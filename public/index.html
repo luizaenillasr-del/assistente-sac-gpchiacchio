@@ -2058,7 +2058,7 @@ function renderDashboard(data) {
           <td>—</td>
           <td><span class="status-badge ${eClass}">${status}</span></td>
           <td><span class="prazo-badge ok">Em dia</span></td>
-          <td><a class="link-abrir" onclick='abrirDossie(${JSON.stringify(x).replace(/'/g,"&#39;")})'>Abrir</a></td>
+          <td><a class="link-abrir" onclick=\"abrirDossieFromCache('fila', filaIdx++)\">Abrir</a></td>
         </tr>`;
       }).join('')
     : '<tr><td colspan="7" style="text-align:center;color:var(--gray-400);padding:20px">Nenhuma manifestação encontrada</td></tr>';
@@ -2479,6 +2479,24 @@ async function registrarManifestacao() {
   }
 }
 
+
+// ===== CACHE PARA DOSSIÊ =====
+function abrirDossieFromCache(tipo, idx) {
+  const item = _dossieCache[tipo + '_' + idx];
+  if (item) abrirDossie(item);
+  else console.warn('Item não encontrado no cache:', tipo, idx);
+}
+
+function storeDossie(tipo, idx, item) {
+  _dossieCache[tipo + '_' + idx] = item;
+}
+
+
+// ===== CACHE DE LINHAS PARA DOSSIÊ =====
+window._tableRows = [];
+function _storeRow(item) { window._tableRows.push(item); return window._tableRows.length - 1; }
+function abrirDossieIdx(idx) { if(window._tableRows[idx]) abrirDossie(window._tableRows[idx]); }
+
 // ===== MODAL DOSSIÊ =====
 function fecharModal() {
   document.getElementById('modal-dossie').style.display = 'none';
@@ -2686,7 +2704,7 @@ function renderAcompanhamento(data) {
           <td>${pri ? `<span style="font-size:11px;font-weight:600;padding:2px 7px;border-radius:10px;background:${priBg};color:${priColor}">${pri}</span>` : '—'}</td>
           <td style="font-size:12px">${m.SLA_HORAS ? m.SLA_HORAS + 'h' : '72h'}</td>
           <td style="font-size:12px;color:var(--gray-500)">${m.RESPONSAVEL || 'Ana Lima'}</td>
-          <td><a class="link-abrir" onclick='abrirDossie(${JSON.stringify(m).replace(/'/g,"&#39;")})'>Abrir</a></td>
+          <td><a class="link-abrir" onclick="abrirDossieIdx(_storeRow(m))">Abrir</a></td>
         </tr>`;
       }).join('')
     : '<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--gray-400)">Nenhuma solicitação encontrada</td></tr>';
@@ -2763,7 +2781,7 @@ function renderBanco() {
           <td><span class="status-badge ${etapaClass(m.STATUS)}">${getEtapaLabel(m.STATUS)}</span></td>
           <td><span class="prazo-badge ${prazoClass2}">${prazoText}</span></td>
           <td>${proc ? `<span class="proc-badge ${proc.toLowerCase().includes('parcial') ? 'parcialmente' : 'procedente'}">${proc}</span>` : '—'}</td>
-          <td><a class="link-abrir" onclick='abrirDossie(${JSON.stringify(m).replace(/'/g,"&#39;")})'>Abrir</a></td>
+          <td><a class="link-abrir" onclick="abrirDossieIdx(_storeRow(m))">Abrir</a></td>
         </tr>`;
       }).join('')
     : '<tr><td colspan="8" style="text-align:center;color:var(--gray-400);padding:20px">Nenhuma manifestação encontrada</td></tr>';
@@ -3159,7 +3177,7 @@ function filterBC(field, val, el) {
 
 function renderBC(items) {
   document.getElementById('bc-list').innerHTML = items.slice(0,15).map((item, i) => `
-    <div class="bc-item ${i === 0 ? 'active' : ''}" onclick="showBCDetail(${JSON.stringify(item).replace(/"/g,'&quot;')}, this)">
+    <div class="bc-item ${i === 0 ? 'active' : ''}" onclick="showBCDetail(_storeRow(item), this)">
       <div class="bc-item-title">${item._nome || item.POLITICA || 'Documento'}</div>
       <div class="bc-item-tags">
         <span class="bc-tag red">${item.SETOR_RESPONSAVEL || item.SETOR || 'Geral'}</span>
