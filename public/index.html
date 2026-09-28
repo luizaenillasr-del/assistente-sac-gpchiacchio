@@ -1987,7 +1987,7 @@ function renderDashboard(data) {
     </div>`;
 
   // Procedência — usar campo Situação Final
-  const recs = _dashData.recs;
+  // 'recs' já foi declarado no início de renderDashboard().
   const proc = {p:0, pp:0, np:0};
   recs.forEach(x => {
     const sf = (x['Situação Final'] || '').toUpperCase();
