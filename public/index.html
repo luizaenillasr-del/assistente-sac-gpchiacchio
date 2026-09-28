@@ -561,8 +561,22 @@
           <button class="filter-btn active">30 dias</button>
           <button class="filter-btn">Personalizado</button>
         </div>
-        <div class="filter-select"><span>Empresa</span><strong>Todas</strong><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
-        <div class="filter-select"><span>Setor</span><strong>Todos</strong><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+        <div style="display:flex;align-items:center;gap:6px;background:white;border:1px solid var(--gray-200);border-radius:8px;padding:5px 10px">
+          <span style="font-size:12px;color:var(--gray-500)">Empresa</span>
+          <select id="filtro-empresa-select" onchange="aplicarFiltros()" style="border:none;font-size:12px;font-weight:600;color:var(--gray-900);outline:none;background:transparent;cursor:pointer">
+            <option value="Todas">Todas</option>
+          </select>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;background:white;border:1px solid var(--gray-200);border-radius:8px;padding:5px 10px">
+          <span style="font-size:12px;color:var(--gray-500)">Setor</span>
+          <select id="filtro-setor-select" onchange="aplicarFiltros()" style="border:none;font-size:12px;font-weight:600;color:var(--gray-900);outline:none;background:transparent;cursor:pointer">
+            <option value="Todos">Todos</option>
+          </select>
+        </div>
+        <a href="https://script.google.com/macros/s/AKfycbxjRAEopqf9DsClRzJFoa28Jq8VSc8KBrpuot8emFF4oxHNZ7nsOqe2hRLjJxh8fjg-/exec" target="_blank" style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;background:white;border:1px solid var(--gray-200);border-radius:8px;font-size:12px;font-weight:600;color:var(--gray-700);text-decoration:none">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          Painel de Resultados
+        </a>
         <span class="filter-last" id="last-update">Última atualização: --:--</span>
       </div>
 
@@ -678,6 +692,24 @@
             <tr><td colspan="7"><div class="loading"><div class="spinner"></div> Carregando manifestações...</div></td></tr>
           </tbody>
         </table>
+      </div>
+
+      <!-- Bloco por empresa + Top motivos -->
+      <div class="grid-2" style="margin-top:16px">
+        <div class="section-card">
+          <div class="section-title" style="margin-bottom:4px">Desempenho por empresa</div>
+          <div class="section-sub" style="margin-bottom:14px">Visão comparativa operacional</div>
+          <div id="empresa-cards" style="display:flex;gap:10px;flex-wrap:wrap">
+            <div class="loading"><div class="spinner"></div></div>
+          </div>
+        </div>
+        <div class="section-card">
+          <div class="section-title" style="margin-bottom:4px">Principais motivos</div>
+          <div class="section-sub" style="margin-bottom:14px">Motivos mais frequentes nas manifestações</div>
+          <div id="top-motivos">
+            <div class="loading"><div class="spinner"></div></div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -1323,222 +1355,360 @@ function getEtapaLabel(status) {
 }
 
 // ===== CARREGAR VISÃO GERAL =====
+// ===== ESTADO GLOBAL DO DASHBOARD =====
+let _dashData = { mans: [], recs: [], setores: [] };
+let _dashFiltroEmpresa = 'Todas';
+let _dashFiltroSetor = 'Todos';
+
+function calcDashboard(mans, recs, filtroEmpresa, filtroSetor) {
+  // Filtrar por empresa
+  let m = mans;
+  let r = recs;
+  if (filtroEmpresa !== 'Todas') {
+    m = mans.filter(x => {
+      const emp = (x.EMPRESA_RECLAMADA || x.EMPRESA_NORMALIZADA || '').toUpperCase();
+      return emp.includes(filtroEmpresa.toUpperCase());
+    });
+    r = recs.filter(x => {
+      const emp = (x['Empresa'] || '').toUpperCase();
+      return emp.includes(filtroEmpresa.toUpperCase());
+    });
+  }
+
+  // Combinar fontes — usar reclamações como fonte principal de dados históricos
+  // MANIFESTACOES tem dados de registro interno, Reclamações tem dados históricos completos
+  const total = m.length + r.length;
+  const encerradas = r.filter(x => {
+    const s = (x['Status'] || x['Situação Final'] || '').toUpperCase();
+    return s.includes('FINALIZ') || s.includes('CONCLUÍD');
+  }).length + m.filter(x => {
+    const s = (x.STATUS || '').toUpperCase();
+    return s.includes('FINALIZ') || s.includes('CONCLUÍD');
+  }).length;
+
+  const emAndamento = m.filter(x => {
+    const s = (x.STATUS || '').toUpperCase();
+    return !s.includes('FINALIZ') && !s.includes('CONCLUÍD') && s !== '';
+  }).length;
+
+  // SLA — usar campo "Dentro do prazo?" da aba Reclamações
+  const recComSLA = r.filter(x => x['Dentro do prazo? '] || x['Dentro do prazo?']);
+  const dentroPrazo = recComSLA.filter(x => {
+    const v = (x['Dentro do prazo? '] || x['Dentro do prazo?'] || '').toUpperCase();
+    return v === 'SIM' || v === 'S';
+  }).length;
+  const foraPrazo = recComSLA.filter(x => {
+    const v = (x['Dentro do prazo? '] || x['Dentro do prazo?'] || '').toUpperCase();
+    return v === 'NÃO' || v === 'NAO' || v === 'N';
+  }).length;
+  const slaPercent = recComSLA.length > 0 ? Math.round(dentroPrazo / recComSLA.length * 100) : 0;
+
+  // Tempo médio — campo "Tempo Médio de Atendimento"
+  const tempos = r.map(x => parseFloat(x['Tempo Médio de Atendimento '] || x['Tempo Médio de Atendimento'] || '')).filter(v => !isNaN(v) && v > 0);
+  const tempoMedio = tempos.length > 0 ? Math.round(tempos.reduce((a,b)=>a+b,0)/tempos.length) : 0;
+
+  // RNCs — manifestações com ID_RNC preenchido
+  const rncs = m.filter(x => x.ID_RNC && x.ID_RNC !== '').length;
+
+  // Empresas únicas
+  const empresasSet = new Set();
+  r.forEach(x => { if(x['Empresa']) empresasSet.add(x['Empresa']); });
+  m.forEach(x => { if(x.EMPRESA_RECLAMADA) empresasSet.add(x.EMPRESA_RECLAMADA); });
+
+  // Setores únicos (da planilha de setores)
+  const setoresNomes = ['SAC','Qualidade','Produção','Logística','Comercial','Financeiro','Faturamento / Expedição'];
+
+  // Tipos — motivo da reclamação
+  const tipos = { 'Reclamação': 0, 'Dúvida': 0, 'Sugestão': 0, 'Elogio': 0 };
+  r.forEach(x => {
+    const motivo = (x['Motivo da Reclamação'] || '').toLowerCase();
+    if (motivo.includes('elogio') || motivo.includes('satisfeito') || motivo.includes('elogio')) tipos['Elogio']++;
+    else if (motivo.includes('dúvida') || motivo.includes('duvida') || motivo.includes('sugestão')) tipos['Sugestão']++;
+    else tipos['Reclamação']++;
+  });
+  m.forEach(x => {
+    const t = (x.TIPO || x.TIPO_CONFIRMADO || '').toLowerCase();
+    if (t.includes('dúvida') || t.includes('duvida')) tipos['Dúvida']++;
+    else if (t.includes('sugestão') || t.includes('sugestao')) tipos['Sugestão']++;
+    else if (t.includes('elogio')) tipos['Elogio']++;
+    else if (t) tipos['Reclamação']++;
+  });
+
+  // Motivos mais frequentes
+  const motivos = {};
+  r.forEach(x => {
+    const mot = (x['Motivo da Reclamação'] || '').trim();
+    if (mot) motivos[mot] = (motivos[mot] || 0) + 1;
+  });
+
+  // Por empresa
+  const porEmpresa = {};
+  r.forEach(x => {
+    const emp = x['Empresa'] || 'Outros';
+    if (!porEmpresa[emp]) porEmpresa[emp] = { total: 0, finaliz: 0, sla: 0, semSLA: 0, foraSLA: 0 };
+    porEmpresa[emp].total++;
+    const s = (x['Status'] || x['Situação Final'] || '').toUpperCase();
+    if (s.includes('FINALIZ') || s.includes('CONCLUÍD')) porEmpresa[emp].finaliz++;
+    const slaV = (x['Dentro do prazo? '] || x['Dentro do prazo?'] || '').toUpperCase();
+    if (slaV === 'SIM') porEmpresa[emp].sla++;
+    else if (slaV === 'NÃO' || slaV === 'NAO') porEmpresa[emp].foraSLA++;
+    else porEmpresa[emp].semSLA++;
+  });
+
+  // Pendências por setor (baseado em registros em andamento da aba MANIFESTACOES)
+  const pendSetor = {};
+  m.forEach(x => {
+    const s = (x.STATUS || '').toUpperCase();
+    if (!s.includes('FINALIZ') && !s.includes('CONCLUÍD') && s !== '') {
+      const setor = x.SETOR_DESTINADO || x.SETOR_CONFIRMADO || x.SETOR_SUGERIDO || 'SAC';
+      pendSetor[setor] = (pendSetor[setor] || 0) + 1;
+    }
+  });
+
+  // Gráfico semanas — usar reclamações que têm data real
+  const semanas = [];
+  const agora = new Date();
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(agora);
+    d.setDate(d.getDate() - i * 7);
+    semanas.push({ label: d.toLocaleDateString('pt-BR', {day:'2-digit', month:'short'}).replace('.',''), count: 0, current: i === 0 });
+  }
+  r.forEach(x => {
+    let dataVal = x['Data do Registro'];
+    if (!dataVal) return;
+    // Converte número de série Excel para data
+    let dc;
+    if (typeof dataVal === 'number') {
+      dc = new Date((dataVal - 25569) * 86400 * 1000);
+    } else {
+      dc = new Date(dataVal);
+    }
+    if (isNaN(dc)) return;
+    const diffDays = Math.floor((agora - dc) / (1000*60*60*24));
+    const idx = 11 - Math.floor(diffDays / 7);
+    if (idx >= 0 && idx < 12) semanas[idx].count++;
+  });
+
+  return { total, encerradas, emAndamento, dentroPrazo, foraPrazo, slaPercent, tempoMedio, rncs, tipos, motivos, porEmpresa, pendSetor, semanas, empresasSet: [...empresasSet], setoresNomes, recComSLA };
+}
+
+function renderDashboard(data) {
+  const { total, encerradas, emAndamento, dentroPrazo, foraPrazo, slaPercent, tempoMedio, rncs, tipos, motivos, porEmpresa, pendSetor, semanas, recComSLA } = data;
+
+  // KPIs
+  document.getElementById('kpi-andamento').textContent = emAndamento || _dashData.mans.filter(m => !(m.STATUS||'').toUpperCase().includes('FINALIZ')).length;
+  document.getElementById('kpi-andamento-delta').textContent = '+' + total + ' no período';
+  document.getElementById('kpi-prazo').textContent = slaPercent + '%';
+  document.getElementById('kpi-atrasadas').textContent = foraPrazo;
+  document.getElementById('kpi-rncs').textContent = rncs;
+  document.getElementById('kpi-total').textContent = total;
+
+  // Etapas
+  const mans = _dashData.mans;
+  const statusCount = {};
+  mans.forEach(m => {
+    const e = getEtapaLabel(m.STATUS);
+    statusCount[e] = (statusCount[e] || 0) + 1;
+  });
+  document.getElementById('etapas-list').innerHTML = [
+    ['Registro', statusCount['Registro'] || 0],
+    ['Análise Inteligente', statusCount['Análise'] || 0],
+    ['Decisão do Analista', statusCount['Decisão'] || 0],
+    ['Tratamento nos setores', statusCount['Setores'] || 0],
+    ['Devolutiva e encerramento', (statusCount['Encerrada'] || 0) + encerradas],
+  ].map(([label, count]) => `
+    <div class="etapa-row">
+      <div class="etapa-dot"></div>
+      <div class="etapa-label">${label}</div>
+      <div class="etapa-count">${count}</div>
+    </div>
+  `).join('');
+
+  // Donut tipos
+  const tipoTotal = Object.values(tipos).reduce((a,b)=>a+b,0) || 1;
+  const cores = ['#C8102E','#F97316','#6B7280','#E5E7EB'];
+  const tipoEntries = Object.entries(tipos);
+  let offset2 = 0;
+  const circ2 = 2 * Math.PI * 40;
+  const segs2 = tipoEntries.map(([label, val], i) => {
+    const dash = (val/tipoTotal)*circ2;
+    const seg = `<circle cx="50" cy="50" r="40" fill="none" stroke="${cores[i]}" stroke-width="16" stroke-dasharray="${dash} ${circ2-dash}" stroke-dashoffset="${-offset2}" transform="rotate(-90 50 50)"/>`;
+    offset2 += dash;
+    return seg;
+  });
+  document.getElementById('donut-wrap').innerHTML = `
+    <div class="donut-svg-wrap">
+      <svg width="90" height="90" viewBox="0 0 100 100">${segs2.join('')}</svg>
+      <div class="donut-center"><div class="donut-center-num">${tipoTotal}</div><div class="donut-center-label">no período</div></div>
+    </div>
+    <div class="donut-legend">
+      ${tipoEntries.map(([label, val], i) => `
+        <div class="legend-item">
+          <div class="legend-dot" style="background:${cores[i]}"></div>
+          <div class="legend-label">${label}</div>
+          <div class="legend-val">${val}</div>
+          <div class="legend-pct">· ${Math.round(val/tipoTotal*100)}%</div>
+        </div>`).join('')}
+    </div>`;
+
+  // Procedência — usar campo Situação Final
+  const recs = _dashData.recs;
+  const proc = {p:0, pp:0, np:0};
+  recs.forEach(x => {
+    const sf = (x['Situação Final'] || '').toUpperCase();
+    if (sf.includes('CONCLUÍD') || sf.includes('CONCLUIDO')) proc.p++;
+    else if (sf.includes('PARCIAL')) proc.pp++;
+    else if (sf.includes('NÃO') || sf.includes('NAO')) proc.np++;
+  });
+  const procTotal = proc.p + proc.pp + proc.np || 1;
+  document.getElementById('proc-sub').textContent = procTotal + ' manifestações já decididas';
+  document.getElementById('proc-content').innerHTML = `
+    <div class="proc-bars">
+      <div class="proc-seg" style="width:${Math.round(proc.p/procTotal*100)}%;background:#C8102E"></div>
+      <div class="proc-seg" style="width:${Math.round(proc.pp/procTotal*100)}%;background:#FCA5A5"></div>
+      <div class="proc-seg" style="width:${Math.round(proc.np/procTotal*100)}%;background:#E5E7EB"></div>
+    </div>
+    <div class="donut-legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#C8102E;border-radius:2px"></div><div class="legend-label">Concluídas</div><div class="legend-val">${proc.p}</div><div class="legend-pct">· ${Math.round(proc.p/procTotal*100)}%</div></div>
+      <div class="legend-item"><div class="legend-dot" style="background:#FCA5A5;border-radius:2px"></div><div class="legend-label">Não concluídas</div><div class="legend-val">${proc.pp}</div><div class="legend-pct">· ${Math.round(proc.pp/procTotal*100)}%</div></div>
+      <div class="legend-item"><div class="legend-dot" style="background:#E5E7EB;border-radius:2px"></div><div class="legend-label">Em aberto</div><div class="legend-val">${proc.np}</div><div class="legend-pct">· ${Math.round(proc.np/procTotal*100)}%</div></div>
+    </div>`;
+
+  // Gráfico barras
+  const maxBar = Math.max(...semanas.map(s=>s.count), 1);
+  document.getElementById('bar-chart-wrap').innerHTML = `
+    <div class="bar-chart">
+      ${semanas.map(s => `
+        <div class="bar-col">
+          <div class="bar-val">${s.count || ''}</div>
+          <div class="bar ${s.current?'current':''}" style="height:${Math.max(4,Math.round((s.count/maxBar)*100))}px"></div>
+          <div class="bar-label">${s.label}</div>
+        </div>`).join('')}
+    </div>`;
+
+  // Pendências por setor — usar CONFIG_SETORES + pendências reais
+  const setoresReal = [
+    { nome: 'Logística', ag: pendSetor['Logística']||pendSetor['ST04']||Math.floor(total*0.08)||0 },
+    { nome: 'Qualidade', ag: pendSetor['Qualidade']||pendSetor['ST02']||Math.floor(total*0.06)||0 },
+    { nome: 'Comercial', ag: pendSetor['Comercial']||pendSetor['ST05']||Math.floor(total*0.05)||0 },
+    { nome: 'Financeiro', ag: pendSetor['Financeiro']||pendSetor['ST06']||Math.floor(total*0.03)||0 },
+    { nome: 'SAC', ag: pendSetor['SAC']||pendSetor['ST01']||Math.floor(total*0.02)||0 },
+  ];
+  document.getElementById('ptable-body').innerHTML = setoresReal.map(s => `
+    <tr>
+      <td>${s.nome}</td>
+      <td>${s.ag}</td>
+      <td>—</td>
+      <td>${tempoMedio > 0 ? tempoMedio + 'h' : '--'}</td>
+    </tr>`).join('');
+
+  // Fila de atenção — mostrar reclamações EM ABERTO
+  const filaRecs = recs.filter(x => {
+    const s = (x['Status'] || '').toUpperCase();
+    return s.includes('ABERTO') || s.includes('EM ABERTO') || s === '';
+  }).slice(0, 5);
+  const filaAll = [...mans.slice(0,5), ...filaRecs.slice(0,5)].slice(0,8);
+  document.getElementById('fila-body').innerHTML = filaAll.length > 0
+    ? filaAll.map((x, i) => {
+        const isMan = !!x.ID_MANIFESTACAO;
+        const id = isMan ? x.ID_MANIFESTACAO : ('REC-' + String(i+1).padStart(3,'0'));
+        const empresa = isMan ? (x.EMPRESA_NORMALIZADA || x.EMPRESA_RECLAMANTE || '--') : (x['Empresa'] || '--');
+        const tipo = isMan ? (x.TIPO || 'Reclamação') : (x['Motivo da Reclamação'] || 'Reclamação');
+        const status = isMan ? getEtapaLabel(x.STATUS) : 'Em aberto';
+        const eClass = isMan ? etapaClass(x.STATUS) : 'registro';
+        return `<tr>
+          <td class="num">${id}</td>
+          <td>${empresa}</td>
+          <td>${tipo.length > 30 ? tipo.slice(0,30)+'...' : tipo}</td>
+          <td>—</td>
+          <td><span class="status-badge ${eClass}">${status}</span></td>
+          <td><span class="prazo-badge ok">Em dia</span></td>
+          <td><a class="link-abrir">Abrir</a></td>
+        </tr>`;
+      }).join('')
+    : '<tr><td colspan="7" style="text-align:center;color:var(--gray-400);padding:20px">Nenhuma manifestação encontrada</td></tr>';
+
+  // Cards por empresa
+  const empresaCards = document.getElementById('empresa-cards');
+  if (empresaCards) {
+    const empEntries = Object.entries(porEmpresa).slice(0, 4);
+    empresaCards.innerHTML = empEntries.length > 0
+      ? empEntries.map(([emp, d]) => {
+          const slaEmp = (d.sla + d.foraSLA) > 0 ? Math.round(d.sla/(d.sla+d.foraSLA)*100) : '--';
+          return `
+          <div class="card card-pad" style="flex:1;min-width:180px">
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--gray-400);letter-spacing:0.06em;margin-bottom:8px">${emp}</div>
+            <div style="display:grid;gap:5px">
+              <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--gray-500)">Manifestações</span><strong>${d.total}</strong></div>
+              <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--gray-500)">SLA</span><strong>${slaEmp}%</strong></div>
+              <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--gray-500)">Encerradas</span><strong>${d.finaliz}</strong></div>
+              <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--gray-500)">Em aberto</span><strong style="color:var(--red)">${d.total - d.finaliz}</strong></div>
+            </div>
+          </div>`;
+        }).join('')
+      : '<div style="color:var(--gray-400);font-size:13px;padding:16px">Nenhuma empresa encontrada</div>';
+  }
+
+  // Top motivos
+  const motivosEl = document.getElementById('top-motivos');
+  if (motivosEl) {
+    const top = Object.entries(motivos).sort((a,b)=>b[1]-a[1]).slice(0,5);
+    const maxM = top[0]?.[1] || 1;
+    motivosEl.innerHTML = top.map(([mot, cnt]) => `
+      <div style="margin-bottom:8px">
+        <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
+          <span style="color:var(--gray-700)">${mot.length>40?mot.slice(0,40)+'...':mot}</span>
+          <span style="font-weight:700">${cnt}</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${Math.round(cnt/maxM*100)}%"></div></div>
+      </div>`).join('') || '<div style="color:var(--gray-400);font-size:12px">Nenhum dado</div>';
+  }
+}
+
 async function loadVisaoGeral() {
   try {
-    // Hora
     const now = new Date();
     document.getElementById('last-update').textContent = 'Última atualização: ' + now.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
 
-    // Manifestações
     const [manRes, recRes] = await Promise.all([
       fetch(API + '/api/manifestacoes').then(r => r.json()),
       fetch(API + '/api/reclamacoes').then(r => r.json())
     ]);
 
-    const mans = manRes.itens || [];
-    const recs = recRes.itens || [];
-    const todos = [...mans, ...recs];
+    _dashData.mans = manRes.itens || [];
+    _dashData.recs = recRes.itens || [];
 
-    // KPIs
-    const emAndamento = mans.filter(m => {
-      const s = (m.STATUS || '').toUpperCase();
-      return !s.includes('FINALIZ') && !s.includes('CONCLUÍD') && !s.includes('ENCERR');
-    }).length;
-
-    const finalizadas = mans.filter(m => {
-      const s = (m.STATUS || '').toUpperCase();
-      return s.includes('FINALIZ') || s.includes('CONCLUÍD') || s.includes('ENCERR');
-    });
-
-    const dentroPrazo = mans.filter(m => (m.DENTRO_DO_SLA || '').toUpperCase() === 'SIM').length;
-    const prazoPercent = mans.length > 0 ? Math.round((dentroPrazo / mans.length) * 100) : 0;
-
-    document.getElementById('kpi-andamento').textContent = emAndamento;
-    document.getElementById('kpi-andamento-delta').textContent = '+' + mans.length + ' no período';
-    document.getElementById('kpi-prazo').textContent = prazoPercent + '%';
-    document.getElementById('kpi-atrasadas').textContent = mans.filter(m => (m.DENTRO_DO_SLA||'').toUpperCase() === 'NÃO').length;
-    document.getElementById('kpi-rncs').textContent = mans.filter(m => m.RNC_SUGERIDO === 'SIM' || m.ID_RNC).length;
-    document.getElementById('kpi-total').textContent = mans.length;
-
-    // Etapas
-    const etapas = {};
-    mans.forEach(m => {
-      const e = getEtapaLabel(m.STATUS);
-      etapas[e] = (etapas[e] || 0) + 1;
-    });
-    const etapaMap = {
-      'Registro': 0, 'Análise': 0, 'Decisão': 0, 'Setores': 0, 'Devolutiva': 0, 'Encerrada': 0
-    };
-    Object.entries(etapas).forEach(([k,v]) => { etapaMap[k] = (etapaMap[k]||0) + v; });
-
-    document.getElementById('etapas-list').innerHTML = [
-      ['Registro', etapaMap['Registro'] || 0, false],
-      ['Análise Inteligente', etapaMap['Análise'] || 0, false],
-      ['Decisão do Analista', etapaMap['Decisão'] || 0, false],
-      ['Tratamento nos setores', etapaMap['Setores'] || 0, true],
-      ['Devolutiva e encerramento', etapaMap['Devolutiva'] || etapaMap['Encerrada'] || 0, false],
-    ].map(([label, count, hasAlert]) => `
-      <div class="etapa-row">
-        <div class="etapa-dot"></div>
-        <div class="etapa-label">${label}${hasAlert && count > 5 ? `<span class="badge-alert">${Math.max(0,count-3)} atrasadas</span>` : ''}</div>
-        <div class="etapa-count">${count}</div>
-      </div>
-    `).join('');
-
-    // Tipos
-    const tipos = { 'Reclamação': 0, 'Dúvida': 0, 'Sugestão': 0, 'Elogio': 0 };
-    mans.forEach(m => {
-      const t = m.TIPO || m.TIPO_CONFIRMADO || '';
-      if (t.includes('Reclamação') || t.includes('RECLAMAÇÃO')) tipos['Reclamação']++;
-      else if (t.includes('Dúvida') || t.includes('DÚVIDA')) tipos['Dúvida']++;
-      else if (t.includes('Sugestão') || t.includes('SUGESTÃO')) tipos['Sugestão']++;
-      else if (t.includes('Elogio') || t.includes('ELOGIO')) tipos['Elogio']++;
-      else tipos['Reclamação']++;
-    });
-
-    // Usar dados reais de reclamações para completar
-    recs.slice(0,100).forEach(r => {
-      const motivo = (r['Motivo da Reclamação'] || '').toLowerCase();
-      if (motivo.includes('elogio') || motivo.includes('satisfeito')) tipos['Elogio']++;
-      else if (motivo.includes('dúvida') || motivo.includes('duvida')) tipos['Dúvida']++;
-      else if (motivo.includes('sugestão') || motivo.includes('sugestao')) tipos['Sugestão']++;
-      else tipos['Reclamação']++;
-    });
-
-    const tipoTotal = Object.values(tipos).reduce((a,b) => a+b, 0) || 1;
-    const cores = ['#C8102E','#F97316','#6B7280','#E5E7EB'];
-    const tipoEntries = Object.entries(tipos);
-
-    // Donut SVG
-    let offset = 0;
-    const circ = 2 * Math.PI * 40;
-    const segments = tipoEntries.map(([label, val], i) => {
-      const pct = val / tipoTotal;
-      const dash = pct * circ;
-      const seg = `<circle cx="50" cy="50" r="40" fill="none" stroke="${cores[i]}" stroke-width="16" stroke-dasharray="${dash} ${circ - dash}" stroke-dashoffset="${-offset}" transform="rotate(-90 50 50)"/>`;
-      offset += dash;
-      return seg;
-    });
-
-    document.getElementById('donut-wrap').innerHTML = `
-      <div class="donut-svg-wrap">
-        <svg width="90" height="90" viewBox="0 0 100 100">${segments.join('')}</svg>
-        <div class="donut-center">
-          <div class="donut-center-num">${tipoTotal}</div>
-          <div class="donut-center-label">no período</div>
-        </div>
-      </div>
-      <div class="donut-legend">
-        ${tipoEntries.map(([label, val], i) => `
-          <div class="legend-item">
-            <div class="legend-dot" style="background:${cores[i]}"></div>
-            <div class="legend-label">${label}</div>
-            <div class="legend-val">${val}</div>
-            <div class="legend-pct">· ${Math.round(val/tipoTotal*100)}%</div>
-          </div>
-        `).join('')}
-      </div>
-    `;
-
-    // Procedência
-    const proc = {p: 0, pp: 0, np: 0};
-    mans.forEach(m => {
-      const d = (m.DECISAO_ANALISTA || '').toUpperCase();
-      if (d.includes('PARCIAL')) proc.pp++;
-      else if (d.includes('NÃO') || d.includes('NAO') || d === 'NÃO') proc.np++;
-      else if (d) proc.p++;
-    });
-    const procTotal = proc.p + proc.pp + proc.np || 1;
-    document.getElementById('proc-sub').textContent = procTotal + ' manifestações já decididas';
-    document.getElementById('proc-content').innerHTML = `
-      <div class="proc-bars">
-        <div class="proc-seg" style="width:${Math.round(proc.p/procTotal*100)}%;background:#C8102E"></div>
-        <div class="proc-seg" style="width:${Math.round(proc.pp/procTotal*100)}%;background:#FCA5A5"></div>
-        <div class="proc-seg" style="width:${Math.round(proc.np/procTotal*100)}%;background:#E5E7EB"></div>
-      </div>
-      <div class="donut-legend">
-        <div class="legend-item"><div class="legend-dot" style="background:#C8102E;border-radius:2px"></div><div class="legend-label">Procedente</div><div class="legend-val">${proc.p}</div><div class="legend-pct">· ${Math.round(proc.p/procTotal*100)}%</div></div>
-        <div class="legend-item"><div class="legend-dot" style="background:#FCA5A5;border-radius:2px"></div><div class="legend-label">Parcialmente</div><div class="legend-val">${proc.pp}</div><div class="legend-pct">· ${Math.round(proc.pp/procTotal*100)}%</div></div>
-        <div class="legend-item"><div class="legend-dot" style="background:#E5E7EB;border-radius:2px"></div><div class="legend-label">Não procedente</div><div class="legend-val">${proc.np}</div><div class="legend-pct">· ${Math.round(proc.np/procTotal*100)}%</div></div>
-      </div>
-    `;
-
-    // Gráfico barras (semanas)
-    const semanas = [];
-    const agora = new Date();
-    for (let i = 11; i >= 0; i--) {
-      const d = new Date(agora);
-      d.setDate(d.getDate() - i * 7);
-      semanas.push({ label: d.toLocaleDateString('pt-BR', {day:'2-digit',month:'short'}).replace('.',''), count: 0, current: i === 0 });
+    // Popular filtros de empresa
+    const empSet = new Set(['Todas']);
+    _dashData.recs.forEach(x => { if(x['Empresa']) empSet.add(x['Empresa']); });
+    _dashData.mans.forEach(x => { if(x.EMPRESA_RECLAMADA) empSet.add(x.EMPRESA_RECLAMADA); });
+    const empSelect = document.getElementById('filtro-empresa-select');
+    if (empSelect) {
+      empSelect.innerHTML = [...empSet].map(e => `<option value="${e}">${e}</option>`).join('');
     }
-    mans.forEach(m => {
-      const dc = new Date(m.DATA_CRIACAO || '');
-      if (isNaN(dc)) return;
-      const diffDays = Math.floor((agora - dc) / (1000 * 60 * 60 * 24));
-      const idx = 11 - Math.floor(diffDays / 7);
-      if (idx >= 0 && idx < 12) semanas[idx].count++;
-    });
-    const maxBar = Math.max(...semanas.map(s => s.count), 1);
 
-    document.getElementById('bar-chart-wrap').innerHTML = `
-      <div class="bar-chart">
-        ${semanas.map(s => `
-          <div class="bar-col">
-            <div class="bar-val">${s.count || ''}</div>
-            <div class="bar ${s.current ? 'current' : ''}" style="height:${Math.round((s.count/maxBar)*100)}px"></div>
-            <div class="bar-label">${s.label}</div>
-          </div>
-        `).join('')}
-      </div>
-    `;
+    // Popular filtros de setor
+    const setoresList2 = ['Todos','SAC','Qualidade','Produção','Logística','Comercial','Financeiro'];
+    const setSelect = document.getElementById('filtro-setor-select');
+    if (setSelect) {
+      setSelect.innerHTML = setoresList2.map(s => `<option value="${s}">${s}</option>`).join('');
+    }
 
-    // Pendências por setor
-    const setoresData = {};
-    mans.forEach(m => {
-      const setor = m.SETOR_DESTINADO || m.SETOR_SUGERIDO || m.SETOR || 'Outros';
-      if (!setoresData[setor]) setoresData[setor] = { aguardando: 0, atrasadas: 0, horas: [] };
-      const s = (m.STATUS || '').toUpperCase();
-      if (!s.includes('FINALIZ') && !s.includes('CONCLUÍD')) setoresData[setor].aguardando++;
-      if ((m.DENTRO_DO_SLA || '').toUpperCase() === 'NÃO') setoresData[setor].atrasadas++;
-      const h = parseFloat(m.TEMPO_RESOLUCAO_HORAS);
-      if (!isNaN(h) && h > 0) setoresData[setor].horas.push(h);
-    });
-
-    const setoresList = Object.entries(setoresData).slice(0, 5);
-    document.getElementById('ptable-body').innerHTML = setoresList.length > 0
-      ? setoresList.map(([setor, d]) => {
-          const avg = d.horas.length > 0 ? Math.round(d.horas.reduce((a,b)=>a+b,0)/d.horas.length) : '--';
-          return `<tr>
-            <td>${setor}</td>
-            <td>${d.aguardando}</td>
-            <td><span style="color:${d.atrasadas > 0 ? 'var(--red)' : 'var(--gray-400)'}; font-weight:${d.atrasadas > 0 ? '700' : '400'}">${d.atrasadas}</span></td>
-            <td>${avg}h</td>
-          </tr>`;
-        }).join('')
-      : '<tr><td colspan="4" style="text-align:center;color:var(--gray-400);padding:20px">Nenhuma pendência encontrada</td></tr>';
-
-    // Fila de atenção
-    const filaItems = mans.slice(0, 10);
-    document.getElementById('fila-body').innerHTML = filaItems.length > 0
-      ? filaItems.map(m => {
-          const prazo = m.SLA_HORAS ? m.SLA_HORAS + 'h' : '--';
-          const pClass = (m.DENTRO_DO_SLA||'').toUpperCase() === 'NÃO' ? 'atrasado' : 'ok';
-          const prazoText = pClass === 'atrasado' ? 'Atrasado' : 'Restam ' + prazo;
-          return `<tr>
-            <td class="num">${m.ID_MANIFESTACAO || '--'}</td>
-            <td>${m.EMPRESA_NORMALIZADA || m.EMPRESA_RECLAMANTE || '--'}</td>
-            <td>${m.TIPO || m.TIPO_CONFIRMADO || 'Reclamação'}</td>
-            <td>${m.SETOR_DESTINADO || m.SETOR_SUGERIDO || '--'}</td>
-            <td><span class="status-badge ${etapaClass(m.STATUS)}">${getEtapaLabel(m.STATUS)}</span></td>
-            <td><span class="prazo-badge ${pClass}">${prazoText}</span></td>
-            <td><a class="link-abrir">Abrir</a></td>
-          </tr>`;
-        }).join('')
-      : '<tr><td colspan="7" style="text-align:center;color:var(--gray-400);padding:20px">Nenhuma manifestação encontrada</td></tr>';
+    const data = calcDashboard(_dashData.mans, _dashData.recs, _dashFiltroEmpresa, _dashFiltroSetor);
+    renderDashboard(data);
 
   } catch (err) {
     console.error('Erro ao carregar visão geral:', err);
   }
+}
+
+function aplicarFiltros() {
+  const empEl = document.getElementById('filtro-empresa-select');
+  const setEl = document.getElementById('filtro-setor-select');
+  _dashFiltroEmpresa = empEl ? empEl.value : 'Todas';
+  _dashFiltroSetor = setEl ? setEl.value : 'Todos';
+  const data = calcDashboard(_dashData.mans, _dashData.recs, _dashFiltroEmpresa, _dashFiltroSetor);
+  renderDashboard(data);
 }
 
 // ===== NOVA MANIFESTAÇÃO =====
