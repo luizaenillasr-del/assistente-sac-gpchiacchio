@@ -1,7 +1,9 @@
 const { google } = require('googleapis');
 
 function getAuth() {
-  const creds = JSON.parse(process.env.GOOGLE_CREDENTIALS);
+  const raw = process.env.GOOGLE_CREDENTIALS;
+  if (!raw) throw new Error('GOOGLE_CREDENTIALS não configurada.');
+  const creds = JSON.parse(raw);
   return new google.auth.GoogleAuth({
     credentials: creds,
     scopes: [
@@ -26,6 +28,7 @@ function normalizarJson(texto) {
 }
 
 async function salvarArquivoGoogleDrive(arquivo) {
+  if (!arquivo?.dataBase64) return { fileId:'', url:'' };
   const {mimeType,base64}=stripDataUrl(arquivo.dataBase64);
   if(!base64) throw new Error('Arquivo sem conteúdo.');
   const auth=await getAuth().getClient();
@@ -38,15 +41,15 @@ async function salvarArquivoGoogleDrive(arquivo) {
   return {fileId:upload.data.id,nome:upload.data.name,url:upload.data.webViewLink||upload.data.webContentLink||''};
 }
 
-async function extrairDadosDocumento(arquivo,tipoDocumento) {
+async function extrairDadosDocumento(arquivo, tipoDocumento) {
   if(!process.env.OPENAI_API_KEY){
-    throw new Error('OPENAI_API_KEY não configurada. A importação do documento precisa da API de IA para extrair os campos.');
+    throw new Error('OPENAI_API_KEY não configurada.');
   }
   const {mimeType,base64}=stripDataUrl(arquivo.dataBase64);
-  const modelo=process.env.OPENAI_EXTRACTION_MODEL || 'gpt-5.6-luna';
+  const modelo=process.env.OPENAI_EXTRACTION_MODEL || 'gpt-4o';
   const isImage=/^image\//i.test(mimeType);
   const content=[];
-  content.push({type:'input_text',text:`Você é o extrator documental do Assistente SAC Grupo Chiacchio.\nTipo do documento: ${tipoDocumento}.\nExtraia somente informações explicitamente presentes no documento. Nunca invente valores. Se um campo não estiver presente, retorne string vazia. Preserve números, datas, nomes, CNPJ, NFe e textos relevantes.\n\nRetorne SOMENTE JSON válido com este formato:\n${tipoDocumento==='RNC' ? JSON.stringify({numeroRnc:'',manifestacaoOrigem:'',dataAbertura:'',empresa:'',setor:'',competencia:'',naoConformidade:'',causaRaiz:'',subcausa:'',acaoCorretiva:'',acaoPreventiva:'',responsavel:'',prazo:'',prioridade:'',status:'',observacoes:''},null,2) : JSON.stringify({dataRegistro:'',numeroReclamacao:'',empresaReclamante:'',empresaReclamada:'',cnpj:'',contato:'',telefone:'',email:'',canal:'',tipoManifestacao:'',descricao:'',produto:'',lote:'',nfe:'',quantidade:'',valor:'',procedencia:'',justificativa:'',setor:'',observacoes:''},null,2)}`});
+  content.push({type:'input_text',text:`Você é o extrator documental do Assistente SAC Grupo Chiacchio.\nTipo do documento: ${tipoDocumento}.\nExtraia somente informações explicitamente presentes no documento. Nunca invente valores. Se um campo não estiver presente, retorne string vazia.\n\nRetorne SOMENTE JSON válido com este formato:\n${tipoDocumento==='RNC' ? JSON.stringify({numeroRnc:'',manifestacaoOrigem:'',dataAbertura:'',empresa:'',setor:'',competencia:'',naoConformidade:'',causaRaiz:'',subcausa:'',acaoCorretiva:'',acaoPreventiva:'',responsavel:'',prazo:'',prioridade:'',status:'',observacoes:''},null,2) : JSON.stringify({dataRegistro:'',numeroReclamacao:'',empresaReclamante:'',empresaReclamada:'',cnpj:'',contato:'',telefone:'',email:'',canal:'',tipoManifestacao:'',descricao:'',produto:'',lote:'',nfe:'',quantidade:'',valor:'',procedencia:'',justificativa:'',setor:'',observacoes:''},null,2)}`});
   if(isImage){
     content.push({type:'input_image',image_url:`data:${mimeType};base64,${base64}`});
   } else {
