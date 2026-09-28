@@ -1,0 +1,155 @@
+const sheets = require('./sheets');
+
+function normalizar(valor) {
+  return String(valor || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^\w\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function campo(obj, nomes) {
+  for (const nome of nomes) {
+    if (obj && obj[nome] !== undefined && obj[nome] !== null && String(obj[nome]).trim() !== '') {
+      return obj[nome];
+    }
+  }
+  return '';
+}
+
+function tokens(texto) {
+  const stopwords = new Set([
+    'a','o','e','de','da','do','das','dos','em','no','na','nos','nas',
+    'um','uma','para','por','com','que','se','foi','ser','está','esta',
+    'este','mais','mas','ou','não','nao','ao','à','as','os'
+  ]);
+  return new Set(
+    normalizar(texto)
+      .split(' ')
+      .filter(p => p.length >= 3 && !stopwords.has(p))
+  );
+}
+
+function calcularSimilaridade(texto1, texto2) {
+  const a = tokens(texto1);
+  const b = tokens(texto2);
+  if (!a.size || !b.size) return 0;
+  let intersecao = 0;
+  a.forEach(token => { if (b.has(token)) intersecao++; });
+  const uniao = new Set([...a, ...b]).size;
+  return uniao ? Math.round((intersecao / uniao) * 100) : 0;
+}
+
+async function buscarCasosSimilares(manifestacao, limite = 8) {
+  try {
+    const historico = await sheets.lerAba('BANCO_HISTORICO', 5000);
+    const descricao = campo(manifestacao, ['DESCRICAO','DESCRIÇÃO','ORIG_DESCRICAO_RECLAMACAO','DESCRICAO_RECLAMACAO','MOTIVO_RELATADO_BRUTO']);
+    if (!descricao) return [];
+    return historico
+      .filter(h => campo(h, ['ORIG_DESCRICAO_RECLAMACAO','DESCRICAO_RECLAMACAO','DESCRICAO']))
+      .map(h => {
+        const descricaoHistorica = campo(h, ['ORIG_DESCRICAO_RECLAMACAO','DESCRICAO_RECLAMACAO','DESCRICAO']);
+        return {
+          id: campo(h, ['ID_HISTORICO','ID_MANIFESTACAO','ID']),
+          empresa: campo(h, ['ORIG_EMPRESA','EMPRESA_RECLAMADA','EMPRESA']),
+          cliente: campo(h, ['ORIG_CONTATO','EMPRESA_RECLAMANTE','CLIENTE']),
+          descricao: descricaoHistorica.slice(0, 300),
+          motivo: campo(h, ['ORIG_MOTIVO_RELATADO','MOTIVO_RELATADO_BRUTO','MOTIVO']),
+          tipo: campo(h, ['COMP_TIPO_PROBLEMA_VALIDADO','TIPO_PROBLEMA_VALIDADO','TIPO']),
+          causa: campo(h, ['COMP_CAUSA_PROVAVEL','CAUSA_RAIZ','CAUSA']),
+          subcausa: campo(h, ['COMP_SUBCAUSA','SUBCAUSA','SUB_CAUSA']),
+          setor: campo(h, ['SETOR_RESPONSAVEL','SETOR']),
+          tratativa: campo(h, ['TRATATIVA_REALIZADA','ORIG_TRATATIVA','TRATATIVA','ORIG_TRATATIVA_REALIZADA']),
+          resultado: campo(h, ['RESULTADO','STATUS_FINAL','DESFECHO']),
+          devolutiva: campo(h, ['DEVOLUTIVA_FINAL','ORIG_DEVOLUTIVA','DEVOLUTIVA']),
+          similaridade: calcularSimilaridade(descricao, descricaoHistorica)
+        };
+      })
+      .filter(caso => caso.similaridade >= 10)
+      .sort((a,b) => b.similaridade - a.similaridade)
+      .slice(0, limite);
+  } catch (erro) {
+    console.error('Erro ao buscar casos similares:', erro.message);
+    return [];
+  }
+}
+
+async function detectarReincidencia(manifestacao) {
+  try {
+    const historico = await sheets.lerAba('BANCO_HISTORICO', 5000);
+    const cliente = normalizar(campo(manifestacao, ['EMPRESA_RECLAMANTE','CLIENTE','CONTATO','ORIG_CONTATO']));
+    if (!cliente) return { detectada:false, quantidade:0, casos:[] };
+    const casos = historico.filter(h => {
+      const clienteHistorico = normalizar(campo(h, ['ORIG_CONTATO','EMPRESA_RECLAMANTE','CLIENTE']));
+      return clienteHistorico && clienteHistorico === cliente;
+    });
+    return {
+      detectada: casos.length > 0,
+      quantidade: casos.length,
+      casos: casos.slice(-10).map(caso => ({
+        id: campo(caso,['ID_HISTORICO','ID_MANIFESTACAO']),
+        data: campo(caso,['ORIG_DATA_ABERTURA','DATA_ABERTURA']),
+        motivo: campo(caso,['ORIG_MOTIVO_RELATADO','MOTIVO']),
+        causa: campo(caso,['COMP_CAUSA_PROVAVEL','CAUSA_RAIZ']),
+        tratativa: campo(caso,['TRATATIVA_REALIZADA','ORIG_TRATATIVA'])
+      }))
+    };
+  } catch (erro) {
+    console.error('Erro reincidência:', erro.message);
+    return { detectada:false, quantidade:0, casos:[] };
+  }
+}
+
+function gerarSugestaoTratativa(casosSimilares) {
+  const casosComTratativa = casosSimilares.filter(caso => caso.tratativa && caso.tratativa.trim() !== '');
+  if (!casosComTratativa.length) return { aplicavel: null, confianca: 0, sugestao: '', quantidadeCasos: 0, evidencia: [] };
+  const contagem = {};
+  casosComTratativa.forEach(caso => { const chave = caso.tratativa.trim(); contagem[chave] = (contagem[chave] || 0) + 1; });
+  const ordenadas = Object.entries(contagem).sort((a,b) => b[1] - a[1]);
+  const [tratativa, quantidade] = ordenadas[0];
+  const confianca = Math.round((quantidade / casosComTratativa.length) * 100);
+  return {
+    aplicavel: true, confianca, sugestao: tratativa, quantidadeCasos: quantidade,
+    evidencia: casosComTratativa.filter(caso => caso.tratativa.trim() === tratativa).slice(0,5).map(caso => ({ id: caso.id, compatibilidade: caso.similaridade, tratativa: caso.tratativa, resultado: caso.resultado }))
+  };
+}
+
+function gerarDevolutiva(empresa, tipo, setor, tratativa) {
+  const setor1 = setor || 'nossos setores responsáveis';
+  return `Prezado(a) cliente da ${empresa || 'empresa'},\n\nRecebemos seu relato referente a ${tipo || 'sua manifestação'} e registramos formalmente em nosso sistema.\n\nEncaminhamos o caso ao setor de ${setor1} para análise e providências.\n\nRetornaremos com um posicionamento completo dentro do prazo estabelecido.\n\nAgradecemos o contato e pedimos desculpas pelos transtornos causados.\n\nAtenciosamente,\nEquipe SAC — Grupo Chiacchio`;
+}
+
+async function analisarManifestacao(manifestacao, regras = {}) {
+  const inicio = Date.now();
+  const [casosSimilares, reincidencia] = await Promise.all([
+    buscarCasosSimilares(manifestacao, 8),
+    detectarReincidencia(manifestacao)
+  ]);
+  const casoPrincipal = casosSimilares[0] || null;
+  const tratativa = gerarSugestaoTratativa(casosSimilares);
+  const setor = regras.setores?.[0] || casoPrincipal?.setor || '';
+  const tipo = regras.tipoDetectado || casoPrincipal?.tipo || 'Não identificado';
+  return {
+    sucesso: true,
+    tipoSugerido: tipo,
+    confianca: regras.tipoConfianca || 0,
+    prioridade: regras.prioridade || 'Média',
+    slaHoras: regras.slaHoras || 72,
+    setoresSugeridos: regras.setores || [],
+    regraAplicada: regras.regraAplicada || null,
+    procedimentoSugerido: regras.procedimentoSugerido || null,
+    perguntasNecessarias: regras.perguntasNecessarias || [],
+    geraRNC: regras.geraRNC || false,
+    casosSemelhantes: casosSimilares,
+    reincidencia,
+    tratativaSugerida: { aplicavel: tratativa.aplicavel, confianca: tratativa.confianca, sugestao: tratativa.sugestao, quantidadeCasos: tratativa.quantidadeCasos, evidencia: tratativa.evidencia },
+    devolutivaSugerida: gerarDevolutiva(manifestacao.empresaReclamante, tipo, setor, tratativa.sugestao),
+    tempoAnaliseSegundos: Math.round((Date.now() - inicio) / 1000),
+    versaoIA: '3.0-tratativa-devolutiva-similaridade',
+    geradaEm: new Date().toISOString()
+  };
+}
+
+module.exports = { normalizar, calcularSimilaridade, buscarCasosSimilares, detectarReincidencia, gerarSugestaoTratativa, gerarDevolutiva, analisarManifestacao };
