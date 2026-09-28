@@ -677,42 +677,51 @@ app.get('/api/rnc-metricas', requerPerfil('MASTER','ANALISTA SAC'), async (req,r
 app.get('/api/empresas', async (req, res) => {
   try {
     const sheets = await getSheets();
-    // Busca headers da MANIFESTACOES
-    const headerRes = await sheets.spreadsheets.values.get({
+    
+    // Busca headers + dados de MANIFESTACOES
+    const res1 = await sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
-      range: 'MANIFESTACOES!1:1',
+      range: 'MANIFESTACOES!A1:Z1000',
       valueRenderOption: 'FORMATTED_VALUE'
     });
-    const headers = headerRes.data.values?.[0] || [];
-    console.log('Headers MANIFESTACOES:', headers);
-
-    const [manifestacoes, reclamacoes] = await Promise.all([
-      lerAba('MANIFESTACOES', 2000).catch(() => []),
-      lerAba('Reclamações + devolutiva', 2000).catch(() => [])
-    ]);
+    const rows = res1.data.values || [];
+    if (rows.length === 0) {
+      return res.json({ sucesso: true, total: 0, itens: [] });
+    }
+    
+    const headers = rows[0];
+    const empresaIdx = headers.indexOf('EMPRESA_NORMALIZADA');
     
     const empresas = new Set();
     
-    // Log para debug
-    if (manifestacoes.length > 0) {
-      console.log('Primeira manifestação:', manifestacoes[0]);
-    }
-    
-    // De MANIFESTACOES: procura por EMPRESA_NORMALIZADA, EMPRESA_RECLAMADA, ou EMPRESA
-    manifestacoes.forEach(m => {
-      const emp = m.EMPRESA_NORMALIZADA || m.EMPRESA_RECLAMADA || m.EMPRESA || m['Empresa'] || '';
-      if (emp && emp.trim()) empresas.add(emp.trim());
-    });
-    
-    // De Reclamações + devolutiva: procura por Empresa
-    reclamacoes.forEach(r => {
-      const emp = r.Empresa || r['Empresa'] || '';
-      if (emp && emp.trim() && !['TR01', 'TR08'].includes(emp.trim())) {
+    // Extrai empresa de cada linha
+    for (let i = 1; i < rows.length; i++) {
+      const emp = (empresaIdx >= 0 && rows[i][empresaIdx]) || '';
+      if (emp && emp.trim()) {
         empresas.add(emp.trim());
       }
-    });
+    }
     
-    res.json({ sucesso: true, total: empresas.size, itens: [...empresas].sort(), debug: { headers, manifestacoesCount: manifestacoes.length } });
+    // Também busca de Reclamações + devolutiva
+    const res2 = await sheets.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: 'Reclamações + devolutiva!A1:Z1000',
+      valueRenderOption: 'FORMATTED_VALUE'
+    }).catch(() => ({ data: { values: [] } }));
+    
+    const recRows = res2.data.values || [];
+    if (recRows.length > 0) {
+      const recHeaders = recRows[0];
+      const recEmpIdx = recHeaders.indexOf('Empresa');
+      for (let i = 1; i < recRows.length; i++) {
+        const emp = (recEmpIdx >= 0 && recRows[i][recEmpIdx]) || '';
+        if (emp && emp.trim() && !['TR01', 'TR08'].includes(emp.trim())) {
+          empresas.add(emp.trim());
+        }
+      }
+    }
+    
+    res.json({ sucesso: true, total: empresas.size, itens: [...empresas].sort() });
   } catch (e) {
     console.error('Erro ao carregar empresas:', e.message);
     res.status(500).json({ sucesso: false, erro: e.message, itens: [] });
@@ -753,41 +762,39 @@ app.get('/api/historico', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁV
 // ===== SETORES / CONHECIMENTO / PROCEDIMENTOS / POLÍTICAS / TIPOS / SLA =====
 app.get('/api/setores-unicos', async (req, res) => {
   try {
-    const [manifestacoes, regras, config] = await Promise.all([
-      lerAba('MANIFESTACOES', 2000).catch(() => []),
-      lerAba('REGRAS_ROTEAMENTO', 500).catch(() => []),
-      lerAba('CONFIG_SETORES', 50).catch(() => [])
-    ]);
-    
+    const sheets = await getSheets();
     const setores = new Set();
     
-    // De manifestações
-    manifestacoes.forEach(m => {
-      if (m.SETOR_SUGERIDO) setores.add(m.SETOR_SUGERIDO);
-      if (m.SETORES_CONFIRMADOS) {
-        m.SETORES_CONFIRMADOS.split(',').forEach(s => {
-          const trimmed = s.trim();
-          if (trimmed) setores.add(trimmed);
-        });
+    // De MANIFESTACOES
+    try {
+      const res1 = await sheets.spreadsheets.values.get({
+        spreadsheetId: SPREADSHEET_ID,
+        range: 'MANIFESTACOES!A1:Z1000',
+        valueRenderOption: 'FORMATTED_VALUE'
+      });
+      const rows = res1.data.values || [];
+      if (rows.length > 0) {
+        const headers = rows[0];
+        const setorIdx = headers.indexOf('SETOR');
+        const setorConfIdx = headers.indexOf('SETOR_CONFIRMADO') >= 0 ? headers.indexOf('SETOR_CONFIRMADO') : headers.indexOf('SETORES_CONFIRMADOS');
+        
+        for (let i = 1; i < rows.length; i++) {
+          if (setorIdx >= 0 && rows[i][setorIdx]) {
+            const s = rows[i][setorIdx].trim();
+            if (s) setores.add(s);
+          }
+          if (setorConfIdx >= 0 && rows[i][setorConfIdx]) {
+            const setor = rows[i][setorConfIdx];
+            setor.split(',').forEach(s => {
+              const trimmed = s.trim();
+              if (trimmed) setores.add(trimmed);
+            });
+          }
+        }
       }
-    });
+    } catch (e) { console.warn('Erro lendo MANIFESTACOES para setores:', e.message); }
     
-    // De regras
-    regras.forEach(r => {
-      if (r.SETORES_ENVOLVIDOS) {
-        r.SETORES_ENVOLVIDOS.split('+').forEach(s => {
-          const trimmed = s.trim().split('(')[0].trim();
-          if (trimmed) setores.add(trimmed);
-        });
-      }
-    });
-    
-    // De config
-    config.forEach(c => {
-      if (c.NOME_SETOR) setores.add(c.NOME_SETOR);
-    });
-    
-    // Setores padrão se vazio
+    // Padrão se vazio
     if (setores.size === 0) {
       ['SAC', 'Qualidade', 'Logística', 'Financeiro', 'Comercial'].forEach(s => setores.add(s));
     }
