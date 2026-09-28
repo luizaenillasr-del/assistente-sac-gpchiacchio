@@ -6,7 +6,6 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// ===== SHEETS SERVICE =====
 const auth = new google.auth.GoogleAuth({
   credentials: JSON.parse(process.env.GOOGLE_CREDENTIALS),
   scopes: ['https://www.googleapis.com/auth/spreadsheets'],
@@ -56,33 +55,24 @@ async function gerarProximoID(nomeAba, prefixo) {
   return `${prefixo}-${String(max + 1).padStart(3, '0')}`;
 }
 
-// ===== ROTAS =====
 app.get('/', (req, res) => {
-  res.json({ status: 'ok', versao: '1.0.0', sistema: 'Assistente SAC Chiacchio' });
+  res.json({ status: 'ok', versao: '2.0.0', sistema: 'Assistente SAC Chiacchio', rotas: ['/api/manifestacoes', '/api/historico', '/api/setores', '/api/conhecimento', '/api/procedimentos', '/api/politicas', '/api/tipos', '/api/sla', '/api/reclamacoes'] });
 });
 
 app.get('/api/manifestacoes', async (req, res) => {
-  try {
-    const data = await lerAba('MANIFESTACOES');
-    res.json({ sucesso: true, itens: data });
-  } catch (e) {
-    res.status(500).json({ sucesso: false, erro: e.message });
-  }
+  try { res.json({ sucesso: true, itens: await lerAba('MANIFESTACOES') }); }
+  catch (e) { res.status(500).json({ sucesso: false, erro: e.message }); }
 });
 
 app.post('/api/manifestacoes', async (req, res) => {
   try {
     const { empresaReclamada, empresaReclamante, contato, produto, lote, descricao } = req.body;
-    if (!empresaReclamada || !empresaReclamante || !contato || !descricao) {
+    if (!empresaReclamada || !empresaReclamante || !contato || !descricao)
       return res.status(400).json({ sucesso: false, erro: 'Campos obrigatórios faltando.' });
-    }
     const id = await gerarProximoID('MANIFESTACOES', 'MAN');
-    const linha = [id, new Date().toISOString(), empresaReclamada, empresaReclamante, contato, produto || '', lote || '', descricao, 'EM ANÁLISE'];
-    await appendLinha('MANIFESTACOES', linha);
+    await appendLinha('MANIFESTACOES', [id, new Date().toISOString(), empresaReclamada, empresaReclamante, contato, produto || '', lote || '', descricao, 'EM ANÁLISE']);
     res.json({ sucesso: true, id });
-  } catch (e) {
-    res.status(500).json({ sucesso: false, erro: e.message });
-  }
+  } catch (e) { res.status(500).json({ sucesso: false, erro: e.message }); }
 });
 
 app.get('/api/manifestacoes/:id', async (req, res) => {
@@ -91,9 +81,47 @@ app.get('/api/manifestacoes/:id', async (req, res) => {
     const item = data.find(r => r.ID_MANIFESTACAO === req.params.id);
     if (!item) return res.status(404).json({ sucesso: false, erro: 'Não encontrada.' });
     res.json({ sucesso: true, manifestacao: item });
-  } catch (e) {
-    res.status(500).json({ sucesso: false, erro: e.message });
-  }
+  } catch (e) { res.status(500).json({ sucesso: false, erro: e.message }); }
+});
+
+app.get('/api/historico', async (req, res) => {
+  try { res.json({ sucesso: true, itens: await lerAba('BANCO_HISTORICO') }); }
+  catch (e) { res.status(500).json({ sucesso: false, erro: e.message }); }
+});
+
+app.get('/api/setores', async (req, res) => {
+  try { res.json({ sucesso: true, itens: await lerAba('CONFIG_SETORES') }); }
+  catch (e) { res.status(500).json({ sucesso: false, erro: e.message }); }
+});
+
+app.get('/api/conhecimento', async (req, res) => {
+  try { res.json({ sucesso: true, itens: await lerAba('CONHECIMENTO_SETORES') }); }
+  catch (e) { res.status(500).json({ sucesso: false, erro: e.message }); }
+});
+
+app.get('/api/procedimentos', async (req, res) => {
+  try { res.json({ sucesso: true, itens: await lerAba('PROCEDIMENTOS') }); }
+  catch (e) { res.status(500).json({ sucesso: false, erro: e.message }); }
+});
+
+app.get('/api/politicas', async (req, res) => {
+  try { res.json({ sucesso: true, itens: await lerAba('POLITICAS') }); }
+  catch (e) { res.status(500).json({ sucesso: false, erro: e.message }); }
+});
+
+app.get('/api/tipos', async (req, res) => {
+  try { res.json({ sucesso: true, itens: await lerAba('TIPOS_RECLAMACAO') }); }
+  catch (e) { res.status(500).json({ sucesso: false, erro: e.message }); }
+});
+
+app.get('/api/sla', async (req, res) => {
+  try { res.json({ sucesso: true, itens: await lerAba('SLA_ESCALONAMENTO') }); }
+  catch (e) { res.status(500).json({ sucesso: false, erro: e.message }); }
+});
+
+app.get('/api/reclamacoes', async (req, res) => {
+  try { res.json({ sucesso: true, itens: await lerAba('Reclamações + devolutiva') }); }
+  catch (e) { res.status(500).json({ sucesso: false, erro: e.message }); }
 });
 
 module.exports = app;
