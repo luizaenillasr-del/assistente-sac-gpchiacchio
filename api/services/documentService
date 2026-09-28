@@ -1,0 +1,63 @@
+const { google } = require('googleapis');
+
+function getAuth() {
+  const creds = JSON.parse(process.env.GOOGLE_CREDENTIALS);
+  return new google.auth.GoogleAuth({
+    credentials: creds,
+    scopes: [
+      'https://www.googleapis.com/auth/drive.file',
+      'https://www.googleapis.com/auth/spreadsheets',
+    ],
+  });
+}
+
+function stripDataUrl(value) {
+  const m = String(value || '').match(/^data:([^;]+);base64,(.+)$/s);
+  if (m) return { mimeType:m[1], base64:m[2] };
+  return { mimeType:'application/octet-stream', base64:String(value||'') };
+}
+
+function normalizarJson(texto) {
+  let t=String(texto||'').trim();
+  t=t.replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'').trim();
+  const inicio=t.indexOf('{'); const fim=t.lastIndexOf('}');
+  if(inicio>=0 && fim>inicio) t=t.slice(inicio,fim+1);
+  return JSON.parse(t);
+}
+
+async function salvarArquivoGoogleDrive(arquivo) {
+  const {mimeType,base64}=stripDataUrl(arquivo.dataBase64);
+  if(!base64) throw new Error('Arquivo sem conteúdo.');
+  const auth=await getAuth().getClient();
+  const drive=google.drive({version:'v3',auth});
+  const buffer=Buffer.from(base64,'base64');
+  const folderId=process.env.DRIVE_FOLDER_ID || undefined;
+  const metadata={name:arquivo.nome||arquivo.name||`anexo-${Date.now()}`,mimeType};
+  if(folderId) metadata.parents=[folderId];
+  const upload=await drive.files.create({resource:metadata,media:{mimeType,body:require('stream').Readable.from(buffer)},fields:'id,name,webViewLink,webContentLink'});
+  return {fileId:upload.data.id,nome:upload.data.name,url:upload.data.webViewLink||upload.data.webContentLink||''};
+}
+
+async function extrairDadosDocumento(arquivo,tipoDocumento) {
+  if(!process.env.OPENAI_API_KEY){
+    throw new Error('OPENAI_API_KEY não configurada. A importação do documento precisa da API de IA para extrair os campos.');
+  }
+  const {mimeType,base64}=stripDataUrl(arquivo.dataBase64);
+  const modelo=process.env.OPENAI_EXTRACTION_MODEL || 'gpt-5.6-luna';
+  const isImage=/^image\//i.test(mimeType);
+  const content=[];
+  content.push({type:'input_text',text:`Você é o extrator documental do Assistente SAC Grupo Chiacchio.\nTipo do documento: ${tipoDocumento}.\nExtraia somente informações explicitamente presentes no documento. Nunca invente valores. Se um campo não estiver presente, retorne string vazia. Preserve números, datas, nomes, CNPJ, NFe e textos relevantes.\n\nRetorne SOMENTE JSON válido com este formato:\n${tipoDocumento==='RNC' ? JSON.stringify({numeroRnc:'',manifestacaoOrigem:'',dataAbertura:'',empresa:'',setor:'',competencia:'',naoConformidade:'',causaRaiz:'',subcausa:'',acaoCorretiva:'',acaoPreventiva:'',responsavel:'',prazo:'',prioridade:'',status:'',observacoes:''},null,2) : JSON.stringify({dataRegistro:'',numeroReclamacao:'',empresaReclamante:'',empresaReclamada:'',cnpj:'',contato:'',telefone:'',email:'',canal:'',tipoManifestacao:'',descricao:'',produto:'',lote:'',nfe:'',quantidade:'',valor:'',procedencia:'',justificativa:'',setor:'',observacoes:''},null,2)}`});
+  if(isImage){
+    content.push({type:'input_image',image_url:`data:${mimeType};base64,${base64}`});
+  } else {
+    content.push({type:'input_file',filename:arquivo.nome||arquivo.name||'documento.pdf',file_data:`data:${mimeType};base64,${base64}`});
+  }
+  const response=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${process.env.OPENAI_API_KEY}`},body:JSON.stringify({model:modelo,input:[{role:'user',content}],max_output_tokens:3000})});
+  const raw=await response.text();
+  if(!response.ok) throw new Error(`OpenAI ${response.status}: ${raw.slice(0,600)}`);
+  const data=JSON.parse(raw);
+  const texto=data.output_text || (data.output||[]).flatMap(x=>x.content||[]).map(x=>x.text||'').join('');
+  return normalizarJson(texto);
+}
+
+module.exports={salvarArquivoGoogleDrive,extrairDadosDocumento};
