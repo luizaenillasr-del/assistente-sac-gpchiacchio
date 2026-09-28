@@ -672,6 +672,32 @@ app.get('/api/rnc-metricas', requerPerfil('MASTER','ANALISTA SAC'), async (req,r
   }catch(e){res.status(500).json({sucesso:false,erro:e.message});}
 });
 
+// ===== EMPRESAS =====
+app.get('/api/empresas', async (req, res) => {
+  try {
+    const [manifestacoes, reclamacoes] = await Promise.all([
+      lerAba('MANIFESTACOES', 2000).catch(() => []),
+      lerAba('Reclamações + devolutiva', 2000).catch(() => [])
+    ]);
+    const empresas = new Set();
+    
+    manifestacoes.forEach(m => {
+      const emp = normalizarEmpresa(m.EMPRESA_RECLAMADA || m.EMPRESA);
+      if (emp) empresas.add(emp);
+    });
+    
+    reclamacoes.forEach(r => {
+      const emp = normalizarEmpresa(r.Empresa);
+      if (emp && !['TR01', 'TR08'].includes(emp)) empresas.add(emp);
+    });
+    
+    res.json({ sucesso: true, total: empresas.size, itens: [...empresas].sort() });
+  } catch (e) {
+    console.error('Erro ao carregar empresas:', e.message);
+    res.status(500).json({ sucesso: false, erro: e.message, itens: [] });
+  }
+});
+
 // ===== CLIENTES =====
 app.get('/api/clientes/:cnpj', requerPerfil('MASTER','ANALISTA SAC','RCA / REPRESENTANTE'), async (req, res) => {
   try {
@@ -700,6 +726,54 @@ app.get('/api/historico', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁV
 });
 
 // ===== SETORES / CONHECIMENTO / PROCEDIMENTOS / POLÍTICAS / TIPOS / SLA =====
+app.get('/api/setores-unicos', async (req, res) => {
+  try {
+    const [manifestacoes, regras, config] = await Promise.all([
+      lerAba('MANIFESTACOES', 2000).catch(() => []),
+      lerAba('REGRAS_ROTEAMENTO', 500).catch(() => []),
+      lerAba('CONFIG_SETORES', 50).catch(() => [])
+    ]);
+    
+    const setores = new Set();
+    
+    // De manifestações
+    manifestacoes.forEach(m => {
+      if (m.SETOR_SUGERIDO) setores.add(m.SETOR_SUGERIDO);
+      if (m.SETORES_CONFIRMADOS) {
+        m.SETORES_CONFIRMADOS.split(',').forEach(s => {
+          const trimmed = s.trim();
+          if (trimmed) setores.add(trimmed);
+        });
+      }
+    });
+    
+    // De regras
+    regras.forEach(r => {
+      if (r.SETORES_ENVOLVIDOS) {
+        r.SETORES_ENVOLVIDOS.split('+').forEach(s => {
+          const trimmed = s.trim().split('(')[0].trim();
+          if (trimmed) setores.add(trimmed);
+        });
+      }
+    });
+    
+    // De config
+    config.forEach(c => {
+      if (c.NOME_SETOR) setores.add(c.NOME_SETOR);
+    });
+    
+    // Setores padrão se vazio
+    if (setores.size === 0) {
+      ['SAC', 'Qualidade', 'Logística', 'Financeiro', 'Comercial'].forEach(s => setores.add(s));
+    }
+    
+    res.json({ sucesso: true, total: setores.size, itens: [...setores].sort() });
+  } catch (e) {
+    console.error('Erro ao carregar setores:', e.message);
+    res.status(500).json({ sucesso: false, erro: e.message, itens: ['SAC'] });
+  }
+});
+
 app.get('/api/setores', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
   try { const data=await lerAba('CONFIG_SETORES',50); res.json({sucesso:true,total:data.length,itens:data}); }
   catch (e) { res.status(500).json({sucesso:false,erro:e.message,dados:[]}); }
