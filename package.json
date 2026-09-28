@@ -1,6 +1,6 @@
 {
   "name": "assistente-sac-chiacchio",
-  "version": "5.0.0",
+  "version": "5.2.0",
   "private": true,
   "description": "Assistente SAC e Gestão de Manifestações - Grupo Chiacchio",
   "main": "api/index.js",
