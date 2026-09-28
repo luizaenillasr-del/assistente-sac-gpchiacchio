@@ -360,8 +360,8 @@ app.get('/', (req, res) => {
 
 // ===== MIDDLEWARE AUTH =====
 app.use('/api', async (req,res,next)=>{
-  const publicPaths = new Set(['/health','/','/auth/login','/auth/forgot-password','/analise','/analise/similares']);
-  if(publicPaths.has(req.path) || req.path.endsWith('/auth/login') || req.path.endsWith('/auth/forgot-password')) return next();
+  const publicPaths = new Set(['/health','/','/auth/login','/auth/forgot-password','/analise','/analise/similares','/empresas','/setores-unicos']);
+  if(publicPaths.has(req.path) || req.path.endsWith('/auth/login') || req.path.endsWith('/auth/forgot-password') || req.path.endsWith('/empresas') || req.path.endsWith('/setores-unicos')) return next();
   const header=req.headers.authorization||'';
   const token=header.startsWith('Bearer ')?header.slice(7):'';
   const payload=verificarToken(token);
