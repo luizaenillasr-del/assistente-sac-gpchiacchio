@@ -470,7 +470,7 @@ app.post('/api/representantes/manifestacoes', requerPerfil('RCA / REPRESENTANTE'
 app.get('/api/manifestacoes', async (req, res) => {
   try {
     let data = await lerAba('MANIFESTACOES', 2000);
-    if (perfilCanonico(req.user.perfil)==='RCA / REPRESENTANTE') {
+    if (req.user && perfilCanonico(req.user.perfil)==='RCA / REPRESENTANTE') {
       const rca=normalizarTexto(req.user.codigoRCA||req.user.usuario);
       data=data.filter(r=>normalizarTexto(r.USUARIO_CRIACAO||'')===normalizarTexto(req.user.usuario)||normalizarTexto(r.CODIGO_RCA||'')===rca||normalizarTexto(r.RCA||'')===rca);
     }
@@ -567,7 +567,8 @@ app.get('/api/dashboard', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁV
     const slaPercent = recComSLA.length > 0 ? Math.round(dentroPrazo/recComSLA.length*100) : null;
     const porEmpresa = {};
     recs.forEach(r => {
-      const emp = normalizarEmpresa(r['Empresa']); if(!emp) return;
+      const emp = (r['Empresa']||'').trim(); 
+      if(!emp) return;
       if(!porEmpresa[emp]) porEmpresa[emp]={total:0,finaliz:0,sla:0,foraSLA:0};
       porEmpresa[emp].total++;
       const st=(r['Status']||r['Situação Final']||'').toUpperCase();
@@ -681,14 +682,18 @@ app.get('/api/empresas', async (req, res) => {
     ]);
     const empresas = new Set();
     
+    // De MANIFESTACOES: procura por EMPRESA_NORMALIZADA, EMPRESA_RECLAMADA, ou EMPRESA
     manifestacoes.forEach(m => {
-      const emp = normalizarEmpresa(m.EMPRESA_RECLAMADA || m.EMPRESA);
-      if (emp) empresas.add(emp);
+      const emp = m.EMPRESA_NORMALIZADA || m.EMPRESA_RECLAMADA || m.EMPRESA || '';
+      if (emp && emp.trim()) empresas.add(emp.trim());
     });
     
+    // De Reclamações + devolutiva: procura por Empresa
     reclamacoes.forEach(r => {
-      const emp = normalizarEmpresa(r.Empresa);
-      if (emp && !['TR01', 'TR08'].includes(emp)) empresas.add(emp);
+      const emp = r.Empresa || '';
+      if (emp && emp.trim() && !['TR01', 'TR08'].includes(emp.trim())) {
+        empresas.add(emp.trim());
+      }
     });
     
     res.json({ sucesso: true, total: empresas.size, itens: [...empresas].sort() });
@@ -714,7 +719,11 @@ app.get('/api/clientes/:cnpj', requerPerfil('MASTER','ANALISTA SAC','RCA / REPRE
 app.get('/api/reclamacoes', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL'), async (req, res) => {
   try {
     const data=await lerAba('Reclamações + devolutiva',2000);
-    const normalizado=data.map(r=>({...r,'Data do Registro':normalizarData(r['Data do Registro']),'Empresa':normalizarEmpresa(r['Empresa'])||r['Empresa']})).filter(r=>r['Empresa']&&!['TR01','TR08'].includes(r['Empresa']));
+    const normalizado=data.map(r=>({
+      ...r,
+      'Data do Registro':normalizarData(r['Data do Registro']),
+      'Empresa':r['Empresa']||''
+    })).filter(r=>r['Empresa'] && r['Empresa'].trim() && !['TR01','TR08'].includes(r['Empresa'].trim()));
     res.json({sucesso:true,total:normalizado.length,itens:normalizado});
   } catch (e) { res.status(500).json({sucesso:false,erro:e.message,dados:[]}); }
 });
