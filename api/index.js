@@ -52,17 +52,30 @@ function senhaValida(informada, armazenada){
   if(s.startsWith('sha256:')) return 'sha256:'+crypto.createHash('sha256').update(String(informada||'')).digest('hex')===s;
   return String(informada||'')===s;
 }
+// ===== USUÁRIOS DE DEMONSTRAÇÃO =====
+// Ativos para a apresentação/reunião. Antes da entrada em produção, troque as senhas
+// e cadastre os usuários reais na aba USUARIOS. Defina DEMO_LOGIN_ENABLED=false para desativar.
+const DEMO_USUARIOS = [
+  {ID_USUARIO:'USR-DEMO-001',USUARIO:'luiza',EMAIL:'',NOME:'Luiza',PERFIL:'MASTER',EMPRESA:'Grupo Chiacchio',SETOR:'SAC',STATUS:'ATIVO',SENHA:'Chiacchio2026!',CODIGO_RCA:''},
+  {ID_USUARIO:'USR-DEMO-002',USUARIO:'joao.aprovador',EMAIL:'',NOME:'João Silva',PERFIL:'APROVADOR',EMPRESA:'Chiacchio',SETOR:'Qualidade',STATUS:'ATIVO',SENHA:'Aprovador2026!',CODIGO_RCA:''},
+  {ID_USUARIO:'USR-DEMO-003',USUARIO:'ana.sac',EMAIL:'',NOME:'Ana Lima',PERFIL:'ANALISTA SAC',EMPRESA:'Grupo Chiacchio',SETOR:'SAC',STATUS:'ATIVO',SENHA:'AnaSAC2026!',CODIGO_RCA:''},
+  {ID_USUARIO:'USR-DEMO-004',USUARIO:'carlos.rca',EMAIL:'',NOME:'Carlos Silva',PERFIL:'RCA / REPRESENTANTE',EMPRESA:'Chiacchio',SETOR:'Comercial',STATUS:'ATIVO',SENHA:'RCA2026!',CODIGO_RCA:'RCA-023'},
+  {ID_USUARIO:'USR-DEMO-005',USUARIO:'maria.qualidade',EMAIL:'',NOME:'Maria Santos',PERFIL:'SETOR RESPONSÁVEL',EMPRESA:'Chiacchio',SETOR:'Qualidade',STATUS:'ATIVO',SENHA:'Qualidade2026!',CODIGO_RCA:''}
+];
+
 async function carregarUsuarios(){
-  try{
-    const rows=await lerAba('USUARIOS',1000);
-    if(rows.length) return rows;
-  }catch(e){ console.warn('USUARIOS não disponível:',e.message); }
+  let rows=[];
+  try{ rows=await lerAba('USUARIOS',1000); }catch(e){ console.warn('USUARIOS não disponível:',e.message); }
   const raw=process.env.USUARIOS_JSON||'{}';
-  const parsed=JSON.parse(raw);
-  return Object.entries(parsed).map(([usuario,val])=>{
-    if(typeof val==='string') return {ID_USUARIO:usuario,USUARIO:usuario,SENHA:val,NOME:usuario,PERFIL:'ANALISTA SAC',STATUS:'ATIVO'};
-    return {ID_USUARIO:usuario,USUARIO:usuario,...val};
-  });
+  let envUsers=[];
+  try{
+    const parsed=JSON.parse(raw);
+    envUsers=Object.entries(parsed).map(([usuario,val])=>typeof val==='string'
+      ? {ID_USUARIO:usuario,USUARIO:usuario,SENHA:val,NOME:usuario,PERFIL:'ANALISTA SAC',STATUS:'ATIVO'}
+      : {ID_USUARIO:usuario,USUARIO:usuario,...val});
+  }catch(e){}
+  const demoEnabled=String(process.env.DEMO_LOGIN_ENABLED||'true').toLowerCase()!=='false';
+  return [...rows,...envUsers,...(demoEnabled?DEMO_USUARIOS:[])];
 }
 function perfilCanonico(v){
   const x=normalizarTexto(v).replace(/\s+/g,' ');
@@ -93,8 +106,14 @@ function requerPerfil(...perfis){
   };
 }
 async function carregarUsuarioPorLogin(login){
-  const usuarios=await carregarUsuarios();
   const alvo=normalizarTexto(login);
+  const demoEnabled=String(process.env.DEMO_LOGIN_ENABLED||'true').toLowerCase()!=='false';
+  // Prioriza contas de demonstração para a reunião, mesmo que a planilha ainda não esteja configurada.
+  if(demoEnabled){
+    const demo=DEMO_USUARIOS.find(u=>normalizarTexto(u.USUARIO)===alvo);
+    if(demo) return demo;
+  }
+  const usuarios=await carregarUsuarios();
   return usuarios.find(u=>normalizarTexto(u.USUARIO||u.EMAIL||u.ID_USUARIO)===alvo && normalizarTexto(u.STATUS||'ATIVO')!=='inativo') || null;
 }
 async function registrarAcessoUsuario(usuario){
@@ -429,16 +448,17 @@ function normalizarData(val) {
 
 // Health
 app.get('/api/health', (req, res) => {
-  res.json({ sucesso: true, status: 'ok', versao: '4.0.0', sistema: 'Assistente SAC Chiacchio', ts: new Date().toISOString() });
+  res.json({ sucesso: true, status: 'ok', versao: '5.2.0', sistema: 'Assistente SAC Chiacchio', ts: new Date().toISOString() });
 });
 
 app.get('/', (req, res) => {
-  res.json({ sucesso: true, status: 'ok', versao: '4.0.0', sistema: 'Assistente SAC Chiacchio', rotas: ['/api/health','/api/manifestacoes','/api/reclamacoes','/api/dashboard','/api/analise','/api/rnc','/api/setores','/api/procedimentos','/api/politicas','/api/tipos','/api/sla','/api/historico','/api/conhecimento','/api/validacoes','/api/auditoria'] });
+  res.json({ sucesso: true, status: 'ok', versao: '5.2.0', sistema: 'Assistente SAC Chiacchio', rotas: ['/api/health','/api/manifestacoes','/api/reclamacoes','/api/dashboard','/api/analise','/api/rnc','/api/setores','/api/procedimentos','/api/politicas','/api/tipos','/api/sla','/api/historico','/api/conhecimento','/api/validacoes','/api/auditoria'] });
 });
 
 // ===== SEGURANÇA / AUTENTICAÇÃO =====
 app.use('/api', async (req,res,next)=>{
-  if(req.path==='/health' || req.path==='/' || req.path==='/auth/login') return next();
+  const publicPaths = new Set(['/health','/','/auth/login','/auth/forgot-password']);
+  if(publicPaths.has(req.path) || req.path.endsWith('/auth/login') || req.path.endsWith('/auth/forgot-password')) return next();
   const header=req.headers.authorization||'';
   const token=header.startsWith('Bearer ')?header.slice(7):'';
   const payload=verificarToken(token);
@@ -1246,6 +1266,6 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`SAC Chiacchio API v4.0 rodando na porta ${PORT}`));
+app.listen(PORT, () => console.log(`SAC Chiacchio API v5.2.0 rodando na porta ${PORT}`));
 
 module.exports = app;
