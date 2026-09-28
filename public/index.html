@@ -3904,7 +3904,37 @@ loadVisaoGeral();
   const DEMO_RNCS=[{ID_RNC:'RNC-139/26',PROTOCOLO_SAC:'SAC-2026-00125',CLIENTE:'Via Cultural',EMPRESA:'Chiacchio',PRODUTO:'Embalagem de transporte',COMPETENCIA:'Qualidade',SETOR:'Qualidade',TIPO_NC:'Real',PROCEDENTE:'Sim',PLANO_ACAO:'Sim',CAUSA:'Avaria identificada na embalagem durante o transporte.',ACAO_CONTENCAO:'Separação do lote e inspeção das unidades.',ACAO_CORRETIVA:'Revisão do acondicionamento e orientação da equipe.',RESPONSAVEL_ACAO:'Carlos Oliveira',PRAZO_ACAO:'30/09/2026',STATUS:'AGUARDANDO APROVAÇÃO',DATA_ABERTURA:'2026-09-28T08:30:00-03:00',DESCRICAO_NAO_CONFORMIDADE:'Cliente relatou avaria do produto e apresentou evidências.'},{ID_RNC:'RNC-140/26',PROTOCOLO_SAC:'SAC-2026-00131',CLIENTE:'Cliente Exemplo',EMPRESA:'Plaschio',PRODUTO:'Produto demonstrativo',COMPETENCIA:'Qualidade',SETOR:'Qualidade',TIPO_NC:'Potencial',PROCEDENTE:'Em análise',PLANO_ACAO:'Sim',CAUSA:'Em análise.',ACAO_CONTENCAO:'Bloqueio preventivo do lote.',ACAO_CORRETIVA:'Em definição.',RESPONSAVEL_ACAO:'Maria Santos',PRAZO_ACAO:'02/10/2026',STATUS:'EM TRATATIVA',DATA_ABERTURA:'2026-09-27T14:00:00-03:00',DESCRICAO_NAO_CONFORMIDADE:'Registro demonstrativo para apresentação.'}];
   const DEMO_SAC=[{ID_MANIFESTACAO:'SAC-2026-00125',EMPRESA_RECLAMANTE:'Via Cultural',PRODUTO:'Embalagem de transporte',STATUS:'AGUARDANDO_DECISÃO',SETOR_SUGERIDO:'Logística',TRATATIVA_SUGERIDA:'Analisar lote, evidências e providenciar solução adequada.',DEVOLUTIVA_SUGERIDA:'Recebemos seu relato e já iniciamos a análise. O caso está sendo conduzido junto à área responsável e retornaremos com as providências necessárias.'}];
   function demoResponse(url){if(url.includes('/api/auth/me'))return{sucesso:true,usuario:sess()};if(url.startsWith('/api/aprovadores/')&&url.endsWith('/pendencias'))return{sucesso:true,totais:{sac:1,rnc:1,total:2},sac:DEMO_SAC,rnc:[DEMO_RNCS[0]],sugestoes:[]};if(url==='/api/rnc')return{sucesso:true,total:DEMO_RNCS.length,itens:DEMO_RNCS};if(url.startsWith('/api/rnc/')&&url.endsWith('/eventos'))return{sucesso:true,itens:[{ID_RNC:'RNC-139/26',TIPO_EVENTO:'RNC criada',DATA_EVENTO:'2026-09-28T08:30:00-03:00',USUARIO:'Ana Lima',DETALHES:'RNC originada de manifestação SAC.'},{ID_RNC:'RNC-139/26',TIPO_EVENTO:'Disponibilizada ao aprovador',DATA_EVENTO:'2026-09-28T08:35:00-03:00',USUARIO:'sistema',DETALHES:'Competência Qualidade identificada.'}]};if(url.startsWith('/api/rnc/')){const id=decodeURIComponent(url.split('/')[3]||'RNC-139/26');return{sucesso:true,rnc:DEMO_RNCS.find(x=>x.ID_RNC===id)||DEMO_RNCS[0],eventos:[{TIPO_EVENTO:'RNC criada',DATA_EVENTO:'2026-09-28T08:30:00-03:00',USUARIO:'Ana Lima',DETALHES:'Origem: Avaliação SAC.'}]};}if(url==='/api/usuarios')return{sucesso:true,total:5,itens:[{id:'USR-DEMO-001',usuario:'luiza',nome:'Luiza',perfil:'MASTER',empresa:'Grupo Chiacchio',status:'ATIVO'},{id:'USR-DEMO-002',usuario:'joao.aprovador',nome:'João Silva',perfil:'APROVADOR',empresa:'Chiacchio',status:'ATIVO'},{id:'USR-DEMO-003',usuario:'ana.sac',nome:'Ana Lima',perfil:'ANALISTA SAC',empresa:'Grupo Chiacchio',status:'ATIVO'},{id:'USR-DEMO-004',usuario:'carlos.rca',nome:'Carlos Silva',perfil:'RCA / REPRESENTANTE',empresa:'Chiacchio',status:'ATIVO'},{id:'USR-DEMO-005',usuario:'maria.qualidade',nome:'Maria Santos',perfil:'SETOR RESPONSÁVEL',empresa:'Chiacchio',status:'ATIVO'}]};if(url==='/api/manifestacoes')return{sucesso:true,total:DEMO_SAC.length,itens:DEMO_SAC};return{sucesso:true,itens:[],total:0,dados:{}};}
-  async function json5(url,opt={}){if(sessionStorage.getItem('sac-demo-local')==='1'){if((opt.method||'GET')!=='GET')return{sucesso:true};return demoResponse(url)}opt.headers={...(opt.headers||{}),Authorization:'Bearer '+token(),'Content-Type':'application/json'};const r=await fetch(API+url,opt);const t=await r.text();let d={};try{d=t?JSON.parse(t):{}}catch{d={raw:t}}if(r.status===401){sessionStorage.clear();location.reload();throw new Error('Sessão expirada.')}if(!r.ok)throw new Error(d.erro||d.error||`Erro ${r.status}`);return d}
+  async function json5(url,opt={}){
+    const isDemo=sessionStorage.getItem('sac-demo-local')==='1';
+    const method=(opt.method||'GET').toUpperCase();
+
+    // No modo demo, mantemos a interface e os exemplos de aprovação/RNC,
+    // mas o dashboard deve ler os dados reais da planilha.
+    const DEMO_REAL_DATA_ROUTES=['/api/manifestacoes','/api/reclamacoes'];
+    if(isDemo && method==='GET' && DEMO_REAL_DATA_ROUTES.includes(url)){
+      const realOpt={...opt,headers:{...(opt.headers||{})}};
+      const r=await fetch(API+url,realOpt);
+      const t=await r.text();
+      let d={};
+      try{d=t?JSON.parse(t):{}}catch{d={raw:t}};
+      if(!r.ok)throw new Error(d.erro||d.error||`Erro ${r.status}`);
+      return d;
+    }
+
+    if(isDemo){
+      if(method!=='GET')return{sucesso:true};
+      return demoResponse(url);
+    }
+
+    opt.headers={...(opt.headers||{}),Authorization:'Bearer '+token(),'Content-Type':'application/json'};
+    const r=await fetch(API+url,opt);
+    const t=await r.text();
+    let d={};
+    try{d=t?JSON.parse(t):{}}catch{d={raw:t}};
+    if(r.status===401){sessionStorage.clear();location.reload();throw new Error('Sessão expirada.')}
+    if(!r.ok)throw new Error(d.erro||d.error||`Erro ${r.status}`);
+    return d
+  }
   function initials(n){return String(n||'US').split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase()}
   function fmt5(v){if(!v)return '—';const d=new Date(v);return isNaN(d)?String(v):d.toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})}
   function role(){return sess()?.perfil||''}
@@ -3955,6 +3985,13 @@ loadVisaoGeral();
 
   window.iniciarSessaoV5=async function(){
     setUserChrome();applyRoleUI();
+
+    // O carregamento inicial da Visão Geral acontecia antes do login.
+    // Depois do login, os dados precisam ser carregados novamente.
+    if(['MASTER','ANALISTA SAC'].includes(role()) && typeof window.loadVisaoGeral==='function'){
+      await window.loadVisaoGeral();
+    }
+
     if(role()==='RCA / REPRESENTANTE') await loadRcaHome();
     if(role()==='MASTER') await loadUsuariosV5();
     if(role()==='APROVADOR'||role()==='MASTER') await loadAprovadorV5();
@@ -4019,9 +4056,21 @@ loadVisaoGeral();
 
   // ===== BOOT =====
   async function boot(){
-    if(sessionStorage.getItem('sac-demo-local')==='1'){document.getElementById('login-screen').style.display='none';await window.iniciarSessaoV5();return;}
+    if(sessionStorage.getItem('sac-demo-local')==='1'){
+      document.getElementById('login-screen').style.display='none';
+      await window.iniciarSessaoV5();
+      return;
+    }
     if(!token()){document.getElementById('login-screen').style.display='flex';return;}
-    try{const d=await json5('/api/auth/me');sessionStorage.setItem('sac-user',JSON.stringify(d.usuario));document.getElementById('login-screen').style.display='none';await window.iniciarSessaoV5();}catch(e){sessionStorage.clear();document.getElementById('login-screen').style.display='flex'}
+    try{
+      const d=await json5('/api/auth/me');
+      sessionStorage.setItem('sac-user',JSON.stringify(d.usuario));
+      document.getElementById('login-screen').style.display='none';
+      await window.iniciarSessaoV5();
+    }catch(e){
+      sessionStorage.clear();
+      document.getElementById('login-screen').style.display='flex'
+    }
   }
   boot();
 })();
