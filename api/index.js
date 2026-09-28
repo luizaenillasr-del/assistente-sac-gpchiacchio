@@ -448,11 +448,11 @@ function normalizarData(val) {
 
 // Health
 app.get('/api/health', (req, res) => {
-  res.json({ sucesso: true, status: 'ok', versao: '5.2.0', sistema: 'Assistente SAC Chiacchio', ts: new Date().toISOString() });
+  res.json({ sucesso: true, status: 'ok', versao: '5.3.0', sistema: 'Assistente SAC Chiacchio', ts: new Date().toISOString() });
 });
 
 app.get('/', (req, res) => {
-  res.json({ sucesso: true, status: 'ok', versao: '5.2.0', sistema: 'Assistente SAC Chiacchio', rotas: ['/api/health','/api/manifestacoes','/api/reclamacoes','/api/dashboard','/api/analise','/api/rnc','/api/setores','/api/procedimentos','/api/politicas','/api/tipos','/api/sla','/api/historico','/api/conhecimento','/api/validacoes','/api/auditoria'] });
+  res.json({ sucesso: true, status: 'ok', versao: '5.3.0', sistema: 'Assistente SAC Chiacchio', rotas: ['/api/health','/api/manifestacoes','/api/reclamacoes','/api/dashboard','/api/analise','/api/rnc','/api/setores','/api/procedimentos','/api/politicas','/api/tipos','/api/sla','/api/historico','/api/conhecimento','/api/validacoes','/api/auditoria'] });
 });
 
 // ===== SEGURANÇA / AUTENTICAÇÃO =====
@@ -1008,9 +1008,14 @@ app.post('/api/auth/login', async (req, res) => {
       sub:pub.id, usuario:pub.usuario, nome:pub.nome, email:pub.email, perfil:pub.perfil,
       empresa:pub.empresa, setor:pub.setor, codigoRCA:pub.codigoRCA, iat:agora, exp:agora+SESSION_TTL_MS
     };
-    await registrarAcessoUsuario(registro);
-    await registrarAuditoria(pub.usuario,'LOGIN',null,'AUTH',null,{perfil:pub.perfil});
-    res.json({ sucesso:true, token:assinarToken(payload), usuario:pub.usuario, usuarioInfo:pub });
+    const isDemo = String(registro.ID_USUARIO||'').startsWith('USR-DEMO-');
+    // Contas de demonstração não dependem do Google Sheets para autenticar.
+    // Isso permite apresentar a ferramenta mesmo antes de configurar as planilhas no Vercel.
+    if (!isDemo) {
+      await registrarAcessoUsuario(registro);
+      await registrarAuditoria(pub.usuario,'LOGIN',null,'AUTH',null,{perfil:pub.perfil});
+    }
+    res.json({ sucesso:true, token:assinarToken(payload), usuario:pub.usuario, usuarioInfo:pub, modo:isDemo?'DEMO':'PRODUCAO' });
   } catch (e) {
     console.error(e);
     res.status(500).json({ sucesso: false, erro: e.message });
@@ -1265,7 +1270,9 @@ app.use((err, req, res, next) => {
   res.status(500).json({ sucesso: false, erro: 'Erro interno do servidor.', dados: null });
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`SAC Chiacchio API v5.2.0 rodando na porta ${PORT}`));
+if (require.main === module) {
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => console.log(`SAC Chiacchio API v5.3.0 rodando na porta ${PORT}`));
+}
 
 module.exports = app;
