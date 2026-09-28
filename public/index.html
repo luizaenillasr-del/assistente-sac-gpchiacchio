@@ -409,6 +409,70 @@
   }
 </style>
 </head>
+<style>
+  .login-screen { position: fixed; inset: 0; background: var(--sidebar-bg); display: flex; align-items: center; justify-content: center; z-index: 9999; }
+  .login-box { background: white; border-radius: 16px; padding: 40px; width: 360px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+  .login-logo { display: flex; align-items: center; gap: 12px; margin-bottom: 28px; }
+  .login-logo-icon { width: 44px; height: 44px; background: var(--red); border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+  .login-logo-icon svg { width: 24px; height: 24px; fill: white; }
+  .login-logo-text h2 { font-size: 15px; font-weight: 800; color: var(--gray-900); }
+  .login-logo-text p { font-size: 12px; color: var(--gray-400); }
+  .login-title { font-size: 22px; font-weight: 800; color: var(--gray-900); margin-bottom: 6px; }
+  .login-sub { font-size: 13px; color: var(--gray-400); margin-bottom: 24px; }
+  .login-field { margin-bottom: 14px; }
+  .login-label { font-size: 12px; font-weight: 600; color: var(--gray-500); margin-bottom: 5px; display: block; }
+  .login-input { width: 100%; padding: 10px 12px; border: 1px solid var(--gray-200); border-radius: 8px; font-size: 14px; outline: none; font-family: inherit; }
+  .login-input:focus { border-color: var(--red); box-shadow: 0 0 0 3px var(--red-light); }
+  .login-btn { width: 100%; padding: 11px; background: var(--red); color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; margin-top: 8px; font-family: inherit; }
+  .login-btn:hover { background: var(--red-dark); }
+  .login-error { background: #FEE2E2; color: #DC2626; font-size: 12px; padding: 8px 12px; border-radius: 6px; margin-top: 10px; display: none; }
+</style>
+
+<div class="login-screen" id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="login-logo-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+      </div>
+      <div class="login-logo-text">
+        <h2>Gestão de Manifestações</h2>
+        <p>SAC · Grupo Chiacchio</p>
+      </div>
+    </div>
+    <div class="login-title">Bem-vinda de volta</div>
+    <div class="login-sub">Entre com suas credenciais para acessar o sistema</div>
+    <div class="login-field">
+      <label class="login-label">Usuário</label>
+      <input class="login-input" type="text" id="login-user" placeholder="seu usuário" autocomplete="username">
+    </div>
+    <div class="login-field">
+      <label class="login-label">Senha</label>
+      <input class="login-input" type="password" id="login-pass" placeholder="••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="login-btn" onclick="doLogin()">Entrar</button>
+    <div class="login-error" id="login-error">Usuário ou senha incorretos.</div>
+  </div>
+</div>
+
+<script>
+  function doLogin() {
+    const user = document.getElementById('login-user').value.trim().toLowerCase();
+    const pass = document.getElementById('login-pass').value;
+    const users = { 'luiza': '125600' };
+    if (users[user] && users[user] === pass) {
+      document.getElementById('login-screen').style.display = 'none';
+      sessionStorage.setItem('sac-auth', '1');
+      sessionStorage.setItem('sac-user', user.charAt(0).toUpperCase() + user.slice(1));
+    } else {
+      document.getElementById('login-error').style.display = 'block';
+    }
+  }
+  // Checar se já está logado
+  if (sessionStorage.getItem('sac-auth') === '1') {
+    document.getElementById('login-screen').style.display = 'none';
+  }
+</script>
+
 <body>
 
 <!-- SIDEBAR -->
