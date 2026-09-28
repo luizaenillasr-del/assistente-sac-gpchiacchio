@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const crypto = require('crypto');
 const { google } = require('googleapis');
-const cerebroService = require('./services/cerebroService');
+const cerebroService = require('./services/cerebroServices');
 const documentService = require('./services/documentService');
 
 const app = express();
