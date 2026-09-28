@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <title>Gestão de Manifestações — Grupo Chiacchio</title>
 <style>
   :root {
@@ -29,7 +30,7 @@
     --orange-light: #FED7AA;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--gray-50); color: var(--gray-900); display: flex; height: 100vh; overflow: hidden; font-size: 14px; }
+  body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--gray-50); color: var(--gray-900); display: flex; height: 100vh; overflow: hidden; font-size: 14px; }
 
   /* SIDEBAR */
   .sidebar { width: 180px; background: var(--sidebar-bg); color: var(--sidebar-text); display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto; }
@@ -232,8 +233,9 @@
   .form-input { padding: 8px 10px; border: 1px solid var(--gray-200); border-radius: 6px; font-size: 13px; color: var(--gray-900); background: white; outline: none; }
   .form-input:focus { border-color: var(--red); box-shadow: 0 0 0 2px var(--red-light); }
   .form-input:read-only { background: var(--gray-50); color: var(--gray-500); }
-  .form-textarea { padding: 10px; border: 1px solid var(--gray-200); border-radius: 6px; font-size: 13px; min-height: 100px; resize: vertical; font-family: inherit; outline: none; }
+  .form-textarea { width:100%; padding: 10px; border: 1px solid var(--gray-200); border-radius: 6px; font-size: 13px; min-height: 100px; resize: vertical; font-family: inherit; outline: none; }
   .form-textarea:focus { border-color: var(--red); box-shadow: 0 0 0 2px var(--red-light); }
+  .ia-tratativa-box { background:#FFF9FA; border:1px solid #E8B8C0; border-left:4px solid var(--red); border-radius:8px; padding:12px 13px; font-size:13px; line-height:1.6; color:var(--gray-700); white-space:pre-wrap; min-height:72px; }
 
   /* CANAL BTNS */
   .canal-btns { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -261,7 +263,7 @@
   .resumo-sub { font-size: 11px; color: var(--gray-400); }
 
   /* LAYOUT COM ASIDE */
-  .page-layout { display: grid; grid-template-columns: 1fr 240px; gap: 16px; }
+  .page-layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; }
   .page-layout-wide { display: grid; grid-template-columns: 1fr 240px; gap: 16px; }
   .aside { display: flex; flex-direction: column; gap: 12px; }
 
@@ -421,6 +423,18 @@
   @media (max-width: 1200px) {
     .kpi-grid, .setores-grid { grid-template-columns: repeat(3, 1fr); }
   }
+
+  .upload-box{border:1.5px dashed #D7A0A8;background:#FFF8F9;border-radius:10px;padding:18px;text-align:center;cursor:pointer;transition:.15s}
+  .upload-box:hover{border-color:var(--red);background:#FFF3F5}
+  .upload-box.drag{border-color:var(--red);background:#FDECEF}
+  .upload-list{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+  .upload-item{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;border:1px solid var(--gray-200);border-radius:8px;background:#fff;font-size:12px}
+  .upload-item small{color:var(--gray-400)}
+  .doc-import-card{border:1px solid #E8B8C0;background:linear-gradient(135deg,#fff,#FFF7F8);border-radius:10px;padding:12px;margin-bottom:12px}
+  .extract-preview{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+  .extract-field{padding:8px;background:#fff;border:1px solid var(--gray-200);border-radius:7px;font-size:12px}.extract-field b{display:block;font-size:10px;text-transform:uppercase;color:var(--gray-400);margin-bottom:3px}
+  .readonly-field{background:#F8F8F8!important;color:#555}
+
 </style>
 </head>
 <style>
@@ -582,6 +596,7 @@
   </div>
 
   <div class="sidebar-section">Gestão</div>
+  <div class="sidebar-item" onclick="navigate('aprovadores', this)">Central de Aprovação</div>
   <div class="sidebar-item" onclick="navigate('banco-rnc', this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
     Banco de RNC
@@ -1032,11 +1047,18 @@
                   <div id="ia-similares"></div>
                 </div>
 
+                <!-- Tratativa sugerida -->
+                <div style="margin-bottom:16px">
+                  <div style="font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">Tratativa sugerida</div>
+                  <div id="ia-tratativa" class="ia-tratativa-box">Aguardando análise da tratativa para este caso.</div>
+                  <div style="font-size:11px;color:var(--gray-400);margin-top:4px">Sugestão da ferramenta. A analista decide se é aplicável e registra a tratativa efetivamente realizada.</div>
+                </div>
+
                 <!-- Devolutiva sugerida -->
                 <div style="margin-bottom:16px">
                   <div style="font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">Devolutiva sugerida</div>
-                  <textarea id="ia-devolutiva" class="form-textarea" style="min-height:160px;font-size:13px;background:#FAFAFA"></textarea>
-                  <div style="font-size:11px;color:var(--gray-400);margin-top:3px">Editável — será usada como base na etapa de devolutiva</div>
+                  <textarea id="ia-devolutiva" class="form-textarea" style="min-height:280px;height:280px;font-size:13px;line-height:1.6;background:#FAFAFA;resize:vertical"></textarea>
+                  <div style="font-size:11px;color:var(--gray-400);margin-top:4px">Editável — será usada como base na etapa de devolutiva. A resposta efetivamente enviada será registrada separadamente.</div>
                 </div>
 
                 <!-- Ações -->
@@ -1059,6 +1081,29 @@
                 <div id="ia-decisao-status" style="display:none;margin-top:10px"></div>
               </div>
             </div>
+          </div>
+
+
+          <!-- Evidências + importação documental -->
+          <div class="form-section">
+            <div class="form-section-title">
+              <div class="form-section-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05 12.25 20.24a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></div>
+              <div><div class="form-section-name">Evidências e documentos</div><div class="form-section-desc">Fotos, NF, laudos e documentos da manifestação</div></div>
+            </div>
+            <div class="doc-import-card">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+                <div><strong style="font-size:13px">Importar ficha de reclamação / RNC</strong><div style="font-size:11px;color:var(--gray-500);margin-top:3px">A IA extrai os dados para conferência. Nada é registrado sem sua confirmação.</div></div>
+                <div style="display:flex;gap:6px"><button class="btn btn-secondary" onclick="abrirImportacaoDocumento('FICHA_RECLAMACAO')">Importar ficha</button><button class="btn btn-secondary" onclick="abrirImportacaoDocumento('RNC')">Importar RNC</button></div>
+              </div>
+              <input id="nm-import-file" type="file" accept=".pdf,image/*" style="display:none" onchange="processarDocumentoImportado(this.files[0])">
+              <div id="nm-extracao-status" style="display:none;margin-top:8px"></div>
+              <div id="nm-extracao-preview" style="display:none"></div>
+            </div>
+            <input id="nm-evidencias" type="file" multiple accept=".pdf,image/*,.doc,.docx,.xls,.xlsx" style="display:none" onchange="adicionarEvidencias(this.files)">
+            <div id="nm-upload-box" class="upload-box" onclick="document.getElementById('nm-evidencias').click()" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="event.preventDefault();this.classList.remove('drag');adicionarEvidencias(event.dataTransfer.files)">
+              <div style="font-size:22px;margin-bottom:5px">↑</div><strong style="font-size:13px">Arraste arquivos aqui</strong><div style="font-size:11px;color:var(--gray-400);margin-top:3px">ou clique para adicionar fotos, NF e evidências</div>
+            </div>
+            <div id="nm-evidencias-list" class="upload-list"></div>
           </div>
 
           <!-- Seção 4 — Produto -->
@@ -1198,6 +1243,22 @@
           </tbody>
         </table>
       </div>
+    </div>
+  </div>
+
+
+  <!-- ===== CENTRAL DO APROVADOR ===== -->
+  <div class="page" id="page-aprovadores">
+    <div class="topbar"><div class="breadcrumb">Gestão / <span>Central de Aprovação e Pendências</span></div><div class="topbar-right"><span id="aprovador-nome-top">Aprovador</span></div></div>
+    <div class="page-content">
+      <div class="page-header"><div><h1>Central de Aprovação e Pendências</h1><p>SAC e RNC conforme perfil, empresa, setor e competência.</p></div><div><select class="form-input" id="aprovador-processo" onchange="loadAprovadorDashboard()"><option value="TODOS">Todos</option><option value="SAC">SAC</option><option value="RNC">RNC</option></select></div></div>
+      <div class="kpi-grid">
+        <div class="kpi-card"><div class="kpi-label">SAC</div><div class="kpi-value" id="ap-saca">--</div><div class="kpi-sub">pendências</div></div>
+        <div class="kpi-card"><div class="kpi-label">RNC</div><div class="kpi-value" id="ap-rnca">--</div><div class="kpi-sub">pendentes</div></div>
+        <div class="kpi-card highlight"><div class="kpi-label">Total</div><div class="kpi-value" id="ap-total">--</div><div class="kpi-sub">minhas pendências</div></div>
+        <div class="kpi-card"><div class="kpi-label">Sugestões enviadas</div><div class="kpi-value" id="ap-sugestoes">--</div><div class="kpi-sub">para o SAC</div></div>
+      </div>
+      <div class="section-card" style="margin-top:14px"><div class="section-title">Minhas pendências</div><div style="font-size:11px;color:var(--gray-400);margin-bottom:10px">RNCs são distribuídas pela competência cadastrada. Manifestações SAC são somente leitura.</div><div id="ap-pendencias-wrap"></div></div>
     </div>
   </div>
 
@@ -2261,6 +2322,27 @@ async function executarAnaliseIA() {
   }
 }
 
+function extrairTratativaSugerida(a) {
+  const candidatos = [
+    a?.tratativaSugerida,
+    a?.TRATATIVA_SUGERIDA,
+    a?.tratativa_sugerida,
+    a?.tratativa,
+    a?.tratativaSugestao,
+    Array.isArray(a?.tratativas) ? a.tratativas[0] : null,
+    Array.isArray(a?.tratativasSugeridas) ? a.tratativasSugeridas[0] : null
+  ];
+  for (const item of candidatos) {
+    if (!item) continue;
+    if (typeof item === 'string' && item.trim()) return item.trim();
+    if (typeof item === 'object') {
+      const texto = item.texto || item.descricao || item.tratativa || item.nome || item.acao || item.ação || '';
+      if (String(texto).trim()) return String(texto).trim();
+    }
+  }
+  return '';
+}
+
 function renderizarAnalise(a) {
   document.getElementById('ia-analisando').style.display = 'none';
   document.getElementById('ia-resultado').style.display = 'block';
@@ -2351,8 +2433,17 @@ function renderizarAnalise(a) {
     simsWrap.style.display = 'none';
   }
 
+  // Tratativa sugerida — separada da devolutiva
+  const tratativaSugerida = extrairTratativaSugerida(a);
+  document.getElementById('ia-tratativa').textContent =
+    tratativaSugerida || 'A ferramenta não encontrou uma tratativa sugerida com os dados disponíveis. A analista deverá definir a tratativa após a apuração.';
+
   // Devolutiva
-  document.getElementById('ia-devolutiva').value = a.devolutivaSugerida || '';
+  document.getElementById('ia-devolutiva').value =
+    a.devolutivaSugerida ||
+    a.DEVOLUTIVA_SUGERIDA ||
+    a.devolutiva ||
+    '';
 }
 
 function aceitarAnalise() {
@@ -2378,6 +2469,27 @@ function rejeitarAnalise() {
   statusEl.innerHTML = '<div class="alert-box red" style="font-size:12px">✗ Análise rejeitada — a manifestação será registrada sem sugestões da IA</div>';
 }
 
+
+let _nmEvidencias = [];
+let _nmTipoImportacao = 'FICHA_RECLAMACAO';
+function fmtBytes(n){ if(!n) return ''; if(n<1024) return n+' B'; if(n<1024*1024) return (n/1024).toFixed(1)+' KB'; return (n/1024/1024).toFixed(1)+' MB'; }
+function abrirImportacaoDocumento(tipo){ _nmTipoImportacao=tipo; const i=document.getElementById('nm-import-file'); i.value=''; i.click(); }
+function adicionarEvidencias(files){ [...(files||[])].forEach(f=>{ if(!_nmEvidencias.some(x=>x.name===f.name&&x.size===f.size)){_nmEvidencias.push(f);} }); renderEvidencias(); }
+function removerEvidencia(i){_nmEvidencias.splice(i,1);renderEvidencias();}
+function renderEvidencias(){const el=document.getElementById('nm-evidencias-list'); if(!el)return; el.innerHTML=_nmEvidencias.map((f,i)=>`<div class="upload-item"><span>📎 ${esc(f.name)}</span><small>${fmtBytes(f.size)} <button class="btn btn-ghost" style="padding:2px 5px" onclick="event.stopPropagation();removerEvidencia(${i})">Remover</button></small></div>`).join('');}
+function fileToBase64(file){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsDataURL(file);});}
+async function processarDocumentoImportado(file){
+  if(!file)return; const status=document.getElementById('nm-extracao-status'); const preview=document.getElementById('nm-extracao-preview');
+  status.style.display='block'; status.innerHTML='<div class="alert-box blue">Extraindo dados do documento com IA…</div>'; preview.style.display='none';
+  try{ const data=await fileToBase64(file); const r=await fetch(API+'/api/documentos/extrair',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tipoDocumento:_nmTipoImportacao,arquivo:{nome:file.name,mimeType:file.type,dataBase64:data}})}).then(x=>x.json());
+    if(!r.sucesso) throw new Error(r.erro||'Falha na extração');
+    window._documentoExtraido=r.dados||{}; preencherCamposExtraidos(r.dados||{}); status.innerHTML='<div class="alert-box green">Dados extraídos. Revise os campos antes de registrar.</div>'; renderPreviewExtracao(r.dados||{});
+  }catch(e){status.innerHTML='<div class="alert-box red">Não foi possível extrair o documento: '+esc(e.message)+'</div>';}
+}
+function setIf(id,v){if(v!==undefined&&v!==null&&String(v).trim()&&document.getElementById(id))document.getElementById(id).value=v;}
+function preencherCamposExtraidos(d){setIf('nm-cnpj',d.cnpj);setIf('nm-nome',d.contato);setIf('nm-empresa',d.empresaReclamante||d.empresa);setIf('nm-tel',d.telefone);setIf('nm-email',d.email);setIf('nm-descricao',d.descricao||d.naoConformidade);setIf('nm-produto',d.produto);setIf('nm-lote',d.lote);setIf('nm-nfe',d.nfe);setIf('nm-qtd',d.quantidade);setIf('nm-valor',d.valor);setIf('nm-empresa-reclamada',d.empresaReclamada);if(d.canal){document.querySelectorAll('.canal-btn').forEach(b=>{if(b.textContent.trim().toLowerCase()===String(d.canal).trim().toLowerCase())b.classList.add('active');});} if(d.tipoManifestacao){document.querySelectorAll('.tipo-btns .canal-btn').forEach(b=>{if(b.textContent.trim().toLowerCase()===String(d.tipoManifestacao).trim().toLowerCase())b.classList.add('active');});} onDescricaoChange();}
+function renderPreviewExtracao(d){const el=document.getElementById('nm-extracao-preview'); const entries=Object.entries(d).filter(([k,v])=>String(v||'').trim()); el.style.display='block'; el.innerHTML='<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--gray-400);margin-top:10px">Prévia dos dados extraídos</div><div class="extract-preview">'+entries.slice(0,16).map(([k,v])=>`<div class="extract-field"><b>${esc(k)}</b>${esc(String(v))}</div>`).join('')+'</div>';}
+
 async function initNovaManifestacao() {
   const today = new Date().toLocaleDateString('pt-BR');
   document.getElementById('nm-data').value = today;
@@ -2399,6 +2511,8 @@ async function initNovaManifestacao() {
   document.getElementById('nm-historico-cliente').style.display = 'none';
   _nmAnaliseAtual = null;
   _nmDecisao = null;
+  _nmEvidencias = []; renderEvidencias();
+  const es=document.getElementById('nm-extracao-status'); if(es) es.style.display='none'; const ep=document.getElementById('nm-extracao-preview'); if(ep) ep.style.display='none';
 }
 
 async function buscarCliente() {
@@ -2464,6 +2578,9 @@ async function registrarManifestacao() {
         analiseIA: _nmAnaliseAtual ? JSON.stringify(_nmAnaliseAtual) : null,
         decisaoAnalista: _nmDecisao || 'pendente',
         devolutivaSugerida: document.getElementById('ia-devolutiva')?.value || '',
+        origemDocumento: _nmTipoImportacao || '',
+        arquivoOrigem: window._documentoExtraido ? JSON.stringify(window._documentoExtraido) : '',
+        anexos: await Promise.all(_nmEvidencias.map(async f => ({ nome:f.name, mimeType:f.type, tamanho:f.size, dataBase64:await fileToBase64(f), categoria:'EVIDENCIA' })))
       })
     }).then(r => r.json());
 
@@ -3228,6 +3345,7 @@ const pageLoaders = {
   'acompanhamento': loadAcompanhamento,
   'visao-geral': loadVisaoGeral,
   'nova-manifestacao': initNovaManifestacao,
+  'aprovadores': loadAprovadorDashboard,
   'banco-manifestacoes': loadBancoManifestacoes,
   'banco-rnc': loadBancoRNC,
   'setores': loadSetores,
