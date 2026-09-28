@@ -1,8 +1,5 @@
 const sheets = require('./sheets');
 
-/**
- * Normalização de texto.
- */
 function normalizar(valor) {
   return String(valor || '')
     .normalize('NFD')
@@ -13,642 +10,254 @@ function normalizar(valor) {
     .trim();
 }
 
-/**
- * Divide texto em palavras relevantes.
- */
-function tokens(valor) {
-  const stopwords = new Set([
-    'a',
-    'o',
-    'e',
-    'de',
-    'da',
-    'do',
-    'das',
-    'dos',
-    'em',
-    'no',
-    'na',
-    'nos',
-    'nas',
-    'um',
-    'uma',
-    'para',
-    'por',
-    'com',
-    'que',
-    'se',
-    'foi',
-    'ser',
-    'estava',
-    'estao',
-    'está',
-  ]);
-
-  return new Set(
-    normalizar(valor)
-      .split(' ')
-      .filter(
-        palavra =>
-          palavra.length >= 3 &&
-          !stopwords.has(palavra)
-      )
-  );
-}
-
-/**
- * Similaridade textual baseada em interseção de termos.
- */
-function similaridadeTexto(a, b) {
-  const A = tokens(a);
-  const B = tokens(b);
-
-  if (!A.size || !B.size) {
-    return 0;
-  }
-
-  let intersecao = 0;
-
-  A.forEach(token => {
-    if (B.has(token)) {
-      intersecao++;
-    }
-  });
-
-  const uniao = new Set([
-    ...A,
-    ...B,
-  ]).size;
-
-  if (!uniao) {
-    return 0;
-  }
-
-  return intersecao / uniao;
-}
-
-/**
- * Pega o primeiro campo existente entre vários nomes possíveis.
- *
- * Isso permite que o cérebro funcione mesmo se sua planilha
- * tiver nomes de colunas ligeiramente diferentes.
- */
 function campo(obj, nomes) {
   for (const nome of nomes) {
-    if (
-      obj &&
-      obj[nome] !== undefined &&
-      obj[nome] !== ''
-    ) {
+    if (obj && obj[nome] !== undefined && obj[nome] !== null && String(obj[nome]).trim() !== '') {
       return obj[nome];
     }
   }
-
   return '';
 }
 
-/**
- * Monta o texto principal do caso.
- */
-function textoCaso(caso) {
-  return [
-    campo(caso, [
-      'DESCRICAO_RECLAMACAO',
-      'DESCRIÇÃO_RECLAMAÇÃO',
+function tokens(texto) {
+  const stopwords = new Set([
+    'a','o','e','de','da','do','das','dos','em','no','na','nos','nas',
+    'um','uma','para','por','com','que','se','foi','ser','está','esta',
+    'este','mais','mas','ou','não','nao','ao','à','as','os'
+  ]);
+
+  return new Set(
+    normalizar(texto)
+      .split(' ')
+      .filter(p => p.length >= 3 && !stopwords.has(p))
+  );
+}
+
+function calcularSimilaridade(texto1, texto2) {
+  const a = tokens(texto1);
+  const b = tokens(texto2);
+  if (!a.size || !b.size) return 0;
+
+  let intersecao = 0;
+  a.forEach(token => {
+    if (b.has(token)) intersecao++;
+  });
+
+  const uniao = new Set([...a, ...b]).size;
+  return uniao ? Math.round((intersecao / uniao) * 100) : 0;
+}
+
+async function buscarCasosSimilares(manifestacao, limite = 8) {
+  try {
+    const historico = await sheets.lerAba('BANCO_HISTORICO', 5000);
+
+    const descricao = campo(manifestacao, [
       'DESCRICAO',
       'DESCRIÇÃO',
-      'RELATO',
-      'MOTIVO_RELATADO_BRUTO',
-    ]),
-
-    campo(caso, [
-      'MOTIVO',
-      'MOTIVO_RECLAMACAO',
-      'MOTIVO_RELATADO_BRUTO',
-      'TIPO_PROBLEMA_VALIDADO',
-    ]),
-
-    campo(caso, [
-      'CAUSA_RAIZ',
-      'CAUSA',
-      'CAUSA_VALIDADA',
-    ]),
-
-    campo(caso, [
-      'SUBCAUSA',
-      'SUB_CAUSA',
-    ]),
-
-    campo(caso, [
-      'PRODUTO',
-      'PRODUTO_RECLAMADO',
-    ]),
-  ]
-    .filter(Boolean)
-    .join(' ');
-}
-
-/**
- * Calcula compatibilidade entre dois casos.
- *
- * Pesos:
- * descrição       35%
- * motivo          20%
- * produto         15%
- * causa           10%
- * empresa         10%
- * setor           10%
- */
-function calcularCompatibilidade(novo, historico) {
-  const descricaoNovo = campo(novo, [
-    'DESCRICAO',
-    'DESCRIÇÃO',
-    'DESCRICAO_RECLAMACAO',
-    'DESCRIÇÃO_RECLAMAÇÃO',
-    'RELATO',
-    'MOTIVO_RELATADO_BRUTO',
-  ]);
-
-  const descricaoHistorico = campo(historico, [
-    'DESCRICAO',
-    'DESCRIÇÃO',
-    'DESCRICAO_RECLAMACAO',
-    'DESCRIÇÃO_RECLAMAÇÃO',
-    'RELATO',
-    'MOTIVO_RELATADO_BRUTO',
-  ]);
-
-  const motivoNovo = campo(novo, [
-    'MOTIVO',
-    'MOTIVO_RECLAMACAO',
-    'TIPO_PROBLEMA_VALIDADO',
-  ]);
-
-  const motivoHistorico = campo(historico, [
-    'MOTIVO',
-    'MOTIVO_RECLAMACAO',
-    'TIPO_PROBLEMA_VALIDADO',
-  ]);
-
-  const produtoNovo = campo(novo, [
-    'PRODUTO',
-    'PRODUTO_RECLAMADO',
-  ]);
-
-  const produtoHistorico = campo(historico, [
-    'PRODUTO',
-    'PRODUTO_RECLAMADO',
-  ]);
-
-  const causaNovo = campo(novo, [
-    'CAUSA_RAIZ',
-    'CAUSA',
-  ]);
-
-  const causaHistorico = campo(historico, [
-    'CAUSA_RAIZ',
-    'CAUSA',
-  ]);
-
-  const empresaNovo = campo(novo, [
-    'EMPRESA_RECLAMADA',
-    'EMPRESA',
-  ]);
-
-  const empresaHistorico = campo(historico, [
-    'EMPRESA_RECLAMADA',
-    'EMPRESA',
-  ]);
-
-  const setorNovo = campo(novo, [
-    'SETOR_RESPONSAVEL',
-    'SETOR',
-  ]);
-
-  const setorHistorico = campo(historico, [
-    'SETOR_RESPONSAVEL',
-    'SETOR',
-  ]);
-
-  const descricaoScore = similaridadeTexto(
-    descricaoNovo,
-    descricaoHistorico
-  );
-
-  const motivoScore = normalizar(motivoNovo) &&
-    normalizar(motivoNovo) === normalizar(motivoHistorico)
-    ? 1
-    : similaridadeTexto(
-        motivoNovo,
-        motivoHistorico
-      );
-
-  const produtoScore = normalizar(produtoNovo) &&
-    normalizar(produtoNovo) === normalizar(produtoHistorico)
-    ? 1
-    : similaridadeTexto(
-        produtoNovo,
-        produtoHistorico
-      );
-
-  const causaScore = normalizar(causaNovo) &&
-    normalizar(causaNovo) === normalizar(causaHistorico)
-    ? 1
-    : similaridadeTexto(
-        causaNovo,
-        causaHistorico
-      );
-
-  const empresaScore =
-    normalizar(empresaNovo) &&
-    normalizar(empresaNovo) === normalizar(empresaHistorico)
-      ? 1
-      : 0;
-
-  const setorScore =
-    normalizar(setorNovo) &&
-    normalizar(setorNovo) === normalizar(setorHistorico)
-      ? 1
-      : 0;
-
-  const score =
-    descricaoScore * 0.35 +
-    motivoScore * 0.20 +
-    produtoScore * 0.15 +
-    causaScore * 0.10 +
-    empresaScore * 0.10 +
-    setorScore * 0.10;
-
-  return Math.round(score * 100);
-}
-
-/**
- * Busca casos semelhantes no histórico.
- */
-async function buscarCasosSimilares(
-  manifestacao,
-  limite = 5
-) {
-  let historico = [];
-
-  try {
-    historico = await sheets.lerAba(
-      'BANCO_HISTORICO'
-    );
-  } catch (erro) {
-    console.error(
-      'Erro ao ler BANCO_HISTORICO:',
-      erro.message
-    );
-
-    return [];
-  }
-
-  if (!historico.length) {
-    return [];
-  }
-
-  const resultados = historico
-    .map(caso => {
-      const compatibilidade =
-        calcularCompatibilidade(
-          manifestacao,
-          caso
-        );
-
-      return {
-        id: campo(caso, [
-          'ID_HISTORICO',
-          'ID_MANIFESTACAO',
-          'ID',
-          'PROTOCOLO',
-        ]),
-
-        compatibilidade,
-
-        descricao: campo(caso, [
-          'DESCRICAO_RECLAMACAO',
-          'DESCRIÇÃO_RECLAMAÇÃO',
-          'DESCRICAO',
-          'DESCRIÇÃO',
-          'RELATO',
-          'MOTIVO_RELATADO_BRUTO',
-        ]),
-
-        motivo: campo(caso, [
-          'MOTIVO',
-          'MOTIVO_RECLAMACAO',
-          'TIPO_PROBLEMA_VALIDADO',
-        ]),
-
-        causaRaiz: campo(caso, [
-          'CAUSA_RAIZ',
-          'CAUSA',
-          'CAUSA_VALIDADA',
-        ]),
-
-        subcausa: campo(caso, [
-          'SUBCAUSA',
-          'SUB_CAUSA',
-        ]),
-
-        setor: campo(caso, [
-          'SETOR_RESPONSAVEL',
-          'SETOR',
-        ]),
-
-        empresa: campo(caso, [
-          'EMPRESA_RECLAMADA',
-          'EMPRESA',
-        ]),
-
-        produto: campo(caso, [
-          'PRODUTO',
-          'PRODUTO_RECLAMADO',
-        ]),
-
-        tratamento: campo(caso, [
-          'TRATAMENTO',
-          'TRATAMENTO_REALIZADO',
-          'SOLUCAO',
-          'SOLUÇÃO',
-          'DEVOLUTIVA',
-        ]),
-
-        resultado: campo(caso, [
-          'RESULTADO',
-          'STATUS_FINAL',
-          'DESFECHO',
-        ]),
-      };
-    })
-    .filter(caso => caso.compatibilidade > 0)
-    .sort(
-      (a, b) =>
-        b.compatibilidade -
-        a.compatibilidade
-    )
-    .slice(0, limite);
-
-  return resultados;
-}
-
-/**
- * Detecta reincidência.
- */
-async function detectarReincidencia(manifestacao) {
-  let historico = [];
-
-  try {
-    historico = await sheets.lerAba(
-      'BANCO_HISTORICO'
-    );
-  } catch (erro) {
-    return {
-      existe: false,
-      quantidade: 0,
-      casos: [],
-    };
-  }
-
-  const cliente = normalizar(
-    campo(manifestacao, [
-      'EMPRESA_RECLAMANTE',
-      'CLIENTE',
-      'CLIENTE_RECLAMANTE',
-    ])
-  );
-
-  const produto = normalizar(
-    campo(manifestacao, [
-      'PRODUTO',
-      'PRODUTO_RECLAMADO',
-    ])
-  );
-
-  if (!cliente) {
-    return {
-      existe: false,
-      quantidade: 0,
-      casos: [],
-    };
-  }
-
-  const casos = historico.filter(caso => {
-    const clienteHistorico = normalizar(
-      campo(caso, [
-        'EMPRESA_RECLAMANTE',
-        'CLIENTE',
-        'CLIENTE_RECLAMANTE',
-      ])
-    );
-
-    const produtoHistorico = normalizar(
-      campo(caso, [
-        'PRODUTO',
-        'PRODUTO_RECLAMADO',
-      ])
-    );
-
-    const mesmoCliente =
-      clienteHistorico === cliente;
-
-    const mesmoProduto =
-      !produto ||
-      !produtoHistorico ||
-      produtoHistorico === produto;
-
-    return mesmoCliente && mesmoProduto;
-  });
-
-  return {
-    existe: casos.length > 0,
-    quantidade: casos.length,
-    casos: casos.slice(0, 10).map(caso => ({
-      id: campo(caso, [
-        'ID_HISTORICO',
-        'ID_MANIFESTACAO',
-        'ID',
-        'PROTOCOLO',
-      ]),
-
-      motivo: campo(caso, [
-        'MOTIVO',
-        'MOTIVO_RECLAMACAO',
-        'TIPO_PROBLEMA_VALIDADO',
-      ]),
-
-      causaRaiz: campo(caso, [
-        'CAUSA_RAIZ',
-        'CAUSA',
-      ]),
-
-      subcausa: campo(caso, [
-        'SUBCAUSA',
-        'SUB_CAUSA',
-      ]),
-    })),
-  };
-}
-
-/**
- * Analisa padrões do histórico.
- */
-async function analisarPadroes(
-  manifestacao,
-  similares
-) {
-  const causas = {};
-  const subcausas = {};
-  const setores = {};
-  const tratamentos = {};
-
-  similares.forEach(caso => {
-    if (caso.causaRaiz) {
-      causas[caso.causaRaiz] =
-        (causas[caso.causaRaiz] || 0) + 1;
-    }
-
-    if (caso.subcausa) {
-      subcausas[caso.subcausa] =
-        (subcausas[caso.subcausa] || 0) + 1;
-    }
-
-    if (caso.setor) {
-      setores[caso.setor] =
-        (setores[caso.setor] || 0) + 1;
-    }
-
-    if (caso.tratamento) {
-      tratamentos[caso.tratamento] =
-        (tratamentos[caso.tratamento] || 0) + 1;
-    }
-  });
-
-  function maisFrequente(obj) {
-    const entradas = Object.entries(obj);
-
-    if (!entradas.length) {
-      return null;
-    }
-
-    entradas.sort((a, b) => b[1] - a[1]);
-
-    return {
-      valor: entradas[0][0],
-      ocorrencias: entradas[0][1],
-    };
-  }
-
-  return {
-    causaMaisFrequente:
-      maisFrequente(causas),
-
-    subcausaMaisFrequente:
-      maisFrequente(subcausas),
-
-    setorMaisFrequente:
-      maisFrequente(setores),
-
-    tratamentoMaisFrequente:
-      maisFrequente(tratamentos),
-  };
-}
-
-/**
- * Função principal do cérebro.
- */
-async function analisarManifestacao(
-  manifestacao
-) {
-  const [similares, reincidencia] =
-    await Promise.all([
-      buscarCasosSimilares(
-        manifestacao,
-        5
-      ),
-
-      detectarReincidencia(
-        manifestacao
-      ),
+      'ORIG_DESCRICAO_RECLAMACAO',
+      'DESCRICAO_RECLAMACAO',
+      'MOTIVO_RELATADO_BRUTO'
     ]);
 
-  const padroes =
-    await analisarPadroes(
-      manifestacao,
-      similares
-    );
+    if (!descricao) return [];
 
-  const casoMaisSimilar =
-    similares.length
-      ? similares[0]
-      : null;
+    return historico
+      .filter(h => campo(h, [
+        'ORIG_DESCRICAO_RECLAMACAO',
+        'DESCRICAO_RECLAMACAO',
+        'DESCRICAO'
+      ]))
+      .map(h => {
+        const descricaoHistorica = campo(h, [
+          'ORIG_DESCRICAO_RECLAMACAO',
+          'DESCRICAO_RECLAMACAO',
+          'DESCRICAO'
+        ]);
 
-  let nivelConfianca = 'BAIXA';
-
-  if (
-    casoMaisSimilar &&
-    casoMaisSimilar.compatibilidade >= 80
-  ) {
-    nivelConfianca = 'ALTA';
-  } else if (
-    casoMaisSimilar &&
-    casoMaisSimilar.compatibilidade >= 60
-  ) {
-    nivelConfianca = 'MÉDIA';
+        return {
+          id: campo(h, ['ID_HISTORICO','ID_MANIFESTACAO','ID']),
+          empresa: campo(h, ['ORIG_EMPRESA','EMPRESA_RECLAMADA','EMPRESA']),
+          cliente: campo(h, ['ORIG_CONTATO','EMPRESA_RECLAMANTE','CLIENTE']),
+          descricao: descricaoHistorica.slice(0, 300),
+          motivo: campo(h, ['ORIG_MOTIVO_RELATADO','MOTIVO_RELATADO_BRUTO','MOTIVO']),
+          tipo: campo(h, ['COMP_TIPO_PROBLEMA_VALIDADO','TIPO_PROBLEMA_VALIDADO','TIPO']),
+          causa: campo(h, ['COMP_CAUSA_PROVAVEL','CAUSA_RAIZ','CAUSA']),
+          subcausa: campo(h, ['COMP_SUBCAUSA','SUBCAUSA','SUB_CAUSA']),
+          setor: campo(h, ['SETOR_RESPONSAVEL','SETOR']),
+          tratativa: campo(h, [
+            'TRATATIVA_REALIZADA',
+            'ORIG_TRATATIVA',
+            'TRATATIVA',
+            'ORIG_TRATATIVA_REALIZADA'
+          ]),
+          resultado: campo(h, ['RESULTADO','STATUS_FINAL','DESFECHO']),
+          devolutiva: campo(h, ['DEVOLUTIVA_FINAL','ORIG_DEVOLUTIVA','DEVOLUTIVA']),
+          similaridade: calcularSimilaridade(descricao, descricaoHistorica)
+        };
+      })
+      .filter(caso => caso.similaridade >= 10)
+      .sort((a,b) => b.similaridade - a.similaridade)
+      .slice(0, limite);
+  } catch (erro) {
+    console.error('Erro ao buscar casos similares:', erro.message);
+    return [];
   }
+}
+
+async function detectarReincidencia(manifestacao) {
+  try {
+    const historico = await sheets.lerAba('BANCO_HISTORICO', 5000);
+
+    const cliente = normalizar(campo(manifestacao, [
+      'EMPRESA_RECLAMANTE','CLIENTE','CONTATO','ORIG_CONTATO'
+    ]));
+
+    if (!cliente) {
+      return { detectada:false, quantidade:0, casos:[] };
+    }
+
+    const casos = historico.filter(h => {
+      const clienteHistorico = normalizar(campo(h, [
+        'ORIG_CONTATO','EMPRESA_RECLAMANTE','CLIENTE'
+      ]));
+      return clienteHistorico && clienteHistorico === cliente;
+    });
+
+    return {
+      detectada: casos.length > 0,
+      quantidade: casos.length,
+      casos: casos.slice(-10).map(caso => ({
+        id: campo(caso,['ID_HISTORICO','ID_MANIFESTACAO']),
+        data: campo(caso,['ORIG_DATA_ABERTURA','DATA_ABERTURA']),
+        motivo: campo(caso,['ORIG_MOTIVO_RELATADO','MOTIVO']),
+        causa: campo(caso,['COMP_CAUSA_PROVAVEL','CAUSA_RAIZ']),
+        tratativa: campo(caso,['TRATATIVA_REALIZADA','ORIG_TRATATIVA'])
+      }))
+    };
+  } catch (erro) {
+    console.error('Erro reincidência:', erro.message);
+    return { detectada:false, quantidade:0, casos:[] };
+  }
+}
+
+function gerarSugestaoTratativa(casosSimilares) {
+  const casosComTratativa = casosSimilares.filter(caso =>
+    caso.tratativa && caso.tratativa.trim() !== ''
+  );
+
+  if (!casosComTratativa.length) {
+    return {
+      aplicavel: null,
+      confianca: 0,
+      sugestao: '',
+      quantidadeCasos: 0,
+      evidencia: []
+    };
+  }
+
+  const contagem = {};
+  casosComTratativa.forEach(caso => {
+    const chave = caso.tratativa.trim();
+    contagem[chave] = (contagem[chave] || 0) + 1;
+  });
+
+  const ordenadas = Object.entries(contagem).sort((a,b) => b[1] - a[1]);
+  const [tratativa, quantidade] = ordenadas[0];
+
+  const confianca = Math.round(
+    (quantidade / casosComTratativa.length) * 100
+  );
+
+  return {
+    aplicavel: true,
+    confianca,
+    sugestao: tratativa,
+    quantidadeCasos: quantidade,
+    evidencia: casosComTratativa
+      .filter(caso => caso.tratativa.trim() === tratativa)
+      .slice(0,5)
+      .map(caso => ({
+        id: caso.id,
+        compatibilidade: caso.similaridade,
+        tratativa: caso.tratativa,
+        resultado: caso.resultado
+      }))
+  };
+}
+
+function gerarDevolutiva(empresa, tipo, setor, tratativa, contexto = {}) {
+  const tipoTexto = tipo || 'sua manifestação';
+  const cliente = contexto.cliente || '';
+  const prazo = contexto.prazo || '';
+  const fase = contexto.fase || (tratativa ? 'FINAL' : 'INICIAL');
+  const saudacao = cliente ? `Olá, ${cliente}.` : 'Olá.';
+
+  if (fase === 'FINAL' && tratativa) {
+    return `${saudacao}\n\nRecebemos sua manifestação referente a ${tipoTexto} e concluímos a análise do caso.\n\nA providência definida foi: ${tratativa}.\n\nO caso seguirá acompanhado até a conclusão da providência informada${prazo ? `, com retorno previsto para ${prazo}` : ''}.\n\nPermanecemos à disposição para qualquer informação adicional.\n\nAtenciosamente,\nEquipe SAC — Grupo Chiacchio`;
+  }
+
+  // Resposta inicial: não atribui culpa, não expõe dependência interna e já comunica ação.
+  const encaminhamento = setor
+    ? `O caso já foi direcionado à área responsável para análise e definição das providências necessárias.`
+    : `O caso já foi registrado e está sendo conduzido para análise e definição das providências necessárias.`;
+
+  return `${saudacao}\n\nRecebemos sua manifestação referente a ${tipoTexto} e já iniciamos o atendimento.\n\n${encaminhamento}\n\nNosso objetivo é solucionar a situação da forma mais adequada possível. Retornaremos com o posicionamento e as providências definidas${prazo ? ` dentro do prazo informado de ${prazo}` : ' assim que a análise for concluída'}.\n\nAgradecemos o contato.\n\nAtenciosamente,\nEquipe SAC — Grupo Chiacchio`;
+}
+
+
+async function analisarManifestacao(manifestacao, regras = {}) {
+  const inicio = Date.now();
+
+  const [casosSimilares, reincidencia] = await Promise.all([
+    buscarCasosSimilares(manifestacao, 8),
+    detectarReincidencia(manifestacao)
+  ]);
+
+  const casoPrincipal = casosSimilares[0] || null;
+  const tratativa = gerarSugestaoTratativa(casosSimilares);
+
+  const setor = regras.setores?.[0] || casoPrincipal?.setor || '';
+  const tipo = regras.tipoDetectado || casoPrincipal?.tipo || 'Não identificado';
 
   return {
     sucesso: true,
-
-    confianca: nivelConfianca,
-
-    compatibilidadePrincipal:
-      casoMaisSimilar
-        ? casoMaisSimilar.compatibilidade
-        : 0,
-
-    casoMaisSimilar,
-
-    casosSimilares: similares,
-
+    tipoSugerido: tipo,
+    confianca: regras.tipoConfianca || 0,
+    prioridade: regras.prioridade || 'Média',
+    slaHoras: regras.slaHoras || 72,
+    setoresSugeridos: regras.setores || [],
+    regraAplicada: regras.regraAplicada || null,
+    procedimentoSugerido: regras.procedimentoSugerido || null,
+    perguntasNecessarias: regras.perguntasNecessarias || [],
+    geraRNC: regras.geraRNC || false,
+    casosSemelhantes: casosSimilares,
     reincidencia,
-
-    padroes,
-
-    sugestao: {
-      causaRaiz:
-        padroes.causaMaisFrequente?.valor ||
-        casoMaisSimilar?.causaRaiz ||
-        '',
-
-      subcausa:
-        padroes.subcausaMaisFrequente?.valor ||
-        casoMaisSimilar?.subcausa ||
-        '',
-
-      setor:
-        padroes.setorMaisFrequente?.valor ||
-        casoMaisSimilar?.setor ||
-        '',
-
-      tratamento:
-        padroes.tratamentoMaisFrequente?.valor ||
-        casoMaisSimilar?.tratamento ||
-        '',
+    tratativaSugerida: {
+      aplicavel: tratativa.aplicavel,
+      confianca: tratativa.confianca,
+      sugestao: tratativa.sugestao,
+      quantidadeCasos: tratativa.quantidadeCasos,
+      evidencia: tratativa.evidencia
     },
-
-    observacao:
-      casoMaisSimilar
-        ? 'Sugestão baseada em casos históricos semelhantes. A decisão final permanece com a analista.'
-        : 'Não foram encontrados casos históricos suficientemente semelhantes.',
+    devolutivaSugerida: gerarDevolutiva(
+      manifestacao.empresaReclamante,
+      tipo,
+      setor,
+      tratativa.sugestao,
+      { cliente: manifestacao.contato || manifestacao.cliente || '', prazo: manifestacao.slaHoras || '', fase: 'INICIAL' }
+    ),
+    tempoAnaliseSegundos: Math.round((Date.now() - inicio) / 1000),
+    versaoIA: '3.0-tratativa-devolutiva-similaridade',
+    geradaEm: new Date().toISOString()
   };
 }
 
 module.exports = {
   normalizar,
-  calcularCompatibilidade,
+  calcularSimilaridade,
   buscarCasosSimilares,
   detectarReincidencia,
-  analisarManifestacao,
+  gerarSugestaoTratativa,
+  gerarDevolutiva,
+  analisarManifestacao
 };
