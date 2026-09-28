@@ -490,6 +490,10 @@
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
     Visão Geral
   </div>
+  <div class="sidebar-item" onclick="navigate('acompanhamento', this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+    Acompanhamento
+  </div>
   <div class="sidebar-item" onclick="navigate('nova-manifestacao', this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
     Nova Manifestação
@@ -897,7 +901,7 @@
                 <!-- Devolutiva sugerida -->
                 <div style="margin-bottom:16px">
                   <div style="font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">Devolutiva sugerida</div>
-                  <textarea id="ia-devolutiva" class="form-textarea" style="min-height:80px;font-size:12px;background:#FAFAFA"></textarea>
+                  <textarea id="ia-devolutiva" class="form-textarea" style="min-height:160px;font-size:13px;background:#FAFAFA"></textarea>
                   <div style="font-size:11px;color:var(--gray-400);margin-top:3px">Editável — será usada como base na etapa de devolutiva</div>
                 </div>
 
@@ -974,6 +978,91 @@
           </button>
           <button class="btn btn-secondary" style="width:100%;justify-content:center;margin-top:6px">Salvar rascunho</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== ACOMPANHAMENTO ===== -->
+  <div class="page" id="page-acompanhamento">
+    <div class="topbar">
+      <div class="breadcrumb">Atendimento / <span>Acompanhamento</span></div>
+      <div class="page-header">
+        <h1 class="page-title">Acompanhamento de Solicitações</h1>
+        <button class="btn btn-primary" onclick="navigate('nova-manifestacao', document.querySelector('[onclick*=nova-manifestacao]'))">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Nova manifestação
+        </button>
+      </div>
+    </div>
+    <div class="content">
+
+      <!-- KPIs rápidos -->
+      <div class="kpi-grid" style="grid-template-columns:repeat(6,1fr);margin-bottom:16px" id="acomp-kpis">
+        <div class="kpi-card highlight"><div class="kpi-label">Em análise</div><div class="kpi-value" id="ac-analise">--</div></div>
+        <div class="kpi-card"><div class="kpi-label">Aguardando decisão</div><div class="kpi-value" id="ac-decisao">--</div></div>
+        <div class="kpi-card"><div class="kpi-label">Aprovadas</div><div class="kpi-value" id="ac-aprovadas">--</div></div>
+        <div class="kpi-card"><div class="kpi-label">Em tratamento</div><div class="kpi-value" id="ac-tratamento">--</div></div>
+        <div class="kpi-card"><div class="kpi-label">Aguard. devolutiva</div><div class="kpi-value" id="ac-devolutiva">--</div></div>
+        <div class="kpi-card"><div class="kpi-label">Encerradas</div><div class="kpi-value" id="ac-encerradas">--</div></div>
+      </div>
+
+      <!-- Filtros -->
+      <div class="card card-pad" style="margin-bottom:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <div class="search-wrap" style="flex:1;min-width:200px">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input class="search-input" placeholder="Buscar por ID, cliente, empresa..." id="acomp-search" oninput="filtrarAcompanhamento()">
+        </div>
+        <select id="acomp-status-filter" onchange="filtrarAcompanhamento()" style="padding:8px 10px;border:1px solid var(--gray-200);border-radius:8px;font-size:12px;outline:none">
+          <option value="">Todos os status</option>
+          <option value="EM ANÁLISE">Em análise</option>
+          <option value="AGUARDANDO_DECISAO">Aguardando decisão</option>
+          <option value="APROVADA">Aprovadas</option>
+          <option value="EM TRATAMENTO">Em tratamento</option>
+          <option value="AGUARDANDO_DEVOLUTIVA">Aguard. devolutiva</option>
+          <option value="ENCERRADA">Encerradas</option>
+          <option value="REJEITADA">Rejeitadas</option>
+        </select>
+        <select id="acomp-empresa-filter" onchange="filtrarAcompanhamento()" style="padding:8px 10px;border:1px solid var(--gray-200);border-radius:8px;font-size:12px;outline:none">
+          <option value="">Todas as empresas</option>
+          <option value="CHIACCHIO EMBALAGENS">Chiacchio Embalagens</option>
+          <option value="PLASCHIO">Plaschio</option>
+          <option value="TUBAHIA">Tubahia</option>
+        </select>
+        <button class="btn btn-secondary" onclick="loadAcompanhamento()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.08-4"/></svg>
+          Atualizar
+        </button>
+      </div>
+
+      <!-- Kanban por status -->
+      <div id="acomp-kanban" style="display:flex;gap:12px;overflow-x:auto;padding-bottom:8px;margin-bottom:16px">
+        <!-- gerado dinamicamente -->
+      </div>
+
+      <!-- Tabela detalhada -->
+      <div class="card">
+        <div style="padding:14px 16px;border-bottom:1px solid var(--gray-100);display:flex;align-items:center;justify-content:space-between">
+          <div style="font-size:14px;font-weight:700">Todas as solicitações</div>
+          <div style="font-size:12px;color:var(--gray-400)" id="acomp-total">Carregando...</div>
+        </div>
+        <table class="banco-table">
+          <thead>
+            <tr>
+              <th>Nº / Data</th>
+              <th>Cliente / Empresa</th>
+              <th>Tipo</th>
+              <th>Empresa reclamada</th>
+              <th>Status</th>
+              <th>Prioridade</th>
+              <th>SLA</th>
+              <th>Analista</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="acomp-body">
+            <tr><td colspan="9"><div class="loading"><div class="spinner"></div> Carregando...</div></td></tr>
+          </tbody>
+        </table>
       </div>
     </div>
   </div>
@@ -2052,7 +2141,121 @@ async function registrarManifestacao() {
   }
 }
 
-// ===== BANCO DE MANIFESTAÇÕES =====
+// ===== ACOMPANHAMENTO =====
+let _acompData = [];
+
+const STATUS_LABELS = {
+  'EM ANÁLISE': { label: 'Em análise', color: '#1D4ED8', bg: '#EFF6FF' },
+  'AGUARDANDO_DECISAO': { label: 'Aguard. decisão', color: '#92400E', bg: '#FEF3C7' },
+  'APROVADA': { label: 'Aprovada', color: '#065F46', bg: '#ECFDF5' },
+  'EM TRATAMENTO': { label: 'Em tratamento', color: '#7C3AED', bg: '#F3E8FF' },
+  'AGUARDANDO_DEVOLUTIVA': { label: 'Aguard. devolutiva', color: '#C2410C', bg: '#FED7AA' },
+  'ENCERRADA': { label: 'Encerrada', color: '#065F46', bg: '#ECFDF5' },
+  'REJEITADA': { label: 'Rejeitada', color: '#DC2626', bg: '#FEE2E2' },
+};
+
+function getStatusInfo(status) {
+  const s = (status || '').toUpperCase().trim().replace(/ /g,'_');
+  return STATUS_LABELS[s] || STATUS_LABELS[(status||'').toUpperCase()] || { label: status || 'Em análise', color: '#6B7280', bg: '#F3F4F6' };
+}
+
+async function loadAcompanhamento() {
+  try {
+    const res = await fetch(API + '/api/manifestacoes').then(r => r.json());
+    _acompData = res.itens || [];
+
+    // KPIs
+    const contagem = {};
+    _acompData.forEach(m => {
+      const s = (m.STATUS || 'EM ANÁLISE').toUpperCase();
+      contagem[s] = (contagem[s] || 0) + 1;
+    });
+    document.getElementById('ac-analise').textContent = contagem['EM ANÁLISE'] || 0;
+    document.getElementById('ac-decisao').textContent = contagem['AGUARDANDO_DECISAO'] || contagem['AGUARDANDO DECISÃO'] || 0;
+    document.getElementById('ac-aprovadas').textContent = contagem['APROVADA'] || 0;
+    document.getElementById('ac-tratamento').textContent = contagem['EM TRATAMENTO'] || 0;
+    document.getElementById('ac-devolutiva').textContent = contagem['AGUARDANDO_DEVOLUTIVA'] || 0;
+    document.getElementById('ac-encerradas').textContent = contagem['ENCERRADA'] || contagem['FINALIZADA'] || 0;
+
+    // Kanban
+    const colunas = ['EM ANÁLISE', 'AGUARDANDO_DECISAO', 'APROVADA', 'EM TRATAMENTO', 'AGUARDANDO_DEVOLUTIVA', 'ENCERRADA'];
+    const kanban = document.getElementById('acomp-kanban');
+    kanban.innerHTML = colunas.map(col => {
+      const info = getStatusInfo(col);
+      const items = _acompData.filter(m => (m.STATUS||'EM ANÁLISE').toUpperCase().replace(/ /g,'_') === col.replace(/ /g,'_'));
+      return `
+        <div style="min-width:180px;flex-shrink:0">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <div style="font-size:11px;font-weight:700;color:${info.color};text-transform:uppercase;letter-spacing:0.05em">${info.label}</div>
+            <div style="background:${info.bg};color:${info.color};font-size:11px;font-weight:700;padding:2px 7px;border-radius:20px">${items.length}</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            ${items.slice(0,5).map(m => `
+              <div style="background:white;border:1px solid var(--gray-200);border-radius:8px;padding:10px;cursor:pointer;transition:border-color 0.15s" onmouseover="this.style.borderColor='var(--red)'" onmouseout="this.style.borderColor='var(--gray-200)'">
+                <div style="font-size:12px;font-weight:700;color:var(--gray-900);margin-bottom:2px">${m.ID_MANIFESTACAO || '--'}</div>
+                <div style="font-size:11px;color:var(--gray-500);margin-bottom:3px">${(m.EMPRESA_NORMALIZADA || m.EMPRESA_RECLAMANTE || '--').slice(0,25)}</div>
+                <div style="font-size:11px;color:var(--gray-400)">${m.TIPO || 'Reclamação'}</div>
+                ${m.PRIORIDADE ? `<div style="margin-top:4px"><span style="font-size:10px;font-weight:600;padding:1px 6px;border-radius:10px;background:${m.PRIORIDADE==='Alta'?'#FEE2E2':m.PRIORIDADE==='Média'?'#FEF3C7':'#F3F4F6'};color:${m.PRIORIDADE==='Alta'?'#DC2626':m.PRIORIDADE==='Média'?'#92400E':'#6B7280'}">${m.PRIORIDADE}</span></div>` : ''}
+              </div>
+            `).join('')}
+            ${items.length > 5 ? `<div style="font-size:11px;color:var(--gray-400);text-align:center;padding:4px">+${items.length-5} mais</div>` : ''}
+          </div>
+        </div>`;
+    }).join('');
+
+    renderAcompanhamento(_acompData);
+  } catch (e) {
+    console.error('Erro acompanhamento:', e);
+  }
+}
+
+function filtrarAcompanhamento() {
+  const search = (document.getElementById('acomp-search')?.value || '').toLowerCase();
+  const statusF = document.getElementById('acomp-status-filter')?.value || '';
+  const empresaF = document.getElementById('acomp-empresa-filter')?.value || '';
+
+  let data = _acompData;
+  if (search) data = data.filter(m =>
+    (m.ID_MANIFESTACAO||'').toLowerCase().includes(search) ||
+    (m.EMPRESA_NORMALIZADA||'').toLowerCase().includes(search) ||
+    (m.EMPRESA_RECLAMANTE||'').toLowerCase().includes(search) ||
+    (m.CONTATO||'').toLowerCase().includes(search)
+  );
+  if (statusF) data = data.filter(m => (m.STATUS||'').toUpperCase().includes(statusF.toUpperCase()));
+  if (empresaF) data = data.filter(m => (m.EMPRESA_RECLAMADA||'').toUpperCase().includes(empresaF.toUpperCase()));
+  renderAcompanhamento(data);
+}
+
+function renderAcompanhamento(data) {
+  document.getElementById('acomp-total').textContent = `${data.length} solicitação(ões)`;
+  document.getElementById('acomp-body').innerHTML = data.length > 0
+    ? data.slice(0,50).map(m => {
+        const info = getStatusInfo(m.STATUS);
+        const pri = m.PRIORIDADE || '';
+        const priColor = pri === 'Alta' ? '#DC2626' : pri === 'Média' ? '#92400E' : '#6B7280';
+        const priBg = pri === 'Alta' ? '#FEE2E2' : pri === 'Média' ? '#FEF3C7' : '#F3F4F6';
+        return `<tr>
+          <td>
+            <div class="num-bold">${m.ID_MANIFESTACAO || '--'}</div>
+            <div class="num-date">${m.DATA_CRIACAO ? new Date(m.DATA_CRIACAO).toLocaleDateString('pt-BR') : '--'}</div>
+          </td>
+          <td>
+            <div class="cliente-primary">${m.EMPRESA_NORMALIZADA || m.EMPRESA_RECLAMANTE || '--'}</div>
+            <div class="cliente-secondary">${m.CONTATO || '--'}</div>
+          </td>
+          <td>${m.TIPO || 'Reclamação'}</td>
+          <td style="font-size:12px">${m.EMPRESA_RECLAMADA || '--'}</td>
+          <td><span style="display:inline-flex;padding:3px 8px;border-radius:20px;font-size:11px;font-weight:600;background:${info.bg};color:${info.color}">${info.label}</span></td>
+          <td>${pri ? `<span style="font-size:11px;font-weight:600;padding:2px 7px;border-radius:10px;background:${priBg};color:${priColor}">${pri}</span>` : '—'}</td>
+          <td style="font-size:12px">${m.SLA_HORAS ? m.SLA_HORAS + 'h' : '72h'}</td>
+          <td style="font-size:12px;color:var(--gray-500)">${m.RESPONSAVEL || 'Ana Lima'}</td>
+          <td><a class="link-abrir" onclick="alert('Dossiê da manifestação ${m.ID_MANIFESTACAO} — em desenvolvimento')">Abrir</a></td>
+        </tr>`;
+      }).join('')
+    : '<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--gray-400)">Nenhuma solicitação encontrada</td></tr>';
+}
+
+
 let bancoData = [];
 let bancoFilter = 'todas';
 
@@ -2388,6 +2591,7 @@ function showBCDetail(item, el) {
 
 // ===== PAGE OBSERVERS =====
 const pageLoaders = {
+  'acompanhamento': loadAcompanhamento,
   'visao-geral': loadVisaoGeral,
   'nova-manifestacao': initNovaManifestacao,
   'banco-manifestacoes': loadBancoManifestacoes,
