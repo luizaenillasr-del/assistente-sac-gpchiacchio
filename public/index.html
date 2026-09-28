@@ -435,6 +435,18 @@
   .extract-field{padding:8px;background:#fff;border:1px solid var(--gray-200);border-radius:7px;font-size:12px}.extract-field b{display:block;font-size:10px;text-transform:uppercase;color:var(--gray-400);margin-bottom:3px}
   .readonly-field{background:#F8F8F8!important;color:#555}
 
+
+/* ===== V5 — USUÁRIOS, RCA, APROVAÇÃO E DEVOLUTIVA ===== */
+.role-pill{display:inline-flex;align-items:center;padding:4px 9px;border-radius:999px;background:var(--red-light);color:var(--red);font-size:10px;font-weight:800;text-transform:uppercase}
+.portal-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px}.portal-card{background:#fff;border:1px solid var(--gray-200);border-radius:12px;padding:18px}.portal-card h3{font-size:14px;margin-bottom:4px}.portal-card p{font-size:12px;color:var(--gray-500)}
+.simple-table{width:100%;border-collapse:collapse}.simple-table th{font-size:11px;color:var(--gray-400);text-align:left;padding:9px 10px;background:var(--gray-50);border-bottom:1px solid var(--gray-200)}.simple-table td{font-size:12px;padding:11px 10px;border-bottom:1px solid var(--gray-100);vertical-align:middle}.simple-table tr:last-child td{border-bottom:0}
+.portal-list{display:flex;flex-direction:column;gap:8px}.portal-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 12px;border:1px solid var(--gray-200);border-radius:9px;background:#fff}.portal-row-main{min-width:0}.portal-row-title{font-size:13px;font-weight:700}.portal-row-sub{font-size:11px;color:var(--gray-400);margin-top:2px}.portal-actions{display:flex;gap:6px;flex-shrink:0}
+.form-section{background:#fff;border:1px solid var(--gray-200);border-radius:12px;padding:18px;margin-bottom:14px}.form-section-title{font-size:13px;font-weight:800;margin-bottom:12px}.field-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.field-grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}.field{display:flex;flex-direction:column;gap:5px}.field label{font-size:11px;font-weight:700;color:var(--gray-500)}.field input,.field select,.field textarea{width:100%;padding:9px 10px;border:1px solid var(--gray-200);border-radius:8px;font:inherit;font-size:12px;outline:none;background:#fff}.field textarea{min-height:90px;resize:vertical}.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--red);box-shadow:0 0 0 2px var(--red-light)}
+.portal-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}.portal-kpi{background:#fff;border:1px solid var(--gray-200);border-radius:10px;padding:13px}.portal-kpi-label{font-size:10px;color:var(--gray-400);font-weight:700;text-transform:uppercase}.portal-kpi-value{font-size:24px;font-weight:800;margin-top:4px}.portal-kpi-sub{font-size:10px;color:var(--gray-400);margin-top:2px}
+.approval-tabs{display:flex;gap:6px;margin-bottom:14px}.approval-tab{padding:9px 13px;border:1px solid var(--gray-200);border-radius:8px;background:#fff;font-size:12px;font-weight:700;cursor:pointer}.approval-tab.active{background:var(--red);border-color:var(--red);color:#fff}
+.rnc-block{border:1px solid var(--gray-200);border-radius:10px;padding:14px;margin-bottom:10px;background:#fff}.rnc-block-title{font-size:11px;text-transform:uppercase;color:var(--gray-400);font-weight:800;margin-bottom:9px}.rnc-value{font-size:13px;color:var(--gray-800);line-height:1.55;white-space:pre-wrap}.rnc-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.decision-bar{display:flex;gap:8px;padding:12px;background:var(--gray-50);border-top:1px solid var(--gray-200);position:sticky;bottom:0}.decision-bar .btn{flex:1;justify-content:center}
+.devolutiva-policy{padding:10px 12px;border:1px solid #E9D5D8;background:#FFF8F9;border-radius:8px;font-size:11px;color:var(--gray-600);line-height:1.5;margin-bottom:8px}.devolutiva-policy strong{color:var(--red)}
+@media(max-width:900px){.portal-grid,.field-grid,.field-grid.three,.rnc-grid{grid-template-columns:1fr}.portal-kpis{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
 <style>
@@ -542,26 +554,33 @@
       <input class="login-input" type="password" id="login-pass" placeholder="••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
     </div>
     <button class="login-btn" onclick="doLogin()">Entrar</button>
+    <button type="button" style="margin-top:10px;border:0;background:none;color:var(--red);font-size:12px;cursor:pointer;width:100%" onclick="solicitarRecuperacao()">Esqueci minha senha</button>
     <div class="login-error" id="login-error">Usuário ou senha incorretos.</div>
   </div>
 </div>
 
 <script>
-  function doLogin() {
-    const user = document.getElementById('login-user').value.trim().toLowerCase();
-    const pass = document.getElementById('login-pass').value;
-    const users = { 'luiza': '125600' };
-    if (users[user] && users[user] === pass) {
-      document.getElementById('login-screen').style.display = 'none';
-      sessionStorage.setItem('sac-auth', '1');
-      sessionStorage.setItem('sac-user', user.charAt(0).toUpperCase() + user.slice(1));
-    } else {
-      document.getElementById('login-error').style.display = 'block';
-    }
+  window.SAC_API = 'https://assistente-sac-gpchiacchio.vercel.app';
+  async function solicitarRecuperacao(){
+    const user=document.getElementById('login-user').value.trim();
+    if(!user)return alert('Informe seu usuário ou e-mail.');
+    try{const r=await fetch(window.SAC_API+'/api/auth/forgot-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({usuario:user})});const d=await r.json();alert(d.mensagem||d.erro||'Solicitação registrada.');}catch(e){alert('Não foi possível registrar a solicitação.')}
   }
-  // Checar se já está logado
-  if (sessionStorage.getItem('sac-auth') === '1') {
-    document.getElementById('login-screen').style.display = 'none';
+  async function doLogin() {
+    const user = document.getElementById('login-user').value.trim();
+    const pass = document.getElementById('login-pass').value;
+    const err = document.getElementById('login-error');
+    err.style.display='none';
+    try {
+      const r=await fetch(window.SAC_API+'/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({usuario:user,senha:pass})});
+      const data=await r.json();
+      if(!r.ok || !data.sucesso) throw new Error(data.erro||'Usuário ou senha incorretos.');
+      sessionStorage.setItem('sac-token',data.token);
+      sessionStorage.setItem('sac-auth','1');
+      sessionStorage.setItem('sac-user',JSON.stringify(data.usuarioInfo));
+      document.getElementById('login-screen').style.display='none';
+      setTimeout(()=>window.iniciarSessaoV5&&window.iniciarSessaoV5(),0);
+    } catch(e) { err.textContent=e.message; err.style.display='block'; }
   }
 </script>
 
@@ -597,6 +616,18 @@
 
   <div class="sidebar-section">Gestão</div>
   <div class="sidebar-item" onclick="navigate('aprovadores', this)">Central de Aprovação</div>
+  <div class="sidebar-item" data-v5-page="representantes" onclick="navigate('representantes', this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/><path d="M21 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    Representantes
+  </div>
+  <div class="sidebar-item" data-v5-page="setor-responsavel" onclick="navigate('setor-responsavel', this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 7 7 3-7 3-3 7-3-7-7-3 7-3 3-7z"/></svg>
+    Minha fila
+  </div>
+  <div class="sidebar-item" data-v5-page="usuarios" onclick="navigate('usuarios', this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><path d="M17 3a4 4 0 0 1 0 8"/></svg>
+    Usuários e Acessos
+  </div>
   <div class="sidebar-item" onclick="navigate('banco-rnc', this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
     Banco de RNC
@@ -622,10 +653,10 @@
       Painel de satisfação geral
     </div>
     <div class="sidebar-user">
-      <div class="sidebar-user-avatar">AN</div>
+      <div class="sidebar-user-avatar" id="sidebar-avatar">US</div>
       <div class="sidebar-user-info">
-        <div class="sidebar-user-name">Ana Lima</div>
-        <div class="sidebar-user-role">Analista SAC</div>
+        <div class="sidebar-user-name" id="sidebar-user-name">Usuário</div>
+        <div class="sidebar-user-role" id="sidebar-user-role">Perfil</div>
       </div>
     </div>
   </div>
@@ -1056,9 +1087,10 @@
 
                 <!-- Devolutiva sugerida -->
                 <div style="margin-bottom:16px">
-                  <div style="font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">Devolutiva sugerida</div>
+                  <div style="font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">Resposta ao cliente — sugestão automática</div>
+                  <div class="devolutiva-policy"><strong>Regra de comunicação:</strong> a resposta deve demonstrar ação e resolução, sem assumir culpa, atribuir responsabilidade antes da apuração ou expor dependências internas entre setores.</div>
                   <textarea id="ia-devolutiva" class="form-textarea" style="min-height:280px;height:280px;font-size:13px;line-height:1.6;background:#FAFAFA;resize:vertical"></textarea>
-                  <div style="font-size:11px;color:var(--gray-400);margin-top:4px">Editável — será usada como base na etapa de devolutiva. A resposta efetivamente enviada será registrada separadamente.</div>
+                  <div style="font-size:11px;color:var(--gray-400);margin-top:4px">Editável pela analista. A resposta inicial deve ser utilizável pelo cliente mesmo enquanto a apuração interna continua. A resposta final será registrada separadamente.</div>
                 </div>
 
                 <!-- Ações -->
@@ -1782,10 +1814,68 @@
     </div>
   </div>
 
+
+  <!-- ===== PORTAL RCA / REPRESENTANTES ===== -->
+  <div class="page" id="page-representantes">
+    <div class="topbar"><div class="breadcrumb">Portal / <span>Representante</span></div><div class="topbar-right"><span id="rca-role-pill" class="role-pill">RCA / Representante</span></div></div>
+    <div class="page-content" style="padding:0 28px 28px">
+      <div class="page-header"><div><h1>Área do Representante</h1><p>Registro e acompanhamento das solicitações dos seus clientes.</p></div><button class="btn btn-primary" onclick="abrirNovaReclamacaoRca()">＋ Nova reclamação</button></div>
+      <div class="portal-grid">
+        <div class="portal-card"><h3>Meus clientes</h3><p>Somente clientes vinculados ao seu cadastro de representante.</p><div id="rca-clientes-list" class="portal-list" style="margin-top:12px"></div></div>
+        <div class="portal-card"><h3>Minhas manifestações</h3><p>Reclamações e RNCs abertas por você.</p><div id="rca-manifestacoes-list" class="portal-list" style="margin-top:12px"></div></div>
+      </div>
+      <div class="card card-pad"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div><div style="font-size:14px;font-weight:800">Acompanhamento</div><div style="font-size:11px;color:var(--gray-400)">Nenhum indicador gerencial é exibido neste perfil.</div></div><button class="btn btn-secondary" onclick="loadRcaHome()">Atualizar</button></div><div id="rca-table-wrap"></div></div>
+    </div>
+  </div>
+
+  <!-- ===== USUÁRIOS E ACESSOS ===== -->
+  <div class="page" id="page-usuarios">
+    <div class="topbar"><div class="breadcrumb">Administração / <span>Usuários e Acessos</span></div></div>
+    <div class="page-content" style="padding:0 28px 28px">
+      <div class="page-header"><div><h1>Usuários e Acessos</h1><p>Cadastro de identidade, perfil, vínculo e permissões do sistema.</p></div><button class="btn btn-primary" onclick="abrirModalUsuario()">＋ Novo usuário</button></div>
+      <div class="portal-kpis"><div class="portal-kpi"><div class="portal-kpi-label">Usuários ativos</div><div class="portal-kpi-value" id="usr-ativos">--</div></div><div class="portal-kpi"><div class="portal-kpi-label">RCA</div><div class="portal-kpi-value" id="usr-rca">--</div></div><div class="portal-kpi"><div class="portal-kpi-label">Aprovadores</div><div class="portal-kpi-value" id="usr-aprov">--</div></div><div class="portal-kpi"><div class="portal-kpi-label">Analistas</div><div class="portal-kpi-value" id="usr-analistas">--</div></div></div>
+      <div class="card"><table class="simple-table"><thead><tr><th>Usuário</th><th>Perfil</th><th>Empresa</th><th>Setor</th><th>Status</th><th>Último acesso</th><th></th></tr></thead><tbody id="usuarios-body"><tr><td colspan="7">Carregando...</td></tr></tbody></table></div>
+    </div>
+  </div>
+
+  <!-- ===== PORTAL SETOR RESPONSÁVEL ===== -->
+  <div class="page" id="page-setor-responsavel">
+    <div class="topbar"><div class="breadcrumb">Execução / <span>Minha fila</span></div><div class="topbar-right"><span class="role-pill">SETOR RESPONSÁVEL</span></div></div>
+    <div class="page-content" style="padding:0 28px 28px"><div class="page-header"><div><h1>Minha fila de tratativas</h1><p>Somente os casos atribuídos ao setor deste usuário.</p></div><button class="btn btn-secondary" onclick="loadSetorV5()">Atualizar</button></div>
+      <div class="portal-kpis"><div class="portal-kpi"><div class="portal-kpi-label">Pendentes</div><div class="portal-kpi-value" id="setor-pendentes">--</div></div><div class="portal-kpi"><div class="portal-kpi-label">Em ação</div><div class="portal-kpi-value" id="setor-em-acao">--</div></div><div class="portal-kpi"><div class="portal-kpi-label">Aguardando eficácia</div><div class="portal-kpi-value" id="setor-eficacia">--</div></div><div class="portal-kpi"><div class="portal-kpi-label">Concluídas</div><div class="portal-kpi-value" id="setor-concluidas">--</div></div></div>
+      <div id="setor-fila" class="portal-list"></div>
+    </div>
+  </div>
+
+  <!-- ===== MODAL NOVA RECLAMAÇÃO RCA ===== -->
+  <div id="modal-rca-reclamacao" class="modal-overlay" style="display:none" onclick="if(event.target===this)fecharModalRca()">
+    <div class="modal-box" style="max-width:920px">
+      <div class="modal-header"><div><div style="font-size:18px;font-weight:800">Nova reclamação</div><div style="font-size:12px;color:var(--gray-400)">O RCA registra o fato. A classificação técnica e a RNC ficam com o processo interno.</div></div><button class="modal-close" onclick="fecharModalRca()">×</button></div>
+      <div class="modal-body">
+        <div class="form-section"><div class="form-section-title">1. Dados do cliente</div><div class="field-grid"><div class="field"><label>Cliente *</label><select id="rca-cliente"></select></div><div class="field"><label>CNPJ/CPF</label><input id="rca-cnpj" readonly></div><div class="field"><label>Contato</label><input id="rca-contato"></div><div class="field"><label>Telefone</label><input id="rca-telefone"></div><div class="field"><label>E-mail</label><input id="rca-email"></div><div class="field"><label>Cidade/UF</label><input id="rca-cidade"></div></div></div>
+        <div class="form-section"><div class="form-section-title">2. Dados da reclamação</div><div class="field-grid three"><div class="field"><label>Data da reclamação</label><input type="date" id="rca-data"></div><div class="field"><label>Produto</label><input id="rca-produto"></div><div class="field"><label>Código do produto</label><input id="rca-cod-produto"></div><div class="field"><label>Pedido</label><input id="rca-pedido"></div><div class="field"><label>Nota fiscal</label><input id="rca-nfe"></div><div class="field"><label>Lote</label><input id="rca-lote"></div><div class="field"><label>Quantidade</label><input id="rca-qtd"></div><div class="field"><label>Data de entrega</label><input type="date" id="rca-entrega"></div></div><div class="field" style="margin-top:10px"><label>Descrição da reclamação *</label><textarea id="rca-descricao" placeholder="Descreva o que o cliente relatou, sem necessidade de classificar causa raiz."></textarea></div><div class="field" style="margin-top:10px"><label>Observações adicionais</label><textarea id="rca-observacoes"></textarea></div></div>
+        <div class="form-section"><div class="form-section-title">3. Classificação inicial</div><div class="field-grid"><div class="field"><label>Área da reclamação</label><select id="rca-area"><option value="">Selecione</option><option>Atendimento</option><option>Prazo / Entrega</option><option>Qualidade</option><option>Outro</option></select></div><div class="field"><label>Este caso possui evidência de não conformidade do produto/processo?</label><select id="rca-evidencia"><option>Não sei</option><option>Sim</option><option>Não</option></select></div></div><div class="devolutiva-policy" style="margin-top:10px"><strong>Importante:</strong> o representante não define causa raiz, procedência ou abertura definitiva de RNC. O SAC fará essa avaliação.</div></div>
+        <div class="form-section"><div class="form-section-title">4. Evidências</div><div class="field"><label>Fotos, vídeos, documentos, comprovantes ou prints</label><input type="file" id="rca-arquivos" multiple></div><div id="rca-arquivos-list" style="font-size:11px;color:var(--gray-500);margin-top:8px"></div></div>
+        <div style="display:flex;justify-content:flex-end;gap:8px"><button class="btn btn-secondary" onclick="fecharModalRca()">Cancelar</button><button class="btn btn-primary" onclick="enviarReclamacaoRca()">Registrar reclamação</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== MODAL USUÁRIO ===== -->
+  <div id="modal-usuario-v5" class="modal-overlay" style="display:none" onclick="if(event.target===this)fecharModalUsuario()">
+    <div class="modal-box" style="max-width:760px"><div class="modal-header"><div><div style="font-size:18px;font-weight:800">Novo usuário</div><div style="font-size:12px;color:var(--gray-400)">A conta é individual. Não utilizar login genérico.</div></div><button class="modal-close" onclick="fecharModalUsuario()">×</button></div><div class="modal-body">
+      <div class="form-section"><div class="form-section-title">Identificação</div><div class="field-grid"><div class="field"><label>Nome completo *</label><input id="usr-nome"></div><div class="field"><label>Usuário *</label><input id="usr-login"></div><div class="field"><label>E-mail</label><input id="usr-email" type="email"></div><div class="field"><label>Senha inicial</label><input id="usr-senha" type="password"></div></div></div>
+      <div class="form-section"><div class="form-section-title">Perfil e vínculo</div><div class="field-grid"><div class="field"><label>Perfil *</label><select id="usr-perfil"><option>ANALISTA SAC</option><option>SETOR RESPONSÁVEL</option><option>APROVADOR</option><option>RCA / REPRESENTANTE</option><option>MASTER</option></select></div><div class="field"><label>Empresa</label><input id="usr-empresa"></div><div class="field"><label>Setor</label><input id="usr-setor"></div><div class="field"><label>Código RCA</label><input id="usr-rca"></div><div class="field"><label>Status</label><select id="usr-status"><option>ATIVO</option><option>INATIVO</option></select></div></div></div>
+      <div style="display:flex;justify-content:flex-end;gap:8px"><button class="btn btn-secondary" onclick="fecharModalUsuario()">Cancelar</button><button class="btn btn-primary" onclick="salvarUsuarioV5()">Criar usuário</button></div>
+    </div></div>
+  </div>
+
+  <!-- ===== MODAL RNC APROVADOR ===== -->
+  <div id="modal-rnc-aprovador-v5" class="modal-overlay" style="display:none" onclick="if(event.target===this)fecharRncAprovador()"><div class="modal-box" style="max-width:1000px"><div class="modal-header"><div><div style="font-size:18px;font-weight:800" id="rnc-modal-title">RNC</div><div style="font-size:12px;color:var(--gray-400)" id="rnc-modal-sub">—</div></div><button class="modal-close" onclick="fecharRncAprovador()">×</button></div><div class="modal-body" id="rnc-modal-body"></div></div></div>
 </main>
 
 <script>
-const API = 'https://assistente-sac-gpchiacchio.vercel.app';
+const API = window.SAC_API || 'https://assistente-sac-gpchiacchio.vercel.app';
 
 // ===== NAVEGAÇÃO =====
 function navigate(page, el) {
@@ -3766,6 +3856,137 @@ loadVisaoGeral();
   window.loadVisaoGeral();
 })();
 
+</script>
+
+<script>
+(function(){
+  'use strict';
+  const V5={};
+  window.V5=V5;
+  const ROLE={MASTER:'MASTER','ANALISTA SAC':'ANALISTA SAC','SETOR RESPONSÁVEL':'SETOR RESPONSÁVEL','APROVADOR':'APROVADOR','RCA / REPRESENTANTE':'RCA / REPRESENTANTE'};
+  function sess(){try{return JSON.parse(sessionStorage.getItem('sac-user')||'null')}catch{return null}}
+  function token(){return sessionStorage.getItem('sac-token')||''}
+  function esc5(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
+  async function json5(url,opt={}){opt.headers={...(opt.headers||{}),Authorization:'Bearer '+token(),'Content-Type':'application/json'};const r=await fetch(API+url,opt);const t=await r.text();let d={};try{d=t?JSON.parse(t):{}}catch{d={raw:t}}if(r.status===401){sessionStorage.clear();location.reload();throw new Error('Sessão expirada.')}if(!r.ok)throw new Error(d.erro||d.error||`Erro ${r.status}`);return d}
+  function initials(n){return String(n||'US').split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase()}
+  function fmt5(v){if(!v)return '—';const d=new Date(v);return isNaN(d)?String(v):d.toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})}
+  function role(){return sess()?.perfil||''}
+  function isInternal(){return role()!=='RCA / REPRESENTANTE'}
+
+  // Intercepta as chamadas antigas do frontend e adiciona o token.
+  const nativeFetch=window.fetch.bind(window);
+  window.fetch=async function(input,options={}){
+    const url=typeof input==='string'?input:input?.url||'';
+    if(url.includes('/api/') && !url.includes('/api/auth/login')){
+      options.headers={...(options.headers||{}),Authorization:'Bearer '+token()};
+    }
+    return nativeFetch(input,options);
+  };
+
+  function setUserChrome(){
+    const u=sess();if(!u)return;
+    document.getElementById('sidebar-user-name').textContent=u.nome||u.usuario||'Usuário';
+    document.getElementById('sidebar-user-role').textContent=u.perfil||'Perfil';
+    document.getElementById('sidebar-avatar').textContent=initials(u.nome||u.usuario);
+  }
+
+  const allowed={
+    'MASTER':['visao-geral','acompanhamento','nova-manifestacao','banco-manifestacoes','aprovadores','banco-rnc','setores','matriz','base-conhecimento','representantes','usuarios'],
+    'ANALISTA SAC':['visao-geral','acompanhamento','nova-manifestacao','banco-manifestacoes','aprovadores','banco-rnc','setores','matriz','base-conhecimento'],
+    'SETOR RESPONSÁVEL':['setor-responsavel','banco-rnc'],
+    'APROVADOR':['aprovadores','banco-rnc'],
+    'RCA / REPRESENTANTE':['representantes']
+  };
+  function applyRoleUI(){
+    const r=role();const list=allowed[r]||[];
+    document.querySelectorAll('.sidebar-item').forEach(el=>{
+      const m=(el.getAttribute('onclick')||'').match(/navigate\(['"]([^'"]+)/); const page=el.dataset.v5Page||m?.[1]||'';
+      el.style.display=list.includes(page)?'flex':'none';
+    });
+    // remove headings that have no visible child by hiding all sidebar sections and then restoring if followed by visible item
+    document.querySelectorAll('.sidebar-section').forEach(sec=>{sec.style.display='block'});
+    if(r==='RCA / REPRESENTANTE') document.querySelectorAll('.sidebar-section').forEach(sec=>sec.style.display='none');
+    if(r==='APROVADOR'){document.querySelectorAll('.sidebar-section').forEach(sec=>sec.style.display='none');}
+    if(r==='SETOR RESPONSÁVEL'){document.querySelectorAll('.sidebar-section').forEach(sec=>sec.style.display='none');}
+    document.querySelectorAll('.page').forEach(p=>{const id=p.id.replace('page-','');if(id==='representantes'&&r==='RCA / REPRESENTANTE')p.classList.remove('active')});
+    if(r==='RCA / REPRESENTANTE') navigate('representantes',document.querySelector('[data-v5-page="representantes"]'));
+    if(r==='APROVADOR') navigate('aprovadores',document.querySelector('[onclick*=aprovadores]'));
+    if(r==='SETOR RESPONSÁVEL') navigate('banco-rnc',document.querySelector('[onclick*=banco-rnc]'));
+    if(r==='MASTER') { /* mantém a página inicial */ }
+    if(r!=='RCA / REPRESENTANTE') document.getElementById('rca-role-pill')?.classList.add('hidden');
+  }
+
+  window.iniciarSessaoV5=async function(){
+    setUserChrome();applyRoleUI();
+    if(role()==='RCA / REPRESENTANTE') await loadRcaHome();
+    if(role()==='MASTER') await loadUsuariosV5();
+    if(role()==='APROVADOR'||role()==='MASTER') await loadAprovadorV5();
+  };
+
+  window.logoutV5=function(){sessionStorage.clear();location.reload()};
+
+  // ===== RCA =====
+  let rcaClientes=[];
+  async function loadRcaHome(){
+    try{
+      const [c,m]=await Promise.all([json5('/api/representantes/meus-clientes'),json5('/api/representantes/minhas-manifestacoes')]);
+      rcaClientes=c.itens||[]; const mans=m.itens||[];
+      document.getElementById('rca-clientes-list').innerHTML=rcaClientes.slice(0,8).map(x=>`<div class="portal-row"><div class="portal-row-main"><div class="portal-row-title">${esc5(x.CLIENTE||x.NOME||x.RAZAO_SOCIAL||x.ID_CLIENTE||'Cliente')}</div><div class="portal-row-sub">${esc5(x.CNPJ||x.CNPJ_CPF||'')} ${x.CIDADE?`· ${esc5(x.CIDADE)}`:''}</div></div></div>`).join('')||'<div style="font-size:12px;color:var(--gray-400)">Nenhum cliente vinculado.</div>';
+      document.getElementById('rca-manifestacoes-list').innerHTML=mans.slice(0,8).map(x=>`<div class="portal-row"><div class="portal-row-main"><div class="portal-row-title">${esc5(x.ID_MANIFESTACAO)}</div><div class="portal-row-sub">${esc5(x.EMPRESA_RECLAMANTE||x.CONTATO||'Cliente')} · ${esc5(x.STATUS||'Recebida')}</div></div><button class="btn btn-secondary" onclick="visualizarMinhaManifestacao('${esc5(x.ID_MANIFESTACAO)}')">Visualizar</button></div>`).join('')||'<div style="font-size:12px;color:var(--gray-400)">Nenhuma manifestação registrada.</div>';
+      document.getElementById('rca-table-wrap').innerHTML=mans.map(x=>`<div class="portal-row"><div class="portal-row-main"><div class="portal-row-title">${esc5(x.ID_MANIFESTACAO)} · ${esc5(x.EMPRESA_RECLAMANTE||'Cliente')}</div><div class="portal-row-sub">${esc5(x.TIPO||'Reclamação')} · última atualização ${fmt5(x.DATA_REGISTRO||x.DATA_ABERTURA)}</div></div><div><span class="status-badge em-andamento">${esc5(x.STATUS||'Recebida')}</span> <button class="btn btn-secondary" onclick="visualizarMinhaManifestacao('${esc5(x.ID_MANIFESTACAO)}')">Visualizar</button></div></div>`).join('')||'<div style="padding:20px;text-align:center;color:var(--gray-400)">Nenhum registro.</div>';
+    }catch(e){document.getElementById('rca-table-wrap').innerHTML=`<div class="alert-box">${esc5(e.message)}</div>`}
+  }
+  window.loadRcaHome=loadRcaHome;
+  window.abrirNovaReclamacaoRca=function(){document.getElementById('modal-rca-reclamacao').style.display='flex';document.getElementById('rca-data').value=new Date().toISOString().slice(0,10);const sel=document.getElementById('rca-cliente');sel.innerHTML='<option value="">Selecione o cliente</option>'+rcaClientes.map(x=>`<option value="${esc5(x.ID_CLIENTE||x.CNPJ||x.CODIGO_CLIENTE)}">${esc5(x.CLIENTE||x.NOME||x.RAZAO_SOCIAL||x.ID_CLIENTE)}</option>`).join('');}
+  window.fecharModalRca=function(){document.getElementById('modal-rca-reclamacao').style.display='none'};
+  document.getElementById('rca-cliente')?.addEventListener('change',function(){const x=rcaClientes.find(c=>String(c.ID_CLIENTE||c.CNPJ||c.CODIGO_CLIENTE)===String(this.value));if(!x)return;document.getElementById('rca-cnpj').value=x.CNPJ||'';document.getElementById('rca-contato').value=x.CONTATO||'';document.getElementById('rca-telefone').value=x.TELEFONE||'';document.getElementById('rca-email').value=x.EMAIL||'';document.getElementById('rca-cidade').value=[x.CIDADE,x.UF].filter(Boolean).join('/')});
+  async function file64(f){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(String(r.result).split(',')[1]||'');r.onerror=reject;r.readAsDataURL(f)})}
+  window.enviarReclamacaoRca=async function(){
+    const cliente=document.getElementById('rca-cliente').value, desc=document.getElementById('rca-descricao').value.trim();if(!cliente||!desc)return alert('Selecione o cliente e informe a descrição da reclamação.');
+    const files=[...(document.getElementById('rca-arquivos').files||[])];const anexos=[];for(const f of files){anexos.push({nome:f.name,mimeType:f.type,tamanho:f.size,dataBase64:await file64(f),categoria:'EVIDENCIA'})}
+    try{const d=await json5('/api/representantes/manifestacoes',{method:'POST',body:JSON.stringify({clienteId:cliente,cnpj:document.getElementById('rca-cnpj').value,contato:document.getElementById('rca-contato').value,telefone:document.getElementById('rca-telefone').value,email:document.getElementById('rca-email').value,produto:document.getElementById('rca-produto').value,codProduto:document.getElementById('rca-cod-produto').value,pedido:document.getElementById('rca-pedido').value,nfe:document.getElementById('rca-nfe').value,lote:document.getElementById('rca-lote').value,quantidade:document.getElementById('rca-qtd').value,dataReclamacao:document.getElementById('rca-data').value,dataEntrega:document.getElementById('rca-entrega').value,descricao:desc,observacoes:document.getElementById('rca-observacoes').value,areaReclamacao:document.getElementById('rca-area').value,evidenciaNC:document.getElementById('rca-evidencia').value,anexos})});alert('Reclamação registrada com sucesso. O SAC fará a avaliação interna.');fecharModalRca();await loadRcaHome();}catch(e){alert(e.message)}
+  };
+  window.visualizarMinhaManifestacao=async function(id){try{const d=await json5('/api/manifestacoes/'+encodeURIComponent(id));abrirDossie(d.manifestacao)}catch(e){alert(e.message)}};
+
+  // ===== USUÁRIOS =====
+  async function loadUsuariosV5(){
+    try{const d=await json5('/api/usuarios');const a=d.itens||[];document.getElementById('usr-ativos').textContent=a.filter(x=>String(x.status).toUpperCase()==='ATIVO').length;document.getElementById('usr-rca').textContent=a.filter(x=>x.perfil===ROLE['RCA / REPRESENTANTE']).length;document.getElementById('usr-aprov').textContent=a.filter(x=>x.perfil==='APROVADOR').length;document.getElementById('usr-analistas').textContent=a.filter(x=>x.perfil==='ANALISTA SAC').length;document.getElementById('usuarios-body').innerHTML=a.map(x=>`<tr><td><strong>${esc5(x.nome)}</strong><div style="font-size:10px;color:var(--gray-400)">${esc5(x.usuario)} · ${esc5(x.email)}</div></td><td><span class="role-pill">${esc5(x.perfil)}</span></td><td>${esc5(x.empresa||'—')}</td><td>${esc5(x.setor||'—')}</td><td>${esc5(x.status)}</td><td>${fmt5(x.ultimoAcesso)}</td><td><button class="btn btn-secondary" onclick="editarUsuarioV5('${esc5(x.id)}')">Editar</button></td></tr>`).join('')||'<tr><td colspan="7">Nenhum usuário cadastrado.</td></tr>'}catch(e){document.getElementById('usuarios-body').innerHTML=`<tr><td colspan="7">${esc5(e.message)}</td></tr>`}
+  }
+  window.loadUsuariosV5=loadUsuariosV5;
+  window.abrirModalUsuario=function(){document.getElementById('modal-usuario-v5').style.display='flex'};window.fecharModalUsuario=function(){document.getElementById('modal-usuario-v5').style.display='none'};
+  window.salvarUsuarioV5=async function(){const b={nome:document.getElementById('usr-nome').value.trim(),usuario:document.getElementById('usr-login').value.trim(),email:document.getElementById('usr-email').value.trim(),senha:document.getElementById('usr-senha').value,perfil:document.getElementById('usr-perfil').value,empresa:document.getElementById('usr-empresa').value,setor:document.getElementById('usr-setor').value,codigoRCA:document.getElementById('usr-rca').value,status:document.getElementById('usr-status').value};try{await json5('/api/usuarios',{method:'POST',body:JSON.stringify(b)});alert('Usuário criado.');fecharModalUsuario();loadUsuariosV5()}catch(e){alert(e.message)}};
+  window.editarUsuarioV5=function(id){alert('A edição detalhada será feita na linha do usuário. ID: '+id)};
+
+  // ===== APROVADOR =====
+  async function loadAprovadorV5(){
+    const u=sess();if(!u||!['APROVADOR','MASTER'].includes(u.perfil))return;try{const d=await json5('/api/aprovadores/'+encodeURIComponent(u.usuario)+'/pendencias');document.getElementById('ap-saca').textContent=d.totais?.sac??0;document.getElementById('ap-rnca').textContent=d.totais?.rnc??0;document.getElementById('ap-total').textContent=d.totais?.total??0;document.getElementById('ap-sugestoes').textContent=(d.sugestoes||[]).filter(x=>x.STATUS==='PENDENTE').length;document.getElementById('aprovador-nome-top').textContent=u.nome||u.usuario;const wrap=document.getElementById('ap-pendencias-wrap');const sac=(d.sac||[]).map(x=>`<div class="portal-row"><div class="portal-row-main"><div class="portal-row-title">${esc5(x.ID_MANIFESTACAO)} · ${esc5(x.EMPRESA_RECLAMANTE||'Cliente')}</div><div class="portal-row-sub">${esc5(x.PRODUTO||'')} · ${esc5(x.STATUS||'Aguardando aprovação')}</div></div><div class="portal-actions"><span class="status-badge decisao">SAC</span><button class="btn btn-secondary" onclick="abrirDossieAprovador('${esc5(x.ID_MANIFESTACAO)}')">Visualizar</button></div></div>`).join('');const rncs=(d.rnc||[]).map(x=>`<div class="portal-row"><div class="portal-row-main"><div class="portal-row-title">${esc5(x.ID_RNC)} · ${esc5(x.CLIENTE||'Cliente')}</div><div class="portal-row-sub">SAC ${esc5(x.PROTOCOLO_SAC||'—')} · ${esc5(x.EMPRESA||'')} · ${esc5(x.COMPETENCIA||x.SETOR||'')}</div></div><div class="portal-actions"><span class="status-badge decisao">RNC</span><button class="btn btn-primary" onclick="abrirRncAprovador('${esc5(x.ID_RNC)}')">Analisar RNC</button></div></div>`).join('');wrap.innerHTML=`<div style="margin-bottom:16px"><div style="font-size:12px;font-weight:800;margin-bottom:8px">APROVAÇÕES SAC</div>${sac||'<div style="padding:14px;background:var(--gray-50);border-radius:8px;color:var(--gray-400);font-size:12px">Nenhuma manifestação SAC aguardando sua análise.</div>'}</div><div><div style="font-size:12px;font-weight:800;margin-bottom:8px">RNCs PENDENTES</div>${rncs||'<div style="padding:14px;background:var(--gray-50);border-radius:8px;color:var(--gray-400);font-size:12px">Nenhuma RNC dentro das suas competências.</div>'}</div>`;}catch(e){document.getElementById('ap-pendencias-wrap').innerHTML=`<div class="alert-box">${esc5(e.message)}</div>`}}
+  window.loadAprovadorV5=loadAprovadorV5;
+  window.abrirDossieAprovador=async function(id){try{const d=await json5('/api/manifestacoes/'+encodeURIComponent(id));abrirDossie(d.manifestacao)}catch(e){alert(e.message)}};
+  window.abrirRncAprovador=async function(id){try{const d=await json5('/api/rnc/'+encodeURIComponent(id));document.getElementById('modal-rnc-aprovador-v5').style.display='flex';document.getElementById('rnc-modal-title').textContent=d.rnc.ID_RNC||id;document.getElementById('rnc-modal-sub').textContent=`SAC ${d.rnc.PROTOCOLO_SAC||'—'} · ${d.rnc.EMPRESA||'—'} · competência ${d.rnc.COMPETENCIA||d.rnc.SETOR||'—'}`;const r=d.rnc;document.getElementById('rnc-modal-body').innerHTML=`<div class="rnc-block"><div class="rnc-block-title">1. Dados de entrada</div><div class="rnc-grid"><div><b>Empresa</b><div class="rnc-value">${esc5(r.EMPRESA)}</div></div><div><b>Cliente</b><div class="rnc-value">${esc5(r.CLIENTE)}</div></div><div><b>Produto</b><div class="rnc-value">${esc5(r.PRODUTO)}</div></div><div><b>Lote</b><div class="rnc-value">${esc5(r.LOTE)}</div></div><div><b>Quantidade</b><div class="rnc-value">${esc5(r.QUANTIDADE)}</div></div><div><b>Contato</b><div class="rnc-value">${esc5(r.CONTATO)}</div></div></div></div><div class="rnc-block"><div class="rnc-block-title">2. Reclamação original</div><div class="rnc-value">${esc5(r.DESCRICAO_NAO_CONFORMIDADE||r.NAO_CONFORMIDADE)}</div></div><div class="rnc-block"><div class="rnc-block-title">3. Classificação da NC</div><div class="rnc-grid"><div><b>Origem</b><div>${esc5(r.ORIGEM_NC)}</div></div><div><b>Tipo</b><div>${esc5(r.TIPO_NC)}</div></div><div><b>Procedente</b><div>${esc5(r.PROCEDENTE)}</div></div><div><b>Plano de ação</b><div>${esc5(r.PLANO_ACAO)}</div></div></div></div><div class="rnc-block"><div class="rnc-block-title">4. Análise de causa</div><div class="rnc-value">${esc5(r.CAUSA||'Ainda não registrada.')}</div></div><div class="rnc-block"><div class="rnc-block-title">5. Ação de contenção</div><div class="rnc-value">${esc5(r.ACAO_CONTENCAO||'Não registrada.')}</div></div><div class="rnc-block"><div class="rnc-block-title">6. Ação corretiva</div><div class="rnc-grid"><div><b>Ação</b><div class="rnc-value">${esc5(r.ACAO_CORRETIVA)}</div></div><div><b>Responsável</b><div class="rnc-value">${esc5(r.RESPONSAVEL_ACAO)}</div></div><div><b>Setor</b><div class="rnc-value">${esc5(r.SETOR_ACAO)}</div></div><div><b>Prazo</b><div class="rnc-value">${esc5(r.PRAZO_ACAO)}</div></div></div></div><div class="rnc-block"><div class="rnc-block-title">7. Verificação da eficácia</div><div class="rnc-grid"><div><b>Responsável</b><div>${esc5(r.RESPONSAVEL_EFICACIA)}</div></div><div><b>Data</b><div>${esc5(r.DATA_EFICACIA)}</div></div><div><b>Resultado</b><div>${esc5(r.RESULTADO_EFICACIA)}</div></div><div><b>Observação</b><div>${esc5(r.OBSERVACAO_EFICACIA)}</div></div></div></div><div class="rnc-block"><div class="rnc-block-title">8. Histórico</div><div class="timeline">${(d.eventos||[]).map(e=>`<div class="tl-item"><div class="tl-dot"></div><div class="tl-content"><div class="tl-label">${esc5(e.TIPO_EVENTO)}</div><div class="tl-meta">${fmt5(e.DATA_EVENTO)} · ${esc5(e.USUARIO)}</div><div class="tl-meta">${esc5(e.DETALHES)}</div></div></div>`).join('')||'<div class="rnc-value">Sem eventos registrados.</div>'}</div></div><div class="rnc-block"><div class="rnc-block-title">9. Decisão</div><div class="field"><label>Justificativa (obrigatória para devolver ou rejeitar)</label><textarea id="rnc-decisao-obs" placeholder="Informe o motivo da decisão, quando aplicável."></textarea></div></div><div class="decision-bar"><button class="btn btn-primary" onclick="decidirRncV5('${esc5(id)}','APROVAR')">Aprovar</button><button class="btn btn-secondary" onclick="decidirRncV5('${esc5(id)}','DEVOLVER')">Devolver para ajuste</button><button class="btn btn-ghost" onclick="decidirRncV5('${esc5(id)}','REJEITAR')">Rejeitar</button></div>`;await json5('/api/rnc/'+encodeURIComponent(id)+'/visualizacao',{method:'POST',body:JSON.stringify({})});}catch(e){alert(e.message)}};
+  window.decidirRncV5=async function(id,decisao){const obs=document.getElementById('rnc-decisao-obs')?.value||'';if(decisao!=='APROVAR'&&!obs.trim())return alert('Informe a justificativa.');try{await json5('/api/rnc/'+encodeURIComponent(id)+'/decisao',{method:'POST',body:JSON.stringify({decisao,observacoes:obs})});alert(decisao==='APROVAR'?'RNC aprovada.':decisao==='REJEITAR'?'RNC rejeitada.':'RNC devolvida para ajuste.');fecharRncAprovador();loadAprovadorV5()}catch(e){alert(e.message)}};
+  window.fecharRncAprovador=function(){document.getElementById('modal-rnc-aprovador-v5').style.display='none'};
+
+  // Reescreve a central de aprovação para o layout definitivo quando a página abrir.
+  const oldLoad=window.loadAprovadorDashboard;window.loadAprovadorDashboard=function(){loadAprovadorV5();if(typeof oldLoad==='function'&&role()!=='APROVADOR')try{oldLoad()}catch(e){}}
+
+  // ===== SETOR RESPONSÁVEL =====
+  async function loadSetorV5(){
+    try{const d=await json5('/api/setor/minhas-pendencias');const a=d.itens||[];document.getElementById('setor-pendentes').textContent=a.length;document.getElementById('setor-em-acao').textContent=a.filter(x=>String(x.STATUS_ACAO||x.STATUS_TRATATIVA||'').toUpperCase().includes('ANDAMENTO')).length;document.getElementById('setor-eficacia').textContent=a.filter(x=>String(x.STATUS||'').toUpperCase().includes('EFIC')).length;document.getElementById('setor-concluidas').textContent=a.filter(x=>['CONCLUÍDA','CONCLUIDA','APROVADA'].includes(String(x.STATUS||'').toUpperCase())).length;document.getElementById('setor-fila').innerHTML=a.map(x=>`<div class="portal-row"><div class="portal-row-main"><div class="portal-row-title">${esc5(x.ID_RNC||x.ID_MANIFESTACAO)} · ${esc5(x.PRODUTO||x.NAO_CONFORMIDADE||'Caso')}</div><div class="portal-row-sub">${esc5(x.CLIENTE||x.EMPRESA||'')} · prazo ${esc5(x.PRAZO_ACAO||x.PRAZO||'—')}</div></div><button class="btn btn-primary" onclick="editarRncSetorV5('${esc5(x.ID_RNC)}')">Abrir tratativa</button></div>`).join('')||'<div style="padding:20px;text-align:center;color:var(--gray-400)">Nenhuma tratativa pendente.</div>'}catch(e){document.getElementById('setor-fila').innerHTML=`<div class="alert-box">${esc5(e.message)}</div>`}
+  }
+  window.loadSetorV5=loadSetorV5;
+  window.editarRncSetorV5=async function(id){try{const d=await json5('/api/rnc/'+encodeURIComponent(id));const r=d.rnc;const causa=prompt('Análise de causa / causa validada:',r.CAUSA||'');if(causa===null)return;const acao=prompt('Ação corretiva RNC:',r.ACAO_CORRETIVA||'');if(acao===null)return;await json5('/api/rnc/'+encodeURIComponent(id)+'/execucao',{method:'PATCH',body:JSON.stringify({CAUSA:causa,acaoCorretiva:acao,STATUS_ACAO:'EM ANDAMENTO'})});alert('RNC atualizada.');loadSetorV5()}catch(e){alert(e.message)}};
+
+  pageLoaders.representantes=loadRcaHome;
+  pageLoaders.usuarios=loadUsuariosV5;
+  pageLoaders['setor-responsavel']=loadSetorV5;
+
+  // ===== BOOT =====
+  async function boot(){
+    if(!token()){document.getElementById('login-screen').style.display='flex';return;}
+    try{const d=await json5('/api/auth/me');sessionStorage.setItem('sac-user',JSON.stringify(d.usuario));document.getElementById('login-screen').style.display='none';await window.iniciarSessaoV5();}catch(e){sessionStorage.clear();document.getElementById('login-screen').style.display='flex'}
+  }
+  boot();
+})();
 </script>
 </body>
 </html>
