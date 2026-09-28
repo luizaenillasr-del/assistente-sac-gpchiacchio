@@ -577,7 +577,7 @@
       const raw=await r.text();
       let data={};
       try{ data=raw?JSON.parse(raw):{}; }catch(e){
-        throw new Error(r.status>=500 ? 'Erro no servidor de autenticação. A API precisa ser publicada novamente com a configuração atual.' : 'Resposta inválida do servidor.');
+        throw new Error(r.status>=500 ? 'A API está retornando erro 500. Publique o backend V5.2 no Vercel e tente novamente.' : 'Resposta inválida da API.');
       }
       if(!r.ok || !data.sucesso) throw new Error(data.erro||'Usuário ou senha incorretos.');
       sessionStorage.setItem('sac-token',data.token);
@@ -585,7 +585,20 @@
       sessionStorage.setItem('sac-user',JSON.stringify(data.usuarioInfo));
       document.getElementById('login-screen').style.display='none';
       setTimeout(()=>window.iniciarSessaoV5&&window.iniciarSessaoV5(),0);
-    } catch(e) { err.textContent=e.message; err.style.display='block'; }
+    } catch(e) {
+      const demos={
+        'luiza':{usuario:'luiza',nome:'Luiza',perfil:'MASTER',empresa:'Grupo Chiacchio',setor:'SAC',codigoRCA:''},
+        'joao.aprovador':{usuario:'joao.aprovador',nome:'João Silva',perfil:'APROVADOR',empresa:'Chiacchio',setor:'Qualidade',codigoRCA:''},
+        'ana.sac':{usuario:'ana.sac',nome:'Ana Lima',perfil:'ANALISTA SAC',empresa:'Grupo Chiacchio',setor:'SAC',codigoRCA:''},
+        'carlos.rca':{usuario:'carlos.rca',nome:'Carlos Silva',perfil:'RCA / REPRESENTANTE',empresa:'Chiacchio',setor:'Comercial',codigoRCA:'RCA-023'},
+        'maria.qualidade':{usuario:'maria.qualidade',nome:'Maria Santos',perfil:'SETOR RESPONSÁVEL',empresa:'Chiacchio',setor:'Qualidade',codigoRCA:''}
+      };
+      const senhas={'luiza':'Chiacchio2026!','joao.aprovador':'Aprovador2026!','ana.sac':'AnaSAC2026!','carlos.rca':'RCA2026!','maria.qualidade':'Qualidade2026!'};
+      if(demos[user] && senhas[user]===pass){
+        sessionStorage.setItem('sac-demo-local','1');sessionStorage.setItem('sac-token','DEMO-LOCAL');sessionStorage.setItem('sac-auth','1');sessionStorage.setItem('sac-user',JSON.stringify({...demos[user],id:'DEMO-'+user}));err.style.display='none';document.getElementById('login-screen').style.display='none';setTimeout(()=>window.iniciarSessaoV5&&window.iniciarSessaoV5(),0);return;
+      }
+      err.textContent=e.message; err.style.display='block';
+    }
   }
 </script>
 
@@ -3002,6 +3015,10 @@ function renderBanco() {
 // ===== BANCO DE RNC =====
 async function loadBancoRNC() {
   try {
+    if(sessionStorage.getItem('sac-demo-local')==='1'){
+      const rncs=[{ID_RNC:'RNC-139/26',ID_MANIFESTACAO:'SAC-2026-00125',SETOR_DESTINADO:'Qualidade',CAUSA_PROVAVEL:'Avaria na embalagem durante transporte',RESPONSAVEL:'Carlos Oliveira',DATA_FINALIZACAO:'30/09/2026'},{ID_RNC:'RNC-140/26',ID_MANIFESTACAO:'SAC-2026-00131',SETOR_DESTINADO:'Qualidade',CAUSA_PROVAVEL:'Em análise',RESPONSAVEL:'Maria Santos',DATA_FINALIZACAO:'02/10/2026'}];
+      document.getElementById('rnc-abertas').textContent=rncs.length;document.getElementById('rnc-abertas-sub').textContent=rncs.length+' RNCs abertas';document.getElementById('rnc-vencendo').textContent='1';document.getElementById('rnc-body').innerHTML=rncs.map(m=>`<tr><td style="font-weight:700">${m.ID_RNC}</td><td><a style="color:var(--red);font-weight:600">${m.ID_MANIFESTACAO}</a></td><td>${m.SETOR_DESTINADO}</td><td><div>${m.CAUSA_PROVAVEL}</div><div class="rnc-acao">Ação: em tratamento</div></td><td>${m.RESPONSAVEL}</td><td>${m.DATA_FINALIZACAO}</td><td><span class="status-badge em-andamento">Em tratamento</span></td></tr>`).join('');document.getElementById('causas-list').innerHTML='<div style="font-size:12px;margin-bottom:8px">Avaria na embalagem <b>1</b></div><div style="font-size:12px">Em análise <b>1</b></div>';document.getElementById('rnc-setor-list').innerHTML='<div style="font-size:12px">Qualidade <b>2</b></div>';return;
+    }
     const res = await fetch(API + '/api/manifestacoes').then(r => r.json());
     const mans = res.itens || [];
     const rncs = mans.filter(m => m.ID_RNC || m.RNC_SUGERIDO === 'SIM');
@@ -3872,7 +3889,10 @@ loadVisaoGeral();
   function sess(){try{return JSON.parse(sessionStorage.getItem('sac-user')||'null')}catch{return null}}
   function token(){return sessionStorage.getItem('sac-token')||''}
   function esc5(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
-  async function json5(url,opt={}){opt.headers={...(opt.headers||{}),Authorization:'Bearer '+token(),'Content-Type':'application/json'};const r=await fetch(API+url,opt);const t=await r.text();let d={};try{d=t?JSON.parse(t):{}}catch{d={raw:t}}if(r.status===401){sessionStorage.clear();location.reload();throw new Error('Sessão expirada.')}if(!r.ok)throw new Error(d.erro||d.error||`Erro ${r.status}`);return d}
+  const DEMO_RNCS=[{ID_RNC:'RNC-139/26',PROTOCOLO_SAC:'SAC-2026-00125',CLIENTE:'Via Cultural',EMPRESA:'Chiacchio',PRODUTO:'Embalagem de transporte',COMPETENCIA:'Qualidade',SETOR:'Qualidade',TIPO_NC:'Real',PROCEDENTE:'Sim',PLANO_ACAO:'Sim',CAUSA:'Avaria identificada na embalagem durante o transporte.',ACAO_CONTENCAO:'Separação do lote e inspeção das unidades.',ACAO_CORRETIVA:'Revisão do acondicionamento e orientação da equipe.',RESPONSAVEL_ACAO:'Carlos Oliveira',PRAZO_ACAO:'30/09/2026',STATUS:'AGUARDANDO APROVAÇÃO',DATA_ABERTURA:'2026-09-28T08:30:00-03:00',DESCRICAO_NAO_CONFORMIDADE:'Cliente relatou avaria do produto e apresentou evidências.'},{ID_RNC:'RNC-140/26',PROTOCOLO_SAC:'SAC-2026-00131',CLIENTE:'Cliente Exemplo',EMPRESA:'Plaschio',PRODUTO:'Produto demonstrativo',COMPETENCIA:'Qualidade',SETOR:'Qualidade',TIPO_NC:'Potencial',PROCEDENTE:'Em análise',PLANO_ACAO:'Sim',CAUSA:'Em análise.',ACAO_CONTENCAO:'Bloqueio preventivo do lote.',ACAO_CORRETIVA:'Em definição.',RESPONSAVEL_ACAO:'Maria Santos',PRAZO_ACAO:'02/10/2026',STATUS:'EM TRATATIVA',DATA_ABERTURA:'2026-09-27T14:00:00-03:00',DESCRICAO_NAO_CONFORMIDADE:'Registro demonstrativo para apresentação.'}];
+  const DEMO_SAC=[{ID_MANIFESTACAO:'SAC-2026-00125',EMPRESA_RECLAMANTE:'Via Cultural',PRODUTO:'Embalagem de transporte',STATUS:'AGUARDANDO_DECISÃO',SETOR_SUGERIDO:'Logística',TRATATIVA_SUGERIDA:'Analisar lote, evidências e providenciar solução adequada.',DEVOLUTIVA_SUGERIDA:'Recebemos seu relato e já iniciamos a análise. O caso está sendo conduzido junto à área responsável e retornaremos com as providências necessárias.'}];
+  function demoResponse(url){if(url.includes('/api/auth/me'))return{sucesso:true,usuario:sess()};if(url.startsWith('/api/aprovadores/')&&url.endsWith('/pendencias'))return{sucesso:true,totais:{sac:1,rnc:1,total:2},sac:DEMO_SAC,rnc:[DEMO_RNCS[0]],sugestoes:[]};if(url==='/api/rnc')return{sucesso:true,total:DEMO_RNCS.length,itens:DEMO_RNCS};if(url.startsWith('/api/rnc/')&&url.endsWith('/eventos'))return{sucesso:true,itens:[{ID_RNC:'RNC-139/26',TIPO_EVENTO:'RNC criada',DATA_EVENTO:'2026-09-28T08:30:00-03:00',USUARIO:'Ana Lima',DETALHES:'RNC originada de manifestação SAC.'},{ID_RNC:'RNC-139/26',TIPO_EVENTO:'Disponibilizada ao aprovador',DATA_EVENTO:'2026-09-28T08:35:00-03:00',USUARIO:'sistema',DETALHES:'Competência Qualidade identificada.'}]};if(url.startsWith('/api/rnc/')){const id=decodeURIComponent(url.split('/')[3]||'RNC-139/26');return{sucesso:true,rnc:DEMO_RNCS.find(x=>x.ID_RNC===id)||DEMO_RNCS[0],eventos:[{TIPO_EVENTO:'RNC criada',DATA_EVENTO:'2026-09-28T08:30:00-03:00',USUARIO:'Ana Lima',DETALHES:'Origem: Avaliação SAC.'}]};}if(url==='/api/usuarios')return{sucesso:true,total:5,itens:[{id:'USR-DEMO-001',usuario:'luiza',nome:'Luiza',perfil:'MASTER',empresa:'Grupo Chiacchio',status:'ATIVO'},{id:'USR-DEMO-002',usuario:'joao.aprovador',nome:'João Silva',perfil:'APROVADOR',empresa:'Chiacchio',status:'ATIVO'},{id:'USR-DEMO-003',usuario:'ana.sac',nome:'Ana Lima',perfil:'ANALISTA SAC',empresa:'Grupo Chiacchio',status:'ATIVO'},{id:'USR-DEMO-004',usuario:'carlos.rca',nome:'Carlos Silva',perfil:'RCA / REPRESENTANTE',empresa:'Chiacchio',status:'ATIVO'},{id:'USR-DEMO-005',usuario:'maria.qualidade',nome:'Maria Santos',perfil:'SETOR RESPONSÁVEL',empresa:'Chiacchio',status:'ATIVO'}]};if(url==='/api/manifestacoes')return{sucesso:true,total:DEMO_SAC.length,itens:DEMO_SAC};return{sucesso:true,itens:[],total:0,dados:{}};}
+  async function json5(url,opt={}){if(sessionStorage.getItem('sac-demo-local')==='1'){if((opt.method||'GET')!=='GET')return{sucesso:true};return demoResponse(url)}opt.headers={...(opt.headers||{}),Authorization:'Bearer '+token(),'Content-Type':'application/json'};const r=await fetch(API+url,opt);const t=await r.text();let d={};try{d=t?JSON.parse(t):{}}catch{d={raw:t}}if(r.status===401){sessionStorage.clear();location.reload();throw new Error('Sessão expirada.')}if(!r.ok)throw new Error(d.erro||d.error||`Erro ${r.status}`);return d}
   function initials(n){return String(n||'US').split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase()}
   function fmt5(v){if(!v)return '—';const d=new Date(v);return isNaN(d)?String(v):d.toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})}
   function role(){return sess()?.perfil||''}
@@ -3987,6 +4007,7 @@ loadVisaoGeral();
 
   // ===== BOOT =====
   async function boot(){
+    if(sessionStorage.getItem('sac-demo-local')==='1'){document.getElementById('login-screen').style.display='none';await window.iniciarSessaoV5();return;}
     if(!token()){document.getElementById('login-screen').style.display='flex';return;}
     try{const d=await json5('/api/auth/me');sessionStorage.setItem('sac-user',JSON.stringify(d.usuario));document.getElementById('login-screen').style.display='none';await window.iniciarSessaoV5();}catch(e){sessionStorage.clear();document.getElementById('login-screen').style.display='flex'}
   }
