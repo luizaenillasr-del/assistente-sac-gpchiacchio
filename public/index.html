@@ -407,6 +407,52 @@
   @media (max-width: 1200px) {
     .kpi-grid, .setores-grid { grid-template-columns: repeat(3, 1fr); }
   }
+
+  /* ===== ADIÇÕES FUNCIONAIS — sem alterar o layout-base ===== */
+  .clickable-card { cursor:pointer; transition:transform .12s ease, box-shadow .12s ease; }
+  .clickable-card:hover { transform:translateY(-1px); box-shadow:0 6px 18px rgba(17,24,39,.08); }
+  .metric-detail { font-size:12px; color:var(--gray-500); line-height:1.55; }
+  .metric-detail strong { color:var(--gray-900); }
+  .action-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; }
+  .action-card { background:#fff; border:1px solid var(--gray-200); border-radius:10px; padding:13px; cursor:pointer; }
+  .action-card:hover { border-color:#d7a0a9; }
+  .action-label { font-size:11px; color:var(--gray-500); margin-bottom:5px; }
+  .action-value { font-size:22px; font-weight:800; color:var(--gray-900); }
+  .action-sub { font-size:10px; color:var(--gray-400); margin-top:4px; }
+  .compare-grid { display:grid; grid-template-columns:1.1fr 1fr 1fr 1fr; gap:10px; }
+  .compare-card { background:#fff; border:1px solid var(--gray-200); border-radius:10px; padding:14px; cursor:pointer; }
+  .compare-card.tool { border-left:3px solid var(--red); }
+  .compare-card:hover { box-shadow:0 5px 15px rgba(17,24,39,.06); }
+  .compare-title { font-size:12px; font-weight:700; margin-bottom:10px; }
+  .compare-line { display:flex; justify-content:space-between; gap:10px; padding:5px 0; border-top:1px solid var(--gray-100); font-size:11px; }
+  .compare-line:first-of-type { border-top:0; }
+  .compare-line span:first-child { color:var(--gray-500); }
+  .compare-line strong { color:var(--gray-900); }
+  .field-note { font-size:10px; color:var(--gray-400); margin-top:4px; }
+  .type-questionnaire { margin-top:12px; padding:12px; background:var(--gray-50); border:1px solid var(--gray-200); border-radius:8px; }
+  .type-questionnaire h4 { font-size:12px; margin-bottom:10px; }
+  .question-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
+  .detail-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
+  .detail-box { background:var(--gray-50); border:1px solid var(--gray-100); border-radius:8px; padding:10px; }
+  .detail-label { font-size:10px; color:var(--gray-400); text-transform:uppercase; letter-spacing:.04em; margin-bottom:4px; }
+  .detail-value { font-size:12px; color:var(--gray-800); white-space:pre-wrap; word-break:break-word; }
+  .modal-backdrop { position:fixed; inset:0; background:rgba(17,24,39,.42); display:none; align-items:center; justify-content:center; z-index:9999; padding:24px; }
+  .modal-backdrop.open { display:flex; }
+  .modal-panel { background:#fff; width:min(980px,96vw); max-height:88vh; overflow:auto; border-radius:14px; box-shadow:0 20px 60px rgba(0,0,0,.2); }
+  .modal-head { position:sticky; top:0; z-index:1; background:#fff; border-bottom:1px solid var(--gray-100); padding:16px 18px; display:flex; justify-content:space-between; align-items:center; }
+  .modal-title { font-size:16px; font-weight:800; }
+  .modal-close { border:0; background:var(--gray-100); width:30px; height:30px; border-radius:7px; cursor:pointer; font-size:18px; }
+  .modal-body { padding:18px; }
+  .modal-section { margin-bottom:16px; }
+  .modal-section h4 { font-size:12px; margin-bottom:8px; color:var(--gray-700); }
+  .activity-list { display:grid; gap:8px; }
+  .activity-item { display:flex; gap:10px; padding:9px 0; border-bottom:1px solid var(--gray-100); }
+  .activity-dot { width:8px; height:8px; border-radius:50%; background:var(--red); margin-top:5px; flex:0 0 auto; }
+  .activity-main { font-size:12px; color:var(--gray-700); }
+  .activity-meta { font-size:10px; color:var(--gray-400); margin-top:2px; }
+  @media (max-width:1100px){ .action-grid{grid-template-columns:repeat(3,1fr)} .compare-grid{grid-template-columns:1fr 1fr} }
+  @media (max-width:700px){ .action-grid,.compare-grid,.question-grid,.detail-grid{grid-template-columns:1fr} }
+
 </style>
 </head>
 <style>
@@ -582,30 +628,79 @@
 
       <!-- KPIs -->
       <div class="kpi-grid" id="kpi-grid">
-        <div class="kpi-card highlight">
+        <div class="kpi-card highlight clickable-card" onclick="openDashboardKpi('{typ}')">
           <div class="kpi-label">Manifestações em andamento</div>
           <div class="kpi-value" id="kpi-andamento">--</div>
           <div class="kpi-delta" id="kpi-andamento-delta">Carregando...</div>
         </div>
-        <div class="kpi-card">
+        <div class="kpi-card clickable-card" onclick="openDashboardKpi('{typ}')">
           <div class="kpi-label">Dentro do prazo de 72h</div>
           <div class="kpi-value" id="kpi-prazo">--%</div>
           <div class="kpi-delta up">↑ carregando</div>
         </div>
-        <div class="kpi-card">
+        <div class="kpi-card clickable-card" onclick="openDashboardKpi('{typ}')">
           <div class="kpi-label">Atrasadas</div>
           <div class="kpi-value" id="kpi-atrasadas">--</div>
           <div class="kpi-delta down">↓ carregando</div>
         </div>
-        <div class="kpi-card">
+        <div class="kpi-card clickable-card" onclick="openDashboardKpi('{typ}')">
           <div class="kpi-label">RNCs abertas</div>
           <div class="kpi-value" id="kpi-rncs">--</div>
           <div class="kpi-delta">carregando</div>
         </div>
-        <div class="kpi-card">
+        <div class="kpi-card clickable-card" onclick="openDashboardKpi('{typ}')">
           <div class="kpi-label">Total de manifestações</div>
           <div class="kpi-value" id="kpi-total">--</div>
           <div class="kpi-delta">no período</div>
+        </div>
+      </div>
+
+      <!-- Comparativo ferramenta x setores -->
+      <div class="section-card" style="margin-bottom:16px">
+        <div class="section-title" style="margin-bottom:4px">Desempenho da ferramenta × setores</div>
+        <div class="section-sub" style="margin-bottom:12px">Comparação operacional com os dados disponíveis no sistema</div>
+        <div class="compare-grid" id="compare-tool-sectors">
+          <div class="compare-card tool clickable-card" onclick="openCompareModal('Ferramenta')">
+            <div class="compare-title">Ferramenta</div>
+            <div class="compare-line"><span>Casos registrados</span><strong id="cmp-tool-total">--</strong></div>
+            <div class="compare-line"><span>Dentro do SLA</span><strong id="cmp-tool-sla">--</strong></div>
+            <div class="compare-line"><span>Tempo médio</span><strong id="cmp-tool-tempo">--</strong></div>
+            <div class="compare-line"><span>RNC</span><strong id="cmp-tool-rnc">--</strong></div>
+          </div>
+          <div class="compare-card clickable-card" onclick="openCompareModal('Qualidade')">
+            <div class="compare-title">Qualidade</div>
+            <div class="compare-line"><span>Casos</span><strong id="cmp-qualidade-total">--</strong></div>
+            <div class="compare-line"><span>SLA</span><strong id="cmp-qualidade-sla">--</strong></div>
+            <div class="compare-line"><span>Tempo médio</span><strong id="cmp-qualidade-tempo">--</strong></div>
+            <div class="compare-line"><span>RNC</span><strong id="cmp-qualidade-rnc">--</strong></div>
+          </div>
+          <div class="compare-card clickable-card" onclick="openCompareModal('Logística')">
+            <div class="compare-title">Logística</div>
+            <div class="compare-line"><span>Casos</span><strong id="cmp-logistica-total">--</strong></div>
+            <div class="compare-line"><span>SLA</span><strong id="cmp-logistica-sla">--</strong></div>
+            <div class="compare-line"><span>Tempo médio</span><strong id="cmp-logistica-tempo">--</strong></div>
+            <div class="compare-line"><span>RNC</span><strong id="cmp-logistica-rnc">--</strong></div>
+          </div>
+          <div class="compare-card clickable-card" onclick="openCompareModal('Comercial')">
+            <div class="compare-title">Comercial</div>
+            <div class="compare-line"><span>Casos</span><strong id="cmp-comercial-total">--</strong></div>
+            <div class="compare-line"><span>SLA</span><strong id="cmp-comercial-sla">--</strong></div>
+            <div class="compare-line"><span>Tempo médio</span><strong id="cmp-comercial-tempo">--</strong></div>
+            <div class="compare-line"><span>RNC</span><strong id="cmp-comercial-rnc">--</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ações realizadas dentro da ferramenta -->
+      <div class="section-card" style="margin-bottom:16px">
+        <div class="section-title" style="margin-bottom:4px">Ações dentro da ferramenta</div>
+        <div class="section-sub" style="margin-bottom:12px">O que o sistema já registrou ou executou nos casos</div>
+        <div class="action-grid" id="tool-actions-grid">
+          <div class="action-card" onclick="openActionModal('registros')"><div class="action-label">Registros criados</div><div class="action-value" id="act-registros">--</div><div class="action-sub">manifestações</div></div>
+          <div class="action-card" onclick="openActionModal('analises')"><div class="action-label">Análises</div><div class="action-value" id="act-analises">--</div><div class="action-sub">casos com análise</div></div>
+          <div class="action-card" onclick="openActionModal('decisoes')"><div class="action-label">Decisões do analista</div><div class="action-value" id="act-decisoes">--</div><div class="action-sub">decisões registradas</div></div>
+          <div class="action-card" onclick="openActionModal('encaminhamentos')"><div class="action-label">Encaminhamentos</div><div class="action-value" id="act-encaminhamentos">--</div><div class="action-sub">setores acionados</div></div>
+          <div class="action-card" onclick="openActionModal('devolutivas')"><div class="action-label">Devolutivas</div><div class="action-value" id="act-devolutivas">--</div><div class="action-sub">respostas disponíveis</div></div>
         </div>
       </div>
 
@@ -668,30 +763,6 @@
             </tbody>
           </table>
         </div>
-      </div>
-
-      <!-- Fila de atenção -->
-      <div class="section-card">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-          <div>
-            <div class="section-title" style="margin-bottom:2px">
-              <svg style="display:inline;width:16px;height:16px;margin-right:6px;vertical-align:-2px" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-              Fila de atenção
-            </div>
-            <div class="section-sub" style="margin-bottom:0">Casos que pedem ação, ordenados por urgência</div>
-          </div>
-          <button class="btn btn-secondary" onclick="navigate('banco-manifestacoes', document.querySelector('[onclick*=banco-manifestacoes]'))">Ver todos os casos</button>
-        </div>
-        <table class="fila-table" id="fila-table">
-          <thead>
-            <tr>
-              <th>Nº</th><th>Cliente</th><th>Tipo</th><th>Setor pendente</th><th>Etapa</th><th>Prazo</th><th></th>
-            </tr>
-          </thead>
-          <tbody id="fila-body">
-            <tr><td colspan="7"><div class="loading"><div class="spinner"></div> Carregando manifestações...</div></td></tr>
-          </tbody>
-        </table>
       </div>
 
       <!-- Bloco por empresa + Top motivos -->
@@ -819,6 +890,10 @@
                 <input class="form-input" placeholder="contato@exemplo.com.br" id="nm-email">
               </div>
             </div>
+            <div class="form-row cols-2">
+              <div class="form-group"><label class="form-label">Empresa reclamada</label><select class="form-input" id="nm-empresa-reclamada"><option>CHIACCHIO EMBALAGENS</option><option>PLASCHIO</option><option>CESBAP</option></select></div>
+              <div class="form-group"><label class="form-label">Valor da reclamação</label><input class="form-input" id="nm-valor-cliente" placeholder="R$ 0,00"></div>
+            </div>
           </div>
 
           <!-- Seção 3 -->
@@ -831,15 +906,44 @@
             <div class="form-group" style="margin-bottom:12px">
               <label class="form-label" style="margin-bottom:6px">Tipo de manifestação</label>
               <div class="tipo-btns">
-                <button class="canal-btn active" onclick="selectTipo(this)">Reclamação</button>
-                <button class="canal-btn" onclick="selectTipo(this)">Dúvida</button>
-                <button class="canal-btn" onclick="selectTipo(this)">Sugestão</button>
-                <button class="canal-btn" onclick="selectTipo(this)">Elogio</button>
+                <button class="canal-btn active" data-tipo="Reclamação" onclick="selectTipo(this)">Reclamação</button>
+                <button class="canal-btn" data-tipo="Dúvida" onclick="selectTipo(this)">Dúvida</button>
+                <button class="canal-btn" data-tipo="Sugestão" onclick="selectTipo(this)">Sugestão</button>
+                <button class="canal-btn" data-tipo="Elogio" onclick="selectTipo(this)">Elogio</button>
               </div>
             </div>
             <div class="form-group">
               <label class="form-label">Descrição detalhada da manifestação</label>
               <textarea class="form-textarea" placeholder="Descreva detalhadamente a manifestação do cliente..." id="nm-descricao"></textarea>
+            </div>
+            <div id="questionario-nao-reclamacao"></div>
+          </div>
+
+          <!-- Campos completos da ficha de reclamação -->
+          <div id="bloco-reclamacao-completo">
+            <div class="form-section">
+              <div class="form-group"><label class="form-label">A reclamação é procedente?</label><select class="form-input" id="nm-procedencia"><option value="">A definir na análise</option><option>Sim</option><option>Não</option><option>Parcialmente</option></select></div>
+              <div class="form-group" style="margin-bottom:0"><label class="form-label">Justifique</label><textarea class="form-textarea" id="nm-justificativa-procedencia" placeholder="Justificativa da procedência"></textarea></div>
+            </div>
+            <div class="form-section">
+              <div class="form-section-title"><div class="form-section-icon"><span style="font-size:16px">✓</span></div><div class="form-section-name">5. Encaminhamento</div></div>
+              <div class="form-row cols-2">
+                <div class="form-group"><label class="form-label">Data de encaminhamento</label><input class="form-input" type="date" id="nm-data-encaminhamento"></div>
+                <div class="form-group"><label class="form-label">Prazo para retorno ao SAC</label><input class="form-input" value="72 horas" readonly id="nm-prazo-sla"></div>
+              </div>
+            </div>
+            <div class="form-section">
+              <div class="form-section-title"><div class="form-section-icon"><span style="font-size:16px">6</span></div><div class="form-section-name">6. Resposta do Setor</div></div>
+              <div class="form-group"><label class="form-label">O que aconteceu?</label><textarea class="form-textarea" id="nm-o-que-aconteceu" placeholder="Descreva objetivamente o que aconteceu."></textarea></div>
+              <div class="form-group"><label class="form-label">Qual foi a causa da ocorrência?</label><textarea class="form-textarea" id="nm-causa-ocorrencia" placeholder="Por que isso aconteceu?"></textarea></div>
+              <div class="form-group"><label class="form-label">Como o caso foi resolvido para este cliente?</label><textarea class="form-textarea" id="nm-resolucao-cliente" placeholder="O que foi feito para solucionar esta reclamação específica?"></textarea></div>
+              <div class="form-group"><label class="form-label">Qual ação será adotada para evitar novas ocorrências?</label><textarea class="form-textarea" id="nm-acao-melhoria" placeholder="Informe a ação corretiva ou preventiva."></textarea></div>
+              <div class="form-row cols-2"><div class="form-group"><label class="form-label">Responsável pela ação de melhoria</label><input class="form-input" id="nm-responsavel-melhoria"></div><div class="form-group"><label class="form-label">Prazo para implementação da ação</label><input class="form-input" type="date" id="nm-prazo-melhoria"></div></div>
+            </div>
+            <div class="form-section">
+              <div class="form-section-title"><div class="form-section-icon"><span style="font-size:16px">7</span></div><div class="form-section-name">7. Validação do SAC</div></div>
+              <div class="form-row cols-2"><div class="form-group"><label class="form-label">Data de retorno ao cliente</label><input class="form-input" type="date" id="nm-data-retorno"></div><div class="form-group"><label class="form-label">Cliente informado?</label><select class="form-input" id="nm-cliente-informado"><option value="">Selecione</option><option>Sim</option><option>Não</option></select></div></div>
+              <div class="form-row cols-2"><div class="form-group"><label class="form-label">Manifestação resolvida?</label><select class="form-input" id="nm-manifestacao-resolvida"><option value="">Selecione</option><option>Sim</option><option>Não</option></select></div><div class="form-group"><label class="form-label">Observações finais</label><textarea class="form-textarea" id="nm-observacoes-finais" placeholder="Observações finais"></textarea></div></div>
             </div>
           </div>
 
@@ -863,6 +967,11 @@
                 <label class="form-label">NFe</label>
                 <input class="form-input" placeholder="000000" id="nm-nfe">
               </div>
+            </div>
+            <div class="form-row cols-3">
+              <div class="form-group"><label class="form-label">Valor</label><input class="form-input" id="nm-valor" placeholder="R$ 0,00"></div>
+              <div class="form-group"><label class="form-label">Kg total do pedido reclamado</label><input class="form-input" type="number" step="0.01" id="nm-kg-total" placeholder="0,00"></div>
+              <div class="form-group"><label class="form-label">Kg devolvidos</label><input class="form-input" type="number" step="0.01" id="nm-kg-devolvidos" placeholder="Quando aplicável"></div>
             </div>
           </div>
         </div>
@@ -1306,8 +1415,121 @@
 
 </main>
 
+<!-- Modal reutilizável para detalhes e indicadores -->
+<div class="modal-backdrop" id="generic-modal" onclick="if(event.target===this)closeModal()">
+  <div class="modal-panel">
+    <div class="modal-head"><div class="modal-title" id="generic-modal-title">Detalhes</div><button class="modal-close" onclick="closeModal()">×</button></div>
+    <div class="modal-body" id="generic-modal-body"></div>
+  </div>
+</div>
+
 <script>
 const API = 'https://assistente-sac-gpchiacchio.vercel.app';
+
+
+// ===== NOVOS HELPERS / MODAIS =====
+function esc(v) {
+  return String(v ?? '--').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function valorCampo(obj, keys, fallback='--') {
+  for (const k of keys) { if (obj && obj[k] !== undefined && obj[k] !== null && String(obj[k]).trim() !== '') return obj[k]; }
+  return fallback;
+}
+function nomeCliente(m) {
+  return valorCampo(m, ['CLIENTE_NOME','NOME_CLIENTE','NOME_DO_CLIENTE','NOME','CONTATO','CLIENTE','EMPRESA_RECLAMANTE'], '--');
+}
+function dataManifestacao(m) {
+  return fmtDate(valorCampo(m, ['DATA_ABERTURA','DATA_CRIACAO','DATA_REGISTRO','DATA','ORIG_DATA_ABERTURA'], ''));
+}
+function isComplaint(m) {
+  return ((m?.TIPO || m?.TIPO_CONFIRMADO || '').toString().toLowerCase().includes('reclam')) || !m?.TIPO;
+}
+function openModal(title, html) {
+  const modal=document.getElementById('generic-modal');
+  if(!modal) return;
+  document.getElementById('generic-modal-title').textContent=title;
+  document.getElementById('generic-modal-body').innerHTML=html;
+  modal.classList.add('open');
+}
+function closeModal(){ const m=document.getElementById('generic-modal'); if(m) m.classList.remove('open'); }
+
+function openDashboardKpi(tipo){
+  const d=calcDashboard(_dashData.mans,_dashData.recs,_dashFiltroEmpresa,_dashFiltroSetor);
+  const rows={
+    andamento:['Manifestações em andamento',d.emAndamento,'Casos não finalizados na base de manifestações.'],
+    sla:['Dentro do SLA',d.slaPercent+'%',`${d.dentroPrazo} dentro do prazo de ${d.recComSLA.length} registros com SLA informado.`],
+    atrasadas:['Atrasadas',d.foraPrazo,`${d.foraPrazo} registros históricos fora do prazo.`],
+    rnc:['RNCs',d.rncs,'Manifestações com RNC identificada ou sugerida na base atual.'],
+    total:['Total de manifestações',d.total,'Soma das manifestações da ferramenta e registros históricos no filtro atual.']
+  };
+  const r=rows[tipo]||rows.total;
+  openModal(r[0],`<div class="detail-grid"><div class="detail-box"><div class="detail-label">Indicador</div><div class="detail-value"><strong>${esc(r[1])}</strong></div></div><div class="detail-box"><div class="detail-label">Filtro atual</div><div class="detail-value">Empresa: ${esc(_dashFiltroEmpresa)} · Setor: ${esc(_dashFiltroSetor)}</div></div></div><div class="metric-detail" style="margin-top:12px">${esc(r[2])}</div>`);
+}
+
+function openCompareModal(tipo){
+  const data = tipo==='Ferramenta' ? (_dashData.mans||[]) : (_dashData.mans||[]).filter(m => String(m.SETOR_DESTINADO||m.SETOR_CONFIRMADO||m.SETOR_SUGERIDO||'').toLowerCase().includes(tipo.toLowerCase()));
+  const total=data.length;
+  const slaOk=data.filter(m => String(m.DENTRO_DO_SLA||'').toUpperCase()==='SIM').length;
+  const slaBase=data.filter(m => ['SIM','NÃO','NAO','N'].includes(String(m.DENTRO_DO_SLA||'').toUpperCase())).length;
+  const tempos=data.map(m=>parseFloat(m.TEMPO_RESOLUCAO_HORAS||m.TEMPO_ATENDIMENTO_HORAS||m.TEMPO_MEDIO_ATENDIMENTO||'')).filter(v=>!isNaN(v)&&v>0);
+  const avg=tempos.length?Math.round(tempos.reduce((a,b)=>a+b,0)/tempos.length):'--';
+  const rncs=data.filter(m=>m.ID_RNC||String(m.RNC_SUGERIDO||'').toUpperCase()==='SIM').length;
+  openModal('Detalhes — '+tipo, `<div class="detail-grid">
+    <div class="detail-box"><div class="detail-label">Casos</div><div class="detail-value">${total}</div></div>
+    <div class="detail-box"><div class="detail-label">SLA</div><div class="detail-value">${slaBase?Math.round(slaOk/slaBase*100)+'%':'--'}</div></div>
+    <div class="detail-box"><div class="detail-label">Tempo médio</div><div class="detail-value">${avg==='--'?'--':avg+'h'}</div></div>
+    <div class="detail-box"><div class="detail-label">RNC</div><div class="detail-value">${rncs}</div></div>
+  </div><div class="modal-section" style="margin-top:16px"><h4>Registros</h4><div class="activity-list">${data.slice(0,20).map(m=>`<div class="activity-item"><div class="activity-dot"></div><div><div class="activity-main"><strong>${esc(m.ID_MANIFESTACAO||'--')}</strong> · ${esc(nomeCliente(m))}</div><div class="activity-meta">${esc(dataManifestacao(m))} · ${esc(m.STATUS||'Registro')}</div></div></div>`).join('')||'<div class="metric-detail">Nenhum registro encontrado.</div>'}</div></div>`);
+}
+function openActionModal(tipo){
+  const mans=_dashData.mans||[]; let arr=[]; let title='';
+  if(tipo==='registros'){arr=mans;title='Registros criados';}
+  if(tipo==='analises'){arr=mans.filter(m=>m.ANALISE_IA||m.ANALISE_INTELIGENTE||m.CONFIANCA_IA||m.TIPO_SUGERIDO||m.CAUSA_PROVAVEL);title='Análises realizadas';}
+  if(tipo==='decisoes'){arr=mans.filter(m=>m.DECISAO_ANALISTA||m.DECISAO);title='Decisões do analista';}
+  if(tipo==='encaminhamentos'){arr=mans.filter(m=>m.SETOR_DESTINADO||m.SETORES_APOIO||m.SETOR_CONFIRMADO);title='Encaminhamentos';}
+  if(tipo==='devolutivas'){arr=mans.filter(m=>m.DEVOLUTIVA_FINAL||m.DEVOLUTIVA_SUGERIDA||m.DEVOLUTIVA||m.RESPOSTA_CLIENTE);title='Devolutivas';}
+  openModal(title, `<div class="metric-detail" style="margin-bottom:10px"><strong>${arr.length}</strong> registros encontrados.</div><div class="activity-list">${arr.slice(0,50).map(m=>`<div class="activity-item"><div class="activity-dot"></div><div><div class="activity-main"><strong>${esc(m.ID_MANIFESTACAO||'--')}</strong> · ${esc(nomeCliente(m))}</div><div class="activity-meta">${esc(dataManifestacao(m))} · ${esc(m.STATUS||'')}</div></div></div>`).join('')||'<div class="metric-detail">Nenhuma ação registrada com os campos atuais.</div>'}</div>`);
+}
+function openCompanyModal(emp){
+  const data=(_dashData.recs||[]).filter(x=>String(x['Empresa']||'').toUpperCase().includes(String(emp).toUpperCase()));
+  const man=(_dashData.mans||[]).filter(x=>String(x.EMPRESA_RECLAMANTE||x.EMPRESA_NORMALIZADA||'').toUpperCase().includes(String(emp).toUpperCase()));
+  const all=[...data,...man];
+  openModal('Detalhes — '+emp, `<div class="detail-grid"><div class="detail-box"><div class="detail-label">Manifestações</div><div class="detail-value">${all.length}</div></div><div class="detail-box"><div class="detail-label">Encerradas</div><div class="detail-value">${all.filter(x=>String(x.STATUS||x['Situação Final']||'').toUpperCase().includes('FINALIZ')).length}</div></div></div><div class="modal-section" style="margin-top:16px"><h4>Casos</h4><div class="activity-list">${all.slice(0,50).map(x=>`<div class="activity-item"><div class="activity-dot"></div><div><div class="activity-main"><strong>${esc(x.ID_MANIFESTACAO||'Registro')}</strong> · ${esc(nomeCliente(x))}</div><div class="activity-meta">${esc(dataManifestacao(x))} · ${esc(x.TIPO||x['Motivo da Reclamação']||'Reclamação')}</div></div></div>`).join('')||'<div class="metric-detail">Nenhum caso.</div>'}</div>`);
+}
+function openManifestacaoDetail(m){
+  const fields=[
+    ['Cliente',nomeCliente(m)],['Data',dataManifestacao(m)],['Empresa reclamada',valorCampo(m,['EMPRESA_RECLAMADA','ORIG_EMPRESA'])],['CNPJ',valorCampo(m,['CNPJ','CLIENTE_CNPJ'])],['Contato',valorCampo(m,['CONTATO','TELEFONE','CLIENTE_CONTATO'])],['Tipo',valorCampo(m,['TIPO','TIPO_CONFIRMADO'])],['Produto',valorCampo(m,['PRODUTO','PRODUTO_DESCRICAO','ORIG_PRODUTO'])],['Lote',valorCampo(m,['LOTE','ORIG_LOTE'])],['NFe',valorCampo(m,['NFE','NOTA_FISCAL','ORIG_NOTA_FISCAL'])],['Valor',valorCampo(m,['VALOR','VALOR_PEDIDO','VALOR_RECLAMACAO'])],['Kg total reclamado',valorCampo(m,['KG_TOTAL_PEDIDO_RECLAMADO','KG_TOTAL_PEDIDO','PESO_TOTAL_RECLAMADO'])],['Kg devolvidos',valorCampo(m,['KG_DEVOLVIDOS','PESO_DEVOLVIDO'])],['Descrição',valorCampo(m,['DESCRICAO','DESCRICAO_RECLAMACAO','MOTIVO_RELATADO_BRUTO'])],['Procedência',valorCampo(m,['DECISAO_ANALISTA','PROCEDENCIA','RESULTADO_FINAL'])],['Causa',valorCampo(m,['CAUSA_PROVAVEL','CAUSA_RAIZ_VALIDADA'])],['Setor',valorCampo(m,['SETOR_DESTINADO','SETOR_CONFIRMADO','SETOR_SUGERIDO'])],['SLA',valorCampo(m,['DENTRO_DO_SLA','DENTRO_PRAZO'])],['Tratativa',valorCampo(m,['TRATATIVA','TRATATIVA_DESCRICAO'])],['Devolutiva',valorCampo(m,['DEVOLUTIVA_FINAL','DEVOLUTIVA_SUGERIDA','DEVOLUTIVA'])]
+  ];
+  openModal('Manifestação '+(m.ID_MANIFESTACAO||''), `<div class="modal-section"><h4>Detalhes do caso</h4><div class="detail-grid">${fields.map(([l,v])=>`<div class="detail-box"><div class="detail-label">${esc(l)}</div><div class="detail-value">${esc(v)}</div></div>`).join('')}</div></div><div class="modal-section"><h4>Ações disponíveis</h4><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-primary" onclick="closeModal(); abrirManifestacaoPorId('${esc(m.ID_MANIFESTACAO||'')}')">Abrir análise</button><button class="btn btn-secondary" onclick="closeModal()">Fechar</button></div></div>`);
+}
+function abrirManifestacaoPorId(id){
+  navigate('nova-manifestacao',document.querySelector('[onclick*=nova-manifestacao]'));
+  // Mantém o layout atual; se a API oferecer detalhe, o registro poderá ser carregado aqui futuramente.
+  console.info('Abrir manifestação',id);
+}
+function atualizarComparativo(data){
+  const map={
+    'Ferramenta':{total:data.total,sla:data.slaPercent+'%',tempo:data.tempoMedio?data.tempoMedio+'h':'--',rnc:data.rncs},
+    'Qualidade':compararSetor('Qualidade'),'Logística':compararSetor('Logística'),'Comercial':compararSetor('Comercial')
+  };
+  Object.entries(map).forEach(([k,v])=>{const id=k.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); const p=id==='ferramenta'?'tool':id; const set=(s,x)=>{const e=document.getElementById('cmp-'+s+'-'+x);if(e)e.textContent=v[x]??'--';}; set(p,'total');set(p,'sla');set(p,'tempo');set(p,'rnc');});
+}
+function compararSetor(setor){
+  const arr=(_dashData.mans||[]).filter(m=>String(m.SETOR_DESTINADO||m.SETOR_CONFIRMADO||m.SETOR_SUGERIDO||'').toLowerCase().includes(setor.toLowerCase()));
+  const ok=arr.filter(m=>String(m.DENTRO_DO_SLA||'').toUpperCase()==='SIM').length; const base=arr.filter(m=>['SIM','NÃO','NAO'].includes(String(m.DENTRO_DO_SLA||'').toUpperCase())).length;
+  const ts=arr.map(m=>parseFloat(m.TEMPO_RESOLUCAO_HORAS||'')).filter(v=>!isNaN(v)&&v>0); const avg=ts.length?Math.round(ts.reduce((a,b)=>a+b,0)/ts.length):'--';
+  return {total:arr.length,sla:base?Math.round(ok/base*100)+'%':'--',tempo:avg==='--'?'--':avg+'h',rnc:arr.filter(m=>m.ID_RNC||String(m.RNC_SUGERIDO||'').toUpperCase()==='SIM').length};
+}
+function atualizarAcoesFerramenta(mans){
+  const vals={
+    registros:mans.length,
+    analises:mans.filter(m=>m.ANALISE_IA||m.ANALISE_INTELIGENTE||m.CONFIANCA_IA||m.TIPO_SUGERIDO||m.CAUSA_PROVAVEL).length,
+    decisoes:mans.filter(m=>m.DECISAO_ANALISTA||m.DECISAO).length,
+    encaminhamentos:mans.filter(m=>m.SETOR_DESTINADO||m.SETORES_APOIO||m.SETOR_CONFIRMADO).length,
+    devolutivas:mans.filter(m=>m.DEVOLUTIVA_FINAL||m.DEVOLUTIVA_SUGERIDA||m.DEVOLUTIVA||m.RESPOSTA_CLIENTE).length
+  };
+  Object.entries(vals).forEach(([k,v])=>{const e=document.getElementById('act-'+k);if(e)e.textContent=v;});
+}
 
 // ===== NAVEGAÇÃO =====
 function navigate(page, el) {
@@ -1320,10 +1542,13 @@ function navigate(page, el) {
 // ===== HELPERS =====
 function fmtDate(d) {
   if (!d) return '--';
-  try {
-    const dt = new Date(d);
-    return dt.toLocaleDateString('pt-BR');
-  } catch { return d; }
+  if (d instanceof Date && !isNaN(d)) return d.toLocaleDateString('pt-BR');
+  const str = String(d).trim();
+  if (!str) return '--';
+  const br = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+  if (br) return `${String(br[1]).padStart(2,'0')}/${String(br[2]).padStart(2,'0')}/${br[3]}`;
+  const dt = new Date(d);
+  return isNaN(dt) ? str : dt.toLocaleDateString('pt-BR');
 }
 
 function prazoClass(status) {
@@ -1374,6 +1599,11 @@ function calcDashboard(mans, recs, filtroEmpresa, filtroSetor) {
       return emp.includes(filtroEmpresa.toUpperCase());
     });
   }
+  if (filtroSetor !== 'Todos') {
+    const setor = filtroSetor.toUpperCase();
+    m = m.filter(x => ((x.SETOR_DESTINADO || x.SETOR_CONFIRMADO || x.SETOR_SUGERIDO || x.SETOR || '') + '').toUpperCase().includes(setor));
+    r = r.filter(x => ((x['Setor'] || x['Setor responsável'] || x['SETOR'] || '') + '').toUpperCase().includes(setor));
+  }
 
   // Combinar fontes — usar reclamações como fonte principal de dados históricos
   // MANIFESTACOES tem dados de registro interno, Reclamações tem dados históricos completos
@@ -1412,8 +1642,8 @@ function calcDashboard(mans, recs, filtroEmpresa, filtroSetor) {
 
   // Empresas únicas
   const empresasSet = new Set();
-  r.forEach(x => { if(x['Empresa']) empresasSet.add(x['Empresa']); });
-  m.forEach(x => { if(x.EMPRESA_RECLAMADA) empresasSet.add(x.EMPRESA_RECLAMADA); });
+  r.forEach(x => { if(x['Empresa'] && !/^TR\d+$/i.test(String(x['Empresa']).trim())) empresasSet.add(x['Empresa']); });
+  m.forEach(x => { if(x.EMPRESA_RECLAMADA && !/^TR\d+$/i.test(String(x.EMPRESA_RECLAMADA).trim())) empresasSet.add(x.EMPRESA_RECLAMADA); });
 
   // Setores únicos (da planilha de setores)
   const setoresNomes = ['SAC','Qualidade','Produção','Logística','Comercial','Financeiro','Faturamento / Expedição'];
@@ -1445,6 +1675,7 @@ function calcDashboard(mans, recs, filtroEmpresa, filtroSetor) {
   const porEmpresa = {};
   r.forEach(x => {
     const emp = x['Empresa'] || 'Outros';
+    if (/^TR\d+$/i.test(String(emp).trim())) return;
     if (!porEmpresa[emp]) porEmpresa[emp] = { total: 0, finaliz: 0, sla: 0, semSLA: 0, foraSLA: 0 };
     porEmpresa[emp].total++;
     const s = (x['Status'] || x['Situação Final'] || '').toUpperCase();
@@ -1602,41 +1833,15 @@ function renderDashboard(data) {
       <td>${tempoMedio > 0 ? tempoMedio + 'h' : '--'}</td>
     </tr>`).join('');
 
-  // Fila de atenção — mostrar reclamações EM ABERTO
-  const filaRecs = recs.filter(x => {
-    const s = (x['Status'] || '').toUpperCase();
-    return s.includes('ABERTO') || s.includes('EM ABERTO') || s === '';
-  }).slice(0, 5);
-  const filaAll = [...mans.slice(0,5), ...filaRecs.slice(0,5)].slice(0,8);
-  document.getElementById('fila-body').innerHTML = filaAll.length > 0
-    ? filaAll.map((x, i) => {
-        const isMan = !!x.ID_MANIFESTACAO;
-        const id = isMan ? x.ID_MANIFESTACAO : ('REC-' + String(i+1).padStart(3,'0'));
-        const empresa = isMan ? (x.EMPRESA_NORMALIZADA || x.EMPRESA_RECLAMANTE || '--') : (x['Empresa'] || '--');
-        const tipo = isMan ? (x.TIPO || 'Reclamação') : (x['Motivo da Reclamação'] || 'Reclamação');
-        const status = isMan ? getEtapaLabel(x.STATUS) : 'Em aberto';
-        const eClass = isMan ? etapaClass(x.STATUS) : 'registro';
-        return `<tr>
-          <td class="num">${id}</td>
-          <td>${empresa}</td>
-          <td>${tipo.length > 30 ? tipo.slice(0,30)+'...' : tipo}</td>
-          <td>—</td>
-          <td><span class="status-badge ${eClass}">${status}</span></td>
-          <td><span class="prazo-badge ok">Em dia</span></td>
-          <td><a class="link-abrir">Abrir</a></td>
-        </tr>`;
-      }).join('')
-    : '<tr><td colspan="7" style="text-align:center;color:var(--gray-400);padding:20px">Nenhuma manifestação encontrada</td></tr>';
-
-  // Cards por empresa
+  // Cards por empresa — somente empresas reais; códigos TRxx nunca entram como empresa
   const empresaCards = document.getElementById('empresa-cards');
   if (empresaCards) {
-    const empEntries = Object.entries(porEmpresa).slice(0, 4);
+    const empEntries = Object.entries(porEmpresa).filter(([emp]) => !/^TR\d+$/i.test(String(emp).trim())).slice(0, 6);
     empresaCards.innerHTML = empEntries.length > 0
       ? empEntries.map(([emp, d]) => {
           const slaEmp = (d.sla + d.foraSLA) > 0 ? Math.round(d.sla/(d.sla+d.foraSLA)*100) : '--';
           return `
-          <div class="card card-pad" style="flex:1;min-width:180px">
+          <div class="card card-pad clickable-card" style="flex:1;min-width:180px" onclick="openCompanyModal(${JSON.stringify(emp).replace(/'/g,'&#39;')})">
             <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--gray-400);letter-spacing:0.06em;margin-bottom:8px">${emp}</div>
             <div style="display:grid;gap:5px">
               <div style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--gray-500)">Manifestações</span><strong>${d.total}</strong></div>
@@ -1648,6 +1853,9 @@ function renderDashboard(data) {
         }).join('')
       : '<div style="color:var(--gray-400);font-size:13px;padding:16px">Nenhuma empresa encontrada</div>';
   }
+
+  atualizarComparativo(data);
+  atualizarAcoesFerramenta(_dashData.mans);
 
   // Top motivos
   const motivosEl = document.getElementById('top-motivos');
@@ -1680,8 +1888,8 @@ async function loadVisaoGeral() {
 
     // Popular filtros de empresa
     const empSet = new Set(['Todas']);
-    _dashData.recs.forEach(x => { if(x['Empresa']) empSet.add(x['Empresa']); });
-    _dashData.mans.forEach(x => { if(x.EMPRESA_RECLAMADA) empSet.add(x.EMPRESA_RECLAMADA); });
+    _dashData.recs.forEach(x => { if(x['Empresa'] && !/^TR\d+$/i.test(String(x['Empresa']).trim())) empSet.add(x['Empresa']); });
+    _dashData.mans.forEach(x => { if(x.EMPRESA_RECLAMADA && !/^TR\d+$/i.test(String(x.EMPRESA_RECLAMADA).trim())) empSet.add(x.EMPRESA_RECLAMADA); });
     const empSelect = document.getElementById('filtro-empresa-select');
     if (empSelect) {
       empSelect.innerHTML = [...empSet].map(e => `<option value="${e}">${e}</option>`).join('');
@@ -1719,6 +1927,24 @@ function selectCanal(btn) {
 function selectTipo(btn) {
   btn.closest('.tipo-btns').querySelectorAll('.canal-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
+  renderQuestionarioTipo(btn.dataset.tipo || btn.textContent.trim());
+}
+function tipoSelecionado(){ return document.querySelector('.tipo-btns .canal-btn.active')?.dataset.tipo || 'Reclamação'; }
+function renderQuestionarioTipo(tipo){
+  const box=document.getElementById('questionario-nao-reclamacao');
+  const reclama=document.getElementById('bloco-reclamacao-completo');
+  if(!box) return;
+  if(tipo==='Reclamação'){
+    if(reclama) reclama.style.display='block'; box.innerHTML=''; return;
+  }
+  if(reclama) reclama.style.display='none';
+  const configs={
+    'Dúvida':{title:'Questionário — Dúvida',fields:[['nm-duvida','Qual é a dúvida do cliente?','Descreva exatamente o que o cliente quer saber.','textarea'],['nm-contexto-duvida','Contexto da dúvida','Informe produto, pedido, processo ou situação relacionada.','textarea'],['nm-resposta-duvida','O que o cliente precisa como resposta?','Defina a informação necessária para responder.','textarea'],['nm-setor-duvida','Setor sugerido','Qual setor deve apoiar a resposta?','input']]},
+    'Sugestão':{title:'Questionário — Sugestão',fields:[['nm-sugestao','Qual é a sugestão do cliente?','Descreva a melhoria sugerida.','textarea'],['nm-problema-sugestao','Que problema ou oportunidade motivou a sugestão?','Descreva o contexto.','textarea'],['nm-beneficio-sugestao','Qual benefício esperado?','Para cliente, processo ou empresa.','textarea'],['nm-setor-sugestao','Setor relacionado','Qual setor pode avaliar a sugestão?','input']]},
+    'Elogio':{title:'Questionário — Elogio',fields:[['nm-elogiado','Quem ou o que foi elogiado?','Pessoa, setor, produto, atendimento ou processo.','input'],['nm-motivo-elogio','Qual foi o motivo do elogio?','Descreva o que o cliente destacou.','textarea'],['nm-destaque-elogio','Há alguma prática que deve ser preservada?','Registre o comportamento ou prática positiva.','textarea']]}
+  };
+  const c=configs[tipo]; if(!c) return;
+  box.innerHTML=`<div class="type-questionnaire"><h4>${c.title}</h4><div class="question-grid">${c.fields.map(f=>`<div class="form-group" style="margin-bottom:0"><label class="form-label">${f[1]}</label>${f[3]==='textarea'?`<textarea class="form-textarea" id="${f[0]}" placeholder="${f[2]}"></textarea>`:`<input class="form-input" id="${f[0]}" placeholder="${f[2]}">`}</div>`).join('')}</div></div>`;
 }
 
 async function initNovaManifestacao() {
@@ -1729,7 +1955,9 @@ async function initNovaManifestacao() {
     const count = (res.itens || []).length + 1;
     const year = new Date().getFullYear();
     document.getElementById('nm-num').value = String(count).padStart(4,'0') + '/' + year;
+    renderQuestionarioTipo('Reclamação');
   } catch { document.getElementById('nm-num').value = '----/2026'; }
+  renderQuestionarioTipo('Reclamação');
 }
 
 function buscarCliente() {
@@ -1743,36 +1971,55 @@ function buscarCliente() {
 }
 
 async function registrarManifestacao() {
-  const empresa = document.getElementById('nm-empresa').value;
-  const nome = document.getElementById('nm-nome').value;
-  const tel = document.getElementById('nm-tel').value;
-  const desc = document.getElementById('nm-descricao').value;
-  if (!empresa || !desc) return alert('Preencha pelo menos a empresa e a descrição');
+  const empresaCliente = document.getElementById('nm-empresa').value.trim();
+  const nome = document.getElementById('nm-nome').value.trim();
+  const tel = document.getElementById('nm-tel').value.trim();
+  const desc = document.getElementById('nm-descricao').value.trim();
+  const tipo = tipoSelecionado();
+  const empresaReclamada = document.getElementById('nm-empresa-reclamada')?.value || 'CHIACCHIO EMBALAGENS';
+  if (!empresaCliente || !nome || !desc) return alert('Preencha empresa/razão social, nome do cliente e descrição da manifestação.');
+
+  const payload = {
+    empresaReclamada,
+    empresaReclamante: empresaCliente,
+    clienteNome: nome,
+    cnpj: document.getElementById('nm-cnpj')?.value || '',
+    contato: tel || nome,
+    email: document.getElementById('nm-email')?.value || '',
+    canal: document.querySelector('.canal-btns .canal-btn.active')?.textContent?.trim() || 'WhatsApp',
+    tipo,
+    produto: document.getElementById('nm-produto')?.value || '',
+    lote: document.getElementById('nm-lote')?.value || '',
+    nfe: document.getElementById('nm-nfe')?.value || '',
+    valor: document.getElementById('nm-valor')?.value || document.getElementById('nm-valor-cliente')?.value || '',
+    kgTotalPedidoReclamado: document.getElementById('nm-kg-total')?.value || '',
+    kgDevolvidos: document.getElementById('nm-kg-devolvidos')?.value || '',
+    descricao: desc,
+    procedencia: document.getElementById('nm-procedencia')?.value || '',
+    justificativaProcedencia: document.getElementById('nm-justificativa-procedencia')?.value || '',
+    dataEncaminhamento: document.getElementById('nm-data-encaminhamento')?.value || '',
+    prazoRetornoSAC: document.getElementById('nm-prazo-sla')?.value || '72 horas',
+    oQueAconteceu: document.getElementById('nm-o-que-aconteceu')?.value || '',
+    causaOcorrencia: document.getElementById('nm-causa-ocorrencia')?.value || '',
+    resolucaoCliente: document.getElementById('nm-resolucao-cliente')?.value || '',
+    acaoMelhoria: document.getElementById('nm-acao-melhoria')?.value || '',
+    responsavelMelhoria: document.getElementById('nm-responsavel-melhoria')?.value || '',
+    prazoMelhoria: document.getElementById('nm-prazo-melhoria')?.value || '',
+    dataRetornoCliente: document.getElementById('nm-data-retorno')?.value || '',
+    clienteInformado: document.getElementById('nm-cliente-informado')?.value || '',
+    manifestacaoResolvida: document.getElementById('nm-manifestacao-resolvida')?.value || '',
+    observacoesFinais: document.getElementById('nm-observacoes-finais')?.value || '',
+    questionario: {}
+  };
+  if(tipo==='Dúvida') payload.questionario={duvida:document.getElementById('nm-duvida')?.value||'',contexto:document.getElementById('nm-contexto-duvida')?.value||'',respostaEsperada:document.getElementById('nm-resposta-duvida')?.value||'',setor:document.getElementById('nm-setor-duvida')?.value||''};
+  if(tipo==='Sugestão') payload.questionario={sugestao:document.getElementById('nm-sugestao')?.value||'',problema:document.getElementById('nm-problema-sugestao')?.value||'',beneficio:document.getElementById('nm-beneficio-sugestao')?.value||'',setor:document.getElementById('nm-setor-sugestao')?.value||''};
+  if(tipo==='Elogio') payload.questionario={elogiado:document.getElementById('nm-elogiado')?.value||'',motivo:document.getElementById('nm-motivo-elogio')?.value||'',pratica:document.getElementById('nm-destaque-elogio')?.value||''};
 
   try {
-    const res = await fetch(API + '/api/manifestacoes', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        empresaReclamada: 'CHIACCHIO EMBALAGENS',
-        empresaReclamante: empresa,
-        contato: tel || nome,
-        produto: document.getElementById('nm-produto').value || '',
-        lote: document.getElementById('nm-lote').value || '',
-        descricao: desc
-      })
-    }).then(r => r.json());
-
-    if (res.sucesso) {
-      alert('Manifestação registrada com sucesso! ID: ' + res.id);
-      navigate('banco-manifestacoes', document.querySelector('[onclick*=banco-manifestacoes]'));
-      loadBancoManifestacoes();
-    } else {
-      alert('Erro: ' + res.erro);
-    }
-  } catch (e) {
-    alert('Erro ao registrar: ' + e.message);
-  }
+    const res = await fetch(API + '/api/manifestacoes', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).then(r=>r.json());
+    if(res.sucesso){ alert('Manifestação registrada com sucesso! ID: '+res.id); navigate('banco-manifestacoes',document.querySelector('[onclick*=banco-manifestacoes]')); loadBancoManifestacoes(); }
+    else alert('Erro: '+(res.erro||'Não foi possível registrar.'));
+  } catch(e){ alert('Erro ao registrar: '+e.message); }
 }
 
 // ===== BANCO DE MANIFESTAÇÕES =====
@@ -1832,21 +2079,21 @@ function renderBanco() {
         const prazoClass2 = isAtrasada ? 'atrasado' : isEncerrada ? 'ok' : 'ok';
         const proc = m.DECISAO_ANALISTA || m.RESULTADO_FINAL || '';
 
-        return `<tr>
+        return `<tr class="clickable-card" onclick='openManifestacaoDetail(${JSON.stringify(m).replace(/'/g,"&#39;")})'>
           <td>
             <div class="num-bold">${m.ID_MANIFESTACAO || '--'}</div>
-            <div class="num-date">${fmtDate(m.DATA_CRIACAO)}</div>
+            <div class="num-date">${dataManifestacao(m)}</div>
           </td>
           <td>
-            <div class="cliente-primary">${m.EMPRESA_NORMALIZADA || m.EMPRESA_RECLAMANTE || '--'}</div>
-            <div class="cliente-secondary">${m.EMPRESA_RECLAMADA || '--'}</div>
+            <div class="cliente-primary">${nomeCliente(m)}</div>
+            <div class="cliente-secondary">${m.EMPRESA_RECLAMANTE || m.EMPRESA_NORMALIZADA || '--'}</div>
           </td>
           <td>${m.TIPO || m.TIPO_CONFIRMADO || 'Reclamação'}</td>
           <td style="font-size:12px;color:var(--gray-500)">${[m.SETOR_DESTINADO, m.SETORES_APOIO].filter(Boolean).join(', ') || '—'}</td>
           <td><span class="status-badge ${etapaClass(m.STATUS)}">${getEtapaLabel(m.STATUS)}</span></td>
           <td><span class="prazo-badge ${prazoClass2}">${prazoText}</span></td>
           <td>${proc ? `<span class="proc-badge ${proc.toLowerCase().includes('parcial') ? 'parcialmente' : 'procedente'}">${proc}</span>` : '—'}</td>
-          <td><a class="link-abrir">Abrir</a></td>
+          <td><a class="link-abrir" onclick="event.stopPropagation();openManifestacaoDetail(m)">Abrir</a></td>
         </tr>`;
       }).join('')
     : '<tr><td colspan="8" style="text-align:center;color:var(--gray-400);padding:20px">Nenhuma manifestação encontrada</td></tr>';
@@ -2126,6 +2373,7 @@ window.navigate = function(page, el) {
   if (pageLoaders[page]) pageLoaders[page]();
 };
 
+document.addEventListener('keydown', e => { if(e.key==='Escape') closeModal(); });
 // Init
 loadVisaoGeral();
 </script>
