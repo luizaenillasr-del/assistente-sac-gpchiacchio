@@ -676,27 +676,43 @@ app.get('/api/rnc-metricas', requerPerfil('MASTER','ANALISTA SAC'), async (req,r
 // ===== EMPRESAS =====
 app.get('/api/empresas', async (req, res) => {
   try {
+    const sheets = await getSheets();
+    // Busca headers da MANIFESTACOES
+    const headerRes = await sheets.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: 'MANIFESTACOES!1:1',
+      valueRenderOption: 'FORMATTED_VALUE'
+    });
+    const headers = headerRes.data.values?.[0] || [];
+    console.log('Headers MANIFESTACOES:', headers);
+
     const [manifestacoes, reclamacoes] = await Promise.all([
       lerAba('MANIFESTACOES', 2000).catch(() => []),
       lerAba('Reclamações + devolutiva', 2000).catch(() => [])
     ]);
+    
     const empresas = new Set();
+    
+    // Log para debug
+    if (manifestacoes.length > 0) {
+      console.log('Primeira manifestação:', manifestacoes[0]);
+    }
     
     // De MANIFESTACOES: procura por EMPRESA_NORMALIZADA, EMPRESA_RECLAMADA, ou EMPRESA
     manifestacoes.forEach(m => {
-      const emp = m.EMPRESA_NORMALIZADA || m.EMPRESA_RECLAMADA || m.EMPRESA || '';
+      const emp = m.EMPRESA_NORMALIZADA || m.EMPRESA_RECLAMADA || m.EMPRESA || m['Empresa'] || '';
       if (emp && emp.trim()) empresas.add(emp.trim());
     });
     
     // De Reclamações + devolutiva: procura por Empresa
     reclamacoes.forEach(r => {
-      const emp = r.Empresa || '';
+      const emp = r.Empresa || r['Empresa'] || '';
       if (emp && emp.trim() && !['TR01', 'TR08'].includes(emp.trim())) {
         empresas.add(emp.trim());
       }
     });
     
-    res.json({ sucesso: true, total: empresas.size, itens: [...empresas].sort() });
+    res.json({ sucesso: true, total: empresas.size, itens: [...empresas].sort(), debug: { headers, manifestacoesCount: manifestacoes.length } });
   } catch (e) {
     console.error('Erro ao carregar empresas:', e.message);
     res.status(500).json({ sucesso: false, erro: e.message, itens: [] });
