@@ -572,32 +572,44 @@
     const pass = document.getElementById('login-pass').value;
     const err = document.getElementById('login-error');
     err.style.display='none';
+
+    // Modo demonstração: autentica localmente ANTES de chamar a API.
+    // Assim a reunião não fica bloqueada se a API/Sheets do Vercel estiverem temporariamente indisponíveis.
+    const demos={
+      'luiza':{usuario:'luiza',nome:'Luiza',perfil:'MASTER',empresa:'Grupo Chiacchio',setor:'SAC',codigoRCA:''},
+      'joao.aprovador':{usuario:'joao.aprovador',nome:'João Silva',perfil:'APROVADOR',empresa:'Chiacchio',setor:'Qualidade',codigoRCA:''},
+      'ana.sac':{usuario:'ana.sac',nome:'Ana Lima',perfil:'ANALISTA SAC',empresa:'Grupo Chiacchio',setor:'SAC',codigoRCA:''},
+      'carlos.rca':{usuario:'carlos.rca',nome:'Carlos Silva',perfil:'RCA / REPRESENTANTE',empresa:'Chiacchio',setor:'Comercial',codigoRCA:'RCA-023'},
+      'maria.qualidade':{usuario:'maria.qualidade',nome:'Maria Santos',perfil:'SETOR RESPONSÁVEL',empresa:'Chiacchio',setor:'Qualidade',codigoRCA:''}
+    };
+    const senhas={'luiza':'Chiacchio2026!','joao.aprovador':'Aprovador2026!','ana.sac':'AnaSAC2026!','carlos.rca':'RCA2026!','maria.qualidade':'Qualidade2026!'};
+    if(demos[user] && senhas[user]===pass){
+      sessionStorage.setItem('sac-demo-local','1');
+      sessionStorage.setItem('sac-token','DEMO-LOCAL');
+      sessionStorage.setItem('sac-auth','1');
+      sessionStorage.setItem('sac-user',JSON.stringify({...demos[user],id:'DEMO-'+user}));
+      err.style.display='none';
+      document.getElementById('login-screen').style.display='none';
+      try { await (window.iniciarSessaoV5 ? window.iniciarSessaoV5() : Promise.resolve()); }
+      catch(e) { console.error(e); err.textContent='Modo demonstração carregado. Algumas funções online dependem da API.'; err.style.display='block'; }
+      return;
+    }
+
+    // Usuário real: usa a API normalmente.
     try {
       const r=await fetch(window.SAC_API+'/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({usuario:user,senha:pass})});
       const raw=await r.text();
       let data={};
-      try{ data=raw?JSON.parse(raw):{}; }catch(e){
-        throw new Error(r.status>=500 ? 'A API está retornando erro 500. Publique o backend V5.2 no Vercel e tente novamente.' : 'Resposta inválida da API.');
-      }
+      try{ data=raw?JSON.parse(raw):{}; }catch(e){ throw new Error(`A API respondeu de forma inválida (HTTP ${r.status}).`); }
       if(!r.ok || !data.sucesso) throw new Error(data.erro||'Usuário ou senha incorretos.');
       sessionStorage.setItem('sac-token',data.token);
       sessionStorage.setItem('sac-auth','1');
       sessionStorage.setItem('sac-user',JSON.stringify(data.usuarioInfo));
       document.getElementById('login-screen').style.display='none';
-      setTimeout(()=>window.iniciarSessaoV5&&window.iniciarSessaoV5(),0);
+      await (window.iniciarSessaoV5 ? window.iniciarSessaoV5() : Promise.resolve());
     } catch(e) {
-      const demos={
-        'luiza':{usuario:'luiza',nome:'Luiza',perfil:'MASTER',empresa:'Grupo Chiacchio',setor:'SAC',codigoRCA:''},
-        'joao.aprovador':{usuario:'joao.aprovador',nome:'João Silva',perfil:'APROVADOR',empresa:'Chiacchio',setor:'Qualidade',codigoRCA:''},
-        'ana.sac':{usuario:'ana.sac',nome:'Ana Lima',perfil:'ANALISTA SAC',empresa:'Grupo Chiacchio',setor:'SAC',codigoRCA:''},
-        'carlos.rca':{usuario:'carlos.rca',nome:'Carlos Silva',perfil:'RCA / REPRESENTANTE',empresa:'Chiacchio',setor:'Comercial',codigoRCA:'RCA-023'},
-        'maria.qualidade':{usuario:'maria.qualidade',nome:'Maria Santos',perfil:'SETOR RESPONSÁVEL',empresa:'Chiacchio',setor:'Qualidade',codigoRCA:''}
-      };
-      const senhas={'luiza':'Chiacchio2026!','joao.aprovador':'Aprovador2026!','ana.sac':'AnaSAC2026!','carlos.rca':'RCA2026!','maria.qualidade':'Qualidade2026!'};
-      if(demos[user] && senhas[user]===pass){
-        sessionStorage.setItem('sac-demo-local','1');sessionStorage.setItem('sac-token','DEMO-LOCAL');sessionStorage.setItem('sac-auth','1');sessionStorage.setItem('sac-user',JSON.stringify({...demos[user],id:'DEMO-'+user}));err.style.display='none';document.getElementById('login-screen').style.display='none';setTimeout(()=>window.iniciarSessaoV5&&window.iniciarSessaoV5(),0);return;
-      }
-      err.textContent=e.message; err.style.display='block';
+      err.textContent=e.message||'Não foi possível autenticar.';
+      err.style.display='block';
     }
   }
 </script>
