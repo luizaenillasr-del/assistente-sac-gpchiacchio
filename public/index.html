@@ -3244,5 +3244,410 @@ window.navigate = function(page, el) {
 // Init
 loadVisaoGeral();
 </script>
+
+<script>
+(function(){
+  'use strict';
+
+  // ============================================================
+  // SAC V3 — CORREÇÕES OPERACIONAIS
+  // Não altera o layout existente.
+  // ============================================================
+
+  const RESULTADOS_URL = '/painel-resultados';
+  const REFRESH_MS = 60000;
+
+  function esc(v){
+    return String(v ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+  }
+
+  async function jsonFetch(url, options){
+    const r = await fetch(API + url, options);
+    const text = await r.text();
+    let data;
+    try { data = text ? JSON.parse(text) : {}; } catch { data = { raw:text }; }
+    if(!r.ok) throw new Error(`${r.status} ${r.statusText}: ${String(data.erro || data.error || data.raw || '').slice(0,300)}`);
+    return data;
+  }
+
+  function parseDate(v){
+    if(v === null || v === undefined || v === '') return null;
+    if(v instanceof Date) return isNaN(v) ? null : v;
+    if(typeof v === 'number'){
+      // Excel/Sheets serial date.
+      if(v > 20000 && v < 80000) return new Date((v - 25569) * 86400 * 1000);
+      return null;
+    }
+    const s = String(v).trim();
+    if(!s) return null;
+    const br = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
+    if(br){
+      let y = Number(br[3]); if(y < 100) y += 2000;
+      const d = new Date(y, Number(br[2])-1, Number(br[1]), Number(br[4]||0), Number(br[5]||0), Number(br[6]||0));
+      return isNaN(d) ? null : d;
+    }
+    const d = new Date(s);
+    return isNaN(d) ? null : d;
+  }
+
+  function hoursFromValue(v){
+    if(v === null || v === undefined || v === '') return null;
+    if(typeof v === 'number'){
+      // Valores absurdamente altos não são aceitos como horas.
+      return v > 0 && v <= 10000 ? v : null;
+    }
+    const s = String(v).trim().toLowerCase().replace(',', '.');
+    if(!s) return null;
+    const day = s.match(/([\d.]+)\s*d/); const hour = s.match(/([\d.]+)\s*h/); const min = s.match(/([\d.]+)\s*m/);
+    if(day || hour || min) return (day?Number(day[1])*24:0)+(hour?Number(hour[1]):0)+(min?Number(min[1])/60:0);
+    if(/^\d+(?:\.\d+)?$/.test(s)){ const n=Number(s); return n>0 && n<=10000 ? n : null; }
+    const hm=s.match(/^(\d{1,4}):(\d{2})(?::(\d{2}))?$/);
+    if(hm) return Number(hm[1])+Number(hm[2])/60+Number(hm[3]||0)/3600;
+    return null;
+  }
+
+  function recordHours(x){
+    const startKeys=['DATA_ABERTURA','Data do Registro','DATA_CRIACAO','DATA_REGISTRO','ORIG_DATA_ABERTURA','Data de abertura'];
+    const endKeys=['DATA_FINALIZACAO','DATA_ENCERRAMENTO','DATA_FECHAMENTO','DATA_CONCLUSAO','Data de encerramento','Data de fechamento'];
+    let start=null,end=null;
+    for(const k of startKeys){ if(x[k]!==undefined && (start=parseDate(x[k]))) break; }
+    for(const k of endKeys){ if(x[k]!==undefined && (end=parseDate(x[k]))) break; }
+    if(start && end){
+      const h=(end-start)/3600000;
+      if(h>=0 && h<=10000) return h;
+    }
+    const candidates=['TEMPO_RESOLUCAO_HORAS','Tempo Médio de Atendimento ','Tempo Médio de Atendimento','TEMPO_MEDIO_ATENDIMENTO_HORAS','TEMPO_ATENDIMENTO_HORAS'];
+    for(const k of candidates){ if(x[k]!==undefined){ const h=hoursFromValue(x[k]); if(h!==null) return h; } }
+    return null;
+  }
+
+  function norm(s){ return String(s??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().trim(); }
+  function isClosed(x){ const s=norm(x.STATUS || x.Status || x['Situação Final'] || ''); return /FINALIZ|ENCERR|CONCLUID/.test(s); }
+
+  // ------------------------------------------------------------
+  // VISÃO GERAL — cálculo corrigido
+  // ------------------------------------------------------------
+  const _renderDashboardOriginal = window.renderDashboard;
+
+  window.calcDashboard = function(mans, recs, filtroEmpresa, filtroSetor){
+    let m = Array.isArray(mans) ? [...mans] : [];
+    let r = Array.isArray(recs) ? [...recs] : [];
+
+    if(filtroEmpresa && filtroEmpresa !== 'Todas'){
+      const f=norm(filtroEmpresa);
+      m=m.filter(x=>norm(x.EMPRESA_RECLAMADA||x.EMPRESA_NORMALIZADA||x.EMPRESA_RECLAMANTE).includes(f));
+      r=r.filter(x=>norm(x.Empresa||x.EMPRESA||x.EMPRESA_RECLAMADA).includes(f));
+    }
+    if(filtroSetor && filtroSetor !== 'Todos'){
+      const f=norm(filtroSetor);
+      m=m.filter(x=>norm(x.SETOR_DESTINADO||x.SETOR_CONFIRMADO||x.SETOR_SUGERIDO||x.SETOR).includes(f));
+    }
+
+    const total=m.length+r.length;
+    const encerradas=r.filter(isClosed).length + m.filter(isClosed).length;
+    const emAndamento=m.filter(x=>!isClosed(x) && String(x.STATUS||'').trim()!=='').length;
+
+    const recComSLA=r.filter(x=>x['Dentro do prazo? ']!==undefined || x['Dentro do prazo?']!==undefined || x.DENTRO_DO_SLA!==undefined);
+    const dentroPrazo=recComSLA.filter(x=>/^SIM$|^S$/i.test(String(x['Dentro do prazo? ']??x['Dentro do prazo?']??x.DENTRO_DO_SLA??''))).length;
+    const foraPrazo=recComSLA.filter(x=>/^N(AO|ÃO)$|^N$/i.test(String(x['Dentro do prazo? ']??x['Dentro do prazo?']??x.DENTRO_DO_SLA??''))).length;
+    const slaPercent=recComSLA.length?Math.round(dentroPrazo/recComSLA.length*100):0;
+
+    const tempos=[...r,...m].map(recordHours).filter(v=>v!==null && isFinite(v) && v>=0 && v<=10000);
+    const tempoMedio=tempos.length?Math.round(tempos.reduce((a,b)=>a+b,0)/tempos.length):0;
+
+    const rncs=m.filter(x=>x.ID_RNC || /^SIM$/i.test(String(x.RNC_SUGERIDO||''))).length;
+    const emAberto=m.filter(x=>!isClosed(x)).length + r.filter(x=>!isClosed(x)).length;
+
+    const tipos={'Reclamação':0,'Dúvida':0,'Sugestão':0,'Elogio':0};
+    r.forEach(x=>{
+      const t=norm(x.TIPO||x['Tipo']||x['Motivo da Reclamação']||'');
+      if(t.includes('DÚVIDA')||t.includes('DUVIDA')) tipos['Dúvida']++;
+      else if(t.includes('SUGEST')) tipos['Sugestão']++;
+      else if(t.includes('ELOG')) tipos['Elogio']++;
+      else if(t) tipos['Reclamação']++;
+    });
+    m.forEach(x=>{
+      const t=norm(x.TIPO||x.TIPO_CONFIRMADO||'');
+      if(t.includes('DÚVIDA')||t.includes('DUVIDA')) tipos['Dúvida']++;
+      else if(t.includes('SUGEST')) tipos['Sugestão']++;
+      else if(t.includes('ELOG')) tipos['Elogio']++;
+      else if(t) tipos['Reclamação']++;
+    });
+
+    const motivos={};
+    r.forEach(x=>{const mot=String(x['Motivo da Reclamação']||x.MOTIVO_RELATADO_BRUTO||'').trim();if(mot)motivos[mot]=(motivos[mot]||0)+1;});
+    m.forEach(x=>{const mot=String(x.MOTIVO_RELATADO_BRUTO||x.MOTIVO||x.CAUSA_PROVAVEL||'').trim();if(mot)motivos[mot]=(motivos[mot]||0)+1;});
+
+    const porEmpresa={};
+    r.forEach(x=>{
+      const emp=String(x.Empresa||x.EMPRESA||'Outros').trim()||'Outros';
+      if(!porEmpresa[emp])porEmpresa[emp]={total:0,finaliz:0,sla:0,semSLA:0,foraSLA:0};
+      porEmpresa[emp].total++;
+      if(isClosed(x))porEmpresa[emp].finaliz++;
+      const sv=norm(x['Dentro do prazo? ']??x['Dentro do prazo?']??'');
+      if(sv==='SIM')porEmpresa[emp].sla++; else if(sv==='NAO')porEmpresa[emp].foraSLA++; else porEmpresa[emp].semSLA++;
+    });
+
+    const pendSetor={};
+    m.filter(x=>!isClosed(x)).forEach(x=>{
+      const setor=String(x.SETOR_DESTINADO||x.SETOR_CONFIRMADO||x.SETOR_SUGERIDO||'SAC').trim()||'SAC';
+      pendSetor[setor]=(pendSetor[setor]||0)+1;
+    });
+
+    const agora=new Date(); const semanas=[];
+    for(let i=11;i>=0;i--){const d=new Date(agora);d.setDate(d.getDate()-i*7);semanas.push({label:d.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'}).replace('.',''),count:0,current:i===0});}
+    r.forEach(x=>{
+      const dc=parseDate(x['Data do Registro']||x.DATA_ABERTURA||x.DATA_CRIACAO); if(!dc)return;
+      const diff=Math.floor((agora-dc)/86400000); const idx=11-Math.floor(diff/7); if(idx>=0&&idx<12)semanas[idx].count++;
+    });
+
+    return {total,encerradas,emAndamento,dentroPrazo,foraPrazo,slaPercent,tempoMedio,rncs,emAberto,tipos,motivos,porEmpresa,pendSetor,semanas,empresasSet:[...new Set([...r.map(x=>x.Empresa||x.EMPRESA).filter(Boolean),...m.map(x=>x.EMPRESA_RECLAMADA).filter(Boolean)])],setoresNomes:[],recComSLA};
+  };
+
+  window.renderDashboard = function(data){
+    if(typeof _renderDashboardOriginal === 'function') _renderDashboardOriginal(data);
+    const el=document.getElementById('kpi-tempo-medio');
+    if(el) el.textContent=data.tempoMedio>0 ? `${data.tempoMedio}h` : 'Sem dados';
+    const aberto=document.getElementById('kpi-aberto');
+    if(aberto) aberto.textContent=String(data.emAberto ?? 0);
+  };
+
+  window.loadVisaoGeral = async function(){
+    try{
+      const now=new Date(); const last=document.getElementById('last-update');
+      if(last)last.textContent='Atualizando...';
+      const results=await Promise.allSettled([
+        jsonFetch('/api/manifestacoes'),
+        jsonFetch('/api/reclamacoes')
+      ]);
+      _dashData.mans=results[0].status==='fulfilled'?(results[0].value.itens||[]):[];
+      _dashData.recs=results[1].status==='fulfilled'?(results[1].value.itens||[]):[];
+      if(results[0].status==='rejected')console.error('Manifestacoes:',results[0].reason);
+      if(results[1].status==='rejected')console.error('Reclamacoes:',results[1].reason);
+
+      const empSet=new Set(['Todas']);
+      _dashData.recs.forEach(x=>{if(x.Empresa)empSet.add(x.Empresa);});
+      _dashData.mans.forEach(x=>{if(x.EMPRESA_RECLAMADA)empSet.add(x.EMPRESA_RECLAMADA);});
+      const emp=document.getElementById('filtro-empresa-select');
+      if(emp)emp.innerHTML=[...empSet].map(e=>`<option value="${esc(e)}">${esc(e)}</option>`).join('');
+      const setores=['Todos','SAC','Qualidade','Produção','Logística','Comercial','Financeiro','Faturamento / Expedição'];
+      const sel=document.getElementById('filtro-setor-select'); if(sel)sel.innerHTML=setores.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('');
+
+      renderDashboard(calcDashboard(_dashData.mans,_dashData.recs,_dashFiltroEmpresa,_dashFiltroSetor));
+      if(last)last.textContent='Última atualização: '+now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    }catch(e){
+      console.error('Erro Visão Geral V3',e);
+      const last=document.getElementById('last-update'); if(last)last.textContent='Erro ao atualizar';
+    }
+  };
+
+  // ------------------------------------------------------------
+  // PAINEL DE RESULTADOS
+  // ------------------------------------------------------------
+  window.abrirPainelResultados=function(){
+    window.location.href=RESULTADOS_URL;
+  };
+  document.querySelectorAll('button').forEach(b=>{
+    if((b.textContent||'').trim()==='Painel de Resultados')b.onclick=abrirPainelResultados;
+  });
+
+  // ------------------------------------------------------------
+  // ACOMPANHAMENTO — cards clicáveis + busca ampla
+  // ------------------------------------------------------------
+  const _loadAcompOriginal=window.loadAcompanhamento;
+  window.loadAcompanhamento=async function(){
+    if(typeof _loadAcompOriginal==='function') await _loadAcompOriginal();
+    document.querySelectorAll('#acomp-kanban > div').forEach((col,idx)=>{
+      const labels=['EM ANÁLISE','AGUARDANDO_DECISAO','APROVADA','EM TRATAMENTO','AGUARDANDO_DEVOLUTIVA','ENCERRADA'];
+      const status=labels[idx];
+      col.querySelectorAll('[data-acomp-card]').forEach(el=>el.remove());
+      const items=_acompData.filter(m=>(m.STATUS||'EM ANÁLISE').toUpperCase().replace(/ /g,'_')===status);
+      const container=col.lastElementChild;
+      if(!container)return;
+      container.innerHTML=items.slice(0,20).map(m=>`<div data-acomp-card="1" style="background:white;border:1px solid var(--gray-200);border-radius:8px;padding:10px;cursor:pointer;margin-bottom:6px" onclick="abrirDossieById('${esc(m.ID_MANIFESTACAO)}')"><div style="font-size:12px;font-weight:700">${esc(m.ID_MANIFESTACAO||'—')}</div><div style="font-size:11px;color:var(--gray-500)">${esc(m.EMPRESA_NORMALIZADA||m.EMPRESA_RECLAMANTE||'—')}</div><div style="font-size:11px;color:var(--gray-400)">${esc(m.TIPO||'Reclamação')}</div></div>`).join('');
+    });
+  };
+  window.abrirDossieById=function(id){
+    const m=(_acompData||[]).find(x=>String(x.ID_MANIFESTACAO)===String(id)) || (_dashData.mans||[]).find(x=>String(x.ID_MANIFESTACAO)===String(id));
+    if(m && typeof abrirDossie==='function')abrirDossie(m); else alert('Manifestação não encontrada.');
+  };
+
+  // Busca ampla no Banco de Manifestações.
+  const _filtrarBancoOriginal=window.filtrarBanco;
+  window.filtrarBanco=function(){
+    const q=norm(document.getElementById('banco-search')?.value||'');
+    if(!q){ if(typeof _filtrarBancoOriginal==='function')return _filtrarBancoOriginal(); return; }
+    const fields=['ID_MANIFESTACAO','CLIENTE_NOME','NOME_CLIENTE','CONTATO','CLIENTE','EMPRESA_RECLAMANTE','EMPRESA_RECLAMADA','CNPJ','TELEFONE','EMAIL','PRODUTO','LOTE','NFE','NF','DESCRICAO_RECLAMACAO','MOTIVO_RELATADO_BRUTO','MOTIVO','CAUSA_PROVAVEL','SUBCAUSA','SETOR_DESTINADO','SETOR_CONFIRMADO','SETOR_SUGERIDO','RESPONSAVEL','ID_RNC'];
+    const data=(_dashData.mans||bancoData||[]).filter(x=>fields.some(k=>norm(x[k]).includes(q)));
+    bancoData=data; if(typeof renderBanco==='function')renderBanco();
+  };
+
+  // ------------------------------------------------------------
+  // SUGESTÕES IA — compatibilidade padronizada
+  // ------------------------------------------------------------
+  function compat(s){
+    const n=Number(s?.compatibilidade ?? s?.similaridade ?? s?.score ?? 0);
+    if(!isFinite(n))return 0;
+    return Math.max(0,Math.min(100,Math.round(n>1?n:n*100)));
+  }
+  const _renderizarAnaliseOriginal=window.renderizarAnalise;
+  window.renderizarAnalise=function(a){
+    if(typeof _renderizarAnaliseOriginal==='function')_renderizarAnaliseOriginal(a);
+    const sims=a?.casosSemelhantes||[]; const wrap=document.getElementById('ia-similares');
+    if(!wrap)return;
+    wrap.innerHTML=sims.slice(0,5).map(s=>`<div style="border:1px solid var(--gray-200);border-radius:8px;padding:10px;margin-bottom:6px"><div style="display:flex;justify-content:space-between;gap:8px"><strong>${esc(s.id||s.ID_MANIFESTACAO||'Caso')}</strong><span style="background:var(--red-light);color:var(--red);padding:2px 7px;border-radius:10px;font-weight:700">${compat(s)}% de compatibilidade</span></div><div style="font-size:11px;color:var(--gray-500);margin-top:4px">${esc(s.empresa||s.EMPRESA||'—')} · ${esc(s.motivo||s.TEMA||'—')}</div><div style="font-size:12px;color:var(--gray-700);margin-top:4px">${esc(s.descricao||s.DESCRICAO||'')}</div>${s.tratativa?`<div style="font-size:11px;color:var(--green);margin-top:4px">✓ ${esc(s.tratativa)}</div>`:''}</div>`).join('') || '<div style="color:var(--gray-400);font-size:12px">Nenhum caso semelhante encontrado.</div>';
+  };
+
+  // ------------------------------------------------------------
+  // EDITOR DE SETOR — usa PATCH /api/setores/[id]
+  // ------------------------------------------------------------
+  window.abrirEditorSetor=function(){
+    const s=(_setoresConfig||[]).find(x=>x.SETOR===_setorAtual)||{};
+    abrirEditorGenerico('Editar setor: '+(_setorAtual||''),[
+      ['SETOR','Nome do setor',s.SETOR||_setorAtual,'text',true],
+      ['DESCRICAO','Descrição',s.DESCRICAO||'','textarea'],
+      ['RESPONSAVEL','Responsável',s.RESPONSAVEL||'','text'],
+      ['SUBSTITUTO','Substituto',s.SUBSTITUTO||'','text'],
+      ['EMAIL_RESPONSAVEL','E-mail do responsável',s.EMAIL_RESPONSAVEL||s.EMAIL||'','text'],
+      ['SLA_HORAS','SLA (horas)',s.SLA_HORAS||72,'number'],
+      ['RESPONSABILIDADES','Responsabilidades',s.RESPONSABILIDADES||'','textarea'],
+      ['REGRAS_OPERACIONAIS','Regras e políticas',s.REGRAS_OPERACIONAIS||'','textarea'],
+      ['PROCEDIMENTOS_ORIENTACOES','Procedimentos e orientações',s.PROCEDIMENTOS_ORIENTACOES||'','textarea'],
+      ['ALERTAS','Alertas do setor',s.ALERTAS||'','textarea'],
+      ['ATIVO','Ativo',s.ATIVO||'SIM','select',false,['SIM','NÃO']]
+    ], async values=>{
+      const id=s.ID_SETOR||s.ID||encodeURIComponent(_setorAtual);
+      const res=await jsonFetch('/api/setores/'+encodeURIComponent(id),{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(values)});
+      if(res.sucesso===false)throw new Error(res.erro||'Falha ao salvar setor');
+      fecharEditorGenerico(); await loadSetores(); await abrirFichaSetor(_setorAtual); alert('Setor salvo com sucesso.');
+    });
+  };
+
+  // ------------------------------------------------------------
+  // EDITOR DA MATRIZ — usa GET /api/matriz e PATCH/POST
+  // ------------------------------------------------------------
+  window.loadMatriz=async function(){
+    const body=document.getElementById('matriz-body'); if(body)body.innerHTML='<tr><td colspan="9"><div class="loading"><div class="spinner"></div> Carregando matriz...</div></td></tr>';
+    try{
+      const res=await jsonFetch('/api/matriz'); const regras=res.itens||[];
+      window._matrizData=regras;
+      if(!body)return;
+      body.innerHTML=regras.map((r,i)=>{
+        const tema=r.TEMA||r.tema||r.NOME||r.nome||'—';
+        const principal=r.SETOR_PRINCIPAL||r.principal||r.SETOR||'—';
+        const apoio=r.SETORES_APOIO||r.apoio||'—';
+        const prazo=r.SLA_HORAS||r.PRAZO||r.prazo||'—';
+        const pri=r.PRIORIDADE||r.prioridade||'—';
+        const rnc=r.GERA_RNC||r.rnc||'Não';
+        const aprov=r.APROVACAO||r.aprovacao||'Analista';
+        const follow=r.FOLLOW_UP||r.followup||'—';
+        return `<tr><td style="font-weight:600">${esc(tema)}</td><td>${esc(principal)}</td><td>${esc(apoio)}</td><td>${esc(prazo)}${typeof prazo==='number'?'h':''}</td><td>${esc(pri)}</td><td>${esc(rnc)}</td><td>${esc(aprov)}</td><td>${esc(follow)}</td><td><button class="btn btn-secondary" style="padding:4px 8px;font-size:11px" onclick="editarRegraMatriz(${i})">Editar</button></td></tr>`;
+      }).join('') || '<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--gray-400)">Nenhuma regra cadastrada.</td></tr>';
+    }catch(e){console.error(e);if(body)body.innerHTML='<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--red)">Não foi possível carregar /api/matriz. Verifique a rota no backend.</td></tr>';}
+  };
+
+  window.editarRegraMatriz=function(i){
+    const r=(_matrizData||[])[i]; if(!r)return;
+    abrirEditorGenerico('Editar regra da Matriz',[
+      ['TEMA','Tema',r.TEMA||r.tema||r.NOME||'','text'],
+      ['SETOR_PRINCIPAL','Setor principal',r.SETOR_PRINCIPAL||r.principal||r.SETOR||'','text'],
+      ['SETORES_APOIO','Setores de apoio',r.SETORES_APOIO||r.apoio||'','text'],
+      ['SLA_HORAS','SLA (horas)',r.SLA_HORAS||r.PRAZO||'','number'],
+      ['PRIORIDADE','Prioridade',r.PRIORIDADE||r.prioridade||'Média','select',false,['Baixa','Média','Alta','Crítica']],
+      ['GERA_RNC','Gera RNC',r.GERA_RNC||r.rnc||'Não','select',false,['Sim','Não']],
+      ['APROVACAO','Aprovação',r.APROVACAO||r.aprovacao||'Analista','text'],
+      ['FOLLOW_UP','Follow-up',r.FOLLOW_UP||r.followup||'','text'],
+      ['REGRAS','Regra/critério',r.REGRAS||r.REGRA||'','textarea']
+    ],async values=>{
+      const id=r.ID_MATRIZ||r.ID||r.id;
+      if(!id)throw new Error('A API /api/matriz precisa retornar ID_MATRIZ/ID para permitir edição.');
+      const res=await jsonFetch('/api/matriz/'+encodeURIComponent(id),{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(values)});
+      if(res.sucesso===false)throw new Error(res.erro||'Falha ao salvar regra');
+      fecharEditorGenerico(); await loadMatriz(); alert('Regra salva com sucesso.');
+    });
+  };
+
+  // ------------------------------------------------------------
+  // MODAL EDITOR GENÉRICO
+  // ------------------------------------------------------------
+  window.abrirEditorGenerico=function(titulo,fields,onSave){
+    let modal=document.getElementById('editor-generico');
+    if(!modal){
+      modal=document.createElement('div'); modal.id='editor-generico'; modal.className='modal-overlay';
+      modal.innerHTML='<div class="modal-box" style="max-width:760px"><div class="modal-header"><div><div id="editor-generico-titulo" style="font-size:18px;font-weight:800"></div><div style="font-size:12px;color:var(--gray-400);margin-top:2px">Alterações são gravadas na base da ferramenta</div></div><button class="modal-close" onclick="fecharEditorGenerico()">×</button></div><div class="modal-body"><div id="editor-generico-body"></div><div style="display:flex;justify-content:flex-end;gap:8px;margin-top:18px"><button class="btn btn-secondary" onclick="fecharEditorGenerico()">Cancelar</button><button class="btn btn-primary" id="editor-generico-save">Salvar alterações</button></div></div></div>';
+      document.body.appendChild(modal);
+    }
+    document.getElementById('editor-generico-titulo').textContent=titulo;
+    document.getElementById('editor-generico-body').innerHTML='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'+fields.map(f=>{
+      const [key,label,value,type,readonly,options]=f;
+      if(type==='textarea')return `<label style="grid-column:1/-1"><div class="form-label">${esc(label)}</div><textarea class="form-textarea editor-field" data-key="${esc(key)}" style="min-height:90px">${esc(value)}</textarea></label>`;
+      if(type==='select')return `<label><div class="form-label">${esc(label)}</div><select class="form-input editor-field" data-key="${esc(key)}">${(options||[]).map(o=>`<option ${String(o)===String(value)?'selected':''}>${esc(o)}</option>`).join('')}</select></label>`;
+      return `<label><div class="form-label">${esc(label)}</div><input class="form-input editor-field" data-key="${esc(key)}" type="${type||'text'}" value="${esc(value)}" ${readonly?'readonly':''}></label>`;
+    }).join('')+'</div>';
+    modal.style.display='flex';
+    document.getElementById('editor-generico-save').onclick=async()=>{
+      const btn=document.getElementById('editor-generico-save');btn.disabled=true;btn.textContent='Salvando...';
+      try{const values={};document.querySelectorAll('#editor-generico .editor-field').forEach(el=>values[el.dataset.key]=el.value);await onSave(values);}catch(e){alert('Não foi possível salvar: '+e.message);}finally{btn.disabled=false;btn.textContent='Salvar alterações';}
+    };
+  };
+  window.fecharEditorGenerico=function(){const m=document.getElementById('editor-generico');if(m)m.style.display='none';};
+
+  // Botão de edição no cabeçalho do setor.
+  const _abrirFichaSetorOriginal=window.abrirFichaSetor;
+  window.abrirFichaSetor=async function(nome){
+    await _abrirFichaSetorOriginal(nome);
+    const holder=document.getElementById('setor-detalhe-btn');
+    if(holder && !holder.querySelector('[data-edit-setor]')){
+      const b=document.createElement('button');b.className='btn btn-primary';b.setAttribute('data-edit-setor','1');b.style.marginLeft='8px';b.textContent='Editar setor';b.onclick=abrirEditorSetor;holder.appendChild(b);
+    }
+  };
+
+  // ------------------------------------------------------------
+  // RNC — preparar botão/registro dentro da plataforma
+  // ------------------------------------------------------------
+  window.abrirEditorRNC=function(manifestacao){
+    const m=manifestacao||{};
+    abrirEditorGenerico('Registrar RNC — '+(m.ID_MANIFESTACAO||''),[
+      ['ID_MANIFESTACAO','Manifestação vinculada',m.ID_MANIFESTACAO||'','text',true],
+      ['CAUSA_RAIZ','Causa raiz',m.CAUSA_PROVAVEL||'','textarea'],
+      ['SUBCAUSA','Subcausa',m.SUBCAUSA||'','textarea'],
+      ['ACAO_IMEDIATA','Ação imediata',m.ACAO_IMEDIATA||'','textarea'],
+      ['ACAO_CORRETIVA','Ação corretiva',m.ACAO_CORRETIVA||'','textarea'],
+      ['ACAO_PREVENTIVA','Ação preventiva',m.ACAO_PREVENTIVA||'','textarea'],
+      ['RESPONSAVEL','Responsável',m.RESPONSAVEL||'','text'],
+      ['PRAZO','Prazo',m.PRAZO_RNC||'','text'],
+      ['LOCAL_REGISTRO','Local oficial de registro da RNC',m.LOCAL_REGISTRO_RNC||'','text'],
+      ['STATUS','Status','ABERTA','select',false,['ABERTA','EM TRATAMENTO','VERIFICAÇÃO DE EFICÁCIA','ENCERRADA']]
+    ],async values=>{
+      const res=await jsonFetch('/api/rnc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(values)});
+      if(res.sucesso===false)throw new Error(res.erro||'Falha ao registrar RNC');
+      fecharEditorGenerico(); alert('RNC registrada com sucesso.'); await loadBancoRNC();
+    });
+  };
+
+  // ------------------------------------------------------------
+  // ATUALIZAÇÃO AUTOMÁTICA
+  // ------------------------------------------------------------
+  if(window.__sacRefreshTimer)clearInterval(window.__sacRefreshTimer);
+  window.__sacRefreshTimer=setInterval(()=>{
+    const visao=document.getElementById('page-visao-geral');
+    const acomp=document.getElementById('page-acompanhamento');
+    if(visao?.classList.contains('active'))window.loadVisaoGeral();
+    if(acomp?.classList.contains('active'))window.loadAcompanhamento();
+  },REFRESH_MS);
+
+  // Rebind page loaders depois dos overrides.
+  if(typeof pageLoaders==='object'){
+    pageLoaders['visao-geral']=window.loadVisaoGeral;
+    pageLoaders['acompanhamento']=window.loadAcompanhamento;
+    pageLoaders['setores']=window.loadSetores;
+    pageLoaders['matriz']=window.loadMatriz;
+  }
+
+  // Primeiro carregamento V3.
+  window.loadVisaoGeral();
+})();
+
+</script>
 </body>
 </html>
