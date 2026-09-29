@@ -761,6 +761,21 @@
         </div>
       </div>
 
+      <!-- KPIs Bloco 3 — Pesquisas de Satisfação -->
+      <div style="margin-bottom:8px;font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.06em">Bloco 3 — Satisfação</div>
+      <div class="kpi-grid" style="grid-template-columns:repeat(2,1fr);margin-bottom:16px">
+        <div class="kpi-card">
+          <div class="kpi-label">Pesquisas recebidas no mês</div>
+          <div class="kpi-value" id="kpi-pesquisas-mes">--</div>
+          <div class="kpi-delta" id="kpi-pesquisas-mes-label">carregando...</div>
+        </div>
+        <div class="kpi-card" style="border-color:#FCA5A5">
+          <div class="kpi-label">Viraram reclamação (nota crítica)</div>
+          <div class="kpi-value" id="kpi-pesquisas-rec" style="color:var(--red)">--</div>
+          <div class="kpi-delta" id="kpi-pesquisas-rec-pct">nota ≤ 3 em qualquer critério</div>
+        </div>
+      </div>
+
       <!-- Row 2 -->
       <div class="grid-3" style="margin-bottom:16px">
         <!-- Etapas -->
@@ -4140,10 +4155,23 @@ loadVisaoGeral();
       if(last)last.textContent='Atualizando...';
       const results=await Promise.allSettled([
         jsonFetch('/api/manifestacoes'),
-        jsonFetch('/api/reclamacoes')
+        jsonFetch('/api/reclamacoes'),
+        jsonFetch('/api/pesquisas/resumo')
       ]);
       _dashData.mans=results[0].status==='fulfilled'?(results[0].value.itens||[]):[];
       _dashData.recs=results[1].status==='fulfilled'?(results[1].value.itens||[]):[];
+      // KPIs pesquisas de satisfação
+      if(results[2].status==='fulfilled'){
+        const p=results[2].value;
+        const elMes=document.getElementById('kpi-pesquisas-mes');
+        const elLabel=document.getElementById('kpi-pesquisas-mes-label');
+        const elRec=document.getElementById('kpi-pesquisas-rec');
+        const elPct=document.getElementById('kpi-pesquisas-rec-pct');
+        if(elMes)elMes.textContent=p.totalMes??'--';
+        if(elLabel)elLabel.textContent=p.mes||'este mês';
+        if(elRec)elRec.textContent=p.viramReclamacao??'--';
+        if(elPct&&p.totalMes>0)elPct.textContent=`${Math.round((p.viramReclamacao/p.totalMes)*100)}% do total do mês`;
+      }
       if(results[0].status==='rejected')console.error('Manifestacoes:',results[0].reason);
       if(results[1].status==='rejected')console.error('Reclamacoes:',results[1].reason);
 
