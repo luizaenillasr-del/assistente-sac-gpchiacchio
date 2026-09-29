@@ -1093,8 +1093,11 @@ app.post('/api/procedimentos', requerPerfil('MASTER','ANALISTA SAC'), async (req
   } catch (e) { res.status(500).json({ sucesso: false, erro: e.message }); }
 });
 app.get('/api/matriz', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
-  try { const data = await lerAba('MATRIZ_DECISAO', 500); res.json({ sucesso: true, itens: data }); }
-  catch (e) { res.status(500).json({ sucesso: false, erro: e.message, itens: [] }); }
+  try {
+    await garantirAbaComCabecalhos('MATRIZ_DECISAO', ['ID_MATRIZ','TEMA','SETOR_PRINCIPAL','SETORES_APOIO','SLA_HORAS','PRIORIDADE','GERA_RNC','APROVACAO','FOLLOW_UP','REGRAS']);
+    const data = await lerAba('MATRIZ_DECISAO', 500);
+    res.json({ sucesso: true, itens: data });
+  } catch (e) { res.status(500).json({ sucesso: false, erro: e.message, itens: [] }); }
 });
 app.patch('/api/matriz/:id', requerPerfil('MASTER','ANALISTA SAC'), async (req, res) => {
   try {

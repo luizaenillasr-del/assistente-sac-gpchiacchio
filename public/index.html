@@ -2041,9 +2041,12 @@ function navigate(page, el) {
 function fmtDate(d) {
   if (!d) return '--';
   try {
-    const dt = new Date(d);
+    let dt;
+    if (typeof d === 'number') { dt = new Date((d - 25569) * 86400000); }
+    else { dt = new Date(d); }
+    if (isNaN(dt)) return '--';
     return dt.toLocaleDateString('pt-BR');
-  } catch { return d; }
+  } catch { return '--'; }
 }
 
 function prazoClass(status) {
@@ -3096,7 +3099,7 @@ function renderAcompanhamento(data) {
           <td>${pri ? `<span style="font-size:11px;font-weight:600;padding:2px 7px;border-radius:10px;background:${priBg};color:${priColor}">${pri}</span>` : '—'}</td>
           <td style="font-size:12px">${m.SLA_HORAS ? m.SLA_HORAS + 'h' : '72h'}</td>
           <td style="font-size:12px;color:var(--gray-500)">${m.RESPONSAVEL || 'Ana Lima'}</td>
-          <td><a class="link-abrir" onclick="abrirDossieIdx(_storeRow(m))">Abrir</a></td>
+          <td><a class="link-abrir" onclick="abrirDossieIdx(${_storeRow(m)})">Abrir</a></td>
         </tr>`;
       }).join('')
     : '<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--gray-400)">Nenhuma solicitação encontrada</td></tr>';
@@ -3273,7 +3276,7 @@ function renderBanco() {
           <td><span class="status-badge ${etapaClass(m.STATUS)}">${getEtapaLabel(m.STATUS)}</span></td>
           <td><span class="prazo-badge ${prazoClass2}">${prazoText}</span></td>
           <td>${proc ? `<span class="proc-badge ${proc.toLowerCase().includes('parcial') ? 'parcialmente' : 'procedente'}">${proc}</span>` : '—'}</td>
-          <td><a class="link-abrir" onclick="abrirDossieIdx(_storeRow(m))">Abrir</a></td>
+          <td><a class="link-abrir" onclick="abrirDossieIdx(${_storeRow(m)})">Abrir</a></td>
         </tr>`;
       }).join('')
     : '<tr><td colspan="8" style="text-align:center;color:var(--gray-400);padding:20px">Nenhuma manifestação encontrada</td></tr>';
@@ -3658,7 +3661,7 @@ async function abrirFichaSetor(nomeSetor) {
           <td>${pri ? `<span style="font-size:11px;font-weight:600;padding:2px 6px;border-radius:10px;background:${pri==='Alta'?'#FEE2E2':'#FEF3C7'};color:${priColor}">${pri}</span>` : '—'}</td>
           <td><span style="display:inline-flex;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;background:#EFF6FF;color:#1D4ED8">${st}</span></td>
           <td><span style="font-size:11px;font-weight:600;color:${isAtrasada?'#DC2626':'#065F46'}">${isAtrasada?'⚠ Atrasada':'Em dia'}</span></td>
-          <td><a class="link-abrir" onclick="abrirDossieIdx(_storeRow(m))">Abrir</a></td>
+          <td><a class="link-abrir" onclick="abrirDossieIdx(${_storeRow(m)})">Abrir</a></td>
         </tr>`;
       }).join('')
     : '<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--gray-400)">Nenhuma manifestação encontrada para este setor</td></tr>';
