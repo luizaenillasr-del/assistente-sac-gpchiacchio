@@ -636,10 +636,24 @@
     Setores
   </div>
 
+  <div class="sidebar-section">Inteligência</div>
+  <div class="sidebar-item" onclick="navigate('painel-maquina', this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    Painel da Máquina
+  </div>
+  <div class="sidebar-item" onclick="navigate('sugestoes-melhoria', this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    Sugestões IA
+  </div>
+
   <div class="sidebar-section">Regras</div>
   <div class="sidebar-item" onclick="navigate('matriz', this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>
     Matriz de Tratamento
+  </div>
+  <div class="sidebar-item" onclick="navigate('causas', this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a2 2 0 0 0-2 2v4"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    Causas e Subcausas
   </div>
   <div class="sidebar-item" onclick="navigate('base-conhecimento', this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
@@ -2068,7 +2082,244 @@
       </div>
     </div>
   </div>
+
+  <!-- ===== PAINEL DA MÁQUINA ===== -->
+  <div class="page" id="page-painel-maquina">
+    <div class="topbar">
+      <div class="breadcrumb">Inteligência / <span>Painel da Máquina</span></div>
+      <div class="page-header">
+        <h1 class="page-title">Painel da Máquina</h1>
+        <div class="page-actions">
+          <select id="pm-filtro-empresa" class="form-input" style="width:160px" onchange="loadPainelMaquina()"><option value="">Todas as empresas</option></select>
+          <select id="pm-filtro-setor" class="form-input" style="width:140px" onchange="loadPainelMaquina()"><option value="">Todos os setores</option></select>
+          <button class="btn btn-secondary" onclick="loadPainelMaquina()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            Atualizar
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="content" style="padding:0 28px 28px">
+      <!-- Indicador de sincronização -->
+      <div id="sync-indicator" style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--gray-400);margin-bottom:16px">
+        <div id="sync-dot" style="width:8px;height:8px;border-radius:50%;background:var(--gray-300)"></div>
+        <span id="sync-text">Carregando...</span>
+      </div>
+
+      <!-- KPIs principais -->
+      <div class="kpi-grid" id="pm-kpis" style="margin-bottom:20px">
+        <div class="kpi-card"><div class="kpi-label">Total de Manifestações</div><div class="kpi-value" id="pm-total">--</div></div>
+        <div class="kpi-card highlight"><div class="kpi-label">Assertividade da IA</div><div class="kpi-value" id="pm-assert" style="color:var(--green)">--%</div></div>
+        <div class="kpi-card"><div class="kpi-label">Taxa de Resolução</div><div class="kpi-value" id="pm-resolucao">--%</div></div>
+        <div class="kpi-card"><div class="kpi-label">Análises Avaliadas</div><div class="kpi-value" id="pm-avaliadas">--</div></div>
+        <div class="kpi-card"><div class="kpi-label">Pontuação Média IA</div><div class="kpi-value" id="pm-pontuacao">--</div></div>
+        <div class="kpi-card"><div class="kpi-label">Causas Cadastradas</div><div class="kpi-value" id="pm-causas">--</div></div>
+      </div>
+
+      <!-- SLA Status -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+        <div class="section-card">
+          <div class="section-title">Status SLA (Casos em Aberto)</div>
+          <div id="pm-sla" style="display:flex;gap:12px;margin-top:12px">
+            <div style="flex:1;text-align:center;padding:16px;background:var(--green-light);border-radius:10px">
+              <div style="font-size:28px;font-weight:800;color:var(--green)" id="pm-sla-ok">--</div>
+              <div style="font-size:11px;color:var(--gray-500);margin-top:4px">No prazo</div>
+            </div>
+            <div style="flex:1;text-align:center;padding:16px;background:var(--yellow-light);border-radius:10px">
+              <div style="font-size:28px;font-weight:800;color:var(--yellow)" id="pm-sla-alerta">--</div>
+              <div style="font-size:11px;color:var(--gray-500);margin-top:4px">Em alerta (75%+)</div>
+            </div>
+            <div style="flex:1;text-align:center;padding:16px;background:var(--red-light);border-radius:10px">
+              <div style="font-size:28px;font-weight:800;color:var(--red)" id="pm-sla-vencido">--</div>
+              <div style="font-size:11px;color:var(--gray-500);margin-top:4px">Vencido</div>
+            </div>
+          </div>
+        </div>
+        <div class="section-card">
+          <div class="section-title">Assertividade por Critério</div>
+          <div id="pm-criterios" style="margin-top:12px"></div>
+        </div>
+      </div>
+
+      <!-- Top Setores e Top Causas -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div class="section-card">
+          <div class="section-title">Top Setores Responsáveis</div>
+          <div id="pm-setores" style="margin-top:12px"></div>
+        </div>
+        <div class="section-card">
+          <div class="section-title">Top Causas Identificadas</div>
+          <div id="pm-topCausas" style="margin-top:12px"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== CAUSAS E SUBCAUSAS ===== -->
+  <div class="page" id="page-causas">
+    <div class="topbar">
+      <div class="breadcrumb">Regras / <span>Causas e Subcausas</span></div>
+      <div class="page-header">
+        <h1 class="page-title">Causas e Subcausas</h1>
+        <div class="page-actions">
+          <button class="btn btn-primary" onclick="abrirModalNovaCausa()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Nova Causa
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="content" style="padding:0 28px 28px">
+      <div class="section-card" style="margin-bottom:16px">
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <input id="causas-busca" class="form-input" style="width:200px" placeholder="Buscar causa..." oninput="filtrarCausas()">
+          <select id="causas-filtro-cat" class="form-input" style="width:160px" onchange="filtrarCausas()"><option value="">Todas as categorias</option></select>
+        </div>
+      </div>
+      <div class="section-card">
+        <div id="causas-lista" style="overflow-x:auto">
+          <div style="color:var(--gray-400);text-align:center;padding:40px">Carregando causas...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== SUGESTÕES DE MELHORIA ===== -->
+  <div class="page" id="page-sugestoes-melhoria">
+    <div class="topbar">
+      <div class="breadcrumb">Inteligência / <span>Sugestões de Melhoria</span></div>
+      <div class="page-header">
+        <h1 class="page-title">Sugestões de Melhoria</h1>
+        <div class="page-actions">
+          <select id="sme-filtro-status" class="form-input" style="width:160px" onchange="loadSugestoesMelhoria()">
+            <option value="">Todos os status</option>
+            <option value="PENDENTE">Pendentes</option>
+            <option value="APROVADA">Aprovadas</option>
+            <option value="REJEITADA">Rejeitadas</option>
+            <option value="IMPLEMENTADA">Implementadas</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="content" style="padding:0 28px 28px">
+      <div class="section-card">
+        <div id="sme-lista">
+          <div style="color:var(--gray-400);text-align:center;padding:40px">Carregando sugestões...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </main>
+
+<!-- MODAL NOVA CAUSA -->
+<div id="modal-nova-causa" style="display:none" class="modal-overlay" onclick="if(event.target===this)fecharModalNovaCausa()">
+  <div class="modal-box" style="max-width:520px">
+    <div class="modal-header">
+      <h3 id="modal-causa-titulo">Nova Causa</h3>
+      <button class="modal-close" onclick="fecharModalNovaCausa()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="grid-2" style="gap:14px">
+        <div class="field">
+          <label>Categoria *</label>
+          <select id="nc-categoria" class="form-input">
+            <option value="">Selecione...</option>
+            <option>QUALIDADE</option><option>LOGÍSTICA</option><option>COMERCIAL</option>
+            <option>FINANCEIRO</option><option>ATENDIMENTO</option><option>PRODUTO</option><option>OUTRO</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Tipo</label>
+          <input id="nc-tipo" class="form-input" placeholder="Ex: Produto, Processo...">
+        </div>
+        <div class="field" style="grid-column:1/-1">
+          <label>Causa *</label>
+          <input id="nc-causa" class="form-input" placeholder="Ex: Defeito físico">
+        </div>
+        <div class="field" style="grid-column:1/-1">
+          <label>Subcausa</label>
+          <input id="nc-subcausa" class="form-input" placeholder="Ex: Dimensional, Embalagem...">
+        </div>
+        <div class="field">
+          <label>Setor Responsável</label>
+          <input id="nc-setor" class="form-input" placeholder="Ex: Qualidade">
+        </div>
+        <div class="field">
+          <label>Palavras-chave (separadas por vírgula)</label>
+          <input id="nc-palavras" class="form-input" placeholder="Ex: amassado, quebrado">
+        </div>
+      </div>
+      <div id="nc-feedback" style="display:none;padding:10px;border-radius:8px;font-size:13px;margin-top:10px"></div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;padding:12px 20px;border-top:1px solid var(--gray-100)">
+      <button class="btn btn-secondary" onclick="fecharModalNovaCausa()">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarNovaCausa()">Salvar Causa</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ASSERTIVIDADE -->
+<div id="modal-assertividade" style="display:none" class="modal-overlay" onclick="if(event.target===this)fecharModalAssertividade()">
+  <div class="modal-box" style="max-width:540px">
+    <div class="modal-header">
+      <h3>Avaliação da Assertividade da IA</h3>
+      <button class="modal-close" onclick="fecharModalAssertividade()">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--gray-500);margin-bottom:16px">Avalie a qualidade da análise automática para esta manifestação. Isso ajuda o sistema a aprender.</p>
+      <div id="assert-man-id" style="font-weight:700;margin-bottom:14px;font-size:13px"></div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
+          <input type="checkbox" id="assert-decisao" style="width:16px;height:16px">
+          <span>A <strong>decisão sugerida</strong> pela IA foi aceita / correta</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
+          <input type="checkbox" id="assert-tratativa" style="width:16px;height:16px">
+          <span>A <strong>tratativa sugerida</strong> foi aplicada</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
+          <input type="checkbox" id="assert-devolutiva" style="width:16px;height:16px">
+          <span>A <strong>devolutiva sugerida</strong> foi enviada ao cliente</span>
+        </label>
+        <div class="field">
+          <label>Causa confirmada (o que realmente causou)</label>
+          <input id="assert-causa" class="form-input" placeholder="Causa real confirmada">
+        </div>
+        <div class="field">
+          <label>Subcausa confirmada</label>
+          <input id="assert-subcausa" class="form-input" placeholder="Subcausa específica">
+        </div>
+        <div class="field">
+          <label>Setor correto</label>
+          <input id="assert-setor" class="form-input" placeholder="Setor que tratou o caso">
+        </div>
+        <div class="field">
+          <label>Observação</label>
+          <textarea id="assert-obs" class="form-input" rows="2" placeholder="Opcional: comente sobre a qualidade da análise..."></textarea>
+        </div>
+      </div>
+      <div id="assert-feedback" style="display:none;padding:10px;border-radius:8px;font-size:13px;margin-top:10px"></div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;padding:12px 20px;border-top:1px solid var(--gray-100)">
+      <button class="btn btn-secondary" onclick="fecharModalAssertividade()">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarAssertividade()">Registrar Avaliação</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CONTEXTO DO CLIENTE -->
+<div id="modal-cliente-ctx" style="display:none" class="modal-overlay" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal-box" style="max-width:700px;max-height:80vh;overflow-y:auto">
+    <div class="modal-header">
+      <h3 id="ctx-titulo">Histórico do Cliente</h3>
+      <button class="modal-close" onclick="document.getElementById('modal-cliente-ctx').style.display='none'">✕</button>
+    </div>
+    <div class="modal-body" id="ctx-conteudo">
+      <div style="text-align:center;color:var(--gray-400);padding:30px">Carregando...</div>
+    </div>
+  </div>
+</div>
 
 <script>
 const API = window.SAC_API || 'https://assistente-sac-gpchiacchio.vercel.app';
@@ -4032,6 +4283,9 @@ const pageLoaders = {
   'setores': loadSetores,
   'matriz': loadMatriz,
   'base-conhecimento': loadBaseConhecimento,
+  'painel-maquina': loadPainelMaquina,
+  'causas': loadCausas,
+  'sugestoes-melhoria': loadSugestoesMelhoria,
 };
 
 const originalNavigate = navigate;
@@ -7338,6 +7592,414 @@ console.log('[base-conhecimento-setores] carregado');
     doc.save(`Ficha_${item.ID_MANIFESTACAO || 'MAN'}.pdf`);
   };
 })();
+</script>
+
+
+<script>
+// ============================================================
+// MÁQUINA OPERACIONAL SAC — Painel, Causas, Assertividade
+// ============================================================
+
+// ── Painel da Máquina ──────────────────────────────────────
+let _pmUltimaSync = null;
+
+async function loadPainelMaquina() {
+  try {
+    atualizarSyncIndicator('carregando');
+    const empresa = document.getElementById('pm-filtro-empresa')?.value || '';
+    const setor = document.getElementById('pm-filtro-setor')?.value || '';
+    let url = (window.SAC_API||'') + '/api/painel-maquina';
+    const params = [];
+    if (empresa) params.push('empresa='+encodeURIComponent(empresa));
+    if (setor) params.push('setor='+encodeURIComponent(setor));
+    if (params.length) url += '?' + params.join('&');
+
+    const res = await _apiFetch('/api/painel-maquina' + (params.length ? '?' + params.join('&') : ''), 15000);
+    if (!res.sucesso) throw new Error(res.erro);
+
+    const m = res.metricas;
+    document.getElementById('pm-total').textContent = m.totalManifestacoes ?? '--';
+    document.getElementById('pm-assert').textContent = (m.assertPercent ?? '--') + '%';
+    document.getElementById('pm-assert').style.color = m.assertPercent >= 70 ? 'var(--green)' : m.assertPercent >= 40 ? 'var(--yellow)' : 'var(--red)';
+    document.getElementById('pm-resolucao').textContent = (m.taxaResolucao ?? '--') + '%';
+    document.getElementById('pm-avaliadas').textContent = m.totalAvaliados ?? '--';
+    document.getElementById('pm-pontuacao').textContent = m.pontuacaoMedia ? m.pontuacaoMedia + '/100' : '--';
+    document.getElementById('pm-causas').textContent = res.totalCausasCadastradas ?? '--';
+
+    // SLA
+    document.getElementById('pm-sla-ok').textContent = res.sla?.ok ?? 0;
+    document.getElementById('pm-sla-alerta').textContent = res.sla?.alerta ?? 0;
+    document.getElementById('pm-sla-vencido').textContent = res.sla?.vencido ?? 0;
+
+    // Critérios
+    const crit = document.getElementById('pm-criterios');
+    if (crit) {
+      const total = m.totalAvaliados || 1;
+      const crits = [
+        {label:'Decisão aceita', v: Math.round((m.totalAceitos||0)/total*100)},
+        {label:'Taxa de resolução', v: m.taxaResolucao||0},
+        {label:'Pontuação média', v: m.pontuacaoMedia||0},
+      ];
+      crit.innerHTML = crits.map(c=>`
+        <div style="margin-bottom:10px">
+          <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+            <span>${c.label}</span><strong>${c.v}%</strong>
+          </div>
+          <div style="height:6px;background:var(--gray-200);border-radius:3px">
+            <div style="height:6px;background:${c.v>=70?'var(--green)':c.v>=40?'var(--yellow)':'var(--red)'};border-radius:3px;width:${Math.min(c.v,100)}%"></div>
+          </div>
+        </div>`).join('');
+    }
+
+    // Top setores
+    const setDiv = document.getElementById('pm-setores');
+    if (setDiv && res.topSetores) {
+      const maxV = res.topSetores[0]?.total || 1;
+      setDiv.innerHTML = res.topSetores.length ? res.topSetores.map(s=>`
+        <div style="margin-bottom:8px">
+          <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
+            <span>${s.setor}</span><strong>${s.total}</strong>
+          </div>
+          <div style="height:5px;background:var(--gray-200);border-radius:3px">
+            <div style="height:5px;background:var(--red);border-radius:3px;width:${Math.round(s.total/maxV*100)}%"></div>
+          </div>
+        </div>`).join('') : '<div style="color:var(--gray-400);font-size:12px">Nenhum dado.</div>';
+    }
+
+    // Top causas
+    const causDiv = document.getElementById('pm-topCausas');
+    if (causDiv && res.topCausas) {
+      const maxC = res.topCausas[0]?.total || 1;
+      causDiv.innerHTML = res.topCausas.length ? res.topCausas.map(c=>`
+        <div style="margin-bottom:8px">
+          <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
+            <span style="max-width:70%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${c.causa}</span><strong>${c.total}</strong>
+          </div>
+          <div style="height:5px;background:var(--gray-200);border-radius:3px">
+            <div style="height:5px;background:var(--orange);border-radius:3px;width:${Math.round(c.total/maxC*100)}%"></div>
+          </div>
+        </div>`).join('') : '<div style="color:var(--gray-400);font-size:12px">Nenhuma causa classificada.</div>';
+    }
+
+    _pmUltimaSync = new Date();
+    atualizarSyncIndicator('ok');
+  } catch(e) {
+    console.error('Erro Painel da Máquina:', e);
+    atualizarSyncIndicator('erro');
+  }
+}
+
+function atualizarSyncIndicator(status) {
+  const dot = document.getElementById('sync-dot');
+  const txt = document.getElementById('sync-text');
+  if (!dot || !txt) return;
+  const agora = new Date().toLocaleTimeString('pt-BR');
+  if (status === 'ok') {
+    dot.style.background = 'var(--green)';
+    txt.textContent = `Última sincronização: ${agora} — SINCRONIZADO`;
+  } else if (status === 'carregando') {
+    dot.style.background = 'var(--yellow)';
+    txt.textContent = 'Sincronizando...';
+  } else {
+    dot.style.background = 'var(--red)';
+    txt.textContent = `Erro na sincronização às ${agora}`;
+  }
+}
+
+// ── Causas ─────────────────────────────────────────────────
+let _causasData = [];
+
+async function loadCausas() {
+  try {
+    const res = await _apiFetch('/api/causas', 10000);
+    _causasData = res.itens || [];
+    renderizarCausas(_causasData);
+
+    // Preencher filtro de categoria
+    const cats = [...new Set(_causasData.map(c=>c.CATEGORIA).filter(Boolean))];
+    const sel = document.getElementById('causas-filtro-cat');
+    if (sel) {
+      const atual = sel.value;
+      sel.innerHTML = '<option value="">Todas as categorias</option>' + cats.map(c=>`<option ${c===atual?'selected':''}>${c}</option>`).join('');
+    }
+  } catch(e) {
+    const el = document.getElementById('causas-lista');
+    if (el) el.innerHTML = `<div style="color:var(--red);padding:20px">Erro ao carregar causas: ${e.message}</div>`;
+  }
+}
+
+function filtrarCausas() {
+  const busca = (document.getElementById('causas-busca')?.value || '').toLowerCase();
+  const cat = (document.getElementById('causas-filtro-cat')?.value || '').toLowerCase();
+  const filtradas = _causasData.filter(c =>
+    (!cat || (c.CATEGORIA||'').toLowerCase() === cat) &&
+    (!busca || (c.CAUSA||'').toLowerCase().includes(busca) || (c.SUBCAUSA||'').toLowerCase().includes(busca) || (c.PALAVRAS_CHAVE||'').toLowerCase().includes(busca))
+  );
+  renderizarCausas(filtradas);
+}
+
+function renderizarCausas(causas) {
+  const el = document.getElementById('causas-lista');
+  if (!el) return;
+  if (!causas.length) { el.innerHTML = '<div style="color:var(--gray-400);text-align:center;padding:40px">Nenhuma causa encontrada. Clique em "Nova Causa" para adicionar.</div>'; return; }
+  el.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:13px">
+    <thead><tr style="border-bottom:2px solid var(--gray-200)">
+      <th style="text-align:left;padding:8px 10px;color:var(--gray-500);font-size:11px;font-weight:600">CATEGORIA</th>
+      <th style="text-align:left;padding:8px 10px;color:var(--gray-500);font-size:11px;font-weight:600">CAUSA</th>
+      <th style="text-align:left;padding:8px 10px;color:var(--gray-500);font-size:11px;font-weight:600">SUBCAUSA</th>
+      <th style="text-align:left;padding:8px 10px;color:var(--gray-500);font-size:11px;font-weight:600">SETOR</th>
+      <th style="text-align:left;padding:8px 10px;color:var(--gray-500);font-size:11px;font-weight:600">PALAVRAS-CHAVE</th>
+      <th style="text-align:left;padding:8px 10px;color:var(--gray-500);font-size:11px;font-weight:600">STATUS</th>
+    </tr></thead>
+    <tbody>${causas.map(c=>`
+      <tr style="border-bottom:1px solid var(--gray-100);cursor:default" title="${c.ID_CAUSA||''}">
+        <td style="padding:8px 10px"><span style="background:var(--red-light);color:var(--red);padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600">${c.CATEGORIA||'—'}</span></td>
+        <td style="padding:8px 10px;font-weight:600">${c.CAUSA||'—'}</td>
+        <td style="padding:8px 10px;color:var(--gray-600)">${c.SUBCAUSA||'—'}</td>
+        <td style="padding:8px 10px">${c.SETOR_RESPONSAVEL||'—'}</td>
+        <td style="padding:8px 10px;color:var(--gray-500);font-size:11px">${c.PALAVRAS_CHAVE||'—'}</td>
+        <td style="padding:8px 10px"><span style="background:${c.ATIVO==='NAO'?'var(--gray-100)':'var(--green-light)'};color:${c.ATIVO==='NAO'?'var(--gray-500)':'var(--green)'};padding:2px 8px;border-radius:12px;font-size:11px">${c.ATIVO==='NAO'?'Inativo':'Ativo'}</span></td>
+      </tr>`).join('')}
+    </tbody></table>`;
+}
+
+function abrirModalNovaCausa() {
+  document.getElementById('nc-categoria').value = '';
+  document.getElementById('nc-tipo').value = '';
+  document.getElementById('nc-causa').value = '';
+  document.getElementById('nc-subcausa').value = '';
+  document.getElementById('nc-setor').value = '';
+  document.getElementById('nc-palavras').value = '';
+  const fb = document.getElementById('nc-feedback'); if (fb) fb.style.display = 'none';
+  document.getElementById('modal-nova-causa').style.display = 'flex';
+}
+function fecharModalNovaCausa() { document.getElementById('modal-nova-causa').style.display = 'none'; }
+
+async function salvarNovaCausa() {
+  const fb = document.getElementById('nc-feedback');
+  const categoria = document.getElementById('nc-categoria').value.trim();
+  const causa = document.getElementById('nc-causa').value.trim();
+  if (!categoria || !causa) {
+    fb.style.display = 'block'; fb.style.background = 'var(--red-light)'; fb.style.color = 'var(--red)';
+    fb.textContent = 'Categoria e Causa são obrigatórios.'; return;
+  }
+  try {
+    fb.style.display = 'block'; fb.style.background = 'var(--yellow-light)'; fb.style.color = '#92400E'; fb.textContent = 'Salvando...';
+    const res = await _apiFetch('/api/causas', 10000, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      categoria, tipo: document.getElementById('nc-tipo').value.trim(),
+      causa, subcausa: document.getElementById('nc-subcausa').value.trim(),
+      setorResponsavel: document.getElementById('nc-setor').value.trim(),
+      palavrasChave: document.getElementById('nc-palavras').value.trim(),
+    })});
+    if (!res.sucesso) throw new Error(res.erro);
+    fb.style.background = 'var(--green-light)'; fb.style.color = 'var(--green)'; fb.textContent = `Causa ${res.id} criada com sucesso!`;
+    await loadCausas();
+    setTimeout(fecharModalNovaCausa, 1500);
+  } catch(e) {
+    fb.style.background = 'var(--red-light)'; fb.style.color = 'var(--red)'; fb.textContent = 'Erro: ' + e.message;
+  }
+}
+
+// ── Assertividade ──────────────────────────────────────────
+let _assertManId = null;
+
+function abrirModalAssertividade(idManifestacao) {
+  _assertManId = idManifestacao;
+  document.getElementById('assert-man-id').textContent = 'Manifestação: ' + idManifestacao;
+  ['assert-decisao','assert-tratativa','assert-devolutiva'].forEach(id => { const el = document.getElementById(id); if(el) el.checked = false; });
+  ['assert-causa','assert-subcausa','assert-setor','assert-obs'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+  const fb = document.getElementById('assert-feedback'); if (fb) fb.style.display = 'none';
+  document.getElementById('modal-assertividade').style.display = 'flex';
+}
+function fecharModalAssertividade() { document.getElementById('modal-assertividade').style.display = 'none'; _assertManId = null; }
+
+async function salvarAssertividade() {
+  if (!_assertManId) return;
+  const fb = document.getElementById('assert-feedback');
+  try {
+    fb.style.display = 'block'; fb.style.background = 'var(--yellow-light)'; fb.style.color = '#92400E'; fb.textContent = 'Registrando avaliação...';
+    const res = await _apiFetch('/api/assertividade-ia', 10000, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      idManifestacao: _assertManId,
+      decisaoAceita: document.getElementById('assert-decisao')?.checked,
+      tratativaAceita: document.getElementById('assert-tratativa')?.checked,
+      devolutivaAceita: document.getElementById('assert-devolutiva')?.checked,
+      causaConfirmada: document.getElementById('assert-causa')?.value.trim(),
+      subcausaConfirmada: document.getElementById('assert-subcausa')?.value.trim(),
+      setorConfirmado: document.getElementById('assert-setor')?.value.trim(),
+      observacao: document.getElementById('assert-obs')?.value.trim(),
+    })});
+    if (!res.sucesso) throw new Error(res.erro);
+    fb.style.background = 'var(--green-light)'; fb.style.color = 'var(--green)';
+    fb.textContent = `Avaliação registrada! Pontuação: ${res.pontuacao}/100`;
+    setTimeout(fecharModalAssertividade, 2000);
+  } catch(e) {
+    fb.style.background = 'var(--red-light)'; fb.style.color = 'var(--red)'; fb.textContent = 'Erro: ' + e.message;
+  }
+}
+
+// ── Sugestões de Melhoria ──────────────────────────────────
+async function loadSugestoesMelhoria() {
+  const lista = document.getElementById('sme-lista');
+  if (lista) lista.innerHTML = '<div style="color:var(--gray-400);text-align:center;padding:30px">Carregando...</div>';
+  try {
+    const status = document.getElementById('sme-filtro-status')?.value || '';
+    const res = await _apiFetch('/api/sugestoes-melhoria' + (status ? '?status=' + encodeURIComponent(status) : ''), 10000);
+    const itens = res.itens || [];
+    if (!lista) return;
+    if (!itens.length) { lista.innerHTML = '<div style="color:var(--gray-400);text-align:center;padding:40px">Nenhuma sugestão encontrada.</div>'; return; }
+    const corStatus = {PENDENTE:'#FEF3C7,#92400E',APROVADA:'#D1FAE5,#065F46',REJEITADA:'#FEE2E2,#DC2626',IMPLEMENTADA:'#EDE9FE,#5B21B6'};
+    lista.innerHTML = `<div style="display:flex;flex-direction:column;gap:12px">${itens.map(s=>{
+      const [bg,fg] = (corStatus[s.STATUS||'PENDENTE']||'#F3F4F6,#374151').split(',');
+      return `<div style="background:white;border:1px solid var(--gray-200);border-radius:10px;padding:14px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+          <div>
+            <span style="background:${bg};color:${fg};padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;margin-right:8px">${s.STATUS||'PENDENTE'}</span>
+            <span style="background:var(--gray-100);color:var(--gray-600);padding:2px 8px;border-radius:12px;font-size:11px">${s.TIPO||'PROCESSO'}</span>
+            ${s.PRIORIDADE==='ALTA'?'<span style="background:var(--red-light);color:var(--red);padding:2px 8px;border-radius:12px;font-size:11px;margin-left:6px">⚡ Alta</span>':''}
+          </div>
+          <span style="font-size:11px;color:var(--gray-400)">${s.DATA_CRIACAO?new Date(s.DATA_CRIACAO).toLocaleDateString('pt-BR'):''}</span>
+        </div>
+        <div style="font-weight:700;font-size:14px;margin-bottom:4px">${s.TITULO||'—'}</div>
+        <div style="font-size:12px;color:var(--gray-600);margin-bottom:6px">${s.DESCRICAO||''}</div>
+        ${s.SETOR?`<div style="font-size:11px;color:var(--gray-400)">Setor: ${s.SETOR}</div>`:''}
+        ${s.ID_MANIFESTACAO?`<div style="font-size:11px;color:var(--gray-400)">Manifestação: ${s.ID_MANIFESTACAO}</div>`:''}
+        ${s.RESULTADO?`<div style="margin-top:8px;font-size:12px;color:var(--green)">✓ ${s.RESULTADO}</div>`:''}
+      </div>`;
+    }).join('')}</div>`;
+  } catch(e) {
+    if (lista) lista.innerHTML = `<div style="color:var(--red);padding:20px">Erro: ${e.message}</div>`;
+  }
+}
+
+// ── Contexto do Cliente ────────────────────────────────────
+async function abrirContextoCliente(cliente, empresa) {
+  document.getElementById('ctx-titulo').textContent = `Histórico: ${cliente}`;
+  document.getElementById('ctx-conteudo').innerHTML = '<div style="text-align:center;color:var(--gray-400);padding:30px">Carregando...</div>';
+  document.getElementById('modal-cliente-ctx').style.display = 'flex';
+  try {
+    let url = '/api/cliente-contexto?cliente=' + encodeURIComponent(cliente);
+    if (empresa) url += '&empresa=' + encodeURIComponent(empresa);
+    const res = await _apiFetch(url, 12000);
+    const casos = res.casos || [];
+    const causasRec = res.causasRecorrentes || [];
+    const produtos = res.produtos || [];
+    document.getElementById('ctx-conteudo').innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px">
+        <div style="text-align:center;padding:12px;background:var(--gray-50);border-radius:8px">
+          <div style="font-size:28px;font-weight:800;color:var(--red)">${res.totalCasos||0}</div>
+          <div style="font-size:11px;color:var(--gray-500)">Total de casos</div>
+        </div>
+        <div style="text-align:center;padding:12px;background:var(--gray-50);border-radius:8px">
+          <div style="font-size:28px;font-weight:800;color:var(--orange)">${causasRec.length}</div>
+          <div style="font-size:11px;color:var(--gray-500)">Causas recorrentes</div>
+        </div>
+        <div style="text-align:center;padding:12px;background:var(--gray-50);border-radius:8px">
+          <div style="font-size:28px;font-weight:800;color:var(--gray-700)">${produtos.length}</div>
+          <div style="font-size:11px;color:var(--gray-500)">Produtos envolvidos</div>
+        </div>
+      </div>
+      ${causasRec.length ? `<div style="margin-bottom:14px"><div style="font-size:12px;font-weight:700;color:var(--gray-700);margin-bottom:8px">Causas Recorrentes</div>
+        ${causasRec.map(c=>`<div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:1px solid var(--gray-100)"><span>${c.causa}</span><strong style="color:var(--red)">${c.ocorrencias}x</strong></div>`).join('')}</div>`:''}
+      <div style="font-size:12px;font-weight:700;color:var(--gray-700);margin-bottom:8px">Últimos ${casos.length} caso(s)</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${casos.map(c=>`<div style="background:var(--gray-50);border-radius:8px;padding:10px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+            <strong style="font-size:12px">${c.id||'—'}</strong>
+            <span style="font-size:11px;color:var(--gray-400)">${c.data?new Date(c.data).toLocaleDateString('pt-BR'):''}</span>
+          </div>
+          <div style="font-size:12px;color:var(--gray-600)">${c.descricao||'—'}</div>
+          ${c.causa?`<div style="font-size:11px;color:var(--gray-400);margin-top:3px">Causa: ${c.causa}</div>`:''}
+        </div>`).join('')}
+      </div>`;
+  } catch(e) {
+    document.getElementById('ctx-conteudo').innerHTML = `<div style="color:var(--red);padding:20px">Erro: ${e.message}</div>`;
+  }
+}
+
+// ── Melhorar abrirDossie com botão de assertividade e contexto ─
+(function() {
+  const _origAbrirDossie = window.abrirDossie;
+  if (typeof _origAbrirDossie !== 'function') return;
+  window.abrirDossie = function(item) {
+    _origAbrirDossie(item);
+    // Injetar botões extras no modal após abertura
+    setTimeout(()=>{
+      const headerEl = document.getElementById('modal-subtitulo');
+      if (!headerEl) return;
+
+      // Adicionar botões de assertividade e contexto cliente se não existirem
+      const idBtnsExtra = 'modal-btns-extra';
+      let btns = document.getElementById(idBtnsExtra);
+      if (!btns) {
+        btns = document.createElement('div');
+        btns.id = idBtnsExtra;
+        btns.style.cssText = 'display:flex;gap:8px;margin-top:10px;flex-wrap:wrap';
+        headerEl.parentNode.insertBefore(btns, headerEl.nextSibling);
+      }
+
+      const isMan = !!item.ID_MANIFESTACAO;
+      if (!isMan) { btns.innerHTML = ''; return; }
+
+      const statusUp = (item.STATUS||'').toUpperCase();
+      const encerrada = ['ENCERRADA','FINALIZADA','CONCLUÍDA','CONCLUIDA'].includes(statusUp);
+      const cliente = item.CONTATO || item.EMPRESA_RECLAMANTE || '';
+      const empresa = item.EMPRESA_RECLAMADA || '';
+
+      btns.innerHTML = `
+        ${encerrada ? `<button class="btn btn-ghost" style="font-size:11px;padding:5px 10px" onclick="abrirModalAssertividade('${item.ID_MANIFESTACAO}')">
+          ⭐ Avaliar IA
+        </button>` : ''}
+        ${cliente ? `<button class="btn btn-secondary" style="font-size:11px;padding:5px 10px" onclick="abrirContextoCliente('${cliente.replace(/'/g,"\\'")}','${empresa.replace(/'/g,"\\'")}')">
+          👤 Histórico do cliente
+        </button>` : ''}
+        <button class="btn btn-secondary" style="font-size:11px;padding:5px 10px" onclick="gerarSugestaoMelhoriaAuto('${item.ID_MANIFESTACAO}')">
+          💡 Sugerir melhoria
+        </button>`;
+
+      // Enriquecer timeline com logs reais
+      carregarTimelineReal(item.ID_MANIFESTACAO);
+    }, 100);
+  };
+})();
+
+async function carregarTimelineReal(idManifestacao) {
+  try {
+    const res = await _apiFetch('/api/log-sistema?id=' + encodeURIComponent(idManifestacao), 8000);
+    const logs = (res.itens || []).filter(l=>String(l.ID_MANIFESTACAO||l.ENTIDADE||'').includes(idManifestacao));
+    if (!logs.length) return;
+    const histEl = document.getElementById('modal-historico-timeline');
+    if (!histEl) return;
+    // Append real log entries
+    const extra = logs.slice(0,10).map(l=>`
+      <div class="timeline-item">
+        <div class="timeline-dot" style="background:var(--gray-400)"></div>
+        <div class="timeline-content">
+          <div class="timeline-label">${l.ACAO||l.EVENTO||'Atualização'}</div>
+          <div class="timeline-meta">${l.DATA_HORA?new Date(l.DATA_HORA).toLocaleString('pt-BR'):''} · ${l.USUARIO||l.USUARIO_ACAO||''}</div>
+        </div>
+      </div>`).join('');
+    histEl.innerHTML += extra;
+  } catch(e) { /* silencioso */ }
+}
+
+async function gerarSugestaoMelhoriaAuto(idManifestacao) {
+  try {
+    const man = await _apiFetch('/api/manifestacoes/' + encodeURIComponent(idManifestacao), 8000);
+    const m = man.manifestacao || man;
+    if (!m) return;
+    const titulo = `Melhoria baseada em caso ${idManifestacao}`;
+    const causa = m.CAUSA_RAIZ || m.CAUSA_CONFIRMADA || m.CAUSA || 'Não identificada';
+    const descricao = `Com base na manifestação ${idManifestacao} (${m.EMPRESA_RECLAMADA||''}): causa "${causa}". Recomenda-se revisar o processo para evitar recorrência.`;
+    const res = await _apiFetch('/api/sugestoes-melhoria', 8000, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      idManifestacao, tipo:'PROCESSO', titulo, descricao, setor: m.SETOR_RESPONSAVEL||'', prioridade:'MEDIA'
+    })});
+    if (res.sucesso) alert(`Sugestão de melhoria ${res.id} criada com sucesso!`);
+  } catch(e) { alert('Erro ao criar sugestão: ' + e.message); }
+}
+
+// ── Adicionar LOG_SISTEMA endpoint helper ──────────────────
+// (O endpoint /api/log-sistema já existe no backend)
+
 </script>
 
 </body>
