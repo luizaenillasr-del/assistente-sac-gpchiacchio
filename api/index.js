@@ -1093,8 +1093,11 @@ app.post('/api/procedimentos', requerPerfil('MASTER','ANALISTA SAC'), async (req
   } catch (e) { res.status(500).json({ sucesso: false, erro: e.message }); }
 });
 app.get('/api/matriz', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
-  try { const data = await lerAba('MATRIZ_DECISAO', 500); res.json({ sucesso: true, itens: data }); }
-  catch (e) { res.status(500).json({ sucesso: false, erro: e.message, itens: [] }); }
+  try {
+    await garantirAbaComCabecalhos('MATRIZ_DECISAO', ['ID_MATRIZ','TEMA','SETOR_PRINCIPAL','SETORES_APOIO','SLA_HORAS','PRIORIDADE','GERA_RNC','APROVACAO','FOLLOW_UP','REGRAS']);
+    const data = await lerAba('MATRIZ_DECISAO', 500);
+    res.json({ sucesso: true, itens: data });
+  } catch (e) { res.status(500).json({ sucesso: false, erro: e.message, itens: [] }); }
 });
 app.patch('/api/matriz/:id', requerPerfil('MASTER','ANALISTA SAC'), async (req, res) => {
   try {
@@ -1105,6 +1108,59 @@ app.patch('/api/matriz/:id', requerPerfil('MASTER','ANALISTA SAC'), async (req, 
     res.json({ sucesso: true, linha: reg.linha });
   } catch (e) { res.status(500).json({ sucesso: false, erro: e.message }); }
 });
+// ===== PESQUISAS DE SATISFAÇÃO (planilha externa, somente leitura) =====
+app.get('/api/pesquisas/resumo', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
+  try {
+    const pesquisaId = process.env.PESQUISA_SPREADSHEET_ID || '1h0NroiziE1z52mKIFQFYTltKqcG20mScPfIgGuk1gV4';
+    const pesquisaAba = process.env.PESQUISA_ABA || 'Respostas ao formulário 1';
+    const sheets = await getSheets();
+    const result = await sheets.spreadsheets.values.get({
+      spreadsheetId: pesquisaId,
+      range: pesquisaAba,
+      valueRenderOption: 'FORMATTED_VALUE',
+    });
+    const rows = result.data.values || [];
+    if (rows.length < 2) return res.json({ sucesso: true, totalMes: 0, viramReclamacao: 0 });
+    const headers = rows[0];
+    const dados = rows.slice(1).map(row => {
+      const obj = {};
+      headers.forEach((h, i) => { if (h) obj[h] = row[i] || ''; });
+      return obj;
+    });
+
+    // Detecta coluna de data (primeira coluna com "data" ou "timestamp" no nome)
+    const colunaData = headers.find(h => /data|timestamp|carimbo|hora/i.test(h)) || headers[0];
+    const agora = new Date();
+    const mesAtual = agora.getMonth();
+    const anoAtual = agora.getFullYear();
+
+    const doMes = dados.filter(r => {
+      const raw = r[colunaData];
+      if (!raw) return false;
+      // Suporta DD/MM/YYYY HH:MM:SS ou ISO
+      const partes = raw.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+      let d;
+      if (partes) { d = new Date(+partes[3], +partes[2] - 1, +partes[1]); }
+      else { d = new Date(raw); }
+      return !isNaN(d) && d.getMonth() === mesAtual && d.getFullYear() === anoAtual;
+    });
+
+    // Conta viram reclamação: qualquer coluna numérica com nota <= 3
+    const colunasNota = headers.filter(h => !/data|timestamp|carimbo|hora|nome|email|cpf|cnpj|observ|coment/i.test(h) && h !== colunaData);
+    const NOTA_CRITICA = Number(process.env.PESQUISA_NOTA_CRITICA || 6);
+    const viramReclamacao = doMes.filter(r =>
+      colunasNota.some(col => {
+        const v = Number(String(r[col]).replace(',', '.'));
+        return !isNaN(v) && v > 0 && v <= NOTA_CRITICA;
+      })
+    ).length;
+
+    res.json({ sucesso: true, totalMes: doMes.length, viramReclamacao, mes: agora.toLocaleString('pt-BR', { month: 'long', year: 'numeric' }) });
+  } catch (e) {
+    res.status(500).json({ sucesso: false, erro: e.message, totalMes: 0, viramReclamacao: 0 });
+  }
+});
+
 app.get('/api/tipos', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
   try { const data=await lerAba('TIPOS_RECLAMACAO',200); res.json({sucesso:true,total:data.length,itens:data}); }
   catch (e) { res.status(500).json({sucesso:false,erro:e.message,dados:[]}); }

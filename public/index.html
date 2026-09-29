@@ -476,7 +476,13 @@
         <div style="font-size:18px;font-weight:800" id="modal-titulo">Manifestação</div>
         <div style="font-size:12px;color:var(--gray-400);margin-top:2px" id="modal-subtitulo">—</div>
       </div>
-      <button class="modal-close" onclick="fecharModal()">×</button>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn btn-secondary" style="font-size:12px;padding:6px 12px" onclick="gerarFichaPDF()" title="Baixar Ficha de Encaminhamento preenchida">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Baixar Ficha PDF
+        </button>
+        <button class="modal-close" onclick="fecharModal()">×</button>
+      </div>
     </div>
     <div class="modal-body">
       <!-- Tabs -->
@@ -758,6 +764,21 @@
           <div class="kpi-label">Tempo médio</div>
           <div class="kpi-value" id="kpi-tempo-medio">--</div>
           <div class="kpi-delta">horas/caso</div>
+        </div>
+      </div>
+
+      <!-- KPIs Bloco 3 — Pesquisas de Satisfação -->
+      <div style="margin-bottom:8px;font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.06em">Bloco 3 — Satisfação</div>
+      <div class="kpi-grid" style="grid-template-columns:repeat(2,1fr);margin-bottom:16px">
+        <div class="kpi-card">
+          <div class="kpi-label">Pesquisas recebidas no mês</div>
+          <div class="kpi-value" id="kpi-pesquisas-mes">--</div>
+          <div class="kpi-delta" id="kpi-pesquisas-mes-label">carregando...</div>
+        </div>
+        <div class="kpi-card" style="border-color:#FCA5A5">
+          <div class="kpi-label">Viraram reclamação (nota crítica)</div>
+          <div class="kpi-value" id="kpi-pesquisas-rec" style="color:var(--red)">--</div>
+          <div class="kpi-delta" id="kpi-pesquisas-rec-pct">nota ≤ 6 em qualquer critério</div>
         </div>
       </div>
 
@@ -1956,6 +1977,23 @@
   <div id="modal-rnc-aprovador-v5" class="modal-overlay" style="display:none" onclick="if(event.target===this)fecharRncAprovador()"><div class="modal-box" style="max-width:1000px"><div class="modal-header"><div><div style="font-size:18px;font-weight:800" id="rnc-modal-title">RNC</div><div style="font-size:12px;color:var(--gray-400)" id="rnc-modal-sub">—</div></div><button class="modal-close" onclick="fecharRncAprovador()">×</button></div><div class="modal-body" id="rnc-modal-body"></div></div></div>
 
   <!-- ===== MODAL NOVO DOCUMENTO (Base de Conhecimento) ===== -->
+  <!-- MODAL VISUALIZAR DOCUMENTO BC -->
+  <div id="modal-ver-doc" class="modal-overlay" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+    <div class="modal-box" style="max-width:700px;max-height:85vh;overflow-y:auto">
+      <div class="modal-header" style="position:sticky;top:0;background:white;z-index:1;border-bottom:1px solid var(--gray-100);padding-bottom:12px;margin-bottom:0">
+        <div>
+          <div style="font-size:18px;font-weight:800" id="vdoc-titulo">Documento</div>
+          <div style="font-size:13px;color:var(--gray-400);margin-top:2px" id="vdoc-meta"></div>
+        </div>
+        <button class="modal-close" onclick="document.getElementById('modal-ver-doc').style.display='none'">×</button>
+      </div>
+      <div style="padding:20px 0 0">
+        <div id="vdoc-badges" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px"></div>
+        <div id="vdoc-corpo"></div>
+      </div>
+    </div>
+  </div>
+
   <div id="modal-novo-doc" class="modal-overlay" style="display:none" onclick="if(event.target===this)fecharModalNovoDoc()">
     <div class="modal-box" style="max-width:680px">
       <div class="modal-header">
@@ -2041,9 +2079,12 @@ function navigate(page, el) {
 function fmtDate(d) {
   if (!d) return '--';
   try {
-    const dt = new Date(d);
+    let dt;
+    if (typeof d === 'number') { dt = new Date((d - 25569) * 86400000); }
+    else { dt = new Date(d); }
+    if (isNaN(dt)) return '--';
     return dt.toLocaleDateString('pt-BR');
-  } catch { return d; }
+  } catch { return '--'; }
 }
 
 function prazoClass(status) {
@@ -3096,7 +3137,7 @@ function renderAcompanhamento(data) {
           <td>${pri ? `<span style="font-size:11px;font-weight:600;padding:2px 7px;border-radius:10px;background:${priBg};color:${priColor}">${pri}</span>` : '—'}</td>
           <td style="font-size:12px">${m.SLA_HORAS ? m.SLA_HORAS + 'h' : '72h'}</td>
           <td style="font-size:12px;color:var(--gray-500)">${m.RESPONSAVEL || 'Ana Lima'}</td>
-          <td><a class="link-abrir" onclick="abrirDossieIdx(_storeRow(m))">Abrir</a></td>
+          <td><a class="link-abrir" onclick="abrirDossieIdx(${_storeRow(m)})">Abrir</a></td>
         </tr>`;
       }).join('')
     : '<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--gray-400)">Nenhuma solicitação encontrada</td></tr>';
@@ -3273,7 +3314,7 @@ function renderBanco() {
           <td><span class="status-badge ${etapaClass(m.STATUS)}">${getEtapaLabel(m.STATUS)}</span></td>
           <td><span class="prazo-badge ${prazoClass2}">${prazoText}</span></td>
           <td>${proc ? `<span class="proc-badge ${proc.toLowerCase().includes('parcial') ? 'parcialmente' : 'procedente'}">${proc}</span>` : '—'}</td>
-          <td><a class="link-abrir" onclick="abrirDossieIdx(_storeRow(m))">Abrir</a></td>
+          <td><a class="link-abrir" onclick="abrirDossieIdx(${_storeRow(m)})">Abrir</a></td>
         </tr>`;
       }).join('')
     : '<tr><td colspan="8" style="text-align:center;color:var(--gray-400);padding:20px">Nenhuma manifestação encontrada</td></tr>';
@@ -3658,7 +3699,7 @@ async function abrirFichaSetor(nomeSetor) {
           <td>${pri ? `<span style="font-size:11px;font-weight:600;padding:2px 6px;border-radius:10px;background:${pri==='Alta'?'#FEE2E2':'#FEF3C7'};color:${priColor}">${pri}</span>` : '—'}</td>
           <td><span style="display:inline-flex;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;background:#EFF6FF;color:#1D4ED8">${st}</span></td>
           <td><span style="font-size:11px;font-weight:600;color:${isAtrasada?'#DC2626':'#065F46'}">${isAtrasada?'⚠ Atrasada':'Em dia'}</span></td>
-          <td><a class="link-abrir" onclick="abrirDossieIdx(_storeRow(m))">Abrir</a></td>
+          <td><a class="link-abrir" onclick="abrirDossieIdx(${_storeRow(m)})">Abrir</a></td>
         </tr>`;
       }).join('')
     : '<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--gray-400)">Nenhuma manifestação encontrada para este setor</td></tr>';
@@ -3846,12 +3887,47 @@ function showBCDetail(item, el) {
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
       Só documentos vigentes alimentam a IA. Documentos com revisão vencida ficam de fora até serem atualizados.
     </div>
-    <button class="btn btn-primary" style="width:100%;justify-content:center;margin-bottom:8px">
+    <button class="btn btn-primary" style="width:100%;justify-content:center;margin-bottom:8px" onclick="abrirDocBC(${_storeRow(item)})">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
       Abrir documento
     </button>
     <button class="btn btn-secondary" style="width:100%;justify-content:center">Solicitar revisão</button>
   `;
+}
+
+function abrirDocBC(idx) {
+  const item = window._tableRows[idx];
+  if (!item) return;
+  const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+  document.getElementById('vdoc-titulo').textContent = item._nome || item.TITULO || item.NOME || 'Documento';
+  document.getElementById('vdoc-meta').textContent =
+    [item.RESPONSAVEL ? 'Responsável: ' + item.RESPONSAVEL : '', item.DATA_CRIACAO ? 'Criado em: ' + fmtDate(item.DATA_CRIACAO) : ''].filter(Boolean).join(' · ') || '';
+
+  const badges = [
+    item._status ? `<span class="bc-tag ${item._status === 'Vigente' ? 'vigente' : ''}">${esc(item._status)}</span>` : '',
+    item.SETOR_RESPONSAVEL ? `<span class="bc-tag red">${esc(item.SETOR_RESPONSAVEL)}</span>` : '',
+    item._tipo ? `<span class="bc-tag">${esc(item._tipo)}</span>` : '',
+  ].filter(Boolean).join('');
+  document.getElementById('vdoc-badges').innerHTML = badges;
+
+  const secao = (titulo, conteudo) => conteudo ? `
+    <div style="margin-bottom:20px">
+      <div style="font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">${titulo}</div>
+      <div style="font-size:14px;color:var(--gray-800);line-height:1.7;white-space:pre-wrap;background:var(--gray-50);padding:14px;border-radius:8px">${esc(conteudo)}</div>
+    </div>` : '';
+
+  const desc = item.DESCRICAO || item.CONTEUDO || item.LIMITES_APROVACAO || item.REGRA || item.PERGUNTA || '';
+  const passos = item.PASSOS || item.ORIENTACOES || item.RESPOSTA || item.PROCEDIMENTO || '';
+  const obs = item.OBSERVACOES || item.DETALHES || '';
+
+  document.getElementById('vdoc-corpo').innerHTML =
+    secao('Descrição / Conteúdo', desc) +
+    secao('Passos / Orientações', passos) +
+    secao('Observações', obs) +
+    (!desc && !passos && !obs ? '<div style="color:var(--gray-400);font-size:13px;padding:20px 0">Nenhum conteúdo registrado para este documento.</div>' : '');
+
+  document.getElementById('modal-ver-doc').style.display = 'flex';
 }
 
 // ===== MODAL NOVO DOCUMENTO =====
@@ -4137,10 +4213,23 @@ loadVisaoGeral();
       if(last)last.textContent='Atualizando...';
       const results=await Promise.allSettled([
         jsonFetch('/api/manifestacoes'),
-        jsonFetch('/api/reclamacoes')
+        jsonFetch('/api/reclamacoes'),
+        jsonFetch('/api/pesquisas/resumo')
       ]);
       _dashData.mans=results[0].status==='fulfilled'?(results[0].value.itens||[]):[];
       _dashData.recs=results[1].status==='fulfilled'?(results[1].value.itens||[]):[];
+      // KPIs pesquisas de satisfação
+      if(results[2].status==='fulfilled'){
+        const p=results[2].value;
+        const elMes=document.getElementById('kpi-pesquisas-mes');
+        const elLabel=document.getElementById('kpi-pesquisas-mes-label');
+        const elRec=document.getElementById('kpi-pesquisas-rec');
+        const elPct=document.getElementById('kpi-pesquisas-rec-pct');
+        if(elMes)elMes.textContent=p.totalMes??'--';
+        if(elLabel)elLabel.textContent=p.mes||'este mês';
+        if(elRec)elRec.textContent=p.viramReclamacao??'--';
+        if(elPct&&p.totalMes>0)elPct.textContent=`${Math.round((p.viramReclamacao/p.totalMes)*100)}% do total do mês`;
+      }
       if(results[0].status==='rejected')console.error('Manifestacoes:',results[0].reason);
       if(results[1].status==='rejected')console.error('Reclamacoes:',results[1].reason);
 
@@ -6960,6 +7049,189 @@ window.editarDocumento=function(idx){
 };
 
 console.log('[base-conhecimento-setores] carregado');
+})();
+</script>
+
+<!-- ===== GERAÇÃO DE FICHA PDF ===== -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+(function(){
+  // Armazena o item atual do dossiê para usar na geração do PDF
+  const _origAbrirDossie = window.abrirDossie;
+  window._dossieItem = null;
+  window.abrirDossie = function(item) {
+    window._dossieItem = item;
+    if (_origAbrirDossie) _origAbrirDossie(item);
+  };
+
+  window.gerarFichaPDF = function() {
+    const item = window._dossieItem;
+    if (!item) { alert('Nenhuma manifestação aberta.'); return; }
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+    const W = 210, M = 15, CW = W - M * 2;
+    let y = 15;
+
+    const RED = [185, 28, 28];
+    const GRAY = [80, 80, 80];
+    const LIGHT = [245, 245, 245];
+
+    function linha(dy = 5) { y += dy; }
+    function checkPage() { if (y > 270) { doc.addPage(); y = 15; } }
+
+    function titulo(txt) {
+      doc.setFontSize(10); doc.setTextColor(...RED); doc.setFont(undefined,'bold');
+      doc.text(txt, M, y); linha(6);
+    }
+
+    function campo(label, valor, x, w, inlineY) {
+      const iy = inlineY || y;
+      doc.setFillColor(...LIGHT); doc.rect(x, iy - 4, w, 8, 'F');
+      doc.setDrawColor(200,200,200); doc.rect(x, iy - 4, w, 8);
+      doc.setFontSize(8); doc.setTextColor(...GRAY); doc.setFont(undefined,'bold');
+      doc.text(label + ':', x + 2, iy - 0.5);
+      doc.setFont(undefined,'normal'); doc.setTextColor(30,30,30);
+      const val = String(valor || '—');
+      doc.text(val.slice(0, Math.floor(w / 2.2)), x + 2 + doc.getTextWidth(label + ': '), iy - 0.5);
+    }
+
+    function campoGrande(label, valor, h = 18) {
+      checkPage();
+      doc.setFillColor(...LIGHT); doc.rect(M, y, CW, h, 'F');
+      doc.setDrawColor(200,200,200); doc.rect(M, y, CW, h);
+      doc.setFontSize(8); doc.setTextColor(...GRAY); doc.setFont(undefined,'bold');
+      doc.text(label + ':', M + 2, y + 4);
+      doc.setFont(undefined,'normal'); doc.setTextColor(30,30,30);
+      const wrapped = doc.splitTextToSize(String(valor || ''), CW - 4);
+      doc.text(wrapped.slice(0, Math.floor(h / 4.5)), M + 2, y + 9);
+      y += h + 2;
+    }
+
+    function checkbox(label, checked, x, cy) {
+      doc.setDrawColor(120,120,120); doc.rect(x, cy - 3.5, 4, 4);
+      if (checked) { doc.setFontSize(8); doc.setTextColor(...RED); doc.text('✓', x + 0.5, cy); }
+      doc.setFontSize(8); doc.setTextColor(30,30,30); doc.setFont(undefined,'normal');
+      doc.text(label, x + 5.5, cy);
+    }
+
+    // ── CABEÇALHO ──
+    doc.setFontSize(13); doc.setTextColor(...RED); doc.setFont(undefined,'bold');
+    doc.text('GRUPO CHIACCHIO', W/2, y, { align:'center' }); linha(5);
+    doc.setDrawColor(...RED); doc.line(M, y, W-M, y); linha(6);
+    doc.setFontSize(11); doc.setTextColor(30,30,30);
+    doc.text('FICHA DE ENCAMINHAMENTO DE MANIFESTAÇÃO', W/2, y, { align:'center' }); linha(8);
+
+    // ── 1. DADOS DO REGISTRO SAC ──
+    titulo('1. Dados do Registro SAC');
+    const dataReg = item.DATA_CRIACAO ? new Date(item.DATA_CRIACAO).toLocaleDateString('pt-BR') : '—';
+    campo('Data do Registro', dataReg, M, 60, y);
+    campo('Setor', 'SAC', M + 62, 40, y);
+    campo('Nº Reclamação', item.ID_MANIFESTACAO, M + 104, CW - 104, y);
+    linha(10);
+    campo('Atendente', item.RESPONSAVEL || item.USUARIO_CRIACAO, M, CW, y); linha(10);
+
+    // Canal de atendimento
+    doc.setFillColor(...LIGHT); doc.rect(M, y, CW, 8, 'F');
+    doc.setDrawColor(200,200,200); doc.rect(M, y, CW, 8);
+    doc.setFontSize(8); doc.setTextColor(...GRAY); doc.setFont(undefined,'bold');
+    doc.text('Canal de Atendimento:', M + 2, y + 5);
+    const canal = (item.CANAL || '').toLowerCase();
+    const canais = ['Telefone','WhatsApp','E-mail','Presencial','Pesquisa de Satisfação','Outro'];
+    let cx = M + 55;
+    canais.forEach(c => {
+      checkbox(c, canal.includes(c.toLowerCase()), cx, y + 5);
+      cx += 24;
+    });
+    linha(11);
+
+    // ── 2. DADOS DO CLIENTE ──
+    titulo('2. Dados do Cliente');
+    campo('Nome do Cliente', item.CONTATO, M, CW, y); linha(10);
+    campo('Empresa / Razão Social', item.EMPRESA_RECLAMANTE, M, CW, y); linha(10);
+    campo('CNPJ', item.CNPJ, M, 70, y);
+    campo('Telefone / WhatsApp', item.TELEFONE, M + 72, CW - 72, y); linha(10);
+    campo('E-mail', item.EMAIL, M, CW, y); linha(11);
+
+    // ── 3. INFORMAÇÕES DA MANIFESTAÇÃO ──
+    titulo('3. Informações da Manifestação');
+    doc.setFillColor(...LIGHT); doc.rect(M, y, CW, 8, 'F');
+    doc.setDrawColor(200,200,200); doc.rect(M, y, CW, 8);
+    doc.setFontSize(8); doc.setTextColor(...GRAY); doc.setFont(undefined,'bold');
+    doc.text('Tipo de Manifestação:', M + 2, y + 5);
+    const tipo = (item.TIPO || '').toLowerCase();
+    let tx = M + 52;
+    ['Reclamação','Dúvida','Sugestão','Elogio'].forEach(t => {
+      checkbox(t, tipo.includes(t.toLowerCase()), tx, y + 5); tx += 36;
+    });
+    linha(11);
+
+    const proc = (item.DECISAO_ANALISTA || item.RESULTADO_FINAL || '').toLowerCase();
+    doc.setFillColor(...LIGHT); doc.rect(M, y, CW, 8, 'F');
+    doc.setDrawColor(200,200,200); doc.rect(M, y, CW, 8);
+    doc.setFontSize(8); doc.setTextColor(...GRAY); doc.setFont(undefined,'bold');
+    doc.text('A reclamação é procedente? Justifique.', M + 2, y + 5);
+    let px = M + 78;
+    ['Sim','Não','Parcialmente'].forEach(p => {
+      checkbox(p, proc.includes(p.toLowerCase().normalize('NFD').replace(/\p{Mn}/gu,'')), px, y + 5); px += 28;
+    });
+    linha(11);
+    campoGrande('Descrição Detalhada da Manifestação', item.DESCRICAO_RECLAMACAO, 22);
+
+    // ── 4. INFORMAÇÕES DO PRODUTO ──
+    titulo('4. Informações do Produto (quando aplicável)');
+    campo('Produto', item.PRODUTO, M, 65, y);
+    campo('Lote', item.LOTE, M + 67, 45, y);
+    campo('NFe', item.NFE, M + 114, 40, y);
+    campo('Valor NF (R$)', item.VALOR, M + 156, CW - 156, y);
+    linha(11);
+
+    // ── 5. ENCAMINHAMENTO ──
+    titulo('5. Encaminhamento');
+    campo('Data de Encaminhamento', dataReg, M, CW / 2, y); linha(10);
+    doc.setFillColor(...LIGHT); doc.rect(M, y, CW, 10, 'F');
+    doc.setDrawColor(200,200,200); doc.rect(M, y, CW, 10);
+    doc.setFontSize(8); doc.setTextColor(...GRAY); doc.setFont(undefined,'bold');
+    doc.text('Prazo para Retorno ao SAC: 72 horas.', M + 2, y + 6);
+    linha(13);
+
+    // ── 6. RESPOSTA DO SETOR ──
+    checkPage();
+    titulo('6. Resposta do Setor');
+    campoGrande('O que aconteceu? (Descreva objetivamente o que aconteceu.)', item.TRATATIVA_REALIZADA || item.TRATATIVA_APLICAVEL, 20);
+    campoGrande('Qual foi a causa da ocorrência?', item.CAUSA_PROVAVEL || item.SUBCAUSA, 16);
+    campoGrande('Como o caso foi resolvido para este cliente?', item.DEVOLUTIVA_FINAL || item.DEVOLUTIVA_ENVIADA, 16);
+    campoGrande('Qual ação será adotada para evitar novas ocorrências?', item.PLANO_ACAO || '', 16);
+    campo('Responsável pela ação de melhoria', item.RESPONSAVEL, M, CW * 0.6, y); linha(10);
+    campo('Prazo para implementação da ação', '', M + CW * 0.62, CW * 0.38, y); linha(11);
+
+    // ── 7. VALIDAÇÃO DO SAC ──
+    checkPage();
+    titulo('7. Validação do SAC');
+    campo('Data de Retorno ao Cliente', item.DATA_ULTIMA_ATUALIZACAO ? new Date(item.DATA_ULTIMA_ATUALIZACAO).toLocaleDateString('pt-BR') : '', M, CW, y); linha(10);
+
+    const finaliz = (item.STATUS || '').toUpperCase().includes('FINALIZ');
+    doc.setFillColor(...LIGHT); doc.rect(M, y, CW / 2 - 2, 16, 'F');
+    doc.setDrawColor(200,200,200); doc.rect(M, y, CW / 2 - 2, 16);
+    doc.setFontSize(8); doc.setTextColor(...GRAY); doc.setFont(undefined,'bold');
+    doc.text('Cliente Informado:', M + 2, y + 5);
+    checkbox('Sim', finaliz, M + 2, y + 11); checkbox('Não', !finaliz, M + 20, y + 11);
+
+    doc.setFillColor(...LIGHT); doc.rect(M + CW / 2 + 2, y, CW / 2 - 2, 16, 'F');
+    doc.setDrawColor(200,200,200); doc.rect(M + CW / 2 + 2, y, CW / 2 - 2, 16);
+    doc.setFont(undefined,'bold');
+    doc.text('Manifestação Resolvida:', M + CW / 2 + 4, y + 5);
+    checkbox('Sim', finaliz, M + CW / 2 + 4, y + 11); checkbox('Não', !finaliz, M + CW / 2 + 22, y + 11);
+    linha(19);
+
+    campoGrande('Observações Finais', item.DEVOLUTIVA_ENVIADA || item.OBSERVACOES || '', 18);
+
+    // ── RODAPÉ ──
+    doc.setFontSize(7); doc.setTextColor(150,150,150);
+    doc.text(`Gerado automaticamente pelo sistema SAC · Grupo Chiacchio · ${new Date().toLocaleString('pt-BR')}`, W/2, 290, { align:'center' });
+
+    doc.save(`Ficha_${item.ID_MANIFESTACAO || 'MAN'}.pdf`);
+  };
 })();
 </script>
 
