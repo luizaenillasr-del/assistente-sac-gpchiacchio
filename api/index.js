@@ -658,6 +658,30 @@ app.patch('/api/setores/:id', requerPerfil('MASTER','ANALISTA SAC'), async(req,r
   } catch(e) { res.status(500).json({ sucesso: false, erro: e.message }); }
 });
 
+app.post('/api/setores/importar', requerPerfil('MASTER','ANALISTA SAC'), async(req,res)=>{
+  try {
+    const { itens } = req.body;
+    if (!Array.isArray(itens) || !itens.length) return res.status(400).json({sucesso:false,erro:'Nenhum item.'});
+    await garantirAbaComCabecalhos('CONFIG_SETORES',['ID_SETOR','SETOR','EMPRESA','DESCRICAO','RESPONSAVEL','SLA_HORAS','ATIVO']);
+    let criados = 0;
+    for (const item of itens) {
+      if (!item.SETOR && !item.setor) continue;
+      const id = await gerarProximoID('CONFIG_SETORES','SET','ID_SETOR');
+      await appendObjeto('CONFIG_SETORES', {
+        ID_SETOR: id,
+        SETOR: item.SETOR || item.setor || '',
+        EMPRESA: item.EMPRESA || item.empresa || '',
+        DESCRICAO: item.DESCRICAO || item.descricao || '',
+        RESPONSAVEL: item.RESPONSAVEL || item.responsavel || '',
+        SLA_HORAS: item.SLA_HORAS || item.sla_horas || '72',
+        ATIVO: item.ATIVO || item.ativo || 'SIM',
+      });
+      criados++;
+    }
+    res.json({sucesso:true, criados});
+  } catch(e) { res.status(500).json({sucesso:false, erro:e.message}); }
+});
+
 // ===== PRODUTOS =====
 app.get('/api/produtos', async(req,res)=>{
   try {
@@ -1435,9 +1459,22 @@ app.get('/api/planilha/abas', requerPerfil('MASTER','ANALISTA SAC'), async (req,
   } catch(e) { res.status(500).json({ sucesso:false, erro:e.message, abas:[] }); }
 });
 
+// Leitura de aba com query param (suporta nomes com acentos/espaços)
+app.get('/api/planilha/ler', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
+  try {
+    const nome = req.query.nome || '';
+    if (!nome) return res.status(400).json({sucesso:false, erro:'Parâmetro nome é obrigatório.'});
+    const max = Math.min(parseInt(req.query.max||'2000',10), 5000);
+    const data = await lerAba(nome, max);
+    res.json({ sucesso:true, aba:nome, total:data.length, itens:data });
+  } catch(e) { res.status(500).json({ sucesso:false, erro:e.message, itens:[] }); }
+});
+
 app.get('/api/planilha/:aba', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
   try {
-    const aba = req.params.aba.toUpperCase().replace(/[^A-Z0-9_]/g,'');
+    const raw = req.params.aba;
+    // Try exact name first, then sanitized fallback
+    const aba = raw.toUpperCase().replace(/[^A-Z0-9_]/g,'');
     const max = Math.min(parseInt(req.query.max||'2000',10), 5000);
     const data = await lerAba(aba, max);
     res.json({ sucesso:true, aba, total:data.length, itens:data });

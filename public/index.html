@@ -2202,10 +2202,17 @@
 
       <!-- ── SETORES ── -->
       <div class="cd-panel" id="cdp-setores" style="display:none">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
           <input class="form-input" id="cd-set-busca" placeholder="Buscar setor…" style="width:220px" oninput="cdFiltrar('set')">
-          <button class="btn btn-primary" onclick="abrirModalSetorCerebro()">+ Novo Setor</button>
+          <div style="display:flex;gap:8px">
+            <label class="btn btn-secondary" style="cursor:pointer;margin:0" title="Importar CSV com colunas: SETOR, EMPRESA, RESPONSAVEL, SLA_HORAS, ATIVO">
+              📥 Importar CSV
+              <input type="file" id="upload-setores-input" accept=".csv,.txt" style="display:none" onchange="handleUploadSetores(this)">
+            </label>
+            <button class="btn btn-primary" onclick="abrirModalSetorCerebro()">+ Novo Setor</button>
+          </div>
         </div>
+        <div id="setores-import-status" style="font-size:13px;color:var(--gray-400);margin-bottom:8px"></div>
         <div id="cerebro-setores-loading" style="padding:24px;text-align:center;color:var(--gray-400);font-size:13px">Carregando...</div>
         <div id="cerebro-setores-tabela" style="display:none;overflow-x:auto">
           <table class="table" style="width:100%">
@@ -3323,8 +3330,17 @@ function renderizarAnalise(a) {
 
   // Tratativa sugerida — separada da devolutiva
   const tratativaSugerida = extrairTratativaSugerida(a);
-  document.getElementById('ia-tratativa').textContent =
-    tratativaSugerida || 'A ferramenta não encontrou uma tratativa sugerida com os dados disponíveis. A analista deverá definir a tratativa após a apuração.';
+  const tratEl = document.getElementById('ia-tratativa');
+  const acoes = a.tratativaSugerida?.acoes || a.acoesSugeridas || [];
+  if (tratativaSugerida) {
+    let html = tratativaSugerida;
+    if (acoes.length) {
+      html += '\n\nAções sugeridas:\n' + acoes.map((ac, i) => `${i+1}. ${ac}`).join('\n');
+    }
+    tratEl.textContent = html;
+  } else {
+    tratEl.textContent = 'A ferramenta não encontrou uma tratativa sugerida com os dados disponíveis. A analista deverá definir a tratativa após a apuração.';
+  }
 
   // Devolutiva
   document.getElementById('ia-devolutiva').value =
@@ -8623,7 +8639,7 @@ async function cdAbrirAba(nome) {
   loading.style.display = 'block'; loading.textContent = `Carregando ${nome}...`;
   tabela.style.display = 'none';
   try {
-    const r = await _apiFetch(`/api/planilha/${nome}`);
+    const r = await _apiFetch(`/api/planilha/ler?nome=${encodeURIComponent(nome)}`);
     _abaData = r.itens || [];
     document.getElementById('cd-aba-total').textContent = `${_abaData.length} registro(s)`;
     _abaCols = _abaData.length ? Object.keys(_abaData[0]).filter(k=>k!=='__linha') : [];
@@ -8700,7 +8716,7 @@ async function cdConfirmarImportAba() {
   const status = document.getElementById('cd-aba-import-status');
   status.style.color='var(--gray-500)'; status.textContent='Importando...';
   try {
-    const r = await _apiFetch(`/api/planilha/${_abaAtual}/importar`, {
+    const r = await _apiFetch(`/api/planilha/${encodeURIComponent(_abaAtual)}/importar`, {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ itens: _abaImportBuffer, cabecalhos: Object.keys(_abaImportBuffer[0]||{}) })
     });
@@ -8733,6 +8749,46 @@ async function loadCerebroProdutos() {
     }
   } catch(e) { if(loading) loading.textContent = 'Erro: ' + e.message; }
 }
+let _setoresParaImportar = [];
+function handleUploadSetores(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const status = document.getElementById('setores-import-status');
+  status.textContent = 'Lendo arquivo...';
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const text = e.target.result;
+      const lines = text.split(/\r?\n/).filter(l => l.trim());
+      if (lines.length < 2) { status.textContent = 'Arquivo vazio ou sem dados.'; return; }
+      const sep = lines[0].includes(';') ? ';' : ',';
+      const headers = lines[0].split(sep).map(h => h.trim().replace(/^"|"$/g,'').toUpperCase());
+      const rows = lines.slice(1).map(l => {
+        const vals = l.split(sep).map(v => v.trim().replace(/^"|"$/g,''));
+        const obj = {};
+        headers.forEach((h, i) => obj[h] = vals[i]||'');
+        return obj;
+      }).filter(r => r.SETOR);
+      _setoresParaImportar = rows;
+      status.style.color = 'var(--gray-600)';
+      status.innerHTML = `${rows.length} setor(es) lido(s) — <button class="btn btn-primary" style="padding:3px 10px;font-size:12px" onclick="confirmarImportSetores()">✔ Confirmar</button> <button class="btn btn-secondary" style="padding:3px 10px;font-size:12px;margin-left:4px" onclick="document.getElementById('setores-import-status').textContent=''">Cancelar</button>`;
+    } catch(err) { status.textContent = 'Erro ao ler CSV: ' + err.message; }
+  };
+  reader.readAsText(file, 'UTF-8');
+  input.value = '';
+}
+async function confirmarImportSetores() {
+  const status = document.getElementById('setores-import-status');
+  status.textContent = 'Importando...';
+  try {
+    const r = await _apiFetch('/api/setores/importar', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({itens:_setoresParaImportar}) });
+    status.style.color = 'var(--green)';
+    status.textContent = `✔ ${r.criados} setor(es) importado(s) com sucesso.`;
+    _setoresParaImportar = [];
+    cdLoadSetores();
+  } catch(e) { status.style.color='var(--red)'; status.textContent='Erro: '+e.message; }
+}
+
 function handleUploadProdutos(input) {
   const file = input.files[0];
   if (!file) return;
