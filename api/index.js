@@ -343,11 +343,11 @@ function normalizarData(val) {
 // ===========================================================
 
 app.get('/api/health', (req, res) => {
-  res.json({ sucesso: true, status: 'ok', versao: '5.6.0', sistema: 'Assistente SAC Chiacchio', ts: new Date().toISOString() });
+  res.json({ sucesso: true, status: 'ok', versao: '5.7.0', sistema: 'Assistente SAC Chiacchio', ts: new Date().toISOString() });
 });
 
 app.get('/', (req, res) => {
-  res.json({ sucesso: true, status: 'ok', versao: '5.6.0', sistema: 'Assistente SAC Chiacchio' });
+  res.json({ sucesso: true, status: 'ok', versao: '5.7.0', sistema: 'Assistente SAC Chiacchio' });
 });
 
 // ===== MIDDLEWARE AUTH =====
@@ -798,6 +798,105 @@ app.get('/api/setores', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL
   try { const data=await lerAba('CONFIG_SETORES',50); res.json({sucesso:true,total:data.length,itens:data}); }
   catch (e) { res.status(500).json({sucesso:false,erro:e.message,dados:[]}); }
 });
+
+app.post('/api/setores', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
+  try {
+    const b=req.body||{};
+    if(!b.SETOR) return res.status(400).json({sucesso:false,erro:'Nome do setor é obrigatório.'});
+    const id=await gerarProximoID('CONFIG_SETORES','ST','ID_SETOR');
+    const obj={
+      ID_SETOR:id, SETOR:b.SETOR, DESCRICAO:b.DESCRICAO||'', RESPONSAVEL:b.RESPONSAVEL||'',
+      SUBSTITUTO:b.SUBSTITUTO||'', EMAIL_RESPONSAVEL:b.EMAIL_RESPONSAVEL||'', SLA_HORAS:b.SLA_HORAS||72,
+      RESPONSABILIDADES:b.RESPONSABILIDADES||'', REGRAS_OPERACIONAIS:b.REGRAS_OPERACIONAIS||'',
+      PROCEDIMENTOS_ORIENTACOES:b.PROCEDIMENTOS_ORIENTACOES||'', ALERTAS:b.ALERTAS||'', ATIVO:b.ATIVO||'SIM'
+    };
+    await appendObjeto('CONFIG_SETORES', obj);
+    await registrarAuditoria(req.user?.usuario||'sistema','CRIOU_SETOR',id,'CONFIG_SETORES',null,{setor:b.SETOR});
+    res.json({sucesso:true,id,setor:obj});
+  } catch(e){ console.error(e); res.status(500).json({sucesso:false,erro:e.message}); }
+});
+
+app.patch('/api/setores/:id', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
+  try {
+    const dados = { ...req.body };
+    const resultado = await atualizarPorID('CONFIG_SETORES', req.params.id, dados, ['ID_SETOR','SETOR']);
+    if (!resultado) return res.status(404).json({sucesso:false,erro:'Setor não encontrado.'});
+    await registrarAuditoria(req.user?.usuario||'sistema','EDITOU_SETOR',req.params.id,'CONFIG_SETORES',null,dados);
+    res.json({sucesso:true});
+  } catch(e){ console.error(e); res.status(500).json({sucesso:false,erro:e.message}); }
+});
+
+// ===== MATRIZ DE TRATAMENTO =====
+app.get('/api/matriz', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
+  try {
+    const regras = await lerAba('REGRAS_ROTEAMENTO', 500);
+    const itens = regras.map(r => ({
+      ID_MATRIZ: r.ID_REGRA,
+      TEMA: r.TIPO || r.TEMA || '',
+      SETOR_PRINCIPAL: (r.SETORES_ENVOLVIDOS||'').split('+')[0]?.trim().split('(')[0].trim() || '',
+      SETORES_APOIO: (r.SETORES_ENVOLVIDOS||'').split('+').slice(1).map(s=>s.trim().split('(')[0].trim()).filter(Boolean).join(', '),
+      SLA_HORAS: r.SLA_HORAS || r.PRAZO_HORAS || 72,
+      PRIORIDADE: r.PRIORIDADE || 'Média',
+      GERA_RNC: r.GERA_RNC || 'Não',
+      APROVACAO: r.APROVACAO || 'Analista',
+      FOLLOW_UP: r.FOLLOW_UP || '',
+      ATIVO: r.ATIVO || 'SIM',
+    }));
+    res.json({ sucesso: true, total: itens.length, itens });
+  } catch (e) { console.error(e); res.status(500).json({ sucesso:false, erro:e.message, itens:[] }); }
+});
+
+app.post('/api/matriz', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
+  try {
+    const b=req.body||{};
+    if(!b.TEMA) return res.status(400).json({sucesso:false,erro:'Tema é obrigatório.'});
+    const id=await gerarProximoID('REGRAS_ROTEAMENTO','REG','ID_REGRA');
+    const setoresEnvolvidos=[b.SETOR_PRINCIPAL, ...String(b.SETORES_APOIO||'').split(',').map(s=>s.trim()).filter(Boolean)].filter(Boolean).join(' + ');
+    const obj={
+      ID_REGRA:id, TIPO:b.TEMA, SETORES_ENVOLVIDOS:setoresEnvolvidos, SLA_HORAS:b.SLA_HORAS||72,
+      PRIORIDADE:b.PRIORIDADE||'Média', GERA_RNC:b.GERA_RNC||'Não', APROVACAO:b.APROVACAO||'Analista',
+      FOLLOW_UP:b.FOLLOW_UP||'', ATIVO:'SIM'
+    };
+    await appendObjeto('REGRAS_ROTEAMENTO', obj);
+    await appendObjeto('VERSOES_PARAMETROS', {
+      DATA:new Date().toISOString(), USUARIO:req.user?.usuario||'sistema', ENTIDADE:'REGRAS_ROTEAMENTO',
+      ID_ENTIDADE:id, DESCRICAO_MUDANCA:`Nova regra criada: ${b.TEMA}`
+    }).catch(()=>{});
+    await registrarAuditoria(req.user?.usuario||'sistema','CRIOU_REGRA_MATRIZ',id,'REGRAS_ROTEAMENTO',null,{tema:b.TEMA});
+    res.json({sucesso:true,id});
+  } catch(e){ console.error(e); res.status(500).json({sucesso:false,erro:e.message}); }
+});
+
+app.patch('/api/matriz/:id', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
+  try {
+    const b=req.body||{};
+    const dados={};
+    if(b.TEMA!==undefined) dados.TIPO=b.TEMA;
+    if(b.SLA_HORAS!==undefined) dados.SLA_HORAS=b.SLA_HORAS;
+    if(b.PRIORIDADE!==undefined) dados.PRIORIDADE=b.PRIORIDADE;
+    if(b.GERA_RNC!==undefined) dados.GERA_RNC=b.GERA_RNC;
+    if(b.APROVACAO!==undefined) dados.APROVACAO=b.APROVACAO;
+    if(b.FOLLOW_UP!==undefined) dados.FOLLOW_UP=b.FOLLOW_UP;
+    if(b.SETOR_PRINCIPAL!==undefined || b.SETORES_APOIO!==undefined){
+      const regras = await lerAba('REGRAS_ROTEAMENTO', 500);
+      const atual = regras.find(r => r.ID_REGRA === req.params.id) || {};
+      const principalAtual = (atual.SETORES_ENVOLVIDOS||'').split('+')[0]?.trim().split('(')[0].trim() || '';
+      const apoioAtual = (atual.SETORES_ENVOLVIDOS||'').split('+').slice(1).map(s=>s.trim().split('(')[0].trim()).filter(Boolean).join(', ');
+      const principal = b.SETOR_PRINCIPAL !== undefined ? b.SETOR_PRINCIPAL : principalAtual;
+      const apoio = b.SETORES_APOIO !== undefined ? b.SETORES_APOIO : apoioAtual;
+      dados.SETORES_ENVOLVIDOS=[principal, ...String(apoio||'').split(',').map(s=>s.trim()).filter(Boolean)].filter(Boolean).join(' + ');
+    }
+    const resultado = await atualizarPorID('REGRAS_ROTEAMENTO', req.params.id, dados, ['ID_REGRA']);
+    if (!resultado) return res.status(404).json({sucesso:false,erro:'Regra não encontrada.'});
+    await appendObjeto('VERSOES_PARAMETROS', {
+      DATA:new Date().toISOString(), USUARIO:req.user?.usuario||'sistema', ENTIDADE:'REGRAS_ROTEAMENTO',
+      ID_ENTIDADE:req.params.id, DESCRICAO_MUDANCA:`Regra editada`
+    }).catch(()=>{});
+    await registrarAuditoria(req.user?.usuario||'sistema','EDITOU_REGRA_MATRIZ',req.params.id,'REGRAS_ROTEAMENTO',null,dados);
+    res.json({sucesso:true});
+  } catch(e){ console.error(e); res.status(500).json({sucesso:false,erro:e.message}); }
+});
+
 app.get('/api/conhecimento', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
   try { const data=await lerAba('CONHECIMENTO_SETORES',200); res.json({sucesso:true,total:data.length,itens:data}); }
   catch (e) { res.status(500).json({sucesso:false,erro:e.message,dados:[]}); }
@@ -952,7 +1051,7 @@ app.use((err, req, res, next) => {
 
 if (require.main === module) {
   const PORT = process.env.PORT || 3000;
-  app.listen(PORT, () => console.log(`SAC Chiacchio API v5.6.0 rodando na porta ${PORT}`));
+  app.listen(PORT, () => console.log(`SAC Chiacchio API v5.7.0 rodando na porta ${PORT}`));
 }
 
 module.exports = app;
