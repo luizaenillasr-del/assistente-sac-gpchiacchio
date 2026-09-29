@@ -333,7 +333,11 @@ function normalizarEmpresa(raw) {
 function normalizarData(val) {
   if (!val) return null;
   if (typeof val === 'number') { const d = new Date((val - 25569) * 86400 * 1000); return isNaN(d) ? null : d.toISOString().split('T')[0]; }
-  if (typeof val === 'string') { const d = new Date(val); return isNaN(d) ? null : d.toISOString().split('T')[0]; }
+  if (typeof val === 'string') {
+    const br = val.trim().match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+    if (br) { let y=Number(br[3]); if(y<100)y+=2000; const d=new Date(y,Number(br[2])-1,Number(br[1])); return isNaN(d)?null:d.toISOString().split('T')[0]; }
+    const d = new Date(val); return isNaN(d) ? null : d.toISOString().split('T')[0];
+  }
   if (val instanceof Date) return val.toISOString().split('T')[0];
   return null;
 }

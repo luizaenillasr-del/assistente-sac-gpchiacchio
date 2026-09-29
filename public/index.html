@@ -2538,8 +2538,8 @@ function aplicarFiltros() {
   let recs = _dashData.recs;
   if (dias != null) {
     const corte = new Date(Date.now() - dias * 86400000);
-    mans = mans.filter(m => { const d = new Date(m.DATA_CRIACAO||m.DATA_ABERTURA||''); return !isNaN(d) && d >= corte; });
-    recs = recs.filter(r => { const d = new Date(r['Data do Registro']||r['DATA_ABERTURA']||''); return !isNaN(d) && d >= corte; });
+    mans = mans.filter(m => { const d = parseDate(m.DATA_CRIACAO||m.DATA_ABERTURA); return d && d >= corte; });
+    recs = recs.filter(r => { const d = parseDate(r['Data do Registro']||r['DATA_ABERTURA']); return d && d >= corte; });
   } else {
     // Personalizado: usar datas escolhidas pelo usuário
     const inicio = document.getElementById('filtro-data-inicio')?.value;
@@ -2547,8 +2547,8 @@ function aplicarFiltros() {
     if (inicio || fim) {
       const di = inicio ? new Date(inicio) : null;
       const df = fim ? new Date(fim + 'T23:59:59') : null;
-      mans = mans.filter(m => { const d = new Date(m.DATA_CRIACAO||m.DATA_ABERTURA||''); if(isNaN(d))return true; if(di&&d<di)return false; if(df&&d>df)return false; return true; });
-      recs = recs.filter(r => { const d = new Date(r['Data do Registro']||r['DATA_ABERTURA']||''); if(isNaN(d))return true; if(di&&d<di)return false; if(df&&d>df)return false; return true; });
+      mans = mans.filter(m => { const d = parseDate(m.DATA_CRIACAO||m.DATA_ABERTURA); if(!d)return true; if(di&&d<di)return false; if(df&&d>df)return false; return true; });
+      recs = recs.filter(r => { const d = parseDate(r['Data do Registro']||r['DATA_ABERTURA']); if(!d)return true; if(di&&d<di)return false; if(df&&d>df)return false; return true; });
     }
   }
 
@@ -5136,7 +5136,10 @@ function parseDate(v){
   if(!v) return null;
   if(v instanceof Date) return isNaN(v)?null:v;
   if(typeof v==='number' && v>20000 && v<80000) return new Date((v-25569)*86400*1000);
-  const d=new Date(v); return isNaN(d)?null:d;
+  const s=String(v).trim();
+  const br=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
+  if(br){let y=Number(br[3]);if(y<100)y+=2000;const d=new Date(y,Number(br[2])-1,Number(br[1]),Number(br[4]||0),Number(br[5]||0),Number(br[6]||0));return isNaN(d)?null:d;}
+  const d=new Date(s); return isNaN(d)?null:d;
 }
 function hoursAgo(v){
   const d=parseDate(v); if(!d) return null;
