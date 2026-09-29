@@ -1331,6 +1331,18 @@ app.get('/api/auditoria', requerPerfil('MASTER'), async (req, res) => {
   catch (e) { res.status(500).json({sucesso:false,erro:e.message,dados:[]}); }
 });
 
+app.get('/api/log-sistema', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req,res)=>{
+  try {
+    const data = await lerAba('LOG_SISTEMA', 2000);
+    const {id, usuario, acao} = req.query;
+    let filtrados = data;
+    if (id) filtrados = filtrados.filter(l=>String(l.ID_MANIFESTACAO||l.ENTIDADE||'').includes(id));
+    if (usuario) filtrados = filtrados.filter(l=>String(l.USUARIO||'').toLowerCase().includes(usuario.toLowerCase()));
+    if (acao) filtrados = filtrados.filter(l=>String(l.ACAO||'').toLowerCase().includes(acao.toLowerCase()));
+    res.json({sucesso:true,total:filtrados.length,itens:filtrados.slice(0,200)});
+  } catch(e){ res.status(500).json({sucesso:false,erro:e.message,itens:[]}); }
+});
+
 // ===== USUÁRIOS =====
 app.get('/api/usuarios', requerPerfil('MASTER'), async (req,res)=>{
   try{ const itens=await carregarUsuarios(); res.json({sucesso:true,total:itens.length,itens:itens.map(usuarioPublico)}); }
@@ -1443,6 +1455,218 @@ app.post('/api/manifestacoes/:id/sugestoes', requerPerfil('MASTER','APROVADOR'),
     const id=await gerarProximoID('SUGESTOES_APROVADOR','SUG','ID_SUGESTAO');
     await appendObjeto('SUGESTOES_APROVADOR',{ID_SUGESTAO:id,ID_MANIFESTACAO:req.params.id,ID_APROVADOR:usuario,TIPO_SUGESTAO:tipoSugestao,SUGESTAO:sugestao,JUSTIFICATIVA:justificativa||'',DATA_SUGESTAO:new Date().toISOString(),STATUS:'PENDENTE'});
     res.json({sucesso:true,id,status:'PENDENTE'});
+  } catch(e){ res.status(500).json({sucesso:false,erro:e.message}); }
+});
+
+// ===== CAUSAS HIERÁRQUICAS =====
+app.get('/api/causas', async (req,res)=>{
+  try {
+    const causas = await lerAba('CAUSAS', 2000);
+    res.json({sucesso:true, total:causas.length, itens:causas});
+  } catch(e){ res.status(500).json({sucesso:false,erro:e.message,itens:[]}); }
+});
+
+app.post('/api/causas', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
+  try {
+    const {categoria, tipo, causa, subcausa, setorResponsavel, palavrasChave, ativo} = req.body||{};
+    if (!categoria || !causa) return res.status(400).json({sucesso:false,erro:'Categoria e causa são obrigatórios.'});
+    const id = await gerarProximoID('CAUSAS','CAU','ID_CAUSA');
+    const obj = {
+      ID_CAUSA:id, CATEGORIA:categoria, TIPO:tipo||'', CAUSA:causa, SUBCAUSA:subcausa||'',
+      SETOR_RESPONSAVEL:setorResponsavel||'', PALAVRAS_CHAVE:palavrasChave||'',
+      ATIVO:ativo!==false?'SIM':'NAO', DATA_CRIACAO:new Date().toISOString(),
+      CRIADO_POR:req.user.usuario
+    };
+    const headers = await obterCabecalhos('CAUSAS').catch(()=>[]);
+    if (!headers.length) {
+      const sheets = await getSheets();
+      const meta = await sheets.spreadsheets.get({spreadsheetId:SPREADSHEET_ID});
+      const existe = meta.data.sheets?.find(s=>s.properties?.title==='CAUSAS');
+      if (!existe) {
+        await sheets.spreadsheets.batchUpdate({spreadsheetId:SPREADSHEET_ID,resource:{requests:[{addSheet:{properties:{title:'CAUSAS'}}}]}});
+      }
+      await sheets.spreadsheets.values.update({
+        spreadsheetId:SPREADSHEET_ID, range:'CAUSAS!A1:K1', valueInputOption:'RAW',
+        resource:{values:[['ID_CAUSA','CATEGORIA','TIPO','CAUSA','SUBCAUSA','SETOR_RESPONSAVEL','PALAVRAS_CHAVE','ATIVO','DATA_CRIACAO','CRIADO_POR','CONTAGEM_OCORRENCIAS']]}
+      });
+    }
+    await appendObjeto('CAUSAS', obj);
+    await registrarAuditoria(req.user.usuario,'CRIOU_CAUSA',id,'CAUSAS',null,{categoria,causa,subcausa});
+    res.json({sucesso:true, id, causa:obj});
+  } catch(e){ res.status(500).json({sucesso:false,erro:e.message}); }
+});
+
+app.patch('/api/causas/:id', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
+  try {
+    const dados = req.body||{};
+    const r = await atualizarPorID('CAUSAS', req.params.id, dados, ['ID_CAUSA']);
+    if (!r) return res.status(404).json({sucesso:false,erro:'Causa não encontrada.'});
+    res.json({sucesso:true});
+  } catch(e){ res.status(500).json({sucesso:false,erro:e.message}); }
+});
+
+// ===== ASSERTIVIDADE DA IA =====
+app.post('/api/assertividade-ia', async (req,res)=>{
+  try {
+    const {idManifestacao, decisaoAceita, causaConfirmada, subcausaConfirmada, setorConfirmado, tratativaAceita, devolutivaAceita, observacao} = req.body||{};
+    if (!idManifestacao) return res.status(400).json({sucesso:false,erro:'ID da manifestação é obrigatório.'});
+    const id = await gerarProximoID('ASSERTIVIDADE_IA','ASS','ID_ASSERTIVIDADE');
+    const obj = {
+      ID_ASSERTIVIDADE:id, ID_MANIFESTACAO:idManifestacao,
+      DECISAO_ACEITA:decisaoAceita?'SIM':'NAO',
+      CAUSA_CONFIRMADA:causaConfirmada||'', SUBCAUSA_CONFIRMADA:subcausaConfirmada||'',
+      SETOR_CONFIRMADO:setorConfirmado||'', TRATATIVA_ACEITA:tratativaAceita?'SIM':'NAO',
+      DEVOLUTIVA_ACEITA:devolutivaAceita?'SIM':'NAO',
+      OBSERVACAO:observacao||'', DATA_AVALIACAO:new Date().toISOString(),
+      AVALIADO_POR:req.user?.usuario||'sistema'
+    };
+    const headers = await obterCabecalhos('ASSERTIVIDADE_IA').catch(()=>[]);
+    if (!headers.length) {
+      const sheets = await getSheets();
+      const meta = await sheets.spreadsheets.get({spreadsheetId:SPREADSHEET_ID});
+      const existe = meta.data.sheets?.find(s=>s.properties?.title==='ASSERTIVIDADE_IA');
+      if (!existe) {
+        await sheets.spreadsheets.batchUpdate({spreadsheetId:SPREADSHEET_ID,resource:{requests:[{addSheet:{properties:{title:'ASSERTIVIDADE_IA'}}}]}});
+      }
+      await sheets.spreadsheets.values.update({
+        spreadsheetId:SPREADSHEET_ID, range:'ASSERTIVIDADE_IA!A1:L1', valueInputOption:'RAW',
+        resource:{values:[['ID_ASSERTIVIDADE','ID_MANIFESTACAO','DECISAO_ACEITA','CAUSA_CONFIRMADA','SUBCAUSA_CONFIRMADA','SETOR_CONFIRMADO','TRATATIVA_ACEITA','DEVOLUTIVA_ACEITA','OBSERVACAO','DATA_AVALIACAO','AVALIADO_POR','PONTUACAO']]}
+      });
+    }
+    const pontuacao = [decisaoAceita,causaConfirmada,setorConfirmado,tratativaAceita,devolutivaAceita].filter(Boolean).length * 20;
+    obj.PONTUACAO = String(pontuacao);
+    await appendObjeto('ASSERTIVIDADE_IA', obj);
+    await atualizarPorID('MANIFESTACOES', idManifestacao, {ASSERTIVIDADE_IA:String(pontuacao), DECISAO_ACEITA:decisaoAceita?'SIM':'NAO', CAUSA_CONFIRMADA:causaConfirmada||'', SUBCAUSA_CONFIRMADA:subcausaConfirmada||'', AVALIADO_EM:new Date().toISOString()}, ['ID_MANIFESTACAO']);
+    await registrarAuditoria(req.user?.usuario||'sistema','AVALIOU_ASSERTIVIDADE_IA',idManifestacao,'ASSERTIVIDADE_IA',null,{pontuacao,decisaoAceita});
+    res.json({sucesso:true, id, pontuacao});
+  } catch(e){ res.status(500).json({sucesso:false,erro:e.message}); }
+});
+
+// ===== PAINEL DA MÁQUINA =====
+app.get('/api/painel-maquina', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req,res)=>{
+  try {
+    const {empresa, setor, de, ate} = req.query;
+    const [mans, asserts, causas] = await Promise.all([
+      lerAba('MANIFESTACOES', 5000),
+      lerAba('ASSERTIVIDADE_IA', 5000).catch(()=>[]),
+      lerAba('CAUSAS', 2000).catch(()=>[]),
+    ]);
+
+    let filtradas = mans;
+    if (empresa) filtradas = filtradas.filter(m=>String(m.EMPRESA_RECLAMADA||'').toLowerCase().includes(empresa.toLowerCase()));
+    if (setor) filtradas = filtradas.filter(m=>String(m.SETOR_RESPONSAVEL||'').toLowerCase().includes(setor.toLowerCase()));
+    if (de) filtradas = filtradas.filter(m=>{ const d=new Date(m.DATA_CRIACAO||m.DATA_ABERTURA||0); return d>=new Date(de); });
+    if (ate) filtradas = filtradas.filter(m=>{ const d=new Date(m.DATA_CRIACAO||m.DATA_ABERTURA||0); return d<=new Date(ate+'T23:59:59'); });
+
+    const total = filtradas.length;
+    const comAnalise = filtradas.filter(m=>m.ANALISE_IA_STATUS||m.DECISAO_FINAL).length;
+    const comAssert = asserts.filter(a=>filtradas.some(m=>m.ID_MANIFESTACAO===a.ID_MANIFESTACAO));
+    const aceitasTotal = comAssert.filter(a=>a.DECISAO_ACEITA==='SIM').length;
+    const assertPercent = comAssert.length ? Math.round(aceitasTotal/comAssert.length*100) : 0;
+    const pontuacaoMedia = comAssert.length ? Math.round(comAssert.reduce((s,a)=>s+Number(a.PONTUACAO||0),0)/comAssert.length) : 0;
+    const encerradas = filtradas.filter(m=>['ENCERRADA','FINALIZADA','CONCLUÍDA','CONCLUIDA'].includes((m.STATUS||'').toUpperCase()));
+    const taxaResolucao = total ? Math.round(encerradas.length/total*100) : 0;
+
+    const setoresCount = {};
+    filtradas.forEach(m=>{ const s=m.SETOR_RESPONSAVEL||'Não definido'; setoresCount[s]=(setoresCount[s]||0)+1; });
+    const topSetores = Object.entries(setoresCount).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([s,n])=>({setor:s,total:n}));
+
+    const causasCount = {};
+    filtradas.forEach(m=>{ const c=m.CAUSA_RAIZ||m.CAUSA_CONFIRMADA||'Não classificada'; causasCount[c]=(causasCount[c]||0)+1; });
+    const topCausas = Object.entries(causasCount).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([c,n])=>({causa:c,total:n}));
+
+    const slaStatus = {ok:0,alerta:0,vencido:0};
+    const agora = Date.now();
+    filtradas.filter(m=>!['ENCERRADA','FINALIZADA','CONCLUÍDA','CONCLUIDA'].includes((m.STATUS||'').toUpperCase())).forEach(m=>{
+      const criacao = new Date(m.DATA_CRIACAO||m.DATA_ABERTURA||agora).getTime();
+      const slaH = Number(m.SLA_HORAS||72);
+      const elapsed = (agora-criacao)/3600000;
+      if (elapsed>=slaH) slaStatus.vencido++;
+      else if (elapsed>=slaH*0.75) slaStatus.alerta++;
+      else slaStatus.ok++;
+    });
+
+    res.json({
+      sucesso:true,
+      metricas:{
+        totalManifestacoes:total, comAnalise, taxaResolucao, assertPercent, pontuacaoMedia,
+        totalAvaliados:comAssert.length, totalAceitos:aceitasTotal,
+        encerradas:encerradas.length, emAberto:total-encerradas.length,
+      },
+      sla:slaStatus, topSetores, topCausas,
+      totalCausasCadastradas:causas.filter(c=>c.ATIVO!=='NAO').length,
+    });
+  } catch(e){ res.status(500).json({sucesso:false,erro:e.message}); }
+});
+
+// ===== SUGESTÕES DE MELHORIA =====
+app.get('/api/sugestoes-melhoria', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req,res)=>{
+  try {
+    const itens = await lerAba('SUGESTOES_MELHORIA', 2000).catch(()=>[]);
+    const status = req.query.status;
+    const filtrados = status ? itens.filter(s=>(s.STATUS||'').toUpperCase()===status.toUpperCase()) : itens;
+    res.json({sucesso:true, total:filtrados.length, itens:filtrados});
+  } catch(e){ res.status(500).json({sucesso:false,erro:e.message,itens:[]}); }
+});
+
+app.post('/api/sugestoes-melhoria', async (req,res)=>{
+  try {
+    const {idManifestacao, tipo, titulo, descricao, setor, prioridade} = req.body||{};
+    if (!titulo||!descricao) return res.status(400).json({sucesso:false,erro:'Título e descrição são obrigatórios.'});
+    const id = await gerarProximoID('SUGESTOES_MELHORIA','SME','ID_SUGESTAO_MELHORIA');
+    const obj = {
+      ID_SUGESTAO_MELHORIA:id, ID_MANIFESTACAO:idManifestacao||'', TIPO:tipo||'PROCESSO',
+      TITULO:titulo, DESCRICAO:descricao, SETOR:setor||'', PRIORIDADE:prioridade||'MEDIA',
+      STATUS:'PENDENTE', DATA_CRIACAO:new Date().toISOString(),
+      CRIADO_POR:req.user?.usuario||'sistema', DATA_AVALIACAO:'', AVALIADO_POR:'', RESULTADO:''
+    };
+    const headers = await obterCabecalhos('SUGESTOES_MELHORIA').catch(()=>[]);
+    if (!headers.length) {
+      const sheets = await getSheets();
+      const meta = await sheets.spreadsheets.get({spreadsheetId:SPREADSHEET_ID});
+      const existe = meta.data.sheets?.find(s=>s.properties?.title==='SUGESTOES_MELHORIA');
+      if (!existe) {
+        await sheets.spreadsheets.batchUpdate({spreadsheetId:SPREADSHEET_ID,resource:{requests:[{addSheet:{properties:{title:'SUGESTOES_MELHORIA'}}}]}});
+      }
+      await sheets.spreadsheets.values.update({
+        spreadsheetId:SPREADSHEET_ID, range:'SUGESTOES_MELHORIA!A1:N1', valueInputOption:'RAW',
+        resource:{values:[['ID_SUGESTAO_MELHORIA','ID_MANIFESTACAO','TIPO','TITULO','DESCRICAO','SETOR','PRIORIDADE','STATUS','DATA_CRIACAO','CRIADO_POR','DATA_AVALIACAO','AVALIADO_POR','RESULTADO','IMPACTO_ESTIMADO']]}
+      });
+    }
+    await appendObjeto('SUGESTOES_MELHORIA', obj);
+    res.json({sucesso:true, id, sugestao:obj});
+  } catch(e){ res.status(500).json({sucesso:false,erro:e.message}); }
+});
+
+app.patch('/api/sugestoes-melhoria/:id', requerPerfil('MASTER','APROVADOR'), async (req,res)=>{
+  try {
+    const dados = {...req.body, DATA_AVALIACAO:new Date().toISOString(), AVALIADO_POR:req.user.usuario};
+    const r = await atualizarPorID('SUGESTOES_MELHORIA', req.params.id, dados, ['ID_SUGESTAO_MELHORIA']);
+    if (!r) return res.status(404).json({sucesso:false,erro:'Sugestão não encontrada.'});
+    res.json({sucesso:true});
+  } catch(e){ res.status(500).json({sucesso:false,erro:e.message}); }
+});
+
+// ===== CONTEXTO DO CLIENTE =====
+app.get('/api/cliente-contexto', async (req,res)=>{
+  try {
+    const {cliente, empresa} = req.query;
+    if (!cliente) return res.status(400).json({sucesso:false,erro:'Cliente é obrigatório.'});
+    const norm = v=>String(v||'').toLowerCase().trim();
+    const [mans, hist] = await Promise.all([
+      lerAba('MANIFESTACOES', 5000),
+      lerAba('BANCO_HISTORICO', 5000).catch(()=>[]),
+    ]);
+    const clienteNorm = norm(cliente);
+    const empresaNorm = empresa?norm(empresa):'';
+    const casosMan = mans.filter(m=>norm(m.CONTATO||m.EMPRESA_RECLAMANTE||'').includes(clienteNorm)&&(!empresaNorm||norm(m.EMPRESA_RECLAMADA||'').includes(empresaNorm)));
+    const casosHist = hist.filter(h=>norm(h.ORIG_CONTATO||h.EMPRESA_RECLAMANTE||'').includes(clienteNorm)&&(!empresaNorm||norm(h.ORIG_EMPRESA||h.EMPRESA_RECLAMADA||'').includes(empresaNorm)));
+    const todosCasos = [...casosMan.map(m=>({id:m.ID_MANIFESTACAO,fonte:'MANIFESTACOES',data:m.DATA_CRIACAO||m.DATA_ABERTURA,status:m.STATUS,tipo:m.TIPO||'',produto:m.PRODUTO||'',causa:m.CAUSA_RAIZ||m.CAUSA_CONFIRMADA||'',descricao:(m.DESCRICAO_RECLAMACAO||m.DESCRICAO||'').slice(0,200)})),...casosHist.map(h=>({id:h.ID_HISTORICO||h.ID_MANIFESTACAO,fonte:'BANCO_HISTORICO',data:h.ORIG_DATA_ABERTURA||h.DATA_ABERTURA,status:h.STATUS_FINAL||h.STATUS||'',tipo:h.COMP_TIPO_PROBLEMA_VALIDADO||h.TIPO||'',produto:h.ORIG_PRODUTO||h.PRODUTO||'',causa:h.COMP_CAUSA_PROVAVEL||h.CAUSA_RAIZ||'',descricao:(h.ORIG_DESCRICAO_RECLAMACAO||h.DESCRICAO||'').slice(0,200)}))];
+    todosCasos.sort((a,b)=>new Date(b.data||0)-new Date(a.data||0));
+    const produtos = [...new Set(todosCasos.map(c=>c.produto).filter(Boolean))];
+    const causasFreq = {};
+    todosCasos.forEach(c=>{if(c.causa)causasFreq[c.causa]=(causasFreq[c.causa]||0)+1;});
+    res.json({sucesso:true,cliente,empresa:empresa||'',totalCasos:todosCasos.length,casos:todosCasos.slice(0,20),produtos,causasRecorrentes:Object.entries(causasFreq).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([c,n])=>({causa:c,ocorrencias:n}))});
   } catch(e){ res.status(500).json({sucesso:false,erro:e.message}); }
 });
 
