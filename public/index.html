@@ -2286,9 +2286,12 @@
 
       <!-- ── CAUSAS ── -->
       <div class="cd-panel" id="cdp-causas-cd" style="display:none">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
           <input class="form-input" id="cd-caus-busca" placeholder="Buscar causa…" style="width:220px" oninput="cdFiltrar('caus')">
-          <span id="cd-caus-count" style="font-size:12px;color:var(--gray-400)"></span>
+          <div style="display:flex;gap:8px;align-items:center">
+            <span id="cd-caus-count" style="font-size:12px;color:var(--gray-400)"></span>
+            <button class="btn btn-secondary" style="font-size:12px;padding:5px 12px" onclick="cdPopularCausas(this)" title="Extrai causas únicas do BANCO_HISTORICO e cadastra automaticamente">⚡ Extrair do Histórico</button>
+          </div>
         </div>
         <div style="overflow-x:auto"><table class="table" style="width:100%">
           <thead><tr><th>ID</th><th>Categoria</th><th>Tipo</th><th>Causa</th><th>Subcausa</th><th>Setor</th><th>Ativo</th></tr></thead>
@@ -8673,9 +8676,21 @@ async function cdLoadCaus() {
   } catch(e) { document.getElementById('cd-caus-loading').textContent='Erro: '+e.message; }
 }
 function renderCdCaus(q='') {
-  const rows=_cdData.caus.filter(x=>!q||(x.CATEGORIA+x.TIPO+x.CAUSA+x.SUBCAUSA).toLowerCase().includes(q));
+  const rows=_cdData.caus.filter(x=>!q||(x.CATEGORIA+x.TIPO+x.CAUSA+(x.SUBCAUSA||'')).toLowerCase().includes(q));
   document.getElementById('cd-caus-count').textContent=`${rows.length} registro(s)`;
-  cdRender('cd-caus-tbody','cd-caus-loading',rows.map(x=>`<tr><td style="font-size:11px">${esc5(x.ID||x.ID_CAUSA||'')}</td><td>${esc5(x.CATEGORIA||'')}</td><td>${esc5(x.TIPO||'')}</td><td>${esc5(x.CAUSA||'')}</td><td>${esc5(x.SUBCAUSA||'')}</td><td>${esc5(x.SETOR||'')}</td><td><span class="badge ${(x.ATIVO||'SIM')==='SIM'?'badge-green':'badge-gray'}">${esc5(x.ATIVO||'SIM')}</span></td></tr>`),7,'Nenhuma causa cadastrada.');
+  cdRender('cd-caus-tbody','cd-caus-loading',rows.map(x=>`<tr><td style="font-size:11px">${esc5(x.ID_CAUSA||x.ID||'')}</td><td>${esc5(x.CATEGORIA||'')}</td><td>${esc5(x.TIPO||'')}</td><td><strong>${esc5(x.CAUSA||'')}</strong></td><td>${esc5(x.SUBCAUSA||'')}</td><td>${esc5(x.SETOR_RESPONSAVEL||x.SETOR||'')}</td><td><span class="badge ${(x.ATIVO||'SIM')==='SIM'?'badge-green':'badge-gray'}">${esc5(x.ATIVO||'SIM')}</span></td></tr>`),7,'Nenhuma causa cadastrada. Clique em "Extrair do Histórico" para popular automaticamente.');
+}
+async function cdPopularCausas(btn) {
+  btn.disabled=true; btn.textContent='Extraindo...';
+  try {
+    const r=await _apiFetch('/api/causas/popular-historico',30000,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
+    if(r.sucesso){
+      alert(`✅ ${r.mensagem}`);
+      _cdData.caus=[];
+      cdLoadCaus();
+    } else { alert('Erro: '+(r.erro||'falha desconhecida')); }
+  } catch(e){ alert('Erro: '+e.message); }
+  finally { btn.disabled=false; btn.textContent='⚡ Extrair do Histórico'; }
 }
 
 // ── AUDITORIA ──
