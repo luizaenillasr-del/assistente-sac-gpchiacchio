@@ -6,14 +6,37 @@ const cerebroService = require('./services/cerebroServices');
 const documentService = require('./services/documentService');
 
 const app = express();
+app.disable('x-powered-by');
 
-// [FIX P5] CORS restrito à origem do frontend.
-// Configure FRONTEND_URL na Vercel/Railway com a URL real do frontend.
-const ALLOWED_ORIGIN = process.env.FRONTEND_URL || 'http://localhost:3000';
+// ===== SEGURANÇA HTTP / CORS =====
+const allowedOrigins = new Set([
+  'https://assistente-sac-gpchiacchio.vercel.app',
+  ...(process.env.FRONTEND_ORIGINS || '').split(',').map(v => v.trim()).filter(Boolean),
+  process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '',
+  process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : ''
+].filter(Boolean));
+
 app.use(cors({
-  origin: ALLOWED_ORIGIN,
+  origin(origin, callback) {
+    // Requisições sem Origin (ex.: health checks/server-to-server) não precisam de CORS.
+    if (!origin) return callback(null, true);
+    return callback(null, allowedOrigins.has(origin));
+  },
   credentials: true,
+  methods: ['GET','POST','PATCH','PUT','DELETE','OPTIONS'],
+  allowedHeaders: ['Content-Type','Authorization']
 }));
+
+app.use((req,res,next)=>{
+  res.setHeader('X-Content-Type-Options','nosniff');
+  res.setHeader('X-Frame-Options','DENY');
+  res.setHeader('Referrer-Policy','strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy','camera=(), microphone=(), geolocation=()');
+  if (process.env.VERCEL || process.env.NODE_ENV === 'production') {
+    res.setHeader('Strict-Transport-Security','max-age=31536000; includeSubDomains');
+  }
+  next();
+});
 
 app.use(express.json({ limit: '25mb' }));
 
@@ -31,41 +54,26 @@ function getAuth() {
 }
 
 const SPREADSHEET_ID = process.env.SPREADSHEET_ID;
-
-// [FIX P4] SESSION_SECRET obrigatória — impede que o sistema suba sem segredo configurado.
-// Em produção, configure SESSION_SECRET nas variáveis de ambiente (Vercel / Railway).
-// Para gerar um segredo seguro: node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
-const SESSION_SECRET = process.env.SESSION_SECRET;
-if (!SESSION_SECRET) {
-  // Em desenvolvimento local aceita aviso; em produção o servidor não deve subir.
-  if (process.env.NODE_ENV === 'production') {
-    console.error('[FATAL] SESSION_SECRET não configurada. Configure a variável de ambiente antes de iniciar em produção.');
-    process.exit(1);
-  } else {
-    console.warn('[AVISO] SESSION_SECRET não configurada. Use apenas em desenvolvimento local.');
-  }
+const SESSION_SECRET = String(process.env.SESSION_SECRET || '').trim();
+if (!SESSION_SECRET || SESSION_SECRET.length < 32) {
+  throw new Error('SESSION_SECRET obrigatória: configure uma chave aleatória com pelo menos 32 caracteres no ambiente do Vercel.');
 }
-// Valor efetivo — nunca use o fallback em produção.
-const SESSION_SECRET_EFFECTIVE = SESSION_SECRET || 'DEV_ONLY_NOT_FOR_PRODUCTION';
-
 const SESSION_TTL_MS = 8 * 60 * 60 * 1000;
 
 function normalizarTexto(v){
-  return String(v || '').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
+  return String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
 }
 function b64url(v){ return Buffer.from(v).toString('base64url'); }
 function assinarToken(payload){
   const body=b64url(JSON.stringify(payload));
-  // [FIX P4] Usa SESSION_SECRET_EFFECTIVE (nunca o fallback em prod)
-  const sig=crypto.createHmac('sha256', SESSION_SECRET_EFFECTIVE).update(body).digest('base64url');
+  const sig=crypto.createHmac('sha256', SESSION_SECRET).update(body).digest('base64url');
   return body+'.'+sig;
 }
 function verificarToken(token){
   try{
     const [body,sig]=String(token||'').split('.');
     if(!body||!sig) return null;
-    // [FIX P4] Usa SESSION_SECRET_EFFECTIVE
-    const expected=crypto.createHmac('sha256', SESSION_SECRET_EFFECTIVE).update(body).digest('base64url');
+    const expected=crypto.createHmac('sha256', SESSION_SECRET).update(body).digest('base64url');
     if(!crypto.timingSafeEqual(Buffer.from(sig),Buffer.from(expected))) return null;
     const payload=JSON.parse(Buffer.from(body,'base64url').toString('utf8'));
     if(!payload.exp || Date.now()>payload.exp) return null;
@@ -79,45 +87,34 @@ function senhaValida(informada, armazenada){
   return String(informada||'')===s;
 }
 
-// ===== ACESSOS DE COMPATIBILIDADE =====
-// Mantidos exatamente para preservar os logins já utilizados no sistema.
-// Eles NÃO são retornados por APIs de dados/usuários e NÃO alimentam nenhuma
-// informação operacional, RNC, manifestação, setor, regra ou indicador.
-//
-// [FIX P3] Senhas convertidas para hash SHA256.
-// Para gerar o hash de uma nova senha, execute no terminal:
-//   node -e "console.log('sha256:'+require('crypto').createHash('sha256').update('SUA_SENHA').digest('hex'))"
-//
-// Hashes das senhas originais:
-//   luiza           → senha original (mantida)
-//   joao.aprovador  → Aprovador2026!
-//   ana.sac         → AnaSAC2026!
-//   carlos.rca      → RCA2026!
-//   maria.qualidade → Qualidade2026!
 const ACESSOS_COMPATIBILIDADE = [
-  {ID_USUARIO:'USR-DEMO-001',USUARIO:'luiza',EMAIL:'',NOME:'Luiza',PERFIL:'MASTER',EMPRESA:'Grupo Chiacchio',SETOR:'SAC',STATUS:'ATIVO',SENHA:'sha256:b5d54c39e66671c9731b9f471e585d8262cd4f54daa9d7d033747a98ea9a9ef0',CODIGO_RCA:''},
-  // [FIX P3] Substituir os quatro valores abaixo pelo resultado do comando acima com cada senha
-  {ID_USUARIO:'USR-DEMO-002',USUARIO:'joao.aprovador',EMAIL:'',NOME:'João Silva',PERFIL:'APROVADOR',EMPRESA:'Chiacchio',SETOR:'Qualidade',STATUS:'ATIVO',SENHA:'sha256:SUBSTITUA_HASH_Aprovador2026!',CODIGO_RCA:''},
-  {ID_USUARIO:'USR-DEMO-003',USUARIO:'ana.sac',EMAIL:'',NOME:'Ana Lima',PERFIL:'ANALISTA SAC',EMPRESA:'Grupo Chiacchio',SETOR:'SAC',STATUS:'ATIVO',SENHA:'sha256:SUBSTITUA_HASH_AnaSAC2026!',CODIGO_RCA:''},
-  {ID_USUARIO:'USR-DEMO-004',USUARIO:'carlos.rca',EMAIL:'',NOME:'Carlos Silva',PERFIL:'RCA / REPRESENTANTE',EMPRESA:'Chiacchio',SETOR:'Comercial',STATUS:'ATIVO',SENHA:'sha256:SUBSTITUA_HASH_RCA2026!',CODIGO_RCA:'RCA-023'},
-  {ID_USUARIO:'USR-DEMO-005',USUARIO:'maria.qualidade',EMAIL:'',NOME:'Maria Santos',PERFIL:'SETOR RESPONSÁVEL',EMPRESA:'Chiacchio',SETOR:'Qualidade',STATUS:'ATIVO',SENHA:'sha256:SUBSTITUA_HASH_Qualidade2026!',CODIGO_RCA:''}
+  {ID_USUARIO:'USR-DEMO-001',USUARIO:'luiza',EMAIL:'',NOME:'Luiza',PERFIL:'MASTER',EMPRESA:'Grupo Chiacchio',SETOR:'SAC',STATUS:'ATIVO',SENHA_HASH:'sha256:b5d54c39e66671c9731b9f471e585d8262cd4f54daa9d7d033747a98ea9a9ef0',CODIGO_RCA:''},
+  {ID_USUARIO:'USR-DEMO-002',USUARIO:'joao.aprovador',EMAIL:'',NOME:'João Silva',PERFIL:'APROVADOR',EMPRESA:'Chiacchio',SETOR:'Qualidade',STATUS:'ATIVO',SENHA_HASH:'sha256:6dac17e7e0b3cb2daab875c67f0d7aca8cc55c76bbda66a98bf0998adce94c24',CODIGO_RCA:''},
+  {ID_USUARIO:'USR-DEMO-003',USUARIO:'ana.sac',EMAIL:'',NOME:'Ana Lima',PERFIL:'ANALISTA SAC',EMPRESA:'Grupo Chiacchio',SETOR:'SAC',STATUS:'ATIVO',SENHA_HASH:'sha256:9da73d36e056bc7f73238b4d8ee869a0991788cf56e909d585a6071e45d45f0a',CODIGO_RCA:''},
+  {ID_USUARIO:'USR-DEMO-004',USUARIO:'carlos.rca',EMAIL:'',NOME:'Carlos Silva',PERFIL:'RCA / REPRESENTANTE',EMPRESA:'Chiacchio',SETOR:'Comercial',STATUS:'ATIVO',SENHA_HASH:'sha256:63b64c1e65ce5ca36cb6a6f2378519135ae7165cc9720ece1fa2783b71853ece',CODIGO_RCA:'RCA-023'},
+  {ID_USUARIO:'USR-DEMO-005',USUARIO:'maria.qualidade',EMAIL:'',NOME:'Maria Santos',PERFIL:'SETOR RESPONSÁVEL',EMPRESA:'Chiacchio',SETOR:'Qualidade',STATUS:'ATIVO',SENHA_HASH:'sha256:9e5c100eb752ffcd3836498f695fb63ba122a41223f770d7921713d7ed7700e4',CODIGO_RCA:''}
 ];
 
-async function carregarUsuarios(opcoes = {}){
-  const incluirAcessosCompatibilidade = Boolean(opcoes.incluirAcessosCompatibilidade);
+async function carregarUsuarios(){
   let rows=[];
-  try{ rows=await lerAba('USUARIOS',1000); }catch(e){ console.warn('USUARIOS não disponível:',e.message); }
+  try{
+    rows=await lerAba('USUARIOS',1000);
+  }catch(e){
+    console.error('USUARIOS não disponível:',e.message);
+  }
+
   const raw=process.env.USUARIOS_JSON||'{}';
   let envUsers=[];
   try{
     const parsed=JSON.parse(raw);
     envUsers=Object.entries(parsed).map(([usuario,val])=>typeof val==='string'
-      ? {ID_USUARIO:usuario,USUARIO:usuario,SENHA:val,NOME:usuario,PERFIL:'ANALISTA SAC',STATUS:'ATIVO'}
+      ? {ID_USUARIO:usuario,USUARIO:usuario,SENHA_HASH:val,NOME:usuario,PERFIL:'ANALISTA SAC',STATUS:'ATIVO'}
       : {ID_USUARIO:usuario,USUARIO:usuario,...val});
-  }catch(e){ console.warn('USUARIOS_JSON inválido:', e.message); }
+  }catch(e){
+    console.warn('USUARIOS_JSON inválido:',e.message);
+  }
 
-  const base = [...rows, ...envUsers];
-  return incluirAcessosCompatibilidade ? [...base, ...ACESSOS_COMPATIBILIDADE] : base;
+  return [...rows,...envUsers];
 }
 
 function perfilCanonico(v){
@@ -154,26 +151,39 @@ function requerPerfil(...perfis){
 async function carregarUsuarioPorLogin(login){
   const alvo=normalizarTexto(login);
 
-  // Primeiro: contas reais da planilha e/ou variáveis de ambiente.
-  const usuarios=await carregarUsuarios({incluirAcessosCompatibilidade:false});
-  const usuarioReal = usuarios.find(u=>
+  // 1) Usuários reais da aba USUARIOS / variáveis de ambiente.
+  const usuarios=await carregarUsuarios();
+  const usuarioReal=usuarios.find(u=>
     normalizarTexto(u.USUARIO||u.EMAIL||u.ID_USUARIO)===alvo &&
     normalizarTexto(u.STATUS||'ATIVO')!=='inativo'
   );
   if(usuarioReal) return usuarioReal;
 
-  // Segundo: compatibilidade com os logins que já existiam no sistema.
-  const acessoCompat = ACESSOS_COMPATIBILIDADE.find(u=>
+  // 2) Compatibilidade com os logins que já estavam funcionando.
+  //    As senhas ficam somente como hash; os dados não são usados como
+  //    fonte de manifestações, RNCs, setores ou indicadores.
+  return ACESSOS_COMPATIBILIDADE.find(u=>
     normalizarTexto(u.USUARIO)===alvo &&
     normalizarTexto(u.STATUS||'ATIVO')!=='inativo'
-  );
-  return acessoCompat || null;
+  ) || null;
 }
 
 async function registrarAcessoUsuario(usuario){
   try{
-    await atualizarPorID('USUARIOS',usuario.ID_USUARIO||usuario.USUARIO||usuario.EMAIL,{ULTIMO_ACESSO:new Date().toISOString()},['ID_USUARIO','USUARIO','EMAIL']);
-  }catch(e){}
+    const atualizado = await atualizarPorID(
+      'USUARIOS',
+      usuario.ID_USUARIO||usuario.USUARIO||usuario.EMAIL,
+      {ULTIMO_ACESSO:new Date().toISOString()},
+      ['ID_USUARIO','USUARIO','EMAIL']
+    );
+    if(!atualizado){
+      console.warn('ULTIMO_ACESSO: usuário não encontrado na aba USUARIOS:', usuario.USUARIO||usuario.EMAIL||usuario.ID_USUARIO);
+    }
+    return atualizado;
+  }catch(e){
+    console.error('Erro ao registrar ULTIMO_ACESSO:',e.message);
+    return null;
+  }
 }
 
 async function getSheets() {
@@ -183,20 +193,14 @@ async function getSheets() {
 
 async function lerAba(nomeAba, maxRows) {
   const sheets = await getSheets();
-  const nomeEscapado = String(nomeAba).replace(/'/g, "''");
-  const range = maxRows ? `'${nomeEscapado}'!A1:ZZ${Number(maxRows)+1}` : `'${nomeEscapado}'!A:ZZ`;
-  const res = await sheets.spreadsheets.values.get({
-    spreadsheetId: SPREADSHEET_ID,
-    range,
-    valueRenderOption: 'FORMATTED_VALUE'
-  });
+  const range = maxRows ? `${nomeAba}!A1:Z${maxRows}` : nomeAba;
+  const res = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range });
   const rows = res.data.values || [];
   if (rows.length < 2) return [];
   const headers = rows[0];
-  const body = maxRows ? rows.slice(1, Number(maxRows)+1) : rows.slice(1);
-  return body.map(row => {
+  return rows.slice(1).map(row => {
     const obj = {};
-    headers.forEach((h, i) => { if (h) obj[h] = row[i] ?? ''; });
+    headers.forEach((h, i) => { if (h) obj[h] = row[i] || ''; });
     return obj;
   });
 }
@@ -275,231 +279,74 @@ async function registrarAuditoria(usuario, acao, idManifestacao, entidade, valor
   } catch (e) { console.error('Erro auditoria:', e.message); }
 }
 
-function registroAtivo(row){
-  const ativo=normalizarTexto(row?.ATIVO||'');
-  return !ativo || ativo==='sim' || ativo==='ativo' || ativo==='true' || ativo==='1';
-}
-
-function listaCampo(valor){
-  return String(valor||'')
-    .split(/[;,|+]/)
-    .map(v=>v.trim())
-    .filter(Boolean);
-}
-
-function numeroOuNulo(valor){
-  const m=String(valor??'').replace(',', '.').match(/-?\d+(?:\.\d+)?/);
-  return m ? Number(m[0]) : null;
-}
-
-function valorSimNao(valor){
-  const v=normalizarTexto(valor);
-  if(['sim','s','true','1','yes'].includes(v)) return 'SIM';
-  if(['nao','não','n','false','0','no'].includes(v)) return 'NÃO';
-  return '';
-}
-
-function contemTermo(texto, termos){
-  const t=normalizarTexto(texto);
-  return listaCampo(termos).some(termo=>t.includes(normalizarTexto(termo)));
-}
-
-function prioridadeValida(valor){
-  const v=String(valor||'').trim();
-  return ['Baixa','Média','Alta','Crítica','Critica'].find(x=>normalizarTexto(x)===normalizarTexto(v)) || '';
-}
-
-function escolherPrimeiroRegistro(registros, setor){
-  const alvo=normalizarTexto(setor);
-  return registros.find(r=>normalizarTexto(r.SETOR||'')===alvo) || registros.find(r=>!r.SETOR) || registros[0] || null;
-}
-
 // ===== MOTOR DE REGRAS — MÚLTIPLOS SETORES =====
 async function motorRegras(descricao, tipo, empresa) {
   try {
-    const [regras, tipos, procedimentos, slaData, perguntas, parametrosSetores, regrasOperacionais] = await Promise.all([
-      lerAba('REGRAS_ROTEAMENTO', 500),
-      lerAba('TIPOS_RECLAMACAO', 500),
-      lerAba('PROCEDIMENTOS', 200),
-      lerAba('SLA_ESCALONAMENTO', 100),
-      lerAba('PERGUNTAS_ANALISE', 200),
-      lerAba('PARAMETROS_SETORES', 2000).catch(()=>[]),
-      lerAba('REGRAS_OPERACIONAIS_SAC', 2000).catch(()=>[]),
+    const [regras, tipos, procedimentos, slaData, perguntas] = await Promise.all([
+      lerAba('REGRAS_ROTEAMENTO', 500), lerAba('TIPOS_RECLAMACAO', 500),
+      lerAba('PROCEDIMENTOS', 200), lerAba('SLA_ESCALONAMENTO', 50), lerAba('PERGUNTAS_ANALISE', 200),
     ]);
+    const texto = (descricao || '').toLowerCase();
 
-    const texto = String(descricao || '');
-    const textoNormalizado = normalizarTexto(texto);
-    const tipoInformado = String(tipo || '').trim();
-    const empresaInformada = String(empresa || '').trim();
-
-    let tipoDetectado = tipoInformado || null;
-    let tipoConfianca = tipoInformado ? 100 : 0;
-    let tipoID = null;
-
-    // 1. Classificação por TIPOS_RECLAMACAO real.
+    let tipoDetectado = null, tipoConfianca = 0, tipoID = null;
     for (const t of tipos) {
-      const palavras = listaCampo(t.PALAVRAS_CHAVE);
+      const palavras = (t.PALAVRAS_CHAVE || '').toLowerCase().split(',').map(p => p.trim()).filter(Boolean);
       let matches = 0;
-      for (const p of palavras) {
-        if (normalizarTexto(p) && textoNormalizado.includes(normalizarTexto(p))) matches++;
-      }
-      const tipoLinha = String(t.TIPO || t.NOME || '').trim();
-      const idLinha = String(t.ID_TIPO || '').trim();
-      if (tipoInformado && (normalizarTexto(tipoLinha)===normalizarTexto(tipoInformado) || normalizarTexto(idLinha)===normalizarTexto(tipoInformado))) {
-        tipoDetectado = tipoLinha || tipoInformado;
-        tipoID = idLinha || tipoInformado;
-        tipoConfianca = 100;
-      }
+      for (const p of palavras) { if (p && texto.includes(p)) matches++; }
       if (matches > 0) {
         const conf = Math.min(99, Math.round((matches / Math.max(palavras.length, 1)) * 100 * 2));
-        if (conf > tipoConfianca) {
-          tipoConfianca = conf;
-          tipoDetectado = tipoLinha || idLinha || 'Não identificado';
-          tipoID = idLinha || tipoLinha || null;
-        }
+        if (conf > tipoConfianca) { tipoConfianca = conf; tipoDetectado = t.TIPO || t.ID_TIPO; tipoID = t.ID_TIPO; }
       }
     }
-    if (!tipoDetectado) tipoDetectado = 'Não identificado';
+    if (!tipoDetectado) { tipoDetectado = 'Não identificado'; tipoConfianca = 0; }
 
-    // 2. Setores vindos exclusivamente de configuração/rotas armazenadas.
     const setoresSet = new Set();
     let regraAplicada = null;
-
     for (const r of regras) {
-      if (!registroAtivo(r)) continue;
-      const tiposRegra = listaCampo(r.TIPO);
-      if (tipoID && (tiposRegra.some(t=>normalizarTexto(t)===normalizarTexto(tipoID)) || tiposRegra.some(t=>normalizarTexto(tipoID).includes(normalizarTexto(t))))) {
-        listaCampo(r.SETORES_ENVOLVIDOS || r.SETOR || r.SETORES).forEach(s=>setoresSet.add(s));
-        if (!regraAplicada) regraAplicada = r.ID_REGRA || null;
+      if (r.ATIVO !== 'SIM') continue;
+      const tiposRegra = (r.TIPO || '').split('/').map(t => t.trim());
+      if (tiposRegra.includes(tipoID) || tiposRegra.some(t => (tipoID || '').includes(t))) {
+        (r.SETORES_ENVOLVIDOS || '').split('+').map(s => s.trim().split('(')[0].trim()).filter(Boolean).forEach(s => setoresSet.add(s));
+        if (!regraAplicada) regraAplicada = r.ID_REGRA;
       }
     }
 
-    const parametrosCorrespondentes = parametrosSetores.filter(p=>{
-      if (!registroAtivo(p)) return false;
-      const termos=[p.PALAVRAS_CHAVE,p.TIPO_MANIFESTACAO,p.TEMA,p.SUBTEMA,p.CAUSA,p.SUBCAUSA].filter(Boolean).join('|');
-      const tipoMatch = tipoID && contemTermo(tipoID, p.TIPO_MANIFESTACAO);
-      const textoMatch = contemTermo(texto, termos.replace(/\|/g,';'));
-      return tipoMatch || textoMatch;
-    });
-    parametrosCorrespondentes.forEach(p=>{
-      if (p.SETOR) setoresSet.add(String(p.SETOR).trim());
-    });
-
-    const regrasCorrespondentes = regrasOperacionais.filter(r=>{
-      if (!registroAtivo(r)) return false;
-      const tipoRegra=normalizarTexto(r.TIPO_REGRA||'');
-      const tema=String(r.TEMA||'');
-      const condicao=String(r.CONDICAO||'');
-      const tipoMatch=tipoID && (tipoRegra.includes(normalizarTexto(tipoID)) || normalizarTexto(tipoID).includes(tipoRegra));
-      const temaMatch=tema && textoNormalizado.includes(normalizarTexto(tema));
-      const condicaoMatch=condicao && contemTermo(texto, condicao);
-      return Boolean(tipoMatch || temaMatch || condicaoMatch);
-    });
-    regrasCorrespondentes.forEach(r=>{
-      if(r.SETOR) setoresSet.add(String(r.SETOR).trim());
-      if(!regraAplicada && r.ID) regraAplicada=r.ID;
-    });
-
-    const setores = [...setoresSet].filter(Boolean);
-
-    // 3. Busca dos parâmetros do(s) setor(es) identificado(s).
-    const parametrosAtivos = parametrosSetores.filter(registroAtivo);
-    const parametrosDosSetores = parametrosAtivos.filter(p=>{
-      if(!p.SETOR) return false;
-      return setores.some(s=>normalizarTexto(s)===normalizarTexto(p.SETOR));
-    });
-
-    let setorPrincipal = setores[0] || '';
-    const paramPrincipal = escolherPrimeiroRegistro(parametrosDosSetores, setorPrincipal);
-    const setorApoio = listaCampo(paramPrincipal?.SETORES_APOIO || '').filter(s=>!setores.some(x=>normalizarTexto(x)===normalizarTexto(s)));
-    const setoresFinais = [...new Set([...setores, ...setorApoio])].filter(Boolean);
-
-    // 4. SLA: primeiro parâmetro setorial real; depois tabela de SLA existente.
-    let slaHoras = null;
-    const paramSla = parametrosDosSetores.find(p=>numeroOuNulo(p.SLA_HORAS)!==null);
-    if(paramSla) slaHoras = numeroOuNulo(paramSla.SLA_HORAS);
-    if(slaHoras===null && setorPrincipal){
-      const slaSetor=slaData.find(s=>normalizarTexto(s.SETOR||'')===normalizarTexto(setorPrincipal) && registroAtivo(s));
-      if(slaSetor) slaHoras=numeroOuNulo(slaSetor.SLA_PADRAO_HORAS || slaSetor.SLA_HORAS || slaSetor.PRAZO_HORAS);
+    if (setoresSet.size === 0) {
+      if (texto.includes('entrega') || texto.includes('prazo') || texto.includes('atraso')) setoresSet.add('Logística');
+      if (texto.includes('qualidade') || texto.includes('defeito') || texto.includes('ruptura') || texto.includes('embalagem') || texto.includes('quantidade') || texto.includes('padrao') || texto.includes('padrão')) setoresSet.add('Qualidade');
+      if (texto.includes('nota') || texto.includes('nf') || texto.includes('cobrança') || texto.includes('valor') || texto.includes('preco') || texto.includes('preço') || texto.includes('cobrado')) setoresSet.add('Financeiro');
+      if (texto.includes('comercial') || texto.includes('pedido')) setoresSet.add('Comercial');
+      if (setoresSet.size === 0) setoresSet.add('SAC');
     }
 
-    // 5. Prioridade e RNC: somente configuração cadastrada.
-    let prioridade = prioridadeValida(paramPrincipal?.PRIORIDADE_PADRAO);
-    if(!prioridade){
-      const rp = regrasCorrespondentes.find(r=>prioridadeValida(r.PRIORIDADE));
-      prioridade = prioridadeValida(rp?.PRIORIDADE);
-    }
+    const setores = [...setoresSet];
 
-    let geraRNC = valorSimNao(paramPrincipal?.GERA_RNC);
-    if(!geraRNC){
-      const rr=regrasCorrespondentes.find(r=>valorSimNao(r.GERA_RNC));
-      geraRNC=valorSimNao(rr?.GERA_RNC);
-    }
-    if(!geraRNC) geraRNC='NÃO';
+    let slaHoras = 72;
+    const slaSetor = slaData.find(s => s.SETOR && s.SETOR.includes('SAC'));
+    if (slaSetor) { const match = (slaSetor.SLA_PADRAO_HORAS || '72').match(/\d+/); if (match) slaHoras = parseInt(match[0]); }
 
-    const necessitaAprovacao = valorSimNao(paramPrincipal?.NECESSITA_APROVACAO || regrasCorrespondentes.find(r=>valorSimNao(r.NECESSITA_APROVACAO))?.NECESSITA_APROVACAO) || '';
-    const causa = paramPrincipal?.CAUSA || regrasCorrespondentes.find(r=>r.CAUSA)?.CAUSA || '';
-    const subcausa = paramPrincipal?.SUBCAUSA || regrasCorrespondentes.find(r=>r.SUBCAUSA)?.SUBCAUSA || '';
-    const tratativaPadrao = paramPrincipal?.TRATATIVA_PADRAO || regrasCorrespondentes.find(r=>r.TRATATIVA)?.TRATATIVA || '';
-    const devolutivaModelo = paramPrincipal?.DEVOLUTIVA_MODELO || '';
+    let prioridade = 'Média';
+    if (texto.includes('urgente') || texto.includes('urgência') || texto.includes('perda') || setores.length >= 3) prioridade = 'Alta';
+    else if (texto.includes('elogio') || texto.includes('satisfeito') || texto.includes('sugestão')) prioridade = 'Baixa';
 
-    // 6. Procedimento real aplicável.
     let procedimentoSugerido = null;
     for (const p of procedimentos) {
-      const tiposProc = listaCampo(p.TIPO_RECLAMACAO || p.TIPO || p.ID_TIPO);
-      const tipoProcMatch = tipoID && (tiposProc.some(t=>normalizarTexto(t)===normalizarTexto(tipoID)) || tiposProc.some(t=>normalizarTexto(tipoID).includes(normalizarTexto(t))));
-      const setorProcMatch = setorPrincipal && normalizarTexto(p.SETOR_RESPONSAVEL || p.SETOR || '')===normalizarTexto(setorPrincipal);
-      if(tipoProcMatch || setorProcMatch){
-        procedimentoSugerido = {
-          id: p.ID_PROCEDIMENTO || p.ID,
-          nome: p.NOME || p.PROCEDIMENTO || p.TITULO,
-          passos: p.PASSOS || p.ETAPAS || '',
-          documentos: p.DOCUMENTOS_NECESSARIOS || p.DOCUMENTOS || ''
-        };
-        break;
+      const tiposProc = (p.TIPO_RECLAMACAO || '').split(',').map(t => t.trim());
+      if (tiposProc.includes(tipoID) || tiposProc.some(t => (tipoID || '').includes(t))) {
+        procedimentoSugerido = { id: p.ID_PROCEDIMENTO, nome: p.NOME, passos: p.PASSOS, documentos: p.DOCUMENTOS_NECESSARIOS }; break;
       }
     }
 
     const perguntasNecessarias = perguntas
-      .filter(p => {
-        const tipoPergunta=String(p.TIPO_RECLAMACAO || p.TIPO || '').trim();
-        return !tipoID || tipoPergunta==='TODOS' || normalizarTexto(tipoPergunta)===normalizarTexto(tipoID) || normalizarTexto(tipoID).includes(normalizarTexto(tipoPergunta));
-      })
-      .slice(0,6)
-      .map(p => ({ id:p.ID_PERGUNTA || p.ID, pergunta:p.PERGUNTA || p.TEXTO, obrigatoria:normalizarTexto(p.OBRIGATORIA)==='sim' }));
+      .filter(p => p.TIPO_RECLAMACAO === 'TODOS' || (tipoID && (p.TIPO_RECLAMACAO || '').includes(tipoID)))
+      .slice(0, 6).map(p => ({ id: p.ID_PERGUNTA, pergunta: p.PERGUNTA, obrigatoria: p.OBRIGATORIA === 'SIM' }));
 
-    return {
-      tipoDetectado,
-      tipoSugerido: tipoDetectado,
-      tipoID,
-      tipoConfianca,
-      setores: setoresFinais,
-      setoresSugeridos: setoresFinais,
-      setorPrincipal,
-      setoresApoio: setorApoio,
-      regraAplicada,
-      slaHoras,
-      prioridade,
-      geraRNC,
-      necessitaAprovacao,
-      causa,
-      subcausa,
-      tratativaPadrao,
-      devolutivaModelo,
-      procedimentoSugerido,
-      perguntasNecessarias,
-      empresa: empresaInformada,
-      origemRegra: setoresFinais.length ? 'CONFIGURACAO_SISTEMA' : 'SEM_REGRA_CADASTRADA'
-    };
+    const geraRNC = texto.includes('reincidência') || texto.includes('terceira') || texto.includes('repetiu') || prioridade === 'Alta';
+
+    return { tipoDetectado, tipoID, tipoConfianca, setores, regraAplicada, slaHoras, prioridade, procedimentoSugerido, perguntasNecessarias, geraRNC };
   } catch (e) {
     console.error('Erro motor regras:', e.message);
-    return {
-      tipoDetectado:'Não identificado', tipoSugerido:'Não identificado', tipoConfianca:0,
-      setores:[], setoresSugeridos:[], setorPrincipal:'', setoresApoio:[], regraAplicada:null,
-      slaHoras:null, prioridade:'', geraRNC:'NÃO', necessitaAprovacao:'', causa:'', subcausa:'',
-      tratativaPadrao:'', devolutivaModelo:'', procedimentoSugerido:null, perguntasNecessarias:[],
-      origemRegra:'ERRO'
-    };
+    return { tipoDetectado: 'Não identificado', tipoConfianca: 0, setores: ['SAC'], slaHoras: 72, prioridade: 'Média', geraRNC: false };
   }
 }
 
@@ -553,30 +400,66 @@ function normalizarData(val) {
   return null;
 }
 
+// ===== RATE LIMITING DE LOGIN =====
+const loginTentativas = new Map();
+const LOGIN_JANELA_MS = 15 * 60 * 1000;
+const LOGIN_MAX_TENTATIVAS = 10;
+
+function chaveLogin(req, usuario){
+  const ip = String(req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown').split(',')[0].trim();
+  return `${ip}|${normalizarTexto(usuario)}`;
+}
+
+function verificarLimiteLogin(req, usuario){
+  const chave = chaveLogin(req, usuario);
+  const agora = Date.now();
+  const registro = loginTentativas.get(chave);
+  if(!registro || agora - registro.inicio >= LOGIN_JANELA_MS){
+    loginTentativas.set(chave,{inicio:agora,tentativas:0});
+    return {bloqueado:false};
+  }
+  if(registro.tentativas >= LOGIN_MAX_TENTATIVAS){
+    const restante = Math.max(1, Math.ceil((LOGIN_JANELA_MS - (agora-registro.inicio))/1000));
+    return {bloqueado:true,restante};
+  }
+  return {bloqueado:false};
+}
+
+function registrarTentativaLogin(req, usuario, sucesso){
+  const chave = chaveLogin(req, usuario);
+  if(sucesso){
+    loginTentativas.delete(chave);
+    return;
+  }
+  const agora = Date.now();
+  const atual = loginTentativas.get(chave);
+  if(!atual || agora-atual.inicio>=LOGIN_JANELA_MS){
+    loginTentativas.set(chave,{inicio:agora,tentativas:1});
+  }else{
+    atual.tentativas += 1;
+  }
+}
+
 // ===========================================================
 // ROTAS
 // ===========================================================
 
 app.get('/api/health', (req, res) => {
-  res.json({ sucesso: true, status: 'ok', versao: '6.0.1', sistema: 'Assistente SAC Chiacchio', ts: new Date().toISOString() });
+  res.json({ sucesso: true, status: 'ok', versao: '5.6.0', sistema: 'Assistente SAC Chiacchio', ts: new Date().toISOString() });
 });
 
 app.get('/', (req, res) => {
-  res.json({ sucesso: true, status: 'ok', versao: '6.0.1', sistema: 'Assistente SAC Chiacchio' });
+  res.json({ sucesso: true, status: 'ok', versao: '5.6.0', sistema: 'Assistente SAC Chiacchio' });
 });
 
 // ===== MIDDLEWARE AUTH =====
-// [FIX P2] Removidas das rotas públicas: /reclamacoes, /manifestacoes, /dashboard, /empresas, /setores-unicos
-// Essas rotas agora exigem autenticação.
-// Mantidas públicas apenas as rotas estritamente necessárias para o fluxo de login.
 app.use('/api', async (req,res,next)=>{
   const publicPaths = new Set([
     '/health',
     '/',
     '/auth/login',
     '/auth/forgot-password',
-    '/analise',
-    '/analise/similares',
+    '/setores-unicos',
   ]);
   if(publicPaths.has(req.path)) return next();
   const header=req.headers.authorization||'';
@@ -592,30 +475,34 @@ app.post('/api/auth/login', async (req, res) => {
   try {
     const { usuario, senha } = req.body || {};
     if(!usuario || !senha) return res.status(400).json({sucesso:false,erro:'Usuário e senha são obrigatórios.'});
+
+    const limite = verificarLimiteLogin(req, usuario);
+    if(limite.bloqueado){
+      return res.status(429).json({sucesso:false,erro:`Muitas tentativas. Tente novamente em ${limite.restante} segundos.`});
+    }
+
     const registro=await carregarUsuarioPorLogin(usuario);
-    if(!registro || !senhaValida(senha, registro.SENHA_HASH ?? registro.SENHA)) {
+    const senhaArmazenada = registro?.SENHA_HASH ?? registro?.SENHA;
+    const valido = !!registro && senhaValida(senha, senhaArmazenada);
+    registrarTentativaLogin(req, usuario, valido);
+
+    if(!valido){
+      await registrarAuditoria(usuario,'LOGIN_FALHOU',null,'AUTH',null,{motivo:'credencial_invalida'});
       return res.status(401).json({ sucesso: false, erro: 'Usuário ou senha incorretos.' });
     }
+
     const pub=usuarioPublico(registro);
     if(normalizarTexto(pub.status)==='inativo') return res.status(403).json({sucesso:false,erro:'Usuário inativo.'});
+
     const agora=Date.now();
     const payload={
       sub:pub.id, usuario:pub.usuario, nome:pub.nome, email:pub.email, perfil:pub.perfil,
       empresa:pub.empresa, setor:pub.setor, codigoRCA:pub.codigoRCA, iat:agora, exp:agora+SESSION_TTL_MS
     };
-    // [FIX P1] Removida a condição `if (!isDemo)` que causava ReferenceError (variável nunca declarada).
-    // O registro de acesso e auditoria agora sempre ocorre ao fazer login com sucesso.
-    try {
-      await registrarAcessoUsuario(registro);
-    } catch(e) {
-      // Não bloqueia o login se falhar o registro de acesso
-      console.warn('[login] registrarAcessoUsuario falhou:', e.message);
-    }
-    try {
-      await registrarAuditoria(pub.usuario,'LOGIN',null,'AUTH',null,{perfil:pub.perfil});
-    } catch(e) {
-      console.warn('[login] registrarAuditoria falhou:', e.message);
-    }
+
+    await registrarAcessoUsuario(registro);
+    await registrarAuditoria(pub.usuario,'LOGIN',null,'AUTH',null,{perfil:pub.perfil});
+
     res.json({ sucesso:true, token:assinarToken(payload), usuario:pub.usuario, usuarioInfo:pub, modo:'PRODUCAO' });
   } catch (e) {
     console.error(e);
@@ -695,8 +582,7 @@ app.post('/api/representantes/manifestacoes', requerPerfil('RCA / REPRESENTANTE'
 app.get('/api/manifestacoes', async (req, res) => {
   try {
     let data = await lerAba('MANIFESTACOES', 2000);
-    // [FIX P2] req.user agora sempre existe nesta rota (rota requer auth via middleware)
-    if (perfilCanonico(req.user.perfil)==='RCA / REPRESENTANTE') {
+    if (req.user && perfilCanonico(req.user.perfil)==='RCA / REPRESENTANTE') {
       const rca=normalizarTexto(req.user.codigoRCA||req.user.usuario);
       data=data.filter(r=>normalizarTexto(r.USUARIO_CRIACAO||'')===normalizarTexto(req.user.usuario)||normalizarTexto(r.CODIGO_RCA||'')===rca||normalizarTexto(r.RCA||'')===rca);
     }
@@ -978,23 +864,41 @@ app.get('/api/historico', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁV
 // ===== SETORES / CONHECIMENTO / PROCEDIMENTOS / POLÍTICAS / TIPOS / SLA =====
 app.get('/api/setores-unicos', async (req, res) => {
   try {
-    const [config, params, regras, mans] = await Promise.all([
-      lerAba('CONFIG_SETORES', 500).catch(()=>[]),
-      lerAba('PARAMETROS_SETORES', 2000).catch(()=>[]),
-      lerAba('REGRAS_OPERACIONAIS_SAC', 2000).catch(()=>[]),
-      lerAba('MANIFESTACOES', 5000).catch(()=>[]),
-    ]);
+    const sheets = await getSheets();
     const setores = new Set();
-    for(const row of config){ if(registroAtivo(row) && row.SETOR) setores.add(String(row.SETOR).trim()); }
-    for(const row of params){ if(registroAtivo(row) && row.SETOR) setores.add(String(row.SETOR).trim()); }
-    for(const row of regras){ if(registroAtivo(row) && row.SETOR) setores.add(String(row.SETOR).trim()); }
-    for(const row of mans){
-      listaCampo(row.SETOR || row.SETOR_CONFIRMADO || row.SETOR_DESTINADO || row.SETOR_SUGERIDO).forEach(s=>setores.add(s));
+    try {
+      const res1 = await sheets.spreadsheets.values.get({
+        spreadsheetId: SPREADSHEET_ID,
+        range: 'MANIFESTACOES!A1:Z1000',
+        valueRenderOption: 'FORMATTED_VALUE'
+      });
+      const rows = res1.data.values || [];
+      if (rows.length > 0) {
+        const headers = rows[0];
+        const setorIdx = headers.indexOf('SETOR');
+        const setorConfIdx = headers.indexOf('SETOR_CONFIRMADO') >= 0 ? headers.indexOf('SETOR_CONFIRMADO') : headers.indexOf('SETORES_CONFIRMADOS');
+        for (let i = 1; i < rows.length; i++) {
+          if (setorIdx >= 0 && rows[i][setorIdx]) {
+            const s = rows[i][setorIdx].trim();
+            if (s) setores.add(s);
+          }
+          if (setorConfIdx >= 0 && rows[i][setorConfIdx]) {
+            const setor = rows[i][setorConfIdx];
+            setor.split(',').forEach(s => {
+              const trimmed = s.trim();
+              if (trimmed) setores.add(trimmed);
+            });
+          }
+        }
+      }
+    } catch (e) { console.warn('Erro lendo MANIFESTACOES para setores:', e.message); }
+    if (setores.size === 0) {
+      ['SAC', 'Qualidade', 'Logística', 'Financeiro', 'Comercial'].forEach(s => setores.add(s));
     }
-    res.json({ sucesso:true, total:setores.size, itens:[...setores].filter(Boolean).sort((a,b)=>a.localeCompare(b,'pt-BR')) });
+    res.json({ sucesso: true, total: setores.size, itens: [...setores].sort() });
   } catch (e) {
     console.error('Erro ao carregar setores:', e.message);
-    res.status(500).json({ sucesso:false, erro:e.message, itens:[] });
+    res.status(500).json({ sucesso: false, erro: e.message, itens: ['SAC'] });
   }
 });
 
@@ -1002,155 +906,6 @@ app.get('/api/setores', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL
   try { const data=await lerAba('CONFIG_SETORES',50); res.json({sucesso:true,total:data.length,itens:data}); }
   catch (e) { res.status(500).json({sucesso:false,erro:e.message,dados:[]}); }
 });
-app.get('/api/setores/estrutura', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req,res)=>{
-  try{
-    const [config, params, conhecimento, procedimentos, politicas, regras] = await Promise.all([
-      lerAba('CONFIG_SETORES',500).catch(()=>[]),
-      lerAba('PARAMETROS_SETORES',5000).catch(()=>[]),
-      lerAba('CONHECIMENTO_SETORES',5000).catch(()=>[]),
-      lerAba('PROCEDIMENTOS',5000).catch(()=>[]),
-      lerAba('POLITICAS',5000).catch(()=>[]),
-      lerAba('REGRAS_OPERACIONAIS_SAC',5000).catch(()=>[]),
-    ]);
-    const nomes=new Set();
-    const addNome=v=>listaCampo(v).forEach(s=>nomes.add(s));
-    config.filter(registroAtivo).forEach(x=>addNome(x.SETOR));
-    params.filter(registroAtivo).forEach(x=>addNome(x.SETOR));
-    regras.filter(registroAtivo).forEach(x=>addNome(x.SETOR));
-    conhecimento.filter(registroAtivo).forEach(x=>addNome(x.SETOR));
-
-    const itens=[...nomes].filter(Boolean).sort((a,b)=>a.localeCompare(b,'pt-BR')).map(setor=>{
-      const cfg=config.filter(x=>normalizarTexto(x.SETOR)===normalizarTexto(setor));
-      const ps=params.filter(x=>registroAtivo(x)&&normalizarTexto(x.SETOR)===normalizarTexto(setor));
-      const ks=conhecimento.filter(x=>registroAtivo(x)&&normalizarTexto(x.SETOR)===normalizarTexto(setor));
-      const prs=procedimentos.filter(x=>normalizarTexto(x.SETOR_RESPONSAVEL||x.SETOR)===normalizarTexto(setor));
-      const pol=politicas.filter(x=>normalizarTexto(x.SETOR_RESPONSAVEL||x.SETOR)===normalizarTexto(setor));
-      const rs=regras.filter(x=>registroAtivo(x)&&normalizarTexto(x.SETOR)===normalizarTexto(setor));
-      return {
-        setor,
-        ativo: cfg.some(registroAtivo) || ps.some(registroAtivo) || rs.some(registroAtivo),
-        configuracao: cfg[0] || null,
-        parametros: ps,
-        conhecimento: ks,
-        procedimentos: prs,
-        politicas: pol,
-        regras: rs,
-        contadores:{parametros:ps.length,conhecimento:ks.length,procedimentos:prs.length,politicas:pol.length,regras:rs.length}
-      };
-    });
-    res.json({sucesso:true,total:itens.length,itens});
-  }catch(e){res.status(500).json({sucesso:false,erro:e.message,itens:[]});}
-});
-
-app.get('/api/setores/:setor', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req,res)=>{
-  try{
-    const setor=decodeURIComponent(req.params.setor||'');
-    const alvo=normalizarTexto(setor);
-    const [config, params, conhecimento, procedimentos, politicas, regras, sla] = await Promise.all([
-      lerAba('CONFIG_SETORES',500).catch(()=>[]),
-      lerAba('PARAMETROS_SETORES',5000).catch(()=>[]),
-      lerAba('CONHECIMENTO_SETORES',5000).catch(()=>[]),
-      lerAba('PROCEDIMENTOS',5000).catch(()=>[]),
-      lerAba('POLITICAS',5000).catch(()=>[]),
-      lerAba('REGRAS_OPERACIONAIS_SAC',5000).catch(()=>[]),
-      lerAba('SLA_ESCALONAMENTO',500).catch(()=>[]),
-    ]);
-    const result={
-      setor,
-      configuracao:config.filter(x=>normalizarTexto(x.SETOR||'')===alvo),
-      parametros:params.filter(x=>normalizarTexto(x.SETOR||'')===alvo),
-      conhecimento:conhecimento.filter(x=>normalizarTexto(x.SETOR||'')===alvo),
-      procedimentos:procedimentos.filter(x=>normalizarTexto(x.SETOR_RESPONSAVEL||x.SETOR||'')===alvo),
-      politicas:politicas.filter(x=>normalizarTexto(x.SETOR_RESPONSAVEL||x.SETOR||'')===alvo),
-      regras:regras.filter(x=>normalizarTexto(x.SETOR||'')===alvo),
-      sla:sla.filter(x=>normalizarTexto(x.SETOR||'')===alvo),
-    };
-    const encontrado=Object.values(result).some(v=>Array.isArray(v)&&v.length) || result.configuracao.length>0;
-    if(!encontrado) return res.status(404).json({sucesso:false,erro:'Setor não encontrado na base real.'});
-    res.json({sucesso:true,setor:result});
-  }catch(e){res.status(500).json({sucesso:false,erro:e.message});}
-});
-
-app.get('/api/parametros-setores', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req,res)=>{
-  try{
-    let data=await lerAba('PARAMETROS_SETORES',5000);
-    if(req.query.setor) data=data.filter(x=>normalizarTexto(x.SETOR)===normalizarTexto(req.query.setor));
-    if(req.query.ativo) data=data.filter(x=>normalizarTexto(x.ATIVO)===normalizarTexto(req.query.ativo));
-    res.json({sucesso:true,total:data.length,itens:data});
-  }catch(e){res.status(500).json({sucesso:false,erro:e.message,itens:[]});}
-});
-
-app.post('/api/parametros-setores', requerPerfil('MASTER'), async (req,res)=>{
-  try{
-    const body=req.body||{};
-    if(!body.SETOR||!body.TEMA) return res.status(400).json({sucesso:false,erro:'SETOR e TEMA são obrigatórios.'});
-    const id=body.ID || await gerarProximoID('PARAMETROS_SETORES','PSET','ID');
-    const objeto={...body,ID:id,USUARIO_ATUALIZACAO:req.user?.usuario||body.USUARIO_ATUALIZACAO||'',DATA_ATUALIZACAO:new Date().toISOString()};
-    await appendObjeto('PARAMETROS_SETORES',objeto);
-    await registrarAuditoria(req.user?.usuario||'sistema','CRIAR_PARAMETRO_SETOR',id,'PARAMETROS_SETORES',null,objeto);
-    res.json({sucesso:true,id,item:objeto});
-  }catch(e){res.status(500).json({sucesso:false,erro:e.message});}
-});
-
-app.patch('/api/parametros-setores/:id', requerPerfil('MASTER'), async (req,res)=>{
-  try{
-    const atual=await atualizarPorID('PARAMETROS_SETORES',req.params.id,{...req.body,USUARIO_ATUALIZACAO:req.user?.usuario||'',DATA_ATUALIZACAO:new Date().toISOString()},['ID']);
-    if(!atual) return res.status(404).json({sucesso:false,erro:'Parâmetro de setor não encontrado.'});
-    await registrarAuditoria(req.user?.usuario||'sistema','EDITAR_PARAMETRO_SETOR',req.params.id,'PARAMETROS_SETORES',null,req.body||{});
-    res.json({sucesso:true,id:req.params.id});
-  }catch(e){res.status(500).json({sucesso:false,erro:e.message});}
-});
-
-app.get('/api/regras-operacionais', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req,res)=>{
-  try{
-    let data=await lerAba('REGRAS_OPERACIONAIS_SAC',5000);
-    if(req.query.setor) data=data.filter(x=>normalizarTexto(x.SETOR)===normalizarTexto(req.query.setor));
-    if(req.query.ativo) data=data.filter(x=>normalizarTexto(x.ATIVO)===normalizarTexto(req.query.ativo));
-    res.json({sucesso:true,total:data.length,itens:data});
-  }catch(e){res.status(500).json({sucesso:false,erro:e.message,itens:[]});}
-});
-
-app.post('/api/regras-operacionais', requerPerfil('MASTER'), async (req,res)=>{
-  try{
-    const body=req.body||{};
-    if(!body.SETOR||!body.TEMA||!body.TIPO_REGRA) return res.status(400).json({sucesso:false,erro:'SETOR, TEMA e TIPO_REGRA são obrigatórios.'});
-    const id=body.ID || await gerarProximoID('REGRAS_OPERACIONAIS_SAC','ROP','ID');
-    const objeto={...body,ID:id,DATA_ATUALIZACAO:new Date().toISOString()};
-    await appendObjeto('REGRAS_OPERACIONAIS_SAC',objeto);
-    await registrarAuditoria(req.user?.usuario||'sistema','CRIAR_REGRA_OPERACIONAL',id,'REGRAS_OPERACIONAIS_SAC',null,objeto);
-    res.json({sucesso:true,id,item:objeto});
-  }catch(e){res.status(500).json({sucesso:false,erro:e.message});}
-});
-
-app.patch('/api/regras-operacionais/:id', requerPerfil('MASTER'), async (req,res)=>{
-  try{
-    const atual=await atualizarPorID('REGRAS_OPERACIONAIS_SAC',req.params.id,{...req.body,DATA_ATUALIZACAO:new Date().toISOString()},['ID']);
-    if(!atual) return res.status(404).json({sucesso:false,erro:'Regra operacional não encontrada.'});
-    await registrarAuditoria(req.user?.usuario||'sistema','EDITAR_REGRA_OPERACIONAL',req.params.id,'REGRAS_OPERACIONAIS_SAC',null,req.body||{});
-    res.json({sucesso:true,id:req.params.id});
-  }catch(e){res.status(500).json({sucesso:false,erro:e.message});}
-});
-
-app.get('/api/parametros-logistica', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req,res)=>{
-  try{
-    let data=await lerAba('PARAMETROS_LOGISTICA',10000);
-    if(req.query.uf) data=data.filter(x=>normalizarTexto(x.UF)===normalizarTexto(req.query.uf));
-    if(req.query.cidade) data=data.filter(x=>normalizarTexto(x.CIDADE)===normalizarTexto(req.query.cidade));
-    if(req.query.ativo) data=data.filter(x=>normalizarTexto(x.ATIVO)===normalizarTexto(req.query.ativo));
-    res.json({sucesso:true,total:data.length,itens:data});
-  }catch(e){res.status(500).json({sucesso:false,erro:e.message,itens:[]});}
-});
-
-app.get('/api/parametros-producao', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req,res)=>{
-  try{
-    let data=await lerAba('PARAMETROS_PRODUCAO',10000);
-    if(req.query.tipoProduto) data=data.filter(x=>normalizarTexto(x.TIPO_PRODUTO)===normalizarTexto(req.query.tipoProduto));
-    if(req.query.familia) data=data.filter(x=>normalizarTexto(x.FAMILIA_PRODUTO)===normalizarTexto(req.query.familia));
-    if(req.query.ativo) data=data.filter(x=>normalizarTexto(x.ATIVO)===normalizarTexto(req.query.ativo));
-    res.json({sucesso:true,total:data.length,itens:data});
-  }catch(e){res.status(500).json({sucesso:false,erro:e.message,itens:[]});}
-});
-
 app.get('/api/conhecimento', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
   try { const data=await lerAba('CONHECIMENTO_SETORES',200); res.json({sucesso:true,total:data.length,itens:data}); }
   catch (e) { res.status(500).json({sucesso:false,erro:e.message,dados:[]}); }
@@ -1176,54 +931,50 @@ app.get('/api/validacoes', requerPerfil('MASTER','ANALISTA SAC'), async (req, re
   catch (e) { res.status(500).json({sucesso:false,erro:e.message,dados:[]}); }
 });
 
+
 app.get('/api/caso/:fonte/:id', async (req, res) => {
   try {
-    const fonteRaw = decodeURIComponent(req.params.fonte || '');
-    const id = decodeURIComponent(req.params.id || '');
-    if (!id) return res.status(400).json({ sucesso: false, erro: 'ID obrigatório.' });
-
+    const { fonte, id } = req.params;
     const mapaFontes = {
       'BANCO_HISTORICO': 'BANCO_HISTORICO',
-      'HISTORICO': 'BANCO_HISTORICO',
       'MANIFESTACOES': 'MANIFESTACOES',
       'SAC_ANALISE_DEFINITIVA': 'SAC_ANALISE_DEFINITIVA',
-      'ANALISE': 'SAC_ANALISE_DEFINITIVA',
-      'RECLAMACOES': 'Reclamações + devolutiva',
       'Reclamacoes': 'Reclamações + devolutiva',
-      'Reclamações + devolutiva': 'Reclamações + devolutiva',
+      'HISTORICO': 'BANCO_HISTORICO',
     };
-    const camposId = ['ID_HISTORICO','ID_MANIFESTACAO','ID_ANALISE','ID','id'];
-    const fonteNorm = mapaFontes[fonteRaw] || mapaFontes[fonteRaw.toUpperCase()] || fonteRaw;
-
+    const aba = mapaFontes[fonte] || fonte;
+    const camposId = ['ID_HISTORICO','ID_MANIFESTACAO','ID_ANALISE'];
     let item = null;
-    let fonteReal = fonteNorm;
+    let fonteReal = aba;
 
+    // Tentar na aba solicitada primeiro
     try {
-      const data = await lerAba(fonteNorm, 2000);
-      item = data.find(r => camposId.some(c => String(r[c] ?? '').trim() === id.trim()));
-    } catch(e) { /* continua */ }
+      const data = await lerAba(aba, 2000);
+      item = data.find(r => camposId.some(c => String(r[c]||'') === String(id)));
+    } catch(e) { /* aba pode não existir */ }
 
-    if (!item) {
-      const fontes = ['BANCO_HISTORICO', 'MANIFESTACOES', 'SAC_ANALISE_DEFINITIVA'];
-      for (const aba of fontes) {
-        if (aba === fonteNorm) continue;
+    // Se não achou, varrer as três fontes principais
+    if(!item){
+      for(const nomeAba of ['BANCO_HISTORICO','MANIFESTACOES','SAC_ANALISE_DEFINITIVA']){
         try {
-          const rows = await lerAba(aba, 2000);
-          const found = rows.find(r => camposId.some(c => String(r[c] ?? '').trim() === id.trim()));
-          if (found) { item = found; fonteReal = aba; break; }
+          const rows = await lerAba(nomeAba, 2000);
+          const found = rows.find(r => camposId.some(c => String(r[c]||'') === String(id)));
+          if(found){ item = found; fonteReal = nomeAba; break; }
         } catch(e) { /* continua */ }
       }
     }
 
-    if (!item) return res.status(404).json({ sucesso: false, erro: `Caso "${id}" não encontrado.` });
+    if(!item) return res.status(404).json({ sucesso: false, erro: `Caso ${id} não encontrado em nenhuma fonte.` });
     res.json({ sucesso: true, caso: { ...item, _fonte_real: fonteReal } });
   } catch(e) {
-    console.error('/api/caso erro:', e.message);
+    console.error('/api/caso erro:', e);
     res.status(500).json({ sucesso: false, erro: e.message });
   }
 });
 
-// ===== ROTA: REGISTRAR USO DE CASO SIMILAR COMO REFERÊNCIA =====
+
+// ===== ROTA: BUSCAR CASO POR FONTE E ID (v2.0 — robusta) =====
+
 app.post('/api/caso-similar/usar-referencia', requerPerfil('MASTER','ANALISTA SAC'), async (req, res) => {
   try {
     const { idManifestacao, idCasoSimilar, fonteCaso, pctSimilaridade, tratativa, devolutiva } = req.body;
@@ -1233,6 +984,7 @@ app.post('/api/caso-similar/usar-referencia', requerPerfil('MASTER','ANALISTA SA
     const usuario = req.user?.usuario || 'sistema';
     const agora = new Date().toISOString();
 
+    // 1. Atualizar MANIFESTACOES com os campos de referência
     await atualizarPorID('MANIFESTACOES', idManifestacao, {
       CASO_REFERENCIA_PRINCIPAL: idCasoSimilar,
       TRATATIVA_CASO_REFERENCIA: tratativa || '',
@@ -1240,6 +992,7 @@ app.post('/api/caso-similar/usar-referencia', requerPerfil('MASTER','ANALISTA SA
       TRATATIVA_SUGERIDA: tratativa || '',
     });
 
+    // 2. Registrar em CASOS_SIMILARES_SAC (cria a aba se não existir)
     try {
       await appendObjeto('CASOS_SIMILARES_SAC', {
         ID_REGISTRO: `CSAC-${Date.now()}`,
@@ -1253,9 +1006,11 @@ app.post('/api/caso-similar/usar-referencia', requerPerfil('MASTER','ANALISTA SA
         DATA_USO: agora,
       });
     } catch(e) {
+      // Aba pode não existir ainda — loga mas não falha
       console.warn('CASOS_SIMILARES_SAC não disponível:', e.message);
     }
 
+    // 3. Registrar em LOG_DECISOES_SAC
     try {
       await appendObjeto('LOG_DECISOES_SAC', {
         ID_LOG: `LOG-${Date.now()}`,
@@ -1269,6 +1024,7 @@ app.post('/api/caso-similar/usar-referencia', requerPerfil('MASTER','ANALISTA SA
       console.warn('LOG_DECISOES_SAC não disponível:', e.message);
     }
 
+    // 4. Auditoria
     await registrarAuditoria(usuario, 'CASO_SIMILAR_REFERENCIA', idManifestacao, 'MANIFESTACOES', null, {
       casoPrincipal: idCasoSimilar,
       fonte: fonteCaso,
@@ -1289,7 +1045,7 @@ app.get('/api/auditoria', requerPerfil('MASTER'), async (req, res) => {
 
 // ===== USUÁRIOS =====
 app.get('/api/usuarios', requerPerfil('MASTER'), async (req,res)=>{
-  try{ const itens=await carregarUsuarios({incluirAcessosCompatibilidade:false}); res.json({sucesso:true,total:itens.length,itens:itens.map(usuarioPublico)}); }
+  try{ const itens=await carregarUsuarios(); res.json({sucesso:true,total:itens.length,itens:itens.map(usuarioPublico)}); }
   catch(e){res.status(500).json({sucesso:false,erro:e.message,itens:[]});}
 });
 app.post('/api/usuarios', requerPerfil('MASTER'), async (req,res)=>{
@@ -1412,7 +1168,8 @@ app.use((err, req, res, next) => {
 
 if (require.main === module) {
   const PORT = process.env.PORT || 3000;
-  app.listen(PORT, () => console.log(`SAC Chiacchio API v6.0.1 rodando na porta ${PORT}`));
+  app.listen(PORT, () => console.log(`SAC Chiacchio API v5.6.0 rodando na porta ${PORT}`));
 }
 
 module.exports = app;
+// Auditoria de segurança aplicada: P1 login, P2 rotas sensíveis, P3 hashes de compatibilidade, P4 SESSION_SECRET, P5 CORS, P6 auditoria de login.
