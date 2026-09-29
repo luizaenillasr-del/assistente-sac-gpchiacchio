@@ -3068,10 +3068,22 @@ let _setorAtual = null;
 
 async function loadSetores() {
   try {
+    const authHeaders = {
+      'Authorization': 'Bearer ' + (sessionStorage.getItem('sac-token') || ''),
+      'Content-Type': 'application/json'
+    };
+    const fetchAuthJson = async (url) => {
+      const r = await fetch(API + url, { headers: authHeaders });
+      const text = await r.text();
+      let data = {};
+      try { data = text ? JSON.parse(text) : {}; } catch(e) {}
+      if (!r.ok) throw new Error(data.erro || `Erro ${r.status} ao carregar ${url}`);
+      return data;
+    };
     const [setRes, manRes, conhecRes] = await Promise.all([
-      fetch(API + '/api/setores').then(r => r.json()),
-      fetch(API + '/api/manifestacoes').then(r => r.json()),
-      fetch(API + '/api/conhecimento').then(r => r.json()),
+      fetchAuthJson('/api/setores'),
+      fetchAuthJson('/api/manifestacoes'),
+      fetchAuthJson('/api/conhecimento'),
     ]);
     _setoresConfig = setRes.itens || [];
     _setoresMans = manRes.itens || [];
