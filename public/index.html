@@ -3115,6 +3115,19 @@ async function loadSetores() {
     _setoresMans = manRes.itens || [];
     const conhecimento = conhecRes.itens || [];
 
+    // Fallback: setores padrão quando a planilha ainda não tem dados
+    if (!_setoresConfig.length) {
+      _setoresConfig = [
+        {SETOR:'Qualidade', DESCRICAO:'Controle e garantia de qualidade dos produtos', RESPONSAVEL:'', ATIVO:'SIM'},
+        {SETOR:'Produção', DESCRICAO:'Fabricação e processos produtivos', RESPONSAVEL:'', ATIVO:'SIM'},
+        {SETOR:'Logística', DESCRICAO:'Distribuição, transporte e entregas', RESPONSAVEL:'', ATIVO:'SIM'},
+        {SETOR:'Comercial', DESCRICAO:'Vendas e relacionamento comercial', RESPONSAVEL:'', ATIVO:'SIM'},
+        {SETOR:'Financeiro', DESCRICAO:'Faturamento, cobrança e pagamentos', RESPONSAVEL:'', ATIVO:'SIM'},
+        {SETOR:'Faturamento / Expedição', DESCRICAO:'Emissão de notas fiscais e expedição de pedidos', RESPONSAVEL:'', ATIVO:'SIM'},
+        {SETOR:'SAC', DESCRICAO:'Serviço de Atendimento ao Cliente — triagem e registro', RESPONSAVEL:'', ATIVO:'SIM'},
+      ];
+    }
+
     // Merge config + conhecimento
     _setoresConfig = _setoresConfig.map(s => {
       const c = conhecimento.find(k => k.SETOR === s.SETOR);

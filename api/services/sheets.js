@@ -112,4 +112,20 @@ async function gerarProximoID(nomeAba,prefixo,campoID){
   return `${prefixo}-${String(max+1).padStart(4,'0')}`;
 }
 
-module.exports={getAuth,getSheets,obterCabecalhos,lerAba,appendLinha,appendObjeto,encontrarLinhaPorID,atualizarPorID,buscarPorID,gerarProximoID};
+async function garantirAbaComCabecalhos(nomeAba, headers) {
+  const sheets = await getSheets();
+  const meta = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
+  const existe = meta.data.sheets?.find(s => s.properties?.title === nomeAba);
+  if (!existe) {
+    await sheets.spreadsheets.batchUpdate({ spreadsheetId: SPREADSHEET_ID, resource: { requests: [{ addSheet: { properties: { title: nomeAba } } }] } });
+  }
+  const atual = await obterCabecalhos(nomeAba);
+  const faltantes = headers.filter(h => !atual.includes(h));
+  if (faltantes.length) {
+    const todos = [...atual, ...faltantes];
+    await sheets.spreadsheets.values.update({ spreadsheetId: SPREADSHEET_ID, range: `${nomeAba}!A1:${colunaParaLetra(todos.length)}1`, valueInputOption: 'RAW', resource: { values: [todos] } });
+  }
+  return await obterCabecalhos(nomeAba);
+}
+
+module.exports={getAuth,getSheets,obterCabecalhos,lerAba,appendLinha,appendObjeto,encontrarLinhaPorID,atualizarPorID,buscarPorID,gerarProximoID,garantirAbaComCabecalhos};
