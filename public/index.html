@@ -1180,7 +1180,7 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
             Registrar e enviar para análise
           </button>
-          <button class="btn btn-secondary" style="width:100%;justify-content:center;margin-top:6px">Salvar rascunho</button>
+          <button class="btn btn-secondary" style="width:100%;justify-content:center;margin-top:6px" onclick="salvarRascunho()">Salvar rascunho</button>
         </div>
       </div>
     </div>
@@ -1294,7 +1294,7 @@
       <div class="page-header">
         <h1 class="page-title">Banco de Manifestações</h1>
         <div class="page-actions">
-          <button class="btn btn-secondary">
+          <button class="btn btn-secondary" onclick="exportarManifestacoes()">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             Exportar
           </button>
@@ -1373,11 +1373,11 @@
       <div class="page-header">
         <h1 class="page-title">Banco de RNC</h1>
         <div class="page-actions">
-          <button class="btn btn-secondary">
+          <button class="btn btn-secondary" onclick="exportarRNC()">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             Exportar
           </button>
-          <button class="btn btn-primary">
+          <button class="btn btn-primary" onclick="abrirEditorRNC({})">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Nova RNC
           </button>
@@ -2691,6 +2691,13 @@ async function initNovaManifestacao() {
   _nmDecisao = null;
   _nmEvidencias = []; renderEvidencias();
   const es=document.getElementById('nm-extracao-status'); if(es) es.style.display='none'; const ep=document.getElementById('nm-extracao-preview'); if(ep) ep.style.display='none';
+  try {
+    const r = localStorage.getItem('sac-rascunho');
+    if (r) {
+      const rascunho = JSON.parse(r);
+      Object.entries(rascunho).forEach(([id, val]) => { const el = document.getElementById(id); if (el && val) el.value = val; });
+    }
+  } catch(e) { /* ignora erro de localStorage */ }
 }
 
 async function buscarCliente() {
@@ -3190,6 +3197,36 @@ function navBancoPage(p) {
   renderBanco();
 }
 
+function _exportarCSV(dados, nome) {
+  if (!dados || !dados.length) { alert('Nenhum dado para exportar.'); return; }
+  const keys = Object.keys(dados[0]).filter(k => k !== '__linha');
+  const esc = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+  const linhas = [keys.join(';'), ...dados.map(r => keys.map(k => esc(r[k])).join(';'))];
+  const blob = new Blob(['﻿' + linhas.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = nome + '_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+}
+
+function exportarManifestacoes() {
+  _exportarCSV(_bancoDataFull.length ? _bancoDataFull : bancoData, 'manifestacoes');
+}
+
+function exportarRNC() {
+  _exportarCSV(window._rncDataFull || [], 'banco_rnc');
+}
+
+function salvarRascunho() {
+  try {
+    const campos = ['nm-empresa','nm-cnpj','nm-tipo','nm-canal','nm-contato','nm-descricao','nm-setor'];
+    const rascunho = {};
+    campos.forEach(id => { const el = document.getElementById(id); if (el) rascunho[id] = el.value || el.textContent || ''; });
+    localStorage.setItem('sac-rascunho', JSON.stringify(rascunho));
+    alert('Rascunho salvo! Ele será recuperado na próxima vez que abrir o formulário.');
+  } catch(e) { alert('Não foi possível salvar o rascunho.'); }
+}
+
 // ===== BANCO DE RNC =====
 async function loadBancoRNC() {
   try {
@@ -3200,6 +3237,7 @@ async function loadBancoRNC() {
     const res = await _apiFetch('/api/manifestacoes', 15000);
     const mans = res.itens || [];
     const rncs = mans.filter(m => m.ID_RNC || m.RNC_SUGERIDO === 'SIM');
+    window._rncDataFull = rncs;
     document.getElementById('rnc-abertas').textContent = rncs.length;
     document.getElementById('rnc-abertas-sub').textContent = rncs.length + ' RNCs abertas';
     document.getElementById('rnc-vencendo').textContent = Math.max(0, Math.floor(rncs.length * 0.3));
@@ -3788,7 +3826,7 @@ const pageLoaders = {
   'acompanhamento': loadAcompanhamento,
   'visao-geral': loadVisaoGeral,
   'nova-manifestacao': initNovaManifestacao,
-  'aprovadores': loadAprovadorDashboard,
+  'aprovadores': function() { if (typeof window.loadAprovadorDashboard === 'function') window.loadAprovadorDashboard(); },
   'banco-manifestacoes': loadBancoManifestacoes,
   'banco-rnc': loadBancoRNC,
   'setores': loadSetores,
@@ -4086,7 +4124,7 @@ loadVisaoGeral();
       ['ATIVO','Ativo',s.ATIVO||'SIM','select',false,['SIM','NÃO']]
     ], async values=>{
       const id=s.ID_SETOR||s.ID||encodeURIComponent(_setorAtual);
-      const res=await jsonFetch('/api/setores/'+encodeURIComponent(id),{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(values)});
+      const res=await jsonFetch('/api/setores/'+encodeURIComponent(id)+'/operacional',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(values)});
       if(res.sucesso===false)throw new Error(res.erro||'Falha ao salvar setor');
       fecharEditorGenerico(); await loadSetores(); await abrirFichaSetor(_setorAtual); alert('Setor salvo com sucesso.');
     });
