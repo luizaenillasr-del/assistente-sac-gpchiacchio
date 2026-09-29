@@ -535,21 +535,15 @@
 <div class="login-screen" id="login-screen">
   <div class="login-box">
     <div class="login-logo">
-      <div class="login-logo-icon">
-        <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-      </div>
-      <div class="login-logo-text">
-        <h2>Gestão de Manifestações</h2>
-        <p>SAC · Grupo Chiacchio</p>
-      </div>
+      <div class="login-logo-icon"><svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div>
+      <div class="login-logo-text"><h2>Gestão de Manifestações</h2><p>SAC · Grupo Chiacchio</p></div>
     </div>
     <div class="login-title">Bem-vinda de volta</div>
-    <div class="login-sub">Entre com suas credenciais para acessar o sistema</div>
+    <div class="login-sub">Informe seu usuário para acessar o sistema</div>
     <div class="login-field">
       <label class="login-label">Usuário</label>
-      <input class="login-input" type="text" id="login-user" placeholder="seu usuário" autocomplete="username">
+      <input class="login-input" type="text" id="login-user" placeholder="seu usuário" autocomplete="username" onkeydown="if(event.key==='Enter')doLogin()">
     </div>
-    <div style="margin:8px 0 18px;color:var(--gray-500);font-size:12px;line-height:1.5">Acesso por usuário. Não é necessário informar senha.</div>
     <button class="login-btn" onclick="doLogin()">Entrar</button>
     <div class="login-error" id="login-error">Usuário não encontrado ou inativo.</div>
   </div>
@@ -558,37 +552,23 @@
 <script>
   window.SAC_API = 'https://assistente-sac-gpchiacchio.vercel.app';
   async function doLogin() {
-    const user = document.getElementById('login-user').value.trim();
-    const err = document.getElementById('login-error');
+    const user=document.getElementById('login-user').value.trim();
+    const err=document.getElementById('login-error');
     err.style.display='none';
-
-    if(!user){
-      err.textContent='Informe seu usuário.';
-      err.style.display='block';
-      return;
-    }
-
-    try {
-      const r=await fetch(window.SAC_API+'/api/auth/login',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({usuario:user})
-      });
-      const raw=await r.text();
-      let data={};
-      try{ data=raw?JSON.parse(raw):{}; }catch(e){ throw new Error(`A API respondeu de forma inválida (HTTP ${r.status}).`); }
+    if(!user){err.textContent='Informe o usuário.';err.style.display='block';return;}
+    try{
+      const r=await fetch(window.SAC_API+'/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({usuario:user})});
+      const raw=await r.text(); let data={};
+      try{data=raw?JSON.parse(raw):{};}catch(e){throw new Error(`A API respondeu de forma inválida (HTTP ${r.status}).`);}
       if(!r.ok || !data.sucesso) throw new Error(data.erro||'Usuário não encontrado ou inativo.');
-      sessionStorage.setItem('sac-token',data.token);
+      sessionStorage.setItem('sac-token',data.token||'');
       sessionStorage.setItem('sac-auth','1');
-      sessionStorage.setItem('sac-user',JSON.stringify(data.usuarioInfo));
+      sessionStorage.setItem('sac-user',JSON.stringify(data.usuarioInfo||{}));
+      sessionStorage.removeItem('sac-demo-local');
       document.getElementById('login-screen').style.display='none';
       await (window.iniciarSessaoV5 ? window.iniciarSessaoV5() : Promise.resolve());
-    } catch(e) {
-      err.textContent=e.message||'Não foi possível entrar no sistema.';
-      err.style.display='block';
-    }
+    }catch(e){err.textContent=e.message||'Não foi possível entrar.';err.style.display='block';}
   }
-
 </script>
 
 <body>
@@ -1871,7 +1851,7 @@
   <!-- ===== MODAL USUÁRIO ===== -->
   <div id="modal-usuario-v5" class="modal-overlay" style="display:none" onclick="if(event.target===this)fecharModalUsuario()">
     <div class="modal-box" style="max-width:760px"><div class="modal-header"><div><div style="font-size:18px;font-weight:800">Novo usuário</div><div style="font-size:12px;color:var(--gray-400)">A conta é individual. Não utilizar login genérico.</div></div><button class="modal-close" onclick="fecharModalUsuario()">×</button></div><div class="modal-body">
-      <div class="form-section"><div class="form-section-title">Identificação</div><div class="field-grid"><div class="field"><label>Nome completo *</label><input id="usr-nome"></div><div class="field"><label>Usuário *</label><input id="usr-login"></div><div class="field"><label>E-mail</label><input id="usr-email" type="email"></div></div></div>
+      <div class="form-section"><div class="form-section-title">Identificação</div><div class="field-grid"><div class="field"><label>Nome completo *</label><input id="usr-nome"></div><div class="field"><label>Usuário *</label><input id="usr-login"></div><div class="field"><label>E-mail</label><input id="usr-email" type="email"></div><div class="field"><label>Senha inicial</label><input id="usr-senha" type="password"></div></div></div>
       <div class="form-section"><div class="form-section-title">Perfil e vínculo</div><div class="field-grid"><div class="field"><label>Perfil *</label><select id="usr-perfil"><option>ANALISTA SAC</option><option>SETOR RESPONSÁVEL</option><option>APROVADOR</option><option>RCA / REPRESENTANTE</option><option>MASTER</option></select></div><div class="field"><label>Empresa</label><input id="usr-empresa"></div><div class="field"><label>Setor</label><input id="usr-setor"></div><div class="field"><label>Código RCA</label><input id="usr-rca"></div><div class="field"><label>Status</label><select id="usr-status"><option>ATIVO</option><option>INATIVO</option></select></div></div></div>
       <div style="display:flex;justify-content:flex-end;gap:8px"><button class="btn btn-secondary" onclick="fecharModalUsuario()">Cancelar</button><button class="btn btn-primary" onclick="salvarUsuarioV5()">Criar usuário</button></div>
     </div></div>
@@ -3068,23 +3048,14 @@ let _setorAtual = null;
 
 async function loadSetores() {
   try {
-    const authHeaders = {
-      'Authorization': 'Bearer ' + (sessionStorage.getItem('sac-token') || ''),
-      'Content-Type': 'application/json'
-    };
-    const fetchAuthJson = async (url) => {
-      const r = await fetch(API + url, { headers: authHeaders });
-      const text = await r.text();
-      let data = {};
-      try { data = text ? JSON.parse(text) : {}; } catch(e) {}
-      if (!r.ok) throw new Error(data.erro || `Erro ${r.status} ao carregar ${url}`);
-      return data;
-    };
     const [setRes, manRes, conhecRes] = await Promise.all([
-      fetchAuthJson('/api/setores'),
-      fetchAuthJson('/api/manifestacoes'),
-      fetchAuthJson('/api/conhecimento'),
+      jsonFetch('/api/setores'),
+      jsonFetch('/api/manifestacoes'),
+      jsonFetch('/api/conhecimento'),
     ]);
+    if(setRes?.sucesso===false) throw new Error(setRes.erro||'Falha ao carregar setores.');
+    if(manRes?.sucesso===false) throw new Error(manRes.erro||'Falha ao carregar manifestações.');
+    if(conhecRes?.sucesso===false) throw new Error(conhecRes.erro||'Falha ao carregar conhecimento.');
     _setoresConfig = setRes.itens || [];
     _setoresMans = manRes.itens || [];
     const conhecimento = conhecRes.itens || [];
@@ -4017,7 +3988,7 @@ loadVisaoGeral();
   }
   window.loadUsuariosV5=loadUsuariosV5;
   window.abrirModalUsuario=function(){document.getElementById('modal-usuario-v5').style.display='flex'};window.fecharModalUsuario=function(){document.getElementById('modal-usuario-v5').style.display='none'};
-  window.salvarUsuarioV5=async function(){const b={nome:document.getElementById('usr-nome').value.trim(),usuario:document.getElementById('usr-login').value.trim(),email:document.getElementById('usr-email').value.trim(),perfil:document.getElementById('usr-perfil').value,empresa:document.getElementById('usr-empresa').value,setor:document.getElementById('usr-setor').value,codigoRCA:document.getElementById('usr-rca').value,status:document.getElementById('usr-status').value};try{await json5('/api/usuarios',{method:'POST',body:JSON.stringify(b)});alert('Usuário criado.');fecharModalUsuario();loadUsuariosV5()}catch(e){alert(e.message)}};
+  window.salvarUsuarioV5=async function(){const b={nome:document.getElementById('usr-nome').value.trim(),usuario:document.getElementById('usr-login').value.trim(),email:document.getElementById('usr-email').value.trim(),senha:document.getElementById('usr-senha').value,perfil:document.getElementById('usr-perfil').value,empresa:document.getElementById('usr-empresa').value,setor:document.getElementById('usr-setor').value,codigoRCA:document.getElementById('usr-rca').value,status:document.getElementById('usr-status').value};try{await json5('/api/usuarios',{method:'POST',body:JSON.stringify(b)});alert('Usuário criado.');fecharModalUsuario();loadUsuariosV5()}catch(e){alert(e.message)}};
   window.editarUsuarioV5=function(id){alert('A edição detalhada será feita na linha do usuário. ID: '+id)};
 
   // ===== APROVADOR =====
@@ -6053,6 +6024,110 @@ window.initNovaManifestacao = async function(){
 console.log('[patch-similares-v2] carregado — robusto, seguro, sem serialização insegura');
 })();
 
+</script>
+
+
+<script>
+(function(){
+  'use strict';
+  const apiBase=window.SAC_API||API;
+  const esc2=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  async function api2(path,opts={}){
+    const token=sessionStorage.getItem('sac-token')||'';
+    const headers={...(opts.headers||{}),...(token?{'Authorization':'Bearer '+token}:{})};
+    const r=await fetch(apiBase+path,{...opts,headers});
+    const raw=await r.text(); let d={}; try{d=raw?JSON.parse(raw):{};}catch(e){d={erro:raw};}
+    if(r.status===401){ sessionStorage.removeItem('sac-token'); sessionStorage.removeItem('sac-auth'); throw new Error('Sessão expirada. Entre novamente.'); }
+    if(!r.ok||d.sucesso===false) throw new Error(d.erro||`Erro HTTP ${r.status}`);
+    return d;
+  }
+  function field(label,key,value,type='textarea'){return `<div style="margin-bottom:12px"><label style="display:block;font-size:12px;font-weight:700;color:var(--gray-600);margin-bottom:5px">${esc2(label)}</label>${type==='input'?`<input id="sf-${key}" class="form-input" value="${esc2(value||'')}">`:`<textarea id="sf-${key}" class="form-input" rows="4" style="resize:vertical">${esc2(value||'')}</textarea>`}</div>`;}
+  function getv(key){return document.getElementById('sf-'+key)?.value||'';}
+  async function carregarFichaOperacional(nome){
+    const box=document.getElementById('setor-operacional-box'); if(!box)return;
+    box.innerHTML='<div class="loading"><div class="spinner"></div> Carregando ficha operacional...</div>';
+    try{
+      const d=await api2('/api/setores/'+encodeURIComponent(nome)+'/operacional');
+      const s=d.setor||{}; const faq=d.faq||[];
+      const perguntas=[
+        ['FAQ_01','O que o SAC deve fazer quando recebe uma reclamação?'],
+        ['FAQ_02','Quais informações devem ser coletadas?'],
+        ['FAQ_03','O SAC deve encaminhar uma reclamação para apenas um setor?'],
+        ['FAQ_04','Como tratar uma reclamação reaberta?'],
+        ['FAQ_05','Como deve ser feita a devolutiva?'],
+        ['FAQ_06','Quando uma manifestação pode ser encerrada?']
+      ];
+      const map={}; faq.forEach(x=>map[x.CODIGO||x.ID_FAQ||'']=x.RESPOSTA||'');
+      box.innerHTML=`<div class="section-card" style="margin-bottom:14px"><div class="section-title">${esc2(nome)}</div><div class="section-sub">Cadastro operacional do setor</div>
+        ${field('Função do setor','FUNCAO_SETOR',s.FUNCAO_SETOR||s.DESCRICAO||'')}
+        ${field('Palavras-chave','PALAVRAS_CHAVE',s.PALAVRAS_CHAVE||'','input')}
+        ${field('Competências do setor','COMPETENCIAS',s.COMPETENCIAS||s.RESPONSABILIDADES||'')}
+        ${field('Limites de atuação','LIMITES_ATUACAO',s.LIMITES_ATUACAO||'')}
+        ${field('Tratativas permitidas','TRATATIVAS_PERMITIDAS',s.TRATATIVAS_PERMITIDAS||'')}
+        ${field('Regra especial','REGRA_ESPECIAL',s.REGRA_ESPECIAL||s.REGRAS_OPERACIONAIS||'')}
+        <button class="btn btn-primary" onclick="window.salvarFichaSetor()">Salvar cadastro do setor</button></div>
+        <div class="section-card"><div class="section-title">FAQ</div><div class="section-sub">Perguntas e respostas usadas pelo Assistente SAC</div>
+        ${perguntas.map(([cod,p])=>field(p,cod,map[cod]||'')).join('')}
+        <button class="btn btn-primary" onclick="window.salvarFAQSetor()">Salvar FAQ</button></div>`;
+      window._faqSetorAtual=nome; window._faqSetorData=faq;
+    }catch(e){box.innerHTML=`<div class="alert-box red">Não foi possível carregar a ficha: ${esc2(e.message)}</div>`;}
+  }
+  window.salvarFichaSetor=async function(){
+    const nome=window._faqSetorAtual||_setorAtual; if(!nome)return;
+    try{
+      await api2('/api/setores/'+encodeURIComponent(nome)+'/operacional',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({FUNCAO_SETOR:getv('FUNCAO_SETOR'),PALAVRAS_CHAVE:getv('PALAVRAS_CHAVE'),COMPETENCIAS:getv('COMPETENCIAS'),LIMITES_ATUACAO:getv('LIMITES_ATUACAO'),TRATATIVAS_PERMITIDAS:getv('TRATATIVAS_PERMITIDAS'),REGRA_ESPECIAL:getv('REGRA_ESPECIAL')})});
+      alert('Cadastro do setor salvo.'); await carregarFichaOperacional(nome);
+    }catch(e){alert('Não foi possível salvar: '+e.message);}
+  };
+  window.salvarFAQSetor=async function(){
+    const nome=window._faqSetorAtual||_setorAtual; if(!nome)return;
+    const perguntas=[
+      ['FAQ_01','O que o SAC deve fazer quando recebe uma reclamação?'],['FAQ_02','Quais informações devem ser coletadas?'],['FAQ_03','O SAC deve encaminhar uma reclamação para apenas um setor?'],['FAQ_04','Como tratar uma reclamação reaberta?'],['FAQ_05','Como deve ser feita a devolutiva?'],['FAQ_06','Quando uma manifestação pode ser encerrada?']
+    ];
+    try{
+      for(const [cod,p] of perguntas){await api2('/api/setores/'+encodeURIComponent(nome)+'/faq',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({CODIGO:cod,PERGUNTA:p,RESPOSTA:getv(cod),ATIVO:'SIM'})});}
+      alert('FAQ salvo.'); await carregarFichaOperacional(nome);
+    }catch(e){alert('Não foi possível salvar o FAQ: '+e.message);}
+  };
+  // acrescenta a aba de cadastro operacional à ficha existente
+  function instalarTabSetor(){
+    const tabs=document.getElementById('ficha-tabs');
+    if(tabs && !document.getElementById('tab-operacional-btn')){
+      const b=document.createElement('button'); b.id='tab-operacional-btn'; b.className='tab-btn'; b.textContent='Cadastro operacional'; b.onclick=function(){
+        switchFichaTab('operacional',this); carregarFichaOperacional(_setorAtual);
+      }; tabs.appendChild(b);
+      const d=document.createElement('div'); d.id='ficha-tab-operacional'; d.style.display='none'; d.innerHTML='<div id="setor-operacional-box"></div>';
+      tabs.parentNode.insertBefore(d,tabs.nextSibling);
+    }
+  }
+  const oldOpen=window.abrirFichaSetor;
+  if(typeof oldOpen==='function') window.abrirFichaSetor=async function(nome){instalarTabSetor();await oldOpen(nome);};
+  const oldSwitch=window.switchFichaTab;
+  window.switchFichaTab=function(tab,btn){
+    ['casos','conhecimento','rnc','desempenho','operacional'].forEach(t=>{const el=document.getElementById('ficha-tab-'+t);if(el)el.style.display=t===tab?'block':'none';});
+    document.querySelectorAll('#ficha-tabs .tab-btn').forEach(b=>b.classList.remove('active')); if(btn)btn.classList.add('active');
+  };
+  // calculadora
+  function instalarCalculadora(){
+    if(document.getElementById('page-calculadora-atraso'))return;
+    const side=document.querySelector('.sidebar');
+    if(side){const sec=document.createElement('div');sec.className='sidebar-section';sec.textContent='Ferramentas';side.appendChild(sec);const item=document.createElement('div');item.className='sidebar-item';item.innerHTML='⏱ Calculadora de atraso';item.onclick=function(){navigate('calculadora-atraso',this);window.carregarCalcParametros();};side.appendChild(item);}
+    const main=document.querySelector('body'); const page=document.createElement('div'); page.className='page';page.id='page-calculadora-atraso';
+    page.innerHTML=`<div class="topbar"><div class="breadcrumb">Ferramentas / <span>Calculadora de atraso</span></div><div class="page-header"><h1 class="page-title">Calculadora de atraso</h1></div></div><div class="content"><div class="section-card"><div class="section-title">Dados do pedido</div><div class="section-sub">A calculadora identifica o prazo previsto e onde ocorreu o desvio.</div><div class="grid-2"><div class="field"><label>Tipo</label><select id="calc-tipo" class="form-input"><option value="ESTOQUE">Produto em estoque</option><option value="PERSONALIZADO">Produto personalizado</option></select></div><div class="field"><label>Tipo de produto</label><input id="calc-produto" class="form-input"></div><div class="field"><label>Família do produto</label><input id="calc-familia" class="form-input"></div><div class="field"><label>Processo</label><input id="calc-processo" class="form-input"></div><div class="field"><label>Data do pedido</label><input id="calc-pedido" type="date" class="form-input"></div><div class="field"><label>Data de faturamento</label><input id="calc-faturamento" type="date" class="form-input"></div><div class="field"><label>Data de implantação</label><input id="calc-implantacao" type="date" class="form-input"></div><div class="field"><label>Início da produção</label><input id="calc-inicio" type="date" class="form-input"></div><div class="field"><label>Fim da produção</label><input id="calc-fim" type="date" class="form-input"></div><div class="field"><label>Data de expedição</label><input id="calc-expedicao" type="date" class="form-input"></div><div class="field"><label>Data de entrega</label><input id="calc-entrega" type="date" class="form-input"></div><div class="field"><label>Cidade do cliente</label><input id="calc-cidade" class="form-input"></div><div class="field"><label>UF</label><input id="calc-uf" maxlength="2" class="form-input"></div><div class="field"><label>Região</label><input id="calc-regiao" class="form-input"></div></div><div style="display:flex;justify-content:flex-end;margin-top:14px"><button class="btn btn-primary" onclick="window.calcularAtraso()">Calcular atraso</button></div></div><div id="calc-resultado" style="margin-top:16px"></div></div>`;
+    main.appendChild(page);
+  }
+  window.carregarCalcParametros=async function(){
+    try{window._calcParams=await api2('/api/calculadora/parametros');}catch(e){window._calcParams={logistica:[],producao:[]};console.error(e);}
+  };
+  const fmt=d=>d?new Date(d+'T00:00:00').toLocaleDateString('pt-BR'):'—';
+  function addDays(date,n,tipo){let d=new Date(date+'T00:00:00');let i=0;while(i<n){d.setDate(d.getDate()+1);if(String(tipo||'').toUpperCase().includes('UTIL')){const w=d.getDay();if(w===0||w===6)continue;}i++;}return d.toISOString().slice(0,10);}
+  function diff(a,b){if(!a||!b)return null;return Math.round((new Date(b+'T00:00:00')-new Date(a+'T00:00:00'))/86400000);}
+  window.calcularAtraso=async function(){
+    const body={tipoProduto:document.getElementById('calc-tipo').value,tipo:document.getElementById('calc-tipo').value,produto:document.getElementById('calc-produto').value,familiaProduto:document.getElementById('calc-familia').value,processo:document.getElementById('calc-processo').value,dataPedido:document.getElementById('calc-pedido').value,dataFaturamento:document.getElementById('calc-faturamento').value,dataImplantacao:document.getElementById('calc-implantacao').value,dataInicioProducao:document.getElementById('calc-inicio').value,dataFimProducao:document.getElementById('calc-fim').value,dataExpedicao:document.getElementById('calc-expedicao').value,dataEntrega:document.getElementById('calc-entrega').value,cidade:document.getElementById('calc-cidade').value,uf:document.getElementById('calc-uf').value,regiao:document.getElementById('calc-regiao').value};
+    try{const d=await api2('/api/calculadora/calcular',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const r=d.resultado||d;document.getElementById('calc-resultado').innerHTML=`<div class="section-card"><div class="section-title">Resultado da análise</div><div class="grid-2" style="margin-top:12px"><div><b>Prazo de produção:</b> ${r.tempoProducao??'—'} dias<br><b>Previsão produção:</b> ${fmt(r.dataProducaoEstimada)}<br><b>Fim real:</b> ${fmt(body.dataFimProducao)}<br><b>Desvio produção:</b> ${r.desvioProducao??'—'} dias</div><div><b>Prazo transporte:</b> ${r.prazoTransporte??'—'} dias<br><b>Previsão entrega:</b> ${fmt(r.dataEntregaEstimada)}<br><b>Entrega real:</b> ${fmt(body.dataEntrega)}<br><b>Desvio transporte:</b> ${r.desvioTransporte??'—'} dias</div></div><div style="margin-top:14px;padding:14px;border-radius:10px;background:${r.desvioDias>0?'#FEF2F2':'#ECFDF5'}"><b>Status:</b> ${esc2(r.statusPrazo||'—')} &nbsp; <b>Etapa:</b> ${esc2(r.etapaDesvio||'—')} &nbsp; <b>Desvio total:</b> ${r.desvioDias??'—'} dias</div></div>`;}catch(e){document.getElementById('calc-resultado').innerHTML=`<div class="alert-box red">${esc2(e.message)}</div>`;}
+  };
+  document.addEventListener('DOMContentLoaded',()=>{instalarCalculadora();instalarTabSetor();});
+})();
 </script>
 
 </body>
