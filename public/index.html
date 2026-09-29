@@ -4082,7 +4082,502 @@ loadVisaoGeral();
 <script>
 // ============================================================
 // PATCH VISÃO GERAL — SAC Chiacchio
-// Cole este bloco ANTES do </body> no index.html
+// Cole este bloco ANTES do 
+<!-- ============================================================ -->
+
+
+
+<!-- ============================================================ -->
+<!-- PATCH SIMILARES + TRATATIVA v2.0 — Robusto e Seguro         -->
+<!-- Cache global, sem serialização insegura, persistência real   -->
+<!-- ============================================================ -->
+<script>
+// ============================================================
+// PATCH SIMILARES + TRATATIVA v2.0 — Robusto e Seguro
+// Substitui completamente a v1.0
+// ============================================================
+(function(){
+'use strict';
+
+// ── CACHE GLOBAL DE CASOS (evita serialização insegura no onclick) ──
+window._casosSimilaresCache = {};
+let _cacheCounter = 0;
+function storeCaso(caso){
+  const key = 'cs_' + (++_cacheCounter);
+  window._casosSimilaresCache[key] = caso;
+  return key;
+}
+function getCaso(key){ return window._casosSimilaresCache[key] || null; }
+
+// ── HELPERS ────────────────────────────────────────────────────
+const API = () => window.SAC_API || 'https://assistente-sac-gpchiacchio.vercel.app';
+function token(){ return sessionStorage.getItem('sac-token') || ''; }
+function esc(v){ return String(v ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
+function fmtDate(v){
+  if(!v) return '—';
+  const d = typeof v === 'number' ? new Date((v - 25569) * 86400000) : new Date(v);
+  return isNaN(d) ? String(v) : d.toLocaleDateString('pt-BR');
+}
+function calcPct(caso){
+  const v = caso?.compatibilidade ?? caso?.similaridade ?? caso?.score ?? 0;
+  return Math.min(100, Math.max(0, Math.round(v > 1 ? v : v * 100)));
+}
+function getCampo(obj, ...chaves){
+  for(const k of chaves){
+    const v = obj[k];
+    if(v !== undefined && v !== null && String(v).trim() && String(v).trim() !== 'undefined') return String(v).trim();
+  }
+  return null;
+}
+function getFonteId(caso){
+  const id = getCampo(caso, 'ID_HISTORICO','ID_MANIFESTACAO','id','ID') || '';
+  const fonte = getCampo(caso, 'FONTE_ORIGINAL','FONTE','fonte') || (id.startsWith('HIST') ? 'BANCO_HISTORICO' : id.startsWith('MAN') ? 'MANIFESTACOES' : 'BANCO_HISTORICO');
+  return { id, fonte, chave: `${fonte}::${id}` };
+}
+
+// ── ESTILOS ────────────────────────────────────────────────────
+if(!document.getElementById('style-sim-v2')){
+  const s = document.createElement('style');
+  s.id = 'style-sim-v2';
+  s.textContent = `
+.sim-v2-card{border:1px solid var(--gray-200);border-radius:10px;padding:12px 14px;margin-bottom:8px;background:white;cursor:pointer;transition:border-color 0.15s,box-shadow 0.15s,transform 0.1s;position:relative;user-select:none}
+.sim-v2-card:hover{border-color:var(--red);box-shadow:0 3px 12px rgba(200,16,46,0.12);transform:translateY(-1px)}
+.sim-v2-card .ver-link{font-size:11px;font-weight:700;color:var(--red);position:absolute;top:10px;right:12px;pointer-events:none}
+.sim-v2-trat{margin-top:7px;padding:6px 9px;background:var(--green-light);border-radius:6px;font-size:11px;color:#065F46;border-left:3px solid #059669;line-height:1.4}
+.sim-v2-sem-trat{font-size:11px;color:var(--gray-400);font-style:italic;margin-top:5px}
+.pct-v2{display:inline-flex;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;margin-right:6px}
+.pct-v2.alta{background:#D1FAE5;color:#065F46}
+.pct-v2.media{background:#FEF3C7;color:#92400E}
+.pct-v2.baixa{background:#F3F4F6;color:#6B7280}
+/* Modal */
+#mcs-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:3000;display:flex;align-items:flex-start;justify-content:center;padding:24px;overflow-y:auto}
+.mcs-box{background:white;border-radius:16px;width:100%;max-width:860px;box-shadow:0 24px 60px rgba(0,0,0,.3);margin:auto}
+.mcs-header{padding:18px 22px;border-bottom:1px solid var(--gray-100);display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.mcs-body{padding:20px 22px;max-height:78vh;overflow-y:auto}
+.mcs-close{width:30px;height:30px;border-radius:8px;border:1px solid var(--gray-200);background:white;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--gray-400);flex-shrink:0;line-height:1}
+.mcs-close:hover{background:var(--gray-50);color:var(--gray-700)}
+.mcs-campo{background:var(--gray-50);border-radius:8px;padding:10px 12px;margin-bottom:7px}
+.mcs-campo-lbl{font-size:10px;font-weight:700;color:var(--gray-400);text-transform:uppercase;margin-bottom:3px}
+.mcs-campo-val{font-size:13px;color:var(--gray-800);line-height:1.5;white-space:pre-wrap;word-break:break-word}
+.mcs-campo-nil{font-size:13px;color:var(--gray-300);font-style:italic}
+.mcs-campo.destaque{border-left:3px solid var(--red);background:var(--red-light)}
+.mcs-campo.verde{border-left:3px solid #059669;background:var(--green-light)}
+.mcs-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:12px}
+.mcs-secao{font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:.05em;margin:12px 0 8px}
+.btn-usar-ref{width:100%;padding:11px;background:var(--red);color:white;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;margin-top:10px;display:flex;align-items:center;justify-content:center;gap:7px;transition:background .15s}
+.btn-usar-ref:hover{background:var(--red-dark)}
+.btn-usar-ref:disabled{background:#9B0D22;cursor:not-allowed;opacity:.7}
+.btn-usar-ref.usado{background:var(--green)}
+.orig-badge{font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;display:inline-flex;align-items:center;gap:3px}
+.orig-badge.similar{background:#EFF6FF;color:#1D4ED8}
+.orig-badge.ia{background:#F3E8FF;color:#7C3AED}
+.orig-badge.ferramenta{background:#ECFDF5;color:#065F46}
+.trat-bloco-loading{color:var(--gray-400);font-size:12px;display:flex;align-items:center;gap:6px}
+`;
+  document.head.appendChild(s);
+}
+
+// ── MODAL DE CASO ──────────────────────────────────────────────
+function garantirModal(){
+  if(document.getElementById('mcs-overlay')) return;
+  const el = document.createElement('div');
+  el.id = 'mcs-overlay';
+  el.style.display = 'none';
+  el.innerHTML = `
+    <div class="mcs-box">
+      <div class="mcs-header">
+        <div>
+          <div style="font-size:18px;font-weight:800" id="mcs-titulo">Caso histórico</div>
+          <div style="font-size:12px;color:var(--gray-400);margin-top:2px" id="mcs-sub">—</div>
+        </div>
+        <button class="mcs-close" onclick="fecharCasoModal()">×</button>
+      </div>
+      <div class="mcs-body" id="mcs-body">
+        <div class="loading"><div class="spinner"></div> Carregando...</div>
+      </div>
+    </div>`;
+  el.addEventListener('click', e => { if(e.target === el) fecharCasoModal(); });
+  document.body.appendChild(el);
+}
+
+window.fecharCasoModal = function(){
+  const el = document.getElementById('mcs-overlay');
+  if(el) el.style.display = 'none';
+};
+
+window.abrirCasoModal = async function(cacheKey){
+  const caso = getCaso(cacheKey);
+  if(!caso){ console.error('Caso não encontrado no cache:', cacheKey); return; }
+  garantirModal();
+  const overlay = document.getElementById('mcs-overlay');
+  const body = document.getElementById('mcs-body');
+  overlay.style.display = 'flex';
+  body.innerHTML = '<div class="loading"><div class="spinner"></div> Carregando caso...</div>';
+
+  const { id, fonte } = getFonteId(caso);
+  const pct = calcPct(caso);
+  const cls = pct >= 80 ? 'alta' : pct >= 60 ? 'media' : 'baixa';
+
+  document.getElementById('mcs-titulo').textContent = id || 'Caso histórico';
+  document.getElementById('mcs-sub').innerHTML = `
+    ${esc(fonte)} · <span class="pct-v2 ${cls}">${pct}% de similaridade</span>`;
+
+  // Tentar buscar dados completos via API
+  let dados = { ...caso };
+  try {
+    const fonteEnc = encodeURIComponent(fonte);
+    const idEnc = encodeURIComponent(id);
+    const r = await fetch(`${API()}/api/caso/${fonteEnc}/${idEnc}`, {
+      headers: { Authorization: `Bearer ${token()}` }
+    });
+    if(r.ok){
+      const d = await r.json();
+      if(d.sucesso && d.caso) dados = { ...caso, ...d.caso };
+    }
+  } catch(e) {
+    console.warn('API /api/caso indisponível — usando dados locais');
+  }
+
+  renderCorpoModal(body, dados, cacheKey, pct);
+};
+
+function campo(lbl, val, opts={}){
+  if(!val){
+    return `<div class="mcs-campo${opts.destaque?' destaque':''}${opts.verde?' verde':''}">
+      <div class="mcs-campo-lbl">${esc(lbl)}</div>
+      <div class="mcs-campo-nil">Não informado</div>
+    </div>`;
+  }
+  return `<div class="mcs-campo${opts.destaque?' destaque':''}${opts.verde?' verde':''}">
+    <div class="mcs-campo-lbl">${esc(lbl)}</div>
+    <div class="mcs-campo-val">${esc(val)}</div>
+  </div>`;
+}
+
+function renderCorpoModal(body, dados, cacheKey, pct){
+  const d = dados;
+  const empresa = getCampo(d,'DRV_EMPRESA_NORMALIZADA','ORIG_EMPRESA','EMPRESA_NORMALIZADA','EMPRESA_RECLAMADA','empresa','EMPRESA');
+  const contato = getCampo(d,'ORIG_CONTATO','CONTATO','contato');
+  const produto  = getCampo(d,'ORIG_PRODUTO','PRODUTO','produto');
+  const lote     = getCampo(d,'ORIG_LOTE','LOTE','ORIG_PEDIDO','lote');
+  const nf       = getCampo(d,'ORIG_NOTA_FISCAL','NFE','nf');
+  const descricao= getCampo(d,'ORIG_DESCRICAO_RECLAMACAO','DESCRICAO_RECLAMACAO','DESCRICAO','descricao');
+  const motivo   = getCampo(d,'ORIG_MOTIVO_RELATADO','MOTIVO_RELATADO','MOTIVO','motivo');
+  const contencao= getCampo(d,'ORIG_ACAO_CONTENCAO','ACAO_CONTENCAO');
+  const tratativa= getCampo(d,'ORIG_TRATATIVA','TRATATIVA','tratativa','TRATATIVA_REALIZADA');
+  const devolutiva=getCampo(d,'ORIG_DEVOLUTIVA','DEVOLUTIVA_ENVIADA','DEVOLUTIVA','devolutiva');
+  const resultado= getCampo(d,'ORIG_RESULTADO','RESULTADO_FINAL','resultado');
+  const status   = getCampo(d,'ORIG_STATUS','STATUS','status');
+  const tipo     = getCampo(d,'COMP_TIPO_PROBLEMA_VALIDADO','COMP_TIPO_PROBLEMA_PROPOSTO','TIPO','tipo');
+  const setor    = getCampo(d,'SETOR_SUGERIDO_REGRA','SETOR_DESTINADO','SETOR','setor');
+  const causa    = getCampo(d,'COMP_CAUSA_PROVAVEL','CAUSA_RAIZ_VALIDADA','CAUSA_PROVAVEL','causa');
+  const subcausa = getCampo(d,'COMP_CAUSA_RELATADA','SUBCAUSA','subcausa');
+  const data     = getCampo(d,'ORIG_DATA_ABERTURA','DATA_ABERTURA','DATA_CRIACAO','data');
+  const fonte    = getCampo(d,'_fonte_real','FONTE_ORIGINAL','FONTE','fonte') || 'BANCO_HISTORICO';
+  const { id }   = getFonteId(d);
+
+  const temTratativa = !!tratativa;
+
+  body.innerHTML = `
+    <div class="mcs-secao">Identificação</div>
+    <div class="mcs-grid">
+      ${campo('Empresa', empresa)}
+      ${campo('Contato / Cliente', contato)}
+      ${campo('Data de abertura', data ? fmtDate(data) : null)}
+      ${campo('Status', status)}
+      ${campo('Fonte dos dados', fonte)}
+      ${campo('Similaridade com o caso atual', pct + '%')}
+    </div>
+
+    <div class="mcs-secao">Classificação</div>
+    <div class="mcs-grid">
+      ${campo('Tipo de manifestação', tipo)}
+      ${campo('Setor responsável', setor)}
+      ${campo('Causa', causa)}
+      ${campo('Subcausa', subcausa)}
+      ${campo('Produto', produto)}
+      ${campo('Lote / Pedido / NF', [lote, nf].filter(Boolean).join(' · ') || null)}
+    </div>
+
+    <div class="mcs-secao">Relato</div>
+    ${campo('Motivo relatado', motivo)}
+    ${campo('Descrição completa', descricao)}
+
+    <div class="mcs-secao">Como foi tratado</div>
+    ${campo('Ação de contenção', contencao)}
+    ${campo('Tratativa aplicada', tratativa, { verde: temTratativa })}
+    ${campo('Devolutiva ao cliente', devolutiva)}
+    ${campo('Resultado', resultado)}
+
+    ${temTratativa ? `
+    <button class="btn-usar-ref" id="btn-usar-ref-${esc(cacheKey)}" 
+      onclick="usarComoReferencia('${esc(cacheKey)}')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+      Usar tratativa como referência para este caso
+    </button>` : `
+    <div class="alert-box" style="font-size:12px;margin-top:10px;background:var(--gray-50);border:1px solid var(--gray-200)">
+      Este caso não possui tratativa registrada. Não pode ser usado como referência de tratativa.
+    </div>`}`;
+}
+
+// ── USAR COMO REFERÊNCIA (com persistência) ────────────────────
+window.usarComoReferencia = async function(cacheKey){
+  const caso = getCaso(cacheKey);
+  if(!caso){ alert('Caso não encontrado.'); return; }
+
+  const { id, fonte } = getFonteId(caso);
+  const pct = calcPct(caso);
+  const tratativa = getCampo(caso,'ORIG_TRATATIVA','TRATATIVA','tratativa') || '';
+  const devolutiva = getCampo(caso,'ORIG_DEVOLUTIVA','DEVOLUTIVA_ENVIADA','DEVOLUTIVA','devolutiva') || '';
+
+  if(!tratativa){ alert('Este caso não possui tratativa registrada.'); return; }
+
+  // Pegar ID da manifestação atual (se já registrada)
+  const idManifestacao = window._nmIdManifestacaoAtual || null;
+
+  // Atualizar campos no frontend
+  const tratEl = document.getElementById('ia-tratativa');
+  if(tratEl){
+    tratEl.textContent = `Com base em caso similar ${id} (${pct}% de compatibilidade):\n\n${tratativa}`;
+  }
+  const devEl = document.getElementById('ia-devolutiva');
+  if(devEl && !devEl.value.trim() && devolutiva){
+    devEl.value = devolutiva;
+  }
+
+  // Guardar no objeto de análise atual
+  if(!window._nmAnaliseAtual) window._nmAnaliseAtual = {};
+  window._nmAnaliseAtual.casoReferenciaPrincipal = id;
+  window._nmAnaliseAtual.tratativaCasoReferencia = tratativa;
+  window._nmAnaliseAtual.fonteTratativa = `CASO_SIMILAR:${fonte}:${id}:${pct}%`;
+
+  // Persistir via API se manifestação já foi registrada
+  if(idManifestacao){
+    const btn = document.getElementById(`btn-usar-ref-${cacheKey}`);
+    if(btn){ btn.disabled = true; btn.textContent = 'Salvando...'; }
+    try {
+      const r = await fetch(`${API()}/api/caso-similar/usar-referencia`, {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json', Authorization:`Bearer ${token()}` },
+        body: JSON.stringify({
+          idManifestacao,
+          idCasoSimilar: id,
+          fonteCaso: fonte,
+          pctSimilaridade: pct,
+          tratativa,
+          devolutiva,
+        })
+      });
+      const d = await r.json();
+      if(d.sucesso){
+        if(btn){ btn.className='btn-usar-ref usado'; btn.innerHTML='✓ Referência registrada'; }
+      } else {
+        if(btn){ btn.disabled=false; btn.innerHTML='Usar como referência'; }
+        console.warn('Erro ao persistir:', d.erro);
+      }
+    } catch(e){
+      console.warn('Erro de rede ao persistir referência:', e.message);
+      if(btn){ btn.className='btn-usar-ref usado'; btn.innerHTML='✓ Copiado (salvo localmente)'; }
+    }
+  } else {
+    // Sem manifestação registrada: só copia o texto
+    const btn = document.getElementById(`btn-usar-ref-${cacheKey}`);
+    if(btn){ btn.className='btn-usar-ref usado'; btn.innerHTML='✓ Tratativa copiada como referência'; }
+  }
+
+  setTimeout(() => fecharCasoModal(), 1200);
+};
+
+// ── EXTRAIR TRATATIVA SUGERIDA (corrigido) ─────────────────────
+window.extrairTratativaSugerida = function(a){
+  if(!a) return '';
+
+  // 1. Regra operacional (via procedimento sugerido)
+  if(a.procedimentoSugerido?.passos) return a.procedimentoSugerido.passos;
+
+  // 2. Campo direto — inclui .sugestao (bug anterior corrigido)
+  const diretos = [
+    a.tratativaSugerida?.sugestao,
+    typeof a.tratativaSugerida === 'string' ? a.tratativaSugerida : null,
+    a.TRATATIVA_SUGERIDA?.sugestao,
+    typeof a.TRATATIVA_SUGERIDA === 'string' ? a.TRATATIVA_SUGERIDA : null,
+    a.tratativa_sugerida,
+    a.tratativaRecomendada?.sugestao,
+    typeof a.tratativaRecomendada === 'string' ? a.tratativaRecomendada : null,
+    Array.isArray(a.tratativas) ? a.tratativas[0] : null,
+  ];
+  for(const item of diretos){
+    if(!item) continue;
+    const txt = typeof item === 'string' ? item : (item.sugestao || item.texto || item.descricao || '');
+    if(txt.trim()) return txt.trim();
+  }
+
+  // 3. Derivar do melhor caso similar com tratativa + resultado + maior %
+  const sims = a.casosSemelhantes || [];
+  const comTrat = sims
+    .map(s => ({
+      ...s,
+      _pct: calcPct(s),
+      _trat: getCampo(s,'ORIG_TRATATIVA','tratativa','TRATATIVA') || '',
+      _result: getCampo(s,'ORIG_RESULTADO','resultado','RESULTADO') || '',
+    }))
+    .filter(s => s._trat.trim())
+    .sort((x, y) => {
+      if(!!x._result !== !!y._result) return y._result ? 1 : -1;
+      return y._pct - x._pct;
+    });
+
+  if(comTrat.length > 0){
+    const m = comTrat[0];
+    const { id } = getFonteId(m);
+    return `Com base em caso similar ${id} (${m._pct}% de compatibilidade):\n\n${m._trat}`;
+  }
+
+  // 4. IA — retornou algo em campo diferente
+  const iaFallback = a.sugestaoIA?.tratativa || a.recomendacao?.tratativa || '';
+  if(iaFallback.trim()) return iaFallback.trim();
+
+  return '';
+};
+
+// ── RENDER DOS CARDS DE SIMILARES ─────────────────────────────
+function renderCardsSimiliares(a){
+  const wrap = document.getElementById('ia-similares-wrap');
+  const el = document.getElementById('ia-similares');
+  if(!el) return;
+
+  const sims = a?.casosSemelhantes || [];
+
+  if(sims.length === 0){
+    if(wrap) wrap.style.display = 'block';
+    el.innerHTML = `<div class="alert-box blue" style="font-size:12px">
+      Não foram encontrados casos históricos com similaridade suficiente para utilização como referência.
+    </div>`;
+    return;
+  }
+
+  if(wrap) wrap.style.display = 'block';
+
+  // Deduplicar por FONTE::ID
+  const vistos = new Set();
+  const simsUnicos = sims.filter(s => {
+    const { chave } = getFonteId(s);
+    if(vistos.has(chave)) return false;
+    vistos.add(chave);
+    return true;
+  });
+
+  el.innerHTML = simsUnicos.slice(0, 5).map(s => {
+    const pct = calcPct(s);
+    const cls = pct >= 80 ? 'alta' : pct >= 60 ? 'media' : 'baixa';
+    const { id, fonte } = getFonteId(s);
+    const empresa = getCampo(s,'DRV_EMPRESA_NORMALIZADA','ORIG_EMPRESA','EMPRESA_NORMALIZADA','empresa') || '—';
+    const setor   = getCampo(s,'SETOR_SUGERIDO_REGRA','setor','SETOR') || '—';
+    const causa   = getCampo(s,'COMP_CAUSA_PROVAVEL','causa','CAUSA_PROVAVEL') || '—';
+    const result  = getCampo(s,'ORIG_RESULTADO','resultado','RESULTADO') || '—';
+    const trat    = getCampo(s,'ORIG_TRATATIVA','tratativa','TRATATIVA') || '';
+
+    // Guardar no cache — sem serialização insegura no onclick
+    const cacheKey = storeCaso(s);
+
+    return `<div class="sim-v2-card" onclick="abrirCasoModal('${cacheKey}')" data-cache-key="${cacheKey}">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;padding-right:90px">
+        <strong style="font-size:13px">${esc(id)}</strong>
+        <span class="pct-v2 ${cls}">${pct}%</span>
+        <span style="font-size:11px;color:var(--gray-400)">${esc(fonte.replace('BANCO_','').replace('_',' '))}</span>
+      </div>
+      <div class="ver-link">Ver caso completo →</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px;font-size:11px;color:var(--gray-600)">
+        <div><strong>Empresa:</strong> ${esc(empresa)}</div>
+        <div><strong>Setor:</strong> ${esc(setor)}</div>
+        <div><strong>Causa:</strong> ${esc(causa)}</div>
+        <div><strong>Resultado:</strong> ${esc(result)}</div>
+      </div>
+      ${trat ? `<div class="sim-v2-trat"><strong>Tratativa:</strong> ${esc(trat.slice(0, 140))}${trat.length > 140 ? '...' : ''}</div>` 
+             : `<div class="sim-v2-sem-trat">Tratativa não registrada neste caso</div>`}
+    </div>`;
+  }).join('');
+}
+
+// ── SOBRESCREVER renderizarAnalise ────────────────────────────
+const _origRenderizarAnalise = window.renderizarAnalise;
+window.renderizarAnalise = function(a){
+  if(typeof _origRenderizarAnalise === 'function') _origRenderizarAnalise(a);
+
+  // 1. Re-renderizar similares com a versão segura
+  renderCardsSimiliares(a);
+
+  // 2. Corrigir tratativa sugerida
+  const tratativa = window.extrairTratativaSugerida(a);
+  const tratEl = document.getElementById('ia-tratativa');
+  if(tratEl){
+    tratEl.textContent = tratativa ||
+      'A ferramenta não encontrou uma tratativa sugerida com os dados disponíveis. Verifique os casos semelhantes acima ou defina manualmente.';
+
+    // Badge de origem
+    let badge = document.getElementById('trat-origem-badge');
+    if(!badge){
+      badge = document.createElement('div');
+      badge.id = 'trat-origem-badge';
+      badge.style.cssText = 'font-size:11px;color:var(--gray-500);margin-top:5px;display:flex;align-items:center;gap:6px;flex-wrap:wrap';
+      tratEl.after(badge);
+    }
+    if(tratativa){
+      const veioDeSimilar = tratativa.startsWith('Com base em caso similar');
+      const veioDeRegra = !!(a.procedimentoSugerido?.passos);
+      badge.innerHTML = veioDeSimilar
+        ? `<span class="orig-badge similar">📋 Derivada de caso similar</span> A analista decide se é aplicável.`
+        : veioDeRegra
+        ? `<span class="orig-badge ferramenta">📐 Regra operacional</span> Baseada na Matriz de Tratamento.`
+        : `<span class="orig-badge ia">🤖 Sugestão da IA</span> A analista decide se é aplicável.`;
+    } else {
+      badge.innerHTML = 'Sugestão da ferramenta. A analista decide se é aplicável e registra a tratativa efetivamente realizada.';
+    }
+  }
+};
+
+// ── INTERCEPTAR registrarManifestacao PARA CAPTURAR O ID ──────
+const _origRegistrar = window.registrarManifestacao;
+window.registrarManifestacao = async function(){
+  if(typeof _origRegistrar === 'function') await _origRegistrar();
+  // O ID é retornado na resposta — tentar capturar
+  // (o id fica em window._ultimoIdRegistrado se o código de registro o salvar)
+};
+
+// Interceptar POST para capturar o ID gerado
+const _origFetch = window.fetch.bind(window);
+window.fetch = function(input, options={}){
+  const url = typeof input === 'string' ? input : (input?.url || '');
+  const method = (options.method || 'GET').toUpperCase();
+  
+  if(url.includes('/api/manifestacoes') && method === 'POST'){
+    return _origFetch(input, options).then(async response => {
+      const clone = response.clone();
+      try {
+        const data = await clone.json();
+        if(data.sucesso && data.id) window._nmIdManifestacaoAtual = data.id;
+      } catch(e){}
+      return response;
+    });
+  }
+  return _origFetch(input, options);
+};
+
+// Limpar ao iniciar nova manifestação
+const _origInit = window.initNovaManifestacao;
+window.initNovaManifestacao = async function(){
+  window._nmIdManifestacaoAtual = null;
+  window._casosSimilaresCache = {};
+  _cacheCounter = 0;
+  if(typeof _origInit === 'function') await _origInit();
+};
+
+console.log('[patch-similares-v2] carregado — robusto, seguro, sem serialização insegura');
+})();
+
+</script>
+
+</body> no index.html
 // Não altera nada existente — apenas sobrescreve funções de
 // dashboard e adiciona navegação com filtros.
 // ============================================================
