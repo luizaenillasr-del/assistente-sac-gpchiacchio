@@ -226,7 +226,6 @@ async function motorRegras(descricao, tipo, empresa) {
     ]);
     const texto = (descricao || '').toLowerCase();
 
-    // 1. Classificar tipo
     let tipoDetectado = null, tipoConfianca = 0, tipoID = null;
     for (const t of tipos) {
       const palavras = (t.PALAVRAS_CHAVE || '').toLowerCase().split(',').map(p => p.trim()).filter(Boolean);
@@ -239,7 +238,6 @@ async function motorRegras(descricao, tipo, empresa) {
     }
     if (!tipoDetectado) { tipoDetectado = 'Não identificado'; tipoConfianca = 0; }
 
-    // 2. Encontrar setores — ACUMULA todos que batem, sem break
     const setoresSet = new Set();
     let regraAplicada = null;
     for (const r of regras) {
@@ -251,7 +249,6 @@ async function motorRegras(descricao, tipo, empresa) {
       }
     }
 
-    // 3. Fallback por palavras-chave — acumula múltiplos setores
     if (setoresSet.size === 0) {
       if (texto.includes('entrega') || texto.includes('prazo') || texto.includes('atraso')) setoresSet.add('Logística');
       if (texto.includes('qualidade') || texto.includes('defeito') || texto.includes('ruptura') || texto.includes('embalagem') || texto.includes('quantidade') || texto.includes('padrao') || texto.includes('padrão')) setoresSet.add('Qualidade');
@@ -262,17 +259,14 @@ async function motorRegras(descricao, tipo, empresa) {
 
     const setores = [...setoresSet];
 
-    // 4. SLA
     let slaHoras = 72;
     const slaSetor = slaData.find(s => s.SETOR && s.SETOR.includes('SAC'));
     if (slaSetor) { const match = (slaSetor.SLA_PADRAO_HORAS || '72').match(/\d+/); if (match) slaHoras = parseInt(match[0]); }
 
-    // 5. Prioridade
     let prioridade = 'Média';
     if (texto.includes('urgente') || texto.includes('urgência') || texto.includes('perda') || setores.length >= 3) prioridade = 'Alta';
     else if (texto.includes('elogio') || texto.includes('satisfeito') || texto.includes('sugestão')) prioridade = 'Baixa';
 
-    // 6. Procedimento
     let procedimentoSugerido = null;
     for (const p of procedimentos) {
       const tiposProc = (p.TIPO_RECLAMACAO || '').split(',').map(t => t.trim());
@@ -281,12 +275,10 @@ async function motorRegras(descricao, tipo, empresa) {
       }
     }
 
-    // 7. Perguntas
     const perguntasNecessarias = perguntas
       .filter(p => p.TIPO_RECLAMACAO === 'TODOS' || (tipoID && (p.TIPO_RECLAMACAO || '').includes(tipoID)))
       .slice(0, 6).map(p => ({ id: p.ID_PERGUNTA, pergunta: p.PERGUNTA, obrigatoria: p.OBRIGATORIA === 'SIM' }));
 
-    // 8. Gera RNC?
     const geraRNC = texto.includes('reincidência') || texto.includes('terceira') || texto.includes('repetiu') || prioridade === 'Alta';
 
     return { tipoDetectado, tipoID, tipoConfianca, setores, regraAplicada, slaHoras, prioridade, procedimentoSugerido, perguntasNecessarias, geraRNC };
@@ -351,17 +343,29 @@ function normalizarData(val) {
 // ===========================================================
 
 app.get('/api/health', (req, res) => {
-  res.json({ sucesso: true, status: 'ok', versao: '5.4.0', sistema: 'Assistente SAC Chiacchio', ts: new Date().toISOString() });
+  res.json({ sucesso: true, status: 'ok', versao: '5.6.0', sistema: 'Assistente SAC Chiacchio', ts: new Date().toISOString() });
 });
 
 app.get('/', (req, res) => {
-  res.json({ sucesso: true, status: 'ok', versao: '5.4.0', sistema: 'Assistente SAC Chiacchio' });
+  res.json({ sucesso: true, status: 'ok', versao: '5.6.0', sistema: 'Assistente SAC Chiacchio' });
 });
 
 // ===== MIDDLEWARE AUTH =====
 app.use('/api', async (req,res,next)=>{
-  const publicPaths = new Set(['/health','/','/auth/login','/auth/forgot-password','/analise','/analise/similares','/empresas','/setores-unicos']);
-  if(publicPaths.has(req.path) || req.path.endsWith('/auth/login') || req.path.endsWith('/auth/forgot-password') || req.path.endsWith('/empresas') || req.path.endsWith('/setores-unicos')) return next();
+  const publicPaths = new Set([
+    '/health',
+    '/',
+    '/auth/login',
+    '/auth/forgot-password',
+    '/analise',
+    '/analise/similares',
+    '/empresas',
+    '/setores-unicos',
+    '/reclamacoes',
+    '/manifestacoes',
+    '/dashboard',
+  ]);
+  if(publicPaths.has(req.path)) return next();
   const header=req.headers.authorization||'';
   const token=header.startsWith('Bearer ')?header.slice(7):'';
   const payload=verificarToken(token);
@@ -557,7 +561,7 @@ app.post('/api/manifestacoes/:id/decisao', requerPerfil('MASTER','ANALISTA SAC')
 });
 
 // ===== DASHBOARD =====
-app.get('/api/dashboard', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
+app.get('/api/dashboard', async (req, res) => {
   try {
     const [mans, recs] = await Promise.all([lerAba('MANIFESTACOES', 2000), lerAba('Reclamações + devolutiva', 2000)]);
     const emAndamento = mans.filter(m => !['FINALIZADA','ENCERRADA','CONCLUÍDA'].some(s => (m.STATUS||'').toUpperCase().includes(s))).length;
@@ -567,7 +571,7 @@ app.get('/api/dashboard', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁV
     const slaPercent = recComSLA.length > 0 ? Math.round(dentroPrazo/recComSLA.length*100) : null;
     const porEmpresa = {};
     recs.forEach(r => {
-      const emp = (r['Empresa']||'').trim(); 
+      const emp = (r['Empresa']||'').trim();
       if(!emp) return;
       if(!porEmpresa[emp]) porEmpresa[emp]={total:0,finaliz:0,sla:0,foraSLA:0};
       porEmpresa[emp].total++;
@@ -677,8 +681,6 @@ app.get('/api/rnc-metricas', requerPerfil('MASTER','ANALISTA SAC'), async (req,r
 app.get('/api/empresas', async (req, res) => {
   try {
     const sheets = await getSheets();
-    
-    // Busca headers + dados de MANIFESTACOES
     const res1 = await sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
       range: 'MANIFESTACOES!A1:Z1000',
@@ -688,27 +690,20 @@ app.get('/api/empresas', async (req, res) => {
     if (rows.length === 0) {
       return res.json({ sucesso: true, total: 0, itens: [] });
     }
-    
     const headers = rows[0];
     const empresaIdx = headers.indexOf('EMPRESA_NORMALIZADA');
-    
     const empresas = new Set();
-    
-    // Extrai empresa de cada linha
     for (let i = 1; i < rows.length; i++) {
       const emp = (empresaIdx >= 0 && rows[i][empresaIdx]) || '';
       if (emp && emp.trim()) {
         empresas.add(emp.trim());
       }
     }
-    
-    // Também busca de Reclamações + devolutiva
     const res2 = await sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
       range: 'Reclamações + devolutiva!A1:Z1000',
       valueRenderOption: 'FORMATTED_VALUE'
     }).catch(() => ({ data: { values: [] } }));
-    
     const recRows = res2.data.values || [];
     if (recRows.length > 0) {
       const recHeaders = recRows[0];
@@ -720,7 +715,6 @@ app.get('/api/empresas', async (req, res) => {
         }
       }
     }
-    
     res.json({ sucesso: true, total: empresas.size, itens: [...empresas].sort() });
   } catch (e) {
     console.error('Erro ao carregar empresas:', e.message);
@@ -741,7 +735,7 @@ app.get('/api/clientes/:cnpj', requerPerfil('MASTER','ANALISTA SAC','RCA / REPRE
 });
 
 // ===== RECLAMAÇÕES =====
-app.get('/api/reclamacoes', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL'), async (req, res) => {
+app.get('/api/reclamacoes', async (req, res) => {
   try {
     const data=await lerAba('Reclamações + devolutiva',2000);
     const normalizado=data.map(r=>({
@@ -764,8 +758,6 @@ app.get('/api/setores-unicos', async (req, res) => {
   try {
     const sheets = await getSheets();
     const setores = new Set();
-    
-    // De MANIFESTACOES
     try {
       const res1 = await sheets.spreadsheets.values.get({
         spreadsheetId: SPREADSHEET_ID,
@@ -777,7 +769,6 @@ app.get('/api/setores-unicos', async (req, res) => {
         const headers = rows[0];
         const setorIdx = headers.indexOf('SETOR');
         const setorConfIdx = headers.indexOf('SETOR_CONFIRMADO') >= 0 ? headers.indexOf('SETOR_CONFIRMADO') : headers.indexOf('SETORES_CONFIRMADOS');
-        
         for (let i = 1; i < rows.length; i++) {
           if (setorIdx >= 0 && rows[i][setorIdx]) {
             const s = rows[i][setorIdx].trim();
@@ -793,12 +784,9 @@ app.get('/api/setores-unicos', async (req, res) => {
         }
       }
     } catch (e) { console.warn('Erro lendo MANIFESTACOES para setores:', e.message); }
-    
-    // Padrão se vazio
     if (setores.size === 0) {
       ['SAC', 'Qualidade', 'Logística', 'Financeiro', 'Comercial'].forEach(s => setores.add(s));
     }
-    
     res.json({ sucesso: true, total: setores.size, itens: [...setores].sort() });
   } catch (e) {
     console.error('Erro ao carregar setores:', e.message);
@@ -964,7 +952,7 @@ app.use((err, req, res, next) => {
 
 if (require.main === module) {
   const PORT = process.env.PORT || 3000;
-  app.listen(PORT, () => console.log(`SAC Chiacchio API v5.4.0 rodando na porta ${PORT}`));
+  app.listen(PORT, () => console.log(`SAC Chiacchio API v5.6.0 rodando na porta ${PORT}`));
 }
 
 module.exports = app;
