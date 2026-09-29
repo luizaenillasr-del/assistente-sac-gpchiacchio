@@ -1108,6 +1108,42 @@ app.patch('/api/matriz/:id', requerPerfil('MASTER','ANALISTA SAC'), async (req, 
     res.json({ sucesso: true, linha: reg.linha });
   } catch (e) { res.status(500).json({ sucesso: false, erro: e.message }); }
 });
+// ===== EXTRAÇÃO DE CAMPOS DE SETOR A PARTIR DE DOCUMENTO =====
+app.post('/api/extrair-campos-setor', requerPerfil('MASTER','ANALISTA SAC'), async (req, res) => {
+  try {
+    const { texto } = req.body;
+    if (!texto) return res.status(400).json({ sucesso: false, erro: 'Texto obrigatório.' });
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) return res.status(400).json({ sucesso: false, erro: 'ANTHROPIC_API_KEY não configurada.' });
+
+    const prompt = `Você é um assistente que extrai informações de documentos internos de empresas para preencher cadastros de setores.
+
+A partir do texto abaixo, extraia e retorne APENAS um JSON com os seguintes campos (deixe vazio se não encontrar):
+- DESCRICAO: descrição resumida do setor/documento (1-2 frases)
+- RESPONSABILIDADES: lista das responsabilidades do setor (bullet points com \\n)
+- REGRAS_OPERACIONAIS: regras e políticas mencionadas (texto corrido ou bullets)
+- PROCEDIMENTOS_ORIENTACOES: procedimentos e orientações operacionais
+- ALERTAS: alertas ou pontos de atenção importantes
+- SLA_HORAS: prazo em horas (apenas número, ex: 72)
+
+Retorne APENAS o JSON, sem explicações.
+
+TEXTO DO DOCUMENTO:
+${texto.slice(0, 6000)}`;
+
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 1200, messages: [{ role: 'user', content: prompt }] }),
+    });
+    const data = await resp.json();
+    const raw = data.content?.[0]?.text || '{}';
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    const campos = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
+    res.json({ sucesso: true, campos });
+  } catch (e) { res.status(500).json({ sucesso: false, erro: e.message }); }
+});
+
 // ===== PESQUISAS DE SATISFAÇÃO (planilha externa, somente leitura) =====
 app.get('/api/pesquisas/resumo', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
   try {

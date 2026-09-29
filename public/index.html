@@ -4317,7 +4317,7 @@ loadVisaoGeral();
   // ------------------------------------------------------------
   window.abrirEditorSetor=function(){
     const s=(_setoresConfig||[]).find(x=>x.SETOR===_setorAtual)||{};
-    abrirEditorGenerico('Editar setor: '+(_setorAtual||''),[
+    abrirEditorGenerico('Editar setor: '+(_setorAtual||''), [
       ['SETOR','Nome do setor',s.SETOR||_setorAtual,'text',true],
       ['DESCRICAO','Descrição',s.DESCRICAO||'','textarea'],
       ['RESPONSAVEL','Responsável',s.RESPONSAVEL||'','text'],
@@ -4335,6 +4335,22 @@ loadVisaoGeral();
       if(res.sucesso===false)throw new Error(res.erro||'Falha ao salvar setor');
       const _nomeSetor = _setorAtual; fecharEditorGenerico(); await loadSetores(); await abrirFichaSetor(_nomeSetor); alert('Setor salvo com sucesso.');
     });
+    // Injeta botão de upload de documento no editor
+    const body = document.getElementById('editor-generico-body');
+    if (body && !body.querySelector('#setor-upload-btn')) {
+      const uploadBar = document.createElement('div');
+      uploadBar.style = 'margin-bottom:14px;padding:10px 12px;background:#FFF7ED;border:1px dashed #F97316;border-radius:8px;display:flex;align-items:center;gap:10px';
+      uploadBar.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F97316" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <span style="font-size:12px;color:#92400E;flex:1">Suba um documento (PDF ou TXT) e os campos serão preenchidos automaticamente</span>
+        <label id="setor-upload-btn" style="cursor:pointer">
+          <span class="btn btn-secondary" style="font-size:12px;padding:5px 12px">Escolher arquivo</span>
+          <input type="file" accept=".pdf,.txt,.docx" style="display:none" onchange="preencherEditorDoArquivo(this.files[0])">
+        </label>
+        <span id="setor-upload-status" style="font-size:11px;color:#92400E"></span>
+      `;
+      body.insertBefore(uploadBar, body.firstChild);
+    }
   };
 
   // ------------------------------------------------------------
@@ -7049,6 +7065,70 @@ window.editarDocumento=function(idx){
 };
 
 console.log('[base-conhecimento-setores] carregado');
+})();
+</script>
+
+<!-- ===== UPLOAD DE DOCUMENTO PARA EDITOR DE SETOR ===== -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+(function(){
+  if(typeof pdfjsLib !== 'undefined') pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+  async function extrairTextoPDF(file) {
+    const ab = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
+    let texto = '';
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      texto += content.items.map(it => it.str).join(' ') + '\n';
+    }
+    return texto;
+  }
+
+  function setField(key, value) {
+    const el = document.querySelector(`#editor-generico [data-key="${key}"]`);
+    if (el && value) el.value = value.trim();
+  }
+
+  window.preencherEditorDoArquivo = async function(file) {
+    if (!file) return;
+    const status = document.getElementById('setor-upload-status');
+    if (status) status.textContent = 'Lendo arquivo...';
+    try {
+      let texto = '';
+      if (file.name.endsWith('.pdf')) {
+        if (typeof pdfjsLib === 'undefined') throw new Error('PDF.js não carregado');
+        texto = await extrairTextoPDF(file);
+      } else {
+        texto = await file.text();
+      }
+
+      if (!texto.trim()) throw new Error('Nenhum texto extraído do arquivo');
+
+      // Envia texto para a IA resumir e extrair campos do setor
+      const token = localStorage.getItem('sac-token') || sessionStorage.getItem('sac-token');
+      const res = await fetch('/api/extrair-campos-setor', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify({ texto: texto.slice(0, 8000) })
+      });
+      const data = await res.json();
+      if (!data.sucesso) throw new Error(data.erro || 'Falha na extração');
+
+      const campos = data.campos || {};
+      if (campos.DESCRICAO) setField('DESCRICAO', campos.DESCRICAO);
+      if (campos.RESPONSABILIDADES) setField('RESPONSABILIDADES', campos.RESPONSABILIDADES);
+      if (campos.REGRAS_OPERACIONAIS) setField('REGRAS_OPERACIONAIS', campos.REGRAS_OPERACIONAIS);
+      if (campos.PROCEDIMENTOS_ORIENTACOES) setField('PROCEDIMENTOS_ORIENTACOES', campos.PROCEDIMENTOS_ORIENTACOES);
+      if (campos.ALERTAS) setField('ALERTAS', campos.ALERTAS);
+      if (campos.SLA_HORAS) setField('SLA_HORAS', campos.SLA_HORAS);
+
+      if (status) status.textContent = '✓ Campos preenchidos! Revise e salve.';
+    } catch(e) {
+      if (status) status.textContent = '✗ Erro: ' + e.message;
+    }
+  };
 })();
 </script>
 
