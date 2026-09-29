@@ -46,6 +46,13 @@ function verificarToken(token){
     return payload;
   }catch(e){ return null; }
 }
+function senhaValida(informada, armazenada){
+  if(armazenada === undefined || armazenada === null) return false;
+  const s=String(armazenada);
+  if(s.startsWith('sha256:')) return 'sha256:'+crypto.createHash('sha256').update(String(informada||'')).digest('hex')===s;
+  return String(informada||'')===s;
+}
+
 const DEMO_USUARIOS = [
   {ID_USUARIO:'USR-DEMO-001',USUARIO:'luiza',EMAIL:'',NOME:'Luiza',PERFIL:'MASTER',EMPRESA:'Grupo Chiacchio',SETOR:'SAC',STATUS:'ATIVO',CODIGO_RCA:''},
   {ID_USUARIO:'USR-DEMO-002',USUARIO:'joao.aprovador',EMAIL:'',NOME:'João Silva',PERFIL:'APROVADOR',EMPRESA:'Chiacchio',SETOR:'Qualidade',STATUS:'ATIVO',CODIGO_RCA:''},
@@ -62,7 +69,7 @@ async function carregarUsuarios(){
   try{
     const parsed=JSON.parse(raw);
     envUsers=Object.entries(parsed).map(([usuario,val])=>typeof val==='string'
-      ? {ID_USUARIO:usuario,USUARIO:usuario,NOME:usuario,PERFIL:'ANALISTA SAC',STATUS:'ATIVO'}
+      ? {ID_USUARIO:usuario,USUARIO:usuario,SENHA:val,NOME:usuario,PERFIL:'ANALISTA SAC',STATUS:'ATIVO'}
       : {ID_USUARIO:usuario,USUARIO:usuario,...val});
   }catch(e){}
   const demoEnabled=String(process.env.DEMO_LOGIN_ENABLED||'true').toLowerCase()!=='false';
@@ -349,6 +356,7 @@ app.use('/api', async (req,res,next)=>{
     '/health',
     '/',
     '/auth/login',
+    '/auth/forgot-password',
     '/analise',
     '/analise/similares',
     '/empresas',
@@ -382,12 +390,9 @@ app.post('/api/auth/login', async (req, res) => {
       sub:pub.id, usuario:pub.usuario, nome:pub.nome, email:pub.email, perfil:pub.perfil,
       empresa:pub.empresa, setor:pub.setor, codigoRCA:pub.codigoRCA, iat:agora, exp:agora+SESSION_TTL_MS
     };
-    const isDemo = String(registro.ID_USUARIO||'').startsWith('USR-DEMO-');
-    if (!isDemo) {
-      await registrarAcessoUsuario(registro);
-      await registrarAuditoria(pub.usuario,'LOGIN',null,'AUTH',null,{perfil:pub.perfil});
-    }
-    res.json({ sucesso:true, token:assinarToken(payload), usuario:pub.usuario, usuarioInfo:pub, modo:isDemo?'DEMO':'PRODUCAO' });
+    await registrarAcessoUsuario(registro);
+    await registrarAuditoria(pub.usuario,'LOGIN',null,'AUTH',null,{perfil:pub.perfil});
+    res.json({ sucesso:true, token:assinarToken(payload), usuario:pub.usuario, usuarioInfo:pub, modo:'PRODUCAO' });
   } catch (e) {
     console.error(e);
     res.status(500).json({ sucesso: false, erro: e.message });
@@ -400,6 +405,13 @@ app.get('/api/auth/me', async (req,res)=>{
   const payload=verificarToken(token);
   if(!payload) return res.status(401).json({sucesso:false,erro:'Sessão inválida.'});
   res.json({sucesso:true,usuario:payload});
+});
+
+app.post('/api/auth/forgot-password', async (req,res)=>{
+  const login=req.body?.usuario||req.body?.email||'';
+  if(!login) return res.status(400).json({sucesso:false,erro:'Informe usuário ou e-mail.'});
+  await registrarAuditoria(login,'SOLICITOU_RECUPERACAO_SENHA',null,'AUTH',null,{});
+  res.json({sucesso:true,mensagem:'Solicitação registrada. O administrador deverá redefinir a senha.'});
 });
 
 // ===== ANÁLISE IA =====
@@ -979,7 +991,8 @@ app.post('/api/usuarios', requerPerfil('MASTER'), async (req,res)=>{
     const b=req.body||{};
     if(!b.usuario||!b.nome||!b.perfil) return res.status(400).json({sucesso:false,erro:'Usuário, nome e perfil são obrigatórios.'});
     const id=await gerarProximoID('USUARIOS','USR','ID_USUARIO');
-    const obj={ID_USUARIO:id,USUARIO:b.usuario,EMAIL:b.email||'',NOME:b.nome,PERFIL:perfilCanonico(b.perfil),EMPRESA:b.empresa||'',SETOR:b.setor||'',CODIGO_RCA:b.codigoRCA||'',STATUS:b.status||'ATIVO',DATA_CRIACAO:new Date().toISOString(),ULTIMO_ACESSO:''};
+    const hash=b.senha?'sha256:'+crypto.createHash('sha256').update(String(b.senha)).digest('hex'):'';
+    const obj={ID_USUARIO:id,USUARIO:b.usuario,EMAIL:b.email||'',NOME:b.nome,PERFIL:perfilCanonico(b.perfil),EMPRESA:b.empresa||'',SETOR:b.setor||'',CODIGO_RCA:b.codigoRCA||'',STATUS:b.status||'ATIVO',SENHA_HASH:hash,DATA_CRIACAO:new Date().toISOString(),ULTIMO_ACESSO:''};
     await appendObjeto('USUARIOS',obj);
     await registrarAuditoria(req.user.usuario,'CRIOU_USUARIO',id,'USUARIOS',null,{perfil:obj.PERFIL});
     res.json({sucesso:true,usuario:usuarioPublico(obj)});
@@ -989,6 +1002,7 @@ app.patch('/api/usuarios/:id', requerPerfil('MASTER'), async (req,res)=>{
   try{
     const b=req.body||{}; const dados={...b};
     if(dados.perfil){dados.PERFIL=perfilCanonico(dados.perfil);delete dados.perfil;}
+    if(dados.senha){dados.SENHA_HASH='sha256:'+crypto.createHash('sha256').update(String(dados.senha)).digest('hex');delete dados.senha;}
     await atualizarPorID('USUARIOS',req.params.id,dados,['ID_USUARIO','USUARIO','EMAIL']);
     res.json({sucesso:true});
   }catch(e){res.status(500).json({sucesso:false,erro:e.message});}
