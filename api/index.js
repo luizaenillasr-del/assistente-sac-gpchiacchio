@@ -109,7 +109,7 @@ function requerPerfil(...perfis){
 
 async function carregarUsuarioPorLogin(login){
   const alvo=normalizarTexto(login);
-  const demoEnabled=String(process.env.DEMO_LOGIN_ENABLED||'true').toLowerCase()!=='false';
+  const demoEnabled=String(process.env.DEMO_LOGIN_ENABLED||'false').toLowerCase()==='true';
   if(demoEnabled){
     const demo=DEMO_USUARIOS.find(u=>normalizarTexto(u.USUARIO)===alvo);
     if(demo) return demo;
@@ -361,13 +361,6 @@ app.use('/api', async (req,res,next)=>{
     '/',
     '/auth/login',
     '/auth/forgot-password',
-    '/analise',
-    '/analise/similares',
-    '/empresas',
-    '/setores-unicos',
-    '/reclamacoes',
-    '/manifestacoes',
-    '/dashboard',
   ]);
   if(publicPaths.has(req.path)) return next();
   const header=req.headers.authorization||'';
@@ -381,12 +374,15 @@ app.use('/api', async (req,res,next)=>{
 // ===== AUTH =====
 app.post('/api/auth/login', async (req, res) => {
   try {
-    const { usuario } = req.body || {};
+    const { usuario, senha } = req.body || {};
     if(!usuario) return res.status(400).json({sucesso:false,erro:'Usuário é obrigatório.'});
+    if(!senha) return res.status(400).json({sucesso:false,erro:'Senha é obrigatória.'});
     const registro=await carregarUsuarioPorLogin(usuario);
-    if(!registro) return res.status(401).json({ sucesso:false, erro:'Usuário não encontrado ou inativo.' });
+    if(!registro) return res.status(401).json({ sucesso:false, erro:'Usuário ou senha inválidos.' });
     const pub=usuarioPublico(registro);
     if(normalizarTexto(pub.status)==='inativo') return res.status(403).json({sucesso:false,erro:'Usuário inativo.'});
+    const senhaOk = senhaValida(senha, registro.SENHA_HASH || registro.SENHA);
+    if(!senhaOk) return res.status(401).json({sucesso:false,erro:'Usuário ou senha inválidos.'});
     const agora=Date.now();
     const payload={
       sub:pub.id, usuario:pub.usuario, nome:pub.nome, email:pub.email, perfil:pub.perfil,
@@ -845,8 +841,9 @@ app.post('/api/rnc', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
     if(!body.COMPETENCIA&&!body.competencia) return res.status(400).json({sucesso:false,erro:'Competência da RNC é obrigatória.'});
     const id=await gerarProximoID('BANCO_RNC','RNC','ID_RNC'); const agora=new Date().toISOString();
     const competencia=body.COMPETENCIA||body.competencia;
-    await appendObjeto('BANCO_RNC',{ID_RNC:id,DATA_ABERTURA:agora,EMPRESA:body.EMPRESA||body.empresa||'',SETOR:body.SETOR||body.setor||'',COMPETENCIA:competencia,NAO_CONFORMIDADE:body.NAO_CONFORMIDADE||body.naoConformidade||'',CAUSA:body.CAUSA||body.causa||'',RESPONSAVEL:body.RESPONSAVEL||body.responsavel||'',PRIORIDADE:body.PRIORIDADE||body.prioridade||'Média',PRAZO:body.PRAZO||body.prazo||'',STATUS:body.STATUS||'AGUARDANDO_APROVACAO'});
-    await registrarAuditoria(body.usuario||'sistema','CRIOU_RNC',id,'BANCO_RNC',null,{competencia});
+    const usuarioCriador=req.user?.usuario||body.usuario||'sistema';
+    await appendObjeto('BANCO_RNC',{ID_RNC:id,DATA_ABERTURA:agora,EMPRESA:body.EMPRESA||body.empresa||'',SETOR:body.SETOR||body.setor||'',COMPETENCIA:competencia,NAO_CONFORMIDADE:body.NAO_CONFORMIDADE||body.naoConformidade||'',CAUSA:body.CAUSA||body.causa||'',RESPONSAVEL:body.RESPONSAVEL||body.responsavel||'',PRIORIDADE:body.PRIORIDADE||body.prioridade||'Média',PRAZO:body.PRAZO||body.prazo||'',STATUS:body.STATUS||'AGUARDANDO_APROVACAO',USUARIO_CRIACAO:usuarioCriador});
+    await registrarAuditoria(usuarioCriador,'CRIOU_RNC',id,'BANCO_RNC',null,{competencia});
     res.json({sucesso:true,id,competencia,status:'AGUARDANDO_APROVACAO'});
   } catch(e){res.status(500).json({sucesso:false,erro:e.message});}
 });
@@ -1357,6 +1354,7 @@ app.patch('/api/usuarios/:id', requerPerfil('MASTER'), async (req,res)=>{
     if(dados.perfil){dados.PERFIL=perfilCanonico(dados.perfil);delete dados.perfil;}
     if(dados.senha){dados.SENHA_HASH='sha256:'+crypto.createHash('sha256').update(String(dados.senha)).digest('hex');delete dados.senha;}
     await atualizarPorID('USUARIOS',req.params.id,dados,['ID_USUARIO','USUARIO','EMAIL']);
+    await registrarAuditoria(req.user.usuario,'ATUALIZOU_USUARIO',req.params.id,'USUARIOS',null,{campos:Object.keys(b)});
     res.json({sucesso:true});
   }catch(e){res.status(500).json({sucesso:false,erro:e.message});}
 });

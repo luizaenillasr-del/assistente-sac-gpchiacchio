@@ -545,13 +545,17 @@
       <div class="login-logo-text"><h2>Gestão de Manifestações</h2><p>SAC · Grupo Chiacchio</p></div>
     </div>
     <div class="login-title">Bem-vinda de volta</div>
-    <div class="login-sub">Informe seu usuário para acessar o sistema</div>
+    <div class="login-sub">Informe suas credenciais para acessar o sistema</div>
     <div class="login-field">
       <label class="login-label">Usuário</label>
-      <input class="login-input" type="text" id="login-user" placeholder="seu usuário" autocomplete="username" onkeydown="if(event.key==='Enter')doLogin()">
+      <input class="login-input" type="text" id="login-user" placeholder="seu usuário" autocomplete="username" onkeydown="if(event.key==='Enter')document.getElementById('login-senha').focus()">
+    </div>
+    <div class="login-field">
+      <label class="login-label">Senha</label>
+      <input class="login-input" type="password" id="login-senha" placeholder="sua senha" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
     </div>
     <button class="login-btn" onclick="doLogin()">Entrar</button>
-    <div class="login-error" id="login-error">Usuário não encontrado ou inativo.</div>
+    <div class="login-error" id="login-error">Usuário ou senha inválidos.</div>
   </div>
 </div>
 
@@ -559,11 +563,13 @@
   window.SAC_API = 'https://assistente-sac-gpchiacchio.vercel.app';
   async function doLogin() {
     const user=document.getElementById('login-user').value.trim();
+    const senha=document.getElementById('login-senha').value;
     const err=document.getElementById('login-error');
     err.style.display='none';
     if(!user){err.textContent='Informe o usuário.';err.style.display='block';return;}
+    if(!senha){err.textContent='Informe a senha.';err.style.display='block';return;}
     try{
-      const r=await fetch(window.SAC_API+'/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({usuario:user})});
+      const r=await fetch(window.SAC_API+'/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({usuario:user,senha})});
       const raw=await r.text(); let data={};
       try{data=raw?JSON.parse(raw):{};}catch(e){throw new Error(`A API respondeu de forma inválida (HTTP ${r.status}).`);}
       if(!r.ok || !data.sucesso) throw new Error(data.erro||'Usuário não encontrado ou inativo.');
@@ -4645,11 +4651,7 @@ loadVisaoGeral();
 
   // ===== BOOT =====
   async function boot(){
-    if(sessionStorage.getItem('sac-demo-local')==='1'){
-      document.getElementById('login-screen').style.display='none';
-      await window.iniciarSessaoV5();
-      return;
-    }
+    sessionStorage.removeItem('sac-demo-local');
     if(!token()){document.getElementById('login-screen').style.display='flex';return;}
     try{
       const d=await json5('/api/auth/me');
