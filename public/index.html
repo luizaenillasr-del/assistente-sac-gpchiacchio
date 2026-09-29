@@ -112,6 +112,11 @@
 
   /* SECTION CARD */
   .section-card { background: white; border: 1px solid var(--gray-200); border-radius: 12px; padding: 20px; }
+  .cd-tab { background:none; border:none; border-bottom:3px solid transparent; padding:8px 14px; font-size:13px; font-weight:500; color:var(--gray-500); cursor:pointer; margin-bottom:-2px; transition:all 0.15s; white-space:nowrap; }
+  .cd-tab:hover { color:var(--gray-800); }
+  .cd-tab.active { color:var(--red); border-bottom-color:var(--red); }
+  .cd-panel { animation:fadeIn 0.15s; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:none} }
   .section-title { font-size: 15px; font-weight: 700; margin-bottom: 2px; }
   .section-sub { font-size: 12px; color: var(--gray-400); margin-bottom: 16px; }
 
@@ -679,8 +684,8 @@
 
   <div class="sidebar-section">Inteligência</div>
   <div class="sidebar-item" onclick="navigate('cerebro', this)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.46 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.44-1.14z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.46 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.44-1.14z"/></svg>
-    Cérebro IA
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+    Central de Dados
   </div>
   <div class="sidebar-item" onclick="navigate('painel-maquina', this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
@@ -2129,97 +2134,104 @@
   </div>
 
   <!-- ===== CÉREBRO IA ===== -->
+  <!-- ===== CENTRAL DE DADOS ===== -->
   <div class="page" id="page-cerebro">
     <div class="topbar">
-      <div class="breadcrumb">Inteligência / <span>Cérebro IA</span></div>
+      <div class="breadcrumb">Inteligência / <span>Central de Dados</span></div>
       <div class="page-header">
-        <h1 class="page-title">Cérebro IA</h1>
+        <h1 class="page-title">Central de Dados</h1>
         <div class="page-actions">
-          <span style="font-size:12px;color:var(--gray-400)" id="cerebro-status">Pronto para análise</span>
+          <span style="font-size:12px;color:var(--gray-400)" id="cerebro-status"></span>
         </div>
       </div>
     </div>
     <div class="content" style="padding:0 28px 28px">
-      <!-- Análise manual -->
-      <div class="section-card" style="margin-bottom:16px">
-        <div class="section-title">Analisar Manifestação</div>
-        <div class="section-sub">Rode o Cérebro IA manualmente em qualquer manifestação para obter análise completa.</div>
-        <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
-          <input id="cerebro-id-input" class="form-input" style="width:220px" placeholder="ID da manifestação (ex: MAN-001)">
-          <button class="btn btn-primary" onclick="rodarCerebro()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-            Rodar Análise
-          </button>
-        </div>
-        <div id="cerebro-loading" style="display:none;margin-top:14px;color:var(--gray-400);font-size:13px">
-          <div style="display:flex;align-items:center;gap:8px">
-            <div style="width:16px;height:16px;border:2px solid var(--red);border-top-color:transparent;border-radius:50%;animation:spin 0.8s linear infinite"></div>
-            Analisando com IA...
-          </div>
-        </div>
-        <div id="cerebro-resultado" style="display:none;margin-top:16px"></div>
+
+      <!-- Tab bar -->
+      <div style="display:flex;gap:2px;flex-wrap:wrap;margin-bottom:18px;border-bottom:2px solid var(--gray-100);padding-bottom:0">
+        <button class="cd-tab active" onclick="cdTab('manifestacoes',this)">📋 Manifestações</button>
+        <button class="cd-tab" onclick="cdTab('rnc',this)">📄 RNC</button>
+        <button class="cd-tab" onclick="cdTab('historico',this)">📚 Histórico</button>
+        <button class="cd-tab" onclick="cdTab('setores',this)">🏢 Setores</button>
+        <button class="cd-tab" onclick="cdTab('produtos',this)">📦 Produtos</button>
+        <button class="cd-tab" onclick="cdTab('usuarios',this)">👥 Usuários</button>
+        <button class="cd-tab" onclick="cdTab('representantes',this)">🔗 Representantes</button>
+        <button class="cd-tab" onclick="cdTab('causas-cd',this)">⚙️ Causas</button>
+        <button class="cd-tab" onclick="cdTab('auditoria',this)">🔍 Auditoria</button>
+        <button class="cd-tab" onclick="cdTab('ia',this)">🤖 Análise IA</button>
       </div>
 
-      <!-- Capacidades do Cérebro -->
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:16px">
-        <div class="section-card" style="text-align:center">
-          <div style="font-size:28px;margin-bottom:8px">🔍</div>
-          <div style="font-weight:700;font-size:13px">Casos Similares</div>
-          <div style="font-size:12px;color:var(--gray-400);margin-top:4px">Busca por similaridade Jaccard no banco histórico</div>
+      <!-- ── MANIFESTAÇÕES ── -->
+      <div class="cd-panel" id="cdp-manifestacoes">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <input class="form-input" id="cd-man-busca" placeholder="Buscar…" style="width:200px" oninput="cdFiltrar('man')">
+            <select class="form-input" id="cd-man-status" style="width:150px" onchange="cdFiltrar('man')">
+              <option value="">Todos os status</option>
+              <option>EM ANÁLISE</option><option>EM TRATAMENTO</option><option>RESOLVIDA</option><option>ENCERRADA</option>
+            </select>
+          </div>
+          <span id="cd-man-count" style="font-size:12px;color:var(--gray-400)"></span>
         </div>
-        <div class="section-card" style="text-align:center">
-          <div style="font-size:28px;margin-bottom:8px">🔄</div>
-          <div style="font-weight:700;font-size:13px">Detecção de Reincidência</div>
-          <div style="font-size:12px;color:var(--gray-400);margin-top:4px">Identifica padrões do mesmo cliente e produto</div>
-        </div>
-        <div class="section-card" style="text-align:center">
-          <div style="font-size:28px;margin-bottom:8px">⏱</div>
-          <div style="font-weight:700;font-size:13px">Cálculo de SLA</div>
-          <div style="font-size:12px;color:var(--gray-400);margin-top:4px">Horas restantes, % consumido e status de prazo</div>
-        </div>
-        <div class="section-card" style="text-align:center">
-          <div style="font-size:28px;margin-bottom:8px">📚</div>
-          <div style="font-weight:700;font-size:13px">Base de Conhecimento</div>
-          <div style="font-size:12px;color:var(--gray-400);margin-top:4px">Consulta políticas e procedimentos dos setores</div>
-        </div>
-        <div class="section-card" style="text-align:center">
-          <div style="font-size:28px;margin-bottom:8px">🤖</div>
-          <div style="font-weight:700;font-size:13px">Claude Haiku</div>
-          <div style="font-size:12px;color:var(--gray-400);margin-top:4px">Análise semântica profunda com LLM da Anthropic</div>
-        </div>
-        <div class="section-card" style="text-align:center">
-          <div style="font-size:28px;margin-bottom:8px">📊</div>
-          <div style="font-weight:700;font-size:13px">Score de Confiança</div>
-          <div style="font-size:12px;color:var(--gray-400);margin-top:4px">Pontuação composta 0–100 com explicabilidade</div>
-        </div>
+        <div style="overflow-x:auto"><table class="table" style="width:100%">
+          <thead><tr><th>ID</th><th>Data</th><th>Empresa Reclamante</th><th>Produto</th><th>Lote</th><th>Status</th><th>Setor</th></tr></thead>
+          <tbody id="cd-man-tbody"></tbody>
+        </table></div>
+        <div id="cd-man-loading" style="padding:24px;text-align:center;color:var(--gray-400);font-size:13px">Carregando...</div>
       </div>
 
-      <!-- Cadastro de Setores -->
-      <div class="section-card" style="margin-bottom:16px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-          <div>
-            <div class="section-title" style="margin-bottom:2px">Cadastro de Setores</div>
-            <div class="section-sub">Gerencie os setores que recebem casos e defina SLA e responsáveis.</div>
+      <!-- ── RNC ── -->
+      <div class="cd-panel" id="cdp-rnc" style="display:none">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <input class="form-input" id="cd-rnc-busca" placeholder="Buscar…" style="width:200px" oninput="cdFiltrar('rnc')">
+            <select class="form-input" id="cd-rnc-status" style="width:150px" onchange="cdFiltrar('rnc')">
+              <option value="">Todos os status</option>
+              <option>ABERTA</option><option>EM TRATAMENTO</option><option>ENCERRADA</option>
+            </select>
           </div>
+          <span id="cd-rnc-count" style="font-size:12px;color:var(--gray-400)"></span>
+        </div>
+        <div style="overflow-x:auto"><table class="table" style="width:100%">
+          <thead><tr><th>ID RNC</th><th>SAC</th><th>Cliente</th><th>Empresa</th><th>Competência</th><th>Status</th><th>Data</th></tr></thead>
+          <tbody id="cd-rnc-tbody"></tbody>
+        </table></div>
+        <div id="cd-rnc-loading" style="padding:24px;text-align:center;color:var(--gray-400);font-size:13px">Carregando...</div>
+      </div>
+
+      <!-- ── HISTÓRICO ── -->
+      <div class="cd-panel" id="cdp-historico" style="display:none">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <input class="form-input" id="cd-hist-busca" placeholder="Buscar por cliente, produto…" style="width:260px" oninput="cdFiltrar('hist')">
+          <span id="cd-hist-count" style="font-size:12px;color:var(--gray-400)"></span>
+        </div>
+        <div style="overflow-x:auto"><table class="table" style="width:100%">
+          <thead><tr><th>ID</th><th>Cliente</th><th>Produto</th><th>Lote</th><th>Tipo</th><th>Causa</th><th>Status</th><th>Data</th></tr></thead>
+          <tbody id="cd-hist-tbody"></tbody>
+        </table></div>
+        <div id="cd-hist-loading" style="padding:24px;text-align:center;color:var(--gray-400);font-size:13px">Carregando...</div>
+      </div>
+
+      <!-- ── SETORES ── -->
+      <div class="cd-panel" id="cdp-setores" style="display:none">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <input class="form-input" id="cd-set-busca" placeholder="Buscar setor…" style="width:220px" oninput="cdFiltrar('set')">
           <button class="btn btn-primary" onclick="abrirModalSetorCerebro()">+ Novo Setor</button>
         </div>
-        <div id="cerebro-setores-loading" style="color:var(--gray-400);font-size:13px">Carregando...</div>
+        <div id="cerebro-setores-loading" style="padding:24px;text-align:center;color:var(--gray-400);font-size:13px">Carregando...</div>
         <div id="cerebro-setores-tabela" style="display:none;overflow-x:auto">
           <table class="table" style="width:100%">
-            <thead><tr>
-              <th>Setor</th><th>Empresa</th><th>Responsável</th><th>SLA (h)</th><th>Status</th><th></th>
-            </tr></thead>
+            <thead><tr><th>ID</th><th>Setor</th><th>Empresa</th><th>Responsável</th><th>SLA (h)</th><th>Status</th><th></th></tr></thead>
             <tbody id="cerebro-setores-tbody"></tbody>
           </table>
         </div>
       </div>
 
-      <!-- Base de Produtos por Empresa -->
-      <div class="section-card" style="margin-bottom:16px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-          <div>
-            <div class="section-title" style="margin-bottom:2px">Base de Produtos por Empresa</div>
-            <div class="section-sub">Importe uma planilha CSV com os produtos de cada empresa. Colunas: EMPRESA, PRODUTO, DESCRICAO, CATEGORIA, UNIDADE</div>
+      <!-- ── PRODUTOS ── -->
+      <div class="cd-panel" id="cdp-produtos" style="display:none">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <input class="form-input" id="cd-prod-busca" placeholder="Buscar produto ou empresa…" style="width:240px" oninput="cdFiltrar('prod')">
           </div>
           <label class="btn btn-secondary" style="cursor:pointer;margin:0">
             📥 Importar CSV
@@ -2227,7 +2239,7 @@
           </label>
         </div>
         <div id="produtos-import-status" style="font-size:13px;color:var(--gray-400);margin-bottom:8px"></div>
-        <div id="produtos-preview" style="display:none;overflow-x:auto">
+        <div id="produtos-preview" style="display:none;overflow-x:auto;margin-bottom:12px">
           <div style="font-size:12px;color:var(--gray-500);margin-bottom:6px" id="produtos-preview-count"></div>
           <table class="table" style="width:100%;font-size:12px">
             <thead><tr id="produtos-preview-head"></tr></thead>
@@ -2238,22 +2250,94 @@
             <button class="btn btn-secondary" onclick="cancelarImportProdutos()">Cancelar</button>
           </div>
         </div>
-        <div id="cerebro-produtos-lista" style="overflow-x:auto;margin-top:4px">
-          <div id="cerebro-produtos-loading" style="color:var(--gray-400);font-size:13px">Carregando produtos...</div>
+        <div id="cerebro-produtos-loading" style="padding:24px;text-align:center;color:var(--gray-400);font-size:13px">Carregando produtos...</div>
+        <div style="overflow-x:auto">
           <table class="table" style="width:100%;display:none" id="cerebro-produtos-tabela">
-            <thead><tr><th>Empresa</th><th>Produto</th><th>Categoria</th><th>Unidade</th></tr></thead>
+            <thead><tr><th>ID</th><th>Empresa</th><th>Produto</th><th>Descrição</th><th>Categoria</th><th>Unidade</th></tr></thead>
             <tbody id="cerebro-produtos-tbody"></tbody>
           </table>
         </div>
       </div>
 
-      <!-- Últimas análises -->
-      <div class="section-card">
-        <div class="section-title">Últimas Análises Registradas</div>
-        <div id="cerebro-ultimas" style="margin-top:12px;color:var(--gray-400);font-size:13px">
-          <button class="btn btn-secondary" style="margin-top:8px" onclick="loadUltimasAnalises()">Carregar histórico de análises</button>
+      <!-- ── USUÁRIOS ── -->
+      <div class="cd-panel" id="cdp-usuarios" style="display:none">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <input class="form-input" id="cd-usr-busca" placeholder="Buscar usuário…" style="width:220px" oninput="cdFiltrar('usr')">
+          <span id="cd-usr-count" style="font-size:12px;color:var(--gray-400)"></span>
+        </div>
+        <div style="overflow-x:auto"><table class="table" style="width:100%">
+          <thead><tr><th>ID</th><th>Usuário</th><th>Nome</th><th>Perfil</th><th>Empresa</th><th>Status</th></tr></thead>
+          <tbody id="cd-usr-tbody"></tbody>
+        </table></div>
+        <div id="cd-usr-loading" style="padding:24px;text-align:center;color:var(--gray-400);font-size:13px">Carregando...</div>
+      </div>
+
+      <!-- ── REPRESENTANTES ── -->
+      <div class="cd-panel" id="cdp-representantes" style="display:none">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <input class="form-input" id="cd-rep-busca" placeholder="Buscar representante ou cliente…" style="width:260px" oninput="cdFiltrar('rep')">
+          <span id="cd-rep-count" style="font-size:12px;color:var(--gray-400)"></span>
+        </div>
+        <div style="overflow-x:auto"><table class="table" style="width:100%">
+          <thead><tr><th>ID</th><th>Nome / Razão Social</th><th>CNPJ/CPF</th><th>Cidade</th><th>Estado</th><th>Email</th><th>RCA</th></tr></thead>
+          <tbody id="cd-rep-tbody"></tbody>
+        </table></div>
+        <div id="cd-rep-loading" style="padding:24px;text-align:center;color:var(--gray-400);font-size:13px">Carregando...</div>
+      </div>
+
+      <!-- ── CAUSAS ── -->
+      <div class="cd-panel" id="cdp-causas-cd" style="display:none">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <input class="form-input" id="cd-caus-busca" placeholder="Buscar causa…" style="width:220px" oninput="cdFiltrar('caus')">
+          <span id="cd-caus-count" style="font-size:12px;color:var(--gray-400)"></span>
+        </div>
+        <div style="overflow-x:auto"><table class="table" style="width:100%">
+          <thead><tr><th>ID</th><th>Categoria</th><th>Tipo</th><th>Causa</th><th>Subcausa</th><th>Setor</th><th>Ativo</th></tr></thead>
+          <tbody id="cd-caus-tbody"></tbody>
+        </table></div>
+        <div id="cd-caus-loading" style="padding:24px;text-align:center;color:var(--gray-400);font-size:13px">Carregando...</div>
+      </div>
+
+      <!-- ── AUDITORIA ── -->
+      <div class="cd-panel" id="cdp-auditoria" style="display:none">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <input class="form-input" id="cd-aud-busca" placeholder="Buscar usuário ou ação…" style="width:220px" oninput="cdFiltrar('aud')">
+          </div>
+          <span id="cd-aud-count" style="font-size:12px;color:var(--gray-400)"></span>
+        </div>
+        <div style="overflow-x:auto"><table class="table" style="width:100%">
+          <thead><tr><th>Data/Hora</th><th>Usuário</th><th>Ação</th><th>ID Registro</th><th>Aba</th><th>Detalhes</th></tr></thead>
+          <tbody id="cd-aud-tbody"></tbody>
+        </table></div>
+        <div id="cd-aud-loading" style="padding:24px;text-align:center;color:var(--gray-400);font-size:13px">Carregando...</div>
+      </div>
+
+      <!-- ── ANÁLISE IA ── -->
+      <div class="cd-panel" id="cdp-ia" style="display:none">
+        <div class="section-card" style="margin-bottom:16px">
+          <div class="section-title">Analisar Manifestação com IA</div>
+          <div class="section-sub">Rode o Cérebro IA manualmente em qualquer manifestação.</div>
+          <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
+            <input id="cerebro-id-input" class="form-input" style="width:220px" placeholder="ID da manifestação (ex: MAN-001)">
+            <button class="btn btn-primary" onclick="rodarCerebro()">▶ Rodar Análise</button>
+          </div>
+          <div id="cerebro-loading" style="display:none;margin-top:14px;color:var(--gray-400);font-size:13px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="width:16px;height:16px;border:2px solid var(--red);border-top-color:transparent;border-radius:50%;animation:spin 0.8s linear infinite"></div>
+              Analisando com IA...
+            </div>
+          </div>
+          <div id="cerebro-resultado" style="display:none;margin-top:16px"></div>
+        </div>
+        <div class="section-card">
+          <div class="section-title">Últimas Análises Registradas</div>
+          <div id="cerebro-ultimas" style="margin-top:12px;color:var(--gray-400);font-size:13px">
+            <button class="btn btn-secondary" style="margin-top:8px" onclick="loadUltimasAnalises()">Carregar histórico</button>
+          </div>
         </div>
       </div>
+
     </div>
   </div>
 
@@ -4485,7 +4569,7 @@ const pageLoaders = {
   'setores': loadSetores,
   'matriz': loadMatriz,
   'base-conhecimento': loadBaseConhecimento,
-  'cerebro': ()=>{ loadCerebroSetores(); loadCerebroProdutos(); },
+  'cerebro': ()=>{ cdLoadMan(); },
   'painel-maquina': loadPainelMaquina,
   'causas': loadCausas,
   'sugestoes-melhoria': loadSugestoesMelhoria,
@@ -8205,35 +8289,116 @@ async function gerarSugestaoMelhoriaAuto(idManifestacao) {
 }
 
 // ── Cérebro IA ────────────────────────────────────────────
-// ===== CÉREBRO: SETORES =====
+// ===== CENTRAL DE DADOS: TABS =====
+let _cdData = { man:[], rnc:[], hist:[], set:[], prod:[], usr:[], rep:[], caus:[], aud:[] };
+
+function cdTab(name, btn) {
+  document.querySelectorAll('.cd-tab').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.cd-panel').forEach(p=>p.style.display='none');
+  btn.classList.add('active');
+  const panel = document.getElementById('cdp-'+name);
+  if (panel) panel.style.display='block';
+  // lazy load
+  if (name==='manifestacoes' && !_cdData.man.length) cdLoadMan();
+  else if (name==='rnc' && !_cdData.rnc.length) cdLoadRnc();
+  else if (name==='historico' && !_cdData.hist.length) cdLoadHist();
+  else if (name==='setores') cdLoadSetores();
+  else if (name==='produtos') { cdLoadProd(); }
+  else if (name==='usuarios' && !_cdData.usr.length) cdLoadUsr();
+  else if (name==='representantes' && !_cdData.rep.length) cdLoadRep();
+  else if (name==='causas-cd' && !_cdData.caus.length) cdLoadCaus();
+  else if (name==='auditoria' && !_cdData.aud.length) cdLoadAud();
+}
+
+function cdRender(tbodyId, loadId, rows, cols, empty='Sem dados.') {
+  const tbody = document.getElementById(tbodyId);
+  const load = document.getElementById(loadId);
+  if (load) load.style.display='none';
+  if (!tbody) return;
+  tbody.innerHTML = rows.length===0
+    ? `<tr><td colspan="${cols}" style="text-align:center;padding:20px;color:var(--gray-400)">${empty}</td></tr>`
+    : rows.join('');
+}
+
+function cdFiltrar(tipo) {
+  const q = (document.getElementById(`cd-${tipo}-busca`)?.value||'').toLowerCase();
+  const st = (document.getElementById(`cd-${tipo}-status`)?.value||'').toLowerCase();
+  const map = {man:'manifestacoes',rnc:'rnc',hist:'historico',set:'setores',prod:'produtos',usr:'usuarios',rep:'representantes',caus:'causas-cd',aud:'auditoria'};
+  const render = { man: renderCdMan, rnc: renderCdRnc, hist: renderCdHist, set: renderCdSet, prod: renderCdProd, usr: renderCdUsr, rep: renderCdRep, caus: renderCdCaus, aud: renderCdAud };
+  if (render[tipo]) render[tipo](q, st);
+}
+
+// ── MANIFESTAÇÕES ──
+async function cdLoadMan() {
+  document.getElementById('cd-man-loading').style.display='block';
+  try { const r=await _apiFetch('/api/manifestacoes'); _cdData.man=r.itens||[]; renderCdMan(); } catch(e) { document.getElementById('cd-man-loading').textContent='Erro: '+e.message; }
+}
+function renderCdMan(q='',st='') {
+  const rows=_cdData.man.filter(x=>{ const s=(q?(x.ID_MANIFESTACAO+x.EMPRESA_RECLAMANTE+x.PRODUTO+x.CONTATO).toLowerCase().includes(q):true); const ss=(st?((x.STATUS||'').toLowerCase()===st):true); return s&&ss; });
+  document.getElementById('cd-man-count').textContent=`${rows.length} registro(s)`;
+  cdRender('cd-man-tbody','cd-man-loading',rows.map(x=>`<tr><td><strong>${esc5(x.ID_MANIFESTACAO)}</strong></td><td style="font-size:11px">${fmt5(x.DATA_ABERTURA||x.DATA_REGISTRO)}</td><td>${esc5(x.EMPRESA_RECLAMANTE||x.CONTATO||'')}</td><td>${esc5(x.PRODUTO||'')}</td><td>${esc5(x.LOTE||'')}</td><td><span class="status-badge ${stClass(x.STATUS)}">${esc5(x.STATUS||'')}</span></td><td>${esc5(x.SETOR_SUGERIDO||x.SETOR_CONFIRMADO||'')}</td></tr>`),7,'Nenhuma manifestação.');
+}
+
+// ── RNC ──
+async function cdLoadRnc() {
+  document.getElementById('cd-rnc-loading').style.display='block';
+  try { const r=await _apiFetch('/api/rnc'); _cdData.rnc=r.itens||[]; renderCdRnc(); } catch(e) { document.getElementById('cd-rnc-loading').textContent='Erro: '+e.message; }
+}
+function renderCdRnc(q='',st='') {
+  const rows=_cdData.rnc.filter(x=>{ const s=(q?(x.ID_RNC+x.CLIENTE+x.EMPRESA+x.COMPETENCIA).toLowerCase().includes(q):true); const ss=(st?((x.STATUS||'').toLowerCase().includes(st)):true); return s&&ss; });
+  document.getElementById('cd-rnc-count').textContent=`${rows.length} registro(s)`;
+  cdRender('cd-rnc-tbody','cd-rnc-loading',rows.map(x=>`<tr><td><strong>${esc5(x.ID_RNC)}</strong></td><td>${esc5(x.PROTOCOLO_SAC||x.ID_MANIFESTACAO||'')}</td><td>${esc5(x.CLIENTE||x.CLIENTE_NOME||'')}</td><td>${esc5(x.EMPRESA||'')}</td><td>${esc5(x.COMPETENCIA||x.COMPETENCIA_RNC||x.SETOR||'')}</td><td><span class="status-badge ${stClass(x.STATUS)}">${esc5(x.STATUS||'')}</span></td><td style="font-size:11px">${fmt5(x.DATA_ABERTURA||x.DATA_CRIACAO)}</td></tr>`),7,'Nenhuma RNC.');
+}
+
+// ── HISTÓRICO ──
+async function cdLoadHist() {
+  document.getElementById('cd-hist-loading').style.display='block';
+  try {
+    const r=await _apiFetch('/api/manifestacoes');
+    _cdData.hist=r.itens||[];
+    renderCdHist();
+  } catch(e) { document.getElementById('cd-hist-loading').textContent='Erro: '+e.message; }
+}
+function renderCdHist(q='') {
+  const rows=_cdData.hist.filter(x=>!q||(x.EMPRESA_RECLAMANTE+x.PRODUTO+x.CONTATO+x.DESCRICAO).toLowerCase().includes(q));
+  document.getElementById('cd-hist-count').textContent=`${rows.length} registro(s)`;
+  cdRender('cd-hist-tbody','cd-hist-loading',rows.map(x=>`<tr><td><strong>${esc5(x.ID_MANIFESTACAO)}</strong></td><td>${esc5(x.EMPRESA_RECLAMANTE||x.CONTATO||'')}</td><td>${esc5(x.PRODUTO||'')}</td><td>${esc5(x.LOTE||'')}</td><td>${esc5(x.TIPO_PROBLEMA_VALIDADO||x.TIPO||'')}</td><td>${esc5(x.CAUSA_RAIZ||x.CAUSA||'')}</td><td><span class="status-badge ${stClass(x.STATUS)}">${esc5(x.STATUS||'')}</span></td><td style="font-size:11px">${fmt5(x.DATA_ABERTURA)}</td></tr>`),8,'Sem histórico.');
+}
+
+// ── SETORES ──
 let _cerebroSetoresData = [];
-async function loadCerebroSetores() {
+async function cdLoadSetores() {
   const loading = document.getElementById('cerebro-setores-loading');
   const tabela = document.getElementById('cerebro-setores-tabela');
   const tbody = document.getElementById('cerebro-setores-tbody');
-  if (!loading) return;
-  loading.style.display = 'block'; tabela.style.display = 'none';
+  if (loading) loading.style.display='block';
+  if (tabela) tabela.style.display='none';
   try {
     const r = await _apiFetch('/api/setores');
     _cerebroSetoresData = r.itens || [];
-    tbody.innerHTML = _cerebroSetoresData.length === 0
-      ? '<tr><td colspan="6" style="text-align:center;color:var(--gray-400)">Nenhum setor cadastrado.</td></tr>'
+    if (tbody) tbody.innerHTML = _cerebroSetoresData.length === 0
+      ? '<tr><td colspan="7" style="text-align:center;color:var(--gray-400);padding:20px">Nenhum setor cadastrado. Clique em "+ Novo Setor" para adicionar.</td></tr>'
       : _cerebroSetoresData.map(s => `
         <tr>
-          <td><strong>${s.SETOR||''}</strong></td>
-          <td>${s.EMPRESA||''}</td>
-          <td>${s.RESPONSAVEL||''}</td>
-          <td>${s.SLA_HORAS||''}</td>
-          <td><span class="badge ${(s.ATIVO||'SIM')==='SIM'?'badge-green':'badge-gray'}">${s.ATIVO||'SIM'}</span></td>
-          <td><button class="btn btn-secondary" style="padding:3px 10px;font-size:12px" onclick="editarSetorCerebro('${s.ID_SETOR}')">Editar</button></td>
+          <td style="font-size:11px;color:var(--gray-400)">${esc5(s.ID_SETOR||'')}</td>
+          <td><strong>${esc5(s.SETOR||'')}</strong></td>
+          <td>${esc5(s.EMPRESA||'')}</td>
+          <td>${esc5(s.RESPONSAVEL||'')}</td>
+          <td>${esc5(s.SLA_HORAS||'')}</td>
+          <td><span class="badge ${(s.ATIVO||'SIM')==='SIM'?'badge-green':'badge-gray'}">${esc5(s.ATIVO||'SIM')}</span></td>
+          <td><button class="btn btn-secondary" style="padding:3px 10px;font-size:12px" onclick="editarSetorCerebro('${esc5(s.ID_SETOR)}')">✏️ Editar</button></td>
         </tr>`).join('');
-    loading.style.display = 'none'; tabela.style.display = 'block';
+    if (loading) loading.style.display='none';
+    if (tabela) tabela.style.display='block';
   } catch(e) {
-    loading.textContent = 'Erro ao carregar setores: ' + e.message;
+    if (loading) { loading.style.display='block'; loading.textContent='Erro ao carregar setores: '+e.message; }
   }
 }
+function loadCerebroSetores() { cdLoadSetores(); }
+function renderCdSet() { cdLoadSetores(); }
+
 function abrirModalSetorCerebro(id) {
-  document.getElementById('modal-setor-cerebro-title').textContent = id ? 'Editar Setor' : 'Novo Setor';
+  document.getElementById('modal-setor-cerebro-title').textContent = id ? 'Editar Informações do Setor' : 'Novo Setor';
   document.getElementById('setor-cerebro-id').value = id||'';
   document.getElementById('setor-cerebro-erro').style.display = 'none';
   if (id) {
@@ -8245,7 +8410,7 @@ function abrirModalSetorCerebro(id) {
     document.getElementById('setor-cerebro-sla').value = s.SLA_HORAS||'72';
     document.getElementById('setor-cerebro-ativo').value = s.ATIVO||'SIM';
   } else {
-    ['setor-cerebro-nome','setor-cerebro-empresa','setor-cerebro-responsavel','setor-cerebro-descricao'].forEach(id=>document.getElementById(id).value='');
+    ['setor-cerebro-nome','setor-cerebro-empresa','setor-cerebro-responsavel','setor-cerebro-descricao'].forEach(fid=>document.getElementById(fid).value='');
     document.getElementById('setor-cerebro-sla').value = '72';
     document.getElementById('setor-cerebro-ativo').value = 'SIM';
   }
@@ -8272,8 +8437,96 @@ async function salvarSetorCerebro() {
       await _apiFetch('/api/setores', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
     }
     fecharModalSetorCerebro();
-    loadCerebroSetores();
+    cdLoadSetores();
   } catch(e) { erro.textContent = e.message; erro.style.display='block'; }
+}
+
+// ── PRODUTOS ──
+async function cdLoadProd() {
+  const loading = document.getElementById('cerebro-produtos-loading');
+  const tabela = document.getElementById('cerebro-produtos-tabela');
+  const tbody = document.getElementById('cerebro-produtos-tbody');
+  if (loading) loading.style.display='block';
+  if (tabela) tabela.style.display='none';
+  try {
+    const r=await _apiFetch('/api/produtos');
+    _cdData.prod=r.itens||[];
+    renderCdProd();
+  } catch(e) { if(loading) { loading.style.display='block'; loading.textContent='Erro: '+e.message; } }
+}
+function loadCerebroProdutos() { cdLoadProd(); }
+function renderCdProd(q='') {
+  const loading = document.getElementById('cerebro-produtos-loading');
+  const tabela = document.getElementById('cerebro-produtos-tabela');
+  const tbody = document.getElementById('cerebro-produtos-tbody');
+  const rows = _cdData.prod.filter(x=>!q||(x.EMPRESA+x.PRODUTO+x.CATEGORIA).toLowerCase().includes(q));
+  if (loading) loading.style.display='none';
+  if (!tbody) return;
+  tbody.innerHTML = rows.length===0
+    ? '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--gray-400)">Nenhum produto. Importe um CSV.</td></tr>'
+    : rows.map(x=>`<tr><td style="font-size:11px">${esc5(x.ID_PRODUTO||'')}</td><td>${esc5(x.EMPRESA||'')}</td><td>${esc5(x.PRODUTO||'')}</td><td>${esc5(x.DESCRICAO||'')}</td><td>${esc5(x.CATEGORIA||'')}</td><td>${esc5(x.UNIDADE||'')}</td></tr>`).join('');
+  if (tabela) tabela.style.display='table';
+}
+
+// ── USUÁRIOS ──
+async function cdLoadUsr() {
+  document.getElementById('cd-usr-loading').style.display='block';
+  try { const r=await _apiFetch('/api/usuarios'); _cdData.usr=r.itens||[]; renderCdUsr(); } catch(e) { document.getElementById('cd-usr-loading').textContent='Erro: '+e.message; }
+}
+function renderCdUsr(q='') {
+  const rows=_cdData.usr.filter(x=>!q||(x.usuario+x.nome+x.perfil+x.empresa).toLowerCase().includes(q));
+  document.getElementById('cd-usr-count').textContent=`${rows.length} usuário(s)`;
+  cdRender('cd-usr-tbody','cd-usr-loading',rows.map(x=>`<tr><td style="font-size:11px">${esc5(x.id||x.ID_USUARIO||'')}</td><td>${esc5(x.usuario||'')}</td><td>${esc5(x.nome||x.NOME||'')}</td><td><span class="badge badge-blue">${esc5(x.perfil||x.PERFIL||'')}</span></td><td>${esc5(x.empresa||x.EMPRESA||'')}</td><td><span class="badge ${(x.status||x.STATUS||'ATIVO')==='ATIVO'?'badge-green':'badge-gray'}">${esc5(x.status||x.STATUS||'ATIVO')}</span></td></tr>`),6,'Nenhum usuário.');
+}
+
+// ── REPRESENTANTES ──
+async function cdLoadRep() {
+  document.getElementById('cd-rep-loading').style.display='block';
+  try { const r=await _apiFetch('/api/empresas'); _cdData.rep=r.itens||r.empresas||[]; renderCdRep(); } catch(e) { document.getElementById('cd-rep-loading').textContent='Erro: '+e.message; }
+}
+function renderCdRep(q='') {
+  const rows=_cdData.rep.filter(x=>!q||(x.RAZAO_SOCIAL||x.NOME||x.CLIENTE||x.CNPJ||'').toLowerCase().includes(q));
+  document.getElementById('cd-rep-count').textContent=`${rows.length} registro(s)`;
+  cdRender('cd-rep-tbody','cd-rep-loading',rows.map(x=>`<tr><td style="font-size:11px">${esc5(x.ID_CLIENTE||x.ID||'')}</td><td>${esc5(x.RAZAO_SOCIAL||x.NOME||x.CLIENTE||'')}</td><td>${esc5(x.CNPJ||x.CNPJ_CPF||'')}</td><td>${esc5(x.CIDADE||'')}</td><td>${esc5(x.ESTADO||x.UF||'')}</td><td>${esc5(x.EMAIL||'')}</td><td>${esc5(x.RCA||x.REPRESENTANTE||'')}</td></tr>`),7,'Nenhum representante/cliente.');
+}
+
+// ── CAUSAS ──
+async function cdLoadCaus() {
+  document.getElementById('cd-caus-loading').style.display='block';
+  try {
+    const r=await _apiFetch('/api/causas').catch(()=>({itens:[]}));
+    _cdData.caus=r.itens||[];
+    renderCdCaus();
+  } catch(e) { document.getElementById('cd-caus-loading').textContent='Erro: '+e.message; }
+}
+function renderCdCaus(q='') {
+  const rows=_cdData.caus.filter(x=>!q||(x.CATEGORIA+x.TIPO+x.CAUSA+x.SUBCAUSA).toLowerCase().includes(q));
+  document.getElementById('cd-caus-count').textContent=`${rows.length} registro(s)`;
+  cdRender('cd-caus-tbody','cd-caus-loading',rows.map(x=>`<tr><td style="font-size:11px">${esc5(x.ID||x.ID_CAUSA||'')}</td><td>${esc5(x.CATEGORIA||'')}</td><td>${esc5(x.TIPO||'')}</td><td>${esc5(x.CAUSA||'')}</td><td>${esc5(x.SUBCAUSA||'')}</td><td>${esc5(x.SETOR||'')}</td><td><span class="badge ${(x.ATIVO||'SIM')==='SIM'?'badge-green':'badge-gray'}">${esc5(x.ATIVO||'SIM')}</span></td></tr>`),7,'Nenhuma causa cadastrada.');
+}
+
+// ── AUDITORIA ──
+async function cdLoadAud() {
+  document.getElementById('cd-aud-loading').style.display='block';
+  try {
+    const r=await _apiFetch('/api/auditoria').catch(()=>({itens:[]}));
+    _cdData.aud=(r.itens||r.logs||[]);
+    renderCdAud();
+  } catch(e) { document.getElementById('cd-aud-loading').textContent='Erro: '+e.message; }
+}
+function renderCdAud(q='') {
+  const rows=_cdData.aud.filter(x=>!q||(x.USUARIO+x.ACAO+x.ID_REGISTRO+x.ABA).toLowerCase().includes(q));
+  document.getElementById('cd-aud-count').textContent=`${rows.length} registro(s)`;
+  cdRender('cd-aud-tbody','cd-aud-loading',rows.map(x=>`<tr><td style="font-size:11px">${fmt5(x.DATA_HORA||x.DATA)}</td><td>${esc5(x.USUARIO||'')}</td><td>${esc5(x.ACAO||'')}</td><td>${esc5(x.ID_REGISTRO||'')}</td><td>${esc5(x.ABA||x.TABELA||'')}</td><td style="font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis">${esc5(x.DETALHES||'')}</td></tr>`),6,'Nenhum log de auditoria.');
+}
+
+function stClass(s='') {
+  s=s.toUpperCase();
+  if(s.includes('ANÁLISE')||s.includes('ANALISE')) return 'em-andamento';
+  if(s.includes('TRATAMENTO')) return 'em-andamento';
+  if(s.includes('RESOLVIDA')||s.includes('ENCERRADA')||s.includes('FECHADA')) return 'resolvida';
+  if(s.includes('ABERTA')) return 'pendente';
+  return 'pendente';
 }
 
 // ===== CÉREBRO: PRODUTOS =====

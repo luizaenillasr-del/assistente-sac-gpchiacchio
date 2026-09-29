@@ -246,9 +246,55 @@ async function consultarBaseConhecimento(tipo, setor) {
 // 5. SUGESTÃO DE TRATATIVA
 // ──────────────────────────────────────────────────────────────
 
-function gerarSugestaoTratativa(casosSimilares) {
+const TRATATIVAS_PADRAO = {
+  'Qualidade': [
+    'Solicitar amostras retidas do lote reclamado e enviar para análise laboratorial interna.',
+    'Acionar o setor de Qualidade para abertura de RNC e análise do lote indicado.',
+    'Solicitar evidências fotográficas ao cliente e comparar com laudo de produção do lote.',
+    'Verificar parâmetros de produção do lote no sistema e acionar supervisão da fábrica.',
+  ],
+  'Logística': [
+    'Verificar rastreamento da entrega junto à transportadora e solicitar posicionamento formal.',
+    'Contatar transportadora para localizar volumes e reagendar entrega com cliente.',
+    'Emitir NF de substituição e acionar logística para envio imediato ao cliente.',
+    'Investigar ocorrência com motorista/rota e registrar não conformidade de transporte.',
+  ],
+  'Financeiro': [
+    'Solicitar NF de referência ao cliente e acionar financeiro para análise de divergência.',
+    'Verificar no sistema a NF indicada e encaminhar análise para faturamento.',
+    'Acionar equipe de crédito para análise e emissão de nota de crédito se pertinente.',
+  ],
+  'Comercial': [
+    'Contatar representante da região para alinhamento e verificação do pedido.',
+    'Verificar condições comerciais acordadas e acionar gerente de contas do cliente.',
+    'Acionar equipe comercial para revisão de prazo e condições do pedido reclamado.',
+  ],
+  'SAC': [
+    'Registrar a manifestação, acionar o setor responsável e comunicar previsão de retorno ao cliente.',
+    'Coletar informações complementares (NF, lote, foto) e encaminhar para análise técnica.',
+    'Abrir ocorrência interna e monitorar prazo de resposta com os setores envolvidos.',
+  ],
+};
+
+function gerarSugestaoTratativaDefault(tipo, setores) {
+  const setor = (Array.isArray(setores) ? setores[0] : setores) || 'SAC';
+  const lista = TRATATIVAS_PADRAO[setor] || TRATATIVAS_PADRAO['SAC'];
+  // escolhe a mais genérica como padrão; em produção pode-se expandir por tipo
+  const sugestao = lista[0];
+  return {
+    aplicavel: true,
+    confianca: 30,
+    sugestao,
+    quantidadeCasos: 0,
+    evidencia: [],
+    origem: 'PADRAO',
+    todasSugestoes: lista,
+  };
+}
+
+function gerarSugestaoTratativa(casosSimilares, tipo, setores) {
   const comTratativa = casosSimilares.filter(c => c.tratativa && c.tratativa.trim());
-  if (!comTratativa.length) return { aplicavel: null, confianca: 0, sugestao: '', quantidadeCasos: 0, evidencia: [] };
+  if (!comTratativa.length) return gerarSugestaoTratativaDefault(tipo, setores);
   const contagem = {};
   comTratativa.forEach(c => { const k = c.tratativa.trim(); contagem[k] = (contagem[k] || 0) + 1; });
   const ordenadas = Object.entries(contagem).sort((a, b) => b[1] - a[1]);
@@ -263,6 +309,8 @@ function gerarSugestaoTratativa(casosSimilares) {
       .filter(c => c.tratativa.trim() === tratativa)
       .slice(0, 5)
       .map(c => ({ id: c.id, compatibilidade: c.similaridade, tratativa: c.tratativa, resultado: c.resultado })),
+    origem: 'HISTORICO',
+    todasSugestoes: ordenadas.slice(0,4).map(([t])=>t),
   };
 }
 
@@ -557,7 +605,7 @@ async function analisarManifestacaoCompleta(manifestacao, regras = {}, usuario =
   ]);
 
   const sla = calcularSLA(dataAbertura, regras.slaHoras || 72);
-  const tratativa = gerarSugestaoTratativa(casosSimilares);
+  const tratativa = gerarSugestaoTratativa(casosSimilares, tipo, regras.setores);
 
   // Contexto para IA
   const contextoIA = {
@@ -603,7 +651,7 @@ async function analisarManifestacaoCompleta(manifestacao, regras = {}, usuario =
     reincidencia,
     sla,
     baseConhecimento,
-    tratativaSugerida: { aplicavel: tratativa.aplicavel, confianca: tratativa.confianca, sugestao: tratativa.sugestao, quantidadeCasos: tratativa.quantidadeCasos, evidencia: tratativa.evidencia },
+    tratativaSugerida: { aplicavel: tratativa.aplicavel, confianca: tratativa.confianca, sugestao: tratativa.sugestao, quantidadeCasos: tratativa.quantidadeCasos, evidencia: tratativa.evidencia, origem: tratativa.origem||'HISTORICO', todasSugestoes: tratativa.todasSugestoes||[] },
     ia,
     confianca,
     conflitos,
