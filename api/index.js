@@ -905,6 +905,24 @@ app.get('/api/politicas', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁV
     res.json({sucesso:true,total:data.length,itens:data});
   } catch (e) { res.status(500).json({sucesso:false,erro:e.message,itens:[]}); }
 });
+app.post('/api/politicas', requerPerfil('MASTER','ANALISTA SAC'), async (req, res) => {
+  try {
+    await garantirAbaComCabecalhos('POLITICAS',['ID_POLITICA','POLITICA','SETOR_RESPONSAVEL','DESCRICAO','RESPONSAVEL','ATIVO','DATA_CRIACAO']).catch(()=>{});
+    const id = await gerarProximoID('POLITICAS','POL','ID_POLITICA');
+    const obj = { ID_POLITICA: id, ...req.body, DATA_CRIACAO: new Date().toLocaleDateString('pt-BR'), ATIVO: 'SIM' };
+    await appendObjeto('POLITICAS', obj);
+    res.json({ sucesso: true, id });
+  } catch (e) { res.status(500).json({ sucesso: false, erro: e.message }); }
+});
+app.post('/api/procedimentos', requerPerfil('MASTER','ANALISTA SAC'), async (req, res) => {
+  try {
+    await garantirAbaComCabecalhos('PROCEDIMENTOS',['ID_PROCEDIMENTO','NOME','SETOR_RESPONSAVEL','DESCRICAO','PASSOS','ATIVO','DATA_CRIACAO']).catch(()=>{});
+    const id = await gerarProximoID('PROCEDIMENTOS','PROC','ID_PROCEDIMENTO');
+    const obj = { ID_PROCEDIMENTO: id, NOME: req.body.POLITICA || req.body.NOME || '', ...req.body, DATA_CRIACAO: new Date().toLocaleDateString('pt-BR'), ATIVO: 'SIM' };
+    await appendObjeto('PROCEDIMENTOS', obj);
+    res.json({ sucesso: true, id });
+  } catch (e) { res.status(500).json({ sucesso: false, erro: e.message }); }
+});
 app.get('/api/tipos', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
   try { const data=await lerAba('TIPOS_RECLAMACAO',200); res.json({sucesso:true,total:data.length,itens:data}); }
   catch (e) { res.status(500).json({sucesso:false,erro:e.message,dados:[]}); }
