@@ -7101,7 +7101,6 @@ console.log('[base-conhecimento-setores] carregado');
     const t = texto;
     const campos = {};
 
-    // Helper: captura bloco de texto após um título de seção
     function capturarBloco(patterns, ate) {
       for (const pat of patterns) {
         const m = t.match(new RegExp(pat + '[:\\-–]?\\s*\\n?([\\s\\S]{10,600}?)(?=' + ate + '|$)', 'i'));
@@ -7112,37 +7111,16 @@ console.log('[base-conhecimento-setores] carregado');
 
     const secoes = 'Descrição|Responsabilidades|Regras|Procedimentos|Alertas|SLA|Prazo|Objetivo|Missão|Visão';
 
-    campos.DESCRICAO = capturarBloco(
-      ['Descrição','Objetivo do setor','Missão','Função do setor','Sobre o setor'],
-      secoes
-    );
-    campos.RESPONSABILIDADES = capturarBloco(
-      ['Responsabilidades','Atribuições','Competências','Atividades principais'],
-      secoes
-    );
-    campos.REGRAS_OPERACIONAIS = capturarBloco(
-      ['Regras','Políticas','Normas','Diretrizes','Regras operacionais'],
-      secoes
-    );
-    campos.PROCEDIMENTOS_ORIENTACOES = capturarBloco(
-      ['Procedimentos','Orientações','Passo a passo','Fluxo de atendimento','Como proceder'],
-      secoes
-    );
-    campos.ALERTAS = capturarBloco(
-      ['Alerta','Atenção','Cuidados','Pontos críticos','Observações importantes'],
-      secoes
-    );
+    campos.DESCRICAO = capturarBloco(['Descrição','Objetivo do setor','Missão','Função do setor','Sobre o setor'], secoes);
+    campos.RESPONSABILIDADES = capturarBloco(['Responsabilidades','Atribuições','Competências','Atividades principais'], secoes);
+    campos.REGRAS_OPERACIONAIS = capturarBloco(['Regras','Políticas','Normas','Diretrizes','Regras operacionais'], secoes);
+    campos.PROCEDIMENTOS_ORIENTACOES = capturarBloco(['Procedimentos','Orientações','Passo a passo','Fluxo de atendimento','Como proceder'], secoes);
+    campos.ALERTAS = capturarBloco(['Alerta','Atenção','Cuidados','Pontos críticos','Observações importantes'], secoes);
 
-    // SLA: busca número de horas explícito
-    const slaM = t.match(/SLA[:\s]*(\d+)\s*h(?:oras?)?/i) ||
-                 t.match(/prazo[:\s]*(\d+)\s*h(?:oras?)?/i) ||
-                 t.match(/(\d+)\s*horas?\s*(?:úteis?|de\s*SLA|para\s*resposta)/i);
+    const slaM = t.match(/SLA[:\s]*(\d+)\s*h(?:oras?)?/i) || t.match(/prazo[:\s]*(\d+)\s*h(?:oras?)?/i) || t.match(/(\d+)\s*horas?\s*(?:úteis?|de\s*SLA|para\s*resposta)/i);
     if (slaM) campos.SLA_HORAS = slaM[1];
 
-    // Se nenhum bloco foi capturado por padrões, usa o texto completo como descrição
-    if (!campos.DESCRICAO && !campos.RESPONSABILIDADES) {
-      campos.DESCRICAO = t.slice(0, 500).trim();
-    }
+    if (!campos.DESCRICAO && !campos.RESPONSABILIDADES) campos.DESCRICAO = t.slice(0, 500).trim();
 
     return campos;
   }
@@ -7164,7 +7142,6 @@ console.log('[base-conhecimento-setores] carregado');
 
       if (status) status.textContent = 'Analisando documento...';
       const campos = extrairCamposDoTexto(texto);
-
       if (campos.DESCRICAO) setField('DESCRICAO', campos.DESCRICAO);
       if (campos.RESPONSABILIDADES) setField('RESPONSABILIDADES', campos.RESPONSABILIDADES);
       if (campos.REGRAS_OPERACIONAIS) setField('REGRAS_OPERACIONAIS', campos.REGRAS_OPERACIONAIS);
