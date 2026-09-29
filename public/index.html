@@ -1772,23 +1772,23 @@
         <div class="bc-sidebar">
           <div class="bc-sidebar-section">Setor</div>
           <div class="bc-sidebar-item active"><span>Todos</span><span class="bc-sidebar-count" id="bc-total">--</span></div>
-          <div class="bc-sidebar-item" onclick="filterBC('setor','Logística',this)"><span>Logística</span><span class="bc-sidebar-count">9</span></div>
-          <div class="bc-sidebar-item" onclick="filterBC('setor','Qualidade',this)"><span>Qualidade</span><span class="bc-sidebar-count">14</span></div>
-          <div class="bc-sidebar-item" onclick="filterBC('setor','Comercial',this)"><span>Comercial</span><span class="bc-sidebar-count">8</span></div>
-          <div class="bc-sidebar-item" onclick="filterBC('setor','Financeiro',this)"><span>Financeiro</span><span class="bc-sidebar-count">6</span></div>
-          <div class="bc-sidebar-item" onclick="filterBC('setor','Outros',this)"><span>Outros</span><span class="bc-sidebar-count">9</span></div>
+          <div class="bc-sidebar-item" onclick="filterBC('setor','Logística',this)"><span>Logística</span><span class="bc-sidebar-count" id="bc-cnt-logistica">--</span></div>
+          <div class="bc-sidebar-item" onclick="filterBC('setor','Qualidade',this)"><span>Qualidade</span><span class="bc-sidebar-count" id="bc-cnt-qualidade">--</span></div>
+          <div class="bc-sidebar-item" onclick="filterBC('setor','Comercial',this)"><span>Comercial</span><span class="bc-sidebar-count" id="bc-cnt-comercial">--</span></div>
+          <div class="bc-sidebar-item" onclick="filterBC('setor','Financeiro',this)"><span>Financeiro</span><span class="bc-sidebar-count" id="bc-cnt-financeiro">--</span></div>
+          <div class="bc-sidebar-item" onclick="filterBC('setor','Outros',this)"><span>Outros</span><span class="bc-sidebar-count" id="bc-cnt-outros">--</span></div>
 
           <div class="bc-sidebar-section">Tipo</div>
-          <div class="bc-sidebar-item" onclick="filterBC('tipo','Política',this)"><span>Política</span><span class="bc-sidebar-count">12</span></div>
-          <div class="bc-sidebar-item" onclick="filterBC('tipo','Procedimento',this)"><span>Procedimento</span><span class="bc-sidebar-count">14</span></div>
-          <div class="bc-sidebar-item" onclick="filterBC('tipo','Resposta-modelo',this)"><span>Resposta-modelo</span><span class="bc-sidebar-count">11</span></div>
-          <div class="bc-sidebar-item" onclick="filterBC('tipo','FAQ',this)"><span>FAQ</span><span class="bc-sidebar-count">6</span></div>
-          <div class="bc-sidebar-item" onclick="filterBC('tipo','Caso exemplar',this)"><span>Caso exemplar</span><span class="bc-sidebar-count">3</span></div>
+          <div class="bc-sidebar-item" onclick="filterBC('tipo','Política',this)"><span>Política</span><span class="bc-sidebar-count" id="bc-cnt-politica">--</span></div>
+          <div class="bc-sidebar-item" onclick="filterBC('tipo','Procedimento',this)"><span>Procedimento</span><span class="bc-sidebar-count" id="bc-cnt-procedimento">--</span></div>
+          <div class="bc-sidebar-item" onclick="filterBC('tipo','Resposta-modelo',this)"><span>Resposta-modelo</span><span class="bc-sidebar-count" id="bc-cnt-resposta">--</span></div>
+          <div class="bc-sidebar-item" onclick="filterBC('tipo','FAQ',this)"><span>FAQ</span><span class="bc-sidebar-count" id="bc-cnt-faq">--</span></div>
+          <div class="bc-sidebar-item" onclick="filterBC('tipo','Caso exemplar',this)"><span>Caso exemplar</span><span class="bc-sidebar-count" id="bc-cnt-caso">--</span></div>
 
           <div class="bc-sidebar-section">Status</div>
-          <div class="bc-sidebar-item" onclick="filterBC('status','Vigente',this)"><span>Vigente</span><span class="bc-sidebar-count">39</span></div>
-          <div class="bc-sidebar-item" onclick="filterBC('status','Revisão vencida',this)"><span>Revisão vencida</span><span class="bc-sidebar-count">4</span></div>
-          <div class="bc-sidebar-item" onclick="filterBC('status','Rascunho',this)"><span>Rascunho</span><span class="bc-sidebar-count">3</span></div>
+          <div class="bc-sidebar-item" onclick="filterBC('status','Vigente',this)"><span>Vigente</span><span class="bc-sidebar-count" id="bc-cnt-vigente">--</span></div>
+          <div class="bc-sidebar-item" onclick="filterBC('status','Revisão vencida',this)"><span>Revisão vencida</span><span class="bc-sidebar-count" id="bc-cnt-vencida">--</span></div>
+          <div class="bc-sidebar-item" onclick="filterBC('status','Rascunho',this)"><span>Rascunho</span><span class="bc-sidebar-count" id="bc-cnt-rascunho">--</span></div>
         </div>
 
         <!-- BC List -->
@@ -3107,9 +3107,8 @@ async function loadSetores() {
       _apiFetch('/api/manifestacoes', 15000).catch(() => ({ itens: [] })),
       _apiFetch('/api/conhecimento', 15000).catch(() => ({ itens: [] })),
     ]);
-    if(setRes?.sucesso===false && !setRes.itens?.length) {
-      if(grid) grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:24px;color:var(--red)">Erro ao carregar setores: ${setRes.erro||'Verifique a aba CONFIG_SETORES na planilha.'}</div>`;
-      return;
+    if(setRes?.sucesso===false) {
+      console.warn('Setores API:', setRes.erro || 'erro desconhecido');
     }
     _setoresConfig = setRes.itens || [];
     _setoresMans = manRes.itens || [];
@@ -3430,7 +3429,26 @@ async function loadBaseConhecimento() {
     const procs = (procRes.itens || []).map(p => ({ ...p, _tipo: 'Procedimento', _nome: p.NOME || p.ID_PROCEDIMENTO }));
 
     bcData = [...pols, ...procs];
-    document.getElementById('bc-total').textContent = bcData.length;
+    document.getElementById('bc-total').textContent = bcData.length || 0;
+
+    // Contadores dinâmicos da sidebar
+    const cnt = (fn) => bcData.filter(fn).length;
+    const setEl = (id, v) => { const el = document.getElementById(id); if(el) el.textContent = v; };
+    setEl('bc-cnt-logistica', cnt(d => (d.SETOR_RESPONSAVEL||d.SETOR||'').includes('Logística')));
+    setEl('bc-cnt-qualidade', cnt(d => (d.SETOR_RESPONSAVEL||d.SETOR||'').includes('Qualidade')));
+    setEl('bc-cnt-comercial', cnt(d => (d.SETOR_RESPONSAVEL||d.SETOR||'').includes('Comercial')));
+    setEl('bc-cnt-financeiro', cnt(d => (d.SETOR_RESPONSAVEL||d.SETOR||'').includes('Financeiro')));
+    const setoresConhecidos = ['Logística','Qualidade','Comercial','Financeiro'];
+    setEl('bc-cnt-outros', cnt(d => !setoresConhecidos.some(s => (d.SETOR_RESPONSAVEL||d.SETOR||'').includes(s))));
+    setEl('bc-cnt-politica', cnt(d => d._tipo === 'Política'));
+    setEl('bc-cnt-procedimento', cnt(d => d._tipo === 'Procedimento'));
+    setEl('bc-cnt-resposta', cnt(d => d._tipo === 'Resposta-modelo'));
+    setEl('bc-cnt-faq', cnt(d => d._tipo === 'FAQ'));
+    setEl('bc-cnt-caso', cnt(d => d._tipo === 'Caso exemplar'));
+    setEl('bc-cnt-vigente', cnt(d => d.ATIVO === 'SIM'));
+    setEl('bc-cnt-vencida', cnt(d => d.ATIVO === 'REVISAO_VENCIDA'));
+    setEl('bc-cnt-rascunho', cnt(d => d.ATIVO !== 'SIM' && d.ATIVO !== 'REVISAO_VENCIDA'));
+
     renderBC(bcData);
   } catch (e) {
     console.error('Erro base conhecimento:', e);
