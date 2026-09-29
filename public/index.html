@@ -4075,5 +4075,1515 @@ loadVisaoGeral();
   boot();
 })();
 </script>
+
+<!-- ============================================================ -->
+<!-- PATCH VISÃO GERAL v1.0 — Cards clicáveis + IA + Empresas    -->
+<!-- ============================================================ -->
+<script>
+// ============================================================
+// PATCH VISÃO GERAL — SAC Chiacchio
+// Cole este bloco ANTES do </body> no index.html
+// Não altera nada existente — apenas sobrescreve funções de
+// dashboard e adiciona navegação com filtros.
+// ============================================================
+
+(function () {
+  'use strict';
+
+  // ──────────────────────────────────────────────────────────
+  // ESTADO DOS FILTROS DA VISÃO GERAL
+  // ──────────────────────────────────────────────────────────
+  // Os estados _dashFiltroEmpresa e _dashFiltroSetor já existem
+  // no código original. Adicionamos período.
+  window._dashFiltroPeriodoDias = 30; // padrão
+
+  // Interceptar cliques nos botões de período
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const txt = btn.textContent.trim();
+        if (txt === 'Hoje') window._dashFiltroPeriodoDias = 1;
+        else if (txt === '7 dias') window._dashFiltroPeriodoDias = 7;
+        else if (txt === '30 dias') window._dashFiltroPeriodoDias = 30;
+        else if (txt === 'Personalizado') window._dashFiltroPeriodoDias = null;
+      });
+    });
+  });
+
+  // ──────────────────────────────────────────────────────────
+  // MAPEAMENTO CENTRAL: CARD → FILTROS
+  // ──────────────────────────────────────────────────────────
+  function getFiltrosAtivos() {
+    return {
+      empresa: window._dashFiltroEmpresa || 'Todas',
+      setor: window._dashFiltroSetor || 'Todos',
+      periodoDias: window._dashFiltroPeriodoDias,
+    };
+  }
+
+  const CARD_FILTROS = {
+    'em-andamento':    f => ({ ...f, statusFn: m => !isClosed(m) && (m.STATUS||'').trim() !== '' }),
+    'total-historico': f => ({ ...f, statusFn: () => true }),
+    'reclamacoes':     f => ({ ...f, statusFn: m => /RECLAMA/i.test(m.TIPO||m.TIPO_CONFIRMADO||'') }),
+    'encerradas':      f => ({ ...f, statusFn: m => isClosed(m) }),
+    'rncs-abertas':    f => ({ ...f, statusFn: m => !!(m.ID_RNC||'').trim() }),
+    'em-aberto':       f => ({ ...f, statusFn: m => !isClosed(m) }),
+    'dentro-sla':      f => ({ ...f, sla: 'SIM' }),
+    'fora-sla':        f => ({ ...f, sla: 'NÃO' }),
+    // IA
+    'ia-analisados':   f => ({ ...f, statusFn: m => !!(m.TIPO_SUGERIDO||'').trim() }),
+    'ia-sugeridos':    f => ({ ...f, statusFn: m => !!(m.TIPO_SUGERIDO||'').trim() }),
+    'ia-aceitos':      f => ({ ...f, ia: 'aceita' }),
+    'ia-ajustes':      f => ({ ...f, ia: 'editada' }),
+    'ia-rejeitados':   f => ({ ...f, ia: 'rejeitada' }),
+    'ia-taxa':         f => ({ ...f, statusFn: m => !!(m.DECISAO_ANALISTA||'').trim() }),
+    // Operacionais novos
+    'risco-sla':       f => ({ ...f, statusFn: m => isEmRiscoSLA(m) }),
+    'sem-mov-24h':     f => ({ ...f, statusFn: m => semMovimentacao24h(m) }),
+    'reincidentes':    f => ({ ...f, statusFn: m => /SIM|NAO_VALIDADO/i.test(m.CLIENTE_REINCIDENTE||'') }),
+    // Por empresa (chave dinâmica gerada em tempo de execução)
+  };
+
+  function isClosed(m) {
+    return /FINALIZ|ENCERR|CONCLUID/i.test(m.STATUS||m['Status']||m['Situação Final']||'');
+  }
+
+  function isEmRiscoSLA(m) {
+    if (isClosed(m)) return false;
+    const criacao = new Date(m.DATA_CRIACAO || m.DATA_ABERTURA);
+    if (isNaN(criacao)) return false;
+    const slaH = Number(m.SLA_HORAS) || 72;
+    const limite = new Date(criacao.getTime() + slaH * 3600000);
+    const agora = new Date();
+    const restante = (limite - agora) / 3600000;
+    return restante > 0 && restante < 12; // vence nas próximas 12h
+  }
+
+  function semMovimentacao24h(m) {
+    if (isClosed(m)) return false;
+    const ult = new Date(m.DATA_ULTIMA_ATUALIZACAO || m.DATA_CRIACAO);
+    if (isNaN(ult)) return false;
+    return (Date.now() - ult) / 3600000 > 24;
+  }
+
+  function filtraPorPeriodo(items, dias) {
+    if (!dias) return items;
+    const corte = new Date(Date.now() - dias * 86400000);
+    return items.filter(m => {
+      const d = new Date(m.DATA_CRIACAO || m.DATA_ABERTURA || m['Data do Registro']);
+      return !isNaN(d) && d >= corte;
+    });
+  }
+
+  function filtraPorEmpresa(items, empresa) {
+    if (!empresa || empresa === 'Todas') return items;
+    const e = empresa.toUpperCase();
+    return items.filter(m => {
+      const emp = (m.EMPRESA_NORMALIZADA||m.EMPRESA_RECLAMADA||m.EMPRESA_RECLAMANTE||m.Empresa||'').toUpperCase();
+      return emp.includes(e);
+    });
+  }
+
+  // ──────────────────────────────────────────────────────────
+  // NAVEGAÇÃO COM FILTRO
+  // ──────────────────────────────────────────────────────────
+  window.navegarComFiltro = function (cardKey, empresaOverride) {
+    const filtros = getFiltrosAtivos();
+    if (empresaOverride) filtros.empresa = empresaOverride;
+
+    const def = CARD_FILTROS[cardKey];
+    if (!def) return navigate('banco-manifestacoes', document.querySelector('[onclick*=banco-manifestacoes]'));
+
+    const filtroFinal = def(filtros);
+
+    // Guardar filtro pendente antes de navegar
+    window._bancoPendingFilter = filtroFinal;
+
+    navigate('banco-manifestacoes', document.querySelector('[onclick*=banco-manifestacoes]'));
+  };
+
+  // ──────────────────────────────────────────────────────────
+  // INTERCEPTAR loadBancoManifestacoes PARA APLICAR FILTRO
+  // ──────────────────────────────────────────────────────────
+  const _loadBancoOrig = window.loadBancoManifestacoes;
+  window.loadBancoManifestacoes = async function () {
+    await _loadBancoOrig();
+    aplicarFiltroPendente();
+  };
+
+  function aplicarFiltroPendente() {
+    const f = window._bancoPendingFilter;
+    if (!f) return;
+    window._bancoPendingFilter = null;
+
+    let data = window.bancoData || [];
+
+    // Período
+    if (f.periodoDias) data = filtraPorPeriodo(data, f.periodoDias);
+    // Empresa
+    if (f.empresa && f.empresa !== 'Todas') data = filtraPorEmpresa(data, f.empresa);
+    // Setor
+    if (f.setor && f.setor !== 'Todos') {
+      const s = f.setor.toUpperCase();
+      data = data.filter(m => (m.SETOR_DESTINADO||m.SETOR_CONFIRMADO||m.SETOR_SUGERIDO||'').toUpperCase().includes(s));
+    }
+    // SLA
+    if (f.sla) {
+      data = data.filter(m => (m.DENTRO_DO_SLA||'').toUpperCase() === f.sla.toUpperCase());
+    }
+    // IA decisão
+    if (f.ia) {
+      data = data.filter(m => (m.DECISAO_ANALISTA||'').toLowerCase() === f.ia.toLowerCase());
+    }
+    // Filtro customizado por função
+    if (f.statusFn) data = data.filter(f.statusFn);
+
+    // Mostrar label do filtro ativo no topo da tabela
+    const totalEl = document.getElementById('banco-info');
+    if (totalEl) totalEl.textContent = `${data.length} resultado(s) filtrado(s)`;
+
+    // Renderizar
+    window.bancoData = data;
+    if (typeof window.renderBanco === 'function') window.renderBanco();
+  }
+
+  // ──────────────────────────────────────────────────────────
+  // CÁLCULO DOS NOVOS INDICADORES
+  // ──────────────────────────────────────────────────────────
+  function calcIndicadores(mans, recs, filtroEmpresa, filtroPeriodoDias) {
+    let m = mans;
+    let r = recs;
+    if (filtroPeriodoDias) { m = filtraPorPeriodo(m, filtroPeriodoDias); r = filtraPorPeriodo(r, filtroPeriodoDias); }
+    if (filtroEmpresa && filtroEmpresa !== 'Todas') { m = filtraPorEmpresa(m, filtroEmpresa); r = filtraPorEmpresa(r, filtroEmpresa); }
+
+    // IA
+    const iaAnalisados   = m.filter(x => (x.TIPO_SUGERIDO||'').trim()).length;
+    const iaAceitos      = m.filter(x => (x.DECISAO_ANALISTA||'').toLowerCase() === 'aceita').length;
+    const iaAjustes      = m.filter(x => (x.DECISAO_ANALISTA||'').toLowerCase() === 'editada').length;
+    const iaRejeitados   = m.filter(x => (x.DECISAO_ANALISTA||'').toLowerCase() === 'rejeitada').length;
+    const iaSugeridos    = iaAceitos + iaAjustes + iaRejeitados;
+    const iaTaxa         = iaSugeridos > 0 ? Math.round((iaAceitos + iaAjustes) / iaSugeridos * 100) : 0;
+
+    // Operacionais novos
+    const emRiscoSLA     = m.filter(isEmRiscoSLA).length;
+    const semMov24h      = m.filter(semMovimentacao24h).length;
+    const reincidentes   = m.filter(x => /SIM/i.test(x.CLIENTE_REINCIDENTE||'')).length;
+    const totalAtivos    = m.filter(x => !isClosed(x)).length;
+    const txReincid      = totalAtivos > 0 ? Math.round(reincidentes / totalAtivos * 100) : 0;
+    // Reabertura: campo não existe — mantém arquitetura preparada
+    const reabertura     = null; // CAMPO FALTANDO: precisa de STATUS_ANTERIOR ou DATA_REABERTURA
+
+    // Por empresa
+    const porEmpresa = {};
+    const todas = [...m, ...r];
+    todas.forEach(x => {
+      const emp = (x.EMPRESA_NORMALIZADA||x.EMPRESA_RECLAMADA||x.EMPRESA_RECLAMANTE||x.Empresa||'Outros').trim();
+      if (!emp || /^TR\d+$/.test(emp.toUpperCase())) return;
+      if (!porEmpresa[emp]) porEmpresa[emp] = { total:0, aberto:0, encerrado:0, foraSLA:0, rncs:0, sugeridos:0, aceitos:0 };
+      porEmpresa[emp].total++;
+      if (isClosed(x)) porEmpresa[emp].encerrado++; else porEmpresa[emp].aberto++;
+      const slaV = (x.DENTRO_DO_SLA||x['Dentro do prazo? ']||x['Dentro do prazo?']||'').toUpperCase();
+      if (slaV === 'NÃO' || slaV === 'NAO') porEmpresa[emp].foraSLA++;
+      if ((x.ID_RNC||'').trim()) porEmpresa[emp].rncs++;
+      if ((x.TIPO_SUGERIDO||'').trim()) porEmpresa[emp].sugeridos++;
+      if ((x.DECISAO_ANALISTA||'').toLowerCase() === 'aceita') porEmpresa[emp].aceitos++;
+    });
+
+    return { iaAnalisados, iaSugeridos, iaAceitos, iaAjustes, iaRejeitados, iaTaxa,
+             emRiscoSLA, semMov24h, reincidentes, txReincid, reabertura, porEmpresa };
+  }
+
+  // ──────────────────────────────────────────────────────────
+  // RENDER DOS NOVOS BLOCOS NA VISÃO GERAL
+  // ──────────────────────────────────────────────────────────
+  function renderBlocoIA(ind) {
+    const el = document.getElementById('bloco-ia');
+    if (!el) return;
+    el.innerHTML = `
+      <div style="margin-bottom:8px;font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.06em">Desempenho da ferramenta</div>
+      <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:0">
+        ${kpiIA('ia-analisados', 'Casos analisados', ind.iaAnalisados, 'total analisado pela IA')}
+        ${kpiIA('ia-sugeridos', 'Casos sugeridos', ind.iaSugeridos, 'receberam sugestão')}
+        ${kpiIA('ia-aceitos', 'Aceitos', ind.iaAceitos, 'sugestão aceita')}
+        ${kpiIA('ia-ajustes', 'Aceitos c/ ajuste', ind.iaAjustes, 'analista editou')}
+        ${kpiIA('ia-rejeitados', 'Rejeitados', ind.iaRejeitados, 'sugestão rejeitada')}
+        ${kpiIA('ia-taxa', 'Taxa aceitação', ind.iaTaxa + '%', 'aceitos ÷ sugeridos')}
+      </div>`;
+  }
+
+  function kpiIA(cardKey, label, valor, delta) {
+    return `<div class="kpi-card" onclick="navegarComFiltro('${cardKey}')"
+      style="cursor:pointer;transition:box-shadow 0.15s,border-color 0.15s;border:1px solid var(--gray-200)"
+      onmouseover="this.style.boxShadow='0 4px 12px rgba(200,16,46,0.15)';this.style.borderColor='var(--red)'"
+      onmouseout="this.style.boxShadow='';this.style.borderColor='var(--gray-200)'">
+      <div class="kpi-label">${label}</div>
+      <div class="kpi-value" style="font-size:24px">${valor !== null ? valor : '<span style="font-size:12px;color:var(--gray-400)">Sem dados</span>'}</div>
+      <div class="kpi-delta">${delta}</div>
+    </div>`;
+  }
+
+  function renderBlocoOperacional(ind) {
+    const el = document.getElementById('bloco-operacional-novo');
+    if (!el) return;
+    el.innerHTML = `
+      <div style="margin-bottom:8px;font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.06em">Alertas operacionais</div>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:0">
+        ${kpiOp('risco-sla', '⚠ Risco SLA', ind.emRiscoSLA, 'vencem em <12h', '#FEF3C7', '#92400E')}
+        ${kpiOp('sem-mov-24h', '🕐 Parados >24h', ind.semMov24h, 'sem movimentação', '#FEE2E2', '#DC2626')}
+        ${kpiOp('reincidentes', '↩ Reincidentes', ind.reincidentes, 'clientes reincidentes', '#EFF6FF', '#1D4ED8')}
+        ${kpiOp(null, '% Reincidência', ind.txReincid + '%', 'dos casos ativos', '#F3E8FF', '#7C3AED')}
+        ${kpiOp(null, '↺ Reabertura', '—', 'campo faltando*', '#F3F4F6', '#9CA3AF')}
+      </div>
+      <div style="font-size:10px;color:var(--gray-400);margin-top:6px">*Reabertura requer campo STATUS_ANTERIOR ou DATA_REABERTURA na planilha MANIFESTACOES</div>`;
+  }
+
+  function kpiOp(cardKey, label, valor, delta, bg, color) {
+    const clicavel = cardKey ? `onclick="navegarComFiltro('${cardKey}')" style="cursor:pointer;background:${bg};border:1px solid transparent;transition:box-shadow 0.15s,border-color 0.15s"
+      onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.12)';this.style.borderColor='${color}'"
+      onmouseout="this.style.boxShadow='';this.style.borderColor='transparent'"` 
+      : `style="background:${bg};opacity:0.7"`;
+    return `<div class="kpi-card" ${clicavel}>
+      <div class="kpi-label" style="color:${color}">${label}</div>
+      <div class="kpi-value" style="font-size:24px;color:${color}">${valor !== null ? valor : '—'}</div>
+      <div class="kpi-delta">${delta}</div>
+    </div>`;
+  }
+
+  function renderTabelaEmpresas(porEmpresa, filtroEmpresa) {
+    const el = document.getElementById('tabela-empresas');
+    if (!el) return;
+    const empresas = Object.entries(porEmpresa)
+      .filter(([e]) => !filtroEmpresa || filtroEmpresa === 'Todas' || e.toUpperCase().includes(filtroEmpresa.toUpperCase()))
+      .sort((a, b) => b[1].total - a[1].total);
+
+    if (!empresas.length) {
+      el.innerHTML = '<div style="color:var(--gray-400);font-size:13px;padding:16px">Sem dados suficientes</div>';
+      return;
+    }
+
+    el.innerHTML = `
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead>
+          <tr style="border-bottom:1px solid var(--gray-100)">
+            ${['Empresa','Total','Em aberto','Encerradas','Fora SLA','RNCs','IA sugeridos','IA aceitos'].map(h =>
+              `<th style="text-align:${h==='Empresa'?'left':'right'};font-size:11px;font-weight:600;color:var(--gray-400);padding:6px 8px">${h}</th>`
+            ).join('')}
+          </tr>
+        </thead>
+        <tbody>
+          ${empresas.map(([emp, d]) => `
+            <tr style="border-bottom:1px solid var(--gray-50);cursor:pointer;transition:background 0.1s"
+              onmouseover="this.style.background='var(--gray-50)'" onmouseout="this.style.background=''"
+              onclick="navegarComFiltro('total-historico','${emp.replace(/'/g,"\\'")}')">
+              <td style="padding:9px 8px;font-weight:600">${emp}</td>
+              <td style="padding:9px 8px;text-align:right">${d.total}</td>
+              <td style="padding:9px 8px;text-align:right;color:${d.aberto>0?'var(--orange)':'var(--gray-400)'}">${d.aberto}</td>
+              <td style="padding:9px 8px;text-align:right;color:var(--green)">${d.encerrado}</td>
+              <td style="padding:9px 8px;text-align:right;color:${d.foraSLA>0?'var(--red)':'var(--gray-400)'}">${d.foraSLA}</td>
+              <td style="padding:9px 8px;text-align:right">${d.rncs||'—'}</td>
+              <td style="padding:9px 8px;text-align:right">${d.sugeridos||'—'}</td>
+              <td style="padding:9px 8px;text-align:right;color:var(--green)">${d.aceitos||'—'}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>`;
+  }
+
+  // ──────────────────────────────────────────────────────────
+  // TORNAR CARDS EXISTENTES CLICÁVEIS + HOVER
+  // ──────────────────────────────────────────────────────────
+  function aplicarEstiloClicavel(el, cardKey, label) {
+    if (!el) return;
+    el.style.cursor = 'pointer';
+    el.setAttribute('title', `Ver ${label} →`);
+    el.addEventListener('mouseover', () => {
+      el.style.boxShadow = '0 4px 12px rgba(200,16,46,0.15)';
+      el.style.borderColor = 'var(--red)';
+      el.style.transform = 'translateY(-1px)';
+      el.style.transition = 'all 0.15s';
+    });
+    el.addEventListener('mouseout', () => {
+      el.style.boxShadow = '';
+      el.style.borderColor = '';
+      el.style.transform = '';
+    });
+    el.addEventListener('click', () => navegarComFiltro(cardKey));
+  }
+
+  // ──────────────────────────────────────────────────────────
+  // INJETAR ELEMENTOS HTML NA VISÃO GERAL
+  // ──────────────────────────────────────────────────────────
+  function injetarElementosHTML() {
+    const content = document.querySelector('#page-visao-geral .content');
+    if (!content) return;
+
+    // Bloco IA — inserir após o bloco SLA (antes do grid-3)
+    const grid3 = content.querySelector('.grid-3');
+    if (grid3 && !document.getElementById('bloco-ia')) {
+      const div = document.createElement('div');
+      div.id = 'bloco-ia';
+      div.style.marginBottom = '16px';
+      content.insertBefore(div, grid3);
+    }
+
+    // Bloco operacional novo — inserir após bloco IA
+    const blocoIA = document.getElementById('bloco-ia');
+    if (blocoIA && !document.getElementById('bloco-operacional-novo')) {
+      const div = document.createElement('div');
+      div.id = 'bloco-operacional-novo';
+      div.style.marginBottom = '16px';
+      blocoIA.after(div);
+    }
+
+    // Tabela de empresas — inserir antes dos alertas
+    const alertas = document.getElementById('alertas-section');
+    if (alertas && !document.getElementById('bloco-empresas')) {
+      const div = document.createElement('div');
+      div.id = 'bloco-empresas';
+      div.className = 'section-card';
+      div.style.marginBottom = '16px';
+      div.innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div>
+            <div class="section-title" style="margin-bottom:2px">Manifestações por empresa</div>
+            <div class="section-sub" style="margin-bottom:0">Clique em uma empresa para filtrar</div>
+          </div>
+        </div>
+        <div id="tabela-empresas"><div class="loading"><div class="spinner"></div></div></div>`;
+      alertas.before(div);
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────
+  // OVERRIDE: renderDashboard — adiciona os novos blocos
+  // ──────────────────────────────────────────────────────────
+  const _renderDashOrig = window.renderDashboard;
+  window.renderDashboard = function (data) {
+    if (typeof _renderDashOrig === 'function') _renderDashOrig(data);
+
+    injetarElementosHTML();
+
+    const mans = window._dashData?.mans || [];
+    const recs = window._dashData?.recs || [];
+    const filtroEmp = window._dashFiltroEmpresa || 'Todas';
+    const filtroDias = window._dashFiltroPeriodoDias || 30;
+
+    const ind = calcIndicadores(mans, recs, filtroEmp, filtroDias);
+
+    renderBlocoIA(ind);
+    renderBlocoOperacional(ind);
+    renderTabelaEmpresas(ind.porEmpresa, filtroEmp);
+
+    // Tornar cards existentes clicáveis (só na primeira vez)
+    if (!window._cardsCliqueveis) {
+      window._cardsCliqueveis = true;
+      setTimeout(() => {
+        // Bloco 1 — Operação
+        aplicarEstiloClicavel(document.getElementById('kpi-andamento')?.closest('.kpi-card'), 'em-andamento', 'casos em andamento');
+        aplicarEstiloClicavel(document.getElementById('kpi-total')?.closest('.kpi-card'), 'total-historico', 'total histórico');
+        aplicarEstiloClicavel(document.getElementById('kpi-reclamacoes')?.closest('.kpi-card'), 'reclamacoes', 'reclamações');
+        aplicarEstiloClicavel(document.getElementById('kpi-encerradas')?.closest('.kpi-card'), 'encerradas', 'encerradas');
+        aplicarEstiloClicavel(document.getElementById('kpi-rncs')?.closest('.kpi-card'), 'rncs-abertas', 'RNCs abertas');
+        aplicarEstiloClicavel(document.getElementById('kpi-aberto')?.closest('.kpi-card'), 'em-aberto', 'em aberto');
+        // Bloco 2 — SLA
+        aplicarEstiloClicavel(document.getElementById('kpi-prazo')?.closest('.kpi-card'), 'total-historico', 'SLA geral');
+        aplicarEstiloClicavel(document.getElementById('kpi-dentro-prazo')?.closest('.kpi-card'), 'dentro-sla', 'dentro do prazo');
+        aplicarEstiloClicavel(document.getElementById('kpi-atrasadas')?.closest('.kpi-card'), 'fora-sla', 'fora do prazo');
+        // Fila de atenção — já tem link "Abrir", manter
+      }, 200);
+    }
+  };
+
+  // ──────────────────────────────────────────────────────────
+  // BADGE DE FILTRO ATIVO NO BANCO DE MANIFESTAÇÕES
+  // ──────────────────────────────────────────────────────────
+  const _origNavigate = window.navigate;
+  if (_origNavigate) {
+    window.navigate = function (page, el) {
+      _origNavigate(page, el);
+      if (page === 'banco-manifestacoes') {
+        // Mostrar badge de filtro ativo se vier da Visão Geral
+        setTimeout(() => {
+          const existente = document.getElementById('badge-filtro-ativo');
+          if (existente) existente.remove();
+          if (window._bancoPendingFilter) {
+            // O badge será colocado após aplicarFiltroPendente
+          }
+        }, 100);
+      }
+    };
+  }
+
+  console.log('[patch-visao-geral] carregado — cards clicáveis + blocos IA + empresas');
+})();
+
+</script>
+
+<!-- ============================================================ -->
+<!-- PATCH ACOMPANHAMENTO v1.0 — Central Operacional              -->
+<!-- ============================================================ -->
+<script>
+// ============================================================
+// PATCH ACOMPANHAMENTO v1.0 — Central Operacional do Analista
+// Cole antes do </body> no index.html, após os scripts existentes
+// ============================================================
+(function () {
+'use strict';
+
+// ── HELPERS ──────────────────────────────────────────────────
+function esc(v){ return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
+function norm(s){ return String(s??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().trim(); }
+function parseDate(v){
+  if(!v) return null;
+  if(v instanceof Date) return isNaN(v)?null:v;
+  if(typeof v==='number' && v>20000 && v<80000) return new Date((v-25569)*86400*1000);
+  const d=new Date(v); return isNaN(d)?null:d;
+}
+function hoursAgo(v){
+  const d=parseDate(v); if(!d) return null;
+  return (Date.now()-d)/3600000;
+}
+function hoursFromNow(v){
+  const d=parseDate(v); if(!d) return null;
+  return (d-Date.now())/3600000;
+}
+function isClosed(m){
+  return /FINALIZ|ENCERR|CONCLUID/i.test(m.STATUS||'');
+}
+function getSLADeadline(m){
+  const ab = parseDate(m.DATA_ABERTURA||m.DATA_CRIACAO);
+  if(!ab) return null;
+  const slaH = Number(m.SLA_HORAS)||72;
+  return new Date(ab.getTime() + slaH*3600000);
+}
+function getSLAStatus(m){
+  if(isClosed(m)) return { label:'Concluída', cls:'ok', restante:null };
+  const deadline = getSLADeadline(m);
+  if(!deadline) return { label:'Sem SLA', cls:'', restante:null };
+  const diffH = (deadline - Date.now())/3600000;
+  if(diffH < 0){
+    const h = Math.abs(diffH);
+    if(h >= 48) return { label:`${Math.round(h/24)}d atrasado`, cls:'atrasado' };
+    return { label:`${Math.round(h)}h atrasado`, cls:'atrasado' };
+  }
+  if(diffH < 24){
+    if(diffH < 2) return { label:'Vence hoje', cls:'vence' };
+    return { label:`${Math.round(diffH)}h restantes`, cls:'vence' };
+  }
+  return { label:`${Math.round(diffH/24)}d restantes`, cls:'ok' };
+}
+function getIAStatus(m){
+  const dec = (m.DECISAO_ANALISTA||'').toLowerCase();
+  if(!m.TIPO_SUGERIDO && !dec) return { label:'Não analisado', cls:'ia-none' };
+  if(dec==='aceita') return { label:'Aceita', cls:'ia-aceita' };
+  if(dec==='editada') return { label:'Ajustada', cls:'ia-ajuste' };
+  if(dec==='rejeitada') return { label:'Rejeitada', cls:'ia-rejeit' };
+  if(m.TIPO_SUGERIDO) return { label:'Disponível', cls:'ia-disp' };
+  return { label:'Pendente', cls:'ia-none' };
+}
+function getProximaAcao(m){
+  const s = norm(m.STATUS||'');
+  if(s.includes('ANÁLISE')||s.includes('ANALISE')) return 'Analisar';
+  if(s.includes('AGUARD')&&s.includes('DECIS')) return 'Decidir';
+  if(s.includes('APROVADA')) return 'Encaminhar';
+  if(s.includes('TRATAMENTO')) return 'Acompanhar';
+  if(s.includes('DEVOLUTIVA')) return 'Devolutiva';
+  if(s.includes('FINALIZ')||s.includes('ENCERR')||s.includes('CONCLUID')) return '—';
+  return 'Analisar';
+}
+function getBtnLabel(m){
+  const s = norm(m.STATUS||'');
+  if(s.includes('ANÁLISE')||s.includes('ANALISE')) return 'Analisar';
+  if(s.includes('AGUARD')&&s.includes('DECIS')) return 'Decidir';
+  if(s.includes('APROVADA')) return 'Encaminhar';
+  if(s.includes('TRATAMENTO')) return 'Acompanhar';
+  if(s.includes('DEVOLUTIVA')) return 'Devolutiva';
+  return 'Abrir';
+}
+function fmtMovimento(m){
+  const d = parseDate(m.DATA_ULTIMA_ATUALIZACAO||m.DATA_DECISAO||m.DATA_CRIACAO);
+  if(!d) return '—';
+  const h = (Date.now()-d)/3600000;
+  let tempo;
+  if(h<1) tempo='há menos de 1h';
+  else if(h<24) tempo=`há ${Math.round(h)}h`;
+  else tempo=`há ${Math.round(h/24)}d`;
+  const fmt = d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})
+    +' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  const tipo = m.DATA_DECISAO ? 'Decisão registrada' : m.DATA_ULTIMA_ATUALIZACAO ? 'Atualizado' : 'Criado';
+  return `${fmt}<br><small style="color:var(--gray-400)">${tipo} · ${tempo}</small>`;
+}
+
+// ── ESTADO DOS FILTROS ────────────────────────────────────────
+window._acompFiltros = {
+  busca: '', status: '', empresa: '', setor: '',
+  analista: '', prioridade: '', sla: '', ia: '', periodo: ''
+};
+window._acompFiltroAtivo = null; // card clicado
+
+// ── INJETAR ESTILOS ───────────────────────────────────────────
+const style = document.createElement('style');
+style.textContent = `
+.ia-badge{display:inline-flex;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:700;white-space:nowrap}
+.ia-none{background:#F3F4F6;color:#6B7280}
+.ia-disp{background:#EFF6FF;color:#1D4ED8}
+.ia-aceita{background:#D1FAE5;color:#065F46}
+.ia-ajuste{background:#FEF3C7;color:#92400E}
+.ia-rejeit{background:#FEE2E2;color:#DC2626}
+.sla-ok{color:#065F46}
+.sla-vence{color:#92400E;font-weight:600}
+.sla-atrasado{color:#DC2626;font-weight:700}
+.kpi-card-operacional{background:white;border:1px solid var(--gray-200);border-radius:12px;padding:14px;cursor:pointer;transition:all 0.15s;text-align:center}
+.kpi-card-operacional:hover,.kpi-card-operacional.ativo{border-color:var(--red);box-shadow:0 3px 10px rgba(200,16,46,0.15);transform:translateY(-1px)}
+.kpi-card-operacional.ativo{background:var(--red-light)}
+.acomp-card-status{cursor:pointer;transition:all 0.15s}
+.acomp-card-status:hover,.acomp-card-status.ativo{border-color:var(--red)!important;box-shadow:0 3px 10px rgba(200,16,46,0.15)!important}
+.acomp-card-status.ativo{background:var(--red-light)!important;color:var(--red)!important}
+.filtro-extra{padding:7px 10px;border:1px solid var(--gray-200);border-radius:8px;font-size:12px;outline:none;background:white;cursor:pointer;min-width:110px}
+.filtro-extra:focus{border-color:var(--red)}
+.acao-btn{padding:5px 10px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid var(--gray-200);background:white;color:var(--gray-700);white-space:nowrap;transition:all 0.15s}
+.acao-btn:hover{background:var(--red);color:white;border-color:var(--red)}
+.proximo-badge{display:inline-flex;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:600;background:#F3E8FF;color:#7C3AED;white-space:nowrap}
+`;
+document.head.appendChild(style);
+
+// ── REESCREVER A TELA DE ACOMPANHAMENTO ──────────────────────
+function patchAcompPage(){
+  const page = document.getElementById('page-acompanhamento');
+  if(!page || page.dataset.patched) return;
+  page.dataset.patched = '1';
+
+  // Substituir o bloco de filtros por versão mais completa
+  const card = page.querySelector('.card.card-pad');
+  if(card){
+    card.innerHTML = `
+      <div style="display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+        <div class="search-wrap" style="flex:1;min-width:200px">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input class="search-input" placeholder="Buscar por ID, cliente, empresa, contato..." id="acomp-search" oninput="aplicarFiltrosAcomp()">
+        </div>
+        <button class="btn btn-secondary" onclick="loadAcompanhamento()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.08-4"/></svg>
+          Atualizar
+        </button>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <select id="af-status" class="filtro-extra" onchange="aplicarFiltrosAcomp()">
+          <option value="">Todos os status</option>
+          <option value="EM ANÁLISE">Em análise</option>
+          <option value="AGUARDANDO_DECISAO">Aguardando decisão</option>
+          <option value="APROVADA">Aprovada</option>
+          <option value="EM TRATAMENTO">Em tratamento</option>
+          <option value="AGUARDANDO_DEVOLUTIVA">Aguard. devolutiva</option>
+          <option value="ENCERRADA">Encerrada</option>
+          <option value="REJEITADA">Rejeitada</option>
+        </select>
+        <select id="af-empresa" class="filtro-extra" onchange="aplicarFiltrosAcomp()">
+          <option value="">Todas as empresas</option>
+          <option value="CHIACCHIO EMBALAGENS">Chiacchio</option>
+          <option value="PLASCHIO">Plaschio</option>
+          <option value="TUBAHIA">Tubahia</option>
+          <option value="CESBAP">Cesbap</option>
+        </select>
+        <select id="af-setor" class="filtro-extra" onchange="aplicarFiltrosAcomp()">
+          <option value="">Todos os setores</option>
+          <option value="SAC">SAC</option>
+          <option value="Qualidade">Qualidade</option>
+          <option value="Logística">Logística</option>
+          <option value="Comercial">Comercial</option>
+          <option value="Financeiro">Financeiro</option>
+          <option value="Produção">Produção</option>
+        </select>
+        <select id="af-prioridade" class="filtro-extra" onchange="aplicarFiltrosAcomp()">
+          <option value="">Todas as prioridades</option>
+          <option value="Crítica">Crítica</option>
+          <option value="Alta">Alta</option>
+          <option value="Média">Média</option>
+          <option value="Baixa">Baixa</option>
+        </select>
+        <select id="af-sla" class="filtro-extra" onchange="aplicarFiltrosAcomp()">
+          <option value="">SLA — todos</option>
+          <option value="vencido">Vencido</option>
+          <option value="risco">Em risco (< 12h)</option>
+          <option value="dentro">Dentro do prazo</option>
+        </select>
+        <select id="af-ia" class="filtro-extra" onchange="aplicarFiltrosAcomp()">
+          <option value="">IA — todos</option>
+          <option value="nao_analisado">Não analisado</option>
+          <option value="disponivel">Sugestão disponível</option>
+          <option value="aceita">Sugestão aceita</option>
+          <option value="editada">Aceita com ajustes</option>
+          <option value="rejeitada">Sugestão rejeitada</option>
+        </select>
+        <select id="af-periodo" class="filtro-extra" onchange="aplicarFiltrosAcomp()">
+          <option value="">Todo o período</option>
+          <option value="7">Últimos 7 dias</option>
+          <option value="30">Últimos 30 dias</option>
+          <option value="90">Últimos 90 dias</option>
+        </select>
+        <button class="btn btn-ghost" onclick="limparFiltrosAcomp()" style="font-size:11px;padding:6px 10px">
+          Limpar filtros
+        </button>
+      </div>`;
+  }
+
+  // Adicionar bloco de KPIs operacionais após os KPIs existentes
+  const kpisExist = page.querySelector('#acomp-kpis');
+  if(kpisExist && !document.getElementById('acomp-kpis-operacionais')){
+    const div = document.createElement('div');
+    div.id = 'acomp-kpis-operacionais';
+    div.style.cssText = 'margin-bottom:14px';
+    div.innerHTML = `
+      <div style="margin-bottom:6px;font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.06em">Atenção imediata</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+        <div class="kpi-card-operacional" id="kop-vencendo" onclick="filtrarPorIndicador('vencendo_hoje')">
+          <div style="font-size:11px;font-weight:600;color:#92400E;margin-bottom:4px">⏰ Vencendo hoje</div>
+          <div style="font-size:24px;font-weight:800;color:#92400E" id="kop-vencendo-val">--</div>
+          <div style="font-size:10px;color:var(--gray-400)">prazo encerra hoje</div>
+        </div>
+        <div class="kpi-card-operacional" id="kop-vencido" onclick="filtrarPorIndicador('sla_vencido')">
+          <div style="font-size:11px;font-weight:600;color:#DC2626;margin-bottom:4px">🔴 SLA vencido</div>
+          <div style="font-size:24px;font-weight:800;color:#DC2626" id="kop-vencido-val">--</div>
+          <div style="font-size:10px;color:var(--gray-400)">fora do prazo</div>
+        </div>
+        <div class="kpi-card-operacional" id="kop-parado" onclick="filtrarPorIndicador('parado_24h')">
+          <div style="font-size:11px;font-weight:600;color:#6B7280;margin-bottom:4px">🕐 Parados >24h</div>
+          <div style="font-size:24px;font-weight:800;color:#374151" id="kop-parado-val">--</div>
+          <div style="font-size:10px;color:var(--gray-400)">sem movimentação</div>
+        </div>
+        <div class="kpi-card-operacional" id="kop-semresp" onclick="filtrarPorIndicador('sem_responsavel')">
+          <div style="font-size:11px;font-weight:600;color:#7C3AED;margin-bottom:4px">👤 Sem responsável</div>
+          <div style="font-size:24px;font-weight:800;color:#7C3AED" id="kop-semresp-val">--</div>
+          <div style="font-size:10px;color:var(--gray-400)">sem analista definido</div>
+        </div>
+      </div>`;
+    kpisExist.after(div);
+  }
+
+  // Melhorar o cabeçalho da tabela
+  const thead = page.querySelector('.banco-table thead tr');
+  if(thead){
+    thead.innerHTML = `
+      <th>Nº / Data</th>
+      <th>Cliente / Empresa</th>
+      <th>Tipo</th>
+      <th>Empresa reclamada</th>
+      <th>Status</th>
+      <th>IA</th>
+      <th>Prioridade</th>
+      <th>Próxima ação</th>
+      <th>Última movimentação</th>
+      <th>SLA</th>
+      <th>Analista</th>
+      <th></th>`;
+  }
+
+  // Substituir texto "solicitações" por "manifestações"
+  const totalEl = page.querySelector('#acomp-total');
+  if(totalEl) totalEl.textContent = 'Carregando manifestações...';
+}
+
+// ── CALCULAR KPIs OPERACIONAIS ────────────────────────────────
+function calcularKPIsOperacionais(data){
+  const ativos = data.filter(m => !isClosed(m));
+
+  // Vencendo hoje (entre 0 e 24h)
+  const vencendoHoje = ativos.filter(m => {
+    const deadline = getSLADeadline(m);
+    if(!deadline) return false;
+    const diffH = (deadline - Date.now())/3600000;
+    return diffH >= 0 && diffH < 24;
+  }).length;
+
+  // SLA vencido
+  const slaVencido = ativos.filter(m => {
+    const deadline = getSLADeadline(m);
+    if(!deadline) return false;
+    return deadline < Date.now();
+  }).length;
+
+  // Parado >24h
+  const parado24h = ativos.filter(m => {
+    const h = hoursAgo(m.DATA_ULTIMA_ATUALIZACAO||m.DATA_DECISAO||m.DATA_CRIACAO);
+    return h !== null && h > 24;
+  }).length;
+
+  // Sem responsável
+  const semResp = ativos.filter(m => !(m.RESPONSAVEL||'').trim()).length;
+
+  // Atualizar KPIs
+  const setVal = (id, val) => { const el=document.getElementById(id); if(el) el.textContent=val; };
+  setVal('kop-vencendo-val', vencendoHoje);
+  setVal('kop-vencido-val', slaVencido);
+  setVal('kop-parado-val', parado24h);
+  setVal('kop-semresp-val', semResp);
+}
+
+// ── FILTRAR POR INDICADOR OPERACIONAL ────────────────────────
+window.filtrarPorIndicador = function(tipo){
+  // Toggle
+  if(window._acompFiltroAtivo === tipo){
+    window._acompFiltroAtivo = null;
+    document.querySelectorAll('.kpi-card-operacional').forEach(k => k.classList.remove('ativo'));
+    aplicarFiltrosAcomp();
+    return;
+  }
+  window._acompFiltroAtivo = tipo;
+  document.querySelectorAll('.kpi-card-operacional').forEach(k => k.classList.remove('ativo'));
+  const map = { vencendo_hoje:'kop-vencendo', sla_vencido:'kop-vencido', parado_24h:'kop-parado', sem_responsavel:'kop-semresp' };
+  document.getElementById(map[tipo])?.classList.add('ativo');
+  aplicarFiltrosAcomp();
+};
+
+// ── FILTROS DOS CARDS DE STATUS ───────────────────────────────
+window._acompStatusFiltro = '';
+function patchKPICards(){
+  const kpis = document.getElementById('acomp-kpis');
+  if(!kpis || kpis.dataset.patched) return;
+  kpis.dataset.patched='1';
+  const labels = ['EM ANÁLISE','AGUARDANDO_DECISAO','APROVADA','EM TRATAMENTO','AGUARDANDO_DEVOLUTIVA','ENCERRADA'];
+  kpis.querySelectorAll('.kpi-card').forEach((card, i) => {
+    card.classList.add('acomp-card-status');
+    const status = labels[i];
+    card.addEventListener('click', () => {
+      if(window._acompStatusFiltro === status){
+        window._acompStatusFiltro = '';
+        card.classList.remove('ativo');
+      } else {
+        window._acompStatusFiltro = status;
+        kpis.querySelectorAll('.kpi-card').forEach(c => c.classList.remove('ativo'));
+        card.classList.add('ativo');
+      }
+      document.getElementById('af-status').value = window._acompStatusFiltro;
+      aplicarFiltrosAcomp();
+    });
+  });
+}
+
+// ── APLICAR FILTROS ───────────────────────────────────────────
+window.aplicarFiltrosAcomp = function(){
+  const busca = norm(document.getElementById('acomp-search')?.value||'');
+  const status = document.getElementById('af-status')?.value||'';
+  const empresa = document.getElementById('af-empresa')?.value||'';
+  const setor = document.getElementById('af-setor')?.value||'';
+  const prioridade = document.getElementById('af-prioridade')?.value||'';
+  const slaF = document.getElementById('af-sla')?.value||'';
+  const iaF = document.getElementById('af-ia')?.value||'';
+  const periodo = document.getElementById('af-periodo')?.value||'';
+  const indicador = window._acompFiltroAtivo;
+
+  let data = [..._acompData];
+
+  // Período
+  if(periodo){
+    const corte = Date.now() - Number(periodo)*86400000;
+    data = data.filter(m => { const d=parseDate(m.DATA_CRIACAO||m.DATA_ABERTURA); return d && d>=corte; });
+  }
+  // Busca
+  if(busca){
+    data = data.filter(m =>
+      norm(m.ID_MANIFESTACAO||'').includes(busca)||
+      norm(m.EMPRESA_NORMALIZADA||'').includes(busca)||
+      norm(m.EMPRESA_RECLAMANTE||'').includes(busca)||
+      norm(m.EMPRESA_RECLAMADA||'').includes(busca)||
+      norm(m.CONTATO||'').includes(busca)
+    );
+  }
+  // Status
+  if(status){
+    data = data.filter(m => {
+      const s = norm(m.STATUS||'').replace(/ /g,'_');
+      return s.includes(norm(status).replace(/ /g,'_'));
+    });
+  }
+  // Empresa
+  if(empresa){
+    const e = norm(empresa);
+    data = data.filter(m =>
+      norm(m.EMPRESA_RECLAMADA||'').includes(e)||
+      norm(m.EMPRESA_NORMALIZADA||'').includes(e)
+    );
+  }
+  // Setor
+  if(setor){
+    const s = norm(setor);
+    data = data.filter(m =>
+      norm(m.SETOR_DESTINADO||'').includes(s)||
+      norm(m.SETOR_CONFIRMADO||'').includes(s)||
+      norm(m.SETOR_SUGERIDO||'').includes(s)||
+      norm(m.SETOR||'').includes(s)
+    );
+  }
+  // Prioridade
+  if(prioridade){ data = data.filter(m => norm(m.PRIORIDADE||'').includes(norm(prioridade))); }
+  // SLA
+  if(slaF){
+    data = data.filter(m => {
+      if(isClosed(m)) return false;
+      const deadline = getSLADeadline(m);
+      if(!deadline) return false;
+      const diffH = (deadline - Date.now())/3600000;
+      if(slaF==='vencido') return diffH < 0;
+      if(slaF==='risco') return diffH >= 0 && diffH < 12;
+      if(slaF==='dentro') return diffH >= 0;
+      return true;
+    });
+  }
+  // IA
+  if(iaF){
+    data = data.filter(m => {
+      const dec = (m.DECISAO_ANALISTA||'').toLowerCase();
+      if(iaF==='nao_analisado') return !m.TIPO_SUGERIDO && !dec;
+      if(iaF==='disponivel') return !!m.TIPO_SUGERIDO && !dec;
+      if(iaF==='aceita') return dec==='aceita';
+      if(iaF==='editada') return dec==='editada';
+      if(iaF==='rejeitada') return dec==='rejeitada';
+      return true;
+    });
+  }
+  // Indicador operacional
+  if(indicador){
+    const ativos = data.filter(m => !isClosed(m));
+    if(indicador==='vencendo_hoje') data = ativos.filter(m => {
+      const deadline=getSLADeadline(m); if(!deadline) return false;
+      const h=(deadline-Date.now())/3600000; return h>=0&&h<24;
+    });
+    if(indicador==='sla_vencido') data = ativos.filter(m => {
+      const deadline=getSLADeadline(m); return deadline && deadline<Date.now();
+    });
+    if(indicador==='parado_24h') data = ativos.filter(m => {
+      const h=hoursAgo(m.DATA_ULTIMA_ATUALIZACAO||m.DATA_DECISAO||m.DATA_CRIACAO);
+      return h!==null&&h>24;
+    });
+    if(indicador==='sem_responsavel') data = ativos.filter(m => !(m.RESPONSAVEL||'').trim());
+  }
+
+  renderAcompanhamentoV2(data);
+};
+
+window.limparFiltrosAcomp = function(){
+  window._acompFiltroAtivo = null;
+  window._acompStatusFiltro = '';
+  document.querySelectorAll('.kpi-card-operacional').forEach(k => k.classList.remove('ativo'));
+  document.querySelectorAll('#acomp-kpis .kpi-card').forEach(k => k.classList.remove('ativo'));
+  ['acomp-search','af-status','af-empresa','af-setor','af-prioridade','af-sla','af-ia','af-periodo']
+    .forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  renderAcompanhamentoV2(_acompData);
+};
+
+// ── RENDER DA TABELA MELHORADA ────────────────────────────────
+function renderAcompanhamentoV2(data){
+  const total = document.getElementById('acomp-total');
+  if(total) total.textContent = `${data.length} manifestação(ões)`;
+
+  const body = document.getElementById('acomp-body');
+  if(!body) return;
+
+  if(data.length===0){
+    body.innerHTML=`<tr><td colspan="12" style="text-align:center;padding:32px;color:var(--gray-400)">
+      <div style="font-size:22px;margin-bottom:8px">🔍</div>
+      Não encontramos manifestações com os filtros selecionados.
+      <br><button class="btn btn-secondary" onclick="limparFiltrosAcomp()" style="margin-top:10px;font-size:12px">Limpar filtros</button>
+    </td></tr>`;
+    return;
+  }
+
+  const getStatusInfo = window.getStatusInfo || (s => ({ label:s, bg:'#F3F4F6', color:'#374151' }));
+
+  body.innerHTML = data.slice(0,50).map(m => {
+    const info = getStatusInfo(m.STATUS);
+    const sla = getSLAStatus(m);
+    const ia = getIAStatus(m);
+    const pri = m.PRIORIDADE||'';
+    const priColor = pri==='Alta'||pri==='Crítica' ? '#DC2626' : pri==='Média' ? '#92400E' : '#6B7280';
+    const priBg = pri==='Alta'||pri==='Crítica' ? '#FEE2E2' : pri==='Média' ? '#FEF3C7' : '#F3F4F6';
+    const btnLabel = getBtnLabel(m);
+    const proxAcao = getProximaAcao(m);
+    const slaClass = sla.cls==='atrasado' ? 'sla-atrasado' : sla.cls==='vence' ? 'sla-vence' : 'sla-ok';
+
+    return `<tr>
+      <td>
+        <div class="num-bold">${esc(m.ID_MANIFESTACAO||'--')}</div>
+        <div class="num-date">${m.DATA_CRIACAO ? new Date(m.DATA_CRIACAO).toLocaleDateString('pt-BR') : '--'}</div>
+      </td>
+      <td>
+        <div class="cliente-primary">${esc(m.EMPRESA_NORMALIZADA||m.EMPRESA_RECLAMANTE||'--')}</div>
+        <div class="cliente-secondary">${esc(m.CONTATO||'--')}</div>
+      </td>
+      <td style="font-size:12px">${esc(m.TIPO||m.TIPO_CONFIRMADO||'Reclamação')}</td>
+      <td style="font-size:12px;color:var(--gray-500)">${esc(m.EMPRESA_RECLAMADA||'--')}</td>
+      <td><span style="display:inline-flex;padding:3px 8px;border-radius:20px;font-size:11px;font-weight:600;background:${info.bg};color:${info.color}">${info.label}</span></td>
+      <td><span class="ia-badge ${ia.cls}">${ia.label}</span></td>
+      <td>${pri ? `<span style="font-size:11px;font-weight:600;padding:2px 7px;border-radius:10px;background:${priBg};color:${priColor}">${pri}</span>` : '—'}</td>
+      <td><span class="proximo-badge">${proxAcao}</span></td>
+      <td style="font-size:11px;color:var(--gray-600)">${fmtMovimento(m)}</td>
+      <td class="${slaClass}" style="font-size:12px;white-space:nowrap">${sla.label}</td>
+      <td style="font-size:12px;color:var(--gray-500)">${esc(m.RESPONSAVEL||'—')}</td>
+      <td><button class="acao-btn" onclick="abrirDossieIdx(_storeRow(${JSON.stringify(m).replace(/"/g,'&quot;')}))">${btnLabel}</button></td>
+    </tr>`;
+  }).join('');
+}
+
+// ── INTERCEPTAR loadAcompanhamento ───────────────────────────
+const _origLoadAcomp = window.loadAcompanhamento;
+window.loadAcompanhamento = async function(){
+  patchAcompPage();
+  patchKPICards();
+
+  // Mostrar loading
+  const body = document.getElementById('acomp-body');
+  if(body) body.innerHTML=`<tr><td colspan="12"><div class="loading"><div class="spinner"></div> Carregando manifestações...</div></td></tr>`;
+
+  if(typeof _origLoadAcomp==='function') await _origLoadAcomp();
+
+  // Após carregar, calcular KPIs operacionais e re-renderizar
+  if(window._acompData?.length){
+    calcularKPIsOperacionais(window._acompData);
+    // Se vier filtro da Visão Geral, aplicar
+    if(window._acompPendingFilter){
+      const f = window._acompPendingFilter;
+      window._acompPendingFilter = null;
+      if(f.status) { document.getElementById('af-status').value=f.status; }
+      if(f.empresa && f.empresa!=='Todas') { document.getElementById('af-empresa').value=f.empresa; }
+      if(f.sla) { document.getElementById('af-sla').value=f.sla; }
+      if(f.ia) { document.getElementById('af-ia').value=f.ia; }
+      if(f.indicador) window._acompFiltroAtivo = f.indicador;
+    }
+    aplicarFiltrosAcomp();
+  }
+};
+
+// Sobrescrever filtrarAcompanhamento para usar a nova versão
+window.filtrarAcompanhamento = window.aplicarFiltrosAcomp;
+
+// Patch ao navegar para acompanhamento
+const _origNavigate = window.navigate;
+window.navigate = function(page, el){
+  _origNavigate(page, el);
+  if(page==='acompanhamento'){
+    setTimeout(()=>{ patchAcompPage(); patchKPICards(); },50);
+  }
+};
+
+// Executar patch se a página já estiver ativa
+setTimeout(()=>{ patchAcompPage(); patchKPICards(); }, 200);
+
+console.log('[patch-acompanhamento] carregado');
+})();
+
+</script>
+
+<!-- ============================================================ -->
+<!-- PATCH NOVA MANIFESTAÇÃO v1.0 — Fluxo de Decisão             -->
+<!-- ============================================================ -->
+<script>
+// ============================================================
+// PATCH NOVA MANIFESTAÇÃO v1.0 — Fluxo de Decisão Completo
+// Cole antes do </body> no index.html, após os demais patches
+// ============================================================
+(function(){
+'use strict';
+
+function esc(v){ return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
+
+// ── ESTADO DA DECISÃO ─────────────────────────────────────────
+window._nmDecisaoCompleta = null;
+// {
+//   tipo: 'aceita'|'editada'|'rejeitada'|'revisao_setor',
+//   origemSugestao: 'ferramenta'|'ia'|'hibrida'|'manual',
+//   sugestaoOriginalIA: {...},
+//   motivo_rejeicao: '',
+//   camposAlterados: {},
+//   decisaoFinal: { tipo, setor, causa, tratativa, devolutiva },
+//   usuario: '', timestamp: ''
+// }
+
+// ── INJETAR ESTILOS ────────────────────────────────────────────
+const style = document.createElement('style');
+style.textContent = `
+.decisao-bloco{background:white;border:2px solid var(--red);border-radius:12px;padding:20px;margin-bottom:16px}
+.decisao-bloco-titulo{font-size:15px;font-weight:800;color:var(--red);margin-bottom:4px;display:flex;align-items:center;gap:8px}
+.decisao-btn-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:0}
+.decisao-btn{padding:12px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;border:2px solid transparent;transition:all 0.15s;text-align:center}
+.decisao-btn-aceitar{background:var(--green-light);color:#065F46;border-color:#A7F3D0}
+.decisao-btn-aceitar:hover,.decisao-btn-aceitar.ativo{background:#065F46;color:white;border-color:#065F46}
+.decisao-btn-ajuste{background:#FEF3C7;color:#92400E;border-color:#FDE68A}
+.decisao-btn-ajuste:hover,.decisao-btn-ajuste.ativo{background:#92400E;color:white;border-color:#92400E}
+.decisao-btn-rejeitar{background:#FEE2E2;color:#DC2626;border-color:#FECACA}
+.decisao-btn-rejeitar:hover,.decisao-btn-rejeitar.ativo{background:#DC2626;color:white;border-color:#DC2626}
+.decisao-btn-setor{background:#F3E8FF;color:#7C3AED;border-color:#DDD6FE}
+.decisao-btn-setor:hover,.decisao-btn-setor.ativo{background:#7C3AED;color:white;border-color:#7C3AED}
+.decisao-form{border:1px solid var(--gray-200);border-radius:10px;padding:16px;margin-top:14px;background:var(--gray-50)}
+.decisao-form-title{font-size:12px;font-weight:700;text-transform:uppercase;color:var(--gray-500);margin-bottom:12px;letter-spacing:0.05em}
+.campo-comparacao{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.campo-ia{background:#EFF6FF;border:1px solid #BFDBFE;border-radius:7px;padding:10px}
+.campo-ia-label{font-size:10px;font-weight:700;color:#1D4ED8;text-transform:uppercase;margin-bottom:4px}
+.campo-humano{background:#ECFDF5;border:1px solid #A7F3D0;border-radius:7px;padding:10px}
+.campo-humano-label{font-size:10px;font-weight:700;color:#065F46;text-transform:uppercase;margin-bottom:4px}
+.origem-opcoes{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.origem-btn{padding:6px 12px;border-radius:20px;border:1px solid var(--gray-200);background:white;font-size:12px;font-weight:600;cursor:pointer;color:var(--gray-600);transition:all 0.15s}
+.origem-btn:hover,.origem-btn.ativo{background:var(--red);color:white;border-color:var(--red)}
+.sim-card{border:1px solid var(--gray-200);border-radius:8px;padding:10px;margin-bottom:8px;background:white}
+.sim-badge{display:inline-flex;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;background:var(--red-light);color:var(--red);margin-left:6px}
+.validacao-erro{color:#DC2626;font-size:11px;margin-top:4px;display:none}
+.auditoria-linha{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--gray-100);font-size:12px}
+.auditoria-dot{width:10px;height:10px;border-radius:50%;background:var(--red);flex-shrink:0;margin-top:3px}
+`;
+document.head.appendChild(style);
+
+// ── REESCREVER PAINEL DE ANÁLISE DA IA ───────────────────────
+const _origRenderizarAnalise = window.renderizarAnalise;
+window.renderizarAnalise = function(a){
+  if(typeof _origRenderizarAnalise==='function') _origRenderizarAnalise(a);
+
+  // Esconder botões antigos
+  const botoesAntigos = document.querySelector('#ia-resultado > div:last-child');
+  if(botoesAntigos && botoesAntigos.style?.display !== 'none'){
+    botoesAntigos.style.display = 'none';
+  }
+
+  // Renderizar casos semelhantes melhorados
+  renderCasosSemelhantesDetalhado(a);
+
+  // Renderizar bloco de origem da sugestão
+  renderOrigemSugestao(a);
+
+  // Renderizar bloco de decisão completo
+  renderBlocoDecisao(a);
+};
+
+function renderCasosSemelhantesDetalhado(a){
+  const wrap = document.getElementById('ia-similares-wrap');
+  const el = document.getElementById('ia-similares');
+  if(!el) return;
+
+  const sims = a?.casosSemelhantes || [];
+  if(sims.length === 0){
+    if(wrap) wrap.style.display = 'block';
+    el.innerHTML = `<div class="alert-box blue" style="font-size:12px">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/></svg>
+      Não foram encontrados casos históricos com similaridade suficiente para utilização como referência.
+    </div>`;
+    return;
+  }
+
+  if(wrap) wrap.style.display = 'block';
+  el.innerHTML = sims.slice(0,5).map((s,i) => {
+    const pct = Math.min(100, Math.max(0, Math.round(
+      (s.compatibilidade??s.similaridade??s.score??0) > 1
+        ? (s.compatibilidade??s.similaridade??s.score??0)
+        : (s.compatibilidade??s.similaridade??s.score??0)*100
+    )));
+    const corPct = pct>=80 ? '#065F46' : pct>=60 ? '#92400E' : '#6B7280';
+    const bgPct = pct>=80 ? '#D1FAE5' : pct>=60 ? '#FEF3C7' : '#F3F4F6';
+    return `<div class="sim-card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <strong style="font-size:13px">${esc(s.id||s.ID_MANIFESTACAO||`Caso ${i+1}`)}</strong>
+        <span style="background:${bgPct};color:${corPct};padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700">${pct}% de similaridade</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px;color:var(--gray-600)">
+        <div><strong>Empresa:</strong> ${esc(s.empresa||s.EMPRESA||'—')}</div>
+        <div><strong>Setor:</strong> ${esc(s.setor||s.SETOR||s.SETOR_RESPONSAVEL||'—')}</div>
+        <div><strong>Causa:</strong> ${esc(s.causa||s.CAUSA||s.causa_raiz||'—')}</div>
+        <div><strong>Resultado:</strong> ${esc(s.resultado||s.RESULTADO||'—')}</div>
+      </div>
+      ${s.tratativa ? `<div style="margin-top:6px;padding:6px 8px;background:var(--green-light);border-radius:6px;font-size:11px;color:#065F46">
+        <strong>Tratativa:</strong> ${esc(String(s.tratativa).slice(0,120))}
+      </div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function renderOrigemSugestao(a){
+  const resultado = document.getElementById('ia-resultado');
+  if(!resultado) return;
+
+  let el = document.getElementById('bloco-origem-sugestao');
+  if(!el){
+    el = document.createElement('div');
+    el.id = 'bloco-origem-sugestao';
+    el.style.marginBottom = '14px';
+    // Inserir antes das ações
+    const acoesDiv = resultado.querySelector('div[style*="border-top"]');
+    if(acoesDiv) resultado.insertBefore(el, acoesDiv);
+    else resultado.appendChild(el);
+  }
+
+  const temFerramenta = !!(a.procedimentoSugerido || (a.casosSemelhantes||[]).length > 0);
+  const temIA = !!(a.tipoSugerido || a.causaProvavel);
+
+  el.innerHTML = `
+    <div style="margin-bottom:8px;font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.05em">
+      Origem da recomendação
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      ${temFerramenta ? `<span style="background:#EFF6FF;color:#1D4ED8;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600">
+        📋 Ferramenta (Regras + Histórico)
+      </span>` : ''}
+      ${temIA ? `<span style="background:#F3E8FF;color:#7C3AED;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600">
+        🤖 IA
+      </span>` : ''}
+      ${temFerramenta && temIA ? `<span style="background:var(--orange-light);color:#C2410C;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600">
+        ✨ Sugestão Híbrida
+      </span>` : ''}
+    </div>`;
+}
+
+function renderBlocoDecisao(a){
+  const painel = document.getElementById('painel-analise');
+  if(!painel) return;
+
+  let el = document.getElementById('bloco-decisao-analista');
+  if(el) el.remove();
+
+  el = document.createElement('div');
+  el.id = 'bloco-decisao-analista';
+  el.className = 'decisao-bloco';
+  el.innerHTML = `
+    <div class="decisao-bloco-titulo">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      Decisão da Analista
+    </div>
+    <div style="font-size:12px;color:var(--gray-400);margin-bottom:14px">
+      A IA apenas sugere. A analista decide o encaminhamento.
+    </div>
+
+    <!-- Seleção de origem -->
+    <div style="margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;color:var(--gray-500);text-transform:uppercase;margin-bottom:6px">Origem da tratativa adotada *</div>
+      <div class="origem-opcoes" id="origem-opcoes">
+        <button class="origem-btn" data-origem="ferramenta" onclick="selecionarOrigem(this,'ferramenta')">📋 Ferramenta</button>
+        <button class="origem-btn" data-origem="ia" onclick="selecionarOrigem(this,'ia')">🤖 IA</button>
+        <button class="origem-btn" data-origem="hibrida" onclick="selecionarOrigem(this,'hibrida')">✨ Híbrida</button>
+        <button class="origem-btn" data-origem="manual" onclick="selecionarOrigem(this,'manual')">✍ Decisão própria</button>
+      </div>
+      <div id="erro-origem" class="validacao-erro">⚠ Selecione a origem da tratativa adotada</div>
+    </div>
+
+    <!-- Botões de decisão -->
+    <div class="decisao-btn-grid">
+      <button class="decisao-btn decisao-btn-aceitar" id="btn-dec-aceitar" onclick="selecionarDecisao('aceita')">
+        ✓ Aceitar sugestão
+      </button>
+      <button class="decisao-btn decisao-btn-ajuste" id="btn-dec-ajuste" onclick="selecionarDecisao('editada')">
+        ✏ Aceitar com ajustes
+      </button>
+      <button class="decisao-btn decisao-btn-rejeitar" id="btn-dec-rejeitar" onclick="selecionarDecisao('rejeitada')">
+        ✗ Rejeitar sugestão
+      </button>
+      <button class="decisao-btn decisao-btn-setor" id="btn-dec-setor" onclick="selecionarDecisao('revisao_setor')">
+        → Enviar para revisão do setor
+      </button>
+    </div>
+
+    <!-- Formulário dinâmico por tipo de decisão -->
+    <div id="decisao-form-container" style="display:none"></div>
+
+    <!-- Status atual da decisão -->
+    <div id="decisao-status-atual" style="display:none;margin-top:12px"></div>`;
+
+  painel.appendChild(el);
+}
+
+window.selecionarOrigem = function(btn, origem){
+  document.querySelectorAll('.origem-btn').forEach(b => b.classList.remove('ativo'));
+  btn.classList.add('ativo');
+  if(!window._nmDecisaoCompleta) window._nmDecisaoCompleta = {};
+  window._nmDecisaoCompleta.origemSugestao = origem;
+  document.getElementById('erro-origem').style.display = 'none';
+};
+
+window.selecionarDecisao = function(tipo){
+  // Marcar botão ativo
+  ['btn-dec-aceitar','btn-dec-ajuste','btn-dec-rejeitar','btn-dec-setor'].forEach(id => {
+    document.getElementById(id)?.classList.remove('ativo');
+  });
+  const mapa = { aceita:'btn-dec-aceitar', editada:'btn-dec-ajuste', rejeitada:'btn-dec-rejeitar', revisao_setor:'btn-dec-setor' };
+  document.getElementById(mapa[tipo])?.classList.add('ativo');
+
+  if(!window._nmDecisaoCompleta) window._nmDecisaoCompleta = {};
+  window._nmDecisaoCompleta.tipo = tipo;
+  window._nmDecisaoCompleta.sugestaoOriginalIA = window._nmAnaliseAtual;
+  window._nmDecisaoCompleta.timestamp = new Date().toISOString();
+
+  const container = document.getElementById('decisao-form-container');
+  container.style.display = 'block';
+
+  if(tipo==='aceita'){
+    container.innerHTML = `
+      <div class="decisao-form">
+        <div class="decisao-form-title">✓ Sugestão aceita</div>
+        <div class="alert-box green" style="font-size:12px">
+          A sugestão da ferramenta será registrada como decisão adotada. Revise a devolutiva antes de confirmar.
+        </div>
+        <div style="margin-top:12px">
+          <label class="form-label">Observações adicionais (opcional)</label>
+          <textarea class="form-textarea" id="dec-obs-aceitar" style="min-height:60px" placeholder="Complementos à análise..."></textarea>
+        </div>
+        <button class="btn btn-primary" style="width:100%;margin-top:12px;justify-content:center" onclick="confirmarDecisao('aceita')">
+          ✓ Confirmar aceitação
+        </button>
+      </div>`;
+  }
+
+  else if(tipo==='editada'){
+    const a = window._nmAnaliseAtual || {};
+    container.innerHTML = `
+      <div class="decisao-form">
+        <div class="decisao-form-title">✏ Aceitar com ajustes — edite os campos que precisam ser alterados</div>
+        <div class="campo-comparacao">
+          <div class="campo-ia">
+            <div class="campo-ia-label">🤖 IA sugeriu</div>
+            <div style="font-size:12px"><strong>Tipo:</strong> ${esc(a.tipoSugerido||'—')}</div>
+            <div style="font-size:12px"><strong>Setor:</strong> ${esc((a.setoresSugeridos||[])[0]||'—')}</div>
+            <div style="font-size:12px"><strong>Causa:</strong> ${esc(a.causaProvavel||a.causa||'—')}</div>
+          </div>
+          <div class="campo-humano">
+            <div class="campo-humano-label">✍ Sua versão</div>
+            <input class="form-input" id="dec-tipo-ajuste" placeholder="Tipo" value="${esc(a.tipoSugerido||'')}" style="margin-bottom:4px;font-size:12px">
+            <input class="form-input" id="dec-setor-ajuste" placeholder="Setor responsável" value="${esc((a.setoresSugeridos||[])[0]||'')}" style="margin-bottom:4px;font-size:12px">
+            <input class="form-input" id="dec-causa-ajuste" placeholder="Causa" value="${esc(a.causaProvavel||a.causa||'')}" style="font-size:12px">
+          </div>
+        </div>
+        <div style="margin-bottom:10px">
+          <label class="form-label">Tratativa definida *</label>
+          <textarea class="form-textarea" id="dec-tratativa-ajuste" style="min-height:80px" placeholder="Descreva a tratativa que será adotada...">${esc(a.tratativaSugerida||'')}</textarea>
+          <div id="erro-tratativa-ajuste" class="validacao-erro">⚠ Informe a tratativa definida</div>
+        </div>
+        <div>
+          <label class="form-label">Devolutiva ao cliente *</label>
+          <textarea class="form-textarea" id="dec-devolutiva-ajuste" style="min-height:80px" placeholder="Texto da devolutiva ao cliente...">${esc(a.devolutivaSugerida||'')}</textarea>
+          <div id="erro-devolutiva-ajuste" class="validacao-erro">⚠ Informe a devolutiva</div>
+        </div>
+        <button class="btn btn-primary" style="width:100%;margin-top:12px;justify-content:center" onclick="confirmarDecisao('editada')">
+          ✓ Confirmar com ajustes
+        </button>
+      </div>`;
+  }
+
+  else if(tipo==='rejeitada'){
+    container.innerHTML = `
+      <div class="decisao-form" style="border-color:#FECACA">
+        <div class="decisao-form-title" style="color:#DC2626">✗ Rejeitar sugestão — justificativa obrigatória</div>
+        <div class="alert-box red" style="font-size:12px;margin-bottom:12px">
+          A rejeição precisa ser justificada. Você também precisará informar a tratativa e devolutiva corretas.
+        </div>
+        <div style="margin-bottom:10px">
+          <label class="form-label">Motivo da rejeição *</label>
+          <textarea class="form-textarea" id="dec-motivo-rejeicao" style="min-height:80px" placeholder="Explique por que a sugestão da ferramenta não é adequada para esta manifestação..."></textarea>
+          <div id="erro-motivo" class="validacao-erro">⚠ Informe o motivo da rejeição</div>
+        </div>
+        <div style="margin-bottom:10px">
+          <label class="form-label">Tipo correto *</label>
+          <input class="form-input" id="dec-tipo-correto" placeholder="Qual é o tipo correto desta manifestação?">
+          <div id="erro-tipo-correto" class="validacao-erro">⚠ Informe o tipo correto</div>
+        </div>
+        <div style="margin-bottom:10px">
+          <label class="form-label">Setor responsável correto *</label>
+          <input class="form-input" id="dec-setor-correto" placeholder="Qual setor deve tratar este caso?">
+          <div id="erro-setor-correto" class="validacao-erro">⚠ Informe o setor correto</div>
+        </div>
+        <div style="margin-bottom:10px">
+          <label class="form-label">Causa identificada *</label>
+          <input class="form-input" id="dec-causa-correta" placeholder="Qual é a causa real?">
+        </div>
+        <div style="margin-bottom:10px">
+          <label class="form-label">Tratativa correta *</label>
+          <textarea class="form-textarea" id="dec-tratativa-correta" style="min-height:80px" placeholder="Descreva a tratativa adequada para este caso..."></textarea>
+          <div id="erro-tratativa-correta" class="validacao-erro">⚠ Informe a tratativa correta</div>
+        </div>
+        <div>
+          <label class="form-label">Devolutiva correta *</label>
+          <textarea class="form-textarea" id="dec-devolutiva-correta" style="min-height:80px" placeholder="Texto da devolutiva adequada ao cliente..."></textarea>
+          <div id="erro-devolutiva-correta" class="validacao-erro">⚠ Informe a devolutiva correta</div>
+        </div>
+        <button class="btn btn-ghost" style="width:100%;margin-top:12px;justify-content:center" onclick="confirmarDecisao('rejeitada')">
+          ✓ Confirmar rejeição com justificativa
+        </button>
+      </div>`;
+  }
+
+  else if(tipo==='revisao_setor'){
+    container.innerHTML = `
+      <div class="decisao-form" style="border-color:#DDD6FE">
+        <div class="decisao-form-title" style="color:#7C3AED">→ Enviar para revisão do setor</div>
+        <div style="margin-bottom:10px">
+          <label class="form-label">Setor responsável *</label>
+          <select class="form-input" id="dec-setor-revisao">
+            <option value="">Selecione o setor...</option>
+            <option>SAC</option><option>Qualidade</option><option>Logística</option>
+            <option>Comercial</option><option>Financeiro</option><option>Produção</option>
+            <option>Faturamento / Expedição</option>
+          </select>
+          <div id="erro-setor-revisao" class="validacao-erro">⚠ Selecione o setor responsável</div>
+        </div>
+        <div style="margin-bottom:10px">
+          <label class="form-label">Contexto para o setor (opcional)</label>
+          <textarea class="form-textarea" id="dec-contexto-setor" style="min-height:80px" placeholder="Informações relevantes para o setor que vai revisar este caso..."></textarea>
+        </div>
+        <div>
+          <label class="form-label">Tratativa preliminar sugerida (opcional)</label>
+          <textarea class="form-textarea" id="dec-tratativa-setor" style="min-height:60px" placeholder="Tratativa inicial que pode ser adotada pelo setor..."></textarea>
+        </div>
+        <button class="btn btn-primary" style="background:#7C3AED;width:100%;margin-top:12px;justify-content:center" onclick="confirmarDecisao('revisao_setor')">
+          → Enviar para revisão do setor
+        </button>
+      </div>`;
+  }
+};
+
+window.confirmarDecisao = function(tipo){
+  // Validar origem
+  const origem = window._nmDecisaoCompleta?.origemSugestao;
+  if(!origem && tipo !== 'revisao_setor'){
+    document.getElementById('erro-origem').style.display = 'block';
+    document.getElementById('erro-origem').scrollIntoView({behavior:'smooth', block:'nearest'});
+    return;
+  }
+
+  let decisaoFinal = {};
+  let valido = true;
+
+  function err(id){ const el=document.getElementById(id); if(el){el.style.display='block';valido=false;} }
+  function val(id){ const el=document.getElementById(id); if(el) el.style.display='none'; return document.getElementById(id)?.value||''; }
+
+  if(tipo==='aceita'){
+    const a = window._nmAnaliseAtual||{};
+    decisaoFinal = {
+      tipo: a.tipoSugerido,
+      setor: (a.setoresSugeridos||[])[0],
+      causa: a.causaProvavel||a.causa,
+      tratativa: document.getElementById('ia-tratativa')?.textContent||a.tratativaSugerida,
+      devolutiva: document.getElementById('ia-devolutiva')?.value||a.devolutivaSugerida,
+      obs: document.getElementById('dec-obs-aceitar')?.value||''
+    };
+  }
+
+  else if(tipo==='editada'){
+    decisaoFinal.tipo = val('dec-tipo-ajuste');
+    decisaoFinal.setor = val('dec-setor-ajuste');
+    decisaoFinal.causa = val('dec-causa-ajuste');
+    decisaoFinal.tratativa = val('dec-tratativa-ajuste');
+    decisaoFinal.devolutiva = val('dec-devolutiva-ajuste');
+    if(!decisaoFinal.tratativa) err('erro-tratativa-ajuste');
+    if(!decisaoFinal.devolutiva) err('erro-devolutiva-ajuste');
+    // Detectar campos alterados vs IA
+    const a = window._nmAnaliseAtual||{};
+    const alterados = {};
+    if(decisaoFinal.tipo !== a.tipoSugerido) alterados.tipo = { ia:a.tipoSugerido, analista:decisaoFinal.tipo };
+    if(decisaoFinal.setor !== (a.setoresSugeridos||[])[0]) alterados.setor = { ia:(a.setoresSugeridos||[])[0], analista:decisaoFinal.setor };
+    if(decisaoFinal.causa !== (a.causaProvavel||a.causa)) alterados.causa = { ia:a.causaProvavel||a.causa, analista:decisaoFinal.causa };
+    window._nmDecisaoCompleta.camposAlterados = alterados;
+  }
+
+  else if(tipo==='rejeitada'){
+    window._nmDecisaoCompleta.motivo_rejeicao = val('dec-motivo-rejeicao');
+    decisaoFinal.tipo = val('dec-tipo-correto');
+    decisaoFinal.setor = val('dec-setor-correto');
+    decisaoFinal.causa = val('dec-causa-correta');
+    decisaoFinal.tratativa = val('dec-tratativa-correta');
+    decisaoFinal.devolutiva = val('dec-devolutiva-correta');
+    if(!window._nmDecisaoCompleta.motivo_rejeicao) err('erro-motivo');
+    if(!decisaoFinal.tipo) err('erro-tipo-correto');
+    if(!decisaoFinal.setor) err('erro-setor-correto');
+    if(!decisaoFinal.tratativa) err('erro-tratativa-correta');
+    if(!decisaoFinal.devolutiva) err('erro-devolutiva-correta');
+    // Preencher campos do formulário com a decisão da analista
+    if(valido){
+      const devEl = document.getElementById('ia-devolutiva');
+      if(devEl) devEl.value = decisaoFinal.devolutiva;
+    }
+  }
+
+  else if(tipo==='revisao_setor'){
+    decisaoFinal.setor = val('dec-setor-revisao');
+    decisaoFinal.contexto = val('dec-contexto-setor');
+    decisaoFinal.tratativa = val('dec-tratativa-setor');
+    if(!decisaoFinal.setor) err('erro-setor-revisao');
+  }
+
+  if(!valido) return;
+
+  window._nmDecisaoCompleta.tipo = tipo;
+  window._nmDecisaoCompleta.decisaoFinal = decisaoFinal;
+  window._nmDecisaoCompleta.origemSugestao = origem || 'manual';
+  window._nmDecisaoCompleta.timestamp = new Date().toISOString();
+  window._nmDecisao = tipo; // compatibilidade com código existente
+
+  // Mostrar status de confirmação
+  const statusEl = document.getElementById('decisao-status-atual');
+  if(statusEl){
+    statusEl.style.display = 'block';
+    const cores = { aceita:'green', editada:'yellow', rejeitada:'red', revisao_setor:'blue' };
+    const labels = { aceita:'Sugestão aceita ✓', editada:'Aceita com ajustes ✓', rejeitada:'Sugestão rejeitada ✓', revisao_setor:'Enviando para revisão do setor →' };
+    statusEl.innerHTML = `<div class="alert-box ${cores[tipo]}" style="font-size:12px">${labels[tipo]} — decisão registrada. Continue para confirmar o registro da manifestação.</div>`;
+    statusEl.scrollIntoView({behavior:'smooth', block:'nearest'});
+  }
+
+  // Registrar auditoria visual no histórico se existir
+  adicionarEventoAuditoria(tipo, decisaoFinal);
+};
+
+function adicionarEventoAuditoria(tipo, decisao){
+  const user = JSON.parse(sessionStorage.getItem('sac-user')||'{}');
+  const evento = {
+    tipo: `Decisão: ${tipo}`,
+    usuario: user.nome||user.usuario||'Analista',
+    timestamp: new Date().toLocaleString('pt-BR'),
+    decisao: tipo,
+    setor: decisao.setor||'—',
+    tratativa: (decisao.tratativa||'').slice(0,100)
+  };
+  if(!window._nmAuditoria) window._nmAuditoria = [];
+  window._nmAuditoria.push(evento);
+}
+
+// ── INTERCEPTAR registrarManifestacao PARA INCLUIR DECISÃO ───
+const _origRegistrar = window.registrarManifestacao;
+window.registrarManifestacao = async function(){
+  // Se há análise e nenhuma decisão, avisar
+  if(window._nmAnaliseAtual && !window._nmDecisaoCompleta?.tipo){
+    const confirmou = confirm('Ainda não há decisão registrada sobre a sugestão da IA. Deseja registrar sem decisão?');
+    if(!confirmou) return;
+  }
+
+  // Injetar dados da decisão no body do POST original
+  window._nmDecisaoPayload = window._nmDecisaoCompleta || null;
+  window._nmAuditoriaPayload = window._nmAuditoria || [];
+
+  if(typeof _origRegistrar === 'function') await _origRegistrar();
+};
+
+// Sobrescrever para incluir payload de decisão
+const _origFetch = window.fetch.bind(window);
+window.fetch = function(input, options={}){
+  if(typeof input==='string' && input.includes('/api/manifestacoes') && options.method==='POST'){
+    if(options.body && window._nmDecisaoPayload){
+      try{
+        const body = JSON.parse(options.body);
+        body.decisaoCompleta = window._nmDecisaoPayload;
+        body.auditoria = window._nmAuditoriaPayload;
+        options.body = JSON.stringify(body);
+        window._nmDecisaoPayload = null;
+      }catch(e){ /* ignora */ }
+    }
+  }
+  return _origFetch(input, options);
+};
+
+// ── RESETAR AO INICIAR NOVA MANIFESTAÇÃO ─────────────────────
+const _origInitNova = window.initNovaManifestacao;
+window.initNovaManifestacao = async function(){
+  window._nmDecisaoCompleta = null;
+  window._nmAuditoria = [];
+  if(typeof _origInitNova==='function') await _origInitNova();
+  // Remover bloco de decisão antigo se existir
+  document.getElementById('bloco-decisao-analista')?.remove();
+};
+
+console.log('[patch-nova-manifestacao] carregado');
+})();
+
+</script>
+
 </body>
 </html>
