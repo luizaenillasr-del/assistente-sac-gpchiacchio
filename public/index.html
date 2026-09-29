@@ -555,7 +555,6 @@
     </div>
     <button class="login-btn" onclick="doLogin()">Entrar</button>
     <button type="button" style="margin-top:10px;border:0;background:none;color:var(--red);font-size:12px;cursor:pointer;width:100%" onclick="solicitarRecuperacao()">Esqueci minha senha</button>
-    <div style="margin-top:12px;padding:9px 10px;border-radius:8px;background:#fff7f7;border:1px solid #f3d0d5;color:#7f1d1d;font-size:10px;line-height:1.45"><strong>Acesso de demonstração:</strong> luiza / Chiacchio2026! · aprovador: joao.aprovador / Aprovador2026!</div>
     <div class="login-error" id="login-error">Usuário ou senha incorretos.</div>
   </div>
 </div>
@@ -572,37 +571,14 @@
     const pass = document.getElementById('login-pass').value;
     const err = document.getElementById('login-error');
     err.style.display='none';
-
-    // Modo demonstração: autentica localmente ANTES de chamar a API.
-    // Assim a reunião não fica bloqueada se a API/Sheets do Vercel estiverem temporariamente indisponíveis.
-    const demos={
-      'luiza':{usuario:'luiza',nome:'Luiza',perfil:'MASTER',empresa:'Grupo Chiacchio',setor:'SAC',codigoRCA:''},
-      'joao.aprovador':{usuario:'joao.aprovador',nome:'João Silva',perfil:'APROVADOR',empresa:'Chiacchio',setor:'Qualidade',codigoRCA:''},
-      'ana.sac':{usuario:'ana.sac',nome:'Ana Lima',perfil:'ANALISTA SAC',empresa:'Grupo Chiacchio',setor:'SAC',codigoRCA:''},
-      'carlos.rca':{usuario:'carlos.rca',nome:'Carlos Silva',perfil:'RCA / REPRESENTANTE',empresa:'Chiacchio',setor:'Comercial',codigoRCA:'RCA-023'},
-      'maria.qualidade':{usuario:'maria.qualidade',nome:'Maria Santos',perfil:'SETOR RESPONSÁVEL',empresa:'Chiacchio',setor:'Qualidade',codigoRCA:''}
-    };
-    const senhas={'luiza':'Chiacchio2026!','joao.aprovador':'Aprovador2026!','ana.sac':'AnaSAC2026!','carlos.rca':'RCA2026!','maria.qualidade':'Qualidade2026!'};
-    if(demos[user] && senhas[user]===pass){
-      sessionStorage.setItem('sac-demo-local','1');
-      sessionStorage.setItem('sac-token','DEMO-LOCAL');
-      sessionStorage.setItem('sac-auth','1');
-      sessionStorage.setItem('sac-user',JSON.stringify({...demos[user],id:'DEMO-'+user}));
-      err.style.display='none';
-      document.getElementById('login-screen').style.display='none';
-      try { await (window.iniciarSessaoV5 ? window.iniciarSessaoV5() : Promise.resolve()); }
-      catch(e) { console.error(e); err.textContent='Modo demonstração carregado. Algumas funções online dependem da API.'; err.style.display='block'; }
-      return;
-    }
-
-    // Usuário real: usa a API normalmente.
+    if(!user || !pass){ err.textContent='Informe usuário e senha.'; err.style.display='block'; return; }
     try {
       const r=await fetch(window.SAC_API+'/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({usuario:user,senha:pass})});
       const raw=await r.text();
       let data={};
       try{ data=raw?JSON.parse(raw):{}; }catch(e){ throw new Error(`A API respondeu de forma inválida (HTTP ${r.status}).`); }
       if(!r.ok || !data.sucesso) throw new Error(data.erro||'Usuário ou senha incorretos.');
-      sessionStorage.setItem('sac-token',data.token);
+            sessionStorage.setItem('sac-token',data.token);
       sessionStorage.setItem('sac-auth','1');
       sessionStorage.setItem('sac-user',JSON.stringify(data.usuarioInfo));
       document.getElementById('login-screen').style.display='none';
@@ -964,7 +940,7 @@
               <div class="form-group"><label class="form-label">Data do registro</label><input class="form-input" readonly id="nm-data"></div>
               <div class="form-group"><label class="form-label">Nº da reclamação</label><input class="form-input" readonly id="nm-num" value="..."></div>
               <div class="form-group"><label class="form-label">Setor</label><input class="form-input" readonly value="SAC"></div>
-              <div class="form-group"><label class="form-label">Atendente</label><input class="form-input" readonly id="nm-atendente" value="Ana Lima"></div>
+              <div class="form-group"><label class="form-label">Atendente</label><input class="form-input" readonly id="nm-atendente" value=""></div>
             </div>
             <div class="form-group">
               <label class="form-label" style="margin-bottom:6px">Canal de atendimento</label>
@@ -1768,24 +1744,7 @@
         <div class="section-card">
           <div class="section-title">Versões</div>
           <div class="section-sub">Histórico de alterações</div>
-          <div style="display:flex;flex-direction:column;gap:8px">
-            <div style="display:flex;gap:8px;align-items:flex-start">
-              <span style="background:var(--red);color:white;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;flex-shrink:0">v1.4</span>
-              <div><div style="font-size:12px;font-weight:600">Prazo de Cotação e preço passou para 48h</div><div style="font-size:11px;color:var(--gray-400)">18/09/2026 · [Nome]</div></div>
-            </div>
-            <div style="display:flex;gap:8px;align-items:flex-start">
-              <span style="background:var(--gray-200);color:var(--gray-600);font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;flex-shrink:0">v1.3</span>
-              <div><div style="font-size:12px;font-weight:600">Qualidade incluída como apoio em Avaria</div><div style="font-size:11px;color:var(--gray-400)">02/09/2026 · [Nome]</div></div>
-            </div>
-            <div style="display:flex;gap:8px;align-items:flex-start">
-              <span style="background:var(--gray-200);color:var(--gray-600);font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;flex-shrink:0">v1.2</span>
-              <div><div style="font-size:12px;font-weight:600">Novo tema: Divergência de NF ou cobrança</div><div style="font-size:11px;color:var(--gray-400)">11/08/2026 · [Nome]</div></div>
-            </div>
-          </div>
-          <div class="alert-box yellow" style="margin-top:12px;font-size:11px">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-            2 regras estão sem revisão há mais de 6 meses.
-          </div>
+          <div id="matriz-versoes" style="display:flex;flex-direction:column;gap:8px"><div style="font-size:12px;color:var(--gray-400)">Carregando histórico...</div></div>
         </div>
       </div>
     </div>
@@ -1808,24 +1767,13 @@
         <!-- BC Sidebar -->
         <div class="bc-sidebar">
           <div class="bc-sidebar-section">Setor</div>
-          <div class="bc-sidebar-item active"><span>Todos</span><span class="bc-sidebar-count" id="bc-total">--</span></div>
-          <div class="bc-sidebar-item" onclick="filterBC('setor','Logística',this)"><span>Logística</span><span class="bc-sidebar-count">9</span></div>
-          <div class="bc-sidebar-item" onclick="filterBC('setor','Qualidade',this)"><span>Qualidade</span><span class="bc-sidebar-count">14</span></div>
-          <div class="bc-sidebar-item" onclick="filterBC('setor','Comercial',this)"><span>Comercial</span><span class="bc-sidebar-count">8</span></div>
-          <div class="bc-sidebar-item" onclick="filterBC('setor','Financeiro',this)"><span>Financeiro</span><span class="bc-sidebar-count">6</span></div>
-          <div class="bc-sidebar-item" onclick="filterBC('setor','Outros',this)"><span>Outros</span><span class="bc-sidebar-count">9</span></div>
-
+          <div id="bc-filter-setor">
+            <div class="bc-sidebar-item active" onclick="filterBC('todos','Todos',this)"><span>Todos</span><span class="bc-sidebar-count" id="bc-total">0</span></div>
+          </div>
           <div class="bc-sidebar-section">Tipo</div>
-          <div class="bc-sidebar-item" onclick="filterBC('tipo','Política',this)"><span>Política</span><span class="bc-sidebar-count">12</span></div>
-          <div class="bc-sidebar-item" onclick="filterBC('tipo','Procedimento',this)"><span>Procedimento</span><span class="bc-sidebar-count">14</span></div>
-          <div class="bc-sidebar-item" onclick="filterBC('tipo','Resposta-modelo',this)"><span>Resposta-modelo</span><span class="bc-sidebar-count">11</span></div>
-          <div class="bc-sidebar-item" onclick="filterBC('tipo','FAQ',this)"><span>FAQ</span><span class="bc-sidebar-count">6</span></div>
-          <div class="bc-sidebar-item" onclick="filterBC('tipo','Caso exemplar',this)"><span>Caso exemplar</span><span class="bc-sidebar-count">3</span></div>
-
+          <div id="bc-filter-tipo"></div>
           <div class="bc-sidebar-section">Status</div>
-          <div class="bc-sidebar-item" onclick="filterBC('status','Vigente',this)"><span>Vigente</span><span class="bc-sidebar-count">39</span></div>
-          <div class="bc-sidebar-item" onclick="filterBC('status','Revisão vencida',this)"><span>Revisão vencida</span><span class="bc-sidebar-count">4</span></div>
-          <div class="bc-sidebar-item" onclick="filterBC('status','Rascunho',this)"><span>Rascunho</span><span class="bc-sidebar-count">3</span></div>
+          <div id="bc-filter-status"></div>
         </div>
 
         <!-- BC List -->
@@ -2613,7 +2561,7 @@ function renderPreviewExtracao(d){const el=document.getElementById('nm-extracao-
 async function initNovaManifestacao() {
   const today = new Date().toLocaleDateString('pt-BR');
   document.getElementById('nm-data').value = today;
-  const user = sessionStorage.getItem('sac-user') || 'Ana Lima';
+  const user = sessionStorage.getItem('sac-user') || ''; 
   document.getElementById('nm-atendente').value = user;
   try {
     const res = await fetch(API + '/api/manifestacoes').then(r => r.json());
@@ -2940,7 +2888,7 @@ function renderAcompanhamento(data) {
           <td><span style="display:inline-flex;padding:3px 8px;border-radius:20px;font-size:11px;font-weight:600;background:${info.bg};color:${info.color}">${info.label}</span></td>
           <td>${pri ? `<span style="font-size:11px;font-weight:600;padding:2px 7px;border-radius:10px;background:${priBg};color:${priColor}">${pri}</span>` : '—'}</td>
           <td style="font-size:12px">${m.SLA_HORAS ? m.SLA_HORAS + 'h' : '72h'}</td>
-          <td style="font-size:12px;color:var(--gray-500)">${m.RESPONSAVEL || 'Ana Lima'}</td>
+          <td style="font-size:12px;color:var(--gray-500)">${m.RESPONSAVEL || '—'}</td>
           <td><a class="link-abrir" onclick="abrirDossieIdx(_storeRow(m))">Abrir</a></td>
         </tr>`;
       }).join('')
@@ -3027,10 +2975,6 @@ function renderBanco() {
 // ===== BANCO DE RNC =====
 async function loadBancoRNC() {
   try {
-    if(sessionStorage.getItem('sac-demo-local')==='1'){
-      const rncs=[{ID_RNC:'RNC-139/26',ID_MANIFESTACAO:'SAC-2026-00125',SETOR_DESTINADO:'Qualidade',CAUSA_PROVAVEL:'Avaria na embalagem durante transporte',RESPONSAVEL:'Carlos Oliveira',DATA_FINALIZACAO:'30/09/2026'},{ID_RNC:'RNC-140/26',ID_MANIFESTACAO:'SAC-2026-00131',SETOR_DESTINADO:'Qualidade',CAUSA_PROVAVEL:'Em análise',RESPONSAVEL:'Maria Santos',DATA_FINALIZACAO:'02/10/2026'}];
-      document.getElementById('rnc-abertas').textContent=rncs.length;document.getElementById('rnc-abertas-sub').textContent=rncs.length+' RNCs abertas';document.getElementById('rnc-vencendo').textContent='1';document.getElementById('rnc-body').innerHTML=rncs.map(m=>`<tr><td style="font-weight:700">${m.ID_RNC}</td><td><a style="color:var(--red);font-weight:600">${m.ID_MANIFESTACAO}</a></td><td>${m.SETOR_DESTINADO}</td><td><div>${m.CAUSA_PROVAVEL}</div><div class="rnc-acao">Ação: em tratamento</div></td><td>${m.RESPONSAVEL}</td><td>${m.DATA_FINALIZACAO}</td><td><span class="status-badge em-andamento">Em tratamento</span></td></tr>`).join('');document.getElementById('causas-list').innerHTML='<div style="font-size:12px;margin-bottom:8px">Avaria na embalagem <b>1</b></div><div style="font-size:12px">Em análise <b>1</b></div>';document.getElementById('rnc-setor-list').innerHTML='<div style="font-size:12px">Qualidade <b>2</b></div>';return;
-    }
     const res = await fetch(API + '/api/manifestacoes').then(r => r.json());
     const mans = res.itens || [];
     const rncs = mans.filter(m => m.ID_RNC || m.RNC_SUGERIDO === 'SIM');
@@ -3040,14 +2984,14 @@ async function loadBancoRNC() {
 
     const body = rncs.slice(0,8).map((m,i) => `
       <tr>
-        <td style="font-weight:700">${m.ID_RNC || ('RNC-' + String(i+1).padStart(4,'0'))}</td>
+        <td style="font-weight:700">${m.ID_RNC || '—'}</td>
         <td><a style="color:var(--red);font-weight:600;cursor:pointer">${m.ID_MANIFESTACAO || '--'}</a></td>
         <td>${m.SETOR_DESTINADO || m.SETOR_SUGERIDO || '--'}</td>
         <td>
           <div>${m.CAUSA_PROVAVEL || 'Causa em análise'}</div>
           <div class="rnc-acao">Ação: ${m.TRATATIVA ? m.TRATATIVA.slice(0,60) + '...' : 'Em definição'}</div>
         </td>
-        <td>${m.RESPONSAVEL || '[Nome]'}</td>
+        <td>${m.RESPONSAVEL || '—'}</td>
         <td>${fmtDate(m.DATA_FINALIZACAO) || '--'}</td>
         <td><span class="status-badge em-andamento">Em tratamento</span></td>
       </tr>
@@ -3355,113 +3299,103 @@ async function abrirFichaSetor(nomeSetor) {
 
 // ===== MATRIZ =====
 async function loadMatriz() {
+  const body=document.getElementById('matriz-body');
+  if(body) body.innerHTML='<tr><td colspan="9"><div class="loading"><div class="spinner"></div> Carregando matriz...</div></td></tr>';
   try {
-    const res = await fetch(API + '/api/procedimentos').then(r => r.json());
-    const procs = res.itens || [];
-
-    const regras = [
-      { tema: 'Avaria no transporte', principal: 'Logística', apoio: 'Qualidade', prazo: '72h', prioridade: 'Média', rnc: 'Sim', aprovacao: 'Analista', followup: '3 dias' },
-      { tema: 'Atraso na entrega', principal: 'Logística', apoio: '—', prazo: '72h', prioridade: 'Média', rnc: 'Não', aprovacao: 'Analista', followup: '3 dias' },
-      { tema: 'Divergência de NF', principal: 'Financeiro', apoio: 'Comercial', prazo: '72h', prioridade: 'Alta', rnc: 'Não', aprovacao: 'Coordenação', followup: '3 dias' },
-      { tema: 'Qualidade do produto', principal: 'Qualidade', apoio: 'Comercial', prazo: '72h', prioridade: 'Alta', rnc: 'Sim', aprovacao: 'Coordenação', followup: '7 dias' },
-      { tema: 'Cotação e preço', principal: 'Comercial', apoio: '—', prazo: '48h', prioridade: 'Baixa', rnc: 'Não', aprovacao: 'Analista', followup: '2 dias' },
-      { tema: 'Dúvida técnica', principal: 'Qualidade', apoio: '—', prazo: '48h', prioridade: 'Baixa', rnc: 'Não', aprovacao: 'Analista', followup: '—' },
-      { tema: 'Sugestão', principal: 'Outros', apoio: '—', prazo: '120h', prioridade: 'Baixa', rnc: 'Não', aprovacao: 'Analista', followup: '—' },
-      { tema: 'Elogio', principal: 'Só registra', apoio: '—', prazo: '—', prioridade: 'Baixa', rnc: 'Não', aprovacao: 'Analista', followup: '—' },
-    ];
-
-    document.getElementById('matriz-body').innerHTML = regras.map(r => `
-      <tr>
-        <td style="font-weight:600">${r.tema}</td>
-        <td>${r.principal}</td>
-        <td style="color:var(--gray-500)">${r.apoio}</td>
-        <td style="font-weight:600">${r.prazo}</td>
-        <td><span class="prioridade-badge ${r.prioridade.toLowerCase()}">${r.prioridade}</span></td>
-        <td><span class="rnc-badge ${r.rnc.toLowerCase()}">${r.rnc}</span></td>
-        <td>${r.aprovacao}</td>
-        <td>${r.followup}</td>
-        <td><svg class="edit-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></td>
-      </tr>
-    `).join('');
-  } catch (e) { console.error(e); }
+    const res=await fetch(API + '/api/matriz').then(r => r.json());
+    if(!res.sucesso) throw new Error(res.erro||'Falha ao carregar matriz');
+    const regras=res.itens||[];
+    if(!body) return;
+    body.innerHTML=regras.map((r,i)=>{
+      const tema=r.TEMA||r.tema||r.NOME||r.nome||'—';
+      const principal=r.SETOR_PRINCIPAL||r.principal||r.SETOR||'—';
+      const apoio=r.SETORES_APOIO||r.apoio||'—';
+      const prazo=r.SLA_HORAS??r.PRAZO??r.prazo??'—';
+      const pri=r.PRIORIDADE||r.prioridade||'—';
+      const rnc=r.GERA_RNC||r.rnc||'—';
+      const aprov=r.APROVACAO||r.aprovacao||r.NECESSITA_APROVACAO||'—';
+      const follow=r.FOLLOW_UP||r.followup||'—';
+      return `<tr><td style="font-weight:600">${esc(tema)}</td><td>${esc(principal)}</td><td>${esc(apoio)}</td><td>${esc(prazo)}${typeof prazo==='number'?'h':''}</td><td>${esc(pri)}</td><td>${esc(rnc)}</td><td>${esc(aprov)}</td><td>${esc(follow)}</td><td><button class="btn btn-secondary" style="padding:4px 8px;font-size:11px" onclick="editarRegraMatriz(${i})">Editar</button></td></tr>`;
+    }).join('') || '<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--gray-400)">Nenhuma regra cadastrada.</td></tr>';
+  } catch(e) {
+    console.error(e);
+    if(body) body.innerHTML='<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--gray-400)">Nenhuma regra cadastrada.</td></tr>';
+  }
 }
 
 // ===== BASE DE CONHECIMENTO =====
 let bcData = [];
+let bcSectors = [];
+
+function bcValue(item, keys){
+  for(const k of keys){ if(item?.[k] !== undefined && String(item[k]).trim() !== '') return item[k]; }
+  return '';
+}
+function bcParseDate(v){
+  if(!v) return null;
+  const d=new Date(v);
+  if(!isNaN(d)) return d;
+  const m=String(v).match(/^(\d{2})[\/-](\d{2})[\/-](\d{4})$/);
+  if(m){ const x=new Date(`${m[3]}-${m[2]}-${m[1]}T00:00:00`); return isNaN(x)?null:x; }
+  return null;
+}
+function statusDocumentoBC(item){
+  const ativo=String(bcValue(item,['ATIVO','STATUS','SITUACAO'])||'').trim().toUpperCase();
+  const revisao=bcParseDate(bcValue(item,['VIGENCIA_FIM','DATA_REVISAO','PROXIMA_REVISAO','DATA_PROXIMA_REVISAO','DATA_VALIDADE','VALIDADE_FIM','REVISAO_ATE','REVISAO_ATÉ']));
+  if(revisao && revisao < new Date()) return 'Revisão vencida';
+  if(['NÃO','NAO','INATIVO','INATIVA','CANCELADO','CANCELADA'].includes(ativo)) return 'Inativo';
+  if(['SIM','ATIVO','ATIVA','VIGENTE'].includes(ativo)) return 'Vigente';
+  return 'Sem status';
+}
+function normalizarDocumentoBC(item, tipoDefault){
+  const tipo=bcValue(item,['TIPO_DOCUMENTO','TIPO_CONHECIMENTO','TIPO','CATEGORIA'])||tipoDefault;
+  const nome=bcValue(item,['NOME','TITULO','TÍTULO','POLITICA','NOME_DOCUMENTO','ID_PROCEDIMENTO','ID_POLITICA','ID'])||'Documento sem título';
+  const setor=bcValue(item,['SETOR_RESPONSAVEL','SETOR','COMPETENCIA','AREA','ÁREA']);
+  const conteudo=bcValue(item,['DESCRICAO','CONTEUDO','CONTEÚDO','PASSOS','TEXTO','LIMITES_APROVACAO','ORIENTACOES','ORIENTAÇÕES']);
+  const versao=bcValue(item,['VERSAO','VERSÃO','VERSION']);
+  const responsavel=bcValue(item,['RESPONSAVEL','RESPONSÁVEL','RESPONSAVEL_DOCUMENTO','DONO']);
+  return {...item,_tipo:tipo,_nome:nome,_setor:setor,_conteudo:conteudo,_versao:versao,_responsavel:responsavel,_status:statusDocumentoBC(item)};
+}
+function renderBCFilters(){
+  const setores=[...new Set(bcData.map(d=>d._setor).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),'pt-BR'));
+  const tipos=[...new Set(bcData.map(d=>d._tipo).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),'pt-BR'));
+  const status=[...new Set(bcData.map(d=>d._status).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),'pt-BR'));
+  const setorWrap=document.getElementById('bc-filter-setor');
+  const tipoWrap=document.getElementById('bc-filter-tipo');
+  const statusWrap=document.getElementById('bc-filter-status');
+  const count=(arr,pred)=>arr.filter(pred).length;
+  if(setorWrap) setorWrap.innerHTML=`<div class="bc-sidebar-item active" onclick="filterBC('todos','Todos',this)"><span>Todos</span><span class="bc-sidebar-count">${bcData.length}</span></div>`+setores.map(s=>`<div class="bc-sidebar-item" onclick="filterBC('setor',${JSON.stringify(s)},this)"><span>${esc(s)}</span><span class="bc-sidebar-count">${count(bcData,d=>d._setor===s)}</span></div>`).join('');
+  if(tipoWrap) tipoWrap.innerHTML=tipos.map(t=>`<div class="bc-sidebar-item" onclick="filterBC('tipo',${JSON.stringify(t)},this)"><span>${esc(t)}</span><span class="bc-sidebar-count">${count(bcData,d=>d._tipo===t)}</span></div>`).join('')||'<div style="padding:6px 12px;color:var(--gray-400);font-size:11px">Nenhum tipo cadastrado</div>';
+  if(statusWrap) statusWrap.innerHTML=status.map(s=>`<div class="bc-sidebar-item" onclick="filterBC('status',${JSON.stringify(s)},this)"><span>${esc(s)}</span><span class="bc-sidebar-count">${count(bcData,d=>d._status===s)}</span></div>`).join('')||'<div style="padding:6px 12px;color:var(--gray-400);font-size:11px">Nenhum status disponível</div>';
+}
 async function loadBaseConhecimento() {
   try {
-    const [polRes, procRes] = await Promise.all([
-      fetch(API + '/api/politicas').then(r => r.json()),
-      fetch(API + '/api/procedimentos').then(r => r.json())
+    const [polRes,procRes,conhecRes,setorRes]=await Promise.all([
+      fetch(API+'/api/politicas').then(r=>r.json()),fetch(API+'/api/procedimentos').then(r=>r.json()),fetch(API+'/api/conhecimento').then(r=>r.json()),fetch(API+'/api/setores').then(r=>r.json())
     ]);
-
-    const pols = (polRes.itens || []).map(p => ({ ...p, _tipo: 'Política', _nome: p.POLITICA || p.ID_POLITICA }));
-    const procs = (procRes.itens || []).map(p => ({ ...p, _tipo: 'Procedimento', _nome: p.NOME || p.ID_PROCEDIMENTO }));
-
-    bcData = [...pols, ...procs];
-    document.getElementById('bc-total').textContent = bcData.length;
-    renderBC(bcData);
-  } catch (e) { console.error(e); }
+    const pols=(polRes.itens||[]).map(p=>normalizarDocumentoBC(p,'Política'));
+    const procs=(procRes.itens||[]).map(p=>normalizarDocumentoBC(p,'Procedimento'));
+    const conhecimento=(conhecRes.itens||[]).filter(k=>bcValue(k,['TIPO_DOCUMENTO','TIPO_CONHECIMENTO','TIPO','CATEGORIA','NOME','TITULO','TÍTULO','DESCRICAO','CONTEUDO','CONTEÚDO'])).map(k=>normalizarDocumentoBC(k,''));
+    const seen=new Set();
+    bcData=[...pols,...procs,...conhecimento].filter(d=>{const key=(d._tipo+'|'+(d.ID||d.ID_PROCEDIMENTO||d.ID_POLITICA||d._nome)).toLowerCase();if(seen.has(key))return false;seen.add(key);return true;});
+    bcSectors=setorRes.itens||[];
+    document.getElementById('bc-total').textContent=bcData.length;
+    renderBCFilters();renderBC(bcData);
+  } catch(e){ console.error(e);bcData=[];renderBCFilters();renderBC([]); }
 }
-
-function filterBC(field, val, el) {
-  document.querySelectorAll('.bc-sidebar-item').forEach(i => i.classList.remove('active'));
-  el.classList.add('active');
-  const filtered = bcData.filter(d => {
-    if (field === 'tipo') return d._tipo === val;
-    if (field === 'setor') return (d.SETOR_RESPONSAVEL || d.SETOR || '').includes(val);
-    if (field === 'status') return (d.ATIVO === 'SIM' ? 'Vigente' : 'Rascunho') === val;
-    return true;
-  });
+function filterBC(field,val,el){
+  document.querySelectorAll('.bc-sidebar-item').forEach(i=>i.classList.remove('active')); if(el)el.classList.add('active');
+  const filtered=field==='todos'?bcData:bcData.filter(d=>field==='tipo'?d._tipo===val:field==='setor'?d._setor===val:field==='status'?d._status===val:true);
   renderBC(filtered);
 }
-
-function renderBC(items) {
-  document.getElementById('bc-list').innerHTML = items.slice(0,15).map((item, i) => `
-    <div class="bc-item ${i === 0 ? 'active' : ''}" onclick="showBCDetail(_storeRow(item), this)">
-      <div class="bc-item-title">${item._nome || item.POLITICA || 'Documento'}</div>
-      <div class="bc-item-tags">
-        <span class="bc-tag red">${item.SETOR_RESPONSAVEL || item.SETOR || 'Geral'}</span>
-        <span class="bc-tag">${item._tipo}</span>
-        <span class="bc-tag ${item.ATIVO === 'SIM' ? 'vigente' : ''}">${item.ATIVO === 'SIM' ? 'Vigente' : 'Rascunho'}</span>
-      </div>
-    </div>
-  `).join('') || '<div style="color:var(--gray-400);font-size:12px;padding:16px;text-align:center">Nenhum documento encontrado</div>';
-
-  // Show first
-  if (items[0]) showBCDetail(items[0], null);
+function renderBC(items){
+  document.getElementById('bc-list').innerHTML=items.slice(0,50).map((item,i)=>`<div class="bc-item ${i===0?'active':''}" onclick="showBCDetail(_storeRow(item),this)"><div class="bc-item-title">${esc(item._nome)}</div><div class="bc-item-tags">${item._setor?`<span class="bc-tag red">${esc(item._setor)}</span>`:''}<span class="bc-tag">${esc(item._tipo||'Sem tipo')}</span><span class="bc-tag ${item._status==='Vigente'?'vigente':''}">${esc(item._status)}</span></div></div>`).join('')||'<div style="color:var(--gray-400);font-size:12px;padding:16px;text-align:center">Nenhum documento cadastrado.</div>';
+  if(items[0])showBCDetail(items[0],null); else document.getElementById('bc-detail').innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;flex-direction:column;gap:8px;color:var(--gray-300)"><span style="font-size:13px">Nenhum documento selecionado</span></div>';
 }
-
-function showBCDetail(item, el) {
-  if (el) {
-    document.querySelectorAll('.bc-item').forEach(i => i.classList.remove('active'));
-    el.classList.add('active');
-  }
-  document.getElementById('bc-detail').innerHTML = `
-    <div class="bc-detail-badges">
-      <span class="bc-tag vigente">Vigente</span>
-      <span class="bc-tag red">${item.SETOR_RESPONSAVEL || item.SETOR || 'Geral'}</span>
-      <span class="bc-tag">${item._tipo}</span>
-    </div>
-    <div class="bc-detail-title">${item._nome || 'Documento'}</div>
-    <div class="bc-meta-grid">
-      <div class="bc-meta-item"><div class="bc-meta-label">Versão</div><div class="bc-meta-val">1.0 · vigente</div></div>
-      <div class="bc-meta-item"><div class="bc-meta-label">Dono</div><div class="bc-meta-val">${item.RESPONSAVEL || '[Nome]'}</div></div>
-      <div class="bc-meta-item"><div class="bc-meta-label">Próxima revisão</div><div class="bc-meta-val">02/12/2026</div></div>
-      <div class="bc-meta-item"><div class="bc-meta-label">Uso pela IA</div><div class="bc-meta-val">-- análises</div></div>
-    </div>
-    <div style="font-size:12px;font-weight:600;color:var(--gray-500);margin-bottom:6px">Trecho do documento</div>
-    <div style="font-size:13px;color:var(--gray-700);line-height:1.6;background:var(--gray-50);padding:12px;border-radius:8px;margin-bottom:12px">${item.DESCRICAO || item.LIMITES_APROVACAO || 'Conteúdo do documento disponível ao abrir.'}</div>
-    <div class="alert-box blue" style="font-size:11px;margin-bottom:16px">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-      Só documentos vigentes alimentam a IA. Documentos com revisão vencida ficam de fora até serem atualizados.
-    </div>
-    <button class="btn btn-primary" style="width:100%;justify-content:center;margin-bottom:8px">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-      Abrir documento
-    </button>
-    <button class="btn btn-secondary" style="width:100%;justify-content:center">Solicitar revisão</button>
-  `;
+function showBCDetail(item,el){
+  if(el){document.querySelectorAll('.bc-item').forEach(i=>i.classList.remove('active'));el.classList.add('active');}
+  const revisao=bcValue(item,['VIGENCIA_FIM','DATA_REVISAO','PROXIMA_REVISAO','DATA_PROXIMA_REVISAO','DATA_VALIDADE','VALIDADE_FIM','REVISAO_ATE','REVISAO_ATÉ']);
+  document.getElementById('bc-detail').innerHTML=`<div class="bc-detail-badges"><span class="bc-tag ${item._status==='Vigente'?'vigente':''}">${esc(item._status)}</span>${item._setor?`<span class="bc-tag red">${esc(item._setor)}</span>`:''}<span class="bc-tag">${esc(item._tipo||'Sem tipo')}</span></div><div class="bc-detail-title">${esc(item._nome)}</div><div class="bc-meta-grid"><div class="bc-meta-item"><div class="bc-meta-label">Versão</div><div class="bc-meta-val">${esc(item._versao||'Não informado')}</div></div><div class="bc-meta-item"><div class="bc-meta-label">Dono</div><div class="bc-meta-val">${esc(item._responsavel||'Não informado')}</div></div><div class="bc-meta-item"><div class="bc-meta-label">Próxima revisão</div><div class="bc-meta-val">${esc(revisao?fmtDate(revisao):'Não informado')}</div></div><div class="bc-meta-item"><div class="bc-meta-label">Uso pela IA</div><div class="bc-meta-val">${item._status==='Vigente'?'Elegível':'Não elegível'}</div></div></div><div style="font-size:12px;font-weight:600;color:var(--gray-500);margin-bottom:6px">Conteúdo</div><div style="font-size:13px;color:var(--gray-700);line-height:1.6;background:var(--gray-50);padding:12px;border-radius:8px;margin-bottom:12px">${esc(item._conteudo||'Conteúdo não cadastrado.')}</div>`;
 }
 
 // ===== PAGE OBSERVERS =====
@@ -3901,39 +3835,18 @@ loadVisaoGeral();
   function sess(){try{return JSON.parse(sessionStorage.getItem('sac-user')||'null')}catch{return null}}
   function token(){return sessionStorage.getItem('sac-token')||''}
   function esc5(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
-  const DEMO_RNCS=[{ID_RNC:'RNC-139/26',PROTOCOLO_SAC:'SAC-2026-00125',CLIENTE:'Via Cultural',EMPRESA:'Chiacchio',PRODUTO:'Embalagem de transporte',COMPETENCIA:'Qualidade',SETOR:'Qualidade',TIPO_NC:'Real',PROCEDENTE:'Sim',PLANO_ACAO:'Sim',CAUSA:'Avaria identificada na embalagem durante o transporte.',ACAO_CONTENCAO:'Separação do lote e inspeção das unidades.',ACAO_CORRETIVA:'Revisão do acondicionamento e orientação da equipe.',RESPONSAVEL_ACAO:'Carlos Oliveira',PRAZO_ACAO:'30/09/2026',STATUS:'AGUARDANDO APROVAÇÃO',DATA_ABERTURA:'2026-09-28T08:30:00-03:00',DESCRICAO_NAO_CONFORMIDADE:'Cliente relatou avaria do produto e apresentou evidências.'},{ID_RNC:'RNC-140/26',PROTOCOLO_SAC:'SAC-2026-00131',CLIENTE:'Cliente Exemplo',EMPRESA:'Plaschio',PRODUTO:'Produto demonstrativo',COMPETENCIA:'Qualidade',SETOR:'Qualidade',TIPO_NC:'Potencial',PROCEDENTE:'Em análise',PLANO_ACAO:'Sim',CAUSA:'Em análise.',ACAO_CONTENCAO:'Bloqueio preventivo do lote.',ACAO_CORRETIVA:'Em definição.',RESPONSAVEL_ACAO:'Maria Santos',PRAZO_ACAO:'02/10/2026',STATUS:'EM TRATATIVA',DATA_ABERTURA:'2026-09-27T14:00:00-03:00',DESCRICAO_NAO_CONFORMIDADE:'Registro demonstrativo para apresentação.'}];
-  const DEMO_SAC=[{ID_MANIFESTACAO:'SAC-2026-00125',EMPRESA_RECLAMANTE:'Via Cultural',PRODUTO:'Embalagem de transporte',STATUS:'AGUARDANDO_DECISÃO',SETOR_SUGERIDO:'Logística',TRATATIVA_SUGERIDA:'Analisar lote, evidências e providenciar solução adequada.',DEVOLUTIVA_SUGERIDA:'Recebemos seu relato e já iniciamos a análise. O caso está sendo conduzido junto à área responsável e retornaremos com as providências necessárias.'}];
-  function demoResponse(url){if(url.includes('/api/auth/me'))return{sucesso:true,usuario:sess()};if(url.startsWith('/api/aprovadores/')&&url.endsWith('/pendencias'))return{sucesso:true,totais:{sac:1,rnc:1,total:2},sac:DEMO_SAC,rnc:[DEMO_RNCS[0]],sugestoes:[]};if(url==='/api/rnc')return{sucesso:true,total:DEMO_RNCS.length,itens:DEMO_RNCS};if(url.startsWith('/api/rnc/')&&url.endsWith('/eventos'))return{sucesso:true,itens:[{ID_RNC:'RNC-139/26',TIPO_EVENTO:'RNC criada',DATA_EVENTO:'2026-09-28T08:30:00-03:00',USUARIO:'Ana Lima',DETALHES:'RNC originada de manifestação SAC.'},{ID_RNC:'RNC-139/26',TIPO_EVENTO:'Disponibilizada ao aprovador',DATA_EVENTO:'2026-09-28T08:35:00-03:00',USUARIO:'sistema',DETALHES:'Competência Qualidade identificada.'}]};if(url.startsWith('/api/rnc/')){const id=decodeURIComponent(url.split('/')[3]||'RNC-139/26');return{sucesso:true,rnc:DEMO_RNCS.find(x=>x.ID_RNC===id)||DEMO_RNCS[0],eventos:[{TIPO_EVENTO:'RNC criada',DATA_EVENTO:'2026-09-28T08:30:00-03:00',USUARIO:'Ana Lima',DETALHES:'Origem: Avaliação SAC.'}]};}if(url==='/api/usuarios')return{sucesso:true,total:5,itens:[{id:'USR-DEMO-001',usuario:'luiza',nome:'Luiza',perfil:'MASTER',empresa:'Grupo Chiacchio',status:'ATIVO'},{id:'USR-DEMO-002',usuario:'joao.aprovador',nome:'João Silva',perfil:'APROVADOR',empresa:'Chiacchio',status:'ATIVO'},{id:'USR-DEMO-003',usuario:'ana.sac',nome:'Ana Lima',perfil:'ANALISTA SAC',empresa:'Grupo Chiacchio',status:'ATIVO'},{id:'USR-DEMO-004',usuario:'carlos.rca',nome:'Carlos Silva',perfil:'RCA / REPRESENTANTE',empresa:'Chiacchio',status:'ATIVO'},{id:'USR-DEMO-005',usuario:'maria.qualidade',nome:'Maria Santos',perfil:'SETOR RESPONSÁVEL',empresa:'Chiacchio',status:'ATIVO'}]};if(url==='/api/manifestacoes')return{sucesso:true,total:DEMO_SAC.length,itens:DEMO_SAC};return{sucesso:true,itens:[],total:0,dados:{}};}
   async function json5(url,opt={}){
-    const isDemo=sessionStorage.getItem('sac-demo-local')==='1';
     const method=(opt.method||'GET').toUpperCase();
-
-    // No modo demo, mantemos a interface e os exemplos de aprovação/RNC,
-    // mas o dashboard deve ler os dados reais da planilha.
-    const DEMO_REAL_DATA_ROUTES=['/api/manifestacoes','/api/reclamacoes'];
-    if(isDemo && method==='GET' && DEMO_REAL_DATA_ROUTES.includes(url)){
-      const realOpt={...opt,headers:{...(opt.headers||{})}};
-      const r=await fetch(API+url,realOpt);
-      const t=await r.text();
-      let d={};
-      try{d=t?JSON.parse(t):{}}catch{d={raw:t}};
-      if(!r.ok)throw new Error(d.erro||d.error||`Erro ${r.status}`);
-      return d;
-    }
-
-    if(isDemo){
-      if(method!=='GET')return{sucesso:true};
-      return demoResponse(url);
-    }
-
-    opt.headers={...(opt.headers||{}),Authorization:'Bearer '+token(),'Content-Type':'application/json'};
+    opt={...opt,headers:{...(opt.headers||{})}};
+    if(!url.includes('/api/auth/login')) opt.headers.Authorization='Bearer '+token();
+    if(method!=='GET') opt.headers['Content-Type']='application/json';
     const r=await fetch(API+url,opt);
     const t=await r.text();
     let d={};
     try{d=t?JSON.parse(t):{}}catch{d={raw:t}};
     if(r.status===401){sessionStorage.clear();location.reload();throw new Error('Sessão expirada.')}
     if(!r.ok)throw new Error(d.erro||d.error||`Erro ${r.status}`);
-    return d
+    return d;
   }
   function initials(n){return String(n||'US').split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase()}
   function fmt5(v){if(!v)return '—';const d=new Date(v);return isNaN(d)?String(v):d.toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})}
@@ -4056,7 +3969,7 @@ loadVisaoGeral();
 
   // ===== BOOT =====
   async function boot(){
-    if(sessionStorage.getItem('sac-demo-local')==='1'){
+    if(false){
       document.getElementById('login-screen').style.display='none';
       await window.iniciarSessaoV5();
       return;
