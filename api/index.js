@@ -1147,7 +1147,7 @@ app.get('/api/pesquisas/resumo', requerPerfil('MASTER','ANALISTA SAC','SETOR RES
 
     // Conta viram reclamação: qualquer coluna numérica com nota <= 3
     const colunasNota = headers.filter(h => !/data|timestamp|carimbo|hora|nome|email|cpf|cnpj|observ|coment/i.test(h) && h !== colunaData);
-    const NOTA_CRITICA = Number(process.env.PESQUISA_NOTA_CRITICA || 3);
+    const NOTA_CRITICA = Number(process.env.PESQUISA_NOTA_CRITICA || 6);
     const viramReclamacao = doMes.filter(r =>
       colunasNota.some(col => {
         const v = Number(String(r[col]).replace(',', '.'));
