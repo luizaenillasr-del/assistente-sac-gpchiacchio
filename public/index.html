@@ -3046,12 +3046,22 @@ let _setoresConfig = [];
 let _setoresMans = [];
 let _setorAtual = null;
 
+async function _apiFetch(url) {
+  const token = sessionStorage.getItem('sac-token') || '';
+  const r = await fetch((window.SAC_API || '') + url, { headers: { Authorization: 'Bearer ' + token } });
+  const text = await r.text();
+  let data;
+  try { data = text ? JSON.parse(text) : {}; } catch { data = { raw: text }; }
+  if (!r.ok) throw new Error((data.erro || data.error || data.raw || '') + ' (HTTP ' + r.status + ')');
+  return data;
+}
+
 async function loadSetores() {
   try {
     const [setRes, manRes, conhecRes] = await Promise.all([
-      jsonFetch('/api/setores'),
-      jsonFetch('/api/manifestacoes'),
-      jsonFetch('/api/conhecimento'),
+      _apiFetch('/api/setores'),
+      _apiFetch('/api/manifestacoes'),
+      _apiFetch('/api/conhecimento'),
     ]);
     if(setRes?.sucesso===false) throw new Error(setRes.erro||'Falha ao carregar setores.');
     if(manRes?.sucesso===false) throw new Error(manRes.erro||'Falha ao carregar manifestações.');
@@ -3183,7 +3193,11 @@ async function loadSetores() {
       </div>`;
     }).join('');
 
-  } catch (e) { console.error('Erro setores:', e); }
+  } catch (e) {
+    console.error('Erro setores:', e);
+    const grid = document.getElementById('setores-grid');
+    if (grid) grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:24px;color:var(--red)">Erro ao carregar setores: ${e.message}</div>`;
+  }
 }
 
 function voltarSetores() {
