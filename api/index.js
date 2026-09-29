@@ -923,6 +923,19 @@ app.post('/api/procedimentos', requerPerfil('MASTER','ANALISTA SAC'), async (req
     res.json({ sucesso: true, id });
   } catch (e) { res.status(500).json({ sucesso: false, erro: e.message }); }
 });
+app.get('/api/matriz', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
+  try { const data = await lerAba('MATRIZ_DECISAO', 500); res.json({ sucesso: true, itens: data }); }
+  catch (e) { res.status(500).json({ sucesso: false, erro: e.message, itens: [] }); }
+});
+app.patch('/api/matriz/:id', requerPerfil('MASTER','ANALISTA SAC'), async (req, res) => {
+  try {
+    const id = req.params.id;
+    await garantirAbaComCabecalhos('MATRIZ_DECISAO', ['ID_MATRIZ','TEMA','SETOR_PRINCIPAL','SETORES_APOIO','SLA_HORAS','PRIORIDADE','GERA_RNC','APROVACAO','FOLLOW_UP','REGRAS']);
+    const reg = await atualizarPorID('MATRIZ_DECISAO', id, req.body, ['ID_MATRIZ','ID']);
+    if (!reg) return res.status(404).json({ sucesso: false, erro: 'Regra não encontrada.' });
+    res.json({ sucesso: true, linha: reg.linha });
+  } catch (e) { res.status(500).json({ sucesso: false, erro: e.message }); }
+});
 app.get('/api/tipos', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
   try { const data=await lerAba('TIPOS_RECLAMACAO',200); res.json({sucesso:true,total:data.length,itens:data}); }
   catch (e) { res.status(500).json({sucesso:false,erro:e.message,dados:[]}); }
@@ -937,48 +950,7 @@ app.get('/api/validacoes', requerPerfil('MASTER','ANALISTA SAC'), async (req, re
 });
 
 
-app.get('/api/caso/:fonte/:id', async (req, res) => {
-  try {
-    const { fonte, id } = req.params;
-    const mapaFontes = {
-      'BANCO_HISTORICO': 'BANCO_HISTORICO',
-      'MANIFESTACOES': 'MANIFESTACOES',
-      'SAC_ANALISE_DEFINITIVA': 'SAC_ANALISE_DEFINITIVA',
-      'Reclamacoes': 'Reclamações + devolutiva',
-      'HISTORICO': 'BANCO_HISTORICO',
-    };
-    const aba = mapaFontes[fonte] || fonte;
-    const camposId = ['ID_HISTORICO','ID_MANIFESTACAO','ID_ANALISE'];
-    let item = null;
-    let fonteReal = aba;
-
-    // Tentar na aba solicitada primeiro
-    try {
-      const data = await lerAba(aba, 2000);
-      item = data.find(r => camposId.some(c => String(r[c]||'') === String(id)));
-    } catch(e) { /* aba pode não existir */ }
-
-    // Se não achou, varrer as três fontes principais
-    if(!item){
-      for(const nomeAba of ['BANCO_HISTORICO','MANIFESTACOES','SAC_ANALISE_DEFINITIVA']){
-        try {
-          const rows = await lerAba(nomeAba, 2000);
-          const found = rows.find(r => camposId.some(c => String(r[c]||'') === String(id)));
-          if(found){ item = found; fonteReal = nomeAba; break; }
-        } catch(e) { /* continua */ }
-      }
-    }
-
-    if(!item) return res.status(404).json({ sucesso: false, erro: `Caso ${id} não encontrado em nenhuma fonte.` });
-    res.json({ sucesso: true, caso: { ...item, _fonte_real: fonteReal } });
-  } catch(e) {
-    console.error('/api/caso erro:', e);
-    res.status(500).json({ sucesso: false, erro: e.message });
-  }
-});
-
-
-// ===== ROTA: BUSCAR CASO POR FONTE E ID (v2.0 — robusta) =====
+// ===== ROTA: BUSCAR CASO POR FONTE E ID =====
 app.get('/api/caso/:fonte/:id', async (req, res) => {
   try {
     const fonteRaw = decodeURIComponent(req.params.fonte || '');
