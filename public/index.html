@@ -2293,10 +2293,13 @@ async function loadVisaoGeral() {
     _dashData.mans = manRes.itens || [];
     _dashData.recs = recRes.itens || [];
 
+    // Códigos internos que não são empresas reais
+    const _NAO_EMPRESAS = new Set(['TR01','TR08','SAC','RNC']);
+
     // Popular filtros de empresa
     const empSet = new Set(['Todas']);
-    _dashData.recs.forEach(x => { if(x['Empresa']) empSet.add(x['Empresa']); });
-    _dashData.mans.forEach(x => { if(x.EMPRESA_RECLAMADA) empSet.add(x.EMPRESA_RECLAMADA); });
+    _dashData.recs.forEach(x => { if(x['Empresa'] && !_NAO_EMPRESAS.has((x['Empresa']||'').toUpperCase().trim())) empSet.add(x['Empresa']); });
+    _dashData.mans.forEach(x => { const e=(x.EMPRESA_RECLAMADA||'').trim(); if(e && !_NAO_EMPRESAS.has(e.toUpperCase())) empSet.add(e); });
     const empSelect = document.getElementById('filtro-empresa-select');
     if (empSelect) {
       empSelect.innerHTML = [...empSet].map(e => `<option value="${e}">${e}</option>`).join('');
@@ -2322,7 +2325,18 @@ function aplicarFiltros() {
   const setEl = document.getElementById('filtro-setor-select');
   _dashFiltroEmpresa = empEl ? empEl.value : 'Todas';
   _dashFiltroSetor = setEl ? setEl.value : 'Todos';
-  const data = calcDashboard(_dashData.mans, _dashData.recs, _dashFiltroEmpresa, _dashFiltroSetor);
+
+  // Aplicar filtro de período antes de calcular
+  const dias = window._dashFiltroPeriodoDias || null;
+  let mans = _dashData.mans;
+  let recs = _dashData.recs;
+  if (dias) {
+    const corte = new Date(Date.now() - dias * 86400000);
+    mans = mans.filter(m => { const d = new Date(m.DATA_CRIACAO||m.DATA_ABERTURA||''); return !isNaN(d) && d >= corte; });
+    recs = recs.filter(r => { const d = new Date(r['Data do Registro']||r['DATA_ABERTURA']||''); return !isNaN(d) && d >= corte; });
+  }
+
+  const data = calcDashboard(mans, recs, _dashFiltroEmpresa, _dashFiltroSetor);
   renderDashboard(data);
 }
 
@@ -3046,12 +3060,22 @@ let _setoresConfig = [];
 let _setoresMans = [];
 let _setorAtual = null;
 
+async function _apiFetch(url) {
+  const token = sessionStorage.getItem('sac-token') || '';
+  const r = await fetch((window.SAC_API || '') + url, { headers: { Authorization: 'Bearer ' + token } });
+  const text = await r.text();
+  let data;
+  try { data = text ? JSON.parse(text) : {}; } catch { data = { raw: text }; }
+  if (!r.ok) throw new Error((data.erro || data.error || data.raw || '') + ' (HTTP ' + r.status + ')');
+  return data;
+}
+
 async function loadSetores() {
   try {
     const [setRes, manRes, conhecRes] = await Promise.all([
-      jsonFetch('/api/setores'),
-      jsonFetch('/api/manifestacoes'),
-      jsonFetch('/api/conhecimento'),
+      _apiFetch('/api/setores'),
+      _apiFetch('/api/manifestacoes'),
+      _apiFetch('/api/conhecimento'),
     ]);
     if(setRes?.sucesso===false) throw new Error(setRes.erro||'Falha ao carregar setores.');
     if(manRes?.sucesso===false) throw new Error(manRes.erro||'Falha ao carregar manifestações.');
@@ -3183,7 +3207,11 @@ async function loadSetores() {
       </div>`;
     }).join('');
 
-  } catch (e) { console.error('Erro setores:', e); }
+  } catch (e) {
+    console.error('Erro setores:', e);
+    const grid = document.getElementById('setores-grid');
+    if (grid) grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:24px;color:var(--red)">Erro ao carregar setores: ${e.message}</div>`;
+  }
 }
 
 function voltarSetores() {
@@ -4064,6 +4092,13 @@ loadVisaoGeral();
         else if (txt === '7 dias') window._dashFiltroPeriodoDias = 7;
         else if (txt === '30 dias') window._dashFiltroPeriodoDias = 30;
         else if (txt === 'Personalizado') window._dashFiltroPeriodoDias = null;
+
+        // Atualizar visual do botão ativo
+        btn.closest('.filter-group')?.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        // Re-renderizar o dashboard com o novo período
+        if (typeof aplicarFiltros === 'function') aplicarFiltros();
       });
     });
   });
