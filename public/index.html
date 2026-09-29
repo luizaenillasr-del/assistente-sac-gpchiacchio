@@ -476,7 +476,13 @@
         <div style="font-size:18px;font-weight:800" id="modal-titulo">Manifestação</div>
         <div style="font-size:12px;color:var(--gray-400);margin-top:2px" id="modal-subtitulo">—</div>
       </div>
-      <button class="modal-close" onclick="fecharModal()">×</button>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn btn-secondary" style="font-size:12px;padding:6px 12px" onclick="gerarFichaPDF()" title="Baixar Ficha de Encaminhamento preenchida">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Baixar Ficha PDF
+        </button>
+        <button class="modal-close" onclick="fecharModal()">×</button>
+      </div>
     </div>
     <div class="modal-body">
       <!-- Tabs -->
@@ -7043,6 +7049,189 @@ window.editarDocumento=function(idx){
 };
 
 console.log('[base-conhecimento-setores] carregado');
+})();
+</script>
+
+<!-- ===== GERAÇÃO DE FICHA PDF ===== -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+(function(){
+  // Armazena o item atual do dossiê para usar na geração do PDF
+  const _origAbrirDossie = window.abrirDossie;
+  window._dossieItem = null;
+  window.abrirDossie = function(item) {
+    window._dossieItem = item;
+    if (_origAbrirDossie) _origAbrirDossie(item);
+  };
+
+  window.gerarFichaPDF = function() {
+    const item = window._dossieItem;
+    if (!item) { alert('Nenhuma manifestação aberta.'); return; }
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+    const W = 210, M = 15, CW = W - M * 2;
+    let y = 15;
+
+    const RED = [185, 28, 28];
+    const GRAY = [80, 80, 80];
+    const LIGHT = [245, 245, 245];
+
+    function linha(dy = 5) { y += dy; }
+    function checkPage() { if (y > 270) { doc.addPage(); y = 15; } }
+
+    function titulo(txt) {
+      doc.setFontSize(10); doc.setTextColor(...RED); doc.setFont(undefined,'bold');
+      doc.text(txt, M, y); linha(6);
+    }
+
+    function campo(label, valor, x, w, inlineY) {
+      const iy = inlineY || y;
+      doc.setFillColor(...LIGHT); doc.rect(x, iy - 4, w, 8, 'F');
+      doc.setDrawColor(200,200,200); doc.rect(x, iy - 4, w, 8);
+      doc.setFontSize(8); doc.setTextColor(...GRAY); doc.setFont(undefined,'bold');
+      doc.text(label + ':', x + 2, iy - 0.5);
+      doc.setFont(undefined,'normal'); doc.setTextColor(30,30,30);
+      const val = String(valor || '—');
+      doc.text(val.slice(0, Math.floor(w / 2.2)), x + 2 + doc.getTextWidth(label + ': '), iy - 0.5);
+    }
+
+    function campoGrande(label, valor, h = 18) {
+      checkPage();
+      doc.setFillColor(...LIGHT); doc.rect(M, y, CW, h, 'F');
+      doc.setDrawColor(200,200,200); doc.rect(M, y, CW, h);
+      doc.setFontSize(8); doc.setTextColor(...GRAY); doc.setFont(undefined,'bold');
+      doc.text(label + ':', M + 2, y + 4);
+      doc.setFont(undefined,'normal'); doc.setTextColor(30,30,30);
+      const wrapped = doc.splitTextToSize(String(valor || ''), CW - 4);
+      doc.text(wrapped.slice(0, Math.floor(h / 4.5)), M + 2, y + 9);
+      y += h + 2;
+    }
+
+    function checkbox(label, checked, x, cy) {
+      doc.setDrawColor(120,120,120); doc.rect(x, cy - 3.5, 4, 4);
+      if (checked) { doc.setFontSize(8); doc.setTextColor(...RED); doc.text('✓', x + 0.5, cy); }
+      doc.setFontSize(8); doc.setTextColor(30,30,30); doc.setFont(undefined,'normal');
+      doc.text(label, x + 5.5, cy);
+    }
+
+    // ── CABEÇALHO ──
+    doc.setFontSize(13); doc.setTextColor(...RED); doc.setFont(undefined,'bold');
+    doc.text('GRUPO CHIACCHIO', W/2, y, { align:'center' }); linha(5);
+    doc.setDrawColor(...RED); doc.line(M, y, W-M, y); linha(6);
+    doc.setFontSize(11); doc.setTextColor(30,30,30);
+    doc.text('FICHA DE ENCAMINHAMENTO DE MANIFESTAÇÃO', W/2, y, { align:'center' }); linha(8);
+
+    // ── 1. DADOS DO REGISTRO SAC ──
+    titulo('1. Dados do Registro SAC');
+    const dataReg = item.DATA_CRIACAO ? new Date(item.DATA_CRIACAO).toLocaleDateString('pt-BR') : '—';
+    campo('Data do Registro', dataReg, M, 60, y);
+    campo('Setor', 'SAC', M + 62, 40, y);
+    campo('Nº Reclamação', item.ID_MANIFESTACAO, M + 104, CW - 104, y);
+    linha(10);
+    campo('Atendente', item.RESPONSAVEL || item.USUARIO_CRIACAO, M, CW, y); linha(10);
+
+    // Canal de atendimento
+    doc.setFillColor(...LIGHT); doc.rect(M, y, CW, 8, 'F');
+    doc.setDrawColor(200,200,200); doc.rect(M, y, CW, 8);
+    doc.setFontSize(8); doc.setTextColor(...GRAY); doc.setFont(undefined,'bold');
+    doc.text('Canal de Atendimento:', M + 2, y + 5);
+    const canal = (item.CANAL || '').toLowerCase();
+    const canais = ['Telefone','WhatsApp','E-mail','Presencial','Pesquisa de Satisfação','Outro'];
+    let cx = M + 55;
+    canais.forEach(c => {
+      checkbox(c, canal.includes(c.toLowerCase()), cx, y + 5);
+      cx += 24;
+    });
+    linha(11);
+
+    // ── 2. DADOS DO CLIENTE ──
+    titulo('2. Dados do Cliente');
+    campo('Nome do Cliente', item.CONTATO, M, CW, y); linha(10);
+    campo('Empresa / Razão Social', item.EMPRESA_RECLAMANTE, M, CW, y); linha(10);
+    campo('CNPJ', item.CNPJ, M, 70, y);
+    campo('Telefone / WhatsApp', item.TELEFONE, M + 72, CW - 72, y); linha(10);
+    campo('E-mail', item.EMAIL, M, CW, y); linha(11);
+
+    // ── 3. INFORMAÇÕES DA MANIFESTAÇÃO ──
+    titulo('3. Informações da Manifestação');
+    doc.setFillColor(...LIGHT); doc.rect(M, y, CW, 8, 'F');
+    doc.setDrawColor(200,200,200); doc.rect(M, y, CW, 8);
+    doc.setFontSize(8); doc.setTextColor(...GRAY); doc.setFont(undefined,'bold');
+    doc.text('Tipo de Manifestação:', M + 2, y + 5);
+    const tipo = (item.TIPO || '').toLowerCase();
+    let tx = M + 52;
+    ['Reclamação','Dúvida','Sugestão','Elogio'].forEach(t => {
+      checkbox(t, tipo.includes(t.toLowerCase()), tx, y + 5); tx += 36;
+    });
+    linha(11);
+
+    const proc = (item.DECISAO_ANALISTA || item.RESULTADO_FINAL || '').toLowerCase();
+    doc.setFillColor(...LIGHT); doc.rect(M, y, CW, 8, 'F');
+    doc.setDrawColor(200,200,200); doc.rect(M, y, CW, 8);
+    doc.setFontSize(8); doc.setTextColor(...GRAY); doc.setFont(undefined,'bold');
+    doc.text('A reclamação é procedente? Justifique.', M + 2, y + 5);
+    let px = M + 78;
+    ['Sim','Não','Parcialmente'].forEach(p => {
+      checkbox(p, proc.includes(p.toLowerCase().normalize('NFD').replace(/\p{Mn}/gu,'')), px, y + 5); px += 28;
+    });
+    linha(11);
+    campoGrande('Descrição Detalhada da Manifestação', item.DESCRICAO_RECLAMACAO, 22);
+
+    // ── 4. INFORMAÇÕES DO PRODUTO ──
+    titulo('4. Informações do Produto (quando aplicável)');
+    campo('Produto', item.PRODUTO, M, 65, y);
+    campo('Lote', item.LOTE, M + 67, 45, y);
+    campo('NFe', item.NFE, M + 114, 40, y);
+    campo('Valor NF (R$)', item.VALOR, M + 156, CW - 156, y);
+    linha(11);
+
+    // ── 5. ENCAMINHAMENTO ──
+    titulo('5. Encaminhamento');
+    campo('Data de Encaminhamento', dataReg, M, CW / 2, y); linha(10);
+    doc.setFillColor(...LIGHT); doc.rect(M, y, CW, 10, 'F');
+    doc.setDrawColor(200,200,200); doc.rect(M, y, CW, 10);
+    doc.setFontSize(8); doc.setTextColor(...GRAY); doc.setFont(undefined,'bold');
+    doc.text('Prazo para Retorno ao SAC: 72 horas.', M + 2, y + 6);
+    linha(13);
+
+    // ── 6. RESPOSTA DO SETOR ──
+    checkPage();
+    titulo('6. Resposta do Setor');
+    campoGrande('O que aconteceu? (Descreva objetivamente o que aconteceu.)', item.TRATATIVA_REALIZADA || item.TRATATIVA_APLICAVEL, 20);
+    campoGrande('Qual foi a causa da ocorrência?', item.CAUSA_PROVAVEL || item.SUBCAUSA, 16);
+    campoGrande('Como o caso foi resolvido para este cliente?', item.DEVOLUTIVA_FINAL || item.DEVOLUTIVA_ENVIADA, 16);
+    campoGrande('Qual ação será adotada para evitar novas ocorrências?', item.PLANO_ACAO || '', 16);
+    campo('Responsável pela ação de melhoria', item.RESPONSAVEL, M, CW * 0.6, y); linha(10);
+    campo('Prazo para implementação da ação', '', M + CW * 0.62, CW * 0.38, y); linha(11);
+
+    // ── 7. VALIDAÇÃO DO SAC ──
+    checkPage();
+    titulo('7. Validação do SAC');
+    campo('Data de Retorno ao Cliente', item.DATA_ULTIMA_ATUALIZACAO ? new Date(item.DATA_ULTIMA_ATUALIZACAO).toLocaleDateString('pt-BR') : '', M, CW, y); linha(10);
+
+    const finaliz = (item.STATUS || '').toUpperCase().includes('FINALIZ');
+    doc.setFillColor(...LIGHT); doc.rect(M, y, CW / 2 - 2, 16, 'F');
+    doc.setDrawColor(200,200,200); doc.rect(M, y, CW / 2 - 2, 16);
+    doc.setFontSize(8); doc.setTextColor(...GRAY); doc.setFont(undefined,'bold');
+    doc.text('Cliente Informado:', M + 2, y + 5);
+    checkbox('Sim', finaliz, M + 2, y + 11); checkbox('Não', !finaliz, M + 20, y + 11);
+
+    doc.setFillColor(...LIGHT); doc.rect(M + CW / 2 + 2, y, CW / 2 - 2, 16, 'F');
+    doc.setDrawColor(200,200,200); doc.rect(M + CW / 2 + 2, y, CW / 2 - 2, 16);
+    doc.setFont(undefined,'bold');
+    doc.text('Manifestação Resolvida:', M + CW / 2 + 4, y + 5);
+    checkbox('Sim', finaliz, M + CW / 2 + 4, y + 11); checkbox('Não', !finaliz, M + CW / 2 + 22, y + 11);
+    linha(19);
+
+    campoGrande('Observações Finais', item.DEVOLUTIVA_ENVIADA || item.OBSERVACOES || '', 18);
+
+    // ── RODAPÉ ──
+    doc.setFontSize(7); doc.setTextColor(150,150,150);
+    doc.text(`Gerado automaticamente pelo sistema SAC · Grupo Chiacchio · ${new Date().toLocaleString('pt-BR')}`, W/2, 290, { align:'center' });
+
+    doc.save(`Ficha_${item.ID_MANIFESTACAO || 'MAN'}.pdf`);
+  };
 })();
 </script>
 
