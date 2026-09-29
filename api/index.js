@@ -290,142 +290,13 @@ async function motorRegras(descricao, tipo, empresa) {
 
 function calcSimilaridade(texto1, texto2) {
   if (!texto1 || !texto2) return 0;
-  const stopwords = new Set(['de','a','o','e','que','do','da','em','um','uma','para','com','por','se','não','na','no','os','as','ao','à','mais','mas','ou','é','foi','está','ser','ter','muito','mais','já','isso','esse','essa','nao','sim','com','sem']);
-  const tokenizar = t => t.toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-    .replace(/[^a-z\s]/g,' ')
-    .split(/\s+/)
-    .filter(w => w.length > 2 && !stopwords.has(w));
+  const stopwords = new Set(['de','a','o','e','que','do','da','em','um','uma','para','com','por','se','não','na','no','os','as','ao','à','mais','mas','ou','é']);
+  const tokenizar = t => t.toLowerCase().replace(/[^a-záàãâéêíóôõúç\s]/g, ' ').split(/\s+/).filter(w => w.length > 2 && !stopwords.has(w));
   const t1 = tokenizar(texto1); const t2 = tokenizar(texto2);
-  if (!t1.length || !t2.length) return 0;
   const set1 = new Set(t1); const set2 = new Set(t2);
   const intersect = [...set1].filter(w => set2.has(w)).length;
   const union = new Set([...set1, ...set2]).size;
-  // Jaccard ponderado: boost quando palavras-chave longas batem
-  let pontosBonusLongo = 0;
-  [...set1].filter(w => w.length > 5 && set2.has(w)).forEach(() => pontosBonusLongo++);
-  const jaccard = union > 0 ? intersect / union : 0;
-  return Math.min(99, Math.round((jaccard * 70) + (pontosBonusLongo * 4)));
-}
-
-// Busca casos semelhantes diretamente nas abas da planilha.
-// Fonte 1: BANCO_HISTORICO (casos históricos migrados)
-// Fonte 2: MANIFESTACOES (casos novos já registrados no sistema)
-// Fonte 3: Reclamações + devolutiva (planilha histórica legada)
-async function buscarCasosSemelhantesInterno(descricao, tipo, empresaReclamada, limite = 5) {
-  const texto = String(descricao || '').trim();
-  if (!texto || texto.length < 15) return [];
-
-  const [historico, manifestacoes, reclamacoes] = await Promise.all([
-    lerAba('BANCO_HISTORICO', 2000).catch(() => []),
-    lerAba('MANIFESTACOES', 2000).catch(() => []),
-    lerAba('Reclamações + devolutiva', 1000).catch(() => []),
-  ]);
-
-  const candidatos = [];
-
-  // Fonte 1: BANCO_HISTORICO (campos do histórico migrado)
-  for (const h of historico) {
-    const desc = h.ORIG_DESCRICAO_RECLAMACAO || h.DESCRICAO || h.DESCRICAO_RECLAMACAO || '';
-    const tratativa = h.COMP_TRATATIVA_EFETIVA || h.COMP_TRATATIVA_RECOMENDADA || h.COMP_ACAO_CORRETIVA || h.COMP_DEVOLUTIVA_ENVIADA || h.TRATATIVA || '';
-    const devolutiva = h.COMP_DEVOLUTIVA_ENVIADA || h.DEVOLUTIVA || '';
-    const motivo = h.COMP_TIPO_PROBLEMA_VALIDADO || h.COMP_CATEGORIA_PROBLEMA || h.MOTIVO || tipo || '';
-    if (!desc || desc.length < 10) continue;
-    const sim = calcSimilaridade(texto, desc);
-    if (sim >= 15) {
-      candidatos.push({
-        id: h.ID_HISTORICO || h.ID_MANIFESTACAO || '—',
-        empresa: normalizarEmpresa(h.ORIG_EMPRESA) || h.ORIG_EMPRESA || '—',
-        setor: h.COMP_SETOR_RESPONSAVEL || h.SETOR || '—',
-        motivo: motivo || '—',
-        descricao: desc.slice(0, 160),
-        tratativa: tratativa.slice(0, 300),
-        devolutiva: devolutiva.slice(0, 200),
-        resultado: h.COMP_RESULTADO_FINAL || h.STATUS || '—',
-        data: normalizarData(h.ORIG_DATA_ABERTURA || h.DATA) || '—',
-        similaridade: sim,
-        fonte: 'historico',
-      });
-    }
-  }
-
-  // Fonte 2: MANIFESTACOES (casos novos com tratativa registrada)
-  for (const m of manifestacoes) {
-    const desc = m.DESCRICAO_MANIFESTACAO || m.DESCRICAO || '';
-    const tratativa = m.TRATATIVA_REALIZADA || m.TRATATIVA_SUGERIDA || m.TRATATIVA_APLICAVEL || '';
-    const devolutiva = m.DEVOLUTIVA_ENVIADA || m.DEVOLUTIVA_FINAL || m.DEVOLUTIVA_SUGERIDA || '';
-    if (!desc || desc.length < 10) continue;
-    // Não sugerir a si mesmo (caso esteja sendo digitado agora)
-    const sim = calcSimilaridade(texto, desc);
-    if (sim >= 15 && (tratativa || devolutiva)) {
-      candidatos.push({
-        id: m.ID_MANIFESTACAO || '—',
-        empresa: normalizarEmpresa(m.EMPRESA_RECLAMADA || m.EMPRESA_NORMALIZADA) || '—',
-        setor: m.SETOR_CONFIRMADO || m.SETOR_SUGERIDO || m.SETOR_DESTINADO || '—',
-        motivo: m.TIPO_CONFIRMADO || m.TIPO || tipo || '—',
-        descricao: desc.slice(0, 160),
-        tratativa: tratativa.slice(0, 300),
-        devolutiva: devolutiva.slice(0, 200),
-        resultado: m.STATUS || '—',
-        data: normalizarData(m.DATA_ABERTURA || m.DATA_REGISTRO) || '—',
-        similaridade: sim,
-        fonte: 'manifestacoes',
-      });
-    }
-  }
-
-  // Fonte 3: Reclamações + devolutiva (planilha histórica legada)
-  for (const r of reclamacoes) {
-    const desc = r['Descrição da Reclamação'] || r['Descrição'] || '';
-    const tratativa = r['Tratativa do Problema'] || r['Tratativa'] || '';
-    const devolutiva = r['Devolutiva ao Cliente'] || r['Devolutiva'] || '';
-    if (!desc || desc.length < 10) continue;
-    const sim = calcSimilaridade(texto, desc);
-    if (sim >= 15) {
-      candidatos.push({
-        id: r['Nº'] || r['Protocolo'] || '—',
-        empresa: r['Empresa'] || '—',
-        setor: r['Setor Responsável'] || '—',
-        motivo: r['Motivo da Reclamação'] || tipo || '—',
-        descricao: desc.slice(0, 160),
-        tratativa: tratativa.slice(0, 300),
-        devolutiva: devolutiva.slice(0, 200),
-        resultado: r['Situação Final'] || r['Status'] || '—',
-        data: normalizarData(r['Data do Registro']) || '—',
-        similaridade: sim,
-        fonte: 'reclamacoes_historico',
-      });
-    }
-  }
-
-  // Ordenar por similaridade, remover duplicatas por id, retornar os top N
-  const vistos = new Set();
-  return candidatos
-    .sort((a, b) => b.similaridade - a.similaridade)
-    .filter(c => { const k = c.id+c.fonte; if(vistos.has(k)) return false; vistos.add(k); return true; })
-    .slice(0, limite);
-}
-
-// Deriva uma tratativa sugerida a partir dos casos similares encontrados.
-// Usa o caso mais similar que tenha tratativa registrada.
-function derivarTratativaDeCasos(similares, tipoSugerido, setores) {
-  if (!similares || !similares.length) return null;
-
-  // Priorizar: maior similaridade + tem tratativa real preenchida
-  const comTratativa = similares.filter(s => s.tratativa && s.tratativa.length > 20);
-  if (!comTratativa.length) return null;
-
-  const melhor = comTratativa[0];
-  const setor = Array.isArray(setores) ? setores[0] : (setores || 'setor responsável');
-
-  return (
-    `Com base em caso similar (${melhor.similaridade}% de compatibilidade) de ${melhor.empresa}:\n\n` +
-    `Tratativa adotada anteriormente: ${melhor.tratativa}\n\n` +
-    `Recomendação para este caso: encaminhar ao ${setor} para análise. ` +
-    (melhor.resultado && !['—',''].includes(melhor.resultado)
-      ? `O caso anterior foi resolvido com status "${melhor.resultado}".`
-      : '')
-  ).trim();
+  return union > 0 ? Math.round((intersect / union) * 100) : 0;
 }
 
 function gerarDevolutiva(empresa, tipo, setores, tratativa) {
@@ -440,60 +311,12 @@ async function executarAnalise(manifestacao) {
     manifestacao.tipo || manifestacao.TIPO || '',
     manifestacao.empresaReclamada || manifestacao.EMPRESA_RECLAMADA || ''
   );
-
-  // Busca de similares diretamente na planilha (independente do cerebroService)
-  const similares = await buscarCasosSemelhantesInterno(
-    manifestacao.descricao || manifestacao.DESCRICAO || '',
-    manifestacao.tipo || manifestacao.TIPO || '',
-    manifestacao.empresaReclamada || manifestacao.EMPRESA_RECLAMADA || '',
-    8
-  );
-
-  // Tratativa derivada dos casos semelhantes reais
-  const tratativaDeHistorico = derivarTratativaDeCasos(similares, regras.tipoDetectado, regras.setores);
-
-  // Tenta enriquecer via cerebroService (IA Anthropic), mas não bloqueia se falhar
-  let analiseIA = {};
-  try {
-    analiseIA = await cerebroService.analisarManifestacao({
-      ...manifestacao,
-      empresaReclamante: manifestacao.empresaReclamante || manifestacao.EMPRESA_RECLAMANTE,
-      descricao: manifestacao.descricao || manifestacao.DESCRICAO,
-      casosSemelhantes: similares, // envia os similares já encontrados para enriquecer o prompt
-    }, regras);
-  } catch (e) {
-    console.warn('cerebroService.analisarManifestacao falhou, usando apenas regras locais:', e.message);
-  }
-
-  // Montar resposta final — prioriza IA quando disponível, cai para local
-  const setoresFinal = analiseIA.setoresSugeridos || regras.setores;
-  const tipoFinal = analiseIA.tipoSugerido || regras.tipoDetectado;
-  const confiancaFinal = analiseIA.confianca ?? regras.tipoConfianca;
-  const tratativaFinal = analiseIA.tratativaSugerida || tratativaDeHistorico || null;
-  const devolutiva = analiseIA.devolutivaSugerida || gerarDevolutiva(
-    manifestacao.empresaReclamante || manifestacao.EMPRESA_RECLAMANTE,
-    tipoFinal,
-    setoresFinal
-  );
-
-  return {
-    tipoSugerido: tipoFinal,
-    tipoID: regras.tipoID,
-    confianca: confiancaFinal,
-    setoresSugeridos: setoresFinal,
-    prioridade: analiseIA.prioridade || regras.prioridade,
-    slaHoras: analiseIA.slaHoras || regras.slaHoras,
-    geraRNC: analiseIA.geraRNC ?? regras.geraRNC,
-    procedimentoSugerido: analiseIA.procedimentoSugerido || regras.procedimentoSugerido,
-    perguntasNecessarias: analiseIA.perguntasNecessarias || regras.perguntasNecessarias || [],
-    casosSemelhantes: similares,        // ← sempre vem da planilha real
-    tratativaSugerida: tratativaFinal,  // ← derivada do histórico + IA
-    devolutivaSugerida: devolutiva,
-    causaProvavel: analiseIA.causaProvavel || analiseIA.causa || null,
-    reincidente: analiseIA.reincidente ?? (similares.filter(s => s.empresa && s.empresa !== '—').length > 1),
-    origemAnalise: analiseIA.tipoSugerido ? 'hibrida' : 'local',
-    tempoAnaliseSegundos: Math.round((Date.now() - inicio) / 1000),
-  };
+  const analise = await cerebroService.analisarManifestacao({
+    ...manifestacao,
+    empresaReclamante: manifestacao.empresaReclamante || manifestacao.EMPRESA_RECLAMANTE,
+    descricao: manifestacao.descricao || manifestacao.DESCRICAO,
+  }, regras);
+  return { ...analise, tipoID: regras.tipoID, tempoAnaliseSegundos: Math.round((Date.now() - inicio) / 1000) };
 }
 
 function normalizarEmpresa(raw) {
@@ -520,11 +343,11 @@ function normalizarData(val) {
 // ===========================================================
 
 app.get('/api/health', (req, res) => {
-  res.json({ sucesso: true, status: 'ok', versao: '5.7.0', sistema: 'Assistente SAC Chiacchio', ts: new Date().toISOString() });
+  res.json({ sucesso: true, status: 'ok', versao: '5.6.0', sistema: 'Assistente SAC Chiacchio', ts: new Date().toISOString() });
 });
 
 app.get('/', (req, res) => {
-  res.json({ sucesso: true, status: 'ok', versao: '5.7.0', sistema: 'Assistente SAC Chiacchio' });
+  res.json({ sucesso: true, status: 'ok', versao: '5.6.0', sistema: 'Assistente SAC Chiacchio' });
 });
 
 // ===== MIDDLEWARE AUTH =====
@@ -609,10 +432,7 @@ app.post('/api/analise', async (req, res) => {
 
 app.post('/api/analise/similares', async (req, res) => {
   try {
-    const { descricao, tipo, empresaReclamada, limite } = req.body || {};
-    const similares = await buscarCasosSemelhantesInterno(
-      descricao || '', tipo || '', empresaReclamada || '', Number(limite || 8)
-    );
+    const similares = await cerebroService.buscarCasosSimilares(req.body || {}, Number(req.body?.limite || 8));
     res.json({ sucesso:true, total:similares.length, itens:similares });
   } catch(e) {
     res.status(500).json({ sucesso:false, erro:e.message, itens:[] });
@@ -978,105 +798,6 @@ app.get('/api/setores', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL
   try { const data=await lerAba('CONFIG_SETORES',50); res.json({sucesso:true,total:data.length,itens:data}); }
   catch (e) { res.status(500).json({sucesso:false,erro:e.message,dados:[]}); }
 });
-
-app.post('/api/setores', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
-  try {
-    const b=req.body||{};
-    if(!b.SETOR) return res.status(400).json({sucesso:false,erro:'Nome do setor é obrigatório.'});
-    const id=await gerarProximoID('CONFIG_SETORES','ST','ID_SETOR');
-    const obj={
-      ID_SETOR:id, SETOR:b.SETOR, DESCRICAO:b.DESCRICAO||'', RESPONSAVEL:b.RESPONSAVEL||'',
-      SUBSTITUTO:b.SUBSTITUTO||'', EMAIL_RESPONSAVEL:b.EMAIL_RESPONSAVEL||'', SLA_HORAS:b.SLA_HORAS||72,
-      RESPONSABILIDADES:b.RESPONSABILIDADES||'', REGRAS_OPERACIONAIS:b.REGRAS_OPERACIONAIS||'',
-      PROCEDIMENTOS_ORIENTACOES:b.PROCEDIMENTOS_ORIENTACOES||'', ALERTAS:b.ALERTAS||'', ATIVO:b.ATIVO||'SIM'
-    };
-    await appendObjeto('CONFIG_SETORES', obj);
-    await registrarAuditoria(req.user?.usuario||'sistema','CRIOU_SETOR',id,'CONFIG_SETORES',null,{setor:b.SETOR});
-    res.json({sucesso:true,id,setor:obj});
-  } catch(e){ console.error(e); res.status(500).json({sucesso:false,erro:e.message}); }
-});
-
-app.patch('/api/setores/:id', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
-  try {
-    const dados = { ...req.body };
-    const resultado = await atualizarPorID('CONFIG_SETORES', req.params.id, dados, ['ID_SETOR','SETOR']);
-    if (!resultado) return res.status(404).json({sucesso:false,erro:'Setor não encontrado.'});
-    await registrarAuditoria(req.user?.usuario||'sistema','EDITOU_SETOR',req.params.id,'CONFIG_SETORES',null,dados);
-    res.json({sucesso:true});
-  } catch(e){ console.error(e); res.status(500).json({sucesso:false,erro:e.message}); }
-});
-
-// ===== MATRIZ DE TRATAMENTO =====
-app.get('/api/matriz', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
-  try {
-    const regras = await lerAba('REGRAS_ROTEAMENTO', 500);
-    const itens = regras.map(r => ({
-      ID_MATRIZ: r.ID_REGRA,
-      TEMA: r.TIPO || r.TEMA || '',
-      SETOR_PRINCIPAL: (r.SETORES_ENVOLVIDOS||'').split('+')[0]?.trim().split('(')[0].trim() || '',
-      SETORES_APOIO: (r.SETORES_ENVOLVIDOS||'').split('+').slice(1).map(s=>s.trim().split('(')[0].trim()).filter(Boolean).join(', '),
-      SLA_HORAS: r.SLA_HORAS || r.PRAZO_HORAS || 72,
-      PRIORIDADE: r.PRIORIDADE || 'Média',
-      GERA_RNC: r.GERA_RNC || 'Não',
-      APROVACAO: r.APROVACAO || 'Analista',
-      FOLLOW_UP: r.FOLLOW_UP || '',
-      ATIVO: r.ATIVO || 'SIM',
-    }));
-    res.json({ sucesso: true, total: itens.length, itens });
-  } catch (e) { console.error(e); res.status(500).json({ sucesso:false, erro:e.message, itens:[] }); }
-});
-
-app.post('/api/matriz', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
-  try {
-    const b=req.body||{};
-    if(!b.TEMA) return res.status(400).json({sucesso:false,erro:'Tema é obrigatório.'});
-    const id=await gerarProximoID('REGRAS_ROTEAMENTO','REG','ID_REGRA');
-    const setoresEnvolvidos=[b.SETOR_PRINCIPAL, ...String(b.SETORES_APOIO||'').split(',').map(s=>s.trim()).filter(Boolean)].filter(Boolean).join(' + ');
-    const obj={
-      ID_REGRA:id, TIPO:b.TEMA, SETORES_ENVOLVIDOS:setoresEnvolvidos, SLA_HORAS:b.SLA_HORAS||72,
-      PRIORIDADE:b.PRIORIDADE||'Média', GERA_RNC:b.GERA_RNC||'Não', APROVACAO:b.APROVACAO||'Analista',
-      FOLLOW_UP:b.FOLLOW_UP||'', ATIVO:'SIM'
-    };
-    await appendObjeto('REGRAS_ROTEAMENTO', obj);
-    await appendObjeto('VERSOES_PARAMETROS', {
-      DATA:new Date().toISOString(), USUARIO:req.user?.usuario||'sistema', ENTIDADE:'REGRAS_ROTEAMENTO',
-      ID_ENTIDADE:id, DESCRICAO_MUDANCA:`Nova regra criada: ${b.TEMA}`
-    }).catch(()=>{});
-    await registrarAuditoria(req.user?.usuario||'sistema','CRIOU_REGRA_MATRIZ',id,'REGRAS_ROTEAMENTO',null,{tema:b.TEMA});
-    res.json({sucesso:true,id});
-  } catch(e){ console.error(e); res.status(500).json({sucesso:false,erro:e.message}); }
-});
-
-app.patch('/api/matriz/:id', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
-  try {
-    const b=req.body||{};
-    const dados={};
-    if(b.TEMA!==undefined) dados.TIPO=b.TEMA;
-    if(b.SLA_HORAS!==undefined) dados.SLA_HORAS=b.SLA_HORAS;
-    if(b.PRIORIDADE!==undefined) dados.PRIORIDADE=b.PRIORIDADE;
-    if(b.GERA_RNC!==undefined) dados.GERA_RNC=b.GERA_RNC;
-    if(b.APROVACAO!==undefined) dados.APROVACAO=b.APROVACAO;
-    if(b.FOLLOW_UP!==undefined) dados.FOLLOW_UP=b.FOLLOW_UP;
-    if(b.SETOR_PRINCIPAL!==undefined || b.SETORES_APOIO!==undefined){
-      const regras = await lerAba('REGRAS_ROTEAMENTO', 500);
-      const atual = regras.find(r => r.ID_REGRA === req.params.id) || {};
-      const principalAtual = (atual.SETORES_ENVOLVIDOS||'').split('+')[0]?.trim().split('(')[0].trim() || '';
-      const apoioAtual = (atual.SETORES_ENVOLVIDOS||'').split('+').slice(1).map(s=>s.trim().split('(')[0].trim()).filter(Boolean).join(', ');
-      const principal = b.SETOR_PRINCIPAL !== undefined ? b.SETOR_PRINCIPAL : principalAtual;
-      const apoio = b.SETORES_APOIO !== undefined ? b.SETORES_APOIO : apoioAtual;
-      dados.SETORES_ENVOLVIDOS=[principal, ...String(apoio||'').split(',').map(s=>s.trim()).filter(Boolean)].filter(Boolean).join(' + ');
-    }
-    const resultado = await atualizarPorID('REGRAS_ROTEAMENTO', req.params.id, dados, ['ID_REGRA']);
-    if (!resultado) return res.status(404).json({sucesso:false,erro:'Regra não encontrada.'});
-    await appendObjeto('VERSOES_PARAMETROS', {
-      DATA:new Date().toISOString(), USUARIO:req.user?.usuario||'sistema', ENTIDADE:'REGRAS_ROTEAMENTO',
-      ID_ENTIDADE:req.params.id, DESCRICAO_MUDANCA:`Regra editada`
-    }).catch(()=>{});
-    await registrarAuditoria(req.user?.usuario||'sistema','EDITOU_REGRA_MATRIZ',req.params.id,'REGRAS_ROTEAMENTO',null,dados);
-    res.json({sucesso:true});
-  } catch(e){ console.error(e); res.status(500).json({sucesso:false,erro:e.message}); }
-});
-
 app.get('/api/conhecimento', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
   try { const data=await lerAba('CONHECIMENTO_SETORES',200); res.json({sucesso:true,total:data.length,itens:data}); }
   catch (e) { res.status(500).json({sucesso:false,erro:e.message,dados:[]}); }
@@ -1101,6 +822,163 @@ app.get('/api/validacoes', requerPerfil('MASTER','ANALISTA SAC'), async (req, re
   try { const data=await lerAba('HISTORICO_VALIDACOES',1000); res.json({sucesso:true,total:data.length,itens:data}); }
   catch (e) { res.status(500).json({sucesso:false,erro:e.message,dados:[]}); }
 });
+
+
+app.get('/api/caso/:fonte/:id', async (req, res) => {
+  try {
+    const { fonte, id } = req.params;
+    const mapaFontes = {
+      'BANCO_HISTORICO': 'BANCO_HISTORICO',
+      'MANIFESTACOES': 'MANIFESTACOES',
+      'SAC_ANALISE_DEFINITIVA': 'SAC_ANALISE_DEFINITIVA',
+      'Reclamacoes': 'Reclamações + devolutiva',
+      'HISTORICO': 'BANCO_HISTORICO',
+    };
+    const aba = mapaFontes[fonte] || fonte;
+    const camposId = ['ID_HISTORICO','ID_MANIFESTACAO','ID_ANALISE'];
+    let item = null;
+    let fonteReal = aba;
+
+    // Tentar na aba solicitada primeiro
+    try {
+      const data = await lerAba(aba, 2000);
+      item = data.find(r => camposId.some(c => String(r[c]||'') === String(id)));
+    } catch(e) { /* aba pode não existir */ }
+
+    // Se não achou, varrer as três fontes principais
+    if(!item){
+      for(const nomeAba of ['BANCO_HISTORICO','MANIFESTACOES','SAC_ANALISE_DEFINITIVA']){
+        try {
+          const rows = await lerAba(nomeAba, 2000);
+          const found = rows.find(r => camposId.some(c => String(r[c]||'') === String(id)));
+          if(found){ item = found; fonteReal = nomeAba; break; }
+        } catch(e) { /* continua */ }
+      }
+    }
+
+    if(!item) return res.status(404).json({ sucesso: false, erro: `Caso ${id} não encontrado em nenhuma fonte.` });
+    res.json({ sucesso: true, caso: { ...item, _fonte_real: fonteReal } });
+  } catch(e) {
+    console.error('/api/caso erro:', e);
+    res.status(500).json({ sucesso: false, erro: e.message });
+  }
+});
+
+
+// ===== ROTA: BUSCAR CASO POR FONTE E ID (v2.0 — robusta) =====
+app.get('/api/caso/:fonte/:id', async (req, res) => {
+  try {
+    const fonteRaw = decodeURIComponent(req.params.fonte || '');
+    const id = decodeURIComponent(req.params.id || '');
+    if (!id) return res.status(400).json({ sucesso: false, erro: 'ID obrigatório.' });
+
+    const mapaFontes = {
+      'BANCO_HISTORICO': 'BANCO_HISTORICO',
+      'HISTORICO': 'BANCO_HISTORICO',
+      'MANIFESTACOES': 'MANIFESTACOES',
+      'SAC_ANALISE_DEFINITIVA': 'SAC_ANALISE_DEFINITIVA',
+      'ANALISE': 'SAC_ANALISE_DEFINITIVA',
+      'RECLAMACOES': 'Reclamações + devolutiva',
+      'Reclamacoes': 'Reclamações + devolutiva',
+      'Reclamações + devolutiva': 'Reclamações + devolutiva',
+    };
+    const camposId = ['ID_HISTORICO','ID_MANIFESTACAO','ID_ANALISE','ID','id'];
+    const fonteNorm = mapaFontes[fonteRaw] || mapaFontes[fonteRaw.toUpperCase()] || fonteRaw;
+
+    let item = null;
+    let fonteReal = fonteNorm;
+
+    // Tentar fonte solicitada primeiro
+    try {
+      const data = await lerAba(fonteNorm, 2000);
+      item = data.find(r => camposId.some(c => String(r[c] ?? '').trim() === id.trim()));
+    } catch(e) { /* continua */ }
+
+    // Varrer todas as fontes principais se não achou
+    if (!item) {
+      const fontes = ['BANCO_HISTORICO', 'MANIFESTACOES', 'SAC_ANALISE_DEFINITIVA'];
+      for (const aba of fontes) {
+        if (aba === fonteNorm) continue;
+        try {
+          const rows = await lerAba(aba, 2000);
+          const found = rows.find(r => camposId.some(c => String(r[c] ?? '').trim() === id.trim()));
+          if (found) { item = found; fonteReal = aba; break; }
+        } catch(e) { /* continua */ }
+      }
+    }
+
+    if (!item) return res.status(404).json({ sucesso: false, erro: `Caso "${id}" não encontrado.` });
+    res.json({ sucesso: true, caso: { ...item, _fonte_real: fonteReal } });
+  } catch(e) {
+    console.error('/api/caso erro:', e.message);
+    res.status(500).json({ sucesso: false, erro: e.message });
+  }
+});
+
+// ===== ROTA: REGISTRAR USO DE CASO SIMILAR COMO REFERÊNCIA =====
+app.post('/api/caso-similar/usar-referencia', requerPerfil('MASTER','ANALISTA SAC'), async (req, res) => {
+  try {
+    const { idManifestacao, idCasoSimilar, fonteCaso, pctSimilaridade, tratativa, devolutiva } = req.body;
+    if (!idManifestacao || !idCasoSimilar) {
+      return res.status(400).json({ sucesso: false, erro: 'idManifestacao e idCasoSimilar são obrigatórios.' });
+    }
+    const usuario = req.user?.usuario || 'sistema';
+    const agora = new Date().toISOString();
+
+    // 1. Atualizar MANIFESTACOES com os campos de referência
+    await atualizarPorID('MANIFESTACOES', idManifestacao, {
+      CASO_REFERENCIA_PRINCIPAL: idCasoSimilar,
+      TRATATIVA_CASO_REFERENCIA: tratativa || '',
+      FONTE_TRATATIVA: `CASO_SIMILAR:${fonteCaso || 'BANCO_HISTORICO'}:${idCasoSimilar}:${pctSimilaridade || 0}%`,
+      TRATATIVA_SUGERIDA: tratativa || '',
+    });
+
+    // 2. Registrar em CASOS_SIMILARES_SAC (cria a aba se não existir)
+    try {
+      await appendObjeto('CASOS_SIMILARES_SAC', {
+        ID_REGISTRO: `CSAC-${Date.now()}`,
+        ID_MANIFESTACAO: idManifestacao,
+        ID_CASO_SIMILAR: idCasoSimilar,
+        FONTE_CASO: fonteCaso || 'BANCO_HISTORICO',
+        PCT_SIMILARIDADE: pctSimilaridade || 0,
+        FOI_UTILIZADO: 'SIM',
+        TRATATIVA_UTILIZADA: tratativa || '',
+        USUARIO: usuario,
+        DATA_USO: agora,
+      });
+    } catch(e) {
+      // Aba pode não existir ainda — loga mas não falha
+      console.warn('CASOS_SIMILARES_SAC não disponível:', e.message);
+    }
+
+    // 3. Registrar em LOG_DECISOES_SAC
+    try {
+      await appendObjeto('LOG_DECISOES_SAC', {
+        ID_LOG: `LOG-${Date.now()}`,
+        ID_MANIFESTACAO: idManifestacao,
+        ACAO: 'USAR_CASO_SIMILAR_COMO_REFERENCIA',
+        DETALHE: `Caso ${idCasoSimilar} (${pctSimilaridade}% de compatibilidade) de ${fonteCaso}`,
+        USUARIO: usuario,
+        DATA_HORA: agora,
+      });
+    } catch(e) {
+      console.warn('LOG_DECISOES_SAC não disponível:', e.message);
+    }
+
+    // 4. Auditoria
+    await registrarAuditoria(usuario, 'CASO_SIMILAR_REFERENCIA', idManifestacao, 'MANIFESTACOES', null, {
+      casoPrincipal: idCasoSimilar,
+      fonte: fonteCaso,
+      pct: pctSimilaridade,
+    });
+
+    res.json({ sucesso: true, mensagem: 'Referência registrada com sucesso.' });
+  } catch(e) {
+    console.error('/api/caso-similar/usar-referencia erro:', e.message);
+    res.status(500).json({ sucesso: false, erro: e.message });
+  }
+});
+
 app.get('/api/auditoria', requerPerfil('MASTER'), async (req, res) => {
   try { const data=await lerAba('LOG_SISTEMA',1000); res.json({sucesso:true,total:data.length,itens:data}); }
   catch (e) { res.status(500).json({sucesso:false,erro:e.message,dados:[]}); }
@@ -1231,7 +1109,7 @@ app.use((err, req, res, next) => {
 
 if (require.main === module) {
   const PORT = process.env.PORT || 3000;
-  app.listen(PORT, () => console.log(`SAC Chiacchio API v5.7.0 rodando na porta ${PORT}`));
+  app.listen(PORT, () => console.log(`SAC Chiacchio API v5.6.0 rodando na porta ${PORT}`));
 }
 
 module.exports = app;
