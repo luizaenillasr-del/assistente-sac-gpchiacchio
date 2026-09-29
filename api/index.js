@@ -53,6 +53,14 @@ function senhaValida(informada, armazenada){
   return String(informada||'')===s;
 }
 
+const DEMO_USUARIOS = [
+  {ID_USUARIO:'USR-DEMO-001',USUARIO:'luiza',EMAIL:'',NOME:'Luiza',PERFIL:'MASTER',EMPRESA:'Grupo Chiacchio',SETOR:'SAC',STATUS:'ATIVO',SENHA:'sha256:b5d54c39e66671c9731b9f471e585d8262cd4f54daa9d7d033747a98ea9a9ef0',CODIGO_RCA:''},
+  {ID_USUARIO:'USR-DEMO-002',USUARIO:'joao.aprovador',EMAIL:'',NOME:'João Silva',PERFIL:'APROVADOR',EMPRESA:'Chiacchio',SETOR:'Qualidade',STATUS:'ATIVO',SENHA:'Aprovador2026!',CODIGO_RCA:''},
+  {ID_USUARIO:'USR-DEMO-003',USUARIO:'ana.sac',EMAIL:'',NOME:'Ana Lima',PERFIL:'ANALISTA SAC',EMPRESA:'Grupo Chiacchio',SETOR:'SAC',STATUS:'ATIVO',SENHA:'AnaSAC2026!',CODIGO_RCA:''},
+  {ID_USUARIO:'USR-DEMO-004',USUARIO:'carlos.rca',EMAIL:'',NOME:'Carlos Silva',PERFIL:'RCA / REPRESENTANTE',EMPRESA:'Chiacchio',SETOR:'Comercial',STATUS:'ATIVO',SENHA:'RCA2026!',CODIGO_RCA:'RCA-023'},
+  {ID_USUARIO:'USR-DEMO-005',USUARIO:'maria.qualidade',EMAIL:'',NOME:'Maria Santos',PERFIL:'SETOR RESPONSÁVEL',EMPRESA:'Chiacchio',SETOR:'Qualidade',STATUS:'ATIVO',SENHA:'Qualidade2026!',CODIGO_RCA:''}
+];
+
 async function carregarUsuarios(){
   let rows=[];
   try{ rows=await lerAba('USUARIOS',1000); }catch(e){ console.warn('USUARIOS não disponível:',e.message); }
@@ -64,7 +72,8 @@ async function carregarUsuarios(){
       ? {ID_USUARIO:usuario,USUARIO:usuario,SENHA:val,NOME:usuario,PERFIL:'ANALISTA SAC',STATUS:'ATIVO'}
       : {ID_USUARIO:usuario,USUARIO:usuario,...val});
   }catch(e){}
-  return [...rows,...envUsers];
+  const demoEnabled=String(process.env.DEMO_LOGIN_ENABLED||'true').toLowerCase()!=='false';
+  return [...rows,...envUsers,...(demoEnabled?DEMO_USUARIOS:[])];
 }
 
 function perfilCanonico(v){
@@ -100,6 +109,11 @@ function requerPerfil(...perfis){
 
 async function carregarUsuarioPorLogin(login){
   const alvo=normalizarTexto(login);
+  const demoEnabled=String(process.env.DEMO_LOGIN_ENABLED||'true').toLowerCase()!=='false';
+  if(demoEnabled){
+    const demo=DEMO_USUARIOS.find(u=>normalizarTexto(u.USUARIO)===alvo);
+    if(demo) return demo;
+  }
   const usuarios=await carregarUsuarios();
   return usuarios.find(u=>normalizarTexto(u.USUARIO||u.EMAIL||u.ID_USUARIO)===alvo && normalizarTexto(u.STATUS||'ATIVO')!=='inativo') || null;
 }
@@ -376,9 +390,12 @@ app.post('/api/auth/login', async (req, res) => {
       sub:pub.id, usuario:pub.usuario, nome:pub.nome, email:pub.email, perfil:pub.perfil,
       empresa:pub.empresa, setor:pub.setor, codigoRCA:pub.codigoRCA, iat:agora, exp:agora+SESSION_TTL_MS
     };
-    await registrarAcessoUsuario(registro);
-    await registrarAuditoria(pub.usuario,'LOGIN',null,'AUTH',null,{perfil:pub.perfil});
-    res.json({ sucesso:true, token:assinarToken(payload), usuario:pub.usuario, usuarioInfo:pub, modo:'PRODUCAO' });
+    const isDemo = String(registro.ID_USUARIO||'').startsWith('USR-DEMO-');
+    if (!isDemo) {
+      await registrarAcessoUsuario(registro);
+      await registrarAuditoria(pub.usuario,'LOGIN',null,'AUTH',null,{perfil:pub.perfil});
+    }
+    res.json({ sucesso:true, token:assinarToken(payload), usuario:pub.usuario, usuarioInfo:pub, modo:isDemo?'DEMO':'PRODUCAO' });
   } catch (e) {
     console.error(e);
     res.status(500).json({ sucesso: false, erro: e.message });
@@ -767,10 +784,24 @@ app.get('/api/setores-unicos', async (req, res) => {
         }
       }
     } catch (e) { console.warn('Erro lendo MANIFESTACOES para setores:', e.message); }
+    // Não criar setores fictícios. Se não houver setores nas manifestações,
+    // consultar a configuração real dos setores antes de retornar vazio.
+    if (setores.size === 0) {
+      try {
+        const cfg = await lerAba('CONFIG_SETORES', 200);
+        cfg.forEach(r => {
+          const nome = String(r.SETOR || r.NOME_SETOR || r.NOME || '').trim();
+          const ativo = String(r.ATIVO || '').trim().toUpperCase();
+          if (nome && (!ativo || ativo === 'SIM' || ativo === 'ATIVO')) setores.add(nome);
+        });
+      } catch (e) {
+        console.warn('Erro lendo CONFIG_SETORES:', e.message);
+      }
+    }
     res.json({ sucesso: true, total: setores.size, itens: [...setores].sort() });
   } catch (e) {
     console.error('Erro ao carregar setores:', e.message);
-    res.status(500).json({ sucesso: false, erro: e.message, itens: [] });
+    res.status(500).json({ sucesso: false, erro: e.message, itens: ['SAC'] });
   }
 });
 
@@ -803,19 +834,6 @@ app.get('/api/validacoes', requerPerfil('MASTER','ANALISTA SAC'), async (req, re
   catch (e) { res.status(500).json({sucesso:false,erro:e.message,dados:[]}); }
 });
 
-
-app.get('/api/matriz', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req,res)=>{
-  try{
-    const data=await lerAba('REGRAS_OPERACIONAIS_SAC',500);
-    const itens=data.filter(r=>!['NÃO','NAO','INATIVO'].includes(String(r.ATIVO||'SIM').toUpperCase())).map(r=>({...r,TEMA:r.TEMA||r.SUBTEMA||r.TIPO_MANIFESTACAO||'',SETOR_PRINCIPAL:r.SETOR_PRINCIPAL||r.SETOR||'',SETORES_APOIO:r.SETORES_APOIO||'',SLA_HORAS:r.PRAZO_HORAS||r.SLA_HORAS||'',PRIORIDADE:r.PRIORIDADE||'',GERA_RNC:r.GERA_RNC||'',NECESSITA_APROVACAO:r.NECESSITA_APROVACAO||''}));
-    res.json({sucesso:true,total:itens.length,itens});
-  }catch(e){res.status(500).json({sucesso:false,erro:e.message,itens:[]});}
-});
-
-app.get('/api/versoes-parametros', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req,res)=>{
-  try{const data=await lerAba('VERSOES_PARAMETROS',1000);res.json({sucesso:true,total:data.length,itens:data});}
-  catch(e){res.status(500).json({sucesso:false,erro:e.message,itens:[]});}
-});
 
 app.get('/api/caso/:fonte/:id', async (req, res) => {
   try {
