@@ -3905,7 +3905,8 @@ loadVisaoGeral();
   if(typeof pageLoaders==='object'){
     pageLoaders['visao-geral']=window.loadVisaoGeral;
     pageLoaders['acompanhamento']=window.loadAcompanhamento;
-    pageLoaders['setores']=window.loadSetores;
+    if(typeof loadSetores==='function') pageLoaders['setores']=loadSetores;
+    window.loadSetores=loadSetores;
     pageLoaders['matriz']=window.loadMatriz;
   }
 
