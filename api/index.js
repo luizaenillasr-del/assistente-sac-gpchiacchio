@@ -1650,9 +1650,7 @@ app.get('/api/planilha/ler', requerPerfil('MASTER','ANALISTA SAC'), async (req,r
 
 app.get('/api/planilha/:aba', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
   try {
-    const raw = req.params.aba;
-    // Try exact name first, then sanitized fallback
-    const aba = raw.toUpperCase().replace(/[^A-Z0-9_]/g,'');
+    const aba = req.params.aba.toUpperCase().replace(/[^A-Z0-9_]/g,'');
     const max = Math.min(parseInt(req.query.max||'2000',10), 5000);
     const data = await lerAba(aba, max);
     res.json({ sucesso:true, aba, total:data.length, itens:data });
