@@ -678,6 +678,10 @@
   </div>
 
   <div class="sidebar-section">Inteligência</div>
+  <div class="sidebar-item" onclick="navigate('cerebro', this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.46 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.44-1.14z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.46 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.44-1.14z"/></svg>
+    Cérebro IA
+  </div>
   <div class="sidebar-item" onclick="navigate('painel-maquina', this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
     Painel da Máquina
@@ -2119,6 +2123,82 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
             Salvar documento
           </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== CÉREBRO IA ===== -->
+  <div class="page" id="page-cerebro">
+    <div class="topbar">
+      <div class="breadcrumb">Inteligência / <span>Cérebro IA</span></div>
+      <div class="page-header">
+        <h1 class="page-title">Cérebro IA</h1>
+        <div class="page-actions">
+          <span style="font-size:12px;color:var(--gray-400)" id="cerebro-status">Pronto para análise</span>
+        </div>
+      </div>
+    </div>
+    <div class="content" style="padding:0 28px 28px">
+      <!-- Análise manual -->
+      <div class="section-card" style="margin-bottom:16px">
+        <div class="section-title">Analisar Manifestação</div>
+        <div class="section-sub">Rode o Cérebro IA manualmente em qualquer manifestação para obter análise completa.</div>
+        <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
+          <input id="cerebro-id-input" class="form-input" style="width:220px" placeholder="ID da manifestação (ex: MAN-001)">
+          <button class="btn btn-primary" onclick="rodarCerebro()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            Rodar Análise
+          </button>
+        </div>
+        <div id="cerebro-loading" style="display:none;margin-top:14px;color:var(--gray-400);font-size:13px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="width:16px;height:16px;border:2px solid var(--red);border-top-color:transparent;border-radius:50%;animation:spin 0.8s linear infinite"></div>
+            Analisando com IA...
+          </div>
+        </div>
+        <div id="cerebro-resultado" style="display:none;margin-top:16px"></div>
+      </div>
+
+      <!-- Capacidades do Cérebro -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:16px">
+        <div class="section-card" style="text-align:center">
+          <div style="font-size:28px;margin-bottom:8px">🔍</div>
+          <div style="font-weight:700;font-size:13px">Casos Similares</div>
+          <div style="font-size:12px;color:var(--gray-400);margin-top:4px">Busca por similaridade Jaccard no banco histórico</div>
+        </div>
+        <div class="section-card" style="text-align:center">
+          <div style="font-size:28px;margin-bottom:8px">🔄</div>
+          <div style="font-weight:700;font-size:13px">Detecção de Reincidência</div>
+          <div style="font-size:12px;color:var(--gray-400);margin-top:4px">Identifica padrões do mesmo cliente e produto</div>
+        </div>
+        <div class="section-card" style="text-align:center">
+          <div style="font-size:28px;margin-bottom:8px">⏱</div>
+          <div style="font-weight:700;font-size:13px">Cálculo de SLA</div>
+          <div style="font-size:12px;color:var(--gray-400);margin-top:4px">Horas restantes, % consumido e status de prazo</div>
+        </div>
+        <div class="section-card" style="text-align:center">
+          <div style="font-size:28px;margin-bottom:8px">📚</div>
+          <div style="font-weight:700;font-size:13px">Base de Conhecimento</div>
+          <div style="font-size:12px;color:var(--gray-400);margin-top:4px">Consulta políticas e procedimentos dos setores</div>
+        </div>
+        <div class="section-card" style="text-align:center">
+          <div style="font-size:28px;margin-bottom:8px">🤖</div>
+          <div style="font-weight:700;font-size:13px">Claude Haiku</div>
+          <div style="font-size:12px;color:var(--gray-400);margin-top:4px">Análise semântica profunda com LLM da Anthropic</div>
+        </div>
+        <div class="section-card" style="text-align:center">
+          <div style="font-size:28px;margin-bottom:8px">📊</div>
+          <div style="font-weight:700;font-size:13px">Score de Confiança</div>
+          <div style="font-size:12px;color:var(--gray-400);margin-top:4px">Pontuação composta 0–100 com explicabilidade</div>
+        </div>
+      </div>
+
+      <!-- Últimas análises -->
+      <div class="section-card">
+        <div class="section-title">Últimas Análises Registradas</div>
+        <div id="cerebro-ultimas" style="margin-top:12px;color:var(--gray-400);font-size:13px">
+          <button class="btn btn-secondary" style="margin-top:8px" onclick="loadUltimasAnalises()">Carregar histórico de análises</button>
         </div>
       </div>
     </div>
@@ -4324,6 +4404,7 @@ const pageLoaders = {
   'setores': loadSetores,
   'matriz': loadMatriz,
   'base-conhecimento': loadBaseConhecimento,
+  'cerebro': ()=>{},
   'painel-maquina': loadPainelMaquina,
   'causas': loadCausas,
   'sugestoes-melhoria': loadSugestoesMelhoria,
@@ -8036,6 +8117,78 @@ async function gerarSugestaoMelhoriaAuto(idManifestacao) {
     })});
     if (res.sucesso) alert(`Sugestão de melhoria ${res.id} criada com sucesso!`);
   } catch(e) { alert('Erro ao criar sugestão: ' + e.message); }
+}
+
+// ── Cérebro IA ────────────────────────────────────────────
+async function rodarCerebro() {
+  const id = (document.getElementById('cerebro-id-input')?.value || '').trim();
+  if (!id) { alert('Informe o ID da manifestação.'); return; }
+  const loading = document.getElementById('cerebro-loading');
+  const resultado = document.getElementById('cerebro-resultado');
+  const status = document.getElementById('cerebro-status');
+  loading.style.display = 'block';
+  resultado.style.display = 'none';
+  if (status) status.textContent = 'Analisando ' + id + '...';
+  try {
+    const res = await _apiFetch('/api/manifestacoes/' + encodeURIComponent(id) + '/analise', 30000);
+    loading.style.display = 'none';
+    if (!res.sucesso) throw new Error(res.erro);
+    const a = res.analise || {};
+    const conf = a.confianca || a.scoreConfianca || 0;
+    const corConf = conf >= 70 ? 'var(--green)' : conf >= 40 ? 'var(--yellow)' : 'var(--red)';
+    resultado.style.display = 'block';
+    resultado.innerHTML = `
+      <div style="border:1px solid var(--gray-200);border-radius:12px;padding:18px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <div style="font-size:16px;font-weight:700">Análise: ${id}</div>
+          <div style="font-size:20px;font-weight:800;color:${corConf}">${conf}% <span style="font-size:12px;font-weight:500;color:var(--gray-500)">confiança</span></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+          ${a.tipoDetectado||a.tipo ? `<div style="background:var(--gray-50);border-radius:8px;padding:10px"><div style="font-size:10px;font-weight:700;color:var(--gray-400);margin-bottom:3px">TIPO DETECTADO</div><div style="font-size:13px;font-weight:600">${a.tipoDetectado||a.tipo||'—'}</div></div>` : ''}
+          ${a.setores||a.setor ? `<div style="background:var(--gray-50);border-radius:8px;padding:10px"><div style="font-size:10px;font-weight:700;color:var(--gray-400);margin-bottom:3px">SETOR(ES)</div><div style="font-size:13px;font-weight:600">${Array.isArray(a.setores)?a.setores.join(', '):(a.setor||'—')}</div></div>` : ''}
+          ${a.prioridade ? `<div style="background:var(--gray-50);border-radius:8px;padding:10px"><div style="font-size:10px;font-weight:700;color:var(--gray-400);margin-bottom:3px">PRIORIDADE</div><div style="font-size:13px;font-weight:600">${a.prioridade}</div></div>` : ''}
+          ${a.sla ? `<div style="background:var(--gray-50);border-radius:8px;padding:10px"><div style="font-size:10px;font-weight:700;color:var(--gray-400);margin-bottom:3px">SLA</div><div style="font-size:13px;font-weight:600">${a.sla.horasRestantes??'—'}h restantes (${a.sla.percentualConsumido??'—'}%)</div></div>` : ''}
+        </div>
+        ${a.reincidencia?.detectada ? `<div style="background:var(--red-light);color:var(--red);padding:10px;border-radius:8px;font-size:13px;font-weight:600;margin-bottom:10px">⚠ Reincidência detectada — ${a.reincidencia.totalOcorrencias} ocorrências anteriores</div>` : ''}
+        ${a.tratativaSugerida ? `<div style="background:var(--green-light);border-radius:8px;padding:10px;margin-bottom:10px"><div style="font-size:10px;font-weight:700;color:var(--green);margin-bottom:3px">TRATATIVA SUGERIDA</div><div style="font-size:13px">${a.tratativaSugerida}</div></div>` : ''}
+        ${a.devolutivaSugerida ? `<div style="background:#EFF6FF;border-radius:8px;padding:10px;margin-bottom:10px"><div style="font-size:10px;font-weight:700;color:#1D4ED8;margin-bottom:3px">DEVOLUTIVA SUGERIDA</div><div style="font-size:13px">${a.devolutivaSugerida}</div></div>` : ''}
+        ${a.casosSimilares?.length ? `<div style="margin-bottom:10px"><div style="font-size:11px;font-weight:700;color:var(--gray-500);margin-bottom:6px">${a.casosSimilares.length} CASO(S) SIMILAR(ES) ENCONTRADO(S)</div>${a.casosSimilares.slice(0,3).map(c=>`<div style="font-size:12px;color:var(--gray-600);padding:4px 0;border-bottom:1px solid var(--gray-100)">${c.id||'—'} — ${c.similaridade}% similaridade · ${c.setor||'—'}</div>`).join('')}</div>` : ''}
+        ${a.explicabilidade ? `<details style="margin-top:10px"><summary style="font-size:12px;cursor:pointer;color:var(--gray-500)">Ver explicabilidade completa</summary><pre style="font-size:11px;background:var(--gray-50);padding:10px;border-radius:6px;margin-top:6px;white-space:pre-wrap;overflow-x:auto">${typeof a.explicabilidade==='object'?JSON.stringify(a.explicabilidade,null,2):a.explicabilidade}</pre></details>` : ''}
+      </div>`;
+    if (status) status.textContent = 'Análise concluída — ' + new Date().toLocaleTimeString('pt-BR');
+  } catch(e) {
+    loading.style.display = 'none';
+    resultado.style.display = 'block';
+    resultado.innerHTML = `<div style="background:var(--red-light);color:var(--red);padding:12px;border-radius:8px">Erro na análise: ${e.message}</div>`;
+    if (status) status.textContent = 'Erro na última análise';
+  }
+}
+
+async function loadUltimasAnalises() {
+  const el = document.getElementById('cerebro-ultimas');
+  if (!el) return;
+  el.innerHTML = '<div style="color:var(--gray-400)">Carregando...</div>';
+  try {
+    const res = await _apiFetch('/api/log-sistema?acao=ANALISE', 10000);
+    const itens = (res.itens || []).slice(0, 15);
+    if (!itens.length) { el.innerHTML = '<div style="color:var(--gray-400);font-size:13px">Nenhuma análise registrada ainda.</div>'; return; }
+    el.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:12px">
+      <thead><tr style="border-bottom:2px solid var(--gray-200)">
+        <th style="text-align:left;padding:6px 8px;color:var(--gray-500);font-size:10px">DATA/HORA</th>
+        <th style="text-align:left;padding:6px 8px;color:var(--gray-500);font-size:10px">MANIFESTAÇÃO</th>
+        <th style="text-align:left;padding:6px 8px;color:var(--gray-500);font-size:10px">AÇÃO</th>
+        <th style="text-align:left;padding:6px 8px;color:var(--gray-500);font-size:10px">USUÁRIO</th>
+      </tr></thead>
+      <tbody>${itens.map(l=>`<tr style="border-bottom:1px solid var(--gray-100)">
+        <td style="padding:6px 8px">${l.DATA_HORA?new Date(l.DATA_HORA).toLocaleString('pt-BR'):''}</td>
+        <td style="padding:6px 8px;font-weight:600">${l.ID_MANIFESTACAO||'—'}</td>
+        <td style="padding:6px 8px">${l.ACAO||'—'}</td>
+        <td style="padding:6px 8px;color:var(--gray-500)">${l.USUARIO||'—'}</td>
+      </tr>`).join('')}</tbody>
+    </table>`;
+  } catch(e) {
+    el.innerHTML = `<div style="color:var(--red);font-size:13px">Erro: ${e.message}</div>`;
+  }
 }
 
 // ── Adicionar LOG_SISTEMA endpoint helper ──────────────────

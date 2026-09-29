@@ -628,6 +628,14 @@ async function atualizarOuCriarSetor(nomeSetor,dados,usuario){
   return payload;
 }
 
+app.get('/api/setores', async(req,res)=>{
+  try {
+    await garantirAbaComCabecalhos('CONFIG_SETORES',['ID_SETOR','SETOR','DESCRICAO','RESPONSAVEL','EMPRESA','SLA_HORAS','ATIVO']);
+    const rows = await lerAba('CONFIG_SETORES', 500);
+    res.json({ sucesso: true, total: rows.length, itens: rows });
+  } catch(e) { res.status(500).json({ sucesso: false, erro: e.message, itens: [] }); }
+});
+
 app.get('/api/setores/:setor/operacional', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async(req,res)=>{
   try{
     const nome=decodeURIComponent(req.params.setor);
