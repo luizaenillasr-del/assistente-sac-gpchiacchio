@@ -636,6 +636,87 @@ app.get('/api/setores', async(req,res)=>{
   } catch(e) { res.status(500).json({ sucesso: false, erro: e.message, itens: [] }); }
 });
 
+app.post('/api/setores', requerPerfil('MASTER','ANALISTA SAC'), async(req,res)=>{
+  try {
+    const HEADERS=['ID_SETOR','SETOR','DESCRICAO','RESPONSAVEL','EMPRESA','SLA_HORAS','ATIVO'];
+    await garantirAbaComCabecalhos('CONFIG_SETORES', HEADERS);
+    const { SETOR, DESCRICAO, RESPONSAVEL, EMPRESA, SLA_HORAS, ATIVO } = req.body;
+    if (!SETOR) return res.status(400).json({ sucesso: false, erro: 'SETOR é obrigatório.' });
+    const rows = await lerAba('CONFIG_SETORES', 500);
+    const existe = rows.find(r => normalizarTexto(r.SETOR) === normalizarTexto(SETOR));
+    if (existe) return res.status(409).json({ sucesso: false, erro: 'Setor já cadastrado.' });
+    const id = await gerarProximoID('CONFIG_SETORES', 'SET', 'ID_SETOR');
+    const obj = { ID_SETOR: id, SETOR, DESCRICAO: DESCRICAO||'', RESPONSAVEL: RESPONSAVEL||'', EMPRESA: EMPRESA||'', SLA_HORAS: SLA_HORAS||'72', ATIVO: ATIVO||'SIM' };
+    await appendObjeto('CONFIG_SETORES', obj);
+    await registrarAuditoria(req.user.usuario, 'CRIOU_SETOR', id, 'CONFIG_SETORES', null, obj);
+    res.status(201).json({ sucesso: true, setor: obj });
+  } catch(e) { res.status(500).json({ sucesso: false, erro: e.message }); }
+});
+
+app.patch('/api/setores/:id', requerPerfil('MASTER','ANALISTA SAC'), async(req,res)=>{
+  try {
+    const id = req.params.id;
+    const campos = ['SETOR','DESCRICAO','RESPONSAVEL','EMPRESA','SLA_HORAS','ATIVO'];
+    const dados = {};
+    campos.forEach(c => { if (req.body[c] !== undefined) dados[c] = req.body[c]; });
+    await atualizarPorID('CONFIG_SETORES', id, dados, ['ID_SETOR']);
+    const atualizado = await buscarPorID('CONFIG_SETORES', id, ['ID_SETOR']);
+    await registrarAuditoria(req.user.usuario, 'ATUALIZOU_SETOR', id, 'CONFIG_SETORES', null, dados);
+    res.json({ sucesso: true, setor: atualizado });
+  } catch(e) { res.status(500).json({ sucesso: false, erro: e.message }); }
+});
+
+// ===== PRODUTOS =====
+app.get('/api/produtos', async(req,res)=>{
+  try {
+    await garantirAbaComCabecalhos('PRODUTOS',['ID_PRODUTO','EMPRESA','PRODUTO','DESCRICAO','CATEGORIA','UNIDADE','ATIVO']);
+    const rows = await lerAba('PRODUTOS', 2000);
+    const empresa = req.query.empresa;
+    const itens = empresa ? rows.filter(r => normalizarTexto(r.EMPRESA||'') === normalizarTexto(empresa)) : rows;
+    res.json({ sucesso: true, total: itens.length, itens });
+  } catch(e) { res.status(500).json({ sucesso: false, erro: e.message, itens: [] }); }
+});
+
+app.post('/api/produtos/importar', requerPerfil('MASTER','ANALISTA SAC'), async(req,res)=>{
+  try {
+    const { itens } = req.body;
+    if (!Array.isArray(itens) || itens.length === 0) return res.status(400).json({ sucesso: false, erro: 'Nenhum item enviado.' });
+    const HEADERS=['ID_PRODUTO','EMPRESA','PRODUTO','DESCRICAO','CATEGORIA','UNIDADE','ATIVO'];
+    await garantirAbaComCabecalhos('PRODUTOS', HEADERS);
+    const existentes = await lerAba('PRODUTOS', 5000);
+    let criados = 0; let atualizados = 0;
+    for (const item of itens) {
+      const empresa = (item.EMPRESA||item.empresa||'').trim();
+      const produto = (item.PRODUTO||item.produto||item.NOME||item.nome||'').trim();
+      if (!produto) continue;
+      const chave = normalizarTexto(empresa+'|'+produto);
+      const existe = existentes.find(r => normalizarTexto((r.EMPRESA||'')+'|'+(r.PRODUTO||'')) === chave);
+      const obj = {
+        EMPRESA: empresa,
+        PRODUTO: produto,
+        DESCRICAO: item.DESCRICAO||item.descricao||'',
+        CATEGORIA: item.CATEGORIA||item.categoria||'',
+        UNIDADE: item.UNIDADE||item.unidade||'UN',
+        ATIVO: 'SIM',
+      };
+      if (existe) {
+        await atualizarPorID('PRODUTOS', existe.ID_PRODUTO, obj, ['ID_PRODUTO']);
+        atualizados++;
+      } else {
+        const rows2 = await lerAba('PRODUTOS', 5000);
+        let max = 0;
+        rows2.forEach(r => { const m = String(r.ID_PRODUTO||'').match(/(\d+)$/); if(m) max = Math.max(max, parseInt(m[1],10)); });
+        obj.ID_PRODUTO = `PRD-${String(max+1).padStart(4,'0')}`;
+        await appendObjeto('PRODUTOS', obj);
+        existentes.push(obj);
+        criados++;
+      }
+    }
+    await registrarAuditoria(req.user.usuario, 'IMPORTOU_PRODUTOS', `${criados}c/${atualizados}a`, 'PRODUTOS', null, { total: itens.length });
+    res.json({ sucesso: true, criados, atualizados, total: criados + atualizados });
+  } catch(e) { res.status(500).json({ sucesso: false, erro: e.message }); }
+});
+
 app.get('/api/setores/:setor/operacional', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async(req,res)=>{
   try{
     const nome=decodeURIComponent(req.params.setor);

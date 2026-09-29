@@ -2194,12 +2194,93 @@
         </div>
       </div>
 
+      <!-- Cadastro de Setores -->
+      <div class="section-card" style="margin-bottom:16px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div>
+            <div class="section-title" style="margin-bottom:2px">Cadastro de Setores</div>
+            <div class="section-sub">Gerencie os setores que recebem casos e defina SLA e responsáveis.</div>
+          </div>
+          <button class="btn btn-primary" onclick="abrirModalSetorCerebro()">+ Novo Setor</button>
+        </div>
+        <div id="cerebro-setores-loading" style="color:var(--gray-400);font-size:13px">Carregando...</div>
+        <div id="cerebro-setores-tabela" style="display:none;overflow-x:auto">
+          <table class="table" style="width:100%">
+            <thead><tr>
+              <th>Setor</th><th>Empresa</th><th>Responsável</th><th>SLA (h)</th><th>Status</th><th></th>
+            </tr></thead>
+            <tbody id="cerebro-setores-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Base de Produtos por Empresa -->
+      <div class="section-card" style="margin-bottom:16px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div>
+            <div class="section-title" style="margin-bottom:2px">Base de Produtos por Empresa</div>
+            <div class="section-sub">Importe uma planilha CSV com os produtos de cada empresa. Colunas: EMPRESA, PRODUTO, DESCRICAO, CATEGORIA, UNIDADE</div>
+          </div>
+          <label class="btn btn-secondary" style="cursor:pointer;margin:0">
+            📥 Importar CSV
+            <input type="file" id="upload-produtos-input" accept=".csv,.txt" style="display:none" onchange="handleUploadProdutos(this)">
+          </label>
+        </div>
+        <div id="produtos-import-status" style="font-size:13px;color:var(--gray-400);margin-bottom:8px"></div>
+        <div id="produtos-preview" style="display:none;overflow-x:auto">
+          <div style="font-size:12px;color:var(--gray-500);margin-bottom:6px" id="produtos-preview-count"></div>
+          <table class="table" style="width:100%;font-size:12px">
+            <thead><tr id="produtos-preview-head"></tr></thead>
+            <tbody id="produtos-preview-body"></tbody>
+          </table>
+          <div style="margin-top:10px;display:flex;gap:8px">
+            <button class="btn btn-primary" id="btn-confirmar-produtos" onclick="confirmarImportProdutos()">✔ Confirmar Importação</button>
+            <button class="btn btn-secondary" onclick="cancelarImportProdutos()">Cancelar</button>
+          </div>
+        </div>
+        <div id="cerebro-produtos-lista" style="overflow-x:auto;margin-top:4px">
+          <div id="cerebro-produtos-loading" style="color:var(--gray-400);font-size:13px">Carregando produtos...</div>
+          <table class="table" style="width:100%;display:none" id="cerebro-produtos-tabela">
+            <thead><tr><th>Empresa</th><th>Produto</th><th>Categoria</th><th>Unidade</th></tr></thead>
+            <tbody id="cerebro-produtos-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
       <!-- Últimas análises -->
       <div class="section-card">
         <div class="section-title">Últimas Análises Registradas</div>
         <div id="cerebro-ultimas" style="margin-top:12px;color:var(--gray-400);font-size:13px">
           <button class="btn btn-secondary" style="margin-top:8px" onclick="loadUltimasAnalises()">Carregar histórico de análises</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Setor Cérebro -->
+  <div class="modal-overlay" id="modal-setor-cerebro" style="display:none" onclick="if(event.target===this)fecharModalSetorCerebro()">
+    <div class="modal" style="max-width:500px;width:95%">
+      <div class="modal-header">
+        <span id="modal-setor-cerebro-title">Novo Setor</span>
+        <button class="modal-close" onclick="fecharModalSetorCerebro()">×</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="setor-cerebro-id">
+        <div class="form-group"><label class="form-label">Setor *</label><input id="setor-cerebro-nome" class="form-input" placeholder="Ex: Qualidade"></div>
+        <div class="form-group"><label class="form-label">Empresa</label><input id="setor-cerebro-empresa" class="form-input" placeholder="Ex: GP Chiacchio"></div>
+        <div class="form-group"><label class="form-label">Responsável</label><input id="setor-cerebro-responsavel" class="form-input"></div>
+        <div class="form-group"><label class="form-label">Descrição</label><textarea id="setor-cerebro-descricao" class="form-input" rows="2"></textarea></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="form-group"><label class="form-label">SLA (horas)</label><input id="setor-cerebro-sla" class="form-input" type="number" placeholder="72"></div>
+          <div class="form-group"><label class="form-label">Ativo</label>
+            <select id="setor-cerebro-ativo" class="form-input"><option value="SIM">SIM</option><option value="NÃO">NÃO</option></select>
+          </div>
+        </div>
+        <div id="setor-cerebro-erro" style="color:var(--red);font-size:13px;display:none"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="fecharModalSetorCerebro()">Cancelar</button>
+        <button class="btn btn-primary" onclick="salvarSetorCerebro()">Salvar</button>
       </div>
     </div>
   </div>
@@ -4404,7 +4485,7 @@ const pageLoaders = {
   'setores': loadSetores,
   'matriz': loadMatriz,
   'base-conhecimento': loadBaseConhecimento,
-  'cerebro': ()=>{},
+  'cerebro': ()=>{ loadCerebroSetores(); loadCerebroProdutos(); },
   'painel-maquina': loadPainelMaquina,
   'causas': loadCausas,
   'sugestoes-melhoria': loadSugestoesMelhoria,
@@ -8120,6 +8201,150 @@ async function gerarSugestaoMelhoriaAuto(idManifestacao) {
 }
 
 // ── Cérebro IA ────────────────────────────────────────────
+// ===== CÉREBRO: SETORES =====
+let _cerebroSetoresData = [];
+async function loadCerebroSetores() {
+  const loading = document.getElementById('cerebro-setores-loading');
+  const tabela = document.getElementById('cerebro-setores-tabela');
+  const tbody = document.getElementById('cerebro-setores-tbody');
+  if (!loading) return;
+  loading.style.display = 'block'; tabela.style.display = 'none';
+  try {
+    const r = await _apiFetch('/api/setores');
+    _cerebroSetoresData = r.itens || [];
+    tbody.innerHTML = _cerebroSetoresData.length === 0
+      ? '<tr><td colspan="6" style="text-align:center;color:var(--gray-400)">Nenhum setor cadastrado.</td></tr>'
+      : _cerebroSetoresData.map(s => `
+        <tr>
+          <td><strong>${s.SETOR||''}</strong></td>
+          <td>${s.EMPRESA||''}</td>
+          <td>${s.RESPONSAVEL||''}</td>
+          <td>${s.SLA_HORAS||''}</td>
+          <td><span class="badge ${(s.ATIVO||'SIM')==='SIM'?'badge-green':'badge-gray'}">${s.ATIVO||'SIM'}</span></td>
+          <td><button class="btn btn-secondary" style="padding:3px 10px;font-size:12px" onclick="editarSetorCerebro('${s.ID_SETOR}')">Editar</button></td>
+        </tr>`).join('');
+    loading.style.display = 'none'; tabela.style.display = 'block';
+  } catch(e) {
+    loading.textContent = 'Erro ao carregar setores: ' + e.message;
+  }
+}
+function abrirModalSetorCerebro(id) {
+  document.getElementById('modal-setor-cerebro-title').textContent = id ? 'Editar Setor' : 'Novo Setor';
+  document.getElementById('setor-cerebro-id').value = id||'';
+  document.getElementById('setor-cerebro-erro').style.display = 'none';
+  if (id) {
+    const s = _cerebroSetoresData.find(x => x.ID_SETOR === id) || {};
+    document.getElementById('setor-cerebro-nome').value = s.SETOR||'';
+    document.getElementById('setor-cerebro-empresa').value = s.EMPRESA||'';
+    document.getElementById('setor-cerebro-responsavel').value = s.RESPONSAVEL||'';
+    document.getElementById('setor-cerebro-descricao').value = s.DESCRICAO||'';
+    document.getElementById('setor-cerebro-sla').value = s.SLA_HORAS||'72';
+    document.getElementById('setor-cerebro-ativo').value = s.ATIVO||'SIM';
+  } else {
+    ['setor-cerebro-nome','setor-cerebro-empresa','setor-cerebro-responsavel','setor-cerebro-descricao'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('setor-cerebro-sla').value = '72';
+    document.getElementById('setor-cerebro-ativo').value = 'SIM';
+  }
+  document.getElementById('modal-setor-cerebro').style.display = 'flex';
+}
+function editarSetorCerebro(id) { abrirModalSetorCerebro(id); }
+function fecharModalSetorCerebro() { document.getElementById('modal-setor-cerebro').style.display = 'none'; }
+async function salvarSetorCerebro() {
+  const id = document.getElementById('setor-cerebro-id').value;
+  const erro = document.getElementById('setor-cerebro-erro');
+  const payload = {
+    SETOR: document.getElementById('setor-cerebro-nome').value.trim(),
+    EMPRESA: document.getElementById('setor-cerebro-empresa').value.trim(),
+    RESPONSAVEL: document.getElementById('setor-cerebro-responsavel').value.trim(),
+    DESCRICAO: document.getElementById('setor-cerebro-descricao').value.trim(),
+    SLA_HORAS: document.getElementById('setor-cerebro-sla').value.trim(),
+    ATIVO: document.getElementById('setor-cerebro-ativo').value,
+  };
+  if (!payload.SETOR) { erro.textContent = 'Nome do setor é obrigatório.'; erro.style.display='block'; return; }
+  try {
+    if (id) {
+      await _apiFetch(`/api/setores/${id}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+    } else {
+      await _apiFetch('/api/setores', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+    }
+    fecharModalSetorCerebro();
+    loadCerebroSetores();
+  } catch(e) { erro.textContent = e.message; erro.style.display='block'; }
+}
+
+// ===== CÉREBRO: PRODUTOS =====
+let _produtosParaImportar = [];
+async function loadCerebroProdutos() {
+  const loading = document.getElementById('cerebro-produtos-loading');
+  const tabela = document.getElementById('cerebro-produtos-tabela');
+  const tbody = document.getElementById('cerebro-produtos-tbody');
+  if (!loading) return;
+  try {
+    const r = await _apiFetch('/api/produtos');
+    const itens = r.itens || [];
+    tabela.style.display = itens.length ? 'table' : 'none';
+    loading.style.display = itens.length ? 'none' : 'block';
+    loading.textContent = itens.length ? '' : 'Nenhum produto cadastrado. Importe um CSV.';
+    tbody.innerHTML = itens.slice(0,50).map(p=>`
+      <tr><td>${p.EMPRESA||''}</td><td>${p.PRODUTO||''}</td><td>${p.CATEGORIA||''}</td><td>${p.UNIDADE||''}</td></tr>`).join('');
+    if (itens.length > 50) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td colspan="4" style="text-align:center;color:var(--gray-400);font-size:12px">… e mais ${itens.length-50} produtos</td>`;
+      tbody.appendChild(tr);
+    }
+  } catch(e) { if(loading) loading.textContent = 'Erro: ' + e.message; }
+}
+function handleUploadProdutos(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const status = document.getElementById('produtos-import-status');
+  status.textContent = 'Lendo arquivo...';
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const text = e.target.result;
+      const lines = text.split(/\r?\n/).filter(l => l.trim());
+      if (lines.length < 2) { status.textContent = 'Arquivo vazio ou sem dados.'; return; }
+      const sep = lines[0].includes(';') ? ';' : ',';
+      const headers = lines[0].split(sep).map(h => h.trim().replace(/^"|"$/g,'').toUpperCase());
+      const rows = lines.slice(1).map(l => {
+        const vals = l.split(sep).map(v => v.trim().replace(/^"|"$/g,''));
+        const obj = {};
+        headers.forEach((h, i) => obj[h] = vals[i]||'');
+        return obj;
+      }).filter(r => Object.values(r).some(v=>v));
+      _produtosParaImportar = rows;
+      // preview
+      const prevHead = document.getElementById('produtos-preview-head');
+      const prevBody = document.getElementById('produtos-preview-body');
+      prevHead.innerHTML = headers.map(h=>`<th>${h}</th>`).join('');
+      prevBody.innerHTML = rows.slice(0,10).map(r=>`<tr>${headers.map(h=>`<td>${r[h]||''}</td>`).join('')}</tr>`).join('');
+      document.getElementById('produtos-preview-count').textContent = `${rows.length} produto(s) encontrado(s) • mostrando primeiros 10`;
+      document.getElementById('produtos-preview').style.display = 'block';
+      status.textContent = '';
+    } catch(err) { status.textContent = 'Erro ao ler CSV: ' + err.message; }
+  };
+  reader.readAsText(file, 'UTF-8');
+  input.value = '';
+}
+async function confirmarImportProdutos() {
+  const btn = document.getElementById('btn-confirmar-produtos');
+  const status = document.getElementById('produtos-import-status');
+  btn.disabled = true; btn.textContent = 'Importando...';
+  try {
+    const r = await _apiFetch('/api/produtos/importar', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ itens: _produtosParaImportar }) });
+    status.style.color = 'var(--green)';
+    status.textContent = `✔ Importado: ${r.criados} novos, ${r.atualizados} atualizados.`;
+    cancelarImportProdutos();
+    loadCerebroProdutos();
+  } catch(e) { status.style.color = 'var(--red)'; status.textContent = 'Erro: ' + e.message; }
+  btn.disabled = false; btn.textContent = '✔ Confirmar Importação';
+}
+function cancelarImportProdutos() {
+  _produtosParaImportar = [];
+  document.getElementById('produtos-preview').style.display = 'none';
+}
+
 async function rodarCerebro() {
   const id = (document.getElementById('cerebro-id-input')?.value || '').trim();
   if (!id) { alert('Informe o ID da manifestação.'); return; }
