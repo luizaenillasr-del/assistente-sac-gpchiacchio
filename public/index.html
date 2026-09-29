@@ -5010,8 +5010,8 @@ loadVisaoGeral();
   }
 
   const allowed={
-    'MASTER':['visao-geral','acompanhamento','nova-manifestacao','banco-manifestacoes','aprovadores','banco-rnc','setores','matriz','base-conhecimento','representantes','usuarios'],
-    'ANALISTA SAC':['visao-geral','acompanhamento','nova-manifestacao','banco-manifestacoes','aprovadores','banco-rnc','setores','matriz','base-conhecimento'],
+    'MASTER':['visao-geral','acompanhamento','nova-manifestacao','banco-manifestacoes','aprovadores','banco-rnc','setores','matriz','base-conhecimento','representantes','usuarios','cerebro','painel-maquina','sugestoes-melhoria','causas'],
+    'ANALISTA SAC':['visao-geral','acompanhamento','nova-manifestacao','banco-manifestacoes','aprovadores','banco-rnc','setores','matriz','base-conhecimento','cerebro','painel-maquina','sugestoes-melhoria','causas'],
     'SETOR RESPONSÁVEL':['setor-responsavel','banco-rnc'],
     'APROVADOR':['aprovadores','banco-rnc'],
     'RCA / REPRESENTANTE':['representantes']
@@ -5022,11 +5022,15 @@ loadVisaoGeral();
       const m=(el.getAttribute('onclick')||'').match(/navigate\(['"]([^'"]+)/); const page=el.dataset.v5Page||m?.[1]||'';
       el.style.display=list.includes(page)?'flex':'none';
     });
-    // remove headings that have no visible child by hiding all sidebar sections and then restoring if followed by visible item
-    document.querySelectorAll('.sidebar-section').forEach(sec=>{sec.style.display='block'});
-    if(r==='RCA / REPRESENTANTE') document.querySelectorAll('.sidebar-section').forEach(sec=>sec.style.display='none');
-    if(r==='APROVADOR'){document.querySelectorAll('.sidebar-section').forEach(sec=>sec.style.display='none');}
-    if(r==='SETOR RESPONSÁVEL'){document.querySelectorAll('.sidebar-section').forEach(sec=>sec.style.display='none');}
+    // hide sections that have no visible items beneath them
+    document.querySelectorAll('.sidebar-section').forEach(sec=>{
+      let next=sec.nextElementSibling; let hasVisible=false;
+      while(next && !next.classList.contains('sidebar-section')){
+        if(next.style.display!=='none') hasVisible=true;
+        next=next.nextElementSibling;
+      }
+      sec.style.display=hasVisible?'block':'none';
+    });
     document.querySelectorAll('.page').forEach(p=>{const id=p.id.replace('page-','');if(id==='representantes'&&r==='RCA / REPRESENTANTE')p.classList.remove('active')});
     if(r==='RCA / REPRESENTANTE') navigate('representantes',document.querySelector('[data-v5-page="representantes"]'));
     if(r==='APROVADOR') navigate('aprovadores',document.querySelector('[onclick*=aprovadores]'));
