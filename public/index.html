@@ -676,6 +676,12 @@
           <button class="filter-btn active">30 dias</button>
           <button class="filter-btn">Personalizado</button>
         </div>
+        <div id="filtro-periodo-custom" style="display:none;align-items:center;gap:6px;background:white;border:1px solid var(--gray-200);border-radius:8px;padding:5px 10px">
+          <span style="font-size:12px;color:var(--gray-500)">De</span>
+          <input type="date" id="filtro-data-inicio" onchange="aplicarFiltros()" style="border:none;font-size:12px;outline:none;cursor:pointer;background:transparent">
+          <span style="font-size:12px;color:var(--gray-500)">até</span>
+          <input type="date" id="filtro-data-fim" onchange="aplicarFiltros()" style="border:none;font-size:12px;outline:none;cursor:pointer;background:transparent">
+        </div>
         <div style="display:flex;align-items:center;gap:6px;background:white;border:1px solid var(--gray-200);border-radius:8px;padding:5px 10px">
           <span style="font-size:12px;color:var(--gray-500)">Empresa</span>
           <select id="filtro-empresa-select" onchange="aplicarFiltros()" style="border:none;font-size:12px;font-weight:600;color:var(--gray-900);outline:none;background:transparent;cursor:pointer">
@@ -2327,13 +2333,23 @@ function aplicarFiltros() {
   _dashFiltroSetor = setEl ? setEl.value : 'Todos';
 
   // Aplicar filtro de período antes de calcular
-  const dias = window._dashFiltroPeriodoDias || null;
+  const dias = window._dashFiltroPeriodoDias;
   let mans = _dashData.mans;
   let recs = _dashData.recs;
-  if (dias) {
+  if (dias != null) {
     const corte = new Date(Date.now() - dias * 86400000);
     mans = mans.filter(m => { const d = new Date(m.DATA_CRIACAO||m.DATA_ABERTURA||''); return !isNaN(d) && d >= corte; });
     recs = recs.filter(r => { const d = new Date(r['Data do Registro']||r['DATA_ABERTURA']||''); return !isNaN(d) && d >= corte; });
+  } else {
+    // Personalizado: usar datas escolhidas pelo usuário
+    const inicio = document.getElementById('filtro-data-inicio')?.value;
+    const fim = document.getElementById('filtro-data-fim')?.value;
+    if (inicio || fim) {
+      const di = inicio ? new Date(inicio) : null;
+      const df = fim ? new Date(fim + 'T23:59:59') : null;
+      mans = mans.filter(m => { const d = new Date(m.DATA_CRIACAO||m.DATA_ABERTURA||''); if(isNaN(d))return true; if(di&&d<di)return false; if(df&&d>df)return false; return true; });
+      recs = recs.filter(r => { const d = new Date(r['Data do Registro']||r['DATA_ABERTURA']||''); if(isNaN(d))return true; if(di&&d<di)return false; if(df&&d>df)return false; return true; });
+    }
   }
 
   const data = calcDashboard(mans, recs, _dashFiltroEmpresa, _dashFiltroSetor);
@@ -2824,7 +2840,7 @@ function getStatusInfo(status) {
 
 async function loadAcompanhamento() {
   try {
-    const res = await fetch(API + '/api/manifestacoes').then(r => r.json());
+    const res = await _apiFetch('/api/manifestacoes', 15000);
     _acompData = res.itens || [];
 
     // KPIs
@@ -2869,6 +2885,8 @@ async function loadAcompanhamento() {
     renderAcompanhamento(_acompData);
   } catch (e) {
     console.error('Erro acompanhamento:', e);
+    const body = document.getElementById('acomp-body');
+    if(body) body.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--gray-400)">Erro ao carregar: ${e.message}</td></tr>`;
   }
 }
 
@@ -2924,11 +2942,13 @@ let bancoFilter = 'todas';
 
 async function loadBancoManifestacoes() {
   try {
-    const res = await fetch(API + '/api/manifestacoes').then(r => r.json());
+    const res = await _apiFetch('/api/manifestacoes', 15000);
     bancoData = res.itens || [];
     renderBanco();
   } catch (e) {
-    document.getElementById('banco-body').innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--gray-400);padding:20px">Erro ao carregar dados</td></tr>';
+    console.error('Erro banco:', e);
+    const el = document.getElementById('banco-body');
+    if(el) el.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--gray-400);padding:20px">Erro ao carregar dados: ${e.message}</td></tr>`;
   }
 }
 
@@ -3389,8 +3409,8 @@ let bcData = [];
 async function loadBaseConhecimento() {
   try {
     const [polRes, procRes] = await Promise.all([
-      fetch(API + '/api/politicas').then(r => r.json()),
-      fetch(API + '/api/procedimentos').then(r => r.json())
+      _apiFetch('/api/politicas', 15000).catch(() => ({ itens: [] })),
+      _apiFetch('/api/procedimentos', 15000).catch(() => ({ itens: [] }))
     ]);
 
     const pols = (polRes.itens || []).map(p => ({ ...p, _tipo: 'Política', _nome: p.POLITICA || p.ID_POLITICA }));
@@ -3399,7 +3419,11 @@ async function loadBaseConhecimento() {
     bcData = [...pols, ...procs];
     document.getElementById('bc-total').textContent = bcData.length;
     renderBC(bcData);
-  } catch (e) { console.error(e); }
+  } catch (e) {
+    console.error('Erro base conhecimento:', e);
+    const el = document.getElementById('bc-list');
+    if(el) el.innerHTML = `<div style="color:var(--gray-400);font-size:12px;padding:16px;text-align:center">Erro ao carregar: ${e.message}</div>`;
+  }
 }
 
 function filterBC(field, val, el) {
@@ -3665,9 +3689,10 @@ loadVisaoGeral();
       if(results[0].status==='rejected')console.error('Manifestacoes:',results[0].reason);
       if(results[1].status==='rejected')console.error('Reclamacoes:',results[1].reason);
 
+      const _NAO_EMP=new Set(['TR01','TR08','SAC','RNC']);
       const empSet=new Set(['Todas']);
-      _dashData.recs.forEach(x=>{if(x.Empresa)empSet.add(x.Empresa);});
-      _dashData.mans.forEach(x=>{if(x.EMPRESA_RECLAMADA)empSet.add(x.EMPRESA_RECLAMADA);});
+      _dashData.recs.forEach(x=>{const e=(x.Empresa||'').trim();if(e&&!_NAO_EMP.has(e.toUpperCase()))empSet.add(x.Empresa);});
+      _dashData.mans.forEach(x=>{const e=(x.EMPRESA_RECLAMADA||'').trim();if(e&&!_NAO_EMP.has(e.toUpperCase()))empSet.add(x.EMPRESA_RECLAMADA);});
       const emp=document.getElementById('filtro-empresa-select');
       if(emp)emp.innerHTML=[...empSet].map(e=>`<option value="${esc(e)}">${esc(e)}</option>`).join('');
       const setores=['Todos','SAC','Qualidade','Produção','Logística','Comercial','Financeiro','Faturamento / Expedição'];
@@ -4102,6 +4127,10 @@ loadVisaoGeral();
         else if (txt === '7 dias') window._dashFiltroPeriodoDias = 7;
         else if (txt === '30 dias') window._dashFiltroPeriodoDias = 30;
         else if (txt === 'Personalizado') window._dashFiltroPeriodoDias = null;
+
+        // Mostrar/esconder seletor de datas personalizadas
+        const customDiv = document.getElementById('filtro-periodo-custom');
+        if (customDiv) customDiv.style.display = txt === 'Personalizado' ? 'flex' : 'none';
 
         // Atualizar visual do botão ativo
         btn.closest('.filter-group')?.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));

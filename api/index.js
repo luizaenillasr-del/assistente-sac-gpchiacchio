@@ -892,12 +892,18 @@ app.get('/api/conhecimento', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONS
   } catch (e) { res.status(500).json({sucesso:false,erro:e.message,itens:[]}); }
 });
 app.get('/api/procedimentos', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
-  try { const data=await lerAba('PROCEDIMENTOS',200); res.json({sucesso:true,total:data.length,itens:data}); }
-  catch (e) { res.status(500).json({sucesso:false,erro:e.message,dados:[]}); }
+  try {
+    await garantirAbaComCabecalhos('PROCEDIMENTOS',['ID_PROCEDIMENTO','NOME','SETOR_RESPONSAVEL','DESCRICAO','PASSOS','ATIVO']).catch(()=>{});
+    const data=await lerAba('PROCEDIMENTOS',200).catch(()=>[]);
+    res.json({sucesso:true,total:data.length,itens:data});
+  } catch (e) { res.status(500).json({sucesso:false,erro:e.message,itens:[]}); }
 });
 app.get('/api/politicas', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
-  try { const data=await lerAba('POLITICAS',200); res.json({sucesso:true,total:data.length,itens:data}); }
-  catch (e) { res.status(500).json({sucesso:false,erro:e.message,dados:[]}); }
+  try {
+    await garantirAbaComCabecalhos('POLITICAS',['ID_POLITICA','POLITICA','SETOR_RESPONSAVEL','DESCRICAO','RESPONSAVEL','ATIVO']).catch(()=>{});
+    const data=await lerAba('POLITICAS',200).catch(()=>[]);
+    res.json({sucesso:true,total:data.length,itens:data});
+  } catch (e) { res.status(500).json({sucesso:false,erro:e.message,itens:[]}); }
 });
 app.get('/api/tipos', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
   try { const data=await lerAba('TIPOS_RECLAMACAO',200); res.json({sucesso:true,total:data.length,itens:data}); }
