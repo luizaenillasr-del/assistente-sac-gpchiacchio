@@ -2198,7 +2198,7 @@
           <span id="cd-hist-count" style="font-size:12px;color:var(--gray-400)"></span>
         </div>
         <div style="overflow-x:auto"><table class="table" style="width:100%">
-          <thead><tr><th>ID</th><th>Cliente</th><th>Produto</th><th>Lote</th><th>Tipo</th><th>Causa</th><th>Status</th><th>Data</th></tr></thead>
+          <thead><tr><th>ID</th><th>Empresa</th><th>Contato</th><th>Descrição</th><th>Tipo</th><th>Causa Raiz</th><th>Status</th><th>Data</th></tr></thead>
           <tbody id="cd-hist-tbody"></tbody>
         </table></div>
         <div id="cd-hist-loading" style="padding:24px;text-align:center;color:var(--gray-400);font-size:13px">Carregando...</div>
@@ -8483,15 +8483,15 @@ function renderCdRnc(q='',st='') {
 async function cdLoadHist() {
   document.getElementById('cd-hist-loading').style.display='block';
   try {
-    const r=await _apiFetch('/api/manifestacoes');
+    const r=await _apiFetch('/api/historico');
     _cdData.hist=r.itens||[];
     renderCdHist();
   } catch(e) { document.getElementById('cd-hist-loading').textContent='Erro: '+e.message; }
 }
 function renderCdHist(q='') {
-  const rows=_cdData.hist.filter(x=>!q||(x.EMPRESA_RECLAMANTE+x.PRODUTO+x.CONTATO+x.DESCRICAO).toLowerCase().includes(q));
+  const rows=_cdData.hist.filter(x=>!q||(x.ORIG_EMPRESA||x.EMPRESA_RECLAMANTE||x.CONTATO||'').toLowerCase().includes(q)||(x.ORIG_DESCRICAO_RECLAMACAO||x.DESCRICAO||'').toLowerCase().includes(q)||(x.COMP_TIPO_PROBLEMA_VALIDADO||x.TIPO_PROBLEMA_VALIDADO||'').toLowerCase().includes(q));
   document.getElementById('cd-hist-count').textContent=`${rows.length} registro(s)`;
-  cdRender('cd-hist-tbody','cd-hist-loading',rows.map(x=>`<tr><td><strong>${esc5(x.ID_MANIFESTACAO)}</strong></td><td>${esc5(x.EMPRESA_RECLAMANTE||x.CONTATO||'')}</td><td>${esc5(x.PRODUTO||'')}</td><td>${esc5(x.LOTE||'')}</td><td>${esc5(x.TIPO_PROBLEMA_VALIDADO||x.TIPO||'')}</td><td>${esc5(x.CAUSA_RAIZ||x.CAUSA||'')}</td><td><span class="status-badge ${stClass(x.STATUS)}">${esc5(x.STATUS||'')}</span></td><td style="font-size:11px">${fmt5(x.DATA_ABERTURA)}</td></tr>`),8,'Sem histórico.');
+  cdRender('cd-hist-tbody','cd-hist-loading',rows.map(x=>`<tr><td><strong>${esc5(x.ID_HISTORICO||x.ID_MANIFESTACAO||'')}</strong></td><td>${esc5(x.ORIG_EMPRESA||x.EMPRESA_RECLAMANTE||x.CONTATO||'')}</td><td>${esc5(x.ORIG_CONTATO||x.CONTATO||'')}</td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc5((x.ORIG_DESCRICAO_RECLAMACAO||x.DESCRICAO||'').slice(0,80))}</td><td>${esc5(x.COMP_TIPO_PROBLEMA_VALIDADO||x.TIPO_PROBLEMA_VALIDADO||x.TIPO||'')}</td><td>${esc5(x.COMP_CAUSA_RAIZ||x.CAUSA_RAIZ||x.CAUSA||'')}</td><td><span class="status-badge ${stClass(x.ORIG_STATUS||x.STATUS)}">${esc5(x.ORIG_STATUS||x.STATUS||'')}</span></td><td style="font-size:11px">${fmt5(x.ORIG_DATA_ABERTURA||x.DATA_ABERTURA)}</td></tr>`),8,'Sem histórico.');
 }
 
 // ── SETORES ──
