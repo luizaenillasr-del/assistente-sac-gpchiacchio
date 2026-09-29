@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const { google } = require('googleapis');
 const cerebroService = require('./services/cerebroServices');
 const documentService = require('./services/documentService');
+const { tratativaEngine, devolutivaEngine, assertividade: assertividadeService } = cerebroService;
 
 const app = express();
 app.use(cors());
@@ -555,10 +556,187 @@ app.post('/api/manifestacoes/:id/decisao', requerPerfil('MASTER','ANALISTA SAC')
       DATA_CONCLUSAO_MANIFESTACAO:devolutivaEnviada&&dataConclusaoTratativa?agora:''
     });
     await registrarAuditoria(usuario,'DECISAO_MANIFESTACAO',id,'MANIFESTACOES',item.STATUS,{novoStatus,status});
+    // Registrar assertividade se tratativa foi aceita/editada/rejeitada
+    if (tratativaAplicavel) {
+      const decisaoAssert = tratativaRealizada && tratativaRealizada !== item.TRATATIVA_SUGERIDA ? 'EDITADA' : (tratativaAplicavel==='NÃO'?'REJEITADA':'ACEITA');
+      assertividadeService.registrarDecisao({
+        idManifestacao: id, tipoRegistro:'TRATATIVA', decisao:decisaoAssert,
+        empresa:item.EMPRESA_RECLAMADA||'', tipoManifestacao:item.TIPO||'',
+        setor:setoresStr, usuario, motivoEdicao:observacoes||'',
+        textoOriginal:item.TRATATIVA_SUGERIDA||'', textoEditado:tratativaRealizada||'',
+      }).catch(()=>{});
+    }
     res.json({ sucesso:true, id, status:novoStatus, statusTratativa:status });
   } catch(e) { console.error(e); res.status(500).json({ sucesso:false, erro:e.message }); }
 });
 
+
+// ============================================================
+// TRATATIVAS ESTRUTURADAS
+// ============================================================
+
+app.get('/api/manifestacoes/:id/tratativa', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req,res)=>{
+  try {
+    const t = await tratativaEngine.buscarTratativaPorManifestacao(req.params.id);
+    if (!t) return res.status(404).json({ sucesso:false, erro:'Nenhuma tratativa encontrada.' });
+    res.json({ sucesso:true, tratativa:t });
+  } catch(e){ res.status(500).json({ sucesso:false, erro:e.message }); }
+});
+
+app.post('/api/manifestacoes/:id/tratativa/gerar', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
+  try {
+    const id = req.params.id;
+    const data = await lerAba('MANIFESTACOES',2000);
+    const m = data.find(r=>r.ID_MANIFESTACAO===id);
+    if (!m) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
+    const analise = await executarAnalise({ ...m, empresaReclamante: m.EMPRESA_RECLAMANTE, empresaReclamada: m.EMPRESA_RECLAMADA, descricao: m.DESCRICAO });
+    const tratativa = analise.tratativaEstruturada;
+    if (tratativa) await tratativaEngine.salvarTratativa(id, tratativa, req.user?.usuario||'sistema').catch(()=>{});
+    res.json({ sucesso:true, tratativa, analise });
+  } catch(e){ res.status(500).json({ sucesso:false, erro:e.message }); }
+});
+
+app.post('/api/manifestacoes/:id/tratativa/decisao', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
+  try {
+    const { decisao, observacoes, textoEditado } = req.body;
+    if (!['ACEITA','EDITADA','REJEITADA'].includes(decisao)) return res.status(400).json({ sucesso:false, erro:'Decisão inválida.' });
+    const data = await lerAba('MANIFESTACOES',2000);
+    const m = data.find(r=>r.ID_MANIFESTACAO===req.params.id);
+    if (!m) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
+    await assertividadeService.registrarDecisao({
+      idManifestacao: req.params.id,
+      tipoRegistro: 'TRATATIVA',
+      decisao,
+      empresa: m.EMPRESA_RECLAMADA||'',
+      tipoManifestacao: m.TIPO||'',
+      categoria: m.CATEGORIA||'',
+      setor: m.SETOR_SUGERIDO||'',
+      usuario: req.user?.usuario||'sistema',
+      motivoEdicao: observacoes||'',
+      textoOriginal: m.TRATATIVA_SUGERIDA||'',
+      textoEditado: textoEditado||'',
+    }).catch(()=>{});
+    await atualizarPorID('MANIFESTACOES', req.params.id, {
+      STATUS_TRATATIVA: decisao==='ACEITA'?'ACEITA':decisao==='REJEITADA'?'REJEITADA':'EDITADA',
+      TRATATIVA_REALIZADA: textoEditado||m.TRATATIVA_SUGERIDA||'',
+    });
+    res.json({ sucesso:true, decisao });
+  } catch(e){ res.status(500).json({ sucesso:false, erro:e.message }); }
+});
+
+// ============================================================
+// DEVOLUTIVAS ESTRUTURADAS
+// ============================================================
+
+app.get('/api/manifestacoes/:id/devolutivas', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req,res)=>{
+  try {
+    const devs = await devolutivaEngine.buscarDevolutivasPorManifestacao(req.params.id);
+    res.json({ sucesso:true, total:devs.length, itens:devs });
+  } catch(e){ res.status(500).json({ sucesso:false, erro:e.message }); }
+});
+
+app.post('/api/manifestacoes/:id/devolutiva/gerar', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
+  try {
+    const id = req.params.id;
+    const data = await lerAba('MANIFESTACOES',2000);
+    const m = data.find(r=>r.ID_MANIFESTACAO===id);
+    if (!m) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
+    const tipo = req.body.tipo || 'RECEBIMENTO';
+    const extra = req.body || {};
+    const dev = await devolutivaEngine.gerarDevolutiva({
+      idManifestacao: id,
+      tipo,
+      empresa: m.EMPRESA_RECLAMADA||'',
+      tipoManifestacao: m.TIPO||'',
+      setor: m.SETOR_SUGERIDO||'SAC',
+      protocolo: id,
+      prazo: (m.SLA_HORAS||72)+' horas úteis',
+      setorResponsavel: m.SETOR_SUGERIDO||'SAC',
+      diagnostico: extra.diagnostico||'',
+      acoesTomadas: extra.acoesTomadas||'',
+      descricaoSolucao: extra.descricaoSolucao||'',
+      atualizacao: extra.atualizacao||'',
+      motivoAtraso: extra.motivoAtraso||'',
+      motivoEscalonamento: extra.motivoEscalonamento||'',
+      justificativaImprocedencia: extra.justificativaImprocedencia||'',
+      descricaoProcedencia: extra.descricaoProcedencia||'',
+      resumoConclusao: extra.resumoConclusao||'',
+    });
+    const salva = await devolutivaEngine.salvarDevolutiva(id, dev, '', m.EMPRESA_RECLAMADA||'', req.user?.usuario||'sistema').catch(()=>null);
+    res.json({ sucesso:true, devolutiva:dev, id: salva?.ID_DEVOLUTIVA });
+  } catch(e){ res.status(500).json({ sucesso:false, erro:e.message }); }
+});
+
+app.post('/api/devolutivas/:idDev/decisao', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
+  try {
+    const { decisao, textoAprovado, motivo } = req.body;
+    if (!['APROVADA','EDITADA','REJEITADA'].includes(decisao)) return res.status(400).json({ sucesso:false, erro:'Decisão inválida.' });
+    const result = await devolutivaEngine.registrarDecisaoDevolutiva(req.params.idDev, decisao, textoAprovado, motivo, req.user?.usuario||'sistema');
+    // Registrar assertividade
+    await assertividadeService.registrarDecisao({
+      idDevolutiva: req.params.idDev,
+      tipoRegistro: 'DEVOLUTIVA',
+      decisao,
+      usuario: req.user?.usuario||'sistema',
+      motivoEdicao: motivo||'',
+      textoOriginal: result.TEXTO_GERADO||'',
+      textoEditado: textoAprovado||'',
+    }).catch(()=>{});
+    res.json({ sucesso:true, devolutiva:result });
+  } catch(e){ res.status(500).json({ sucesso:false, erro:e.message }); }
+});
+
+// ============================================================
+// ASSERTIVIDADE E MÉTRICAS
+// ============================================================
+
+app.get('/api/assertividade/metricas', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
+  try {
+    const filtros = {
+      empresa: req.query.empresa,
+      tipoManifestacao: req.query.tipo,
+      categoria: req.query.categoria,
+      setor: req.query.setor,
+      dias: req.query.dias ? Number(req.query.dias) : 30,
+    };
+    const metricas = await assertividadeService.calcularMetricas(filtros);
+    res.json({ sucesso:true, ...metricas });
+  } catch(e){ res.status(500).json({ sucesso:false, erro:e.message }); }
+});
+
+app.get('/api/assertividade/sugestoes', requerPerfil('MASTER'), async (req,res)=>{
+  try {
+    const result = await assertividadeService.gerarSugestoes();
+    res.json({ sucesso:true, ...result });
+  } catch(e){ res.status(500).json({ sucesso:false, erro:e.message }); }
+});
+
+app.post('/api/assertividade/resultado', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
+  try {
+    const r = await assertividadeService.registrarResultado({ ...req.body, usuario: req.user?.usuario });
+    res.json({ sucesso:true, id:r.id });
+  } catch(e){ res.status(500).json({ sucesso:false, erro:e.message }); }
+});
+
+// ============================================================
+// MATRIZ DE TRATAMENTO
+// ============================================================
+
+app.get('/api/matriz-tratamento', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
+  try {
+    const { matrizTratamento } = cerebroService;
+    const regras = await matrizTratamento.carregarMatriz();
+    res.json({ sucesso:true, total:regras.length, itens:regras });
+  } catch(e){ res.status(500).json({ sucesso:false, erro:e.message }); }
+});
+
+app.post('/api/matriz-tratamento/consultar', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL'), async (req,res)=>{
+  try {
+    const { matrizTratamento } = cerebroService;
+    const resultado = await matrizTratamento.obterRegras(req.body||{});
+    res.json({ sucesso:true, regra:resultado });
+  } catch(e){ res.status(500).json({ sucesso:false, erro:e.message }); }
+});
 
 // ============================================================
 // CADASTRO OPERACIONAL DE SETORES + FAQ + CALCULADORA DE ATRASO
@@ -656,6 +834,30 @@ app.patch('/api/setores/:id', requerPerfil('MASTER','ANALISTA SAC'), async(req,r
     await registrarAuditoria(req.user.usuario, 'ATUALIZOU_SETOR', id, 'CONFIG_SETORES', null, dados);
     res.json({ sucesso: true, setor: atualizado });
   } catch(e) { res.status(500).json({ sucesso: false, erro: e.message }); }
+});
+
+app.post('/api/setores/importar', requerPerfil('MASTER','ANALISTA SAC'), async(req,res)=>{
+  try {
+    const { itens } = req.body;
+    if (!Array.isArray(itens) || !itens.length) return res.status(400).json({sucesso:false,erro:'Nenhum item.'});
+    await garantirAbaComCabecalhos('CONFIG_SETORES',['ID_SETOR','SETOR','EMPRESA','DESCRICAO','RESPONSAVEL','SLA_HORAS','ATIVO']);
+    let criados = 0;
+    for (const item of itens) {
+      if (!item.SETOR && !item.setor) continue;
+      const id = await gerarProximoID('CONFIG_SETORES','SET','ID_SETOR');
+      await appendObjeto('CONFIG_SETORES', {
+        ID_SETOR: id,
+        SETOR: item.SETOR || item.setor || '',
+        EMPRESA: item.EMPRESA || item.empresa || '',
+        DESCRICAO: item.DESCRICAO || item.descricao || '',
+        RESPONSAVEL: item.RESPONSAVEL || item.responsavel || '',
+        SLA_HORAS: item.SLA_HORAS || item.sla_horas || '72',
+        ATIVO: item.ATIVO || item.ativo || 'SIM',
+      });
+      criados++;
+    }
+    res.json({sucesso:true, criados});
+  } catch(e) { res.status(500).json({sucesso:false, erro:e.message}); }
 });
 
 // ===== PRODUTOS =====
@@ -1433,6 +1635,17 @@ app.get('/api/planilha/abas', requerPerfil('MASTER','ANALISTA SAC'), async (req,
     const todas = (meta.data.sheets||[]).map(s=>({ nome: s.properties.title, linhas: s.properties.gridProperties?.rowCount||0, colunas: s.properties.gridProperties?.columnCount||0 }));
     res.json({ sucesso:true, abas: todas });
   } catch(e) { res.status(500).json({ sucesso:false, erro:e.message, abas:[] }); }
+});
+
+// Leitura de aba com query param (suporta nomes com acentos/espaços)
+app.get('/api/planilha/ler', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
+  try {
+    const nome = req.query.nome || '';
+    if (!nome) return res.status(400).json({sucesso:false, erro:'Parâmetro nome é obrigatório.'});
+    const max = Math.min(parseInt(req.query.max||'2000',10), 5000);
+    const data = await lerAba(nome, max);
+    res.json({ sucesso:true, aba:nome, total:data.length, itens:data });
+  } catch(e) { res.status(500).json({ sucesso:false, erro:e.message, itens:[] }); }
 });
 
 app.get('/api/planilha/:aba', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{

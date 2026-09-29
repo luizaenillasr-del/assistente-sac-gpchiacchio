@@ -1,13 +1,17 @@
 'use strict';
 // ============================================================
-// CÉREBRO DO ASSISTENTE SAC — v2.0
+// CÉREBRO DO ASSISTENTE SAC — v3.0
 // Módulo central de inteligência: análise, rastreabilidade,
 // regras, histórico, conhecimento, IA e validação humana.
 // ============================================================
 
 const sheets = require('./sheets');
+const tratativaEngine = require('./tratativaEngine');
+const devolutivaEngine = require('./devolutivaEngine');
+const matrizTratamento = require('./matrizTratamentoService');
+const assertividade = require('./assertividadeService');
 
-const CEREBRO_VERSION = '2.0.0';
+const CEREBRO_VERSION = '3.0.0';
 const BASE_CONHECIMENTO_VERSION = '1.0';
 const POLITICAS_VERSION = '1.0';
 const MATRIZ_VERSION = '1.0';
@@ -246,45 +250,88 @@ async function consultarBaseConhecimento(tipo, setor) {
 // 5. SUGESTÃO DE TRATATIVA
 // ──────────────────────────────────────────────────────────────
 
+// Tratativas específicas por palavra-chave no tipo/descrição do problema
+const TRATATIVAS_POR_MOTIVO = [
+  { palavras: ['arte','impressao','impressão','grafica','gráfica','layout','embalagem personalizada','especificacao','especificação','divergencia de arte'],
+    sugestao: 'Solicitar ao cliente o arquivo da arte aprovada e comparar com amostra ou foto da embalagem reclamada. Acionar o setor responsável (arte/design/qualidade) para verificar se houve desvio na reprodução. Identificar responsabilidade (erro interno ou briefing do cliente) e definir prazo para reimpressão, crédito ou justificativa técnica.',
+    acoes: ['Coletar amostra ou foto da embalagem reclamada','Localizar arte aprovada pelo cliente (arquivo e data de aprovação)','Comparar especificação aprovada vs. produto entregue','Identificar responsabilidade: erro interno vs. mudança não informada','Definir solução: reimpressão, crédito ou justificativa técnica'],
+  },
+  { palavras: ['atraso','entrega atrasada','prazo','fora do prazo','nao chegou','não chegou','nao recebeu','não recebeu'],
+    sugestao: 'Verificar rastreamento do pedido junto à transportadora e identificar a etapa do atraso. Acionar comercial/logística para confirmar o novo prazo de entrega. Comunicar ao cliente com prazo confirmado e responsabilidade definida.',
+    acoes: ['Identificar NF e transportadora responsável','Verificar rastreamento e localizar etapa do atraso','Contatar transportadora para posicionamento formal','Confirmar novo prazo com o cliente','Registrar ocorrência para análise de recorrência'],
+  },
+  { palavras: ['produto danificado','avaria','avariado','danificado','quebrado','amassado','violado'],
+    sugestao: 'Solicitar fotos da embalagem e do produto danificado ao cliente. Acionar logística para apurar responsabilidade (dano em trânsito ou no armazém). Abrir ocorrência com a transportadora se dano for de transporte. Acionar qualidade para análise de lote se dano for de fabricação.',
+    acoes: ['Solicitar fotos da embalagem e do produto','Verificar se dano é de fabricação ou transporte','Acionar logística/transportadora ou qualidade conforme resultado','Definir solução: reposição, crédito ou devolução'],
+  },
+  { palavras: ['nota fiscal','nf','faturamento','cobrança indevida','valor incorreto','divergencia de valor','divergência de valor'],
+    sugestao: 'Solicitar NF(s) de referência ao cliente. Acionar faturamento para verificar valor cobrado versus valor acordado. Identificar origem da divergência e, se confirmada, emitir nota de crédito ou NF de correção no prazo.',
+    acoes: ['Coletar NF(s) do cliente','Verificar valor acordado vs. valor faturado no sistema','Acionar faturamento para análise','Emitir crédito ou corrigir NF se pertinente'],
+  },
+  { palavras: ['quantidade','falta','faltou','faltando','volume','incompleto','pedido incompleto'],
+    sugestao: 'Solicitar ao cliente lista dos itens recebidos e confrontar com o romaneio/NF. Verificar no sistema se houve separação parcial ou divergência de estoque. Acionar logística para verificar se volumes foram entregues. Definir complementação ou crédito.',
+    acoes: ['Conferir NF vs. romaneio','Verificar registro de separação no sistema','Acionar logística para apurar entrega','Definir reposição, complementação ou crédito'],
+  },
+  { palavras: ['prazo de validade','validade','vencido','vencimento','expirado'],
+    sugestao: 'Acionar Qualidade imediatamente para rastreabilidade do lote. Solicitar fotos do produto com data de validade visível. Verificar parâmetros do lote no controle de produção. Avaliar necessidade de recolhimento. Abrir RNC se houver desvio de processo.',
+    acoes: ['Solicitar foto do produto com data visível','Acionar Qualidade para rastreabilidade do lote','Verificar lote no controle de produção','Avaliar alerta de recall se necessário','Abrir RNC'],
+  },
+  { palavras: ['reincidente','reincidência','reincidencia','novo problema','mesmo problema','ocorreu novamente','segunda vez'],
+    sugestao: 'Identificar o histórico completo do cliente e o padrão de recorrência. Acionar o setor responsável com contexto de reincidência. Escalar para gerência se for 3ª ocorrência ou mais. Definir ação corretiva estruturada para evitar nova recorrência.',
+    acoes: ['Mapear histórico completo do cliente','Identificar padrão/causa raiz da recorrência','Escalar para supervisão/gerência conforme frequência','Definir ação corretiva com prazo e responsável'],
+  },
+];
+
 const TRATATIVAS_PADRAO = {
   'Qualidade': [
+    'Acionar o setor de Qualidade para análise do lote indicado e abertura de RNC se confirmada não conformidade. Solicitar evidências fotográficas ao cliente e comparar com laudo de produção.',
     'Solicitar amostras retidas do lote reclamado e enviar para análise laboratorial interna.',
-    'Acionar o setor de Qualidade para abertura de RNC e análise do lote indicado.',
-    'Solicitar evidências fotográficas ao cliente e comparar com laudo de produção do lote.',
     'Verificar parâmetros de produção do lote no sistema e acionar supervisão da fábrica.',
   ],
   'Logística': [
-    'Verificar rastreamento da entrega junto à transportadora e solicitar posicionamento formal.',
-    'Contatar transportadora para localizar volumes e reagendar entrega com cliente.',
+    'Verificar rastreamento da entrega junto à transportadora, solicitar posicionamento formal e confirmar novo prazo com o cliente.',
+    'Contatar transportadora para localizar volumes e reagendar entrega com o cliente.',
     'Emitir NF de substituição e acionar logística para envio imediato ao cliente.',
-    'Investigar ocorrência com motorista/rota e registrar não conformidade de transporte.',
   ],
   'Financeiro': [
-    'Solicitar NF de referência ao cliente e acionar financeiro para análise de divergência.',
+    'Solicitar NF de referência ao cliente e acionar faturamento para análise de divergência. Se confirmada, emitir nota de crédito ou corrigir a NF no prazo.',
     'Verificar no sistema a NF indicada e encaminhar análise para faturamento.',
-    'Acionar equipe de crédito para análise e emissão de nota de crédito se pertinente.',
   ],
   'Comercial': [
-    'Contatar representante da região para alinhamento e verificação do pedido.',
-    'Verificar condições comerciais acordadas e acionar gerente de contas do cliente.',
-    'Acionar equipe comercial para revisão de prazo e condições do pedido reclamado.',
+    'Contatar representante da região para alinhamento e verificar histórico do pedido. Acionar gerente de contas do cliente para definir solução.',
+    'Verificar condições comerciais acordadas e acionar comercial para revisão de prazo e condições.',
   ],
   'SAC': [
-    'Registrar a manifestação, acionar o setor responsável e comunicar previsão de retorno ao cliente.',
-    'Coletar informações complementares (NF, lote, foto) e encaminhar para análise técnica.',
-    'Abrir ocorrência interna e monitorar prazo de resposta com os setores envolvidos.',
+    'Registrar a manifestação, acionar o setor responsável com contexto completo e comunicar previsão de retorno ao cliente com data confirmada.',
+    'Coletar informações complementares (NF, lote, fotos) e encaminhar para análise técnica do setor responsável.',
   ],
 };
 
-function gerarSugestaoTratativaDefault(tipo, setores) {
+function gerarSugestaoTratativaDefault(tipo, setores, descricao) {
+  const textoBusca = normalizar((tipo||'') + ' ' + (descricao||''));
+  // Busca por motivo específico primeiro
+  for (const regra of TRATATIVAS_POR_MOTIVO) {
+    if (regra.palavras.some(p => textoBusca.includes(normalizar(p)))) {
+      return {
+        aplicavel: true,
+        confianca: 50,
+        sugestao: regra.sugestao,
+        acoes: regra.acoes || [],
+        quantidadeCasos: 0,
+        evidencia: [],
+        origem: 'PADRAO_ESPECIFICO',
+        todasSugestoes: [regra.sugestao],
+      };
+    }
+  }
+  // Fallback por setor
   const setor = (Array.isArray(setores) ? setores[0] : setores) || 'SAC';
   const lista = TRATATIVAS_PADRAO[setor] || TRATATIVAS_PADRAO['SAC'];
-  // escolhe a mais genérica como padrão; em produção pode-se expandir por tipo
-  const sugestao = lista[0];
   return {
     aplicavel: true,
     confianca: 30,
-    sugestao,
+    sugestao: lista[0],
+    acoes: [],
     quantidadeCasos: 0,
     evidencia: [],
     origem: 'PADRAO',
@@ -292,9 +339,9 @@ function gerarSugestaoTratativaDefault(tipo, setores) {
   };
 }
 
-function gerarSugestaoTratativa(casosSimilares, tipo, setores) {
+function gerarSugestaoTratativa(casosSimilares, tipo, setores, descricao) {
   const comTratativa = casosSimilares.filter(c => c.tratativa && c.tratativa.trim());
-  if (!comTratativa.length) return gerarSugestaoTratativaDefault(tipo, setores);
+  if (!comTratativa.length) return gerarSugestaoTratativaDefault(tipo, setores, descricao);
   const contagem = {};
   comTratativa.forEach(c => { const k = c.tratativa.trim(); contagem[k] = (contagem[k] || 0) + 1; });
   const ordenadas = Object.entries(contagem).sort((a, b) => b[1] - a[1]);
@@ -605,7 +652,7 @@ async function analisarManifestacaoCompleta(manifestacao, regras = {}, usuario =
   ]);
 
   const sla = calcularSLA(dataAbertura, regras.slaHoras || 72);
-  const tratativa = gerarSugestaoTratativa(casosSimilares, tipo, regras.setores);
+  const tratativa = gerarSugestaoTratativa(casosSimilares, tipo, regras.setores, descricao);
 
   // Contexto para IA
   const contextoIA = {
@@ -620,21 +667,72 @@ async function analisarManifestacaoCompleta(manifestacao, regras = {}, usuario =
 
   const ia = await chamarIA(contextoIA).catch(e => { erros.push('ia: ' + e.message); return { disponivel: false, erro: e.message }; });
 
-  // Devolutiva: prefere IA, fallback para gerada
+  // ── Tratativa estruturada (motor v3) ─────────────────────────
+  const empresa = campo(manifestacao, ['empresaReclamada','EMPRESA_RECLAMADA']);
+  const reincidenteBool = reincidencia.nivel === 'REINCIDENCIA_CONFIRMADA';
+
+  let tratativaEstruturada = null;
+  try {
+    tratativaEstruturada = await tratativaEngine.gerarTratativaEstruturada({
+      idManifestacao: protocolo,
+      empresa,
+      tipoManifestacao: tipo,
+      categoria: campo(manifestacao, ['CATEGORIA','categoria']) || '',
+      subcategoria: campo(manifestacao, ['SUBCATEGORIA','subcategoria']) || '',
+      setor,
+      descricao,
+      produto: campo(manifestacao, ['PRODUTO','produto']) || '',
+      dataAbertura: campo(manifestacao, ['DATA_ABERTURA','dataAbertura']) || '',
+      reincidente: reincidenteBool,
+      prioridade: regras.prioridade || 'Média',
+      casosSimilares,
+      reincidencia,
+      sla,
+      baseConhecimento,
+    });
+  } catch (e) { erros.push('tratativaEngine: ' + e.message); }
+
+  // ── Devolutiva estruturada (engine v3) ────────────────────────
+  let devolutivaEstruturada = null;
+  try {
+    devolutivaEstruturada = await devolutivaEngine.gerarDevolutiva({
+      idManifestacao: protocolo,
+      tipo: 'RECEBIMENTO',
+      empresa,
+      tipoManifestacao: tipo,
+      categoria: campo(manifestacao, ['CATEGORIA','categoria']) || '',
+      setor,
+      protocolo,
+      prazo: (regras.slaHoras || 72) + ' horas úteis',
+      setorResponsavel: setor || regras.setores?.[0] || 'SAC',
+      reincidente: reincidenteBool,
+      prioridade: regras.prioridade || 'Média',
+      diagnostico: tratativaEstruturada?.diagnostico?.descricao || '',
+    });
+  } catch (e) { erros.push('devolutivaEngine: ' + e.message); }
+
+  // Devolutiva textual: prefere IA, depois engine, depois fallback
   const devolutiva = (ia?.devolutivaSugerida && !ia.erro)
     ? ia.devolutivaSugerida
-    : gerarDevolutiva(
+    : (devolutivaEstruturada?.textoGerado || gerarDevolutiva(
         campo(manifestacao, ['empresaReclamante','EMPRESA_RECLAMANTE']),
         tipo,
         setor,
         tratativa.sugestao
-      );
+      ));
 
   // Consolidação
   const dadosParaConfianca = { regraAplicada: regras.regraAplicada, tipoDetectado: tipo, tipoConfianca: regras.tipoConfianca, casosSimilares, baseConhecimento, ia };
   const confianca = calcularConfianca(dadosParaConfianca);
   const conflitos = detectarConflitos({ ...regras, casosSimilares, reincidencia, ia });
-  const necessitaValidacaoHumana = confianca.nivel === 'BAIXA' || conflitos.length > 0 || reincidencia.nivel === 'REINCIDENCIA_CONFIRMADA';
+
+  // Conflitos do motor de tratativas
+  if (tratativaEstruturada?.conflitos?.length) {
+    conflitos.push(...tratativaEstruturada.conflitos.map(c => ({ tipo: 'CONFLITO_TRATATIVA', descricao: c })));
+  }
+
+  const necessitaValidacaoHumana = confianca.nivel === 'BAIXA' || conflitos.length > 0 || reincidencia.nivel === 'REINCIDENCIA_CONFIRMADA'
+    || tratativaEstruturada?.necessitaAprovacao;
 
   const analise = {
     protocolo,
@@ -652,6 +750,8 @@ async function analisarManifestacaoCompleta(manifestacao, regras = {}, usuario =
     sla,
     baseConhecimento,
     tratativaSugerida: { aplicavel: tratativa.aplicavel, confianca: tratativa.confianca, sugestao: tratativa.sugestao, quantidadeCasos: tratativa.quantidadeCasos, evidencia: tratativa.evidencia, origem: tratativa.origem||'HISTORICO', todasSugestoes: tratativa.todasSugestoes||[] },
+    tratativaEstruturada,
+    devolutivaEstruturada,
     ia,
     confianca,
     conflitos,
@@ -704,7 +804,12 @@ module.exports = {
   chamarIA,
   // Principal
   analisarManifestacao,          // v1 (compat)
-  analisarManifestacaoCompleta,  // v2 (completa)
+  analisarManifestacaoCompleta,  // v3 (completa com tratativa + devolutiva)
+  // Engines (re-exportados para uso nas rotas)
+  tratativaEngine,
+  devolutivaEngine,
+  assertividade,
+  matrizTratamento,
   // Constantes
   CEREBRO_VERSION,
 };

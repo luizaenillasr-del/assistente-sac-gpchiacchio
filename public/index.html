@@ -240,7 +240,7 @@
   .form-input:read-only { background: var(--gray-50); color: var(--gray-500); }
   .form-textarea { width:100%; padding: 10px; border: 1px solid var(--gray-200); border-radius: 6px; font-size: 13px; min-height: 100px; resize: vertical; font-family: inherit; outline: none; }
   .form-textarea:focus { border-color: var(--red); box-shadow: 0 0 0 2px var(--red-light); }
-  .ia-tratativa-box { background:#FFF9FA; border:1px solid #E8B8C0; border-left:4px solid var(--red); border-radius:8px; padding:12px 13px; font-size:13px; line-height:1.6; color:var(--gray-700); white-space:pre-wrap; min-height:72px; }
+  .ia-tratativa-box { background:#FFF9FA; border:1px solid #E8B8C0; border-left:4px solid var(--red); border-radius:8px; padding:12px 13px; font-size:13px; line-height:1.6; color:var(--gray-700); min-height:72px; }
 
   /* CANAL BTNS */
   .canal-btns { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -777,45 +777,39 @@
         <span class="filter-last" id="last-update">Última atualização: --:--</span>
       </div>
 
-      <!-- KPIs Bloco 1 — Operação -->
-      <div style="margin-bottom:8px;font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.06em">Bloco 1 — Operação</div>
-      <div class="kpi-grid" style="grid-template-columns:repeat(6,1fr);margin-bottom:16px">
+      <!-- KPIs Principais -->
+      <div class="kpi-grid" style="grid-template-columns:repeat(5,1fr);margin-bottom:16px">
         <div class="kpi-card highlight" style="cursor:pointer" onclick="navigate('banco-manifestacoes', document.querySelector('[onclick*=banco-manifestacoes]'))">
-          <div class="kpi-label">Em andamento</div>
-          <div class="kpi-value" id="kpi-andamento">--</div>
-          <div class="kpi-delta" id="kpi-andamento-delta">total ativo</div>
+          <div class="kpi-label">Reclamações do período</div>
+          <div class="kpi-value" id="kpi-reclamacoes">--</div>
+          <div class="kpi-delta" id="kpi-rec-pct">no período selecionado</div>
         </div>
         <div class="kpi-card" style="cursor:pointer" onclick="navigate('banco-manifestacoes', document.querySelector('[onclick*=banco-manifestacoes]'))">
-          <div class="kpi-label">Total histórico</div>
-          <div class="kpi-value" id="kpi-total">--</div>
-          <div class="kpi-delta">no período</div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-label">Reclamações</div>
-          <div class="kpi-value" id="kpi-reclamacoes">--</div>
-          <div class="kpi-delta" id="kpi-rec-pct">do total</div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-label">Encerradas</div>
-          <div class="kpi-value" id="kpi-encerradas">--</div>
-          <div class="kpi-delta" id="kpi-enc-pct">do total</div>
-        </div>
-        <div class="kpi-card" style="cursor:pointer" onclick="navigate('banco-rnc', document.querySelector('[onclick*=banco-rnc]'))">
-          <div class="kpi-label">RNCs abertas</div>
-          <div class="kpi-value" id="kpi-rncs">--</div>
-          <div class="kpi-delta">não conformidades</div>
-        </div>
-        <div class="kpi-card">
           <div class="kpi-label">Em aberto</div>
           <div class="kpi-value" id="kpi-aberto">--</div>
-          <div class="kpi-delta">aguardando ação</div>
+          <div class="kpi-delta" id="kpi-andamento-delta">aguardando ação</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Concluídas</div>
+          <div class="kpi-value" id="kpi-encerradas">--</div>
+          <div class="kpi-delta" id="kpi-enc-pct">finalizadas</div>
+        </div>
+        <div class="kpi-card" id="kpi-fora-sla-card">
+          <div class="kpi-label">Fora do SLA</div>
+          <div class="kpi-value" id="kpi-atrasadas">--</div>
+          <div class="kpi-delta down" id="kpi-fora-delta">fora do prazo</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Tempo médio de tratativa</div>
+          <div class="kpi-value" id="kpi-tempo-medio">--</div>
+          <div class="kpi-delta">horas por caso</div>
         </div>
       </div>
 
-      <!-- KPIs Bloco 2 — SLA -->
-      <div style="margin-bottom:8px;font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.06em">Bloco 2 — SLA</div>
-      <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px">
-        <div class="kpi-card highlight">
+      <!-- Métricas da Ferramenta -->
+      <div style="margin-bottom:8px;font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.06em">Métricas da Ferramenta</div>
+      <div class="kpi-grid" style="grid-template-columns:repeat(5,1fr);margin-bottom:16px">
+        <div class="kpi-card">
           <div class="kpi-label">SLA geral</div>
           <div class="kpi-value" id="kpi-prazo">--%</div>
           <div class="kpi-delta">dentro do prazo</div>
@@ -825,32 +819,25 @@
           <div class="kpi-value" id="kpi-dentro-prazo">--</div>
           <div class="kpi-delta up" id="kpi-dentro-delta">casos</div>
         </div>
-        <div class="kpi-card">
-          <div class="kpi-label">Fora do prazo</div>
-          <div class="kpi-value" id="kpi-atrasadas">--</div>
-          <div class="kpi-delta down" id="kpi-fora-delta">casos</div>
+        <div class="kpi-card" style="cursor:pointer" onclick="navigate('banco-rnc', document.querySelector('[onclick*=banco-rnc]'))">
+          <div class="kpi-label">RNCs abertas</div>
+          <div class="kpi-value" id="kpi-rncs">--</div>
+          <div class="kpi-delta">não conformidades</div>
         </div>
         <div class="kpi-card">
-          <div class="kpi-label">Tempo médio</div>
-          <div class="kpi-value" id="kpi-tempo-medio">--</div>
-          <div class="kpi-delta">horas/caso</div>
-        </div>
-      </div>
-
-      <!-- KPIs Bloco 3 — Pesquisas de Satisfação -->
-      <div style="margin-bottom:8px;font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.06em">Bloco 3 — Satisfação</div>
-      <div class="kpi-grid" style="grid-template-columns:repeat(2,1fr);margin-bottom:16px">
-        <div class="kpi-card">
-          <div class="kpi-label">Pesquisas recebidas no mês</div>
+          <div class="kpi-label">Pesquisas recebidas</div>
           <div class="kpi-value" id="kpi-pesquisas-mes">--</div>
-          <div class="kpi-delta" id="kpi-pesquisas-mes-label">carregando...</div>
+          <div class="kpi-delta" id="kpi-pesquisas-mes-label">no mês</div>
         </div>
         <div class="kpi-card" style="border-color:#FCA5A5">
-          <div class="kpi-label">Viraram reclamação (nota crítica)</div>
+          <div class="kpi-label">Viraram reclamação</div>
           <div class="kpi-value" id="kpi-pesquisas-rec" style="color:var(--red)">--</div>
-          <div class="kpi-delta" id="kpi-pesquisas-rec-pct">nota ≤ 6 em qualquer critério</div>
+          <div class="kpi-delta" id="kpi-pesquisas-rec-pct">nota crítica ≤ 6</div>
         </div>
       </div>
+      <!-- hidden IDs still used by renderDashboard -->
+      <span id="kpi-andamento" style="display:none"></span>
+      <span id="kpi-total" style="display:none"></span>
 
       <!-- Row 2 -->
       <div class="grid-3" style="margin-bottom:16px">
@@ -1173,6 +1160,10 @@
                 <div style="margin-bottom:16px">
                   <div style="font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">Resposta ao cliente — sugestão automática</div>
                   <div class="devolutiva-policy"><strong>Regra de comunicação:</strong> a resposta deve demonstrar ação e resolução, sem assumir culpa, atribuir responsabilidade antes da apuração ou expor dependências internas entre setores.</div>
+                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+                    <span id="ia-devolutiva-tipo" style="display:none;background:#EFF6FF;color:#1D4ED8;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700"></span>
+                  </div>
+                  <div id="ia-devolutiva-bloqueadas" style="display:none;background:#FEF2F2;border-radius:6px;padding:6px 10px;margin-bottom:6px"></div>
                   <textarea id="ia-devolutiva" class="form-textarea" style="min-height:280px;height:280px;font-size:13px;line-height:1.6;background:#FAFAFA;resize:vertical"></textarea>
                   <div style="font-size:11px;color:var(--gray-400);margin-top:4px">Editável pela analista. A resposta inicial deve ser utilizável pelo cliente mesmo enquanto a apuração interna continua. A resposta final será registrada separadamente.</div>
                 </div>
@@ -2215,10 +2206,17 @@
 
       <!-- ── SETORES ── -->
       <div class="cd-panel" id="cdp-setores" style="display:none">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
           <input class="form-input" id="cd-set-busca" placeholder="Buscar setor…" style="width:220px" oninput="cdFiltrar('set')">
-          <button class="btn btn-primary" onclick="abrirModalSetorCerebro()">+ Novo Setor</button>
+          <div style="display:flex;gap:8px">
+            <label class="btn btn-secondary" style="cursor:pointer;margin:0" title="Importar CSV com colunas: SETOR, EMPRESA, RESPONSAVEL, SLA_HORAS, ATIVO">
+              📥 Importar CSV
+              <input type="file" id="upload-setores-input" accept=".csv,.txt" style="display:none" onchange="handleUploadSetores(this)">
+            </label>
+            <button class="btn btn-primary" onclick="abrirModalSetorCerebro()">+ Novo Setor</button>
+          </div>
         </div>
+        <div id="setores-import-status" style="font-size:13px;color:var(--gray-400);margin-bottom:8px"></div>
         <div id="cerebro-setores-loading" style="padding:24px;text-align:center;color:var(--gray-400);font-size:13px">Carregando...</div>
         <div id="cerebro-setores-tabela" style="display:none;overflow-x:auto">
           <table class="table" style="width:100%">
@@ -2849,21 +2847,24 @@ function renderDashboard(data) {
   const recs = _dashData.recs;
   const mans = _dashData.mans;
 
-  // === BLOCO 1 — OPERAÇÃO ===
+  // === KPIs PRINCIPAIS ===
   const emAberto = recs.filter(r => (r['Status']||'').toUpperCase().includes('ABERTO')).length;
   const reclamacoes = recs.filter(r => (r['Motivo da Reclamação']||'') !== '').length;
-  const recPct = total > 0 ? Math.round(reclamacoes/total*100) : 0;
   const encPct = total > 0 ? Math.round(encerradas/total*100) : 0;
+  const totalPeriodo = reclamacoes || total;
 
   document.getElementById('kpi-andamento').textContent = emAndamento || mans.filter(m => !(m.STATUS||'').toUpperCase().includes('FINALIZ')).length;
-  document.getElementById('kpi-andamento-delta').textContent = 'casos ativos';
   document.getElementById('kpi-total').textContent = total;
-  document.getElementById('kpi-reclamacoes').textContent = reclamacoes || total;
-  document.getElementById('kpi-rec-pct').textContent = recPct + '% do total';
+  document.getElementById('kpi-reclamacoes').textContent = totalPeriodo;
+  document.getElementById('kpi-rec-pct').textContent = totalPeriodo === 1 ? '1 manifestação' : totalPeriodo + ' manifestações';
+  document.getElementById('kpi-aberto').textContent = emAberto || (total - encerradas);
+  document.getElementById('kpi-andamento-delta').textContent = 'aguardando ação';
   document.getElementById('kpi-encerradas').textContent = encerradas;
   document.getElementById('kpi-enc-pct').textContent = encPct + '% do total';
   document.getElementById('kpi-rncs').textContent = rncs || 0;
-  document.getElementById('kpi-aberto').textContent = emAberto || (total - encerradas);
+  // Destacar "Fora do SLA" em vermelho se > 0
+  const foraSlaCard = document.getElementById('kpi-fora-sla-card');
+  if (foraSlaCard) { foraSlaCard.style.borderColor = foraPrazo > 0 ? 'var(--red)' : ''; }
 
   // === BLOCO 2 — SLA ===
   const slaVal = slaPercent !== null && slaPercent !== 'Sem dados suficientes' ? slaPercent + '%' : 'Sem dados';
@@ -3331,17 +3332,89 @@ function renderizarAnalise(a) {
     simsWrap.style.display = 'none';
   }
 
-  // Tratativa sugerida — separada da devolutiva
-  const tratativaSugerida = extrairTratativaSugerida(a);
-  document.getElementById('ia-tratativa').textContent =
-    tratativaSugerida || 'A ferramenta não encontrou uma tratativa sugerida com os dados disponíveis. A analista deverá definir a tratativa após a apuração.';
+  // ── Tratativa estruturada v3 (ações tipadas) ─────────────────
+  const tratEl = document.getElementById('ia-tratativa');
+  const te = a.tratativaEstruturada;
+  if (te && (te.acoes?.length || te.diagnostico)) {
+    const corTipo = { OBRIGATORIA:'#DC2626', RECOMENDADA:'#D97706', CONDICIONAL:'#2563EB', PROIBIDA:'#6B7280' };
+    const bgTipo  = { OBRIGATORIA:'#FEE2E2', RECOMENDADA:'#FEF3C7', CONDICIONAL:'#EFF6FF', PROIBIDA:'#F3F4F6' };
+    const labelTipo = { OBRIGATORIA:'● OBRIGATÓRIA', RECOMENDADA:'● RECOMENDADA', CONDICIONAL:'◎ CONDICIONAL', PROIBIDA:'✕ PROIBIDA' };
+    let html = '';
+    if (te.diagnostico?.descricao) {
+      const nivelCor = te.diagnostico.nivel === 'CONFIRMADO' ? '#16A34A' : te.diagnostico.nivel === 'HIPOTESE' ? '#D97706' : '#6B7280';
+      html += `<div style="background:#F0FDF4;border-radius:8px;padding:10px;margin-bottom:10px;border-left:3px solid ${nivelCor}">
+        <div style="font-size:10px;font-weight:700;color:${nivelCor};margin-bottom:3px">DIAGNÓSTICO · ${te.diagnostico.nivel||'EM INVESTIGAÇÃO'}</div>
+        <div style="font-size:12px;color:#1F2937">${esc5(te.diagnostico.descricao)}</div>
+        ${te.diagnostico.causa ? `<div style="font-size:11px;color:#6B7280;margin-top:3px">Causa provável: ${esc5(te.diagnostico.causa)}</div>` : ''}
+      </div>`;
+    }
+    if (te.acoes?.length) {
+      const grupos = {};
+      for (const ac of te.acoes) { const t = ac.tipo||'RECOMENDADA'; if (!grupos[t]) grupos[t] = []; grupos[t].push(ac); }
+      const ordem = ['OBRIGATORIA','RECOMENDADA','CONDICIONAL','PROIBIDA'];
+      for (const tipo of ordem) {
+        if (!grupos[tipo]) continue;
+        html += `<div style="margin-bottom:8px">
+          <div style="font-size:10px;font-weight:700;color:${corTipo[tipo]};margin-bottom:4px">${labelTipo[tipo]}</div>`;
+        for (const ac of grupos[tipo]) {
+          html += `<div style="background:${bgTipo[tipo]};border-radius:6px;padding:6px 10px;margin-bottom:3px;font-size:12px;color:#1F2937">
+            ${esc5(ac.descricao)}
+            ${ac.responsavel ? `<span style="color:#6B7280;font-size:10px"> · ${esc5(ac.responsavel)}</span>` : ''}
+            ${ac.prazo ? `<span style="color:#6B7280;font-size:10px"> · Prazo: ${esc5(ac.prazo)}</span>` : ''}
+          </div>`;
+        }
+        html += '</div>';
+      }
+    }
+    if (te.necessitaAprovacao) {
+      html += `<div style="background:#FEF3C7;border-radius:6px;padding:6px 10px;font-size:11px;color:#92400E;margin-top:4px">⚠ Necessita aprovação${te.quemAprova ? ': ' + esc5(te.quemAprova) : ''}</div>`;
+    }
+    if (te.necessitaEscalonamento) {
+      html += `<div style="background:#FEE2E2;border-radius:6px;padding:6px 10px;font-size:11px;color:#DC2626;margin-top:4px">🔺 Necessita escalonamento</div>`;
+    }
+    tratEl.innerHTML = html || '<span style="color:var(--gray-400);font-size:12px">Processando ações...</span>';
+  } else {
+    // Fallback tratativa v2
+    const tratativaSugerida = extrairTratativaSugerida(a);
+    const acoes = a.tratativaSugerida?.acoes || a.acoesSugeridas || [];
+    if (tratativaSugerida) {
+      let html = `<div style="font-size:13px;color:#1F2937;white-space:pre-wrap">${esc5(tratativaSugerida)}</div>`;
+      if (acoes.length) {
+        html += '<div style="margin-top:8px">' + acoes.map((ac,i) =>
+          `<div style="background:#EFF6FF;border-radius:5px;padding:5px 8px;margin-bottom:3px;font-size:12px">${i+1}. ${esc5(ac)}</div>`
+        ).join('') + '</div>';
+      }
+      tratEl.innerHTML = html;
+    } else {
+      tratEl.textContent = 'A ferramenta não encontrou uma tratativa sugerida com os dados disponíveis. A analista deverá definir a tratativa após a apuração.';
+    }
+  }
 
-  // Devolutiva
-  document.getElementById('ia-devolutiva').value =
-    a.devolutivaSugerida ||
-    a.DEVOLUTIVA_SUGERIDA ||
-    a.devolutiva ||
-    '';
+  // ── Devolutiva estruturada v3 ─────────────────────────────────
+  const de = a.devolutivaEstruturada;
+  const devEl = document.getElementById('ia-devolutiva');
+  if (de?.textoGerado) {
+    devEl.value = de.textoGerado;
+    // Badge de tipo de devolutiva
+    const tipoDevEl = document.getElementById('ia-devolutiva-tipo');
+    if (tipoDevEl) {
+      tipoDevEl.textContent = de.descricaoTipo || de.tipo || '';
+      tipoDevEl.style.display = de.tipo ? 'inline' : 'none';
+    }
+    // Informações proibidas bloqueadas
+    const bloqEl = document.getElementById('ia-devolutiva-bloqueadas');
+    if (bloqEl) {
+      if (de.informacoesBloqueadas?.length) {
+        bloqEl.style.display = 'block';
+        bloqEl.innerHTML = `<span style="font-size:10px;font-weight:700;color:#DC2626">ℹ INFORMAÇÕES OMITIDAS:</span> ` +
+          de.informacoesBloqueadas.map(b => `<span style="background:#FEE2E2;color:#DC2626;padding:1px 5px;border-radius:3px;font-size:10px">${esc5(b)}</span>`).join(' ');
+      } else {
+        bloqEl.style.display = 'none';
+      }
+    }
+  } else {
+    devEl.value = a.devolutivaSugerida || a.DEVOLUTIVA_SUGERIDA || a.devolutiva || '';
+  }
 }
 
 function aceitarAnalise() {
@@ -7200,14 +7273,15 @@ window.renderizarAnalise = function(a){
   // 1. Re-renderizar similares com a versão segura
   renderCardsSimiliares(a);
 
-  // 2. Corrigir tratativa sugerida
-  const tratativa = window.extrairTratativaSugerida(a);
+  // 2. Badge de origem da tratativa — só se não for estruturada (v3)
   const tratEl = document.getElementById('ia-tratativa');
-  if(tratEl){
-    tratEl.textContent = tratativa ||
-      'A ferramenta não encontrou uma tratativa sugerida com os dados disponíveis. Verifique os casos semelhantes acima ou defina manualmente.';
-
-    // Badge de origem
+  if(tratEl && !a.tratativaEstruturada?.acoes?.length) {
+    const tratativa = window.extrairTratativaSugerida(a);
+    if(!tratEl.querySelector('div')) {
+      // Só substitui textContent se não houver HTML estruturado
+      tratEl.textContent = tratativa ||
+        'A ferramenta não encontrou uma tratativa sugerida com os dados disponíveis. Verifique os casos semelhantes acima ou defina manualmente.';
+    }
     let badge = document.getElementById('trat-origem-badge');
     if(!badge){
       badge = document.createElement('div');
@@ -7226,6 +7300,10 @@ window.renderizarAnalise = function(a){
     } else {
       badge.innerHTML = 'Sugestão da ferramenta. A analista decide se é aplicável e registra a tratativa efetivamente realizada.';
     }
+  } else if(tratEl && a.tratativaEstruturada?.acoes?.length) {
+    // Remove badge de origem quando há estrutura v3
+    const old = document.getElementById('trat-origem-badge');
+    if(old) old.innerHTML = `<span class="orig-badge ferramenta">📐 Motor de Tratativas v3</span> Baseada na Matriz de Tratamento + histórico de casos.`;
   }
 };
 
@@ -8633,7 +8711,7 @@ async function cdAbrirAba(nome) {
   loading.style.display = 'block'; loading.textContent = `Carregando ${nome}...`;
   tabela.style.display = 'none';
   try {
-    const r = await _apiFetch(`/api/planilha/${nome}`);
+    const r = await _apiFetch(`/api/planilha/ler?nome=${encodeURIComponent(nome)}`);
     _abaData = r.itens || [];
     document.getElementById('cd-aba-total').textContent = `${_abaData.length} registro(s)`;
     _abaCols = _abaData.length ? Object.keys(_abaData[0]).filter(k=>k!=='__linha') : [];
@@ -8710,7 +8788,7 @@ async function cdConfirmarImportAba() {
   const status = document.getElementById('cd-aba-import-status');
   status.style.color='var(--gray-500)'; status.textContent='Importando...';
   try {
-    const r = await _apiFetch(`/api/planilha/${_abaAtual}/importar`, {
+    const r = await _apiFetch(`/api/planilha/${encodeURIComponent(_abaAtual)}/importar`, {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ itens: _abaImportBuffer, cabecalhos: Object.keys(_abaImportBuffer[0]||{}) })
     });
@@ -8743,6 +8821,46 @@ async function loadCerebroProdutos() {
     }
   } catch(e) { if(loading) loading.textContent = 'Erro: ' + e.message; }
 }
+let _setoresParaImportar = [];
+function handleUploadSetores(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const status = document.getElementById('setores-import-status');
+  status.textContent = 'Lendo arquivo...';
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const text = e.target.result;
+      const lines = text.split(/\r?\n/).filter(l => l.trim());
+      if (lines.length < 2) { status.textContent = 'Arquivo vazio ou sem dados.'; return; }
+      const sep = lines[0].includes(';') ? ';' : ',';
+      const headers = lines[0].split(sep).map(h => h.trim().replace(/^"|"$/g,'').toUpperCase());
+      const rows = lines.slice(1).map(l => {
+        const vals = l.split(sep).map(v => v.trim().replace(/^"|"$/g,''));
+        const obj = {};
+        headers.forEach((h, i) => obj[h] = vals[i]||'');
+        return obj;
+      }).filter(r => r.SETOR);
+      _setoresParaImportar = rows;
+      status.style.color = 'var(--gray-600)';
+      status.innerHTML = `${rows.length} setor(es) lido(s) — <button class="btn btn-primary" style="padding:3px 10px;font-size:12px" onclick="confirmarImportSetores()">✔ Confirmar</button> <button class="btn btn-secondary" style="padding:3px 10px;font-size:12px;margin-left:4px" onclick="document.getElementById('setores-import-status').textContent=''">Cancelar</button>`;
+    } catch(err) { status.textContent = 'Erro ao ler CSV: ' + err.message; }
+  };
+  reader.readAsText(file, 'UTF-8');
+  input.value = '';
+}
+async function confirmarImportSetores() {
+  const status = document.getElementById('setores-import-status');
+  status.textContent = 'Importando...';
+  try {
+    const r = await _apiFetch('/api/setores/importar', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({itens:_setoresParaImportar}) });
+    status.style.color = 'var(--green)';
+    status.textContent = `✔ ${r.criados} setor(es) importado(s) com sucesso.`;
+    _setoresParaImportar = [];
+    cdLoadSetores();
+  } catch(e) { status.style.color='var(--red)'; status.textContent='Erro: '+e.message; }
+}
+
 function handleUploadProdutos(input) {
   const file = input.files[0];
   if (!file) return;
