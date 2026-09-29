@@ -777,45 +777,39 @@
         <span class="filter-last" id="last-update">Última atualização: --:--</span>
       </div>
 
-      <!-- KPIs Bloco 1 — Operação -->
-      <div style="margin-bottom:8px;font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.06em">Bloco 1 — Operação</div>
-      <div class="kpi-grid" style="grid-template-columns:repeat(6,1fr);margin-bottom:16px">
+      <!-- KPIs Principais -->
+      <div class="kpi-grid" style="grid-template-columns:repeat(5,1fr);margin-bottom:16px">
         <div class="kpi-card highlight" style="cursor:pointer" onclick="navigate('banco-manifestacoes', document.querySelector('[onclick*=banco-manifestacoes]'))">
-          <div class="kpi-label">Em andamento</div>
-          <div class="kpi-value" id="kpi-andamento">--</div>
-          <div class="kpi-delta" id="kpi-andamento-delta">total ativo</div>
+          <div class="kpi-label">Reclamações do período</div>
+          <div class="kpi-value" id="kpi-reclamacoes">--</div>
+          <div class="kpi-delta" id="kpi-rec-pct">no período selecionado</div>
         </div>
         <div class="kpi-card" style="cursor:pointer" onclick="navigate('banco-manifestacoes', document.querySelector('[onclick*=banco-manifestacoes]'))">
-          <div class="kpi-label">Total histórico</div>
-          <div class="kpi-value" id="kpi-total">--</div>
-          <div class="kpi-delta">no período</div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-label">Reclamações</div>
-          <div class="kpi-value" id="kpi-reclamacoes">--</div>
-          <div class="kpi-delta" id="kpi-rec-pct">do total</div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-label">Encerradas</div>
-          <div class="kpi-value" id="kpi-encerradas">--</div>
-          <div class="kpi-delta" id="kpi-enc-pct">do total</div>
-        </div>
-        <div class="kpi-card" style="cursor:pointer" onclick="navigate('banco-rnc', document.querySelector('[onclick*=banco-rnc]'))">
-          <div class="kpi-label">RNCs abertas</div>
-          <div class="kpi-value" id="kpi-rncs">--</div>
-          <div class="kpi-delta">não conformidades</div>
-        </div>
-        <div class="kpi-card">
           <div class="kpi-label">Em aberto</div>
           <div class="kpi-value" id="kpi-aberto">--</div>
-          <div class="kpi-delta">aguardando ação</div>
+          <div class="kpi-delta" id="kpi-andamento-delta">aguardando ação</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Concluídas</div>
+          <div class="kpi-value" id="kpi-encerradas">--</div>
+          <div class="kpi-delta" id="kpi-enc-pct">finalizadas</div>
+        </div>
+        <div class="kpi-card" id="kpi-fora-sla-card">
+          <div class="kpi-label">Fora do SLA</div>
+          <div class="kpi-value" id="kpi-atrasadas">--</div>
+          <div class="kpi-delta down" id="kpi-fora-delta">fora do prazo</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Tempo médio de tratativa</div>
+          <div class="kpi-value" id="kpi-tempo-medio">--</div>
+          <div class="kpi-delta">horas por caso</div>
         </div>
       </div>
 
-      <!-- KPIs Bloco 2 — SLA -->
-      <div style="margin-bottom:8px;font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.06em">Bloco 2 — SLA</div>
-      <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px">
-        <div class="kpi-card highlight">
+      <!-- Métricas da Ferramenta -->
+      <div style="margin-bottom:8px;font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.06em">Métricas da Ferramenta</div>
+      <div class="kpi-grid" style="grid-template-columns:repeat(5,1fr);margin-bottom:16px">
+        <div class="kpi-card">
           <div class="kpi-label">SLA geral</div>
           <div class="kpi-value" id="kpi-prazo">--%</div>
           <div class="kpi-delta">dentro do prazo</div>
@@ -825,32 +819,25 @@
           <div class="kpi-value" id="kpi-dentro-prazo">--</div>
           <div class="kpi-delta up" id="kpi-dentro-delta">casos</div>
         </div>
-        <div class="kpi-card">
-          <div class="kpi-label">Fora do prazo</div>
-          <div class="kpi-value" id="kpi-atrasadas">--</div>
-          <div class="kpi-delta down" id="kpi-fora-delta">casos</div>
+        <div class="kpi-card" style="cursor:pointer" onclick="navigate('banco-rnc', document.querySelector('[onclick*=banco-rnc]'))">
+          <div class="kpi-label">RNCs abertas</div>
+          <div class="kpi-value" id="kpi-rncs">--</div>
+          <div class="kpi-delta">não conformidades</div>
         </div>
         <div class="kpi-card">
-          <div class="kpi-label">Tempo médio</div>
-          <div class="kpi-value" id="kpi-tempo-medio">--</div>
-          <div class="kpi-delta">horas/caso</div>
-        </div>
-      </div>
-
-      <!-- KPIs Bloco 3 — Pesquisas de Satisfação -->
-      <div style="margin-bottom:8px;font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.06em">Bloco 3 — Satisfação</div>
-      <div class="kpi-grid" style="grid-template-columns:repeat(2,1fr);margin-bottom:16px">
-        <div class="kpi-card">
-          <div class="kpi-label">Pesquisas recebidas no mês</div>
+          <div class="kpi-label">Pesquisas recebidas</div>
           <div class="kpi-value" id="kpi-pesquisas-mes">--</div>
-          <div class="kpi-delta" id="kpi-pesquisas-mes-label">carregando...</div>
+          <div class="kpi-delta" id="kpi-pesquisas-mes-label">no mês</div>
         </div>
         <div class="kpi-card" style="border-color:#FCA5A5">
-          <div class="kpi-label">Viraram reclamação (nota crítica)</div>
+          <div class="kpi-label">Viraram reclamação</div>
           <div class="kpi-value" id="kpi-pesquisas-rec" style="color:var(--red)">--</div>
-          <div class="kpi-delta" id="kpi-pesquisas-rec-pct">nota ≤ 6 em qualquer critério</div>
+          <div class="kpi-delta" id="kpi-pesquisas-rec-pct">nota crítica ≤ 6</div>
         </div>
       </div>
+      <!-- hidden IDs still used by renderDashboard -->
+      <span id="kpi-andamento" style="display:none"></span>
+      <span id="kpi-total" style="display:none"></span>
 
       <!-- Row 2 -->
       <div class="grid-3" style="margin-bottom:16px">
@@ -2849,21 +2836,24 @@ function renderDashboard(data) {
   const recs = _dashData.recs;
   const mans = _dashData.mans;
 
-  // === BLOCO 1 — OPERAÇÃO ===
+  // === KPIs PRINCIPAIS ===
   const emAberto = recs.filter(r => (r['Status']||'').toUpperCase().includes('ABERTO')).length;
   const reclamacoes = recs.filter(r => (r['Motivo da Reclamação']||'') !== '').length;
-  const recPct = total > 0 ? Math.round(reclamacoes/total*100) : 0;
   const encPct = total > 0 ? Math.round(encerradas/total*100) : 0;
+  const totalPeriodo = reclamacoes || total;
 
   document.getElementById('kpi-andamento').textContent = emAndamento || mans.filter(m => !(m.STATUS||'').toUpperCase().includes('FINALIZ')).length;
-  document.getElementById('kpi-andamento-delta').textContent = 'casos ativos';
   document.getElementById('kpi-total').textContent = total;
-  document.getElementById('kpi-reclamacoes').textContent = reclamacoes || total;
-  document.getElementById('kpi-rec-pct').textContent = recPct + '% do total';
+  document.getElementById('kpi-reclamacoes').textContent = totalPeriodo;
+  document.getElementById('kpi-rec-pct').textContent = totalPeriodo === 1 ? '1 manifestação' : totalPeriodo + ' manifestações';
+  document.getElementById('kpi-aberto').textContent = emAberto || (total - encerradas);
+  document.getElementById('kpi-andamento-delta').textContent = 'aguardando ação';
   document.getElementById('kpi-encerradas').textContent = encerradas;
   document.getElementById('kpi-enc-pct').textContent = encPct + '% do total';
   document.getElementById('kpi-rncs').textContent = rncs || 0;
-  document.getElementById('kpi-aberto').textContent = emAberto || (total - encerradas);
+  // Destacar "Fora do SLA" em vermelho se > 0
+  const foraSlaCard = document.getElementById('kpi-fora-sla-card');
+  if (foraSlaCard) { foraSlaCard.style.borderColor = foraPrazo > 0 ? 'var(--red)' : ''; }
 
   // === BLOCO 2 — SLA ===
   const slaVal = slaPercent !== null && slaPercent !== 'Sem dados suficientes' ? slaPercent + '%' : 'Sem dados';
