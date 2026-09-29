@@ -556,11 +556,52 @@
     </div>
     <button class="login-btn" onclick="doLogin()">Entrar</button>
     <div class="login-error" id="login-error">Usuário ou senha inválidos.</div>
+    <div style="margin-top:14px;text-align:center">
+      <span style="font-size:12px;color:#9CA3AF;cursor:pointer" onclick="toggleBootstrap()">Primeiro acesso? Criar conta administradora</span>
+    </div>
+  </div>
+
+  <!-- BOOTSTRAP — só aparece quando não há usuários -->
+  <div class="login-box" id="bootstrap-box" style="display:none;margin-top:16px;max-width:360px">
+    <div style="font-size:14px;font-weight:700;margin-bottom:12px;color:#111827">Criar conta administradora</div>
+    <div style="font-size:12px;color:#6B7280;margin-bottom:14px">Use apenas na configuração inicial. Após criar o primeiro usuário, este formulário deixa de funcionar.</div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <input id="bs-usuario" class="login-input" placeholder="Login (ex: luiza)" autocomplete="off">
+      <input id="bs-nome" class="login-input" placeholder="Nome completo">
+      <input id="bs-senha" type="password" class="login-input" placeholder="Senha (mín. 6 caracteres)">
+    </div>
+    <button class="login-btn" style="margin-top:10px" onclick="doBootstrap()">Criar administrador</button>
+    <div id="bs-feedback" style="display:none;font-size:12px;padding:8px;border-radius:6px;margin-top:8px"></div>
   </div>
 </div>
 
 <script>
   window.SAC_API = 'https://assistente-sac-gpchiacchio.vercel.app';
+
+  function toggleBootstrap() {
+    const el = document.getElementById('bootstrap-box');
+    el.style.display = el.style.display === 'none' ? 'block' : 'none';
+  }
+
+  async function doBootstrap() {
+    const fb = document.getElementById('bs-feedback');
+    const usuario = document.getElementById('bs-usuario').value.trim();
+    const nome = document.getElementById('bs-nome').value.trim();
+    const senha = document.getElementById('bs-senha').value;
+    if (!usuario || !nome || !senha) { fb.style.display='block';fb.style.background='#FEE2E2';fb.style.color='#DC2626';fb.textContent='Preencha todos os campos.';return; }
+    fb.style.display='block';fb.style.background='#FEF3C7';fb.style.color='#92400E';fb.textContent='Criando...';
+    try {
+      const r = await fetch(window.SAC_API+'/api/bootstrap', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({usuario,nome,senha})});
+      const data = await r.json();
+      if (!data.sucesso) throw new Error(data.erro);
+      fb.style.background='#D1FAE5';fb.style.color='#065F46';
+      fb.textContent='✓ Conta criada! Faça login agora com seu usuário e senha.';
+      document.getElementById('login-user').value = usuario;
+      document.getElementById('login-senha').focus();
+      setTimeout(()=>{ document.getElementById('bootstrap-box').style.display='none'; }, 3000);
+    } catch(e) { fb.style.background='#FEE2E2';fb.style.color='#DC2626';fb.textContent='Erro: '+e.message; }
+  }
+
   async function doLogin() {
     const user=document.getElementById('login-user').value.trim();
     const senha=document.getElementById('login-senha').value;

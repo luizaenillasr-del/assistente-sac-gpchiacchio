@@ -361,6 +361,7 @@ app.use('/api', async (req,res,next)=>{
     '/',
     '/auth/login',
     '/auth/forgot-password',
+    '/bootstrap',
   ]);
   if(publicPaths.has(req.path)) return next();
   const header=req.headers.authorization||'';
@@ -1668,6 +1669,40 @@ app.get('/api/cliente-contexto', async (req,res)=>{
     todosCasos.forEach(c=>{if(c.causa)causasFreq[c.causa]=(causasFreq[c.causa]||0)+1;});
     res.json({sucesso:true,cliente,empresa:empresa||'',totalCasos:todosCasos.length,casos:todosCasos.slice(0,20),produtos,causasRecorrentes:Object.entries(causasFreq).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([c,n])=>({causa:c,ocorrencias:n}))});
   } catch(e){ res.status(500).json({sucesso:false,erro:e.message}); }
+});
+
+// ===== BOOTSTRAP — criar primeiro usuário MASTER =====
+app.post('/api/bootstrap', async (req, res) => {
+  try {
+    const { usuario, nome, senha, bootstrapKey } = req.body || {};
+    const keyOk = bootstrapKey && bootstrapKey === (process.env.BOOTSTRAP_KEY || '');
+    if (!keyOk) {
+      const existentes = await lerAba('USUARIOS', 10).catch(() => []);
+      if (existentes.length > 0) {
+        return res.status(403).json({ sucesso: false, erro: 'Já existem usuários cadastrados. Use BOOTSTRAP_KEY para forçar criação.' });
+      }
+    }
+    if (!usuario || !nome || !senha) return res.status(400).json({ sucesso: false, erro: 'usuario, nome e senha são obrigatórios.' });
+    if (senha.length < 6) return res.status(400).json({ sucesso: false, erro: 'Senha deve ter ao menos 6 caracteres.' });
+    const sheets = await getSheets();
+    const meta = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
+    const existe = meta.data.sheets?.find(s => s.properties?.title === 'USUARIOS');
+    if (!existe) {
+      await sheets.spreadsheets.batchUpdate({ spreadsheetId: SPREADSHEET_ID, resource: { requests: [{ addSheet: { properties: { title: 'USUARIOS' } } }] } });
+    }
+    const headers = await obterCabecalhos('USUARIOS').catch(() => []);
+    const cols = ['ID_USUARIO','USUARIO','EMAIL','NOME','PERFIL','EMPRESA','SETOR','CODIGO_RCA','STATUS','SENHA_HASH','DATA_CRIACAO','ULTIMO_ACESSO'];
+    if (!headers.length) {
+      await sheets.spreadsheets.values.update({ spreadsheetId: SPREADSHEET_ID, range: `USUARIOS!A1:L1`, valueInputOption: 'RAW', resource: { values: [cols] } });
+    }
+    const hash = 'sha256:' + crypto.createHash('sha256').update(String(senha)).digest('hex');
+    const obj = { ID_USUARIO: 'USR-001', USUARIO: usuario, EMAIL: '', NOME: nome, PERFIL: 'MASTER', EMPRESA: 'Grupo Chiacchio', SETOR: 'SAC', CODIGO_RCA: '', STATUS: 'ATIVO', SENHA_HASH: hash, DATA_CRIACAO: new Date().toISOString(), ULTIMO_ACESSO: '' };
+    await appendObjeto('USUARIOS', obj);
+    res.json({ sucesso: true, mensagem: `Usuário MASTER "${usuario}" criado com sucesso. Agora você pode logar normalmente.`, id: 'USR-001' });
+  } catch (e) {
+    console.error('Bootstrap erro:', e);
+    res.status(500).json({ sucesso: false, erro: e.message });
+  }
 });
 
 // ===== CATCH ALL =====
