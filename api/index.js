@@ -72,7 +72,7 @@ async function carregarUsuarios(){
       ? {ID_USUARIO:usuario,USUARIO:usuario,SENHA:val,NOME:usuario,PERFIL:'ANALISTA SAC',STATUS:'ATIVO'}
       : {ID_USUARIO:usuario,USUARIO:usuario,...val});
   }catch(e){}
-  const demoEnabled=String(process.env.DEMO_LOGIN_ENABLED||'true').toLowerCase()!=='false';
+  const demoEnabled=String(process.env.DEMO_LOGIN_ENABLED||'false').toLowerCase()==='true';
   return [...rows,...envUsers,...(demoEnabled?DEMO_USUARIOS:[])];
 }
 
@@ -562,11 +562,41 @@ app.post('/api/manifestacoes/:id/decisao', requerPerfil('MASTER','ANALISTA SAC')
 // ============================================================
 // CADASTRO OPERACIONAL DE SETORES + FAQ + CALCULADORA DE ATRASO
 // ============================================================
+const EMPRESAS_VALIDAS = ['CHIACCHIO','PLASCHIO','TUBAHIA/CESBAP','TODAS'];
 const SETOR_OPERACIONAL_FIELDS = [
   'FUNCAO_SETOR','PALAVRAS_CHAVE','COMPETENCIAS','LIMITES_ATUACAO',
-  'TRATATIVAS_PERMITIDAS','REGRA_ESPECIAL'
+  'TRATATIVAS_PERMITIDAS','REGRA_ESPECIAL',
+  'EMPRESA','QUANDO_ACIONAR','QUANDO_NAO_ACIONAR',
+  'SLA_CRITICO','SLA_ANALISE_TECNICA','SLA_RETORNO_SAC',
+  'ESCALONAMENTO_CONDICAO','ESCALONAMENTO_RESPONSAVEL','ESCALONAMENTO_PRAZO',
+  'REINCIDENCIA_CRITERIO','REINCIDENCIA_PERIODO','REINCIDENCIA_ACAO',
+  'RNC_CRITERIO','RNC_RESPONSAVEL','RNC_PRAZO',
+  'DEVOLUTIVA_CAMPOS','LIMITACOES_IA','SETORES_RELACIONADOS'
 ];
-const FAQ_HEADERS = ['ID_FAQ','SETOR','CODIGO','PERGUNTA','RESPOSTA','ATIVO','DATA_ATUALIZACAO','USUARIO_ATUALIZACAO'];
+const FAQ_HEADERS = ['ID_FAQ','SETOR','EMPRESA','CODIGO','PERGUNTA','RESPOSTA','PALAVRAS_CHAVE_FAQ','FONTE','STATUS','ATIVO','DATA_ATUALIZACAO','USUARIO_ATUALIZACAO'];
+const REGRAS_HEADERS = ['ID_REGRA','SETOR','EMPRESA','NOME','CONDICAO','PALAVRAS_GATILHO','ACAO','PRIORIDADE','NECESSITA_APROVACAO','QUEM_APROVA','AUTOMATICA','EXCECOES','SLA','STATUS','FONTE','DATA_ATUALIZACAO','USUARIO'];
+const PROCEDIMENTOS_HEADERS = ['ID_PROC','SETOR','EMPRESA','NOME','OBJETIVO','QUANDO_USAR','PASSOS','RESPONSAVEL','SETORES_ENVOLVIDOS','RESULTADO_ESPERADO','PRAZO','STATUS','FONTE','DATA_ATUALIZACAO','USUARIO'];
+const POLITICAS_HEADERS = ['ID_POL','SETOR','EMPRESA','NOME','OBJETIVO','REGRA_OFICIAL','LIMITES','CONDICOES','EXCECOES','QUEM_APROVA','PRAZO','VIGENCIA','STATUS','FONTE','DATA_ATUALIZACAO','USUARIO'];
+const PERGUNTAS_IA_HEADERS = ['ID_PERG','SETOR','EMPRESA','PERGUNTA','OBRIGATORIA','MOTIVO','CAMPO_DESTINO','TIPO_RESPOSTA','ORDEM','ATIVO','DATA_ATUALIZACAO','USUARIO'];
+const PALAVRAS_HEADERS = ['ID_PC','SETOR','EMPRESA','PALAVRA','CATEGORIA','ATIVO','DATA_ATUALIZACAO','USUARIO'];
+const DOCS_SETOR_HEADERS = ['ID_DOC','SETOR','EMPRESA','NOME','TIPO','CATEGORIA','DESCRICAO','VERSAO','STATUS','FONTE_CONHECIMENTO','URL_ARQUIVO','DRIVE_FILE_ID','DATA_UPLOAD','USUARIO'];
+
+async function crudSetorGet(aba, headers, setor) {
+  await garantirAbaComCabecalhos(aba, headers).catch(()=>{});
+  const rows = await lerAba(aba, 2000);
+  return rows.filter(r => normalizarTexto(r.SETOR||'') === normalizarTexto(setor));
+}
+async function crudSetorPost(aba, headers, setor, body, prefixo, campoId, usuario) {
+  await garantirAbaComCabecalhos(aba, headers);
+  const id = await gerarProximoID(aba, prefixo, campoId);
+  const obj = { [campoId]: id, SETOR: setor, ...body, DATA_ATUALIZACAO: new Date().toISOString(), USUARIO: usuario || 'sistema' };
+  await appendObjeto(aba, obj);
+  return obj;
+}
+async function crudSetorPatch(aba, id, body, campoId, usuario) {
+  const dados = { ...body, DATA_ATUALIZACAO: new Date().toISOString(), USUARIO: usuario || 'sistema' };
+  return atualizarPorID(aba, id, dados, [campoId, 'ID']);
+}
 const LOG_HEADERS = ['ID','UF','CIDADE','REGIAO','TIPO_DIA','PRAZO_TRANSPORTE_DIAS','PRAZO_MIN_DIAS','PRAZO_MAX_DIAS','OBSERVACAO','FONTE','VERSAO','VIGENCIA_INICIO','VIGENCIA_FIM','USUARIO_ATUALIZACAO','DATA_ATUALIZACAO','ATIVO'];
 const PROD_HEADERS = ['ID','TIPO_PRODUTO','PROCESSO','FAMILIA_PRODUTO','TEMPO_MEDIO_DIAS','TEMPO_MIN_DIAS','TEMPO_MAX_DIAS','TIPO_DIA','VIGENCIA_INICIO','VIGENCIA_FIM','FONTE','VERSAO','USUARIO_ATUALIZACAO','DATA_ATUALIZACAO','ATIVO','OBSERVACAO'];
 
@@ -612,8 +642,126 @@ app.patch('/api/setores/:setor/operacional', requerPerfil('MASTER','ANALISTA SAC
   catch(e){res.status(500).json({sucesso:false,erro:e.message});}
 });
 app.post('/api/setores/:setor/faq', requerPerfil('MASTER','ANALISTA SAC'), async(req,res)=>{
-  try{const nome=decodeURIComponent(req.params.setor);await garantirAbaComCabecalhos('FAQ_SETORES',FAQ_HEADERS);const b=req.body||{};if(!b.CODIGO||!b.PERGUNTA)return res.status(400).json({sucesso:false,erro:'CODIGO e PERGUNTA são obrigatórios.'});const existentes=await lerAba('FAQ_SETORES',2000);const ex=existentes.find(r=>normalizarTexto(r.SETOR)===normalizarTexto(nome)&&normalizarTexto(r.CODIGO)===normalizarTexto(b.CODIGO));const dados={SETOR:nome,CODIGO:b.CODIGO,PERGUNTA:b.PERGUNTA,RESPOSTA:b.RESPOSTA||'',ATIVO:b.ATIVO||'SIM',DATA_ATUALIZACAO:new Date().toISOString(),USUARIO_ATUALIZACAO:req.user.usuario};if(ex?.ID_FAQ){await atualizarPorID('FAQ_SETORES',ex.ID_FAQ,dados,['ID_FAQ','ID']);}else{dados.ID_FAQ=await gerarProximoID('FAQ_SETORES','FAQ','ID_FAQ');await appendObjeto('FAQ_SETORES',dados);}res.json({sucesso:true});}
+  try{
+    const nome=decodeURIComponent(req.params.setor);
+    await garantirAbaComCabecalhos('FAQ_SETORES',FAQ_HEADERS);
+    const b=req.body||{};
+    if(!b.PERGUNTA) return res.status(400).json({sucesso:false,erro:'PERGUNTA é obrigatória.'});
+    const existentes=await lerAba('FAQ_SETORES',2000);
+    const ex=b.ID_FAQ?existentes.find(r=>r.ID_FAQ===b.ID_FAQ):null;
+    const dados={SETOR:nome,EMPRESA:b.EMPRESA||'TODAS',CODIGO:b.CODIGO||'',PERGUNTA:b.PERGUNTA,RESPOSTA:b.RESPOSTA||'',PALAVRAS_CHAVE_FAQ:b.PALAVRAS_CHAVE_FAQ||'',FONTE:b.FONTE||'',STATUS:b.STATUS||'A VALIDAR',ATIVO:b.ATIVO||'SIM',DATA_ATUALIZACAO:new Date().toISOString(),USUARIO_ATUALIZACAO:req.user.usuario};
+    if(ex?.ID_FAQ){await atualizarPorID('FAQ_SETORES',ex.ID_FAQ,dados,['ID_FAQ']);res.json({sucesso:true,id:ex.ID_FAQ});}
+    else{dados.ID_FAQ=await gerarProximoID('FAQ_SETORES','FAQ','ID_FAQ');await appendObjeto('FAQ_SETORES',dados);res.json({sucesso:true,id:dados.ID_FAQ});}
+  } catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+});
+
+// FAQ GET list
+app.get('/api/setores/:setor/faq', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async(req,res)=>{
+  try{
+    const nome=decodeURIComponent(req.params.setor);
+    const itens=await crudSetorGet('FAQ_SETORES',FAQ_HEADERS,nome);
+    res.json({sucesso:true,itens});
+  }catch(e){res.status(500).json({sucesso:false,erro:e.message,itens:[]});}
+});
+
+// REGRAS
+app.get('/api/setores/:setor/regras', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async(req,res)=>{
+  try{const nome=decodeURIComponent(req.params.setor);const itens=await crudSetorGet('REGRAS_SETORES',REGRAS_HEADERS,nome);res.json({sucesso:true,itens});}
+  catch(e){res.status(500).json({sucesso:false,erro:e.message,itens:[]});}
+});
+app.post('/api/setores/:setor/regras', requerPerfil('MASTER','ANALISTA SAC'), async(req,res)=>{
+  try{const nome=decodeURIComponent(req.params.setor);if(!req.body?.NOME)return res.status(400).json({sucesso:false,erro:'NOME obrigatório.'});const obj=await crudSetorPost('REGRAS_SETORES',REGRAS_HEADERS,nome,{EMPRESA:req.body.EMPRESA||'TODAS',NOME:req.body.NOME,CONDICAO:req.body.CONDICAO||'',PALAVRAS_GATILHO:req.body.PALAVRAS_GATILHO||'',ACAO:req.body.ACAO||'',PRIORIDADE:req.body.PRIORIDADE||'Média',NECESSITA_APROVACAO:req.body.NECESSITA_APROVACAO||'NÃO',QUEM_APROVA:req.body.QUEM_APROVA||'',AUTOMATICA:req.body.AUTOMATICA||'NÃO',EXCECOES:req.body.EXCECOES||'',SLA:req.body.SLA||'',STATUS:req.body.STATUS||'A VALIDAR',FONTE:req.body.FONTE||''},'RGR','ID_REGRA',req.user.usuario);res.json({sucesso:true,id:obj.ID_REGRA});}
   catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+});
+app.patch('/api/setores/:setor/regras/:id', requerPerfil('MASTER','ANALISTA SAC'), async(req,res)=>{
+  try{const reg=await crudSetorPatch('REGRAS_SETORES',req.params.id,req.body,'ID_REGRA',req.user.usuario);if(!reg)return res.status(404).json({sucesso:false,erro:'Regra não encontrada.'});res.json({sucesso:true});}
+  catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+});
+
+// PROCEDIMENTOS
+app.get('/api/setores/:setor/procedimentos', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async(req,res)=>{
+  try{const nome=decodeURIComponent(req.params.setor);const itens=await crudSetorGet('PROCEDIMENTOS_SETORES',PROCEDIMENTOS_HEADERS,nome);res.json({sucesso:true,itens});}
+  catch(e){res.status(500).json({sucesso:false,erro:e.message,itens:[]});}
+});
+app.post('/api/setores/:setor/procedimentos', requerPerfil('MASTER','ANALISTA SAC'), async(req,res)=>{
+  try{const nome=decodeURIComponent(req.params.setor);if(!req.body?.NOME)return res.status(400).json({sucesso:false,erro:'NOME obrigatório.'});const obj=await crudSetorPost('PROCEDIMENTOS_SETORES',PROCEDIMENTOS_HEADERS,nome,{EMPRESA:req.body.EMPRESA||'TODAS',NOME:req.body.NOME,OBJETIVO:req.body.OBJETIVO||'',QUANDO_USAR:req.body.QUANDO_USAR||'',PASSOS:req.body.PASSOS||'',RESPONSAVEL:req.body.RESPONSAVEL||'',SETORES_ENVOLVIDOS:req.body.SETORES_ENVOLVIDOS||'',RESULTADO_ESPERADO:req.body.RESULTADO_ESPERADO||'',PRAZO:req.body.PRAZO||'',STATUS:req.body.STATUS||'A VALIDAR',FONTE:req.body.FONTE||''},'PRC','ID_PROC',req.user.usuario);res.json({sucesso:true,id:obj.ID_PROC});}
+  catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+});
+app.patch('/api/setores/:setor/procedimentos/:id', requerPerfil('MASTER','ANALISTA SAC'), async(req,res)=>{
+  try{const reg=await crudSetorPatch('PROCEDIMENTOS_SETORES',req.params.id,req.body,'ID_PROC',req.user.usuario);if(!reg)return res.status(404).json({sucesso:false,erro:'Procedimento não encontrado.'});res.json({sucesso:true});}
+  catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+});
+
+// POLÍTICAS
+app.get('/api/setores/:setor/politicas', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async(req,res)=>{
+  try{const nome=decodeURIComponent(req.params.setor);const itens=await crudSetorGet('POLITICAS_SETORES',POLITICAS_HEADERS,nome);res.json({sucesso:true,itens});}
+  catch(e){res.status(500).json({sucesso:false,erro:e.message,itens:[]});}
+});
+app.post('/api/setores/:setor/politicas', requerPerfil('MASTER','ANALISTA SAC'), async(req,res)=>{
+  try{const nome=decodeURIComponent(req.params.setor);if(!req.body?.NOME)return res.status(400).json({sucesso:false,erro:'NOME obrigatório.'});const obj=await crudSetorPost('POLITICAS_SETORES',POLITICAS_HEADERS,nome,{EMPRESA:req.body.EMPRESA||'TODAS',NOME:req.body.NOME,OBJETIVO:req.body.OBJETIVO||'',REGRA_OFICIAL:req.body.REGRA_OFICIAL||'',LIMITES:req.body.LIMITES||'',CONDICOES:req.body.CONDICOES||'',EXCECOES:req.body.EXCECOES||'',QUEM_APROVA:req.body.QUEM_APROVA||'',PRAZO:req.body.PRAZO||'',VIGENCIA:req.body.VIGENCIA||'',STATUS:req.body.STATUS||'A VALIDAR',FONTE:req.body.FONTE||''},'POL','ID_POL',req.user.usuario);res.json({sucesso:true,id:obj.ID_POL});}
+  catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+});
+app.patch('/api/setores/:setor/politicas/:id', requerPerfil('MASTER','ANALISTA SAC'), async(req,res)=>{
+  try{const reg=await crudSetorPatch('POLITICAS_SETORES',req.params.id,req.body,'ID_POL',req.user.usuario);if(!reg)return res.status(404).json({sucesso:false,erro:'Política não encontrada.'});res.json({sucesso:true});}
+  catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+});
+
+// PERGUNTAS DA IA
+app.get('/api/setores/:setor/perguntas-ia', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async(req,res)=>{
+  try{const nome=decodeURIComponent(req.params.setor);const itens=await crudSetorGet('PERGUNTAS_IA_SETORES',PERGUNTAS_IA_HEADERS,nome);res.json({sucesso:true,itens:itens.sort((a,b)=>parseInt(a.ORDEM||99)-parseInt(b.ORDEM||99))});}
+  catch(e){res.status(500).json({sucesso:false,erro:e.message,itens:[]});}
+});
+app.post('/api/setores/:setor/perguntas-ia', requerPerfil('MASTER','ANALISTA SAC'), async(req,res)=>{
+  try{const nome=decodeURIComponent(req.params.setor);if(!req.body?.PERGUNTA)return res.status(400).json({sucesso:false,erro:'PERGUNTA obrigatória.'});const obj=await crudSetorPost('PERGUNTAS_IA_SETORES',PERGUNTAS_IA_HEADERS,nome,{EMPRESA:req.body.EMPRESA||'TODAS',PERGUNTA:req.body.PERGUNTA,OBRIGATORIA:req.body.OBRIGATORIA||'SIM',MOTIVO:req.body.MOTIVO||'',CAMPO_DESTINO:req.body.CAMPO_DESTINO||'',TIPO_RESPOSTA:req.body.TIPO_RESPOSTA||'texto',ORDEM:req.body.ORDEM||99,ATIVO:req.body.ATIVO||'SIM'},'PRG','ID_PERG',req.user.usuario);res.json({sucesso:true,id:obj.ID_PERG});}
+  catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+});
+app.patch('/api/setores/:setor/perguntas-ia/:id', requerPerfil('MASTER','ANALISTA SAC'), async(req,res)=>{
+  try{const reg=await crudSetorPatch('PERGUNTAS_IA_SETORES',req.params.id,req.body,'ID_PERG',req.user.usuario);if(!reg)return res.status(404).json({sucesso:false,erro:'Pergunta não encontrada.'});res.json({sucesso:true});}
+  catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+});
+
+// DOCUMENTOS DO SETOR (metadados — upload usa /api/anexos)
+app.get('/api/setores/:setor/documentos', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async(req,res)=>{
+  try{const nome=decodeURIComponent(req.params.setor);const itens=await crudSetorGet('DOCUMENTOS_SETORES',DOCS_SETOR_HEADERS,nome);res.json({sucesso:true,itens});}
+  catch(e){res.status(500).json({sucesso:false,erro:e.message,itens:[]});}
+});
+app.post('/api/setores/:setor/documentos', requerPerfil('MASTER','ANALISTA SAC'), async(req,res)=>{
+  try{
+    const nome=decodeURIComponent(req.params.setor);
+    const b=req.body||{};
+    if(!b.NOME) return res.status(400).json({sucesso:false,erro:'NOME do documento obrigatório.'});
+    // Se vier arquivo base64, salvar via Google Drive
+    let urlArquivo='', driveId='';
+    if(b.arquivo?.dataBase64){
+      const resultado=await salvarAnexo({...b.arquivo,categoria:b.CATEGORIA||'DOCUMENTO'},{tipoEntidade:'SETOR',idEntidade:nome,usuario:req.user.usuario});
+      urlArquivo=resultado.url||''; driveId=resultado.fileId||'';
+    }
+    const obj=await crudSetorPost('DOCUMENTOS_SETORES',DOCS_SETOR_HEADERS,nome,{EMPRESA:b.EMPRESA||'TODAS',NOME:b.NOME,TIPO:b.TIPO||'',CATEGORIA:b.CATEGORIA||'Documento de apoio',DESCRICAO:b.DESCRICAO||'',VERSAO:b.VERSAO||'1.0',STATUS:b.STATUS||'A VALIDAR',FONTE_CONHECIMENTO:b.FONTE_CONHECIMENTO||'NÃO',URL_ARQUIVO:urlArquivo,DRIVE_FILE_ID:driveId,DATA_UPLOAD:new Date().toISOString()},'DOC','ID_DOC',req.user.usuario);
+    res.json({sucesso:true,id:obj.ID_DOC,url:urlArquivo});
+  }catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+});
+app.patch('/api/setores/:setor/documentos/:id', requerPerfil('MASTER','ANALISTA SAC'), async(req,res)=>{
+  try{const reg=await crudSetorPatch('DOCUMENTOS_SETORES',req.params.id,req.body,'ID_DOC',req.user.usuario);if(!reg)return res.status(404).json({sucesso:false,erro:'Documento não encontrado.'});res.json({sucesso:true});}
+  catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+});
+
+// CONHECIMENTO COMPLETO — rota para o cérebro da IA
+app.get('/api/setores/:setor/conhecimento-completo', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async(req,res)=>{
+  try{
+    const nome=decodeURIComponent(req.params.setor);
+    const empresa=req.query.empresa||null;
+    const filtroEmpresa=r=>!empresa||r.EMPRESA==='TODAS'||r.EMPRESA===empresa;
+    const [config,faqs,regras,procs,pols,pergs,docs]=await Promise.all([
+      lerAba('CONFIG_SETORES',500).then(rows=>rows.find(r=>normalizarTexto(r.SETOR||'')===normalizarTexto(nome))||{}),
+      crudSetorGet('FAQ_SETORES',FAQ_HEADERS,nome).then(rows=>rows.filter(filtroEmpresa).filter(r=>(r.ATIVO||'SIM')!=='NÃO')),
+      crudSetorGet('REGRAS_SETORES',REGRAS_HEADERS,nome).then(rows=>rows.filter(filtroEmpresa).filter(r=>r.STATUS!=='OBSOLETA')),
+      crudSetorGet('PROCEDIMENTOS_SETORES',PROCEDIMENTOS_HEADERS,nome).then(rows=>rows.filter(filtroEmpresa).filter(r=>r.STATUS!=='OBSOLETA')),
+      crudSetorGet('POLITICAS_SETORES',POLITICAS_HEADERS,nome).then(rows=>rows.filter(filtroEmpresa).filter(r=>r.STATUS==='VALIDADA')),
+      crudSetorGet('PERGUNTAS_IA_SETORES',PERGUNTAS_IA_HEADERS,nome).then(rows=>rows.filter(filtroEmpresa).filter(r=>(r.ATIVO||'SIM')!=='NÃO').sort((a,b)=>parseInt(a.ORDEM||99)-parseInt(b.ORDEM||99))),
+      crudSetorGet('DOCUMENTOS_SETORES',DOCS_SETOR_HEADERS,nome).then(rows=>rows.filter(filtroEmpresa).filter(r=>r.FONTE_CONHECIMENTO==='SIM'&&r.STATUS==='VALIDADA')),
+    ]);
+    res.json({sucesso:true,setor:nome,empresa:empresa||'TODAS',config,faqs,regras,procedimentos:procs,politicas:pols,perguntas_ia:pergs,documentos_fonte:docs});
+  }catch(e){res.status(500).json({sucesso:false,erro:e.message});}
 });
 
 function ativoAgora(r){const hoje=new Date();const ini=r.VIGENCIA_INICIO?new Date(r.VIGENCIA_INICIO):null;const fim=r.VIGENCIA_FIM?new Date(r.VIGENCIA_FIM):null;return normalizarTexto(r.ATIVO||'sim')!=='nao'&&(!ini||hoje>=ini)&&(!fim||hoje<=fim);}
@@ -879,10 +1027,31 @@ app.get('/api/setores-unicos', async (req, res) => {
 
 app.get('/api/setores', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
   try {
-    await garantirAbaComCabecalhos('CONFIG_SETORES',['ID_SETOR','SETOR','DESCRICAO','RESPONSAVEL','SUBSTITUTO','EMAIL_RESPONSAVEL','SLA_HORAS','RESPONSABILIDADES','REGRAS_OPERACIONAIS','PROCEDIMENTOS_ORIENTACOES','ALERTAS','ATIVO']).catch(()=>{});
-    const data=await lerAba('CONFIG_SETORES',500).catch(()=>[]);
-    res.json({sucesso:true,total:data.length,itens:data});
-  } catch (e) { res.status(500).json({sucesso:false,erro:e.message,itens:[]}); }
+    await garantirAbaComCabecalhos('CONFIG_SETORES',['ID_SETOR','SETOR','DESCRICAO','RESPONSAVEL','SUBSTITUTO','EMAIL_RESPONSAVEL','SLA_HORAS','RESPONSABILIDADES','REGRAS_OPERACIONAIS','PROCEDIMENTOS_ORIENTACOES','ALERTAS','ATIVO','EMPRESA']).catch(()=>{});
+    const data = await lerAba('CONFIG_SETORES', 500).catch(()=>[]);
+    // Attach knowledge counts per sector
+    const [faqs, regras, procs, pols, pergs] = await Promise.all([
+      lerAba('FAQ_SETORES',5000).catch(()=>[]),
+      lerAba('REGRAS_SETORES',5000).catch(()=>[]),
+      lerAba('PROCEDIMENTOS_SETORES',5000).catch(()=>[]),
+      lerAba('POLITICAS_SETORES',5000).catch(()=>[]),
+      lerAba('PERGUNTAS_IA_SETORES',2000).catch(()=>[]),
+    ]);
+    const itens = data.map(s => {
+      const n = normalizarTexto(s.SETOR||'');
+      return {
+        ...s,
+        _counts: {
+          faqs: faqs.filter(r=>normalizarTexto(r.SETOR||'')===n&&(r.ATIVO||'SIM')!=='NÃO').length,
+          regras: regras.filter(r=>normalizarTexto(r.SETOR||'')===n&&r.STATUS!=='OBSOLETA').length,
+          procedimentos: procs.filter(r=>normalizarTexto(r.SETOR||'')===n&&r.STATUS!=='OBSOLETA').length,
+          politicas: pols.filter(r=>normalizarTexto(r.SETOR||'')===n&&r.STATUS!=='OBSOLETA'&&r.STATUS!=='EXPIRADA').length,
+          perguntas: pergs.filter(r=>normalizarTexto(r.SETOR||'')===n&&(r.ATIVO||'SIM')!=='NÃO').length,
+        }
+      };
+    });
+    res.json({ sucesso:true, total:itens.length, itens });
+  } catch (e) { res.status(500).json({ sucesso:false, erro:e.message, itens:[] }); }
 });
 app.get('/api/conhecimento', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
   try {
