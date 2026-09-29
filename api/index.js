@@ -1835,6 +1835,50 @@ app.post('/api/causas', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>
   } catch(e){ res.status(500).json({sucesso:false,erro:e.message}); }
 });
 
+// Popular CAUSAS a partir do BANCO_HISTORICO (extrai tipos/causas únicos)
+app.post('/api/causas/popular-historico', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
+  try {
+    const hist = await lerAba('BANCO_HISTORICO', 5000);
+    const existentes = await lerAba('CAUSAS', 2000);
+    const causasExistentes = new Set(existentes.map(c=>(c.CAUSA||'').toLowerCase().trim()));
+
+    const mapa = {}; // "tipo|causa|subcausa" -> contagem
+    for (const h of hist) {
+      const tipo = (h.COMP_TIPO_PROBLEMA_VALIDADO||h.TIPO_PROBLEMA_VALIDADO||'').trim();
+      const causa = (h.COMP_CAUSA_RAIZ||h.COMP_CAUSA_PROVAVEL||h.CAUSA_RAIZ||'').trim();
+      const subcausa = (h.COMP_SUBCAUSA||h.SUBCAUSA||'').trim();
+      const categoria = (h.COMP_CATEGORIA||h.CATEGORIA||tipo||'').trim();
+      const setor = (h.COMP_SETOR_RESPONSAVEL||h.SETOR_RESPONSAVEL||h.SETOR||'').trim();
+      if (!causa) continue;
+      const key = `${tipo}|${causa}|${subcausa}`;
+      if (!mapa[key]) mapa[key] = { tipo, causa, subcausa, categoria, setor, count: 0 };
+      mapa[key].count++;
+    }
+
+    const novas = Object.values(mapa).filter(m => !causasExistentes.has(m.causa.toLowerCase()));
+    if (!novas.length) return res.json({ sucesso: true, inseridas: 0, mensagem: 'Todas as causas já existem.' });
+
+    // Garantir cabeçalho da aba
+    await garantirAbaComCabecalhos('CAUSAS', ['ID_CAUSA','CATEGORIA','TIPO','CAUSA','SUBCAUSA','SETOR_RESPONSAVEL','PALAVRAS_CHAVE','ATIVO','DATA_CRIACAO','CRIADO_POR','CONTAGEM_OCORRENCIAS']).catch(()=>{});
+
+    let inseridas = 0;
+    for (const m of novas) {
+      const id = await gerarProximoID('CAUSAS','CAU','ID_CAUSA').catch(()=>'CAU-'+Date.now().toString().slice(-6));
+      await appendObjeto('CAUSAS', {
+        ID_CAUSA: id, CATEGORIA: m.categoria||m.tipo||'GERAL', TIPO: m.tipo||'',
+        CAUSA: m.causa, SUBCAUSA: m.subcausa, SETOR_RESPONSAVEL: m.setor,
+        PALAVRAS_CHAVE: '', ATIVO: 'SIM',
+        DATA_CRIACAO: new Date().toISOString(),
+        CRIADO_POR: 'IMPORTACAO_HISTORICO',
+        CONTAGEM_OCORRENCIAS: m.count,
+      });
+      inseridas++;
+    }
+
+    res.json({ sucesso: true, inseridas, total_historico: hist.length, mensagem: `${inseridas} causas extraídas do histórico e inseridas.` });
+  } catch(e){ res.status(500).json({ sucesso: false, erro: e.message }); }
+});
+
 app.patch('/api/causas/:id', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
   try {
     const dados = req.body||{};
