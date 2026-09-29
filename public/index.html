@@ -2293,10 +2293,13 @@ async function loadVisaoGeral() {
     _dashData.mans = manRes.itens || [];
     _dashData.recs = recRes.itens || [];
 
+    // Códigos internos que não são empresas reais
+    const _NAO_EMPRESAS = new Set(['TR01','TR08','SAC','RNC']);
+
     // Popular filtros de empresa
     const empSet = new Set(['Todas']);
-    _dashData.recs.forEach(x => { if(x['Empresa']) empSet.add(x['Empresa']); });
-    _dashData.mans.forEach(x => { if(x.EMPRESA_RECLAMADA) empSet.add(x.EMPRESA_RECLAMADA); });
+    _dashData.recs.forEach(x => { if(x['Empresa'] && !_NAO_EMPRESAS.has((x['Empresa']||'').toUpperCase().trim())) empSet.add(x['Empresa']); });
+    _dashData.mans.forEach(x => { const e=(x.EMPRESA_RECLAMADA||'').trim(); if(e && !_NAO_EMPRESAS.has(e.toUpperCase())) empSet.add(e); });
     const empSelect = document.getElementById('filtro-empresa-select');
     if (empSelect) {
       empSelect.innerHTML = [...empSet].map(e => `<option value="${e}">${e}</option>`).join('');
@@ -2322,7 +2325,18 @@ function aplicarFiltros() {
   const setEl = document.getElementById('filtro-setor-select');
   _dashFiltroEmpresa = empEl ? empEl.value : 'Todas';
   _dashFiltroSetor = setEl ? setEl.value : 'Todos';
-  const data = calcDashboard(_dashData.mans, _dashData.recs, _dashFiltroEmpresa, _dashFiltroSetor);
+
+  // Aplicar filtro de período antes de calcular
+  const dias = window._dashFiltroPeriodoDias || null;
+  let mans = _dashData.mans;
+  let recs = _dashData.recs;
+  if (dias) {
+    const corte = new Date(Date.now() - dias * 86400000);
+    mans = mans.filter(m => { const d = new Date(m.DATA_CRIACAO||m.DATA_ABERTURA||''); return !isNaN(d) && d >= corte; });
+    recs = recs.filter(r => { const d = new Date(r['Data do Registro']||r['DATA_ABERTURA']||''); return !isNaN(d) && d >= corte; });
+  }
+
+  const data = calcDashboard(mans, recs, _dashFiltroEmpresa, _dashFiltroSetor);
   renderDashboard(data);
 }
 
@@ -4078,6 +4092,13 @@ loadVisaoGeral();
         else if (txt === '7 dias') window._dashFiltroPeriodoDias = 7;
         else if (txt === '30 dias') window._dashFiltroPeriodoDias = 30;
         else if (txt === 'Personalizado') window._dashFiltroPeriodoDias = null;
+
+        // Atualizar visual do botão ativo
+        btn.closest('.filter-group')?.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        // Re-renderizar o dashboard com o novo período
+        if (typeof aplicarFiltros === 'function') aplicarFiltros();
       });
     });
   });
