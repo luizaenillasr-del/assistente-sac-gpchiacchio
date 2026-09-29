@@ -8491,7 +8491,51 @@ async function cdLoadHist() {
 function renderCdHist(q='') {
   const rows=_cdData.hist.filter(x=>!q||(x.ORIG_EMPRESA||x.EMPRESA_RECLAMANTE||x.CONTATO||'').toLowerCase().includes(q)||(x.ORIG_DESCRICAO_RECLAMACAO||x.DESCRICAO||'').toLowerCase().includes(q)||(x.COMP_TIPO_PROBLEMA_VALIDADO||x.TIPO_PROBLEMA_VALIDADO||'').toLowerCase().includes(q));
   document.getElementById('cd-hist-count').textContent=`${rows.length} registro(s)`;
-  cdRender('cd-hist-tbody','cd-hist-loading',rows.map(x=>`<tr><td><strong>${esc5(x.ID_HISTORICO||x.ID_MANIFESTACAO||'')}</strong></td><td>${esc5(x.ORIG_EMPRESA||x.EMPRESA_RECLAMANTE||x.CONTATO||'')}</td><td>${esc5(x.ORIG_CONTATO||x.CONTATO||'')}</td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc5((x.ORIG_DESCRICAO_RECLAMACAO||x.DESCRICAO||'').slice(0,80))}</td><td>${esc5(x.COMP_TIPO_PROBLEMA_VALIDADO||x.TIPO_PROBLEMA_VALIDADO||x.TIPO||'')}</td><td>${esc5(x.COMP_CAUSA_RAIZ||x.CAUSA_RAIZ||x.CAUSA||'')}</td><td><span class="status-badge ${stClass(x.ORIG_STATUS||x.STATUS)}">${esc5(x.ORIG_STATUS||x.STATUS||'')}</span></td><td style="font-size:11px">${fmt5(x.ORIG_DATA_ABERTURA||x.DATA_ABERTURA)}</td></tr>`),8,'Sem histórico.');
+  cdRender('cd-hist-tbody','cd-hist-loading',rows.map((x,i)=>`<tr style="cursor:pointer" onclick="cdHistDetalhe(${_cdData.hist.indexOf(x)})" title="Clique para ver detalhes"><td><strong>${esc5(x.ID_HISTORICO||x.ID_MANIFESTACAO||'')}</strong></td><td>${esc5(x.ORIG_EMPRESA||x.EMPRESA_RECLAMANTE||x.CONTATO||'')}</td><td>${esc5(x.ORIG_CONTATO||x.CONTATO||'')}</td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc5((x.ORIG_DESCRICAO_RECLAMACAO||x.DESCRICAO||'').slice(0,80))}</td><td>${esc5(x.COMP_TIPO_PROBLEMA_VALIDADO||x.TIPO_PROBLEMA_VALIDADO||x.TIPO||'')}</td><td>${esc5(x.COMP_CAUSA_RAIZ||x.CAUSA_RAIZ||x.CAUSA||'')}</td><td><span class="status-badge ${stClass(x.ORIG_STATUS||x.STATUS)}">${esc5(x.ORIG_STATUS||x.STATUS||'')}</span></td><td style="font-size:11px">${fmt5(x.ORIG_DATA_ABERTURA||x.DATA_ABERTURA)}</td></tr>`),8,'Sem histórico.');
+}
+function cdHistDetalhe(idx) {
+  const x = _cdData.hist[idx];
+  if (!x) return;
+  const campos = [
+    ['ID','ID_HISTORICO','ID_MANIFESTACAO'],['Empresa','ORIG_EMPRESA','EMPRESA_RECLAMANTE'],
+    ['Contato','ORIG_CONTATO','CONTATO'],['Canal','ORIG_CANAL','CANAL'],
+    ['Data Abertura','ORIG_DATA_ABERTURA','DATA_ABERTURA'],['Status','ORIG_STATUS','STATUS'],
+    ['Tipo','COMP_TIPO_PROBLEMA_VALIDADO','TIPO_PROBLEMA_VALIDADO','TIPO'],
+    ['Categoria','COMP_CATEGORIA','CATEGORIA'],['Subcategoria','COMP_SUBCATEGORIA','SUBCATEGORIA'],
+    ['Setor','COMP_SETOR_RESPONSAVEL','SETOR_RESPONSAVEL','SETOR'],
+    ['Causa Raiz','COMP_CAUSA_RAIZ','CAUSA_RAIZ','CAUSA'],
+    ['Procedência','COMP_PROCEDENCIA','PROCEDENCIA'],
+    ['SLA (h)','COMP_SLA_HORAS','SLA_HORAS'],
+    ['Prazo Cumprido','COMP_PRAZO_CUMPRIDO','PRAZO_CUMPRIDO'],
+    ['Satisfação','COMP_SATISFACAO','SATISFACAO'],
+    ['Reincidente','COMP_REINCIDENTE','REINCIDENTE'],
+    ['Tratativa','COMP_TRATATIVA','TRATATIVA'],
+    ['Produto','ORIG_PRODUTO','PRODUTO'],['Lote','ORIG_LOTE','LOTE'],
+    ['NF-e','ORIG_NFE','NFE'],['Quantidade','ORIG_QUANTIDADE','QUANTIDADE'],
+    ['Valor','ORIG_VALOR','VALOR'],
+  ];
+  const linhas = campos.map(([label,...keys])=>{
+    const val = keys.map(k=>x[k]).find(v=>v!=null&&v!=='');
+    if(!val) return '';
+    return `<div style="display:flex;gap:8px;padding:6px 0;border-bottom:1px solid var(--gray-100)"><span style="min-width:130px;font-weight:600;font-size:12px;color:var(--gray-500)">${label}</span><span style="font-size:13px;flex:1">${esc5(val)}</span></div>`;
+  }).join('');
+  const descricao = x.ORIG_DESCRICAO_RECLAMACAO||x.DESCRICAO||'';
+  let el = document.getElementById('modal-hist-detalhe');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'modal-hist-detalhe';
+    el.className = 'modal-overlay';
+    el.style.cssText='display:none;z-index:2000';
+    el.innerHTML=`<div class="modal" style="max-width:680px;width:100%;max-height:90vh;overflow-y:auto"><div class="modal-header"><h3 id="mhd-title" style="font-size:16px;font-weight:700"></h3><button class="modal-close" onclick="document.getElementById('modal-hist-detalhe').style.display='none'">×</button></div><div class="modal-body" style="padding:20px"><div id="mhd-campos"></div><div id="mhd-desc-wrap" style="margin-top:16px;display:none"><div style="font-weight:600;font-size:12px;color:var(--gray-500);margin-bottom:6px">DESCRIÇÃO COMPLETA</div><div id="mhd-desc" style="background:var(--gray-50);border-radius:8px;padding:12px;font-size:13px;line-height:1.6;white-space:pre-wrap"></div></div></div></div>`;
+    el.addEventListener('click',e=>{ if(e.target===el) el.style.display='none'; });
+    document.body.appendChild(el);
+  }
+  document.getElementById('mhd-title').textContent=`Histórico: ${x.ID_HISTORICO||x.ID_MANIFESTACAO||''}`;
+  document.getElementById('mhd-campos').innerHTML=linhas;
+  const descEl=document.getElementById('mhd-desc');
+  const descWrap=document.getElementById('mhd-desc-wrap');
+  if(descricao){descEl.textContent=descricao;descWrap.style.display='block';}else{descWrap.style.display='none';}
+  el.style.display='flex';
 }
 
 // ── SETORES ──
