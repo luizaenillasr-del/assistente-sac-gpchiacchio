@@ -545,13 +545,17 @@
       <div class="login-logo-text"><h2>Gestão de Manifestações</h2><p>SAC · Grupo Chiacchio</p></div>
     </div>
     <div class="login-title">Bem-vinda de volta</div>
-    <div class="login-sub">Informe seu usuário para acessar o sistema</div>
+    <div class="login-sub">Informe suas credenciais para acessar o sistema</div>
     <div class="login-field">
       <label class="login-label">Usuário</label>
-      <input class="login-input" type="text" id="login-user" placeholder="seu usuário" autocomplete="username" onkeydown="if(event.key==='Enter')doLogin()">
+      <input class="login-input" type="text" id="login-user" placeholder="seu usuário" autocomplete="username" onkeydown="if(event.key==='Enter')document.getElementById('login-senha').focus()">
+    </div>
+    <div class="login-field">
+      <label class="login-label">Senha</label>
+      <input class="login-input" type="password" id="login-senha" placeholder="sua senha" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
     </div>
     <button class="login-btn" onclick="doLogin()">Entrar</button>
-    <div class="login-error" id="login-error">Usuário não encontrado ou inativo.</div>
+    <div class="login-error" id="login-error">Usuário ou senha inválidos.</div>
   </div>
 </div>
 
@@ -559,11 +563,13 @@
   window.SAC_API = 'https://assistente-sac-gpchiacchio.vercel.app';
   async function doLogin() {
     const user=document.getElementById('login-user').value.trim();
+    const senha=document.getElementById('login-senha').value;
     const err=document.getElementById('login-error');
     err.style.display='none';
     if(!user){err.textContent='Informe o usuário.';err.style.display='block';return;}
+    if(!senha){err.textContent='Informe a senha.';err.style.display='block';return;}
     try{
-      const r=await fetch(window.SAC_API+'/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({usuario:user})});
+      const r=await fetch(window.SAC_API+'/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({usuario:user,senha})});
       const raw=await r.text(); let data={};
       try{data=raw?JSON.parse(raw):{};}catch(e){throw new Error(`A API respondeu de forma inválida (HTTP ${r.status}).`);}
       if(!r.ok || !data.sucesso) throw new Error(data.erro||'Usuário não encontrado ou inativo.');
@@ -2538,8 +2544,8 @@ function aplicarFiltros() {
   let recs = _dashData.recs;
   if (dias != null) {
     const corte = new Date(Date.now() - dias * 86400000);
-    mans = mans.filter(m => { const d = new Date(m.DATA_CRIACAO||m.DATA_ABERTURA||''); return !isNaN(d) && d >= corte; });
-    recs = recs.filter(r => { const d = new Date(r['Data do Registro']||r['DATA_ABERTURA']||''); return !isNaN(d) && d >= corte; });
+    mans = mans.filter(m => { const d = parseDate(m.DATA_CRIACAO||m.DATA_ABERTURA); return d && d >= corte; });
+    recs = recs.filter(r => { const d = parseDate(r['Data do Registro']||r['DATA_ABERTURA']); return d && d >= corte; });
   } else {
     // Personalizado: usar datas escolhidas pelo usuário
     const inicio = document.getElementById('filtro-data-inicio')?.value;
@@ -2547,8 +2553,8 @@ function aplicarFiltros() {
     if (inicio || fim) {
       const di = inicio ? new Date(inicio) : null;
       const df = fim ? new Date(fim + 'T23:59:59') : null;
-      mans = mans.filter(m => { const d = new Date(m.DATA_CRIACAO||m.DATA_ABERTURA||''); if(isNaN(d))return true; if(di&&d<di)return false; if(df&&d>df)return false; return true; });
-      recs = recs.filter(r => { const d = new Date(r['Data do Registro']||r['DATA_ABERTURA']||''); if(isNaN(d))return true; if(di&&d<di)return false; if(df&&d>df)return false; return true; });
+      mans = mans.filter(m => { const d = parseDate(m.DATA_CRIACAO||m.DATA_ABERTURA); if(!d)return true; if(di&&d<di)return false; if(df&&d>df)return false; return true; });
+      recs = recs.filter(r => { const d = parseDate(r['Data do Registro']||r['DATA_ABERTURA']); if(!d)return true; if(di&&d<di)return false; if(df&&d>df)return false; return true; });
     }
   }
 
@@ -4645,11 +4651,7 @@ loadVisaoGeral();
 
   // ===== BOOT =====
   async function boot(){
-    if(sessionStorage.getItem('sac-demo-local')==='1'){
-      document.getElementById('login-screen').style.display='none';
-      await window.iniciarSessaoV5();
-      return;
-    }
+    sessionStorage.removeItem('sac-demo-local');
     if(!token()){document.getElementById('login-screen').style.display='flex';return;}
     try{
       const d=await json5('/api/auth/me');
@@ -5136,7 +5138,10 @@ function parseDate(v){
   if(!v) return null;
   if(v instanceof Date) return isNaN(v)?null:v;
   if(typeof v==='number' && v>20000 && v<80000) return new Date((v-25569)*86400*1000);
-  const d=new Date(v); return isNaN(d)?null:d;
+  const s=String(v).trim();
+  const br=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
+  if(br){let y=Number(br[3]);if(y<100)y+=2000;const d=new Date(y,Number(br[2])-1,Number(br[1]),Number(br[4]||0),Number(br[5]||0),Number(br[6]||0));return isNaN(d)?null:d;}
+  const d=new Date(s); return isNaN(d)?null:d;
 }
 function hoursAgo(v){
   const d=parseDate(v); if(!d) return null;
@@ -7091,6 +7096,35 @@ console.log('[base-conhecimento-setores] carregado');
     if (el && value) el.value = value.trim();
   }
 
+  // Extrai campos do setor diretamente do texto, sem IA externa
+  function extrairCamposDoTexto(texto) {
+    const t = texto;
+    const campos = {};
+
+    function capturarBloco(patterns, ate) {
+      for (const pat of patterns) {
+        const m = t.match(new RegExp(pat + '[:\\-–]?\\s*\\n?([\\s\\S]{10,600}?)(?=' + ate + '|$)', 'i'));
+        if (m) return m[1].replace(/\n{3,}/g, '\n\n').trim();
+      }
+      return '';
+    }
+
+    const secoes = 'Descrição|Responsabilidades|Regras|Procedimentos|Alertas|SLA|Prazo|Objetivo|Missão|Visão';
+
+    campos.DESCRICAO = capturarBloco(['Descrição','Objetivo do setor','Missão','Função do setor','Sobre o setor'], secoes);
+    campos.RESPONSABILIDADES = capturarBloco(['Responsabilidades','Atribuições','Competências','Atividades principais'], secoes);
+    campos.REGRAS_OPERACIONAIS = capturarBloco(['Regras','Políticas','Normas','Diretrizes','Regras operacionais'], secoes);
+    campos.PROCEDIMENTOS_ORIENTACOES = capturarBloco(['Procedimentos','Orientações','Passo a passo','Fluxo de atendimento','Como proceder'], secoes);
+    campos.ALERTAS = capturarBloco(['Alerta','Atenção','Cuidados','Pontos críticos','Observações importantes'], secoes);
+
+    const slaM = t.match(/SLA[:\s]*(\d+)\s*h(?:oras?)?/i) || t.match(/prazo[:\s]*(\d+)\s*h(?:oras?)?/i) || t.match(/(\d+)\s*horas?\s*(?:úteis?|de\s*SLA|para\s*resposta)/i);
+    if (slaM) campos.SLA_HORAS = slaM[1];
+
+    if (!campos.DESCRICAO && !campos.RESPONSABILIDADES) campos.DESCRICAO = t.slice(0, 500).trim();
+
+    return campos;
+  }
+
   window.preencherEditorDoArquivo = async function(file) {
     if (!file) return;
     const status = document.getElementById('setor-upload-status');
@@ -7106,17 +7140,8 @@ console.log('[base-conhecimento-setores] carregado');
 
       if (!texto.trim()) throw new Error('Nenhum texto extraído do arquivo');
 
-      // Envia texto para a IA resumir e extrair campos do setor
-      const token = localStorage.getItem('sac-token') || sessionStorage.getItem('sac-token');
-      const res = await fetch('/api/extrair-campos-setor', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-        body: JSON.stringify({ texto: texto.slice(0, 8000) })
-      });
-      const data = await res.json();
-      if (!data.sucesso) throw new Error(data.erro || 'Falha na extração');
-
-      const campos = data.campos || {};
+      if (status) status.textContent = 'Analisando documento...';
+      const campos = extrairCamposDoTexto(texto);
       if (campos.DESCRICAO) setField('DESCRICAO', campos.DESCRICAO);
       if (campos.RESPONSABILIDADES) setField('RESPONSABILIDADES', campos.RESPONSABILIDADES);
       if (campos.REGRAS_OPERACIONAIS) setField('REGRAS_OPERACIONAIS', campos.REGRAS_OPERACIONAIS);
