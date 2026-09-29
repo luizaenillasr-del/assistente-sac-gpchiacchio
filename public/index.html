@@ -1484,6 +1484,14 @@
 
       <!-- LISTA DE SETORES -->
       <div id="setores-lista-view">
+        <!-- Filtro por empresa -->
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+          <span style="font-size:12px;color:var(--gray-500);font-weight:600">Empresa:</span>
+          <button class="tab-btn active" data-filtro-empresa-btn onclick="filtrarSetoresPorEmpresa('TODOS',this)">Todos</button>
+          <button class="tab-btn" data-filtro-empresa-btn onclick="filtrarSetoresPorEmpresa('CHIACCHIO',this)">Chiacchio</button>
+          <button class="tab-btn" data-filtro-empresa-btn onclick="filtrarSetoresPorEmpresa('PLASCHIO',this)">Plaschio</button>
+          <button class="tab-btn" data-filtro-empresa-btn onclick="filtrarSetoresPorEmpresa('TUBAHIA/CESBAP',this)">Tubahia/Cesbap</button>
+        </div>
         <!-- Grid de cards dos setores -->
         <div id="setores-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px">
           <div class="loading" style="grid-column:1/-1"><div class="spinner"></div> Carregando setores...</div>
@@ -1569,9 +1577,15 @@
         </div>
 
         <!-- Tabs da ficha -->
-        <div class="tabs-bar" id="ficha-tabs" style="margin-bottom:16px">
+        <div class="tabs-bar" id="ficha-tabs" style="margin-bottom:16px;flex-wrap:wrap">
           <button class="tab-btn active" onclick="switchFichaTab('casos', this)">Casos em aberto</button>
           <button class="tab-btn" onclick="switchFichaTab('conhecimento', this)">Conhecimento operacional</button>
+          <button class="tab-btn" onclick="switchFichaTab('faq', this)">FAQ</button>
+          <button class="tab-btn" onclick="switchFichaTab('regras', this)">Regras</button>
+          <button class="tab-btn" onclick="switchFichaTab('procedimentos', this)">Procedimentos</button>
+          <button class="tab-btn" onclick="switchFichaTab('politicas', this)">Políticas</button>
+          <button class="tab-btn" onclick="switchFichaTab('perguntas-ia', this)">Perguntas IA</button>
+          <button class="tab-btn" onclick="switchFichaTab('documentos', this)">Documentos</button>
           <button class="tab-btn" onclick="switchFichaTab('rnc', this)">RNCs vinculadas</button>
           <button class="tab-btn" onclick="switchFichaTab('desempenho', this)">Desempenho</button>
         </div>
@@ -1666,6 +1680,80 @@
             </div>
           </div>
         </div>
+
+        <!-- Tab: FAQ -->
+        <div id="ficha-tab-faq" style="display:none">
+          <div class="card">
+            <div style="padding:14px 16px;border-bottom:1px solid var(--gray-100);display:flex;align-items:center;justify-content:space-between">
+              <div><div style="font-size:14px;font-weight:700">Perguntas Frequentes (FAQ)</div><div style="font-size:12px;color:var(--gray-400);margin-top:2px">Base de respostas para atendimento</div></div>
+              <button class="btn btn-primary" style="font-size:12px;padding:6px 12px" onclick="abrirNovoItemConhecimento('faq')">+ Nova pergunta</button>
+            </div>
+            <div id="ficha-faq-filtros" style="padding:8px 16px;border-bottom:1px solid var(--gray-100);display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+              <span style="font-size:11px;color:var(--gray-500);font-weight:600">Empresa:</span>
+              <button class="tab-btn active" data-faq-emp-btn onclick="filtrarFAQEmpresa('TODAS',this)">Todas</button>
+              <button class="tab-btn" data-faq-emp-btn onclick="filtrarFAQEmpresa('CHIACCHIO',this)">Chiacchio</button>
+              <button class="tab-btn" data-faq-emp-btn onclick="filtrarFAQEmpresa('PLASCHIO',this)">Plaschio</button>
+              <button class="tab-btn" data-faq-emp-btn onclick="filtrarFAQEmpresa('TUBAHIA/CESBAP',this)">Tubahia/Cesbap</button>
+            </div>
+            <div id="ficha-faq-body" style="padding:16px"><div class="loading"><div class="spinner"></div></div></div>
+          </div>
+        </div>
+
+        <!-- Tab: Regras -->
+        <div id="ficha-tab-regras" style="display:none">
+          <div class="card">
+            <div style="padding:14px 16px;border-bottom:1px solid var(--gray-100);display:flex;align-items:center;justify-content:space-between">
+              <div><div style="font-size:14px;font-weight:700">Regras Operacionais</div><div style="font-size:12px;color:var(--gray-400);margin-top:2px">Regras que regem a operação deste setor</div></div>
+              <button class="btn btn-primary" style="font-size:12px;padding:6px 12px" onclick="abrirNovoItemConhecimento('regras')">+ Nova regra</button>
+            </div>
+            <div id="ficha-regras-body" style="padding:16px"><div class="loading"><div class="spinner"></div></div></div>
+          </div>
+        </div>
+
+        <!-- Tab: Procedimentos -->
+        <div id="ficha-tab-procedimentos" style="display:none">
+          <div class="card">
+            <div style="padding:14px 16px;border-bottom:1px solid var(--gray-100);display:flex;align-items:center;justify-content:space-between">
+              <div><div style="font-size:14px;font-weight:700">Procedimentos</div><div style="font-size:12px;color:var(--gray-400);margin-top:2px">Procedimentos e passo a passo operacional</div></div>
+              <button class="btn btn-primary" style="font-size:12px;padding:6px 12px" onclick="abrirNovoItemConhecimento('procedimentos')">+ Novo procedimento</button>
+            </div>
+            <div id="ficha-procedimentos-body" style="padding:16px"><div class="loading"><div class="spinner"></div></div></div>
+          </div>
+        </div>
+
+        <!-- Tab: Políticas -->
+        <div id="ficha-tab-politicas" style="display:none">
+          <div class="card">
+            <div style="padding:14px 16px;border-bottom:1px solid var(--gray-100);display:flex;align-items:center;justify-content:space-between">
+              <div><div style="font-size:14px;font-weight:700">Políticas</div><div style="font-size:12px;color:var(--gray-400);margin-top:2px">Políticas aprovadas para este setor</div></div>
+              <button class="btn btn-primary" style="font-size:12px;padding:6px 12px" onclick="abrirNovoItemConhecimento('politicas')">+ Nova política</button>
+            </div>
+            <div id="ficha-politicas-body" style="padding:16px"><div class="loading"><div class="spinner"></div></div></div>
+          </div>
+        </div>
+
+        <!-- Tab: Perguntas IA -->
+        <div id="ficha-tab-perguntas-ia" style="display:none">
+          <div class="card">
+            <div style="padding:14px 16px;border-bottom:1px solid var(--gray-100);display:flex;align-items:center;justify-content:space-between">
+              <div><div style="font-size:14px;font-weight:700">Perguntas para a IA</div><div style="font-size:12px;color:var(--gray-400);margin-top:2px">Pares pergunta-resposta usados pelo cérebro da IA</div></div>
+              <button class="btn btn-primary" style="font-size:12px;padding:6px 12px" onclick="abrirNovoItemConhecimento('perguntas-ia')">+ Nova pergunta IA</button>
+            </div>
+            <div id="ficha-perguntas-ia-body" style="padding:16px"><div class="loading"><div class="spinner"></div></div></div>
+          </div>
+        </div>
+
+        <!-- Tab: Documentos -->
+        <div id="ficha-tab-documentos" style="display:none">
+          <div class="card">
+            <div style="padding:14px 16px;border-bottom:1px solid var(--gray-100);display:flex;align-items:center;justify-content:space-between">
+              <div><div style="font-size:14px;font-weight:700">Documentos</div><div style="font-size:12px;color:var(--gray-400);margin-top:2px">Arquivos e documentos de referência</div></div>
+              <button class="btn btn-primary" style="font-size:12px;padding:6px 12px" onclick="abrirNovoDocumento()">+ Novo documento</button>
+            </div>
+            <div id="ficha-documentos-body" style="padding:16px"><div class="loading"><div class="spinner"></div></div></div>
+          </div>
+        </div>
+
       </div>
     </div>
   </div>
@@ -3296,6 +3384,13 @@ async function loadBancoRNC() {
 let _setoresConfig = [];
 let _setoresMans = [];
 let _setorAtual = null;
+let _filtroEmpresaSetores = 'TODOS';
+window.filtrarSetoresPorEmpresa = function(empresa, btn) {
+  _filtroEmpresaSetores = empresa;
+  document.querySelectorAll('[data-filtro-empresa-btn]').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  loadSetores();
+};
 
 async function _apiFetch(url, timeoutMs, extraOptions) {
   const token = sessionStorage.getItem('sac-token') || '';
@@ -3373,22 +3468,40 @@ async function loadSetores() {
     });
 
     // Grid de cards — usar CONFIG_SETORES como fonte principal
-    const setoresAtivos = _setoresConfig.filter(s => s.ATIVO === 'SIM' && s.SETOR !== 'SAC');
+    const setoresAtivos = _setoresConfig.filter(s => {
+      if (s.ATIVO !== 'SIM' || s.SETOR === 'SAC') return false;
+      if (_filtroEmpresaSetores === 'TODOS') return true;
+      const emp = (s.EMPRESA || 'TODAS').toUpperCase();
+      return emp === 'TODAS' || emp === _filtroEmpresaSetores;
+    });
+    const empCores = {'CHIACCHIO':'#1D4ED8;background:#EFF6FF','PLASCHIO':'#065F46;background:#ECFDF5','TUBAHIA/CESBAP':'#92400E;background:#FEF3C7'};
     document.getElementById('setores-grid').innerHTML = setoresAtivos.map(s => {
       const d = dadosSetor[s.SETOR] || { total: 0, pendentes: 0, atrasadas: 0, horas: [] };
       const avg = d.horas.length > 0 ? Math.round(d.horas.reduce((a,b)=>a+b,0)/d.horas.length) : null;
+      const emp = (s.EMPRESA || '').toUpperCase();
+      const empStyle = empCores[emp] || '';
+      const empBadge = empStyle ? `<span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;color:${empStyle};margin-right:4px">${esc(s.EMPRESA)}</span>` : '';
+      const counts = s._counts || {};
+      const totalBase = (counts.faqs||0)+(counts.regras||0)+(counts.procedimentos||0)+(counts.politicas||0)+(counts.perguntas||0);
+      const countsBadge = totalBase > 0 ? `<div style="margin-top:7px;padding:5px 8px;background:#F8FAFC;border-radius:6px;font-size:11px;color:var(--gray-500);display:flex;gap:8px;flex-wrap:wrap">
+        ${counts.faqs ? `<span>FAQ: <strong>${counts.faqs}</strong></span>` : ''}
+        ${counts.regras ? `<span>Regras: <strong>${counts.regras}</strong></span>` : ''}
+        ${counts.procedimentos ? `<span>Proc: <strong>${counts.procedimentos}</strong></span>` : ''}
+        ${counts.politicas ? `<span>Pol: <strong>${counts.politicas}</strong></span>` : ''}
+        ${counts.perguntas ? `<span>IA: <strong>${counts.perguntas}</strong></span>` : ''}
+      </div>` : '';
       return `
-        <div style="background:white;border:1px solid var(--gray-200);border-radius:12px;padding:18px;cursor:pointer;transition:all 0.15s" 
-             onmouseover="this.style.borderColor='var(--red)';this.style.boxShadow='0 2px 8px rgba(200,16,46,0.1)'" 
+        <div style="background:white;border:1px solid var(--gray-200);border-radius:12px;padding:18px;cursor:pointer;transition:all 0.15s"
+             onmouseover="this.style.borderColor='var(--red)';this.style.boxShadow='0 2px 8px rgba(200,16,46,0.1)'"
              onmouseout="this.style.borderColor='var(--gray-200)';this.style.boxShadow='none'"
-             onclick="abrirFichaSetor('${s.SETOR}')">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-            <div style="font-size:15px;font-weight:800;color:var(--gray-900)">${s.SETOR}</div>
-            <span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;background:var(--green-light);color:#065F46">Ativo</span>
+             onclick="abrirFichaSetor('${esc(s.SETOR)}')">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px">
+            <div style="font-size:15px;font-weight:800;color:var(--gray-900)">${esc(s.SETOR)}</div>
+            <div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end">${empBadge}<span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;background:var(--green-light);color:#065F46">Ativo</span></div>
           </div>
-          <div style="font-size:12px;color:var(--gray-500);margin-bottom:12px;line-height:1.4">${(s.DESCRICAO||'').slice(0,80)}${(s.DESCRICAO||'').length>80?'...':''}</div>
+          <div style="font-size:12px;color:var(--gray-500);margin-bottom:12px;line-height:1.4">${esc((s.DESCRICAO||'').slice(0,80))}${(s.DESCRICAO||'').length>80?'...':''}</div>
           <div style="font-size:11px;color:var(--gray-400);margin-bottom:10px">
-            Responsável: <strong style="color:var(--gray-700)">${s.RESPONSAVEL || '—'}</strong>
+            Responsável: <strong style="color:var(--gray-700)">${esc(s.RESPONSAVEL || '—')}</strong>
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
             <div style="text-align:center;background:var(--red-light);border-radius:6px;padding:8px">
@@ -3404,10 +3517,13 @@ async function loadSetores() {
               <div style="font-size:10px;color:${d.atrasadas>0?'#DC2626':'var(--gray-400)'};font-weight:600">Atrasadas</div>
             </div>
           </div>
+          ${countsBadge}
           ${avg ? `<div style="margin-top:8px;font-size:11px;color:var(--gray-500);text-align:right">Tempo médio: <strong>${avg}h</strong></div>` : ''}
-          <div style="margin-top:10px;font-size:11px;color:var(--red);font-weight:600;text-align:center">Ver ficha completa →</div>
+          <div style="margin-top:10px">
+            <button class="btn btn-primary" style="width:100%;font-size:12px;padding:6px" onclick="event.stopPropagation();abrirFichaSetor('${esc(s.SETOR)}')">VER SETOR</button>
+          </div>
         </div>`;
-    }).join('') || '<div style="grid-column:1/-1;text-align:center;padding:24px;color:var(--gray-400)">Nenhum setor configurado</div>';
+    }).join('') || '<div style="grid-column:1/-1;text-align:center;padding:24px;color:var(--gray-400)">Nenhum setor encontrado para este filtro</div>';
 
     // Heatmap com dados reais de motivos
     const motivos = ['Ruptura/Abertura', 'Atraso/Entrega', 'Qualidade', 'Diverg. NF', 'Cotação', 'Atendimento', 'Outros'];
@@ -6525,8 +6641,17 @@ console.log('[patch-similares-v2] carregado — robusto, seguro, sem serializaç
   if(typeof oldOpen==='function') window.abrirFichaSetor=async function(nome){instalarTabSetor();await oldOpen(nome);};
   const oldSwitch=window.switchFichaTab;
   window.switchFichaTab=function(tab,btn){
-    ['casos','conhecimento','rnc','desempenho','operacional'].forEach(t=>{const el=document.getElementById('ficha-tab-'+t);if(el)el.style.display=t===tab?'block':'none';});
+    ['casos','conhecimento','rnc','desempenho','operacional','faq','regras','procedimentos','politicas','perguntas-ia','documentos'].forEach(t=>{const el=document.getElementById('ficha-tab-'+t);if(el)el.style.display=t===tab?'block':'none';});
     document.querySelectorAll('#ficha-tabs .tab-btn').forEach(b=>b.classList.remove('active')); if(btn)btn.classList.add('active');
+    // Lazy-load knowledge tabs
+    if(_setorAtual){
+      if(tab==='faq') loadSetorFAQ(_setorAtual);
+      else if(tab==='regras') loadSetorRegras(_setorAtual);
+      else if(tab==='procedimentos') loadSetorProcedimentos(_setorAtual);
+      else if(tab==='politicas') loadSetorPoliticas(_setorAtual);
+      else if(tab==='perguntas-ia') loadSetorPerguntasIA(_setorAtual);
+      else if(tab==='documentos') loadSetorDocumentos(_setorAtual);
+    }
   };
   // calculadora
   function instalarCalculadora(){
@@ -6548,6 +6673,291 @@ console.log('[patch-similares-v2] carregado — robusto, seguro, sem serializaç
     try{const d=await api2('/api/calculadora/calcular',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const r=d.resultado||d;document.getElementById('calc-resultado').innerHTML=`<div class="section-card"><div class="section-title">Resultado da análise</div><div class="grid-2" style="margin-top:12px"><div><b>Prazo de produção:</b> ${r.tempoProducao??'—'} dias<br><b>Previsão produção:</b> ${fmt(r.dataProducaoEstimada)}<br><b>Fim real:</b> ${fmt(body.dataFimProducao)}<br><b>Desvio produção:</b> ${r.desvioProducao??'—'} dias</div><div><b>Prazo transporte:</b> ${r.prazoTransporte??'—'} dias<br><b>Previsão entrega:</b> ${fmt(r.dataEntregaEstimada)}<br><b>Entrega real:</b> ${fmt(body.dataEntrega)}<br><b>Desvio transporte:</b> ${r.desvioTransporte??'—'} dias</div></div><div style="margin-top:14px;padding:14px;border-radius:10px;background:${r.desvioDias>0?'#FEF2F2':'#ECFDF5'}"><b>Status:</b> ${esc2(r.statusPrazo||'—')} &nbsp; <b>Etapa:</b> ${esc2(r.etapaDesvio||'—')} &nbsp; <b>Desvio total:</b> ${r.desvioDias??'—'} dias</div></div>`;}catch(e){document.getElementById('calc-resultado').innerHTML=`<div class="alert-box red">${esc2(e.message)}</div>`;}
   };
   document.addEventListener('DOMContentLoaded',()=>{instalarCalculadora();instalarTabSetor();});
+})();
+</script>
+
+<!-- ===== BASE DE CONHECIMENTO OPERACIONAL DOS SETORES ===== -->
+<script>
+(function(){
+'use strict';
+
+// ── helpers ──────────────────────────────────────────────────────────────────
+function escK(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+async function apiFetchK(path,opts={}){
+  const token=sessionStorage.getItem('sac-token')||'';
+  const r=await fetch((window.SAC_API||'')+path,{...opts,headers:{...(opts.headers||{}),'Authorization':'Bearer '+token}});
+  const data=await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error(data.erro||'Erro '+r.status);
+  return data;
+}
+
+const EMPRESAS_BC=['TODAS','CHIACCHIO','PLASCHIO','TUBAHIA/CESBAP'];
+const STATUS_BC=['VALIDADA','A VALIDAR','A DEFINIR','OBSOLETA'];
+
+// ── status badge ─────────────────────────────────────────────────────────────
+function statusBadge(s){
+  const cores={VALIDADA:'#065F46;background:#ECFDF5','A VALIDAR':'#92400E;background:#FEF3C7','A DEFINIR':'#6B7280;background:#F3F4F6','OBSOLETA':'#DC2626;background:#FEE2E2','HISTÓRICA':'#4B5563;background:#F9FAFB'};
+  const c=cores[(s||'').toUpperCase()]||'#6B7280;background:#F3F4F6';
+  return `<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;color:${c}">${escK(s||'—')}</span>`;
+}
+
+// ── renderizar lista genérica ─────────────────────────────────────────────────
+function renderizarLista(containerId, items, tipo, mapeamento){
+  const el=document.getElementById(containerId);
+  if(!el)return;
+  if(!items||!items.length){
+    el.innerHTML=`<div style="text-align:center;padding:24px;color:var(--gray-400);font-size:13px">Nenhum registro cadastrado. Clique em "+ ${mapeamento.botaoLabel}" para adicionar.</div>`;
+    return;
+  }
+  el.innerHTML=items.map((item,i)=>{
+    const titulo=escK(item[mapeamento.titulo]||'—');
+    const corpo=escK(item[mapeamento.corpo]||'');
+    const emp=item.EMPRESA||'TODAS';
+    return `<div style="border:1px solid var(--gray-100);border-radius:8px;padding:14px;margin-bottom:10px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+        <div style="flex:1">
+          <div style="font-weight:700;font-size:14px;margin-bottom:4px">${titulo}</div>
+          ${corpo?`<div style="font-size:13px;color:var(--gray-600);line-height:1.5;margin-bottom:6px;white-space:pre-wrap">${corpo}</div>`:''}
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:4px">
+            ${emp&&emp!=='TODAS'?`<span style="font-size:11px;color:#1D4ED8;background:#EFF6FF;padding:2px 7px;border-radius:10px">${escK(emp)}</span>`:''}
+            ${item.STATUS?statusBadge(item.STATUS):''}
+            ${item.PALAVRAS_CHAVE_FAQ?`<span style="font-size:11px;color:var(--gray-400)">🔑 ${escK(item.PALAVRAS_CHAVE_FAQ)}</span>`:''}
+          </div>
+        </div>
+        <button class="btn btn-secondary" style="font-size:11px;padding:4px 10px;flex-shrink:0" onclick="editarItemConhecimento('${tipo}',${i})">Editar</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── cache de dados das tabs ──────────────────────────────────────────────────
+window._bcCache={};
+window._bcFiltroFAQEmp='TODAS';
+
+// ── filtrar FAQ por empresa ───────────────────────────────────────────────────
+window.filtrarFAQEmpresa=function(emp,btn){
+  window._bcFiltroFAQEmp=emp;
+  document.querySelectorAll('[data-faq-emp-btn]').forEach(b=>b.classList.remove('active'));
+  if(btn)btn.classList.add('active');
+  const all=window._bcCache.faq||[];
+  const filtrado=emp==='TODAS'?all:all.filter(f=>!f.EMPRESA||f.EMPRESA==='TODAS'||f.EMPRESA===emp);
+  renderizarLista('ficha-faq-body',filtrado,'faq',{titulo:'PERGUNTA',corpo:'RESPOSTA',botaoLabel:'Nova pergunta'});
+};
+
+// ── loaders ──────────────────────────────────────────────────────────────────
+window.loadSetorFAQ=async function(setor){
+  const el=document.getElementById('ficha-faq-body');
+  if(el)el.innerHTML='<div class="loading"><div class="spinner"></div></div>';
+  try{
+    const res=await apiFetchK('/api/setores/'+encodeURIComponent(setor)+'/faq');
+    window._bcCache.faq=(res.itens||[]);
+    window.filtrarFAQEmpresa(window._bcFiltroFAQEmp,null);
+  }catch(e){if(el)el.innerHTML=`<div style="color:var(--red);padding:16px">Erro: ${escK(e.message)}</div>`;}
+};
+
+window.loadSetorRegras=async function(setor){
+  const el=document.getElementById('ficha-regras-body');
+  if(el)el.innerHTML='<div class="loading"><div class="spinner"></div></div>';
+  try{
+    const res=await apiFetchK('/api/setores/'+encodeURIComponent(setor)+'/regras');
+    window._bcCache.regras=(res.itens||[]);
+    renderizarLista('ficha-regras-body',window._bcCache.regras,'regras',{titulo:'TITULO',corpo:'REGRA',botaoLabel:'Nova regra'});
+  }catch(e){if(el)el.innerHTML=`<div style="color:var(--red);padding:16px">Erro: ${escK(e.message)}</div>`;}
+};
+
+window.loadSetorProcedimentos=async function(setor){
+  const el=document.getElementById('ficha-procedimentos-body');
+  if(el)el.innerHTML='<div class="loading"><div class="spinner"></div></div>';
+  try{
+    const res=await apiFetchK('/api/setores/'+encodeURIComponent(setor)+'/procedimentos');
+    window._bcCache.procedimentos=(res.itens||[]);
+    renderizarLista('ficha-procedimentos-body',window._bcCache.procedimentos,'procedimentos',{titulo:'TITULO',corpo:'DESCRICAO',botaoLabel:'Novo procedimento'});
+  }catch(e){if(el)el.innerHTML=`<div style="color:var(--red);padding:16px">Erro: ${escK(e.message)}</div>`;}
+};
+
+window.loadSetorPoliticas=async function(setor){
+  const el=document.getElementById('ficha-politicas-body');
+  if(el)el.innerHTML='<div class="loading"><div class="spinner"></div></div>';
+  try{
+    const res=await apiFetchK('/api/setores/'+encodeURIComponent(setor)+'/politicas');
+    window._bcCache.politicas=(res.itens||[]);
+    renderizarLista('ficha-politicas-body',window._bcCache.politicas,'politicas',{titulo:'TITULO',corpo:'DESCRICAO',botaoLabel:'Nova política'});
+  }catch(e){if(el)el.innerHTML=`<div style="color:var(--red);padding:16px">Erro: ${escK(e.message)}</div>`;}
+};
+
+window.loadSetorPerguntasIA=async function(setor){
+  const el=document.getElementById('ficha-perguntas-ia-body');
+  if(el)el.innerHTML='<div class="loading"><div class="spinner"></div></div>';
+  try{
+    const res=await apiFetchK('/api/setores/'+encodeURIComponent(setor)+'/perguntas-ia');
+    window._bcCache.perguntasIA=(res.itens||[]);
+    renderizarLista('ficha-perguntas-ia-body',window._bcCache.perguntasIA,'perguntas-ia',{titulo:'PERGUNTA',corpo:'RESPOSTA_ESPERADA',botaoLabel:'Nova pergunta IA'});
+  }catch(e){if(el)el.innerHTML=`<div style="color:var(--red);padding:16px">Erro: ${escK(e.message)}</div>`;}
+};
+
+window.loadSetorDocumentos=async function(setor){
+  const el=document.getElementById('ficha-documentos-body');
+  if(el)el.innerHTML='<div class="loading"><div class="spinner"></div></div>';
+  try{
+    const res=await apiFetchK('/api/setores/'+encodeURIComponent(setor)+'/documentos');
+    window._bcCache.documentos=(res.itens||[]);
+    const docs=window._bcCache.documentos;
+    if(!docs.length){
+      el.innerHTML='<div style="text-align:center;padding:24px;color:var(--gray-400);font-size:13px">Nenhum documento cadastrado. Clique em "+ Novo documento" para adicionar.</div>';
+      return;
+    }
+    el.innerHTML=docs.map((d,i)=>`
+      <div style="border:1px solid var(--gray-100);border-radius:8px;padding:14px;margin-bottom:10px;display:flex;align-items:flex-start;gap:12px">
+        <div style="width:36px;height:36px;background:var(--red-light);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        </div>
+        <div style="flex:1">
+          <div style="font-weight:700;font-size:14px">${escK(d.NOME||'—')}</div>
+          <div style="font-size:12px;color:var(--gray-500);margin-top:2px">${escK(d.TIPO||'')} ${d.VERSAO?'· v'+escK(d.VERSAO):''}</div>
+          <div style="display:flex;gap:8px;margin-top:6px;align-items:center">
+            ${d.URL_DOCUMENTO?`<a href="${escK(d.URL_DOCUMENTO)}" target="_blank" class="btn btn-secondary" style="font-size:11px;padding:3px 10px">Abrir</a>`:''}
+            ${d.USAR_COMO_FONTE_IA==='SIM'?'<span style="font-size:11px;color:#065F46;background:#ECFDF5;padding:2px 7px;border-radius:10px">Fonte IA</span>':''}
+            ${d.EMPRESA&&d.EMPRESA!=='TODAS'?`<span style="font-size:11px;color:#1D4ED8;background:#EFF6FF;padding:2px 7px;border-radius:10px">${escK(d.EMPRESA)}</span>`:''}
+          </div>
+        </div>
+        <button class="btn btn-secondary" style="font-size:11px;padding:4px 10px;flex-shrink:0" onclick="editarDocumento(${i})">Editar</button>
+      </div>`).join('');
+  }catch(e){if(el)el.innerHTML=`<div style="color:var(--red);padding:16px">Erro: ${escK(e.message)}</div>`;}
+};
+
+// ── configs dos formulários de edição ────────────────────────────────────────
+const BC_FORM_CONFIG={
+  faq:{
+    titulo:'Pergunta Frequente (FAQ)',
+    fields:function(item){return[
+      ['PERGUNTA','Pergunta',item.PERGUNTA||'','textarea'],
+      ['RESPOSTA','Resposta',item.RESPOSTA||'','textarea'],
+      ['EMPRESA','Empresa',item.EMPRESA||'TODAS','select',false,EMPRESAS_BC],
+      ['STATUS','Status',item.STATUS||'A VALIDAR','select',false,STATUS_BC],
+      ['PALAVRAS_CHAVE_FAQ','Palavras-chave',item.PALAVRAS_CHAVE_FAQ||'','text'],
+      ['FONTE','Fonte',item.FONTE||'','text'],
+    ];},
+    reload:function(s){loadSetorFAQ(s);},
+  },
+  regras:{
+    titulo:'Regra Operacional',
+    fields:function(item){return[
+      ['TITULO','Título',item.TITULO||'','text'],
+      ['REGRA','Regra',item.REGRA||'','textarea'],
+      ['EMPRESA','Empresa',item.EMPRESA||'TODAS','select',false,EMPRESAS_BC],
+      ['STATUS','Status',item.STATUS||'A VALIDAR','select',false,STATUS_BC],
+    ];},
+    reload:function(s){loadSetorRegras(s);},
+  },
+  procedimentos:{
+    titulo:'Procedimento',
+    fields:function(item){return[
+      ['TITULO','Título',item.TITULO||'','text'],
+      ['DESCRICAO','Descrição',item.DESCRICAO||'','textarea'],
+      ['PASSOS','Passo a passo',item.PASSOS||'','textarea'],
+      ['EMPRESA','Empresa',item.EMPRESA||'TODAS','select',false,EMPRESAS_BC],
+      ['STATUS','Status',item.STATUS||'A VALIDAR','select',false,STATUS_BC],
+    ];},
+    reload:function(s){loadSetorProcedimentos(s);},
+  },
+  politicas:{
+    titulo:'Política',
+    fields:function(item){return[
+      ['TITULO','Título',item.TITULO||'','text'],
+      ['DESCRICAO','Descrição',item.DESCRICAO||'','textarea'],
+      ['EMPRESA','Empresa',item.EMPRESA||'TODAS','select',false,EMPRESAS_BC],
+      ['STATUS','Status',item.STATUS||'A VALIDAR','select',false,STATUS_BC],
+    ];},
+    reload:function(s){loadSetorPoliticas(s);},
+  },
+  'perguntas-ia':{
+    titulo:'Pergunta para a IA',
+    fields:function(item){return[
+      ['PERGUNTA','Pergunta',item.PERGUNTA||'','textarea'],
+      ['RESPOSTA_ESPERADA','Resposta esperada',item.RESPOSTA_ESPERADA||'','textarea'],
+      ['EMPRESA','Empresa',item.EMPRESA||'TODAS','select',false,EMPRESAS_BC],
+      ['STATUS','Status',item.STATUS||'A VALIDAR','select',false,STATUS_BC],
+    ];},
+    reload:function(s){loadSetorPerguntasIA(s);},
+  },
+};
+
+// ── abrir novo item ───────────────────────────────────────────────────────────
+window.abrirNovoItemConhecimento=function(tipo){
+  const setor=window._setorAtual;
+  if(!setor){alert('Nenhum setor selecionado.');return;}
+  const cfg=BC_FORM_CONFIG[tipo];
+  if(!cfg){alert('Tipo desconhecido: '+tipo);return;}
+  abrirEditorGenerico(cfg.titulo+' — '+setor, cfg.fields({}), async function(values){
+    await apiFetchK('/api/setores/'+encodeURIComponent(setor)+'/'+tipo,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(values)});
+    fecharEditorGenerico();
+    cfg.reload(setor);
+    alert('Salvo com sucesso!');
+  });
+};
+
+// ── editar item existente ─────────────────────────────────────────────────────
+window.editarItemConhecimento=function(tipo,idx){
+  const setor=window._setorAtual;
+  if(!setor)return;
+  const cfg=BC_FORM_CONFIG[tipo];
+  if(!cfg)return;
+  const cacheKey={'faq':'faq','regras':'regras','procedimentos':'procedimentos','politicas':'politicas','perguntas-ia':'perguntasIA'}[tipo];
+  const item=(window._bcCache[cacheKey]||[])[idx]||{};
+  const idCampo={'faq':'ID_FAQ','regras':'ID_REGRA','procedimentos':'ID_PROCEDIMENTO','politicas':'ID_POLITICA','perguntas-ia':'ID_PERGUNTA'}[tipo];
+  const id=item[idCampo]||item.ID||'';
+  if(!id){alert('ID não encontrado para edição.');return;}
+  abrirEditorGenerico('Editar '+cfg.titulo+' — '+setor, cfg.fields(item), async function(values){
+    await apiFetchK('/api/setores/'+encodeURIComponent(setor)+'/'+tipo+'/'+encodeURIComponent(id),{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(values)});
+    fecharEditorGenerico();
+    cfg.reload(setor);
+    alert('Atualizado com sucesso!');
+  });
+};
+
+// ── documentos ───────────────────────────────────────────────────────────────
+window.abrirNovoDocumento=function(){
+  const setor=window._setorAtual;
+  if(!setor){alert('Nenhum setor selecionado.');return;}
+  abrirEditorGenerico('Novo Documento — '+setor,[
+    ['NOME','Nome do documento','','text'],
+    ['TIPO','Tipo (manual, política, procedimento...)','"Manual"','text'],
+    ['VERSAO','Versão','1.0','text'],
+    ['EMPRESA','Empresa','TODAS','select',false,EMPRESAS_BC],
+    ['USAR_COMO_FONTE_IA','Usar como fonte da IA','SIM','select',false,['SIM','NÃO']],
+    ['URL_DOCUMENTO','URL do documento (Google Drive, etc.)','','text'],
+    ['DESCRICAO','Descrição','','textarea'],
+  ],async function(values){
+    await apiFetchK('/api/setores/'+encodeURIComponent(setor)+'/documentos',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(values)});
+    fecharEditorGenerico();
+    loadSetorDocumentos(setor);
+    alert('Documento cadastrado!');
+  });
+};
+
+window.editarDocumento=function(idx){
+  const setor=window._setorAtual;
+  if(!setor)return;
+  const item=(window._bcCache.documentos||[])[idx]||{};
+  const id=item.ID_DOCUMENTO||item.ID||'';
+  if(!id){alert('ID não encontrado.');return;}
+  abrirEditorGenerico('Editar Documento — '+setor,[
+    ['NOME','Nome',item.NOME||'','text'],
+    ['TIPO','Tipo',item.TIPO||'','text'],
+    ['VERSAO','Versão',item.VERSAO||'','text'],
+    ['EMPRESA','Empresa',item.EMPRESA||'TODAS','select',false,EMPRESAS_BC],
+    ['USAR_COMO_FONTE_IA','Usar como fonte da IA',item.USAR_COMO_FONTE_IA||'SIM','select',false,['SIM','NÃO']],
+    ['URL_DOCUMENTO','URL',item.URL_DOCUMENTO||'','text'],
+    ['DESCRICAO','Descrição',item.DESCRICAO||'','textarea'],
+  ],async function(values){
+    await apiFetchK('/api/setores/'+encodeURIComponent(setor)+'/documentos/'+encodeURIComponent(id),{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(values)});
+    fecharEditorGenerico();
+    loadSetorDocumentos(setor);
+    alert('Atualizado!');
+  });
+};
+
+console.log('[base-conhecimento-setores] carregado');
 })();
 </script>
 
