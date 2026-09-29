@@ -1314,13 +1314,14 @@
             <input class="search-input" placeholder="Buscar por protocolo, cliente, CNPJ, NFe ou lote" id="banco-search" oninput="filtrarBanco()">
           </div>
         </div>
-        <div class="filters" style="margin-bottom:0">
-          <div class="filter-select"><span>Status</span><strong>Todos</strong><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
-          <div class="filter-select"><span>Tipo</span><strong>Todos</strong><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
-          <div class="filter-select"><span>Setor</span><strong>Todos</strong><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
-          <div class="filter-select"><span>Empresa</span><strong>Todas</strong><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
-          <div class="filter-select"><span>Período</span><strong>30 dias</strong><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
-          <div class="filter-select"><span>Procedência</span><strong>Todas</strong><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+        <div class="filters" style="margin-bottom:0;position:relative">
+          <div class="filter-select" id="bflt-status" onclick="abrirFiltroDropdown('status',this)" style="cursor:pointer"><span>Status</span><strong id="bflt-status-label">Todos</strong><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+          <div class="filter-select" id="bflt-tipo" onclick="abrirFiltroDropdown('tipo',this)" style="cursor:pointer"><span>Tipo</span><strong id="bflt-tipo-label">Todos</strong><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+          <div class="filter-select" id="bflt-setor" onclick="abrirFiltroDropdown('setor',this)" style="cursor:pointer"><span>Setor</span><strong id="bflt-setor-label">Todos</strong><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+          <div class="filter-select" id="bflt-empresa" onclick="abrirFiltroDropdown('empresa',this)" style="cursor:pointer"><span>Empresa</span><strong id="bflt-empresa-label">Todas</strong><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+          <div class="filter-select" id="bflt-periodo" onclick="abrirFiltroDropdown('periodo',this)" style="cursor:pointer"><span>Período</span><strong id="bflt-periodo-label">Todos</strong><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+          <div class="filter-select" id="bflt-procedencia" onclick="abrirFiltroDropdown('procedencia',this)" style="cursor:pointer"><span>Procedência</span><strong id="bflt-procedencia-label">Todas</strong><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+          <div id="banco-filter-dropdown" style="display:none;position:absolute;top:100%;left:0;z-index:200;background:white;border:1px solid var(--gray-200);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.12);min-width:180px;padding:6px 0;max-height:260px;overflow-y:auto"></div>
         </div>
       </div>
 
@@ -1760,7 +1761,7 @@
       <div class="breadcrumb">Regras / <span>Base de Conhecimento</span></div>
       <div class="page-header">
         <h1 class="page-title">Base de Conhecimento</h1>
-        <button class="btn btn-primary">
+        <button class="btn btn-primary" onclick="abrirModalNovoDoc()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           Novo documento
         </button>
@@ -1865,6 +1866,76 @@
 
   <!-- ===== MODAL RNC APROVADOR ===== -->
   <div id="modal-rnc-aprovador-v5" class="modal-overlay" style="display:none" onclick="if(event.target===this)fecharRncAprovador()"><div class="modal-box" style="max-width:1000px"><div class="modal-header"><div><div style="font-size:18px;font-weight:800" id="rnc-modal-title">RNC</div><div style="font-size:12px;color:var(--gray-400)" id="rnc-modal-sub">—</div></div><button class="modal-close" onclick="fecharRncAprovador()">×</button></div><div class="modal-body" id="rnc-modal-body"></div></div></div>
+
+  <!-- ===== MODAL NOVO DOCUMENTO (Base de Conhecimento) ===== -->
+  <div id="modal-novo-doc" class="modal-overlay" style="display:none" onclick="if(event.target===this)fecharModalNovoDoc()">
+    <div class="modal-box" style="max-width:680px">
+      <div class="modal-header">
+        <div>
+          <div style="font-size:18px;font-weight:800">Novo documento</div>
+          <div style="font-size:12px;color:var(--gray-400)">Base de Conhecimento — Grupo Chiacchio</div>
+        </div>
+        <button class="modal-close" onclick="fecharModalNovoDoc()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-section">
+          <div class="form-section-title">Identificação</div>
+          <div class="field-grid">
+            <div class="field" style="grid-column:span 2">
+              <label>Título do documento *</label>
+              <input id="ndoc-titulo" placeholder="Ex: Política de devolução de mercadorias">
+            </div>
+            <div class="field">
+              <label>Tipo *</label>
+              <select id="ndoc-tipo">
+                <option value="Política">Política</option>
+                <option value="Procedimento">Procedimento</option>
+                <option value="FAQ">FAQ</option>
+                <option value="Resposta-modelo">Resposta-modelo</option>
+                <option value="Caso exemplar">Caso exemplar</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Setor responsável</label>
+              <select id="ndoc-setor">
+                <option value="">Selecione...</option>
+                <option>Logística</option>
+                <option>Qualidade</option>
+                <option>Comercial</option>
+                <option>Financeiro</option>
+                <option>Operações</option>
+                <option>SAC</option>
+                <option>Outros</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Responsável</label>
+              <input id="ndoc-responsavel" placeholder="Nome do responsável">
+            </div>
+          </div>
+        </div>
+        <div class="form-section">
+          <div class="form-section-title">Conteúdo</div>
+          <div class="field">
+            <label>Descrição *</label>
+            <textarea id="ndoc-descricao" rows="4" style="width:100%;border:1px solid var(--gray-200);border-radius:8px;padding:10px;font-size:13px;resize:vertical" placeholder="Descreva o conteúdo do documento..."></textarea>
+          </div>
+          <div class="field" style="margin-top:10px">
+            <label>Passos / Orientações</label>
+            <textarea id="ndoc-passos" rows="3" style="width:100%;border:1px solid var(--gray-200);border-radius:8px;padding:10px;font-size:13px;resize:vertical" placeholder="Liste os passos ou orientações (opcional)..."></textarea>
+          </div>
+        </div>
+        <div id="ndoc-feedback" style="display:none;padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:10px"></div>
+        <div style="display:flex;justify-content:flex-end;gap:8px">
+          <button class="btn btn-secondary" onclick="fecharModalNovoDoc()">Cancelar</button>
+          <button class="btn btn-primary" id="ndoc-salvar-btn" onclick="salvarNovoDoc()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            Salvar documento
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 </main>
 
 <script>
@@ -2939,11 +3010,73 @@ function renderAcompanhamento(data) {
 
 let bancoData = [];
 let bancoFilter = 'todas';
+let bancoPagina = 1;
+window._getBancoPagina = () => bancoPagina;
+window._setBancoPagina = (v) => { bancoPagina = v; };
+window._bancoDataFull = [];
+const BANCO_PAGE_SIZE = 10;
+let bancoFiltros = { status: '', tipo: '', setor: '', empresa: '', periodo: 0, procedencia: '' };
+let _bancoDataFull = [];
+
+function abrirFiltroDropdown(campo, anchor) {
+  const dd = document.getElementById('banco-filter-dropdown');
+  if (!dd) return;
+  if (dd.style.display !== 'none' && dd.dataset.campo === campo) {
+    dd.style.display = 'none';
+    return;
+  }
+  dd.dataset.campo = campo;
+  const rect = anchor.getBoundingClientRect();
+  const parentRect = anchor.closest('.filters').getBoundingClientRect();
+  dd.style.left = (rect.left - parentRect.left) + 'px';
+
+  const opcoesMap = {
+    status: ['Todos', ...new Set((_bancoDataFull.length ? _bancoDataFull : bancoData).map(m => m.STATUS).filter(Boolean))],
+    tipo: ['Todos', ...new Set((_bancoDataFull.length ? _bancoDataFull : bancoData).map(m => m.TIPO || m.TIPO_CONFIRMADO).filter(Boolean))],
+    setor: ['Todos', ...new Set((_bancoDataFull.length ? _bancoDataFull : bancoData).map(m => m.SETOR_DESTINADO || m.SETOR_CONFIRMADO).filter(Boolean))],
+    empresa: ['Todas', ...new Set((_bancoDataFull.length ? _bancoDataFull : bancoData).map(m => m.EMPRESA_RECLAMADA).filter(Boolean))],
+    periodo: ['Todos', '7 dias', '15 dias', '30 dias', '60 dias', '90 dias', '180 dias'],
+    procedencia: ['Todas', ...new Set((_bancoDataFull.length ? _bancoDataFull : bancoData).map(m => m.DECISAO_ANALISTA || m.RESULTADO_FINAL).filter(Boolean))],
+  };
+  const opts = opcoesMap[campo] || [];
+  const atual = bancoFiltros[campo];
+  dd.innerHTML = opts.map(o => {
+    const isActive = (o === 'Todos' || o === 'Todas') ? !atual : String(o) === String(atual);
+    return `<div onclick="selecionarFiltroBanco('${campo}','${String(o).replace(/'/g,"\\'")}',this)" style="padding:8px 14px;cursor:pointer;font-size:13px;font-weight:${isActive?700:400};background:${isActive?'var(--red-light)':''};color:${isActive?'var(--red)':'var(--gray-700)'}">${o}</div>`;
+  }).join('');
+  dd.style.display = 'block';
+}
+
+function selecionarFiltroBanco(campo, valor, el) {
+  const dd = document.getElementById('banco-filter-dropdown');
+  if (dd) dd.style.display = 'none';
+  if (valor === 'Todos' || valor === 'Todas') {
+    bancoFiltros[campo] = campo === 'periodo' ? 0 : '';
+  } else if (campo === 'periodo') {
+    bancoFiltros[campo] = parseInt(valor) || 0;
+  } else {
+    bancoFiltros[campo] = valor;
+  }
+  const labelEl = document.getElementById('bflt-' + campo + '-label');
+  if (labelEl) labelEl.textContent = valor;
+  bancoPagina = 1;
+  renderBanco();
+}
+
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('#bflt-status,#bflt-tipo,#bflt-setor,#bflt-empresa,#bflt-periodo,#bflt-procedencia,#banco-filter-dropdown')) {
+    const dd = document.getElementById('banco-filter-dropdown');
+    if (dd) dd.style.display = 'none';
+  }
+});
 
 async function loadBancoManifestacoes() {
   try {
     const res = await _apiFetch('/api/manifestacoes', 15000);
     bancoData = res.itens || [];
+    _bancoDataFull = [...bancoData];
+    window.bancoData = bancoData;
+    window._bancoDataFull = _bancoDataFull;
     renderBanco();
   } catch (e) {
     console.error('Erro banco:', e);
@@ -2952,43 +3085,79 @@ async function loadBancoManifestacoes() {
   }
 }
 
+window.setBancoData = function(d) { bancoData = d; };
+
 function filterBancoTab(btn, filter) {
   bancoFilter = filter;
+  bancoPagina = 1;
   document.querySelectorAll('#banco-tabs .tab-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   renderBanco();
 }
 
-function filtrarBanco() { renderBanco(); }
+function filtrarBanco() { bancoPagina = 1; renderBanco(); }
 
 function renderBanco() {
   const search = (document.getElementById('banco-search')?.value || '').toLowerCase();
-  let data = bancoData;
+  const base = _bancoDataFull.length ? _bancoDataFull : bancoData;
+  let data = base;
 
   if (bancoFilter === 'atrasadas') data = data.filter(m => (m.DENTRO_DO_SLA||'').toUpperCase() === 'NÃO');
   else if (bancoFilter === 'aguardando') data = data.filter(m => (m.SETOR_DESTINADO || m.SETOR_SUGERIDO) && !(m.STATUS||'').includes('FINALIZ'));
   else if (bancoFilter === 'encerradas') data = data.filter(m => (m.STATUS||'').toUpperCase().includes('FINALIZ') || (m.STATUS||'').toUpperCase().includes('CONCLUÍD'));
+
+  // Apply column filters
+  if (bancoFiltros.status) data = data.filter(m => (m.STATUS||'') === bancoFiltros.status);
+  if (bancoFiltros.tipo) data = data.filter(m => (m.TIPO||m.TIPO_CONFIRMADO||'') === bancoFiltros.tipo);
+  if (bancoFiltros.setor) data = data.filter(m => (m.SETOR_DESTINADO||m.SETOR_CONFIRMADO||'') === bancoFiltros.setor);
+  if (bancoFiltros.empresa) data = data.filter(m => (m.EMPRESA_RECLAMADA||'') === bancoFiltros.empresa);
+  if (bancoFiltros.procedencia) data = data.filter(m => (m.DECISAO_ANALISTA||m.RESULTADO_FINAL||'') === bancoFiltros.procedencia);
+  if (bancoFiltros.periodo) {
+    const cutoff = new Date(Date.now() - bancoFiltros.periodo * 86400000);
+    data = data.filter(m => { const d = new Date(m.DATA_CRIACAO); return isNaN(d) || d >= cutoff; });
+  }
 
   if (search) {
     data = data.filter(m =>
       (m.ID_MANIFESTACAO||'').toLowerCase().includes(search) ||
       (m.EMPRESA_NORMALIZADA||'').toLowerCase().includes(search) ||
       (m.EMPRESA_RECLAMANTE||'').toLowerCase().includes(search) ||
-      (m.CONTATO||'').toLowerCase().includes(search)
+      (m.CONTATO||'').toLowerCase().includes(search) ||
+      (m.DESCRICAO_RECLAMACAO||'').toLowerCase().includes(search) ||
+      (m.CNPJ||'').toLowerCase().includes(search)
     );
   }
 
-  // Update tab counts
-  document.getElementById('tab-total').textContent = bancoData.length;
-  document.getElementById('tab-atrasadas').textContent = bancoData.filter(m => (m.DENTRO_DO_SLA||'').toUpperCase() === 'NÃO').length;
-  document.getElementById('tab-aguardando').textContent = bancoData.filter(m => (m.SETOR_DESTINADO || m.SETOR_SUGERIDO) && !(m.STATUS||'').includes('FINALIZ')).length;
-  document.getElementById('tab-encerradas').textContent = bancoData.filter(m => (m.STATUS||'').toUpperCase().includes('FINALIZ')).length;
+  // Update tab counts (always from full dataset)
+  document.getElementById('tab-total').textContent = base.length;
+  document.getElementById('tab-atrasadas').textContent = base.filter(m => (m.DENTRO_DO_SLA||'').toUpperCase() === 'NÃO').length;
+  document.getElementById('tab-aguardando').textContent = base.filter(m => (m.SETOR_DESTINADO || m.SETOR_SUGERIDO) && !(m.STATUS||'').includes('FINALIZ')).length;
+  document.getElementById('tab-encerradas').textContent = base.filter(m => (m.STATUS||'').toUpperCase().includes('FINALIZ')).length;
 
-  const page10 = data.slice(0, 10);
-  document.getElementById('banco-info').textContent = `Mostrando 1–${page10.length} de ${data.length}`;
+  // Pagination
+  const totalPages = Math.max(1, Math.ceil(data.length / BANCO_PAGE_SIZE));
+  if (bancoPagina > totalPages) bancoPagina = totalPages;
+  const start = (bancoPagina - 1) * BANCO_PAGE_SIZE;
+  const pageSlice = data.slice(start, start + BANCO_PAGE_SIZE);
 
-  document.getElementById('banco-body').innerHTML = page10.length > 0
-    ? page10.map(m => {
+  document.getElementById('banco-info').textContent = data.length > 0
+    ? `Mostrando ${start + 1}–${start + pageSlice.length} de ${data.length}`
+    : 'Nenhum resultado';
+
+  // Pagination buttons
+  const paginationBtns = document.querySelector('.pagination-btns');
+  if (paginationBtns) {
+    const maxBtns = 5;
+    let pages = [];
+    for (let i = Math.max(1, bancoPagina - 2); i <= Math.min(totalPages, Math.max(1, bancoPagina - 2) + maxBtns - 1); i++) pages.push(i);
+    paginationBtns.innerHTML =
+      `<button class="page-btn" onclick="navBancoPage(${bancoPagina - 1})" ${bancoPagina <= 1 ? 'disabled' : ''}>←</button>` +
+      pages.map(p => `<button class="page-btn${p === bancoPagina ? ' active' : ''}" onclick="navBancoPage(${p})">${p}</button>`).join('') +
+      `<button class="page-btn" onclick="navBancoPage(${bancoPagina + 1})" ${bancoPagina >= totalPages ? 'disabled' : ''}>→</button>`;
+  }
+
+  document.getElementById('banco-body').innerHTML = pageSlice.length > 0
+    ? pageSlice.map(m => {
         const isAtrasada = (m.DENTRO_DO_SLA||'').toUpperCase() === 'NÃO';
         const isEncerrada = (m.STATUS||'').toUpperCase().includes('FINALIZ') || (m.STATUS||'').toUpperCase().includes('CONCLUÍD');
         const prazoText = isAtrasada ? 'Atrasado' : isEncerrada ? 'Concluída' : 'Em dia';
@@ -3015,6 +3184,12 @@ function renderBanco() {
     : '<tr><td colspan="8" style="text-align:center;color:var(--gray-400);padding:20px">Nenhuma manifestação encontrada</td></tr>';
 }
 
+function navBancoPage(p) {
+  const total = Math.max(1, Math.ceil((_bancoDataFull.length || bancoData.length) / BANCO_PAGE_SIZE));
+  bancoPagina = Math.max(1, Math.min(p, total));
+  renderBanco();
+}
+
 // ===== BANCO DE RNC =====
 async function loadBancoRNC() {
   try {
@@ -3022,7 +3197,7 @@ async function loadBancoRNC() {
       const rncs=[{ID_RNC:'RNC-139/26',ID_MANIFESTACAO:'SAC-2026-00125',SETOR_DESTINADO:'Qualidade',CAUSA_PROVAVEL:'Avaria na embalagem durante transporte',RESPONSAVEL:'Carlos Oliveira',DATA_FINALIZACAO:'30/09/2026'},{ID_RNC:'RNC-140/26',ID_MANIFESTACAO:'SAC-2026-00131',SETOR_DESTINADO:'Qualidade',CAUSA_PROVAVEL:'Em análise',RESPONSAVEL:'Maria Santos',DATA_FINALIZACAO:'02/10/2026'}];
       document.getElementById('rnc-abertas').textContent=rncs.length;document.getElementById('rnc-abertas-sub').textContent=rncs.length+' RNCs abertas';document.getElementById('rnc-vencendo').textContent='1';document.getElementById('rnc-body').innerHTML=rncs.map(m=>`<tr><td style="font-weight:700">${m.ID_RNC}</td><td><a style="color:var(--red);font-weight:600">${m.ID_MANIFESTACAO}</a></td><td>${m.SETOR_DESTINADO}</td><td><div>${m.CAUSA_PROVAVEL}</div><div class="rnc-acao">Ação: em tratamento</div></td><td>${m.RESPONSAVEL}</td><td>${m.DATA_FINALIZACAO}</td><td><span class="status-badge em-andamento">Em tratamento</span></td></tr>`).join('');document.getElementById('causas-list').innerHTML='<div style="font-size:12px;margin-bottom:8px">Avaria na embalagem <b>1</b></div><div style="font-size:12px">Em análise <b>1</b></div>';document.getElementById('rnc-setor-list').innerHTML='<div style="font-size:12px">Qualidade <b>2</b></div>';return;
     }
-    const res = await fetch(API + '/api/manifestacoes').then(r => r.json());
+    const res = await _apiFetch('/api/manifestacoes', 15000);
     const mans = res.itens || [];
     const rncs = mans.filter(m => m.ID_RNC || m.RNC_SUGERIDO === 'SIM');
     document.getElementById('rnc-abertas').textContent = rncs.length;
@@ -3072,7 +3247,11 @@ async function loadBancoRNC() {
         <div class="progress-bar"><div class="progress-fill" style="width:${Math.round(c/maxS*100)}%"></div></div>
       </div>
     `).join('') || '';
-  } catch (e) { console.error(e); }
+  } catch (e) {
+    console.error('Erro banco RNC:', e);
+    const el = document.getElementById('rnc-body');
+    if (el) el.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--gray-400);padding:20px">Erro ao carregar RNCs: ${e.message}</td></tr>`;
+  }
 }
 
 // ===== SETORES =====
@@ -3080,15 +3259,17 @@ let _setoresConfig = [];
 let _setoresMans = [];
 let _setorAtual = null;
 
-async function _apiFetch(url, timeoutMs) {
+async function _apiFetch(url, timeoutMs, extraOptions) {
   const token = sessionStorage.getItem('sac-token') || '';
   const controller = new AbortController();
   const tid = timeoutMs ? setTimeout(() => controller.abort(), timeoutMs) : null;
   try {
-    const r = await fetch((window.SAC_API || '') + url, {
-      headers: { Authorization: 'Bearer ' + token },
+    const opts = {
+      ...extraOptions,
+      headers: { Authorization: 'Bearer ' + token, ...(extraOptions?.headers || {}) },
       signal: controller.signal,
-    });
+    };
+    const r = await fetch((window.SAC_API || '') + url, opts);
     const text = await r.text();
     let data;
     try { data = text ? JSON.parse(text) : {}; } catch { data = { raw: text }; }
@@ -3321,7 +3502,7 @@ async function abrirFichaSetor(nomeSetor) {
           <td>${pri ? `<span style="font-size:11px;font-weight:600;padding:2px 6px;border-radius:10px;background:${pri==='Alta'?'#FEE2E2':'#FEF3C7'};color:${priColor}">${pri}</span>` : '—'}</td>
           <td><span style="display:inline-flex;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;background:#EFF6FF;color:#1D4ED8">${st}</span></td>
           <td><span style="font-size:11px;font-weight:600;color:${isAtrasada?'#DC2626':'#065F46'}">${isAtrasada?'⚠ Atrasada':'Em dia'}</span></td>
-          <td><a class="link-abrir">Abrir</a></td>
+          <td><a class="link-abrir" onclick="abrirDossieIdx(_storeRow(m))">Abrir</a></td>
         </tr>`;
       }).join('')
     : '<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--gray-400)">Nenhuma manifestação encontrada para este setor</td></tr>';
@@ -3517,6 +3698,91 @@ function showBCDetail(item, el) {
   `;
 }
 
+// ===== MODAL NOVO DOCUMENTO =====
+function abrirModalNovoDoc() {
+  document.getElementById('modal-novo-doc').style.display = 'flex';
+  document.getElementById('ndoc-titulo').value = '';
+  document.getElementById('ndoc-tipo').value = 'Política';
+  document.getElementById('ndoc-setor').value = '';
+  document.getElementById('ndoc-responsavel').value = '';
+  document.getElementById('ndoc-descricao').value = '';
+  document.getElementById('ndoc-passos').value = '';
+  const fb = document.getElementById('ndoc-feedback');
+  if (fb) { fb.style.display = 'none'; fb.textContent = ''; }
+}
+
+function fecharModalNovoDoc() {
+  document.getElementById('modal-novo-doc').style.display = 'none';
+}
+
+async function salvarNovoDoc() {
+  const titulo = document.getElementById('ndoc-titulo').value.trim();
+  const tipo = document.getElementById('ndoc-tipo').value;
+  const setor = document.getElementById('ndoc-setor').value.trim();
+  const responsavel = document.getElementById('ndoc-responsavel').value.trim();
+  const descricao = document.getElementById('ndoc-descricao').value.trim();
+  const passos = document.getElementById('ndoc-passos').value.trim();
+  const fb = document.getElementById('ndoc-feedback');
+
+  if (!titulo) {
+    fb.style.display = 'block';
+    fb.style.background = '#FEE2E2';
+    fb.style.color = '#DC2626';
+    fb.textContent = 'Informe o título do documento.';
+    return;
+  }
+  if (!descricao) {
+    fb.style.display = 'block';
+    fb.style.background = '#FEE2E2';
+    fb.style.color = '#DC2626';
+    fb.textContent = 'Informe a descrição do documento.';
+    return;
+  }
+
+  const btn = document.getElementById('ndoc-salvar-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Salvando...'; }
+
+  const endpoint = (tipo === 'Procedimento' || tipo === 'FAQ' || tipo === 'Caso exemplar' || tipo === 'Resposta-modelo')
+    ? '/api/procedimentos' : '/api/politicas';
+
+  const payload = {
+    POLITICA: titulo,
+    NOME: titulo,
+    SETOR_RESPONSAVEL: setor,
+    RESPONSAVEL: responsavel,
+    DESCRICAO: descricao,
+    PASSOS: passos,
+    TIPO: tipo,
+    ATIVO: 'SIM',
+  };
+
+  try {
+    const res = await _apiFetch(endpoint, 15000, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    fb.style.display = 'block';
+    fb.style.background = '#D1FAE5';
+    fb.style.color = '#065F46';
+    fb.textContent = `Documento salvo com sucesso! (${res.id || 'OK'})`;
+    setTimeout(() => {
+      fecharModalNovoDoc();
+      if (typeof loadBaseConhecimento === 'function') loadBaseConhecimento();
+    }, 1500);
+  } catch (e) {
+    fb.style.display = 'block';
+    fb.style.background = '#FEE2E2';
+    fb.style.color = '#DC2626';
+    fb.textContent = 'Erro ao salvar: ' + e.message;
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Salvar documento';
+    }
+  }
+}
+
 // ===== PAGE OBSERVERS =====
 const pageLoaders = {
   'acompanhamento': loadAcompanhamento,
@@ -3557,7 +3823,9 @@ loadVisaoGeral();
   }
 
   async function jsonFetch(url, options){
-    const r = await fetch(API + url, options);
+    const token = sessionStorage.getItem('sac-token') || '';
+    const opts = { ...options, headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token, ...(options?.headers || {}) } };
+    const r = await fetch(API + url, opts);
     const text = await r.text();
     let data;
     try { data = text ? JSON.parse(text) : {}; } catch { data = { raw:text }; }
@@ -3772,10 +4040,15 @@ loadVisaoGeral();
   const _filtrarBancoOriginal=window.filtrarBanco;
   window.filtrarBanco=function(){
     const q=norm(document.getElementById('banco-search')?.value||'');
-    if(!q){ if(typeof _filtrarBancoOriginal==='function')return _filtrarBancoOriginal(); return; }
+    if(!q){ if(typeof window._setBancoPagina==='function')window._setBancoPagina(1); if(typeof _filtrarBancoOriginal==='function')return _filtrarBancoOriginal(); return; }
     const fields=['ID_MANIFESTACAO','CLIENTE_NOME','NOME_CLIENTE','CONTATO','CLIENTE','EMPRESA_RECLAMANTE','EMPRESA_RECLAMADA','CNPJ','TELEFONE','EMAIL','PRODUTO','LOTE','NFE','NF','DESCRICAO_RECLAMACAO','MOTIVO_RELATADO_BRUTO','MOTIVO','CAUSA_PROVAVEL','SUBCAUSA','SETOR_DESTINADO','SETOR_CONFIRMADO','SETOR_SUGERIDO','RESPONSAVEL','ID_RNC'];
-    const data=(_dashData.mans||bancoData||[]).filter(x=>fields.some(k=>norm(x[k]).includes(q)));
-    bancoData=data; if(typeof renderBanco==='function')renderBanco();
+    const _bf=window._bancoDataFull||[];
+    const fonte=_bf.length?_bf:(_dashData.mans||bancoData||[]);
+    const filtered=fonte.filter(x=>fields.some(k=>norm(x[k]).includes(q)));
+    if(typeof window.setBancoData==='function') window.setBancoData(filtered);
+    else bancoData=filtered;
+    if(typeof window._setBancoPagina==='function') window._setBancoPagina(1);
+    if(typeof renderBanco==='function')renderBanco();
   };
 
   // ------------------------------------------------------------
@@ -4274,13 +4547,15 @@ loadVisaoGeral();
     await _loadBancoOrig();
     aplicarFiltroPendente();
   };
+  // Update pageLoaders to point to new wrapper so navigate() uses it
+  if (typeof pageLoaders !== 'undefined') pageLoaders['banco-manifestacoes'] = window.loadBancoManifestacoes;
 
   function aplicarFiltroPendente() {
     const f = window._bancoPendingFilter;
     if (!f) return;
     window._bancoPendingFilter = null;
 
-    let data = window.bancoData || [];
+    let data = _bancoDataFull.length ? [..._bancoDataFull] : (window.bancoData || []);
 
     // Período
     if (f.periodoDias) data = filtraPorPeriodo(data, f.periodoDias);
@@ -4307,7 +4582,9 @@ loadVisaoGeral();
     if (totalEl) totalEl.textContent = `${data.length} resultado(s) filtrado(s)`;
 
     // Renderizar
-    window.bancoData = data;
+    if (typeof window.setBancoData === 'function') window.setBancoData(data);
+    else window.bancoData = data;
+    if (typeof window._setBancoPagina === 'function') window._setBancoPagina(1);
     if (typeof window.renderBanco === 'function') window.renderBanco();
   }
 
