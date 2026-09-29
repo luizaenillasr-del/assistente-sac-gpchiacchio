@@ -2363,8 +2363,8 @@ async function loadVisaoGeral() {
     document.getElementById('last-update').textContent = 'Última atualização: ' + now.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
 
     const [manRes, recRes] = await Promise.all([
-      fetch(API + '/api/manifestacoes').then(r => r.json()),
-      fetch(API + '/api/reclamacoes').then(r => r.json())
+      _apiFetch('/api/manifestacoes', 15000).catch(() => ({ itens: [] })),
+      _apiFetch('/api/reclamacoes', 15000).catch(() => ({ itens: [] }))
     ]);
 
     _dashData.mans = manRes.itens || [];
@@ -2484,11 +2484,11 @@ async function executarAnaliseIA() {
   _nmDecisao = null;
 
   try {
-    const res = await fetch(API + '/api/analise', {
+    const res = await _apiFetch('/api/analise', 15000, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ descricao: desc, tipo, empresaReclamada: empresaRec, empresaReclamante: empresaRec2, produto, lote })
-    }).then(r => r.json());
+    });
 
     if (!res.sucesso) throw new Error(res.erro);
     _nmAnaliseAtual = res.analise;
@@ -2659,7 +2659,7 @@ function fileToBase64(file){return new Promise((resolve,reject)=>{const r=new Fi
 async function processarDocumentoImportado(file){
   if(!file)return; const status=document.getElementById('nm-extracao-status'); const preview=document.getElementById('nm-extracao-preview');
   status.style.display='block'; status.innerHTML='<div class="alert-box blue">Extraindo dados do documento com IA…</div>'; preview.style.display='none';
-  try{ const data=await fileToBase64(file); const r=await fetch(API+'/api/documentos/extrair',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tipoDocumento:_nmTipoImportacao,arquivo:{nome:file.name,mimeType:file.type,dataBase64:data}})}).then(x=>x.json());
+  try{ const data=await fileToBase64(file); const r=await _apiFetch('/api/documentos/extrair',30000,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tipoDocumento:_nmTipoImportacao,arquivo:{nome:file.name,mimeType:file.type,dataBase64:data}})});
     if(!r.sucesso) throw new Error(r.erro||'Falha na extração');
     window._documentoExtraido=r.dados||{}; preencherCamposExtraidos(r.dados||{}); status.innerHTML='<div class="alert-box green">Dados extraídos. Revise os campos antes de registrar.</div>'; renderPreviewExtracao(r.dados||{});
   }catch(e){status.innerHTML='<div class="alert-box red">Não foi possível extrair o documento: '+esc(e.message)+'</div>';}
@@ -2674,7 +2674,7 @@ async function initNovaManifestacao() {
   const user = sessionStorage.getItem('sac-user') || 'Ana Lima';
   document.getElementById('nm-atendente').value = user;
   try {
-    const res = await fetch(API + '/api/manifestacoes').then(r => r.json());
+    const res = await _apiFetch('/api/manifestacoes', 10000);
     const count = (res.total || (res.itens||[]).length) + 1;
     document.getElementById('nm-num').value = String(count).padStart(4,'0') + '/' + new Date().getFullYear();
   } catch { document.getElementById('nm-num').value = '----/' + new Date().getFullYear(); }
@@ -2697,7 +2697,7 @@ async function buscarCliente() {
   const cnpj = document.getElementById('nm-cnpj').value;
   if (!cnpj || cnpj.replace(/\D/g,'').length < 8) return;
   try {
-    const res = await fetch(`${API}/api/clientes/${cnpj.replace(/\D/g,'')}`).then(r => r.json());
+    const res = await _apiFetch(`/api/clientes/${cnpj.replace(/\D/g,'')}`, 10000);
     const el = document.getElementById('nm-historico-cliente');
     if (res.encontrado && res.cliente) {
       el.style.display = 'block';
@@ -2734,7 +2734,7 @@ async function registrarManifestacao() {
   const usuario = sessionStorage.getItem('sac-user') || 'analista';
 
   try {
-    const res = await fetch(API + '/api/manifestacoes', {
+    const res = await _apiFetch('/api/manifestacoes', 60000, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -2760,7 +2760,7 @@ async function registrarManifestacao() {
         arquivoOrigem: window._documentoExtraido ? JSON.stringify(window._documentoExtraido) : '',
         anexos: await Promise.all(_nmEvidencias.map(async f => ({ nome:f.name, mimeType:f.type, tamanho:f.size, dataBase64:await fileToBase64(f), categoria:'EVIDENCIA' })))
       })
-    }).then(r => r.json());
+    });
 
     if (res.sucesso) {
       alert(`✅ Manifestação ${res.id} registrada com sucesso!\n\nA análise inteligente foi iniciada.`);
@@ -3567,7 +3567,7 @@ async function abrirFichaSetor(nomeSetor) {
 // ===== MATRIZ =====
 async function loadMatriz() {
   try {
-    const res = await fetch(API + '/api/procedimentos').then(r => r.json());
+    const res = await _apiFetch('/api/procedimentos', 15000);
     const procs = res.itens || [];
 
     const regras = [
@@ -4240,7 +4240,7 @@ loadVisaoGeral();
     // mas o dashboard deve ler os dados reais da planilha.
     const DEMO_REAL_DATA_ROUTES=['/api/manifestacoes','/api/reclamacoes'];
     if(isDemo && method==='GET' && DEMO_REAL_DATA_ROUTES.includes(url)){
-      const realOpt={...opt,headers:{...(opt.headers||{})}};
+      const realOpt={...opt,headers:{...(opt.headers||{}),'Authorization':'Bearer '+token()}};
       const r=await fetch(API+url,realOpt);
       const t=await r.text();
       let d={};
