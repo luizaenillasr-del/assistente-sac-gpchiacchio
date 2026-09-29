@@ -1,13 +1,17 @@
 'use strict';
 // ============================================================
-// CÉREBRO DO ASSISTENTE SAC — v2.0
+// CÉREBRO DO ASSISTENTE SAC — v3.0
 // Módulo central de inteligência: análise, rastreabilidade,
 // regras, histórico, conhecimento, IA e validação humana.
 // ============================================================
 
 const sheets = require('./sheets');
+const tratativaEngine = require('./tratativaEngine');
+const devolutivaEngine = require('./devolutivaEngine');
+const matrizTratamento = require('./matrizTratamentoService');
+const assertividade = require('./assertividadeService');
 
-const CEREBRO_VERSION = '2.0.0';
+const CEREBRO_VERSION = '3.0.0';
 const BASE_CONHECIMENTO_VERSION = '1.0';
 const POLITICAS_VERSION = '1.0';
 const MATRIZ_VERSION = '1.0';
@@ -663,21 +667,72 @@ async function analisarManifestacaoCompleta(manifestacao, regras = {}, usuario =
 
   const ia = await chamarIA(contextoIA).catch(e => { erros.push('ia: ' + e.message); return { disponivel: false, erro: e.message }; });
 
-  // Devolutiva: prefere IA, fallback para gerada
+  // ── Tratativa estruturada (motor v3) ─────────────────────────
+  const empresa = campo(manifestacao, ['empresaReclamada','EMPRESA_RECLAMADA']);
+  const reincidenteBool = reincidencia.nivel === 'REINCIDENCIA_CONFIRMADA';
+
+  let tratativaEstruturada = null;
+  try {
+    tratativaEstruturada = await tratativaEngine.gerarTratativaEstruturada({
+      idManifestacao: protocolo,
+      empresa,
+      tipoManifestacao: tipo,
+      categoria: campo(manifestacao, ['CATEGORIA','categoria']) || '',
+      subcategoria: campo(manifestacao, ['SUBCATEGORIA','subcategoria']) || '',
+      setor,
+      descricao,
+      produto: campo(manifestacao, ['PRODUTO','produto']) || '',
+      dataAbertura: campo(manifestacao, ['DATA_ABERTURA','dataAbertura']) || '',
+      reincidente: reincidenteBool,
+      prioridade: regras.prioridade || 'Média',
+      casosSimilares,
+      reincidencia,
+      sla,
+      baseConhecimento,
+    });
+  } catch (e) { erros.push('tratativaEngine: ' + e.message); }
+
+  // ── Devolutiva estruturada (engine v3) ────────────────────────
+  let devolutivaEstruturada = null;
+  try {
+    devolutivaEstruturada = await devolutivaEngine.gerarDevolutiva({
+      idManifestacao: protocolo,
+      tipo: 'RECEBIMENTO',
+      empresa,
+      tipoManifestacao: tipo,
+      categoria: campo(manifestacao, ['CATEGORIA','categoria']) || '',
+      setor,
+      protocolo,
+      prazo: (regras.slaHoras || 72) + ' horas úteis',
+      setorResponsavel: setor || regras.setores?.[0] || 'SAC',
+      reincidente: reincidenteBool,
+      prioridade: regras.prioridade || 'Média',
+      diagnostico: tratativaEstruturada?.diagnostico?.descricao || '',
+    });
+  } catch (e) { erros.push('devolutivaEngine: ' + e.message); }
+
+  // Devolutiva textual: prefere IA, depois engine, depois fallback
   const devolutiva = (ia?.devolutivaSugerida && !ia.erro)
     ? ia.devolutivaSugerida
-    : gerarDevolutiva(
+    : (devolutivaEstruturada?.textoGerado || gerarDevolutiva(
         campo(manifestacao, ['empresaReclamante','EMPRESA_RECLAMANTE']),
         tipo,
         setor,
         tratativa.sugestao
-      );
+      ));
 
   // Consolidação
   const dadosParaConfianca = { regraAplicada: regras.regraAplicada, tipoDetectado: tipo, tipoConfianca: regras.tipoConfianca, casosSimilares, baseConhecimento, ia };
   const confianca = calcularConfianca(dadosParaConfianca);
   const conflitos = detectarConflitos({ ...regras, casosSimilares, reincidencia, ia });
-  const necessitaValidacaoHumana = confianca.nivel === 'BAIXA' || conflitos.length > 0 || reincidencia.nivel === 'REINCIDENCIA_CONFIRMADA';
+
+  // Conflitos do motor de tratativas
+  if (tratativaEstruturada?.conflitos?.length) {
+    conflitos.push(...tratativaEstruturada.conflitos.map(c => ({ tipo: 'CONFLITO_TRATATIVA', descricao: c })));
+  }
+
+  const necessitaValidacaoHumana = confianca.nivel === 'BAIXA' || conflitos.length > 0 || reincidencia.nivel === 'REINCIDENCIA_CONFIRMADA'
+    || tratativaEstruturada?.necessitaAprovacao;
 
   const analise = {
     protocolo,
@@ -695,6 +750,8 @@ async function analisarManifestacaoCompleta(manifestacao, regras = {}, usuario =
     sla,
     baseConhecimento,
     tratativaSugerida: { aplicavel: tratativa.aplicavel, confianca: tratativa.confianca, sugestao: tratativa.sugestao, quantidadeCasos: tratativa.quantidadeCasos, evidencia: tratativa.evidencia, origem: tratativa.origem||'HISTORICO', todasSugestoes: tratativa.todasSugestoes||[] },
+    tratativaEstruturada,
+    devolutivaEstruturada,
     ia,
     confianca,
     conflitos,
@@ -747,7 +804,12 @@ module.exports = {
   chamarIA,
   // Principal
   analisarManifestacao,          // v1 (compat)
-  analisarManifestacaoCompleta,  // v2 (completa)
+  analisarManifestacaoCompleta,  // v3 (completa com tratativa + devolutiva)
+  // Engines (re-exportados para uso nas rotas)
+  tratativaEngine,
+  devolutivaEngine,
+  assertividade,
+  matrizTratamento,
   // Constantes
   CEREBRO_VERSION,
 };

@@ -240,7 +240,7 @@
   .form-input:read-only { background: var(--gray-50); color: var(--gray-500); }
   .form-textarea { width:100%; padding: 10px; border: 1px solid var(--gray-200); border-radius: 6px; font-size: 13px; min-height: 100px; resize: vertical; font-family: inherit; outline: none; }
   .form-textarea:focus { border-color: var(--red); box-shadow: 0 0 0 2px var(--red-light); }
-  .ia-tratativa-box { background:#FFF9FA; border:1px solid #E8B8C0; border-left:4px solid var(--red); border-radius:8px; padding:12px 13px; font-size:13px; line-height:1.6; color:var(--gray-700); white-space:pre-wrap; min-height:72px; }
+  .ia-tratativa-box { background:#FFF9FA; border:1px solid #E8B8C0; border-left:4px solid var(--red); border-radius:8px; padding:12px 13px; font-size:13px; line-height:1.6; color:var(--gray-700); min-height:72px; }
 
   /* CANAL BTNS */
   .canal-btns { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -1160,6 +1160,10 @@
                 <div style="margin-bottom:16px">
                   <div style="font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">Resposta ao cliente — sugestão automática</div>
                   <div class="devolutiva-policy"><strong>Regra de comunicação:</strong> a resposta deve demonstrar ação e resolução, sem assumir culpa, atribuir responsabilidade antes da apuração ou expor dependências internas entre setores.</div>
+                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+                    <span id="ia-devolutiva-tipo" style="display:none;background:#EFF6FF;color:#1D4ED8;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700"></span>
+                  </div>
+                  <div id="ia-devolutiva-bloqueadas" style="display:none;background:#FEF2F2;border-radius:6px;padding:6px 10px;margin-bottom:6px"></div>
                   <textarea id="ia-devolutiva" class="form-textarea" style="min-height:280px;height:280px;font-size:13px;line-height:1.6;background:#FAFAFA;resize:vertical"></textarea>
                   <div style="font-size:11px;color:var(--gray-400);margin-top:4px">Editável pela analista. A resposta inicial deve ser utilizável pelo cliente mesmo enquanto a apuração interna continua. A resposta final será registrada separadamente.</div>
                 </div>
@@ -3328,26 +3332,89 @@ function renderizarAnalise(a) {
     simsWrap.style.display = 'none';
   }
 
-  // Tratativa sugerida — separada da devolutiva
-  const tratativaSugerida = extrairTratativaSugerida(a);
+  // ── Tratativa estruturada v3 (ações tipadas) ─────────────────
   const tratEl = document.getElementById('ia-tratativa');
-  const acoes = a.tratativaSugerida?.acoes || a.acoesSugeridas || [];
-  if (tratativaSugerida) {
-    let html = tratativaSugerida;
-    if (acoes.length) {
-      html += '\n\nAções sugeridas:\n' + acoes.map((ac, i) => `${i+1}. ${ac}`).join('\n');
+  const te = a.tratativaEstruturada;
+  if (te && (te.acoes?.length || te.diagnostico)) {
+    const corTipo = { OBRIGATORIA:'#DC2626', RECOMENDADA:'#D97706', CONDICIONAL:'#2563EB', PROIBIDA:'#6B7280' };
+    const bgTipo  = { OBRIGATORIA:'#FEE2E2', RECOMENDADA:'#FEF3C7', CONDICIONAL:'#EFF6FF', PROIBIDA:'#F3F4F6' };
+    const labelTipo = { OBRIGATORIA:'● OBRIGATÓRIA', RECOMENDADA:'● RECOMENDADA', CONDICIONAL:'◎ CONDICIONAL', PROIBIDA:'✕ PROIBIDA' };
+    let html = '';
+    if (te.diagnostico?.descricao) {
+      const nivelCor = te.diagnostico.nivel === 'CONFIRMADO' ? '#16A34A' : te.diagnostico.nivel === 'HIPOTESE' ? '#D97706' : '#6B7280';
+      html += `<div style="background:#F0FDF4;border-radius:8px;padding:10px;margin-bottom:10px;border-left:3px solid ${nivelCor}">
+        <div style="font-size:10px;font-weight:700;color:${nivelCor};margin-bottom:3px">DIAGNÓSTICO · ${te.diagnostico.nivel||'EM INVESTIGAÇÃO'}</div>
+        <div style="font-size:12px;color:#1F2937">${esc5(te.diagnostico.descricao)}</div>
+        ${te.diagnostico.causa ? `<div style="font-size:11px;color:#6B7280;margin-top:3px">Causa provável: ${esc5(te.diagnostico.causa)}</div>` : ''}
+      </div>`;
     }
-    tratEl.textContent = html;
+    if (te.acoes?.length) {
+      const grupos = {};
+      for (const ac of te.acoes) { const t = ac.tipo||'RECOMENDADA'; if (!grupos[t]) grupos[t] = []; grupos[t].push(ac); }
+      const ordem = ['OBRIGATORIA','RECOMENDADA','CONDICIONAL','PROIBIDA'];
+      for (const tipo of ordem) {
+        if (!grupos[tipo]) continue;
+        html += `<div style="margin-bottom:8px">
+          <div style="font-size:10px;font-weight:700;color:${corTipo[tipo]};margin-bottom:4px">${labelTipo[tipo]}</div>`;
+        for (const ac of grupos[tipo]) {
+          html += `<div style="background:${bgTipo[tipo]};border-radius:6px;padding:6px 10px;margin-bottom:3px;font-size:12px;color:#1F2937">
+            ${esc5(ac.descricao)}
+            ${ac.responsavel ? `<span style="color:#6B7280;font-size:10px"> · ${esc5(ac.responsavel)}</span>` : ''}
+            ${ac.prazo ? `<span style="color:#6B7280;font-size:10px"> · Prazo: ${esc5(ac.prazo)}</span>` : ''}
+          </div>`;
+        }
+        html += '</div>';
+      }
+    }
+    if (te.necessitaAprovacao) {
+      html += `<div style="background:#FEF3C7;border-radius:6px;padding:6px 10px;font-size:11px;color:#92400E;margin-top:4px">⚠ Necessita aprovação${te.quemAprova ? ': ' + esc5(te.quemAprova) : ''}</div>`;
+    }
+    if (te.necessitaEscalonamento) {
+      html += `<div style="background:#FEE2E2;border-radius:6px;padding:6px 10px;font-size:11px;color:#DC2626;margin-top:4px">🔺 Necessita escalonamento</div>`;
+    }
+    tratEl.innerHTML = html || '<span style="color:var(--gray-400);font-size:12px">Processando ações...</span>';
   } else {
-    tratEl.textContent = 'A ferramenta não encontrou uma tratativa sugerida com os dados disponíveis. A analista deverá definir a tratativa após a apuração.';
+    // Fallback tratativa v2
+    const tratativaSugerida = extrairTratativaSugerida(a);
+    const acoes = a.tratativaSugerida?.acoes || a.acoesSugeridas || [];
+    if (tratativaSugerida) {
+      let html = `<div style="font-size:13px;color:#1F2937;white-space:pre-wrap">${esc5(tratativaSugerida)}</div>`;
+      if (acoes.length) {
+        html += '<div style="margin-top:8px">' + acoes.map((ac,i) =>
+          `<div style="background:#EFF6FF;border-radius:5px;padding:5px 8px;margin-bottom:3px;font-size:12px">${i+1}. ${esc5(ac)}</div>`
+        ).join('') + '</div>';
+      }
+      tratEl.innerHTML = html;
+    } else {
+      tratEl.textContent = 'A ferramenta não encontrou uma tratativa sugerida com os dados disponíveis. A analista deverá definir a tratativa após a apuração.';
+    }
   }
 
-  // Devolutiva
-  document.getElementById('ia-devolutiva').value =
-    a.devolutivaSugerida ||
-    a.DEVOLUTIVA_SUGERIDA ||
-    a.devolutiva ||
-    '';
+  // ── Devolutiva estruturada v3 ─────────────────────────────────
+  const de = a.devolutivaEstruturada;
+  const devEl = document.getElementById('ia-devolutiva');
+  if (de?.textoGerado) {
+    devEl.value = de.textoGerado;
+    // Badge de tipo de devolutiva
+    const tipoDevEl = document.getElementById('ia-devolutiva-tipo');
+    if (tipoDevEl) {
+      tipoDevEl.textContent = de.descricaoTipo || de.tipo || '';
+      tipoDevEl.style.display = de.tipo ? 'inline' : 'none';
+    }
+    // Informações proibidas bloqueadas
+    const bloqEl = document.getElementById('ia-devolutiva-bloqueadas');
+    if (bloqEl) {
+      if (de.informacoesBloqueadas?.length) {
+        bloqEl.style.display = 'block';
+        bloqEl.innerHTML = `<span style="font-size:10px;font-weight:700;color:#DC2626">ℹ INFORMAÇÕES OMITIDAS:</span> ` +
+          de.informacoesBloqueadas.map(b => `<span style="background:#FEE2E2;color:#DC2626;padding:1px 5px;border-radius:3px;font-size:10px">${esc5(b)}</span>`).join(' ');
+      } else {
+        bloqEl.style.display = 'none';
+      }
+    }
+  } else {
+    devEl.value = a.devolutivaSugerida || a.DEVOLUTIVA_SUGERIDA || a.devolutiva || '';
+  }
 }
 
 function aceitarAnalise() {
@@ -7206,14 +7273,15 @@ window.renderizarAnalise = function(a){
   // 1. Re-renderizar similares com a versão segura
   renderCardsSimiliares(a);
 
-  // 2. Corrigir tratativa sugerida
-  const tratativa = window.extrairTratativaSugerida(a);
+  // 2. Badge de origem da tratativa — só se não for estruturada (v3)
   const tratEl = document.getElementById('ia-tratativa');
-  if(tratEl){
-    tratEl.textContent = tratativa ||
-      'A ferramenta não encontrou uma tratativa sugerida com os dados disponíveis. Verifique os casos semelhantes acima ou defina manualmente.';
-
-    // Badge de origem
+  if(tratEl && !a.tratativaEstruturada?.acoes?.length) {
+    const tratativa = window.extrairTratativaSugerida(a);
+    if(!tratEl.querySelector('div')) {
+      // Só substitui textContent se não houver HTML estruturado
+      tratEl.textContent = tratativa ||
+        'A ferramenta não encontrou uma tratativa sugerida com os dados disponíveis. Verifique os casos semelhantes acima ou defina manualmente.';
+    }
     let badge = document.getElementById('trat-origem-badge');
     if(!badge){
       badge = document.createElement('div');
@@ -7232,6 +7300,10 @@ window.renderizarAnalise = function(a){
     } else {
       badge.innerHTML = 'Sugestão da ferramenta. A analista decide se é aplicável e registra a tratativa efetivamente realizada.';
     }
+  } else if(tratEl && a.tratativaEstruturada?.acoes?.length) {
+    // Remove badge de origem quando há estrutura v3
+    const old = document.getElementById('trat-origem-badge');
+    if(old) old.innerHTML = `<span class="orig-badge ferramenta">📐 Motor de Tratativas v3</span> Baseada na Matriz de Tratamento + histórico de casos.`;
   }
 };
 
