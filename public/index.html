@@ -2159,6 +2159,7 @@
         <button class="cd-tab" onclick="cdTab('causas-cd',this)">⚙️ Causas</button>
         <button class="cd-tab" onclick="cdTab('auditoria',this)">🔍 Auditoria</button>
         <button class="cd-tab" onclick="cdTab('ia',this)">🤖 Análise IA</button>
+        <button class="cd-tab" onclick="cdTab('todas-abas',this)">🗂️ Todas as Abas</button>
       </div>
 
       <!-- ── MANIFESTAÇÕES ── -->
@@ -2311,6 +2312,53 @@
           <tbody id="cd-aud-tbody"></tbody>
         </table></div>
         <div id="cd-aud-loading" style="padding:24px;text-align:center;color:var(--gray-400);font-size:13px">Carregando...</div>
+      </div>
+
+      <!-- ── TODAS AS ABAS ── -->
+      <div class="cd-panel" id="cdp-todas-abas" style="display:none">
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
+          <div>
+            <div style="font-weight:600;font-size:14px">Abas da Planilha</div>
+            <div style="font-size:12px;color:var(--gray-400)">Clique em qualquer aba para visualizar e editar seus dados diretamente</div>
+          </div>
+          <button class="btn btn-secondary" style="margin-left:auto" onclick="cdLoadTodasAbas()">↺ Recarregar lista</button>
+        </div>
+        <div id="cd-abas-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-bottom:20px">
+          <div style="color:var(--gray-400);font-size:13px;grid-column:1/-1">Carregando abas da planilha...</div>
+        </div>
+        <!-- Visualizador dinâmico de aba -->
+        <div id="cd-aba-viewer" style="display:none">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+            <div style="display:flex;align-items:center;gap:10px">
+              <strong id="cd-aba-nome" style="font-size:15px"></strong>
+              <span id="cd-aba-total" style="font-size:12px;color:var(--gray-400)"></span>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <input class="form-input" id="cd-aba-busca" placeholder="Filtrar…" style="width:200px" oninput="cdFiltrarAba()">
+              <label class="btn btn-secondary" style="cursor:pointer;margin:0">
+                📥 Importar CSV
+                <input type="file" id="cd-aba-csv-input" accept=".csv,.txt" style="display:none" onchange="cdImportarCsvAba(this)">
+              </label>
+              <button class="btn btn-secondary" onclick="cdExportarAba()">📤 Exportar CSV</button>
+            </div>
+          </div>
+          <div id="cd-aba-import-status" style="font-size:13px;margin-bottom:8px"></div>
+          <div id="cd-aba-preview-wrap" style="display:none;margin-bottom:12px">
+            <div style="font-size:12px;color:var(--gray-500);margin-bottom:6px" id="cd-aba-preview-count"></div>
+            <div style="overflow-x:auto"><table class="table" style="font-size:12px"><thead><tr id="cd-aba-preview-head"></tr></thead><tbody id="cd-aba-preview-body"></tbody></table></div>
+            <div style="margin-top:8px;display:flex;gap:8px">
+              <button class="btn btn-primary" onclick="cdConfirmarImportAba()">✔ Confirmar Importação</button>
+              <button class="btn btn-secondary" onclick="document.getElementById('cd-aba-preview-wrap').style.display='none'">Cancelar</button>
+            </div>
+          </div>
+          <div style="overflow-x:auto">
+            <div id="cd-aba-loading" style="padding:24px;text-align:center;color:var(--gray-400);font-size:13px">Carregando...</div>
+            <table class="table" style="width:100%;font-size:12px;display:none" id="cd-aba-tabela">
+              <thead><tr id="cd-aba-thead"></tr></thead>
+              <tbody id="cd-aba-tbody"></tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
       <!-- ── ANÁLISE IA ── -->
@@ -8310,6 +8358,7 @@ function cdTab(name, btn) {
   else if (name==='representantes' && !_cdData.rep.length) cdLoadRep();
   else if (name==='causas-cd' && !_cdData.caus.length) cdLoadCaus();
   else if (name==='auditoria' && !_cdData.aud.length) cdLoadAud();
+  else if (name==='todas-abas') cdLoadTodasAbas();
 }
 
 function cdRender(tbodyId, loadId, rows, cols, empty='Sem dados.') {
@@ -8529,6 +8578,147 @@ function stClass(s='') {
   if(s.includes('RESOLVIDA')||s.includes('ENCERRADA')||s.includes('FECHADA')) return 'resolvida';
   if(s.includes('ABERTA')) return 'pendente';
   return 'pendente';
+}
+
+// ===== TODAS AS ABAS =====
+let _abaAtual = null;
+let _abaData = [];
+let _abaCols = [];
+let _abaImportBuffer = [];
+
+const ABA_ICONS = {
+  MANIFESTACOES:'📋', BANCO_HISTORICO:'📚', RNC:'📄', BANCO_RNC:'📄', RNC_EVENTOS:'📄',
+  CONFIG_SETORES:'🏢', PRODUTOS:'📦', USUARIOS:'👥', CLIENTES_REPRESENTANTES:'🔗',
+  CAUSAS:'⚙️', ASSERTIVIDADE_IA:'🤖', SUGESTOES_MELHORIA:'💡',
+  LOG_ANALISES:'🔍', LOG_SISTEMA:'🔍', LOG_DECISOES_SAC:'🔍',
+  FAQ_SETORES:'❓', REGRAS_SETORES:'📏', PROCEDIMENTOS_SETORES:'📋', POLITICAS_SETORES:'📜',
+  PERGUNTAS_IA_SETORES:'🤔', MATRIZ_DECISAO:'🗺️', TIPOS_RECLAMACAO:'🏷️',
+  REGRAS_ROTEAMENTO:'🔀', PARAMETROS_LOGISTICA:'🚚', PARAMETROS_PRODUCAO:'🏭',
+  ANEXOS:'📎', DOCUMENTOS_SETORES:'📄', APROVADOR_COMPETENCIAS:'✅', CONHECIMENTO_SETORES:'🧠',
+};
+
+async function cdLoadTodasAbas() {
+  const grid = document.getElementById('cd-abas-grid');
+  if (!grid) return;
+  grid.innerHTML = '<div style="color:var(--gray-400);font-size:13px;grid-column:1/-1">Carregando lista de abas...</div>';
+  try {
+    const r = await _apiFetch('/api/planilha/abas');
+    const abas = r.abas || [];
+    if (!abas.length) { grid.innerHTML = '<div style="color:var(--gray-400);font-size:13px;grid-column:1/-1">Nenhuma aba encontrada.</div>'; return; }
+    grid.innerHTML = abas.map(a => {
+      const icon = ABA_ICONS[a.nome] || '📊';
+      return `<div class="section-card" style="cursor:pointer;transition:box-shadow 0.15s;padding:14px" onclick="cdAbrirAba('${a.nome}')" onmouseenter="this.style.boxShadow='0 0 0 2px var(--red)'" onmouseleave="this.style.boxShadow=''">
+        <div style="font-size:22px;margin-bottom:6px">${icon}</div>
+        <div style="font-weight:600;font-size:13px">${a.nome}</div>
+        <div style="font-size:11px;color:var(--gray-400);margin-top:2px">${a.linhas > 0 ? `~${a.linhas} linhas` : ''}</div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    grid.innerHTML = `<div style="color:var(--red);font-size:13px;grid-column:1/-1">Erro: ${e.message}</div>`;
+  }
+}
+
+async function cdAbrirAba(nome) {
+  _abaAtual = nome;
+  _abaData = [];
+  _abaCols = [];
+  document.getElementById('cd-aba-viewer').style.display = 'block';
+  document.getElementById('cd-aba-nome').textContent = nome;
+  document.getElementById('cd-aba-total').textContent = '';
+  document.getElementById('cd-aba-busca').value = '';
+  document.getElementById('cd-aba-import-status').textContent = '';
+  document.getElementById('cd-aba-preview-wrap').style.display = 'none';
+  const loading = document.getElementById('cd-aba-loading');
+  const tabela = document.getElementById('cd-aba-tabela');
+  loading.style.display = 'block'; loading.textContent = `Carregando ${nome}...`;
+  tabela.style.display = 'none';
+  try {
+    const r = await _apiFetch(`/api/planilha/${nome}`);
+    _abaData = r.itens || [];
+    document.getElementById('cd-aba-total').textContent = `${_abaData.length} registro(s)`;
+    _abaCols = _abaData.length ? Object.keys(_abaData[0]).filter(k=>k!=='__linha') : [];
+    loading.style.display = 'none';
+    cdRenderAba();
+  } catch(e) {
+    loading.textContent = `Erro ao carregar ${nome}: ${e.message}`;
+  }
+}
+
+function cdFiltrarAba() {
+  cdRenderAba((document.getElementById('cd-aba-busca')?.value||'').toLowerCase());
+}
+
+function cdRenderAba(q='') {
+  const tabela = document.getElementById('cd-aba-tabela');
+  const thead = document.getElementById('cd-aba-thead');
+  const tbody = document.getElementById('cd-aba-tbody');
+  if (!tabela || !_abaCols.length) return;
+  const rows = q ? _abaData.filter(x => Object.values(x).some(v=>String(v||'').toLowerCase().includes(q))) : _abaData;
+  document.getElementById('cd-aba-total').textContent = `${rows.length} de ${_abaData.length} registro(s)`;
+  thead.innerHTML = _abaCols.map(c=>`<th style="white-space:nowrap">${c}</th>`).join('');
+  tbody.innerHTML = rows.slice(0,500).map(r=>`<tr>${_abaCols.map(c=>`<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc5(r[c]||'')}">${esc5(r[c]||'')}</td>`).join('')}</tr>`).join('')
+    || `<tr><td colspan="${_abaCols.length}" style="text-align:center;padding:20px;color:var(--gray-400)">Nenhum dado.</td></tr>`;
+  if (rows.length > 500) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td colspan="${_abaCols.length}" style="text-align:center;color:var(--gray-400);font-size:12px;padding:8px">… e mais ${rows.length-500} linhas (use exportar CSV para ver tudo)</td>`;
+    tbody.appendChild(tr);
+  }
+  tabela.style.display = 'table';
+}
+
+function cdExportarAba() {
+  if (!_abaAtual || !_abaData.length) return;
+  const cols = _abaCols;
+  const rows = [cols.join(','), ..._abaData.map(r => cols.map(c=>JSON.stringify(r[c]||'')).join(','))];
+  const blob = new Blob([rows.join('\n')], {type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `${_abaAtual}_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+}
+
+function cdImportarCsvAba(input) {
+  const file = input.files[0]; if (!file) return;
+  const status = document.getElementById('cd-aba-import-status');
+  status.style.color='var(--gray-500)'; status.textContent='Lendo arquivo...';
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const text = e.target.result;
+      const lines = text.split(/\r?\n/).filter(l=>l.trim());
+      if (lines.length < 2) { status.textContent='Arquivo vazio.'; return; }
+      const sep = lines[0].includes(';') ? ';' : ',';
+      const headers = lines[0].split(sep).map(h=>h.trim().replace(/^"|"$/g,'').toUpperCase());
+      _abaImportBuffer = lines.slice(1).map(l=>{
+        const vals = l.split(sep).map(v=>v.trim().replace(/^"|"$/g,''));
+        const obj={}; headers.forEach((h,i)=>obj[h]=vals[i]||''); return obj;
+      }).filter(r=>Object.values(r).some(v=>v));
+      const ph = document.getElementById('cd-aba-preview-head');
+      const pb = document.getElementById('cd-aba-preview-body');
+      ph.innerHTML = headers.map(h=>`<th>${h}</th>`).join('');
+      pb.innerHTML = _abaImportBuffer.slice(0,10).map(r=>`<tr>${headers.map(h=>`<td>${esc5(r[h]||'')}</td>`).join('')}</tr>`).join('');
+      document.getElementById('cd-aba-preview-count').textContent = `${_abaImportBuffer.length} linha(s) encontrada(s) · mostrando 10`;
+      document.getElementById('cd-aba-preview-wrap').style.display='block';
+      status.textContent='';
+    } catch(err) { status.style.color='var(--red)'; status.textContent='Erro ao ler: '+err.message; }
+  };
+  reader.readAsText(file,'UTF-8');
+  input.value='';
+}
+
+async function cdConfirmarImportAba() {
+  if (!_abaAtual || !_abaImportBuffer.length) return;
+  const status = document.getElementById('cd-aba-import-status');
+  status.style.color='var(--gray-500)'; status.textContent='Importando...';
+  try {
+    const r = await _apiFetch(`/api/planilha/${_abaAtual}/importar`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ itens: _abaImportBuffer, cabecalhos: Object.keys(_abaImportBuffer[0]||{}) })
+    });
+    status.style.color='var(--green)'; status.textContent=`✔ ${r.criados} linhas importadas para ${_abaAtual}.`;
+    document.getElementById('cd-aba-preview-wrap').style.display='none';
+    _abaImportBuffer=[];
+    cdAbrirAba(_abaAtual);
+  } catch(e) { status.style.color='var(--red)'; status.textContent='Erro: '+e.message; }
 }
 
 // ===== CÉREBRO: PRODUTOS =====

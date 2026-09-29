@@ -1413,6 +1413,50 @@ app.get('/api/auditoria', requerPerfil('MASTER'), async (req, res) => {
   catch (e) { res.status(500).json({sucesso:false,erro:e.message,dados:[]}); }
 });
 
+// ===== LEITOR GENÉRICO DE ABAS (Central de Dados) =====
+const ABAS_PERMITIDAS = [
+  'MANIFESTACOES','BANCO_HISTORICO','RNC','BANCO_RNC','RNC_EVENTOS',
+  'CONFIG_SETORES','PRODUTOS','USUARIOS','CLIENTES_REPRESENTANTES',
+  'CAUSAS','ASSERTIVIDADE_IA','SUGESTOES_MELHORIA',
+  'LOG_ANALISES','LOG_SISTEMA','LOG_DECISOES_SAC',
+  'FAQ_SETORES','REGRAS_SETORES','PROCEDIMENTOS_SETORES','POLITICAS_SETORES','PERGUNTAS_IA_SETORES',
+  'MATRIZ_DECISAO','TIPOS_RECLAMACAO','REGRAS_ROTEAMENTO',
+  'PARAMETROS_LOGISTICA','PARAMETROS_PRODUCAO',
+  'ANEXOS','DOCUMENTOS_SETORES','APROVADOR_COMPETENCIAS','CONHECIMENTO_SETORES',
+];
+
+app.get('/api/planilha/abas', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
+  try {
+    const { getSheets } = require('./services/sheets');
+    const sheets = await getSheets();
+    const meta = await sheets.spreadsheets.get({ spreadsheetId: process.env.SPREADSHEET_ID });
+    const todas = (meta.data.sheets||[]).map(s=>({ nome: s.properties.title, linhas: s.properties.gridProperties?.rowCount||0, colunas: s.properties.gridProperties?.columnCount||0 }));
+    res.json({ sucesso:true, abas: todas });
+  } catch(e) { res.status(500).json({ sucesso:false, erro:e.message, abas:[] }); }
+});
+
+app.get('/api/planilha/:aba', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
+  try {
+    const aba = req.params.aba.toUpperCase().replace(/[^A-Z0-9_]/g,'');
+    const max = Math.min(parseInt(req.query.max||'2000',10), 5000);
+    const data = await lerAba(aba, max);
+    res.json({ sucesso:true, aba, total:data.length, itens:data });
+  } catch(e) { res.status(500).json({ sucesso:false, erro:e.message, itens:[] }); }
+});
+
+app.post('/api/planilha/:aba/importar', requerPerfil('MASTER'), async (req,res)=>{
+  try {
+    const aba = req.params.aba.toUpperCase().replace(/[^A-Z0-9_]/g,'');
+    const { itens, cabecalhos } = req.body;
+    if(!Array.isArray(itens)||!itens.length) return res.status(400).json({ sucesso:false, erro:'Nenhum item.' });
+    if(cabecalhos && Array.isArray(cabecalhos)) await garantirAbaComCabecalhos(aba, cabecalhos);
+    let criados=0;
+    for(const item of itens){ await appendObjeto(aba, item); criados++; }
+    await registrarAuditoria(req.user.usuario,'IMPORTOU_DADOS_PLANILHA',`${criados} linhas`,aba,null,{aba,total:criados});
+    res.json({ sucesso:true, criados, aba });
+  } catch(e) { res.status(500).json({ sucesso:false, erro:e.message }); }
+});
+
 app.get('/api/log-sistema', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req,res)=>{
   try {
     const data = await lerAba('LOG_SISTEMA', 2000);
