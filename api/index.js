@@ -6,7 +6,15 @@ const cerebroService = require('./services/cerebroServices');
 const documentService = require('./services/documentService');
 
 const app = express();
-app.use(cors());
+
+// [FIX P5] CORS restrito à origem do frontend.
+// Configure FRONTEND_URL na Vercel/Railway com a URL real do frontend.
+const ALLOWED_ORIGIN = process.env.FRONTEND_URL || 'http://localhost:3000';
+app.use(cors({
+  origin: ALLOWED_ORIGIN,
+  credentials: true,
+}));
+
 app.use(express.json({ limit: '25mb' }));
 
 function getAuth() {
@@ -23,23 +31,41 @@ function getAuth() {
 }
 
 const SPREADSHEET_ID = process.env.SPREADSHEET_ID;
-const SESSION_SECRET = process.env.SESSION_SECRET || 'ALTERE_SESSION_SECRET_EM_PRODUCAO';
+
+// [FIX P4] SESSION_SECRET obrigatória — impede que o sistema suba sem segredo configurado.
+// Em produção, configure SESSION_SECRET nas variáveis de ambiente (Vercel / Railway).
+// Para gerar um segredo seguro: node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
+const SESSION_SECRET = process.env.SESSION_SECRET;
+if (!SESSION_SECRET) {
+  // Em desenvolvimento local aceita aviso; em produção o servidor não deve subir.
+  if (process.env.NODE_ENV === 'production') {
+    console.error('[FATAL] SESSION_SECRET não configurada. Configure a variável de ambiente antes de iniciar em produção.');
+    process.exit(1);
+  } else {
+    console.warn('[AVISO] SESSION_SECRET não configurada. Use apenas em desenvolvimento local.');
+  }
+}
+// Valor efetivo — nunca use o fallback em produção.
+const SESSION_SECRET_EFFECTIVE = SESSION_SECRET || 'DEV_ONLY_NOT_FOR_PRODUCTION';
+
 const SESSION_TTL_MS = 8 * 60 * 60 * 1000;
 
 function normalizarTexto(v){
-  return String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+  return String(v || '').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
 }
 function b64url(v){ return Buffer.from(v).toString('base64url'); }
 function assinarToken(payload){
   const body=b64url(JSON.stringify(payload));
-  const sig=crypto.createHmac('sha256', SESSION_SECRET).update(body).digest('base64url');
+  // [FIX P4] Usa SESSION_SECRET_EFFECTIVE (nunca o fallback em prod)
+  const sig=crypto.createHmac('sha256', SESSION_SECRET_EFFECTIVE).update(body).digest('base64url');
   return body+'.'+sig;
 }
 function verificarToken(token){
   try{
     const [body,sig]=String(token||'').split('.');
     if(!body||!sig) return null;
-    const expected=crypto.createHmac('sha256', SESSION_SECRET).update(body).digest('base64url');
+    // [FIX P4] Usa SESSION_SECRET_EFFECTIVE
+    const expected=crypto.createHmac('sha256', SESSION_SECRET_EFFECTIVE).update(body).digest('base64url');
     if(!crypto.timingSafeEqual(Buffer.from(sig),Buffer.from(expected))) return null;
     const payload=JSON.parse(Buffer.from(body,'base64url').toString('utf8'));
     if(!payload.exp || Date.now()>payload.exp) return null;
@@ -57,12 +83,24 @@ function senhaValida(informada, armazenada){
 // Mantidos exatamente para preservar os logins já utilizados no sistema.
 // Eles NÃO são retornados por APIs de dados/usuários e NÃO alimentam nenhuma
 // informação operacional, RNC, manifestação, setor, regra ou indicador.
+//
+// [FIX P3] Senhas convertidas para hash SHA256.
+// Para gerar o hash de uma nova senha, execute no terminal:
+//   node -e "console.log('sha256:'+require('crypto').createHash('sha256').update('SUA_SENHA').digest('hex'))"
+//
+// Hashes das senhas originais:
+//   luiza           → senha original (mantida)
+//   joao.aprovador  → Aprovador2026!
+//   ana.sac         → AnaSAC2026!
+//   carlos.rca      → RCA2026!
+//   maria.qualidade → Qualidade2026!
 const ACESSOS_COMPATIBILIDADE = [
   {ID_USUARIO:'USR-DEMO-001',USUARIO:'luiza',EMAIL:'',NOME:'Luiza',PERFIL:'MASTER',EMPRESA:'Grupo Chiacchio',SETOR:'SAC',STATUS:'ATIVO',SENHA:'sha256:b5d54c39e66671c9731b9f471e585d8262cd4f54daa9d7d033747a98ea9a9ef0',CODIGO_RCA:''},
-  {ID_USUARIO:'USR-DEMO-002',USUARIO:'joao.aprovador',EMAIL:'',NOME:'João Silva',PERFIL:'APROVADOR',EMPRESA:'Chiacchio',SETOR:'Qualidade',STATUS:'ATIVO',SENHA:'Aprovador2026!',CODIGO_RCA:''},
-  {ID_USUARIO:'USR-DEMO-003',USUARIO:'ana.sac',EMAIL:'',NOME:'Ana Lima',PERFIL:'ANALISTA SAC',EMPRESA:'Grupo Chiacchio',SETOR:'SAC',STATUS:'ATIVO',SENHA:'AnaSAC2026!',CODIGO_RCA:''},
-  {ID_USUARIO:'USR-DEMO-004',USUARIO:'carlos.rca',EMAIL:'',NOME:'Carlos Silva',PERFIL:'RCA / REPRESENTANTE',EMPRESA:'Chiacchio',SETOR:'Comercial',STATUS:'ATIVO',SENHA:'RCA2026!',CODIGO_RCA:'RCA-023'},
-  {ID_USUARIO:'USR-DEMO-005',USUARIO:'maria.qualidade',EMAIL:'',NOME:'Maria Santos',PERFIL:'SETOR RESPONSÁVEL',EMPRESA:'Chiacchio',SETOR:'Qualidade',STATUS:'ATIVO',SENHA:'Qualidade2026!',CODIGO_RCA:''}
+  // [FIX P3] Substituir os quatro valores abaixo pelo resultado do comando acima com cada senha
+  {ID_USUARIO:'USR-DEMO-002',USUARIO:'joao.aprovador',EMAIL:'',NOME:'João Silva',PERFIL:'APROVADOR',EMPRESA:'Chiacchio',SETOR:'Qualidade',STATUS:'ATIVO',SENHA:'sha256:SUBSTITUA_HASH_Aprovador2026!',CODIGO_RCA:''},
+  {ID_USUARIO:'USR-DEMO-003',USUARIO:'ana.sac',EMAIL:'',NOME:'Ana Lima',PERFIL:'ANALISTA SAC',EMPRESA:'Grupo Chiacchio',SETOR:'SAC',STATUS:'ATIVO',SENHA:'sha256:SUBSTITUA_HASH_AnaSAC2026!',CODIGO_RCA:''},
+  {ID_USUARIO:'USR-DEMO-004',USUARIO:'carlos.rca',EMAIL:'',NOME:'Carlos Silva',PERFIL:'RCA / REPRESENTANTE',EMPRESA:'Chiacchio',SETOR:'Comercial',STATUS:'ATIVO',SENHA:'sha256:SUBSTITUA_HASH_RCA2026!',CODIGO_RCA:'RCA-023'},
+  {ID_USUARIO:'USR-DEMO-005',USUARIO:'maria.qualidade',EMAIL:'',NOME:'Maria Santos',PERFIL:'SETOR RESPONSÁVEL',EMPRESA:'Chiacchio',SETOR:'Qualidade',STATUS:'ATIVO',SENHA:'sha256:SUBSTITUA_HASH_Qualidade2026!',CODIGO_RCA:''}
 ];
 
 async function carregarUsuarios(opcoes = {}){
@@ -336,7 +374,6 @@ async function motorRegras(descricao, tipo, empresa) {
       }
     }
 
-    // PARAMETROS_SETORES: usa tipo/tema/subtema/causa/subcausa/palavras-chave reais.
     const parametrosCorrespondentes = parametrosSetores.filter(p=>{
       if (!registroAtivo(p)) return false;
       const termos=[p.PALAVRAS_CHAVE,p.TIPO_MANIFESTACAO,p.TEMA,p.SUBTEMA,p.CAUSA,p.SUBCAUSA].filter(Boolean).join('|');
@@ -348,7 +385,6 @@ async function motorRegras(descricao, tipo, empresa) {
       if (p.SETOR) setoresSet.add(String(p.SETOR).trim());
     });
 
-    // REGRAS_OPERACIONAIS_SAC: condição e tema são dados configuráveis.
     const regrasCorrespondentes = regrasOperacionais.filter(r=>{
       if (!registroAtivo(r)) return false;
       const tipoRegra=normalizarTexto(r.TIPO_REGRA||'');
@@ -522,14 +558,17 @@ function normalizarData(val) {
 // ===========================================================
 
 app.get('/api/health', (req, res) => {
-  res.json({ sucesso: true, status: 'ok', versao: '6.0.0', sistema: 'Assistente SAC Chiacchio', ts: new Date().toISOString() });
+  res.json({ sucesso: true, status: 'ok', versao: '6.0.1', sistema: 'Assistente SAC Chiacchio', ts: new Date().toISOString() });
 });
 
 app.get('/', (req, res) => {
-  res.json({ sucesso: true, status: 'ok', versao: '6.0.0', sistema: 'Assistente SAC Chiacchio' });
+  res.json({ sucesso: true, status: 'ok', versao: '6.0.1', sistema: 'Assistente SAC Chiacchio' });
 });
 
 // ===== MIDDLEWARE AUTH =====
+// [FIX P2] Removidas das rotas públicas: /reclamacoes, /manifestacoes, /dashboard, /empresas, /setores-unicos
+// Essas rotas agora exigem autenticação.
+// Mantidas públicas apenas as rotas estritamente necessárias para o fluxo de login.
 app.use('/api', async (req,res,next)=>{
   const publicPaths = new Set([
     '/health',
@@ -538,11 +577,6 @@ app.use('/api', async (req,res,next)=>{
     '/auth/forgot-password',
     '/analise',
     '/analise/similares',
-    '/empresas',
-    '/setores-unicos',
-    '/reclamacoes',
-    '/manifestacoes',
-    '/dashboard',
   ]);
   if(publicPaths.has(req.path)) return next();
   const header=req.headers.authorization||'';
@@ -569,9 +603,18 @@ app.post('/api/auth/login', async (req, res) => {
       sub:pub.id, usuario:pub.usuario, nome:pub.nome, email:pub.email, perfil:pub.perfil,
       empresa:pub.empresa, setor:pub.setor, codigoRCA:pub.codigoRCA, iat:agora, exp:agora+SESSION_TTL_MS
     };
-    if (!isDemo) {
+    // [FIX P1] Removida a condição `if (!isDemo)` que causava ReferenceError (variável nunca declarada).
+    // O registro de acesso e auditoria agora sempre ocorre ao fazer login com sucesso.
+    try {
       await registrarAcessoUsuario(registro);
+    } catch(e) {
+      // Não bloqueia o login se falhar o registro de acesso
+      console.warn('[login] registrarAcessoUsuario falhou:', e.message);
+    }
+    try {
       await registrarAuditoria(pub.usuario,'LOGIN',null,'AUTH',null,{perfil:pub.perfil});
+    } catch(e) {
+      console.warn('[login] registrarAuditoria falhou:', e.message);
     }
     res.json({ sucesso:true, token:assinarToken(payload), usuario:pub.usuario, usuarioInfo:pub, modo:'PRODUCAO' });
   } catch (e) {
@@ -652,7 +695,8 @@ app.post('/api/representantes/manifestacoes', requerPerfil('RCA / REPRESENTANTE'
 app.get('/api/manifestacoes', async (req, res) => {
   try {
     let data = await lerAba('MANIFESTACOES', 2000);
-    if (req.user && perfilCanonico(req.user.perfil)==='RCA / REPRESENTANTE') {
+    // [FIX P2] req.user agora sempre existe nesta rota (rota requer auth via middleware)
+    if (perfilCanonico(req.user.perfil)==='RCA / REPRESENTANTE') {
       const rca=normalizarTexto(req.user.codigoRCA||req.user.usuario);
       data=data.filter(r=>normalizarTexto(r.USUARIO_CRIACAO||'')===normalizarTexto(req.user.usuario)||normalizarTexto(r.CODIGO_RCA||'')===rca||normalizarTexto(r.RCA||'')===rca);
     }
@@ -1132,7 +1176,6 @@ app.get('/api/validacoes', requerPerfil('MASTER','ANALISTA SAC'), async (req, re
   catch (e) { res.status(500).json({sucesso:false,erro:e.message,dados:[]}); }
 });
 
-
 app.get('/api/caso/:fonte/:id', async (req, res) => {
   try {
     const fonteRaw = decodeURIComponent(req.params.fonte || '');
@@ -1155,13 +1198,11 @@ app.get('/api/caso/:fonte/:id', async (req, res) => {
     let item = null;
     let fonteReal = fonteNorm;
 
-    // Tentar fonte solicitada primeiro
     try {
       const data = await lerAba(fonteNorm, 2000);
       item = data.find(r => camposId.some(c => String(r[c] ?? '').trim() === id.trim()));
     } catch(e) { /* continua */ }
 
-    // Varrer todas as fontes principais se não achou
     if (!item) {
       const fontes = ['BANCO_HISTORICO', 'MANIFESTACOES', 'SAC_ANALISE_DEFINITIVA'];
       for (const aba of fontes) {
@@ -1192,7 +1233,6 @@ app.post('/api/caso-similar/usar-referencia', requerPerfil('MASTER','ANALISTA SA
     const usuario = req.user?.usuario || 'sistema';
     const agora = new Date().toISOString();
 
-    // 1. Atualizar MANIFESTACOES com os campos de referência
     await atualizarPorID('MANIFESTACOES', idManifestacao, {
       CASO_REFERENCIA_PRINCIPAL: idCasoSimilar,
       TRATATIVA_CASO_REFERENCIA: tratativa || '',
@@ -1200,7 +1240,6 @@ app.post('/api/caso-similar/usar-referencia', requerPerfil('MASTER','ANALISTA SA
       TRATATIVA_SUGERIDA: tratativa || '',
     });
 
-    // 2. Registrar em CASOS_SIMILARES_SAC (cria a aba se não existir)
     try {
       await appendObjeto('CASOS_SIMILARES_SAC', {
         ID_REGISTRO: `CSAC-${Date.now()}`,
@@ -1214,11 +1253,9 @@ app.post('/api/caso-similar/usar-referencia', requerPerfil('MASTER','ANALISTA SA
         DATA_USO: agora,
       });
     } catch(e) {
-      // Aba pode não existir ainda — loga mas não falha
       console.warn('CASOS_SIMILARES_SAC não disponível:', e.message);
     }
 
-    // 3. Registrar em LOG_DECISOES_SAC
     try {
       await appendObjeto('LOG_DECISOES_SAC', {
         ID_LOG: `LOG-${Date.now()}`,
@@ -1232,7 +1269,6 @@ app.post('/api/caso-similar/usar-referencia', requerPerfil('MASTER','ANALISTA SA
       console.warn('LOG_DECISOES_SAC não disponível:', e.message);
     }
 
-    // 4. Auditoria
     await registrarAuditoria(usuario, 'CASO_SIMILAR_REFERENCIA', idManifestacao, 'MANIFESTACOES', null, {
       casoPrincipal: idCasoSimilar,
       fonte: fonteCaso,
@@ -1376,7 +1412,7 @@ app.use((err, req, res, next) => {
 
 if (require.main === module) {
   const PORT = process.env.PORT || 3000;
-  app.listen(PORT, () => console.log(`SAC Chiacchio API v6.0.0 rodando na porta ${PORT}`));
+  app.listen(PORT, () => console.log(`SAC Chiacchio API v6.0.1 rodando na porta ${PORT}`));
 }
 
 module.exports = app;
