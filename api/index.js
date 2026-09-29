@@ -1673,11 +1673,9 @@ app.get('/api/cliente-contexto', async (req,res)=>{
 // ===== BOOTSTRAP — criar primeiro usuário MASTER =====
 app.post('/api/bootstrap', async (req, res) => {
   try {
-    // Só funciona se não houver usuários cadastrados OU se BOOTSTRAP_KEY bater
     const { usuario, nome, senha, bootstrapKey } = req.body || {};
     const keyOk = bootstrapKey && bootstrapKey === (process.env.BOOTSTRAP_KEY || '');
     if (!keyOk) {
-      // Verificar se já existem usuários
       const existentes = await lerAba('USUARIOS', 10).catch(() => []);
       if (existentes.length > 0) {
         return res.status(403).json({ sucesso: false, erro: 'Já existem usuários cadastrados. Use BOOTSTRAP_KEY para forçar criação.' });
@@ -1685,8 +1683,6 @@ app.post('/api/bootstrap', async (req, res) => {
     }
     if (!usuario || !nome || !senha) return res.status(400).json({ sucesso: false, erro: 'usuario, nome e senha são obrigatórios.' });
     if (senha.length < 6) return res.status(400).json({ sucesso: false, erro: 'Senha deve ter ao menos 6 caracteres.' });
-
-    // Criar aba USUARIOS se não existir
     const sheets = await getSheets();
     const meta = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
     const existe = meta.data.sheets?.find(s => s.properties?.title === 'USUARIOS');
