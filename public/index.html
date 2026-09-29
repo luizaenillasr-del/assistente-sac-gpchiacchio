@@ -4244,7 +4244,7 @@ loadVisaoGeral();
       const id=s.ID_SETOR||s.ID||encodeURIComponent(_setorAtual);
       const res=await jsonFetch('/api/setores/'+encodeURIComponent(id)+'/operacional',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(values)});
       if(res.sucesso===false)throw new Error(res.erro||'Falha ao salvar setor');
-      fecharEditorGenerico(); await loadSetores(); await abrirFichaSetor(_setorAtual); alert('Setor salvo com sucesso.');
+      const _nomeSetor = _setorAtual; fecharEditorGenerico(); await loadSetores(); await abrirFichaSetor(_nomeSetor); alert('Setor salvo com sucesso.');
     });
   };
 
@@ -6886,7 +6886,7 @@ const BC_FORM_CONFIG={
 
 // ── abrir novo item ───────────────────────────────────────────────────────────
 window.abrirNovoItemConhecimento=function(tipo){
-  const setor=window._setorAtual;
+  const setor=_setorAtual;
   if(!setor){alert('Nenhum setor selecionado.');return;}
   const cfg=BC_FORM_CONFIG[tipo];
   if(!cfg){alert('Tipo desconhecido: '+tipo);return;}
@@ -6900,7 +6900,7 @@ window.abrirNovoItemConhecimento=function(tipo){
 
 // ── editar item existente ─────────────────────────────────────────────────────
 window.editarItemConhecimento=function(tipo,idx){
-  const setor=window._setorAtual;
+  const setor=_setorAtual;
   if(!setor)return;
   const cfg=BC_FORM_CONFIG[tipo];
   if(!cfg)return;
@@ -6919,7 +6919,7 @@ window.editarItemConhecimento=function(tipo,idx){
 
 // ── documentos ───────────────────────────────────────────────────────────────
 window.abrirNovoDocumento=function(){
-  const setor=window._setorAtual;
+  const setor=_setorAtual;
   if(!setor){alert('Nenhum setor selecionado.');return;}
   abrirEditorGenerico('Novo Documento — '+setor,[
     ['NOME','Nome do documento','','text'],
@@ -6938,7 +6938,7 @@ window.abrirNovoDocumento=function(){
 };
 
 window.editarDocumento=function(idx){
-  const setor=window._setorAtual;
+  const setor=_setorAtual;
   if(!setor)return;
   const item=(window._bcCache.documentos||[])[idx]||{};
   const id=item.ID_DOCUMENTO||item.ID||'';
