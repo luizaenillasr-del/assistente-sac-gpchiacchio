@@ -3060,26 +3060,37 @@ let _setoresConfig = [];
 let _setoresMans = [];
 let _setorAtual = null;
 
-async function _apiFetch(url) {
+async function _apiFetch(url, timeoutMs) {
   const token = sessionStorage.getItem('sac-token') || '';
-  const r = await fetch((window.SAC_API || '') + url, { headers: { Authorization: 'Bearer ' + token } });
-  const text = await r.text();
-  let data;
-  try { data = text ? JSON.parse(text) : {}; } catch { data = { raw: text }; }
-  if (!r.ok) throw new Error((data.erro || data.error || data.raw || '') + ' (HTTP ' + r.status + ')');
-  return data;
+  const controller = new AbortController();
+  const tid = timeoutMs ? setTimeout(() => controller.abort(), timeoutMs) : null;
+  try {
+    const r = await fetch((window.SAC_API || '') + url, {
+      headers: { Authorization: 'Bearer ' + token },
+      signal: controller.signal,
+    });
+    const text = await r.text();
+    let data;
+    try { data = text ? JSON.parse(text) : {}; } catch { data = { raw: text }; }
+    if (!r.ok) throw new Error((data.erro || data.error || data.raw || '') + ' (HTTP ' + r.status + ')');
+    return data;
+  } finally {
+    if (tid) clearTimeout(tid);
+  }
 }
 
 async function loadSetores() {
+  const grid = document.getElementById('setores-grid');
   try {
     const [setRes, manRes, conhecRes] = await Promise.all([
-      _apiFetch('/api/setores'),
-      _apiFetch('/api/manifestacoes'),
-      _apiFetch('/api/conhecimento'),
+      _apiFetch('/api/setores', 15000).catch(e => ({ sucesso: false, erro: e.message, itens: [] })),
+      _apiFetch('/api/manifestacoes', 15000).catch(() => ({ itens: [] })),
+      _apiFetch('/api/conhecimento', 15000).catch(() => ({ itens: [] })),
     ]);
-    if(setRes?.sucesso===false) throw new Error(setRes.erro||'Falha ao carregar setores.');
-    if(manRes?.sucesso===false) throw new Error(manRes.erro||'Falha ao carregar manifestações.');
-    if(conhecRes?.sucesso===false) throw new Error(conhecRes.erro||'Falha ao carregar conhecimento.');
+    if(setRes?.sucesso===false && !setRes.itens?.length) {
+      if(grid) grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:24px;color:var(--red)">Erro ao carregar setores: ${setRes.erro||'Verifique a aba CONFIG_SETORES na planilha.'}</div>`;
+      return;
+    }
     _setoresConfig = setRes.itens || [];
     _setoresMans = manRes.itens || [];
     const conhecimento = conhecRes.itens || [];
@@ -3209,7 +3220,6 @@ async function loadSetores() {
 
   } catch (e) {
     console.error('Erro setores:', e);
-    const grid = document.getElementById('setores-grid');
     if (grid) grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:24px;color:var(--red)">Erro ao carregar setores: ${e.message}</div>`;
   }
 }

@@ -878,12 +878,18 @@ app.get('/api/setores-unicos', async (req, res) => {
 });
 
 app.get('/api/setores', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
-  try { const data=await lerAba('CONFIG_SETORES',50); res.json({sucesso:true,total:data.length,itens:data}); }
-  catch (e) { res.status(500).json({sucesso:false,erro:e.message,dados:[]}); }
+  try {
+    await garantirAbaComCabecalhos('CONFIG_SETORES',['ID_SETOR','SETOR','DESCRICAO','RESPONSAVEL','SUBSTITUTO','EMAIL_RESPONSAVEL','SLA_HORAS','RESPONSABILIDADES','REGRAS_OPERACIONAIS','PROCEDIMENTOS_ORIENTACOES','ALERTAS','ATIVO']).catch(()=>{});
+    const data=await lerAba('CONFIG_SETORES',500).catch(()=>[]);
+    res.json({sucesso:true,total:data.length,itens:data});
+  } catch (e) { res.status(500).json({sucesso:false,erro:e.message,itens:[]}); }
 });
 app.get('/api/conhecimento', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
-  try { const data=await lerAba('CONHECIMENTO_SETORES',200); res.json({sucesso:true,total:data.length,itens:data}); }
-  catch (e) { res.status(500).json({sucesso:false,erro:e.message,dados:[]}); }
+  try {
+    await garantirAbaComCabecalhos('CONHECIMENTO_SETORES',['SETOR','DESCRICAO','RESPONSABILIDADES','REGRAS_OPERACIONAIS','PROCEDIMENTOS_ORIENTACOES','ALERTAS']).catch(()=>{});
+    const data=await lerAba('CONHECIMENTO_SETORES',200).catch(()=>[]);
+    res.json({sucesso:true,total:data.length,itens:data});
+  } catch (e) { res.status(500).json({sucesso:false,erro:e.message,itens:[]}); }
 });
 app.get('/api/procedimentos', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
   try { const data=await lerAba('PROCEDIMENTOS',200); res.json({sucesso:true,total:data.length,itens:data}); }
