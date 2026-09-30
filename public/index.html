@@ -8608,9 +8608,9 @@ async function salvarSetorCerebro() {
   if (!payload.SETOR) { erro.textContent = 'Nome do setor é obrigatório.'; erro.style.display='block'; return; }
   try {
     if (id) {
-      await _apiFetch(`/api/setores/${id}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+      await _apiFetch(`/api/setores/${id}`, 15000, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
     } else {
-      await _apiFetch('/api/setores', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+      await _apiFetch('/api/setores', 15000, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
     }
     fecharModalSetorCerebro();
     cdLoadSetores();
@@ -8847,7 +8847,7 @@ async function cdConfirmarImportAba() {
   const status = document.getElementById('cd-aba-import-status');
   status.style.color='var(--gray-500)'; status.textContent='Importando...';
   try {
-    const r = await _apiFetch(`/api/planilha/${encodeURIComponent(_abaAtual)}/importar`, {
+    const r = await _apiFetch(`/api/planilha/${encodeURIComponent(_abaAtual)}/importar`, 30000, {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ itens: _abaImportBuffer, cabecalhos: Object.keys(_abaImportBuffer[0]||{}) })
     });
@@ -8912,7 +8912,7 @@ async function confirmarImportSetores() {
   const status = document.getElementById('setores-import-status');
   status.textContent = 'Importando...';
   try {
-    const r = await _apiFetch('/api/setores/importar', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({itens:_setoresParaImportar}) });
+    const r = await _apiFetch('/api/setores/importar', 30000, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({itens:_setoresParaImportar}) });
     status.style.color = 'var(--green)';
     status.textContent = `✔ ${r.criados} setor(es) importado(s) com sucesso.`;
     _setoresParaImportar = [];
@@ -8958,7 +8958,7 @@ async function confirmarImportProdutos() {
   const status = document.getElementById('produtos-import-status');
   btn.disabled = true; btn.textContent = 'Importando...';
   try {
-    const r = await _apiFetch('/api/produtos/importar', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ itens: _produtosParaImportar }) });
+    const r = await _apiFetch('/api/produtos/importar', 30000, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ itens: _produtosParaImportar }) });
     status.style.color = 'var(--green)';
     status.textContent = `✔ Importado: ${r.criados} novos, ${r.atualizados} atualizados.`;
     cancelarImportProdutos();
