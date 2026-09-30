@@ -475,70 +475,94 @@
 
 <!-- MODAL DOSSIÊ -->
 <div id="modal-dossie" style="display:none" class="modal-overlay" onclick="if(event.target===this)fecharModal()">
-  <div class="modal-box">
-    <div class="modal-header">
-      <div>
-        <div style="font-size:18px;font-weight:800" id="modal-titulo">Manifestação</div>
-        <div style="font-size:12px;color:var(--gray-400);margin-top:2px" id="modal-subtitulo">—</div>
+  <div class="modal-box" style="max-width:900px;width:96vw">
+    <div class="modal-header" style="padding:16px 20px">
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <div style="font-size:17px;font-weight:800;color:var(--gray-900)" id="modal-titulo">Manifestação</div>
+          <span id="modal-status-badge" style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700"></span>
+          <span id="modal-sla-badge" style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700"></span>
+          <span id="modal-pri-badge" style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;display:none"></span>
+        </div>
+        <div style="font-size:12px;color:var(--gray-400);margin-top:3px" id="modal-subtitulo">—</div>
       </div>
-      <div style="display:flex;gap:8px;align-items:center">
-        <button class="btn btn-secondary" style="font-size:12px;padding:6px 12px" onclick="gerarFichaPDF()" title="Baixar Ficha de Encaminhamento preenchida">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Baixar Ficha PDF
+      <div style="display:flex;gap:8px;align-items:center;flex-shrink:0">
+        <button class="btn btn-secondary" style="font-size:12px;padding:6px 12px" onclick="gerarFichaPDF()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          PDF
         </button>
         <button class="modal-close" onclick="fecharModal()">×</button>
       </div>
     </div>
-    <div class="modal-body">
+
+    <!-- Próxima ação — banner de destaque -->
+    <div id="modal-prox-acao" style="display:none;padding:10px 20px;border-bottom:1px solid var(--gray-100);background:#FFFBEB"></div>
+
+    <div class="modal-body" style="padding:0">
       <!-- Tabs -->
-      <div class="tabs-bar" id="modal-tabs" style="margin-bottom:16px">
-        <button class="tab-btn active" onclick="switchModalTab('resumo',this)">Resumo</button>
-        <button class="tab-btn" onclick="switchModalTab('dados',this)">Dados completos</button>
-        <button class="tab-btn" onclick="switchModalTab('analise',this)">Análise IA</button>
-        <button class="tab-btn" onclick="switchModalTab('historico',this)">Histórico</button>
+      <div class="tabs-bar" id="modal-tabs" style="padding:0 20px;margin:0;border-bottom:1px solid var(--gray-100)">
+        <button class="tab-btn active" onclick="switchModalTab('ciclo',this)">📋 Ciclo de Vida</button>
+        <button class="tab-btn" onclick="switchModalTab('dados',this)">📄 Dados</button>
+        <button class="tab-btn" onclick="switchModalTab('tratativa',this)">🔧 Tratativas</button>
+        <button class="tab-btn" onclick="switchModalTab('aprovacao',this)">✅ Aprovação</button>
+        <button class="tab-btn" onclick="switchModalTab('analise',this)">🤖 IA</button>
+        <button class="tab-btn" onclick="switchModalTab('historico',this)" id="modal-tab-btn-historico">📜 Histórico</button>
       </div>
 
-      <!-- Tab Resumo -->
-      <div id="modal-tab-resumo">
-        <div class="grid-2" style="margin-bottom:14px">
-          <div class="section-card" style="padding:14px">
-            <div style="font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;margin-bottom:10px">Informações principais</div>
-            <div id="modal-info-grid" style="display:grid;gap:8px"></div>
+      <div style="padding:20px;overflow-y:auto;max-height:62vh">
+
+        <!-- Tab Ciclo de Vida -->
+        <div id="modal-tab-ciclo">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+            <div>
+              <div style="font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Informações da manifestação</div>
+              <div id="modal-info-grid" style="display:grid;gap:6px"></div>
+            </div>
+            <div>
+              <div style="font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Ciclo de vida — etapas</div>
+              <div id="modal-timeline"></div>
+            </div>
           </div>
-          <div class="section-card" style="padding:14px">
-            <div style="font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;margin-bottom:10px">Status do fluxo</div>
-            <div id="modal-timeline"></div>
+
+          <div style="background:var(--gray-50);border-radius:10px;padding:14px;margin-bottom:14px">
+            <div style="font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Descrição registrada</div>
+            <div id="modal-descricao" style="font-size:13px;color:var(--gray-700);line-height:1.65;white-space:pre-wrap"></div>
           </div>
-        </div>
-        <div class="section-card" style="padding:14px;margin-bottom:14px">
-          <div style="font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;margin-bottom:8px">Descrição</div>
-          <div id="modal-descricao" style="font-size:13px;color:var(--gray-700);line-height:1.6"></div>
-        </div>
-        <div class="section-card" style="padding:14px">
-          <div style="font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;margin-bottom:8px">Tratativa / Devolutiva</div>
-          <div id="modal-tratativa" style="font-size:13px;color:var(--gray-700);line-height:1.6"></div>
-        </div>
-      </div>
 
-      <!-- Tab Dados -->
-      <div id="modal-tab-dados" style="display:none">
-        <div id="modal-dados-completos" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"></div>
-      </div>
-
-      <!-- Tab Análise IA -->
-      <div id="modal-tab-analise" style="display:none">
-        <div id="modal-analise-content">
-          <div class="alert-box blue" style="font-size:12px">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-            Análise IA disponível somente para manifestações registradas pelo novo sistema (v3.0+).
+          <div id="modal-proximos-passos" style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:10px;padding:14px;display:none">
+            <div style="font-size:11px;font-weight:700;color:#1D4ED8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">⚡ Próximos passos</div>
+            <div id="modal-proximos-passos-content" style="font-size:13px;color:#1E40AF;line-height:1.65"></div>
           </div>
         </div>
-      </div>
 
-      <!-- Tab Histórico -->
-      <div id="modal-tab-historico" style="display:none">
-        <div id="modal-historico-timeline"></div>
-      </div>
+        <!-- Tab Dados completos -->
+        <div id="modal-tab-dados" style="display:none">
+          <div id="modal-dados-completos" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"></div>
+        </div>
+
+        <!-- Tab Tratativas -->
+        <div id="modal-tab-tratativa" style="display:none">
+          <div id="modal-tratativas-content"></div>
+        </div>
+
+        <!-- Tab Aprovação -->
+        <div id="modal-tab-aprovacao" style="display:none">
+          <div id="modal-aprovacao-content"></div>
+        </div>
+
+        <!-- Tab Análise IA -->
+        <div id="modal-tab-analise" style="display:none">
+          <div id="modal-analise-content"></div>
+        </div>
+
+        <!-- Tab Histórico -->
+        <div id="modal-tab-historico" style="display:none">
+          <div id="modal-historico-timeline">
+            <div style="text-align:center;color:var(--gray-400);padding:24px;font-size:13px">Carregando histórico...</div>
+          </div>
+        </div>
+
+      </div><!-- /padding wrapper -->
     </div>
   </div>
 </div>
@@ -1276,83 +1300,107 @@
     <div class="topbar">
       <div class="breadcrumb">Atendimento / <span>Acompanhamento</span></div>
       <div class="page-header">
-        <h1 class="page-title">Acompanhamento de Solicitações</h1>
-        <button class="btn btn-primary" onclick="navigate('nova-manifestacao', document.querySelector('[onclick*=nova-manifestacao]'))">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          Nova manifestação
-        </button>
+        <h1 class="page-title">Central de Acompanhamento</h1>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-secondary" onclick="loadAcompanhamento()" title="Atualizar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.08-4"/></svg>
+            Atualizar
+          </button>
+          <button class="btn btn-primary" onclick="navigate('nova-manifestacao', document.querySelector('[onclick*=nova-manifestacao]'))">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:14px;height:14px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Nova manifestação
+          </button>
+        </div>
       </div>
     </div>
-    <div class="content">
+    <div class="content" style="padding:0 24px 32px">
 
       <!-- KPIs rápidos -->
-      <div class="kpi-grid" style="grid-template-columns:repeat(6,1fr);margin-bottom:16px" id="acomp-kpis">
-        <div class="kpi-card highlight"><div class="kpi-label">Em análise</div><div class="kpi-value" id="ac-analise">--</div></div>
-        <div class="kpi-card"><div class="kpi-label">Aguardando decisão</div><div class="kpi-value" id="ac-decisao">--</div></div>
-        <div class="kpi-card"><div class="kpi-label">Aprovadas</div><div class="kpi-value" id="ac-aprovadas">--</div></div>
-        <div class="kpi-card"><div class="kpi-label">Em tratamento</div><div class="kpi-value" id="ac-tratamento">--</div></div>
-        <div class="kpi-card"><div class="kpi-label">Aguard. devolutiva</div><div class="kpi-value" id="ac-devolutiva">--</div></div>
-        <div class="kpi-card"><div class="kpi-label">Encerradas</div><div class="kpi-value" id="ac-encerradas">--</div></div>
+      <div class="kpi-grid" style="grid-template-columns:repeat(7,1fr);margin-bottom:18px" id="acomp-kpis">
+        <div class="kpi-card" style="cursor:pointer" onclick="acompFiltrarStatus('')"><div class="kpi-label">Total</div><div class="kpi-value" id="ac-total">--</div></div>
+        <div class="kpi-card highlight" style="cursor:pointer" onclick="acompFiltrarStatus('EM ANÁLISE')"><div class="kpi-label">Em análise</div><div class="kpi-value" id="ac-analise">--</div></div>
+        <div class="kpi-card" style="cursor:pointer" onclick="acompFiltrarStatus('AGUARDANDO')"><div class="kpi-label">Aguard. decisão</div><div class="kpi-value" id="ac-decisao">--</div></div>
+        <div class="kpi-card" style="cursor:pointer" onclick="acompFiltrarStatus('EM TRATAMENTO')"><div class="kpi-label">Em tratamento</div><div class="kpi-value" id="ac-tratamento">--</div></div>
+        <div class="kpi-card" style="cursor:pointer" onclick="acompFiltrarStatus('APROVADA')"><div class="kpi-label">Aprovadas</div><div class="kpi-value" id="ac-aprovadas">--</div></div>
+        <div class="kpi-card" style="cursor:pointer" onclick="acompFiltrarStatus('ENCERRADA')"><div class="kpi-label">Encerradas</div><div class="kpi-value" id="ac-encerradas">--</div></div>
+        <div class="kpi-card" style="cursor:pointer;border-color:#FCA5A5" onclick="acompFiltrarStatus('VENCIDO')"><div class="kpi-label" style="color:#DC2626">Fora do SLA</div><div class="kpi-value" id="ac-vencidos" style="color:#DC2626">--</div></div>
       </div>
 
       <!-- Filtros -->
-      <div class="card card-pad" style="margin-bottom:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-        <div class="search-wrap" style="flex:1;min-width:200px">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input class="search-input" placeholder="Buscar por ID, cliente, empresa..." id="acomp-search" oninput="filtrarAcompanhamento()">
+      <div class="card card-pad" style="margin-bottom:14px">
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <div class="search-wrap" style="flex:1;min-width:200px">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input class="search-input" placeholder="Buscar por ID, cliente, empresa, produto..." id="acomp-search" oninput="filtrarAcompanhamento()">
+          </div>
+          <select id="acomp-status-filter" onchange="filtrarAcompanhamento()" style="padding:8px 10px;border:1px solid var(--gray-200);border-radius:8px;font-size:12px;outline:none;min-width:150px">
+            <option value="">Todos os status</option>
+            <option value="EM ANÁLISE">Em análise</option>
+            <option value="AGUARDANDO">Aguardando decisão</option>
+            <option value="EM TRATAMENTO">Em tratamento</option>
+            <option value="APROVADA">Aprovadas</option>
+            <option value="AGUARDANDO_DEVOLUTIVA">Aguard. devolutiva</option>
+            <option value="ENCERRADA">Encerradas</option>
+            <option value="REJEITADA">Rejeitadas</option>
+          </select>
+          <select id="acomp-empresa-filter" onchange="filtrarAcompanhamento()" style="padding:8px 10px;border:1px solid var(--gray-200);border-radius:8px;font-size:12px;outline:none">
+            <option value="">Todas as empresas</option>
+            <option value="CHIACCHIO">Chiacchio Embalagens</option>
+            <option value="PLASCHIO">Plaschio</option>
+            <option value="TUBAHIA">Tubahia / Cesbap</option>
+          </select>
+          <select id="acomp-tipo-filter" onchange="filtrarAcompanhamento()" style="padding:8px 10px;border:1px solid var(--gray-200);border-radius:8px;font-size:12px;outline:none">
+            <option value="">Todos os tipos</option>
+            <option value="Reclamação">Reclamação</option>
+            <option value="Elogio">Elogio</option>
+            <option value="Sugestão">Sugestão</option>
+            <option value="Informação">Informação</option>
+            <option value="Devolução">Devolução</option>
+          </select>
+          <select id="acomp-setor-filter" onchange="filtrarAcompanhamento()" style="padding:8px 10px;border:1px solid var(--gray-200);border-radius:8px;font-size:12px;outline:none">
+            <option value="">Todos os setores</option>
+          </select>
+          <select id="acomp-periodo-filter" onchange="filtrarAcompanhamento()" style="padding:8px 10px;border:1px solid var(--gray-200);border-radius:8px;font-size:12px;outline:none">
+            <option value="0">Qualquer período</option>
+            <option value="7">Últimos 7 dias</option>
+            <option value="15">Últimos 15 dias</option>
+            <option value="30">Últimos 30 dias</option>
+            <option value="60">Últimos 60 dias</option>
+            <option value="90">Últimos 90 dias</option>
+          </select>
+          <button class="btn btn-secondary" onclick="limparFiltrosAcomp()" style="font-size:12px">✕ Limpar</button>
         </div>
-        <select id="acomp-status-filter" onchange="filtrarAcompanhamento()" style="padding:8px 10px;border:1px solid var(--gray-200);border-radius:8px;font-size:12px;outline:none">
-          <option value="">Todos os status</option>
-          <option value="EM ANÁLISE">Em análise</option>
-          <option value="AGUARDANDO_DECISAO">Aguardando decisão</option>
-          <option value="APROVADA">Aprovadas</option>
-          <option value="EM TRATAMENTO">Em tratamento</option>
-          <option value="AGUARDANDO_DEVOLUTIVA">Aguard. devolutiva</option>
-          <option value="ENCERRADA">Encerradas</option>
-          <option value="REJEITADA">Rejeitadas</option>
-        </select>
-        <select id="acomp-empresa-filter" onchange="filtrarAcompanhamento()" style="padding:8px 10px;border:1px solid var(--gray-200);border-radius:8px;font-size:12px;outline:none">
-          <option value="">Todas as empresas</option>
-          <option value="CHIACCHIO EMBALAGENS">Chiacchio Embalagens</option>
-          <option value="PLASCHIO">Plaschio</option>
-          <option value="TUBAHIA">Tubahia</option>
-        </select>
-        <button class="btn btn-secondary" onclick="loadAcompanhamento()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.08-4"/></svg>
-          Atualizar
-        </button>
       </div>
 
-      <!-- Kanban por status -->
-      <div id="acomp-kanban" style="display:flex;gap:12px;overflow-x:auto;padding-bottom:8px;margin-bottom:16px">
-        <!-- gerado dinamicamente -->
-      </div>
-
-      <!-- Tabela detalhada -->
+      <!-- Tabela central de acompanhamento -->
       <div class="card">
-        <div style="padding:14px 16px;border-bottom:1px solid var(--gray-100);display:flex;align-items:center;justify-content:space-between">
-          <div style="font-size:14px;font-weight:700">Todas as solicitações</div>
+        <div style="padding:12px 16px;border-bottom:1px solid var(--gray-100);display:flex;align-items:center;justify-content:space-between">
+          <div style="font-size:14px;font-weight:700">Todas as manifestações</div>
           <div style="font-size:12px;color:var(--gray-400)" id="acomp-total">Carregando...</div>
         </div>
-        <table class="banco-table">
-          <thead>
-            <tr>
-              <th>Nº / Data</th>
-              <th>Cliente / Empresa</th>
-              <th>Tipo</th>
-              <th>Empresa reclamada</th>
-              <th>Status</th>
-              <th>Prioridade</th>
-              <th>SLA</th>
-              <th>Analista</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="acomp-body">
-            <tr><td colspan="9"><div class="loading"><div class="spinner"></div> Carregando...</div></td></tr>
-          </tbody>
-        </table>
+        <div style="overflow-x:auto">
+          <table class="banco-table" style="min-width:900px">
+            <thead>
+              <tr>
+                <th>Nº / Data</th>
+                <th>Cliente / Empresa</th>
+                <th>Tipo</th>
+                <th>Empresa reclamada</th>
+                <th>Setor</th>
+                <th>Status / Etapa</th>
+                <th>SLA</th>
+                <th>Próxima ação</th>
+                <th>Responsável</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="acomp-body">
+              <tr><td colspan="10"><div class="loading"><div class="spinner"></div> Carregando...</div></td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
+
     </div>
   </div>
 
@@ -2395,28 +2443,47 @@
 
   <!-- Modal Setor Cérebro -->
   <div class="modal-overlay" id="modal-setor-cerebro" style="display:none" onclick="if(event.target===this)fecharModalSetorCerebro()">
-    <div class="modal" style="max-width:500px;width:95%">
+    <div class="modal" style="max-width:640px;width:96%">
       <div class="modal-header">
         <span id="modal-setor-cerebro-title">Novo Setor</span>
         <button class="modal-close" onclick="fecharModalSetorCerebro()">×</button>
       </div>
-      <div class="modal-body">
+      <div class="modal-body" style="max-height:72vh;overflow-y:auto;padding:20px 24px">
         <input type="hidden" id="setor-cerebro-id">
-        <div class="form-group"><label class="form-label">Setor *</label><input id="setor-cerebro-nome" class="form-input" placeholder="Ex: Qualidade"></div>
-        <div class="form-group"><label class="form-label">Empresa</label><input id="setor-cerebro-empresa" class="form-input" placeholder="Ex: GP Chiacchio"></div>
-        <div class="form-group"><label class="form-label">Responsável</label><input id="setor-cerebro-responsavel" class="form-input"></div>
-        <div class="form-group"><label class="form-label">Descrição</label><textarea id="setor-cerebro-descricao" class="form-input" rows="2"></textarea></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-          <div class="form-group"><label class="form-label">SLA (horas)</label><input id="setor-cerebro-sla" class="form-input" type="number" placeholder="72"></div>
-          <div class="form-group"><label class="form-label">Ativo</label>
+
+        <!-- Identificação -->
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--gray-400);letter-spacing:.06em;margin-bottom:12px">Identificação</div>
+        <div style="display:grid;grid-template-columns:1fr auto;gap:12px;align-items:end;margin-bottom:14px">
+          <div class="form-group" style="margin:0"><label class="form-label">Nome do Setor *</label><input id="setor-cerebro-nome" class="form-input" placeholder="Ex: Qualidade"></div>
+          <div class="form-group" style="margin:0;min-width:80px"><label class="form-label">Ativo</label>
             <select id="setor-cerebro-ativo" class="form-input"><option value="SIM">SIM</option><option value="NÃO">NÃO</option></select>
           </div>
         </div>
-        <div id="setor-cerebro-erro" style="color:var(--red);font-size:13px;display:none"></div>
+        <div class="form-group"><label class="form-label">Descrição resumida</label><textarea id="setor-cerebro-descricao" class="form-input" rows="2" style="resize:vertical"></textarea></div>
+
+        <!-- Responsáveis e SLA -->
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--gray-400);letter-spacing:.06em;margin:18px 0 12px">Responsáveis e SLA</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+          <div class="form-group" style="margin:0"><label class="form-label">Responsável</label><input id="setor-cerebro-responsavel" class="form-input" placeholder="Nome do responsável"></div>
+          <div class="form-group" style="margin:0"><label class="form-label">Substituto</label><input id="setor-cerebro-substituto" class="form-input" placeholder="Nome do substituto"></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+          <div class="form-group" style="margin:0"><label class="form-label">E-mail do responsável</label><input id="setor-cerebro-email" class="form-input" type="email" placeholder="responsavel@empresa.com"></div>
+          <div class="form-group" style="margin:0"><label class="form-label">SLA (horas)</label><input id="setor-cerebro-sla" class="form-input" type="number" placeholder="72"></div>
+        </div>
+
+        <!-- Base de conhecimento -->
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--gray-400);letter-spacing:.06em;margin:18px 0 12px">Base de conhecimento do setor</div>
+        <div class="form-group"><label class="form-label">Responsabilidades</label><textarea id="setor-cerebro-responsabilidades" class="form-input" rows="3" style="resize:vertical" placeholder="O que este setor faz, suas atribuições e competências..."></textarea></div>
+        <div class="form-group"><label class="form-label">Regras e políticas operacionais</label><textarea id="setor-cerebro-regras" class="form-input" rows="3" style="resize:vertical" placeholder="Regras de operação, limites, políticas internas..."></textarea></div>
+        <div class="form-group"><label class="form-label">Procedimentos e orientações</label><textarea id="setor-cerebro-procedimentos" class="form-input" rows="3" style="resize:vertical" placeholder="Passo a passo, como proceder, fluxo de atendimento..."></textarea></div>
+        <div class="form-group"><label class="form-label">Alertas do setor</label><textarea id="setor-cerebro-alertas" class="form-input" rows="2" style="resize:vertical" placeholder="Pontos de atenção, exceções, cuidados especiais..."></textarea></div>
+
+        <div id="setor-cerebro-erro" style="color:var(--red);font-size:13px;display:none;margin-top:8px;padding:10px;background:var(--red-light,#fef2f2);border-radius:6px"></div>
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="fecharModalSetorCerebro()">Cancelar</button>
-        <button class="btn btn-primary" onclick="salvarSetorCerebro()">Salvar</button>
+        <button class="btn btn-primary" onclick="salvarSetorCerebro()">💾 Salvar setor</button>
       </div>
     </div>
   </div>
@@ -3617,97 +3684,305 @@ function fecharModal() {
 }
 
 function switchModalTab(tab, btn) {
-  ['resumo','dados','analise','historico'].forEach(t => {
-    document.getElementById(`modal-tab-${t}`).style.display = t === tab ? 'block' : 'none';
+  ['ciclo','dados','tratativa','aprovacao','analise','historico'].forEach(t => {
+    const el = document.getElementById(`modal-tab-${t}`);
+    if (el) el.style.display = t === tab ? 'block' : 'none';
   });
   document.querySelectorAll('#modal-tabs .tab-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (tab === 'historico') _loadDossieHistorico();
+}
+
+let _dossieItem = null;
+
+function _fmtData(d) {
+  if (!d) return '--';
+  try { return new Date(typeof d === 'number' ? (d-25569)*86400*1000 : d).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}); } catch { return '--'; }
+}
+function _fmtDataCurta(d) {
+  if (!d) return '--';
+  try { return new Date(typeof d === 'number' ? (d-25569)*86400*1000 : d).toLocaleDateString('pt-BR'); } catch { return '--'; }
+}
+function _calcSLA(dataAbertura, slaHoras) {
+  try {
+    const ab = new Date(dataAbertura);
+    const sla = parseInt(slaHoras) || 72;
+    const limite = new Date(ab.getTime() + sla * 3600000);
+    const agora = new Date();
+    const horasRestantes = (limite - agora) / 3600000;
+    const pct = Math.min(100, Math.max(0, ((agora - ab) / (sla * 3600000)) * 100));
+    return { limite, horasRestantes, pct, vencido: horasRestantes < 0, emAlerta: horasRestantes >= 0 && pct >= 75, sla };
+  } catch { return null; }
+}
+function _proxPassos(m) {
+  const st = (m.STATUS||'').toUpperCase();
+  if (st.includes('ENCERR') || st.includes('FINALIZ')) return null;
+  if (st.includes('REJEIT')) return { quem: 'Analista SAC', acao: 'Manifestação rejeitada. Verificar se cabe revisão ou comunicar ao cliente.' };
+  if (!m.TIPO_CONFIRMADO && !m.SETOR_CONFIRMADO && !m.DECISAO_ANALISTA)
+    return { quem: 'Analista SAC', acao: 'Revisar análise da IA e tomar decisão: aceitar, editar ou rejeitar a manifestação.' };
+  if (st.includes('AGUARDANDO') || (!m.SETOR_CONFIRMADO && m.TIPO_CONFIRMADO))
+    return { quem: 'Analista SAC', acao: 'Confirmar setor responsável e encaminhar manifestação.' };
+  if (st.includes('TRATAMENTO') || st === 'APROVADA') {
+    const setor = m.SETOR_CONFIRMADO || m.SETOR_SUGERIDO || 'Setor responsável';
+    if (!m.TRATATIVA_REALIZADA) return { quem: setor, acao: 'Registrar a tratativa realizada e retornar ao SAC.' };
+    if (!m.DEVOLUTIVA_FINAL && !m.DEVOLUTIVA_ENVIADA)
+      return { quem: 'Analista SAC', acao: 'Redigir e enviar a devolutiva ao cliente com base na tratativa recebida.' };
+  }
+  if (st.includes('DEVOLUTIVA'))
+    return { quem: 'Analista SAC', acao: 'Enviar devolutiva ao cliente e registrar o encerramento.' };
+  if (m.TRATATIVA_REALIZADA && (m.DEVOLUTIVA_FINAL || m.DEVOLUTIVA_ENVIADA))
+    return { quem: 'Analista SAC', acao: 'Confirmar encerramento da manifestação.' };
+  return { quem: 'Analista SAC', acao: 'Verificar pendências e atualizar status da manifestação.' };
 }
 
 function abrirDossie(item) {
   if (!item) return;
-  const isRec = !!item['Empresa']; // vem da aba Reclamações
+  _dossieItem = item;
   const isMan = !!item.ID_MANIFESTACAO;
 
-  const id = isMan ? item.ID_MANIFESTACAO : ('REC-' + Math.random().toString(36).slice(2,7).toUpperCase());
-  const empresa = isMan ? (item.EMPRESA_RECLAMADA || item.EMPRESA_NORMALIZADA || '--') : (item['Empresa'] || '--');
-  const cliente = isMan ? (item.NOME_CONTATO || item.NOME || item.CONTATO || '--') : (item['Contato'] || '--');
-  const tipo = isMan ? (item.TIPO || 'Reclamação') : (item['Motivo da Reclamação'] || '--');
-  const status = isMan ? (item.STATUS || 'EM ANÁLISE') : (item['Status'] || item['Situação Final'] || '--');
-  const desc = isMan ? (item.DESCRICAO_MANIFESTACAO || item.DESCRICAO || item.DESCRICAO_RECLAMACAO || '--') : (item['Descrição da Reclamação'] || '--');
-  const tratativa = isMan ? (item.TRATATIVA_REALIZADA || item.TRATATIVA_APLICAVEL || item.TRATATIVA || '--') : (item['Tratativa do Problema'] || '--');
-  const devolutiva = isMan ? (item.DEVOLUTIVA_ENVIADA || '') : (item['Devolutiva ao Cliente'] || '');
-  const data = isMan ? (item.DATA_ABERTURA || item.DATA_REGISTRO || item.DATA_CRIACAO) : item['Data do Registro'];
-  const dataFmt = data ? (typeof data === 'number' ? new Date((data-25569)*86400*1000).toLocaleDateString('pt-BR') : new Date(data).toLocaleDateString('pt-BR')) : '--';
+  const id    = isMan ? item.ID_MANIFESTACAO : ('REC-' + Math.random().toString(36).slice(2,7).toUpperCase());
+  const empReclamada  = isMan ? (item.EMPRESA_RECLAMADA || '--') : (item['Empresa'] || '--');
+  const empReclamante = isMan ? (item.EMPRESA_RECLAMANTE || '--') : '--';
+  const cliente = isMan ? (item.CONTATO || item.NOME_CONTATO || '--') : (item['Contato'] || '--');
+  const tipo    = isMan ? (item.TIPO_CONFIRMADO || item.TIPO || 'Reclamação') : (item['Motivo da Reclamação'] || '--');
+  const status  = isMan ? (item.STATUS || 'EM ANÁLISE') : (item['Status'] || '--');
+  const desc    = isMan ? (item.DESCRICAO_MANIFESTACAO || item.DESCRICAO || '--') : (item['Descrição da Reclamação'] || '--');
+  const dataAb  = isMan ? (item.DATA_ABERTURA || item.DATA_REGISTRO) : item['Data do Registro'];
+  const setor   = item.SETOR_CONFIRMADO || item.SETOR_SUGERIDO || '--';
+  const responsavel = item.RESPONSAVEL || item.USUARIO_CRIACAO || '--';
+  const slaHoras = item.SLA_HORAS || 72;
+  const prioridade = item.PRIORIDADE || '';
 
-  // Header
+  // ── Header
   document.getElementById('modal-titulo').textContent = `Manifestação ${id}`;
-  const stInfo = getStatusInfo ? getStatusInfo(status) : { label: status, bg: '#EFF6FF', color: '#1D4ED8' };
-  document.getElementById('modal-subtitulo').innerHTML = `
-    ${empresa} · ${cliente} · 
-    <span style="display:inline-flex;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;background:${stInfo.bg};color:${stInfo.color}">${stInfo.label}</span>`;
+  document.getElementById('modal-subtitulo').textContent = `${empReclamante} · ${empReclamada} · ${cliente}`;
 
-  // Info grid
-  const infoItems = [
-    ['Empresa', empresa], ['Cliente', cliente], ['Tipo', tipo],
-    ['Status', status], ['Data', dataFmt],
-    ['Produto', isMan ? item.PRODUTO : (item['Descrição do Produto']||'--')],
-    ['Lote', isMan ? item.LOTE : (item['Lote']||'--')],
-    ['Responsável', isMan ? (item.RESPONSAVEL||'--') : (item['Responsável']||'--')],
-  ];
-  document.getElementById('modal-info-grid').innerHTML = infoItems.map(([k,v]) => `
-    <div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:1px solid var(--gray-50)">
-      <span style="color:var(--gray-400)">${k}</span>
-      <strong style="color:var(--gray-900);text-align:right;max-width:55%">${v||'—'}</strong>
+  const stInfo = typeof getStatusInfo === 'function' ? getStatusInfo(status) : { label: status, bg: '#EFF6FF', color: '#1D4ED8' };
+  const badge = document.getElementById('modal-status-badge');
+  badge.textContent = stInfo.label;
+  badge.style.background = stInfo.bg;
+  badge.style.color = stInfo.color;
+
+  // SLA badge
+  const slaBadge = document.getElementById('modal-sla-badge');
+  const slaInfo = _calcSLA(dataAb, slaHoras);
+  if (slaInfo) {
+    const encerrado = status.toUpperCase().includes('ENCERR') || status.toUpperCase().includes('FINALIZ');
+    if (encerrado) { slaBadge.style.display='none'; }
+    else if (slaInfo.vencido) {
+      slaBadge.style.display = '';
+      slaBadge.textContent = `⏰ SLA vencido há ${Math.abs(Math.round(slaInfo.horasRestantes))}h`;
+      slaBadge.style.background = '#FEE2E2'; slaBadge.style.color = '#DC2626';
+    } else if (slaInfo.emAlerta) {
+      slaBadge.style.display = '';
+      slaBadge.textContent = `⚠ ${Math.round(slaInfo.horasRestantes)}h restantes`;
+      slaBadge.style.background = '#FEF3C7'; slaBadge.style.color = '#92400E';
+    } else {
+      slaBadge.style.display = '';
+      slaBadge.textContent = `✓ ${Math.round(slaInfo.horasRestantes)}h restantes (${slaHoras}h SLA)`;
+      slaBadge.style.background = '#D1FAE5'; slaBadge.style.color = '#065F46';
+    }
+  } else { slaBadge.style.display = 'none'; }
+
+  // Prioridade badge
+  const priBadge = document.getElementById('modal-pri-badge');
+  if (prioridade) {
+    const pBg = prioridade==='Alta'?'#FEE2E2':prioridade==='Média'?'#FEF3C7':'#F3F4F6';
+    const pC  = prioridade==='Alta'?'#DC2626':prioridade==='Média'?'#92400E':'#6B7280';
+    priBadge.style.display=''; priBadge.textContent=prioridade; priBadge.style.background=pBg; priBadge.style.color=pC;
+  } else { priBadge.style.display='none'; }
+
+  // ── Próxima ação banner
+  const prox = _proxPassos(item);
+  const proxBanner = document.getElementById('modal-prox-acao');
+  if (prox) {
+    proxBanner.style.display = '';
+    proxBanner.innerHTML = `<span style="font-size:12px;font-weight:700;color:#92400E">⚡ Próxima ação — <span style="font-weight:400">${prox.acao}</span></span> <span style="margin-left:8px;font-size:11px;background:#FDE68A;color:#78350F;padding:2px 8px;border-radius:10px">${prox.quem}</span>`;
+  } else { proxBanner.style.display='none'; }
+
+  // ── Info grid
+  const fields = [
+    ['ID', id], ['Data de abertura', _fmtData(dataAb)],
+    ['Empresa reclamante', empReclamante], ['Empresa reclamada', empReclamada],
+    ['Cliente / Contato', cliente], ['Tipo', tipo], ['Canal', item.CANAL||'--'],
+    ['CNPJ', item.CNPJ||'--'], ['Produto', item.PRODUTO||'--'], ['Lote', item.LOTE||'--'],
+    ['NFe', item.NFE||'--'], ['Setor responsável', setor],
+    ['Analista criador', responsavel], ['SLA', `${slaHoras}h`],
+    ['Quantidade', item.QUANTIDADE||'--'], ['Valor', item.VALOR||'--'],
+  ].filter(([,v]) => v && v !== '--');
+  const infoEl = document.getElementById('modal-info-grid');
+  infoEl.innerHTML = fields.map(([k,v]) => `
+    <div style="display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px solid var(--gray-100)">
+      <span style="color:var(--gray-400);flex-shrink:0;margin-right:8px">${k}</span>
+      <strong style="color:var(--gray-800);text-align:right;word-break:break-word;max-width:60%">${v}</strong>
     </div>`).join('');
 
-  // Timeline
+  // ── Ciclo de vida (timeline de etapas)
+  const temDecisao  = !!(item.TIPO_CONFIRMADO || item.DECISAO_ANALISTA || item.SETOR_CONFIRMADO);
+  const temEnc      = !!(item.SETOR_CONFIRMADO || item.SETOR_SUGERIDO);
+  const temTratativa= !!(item.TRATATIVA_REALIZADA);
+  const temAprov    = status.toUpperCase().includes('APROV');
+  const temDev      = !!(item.DEVOLUTIVA_FINAL || item.DEVOLUTIVA_ENVIADA);
+  const encerrada   = status.toUpperCase().includes('ENCERR') || status.toUpperCase().includes('FINALIZ');
+
   const etapas = [
-    { label: 'Registro', done: true, meta: dataFmt },
-    { label: 'Análise Inteligente', done: false, meta: 'Automática' },
-    { label: 'Decisão da analista', done: false, meta: 'Pendente' },
-    { label: 'Encaminhamento aos setores', done: false, meta: 'Pendente' },
-    { label: 'Resposta dos setores', done: false, meta: 'Pendente' },
-    { label: 'Devolutiva ao cliente', done: !!devolutiva, meta: devolutiva ? 'Enviada' : 'Pendente' },
-    { label: 'Encerramento', done: status.toUpperCase().includes('FINALIZ') || status.toUpperCase().includes('ENCERR'), meta: '' },
+    { icon:'📝', label:'Registro', done:true,    meta:_fmtData(dataAb), obs:`Registrado por: ${responsavel}` },
+    { icon:'🤖', label:'Análise IA', done:!!(item.TIPO_SUGERIDO||item.SETOR_SUGERIDO), meta: item.TIPO_SUGERIDO ? `Tipo sugerido: ${item.TIPO_SUGERIDO}` : 'Automática', obs: item.SETOR_SUGERIDO ? `Setor sugerido: ${item.SETOR_SUGERIDO}` : '' },
+    { icon:'👤', label:'Decisão da analista', done:temDecisao, meta: temDecisao ? (item.DECISAO_ANALISTA||'Confirmada') : 'Pendente', obs: item.TIPO_CONFIRMADO ? `Tipo confirmado: ${item.TIPO_CONFIRMADO}` : '' },
+    { icon:'📨', label:'Encaminhamento ao setor', done:temEnc, meta: temEnc ? (item.SETOR_CONFIRMADO||item.SETOR_SUGERIDO) : 'Pendente', obs: item.SETORES_CONFIRMADOS ? `Setores: ${item.SETORES_CONFIRMADOS}` : '' },
+    { icon:'🔧', label:'Tratativa', done:temTratativa, meta: temTratativa ? 'Registrada' : 'Pendente', obs: item.TRATATIVA_REALIZADA ? item.TRATATIVA_REALIZADA.slice(0,80)+(item.TRATATIVA_REALIZADA.length>80?'...':'') : '' },
+    { icon:'✅', label:'Aprovação', done:temAprov, meta: temAprov ? 'Aprovada' : (item.STATUS?.toUpperCase().includes('REJEIT') ? 'Rejeitada' : 'Pendente'), obs: item.APROVADOR ? `Por: ${item.APROVADOR}` : '' },
+    { icon:'💬', label:'Devolutiva ao cliente', done:temDev, meta: temDev ? 'Enviada' : 'Pendente', obs: '' },
+    { icon:'🏁', label:'Encerramento', done:encerrada, meta: encerrada ? (_fmtDataCurta(item.DATA_CONCLUSAO_MANIFESTACAO)||'Encerrada') : 'Pendente', obs: '' },
   ];
-  document.getElementById('modal-timeline').innerHTML = etapas.map(e => `
-    <div class="timeline-item">
-      <div class="timeline-dot ${e.done?'':'pending'}"></div>
-      <div class="timeline-content">
-        <div class="timeline-label" style="color:${e.done?'var(--gray-900)':'var(--gray-400)'}">${e.label}</div>
-        <div class="timeline-meta">${e.meta}</div>
+  const tlEl = document.getElementById('modal-timeline');
+  tlEl.innerHTML = etapas.map((e, i) => {
+    const isCurrent = !e.done && (i === 0 || etapas[i-1].done);
+    return `
+    <div style="display:flex;gap:10px;padding:6px 0;${i < etapas.length-1 ? 'border-left:2px solid '+(e.done?'var(--red)':'var(--gray-200)')+';margin-left:9px;padding-left:16px;':''}">
+      <div style="width:20px;height:20px;border-radius:50%;background:${e.done?'var(--red)':isCurrent?'#FEF3C7':'var(--gray-100)'};border:2px solid ${e.done?'var(--red)':isCurrent?'#F59E0B':'var(--gray-200)'};display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0;margin-left:${i < etapas.length-1 ?'-26':'0'}px">${e.done?'✓':''}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:${e.done||isCurrent?'700':'400'};color:${e.done?'var(--gray-900)':isCurrent?'#92400E':'var(--gray-400)'}">
+          ${e.icon} ${e.label}${isCurrent?' <span style="font-size:10px;background:#FDE68A;color:#78350F;padding:1px 6px;border-radius:8px;margin-left:4px">ETAPA ATUAL</span>':''}
+        </div>
+        <div style="font-size:11px;color:var(--gray-400);margin-top:1px">${e.meta}</div>
+        ${e.obs ? `<div style="font-size:11px;color:var(--gray-600);margin-top:1px;font-style:italic">${e.obs}</div>` : ''}
       </div>
-    </div>`).join('');
+    </div>`}).join('');
 
-  // Descrição
-  document.getElementById('modal-descricao').textContent = desc || 'Sem descrição registrada.';
+  // ── Descrição
+  document.getElementById('modal-descricao').textContent = desc;
 
-  // Tratativa
-  document.getElementById('modal-tratativa').innerHTML = [
-    tratativa && tratativa !== '--' ? `<div style="margin-bottom:8px"><strong>Tratativa:</strong> ${tratativa}</div>` : '',
-    devolutiva ? `<div><strong>Devolutiva enviada:</strong> ${devolutiva}</div>` : '<div style="color:var(--gray-400)">Devolutiva ainda não enviada.</div>',
-  ].join('');
+  // ── Próximos passos card
+  const ppEl = document.getElementById('modal-proximos-passos');
+  const ppContent = document.getElementById('modal-proximos-passos-content');
+  if (prox) {
+    ppEl.style.display = '';
+    ppContent.innerHTML = `<strong>${prox.quem}</strong> precisa: ${prox.acao}`;
+  } else if (encerrada) {
+    ppEl.style.background='#ECFDF5'; ppEl.style.borderColor='#6EE7B7';
+    ppEl.style.display='';
+    ppContent.innerHTML = `<span style="color:#065F46">✅ Manifestação encerrada. Nenhuma ação pendente.</span>`;
+    ppContent.parentElement.querySelector('div').style.color='#065F46';
+  } else { ppEl.style.display='none'; }
 
-  // Dados completos
-  const allFields = isMan ? Object.entries(item) : Object.entries(item).filter(([k]) => k && k !== 'undefined');
-  document.getElementById('modal-dados-completos').innerHTML = allFields
-    .filter(([k,v]) => v && k && !['undefined'].includes(k))
+  // ── Tab Dados completos
+  const ignorar = ['_pgId'];
+  document.getElementById('modal-dados-completos').innerHTML = Object.entries(item)
+    .filter(([k,v]) => v && k && !ignorar.includes(k) && String(v).trim())
     .map(([k,v]) => `
       <div style="background:var(--gray-50);border-radius:8px;padding:10px">
         <div style="font-size:10px;font-weight:700;color:var(--gray-400);text-transform:uppercase;margin-bottom:3px">${k}</div>
-        <div style="font-size:12px;color:var(--gray-800);word-break:break-word">${String(v).slice(0,200)}</div>
-      </div>`).join('');
+        <div style="font-size:12px;color:var(--gray-800);word-break:break-word">${String(v).slice(0,300)}</div>
+      </div>`).join('') || '<div style="color:var(--gray-400);font-size:13px">Nenhum dado adicional.</div>';
 
-  // Histórico timeline
-  document.getElementById('modal-historico-timeline').innerHTML = `
-    <div class="timeline-item"><div class="timeline-dot"></div><div class="timeline-content"><div class="timeline-label">Manifestação registrada</div><div class="timeline-meta">${dataFmt} · ${empresa}</div></div></div>
-    ${devolutiva ? `<div class="timeline-item"><div class="timeline-dot"></div><div class="timeline-content"><div class="timeline-label">Devolutiva enviada</div><div class="timeline-meta">${devolutiva.slice(0,100)}...</div></div></div>` : ''}
-    ${(status.toUpperCase().includes('FINALIZ')||status.toUpperCase().includes('ENCERR')) ? `<div class="timeline-item"><div class="timeline-dot"></div><div class="timeline-content"><div class="timeline-label">Encerrada</div><div class="timeline-meta">${status}</div></div></div>` : ''}`;
+  // ── Tab Tratativas
+  const tratativaText = item.TRATATIVA_REALIZADA || item.TRATATIVA_APLICAVEL || item.TRATATIVA_SUGERIDA || '';
+  const devText = item.DEVOLUTIVA_FINAL || item.DEVOLUTIVA_ENVIADA || item.DEVOLUTIVA_SUGERIDA || '';
+  document.getElementById('modal-tratativas-content').innerHTML = `
+    <div class="section-card" style="margin-bottom:14px;padding:14px">
+      <div style="font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;margin-bottom:10px">Tratativa realizada</div>
+      ${tratativaText ? `<div style="font-size:13px;color:var(--gray-700);line-height:1.65;white-space:pre-wrap">${tratativaText}</div>` : '<div style="color:var(--gray-400);font-size:13px">Nenhuma tratativa registrada ainda.</div>'}
+    </div>
+    ${item.TRATATIVA_SUGERIDA && item.TRATATIVA_SUGERIDA !== tratativaText ? `
+    <div class="section-card" style="margin-bottom:14px;padding:14px;border-left:3px solid var(--red)">
+      <div style="font-size:11px;font-weight:700;color:var(--red);text-transform:uppercase;margin-bottom:8px">🤖 Tratativa sugerida pela IA</div>
+      <div style="font-size:13px;color:var(--gray-700);line-height:1.65">${item.TRATATIVA_SUGERIDA}</div>
+    </div>` : ''}
+    <div class="section-card" style="padding:14px">
+      <div style="font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;margin-bottom:10px">Devolutiva ao cliente</div>
+      ${devText ? `<div style="font-size:13px;color:var(--gray-700);line-height:1.65;white-space:pre-wrap;background:var(--gray-50);border-radius:8px;padding:10px">${devText}</div>
+      <div style="font-size:11px;color:var(--gray-400);margin-top:6px">Status: ${item.DEVOLUTIVA_ENVIADA ? '✅ Enviada' : '⏳ Não enviada'}</div>` : '<div style="color:var(--gray-400);font-size:13px">Devolutiva ainda não redigida.</div>'}
+    </div>`;
+
+  // ── Tab Aprovação
+  const aprov = item.APROVADO_POR || item.APROVADOR || '';
+  const apData = item.DATA_APROVACAO || item.DATA_CONCLUSAO_MANIFESTACAO || '';
+  const stAprov = status.toUpperCase();
+  document.getElementById('modal-aprovacao-content').innerHTML = `
+    <div class="section-card" style="margin-bottom:14px;padding:16px">
+      <div style="font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;margin-bottom:12px">Status de aprovação</div>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+        <div style="font-size:32px">${stAprov.includes('APROV')?'✅':stAprov.includes('REJEIT')?'❌':stAprov.includes('ENCERR')?'🏁':'⏳'}</div>
+        <div>
+          <div style="font-size:15px;font-weight:700;color:var(--gray-900)">${stAprov.includes('APROV')?'Aprovada':stAprov.includes('REJEIT')?'Rejeitada':stAprov.includes('ENCERR')?'Encerrada':'Aguardando aprovação'}</div>
+          ${aprov ? `<div style="font-size:12px;color:var(--gray-500);margin-top:2px">Por: <strong>${aprov}</strong> em ${_fmtDataCurta(apData)}</div>` : ''}
+        </div>
+      </div>
+      ${item.MOTIVO_REJEICAO ? `<div style="background:#FEF2F2;border-radius:8px;padding:10px;font-size:13px;color:#991B1B"><strong>Motivo da rejeição:</strong> ${item.MOTIVO_REJEICAO}</div>` : ''}
+      ${item.OBSERVACOES_APROVADOR ? `<div style="background:var(--gray-50);border-radius:8px;padding:10px;font-size:13px;color:var(--gray-700);margin-top:10px"><strong>Observações do aprovador:</strong> ${item.OBSERVACOES_APROVADOR}</div>` : ''}
+    </div>
+    <div class="section-card" style="padding:14px">
+      <div style="font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;margin-bottom:10px">Quem precisa aprovar</div>
+      <div style="font-size:13px;color:var(--gray-700)">${stAprov.includes('APROV')||stAprov.includes('ENCERR') ? 'Já aprovada — nenhuma ação necessária.' : `<span style="color:#92400E">Aprovador do setor <strong>${setor}</strong> precisa revisar e aprovar esta manifestação.</span>`}</div>
+    </div>`;
+
+  // ── Tab IA
+  const tipoS = item.TIPO_SUGERIDO || ''; const setorS = item.SETOR_SUGERIDO || '';
+  document.getElementById('modal-analise-content').innerHTML = (tipoS || setorS || item.DEVOLUTIVA_SUGERIDA) ? `
+    <div class="section-card" style="margin-bottom:12px;padding:14px;border-left:3px solid var(--red)">
+      <div style="font-size:11px;font-weight:700;color:var(--red);text-transform:uppercase;margin-bottom:10px">🤖 Sugestões da análise IA</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+        ${tipoS?`<div style="background:var(--gray-50);border-radius:8px;padding:10px"><div style="font-size:10px;color:var(--gray-400);font-weight:700;margin-bottom:3px">TIPO SUGERIDO</div><div style="font-size:13px;font-weight:600">${tipoS}</div></div>`:''}
+        ${setorS?`<div style="background:var(--gray-50);border-radius:8px;padding:10px"><div style="font-size:10px;color:var(--gray-400);font-weight:700;margin-bottom:3px">SETOR SUGERIDO</div><div style="font-size:13px;font-weight:600">${setorS}</div></div>`:''}
+        ${item.PRIORIDADE?`<div style="background:var(--gray-50);border-radius:8px;padding:10px"><div style="font-size:10px;color:var(--gray-400);font-weight:700;margin-bottom:3px">PRIORIDADE</div><div style="font-size:13px;font-weight:600">${item.PRIORIDADE}</div></div>`:''}
+        ${item.SLA_HORAS?`<div style="background:var(--gray-50);border-radius:8px;padding:10px"><div style="font-size:10px;color:var(--gray-400);font-weight:700;margin-bottom:3px">SLA SUGERIDO</div><div style="font-size:13px;font-weight:600">${item.SLA_HORAS}h</div></div>`:''}
+      </div>
+      ${item.DEVOLUTIVA_SUGERIDA?`<div><div style="font-size:10px;color:var(--gray-400);font-weight:700;margin-bottom:4px">DEVOLUTIVA SUGERIDA PELA IA</div><div style="font-size:13px;color:var(--gray-700);line-height:1.65;background:var(--gray-50);border-radius:8px;padding:10px">${item.DEVOLUTIVA_SUGERIDA}</div></div>`:''}
+    </div>` :
+    `<div style="text-align:center;padding:32px;color:var(--gray-400)">
+      <div style="font-size:32px;margin-bottom:8px">🤖</div>
+      <div style="font-size:13px">Análise IA ainda não disponível para esta manifestação.</div>
+    </div>`;
+
+  // ── Histórico tab: placeholder, carrega ao clicar
+  document.getElementById('modal-historico-timeline').innerHTML = `<div style="text-align:center;color:var(--gray-400);padding:24px;font-size:13px">Clique na aba Histórico para carregar.</div>`;
 
   document.getElementById('modal-dossie').style.display = 'flex';
-  // Reset tabs
-  switchModalTab('resumo', document.querySelector('#modal-tabs .tab-btn'));
+  switchModalTab('ciclo', document.querySelector('#modal-tabs .tab-btn'));
+}
+
+async function _loadDossieHistorico() {
+  const el = document.getElementById('modal-historico-timeline');
+  const m = _dossieItem;
+  if (!m || !m.ID_MANIFESTACAO) { el.innerHTML = '<div style="color:var(--gray-400);padding:20px;text-align:center">Sem dados de histórico.</div>'; return; }
+  el.innerHTML = '<div style="text-align:center;padding:20px"><div class="spinner"></div></div>';
+  // Monta timeline a partir dos dados disponíveis na manifestação
+  const eventos = [];
+  const push = (data, acao, quem, obs) => { if (data||acao) eventos.push({data,acao,quem,obs}); };
+  push(m.DATA_ABERTURA||m.DATA_REGISTRO, 'Manifestação registrada', m.USUARIO_CRIACAO||'Sistema', `Empresa: ${m.EMPRESA_RECLAMANTE||'--'} · Tipo: ${m.TIPO||'--'}`);
+  if (m.TIPO_SUGERIDO||m.SETOR_SUGERIDO) push(m.DATA_ABERTURA, 'Análise IA realizada', 'IA', `Tipo sugerido: ${m.TIPO_SUGERIDO||'--'} · Setor: ${m.SETOR_SUGERIDO||'--'} · Prioridade: ${m.PRIORIDADE||'--'}`);
+  if (m.DECISAO_ANALISTA||m.TIPO_CONFIRMADO) push(m.DATA_ABERTURA, `Decisão da analista: ${m.DECISAO_ANALISTA||'confirmada'}`, m.USUARIO_CRIACAO||'Analista SAC', `Tipo confirmado: ${m.TIPO_CONFIRMADO||'--'} · Setor: ${m.SETOR_CONFIRMADO||'--'}`);
+  if (m.SETOR_CONFIRMADO||m.SETOR_SUGERIDO) push(null, 'Encaminhada ao setor', 'Sistema', `Setor: ${m.SETOR_CONFIRMADO||m.SETOR_SUGERIDO}`);
+  if (m.DATA_INICIO_TRATATIVA) push(m.DATA_INICIO_TRATATIVA, 'Tratativa iniciada', m.SETOR_CONFIRMADO||'Setor', '');
+  if (m.TRATATIVA_REALIZADA) push(m.DATA_CONCLUSAO_TRATATIVA||null, 'Tratativa registrada', m.SETOR_CONFIRMADO||'Setor', m.TRATATIVA_REALIZADA.slice(0,100));
+  if (m.STATUS?.toUpperCase().includes('APROV')) push(m.DATA_APROVACAO||null, 'Manifestação aprovada', m.APROVADO_POR||m.APROVADOR||'Aprovador', '');
+  if (m.DEVOLUTIVA_FINAL||m.DEVOLUTIVA_ENVIADA) push(m.DATA_DEVOLUTIVA||null, 'Devolutiva enviada ao cliente', 'Analista SAC', (m.DEVOLUTIVA_FINAL||m.DEVOLUTIVA_ENVIADA||'').slice(0,80));
+  if (m.STATUS?.toUpperCase().includes('ENCERR')||m.STATUS?.toUpperCase().includes('FINALIZ')) push(m.DATA_CONCLUSAO_MANIFESTACAO||null, 'Manifestação encerrada', 'Sistema', '');
+  // Tenta carregar do /api/auditoria
+  try {
+    const aud = await _apiFetch('/api/auditoria', 8000).catch(()=>({itens:[]}));
+    const logs = (aud.itens||[]).filter(l => l.ID_REGISTRO === m.ID_MANIFESTACAO || l.ID_MANIFESTACAO === m.ID_MANIFESTACAO);
+    logs.forEach(l => {
+      if (!eventos.some(e => e.acao === l.ACAO)) push(l.DATA_HORA||l.DATA, l.ACAO||'Ação', l.USUARIO||'Sistema', l.DETALHES||'');
+    });
+  } catch {}
+  if (!eventos.length) { el.innerHTML='<div style="color:var(--gray-400);padding:20px;text-align:center;font-size:13px">Nenhum evento registrado.</div>'; return; }
+  el.innerHTML = `<div style="position:relative;padding-left:28px">
+    <div style="position:absolute;left:10px;top:0;bottom:0;width:2px;background:var(--gray-100)"></div>
+    ${eventos.map((ev,i) => `
+    <div style="position:relative;margin-bottom:18px">
+      <div style="position:absolute;left:-22px;width:14px;height:14px;border-radius:50%;background:${i===eventos.length-1?'var(--gray-200)':'var(--red)'};border:2px solid ${i===eventos.length-1?'var(--gray-300)':'white'};box-shadow:0 0 0 2px ${i===eventos.length-1?'var(--gray-200)':'var(--red)'};top:2px"></div>
+      <div style="background:white;border:1px solid var(--gray-100);border-radius:8px;padding:10px 12px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+          <div style="font-size:13px;font-weight:600;color:var(--gray-900)">${ev.acao}</div>
+          ${ev.data ? `<div style="font-size:11px;color:var(--gray-400);flex-shrink:0">${_fmtData(ev.data)}</div>` : ''}
+        </div>
+        ${ev.quem ? `<div style="font-size:11px;color:var(--red);margin-top:2px;font-weight:600">${ev.quem}</div>` : ''}
+        ${ev.obs ? `<div style="font-size:12px;color:var(--gray-500);margin-top:4px;line-height:1.5">${ev.obs}</div>` : ''}
+      </div>
+    </div>`).join('')}
+  </div>`;
 }
 
 
@@ -3734,96 +4009,177 @@ async function loadAcompanhamento() {
     _acompData = res.itens || [];
 
     // KPIs
-    const contagem = {};
+    let totalCount = _acompData.length;
+    let analiseCount = 0, decisaoCount = 0, tratamentoCount = 0, aprovadaCount = 0, encerradaCount = 0, vencidoCount = 0;
+    const agora = Date.now();
+    const setoresSet = new Set();
+
     _acompData.forEach(m => {
       const s = (m.STATUS || 'EM ANÁLISE').toUpperCase();
-      contagem[s] = (contagem[s] || 0) + 1;
-    });
-    document.getElementById('ac-analise').textContent = contagem['EM ANÁLISE'] || 0;
-    document.getElementById('ac-decisao').textContent = contagem['AGUARDANDO_DECISAO'] || contagem['AGUARDANDO DECISÃO'] || 0;
-    document.getElementById('ac-aprovadas').textContent = contagem['APROVADA'] || 0;
-    document.getElementById('ac-tratamento').textContent = contagem['EM TRATAMENTO'] || 0;
-    document.getElementById('ac-devolutiva').textContent = contagem['AGUARDANDO_DEVOLUTIVA'] || 0;
-    document.getElementById('ac-encerradas').textContent = contagem['ENCERRADA'] || contagem['FINALIZADA'] || 0;
+      if (s.includes('ANÁLISE') || s === 'EM ANALISE') analiseCount++;
+      else if (s.includes('AGUARDANDO')) decisaoCount++;
+      else if (s.includes('TRATAMENTO')) tratamentoCount++;
+      else if (s.includes('APROVADA')) aprovadaCount++;
+      else if (s.includes('ENCERRADA') || s.includes('FINALIZADA')) encerradaCount++;
 
-    // Kanban
-    const colunas = ['EM ANÁLISE', 'AGUARDANDO_DECISAO', 'APROVADA', 'EM TRATAMENTO', 'AGUARDANDO_DEVOLUTIVA', 'ENCERRADA'];
-    const kanban = document.getElementById('acomp-kanban');
-    kanban.innerHTML = colunas.map(col => {
-      const info = getStatusInfo(col);
-      const items = _acompData.filter(m => (m.STATUS||'EM ANÁLISE').toUpperCase().replace(/ /g,'_') === col.replace(/ /g,'_'));
-      return `
-        <div style="min-width:180px;flex-shrink:0">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-            <div style="font-size:11px;font-weight:700;color:${info.color};text-transform:uppercase;letter-spacing:0.05em">${info.label}</div>
-            <div style="background:${info.bg};color:${info.color};font-size:11px;font-weight:700;padding:2px 7px;border-radius:20px">${items.length}</div>
-          </div>
-          <div style="display:flex;flex-direction:column;gap:6px">
-            ${items.slice(0,5).map(m => `
-              <div style="background:white;border:1px solid var(--gray-200);border-radius:8px;padding:10px;cursor:pointer;transition:border-color 0.15s" onmouseover="this.style.borderColor='var(--red)'" onmouseout="this.style.borderColor='var(--gray-200)'">
-                <div style="font-size:12px;font-weight:700;color:var(--gray-900);margin-bottom:2px">${m.ID_MANIFESTACAO || '--'}</div>
-                <div style="font-size:11px;color:var(--gray-500);margin-bottom:3px">${(m.EMPRESA_NORMALIZADA || m.EMPRESA_RECLAMANTE || '--').slice(0,25)}</div>
-                <div style="font-size:11px;color:var(--gray-400)">${m.TIPO || 'Reclamação'}</div>
-                ${m.PRIORIDADE ? `<div style="margin-top:4px"><span style="font-size:10px;font-weight:600;padding:1px 6px;border-radius:10px;background:${m.PRIORIDADE==='Alta'?'#FEE2E2':m.PRIORIDADE==='Média'?'#FEF3C7':'#F3F4F6'};color:${m.PRIORIDADE==='Alta'?'#DC2626':m.PRIORIDADE==='Média'?'#92400E':'#6B7280'}">${m.PRIORIDADE}</span></div>` : ''}
-              </div>
-            `).join('')}
-            ${items.length > 5 ? `<div style="font-size:11px;color:var(--gray-400);text-align:center;padding:4px">+${items.length-5} mais</div>` : ''}
-          </div>
-        </div>`;
-    }).join('');
+      // SLA vencido
+      const slaH = parseFloat(m.SLA_HORAS) || 72;
+      const dataAb = m.DATA_ABERTURA || m.DATA_REGISTRO || m.DATA_CRIACAO;
+      if (dataAb && !s.includes('ENCERRADA') && !s.includes('FINALIZADA')) {
+        const limite = new Date(dataAb).getTime() + slaH * 3600000;
+        if (agora > limite) vencidoCount++;
+      }
+
+      const setor = m.SETOR_DESTINADO || m.SETOR_CONFIRMADO || m.SETOR_SUGERIDO;
+      if (setor) setoresSet.add(setor);
+    });
+
+    const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    set('ac-total', totalCount);
+    set('ac-analise', analiseCount);
+    set('ac-decisao', decisaoCount);
+    set('ac-tratamento', tratamentoCount);
+    set('ac-aprovadas', aprovadaCount);
+    set('ac-encerradas', encerradaCount);
+    set('ac-vencidos', vencidoCount);
+
+    // Populate setor filter
+    const setorEl = document.getElementById('acomp-setor-filter');
+    if (setorEl && setoresSet.size > 0) {
+      const cur = setorEl.value;
+      setorEl.innerHTML = '<option value="">Todos os setores</option>' +
+        [...setoresSet].sort().map(s => `<option value="${s}"${s===cur?'selected':''}>${s}</option>`).join('');
+    }
 
     renderAcompanhamento(_acompData);
   } catch (e) {
     console.error('Erro acompanhamento:', e);
     const body = document.getElementById('acomp-body');
-    if(body) body.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--gray-400)">Erro ao carregar: ${e.message}</td></tr>`;
+    if (body) body.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--gray-400)">Erro ao carregar: ${e.message}</td></tr>`;
   }
+}
+
+function acompFiltrarStatus(status) {
+  const el = document.getElementById('acomp-status-filter');
+  if (el) el.value = status;
+  filtrarAcompanhamento();
+}
+
+function limparFiltrosAcomp() {
+  ['acomp-search','acomp-status-filter','acomp-empresa-filter','acomp-tipo-filter','acomp-setor-filter'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  const per = document.getElementById('acomp-periodo-filter');
+  if (per) per.value = '0';
+  renderAcompanhamento(_acompData);
 }
 
 function filtrarAcompanhamento() {
   const search = (document.getElementById('acomp-search')?.value || '').toLowerCase();
-  const statusF = document.getElementById('acomp-status-filter')?.value || '';
-  const empresaF = document.getElementById('acomp-empresa-filter')?.value || '';
+  const statusF = (document.getElementById('acomp-status-filter')?.value || '').toUpperCase();
+  const empresaF = (document.getElementById('acomp-empresa-filter')?.value || '').toUpperCase();
+  const tipoF = (document.getElementById('acomp-tipo-filter')?.value || '').toLowerCase();
+  const setorF = (document.getElementById('acomp-setor-filter')?.value || '').toLowerCase();
+  const periodoF = parseInt(document.getElementById('acomp-periodo-filter')?.value || '0');
+  const agora = Date.now();
+  const corteMs = periodoF > 0 ? agora - periodoF * 86400000 : 0;
 
   let data = _acompData;
+
   if (search) data = data.filter(m =>
     (m.ID_MANIFESTACAO||'').toLowerCase().includes(search) ||
     (m.EMPRESA_NORMALIZADA||'').toLowerCase().includes(search) ||
     (m.EMPRESA_RECLAMANTE||'').toLowerCase().includes(search) ||
-    (m.CONTATO||'').toLowerCase().includes(search)
+    (m.CONTATO||'').toLowerCase().includes(search) ||
+    (m.PRODUTO||'').toLowerCase().includes(search) ||
+    (m.DESCRICAO||'').toLowerCase().includes(search)
   );
-  if (statusF) data = data.filter(m => (m.STATUS||'').toUpperCase().includes(statusF.toUpperCase()));
-  if (empresaF) data = data.filter(m => (m.EMPRESA_RECLAMADA||'').toUpperCase().includes(empresaF.toUpperCase()));
+
+  if (statusF === 'VENCIDO') {
+    data = data.filter(m => {
+      const s = (m.STATUS||'').toUpperCase();
+      if (s.includes('ENCERRADA') || s.includes('FINALIZADA')) return false;
+      const slaH = parseFloat(m.SLA_HORAS) || 72;
+      const dataAb = m.DATA_ABERTURA || m.DATA_REGISTRO || m.DATA_CRIACAO;
+      if (!dataAb) return false;
+      return agora > new Date(dataAb).getTime() + slaH * 3600000;
+    });
+  } else if (statusF) {
+    data = data.filter(m => (m.STATUS||'').toUpperCase().includes(statusF));
+  }
+
+  if (empresaF) data = data.filter(m => (m.EMPRESA_RECLAMADA||'').toUpperCase().includes(empresaF));
+  if (tipoF) data = data.filter(m => (m.TIPO||m.TIPO_CONFIRMADO||'').toLowerCase().includes(tipoF));
+  if (setorF) data = data.filter(m =>
+    (m.SETOR_DESTINADO||m.SETOR_CONFIRMADO||m.SETOR_SUGERIDO||'').toLowerCase().includes(setorF)
+  );
+  if (corteMs > 0) data = data.filter(m => {
+    const dataAb = m.DATA_ABERTURA || m.DATA_REGISTRO || m.DATA_CRIACAO;
+    return dataAb && new Date(dataAb).getTime() >= corteMs;
+  });
+
   renderAcompanhamento(data);
 }
 
 function renderAcompanhamento(data) {
-  document.getElementById('acomp-total').textContent = `${data.length} solicitação(ões)`;
-  document.getElementById('acomp-body').innerHTML = data.length > 0
-    ? data.slice(0,50).map(m => {
-        const info = getStatusInfo(m.STATUS);
-        const pri = m.PRIORIDADE || '';
-        const priColor = pri === 'Alta' ? '#DC2626' : pri === 'Média' ? '#92400E' : '#6B7280';
-        const priBg = pri === 'Alta' ? '#FEE2E2' : pri === 'Média' ? '#FEF3C7' : '#F3F4F6';
-        return `<tr>
-          <td>
-            <div class="num-bold">${m.ID_MANIFESTACAO || '--'}</div>
-            <div class="num-date">${(m.DATA_ABERTURA||m.DATA_REGISTRO||m.DATA_CRIACAO) ? new Date(m.DATA_ABERTURA||m.DATA_REGISTRO||m.DATA_CRIACAO).toLocaleDateString('pt-BR') : '--'}</div>
-          </td>
-          <td>
-            <div class="cliente-primary">${m.EMPRESA_NORMALIZADA || m.EMPRESA_RECLAMANTE || '--'}</div>
-            <div class="cliente-secondary">${m.CONTATO || '--'}</div>
-          </td>
-          <td>${m.TIPO || 'Reclamação'}</td>
-          <td style="font-size:12px">${m.EMPRESA_RECLAMADA || '--'}</td>
-          <td><span style="display:inline-flex;padding:3px 8px;border-radius:20px;font-size:11px;font-weight:600;background:${info.bg};color:${info.color}">${info.label}</span></td>
-          <td>${pri ? `<span style="font-size:11px;font-weight:600;padding:2px 7px;border-radius:10px;background:${priBg};color:${priColor}">${pri}</span>` : '—'}</td>
-          <td style="font-size:12px">${m.SLA_HORAS ? m.SLA_HORAS + 'h' : '72h'}</td>
-          <td style="font-size:12px;color:var(--gray-500)">${m.RESPONSAVEL || 'Ana Lima'}</td>
-          <td><a class="link-abrir" onclick="abrirDossieIdx(${_storeRow(m)})">Abrir</a></td>
-        </tr>`;
-      }).join('')
-    : '<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--gray-400)">Nenhuma solicitação encontrada</td></tr>';
+  const total = document.getElementById('acomp-total');
+  if (total) total.textContent = `${data.length} solicitação(ões)`;
+  const agora = Date.now();
+  const body = document.getElementById('acomp-body');
+  if (!body) return;
+  if (!data.length) {
+    body.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--gray-400)">Nenhuma solicitação encontrada</td></tr>';
+    return;
+  }
+  body.innerHTML = data.slice(0, 100).map(m => {
+    const info = getStatusInfo(m.STATUS);
+    const setor = m.SETOR_DESTINADO || m.SETOR_CONFIRMADO || m.SETOR_SUGERIDO || '—';
+    const dataAb = m.DATA_ABERTURA || m.DATA_REGISTRO || m.DATA_CRIACAO;
+    const slaH = parseFloat(m.SLA_HORAS) || 72;
+    let slaHtml = '—';
+    if (dataAb) {
+      const limite = new Date(dataAb).getTime() + slaH * 3600000;
+      const diff = limite - agora;
+      const s = (m.STATUS||'').toUpperCase();
+      const encerrada = s.includes('ENCERRADA') || s.includes('FINALIZADA');
+      if (encerrada) {
+        slaHtml = '<span style="color:#6B7280;font-size:11px">Encerrada</span>';
+      } else if (diff < 0) {
+        const h = Math.abs(Math.round(diff / 3600000));
+        slaHtml = `<span style="color:#DC2626;font-weight:700;font-size:11px">⚠ +${h}h</span>`;
+      } else if (diff < 4 * 3600000) {
+        const h = Math.round(diff / 3600000);
+        slaHtml = `<span style="color:#D97706;font-weight:600;font-size:11px">⚡ ${h}h</span>`;
+      } else {
+        const h = Math.round(diff / 3600000);
+        slaHtml = `<span style="color:#059669;font-size:11px">${h}h</span>`;
+      }
+    }
+    const prox = typeof _proxPassos === 'function' ? _proxPassos(m) : null;
+    const proxHtml = prox
+      ? `<div style="font-size:11px;color:var(--gray-700)">${prox.acao}</div><div style="font-size:10px;color:var(--gray-400)">${prox.quem}</div>`
+      : '<span style="font-size:11px;color:var(--gray-400)">—</span>';
+    const resp = m.RESPONSAVEL || m.ANALISTA || '—';
+    return `<tr>
+      <td>
+        <div style="font-weight:700;font-size:12px">${m.ID_MANIFESTACAO || '--'}</div>
+        <div style="font-size:11px;color:var(--gray-400)">${dataAb ? new Date(dataAb).toLocaleDateString('pt-BR') : '--'}</div>
+      </td>
+      <td>
+        <div style="font-size:12px;font-weight:600">${m.EMPRESA_NORMALIZADA || m.EMPRESA_RECLAMANTE || '--'}</div>
+        <div style="font-size:11px;color:var(--gray-400)">${m.CONTATO || '--'}</div>
+      </td>
+      <td style="font-size:12px">${m.TIPO || m.TIPO_CONFIRMADO || 'Reclamação'}</td>
+      <td style="font-size:12px">${m.EMPRESA_RECLAMADA || '--'}</td>
+      <td style="font-size:12px">${setor}</td>
+      <td><span style="display:inline-flex;padding:3px 8px;border-radius:20px;font-size:11px;font-weight:600;background:${info.bg};color:${info.color}">${info.label}</span></td>
+      <td>${slaHtml}</td>
+      <td>${proxHtml}</td>
+      <td style="font-size:11px;color:var(--gray-600)">${resp}</td>
+      <td><a class="link-abrir" onclick="abrirDossieIdx(${_storeRow(m)})">Abrir</a></td>
+    </tr>`;
+  }).join('');
 }
 
 
@@ -8688,19 +9044,18 @@ function abrirModalSetorCerebro(id) {
   document.getElementById('modal-setor-cerebro-title').textContent = id ? 'Editar Informações do Setor' : 'Novo Setor';
   document.getElementById('setor-cerebro-id').value = id||'';
   document.getElementById('setor-cerebro-erro').style.display = 'none';
-  if (id) {
-    const s = _cerebroSetoresData.find(x => x.ID_SETOR === id) || {};
-    document.getElementById('setor-cerebro-nome').value = s.SETOR||'';
-    document.getElementById('setor-cerebro-empresa').value = s.EMPRESA||'';
-    document.getElementById('setor-cerebro-responsavel').value = s.RESPONSAVEL||'';
-    document.getElementById('setor-cerebro-descricao').value = s.DESCRICAO||'';
-    document.getElementById('setor-cerebro-sla').value = s.SLA_HORAS||'72';
-    document.getElementById('setor-cerebro-ativo').value = s.ATIVO||'SIM';
-  } else {
-    ['setor-cerebro-nome','setor-cerebro-empresa','setor-cerebro-responsavel','setor-cerebro-descricao'].forEach(fid=>document.getElementById(fid).value='');
-    document.getElementById('setor-cerebro-sla').value = '72';
-    document.getElementById('setor-cerebro-ativo').value = 'SIM';
-  }
+  const s = id ? (_cerebroSetoresData.find(x => x.ID_SETOR === id) || {}) : {};
+  document.getElementById('setor-cerebro-nome').value = s.SETOR||'';
+  document.getElementById('setor-cerebro-ativo').value = s.ATIVO||'SIM';
+  document.getElementById('setor-cerebro-descricao').value = s.DESCRICAO||'';
+  document.getElementById('setor-cerebro-responsavel').value = s.RESPONSAVEL||'';
+  document.getElementById('setor-cerebro-substituto').value = s.SUBSTITUTO||'';
+  document.getElementById('setor-cerebro-email').value = s.EMAIL_RESPONSAVEL||'';
+  document.getElementById('setor-cerebro-sla').value = s.SLA_HORAS||'72';
+  document.getElementById('setor-cerebro-responsabilidades').value = s.RESPONSABILIDADES||'';
+  document.getElementById('setor-cerebro-regras').value = s.REGRAS_OPERACIONAIS||'';
+  document.getElementById('setor-cerebro-procedimentos').value = s.PROCEDIMENTOS_ORIENTACOES||'';
+  document.getElementById('setor-cerebro-alertas').value = s.ALERTAS||'';
   document.getElementById('modal-setor-cerebro').style.display = 'flex';
 }
 function editarSetorCerebro(id) { abrirModalSetorCerebro(id); }
@@ -8708,18 +9063,26 @@ function fecharModalSetorCerebro() { document.getElementById('modal-setor-cerebr
 async function salvarSetorCerebro() {
   const id = document.getElementById('setor-cerebro-id').value;
   const erro = document.getElementById('setor-cerebro-erro');
+  erro.style.display = 'none';
+  const nome = document.getElementById('setor-cerebro-nome').value.trim();
+  if (!nome) { erro.textContent = 'Nome do setor é obrigatório.'; erro.style.display='block'; return; }
   const payload = {
-    SETOR: document.getElementById('setor-cerebro-nome').value.trim(),
-    EMPRESA: document.getElementById('setor-cerebro-empresa').value.trim(),
-    RESPONSAVEL: document.getElementById('setor-cerebro-responsavel').value.trim(),
-    DESCRICAO: document.getElementById('setor-cerebro-descricao').value.trim(),
-    SLA_HORAS: document.getElementById('setor-cerebro-sla').value.trim(),
+    SETOR: nome,
     ATIVO: document.getElementById('setor-cerebro-ativo').value,
+    DESCRICAO: document.getElementById('setor-cerebro-descricao').value.trim(),
+    RESPONSAVEL: document.getElementById('setor-cerebro-responsavel').value.trim(),
+    SUBSTITUTO: document.getElementById('setor-cerebro-substituto').value.trim(),
+    EMAIL_RESPONSAVEL: document.getElementById('setor-cerebro-email').value.trim(),
+    SLA_HORAS: document.getElementById('setor-cerebro-sla').value.trim(),
+    RESPONSABILIDADES: document.getElementById('setor-cerebro-responsabilidades').value.trim(),
+    REGRAS_OPERACIONAIS: document.getElementById('setor-cerebro-regras').value.trim(),
+    PROCEDIMENTOS_ORIENTACOES: document.getElementById('setor-cerebro-procedimentos').value.trim(),
+    ALERTAS: document.getElementById('setor-cerebro-alertas').value.trim(),
   };
-  if (!payload.SETOR) { erro.textContent = 'Nome do setor é obrigatório.'; erro.style.display='block'; return; }
   try {
     if (id) {
-      await _apiFetch(`/api/setores/${id}`, 15000, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+      // usa rota /operacional para salvar todos os campos incluindo base de conhecimento
+      await _apiFetch(`/api/setores/${encodeURIComponent(nome)}/operacional`, 15000, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
     } else {
       await _apiFetch('/api/setores', 15000, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
     }
