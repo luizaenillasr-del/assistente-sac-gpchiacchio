@@ -473,7 +473,7 @@ app.post('/api/representantes/manifestacoes', requerPerfil('RCA / REPRESENTANTE'
 // ===== MANIFESTAÇÕES =====
 app.get('/api/manifestacoes', async (req, res) => {
   try {
-    let data = await lerAba('MANIFESTACOES', 2000);
+    let data = await lerAba('MANIFESTACOES', 2000).catch(()=>[]);
     if (req.user && perfilCanonico(req.user.perfil)==='RCA / REPRESENTANTE') {
       const rca=normalizarTexto(req.user.codigoRCA||req.user.usuario);
       data=data.filter(r=>normalizarTexto(r.USUARIO_CRIACAO||'')===normalizarTexto(req.user.usuario)||normalizarTexto(r.CODIGO_RCA||'')===rca||normalizarTexto(r.RCA||'')===rca);
@@ -484,7 +484,7 @@ app.get('/api/manifestacoes', async (req, res) => {
 
 app.get('/api/manifestacoes/:id', async (req, res) => {
   try {
-    const data = await lerAba('MANIFESTACOES', 2000);
+    const data = await lerAba('MANIFESTACOES', 2000).catch(()=>[]);
     const item = data.find(r => r.ID_MANIFESTACAO === req.params.id);
     if (!item) return res.status(404).json({ sucesso: false, erro: 'Manifestação não encontrada.' });
     res.json({ sucesso: true, manifestacao: item });
@@ -1800,7 +1800,7 @@ app.post('/api/manifestacoes/:id/sugestoes', requerPerfil('MASTER','APROVADOR'),
 // ===== CAUSAS HIERÁRQUICAS =====
 app.get('/api/causas', async (req,res)=>{
   try {
-    const causas = await lerAba('CAUSAS', 2000);
+    const causas = await lerAba('CAUSAS', 2000).catch(()=>[]);
     res.json({sucesso:true, total:causas.length, itens:causas});
   } catch(e){ res.status(500).json({sucesso:false,erro:e.message,itens:[]}); }
 });
@@ -1839,7 +1839,7 @@ app.post('/api/causas', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>
 app.post('/api/causas/popular-historico', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
   try {
     const hist = await lerAba('BANCO_HISTORICO', 5000);
-    const existentes = await lerAba('CAUSAS', 2000);
+    const existentes = await lerAba('CAUSAS', 2000).catch(()=>[]);
     const causasExistentes = new Set(existentes.map(c=>(c.CAUSA||'').toLowerCase().trim()));
 
     const mapa = {}; // "tipo|causa|subcausa" -> contagem

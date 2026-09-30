@@ -2842,13 +2842,13 @@ function calcDashboard(mans, recs, filtroEmpresa, filtroSetor) {
     if (idx >= 0 && idx < 12) semanas[idx].count++;
   });
 
-  return { total, encerradas, emAndamento, dentroPrazo, foraPrazo, slaPercent, tempoMedio, rncs, tipos, motivos, porEmpresa, pendSetor, semanas, empresasSet: [...empresasSet], setoresNomes, recComSLA };
+  return { total, encerradas, emAndamento, dentroPrazo, foraPrazo, slaPercent, tempoMedio, rncs, tipos, motivos, porEmpresa, pendSetor, semanas, empresasSet: [...empresasSet], setoresNomes, recComSLA, _filteredMans: m, _filteredRecs: r };
 }
 
 function renderDashboard(data) {
   const { total, encerradas, emAndamento, dentroPrazo, foraPrazo, slaPercent, tempoMedio, rncs, tipos, motivos, porEmpresa, pendSetor, semanas, recComSLA } = data;
-  const recs = _dashData.recs;
-  const mans = _dashData.mans;
+  const recs = data._filteredRecs || _dashData.recs;
+  const mans = data._filteredMans || _dashData.mans;
 
   // === KPIs PRINCIPAIS ===
   const emAberto = recs.filter(r => (r['Status']||'').toUpperCase().includes('ABERTO')).length;
@@ -2987,12 +2987,13 @@ function renderDashboard(data) {
         const isMan = !!x.ID_MANIFESTACAO;
         const id = isMan ? x.ID_MANIFESTACAO : ('REC-' + String(i+1).padStart(3,'0'));
         const empresa = isMan ? (x.EMPRESA_NORMALIZADA || x.EMPRESA_RECLAMANTE || '--') : (x['Empresa'] || '--');
+        const contato = isMan ? (x.NOME_CONTATO || x.NOME || x.CONTATO || empresa) : (x['Contato'] || empresa);
         const tipo = isMan ? (x.TIPO || 'Reclamação') : (x['Motivo da Reclamação'] || 'Reclamação');
         const status = isMan ? getEtapaLabel(x.STATUS) : 'Em aberto';
         const eClass = isMan ? etapaClass(x.STATUS) : 'registro';
         return `<tr>
           <td class="num">${id}</td>
-          <td>${empresa}</td>
+          <td title="${empresa}">${contato}</td>
           <td>${tipo.length > 30 ? tipo.slice(0,30)+'...' : tipo}</td>
           <td>—</td>
           <td><span class="status-badge ${eClass}">${status}</span></td>
@@ -3615,7 +3616,7 @@ function abrirDossie(item) {
 
   const id = isMan ? item.ID_MANIFESTACAO : ('REC-' + Math.random().toString(36).slice(2,7).toUpperCase());
   const empresa = isMan ? (item.EMPRESA_RECLAMADA || item.EMPRESA_NORMALIZADA || '--') : (item['Empresa'] || '--');
-  const cliente = isMan ? (item.CONTATO || '--') : (item['Contato'] || '--');
+  const cliente = isMan ? (item.NOME_CONTATO || item.NOME || item.CONTATO || '--') : (item['Contato'] || '--');
   const tipo = isMan ? (item.TIPO || 'Reclamação') : (item['Motivo da Reclamação'] || '--');
   const status = isMan ? (item.STATUS || 'EM ANÁLISE') : (item['Status'] || item['Situação Final'] || '--');
   const desc = isMan ? (item.DESCRICAO_RECLAMACAO || '--') : (item['Descrição da Reclamação'] || '--');
