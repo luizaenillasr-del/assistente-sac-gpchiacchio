@@ -2987,13 +2987,14 @@ function renderDashboard(data) {
         const isMan = !!x.ID_MANIFESTACAO;
         const id = isMan ? x.ID_MANIFESTACAO : ('REC-' + String(i+1).padStart(3,'0'));
         const empresa = isMan ? (x.EMPRESA_NORMALIZADA || x.EMPRESA_RECLAMANTE || '--') : (x['Empresa'] || '--');
-        const contato = isMan ? (x.NOME_CONTATO || x.NOME || x.CONTATO || empresa) : (x['Contato'] || empresa);
+        const contato = isMan ? (x.NOME_CONTATO || x.NOME || x.CONTATO || '') : (x['Contato'] || '');
         const tipo = isMan ? (x.TIPO || 'Reclamação') : (x['Motivo da Reclamação'] || 'Reclamação');
         const status = isMan ? getEtapaLabel(x.STATUS) : 'Em aberto';
         const eClass = isMan ? etapaClass(x.STATUS) : 'registro';
+        const clienteLabel = contato && contato !== empresa ? `${contato}<div style="font-size:10px;color:var(--gray-400)">${empresa}</div>` : empresa;
         return `<tr>
           <td class="num">${id}</td>
-          <td title="${empresa}">${contato}</td>
+          <td title="${empresa}">${clienteLabel}</td>
           <td>${tipo.length > 30 ? tipo.slice(0,30)+'...' : tipo}</td>
           <td>—</td>
           <td><span class="status-badge ${eClass}">${status}</span></td>
@@ -4719,7 +4720,7 @@ loadVisaoGeral();
   // Não altera o layout existente.
   // ============================================================
 
-  const RESULTADOS_URL = '/painel-resultados';
+  const RESULTADOS_URL = 'https://script.google.com/macros/s/AKfycbxjRAEopqf9DsClRzJFoa28Jq8VSc8KBrpuot8emFF4oxHNZ7nsOqe2hRLjJxh8fjg-/exec';
   const REFRESH_MS = 60000;
 
   function esc(v){
@@ -8502,7 +8503,7 @@ async function cdLoadMan() {
 function renderCdMan(q='',st='') {
   const rows=_cdData.man.filter(x=>{ const s=(q?(x.ID_MANIFESTACAO+x.EMPRESA_RECLAMANTE+x.PRODUTO+x.CONTATO).toLowerCase().includes(q):true); const ss=(st?((x.STATUS||'').toLowerCase()===st):true); return s&&ss; });
   document.getElementById('cd-man-count').textContent=`${rows.length} registro(s)`;
-  cdRender('cd-man-tbody','cd-man-loading',rows.map(x=>`<tr><td><strong>${esc5(x.ID_MANIFESTACAO)}</strong></td><td style="font-size:11px">${fmt5(x.DATA_ABERTURA||x.DATA_REGISTRO)}</td><td>${esc5(x.EMPRESA_RECLAMANTE||x.CONTATO||'')}</td><td>${esc5(x.PRODUTO||'')}</td><td>${esc5(x.LOTE||'')}</td><td><span class="status-badge ${stClass(x.STATUS)}">${esc5(x.STATUS||'')}</span></td><td>${esc5(x.SETOR_SUGERIDO||x.SETOR_CONFIRMADO||'')}</td></tr>`),7,'Nenhuma manifestação.');
+  cdRender('cd-man-tbody','cd-man-loading',rows.map(x=>`<tr style="cursor:pointer" onclick="abrirDossie(${JSON.stringify(x).replace(/</g,'\\u003c')})" title="Clique para abrir o dossiê"><td><strong>${esc5(x.ID_MANIFESTACAO)}</strong></td><td style="font-size:11px">${fmt5(x.DATA_ABERTURA||x.DATA_REGISTRO)}</td><td>${esc5(x.EMPRESA_RECLAMANTE||x.CONTATO||'')}</td><td>${esc5(x.PRODUTO||'')}</td><td>${esc5(x.LOTE||'')}</td><td><span class="status-badge ${stClass(x.STATUS)}">${esc5(x.STATUS||'')}</span></td><td>${esc5(x.SETOR_SUGERIDO||x.SETOR_CONFIRMADO||'')}</td></tr>`),7,'Nenhuma manifestação.');
 }
 
 // ── RNC ──
