@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<title>Gestão de Manifestações — Grupo Chiacchio</title>
+<title>SAC GRUPO CHIACCHIO</title>
 <style>
   :root {
     --red: #C8102E;
@@ -455,15 +455,14 @@
 </style>
 </head>
 <style>
-  .login-screen { position: fixed; inset: 0; background: var(--sidebar-bg); display: flex; align-items: center; justify-content: center; z-index: 9999; }
-  .login-box { background: white; border-radius: 16px; padding: 40px; width: 360px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
-  .login-logo { display: flex; align-items: center; gap: 12px; margin-bottom: 28px; }
-  .login-logo-icon { width: 44px; height: 44px; background: var(--red); border-radius: 10px; display: flex; align-items: center; justify-content: center; }
-  .login-logo-icon svg { width: 24px; height: 24px; fill: white; }
-  .login-logo-text h2 { font-size: 15px; font-weight: 800; color: var(--gray-900); }
-  .login-logo-text p { font-size: 12px; color: var(--gray-400); }
-  .login-title { font-size: 22px; font-weight: 800; color: var(--gray-900); margin-bottom: 6px; }
-  .login-sub { font-size: 13px; color: var(--gray-400); margin-bottom: 24px; }
+  .login-screen { position: fixed; inset: 0; background: var(--sidebar-bg); display: flex; align-items: center; justify-content: center; z-index: 9999; padding: 20px; overflow-y: auto; }
+  .login-wrap { display: flex; flex-direction: column; align-items: center; gap: 20px; width: 100%; max-width: 400px; }
+  .login-header { text-align: center; margin-bottom: 4px; }
+  .login-header img { height: 48px; margin-bottom: 10px; filter: brightness(0) invert(1); }
+  .login-header h1 { font-size: 18px; font-weight: 800; color: white; letter-spacing: 0.06em; }
+  .login-box { background: white; border-radius: 16px; padding: 32px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.4); }
+  .login-title { font-size: 16px; font-weight: 800; color: var(--gray-900); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .login-sub { font-size: 12px; color: var(--gray-400); margin-bottom: 22px; }
   .login-field { margin-bottom: 14px; }
   .login-label { font-size: 12px; font-weight: 600; color: var(--gray-500); margin-bottom: 5px; display: block; }
   .login-input { width: 100%; padding: 10px 12px; border: 1px solid var(--gray-200); border-radius: 8px; font-size: 14px; outline: none; font-family: inherit; }
@@ -471,6 +470,51 @@
   .login-btn { width: 100%; padding: 11px; background: var(--red); color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; margin-top: 8px; font-family: inherit; }
   .login-btn:hover { background: var(--red-dark); }
   .login-error { background: #FEE2E2; color: #DC2626; font-size: 12px; padding: 8px 12px; border-radius: 6px; margin-top: 10px; display: none; }
+  .login-divider { display: flex; align-items: center; gap: 10px; margin: 6px 0; }
+  .login-divider::before, .login-divider::after { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,0.15); }
+  .login-divider span { font-size: 11px; color: rgba(255,255,255,0.45); white-space: nowrap; }
+  .login-portal-box { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 16px; padding: 24px; width: 100%; text-align: center; }
+  .login-portal-box h3 { font-size: 13px; font-weight: 700; color: white; margin-bottom: 6px; }
+  .login-portal-box p { font-size: 12px; color: rgba(255,255,255,0.55); margin-bottom: 16px; line-height: 1.5; }
+  .btn-portal { display: block; width: 100%; padding: 12px; background: transparent; color: white; border: 2px solid rgba(255,255,255,0.4); border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; transition: all 0.2s; }
+  .btn-portal:hover { background: rgba(255,255,255,0.12); border-color: white; }
+
+  /* PORTAL PÚBLICO — Formulário sem login */
+  .portal-screen { position: fixed; inset: 0; background: var(--gray-50); z-index: 9998; display: none; overflow-y: auto; }
+  .portal-header { background: var(--sidebar-bg); padding: 16px 24px; display: flex; align-items: center; gap: 16px; }
+  .portal-header img { height: 36px; filter: brightness(0) invert(1); }
+  .portal-header-title { color: white; }
+  .portal-header-title h1 { font-size: 14px; font-weight: 800; letter-spacing: 0.05em; }
+  .portal-header-title p { font-size: 11px; color: rgba(255,255,255,0.5); }
+  .portal-content { max-width: 680px; margin: 0 auto; padding: 32px 20px 60px; }
+  .portal-section { background: white; border: 1px solid var(--gray-200); border-radius: 12px; padding: 24px; margin-bottom: 16px; }
+  .portal-section-title { font-size: 13px; font-weight: 700; color: var(--gray-900); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .portal-section-sub { font-size: 12px; color: var(--gray-400); margin-bottom: 18px; }
+  .portal-field { margin-bottom: 14px; }
+  .portal-label { font-size: 12px; font-weight: 600; color: var(--gray-700); margin-bottom: 5px; display: block; }
+  .portal-label span { color: var(--red); }
+  .portal-input { width: 100%; padding: 10px 12px; border: 1px solid var(--gray-200); border-radius: 8px; font-size: 14px; outline: none; font-family: inherit; background: white; }
+  .portal-input:focus { border-color: var(--red); box-shadow: 0 0 0 3px var(--red-light); }
+  .portal-select { width: 100%; padding: 10px 12px; border: 1px solid var(--gray-200); border-radius: 8px; font-size: 14px; outline: none; font-family: inherit; background: white; appearance: none; }
+  .portal-textarea { width: 100%; padding: 10px 12px; border: 1px solid var(--gray-200); border-radius: 8px; font-size: 14px; outline: none; font-family: inherit; resize: vertical; min-height: 120px; }
+  .portal-textarea:focus, .portal-select:focus { border-color: var(--red); box-shadow: 0 0 0 3px var(--red-light); }
+  .portal-field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .portal-hint { font-size: 11px; color: var(--gray-400); margin-top: 4px; font-style: italic; }
+  .portal-err { background: #FEE2E2; color: #DC2626; font-size: 12px; padding: 10px 14px; border-radius: 8px; margin-bottom: 14px; display: none; }
+  .portal-btn-submit { width: 100%; padding: 14px; background: var(--red); color: white; border: none; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; transition: background 0.2s; }
+  .portal-btn-submit:hover { background: var(--red-dark); }
+  .portal-btn-submit:disabled { background: var(--gray-300); cursor: not-allowed; }
+  .portal-back { background: transparent; border: none; color: var(--gray-500); font-size: 13px; cursor: pointer; font-family: inherit; padding: 4px 0; margin-bottom: 20px; display: flex; align-items: center; gap: 5px; }
+  .portal-back:hover { color: var(--gray-900); }
+  .portal-success { text-align: center; padding: 48px 24px; }
+  .portal-success-icon { width: 72px; height: 72px; background: var(--green-light); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; }
+  .portal-protocol { background: var(--gray-50); border: 2px dashed var(--gray-300); border-radius: 12px; padding: 20px; margin: 20px 0; }
+  .portal-protocol-label { font-size: 12px; font-weight: 600; color: var(--gray-400); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+  .portal-protocol-num { font-size: 28px; font-weight: 800; color: var(--gray-900); letter-spacing: 0.05em; }
+  @media (max-width: 600px) {
+    .portal-field-grid { grid-template-columns: 1fr; }
+    .login-wrap { max-width: 100%; }
+  }
 </style>
 
 <!-- MODAL DOSSIÊ -->
@@ -568,39 +612,260 @@
 </div>
 
 <div class="login-screen" id="login-screen">
-  <div class="login-box">
-    <div class="login-logo">
-      <div class="login-logo-icon"><svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div>
-      <div class="login-logo-text"><h2>Gestão de Manifestações</h2><p>SAC · Grupo Chiacchio</p></div>
+  <div class="login-wrap">
+    <!-- Cabeçalho institucional -->
+    <div class="login-header">
+      <img src="/logo-chiacchio.png" alt="Grupo Chiacchio">
+      <h1>SAC GRUPO CHIACCHIO</h1>
     </div>
-    <div class="login-title">Bem-vinda de volta</div>
-    <div class="login-sub">Informe suas credenciais para acessar o sistema</div>
-    <div class="login-field">
-      <label class="login-label">Usuário</label>
-      <input class="login-input" type="text" id="login-user" placeholder="seu usuário" autocomplete="username" onkeydown="if(event.key==='Enter')document.getElementById('login-senha').focus()">
+
+    <!-- Caixa de login -->
+    <div class="login-box">
+      <div class="login-title">ACESSO AO SAC</div>
+      <div class="login-sub">Informe suas credenciais para acessar o sistema.</div>
+      <div class="login-field">
+        <label class="login-label">Usuário</label>
+        <input class="login-input" type="text" id="login-user" placeholder="seu usuário" autocomplete="username" onkeydown="if(event.key==='Enter')document.getElementById('login-senha').focus()">
+      </div>
+      <div class="login-field">
+        <label class="login-label">Senha</label>
+        <input class="login-input" type="password" id="login-senha" placeholder="sua senha" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <button class="login-btn" onclick="doLogin()">ENTRAR</button>
+      <div class="login-error" id="login-error">Usuário ou senha inválidos.</div>
+      <div style="margin-top:14px;text-align:center">
+        <span style="font-size:12px;color:#9CA3AF;cursor:pointer" onclick="toggleBootstrap()">Primeiro acesso? Criar conta administradora</span>
+      </div>
     </div>
-    <div class="login-field">
-      <label class="login-label">Senha</label>
-      <input class="login-input" type="password" id="login-senha" placeholder="sua senha" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+
+    <!-- Divisor -->
+    <div class="login-divider"><span>OU</span></div>
+
+    <!-- Portal do funcionário -->
+    <div class="login-portal-box">
+      <h3>RECEBEU UMA RECLAMAÇÃO DE CLIENTE?</h3>
+      <p>Você pode registrar a reclamação diretamente para o SAC, sem precisar de login.</p>
+      <button class="btn-portal" onclick="abrirPortalPublico()">REGISTRAR RECLAMAÇÃO</button>
     </div>
-    <button class="login-btn" onclick="doLogin()">Entrar</button>
-    <div class="login-error" id="login-error">Usuário ou senha inválidos.</div>
-    <div style="margin-top:14px;text-align:center">
-      <span style="font-size:12px;color:#9CA3AF;cursor:pointer" onclick="toggleBootstrap()">Primeiro acesso? Criar conta administradora</span>
+
+    <!-- BOOTSTRAP — só aparece quando não há usuários -->
+    <div class="login-box" id="bootstrap-box" style="display:none">
+      <div style="font-size:14px;font-weight:700;margin-bottom:12px;color:#111827">Criar conta administradora</div>
+      <div style="font-size:12px;color:#6B7280;margin-bottom:14px">Use apenas na configuração inicial. Após criar o primeiro usuário, este formulário deixa de funcionar.</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <input id="bs-usuario" class="login-input" placeholder="Login (ex: luiza)" autocomplete="off">
+        <input id="bs-nome" class="login-input" placeholder="Nome completo">
+        <input id="bs-senha" type="password" class="login-input" placeholder="Senha (mín. 6 caracteres)">
+      </div>
+      <button class="login-btn" style="margin-top:10px" onclick="doBootstrap()">Criar administrador</button>
+      <div id="bs-feedback" style="display:none;font-size:12px;padding:8px;border-radius:6px;margin-top:8px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- PORTAL PÚBLICO — REGISTRAR RECLAMAÇÃO (SEM LOGIN)           -->
+<!-- ============================================================ -->
+<div class="portal-screen" id="portal-screen">
+  <div class="portal-header">
+    <img src="/logo-chiacchio.png" alt="Grupo Chiacchio">
+    <div class="portal-header-title">
+      <h1>SAC GRUPO CHIACCHIO</h1>
+      <p>Registrar Reclamação</p>
     </div>
   </div>
 
-  <!-- BOOTSTRAP — só aparece quando não há usuários -->
-  <div class="login-box" id="bootstrap-box" style="display:none;margin-top:16px;max-width:360px">
-    <div style="font-size:14px;font-weight:700;margin-bottom:12px;color:#111827">Criar conta administradora</div>
-    <div style="font-size:12px;color:#6B7280;margin-bottom:14px">Use apenas na configuração inicial. Após criar o primeiro usuário, este formulário deixa de funcionar.</div>
-    <div style="display:flex;flex-direction:column;gap:10px">
-      <input id="bs-usuario" class="login-input" placeholder="Login (ex: luiza)" autocomplete="off">
-      <input id="bs-nome" class="login-input" placeholder="Nome completo">
-      <input id="bs-senha" type="password" class="login-input" placeholder="Senha (mín. 6 caracteres)">
+  <!-- Formulário -->
+  <div class="portal-content" id="portal-form-wrap">
+    <button class="portal-back" onclick="fecharPortalPublico()">
+      ← Voltar
+    </button>
+
+    <div style="margin-bottom:24px">
+      <div style="font-size:22px;font-weight:800;color:var(--gray-900);margin-bottom:6px">Registrar Reclamação</div>
+      <div style="font-size:13px;color:var(--gray-500);line-height:1.6">Recebeu uma reclamação de cliente? Registre as informações abaixo para que o SAC possa realizar o atendimento.<br><strong style="color:var(--gray-700)">Você não precisa analisar a reclamação — apenas registre o que o cliente informou.</strong></div>
     </div>
-    <button class="login-btn" style="margin-top:10px" onclick="doBootstrap()">Criar administrador</button>
-    <div id="bs-feedback" style="display:none;font-size:12px;padding:8px;border-radius:6px;margin-top:8px"></div>
+
+    <div class="portal-err" id="portal-err"></div>
+
+    <!-- Seção 1: Quem está registrando -->
+    <div class="portal-section">
+      <div class="portal-section-title">Quem está registrando</div>
+      <div class="portal-section-sub">Identifique-se para que o SAC saiba quem encaminhou a reclamação.</div>
+      <div class="portal-field-grid">
+        <div class="portal-field">
+          <label class="portal-label">Seu nome <span>*</span></label>
+          <input class="portal-input" id="p-nome-reg" type="text" placeholder="Seu nome completo">
+        </div>
+        <div class="portal-field">
+          <label class="portal-label">Seu setor <span>*</span></label>
+          <input class="portal-input" id="p-setor-reg" type="text" placeholder="Ex: Comercial, Logística...">
+        </div>
+      </div>
+      <div class="portal-field">
+        <label class="portal-label">Seu contato (telefone ou e-mail)</label>
+        <input class="portal-input" id="p-contato-reg" type="text" placeholder="Opcional">
+      </div>
+      <div class="portal-field">
+        <label class="portal-label">Empresa <span>*</span></label>
+        <select class="portal-select" id="p-empresa">
+          <option value="">Selecione...</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Seção 2: Como chegou -->
+    <div class="portal-section">
+      <div class="portal-section-title">Como a reclamação chegou</div>
+      <div class="portal-section-sub">De que forma o cliente entrou em contato?</div>
+      <div class="portal-field">
+        <label class="portal-label">Canal de contato</label>
+        <select class="portal-select" id="p-canal" onchange="toggleCanalOutro()">
+          <option value="">Selecione...</option>
+          <option>Telefone</option>
+          <option>WhatsApp</option>
+          <option>E-mail</option>
+          <option>Presencial</option>
+          <option>Representante</option>
+          <option>Comercial</option>
+          <option>Outro</option>
+        </select>
+      </div>
+      <div class="portal-field" id="p-canal-outro-wrap" style="display:none">
+        <label class="portal-label">Informe o canal</label>
+        <input class="portal-input" id="p-canal-outro" type="text" placeholder="Descreva o canal">
+      </div>
+    </div>
+
+    <!-- Seção 3: Dados do cliente -->
+    <div class="portal-section">
+      <div class="portal-section-title">Dados do cliente</div>
+      <div class="portal-section-sub">Preencha o que souber. O SAC complementará as informações posteriormente.</div>
+      <div class="portal-field">
+        <label class="portal-label">Nome do cliente <span>*</span></label>
+        <input class="portal-input" id="p-nome-cliente" type="text" placeholder="Nome da empresa ou pessoa">
+      </div>
+      <div class="portal-field-grid">
+        <div class="portal-field">
+          <label class="portal-label">CNPJ / CPF</label>
+          <input class="portal-input" id="p-cnpj" type="text" placeholder="Opcional">
+        </div>
+        <div class="portal-field">
+          <label class="portal-label">Telefone / WhatsApp</label>
+          <input class="portal-input" id="p-tel" type="text" placeholder="Opcional">
+        </div>
+      </div>
+      <div class="portal-field">
+        <label class="portal-label">E-mail</label>
+        <input class="portal-input" id="p-email" type="email" placeholder="Opcional">
+      </div>
+    </div>
+
+    <!-- Seção 4: O que aconteceu -->
+    <div class="portal-section">
+      <div class="portal-section-title">O que o cliente reclamou?</div>
+      <div class="portal-section-sub">Descreva o que o cliente relatou. Registre os fatos da forma mais fiel possível, sem tentar identificar a causa.</div>
+      <div class="portal-field">
+        <label class="portal-label">O que aconteceu? <span>*</span></label>
+        <textarea class="portal-textarea" id="p-descricao" placeholder='Ex: "Cliente informou que recebeu 20 caixas do produto e 3 estavam danificadas."' style="min-height:140px"></textarea>
+      </div>
+      <div class="portal-field">
+        <label class="portal-label">O que o cliente deseja?</label>
+        <select class="portal-select" id="p-solicitacao">
+          <option value="">Não informado</option>
+          <option>Troca do produto</option>
+          <option>Devolução</option>
+          <option>Reposição</option>
+          <option>Esclarecimento</option>
+          <option>Contato do responsável</option>
+          <option>Apenas registrou a insatisfação</option>
+          <option>Outro</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Seção 5: Dados da ocorrência -->
+    <div class="portal-section">
+      <div class="portal-section-title">Dados da ocorrência</div>
+      <div class="portal-section-sub">Preencha o que souber. Todos os campos são opcionais — não bloqueie o registro por falta de informação.</div>
+      <div class="portal-field-grid">
+        <div class="portal-field">
+          <label class="portal-label">Produto</label>
+          <input class="portal-input" id="p-produto" type="text" placeholder="Nome ou código">
+        </div>
+        <div class="portal-field">
+          <label class="portal-label">Pedido</label>
+          <input class="portal-input" id="p-pedido" type="text" placeholder="Número do pedido">
+        </div>
+        <div class="portal-field">
+          <label class="portal-label">Nota fiscal</label>
+          <input class="portal-input" id="p-nf" type="text" placeholder="NF ou número">
+        </div>
+        <div class="portal-field">
+          <label class="portal-label">Lote</label>
+          <input class="portal-input" id="p-lote" type="text" placeholder="Número do lote">
+        </div>
+        <div class="portal-field">
+          <label class="portal-label">Quantidade</label>
+          <input class="portal-input" id="p-qtd" type="text" placeholder="Ex: 3 caixas">
+        </div>
+        <div class="portal-field">
+          <label class="portal-label">Transportadora</label>
+          <input class="portal-input" id="p-transp" type="text" placeholder="Nome">
+        </div>
+        <div class="portal-field">
+          <label class="portal-label">Data do ocorrido</label>
+          <input class="portal-input" id="p-data-oc" type="date">
+        </div>
+        <div class="portal-field">
+          <label class="portal-label">Data da entrega</label>
+          <input class="portal-input" id="p-data-ent" type="date">
+        </div>
+      </div>
+    </div>
+
+    <!-- Seção 6: Evidências -->
+    <div class="portal-section">
+      <div class="portal-section-title">Evidências</div>
+      <div class="portal-section-sub">Se o cliente enviou fotos, documentos ou comprovantes, você pode anexá-los aqui. Não obrigatório.</div>
+      <div class="portal-field">
+        <input type="file" id="p-files" multiple accept="image/*,.pdf,.txt" style="display:none" onchange="handlePortalFiles(event)">
+        <button type="button" class="btn btn-secondary" onclick="document.getElementById('p-files').click()">+ Adicionar arquivos</button>
+        <div class="portal-hint">Formatos: imagens (JPG, PNG, GIF, WEBP), PDF, TXT — máx. 5 MB por arquivo, até 5 arquivos.</div>
+        <div id="p-files-list" style="margin-top:10px;display:flex;flex-direction:column;gap:6px"></div>
+      </div>
+    </div>
+
+    <!-- Botão enviar -->
+    <button class="portal-btn-submit" id="portal-submit-btn" onclick="submitPortal()">
+      ENVIAR RECLAMAÇÃO AO SAC
+    </button>
+    <div style="text-align:center;margin-top:12px;font-size:12px;color:var(--gray-400)">
+      Ao enviar, a reclamação será encaminhada ao SAC para análise e atendimento.
+    </div>
+  </div>
+
+  <!-- Tela de sucesso -->
+  <div class="portal-content" id="portal-success-wrap" style="display:none">
+    <div class="portal-success">
+      <div class="portal-success-icon">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+      </div>
+      <div style="font-size:24px;font-weight:800;color:var(--gray-900);margin-bottom:8px">Reclamação registrada!</div>
+      <div style="font-size:14px;color:var(--gray-500);margin-bottom:24px;line-height:1.6">Recebemos a reclamação e ela foi encaminhada ao SAC.<br>O SAC realizará o atendimento e, se necessário, entrará em contato.</div>
+      <div class="portal-protocol">
+        <div class="portal-protocol-label">Protocolo</div>
+        <div class="portal-protocol-num" id="portal-protocolo-num">—</div>
+        <div style="font-size:12px;color:var(--gray-400);margin-top:6px" id="portal-protocolo-info"></div>
+      </div>
+      <div style="background:var(--yellow-light);border:1px solid #FDE68A;border-radius:8px;padding:10px 14px;margin-bottom:24px;font-size:12px;color:#92400E">
+        📝 Anote o número do protocolo para acompanhamento com o SAC.
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <button class="portal-btn-submit" onclick="resetPortal()">REGISTRAR OUTRA RECLAMAÇÃO</button>
+        <button class="portal-back" style="justify-content:center" onclick="fecharPortalPublico()">← Voltar para o início</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -609,7 +874,8 @@
 
   function toggleBootstrap() {
     const el = document.getElementById('bootstrap-box');
-    el.style.display = el.style.display === 'none' ? 'block' : 'none';
+    el.style.display = el.style.display === 'none' ? 'flex' : 'none';
+    if (el.style.display === 'flex') el.style.flexDirection = 'column';
   }
 
   async function doBootstrap() {
@@ -651,6 +917,148 @@
       await (window.iniciarSessaoV5 ? window.iniciarSessaoV5() : Promise.resolve());
     }catch(e){err.textContent=e.message||'Não foi possível entrar.';err.style.display='block';}
   }
+
+  // ===== PORTAL PÚBLICO =====
+  let _portalFiles = [];
+
+  function abrirPortalPublico() {
+    document.getElementById('portal-screen').style.display='block';
+    document.body.style.overflow='hidden';
+    // Carrega lista de empresas
+    fetch(window.SAC_API+'/api/public/empresas')
+      .then(r=>r.json()).then(d=>{
+        const sel=document.getElementById('p-empresa');
+        if(d.empresas&&d.empresas.length){
+          sel.innerHTML='<option value="">Selecione...</option>'+d.empresas.map(e=>`<option value="${e.replace(/"/g,'&quot;')}">${e}</option>`).join('');
+        }
+      }).catch(()=>{});
+  }
+
+  function fecharPortalPublico() {
+    document.getElementById('portal-screen').style.display='none';
+    document.body.style.overflow='';
+  }
+
+  function toggleCanalOutro() {
+    const v = document.getElementById('p-canal').value;
+    document.getElementById('p-canal-outro-wrap').style.display = v === 'Outro' ? 'block' : 'none';
+  }
+
+  function handlePortalFiles(e) {
+    const files = Array.from(e.target.files);
+    const allowed = ['image/jpeg','image/png','image/gif','image/webp','application/pdf','text/plain'];
+    const maxMB = 5;
+    const list = document.getElementById('p-files-list');
+    for (const f of files) {
+      if (_portalFiles.length >= 5) { alert('Máximo de 5 arquivos.'); break; }
+      if (!allowed.includes(f.type)) { alert(`Tipo não permitido: ${f.name}`); continue; }
+      if (f.size > maxMB * 1024 * 1024) { alert(`Arquivo muito grande: ${f.name} (máx ${maxMB}MB)`); continue; }
+      const reader = new FileReader();
+      const idx = _portalFiles.length;
+      _portalFiles.push({ nome: f.name, tipo: f.type, tamanho: f.size, dados: null });
+      reader.onload = ev => { _portalFiles[idx].dados = ev.target.result.split(',')[1]; renderPortalFiles(); };
+      reader.readAsDataURL(f);
+    }
+    e.target.value = '';
+    renderPortalFiles();
+  }
+
+  function renderPortalFiles() {
+    const list = document.getElementById('p-files-list');
+    list.innerHTML = _portalFiles.map((f,i) => `
+      <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--gray-50);border:1px solid var(--gray-200);border-radius:6px">
+        <span style="font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${f.nome}</span>
+        <span style="font-size:11px;color:var(--gray-400)">${(f.tamanho/1024).toFixed(0)}KB</span>
+        <button onclick="_portalFiles.splice(${i},1);renderPortalFiles()" style="background:none;border:none;cursor:pointer;color:var(--gray-400);font-size:14px;padding:0">×</button>
+      </div>`).join('');
+  }
+
+  function resetPortal() {
+    document.getElementById('portal-form-wrap').style.display='block';
+    document.getElementById('portal-success-wrap').style.display='none';
+    document.getElementById('portal-err').style.display='none';
+    // Limpar campos
+    ['p-nome-reg','p-setor-reg','p-contato-reg','p-nome-cliente','p-cnpj','p-tel','p-email','p-descricao','p-produto','p-pedido','p-nf','p-lote','p-qtd','p-transp','p-data-oc','p-data-ent'].forEach(id=>{ const el=document.getElementById(id); if(el)el.value=''; });
+    document.getElementById('p-empresa').value='';
+    document.getElementById('p-canal').value='';
+    document.getElementById('p-solicitacao').value='';
+    document.getElementById('p-canal-outro-wrap').style.display='none';
+    _portalFiles=[];
+    renderPortalFiles();
+    document.getElementById('portal-screen').scrollTop=0;
+  }
+
+  async function submitPortal() {
+    const btn = document.getElementById('portal-submit-btn');
+    const errEl = document.getElementById('portal-err');
+    errEl.style.display='none';
+
+    const v = id => (document.getElementById(id)?.value||'').trim();
+    const nomeRegistrante = v('p-nome-reg');
+    const setorRegistrante = v('p-setor-reg');
+    const empresa = v('p-empresa');
+    const nomeCliente = v('p-nome-cliente');
+    const descricao = v('p-descricao');
+
+    if (!nomeRegistrante) { errEl.textContent='Informe seu nome.'; errEl.style.display='block'; document.getElementById('p-nome-reg').focus(); return; }
+    if (!setorRegistrante) { errEl.textContent='Informe seu setor.'; errEl.style.display='block'; document.getElementById('p-setor-reg').focus(); return; }
+    if (!empresa) { errEl.textContent='Selecione a empresa.'; errEl.style.display='block'; document.getElementById('p-empresa').focus(); return; }
+    if (!nomeCliente) { errEl.textContent='Informe o nome do cliente.'; errEl.style.display='block'; document.getElementById('p-nome-cliente').focus(); return; }
+    if (!descricao || descricao.length < 10) { errEl.textContent='Descreva o que aconteceu (mínimo 10 caracteres).'; errEl.style.display='block'; document.getElementById('p-descricao').focus(); return; }
+
+    // Verificar se arquivos já foram lidos
+    const pendentes = _portalFiles.filter(f => !f.dados);
+    if (pendentes.length > 0) { errEl.textContent='Aguarde o carregamento dos arquivos.'; errEl.style.display='block'; return; }
+
+    btn.disabled=true; btn.textContent='Enviando...';
+
+    const payload = {
+      nomeRegistrante,
+      setorRegistrante,
+      contatoRegistrante: v('p-contato-reg'),
+      empresa,
+      canal: v('p-canal'),
+      canalOutro: v('p-canal-outro'),
+      nomeCliente,
+      cnpjCliente: v('p-cnpj'),
+      telefoneCliente: v('p-tel'),
+      emailCliente: v('p-email'),
+      descricao,
+      solicitacaoCliente: v('p-solicitacao'),
+      produto: v('p-produto'),
+      pedido: v('p-pedido'),
+      notaFiscal: v('p-nf'),
+      lote: v('p-lote'),
+      quantidade: v('p-qtd'),
+      transportadora: v('p-transp'),
+      dataOcorrido: v('p-data-oc'),
+      dataEntrega: v('p-data-ent'),
+      evidencias: _portalFiles.filter(f=>f.dados),
+    };
+
+    try {
+      const r = await fetch(window.SAC_API+'/api/public/reclamacoes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await r.json();
+      if (!data.sucesso) throw new Error(data.erro || 'Erro ao registrar.');
+
+      // Mostrar tela de sucesso
+      document.getElementById('portal-form-wrap').style.display='none';
+      document.getElementById('portal-success-wrap').style.display='block';
+      document.getElementById('portal-protocolo-num').textContent = data.protocolo || '—';
+      const dt = data.dataHora ? new Date(data.dataHora).toLocaleString('pt-BR') : '';
+      document.getElementById('portal-protocolo-info').textContent = [dt && 'Registrado em: '+dt, empresa && 'Empresa: '+empresa, nomeCliente && 'Cliente: '+nomeCliente].filter(Boolean).join(' · ');
+      document.getElementById('portal-screen').scrollTop=0;
+    } catch(e) {
+      errEl.textContent = e.message || 'Não foi possível registrar. Tente novamente.';
+      errEl.style.display='block';
+    } finally {
+      btn.disabled=false; btn.textContent='ENVIAR RECLAMAÇÃO AO SAC';
+    }
+  }
 </script>
 
 <body>
@@ -658,11 +1066,8 @@
 <!-- SIDEBAR -->
 <nav class="sidebar">
   <div class="sidebar-logo">
-    <div class="sidebar-logo-icon">
-      <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-    </div>
-    <h2>Gestão de Manifestações</h2>
-    <p>SAC · Grupo Chiacchio</p>
+    <img src="/logo-chiacchio.png" alt="Grupo Chiacchio" style="width:130px;display:block;margin-bottom:6px;filter:brightness(0) invert(1);opacity:0.9">
+    <h2 style="font-size:11px;font-weight:700;color:white;letter-spacing:0.04em">SAC GRUPO CHIACCHIO</h2>
   </div>
 
   <div class="sidebar-section">Atendimento</div>

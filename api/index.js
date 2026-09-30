@@ -2866,6 +2866,134 @@ app.get('/api/historico-aprovacao', requerPerfil('MASTER','APROVADOR'), async (r
   } catch(e){res.status(500).json({sucesso:false,erro:e.message});}
 });
 
+// ===== PORTAL FUNCIONÁRIO — ROTA PÚBLICA (SEM AUTENTICAÇÃO) =====
+// Rate limiting em memória para a rota pública
+const _publicRateMap = new Map();
+function publicRateLimit(req, res, next) {
+  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
+  const now = Date.now();
+  const window = 60 * 1000; // 1 min
+  const max = 5; // max 5 requests per minute per IP
+  const entry = _publicRateMap.get(ip) || { count: 0, start: now };
+  if (now - entry.start > window) { entry.count = 0; entry.start = now; }
+  entry.count++;
+  _publicRateMap.set(ip, entry);
+  if (entry.count > max) return res.status(429).json({ sucesso: false, erro: 'Muitas requisições. Aguarde um momento.' });
+  next();
+}
+
+// Limpeza periódica do rate limit map
+setInterval(() => { const cutoff = Date.now() - 2 * 60 * 1000; _publicRateMap.forEach((v, k) => { if (v.start < cutoff) _publicRateMap.delete(k); }); }, 5 * 60 * 1000);
+
+const ALLOWED_FILE_TYPES = ['image/jpeg','image/png','image/gif','image/webp','application/pdf','text/plain'];
+const MAX_FILE_SIZE_MB = 5;
+
+app.post('/api/public/reclamacoes', publicRateLimit, async (req, res) => {
+  try {
+    const b = req.body || {};
+
+    // Validação obrigatória
+    const nomeRegistrante = String(b.nomeRegistrante || '').trim().slice(0, 200);
+    const setorRegistrante = String(b.setorRegistrante || '').trim().slice(0, 100);
+    const empresa = String(b.empresa || '').trim().slice(0, 200);
+    const nomeCliente = String(b.nomeCliente || '').trim().slice(0, 200);
+    const descricao = String(b.descricao || '').trim().slice(0, 3000);
+
+    if (!nomeRegistrante) return res.status(400).json({ sucesso: false, erro: 'Informe seu nome.' });
+    if (!setorRegistrante) return res.status(400).json({ sucesso: false, erro: 'Informe seu setor.' });
+    if (!empresa) return res.status(400).json({ sucesso: false, erro: 'Selecione a empresa.' });
+    if (!nomeCliente) return res.status(400).json({ sucesso: false, erro: 'Informe o nome do cliente.' });
+    if (!descricao || descricao.length < 10) return res.status(400).json({ sucesso: false, erro: 'Descreva o que aconteceu (mínimo 10 caracteres).' });
+
+    // Campos opcionais — sanitizados
+    const contatoRegistrante = String(b.contatoRegistrante || '').trim().slice(0, 100);
+    const cnpjCliente = String(b.cnpjCliente || '').replace(/[^0-9./-]/g,'').slice(0, 20);
+    const telefoneCliente = String(b.telefoneCliente || '').replace(/[^0-9() +\-]/g,'').slice(0, 30);
+    const emailCliente = String(b.emailCliente || '').trim().slice(0, 200);
+    const canal = String(b.canal || '').trim().slice(0, 50);
+    const canalOutro = String(b.canalOutro || '').trim().slice(0, 100);
+    const solicitacaoCliente = String(b.solicitacaoCliente || '').trim().slice(0, 500);
+    const produto = String(b.produto || '').trim().slice(0, 200);
+    const pedido = String(b.pedido || '').trim().slice(0, 100);
+    const notaFiscal = String(b.notaFiscal || '').trim().slice(0, 100);
+    const lote = String(b.lote || '').trim().slice(0, 100);
+    const quantidade = String(b.quantidade || '').trim().slice(0, 50);
+    const dataOcorrido = String(b.dataOcorrido || '').trim().slice(0, 30);
+    const dataEntrega = String(b.dataEntrega || '').trim().slice(0, 30);
+    const transportadora = String(b.transportadora || '').trim().slice(0, 100);
+
+    // Validar evidências (base64)
+    const evidencias = Array.isArray(b.evidencias) ? b.evidencias.slice(0, 5) : [];
+    for (const ev of evidencias) {
+      if (!ev.nome || !ev.tipo || !ev.dados) continue;
+      if (!ALLOWED_FILE_TYPES.includes(ev.tipo)) return res.status(400).json({ sucesso: false, erro: `Tipo de arquivo não permitido: ${ev.tipo}` });
+      const sizeMB = (ev.dados.length * 3 / 4) / (1024 * 1024);
+      if (sizeMB > MAX_FILE_SIZE_MB) return res.status(400).json({ sucesso: false, erro: `Arquivo muito grande: ${ev.nome} (máx ${MAX_FILE_SIZE_MB}MB)` });
+    }
+
+    const agora = new Date().toISOString();
+    const id = await gerarProximoID('MANIFESTACOES', 'MAN', 'ID_MANIFESTACAO');
+
+    const canalFinal = canal === 'Outro' && canalOutro ? `Outro: ${canalOutro}` : (canal || 'Não informado');
+
+    const objeto = {
+      ID_MANIFESTACAO: id,
+      DATA_ABERTURA: agora,
+      DATA_REGISTRO: agora,
+      EMPRESA_RECLAMADA: empresa,
+      EMPRESA_RECLAMANTE: empresa,
+      CLIENTE_NOME: nomeCliente,
+      NOME_CLIENTE: nomeCliente,
+      CNPJ: cnpjCliente,
+      TELEFONE: telefoneCliente,
+      EMAIL: emailCliente,
+      DESCRICAO: descricao,
+      DESCRICAO_RECLAMACAO: descricao,
+      DESCRICAO_MANIFESTACAO: descricao,
+      PRODUTO: produto,
+      LOTE: lote,
+      NFE: notaFiscal,
+      PEDIDO: pedido,
+      QUANTIDADE: quantidade,
+      DATA_OCORRIDO: dataOcorrido,
+      DATA_ENTREGA: dataEntrega,
+      TRANSPORTADORA: transportadora,
+      CANAL: canalFinal,
+      SOLICITACAO_CLIENTE: solicitacaoCliente,
+      STATUS: 'RECEBIDA',
+      TIPO: 'Reclamação',
+      ORIGEM: 'PORTAL_FUNCIONARIO',
+      ORIGEM_REGISTRO: 'PORTAL_FUNCIONARIO',
+      REGISTRADO_POR: nomeRegistrante,
+      SETOR_REGISTRANTE: setorRegistrante,
+      CONTATO_REGISTRANTE: contatoRegistrante,
+      USUARIO_CRIACAO: `portal:${nomeRegistrante}`,
+      STATUS_TRATATIVA: 'NÃO INICIADA',
+      EVIDENCIAS: evidencias.length > 0 ? JSON.stringify(evidencias.map(e => ({ nome: e.nome, tipo: e.tipo, tamanho: e.tamanho }))) : '',
+    };
+
+    await appendObjeto('MANIFESTACOES', objeto);
+    registrarAuditoria(`portal:${nomeRegistrante}`, 'CRIOU_MANIFESTAÇÃO_PORTAL', id, 'MANIFESTACOES', null, { empresa, nomeCliente, canal: canalFinal }).catch(() => {});
+
+    // Retorna APENAS o protocolo — sem dados internos
+    res.json({ sucesso: true, protocolo: id, dataHora: agora });
+  } catch (e) {
+    console.error('[PUBLIC] POST /api/public/reclamacoes:', e.message);
+    res.status(500).json({ sucesso: false, erro: 'Não foi possível registrar a reclamação. Tente novamente.' });
+  }
+});
+
+// Empresas para o portal público (somente lista de nomes, sem dados internos)
+app.get('/api/public/empresas', publicRateLimit, async (req, res) => {
+  try {
+    const data = await lerAba('EMPRESAS', 500).catch(() => []);
+    const nomes = [...new Set(data.map(e => (e.NOME || e.EMPRESA || e.nome || '').trim()).filter(Boolean))].sort();
+    res.json({ sucesso: true, empresas: nomes });
+  } catch (e) {
+    res.status(500).json({ sucesso: false, empresas: [] });
+  }
+});
+
 // ===== CATCH ALL =====
 app.use((req, res) => {
   res.status(404).json({ sucesso:false, erro:`Rota não encontrada: ${req.method} ${req.path}` });

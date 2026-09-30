@@ -18,6 +18,7 @@
       }
     },
     { "src": "/api/(.*)", "dest": "/api/index.js" },
+    { "src": "/logo-chiacchio.png", "dest": "/public/logo-chiacchio.png" },
     { "src": "/(.*)", "dest": "/public/index.html" }
   ]
 }
