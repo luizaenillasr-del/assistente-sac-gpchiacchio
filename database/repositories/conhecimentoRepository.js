@@ -8,17 +8,17 @@ const conhecimentoRepository = {
     const where = {};
     if (empresaId) where.empresaId = Number(empresaId);
     if (setorId) where.setorId = Number(setorId);
-    if (ativo) where.ativo = true;
-    return prisma.politica.findMany({ where, orderBy: { nome: 'asc' } });
+    if (ativo) where.status = 'ATIVA';
+    return prisma.politica.findMany({ where, orderBy: { titulo: 'asc' } });
   },
 
   // Procedimentos por empresa/setor/tipo
   async findProcedimentos({ empresaId, setorId, tipo } = {}) {
-    const where = { ativo: true };
+    const where = { status: 'ATIVO' };
     if (empresaId) where.empresaId = Number(empresaId);
     if (setorId) where.setorId = Number(setorId);
     if (tipo) where.tipo = tipo;
-    return prisma.procedimento.findMany({ where, orderBy: { nome: 'asc' } });
+    return prisma.procedimento.findMany({ where, orderBy: { titulo: 'asc' } });
   },
 
   // Regras por empresa/setor
@@ -26,7 +26,7 @@ const conhecimentoRepository = {
     const where = { ativo: true };
     if (empresaId) where.empresaId = Number(empresaId);
     if (setorId) where.setorId = Number(setorId);
-    return prisma.regra.findMany({ where, orderBy: { prioridade: 'asc' } });
+    return prisma.regra.findMany({ where, orderBy: { titulo: 'asc' } });
   },
 
   // Base de conhecimento (FAQ)
@@ -34,7 +34,7 @@ const conhecimentoRepository = {
     const where = { ativo: true };
     if (setorId) where.setorId = Number(setorId);
     if (tipo) where.tipo = tipo;
-    if (busca) where.conteudo = { contains: busca, mode: 'insensitive' };
+    if (busca) where.resposta = { contains: busca, mode: 'insensitive' };
     return prisma.baseConhecimento.findMany({ where, orderBy: { criadoEm: 'desc' }, take: 20 });
   },
 
@@ -43,56 +43,72 @@ const conhecimentoRepository = {
     const where = { ativo: true };
     if (empresaId) where.empresaId = Number(empresaId);
     if (setorId) where.setorId = Number(setorId);
-    if (tipo) where.tipo = tipo;
+    if (tipo) where.tipoManifestacao = tipo;
     if (categoria) where.categoria = categoria;
     return prisma.slaConfig.findFirst({
       where,
-      orderBy: { criadoEm: 'desc' },
+      orderBy: { criadaEm: 'desc' },
     });
   },
 
   // Matriz de tratamento por empresa/tipo/categoria
   async findMatriz({ empresaId, tipo, categoria, subcategoria, setor } = {}) {
-    const where = { ativa: true };
+    const where = { ativo: true };
     if (empresaId) where.empresaId = Number(empresaId);
     if (tipo) where.tipoManifestacao = tipo;
     if (categoria) where.categoria = categoria;
     if (subcategoria) where.subcategoria = subcategoria;
-    if (setor) where.setor = setor;
+    if (setor) where.setorResponsavel = setor;
     return prisma.matrizTratamento.findMany({ where, orderBy: { prioridade: 'asc' } });
   },
 
   // Upsert política
-  async upsertPolitica({ empresaId, setorId, nome, descricao, regra, vigencia }) {
-    return prisma.politica.upsert({
-      where: { empresaId_setorId_nome: { empresaId: Number(empresaId), setorId: Number(setorId), nome } },
-      update: { descricao, regra, vigencia },
-      create: { empresaId: Number(empresaId), setorId: Number(setorId), nome, descricao, regra, vigencia },
+  async upsertPolitica({ empresaId, setorId, titulo, texto, responsavel }) {
+    const existente = await prisma.politica.findFirst({
+      where: { empresaId: Number(empresaId), titulo },
+    });
+    if (existente) {
+      return prisma.politica.update({ where: { id: existente.id }, data: { texto, responsavel } });
+    }
+    return prisma.politica.create({
+      data: {
+        empresaId: Number(empresaId),
+        setorId: setorId ? Number(setorId) : null,
+        titulo, texto: texto || '', responsavel,
+      },
     });
   },
 
   // Upsert procedimento
-  async upsertProcedimento({ empresaId, setorId, nome, objetivo, passos, tipo }) {
+  async upsertProcedimento({ empresaId, setorId, titulo, texto, tipo }) {
+    const existente = await prisma.procedimento.findFirst({
+      where: { empresaId: Number(empresaId), titulo },
+    });
+    if (existente) {
+      return prisma.procedimento.update({ where: { id: existente.id }, data: { texto, tipo } });
+    }
     return prisma.procedimento.create({
-      data: { empresaId: Number(empresaId), setorId: Number(setorId), nome, objetivo, passos, tipo },
-    }).catch(async () => {
-      const existente = await prisma.procedimento.findFirst({
-        where: { empresaId: Number(empresaId), nome },
-      });
-      if (existente) return prisma.procedimento.update({ where: { id: existente.id }, data: { objetivo, passos } });
-      return null;
+      data: {
+        empresaId: Number(empresaId),
+        setorId: setorId ? Number(setorId) : null,
+        titulo, texto: texto || '', tipo,
+      },
     });
   },
 
   // Upsert regra
-  async upsertRegra({ empresaId, setorId, nome, condicao, acao, palavrasGatilho, prioridade }) {
+  async upsertRegra({ empresaId, setorId, titulo, descricao, condicao, acao }) {
+    const existente = await prisma.regra.findFirst({
+      where: { empresaId: Number(empresaId), titulo },
+    });
+    if (existente) {
+      return prisma.regra.update({ where: { id: existente.id }, data: { descricao, condicao, acao } });
+    }
     return prisma.regra.create({
       data: {
         empresaId: Number(empresaId),
-        setorId: Number(setorId),
-        nome, condicao, acao,
-        palavrasGatilho: palavrasGatilho || [],
-        prioridade: prioridade || 5,
+        setorId: setorId ? Number(setorId) : null,
+        titulo: titulo || 'Sem título', descricao: descricao || '', condicao, acao,
       },
     }).catch(() => null);
   },

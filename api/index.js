@@ -6,13 +6,14 @@ const cerebroService = require('./services/cerebroServices');
 const documentService = require('./services/documentService');
 const { tratativaEngine, devolutivaEngine, assertividade: assertividadeService } = cerebroService;
 
-// Repositórios PostgreSQL (F4) — falha silenciosa, fallback para Sheets
-let usuarioRepo, manifestacaoRepo, rncRepo, empresaRepo;
+// Repositórios PostgreSQL (F4/F7) — falha silenciosa, fallback para Sheets
+let usuarioRepo, manifestacaoRepo, rncRepo, empresaRepo, conhecimentoRepo;
 try {
   usuarioRepo = require('../database/repositories/usuarioRepository');
   manifestacaoRepo = require('../database/repositories/manifestacaoRepository');
   rncRepo = require('../database/repositories/rncRepository');
   empresaRepo = require('../database/repositories/empresaRepository');
+  conhecimentoRepo = require('../database/repositories/conhecimentoRepository');
 } catch (e) {
   console.warn('[F4] Repositórios PG não disponíveis:', e.message);
 }
@@ -1582,6 +1583,22 @@ app.get('/api/conhecimento', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONS
 });
 app.get('/api/procedimentos', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
   try {
+    // F7: tenta PostgreSQL primeiro
+    if (conhecimentoRepo) {
+      try {
+        const filtros = {};
+        if (req.query.empresaId) filtros.empresaId = req.query.empresaId;
+        if (req.query.setorId) filtros.setorId = req.query.setorId;
+        const pgData = await conhecimentoRepo.findProcedimentos(filtros);
+        if (pgData && pgData.length > 0) {
+          const itens = pgData.map(p => ({
+            ID_PROCEDIMENTO: String(p.id), NOME: p.titulo || '',
+            DESCRICAO: p.texto || '', PASSOS: '', ATIVO: p.status === 'ATIVO' ? 'SIM' : 'NÃO',
+          }));
+          return res.json({ sucesso: true, total: itens.length, itens, fonte: 'postgresql' });
+        }
+      } catch (e) { console.warn('[F7] GET /procedimentos PG falhou:', e.message); }
+    }
     await garantirAbaComCabecalhos('PROCEDIMENTOS',['ID_PROCEDIMENTO','NOME','SETOR_RESPONSAVEL','DESCRICAO','PASSOS','ATIVO']).catch(()=>{});
     const data=await lerAba('PROCEDIMENTOS',200).catch(()=>[]);
     res.json({sucesso:true,total:data.length,itens:data});
@@ -1589,6 +1606,22 @@ app.get('/api/procedimentos', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPON
 });
 app.get('/api/politicas', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
   try {
+    // F7: tenta PostgreSQL primeiro
+    if (conhecimentoRepo) {
+      try {
+        const filtros = {};
+        if (req.query.empresaId) filtros.empresaId = req.query.empresaId;
+        if (req.query.setorId) filtros.setorId = req.query.setorId;
+        const pgData = await conhecimentoRepo.findPoliticas(filtros);
+        if (pgData && pgData.length > 0) {
+          const itens = pgData.map(p => ({
+            ID_POLITICA: String(p.id), POLITICA: p.titulo || '',
+            DESCRICAO: p.texto || '', ATIVO: p.status === 'ATIVA' ? 'SIM' : 'NÃO',
+          }));
+          return res.json({ sucesso: true, total: itens.length, itens, fonte: 'postgresql' });
+        }
+      } catch (e) { console.warn('[F7] GET /politicas PG falhou:', e.message); }
+    }
     await garantirAbaComCabecalhos('POLITICAS',['ID_POLITICA','POLITICA','SETOR_RESPONSAVEL','DESCRICAO','RESPONSAVEL','ATIVO']).catch(()=>{});
     const data=await lerAba('POLITICAS',200).catch(()=>[]);
     res.json({sucesso:true,total:data.length,itens:data});
@@ -1614,6 +1647,18 @@ app.post('/api/procedimentos', requerPerfil('MASTER','ANALISTA SAC'), async (req
 });
 app.get('/api/matriz', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
   try {
+    // F12: tenta PostgreSQL primeiro
+    if (conhecimentoRepo) {
+      try {
+        const filtros = {};
+        if (req.query.empresaId) filtros.empresaId = req.query.empresaId;
+        if (req.query.tipo) filtros.tipo = req.query.tipo;
+        const pgData = await conhecimentoRepo.findMatriz(filtros);
+        if (pgData && pgData.length > 0) {
+          return res.json({ sucesso: true, itens: pgData, fonte: 'postgresql' });
+        }
+      } catch (e) { console.warn('[F12] GET /matriz PG falhou:', e.message); }
+    }
     await garantirAbaComCabecalhos('MATRIZ_DECISAO', ['ID_MATRIZ','TEMA','SETOR_PRINCIPAL','SETORES_APOIO','SLA_HORAS','PRIORIDADE','GERA_RNC','APROVACAO','FOLLOW_UP','REGRAS']);
     const data = await lerAba('MATRIZ_DECISAO', 500);
     res.json({ sucesso: true, itens: data });
@@ -1722,8 +1767,20 @@ app.get('/api/tipos', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL',
   catch (e) { res.status(500).json({sucesso:false,erro:e.message,dados:[]}); }
 });
 app.get('/api/sla', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
-  try { const data=await lerAba('SLA_ESCALONAMENTO',50).catch(()=>[]); res.json({sucesso:true,total:data.length,itens:data}); }
-  catch (e) { res.status(500).json({sucesso:false,erro:e.message,dados:[]}); }
+  try {
+    // F12: tenta PostgreSQL primeiro
+    if (conhecimentoRepo) {
+      try {
+        const filtros = {};
+        if (req.query.empresaId) filtros.empresaId = req.query.empresaId;
+        if (req.query.tipo) filtros.tipo = req.query.tipo;
+        const sla = await conhecimentoRepo.findSla(filtros);
+        if (sla) return res.json({ sucesso: true, total: 1, itens: [sla], fonte: 'postgresql' });
+      } catch (e) { console.warn('[F12] GET /sla PG falhou:', e.message); }
+    }
+    const data=await lerAba('SLA_ESCALONAMENTO',50).catch(()=>[]);
+    res.json({sucesso:true,total:data.length,itens:data});
+  } catch (e) { res.status(500).json({sucesso:false,erro:e.message,dados:[]}); }
 });
 app.get('/api/validacoes', requerPerfil('MASTER','ANALISTA SAC'), async (req, res) => {
   try { const data=await lerAba('HISTORICO_VALIDACOES',1000).catch(()=>[]); res.json({sucesso:true,total:data.length,itens:data}); }
