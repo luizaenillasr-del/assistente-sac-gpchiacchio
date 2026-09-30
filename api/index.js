@@ -1481,8 +1481,16 @@ app.get('/api/empresas', async (req, res) => {
 app.get('/api/clientes/:cnpj', requerPerfil('MASTER','ANALISTA SAC','RCA / REPRESENTANTE'), async (req, res) => {
   try {
     const cnpj=req.params.cnpj.replace(/\D/g,'');
+    if(cnpj.length < 8) return res.json({sucesso:true,encontrado:false,cliente:null,historico:[]});
     const historico=await lerAba('BANCO_HISTORICO',2000).catch(()=>[]);
-    const casos=historico.filter(h=>{const hcnpj=(h.ORIG_CONTATO||'').replace(/\D/g,'');return hcnpj.includes(cnpj)||cnpj.includes(hcnpj);});
+    const casos=historico.filter(h=>{
+      // Busca pelo campo CNPJ dedicado primeiro
+      const hcnpj=(h.ORIG_CNPJ||h.CNPJ||'').replace(/\D/g,'');
+      if(hcnpj.length >= 8) return hcnpj === cnpj;
+      // Fallback: busca no contato mas exige tamanho mínimo para evitar falsos positivos
+      const hcontato=(h.ORIG_CONTATO||'').replace(/\D/g,'');
+      return hcontato.length >= 8 && hcontato === cnpj;
+    });
     if(casos.length===0) return res.json({sucesso:true,encontrado:false,cliente:null,historico:[]});
     const ultimo=casos[casos.length-1];
     res.json({sucesso:true,encontrado:true,cliente:{contato:ultimo.ORIG_CONTATO,empresa:normalizarEmpresa(ultimo.ORIG_EMPRESA)||ultimo.ORIG_EMPRESA,reincidente:casos.length>1},historico:casos.slice(-5).map(c=>({id:c.ID_HISTORICO,data:normalizarData(c.ORIG_DATA_ABERTURA),descricao:(c.ORIG_DESCRICAO_RECLAMACAO||'').slice(0,100),status:c.ORIG_STATUS,tipo:c.COMP_TIPO_PROBLEMA_VALIDADO})),totalCasos:casos.length});
@@ -1551,10 +1559,8 @@ app.get('/api/setores-unicos', async (req, res) => {
 
 app.get('/api/setores', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
   try {
-    // Não await garantirAbaComCabecalhos no GET — write ops atrasam demais
-    garantirAbaComCabecalhos('CONFIG_SETORES',['ID_SETOR','SETOR','DESCRICAO','RESPONSAVEL','SUBSTITUTO','EMAIL_RESPONSAVEL','SLA_HORAS','RESPONSABILIDADES','REGRAS_OPERACIONAIS','PROCEDIMENTOS_ORIENTACOES','ALERTAS','ATIVO','EMPRESA']).catch(()=>{});
+    // GET puro — sem criar/escrever abas. Se não existe, retorna vazio e frontend usa fallback.
     const data = await lerAba('CONFIG_SETORES', 500).catch(()=>[]);
-    // Counts carregados separadamente em /api/setores/counts para não travar o listing
     const itens = data.map(s => ({ ...s, _counts: {} }));
     res.json({ sucesso:true, total:itens.length, itens });
   } catch (e) { res.status(500).json({ sucesso:false, erro:e.message, itens:[] }); }
