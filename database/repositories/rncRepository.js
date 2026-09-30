@@ -8,7 +8,6 @@ const rncRepository = {
       where: { id: Number(id) },
       include: {
         empresa: true,
-        setor: true,
         manifestacao: true,
         investigacoes: true,
         acoes: true,
@@ -32,8 +31,8 @@ const rncRepository = {
     if (status) where.status = status;
     return prisma.rnc.findMany({
       where,
-      include: { empresa: true, setor: true },
-      orderBy: { abertaEm: 'desc' },
+      include: { empresa: true },
+      orderBy: { dataAbertura: 'desc' },
       skip,
       take,
     });
