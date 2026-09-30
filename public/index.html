@@ -8497,7 +8497,7 @@ function renderCdHist(q='') {
   document.getElementById('cd-hist-count').textContent=`${rows.length} registro(s)`;
   cdRender('cd-hist-tbody','cd-hist-loading',rows.map((x,i)=>`<tr style="cursor:pointer" onclick="cdHistDetalhe(${_cdData.hist.indexOf(x)})" title="Clique para ver detalhes"><td><strong>${esc5(x.ID_HISTORICO||x.ID_MANIFESTACAO||'')}</strong></td><td>${esc5(x.ORIG_EMPRESA||x.EMPRESA_RECLAMANTE||x.CONTATO||'')}</td><td>${esc5(x.ORIG_CONTATO||x.CONTATO||'')}</td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc5((x.ORIG_DESCRICAO_RECLAMACAO||x.DESCRICAO||'').slice(0,80))}</td><td>${esc5(x.COMP_TIPO_PROBLEMA_VALIDADO||x.TIPO_PROBLEMA_VALIDADO||x.TIPO||'')}</td><td>${esc5(x.COMP_CAUSA_RAIZ||x.CAUSA_RAIZ||x.CAUSA||'')}</td><td><span class="status-badge ${stClass(x.ORIG_STATUS||x.STATUS)}">${esc5(x.ORIG_STATUS||x.STATUS||'')}</span></td><td style="font-size:11px">${fmt5(x.ORIG_DATA_ABERTURA||x.DATA_ABERTURA)}</td></tr>`),8,'Sem histórico.');
 }
-function cdHistDetalhe(idx) {
+async function cdHistDetalhe(idx) {
   const x = _cdData.hist[idx];
   if (!x) return;
   const campos = [
@@ -8513,7 +8513,6 @@ function cdHistDetalhe(idx) {
     ['Prazo Cumprido','COMP_PRAZO_CUMPRIDO','PRAZO_CUMPRIDO'],
     ['Satisfação','COMP_SATISFACAO','SATISFACAO'],
     ['Reincidente','COMP_REINCIDENTE','REINCIDENTE'],
-    ['Tratativa','COMP_TRATATIVA','TRATATIVA'],
     ['Produto','ORIG_PRODUTO','PRODUTO'],['Lote','ORIG_LOTE','LOTE'],
     ['NF-e','ORIG_NFE','NFE'],['Quantidade','ORIG_QUANTIDADE','QUANTIDADE'],
     ['Valor','ORIG_VALOR','VALOR'],
@@ -8524,22 +8523,86 @@ function cdHistDetalhe(idx) {
     return `<div style="display:flex;gap:8px;padding:6px 0;border-bottom:1px solid var(--gray-100)"><span style="min-width:130px;font-weight:600;font-size:12px;color:var(--gray-500)">${label}</span><span style="font-size:13px;flex:1">${esc5(val)}</span></div>`;
   }).join('');
   const descricao = x.ORIG_DESCRICAO_RECLAMACAO||x.DESCRICAO||'';
+  const tratativa = x.COMP_TRATATIVA||x.TRATATIVA||x.TRATATIVA_APLICAVEL||x.TRATATIVA_REALIZADA||'';
+  const devolutiva = x.COMP_DEVOLUTIVA||x.DEVOLUTIVA||x.DEVOLUTIVA_ENVIADA||x.DEVOLUTIVA_FINAL||'';
+  const diagnostico = x.COMP_DIAGNOSTICO||x.DIAGNOSTICO||x.COMP_CAUSA_RAIZ||x.CAUSA_RAIZ||'';
+
   let el = document.getElementById('modal-hist-detalhe');
   if (!el) {
     el = document.createElement('div');
     el.id = 'modal-hist-detalhe';
     el.className = 'modal-overlay';
     el.style.cssText='display:none;z-index:2000';
-    el.innerHTML=`<div class="modal" style="max-width:680px;width:100%;max-height:90vh;overflow-y:auto"><div class="modal-header"><h3 id="mhd-title" style="font-size:16px;font-weight:700"></h3><button class="modal-close" onclick="document.getElementById('modal-hist-detalhe').style.display='none'">×</button></div><div class="modal-body" style="padding:20px"><div id="mhd-campos"></div><div id="mhd-desc-wrap" style="margin-top:16px;display:none"><div style="font-weight:600;font-size:12px;color:var(--gray-500);margin-bottom:6px">DESCRIÇÃO COMPLETA</div><div id="mhd-desc" style="background:var(--gray-50);border-radius:8px;padding:12px;font-size:13px;line-height:1.6;white-space:pre-wrap"></div></div></div></div>`;
+    el.innerHTML=`<div class="modal" style="max-width:760px;width:100%;max-height:92vh;overflow-y:auto">
+      <div class="modal-header">
+        <h3 id="mhd-title" style="font-size:16px;font-weight:700"></h3>
+        <button class="modal-close" onclick="document.getElementById('modal-hist-detalhe').style.display='none'">×</button>
+      </div>
+      <div class="modal-body" style="padding:20px">
+        <div id="mhd-campos"></div>
+        <div id="mhd-desc-wrap" style="margin-top:16px;display:none">
+          <div style="font-weight:700;font-size:11px;color:var(--gray-400);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Descrição</div>
+          <div id="mhd-desc" style="background:var(--gray-50);border-radius:8px;padding:12px;font-size:13px;line-height:1.6;white-space:pre-wrap"></div>
+        </div>
+        <div id="mhd-diag-wrap" style="margin-top:16px;display:none">
+          <div style="font-weight:700;font-size:11px;color:var(--gray-400);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Diagnóstico / Causa Raiz</div>
+          <div id="mhd-diag" style="background:#FEF9C3;border-radius:8px;padding:12px;font-size:13px;line-height:1.6;border-left:3px solid #CA8A04"></div>
+        </div>
+        <div id="mhd-trat-wrap" style="margin-top:16px;display:none">
+          <div style="font-weight:700;font-size:11px;color:var(--gray-400);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Tratativa Aplicada</div>
+          <div id="mhd-trat" style="background:#F0FDF4;border-radius:8px;padding:12px;font-size:13px;line-height:1.6;border-left:3px solid #16A34A"></div>
+        </div>
+        <div id="mhd-dev-wrap" style="margin-top:16px;display:none">
+          <div style="font-weight:700;font-size:11px;color:var(--gray-400);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Devolutiva ao Cliente</div>
+          <div id="mhd-dev" style="background:#EFF6FF;border-radius:8px;padding:12px;font-size:13px;line-height:1.6;border-left:3px solid #2563EB;white-space:pre-wrap"></div>
+        </div>
+        <div id="mhd-sim-wrap" style="margin-top:20px;display:none">
+          <div style="font-weight:700;font-size:11px;color:var(--gray-400);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Casos Similares</div>
+          <div id="mhd-sim-list"></div>
+        </div>
+      </div>
+    </div>`;
     el.addEventListener('click',e=>{ if(e.target===el) el.style.display='none'; });
     document.body.appendChild(el);
   }
-  document.getElementById('mhd-title').textContent=`Histórico: ${x.ID_HISTORICO||x.ID_MANIFESTACAO||''}`;
+
+  document.getElementById('mhd-title').textContent=`${x.ORIG_EMPRESA||x.EMPRESA_RECLAMANTE||'Histórico'} — ${x.ID_HISTORICO||x.ID_MANIFESTACAO||''}`;
   document.getElementById('mhd-campos').innerHTML=linhas;
-  const descEl=document.getElementById('mhd-desc');
-  const descWrap=document.getElementById('mhd-desc-wrap');
-  if(descricao){descEl.textContent=descricao;descWrap.style.display='block';}else{descWrap.style.display='none';}
+
+  const set=(id,val,wrapId)=>{
+    const w=document.getElementById(wrapId);
+    if(val){document.getElementById(id).textContent=val;w.style.display='block';}else{w.style.display='none';}
+  };
+  set('mhd-desc',descricao,'mhd-desc-wrap');
+  set('mhd-diag',diagnostico,'mhd-diag-wrap');
+  set('mhd-trat',tratativa,'mhd-trat-wrap');
+  set('mhd-dev',devolutiva,'mhd-dev-wrap');
+
   el.style.display='flex';
+
+  // Buscar casos similares assíncronamente
+  const simWrap=document.getElementById('mhd-sim-wrap');
+  const simList=document.getElementById('mhd-sim-list');
+  simWrap.style.display='none';
+  if(descricao) {
+    simList.innerHTML='<div class="loading"><div class="spinner"></div> Buscando casos similares...</div>';
+    simWrap.style.display='block';
+    try {
+      const sr=await _apiFetch('/api/analise/similares',15000,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({descricao,empresa:x.ORIG_EMPRESA||x.EMPRESA_RECLAMANTE||''})});
+      const sims=(sr.similares||sr.casosSimilares||[]).slice(0,4);
+      if(sims.length){
+        simList.innerHTML=sims.map(s=>`<div style="background:var(--gray-50);border-radius:8px;padding:10px 12px;margin-bottom:8px;font-size:12px">
+          <div style="font-weight:600;color:var(--gray-700);margin-bottom:4px">${esc5(s.empresa||s.EMPRESA||'')} — ${esc5(s.tipo||s.TIPO||'')} <span style="color:var(--gray-400);font-weight:400">${Math.round((s.similaridade||0)*100)}% similar</span></div>
+          <div style="color:var(--gray-500);margin-bottom:4px">${esc5((s.descricao||s.DESCRICAO||'').slice(0,120))}</div>
+          ${s.tratativa||s.TRATATIVA?`<div style="color:#16A34A;font-style:italic">Tratativa: ${esc5((s.tratativa||s.TRATATIVA||'').slice(0,100))}</div>`:''}
+        </div>`).join('');
+      } else {
+        simList.innerHTML='<div style="color:var(--gray-400);font-size:12px">Nenhum caso similar encontrado.</div>';
+      }
+    } catch(e) {
+      simList.innerHTML='<div style="color:var(--gray-400);font-size:12px">Não foi possível buscar casos similares.</div>';
+    }
+  }
 }
 
 // ── SETORES ──
