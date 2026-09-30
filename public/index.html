@@ -506,6 +506,10 @@
   .portal-btn-submit:disabled { background: var(--gray-300); cursor: not-allowed; }
   .portal-back { background: transparent; border: none; color: var(--gray-500); font-size: 13px; cursor: pointer; font-family: inherit; padding: 4px 0; margin-bottom: 20px; display: flex; align-items: center; gap: 5px; }
   .portal-back:hover { color: var(--gray-900); }
+  .portal-checkbox-opt { display: flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1.5px solid var(--gray-200); border-radius: 20px; cursor: pointer; font-size: 13px; font-weight: 500; color: var(--gray-700); transition: all 0.15s; user-select: none; }
+  .portal-checkbox-opt:hover { border-color: var(--red); color: var(--red); }
+  .portal-checkbox-opt input[type=radio] { accent-color: var(--red); width: 14px; height: 14px; }
+  .portal-hint { font-size: 11px; color: var(--gray-400); margin-top: 5px; }
   .portal-success { text-align: center; padding: 48px 24px; }
   .portal-success-icon { width: 72px; height: 72px; background: var(--green-light); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; }
   .portal-protocol { background: var(--gray-50); border: 2px dashed var(--gray-300); border-radius: 12px; padding: 20px; margin: 20px 0; }
@@ -671,177 +675,178 @@
     <img src="/logo-chiacchio.png" alt="Grupo Chiacchio">
     <div class="portal-header-title">
       <h1>SAC GRUPO CHIACCHIO</h1>
-      <p>Registrar Reclamação</p>
+      <p>Ficha de Reclamação / Manifestação</p>
     </div>
   </div>
 
   <!-- Formulário -->
   <div class="portal-content" id="portal-form-wrap">
-    <button class="portal-back" onclick="fecharPortalPublico()">
-      ← Voltar
-    </button>
+    <button class="portal-back" onclick="fecharPortalPublico()">← Voltar</button>
 
     <div style="margin-bottom:24px">
-      <div style="font-size:22px;font-weight:800;color:var(--gray-900);margin-bottom:6px">Registrar Reclamação</div>
-      <div style="font-size:13px;color:var(--gray-500);line-height:1.6">Recebeu uma reclamação de cliente? Registre as informações abaixo para que o SAC possa realizar o atendimento.<br><strong style="color:var(--gray-700)">Você não precisa analisar a reclamação — apenas registre o que o cliente informou.</strong></div>
+      <div style="font-size:22px;font-weight:800;color:var(--gray-900);margin-bottom:6px">Registrar Manifestação</div>
+      <div style="font-size:13px;color:var(--gray-500);line-height:1.6">Preencha a ficha com as informações recebidas do cliente. <strong style="color:var(--gray-700)">Registre os fatos — o SAC realizará a análise.</strong></div>
     </div>
 
     <div class="portal-err" id="portal-err"></div>
 
-    <!-- Seção 1: Quem está registrando -->
+    <!-- SEÇÃO 1: DADOS DO REGISTRO -->
     <div class="portal-section">
-      <div class="portal-section-title">Quem está registrando</div>
-      <div class="portal-section-sub">Identifique-se para que o SAC saiba quem encaminhou a reclamação.</div>
+      <div class="portal-section-title"><span style="background:var(--red);color:white;border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;margin-right:8px;flex-shrink:0">1</span>DADOS DO REGISTRO</div>
       <div class="portal-field-grid">
         <div class="portal-field">
-          <label class="portal-label">Seu nome <span>*</span></label>
+          <label class="portal-label">Data do Registro</label>
+          <input class="portal-input" id="p-data-reg" type="text" readonly style="background:var(--gray-100);color:var(--gray-500)">
+        </div>
+        <div class="portal-field">
+          <label class="portal-label">Setor <span>*</span></label>
+          <input class="portal-input" id="p-setor-reg" type="text" placeholder="Ex: Comercial, Logística, Vendas...">
+        </div>
+        <div class="portal-field">
+          <label class="portal-label">Colaborador (Recebimento) <span>*</span></label>
           <input class="portal-input" id="p-nome-reg" type="text" placeholder="Seu nome completo">
         </div>
         <div class="portal-field">
-          <label class="portal-label">Seu setor <span>*</span></label>
-          <input class="portal-input" id="p-setor-reg" type="text" placeholder="Ex: Comercial, Logística...">
+          <label class="portal-label">Empresa <span>*</span></label>
+          <select class="portal-select" id="p-empresa">
+            <option value="">Selecione...</option>
+          </select>
         </div>
       </div>
-      <div class="portal-field">
-        <label class="portal-label">Seu contato (telefone ou e-mail)</label>
-        <input class="portal-input" id="p-contato-reg" type="text" placeholder="Opcional">
-      </div>
-      <div class="portal-field">
-        <label class="portal-label">Empresa <span>*</span></label>
-        <select class="portal-select" id="p-empresa">
-          <option value="">Selecione...</option>
-        </select>
-      </div>
     </div>
 
-    <!-- Seção 2: Como chegou -->
+    <!-- SEÇÃO 2: DADOS DO CLIENTE -->
     <div class="portal-section">
-      <div class="portal-section-title">Como a reclamação chegou</div>
-      <div class="portal-section-sub">De que forma o cliente entrou em contato?</div>
-      <div class="portal-field">
-        <label class="portal-label">Canal de contato</label>
-        <select class="portal-select" id="p-canal" onchange="toggleCanalOutro()">
-          <option value="">Selecione...</option>
-          <option>Telefone</option>
-          <option>WhatsApp</option>
-          <option>E-mail</option>
-          <option>Presencial</option>
-          <option>Representante</option>
-          <option>Comercial</option>
-          <option>Outro</option>
-        </select>
-      </div>
-      <div class="portal-field" id="p-canal-outro-wrap" style="display:none">
-        <label class="portal-label">Informe o canal</label>
-        <input class="portal-input" id="p-canal-outro" type="text" placeholder="Descreva o canal">
-      </div>
-    </div>
-
-    <!-- Seção 3: Dados do cliente -->
-    <div class="portal-section">
-      <div class="portal-section-title">Dados do cliente</div>
-      <div class="portal-section-sub">Preencha o que souber. O SAC complementará as informações posteriormente.</div>
-      <div class="portal-field">
-        <label class="portal-label">Nome do cliente <span>*</span></label>
-        <input class="portal-input" id="p-nome-cliente" type="text" placeholder="Nome da empresa ou pessoa">
-      </div>
+      <div class="portal-section-title"><span style="background:var(--red);color:white;border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;margin-right:8px;flex-shrink:0">2</span>DADOS DO CLIENTE</div>
       <div class="portal-field-grid">
-        <div class="portal-field">
-          <label class="portal-label">CNPJ / CPF</label>
-          <input class="portal-input" id="p-cnpj" type="text" placeholder="Opcional">
+        <div class="portal-field" style="grid-column:1/-1">
+          <label class="portal-label">Nome do Cliente / Empresa <span>*</span></label>
+          <input class="portal-input" id="p-nome-cliente" type="text" placeholder="Nome do cliente ou razão social">
         </div>
         <div class="portal-field">
           <label class="portal-label">Telefone / WhatsApp</label>
           <input class="portal-input" id="p-tel" type="text" placeholder="Opcional">
         </div>
-      </div>
-      <div class="portal-field">
-        <label class="portal-label">E-mail</label>
-        <input class="portal-input" id="p-email" type="email" placeholder="Opcional">
-      </div>
-    </div>
-
-    <!-- Seção 4: O que aconteceu -->
-    <div class="portal-section">
-      <div class="portal-section-title">O que o cliente reclamou?</div>
-      <div class="portal-section-sub">Descreva o que o cliente relatou. Registre os fatos da forma mais fiel possível, sem tentar identificar a causa.</div>
-      <div class="portal-field">
-        <label class="portal-label">O que aconteceu? <span>*</span></label>
-        <textarea class="portal-textarea" id="p-descricao" placeholder='Ex: "Cliente informou que recebeu 20 caixas do produto e 3 estavam danificadas."' style="min-height:140px"></textarea>
-      </div>
-      <div class="portal-field">
-        <label class="portal-label">O que o cliente deseja?</label>
-        <select class="portal-select" id="p-solicitacao">
-          <option value="">Não informado</option>
-          <option>Troca do produto</option>
-          <option>Devolução</option>
-          <option>Reposição</option>
-          <option>Esclarecimento</option>
-          <option>Contato do responsável</option>
-          <option>Apenas registrou a insatisfação</option>
-          <option>Outro</option>
-        </select>
-      </div>
-    </div>
-
-    <!-- Seção 5: Dados da ocorrência -->
-    <div class="portal-section">
-      <div class="portal-section-title">Dados da ocorrência</div>
-      <div class="portal-section-sub">Preencha o que souber. Todos os campos são opcionais — não bloqueie o registro por falta de informação.</div>
-      <div class="portal-field-grid">
         <div class="portal-field">
-          <label class="portal-label">Produto</label>
-          <input class="portal-input" id="p-produto" type="text" placeholder="Nome ou código">
-        </div>
-        <div class="portal-field">
-          <label class="portal-label">Pedido</label>
-          <input class="portal-input" id="p-pedido" type="text" placeholder="Número do pedido">
-        </div>
-        <div class="portal-field">
-          <label class="portal-label">Nota fiscal</label>
-          <input class="portal-input" id="p-nf" type="text" placeholder="NF ou número">
-        </div>
-        <div class="portal-field">
-          <label class="portal-label">Lote</label>
-          <input class="portal-input" id="p-lote" type="text" placeholder="Número do lote">
-        </div>
-        <div class="portal-field">
-          <label class="portal-label">Quantidade</label>
-          <input class="portal-input" id="p-qtd" type="text" placeholder="Ex: 3 caixas">
-        </div>
-        <div class="portal-field">
-          <label class="portal-label">Transportadora</label>
-          <input class="portal-input" id="p-transp" type="text" placeholder="Nome">
-        </div>
-        <div class="portal-field">
-          <label class="portal-label">Data do ocorrido</label>
-          <input class="portal-input" id="p-data-oc" type="date">
-        </div>
-        <div class="portal-field">
-          <label class="portal-label">Data da entrega</label>
-          <input class="portal-input" id="p-data-ent" type="date">
+          <label class="portal-label">E-mail</label>
+          <input class="portal-input" id="p-email" type="email" placeholder="Opcional">
         </div>
       </div>
     </div>
 
-    <!-- Seção 6: Evidências -->
+    <!-- SEÇÃO 3: INFORMAÇÕES DA MANIFESTAÇÃO -->
     <div class="portal-section">
-      <div class="portal-section-title">Evidências</div>
-      <div class="portal-section-sub">Se o cliente enviou fotos, documentos ou comprovantes, você pode anexá-los aqui. Não obrigatório.</div>
+      <div class="portal-section-title"><span style="background:var(--red);color:white;border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;margin-right:8px;flex-shrink:0">3</span>INFORMAÇÕES DA MANIFESTAÇÃO</div>
+
       <div class="portal-field">
-        <input type="file" id="p-files" multiple accept="image/*,.pdf,.txt" style="display:none" onchange="handlePortalFiles(event)">
-        <button type="button" class="btn btn-secondary" onclick="document.getElementById('p-files').click()">+ Adicionar arquivos</button>
-        <div class="portal-hint">Formatos: imagens (JPG, PNG, GIF, WEBP), PDF, TXT — máx. 5 MB por arquivo, até 5 arquivos.</div>
-        <div id="p-files-list" style="margin-top:10px;display:flex;flex-direction:column;gap:6px"></div>
+        <label class="portal-label">Canal de Recebimento <span>*</span></label>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px" id="p-canal-group">
+          <label class="portal-checkbox-opt"><input type="radio" name="p-canal" value="Telefone" onchange="toggleCanalOutro()"> Telefone</label>
+          <label class="portal-checkbox-opt"><input type="radio" name="p-canal" value="WhatsApp" onchange="toggleCanalOutro()"> WhatsApp</label>
+          <label class="portal-checkbox-opt"><input type="radio" name="p-canal" value="E-mail" onchange="toggleCanalOutro()"> E-mail</label>
+          <label class="portal-checkbox-opt"><input type="radio" name="p-canal" value="Presencial" onchange="toggleCanalOutro()"> Presencial</label>
+          <label class="portal-checkbox-opt"><input type="radio" name="p-canal" value="Comercial" onchange="toggleCanalOutro()"> Comercial</label>
+          <label class="portal-checkbox-opt"><input type="radio" name="p-canal" value="Outro" onchange="toggleCanalOutro()"> Outro</label>
+        </div>
+        <div id="p-canal-outro-wrap" style="display:none;margin-top:8px">
+          <input class="portal-input" id="p-canal-outro" type="text" placeholder="Informe o canal">
+        </div>
       </div>
+
+      <div class="portal-field">
+        <label class="portal-label">Tipo de Manifestação <span>*</span></label>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px" id="p-tipo-group">
+          <label class="portal-checkbox-opt"><input type="radio" name="p-tipo" value="Reclamação" checked> Reclamação</label>
+          <label class="portal-checkbox-opt"><input type="radio" name="p-tipo" value="Dúvida"> Dúvida</label>
+          <label class="portal-checkbox-opt"><input type="radio" name="p-tipo" value="Sugestão"> Sugestão</label>
+          <label class="portal-checkbox-opt"><input type="radio" name="p-tipo" value="Elogio"> Elogio</label>
+        </div>
+      </div>
+
+      <div class="portal-field">
+        <label class="portal-label">Motivo da Manifestação</label>
+        <input class="portal-input" id="p-motivo" type="text" placeholder="Ex: Produto avariado, Atraso na entrega, Faturamento incorreto...">
+      </div>
+
+      <div class="portal-field">
+        <label class="portal-label">Descrição Detalhada <span>*</span></label>
+        <textarea class="portal-textarea" id="p-descricao" placeholder='Descreva o que o cliente relatou de forma detalhada e fiel. Ex: "Cliente informou que recebeu 20 caixas e 3 estavam danificadas. Produto com amassado na embalagem..."' style="min-height:140px"></textarea>
+        <div style="font-size:11px;color:var(--gray-400);margin-top:4px">Esta descrição será preservada como registro original. Não a altere após envio.</div>
+      </div>
+    </div>
+
+    <!-- SEÇÃO 4: INFORMAÇÕES DO PRODUTO (colapsível) -->
+    <div class="portal-section">
+      <div class="portal-section-title" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between" onclick="toggleProdutoSection()">
+        <span><span style="background:var(--red);color:white;border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;margin-right:8px;flex-shrink:0">4</span>INFORMAÇÕES DO PRODUTO (quando aplicável)</span>
+        <span id="p-prod-chevron" style="font-size:12px;color:var(--gray-400)">▼ expandir</span>
+      </div>
+      <div id="p-produto-section" style="display:none;margin-top:12px">
+        <div class="portal-section-sub">Preencha se disponível. Não bloqueie o registro por falta dessas informações.</div>
+        <div class="portal-field-grid">
+          <div class="portal-field">
+            <label class="portal-label">Produto</label>
+            <input class="portal-input" id="p-produto" type="text" placeholder="Nome ou código">
+          </div>
+          <div class="portal-field">
+            <label class="portal-label">Lote</label>
+            <input class="portal-input" id="p-lote" type="text" placeholder="Número do lote">
+          </div>
+          <div class="portal-field">
+            <label class="portal-label">Quantidade Afetada</label>
+            <input class="portal-input" id="p-qtd" type="text" placeholder="Ex: 3 caixas">
+          </div>
+          <div class="portal-field">
+            <label class="portal-label">Pedido</label>
+            <input class="portal-input" id="p-pedido" type="text" placeholder="Número do pedido">
+          </div>
+          <div class="portal-field">
+            <label class="portal-label">Nota Fiscal</label>
+            <input class="portal-input" id="p-nf" type="text" placeholder="NF ou número">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SEÇÃO 5: ENCAMINHAMENTO -->
+    <div class="portal-section">
+      <div class="portal-section-title"><span style="background:var(--red);color:white;border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;margin-right:8px;flex-shrink:0">5</span>ENCAMINHAMENTO</div>
+      <div class="portal-field">
+        <label class="portal-label">Observações Adicionais</label>
+        <textarea class="portal-textarea" id="p-obs" placeholder="Informações complementares relevantes para o SAC..." style="min-height:80px"></textarea>
+      </div>
+    </div>
+
+    <!-- EVIDÊNCIAS -->
+    <div class="portal-section">
+      <div class="portal-section-title" style="display:flex;align-items:center;gap:8px">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+        EVIDÊNCIAS E ANEXOS
+      </div>
+      <div class="portal-section-sub">Fotos, áudios, vídeos, PDFs ou documentos enviados pelo cliente. Não obrigatório.</div>
+
+      <!-- Drag-and-drop zone -->
+      <div id="p-drop-zone" style="border:2px dashed var(--gray-300);border-radius:10px;padding:24px;text-align:center;cursor:pointer;transition:all 0.2s;margin-bottom:10px"
+        onclick="document.getElementById('p-files').click()"
+        ondragover="event.preventDefault();this.style.borderColor='var(--red)';this.style.background='var(--red-light)'"
+        ondragleave="this.style.borderColor='var(--gray-300)';this.style.background=''"
+        ondrop="handlePortalDrop(event)">
+        <div style="font-size:28px;margin-bottom:8px">📎</div>
+        <div style="font-size:13px;font-weight:600;color:var(--gray-700)">Clique ou arraste arquivos aqui</div>
+        <div style="font-size:12px;color:var(--gray-400);margin-top:4px">Imagens, áudios, vídeos, PDFs, documentos — máx. 10MB por arquivo, até 8 arquivos</div>
+      </div>
+      <input type="file" id="p-files" multiple
+        accept="image/*,audio/*,video/*,application/pdf,.doc,.docx,.xls,.xlsx,.txt"
+        style="display:none" onchange="handlePortalFiles(event)">
+      <div id="p-files-list" style="display:flex;flex-direction:column;gap:6px"></div>
     </div>
 
     <!-- Botão enviar -->
     <button class="portal-btn-submit" id="portal-submit-btn" onclick="submitPortal()">
-      ENVIAR RECLAMAÇÃO AO SAC
+      ENVIAR AO SAC
     </button>
     <div style="text-align:center;margin-top:12px;font-size:12px;color:var(--gray-400)">
-      Ao enviar, a reclamação será encaminhada ao SAC para análise e atendimento.
+      Ao enviar, a manifestação será encaminhada ao SAC e uma ficha oficial será gerada.
     </div>
   </div>
 
@@ -851,8 +856,8 @@
       <div class="portal-success-icon">
         <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
       </div>
-      <div style="font-size:24px;font-weight:800;color:var(--gray-900);margin-bottom:8px">Reclamação registrada!</div>
-      <div style="font-size:14px;color:var(--gray-500);margin-bottom:24px;line-height:1.6">Recebemos a reclamação e ela foi encaminhada ao SAC.<br>O SAC realizará o atendimento e, se necessário, entrará em contato.</div>
+      <div style="font-size:24px;font-weight:800;color:var(--gray-900);margin-bottom:8px">Manifestação registrada!</div>
+      <div style="font-size:14px;color:var(--gray-500);margin-bottom:24px;line-height:1.6">Recebemos a manifestação e ela foi encaminhada ao SAC.<br>Uma ficha oficial foi gerada e arquivada na Biblioteca.</div>
       <div class="portal-protocol">
         <div class="portal-protocol-label">Protocolo</div>
         <div class="portal-protocol-num" id="portal-protocolo-num">—</div>
@@ -861,8 +866,11 @@
       <div style="background:var(--yellow-light);border:1px solid #FDE68A;border-radius:8px;padding:10px 14px;margin-bottom:24px;font-size:12px;color:#92400E">
         📝 Anote o número do protocolo para acompanhamento com o SAC.
       </div>
-      <div style="display:flex;flex-direction:column;gap:10px">
-        <button class="portal-btn-submit" onclick="resetPortal()">REGISTRAR OUTRA RECLAMAÇÃO</button>
+      <div style="display:flex;flex-direction:column;gap:10px" id="portal-success-actions">
+        <button class="portal-btn-submit" id="portal-pdf-btn" style="display:none;background:var(--gray-700)" onclick="baixarFichaPortal()">
+          📄 BAIXAR FICHA EM PDF
+        </button>
+        <button class="portal-btn-submit" onclick="resetPortal()">REGISTRAR NOVA MANIFESTAÇÃO</button>
         <button class="portal-back" style="justify-content:center" onclick="fecharPortalPublico()">← Voltar para o início</button>
       </div>
     </div>
@@ -920,10 +928,16 @@
 
   // ===== PORTAL PÚBLICO =====
   let _portalFiles = [];
+  let _portalPdfBase64 = null;
+  let _portalProtocolo = null;
 
   function abrirPortalPublico() {
     document.getElementById('portal-screen').style.display='block';
     document.body.style.overflow='hidden';
+    // Preencher data/hora atual
+    const agora = new Date();
+    const dataFmt = agora.toLocaleDateString('pt-BR') + ' ' + agora.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
+    document.getElementById('p-data-reg').value = dataFmt;
     // Carrega lista de empresas
     fetch(window.SAC_API+'/api/public/empresas')
       .then(r=>r.json()).then(d=>{
@@ -940,36 +954,62 @@
   }
 
   function toggleCanalOutro() {
-    const v = document.getElementById('p-canal').value;
-    document.getElementById('p-canal-outro-wrap').style.display = v === 'Outro' ? 'block' : 'none';
+    const sel = document.querySelector('input[name="p-canal"]:checked');
+    document.getElementById('p-canal-outro-wrap').style.display = sel && sel.value === 'Outro' ? 'block' : 'none';
+  }
+
+  function toggleProdutoSection() {
+    const sec = document.getElementById('p-produto-section');
+    const chev = document.getElementById('p-prod-chevron');
+    const open = sec.style.display !== 'none';
+    sec.style.display = open ? 'none' : 'block';
+    chev.textContent = open ? '▼ expandir' : '▲ recolher';
+  }
+
+  const _PORTAL_ALLOWED = ['image/jpeg','image/png','image/gif','image/webp','audio/mpeg','audio/wav','audio/mp4','audio/aac','audio/ogg','audio/webm','video/mp4','video/quicktime','video/webm','application/pdf','application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document','application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','text/plain'];
+  function _fileIcon(tipo) {
+    if (tipo.startsWith('image/')) return '🖼️';
+    if (tipo.startsWith('audio/')) return '🎧';
+    if (tipo.startsWith('video/')) return '🎬';
+    if (tipo === 'application/pdf') return '📄';
+    return '📎';
+  }
+
+  function _addPortalFile(f) {
+    if (_portalFiles.length >= 8) { alert('Máximo de 8 arquivos.'); return; }
+    if (!_PORTAL_ALLOWED.includes(f.type)) { alert(`Tipo não permitido: ${f.name}`); return; }
+    if (f.size > 10 * 1024 * 1024) { alert(`Arquivo muito grande: ${f.name} (máx 10MB)`); return; }
+    const idx = _portalFiles.length;
+    _portalFiles.push({ nome: f.name, tipo: f.type, tamanho: f.size, dados: null });
+    const reader = new FileReader();
+    reader.onload = ev => { _portalFiles[idx].dados = ev.target.result.split(',')[1]; renderPortalFiles(); };
+    reader.readAsDataURL(f);
   }
 
   function handlePortalFiles(e) {
-    const files = Array.from(e.target.files);
-    const allowed = ['image/jpeg','image/png','image/gif','image/webp','application/pdf','text/plain'];
-    const maxMB = 5;
-    const list = document.getElementById('p-files-list');
-    for (const f of files) {
-      if (_portalFiles.length >= 5) { alert('Máximo de 5 arquivos.'); break; }
-      if (!allowed.includes(f.type)) { alert(`Tipo não permitido: ${f.name}`); continue; }
-      if (f.size > maxMB * 1024 * 1024) { alert(`Arquivo muito grande: ${f.name} (máx ${maxMB}MB)`); continue; }
-      const reader = new FileReader();
-      const idx = _portalFiles.length;
-      _portalFiles.push({ nome: f.name, tipo: f.type, tamanho: f.size, dados: null });
-      reader.onload = ev => { _portalFiles[idx].dados = ev.target.result.split(',')[1]; renderPortalFiles(); };
-      reader.readAsDataURL(f);
-    }
+    Array.from(e.target.files).forEach(_addPortalFile);
     e.target.value = '';
+    renderPortalFiles();
+  }
+
+  function handlePortalDrop(e) {
+    e.preventDefault();
+    e.currentTarget.style.borderColor='var(--gray-300)';
+    e.currentTarget.style.background='';
+    Array.from(e.dataTransfer.files).forEach(_addPortalFile);
     renderPortalFiles();
   }
 
   function renderPortalFiles() {
     const list = document.getElementById('p-files-list');
     list.innerHTML = _portalFiles.map((f,i) => `
-      <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--gray-50);border:1px solid var(--gray-200);border-radius:6px">
-        <span style="font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${f.nome}</span>
-        <span style="font-size:11px;color:var(--gray-400)">${(f.tamanho/1024).toFixed(0)}KB</span>
-        <button onclick="_portalFiles.splice(${i},1);renderPortalFiles()" style="background:none;border:none;cursor:pointer;color:var(--gray-400);font-size:14px;padding:0">×</button>
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--gray-50);border:1px solid var(--gray-200);border-radius:8px">
+        <span style="font-size:18px">${_fileIcon(f.tipo)}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${f.nome}</div>
+          <div style="font-size:11px;color:var(--gray-400)">${(f.tamanho/1024).toFixed(0)}KB · ${f.dados?'✓ pronto':'⏳ carregando'}</div>
+        </div>
+        <button onclick="_portalFiles.splice(${i},1);renderPortalFiles()" style="background:none;border:none;cursor:pointer;color:var(--gray-400);font-size:18px;padding:0;line-height:1">×</button>
       </div>`).join('');
   }
 
@@ -977,15 +1017,28 @@
     document.getElementById('portal-form-wrap').style.display='block';
     document.getElementById('portal-success-wrap').style.display='none';
     document.getElementById('portal-err').style.display='none';
-    // Limpar campos
-    ['p-nome-reg','p-setor-reg','p-contato-reg','p-nome-cliente','p-cnpj','p-tel','p-email','p-descricao','p-produto','p-pedido','p-nf','p-lote','p-qtd','p-transp','p-data-oc','p-data-ent'].forEach(id=>{ const el=document.getElementById(id); if(el)el.value=''; });
+    ['p-nome-reg','p-setor-reg','p-nome-cliente','p-tel','p-email','p-descricao','p-motivo','p-produto','p-pedido','p-nf','p-lote','p-qtd','p-obs','p-canal-outro'].forEach(id=>{ const el=document.getElementById(id); if(el)el.value=''; });
     document.getElementById('p-empresa').value='';
-    document.getElementById('p-canal').value='';
-    document.getElementById('p-solicitacao').value='';
+    document.querySelectorAll('input[name="p-canal"]').forEach(r=>r.checked=false);
+    const tipoRec = document.querySelector('input[name="p-tipo"][value="Reclamação"]');
+    if(tipoRec) tipoRec.checked=true;
     document.getElementById('p-canal-outro-wrap').style.display='none';
-    _portalFiles=[];
+    _portalFiles=[]; _portalPdfBase64=null; _portalProtocolo=null;
     renderPortalFiles();
     document.getElementById('portal-screen').scrollTop=0;
+    const agora = new Date();
+    document.getElementById('p-data-reg').value = agora.toLocaleDateString('pt-BR') + ' ' + agora.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
+  }
+
+  function baixarFichaPortal() {
+    if (!_portalPdfBase64) return;
+    const byteChars = atob(_portalPdfBase64);
+    const byteNums = new Array(byteChars.length);
+    for(let i=0;i<byteChars.length;i++) byteNums[i]=byteChars.charCodeAt(i);
+    const blob = new Blob([new Uint8Array(byteNums)], {type:'application/pdf'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href=url; a.download=`FICHA_${_portalProtocolo||'manifestacao'}.pdf`; a.click();
+    setTimeout(()=>URL.revokeObjectURL(url), 5000);
   }
 
   async function submitPortal() {
@@ -994,45 +1047,36 @@
     errEl.style.display='none';
 
     const v = id => (document.getElementById(id)?.value||'').trim();
-    const nomeRegistrante = v('p-nome-reg');
-    const setorRegistrante = v('p-setor-reg');
+    const colaboradorRecebimento = v('p-nome-reg');
+    const setorRecebimento = v('p-setor-reg');
     const empresa = v('p-empresa');
     const nomeCliente = v('p-nome-cliente');
-    const descricao = v('p-descricao');
+    const descricaoOriginal = v('p-descricao');
+    const canalSel = document.querySelector('input[name="p-canal"]:checked');
+    const tipoSel = document.querySelector('input[name="p-tipo"]:checked');
+    const canalRecebimento = canalSel ? canalSel.value : '';
+    const tipoManifestacao = tipoSel ? tipoSel.value : 'Reclamação';
 
-    if (!nomeRegistrante) { errEl.textContent='Informe seu nome.'; errEl.style.display='block'; document.getElementById('p-nome-reg').focus(); return; }
-    if (!setorRegistrante) { errEl.textContent='Informe seu setor.'; errEl.style.display='block'; document.getElementById('p-setor-reg').focus(); return; }
+    if (!colaboradorRecebimento) { errEl.textContent='Informe seu nome.'; errEl.style.display='block'; document.getElementById('p-nome-reg').focus(); return; }
+    if (!setorRecebimento) { errEl.textContent='Informe seu setor.'; errEl.style.display='block'; document.getElementById('p-setor-reg').focus(); return; }
     if (!empresa) { errEl.textContent='Selecione a empresa.'; errEl.style.display='block'; document.getElementById('p-empresa').focus(); return; }
     if (!nomeCliente) { errEl.textContent='Informe o nome do cliente.'; errEl.style.display='block'; document.getElementById('p-nome-cliente').focus(); return; }
-    if (!descricao || descricao.length < 10) { errEl.textContent='Descreva o que aconteceu (mínimo 10 caracteres).'; errEl.style.display='block'; document.getElementById('p-descricao').focus(); return; }
+    if (!descricaoOriginal || descricaoOriginal.length < 10) { errEl.textContent='Descreva a manifestação (mínimo 10 caracteres).'; errEl.style.display='block'; document.getElementById('p-descricao').focus(); return; }
 
-    // Verificar se arquivos já foram lidos
     const pendentes = _portalFiles.filter(f => !f.dados);
     if (pendentes.length > 0) { errEl.textContent='Aguarde o carregamento dos arquivos.'; errEl.style.display='block'; return; }
 
-    btn.disabled=true; btn.textContent='Enviando...';
+    btn.disabled=true; btn.textContent='Enviando... aguarde';
 
     const payload = {
-      nomeRegistrante,
-      setorRegistrante,
-      contatoRegistrante: v('p-contato-reg'),
-      empresa,
-      canal: v('p-canal'),
-      canalOutro: v('p-canal-outro'),
-      nomeCliente,
-      cnpjCliente: v('p-cnpj'),
-      telefoneCliente: v('p-tel'),
-      emailCliente: v('p-email'),
-      descricao,
-      solicitacaoCliente: v('p-solicitacao'),
-      produto: v('p-produto'),
-      pedido: v('p-pedido'),
-      notaFiscal: v('p-nf'),
-      lote: v('p-lote'),
-      quantidade: v('p-qtd'),
-      transportadora: v('p-transp'),
-      dataOcorrido: v('p-data-oc'),
-      dataEntrega: v('p-data-ent'),
+      colaboradorRecebimento, setorRecebimento, empresa,
+      nomeCliente, descricaoOriginal, tipoManifestacao,
+      canalRecebimento, canalOutro: v('p-canal-outro'),
+      telefone: v('p-tel'), email: v('p-email'),
+      motivoManifestacao: v('p-motivo'),
+      produto: v('p-produto'), lote: v('p-lote'),
+      quantidadeAfetada: v('p-qtd'), pedido: v('p-pedido'),
+      notaFiscal: v('p-nf'), observacoes: v('p-obs'),
       evidencias: _portalFiles.filter(f=>f.dados),
     };
 
@@ -1045,18 +1089,22 @@
       const data = await r.json();
       if (!data.sucesso) throw new Error(data.erro || 'Erro ao registrar.');
 
-      // Mostrar tela de sucesso
+      _portalProtocolo = data.protocolo;
+      _portalPdfBase64 = data.pdfBase64 || null;
+
       document.getElementById('portal-form-wrap').style.display='none';
       document.getElementById('portal-success-wrap').style.display='block';
       document.getElementById('portal-protocolo-num').textContent = data.protocolo || '—';
       const dt = data.dataHora ? new Date(data.dataHora).toLocaleString('pt-BR') : '';
       document.getElementById('portal-protocolo-info').textContent = [dt && 'Registrado em: '+dt, empresa && 'Empresa: '+empresa, nomeCliente && 'Cliente: '+nomeCliente].filter(Boolean).join(' · ');
+      const pdfBtn = document.getElementById('portal-pdf-btn');
+      if (pdfBtn) pdfBtn.style.display = _portalPdfBase64 ? 'block' : 'none';
       document.getElementById('portal-screen').scrollTop=0;
     } catch(e) {
       errEl.textContent = e.message || 'Não foi possível registrar. Tente novamente.';
       errEl.style.display='block';
     } finally {
-      btn.disabled=false; btn.textContent='ENVIAR RECLAMAÇÃO AO SAC';
+      btn.disabled=false; btn.textContent='ENVIAR AO SAC';
     }
   }
 </script>
@@ -1109,6 +1157,11 @@
   <div class="sidebar-item" onclick="navigate('setores', this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 19.07a10 10 0 0 1 0-14.14"/></svg>
     Setores
+  </div>
+
+  <div class="sidebar-item" onclick="navigate('biblioteca-fichas', this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/></svg>
+    Biblioteca
   </div>
 
   <div class="sidebar-section">Inteligência</div>
@@ -3318,6 +3371,140 @@
   </div>
 </div>
 
+<!-- ===== BIBLIOTECA DE FICHAS ===== -->
+<div class="page" id="page-biblioteca-fichas">
+  <div class="page-header" style="flex-wrap:wrap;gap:12px">
+    <div>
+      <h1>Biblioteca de Fichas</h1>
+      <p>Arquivo digital das fichas de reclamações e manifestações.</p>
+    </div>
+    <button class="btn btn-primary" onclick="loadBiblioteca(true)">⟳ Atualizar</button>
+  </div>
+
+  <!-- Stats -->
+  <div class="kpi-row" id="bib-kpis" style="padding:0 24px 16px">
+    <div class="kpi-card"><div class="kpi-label">Total de Fichas</div><div class="kpi-value" id="bib-stat-total">—</div></div>
+    <div class="kpi-card"><div class="kpi-label">Fichas do Mês</div><div class="kpi-value" id="bib-stat-mes">—</div></div>
+    <div class="kpi-card"><div class="kpi-label">Fichas do Ano</div><div class="kpi-value" id="bib-stat-ano">—</div></div>
+    <div class="kpi-card"><div class="kpi-label">Com Evidências</div><div class="kpi-value" id="bib-stat-ev">—</div></div>
+  </div>
+
+  <!-- Filtros -->
+  <div style="padding:0 24px 16px">
+    <div style="background:white;border:1px solid var(--gray-200);border-radius:12px;padding:20px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:14px;color:var(--gray-700)">FILTROS</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:12px">
+        <div>
+          <label style="font-size:11px;font-weight:600;color:var(--gray-500);display:block;margin-bottom:4px">ANO</label>
+          <select id="bib-f-ano" class="select" style="width:100%">
+            <option value="">Todos</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:600;color:var(--gray-500);display:block;margin-bottom:4px">MÊS</label>
+          <select id="bib-f-mes" class="select" style="width:100%">
+            <option value="">Todos</option>
+            <option value="01">Janeiro</option><option value="02">Fevereiro</option><option value="03">Março</option>
+            <option value="04">Abril</option><option value="05">Maio</option><option value="06">Junho</option>
+            <option value="07">Julho</option><option value="08">Agosto</option><option value="09">Setembro</option>
+            <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:600;color:var(--gray-500);display:block;margin-bottom:4px">EMPRESA</label>
+          <select id="bib-f-empresa" class="select" style="width:100%">
+            <option value="">Todas</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:600;color:var(--gray-500);display:block;margin-bottom:4px">TIPO</label>
+          <select id="bib-f-tipo" class="select" style="width:100%">
+            <option value="">Todos</option>
+            <option value="Reclamação">Reclamação</option>
+            <option value="Dúvida">Dúvida</option>
+            <option value="Sugestão">Sugestão</option>
+            <option value="Elogio">Elogio</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:600;color:var(--gray-500);display:block;margin-bottom:4px">STATUS</label>
+          <select id="bib-f-status" class="select" style="width:100%">
+            <option value="">Todos</option>
+            <option value="NOVA">NOVA</option>
+            <option value="EM ANÁLISE">EM ANÁLISE</option>
+            <option value="RESOLVIDA">RESOLVIDA</option>
+          </select>
+        </div>
+        <div style="grid-column:1/-1">
+          <label style="font-size:11px;font-weight:600;color:var(--gray-500);display:block;margin-bottom:4px">PESQUISAR</label>
+          <input id="bib-f-q" class="input" type="text" placeholder="Protocolo, cliente, colaborador, motivo..." style="width:100%" onkeydown="if(event.key==='Enter')loadBiblioteca(true)">
+        </div>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-primary" onclick="loadBiblioteca(true)">FILTRAR</button>
+        <button class="btn btn-secondary" onclick="limparFiltrosBib()">LIMPAR FILTROS</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Navegação hierárquica (anos/meses) -->
+  <div id="bib-hierarquia" style="padding:0 24px 16px;display:none">
+    <div style="background:white;border:1px solid var(--gray-200);border-radius:12px;padding:16px">
+      <div style="font-size:12px;font-weight:700;color:var(--gray-500);margin-bottom:12px;text-transform:uppercase;letter-spacing:.05em">Navegação por Período</div>
+      <div id="bib-hier-content"></div>
+    </div>
+  </div>
+
+  <!-- Tabela -->
+  <div style="padding:0 24px 32px">
+    <div style="background:white;border:1px solid var(--gray-200);border-radius:12px;overflow:hidden">
+      <div style="padding:16px 20px;border-bottom:1px solid var(--gray-200);display:flex;align-items:center;justify-content:space-between">
+        <div style="font-size:13px;font-weight:700;color:var(--gray-900)">FICHAS <span id="bib-count" style="color:var(--gray-400);font-weight:400"></span></div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <button id="bib-prev-btn" class="btn btn-secondary" style="padding:4px 10px;font-size:12px" onclick="bibChangePage(-1)">‹ Ant.</button>
+          <span id="bib-page-info" style="font-size:12px;color:var(--gray-500)"></span>
+          <button id="bib-next-btn" class="btn btn-secondary" style="padding:4px 10px;font-size:12px" onclick="bibChangePage(1)">Prox. ›</button>
+        </div>
+      </div>
+      <div id="bib-loading" style="text-align:center;padding:40px;color:var(--gray-400);display:none">Carregando fichas...</div>
+      <div id="bib-empty" style="text-align:center;padding:40px;color:var(--gray-400);display:none">Nenhuma ficha encontrada para os filtros selecionados.</div>
+      <div style="overflow-x:auto">
+        <table class="table" id="bib-table" style="display:none">
+          <thead>
+            <tr>
+              <th>PROTOCOLO</th>
+              <th>DATA</th>
+              <th>CLIENTE</th>
+              <th>EMPRESA</th>
+              <th>TIPO</th>
+              <th>SETOR</th>
+              <th>COLABORADOR</th>
+              <th>STATUS</th>
+              <th>PDF</th>
+              <th>EVIDÊNCIAS</th>
+              <th>AÇÕES</th>
+            </tr>
+          </thead>
+          <tbody id="bib-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DOSSIÊ DA FICHA (Biblioteca) -->
+<div id="modal-bib-ficha" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeBibFichaModal()">
+  <div class="modal-box" style="max-width:780px;max-height:90vh;overflow-y:auto">
+    <div class="modal-header">
+      <h3 id="bib-modal-titulo">Ficha</h3>
+      <button class="modal-close" onclick="closeBibFichaModal()">✕</button>
+    </div>
+    <div class="modal-body" id="bib-modal-body">
+      <div style="text-align:center;color:var(--gray-400);padding:30px">Carregando...</div>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL CONTEXTO DO CLIENTE -->
 <div id="modal-cliente-ctx" style="display:none" class="modal-overlay" onclick="if(event.target===this)this.style.display='none'">
   <div class="modal-box" style="max-width:700px;max-height:80vh;overflow-y:auto">
@@ -3338,9 +3525,216 @@ const API = window.SAC_API || 'https://assistente-sac-gpchiacchio.vercel.app';
 function navigate(page, el) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
-  document.getElementById('page-' + page).classList.add('active');
+  const pageEl = document.getElementById('page-' + page);
+  if (!pageEl) return;
+  pageEl.classList.add('active');
   if (el) el.classList.add('active');
+  if (page === 'biblioteca-fichas') loadBiblioteca(false);
 }
+
+// ===== BIBLIOTECA DE FICHAS =====
+let _bibPage = 1;
+let _bibTotalPages = 1;
+let _bibStats = null;
+
+async function loadBiblioteca(reset) {
+  if (reset) _bibPage = 1;
+  const tok = sessionStorage.getItem('sac-token');
+  if (!tok) return;
+  const q = (document.getElementById('bib-f-q')?.value||'').trim();
+  const ano = document.getElementById('bib-f-ano')?.value||'';
+  const mes = document.getElementById('bib-f-mes')?.value||'';
+  const empresa = document.getElementById('bib-f-empresa')?.value||'';
+  const tipo = document.getElementById('bib-f-tipo')?.value||'';
+  const status = document.getElementById('bib-f-status')?.value||'';
+  const params = new URLSearchParams({ page: _bibPage, limit: 50 });
+  if (q) params.set('q', q);
+  if (ano) params.set('ano', ano);
+  if (mes) params.set('mes', mes);
+  if (empresa) params.set('empresa', empresa);
+  if (tipo) params.set('tipo', tipo);
+  if (status) params.set('status', status);
+
+  document.getElementById('bib-loading').style.display='block';
+  document.getElementById('bib-table').style.display='none';
+  document.getElementById('bib-empty').style.display='none';
+
+  try {
+    const [fichasRes, statsRes] = await Promise.all([
+      fetch(API+'/api/biblioteca/fichas?'+params, {headers:{'Authorization':'Bearer '+tok}}).then(r=>r.json()),
+      fetch(API+'/api/biblioteca/stats?'+(empresa?'empresa='+encodeURIComponent(empresa):''), {headers:{'Authorization':'Bearer '+tok}}).then(r=>r.json()).catch(()=>({sucesso:false})),
+    ]);
+
+    // Stats
+    if (statsRes.sucesso) {
+      _bibStats = statsRes;
+      document.getElementById('bib-stat-total').textContent = statsRes.totalFichas ?? '—';
+      document.getElementById('bib-stat-mes').textContent = statsRes.fichasDoMes ?? '—';
+      document.getElementById('bib-stat-ano').textContent = statsRes.fichasDoAno ?? '—';
+      document.getElementById('bib-stat-ev').textContent = statsRes.comEvidencias ?? '—';
+      renderBibHierarquia(statsRes.porAnoMes || {});
+      renderBibAnoOptions(Object.keys(statsRes.porAnoMes || {}).sort().reverse());
+      renderBibEmpresaOptions(Object.keys(statsRes.porEmpresa || {}));
+    }
+
+    // Fichas
+    document.getElementById('bib-loading').style.display='none';
+    if (!fichasRes.sucesso) { document.getElementById('bib-empty').style.display='block'; return; }
+    _bibTotalPages = fichasRes.pages || 1;
+    document.getElementById('bib-count').textContent = `(${fichasRes.total} ficha${fichasRes.total !== 1 ? 's' : ''})`;
+    document.getElementById('bib-page-info').textContent = `Página ${fichasRes.page} de ${_bibTotalPages}`;
+    document.getElementById('bib-prev-btn').disabled = fichasRes.page <= 1;
+    document.getElementById('bib-next-btn').disabled = fichasRes.page >= _bibTotalPages;
+
+    if (!fichasRes.fichas || fichasRes.fichas.length === 0) {
+      document.getElementById('bib-empty').style.display='block';
+      return;
+    }
+    document.getElementById('bib-table').style.display='table';
+    const meses = ['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+    document.getElementById('bib-tbody').innerHTML = fichasRes.fichas.map(f => {
+      const dt = f.DATA_REGISTRO ? new Date(f.DATA_REGISTRO).toLocaleDateString('pt-BR') : (f.ANO&&f.MES?`${meses[parseInt(f.MES)]}/${f.ANO}`:'—');
+      const evCount = parseInt(f.TOTAL_EVIDENCIAS||0);
+      const hasPdf = !!f.PDF_DRIVE_URL;
+      const statusCls = (f.STATUS||'').toLowerCase().includes('nova')?'status-recebida':(f.STATUS||'').toLowerCase().includes('análise')?'status-em-analise':'status-encerrada';
+      return `<tr>
+        <td><span style="font-family:monospace;font-size:12px;font-weight:600">${escHtml(f.PROTOCOLO||f.ID_MANIFESTACAO||'—')}</span></td>
+        <td style="white-space:nowrap">${dt}</td>
+        <td>${escHtml(f.NOME_CLIENTE||'—')}</td>
+        <td>${escHtml(f.EMPRESA||'—')}</td>
+        <td><span class="badge" style="background:${f.TIPO_MANIFESTACAO==='Reclamação'?'var(--red-light)':f.TIPO_MANIFESTACAO==='Elogio'?'var(--green-light)':'var(--yellow-light)'}; color:var(--gray-700)">${escHtml(f.TIPO_MANIFESTACAO||'—')}</span></td>
+        <td>${escHtml(f.SETOR_RECEBIMENTO||'—')}</td>
+        <td>${escHtml(f.COLABORADOR_RECEBIMENTO||'—')}</td>
+        <td><span class="status-badge ${statusCls}">${escHtml(f.STATUS||'—')}</span></td>
+        <td>${hasPdf?`<a href="${escHtml(f.PDF_DRIVE_URL)}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary" style="padding:3px 8px;font-size:11px">📄 PDF</a>`:'<span style="color:var(--gray-400);font-size:12px">—</span>'}</td>
+        <td>${evCount>0?`<span style="font-size:12px;color:var(--gray-700)">📎 ${evCount}</span>`:'<span style="color:var(--gray-400);font-size:12px">—</span>'}</td>
+        <td><button class="btn btn-secondary" style="padding:3px 8px;font-size:11px" onclick="openBibFicha('${escHtml(f.ID_MANIFESTACAO||f.PROTOCOLO||'')}')">ABRIR</button></td>
+      </tr>`;
+    }).join('');
+  } catch(e) {
+    document.getElementById('bib-loading').style.display='none';
+    document.getElementById('bib-empty').style.display='block';
+    document.getElementById('bib-empty').textContent = 'Erro ao carregar fichas: ' + e.message;
+  }
+}
+
+function bibChangePage(delta) {
+  const np = _bibPage + delta;
+  if (np < 1 || np > _bibTotalPages) return;
+  _bibPage = np;
+  loadBiblioteca(false);
+}
+
+function limparFiltrosBib() {
+  ['bib-f-ano','bib-f-mes','bib-f-empresa','bib-f-tipo','bib-f-status'].forEach(id => { const el=document.getElementById(id); if(el)el.value=''; });
+  document.getElementById('bib-f-q').value='';
+  loadBiblioteca(true);
+}
+
+function renderBibAnoOptions(anos) {
+  const sel = document.getElementById('bib-f-ano');
+  if (!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">Todos</option>' + anos.map(a => `<option value="${a}"${a===cur?' selected':''}>${a}</option>`).join('');
+}
+
+function renderBibEmpresaOptions(empresas) {
+  const sel = document.getElementById('bib-f-empresa');
+  if (!sel) return;
+  const cur = sel.value;
+  const unique = [...new Set(empresas)].sort();
+  sel.innerHTML = '<option value="">Todas</option>' + unique.map(e => `<option value="${escHtml(e)}"${e===cur?' selected':''}>${escHtml(e)}</option>`).join('');
+}
+
+function renderBibHierarquia(porAnoMes) {
+  const wrap = document.getElementById('bib-hierarquia');
+  const cont = document.getElementById('bib-hier-content');
+  const anos = Object.keys(porAnoMes).sort().reverse();
+  if (anos.length === 0) { wrap.style.display='none'; return; }
+  wrap.style.display='block';
+  const nomMes = {' 01':'Jan','02':'Fev','03':'Mar','04':'Abr','05':'Mai','06':'Jun','07':'Jul','08':'Ago','09':'Set','10':'Out','11':'Nov','12':'Dez'};
+  cont.innerHTML = anos.map(ano => {
+    const meses = porAnoMes[ano];
+    const mesHtml = Object.keys(meses).sort().map(m => {
+      const nm = ({' 01':'Janeiro','02':'Fevereiro','03':'Março','04':'Abril','05':'Maio','06':'Junho','07':'Julho','08':'Agosto','09':'Setembro','10':'Outubro','11':'Novembro','12':'Dezembro'})[m] || m;
+      return `<button onclick="document.getElementById('bib-f-ano').value='${ano}';document.getElementById('bib-f-mes').value='${m}';loadBiblioteca(true)" style="background:var(--gray-50);border:1px solid var(--gray-200);border-radius:8px;padding:8px 12px;font-size:12px;cursor:pointer;text-align:left">
+        <div style="font-weight:600;color:var(--gray-700)">${nm}</div>
+        <div style="color:var(--gray-400);font-size:11px">${meses[m]} ficha${meses[m]!==1?'s':''}</div>
+      </button>`;
+    }).join('');
+    return `<div style="margin-bottom:16px"><div style="font-size:16px;font-weight:800;color:var(--gray-900);margin-bottom:8px;cursor:pointer" onclick="document.getElementById('bib-f-ano').value='${ano}';document.getElementById('bib-f-mes').value='';loadBiblioteca(true)">${ano}</div><div style="display:flex;flex-wrap:wrap;gap:8px">${mesHtml}</div></div>`;
+  }).join('');
+}
+
+async function openBibFicha(id) {
+  const tok = sessionStorage.getItem('sac-token');
+  if (!tok || !id) return;
+  document.getElementById('modal-bib-ficha').style.display='flex';
+  document.getElementById('bib-modal-titulo').textContent = 'Ficha ' + id;
+  document.getElementById('bib-modal-body').innerHTML = '<div style="text-align:center;color:var(--gray-400);padding:30px">Carregando...</div>';
+  try {
+    const r = await fetch(API+'/api/biblioteca/fichas/'+encodeURIComponent(id), {headers:{'Authorization':'Bearer '+tok}});
+    const d = await r.json();
+    if (!d.sucesso) throw new Error(d.erro||'Não encontrada');
+    const f = d.ficha; const evs = d.evidencias || [];
+    const hasPdf = !!f.PDF_DRIVE_URL;
+    const evIcons = {'image/':'🖼️','audio/':'🎧','video/':'🎬','application/pdf':'📄'};
+    const evIcon = m => { for(const k of Object.keys(evIcons)) if(m&&m.startsWith(k)) return evIcons[k]; return '📎'; };
+    document.getElementById('bib-modal-titulo').textContent = 'Ficha ' + (f.PROTOCOLO||id);
+    document.getElementById('bib-modal-body').innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
+        <div class="field-group"><label>Protocolo</label><div>${escHtml(f.PROTOCOLO||'—')}</div></div>
+        <div class="field-group"><label>Data</label><div>${f.DATA_REGISTRO?new Date(f.DATA_REGISTRO).toLocaleDateString('pt-BR'):'—'}</div></div>
+        <div class="field-group"><label>Cliente</label><div>${escHtml(f.NOME_CLIENTE||'—')}</div></div>
+        <div class="field-group"><label>Empresa</label><div>${escHtml(f.EMPRESA||'—')}</div></div>
+        <div class="field-group"><label>Setor</label><div>${escHtml(f.SETOR_RECEBIMENTO||'—')}</div></div>
+        <div class="field-group"><label>Colaborador</label><div>${escHtml(f.COLABORADOR_RECEBIMENTO||'—')}</div></div>
+        <div class="field-group"><label>Tipo</label><div>${escHtml(f.TIPO_MANIFESTACAO||'—')}</div></div>
+        <div class="field-group"><label>Status</label><div>${escHtml(f.STATUS||'—')}</div></div>
+        ${f.MOTIVO?`<div class="field-group" style="grid-column:1/-1"><label>Motivo</label><div>${escHtml(f.MOTIVO)}</div></div>`:''}
+      </div>
+
+      <div style="border:1px solid var(--gray-200);border-radius:10px;padding:16px;margin-bottom:16px">
+        <div style="font-size:12px;font-weight:700;color:var(--gray-700);margin-bottom:10px">DOCUMENTO OFICIAL</div>
+        ${hasPdf ? `
+          <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--gray-50);border-radius:8px">
+            <span style="font-size:24px">📄</span>
+            <div style="flex:1"><div style="font-size:13px;font-weight:600">${escHtml(f.PDF_NOME||'Ficha de Reclamação / Manifestação.pdf')}</div><div style="font-size:11px;color:var(--gray-400)">Versão ${f.VERSAO||1}</div></div>
+            <a href="${escHtml(f.PDF_DRIVE_URL)}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary" style="font-size:12px;padding:6px 12px">📥 BAIXAR PDF</a>
+          </div>` :
+          '<div style="color:var(--gray-400);font-size:13px">PDF não disponível para esta ficha.</div>'
+        }
+      </div>
+
+      ${evs.length > 0 ? `
+      <div style="border:1px solid var(--gray-200);border-radius:10px;padding:16px;margin-bottom:16px">
+        <div style="font-size:12px;font-weight:700;color:var(--gray-700);margin-bottom:10px">EVIDÊNCIAS (${evs.length})</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          ${evs.map(ev => `
+          <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--gray-50);border-radius:8px">
+            <span style="font-size:20px">${evIcon(ev.TIPO_MIME||'')}</span>
+            <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(ev.NOME||'Arquivo')}</div><div style="font-size:11px;color:var(--gray-400)">${ev.TIPO_MIME||''}${ev.TAMANHO?' · '+(parseInt(ev.TAMANHO)/1024).toFixed(0)+'KB':''}</div></div>
+            ${ev.DRIVE_URL?`<a href="${escHtml(ev.DRIVE_URL)}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary" style="font-size:11px;padding:4px 10px">Abrir</a>`:''}
+          </div>`).join('')}
+        </div>
+      </div>` : ''}
+
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-primary" onclick="if(window.abrirDossie)window.abrirDossie('${escHtml(f.ID_MANIFESTACAO||'')}');closeBibFichaModal()">ABRIR DOSSIÊ</button>
+        <button class="btn btn-secondary" onclick="closeBibFichaModal()">Fechar</button>
+      </div>
+    `;
+  } catch(e) {
+    document.getElementById('bib-modal-body').innerHTML = `<div style="color:var(--red);padding:20px">Erro: ${escHtml(e.message)}</div>`;
+  }
+}
+
+function closeBibFichaModal() {
+  document.getElementById('modal-bib-ficha').style.display='none';
+}
+
+// escHtml — alias de esc para compatibilidade da Biblioteca
+function escHtml(s) { return esc(s); }
 
 // ===== HELPERS =====
 function fmtDate(d) {

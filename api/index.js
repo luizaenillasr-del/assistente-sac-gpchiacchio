@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const crypto = require('crypto');
+const { Readable } = require('stream');
 const { google } = require('googleapis');
 const cerebroService = require('./services/cerebroServices');
 const documentService = require('./services/documentService');
@@ -42,6 +43,27 @@ function getAuth() {
 }
 
 const SPREADSHEET_ID = process.env.SPREADSHEET_ID;
+
+// PDF service
+let gerarFichaPDF;
+try { ({ gerarFichaPDF } = require('./services/pdfFicha')); } catch(e) { console.warn('[PDF] pdfFicha não disponível:', e.message); }
+
+// Google Drive upload (usa mesma service account com scope drive.file)
+async function uploadArquivoDrive(nome, mimeType, bufferOuBase64) {
+  const buf = Buffer.isBuffer(bufferOuBase64) ? bufferOuBase64 : Buffer.from(bufferOuBase64, 'base64');
+  const auth = getAuth();
+  const drive = google.drive({ version: 'v3', auth });
+  const stream = Readable.from(buf);
+  const folderId = process.env.DRIVE_FOLDER_ID || null;
+  const meta = { name: nome, mimeType };
+  if (folderId) meta.parents = [folderId];
+  const res = await drive.files.create({
+    requestBody: meta,
+    media: { mimeType, body: stream },
+    fields: 'id,name,webViewLink,webContentLink',
+  });
+  return res.data; // { id, name, webViewLink, webContentLink }
+}
 if (!process.env.SESSION_SECRET || process.env.SESSION_SECRET.length < 32) {
   console.error('FATAL: SESSION_SECRET não definida ou com menos de 32 caracteres. Defina SESSION_SECRET nas variáveis de ambiente.');
   if (process.env.NODE_ENV === 'production') process.exit(1);
@@ -2885,57 +2907,78 @@ function publicRateLimit(req, res, next) {
 // Limpeza periódica do rate limit map
 setInterval(() => { const cutoff = Date.now() - 2 * 60 * 1000; _publicRateMap.forEach((v, k) => { if (v.start < cutoff) _publicRateMap.delete(k); }); }, 5 * 60 * 1000);
 
-const ALLOWED_FILE_TYPES = ['image/jpeg','image/png','image/gif','image/webp','application/pdf','text/plain'];
-const MAX_FILE_SIZE_MB = 5;
+const ALLOWED_FILE_TYPES = [
+  'image/jpeg','image/png','image/gif','image/webp',
+  'audio/mpeg','audio/wav','audio/mp4','audio/aac','audio/ogg','audio/webm',
+  'video/mp4','video/quicktime','video/webm','video/x-msvideo',
+  'application/pdf','application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'text/plain',
+];
+const MAX_FILE_SIZE_MB = 10;
+
+const FICHAS_BIBLIOTECA_HEADERS = [
+  'ID_FICHA','ID_MANIFESTACAO','PROTOCOLO','DATA_REGISTRO','ANO','MES',
+  'EMPRESA','SETOR_RECEBIMENTO','COLABORADOR_RECEBIMENTO','NOME_CLIENTE',
+  'TIPO_MANIFESTACAO','MOTIVO','STATUS','PDF_DRIVE_ID','PDF_DRIVE_URL',
+  'PDF_NOME','TOTAL_EVIDENCIAS','CREATED_AT','VERSAO',
+];
+const EVIDENCIAS_HEADERS = [
+  'ID_EVIDENCIA','ID_MANIFESTACAO','NOME','TIPO_MIME','TAMANHO',
+  'DRIVE_ID','DRIVE_URL','DATA_UPLOAD','DESCRICAO','ORDEM',
+];
 
 app.post('/api/public/reclamacoes', publicRateLimit, async (req, res) => {
   try {
     const b = req.body || {};
 
-    // Validação obrigatória
-    const nomeRegistrante = String(b.nomeRegistrante || '').trim().slice(0, 200);
-    const setorRegistrante = String(b.setorRegistrante || '').trim().slice(0, 100);
+    // Campos obrigatórios (ficha oficial)
+    const colaboradorRecebimento = String(b.colaboradorRecebimento || '').trim().slice(0, 200);
+    const setorRecebimento = String(b.setorRecebimento || '').trim().slice(0, 100);
     const empresa = String(b.empresa || '').trim().slice(0, 200);
     const nomeCliente = String(b.nomeCliente || '').trim().slice(0, 200);
-    const descricao = String(b.descricao || '').trim().slice(0, 3000);
+    const descricaoOriginal = String(b.descricaoOriginal || b.descricao || '').trim().slice(0, 4000);
+    const tipoManifestacao = String(b.tipoManifestacao || 'Reclamação').trim().slice(0, 50);
 
-    if (!nomeRegistrante) return res.status(400).json({ sucesso: false, erro: 'Informe seu nome.' });
-    if (!setorRegistrante) return res.status(400).json({ sucesso: false, erro: 'Informe seu setor.' });
+    if (!colaboradorRecebimento) return res.status(400).json({ sucesso: false, erro: 'Informe o nome do colaborador.' });
+    if (!setorRecebimento) return res.status(400).json({ sucesso: false, erro: 'Informe o setor.' });
     if (!empresa) return res.status(400).json({ sucesso: false, erro: 'Selecione a empresa.' });
     if (!nomeCliente) return res.status(400).json({ sucesso: false, erro: 'Informe o nome do cliente.' });
-    if (!descricao || descricao.length < 10) return res.status(400).json({ sucesso: false, erro: 'Descreva o que aconteceu (mínimo 10 caracteres).' });
+    if (!descricaoOriginal || descricaoOriginal.length < 10) return res.status(400).json({ sucesso: false, erro: 'Descreva a manifestação (mínimo 10 caracteres).' });
 
-    // Campos opcionais — sanitizados
-    const contatoRegistrante = String(b.contatoRegistrante || '').trim().slice(0, 100);
-    const cnpjCliente = String(b.cnpjCliente || '').replace(/[^0-9./-]/g,'').slice(0, 20);
-    const telefoneCliente = String(b.telefoneCliente || '').replace(/[^0-9() +\-]/g,'').slice(0, 30);
-    const emailCliente = String(b.emailCliente || '').trim().slice(0, 200);
-    const canal = String(b.canal || '').trim().slice(0, 50);
+    // Campos opcionais
+    const telefone = String(b.telefone || b.telefoneCliente || '').replace(/[^0-9() +\-]/g,'').slice(0, 30);
+    const email = String(b.email || b.emailCliente || '').trim().slice(0, 200);
+    const canalRecebimento = String(b.canalRecebimento || b.canal || '').trim().slice(0, 50);
     const canalOutro = String(b.canalOutro || '').trim().slice(0, 100);
-    const solicitacaoCliente = String(b.solicitacaoCliente || '').trim().slice(0, 500);
+    const motivoManifestacao = String(b.motivoManifestacao || b.motivo || '').trim().slice(0, 500);
     const produto = String(b.produto || '').trim().slice(0, 200);
+    const lote = String(b.lote || '').trim().slice(0, 100);
+    const quantidadeAfetada = String(b.quantidadeAfetada || b.quantidade || '').trim().slice(0, 50);
+    const observacoes = String(b.observacoes || b.solicitacaoCliente || '').trim().slice(0, 1000);
     const pedido = String(b.pedido || '').trim().slice(0, 100);
     const notaFiscal = String(b.notaFiscal || '').trim().slice(0, 100);
-    const lote = String(b.lote || '').trim().slice(0, 100);
-    const quantidade = String(b.quantidade || '').trim().slice(0, 50);
-    const dataOcorrido = String(b.dataOcorrido || '').trim().slice(0, 30);
-    const dataEntrega = String(b.dataEntrega || '').trim().slice(0, 30);
-    const transportadora = String(b.transportadora || '').trim().slice(0, 100);
 
-    // Validar evidências (base64)
-    const evidencias = Array.isArray(b.evidencias) ? b.evidencias.slice(0, 5) : [];
+    // Validar evidências
+    const evidencias = Array.isArray(b.evidencias) ? b.evidencias.slice(0, 8) : [];
     for (const ev of evidencias) {
       if (!ev.nome || !ev.tipo || !ev.dados) continue;
-      if (!ALLOWED_FILE_TYPES.includes(ev.tipo)) return res.status(400).json({ sucesso: false, erro: `Tipo de arquivo não permitido: ${ev.tipo}` });
+      if (!ALLOWED_FILE_TYPES.includes(ev.tipo)) return res.status(400).json({ sucesso: false, erro: `Tipo não permitido: ${ev.tipo}` });
       const sizeMB = (ev.dados.length * 3 / 4) / (1024 * 1024);
       if (sizeMB > MAX_FILE_SIZE_MB) return res.status(400).json({ sucesso: false, erro: `Arquivo muito grande: ${ev.nome} (máx ${MAX_FILE_SIZE_MB}MB)` });
     }
 
     const agora = new Date().toISOString();
     const id = await gerarProximoID('MANIFESTACOES', 'MAN', 'ID_MANIFESTACAO');
+    const canalFinal = canalRecebimento === 'Outro' && canalOutro ? `Outro: ${canalOutro}` : (canalRecebimento || 'Não informado');
+    const dtReg = new Date(agora);
+    const anoReg = dtReg.getFullYear().toString();
+    const mesReg = String(dtReg.getMonth() + 1).padStart(2, '0');
+    const dataRegistroFmt = dtReg.toLocaleDateString('pt-BR') + ' ' + dtReg.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
 
-    const canalFinal = canal === 'Outro' && canalOutro ? `Outro: ${canalOutro}` : (canal || 'Não informado');
-
+    // 1. Salvar manifestação no Sheets
     const objeto = {
       ID_MANIFESTACAO: id,
       DATA_ABERTURA: agora,
@@ -2944,42 +2987,108 @@ app.post('/api/public/reclamacoes', publicRateLimit, async (req, res) => {
       EMPRESA_RECLAMANTE: empresa,
       CLIENTE_NOME: nomeCliente,
       NOME_CLIENTE: nomeCliente,
-      CNPJ: cnpjCliente,
-      TELEFONE: telefoneCliente,
-      EMAIL: emailCliente,
-      DESCRICAO: descricao,
-      DESCRICAO_RECLAMACAO: descricao,
-      DESCRICAO_MANIFESTACAO: descricao,
+      TELEFONE: telefone,
+      EMAIL: email,
+      DESCRICAO: descricaoOriginal,
+      DESCRICAO_ORIGINAL: descricaoOriginal,
+      DESCRICAO_RECLAMACAO: descricaoOriginal,
+      DESCRICAO_MANIFESTACAO: descricaoOriginal,
       PRODUTO: produto,
       LOTE: lote,
-      NFE: notaFiscal,
       PEDIDO: pedido,
-      QUANTIDADE: quantidade,
-      DATA_OCORRIDO: dataOcorrido,
-      DATA_ENTREGA: dataEntrega,
-      TRANSPORTADORA: transportadora,
+      NFE: notaFiscal,
+      QUANTIDADE: quantidadeAfetada,
       CANAL: canalFinal,
-      SOLICITACAO_CLIENTE: solicitacaoCliente,
-      STATUS: 'RECEBIDA',
-      TIPO: 'Reclamação',
+      MOTIVO: motivoManifestacao,
+      OBSERVACOES: observacoes,
+      STATUS: 'NOVA',
+      TIPO: tipoManifestacao,
+      TIPO_MANIFESTACAO: tipoManifestacao,
       ORIGEM: 'PORTAL_FUNCIONARIO',
       ORIGEM_REGISTRO: 'PORTAL_FUNCIONARIO',
-      REGISTRADO_POR: nomeRegistrante,
-      SETOR_REGISTRANTE: setorRegistrante,
-      CONTATO_REGISTRANTE: contatoRegistrante,
-      USUARIO_CRIACAO: `portal:${nomeRegistrante}`,
+      REGISTRADO_POR: colaboradorRecebimento,
+      COLABORADOR_RECEBIMENTO: colaboradorRecebimento,
+      SETOR_RECEBIMENTO: setorRecebimento,
+      USUARIO_CRIACAO: `portal:${colaboradorRecebimento}`,
       STATUS_TRATATIVA: 'NÃO INICIADA',
-      EVIDENCIAS: evidencias.length > 0 ? JSON.stringify(evidencias.map(e => ({ nome: e.nome, tipo: e.tipo, tamanho: e.tamanho }))) : '',
     };
-
     await appendObjeto('MANIFESTACOES', objeto);
-    registrarAuditoria(`portal:${nomeRegistrante}`, 'CRIOU_MANIFESTAÇÃO_PORTAL', id, 'MANIFESTACOES', null, { empresa, nomeCliente, canal: canalFinal }).catch(() => {});
 
-    // Retorna APENAS o protocolo — sem dados internos
-    res.json({ sucesso: true, protocolo: id, dataHora: agora });
+    // 2. Upload evidências para o Drive (não bloqueia se falhar)
+    const evidenciasMetadata = [];
+    for (let i = 0; i < evidencias.length; i++) {
+      const ev = evidencias[i];
+      if (!ev.nome || !ev.tipo || !ev.dados) continue;
+      try {
+        const driveFile = await uploadArquivoDrive(`EV_${id}_${i+1}_${ev.nome}`, ev.tipo, ev.dados);
+        const evId = await gerarProximoID('EVIDENCIAS', 'EVI', 'ID_EVIDENCIA').catch(() => `EVI-${Date.now()}-${i}`);
+        const evMeta = { ID_EVIDENCIA: evId, ID_MANIFESTACAO: id, NOME: ev.nome, TIPO_MIME: ev.tipo, TAMANHO: ev.tamanho || 0, DRIVE_ID: driveFile.id || '', DRIVE_URL: driveFile.webViewLink || driveFile.webContentLink || '', DATA_UPLOAD: agora, DESCRICAO: ev.descricao || '', ORDEM: i + 1 };
+        await garantirAbaComCabecalhos('EVIDENCIAS', EVIDENCIAS_HEADERS);
+        await appendObjeto('EVIDENCIAS', evMeta);
+        evidenciasMetadata.push(evMeta);
+      } catch (evErr) {
+        console.warn(`[PUBLIC] Evidência ${i+1} falhou no upload:`, evErr.message);
+      }
+    }
+
+    // 3. Gerar PDF da ficha
+    let pdfBuffer = null;
+    let pdfBase64 = null;
+    if (gerarFichaPDF) {
+      try {
+        const dadosPDF = { protocolo: id, dataRegistroFmt, setorRecebimento, colaboradorRecebimento, nomeCliente, empresa, telefone, email, canalRecebimento: canalFinal, tipoManifestacao, motivoManifestacao, descricaoOriginal, produto, lote, quantidadeAfetada, observacoes, totalEvidencias: evidenciasMetadata.length };
+        pdfBuffer = await gerarFichaPDF(dadosPDF);
+        pdfBase64 = pdfBuffer.toString('base64');
+      } catch (pdfErr) {
+        console.warn('[PUBLIC] PDF geração falhou:', pdfErr.message);
+      }
+    }
+
+    // 4. Upload PDF para o Drive
+    let pdfDriveId = '';
+    let pdfDriveUrl = '';
+    const pdfNome = `FICHA_${id}.pdf`;
+    if (pdfBuffer) {
+      try {
+        const pdfDrive = await uploadArquivoDrive(pdfNome, 'application/pdf', pdfBuffer);
+        pdfDriveId = pdfDrive.id || '';
+        pdfDriveUrl = pdfDrive.webViewLink || pdfDrive.webContentLink || '';
+      } catch (pdfUpErr) {
+        console.warn('[PUBLIC] PDF upload Drive falhou:', pdfUpErr.message);
+      }
+    }
+
+    // 5. Indexar na FICHAS_BIBLIOTECA
+    try {
+      await garantirAbaComCabecalhos('FICHAS_BIBLIOTECA', FICHAS_BIBLIOTECA_HEADERS);
+      const fichaId = `FIC-${id}`;
+      await appendObjeto('FICHAS_BIBLIOTECA', {
+        ID_FICHA: fichaId, ID_MANIFESTACAO: id, PROTOCOLO: id,
+        DATA_REGISTRO: agora, ANO: anoReg, MES: mesReg,
+        EMPRESA: empresa, SETOR_RECEBIMENTO: setorRecebimento,
+        COLABORADOR_RECEBIMENTO: colaboradorRecebimento, NOME_CLIENTE: nomeCliente,
+        TIPO_MANIFESTACAO: tipoManifestacao, MOTIVO: motivoManifestacao,
+        STATUS: 'NOVA', PDF_DRIVE_ID: pdfDriveId, PDF_DRIVE_URL: pdfDriveUrl,
+        PDF_NOME: pdfNome, TOTAL_EVIDENCIAS: evidenciasMetadata.length,
+        CREATED_AT: agora, VERSAO: '1',
+      });
+    } catch (bibErr) {
+      console.warn('[PUBLIC] FICHAS_BIBLIOTECA indexação falhou:', bibErr.message);
+    }
+
+    // 6. Atualizar MANIFESTACOES com referências do PDF/Drive
+    if (pdfDriveId) {
+      atualizarPorID('MANIFESTACOES', id, { PDF_DRIVE_ID: pdfDriveId, PDF_DRIVE_URL: pdfDriveUrl, PDF_NOME: pdfNome }, ['ID_MANIFESTACAO']).catch(() => {});
+    }
+
+    registrarAuditoria(`portal:${colaboradorRecebimento}`, 'CRIOU_MANIFESTAÇÃO_PORTAL', id, 'MANIFESTACOES', null, { empresa, nomeCliente, canal: canalFinal, tipo: tipoManifestacao }).catch(() => {});
+
+    const resposta = { sucesso: true, protocolo: id, dataHora: agora };
+    if (pdfBase64) resposta.pdfBase64 = pdfBase64;
+    res.json(resposta);
   } catch (e) {
     console.error('[PUBLIC] POST /api/public/reclamacoes:', e.message);
-    res.status(500).json({ sucesso: false, erro: 'Não foi possível registrar a reclamação. Tente novamente.' });
+    res.status(500).json({ sucesso: false, erro: 'Não foi possível registrar. Tente novamente.' });
   }
 });
 
@@ -2992,6 +3101,130 @@ app.get('/api/public/empresas', publicRateLimit, async (req, res) => {
   } catch (e) {
     res.status(500).json({ sucesso: false, empresas: [] });
   }
+});
+
+// ===== BIBLIOTECA DE FICHAS =====
+// Listar fichas com filtros e paginação
+app.get('/api/biblioteca/fichas', requerPerfil('MASTER','ADMINISTRADOR','ANALISTA SAC','SAC','APROVADOR','SETOR RESPONSÁVEL','GESTOR DE SETOR','USUÁRIO DE SETOR'), async (req, res) => {
+  try {
+    const { ano, mes, empresa, setor, tipo, status, q, page = '1', limit = '50' } = req.query;
+    const fichas = await lerAba('FICHAS_BIBLIOTECA', 5000).catch(() => []);
+    let filtered = fichas;
+    if (ano) filtered = filtered.filter(f => (f.ANO || '') === String(ano));
+    if (mes) filtered = filtered.filter(f => (f.MES || '') === String(mes).padStart(2,'0'));
+    if (empresa) filtered = filtered.filter(f => normalizarTexto(f.EMPRESA||'').includes(normalizarTexto(empresa)));
+    if (setor) filtered = filtered.filter(f => normalizarTexto(f.SETOR_RECEBIMENTO||'').includes(normalizarTexto(setor)));
+    if (tipo) filtered = filtered.filter(f => normalizarTexto(f.TIPO_MANIFESTACAO||'').includes(normalizarTexto(tipo)));
+    if (status) filtered = filtered.filter(f => normalizarTexto(f.STATUS||'').includes(normalizarTexto(status)));
+    if (q) {
+      const nq = normalizarTexto(q);
+      filtered = filtered.filter(f =>
+        normalizarTexto(f.PROTOCOLO||'').includes(nq) ||
+        normalizarTexto(f.NOME_CLIENTE||'').includes(nq) ||
+        normalizarTexto(f.EMPRESA||'').includes(nq) ||
+        normalizarTexto(f.COLABORADOR_RECEBIMENTO||'').includes(nq) ||
+        normalizarTexto(f.MOTIVO||'').includes(nq)
+      );
+    }
+    // Sort desc por data
+    filtered.sort((a, b) => (b.DATA_REGISTRO || b.CREATED_AT || '').localeCompare(a.DATA_REGISTRO || a.CREATED_AT || ''));
+    const pageNum = Math.max(1, parseInt(page) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit) || 50));
+    const total = filtered.length;
+    const items = filtered.slice((pageNum - 1) * limitNum, pageNum * limitNum);
+    // Remove PDF Drive IDs from list response (available on detail)
+    const safe = items.map(({ PDF_DRIVE_ID, ...rest }) => rest);
+    res.json({ sucesso: true, total, page: pageNum, limit: limitNum, pages: Math.ceil(total / limitNum), fichas: safe });
+  } catch(e) { res.status(500).json({ sucesso: false, erro: e.message }); }
+});
+
+// Stats da biblioteca (respeitam filtros de ano/mes/empresa)
+app.get('/api/biblioteca/stats', requerPerfil('MASTER','ADMINISTRADOR','ANALISTA SAC','SAC','APROVADOR','SETOR RESPONSÁVEL','GESTOR DE SETOR','USUÁRIO DE SETOR'), async (req, res) => {
+  try {
+    const { ano, mes, empresa } = req.query;
+    const fichas = await lerAba('FICHAS_BIBLIOTECA', 5000).catch(() => []);
+    let base = fichas;
+    if (empresa) base = base.filter(f => normalizarTexto(f.EMPRESA||'').includes(normalizarTexto(empresa)));
+    const agora = new Date();
+    const anoAtual = agora.getFullYear().toString();
+    const mesAtual = String(agora.getMonth() + 1).padStart(2,'0');
+    const doAno = base.filter(f => (f.ANO||'') === anoAtual);
+    const doMes = doAno.filter(f => (f.MES||'') === mesAtual);
+    // Por empresa
+    const porEmpresa = {};
+    base.forEach(f => { const e = f.EMPRESA||'Não informada'; porEmpresa[e] = (porEmpresa[e]||0)+1; });
+    // Por tipo
+    const porTipo = {};
+    base.forEach(f => { const t = f.TIPO_MANIFESTACAO||'Reclamação'; porTipo[t] = (porTipo[t]||0)+1; });
+    // Por ano/mes para navegação hierárquica
+    const porAnoMes = {};
+    base.forEach(f => {
+      const a = f.ANO || 'S/A'; const m = f.MES || '00';
+      if (!porAnoMes[a]) porAnoMes[a] = {};
+      porAnoMes[a][m] = (porAnoMes[a][m]||0)+1;
+    });
+    const comEvidencias = base.filter(f => parseInt(f.TOTAL_EVIDENCIAS||0) > 0).length;
+    let scope = base;
+    if (ano) scope = scope.filter(f => (f.ANO||'') === String(ano));
+    if (mes) scope = scope.filter(f => (f.MES||'') === String(mes).padStart(2,'0'));
+    res.json({ sucesso: true, totalFichas: scope.length, fichasDoMes: doMes.length, fichasDoAno: doAno.length, porEmpresa, porTipo, porAnoMes, comEvidencias });
+  } catch(e) { res.status(500).json({ sucesso: false, erro: e.message }); }
+});
+
+// Detalhe de uma ficha (inclui PDF Drive URL)
+app.get('/api/biblioteca/fichas/:id', requerPerfil('MASTER','ADMINISTRADOR','ANALISTA SAC','SAC','APROVADOR','SETOR RESPONSÁVEL','GESTOR DE SETOR','USUÁRIO DE SETOR'), async (req, res) => {
+  try {
+    const fichas = await lerAba('FICHAS_BIBLIOTECA', 5000).catch(() => []);
+    const ficha = fichas.find(f => f.ID_FICHA === req.params.id || f.ID_MANIFESTACAO === req.params.id || f.PROTOCOLO === req.params.id);
+    if (!ficha) return res.status(404).json({ sucesso: false, erro: 'Ficha não encontrada.' });
+    // Buscar evidências
+    const evs = await lerAba('EVIDENCIAS', 2000).catch(() => []);
+    const evidencias = evs.filter(e => e.ID_MANIFESTACAO === ficha.ID_MANIFESTACAO);
+    registrarAuditoria(req.user.usuario, 'VISUALIZOU_FICHA_BIBLIOTECA', ficha.ID_MANIFESTACAO, 'FICHAS_BIBLIOTECA', null, {}).catch(() => {});
+    res.json({ sucesso: true, ficha, evidencias });
+  } catch(e) { res.status(500).json({ sucesso: false, erro: e.message }); }
+});
+
+// Regenerar PDF de uma ficha (MASTER/ADMINISTRADOR/SAC)
+app.post('/api/biblioteca/fichas/:id/regenerar-pdf', requerPerfil('MASTER','ADMINISTRADOR','ANALISTA SAC','SAC'), async (req, res) => {
+  try {
+    if (!gerarFichaPDF) return res.status(503).json({ sucesso: false, erro: 'Serviço de PDF não disponível.' });
+    const fichas = await lerAba('FICHAS_BIBLIOTECA', 5000).catch(() => []);
+    const ficha = fichas.find(f => f.ID_FICHA === req.params.id || f.ID_MANIFESTACAO === req.params.id || f.PROTOCOLO === req.params.id);
+    if (!ficha) return res.status(404).json({ sucesso: false, erro: 'Ficha não encontrada.' });
+    const mans = await lerAba('MANIFESTACOES', 5000).catch(() => []);
+    const man = mans.find(m => m.ID_MANIFESTACAO === ficha.ID_MANIFESTACAO);
+    if (!man) return res.status(404).json({ sucesso: false, erro: 'Manifestação não encontrada.' });
+    const evs = await lerAba('EVIDENCIAS', 2000).catch(() => []);
+    const evidencias = evs.filter(e => e.ID_MANIFESTACAO === ficha.ID_MANIFESTACAO);
+    const dtReg = new Date(man.DATA_REGISTRO || man.DATA_ABERTURA || Date.now());
+    const dataRegistroFmt = dtReg.toLocaleDateString('pt-BR') + ' ' + dtReg.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
+    const dadosPDF = {
+      protocolo: man.ID_MANIFESTACAO, dataRegistroFmt,
+      setorRecebimento: man.SETOR_RECEBIMENTO || man.SETOR_REGISTRANTE || '',
+      colaboradorRecebimento: man.COLABORADOR_RECEBIMENTO || man.REGISTRADO_POR || '',
+      nomeCliente: man.NOME_CLIENTE || man.CLIENTE_NOME || '',
+      empresa: man.EMPRESA_RECLAMADA || man.EMPRESA_RECLAMANTE || '',
+      telefone: man.TELEFONE || '', email: man.EMAIL || '',
+      canalRecebimento: man.CANAL || '', tipoManifestacao: man.TIPO || man.TIPO_MANIFESTACAO || 'Reclamação',
+      motivoManifestacao: man.MOTIVO || '', descricaoOriginal: man.DESCRICAO_ORIGINAL || man.DESCRICAO || '',
+      produto: man.PRODUTO || '', lote: man.LOTE || '', quantidadeAfetada: man.QUANTIDADE || '',
+      observacoes: man.OBSERVACOES || '', totalEvidencias: evidencias.length,
+    };
+    const pdfBuffer = await gerarFichaPDF(dadosPDF);
+    const versaoAtual = parseInt(ficha.VERSAO || '1');
+    const novaVersao = versaoAtual + 1;
+    const pdfNome = `FICHA_${man.ID_MANIFESTACAO}_v${novaVersao}.pdf`;
+    let pdfDriveId = ''; let pdfDriveUrl = '';
+    try {
+      const pdfDrive = await uploadArquivoDrive(pdfNome, 'application/pdf', pdfBuffer);
+      pdfDriveId = pdfDrive.id || ''; pdfDriveUrl = pdfDrive.webViewLink || '';
+    } catch(upErr) { console.warn('[BIBLIOTECA] PDF upload falhou:', upErr.message); }
+    await atualizarPorID('FICHAS_BIBLIOTECA', ficha.ID_FICHA, { PDF_DRIVE_ID: pdfDriveId, PDF_DRIVE_URL: pdfDriveUrl, PDF_NOME: pdfNome, VERSAO: novaVersao.toString() }, ['ID_FICHA']).catch(() => {});
+    registrarAuditoria(req.user.usuario, 'REGENEROU_PDF_BIBLIOTECA', ficha.ID_MANIFESTACAO, 'FICHAS_BIBLIOTECA', null, { versao: novaVersao }).catch(() => {});
+    const pdfBase64 = pdfBuffer.toString('base64');
+    res.json({ sucesso: true, pdfBase64, pdfNome, versao: novaVersao, pdfDriveUrl });
+  } catch(e) { res.status(500).json({ sucesso: false, erro: e.message }); }
 });
 
 // ===== CATCH ALL =====
