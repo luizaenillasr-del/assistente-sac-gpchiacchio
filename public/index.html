@@ -6724,10 +6724,10 @@ window.confirmarDecisao = function(tipo){
   if(tipo==='aceita'){
     const a = window._nmAnaliseAtual||{};
     decisaoFinal = {
-      tipo: a.tipoSugerido,
-      setor: (a.setoresSugeridos||[])[0],
+      tipo: a.tipoDetectado||a.tipoSugerido,
+      setor: (a.setores||a.setoresSugeridos||[])[0],
       causa: a.causaProvavel||a.causa,
-      tratativa: document.getElementById('ia-tratativa')?.textContent||a.tratativaSugerida,
+      tratativa: document.getElementById('ia-tratativa')?.textContent||(typeof a.tratativaSugerida==='object'?a.tratativaSugerida?.sugestao:a.tratativaSugerida),
       devolutiva: document.getElementById('ia-devolutiva')?.value||a.devolutivaSugerida,
       obs: document.getElementById('dec-obs-aceitar')?.value||''
     };
@@ -6744,8 +6744,8 @@ window.confirmarDecisao = function(tipo){
     // Detectar campos alterados vs IA
     const a = window._nmAnaliseAtual||{};
     const alterados = {};
-    if(decisaoFinal.tipo !== a.tipoSugerido) alterados.tipo = { ia:a.tipoSugerido, analista:decisaoFinal.tipo };
-    if(decisaoFinal.setor !== (a.setoresSugeridos||[])[0]) alterados.setor = { ia:(a.setoresSugeridos||[])[0], analista:decisaoFinal.setor };
+    if(decisaoFinal.tipo !== (a.tipoDetectado||a.tipoSugerido)) alterados.tipo = { ia:a.tipoDetectado||a.tipoSugerido, analista:decisaoFinal.tipo };
+    if(decisaoFinal.setor !== (a.setores||a.setoresSugeridos||[])[0]) alterados.setor = { ia:(a.setores||a.setoresSugeridos||[])[0], analista:decisaoFinal.setor };
     if(decisaoFinal.causa !== (a.causaProvavel||a.causa)) alterados.causa = { ia:a.causaProvavel||a.causa, analista:decisaoFinal.causa };
     window._nmDecisaoCompleta.camposAlterados = alterados;
   }
@@ -8589,7 +8589,7 @@ async function cdHistDetalhe(idx) {
     simWrap.style.display='block';
     try {
       const sr=await _apiFetch('/api/analise/similares',15000,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({descricao,empresa:x.ORIG_EMPRESA||x.EMPRESA_RECLAMANTE||''})});
-      const sims=(sr.similares||sr.casosSimilares||[]).slice(0,4);
+      const sims=(sr.itens||sr.similares||sr.casosSimilares||[]).slice(0,4);
       if(sims.length){
         simList.innerHTML=sims.map(s=>`<div style="background:var(--gray-50);border-radius:8px;padding:10px 12px;margin-bottom:8px;font-size:12px">
           <div style="font-weight:600;color:var(--gray-700);margin-bottom:4px">${esc5(s.empresa||s.EMPRESA||'')} — ${esc5(s.tipo||s.TIPO||'')} <span style="color:var(--gray-400);font-weight:400">${Math.round((s.similaridade||0)*100)}% similar</span></div>
@@ -8725,9 +8725,18 @@ async function cdLoadRep() {
   try { const r=await _apiFetch('/api/empresas'); _cdData.rep=r.itens||r.empresas||[]; renderCdRep(); } catch(e) { document.getElementById('cd-rep-loading').textContent='Erro: '+e.message; }
 }
 function renderCdRep(q='') {
-  const rows=_cdData.rep.filter(x=>!q||(x.RAZAO_SOCIAL||x.NOME||x.CLIENTE||x.CNPJ||'').toLowerCase().includes(q));
+  const rows=_cdData.rep.filter(x=>{const nome=typeof x==='string'?x:(x.RAZAO_SOCIAL||x.NOME||x.CLIENTE||x.CNPJ||'');return !q||nome.toLowerCase().includes(q);});
   document.getElementById('cd-rep-count').textContent=`${rows.length} registro(s)`;
-  cdRender('cd-rep-tbody','cd-rep-loading',rows.map(x=>`<tr><td style="font-size:11px">${esc5(x.ID_CLIENTE||x.ID||'')}</td><td>${esc5(x.RAZAO_SOCIAL||x.NOME||x.CLIENTE||'')}</td><td>${esc5(x.CNPJ||x.CNPJ_CPF||'')}</td><td>${esc5(x.CIDADE||'')}</td><td>${esc5(x.ESTADO||x.UF||'')}</td><td>${esc5(x.EMAIL||'')}</td><td>${esc5(x.RCA||x.REPRESENTANTE||'')}</td></tr>`),7,'Nenhum representante/cliente.');
+  cdRender('cd-rep-tbody','cd-rep-loading',rows.map(x=>{
+    const nome=typeof x==='string'?x:(x.RAZAO_SOCIAL||x.NOME||x.CLIENTE||'');
+    const id=typeof x==='string'?'':(x.ID_CLIENTE||x.ID||'');
+    const cnpj=typeof x==='string'?'':(x.CNPJ||x.CNPJ_CPF||'');
+    const cidade=typeof x==='string'?'':(x.CIDADE||'');
+    const estado=typeof x==='string'?'':(x.ESTADO||x.UF||'');
+    const email=typeof x==='string'?'':(x.EMAIL||'');
+    const rca=typeof x==='string'?'':(x.RCA||x.REPRESENTANTE||'');
+    return `<tr><td style="font-size:11px">${esc5(id)}</td><td>${esc5(nome)}</td><td>${esc5(cnpj)}</td><td>${esc5(cidade)}</td><td>${esc5(estado)}</td><td>${esc5(email)}</td><td>${esc5(rca)}</td></tr>`;
+  }),7,'Nenhum representante/cliente.');
 }
 
 // ── CAUSAS ──
