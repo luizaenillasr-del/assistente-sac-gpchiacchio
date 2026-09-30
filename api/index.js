@@ -2404,6 +2404,119 @@ app.use((err, req, res, next) => {
   res.status(500).json({ sucesso:false, erro:'Erro interno do servidor.' });
 });
 
+// ===== IMPORTADOR TEMPORÁRIO (F3) — remover após uso =====
+app.get('/api/_importar', async (req, res) => {
+  const secret = process.env.SESSION_SECRET || '';
+  if (!secret || req.query.secret !== secret) {
+    return res.status(403).json({ erro: 'Acesso negado.' });
+  }
+  const etapa = req.query.etapa || 'status';
+
+  if (etapa === 'status') {
+    return res.json({ ok: true, mensagem: 'Importador disponível.', etapas: ['empresas','usuarios','clientes','manifestacoes'] });
+  }
+
+  try {
+    const { google: goog } = require('googleapis');
+    const prismaDb = require('../database/connection');
+
+    async function getSheetsClient() {
+      const creds = JSON.parse(process.env.GOOGLE_CREDENTIALS);
+      const auth = new goog.auth.GoogleAuth({ credentials: creds, scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'] });
+      const client = await auth.getClient();
+      return goog.sheets({ version: 'v4', auth: client });
+    }
+    async function lerAbaLocal(sheets, nome, max = 5000) {
+      const r = await sheets.spreadsheets.values.get({ spreadsheetId: process.env.SPREADSHEET_ID, range: `${nome}!A1:AZ${max}` });
+      const rows = r.data.values || [];
+      if (rows.length < 2) return [];
+      const headers = rows[0];
+      return rows.slice(1).map(row => { const o = {}; headers.forEach((h, i) => { if (h) o[h] = row[i] || ''; }); return o; });
+    }
+
+    const sheets = await getSheetsClient();
+    const log = [];
+
+    if (etapa === 'empresas') {
+      const rows = await lerAbaLocal(sheets, 'EMPRESAS').catch(() => []);
+      let ok = 0;
+      for (const r of rows) {
+        const codigo = (r.CODIGO || r.NOME || '').trim().toUpperCase();
+        const nome = (r.NOME || codigo).trim();
+        if (!codigo) continue;
+        await prismaDb.empresa.upsert({ where: { codigo }, update: { nome }, create: { codigo, nome, cnpj: r.CNPJ || null } }).catch(() => {});
+        ok++;
+      }
+      log.push(`Empresas: ${ok} processadas`);
+    }
+
+    if (etapa === 'usuarios') {
+      const rows = await lerAbaLocal(sheets, 'USUARIOS').catch(() => []);
+      const empresas = await prismaDb.empresa.findMany();
+      const perfis = await prismaDb.perfil.findMany();
+      const empDefault = empresas[0];
+      let ok = 0, erros = 0;
+      for (const r of rows) {
+        const email = (r.EMAIL || '').toLowerCase().trim();
+        const nome = (r.NOME || r.NOME_COMPLETO || '').trim();
+        if (!email || !nome) { erros++; continue; }
+        const perf = perfis.find(p => p.codigo.toLowerCase().includes((r.PERFIL||'').toLowerCase().split(' ')[0])) || perfis[0];
+        if (!empDefault || !perf) { erros++; continue; }
+        await prismaDb.usuario.upsert({
+          where: { email },
+          update: { nome, idOriginal: r.ID_USUARIO || null },
+          create: { email, nome, senhaHash: r.SENHA_HASH || r.SENHA || 'PENDENTE', idOriginal: r.ID_USUARIO || null, empresaId: empDefault.id, perfilId: perf.id, ativo: (r.STATUS||'ATIVO').toUpperCase() !== 'INATIVO' },
+        }).catch(() => { erros++; });
+        ok++;
+      }
+      log.push(`Usuários: ${ok} processados, ${erros} erros`);
+    }
+
+    if (etapa === 'clientes') {
+      const mans = await lerAbaLocal(sheets, 'MANIFESTACOES', 5000).catch(() => []);
+      const empresas = await prismaDb.empresa.findMany();
+      const empDefault = empresas[0];
+      const nomes = [...new Set(mans.map(m => (m.EMPRESA_RECLAMANTE||'').trim()).filter(Boolean))];
+      let ok = 0;
+      for (const nome of nomes) {
+        const exist = await prismaDb.cliente.findFirst({ where: { nome, empresaId: empDefault.id } });
+        if (!exist) await prismaDb.cliente.create({ data: { nome, empresaId: empDefault.id } }).catch(() => {});
+        ok++;
+      }
+      log.push(`Clientes: ${ok} processados`);
+    }
+
+    if (etapa === 'manifestacoes') {
+      const rows = await lerAbaLocal(sheets, 'MANIFESTACOES', 5000).catch(() => []);
+      const empresas = await prismaDb.empresa.findMany();
+      const empDefault = empresas[0];
+      let ok = 0, ignorados = 0, erros = 0;
+      for (const r of rows) {
+        const idOriginal = (r.ID_MANIFESTACAO||'').trim();
+        if (!idOriginal) { erros++; continue; }
+        const exist = await prismaDb.manifestacao.findFirst({ where: { idOriginal } });
+        if (exist) { ignorados++; continue; }
+        const emp = empresas.find(e => e.nome.toLowerCase().includes((r.EMPRESA_RECLAMADA||'').toLowerCase())) || empDefault;
+        await prismaDb.manifestacao.create({ data: {
+          protocolo: idOriginal, idOriginal, empresaId: emp.id,
+          empresaNome: r.EMPRESA_RECLAMADA || r.EMPRESA_RECLAMANTE || emp.nome,
+          contato: r.EMPRESA_RECLAMANTE || null,
+          descricao: r.DESCRICAO || r.DESCRICAO_MANIFESTACAO || '',
+          tipo: r.TIPO || 'RECLAMACAO', produtoNome: r.PRODUTO || null, prioridade: r.PRIORIDADE || 'Media',
+          status: r.STATUS || 'ABERTA',
+          criadaEm: r.DATA_ABERTURA ? new Date(r.DATA_ABERTURA) : new Date(),
+        }}).catch(() => { erros++; });
+        ok++;
+      }
+      log.push(`Manifestações: ${ok} novas, ${ignorados} já existiam, ${erros} erros`);
+    }
+
+    res.json({ ok: true, log });
+  } catch (e) {
+    res.status(500).json({ ok: false, erro: e.message });
+  }
+});
+
 if (require.main === module) {
   const PORT = process.env.PORT || 3000;
   app.listen(PORT, () => console.log(`SAC Chiacchio API v5.6.0 rodando na porta ${PORT}`));
