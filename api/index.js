@@ -2405,7 +2405,22 @@ app.get('/api/_importar', async (req, res) => {
   const etapa = req.query.etapa || 'status';
 
   if (etapa === 'status') {
-    return res.json({ ok: true, mensagem: 'Importador disponível.', etapas: ['empresas','clientes','manifestacoes','rnc'] });
+    return res.json({ ok: true, mensagem: 'Importador disponível.', etapas: ['debug','empresas','clientes','manifestacoes','rnc'] });
+  }
+
+  if (etapa === 'debug') {
+    try {
+      const { google: goog } = require('googleapis');
+      const creds = JSON.parse(process.env.GOOGLE_CREDENTIALS);
+      const auth = new goog.auth.GoogleAuth({ credentials: creds, scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'] });
+      const client = await auth.getClient();
+      const sheets = goog.sheets({ version: 'v4', auth: client });
+      const meta = await sheets.spreadsheets.get({ spreadsheetId: process.env.SPREADSHEET_ID });
+      const abas = meta.data.sheets.map(s => s.properties.title);
+      return res.json({ ok: true, spreadsheetId: process.env.SPREADSHEET_ID, titulo: meta.data.properties.title, abas });
+    } catch(e) {
+      return res.status(500).json({ ok: false, erro: e.message });
+    }
   }
 
   try {
