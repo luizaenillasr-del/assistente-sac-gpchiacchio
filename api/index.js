@@ -2405,7 +2405,7 @@ app.get('/api/_importar', async (req, res) => {
   const etapa = req.query.etapa || 'status';
 
   if (etapa === 'status') {
-    return res.json({ ok: true, mensagem: 'Importador disponível.', etapas: ['empresas','usuarios','clientes','manifestacoes'] });
+    return res.json({ ok: true, mensagem: 'Importador disponível.', etapas: ['empresas','clientes','manifestacoes','rnc'] });
   }
 
   try {
@@ -2418,89 +2418,118 @@ app.get('/api/_importar', async (req, res) => {
       const client = await auth.getClient();
       return goog.sheets({ version: 'v4', auth: client });
     }
-    async function lerAbaLocal(sheets, nome, max = 5000) {
+    async function lerAba(sheets, nome, max = 5000) {
       const r = await sheets.spreadsheets.values.get({ spreadsheetId: process.env.SPREADSHEET_ID, range: `${nome}!A1:AZ${max}` });
       const rows = r.data.values || [];
       if (rows.length < 2) return [];
       const headers = rows[0];
-      return rows.slice(1).map(row => { const o = {}; headers.forEach((h, i) => { if (h) o[h] = row[i] || ''; }); return o; });
+      return rows.slice(1).map(row => { const o = {}; headers.forEach((h, i) => { if (h) o[String(h).trim()] = row[i] || ''; }); return o; });
     }
 
     const sheets = await getSheetsClient();
     const log = [];
 
+    // Empresas: aba "Configurações", coluna "Empresas"
     if (etapa === 'empresas') {
-      const rows = await lerAbaLocal(sheets, 'EMPRESAS').catch(() => []);
+      const rows = await lerAba(sheets, 'Configurações').catch(() => []);
       let ok = 0;
       for (const r of rows) {
-        const codigo = (r.CODIGO || r.NOME || '').trim().toUpperCase();
-        const nome = (r.NOME || codigo).trim();
-        if (!codigo) continue;
-        await prismaDb.empresa.upsert({ where: { codigo }, update: { nome }, create: { codigo, nome, cnpj: r.CNPJ || null } }).catch(() => {});
+        const nome = (r['Empresas'] || '').trim();
+        if (!nome) continue;
+        const codigo = nome.toUpperCase().replace(/\s+/g, '_');
+        await prismaDb.empresa.upsert({ where: { codigo }, update: { nome }, create: { codigo, nome } }).catch(() => {});
         ok++;
       }
       log.push(`Empresas: ${ok} processadas`);
     }
 
-    if (etapa === 'usuarios') {
-      const rows = await lerAbaLocal(sheets, 'USUARIOS').catch(() => []);
+    // Clientes: aba "Clientes"
+    if (etapa === 'clientes') {
+      const rows = await lerAba(sheets, 'Clientes').catch(() => []);
       const empresas = await prismaDb.empresa.findMany();
-      const perfis = await prismaDb.perfil.findMany();
-      const empDefault = empresas[0];
       let ok = 0, erros = 0;
       for (const r of rows) {
-        const email = (r.EMAIL || '').toLowerCase().trim();
-        const nome = (r.NOME || r.NOME_COMPLETO || '').trim();
-        if (!email || !nome) { erros++; continue; }
-        const perf = perfis.find(p => p.codigo.toLowerCase().includes((r.PERFIL||'').toLowerCase().split(' ')[0])) || perfis[0];
-        if (!empDefault || !perf) { erros++; continue; }
-        await prismaDb.usuario.upsert({
-          where: { email },
-          update: { nome, idOriginal: r.ID_USUARIO || null },
-          create: { email, nome, senhaHash: r.SENHA_HASH || r.SENHA || 'PENDENTE', idOriginal: r.ID_USUARIO || null, empresaId: empDefault.id, perfilId: perf.id, ativo: (r.STATUS||'ATIVO').toUpperCase() !== 'INATIVO' },
-        }).catch(() => { erros++; });
+        const idOriginal = (r['ID Cliente'] || '').trim();
+        const nome = (r['Nome do Cliente'] || '').trim();
+        if (!nome) { erros++; continue; }
+        const nomeEmp = (r['Empresa do Grupo'] || '').trim().toUpperCase();
+        const emp = empresas.find(e => e.nome.toUpperCase().includes(nomeEmp) || e.codigo.includes(nomeEmp)) || empresas[0];
+        if (!emp) { erros++; continue; }
+        const exist = await prismaDb.cliente.findFirst({ where: { nome, empresaId: emp.id } });
+        if (!exist) {
+          await prismaDb.cliente.create({ data: { nome, empresaId: emp.id, contatoOriginal: idOriginal || null } }).catch(() => { erros++; });
+        }
         ok++;
       }
-      log.push(`Usuários: ${ok} processados, ${erros} erros`);
+      log.push(`Clientes: ${ok} processados, ${erros} erros`);
     }
 
-    if (etapa === 'clientes') {
-      const mans = await lerAbaLocal(sheets, 'MANIFESTACOES', 5000).catch(() => []);
-      const empresas = await prismaDb.empresa.findMany();
-      const empDefault = empresas[0];
-      const nomes = [...new Set(mans.map(m => (m.EMPRESA_RECLAMANTE||'').trim()).filter(Boolean))];
-      let ok = 0;
-      for (const nome of nomes) {
-        const exist = await prismaDb.cliente.findFirst({ where: { nome, empresaId: empDefault.id } });
-        if (!exist) await prismaDb.cliente.create({ data: { nome, empresaId: empDefault.id } }).catch(() => {});
-        ok++;
-      }
-      log.push(`Clientes: ${ok} processados`);
-    }
-
+    // Manifestações: aba " Reclamações" + detalhes de "Fichas de Encaminhamento"
     if (etapa === 'manifestacoes') {
-      const rows = await lerAbaLocal(sheets, 'MANIFESTACOES', 5000).catch(() => []);
+      const reclamacoes = await lerAba(sheets, ' Reclamações').catch(() => []);
+      const fichas = await lerAba(sheets, 'Fichas de Encaminhamento').catch(() => []);
       const empresas = await prismaDb.empresa.findMany();
-      const empDefault = empresas[0];
+      const fichasMap = {};
+      fichas.forEach(f => { if (f['Nº Reclamação']) fichasMap[f['Nº Reclamação'].trim()] = f; });
       let ok = 0, ignorados = 0, erros = 0;
-      for (const r of rows) {
-        const idOriginal = (r.ID_MANIFESTACAO||'').trim();
+      for (const r of reclamacoes) {
+        const idOriginal = (r['Nº Reclamação'] || '').trim();
         if (!idOriginal) { erros++; continue; }
         const exist = await prismaDb.manifestacao.findFirst({ where: { idOriginal } });
         if (exist) { ignorados++; continue; }
-        const emp = empresas.find(e => e.nome.toLowerCase().includes((r.EMPRESA_RECLAMADA||'').toLowerCase())) || empDefault;
+        const nomeEmp = (r['Empresa'] || '').trim().toUpperCase();
+        const emp = empresas.find(e => e.nome.toUpperCase().includes(nomeEmp) || e.codigo.includes(nomeEmp)) || empresas[0];
+        const ficha = fichasMap[idOriginal] || {};
+        const statusRaw = (r['Status'] || '').toLowerCase();
+        const status = statusRaw.includes('conclu') ? 'CONCLUIDA' : statusRaw.includes('andamento') ? 'EM_ANDAMENTO' : 'ABERTA';
+        const dataRaw = r['Data de Registro'];
+        const criadaEm = dataRaw ? new Date(dataRaw) : new Date();
         await prismaDb.manifestacao.create({ data: {
           protocolo: idOriginal, idOriginal, empresaId: emp.id,
-          empresaNome: r.EMPRESA_RECLAMADA || r.EMPRESA_RECLAMANTE || emp.nome,
-          contato: r.EMPRESA_RECLAMANTE || null,
-          descricao: r.DESCRICAO || r.DESCRICAO_MANIFESTACAO || '',
-          tipo: r.TIPO || 'RECLAMACAO', produtoNome: r.PRODUTO || null, prioridade: r.PRIORIDADE || 'Media',
-          status: r.STATUS || 'ABERTA',
-          criadaEm: r.DATA_ABERTURA ? new Date(r.DATA_ABERTURA) : new Date(),
+          empresaNome: r['Empresa'] || emp.nome,
+          contato: (r['Cliente'] || ficha['Nome do Cliente'] || '').substring(0, 200),
+          descricao: ficha['Descrição Detalhada'] || '',
+          tipo: (ficha['Tipo de Manifestação'] || 'RECLAMACAO').toUpperCase().replace(/\s+/g,'_').replace('RECLAMAÇÃO','RECLAMACAO'),
+          produtoNome: ficha['Produto'] || null,
+          prioridade: 'Media', status,
+          criadaEm: isNaN(criadaEm) ? new Date() : criadaEm,
         }}).catch(() => { erros++; });
         ok++;
       }
       log.push(`Manifestações: ${ok} novas, ${ignorados} já existiam, ${erros} erros`);
+    }
+
+    // RNC: aba "Virou RNC"
+    if (etapa === 'rnc') {
+      const rows = await lerAba(sheets, 'Virou RNC').catch(() => []);
+      const empresas = await prismaDb.empresa.findMany();
+      let ok = 0, ignorados = 0, erros = 0;
+      for (const r of rows) {
+        const idOriginal = (r['Nº RNC'] || '').trim();
+        const clienteNome = (r['Cliente '] || r['Cliente'] || '').trim();
+        if (!clienteNome) { erros++; continue; }
+        const nomeEmp = (r['Empresa'] || '').trim().toUpperCase();
+        const emp = empresas.find(e => e.nome.toUpperCase().includes(nomeEmp) || e.codigo.includes(nomeEmp)) || empresas[0];
+        const exist = idOriginal ? await prismaDb.rnc.findFirst({ where: { idOriginal } }) : null;
+        if (exist) { ignorados++; continue; }
+        const dataRaw = r['Data de Entrada '] || r['Data de Entrada'];
+        const dataAbertura = dataRaw ? new Date(dataRaw) : new Date();
+        const numRnc = idOriginal || `RNC-${Date.now()}-${ok}`;
+        await prismaDb.rnc.create({ data: {
+          idOriginal: idOriginal || null,
+          protocolo: numRnc,
+          empresaId: emp.id,
+          origemTipo: 'COMERCIAL_RECLAMACAO',
+          descricao: r['Causa Raiz '] || r['Causa Raiz'] || clienteNome,
+          produto: null,
+          setor: null,
+          responsavel: r['Responsável'] || null,
+          dataAbertura: isNaN(dataAbertura) ? new Date() : dataAbertura,
+          status: 'ABERTA',
+        }}).catch(() => { erros++; });
+        ok++;
+      }
+      log.push(`RNC: ${ok} novas, ${ignorados} já existiam, ${erros} erros`);
     }
 
     res.json({ ok: true, log });
