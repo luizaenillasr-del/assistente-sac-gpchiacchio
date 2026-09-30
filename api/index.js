@@ -56,10 +56,10 @@ function senhaValida(informada, armazenada){
 
 const DEMO_USUARIOS = [
   {ID_USUARIO:'USR-DEMO-001',USUARIO:'luiza',EMAIL:'',NOME:'Luiza',PERFIL:'MASTER',EMPRESA:'Grupo Chiacchio',SETOR:'SAC',STATUS:'ATIVO',SENHA:'sha256:b5d54c39e66671c9731b9f471e585d8262cd4f54daa9d7d033747a98ea9a9ef0',CODIGO_RCA:''},
-  {ID_USUARIO:'USR-DEMO-002',USUARIO:'joao.aprovador',EMAIL:'',NOME:'João Silva',PERFIL:'APROVADOR',EMPRESA:'Chiacchio',SETOR:'Qualidade',STATUS:'ATIVO',SENHA:'Aprovador2026!',CODIGO_RCA:''},
-  {ID_USUARIO:'USR-DEMO-003',USUARIO:'ana.sac',EMAIL:'',NOME:'Ana Lima',PERFIL:'ANALISTA SAC',EMPRESA:'Grupo Chiacchio',SETOR:'SAC',STATUS:'ATIVO',SENHA:'AnaSAC2026!',CODIGO_RCA:''},
-  {ID_USUARIO:'USR-DEMO-004',USUARIO:'carlos.rca',EMAIL:'',NOME:'Carlos Silva',PERFIL:'RCA / REPRESENTANTE',EMPRESA:'Chiacchio',SETOR:'Comercial',STATUS:'ATIVO',SENHA:'RCA2026!',CODIGO_RCA:'RCA-023'},
-  {ID_USUARIO:'USR-DEMO-005',USUARIO:'maria.qualidade',EMAIL:'',NOME:'Maria Santos',PERFIL:'SETOR RESPONSÁVEL',EMPRESA:'Chiacchio',SETOR:'Qualidade',STATUS:'ATIVO',SENHA:'Qualidade2026!',CODIGO_RCA:''}
+  {ID_USUARIO:'USR-DEMO-002',USUARIO:'joao.aprovador',EMAIL:'',NOME:'João Silva',PERFIL:'APROVADOR',EMPRESA:'Chiacchio',SETOR:'Qualidade',STATUS:'ATIVO',SENHA:'sha256:6dac17e7e0b3cb2daab875c67f0d7aca8cc55c76bbda66a98bf0998adce94c24',CODIGO_RCA:''},
+  {ID_USUARIO:'USR-DEMO-003',USUARIO:'ana.sac',EMAIL:'',NOME:'Ana Lima',PERFIL:'ANALISTA SAC',EMPRESA:'Grupo Chiacchio',SETOR:'SAC',STATUS:'ATIVO',SENHA:'sha256:9da73d36e056bc7f73238b4d8ee869a0991788cf56e909d585a6071e45d45f0a',CODIGO_RCA:''},
+  {ID_USUARIO:'USR-DEMO-004',USUARIO:'carlos.rca',EMAIL:'',NOME:'Carlos Silva',PERFIL:'RCA / REPRESENTANTE',EMPRESA:'Chiacchio',SETOR:'Comercial',STATUS:'ATIVO',SENHA:'sha256:63b64c1e65ce5ca36cb6a6f2378519135ae7165cc9720ece1fa2783b71853ece',CODIGO_RCA:'RCA-023'},
+  {ID_USUARIO:'USR-DEMO-005',USUARIO:'maria.qualidade',EMAIL:'',NOME:'Maria Santos',PERFIL:'SETOR RESPONSÁVEL',EMPRESA:'Chiacchio',SETOR:'Qualidade',STATUS:'ATIVO',SENHA:'sha256:9e5c100eb752ffcd3836498f695fb63ba122a41223f770d7921713d7ed7700e4',CODIGO_RCA:''}
 ];
 
 async function carregarUsuarios(){
@@ -204,7 +204,7 @@ async function gerarProximoID(nomeAba, prefixo, campoID) {
     const match = campo.match(/(\d+)$/);
     if (match) max = Math.max(max, parseInt(match[1]));
   });
-  return `${prefixo}-${String(max + 1).padStart(3, '0')}`;
+  return `${prefixo}-${String(max + 1).padStart(4, '0')}`;
 }
 
 async function buscarPorID(nomeAba, id, camposID = ['ID_MANIFESTACAO','ID_RNC','ID_SETOR','ID']) {
@@ -522,9 +522,9 @@ app.post('/api/manifestacoes', requerPerfil('MASTER','ANALISTA SAC'), async (req
     try {
       analise = await executarAnalise({ ...objeto, empresaReclamante, empresaReclamada, descricao, tipo:tipoFinal });
       await atualizarPorID('MANIFESTACOES', id, {
-        TIPO_SUGERIDO:analise.tipoSugerido||'',
-        SETOR_SUGERIDO:Array.isArray(analise.setoresSugeridos)?analise.setoresSugeridos[0]||'':'',
-        SETORES_SUGERIDOS:Array.isArray(analise.setoresSugeridos)?analise.setoresSugeridos.join(', '):'',
+        TIPO_SUGERIDO:analise.tipoDetectado||analise.tipoSugerido||'',
+        SETOR_SUGERIDO:Array.isArray(analise.setores)?analise.setores[0]||'':analise.setoresSugeridos?.[0]||'',
+        SETORES_SUGERIDOS:Array.isArray(analise.setores)?analise.setores.join(', '):(analise.setoresSugeridos||[]).join(', '),
         PROCEDIMENTO_SUGERIDO:analise.procedimentoSugerido?.nome||'',
         SLA_HORAS:analise.slaHoras||'', PRIORIDADE:analise.prioridade||'',
         RNC_SUGERIDO:analise.geraRNC?'SIM':'NÃO', TRATATIVA_SUGERIDA:analise.tratativaSugerida?.sugestao||'',
@@ -1788,6 +1788,22 @@ app.post('/api/documentos/extrair', async (req,res) => {
   } catch(e){ res.status(500).json({sucesso:false,erro:e.message}); }
 });
 
+// ===== ANÁLISE IA POR MANIFESTAÇÃO =====
+app.get('/api/manifestacoes/:id/analise', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','SETOR RESPONSÁVEL'), async (req,res) => {
+  try {
+    const data = await lerAba('MANIFESTACOES', 2000).catch(()=>[]);
+    const m = data.find(r => r.ID_MANIFESTACAO === req.params.id);
+    if (!m) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
+    const analise = await executarAnalise({
+      ...m,
+      empresaReclamante: m.EMPRESA_RECLAMANTE,
+      empresaReclamada: m.EMPRESA_RECLAMADA,
+      descricao: m.DESCRICAO || m.DESCRICAO_MANIFESTACAO,
+    });
+    res.json({ sucesso:true, analise });
+  } catch(e){ res.status(500).json({ sucesso:false, erro:e.message }); }
+});
+
 // ===== SUGESTÕES APROVADOR =====
 app.get('/api/manifestacoes/:id/sugestoes', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req,res) => {
   try { const data=await lerAba('SUGESTOES_APROVADOR',5000); res.json({sucesso:true,itens:data.filter(x=>String(x.ID_MANIFESTACAO||'')===String(req.params.id))}); }
@@ -2084,7 +2100,7 @@ app.post('/api/bootstrap', async (req, res) => {
       await sheets.spreadsheets.values.update({ spreadsheetId: SPREADSHEET_ID, range: `USUARIOS!A1:L1`, valueInputOption: 'RAW', resource: { values: [cols] } });
     }
     const hash = 'sha256:' + crypto.createHash('sha256').update(String(senha)).digest('hex');
-    const obj = { ID_USUARIO: 'USR-001', USUARIO: usuario, EMAIL: '', NOME: nome, PERFIL: 'MASTER', EMPRESA: 'Grupo Chiacchio', SETOR: 'SAC', CODIGO_RCA: '', STATUS: 'ATIVO', SENHA_HASH: hash, DATA_CRIACAO: new Date().toISOString(), ULTIMO_ACESSO: '' };
+    const obj = { ID_USUARIO: 'USR-0001', USUARIO: usuario, EMAIL: '', NOME: nome, PERFIL: 'MASTER', EMPRESA: 'Grupo Chiacchio', SETOR: 'SAC', CODIGO_RCA: '', STATUS: 'ATIVO', SENHA_HASH: hash, DATA_CRIACAO: new Date().toISOString(), ULTIMO_ACESSO: '' };
     await appendObjeto('USUARIOS', obj);
     res.json({ sucesso: true, mensagem: `Usuário MASTER "${usuario}" criado com sucesso. Agora você pode logar normalmente.`, id: 'USR-001' });
   } catch (e) {
