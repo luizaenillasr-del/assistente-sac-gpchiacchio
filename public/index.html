@@ -3617,7 +3617,9 @@ async function registrarManifestacao() {
   const tipo = tipoBtn ? tipoBtn.textContent.trim() : 'Reclamação';
   const canalBtn = document.querySelector('.canal-btns .canal-btn.active');
   const canal = canalBtn ? canalBtn.textContent.trim() : 'WhatsApp';
-  const usuario = sessionStorage.getItem('sac-user') || 'analista';
+  const _uRaw = sessionStorage.getItem('sac-user') || '{}';
+  let _uParsed = {}; try { _uParsed = JSON.parse(_uRaw); } catch {}
+  const usuario = _uParsed.usuario || _uParsed.USUARIO || 'analista';
 
   try {
     const res = await _apiFetch('/api/manifestacoes', 60000, {
