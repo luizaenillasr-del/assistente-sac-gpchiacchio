@@ -628,7 +628,8 @@ app.post('/api/manifestacoes', requerPerfil('MASTER','ANALISTA SAC'), async (req
     const { empresaReclamada, empresaReclamante, contato, produto, lote, nfe, descricao, tipo, canal, cnpj, telefone, email, quantidade, valor, usuario, anexos = [], origemDocumento = '', arquivoOrigem = '' } = req.body;
     if (!empresaReclamante || !descricao) return res.status(400).json({ sucesso:false, erro:'Empresa reclamante e descrição são obrigatórios.' });
     const empNorm = normalizarEmpresa(empresaReclamada);
-    await garantirAbaComCabecalhos('MANIFESTACOES',['ID_MANIFESTACAO','DATA_ABERTURA','DATA_REGISTRO','EMPRESA_RECLAMANTE','CONTATO','PRODUTO','LOTE','NFE','DESCRICAO','DESCRICAO_MANIFESTACAO','STATUS','TIPO','TIPO_SUGERIDO','SETOR_SUGERIDO','SETORES_SUGERIDOS','PROCEDIMENTO_SUGERIDO','SLA_HORAS','PRIORIDADE','RNC_SUGERIDO','EMPRESA_RECLAMADA','CANAL','CNPJ','TELEFONE','EMAIL','QUANTIDADE','VALOR','TRATATIVA_SUGERIDA','TRATATIVA_APLICAVEL','TRATATIVA_REALIZADA','STATUS_TRATATIVA','DEVOLUTIVA_SUGERIDA','DEVOLUTIVA_FINAL','DEVOLUTIVA_ENVIADA','ORIGEM_DOCUMENTO','ARQUIVO_ORIGEM','USUARIO_CRIACAO','ORIGEM','TIPO_CONFIRMADO','SETORES_CONFIRMADOS','ID_PROCEDIMENTO_APLICADO','GERA_RNC','DATA_INICIO_TRATATIVA','DATA_CONCLUSAO_TRATATIVA','DATA_DEVOLUTIVA','DATA_CONCLUSAO_MANIFESTACAO']).catch(()=>{});
+    // Não bloqueia na criação de colunas — a aba já existe em produção
+    garantirAbaComCabecalhos('MANIFESTACOES',['ID_MANIFESTACAO','DATA_ABERTURA','DATA_REGISTRO','EMPRESA_RECLAMANTE','CONTATO','PRODUTO','LOTE','NFE','DESCRICAO','DESCRICAO_MANIFESTACAO','STATUS','TIPO','TIPO_SUGERIDO','SETOR_SUGERIDO','SETORES_SUGERIDOS','PROCEDIMENTO_SUGERIDO','SLA_HORAS','PRIORIDADE','RNC_SUGERIDO','EMPRESA_RECLAMADA','CANAL','CNPJ','TELEFONE','EMAIL','QUANTIDADE','VALOR','TRATATIVA_SUGERIDA','TRATATIVA_APLICAVEL','TRATATIVA_REALIZADA','STATUS_TRATATIVA','DEVOLUTIVA_SUGERIDA','DEVOLUTIVA_FINAL','DEVOLUTIVA_ENVIADA','ORIGEM_DOCUMENTO','ARQUIVO_ORIGEM','USUARIO_CRIACAO','ORIGEM','TIPO_CONFIRMADO','SETORES_CONFIRMADOS','ID_PROCEDIMENTO_APLICADO','GERA_RNC','DATA_INICIO_TRATATIVA','DATA_CONCLUSAO_TRATATIVA','DATA_DEVOLUTIVA','DATA_CONCLUSAO_MANIFESTACAO']).catch(()=>{});
     const id = await gerarProximoID('MANIFESTACOES','MAN','ID_MANIFESTACAO');
     const agora = new Date().toISOString();
     const tipoFinal = tipo || 'Reclamação';
@@ -658,39 +659,44 @@ app.post('/api/manifestacoes', requerPerfil('MASTER','ANALISTA SAC'), async (req
         DATA_ABERTURA: agora,
       }).catch(e => console.warn('[F6] dual-write PG falhou:', e.message));
     }
-    let analise = null;
-    try {
-      analise = await executarAnalise({ ...objeto, empresaReclamante, empresaReclamada, descricao, tipo:tipoFinal });
-      await atualizarPorID('MANIFESTACOES', id, {
-        TIPO_SUGERIDO:analise.tipoDetectado||analise.tipoSugerido||'',
-        SETOR_SUGERIDO:Array.isArray(analise.setores)?analise.setores[0]||'':analise.setoresSugeridos?.[0]||'',
-        SETORES_SUGERIDOS:Array.isArray(analise.setores)?analise.setores.join(', '):(analise.setoresSugeridos||[]).join(', '),
-        PROCEDIMENTO_SUGERIDO:analise.procedimentoSugerido?.nome||'',
-        SLA_HORAS:analise.slaHoras||'', PRIORIDADE:analise.prioridade||'',
-        RNC_SUGERIDO:analise.geraRNC?'SIM':'NÃO', TRATATIVA_SUGERIDA:analise.tratativaSugerida?.sugestao||'',
-        DEVOLUTIVA_SUGERIDA:analise.devolutivaSugerida||'', STATUS:'AGUARDANDO_DECISÃO'
-      });
-    } catch (e) { console.error('Falha na análise automática:', e.message); }
-    // Processar decisão do analista se já tomada na tela de nova manifestação
+    registrarAuditoria(usuario||'sistema','CRIOU_MANIFESTAÇÃO',id,'MANIFESTACOES',null,{empresaReclamante,tipo:tipoFinal}).catch(()=>{});
+    // Responde ao cliente imediatamente após salvar (antes da IA)
+    // A análise IA roda em background e atualiza a manifestação
+    res.json({ sucesso:true, id, analise:null, mensagem:'Manifestação registrada com sucesso! A análise IA será processada em segundos.' });
+    // IA + updates rodando em background (não bloqueiam a resposta)
     const decisaoCompleta = req.body.decisaoCompleta;
-    if (decisaoCompleta && decisaoCompleta.tipo) {
-      const tipoDecisao = decisaoCompleta.tipo;
-      const df = decisaoCompleta.decisaoFinal || {};
-      let novoStatus = 'AGUARDANDO_DECISÃO';
-      if (tipoDecisao === 'rejeitada') novoStatus = 'REJEITADA';
-      else if (tipoDecisao === 'aceita' || tipoDecisao === 'editada') novoStatus = 'EM TRATAMENTO';
-      await atualizarPorID('MANIFESTACOES', id, {
-        STATUS: novoStatus,
-        TIPO_CONFIRMADO: df.tipo || analise?.tipoDetectado || '',
-        SETOR_CONFIRMADO: df.setor || (Array.isArray(analise?.setores) ? analise.setores[0] : '') || '',
-        TRATATIVA_REALIZADA: df.tratativa || '',
-        DEVOLUTIVA_FINAL: df.devolutiva || '',
-        CAUSA_PROVAVEL: df.causa || '',
-        DECISAO_ANALISTA: tipoDecisao,
-      }).catch(() => {});
-    }
-    await registrarAuditoria(usuario||'sistema','CRIOU_MANIFESTAÇÃO',id,'MANIFESTACOES',null,{empresaReclamante,tipo:tipoFinal});
-    res.json({ sucesso:true, id, analise, mensagem:'Manifestação registrada e analisada.' });
+    (async () => {
+      try {
+        const analise = await executarAnalise({ ...objeto, empresaReclamante, empresaReclamada, descricao, tipo:tipoFinal });
+        if (analise) {
+          await atualizarPorID('MANIFESTACOES', id, {
+            TIPO_SUGERIDO:analise.tipoDetectado||analise.tipoSugerido||'',
+            SETOR_SUGERIDO:Array.isArray(analise.setores)?analise.setores[0]||'':analise.setoresSugeridos?.[0]||'',
+            SETORES_SUGERIDOS:Array.isArray(analise.setores)?analise.setores.join(', '):(analise.setoresSugeridos||[]).join(', '),
+            PROCEDIMENTO_SUGERIDO:analise.procedimentoSugerido?.nome||'',
+            SLA_HORAS:analise.slaHoras||'', PRIORIDADE:analise.prioridade||'',
+            RNC_SUGERIDO:analise.geraRNC?'SIM':'NÃO', TRATATIVA_SUGERIDA:analise.tratativaSugerida?.sugestao||'',
+            DEVOLUTIVA_SUGERIDA:analise.devolutivaSugerida||'', STATUS:'AGUARDANDO_DECISÃO'
+          }).catch(()=>{});
+        }
+        if (decisaoCompleta && decisaoCompleta.tipo) {
+          const tipoDecisao = decisaoCompleta.tipo;
+          const df = decisaoCompleta.decisaoFinal || {};
+          let novoStatus = 'AGUARDANDO_DECISÃO';
+          if (tipoDecisao === 'rejeitada') novoStatus = 'REJEITADA';
+          else if (tipoDecisao === 'aceita' || tipoDecisao === 'editada') novoStatus = 'EM TRATAMENTO';
+          await atualizarPorID('MANIFESTACOES', id, {
+            STATUS: novoStatus,
+            TIPO_CONFIRMADO: df.tipo || analise?.tipoDetectado || '',
+            SETOR_CONFIRMADO: df.setor || (Array.isArray(analise?.setores) ? analise.setores[0] : '') || '',
+            TRATATIVA_REALIZADA: df.tratativa || '',
+            DEVOLUTIVA_FINAL: df.devolutiva || '',
+            CAUSA_PROVAVEL: df.causa || '',
+            DECISAO_ANALISTA: tipoDecisao,
+          }).catch(() => {});
+        }
+      } catch (e) { console.error('Falha na análise automática background:', e.message); }
+    })();
   } catch (e) { console.error(e); res.status(500).json({ sucesso:false, erro:e.message }); }
 });
 
@@ -1117,7 +1123,20 @@ app.get('/api/setores/:setor/operacional', requerPerfil('MASTER','ANALISTA SAC',
   }catch(e){res.status(500).json({sucesso:false,erro:e.message});}
 });
 app.patch('/api/setores/:setor/operacional', requerPerfil('MASTER','ANALISTA SAC'), async(req,res)=>{
-  try{const nome=decodeURIComponent(req.params.setor);const dados={};for(const c of SETOR_OPERACIONAL_FIELDS){if(req.body?.[c]!==undefined)dados[c]=req.body[c];}dados.ATIVO=req.body?.ATIVO||'SIM';const out=await atualizarOuCriarSetor(nome,dados,req.user.usuario);await registrarAuditoria(req.user.usuario,'ATUALIZOU_FICHA_SETOR',nome,'CONFIG_SETORES',null,dados);res.json({sucesso:true,setor:out});}
+  try{
+    const nome=decodeURIComponent(req.params.setor);
+    const TODOS_CAMPOS=[
+      'DESCRICAO','RESPONSAVEL','SUBSTITUTO','EMAIL_RESPONSAVEL','SLA_HORAS',
+      'RESPONSABILIDADES','REGRAS_OPERACIONAIS','PROCEDIMENTOS_ORIENTACOES','ALERTAS',
+      ...SETOR_OPERACIONAL_FIELDS
+    ];
+    const dados={};
+    for(const c of TODOS_CAMPOS){if(req.body?.[c]!==undefined)dados[c]=req.body[c];}
+    dados.ATIVO=req.body?.ATIVO||'SIM';
+    const out=await atualizarOuCriarSetor(nome,dados,req.user.usuario);
+    await registrarAuditoria(req.user.usuario,'ATUALIZOU_FICHA_SETOR',nome,'CONFIG_SETORES',null,dados);
+    res.json({sucesso:true,setor:out});
+  }
   catch(e){res.status(500).json({sucesso:false,erro:e.message});}
 });
 app.post('/api/setores/:setor/faq', requerPerfil('MASTER','ANALISTA SAC'), async(req,res)=>{

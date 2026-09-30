@@ -2395,28 +2395,47 @@
 
   <!-- Modal Setor Cérebro -->
   <div class="modal-overlay" id="modal-setor-cerebro" style="display:none" onclick="if(event.target===this)fecharModalSetorCerebro()">
-    <div class="modal" style="max-width:500px;width:95%">
+    <div class="modal" style="max-width:640px;width:96%">
       <div class="modal-header">
         <span id="modal-setor-cerebro-title">Novo Setor</span>
         <button class="modal-close" onclick="fecharModalSetorCerebro()">×</button>
       </div>
-      <div class="modal-body">
+      <div class="modal-body" style="max-height:72vh;overflow-y:auto;padding:20px 24px">
         <input type="hidden" id="setor-cerebro-id">
-        <div class="form-group"><label class="form-label">Setor *</label><input id="setor-cerebro-nome" class="form-input" placeholder="Ex: Qualidade"></div>
-        <div class="form-group"><label class="form-label">Empresa</label><input id="setor-cerebro-empresa" class="form-input" placeholder="Ex: GP Chiacchio"></div>
-        <div class="form-group"><label class="form-label">Responsável</label><input id="setor-cerebro-responsavel" class="form-input"></div>
-        <div class="form-group"><label class="form-label">Descrição</label><textarea id="setor-cerebro-descricao" class="form-input" rows="2"></textarea></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-          <div class="form-group"><label class="form-label">SLA (horas)</label><input id="setor-cerebro-sla" class="form-input" type="number" placeholder="72"></div>
-          <div class="form-group"><label class="form-label">Ativo</label>
+
+        <!-- Identificação -->
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--gray-400);letter-spacing:.06em;margin-bottom:12px">Identificação</div>
+        <div style="display:grid;grid-template-columns:1fr auto;gap:12px;align-items:end;margin-bottom:14px">
+          <div class="form-group" style="margin:0"><label class="form-label">Nome do Setor *</label><input id="setor-cerebro-nome" class="form-input" placeholder="Ex: Qualidade"></div>
+          <div class="form-group" style="margin:0;min-width:80px"><label class="form-label">Ativo</label>
             <select id="setor-cerebro-ativo" class="form-input"><option value="SIM">SIM</option><option value="NÃO">NÃO</option></select>
           </div>
         </div>
-        <div id="setor-cerebro-erro" style="color:var(--red);font-size:13px;display:none"></div>
+        <div class="form-group"><label class="form-label">Descrição resumida</label><textarea id="setor-cerebro-descricao" class="form-input" rows="2" style="resize:vertical"></textarea></div>
+
+        <!-- Responsáveis e SLA -->
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--gray-400);letter-spacing:.06em;margin:18px 0 12px">Responsáveis e SLA</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+          <div class="form-group" style="margin:0"><label class="form-label">Responsável</label><input id="setor-cerebro-responsavel" class="form-input" placeholder="Nome do responsável"></div>
+          <div class="form-group" style="margin:0"><label class="form-label">Substituto</label><input id="setor-cerebro-substituto" class="form-input" placeholder="Nome do substituto"></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+          <div class="form-group" style="margin:0"><label class="form-label">E-mail do responsável</label><input id="setor-cerebro-email" class="form-input" type="email" placeholder="responsavel@empresa.com"></div>
+          <div class="form-group" style="margin:0"><label class="form-label">SLA (horas)</label><input id="setor-cerebro-sla" class="form-input" type="number" placeholder="72"></div>
+        </div>
+
+        <!-- Base de conhecimento -->
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--gray-400);letter-spacing:.06em;margin:18px 0 12px">Base de conhecimento do setor</div>
+        <div class="form-group"><label class="form-label">Responsabilidades</label><textarea id="setor-cerebro-responsabilidades" class="form-input" rows="3" style="resize:vertical" placeholder="O que este setor faz, suas atribuições e competências..."></textarea></div>
+        <div class="form-group"><label class="form-label">Regras e políticas operacionais</label><textarea id="setor-cerebro-regras" class="form-input" rows="3" style="resize:vertical" placeholder="Regras de operação, limites, políticas internas..."></textarea></div>
+        <div class="form-group"><label class="form-label">Procedimentos e orientações</label><textarea id="setor-cerebro-procedimentos" class="form-input" rows="3" style="resize:vertical" placeholder="Passo a passo, como proceder, fluxo de atendimento..."></textarea></div>
+        <div class="form-group"><label class="form-label">Alertas do setor</label><textarea id="setor-cerebro-alertas" class="form-input" rows="2" style="resize:vertical" placeholder="Pontos de atenção, exceções, cuidados especiais..."></textarea></div>
+
+        <div id="setor-cerebro-erro" style="color:var(--red);font-size:13px;display:none;margin-top:8px;padding:10px;background:var(--red-light,#fef2f2);border-radius:6px"></div>
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="fecharModalSetorCerebro()">Cancelar</button>
-        <button class="btn btn-primary" onclick="salvarSetorCerebro()">Salvar</button>
+        <button class="btn btn-primary" onclick="salvarSetorCerebro()">💾 Salvar setor</button>
       </div>
     </div>
   </div>
@@ -8688,19 +8707,18 @@ function abrirModalSetorCerebro(id) {
   document.getElementById('modal-setor-cerebro-title').textContent = id ? 'Editar Informações do Setor' : 'Novo Setor';
   document.getElementById('setor-cerebro-id').value = id||'';
   document.getElementById('setor-cerebro-erro').style.display = 'none';
-  if (id) {
-    const s = _cerebroSetoresData.find(x => x.ID_SETOR === id) || {};
-    document.getElementById('setor-cerebro-nome').value = s.SETOR||'';
-    document.getElementById('setor-cerebro-empresa').value = s.EMPRESA||'';
-    document.getElementById('setor-cerebro-responsavel').value = s.RESPONSAVEL||'';
-    document.getElementById('setor-cerebro-descricao').value = s.DESCRICAO||'';
-    document.getElementById('setor-cerebro-sla').value = s.SLA_HORAS||'72';
-    document.getElementById('setor-cerebro-ativo').value = s.ATIVO||'SIM';
-  } else {
-    ['setor-cerebro-nome','setor-cerebro-empresa','setor-cerebro-responsavel','setor-cerebro-descricao'].forEach(fid=>document.getElementById(fid).value='');
-    document.getElementById('setor-cerebro-sla').value = '72';
-    document.getElementById('setor-cerebro-ativo').value = 'SIM';
-  }
+  const s = id ? (_cerebroSetoresData.find(x => x.ID_SETOR === id) || {}) : {};
+  document.getElementById('setor-cerebro-nome').value = s.SETOR||'';
+  document.getElementById('setor-cerebro-ativo').value = s.ATIVO||'SIM';
+  document.getElementById('setor-cerebro-descricao').value = s.DESCRICAO||'';
+  document.getElementById('setor-cerebro-responsavel').value = s.RESPONSAVEL||'';
+  document.getElementById('setor-cerebro-substituto').value = s.SUBSTITUTO||'';
+  document.getElementById('setor-cerebro-email').value = s.EMAIL_RESPONSAVEL||'';
+  document.getElementById('setor-cerebro-sla').value = s.SLA_HORAS||'72';
+  document.getElementById('setor-cerebro-responsabilidades').value = s.RESPONSABILIDADES||'';
+  document.getElementById('setor-cerebro-regras').value = s.REGRAS_OPERACIONAIS||'';
+  document.getElementById('setor-cerebro-procedimentos').value = s.PROCEDIMENTOS_ORIENTACOES||'';
+  document.getElementById('setor-cerebro-alertas').value = s.ALERTAS||'';
   document.getElementById('modal-setor-cerebro').style.display = 'flex';
 }
 function editarSetorCerebro(id) { abrirModalSetorCerebro(id); }
@@ -8708,18 +8726,26 @@ function fecharModalSetorCerebro() { document.getElementById('modal-setor-cerebr
 async function salvarSetorCerebro() {
   const id = document.getElementById('setor-cerebro-id').value;
   const erro = document.getElementById('setor-cerebro-erro');
+  erro.style.display = 'none';
+  const nome = document.getElementById('setor-cerebro-nome').value.trim();
+  if (!nome) { erro.textContent = 'Nome do setor é obrigatório.'; erro.style.display='block'; return; }
   const payload = {
-    SETOR: document.getElementById('setor-cerebro-nome').value.trim(),
-    EMPRESA: document.getElementById('setor-cerebro-empresa').value.trim(),
-    RESPONSAVEL: document.getElementById('setor-cerebro-responsavel').value.trim(),
-    DESCRICAO: document.getElementById('setor-cerebro-descricao').value.trim(),
-    SLA_HORAS: document.getElementById('setor-cerebro-sla').value.trim(),
+    SETOR: nome,
     ATIVO: document.getElementById('setor-cerebro-ativo').value,
+    DESCRICAO: document.getElementById('setor-cerebro-descricao').value.trim(),
+    RESPONSAVEL: document.getElementById('setor-cerebro-responsavel').value.trim(),
+    SUBSTITUTO: document.getElementById('setor-cerebro-substituto').value.trim(),
+    EMAIL_RESPONSAVEL: document.getElementById('setor-cerebro-email').value.trim(),
+    SLA_HORAS: document.getElementById('setor-cerebro-sla').value.trim(),
+    RESPONSABILIDADES: document.getElementById('setor-cerebro-responsabilidades').value.trim(),
+    REGRAS_OPERACIONAIS: document.getElementById('setor-cerebro-regras').value.trim(),
+    PROCEDIMENTOS_ORIENTACOES: document.getElementById('setor-cerebro-procedimentos').value.trim(),
+    ALERTAS: document.getElementById('setor-cerebro-alertas').value.trim(),
   };
-  if (!payload.SETOR) { erro.textContent = 'Nome do setor é obrigatório.'; erro.style.display='block'; return; }
   try {
     if (id) {
-      await _apiFetch(`/api/setores/${id}`, 15000, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+      // usa rota /operacional para salvar todos os campos incluindo base de conhecimento
+      await _apiFetch(`/api/setores/${encodeURIComponent(nome)}/operacional`, 15000, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
     } else {
       await _apiFetch('/api/setores', 15000, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
     }
