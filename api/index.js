@@ -2338,13 +2338,7 @@ app.post('/api/sugestoes-melhoria', async (req,res)=>{
   try {
     const {idManifestacao, tipo, titulo, descricao, setor, prioridade} = req.body||{};
     if (!titulo||!descricao) return res.status(400).json({sucesso:false,erro:'Título e descrição são obrigatórios.'});
-    const id = await gerarProximoID('SUGESTOES_MELHORIA','SME','ID_SUGESTAO_MELHORIA');
-    const obj = {
-      ID_SUGESTAO_MELHORIA:id, ID_MANIFESTACAO:idManifestacao||'', TIPO:tipo||'PROCESSO',
-      TITULO:titulo, DESCRICAO:descricao, SETOR:setor||'', PRIORIDADE:prioridade||'MEDIA',
-      STATUS:'PENDENTE', DATA_CRIACAO:new Date().toISOString(),
-      CRIADO_POR:req.user?.usuario||'sistema', DATA_AVALIACAO:'', AVALIADO_POR:'', RESULTADO:''
-    };
+    // Garante aba antes de qualquer leitura
     const headers = await obterCabecalhos('SUGESTOES_MELHORIA').catch(()=>[]);
     if (!headers.length) {
       const sheets = await getSheets();
@@ -2358,6 +2352,13 @@ app.post('/api/sugestoes-melhoria', async (req,res)=>{
         resource:{values:[['ID_SUGESTAO_MELHORIA','ID_MANIFESTACAO','TIPO','TITULO','DESCRICAO','SETOR','PRIORIDADE','STATUS','DATA_CRIACAO','CRIADO_POR','DATA_AVALIACAO','AVALIADO_POR','RESULTADO','IMPACTO_ESTIMADO']]}
       });
     }
+    const id = await gerarProximoID('SUGESTOES_MELHORIA','SME','ID_SUGESTAO_MELHORIA');
+    const obj = {
+      ID_SUGESTAO_MELHORIA:id, ID_MANIFESTACAO:idManifestacao||'', TIPO:tipo||'PROCESSO',
+      TITULO:titulo, DESCRICAO:descricao, SETOR:setor||'', PRIORIDADE:prioridade||'MEDIA',
+      STATUS:'PENDENTE', DATA_CRIACAO:new Date().toISOString(),
+      CRIADO_POR:req.user?.usuario||'sistema', DATA_AVALIACAO:'', AVALIADO_POR:'', RESULTADO:''
+    };
     await appendObjeto('SUGESTOES_MELHORIA', obj);
     res.json({sucesso:true, id, sugestao:obj});
   } catch(e){ res.status(500).json({sucesso:false,erro:e.message}); }
