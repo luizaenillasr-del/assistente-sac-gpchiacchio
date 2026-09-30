@@ -1002,10 +1002,10 @@
             </div>
             <div class="form-section-desc">Preenchidos automaticamente, exceto o canal</div>
             <div class="form-row cols-4">
-              <div class="form-group"><label class="form-label">Data do registro</label><input class="form-input" readonly id="nm-data"></div>
-              <div class="form-group"><label class="form-label">Nº da reclamação</label><input class="form-input" readonly id="nm-num" value="..."></div>
-              <div class="form-group"><label class="form-label">Setor</label><input class="form-input" readonly value="SAC"></div>
-              <div class="form-group"><label class="form-label">Atendente</label><input class="form-input" readonly id="nm-atendente" value="Ana Lima"></div>
+              <div class="form-group"><label class="form-label">Data do registro</label><input class="form-input" id="nm-data" type="date" title="Preenchida automaticamente com a data de hoje"></div>
+              <div class="form-group"><label class="form-label">Nº da reclamação</label><input class="form-input" readonly id="nm-num" value="..." title="Gerado automaticamente ao registrar"></div>
+              <div class="form-group"><label class="form-label">Setor de entrada</label><input class="form-input" readonly value="SAC"></div>
+              <div class="form-group"><label class="form-label">Atendente</label><input class="form-input" readonly id="nm-atendente"></div>
             </div>
             <div class="form-group">
               <label class="form-label" style="margin-bottom:6px">Canal de atendimento</label>
@@ -1044,12 +1044,12 @@
               <div class="form-group"><label class="form-label">E-mail</label><input class="form-input" placeholder="contato@exemplo.com.br" id="nm-email"></div>
             </div>
             <div class="form-group" style="margin-top:4px">
-              <label class="form-label">Empresa reclamada</label>
+              <label class="form-label">Empresa do Grupo <span style="font-weight:400;color:var(--gray-400)">(empresa reclamada)</span></label>
               <select class="form-input" id="nm-empresa-reclamada" style="cursor:pointer">
-                <option value="">Selecione a empresa...</option>
+                <option value="">Selecione qual empresa do Grupo recebeu a reclamação...</option>
                 <option value="CHIACCHIO EMBALAGENS">CHIACCHIO EMBALAGENS</option>
                 <option value="PLASCHIO">PLASCHIO</option>
-                <option value="TUBAHIA">TUBAHIA</option>
+                <option value="TUBAHIA">TUBAHIA / CESBAP</option>
               </select>
             </div>
           </div>
@@ -3470,10 +3470,11 @@ function preencherCamposExtraidos(d){setIf('nm-cnpj',d.cnpj);setIf('nm-nome',d.c
 function renderPreviewExtracao(d){const el=document.getElementById('nm-extracao-preview'); const entries=Object.entries(d).filter(([k,v])=>String(v||'').trim()); el.style.display='block'; el.innerHTML='<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--gray-400);margin-top:10px">Prévia dos dados extraídos</div><div class="extract-preview">'+entries.slice(0,16).map(([k,v])=>`<div class="extract-field"><b>${esc(k)}</b>${esc(String(v))}</div>`).join('')+'</div>';}
 
 async function initNovaManifestacao() {
-  const today = new Date().toLocaleDateString('pt-BR');
-  document.getElementById('nm-data').value = today;
-  const user = sessionStorage.getItem('sac-user') || 'Ana Lima';
-  document.getElementById('nm-atendente').value = user;
+  const _now = new Date();
+  document.getElementById('nm-data').value = _now.toISOString().slice(0,10); // YYYY-MM-DD for date input
+  let _userObj = {}; try { _userObj = JSON.parse(sessionStorage.getItem('sac-user')||'{}'); } catch {}
+  const userName = _userObj.NOME || _userObj.nome || _userObj.USUARIO || _userObj.usuario || 'Analista SAC';
+  document.getElementById('nm-atendente').value = userName;
   try {
     const res = await _apiFetch('/api/manifestacoes', 10000);
     const count = (res.total || (res.itens||[]).length) + 1;
@@ -6729,14 +6730,11 @@ window.selecionarDecisao = function(tipo){
       <div class="decisao-form" style="border-color:#DDD6FE">
         <div class="decisao-form-title" style="color:#7C3AED">→ Enviar para revisão do setor</div>
         <div style="margin-bottom:10px">
-          <label class="form-label">Setor responsável *</label>
-          <select class="form-input" id="dec-setor-revisao">
-            <option value="">Selecione o setor...</option>
-            <option>SAC</option><option>Qualidade</option><option>Logística</option>
-            <option>Comercial</option><option>Financeiro</option><option>Produção</option>
-            <option>Faturamento / Expedição</option>
-          </select>
-          <div id="erro-setor-revisao" class="validacao-erro">⚠ Selecione o setor responsável</div>
+          <label class="form-label">Setor(es) responsável(is) * <span style="font-weight:400;color:var(--gray-400);font-size:11px">Pode selecionar mais de um</span></label>
+          <div id="dec-setor-revisao-list" style="display:flex;flex-wrap:wrap;gap:8px;padding:10px;border:1px solid var(--gray-200);border-radius:8px;background:var(--gray-50)">
+            ${['SAC','Qualidade','Logística','Comercial','Financeiro','Produção','Faturamento / Expedição'].map(s=>`<label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;padding:4px 8px;background:white;border:1px solid var(--gray-200);border-radius:6px"><input type="checkbox" class="dec-setor-check" value="${s}"> ${s}</label>`).join('')}
+          </div>
+          <div id="erro-setor-revisao" class="validacao-erro">⚠ Selecione ao menos um setor</div>
         </div>
         <div style="margin-bottom:10px">
           <label class="form-label">Contexto para o setor (opcional)</label>
@@ -6817,10 +6815,12 @@ window.confirmarDecisao = function(tipo){
   }
 
   else if(tipo==='revisao_setor'){
-    decisaoFinal.setor = val('dec-setor-revisao');
+    const checkedSetores = [...document.querySelectorAll('.dec-setor-check:checked')].map(c=>c.value);
+    decisaoFinal.setor = checkedSetores[0] || '';
+    decisaoFinal.setores = checkedSetores;
     decisaoFinal.contexto = val('dec-contexto-setor');
     decisaoFinal.tratativa = val('dec-tratativa-setor');
-    if(!decisaoFinal.setor) err('erro-setor-revisao');
+    if(!checkedSetores.length) err('erro-setor-revisao');
   }
 
   if(!valido) return;
