@@ -1405,18 +1405,218 @@
   </div>
 
 
-  <!-- ===== CENTRAL DO APROVADOR ===== -->
+  <!-- ===== CENTRAL DE APROVAÇÃO (MULTI-PERFIL) ===== -->
   <div class="page" id="page-aprovadores">
-    <div class="topbar"><div class="breadcrumb">Gestão / <span>Central de Aprovação e Pendências</span></div><div class="topbar-right"><span id="aprovador-nome-top">Aprovador</span></div></div>
+    <div class="topbar"><div class="breadcrumb">Gestão / <span>Central de Aprovação</span></div><div class="topbar-right"><span id="aprovador-nome-top"></span></div></div>
     <div class="page-content">
-      <div class="page-header"><div><h1>Central de Aprovação e Pendências</h1><p>SAC e RNC conforme perfil, empresa, setor e competência.</p></div><div><select class="form-input" id="aprovador-processo" onchange="loadAprovadorDashboard()"><option value="TODOS">Todos</option><option value="SAC">SAC</option><option value="RNC">RNC</option></select></div></div>
-      <div class="kpi-grid">
-        <div class="kpi-card"><div class="kpi-label">SAC</div><div class="kpi-value" id="ap-saca">--</div><div class="kpi-sub">pendências</div></div>
-        <div class="kpi-card"><div class="kpi-label">RNC</div><div class="kpi-value" id="ap-rnca">--</div><div class="kpi-sub">pendentes</div></div>
-        <div class="kpi-card highlight"><div class="kpi-label">Total</div><div class="kpi-value" id="ap-total">--</div><div class="kpi-sub">minhas pendências</div></div>
-        <div class="kpi-card"><div class="kpi-label">Sugestões enviadas</div><div class="kpi-value" id="ap-sugestoes">--</div><div class="kpi-sub">para o SAC</div></div>
+      <div class="page-header"><div><h1>Central de Aprovação</h1><p id="aprov-page-desc">Gerencie aprovadores, regras e pendências.</p></div></div>
+      <!-- Tabs dinâmicos por perfil -->
+      <div class="tabs-bar" id="aprov-tabs" style="margin-bottom:16px">
+        <button class="tab-btn active" onclick="aprvTab('pendencias',this)" id="aprtab-pendencias">Pendências</button>
+        <button class="tab-btn" onclick="aprvTab('fila-sac',this)" id="aprtab-fila-sac" style="display:none">Fila SAC</button>
+        <button class="tab-btn" onclick="aprvTab('aprovadores',this)" id="aprtab-aprovadores" style="display:none">Aprovadores</button>
+        <button class="tab-btn" onclick="aprvTab('competencias',this)" id="aprtab-competencias" style="display:none">Competências</button>
+        <button class="tab-btn" onclick="aprvTab('regras',this)" id="aprtab-regras" style="display:none">Regras</button>
+        <button class="tab-btn" onclick="aprvTab('historico',this)" id="aprtab-historico" style="display:none">Histórico</button>
       </div>
-      <div class="section-card" style="margin-top:14px"><div class="section-title">APROVAÇÕES SAC</div><div style="font-size:11px;color:var(--gray-400);margin-bottom:10px">Manifestações são exibidas somente quando o usuário possui autorização para análise.</div><div id="ap-sac-queue"></div></div><div class="section-card" style="margin-top:14px"><div class="section-title">RNCs PENDENTES</div><div style="font-size:11px;color:var(--gray-400);margin-bottom:10px">Somente RNCs dentro da competência e empresa autorizadas para este aprovador.</div><div id="ap-rnc-queue"></div></div><div class="section-card" style="margin-top:14px"><div class="section-title">Todas as pendências</div><div id="ap-pendencias-wrap"></div></div>
+
+      <!-- TAB: PENDÊNCIAS (APROVADOR / MASTER) -->
+      <div id="aprtab-panel-pendencias">
+        <div class="kpi-grid">
+          <div class="kpi-card"><div class="kpi-label">SAC</div><div class="kpi-value" id="ap-saca">--</div><div class="kpi-sub">pendências</div></div>
+          <div class="kpi-card"><div class="kpi-label">RNC</div><div class="kpi-value" id="ap-rnca">--</div><div class="kpi-sub">pendentes</div></div>
+          <div class="kpi-card highlight"><div class="kpi-label">Total</div><div class="kpi-value" id="ap-total">--</div><div class="kpi-sub">minhas pendências</div></div>
+          <div class="kpi-card"><div class="kpi-label">Sugestões</div><div class="kpi-value" id="ap-sugestoes">--</div><div class="kpi-sub">enviadas ao SAC</div></div>
+        </div>
+        <div class="section-card" style="margin-top:14px"><div class="section-title">APROVAÇÕES SAC</div><div style="font-size:11px;color:var(--gray-400);margin-bottom:10px">Manifestações aguardando sua análise.</div><div id="ap-sac-queue"></div></div>
+        <div class="section-card" style="margin-top:14px"><div class="section-title">RNCs PENDENTES</div><div style="font-size:11px;color:var(--gray-400);margin-bottom:10px">Somente RNCs dentro da sua competência e empresa.</div><div id="ap-rnc-queue"></div></div>
+        <!-- Fila de aprovação estruturada -->
+        <div class="section-card" style="margin-top:14px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+            <div class="section-title" style="margin:0">FILA DE APROVAÇÃO</div>
+            <button class="btn btn-secondary" onclick="carregarFilaPendencias()" style="font-size:12px;padding:6px 14px">Atualizar</button>
+          </div>
+          <div id="ap-fila-pendencias"></div>
+        </div>
+      </div>
+
+      <!-- TAB: FILA SAC (ANALISTA SAC) -->
+      <div id="aprtab-panel-fila-sac" style="display:none">
+        <div class="kpi-grid">
+          <div class="kpi-card"><div class="kpi-label">Enviados</div><div class="kpi-value" id="sac-fila-total">--</div><div class="kpi-sub">para aprovação</div></div>
+          <div class="kpi-card highlight"><div class="kpi-label">Pendentes</div><div class="kpi-value" id="sac-fila-pendentes">--</div><div class="kpi-sub">aguardando decisão</div></div>
+          <div class="kpi-card" style="border-color:#059669"><div class="kpi-label">Aprovados</div><div class="kpi-value" id="sac-fila-aprov">--</div><div class="kpi-sub">este mês</div></div>
+          <div class="kpi-card" style="border-color:#DC2626"><div class="kpi-label">Rejeitados</div><div class="kpi-value" id="sac-fila-rej">--</div><div class="kpi-sub">este mês</div></div>
+        </div>
+        <div class="section-card" style="margin-top:14px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <div class="section-title" style="margin:0">ITENS ENVIADOS PARA APROVAÇÃO</div>
+            <button class="btn btn-primary" onclick="abrirModalEnviarAprovacao()" style="font-size:12px;padding:6px 14px">+ Enviar para aprovação</button>
+          </div>
+          <div id="sac-fila-lista"></div>
+        </div>
+      </div>
+
+      <!-- TAB: APROVADORES (MASTER) -->
+      <div id="aprtab-panel-aprovadores" style="display:none">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <div><h2 style="font-size:16px;font-weight:700;margin:0">Aprovadores cadastrados</h2><p style="font-size:12px;color:var(--gray-400);margin:4px 0 0">Gerencie quem pode aprovar SAC e RNC.</p></div>
+          <button class="btn btn-primary" onclick="abrirModalAprovador()">+ Novo aprovador</button>
+        </div>
+        <div id="aprov-lista"></div>
+      </div>
+
+      <!-- TAB: COMPETÊNCIAS (MASTER) -->
+      <div id="aprtab-panel-competencias" style="display:none">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <div><h2 style="font-size:16px;font-weight:700;margin:0">Competências de aprovação</h2><p style="font-size:12px;color:var(--gray-400);margin:4px 0 0">Defina os tipos de competência (ex: Qualidade, Logística).</p></div>
+          <button class="btn btn-primary" onclick="abrirModalCompetencia()">+ Nova competência</button>
+        </div>
+        <div id="comp-lista"></div>
+        <div style="margin-top:24px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <h2 style="font-size:16px;font-weight:700;margin:0">Atribuições (Aprovador × Competência)</h2>
+            <button class="btn btn-secondary" onclick="abrirModalAtribuicao()">+ Atribuir competência</button>
+          </div>
+          <div id="atrib-lista"></div>
+        </div>
+      </div>
+
+      <!-- TAB: REGRAS (MASTER) -->
+      <div id="aprtab-panel-regras" style="display:none">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <div><h2 style="font-size:16px;font-weight:700;margin:0">Regras de aprovação</h2><p style="font-size:12px;color:var(--gray-400);margin:4px 0 0">Defina quando e que competência é exigida.</p></div>
+          <button class="btn btn-primary" onclick="abrirModalRegra()">+ Nova regra</button>
+        </div>
+        <div id="regras-lista"></div>
+      </div>
+
+      <!-- TAB: HISTÓRICO (MASTER / APROVADOR) -->
+      <div id="aprtab-panel-historico" style="display:none">
+        <div class="section-card">
+          <div class="section-title">HISTÓRICO DE DECISÕES</div>
+          <div id="hist-lista"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Aprovador -->
+  <div id="modal-aprovador" class="modal-overlay" style="display:none" onclick="if(event.target===this)fecharModal('modal-aprovador')">
+    <div class="modal-box" style="max-width:560px">
+      <div class="modal-header"><div><div style="font-size:17px;font-weight:800" id="modal-aprov-title">Novo Aprovador</div></div><button class="modal-close" onclick="fecharModal('modal-aprovador')">×</button></div>
+      <div class="modal-body">
+        <input type="hidden" id="aprov-edit-id">
+        <div class="field-grid">
+          <div class="field"><label>Nome *</label><input id="aprov-nome" class="form-input" placeholder="Nome completo"></div>
+          <div class="field"><label>Login (usuário do sistema)</label><input id="aprov-usuario" class="form-input" placeholder="login no sistema"></div>
+          <div class="field"><label>E-mail</label><input id="aprov-email" class="form-input" type="email" placeholder="email@empresa.com"></div>
+          <div class="field"><label>Cargo</label><input id="aprov-cargo" class="form-input" placeholder="ex: Gerente de Qualidade"></div>
+          <div class="field"><label>Empresa</label><input id="aprov-empresa" class="form-input" placeholder="ex: Chiacchio Embalagens"></div>
+          <div class="field"><label>Setor</label><input id="aprov-setor" class="form-input" placeholder="ex: Qualidade"></div>
+          <div class="field" style="grid-column:1/-1"><label>Observações</label><textarea id="aprov-obs" class="form-input" rows="2" placeholder="Observações adicionais"></textarea></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end">
+          <button class="btn btn-secondary" onclick="fecharModal('modal-aprovador')">Cancelar</button>
+          <button class="btn btn-primary" onclick="salvarAprovador()">Salvar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Competência -->
+  <div id="modal-competencia" class="modal-overlay" style="display:none" onclick="if(event.target===this)fecharModal('modal-competencia')">
+    <div class="modal-box" style="max-width:480px">
+      <div class="modal-header"><div><div style="font-size:17px;font-weight:800">Nova Competência</div></div><button class="modal-close" onclick="fecharModal('modal-competencia')">×</button></div>
+      <div class="modal-body">
+        <div class="field-grid">
+          <div class="field"><label>Nome *</label><input id="comp-nome" class="form-input" placeholder="ex: Qualidade, Logística"></div>
+          <div class="field"><label>Tipo</label><select id="comp-tipo" class="form-input"><option value="AMBOS">SAC e RNC</option><option value="SAC">Somente SAC</option><option value="RNC">Somente RNC</option></select></div>
+          <div class="field" style="grid-column:1/-1"><label>Descrição</label><textarea id="comp-descricao" class="form-input" rows="2" placeholder="Descreva o escopo desta competência"></textarea></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end">
+          <button class="btn btn-secondary" onclick="fecharModal('modal-competencia')">Cancelar</button>
+          <button class="btn btn-primary" onclick="salvarCompetencia()">Salvar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Atribuição -->
+  <div id="modal-atribuicao" class="modal-overlay" style="display:none" onclick="if(event.target===this)fecharModal('modal-atribuicao')">
+    <div class="modal-box" style="max-width:480px">
+      <div class="modal-header"><div><div style="font-size:17px;font-weight:800">Atribuir Competência</div></div><button class="modal-close" onclick="fecharModal('modal-atribuicao')">×</button></div>
+      <div class="modal-body">
+        <div class="field-grid">
+          <div class="field"><label>Aprovador *</label><select id="atrib-aprovador" class="form-input"><option value="">Selecione...</option></select></div>
+          <div class="field"><label>Competência *</label><select id="atrib-competencia" class="form-input"><option value="">Selecione...</option></select></div>
+          <div class="field" style="grid-column:1/-1"><label>Empresa (opcional — restringe ao escopo)</label><input id="atrib-empresa" class="form-input" placeholder="Deixe em branco para todas as empresas"></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end">
+          <button class="btn btn-secondary" onclick="fecharModal('modal-atribuicao')">Cancelar</button>
+          <button class="btn btn-primary" onclick="salvarAtribuicao()">Atribuir</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Regra -->
+  <div id="modal-regra" class="modal-overlay" style="display:none" onclick="if(event.target===this)fecharModal('modal-regra')">
+    <div class="modal-box" style="max-width:560px">
+      <div class="modal-header"><div><div style="font-size:17px;font-weight:800" id="modal-regra-title">Nova Regra</div></div><button class="modal-close" onclick="fecharModal('modal-regra')">×</button></div>
+      <div class="modal-body">
+        <input type="hidden" id="regra-edit-id">
+        <div class="field-grid">
+          <div class="field"><label>Nome da regra *</label><input id="regra-nome" class="form-input" placeholder="ex: RNC com causa crítica"></div>
+          <div class="field"><label>Tipo de entidade *</label><select id="regra-tipo" class="form-input"><option value="SAC">SAC (Manifestação)</option><option value="RNC">RNC</option><option value="AMBOS">SAC e RNC</option></select></div>
+          <div class="field"><label>Competência necessária *</label><input id="regra-competencia" class="form-input" placeholder="ex: Qualidade"></div>
+          <div class="field"><label>Prioridade</label><select id="regra-prioridade" class="form-input"><option value="NORMAL">Normal</option><option value="ALTA">Alta</option><option value="CRITICA">Crítica</option></select></div>
+          <div class="field" style="grid-column:1/-1"><label>Condição / descrição</label><textarea id="regra-condicao" class="form-input" rows="2" placeholder="Descreva quando esta regra se aplica"></textarea></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end">
+          <button class="btn btn-secondary" onclick="fecharModal('modal-regra')">Cancelar</button>
+          <button class="btn btn-primary" onclick="salvarRegra()">Salvar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Enviar para Aprovação -->
+  <div id="modal-enviar-aprovacao" class="modal-overlay" style="display:none" onclick="if(event.target===this)fecharModal('modal-enviar-aprovacao')">
+    <div class="modal-box" style="max-width:560px">
+      <div class="modal-header"><div><div style="font-size:17px;font-weight:800">Enviar para Aprovação</div></div><button class="modal-close" onclick="fecharModal('modal-enviar-aprovacao')">×</button></div>
+      <div class="modal-body">
+        <div class="field-grid">
+          <div class="field"><label>Tipo *</label><select id="env-tipo" class="form-input" onchange="atualizarSelectEntidade()"><option value="SAC">SAC (Manifestação)</option><option value="RNC">RNC</option></select></div>
+          <div class="field"><label>ID da entidade *</label><input id="env-id" class="form-input" placeholder="ex: MAN-ABC123 ou RNC-XYZ456"></div>
+          <div class="field"><label>Competência necessária</label><select id="env-competencia" class="form-input"><option value="">Selecione...</option></select></div>
+          <div class="field"><label>Aprovador</label><select id="env-aprovador" class="form-input"><option value="">Selecione...</option></select></div>
+          <div class="field"><label>Empresa</label><input id="env-empresa" class="form-input" placeholder="empresa relacionada"></div>
+          <div class="field"><label>Setor</label><input id="env-setor" class="form-input" placeholder="setor responsável"></div>
+          <div class="field" style="grid-column:1/-1"><label>Descrição</label><textarea id="env-descricao" class="form-input" rows="2" placeholder="Descreva brevemente o que precisa de aprovação"></textarea></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end">
+          <button class="btn btn-secondary" onclick="fecharModal('modal-enviar-aprovacao')">Cancelar</button>
+          <button class="btn btn-primary" onclick="enviarParaAprovacao()">Enviar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Decisão Aprovação -->
+  <div id="modal-decisao-aprov" class="modal-overlay" style="display:none" onclick="if(event.target===this)fecharModal('modal-decisao-aprov')">
+    <div class="modal-box" style="max-width:520px">
+      <div class="modal-header"><div><div style="font-size:17px;font-weight:800" id="decisao-aprov-title">Decisão de Aprovação</div><div style="font-size:12px;color:var(--gray-400)" id="decisao-aprov-sub"></div></div><button class="modal-close" onclick="fecharModal('modal-decisao-aprov')">×</button></div>
+      <div class="modal-body">
+        <input type="hidden" id="decisao-aprov-id">
+        <div class="field"><label>Observações <span id="decisao-obs-req" style="color:#DC2626;display:none">(obrigatório)</span></label><textarea id="decisao-obs" class="form-input" rows="3" placeholder="Justifique a decisão quando necessário"></textarea></div>
+        <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">
+          <button class="btn btn-primary" onclick="submitDecisao('APROVADO')">✅ Aprovar</button>
+          <button class="btn btn-secondary" onclick="submitDecisao('DEVOLVIDO')">↩ Devolver para ajuste</button>
+          <button class="btn btn-secondary" onclick="submitDecisao('SOLICITANDO_INFORMACOES')">❓ Solicitar informações</button>
+          <button class="btn btn-ghost" onclick="submitDecisao('REJEITADO')" style="color:#DC2626">✖ Rejeitar</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -5637,6 +5837,7 @@ loadVisaoGeral();
     if(role()==='RCA / REPRESENTANTE') await loadRcaHome();
     if(role()==='MASTER') await loadUsuariosV5();
     if(role()==='APROVADOR'||role()==='MASTER') await loadAprovadorV5();
+    if(role()==='ANALISTA SAC') setupAprovacaoUI();
   };
 
   window.logoutV5=function(){sessionStorage.clear();location.reload()};
@@ -5706,17 +5907,355 @@ loadVisaoGeral();
     if(box){box.querySelector('.modal-header div div:first-child').textContent='Novo usuário';const btn=box.querySelector('.btn.btn-primary');btn.textContent='Criar usuário';btn.onclick=window.salvarUsuarioV5;}
   };
 
-  // ===== APROVADOR =====
+  // ===== MÓDULO DE APROVAÇÃO COMPLETO =====
+  let _aprvData = { aprovadores:[], competencias:[], relacionamentos:[], regras:[] };
+
+  // Helper: fechar qualquer modal
+  window.fecharModal = function(id){ const el=document.getElementById(id); if(el) el.style.display='none'; };
+
+  // Configurar tabs e UI por perfil ao entrar na página
+  function setupAprovacaoUI(){
+    const u=sess(); if(!u) return;
+    const p=u.perfil||'';
+    document.getElementById('aprovador-nome-top').textContent=u.nome||u.usuario||'';
+    // Mostrar tabs conforme perfil
+    document.getElementById('aprtab-pendencias').style.display=(p==='APROVADOR'||p==='MASTER')?'':'none';
+    document.getElementById('aprtab-fila-sac').style.display=(p==='ANALISTA SAC'||p==='MASTER')?'':'none';
+    document.getElementById('aprtab-aprovadores').style.display=p==='MASTER'?'':'none';
+    document.getElementById('aprtab-competencias').style.display=p==='MASTER'?'':'none';
+    document.getElementById('aprtab-regras').style.display=p==='MASTER'?'':'none';
+    document.getElementById('aprtab-historico').style.display=(p==='MASTER'||p==='APROVADOR')?'':'none';
+    // Definir tab ativa inicial
+    const tabs=document.querySelectorAll('#aprov-tabs .tab-btn');
+    tabs.forEach(t=>t.classList.remove('active'));
+    if(p==='ANALISTA SAC'){
+      document.getElementById('aprtab-fila-sac').classList.add('active');
+      aprvTab('fila-sac');
+    } else {
+      document.getElementById('aprtab-pendencias').classList.add('active');
+      aprvTab('pendencias');
+    }
+  }
+
+  window.aprvTab = function(tab, btn){
+    const panels=['pendencias','fila-sac','aprovadores','competencias','regras','historico'];
+    panels.forEach(p=>{ const el=document.getElementById('aprtab-panel-'+p); if(el) el.style.display=p===tab?'':'none'; });
+    if(btn){ document.querySelectorAll('#aprov-tabs .tab-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); }
+    if(tab==='pendencias') loadAprovadorV5();
+    if(tab==='fila-sac') carregarFilaSac();
+    if(tab==='aprovadores') carregarAprovadoresAdmin();
+    if(tab==='competencias') carregarCompetencias();
+    if(tab==='regras') carregarRegras();
+    if(tab==='historico') carregarHistorico();
+  };
+
+  // ── TAB PENDÊNCIAS (APROVADOR / MASTER) ──
   async function loadAprovadorV5(){
-    const u=sess();if(!u||!['APROVADOR','MASTER'].includes(u.perfil))return;try{const d=await json5('/api/aprovadores/'+encodeURIComponent(u.usuario)+'/pendencias');document.getElementById('ap-saca').textContent=d.totais?.sac??0;document.getElementById('ap-rnca').textContent=d.totais?.rnc??0;document.getElementById('ap-total').textContent=d.totais?.total??0;document.getElementById('ap-sugestoes').textContent=(d.sugestoes||[]).filter(x=>x.STATUS==='PENDENTE').length;document.getElementById('aprovador-nome-top').textContent=u.nome||u.usuario;const wrap=document.getElementById('ap-pendencias-wrap');const sac=(d.sac||[]).map(x=>`<div class="portal-row"><div class="portal-row-main"><div class="portal-row-title">${esc5(x.ID_MANIFESTACAO)} · ${esc5(x.EMPRESA_RECLAMANTE||x.CLIENTE||'Cliente')}</div><div class="portal-row-sub">${esc5(x.PRODUTO||'')} · ${esc5(x.STATUS||'Aguardando aprovação')} · ${esc5(x.SETOR_CONFIRMADO||x.SETOR_SUGERIDO||'SAC')}</div></div><div class="portal-actions"><span class="status-badge decisao">SAC</span><button class="btn btn-secondary" onclick="abrirDossieAprovador('${esc5(x.ID_MANIFESTACAO)}')">Visualizar</button></div></div>`).join('');const rncs=(d.rnc||[]).map(x=>`<div class="portal-row"><div class="portal-row-main"><div class="portal-row-title">${esc5(x.ID_RNC)} · ${esc5(x.CLIENTE||x.CLIENTE_NOME||'Cliente')}</div><div class="portal-row-sub">SAC ${esc5(x.PROTOCOLO_SAC||x.ID_MANIFESTACAO||'—')} · ${esc5(x.EMPRESA||'')} · ${esc5(x.COMPETENCIA||x.COMPETENCIA_RNC||x.SETOR||'')} · ${esc5(x.STATUS||'Pendente')}</div></div><div class="portal-actions"><span class="status-badge decisao">RNC</span><button class="btn btn-primary" onclick="abrirRncAprovador('${esc5(x.ID_RNC)}')">Analisar RNC</button></div></div>`).join('');document.getElementById('ap-sac-queue').innerHTML=sac||'<div style="padding:14px;background:var(--gray-50);border-radius:8px;color:var(--gray-400);font-size:12px">Nenhuma manifestação SAC aguardando sua análise.</div>';document.getElementById('ap-rnc-queue').innerHTML=rncs||'<div style="padding:14px;background:var(--gray-50);border-radius:8px;color:var(--gray-400);font-size:12px">Nenhuma RNC dentro das suas competências.</div>';wrap.innerHTML=(sac+rncs)||'<div style="padding:14px;color:var(--gray-400);font-size:12px">Nenhuma pendência.</div>';}catch(e){document.getElementById('ap-pendencias-wrap').innerHTML=`<div class="alert-box">${esc5(e.message)}</div>`;document.getElementById('ap-sac-queue').innerHTML='';document.getElementById('ap-rnc-queue').innerHTML=''}}
+    const u=sess(); if(!u||!['APROVADOR','MASTER'].includes(u.perfil)) return;
+    try {
+      const [pend,fila]=await Promise.all([
+        json5('/api/aprovadores/'+encodeURIComponent(u.usuario)+'/pendencias'),
+        json5('/api/fila-aprovacao').catch(()=>({itens:[]}))
+      ]);
+      document.getElementById('ap-saca').textContent=pend.totais?.sac??0;
+      document.getElementById('ap-rnca').textContent=pend.totais?.rnc??0;
+      document.getElementById('ap-total').textContent=pend.totais?.total??0;
+      document.getElementById('ap-sugestoes').textContent=(pend.sugestoes||[]).filter(x=>x.STATUS==='PENDENTE').length;
+      const sac=(pend.sac||[]).map(x=>`<div class="portal-row"><div class="portal-row-main"><div class="portal-row-title">${esc5(x.ID_MANIFESTACAO)} · ${esc5(x.EMPRESA_RECLAMANTE||x.CLIENTE||'Cliente')}</div><div class="portal-row-sub">${esc5(x.PRODUTO||'')} · ${esc5(x.STATUS||'Aguardando aprovação')} · ${esc5(x.SETOR_CONFIRMADO||x.SETOR_SUGERIDO||'SAC')}</div></div><div class="portal-actions"><span class="status-badge decisao">SAC</span><button class="btn btn-secondary" onclick="abrirDossieAprovador('${esc5(x.ID_MANIFESTACAO)}')">Visualizar</button></div></div>`).join('');
+      const rncs=(pend.rnc||[]).map(x=>`<div class="portal-row"><div class="portal-row-main"><div class="portal-row-title">${esc5(x.ID_RNC)} · ${esc5(x.CLIENTE||x.CLIENTE_NOME||'Cliente')}</div><div class="portal-row-sub">SAC ${esc5(x.PROTOCOLO_SAC||x.ID_MANIFESTACAO||'—')} · ${esc5(x.EMPRESA||'')} · ${esc5(x.COMPETENCIA||x.SETOR||'')} · ${esc5(x.STATUS||'Pendente')}</div></div><div class="portal-actions"><span class="status-badge decisao">RNC</span><button class="btn btn-primary" onclick="abrirRncAprovador('${esc5(x.ID_RNC)}')">Analisar RNC</button></div></div>`).join('');
+      document.getElementById('ap-sac-queue').innerHTML=sac||'<div style="padding:14px;background:var(--gray-50);border-radius:8px;color:var(--gray-400);font-size:12px">Nenhuma manifestação SAC aguardando sua análise.</div>';
+      document.getElementById('ap-rnc-queue').innerHTML=rncs||'<div style="padding:14px;background:var(--gray-50);border-radius:8px;color:var(--gray-400);font-size:12px">Nenhuma RNC dentro das suas competências.</div>';
+      // Fila estruturada
+      renderFilaPendencias(fila.itens||[]);
+    } catch(e){
+      document.getElementById('ap-sac-queue').innerHTML=`<div class="alert-box">${esc5(e.message)}</div>`;
+    }
+  }
   window.loadAprovadorV5=loadAprovadorV5;
+
+  function renderFilaPendencias(itens){
+    const pend=itens.filter(x=>x.STATUS==='PENDENTE');
+    const el=document.getElementById('ap-fila-pendencias');
+    if(!el)return;
+    if(!pend.length){el.innerHTML='<div style="padding:14px;color:var(--gray-400);font-size:12px">Nenhum item na fila de aprovação.</div>';return;}
+    el.innerHTML=pend.map(x=>{
+      const cor=x.TIPO_ENTIDADE==='SAC'?'#1E40AF':'#065F46';
+      return `<div class="portal-row"><div class="portal-row-main">
+        <div class="portal-row-title">[${esc5(x.TIPO_ENTIDADE)}] ${esc5(x.ID_ENTIDADE)} <span style="font-size:11px;font-weight:400;color:${cor}">${esc5(x.COMPETENCIA||'')}</span></div>
+        <div class="portal-row-sub">${esc5(x.EMPRESA||'')} ${x.SETOR?'· '+esc5(x.SETOR):''} · enviado por ${esc5(x.CRIADO_POR||'—')} · ${fmt5(x.DATA_ENVIO)}</div>
+        ${x.DESCRICAO?`<div style="font-size:12px;color:var(--gray-500);margin-top:4px">${esc5(x.DESCRICAO)}</div>`:''}
+      </div><div class="portal-actions">
+        <span class="status-badge decisao">PENDENTE</span>
+        <button class="btn btn-primary" onclick="abrirDecisaoAprovacao('${esc5(x.ID_FILA)}','${esc5(x.ID_ENTIDADE)}','${esc5(x.TIPO_ENTIDADE)}')">Decidir</button>
+      </div></div>`;
+    }).join('');
+  }
+
+  window.carregarFilaPendencias = async function(){
+    try{const d=await json5('/api/fila-aprovacao'); renderFilaPendencias(d.itens||[]);}catch(e){document.getElementById('ap-fila-pendencias').innerHTML=`<div class="alert-box">${esc5(e.message)}</div>`;}
+  };
+
+  // ── TAB FILA SAC (ANALISTA SAC / MASTER) ──
+  async function carregarFilaSac(){
+    try{
+      const d=await json5('/api/fila-aprovacao');
+      const itens=d.itens||[];
+      const agora=new Date(); const mesAtual=agora.getMonth(); const anoAtual=agora.getFullYear();
+      const destesMes=x=>{const dt=new Date(x.DATA_DECISAO||''); return dt.getMonth()===mesAtual&&dt.getFullYear()===anoAtual;};
+      document.getElementById('sac-fila-total').textContent=itens.length;
+      document.getElementById('sac-fila-pendentes').textContent=itens.filter(x=>x.STATUS==='PENDENTE').length;
+      document.getElementById('sac-fila-aprov').textContent=itens.filter(x=>x.STATUS==='APROVADO'&&destesMes(x)).length;
+      document.getElementById('sac-fila-rej').textContent=itens.filter(x=>x.STATUS==='REJEITADO'&&destesMes(x)).length;
+      const stCor={PENDENTE:'#D97706',APROVADO:'#059669',REJEITADO:'#DC2626',DEVOLVIDO:'#7C3AED',SOLICITANDO_INFORMACOES:'#2563EB'};
+      document.getElementById('sac-fila-lista').innerHTML=itens.length?itens.map(x=>`<div class="portal-row"><div class="portal-row-main">
+        <div class="portal-row-title">[${esc5(x.TIPO_ENTIDADE)}] ${esc5(x.ID_ENTIDADE)}</div>
+        <div class="portal-row-sub">${esc5(x.EMPRESA||'')} ${x.SETOR?'· '+esc5(x.SETOR):''} · competência: ${esc5(x.COMPETENCIA||'—')} · aprovador: ${esc5(x.NOME_APROVADOR||'—')}</div>
+        ${x.OBSERVACOES?`<div style="font-size:12px;color:var(--gray-500);margin-top:2px">Obs: ${esc5(x.OBSERVACOES)}</div>`:''}
+        <div style="font-size:11px;color:var(--gray-400);margin-top:2px">Enviado ${fmt5(x.DATA_ENVIO)} ${x.DATA_DECISAO?'· Decisão '+fmt5(x.DATA_DECISAO):''}</div>
+      </div><div class="portal-actions">
+        <span style="font-size:12px;font-weight:700;color:${stCor[x.STATUS]||'#374151'}">${esc5(x.STATUS)}</span>
+      </div></div>`).join(''):'<div style="padding:16px;color:var(--gray-400);font-size:12px">Nenhum item enviado para aprovação.</div>';
+    }catch(e){document.getElementById('sac-fila-lista').innerHTML=`<div class="alert-box">${esc5(e.message)}</div>`;}
+  }
+
+  // ── MODAL ENVIAR PARA APROVAÇÃO ──
+  window.abrirModalEnviarAprovacao = async function(){
+    document.getElementById('modal-enviar-aprovacao').style.display='flex';
+    try{
+      const [comp,aprov]=await Promise.all([json5('/api/competencias-lista').catch(()=>({competencias:[]})), json5('/api/aprovadores-admin').catch(()=>({aprovadores:[]}))]);
+      const selComp=document.getElementById('env-competencia');
+      selComp.innerHTML='<option value="">Selecione...</option>'+(comp.competencias||[]).filter(c=>c.STATUS!=='INATIVO').map(c=>`<option value="${esc5(c.NOME)}">${esc5(c.NOME)}</option>`).join('');
+      const selAprov=document.getElementById('env-aprovador');
+      selAprov.innerHTML='<option value="">Selecione (opcional)...</option>'+(aprov.aprovadores||[]).filter(a=>a.STATUS!=='INATIVO').map(a=>`<option value="${esc5(a.ID_APROVADOR)}" data-nome="${esc5(a.NOME)}">${esc5(a.NOME)} — ${esc5(a.EMPRESA||'')}</option>`).join('');
+    }catch(e){}
+  };
+
+  window.enviarParaAprovacao = async function(){
+    const tipo=document.getElementById('env-tipo').value;
+    const id=document.getElementById('env-id').value.trim();
+    const competencia=document.getElementById('env-competencia').value;
+    const selAprov=document.getElementById('env-aprovador');
+    const idAprovador=selAprov.value;
+    const nomeAprovador=selAprov.selectedOptions[0]?.dataset?.nome||'';
+    const empresa=document.getElementById('env-empresa').value.trim();
+    const setor=document.getElementById('env-setor').value.trim();
+    const descricao=document.getElementById('env-descricao').value.trim();
+    if(!id||!tipo) return alert('Informe o tipo e o ID da entidade.');
+    try{
+      await json5('/api/fila-aprovacao',{method:'POST',body:JSON.stringify({idEntidade:id,tipoEntidade:tipo,descricao,empresa,setor,competencia,idAprovador,nomeAprovador})});
+      alert('Item enviado para aprovação.');
+      fecharModal('modal-enviar-aprovacao');
+      carregarFilaSac();
+    }catch(e){alert(e.message);}
+  };
+
+  // ── MODAL DECISÃO ──
+  window.abrirDecisaoAprovacao = function(idFila, idEntidade, tipo){
+    document.getElementById('decisao-aprov-id').value=idFila;
+    document.getElementById('decisao-aprov-title').textContent=`Decisão — ${tipo}: ${idEntidade}`;
+    document.getElementById('decisao-aprov-sub').textContent=`Fila: ${idFila}`;
+    document.getElementById('decisao-obs').value='';
+    document.getElementById('modal-decisao-aprov').style.display='flex';
+  };
+
+  window.submitDecisao = async function(decisao){
+    const id=document.getElementById('decisao-aprov-id').value;
+    const obs=document.getElementById('decisao-obs').value.trim();
+    if(decisao!=='APROVADO'&&!obs) return alert('Informe as observações/justificativa.');
+    try{
+      await json5('/api/fila-aprovacao/'+encodeURIComponent(id)+'/decidir',{method:'POST',body:JSON.stringify({decisao,observacoes:obs})});
+      alert(`Decisão registrada: ${decisao}`);
+      fecharModal('modal-decisao-aprov');
+      loadAprovadorV5();
+    }catch(e){alert(e.message);}
+  };
+
+  // ── TAB APROVADORES (MASTER) ──
+  async function carregarAprovadoresAdmin(){
+    try{
+      const d=await json5('/api/aprovadores-admin');
+      _aprvData.aprovadores=d.aprovadores||[];
+      _aprvData.competencias=d.competencias||[];
+      _aprvData.relacionamentos=d.relacionamentos||[];
+      const el=document.getElementById('aprov-lista');
+      if(!_aprvData.aprovadores.length){el.innerHTML='<div style="padding:16px;color:var(--gray-400);font-size:12px">Nenhum aprovador cadastrado. Clique em "+ Novo aprovador" para começar.</div>';return;}
+      el.innerHTML=`<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:var(--gray-50)"><th style="padding:10px 12px;text-align:left">Nome</th><th>Login</th><th>Empresa</th><th>Setor</th><th>Status</th><th>Ações</th></tr></thead><tbody>`+
+        _aprvData.aprovadores.map(a=>`<tr style="border-bottom:1px solid var(--gray-100)">
+          <td style="padding:10px 12px"><strong>${esc5(a.NOME)}</strong><div style="font-size:11px;color:var(--gray-400)">${esc5(a.EMAIL||'')}</div></td>
+          <td style="padding:8px 12px">${esc5(a.USUARIO||'—')}</td>
+          <td style="padding:8px 12px">${esc5(a.EMPRESA||'—')}</td>
+          <td style="padding:8px 12px">${esc5(a.SETOR||'—')}</td>
+          <td style="padding:8px 12px"><span style="font-size:11px;font-weight:700;color:${a.STATUS==='ATIVO'?'#059669':'#DC2626'}">${esc5(a.STATUS)}</span></td>
+          <td style="padding:8px 12px"><button class="btn btn-secondary" style="font-size:11px;padding:4px 10px" onclick="editarAprovador('${esc5(a.ID_APROVADOR)}')">Editar</button></td>
+        </tr>`).join('')+'</tbody></table>';
+    }catch(e){document.getElementById('aprov-lista').innerHTML=`<div class="alert-box">${esc5(e.message)}</div>`;}
+  }
+
+  window.abrirModalAprovador = function(){
+    document.getElementById('modal-aprov-title').textContent='Novo Aprovador';
+    document.getElementById('aprov-edit-id').value='';
+    ['aprov-nome','aprov-usuario','aprov-email','aprov-cargo','aprov-empresa','aprov-setor','aprov-obs'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+    document.getElementById('modal-aprovador').style.display='flex';
+  };
+
+  window.editarAprovador = function(id){
+    const a=_aprvData.aprovadores.find(x=>x.ID_APROVADOR===id); if(!a) return;
+    document.getElementById('modal-aprov-title').textContent='Editar Aprovador';
+    document.getElementById('aprov-edit-id').value=id;
+    document.getElementById('aprov-nome').value=a.NOME||'';
+    document.getElementById('aprov-usuario').value=a.USUARIO||'';
+    document.getElementById('aprov-email').value=a.EMAIL||'';
+    document.getElementById('aprov-cargo').value=a.CARGO||'';
+    document.getElementById('aprov-empresa').value=a.EMPRESA||'';
+    document.getElementById('aprov-setor').value=a.SETOR||'';
+    document.getElementById('aprov-obs').value=a.OBSERVACOES||'';
+    document.getElementById('modal-aprovador').style.display='flex';
+  };
+
+  window.salvarAprovador = async function(){
+    const id=document.getElementById('aprov-edit-id').value;
+    const body={nome:document.getElementById('aprov-nome').value.trim(),usuario:document.getElementById('aprov-usuario').value.trim(),email:document.getElementById('aprov-email').value.trim(),cargo:document.getElementById('aprov-cargo').value.trim(),empresa:document.getElementById('aprov-empresa').value.trim(),setor:document.getElementById('aprov-setor').value.trim(),observacoes:document.getElementById('aprov-obs').value.trim()};
+    if(!body.nome) return alert('Nome é obrigatório.');
+    try{
+      if(id){await json5('/api/aprovadores-admin/'+encodeURIComponent(id),{method:'PUT',body:JSON.stringify(body)});}
+      else{await json5('/api/aprovadores-admin',{method:'POST',body:JSON.stringify(body)});}
+      alert(id?'Aprovador atualizado.':'Aprovador criado.');
+      fecharModal('modal-aprovador');
+      carregarAprovadoresAdmin();
+    }catch(e){alert(e.message);}
+  };
+
+  // ── TAB COMPETÊNCIAS (MASTER) ──
+  async function carregarCompetencias(){
+    try{
+      const d=await json5('/api/aprovadores-admin');
+      _aprvData.competencias=d.competencias||[];
+      _aprvData.relacionamentos=d.relacionamentos||[];
+      _aprvData.aprovadores=d.aprovadores||[];
+      const elComp=document.getElementById('comp-lista');
+      elComp.innerHTML=_aprvData.competencias.filter(c=>c.STATUS!=='INATIVO').length?
+        `<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:var(--gray-50)"><th style="padding:10px 12px;text-align:left">Nome</th><th>Tipo</th><th>Descrição</th></tr></thead><tbody>`+
+        _aprvData.competencias.filter(c=>c.STATUS!=='INATIVO').map(c=>`<tr style="border-bottom:1px solid var(--gray-100)"><td style="padding:10px 12px"><strong>${esc5(c.NOME)}</strong></td><td style="padding:8px 12px">${esc5(c.TIPO||'AMBOS')}</td><td style="padding:8px 12px;color:var(--gray-500)">${esc5(c.DESCRICAO||'—')}</td></tr>`).join('')+'</tbody></table>'
+        :'<div style="padding:12px;color:var(--gray-400);font-size:12px">Nenhuma competência cadastrada.</div>';
+      const elAtrib=document.getElementById('atrib-lista');
+      const ativas=_aprvData.relacionamentos.filter(r=>r.STATUS!=='INATIVO');
+      elAtrib.innerHTML=ativas.length?
+        `<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:var(--gray-50)"><th style="padding:10px 12px;text-align:left">Aprovador</th><th>Competência</th><th>Empresa</th><th>Ações</th></tr></thead><tbody>`+
+        ativas.map(r=>`<tr style="border-bottom:1px solid var(--gray-100)"><td style="padding:10px 12px">${esc5(r.NOME_APROVADOR||r.ID_APROVADOR)}</td><td style="padding:8px 12px">${esc5(r.NOME_COMPETENCIA||r.ID_COMPETENCIA)}</td><td style="padding:8px 12px">${esc5(r.EMPRESA||'Todas')}</td><td style="padding:8px 12px"><button class="btn btn-ghost" style="font-size:11px;color:#DC2626;padding:4px 10px" onclick="removerAtribuicao('${esc5(r.ID)}')">Remover</button></td></tr>`).join('')+'</tbody></table>'
+        :'<div style="padding:12px;color:var(--gray-400);font-size:12px">Nenhuma atribuição.</div>';
+    }catch(e){document.getElementById('comp-lista').innerHTML=`<div class="alert-box">${esc5(e.message)}</div>`;}
+  }
+
+  window.abrirModalCompetencia = function(){
+    ['comp-nome','comp-descricao'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    document.getElementById('modal-competencia').style.display='flex';
+  };
+
+  window.salvarCompetencia = async function(){
+    const nome=document.getElementById('comp-nome').value.trim();
+    if(!nome) return alert('Nome é obrigatório.');
+    const body={nome,descricao:document.getElementById('comp-descricao').value.trim(),tipo:document.getElementById('comp-tipo').value};
+    try{await json5('/api/competencias-lista',{method:'POST',body:JSON.stringify(body)});alert('Competência criada.');fecharModal('modal-competencia');carregarCompetencias();}
+    catch(e){alert(e.message);}
+  };
+
+  window.abrirModalAtribuicao = function(){
+    const selA=document.getElementById('atrib-aprovador');
+    selA.innerHTML='<option value="">Selecione...</option>'+_aprvData.aprovadores.filter(a=>a.STATUS!=='INATIVO').map(a=>`<option value="${esc5(a.ID_APROVADOR)}" data-nome="${esc5(a.NOME)}">${esc5(a.NOME)} — ${esc5(a.EMPRESA||'')}</option>`).join('');
+    const selC=document.getElementById('atrib-competencia');
+    selC.innerHTML='<option value="">Selecione...</option>'+_aprvData.competencias.filter(c=>c.STATUS!=='INATIVO').map(c=>`<option value="${esc5(c.ID_COMPETENCIA)}" data-nome="${esc5(c.NOME)}">${esc5(c.NOME)}</option>`).join('');
+    document.getElementById('atrib-empresa').value='';
+    document.getElementById('modal-atribuicao').style.display='flex';
+  };
+
+  window.salvarAtribuicao = async function(){
+    const selA=document.getElementById('atrib-aprovador'); const selC=document.getElementById('atrib-competencia');
+    const idAprovador=selA.value; const nomeAprovador=selA.selectedOptions[0]?.dataset?.nome||'';
+    const idCompetencia=selC.value; const nomeCompetencia=selC.selectedOptions[0]?.dataset?.nome||'';
+    const empresa=document.getElementById('atrib-empresa').value.trim();
+    if(!idAprovador||!idCompetencia) return alert('Selecione aprovador e competência.');
+    try{await json5('/api/aprovador-competencias',{method:'POST',body:JSON.stringify({idAprovador,nomeAprovador,idCompetencia,nomeCompetencia,empresa})});alert('Competência atribuída.');fecharModal('modal-atribuicao');carregarCompetencias();}
+    catch(e){alert(e.message);}
+  };
+
+  window.removerAtribuicao = async function(id){
+    if(!confirm('Remover esta atribuição?')) return;
+    try{await json5('/api/aprovador-competencias/'+encodeURIComponent(id),{method:'DELETE'});alert('Atribuição removida.');carregarCompetencias();}
+    catch(e){alert(e.message);}
+  };
+
+  // ── TAB REGRAS (MASTER) ──
+  async function carregarRegras(){
+    try{
+      const d=await json5('/api/regras-aprovacao');
+      _aprvData.regras=d.regras||[];
+      const el=document.getElementById('regras-lista');
+      const ativas=_aprvData.regras.filter(r=>r.STATUS!=='INATIVO');
+      el.innerHTML=ativas.length?
+        `<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:var(--gray-50)"><th style="padding:10px 12px;text-align:left">Regra</th><th>Tipo</th><th>Competência</th><th>Prioridade</th><th>Ações</th></tr></thead><tbody>`+
+        ativas.map(r=>`<tr style="border-bottom:1px solid var(--gray-100)"><td style="padding:10px 12px"><strong>${esc5(r.NOME)}</strong><div style="font-size:11px;color:var(--gray-400)">${esc5(r.DESCRICAO_CONDICAO||'')}</div></td><td style="padding:8px 12px">${esc5(r.TIPO_ENTIDADE)}</td><td style="padding:8px 12px">${esc5(r.COMPETENCIA_NECESSARIA)}</td><td style="padding:8px 12px"><span style="font-size:11px;font-weight:700;color:${r.PRIORIDADE==='CRITICA'?'#DC2626':r.PRIORIDADE==='ALTA'?'#D97706':'#374151'}">${esc5(r.PRIORIDADE)}</span></td><td style="padding:8px 12px"><button class="btn btn-secondary" style="font-size:11px;padding:4px 10px" onclick="editarRegra('${esc5(r.ID_REGRA)}')">Editar</button> <button class="btn btn-ghost" style="font-size:11px;color:#DC2626;padding:4px 10px" onclick="desativarRegra('${esc5(r.ID_REGRA)}')">Desativar</button></td></tr>`).join('')+'</tbody></table>'
+        :'<div style="padding:16px;color:var(--gray-400);font-size:12px">Nenhuma regra cadastrada. Clique em "+ Nova regra" para começar.</div>';
+    }catch(e){document.getElementById('regras-lista').innerHTML=`<div class="alert-box">${esc5(e.message)}</div>`;}
+  }
+
+  window.abrirModalRegra = function(){
+    document.getElementById('modal-regra-title').textContent='Nova Regra';
+    document.getElementById('regra-edit-id').value='';
+    ['regra-nome','regra-condicao','regra-competencia'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    document.getElementById('modal-regra').style.display='flex';
+  };
+
+  window.editarRegra = function(id){
+    const r=_aprvData.regras.find(x=>x.ID_REGRA===id); if(!r) return;
+    document.getElementById('modal-regra-title').textContent='Editar Regra';
+    document.getElementById('regra-edit-id').value=id;
+    document.getElementById('regra-nome').value=r.NOME||'';
+    document.getElementById('regra-tipo').value=r.TIPO_ENTIDADE||'SAC';
+    document.getElementById('regra-competencia').value=r.COMPETENCIA_NECESSARIA||'';
+    document.getElementById('regra-prioridade').value=r.PRIORIDADE||'NORMAL';
+    document.getElementById('regra-condicao').value=r.DESCRICAO_CONDICAO||'';
+    document.getElementById('modal-regra').style.display='flex';
+  };
+
+  window.salvarRegra = async function(){
+    const id=document.getElementById('regra-edit-id').value;
+    const body={nome:document.getElementById('regra-nome').value.trim(),tipoEntidade:document.getElementById('regra-tipo').value,competenciaNecessaria:document.getElementById('regra-competencia').value.trim(),prioridade:document.getElementById('regra-prioridade').value,descricaoCondicao:document.getElementById('regra-condicao').value.trim()};
+    if(!body.nome||!body.competenciaNecessaria) return alert('Nome e competência são obrigatórios.');
+    try{
+      if(id){await json5('/api/regras-aprovacao/'+encodeURIComponent(id),{method:'PUT',body:JSON.stringify(body)});}
+      else{await json5('/api/regras-aprovacao',{method:'POST',body:JSON.stringify(body)});}
+      alert(id?'Regra atualizada.':'Regra criada.');fecharModal('modal-regra');carregarRegras();
+    }catch(e){alert(e.message);}
+  };
+
+  window.desativarRegra = async function(id){
+    if(!confirm('Desativar esta regra?')) return;
+    try{await json5('/api/regras-aprovacao/'+encodeURIComponent(id),{method:'PUT',body:JSON.stringify({STATUS:'INATIVO'})});alert('Regra desativada.');carregarRegras();}
+    catch(e){alert(e.message);}
+  };
+
+  // ── TAB HISTÓRICO ──
+  async function carregarHistorico(){
+    try{
+      const d=await json5('/api/historico-aprovacao');
+      const itens=d.itens||[];
+      const el=document.getElementById('hist-lista');
+      el.innerHTML=itens.length?
+        `<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:var(--gray-50)"><th style="padding:10px 12px;text-align:left">Data</th><th>Entidade</th><th>Tipo</th><th>Decisão</th><th>Aprovador</th><th>Obs</th></tr></thead><tbody>`+
+        itens.slice().reverse().map(h=>{const cor={APROVADO:'#059669',REJEITADO:'#DC2626',DEVOLVIDO:'#7C3AED',SOLICITANDO_INFORMACOES:'#2563EB'}[h.DECISAO]||'#374151';return`<tr style="border-bottom:1px solid var(--gray-100)"><td style="padding:10px 12px;white-space:nowrap">${fmt5(h.DATA_DECISAO)}</td><td style="padding:8px 12px"><strong>${esc5(h.ID_ENTIDADE)}</strong></td><td style="padding:8px 12px">${esc5(h.TIPO_ENTIDADE)}</td><td style="padding:8px 12px"><span style="font-size:11px;font-weight:700;color:${cor}">${esc5(h.DECISAO)}</span></td><td style="padding:8px 12px">${esc5(h.APROVADOR)}</td><td style="padding:8px 12px;font-size:11px;color:var(--gray-500)">${esc5(h.OBSERVACOES||'—')}</td></tr>`}).join('')+'</tbody></table>'
+        :'<div style="padding:16px;color:var(--gray-400);font-size:12px">Nenhuma decisão registrada ainda.</div>';
+    }catch(e){document.getElementById('hist-lista').innerHTML=`<div class="alert-box">${esc5(e.message)}</div>`;}
+  }
+
+  // Legados mantidos para compatibilidade
   window.abrirDossieAprovador=async function(id){try{const d=await json5('/api/manifestacoes/'+encodeURIComponent(id));abrirDossie(d.manifestacao)}catch(e){alert(e.message)}};
   window.abrirRncAprovador=async function(id){try{const d=await json5('/api/rnc/'+encodeURIComponent(id));document.getElementById('modal-rnc-aprovador-v5').style.display='flex';document.getElementById('rnc-modal-title').textContent=d.rnc.ID_RNC||id;document.getElementById('rnc-modal-sub').textContent=`SAC ${d.rnc.PROTOCOLO_SAC||'—'} · ${d.rnc.EMPRESA||'—'} · competência ${d.rnc.COMPETENCIA||d.rnc.SETOR||'—'}`;const r=d.rnc;document.getElementById('rnc-modal-body').innerHTML=`<div class="rnc-block"><div class="rnc-block-title">1. Dados de entrada</div><div class="rnc-grid"><div><b>Empresa</b><div class="rnc-value">${esc5(r.EMPRESA)}</div></div><div><b>Cliente</b><div class="rnc-value">${esc5(r.CLIENTE)}</div></div><div><b>Produto</b><div class="rnc-value">${esc5(r.PRODUTO)}</div></div><div><b>Lote</b><div class="rnc-value">${esc5(r.LOTE)}</div></div><div><b>Quantidade</b><div class="rnc-value">${esc5(r.QUANTIDADE)}</div></div><div><b>Contato</b><div class="rnc-value">${esc5(r.CONTATO)}</div></div></div></div><div class="rnc-block"><div class="rnc-block-title">2. Reclamação original</div><div class="rnc-value">${esc5(r.DESCRICAO_NAO_CONFORMIDADE||r.NAO_CONFORMIDADE)}</div></div><div class="rnc-block"><div class="rnc-block-title">3. Classificação da NC</div><div class="rnc-grid"><div><b>Origem</b><div>${esc5(r.ORIGEM_NC)}</div></div><div><b>Tipo</b><div>${esc5(r.TIPO_NC)}</div></div><div><b>Procedente</b><div>${esc5(r.PROCEDENTE)}</div></div><div><b>Plano de ação</b><div>${esc5(r.PLANO_ACAO)}</div></div></div></div><div class="rnc-block"><div class="rnc-block-title">4. Análise de causa</div><div class="rnc-value">${esc5(r.CAUSA||'Ainda não registrada.')}</div></div><div class="rnc-block"><div class="rnc-block-title">5. Ação de contenção</div><div class="rnc-value">${esc5(r.ACAO_CONTENCAO||'Não registrada.')}</div></div><div class="rnc-block"><div class="rnc-block-title">6. Ação corretiva</div><div class="rnc-grid"><div><b>Ação</b><div class="rnc-value">${esc5(r.ACAO_CORRETIVA)}</div></div><div><b>Responsável</b><div class="rnc-value">${esc5(r.RESPONSAVEL_ACAO)}</div></div><div><b>Setor</b><div class="rnc-value">${esc5(r.SETOR_ACAO)}</div></div><div><b>Prazo</b><div class="rnc-value">${esc5(r.PRAZO_ACAO)}</div></div></div></div><div class="rnc-block"><div class="rnc-block-title">7. Verificação da eficácia</div><div class="rnc-grid"><div><b>Responsável</b><div>${esc5(r.RESPONSAVEL_EFICACIA)}</div></div><div><b>Data</b><div>${esc5(r.DATA_EFICACIA)}</div></div><div><b>Resultado</b><div>${esc5(r.RESULTADO_EFICACIA)}</div></div><div><b>Observação</b><div>${esc5(r.OBSERVACAO_EFICACIA)}</div></div></div></div><div class="rnc-block"><div class="rnc-block-title">8. Histórico</div><div class="timeline">${(d.eventos||[]).map(e=>`<div class="tl-item"><div class="tl-dot"></div><div class="tl-content"><div class="tl-label">${esc5(e.TIPO_EVENTO)}</div><div class="tl-meta">${fmt5(e.DATA_EVENTO)} · ${esc5(e.USUARIO)}</div><div class="tl-meta">${esc5(e.DETALHES)}</div></div></div>`).join('')||'<div class="rnc-value">Sem eventos registrados.</div>'}</div></div><div class="rnc-block"><div class="rnc-block-title">9. Decisão</div><div class="field"><label>Justificativa (obrigatória para devolver ou rejeitar)</label><textarea id="rnc-decisao-obs" placeholder="Informe o motivo da decisão, quando aplicável."></textarea></div></div><div class="decision-bar"><button class="btn btn-primary" onclick="decidirRncV5('${esc5(id)}','APROVAR')">Aprovar</button><button class="btn btn-secondary" onclick="decidirRncV5('${esc5(id)}','DEVOLVER')">Devolver para ajuste</button><button class="btn btn-ghost" onclick="decidirRncV5('${esc5(id)}','REJEITAR')">Rejeitar</button></div>`;await json5('/api/rnc/'+encodeURIComponent(id)+'/visualizacao',{method:'POST',body:JSON.stringify({})});}catch(e){alert(e.message)}};
   window.decidirRncV5=async function(id,decisao){const obs=document.getElementById('rnc-decisao-obs')?.value||'';if(decisao!=='APROVAR'&&!obs.trim())return alert('Informe a justificativa.');try{await json5('/api/rnc/'+encodeURIComponent(id)+'/decisao',{method:'POST',body:JSON.stringify({decisao,observacoes:obs})});alert(decisao==='APROVAR'?'RNC aprovada.':decisao==='REJEITAR'?'RNC rejeitada.':'RNC devolvida para ajuste.');fecharRncAprovador();loadAprovadorV5()}catch(e){alert(e.message)}};
   window.fecharRncAprovador=function(){document.getElementById('modal-rnc-aprovador-v5').style.display='none'};
 
-  // Reescreve a central de aprovação para o layout definitivo quando a página abrir.
-  const oldLoad=window.loadAprovadorDashboard;window.loadAprovadorDashboard=function(){loadAprovadorV5();if(typeof oldLoad==='function'&&role()!=='APROVADOR')try{oldLoad()}catch(e){}}
+  // Override do pageLoader para inicializar UI por perfil
+  const oldLoadAprov=window.loadAprovadorDashboard;
+  window.loadAprovadorDashboard=function(){ setupAprovacaoUI(); if(typeof oldLoadAprov==='function'&&role()!=='APROVADOR'&&role()!=='ANALISTA SAC')try{oldLoadAprov()}catch(e){} };
 
   // ===== SETOR RESPONSÁVEL =====
   async function loadSetorV5(){

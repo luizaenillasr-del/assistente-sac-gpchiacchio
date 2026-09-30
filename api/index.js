@@ -2651,6 +2651,221 @@ app.get('/api/_importar', async (req, res) => {
   }
 });
 
+// ===== MÓDULO COMPLETO DE APROVAÇÃO =====
+
+const APROVADORES_HEADERS = ['ID_APROVADOR','NOME','EMAIL','USUARIO','CARGO','EMPRESA','SETOR','STATUS','DATA_CRIACAO','OBSERVACOES'];
+const COMPETENCIAS_HEADERS = ['ID_COMPETENCIA','NOME','DESCRICAO','TIPO','STATUS','DATA_CRIACAO'];
+const APROV_COMP_HEADERS = ['ID','ID_APROVADOR','NOME_APROVADOR','ID_COMPETENCIA','NOME_COMPETENCIA','EMPRESA','STATUS','DATA_ATRIBUICAO'];
+const REGRAS_APROV_HEADERS = ['ID_REGRA','NOME','TIPO_ENTIDADE','DESCRICAO_CONDICAO','COMPETENCIA_NECESSARIA','PRIORIDADE','STATUS','DATA_CRIACAO','USUARIO_CRIACAO'];
+const FILA_APROV_HEADERS = ['ID_FILA','ID_ENTIDADE','TIPO_ENTIDADE','DESCRICAO','EMPRESA','SETOR','COMPETENCIA','STATUS','ID_APROVADOR','NOME_APROVADOR','DATA_ENVIO','DATA_DECISAO','OBSERVACOES','CRIADO_POR','ID_REGRA'];
+const HIST_APROV_HEADERS = ['ID_HISTORICO','ID_FILA','ID_ENTIDADE','TIPO_ENTIDADE','DECISAO','OBSERVACOES','APROVADOR','DATA_DECISAO','DETALHES'];
+
+// Listar aprovadores + competências + relacionamentos (MASTER)
+app.get('/api/aprovadores-admin', requerPerfil('MASTER'), async (req,res)=>{
+  try {
+    garantirAbaComCabecalhos('APROVADORES', APROVADORES_HEADERS).catch(()=>{});
+    garantirAbaComCabecalhos('COMPETENCIAS', COMPETENCIAS_HEADERS).catch(()=>{});
+    garantirAbaComCabecalhos('APROVADOR_COMPETENCIAS', APROV_COMP_HEADERS).catch(()=>{});
+    const [ap,comp,rel] = await Promise.all([
+      lerAba('APROVADORES',500).catch(()=>[]),
+      lerAba('COMPETENCIAS',500).catch(()=>[]),
+      lerAba('APROVADOR_COMPETENCIAS',2000).catch(()=>[]),
+    ]);
+    res.json({sucesso:true,aprovadores:ap,competencias:comp,relacionamentos:rel});
+  } catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+});
+
+// Criar aprovador (MASTER)
+app.post('/api/aprovadores-admin', requerPerfil('MASTER'), async (req,res)=>{
+  try {
+    garantirAbaComCabecalhos('APROVADORES', APROVADORES_HEADERS).catch(()=>{});
+    const {nome,email,usuario,cargo,empresa,setor,observacoes} = req.body||{};
+    if(!nome) return res.status(400).json({sucesso:false,erro:'Nome é obrigatório.'});
+    const id = await gerarProximoID('APROVADORES','APV','ID_APROVADOR');
+    const obj = {ID_APROVADOR:id,NOME:nome,EMAIL:email||'',USUARIO:usuario||'',CARGO:cargo||'',EMPRESA:empresa||'',SETOR:setor||'',STATUS:'ATIVO',DATA_CRIACAO:new Date().toISOString(),OBSERVACOES:observacoes||''};
+    await appendObjeto('APROVADORES',obj);
+    await registrarAuditoria(req.user.usuario,'APROVADOR_CRIADO',id,'APROVADORES','',JSON.stringify({nome,empresa,setor}));
+    res.json({sucesso:true,aprovador:obj});
+  } catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+});
+
+// Atualizar aprovador (MASTER)
+app.put('/api/aprovadores-admin/:id', requerPerfil('MASTER'), async (req,res)=>{
+  try {
+    const campos = ['NOME','EMAIL','USUARIO','CARGO','EMPRESA','SETOR','STATUS','OBSERVACOES'];
+    const dados = {};
+    for(const c of campos) { if(req.body[c]!==undefined) dados[c]=req.body[c]; }
+    const r = await atualizarPorID('APROVADORES',req.params.id,dados,['ID_APROVADOR']);
+    if(!r) return res.status(404).json({sucesso:false,erro:'Aprovador não encontrado.'});
+    await registrarAuditoria(req.user.usuario,'APROVADOR_ATUALIZADO',req.params.id,'APROVADORES','',JSON.stringify(dados));
+    res.json({sucesso:true});
+  } catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+});
+
+// Listar competências
+app.get('/api/competencias-lista', requerPerfil('MASTER','APROVADOR','ANALISTA SAC'), async (req,res)=>{
+  try {
+    garantirAbaComCabecalhos('COMPETENCIAS', COMPETENCIAS_HEADERS).catch(()=>{});
+    const comp = await lerAba('COMPETENCIAS',500).catch(()=>[]);
+    res.json({sucesso:true,competencias:comp.filter(c=>c.STATUS!=='INATIVO')});
+  } catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+});
+
+// Criar competência (MASTER)
+app.post('/api/competencias-lista', requerPerfil('MASTER'), async (req,res)=>{
+  try {
+    garantirAbaComCabecalhos('COMPETENCIAS', COMPETENCIAS_HEADERS).catch(()=>{});
+    const {nome,descricao,tipo} = req.body||{};
+    if(!nome) return res.status(400).json({sucesso:false,erro:'Nome é obrigatório.'});
+    const id = await gerarProximoID('COMPETENCIAS','CMP','ID_COMPETENCIA');
+    const obj = {ID_COMPETENCIA:id,NOME:nome,DESCRICAO:descricao||'',TIPO:tipo||'AMBOS',STATUS:'ATIVO',DATA_CRIACAO:new Date().toISOString()};
+    await appendObjeto('COMPETENCIAS',obj);
+    res.json({sucesso:true,competencia:obj});
+  } catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+});
+
+// Atribuir competência a aprovador (MASTER)
+app.post('/api/aprovador-competencias', requerPerfil('MASTER'), async (req,res)=>{
+  try {
+    garantirAbaComCabecalhos('APROVADOR_COMPETENCIAS', APROV_COMP_HEADERS).catch(()=>{});
+    const {idAprovador,nomeAprovador,idCompetencia,nomeCompetencia,empresa} = req.body||{};
+    if(!idAprovador||!idCompetencia) return res.status(400).json({sucesso:false,erro:'ID Aprovador e ID Competência são obrigatórios.'});
+    const id = await gerarProximoID('APROVADOR_COMPETENCIAS','AC','ID');
+    const obj = {ID:id,ID_APROVADOR:idAprovador,NOME_APROVADOR:nomeAprovador||'',ID_COMPETENCIA:idCompetencia,NOME_COMPETENCIA:nomeCompetencia||'',EMPRESA:empresa||'',STATUS:'ATIVO',DATA_ATRIBUICAO:new Date().toISOString()};
+    await appendObjeto('APROVADOR_COMPETENCIAS',obj);
+    res.json({sucesso:true,relacionamento:obj});
+  } catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+});
+
+// Remover atribuição de competência (MASTER)
+app.delete('/api/aprovador-competencias/:id', requerPerfil('MASTER'), async (req,res)=>{
+  try {
+    const r = await atualizarPorID('APROVADOR_COMPETENCIAS',req.params.id,{STATUS:'INATIVO'},['ID']);
+    if(!r) return res.status(404).json({sucesso:false,erro:'Relacionamento não encontrado.'});
+    res.json({sucesso:true});
+  } catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+});
+
+// Listar regras de aprovação
+app.get('/api/regras-aprovacao', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req,res)=>{
+  try {
+    garantirAbaComCabecalhos('REGRAS_APROVACAO', REGRAS_APROV_HEADERS).catch(()=>{});
+    const regras = await lerAba('REGRAS_APROVACAO',500).catch(()=>[]);
+    res.json({sucesso:true,regras});
+  } catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+});
+
+// Criar regra de aprovação (MASTER)
+app.post('/api/regras-aprovacao', requerPerfil('MASTER'), async (req,res)=>{
+  try {
+    garantirAbaComCabecalhos('REGRAS_APROVACAO', REGRAS_APROV_HEADERS).catch(()=>{});
+    const {nome,tipoEntidade,descricaoCondicao,competenciaNecessaria,prioridade} = req.body||{};
+    if(!nome||!tipoEntidade||!competenciaNecessaria) return res.status(400).json({sucesso:false,erro:'Nome, tipo de entidade e competência são obrigatórios.'});
+    const id = await gerarProximoID('REGRAS_APROVACAO','RGR','ID_REGRA');
+    const obj = {ID_REGRA:id,NOME:nome,TIPO_ENTIDADE:tipoEntidade,DESCRICAO_CONDICAO:descricaoCondicao||'',COMPETENCIA_NECESSARIA:competenciaNecessaria,PRIORIDADE:prioridade||'NORMAL',STATUS:'ATIVO',DATA_CRIACAO:new Date().toISOString(),USUARIO_CRIACAO:req.user.usuario};
+    await appendObjeto('REGRAS_APROVACAO',obj);
+    res.json({sucesso:true,regra:obj});
+  } catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+});
+
+// Atualizar regra (MASTER)
+app.put('/api/regras-aprovacao/:id', requerPerfil('MASTER'), async (req,res)=>{
+  try {
+    const campos = ['NOME','DESCRICAO_CONDICAO','COMPETENCIA_NECESSARIA','PRIORIDADE','STATUS'];
+    const dados = {};
+    for(const c of campos) { if(req.body[c]!==undefined) dados[c]=req.body[c]; }
+    const r = await atualizarPorID('REGRAS_APROVACAO',req.params.id,dados,['ID_REGRA']);
+    if(!r) return res.status(404).json({sucesso:false,erro:'Regra não encontrada.'});
+    res.json({sucesso:true});
+  } catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+});
+
+// Listar fila de aprovação (filtrada por perfil)
+app.get('/api/fila-aprovacao', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req,res)=>{
+  try {
+    garantirAbaComCabecalhos('FILA_APROVACAO', FILA_APROV_HEADERS).catch(()=>{});
+    const u = req.user;
+    const fila = await lerAba('FILA_APROVACAO',2000).catch(()=>[]);
+    let itens = fila;
+    const n = v => normalizarTexto(v);
+    if(perfilCanonico(u.perfil) === 'ANALISTA SAC') {
+      itens = fila.filter(x => n(x.CRIADO_POR||'') === n(u.usuario));
+    } else if(perfilCanonico(u.perfil) === 'APROVADOR') {
+      itens = fila.filter(x => n(x.ID_APROVADOR||'') === n(u.usuario) || n(x.NOME_APROVADOR||'') === n(u.nome||u.usuario) || n(x.ID_APROVADOR||'') === n(u.id||''));
+    }
+    const pendentes = itens.filter(x=>x.STATUS==='PENDENTE').length;
+    res.json({sucesso:true,total:itens.length,pendentes,itens});
+  } catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+});
+
+// Enviar item para aprovação (ANALISTA SAC, MASTER)
+app.post('/api/fila-aprovacao', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
+  try {
+    garantirAbaComCabecalhos('FILA_APROVACAO', FILA_APROV_HEADERS).catch(()=>{});
+    const {idEntidade,tipoEntidade,descricao,empresa,setor,competencia,idAprovador,nomeAprovador,idRegra} = req.body||{};
+    if(!idEntidade||!tipoEntidade) return res.status(400).json({sucesso:false,erro:'ID e tipo da entidade são obrigatórios.'});
+    const fila = await lerAba('FILA_APROVACAO',2000).catch(()=>[]);
+    const jaExiste = fila.find(x => String(x.ID_ENTIDADE||'') === String(idEntidade) && x.STATUS === 'PENDENTE');
+    if(jaExiste) return res.status(409).json({sucesso:false,erro:'Já existe uma aprovação pendente para este item.'});
+    const id = await gerarProximoID('FILA_APROVACAO','FAP','ID_FILA');
+    const obj = {ID_FILA:id,ID_ENTIDADE:idEntidade,TIPO_ENTIDADE:tipoEntidade,DESCRICAO:descricao||'',EMPRESA:empresa||'',SETOR:setor||'',COMPETENCIA:competencia||'',STATUS:'PENDENTE',ID_APROVADOR:idAprovador||'',NOME_APROVADOR:nomeAprovador||'',DATA_ENVIO:new Date().toISOString(),DATA_DECISAO:'',OBSERVACOES:'',CRIADO_POR:req.user.usuario,ID_REGRA:idRegra||''};
+    await appendObjeto('FILA_APROVACAO',obj);
+    if(tipoEntidade==='SAC') {
+      await atualizarPorID('MANIFESTACOES',idEntidade,{STATUS:'AGUARDANDO_APROVAÇÃO',APROVACAO_NECESSARIA:'SIM'},['ID_MANIFESTACAO']).catch(()=>{});
+    } else if(tipoEntidade==='RNC') {
+      await atualizarPorID('BANCO_RNC',idEntidade,{STATUS:'AGUARDANDO_APROVAÇÃO'},['ID_RNC']).catch(()=>{});
+    }
+    await registrarAuditoria(req.user.usuario,'ENVIADO_PARA_APROVACAO',idEntidade,'FILA_APROVACAO','',JSON.stringify({tipoEntidade,competencia,nomeAprovador}));
+    res.json({sucesso:true,fila:obj});
+  } catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+});
+
+// Decidir sobre item na fila (APROVADOR, MASTER)
+app.post('/api/fila-aprovacao/:id/decidir', requerPerfil('APROVADOR','MASTER'), async (req,res)=>{
+  try {
+    garantirAbaComCabecalhos('HISTORICO_APROVACAO', HIST_APROV_HEADERS).catch(()=>{});
+    const {decisao, observacoes} = req.body||{};
+    const decisoesValidas = ['APROVADO','REJEITADO','DEVOLVIDO','SOLICITANDO_INFORMACOES'];
+    if(!decisoesValidas.includes(decisao)) return res.status(400).json({sucesso:false,erro:'Decisão inválida. Use: APROVADO, REJEITADO, DEVOLVIDO ou SOLICITANDO_INFORMACOES'});
+    if(decisao!=='APROVADO' && !(observacoes||'').trim()) return res.status(400).json({sucesso:false,erro:'Observações obrigatórias para esta decisão.'});
+    const fila = await lerAba('FILA_APROVACAO',2000).catch(()=>[]);
+    const item = fila.find(x => String(x.ID_FILA||'') === String(req.params.id));
+    if(!item) return res.status(404).json({sucesso:false,erro:'Item não encontrado na fila.'});
+    if(item.STATUS !== 'PENDENTE') return res.status(409).json({sucesso:false,erro:'Este item não está mais pendente.'});
+    // APROVADOR: bloquear autoaprovação
+    if(perfilCanonico(req.user.perfil) === 'APROVADOR') {
+      const n = v => normalizarTexto(v);
+      if(n(item.CRIADO_POR||'') === n(req.user.usuario)) {
+        return res.status(403).json({sucesso:false,erro:'Autoaprovação não permitida. Você não pode aprovar um item que você mesmo enviou para aprovação.'});
+      }
+    }
+    const now = new Date().toISOString();
+    await atualizarPorID('FILA_APROVACAO',req.params.id,{STATUS:decisao,NOME_APROVADOR:req.user.nome||req.user.usuario,DATA_DECISAO:now,OBSERVACOES:observacoes||''},['ID_FILA']);
+    const histId = await gerarProximoID('HISTORICO_APROVACAO','HAP','ID_HISTORICO');
+    await appendObjeto('HISTORICO_APROVACAO',{ID_HISTORICO:histId,ID_FILA:req.params.id,ID_ENTIDADE:item.ID_ENTIDADE,TIPO_ENTIDADE:item.TIPO_ENTIDADE,DECISAO:decisao,OBSERVACOES:observacoes||'',APROVADOR:req.user.nome||req.user.usuario,DATA_DECISAO:now,DETALHES:JSON.stringify({empresa:item.EMPRESA,setor:item.SETOR,competencia:item.COMPETENCIA})}).catch(()=>{});
+    const novoStatus = decisao==='APROVADO'?'APROVADA':decisao==='REJEITADO'?'REJEITADA':decisao==='DEVOLVIDO'?'EM_ANÁLISE':'AGUARDANDO_APROVAÇÃO';
+    if(item.TIPO_ENTIDADE==='SAC') {
+      await atualizarPorID('MANIFESTACOES',item.ID_ENTIDADE,{STATUS:novoStatus,APROVADO_POR:req.user.nome||req.user.usuario,DATA_APROVACAO:now,OBSERVACOES_APROVADOR:observacoes||''},['ID_MANIFESTACAO']).catch(()=>{});
+    } else if(item.TIPO_ENTIDADE==='RNC') {
+      await atualizarPorID('BANCO_RNC',item.ID_ENTIDADE,{STATUS:novoStatus,APROVADO_POR:req.user.nome||req.user.usuario,DATA_APROVACAO:now},['ID_RNC']).catch(()=>{});
+    }
+    await registrarAuditoria(req.user.usuario,`APROVACAO_${decisao}`,item.ID_ENTIDADE,'FILA_APROVACAO',item.STATUS,JSON.stringify({decisao,observacoes}));
+    res.json({sucesso:true,decisao,entidade:item.ID_ENTIDADE,novoStatus});
+  } catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+});
+
+// Histórico de aprovações
+app.get('/api/historico-aprovacao', requerPerfil('MASTER','APROVADOR'), async (req,res)=>{
+  try {
+    const hist = await lerAba('HISTORICO_APROVACAO',2000).catch(()=>[]);
+    let itens = hist;
+    if(perfilCanonico(req.user.perfil) === 'APROVADOR') {
+      itens = hist.filter(x => normalizarTexto(x.APROVADOR||'') === normalizarTexto(req.user.nome||req.user.usuario));
+    }
+    res.json({sucesso:true,total:itens.length,itens});
+  } catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+});
+
 // ===== CATCH ALL =====
 app.use((req, res) => {
   res.status(404).json({ sucesso:false, erro:`Rota não encontrada: ${req.method} ${req.path}` });
