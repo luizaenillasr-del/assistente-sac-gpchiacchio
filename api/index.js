@@ -531,9 +531,49 @@ app.post('/api/manifestacoes', requerPerfil('MASTER','ANALISTA SAC'), async (req
         DEVOLUTIVA_SUGERIDA:analise.devolutivaSugerida||'', STATUS:'AGUARDANDO_DECISÃO'
       });
     } catch (e) { console.error('Falha na análise automática:', e.message); }
+    // Processar decisão do analista se já tomada na tela de nova manifestação
+    const decisaoCompleta = req.body.decisaoCompleta;
+    if (decisaoCompleta && decisaoCompleta.tipo) {
+      const tipoDecisao = decisaoCompleta.tipo;
+      const df = decisaoCompleta.decisaoFinal || {};
+      let novoStatus = 'AGUARDANDO_DECISÃO';
+      if (tipoDecisao === 'rejeitada') novoStatus = 'REJEITADA';
+      else if (tipoDecisao === 'aceita' || tipoDecisao === 'editada') novoStatus = 'EM TRATAMENTO';
+      await atualizarPorID('MANIFESTACOES', id, {
+        STATUS: novoStatus,
+        TIPO_CONFIRMADO: df.tipo || analise?.tipoDetectado || '',
+        SETOR_CONFIRMADO: df.setor || (Array.isArray(analise?.setores) ? analise.setores[0] : '') || '',
+        TRATATIVA_REALIZADA: df.tratativa || '',
+        DEVOLUTIVA_FINAL: df.devolutiva || '',
+        CAUSA_PROVAVEL: df.causa || '',
+        DECISAO_ANALISTA: tipoDecisao,
+      }).catch(() => {});
+    }
     await registrarAuditoria(usuario||'sistema','CRIOU_MANIFESTAÇÃO',id,'MANIFESTACOES',null,{empresaReclamante,tipo:tipoFinal});
     res.json({ sucesso:true, id, analise, mensagem:'Manifestação registrada e analisada.' });
   } catch (e) { console.error(e); res.status(500).json({ sucesso:false, erro:e.message }); }
+});
+
+app.patch('/api/manifestacoes/:id', requerPerfil('MASTER','ANALISTA SAC'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const STATUS_VALIDOS = ['EM ANÁLISE','AGUARDANDO_DECISÃO','EM TRATAMENTO','AGUARDANDO_DEVOLUTIVA','ENCERRADA','REJEITADA','APROVADA'];
+    const dados = {};
+    const { status, tratativa, devolutiva, setor, responsavel, observacoes } = req.body || {};
+    if (status) {
+      if (!STATUS_VALIDOS.includes(status)) return res.status(400).json({ sucesso:false, erro:`Status inválido: ${status}` });
+      dados.STATUS = status;
+      if (status === 'ENCERRADA') { dados.DATA_ENCERRAMENTO = new Date().toISOString(); dados.ENCERRADA_POR = req.user?.usuario||'sistema'; }
+    }
+    if (tratativa !== undefined) dados.TRATATIVA_REALIZADA = tratativa;
+    if (devolutiva !== undefined) { dados.DEVOLUTIVA_FINAL = devolutiva; dados.DEVOLUTIVA_ENVIADA = devolutiva; }
+    if (setor !== undefined) dados.SETOR_CONFIRMADO = setor;
+    if (responsavel !== undefined) dados.RESPONSAVEL = responsavel;
+    if (!Object.keys(dados).length) return res.status(400).json({ sucesso:false, erro:'Nenhum campo para atualizar.' });
+    await atualizarPorID('MANIFESTACOES', id, dados);
+    await registrarAuditoria(req.user?.usuario||'sistema','ATUALIZOU_MANIFESTAÇÃO',id,'MANIFESTACOES',null,dados);
+    res.json({ sucesso:true, id, atualizado: dados });
+  } catch(e){ res.status(500).json({ sucesso:false, erro:e.message }); }
 });
 
 app.post('/api/manifestacoes/:id/decisao', requerPerfil('MASTER','ANALISTA SAC'), async (req, res) => {
@@ -548,7 +588,7 @@ app.post('/api/manifestacoes/:id/decisao', requerPerfil('MASTER','ANALISTA SAC')
     const setoresStr = Array.isArray(setoresConfirmados) ? setoresConfirmados.join(', ') : (setoresConfirmados || '');
     const depStr = Array.isArray(setoresDependentes) ? setoresDependentes.join(', ') : (setoresDependentes || '');
     const status = statusTratativa || (tratativaAplicavel === 'NÃO' ? 'NÃO APLICÁVEL' : (dataConclusaoTratativa ? 'CONCLUÍDA' : (dependeOutroSetor === 'SIM' && !dataRetornoSetor ? 'AGUARDANDO OUTRO SETOR' : (dataInicioTratativa ? 'EM ANDAMENTO' : 'NÃO INICIADA'))));
-    const novoStatus = decisaoStatus === 'APROVADA' ? 'APROVADA' : (decisaoStatus === 'REJEITADA' ? 'REJEITADA' : 'AGUARDANDO_ENCAMINHAMENTO');
+    const novoStatus = decisaoStatus === 'APROVADA' ? 'EM TRATAMENTO' : (decisaoStatus === 'REJEITADA' ? 'REJEITADA' : 'EM TRATAMENTO');
     await atualizarPorID('MANIFESTACOES', id, {
       TIPO:tipoConfirmado||item.TIPO||'', TIPO_CONFIRMADO:tipoConfirmado||'',
       SETOR_SUGERIDO:setoresStr, SETORES_CONFIRMADOS:setoresStr,
@@ -688,6 +728,15 @@ app.post('/api/devolutivas/:idDev/decisao', requerPerfil('MASTER','ANALISTA SAC'
       textoOriginal: result.TEXTO_GERADO||'',
       textoEditado: textoAprovado||'',
     }).catch(()=>{});
+    // Encerrar a manifestação quando devolutiva é aprovada
+    if (decisao === 'APROVADA' && result.ID_MANIFESTACAO) {
+      await atualizarPorID('MANIFESTACOES', result.ID_MANIFESTACAO, {
+        STATUS: 'ENCERRADA',
+        DATA_ENCERRAMENTO: new Date().toISOString(),
+        ENCERRADA_POR: req.user?.usuario || 'sistema',
+        DEVOLUTIVA_ENVIADA: result.VERSAO_FINAL || result.TEXTO_APROVADO || '',
+      }).catch(() => {});
+    }
     res.json({ sucesso:true, devolutiva:result });
   } catch(e){ res.status(500).json({ sucesso:false, erro:e.message }); }
 });

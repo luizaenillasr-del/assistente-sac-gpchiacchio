@@ -3688,7 +3688,7 @@ function abrirDossie(item) {
   document.getElementById('modal-historico-timeline').innerHTML = `
     <div class="timeline-item"><div class="timeline-dot"></div><div class="timeline-content"><div class="timeline-label">Manifestação registrada</div><div class="timeline-meta">${dataFmt} · ${empresa}</div></div></div>
     ${devolutiva ? `<div class="timeline-item"><div class="timeline-dot"></div><div class="timeline-content"><div class="timeline-label">Devolutiva enviada</div><div class="timeline-meta">${devolutiva.slice(0,100)}...</div></div></div>` : ''}
-    ${status.toUpperCase().includes('FINALIZ') ? `<div class="timeline-item"><div class="timeline-dot"></div><div class="timeline-content"><div class="timeline-label">Encerrada</div><div class="timeline-meta">${status}</div></div></div>` : ''}`;
+    ${(status.toUpperCase().includes('FINALIZ')||status.toUpperCase().includes('ENCERR')) ? `<div class="timeline-item"><div class="timeline-dot"></div><div class="timeline-content"><div class="timeline-label">Encerrada</div><div class="timeline-meta">${status}</div></div></div>` : ''}`;
 
   document.getElementById('modal-dossie').style.display = 'flex';
   // Reset tabs
@@ -3908,7 +3908,7 @@ function renderBanco() {
 
   if (bancoFilter === 'atrasadas') data = data.filter(m => (m.DENTRO_DO_SLA||'').toUpperCase() === 'NÃO');
   else if (bancoFilter === 'aguardando') data = data.filter(m => (m.SETOR_DESTINADO || m.SETOR_SUGERIDO) && !(m.STATUS||'').includes('FINALIZ'));
-  else if (bancoFilter === 'encerradas') data = data.filter(m => (m.STATUS||'').toUpperCase().includes('FINALIZ') || (m.STATUS||'').toUpperCase().includes('CONCLUÍD'));
+  else if (bancoFilter === 'encerradas') data = data.filter(m => { const s=(m.STATUS||'').toUpperCase(); return s.includes('ENCERR') || s.includes('FINALIZ') || s.includes('CONCLUÍD'); });
 
   // Apply column filters
   if (bancoFiltros.status) data = data.filter(m => (m.STATUS||'') === bancoFiltros.status);
