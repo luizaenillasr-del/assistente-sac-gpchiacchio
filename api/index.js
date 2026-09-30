@@ -56,10 +56,10 @@ function senhaValida(informada, armazenada){
 
 const DEMO_USUARIOS = [
   {ID_USUARIO:'USR-DEMO-001',USUARIO:'luiza',EMAIL:'',NOME:'Luiza',PERFIL:'MASTER',EMPRESA:'Grupo Chiacchio',SETOR:'SAC',STATUS:'ATIVO',SENHA:'sha256:b5d54c39e66671c9731b9f471e585d8262cd4f54daa9d7d033747a98ea9a9ef0',CODIGO_RCA:''},
-  {ID_USUARIO:'USR-DEMO-002',USUARIO:'joao.aprovador',EMAIL:'',NOME:'João Silva',PERFIL:'APROVADOR',EMPRESA:'Chiacchio',SETOR:'Qualidade',STATUS:'ATIVO',SENHA:'Aprovador2026!',CODIGO_RCA:''},
-  {ID_USUARIO:'USR-DEMO-003',USUARIO:'ana.sac',EMAIL:'',NOME:'Ana Lima',PERFIL:'ANALISTA SAC',EMPRESA:'Grupo Chiacchio',SETOR:'SAC',STATUS:'ATIVO',SENHA:'AnaSAC2026!',CODIGO_RCA:''},
-  {ID_USUARIO:'USR-DEMO-004',USUARIO:'carlos.rca',EMAIL:'',NOME:'Carlos Silva',PERFIL:'RCA / REPRESENTANTE',EMPRESA:'Chiacchio',SETOR:'Comercial',STATUS:'ATIVO',SENHA:'RCA2026!',CODIGO_RCA:'RCA-023'},
-  {ID_USUARIO:'USR-DEMO-005',USUARIO:'maria.qualidade',EMAIL:'',NOME:'Maria Santos',PERFIL:'SETOR RESPONSÁVEL',EMPRESA:'Chiacchio',SETOR:'Qualidade',STATUS:'ATIVO',SENHA:'Qualidade2026!',CODIGO_RCA:''}
+  {ID_USUARIO:'USR-DEMO-002',USUARIO:'joao.aprovador',EMAIL:'',NOME:'João Silva',PERFIL:'APROVADOR',EMPRESA:'Chiacchio',SETOR:'Qualidade',STATUS:'ATIVO',SENHA:'sha256:6dac17e7e0b3cb2daab875c67f0d7aca8cc55c76bbda66a98bf0998adce94c24',CODIGO_RCA:''},
+  {ID_USUARIO:'USR-DEMO-003',USUARIO:'ana.sac',EMAIL:'',NOME:'Ana Lima',PERFIL:'ANALISTA SAC',EMPRESA:'Grupo Chiacchio',SETOR:'SAC',STATUS:'ATIVO',SENHA:'sha256:9da73d36e056bc7f73238b4d8ee869a0991788cf56e909d585a6071e45d45f0a',CODIGO_RCA:''},
+  {ID_USUARIO:'USR-DEMO-004',USUARIO:'carlos.rca',EMAIL:'',NOME:'Carlos Silva',PERFIL:'RCA / REPRESENTANTE',EMPRESA:'Chiacchio',SETOR:'Comercial',STATUS:'ATIVO',SENHA:'sha256:63b64c1e65ce5ca36cb6a6f2378519135ae7165cc9720ece1fa2783b71853ece',CODIGO_RCA:'RCA-023'},
+  {ID_USUARIO:'USR-DEMO-005',USUARIO:'maria.qualidade',EMAIL:'',NOME:'Maria Santos',PERFIL:'SETOR RESPONSÁVEL',EMPRESA:'Chiacchio',SETOR:'Qualidade',STATUS:'ATIVO',SENHA:'sha256:9e5c100eb752ffcd3836498f695fb63ba122a41223f770d7921713d7ed7700e4',CODIGO_RCA:''}
 ];
 
 async function carregarUsuarios(){
@@ -204,7 +204,12 @@ async function gerarProximoID(nomeAba, prefixo, campoID) {
     const match = campo.match(/(\d+)$/);
     if (match) max = Math.max(max, parseInt(match[1]));
   });
-  return `${prefixo}-${String(max + 1).padStart(3, '0')}`;
+  return `${prefixo}-${String(max + 1).padStart(4, '0')}`;
+}
+
+async function buscarPorID(nomeAba, id, camposID = ['ID_MANIFESTACAO','ID_RNC','ID_SETOR','ID']) {
+  const dados = await lerAba(nomeAba, 5000).catch(() => []);
+  return dados.find(r => camposID.some(c => String(r[c] || '').trim() === String(id).trim())) || null;
 }
 
 async function registrarAuditoria(usuario, acao, idManifestacao, entidade, valorAnterior, valorNovo) {
@@ -222,8 +227,8 @@ async function registrarAuditoria(usuario, acao, idManifestacao, entidade, valor
 async function motorRegras(descricao, tipo, empresa) {
   try {
     const [regras, tipos, procedimentos, slaData, perguntas] = await Promise.all([
-      lerAba('REGRAS_ROTEAMENTO', 500), lerAba('TIPOS_RECLAMACAO', 500),
-      lerAba('PROCEDIMENTOS', 200), lerAba('SLA_ESCALONAMENTO', 50), lerAba('PERGUNTAS_ANALISE', 200),
+      lerAba('REGRAS_ROTEAMENTO', 500).catch(()=>[]), lerAba('TIPOS_RECLAMACAO', 500).catch(()=>[]),
+      lerAba('PROCEDIMENTOS', 200).catch(()=>[]), lerAba('SLA_ESCALONAMENTO', 50).catch(()=>[]), lerAba('PERGUNTAS_ANALISE', 200).catch(()=>[]),
     ]);
     const texto = (descricao || '').toLowerCase();
 
@@ -473,7 +478,7 @@ app.post('/api/representantes/manifestacoes', requerPerfil('RCA / REPRESENTANTE'
 // ===== MANIFESTAÇÕES =====
 app.get('/api/manifestacoes', async (req, res) => {
   try {
-    let data = await lerAba('MANIFESTACOES', 2000);
+    let data = await lerAba('MANIFESTACOES', 2000).catch(()=>[]);
     if (req.user && perfilCanonico(req.user.perfil)==='RCA / REPRESENTANTE') {
       const rca=normalizarTexto(req.user.codigoRCA||req.user.usuario);
       data=data.filter(r=>normalizarTexto(r.USUARIO_CRIACAO||'')===normalizarTexto(req.user.usuario)||normalizarTexto(r.CODIGO_RCA||'')===rca||normalizarTexto(r.RCA||'')===rca);
@@ -484,7 +489,7 @@ app.get('/api/manifestacoes', async (req, res) => {
 
 app.get('/api/manifestacoes/:id', async (req, res) => {
   try {
-    const data = await lerAba('MANIFESTACOES', 2000);
+    const data = await lerAba('MANIFESTACOES', 2000).catch(()=>[]);
     const item = data.find(r => r.ID_MANIFESTACAO === req.params.id);
     if (!item) return res.status(404).json({ sucesso: false, erro: 'Manifestação não encontrada.' });
     res.json({ sucesso: true, manifestacao: item });
@@ -496,6 +501,7 @@ app.post('/api/manifestacoes', requerPerfil('MASTER','ANALISTA SAC'), async (req
     const { empresaReclamada, empresaReclamante, contato, produto, lote, nfe, descricao, tipo, canal, cnpj, telefone, email, quantidade, valor, usuario, anexos = [], origemDocumento = '', arquivoOrigem = '' } = req.body;
     if (!empresaReclamante || !descricao) return res.status(400).json({ sucesso:false, erro:'Empresa reclamante e descrição são obrigatórios.' });
     const empNorm = normalizarEmpresa(empresaReclamada);
+    await garantirAbaComCabecalhos('MANIFESTACOES',['ID_MANIFESTACAO','DATA_ABERTURA','DATA_REGISTRO','EMPRESA_RECLAMANTE','CONTATO','PRODUTO','LOTE','NFE','DESCRICAO','DESCRICAO_MANIFESTACAO','STATUS','TIPO','TIPO_SUGERIDO','SETOR_SUGERIDO','SETORES_SUGERIDOS','PROCEDIMENTO_SUGERIDO','SLA_HORAS','PRIORIDADE','RNC_SUGERIDO','EMPRESA_RECLAMADA','CANAL','CNPJ','TELEFONE','EMAIL','QUANTIDADE','VALOR','TRATATIVA_SUGERIDA','TRATATIVA_APLICAVEL','TRATATIVA_REALIZADA','STATUS_TRATATIVA','DEVOLUTIVA_SUGERIDA','DEVOLUTIVA_FINAL','DEVOLUTIVA_ENVIADA','ORIGEM_DOCUMENTO','ARQUIVO_ORIGEM','USUARIO_CRIACAO','ORIGEM','TIPO_CONFIRMADO','SETORES_CONFIRMADOS','ID_PROCEDIMENTO_APLICADO','GERA_RNC','DATA_INICIO_TRATATIVA','DATA_CONCLUSAO_TRATATIVA','DATA_DEVOLUTIVA','DATA_CONCLUSAO_MANIFESTACAO']).catch(()=>{});
     const id = await gerarProximoID('MANIFESTACOES','MAN','ID_MANIFESTACAO');
     const agora = new Date().toISOString();
     const tipoFinal = tipo || 'Reclamação';
@@ -516,18 +522,58 @@ app.post('/api/manifestacoes', requerPerfil('MASTER','ANALISTA SAC'), async (req
     try {
       analise = await executarAnalise({ ...objeto, empresaReclamante, empresaReclamada, descricao, tipo:tipoFinal });
       await atualizarPorID('MANIFESTACOES', id, {
-        TIPO_SUGERIDO:analise.tipoSugerido||'',
-        SETOR_SUGERIDO:Array.isArray(analise.setoresSugeridos)?analise.setoresSugeridos[0]||'':'',
-        SETORES_SUGERIDOS:Array.isArray(analise.setoresSugeridos)?analise.setoresSugeridos.join(', '):'',
+        TIPO_SUGERIDO:analise.tipoDetectado||analise.tipoSugerido||'',
+        SETOR_SUGERIDO:Array.isArray(analise.setores)?analise.setores[0]||'':analise.setoresSugeridos?.[0]||'',
+        SETORES_SUGERIDOS:Array.isArray(analise.setores)?analise.setores.join(', '):(analise.setoresSugeridos||[]).join(', '),
         PROCEDIMENTO_SUGERIDO:analise.procedimentoSugerido?.nome||'',
         SLA_HORAS:analise.slaHoras||'', PRIORIDADE:analise.prioridade||'',
         RNC_SUGERIDO:analise.geraRNC?'SIM':'NÃO', TRATATIVA_SUGERIDA:analise.tratativaSugerida?.sugestao||'',
         DEVOLUTIVA_SUGERIDA:analise.devolutivaSugerida||'', STATUS:'AGUARDANDO_DECISÃO'
       });
     } catch (e) { console.error('Falha na análise automática:', e.message); }
+    // Processar decisão do analista se já tomada na tela de nova manifestação
+    const decisaoCompleta = req.body.decisaoCompleta;
+    if (decisaoCompleta && decisaoCompleta.tipo) {
+      const tipoDecisao = decisaoCompleta.tipo;
+      const df = decisaoCompleta.decisaoFinal || {};
+      let novoStatus = 'AGUARDANDO_DECISÃO';
+      if (tipoDecisao === 'rejeitada') novoStatus = 'REJEITADA';
+      else if (tipoDecisao === 'aceita' || tipoDecisao === 'editada') novoStatus = 'EM TRATAMENTO';
+      await atualizarPorID('MANIFESTACOES', id, {
+        STATUS: novoStatus,
+        TIPO_CONFIRMADO: df.tipo || analise?.tipoDetectado || '',
+        SETOR_CONFIRMADO: df.setor || (Array.isArray(analise?.setores) ? analise.setores[0] : '') || '',
+        TRATATIVA_REALIZADA: df.tratativa || '',
+        DEVOLUTIVA_FINAL: df.devolutiva || '',
+        CAUSA_PROVAVEL: df.causa || '',
+        DECISAO_ANALISTA: tipoDecisao,
+      }).catch(() => {});
+    }
     await registrarAuditoria(usuario||'sistema','CRIOU_MANIFESTAÇÃO',id,'MANIFESTACOES',null,{empresaReclamante,tipo:tipoFinal});
     res.json({ sucesso:true, id, analise, mensagem:'Manifestação registrada e analisada.' });
   } catch (e) { console.error(e); res.status(500).json({ sucesso:false, erro:e.message }); }
+});
+
+app.patch('/api/manifestacoes/:id', requerPerfil('MASTER','ANALISTA SAC'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const STATUS_VALIDOS = ['EM ANÁLISE','AGUARDANDO_DECISÃO','EM TRATAMENTO','AGUARDANDO_DEVOLUTIVA','ENCERRADA','REJEITADA','APROVADA'];
+    const dados = {};
+    const { status, tratativa, devolutiva, setor, responsavel, observacoes } = req.body || {};
+    if (status) {
+      if (!STATUS_VALIDOS.includes(status)) return res.status(400).json({ sucesso:false, erro:`Status inválido: ${status}` });
+      dados.STATUS = status;
+      if (status === 'ENCERRADA') { dados.DATA_ENCERRAMENTO = new Date().toISOString(); dados.ENCERRADA_POR = req.user?.usuario||'sistema'; }
+    }
+    if (tratativa !== undefined) dados.TRATATIVA_REALIZADA = tratativa;
+    if (devolutiva !== undefined) { dados.DEVOLUTIVA_FINAL = devolutiva; dados.DEVOLUTIVA_ENVIADA = devolutiva; }
+    if (setor !== undefined) dados.SETOR_CONFIRMADO = setor;
+    if (responsavel !== undefined) dados.RESPONSAVEL = responsavel;
+    if (!Object.keys(dados).length) return res.status(400).json({ sucesso:false, erro:'Nenhum campo para atualizar.' });
+    await atualizarPorID('MANIFESTACOES', id, dados);
+    await registrarAuditoria(req.user?.usuario||'sistema','ATUALIZOU_MANIFESTAÇÃO',id,'MANIFESTACOES',null,dados);
+    res.json({ sucesso:true, id, atualizado: dados });
+  } catch(e){ res.status(500).json({ sucesso:false, erro:e.message }); }
 });
 
 app.post('/api/manifestacoes/:id/decisao', requerPerfil('MASTER','ANALISTA SAC'), async (req, res) => {
@@ -542,7 +588,7 @@ app.post('/api/manifestacoes/:id/decisao', requerPerfil('MASTER','ANALISTA SAC')
     const setoresStr = Array.isArray(setoresConfirmados) ? setoresConfirmados.join(', ') : (setoresConfirmados || '');
     const depStr = Array.isArray(setoresDependentes) ? setoresDependentes.join(', ') : (setoresDependentes || '');
     const status = statusTratativa || (tratativaAplicavel === 'NÃO' ? 'NÃO APLICÁVEL' : (dataConclusaoTratativa ? 'CONCLUÍDA' : (dependeOutroSetor === 'SIM' && !dataRetornoSetor ? 'AGUARDANDO OUTRO SETOR' : (dataInicioTratativa ? 'EM ANDAMENTO' : 'NÃO INICIADA'))));
-    const novoStatus = decisaoStatus === 'APROVADA' ? 'APROVADA' : (decisaoStatus === 'REJEITADA' ? 'REJEITADA' : 'AGUARDANDO_ENCAMINHAMENTO');
+    const novoStatus = decisaoStatus === 'APROVADA' ? 'EM TRATAMENTO' : (decisaoStatus === 'REJEITADA' ? 'REJEITADA' : 'EM TRATAMENTO');
     await atualizarPorID('MANIFESTACOES', id, {
       TIPO:tipoConfirmado||item.TIPO||'', TIPO_CONFIRMADO:tipoConfirmado||'',
       SETOR_SUGERIDO:setoresStr, SETORES_CONFIRMADOS:setoresStr,
@@ -682,6 +728,15 @@ app.post('/api/devolutivas/:idDev/decisao', requerPerfil('MASTER','ANALISTA SAC'
       textoOriginal: result.TEXTO_GERADO||'',
       textoEditado: textoAprovado||'',
     }).catch(()=>{});
+    // Encerrar a manifestação quando devolutiva é aprovada
+    if (decisao === 'APROVADA' && result.ID_MANIFESTACAO) {
+      await atualizarPorID('MANIFESTACOES', result.ID_MANIFESTACAO, {
+        STATUS: 'ENCERRADA',
+        DATA_ENCERRAMENTO: new Date().toISOString(),
+        ENCERRADA_POR: req.user?.usuario || 'sistema',
+        DEVOLUTIVA_ENVIADA: result.VERSAO_FINAL || result.TEXTO_APROVADO || '',
+      }).catch(() => {});
+    }
     res.json({ sucesso:true, devolutiva:result });
   } catch(e){ res.status(500).json({ sucesso:false, erro:e.message }); }
 });
@@ -1078,7 +1133,7 @@ app.post('/api/calculadora/parametros/producao', requerPerfil('MASTER'), async(r
 // ===== DASHBOARD =====
 app.get('/api/dashboard', async (req, res) => {
   try {
-    const [mans, recs] = await Promise.all([lerAba('MANIFESTACOES', 2000), lerAba('Reclamações + devolutiva', 2000)]);
+    const [mans, recs] = await Promise.all([lerAba('MANIFESTACOES', 2000).catch(()=>[]), lerAba('Reclamações + devolutiva', 2000).catch(()=>[])]);
     const emAndamento = mans.filter(m => !['FINALIZADA','ENCERRADA','CONCLUÍDA'].some(s => (m.STATUS||'').toUpperCase().includes(s))).length;
     const rncsAbertas = mans.filter(m => m.ID_RNC && m.ID_RNC !== '').length;
     const recComSLA = recs.filter(r => r['Dentro do prazo? '] || r['Dentro do prazo?']);
@@ -1115,7 +1170,7 @@ app.get('/api/dashboard', async (req, res) => {
 
 // ===== RNC =====
 app.get('/api/rnc', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','SETOR RESPONSÁVEL','RCA / REPRESENTANTE'), async (req, res) => {
-  try { const data=await lerAba('BANCO_RNC',5000); res.json({sucesso:true,total:data.length,itens:data}); }
+  try { const data=await lerAba('BANCO_RNC',5000).catch(()=>[]); res.json({sucesso:true,total:data.length,itens:data}); }
   catch (e) { res.status(500).json({sucesso:false,erro:e.message,dados:[]}); }
 });
 
@@ -1134,7 +1189,7 @@ app.post('/api/rnc', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
 
 app.get('/api/rnc/:id', requerPerfil('APROVADOR','MASTER','ANALISTA SAC','SETOR RESPONSÁVEL'), async (req,res)=>{
   try{
-    const rnc=(await lerAba('BANCO_RNC',5000)).find(x=>x.ID_RNC===req.params.id);
+    const rnc=(await lerAba('BANCO_RNC',5000).catch(()=>[])).find(x=>x.ID_RNC===req.params.id);
     if(!rnc) return res.status(404).json({sucesso:false,erro:'RNC não encontrada.'});
     const eventos=await lerAba('RNC_EVENTOS',5000).catch(()=>[]);
     const anexos=await lerAba('ANEXOS',5000).catch(()=>[]);
@@ -1146,7 +1201,7 @@ app.post('/api/rnc/:id/decisao', requerPerfil('APROVADOR','MASTER'), async (req,
   try{
     const {decisao,observacoes}=req.body||{};
     if(!decisao) return res.status(400).json({sucesso:false,erro:'Decisão é obrigatória.'});
-    const rnc=(await lerAba('BANCO_RNC',5000)).find(x=>x.ID_RNC===req.params.id);
+    const rnc=(await lerAba('BANCO_RNC',5000).catch(()=>[])).find(x=>x.ID_RNC===req.params.id);
     if(!rnc) return res.status(404).json({sucesso:false,erro:'RNC não encontrada.'});
     const d=String(decisao).toUpperCase();
     if(d!=='APROVAR'&&(!observacoes||!String(observacoes).trim())) return res.status(400).json({sucesso:false,erro:'Justificativa é obrigatória.'});
@@ -1242,7 +1297,7 @@ app.get('/api/empresas', async (req, res) => {
 app.get('/api/clientes/:cnpj', requerPerfil('MASTER','ANALISTA SAC','RCA / REPRESENTANTE'), async (req, res) => {
   try {
     const cnpj=req.params.cnpj.replace(/\D/g,'');
-    const historico=await lerAba('BANCO_HISTORICO',2000);
+    const historico=await lerAba('BANCO_HISTORICO',2000).catch(()=>[]);
     const casos=historico.filter(h=>{const hcnpj=(h.ORIG_CONTATO||'').replace(/\D/g,'');return hcnpj.includes(cnpj)||cnpj.includes(hcnpj);});
     if(casos.length===0) return res.json({sucesso:true,encontrado:false,cliente:null,historico:[]});
     const ultimo=casos[casos.length-1];
@@ -1253,7 +1308,7 @@ app.get('/api/clientes/:cnpj', requerPerfil('MASTER','ANALISTA SAC','RCA / REPRE
 // ===== RECLAMAÇÕES =====
 app.get('/api/reclamacoes', async (req, res) => {
   try {
-    const data=await lerAba('Reclamações + devolutiva',2000);
+    const data=await lerAba('Reclamações + devolutiva',2000).catch(()=>[]);
     const normalizado=data.map(r=>({
       ...r,
       'Data do Registro':normalizarData(r['Data do Registro']),
@@ -1265,7 +1320,7 @@ app.get('/api/reclamacoes', async (req, res) => {
 
 // ===== HISTORICO =====
 app.get('/api/historico', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL'), async (req, res) => {
-  try { const data=await lerAba('BANCO_HISTORICO',1000); res.json({sucesso:true,total:data.length,itens:data}); }
+  try { const data=await lerAba('BANCO_HISTORICO',1000).catch(()=>[]); res.json({sucesso:true,total:data.length,itens:data}); }
   catch (e) { res.status(500).json({sucesso:false,erro:e.message,dados:[]}); }
 });
 
@@ -1483,15 +1538,15 @@ app.get('/api/pesquisas/resumo', requerPerfil('MASTER','ANALISTA SAC','SETOR RES
 });
 
 app.get('/api/tipos', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
-  try { const data=await lerAba('TIPOS_RECLAMACAO',200); res.json({sucesso:true,total:data.length,itens:data}); }
+  try { const data=await lerAba('TIPOS_RECLAMACAO',200).catch(()=>[]); res.json({sucesso:true,total:data.length,itens:data}); }
   catch (e) { res.status(500).json({sucesso:false,erro:e.message,dados:[]}); }
 });
 app.get('/api/sla', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
-  try { const data=await lerAba('SLA_ESCALONAMENTO',50); res.json({sucesso:true,total:data.length,itens:data}); }
+  try { const data=await lerAba('SLA_ESCALONAMENTO',50).catch(()=>[]); res.json({sucesso:true,total:data.length,itens:data}); }
   catch (e) { res.status(500).json({sucesso:false,erro:e.message,dados:[]}); }
 });
 app.get('/api/validacoes', requerPerfil('MASTER','ANALISTA SAC'), async (req, res) => {
-  try { const data=await lerAba('HISTORICO_VALIDACOES',1000); res.json({sucesso:true,total:data.length,itens:data}); }
+  try { const data=await lerAba('HISTORICO_VALIDACOES',1000).catch(()=>[]); res.json({sucesso:true,total:data.length,itens:data}); }
   catch (e) { res.status(500).json({sucesso:false,erro:e.message,dados:[]}); }
 });
 
@@ -1672,7 +1727,7 @@ app.post('/api/planilha/:aba/importar', requerPerfil('MASTER'), async (req,res)=
 
 app.get('/api/log-sistema', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req,res)=>{
   try {
-    const data = await lerAba('LOG_SISTEMA', 2000);
+    const data = await lerAba('LOG_SISTEMA', 2000).catch(()=>[]);
     const {id, usuario, acao} = req.query;
     let filtrados = data;
     if (id) filtrados = filtrados.filter(l=>String(l.ID_MANIFESTACAO||l.ENTIDADE||'').includes(id));
@@ -1713,14 +1768,14 @@ app.patch('/api/usuarios/:id', requerPerfil('MASTER'), async (req,res)=>{
 // ===== APROVADORES =====
 app.get('/api/aprovadores', requerPerfil('MASTER','APROVADOR'), async (req,res)=>{
   try {
-    const [a,c,ac]=await Promise.all([lerAba('APROVADORES',500),lerAba('COMPETENCIAS',500),lerAba('APROVADOR_COMPETENCIAS',2000)]);
+    const [a,c,ac]=await Promise.all([lerAba('APROVADORES',500).catch(()=>[]),lerAba('COMPETENCIAS',500).catch(()=>[]),lerAba('APROVADOR_COMPETENCIAS',2000).catch(()=>[])]);
     res.json({sucesso:true,aprovadores:a,competencias:c,relacionamentos:ac});
   } catch(e){res.status(500).json({sucesso:false,erro:e.message});}
 });
 app.get('/api/aprovadores/:usuario/pendencias', requerPerfil('APROVADOR','MASTER'), async (req,res)=>{
   try {
     const usuario=req.params.usuario;
-    const [aprovadores,rel,comp,rncs,mans]=await Promise.all([lerAba('APROVADORES',500),lerAba('APROVADOR_COMPETENCIAS',5000),lerAba('COMPETENCIAS',500),lerAba('BANCO_RNC',5000),lerAba('MANIFESTACOES',5000)]);
+    const [aprovadores,rel,comp,rncs,mans]=await Promise.all([lerAba('APROVADORES',500).catch(()=>[]),lerAba('APROVADOR_COMPETENCIAS',5000).catch(()=>[]),lerAba('COMPETENCIAS',500).catch(()=>[]),lerAba('BANCO_RNC',5000).catch(()=>[]),lerAba('MANIFESTACOES',5000).catch(()=>[])]);
     const ap=aprovadores.find(x=>normalizarTexto(x.ID_APROVADOR||x.NOME||x.EMAIL)===normalizarTexto(usuario));
     const apId=ap?.ID_APROVADOR||usuario;
     const relAtivos=rel.filter(x=>String(x.ID_APROVADOR||'')===String(apId)&&normalizarTexto(x.STATUS||'ATIVO')!=='inativo');
@@ -1782,6 +1837,22 @@ app.post('/api/documentos/extrair', async (req,res) => {
   } catch(e){ res.status(500).json({sucesso:false,erro:e.message}); }
 });
 
+// ===== ANÁLISE IA POR MANIFESTAÇÃO =====
+app.get('/api/manifestacoes/:id/analise', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','SETOR RESPONSÁVEL'), async (req,res) => {
+  try {
+    const data = await lerAba('MANIFESTACOES', 2000).catch(()=>[]);
+    const m = data.find(r => r.ID_MANIFESTACAO === req.params.id);
+    if (!m) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
+    const analise = await executarAnalise({
+      ...m,
+      empresaReclamante: m.EMPRESA_RECLAMANTE,
+      empresaReclamada: m.EMPRESA_RECLAMADA,
+      descricao: m.DESCRICAO || m.DESCRICAO_MANIFESTACAO,
+    });
+    res.json({ sucesso:true, analise });
+  } catch(e){ res.status(500).json({ sucesso:false, erro:e.message }); }
+});
+
 // ===== SUGESTÕES APROVADOR =====
 app.get('/api/manifestacoes/:id/sugestoes', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req,res) => {
   try { const data=await lerAba('SUGESTOES_APROVADOR',5000); res.json({sucesso:true,itens:data.filter(x=>String(x.ID_MANIFESTACAO||'')===String(req.params.id))}); }
@@ -1800,7 +1871,7 @@ app.post('/api/manifestacoes/:id/sugestoes', requerPerfil('MASTER','APROVADOR'),
 // ===== CAUSAS HIERÁRQUICAS =====
 app.get('/api/causas', async (req,res)=>{
   try {
-    const causas = await lerAba('CAUSAS', 2000);
+    const causas = await lerAba('CAUSAS', 2000).catch(()=>[]);
     res.json({sucesso:true, total:causas.length, itens:causas});
   } catch(e){ res.status(500).json({sucesso:false,erro:e.message,itens:[]}); }
 });
@@ -1839,7 +1910,7 @@ app.post('/api/causas', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>
 app.post('/api/causas/popular-historico', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
   try {
     const hist = await lerAba('BANCO_HISTORICO', 5000);
-    const existentes = await lerAba('CAUSAS', 2000);
+    const existentes = await lerAba('CAUSAS', 2000).catch(()=>[]);
     const causasExistentes = new Set(existentes.map(c=>(c.CAUSA||'').toLowerCase().trim()));
 
     const mapa = {}; // "tipo|causa|subcausa" -> contagem
@@ -2078,7 +2149,7 @@ app.post('/api/bootstrap', async (req, res) => {
       await sheets.spreadsheets.values.update({ spreadsheetId: SPREADSHEET_ID, range: `USUARIOS!A1:L1`, valueInputOption: 'RAW', resource: { values: [cols] } });
     }
     const hash = 'sha256:' + crypto.createHash('sha256').update(String(senha)).digest('hex');
-    const obj = { ID_USUARIO: 'USR-001', USUARIO: usuario, EMAIL: '', NOME: nome, PERFIL: 'MASTER', EMPRESA: 'Grupo Chiacchio', SETOR: 'SAC', CODIGO_RCA: '', STATUS: 'ATIVO', SENHA_HASH: hash, DATA_CRIACAO: new Date().toISOString(), ULTIMO_ACESSO: '' };
+    const obj = { ID_USUARIO: 'USR-0001', USUARIO: usuario, EMAIL: '', NOME: nome, PERFIL: 'MASTER', EMPRESA: 'Grupo Chiacchio', SETOR: 'SAC', CODIGO_RCA: '', STATUS: 'ATIVO', SENHA_HASH: hash, DATA_CRIACAO: new Date().toISOString(), ULTIMO_ACESSO: '' };
     await appendObjeto('USUARIOS', obj);
     res.json({ sucesso: true, mensagem: `Usuário MASTER "${usuario}" criado com sucesso. Agora você pode logar normalmente.`, id: 'USR-001' });
   } catch (e) {

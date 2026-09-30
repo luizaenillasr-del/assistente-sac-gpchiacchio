@@ -674,21 +674,26 @@ async function analisarManifestacaoCompleta(manifestacao, regras = {}, usuario =
   let tratativaEstruturada = null;
   try {
     tratativaEstruturada = await tratativaEngine.gerarTratativaEstruturada({
-      idManifestacao: protocolo,
+      manifestacao: {
+        ...manifestacao,
+        DESCRICAO: descricao,
+        EMPRESA_RECLAMADA: empresa,
+        DATA_ABERTURA: campo(manifestacao, ['DATA_ABERTURA','dataAbertura']) || '',
+        PRODUTO: campo(manifestacao, ['PRODUTO','produto']) || '',
+        CATEGORIA: campo(manifestacao, ['CATEGORIA','categoria']) || '',
+        SUBCATEGORIA: campo(manifestacao, ['SUBCATEGORIA','subcategoria']) || '',
+      },
+      classificacao: tipo,
       empresa,
-      tipoManifestacao: tipo,
-      categoria: campo(manifestacao, ['CATEGORIA','categoria']) || '',
-      subcategoria: campo(manifestacao, ['SUBCATEGORIA','subcategoria']) || '',
+      cliente: campo(manifestacao, ['CONTATO','NOME_CONTATO','nomeCliente']) || '',
       setor,
-      descricao,
-      produto: campo(manifestacao, ['PRODUTO','produto']) || '',
-      dataAbertura: campo(manifestacao, ['DATA_ABERTURA','dataAbertura']) || '',
-      reincidente: reincidenteBool,
       prioridade: regras.prioridade || 'Média',
       casosSimilares,
       reincidencia,
       sla,
-      baseConhecimento,
+      iaResultado: ia || {},
+      usuario: campo(manifestacao, ['USUARIO_CRIACAO','usuario']) || 'sistema',
+      versaoCerebro: CEREBRO_VERSION,
     });
   } catch (e) { erros.push('tratativaEngine: ' + e.message); }
 

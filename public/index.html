@@ -2842,13 +2842,13 @@ function calcDashboard(mans, recs, filtroEmpresa, filtroSetor) {
     if (idx >= 0 && idx < 12) semanas[idx].count++;
   });
 
-  return { total, encerradas, emAndamento, dentroPrazo, foraPrazo, slaPercent, tempoMedio, rncs, tipos, motivos, porEmpresa, pendSetor, semanas, empresasSet: [...empresasSet], setoresNomes, recComSLA };
+  return { total, encerradas, emAndamento, dentroPrazo, foraPrazo, slaPercent, tempoMedio, rncs, tipos, motivos, porEmpresa, pendSetor, semanas, empresasSet: [...empresasSet], setoresNomes, recComSLA, _filteredMans: m, _filteredRecs: r };
 }
 
 function renderDashboard(data) {
   const { total, encerradas, emAndamento, dentroPrazo, foraPrazo, slaPercent, tempoMedio, rncs, tipos, motivos, porEmpresa, pendSetor, semanas, recComSLA } = data;
-  const recs = _dashData.recs;
-  const mans = _dashData.mans;
+  const recs = data._filteredRecs || _dashData.recs;
+  const mans = data._filteredMans || _dashData.mans;
 
   // === KPIs PRINCIPAIS ===
   const emAberto = recs.filter(r => (r['Status']||'').toUpperCase().includes('ABERTO')).length;
@@ -2987,12 +2987,14 @@ function renderDashboard(data) {
         const isMan = !!x.ID_MANIFESTACAO;
         const id = isMan ? x.ID_MANIFESTACAO : ('REC-' + String(i+1).padStart(3,'0'));
         const empresa = isMan ? (x.EMPRESA_NORMALIZADA || x.EMPRESA_RECLAMANTE || '--') : (x['Empresa'] || '--');
+        const contato = isMan ? (x.NOME_CONTATO || x.NOME || x.CONTATO || '') : (x['Contato'] || '');
         const tipo = isMan ? (x.TIPO || 'Reclamação') : (x['Motivo da Reclamação'] || 'Reclamação');
         const status = isMan ? getEtapaLabel(x.STATUS) : 'Em aberto';
         const eClass = isMan ? etapaClass(x.STATUS) : 'registro';
+        const clienteLabel = contato && contato !== empresa ? `${contato}<div style="font-size:10px;color:var(--gray-400)">${empresa}</div>` : empresa;
         return `<tr>
           <td class="num">${id}</td>
-          <td>${empresa}</td>
+          <td title="${empresa}">${clienteLabel}</td>
           <td>${tipo.length > 30 ? tipo.slice(0,30)+'...' : tipo}</td>
           <td>—</td>
           <td><span class="status-badge ${eClass}">${status}</span></td>
@@ -3238,7 +3240,7 @@ function extrairTratativaSugerida(a) {
     if (!item) continue;
     if (typeof item === 'string' && item.trim()) return item.trim();
     if (typeof item === 'object') {
-      const texto = item.texto || item.descricao || item.tratativa || item.nome || item.acao || item.ação || '';
+      const texto = item.sugestao || item.texto || item.descricao || item.tratativa || item.nome || item.acao || item.ação || '';
       if (String(texto).trim()) return String(texto).trim();
     }
   }
@@ -3251,8 +3253,8 @@ function renderizarAnalise(a) {
   document.getElementById('ia-timestamp').textContent = `Gerada em ${new Date().toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'})} · Sugestão: quem decide é a analista`;
 
   // Tipo e confiança
-  document.getElementById('ia-tipo').textContent = a.tipoSugerido || 'Não identificado';
-  const conf = a.confianca || 0;
+  document.getElementById('ia-tipo').textContent = a.tipoDetectado || a.tipoSugerido || 'Não identificado';
+  const conf = (typeof a.confianca === 'object' ? a.confianca?.score : a.confianca) ?? 0;
   document.getElementById('ia-confianca-bar').style.width = conf + '%';
   document.getElementById('ia-confianca-pct').textContent = conf + '%';
 
@@ -3267,7 +3269,7 @@ function renderizarAnalise(a) {
 
   // Alertas
   const alertas = [];
-  if (a.reincidente) alertas.push({ tipo: 'red', msg: '⚠ Cliente reincidente — casos anteriores encontrados no histórico' });
+  if (a.reincidencia?.detectada || a.reincidente) alertas.push({ tipo: 'red', msg: '⚠ Cliente reincidente — casos anteriores encontrados no histórico' });
   if (a.geraRNC) alertas.push({ tipo: 'yellow', msg: '⚠ Pode gerar RNC — avaliar na decisão' });
   if ((a.prioridade||'').toUpperCase() === 'ALTA') alertas.push({ tipo: 'red', msg: '⚠ Alta prioridade — requer atenção imediata' });
   const alertasEl = document.getElementById('ia-alertas');
@@ -3281,7 +3283,7 @@ function renderizarAnalise(a) {
 
   // Setores
   const setoresEl = document.getElementById('ia-setores');
-  setoresEl.innerHTML = (a.setoresSugeridos || []).map(s =>
+  setoresEl.innerHTML = (a.setores || a.setoresSugeridos || []).map(s =>
     `<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;background:var(--red-light);color:var(--red);font-size:12px;font-weight:600">
       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
       ${s}
@@ -3317,7 +3319,7 @@ function renderizarAnalise(a) {
   }
 
   // Casos semelhantes
-  const sims = a.casosSemelhantes || [];
+  const sims = a.casosSimilares || a.casosSemelhantes || [];
   const simsWrap = document.getElementById('ia-similares-wrap');
   if (sims.length > 0) {
     simsWrap.style.display = 'block';
@@ -3615,13 +3617,13 @@ function abrirDossie(item) {
 
   const id = isMan ? item.ID_MANIFESTACAO : ('REC-' + Math.random().toString(36).slice(2,7).toUpperCase());
   const empresa = isMan ? (item.EMPRESA_RECLAMADA || item.EMPRESA_NORMALIZADA || '--') : (item['Empresa'] || '--');
-  const cliente = isMan ? (item.CONTATO || '--') : (item['Contato'] || '--');
+  const cliente = isMan ? (item.NOME_CONTATO || item.NOME || item.CONTATO || '--') : (item['Contato'] || '--');
   const tipo = isMan ? (item.TIPO || 'Reclamação') : (item['Motivo da Reclamação'] || '--');
   const status = isMan ? (item.STATUS || 'EM ANÁLISE') : (item['Status'] || item['Situação Final'] || '--');
-  const desc = isMan ? (item.DESCRICAO_RECLAMACAO || '--') : (item['Descrição da Reclamação'] || '--');
-  const tratativa = isMan ? (item.TRATATIVA || '--') : (item['Tratativa do Problema'] || '--');
+  const desc = isMan ? (item.DESCRICAO_MANIFESTACAO || item.DESCRICAO || item.DESCRICAO_RECLAMACAO || '--') : (item['Descrição da Reclamação'] || '--');
+  const tratativa = isMan ? (item.TRATATIVA_REALIZADA || item.TRATATIVA_APLICAVEL || item.TRATATIVA || '--') : (item['Tratativa do Problema'] || '--');
   const devolutiva = isMan ? (item.DEVOLUTIVA_ENVIADA || '') : (item['Devolutiva ao Cliente'] || '');
-  const data = isMan ? item.DATA_CRIACAO : item['Data do Registro'];
+  const data = isMan ? (item.DATA_ABERTURA || item.DATA_REGISTRO || item.DATA_CRIACAO) : item['Data do Registro'];
   const dataFmt = data ? (typeof data === 'number' ? new Date((data-25569)*86400*1000).toLocaleDateString('pt-BR') : new Date(data).toLocaleDateString('pt-BR')) : '--';
 
   // Header
@@ -3687,7 +3689,7 @@ function abrirDossie(item) {
   document.getElementById('modal-historico-timeline').innerHTML = `
     <div class="timeline-item"><div class="timeline-dot"></div><div class="timeline-content"><div class="timeline-label">Manifestação registrada</div><div class="timeline-meta">${dataFmt} · ${empresa}</div></div></div>
     ${devolutiva ? `<div class="timeline-item"><div class="timeline-dot"></div><div class="timeline-content"><div class="timeline-label">Devolutiva enviada</div><div class="timeline-meta">${devolutiva.slice(0,100)}...</div></div></div>` : ''}
-    ${status.toUpperCase().includes('FINALIZ') ? `<div class="timeline-item"><div class="timeline-dot"></div><div class="timeline-content"><div class="timeline-label">Encerrada</div><div class="timeline-meta">${status}</div></div></div>` : ''}`;
+    ${(status.toUpperCase().includes('FINALIZ')||status.toUpperCase().includes('ENCERR')) ? `<div class="timeline-item"><div class="timeline-dot"></div><div class="timeline-content"><div class="timeline-label">Encerrada</div><div class="timeline-meta">${status}</div></div></div>` : ''}`;
 
   document.getElementById('modal-dossie').style.display = 'flex';
   // Reset tabs
@@ -3792,7 +3794,7 @@ function renderAcompanhamento(data) {
         return `<tr>
           <td>
             <div class="num-bold">${m.ID_MANIFESTACAO || '--'}</div>
-            <div class="num-date">${m.DATA_CRIACAO ? new Date(m.DATA_CRIACAO).toLocaleDateString('pt-BR') : '--'}</div>
+            <div class="num-date">${(m.DATA_ABERTURA||m.DATA_REGISTRO||m.DATA_CRIACAO) ? new Date(m.DATA_ABERTURA||m.DATA_REGISTRO||m.DATA_CRIACAO).toLocaleDateString('pt-BR') : '--'}</div>
           </td>
           <td>
             <div class="cliente-primary">${m.EMPRESA_NORMALIZADA || m.EMPRESA_RECLAMANTE || '--'}</div>
@@ -3907,7 +3909,7 @@ function renderBanco() {
 
   if (bancoFilter === 'atrasadas') data = data.filter(m => (m.DENTRO_DO_SLA||'').toUpperCase() === 'NÃO');
   else if (bancoFilter === 'aguardando') data = data.filter(m => (m.SETOR_DESTINADO || m.SETOR_SUGERIDO) && !(m.STATUS||'').includes('FINALIZ'));
-  else if (bancoFilter === 'encerradas') data = data.filter(m => (m.STATUS||'').toUpperCase().includes('FINALIZ') || (m.STATUS||'').toUpperCase().includes('CONCLUÍD'));
+  else if (bancoFilter === 'encerradas') data = data.filter(m => { const s=(m.STATUS||'').toUpperCase(); return s.includes('ENCERR') || s.includes('FINALIZ') || s.includes('CONCLUÍD'); });
 
   // Apply column filters
   if (bancoFiltros.status) data = data.filter(m => (m.STATUS||'') === bancoFiltros.status);
@@ -3917,7 +3919,7 @@ function renderBanco() {
   if (bancoFiltros.procedencia) data = data.filter(m => (m.DECISAO_ANALISTA||m.RESULTADO_FINAL||'') === bancoFiltros.procedencia);
   if (bancoFiltros.periodo) {
     const cutoff = new Date(Date.now() - bancoFiltros.periodo * 86400000);
-    data = data.filter(m => { const d = new Date(m.DATA_CRIACAO); return isNaN(d) || d >= cutoff; });
+    data = data.filter(m => { const d = new Date(m.DATA_ABERTURA||m.DATA_REGISTRO||m.DATA_CRIACAO); return isNaN(d) || d >= cutoff; });
   }
 
   if (search) {
@@ -3926,7 +3928,7 @@ function renderBanco() {
       (m.EMPRESA_NORMALIZADA||'').toLowerCase().includes(search) ||
       (m.EMPRESA_RECLAMANTE||'').toLowerCase().includes(search) ||
       (m.CONTATO||'').toLowerCase().includes(search) ||
-      (m.DESCRICAO_RECLAMACAO||'').toLowerCase().includes(search) ||
+      (m.DESCRICAO_MANIFESTACAO||m.DESCRICAO||m.DESCRICAO_RECLAMACAO||'').toLowerCase().includes(search) ||
       (m.CNPJ||'').toLowerCase().includes(search)
     );
   }
@@ -3970,7 +3972,7 @@ function renderBanco() {
         return `<tr>
           <td>
             <div class="num-bold">${m.ID_MANIFESTACAO || '--'}</div>
-            <div class="num-date">${fmtDate(m.DATA_CRIACAO)}</div>
+            <div class="num-date">${fmtDate(m.DATA_ABERTURA||m.DATA_REGISTRO||m.DATA_CRIACAO)}</div>
           </td>
           <td>
             <div class="cliente-primary">${m.EMPRESA_NORMALIZADA || m.EMPRESA_RECLAMANTE || '--'}</div>
@@ -4358,7 +4360,7 @@ async function abrirFichaSetor(nomeSetor) {
         return `<tr>
           <td>
             <div class="num-bold">${m.ID_MANIFESTACAO || '--'}</div>
-            <div class="num-date">${m.DATA_CRIACAO ? new Date(m.DATA_CRIACAO).toLocaleDateString('pt-BR') : '--'}</div>
+            <div class="num-date">${(m.DATA_ABERTURA||m.DATA_REGISTRO||m.DATA_CRIACAO) ? new Date(m.DATA_ABERTURA||m.DATA_REGISTRO||m.DATA_CRIACAO).toLocaleDateString('pt-BR') : '--'}</div>
           </td>
           <td><div class="cliente-primary">${m.EMPRESA_NORMALIZADA || m.EMPRESA_RECLAMANTE || '--'}</div><div class="cliente-secondary">${m.CONTATO || '--'}</div></td>
           <td>${m.EMPRESA_RECLAMADA || '--'}</td>
@@ -4718,7 +4720,7 @@ loadVisaoGeral();
   // Não altera o layout existente.
   // ============================================================
 
-  const RESULTADOS_URL = '/painel-resultados';
+  const RESULTADOS_URL = 'https://script.google.com/macros/s/AKfycbxjRAEopqf9DsClRzJFoa28Jq8VSc8KBrpuot8emFF4oxHNZ7nsOqe2hRLjJxh8fjg-/exec';
   const REFRESH_MS = 60000;
 
   function esc(v){
@@ -5295,7 +5297,40 @@ loadVisaoGeral();
   window.loadUsuariosV5=loadUsuariosV5;
   window.abrirModalUsuario=function(){document.getElementById('modal-usuario-v5').style.display='flex'};window.fecharModalUsuario=function(){document.getElementById('modal-usuario-v5').style.display='none'};
   window.salvarUsuarioV5=async function(){const b={nome:document.getElementById('usr-nome').value.trim(),usuario:document.getElementById('usr-login').value.trim(),email:document.getElementById('usr-email').value.trim(),senha:document.getElementById('usr-senha').value,perfil:document.getElementById('usr-perfil').value,empresa:document.getElementById('usr-empresa').value,setor:document.getElementById('usr-setor').value,codigoRCA:document.getElementById('usr-rca').value,status:document.getElementById('usr-status').value};try{await json5('/api/usuarios',{method:'POST',body:JSON.stringify(b)});alert('Usuário criado.');fecharModalUsuario();loadUsuariosV5()}catch(e){alert(e.message)}};
-  window.editarUsuarioV5=function(id){alert('A edição detalhada será feita na linha do usuário. ID: '+id)};
+  window.editarUsuarioV5=async function(id){
+    try{
+      const d=await json5('/api/usuarios');
+      const u=(d.itens||[]).find(x=>String(x.id)===String(id)||String(x.usuario)===String(id));
+      if(!u)return alert('Usuário não encontrado.');
+      document.getElementById('usr-nome').value=u.nome||'';
+      document.getElementById('usr-login').value=u.usuario||'';
+      document.getElementById('usr-email').value=u.email||'';
+      document.getElementById('usr-senha').value='';
+      document.getElementById('usr-perfil').value=u.perfil||'ANALISTA SAC';
+      document.getElementById('usr-empresa').value=u.empresa||'';
+      document.getElementById('usr-setor').value=u.setor||'';
+      document.getElementById('usr-rca').value=u.codigoRCA||u.codigo_rca||'';
+      document.getElementById('usr-status').value=u.status||'ATIVO';
+      // Trocar título e botão para modo edição
+      const box=document.querySelector('#modal-usuario-v5 .modal-box');
+      box.querySelector('.modal-header div div:first-child').textContent='Editar usuário';
+      const btn=box.querySelector('.btn.btn-primary');
+      btn.textContent='Salvar alterações';
+      btn.onclick=async function(){
+        const b={nome:document.getElementById('usr-nome').value.trim(),email:document.getElementById('usr-email').value.trim(),perfil:document.getElementById('usr-perfil').value,empresa:document.getElementById('usr-empresa').value,setor:document.getElementById('usr-setor').value,codigoRCA:document.getElementById('usr-rca').value,status:document.getElementById('usr-status').value};
+        const s=document.getElementById('usr-senha').value;if(s)b.senha=s;
+        try{await json5('/api/usuarios/'+encodeURIComponent(id),{method:'PATCH',body:JSON.stringify(b)});alert('Usuário atualizado.');fecharModalUsuario();loadUsuariosV5();}catch(e){alert(e.message)}
+      };
+      document.getElementById('modal-usuario-v5').style.display='flex';
+    }catch(e){alert(e.message)}
+  };
+  // Restaurar modal para modo criação ao fechar
+  const _fecharModalUsuarioOrig=window.fecharModalUsuario;
+  window.fecharModalUsuario=function(){
+    _fecharModalUsuarioOrig();
+    const box=document.querySelector('#modal-usuario-v5 .modal-box');
+    if(box){box.querySelector('.modal-header div div:first-child').textContent='Novo usuário';const btn=box.querySelector('.btn.btn-primary');btn.textContent='Criar usuário';btn.onclick=window.salvarUsuarioV5;}
+  };
 
   // ===== APROVADOR =====
   async function loadAprovadorV5(){
@@ -6279,7 +6314,7 @@ function renderAcompanhamentoV2(data){
     return `<tr>
       <td>
         <div class="num-bold">${esc(m.ID_MANIFESTACAO||'--')}</div>
-        <div class="num-date">${m.DATA_CRIACAO ? new Date(m.DATA_CRIACAO).toLocaleDateString('pt-BR') : '--'}</div>
+        <div class="num-date">${(m.DATA_ABERTURA||m.DATA_REGISTRO||m.DATA_CRIACAO) ? new Date(m.DATA_ABERTURA||m.DATA_REGISTRO||m.DATA_CRIACAO).toLocaleDateString('pt-BR') : '--'}</div>
       </td>
       <td>
         <div class="cliente-primary">${esc(m.EMPRESA_NORMALIZADA||m.EMPRESA_RECLAMANTE||'--')}</div>
@@ -6723,10 +6758,10 @@ window.confirmarDecisao = function(tipo){
   if(tipo==='aceita'){
     const a = window._nmAnaliseAtual||{};
     decisaoFinal = {
-      tipo: a.tipoSugerido,
-      setor: (a.setoresSugeridos||[])[0],
+      tipo: a.tipoDetectado||a.tipoSugerido,
+      setor: (a.setores||a.setoresSugeridos||[])[0],
       causa: a.causaProvavel||a.causa,
-      tratativa: document.getElementById('ia-tratativa')?.textContent||a.tratativaSugerida,
+      tratativa: document.getElementById('ia-tratativa')?.textContent||(typeof a.tratativaSugerida==='object'?a.tratativaSugerida?.sugestao:a.tratativaSugerida),
       devolutiva: document.getElementById('ia-devolutiva')?.value||a.devolutivaSugerida,
       obs: document.getElementById('dec-obs-aceitar')?.value||''
     };
@@ -6743,8 +6778,8 @@ window.confirmarDecisao = function(tipo){
     // Detectar campos alterados vs IA
     const a = window._nmAnaliseAtual||{};
     const alterados = {};
-    if(decisaoFinal.tipo !== a.tipoSugerido) alterados.tipo = { ia:a.tipoSugerido, analista:decisaoFinal.tipo };
-    if(decisaoFinal.setor !== (a.setoresSugeridos||[])[0]) alterados.setor = { ia:(a.setoresSugeridos||[])[0], analista:decisaoFinal.setor };
+    if(decisaoFinal.tipo !== (a.tipoDetectado||a.tipoSugerido)) alterados.tipo = { ia:a.tipoDetectado||a.tipoSugerido, analista:decisaoFinal.tipo };
+    if(decisaoFinal.setor !== (a.setores||a.setoresSugeridos||[])[0]) alterados.setor = { ia:(a.setores||a.setoresSugeridos||[])[0], analista:decisaoFinal.setor };
     if(decisaoFinal.causa !== (a.causaProvavel||a.causa)) alterados.causa = { ia:a.causaProvavel||a.causa, analista:decisaoFinal.causa };
     window._nmDecisaoCompleta.camposAlterados = alterados;
   }
@@ -7182,7 +7217,7 @@ window.extrairTratativaSugerida = function(a){
   }
 
   // 3. Derivar do melhor caso similar com tratativa + resultado + maior %
-  const sims = a.casosSemelhantes || [];
+  const sims = a.casosSimilares || a.casosSemelhantes || [];
   const comTrat = sims
     .map(s => ({
       ...s,
@@ -8468,7 +8503,7 @@ async function cdLoadMan() {
 function renderCdMan(q='',st='') {
   const rows=_cdData.man.filter(x=>{ const s=(q?(x.ID_MANIFESTACAO+x.EMPRESA_RECLAMANTE+x.PRODUTO+x.CONTATO).toLowerCase().includes(q):true); const ss=(st?((x.STATUS||'').toLowerCase()===st):true); return s&&ss; });
   document.getElementById('cd-man-count').textContent=`${rows.length} registro(s)`;
-  cdRender('cd-man-tbody','cd-man-loading',rows.map(x=>`<tr><td><strong>${esc5(x.ID_MANIFESTACAO)}</strong></td><td style="font-size:11px">${fmt5(x.DATA_ABERTURA||x.DATA_REGISTRO)}</td><td>${esc5(x.EMPRESA_RECLAMANTE||x.CONTATO||'')}</td><td>${esc5(x.PRODUTO||'')}</td><td>${esc5(x.LOTE||'')}</td><td><span class="status-badge ${stClass(x.STATUS)}">${esc5(x.STATUS||'')}</span></td><td>${esc5(x.SETOR_SUGERIDO||x.SETOR_CONFIRMADO||'')}</td></tr>`),7,'Nenhuma manifestação.');
+  cdRender('cd-man-tbody','cd-man-loading',rows.map(x=>`<tr style="cursor:pointer" onclick="abrirDossie(${JSON.stringify(x).replace(/</g,'\\u003c')})" title="Clique para abrir o dossiê"><td><strong>${esc5(x.ID_MANIFESTACAO)}</strong></td><td style="font-size:11px">${fmt5(x.DATA_ABERTURA||x.DATA_REGISTRO)}</td><td>${esc5(x.EMPRESA_RECLAMANTE||x.CONTATO||'')}</td><td>${esc5(x.PRODUTO||'')}</td><td>${esc5(x.LOTE||'')}</td><td><span class="status-badge ${stClass(x.STATUS)}">${esc5(x.STATUS||'')}</span></td><td>${esc5(x.SETOR_SUGERIDO||x.SETOR_CONFIRMADO||'')}</td></tr>`),7,'Nenhuma manifestação.');
 }
 
 // ── RNC ──
@@ -8496,7 +8531,7 @@ function renderCdHist(q='') {
   document.getElementById('cd-hist-count').textContent=`${rows.length} registro(s)`;
   cdRender('cd-hist-tbody','cd-hist-loading',rows.map((x,i)=>`<tr style="cursor:pointer" onclick="cdHistDetalhe(${_cdData.hist.indexOf(x)})" title="Clique para ver detalhes"><td><strong>${esc5(x.ID_HISTORICO||x.ID_MANIFESTACAO||'')}</strong></td><td>${esc5(x.ORIG_EMPRESA||x.EMPRESA_RECLAMANTE||x.CONTATO||'')}</td><td>${esc5(x.ORIG_CONTATO||x.CONTATO||'')}</td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc5((x.ORIG_DESCRICAO_RECLAMACAO||x.DESCRICAO||'').slice(0,80))}</td><td>${esc5(x.COMP_TIPO_PROBLEMA_VALIDADO||x.TIPO_PROBLEMA_VALIDADO||x.TIPO||'')}</td><td>${esc5(x.COMP_CAUSA_RAIZ||x.CAUSA_RAIZ||x.CAUSA||'')}</td><td><span class="status-badge ${stClass(x.ORIG_STATUS||x.STATUS)}">${esc5(x.ORIG_STATUS||x.STATUS||'')}</span></td><td style="font-size:11px">${fmt5(x.ORIG_DATA_ABERTURA||x.DATA_ABERTURA)}</td></tr>`),8,'Sem histórico.');
 }
-function cdHistDetalhe(idx) {
+async function cdHistDetalhe(idx) {
   const x = _cdData.hist[idx];
   if (!x) return;
   const campos = [
@@ -8512,7 +8547,6 @@ function cdHistDetalhe(idx) {
     ['Prazo Cumprido','COMP_PRAZO_CUMPRIDO','PRAZO_CUMPRIDO'],
     ['Satisfação','COMP_SATISFACAO','SATISFACAO'],
     ['Reincidente','COMP_REINCIDENTE','REINCIDENTE'],
-    ['Tratativa','COMP_TRATATIVA','TRATATIVA'],
     ['Produto','ORIG_PRODUTO','PRODUTO'],['Lote','ORIG_LOTE','LOTE'],
     ['NF-e','ORIG_NFE','NFE'],['Quantidade','ORIG_QUANTIDADE','QUANTIDADE'],
     ['Valor','ORIG_VALOR','VALOR'],
@@ -8523,22 +8557,86 @@ function cdHistDetalhe(idx) {
     return `<div style="display:flex;gap:8px;padding:6px 0;border-bottom:1px solid var(--gray-100)"><span style="min-width:130px;font-weight:600;font-size:12px;color:var(--gray-500)">${label}</span><span style="font-size:13px;flex:1">${esc5(val)}</span></div>`;
   }).join('');
   const descricao = x.ORIG_DESCRICAO_RECLAMACAO||x.DESCRICAO||'';
+  const tratativa = x.COMP_TRATATIVA||x.TRATATIVA||x.TRATATIVA_APLICAVEL||x.TRATATIVA_REALIZADA||'';
+  const devolutiva = x.COMP_DEVOLUTIVA||x.DEVOLUTIVA||x.DEVOLUTIVA_ENVIADA||x.DEVOLUTIVA_FINAL||'';
+  const diagnostico = x.COMP_DIAGNOSTICO||x.DIAGNOSTICO||x.COMP_CAUSA_RAIZ||x.CAUSA_RAIZ||'';
+
   let el = document.getElementById('modal-hist-detalhe');
   if (!el) {
     el = document.createElement('div');
     el.id = 'modal-hist-detalhe';
     el.className = 'modal-overlay';
     el.style.cssText='display:none;z-index:2000';
-    el.innerHTML=`<div class="modal" style="max-width:680px;width:100%;max-height:90vh;overflow-y:auto"><div class="modal-header"><h3 id="mhd-title" style="font-size:16px;font-weight:700"></h3><button class="modal-close" onclick="document.getElementById('modal-hist-detalhe').style.display='none'">×</button></div><div class="modal-body" style="padding:20px"><div id="mhd-campos"></div><div id="mhd-desc-wrap" style="margin-top:16px;display:none"><div style="font-weight:600;font-size:12px;color:var(--gray-500);margin-bottom:6px">DESCRIÇÃO COMPLETA</div><div id="mhd-desc" style="background:var(--gray-50);border-radius:8px;padding:12px;font-size:13px;line-height:1.6;white-space:pre-wrap"></div></div></div></div>`;
+    el.innerHTML=`<div class="modal" style="max-width:760px;width:100%;max-height:92vh;overflow-y:auto">
+      <div class="modal-header">
+        <h3 id="mhd-title" style="font-size:16px;font-weight:700"></h3>
+        <button class="modal-close" onclick="document.getElementById('modal-hist-detalhe').style.display='none'">×</button>
+      </div>
+      <div class="modal-body" style="padding:20px">
+        <div id="mhd-campos"></div>
+        <div id="mhd-desc-wrap" style="margin-top:16px;display:none">
+          <div style="font-weight:700;font-size:11px;color:var(--gray-400);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Descrição</div>
+          <div id="mhd-desc" style="background:var(--gray-50);border-radius:8px;padding:12px;font-size:13px;line-height:1.6;white-space:pre-wrap"></div>
+        </div>
+        <div id="mhd-diag-wrap" style="margin-top:16px;display:none">
+          <div style="font-weight:700;font-size:11px;color:var(--gray-400);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Diagnóstico / Causa Raiz</div>
+          <div id="mhd-diag" style="background:#FEF9C3;border-radius:8px;padding:12px;font-size:13px;line-height:1.6;border-left:3px solid #CA8A04"></div>
+        </div>
+        <div id="mhd-trat-wrap" style="margin-top:16px;display:none">
+          <div style="font-weight:700;font-size:11px;color:var(--gray-400);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Tratativa Aplicada</div>
+          <div id="mhd-trat" style="background:#F0FDF4;border-radius:8px;padding:12px;font-size:13px;line-height:1.6;border-left:3px solid #16A34A"></div>
+        </div>
+        <div id="mhd-dev-wrap" style="margin-top:16px;display:none">
+          <div style="font-weight:700;font-size:11px;color:var(--gray-400);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Devolutiva ao Cliente</div>
+          <div id="mhd-dev" style="background:#EFF6FF;border-radius:8px;padding:12px;font-size:13px;line-height:1.6;border-left:3px solid #2563EB;white-space:pre-wrap"></div>
+        </div>
+        <div id="mhd-sim-wrap" style="margin-top:20px;display:none">
+          <div style="font-weight:700;font-size:11px;color:var(--gray-400);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Casos Similares</div>
+          <div id="mhd-sim-list"></div>
+        </div>
+      </div>
+    </div>`;
     el.addEventListener('click',e=>{ if(e.target===el) el.style.display='none'; });
     document.body.appendChild(el);
   }
-  document.getElementById('mhd-title').textContent=`Histórico: ${x.ID_HISTORICO||x.ID_MANIFESTACAO||''}`;
+
+  document.getElementById('mhd-title').textContent=`${x.ORIG_EMPRESA||x.EMPRESA_RECLAMANTE||'Histórico'} — ${x.ID_HISTORICO||x.ID_MANIFESTACAO||''}`;
   document.getElementById('mhd-campos').innerHTML=linhas;
-  const descEl=document.getElementById('mhd-desc');
-  const descWrap=document.getElementById('mhd-desc-wrap');
-  if(descricao){descEl.textContent=descricao;descWrap.style.display='block';}else{descWrap.style.display='none';}
+
+  const set=(id,val,wrapId)=>{
+    const w=document.getElementById(wrapId);
+    if(val){document.getElementById(id).textContent=val;w.style.display='block';}else{w.style.display='none';}
+  };
+  set('mhd-desc',descricao,'mhd-desc-wrap');
+  set('mhd-diag',diagnostico,'mhd-diag-wrap');
+  set('mhd-trat',tratativa,'mhd-trat-wrap');
+  set('mhd-dev',devolutiva,'mhd-dev-wrap');
+
   el.style.display='flex';
+
+  // Buscar casos similares assíncronamente
+  const simWrap=document.getElementById('mhd-sim-wrap');
+  const simList=document.getElementById('mhd-sim-list');
+  simWrap.style.display='none';
+  if(descricao) {
+    simList.innerHTML='<div class="loading"><div class="spinner"></div> Buscando casos similares...</div>';
+    simWrap.style.display='block';
+    try {
+      const sr=await _apiFetch('/api/analise/similares',15000,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({descricao,empresa:x.ORIG_EMPRESA||x.EMPRESA_RECLAMANTE||''})});
+      const sims=(sr.itens||sr.similares||sr.casosSimilares||[]).slice(0,4);
+      if(sims.length){
+        simList.innerHTML=sims.map(s=>`<div style="background:var(--gray-50);border-radius:8px;padding:10px 12px;margin-bottom:8px;font-size:12px">
+          <div style="font-weight:600;color:var(--gray-700);margin-bottom:4px">${esc5(s.empresa||s.EMPRESA||'')} — ${esc5(s.tipo||s.TIPO||'')} <span style="color:var(--gray-400);font-weight:400">${Math.round((s.similaridade||0)*100)}% similar</span></div>
+          <div style="color:var(--gray-500);margin-bottom:4px">${esc5((s.descricao||s.DESCRICAO||'').slice(0,120))}</div>
+          ${s.tratativa||s.TRATATIVA?`<div style="color:#16A34A;font-style:italic">Tratativa: ${esc5((s.tratativa||s.TRATATIVA||'').slice(0,100))}</div>`:''}
+        </div>`).join('');
+      } else {
+        simList.innerHTML='<div style="color:var(--gray-400);font-size:12px">Nenhum caso similar encontrado.</div>';
+      }
+    } catch(e) {
+      simList.innerHTML='<div style="color:var(--gray-400);font-size:12px">Não foi possível buscar casos similares.</div>';
+    }
+  }
 }
 
 // ── SETORES ──
@@ -8661,9 +8759,18 @@ async function cdLoadRep() {
   try { const r=await _apiFetch('/api/empresas'); _cdData.rep=r.itens||r.empresas||[]; renderCdRep(); } catch(e) { document.getElementById('cd-rep-loading').textContent='Erro: '+e.message; }
 }
 function renderCdRep(q='') {
-  const rows=_cdData.rep.filter(x=>!q||(x.RAZAO_SOCIAL||x.NOME||x.CLIENTE||x.CNPJ||'').toLowerCase().includes(q));
+  const rows=_cdData.rep.filter(x=>{const nome=typeof x==='string'?x:(x.RAZAO_SOCIAL||x.NOME||x.CLIENTE||x.CNPJ||'');return !q||nome.toLowerCase().includes(q);});
   document.getElementById('cd-rep-count').textContent=`${rows.length} registro(s)`;
-  cdRender('cd-rep-tbody','cd-rep-loading',rows.map(x=>`<tr><td style="font-size:11px">${esc5(x.ID_CLIENTE||x.ID||'')}</td><td>${esc5(x.RAZAO_SOCIAL||x.NOME||x.CLIENTE||'')}</td><td>${esc5(x.CNPJ||x.CNPJ_CPF||'')}</td><td>${esc5(x.CIDADE||'')}</td><td>${esc5(x.ESTADO||x.UF||'')}</td><td>${esc5(x.EMAIL||'')}</td><td>${esc5(x.RCA||x.REPRESENTANTE||'')}</td></tr>`),7,'Nenhum representante/cliente.');
+  cdRender('cd-rep-tbody','cd-rep-loading',rows.map(x=>{
+    const nome=typeof x==='string'?x:(x.RAZAO_SOCIAL||x.NOME||x.CLIENTE||'');
+    const id=typeof x==='string'?'':(x.ID_CLIENTE||x.ID||'');
+    const cnpj=typeof x==='string'?'':(x.CNPJ||x.CNPJ_CPF||'');
+    const cidade=typeof x==='string'?'':(x.CIDADE||'');
+    const estado=typeof x==='string'?'':(x.ESTADO||x.UF||'');
+    const email=typeof x==='string'?'':(x.EMAIL||'');
+    const rca=typeof x==='string'?'':(x.RCA||x.REPRESENTANTE||'');
+    return `<tr><td style="font-size:11px">${esc5(id)}</td><td>${esc5(nome)}</td><td>${esc5(cnpj)}</td><td>${esc5(cidade)}</td><td>${esc5(estado)}</td><td>${esc5(email)}</td><td>${esc5(rca)}</td></tr>`;
+  }),7,'Nenhum representante/cliente.');
 }
 
 // ── CAUSAS ──
@@ -8985,7 +9092,7 @@ async function rodarCerebro() {
     loading.style.display = 'none';
     if (!res.sucesso) throw new Error(res.erro);
     const a = res.analise || {};
-    const conf = a.confianca || a.scoreConfianca || 0;
+    const conf = (typeof a.confianca === 'object' ? a.confianca?.score : a.confianca) ?? a.scoreConfianca ?? 0;
     const corConf = conf >= 70 ? 'var(--green)' : conf >= 40 ? 'var(--yellow)' : 'var(--red)';
     resultado.style.display = 'block';
     resultado.innerHTML = `
@@ -8998,10 +9105,10 @@ async function rodarCerebro() {
           ${a.tipoDetectado||a.tipo ? `<div style="background:var(--gray-50);border-radius:8px;padding:10px"><div style="font-size:10px;font-weight:700;color:var(--gray-400);margin-bottom:3px">TIPO DETECTADO</div><div style="font-size:13px;font-weight:600">${a.tipoDetectado||a.tipo||'—'}</div></div>` : ''}
           ${a.setores||a.setor ? `<div style="background:var(--gray-50);border-radius:8px;padding:10px"><div style="font-size:10px;font-weight:700;color:var(--gray-400);margin-bottom:3px">SETOR(ES)</div><div style="font-size:13px;font-weight:600">${Array.isArray(a.setores)?a.setores.join(', '):(a.setor||'—')}</div></div>` : ''}
           ${a.prioridade ? `<div style="background:var(--gray-50);border-radius:8px;padding:10px"><div style="font-size:10px;font-weight:700;color:var(--gray-400);margin-bottom:3px">PRIORIDADE</div><div style="font-size:13px;font-weight:600">${a.prioridade}</div></div>` : ''}
-          ${a.sla ? `<div style="background:var(--gray-50);border-radius:8px;padding:10px"><div style="font-size:10px;font-weight:700;color:var(--gray-400);margin-bottom:3px">SLA</div><div style="font-size:13px;font-weight:600">${a.sla.horasRestantes??'—'}h restantes (${a.sla.percentualConsumido??'—'}%)</div></div>` : ''}
+          ${a.sla ? `<div style="background:var(--gray-50);border-radius:8px;padding:10px"><div style="font-size:10px;font-weight:700;color:var(--gray-400);margin-bottom:3px">SLA</div><div style="font-size:13px;font-weight:600">${a.sla.horasRestantes??'—'}h restantes (${a.sla.percentDecorrido??a.sla.percentualConsumido??'—'}%)</div></div>` : ''}
         </div>
-        ${a.reincidencia?.detectada ? `<div style="background:var(--red-light);color:var(--red);padding:10px;border-radius:8px;font-size:13px;font-weight:600;margin-bottom:10px">⚠ Reincidência detectada — ${a.reincidencia.totalOcorrencias} ocorrências anteriores</div>` : ''}
-        ${a.tratativaSugerida ? `<div style="background:var(--green-light);border-radius:8px;padding:10px;margin-bottom:10px"><div style="font-size:10px;font-weight:700;color:var(--green);margin-bottom:3px">TRATATIVA SUGERIDA</div><div style="font-size:13px">${a.tratativaSugerida}</div></div>` : ''}
+        ${a.reincidencia?.detectada ? `<div style="background:var(--red-light);color:var(--red);padding:10px;border-radius:8px;font-size:13px;font-weight:600;margin-bottom:10px">⚠ Reincidência detectada — ${a.reincidencia.quantidade??a.reincidencia.totalOcorrencias??0} ocorrências anteriores</div>` : ''}
+        ${a.tratativaSugerida ? `<div style="background:var(--green-light);border-radius:8px;padding:10px;margin-bottom:10px"><div style="font-size:10px;font-weight:700;color:var(--green);margin-bottom:3px">TRATATIVA SUGERIDA</div><div style="font-size:13px">${typeof a.tratativaSugerida==='object'?(a.tratativaSugerida.sugestao||a.tratativaSugerida.texto||JSON.stringify(a.tratativaSugerida)):a.tratativaSugerida}</div></div>` : ''}
         ${a.devolutivaSugerida ? `<div style="background:#EFF6FF;border-radius:8px;padding:10px;margin-bottom:10px"><div style="font-size:10px;font-weight:700;color:#1D4ED8;margin-bottom:3px">DEVOLUTIVA SUGERIDA</div><div style="font-size:13px">${a.devolutivaSugerida}</div></div>` : ''}
         ${a.casosSimilares?.length ? `<div style="margin-bottom:10px"><div style="font-size:11px;font-weight:700;color:var(--gray-500);margin-bottom:6px">${a.casosSimilares.length} CASO(S) SIMILAR(ES) ENCONTRADO(S)</div>${a.casosSimilares.slice(0,3).map(c=>`<div style="font-size:12px;color:var(--gray-600);padding:4px 0;border-bottom:1px solid var(--gray-100)">${c.id||'—'} — ${c.similaridade}% similaridade · ${c.setor||'—'}</div>`).join('')}</div>` : ''}
         ${a.explicabilidade ? `<details style="margin-top:10px"><summary style="font-size:12px;cursor:pointer;color:var(--gray-500)">Ver explicabilidade completa</summary><pre style="font-size:11px;background:var(--gray-50);padding:10px;border-radius:6px;margin-top:6px;white-space:pre-wrap;overflow-x:auto">${typeof a.explicabilidade==='object'?JSON.stringify(a.explicabilidade,null,2):a.explicabilidade}</pre></details>` : ''}

@@ -1,15 +1,24 @@
 {
   "name": "assistente-sac-chiacchio",
-  "version": "5.2.0",
+  "version": "5.3.0",
   "private": true,
   "description": "Assistente SAC e Gestão de Manifestações - Grupo Chiacchio",
   "main": "api/index.js",
   "scripts": {
-    "start": "node api/index.js"
+    "start": "node api/index.js",
+    "postinstall": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
+    "db:migrate:dev": "prisma migrate dev",
+    "db:seed": "node database/seed/seed.js",
+    "db:studio": "prisma studio"
   },
   "dependencies": {
+    "@prisma/client": "^6.19.3",
     "cors": "^2.8.5",
     "express": "^4.21.2",
     "googleapis": "^144.0.0"
+  },
+  "devDependencies": {
+    "prisma": "^6.19.3"
   }
 }
