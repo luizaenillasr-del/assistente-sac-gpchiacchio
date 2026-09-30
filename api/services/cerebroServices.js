@@ -775,7 +775,10 @@ async function analisarManifestacaoCompleta(manifestacao, regras = {}, usuario =
     });
   } catch (e) { erros.push('devolutivaEngine: ' + e.message); }
 
-  const devolutiva = (ia?.devolutivaSugerida && !ia.erro) ? ia.devolutivaSugerida : (devolutivaEstruturada?.textoGerado || gerarDevolutiva(campo(manifestacao, ['empresaReclamante','EMPRESA_RECLAMANTE']), tipo, setor, tratativa.sugestao));
+  // Prioridade: 1) devolutiva de caso histórico similar, 2) IA como complemento, 3) template estruturado
+  const devolutivaHistorica = casosSimilares?.find(c => c.devolutiva && c.devolutiva.trim().length > 20 && c.similaridade >= 30)?.devolutiva || null;
+  const devolutiva = devolutivaHistorica || (ia?.devolutivaSugerida && !ia.erro ? ia.devolutivaSugerida : (devolutivaEstruturada?.textoGerado || gerarDevolutiva(campo(manifestacao, ['empresaReclamante','EMPRESA_RECLAMANTE']), tipo, setor, tratativa.sugestao)));
+  const origemDevolutiva = devolutivaHistorica ? 'HISTORICO' : (ia?.devolutivaSugerida && !ia.erro ? 'IA' : 'TEMPLATE');
 
   const dadosParaConfianca = { regraAplicada: regras.regraAplicada, tipoDetectado: tipo, tipoConfianca: regras.tipoConfianca, casosSimilares, baseConhecimento, ia };
   const confianca = calcularConfianca(dadosParaConfianca);
@@ -796,7 +799,7 @@ async function analisarManifestacaoCompleta(manifestacao, regras = {}, usuario =
     casosSimilares, reincidencia, sla, baseConhecimento,
     tratativaSugerida: { aplicavel: tratativa.aplicavel, confianca: tratativa.confianca, sugestao: tratativa.sugestao, quantidadeCasos: tratativa.quantidadeCasos, evidencia: tratativa.evidencia, origem: tratativa.origem||'HISTORICO', todasSugestoes: tratativa.todasSugestoes||[] },
     tratativaEstruturada, devolutivaEstruturada, ia, confianca, conflitos,
-    informacoesAusentes, devolutivaSugerida: devolutiva, necessitaValidacaoHumana,
+    informacoesAusentes, devolutivaSugerida: devolutiva, origemDevolutiva, necessitaValidacaoHumana,
     explicabilidade: null,
     versoes: { cerebro: CEREBRO_VERSION, baseConhecimento: BASE_CONHECIMENTO_VERSION, politicas: POLITICAS_VERSION, matriz: MATRIZ_VERSION },
     tempoMs: Date.now() - inicio, erros, geradaEm: new Date().toISOString(),
