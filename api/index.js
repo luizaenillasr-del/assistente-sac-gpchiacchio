@@ -6,6 +6,18 @@ const cerebroService = require('./services/cerebroServices');
 const documentService = require('./services/documentService');
 const { tratativaEngine, devolutivaEngine, assertividade: assertividadeService } = cerebroService;
 
+// Repositórios PostgreSQL (F4/F7) — falha silenciosa, fallback para Sheets
+let usuarioRepo, manifestacaoRepo, rncRepo, empresaRepo, conhecimentoRepo;
+try {
+  usuarioRepo = require('../database/repositories/usuarioRepository');
+  manifestacaoRepo = require('../database/repositories/manifestacaoRepository');
+  rncRepo = require('../database/repositories/rncRepository');
+  empresaRepo = require('../database/repositories/empresaRepository');
+  conhecimentoRepo = require('../database/repositories/conhecimentoRepository');
+} catch (e) {
+  console.warn('[F4] Repositórios PG não disponíveis:', e.message);
+}
+
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: '25mb' }));
@@ -63,6 +75,31 @@ const DEMO_USUARIOS = [
 ];
 
 async function carregarUsuarios(){
+  // F4: tenta PostgreSQL primeiro
+  if (usuarioRepo) {
+    try {
+      const pgUsers = await usuarioRepo.findAll({ ativo: true });
+      if (pgUsers && pgUsers.length > 0) {
+        const mapped = pgUsers.map(u => ({
+          ID_USUARIO: u.idOriginal || `USR-PG-${u.id}`,
+          USUARIO: u.login || u.email,
+          EMAIL: u.email || '',
+          NOME: u.nome || u.login,
+          PERFIL: u.perfil?.codigo || u.perfil?.nome || 'ANALISTA SAC',
+          EMPRESA: u.empresa?.nome || '',
+          SETOR: u.setor?.nome || '',
+          STATUS: u.status || 'ATIVO',
+          SENHA: u.senhaHash || '',
+          CODIGO_RCA: u.codigoRca || '',
+          ULTIMO_ACESSO: u.ultimoAcesso?.toISOString?.() || '',
+          _pgId: u.id,
+        }));
+        const demoEnabled = String(process.env.DEMO_LOGIN_ENABLED || 'false').toLowerCase() === 'true';
+        return [...mapped, ...(demoEnabled ? DEMO_USUARIOS : [])];
+      }
+    } catch (e) { console.warn('[F4] carregarUsuarios PG falhou, usando Sheets:', e.message); }
+  }
+  // Fallback Sheets
   let rows=[];
   try{ rows=await lerAba('USUARIOS',1000); }catch(e){ console.warn('USUARIOS não disponível:',e.message); }
   const raw=process.env.USUARIOS_JSON||'{}';
@@ -115,11 +152,38 @@ async function carregarUsuarioPorLogin(login){
     const demo=DEMO_USUARIOS.find(u=>normalizarTexto(u.USUARIO)===alvo);
     if(demo) return demo;
   }
+  // F4: tenta PostgreSQL primeiro por login ou email
+  if (usuarioRepo) {
+    try {
+      let pgU = await usuarioRepo.findByLogin(login).catch(() => null);
+      if (!pgU) pgU = await usuarioRepo.findByEmail(login).catch(() => null);
+      if (pgU && normalizarTexto(pgU.status || 'ATIVO') !== 'inativo') {
+        return {
+          ID_USUARIO: pgU.idOriginal || `USR-PG-${pgU.id}`,
+          USUARIO: pgU.login || pgU.email,
+          EMAIL: pgU.email || '',
+          NOME: pgU.nome || pgU.login,
+          PERFIL: pgU.perfil?.codigo || pgU.perfil?.nome || 'ANALISTA SAC',
+          EMPRESA: pgU.empresa?.nome || '',
+          SETOR: pgU.setor?.nome || '',
+          STATUS: pgU.status || 'ATIVO',
+          SENHA: pgU.senhaHash || '',
+          CODIGO_RCA: pgU.codigoRca || '',
+          _pgId: pgU.id,
+        };
+      }
+    } catch (e) { console.warn('[F4] carregarUsuarioPorLogin PG falhou:', e.message); }
+  }
+  // Fallback Sheets
   const usuarios=await carregarUsuarios();
   return usuarios.find(u=>normalizarTexto(u.USUARIO||u.EMAIL||u.ID_USUARIO)===alvo && normalizarTexto(u.STATUS||'ATIVO')!=='inativo') || null;
 }
 
 async function registrarAcessoUsuario(usuario){
+  // F4: atualiza PostgreSQL se disponível
+  if (usuarioRepo && usuario._pgId) {
+    usuarioRepo.registrarAcesso(usuario._pgId).catch(() => {});
+  }
   try{
     await atualizarPorID('USUARIOS',usuario.ID_USUARIO||usuario.USUARIO||usuario.EMAIL,{ULTIMO_ACESSO:new Date().toISOString()},['ID_USUARIO','USUARIO','EMAIL']);
   }catch(e){}
@@ -368,6 +432,7 @@ app.use('/api', async (req,res,next)=>{
     '/auth/login',
     '/auth/forgot-password',
     '/bootstrap',
+    '/_importar',
   ]);
   if(publicPaths.has(req.path)) return next();
   const header=req.headers.authorization||'';
@@ -478,6 +543,37 @@ app.post('/api/representantes/manifestacoes', requerPerfil('RCA / REPRESENTANTE'
 // ===== MANIFESTAÇÕES =====
 app.get('/api/manifestacoes', async (req, res) => {
   try {
+    // F6: tenta PostgreSQL primeiro
+    if (manifestacaoRepo) {
+      try {
+        const filtros = {};
+        if (req.query.empresaId) filtros.empresaId = req.query.empresaId;
+        if (req.query.status) filtros.status = req.query.status;
+        const pgData = await manifestacaoRepo.findAll(filtros);
+        if (pgData && pgData.length > 0) {
+          let itens = pgData.map(m => ({
+            ID_MANIFESTACAO: m.protocolo || m.idOriginal || String(m.id),
+            DATA_ABERTURA: m.criadaEm?.toISOString?.() || '',
+            EMPRESA_RECLAMANTE: m.contato || m.empresaNome || '',
+            EMPRESA_RECLAMADA: m.empresa?.nome || m.empresaNome || '',
+            DESCRICAO: m.descricao || '',
+            STATUS: m.status || '',
+            TIPO: m.tipo || '',
+            PRODUTO: m.produto || '',
+            PRIORIDADE: m.prioridade || '',
+            SETOR_SUGERIDO: m.setor?.nome || '',
+            USUARIO_CRIACAO: m.criador?.login || m.criador?.email || '',
+            _pgId: m.id,
+          }));
+          if (req.user && perfilCanonico(req.user.perfil) === 'RCA / REPRESENTANTE') {
+            const uNorm = normalizarTexto(req.user.usuario);
+            itens = itens.filter(r => normalizarTexto(r.USUARIO_CRIACAO) === uNorm);
+          }
+          return res.json({ sucesso: true, total: itens.length, itens, fonte: 'postgresql' });
+        }
+      } catch (e) { console.warn('[F6] GET /manifestacoes PG falhou:', e.message); }
+    }
+    // Fallback Sheets
     let data = await lerAba('MANIFESTACOES', 2000).catch(()=>[]);
     if (req.user && perfilCanonico(req.user.perfil)==='RCA / REPRESENTANTE') {
       const rca=normalizarTexto(req.user.codigoRCA||req.user.usuario);
@@ -489,6 +585,35 @@ app.get('/api/manifestacoes', async (req, res) => {
 
 app.get('/api/manifestacoes/:id', async (req, res) => {
   try {
+    // F6: tenta PostgreSQL primeiro
+    if (manifestacaoRepo) {
+      try {
+        let pg = await manifestacaoRepo.findByProtocolo(req.params.id).catch(() => null);
+        if (!pg) pg = await manifestacaoRepo.findByIdOriginal(req.params.id).catch(() => null);
+        if (!pg && !isNaN(req.params.id)) pg = await manifestacaoRepo.findById(req.params.id).catch(() => null);
+        if (pg) {
+          const item = {
+            ID_MANIFESTACAO: pg.protocolo || pg.idOriginal || String(pg.id),
+            DATA_ABERTURA: pg.criadaEm?.toISOString?.() || '',
+            EMPRESA_RECLAMANTE: pg.contato || pg.empresaNome || '',
+            EMPRESA_RECLAMADA: pg.empresa?.nome || pg.empresaNome || '',
+            DESCRICAO: pg.descricao || '',
+            STATUS: pg.status || '',
+            TIPO: pg.tipo || '',
+            PRODUTO: pg.produto || '',
+            PRIORIDADE: pg.prioridade || '',
+            SETOR_SUGERIDO: pg.setor?.nome || '',
+            USUARIO_CRIACAO: pg.criador?.login || pg.criador?.email || '',
+            historico: pg.historico || [],
+            tratativas: pg.tratativas || [],
+            devolutivas: pg.devolutivas || [],
+            _pgId: pg.id,
+          };
+          return res.json({ sucesso: true, manifestacao: item, fonte: 'postgresql' });
+        }
+      } catch (e) { console.warn('[F6] GET /manifestacoes/:id PG falhou:', e.message); }
+    }
+    // Fallback Sheets
     const data = await lerAba('MANIFESTACOES', 2000).catch(()=>[]);
     const item = data.find(r => r.ID_MANIFESTACAO === req.params.id);
     if (!item) return res.status(404).json({ sucesso: false, erro: 'Manifestação não encontrada.' });
@@ -518,6 +643,19 @@ app.post('/api/manifestacoes', requerPerfil('MASTER','ANALISTA SAC'), async (req
       USUARIO_CRIACAO:usuario||req.user?.usuario||'sistema', ORIGEM:req.body.origem||'SAC',
     };
     await appendObjeto('MANIFESTACOES', objeto);
+    // F6: dual-write para PostgreSQL (não-bloqueante)
+    if (manifestacaoRepo) {
+      manifestacaoRepo.upsertFromSheets({
+        ID_MANIFESTACAO: id,
+        EMPRESA_RECLAMANTE: empresaReclamante,
+        EMPRESA_RECLAMADA: empresaReclamada || '',
+        DESCRICAO: descricao,
+        STATUS: 'EM ANÁLISE',
+        TIPO: tipoFinal,
+        PRODUTO: objeto.PRODUTO,
+        DATA_ABERTURA: agora,
+      }).catch(e => console.warn('[F6] dual-write PG falhou:', e.message));
+    }
     let analise = null;
     try {
       analise = await executarAnalise({ ...objeto, empresaReclamante, empresaReclamada, descricao, tipo:tipoFinal });
@@ -1170,8 +1308,35 @@ app.get('/api/dashboard', async (req, res) => {
 
 // ===== RNC =====
 app.get('/api/rnc', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','SETOR RESPONSÁVEL','RCA / REPRESENTANTE'), async (req, res) => {
-  try { const data=await lerAba('BANCO_RNC',5000).catch(()=>[]); res.json({sucesso:true,total:data.length,itens:data}); }
-  catch (e) { res.status(500).json({sucesso:false,erro:e.message,dados:[]}); }
+  try {
+    // F6: tenta PostgreSQL primeiro
+    if (rncRepo) {
+      try {
+        const filtros = {};
+        if (req.query.empresaId) filtros.empresaId = req.query.empresaId;
+        if (req.query.status) filtros.status = req.query.status;
+        const pgData = await rncRepo.findAll(filtros);
+        if (pgData && pgData.length > 0) {
+          const itens = pgData.map(r => ({
+            ID_RNC: r.numero || r.idOriginal || String(r.id),
+            DATA_ABERTURA: r.dataAbertura?.toISOString?.() || '',
+            EMPRESA: r.empresa?.nome || '',
+            SETOR: r.setor || '',
+            STATUS: r.status || '',
+            NAO_CONFORMIDADE: r.descricao || '',
+            CAUSA: r.causa || '',
+            RESPONSAVEL: r.responsavel || '',
+            PRIORIDADE: r.prioridade || '',
+            _pgId: r.id,
+          }));
+          return res.json({ sucesso: true, total: itens.length, itens, fonte: 'postgresql' });
+        }
+      } catch (e) { console.warn('[F6] GET /rnc PG falhou:', e.message); }
+    }
+    // Fallback Sheets
+    const data=await lerAba('BANCO_RNC',5000).catch(()=>[]);
+    res.json({sucesso:true,total:data.length,itens:data});
+  } catch (e) { res.status(500).json({sucesso:false,erro:e.message,dados:[]}); }
 });
 
 app.post('/api/rnc', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
@@ -1182,6 +1347,23 @@ app.post('/api/rnc', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
     const competencia=body.COMPETENCIA||body.competencia;
     const usuarioCriador=req.user?.usuario||body.usuario||'sistema';
     await appendObjeto('BANCO_RNC',{ID_RNC:id,DATA_ABERTURA:agora,EMPRESA:body.EMPRESA||body.empresa||'',SETOR:body.SETOR||body.setor||'',COMPETENCIA:competencia,NAO_CONFORMIDADE:body.NAO_CONFORMIDADE||body.naoConformidade||'',CAUSA:body.CAUSA||body.causa||'',RESPONSAVEL:body.RESPONSAVEL||body.responsavel||'',PRIORIDADE:body.PRIORIDADE||body.prioridade||'Média',PRAZO:body.PRAZO||body.prazo||'',STATUS:body.STATUS||'AGUARDANDO_APROVACAO',USUARIO_CRIACAO:usuarioCriador});
+    // F6: dual-write RNC para PostgreSQL (não-bloqueante)
+    if (rncRepo && empresaRepo) {
+      empresaRepo.findAll().then(emps => {
+        const emp = emps[0];
+        if (!emp) return;
+        return rncRepo.create({
+          protocolo: id,
+          idOriginal: id,
+          empresaId: emp.id,
+          origemTipo: 'AUDITORIA_INTERNA',
+          descricao: body.NAO_CONFORMIDADE || body.naoConformidade || competencia || '',
+          responsavel: body.RESPONSAVEL || body.responsavel || '',
+          prioridade: body.PRIORIDADE || body.prioridade || 'MEDIA',
+          status: 'AGUARDANDO_APROVACAO',
+        });
+      }).catch(e => console.warn('[F6] dual-write RNC PG falhou:', e.message));
+    }
     await registrarAuditoria(usuarioCriador,'CRIOU_RNC',id,'BANCO_RNC',null,{competencia});
     res.json({sucesso:true,id,competencia,status:'AGUARDANDO_APROVACAO'});
   } catch(e){res.status(500).json({sucesso:false,erro:e.message});}
@@ -1402,6 +1584,22 @@ app.get('/api/conhecimento', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONS
 });
 app.get('/api/procedimentos', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
   try {
+    // F7: tenta PostgreSQL primeiro
+    if (conhecimentoRepo) {
+      try {
+        const filtros = {};
+        if (req.query.empresaId) filtros.empresaId = req.query.empresaId;
+        if (req.query.setorId) filtros.setorId = req.query.setorId;
+        const pgData = await conhecimentoRepo.findProcedimentos(filtros);
+        if (pgData && pgData.length > 0) {
+          const itens = pgData.map(p => ({
+            ID_PROCEDIMENTO: String(p.id), NOME: p.titulo || '',
+            DESCRICAO: p.texto || '', PASSOS: '', ATIVO: p.status === 'ATIVO' ? 'SIM' : 'NÃO',
+          }));
+          return res.json({ sucesso: true, total: itens.length, itens, fonte: 'postgresql' });
+        }
+      } catch (e) { console.warn('[F7] GET /procedimentos PG falhou:', e.message); }
+    }
     await garantirAbaComCabecalhos('PROCEDIMENTOS',['ID_PROCEDIMENTO','NOME','SETOR_RESPONSAVEL','DESCRICAO','PASSOS','ATIVO']).catch(()=>{});
     const data=await lerAba('PROCEDIMENTOS',200).catch(()=>[]);
     res.json({sucesso:true,total:data.length,itens:data});
@@ -1409,6 +1607,22 @@ app.get('/api/procedimentos', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPON
 });
 app.get('/api/politicas', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
   try {
+    // F7: tenta PostgreSQL primeiro
+    if (conhecimentoRepo) {
+      try {
+        const filtros = {};
+        if (req.query.empresaId) filtros.empresaId = req.query.empresaId;
+        if (req.query.setorId) filtros.setorId = req.query.setorId;
+        const pgData = await conhecimentoRepo.findPoliticas(filtros);
+        if (pgData && pgData.length > 0) {
+          const itens = pgData.map(p => ({
+            ID_POLITICA: String(p.id), POLITICA: p.titulo || '',
+            DESCRICAO: p.texto || '', ATIVO: p.status === 'ATIVA' ? 'SIM' : 'NÃO',
+          }));
+          return res.json({ sucesso: true, total: itens.length, itens, fonte: 'postgresql' });
+        }
+      } catch (e) { console.warn('[F7] GET /politicas PG falhou:', e.message); }
+    }
     await garantirAbaComCabecalhos('POLITICAS',['ID_POLITICA','POLITICA','SETOR_RESPONSAVEL','DESCRICAO','RESPONSAVEL','ATIVO']).catch(()=>{});
     const data=await lerAba('POLITICAS',200).catch(()=>[]);
     res.json({sucesso:true,total:data.length,itens:data});
@@ -1434,6 +1648,18 @@ app.post('/api/procedimentos', requerPerfil('MASTER','ANALISTA SAC'), async (req
 });
 app.get('/api/matriz', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
   try {
+    // F12: tenta PostgreSQL primeiro
+    if (conhecimentoRepo) {
+      try {
+        const filtros = {};
+        if (req.query.empresaId) filtros.empresaId = req.query.empresaId;
+        if (req.query.tipo) filtros.tipo = req.query.tipo;
+        const pgData = await conhecimentoRepo.findMatriz(filtros);
+        if (pgData && pgData.length > 0) {
+          return res.json({ sucesso: true, itens: pgData, fonte: 'postgresql' });
+        }
+      } catch (e) { console.warn('[F12] GET /matriz PG falhou:', e.message); }
+    }
     await garantirAbaComCabecalhos('MATRIZ_DECISAO', ['ID_MATRIZ','TEMA','SETOR_PRINCIPAL','SETORES_APOIO','SLA_HORAS','PRIORIDADE','GERA_RNC','APROVACAO','FOLLOW_UP','REGRAS']);
     const data = await lerAba('MATRIZ_DECISAO', 500);
     res.json({ sucesso: true, itens: data });
@@ -1542,8 +1768,20 @@ app.get('/api/tipos', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL',
   catch (e) { res.status(500).json({sucesso:false,erro:e.message,dados:[]}); }
 });
 app.get('/api/sla', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
-  try { const data=await lerAba('SLA_ESCALONAMENTO',50).catch(()=>[]); res.json({sucesso:true,total:data.length,itens:data}); }
-  catch (e) { res.status(500).json({sucesso:false,erro:e.message,dados:[]}); }
+  try {
+    // F12: tenta PostgreSQL primeiro
+    if (conhecimentoRepo) {
+      try {
+        const filtros = {};
+        if (req.query.empresaId) filtros.empresaId = req.query.empresaId;
+        if (req.query.tipo) filtros.tipo = req.query.tipo;
+        const sla = await conhecimentoRepo.findSla(filtros);
+        if (sla) return res.json({ sucesso: true, total: 1, itens: [sla], fonte: 'postgresql' });
+      } catch (e) { console.warn('[F12] GET /sla PG falhou:', e.message); }
+    }
+    const data=await lerAba('SLA_ESCALONAMENTO',50).catch(()=>[]);
+    res.json({sucesso:true,total:data.length,itens:data});
+  } catch (e) { res.status(500).json({sucesso:false,erro:e.message,dados:[]}); }
 });
 app.get('/api/validacoes', requerPerfil('MASTER','ANALISTA SAC'), async (req, res) => {
   try { const data=await lerAba('HISTORICO_VALIDACOES',1000).catch(()=>[]); res.json({sucesso:true,total:data.length,itens:data}); }
@@ -2165,6 +2403,119 @@ app.use((req, res) => {
 app.use((err, req, res, next) => {
   console.error(err);
   res.status(500).json({ sucesso:false, erro:'Erro interno do servidor.' });
+});
+
+// ===== IMPORTADOR TEMPORÁRIO (F3) — remover após uso =====
+app.get('/api/_importar', async (req, res) => {
+  const secret = process.env.SESSION_SECRET || '';
+  if (!secret || req.query.secret !== secret) {
+    return res.status(403).json({ erro: 'Acesso negado.' });
+  }
+  const etapa = req.query.etapa || 'status';
+
+  if (etapa === 'status') {
+    return res.json({ ok: true, mensagem: 'Importador disponível.', etapas: ['empresas','usuarios','clientes','manifestacoes'] });
+  }
+
+  try {
+    const { google: goog } = require('googleapis');
+    const prismaDb = require('../database/connection');
+
+    async function getSheetsClient() {
+      const creds = JSON.parse(process.env.GOOGLE_CREDENTIALS);
+      const auth = new goog.auth.GoogleAuth({ credentials: creds, scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'] });
+      const client = await auth.getClient();
+      return goog.sheets({ version: 'v4', auth: client });
+    }
+    async function lerAbaLocal(sheets, nome, max = 5000) {
+      const r = await sheets.spreadsheets.values.get({ spreadsheetId: process.env.SPREADSHEET_ID, range: `${nome}!A1:AZ${max}` });
+      const rows = r.data.values || [];
+      if (rows.length < 2) return [];
+      const headers = rows[0];
+      return rows.slice(1).map(row => { const o = {}; headers.forEach((h, i) => { if (h) o[h] = row[i] || ''; }); return o; });
+    }
+
+    const sheets = await getSheetsClient();
+    const log = [];
+
+    if (etapa === 'empresas') {
+      const rows = await lerAbaLocal(sheets, 'EMPRESAS').catch(() => []);
+      let ok = 0;
+      for (const r of rows) {
+        const codigo = (r.CODIGO || r.NOME || '').trim().toUpperCase();
+        const nome = (r.NOME || codigo).trim();
+        if (!codigo) continue;
+        await prismaDb.empresa.upsert({ where: { codigo }, update: { nome }, create: { codigo, nome, cnpj: r.CNPJ || null } }).catch(() => {});
+        ok++;
+      }
+      log.push(`Empresas: ${ok} processadas`);
+    }
+
+    if (etapa === 'usuarios') {
+      const rows = await lerAbaLocal(sheets, 'USUARIOS').catch(() => []);
+      const empresas = await prismaDb.empresa.findMany();
+      const perfis = await prismaDb.perfil.findMany();
+      const empDefault = empresas[0];
+      let ok = 0, erros = 0;
+      for (const r of rows) {
+        const email = (r.EMAIL || '').toLowerCase().trim();
+        const nome = (r.NOME || r.NOME_COMPLETO || '').trim();
+        if (!email || !nome) { erros++; continue; }
+        const perf = perfis.find(p => p.codigo.toLowerCase().includes((r.PERFIL||'').toLowerCase().split(' ')[0])) || perfis[0];
+        if (!empDefault || !perf) { erros++; continue; }
+        await prismaDb.usuario.upsert({
+          where: { email },
+          update: { nome, idOriginal: r.ID_USUARIO || null },
+          create: { email, nome, senhaHash: r.SENHA_HASH || r.SENHA || 'PENDENTE', idOriginal: r.ID_USUARIO || null, empresaId: empDefault.id, perfilId: perf.id, ativo: (r.STATUS||'ATIVO').toUpperCase() !== 'INATIVO' },
+        }).catch(() => { erros++; });
+        ok++;
+      }
+      log.push(`Usuários: ${ok} processados, ${erros} erros`);
+    }
+
+    if (etapa === 'clientes') {
+      const mans = await lerAbaLocal(sheets, 'MANIFESTACOES', 5000).catch(() => []);
+      const empresas = await prismaDb.empresa.findMany();
+      const empDefault = empresas[0];
+      const nomes = [...new Set(mans.map(m => (m.EMPRESA_RECLAMANTE||'').trim()).filter(Boolean))];
+      let ok = 0;
+      for (const nome of nomes) {
+        const exist = await prismaDb.cliente.findFirst({ where: { nome, empresaId: empDefault.id } });
+        if (!exist) await prismaDb.cliente.create({ data: { nome, empresaId: empDefault.id } }).catch(() => {});
+        ok++;
+      }
+      log.push(`Clientes: ${ok} processados`);
+    }
+
+    if (etapa === 'manifestacoes') {
+      const rows = await lerAbaLocal(sheets, 'MANIFESTACOES', 5000).catch(() => []);
+      const empresas = await prismaDb.empresa.findMany();
+      const empDefault = empresas[0];
+      let ok = 0, ignorados = 0, erros = 0;
+      for (const r of rows) {
+        const idOriginal = (r.ID_MANIFESTACAO||'').trim();
+        if (!idOriginal) { erros++; continue; }
+        const exist = await prismaDb.manifestacao.findFirst({ where: { idOriginal } });
+        if (exist) { ignorados++; continue; }
+        const emp = empresas.find(e => e.nome.toLowerCase().includes((r.EMPRESA_RECLAMADA||'').toLowerCase())) || empDefault;
+        await prismaDb.manifestacao.create({ data: {
+          protocolo: idOriginal, idOriginal, empresaId: emp.id,
+          empresaNome: r.EMPRESA_RECLAMADA || r.EMPRESA_RECLAMANTE || emp.nome,
+          contato: r.EMPRESA_RECLAMANTE || null,
+          descricao: r.DESCRICAO || r.DESCRICAO_MANIFESTACAO || '',
+          tipo: r.TIPO || 'RECLAMACAO', produtoNome: r.PRODUTO || null, prioridade: r.PRIORIDADE || 'Media',
+          status: r.STATUS || 'ABERTA',
+          criadaEm: r.DATA_ABERTURA ? new Date(r.DATA_ABERTURA) : new Date(),
+        }}).catch(() => { erros++; });
+        ok++;
+      }
+      log.push(`Manifestações: ${ok} novas, ${ignorados} já existiam, ${erros} erros`);
+    }
+
+    res.json({ ok: true, log });
+  } catch (e) {
+    res.status(500).json({ ok: false, erro: e.message });
+  }
 });
 
 if (require.main === module) {
