@@ -2423,7 +2423,13 @@ app.get('/api/_importar', async (req, res) => {
         const r = await sheets.spreadsheets.values.get({ spreadsheetId: process.env.SPREADSHEET_ID, range: 'MANIFESTACOES!A1:E3' });
         amostra = r.data.values;
       } catch(e2) { erroAmostra = e2.message; }
-      return res.json({ ok: true, spreadsheetId: process.env.SPREADSHEET_ID, titulo: meta.data.properties.title, totalAbas: abas.length, amostra, erroAmostra });
+      // Tenta ler USUARIOS
+      let usuarios = null;
+      try {
+        const ru = await sheets.spreadsheets.values.get({ spreadsheetId: process.env.SPREADSHEET_ID, range: 'USUARIOS!A1:C5' });
+        usuarios = ru.data.values;
+      } catch(e3) { usuarios = `erro: ${e3.message}`; }
+      return res.json({ ok: true, spreadsheetId: process.env.SPREADSHEET_ID, titulo: meta.data.properties.title, totalAbas: abas.length, amostra, erroAmostra, usuarios });
     } catch(e) {
       return res.status(500).json({ ok: false, erro: e.message });
     }
