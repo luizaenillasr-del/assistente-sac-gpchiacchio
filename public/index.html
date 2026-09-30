@@ -3620,10 +3620,10 @@ function abrirDossie(item) {
   const cliente = isMan ? (item.NOME_CONTATO || item.NOME || item.CONTATO || '--') : (item['Contato'] || '--');
   const tipo = isMan ? (item.TIPO || 'Reclamação') : (item['Motivo da Reclamação'] || '--');
   const status = isMan ? (item.STATUS || 'EM ANÁLISE') : (item['Status'] || item['Situação Final'] || '--');
-  const desc = isMan ? (item.DESCRICAO_RECLAMACAO || '--') : (item['Descrição da Reclamação'] || '--');
-  const tratativa = isMan ? (item.TRATATIVA || '--') : (item['Tratativa do Problema'] || '--');
+  const desc = isMan ? (item.DESCRICAO_MANIFESTACAO || item.DESCRICAO || item.DESCRICAO_RECLAMACAO || '--') : (item['Descrição da Reclamação'] || '--');
+  const tratativa = isMan ? (item.TRATATIVA_REALIZADA || item.TRATATIVA_APLICAVEL || item.TRATATIVA || '--') : (item['Tratativa do Problema'] || '--');
   const devolutiva = isMan ? (item.DEVOLUTIVA_ENVIADA || '') : (item['Devolutiva ao Cliente'] || '');
-  const data = isMan ? item.DATA_CRIACAO : item['Data do Registro'];
+  const data = isMan ? (item.DATA_ABERTURA || item.DATA_REGISTRO || item.DATA_CRIACAO) : item['Data do Registro'];
   const dataFmt = data ? (typeof data === 'number' ? new Date((data-25569)*86400*1000).toLocaleDateString('pt-BR') : new Date(data).toLocaleDateString('pt-BR')) : '--';
 
   // Header
@@ -3794,7 +3794,7 @@ function renderAcompanhamento(data) {
         return `<tr>
           <td>
             <div class="num-bold">${m.ID_MANIFESTACAO || '--'}</div>
-            <div class="num-date">${m.DATA_CRIACAO ? new Date(m.DATA_CRIACAO).toLocaleDateString('pt-BR') : '--'}</div>
+            <div class="num-date">${(m.DATA_ABERTURA||m.DATA_REGISTRO||m.DATA_CRIACAO) ? new Date(m.DATA_ABERTURA||m.DATA_REGISTRO||m.DATA_CRIACAO).toLocaleDateString('pt-BR') : '--'}</div>
           </td>
           <td>
             <div class="cliente-primary">${m.EMPRESA_NORMALIZADA || m.EMPRESA_RECLAMANTE || '--'}</div>
@@ -3919,7 +3919,7 @@ function renderBanco() {
   if (bancoFiltros.procedencia) data = data.filter(m => (m.DECISAO_ANALISTA||m.RESULTADO_FINAL||'') === bancoFiltros.procedencia);
   if (bancoFiltros.periodo) {
     const cutoff = new Date(Date.now() - bancoFiltros.periodo * 86400000);
-    data = data.filter(m => { const d = new Date(m.DATA_CRIACAO); return isNaN(d) || d >= cutoff; });
+    data = data.filter(m => { const d = new Date(m.DATA_ABERTURA||m.DATA_REGISTRO||m.DATA_CRIACAO); return isNaN(d) || d >= cutoff; });
   }
 
   if (search) {
@@ -3928,7 +3928,7 @@ function renderBanco() {
       (m.EMPRESA_NORMALIZADA||'').toLowerCase().includes(search) ||
       (m.EMPRESA_RECLAMANTE||'').toLowerCase().includes(search) ||
       (m.CONTATO||'').toLowerCase().includes(search) ||
-      (m.DESCRICAO_RECLAMACAO||'').toLowerCase().includes(search) ||
+      (m.DESCRICAO_MANIFESTACAO||m.DESCRICAO||m.DESCRICAO_RECLAMACAO||'').toLowerCase().includes(search) ||
       (m.CNPJ||'').toLowerCase().includes(search)
     );
   }
@@ -3972,7 +3972,7 @@ function renderBanco() {
         return `<tr>
           <td>
             <div class="num-bold">${m.ID_MANIFESTACAO || '--'}</div>
-            <div class="num-date">${fmtDate(m.DATA_CRIACAO)}</div>
+            <div class="num-date">${fmtDate(m.DATA_ABERTURA||m.DATA_REGISTRO||m.DATA_CRIACAO)}</div>
           </td>
           <td>
             <div class="cliente-primary">${m.EMPRESA_NORMALIZADA || m.EMPRESA_RECLAMANTE || '--'}</div>
@@ -4360,7 +4360,7 @@ async function abrirFichaSetor(nomeSetor) {
         return `<tr>
           <td>
             <div class="num-bold">${m.ID_MANIFESTACAO || '--'}</div>
-            <div class="num-date">${m.DATA_CRIACAO ? new Date(m.DATA_CRIACAO).toLocaleDateString('pt-BR') : '--'}</div>
+            <div class="num-date">${(m.DATA_ABERTURA||m.DATA_REGISTRO||m.DATA_CRIACAO) ? new Date(m.DATA_ABERTURA||m.DATA_REGISTRO||m.DATA_CRIACAO).toLocaleDateString('pt-BR') : '--'}</div>
           </td>
           <td><div class="cliente-primary">${m.EMPRESA_NORMALIZADA || m.EMPRESA_RECLAMANTE || '--'}</div><div class="cliente-secondary">${m.CONTATO || '--'}</div></td>
           <td>${m.EMPRESA_RECLAMADA || '--'}</td>
@@ -6314,7 +6314,7 @@ function renderAcompanhamentoV2(data){
     return `<tr>
       <td>
         <div class="num-bold">${esc(m.ID_MANIFESTACAO||'--')}</div>
-        <div class="num-date">${m.DATA_CRIACAO ? new Date(m.DATA_CRIACAO).toLocaleDateString('pt-BR') : '--'}</div>
+        <div class="num-date">${(m.DATA_ABERTURA||m.DATA_REGISTRO||m.DATA_CRIACAO) ? new Date(m.DATA_ABERTURA||m.DATA_REGISTRO||m.DATA_CRIACAO).toLocaleDateString('pt-BR') : '--'}</div>
       </td>
       <td>
         <div class="cliente-primary">${esc(m.EMPRESA_NORMALIZADA||m.EMPRESA_RECLAMANTE||'--')}</div>
