@@ -552,8 +552,8 @@ app.get('/api/manifestacoes', async (req, res) => {
           let itens = pgData.map(m => ({
             ID_MANIFESTACAO: m.protocolo || m.idOriginal || String(m.id),
             DATA_ABERTURA: m.criadaEm?.toISOString?.() || '',
-            EMPRESA_RECLAMANTE: m.empresaReclamante || '',
-            EMPRESA_RECLAMADA: m.empresa?.nome || '',
+            EMPRESA_RECLAMANTE: m.contato || m.empresaNome || '',
+            EMPRESA_RECLAMADA: m.empresa?.nome || m.empresaNome || '',
             DESCRICAO: m.descricao || '',
             STATUS: m.status || '',
             TIPO: m.tipo || '',
@@ -593,8 +593,8 @@ app.get('/api/manifestacoes/:id', async (req, res) => {
           const item = {
             ID_MANIFESTACAO: pg.protocolo || pg.idOriginal || String(pg.id),
             DATA_ABERTURA: pg.criadaEm?.toISOString?.() || '',
-            EMPRESA_RECLAMANTE: pg.empresaReclamante || '',
-            EMPRESA_RECLAMADA: pg.empresa?.nome || '',
+            EMPRESA_RECLAMANTE: pg.contato || pg.empresaNome || '',
+            EMPRESA_RECLAMADA: pg.empresa?.nome || pg.empresaNome || '',
             DESCRICAO: pg.descricao || '',
             STATUS: pg.status || '',
             TIPO: pg.tipo || '',
@@ -642,7 +642,7 @@ app.post('/api/manifestacoes', requerPerfil('MASTER','ANALISTA SAC'), async (req
     };
     await appendObjeto('MANIFESTACOES', objeto);
     // F6: dual-write para PostgreSQL (não-bloqueante)
-    if (manifestacaoRepo && empresaRepo) {
+    if (manifestacaoRepo) {
       manifestacaoRepo.upsertFromSheets({
         ID_MANIFESTACAO: id,
         EMPRESA_RECLAMANTE: empresaReclamante,
