@@ -1,8 +1,8 @@
 'use strict';
 // ============================================================
-// CÉREBRO DO ASSISTENTE SAC — v3.0
-// Módulo central de inteligência: análise, rastreabilidade,
-// regras, histórico, conhecimento, IA e validação humana.
+// CÉREBRO DO ASSISTENTE SAC — v4.0
+// PostgreSQL (Neon/Prisma) como fonte primária.
+// Google Sheets como fallback durante período de transição.
 // ============================================================
 
 const sheets = require('./sheets');
@@ -10,11 +10,21 @@ const tratativaEngine = require('./tratativaEngine');
 const devolutivaEngine = require('./devolutivaEngine');
 const matrizTratamento = require('./matrizTratamentoService');
 const assertividade = require('./assertividadeService');
+const aiService = require('./aiService');
 
-const CEREBRO_VERSION = '3.0.0';
-const BASE_CONHECIMENTO_VERSION = '1.0';
-const POLITICAS_VERSION = '1.0';
-const MATRIZ_VERSION = '1.0';
+let manifestacaoRepo, conhecimentoRepo, prisma;
+try {
+  manifestacaoRepo = require('../../database/repositories/manifestacaoRepository');
+  conhecimentoRepo = require('../../database/repositories/conhecimentoRepository');
+  prisma = require('../../database/connection');
+} catch (e) {
+  console.warn('Repositórios PG não disponíveis, usando Sheets:', e.message);
+}
+
+const CEREBRO_VERSION = '4.0.0';
+const BASE_CONHECIMENTO_VERSION = '2.0';
+const POLITICAS_VERSION = '2.0';
+const MATRIZ_VERSION = '2.0';
 
 // ──────────────────────────────────────────────────────────────
 // UTILITÁRIOS
@@ -64,14 +74,47 @@ function calcularSimilaridade(texto1, texto2) {
 }
 
 // ──────────────────────────────────────────────────────────────
-// 1. CASOS SIMILARES
+// 1. CASOS SIMILARES (PostgreSQL → fallback Sheets)
 // ──────────────────────────────────────────────────────────────
 
 async function buscarCasosSimilares(manifestacao, limite = 8) {
+  const descricao = campo(manifestacao, ['DESCRICAO','DESCRIÇÃO','descricao','ORIG_DESCRICAO_RECLAMACAO','DESCRICAO_RECLAMACAO']);
+  if (!descricao) return [];
+
+  try {
+    // Tentar PostgreSQL primeiro
+    if (manifestacaoRepo) {
+      const historico = await manifestacaoRepo.buscarParaSimilaridade(2000);
+      if (historico.length > 0) {
+        return historico
+          .map(h => {
+            const dh = h.descricao || '';
+            return {
+              id: h.idOriginal || String(h.id),
+              empresa: h.empresa?.nome || '',
+              cliente: h.cliente?.nome || '',
+              descricao: dh.slice(0, 300),
+              tipo: h.tipo || '',
+              setor: h.setor?.nome || '',
+              tratativa: h.tratativas?.[0]?.descricaoTratativa || '',
+              resultado: h.tratativas?.[0]?.resultado || '',
+              data: h.criadaEm ? h.criadaEm.toISOString().split('T')[0] : '',
+              protocolo: h.protocolo || h.idOriginal || String(h.id),
+              similaridade: calcularSimilaridade(descricao, dh),
+            };
+          })
+          .filter(c => c.similaridade >= 10)
+          .sort((a, b) => b.similaridade - a.similaridade)
+          .slice(0, limite);
+      }
+    }
+  } catch (e) {
+    console.warn('Fallback Sheets para similares:', e.message);
+  }
+
+  // Fallback: Google Sheets
   try {
     const historico = await sheets.lerAba('BANCO_HISTORICO', 5000);
-    const descricao = campo(manifestacao, ['DESCRICAO','DESCRIÇÃO','ORIG_DESCRICAO_RECLAMACAO','DESCRICAO_RECLAMACAO','MOTIVO_RELATADO_BRUTO']);
-    if (!descricao) return [];
     return historico
       .filter(h => campo(h, ['ORIG_DESCRICAO_RECLAMACAO','DESCRICAO_RECLAMACAO','DESCRICAO']))
       .map(h => {
@@ -84,9 +127,8 @@ async function buscarCasosSimilares(manifestacao, limite = 8) {
           motivo: campo(h, ['ORIG_MOTIVO_RELATADO','MOTIVO_RELATADO_BRUTO','MOTIVO']),
           tipo: campo(h, ['COMP_TIPO_PROBLEMA_VALIDADO','TIPO_PROBLEMA_VALIDADO','TIPO']),
           causa: campo(h, ['COMP_CAUSA_PROVAVEL','CAUSA_RAIZ','CAUSA']),
-          subcausa: campo(h, ['COMP_SUBCAUSA','SUBCAUSA','SUB_CAUSA']),
           setor: campo(h, ['SETOR_RESPONSAVEL','SETOR']),
-          tratativa: campo(h, ['TRATATIVA_REALIZADA','ORIG_TRATATIVA','TRATATIVA','ORIG_TRATATIVA_REALIZADA']),
+          tratativa: campo(h, ['TRATATIVA_REALIZADA','ORIG_TRATATIVA','TRATATIVA']),
           resultado: campo(h, ['RESULTADO','STATUS_FINAL','DESFECHO']),
           devolutiva: campo(h, ['DEVOLUTIVA_FINAL','ORIG_DEVOLUTIVA','DEVOLUTIVA']),
           data: campo(h, ['ORIG_DATA_ABERTURA','DATA_ABERTURA']),
@@ -104,29 +146,77 @@ async function buscarCasosSimilares(manifestacao, limite = 8) {
 }
 
 // ──────────────────────────────────────────────────────────────
-// 2. REINCIDÊNCIA
+// 2. REINCIDÊNCIA (PostgreSQL → fallback Sheets)
 // ──────────────────────────────────────────────────────────────
 
 async function detectarReincidencia(manifestacao) {
+  const clienteNome = normalizar(campo(manifestacao, ['EMPRESA_RECLAMANTE','CLIENTE','CONTATO','nomeCliente']));
+  const produto = normalizar(campo(manifestacao, ['PRODUTO','produto']));
+  const idAtual = campo(manifestacao, ['ID_MANIFESTACAO','protocolo']);
+
+  if (!clienteNome) return { nivel: 'SEM_REINCIDENCIA', detectada: false, quantidade: 0, casos: [] };
+
+  try {
+    if (prisma) {
+      // Busca cliente por nome
+      const cliente = await prisma.cliente.findFirst({
+        where: { nome: { contains: clienteNome, mode: 'insensitive' } },
+      });
+      if (cliente) {
+        const manifestacoes = await prisma.manifestacao.findMany({
+          where: {
+            clienteId: cliente.id,
+            protocolo: idAtual ? { not: idAtual } : undefined,
+          },
+          orderBy: { criadaEm: 'desc' },
+          take: 50,
+          select: {
+            id: true, protocolo: true, descricao: true, tipo: true,
+            produto: true, criadaEm: true, status: true,
+            tratativas: { select: { descricaoTratativa: true }, take: 1 },
+          },
+        });
+
+        const comMesmoProblema = produto
+          ? manifestacoes.filter(m => normalizar(m.produto || '').includes(produto.slice(0, 5)))
+          : [];
+
+        let nivel = 'SEM_REINCIDENCIA';
+        if (comMesmoProblema.length >= 2) nivel = 'REINCIDENCIA_CONFIRMADA';
+        else if (comMesmoProblema.length >= 1 || manifestacoes.length >= 3) nivel = 'POSSIVEL_REINCIDENCIA';
+
+        return {
+          nivel,
+          detectada: manifestacoes.length > 0,
+          quantidade: manifestacoes.length,
+          quantidadeMesmoProblema: comMesmoProblema.length,
+          fonte: 'postgresql',
+          casos: manifestacoes.slice(0, 10).map(m => ({
+            id: m.protocolo || String(m.id),
+            data: m.criadaEm?.toISOString().split('T')[0],
+            motivo: m.tipo,
+            tratativa: m.tratativas?.[0]?.descricaoTratativa || '',
+            produto: m.produto,
+          })),
+        };
+      }
+    }
+  } catch (e) {
+    console.warn('Fallback Sheets para reincidência:', e.message);
+  }
+
+  // Fallback Sheets
   try {
     const historico = await sheets.lerAba('MANIFESTACOES', 5000);
     const historicoBanco = await sheets.lerAba('BANCO_HISTORICO', 5000).catch(() => []);
     const todos = [...historico, ...historicoBanco];
 
-    const cliente = normalizar(campo(manifestacao, ['EMPRESA_RECLAMANTE','CLIENTE','CONTATO','ORIG_CONTATO']));
-    const produto = normalizar(campo(manifestacao, ['PRODUTO']));
-    const tipo = normalizar(campo(manifestacao, ['TIPO','TIPO_PROBLEMA_VALIDADO']));
-    const idAtual = campo(manifestacao, ['ID_MANIFESTACAO','protocolo']);
-
-    if (!cliente) return { nivel: 'SEM_REINCIDENCIA', detectada: false, quantidade: 0, casos: [] };
-
     const casos = todos.filter(h => {
       const cH = normalizar(campo(h, ['ORIG_CONTATO','EMPRESA_RECLAMANTE','CLIENTE','CONTATO']));
       const idH = campo(h, ['ID_HISTORICO','ID_MANIFESTACAO','ID']);
-      return cH && cH === cliente && idH !== idAtual;
+      return cH && cH === clienteNome && idH !== idAtual;
     });
 
-    // Verificar reincidência por produto
     const casosComMesmoProblema = produto
       ? casos.filter(h => normalizar(campo(h, ['PRODUTO'])).includes(produto.slice(0, 5)))
       : [];
@@ -140,9 +230,10 @@ async function detectarReincidencia(manifestacao) {
       detectada: casos.length > 0,
       quantidade: casos.length,
       quantidadeMesmoProblema: casosComMesmoProblema.length,
+      fonte: 'sheets',
       casos: casos.slice(-10).map(h => ({
         id: campo(h, ['ID_HISTORICO','ID_MANIFESTACAO']),
-        data: campo(h, ['ORIG_DATA_ABERTURA','DATA_ABERTURA','DATA_CRIACAO']),
+        data: campo(h, ['ORIG_DATA_ABERTURA','DATA_ABERTURA']),
         motivo: campo(h, ['ORIG_MOTIVO_RELATADO','MOTIVO','TIPO']),
         causa: campo(h, ['COMP_CAUSA_PROVAVEL','CAUSA_RAIZ','CAUSA']),
         tratativa: campo(h, ['TRATATIVA_REALIZADA','ORIG_TRATATIVA']),
@@ -185,11 +276,69 @@ function calcularSLA(dataAbertura, slaHoras) {
   };
 }
 
+// SLA configurável do banco
+async function obterSlaConfigurado({ empresaId, setorId, tipo, categoria } = {}) {
+  try {
+    if (conhecimentoRepo) {
+      const sla = await conhecimentoRepo.findSla({ empresaId, setorId, tipo, categoria });
+      if (sla) return sla.prazoHoras;
+    }
+  } catch (e) {}
+
+  // Fallback via Sheets
+  try {
+    const slaData = await sheets.lerAba('SLA_ESCALONAMENTO', 50).catch(() => []);
+    const slaSetor = slaData.find(s => s.SETOR && s.SETOR.includes('SAC'));
+    if (slaSetor) {
+      const match = (slaSetor.SLA_PADRAO_HORAS || '72').match(/\d+/);
+      if (match) return parseInt(match[0]);
+    }
+  } catch (e) {}
+
+  return 72; // padrão
+}
+
 // ──────────────────────────────────────────────────────────────
-// 4. BASE DE CONHECIMENTO
+// 4. BASE DE CONHECIMENTO (PostgreSQL → fallback Sheets)
 // ──────────────────────────────────────────────────────────────
 
-async function consultarBaseConhecimento(tipo, setor) {
+async function consultarBaseConhecimento(tipo, setor, empresaId) {
+  const relevantes = [];
+
+  try {
+    if (conhecimentoRepo) {
+      // Resolver setorId se tiver nome de setor
+      let setorId;
+      if (setor && prisma) {
+        const setorObj = await prisma.setor.findFirst({
+          where: { nome: { contains: setor, mode: 'insensitive' } },
+        });
+        setorId = setorObj?.id;
+      }
+
+      const [politicas, procedimentos] = await Promise.all([
+        conhecimentoRepo.findPoliticas({ empresaId, setorId }),
+        conhecimentoRepo.findProcedimentos({ empresaId, setorId, tipo }),
+      ]);
+
+      politicas.forEach(p => relevantes.push({
+        tipo: 'Política', id: String(p.id), nome: p.nome, descricao: p.descricao,
+        setor, versao: POLITICAS_VERSION, fonte: 'postgresql',
+      }));
+      procedimentos.forEach(p => relevantes.push({
+        tipo: 'Procedimento', id: String(p.id), nome: p.nome, passos: p.passos,
+        setor, versao: BASE_CONHECIMENTO_VERSION, fonte: 'postgresql',
+      }));
+
+      if (relevantes.length > 0) {
+        return { status: 'CONHECIMENTO_RELEVANTE', itens: relevantes, total: relevantes.length, fonte: 'POSTGRESQL', versao: BASE_CONHECIMENTO_VERSION };
+      }
+    }
+  } catch (e) {
+    console.warn('Fallback Sheets para conhecimento:', e.message);
+  }
+
+  // Fallback Sheets
   try {
     const [politicas, procedimentos] = await Promise.all([
       sheets.lerAba('POLITICAS', 200).catch(() => []),
@@ -198,23 +347,14 @@ async function consultarBaseConhecimento(tipo, setor) {
 
     const setorN = normalizar(setor || '');
     const tipoN = normalizar(tipo || '');
-    const relevantes = [];
 
     politicas.forEach(p => {
       const setorP = normalizar(p.SETOR_RESPONSAVEL || p.SETOR || '');
       const ativo = (p.ATIVO || 'SIM').toUpperCase() !== 'NAO';
       if (ativo && (setorN && setorP && setorP.includes(setorN.split(' ')[0]))) {
-        relevantes.push({
-          tipo: 'Política',
-          id: p.ID_POLITICA || p.ID,
-          nome: p.POLITICA || p.NOME,
-          descricao: p.DESCRICAO || '',
-          setor: p.SETOR_RESPONSAVEL || p.SETOR,
-          versao: POLITICAS_VERSION,
-        });
+        relevantes.push({ tipo: 'Política', id: p.ID_POLITICA || p.ID, nome: p.POLITICA || p.NOME, descricao: p.DESCRICAO || '', setor: p.SETOR_RESPONSAVEL || p.SETOR, versao: POLITICAS_VERSION, fonte: 'sheets' });
       }
     });
-
     procedimentos.forEach(p => {
       const setorP = normalizar(p.SETOR_RESPONSAVEL || p.SETOR || '');
       const tiposProc = normalizar(p.TIPO_RECLAMACAO || '');
@@ -222,35 +362,28 @@ async function consultarBaseConhecimento(tipo, setor) {
       const matchSetor = setorN && setorP && setorP.includes(setorN.split(' ')[0]);
       const matchTipo = tipoN && tiposProc && tiposProc.includes(tipoN.split(' ')[0]);
       if (ativo && (matchSetor || matchTipo)) {
-        relevantes.push({
-          tipo: 'Procedimento',
-          id: p.ID_PROCEDIMENTO || p.ID,
-          nome: p.NOME,
-          passos: p.PASSOS || '',
-          setor: p.SETOR_RESPONSAVEL || p.SETOR,
-          versao: BASE_CONHECIMENTO_VERSION,
-        });
+        relevantes.push({ tipo: 'Procedimento', id: p.ID_PROCEDIMENTO || p.ID, nome: p.NOME, passos: p.PASSOS || '', setor: p.SETOR_RESPONSAVEL || p.SETOR, versao: BASE_CONHECIMENTO_VERSION, fonte: 'sheets' });
       }
     });
-
-    return {
-      status: relevantes.length > 0 ? 'CONHECIMENTO_RELEVANTE' : 'CONHECIMENTO_INSUFICIENTE',
-      itens: relevantes,
-      total: relevantes.length,
-      fonte: 'POLITICAS + PROCEDIMENTOS',
-      versao: BASE_CONHECIMENTO_VERSION,
-    };
   } catch (e) {
     console.error('Erro base conhecimento:', e.message);
-    return { status: 'CONHECIMENTO_INSUFICIENTE', itens: [], total: 0 };
   }
+
+  return {
+    status: relevantes.length > 0 ? 'CONHECIMENTO_RELEVANTE' : 'CONHECIMENTO_INSUFICIENTE',
+    itens: relevantes,
+    total: relevantes.length,
+    fonte: 'POLITICAS + PROCEDIMENTOS (sheets)',
+    versao: BASE_CONHECIMENTO_VERSION,
+  };
 }
 
 // ──────────────────────────────────────────────────────────────
-// 5. SUGESTÃO DE TRATATIVA
+// 5. TRATATIVAS HARDCODED (F8 — ainda existem como fallback seguro)
 // ──────────────────────────────────────────────────────────────
 
-// Tratativas específicas por palavra-chave no tipo/descrição do problema
+// REGRAS DE TRATATIVA — serão migradas para banco progressivamente.
+// Enquanto o banco não tiver dados de regras, estas são o fallback determinístico.
 const TRATATIVAS_POR_MOTIVO = [
   { palavras: ['arte','impressao','impressão','grafica','gráfica','layout','embalagem personalizada','especificacao','especificação','divergencia de arte'],
     sugestao: 'Solicitar ao cliente o arquivo da arte aprovada e comparar com amostra ou foto da embalagem reclamada. Acionar o setor responsável (arte/design/qualidade) para verificar se houve desvio na reprodução. Identificar responsabilidade (erro interno ou briefing do cliente) e definir prazo para reimpressão, crédito ou justificativa técnica.',
@@ -307,36 +440,34 @@ const TRATATIVAS_PADRAO = {
   ],
 };
 
+// Tentar buscar regras do banco antes de usar hardcoded
+async function buscarRegrasDeBanco(tipo, setor, descricao, empresaId) {
+  if (!conhecimentoRepo) return null;
+  try {
+    const regras = await conhecimentoRepo.findRegras({ empresaId });
+    if (!regras.length) return null;
+
+    const textoBusca = normalizar((tipo || '') + ' ' + (descricao || ''));
+    for (const regra of regras) {
+      const palavras = (regra.palavrasGatilho || []).map(p => normalizar(p));
+      if (palavras.some(p => textoBusca.includes(p))) {
+        return { sugestao: regra.acao, acoes: [], confianca: 70, origem: 'BANCO_REGRAS' };
+      }
+    }
+  } catch (e) {}
+  return null;
+}
+
 function gerarSugestaoTratativaDefault(tipo, setores, descricao) {
   const textoBusca = normalizar((tipo||'') + ' ' + (descricao||''));
-  // Busca por motivo específico primeiro
   for (const regra of TRATATIVAS_POR_MOTIVO) {
     if (regra.palavras.some(p => textoBusca.includes(normalizar(p)))) {
-      return {
-        aplicavel: true,
-        confianca: 50,
-        sugestao: regra.sugestao,
-        acoes: regra.acoes || [],
-        quantidadeCasos: 0,
-        evidencia: [],
-        origem: 'PADRAO_ESPECIFICO',
-        todasSugestoes: [regra.sugestao],
-      };
+      return { aplicavel: true, confianca: 50, sugestao: regra.sugestao, acoes: regra.acoes || [], quantidadeCasos: 0, evidencia: [], origem: 'PADRAO_ESPECIFICO', todasSugestoes: [regra.sugestao] };
     }
   }
-  // Fallback por setor
   const setor = (Array.isArray(setores) ? setores[0] : setores) || 'SAC';
   const lista = TRATATIVAS_PADRAO[setor] || TRATATIVAS_PADRAO['SAC'];
-  return {
-    aplicavel: true,
-    confianca: 30,
-    sugestao: lista[0],
-    acoes: [],
-    quantidadeCasos: 0,
-    evidencia: [],
-    origem: 'PADRAO',
-    todasSugestoes: lista,
-  };
+  return { aplicavel: true, confianca: 30, sugestao: lista[0], acoes: [], quantidadeCasos: 0, evidencia: [], origem: 'PADRAO', todasSugestoes: lista };
 }
 
 function gerarSugestaoTratativa(casosSimilares, tipo, setores, descricao) {
@@ -348,16 +479,9 @@ function gerarSugestaoTratativa(casosSimilares, tipo, setores, descricao) {
   const [tratativa, quantidade] = ordenadas[0];
   const confianca = Math.round((quantidade / comTratativa.length) * 100);
   return {
-    aplicavel: true,
-    confianca,
-    sugestao: tratativa,
-    quantidadeCasos: quantidade,
-    evidencia: comTratativa
-      .filter(c => c.tratativa.trim() === tratativa)
-      .slice(0, 5)
-      .map(c => ({ id: c.id, compatibilidade: c.similaridade, tratativa: c.tratativa, resultado: c.resultado })),
-    origem: 'HISTORICO',
-    todasSugestoes: ordenadas.slice(0,4).map(([t])=>t),
+    aplicavel: true, confianca, sugestao: tratativa, quantidadeCasos: quantidade,
+    evidencia: comTratativa.filter(c => c.tratativa.trim() === tratativa).slice(0, 5).map(c => ({ id: c.id, compatibilidade: c.similaridade, tratativa: c.tratativa, resultado: c.resultado })),
+    origem: 'HISTORICO', todasSugestoes: ordenadas.slice(0,4).map(([t])=>t),
   };
 }
 
@@ -405,37 +529,24 @@ function calcularConfianca(dados) {
 }
 
 // ──────────────────────────────────────────────────────────────
-// 8. DETECÇÃO DE CONFLITOS
+// 8. CONFLITOS
 // ──────────────────────────────────────────────────────────────
 
 function detectarConflitos(dados) {
   const conflitos = [];
-
   const setorIA = normalizar(dados.ia?.setorSugerido || '');
   const setorRegra = normalizar(dados.setores?.[0] || '');
   if (setorIA && setorRegra && !setorIA.includes(setorRegra.split(' ')[0]) && !setorRegra.includes(setorIA.split(' ')[0])) {
-    conflitos.push({
-      tipo: 'CONFLITO_SETOR',
-      descricao: `IA sugere "${dados.ia?.setorSugerido}", regras indicam "${dados.setores?.[0]}"`,
-      fonte1: { origem: 'IA', valor: dados.ia?.setorSugerido },
-      fonte2: { origem: 'REGRAS_ROTEAMENTO', valor: dados.setores?.[0] },
-    });
+    conflitos.push({ tipo: 'CONFLITO_SETOR', descricao: `IA sugere "${dados.ia?.setorSugerido}", regras indicam "${dados.setores?.[0]}"`, fonte1: { origem: 'IA', valor: dados.ia?.setorSugerido }, fonte2: { origem: 'REGRAS_ROTEAMENTO', valor: dados.setores?.[0] } });
   }
-
   const tipoIA = normalizar(dados.ia?.classificacao || '');
   const tipoRegra = normalizar(dados.tipoDetectado || '');
   const excluir = ['nao identificado', 'não identificado', ''];
   if (tipoIA && tipoRegra && !excluir.includes(tipoIA) && !excluir.includes(tipoRegra)) {
     if (!tipoIA.includes(tipoRegra.split(' ')[0]) && !tipoRegra.includes(tipoIA.split(' ')[0])) {
-      conflitos.push({
-        tipo: 'CONFLITO_CLASSIFICACAO',
-        descricao: `IA classifica como "${dados.ia?.classificacao}", regras identificaram "${dados.tipoDetectado}"`,
-        fonte1: { origem: 'IA', valor: dados.ia?.classificacao },
-        fonte2: { origem: 'TIPOS_RECLAMACAO', valor: dados.tipoDetectado },
-      });
+      conflitos.push({ tipo: 'CONFLITO_CLASSIFICACAO', descricao: `IA classifica como "${dados.ia?.classificacao}", regras identificaram "${dados.tipoDetectado}"`, fonte1: { origem: 'IA', valor: dados.ia?.classificacao }, fonte2: { origem: 'TIPOS_RECLAMACAO', valor: dados.tipoDetectado } });
     }
   }
-
   return conflitos;
 }
 
@@ -445,63 +556,47 @@ function detectarConflitos(dados) {
 
 function gerarExplicabilidade(dados) {
   const linhas = [];
-
   linhas.push(`[CLASSIFICAÇÃO] Tipo: ${dados.tipoDetectado || 'não identificado'} (confiança: ${dados.tipoConfianca || 0}%)`);
-
   if (dados.regraAplicada) linhas.push(`[ROTEAMENTO] Regra aplicada: ${dados.regraAplicada}`);
   else linhas.push('[ROTEAMENTO] Nenhuma regra específica encontrada — setor sugerido por palavras-chave da descrição');
-
   if (dados.setores?.length) linhas.push(`[DESTINO] Setor(es): ${dados.setores.join(', ')}`);
-
   if (dados.casosSimilares?.length) {
     linhas.push(`[HISTÓRICO] ${dados.casosSimilares.length} caso(s) semelhante(s) encontrado(s):`);
-    dados.casosSimilares.slice(0, 3).forEach(c => {
-      linhas.push(`  • ${c.id} — ${c.similaridade}% similares — causa: ${c.causa || c.motivo || 'não registrada'}`);
-    });
+    dados.casosSimilares.slice(0, 3).forEach(c => linhas.push(`  • ${c.id} — ${c.similaridade}% similares — causa: ${c.causa || c.motivo || 'não registrada'}`));
   } else {
-    linhas.push('[HISTÓRICO] Nenhum caso similar encontrado no banco histórico');
+    linhas.push('[HISTÓRICO] Nenhum caso similar encontrado');
   }
-
   if (dados.reincidencia?.detectada) {
     linhas.push(`[REINCIDÊNCIA] ${dados.reincidencia.nivel}: ${dados.reincidencia.quantidade} ocorrência(s) anterior(es) para este cliente`);
   } else {
     linhas.push('[REINCIDÊNCIA] Sem reincidência detectada para este cliente');
   }
-
   if (dados.baseConhecimento?.total > 0) {
-    linhas.push(`[CONHECIMENTO] ${dados.baseConhecimento.total} documento(s) relevante(s) consultado(s) na base`);
-    dados.baseConhecimento.itens.slice(0, 2).forEach(d => linhas.push(`  • ${d.tipo}: ${d.nome}`));
+    linhas.push(`[CONHECIMENTO] ${dados.baseConhecimento.total} documento(s) relevante(s) — fonte: ${dados.baseConhecimento.fonte || 'desconhecida'}`);
   } else {
     linhas.push('[CONHECIMENTO] Base de conhecimento insuficiente para este tipo/setor');
   }
-
   if (dados.conflitos?.length) {
     linhas.push(`[CONFLITOS] ${dados.conflitos.length} conflito(s) detectado(s) — revisão humana recomendada`);
     dados.conflitos.forEach(c => linhas.push(`  • ${c.tipo}: ${c.descricao}`));
   }
-
-  linhas.push(`[CONFIANÇA] Nível: ${dados.confianca?.nivel || 'BAIXA'} (${dados.confianca?.score || 0} pontos) — ${(dados.confianca?.fatores || []).join('; ') || 'dados insuficientes'}`);
-
+  linhas.push(`[CONFIANÇA] Nível: ${dados.confianca?.nivel || 'BAIXA'} (${dados.confianca?.score || 0} pontos)`);
   return {
     resumo: linhas.join('\n'),
     linhas,
-    versoesSistema: {
-      cerebro: CEREBRO_VERSION,
-      baseConhecimento: BASE_CONHECIMENTO_VERSION,
-      politicas: POLITICAS_VERSION,
-      matriz: MATRIZ_VERSION,
-    },
+    versoesSistema: { cerebro: CEREBRO_VERSION, baseConhecimento: BASE_CONHECIMENTO_VERSION, politicas: POLITICAS_VERSION, matriz: MATRIZ_VERSION },
     geradaEm: new Date().toISOString(),
   };
 }
 
 // ──────────────────────────────────────────────────────────────
-// 10. CHAMADA IA (CLAUDE)
+// 10. CHAMADA IA — Usa aiService (F11 desacoplamento)
 // ──────────────────────────────────────────────────────────────
 
 async function chamarIA(contexto) {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return { disponivel: false, motivo: 'ANTHROPIC_API_KEY não configurada — análise determinística apenas' };
+  if (!aiService.isDisponivel()) {
+    return { disponivel: false, motivo: 'AI_PROVIDER não configurado — análise determinística apenas' };
+  }
 
   const prompt = `Você é o módulo de IA do Assistente SAC do Grupo Chiacchio (fabricante de embalagens e produtos plásticos). Analise a manifestação e responda SOMENTE em JSON válido, sem texto adicional.
 
@@ -517,9 +612,7 @@ ${JSON.stringify({
 CONTEXTO DO SISTEMA:
 - Tipo identificado pelas regras: ${contexto.tipoDetectado || 'não identificado'}
 - Setores sugeridos: ${(contexto.setores || []).join(', ') || 'nenhum'}
-- Casos similares (${contexto.casosSimilares?.length || 0} encontrados): ${JSON.stringify(
-  (contexto.casosSimilares || []).slice(0, 3).map(c => ({ id: c.id, similaridade: c.similaridade, causa: c.causa, tratativa: c.tratativa }))
-)}
+- Casos similares (${contexto.casosSimilares?.length || 0} encontrados): ${JSON.stringify((contexto.casosSimilares || []).slice(0, 3).map(c => ({ id: c.id, similaridade: c.similaridade, causa: c.causa, tratativa: c.tratativa })))}
 - Reincidência: ${contexto.reincidencia?.nivel || 'SEM_REINCIDENCIA'} (${contexto.reincidencia?.quantidade || 0} ocorrência(s))
 - SLA: ${contexto.sla?.status || 'SEM_SLA'} — ${contexto.sla?.horasRestantes != null ? contexto.sla.horasRestantes + 'h restantes' : 'sem dados'}
 - Conhecimento relevante (${contexto.baseConhecimento?.total || 0} documentos)
@@ -529,6 +622,7 @@ REGRAS OBRIGATÓRIAS:
 2. NÃO crie políticas nem regras que não existam no contexto.
 3. NÃO tome decisões irreversíveis. Recomende, não decida.
 4. A decisão final é sempre do humano.
+5. SAC NÃO gera RNC automaticamente. Apenas reincidência confirmada pode sugerir investigação.
 
 Responda com este JSON exato:
 {
@@ -545,38 +639,19 @@ Responda com este JSON exato:
 }`;
 
   try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 1024,
-        messages: [{ role: 'user', content: prompt }],
-      }),
-      signal: AbortSignal.timeout ? AbortSignal.timeout(15000) : undefined,
-    });
+    const resultado = await aiService.chamar(prompt, { contexto: 'analise_manifestacao', timeout: 15000 });
+    if (!resultado.disponivel) return resultado;
 
-    if (!resp.ok) {
-      const err = await resp.text().catch(() => '');
-      return { disponivel: true, erro: `API ${resp.status}: ${err.slice(0, 200)}` };
-    }
+    const json = aiService.extrairJSON(resultado.texto);
+    if (!json) return { disponivel: true, erro: 'Resposta fora do formato JSON', raw: resultado.texto?.slice(0, 500) };
 
-    const data = await resp.json();
-    const text = data.content?.[0]?.text || '';
-    const match = text.match(/\{[\s\S]*\}/);
-    if (!match) return { disponivel: true, erro: 'Resposta fora do formato JSON', raw: text.slice(0, 500) };
-
-    const resultado = JSON.parse(match[0]);
     return {
       disponivel: true,
-      modelo: data.model || 'claude-haiku-4-5',
-      tokensEntrada: data.usage?.input_tokens || 0,
-      tokensSaida: data.usage?.output_tokens || 0,
-      ...resultado,
+      modelo: resultado.modelo,
+      tokensEntrada: resultado.tokensEntrada,
+      tokensSaida: resultado.tokensSaida,
+      provider: resultado.provider,
+      ...json,
     };
   } catch (e) {
     return { disponivel: true, erro: e.message };
@@ -584,10 +659,42 @@ Responda com este JSON exato:
 }
 
 // ──────────────────────────────────────────────────────────────
-// 11. AUDITORIA DE ANÁLISE
+// 11. AUDITORIA (PostgreSQL → fallback Sheets)
 // ──────────────────────────────────────────────────────────────
 
 async function registrarAuditoriaAnalise(protocolo, usuario, analise) {
+  // Tentar salvar no PostgreSQL
+  if (prisma) {
+    try {
+      await prisma.logAnalise.create({
+        data: {
+          protocolo: protocolo || '',
+          usuario: usuario || 'sistema',
+          versaoCerebro: CEREBRO_VERSION,
+          tipoDetectado: analise.tipoDetectado || '',
+          setores: (analise.setores || []).join(', '),
+          similaresEncontrados: analise.casosSimilares?.length || 0,
+          reincidencia: analise.reincidencia?.nivel || 'SEM_REINCIDENCIA',
+          slaStatus: analise.sla?.status || 'SEM_SLA',
+          confiancaNivel: analise.confianca?.nivel || 'BAIXA',
+          confiancaScore: analise.confianca?.score || 0,
+          iaDisponivel: analise.ia?.disponivel || false,
+          iaModelo: analise.ia?.modelo || null,
+          iaTokensEntrada: analise.ia?.tokensEntrada || 0,
+          iaTokensSaida: analise.ia?.tokensSaida || 0,
+          conflitos: analise.conflitos?.length || 0,
+          necessitaValidacao: analise.necessitaValidacaoHumana || false,
+          tempoMs: analise.tempoMs || 0,
+          erros: (analise.erros || []).join('; ') || null,
+        },
+      });
+      return;
+    } catch (e) {
+      console.warn('Falha auditoria PG, usando Sheets:', e.message);
+    }
+  }
+
+  // Fallback Sheets
   try {
     await sheets.garantirAbaComCabecalhos('LOG_ANALISES', [
       'TIMESTAMP','PROTOCOLO','USUARIO','VERSAO_CEREBRO','TIPO_DETECTADO','SETORES',
@@ -596,43 +703,30 @@ async function registrarAuditoriaAnalise(protocolo, usuario, analise) {
       'CONFLITOS','NECESSITA_VALIDACAO','TEMPO_MS','ERROS',
     ]).catch(() => {});
 
-    const linha = {
-      TIMESTAMP: new Date().toISOString(),
-      PROTOCOLO: protocolo || '',
-      USUARIO: usuario || 'sistema',
-      VERSAO_CEREBRO: CEREBRO_VERSION,
-      TIPO_DETECTADO: analise.tipoDetectado || '',
-      SETORES: (analise.setores || []).join(', '),
-      SIMILARES_ENCONTRADOS: analise.casosSimilares?.length || 0,
-      REINCIDENCIA: analise.reincidencia?.nivel || 'SEM_REINCIDENCIA',
-      SLA_STATUS: analise.sla?.status || 'SEM_SLA',
-      CONFIANCA_NIVEL: analise.confianca?.nivel || 'BAIXA',
-      CONFIANCA_SCORE: analise.confianca?.score || 0,
-      IA_DISPONIVEL: analise.ia?.disponivel ? 'SIM' : 'NÃO',
-      IA_MODELO: analise.ia?.modelo || '',
-      IA_TOKENS_ENTRADA: analise.ia?.tokensEntrada || 0,
-      IA_TOKENS_SAIDA: analise.ia?.tokensSaida || 0,
-      CONFLITOS: analise.conflitos?.length || 0,
-      NECESSITA_VALIDACAO: analise.necessitaValidacaoHumana ? 'SIM' : 'NÃO',
-      TEMPO_MS: analise.tempoMs || 0,
-      ERROS: analise.erros?.join('; ') || '',
-    };
-
-    await sheets.appendObjeto('LOG_ANALISES', linha).catch(() => {});
+    await sheets.appendObjeto('LOG_ANALISES', {
+      TIMESTAMP: new Date().toISOString(), PROTOCOLO: protocolo || '', USUARIO: usuario || 'sistema',
+      VERSAO_CEREBRO: CEREBRO_VERSION, TIPO_DETECTADO: analise.tipoDetectado || '',
+      SETORES: (analise.setores || []).join(', '), SIMILARES_ENCONTRADOS: analise.casosSimilares?.length || 0,
+      REINCIDENCIA: analise.reincidencia?.nivel || 'SEM_REINCIDENCIA', SLA_STATUS: analise.sla?.status || 'SEM_SLA',
+      CONFIANCA_NIVEL: analise.confianca?.nivel || 'BAIXA', CONFIANCA_SCORE: analise.confianca?.score || 0,
+      IA_DISPONIVEL: analise.ia?.disponivel ? 'SIM' : 'NÃO', IA_MODELO: analise.ia?.modelo || '',
+      IA_TOKENS_ENTRADA: analise.ia?.tokensEntrada || 0, IA_TOKENS_SAIDA: analise.ia?.tokensSaida || 0,
+      CONFLITOS: analise.conflitos?.length || 0, NECESSITA_VALIDACAO: analise.necessitaValidacaoHumana ? 'SIM' : 'NÃO',
+      TEMPO_MS: analise.tempoMs || 0, ERROS: analise.erros?.join('; ') || '',
+    }).catch(() => {});
   } catch (e) {
     console.error('Erro ao registrar auditoria de análise:', e.message);
   }
 }
 
 // ──────────────────────────────────────────────────────────────
-// 12. ANÁLISE COMPLETA (NOVO - v2.0)
+// 12. ANÁLISE COMPLETA v4.0
 // ──────────────────────────────────────────────────────────────
 
 async function analisarManifestacaoCompleta(manifestacao, regras = {}, usuario = 'sistema') {
   const inicio = Date.now();
   const erros = [];
 
-  // Validação de entrada
   const descricao = campo(manifestacao, ['descricao','DESCRICAO','DESCRICAO_RECLAMACAO']);
   const informacoesAusentes = [];
   if (!descricao) informacoesAusentes.push('DESCRICAO');
@@ -644,7 +738,6 @@ async function analisarManifestacaoCompleta(manifestacao, regras = {}, usuario =
   const tipo = regras.tipoDetectado || '';
   const dataAbertura = campo(manifestacao, ['dataAbertura','DATA_ABERTURA','DATA_CRIACAO']);
 
-  // Executar etapas em paralelo onde possível
   const [casosSimilares, reincidencia, baseConhecimento] = await Promise.all([
     buscarCasosSimilares(manifestacao, 8).catch(e => { erros.push('similares: ' + e.message); return []; }),
     detectarReincidencia(manifestacao).catch(e => { erros.push('reincidencia: ' + e.message); return { nivel: 'SEM_REINCIDENCIA', detectada: false, quantidade: 0, casos: [] }; }),
@@ -654,135 +747,67 @@ async function analisarManifestacaoCompleta(manifestacao, regras = {}, usuario =
   const sla = calcularSLA(dataAbertura, regras.slaHoras || 72);
   const tratativa = gerarSugestaoTratativa(casosSimilares, tipo, regras.setores, descricao);
 
-  // Contexto para IA
-  const contextoIA = {
-    manifestacao,
-    tipoDetectado: tipo,
-    setores: regras.setores || [],
-    casosSimilares,
-    reincidencia,
-    sla,
-    baseConhecimento,
-  };
-
+  const contextoIA = { manifestacao, tipoDetectado: tipo, setores: regras.setores || [], casosSimilares, reincidencia, sla, baseConhecimento };
   const ia = await chamarIA(contextoIA).catch(e => { erros.push('ia: ' + e.message); return { disponivel: false, erro: e.message }; });
 
-  // ── Tratativa estruturada (motor v3) ─────────────────────────
   const empresa = campo(manifestacao, ['empresaReclamada','EMPRESA_RECLAMADA']);
   const reincidenteBool = reincidencia.nivel === 'REINCIDENCIA_CONFIRMADA';
 
   let tratativaEstruturada = null;
   try {
     tratativaEstruturada = await tratativaEngine.gerarTratativaEstruturada({
-      manifestacao: {
-        ...manifestacao,
-        DESCRICAO: descricao,
-        EMPRESA_RECLAMADA: empresa,
-        DATA_ABERTURA: campo(manifestacao, ['DATA_ABERTURA','dataAbertura']) || '',
-        PRODUTO: campo(manifestacao, ['PRODUTO','produto']) || '',
-        CATEGORIA: campo(manifestacao, ['CATEGORIA','categoria']) || '',
-        SUBCATEGORIA: campo(manifestacao, ['SUBCATEGORIA','subcategoria']) || '',
-      },
-      classificacao: tipo,
-      empresa,
-      cliente: campo(manifestacao, ['CONTATO','NOME_CONTATO','nomeCliente']) || '',
-      setor,
-      prioridade: regras.prioridade || 'Média',
-      casosSimilares,
-      reincidencia,
-      sla,
-      iaResultado: ia || {},
-      usuario: campo(manifestacao, ['USUARIO_CRIACAO','usuario']) || 'sistema',
+      manifestacao: { ...manifestacao, DESCRICAO: descricao, EMPRESA_RECLAMADA: empresa, DATA_ABERTURA: campo(manifestacao, ['DATA_ABERTURA','dataAbertura']) || '', PRODUTO: campo(manifestacao, ['PRODUTO','produto']) || '', CATEGORIA: campo(manifestacao, ['CATEGORIA','categoria']) || '', SUBCATEGORIA: campo(manifestacao, ['SUBCATEGORIA','subcategoria']) || '' },
+      classificacao: tipo, empresa, cliente: campo(manifestacao, ['CONTATO','NOME_CONTATO','nomeCliente']) || '',
+      setor, prioridade: regras.prioridade || 'Média', casosSimilares, reincidencia, sla,
+      iaResultado: ia || {}, usuario: campo(manifestacao, ['USUARIO_CRIACAO','usuario']) || 'sistema',
       versaoCerebro: CEREBRO_VERSION,
     });
   } catch (e) { erros.push('tratativaEngine: ' + e.message); }
 
-  // ── Devolutiva estruturada (engine v3) ────────────────────────
   let devolutivaEstruturada = null;
   try {
     devolutivaEstruturada = await devolutivaEngine.gerarDevolutiva({
-      idManifestacao: protocolo,
-      tipo: 'RECEBIMENTO',
-      empresa,
-      tipoManifestacao: tipo,
-      categoria: campo(manifestacao, ['CATEGORIA','categoria']) || '',
-      setor,
-      protocolo,
-      prazo: (regras.slaHoras || 72) + ' horas úteis',
-      setorResponsavel: setor || regras.setores?.[0] || 'SAC',
-      reincidente: reincidenteBool,
-      prioridade: regras.prioridade || 'Média',
+      idManifestacao: protocolo, tipo: 'RECEBIMENTO', empresa, tipoManifestacao: tipo,
+      categoria: campo(manifestacao, ['CATEGORIA','categoria']) || '', setor, protocolo,
+      prazo: (regras.slaHoras || 72) + ' horas úteis', setorResponsavel: setor || regras.setores?.[0] || 'SAC',
+      reincidente: reincidenteBool, prioridade: regras.prioridade || 'Média',
       diagnostico: tratativaEstruturada?.diagnostico?.descricao || '',
     });
   } catch (e) { erros.push('devolutivaEngine: ' + e.message); }
 
-  // Devolutiva textual: prefere IA, depois engine, depois fallback
-  const devolutiva = (ia?.devolutivaSugerida && !ia.erro)
-    ? ia.devolutivaSugerida
-    : (devolutivaEstruturada?.textoGerado || gerarDevolutiva(
-        campo(manifestacao, ['empresaReclamante','EMPRESA_RECLAMANTE']),
-        tipo,
-        setor,
-        tratativa.sugestao
-      ));
+  const devolutiva = (ia?.devolutivaSugerida && !ia.erro) ? ia.devolutivaSugerida : (devolutivaEstruturada?.textoGerado || gerarDevolutiva(campo(manifestacao, ['empresaReclamante','EMPRESA_RECLAMANTE']), tipo, setor, tratativa.sugestao));
 
-  // Consolidação
   const dadosParaConfianca = { regraAplicada: regras.regraAplicada, tipoDetectado: tipo, tipoConfianca: regras.tipoConfianca, casosSimilares, baseConhecimento, ia };
   const confianca = calcularConfianca(dadosParaConfianca);
   const conflitos = detectarConflitos({ ...regras, casosSimilares, reincidencia, ia });
 
-  // Conflitos do motor de tratativas
   if (tratativaEstruturada?.conflitos?.length) {
     conflitos.push(...tratativaEstruturada.conflitos.map(c => ({ tipo: 'CONFLITO_TRATATIVA', descricao: c })));
   }
 
-  const necessitaValidacaoHumana = confianca.nivel === 'BAIXA' || conflitos.length > 0 || reincidencia.nivel === 'REINCIDENCIA_CONFIRMADA'
-    || tratativaEstruturada?.necessitaAprovacao;
+  const necessitaValidacaoHumana = confianca.nivel === 'BAIXA' || conflitos.length > 0 || reincidencia.nivel === 'REINCIDENCIA_CONFIRMADA' || tratativaEstruturada?.necessitaAprovacao;
 
   const analise = {
-    protocolo,
-    tipoDetectado: tipo,
-    tipoConfianca: regras.tipoConfianca || 0,
-    setores: regras.setores || ['SAC'],
-    regraAplicada: regras.regraAplicada || null,
-    prioridade: regras.prioridade || 'Média',
-    slaHoras: regras.slaHoras || 72,
-    geraRNC: regras.geraRNC || false,
-    procedimentoSugerido: regras.procedimentoSugerido || null,
-    perguntasNecessarias: regras.perguntasNecessarias || [],
-    casosSimilares,
-    reincidencia,
-    sla,
-    baseConhecimento,
+    protocolo, tipoDetectado: tipo, tipoConfianca: regras.tipoConfianca || 0,
+    setores: regras.setores || ['SAC'], regraAplicada: regras.regraAplicada || null,
+    prioridade: regras.prioridade || 'Média', slaHoras: regras.slaHoras || 72,
+    geraRNC: false, // RNC nunca automático — apenas por critério humano/auditoria
+    procedimentoSugerido: regras.procedimentoSugerido || null, perguntasNecessarias: regras.perguntasNecessarias || [],
+    casosSimilares, reincidencia, sla, baseConhecimento,
     tratativaSugerida: { aplicavel: tratativa.aplicavel, confianca: tratativa.confianca, sugestao: tratativa.sugestao, quantidadeCasos: tratativa.quantidadeCasos, evidencia: tratativa.evidencia, origem: tratativa.origem||'HISTORICO', todasSugestoes: tratativa.todasSugestoes||[] },
-    tratativaEstruturada,
-    devolutivaEstruturada,
-    ia,
-    confianca,
-    conflitos,
-    informacoesAusentes,
-    devolutivaSugerida: devolutiva,
-    necessitaValidacaoHumana,
-    explicabilidade: null, // preenchido abaixo
+    tratativaEstruturada, devolutivaEstruturada, ia, confianca, conflitos,
+    informacoesAusentes, devolutivaSugerida: devolutiva, necessitaValidacaoHumana,
+    explicabilidade: null,
     versoes: { cerebro: CEREBRO_VERSION, baseConhecimento: BASE_CONHECIMENTO_VERSION, politicas: POLITICAS_VERSION, matriz: MATRIZ_VERSION },
-    tempoMs: Date.now() - inicio,
-    erros,
-    geradaEm: new Date().toISOString(),
-    // compat v1
+    tempoMs: Date.now() - inicio, erros, geradaEm: new Date().toISOString(),
     versaoIA: CEREBRO_VERSION,
   };
 
   analise.explicabilidade = gerarExplicabilidade(analise);
-
-  // Auditoria assíncrona (não bloqueia resposta)
   registrarAuditoriaAnalise(protocolo, usuario, analise).catch(() => {});
 
   return analise;
 }
-
-// ──────────────────────────────────────────────────────────────
-// 13. ANÁLISE LEGADA (compatibilidade v1)
-// ──────────────────────────────────────────────────────────────
 
 async function analisarManifestacao(manifestacao, regras = {}) {
   return analisarManifestacaoCompleta(manifestacao, regras, 'sistema');
@@ -793,28 +818,24 @@ async function analisarManifestacao(manifestacao, regras = {}) {
 // ──────────────────────────────────────────────────────────────
 
 module.exports = {
-  // Utilitários
   normalizar,
   calcularSimilaridade,
-  // Análise
   buscarCasosSimilares,
   detectarReincidencia,
   gerarSugestaoTratativa,
   gerarDevolutiva,
   calcularSLA,
+  obterSlaConfigurado,
   consultarBaseConhecimento,
   calcularConfianca,
   detectarConflitos,
   gerarExplicabilidade,
   chamarIA,
-  // Principal
-  analisarManifestacao,          // v1 (compat)
-  analisarManifestacaoCompleta,  // v3 (completa com tratativa + devolutiva)
-  // Engines (re-exportados para uso nas rotas)
+  analisarManifestacao,
+  analisarManifestacaoCompleta,
   tratativaEngine,
   devolutivaEngine,
   assertividade,
   matrizTratamento,
-  // Constantes
   CEREBRO_VERSION,
 };
