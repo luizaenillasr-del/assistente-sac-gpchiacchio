@@ -1551,9 +1551,17 @@ app.get('/api/setores-unicos', async (req, res) => {
 
 app.get('/api/setores', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
   try {
-    await garantirAbaComCabecalhos('CONFIG_SETORES',['ID_SETOR','SETOR','DESCRICAO','RESPONSAVEL','SUBSTITUTO','EMAIL_RESPONSAVEL','SLA_HORAS','RESPONSABILIDADES','REGRAS_OPERACIONAIS','PROCEDIMENTOS_ORIENTACOES','ALERTAS','ATIVO','EMPRESA']).catch(()=>{});
+    // Não await garantirAbaComCabecalhos no GET — write ops atrasam demais
+    garantirAbaComCabecalhos('CONFIG_SETORES',['ID_SETOR','SETOR','DESCRICAO','RESPONSAVEL','SUBSTITUTO','EMAIL_RESPONSAVEL','SLA_HORAS','RESPONSABILIDADES','REGRAS_OPERACIONAIS','PROCEDIMENTOS_ORIENTACOES','ALERTAS','ATIVO','EMPRESA']).catch(()=>{});
     const data = await lerAba('CONFIG_SETORES', 500).catch(()=>[]);
-    // Attach knowledge counts per sector
+    // Counts carregados separadamente em /api/setores/counts para não travar o listing
+    const itens = data.map(s => ({ ...s, _counts: {} }));
+    res.json({ sucesso:true, total:itens.length, itens });
+  } catch (e) { res.status(500).json({ sucesso:false, erro:e.message, itens:[] }); }
+});
+
+app.get('/api/setores/counts', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
+  try {
     const [faqs, regras, procs, pols, pergs] = await Promise.all([
       lerAba('FAQ_SETORES',5000).catch(()=>[]),
       lerAba('REGRAS_SETORES',5000).catch(()=>[]),
@@ -1561,21 +1569,19 @@ app.get('/api/setores', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL
       lerAba('POLITICAS_SETORES',5000).catch(()=>[]),
       lerAba('PERGUNTAS_IA_SETORES',2000).catch(()=>[]),
     ]);
-    const itens = data.map(s => {
-      const n = normalizarTexto(s.SETOR||'');
-      return {
-        ...s,
-        _counts: {
-          faqs: faqs.filter(r=>normalizarTexto(r.SETOR||'')===n&&(r.ATIVO||'SIM')!=='NÃO').length,
-          regras: regras.filter(r=>normalizarTexto(r.SETOR||'')===n&&r.STATUS!=='OBSOLETA').length,
-          procedimentos: procs.filter(r=>normalizarTexto(r.SETOR||'')===n&&r.STATUS!=='OBSOLETA').length,
-          politicas: pols.filter(r=>normalizarTexto(r.SETOR||'')===n&&r.STATUS!=='OBSOLETA'&&r.STATUS!=='EXPIRADA').length,
-          perguntas: pergs.filter(r=>normalizarTexto(r.SETOR||'')===n&&(r.ATIVO||'SIM')!=='NÃO').length,
-        }
+    const counts = {};
+    [...new Set([...faqs,...regras,...procs,...pols,...pergs].map(r=>r.SETOR).filter(Boolean))].forEach(setor => {
+      const n = normalizarTexto(setor);
+      counts[setor] = {
+        faqs: faqs.filter(r=>normalizarTexto(r.SETOR||'')===n&&(r.ATIVO||'SIM')!=='NÃO').length,
+        regras: regras.filter(r=>normalizarTexto(r.SETOR||'')===n&&r.STATUS!=='OBSOLETA').length,
+        procedimentos: procs.filter(r=>normalizarTexto(r.SETOR||'')===n&&r.STATUS!=='OBSOLETA').length,
+        politicas: pols.filter(r=>normalizarTexto(r.SETOR||'')===n&&r.STATUS!=='OBSOLETA'&&r.STATUS!=='EXPIRADA').length,
+        perguntas: pergs.filter(r=>normalizarTexto(r.SETOR||'')===n&&(r.ATIVO||'SIM')!=='NÃO').length,
       };
     });
-    res.json({ sucesso:true, total:itens.length, itens });
-  } catch (e) { res.status(500).json({ sucesso:false, erro:e.message, itens:[] }); }
+    res.json({ sucesso:true, counts });
+  } catch (e) { res.status(500).json({ sucesso:false, erro:e.message, counts:{} }); }
 });
 app.get('/api/conhecimento', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
   try {
