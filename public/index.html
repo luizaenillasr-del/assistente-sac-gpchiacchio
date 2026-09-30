@@ -912,7 +912,11 @@
     if(!user){err.textContent='Informe o usuário.';err.style.display='block';return;}
     if(!senha){err.textContent='Informe a senha.';err.style.display='block';return;}
     try{
-      const r=await fetch(window.SAC_API+'/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({usuario:user,senha})});
+      const ctrl=new AbortController(); const tid=setTimeout(()=>ctrl.abort(),25000);
+      let r;
+      try{ r=await fetch(window.SAC_API+'/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({usuario:user,senha}),signal:ctrl.signal}); }
+      catch(fe){ clearTimeout(tid); throw new Error(fe.name==='AbortError'?'O servidor demorou para responder. Tente novamente.':'Não foi possível conectar ao servidor.'); }
+      clearTimeout(tid);
       const raw=await r.text(); let data={};
       try{data=raw?JSON.parse(raw):{};}catch(e){throw new Error(`A API respondeu de forma inválida (HTTP ${r.status}).`);}
       if(!r.ok || !data.sucesso) throw new Error(data.erro||'Usuário não encontrado ou inativo.');
