@@ -3122,14 +3122,14 @@ function renderDashboard(data) {
 
   // === KPIs PRINCIPAIS ===
   const emAberto = recs.filter(r => (r['Status']||'').toUpperCase().includes('ABERTO')).length;
-  const reclamacoes = recs.filter(r => (r['Motivo da Reclamação']||'') !== '').length;
   const encPct = total > 0 ? Math.round(encerradas/total*100) : 0;
-  const totalPeriodo = reclamacoes || total;
+  // kpi-reclamacoes: count de reclamações do período (somente aba "Reclamações + devolutiva", já filtrada por período/empresa/setor)
+  const totalPeriodo = recs.length;
 
   document.getElementById('kpi-andamento').textContent = emAndamento || mans.filter(m => !(m.STATUS||'').toUpperCase().includes('FINALIZ')).length;
   document.getElementById('kpi-total').textContent = total;
   document.getElementById('kpi-reclamacoes').textContent = totalPeriodo;
-  document.getElementById('kpi-rec-pct').textContent = totalPeriodo === 1 ? '1 manifestação' : totalPeriodo + ' manifestações';
+  document.getElementById('kpi-rec-pct').textContent = totalPeriodo === 1 ? '1 reclamação' : totalPeriodo + ' reclamações';
   document.getElementById('kpi-aberto').textContent = emAberto || (total - encerradas);
   document.getElementById('kpi-andamento-delta').textContent = 'aguardando ação';
   document.getElementById('kpi-encerradas').textContent = encerradas;
@@ -5478,7 +5478,7 @@ loadVisaoGeral();
         if(elPct&&p.totalMes>0)elPct.textContent=`${Math.round((p.viramReclamacao/p.totalMes)*100)}% do total do mês`;
       }
       if(results[0].status==='rejected')console.error('Manifestacoes:',results[0].reason);
-      if(results[1].status==='rejected')console.error('Reclamacoes:',results[1].reason);
+      if(results[1].status==='rejected'){console.error('Reclamacoes:',results[1].reason);const kpiRec=document.getElementById('kpi-reclamacoes');if(kpiRec)kpiRec.textContent='Erro ao carregar';}
 
       const _NAO_EMP=new Set(['TR01','TR08','SAC','RNC']);
       const empSet=new Set(['Todas']);
@@ -5489,11 +5489,13 @@ loadVisaoGeral();
       const setores=['Todos','SAC','Qualidade','Produção','Logística','Comercial','Financeiro','Faturamento / Expedição'];
       const sel=document.getElementById('filtro-setor-select'); if(sel)sel.innerHTML=setores.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('');
 
-      renderDashboard(calcDashboard(_dashData.mans,_dashData.recs,_dashFiltroEmpresa,_dashFiltroSetor));
+      if(typeof aplicarFiltros==='function') aplicarFiltros();
+      else renderDashboard(calcDashboard(_dashData.mans,_dashData.recs,_dashFiltroEmpresa,_dashFiltroSetor));
       if(last)last.textContent='Última atualização: '+now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
     }catch(e){
       console.error('Erro Visão Geral V3',e);
       const last=document.getElementById('last-update'); if(last)last.textContent='Erro ao atualizar';
+      const kpiRec=document.getElementById('kpi-reclamacoes'); if(kpiRec)kpiRec.textContent='Erro ao carregar';
     }
   };
 
