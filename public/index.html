@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<title>Gestão de Manifestações — Grupo Chiacchio</title>
+<title>SAC GRUPO CHIACCHIO</title>
 <style>
   :root {
     --red: #C8102E;
@@ -455,15 +455,14 @@
 </style>
 </head>
 <style>
-  .login-screen { position: fixed; inset: 0; background: var(--sidebar-bg); display: flex; align-items: center; justify-content: center; z-index: 9999; }
-  .login-box { background: white; border-radius: 16px; padding: 40px; width: 360px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
-  .login-logo { display: flex; align-items: center; gap: 12px; margin-bottom: 28px; }
-  .login-logo-icon { width: 44px; height: 44px; background: var(--red); border-radius: 10px; display: flex; align-items: center; justify-content: center; }
-  .login-logo-icon svg { width: 24px; height: 24px; fill: white; }
-  .login-logo-text h2 { font-size: 15px; font-weight: 800; color: var(--gray-900); }
-  .login-logo-text p { font-size: 12px; color: var(--gray-400); }
-  .login-title { font-size: 22px; font-weight: 800; color: var(--gray-900); margin-bottom: 6px; }
-  .login-sub { font-size: 13px; color: var(--gray-400); margin-bottom: 24px; }
+  .login-screen { position: fixed; inset: 0; background: var(--sidebar-bg); display: flex; align-items: center; justify-content: center; z-index: 9999; padding: 20px; overflow-y: auto; }
+  .login-wrap { display: flex; flex-direction: column; align-items: center; gap: 20px; width: 100%; max-width: 400px; }
+  .login-header { text-align: center; margin-bottom: 4px; }
+  .login-header img { height: 48px; margin-bottom: 10px; filter: brightness(0) invert(1); }
+  .login-header h1 { font-size: 18px; font-weight: 800; color: white; letter-spacing: 0.06em; }
+  .login-box { background: white; border-radius: 16px; padding: 32px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.4); }
+  .login-title { font-size: 16px; font-weight: 800; color: var(--gray-900); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .login-sub { font-size: 12px; color: var(--gray-400); margin-bottom: 22px; }
   .login-field { margin-bottom: 14px; }
   .login-label { font-size: 12px; font-weight: 600; color: var(--gray-500); margin-bottom: 5px; display: block; }
   .login-input { width: 100%; padding: 10px 12px; border: 1px solid var(--gray-200); border-radius: 8px; font-size: 14px; outline: none; font-family: inherit; }
@@ -471,6 +470,55 @@
   .login-btn { width: 100%; padding: 11px; background: var(--red); color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; margin-top: 8px; font-family: inherit; }
   .login-btn:hover { background: var(--red-dark); }
   .login-error { background: #FEE2E2; color: #DC2626; font-size: 12px; padding: 8px 12px; border-radius: 6px; margin-top: 10px; display: none; }
+  .login-divider { display: flex; align-items: center; gap: 10px; margin: 6px 0; }
+  .login-divider::before, .login-divider::after { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,0.15); }
+  .login-divider span { font-size: 11px; color: rgba(255,255,255,0.45); white-space: nowrap; }
+  .login-portal-box { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 16px; padding: 24px; width: 100%; text-align: center; }
+  .login-portal-box h3 { font-size: 13px; font-weight: 700; color: white; margin-bottom: 6px; }
+  .login-portal-box p { font-size: 12px; color: rgba(255,255,255,0.55); margin-bottom: 16px; line-height: 1.5; }
+  .btn-portal { display: block; width: 100%; padding: 12px; background: transparent; color: white; border: 2px solid rgba(255,255,255,0.4); border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; transition: all 0.2s; }
+  .btn-portal:hover { background: rgba(255,255,255,0.12); border-color: white; }
+
+  /* PORTAL PÚBLICO — Formulário sem login */
+  .portal-screen { position: fixed; inset: 0; background: var(--gray-50); z-index: 9998; display: none; overflow-y: auto; }
+  .portal-header { background: var(--sidebar-bg); padding: 16px 24px; display: flex; align-items: center; gap: 16px; }
+  .portal-header img { height: 36px; filter: brightness(0) invert(1); }
+  .portal-header-title { color: white; }
+  .portal-header-title h1 { font-size: 14px; font-weight: 800; letter-spacing: 0.05em; }
+  .portal-header-title p { font-size: 11px; color: rgba(255,255,255,0.5); }
+  .portal-content { max-width: 680px; margin: 0 auto; padding: 32px 20px 60px; }
+  .portal-section { background: white; border: 1px solid var(--gray-200); border-radius: 12px; padding: 24px; margin-bottom: 16px; }
+  .portal-section-title { font-size: 13px; font-weight: 700; color: var(--gray-900); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .portal-section-sub { font-size: 12px; color: var(--gray-400); margin-bottom: 18px; }
+  .portal-field { margin-bottom: 14px; }
+  .portal-label { font-size: 12px; font-weight: 600; color: var(--gray-700); margin-bottom: 5px; display: block; }
+  .portal-label span { color: var(--red); }
+  .portal-input { width: 100%; padding: 10px 12px; border: 1px solid var(--gray-200); border-radius: 8px; font-size: 14px; outline: none; font-family: inherit; background: white; }
+  .portal-input:focus { border-color: var(--red); box-shadow: 0 0 0 3px var(--red-light); }
+  .portal-select { width: 100%; padding: 10px 12px; border: 1px solid var(--gray-200); border-radius: 8px; font-size: 14px; outline: none; font-family: inherit; background: white; appearance: none; }
+  .portal-textarea { width: 100%; padding: 10px 12px; border: 1px solid var(--gray-200); border-radius: 8px; font-size: 14px; outline: none; font-family: inherit; resize: vertical; min-height: 120px; }
+  .portal-textarea:focus, .portal-select:focus { border-color: var(--red); box-shadow: 0 0 0 3px var(--red-light); }
+  .portal-field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .portal-hint { font-size: 11px; color: var(--gray-400); margin-top: 4px; font-style: italic; }
+  .portal-err { background: #FEE2E2; color: #DC2626; font-size: 12px; padding: 10px 14px; border-radius: 8px; margin-bottom: 14px; display: none; }
+  .portal-btn-submit { width: 100%; padding: 14px; background: var(--red); color: white; border: none; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; transition: background 0.2s; }
+  .portal-btn-submit:hover { background: var(--red-dark); }
+  .portal-btn-submit:disabled { background: var(--gray-300); cursor: not-allowed; }
+  .portal-back { background: transparent; border: none; color: var(--gray-500); font-size: 13px; cursor: pointer; font-family: inherit; padding: 4px 0; margin-bottom: 20px; display: flex; align-items: center; gap: 5px; }
+  .portal-back:hover { color: var(--gray-900); }
+  .portal-checkbox-opt { display: flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1.5px solid var(--gray-200); border-radius: 20px; cursor: pointer; font-size: 13px; font-weight: 500; color: var(--gray-700); transition: all 0.15s; user-select: none; }
+  .portal-checkbox-opt:hover { border-color: var(--red); color: var(--red); }
+  .portal-checkbox-opt input[type=radio] { accent-color: var(--red); width: 14px; height: 14px; }
+  .portal-hint { font-size: 11px; color: var(--gray-400); margin-top: 5px; }
+  .portal-success { text-align: center; padding: 48px 24px; }
+  .portal-success-icon { width: 72px; height: 72px; background: var(--green-light); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; }
+  .portal-protocol { background: var(--gray-50); border: 2px dashed var(--gray-300); border-radius: 12px; padding: 20px; margin: 20px 0; }
+  .portal-protocol-label { font-size: 12px; font-weight: 600; color: var(--gray-400); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+  .portal-protocol-num { font-size: 28px; font-weight: 800; color: var(--gray-900); letter-spacing: 0.05em; }
+  @media (max-width: 600px) {
+    .portal-field-grid { grid-template-columns: 1fr; }
+    .login-wrap { max-width: 100%; }
+  }
 </style>
 
 <!-- MODAL DOSSIÊ -->
@@ -568,39 +616,264 @@
 </div>
 
 <div class="login-screen" id="login-screen">
-  <div class="login-box">
-    <div class="login-logo">
-      <div class="login-logo-icon"><svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div>
-      <div class="login-logo-text"><h2>Gestão de Manifestações</h2><p>SAC · Grupo Chiacchio</p></div>
+  <div class="login-wrap">
+    <!-- Cabeçalho institucional -->
+    <div class="login-header">
+      <img src="/logo-chiacchio.png" alt="Grupo Chiacchio">
+      <h1>SAC GRUPO CHIACCHIO</h1>
     </div>
-    <div class="login-title">Bem-vinda de volta</div>
-    <div class="login-sub">Informe suas credenciais para acessar o sistema</div>
-    <div class="login-field">
-      <label class="login-label">Usuário</label>
-      <input class="login-input" type="text" id="login-user" placeholder="seu usuário" autocomplete="username" onkeydown="if(event.key==='Enter')document.getElementById('login-senha').focus()">
+
+    <!-- Caixa de login -->
+    <div class="login-box">
+      <div class="login-title">ACESSO AO SAC</div>
+      <div class="login-sub">Informe suas credenciais para acessar o sistema.</div>
+      <div class="login-field">
+        <label class="login-label">Usuário</label>
+        <input class="login-input" type="text" id="login-user" placeholder="seu usuário" autocomplete="username" onkeydown="if(event.key==='Enter')document.getElementById('login-senha').focus()">
+      </div>
+      <div class="login-field">
+        <label class="login-label">Senha</label>
+        <input class="login-input" type="password" id="login-senha" placeholder="sua senha" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <button class="login-btn" onclick="doLogin()">ENTRAR</button>
+      <div class="login-error" id="login-error">Usuário ou senha inválidos.</div>
+      <div style="margin-top:14px;text-align:center">
+        <span style="font-size:12px;color:#9CA3AF;cursor:pointer" onclick="toggleBootstrap()">Primeiro acesso? Criar conta administradora</span>
+      </div>
     </div>
-    <div class="login-field">
-      <label class="login-label">Senha</label>
-      <input class="login-input" type="password" id="login-senha" placeholder="sua senha" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+
+    <!-- Divisor -->
+    <div class="login-divider"><span>OU</span></div>
+
+    <!-- Portal do funcionário -->
+    <div class="login-portal-box">
+      <h3>RECEBEU UMA RECLAMAÇÃO DE CLIENTE?</h3>
+      <p>Você pode registrar a reclamação diretamente para o SAC, sem precisar de login.</p>
+      <button class="btn-portal" onclick="abrirPortalPublico()">REGISTRAR RECLAMAÇÃO</button>
     </div>
-    <button class="login-btn" onclick="doLogin()">Entrar</button>
-    <div class="login-error" id="login-error">Usuário ou senha inválidos.</div>
-    <div style="margin-top:14px;text-align:center">
-      <span style="font-size:12px;color:#9CA3AF;cursor:pointer" onclick="toggleBootstrap()">Primeiro acesso? Criar conta administradora</span>
+
+    <!-- BOOTSTRAP — só aparece quando não há usuários -->
+    <div class="login-box" id="bootstrap-box" style="display:none">
+      <div style="font-size:14px;font-weight:700;margin-bottom:12px;color:#111827">Criar conta administradora</div>
+      <div style="font-size:12px;color:#6B7280;margin-bottom:14px">Use apenas na configuração inicial. Após criar o primeiro usuário, este formulário deixa de funcionar.</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <input id="bs-usuario" class="login-input" placeholder="Login (ex: luiza)" autocomplete="off">
+        <input id="bs-nome" class="login-input" placeholder="Nome completo">
+        <input id="bs-senha" type="password" class="login-input" placeholder="Senha (mín. 6 caracteres)">
+      </div>
+      <button class="login-btn" style="margin-top:10px" onclick="doBootstrap()">Criar administrador</button>
+      <div id="bs-feedback" style="display:none;font-size:12px;padding:8px;border-radius:6px;margin-top:8px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- PORTAL PÚBLICO — REGISTRAR RECLAMAÇÃO (SEM LOGIN)           -->
+<!-- ============================================================ -->
+<div class="portal-screen" id="portal-screen">
+  <div class="portal-header">
+    <img src="/logo-chiacchio.png" alt="Grupo Chiacchio">
+    <div class="portal-header-title">
+      <h1>SAC GRUPO CHIACCHIO</h1>
+      <p>Ficha de Reclamação / Manifestação</p>
     </div>
   </div>
 
-  <!-- BOOTSTRAP — só aparece quando não há usuários -->
-  <div class="login-box" id="bootstrap-box" style="display:none;margin-top:16px;max-width:360px">
-    <div style="font-size:14px;font-weight:700;margin-bottom:12px;color:#111827">Criar conta administradora</div>
-    <div style="font-size:12px;color:#6B7280;margin-bottom:14px">Use apenas na configuração inicial. Após criar o primeiro usuário, este formulário deixa de funcionar.</div>
-    <div style="display:flex;flex-direction:column;gap:10px">
-      <input id="bs-usuario" class="login-input" placeholder="Login (ex: luiza)" autocomplete="off">
-      <input id="bs-nome" class="login-input" placeholder="Nome completo">
-      <input id="bs-senha" type="password" class="login-input" placeholder="Senha (mín. 6 caracteres)">
+  <!-- Formulário -->
+  <div class="portal-content" id="portal-form-wrap">
+    <button class="portal-back" onclick="fecharPortalPublico()">← Voltar</button>
+
+    <div style="margin-bottom:24px">
+      <div style="font-size:22px;font-weight:800;color:var(--gray-900);margin-bottom:6px">Registrar Manifestação</div>
+      <div style="font-size:13px;color:var(--gray-500);line-height:1.6">Preencha a ficha com as informações recebidas do cliente. <strong style="color:var(--gray-700)">Registre os fatos — o SAC realizará a análise.</strong></div>
     </div>
-    <button class="login-btn" style="margin-top:10px" onclick="doBootstrap()">Criar administrador</button>
-    <div id="bs-feedback" style="display:none;font-size:12px;padding:8px;border-radius:6px;margin-top:8px"></div>
+
+    <div class="portal-err" id="portal-err"></div>
+
+    <!-- SEÇÃO 1: DADOS DO REGISTRO -->
+    <div class="portal-section">
+      <div class="portal-section-title"><span style="background:var(--red);color:white;border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;margin-right:8px;flex-shrink:0">1</span>DADOS DO REGISTRO</div>
+      <div class="portal-field-grid">
+        <div class="portal-field">
+          <label class="portal-label">Data do Registro</label>
+          <input class="portal-input" id="p-data-reg" type="text" readonly style="background:var(--gray-100);color:var(--gray-500)">
+        </div>
+        <div class="portal-field">
+          <label class="portal-label">Setor <span>*</span></label>
+          <input class="portal-input" id="p-setor-reg" type="text" placeholder="Ex: Comercial, Logística, Vendas...">
+        </div>
+        <div class="portal-field">
+          <label class="portal-label">Colaborador (Recebimento) <span>*</span></label>
+          <input class="portal-input" id="p-nome-reg" type="text" placeholder="Seu nome completo">
+        </div>
+        <div class="portal-field">
+          <label class="portal-label">Empresa <span>*</span></label>
+          <select class="portal-select" id="p-empresa">
+            <option value="">Selecione...</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- SEÇÃO 2: DADOS DO CLIENTE -->
+    <div class="portal-section">
+      <div class="portal-section-title"><span style="background:var(--red);color:white;border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;margin-right:8px;flex-shrink:0">2</span>DADOS DO CLIENTE</div>
+      <div class="portal-field-grid">
+        <div class="portal-field" style="grid-column:1/-1">
+          <label class="portal-label">Nome do Cliente / Empresa <span>*</span></label>
+          <input class="portal-input" id="p-nome-cliente" type="text" placeholder="Nome do cliente ou razão social">
+        </div>
+        <div class="portal-field">
+          <label class="portal-label">Telefone / WhatsApp</label>
+          <input class="portal-input" id="p-tel" type="text" placeholder="Opcional">
+        </div>
+        <div class="portal-field">
+          <label class="portal-label">E-mail</label>
+          <input class="portal-input" id="p-email" type="email" placeholder="Opcional">
+        </div>
+      </div>
+    </div>
+
+    <!-- SEÇÃO 3: INFORMAÇÕES DA MANIFESTAÇÃO -->
+    <div class="portal-section">
+      <div class="portal-section-title"><span style="background:var(--red);color:white;border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;margin-right:8px;flex-shrink:0">3</span>INFORMAÇÕES DA MANIFESTAÇÃO</div>
+
+      <div class="portal-field">
+        <label class="portal-label">Canal de Recebimento <span>*</span></label>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px" id="p-canal-group">
+          <label class="portal-checkbox-opt"><input type="radio" name="p-canal" value="Telefone" onchange="toggleCanalOutro()"> Telefone</label>
+          <label class="portal-checkbox-opt"><input type="radio" name="p-canal" value="WhatsApp" onchange="toggleCanalOutro()"> WhatsApp</label>
+          <label class="portal-checkbox-opt"><input type="radio" name="p-canal" value="E-mail" onchange="toggleCanalOutro()"> E-mail</label>
+          <label class="portal-checkbox-opt"><input type="radio" name="p-canal" value="Presencial" onchange="toggleCanalOutro()"> Presencial</label>
+          <label class="portal-checkbox-opt"><input type="radio" name="p-canal" value="Comercial" onchange="toggleCanalOutro()"> Comercial</label>
+          <label class="portal-checkbox-opt"><input type="radio" name="p-canal" value="Outro" onchange="toggleCanalOutro()"> Outro</label>
+        </div>
+        <div id="p-canal-outro-wrap" style="display:none;margin-top:8px">
+          <input class="portal-input" id="p-canal-outro" type="text" placeholder="Informe o canal">
+        </div>
+      </div>
+
+      <div class="portal-field">
+        <label class="portal-label">Tipo de Manifestação <span>*</span></label>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px" id="p-tipo-group">
+          <label class="portal-checkbox-opt"><input type="radio" name="p-tipo" value="Reclamação" checked> Reclamação</label>
+          <label class="portal-checkbox-opt"><input type="radio" name="p-tipo" value="Dúvida"> Dúvida</label>
+          <label class="portal-checkbox-opt"><input type="radio" name="p-tipo" value="Sugestão"> Sugestão</label>
+          <label class="portal-checkbox-opt"><input type="radio" name="p-tipo" value="Elogio"> Elogio</label>
+        </div>
+      </div>
+
+      <div class="portal-field">
+        <label class="portal-label">Motivo da Manifestação</label>
+        <input class="portal-input" id="p-motivo" type="text" placeholder="Ex: Produto avariado, Atraso na entrega, Faturamento incorreto...">
+      </div>
+
+      <div class="portal-field">
+        <label class="portal-label">Descrição Detalhada <span>*</span></label>
+        <textarea class="portal-textarea" id="p-descricao" placeholder='Descreva o que o cliente relatou de forma detalhada e fiel. Ex: "Cliente informou que recebeu 20 caixas e 3 estavam danificadas. Produto com amassado na embalagem..."' style="min-height:140px"></textarea>
+        <div style="font-size:11px;color:var(--gray-400);margin-top:4px">Esta descrição será preservada como registro original. Não a altere após envio.</div>
+      </div>
+    </div>
+
+    <!-- SEÇÃO 4: INFORMAÇÕES DO PRODUTO (colapsível) -->
+    <div class="portal-section">
+      <div class="portal-section-title" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between" onclick="toggleProdutoSection()">
+        <span><span style="background:var(--red);color:white;border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;margin-right:8px;flex-shrink:0">4</span>INFORMAÇÕES DO PRODUTO (quando aplicável)</span>
+        <span id="p-prod-chevron" style="font-size:12px;color:var(--gray-400)">▼ expandir</span>
+      </div>
+      <div id="p-produto-section" style="display:none;margin-top:12px">
+        <div class="portal-section-sub">Preencha se disponível. Não bloqueie o registro por falta dessas informações.</div>
+        <div class="portal-field-grid">
+          <div class="portal-field">
+            <label class="portal-label">Produto</label>
+            <input class="portal-input" id="p-produto" type="text" placeholder="Nome ou código">
+          </div>
+          <div class="portal-field">
+            <label class="portal-label">Lote</label>
+            <input class="portal-input" id="p-lote" type="text" placeholder="Número do lote">
+          </div>
+          <div class="portal-field">
+            <label class="portal-label">Quantidade Afetada</label>
+            <input class="portal-input" id="p-qtd" type="text" placeholder="Ex: 3 caixas">
+          </div>
+          <div class="portal-field">
+            <label class="portal-label">Pedido</label>
+            <input class="portal-input" id="p-pedido" type="text" placeholder="Número do pedido">
+          </div>
+          <div class="portal-field">
+            <label class="portal-label">Nota Fiscal</label>
+            <input class="portal-input" id="p-nf" type="text" placeholder="NF ou número">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SEÇÃO 5: ENCAMINHAMENTO -->
+    <div class="portal-section">
+      <div class="portal-section-title"><span style="background:var(--red);color:white;border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;margin-right:8px;flex-shrink:0">5</span>ENCAMINHAMENTO</div>
+      <div class="portal-field">
+        <label class="portal-label">Observações Adicionais</label>
+        <textarea class="portal-textarea" id="p-obs" placeholder="Informações complementares relevantes para o SAC..." style="min-height:80px"></textarea>
+      </div>
+    </div>
+
+    <!-- EVIDÊNCIAS -->
+    <div class="portal-section">
+      <div class="portal-section-title" style="display:flex;align-items:center;gap:8px">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+        EVIDÊNCIAS E ANEXOS
+      </div>
+      <div class="portal-section-sub">Fotos, áudios, vídeos, PDFs ou documentos enviados pelo cliente. Não obrigatório.</div>
+
+      <!-- Drag-and-drop zone -->
+      <div id="p-drop-zone" style="border:2px dashed var(--gray-300);border-radius:10px;padding:24px;text-align:center;cursor:pointer;transition:all 0.2s;margin-bottom:10px"
+        onclick="document.getElementById('p-files').click()"
+        ondragover="event.preventDefault();this.style.borderColor='var(--red)';this.style.background='var(--red-light)'"
+        ondragleave="this.style.borderColor='var(--gray-300)';this.style.background=''"
+        ondrop="handlePortalDrop(event)">
+        <div style="font-size:28px;margin-bottom:8px">📎</div>
+        <div style="font-size:13px;font-weight:600;color:var(--gray-700)">Clique ou arraste arquivos aqui</div>
+        <div style="font-size:12px;color:var(--gray-400);margin-top:4px">Imagens, áudios, vídeos, PDFs, documentos — máx. 10MB por arquivo, até 8 arquivos</div>
+      </div>
+      <input type="file" id="p-files" multiple
+        accept="image/*,audio/*,video/*,application/pdf,.doc,.docx,.xls,.xlsx,.txt"
+        style="display:none" onchange="handlePortalFiles(event)">
+      <div id="p-files-list" style="display:flex;flex-direction:column;gap:6px"></div>
+    </div>
+
+    <!-- Botão enviar -->
+    <button class="portal-btn-submit" id="portal-submit-btn" onclick="submitPortal()">
+      ENVIAR AO SAC
+    </button>
+    <div style="text-align:center;margin-top:12px;font-size:12px;color:var(--gray-400)">
+      Ao enviar, a manifestação será encaminhada ao SAC e uma ficha oficial será gerada.
+    </div>
+  </div>
+
+  <!-- Tela de sucesso -->
+  <div class="portal-content" id="portal-success-wrap" style="display:none">
+    <div class="portal-success">
+      <div class="portal-success-icon">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+      </div>
+      <div style="font-size:24px;font-weight:800;color:var(--gray-900);margin-bottom:8px">Manifestação registrada!</div>
+      <div style="font-size:14px;color:var(--gray-500);margin-bottom:24px;line-height:1.6">Recebemos a manifestação e ela foi encaminhada ao SAC.<br>Uma ficha oficial foi gerada e arquivada na Biblioteca.</div>
+      <div class="portal-protocol">
+        <div class="portal-protocol-label">Protocolo</div>
+        <div class="portal-protocol-num" id="portal-protocolo-num">—</div>
+        <div style="font-size:12px;color:var(--gray-400);margin-top:6px" id="portal-protocolo-info"></div>
+      </div>
+      <div style="background:var(--yellow-light);border:1px solid #FDE68A;border-radius:8px;padding:10px 14px;margin-bottom:24px;font-size:12px;color:#92400E">
+        📝 Anote o número do protocolo para acompanhamento com o SAC.
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px" id="portal-success-actions">
+        <button class="portal-btn-submit" id="portal-pdf-btn" style="display:none;background:var(--gray-700)" onclick="baixarFichaPortal()">
+          📄 BAIXAR FICHA EM PDF
+        </button>
+        <button class="portal-btn-submit" onclick="resetPortal()">REGISTRAR NOVA MANIFESTAÇÃO</button>
+        <button class="portal-back" style="justify-content:center" onclick="fecharPortalPublico()">← Voltar para o início</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -609,7 +882,8 @@
 
   function toggleBootstrap() {
     const el = document.getElementById('bootstrap-box');
-    el.style.display = el.style.display === 'none' ? 'block' : 'none';
+    el.style.display = el.style.display === 'none' ? 'flex' : 'none';
+    if (el.style.display === 'flex') el.style.flexDirection = 'column';
   }
 
   async function doBootstrap() {
@@ -651,6 +925,188 @@
       await (window.iniciarSessaoV5 ? window.iniciarSessaoV5() : Promise.resolve());
     }catch(e){err.textContent=e.message||'Não foi possível entrar.';err.style.display='block';}
   }
+
+  // ===== PORTAL PÚBLICO =====
+  let _portalFiles = [];
+  let _portalPdfBase64 = null;
+  let _portalProtocolo = null;
+
+  function abrirPortalPublico() {
+    document.getElementById('portal-screen').style.display='block';
+    document.body.style.overflow='hidden';
+    // Preencher data/hora atual
+    const agora = new Date();
+    const dataFmt = agora.toLocaleDateString('pt-BR') + ' ' + agora.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
+    document.getElementById('p-data-reg').value = dataFmt;
+    // Carrega lista de empresas
+    fetch(window.SAC_API+'/api/public/empresas')
+      .then(r=>r.json()).then(d=>{
+        const sel=document.getElementById('p-empresa');
+        if(d.empresas&&d.empresas.length){
+          sel.innerHTML='<option value="">Selecione...</option>'+d.empresas.map(e=>`<option value="${e.replace(/"/g,'&quot;')}">${e}</option>`).join('');
+        }
+      }).catch(()=>{});
+  }
+
+  function fecharPortalPublico() {
+    document.getElementById('portal-screen').style.display='none';
+    document.body.style.overflow='';
+  }
+
+  function toggleCanalOutro() {
+    const sel = document.querySelector('input[name="p-canal"]:checked');
+    document.getElementById('p-canal-outro-wrap').style.display = sel && sel.value === 'Outro' ? 'block' : 'none';
+  }
+
+  function toggleProdutoSection() {
+    const sec = document.getElementById('p-produto-section');
+    const chev = document.getElementById('p-prod-chevron');
+    const open = sec.style.display !== 'none';
+    sec.style.display = open ? 'none' : 'block';
+    chev.textContent = open ? '▼ expandir' : '▲ recolher';
+  }
+
+  const _PORTAL_ALLOWED = ['image/jpeg','image/png','image/gif','image/webp','audio/mpeg','audio/wav','audio/mp4','audio/aac','audio/ogg','audio/webm','video/mp4','video/quicktime','video/webm','application/pdf','application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document','application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','text/plain'];
+  function _fileIcon(tipo) {
+    if (tipo.startsWith('image/')) return '🖼️';
+    if (tipo.startsWith('audio/')) return '🎧';
+    if (tipo.startsWith('video/')) return '🎬';
+    if (tipo === 'application/pdf') return '📄';
+    return '📎';
+  }
+
+  function _addPortalFile(f) {
+    if (_portalFiles.length >= 8) { alert('Máximo de 8 arquivos.'); return; }
+    if (!_PORTAL_ALLOWED.includes(f.type)) { alert(`Tipo não permitido: ${f.name}`); return; }
+    if (f.size > 10 * 1024 * 1024) { alert(`Arquivo muito grande: ${f.name} (máx 10MB)`); return; }
+    const idx = _portalFiles.length;
+    _portalFiles.push({ nome: f.name, tipo: f.type, tamanho: f.size, dados: null });
+    const reader = new FileReader();
+    reader.onload = ev => { _portalFiles[idx].dados = ev.target.result.split(',')[1]; renderPortalFiles(); };
+    reader.readAsDataURL(f);
+  }
+
+  function handlePortalFiles(e) {
+    Array.from(e.target.files).forEach(_addPortalFile);
+    e.target.value = '';
+    renderPortalFiles();
+  }
+
+  function handlePortalDrop(e) {
+    e.preventDefault();
+    e.currentTarget.style.borderColor='var(--gray-300)';
+    e.currentTarget.style.background='';
+    Array.from(e.dataTransfer.files).forEach(_addPortalFile);
+    renderPortalFiles();
+  }
+
+  function renderPortalFiles() {
+    const list = document.getElementById('p-files-list');
+    list.innerHTML = _portalFiles.map((f,i) => `
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--gray-50);border:1px solid var(--gray-200);border-radius:8px">
+        <span style="font-size:18px">${_fileIcon(f.tipo)}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${f.nome}</div>
+          <div style="font-size:11px;color:var(--gray-400)">${(f.tamanho/1024).toFixed(0)}KB · ${f.dados?'✓ pronto':'⏳ carregando'}</div>
+        </div>
+        <button onclick="_portalFiles.splice(${i},1);renderPortalFiles()" style="background:none;border:none;cursor:pointer;color:var(--gray-400);font-size:18px;padding:0;line-height:1">×</button>
+      </div>`).join('');
+  }
+
+  function resetPortal() {
+    document.getElementById('portal-form-wrap').style.display='block';
+    document.getElementById('portal-success-wrap').style.display='none';
+    document.getElementById('portal-err').style.display='none';
+    ['p-nome-reg','p-setor-reg','p-nome-cliente','p-tel','p-email','p-descricao','p-motivo','p-produto','p-pedido','p-nf','p-lote','p-qtd','p-obs','p-canal-outro'].forEach(id=>{ const el=document.getElementById(id); if(el)el.value=''; });
+    document.getElementById('p-empresa').value='';
+    document.querySelectorAll('input[name="p-canal"]').forEach(r=>r.checked=false);
+    const tipoRec = document.querySelector('input[name="p-tipo"][value="Reclamação"]');
+    if(tipoRec) tipoRec.checked=true;
+    document.getElementById('p-canal-outro-wrap').style.display='none';
+    _portalFiles=[]; _portalPdfBase64=null; _portalProtocolo=null;
+    renderPortalFiles();
+    document.getElementById('portal-screen').scrollTop=0;
+    const agora = new Date();
+    document.getElementById('p-data-reg').value = agora.toLocaleDateString('pt-BR') + ' ' + agora.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
+  }
+
+  function baixarFichaPortal() {
+    if (!_portalPdfBase64) return;
+    const byteChars = atob(_portalPdfBase64);
+    const byteNums = new Array(byteChars.length);
+    for(let i=0;i<byteChars.length;i++) byteNums[i]=byteChars.charCodeAt(i);
+    const blob = new Blob([new Uint8Array(byteNums)], {type:'application/pdf'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href=url; a.download=`FICHA_${_portalProtocolo||'manifestacao'}.pdf`; a.click();
+    setTimeout(()=>URL.revokeObjectURL(url), 5000);
+  }
+
+  async function submitPortal() {
+    const btn = document.getElementById('portal-submit-btn');
+    const errEl = document.getElementById('portal-err');
+    errEl.style.display='none';
+
+    const v = id => (document.getElementById(id)?.value||'').trim();
+    const colaboradorRecebimento = v('p-nome-reg');
+    const setorRecebimento = v('p-setor-reg');
+    const empresa = v('p-empresa');
+    const nomeCliente = v('p-nome-cliente');
+    const descricaoOriginal = v('p-descricao');
+    const canalSel = document.querySelector('input[name="p-canal"]:checked');
+    const tipoSel = document.querySelector('input[name="p-tipo"]:checked');
+    const canalRecebimento = canalSel ? canalSel.value : '';
+    const tipoManifestacao = tipoSel ? tipoSel.value : 'Reclamação';
+
+    if (!colaboradorRecebimento) { errEl.textContent='Informe seu nome.'; errEl.style.display='block'; document.getElementById('p-nome-reg').focus(); return; }
+    if (!setorRecebimento) { errEl.textContent='Informe seu setor.'; errEl.style.display='block'; document.getElementById('p-setor-reg').focus(); return; }
+    if (!empresa) { errEl.textContent='Selecione a empresa.'; errEl.style.display='block'; document.getElementById('p-empresa').focus(); return; }
+    if (!nomeCliente) { errEl.textContent='Informe o nome do cliente.'; errEl.style.display='block'; document.getElementById('p-nome-cliente').focus(); return; }
+    if (!descricaoOriginal || descricaoOriginal.length < 10) { errEl.textContent='Descreva a manifestação (mínimo 10 caracteres).'; errEl.style.display='block'; document.getElementById('p-descricao').focus(); return; }
+
+    const pendentes = _portalFiles.filter(f => !f.dados);
+    if (pendentes.length > 0) { errEl.textContent='Aguarde o carregamento dos arquivos.'; errEl.style.display='block'; return; }
+
+    btn.disabled=true; btn.textContent='Enviando... aguarde';
+
+    const payload = {
+      colaboradorRecebimento, setorRecebimento, empresa,
+      nomeCliente, descricaoOriginal, tipoManifestacao,
+      canalRecebimento, canalOutro: v('p-canal-outro'),
+      telefone: v('p-tel'), email: v('p-email'),
+      motivoManifestacao: v('p-motivo'),
+      produto: v('p-produto'), lote: v('p-lote'),
+      quantidadeAfetada: v('p-qtd'), pedido: v('p-pedido'),
+      notaFiscal: v('p-nf'), observacoes: v('p-obs'),
+      evidencias: _portalFiles.filter(f=>f.dados),
+    };
+
+    try {
+      const r = await fetch(window.SAC_API+'/api/public/reclamacoes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await r.json();
+      if (!data.sucesso) throw new Error(data.erro || 'Erro ao registrar.');
+
+      _portalProtocolo = data.protocolo;
+      _portalPdfBase64 = data.pdfBase64 || null;
+
+      document.getElementById('portal-form-wrap').style.display='none';
+      document.getElementById('portal-success-wrap').style.display='block';
+      document.getElementById('portal-protocolo-num').textContent = data.protocolo || '—';
+      const dt = data.dataHora ? new Date(data.dataHora).toLocaleString('pt-BR') : '';
+      document.getElementById('portal-protocolo-info').textContent = [dt && 'Registrado em: '+dt, empresa && 'Empresa: '+empresa, nomeCliente && 'Cliente: '+nomeCliente].filter(Boolean).join(' · ');
+      const pdfBtn = document.getElementById('portal-pdf-btn');
+      if (pdfBtn) pdfBtn.style.display = _portalPdfBase64 ? 'block' : 'none';
+      document.getElementById('portal-screen').scrollTop=0;
+    } catch(e) {
+      errEl.textContent = e.message || 'Não foi possível registrar. Tente novamente.';
+      errEl.style.display='block';
+    } finally {
+      btn.disabled=false; btn.textContent='ENVIAR AO SAC';
+    }
+  }
 </script>
 
 <body>
@@ -658,11 +1114,8 @@
 <!-- SIDEBAR -->
 <nav class="sidebar">
   <div class="sidebar-logo">
-    <div class="sidebar-logo-icon">
-      <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-    </div>
-    <h2>Gestão de Manifestações</h2>
-    <p>SAC · Grupo Chiacchio</p>
+    <img src="/logo-chiacchio.png" alt="Grupo Chiacchio" style="width:130px;display:block;margin-bottom:6px;filter:brightness(0) invert(1);opacity:0.9">
+    <h2 style="font-size:11px;font-weight:700;color:white;letter-spacing:0.04em">SAC GRUPO CHIACCHIO</h2>
   </div>
 
   <div class="sidebar-section">Atendimento</div>
@@ -704,6 +1157,11 @@
   <div class="sidebar-item" onclick="navigate('setores', this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 19.07a10 10 0 0 1 0-14.14"/></svg>
     Setores
+  </div>
+
+  <div class="sidebar-item" onclick="navigate('biblioteca-fichas', this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/></svg>
+    Biblioteca
   </div>
 
   <div class="sidebar-section">Inteligência</div>
@@ -1405,18 +1863,218 @@
   </div>
 
 
-  <!-- ===== CENTRAL DO APROVADOR ===== -->
+  <!-- ===== CENTRAL DE APROVAÇÃO (MULTI-PERFIL) ===== -->
   <div class="page" id="page-aprovadores">
-    <div class="topbar"><div class="breadcrumb">Gestão / <span>Central de Aprovação e Pendências</span></div><div class="topbar-right"><span id="aprovador-nome-top">Aprovador</span></div></div>
+    <div class="topbar"><div class="breadcrumb">Gestão / <span>Central de Aprovação</span></div><div class="topbar-right"><span id="aprovador-nome-top"></span></div></div>
     <div class="page-content">
-      <div class="page-header"><div><h1>Central de Aprovação e Pendências</h1><p>SAC e RNC conforme perfil, empresa, setor e competência.</p></div><div><select class="form-input" id="aprovador-processo" onchange="loadAprovadorDashboard()"><option value="TODOS">Todos</option><option value="SAC">SAC</option><option value="RNC">RNC</option></select></div></div>
-      <div class="kpi-grid">
-        <div class="kpi-card"><div class="kpi-label">SAC</div><div class="kpi-value" id="ap-saca">--</div><div class="kpi-sub">pendências</div></div>
-        <div class="kpi-card"><div class="kpi-label">RNC</div><div class="kpi-value" id="ap-rnca">--</div><div class="kpi-sub">pendentes</div></div>
-        <div class="kpi-card highlight"><div class="kpi-label">Total</div><div class="kpi-value" id="ap-total">--</div><div class="kpi-sub">minhas pendências</div></div>
-        <div class="kpi-card"><div class="kpi-label">Sugestões enviadas</div><div class="kpi-value" id="ap-sugestoes">--</div><div class="kpi-sub">para o SAC</div></div>
+      <div class="page-header"><div><h1>Central de Aprovação</h1><p id="aprov-page-desc">Gerencie aprovadores, regras e pendências.</p></div></div>
+      <!-- Tabs dinâmicos por perfil -->
+      <div class="tabs-bar" id="aprov-tabs" style="margin-bottom:16px">
+        <button class="tab-btn active" onclick="aprvTab('pendencias',this)" id="aprtab-pendencias">Pendências</button>
+        <button class="tab-btn" onclick="aprvTab('fila-sac',this)" id="aprtab-fila-sac" style="display:none">Fila SAC</button>
+        <button class="tab-btn" onclick="aprvTab('aprovadores',this)" id="aprtab-aprovadores" style="display:none">Aprovadores</button>
+        <button class="tab-btn" onclick="aprvTab('competencias',this)" id="aprtab-competencias" style="display:none">Competências</button>
+        <button class="tab-btn" onclick="aprvTab('regras',this)" id="aprtab-regras" style="display:none">Regras</button>
+        <button class="tab-btn" onclick="aprvTab('historico',this)" id="aprtab-historico" style="display:none">Histórico</button>
       </div>
-      <div class="section-card" style="margin-top:14px"><div class="section-title">APROVAÇÕES SAC</div><div style="font-size:11px;color:var(--gray-400);margin-bottom:10px">Manifestações são exibidas somente quando o usuário possui autorização para análise.</div><div id="ap-sac-queue"></div></div><div class="section-card" style="margin-top:14px"><div class="section-title">RNCs PENDENTES</div><div style="font-size:11px;color:var(--gray-400);margin-bottom:10px">Somente RNCs dentro da competência e empresa autorizadas para este aprovador.</div><div id="ap-rnc-queue"></div></div><div class="section-card" style="margin-top:14px"><div class="section-title">Todas as pendências</div><div id="ap-pendencias-wrap"></div></div>
+
+      <!-- TAB: PENDÊNCIAS (APROVADOR / MASTER) -->
+      <div id="aprtab-panel-pendencias">
+        <div class="kpi-grid">
+          <div class="kpi-card"><div class="kpi-label">SAC</div><div class="kpi-value" id="ap-saca">--</div><div class="kpi-sub">pendências</div></div>
+          <div class="kpi-card"><div class="kpi-label">RNC</div><div class="kpi-value" id="ap-rnca">--</div><div class="kpi-sub">pendentes</div></div>
+          <div class="kpi-card highlight"><div class="kpi-label">Total</div><div class="kpi-value" id="ap-total">--</div><div class="kpi-sub">minhas pendências</div></div>
+          <div class="kpi-card"><div class="kpi-label">Sugestões</div><div class="kpi-value" id="ap-sugestoes">--</div><div class="kpi-sub">enviadas ao SAC</div></div>
+        </div>
+        <div class="section-card" style="margin-top:14px"><div class="section-title">APROVAÇÕES SAC</div><div style="font-size:11px;color:var(--gray-400);margin-bottom:10px">Manifestações aguardando sua análise.</div><div id="ap-sac-queue"></div></div>
+        <div class="section-card" style="margin-top:14px"><div class="section-title">RNCs PENDENTES</div><div style="font-size:11px;color:var(--gray-400);margin-bottom:10px">Somente RNCs dentro da sua competência e empresa.</div><div id="ap-rnc-queue"></div></div>
+        <!-- Fila de aprovação estruturada -->
+        <div class="section-card" style="margin-top:14px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+            <div class="section-title" style="margin:0">FILA DE APROVAÇÃO</div>
+            <button class="btn btn-secondary" onclick="carregarFilaPendencias()" style="font-size:12px;padding:6px 14px">Atualizar</button>
+          </div>
+          <div id="ap-fila-pendencias"></div>
+        </div>
+      </div>
+
+      <!-- TAB: FILA SAC (ANALISTA SAC) -->
+      <div id="aprtab-panel-fila-sac" style="display:none">
+        <div class="kpi-grid">
+          <div class="kpi-card"><div class="kpi-label">Enviados</div><div class="kpi-value" id="sac-fila-total">--</div><div class="kpi-sub">para aprovação</div></div>
+          <div class="kpi-card highlight"><div class="kpi-label">Pendentes</div><div class="kpi-value" id="sac-fila-pendentes">--</div><div class="kpi-sub">aguardando decisão</div></div>
+          <div class="kpi-card" style="border-color:#059669"><div class="kpi-label">Aprovados</div><div class="kpi-value" id="sac-fila-aprov">--</div><div class="kpi-sub">este mês</div></div>
+          <div class="kpi-card" style="border-color:#DC2626"><div class="kpi-label">Rejeitados</div><div class="kpi-value" id="sac-fila-rej">--</div><div class="kpi-sub">este mês</div></div>
+        </div>
+        <div class="section-card" style="margin-top:14px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <div class="section-title" style="margin:0">ITENS ENVIADOS PARA APROVAÇÃO</div>
+            <button class="btn btn-primary" onclick="abrirModalEnviarAprovacao()" style="font-size:12px;padding:6px 14px">+ Enviar para aprovação</button>
+          </div>
+          <div id="sac-fila-lista"></div>
+        </div>
+      </div>
+
+      <!-- TAB: APROVADORES (MASTER) -->
+      <div id="aprtab-panel-aprovadores" style="display:none">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <div><h2 style="font-size:16px;font-weight:700;margin:0">Aprovadores cadastrados</h2><p style="font-size:12px;color:var(--gray-400);margin:4px 0 0">Gerencie quem pode aprovar SAC e RNC.</p></div>
+          <button class="btn btn-primary" onclick="abrirModalAprovador()">+ Novo aprovador</button>
+        </div>
+        <div id="aprov-lista"></div>
+      </div>
+
+      <!-- TAB: COMPETÊNCIAS (MASTER) -->
+      <div id="aprtab-panel-competencias" style="display:none">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <div><h2 style="font-size:16px;font-weight:700;margin:0">Competências de aprovação</h2><p style="font-size:12px;color:var(--gray-400);margin:4px 0 0">Defina os tipos de competência (ex: Qualidade, Logística).</p></div>
+          <button class="btn btn-primary" onclick="abrirModalCompetencia()">+ Nova competência</button>
+        </div>
+        <div id="comp-lista"></div>
+        <div style="margin-top:24px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <h2 style="font-size:16px;font-weight:700;margin:0">Atribuições (Aprovador × Competência)</h2>
+            <button class="btn btn-secondary" onclick="abrirModalAtribuicao()">+ Atribuir competência</button>
+          </div>
+          <div id="atrib-lista"></div>
+        </div>
+      </div>
+
+      <!-- TAB: REGRAS (MASTER) -->
+      <div id="aprtab-panel-regras" style="display:none">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <div><h2 style="font-size:16px;font-weight:700;margin:0">Regras de aprovação</h2><p style="font-size:12px;color:var(--gray-400);margin:4px 0 0">Defina quando e que competência é exigida.</p></div>
+          <button class="btn btn-primary" onclick="abrirModalRegra()">+ Nova regra</button>
+        </div>
+        <div id="regras-lista"></div>
+      </div>
+
+      <!-- TAB: HISTÓRICO (MASTER / APROVADOR) -->
+      <div id="aprtab-panel-historico" style="display:none">
+        <div class="section-card">
+          <div class="section-title">HISTÓRICO DE DECISÕES</div>
+          <div id="hist-lista"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Aprovador -->
+  <div id="modal-aprovador" class="modal-overlay" style="display:none" onclick="if(event.target===this)fecharModal('modal-aprovador')">
+    <div class="modal-box" style="max-width:560px">
+      <div class="modal-header"><div><div style="font-size:17px;font-weight:800" id="modal-aprov-title">Novo Aprovador</div></div><button class="modal-close" onclick="fecharModal('modal-aprovador')">×</button></div>
+      <div class="modal-body">
+        <input type="hidden" id="aprov-edit-id">
+        <div class="field-grid">
+          <div class="field"><label>Nome *</label><input id="aprov-nome" class="form-input" placeholder="Nome completo"></div>
+          <div class="field"><label>Login (usuário do sistema)</label><input id="aprov-usuario" class="form-input" placeholder="login no sistema"></div>
+          <div class="field"><label>E-mail</label><input id="aprov-email" class="form-input" type="email" placeholder="email@empresa.com"></div>
+          <div class="field"><label>Cargo</label><input id="aprov-cargo" class="form-input" placeholder="ex: Gerente de Qualidade"></div>
+          <div class="field"><label>Empresa</label><input id="aprov-empresa" class="form-input" placeholder="ex: Chiacchio Embalagens"></div>
+          <div class="field"><label>Setor</label><input id="aprov-setor" class="form-input" placeholder="ex: Qualidade"></div>
+          <div class="field" style="grid-column:1/-1"><label>Observações</label><textarea id="aprov-obs" class="form-input" rows="2" placeholder="Observações adicionais"></textarea></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end">
+          <button class="btn btn-secondary" onclick="fecharModal('modal-aprovador')">Cancelar</button>
+          <button class="btn btn-primary" onclick="salvarAprovador()">Salvar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Competência -->
+  <div id="modal-competencia" class="modal-overlay" style="display:none" onclick="if(event.target===this)fecharModal('modal-competencia')">
+    <div class="modal-box" style="max-width:480px">
+      <div class="modal-header"><div><div style="font-size:17px;font-weight:800">Nova Competência</div></div><button class="modal-close" onclick="fecharModal('modal-competencia')">×</button></div>
+      <div class="modal-body">
+        <div class="field-grid">
+          <div class="field"><label>Nome *</label><input id="comp-nome" class="form-input" placeholder="ex: Qualidade, Logística"></div>
+          <div class="field"><label>Tipo</label><select id="comp-tipo" class="form-input"><option value="AMBOS">SAC e RNC</option><option value="SAC">Somente SAC</option><option value="RNC">Somente RNC</option></select></div>
+          <div class="field" style="grid-column:1/-1"><label>Descrição</label><textarea id="comp-descricao" class="form-input" rows="2" placeholder="Descreva o escopo desta competência"></textarea></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end">
+          <button class="btn btn-secondary" onclick="fecharModal('modal-competencia')">Cancelar</button>
+          <button class="btn btn-primary" onclick="salvarCompetencia()">Salvar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Atribuição -->
+  <div id="modal-atribuicao" class="modal-overlay" style="display:none" onclick="if(event.target===this)fecharModal('modal-atribuicao')">
+    <div class="modal-box" style="max-width:480px">
+      <div class="modal-header"><div><div style="font-size:17px;font-weight:800">Atribuir Competência</div></div><button class="modal-close" onclick="fecharModal('modal-atribuicao')">×</button></div>
+      <div class="modal-body">
+        <div class="field-grid">
+          <div class="field"><label>Aprovador *</label><select id="atrib-aprovador" class="form-input"><option value="">Selecione...</option></select></div>
+          <div class="field"><label>Competência *</label><select id="atrib-competencia" class="form-input"><option value="">Selecione...</option></select></div>
+          <div class="field" style="grid-column:1/-1"><label>Empresa (opcional — restringe ao escopo)</label><input id="atrib-empresa" class="form-input" placeholder="Deixe em branco para todas as empresas"></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end">
+          <button class="btn btn-secondary" onclick="fecharModal('modal-atribuicao')">Cancelar</button>
+          <button class="btn btn-primary" onclick="salvarAtribuicao()">Atribuir</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Regra -->
+  <div id="modal-regra" class="modal-overlay" style="display:none" onclick="if(event.target===this)fecharModal('modal-regra')">
+    <div class="modal-box" style="max-width:560px">
+      <div class="modal-header"><div><div style="font-size:17px;font-weight:800" id="modal-regra-title">Nova Regra</div></div><button class="modal-close" onclick="fecharModal('modal-regra')">×</button></div>
+      <div class="modal-body">
+        <input type="hidden" id="regra-edit-id">
+        <div class="field-grid">
+          <div class="field"><label>Nome da regra *</label><input id="regra-nome" class="form-input" placeholder="ex: RNC com causa crítica"></div>
+          <div class="field"><label>Tipo de entidade *</label><select id="regra-tipo" class="form-input"><option value="SAC">SAC (Manifestação)</option><option value="RNC">RNC</option><option value="AMBOS">SAC e RNC</option></select></div>
+          <div class="field"><label>Competência necessária *</label><input id="regra-competencia" class="form-input" placeholder="ex: Qualidade"></div>
+          <div class="field"><label>Prioridade</label><select id="regra-prioridade" class="form-input"><option value="NORMAL">Normal</option><option value="ALTA">Alta</option><option value="CRITICA">Crítica</option></select></div>
+          <div class="field" style="grid-column:1/-1"><label>Condição / descrição</label><textarea id="regra-condicao" class="form-input" rows="2" placeholder="Descreva quando esta regra se aplica"></textarea></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end">
+          <button class="btn btn-secondary" onclick="fecharModal('modal-regra')">Cancelar</button>
+          <button class="btn btn-primary" onclick="salvarRegra()">Salvar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Enviar para Aprovação -->
+  <div id="modal-enviar-aprovacao" class="modal-overlay" style="display:none" onclick="if(event.target===this)fecharModal('modal-enviar-aprovacao')">
+    <div class="modal-box" style="max-width:560px">
+      <div class="modal-header"><div><div style="font-size:17px;font-weight:800">Enviar para Aprovação</div></div><button class="modal-close" onclick="fecharModal('modal-enviar-aprovacao')">×</button></div>
+      <div class="modal-body">
+        <div class="field-grid">
+          <div class="field"><label>Tipo *</label><select id="env-tipo" class="form-input" onchange="atualizarSelectEntidade()"><option value="SAC">SAC (Manifestação)</option><option value="RNC">RNC</option></select></div>
+          <div class="field"><label>ID da entidade *</label><input id="env-id" class="form-input" placeholder="ex: MAN-ABC123 ou RNC-XYZ456"></div>
+          <div class="field"><label>Competência necessária</label><select id="env-competencia" class="form-input"><option value="">Selecione...</option></select></div>
+          <div class="field"><label>Aprovador</label><select id="env-aprovador" class="form-input"><option value="">Selecione...</option></select></div>
+          <div class="field"><label>Empresa</label><input id="env-empresa" class="form-input" placeholder="empresa relacionada"></div>
+          <div class="field"><label>Setor</label><input id="env-setor" class="form-input" placeholder="setor responsável"></div>
+          <div class="field" style="grid-column:1/-1"><label>Descrição</label><textarea id="env-descricao" class="form-input" rows="2" placeholder="Descreva brevemente o que precisa de aprovação"></textarea></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end">
+          <button class="btn btn-secondary" onclick="fecharModal('modal-enviar-aprovacao')">Cancelar</button>
+          <button class="btn btn-primary" onclick="enviarParaAprovacao()">Enviar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Decisão Aprovação -->
+  <div id="modal-decisao-aprov" class="modal-overlay" style="display:none" onclick="if(event.target===this)fecharModal('modal-decisao-aprov')">
+    <div class="modal-box" style="max-width:520px">
+      <div class="modal-header"><div><div style="font-size:17px;font-weight:800" id="decisao-aprov-title">Decisão de Aprovação</div><div style="font-size:12px;color:var(--gray-400)" id="decisao-aprov-sub"></div></div><button class="modal-close" onclick="fecharModal('modal-decisao-aprov')">×</button></div>
+      <div class="modal-body">
+        <input type="hidden" id="decisao-aprov-id">
+        <div class="field"><label>Observações <span id="decisao-obs-req" style="color:#DC2626;display:none">(obrigatório)</span></label><textarea id="decisao-obs" class="form-input" rows="3" placeholder="Justifique a decisão quando necessário"></textarea></div>
+        <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">
+          <button class="btn btn-primary" onclick="submitDecisao('APROVADO')">✅ Aprovar</button>
+          <button class="btn btn-secondary" onclick="submitDecisao('DEVOLVIDO')">↩ Devolver para ajuste</button>
+          <button class="btn btn-secondary" onclick="submitDecisao('SOLICITANDO_INFORMACOES')">❓ Solicitar informações</button>
+          <button class="btn btn-ghost" onclick="submitDecisao('REJEITADO')" style="color:#DC2626">✖ Rejeitar</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -2713,6 +3371,140 @@
   </div>
 </div>
 
+<!-- ===== BIBLIOTECA DE FICHAS ===== -->
+<div class="page" id="page-biblioteca-fichas">
+  <div class="page-header" style="flex-wrap:wrap;gap:12px">
+    <div>
+      <h1>Biblioteca de Fichas</h1>
+      <p>Arquivo digital das fichas de reclamações e manifestações.</p>
+    </div>
+    <button class="btn btn-primary" onclick="loadBiblioteca(true)">⟳ Atualizar</button>
+  </div>
+
+  <!-- Stats -->
+  <div class="kpi-row" id="bib-kpis" style="padding:0 24px 16px">
+    <div class="kpi-card"><div class="kpi-label">Total de Fichas</div><div class="kpi-value" id="bib-stat-total">—</div></div>
+    <div class="kpi-card"><div class="kpi-label">Fichas do Mês</div><div class="kpi-value" id="bib-stat-mes">—</div></div>
+    <div class="kpi-card"><div class="kpi-label">Fichas do Ano</div><div class="kpi-value" id="bib-stat-ano">—</div></div>
+    <div class="kpi-card"><div class="kpi-label">Com Evidências</div><div class="kpi-value" id="bib-stat-ev">—</div></div>
+  </div>
+
+  <!-- Filtros -->
+  <div style="padding:0 24px 16px">
+    <div style="background:white;border:1px solid var(--gray-200);border-radius:12px;padding:20px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:14px;color:var(--gray-700)">FILTROS</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:12px">
+        <div>
+          <label style="font-size:11px;font-weight:600;color:var(--gray-500);display:block;margin-bottom:4px">ANO</label>
+          <select id="bib-f-ano" class="select" style="width:100%">
+            <option value="">Todos</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:600;color:var(--gray-500);display:block;margin-bottom:4px">MÊS</label>
+          <select id="bib-f-mes" class="select" style="width:100%">
+            <option value="">Todos</option>
+            <option value="01">Janeiro</option><option value="02">Fevereiro</option><option value="03">Março</option>
+            <option value="04">Abril</option><option value="05">Maio</option><option value="06">Junho</option>
+            <option value="07">Julho</option><option value="08">Agosto</option><option value="09">Setembro</option>
+            <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:600;color:var(--gray-500);display:block;margin-bottom:4px">EMPRESA</label>
+          <select id="bib-f-empresa" class="select" style="width:100%">
+            <option value="">Todas</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:600;color:var(--gray-500);display:block;margin-bottom:4px">TIPO</label>
+          <select id="bib-f-tipo" class="select" style="width:100%">
+            <option value="">Todos</option>
+            <option value="Reclamação">Reclamação</option>
+            <option value="Dúvida">Dúvida</option>
+            <option value="Sugestão">Sugestão</option>
+            <option value="Elogio">Elogio</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:600;color:var(--gray-500);display:block;margin-bottom:4px">STATUS</label>
+          <select id="bib-f-status" class="select" style="width:100%">
+            <option value="">Todos</option>
+            <option value="NOVA">NOVA</option>
+            <option value="EM ANÁLISE">EM ANÁLISE</option>
+            <option value="RESOLVIDA">RESOLVIDA</option>
+          </select>
+        </div>
+        <div style="grid-column:1/-1">
+          <label style="font-size:11px;font-weight:600;color:var(--gray-500);display:block;margin-bottom:4px">PESQUISAR</label>
+          <input id="bib-f-q" class="input" type="text" placeholder="Protocolo, cliente, colaborador, motivo..." style="width:100%" onkeydown="if(event.key==='Enter')loadBiblioteca(true)">
+        </div>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-primary" onclick="loadBiblioteca(true)">FILTRAR</button>
+        <button class="btn btn-secondary" onclick="limparFiltrosBib()">LIMPAR FILTROS</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Navegação hierárquica (anos/meses) -->
+  <div id="bib-hierarquia" style="padding:0 24px 16px;display:none">
+    <div style="background:white;border:1px solid var(--gray-200);border-radius:12px;padding:16px">
+      <div style="font-size:12px;font-weight:700;color:var(--gray-500);margin-bottom:12px;text-transform:uppercase;letter-spacing:.05em">Navegação por Período</div>
+      <div id="bib-hier-content"></div>
+    </div>
+  </div>
+
+  <!-- Tabela -->
+  <div style="padding:0 24px 32px">
+    <div style="background:white;border:1px solid var(--gray-200);border-radius:12px;overflow:hidden">
+      <div style="padding:16px 20px;border-bottom:1px solid var(--gray-200);display:flex;align-items:center;justify-content:space-between">
+        <div style="font-size:13px;font-weight:700;color:var(--gray-900)">FICHAS <span id="bib-count" style="color:var(--gray-400);font-weight:400"></span></div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <button id="bib-prev-btn" class="btn btn-secondary" style="padding:4px 10px;font-size:12px" onclick="bibChangePage(-1)">‹ Ant.</button>
+          <span id="bib-page-info" style="font-size:12px;color:var(--gray-500)"></span>
+          <button id="bib-next-btn" class="btn btn-secondary" style="padding:4px 10px;font-size:12px" onclick="bibChangePage(1)">Prox. ›</button>
+        </div>
+      </div>
+      <div id="bib-loading" style="text-align:center;padding:40px;color:var(--gray-400);display:none">Carregando fichas...</div>
+      <div id="bib-empty" style="text-align:center;padding:40px;color:var(--gray-400);display:none">Nenhuma ficha encontrada para os filtros selecionados.</div>
+      <div style="overflow-x:auto">
+        <table class="table" id="bib-table" style="display:none">
+          <thead>
+            <tr>
+              <th>PROTOCOLO</th>
+              <th>DATA</th>
+              <th>CLIENTE</th>
+              <th>EMPRESA</th>
+              <th>TIPO</th>
+              <th>SETOR</th>
+              <th>COLABORADOR</th>
+              <th>STATUS</th>
+              <th>PDF</th>
+              <th>EVIDÊNCIAS</th>
+              <th>AÇÕES</th>
+            </tr>
+          </thead>
+          <tbody id="bib-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DOSSIÊ DA FICHA (Biblioteca) -->
+<div id="modal-bib-ficha" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeBibFichaModal()">
+  <div class="modal-box" style="max-width:780px;max-height:90vh;overflow-y:auto">
+    <div class="modal-header">
+      <h3 id="bib-modal-titulo">Ficha</h3>
+      <button class="modal-close" onclick="closeBibFichaModal()">✕</button>
+    </div>
+    <div class="modal-body" id="bib-modal-body">
+      <div style="text-align:center;color:var(--gray-400);padding:30px">Carregando...</div>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL CONTEXTO DO CLIENTE -->
 <div id="modal-cliente-ctx" style="display:none" class="modal-overlay" onclick="if(event.target===this)this.style.display='none'">
   <div class="modal-box" style="max-width:700px;max-height:80vh;overflow-y:auto">
@@ -2733,9 +3525,216 @@ const API = window.SAC_API || 'https://assistente-sac-gpchiacchio.vercel.app';
 function navigate(page, el) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
-  document.getElementById('page-' + page).classList.add('active');
+  const pageEl = document.getElementById('page-' + page);
+  if (!pageEl) return;
+  pageEl.classList.add('active');
   if (el) el.classList.add('active');
+  if (page === 'biblioteca-fichas') loadBiblioteca(false);
 }
+
+// ===== BIBLIOTECA DE FICHAS =====
+let _bibPage = 1;
+let _bibTotalPages = 1;
+let _bibStats = null;
+
+async function loadBiblioteca(reset) {
+  if (reset) _bibPage = 1;
+  const tok = sessionStorage.getItem('sac-token');
+  if (!tok) return;
+  const q = (document.getElementById('bib-f-q')?.value||'').trim();
+  const ano = document.getElementById('bib-f-ano')?.value||'';
+  const mes = document.getElementById('bib-f-mes')?.value||'';
+  const empresa = document.getElementById('bib-f-empresa')?.value||'';
+  const tipo = document.getElementById('bib-f-tipo')?.value||'';
+  const status = document.getElementById('bib-f-status')?.value||'';
+  const params = new URLSearchParams({ page: _bibPage, limit: 50 });
+  if (q) params.set('q', q);
+  if (ano) params.set('ano', ano);
+  if (mes) params.set('mes', mes);
+  if (empresa) params.set('empresa', empresa);
+  if (tipo) params.set('tipo', tipo);
+  if (status) params.set('status', status);
+
+  document.getElementById('bib-loading').style.display='block';
+  document.getElementById('bib-table').style.display='none';
+  document.getElementById('bib-empty').style.display='none';
+
+  try {
+    const [fichasRes, statsRes] = await Promise.all([
+      fetch(API+'/api/biblioteca/fichas?'+params, {headers:{'Authorization':'Bearer '+tok}}).then(r=>r.json()),
+      fetch(API+'/api/biblioteca/stats?'+(empresa?'empresa='+encodeURIComponent(empresa):''), {headers:{'Authorization':'Bearer '+tok}}).then(r=>r.json()).catch(()=>({sucesso:false})),
+    ]);
+
+    // Stats
+    if (statsRes.sucesso) {
+      _bibStats = statsRes;
+      document.getElementById('bib-stat-total').textContent = statsRes.totalFichas ?? '—';
+      document.getElementById('bib-stat-mes').textContent = statsRes.fichasDoMes ?? '—';
+      document.getElementById('bib-stat-ano').textContent = statsRes.fichasDoAno ?? '—';
+      document.getElementById('bib-stat-ev').textContent = statsRes.comEvidencias ?? '—';
+      renderBibHierarquia(statsRes.porAnoMes || {});
+      renderBibAnoOptions(Object.keys(statsRes.porAnoMes || {}).sort().reverse());
+      renderBibEmpresaOptions(Object.keys(statsRes.porEmpresa || {}));
+    }
+
+    // Fichas
+    document.getElementById('bib-loading').style.display='none';
+    if (!fichasRes.sucesso) { document.getElementById('bib-empty').style.display='block'; return; }
+    _bibTotalPages = fichasRes.pages || 1;
+    document.getElementById('bib-count').textContent = `(${fichasRes.total} ficha${fichasRes.total !== 1 ? 's' : ''})`;
+    document.getElementById('bib-page-info').textContent = `Página ${fichasRes.page} de ${_bibTotalPages}`;
+    document.getElementById('bib-prev-btn').disabled = fichasRes.page <= 1;
+    document.getElementById('bib-next-btn').disabled = fichasRes.page >= _bibTotalPages;
+
+    if (!fichasRes.fichas || fichasRes.fichas.length === 0) {
+      document.getElementById('bib-empty').style.display='block';
+      return;
+    }
+    document.getElementById('bib-table').style.display='table';
+    const meses = ['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+    document.getElementById('bib-tbody').innerHTML = fichasRes.fichas.map(f => {
+      const dt = f.DATA_REGISTRO ? new Date(f.DATA_REGISTRO).toLocaleDateString('pt-BR') : (f.ANO&&f.MES?`${meses[parseInt(f.MES)]}/${f.ANO}`:'—');
+      const evCount = parseInt(f.TOTAL_EVIDENCIAS||0);
+      const hasPdf = !!f.PDF_DRIVE_URL;
+      const statusCls = (f.STATUS||'').toLowerCase().includes('nova')?'status-recebida':(f.STATUS||'').toLowerCase().includes('análise')?'status-em-analise':'status-encerrada';
+      return `<tr>
+        <td><span style="font-family:monospace;font-size:12px;font-weight:600">${escHtml(f.PROTOCOLO||f.ID_MANIFESTACAO||'—')}</span></td>
+        <td style="white-space:nowrap">${dt}</td>
+        <td>${escHtml(f.NOME_CLIENTE||'—')}</td>
+        <td>${escHtml(f.EMPRESA||'—')}</td>
+        <td><span class="badge" style="background:${f.TIPO_MANIFESTACAO==='Reclamação'?'var(--red-light)':f.TIPO_MANIFESTACAO==='Elogio'?'var(--green-light)':'var(--yellow-light)'}; color:var(--gray-700)">${escHtml(f.TIPO_MANIFESTACAO||'—')}</span></td>
+        <td>${escHtml(f.SETOR_RECEBIMENTO||'—')}</td>
+        <td>${escHtml(f.COLABORADOR_RECEBIMENTO||'—')}</td>
+        <td><span class="status-badge ${statusCls}">${escHtml(f.STATUS||'—')}</span></td>
+        <td>${hasPdf?`<a href="${escHtml(f.PDF_DRIVE_URL)}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary" style="padding:3px 8px;font-size:11px">📄 PDF</a>`:'<span style="color:var(--gray-400);font-size:12px">—</span>'}</td>
+        <td>${evCount>0?`<span style="font-size:12px;color:var(--gray-700)">📎 ${evCount}</span>`:'<span style="color:var(--gray-400);font-size:12px">—</span>'}</td>
+        <td><button class="btn btn-secondary" style="padding:3px 8px;font-size:11px" onclick="openBibFicha('${escHtml(f.ID_MANIFESTACAO||f.PROTOCOLO||'')}')">ABRIR</button></td>
+      </tr>`;
+    }).join('');
+  } catch(e) {
+    document.getElementById('bib-loading').style.display='none';
+    document.getElementById('bib-empty').style.display='block';
+    document.getElementById('bib-empty').textContent = 'Erro ao carregar fichas: ' + e.message;
+  }
+}
+
+function bibChangePage(delta) {
+  const np = _bibPage + delta;
+  if (np < 1 || np > _bibTotalPages) return;
+  _bibPage = np;
+  loadBiblioteca(false);
+}
+
+function limparFiltrosBib() {
+  ['bib-f-ano','bib-f-mes','bib-f-empresa','bib-f-tipo','bib-f-status'].forEach(id => { const el=document.getElementById(id); if(el)el.value=''; });
+  document.getElementById('bib-f-q').value='';
+  loadBiblioteca(true);
+}
+
+function renderBibAnoOptions(anos) {
+  const sel = document.getElementById('bib-f-ano');
+  if (!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">Todos</option>' + anos.map(a => `<option value="${a}"${a===cur?' selected':''}>${a}</option>`).join('');
+}
+
+function renderBibEmpresaOptions(empresas) {
+  const sel = document.getElementById('bib-f-empresa');
+  if (!sel) return;
+  const cur = sel.value;
+  const unique = [...new Set(empresas)].sort();
+  sel.innerHTML = '<option value="">Todas</option>' + unique.map(e => `<option value="${escHtml(e)}"${e===cur?' selected':''}>${escHtml(e)}</option>`).join('');
+}
+
+function renderBibHierarquia(porAnoMes) {
+  const wrap = document.getElementById('bib-hierarquia');
+  const cont = document.getElementById('bib-hier-content');
+  const anos = Object.keys(porAnoMes).sort().reverse();
+  if (anos.length === 0) { wrap.style.display='none'; return; }
+  wrap.style.display='block';
+  const nomMes = {' 01':'Jan','02':'Fev','03':'Mar','04':'Abr','05':'Mai','06':'Jun','07':'Jul','08':'Ago','09':'Set','10':'Out','11':'Nov','12':'Dez'};
+  cont.innerHTML = anos.map(ano => {
+    const meses = porAnoMes[ano];
+    const mesHtml = Object.keys(meses).sort().map(m => {
+      const nm = ({' 01':'Janeiro','02':'Fevereiro','03':'Março','04':'Abril','05':'Maio','06':'Junho','07':'Julho','08':'Agosto','09':'Setembro','10':'Outubro','11':'Novembro','12':'Dezembro'})[m] || m;
+      return `<button onclick="document.getElementById('bib-f-ano').value='${ano}';document.getElementById('bib-f-mes').value='${m}';loadBiblioteca(true)" style="background:var(--gray-50);border:1px solid var(--gray-200);border-radius:8px;padding:8px 12px;font-size:12px;cursor:pointer;text-align:left">
+        <div style="font-weight:600;color:var(--gray-700)">${nm}</div>
+        <div style="color:var(--gray-400);font-size:11px">${meses[m]} ficha${meses[m]!==1?'s':''}</div>
+      </button>`;
+    }).join('');
+    return `<div style="margin-bottom:16px"><div style="font-size:16px;font-weight:800;color:var(--gray-900);margin-bottom:8px;cursor:pointer" onclick="document.getElementById('bib-f-ano').value='${ano}';document.getElementById('bib-f-mes').value='';loadBiblioteca(true)">${ano}</div><div style="display:flex;flex-wrap:wrap;gap:8px">${mesHtml}</div></div>`;
+  }).join('');
+}
+
+async function openBibFicha(id) {
+  const tok = sessionStorage.getItem('sac-token');
+  if (!tok || !id) return;
+  document.getElementById('modal-bib-ficha').style.display='flex';
+  document.getElementById('bib-modal-titulo').textContent = 'Ficha ' + id;
+  document.getElementById('bib-modal-body').innerHTML = '<div style="text-align:center;color:var(--gray-400);padding:30px">Carregando...</div>';
+  try {
+    const r = await fetch(API+'/api/biblioteca/fichas/'+encodeURIComponent(id), {headers:{'Authorization':'Bearer '+tok}});
+    const d = await r.json();
+    if (!d.sucesso) throw new Error(d.erro||'Não encontrada');
+    const f = d.ficha; const evs = d.evidencias || [];
+    const hasPdf = !!f.PDF_DRIVE_URL;
+    const evIcons = {'image/':'🖼️','audio/':'🎧','video/':'🎬','application/pdf':'📄'};
+    const evIcon = m => { for(const k of Object.keys(evIcons)) if(m&&m.startsWith(k)) return evIcons[k]; return '📎'; };
+    document.getElementById('bib-modal-titulo').textContent = 'Ficha ' + (f.PROTOCOLO||id);
+    document.getElementById('bib-modal-body').innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
+        <div class="field-group"><label>Protocolo</label><div>${escHtml(f.PROTOCOLO||'—')}</div></div>
+        <div class="field-group"><label>Data</label><div>${f.DATA_REGISTRO?new Date(f.DATA_REGISTRO).toLocaleDateString('pt-BR'):'—'}</div></div>
+        <div class="field-group"><label>Cliente</label><div>${escHtml(f.NOME_CLIENTE||'—')}</div></div>
+        <div class="field-group"><label>Empresa</label><div>${escHtml(f.EMPRESA||'—')}</div></div>
+        <div class="field-group"><label>Setor</label><div>${escHtml(f.SETOR_RECEBIMENTO||'—')}</div></div>
+        <div class="field-group"><label>Colaborador</label><div>${escHtml(f.COLABORADOR_RECEBIMENTO||'—')}</div></div>
+        <div class="field-group"><label>Tipo</label><div>${escHtml(f.TIPO_MANIFESTACAO||'—')}</div></div>
+        <div class="field-group"><label>Status</label><div>${escHtml(f.STATUS||'—')}</div></div>
+        ${f.MOTIVO?`<div class="field-group" style="grid-column:1/-1"><label>Motivo</label><div>${escHtml(f.MOTIVO)}</div></div>`:''}
+      </div>
+
+      <div style="border:1px solid var(--gray-200);border-radius:10px;padding:16px;margin-bottom:16px">
+        <div style="font-size:12px;font-weight:700;color:var(--gray-700);margin-bottom:10px">DOCUMENTO OFICIAL</div>
+        ${hasPdf ? `
+          <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--gray-50);border-radius:8px">
+            <span style="font-size:24px">📄</span>
+            <div style="flex:1"><div style="font-size:13px;font-weight:600">${escHtml(f.PDF_NOME||'Ficha de Reclamação / Manifestação.pdf')}</div><div style="font-size:11px;color:var(--gray-400)">Versão ${f.VERSAO||1}</div></div>
+            <a href="${escHtml(f.PDF_DRIVE_URL)}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary" style="font-size:12px;padding:6px 12px">📥 BAIXAR PDF</a>
+          </div>` :
+          '<div style="color:var(--gray-400);font-size:13px">PDF não disponível para esta ficha.</div>'
+        }
+      </div>
+
+      ${evs.length > 0 ? `
+      <div style="border:1px solid var(--gray-200);border-radius:10px;padding:16px;margin-bottom:16px">
+        <div style="font-size:12px;font-weight:700;color:var(--gray-700);margin-bottom:10px">EVIDÊNCIAS (${evs.length})</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          ${evs.map(ev => `
+          <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--gray-50);border-radius:8px">
+            <span style="font-size:20px">${evIcon(ev.TIPO_MIME||'')}</span>
+            <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(ev.NOME||'Arquivo')}</div><div style="font-size:11px;color:var(--gray-400)">${ev.TIPO_MIME||''}${ev.TAMANHO?' · '+(parseInt(ev.TAMANHO)/1024).toFixed(0)+'KB':''}</div></div>
+            ${ev.DRIVE_URL?`<a href="${escHtml(ev.DRIVE_URL)}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary" style="font-size:11px;padding:4px 10px">Abrir</a>`:''}
+          </div>`).join('')}
+        </div>
+      </div>` : ''}
+
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-primary" onclick="if(window.abrirDossie)window.abrirDossie('${escHtml(f.ID_MANIFESTACAO||'')}');closeBibFichaModal()">ABRIR DOSSIÊ</button>
+        <button class="btn btn-secondary" onclick="closeBibFichaModal()">Fechar</button>
+      </div>
+    `;
+  } catch(e) {
+    document.getElementById('bib-modal-body').innerHTML = `<div style="color:var(--red);padding:20px">Erro: ${escHtml(e.message)}</div>`;
+  }
+}
+
+function closeBibFichaModal() {
+  document.getElementById('modal-bib-ficha').style.display='none';
+}
+
+// escHtml — alias de esc para compatibilidade da Biblioteca
+function escHtml(s) { return esc(s); }
 
 // ===== HELPERS =====
 function fmtDate(d) {
@@ -2922,14 +3921,14 @@ function renderDashboard(data) {
 
   // === KPIs PRINCIPAIS ===
   const emAberto = recs.filter(r => (r['Status']||'').toUpperCase().includes('ABERTO')).length;
-  const reclamacoes = recs.filter(r => (r['Motivo da Reclamação']||'') !== '').length;
   const encPct = total > 0 ? Math.round(encerradas/total*100) : 0;
-  const totalPeriodo = reclamacoes || total;
+  // kpi-reclamacoes: count de reclamações do período (somente aba "Reclamações + devolutiva", já filtrada por período/empresa/setor)
+  const totalPeriodo = recs.length;
 
   document.getElementById('kpi-andamento').textContent = emAndamento || mans.filter(m => !(m.STATUS||'').toUpperCase().includes('FINALIZ')).length;
   document.getElementById('kpi-total').textContent = total;
   document.getElementById('kpi-reclamacoes').textContent = totalPeriodo;
-  document.getElementById('kpi-rec-pct').textContent = totalPeriodo === 1 ? '1 manifestação' : totalPeriodo + ' manifestações';
+  document.getElementById('kpi-rec-pct').textContent = totalPeriodo === 1 ? '1 reclamação' : totalPeriodo + ' reclamações';
   document.getElementById('kpi-aberto').textContent = emAberto || (total - encerradas);
   document.getElementById('kpi-andamento-delta').textContent = 'aguardando ação';
   document.getElementById('kpi-encerradas').textContent = encerradas;
@@ -5278,7 +6277,7 @@ loadVisaoGeral();
         if(elPct&&p.totalMes>0)elPct.textContent=`${Math.round((p.viramReclamacao/p.totalMes)*100)}% do total do mês`;
       }
       if(results[0].status==='rejected')console.error('Manifestacoes:',results[0].reason);
-      if(results[1].status==='rejected')console.error('Reclamacoes:',results[1].reason);
+      if(results[1].status==='rejected'){console.error('Reclamacoes:',results[1].reason);const kpiRec=document.getElementById('kpi-reclamacoes');if(kpiRec)kpiRec.textContent='Erro ao carregar';}
 
       const _NAO_EMP=new Set(['TR01','TR08','SAC','RNC']);
       const empSet=new Set(['Todas']);
@@ -5289,11 +6288,13 @@ loadVisaoGeral();
       const setores=['Todos','SAC','Qualidade','Produção','Logística','Comercial','Financeiro','Faturamento / Expedição'];
       const sel=document.getElementById('filtro-setor-select'); if(sel)sel.innerHTML=setores.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('');
 
-      renderDashboard(calcDashboard(_dashData.mans,_dashData.recs,_dashFiltroEmpresa,_dashFiltroSetor));
+      if(typeof aplicarFiltros==='function') aplicarFiltros();
+      else renderDashboard(calcDashboard(_dashData.mans,_dashData.recs,_dashFiltroEmpresa,_dashFiltroSetor));
       if(last)last.textContent='Última atualização: '+now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
     }catch(e){
       console.error('Erro Visão Geral V3',e);
       const last=document.getElementById('last-update'); if(last)last.textContent='Erro ao atualizar';
+      const kpiRec=document.getElementById('kpi-reclamacoes'); if(kpiRec)kpiRec.textContent='Erro ao carregar';
     }
   };
 
@@ -5637,6 +6638,7 @@ loadVisaoGeral();
     if(role()==='RCA / REPRESENTANTE') await loadRcaHome();
     if(role()==='MASTER') await loadUsuariosV5();
     if(role()==='APROVADOR'||role()==='MASTER') await loadAprovadorV5();
+    if(role()==='ANALISTA SAC') setupAprovacaoUI();
   };
 
   window.logoutV5=function(){sessionStorage.clear();location.reload()};
@@ -5706,17 +6708,355 @@ loadVisaoGeral();
     if(box){box.querySelector('.modal-header div div:first-child').textContent='Novo usuário';const btn=box.querySelector('.btn.btn-primary');btn.textContent='Criar usuário';btn.onclick=window.salvarUsuarioV5;}
   };
 
-  // ===== APROVADOR =====
+  // ===== MÓDULO DE APROVAÇÃO COMPLETO =====
+  let _aprvData = { aprovadores:[], competencias:[], relacionamentos:[], regras:[] };
+
+  // Helper: fechar qualquer modal
+  window.fecharModal = function(id){ const el=document.getElementById(id); if(el) el.style.display='none'; };
+
+  // Configurar tabs e UI por perfil ao entrar na página
+  function setupAprovacaoUI(){
+    const u=sess(); if(!u) return;
+    const p=u.perfil||'';
+    document.getElementById('aprovador-nome-top').textContent=u.nome||u.usuario||'';
+    // Mostrar tabs conforme perfil
+    document.getElementById('aprtab-pendencias').style.display=(p==='APROVADOR'||p==='MASTER')?'':'none';
+    document.getElementById('aprtab-fila-sac').style.display=(p==='ANALISTA SAC'||p==='MASTER')?'':'none';
+    document.getElementById('aprtab-aprovadores').style.display=p==='MASTER'?'':'none';
+    document.getElementById('aprtab-competencias').style.display=p==='MASTER'?'':'none';
+    document.getElementById('aprtab-regras').style.display=p==='MASTER'?'':'none';
+    document.getElementById('aprtab-historico').style.display=(p==='MASTER'||p==='APROVADOR')?'':'none';
+    // Definir tab ativa inicial
+    const tabs=document.querySelectorAll('#aprov-tabs .tab-btn');
+    tabs.forEach(t=>t.classList.remove('active'));
+    if(p==='ANALISTA SAC'){
+      document.getElementById('aprtab-fila-sac').classList.add('active');
+      aprvTab('fila-sac');
+    } else {
+      document.getElementById('aprtab-pendencias').classList.add('active');
+      aprvTab('pendencias');
+    }
+  }
+
+  window.aprvTab = function(tab, btn){
+    const panels=['pendencias','fila-sac','aprovadores','competencias','regras','historico'];
+    panels.forEach(p=>{ const el=document.getElementById('aprtab-panel-'+p); if(el) el.style.display=p===tab?'':'none'; });
+    if(btn){ document.querySelectorAll('#aprov-tabs .tab-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); }
+    if(tab==='pendencias') loadAprovadorV5();
+    if(tab==='fila-sac') carregarFilaSac();
+    if(tab==='aprovadores') carregarAprovadoresAdmin();
+    if(tab==='competencias') carregarCompetencias();
+    if(tab==='regras') carregarRegras();
+    if(tab==='historico') carregarHistorico();
+  };
+
+  // ── TAB PENDÊNCIAS (APROVADOR / MASTER) ──
   async function loadAprovadorV5(){
-    const u=sess();if(!u||!['APROVADOR','MASTER'].includes(u.perfil))return;try{const d=await json5('/api/aprovadores/'+encodeURIComponent(u.usuario)+'/pendencias');document.getElementById('ap-saca').textContent=d.totais?.sac??0;document.getElementById('ap-rnca').textContent=d.totais?.rnc??0;document.getElementById('ap-total').textContent=d.totais?.total??0;document.getElementById('ap-sugestoes').textContent=(d.sugestoes||[]).filter(x=>x.STATUS==='PENDENTE').length;document.getElementById('aprovador-nome-top').textContent=u.nome||u.usuario;const wrap=document.getElementById('ap-pendencias-wrap');const sac=(d.sac||[]).map(x=>`<div class="portal-row"><div class="portal-row-main"><div class="portal-row-title">${esc5(x.ID_MANIFESTACAO)} · ${esc5(x.EMPRESA_RECLAMANTE||x.CLIENTE||'Cliente')}</div><div class="portal-row-sub">${esc5(x.PRODUTO||'')} · ${esc5(x.STATUS||'Aguardando aprovação')} · ${esc5(x.SETOR_CONFIRMADO||x.SETOR_SUGERIDO||'SAC')}</div></div><div class="portal-actions"><span class="status-badge decisao">SAC</span><button class="btn btn-secondary" onclick="abrirDossieAprovador('${esc5(x.ID_MANIFESTACAO)}')">Visualizar</button></div></div>`).join('');const rncs=(d.rnc||[]).map(x=>`<div class="portal-row"><div class="portal-row-main"><div class="portal-row-title">${esc5(x.ID_RNC)} · ${esc5(x.CLIENTE||x.CLIENTE_NOME||'Cliente')}</div><div class="portal-row-sub">SAC ${esc5(x.PROTOCOLO_SAC||x.ID_MANIFESTACAO||'—')} · ${esc5(x.EMPRESA||'')} · ${esc5(x.COMPETENCIA||x.COMPETENCIA_RNC||x.SETOR||'')} · ${esc5(x.STATUS||'Pendente')}</div></div><div class="portal-actions"><span class="status-badge decisao">RNC</span><button class="btn btn-primary" onclick="abrirRncAprovador('${esc5(x.ID_RNC)}')">Analisar RNC</button></div></div>`).join('');document.getElementById('ap-sac-queue').innerHTML=sac||'<div style="padding:14px;background:var(--gray-50);border-radius:8px;color:var(--gray-400);font-size:12px">Nenhuma manifestação SAC aguardando sua análise.</div>';document.getElementById('ap-rnc-queue').innerHTML=rncs||'<div style="padding:14px;background:var(--gray-50);border-radius:8px;color:var(--gray-400);font-size:12px">Nenhuma RNC dentro das suas competências.</div>';wrap.innerHTML=(sac+rncs)||'<div style="padding:14px;color:var(--gray-400);font-size:12px">Nenhuma pendência.</div>';}catch(e){document.getElementById('ap-pendencias-wrap').innerHTML=`<div class="alert-box">${esc5(e.message)}</div>`;document.getElementById('ap-sac-queue').innerHTML='';document.getElementById('ap-rnc-queue').innerHTML=''}}
+    const u=sess(); if(!u||!['APROVADOR','MASTER'].includes(u.perfil)) return;
+    try {
+      const [pend,fila]=await Promise.all([
+        json5('/api/aprovadores/'+encodeURIComponent(u.usuario)+'/pendencias'),
+        json5('/api/fila-aprovacao').catch(()=>({itens:[]}))
+      ]);
+      document.getElementById('ap-saca').textContent=pend.totais?.sac??0;
+      document.getElementById('ap-rnca').textContent=pend.totais?.rnc??0;
+      document.getElementById('ap-total').textContent=pend.totais?.total??0;
+      document.getElementById('ap-sugestoes').textContent=(pend.sugestoes||[]).filter(x=>x.STATUS==='PENDENTE').length;
+      const sac=(pend.sac||[]).map(x=>`<div class="portal-row"><div class="portal-row-main"><div class="portal-row-title">${esc5(x.ID_MANIFESTACAO)} · ${esc5(x.EMPRESA_RECLAMANTE||x.CLIENTE||'Cliente')}</div><div class="portal-row-sub">${esc5(x.PRODUTO||'')} · ${esc5(x.STATUS||'Aguardando aprovação')} · ${esc5(x.SETOR_CONFIRMADO||x.SETOR_SUGERIDO||'SAC')}</div></div><div class="portal-actions"><span class="status-badge decisao">SAC</span><button class="btn btn-secondary" onclick="abrirDossieAprovador('${esc5(x.ID_MANIFESTACAO)}')">Visualizar</button></div></div>`).join('');
+      const rncs=(pend.rnc||[]).map(x=>`<div class="portal-row"><div class="portal-row-main"><div class="portal-row-title">${esc5(x.ID_RNC)} · ${esc5(x.CLIENTE||x.CLIENTE_NOME||'Cliente')}</div><div class="portal-row-sub">SAC ${esc5(x.PROTOCOLO_SAC||x.ID_MANIFESTACAO||'—')} · ${esc5(x.EMPRESA||'')} · ${esc5(x.COMPETENCIA||x.SETOR||'')} · ${esc5(x.STATUS||'Pendente')}</div></div><div class="portal-actions"><span class="status-badge decisao">RNC</span><button class="btn btn-primary" onclick="abrirRncAprovador('${esc5(x.ID_RNC)}')">Analisar RNC</button></div></div>`).join('');
+      document.getElementById('ap-sac-queue').innerHTML=sac||'<div style="padding:14px;background:var(--gray-50);border-radius:8px;color:var(--gray-400);font-size:12px">Nenhuma manifestação SAC aguardando sua análise.</div>';
+      document.getElementById('ap-rnc-queue').innerHTML=rncs||'<div style="padding:14px;background:var(--gray-50);border-radius:8px;color:var(--gray-400);font-size:12px">Nenhuma RNC dentro das suas competências.</div>';
+      // Fila estruturada
+      renderFilaPendencias(fila.itens||[]);
+    } catch(e){
+      document.getElementById('ap-sac-queue').innerHTML=`<div class="alert-box">${esc5(e.message)}</div>`;
+    }
+  }
   window.loadAprovadorV5=loadAprovadorV5;
+
+  function renderFilaPendencias(itens){
+    const pend=itens.filter(x=>x.STATUS==='PENDENTE');
+    const el=document.getElementById('ap-fila-pendencias');
+    if(!el)return;
+    if(!pend.length){el.innerHTML='<div style="padding:14px;color:var(--gray-400);font-size:12px">Nenhum item na fila de aprovação.</div>';return;}
+    el.innerHTML=pend.map(x=>{
+      const cor=x.TIPO_ENTIDADE==='SAC'?'#1E40AF':'#065F46';
+      return `<div class="portal-row"><div class="portal-row-main">
+        <div class="portal-row-title">[${esc5(x.TIPO_ENTIDADE)}] ${esc5(x.ID_ENTIDADE)} <span style="font-size:11px;font-weight:400;color:${cor}">${esc5(x.COMPETENCIA||'')}</span></div>
+        <div class="portal-row-sub">${esc5(x.EMPRESA||'')} ${x.SETOR?'· '+esc5(x.SETOR):''} · enviado por ${esc5(x.CRIADO_POR||'—')} · ${fmt5(x.DATA_ENVIO)}</div>
+        ${x.DESCRICAO?`<div style="font-size:12px;color:var(--gray-500);margin-top:4px">${esc5(x.DESCRICAO)}</div>`:''}
+      </div><div class="portal-actions">
+        <span class="status-badge decisao">PENDENTE</span>
+        <button class="btn btn-primary" onclick="abrirDecisaoAprovacao('${esc5(x.ID_FILA)}','${esc5(x.ID_ENTIDADE)}','${esc5(x.TIPO_ENTIDADE)}')">Decidir</button>
+      </div></div>`;
+    }).join('');
+  }
+
+  window.carregarFilaPendencias = async function(){
+    try{const d=await json5('/api/fila-aprovacao'); renderFilaPendencias(d.itens||[]);}catch(e){document.getElementById('ap-fila-pendencias').innerHTML=`<div class="alert-box">${esc5(e.message)}</div>`;}
+  };
+
+  // ── TAB FILA SAC (ANALISTA SAC / MASTER) ──
+  async function carregarFilaSac(){
+    try{
+      const d=await json5('/api/fila-aprovacao');
+      const itens=d.itens||[];
+      const agora=new Date(); const mesAtual=agora.getMonth(); const anoAtual=agora.getFullYear();
+      const destesMes=x=>{const dt=new Date(x.DATA_DECISAO||''); return dt.getMonth()===mesAtual&&dt.getFullYear()===anoAtual;};
+      document.getElementById('sac-fila-total').textContent=itens.length;
+      document.getElementById('sac-fila-pendentes').textContent=itens.filter(x=>x.STATUS==='PENDENTE').length;
+      document.getElementById('sac-fila-aprov').textContent=itens.filter(x=>x.STATUS==='APROVADO'&&destesMes(x)).length;
+      document.getElementById('sac-fila-rej').textContent=itens.filter(x=>x.STATUS==='REJEITADO'&&destesMes(x)).length;
+      const stCor={PENDENTE:'#D97706',APROVADO:'#059669',REJEITADO:'#DC2626',DEVOLVIDO:'#7C3AED',SOLICITANDO_INFORMACOES:'#2563EB'};
+      document.getElementById('sac-fila-lista').innerHTML=itens.length?itens.map(x=>`<div class="portal-row"><div class="portal-row-main">
+        <div class="portal-row-title">[${esc5(x.TIPO_ENTIDADE)}] ${esc5(x.ID_ENTIDADE)}</div>
+        <div class="portal-row-sub">${esc5(x.EMPRESA||'')} ${x.SETOR?'· '+esc5(x.SETOR):''} · competência: ${esc5(x.COMPETENCIA||'—')} · aprovador: ${esc5(x.NOME_APROVADOR||'—')}</div>
+        ${x.OBSERVACOES?`<div style="font-size:12px;color:var(--gray-500);margin-top:2px">Obs: ${esc5(x.OBSERVACOES)}</div>`:''}
+        <div style="font-size:11px;color:var(--gray-400);margin-top:2px">Enviado ${fmt5(x.DATA_ENVIO)} ${x.DATA_DECISAO?'· Decisão '+fmt5(x.DATA_DECISAO):''}</div>
+      </div><div class="portal-actions">
+        <span style="font-size:12px;font-weight:700;color:${stCor[x.STATUS]||'#374151'}">${esc5(x.STATUS)}</span>
+      </div></div>`).join(''):'<div style="padding:16px;color:var(--gray-400);font-size:12px">Nenhum item enviado para aprovação.</div>';
+    }catch(e){document.getElementById('sac-fila-lista').innerHTML=`<div class="alert-box">${esc5(e.message)}</div>`;}
+  }
+
+  // ── MODAL ENVIAR PARA APROVAÇÃO ──
+  window.abrirModalEnviarAprovacao = async function(){
+    document.getElementById('modal-enviar-aprovacao').style.display='flex';
+    try{
+      const [comp,aprov]=await Promise.all([json5('/api/competencias-lista').catch(()=>({competencias:[]})), json5('/api/aprovadores-admin').catch(()=>({aprovadores:[]}))]);
+      const selComp=document.getElementById('env-competencia');
+      selComp.innerHTML='<option value="">Selecione...</option>'+(comp.competencias||[]).filter(c=>c.STATUS!=='INATIVO').map(c=>`<option value="${esc5(c.NOME)}">${esc5(c.NOME)}</option>`).join('');
+      const selAprov=document.getElementById('env-aprovador');
+      selAprov.innerHTML='<option value="">Selecione (opcional)...</option>'+(aprov.aprovadores||[]).filter(a=>a.STATUS!=='INATIVO').map(a=>`<option value="${esc5(a.ID_APROVADOR)}" data-nome="${esc5(a.NOME)}">${esc5(a.NOME)} — ${esc5(a.EMPRESA||'')}</option>`).join('');
+    }catch(e){}
+  };
+
+  window.enviarParaAprovacao = async function(){
+    const tipo=document.getElementById('env-tipo').value;
+    const id=document.getElementById('env-id').value.trim();
+    const competencia=document.getElementById('env-competencia').value;
+    const selAprov=document.getElementById('env-aprovador');
+    const idAprovador=selAprov.value;
+    const nomeAprovador=selAprov.selectedOptions[0]?.dataset?.nome||'';
+    const empresa=document.getElementById('env-empresa').value.trim();
+    const setor=document.getElementById('env-setor').value.trim();
+    const descricao=document.getElementById('env-descricao').value.trim();
+    if(!id||!tipo) return alert('Informe o tipo e o ID da entidade.');
+    try{
+      await json5('/api/fila-aprovacao',{method:'POST',body:JSON.stringify({idEntidade:id,tipoEntidade:tipo,descricao,empresa,setor,competencia,idAprovador,nomeAprovador})});
+      alert('Item enviado para aprovação.');
+      fecharModal('modal-enviar-aprovacao');
+      carregarFilaSac();
+    }catch(e){alert(e.message);}
+  };
+
+  // ── MODAL DECISÃO ──
+  window.abrirDecisaoAprovacao = function(idFila, idEntidade, tipo){
+    document.getElementById('decisao-aprov-id').value=idFila;
+    document.getElementById('decisao-aprov-title').textContent=`Decisão — ${tipo}: ${idEntidade}`;
+    document.getElementById('decisao-aprov-sub').textContent=`Fila: ${idFila}`;
+    document.getElementById('decisao-obs').value='';
+    document.getElementById('modal-decisao-aprov').style.display='flex';
+  };
+
+  window.submitDecisao = async function(decisao){
+    const id=document.getElementById('decisao-aprov-id').value;
+    const obs=document.getElementById('decisao-obs').value.trim();
+    if(decisao!=='APROVADO'&&!obs) return alert('Informe as observações/justificativa.');
+    try{
+      await json5('/api/fila-aprovacao/'+encodeURIComponent(id)+'/decidir',{method:'POST',body:JSON.stringify({decisao,observacoes:obs})});
+      alert(`Decisão registrada: ${decisao}`);
+      fecharModal('modal-decisao-aprov');
+      loadAprovadorV5();
+    }catch(e){alert(e.message);}
+  };
+
+  // ── TAB APROVADORES (MASTER) ──
+  async function carregarAprovadoresAdmin(){
+    try{
+      const d=await json5('/api/aprovadores-admin');
+      _aprvData.aprovadores=d.aprovadores||[];
+      _aprvData.competencias=d.competencias||[];
+      _aprvData.relacionamentos=d.relacionamentos||[];
+      const el=document.getElementById('aprov-lista');
+      if(!_aprvData.aprovadores.length){el.innerHTML='<div style="padding:16px;color:var(--gray-400);font-size:12px">Nenhum aprovador cadastrado. Clique em "+ Novo aprovador" para começar.</div>';return;}
+      el.innerHTML=`<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:var(--gray-50)"><th style="padding:10px 12px;text-align:left">Nome</th><th>Login</th><th>Empresa</th><th>Setor</th><th>Status</th><th>Ações</th></tr></thead><tbody>`+
+        _aprvData.aprovadores.map(a=>`<tr style="border-bottom:1px solid var(--gray-100)">
+          <td style="padding:10px 12px"><strong>${esc5(a.NOME)}</strong><div style="font-size:11px;color:var(--gray-400)">${esc5(a.EMAIL||'')}</div></td>
+          <td style="padding:8px 12px">${esc5(a.USUARIO||'—')}</td>
+          <td style="padding:8px 12px">${esc5(a.EMPRESA||'—')}</td>
+          <td style="padding:8px 12px">${esc5(a.SETOR||'—')}</td>
+          <td style="padding:8px 12px"><span style="font-size:11px;font-weight:700;color:${a.STATUS==='ATIVO'?'#059669':'#DC2626'}">${esc5(a.STATUS)}</span></td>
+          <td style="padding:8px 12px"><button class="btn btn-secondary" style="font-size:11px;padding:4px 10px" onclick="editarAprovador('${esc5(a.ID_APROVADOR)}')">Editar</button></td>
+        </tr>`).join('')+'</tbody></table>';
+    }catch(e){document.getElementById('aprov-lista').innerHTML=`<div class="alert-box">${esc5(e.message)}</div>`;}
+  }
+
+  window.abrirModalAprovador = function(){
+    document.getElementById('modal-aprov-title').textContent='Novo Aprovador';
+    document.getElementById('aprov-edit-id').value='';
+    ['aprov-nome','aprov-usuario','aprov-email','aprov-cargo','aprov-empresa','aprov-setor','aprov-obs'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+    document.getElementById('modal-aprovador').style.display='flex';
+  };
+
+  window.editarAprovador = function(id){
+    const a=_aprvData.aprovadores.find(x=>x.ID_APROVADOR===id); if(!a) return;
+    document.getElementById('modal-aprov-title').textContent='Editar Aprovador';
+    document.getElementById('aprov-edit-id').value=id;
+    document.getElementById('aprov-nome').value=a.NOME||'';
+    document.getElementById('aprov-usuario').value=a.USUARIO||'';
+    document.getElementById('aprov-email').value=a.EMAIL||'';
+    document.getElementById('aprov-cargo').value=a.CARGO||'';
+    document.getElementById('aprov-empresa').value=a.EMPRESA||'';
+    document.getElementById('aprov-setor').value=a.SETOR||'';
+    document.getElementById('aprov-obs').value=a.OBSERVACOES||'';
+    document.getElementById('modal-aprovador').style.display='flex';
+  };
+
+  window.salvarAprovador = async function(){
+    const id=document.getElementById('aprov-edit-id').value;
+    const body={nome:document.getElementById('aprov-nome').value.trim(),usuario:document.getElementById('aprov-usuario').value.trim(),email:document.getElementById('aprov-email').value.trim(),cargo:document.getElementById('aprov-cargo').value.trim(),empresa:document.getElementById('aprov-empresa').value.trim(),setor:document.getElementById('aprov-setor').value.trim(),observacoes:document.getElementById('aprov-obs').value.trim()};
+    if(!body.nome) return alert('Nome é obrigatório.');
+    try{
+      if(id){await json5('/api/aprovadores-admin/'+encodeURIComponent(id),{method:'PUT',body:JSON.stringify(body)});}
+      else{await json5('/api/aprovadores-admin',{method:'POST',body:JSON.stringify(body)});}
+      alert(id?'Aprovador atualizado.':'Aprovador criado.');
+      fecharModal('modal-aprovador');
+      carregarAprovadoresAdmin();
+    }catch(e){alert(e.message);}
+  };
+
+  // ── TAB COMPETÊNCIAS (MASTER) ──
+  async function carregarCompetencias(){
+    try{
+      const d=await json5('/api/aprovadores-admin');
+      _aprvData.competencias=d.competencias||[];
+      _aprvData.relacionamentos=d.relacionamentos||[];
+      _aprvData.aprovadores=d.aprovadores||[];
+      const elComp=document.getElementById('comp-lista');
+      elComp.innerHTML=_aprvData.competencias.filter(c=>c.STATUS!=='INATIVO').length?
+        `<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:var(--gray-50)"><th style="padding:10px 12px;text-align:left">Nome</th><th>Tipo</th><th>Descrição</th></tr></thead><tbody>`+
+        _aprvData.competencias.filter(c=>c.STATUS!=='INATIVO').map(c=>`<tr style="border-bottom:1px solid var(--gray-100)"><td style="padding:10px 12px"><strong>${esc5(c.NOME)}</strong></td><td style="padding:8px 12px">${esc5(c.TIPO||'AMBOS')}</td><td style="padding:8px 12px;color:var(--gray-500)">${esc5(c.DESCRICAO||'—')}</td></tr>`).join('')+'</tbody></table>'
+        :'<div style="padding:12px;color:var(--gray-400);font-size:12px">Nenhuma competência cadastrada.</div>';
+      const elAtrib=document.getElementById('atrib-lista');
+      const ativas=_aprvData.relacionamentos.filter(r=>r.STATUS!=='INATIVO');
+      elAtrib.innerHTML=ativas.length?
+        `<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:var(--gray-50)"><th style="padding:10px 12px;text-align:left">Aprovador</th><th>Competência</th><th>Empresa</th><th>Ações</th></tr></thead><tbody>`+
+        ativas.map(r=>`<tr style="border-bottom:1px solid var(--gray-100)"><td style="padding:10px 12px">${esc5(r.NOME_APROVADOR||r.ID_APROVADOR)}</td><td style="padding:8px 12px">${esc5(r.NOME_COMPETENCIA||r.ID_COMPETENCIA)}</td><td style="padding:8px 12px">${esc5(r.EMPRESA||'Todas')}</td><td style="padding:8px 12px"><button class="btn btn-ghost" style="font-size:11px;color:#DC2626;padding:4px 10px" onclick="removerAtribuicao('${esc5(r.ID)}')">Remover</button></td></tr>`).join('')+'</tbody></table>'
+        :'<div style="padding:12px;color:var(--gray-400);font-size:12px">Nenhuma atribuição.</div>';
+    }catch(e){document.getElementById('comp-lista').innerHTML=`<div class="alert-box">${esc5(e.message)}</div>`;}
+  }
+
+  window.abrirModalCompetencia = function(){
+    ['comp-nome','comp-descricao'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    document.getElementById('modal-competencia').style.display='flex';
+  };
+
+  window.salvarCompetencia = async function(){
+    const nome=document.getElementById('comp-nome').value.trim();
+    if(!nome) return alert('Nome é obrigatório.');
+    const body={nome,descricao:document.getElementById('comp-descricao').value.trim(),tipo:document.getElementById('comp-tipo').value};
+    try{await json5('/api/competencias-lista',{method:'POST',body:JSON.stringify(body)});alert('Competência criada.');fecharModal('modal-competencia');carregarCompetencias();}
+    catch(e){alert(e.message);}
+  };
+
+  window.abrirModalAtribuicao = function(){
+    const selA=document.getElementById('atrib-aprovador');
+    selA.innerHTML='<option value="">Selecione...</option>'+_aprvData.aprovadores.filter(a=>a.STATUS!=='INATIVO').map(a=>`<option value="${esc5(a.ID_APROVADOR)}" data-nome="${esc5(a.NOME)}">${esc5(a.NOME)} — ${esc5(a.EMPRESA||'')}</option>`).join('');
+    const selC=document.getElementById('atrib-competencia');
+    selC.innerHTML='<option value="">Selecione...</option>'+_aprvData.competencias.filter(c=>c.STATUS!=='INATIVO').map(c=>`<option value="${esc5(c.ID_COMPETENCIA)}" data-nome="${esc5(c.NOME)}">${esc5(c.NOME)}</option>`).join('');
+    document.getElementById('atrib-empresa').value='';
+    document.getElementById('modal-atribuicao').style.display='flex';
+  };
+
+  window.salvarAtribuicao = async function(){
+    const selA=document.getElementById('atrib-aprovador'); const selC=document.getElementById('atrib-competencia');
+    const idAprovador=selA.value; const nomeAprovador=selA.selectedOptions[0]?.dataset?.nome||'';
+    const idCompetencia=selC.value; const nomeCompetencia=selC.selectedOptions[0]?.dataset?.nome||'';
+    const empresa=document.getElementById('atrib-empresa').value.trim();
+    if(!idAprovador||!idCompetencia) return alert('Selecione aprovador e competência.');
+    try{await json5('/api/aprovador-competencias',{method:'POST',body:JSON.stringify({idAprovador,nomeAprovador,idCompetencia,nomeCompetencia,empresa})});alert('Competência atribuída.');fecharModal('modal-atribuicao');carregarCompetencias();}
+    catch(e){alert(e.message);}
+  };
+
+  window.removerAtribuicao = async function(id){
+    if(!confirm('Remover esta atribuição?')) return;
+    try{await json5('/api/aprovador-competencias/'+encodeURIComponent(id),{method:'DELETE'});alert('Atribuição removida.');carregarCompetencias();}
+    catch(e){alert(e.message);}
+  };
+
+  // ── TAB REGRAS (MASTER) ──
+  async function carregarRegras(){
+    try{
+      const d=await json5('/api/regras-aprovacao');
+      _aprvData.regras=d.regras||[];
+      const el=document.getElementById('regras-lista');
+      const ativas=_aprvData.regras.filter(r=>r.STATUS!=='INATIVO');
+      el.innerHTML=ativas.length?
+        `<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:var(--gray-50)"><th style="padding:10px 12px;text-align:left">Regra</th><th>Tipo</th><th>Competência</th><th>Prioridade</th><th>Ações</th></tr></thead><tbody>`+
+        ativas.map(r=>`<tr style="border-bottom:1px solid var(--gray-100)"><td style="padding:10px 12px"><strong>${esc5(r.NOME)}</strong><div style="font-size:11px;color:var(--gray-400)">${esc5(r.DESCRICAO_CONDICAO||'')}</div></td><td style="padding:8px 12px">${esc5(r.TIPO_ENTIDADE)}</td><td style="padding:8px 12px">${esc5(r.COMPETENCIA_NECESSARIA)}</td><td style="padding:8px 12px"><span style="font-size:11px;font-weight:700;color:${r.PRIORIDADE==='CRITICA'?'#DC2626':r.PRIORIDADE==='ALTA'?'#D97706':'#374151'}">${esc5(r.PRIORIDADE)}</span></td><td style="padding:8px 12px"><button class="btn btn-secondary" style="font-size:11px;padding:4px 10px" onclick="editarRegra('${esc5(r.ID_REGRA)}')">Editar</button> <button class="btn btn-ghost" style="font-size:11px;color:#DC2626;padding:4px 10px" onclick="desativarRegra('${esc5(r.ID_REGRA)}')">Desativar</button></td></tr>`).join('')+'</tbody></table>'
+        :'<div style="padding:16px;color:var(--gray-400);font-size:12px">Nenhuma regra cadastrada. Clique em "+ Nova regra" para começar.</div>';
+    }catch(e){document.getElementById('regras-lista').innerHTML=`<div class="alert-box">${esc5(e.message)}</div>`;}
+  }
+
+  window.abrirModalRegra = function(){
+    document.getElementById('modal-regra-title').textContent='Nova Regra';
+    document.getElementById('regra-edit-id').value='';
+    ['regra-nome','regra-condicao','regra-competencia'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    document.getElementById('modal-regra').style.display='flex';
+  };
+
+  window.editarRegra = function(id){
+    const r=_aprvData.regras.find(x=>x.ID_REGRA===id); if(!r) return;
+    document.getElementById('modal-regra-title').textContent='Editar Regra';
+    document.getElementById('regra-edit-id').value=id;
+    document.getElementById('regra-nome').value=r.NOME||'';
+    document.getElementById('regra-tipo').value=r.TIPO_ENTIDADE||'SAC';
+    document.getElementById('regra-competencia').value=r.COMPETENCIA_NECESSARIA||'';
+    document.getElementById('regra-prioridade').value=r.PRIORIDADE||'NORMAL';
+    document.getElementById('regra-condicao').value=r.DESCRICAO_CONDICAO||'';
+    document.getElementById('modal-regra').style.display='flex';
+  };
+
+  window.salvarRegra = async function(){
+    const id=document.getElementById('regra-edit-id').value;
+    const body={nome:document.getElementById('regra-nome').value.trim(),tipoEntidade:document.getElementById('regra-tipo').value,competenciaNecessaria:document.getElementById('regra-competencia').value.trim(),prioridade:document.getElementById('regra-prioridade').value,descricaoCondicao:document.getElementById('regra-condicao').value.trim()};
+    if(!body.nome||!body.competenciaNecessaria) return alert('Nome e competência são obrigatórios.');
+    try{
+      if(id){await json5('/api/regras-aprovacao/'+encodeURIComponent(id),{method:'PUT',body:JSON.stringify(body)});}
+      else{await json5('/api/regras-aprovacao',{method:'POST',body:JSON.stringify(body)});}
+      alert(id?'Regra atualizada.':'Regra criada.');fecharModal('modal-regra');carregarRegras();
+    }catch(e){alert(e.message);}
+  };
+
+  window.desativarRegra = async function(id){
+    if(!confirm('Desativar esta regra?')) return;
+    try{await json5('/api/regras-aprovacao/'+encodeURIComponent(id),{method:'PUT',body:JSON.stringify({STATUS:'INATIVO'})});alert('Regra desativada.');carregarRegras();}
+    catch(e){alert(e.message);}
+  };
+
+  // ── TAB HISTÓRICO ──
+  async function carregarHistorico(){
+    try{
+      const d=await json5('/api/historico-aprovacao');
+      const itens=d.itens||[];
+      const el=document.getElementById('hist-lista');
+      el.innerHTML=itens.length?
+        `<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:var(--gray-50)"><th style="padding:10px 12px;text-align:left">Data</th><th>Entidade</th><th>Tipo</th><th>Decisão</th><th>Aprovador</th><th>Obs</th></tr></thead><tbody>`+
+        itens.slice().reverse().map(h=>{const cor={APROVADO:'#059669',REJEITADO:'#DC2626',DEVOLVIDO:'#7C3AED',SOLICITANDO_INFORMACOES:'#2563EB'}[h.DECISAO]||'#374151';return`<tr style="border-bottom:1px solid var(--gray-100)"><td style="padding:10px 12px;white-space:nowrap">${fmt5(h.DATA_DECISAO)}</td><td style="padding:8px 12px"><strong>${esc5(h.ID_ENTIDADE)}</strong></td><td style="padding:8px 12px">${esc5(h.TIPO_ENTIDADE)}</td><td style="padding:8px 12px"><span style="font-size:11px;font-weight:700;color:${cor}">${esc5(h.DECISAO)}</span></td><td style="padding:8px 12px">${esc5(h.APROVADOR)}</td><td style="padding:8px 12px;font-size:11px;color:var(--gray-500)">${esc5(h.OBSERVACOES||'—')}</td></tr>`}).join('')+'</tbody></table>'
+        :'<div style="padding:16px;color:var(--gray-400);font-size:12px">Nenhuma decisão registrada ainda.</div>';
+    }catch(e){document.getElementById('hist-lista').innerHTML=`<div class="alert-box">${esc5(e.message)}</div>`;}
+  }
+
+  // Legados mantidos para compatibilidade
   window.abrirDossieAprovador=async function(id){try{const d=await json5('/api/manifestacoes/'+encodeURIComponent(id));abrirDossie(d.manifestacao)}catch(e){alert(e.message)}};
   window.abrirRncAprovador=async function(id){try{const d=await json5('/api/rnc/'+encodeURIComponent(id));document.getElementById('modal-rnc-aprovador-v5').style.display='flex';document.getElementById('rnc-modal-title').textContent=d.rnc.ID_RNC||id;document.getElementById('rnc-modal-sub').textContent=`SAC ${d.rnc.PROTOCOLO_SAC||'—'} · ${d.rnc.EMPRESA||'—'} · competência ${d.rnc.COMPETENCIA||d.rnc.SETOR||'—'}`;const r=d.rnc;document.getElementById('rnc-modal-body').innerHTML=`<div class="rnc-block"><div class="rnc-block-title">1. Dados de entrada</div><div class="rnc-grid"><div><b>Empresa</b><div class="rnc-value">${esc5(r.EMPRESA)}</div></div><div><b>Cliente</b><div class="rnc-value">${esc5(r.CLIENTE)}</div></div><div><b>Produto</b><div class="rnc-value">${esc5(r.PRODUTO)}</div></div><div><b>Lote</b><div class="rnc-value">${esc5(r.LOTE)}</div></div><div><b>Quantidade</b><div class="rnc-value">${esc5(r.QUANTIDADE)}</div></div><div><b>Contato</b><div class="rnc-value">${esc5(r.CONTATO)}</div></div></div></div><div class="rnc-block"><div class="rnc-block-title">2. Reclamação original</div><div class="rnc-value">${esc5(r.DESCRICAO_NAO_CONFORMIDADE||r.NAO_CONFORMIDADE)}</div></div><div class="rnc-block"><div class="rnc-block-title">3. Classificação da NC</div><div class="rnc-grid"><div><b>Origem</b><div>${esc5(r.ORIGEM_NC)}</div></div><div><b>Tipo</b><div>${esc5(r.TIPO_NC)}</div></div><div><b>Procedente</b><div>${esc5(r.PROCEDENTE)}</div></div><div><b>Plano de ação</b><div>${esc5(r.PLANO_ACAO)}</div></div></div></div><div class="rnc-block"><div class="rnc-block-title">4. Análise de causa</div><div class="rnc-value">${esc5(r.CAUSA||'Ainda não registrada.')}</div></div><div class="rnc-block"><div class="rnc-block-title">5. Ação de contenção</div><div class="rnc-value">${esc5(r.ACAO_CONTENCAO||'Não registrada.')}</div></div><div class="rnc-block"><div class="rnc-block-title">6. Ação corretiva</div><div class="rnc-grid"><div><b>Ação</b><div class="rnc-value">${esc5(r.ACAO_CORRETIVA)}</div></div><div><b>Responsável</b><div class="rnc-value">${esc5(r.RESPONSAVEL_ACAO)}</div></div><div><b>Setor</b><div class="rnc-value">${esc5(r.SETOR_ACAO)}</div></div><div><b>Prazo</b><div class="rnc-value">${esc5(r.PRAZO_ACAO)}</div></div></div></div><div class="rnc-block"><div class="rnc-block-title">7. Verificação da eficácia</div><div class="rnc-grid"><div><b>Responsável</b><div>${esc5(r.RESPONSAVEL_EFICACIA)}</div></div><div><b>Data</b><div>${esc5(r.DATA_EFICACIA)}</div></div><div><b>Resultado</b><div>${esc5(r.RESULTADO_EFICACIA)}</div></div><div><b>Observação</b><div>${esc5(r.OBSERVACAO_EFICACIA)}</div></div></div></div><div class="rnc-block"><div class="rnc-block-title">8. Histórico</div><div class="timeline">${(d.eventos||[]).map(e=>`<div class="tl-item"><div class="tl-dot"></div><div class="tl-content"><div class="tl-label">${esc5(e.TIPO_EVENTO)}</div><div class="tl-meta">${fmt5(e.DATA_EVENTO)} · ${esc5(e.USUARIO)}</div><div class="tl-meta">${esc5(e.DETALHES)}</div></div></div>`).join('')||'<div class="rnc-value">Sem eventos registrados.</div>'}</div></div><div class="rnc-block"><div class="rnc-block-title">9. Decisão</div><div class="field"><label>Justificativa (obrigatória para devolver ou rejeitar)</label><textarea id="rnc-decisao-obs" placeholder="Informe o motivo da decisão, quando aplicável."></textarea></div></div><div class="decision-bar"><button class="btn btn-primary" onclick="decidirRncV5('${esc5(id)}','APROVAR')">Aprovar</button><button class="btn btn-secondary" onclick="decidirRncV5('${esc5(id)}','DEVOLVER')">Devolver para ajuste</button><button class="btn btn-ghost" onclick="decidirRncV5('${esc5(id)}','REJEITAR')">Rejeitar</button></div>`;await json5('/api/rnc/'+encodeURIComponent(id)+'/visualizacao',{method:'POST',body:JSON.stringify({})});}catch(e){alert(e.message)}};
   window.decidirRncV5=async function(id,decisao){const obs=document.getElementById('rnc-decisao-obs')?.value||'';if(decisao!=='APROVAR'&&!obs.trim())return alert('Informe a justificativa.');try{await json5('/api/rnc/'+encodeURIComponent(id)+'/decisao',{method:'POST',body:JSON.stringify({decisao,observacoes:obs})});alert(decisao==='APROVAR'?'RNC aprovada.':decisao==='REJEITAR'?'RNC rejeitada.':'RNC devolvida para ajuste.');fecharRncAprovador();loadAprovadorV5()}catch(e){alert(e.message)}};
   window.fecharRncAprovador=function(){document.getElementById('modal-rnc-aprovador-v5').style.display='none'};
 
-  // Reescreve a central de aprovação para o layout definitivo quando a página abrir.
-  const oldLoad=window.loadAprovadorDashboard;window.loadAprovadorDashboard=function(){loadAprovadorV5();if(typeof oldLoad==='function'&&role()!=='APROVADOR')try{oldLoad()}catch(e){}}
+  // Override do pageLoader para inicializar UI por perfil
+  const oldLoadAprov=window.loadAprovadorDashboard;
+  window.loadAprovadorDashboard=function(){ setupAprovacaoUI(); if(typeof oldLoadAprov==='function'&&role()!=='APROVADOR'&&role()!=='ANALISTA SAC')try{oldLoadAprov()}catch(e){} };
 
   // ===== SETOR RESPONSÁVEL =====
   async function loadSetorV5(){
