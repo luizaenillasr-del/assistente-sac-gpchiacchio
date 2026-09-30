@@ -5296,7 +5296,40 @@ loadVisaoGeral();
   window.loadUsuariosV5=loadUsuariosV5;
   window.abrirModalUsuario=function(){document.getElementById('modal-usuario-v5').style.display='flex'};window.fecharModalUsuario=function(){document.getElementById('modal-usuario-v5').style.display='none'};
   window.salvarUsuarioV5=async function(){const b={nome:document.getElementById('usr-nome').value.trim(),usuario:document.getElementById('usr-login').value.trim(),email:document.getElementById('usr-email').value.trim(),senha:document.getElementById('usr-senha').value,perfil:document.getElementById('usr-perfil').value,empresa:document.getElementById('usr-empresa').value,setor:document.getElementById('usr-setor').value,codigoRCA:document.getElementById('usr-rca').value,status:document.getElementById('usr-status').value};try{await json5('/api/usuarios',{method:'POST',body:JSON.stringify(b)});alert('Usuário criado.');fecharModalUsuario();loadUsuariosV5()}catch(e){alert(e.message)}};
-  window.editarUsuarioV5=function(id){alert('A edição detalhada será feita na linha do usuário. ID: '+id)};
+  window.editarUsuarioV5=async function(id){
+    try{
+      const d=await json5('/api/usuarios');
+      const u=(d.itens||[]).find(x=>String(x.id)===String(id)||String(x.usuario)===String(id));
+      if(!u)return alert('Usuário não encontrado.');
+      document.getElementById('usr-nome').value=u.nome||'';
+      document.getElementById('usr-login').value=u.usuario||'';
+      document.getElementById('usr-email').value=u.email||'';
+      document.getElementById('usr-senha').value='';
+      document.getElementById('usr-perfil').value=u.perfil||'ANALISTA SAC';
+      document.getElementById('usr-empresa').value=u.empresa||'';
+      document.getElementById('usr-setor').value=u.setor||'';
+      document.getElementById('usr-rca').value=u.codigoRCA||u.codigo_rca||'';
+      document.getElementById('usr-status').value=u.status||'ATIVO';
+      // Trocar título e botão para modo edição
+      const box=document.querySelector('#modal-usuario-v5 .modal-box');
+      box.querySelector('.modal-header div div:first-child').textContent='Editar usuário';
+      const btn=box.querySelector('.btn.btn-primary');
+      btn.textContent='Salvar alterações';
+      btn.onclick=async function(){
+        const b={nome:document.getElementById('usr-nome').value.trim(),email:document.getElementById('usr-email').value.trim(),perfil:document.getElementById('usr-perfil').value,empresa:document.getElementById('usr-empresa').value,setor:document.getElementById('usr-setor').value,codigoRCA:document.getElementById('usr-rca').value,status:document.getElementById('usr-status').value};
+        const s=document.getElementById('usr-senha').value;if(s)b.senha=s;
+        try{await json5('/api/usuarios/'+encodeURIComponent(id),{method:'PATCH',body:JSON.stringify(b)});alert('Usuário atualizado.');fecharModalUsuario();loadUsuariosV5();}catch(e){alert(e.message)}
+      };
+      document.getElementById('modal-usuario-v5').style.display='flex';
+    }catch(e){alert(e.message)}
+  };
+  // Restaurar modal para modo criação ao fechar
+  const _fecharModalUsuarioOrig=window.fecharModalUsuario;
+  window.fecharModalUsuario=function(){
+    _fecharModalUsuarioOrig();
+    const box=document.querySelector('#modal-usuario-v5 .modal-box');
+    if(box){box.querySelector('.modal-header div div:first-child').textContent='Novo usuário';const btn=box.querySelector('.btn.btn-primary');btn.textContent='Criar usuário';btn.onclick=window.salvarUsuarioV5;}
+  };
 
   // ===== APROVADOR =====
   async function loadAprovadorV5(){
