@@ -2423,7 +2423,13 @@ app.get('/api/_reset', async (req, res) => {
 });
 
 // ===== BOOTSTRAP — criar primeiro usuário MASTER =====
-app.post('/api/bootstrap', async (req, res) => {
+// GET conveniente: /api/bootstrap?usuario=luiza&nome=Luiza&senha=125600
+app.get('/api/bootstrap', async (req, res) => {
+  req.body = req.query;
+  return bootstrapHandler(req, res);
+});
+app.post('/api/bootstrap', async (req, res) => bootstrapHandler(req, res));
+async function bootstrapHandler(req, res) {
   try {
     const { usuario, nome, senha, bootstrapKey } = req.body || {};
     const keyOk = bootstrapKey && bootstrapKey === (process.env.BOOTSTRAP_KEY || '');
@@ -2463,7 +2469,7 @@ app.post('/api/bootstrap', async (req, res) => {
     console.error('Bootstrap erro:', e);
     res.status(500).json({ sucesso: false, erro: e.message });
   }
-});
+}
 
 // ===== IMPORTADOR TEMPORÁRIO (F3) — remover após uso =====
 app.get('/api/_importar', async (req, res) => {
