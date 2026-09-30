@@ -3987,6 +3987,7 @@ async function _loadDossieHistorico() {
 
 
 let _acompData = [];
+window._acompData = _acompData;
 
 const STATUS_LABELS = {
   'EM ANÁLISE': { label: 'Em análise', color: '#1D4ED8', bg: '#EFF6FF' },
@@ -4007,6 +4008,7 @@ async function loadAcompanhamento() {
   try {
     const res = await _apiFetch('/api/manifestacoes', 15000);
     _acompData = res.itens || [];
+    window._acompData = _acompData;
 
     // KPIs
     let totalCount = _acompData.length;
@@ -8034,8 +8036,9 @@ const BC_FORM_CONFIG={
   regras:{
     titulo:'Regra Operacional',
     fields:function(item){return[
-      ['TITULO','Título',item.TITULO||'','text'],
-      ['REGRA','Regra',item.REGRA||'','textarea'],
+      ['NOME','Título da regra',item.NOME||item.TITULO||'','text'],
+      ['CONDICAO','Regra / condição',item.CONDICAO||item.REGRA||'','textarea'],
+      ['ACAO','Ação a tomar',item.ACAO||'','textarea'],
       ['EMPRESA','Empresa',item.EMPRESA||'TODAS','select',false,EMPRESAS_BC],
       ['STATUS','Status',item.STATUS||'A VALIDAR','select',false,STATUS_BC],
     ];},
@@ -8044,9 +8047,10 @@ const BC_FORM_CONFIG={
   procedimentos:{
     titulo:'Procedimento',
     fields:function(item){return[
-      ['TITULO','Título',item.TITULO||'','text'],
-      ['DESCRICAO','Descrição',item.DESCRICAO||'','textarea'],
+      ['NOME','Título do procedimento',item.NOME||item.TITULO||'','text'],
+      ['OBJETIVO','Descrição / objetivo',item.OBJETIVO||item.DESCRICAO||'','textarea'],
       ['PASSOS','Passo a passo',item.PASSOS||'','textarea'],
+      ['QUANDO_USAR','Quando usar',item.QUANDO_USAR||'','textarea'],
       ['EMPRESA','Empresa',item.EMPRESA||'TODAS','select',false,EMPRESAS_BC],
       ['STATUS','Status',item.STATUS||'A VALIDAR','select',false,STATUS_BC],
     ];},
@@ -8055,8 +8059,9 @@ const BC_FORM_CONFIG={
   politicas:{
     titulo:'Política',
     fields:function(item){return[
-      ['TITULO','Título',item.TITULO||'','text'],
-      ['DESCRICAO','Descrição',item.DESCRICAO||'','textarea'],
+      ['NOME','Título da política',item.NOME||item.TITULO||'','text'],
+      ['OBJETIVO','Descrição / objetivo',item.OBJETIVO||item.DESCRICAO||'','textarea'],
+      ['REGRA_OFICIAL','Regra oficial',item.REGRA_OFICIAL||'','textarea'],
       ['EMPRESA','Empresa',item.EMPRESA||'TODAS','select',false,EMPRESAS_BC],
       ['STATUS','Status',item.STATUS||'A VALIDAR','select',false,STATUS_BC],
     ];},
