@@ -2396,15 +2396,6 @@ app.post('/api/bootstrap', async (req, res) => {
   }
 });
 
-// ===== CATCH ALL =====
-app.use((req, res) => {
-  res.status(404).json({ sucesso:false, erro:`Rota não encontrada: ${req.method} ${req.path}` });
-});
-app.use((err, req, res, next) => {
-  console.error(err);
-  res.status(500).json({ sucesso:false, erro:'Erro interno do servidor.' });
-});
-
 // ===== IMPORTADOR TEMPORÁRIO (F3) — remover após uso =====
 app.get('/api/_importar', async (req, res) => {
   const secret = process.env.SESSION_SECRET || '';
@@ -2516,6 +2507,15 @@ app.get('/api/_importar', async (req, res) => {
   } catch (e) {
     res.status(500).json({ ok: false, erro: e.message });
   }
+});
+
+// ===== CATCH ALL =====
+app.use((req, res) => {
+  res.status(404).json({ sucesso:false, erro:`Rota não encontrada: ${req.method} ${req.path}` });
+});
+app.use((err, req, res, next) => {
+  console.error(err);
+  res.status(500).json({ sucesso:false, erro:'Erro interno do servidor.' });
 });
 
 if (require.main === module) {
