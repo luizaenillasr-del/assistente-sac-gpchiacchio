@@ -479,7 +479,7 @@
   .btn-portal:hover { background: rgba(255,255,255,0.12); border-color: white; }
 
   /* PORTAL PÚBLICO — Formulário sem login */
-  .portal-screen { position: fixed; inset: 0; background: var(--gray-50); z-index: 9998; display: none; overflow-y: auto; }
+  .portal-screen { position: fixed; inset: 0; background: var(--gray-50); z-index: 10000; display: none; overflow-y: auto; }
   .portal-header { background: var(--sidebar-bg); padding: 16px 24px; display: flex; align-items: center; gap: 16px; }
   .portal-header img { height: 36px; filter: brightness(0) invert(1); }
   .portal-header-title { color: white; }
@@ -1195,6 +1195,11 @@
     Base de Conhecimento
   </div>
 
+  <div class="sidebar-item" onclick="navigate('matriz-conhecimento', this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>
+    Matriz de Conhecimento
+  </div>
+
   <div class="sidebar-bottom">
     <div class="sidebar-link">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
@@ -1207,6 +1212,10 @@
         <div class="sidebar-user-role" id="sidebar-user-role">Perfil</div>
       </div>
     </div>
+    <button onclick="doLogout()" style="margin-top:10px;width:100%;background:none;border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.6);border-radius:6px;padding:7px 10px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all 0.15s" onmouseover="this.style.background='rgba(199,6,2,0.2)';this.style.color='#fff'" onmouseout="this.style.background='none';this.style.color='rgba(255,255,255,0.6)'">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Sair
+    </button>
   </div>
 </nav>
 
@@ -3276,7 +3285,198 @@
     </div>
   </div>
 
+  <!-- ===== MATRIZ DE CONHECIMENTO ===== -->
+  <div class="page" id="page-matriz-conhecimento">
+    <div class="topbar">
+      <div class="breadcrumb">Inteligência / <span>Matriz de Conhecimento</span></div>
+      <div class="page-header">
+        <h1 class="page-title">Matriz de Conhecimento</h1>
+        <div class="page-actions">
+          <button class="btn btn-primary" onclick="abrirModalNovaMatriz()" id="btn-nova-mc">+ Nova Matriz</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- KPIs -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px" id="mc-kpis">
+      <div class="section-card" style="padding:14px 16px">
+        <div style="font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Total</div>
+        <div style="font-size:26px;font-weight:800;color:var(--gray-900)" id="mc-kpi-total">—</div>
+      </div>
+      <div class="section-card" style="padding:14px 16px">
+        <div style="font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Publicadas</div>
+        <div style="font-size:26px;font-weight:800;color:#16a34a" id="mc-kpi-pub">—</div>
+      </div>
+      <div class="section-card" style="padding:14px 16px">
+        <div style="font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Rascunho</div>
+        <div style="font-size:26px;font-weight:800;color:var(--gray-500)" id="mc-kpi-rascunho">—</div>
+      </div>
+      <div class="section-card" style="padding:14px 16px">
+        <div style="font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Em Revisão</div>
+        <div style="font-size:26px;font-weight:800;color:#d97706" id="mc-kpi-revisao">—</div>
+      </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="section-card" style="margin-bottom:16px;padding:14px 16px">
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr auto;gap:10px;align-items:end">
+        <div>
+          <label style="font-size:11px;font-weight:700;color:var(--gray-500);display:block;margin-bottom:4px">Buscar</label>
+          <input id="mc-f-q" class="form-input" placeholder="Nome, código..." oninput="loadMatrizConhecimento()" style="width:100%">
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:700;color:var(--gray-500);display:block;margin-bottom:4px">Tipo</label>
+          <input id="mc-f-tipo" class="form-input" placeholder="Tipo..." oninput="loadMatrizConhecimento()" style="width:100%">
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:700;color:var(--gray-500);display:block;margin-bottom:4px">Categoria</label>
+          <input id="mc-f-cat" class="form-input" placeholder="Categoria..." oninput="loadMatrizConhecimento()" style="width:100%">
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:700;color:var(--gray-500);display:block;margin-bottom:4px">Status</label>
+          <select id="mc-f-status" class="form-input" onchange="loadMatrizConhecimento()">
+            <option value="">Todos</option>
+            <option value="RASCUNHO">Rascunho</option>
+            <option value="EM_REVISAO">Em Revisão</option>
+            <option value="APROVADA">Aprovada</option>
+            <option value="PUBLICADA">Publicada</option>
+            <option value="SUSPENSA">Suspensa</option>
+            <option value="ARQUIVADA">Arquivada</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:700;color:var(--gray-500);display:block;margin-bottom:4px">Empresa</label>
+          <input id="mc-f-empresa" class="form-input" placeholder="Empresa..." oninput="loadMatrizConhecimento()" style="width:100%">
+        </div>
+        <button class="btn btn-secondary" onclick="limparFiltrosMC()" style="height:36px">Limpar</button>
+      </div>
+    </div>
+
+    <!-- Tabela -->
+    <div class="section-card" style="padding:0;overflow:hidden">
+      <div id="mc-loading" style="padding:32px;text-align:center;color:var(--gray-400)">Carregando...</div>
+      <div id="mc-empty" style="display:none;padding:40px;text-align:center;color:var(--gray-400)">Nenhuma matriz encontrada.</div>
+      <div id="mc-table-wrap" style="display:none;overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+          <thead>
+            <tr style="background:var(--gray-50);border-bottom:1px solid var(--gray-200)">
+              <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap">Código</th>
+              <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.05em">Nome</th>
+              <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.05em">Empresa</th>
+              <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.05em">Tipo</th>
+              <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.05em">Categoria</th>
+              <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.05em">Subcategoria</th>
+              <th style="padding:10px 14px;text-align:center;font-size:11px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.05em">Versão</th>
+              <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.05em">Status</th>
+              <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.05em">Vigência</th>
+              <th style="padding:10px 14px;text-align:center;font-size:11px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.05em">Ações</th>
+            </tr>
+          </thead>
+          <tbody id="mc-tbody"></tbody>
+        </table>
+      </div>
+      <div id="mc-pagination" style="display:none;padding:12px 16px;border-top:1px solid var(--gray-100);display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--gray-500)"></div>
+    </div>
+  </div>
+
 </main>
+
+<!-- MODAL MATRIZ DE CONHECIMENTO -->
+<div id="modal-mc" style="display:none" class="modal-overlay" onclick="if(event.target===this)fecharModalMC()">
+  <div class="modal-box" style="max-width:780px;width:100%">
+    <div class="modal-header">
+      <h2 class="modal-title" id="modal-mc-titulo">Nova Matriz de Conhecimento</h2>
+      <button class="modal-close" onclick="fecharModalMC()">×</button>
+    </div>
+    <div class="modal-body" style="max-height:75vh;overflow-y:auto">
+
+      <!-- DADOS GERAIS -->
+      <div style="font-size:11px;font-weight:800;color:var(--red);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px;padding-bottom:6px;border-bottom:2px solid var(--red)">① Dados Gerais</div>
+      <div style="display:grid;grid-template-columns:1fr 2fr;gap:12px;margin-bottom:12px">
+        <div>
+          <label class="form-label">Código</label>
+          <input id="mc-cod" class="form-input" placeholder="MC-001">
+        </div>
+        <div>
+          <label class="form-label">Nome *</label>
+          <input id="mc-nome" class="form-input" placeholder="Ex: Produto danificado em transporte">
+        </div>
+      </div>
+      <div style="margin-bottom:12px">
+        <label class="form-label">Descrição</label>
+        <textarea id="mc-descricao" class="form-input" rows="2" placeholder="Descreva o escopo desta matriz de conhecimento..."></textarea>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:12px">
+        <div><label class="form-label">Empresa</label><input id="mc-empresa" class="form-input" placeholder="TODAS ou nome específico"></div>
+        <div><label class="form-label">Setor</label><input id="mc-setor" class="form-input" placeholder="Ex: Qualidade"></div>
+        <div><label class="form-label">Tipo de Manifestação</label><input id="mc-tipo" class="form-input" placeholder="Reclamação, Dúvida..."></div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:12px">
+        <div><label class="form-label">Categoria</label><input id="mc-categoria" class="form-input" placeholder="Ex: Produto"></div>
+        <div><label class="form-label">Subcategoria</label><input id="mc-subcategoria" class="form-input" placeholder="Ex: Avaria"></div>
+        <div><label class="form-label">Produto / Família</label><input id="mc-produto" class="form-input" placeholder="Ex: Copo X"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:12px">
+        <div><label class="form-label">Canal</label><input id="mc-canal" class="form-input" placeholder="Telefone, E-mail..."></div>
+        <div><label class="form-label">Prioridade</label>
+          <select id="mc-prioridade" class="form-input">
+            <option value="CRITICA">Crítica</option>
+            <option value="ALTA">Alta</option>
+            <option value="MEDIA" selected>Média</option>
+            <option value="BAIXA">Baixa</option>
+          </select>
+        </div>
+        <div>
+          <label class="form-label">Vigência Início</label>
+          <input id="mc-vigencia-ini" class="form-input" type="date">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 2fr;gap:12px;margin-bottom:16px">
+        <div><label class="form-label">Vigência Fim</label><input id="mc-vigencia-fim" class="form-input" type="date"></div>
+        <div><label class="form-label">Termos de Referência (separados por ;)</label><input id="mc-termos" class="form-input" placeholder="avaria;danificado;quebrado;amassado"></div>
+      </div>
+
+      <!-- ANÁLISE TÉCNICA -->
+      <div style="font-size:11px;font-weight:800;color:var(--red);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px;padding-bottom:6px;border-bottom:2px solid var(--red)">② Análise Técnica</div>
+      <div style="display:grid;grid-template-columns:auto 1fr 1fr 1fr;gap:12px;align-items:center;margin-bottom:16px">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;font-weight:600">
+          <input type="checkbox" id="mc-at-sim" onchange="toggleMCAnaliseTecnica()">
+          Necessita análise técnica
+        </label>
+        <div id="mc-at-fields" style="display:none;grid-column:span 3;display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+          <div><label class="form-label">Setor responsável</label><input id="mc-at-setor" class="form-input" placeholder="Ex: Qualidade"></div>
+          <div><label class="form-label">Prazo</label><input id="mc-at-prazo" class="form-input" placeholder="Ex: 5 dias úteis"></div>
+          <div><label class="form-label">Tipo de análise</label><input id="mc-at-tipo" class="form-input" placeholder="Ex: Análise laboratorial"></div>
+        </div>
+      </div>
+      <div style="margin-bottom:16px">
+        <label class="form-label">Setor Detentor do Conhecimento</label>
+        <input id="mc-setor-detentor" class="form-input" placeholder="Setor que possui o conhecimento técnico (pode ser diferente do responsável pela tratativa)">
+      </div>
+
+      <!-- CONHECIMENTOS -->
+      <div style="font-size:11px;font-weight:800;color:var(--red);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid var(--red)">③ Fontes de Conhecimento</div>
+      <div id="mc-itens-lista" style="margin-bottom:8px"></div>
+      <button class="btn btn-secondary" onclick="adicionarItemMC()" style="margin-bottom:16px;font-size:12px">+ Adicionar Conhecimento</button>
+
+      <!-- EVIDÊNCIAS -->
+      <div style="font-size:11px;font-weight:800;color:var(--red);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid var(--red)">④ Evidências Necessárias</div>
+      <div id="mc-ev-lista" style="margin-bottom:8px"></div>
+      <button class="btn btn-secondary" onclick="adicionarEvidenciaMC()" style="margin-bottom:16px;font-size:12px">+ Adicionar Evidência</button>
+
+      <!-- EXCEÇÕES -->
+      <div style="font-size:11px;font-weight:800;color:var(--red);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid var(--red)">⑤ Exceções</div>
+      <div id="mc-exc-lista" style="margin-bottom:8px"></div>
+      <button class="btn btn-secondary" onclick="adicionarExcecaoMC()" style="margin-bottom:16px;font-size:12px">+ Adicionar Exceção</button>
+
+    </div>
+    <div class="modal-footer">
+      <div id="mc-modal-err" style="color:var(--red);font-size:12px;flex:1"></div>
+      <button class="btn btn-secondary" onclick="fecharModalMC()">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarMatrizConhecimento()" id="mc-btn-salvar">Salvar Rascunho</button>
+    </div>
+  </div>
+</div>
 
 <!-- MODAL NOVA CAUSA -->
 <div id="modal-nova-causa" style="display:none" class="modal-overlay" onclick="if(event.target===this)fecharModalNovaCausa()">
@@ -3525,6 +3725,15 @@
 const API = window.SAC_API || 'https://assistente-sac-gpchiacchio.vercel.app';
 
 // ===== NAVEGAÇÃO =====
+function doLogout() {
+  if (!confirm('Deseja sair do sistema?')) return;
+  sessionStorage.removeItem('sac-token');
+  sessionStorage.removeItem('sac-auth');
+  sessionStorage.removeItem('sac-user');
+  sessionStorage.removeItem('sac-demo-local');
+  location.reload();
+}
+
 function navigate(page, el) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
@@ -3533,6 +3742,7 @@ function navigate(page, el) {
   pageEl.classList.add('active');
   if (el) el.classList.add('active');
   if (page === 'biblioteca-fichas') loadBiblioteca(false);
+  if (page === 'matriz-conhecimento') loadMatrizConhecimento();
 }
 
 // ===== BIBLIOTECA DE FICHAS =====
@@ -10873,6 +11083,338 @@ async function loadUltimasAnalises() {
   } catch(e) {
     el.innerHTML = `<div style="color:var(--red);font-size:13px">Erro: ${esc(e.message)}</div>`;
   }
+}
+
+// ── Adicionar LOG_SISTEMA endpoint helper ──────────────────
+// (O endpoint /api/log-sistema já existe no backend)
+
+// ===================================================================
+// MATRIZ DE CONHECIMENTO
+// ===================================================================
+
+let _mcPage = 1;
+let _mcTotal = 0;
+let _mcEditId = null;
+let _mcItens = [];
+let _mcEvidencias = [];
+let _mcExcecoes = [];
+
+const MC_STATUS_BADGE = {
+  RASCUNHO: { bg:'#f3f4f6', color:'#6b7280', label:'Rascunho' },
+  EM_REVISAO: { bg:'#fef9c3', color:'#a16207', label:'Em Revisão' },
+  APROVADA: { bg:'#dcfce7', color:'#15803d', label:'Aprovada' },
+  PUBLICADA: { bg:'#d1fae5', color:'#065f46', label:'Publicada' },
+  SUSPENSA: { bg:'#fee2e2', color:'#b91c1c', label:'Suspensa' },
+  ARQUIVADA: { bg:'#e5e7eb', color:'#374151', label:'Arquivada' },
+};
+
+function mcBadge(status) {
+  const s = MC_STATUS_BADGE[status] || { bg:'#f3f4f6', color:'#6b7280', label: status };
+  return `<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:${s.bg};color:${s.color}">${s.label}</span>`;
+}
+
+async function loadMatrizConhecimento() {
+  const tok = sessionStorage.getItem('sac-token');
+  if (!tok) return;
+  const q = document.getElementById('mc-f-q')?.value||'';
+  const tipo = document.getElementById('mc-f-tipo')?.value||'';
+  const cat = document.getElementById('mc-f-cat')?.value||'';
+  const status = document.getElementById('mc-f-status')?.value||'';
+  const empresa = document.getElementById('mc-f-empresa')?.value||'';
+  const params = new URLSearchParams({ page: _mcPage, perPage: 25 });
+  if (q) params.set('q', q);
+  if (tipo) params.set('tipo', tipo);
+  if (cat) params.set('categoria', cat);
+  if (status) params.set('status', status);
+  if (empresa) params.set('empresa', empresa);
+
+  document.getElementById('mc-loading').style.display = 'block';
+  document.getElementById('mc-empty').style.display = 'none';
+  document.getElementById('mc-table-wrap').style.display = 'none';
+  document.getElementById('mc-pagination').style.display = 'none';
+
+  try {
+    const r = await fetch(API + '/api/matriz-conhecimento?' + params, { headers: { Authorization: 'Bearer ' + tok } });
+    const d = await r.json();
+    document.getElementById('mc-loading').style.display = 'none';
+    if (!d.sucesso) throw new Error(d.erro);
+    _mcTotal = d.total;
+
+    // KPIs
+    const all = d.itens;
+    document.getElementById('mc-kpi-total').textContent = d.total;
+    // Para KPIs mais detalhados precisaria de busca sem filtro de status; aproximamos com dados atuais
+    document.getElementById('mc-kpi-pub').textContent = all.filter(i => i.STATUS === 'PUBLICADA').length;
+    document.getElementById('mc-kpi-rascunho').textContent = all.filter(i => i.STATUS === 'RASCUNHO').length;
+    document.getElementById('mc-kpi-revisao').textContent = all.filter(i => i.STATUS === 'EM_REVISAO').length;
+
+    if (!d.itens.length) {
+      document.getElementById('mc-empty').style.display = 'block';
+      return;
+    }
+
+    const tbody = document.getElementById('mc-tbody');
+    tbody.innerHTML = d.itens.map(m => `
+      <tr style="border-bottom:1px solid var(--gray-100);transition:background 0.1s" onmouseover="this.style.background='var(--gray-50)'" onmouseout="this.style.background=''">
+        <td style="padding:10px 14px;font-family:monospace;font-size:12px;font-weight:700;color:var(--gray-600)">${esc(m.CODIGO)}</td>
+        <td style="padding:10px 14px;font-weight:600;color:var(--gray-900);max-width:220px">
+          <div>${esc(m.NOME)}</div>
+          ${m.DESCRICAO ? `<div style="font-size:11px;color:var(--gray-400);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px">${esc(m.DESCRICAO)}</div>` : ''}
+        </td>
+        <td style="padding:10px 14px;font-size:12px;color:var(--gray-600)">${esc(m.EMPRESA||'—')}</td>
+        <td style="padding:10px 14px;font-size:12px;color:var(--gray-600)">${esc(m.TIPO_MANIFESTACAO||'—')}</td>
+        <td style="padding:10px 14px;font-size:12px;color:var(--gray-600)">${esc(m.CATEGORIA||'—')}</td>
+        <td style="padding:10px 14px;font-size:12px;color:var(--gray-500)">${esc(m.SUBCATEGORIA||'—')}</td>
+        <td style="padding:10px 14px;text-align:center;font-size:12px;color:var(--gray-500)">v${esc(m.VERSAO||'1')}</td>
+        <td style="padding:10px 14px">${mcBadge(m.STATUS)}</td>
+        <td style="padding:10px 14px;font-size:11px;color:var(--gray-400)">
+          ${m.DATA_INICIO_VIGENCIA ? esc(m.DATA_INICIO_VIGENCIA.slice(0,10)) : '—'}
+          ${m.DATA_FIM_VIGENCIA ? '<br>até ' + esc(m.DATA_FIM_VIGENCIA.slice(0,10)) : ''}
+        </td>
+        <td style="padding:10px 14px;text-align:center">
+          <div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap">
+            <button onclick="editarMatrizConhecimento('${esc(m.ID)}')" style="font-size:11px;padding:3px 8px;background:#f3f4f6;border:none;border-radius:5px;cursor:pointer;color:var(--gray-700)" title="Editar">✏️</button>
+            ${m.STATUS === 'RASCUNHO' ? `<button onclick="mudarStatusMC('${esc(m.ID)}','EM_REVISAO')" style="font-size:11px;padding:3px 8px;background:#fef9c3;border:none;border-radius:5px;cursor:pointer;color:#a16207" title="Enviar p/ revisão">🔍</button>` : ''}
+            ${m.STATUS === 'EM_REVISAO' ? `<button onclick="mudarStatusMC('${esc(m.ID)}','APROVADA')" style="font-size:11px;padding:3px 8px;background:#dcfce7;border:none;border-radius:5px;cursor:pointer;color:#15803d" title="Aprovar">✓</button>` : ''}
+            ${m.STATUS === 'APROVADA' ? `<button onclick="mudarStatusMC('${esc(m.ID)}','PUBLICADA')" style="font-size:11px;padding:3px 8px;background:#d1fae5;border:none;border-radius:5px;cursor:pointer;color:#065f46" title="Publicar">🚀</button>` : ''}
+            ${m.STATUS === 'PUBLICADA' ? `<button onclick="mudarStatusMC('${esc(m.ID)}','SUSPENSA')" style="font-size:11px;padding:3px 8px;background:#fee2e2;border:none;border-radius:5px;cursor:pointer;color:#b91c1c" title="Suspender">⏸</button>` : ''}
+            <button onclick="mudarStatusMC('${esc(m.ID)}','ARQUIVADA')" style="font-size:11px;padding:3px 8px;background:#e5e7eb;border:none;border-radius:5px;cursor:pointer;color:#374151" title="Arquivar">📦</button>
+          </div>
+        </td>
+      </tr>`).join('');
+
+    document.getElementById('mc-table-wrap').style.display = 'block';
+
+    // Paginação
+    if (d.totalPages > 1) {
+      document.getElementById('mc-pagination').style.display = 'flex';
+      document.getElementById('mc-pagination').innerHTML = `
+        <span>${d.total} matrizes · página ${d.page} de ${d.totalPages}</span>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-secondary" onclick="_mcPage=Math.max(1,_mcPage-1);loadMatrizConhecimento()" ${d.page<=1?'disabled':''} style="font-size:12px;padding:4px 10px">← Anterior</button>
+          <button class="btn btn-secondary" onclick="_mcPage=Math.min(${d.totalPages},_mcPage+1);loadMatrizConhecimento()" ${d.page>=d.totalPages?'disabled':''} style="font-size:12px;padding:4px 10px">Próxima →</button>
+        </div>`;
+    }
+  } catch (e) {
+    document.getElementById('mc-loading').style.display = 'none';
+    document.getElementById('mc-empty').style.display = 'block';
+    document.getElementById('mc-empty').textContent = 'Erro ao carregar: ' + e.message;
+  }
+}
+
+function limparFiltrosMC() {
+  ['mc-f-q','mc-f-tipo','mc-f-cat','mc-f-empresa'].forEach(id => { const el = document.getElementById(id); if (el) el.value=''; });
+  const st = document.getElementById('mc-f-status'); if (st) st.value='';
+  _mcPage = 1;
+  loadMatrizConhecimento();
+}
+
+function abrirModalNovaMatriz() {
+  _mcEditId = null;
+  _mcItens = [];
+  _mcEvidencias = [];
+  _mcExcecoes = [];
+  document.getElementById('modal-mc-titulo').textContent = 'Nova Matriz de Conhecimento';
+  ['mc-cod','mc-nome','mc-descricao','mc-empresa','mc-setor','mc-tipo','mc-categoria',
+   'mc-subcategoria','mc-produto','mc-canal','mc-termos','mc-vigencia-ini','mc-vigencia-fim',
+   'mc-at-setor','mc-at-prazo','mc-at-tipo','mc-setor-detentor'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value='';
+  });
+  document.getElementById('mc-prioridade').value='MEDIA';
+  document.getElementById('mc-at-sim').checked = false;
+  document.getElementById('mc-at-fields').style.display = 'none';
+  document.getElementById('mc-modal-err').textContent = '';
+  renderMCItens(); renderMCEvidencias(); renderMCExcecoes();
+  document.getElementById('modal-mc').style.display = 'flex';
+}
+
+async function editarMatrizConhecimento(id) {
+  const tok = sessionStorage.getItem('sac-token');
+  try {
+    const r = await fetch(API + '/api/matriz-conhecimento/' + id, { headers: { Authorization: 'Bearer ' + tok } });
+    const d = await r.json();
+    if (!d.sucesso) throw new Error(d.erro);
+    const m = d.matriz;
+    _mcEditId = id;
+    _mcItens = d.itens || [];
+    _mcEvidencias = d.evidencias || [];
+    _mcExcecoes = d.excecoes || [];
+    document.getElementById('modal-mc-titulo').textContent = 'Editar Matriz — ' + m.CODIGO;
+    document.getElementById('mc-cod').value = m.CODIGO||'';
+    document.getElementById('mc-nome').value = m.NOME||'';
+    document.getElementById('mc-descricao').value = m.DESCRICAO||'';
+    document.getElementById('mc-empresa').value = m.EMPRESA||'';
+    document.getElementById('mc-setor').value = m.SETOR||'';
+    document.getElementById('mc-tipo').value = m.TIPO_MANIFESTACAO||'';
+    document.getElementById('mc-categoria').value = m.CATEGORIA||'';
+    document.getElementById('mc-subcategoria').value = m.SUBCATEGORIA||'';
+    document.getElementById('mc-produto').value = m.PRODUTO||'';
+    document.getElementById('mc-canal').value = m.CANAL||'';
+    document.getElementById('mc-prioridade').value = m.PRIORIDADE||'MEDIA';
+    document.getElementById('mc-vigencia-ini').value = m.DATA_INICIO_VIGENCIA||'';
+    document.getElementById('mc-vigencia-fim').value = m.DATA_FIM_VIGENCIA||'';
+    document.getElementById('mc-termos').value = m.TERMOS_REFERENCIA||'';
+    document.getElementById('mc-setor-detentor').value = m.SETOR_DETENTOR_CONHECIMENTO||'';
+    const at = String(m.NECESSITA_ANALISE_TECNICA||'').toUpperCase() === 'SIM';
+    document.getElementById('mc-at-sim').checked = at;
+    document.getElementById('mc-at-fields').style.display = at ? 'grid' : 'none';
+    document.getElementById('mc-at-setor').value = m.SETOR_ANALISE_TECNICA||'';
+    document.getElementById('mc-at-prazo').value = m.PRAZO_ANALISE||'';
+    document.getElementById('mc-at-tipo').value = m.TIPO_ANALISE||'';
+    document.getElementById('mc-modal-err').textContent = '';
+    renderMCItens(); renderMCEvidencias(); renderMCExcecoes();
+    document.getElementById('modal-mc').style.display = 'flex';
+  } catch (e) {
+    alert('Erro ao carregar: ' + e.message);
+  }
+}
+
+function fecharModalMC() {
+  document.getElementById('modal-mc').style.display = 'none';
+}
+
+function toggleMCAnaliseTecnica() {
+  const checked = document.getElementById('mc-at-sim').checked;
+  document.getElementById('mc-at-fields').style.display = checked ? 'grid' : 'none';
+}
+
+// ── Itens de Conhecimento (in-memory) ──
+function renderMCItens() {
+  const el = document.getElementById('mc-itens-lista');
+  if (!_mcItens.length) { el.innerHTML = '<div style="color:var(--gray-400);font-size:12px;padding:8px 0">Nenhuma fonte adicionada.</div>'; return; }
+  el.innerHTML = _mcItens.map((it, i) => `
+    <div style="display:grid;grid-template-columns:1fr 1fr auto auto auto auto;gap:8px;align-items:center;padding:8px;background:var(--gray-50);border-radius:6px;margin-bottom:6px">
+      <input class="form-input" style="font-size:12px" placeholder="Título" value="${esc(it.titulo||it.TITULO||'')}" oninput="_mcItens[${i}].titulo=this.value">
+      <select class="form-input" style="font-size:12px" onchange="_mcItens[${i}].tipoFonte=this.value">
+        ${['BASE_CONHECIMENTO','PROCEDIMENTO','POLITICA','REGRA','FAQ','DOCUMENTO','INSTRUCAO_TECNICA','ESPECIFICACAO','CRITERIO_QUALIDADE','CRITERIO_COMERCIAL','SLA','MATRIZ_TRATAMENTO'].map(t=>`<option value="${t}" ${(it.tipoFonte||it.TIPO_FONTE||'')===t?'selected':''}>${t.replace(/_/g,' ')}</option>`).join('')}
+      </select>
+      <select class="form-input" style="font-size:12px;width:90px" onchange="_mcItens[${i}].prioridade=this.value">
+        ${['CRITICA','ALTA','MEDIA','BAIXA'].map(p=>`<option value="${p}" ${(it.prioridade||it.PRIORIDADE||'MEDIA')===p?'selected':''}>${p}</option>`).join('')}
+      </select>
+      <label style="display:flex;align-items:center;gap:4px;font-size:11px;white-space:nowrap;cursor:pointer">
+        <input type="checkbox" ${(it.obrigatorio||it.OBRIGATORIO||'')?.toUpperCase()==='SIM'?'checked':''} onchange="_mcItens[${i}].obrigatorio=this.checked?'SIM':'NÃO'"> Obrig.
+      </label>
+      <input class="form-input" style="font-size:11px;width:90px" placeholder="Fonte ID" value="${esc(it.fonteId||it.FONTE_ID||'')}" oninput="_mcItens[${i}].fonteId=this.value">
+      <button onclick="_mcItens.splice(${i},1);renderMCItens()" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:16px;line-height:1">×</button>
+    </div>`).join('');
+}
+
+function adicionarItemMC() {
+  _mcItens.push({ titulo:'', tipoFonte:'PROCEDIMENTO', prioridade:'ALTA', obrigatorio:'NÃO', fonteId:'' });
+  renderMCItens();
+}
+
+// ── Evidências ──
+function renderMCEvidencias() {
+  const el = document.getElementById('mc-ev-lista');
+  if (!_mcEvidencias.length) { el.innerHTML = '<div style="color:var(--gray-400);font-size:12px;padding:8px 0">Nenhuma evidência adicionada.</div>'; return; }
+  el.innerHTML = _mcEvidencias.map((ev, i) => `
+    <div style="display:grid;grid-template-columns:2fr 1fr auto auto;gap:8px;align-items:center;padding:8px;background:var(--gray-50);border-radius:6px;margin-bottom:6px">
+      <input class="form-input" style="font-size:12px" placeholder="Descrição da evidência" value="${esc(ev.titulo||ev.TITULO||'')}" oninput="_mcEvidencias[${i}].titulo=this.value">
+      <input class="form-input" style="font-size:12px" placeholder="Tipo (foto, doc...)" value="${esc(ev.tipoEvidencia||ev.TIPO_EVIDENCIA||'')}" oninput="_mcEvidencias[${i}].tipoEvidencia=this.value">
+      <label style="display:flex;align-items:center;gap:4px;font-size:11px;white-space:nowrap;cursor:pointer">
+        <input type="checkbox" ${(ev.obrigatoria||ev.OBRIGATORIA||'SIM').toUpperCase()==='SIM'?'checked':''} onchange="_mcEvidencias[${i}].obrigatoria=this.checked?'SIM':'NÃO'"> Obrig.
+      </label>
+      <button onclick="_mcEvidencias.splice(${i},1);renderMCEvidencias()" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:16px;line-height:1">×</button>
+    </div>`).join('');
+}
+
+function adicionarEvidenciaMC() {
+  _mcEvidencias.push({ titulo:'', tipoEvidencia:'', obrigatoria:'SIM' });
+  renderMCEvidencias();
+}
+
+// ── Exceções ──
+function renderMCExcecoes() {
+  const el = document.getElementById('mc-exc-lista');
+  if (!_mcExcecoes.length) { el.innerHTML = '<div style="color:var(--gray-400);font-size:12px;padding:8px 0">Nenhuma exceção adicionada.</div>'; return; }
+  el.innerHTML = _mcExcecoes.map((ex, i) => `
+    <div style="display:grid;grid-template-columns:1fr 2fr auto;gap:8px;align-items:center;padding:8px;background:var(--gray-50);border-radius:6px;margin-bottom:6px">
+      <input class="form-input" style="font-size:12px" placeholder="Condição da exceção" value="${esc(ex.condicao||ex.CONDICAO||'')}" oninput="_mcExcecoes[${i}].condicao=this.value">
+      <input class="form-input" style="font-size:12px" placeholder="Conhecimento alternativo / observação" value="${esc(ex.conhecimentoAlternativo||ex.CONHECIMENTO_ALTERNATIVO||'')}" oninput="_mcExcecoes[${i}].conhecimentoAlternativo=this.value">
+      <button onclick="_mcExcecoes.splice(${i},1);renderMCExcecoes()" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:16px;line-height:1">×</button>
+    </div>`).join('');
+}
+
+function adicionarExcecaoMC() {
+  _mcExcecoes.push({ condicao:'', conhecimentoAlternativo:'' });
+  renderMCExcecoes();
+}
+
+// ── Salvar ──
+async function salvarMatrizConhecimento() {
+  const tok = sessionStorage.getItem('sac-token');
+  const nome = document.getElementById('mc-nome').value.trim();
+  if (!nome) { document.getElementById('mc-modal-err').textContent = 'Nome é obrigatório.'; return; }
+
+  const payload = {
+    codigo: document.getElementById('mc-cod').value.trim(),
+    nome,
+    descricao: document.getElementById('mc-descricao').value.trim(),
+    empresa: document.getElementById('mc-empresa').value.trim(),
+    setor: document.getElementById('mc-setor').value.trim(),
+    tipoManifestacao: document.getElementById('mc-tipo').value.trim(),
+    categoria: document.getElementById('mc-categoria').value.trim(),
+    subcategoria: document.getElementById('mc-subcategoria').value.trim(),
+    produto: document.getElementById('mc-produto').value.trim(),
+    canal: document.getElementById('mc-canal').value.trim(),
+    prioridade: document.getElementById('mc-prioridade').value,
+    dataInicioVigencia: document.getElementById('mc-vigencia-ini').value,
+    dataFimVigencia: document.getElementById('mc-vigencia-fim').value,
+    termosReferencia: document.getElementById('mc-termos').value.trim(),
+    setorDetentorConhecimento: document.getElementById('mc-setor-detentor').value.trim(),
+    necessitaAnaliseTecnica: document.getElementById('mc-at-sim').checked ? 'SIM' : 'NÃO',
+    setorAnaliseTecnica: document.getElementById('mc-at-setor').value.trim(),
+    prazoAnalise: document.getElementById('mc-at-prazo').value.trim(),
+    tipoAnalise: document.getElementById('mc-at-tipo').value.trim(),
+  };
+
+  const btn = document.getElementById('mc-btn-salvar');
+  btn.disabled = true; btn.textContent = 'Salvando...';
+  document.getElementById('mc-modal-err').textContent = '';
+
+  try {
+    let matrizId = _mcEditId;
+    if (_mcEditId) {
+      const r = await fetch(API + '/api/matriz-conhecimento/' + _mcEditId, { method:'PUT', headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok}, body: JSON.stringify(payload) });
+      const d = await r.json();
+      if (!d.sucesso) throw new Error(d.erro);
+    } else {
+      const r = await fetch(API + '/api/matriz-conhecimento', { method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok}, body: JSON.stringify(payload) });
+      const d = await r.json();
+      if (!d.sucesso) throw new Error(d.erro);
+      matrizId = d.id;
+    }
+
+    // Salvar itens, evidências e exceções (somente para novas, ou os já marcados como novos)
+    if (matrizId) {
+      const headers = {'Content-Type':'application/json','Authorization':'Bearer '+tok};
+      await Promise.all([
+        ..._mcItens.filter(i=>!i.ID).map(it => fetch(API+'/api/matriz-conhecimento/'+matrizId+'/itens',{method:'POST',headers,body:JSON.stringify(it)}).catch(()=>{})),
+        ..._mcEvidencias.filter(e=>!e.ID).map(ev => fetch(API+'/api/matriz-conhecimento/'+matrizId+'/evidencias',{method:'POST',headers,body:JSON.stringify(ev)}).catch(()=>{})),
+        ..._mcExcecoes.filter(x=>!x.ID).map(ex => fetch(API+'/api/matriz-conhecimento/'+matrizId+'/excecoes',{method:'POST',headers,body:JSON.stringify(ex)}).catch(()=>{})),
+      ]);
+    }
+
+    fecharModalMC();
+    loadMatrizConhecimento();
+  } catch (e) {
+    document.getElementById('mc-modal-err').textContent = e.message;
+  } finally {
+    btn.disabled = false; btn.textContent = 'Salvar Rascunho';
+  }
+}
+
+async function mudarStatusMC(id, novoStatus) {
+  const labels = { EM_REVISAO:'enviar para revisão', APROVADA:'aprovar', PUBLICADA:'publicar', SUSPENSA:'suspender', ARQUIVADA:'arquivar' };
+  if (!confirm('Deseja ' + (labels[novoStatus]||novoStatus) + ' esta matriz?')) return;
+  const tok = sessionStorage.getItem('sac-token');
+  try {
+    const r = await fetch(API+'/api/matriz-conhecimento/'+id+'/status',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},body:JSON.stringify({status:novoStatus})});
+    const d = await r.json();
+    if (!d.sucesso) throw new Error(d.erro);
+    loadMatrizConhecimento();
+  } catch (e) { alert('Erro: ' + e.message); }
 }
 
 // ── Adicionar LOG_SISTEMA endpoint helper ──────────────────

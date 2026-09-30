@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const { Readable } = require('stream');
 const { google } = require('googleapis');
 const cerebroService = require('./services/cerebroServices');
+const mcService = require('./services/matrizConhecimentoService');
 const documentService = require('./services/documentService');
 const { tratativaEngine, devolutivaEngine, assertividade: assertividadeService } = cerebroService;
 
@@ -409,12 +410,32 @@ async function executarAnalise(manifestacao) {
     manifestacao.tipo || manifestacao.TIPO || '',
     manifestacao.empresaReclamada || manifestacao.EMPRESA_RECLAMADA || ''
   );
+  // Resolver Matriz de Conhecimento antes de chamar o Cérebro
+  const matrizConhecimento = await mcService.resolverConhecimento({
+    ...manifestacao,
+    EMPRESA_RECLAMADA: manifestacao.empresaReclamada || manifestacao.EMPRESA_RECLAMADA || '',
+    TIPO_MANIFESTACAO: manifestacao.tipo || manifestacao.TIPO || regras.tipoDetectado || '',
+    CATEGORIA: manifestacao.categoria || manifestacao.CATEGORIA || '',
+    SUBCATEGORIA: manifestacao.subcategoria || manifestacao.SUBCATEGORIA || '',
+    PRODUTO: manifestacao.produto || manifestacao.PRODUTO || '',
+    SETOR: regras.setores?.[0] || '',
+    DESCRICAO: manifestacao.descricao || manifestacao.DESCRICAO || '',
+  }).catch(e => { console.warn('[MC] resolverConhecimento falhou:', e.message); return null; });
+
   const analise = await cerebroService.analisarManifestacao({
     ...manifestacao,
     empresaReclamante: manifestacao.empresaReclamante || manifestacao.EMPRESA_RECLAMANTE,
     descricao: manifestacao.descricao || manifestacao.DESCRICAO,
+    matrizConhecimento,
   }, regras);
-  return { ...analise, tipoID: regras.tipoID, tempoAnaliseSegundos: Math.round((Date.now() - inicio) / 1000) };
+
+  // Registrar auditoria da Matriz
+  if (matrizConhecimento) {
+    const protocolo = manifestacao.protocolo || manifestacao.ID_MANIFESTACAO || '';
+    mcService.registrarAuditoria(protocolo, matrizConhecimento, 'sistema', analise.versoes?.cerebro || '4.0.0').catch(() => {});
+  }
+
+  return { ...analise, matrizConhecimento, tipoID: regras.tipoID, tempoAnaliseSegundos: Math.round((Date.now() - inicio) / 1000) };
 }
 
 function normalizarEmpresa(raw) {
@@ -3225,6 +3246,148 @@ app.post('/api/biblioteca/fichas/:id/regenerar-pdf', requerPerfil('MASTER','ADMI
     const pdfBase64 = pdfBuffer.toString('base64');
     res.json({ sucesso: true, pdfBase64, pdfNome, versao: novaVersao, pdfDriveUrl });
   } catch(e) { res.status(500).json({ sucesso: false, erro: e.message }); }
+});
+
+// ===== MATRIZ DE CONHECIMENTO =====
+
+const MC_PERFIS_EDITOR = new Set(['MASTER','ADMINISTRADOR','ANALISTA SAC','GESTOR SAC']);
+const MC_PERFIS_APROVADOR = new Set(['MASTER','ADMINISTRADOR']);
+const MC_PERFIS_PUBLICADOR = new Set(['MASTER','ADMINISTRADOR']);
+
+function podeMC(perfil, acao) {
+  const p = (perfil || '').toUpperCase();
+  if (acao === 'visualizar') return true;
+  if (acao === 'criar' || acao === 'editar') return MC_PERFIS_EDITOR.has(p);
+  if (acao === 'aprovar') return MC_PERFIS_APROVADOR.has(p);
+  if (acao === 'publicar' || acao === 'arquivar') return MC_PERFIS_PUBLICADOR.has(p);
+  if (acao === 'historico') return MC_PERFIS_EDITOR.has(p);
+  return false;
+}
+
+// Listar matrizes
+app.get('/api/matriz-conhecimento', async (req, res) => {
+  try {
+    if (!podeMC(req.user?.perfil, 'visualizar')) return res.status(403).json({ sucesso: false, erro: 'Sem permissão.' });
+    const filtros = { empresa: req.query.empresa, setor: req.query.setor, tipo: req.query.tipo, categoria: req.query.categoria, subcategoria: req.query.subcategoria, status: req.query.status, q: req.query.q };
+    const page = Math.max(1, parseInt(req.query.page || '1'));
+    const perPage = Math.min(50, parseInt(req.query.perPage || '20'));
+    const lista = await mcService.listarMatrizes(filtros);
+    const total = lista.length;
+    const itens = lista.slice((page - 1) * perPage, page * perPage);
+    res.json({ sucesso: true, itens, total, page, perPage, totalPages: Math.ceil(total / perPage) });
+  } catch (e) { console.error(e); res.status(500).json({ sucesso: false, erro: e.message }); }
+});
+
+// Obter matriz por ID
+app.get('/api/matriz-conhecimento/:id', async (req, res) => {
+  try {
+    if (!podeMC(req.user?.perfil, 'visualizar')) return res.status(403).json({ sucesso: false, erro: 'Sem permissão.' });
+    const matriz = await mcService.obterMatriz(req.params.id);
+    if (!matriz) return res.status(404).json({ sucesso: false, erro: 'Matriz não encontrada.' });
+    const [itens, evidencias, excecoes] = await Promise.all([
+      mcService.listarItens(matriz.ID),
+      mcService.listarEvidencias(matriz.ID),
+      mcService.listarExcecoes(matriz.ID),
+    ]);
+    res.json({ sucesso: true, matriz, itens, evidencias, excecoes });
+  } catch (e) { res.status(500).json({ sucesso: false, erro: e.message }); }
+});
+
+// Criar matriz
+app.post('/api/matriz-conhecimento', async (req, res) => {
+  try {
+    if (!podeMC(req.user?.perfil, 'criar')) return res.status(403).json({ sucesso: false, erro: 'Sem permissão.' });
+    if (!req.body?.nome) return res.status(400).json({ sucesso: false, erro: 'Campo "nome" obrigatório.' });
+    const obj = await mcService.criarMatriz(req.body, req.user.usuario);
+    await registrarAuditoria(req.user.usuario, 'CRIAR_MATRIZ_CONHECIMENTO', null, 'MATRIZ_CONHECIMENTO', null, { id: obj.ID, nome: obj.NOME });
+    res.json({ sucesso: true, id: obj.ID, codigo: obj.CODIGO });
+  } catch (e) { res.status(500).json({ sucesso: false, erro: e.message }); }
+});
+
+// Atualizar matriz
+app.put('/api/matriz-conhecimento/:id', async (req, res) => {
+  try {
+    if (!podeMC(req.user?.perfil, 'editar')) return res.status(403).json({ sucesso: false, erro: 'Sem permissão.' });
+    await mcService.atualizarMatriz(req.params.id, req.body, req.user.usuario);
+    await registrarAuditoria(req.user.usuario, 'EDITAR_MATRIZ_CONHECIMENTO', null, 'MATRIZ_CONHECIMENTO', null, { id: req.params.id });
+    res.json({ sucesso: true });
+  } catch (e) { res.status(500).json({ sucesso: false, erro: e.message }); }
+});
+
+// Mudar status (aprovar, publicar, arquivar, suspender)
+app.post('/api/matriz-conhecimento/:id/status', async (req, res) => {
+  try {
+    const { status } = req.body || {};
+    if (!status) return res.status(400).json({ sucesso: false, erro: 'status obrigatório.' });
+    const acao = status === 'APROVADA' ? 'aprovar' : status === 'PUBLICADA' ? 'publicar' : 'arquivar';
+    if (!podeMC(req.user?.perfil, acao)) return res.status(403).json({ sucesso: false, erro: 'Sem permissão para esta ação.' });
+    await mcService.mudarStatusMatriz(req.params.id, status, req.user.usuario);
+    await registrarAuditoria(req.user.usuario, `MATRIZ_CONHECIMENTO_${status}`, null, 'MATRIZ_CONHECIMENTO', null, { id: req.params.id, status });
+    res.json({ sucesso: true });
+  } catch (e) { res.status(500).json({ sucesso: false, erro: e.message }); }
+});
+
+// ITENS — adicionar
+app.post('/api/matriz-conhecimento/:id/itens', async (req, res) => {
+  try {
+    if (!podeMC(req.user?.perfil, 'editar')) return res.status(403).json({ sucesso: false, erro: 'Sem permissão.' });
+    const item = await mcService.adicionarItem(req.params.id, req.body, req.user.usuario);
+    res.json({ sucesso: true, id: item.ID });
+  } catch (e) { res.status(500).json({ sucesso: false, erro: e.message }); }
+});
+
+// ITENS — remover
+app.delete('/api/matriz-conhecimento/:id/itens/:itemId', async (req, res) => {
+  try {
+    if (!podeMC(req.user?.perfil, 'editar')) return res.status(403).json({ sucesso: false, erro: 'Sem permissão.' });
+    await mcService.removerItem(req.params.itemId, req.user.usuario);
+    res.json({ sucesso: true });
+  } catch (e) { res.status(500).json({ sucesso: false, erro: e.message }); }
+});
+
+// EVIDÊNCIAS — adicionar
+app.post('/api/matriz-conhecimento/:id/evidencias', async (req, res) => {
+  try {
+    if (!podeMC(req.user?.perfil, 'editar')) return res.status(403).json({ sucesso: false, erro: 'Sem permissão.' });
+    const ev = await mcService.adicionarEvidencia(req.params.id, req.body);
+    res.json({ sucesso: true, id: ev.ID });
+  } catch (e) { res.status(500).json({ sucesso: false, erro: e.message }); }
+});
+
+// EVIDÊNCIAS — remover
+app.delete('/api/matriz-conhecimento/:id/evidencias/:evId', async (req, res) => {
+  try {
+    if (!podeMC(req.user?.perfil, 'editar')) return res.status(403).json({ sucesso: false, erro: 'Sem permissão.' });
+    await mcService.removerEvidencia(req.params.evId);
+    res.json({ sucesso: true });
+  } catch (e) { res.status(500).json({ sucesso: false, erro: e.message }); }
+});
+
+// EXCEÇÕES — adicionar
+app.post('/api/matriz-conhecimento/:id/excecoes', async (req, res) => {
+  try {
+    if (!podeMC(req.user?.perfil, 'editar')) return res.status(403).json({ sucesso: false, erro: 'Sem permissão.' });
+    const ex = await mcService.adicionarExcecao(req.params.id, req.body);
+    res.json({ sucesso: true, id: ex.ID });
+  } catch (e) { res.status(500).json({ sucesso: false, erro: e.message }); }
+});
+
+// EXCEÇÕES — remover
+app.delete('/api/matriz-conhecimento/:id/excecoes/:exId', async (req, res) => {
+  try {
+    if (!podeMC(req.user?.perfil, 'editar')) return res.status(403).json({ sucesso: false, erro: 'Sem permissão.' });
+    await sheets.atualizarPorID('MC_EXCECOES', req.params.exId, { ATIVO: 'NÃO' }, ['ID']);
+    res.json({ sucesso: true });
+  } catch (e) { res.status(500).json({ sucesso: false, erro: e.message }); }
+});
+
+// RESOLVER — endpoint de teste/consulta
+app.post('/api/matriz-conhecimento/resolver', async (req, res) => {
+  try {
+    if (!podeMC(req.user?.perfil, 'visualizar')) return res.status(403).json({ sucesso: false, erro: 'Sem permissão.' });
+    const resultado = await mcService.resolverConhecimento(req.body || {});
+    res.json({ sucesso: true, resultado });
+  } catch (e) { res.status(500).json({ sucesso: false, erro: e.message }); }
 });
 
 // ===== CATCH ALL =====
