@@ -5055,7 +5055,7 @@ async function salvarNovoDoc() {
 }
 
 // ===== PAGE OBSERVERS =====
-const pageLoaders = {
+const pageLoaders = window.pageLoaders = {
   'acompanhamento': loadAcompanhamento,
   'visao-geral': loadVisaoGeral,
   'nova-manifestacao': initNovaManifestacao,
@@ -5066,9 +5066,9 @@ const pageLoaders = {
   'matriz': loadMatriz,
   'base-conhecimento': loadBaseConhecimento,
   'cerebro': ()=>{ cdLoadMan(); },
-  'painel-maquina': loadPainelMaquina,
-  'causas': loadCausas,
-  'sugestoes-melhoria': loadSugestoesMelhoria,
+  'painel-maquina': (...a) => loadPainelMaquina(...a),
+  'causas': (...a) => loadCausas(...a),
+  'sugestoes-melhoria': (...a) => loadSugestoesMelhoria(...a),
 };
 
 const originalNavigate = navigate;
