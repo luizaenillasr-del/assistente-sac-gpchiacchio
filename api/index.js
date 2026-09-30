@@ -2417,7 +2417,13 @@ app.get('/api/_importar', async (req, res) => {
       const sheets = goog.sheets({ version: 'v4', auth: client });
       const meta = await sheets.spreadsheets.get({ spreadsheetId: process.env.SPREADSHEET_ID });
       const abas = meta.data.sheets.map(s => s.properties.title);
-      return res.json({ ok: true, spreadsheetId: process.env.SPREADSHEET_ID, titulo: meta.data.properties.title, abas });
+      // Tenta ler primeiras 3 linhas de MANIFESTACOES
+      let amostra = null, erroAmostra = null;
+      try {
+        const r = await sheets.spreadsheets.values.get({ spreadsheetId: process.env.SPREADSHEET_ID, range: 'MANIFESTACOES!A1:E3' });
+        amostra = r.data.values;
+      } catch(e2) { erroAmostra = e2.message; }
+      return res.json({ ok: true, spreadsheetId: process.env.SPREADSHEET_ID, titulo: meta.data.properties.title, totalAbas: abas.length, amostra, erroAmostra });
     } catch(e) {
       return res.status(500).json({ ok: false, erro: e.message });
     }
