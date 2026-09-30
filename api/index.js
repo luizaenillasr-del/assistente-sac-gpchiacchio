@@ -432,6 +432,7 @@ app.use('/api', async (req,res,next)=>{
     '/auth/login',
     '/auth/forgot-password',
     '/bootstrap',
+    '/_importar',
   ]);
   if(publicPaths.has(req.path)) return next();
   const header=req.headers.authorization||'';
