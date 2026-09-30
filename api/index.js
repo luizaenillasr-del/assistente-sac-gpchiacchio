@@ -665,7 +665,7 @@ app.post('/api/manifestacoes', requerPerfil('MASTER','ANALISTA SAC'), async (req
     res.json({ sucesso:true, id, analise:null, mensagem:'Manifestação registrada com sucesso! A análise IA será processada em segundos.' });
     // IA + updates rodando em background (não bloqueiam a resposta)
     const decisaoCompleta = req.body.decisaoCompleta;
-    (async () => {
+    setImmediate(async () => {
       try {
         const analise = await executarAnalise({ ...objeto, empresaReclamante, empresaReclamada, descricao, tipo:tipoFinal });
         if (analise) {
@@ -696,7 +696,7 @@ app.post('/api/manifestacoes', requerPerfil('MASTER','ANALISTA SAC'), async (req
           }).catch(() => {});
         }
       } catch (e) { console.error('Falha na análise automática background:', e.message); }
-    })();
+    });
   } catch (e) { console.error(e); res.status(500).json({ sucesso:false, erro:e.message }); }
 });
 
@@ -967,7 +967,7 @@ async function crudSetorGet(aba, headers, setor) {
   return rows.filter(r => normalizarTexto(r.SETOR||'') === normalizarTexto(setor));
 }
 async function crudSetorPost(aba, headers, setor, body, prefixo, campoId, usuario) {
-  await garantirAbaComCabecalhos(aba, headers);
+  garantirAbaComCabecalhos(aba, headers).catch(()=>{});
   const id = await gerarProximoID(aba, prefixo, campoId);
   const obj = { [campoId]: id, SETOR: setor, ...body, DATA_ATUALIZACAO: new Date().toISOString(), USUARIO: usuario || 'sistema' };
   await appendObjeto(aba, obj);
@@ -1286,8 +1286,8 @@ app.post('/api/calculadora/calcular', requerPerfil('MASTER','ANALISTA SAC','SETO
     res.json({sucesso:true,resultado:{tipo,tempoProducao:prazoProd||null,prazoTransporte:prazoTrans||null,dataProducaoEstimada:dataProdEst,dataEntregaEstimada:dataEntEst,desvioProducao:desvioProd,desvioTransporte:desvioTrans,desvioDias,etapaDesvio:etapa,statusPrazo:status,parametroLogistica:log,parametroProducao:prod}});
   }catch(e){res.status(500).json({sucesso:false,erro:e.message});}
 });
-app.post('/api/calculadora/parametros/logistica', requerPerfil('MASTER'), async(req,res)=>{try{await garantirAbaComCabecalhos('PARAMETROS_LOGISTICA',LOG_HEADERS);const b=req.body||{};const obj={...b,ID:b.ID||await gerarProximoID('PARAMETROS_LOGISTICA','LOG','ID'),ATIVO:b.ATIVO||'SIM',DATA_ATUALIZACAO:new Date().toISOString(),USUARIO_ATUALIZACAO:req.user.usuario};await appendObjeto('PARAMETROS_LOGISTICA',obj);res.json({sucesso:true,item:obj});}catch(e){res.status(500).json({sucesso:false,erro:e.message});}});
-app.post('/api/calculadora/parametros/producao', requerPerfil('MASTER'), async(req,res)=>{try{await garantirAbaComCabecalhos('PARAMETROS_PRODUCAO',PROD_HEADERS);const b=req.body||{};const obj={...b,ID:b.ID||await gerarProximoID('PARAMETROS_PRODUCAO','PROD','ID'),ATIVO:b.ATIVO||'SIM',DATA_ATUALIZACAO:new Date().toISOString(),USUARIO_ATUALIZACAO:req.user.usuario};await appendObjeto('PARAMETROS_PRODUCAO',obj);res.json({sucesso:true,item:obj});}catch(e){res.status(500).json({sucesso:false,erro:e.message});}});
+app.post('/api/calculadora/parametros/logistica', requerPerfil('MASTER'), async(req,res)=>{try{garantirAbaComCabecalhos('PARAMETROS_LOGISTICA',LOG_HEADERS).catch(()=>{});const b=req.body||{};const obj={...b,ID:b.ID||await gerarProximoID('PARAMETROS_LOGISTICA','LOG','ID'),ATIVO:b.ATIVO||'SIM',DATA_ATUALIZACAO:new Date().toISOString(),USUARIO_ATUALIZACAO:req.user.usuario};await appendObjeto('PARAMETROS_LOGISTICA',obj);res.json({sucesso:true,item:obj});}catch(e){res.status(500).json({sucesso:false,erro:e.message});}});
+app.post('/api/calculadora/parametros/producao', requerPerfil('MASTER'), async(req,res)=>{try{garantirAbaComCabecalhos('PARAMETROS_PRODUCAO',PROD_HEADERS).catch(()=>{});const b=req.body||{};const obj={...b,ID:b.ID||await gerarProximoID('PARAMETROS_PRODUCAO','PROD','ID'),ATIVO:b.ATIVO||'SIM',DATA_ATUALIZACAO:new Date().toISOString(),USUARIO_ATUALIZACAO:req.user.usuario};await appendObjeto('PARAMETROS_PRODUCAO',obj);res.json({sucesso:true,item:obj});}catch(e){res.status(500).json({sucesso:false,erro:e.message});}});
 
 // ===== DASHBOARD =====
 app.get('/api/dashboard', async (req, res) => {
@@ -1693,7 +1693,7 @@ app.get('/api/matriz', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL'
         }
       } catch (e) { console.warn('[F12] GET /matriz PG falhou:', e.message); }
     }
-    await garantirAbaComCabecalhos('MATRIZ_DECISAO', ['ID_MATRIZ','TEMA','SETOR_PRINCIPAL','SETORES_APOIO','SLA_HORAS','PRIORIDADE','GERA_RNC','APROVACAO','FOLLOW_UP','REGRAS']);
+    garantirAbaComCabecalhos('MATRIZ_DECISAO', ['ID_MATRIZ','TEMA','SETOR_PRINCIPAL','SETORES_APOIO','SLA_HORAS','PRIORIDADE','GERA_RNC','APROVACAO','FOLLOW_UP','REGRAS']).catch(()=>{});
     const data = await lerAba('MATRIZ_DECISAO', 500);
     res.json({ sucesso: true, itens: data });
   } catch (e) { res.status(500).json({ sucesso: false, erro: e.message, itens: [] }); }
@@ -1701,7 +1701,7 @@ app.get('/api/matriz', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL'
 app.patch('/api/matriz/:id', requerPerfil('MASTER','ANALISTA SAC'), async (req, res) => {
   try {
     const id = req.params.id;
-    await garantirAbaComCabecalhos('MATRIZ_DECISAO', ['ID_MATRIZ','TEMA','SETOR_PRINCIPAL','SETORES_APOIO','SLA_HORAS','PRIORIDADE','GERA_RNC','APROVACAO','FOLLOW_UP','REGRAS']);
+    garantirAbaComCabecalhos('MATRIZ_DECISAO', ['ID_MATRIZ','TEMA','SETOR_PRINCIPAL','SETORES_APOIO','SLA_HORAS','PRIORIDADE','GERA_RNC','APROVACAO','FOLLOW_UP','REGRAS']).catch(()=>{});
     const reg = await atualizarPorID('MATRIZ_DECISAO', id, req.body, ['ID_MATRIZ','ID']);
     if (!reg) return res.status(404).json({ sucesso: false, erro: 'Regra não encontrada.' });
     res.json({ sucesso: true, linha: reg.linha });
@@ -2201,7 +2201,7 @@ app.post('/api/causas/popular-historico', requerPerfil('MASTER','ANALISTA SAC'),
     if (!novas.length) return res.json({ sucesso: true, inseridas: 0, mensagem: 'Todas as causas já existem.' });
 
     // Garantir cabeçalho da aba
-    await garantirAbaComCabecalhos('CAUSAS', ['ID_CAUSA','CATEGORIA','TIPO','CAUSA','SUBCAUSA','SETOR_RESPONSAVEL','PALAVRAS_CHAVE','ATIVO','DATA_CRIACAO','CRIADO_POR','CONTAGEM_OCORRENCIAS']).catch(()=>{});
+    garantirAbaComCabecalhos('CAUSAS', ['ID_CAUSA','CATEGORIA','TIPO','CAUSA','SUBCAUSA','SETOR_RESPONSAVEL','PALAVRAS_CHAVE','ATIVO','DATA_CRIACAO','CRIADO_POR','CONTAGEM_OCORRENCIAS']).catch(()=>{});
 
     let inseridas = 0;
     for (const m of novas) {
