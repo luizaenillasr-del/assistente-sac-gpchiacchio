@@ -235,11 +235,9 @@ async function gerarDevolutiva(params) {
 
 // ── Salvar devolutiva no Sheets ───────────────────────────────────
 async function salvarDevolutiva(idManifestacao, devolutiva, idTratativa, empresa, usuario) {
-  const { gerarProximoID, garantirAbaComCabecalhos, acrescentarLinhas } = sheets;
+  await sheets.garantirAbaComCabecalhos('DEVOLUTIVAS', CABECALHOS_DEVOLUTIVAS).catch(() => {});
 
-  await garantirAbaComCabecalhos('DEVOLUTIVAS', CABECALHOS_DEVOLUTIVAS).catch(() => {});
-
-  const idDev = await gerarProximoID('DEVOLUTIVAS', 'DEV', 'ID_DEVOLUTIVA').catch(() =>
+  const idDev = await sheets.gerarProximoID('DEVOLUTIVAS', 'DEV', 'ID_DEVOLUTIVA').catch(() =>
     'DEV-' + Date.now().toString().slice(-6)
   );
 
@@ -266,31 +264,28 @@ async function salvarDevolutiva(idManifestacao, devolutiva, idTratativa, empresa
     EMPRESA:              empresa || '',
   };
 
-  await acrescentarLinhas('DEVOLUTIVAS', [linha]);
+  await sheets.appendObjeto('DEVOLUTIVAS', linha);
   return { id: idDev, ...linha };
 }
 
 // ── Registrar decisão humana sobre devolutiva ─────────────────────
 async function registrarDecisaoDevolutiva(idDevolutiva, decisao, textoAprovado, motivo, usuario) {
-  const { lerAba, atualizarLinha } = sheets;
+  const todas = await sheets.lerAba('DEVOLUTIVAS', 5000);
+  const found = todas.find(r => r.ID_DEVOLUTIVA === idDevolutiva);
+  if (!found) throw new Error(`Devolutiva ${idDevolutiva} não encontrada.`);
 
-  const todas = await lerAba('DEVOLUTIVAS', 5000);
-  const idx   = todas.findIndex(r => r.ID_DEVOLUTIVA === idDevolutiva);
-  if (idx < 0) throw new Error(`Devolutiva ${idDevolutiva} não encontrada.`);
-
-  const linha = {
-    ...todas[idx],
+  const atualizacao = {
     STATUS:         decisao === 'APROVADA' ? 'APROVADA' : decisao === 'REJEITADA' ? 'REJEITADA' : 'EDITADA',
     DECISAO:        decisao,
-    TEXTO_APROVADO: textoAprovado || todas[idx].TEXTO_GERADO,
-    VERSAO_FINAL:   textoAprovado || todas[idx].TEXTO_GERADO,
+    TEXTO_APROVADO: textoAprovado || found.TEXTO_GERADO,
+    VERSAO_FINAL:   textoAprovado || found.TEXTO_GERADO,
     APROVADA_EM:    new Date().toISOString(),
     APROVADA_POR:   usuario || 'SISTEMA',
     MOTIVO_EDICAO:  motivo || '',
   };
 
-  await atualizarLinha('DEVOLUTIVAS', idx, linha);
-  return linha;
+  await sheets.atualizarPorID('DEVOLUTIVAS', idDevolutiva, atualizacao, ['ID_DEVOLUTIVA']);
+  return { ...found, ...atualizacao };
 }
 
 // ── Buscar devolutivas de uma manifestação ────────────────────────

@@ -207,6 +207,11 @@ async function gerarProximoID(nomeAba, prefixo, campoID) {
   return `${prefixo}-${String(max + 1).padStart(3, '0')}`;
 }
 
+async function buscarPorID(nomeAba, id, camposID = ['ID_MANIFESTACAO','ID_RNC','ID_SETOR','ID']) {
+  const dados = await lerAba(nomeAba, 5000).catch(() => []);
+  return dados.find(r => camposID.some(c => String(r[c] || '').trim() === String(id).trim())) || null;
+}
+
 async function registrarAuditoria(usuario, acao, idManifestacao, entidade, valorAnterior, valorNovo) {
   try {
     const linha = [
@@ -222,8 +227,8 @@ async function registrarAuditoria(usuario, acao, idManifestacao, entidade, valor
 async function motorRegras(descricao, tipo, empresa) {
   try {
     const [regras, tipos, procedimentos, slaData, perguntas] = await Promise.all([
-      lerAba('REGRAS_ROTEAMENTO', 500), lerAba('TIPOS_RECLAMACAO', 500),
-      lerAba('PROCEDIMENTOS', 200), lerAba('SLA_ESCALONAMENTO', 50), lerAba('PERGUNTAS_ANALISE', 200),
+      lerAba('REGRAS_ROTEAMENTO', 500).catch(()=>[]), lerAba('TIPOS_RECLAMACAO', 500).catch(()=>[]),
+      lerAba('PROCEDIMENTOS', 200).catch(()=>[]), lerAba('SLA_ESCALONAMENTO', 50).catch(()=>[]), lerAba('PERGUNTAS_ANALISE', 200).catch(()=>[]),
     ]);
     const texto = (descricao || '').toLowerCase();
 
@@ -496,6 +501,7 @@ app.post('/api/manifestacoes', requerPerfil('MASTER','ANALISTA SAC'), async (req
     const { empresaReclamada, empresaReclamante, contato, produto, lote, nfe, descricao, tipo, canal, cnpj, telefone, email, quantidade, valor, usuario, anexos = [], origemDocumento = '', arquivoOrigem = '' } = req.body;
     if (!empresaReclamante || !descricao) return res.status(400).json({ sucesso:false, erro:'Empresa reclamante e descrição são obrigatórios.' });
     const empNorm = normalizarEmpresa(empresaReclamada);
+    await garantirAbaComCabecalhos('MANIFESTACOES',['ID_MANIFESTACAO','DATA_ABERTURA','DATA_REGISTRO','EMPRESA_RECLAMANTE','CONTATO','PRODUTO','LOTE','NFE','DESCRICAO','DESCRICAO_MANIFESTACAO','STATUS','TIPO','TIPO_SUGERIDO','SETOR_SUGERIDO','SETORES_SUGERIDOS','PROCEDIMENTO_SUGERIDO','SLA_HORAS','PRIORIDADE','RNC_SUGERIDO','EMPRESA_RECLAMADA','CANAL','CNPJ','TELEFONE','EMAIL','QUANTIDADE','VALOR','TRATATIVA_SUGERIDA','TRATATIVA_APLICAVEL','TRATATIVA_REALIZADA','STATUS_TRATATIVA','DEVOLUTIVA_SUGERIDA','DEVOLUTIVA_FINAL','DEVOLUTIVA_ENVIADA','ORIGEM_DOCUMENTO','ARQUIVO_ORIGEM','USUARIO_CRIACAO','ORIGEM','TIPO_CONFIRMADO','SETORES_CONFIRMADOS','ID_PROCEDIMENTO_APLICADO','GERA_RNC','DATA_INICIO_TRATATIVA','DATA_CONCLUSAO_TRATATIVA','DATA_DEVOLUTIVA','DATA_CONCLUSAO_MANIFESTACAO']).catch(()=>{});
     const id = await gerarProximoID('MANIFESTACOES','MAN','ID_MANIFESTACAO');
     const agora = new Date().toISOString();
     const tipoFinal = tipo || 'Reclamação';
@@ -1078,7 +1084,7 @@ app.post('/api/calculadora/parametros/producao', requerPerfil('MASTER'), async(r
 // ===== DASHBOARD =====
 app.get('/api/dashboard', async (req, res) => {
   try {
-    const [mans, recs] = await Promise.all([lerAba('MANIFESTACOES', 2000), lerAba('Reclamações + devolutiva', 2000)]);
+    const [mans, recs] = await Promise.all([lerAba('MANIFESTACOES', 2000).catch(()=>[]), lerAba('Reclamações + devolutiva', 2000).catch(()=>[])]);
     const emAndamento = mans.filter(m => !['FINALIZADA','ENCERRADA','CONCLUÍDA'].some(s => (m.STATUS||'').toUpperCase().includes(s))).length;
     const rncsAbertas = mans.filter(m => m.ID_RNC && m.ID_RNC !== '').length;
     const recComSLA = recs.filter(r => r['Dentro do prazo? '] || r['Dentro do prazo?']);
@@ -1115,7 +1121,7 @@ app.get('/api/dashboard', async (req, res) => {
 
 // ===== RNC =====
 app.get('/api/rnc', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','SETOR RESPONSÁVEL','RCA / REPRESENTANTE'), async (req, res) => {
-  try { const data=await lerAba('BANCO_RNC',5000); res.json({sucesso:true,total:data.length,itens:data}); }
+  try { const data=await lerAba('BANCO_RNC',5000).catch(()=>[]); res.json({sucesso:true,total:data.length,itens:data}); }
   catch (e) { res.status(500).json({sucesso:false,erro:e.message,dados:[]}); }
 });
 
@@ -1134,7 +1140,7 @@ app.post('/api/rnc', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
 
 app.get('/api/rnc/:id', requerPerfil('APROVADOR','MASTER','ANALISTA SAC','SETOR RESPONSÁVEL'), async (req,res)=>{
   try{
-    const rnc=(await lerAba('BANCO_RNC',5000)).find(x=>x.ID_RNC===req.params.id);
+    const rnc=(await lerAba('BANCO_RNC',5000).catch(()=>[])).find(x=>x.ID_RNC===req.params.id);
     if(!rnc) return res.status(404).json({sucesso:false,erro:'RNC não encontrada.'});
     const eventos=await lerAba('RNC_EVENTOS',5000).catch(()=>[]);
     const anexos=await lerAba('ANEXOS',5000).catch(()=>[]);
@@ -1146,7 +1152,7 @@ app.post('/api/rnc/:id/decisao', requerPerfil('APROVADOR','MASTER'), async (req,
   try{
     const {decisao,observacoes}=req.body||{};
     if(!decisao) return res.status(400).json({sucesso:false,erro:'Decisão é obrigatória.'});
-    const rnc=(await lerAba('BANCO_RNC',5000)).find(x=>x.ID_RNC===req.params.id);
+    const rnc=(await lerAba('BANCO_RNC',5000).catch(()=>[])).find(x=>x.ID_RNC===req.params.id);
     if(!rnc) return res.status(404).json({sucesso:false,erro:'RNC não encontrada.'});
     const d=String(decisao).toUpperCase();
     if(d!=='APROVAR'&&(!observacoes||!String(observacoes).trim())) return res.status(400).json({sucesso:false,erro:'Justificativa é obrigatória.'});
@@ -1242,7 +1248,7 @@ app.get('/api/empresas', async (req, res) => {
 app.get('/api/clientes/:cnpj', requerPerfil('MASTER','ANALISTA SAC','RCA / REPRESENTANTE'), async (req, res) => {
   try {
     const cnpj=req.params.cnpj.replace(/\D/g,'');
-    const historico=await lerAba('BANCO_HISTORICO',2000);
+    const historico=await lerAba('BANCO_HISTORICO',2000).catch(()=>[]);
     const casos=historico.filter(h=>{const hcnpj=(h.ORIG_CONTATO||'').replace(/\D/g,'');return hcnpj.includes(cnpj)||cnpj.includes(hcnpj);});
     if(casos.length===0) return res.json({sucesso:true,encontrado:false,cliente:null,historico:[]});
     const ultimo=casos[casos.length-1];
@@ -1253,7 +1259,7 @@ app.get('/api/clientes/:cnpj', requerPerfil('MASTER','ANALISTA SAC','RCA / REPRE
 // ===== RECLAMAÇÕES =====
 app.get('/api/reclamacoes', async (req, res) => {
   try {
-    const data=await lerAba('Reclamações + devolutiva',2000);
+    const data=await lerAba('Reclamações + devolutiva',2000).catch(()=>[]);
     const normalizado=data.map(r=>({
       ...r,
       'Data do Registro':normalizarData(r['Data do Registro']),
@@ -1265,7 +1271,7 @@ app.get('/api/reclamacoes', async (req, res) => {
 
 // ===== HISTORICO =====
 app.get('/api/historico', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL'), async (req, res) => {
-  try { const data=await lerAba('BANCO_HISTORICO',1000); res.json({sucesso:true,total:data.length,itens:data}); }
+  try { const data=await lerAba('BANCO_HISTORICO',1000).catch(()=>[]); res.json({sucesso:true,total:data.length,itens:data}); }
   catch (e) { res.status(500).json({sucesso:false,erro:e.message,dados:[]}); }
 });
 
@@ -1483,15 +1489,15 @@ app.get('/api/pesquisas/resumo', requerPerfil('MASTER','ANALISTA SAC','SETOR RES
 });
 
 app.get('/api/tipos', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
-  try { const data=await lerAba('TIPOS_RECLAMACAO',200); res.json({sucesso:true,total:data.length,itens:data}); }
+  try { const data=await lerAba('TIPOS_RECLAMACAO',200).catch(()=>[]); res.json({sucesso:true,total:data.length,itens:data}); }
   catch (e) { res.status(500).json({sucesso:false,erro:e.message,dados:[]}); }
 });
 app.get('/api/sla', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
-  try { const data=await lerAba('SLA_ESCALONAMENTO',50); res.json({sucesso:true,total:data.length,itens:data}); }
+  try { const data=await lerAba('SLA_ESCALONAMENTO',50).catch(()=>[]); res.json({sucesso:true,total:data.length,itens:data}); }
   catch (e) { res.status(500).json({sucesso:false,erro:e.message,dados:[]}); }
 });
 app.get('/api/validacoes', requerPerfil('MASTER','ANALISTA SAC'), async (req, res) => {
-  try { const data=await lerAba('HISTORICO_VALIDACOES',1000); res.json({sucesso:true,total:data.length,itens:data}); }
+  try { const data=await lerAba('HISTORICO_VALIDACOES',1000).catch(()=>[]); res.json({sucesso:true,total:data.length,itens:data}); }
   catch (e) { res.status(500).json({sucesso:false,erro:e.message,dados:[]}); }
 });
 
@@ -1672,7 +1678,7 @@ app.post('/api/planilha/:aba/importar', requerPerfil('MASTER'), async (req,res)=
 
 app.get('/api/log-sistema', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req,res)=>{
   try {
-    const data = await lerAba('LOG_SISTEMA', 2000);
+    const data = await lerAba('LOG_SISTEMA', 2000).catch(()=>[]);
     const {id, usuario, acao} = req.query;
     let filtrados = data;
     if (id) filtrados = filtrados.filter(l=>String(l.ID_MANIFESTACAO||l.ENTIDADE||'').includes(id));
@@ -1713,14 +1719,14 @@ app.patch('/api/usuarios/:id', requerPerfil('MASTER'), async (req,res)=>{
 // ===== APROVADORES =====
 app.get('/api/aprovadores', requerPerfil('MASTER','APROVADOR'), async (req,res)=>{
   try {
-    const [a,c,ac]=await Promise.all([lerAba('APROVADORES',500),lerAba('COMPETENCIAS',500),lerAba('APROVADOR_COMPETENCIAS',2000)]);
+    const [a,c,ac]=await Promise.all([lerAba('APROVADORES',500).catch(()=>[]),lerAba('COMPETENCIAS',500).catch(()=>[]),lerAba('APROVADOR_COMPETENCIAS',2000).catch(()=>[])]);
     res.json({sucesso:true,aprovadores:a,competencias:c,relacionamentos:ac});
   } catch(e){res.status(500).json({sucesso:false,erro:e.message});}
 });
 app.get('/api/aprovadores/:usuario/pendencias', requerPerfil('APROVADOR','MASTER'), async (req,res)=>{
   try {
     const usuario=req.params.usuario;
-    const [aprovadores,rel,comp,rncs,mans]=await Promise.all([lerAba('APROVADORES',500),lerAba('APROVADOR_COMPETENCIAS',5000),lerAba('COMPETENCIAS',500),lerAba('BANCO_RNC',5000),lerAba('MANIFESTACOES',5000)]);
+    const [aprovadores,rel,comp,rncs,mans]=await Promise.all([lerAba('APROVADORES',500).catch(()=>[]),lerAba('APROVADOR_COMPETENCIAS',5000).catch(()=>[]),lerAba('COMPETENCIAS',500).catch(()=>[]),lerAba('BANCO_RNC',5000).catch(()=>[]),lerAba('MANIFESTACOES',5000).catch(()=>[])]);
     const ap=aprovadores.find(x=>normalizarTexto(x.ID_APROVADOR||x.NOME||x.EMAIL)===normalizarTexto(usuario));
     const apId=ap?.ID_APROVADOR||usuario;
     const relAtivos=rel.filter(x=>String(x.ID_APROVADOR||'')===String(apId)&&normalizarTexto(x.STATUS||'ATIVO')!=='inativo');

@@ -46,7 +46,7 @@ async function registrarDecisao({
     taxaEdicao = orig > 0 ? Math.round((diferenca / orig) * 100) : 100;
   }
 
-  await sheets.acrescentarLinhas('ASSERTIVIDADE', [{
+  await sheets.appendObjeto('ASSERTIVIDADE', {
     ID_REGISTRO:       id,
     ID_MANIFESTACAO:   idManifestacao || '',
     ID_TRATATIVA:      idTratativa    || '',
@@ -64,7 +64,7 @@ async function registrarDecisao({
     MOTIVO_EDICAO:     motivoEdicao || '',
     TAXA_EDICAO_TEXTO: taxaEdicao,
     ORIGEM_REGRA:      '',
-  }]);
+  });
 
   return { id, decisao };
 }
@@ -151,7 +151,7 @@ async function registrarResultado({
     'RES-' + Date.now().toString().slice(-6)
   );
 
-  await sheets.acrescentarLinhas('TRATATIVAS_RESULTADOS', [{
+  await sheets.appendObjeto('TRATATIVAS_RESULTADOS', {
     ID_RESULTADO:       id,
     ID_MANIFESTACAO:    idManifestacao  || '',
     ID_TRATATIVA:       idTratativa     || '',
@@ -164,7 +164,7 @@ async function registrarResultado({
     REGISTRADO_EM:      new Date().toISOString(),
     REGISTRADO_POR:     usuario  || 'SISTEMA',
     EMPRESA:            empresa  || '',
-  }]);
+  });
 
   return { id };
 }
