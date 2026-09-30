@@ -2387,6 +2387,15 @@ app.post('/api/bootstrap', async (req, res) => {
       await sheets.spreadsheets.values.update({ spreadsheetId: SPREADSHEET_ID, range: `USUARIOS!A1:L1`, valueInputOption: 'RAW', resource: { values: [cols] } });
     }
     const hash = 'sha256:' + crypto.createHash('sha256').update(String(senha)).digest('hex');
+    // Se keyOk e usuário já existe, apenas atualiza a senha
+    if (keyOk) {
+      const todos = await lerAba('USUARIOS', 100).catch(() => []);
+      const existente = todos.find(u => normalizarTexto(u.USUARIO || '') === normalizarTexto(usuario));
+      if (existente) {
+        await atualizarPorID('USUARIOS', existente.ID_USUARIO || existente.USUARIO, { SENHA_HASH: hash, STATUS: 'ATIVO' }, ['ID_USUARIO', 'USUARIO']);
+        return res.json({ sucesso: true, mensagem: `Senha do usuário "${usuario}" redefinida com sucesso. Agora você pode logar normalmente.`, acao: 'senha_atualizada' });
+      }
+    }
     const obj = { ID_USUARIO: 'USR-0001', USUARIO: usuario, EMAIL: '', NOME: nome, PERFIL: 'MASTER', EMPRESA: 'Grupo Chiacchio', SETOR: 'SAC', CODIGO_RCA: '', STATUS: 'ATIVO', SENHA_HASH: hash, DATA_CRIACAO: new Date().toISOString(), ULTIMO_ACESSO: '' };
     await appendObjeto('USUARIOS', obj);
     res.json({ sucesso: true, mensagem: `Usuário MASTER "${usuario}" criado com sucesso. Agora você pode logar normalmente.`, id: 'USR-001' });
