@@ -3239,7 +3239,7 @@ function extrairTratativaSugerida(a) {
     if (!item) continue;
     if (typeof item === 'string' && item.trim()) return item.trim();
     if (typeof item === 'object') {
-      const texto = item.texto || item.descricao || item.tratativa || item.nome || item.acao || item.ação || '';
+      const texto = item.sugestao || item.texto || item.descricao || item.tratativa || item.nome || item.acao || item.ação || '';
       if (String(texto).trim()) return String(texto).trim();
     }
   }
@@ -3252,8 +3252,8 @@ function renderizarAnalise(a) {
   document.getElementById('ia-timestamp').textContent = `Gerada em ${new Date().toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'})} · Sugestão: quem decide é a analista`;
 
   // Tipo e confiança
-  document.getElementById('ia-tipo').textContent = a.tipoSugerido || 'Não identificado';
-  const conf = a.confianca || 0;
+  document.getElementById('ia-tipo').textContent = a.tipoDetectado || a.tipoSugerido || 'Não identificado';
+  const conf = (typeof a.confianca === 'object' ? a.confianca?.score : a.confianca) ?? 0;
   document.getElementById('ia-confianca-bar').style.width = conf + '%';
   document.getElementById('ia-confianca-pct').textContent = conf + '%';
 
@@ -3268,7 +3268,7 @@ function renderizarAnalise(a) {
 
   // Alertas
   const alertas = [];
-  if (a.reincidente) alertas.push({ tipo: 'red', msg: '⚠ Cliente reincidente — casos anteriores encontrados no histórico' });
+  if (a.reincidencia?.detectada || a.reincidente) alertas.push({ tipo: 'red', msg: '⚠ Cliente reincidente — casos anteriores encontrados no histórico' });
   if (a.geraRNC) alertas.push({ tipo: 'yellow', msg: '⚠ Pode gerar RNC — avaliar na decisão' });
   if ((a.prioridade||'').toUpperCase() === 'ALTA') alertas.push({ tipo: 'red', msg: '⚠ Alta prioridade — requer atenção imediata' });
   const alertasEl = document.getElementById('ia-alertas');
@@ -3282,7 +3282,7 @@ function renderizarAnalise(a) {
 
   // Setores
   const setoresEl = document.getElementById('ia-setores');
-  setoresEl.innerHTML = (a.setoresSugeridos || []).map(s =>
+  setoresEl.innerHTML = (a.setores || a.setoresSugeridos || []).map(s =>
     `<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;background:var(--red-light);color:var(--red);font-size:12px;font-weight:600">
       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
       ${s}
@@ -3318,7 +3318,7 @@ function renderizarAnalise(a) {
   }
 
   // Casos semelhantes
-  const sims = a.casosSemelhantes || [];
+  const sims = a.casosSimilares || a.casosSemelhantes || [];
   const simsWrap = document.getElementById('ia-similares-wrap');
   if (sims.length > 0) {
     simsWrap.style.display = 'block';
@@ -7183,7 +7183,7 @@ window.extrairTratativaSugerida = function(a){
   }
 
   // 3. Derivar do melhor caso similar com tratativa + resultado + maior %
-  const sims = a.casosSemelhantes || [];
+  const sims = a.casosSimilares || a.casosSemelhantes || [];
   const comTrat = sims
     .map(s => ({
       ...s,
