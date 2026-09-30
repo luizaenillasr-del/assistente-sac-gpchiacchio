@@ -3390,6 +3390,46 @@ app.post('/api/matriz-conhecimento/resolver', async (req, res) => {
   } catch (e) { res.status(500).json({ sucesso: false, erro: e.message }); }
 });
 
+// ===== IA: EXTRAIR CAMPOS DO SETOR =====
+app.post('/api/ia/extrair-setor', requerPerfil('MASTER','ANALISTA SAC','ADMINISTRADOR'), async (req, res) => {
+  try {
+    const { texto, setor } = req.body || {};
+    if (!texto || texto.trim().length < 20) return res.status(400).json({ sucesso: false, erro: 'Texto muito curto.' });
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) return res.status(400).json({ sucesso: false, erro: 'ANTHROPIC_API_KEY não configurada.' });
+    const prompt = `Você é um assistente que extrai informações estruturadas sobre setores de SAC a partir de documentos.
+
+Setor: ${setor || '(não informado)'}
+
+Texto fornecido:
+"""
+${texto.slice(0, 8000)}
+"""
+
+Extraia as seguintes informações do texto acima e retorne SOMENTE um JSON válido com estas chaves (omita as que não encontrar no texto):
+- DESCRICAO: descrição geral do setor (1-3 frases)
+- RESPONSABILIDADES: o que este setor faz e analisa (texto livre)
+- REGRAS_OPERACIONAIS: regras, políticas e critérios do setor (texto livre)
+- PROCEDIMENTOS_ORIENTACOES: procedimentos e orientações operacionais (texto livre)
+- ALERTAS: alertas, atenções e exceções importantes (texto livre)
+- SLA_HORAS: prazo em horas (número inteiro, somente se explícito)
+
+Retorne apenas o JSON, sem markdown, sem explicação.`;
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 1024, messages: [{ role: 'user', content: prompt }] })
+    });
+    const data = await resp.json();
+    const raw = data?.content?.[0]?.text || '';
+    let campos = {};
+    try { campos = JSON.parse(raw.replace(/^```json\s*/,'').replace(/```$/,'')); } catch(e) {
+      const m = raw.match(/\{[\s\S]*\}/); if (m) try { campos = JSON.parse(m[0]); } catch(e2) {}
+    }
+    res.json({ sucesso: true, campos });
+  } catch (e) { res.status(500).json({ sucesso: false, erro: e.message }); }
+});
+
 // ===== CATCH ALL =====
 app.use((req, res) => {
   res.status(404).json({ sucesso:false, erro:`Rota não encontrada: ${req.method} ${req.path}` });

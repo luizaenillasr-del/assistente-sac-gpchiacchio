@@ -6690,6 +6690,80 @@ loadVisaoGeral();
     const holder=document.getElementById('setor-detalhe-btn');
     if(holder && !holder.querySelector('[data-edit-setor]')){
       const b=document.createElement('button');b.className='btn btn-primary';b.setAttribute('data-edit-setor','1');b.style.marginLeft='8px';b.textContent='Editar setor';b.onclick=abrirEditorSetor;holder.appendChild(b);
+      const bAI=document.createElement('button');bAI.className='btn btn-secondary';bAI.setAttribute('data-edit-setor','1');bAI.style.marginLeft='8px';bAI.innerHTML='✨ Preencher com IA';bAI.onclick=abrirImportacaoIASetor;holder.appendChild(bAI);
+    }
+  };
+
+  // Modal de importação via IA para preencher setor
+  window.abrirImportacaoIASetor = function() {
+    let m = document.getElementById('modal-ia-setor');
+    if (!m) {
+      m = document.createElement('div');
+      m.id = 'modal-ia-setor';
+      m.className = 'modal-overlay';
+      m.style.cssText = 'display:none;z-index:10001';
+      m.innerHTML = `
+        <div class="modal" style="max-width:600px;width:95%">
+          <div class="modal-header">
+            <span class="modal-title">✨ Preencher setor com IA</span>
+            <button class="modal-close" onclick="document.getElementById('modal-ia-setor').style.display='none'">✕</button>
+          </div>
+          <div class="modal-body">
+            <p style="font-size:13px;color:var(--gray-600);margin-bottom:12px">Cole abaixo qualquer texto sobre este setor: procedimentos, descrições, regras, responsabilidades, FAQ, políticas — a IA vai extrair e organizar tudo automaticamente.</p>
+            <textarea id="ia-setor-texto" class="input" rows="10" style="width:100%;font-size:13px;resize:vertical" placeholder="Cole aqui o texto, documento ou descrição do setor..."></textarea>
+            <div id="ia-setor-status" style="margin-top:8px;font-size:12px;color:var(--gray-500)"></div>
+          </div>
+          <div class="modal-footer" style="display:flex;gap:8px;justify-content:flex-end">
+            <button class="btn btn-secondary" onclick="document.getElementById('modal-ia-setor').style.display='none'">Cancelar</button>
+            <button class="btn btn-primary" onclick="executarImportacaoIASetor()">✨ Analisar e preencher</button>
+          </div>
+        </div>`;
+      document.body.appendChild(m);
+    }
+    document.getElementById('ia-setor-texto').value = '';
+    document.getElementById('ia-setor-status').textContent = '';
+    m.style.display = 'flex';
+  };
+
+  window.executarImportacaoIASetor = async function() {
+    const texto = (document.getElementById('ia-setor-texto')?.value || '').trim();
+    if (!texto) { alert('Cole um texto antes de continuar.'); return; }
+    const status = document.getElementById('ia-setor-status');
+    status.textContent = '⏳ Analisando...';
+    const tok = sessionStorage.getItem('sac-token');
+    try {
+      const res = await fetch(API + '/api/ia/extrair-setor', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok },
+        body: JSON.stringify({ texto, setor: _setorAtual })
+      }).then(r => r.json());
+      if (!res.sucesso) throw new Error(res.erro || 'Falha na extração');
+      const c = res.campos || {};
+      // Salva direto via PATCH
+      const s = (_setoresConfig || []).find(x => x.SETOR === _setorAtual) || {};
+      const id = s.ID_SETOR || s.ID || encodeURIComponent(_setorAtual);
+      const payload = {};
+      if (c.DESCRICAO) payload.DESCRICAO = c.DESCRICAO;
+      if (c.RESPONSABILIDADES) payload.RESPONSABILIDADES = c.RESPONSABILIDADES;
+      if (c.REGRAS_OPERACIONAIS) payload.REGRAS_OPERACIONAIS = c.REGRAS_OPERACIONAIS;
+      if (c.PROCEDIMENTOS_ORIENTACOES) payload.PROCEDIMENTOS_ORIENTACOES = c.PROCEDIMENTOS_ORIENTACOES;
+      if (c.ALERTAS) payload.ALERTAS = c.ALERTAS;
+      if (c.SLA_HORAS) payload.SLA_HORAS = c.SLA_HORAS;
+      if (Object.keys(payload).length === 0) { status.textContent = '⚠️ Nenhum campo extraído. Tente um texto mais detalhado.'; return; }
+      const save = await fetch(API + '/api/setores/' + encodeURIComponent(id) + '/operacional', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok },
+        body: JSON.stringify(payload)
+      }).then(r => r.json());
+      if (save.sucesso === false) throw new Error(save.erro || 'Erro ao salvar');
+      document.getElementById('modal-ia-setor').style.display = 'none';
+      const _n = _setorAtual;
+      await loadSetores();
+      await abrirFichaSetor(_n);
+      const camposExtraidos = Object.keys(payload).join(', ');
+      alert('✅ Setor atualizado com IA!\n\nCampos preenchidos: ' + camposExtraidos + '\n\nRevise as informações nas abas do setor.');
+    } catch(e) {
+      status.textContent = '✗ Erro: ' + e.message;
     }
   };
 
@@ -6810,8 +6884,8 @@ loadVisaoGeral();
   }
 
   const allowed={
-    'MASTER':['visao-geral','acompanhamento','nova-manifestacao','banco-manifestacoes','aprovadores','banco-rnc','setores','matriz','base-conhecimento','representantes','usuarios','cerebro','painel-maquina','sugestoes-melhoria','causas'],
-    'ANALISTA SAC':['visao-geral','acompanhamento','nova-manifestacao','banco-manifestacoes','aprovadores','banco-rnc','setores','matriz','base-conhecimento','cerebro','painel-maquina','sugestoes-melhoria','causas'],
+    'MASTER':['visao-geral','acompanhamento','nova-manifestacao','banco-manifestacoes','aprovadores','banco-rnc','setores','biblioteca-fichas','matriz','base-conhecimento','representantes','usuarios','cerebro','painel-maquina','sugestoes-melhoria','causas','matriz-conhecimento'],
+    'ANALISTA SAC':['visao-geral','acompanhamento','nova-manifestacao','banco-manifestacoes','aprovadores','banco-rnc','setores','biblioteca-fichas','matriz','base-conhecimento','cerebro','painel-maquina','sugestoes-melhoria','causas','matriz-conhecimento'],
     'SETOR RESPONSÁVEL':['setor-responsavel','banco-rnc'],
     'APROVADOR':['aprovadores','banco-rnc'],
     'RCA / REPRESENTANTE':['representantes']
