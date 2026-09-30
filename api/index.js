@@ -434,6 +434,7 @@ app.use('/api', async (req,res,next)=>{
     '/auth/forgot-password',
     '/bootstrap',
     '/_importar',
+    '/_reset',
   ]);
   if(publicPaths.has(req.path)) return next();
   const header=req.headers.authorization||'';
@@ -2361,6 +2362,33 @@ app.get('/api/cliente-contexto', async (req,res)=>{
     todosCasos.forEach(c=>{if(c.causa)causasFreq[c.causa]=(causasFreq[c.causa]||0)+1;});
     res.json({sucesso:true,cliente,empresa:empresa||'',totalCasos:todosCasos.length,casos:todosCasos.slice(0,20),produtos,causasRecorrentes:Object.entries(causasFreq).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([c,n])=>({causa:c,ocorrencias:n}))});
   } catch(e){ res.status(500).json({sucesso:false,erro:e.message}); }
+});
+
+// ===== RESET SENHA VIA GET (sem preflight CORS) =====
+app.get('/api/_reset', async (req, res) => {
+  res.set('Access-Control-Allow-Origin', '*');
+  try {
+    const { usuario, senha, key } = req.query;
+    if (!key || key !== (process.env.BOOTSTRAP_KEY || '')) {
+      return res.status(403).json({ sucesso: false, erro: 'Chave inválida.' });
+    }
+    if (!usuario || !senha || senha.length < 6) {
+      return res.status(400).json({ sucesso: false, erro: 'usuario e senha (mín. 6 chars) obrigatórios.' });
+    }
+    const hash = 'sha256:' + crypto.createHash('sha256').update(String(senha)).digest('hex');
+    const todos = await lerAba('USUARIOS', 100).catch(() => []);
+    const existente = todos.find(u => normalizarTexto(u.USUARIO || '') === normalizarTexto(usuario));
+    if (existente) {
+      await atualizarPorID('USUARIOS', existente.ID_USUARIO || existente.USUARIO, { SENHA_HASH: hash, STATUS: 'ATIVO' }, ['ID_USUARIO', 'USUARIO']);
+      return res.json({ sucesso: true, mensagem: `Senha de "${usuario}" redefinida. Acesse o sistema e faça login.` });
+    }
+    // Cria usuário novo
+    const obj = { ID_USUARIO: 'USR-0001', USUARIO: usuario, EMAIL: '', NOME: usuario, PERFIL: 'MASTER', EMPRESA: 'Grupo Chiacchio', SETOR: 'SAC', CODIGO_RCA: '', STATUS: 'ATIVO', SENHA_HASH: hash, DATA_CRIACAO: new Date().toISOString(), ULTIMO_ACESSO: '' };
+    await appendObjeto('USUARIOS', obj);
+    return res.json({ sucesso: true, mensagem: `Usuário "${usuario}" criado. Acesse o sistema e faça login.` });
+  } catch (e) {
+    return res.status(500).json({ sucesso: false, erro: e.message });
+  }
 });
 
 // ===== BOOTSTRAP — criar primeiro usuário MASTER =====
