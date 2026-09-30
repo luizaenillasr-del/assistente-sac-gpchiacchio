@@ -3175,14 +3175,14 @@ async function loadVisaoGeral() {
     _dashData.mans.forEach(x => { const e=(x.EMPRESA_RECLAMADA||'').trim(); if(e && !_NAO_EMPRESAS.has(e.toUpperCase())) empSet.add(e); });
     const empSelect = document.getElementById('filtro-empresa-select');
     if (empSelect) {
-      empSelect.innerHTML = [...empSet].map(e => `<option value="${e}">${e}</option>`).join('');
+      empSelect.innerHTML = [...empSet].map(e => `<option value="${esc(e)}">${esc(e)}</option>`).join('');
     }
 
     // Popular filtros de setor
     const setoresList2 = ['Todos','SAC','Qualidade','Produção','Logística','Comercial','Financeiro'];
     const setSelect = document.getElementById('filtro-setor-select');
     if (setSelect) {
-      setSelect.innerHTML = setoresList2.map(s => `<option value="${s}">${s}</option>`).join('');
+      setSelect.innerHTML = setoresList2.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
     }
 
     const data = calcDashboard(_dashData.mans, _dashData.recs, _dashFiltroEmpresa, _dashFiltroSetor);
@@ -3290,7 +3290,7 @@ async function executarAnaliseIA() {
     _nmAnaliseAtual = res.analise;
     renderizarAnalise(res.analise);
   } catch (e) {
-    document.getElementById('ia-analisando').innerHTML = `<div style="color:var(--red);font-size:13px">⚠ Erro na análise: ${e.message}</div>`;
+    document.getElementById('ia-analisando').innerHTML = `<div style="color:var(--red);font-size:13px">⚠ Erro na análise: ${esc(e.message)}</div>`;
   } finally {
     document.getElementById('ia-loading').style.display = 'none';
   }
@@ -4052,14 +4052,14 @@ async function loadAcompanhamento() {
     if (setorEl && setoresSet.size > 0) {
       const cur = setorEl.value;
       setorEl.innerHTML = '<option value="">Todos os setores</option>' +
-        [...setoresSet].sort().map(s => `<option value="${s}"${s===cur?'selected':''}>${s}</option>`).join('');
+        [...setoresSet].sort().map(s => `<option value="${esc(s)}"${s===cur?'selected':''}>${esc(s)}</option>`).join('');
     }
 
     renderAcompanhamento(_acompData);
   } catch (e) {
     console.error('Erro acompanhamento:', e);
     const body = document.getElementById('acomp-body');
-    if (body) body.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--gray-400)">Erro ao carregar: ${e.message}</td></tr>`;
+    if (body) body.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--gray-400)">Erro ao carregar: ${esc(e.message)}</td></tr>`;
   }
 }
 
@@ -4260,7 +4260,7 @@ async function loadBancoManifestacoes() {
   } catch (e) {
     console.error('Erro banco:', e);
     const el = document.getElementById('banco-body');
-    if(el) el.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--gray-400);padding:20px">Erro ao carregar dados: ${e.message}</td></tr>`;
+    if(el) el.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--gray-400);padding:20px">Erro ao carregar dados: ${esc(e.message)}</td></tr>`;
   }
 }
 
@@ -4460,7 +4460,7 @@ async function loadBancoRNC() {
   } catch (e) {
     console.error('Erro banco RNC:', e);
     const el = document.getElementById('rnc-body');
-    if (el) el.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--gray-400);padding:20px">Erro ao carregar RNCs: ${e.message}</td></tr>`;
+    if (el) el.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--gray-400);padding:20px">Erro ao carregar RNCs: ${esc(e.message)}</td></tr>`;
   }
 }
 
@@ -4673,7 +4673,7 @@ async function loadSetores() {
 
   } catch (e) {
     console.error('Erro setores:', e);
-    if (grid) grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:24px;color:var(--red)">Erro ao carregar setores: ${e.message}</div>`;
+    if (grid) grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:24px;color:var(--red)">Erro ao carregar setores: ${esc(e.message)}</div>`;
   }
 }
 
@@ -4874,7 +4874,7 @@ async function loadBaseConhecimento() {
   } catch (e) {
     console.error('Erro base conhecimento:', e);
     const el = document.getElementById('bc-list');
-    if(el) el.innerHTML = `<div style="color:var(--gray-400);font-size:12px;padding:16px;text-align:center">Erro ao carregar: ${e.message}</div>`;
+    if(el) el.innerHTML = `<div style="color:var(--gray-400);font-size:12px;padding:16px;text-align:center">Erro ao carregar: ${esc(e.message)}</div>`;
   }
 }
 
@@ -8553,11 +8553,11 @@ async function loadCausas() {
     const sel = document.getElementById('causas-filtro-cat');
     if (sel) {
       const atual = sel.value;
-      sel.innerHTML = '<option value="">Todas as categorias</option>' + cats.map(c=>`<option ${c===atual?'selected':''}>${c}</option>`).join('');
+      sel.innerHTML = '<option value="">Todas as categorias</option>' + cats.map(c=>`<option value="${esc(c)}" ${c===atual?'selected':''}>${esc(c)}</option>`).join('');
     }
   } catch(e) {
     const el = document.getElementById('causas-lista');
-    if (el) el.innerHTML = `<div style="color:var(--red);padding:20px">Erro ao carregar causas: ${e.message}</div>`;
+    if (el) el.innerHTML = `<div style="color:var(--red);padding:20px">Erro ao carregar causas: ${esc(e.message)}</div>`;
   }
 }
 
@@ -8700,7 +8700,7 @@ async function loadSugestoesMelhoria() {
       </div>`;
     }).join('')}</div>`;
   } catch(e) {
-    if (lista) lista.innerHTML = `<div style="color:var(--red);padding:20px">Erro: ${e.message}</div>`;
+    if (lista) lista.innerHTML = `<div style="color:var(--red);padding:20px">Erro: ${esc(e.message)}</div>`;
   }
 }
 
@@ -8745,7 +8745,7 @@ async function abrirContextoCliente(cliente, empresa) {
         </div>`).join('')}
       </div>`;
   } catch(e) {
-    document.getElementById('ctx-conteudo').innerHTML = `<div style="color:var(--red);padding:20px">Erro: ${e.message}</div>`;
+    document.getElementById('ctx-conteudo').innerHTML = `<div style="color:var(--red);padding:20px">Erro: ${esc(e.message)}</div>`;
   }
 }
 
@@ -9241,7 +9241,7 @@ async function cdLoadTodasAbas() {
       </div>`;
     }).join('');
   } catch(e) {
-    grid.innerHTML = `<div style="color:var(--red);font-size:13px;grid-column:1/-1">Erro: ${e.message}</div>`;
+    grid.innerHTML = `<div style="color:var(--red);font-size:13px;grid-column:1/-1">Erro: ${esc(e.message)}</div>`;
   }
 }
 
@@ -9267,7 +9267,7 @@ async function cdAbrirAba(nome) {
     loading.style.display = 'none';
     cdRenderAba();
   } catch(e) {
-    loading.textContent = `Erro ao carregar ${nome}: ${e.message}`;
+    loading.textContent = `Erro ao carregar ${nome}: ${esc(e.message)}`;
   }
 }
 
@@ -9500,7 +9500,7 @@ async function rodarCerebro() {
   } catch(e) {
     loading.style.display = 'none';
     resultado.style.display = 'block';
-    resultado.innerHTML = `<div style="background:var(--red-light);color:var(--red);padding:12px;border-radius:8px">Erro na análise: ${e.message}</div>`;
+    resultado.innerHTML = `<div style="background:var(--red-light);color:var(--red);padding:12px;border-radius:8px">Erro na análise: ${esc(e.message)}</div>`;
     if (status) status.textContent = 'Erro na última análise';
   }
 }
@@ -9528,7 +9528,7 @@ async function loadUltimasAnalises() {
       </tr>`).join('')}</tbody>
     </table>`;
   } catch(e) {
-    el.innerHTML = `<div style="color:var(--red);font-size:13px">Erro: ${e.message}</div>`;
+    el.innerHTML = `<div style="color:var(--red);font-size:13px">Erro: ${esc(e.message)}</div>`;
   }
 }
 

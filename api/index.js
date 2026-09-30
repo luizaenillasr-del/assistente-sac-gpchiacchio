@@ -19,8 +19,13 @@ try {
 }
 
 const app = express();
-app.use(cors({ origin: true, credentials: true }));
-app.options('*', cors({ origin: true, credentials: true }));
+const ALLOWED_ORIGINS = [
+  'https://assistente-sac-gpchiacchio.vercel.app',
+  'https://assistente-sac-gpchiacchio-grudfk40c-luiza4.vercel.app',
+];
+const corsOptions = { origin: (origin, cb) => { if (!origin || ALLOWED_ORIGINS.includes(origin)) cb(null, true); else cb(new Error('CORS: origem não permitida')); }, credentials: true };
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 app.use(express.json({ limit: '25mb' }));
 
 function getAuth() {
@@ -37,7 +42,11 @@ function getAuth() {
 }
 
 const SPREADSHEET_ID = process.env.SPREADSHEET_ID;
-const SESSION_SECRET = process.env.SESSION_SECRET || 'ALTERE_SESSION_SECRET_EM_PRODUCAO';
+if (!process.env.SESSION_SECRET || process.env.SESSION_SECRET.length < 32) {
+  console.error('FATAL: SESSION_SECRET não definida ou com menos de 32 caracteres. Defina SESSION_SECRET nas variáveis de ambiente.');
+  if (process.env.NODE_ENV === 'production') process.exit(1);
+}
+const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex');
 const SESSION_TTL_MS = 8 * 60 * 60 * 1000;
 
 function normalizarTexto(v){
@@ -262,14 +271,10 @@ async function atualizarPorID(nomeAba, id, dados, camposID = ['ID_MANIFESTACAO',
 }
 
 async function gerarProximoID(nomeAba, prefixo, campoID) {
-  const dados = await lerAba(nomeAba, 2000);
-  let max = 0;
-  dados.forEach(r => {
-    const campo = r[campoID] || r.ID_MANIFESTACAO || r.ID_HISTORICO || r.ID || '';
-    const match = campo.match(/(\d+)$/);
-    if (match) max = Math.max(max, parseInt(match[1]));
-  });
-  return `${prefixo}-${String(max + 1).padStart(4, '0')}`;
+  // Usa timestamp + random para evitar race condition em ambiente serverless
+  const ts = Date.now().toString(36).toUpperCase();
+  const rand = Math.random().toString(36).slice(2, 5).toUpperCase();
+  return `${prefixo}-${ts}${rand}`;
 }
 
 async function buscarPorID(nomeAba, id, camposID = ['ID_MANIFESTACAO','ID_RNC','ID_SETOR','ID']) {
@@ -445,9 +450,29 @@ app.use('/api', async (req,res,next)=>{
   next();
 });
 
+// ===== RATE LIMITING para login =====
+const _loginAttempts = new Map();
+function verificarRateLimit(ip) {
+  const agora = Date.now();
+  const janela = 15 * 60 * 1000;
+  const max = 10;
+  const tentativas = (_loginAttempts.get(ip) || []).filter(t => agora - t < janela);
+  if (tentativas.length >= max) return false;
+  tentativas.push(agora);
+  _loginAttempts.set(ip, tentativas);
+  if (_loginAttempts.size > 2000) {
+    for (const [k, v] of _loginAttempts) {
+      if (v.every(t => agora - t >= janela)) _loginAttempts.delete(k);
+    }
+  }
+  return true;
+}
+
 // ===== AUTH =====
 app.post('/api/auth/login', async (req, res) => {
   try {
+    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
+    if (!verificarRateLimit(ip)) return res.status(429).json({ sucesso: false, erro: 'Muitas tentativas de login. Aguarde 15 minutos.' });
     const { usuario, senha } = req.body || {};
     if(!usuario) return res.status(400).json({sucesso:false,erro:'Usuário é obrigatório.'});
     if(!senha) return res.status(400).json({sucesso:false,erro:'Senha é obrigatória.'});
@@ -2424,11 +2449,6 @@ app.get('/api/_reset', async (req, res) => {
 });
 
 // ===== BOOTSTRAP — criar primeiro usuário MASTER =====
-// GET conveniente: /api/bootstrap?usuario=luiza&nome=Luiza&senha=125600
-app.get('/api/bootstrap', async (req, res) => {
-  req.body = req.query;
-  return bootstrapHandler(req, res);
-});
 app.post('/api/bootstrap', async (req, res) => bootstrapHandler(req, res));
 async function bootstrapHandler(req, res) {
   try {
