@@ -270,6 +270,20 @@ function filtrarPorEmpresa(itens, req, campoEmpresa) {
   });
 }
 
+// Filtra dados históricos/operacionais legados onde empresa pode estar vazia.
+// Sem empresa → dado anterior ao isolamento B2 → visível para todos (global).
+// Com empresa preenchida → apenas daquela empresa e MASTER.
+function filtrarPorEmpresaHistorico(itens, req, campoEmpresa) {
+  if (!req._empresaScope) return itens;
+  const userCod = empresaCanonica(req._empresaScope);
+  if (!userCod || userCod === 'MASTER') return itens;
+  return itens.filter(item => {
+    const val = item[campoEmpresa] || '';
+    if (!val) return true; // legado sem empresa = compartilhado
+    return empresaCanonica(val) === userCod;
+  });
+}
+
 // Filtra itens de configuração/conhecimento.
 // Sem empresa no item → global (visível para todos). Com empresa → apenas daquela empresa e MASTER.
 function filtrarPorEmpresaConfig(itens, req, campoEmpresa = 'EMPRESA') {
@@ -859,8 +873,8 @@ app.get('/api/manifestacoes', middlewareEscopoEmpresa(), async (req, res) => {
       const rca=normalizarTexto(req.user.codigoRCA||req.user.usuario);
       data=data.filter(r=>normalizarTexto(r.USUARIO_CRIACAO||'')===normalizarTexto(req.user.usuario)||normalizarTexto(r.CODIGO_RCA||'')===rca||normalizarTexto(r.RCA||'')===rca);
     }
-    // B2: filtrar por empresa se não for MASTER
-    data = filtrarPorEmpresa(data, req, COLUNA_EMPRESA_ABA.MANIFESTACOES);
+    // B2: legado sem empresa = global; com empresa = apenas daquela empresa
+    data = filtrarPorEmpresaHistorico(data, req, COLUNA_EMPRESA_ABA.MANIFESTACOES);
     res.json({ sucesso: true, total: data.length, itens: data });
   } catch (e) { res.status(500).json({ sucesso: false, erro: e.message, dados: [] }); }
 });
@@ -1627,8 +1641,8 @@ app.post('/api/calculadora/parametros/producao', requerPerfil('MASTER'), async(r
 app.get('/api/dashboard', middlewareEscopoEmpresa(), requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req, res) => {
   try {
     let [mans, recs] = await Promise.all([lerAba('MANIFESTACOES', 2000).catch(()=>[]), lerAbaReclamacoes(2000)]);
-    mans = filtrarPorEmpresa(mans, req, COLUNA_EMPRESA_ABA.MANIFESTACOES).filter(m => !isTeste(m));
-    recs = filtrarPorEmpresa(recs, req, COLUNA_EMPRESA_ABA['Reclamações']).filter(r => !isTeste(r));
+    mans = filtrarPorEmpresaHistorico(mans, req, COLUNA_EMPRESA_ABA.MANIFESTACOES).filter(m => !isTeste(m));
+    recs = filtrarPorEmpresaHistorico(recs, req, COLUNA_EMPRESA_ABA['Reclamações']).filter(r => !isTeste(r));
     const emAndamento = mans.filter(m => !['FINALIZADA','ENCERRADA','CONCLUÍDA'].some(s => (m.STATUS||'').toUpperCase().includes(s))).length;
     const rncsAbertas = mans.filter(m => m.ID_RNC && m.ID_RNC !== '').length;
     const recComSLA = recs.filter(r => r['Dentro do prazo? '] || r['Dentro do prazo?']);
@@ -1693,9 +1707,9 @@ app.get('/api/rnc', middlewareEscopoEmpresa(), requerPerfil('MASTER','ANALISTA S
         }
       } catch (e) { console.warn('[F6] GET /rnc PG falhou:', e.message); }
     }
-    // Fallback Sheets — B2: filtrar por empresa
+    // Fallback Sheets — B2: legado sem empresa = global
     let data=await lerAba('BANCO_RNC',5000).catch(()=>[]);
-    data = filtrarPorEmpresa(data, req, COLUNA_EMPRESA_ABA.BANCO_RNC);
+    data = filtrarPorEmpresaHistorico(data, req, COLUNA_EMPRESA_ABA.BANCO_RNC);
     res.json({sucesso:true,total:data.length,itens:data});
   } catch (e) { res.status(500).json({sucesso:false,erro:e.message,dados:[]}); }
 });
@@ -1864,9 +1878,9 @@ app.get('/api/reclamacoes', middlewareEscopoEmpresa(), async (req, res) => {
       ...r,
       'Data do Registro':normalizarData(r['Data do Registro']),
       'Empresa':r['Empresa']||''
-    })).filter(r=>r['Empresa'] && r['Empresa'].trim() && !['TR01','TR08'].includes(r['Empresa'].trim()));
-    // B2: filtrar por empresa do usuário
-    normalizado = filtrarPorEmpresa(normalizado, req, COLUNA_EMPRESA_ABA['Reclamações']);
+    })).filter(r=>!['TR01','TR08'].includes((r['Empresa']||'').trim()));
+    // B2: legado sem empresa = global; com empresa = apenas daquela empresa
+    normalizado = filtrarPorEmpresaHistorico(normalizado, req, COLUNA_EMPRESA_ABA['Reclamações']);
     res.json({sucesso:true,total:normalizado.length,itens:normalizado});
   } catch (e) { res.status(500).json({sucesso:false,erro:e.message,dados:[]}); }
 });
@@ -1875,8 +1889,8 @@ app.get('/api/reclamacoes', middlewareEscopoEmpresa(), async (req, res) => {
 app.get('/api/historico', middlewareEscopoEmpresa(), requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL'), async (req, res) => {
   try {
     let data=await lerAba('BANCO_HISTORICO',1000).catch(()=>[]);
-    // B2: filtrar por empresa se não for MASTER
-    data = filtrarPorEmpresa(data, req, COLUNA_EMPRESA_ABA.BANCO_HISTORICO);
+    // B2: legado sem empresa = global; com empresa = apenas daquela empresa
+    data = filtrarPorEmpresaHistorico(data, req, COLUNA_EMPRESA_ABA.BANCO_HISTORICO);
     res.json({sucesso:true,total:data.length,itens:data});
   }
   catch (e) { res.status(500).json({sucesso:false,erro:e.message,dados:[]}); }
