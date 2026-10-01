@@ -62,11 +62,18 @@ const CONFIG_SETORES = [
   { ID_SETOR:'SET-003', NOME_SETOR:'Produção', EMPRESA:'CHIACCHIO EMBALAGENS' },
 ];
 
+// ─── FILA_APROVACAO — coluna de empresa: EMPRESA ────────────────────────────
+const FILA_APROVACAO = [
+  { ID_FILA:'FAP-CHI-001', ID_ENTIDADE:'MAN-CHI-001', TIPO_ENTIDADE:'SAC', EMPRESA:'CHIACCHIO EMBALAGENS', STATUS:'PENDENTE', CRIADO_POR:'ana.chiacchio', ID_APROVADOR:'aprovador.chi' },
+  { ID_FILA:'FAP-PLA-001', ID_ENTIDADE:'MAN-PLA-001', TIPO_ENTIDADE:'SAC', EMPRESA:'PLASCHIO',             STATUS:'PENDENTE', CRIADO_POR:'joao.plaschio',  ID_APROVADOR:'aprovador.pla' },
+];
+
 const DB = {
   MANIFESTACOES,
   BANCO_RNC,
   BANCO_HISTORICO,
   CONFIG_SETORES,
+  FILA_APROVACAO,
   USUARIOS,
   'Reclamações': RECLAMACOES,
   'Reclamações + devolutiva': [],

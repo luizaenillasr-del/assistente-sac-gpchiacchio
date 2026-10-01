@@ -333,11 +333,29 @@ async function getSheets() {
   return google.sheets({ version: 'v4', auth: client });
 }
 
+async function _sheetsGetComRetry(sheets, params, tentativas = 3) {
+  let espera = 1000;
+  for (let i = 0; i < tentativas; i++) {
+    try {
+      return await sheets.spreadsheets.values.get(params);
+    } catch (e) {
+      const status = e?.response?.status || e?.code;
+      // Retry apenas em 429 (rate limit) e 503 (serviço indisponível)
+      if ((status === 429 || status === 503) && i < tentativas - 1) {
+        await new Promise(r => setTimeout(r, espera));
+        espera *= 2;
+        continue;
+      }
+      throw e;
+    }
+  }
+}
+
 async function lerAba(nomeAba, maxRows) {
   if (_sheetsMock?.lerAba) return _sheetsMock.lerAba(nomeAba, maxRows);
   const sheets = await getSheets();
   const range = maxRows ? `${nomeAba}!A1:AZ${maxRows}` : nomeAba;
-  const res = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range });
+  const res = await _sheetsGetComRetry(sheets, { spreadsheetId: SPREADSHEET_ID, range });
   const rows = res.data.values || [];
   if (rows.length < 2) return [];
   const headers = rows[0];
@@ -623,6 +641,27 @@ app.get('/', (req, res) => {
 });
 
 // ===== MIDDLEWARE AUTH =====
+// Cache leve de status de usuário: evita ler Sheets a cada request.
+// TTL 2 minutos — usuário desativado expulso em até 2 min.
+const _statusCache = new Map(); // login → { status, ts }
+const _STATUS_CACHE_TTL = 2 * 60 * 1000;
+
+async function verificarStatusUsuario(login) {
+  const agora = Date.now();
+  const cached = _statusCache.get(login);
+  if (cached && (agora - cached.ts) < _STATUS_CACHE_TTL) return cached.status;
+  try {
+    const rows = await lerAba('USUARIOS', 1000);
+    const u = rows.find(r => normalizarTexto(r.USUARIO||'') === normalizarTexto(login));
+    const status = u ? (u.STATUS || 'ATIVO').toUpperCase() : 'ATIVO';
+    _statusCache.set(login, { status, ts: agora });
+    return status;
+  } catch(e) {
+    // Falha ao verificar: preservar sessão (fail-open) para evitar bloqueio por erro de Sheets
+    return 'ATIVO';
+  }
+}
+
 app.use('/api', async (req,res,next)=>{
   const publicPaths = new Set([
     '/health',
@@ -637,6 +676,12 @@ app.use('/api', async (req,res,next)=>{
   const token=header.startsWith('Bearer ')?header.slice(7):'';
   const payload=verificarToken(token);
   if(!payload) return res.status(401).json({sucesso:false,erro:'Sessão inválida ou expirada.'});
+  // Item10: verificar se usuário ainda está ativo (detecta desativação pós-login)
+  const status = await verificarStatusUsuario(payload.usuario);
+  if (status === 'INATIVO') {
+    _statusCache.delete(payload.usuario); // forçar re-verificação na próxima vez
+    return res.status(401).json({sucesso:false,erro:'Usuário inativo. Sessão encerrada.'});
+  }
   req.user=payload;
   next();
 });
@@ -732,7 +777,9 @@ app.post('/api/analise', async (req, res) => {
 
 app.post('/api/analise/similares', async (req, res) => {
   try {
-    const similares = await cerebroService.buscarCasosSimilares(req.body || {}, Number(req.body?.limite || 8));
+    // B2/Item11: isolar similares por empresa do usuário autenticado
+    const empresaFiltro = req.user?.empresa || null;
+    const similares = await cerebroService.buscarCasosSimilares(req.body || {}, Number(req.body?.limite || 8), empresaFiltro);
     res.json({ sucesso:true, total:similares.length, itens:similares });
   } catch(e) {
     res.status(500).json({ sucesso:false, erro:e.message, itens:[] });
@@ -953,6 +1000,13 @@ app.post('/api/manifestacoes', requerPerfil('MASTER','ANALISTA SAC'), async (req
 app.patch('/api/manifestacoes/:id', requerPerfil('MASTER','ANALISTA SAC'), async (req, res) => {
   try {
     const { id } = req.params;
+    // B2/Item18: verificar pertencimento de empresa antes de gravar
+    const todas = await lerAba('MANIFESTACOES', 2000);
+    const itemExistente = todas.find(r => r.ID_MANIFESTACAO === id);
+    if (!itemExistente) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
+    if (!pertenceEmpresa(req.user?.empresa, itemExistente.EMPRESA_RECLAMADA)) {
+      return res.status(403).json({ sucesso:false, erro:'Acesso negado: manifestação pertence a outra empresa.' });
+    }
     const STATUS_VALIDOS = ['EM ANÁLISE','AGUARDANDO_DECISÃO','EM TRATAMENTO','AGUARDANDO_DEVOLUTIVA','ENCERRADA','REJEITADA','APROVADA'];
     const dados = {};
     const { status, tratativa, devolutiva, setor, responsavel, observacoes } = req.body || {};
@@ -980,6 +1034,10 @@ app.post('/api/manifestacoes/:id/decisao', requerPerfil('MASTER','ANALISTA SAC')
     const data = await lerAba('MANIFESTACOES',2000);
     const item = data.find(r => r.ID_MANIFESTACAO === id);
     if (!item) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
+    // B2/Item18: verificar pertencimento de empresa antes de gravar decisão
+    if (!pertenceEmpresa(req.user?.empresa, item.EMPRESA_RECLAMADA)) {
+      return res.status(403).json({ sucesso:false, erro:'Acesso negado: manifestação pertence a outra empresa.' });
+    }
     const agora = new Date().toISOString();
     const setoresStr = Array.isArray(setoresConfirmados) ? setoresConfirmados.join(', ') : (setoresConfirmados || '');
     const depStr = Array.isArray(setoresDependentes) ? setoresDependentes.join(', ') : (setoresDependentes || '');
@@ -1799,14 +1857,16 @@ app.get('/api/clientes/:cnpj', requerPerfil('MASTER','ANALISTA SAC','RCA / REPRE
 });
 
 // ===== RECLAMAÇÕES =====
-app.get('/api/reclamacoes', async (req, res) => {
+app.get('/api/reclamacoes', middlewareEscopoEmpresa(), async (req, res) => {
   try {
     const data=await lerAbaReclamacoes(2000);
-    const normalizado=data.map(r=>({
+    let normalizado=data.map(r=>({
       ...r,
       'Data do Registro':normalizarData(r['Data do Registro']),
       'Empresa':r['Empresa']||''
     })).filter(r=>r['Empresa'] && r['Empresa'].trim() && !['TR01','TR08'].includes(r['Empresa'].trim()));
+    // B2: filtrar por empresa do usuário
+    normalizado = filtrarPorEmpresa(normalizado, req, COLUNA_EMPRESA_ABA['Reclamações']);
     res.json({sucesso:true,total:normalizado.length,itens:normalizado});
   } catch (e) { res.status(500).json({sucesso:false,erro:e.message,dados:[]}); }
 });
@@ -1863,11 +1923,13 @@ app.get('/api/setores-unicos', async (req, res) => {
   }
 });
 
-app.get('/api/setores', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
+app.get('/api/setores', middlewareEscopoEmpresa(), requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
   try {
     // GET puro — sem criar/escrever abas. Se não existe, retorna vazio e frontend usa fallback.
     const data = await lerAba('CONFIG_SETORES', 500).catch(()=>[]);
-    const itens = data.map(s => ({ ...s, _counts: {} }));
+    // Config: sem empresa = global (todos veem). Com empresa = apenas essa empresa + MASTER.
+    const filtrado = filtrarPorEmpresaConfig(data, req, 'EMPRESA');
+    const itens = filtrado.map(s => ({ ...s, _counts: {} }));
     res.json({ sucesso:true, total:itens.length, itens });
   } catch (e) { res.status(500).json({ sucesso:false, erro:e.message, itens:[] }); }
 });
@@ -2864,18 +2926,20 @@ app.put('/api/regras-aprovacao/:id', requerPerfil('MASTER'), async (req,res)=>{
   } catch(e){res.status(500).json({sucesso:false,erro:e.message});}
 });
 
-// Listar fila de aprovação (filtrada por perfil)
-app.get('/api/fila-aprovacao', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req,res)=>{
+// Listar fila de aprovação (filtrada por perfil e empresa)
+app.get('/api/fila-aprovacao', middlewareEscopoEmpresa(), requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req,res)=>{
   try {
     garantirAbaComCabecalhos('FILA_APROVACAO', FILA_APROV_HEADERS).catch(()=>{});
     const u = req.user;
     const fila = await lerAba('FILA_APROVACAO',2000).catch(()=>[]);
-    let itens = fila;
+    // B2: filtrar por empresa primeiro
+    const filaEmpresa = filtrarPorEmpresa(fila, req, COLUNA_EMPRESA_ABA.FILA_APROVACAO);
+    let itens = filaEmpresa;
     const n = v => normalizarTexto(v);
     if(perfilCanonico(u.perfil) === 'ANALISTA SAC') {
-      itens = fila.filter(x => n(x.CRIADO_POR||'') === n(u.usuario));
+      itens = filaEmpresa.filter(x => n(x.CRIADO_POR||'') === n(u.usuario));
     } else if(perfilCanonico(u.perfil) === 'APROVADOR') {
-      itens = fila.filter(x => n(x.ID_APROVADOR||'') === n(u.usuario) || n(x.NOME_APROVADOR||'') === n(u.nome||u.usuario) || n(x.ID_APROVADOR||'') === n(u.id||''));
+      itens = filaEmpresa.filter(x => n(x.ID_APROVADOR||'') === n(u.usuario) || n(x.NOME_APROVADOR||'') === n(u.nome||u.usuario) || n(x.ID_APROVADOR||'') === n(u.id||''));
     }
     const pendentes = itens.filter(x=>x.STATUS==='PENDENTE').length;
     res.json({sucesso:true,total:itens.length,pendentes,itens});

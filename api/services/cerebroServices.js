@@ -77,9 +77,37 @@ function calcularSimilaridade(texto1, texto2) {
 // 1. CASOS SIMILARES (PostgreSQL → fallback Sheets)
 // ──────────────────────────────────────────────────────────────
 
-async function buscarCasosSimilares(manifestacao, limite = 8) {
+// Mapa canônico de empresas (espelho do api/index.js para isolamento B2)
+const _EMPRESA_MAP_SIMIL = {
+  CHIACCHIO: ['chiacchio embalagens', 'chiachio embalagens', 'chiacchio'],
+  PLASCHIO:  ['plaschio'],
+  TUBAHIA:   ['tubahia', 'cesbap'],
+  MASTER:    ['grupo chiacchio'],
+};
+function _empresaCodigoSimil(texto) {
+  const n = String(texto||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
+  if (!n) return null;
+  for (const [cod, grafias] of Object.entries(_EMPRESA_MAP_SIMIL)) {
+    if (grafias.some(g => n === g)) return cod;
+  }
+  return null;
+}
+
+async function buscarCasosSimilares(manifestacao, limite = 8, empresaFiltro = null) {
   const descricao = campo(manifestacao, ['DESCRICAO','DESCRIÇÃO','descricao','ORIG_DESCRICAO_RECLAMACAO','DESCRICAO_RECLAMACAO']);
   if (!descricao) return [];
+
+  // B2/Item11: código canônico do usuário para filtrar resultado
+  const userCod = _empresaCodigoSimil(empresaFiltro);
+
+  function filtrarPorEmpresaSimil(items) {
+    if (!userCod || userCod === 'MASTER') return items;
+    return items.filter(item => {
+      const empItem = item.empresa || '';
+      const cod = _empresaCodigoSimil(empItem);
+      return cod === userCod;
+    });
+  }
 
   try {
     // Tentar PostgreSQL primeiro — distinguir PG vazio de PG offline
@@ -93,7 +121,7 @@ async function buscarCasosSimilares(manifestacao, limite = 8) {
         historico = null; // null = offline; [] = vazio
       }
       if (historico !== null && historico.length > 0) {
-        return historico
+        const mapeados = historico
           .map(h => {
             const dh = h.descricao || '';
             return {
@@ -110,7 +138,8 @@ async function buscarCasosSimilares(manifestacao, limite = 8) {
               similaridade: calcularSimilaridade(descricao, dh),
             };
           })
-          .filter(c => c.similaridade >= 10)
+          .filter(c => c.similaridade >= 10);
+        return filtrarPorEmpresaSimil(mapeados)
           .sort((a, b) => b.similaridade - a.similaridade)
           .slice(0, limite);
       }
@@ -126,13 +155,13 @@ async function buscarCasosSimilares(manifestacao, limite = 8) {
   // Fallback: Google Sheets
   try {
     const historico = await sheets.lerAba('BANCO_HISTORICO', 5000);
-    return historico
+    const mapeados = historico
       .filter(h => campo(h, ['ORIG_DESCRICAO_RECLAMACAO','DESCRICAO_RECLAMACAO','DESCRICAO']))
       .map(h => {
         const dh = campo(h, ['ORIG_DESCRICAO_RECLAMACAO','DESCRICAO_RECLAMACAO','DESCRICAO']);
         return {
           id: campo(h, ['ID_HISTORICO','ID_MANIFESTACAO','ID']),
-          empresa: campo(h, ['ORIG_EMPRESA','EMPRESA_RECLAMADA','EMPRESA']),
+          empresa: campo(h, ['DRV_EMPRESA_NORMALIZADA','ORIG_EMPRESA','EMPRESA_RECLAMADA','EMPRESA']),
           cliente: campo(h, ['ORIG_CONTATO','EMPRESA_RECLAMANTE','CLIENTE']),
           descricao: dh.slice(0, 300),
           motivo: campo(h, ['ORIG_MOTIVO_RELATADO','MOTIVO_RELATADO_BRUTO','MOTIVO']),
@@ -147,7 +176,8 @@ async function buscarCasosSimilares(manifestacao, limite = 8) {
           similaridade: calcularSimilaridade(descricao, dh),
         };
       })
-      .filter(caso => caso.similaridade >= 10)
+      .filter(caso => caso.similaridade >= 10);
+    return filtrarPorEmpresaSimil(mapeados)
       .sort((a, b) => b.similaridade - a.similaridade)
       .slice(0, limite);
   } catch (erro) {
@@ -772,8 +802,9 @@ async function analisarManifestacaoCompleta(manifestacao, regras = {}, usuario =
   const tipo = regras.tipoDetectado || '';
   const dataAbertura = campo(manifestacao, ['dataAbertura','DATA_ABERTURA','DATA_CRIACAO']);
 
+  const empresaManif = campo(manifestacao, ['empresaReclamada','EMPRESA_RECLAMADA']);
   const [casosSimilares, reincidencia, baseConhecimento] = await Promise.all([
-    buscarCasosSimilares(manifestacao, 8).catch(e => { erros.push('similares: ' + e.message); return []; }),
+    buscarCasosSimilares(manifestacao, 8, empresaManif).catch(e => { erros.push('similares: ' + e.message); return []; }),
     detectarReincidencia(manifestacao).catch(e => { erros.push('reincidencia: ' + e.message); return { nivel: 'SEM_REINCIDENCIA', detectada: false, quantidade: 0, casos: [] }; }),
     consultarBaseConhecimento(tipo, setor).catch(e => { erros.push('conhecimento: ' + e.message); return { status: 'CONHECIMENTO_INSUFICIENTE', itens: [], total: 0 }; }),
   ]);
