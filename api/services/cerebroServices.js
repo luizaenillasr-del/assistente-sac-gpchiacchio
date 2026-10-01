@@ -616,6 +616,7 @@ CONTEXTO DO SISTEMA:
 - Reincidência: ${contexto.reincidencia?.nivel || 'SEM_REINCIDENCIA'} (${contexto.reincidencia?.quantidade || 0} ocorrência(s))
 - SLA: ${contexto.sla?.status || 'SEM_SLA'} — ${contexto.sla?.horasRestantes != null ? contexto.sla.horasRestantes + 'h restantes' : 'sem dados'}
 - Conhecimento relevante (${contexto.baseConhecimento?.total || 0} documentos)
+${contexto.matrizConhecimento && contexto.matrizConhecimento.status === 'RESOLVIDA' ? `- Matriz de Conhecimento aplicável: ${contexto.matrizConhecimento.matrizes?.length || 0} matriz(es) encontrada(s). Itens de conhecimento: ${JSON.stringify((contexto.matrizConhecimento.itensConhecimento || []).slice(0, 5).map(i => ({ tipo: i.TIPO_FONTE, conteudo: (i.CONTEUDO || '').slice(0, 200) })))}` : '- Matriz de Conhecimento: nenhuma aplicável ao caso'}
 
 REGRAS OBRIGATÓRIAS:
 1. NÃO invente informações. Use "DADO_NAO_ENCONTRADO" quando não souber.
@@ -747,7 +748,8 @@ async function analisarManifestacaoCompleta(manifestacao, regras = {}, usuario =
   const sla = calcularSLA(dataAbertura, regras.slaHoras || 72);
   const tratativa = gerarSugestaoTratativa(casosSimilares, tipo, regras.setores, descricao);
 
-  const contextoIA = { manifestacao, tipoDetectado: tipo, setores: regras.setores || [], casosSimilares, reincidencia, sla, baseConhecimento };
+  const matrizConhecimento = manifestacao.matrizConhecimento || null;
+  const contextoIA = { manifestacao, tipoDetectado: tipo, setores: regras.setores || [], casosSimilares, reincidencia, sla, baseConhecimento, matrizConhecimento };
   const ia = await chamarIA(contextoIA).catch(e => { erros.push('ia: ' + e.message); return { disponivel: false, erro: e.message }; });
 
   const empresa = campo(manifestacao, ['empresaReclamada','EMPRESA_RECLAMADA']);

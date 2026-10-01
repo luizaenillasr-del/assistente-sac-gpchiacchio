@@ -122,7 +122,7 @@ async function carregarUsuarios(){
           EMPRESA: u.empresa?.nome || '',
           SETOR: u.setor?.nome || '',
           STATUS: u.status || 'ATIVO',
-          SENHA: u.senhaHash || '',
+          SENHA_HASH: u.senhaHash || '',
           CODIGO_RCA: u.codigoRca || '',
           ULTIMO_ACESSO: u.ultimoAcesso?.toISOString?.() || '',
           _pgId: u.id,
@@ -151,9 +151,13 @@ function perfilCanonico(v){
   const x=normalizarTexto(v).replace(/\s+/g,' ');
   const map={
     'master':'MASTER','administrador':'MASTER','admin':'MASTER',
-    'analista sac':'ANALISTA SAC','analista':'ANALISTA SAC',
+    'analista sac':'ANALISTA SAC','analista':'ANALISTA SAC','sac':'ANALISTA SAC',
+    'gestor sac':'ANALISTA SAC','gestor de sac':'ANALISTA SAC',
     'setor responsavel':'SETOR RESPONSÁVEL','setor responsável':'SETOR RESPONSÁVEL',
-    'aprovador':'APROVADOR','rca':'RCA / REPRESENTANTE','representante':'RCA / REPRESENTANTE','representante comercial':'RCA / REPRESENTANTE'
+    'gestor de setor':'SETOR RESPONSÁVEL','gestor setor':'SETOR RESPONSÁVEL',
+    'usuario de setor':'SETOR RESPONSÁVEL','usuário de setor':'SETOR RESPONSÁVEL',
+    'aprovador':'APROVADOR',
+    'rca':'RCA / REPRESENTANTE','representante':'RCA / REPRESENTANTE','representante comercial':'RCA / REPRESENTANTE'
   };
   return map[x]||String(v||'').toUpperCase();
 }
@@ -481,8 +485,7 @@ app.use('/api', async (req,res,next)=>{
     '/auth/login',
     '/auth/forgot-password',
     '/bootstrap',
-    '/_importar',
-    '/_reset',
+    // rotas de debug/importação removidas por segurança
   ]);
   if(publicPaths.has(req.path)) return next();
   const header=req.headers.authorization||'';
@@ -548,6 +551,18 @@ app.get('/api/auth/me', async (req,res)=>{
   const payload=verificarToken(token);
   if(!payload) return res.status(401).json({sucesso:false,erro:'Sessão inválida.'});
   res.json({sucesso:true,usuario:payload});
+});
+
+app.post('/api/auth/refresh', async (req,res)=>{
+  const header=req.headers.authorization||'';
+  const token=header.startsWith('Bearer ')?header.slice(7):'';
+  const payload=verificarToken(token);
+  if(!payload) return res.status(401).json({sucesso:false,erro:'Sessão inválida ou expirada.'});
+  const agora=Date.now();
+  const novoPayload={...payload, iat:agora, exp:agora+SESSION_TTL_MS};
+  delete novoPayload.iat; delete novoPayload.exp; // reassign above
+  Object.assign(novoPayload, {iat:agora, exp:agora+SESSION_TTL_MS});
+  res.json({sucesso:true, token:assinarToken(novoPayload)});
 });
 
 app.post('/api/auth/forgot-password', async (req,res)=>{
@@ -728,43 +743,41 @@ app.post('/api/manifestacoes', requerPerfil('MASTER','ANALISTA SAC'), async (req
       }).catch(e => console.warn('[F6] dual-write PG falhou:', e.message));
     }
     registrarAuditoria(usuario||'sistema','CRIOU_MANIFESTAÇÃO',id,'MANIFESTACOES',null,{empresaReclamante,tipo:tipoFinal}).catch(()=>{});
-    // Responde ao cliente imediatamente após salvar (antes da IA)
-    // A análise IA roda em background e atualiza a manifestação
-    res.json({ sucesso:true, id, analise:null, mensagem:'Manifestação registrada com sucesso! A análise IA será processada em segundos.' });
-    // IA + updates rodando em background (não bloqueiam a resposta)
+    // Executar análise de IA de forma síncrona antes de responder
+    // (setImmediate não funciona em Vercel serverless)
     const decisaoCompleta = req.body.decisaoCompleta;
-    setImmediate(async () => {
-      try {
-        const analise = await executarAnalise({ ...objeto, empresaReclamante, empresaReclamada, descricao, tipo:tipoFinal });
-        if (analise) {
-          await atualizarPorID('MANIFESTACOES', id, {
-            TIPO_SUGERIDO:analise.tipoDetectado||analise.tipoSugerido||'',
-            SETOR_SUGERIDO:Array.isArray(analise.setores)?analise.setores[0]||'':analise.setoresSugeridos?.[0]||'',
-            SETORES_SUGERIDOS:Array.isArray(analise.setores)?analise.setores.join(', '):(analise.setoresSugeridos||[]).join(', '),
-            PROCEDIMENTO_SUGERIDO:analise.procedimentoSugerido?.nome||'',
-            SLA_HORAS:analise.slaHoras||'', PRIORIDADE:analise.prioridade||'',
-            RNC_SUGERIDO:analise.geraRNC?'SIM':'NÃO', TRATATIVA_SUGERIDA:analise.tratativaSugerida?.sugestao||'',
-            DEVOLUTIVA_SUGERIDA:analise.devolutivaSugerida||'', STATUS:'AGUARDANDO_DECISÃO'
-          }).catch(()=>{});
-        }
-        if (decisaoCompleta && decisaoCompleta.tipo) {
-          const tipoDecisao = decisaoCompleta.tipo;
-          const df = decisaoCompleta.decisaoFinal || {};
-          let novoStatus = 'AGUARDANDO_DECISÃO';
-          if (tipoDecisao === 'rejeitada') novoStatus = 'REJEITADA';
-          else if (tipoDecisao === 'aceita' || tipoDecisao === 'editada') novoStatus = 'EM TRATAMENTO';
-          await atualizarPorID('MANIFESTACOES', id, {
-            STATUS: novoStatus,
-            TIPO_CONFIRMADO: df.tipo || analise?.tipoDetectado || '',
-            SETOR_CONFIRMADO: df.setor || (Array.isArray(analise?.setores) ? analise.setores[0] : '') || '',
-            TRATATIVA_REALIZADA: df.tratativa || '',
-            DEVOLUTIVA_FINAL: df.devolutiva || '',
-            CAUSA_PROVAVEL: df.causa || '',
-            DECISAO_ANALISTA: tipoDecisao,
-          }).catch(() => {});
-        }
-      } catch (e) { console.error('Falha na análise automática background:', e.message); }
-    });
+    let analise = null;
+    try {
+      analise = await executarAnalise({ ...objeto, empresaReclamante, empresaReclamada, descricao, tipo:tipoFinal });
+      if (analise) {
+        await atualizarPorID('MANIFESTACOES', id, {
+          TIPO_SUGERIDO:analise.tipoDetectado||analise.tipoSugerido||'',
+          SETOR_SUGERIDO:Array.isArray(analise.setores)?analise.setores[0]||'':analise.setoresSugeridos?.[0]||'',
+          SETORES_SUGERIDOS:Array.isArray(analise.setores)?analise.setores.join(', '):(analise.setoresSugeridos||[]).join(', '),
+          PROCEDIMENTO_SUGERIDO:analise.procedimentoSugerido?.nome||'',
+          SLA_HORAS:analise.slaHoras||'', PRIORIDADE:analise.prioridade||'',
+          RNC_SUGERIDO:analise.geraRNC?'SIM':'NÃO', TRATATIVA_SUGERIDA:analise.tratativaSugerida?.sugestao||'',
+          DEVOLUTIVA_SUGERIDA:analise.devolutivaSugerida||'', STATUS:'AGUARDANDO_DECISÃO'
+        }).catch(()=>{});
+      }
+      if (decisaoCompleta && decisaoCompleta.tipo) {
+        const tipoDecisao = decisaoCompleta.tipo;
+        const df = decisaoCompleta.decisaoFinal || {};
+        let novoStatus = 'AGUARDANDO_DECISÃO';
+        if (tipoDecisao === 'rejeitada') novoStatus = 'REJEITADA';
+        else if (tipoDecisao === 'aceita' || tipoDecisao === 'editada') novoStatus = 'EM TRATAMENTO';
+        await atualizarPorID('MANIFESTACOES', id, {
+          STATUS: novoStatus,
+          TIPO_CONFIRMADO: df.tipo || analise?.tipoDetectado || '',
+          SETOR_CONFIRMADO: df.setor || (Array.isArray(analise?.setores) ? analise.setores[0] : '') || '',
+          TRATATIVA_REALIZADA: df.tratativa || '',
+          DEVOLUTIVA_FINAL: df.devolutiva || '',
+          CAUSA_PROVAVEL: df.causa || '',
+          DECISAO_ANALISTA: tipoDecisao,
+        }).catch(() => {});
+      }
+    } catch (e) { console.error('Falha na análise automática:', e.message); }
+    res.json({ sucesso:true, id, analise, mensagem:'Manifestação registrada e analisada com sucesso.' });
   } catch (e) { console.error(e); res.status(500).json({ sucesso:false, erro:e.message }); }
 });
 
@@ -1049,7 +1062,11 @@ const LOG_HEADERS = ['ID','UF','CIDADE','REGIAO','TIPO_DIA','PRAZO_TRANSPORTE_DI
 const PROD_HEADERS = ['ID','TIPO_PRODUTO','PROCESSO','FAMILIA_PRODUTO','TEMPO_MEDIO_DIAS','TEMPO_MIN_DIAS','TEMPO_MAX_DIAS','TIPO_DIA','VIGENCIA_INICIO','VIGENCIA_FIM','FONTE','VERSAO','USUARIO_ATUALIZACAO','DATA_ATUALIZACAO','ATIVO','OBSERVACAO'];
 
 function colLetter(n){let s='';while(n>0){let r=(n-1)%26;s=String.fromCharCode(65+r)+s;n=Math.floor((n-1)/26);}return s;}
+const _abaCache = new Map(); // P015: cache de abas já verificadas (TTL 5min)
 async function garantirAbaComCabecalhos(nomeAba, headers){
+  const cacheKey = `${nomeAba}:${headers.join(',')}`;
+  const cached = _abaCache.get(cacheKey);
+  if (cached && Date.now() - cached.ts < 300000) return cached.headers;
   const sheets=await getSheets();
   let meta=await sheets.spreadsheets.get({spreadsheetId:SPREADSHEET_ID});
   let sh=meta.data.sheets?.find(s=>s.properties?.title===nomeAba);
@@ -1063,7 +1080,9 @@ async function garantirAbaComCabecalhos(nomeAba, headers){
     const todos=[...atual,...faltantes];
     await sheets.spreadsheets.values.update({spreadsheetId:SPREADSHEET_ID,range:`${nomeAba}!A1:${colLetter(todos.length)}1`,valueInputOption:'RAW',resource:{values:[todos]}});
   }
-  return [...(await obterCabecalhos(nomeAba))];
+  const result = [...(await obterCabecalhos(nomeAba))];
+  _abaCache.set(cacheKey, { ts: Date.now(), headers: result });
+  return result;
 }
 async function atualizarOuCriarSetor(nomeSetor,dados,usuario){
   const headers=await garantirAbaComCabecalhos('CONFIG_SETORES',['ID_SETOR','SETOR','DESCRICAO','RESPONSAVEL','SUBSTITUTO','EMAIL_RESPONSAVEL','SLA_HORAS','RESPONSABILIDADES','REGRAS_OPERACIONAIS','PROCEDIMENTOS_ORIENTACOES','ALERTAS','ATIVO',...SETOR_OPERACIONAL_FIELDS]);
@@ -1358,7 +1377,7 @@ app.post('/api/calculadora/parametros/logistica', requerPerfil('MASTER'), async(
 app.post('/api/calculadora/parametros/producao', requerPerfil('MASTER'), async(req,res)=>{try{garantirAbaComCabecalhos('PARAMETROS_PRODUCAO',PROD_HEADERS).catch(()=>{});const b=req.body||{};const obj={...b,ID:b.ID||await gerarProximoID('PARAMETROS_PRODUCAO','PROD','ID'),ATIVO:b.ATIVO||'SIM',DATA_ATUALIZACAO:new Date().toISOString(),USUARIO_ATUALIZACAO:req.user.usuario};await appendObjeto('PARAMETROS_PRODUCAO',obj);res.json({sucesso:true,item:obj});}catch(e){res.status(500).json({sucesso:false,erro:e.message});}});
 
 // ===== DASHBOARD =====
-app.get('/api/dashboard', async (req, res) => {
+app.get('/api/dashboard', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req, res) => {
   try {
     const [mans, recs] = await Promise.all([lerAba('MANIFESTACOES', 2000).catch(()=>[]), lerAba('Reclamações + devolutiva', 2000).catch(()=>[])]);
     const emAndamento = mans.filter(m => !['FINALIZADA','ENCERRADA','CONCLUÍDA'].some(s => (m.STATUS||'').toUpperCase().includes(s))).length;
@@ -1391,7 +1410,7 @@ app.get('/api/dashboard', async (req, res) => {
       const diff=Math.floor((agora-dc)/86400000); const idx=11-Math.floor(diff/7);
       if(idx>=0&&idx<12)semanas[idx].count++;
     });
-    res.json({sucesso:true,dados:{kpis:{emAndamento,totalManifestacoes:mans.length,totalReclamacoes:recs.length,rncsAbertas,slaPercent:slaPercent!==null?slaPercent:'Sem dados',foraPrazo:recComSLA.length-dentroPrazo},statusCount,porEmpresa,motivos:Object.entries(motivos).sort((a,b)=>b[1]-a[1]).slice(0,10).map(([m,c])=>({motivo:m,count:c})),semanas}});
+    res.json({sucesso:true,fontesDados:{manifestacoes:'Google Sheets (MANIFESTACOES)',reclamacoes:"Google Sheets (Reclamações + devolutiva)"},dados:{kpis:{emAndamento,totalManifestacoes:mans.length,totalReclamacoes:recs.length,rncsAbertas,slaPercent:slaPercent!==null?slaPercent:'Sem dados',foraPrazo:recComSLA.length-dentroPrazo},statusCount,porEmpresa,motivos:Object.entries(motivos).sort((a,b)=>b[1]-a[1]).slice(0,10).map(([m,c])=>({motivo:m,count:c})),semanas}});
   } catch (e) { console.error(e); res.status(500).json({ sucesso:false, erro:e.message, dados:{} }); }
 });
 
@@ -1533,7 +1552,7 @@ app.get('/api/empresas', async (req, res) => {
       return res.json({ sucesso: true, total: 0, itens: [] });
     }
     const headers = rows[0];
-    const empresaIdx = headers.indexOf('EMPRESA_NORMALIZADA');
+    const empresaIdx = headers.indexOf('EMPRESA_RECLAMADA') >= 0 ? headers.indexOf('EMPRESA_RECLAMADA') : headers.indexOf('EMPRESA_NORMALIZADA');
     const empresas = new Set();
     for (let i = 1; i < rows.length; i++) {
       const emp = (empresaIdx >= 0 && rows[i][empresaIdx]) || '';
@@ -1801,7 +1820,7 @@ ${texto.slice(0, 6000)}`;
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 1200, messages: [{ role: 'user', content: prompt }] }),
+      body: JSON.stringify({ model: 'claude-haiku-4-5', max_tokens: 1200, messages: [{ role: 'user', content: prompt }] }),
     });
     const data = await resp.json();
     const raw = data.content?.[0]?.text || '{}';
@@ -2019,6 +2038,8 @@ const ABAS_PERMITIDAS = [
   'MATRIZ_DECISAO','TIPOS_RECLAMACAO','REGRAS_ROTEAMENTO',
   'PARAMETROS_LOGISTICA','PARAMETROS_PRODUCAO',
   'ANEXOS','DOCUMENTOS_SETORES','APROVADOR_COMPETENCIAS','CONHECIMENTO_SETORES',
+  'Reclamações + devolutiva', // P023: fonte oficial para "Reclamações do período"
+  'SLA_ESCALONAMENTO','PERGUNTAS_ANALISE',
 ];
 
 app.get('/api/planilha/abas', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
@@ -2036,6 +2057,7 @@ app.get('/api/planilha/ler', requerPerfil('MASTER','ANALISTA SAC'), async (req,r
   try {
     const nome = req.query.nome || '';
     if (!nome) return res.status(400).json({sucesso:false, erro:'Parâmetro nome é obrigatório.'});
+    if (!ABAS_PERMITIDAS.includes(nome)) return res.status(403).json({sucesso:false, erro:`Aba não permitida: ${nome}`});
     const max = Math.min(parseInt(req.query.max||'2000',10), 5000);
     const data = await lerAba(nome, max);
     res.json({ sucesso:true, aba:nome, total:data.length, itens:data });
@@ -2157,7 +2179,7 @@ app.get('/api/anexos', async (req,res) => {
     res.json({sucesso:true,total:itens.length,itens});
   } catch(e){ res.status(500).json({sucesso:false,erro:e.message,itens:[]}); }
 });
-app.post('/api/anexos', async (req,res) => {
+app.post('/api/anexos', requerPerfil('MASTER','ANALISTA SAC'), async (req,res) => {
   try {
     const {arquivo,tipoEntidade,idEntidade,usuario,categoria}=req.body||{};
     if(!arquivo?.dataBase64) return res.status(400).json({sucesso:false,erro:'Arquivo não informado.'});
@@ -2465,31 +2487,7 @@ app.get('/api/cliente-contexto', async (req,res)=>{
 });
 
 // ===== RESET SENHA VIA GET (sem preflight CORS) =====
-app.get('/api/_reset', async (req, res) => {
-  res.set('Access-Control-Allow-Origin', '*');
-  try {
-    const { usuario, senha, key } = req.query;
-    if (!key || key !== (process.env.BOOTSTRAP_KEY || '')) {
-      return res.status(403).json({ sucesso: false, erro: 'Chave inválida.' });
-    }
-    if (!usuario || !senha || senha.length < 6) {
-      return res.status(400).json({ sucesso: false, erro: 'usuario e senha (mín. 6 chars) obrigatórios.' });
-    }
-    const hash = 'sha256:' + crypto.createHash('sha256').update(String(senha)).digest('hex');
-    const todos = await lerAba('USUARIOS', 100).catch(() => []);
-    const existente = todos.find(u => normalizarTexto(u.USUARIO || '') === normalizarTexto(usuario));
-    if (existente) {
-      await atualizarPorID('USUARIOS', existente.ID_USUARIO || existente.USUARIO, { SENHA_HASH: hash, STATUS: 'ATIVO' }, ['ID_USUARIO', 'USUARIO']);
-      return res.json({ sucesso: true, mensagem: `Senha de "${usuario}" redefinida. Acesse o sistema e faça login.` });
-    }
-    // Cria usuário novo
-    const obj = { ID_USUARIO: 'USR-0001', USUARIO: usuario, EMAIL: '', NOME: usuario, PERFIL: 'MASTER', EMPRESA: 'Grupo Chiacchio', SETOR: 'SAC', CODIGO_RCA: '', STATUS: 'ATIVO', SENHA_HASH: hash, DATA_CRIACAO: new Date().toISOString(), ULTIMO_ACESSO: '' };
-    await appendObjeto('USUARIOS', obj);
-    return res.json({ sucesso: true, mensagem: `Usuário "${usuario}" criado. Acesse o sistema e faça login.` });
-  } catch (e) {
-    return res.status(500).json({ sucesso: false, erro: e.message });
-  }
-});
+// Rota _reset removida por segurança (credenciais em query param, rota pública)
 
 // ===== BOOTSTRAP — criar primeiro usuário MASTER =====
 app.post('/api/bootstrap', async (req, res) => bootstrapHandler(req, res));
@@ -2535,164 +2533,6 @@ async function bootstrapHandler(req, res) {
   }
 }
 
-// ===== IMPORTADOR TEMPORÁRIO (F3) — remover após uso =====
-app.get('/api/_importar', async (req, res) => {
-  const secret = process.env.SESSION_SECRET || '';
-  if (!secret || req.query.secret !== secret) {
-    return res.status(403).json({ erro: 'Acesso negado.' });
-  }
-  const etapa = req.query.etapa || 'status';
-
-  if (etapa === 'status') {
-    return res.json({ ok: true, mensagem: 'Importador disponível.', etapas: ['debug','empresas','clientes','manifestacoes','rnc'] });
-  }
-
-  if (etapa === 'debug') {
-    try {
-      const { google: goog } = require('googleapis');
-      const creds = JSON.parse(process.env.GOOGLE_CREDENTIALS);
-      const auth = new goog.auth.GoogleAuth({ credentials: creds, scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'] });
-      const client = await auth.getClient();
-      const sheets = goog.sheets({ version: 'v4', auth: client });
-      const meta = await sheets.spreadsheets.get({ spreadsheetId: process.env.SPREADSHEET_ID });
-      const abas = meta.data.sheets.map(s => s.properties.title);
-      // Tenta ler primeiras 3 linhas de MANIFESTACOES
-      let amostra = null, erroAmostra = null;
-      try {
-        const r = await sheets.spreadsheets.values.get({ spreadsheetId: process.env.SPREADSHEET_ID, range: 'MANIFESTACOES!A1:E3' });
-        amostra = r.data.values;
-      } catch(e2) { erroAmostra = e2.message; }
-      // Tenta ler USUARIOS
-      let usuarios = null;
-      try {
-        const ru = await sheets.spreadsheets.values.get({ spreadsheetId: process.env.SPREADSHEET_ID, range: 'USUARIOS!A1:C5' });
-        usuarios = ru.data.values;
-      } catch(e3) { usuarios = `erro: ${e3.message}`; }
-      return res.json({ ok: true, spreadsheetId: process.env.SPREADSHEET_ID, titulo: meta.data.properties.title, totalAbas: abas.length, amostra, erroAmostra, usuarios });
-    } catch(e) {
-      return res.status(500).json({ ok: false, erro: e.message });
-    }
-  }
-
-  try {
-    const { google: goog } = require('googleapis');
-    const prismaDb = require('../database/connection');
-
-    async function getSheetsClient() {
-      const creds = JSON.parse(process.env.GOOGLE_CREDENTIALS);
-      const auth = new goog.auth.GoogleAuth({ credentials: creds, scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'] });
-      const client = await auth.getClient();
-      return goog.sheets({ version: 'v4', auth: client });
-    }
-    async function lerAba(sheets, nome, max = 5000) {
-      const r = await sheets.spreadsheets.values.get({ spreadsheetId: process.env.SPREADSHEET_ID, range: `${nome}!A1:AZ${max}` });
-      const rows = r.data.values || [];
-      if (rows.length < 2) return [];
-      const headers = rows[0];
-      return rows.slice(1).map(row => { const o = {}; headers.forEach((h, i) => { if (h) o[String(h).trim()] = row[i] || ''; }); return o; });
-    }
-
-    const sheets = await getSheetsClient();
-    const log = [];
-
-    // Empresas: extraídas de MANIFESTACOES.EMPRESA_NORMALIZADA
-    if (etapa === 'empresas') {
-      const rows = await lerAba(sheets, 'MANIFESTACOES').catch(() => []);
-      const nomes = [...new Set(rows.map(r => (r['EMPRESA_NORMALIZADA'] || r['EMPRESA_RECLAMADA'] || '').trim()).filter(Boolean))];
-      let ok = 0;
-      for (const nome of nomes) {
-        const codigo = nome.toUpperCase().replace(/\s+/g, '_').substring(0, 50);
-        await prismaDb.empresa.upsert({ where: { codigo }, update: { nome }, create: { codigo, nome } }).catch(() => {});
-        ok++;
-      }
-      log.push(`Empresas: ${ok} processadas`);
-    }
-
-    // Clientes: extraídos de MANIFESTACOES.EMPRESA_RECLAMANTE
-    if (etapa === 'clientes') {
-      const rows = await lerAba(sheets, 'MANIFESTACOES').catch(() => []);
-      const empresas = await prismaDb.empresa.findMany();
-      const empDefault = empresas[0];
-      if (!empDefault) { log.push('Clientes: nenhuma empresa encontrada, rode etapa=empresas primeiro'); }
-      else {
-        const nomes = [...new Set(rows.map(r => (r['EMPRESA_RECLAMANTE'] || r['CONTATO'] || '').trim()).filter(Boolean))];
-        let ok = 0, erros = 0;
-        for (const nome of nomes) {
-          const nomeTrunc = nome.substring(0, 200);
-          const exist = await prismaDb.cliente.findFirst({ where: { nome: nomeTrunc, empresaId: empDefault.id } });
-          if (!exist) await prismaDb.cliente.create({ data: { nome: nomeTrunc, empresaId: empDefault.id } }).catch(() => { erros++; });
-          ok++;
-        }
-        log.push(`Clientes: ${ok} processados, ${erros} erros`);
-      }
-    }
-
-    // Manifestações: aba MANIFESTACOES
-    if (etapa === 'manifestacoes') {
-      const rows = await lerAba(sheets, 'MANIFESTACOES').catch(() => []);
-      const empresas = await prismaDb.empresa.findMany();
-      let ok = 0, ignorados = 0, erros = 0;
-      for (const r of rows) {
-        const idOriginal = (r['ID_MANIFESTACAO'] || '').trim();
-        if (!idOriginal) { erros++; continue; }
-        const exist = await prismaDb.manifestacao.findFirst({ where: { idOriginal } });
-        if (exist) { ignorados++; continue; }
-        const nomeEmp = (r['EMPRESA_NORMALIZADA'] || r['EMPRESA_RECLAMADA'] || '').trim().toUpperCase();
-        const emp = empresas.find(e => e.nome.toUpperCase().includes(nomeEmp) || e.codigo === nomeEmp.replace(/\s+/g,'_')) || empresas[0];
-        const statusRaw = (r['STATUS'] || '').toLowerCase();
-        const status = statusRaw.includes('conclu') || statusRaw.includes('finaliz') ? 'CONCLUIDA' : statusRaw.includes('análise') || statusRaw.includes('andamento') ? 'EM_ANDAMENTO' : 'ABERTA';
-        const criadaEm = r['DATA_ABERTURA'] || r['DATA_CRIACAO'] ? new Date(r['DATA_ABERTURA'] || r['DATA_CRIACAO']) : new Date();
-        await prismaDb.manifestacao.create({ data: {
-          protocolo: idOriginal, idOriginal,
-          empresaId: emp ? emp.id : empresas[0].id,
-          empresaNome: r['EMPRESA_NORMALIZADA'] || r['EMPRESA_RECLAMADA'] || (emp ? emp.nome : ''),
-          contato: (r['EMPRESA_RECLAMANTE'] || r['CONTATO'] || '').substring(0, 200),
-          descricao: r['DESCRICAO_RECLAMACAO'] || '',
-          tipo: 'RECLAMACAO',
-          produtoNome: r['PRODUTO'] || null,
-          prioridade: r['PRIORIDADE'] || 'Media',
-          status,
-          criadaEm: isNaN(criadaEm) ? new Date() : criadaEm,
-        }}).catch(() => { erros++; });
-        ok++;
-      }
-      log.push(`Manifestações: ${ok} novas, ${ignorados} já existiam, ${erros} erros`);
-    }
-
-    // RNC: aba BANCO_RNC
-    if (etapa === 'rnc') {
-      const rows = await lerAba(sheets, 'BANCO_RNC').catch(() => []);
-      const empresas = await prismaDb.empresa.findMany();
-      let ok = 0, ignorados = 0, erros = 0;
-      for (const r of rows) {
-        const idOriginal = (r['ID_RNC'] || '').trim();
-        if (!idOriginal) { erros++; continue; }
-        const exist = await prismaDb.rnc.findFirst({ where: { idOriginal } });
-        if (exist) { ignorados++; continue; }
-        const nomeEmp = (r['EMPRESA_RECLAMADA'] || '').trim().toUpperCase();
-        const emp = empresas.find(e => e.nome.toUpperCase().includes(nomeEmp) || e.codigo === nomeEmp.replace(/\s+/g,'_')) || empresas[0];
-        const dataAbertura = r['DATA_ABERTURA'] ? new Date(r['DATA_ABERTURA']) : new Date();
-        await prismaDb.rnc.create({ data: {
-          idOriginal,
-          protocolo: idOriginal,
-          empresaId: emp ? emp.id : empresas[0].id,
-          origemTipo: r['TIPO'] || 'COMERCIAL_RECLAMACAO',
-          descricao: r['DESCRICAO'] || r['OCORRENCIA'] || r['CAUSA'] || '',
-          setor: r['SETOR'] || null,
-          responsavel: r['RESPONSAVEL'] || null,
-          dataAbertura: isNaN(dataAbertura) ? new Date() : dataAbertura,
-          status: r['STATUS'] || 'ABERTA',
-        }}).catch(() => { erros++; });
-        ok++;
-      }
-      log.push(`RNC: ${ok} novas, ${ignorados} já existiam, ${erros} erros`);
-    }
-
-    res.json({ ok: true, log });
-  } catch (e) {
-    res.status(500).json({ ok: false, erro: e.message });
-  }
-});
 
 // ===== MÓDULO COMPLETO DE APROVAÇÃO =====
 
@@ -3390,6 +3230,46 @@ app.post('/api/matriz-conhecimento/resolver', async (req, res) => {
   } catch (e) { res.status(500).json({ sucesso: false, erro: e.message }); }
 });
 
+// ===== IA: EXTRAIR CAMPOS DO SETOR =====
+app.post('/api/ia/extrair-setor', requerPerfil('MASTER','ANALISTA SAC','ADMINISTRADOR'), async (req, res) => {
+  try {
+    const { texto, setor } = req.body || {};
+    if (!texto || texto.trim().length < 20) return res.status(400).json({ sucesso: false, erro: 'Texto muito curto.' });
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) return res.status(400).json({ sucesso: false, erro: 'ANTHROPIC_API_KEY não configurada.' });
+    const prompt = `Você é um assistente que extrai informações estruturadas sobre setores de SAC a partir de documentos.
+
+Setor: ${setor || '(não informado)'}
+
+Texto fornecido:
+"""
+${texto.slice(0, 8000)}
+"""
+
+Extraia as seguintes informações do texto acima e retorne SOMENTE um JSON válido com estas chaves (omita as que não encontrar no texto):
+- DESCRICAO: descrição geral do setor (1-3 frases)
+- RESPONSABILIDADES: o que este setor faz e analisa (texto livre)
+- REGRAS_OPERACIONAIS: regras, políticas e critérios do setor (texto livre)
+- PROCEDIMENTOS_ORIENTACOES: procedimentos e orientações operacionais (texto livre)
+- ALERTAS: alertas, atenções e exceções importantes (texto livre)
+- SLA_HORAS: prazo em horas (número inteiro, somente se explícito)
+
+Retorne apenas o JSON, sem markdown, sem explicação.`;
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 1024, messages: [{ role: 'user', content: prompt }] })
+    });
+    const data = await resp.json();
+    const raw = data?.content?.[0]?.text || '';
+    let campos = {};
+    try { campos = JSON.parse(raw.replace(/^```json\s*/,'').replace(/```$/,'')); } catch(e) {
+      const m = raw.match(/\{[\s\S]*\}/); if (m) try { campos = JSON.parse(m[0]); } catch(e2) {}
+    }
+    res.json({ sucesso: true, campos });
+  } catch (e) { res.status(500).json({ sucesso: false, erro: e.message }); }
+});
+
 // ===== CATCH ALL =====
 app.use((req, res) => {
   res.status(404).json({ sucesso:false, erro:`Rota não encontrada: ${req.method} ${req.path}` });
@@ -3398,6 +3278,10 @@ app.use((err, req, res, next) => {
   console.error(err);
   res.status(500).json({ sucesso:false, erro:'Erro interno do servidor.' });
 });
+
+// P021: garantir cabeçalhos do LOG_SISTEMA na inicialização
+const LOG_SISTEMA_HEADERS = ['DATA_HORA','USUARIO','ACAO','ID_MANIFESTACAO','ENTIDADE','VALOR_ANTERIOR','VALOR_NOVO'];
+garantirAbaComCabecalhos('LOG_SISTEMA', LOG_SISTEMA_HEADERS).catch(e => console.error('Aviso: não foi possível garantir cabeçalhos LOG_SISTEMA:', e.message));
 
 if (require.main === module) {
   const PORT = process.env.PORT || 3000;
