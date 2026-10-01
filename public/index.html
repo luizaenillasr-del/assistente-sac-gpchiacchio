@@ -10873,9 +10873,30 @@ console.log('[base-conhecimento-setores] carregado');
     if (_origAbrirDossie) _origAbrirDossie(item);
   };
 
-  window.gerarFichaPDF = function() {
+  window.gerarFichaPDF = async function() {
     const item = window._dossieItem || _dossieItem;
     if (!item) { alert('Nenhuma manifestação aberta.'); return; }
+    const id = item.ID_MANIFESTACAO;
+    if (!id) { alert('ID da manifestação não encontrado.'); return; }
+    try {
+      const resp = await fetch(`/api/manifestacoes/${encodeURIComponent(id)}/pdf`, {
+        headers: { 'Authorization': 'Bearer ' + (sessionStorage.getItem('sac-token') || '') }
+      });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        alert('Erro ao gerar PDF: ' + (err.erro || resp.statusText));
+        return;
+      }
+      const blob = await resp.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `Ficha_${id}.pdf`;
+      document.body.appendChild(a); a.click();
+      setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 2000);
+      return;
+    } catch(e) { alert('Falha ao baixar PDF: ' + e.message); return; }
+
+    // Fallback legado jsPDF (nunca alcançado se servidor disponível)
     if (!window.jspdf) { alert('Biblioteca de PDF ainda carregando. Aguarde alguns segundos e tente novamente.'); return; }
 
     const { jsPDF } = window.jspdf;

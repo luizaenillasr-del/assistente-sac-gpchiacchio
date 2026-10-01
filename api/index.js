@@ -3658,6 +3658,38 @@ app.get('/api/biblioteca/fichas/:id', requerPerfil('MASTER','ADMINISTRADOR','ANA
   } catch(e) { res.status(500).json({ sucesso: false, erro: e.message }); }
 });
 
+// Download direto do PDF de uma manifestação
+app.get('/api/manifestacoes/:id/pdf', requerPerfil('MASTER','ANALISTA SAC','GESTOR SAC','APROVADOR','SETOR RESPONSÁVEL','CONSULTA','AUDITOR','RCA / REPRESENTANTE'), async (req, res) => {
+  try {
+    if (!gerarFichaPDF) return res.status(503).json({ sucesso: false, erro: 'Serviço de PDF não disponível.' });
+    const mans = await lerAba('MANIFESTACOES', 5000).catch(() => []);
+    const man = mans.find(m => m.ID_MANIFESTACAO === req.params.id);
+    if (!man) return res.status(404).json({ sucesso: false, erro: 'Manifestação não encontrada.' });
+    const evs = await lerAba('EVIDENCIAS', 2000).catch(() => []);
+    const evidencias = evs.filter(e => e.ID_MANIFESTACAO === man.ID_MANIFESTACAO);
+    const dtReg = new Date(man.DATA_REGISTRO || man.DATA_ABERTURA || Date.now());
+    const dataRegistroFmt = dtReg.toLocaleDateString('pt-BR') + ' ' + dtReg.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
+    const dadosPDF = {
+      protocolo: man.ID_MANIFESTACAO, dataRegistroFmt,
+      setorRecebimento: man.SETOR_RECEBIMENTO || man.SETOR_REGISTRANTE || '',
+      colaboradorRecebimento: man.COLABORADOR_RECEBIMENTO || man.REGISTRADO_POR || '',
+      nomeCliente: man.NOME_CLIENTE || man.CLIENTE_NOME || man.CONTATO || '',
+      empresa: man.EMPRESA_RECLAMADA || man.EMPRESA_RECLAMANTE || '',
+      telefone: man.TELEFONE || '', email: man.EMAIL || '',
+      canalRecebimento: man.CANAL || '', tipoManifestacao: man.TIPO || man.TIPO_MANIFESTACAO || 'Reclamação',
+      motivoManifestacao: man.MOTIVO || '', descricaoOriginal: man.DESCRICAO_ORIGINAL || man.DESCRICAO || man.DESCRICAO_RECLAMACAO || '',
+      produto: man.PRODUTO || '', lote: man.LOTE || '', quantidadeAfetada: man.QUANTIDADE || '',
+      observacoes: man.OBSERVACOES || '', totalEvidencias: evidencias.length,
+    };
+    const pdfBuffer = await gerarFichaPDF(dadosPDF);
+    const pdfNome = `Ficha_${man.ID_MANIFESTACAO}.pdf`;
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${pdfNome}"`);
+    res.setHeader('Content-Length', pdfBuffer.length);
+    res.send(pdfBuffer);
+  } catch(e) { res.status(500).json({ sucesso: false, erro: e.message }); }
+});
+
 // Regenerar PDF de uma ficha (MASTER/ADMINISTRADOR/SAC)
 app.post('/api/biblioteca/fichas/:id/regenerar-pdf', requerPerfil('MASTER','ADMINISTRADOR','ANALISTA SAC','SAC'), async (req, res) => {
   try {
