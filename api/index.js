@@ -366,19 +366,34 @@ async function _sheetsGetComRetry(sheets, params, tentativas = 3) {
   }
 }
 
+// Cache em memória para leituras do Sheets (60 s TTL) — evita quota exceeded
+const _lerAbaCache = new Map();
+const LER_ABA_TTL_MS = 60_000;
+
 async function lerAba(nomeAba, maxRows) {
   if (_sheetsMock?.lerAba) return _sheetsMock.lerAba(nomeAba, maxRows);
+  const cacheKey = `${nomeAba}|${maxRows||''}`;
+  const cached = _lerAbaCache.get(cacheKey);
+  if (cached && (Date.now() - cached.ts) < LER_ABA_TTL_MS) return cached.data;
   const sheets = await getSheets();
   const range = maxRows ? `${nomeAba}!A1:AZ${maxRows}` : nomeAba;
   const res = await _sheetsGetComRetry(sheets, { spreadsheetId: SPREADSHEET_ID, range });
   const rows = res.data.values || [];
-  if (rows.length < 2) return [];
+  if (rows.length < 2) { _lerAbaCache.set(cacheKey, { data: [], ts: Date.now() }); return []; }
   const headers = rows[0];
-  return rows.slice(1).map(row => {
+  const data = rows.slice(1).map(row => {
     const obj = {};
     headers.forEach((h, i) => { if (h) obj[h] = row[i] || ''; });
     return obj;
   });
+  _lerAbaCache.set(cacheKey, { data, ts: Date.now() });
+  return data;
+}
+
+function invalidarCacheAba(nomeAba) {
+  for (const key of _lerAbaCache.keys()) {
+    if (key.startsWith(nomeAba + '|')) _lerAbaCache.delete(key);
+  }
 }
 
 // Tenta 'Reclamações + devolutiva' primeiro; cai para 'Reclamações' se vazio
@@ -420,6 +435,7 @@ async function appendObjeto(nomeAba, objeto) {
   if (!headers.length) throw new Error(`A aba "${nomeAba}" não possui cabeçalhos.`);
   const linha = headers.map(h => objeto[h] !== undefined ? objeto[h] : '');
   await appendLinha(nomeAba, linha);
+  invalidarCacheAba(nomeAba);
   return { headers, linha };
 }
 
@@ -441,6 +457,7 @@ async function atualizarPorID(nomeAba, id, dados, camposID = ['ID_MANIFESTACAO',
   const valores = [...rows[rowIndex-1]];
   headers.forEach((h,i)=>{ if(Object.prototype.hasOwnProperty.call(dados,h)) valores[i]=dados[h]; });
   await updateLinha(nomeAba,rowIndex,valores);
+  invalidarCacheAba(nomeAba);
   return { rowIndex, headers, valores };
 }
 

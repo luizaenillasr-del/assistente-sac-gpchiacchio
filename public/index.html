@@ -1188,7 +1188,8 @@
 <nav class="sidebar">
   <div class="sidebar-logo">
     <img src="/logo-chiacchio.png" alt="Grupo Chiacchio" style="width:130px;display:block;margin-bottom:6px;filter:brightness(0) invert(1);opacity:0.9">
-    <h2 style="font-size:11px;font-weight:700;color:white;letter-spacing:0.04em">SAC GRUPO CHIACCHIO</h2>
+    <div style="font-size:9px;color:rgba(255,255,255,0.55);letter-spacing:0.05em;font-weight:500;margin-bottom:2px">Gestão de Manifestações</div>
+    <h2 style="font-size:11px;font-weight:700;color:white;letter-spacing:0.04em">SAC · Grupo Chiacchio</h2>
   </div>
 
   <div class="sidebar-section">Atendimento</div>
@@ -1196,7 +1197,7 @@
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
     Visão Geral
   </div>
-  <div class="sidebar-item" onclick="navigate('acompanhamento', this)">
+  <div class="sidebar-item" onclick="navigate('acompanhamento', this)" style="display:none">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
     Acompanhamento
   </div>
@@ -1215,12 +1216,12 @@
   </div>
 
   <div class="sidebar-section">Gestão</div>
-  <div class="sidebar-item" onclick="navigate('aprovadores', this)">Central de Aprovação</div>
-  <div class="sidebar-item" data-v5-page="representantes" onclick="navigate('representantes', this)">
+  <div class="sidebar-item" onclick="navigate('aprovadores', this)" style="display:none">Central de Aprovação</div>
+  <div class="sidebar-item" data-v5-page="representantes" onclick="navigate('representantes', this)" style="display:none">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/><path d="M21 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
     Representantes
   </div>
-  <div class="sidebar-item" data-v5-page="setor-responsavel" onclick="navigate('setor-responsavel', this)">
+  <div class="sidebar-item" data-v5-page="setor-responsavel" onclick="navigate('setor-responsavel', this)" style="display:none">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 7 7 3-7 3-3 7-3-7-7-3 7-3 3-7z"/></svg>
     Minha fila
   </div>
@@ -1237,37 +1238,24 @@
     Setores
   </div>
 
-  <div class="sidebar-item" onclick="navigate('biblioteca-fichas', this)">
+  <div class="sidebar-item" onclick="navigate('biblioteca-fichas', this)" style="display:none">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/></svg>
     Arquivo de Fichas
   </div>
 
-  <div class="sidebar-section">Inteligência</div>
-  <div class="sidebar-item" onclick="navigate('cerebro', this)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
-    Central de Dados
-  </div>
-  <div class="sidebar-item" onclick="navigate('painel-maquina', this)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-    Painel da Máquina
-  </div>
-  <div class="sidebar-item" onclick="navigate('sugestoes-melhoria', this)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-    Sugestões IA
-  </div>
-
-  <div class="sidebar-item" onclick="navigate('prazos-regionais', this)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/><path d="M2 12h3M19 12h3M12 2v3M12 19v3"/></svg>
-    Prazos Regionais
-  </div>
+  <div class="sidebar-section" style="display:none">Inteligência</div>
+  <div class="sidebar-item" onclick="navigate('cerebro', this)" style="display:none">Central de Dados</div>
+  <div class="sidebar-item" onclick="navigate('painel-maquina', this)" style="display:none">Painel da Máquina</div>
+  <div class="sidebar-item" onclick="navigate('sugestoes-melhoria', this)" style="display:none">Sugestões IA</div>
+  <div class="sidebar-item" onclick="navigate('prazos-regionais', this)" style="display:none">Prazos Regionais</div>
 
   <div class="sidebar-section">Regras</div>
   <div class="sidebar-item" onclick="navigate('matriz', this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>
     Matriz de Tratamento
   </div>
-  <div class="sidebar-item" onclick="navigate('causas', this)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a2 2 0 0 0-2 2v4"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+  <div class="sidebar-item" onclick="navigate('causas', this)" style="display:none">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a2 2 0 0 0-2 2v4"/><circle cx="9" cy="7" r="4"/></svg>
     Causas e Subcausas
   </div>
   <div class="sidebar-item" onclick="navigate('base-conhecimento', this)">
@@ -1275,10 +1263,7 @@
     Base de Conhecimento
   </div>
 
-  <div class="sidebar-item" onclick="navigate('matriz-conhecimento', this)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>
-    Matriz de Conhecimento
-  </div>
+  <div class="sidebar-item" onclick="navigate('matriz-conhecimento', this)" style="display:none">Matriz de Conhecimento</div>
 
   <div class="sidebar-bottom">
     <div class="sidebar-link">
@@ -1351,47 +1336,22 @@
         <span class="filter-last" id="last-update">Última atualização: --:--</span>
       </div>
 
-      <!-- KPIs Principais -->
+      <!-- KPIs Principais — 5 cards conforme mockup -->
       <div class="kpi-grid" style="grid-template-columns:repeat(5,1fr);margin-bottom:16px">
         <div class="kpi-card highlight" style="cursor:pointer" onclick="navigate('banco-manifestacoes', document.querySelector('[onclick*=banco-manifestacoes]'))">
-          <div class="kpi-label">Reclamações do período</div>
+          <div class="kpi-label">Manifestações em andamento</div>
           <div class="kpi-value" id="kpi-reclamacoes">--</div>
           <div class="kpi-delta" id="kpi-rec-pct">no período selecionado</div>
         </div>
-        <div class="kpi-card" style="cursor:pointer" onclick="navigate('banco-manifestacoes', document.querySelector('[onclick*=banco-manifestacoes]'))">
-          <div class="kpi-label">Em aberto</div>
-          <div class="kpi-value" id="kpi-aberto">--</div>
-          <div class="kpi-delta" id="kpi-andamento-delta">aguardando ação</div>
-        </div>
         <div class="kpi-card">
-          <div class="kpi-label">Concluídas</div>
-          <div class="kpi-value" id="kpi-encerradas">--</div>
-          <div class="kpi-delta" id="kpi-enc-pct">finalizadas</div>
+          <div class="kpi-label">Dentro do prazo de 72h</div>
+          <div class="kpi-value" id="kpi-aberto" style="color:var(--green,#16a34a)">--%</div>
+          <div class="kpi-delta up" id="kpi-andamento-delta">dos casos no prazo</div>
         </div>
         <div class="kpi-card" id="kpi-fora-sla-card">
-          <div class="kpi-label">Fora do SLA</div>
+          <div class="kpi-label">Atrasadas</div>
           <div class="kpi-value" id="kpi-atrasadas">--</div>
           <div class="kpi-delta down" id="kpi-fora-delta">fora do prazo</div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-label">Tempo médio de tratativa</div>
-          <div class="kpi-value" id="kpi-tempo-medio">--</div>
-          <div class="kpi-delta">horas por caso</div>
-        </div>
-      </div>
-
-      <!-- Métricas da Ferramenta -->
-      <div style="margin-bottom:8px;font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.06em">Métricas da Ferramenta</div>
-      <div class="kpi-grid" style="grid-template-columns:repeat(5,1fr);margin-bottom:16px">
-        <div class="kpi-card">
-          <div class="kpi-label">SLA geral</div>
-          <div class="kpi-value" id="kpi-prazo">--%</div>
-          <div class="kpi-delta">dentro do prazo</div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-label">Dentro do prazo</div>
-          <div class="kpi-value" id="kpi-dentro-prazo">--</div>
-          <div class="kpi-delta up" id="kpi-dentro-delta">casos</div>
         </div>
         <div class="kpi-card" style="cursor:pointer" onclick="navigate('banco-rnc', document.querySelector('[onclick*=banco-rnc]'))">
           <div class="kpi-label">RNCs abertas</div>
@@ -1399,16 +1359,23 @@
           <div class="kpi-delta">não conformidades</div>
         </div>
         <div class="kpi-card">
-          <div class="kpi-label">Pesquisas recebidas</div>
-          <div class="kpi-value" id="kpi-pesquisas-mes">--</div>
-          <div class="kpi-delta" id="kpi-pesquisas-mes-label">no mês</div>
-        </div>
-        <div class="kpi-card" style="border-color:#FCA5A5">
-          <div class="kpi-label">Viraram reclamação</div>
-          <div class="kpi-value" id="kpi-pesquisas-rec" style="color:var(--red)">--</div>
-          <div class="kpi-delta" id="kpi-pesquisas-rec-pct">nota crítica ≤ 6</div>
+          <div class="kpi-label">Sugestões da IA aceitas</div>
+          <div class="kpi-value" id="kpi-ia-aceitas">--%</div>
+          <div class="kpi-delta" id="kpi-ia-aceitas-delta">das sugestões aceitas</div>
         </div>
       </div>
+
+      <!-- Métricas secundárias (ocultas por padrão — mantidas para compatibilidade JS) -->
+      <span id="kpi-encerradas" style="display:none"></span>
+      <span id="kpi-enc-pct" style="display:none"></span>
+      <span id="kpi-prazo" style="display:none"></span>
+      <span id="kpi-dentro-prazo" style="display:none"></span>
+      <span id="kpi-dentro-delta" style="display:none"></span>
+      <span id="kpi-tempo-medio" style="display:none"></span>
+      <span id="kpi-pesquisas-mes" style="display:none"></span>
+      <span id="kpi-pesquisas-mes-label" style="display:none"></span>
+      <span id="kpi-pesquisas-rec" style="display:none"></span>
+      <span id="kpi-pesquisas-rec-pct" style="display:none"></span>
       <!-- hidden IDs still used by renderDashboard -->
       <span id="kpi-andamento" style="display:none"></span>
       <span id="kpi-total" style="display:none"></span>
@@ -2213,6 +2180,7 @@
         <button class="tab-btn active" onclick="filterBancoTab(this, 'todas')">Todas · <span id="tab-total">--</span></button>
         <button class="tab-btn" onclick="filterBancoTab(this, 'atrasadas')">Atrasadas · <span id="tab-atrasadas">--</span></button>
         <button class="tab-btn" onclick="filterBancoTab(this, 'aguardando')">Aguardando setor · <span id="tab-aguardando">--</span></button>
+        <button class="tab-btn" onclick="filterBancoTab(this, 'minhas')">Minhas · <span id="tab-minhas">--</span></button>
         <button class="tab-btn" onclick="filterBancoTab(this, 'encerradas')">Encerradas · <span id="tab-encerradas">--</span></button>
       </div>
 
@@ -5101,33 +5069,50 @@ function renderDashboard(data) {
   const recs = data._filteredRecs || _dashData.recs;
   const mans = data._filteredMans || _dashData.mans;
 
-  // === KPIs PRINCIPAIS ===
-  const emAberto = recs.filter(r => (r['Status']||'').toUpperCase().includes('ABERTO')).length;
-  const encPct = total > 0 ? Math.round(encerradas/total*100) : 0;
-  // kpi-reclamacoes: count de reclamações do período (somente aba "Reclamações + devolutiva", já filtrada por período/empresa/setor)
+  // === KPIs PRINCIPAIS (layout mockup) ===
   const totalPeriodo = recs.length;
+  const emAndamentoAtivo = emAndamento || mans.filter(m => !(m.STATUS||'').toUpperCase().includes('FINALIZ') && !(m.STATUS||'').toUpperCase().includes('ENCERR')).length;
+  const slaVal = slaPercent !== null && slaPercent !== 'Sem dados suficientes' ? slaPercent + '%' : '--%';
 
-  document.getElementById('kpi-andamento').textContent = emAndamento || mans.filter(m => !(m.STATUS||'').toUpperCase().includes('FINALIZ')).length;
-  document.getElementById('kpi-total').textContent = total;
-  document.getElementById('kpi-reclamacoes').textContent = totalPeriodo;
-  document.getElementById('kpi-rec-pct').textContent = totalPeriodo === 1 ? '1 reclamação' : totalPeriodo + ' reclamações';
-  document.getElementById('kpi-aberto').textContent = emAberto || (total - encerradas);
-  document.getElementById('kpi-andamento-delta').textContent = 'aguardando ação';
-  document.getElementById('kpi-encerradas').textContent = encerradas;
-  document.getElementById('kpi-enc-pct').textContent = encPct + '% do total';
-  document.getElementById('kpi-rncs').textContent = rncs || 0;
-  // Destacar "Fora do SLA" em vermelho se > 0
+  // KPI 1 — Manifestações em andamento
+  document.getElementById('kpi-reclamacoes').textContent = emAndamentoAtivo;
+  document.getElementById('kpi-rec-pct').textContent = totalPeriodo + (totalPeriodo === 1 ? ' reclamação' : ' reclamações') + ' no período';
+
+  // KPI 2 — Dentro do prazo de 72h (%)
+  document.getElementById('kpi-aberto').textContent = slaVal;
+  document.getElementById('kpi-andamento-delta').textContent = dentroPrazo > 0 ? dentroPrazo + ' dentro do prazo' : 'dos casos no prazo';
+
+  // KPI 3 — Atrasadas (count)
+  document.getElementById('kpi-atrasadas').textContent = foraPrazo || 0;
+  document.getElementById('kpi-fora-delta').textContent = foraPrazo > 0 ? 'fora do prazo' : 'nenhuma atrasada';
   const foraSlaCard = document.getElementById('kpi-fora-sla-card');
   if (foraSlaCard) { foraSlaCard.style.borderColor = foraPrazo > 0 ? 'var(--red)' : ''; }
 
-  // === BLOCO 2 — SLA ===
-  const slaVal = slaPercent !== null && slaPercent !== 'Sem dados suficientes' ? slaPercent + '%' : 'Sem dados';
+  // KPI 4 — RNCs abertas
+  document.getElementById('kpi-rncs').textContent = rncs || 0;
+
+  // KPI 5 — Sugestões da IA aceitas (%)
+  const totalComIA = mans.filter(m => m.SUGESTAO_IA || m['Sugestão IA'] || m['IA_RESULTADO']).length;
+  const totalIAaceitas = mans.filter(m => {
+    const d = (m.DECISAO_ANALISTA || m['Decisão Analista'] || '').toUpperCase();
+    return (m.SUGESTAO_IA || m['Sugestão IA']) && (d === 'ACEITA' || d === 'CONFORME IA' || d.includes('ACEIT'));
+  }).length;
+  const iaAceitasPct = totalComIA > 0 ? Math.round(totalIAaceitas / totalComIA * 100) + '%' : '--%';
+  const elIA = document.getElementById('kpi-ia-aceitas');
+  if (elIA) elIA.textContent = iaAceitasPct;
+  const elIAdelta = document.getElementById('kpi-ia-aceitas-delta');
+  if (elIAdelta) elIAdelta.textContent = totalComIA > 0 ? totalIAaceitas + ' de ' + totalComIA + ' sugestões' : 'sem sugestões ainda';
+
+  // IDs legados — compatibilidade com overrides
+  document.getElementById('kpi-andamento').textContent = emAndamentoAtivo;
+  document.getElementById('kpi-total').textContent = total;
+  document.getElementById('kpi-encerradas').textContent = encerradas;
+  const encPct = total > 0 ? Math.round(encerradas/total*100) : 0;
+  document.getElementById('kpi-enc-pct').textContent = encPct + '% do total';
   document.getElementById('kpi-prazo').textContent = slaVal;
-  document.getElementById('kpi-dentro-prazo').textContent = dentroPrazo || 'Sem dados';
+  document.getElementById('kpi-dentro-prazo').textContent = dentroPrazo || 0;
   document.getElementById('kpi-dentro-delta').textContent = dentroPrazo > 0 ? 'dentro do prazo' : 'sem dados suficientes';
-  document.getElementById('kpi-atrasadas').textContent = foraPrazo || 0;
-  document.getElementById('kpi-fora-delta').textContent = foraPrazo > 0 ? 'fora do prazo' : 'nenhuma atrasada';
-  document.getElementById('kpi-tempo-medio').textContent = tempoMedio > 0 ? tempoMedio + 'h' : 'Sem dados';
+  document.getElementById('kpi-tempo-medio').textContent = tempoMedio > 0 ? tempoMedio + 'h' : '--';
 
   // === ETAPAS ===
   const statusCount = {};
@@ -6479,6 +6464,7 @@ function renderBanco() {
   if (bancoFilter === 'atrasadas') data = data.filter(m => (m.DENTRO_DO_SLA||'').toUpperCase() === 'NÃO');
   else if (bancoFilter === 'aguardando') data = data.filter(m => (m.SETOR_DESTINADO || m.SETOR_SUGERIDO) && !(m.STATUS||'').includes('FINALIZ'));
   else if (bancoFilter === 'encerradas') data = data.filter(m => { const s=(m.STATUS||'').toUpperCase(); return s.includes('ENCERR') || s.includes('FINALIZ') || s.includes('CONCLUÍD'); });
+  else if (bancoFilter === 'minhas') { const meNome = (document.getElementById('sidebar-user-name')?.textContent||'').trim(); if (meNome && meNome !== 'Usuário') data = data.filter(m => (m.RESPONSAVEL||m.ANALISTA_RESPONSAVEL||m.ATENDENTE||'').toLowerCase().includes(meNome.toLowerCase())); }
 
   // Apply column filters
   if (bancoFiltros.status) data = data.filter(m => (m.STATUS||'') === bancoFiltros.status);
@@ -6506,7 +6492,10 @@ function renderBanco() {
   document.getElementById('tab-total').textContent = base.length;
   document.getElementById('tab-atrasadas').textContent = base.filter(m => (m.DENTRO_DO_SLA||'').toUpperCase() === 'NÃO').length;
   document.getElementById('tab-aguardando').textContent = base.filter(m => (m.SETOR_DESTINADO || m.SETOR_SUGERIDO) && !(m.STATUS||'').includes('FINALIZ')).length;
-  document.getElementById('tab-encerradas').textContent = base.filter(m => (m.STATUS||'').toUpperCase().includes('FINALIZ')).length;
+  document.getElementById('tab-encerradas').textContent = base.filter(m => { const s=(m.STATUS||'').toUpperCase(); return s.includes('ENCERR')||s.includes('FINALIZ')||s.includes('CONCLUÍD'); }).length;
+  const meNome2 = (document.getElementById('sidebar-user-name')?.textContent||'').trim();
+  const minhasCount = meNome2 && meNome2 !== 'Usuário' ? base.filter(m => (m.RESPONSAVEL||m.ANALISTA_RESPONSAVEL||m.ATENDENTE||'').toLowerCase().includes(meNome2.toLowerCase())).length : '—';
+  const elMinhas = document.getElementById('tab-minhas'); if (elMinhas) elMinhas.textContent = minhasCount;
 
   // Pagination
   const totalPages = Math.max(1, Math.ceil(data.length / BANCO_PAGE_SIZE));
