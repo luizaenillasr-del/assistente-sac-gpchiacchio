@@ -60,7 +60,7 @@ async function calcularAtraso(manifestacao) {
     const params = await sheets.lerAba('PARAMETROS_LOGISTICA', 100).catch(() => []);
     const cadeiaCfg = params.find(r => (r.PARAMETRO || '').toUpperCase() === 'CADEIA_ENTREGA');
     if (cadeiaCfg?.VALOR) cadeia = cadeiaCfg.VALOR.split('|').map(s => s.trim());
-  } catch {}
+  } catch (e) { console.warn('[TratativaEngine] Falha ao ler PARAMETROS_LOGISTICA:', e.message); }
 
   // Diagnóstico básico por palavras-chave
   let etapaDesviada = null;

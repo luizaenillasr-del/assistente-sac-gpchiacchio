@@ -8,6 +8,11 @@ const mcService = require('./services/matrizConhecimentoService');
 const documentService = require('./services/documentService');
 const { tratativaEngine, devolutivaEngine, assertividade: assertividadeService } = cerebroService;
 
+// Injeção de mock Sheets para testes — nunca ativo em produção (env var não existe em prod)
+const _sheetsMock = process.env.SHEETS_MOCK_PATH ? (() => { try { return require(process.env.SHEETS_MOCK_PATH); } catch(e) { console.warn('[MOCK] falhou ao carregar:', e.message); return null; } })() : null;
+// Flag de leitura PG: padrão false = leituras sempre do Sheets (seguro ao configurar DATABASE_URL)
+const PG_LEITURA_ATIVA = String(process.env.PG_LEITURA_ATIVA || 'false').toLowerCase() === 'true';
+
 // Repositórios PostgreSQL (F4/F7) — falha silenciosa, fallback para Sheets
 let usuarioRepo, manifestacaoRepo, rncRepo, empresaRepo, conhecimentoRepo;
 try {
@@ -69,11 +74,57 @@ if (!process.env.SESSION_SECRET || process.env.SESSION_SECRET.length < 32) {
   console.error('FATAL: SESSION_SECRET não definida ou com menos de 32 caracteres. Defina SESSION_SECRET nas variáveis de ambiente.');
   if (process.env.NODE_ENV === 'production') process.exit(1);
 }
+// B5: Aviso explícito sobre usuários demo em produção
+if (String(process.env.DEMO_LOGIN_ENABLED || 'false').toLowerCase() === 'true' && process.env.NODE_ENV === 'production') {
+  console.error('[SEGURANÇA B5] DEMO_LOGIN_ENABLED=true em NODE_ENV=production. Usuários demo ATIVOS em produção. Defina DEMO_LOGIN_ENABLED=false imediatamente.');
+}
+if (String(process.env.DEMO_LOGIN_ENABLED || 'false').toLowerCase() !== 'true') {
+  console.info('[SEGURANÇA] Usuários demo desabilitados (DEMO_LOGIN_ENABLED != true). Correto para produção.');
+}
 const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex');
 const SESSION_TTL_MS = 8 * 60 * 60 * 1000;
 
 function normalizarTexto(v){
   return String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+}
+
+// \u2500\u2500\u2500 Mapa can\u00f4nico de empresas do Grupo Chiacchio \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+// C\u00f3digo can\u00f4nico \u2192 lista de grafias aceitas (normalizadas)
+const EMPRESA_MAP = {
+  CHIACCHIO: ['chiacchio embalagens', 'chiachio embalagens', 'chiacchio'],
+  PLASCHIO:  ['plaschio'],
+  TUBAHIA:   ['tubahia', 'cesbap'],
+  MASTER:    ['grupo chiacchio'], // empresa do usu\u00e1rio MASTER = acesso global
+};
+
+// Coluna de empresa correta por aba
+const COLUNA_EMPRESA_ABA = {
+  MANIFESTACOES:              'EMPRESA_RECLAMADA',
+  'Reclama\u00e7\u00f5es':              'Empresa',
+  'Reclama\u00e7\u00f5es + devolutiva': 'Empresa',
+  BANCO_HISTORICO:            'DRV_EMPRESA_NORMALIZADA',
+  BANCO_RNC:                  'EMPRESA_RECLAMADA',
+  DEVOLUTIVAS:                'EMPRESA',
+  FILA_APROVACAO:             'EMPRESA',
+  CEREBRO_APRENDIZADO:        'EMPRESA',
+  PADROES_VALIDADOS:          'EMPRESA',
+};
+
+// Abas de configura\u00e7\u00e3o: sem empresa = global (vis\u00edvel para todos)
+const ABAS_CONFIGURACAO = new Set([
+  'CONFIG_SETORES','REGRAS_SETORES','PROCEDIMENTOS','POLITICAS','CAUSAS',
+  'MATRIZ_CONHECIMENTO','MATRIZ_RISCOS','FAQ_SETORES',
+  'TIPOS_RECLAMACAO','REGRAS_ROTEAMENTO','SLA_ESCALONAMENTO','PERGUNTAS_ANALISE',
+]);
+
+// Retorna o c\u00f3digo can\u00f4nico (CHIACCHIO | PLASCHIO | TUBAHIA | MASTER) ou null
+function empresaCanonica(texto) {
+  const norm = normalizarTexto(texto || '');
+  if (!norm) return null;
+  for (const [cod, grafias] of Object.entries(EMPRESA_MAP)) {
+    if (grafias.some(g => norm === g)) return cod;
+  }
+  return null;
 }
 function b64url(v){ return Buffer.from(v).toString('base64url'); }
 function assinarToken(payload){
@@ -95,8 +146,11 @@ function verificarToken(token){
 function senhaValida(informada, armazenada){
   if(armazenada === undefined || armazenada === null) return false;
   const s=String(armazenada);
+  // Segurança B1: NUNCA aceitar senha em texto puro. Apenas hashes são válidos.
   if(s.startsWith('sha256:')) return 'sha256:'+crypto.createHash('sha256').update(String(informada||'')).digest('hex')===s;
-  return String(informada||'')===s;
+  // Senha sem hash no storage = configuração inválida. Rejeitar para forçar migração.
+  console.warn('[SEGURANÇA] Tentativa de login com senha sem hash no storage. Configure sha256: no campo SENHA.');
+  return false;
 }
 
 const DEMO_USUARIOS = [
@@ -182,10 +236,58 @@ function requerPerfil(...perfis){
   };
 }
 
+// B2: Isolamento de empresa — comparação por código canônico
+function pertenceEmpresa(userEmpresa, registroEmpresa) {
+  if (!userEmpresa) return true;
+  const userCod = empresaCanonica(userEmpresa);
+  if (!userCod || userCod === 'MASTER') return true; // MASTER vê tudo
+  const recCod = empresaCanonica(registroEmpresa || '');
+  if (!recCod) return false; // empresa desconhecida = invisível para não-MASTER
+  return userCod === recCod;
+}
+
+function middlewareEscopoEmpresa() {
+  return (req, res, next) => {
+    if (!req.user) return next();
+    const perfil = perfilCanonico(req.user.perfil);
+    if (perfil === 'MASTER') return next(); // MASTER tem acesso global
+    req._empresaScope = req.user.empresa || null;
+    next();
+  };
+}
+
+// Filtra itens de atendimento pelo escopo de empresa do usuário.
+// campoEmpresa: coluna exata do campo de empresa nesta aba (use COLUNA_EMPRESA_ABA).
+// Sem empresa no item → invisível para não-MASTER (dado sem dono).
+function filtrarPorEmpresa(itens, req, campoEmpresa) {
+  if (!req._empresaScope) return itens;
+  const userCod = empresaCanonica(req._empresaScope);
+  if (!userCod || userCod === 'MASTER') return itens;
+  return itens.filter(item => {
+    const val = item[campoEmpresa] || '';
+    if (!val) return false;
+    return empresaCanonica(val) === userCod;
+  });
+}
+
+// Filtra itens de configuração/conhecimento.
+// Sem empresa no item → global (visível para todos). Com empresa → apenas daquela empresa e MASTER.
+function filtrarPorEmpresaConfig(itens, req, campoEmpresa = 'EMPRESA') {
+  if (!req._empresaScope) return itens;
+  const userCod = empresaCanonica(req._empresaScope);
+  if (!userCod || userCod === 'MASTER') return itens;
+  return itens.filter(item => {
+    const val = item[campoEmpresa] || '';
+    if (!val) return true; // sem empresa = global
+    return empresaCanonica(val) === userCod;
+  });
+}
+
 async function carregarUsuarioPorLogin(login){
   const alvo=normalizarTexto(login);
   const demoEnabled=String(process.env.DEMO_LOGIN_ENABLED||'false').toLowerCase()==='true';
-  if(demoEnabled){
+  const emProducao = process.env.NODE_ENV==='production' || process.env.VERCEL_ENV==='production';
+  if(demoEnabled && !emProducao){
     const demo=DEMO_USUARIOS.find(u=>normalizarTexto(u.USUARIO)===alvo);
     if(demo) return demo;
   }
@@ -231,10 +333,29 @@ async function getSheets() {
   return google.sheets({ version: 'v4', auth: client });
 }
 
+async function _sheetsGetComRetry(sheets, params, tentativas = 3) {
+  let espera = 1000;
+  for (let i = 0; i < tentativas; i++) {
+    try {
+      return await sheets.spreadsheets.values.get(params);
+    } catch (e) {
+      const status = e?.response?.status || e?.code;
+      // Retry apenas em 429 (rate limit) e 503 (serviço indisponível)
+      if ((status === 429 || status === 503) && i < tentativas - 1) {
+        await new Promise(r => setTimeout(r, espera));
+        espera *= 2;
+        continue;
+      }
+      throw e;
+    }
+  }
+}
+
 async function lerAba(nomeAba, maxRows) {
+  if (_sheetsMock?.lerAba) return _sheetsMock.lerAba(nomeAba, maxRows);
   const sheets = await getSheets();
   const range = maxRows ? `${nomeAba}!A1:AZ${maxRows}` : nomeAba;
-  const res = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range });
+  const res = await _sheetsGetComRetry(sheets, { spreadsheetId: SPREADSHEET_ID, range });
   const rows = res.data.values || [];
   if (rows.length < 2) return [];
   const headers = rows[0];
@@ -247,12 +368,14 @@ async function lerAba(nomeAba, maxRows) {
 
 // Tenta 'Reclamações + devolutiva' primeiro; cai para 'Reclamações' se vazio
 async function lerAbaReclamacoes(max = 2000) {
+  if (_sheetsMock?.lerAbaReclamacoes) return _sheetsMock.lerAbaReclamacoes(max);
   const r1 = await lerAba('Reclamações + devolutiva', max).catch(() => []);
   if (r1.length > 0) return r1;
   return lerAba('Reclamações', max).catch(() => []);
 }
 
 async function appendLinha(nomeAba, linha) {
+  if (_sheetsMock?.appendLinha) return _sheetsMock.appendLinha(nomeAba, linha);
   const sheets = await getSheets();
   await sheets.spreadsheets.values.append({
     spreadsheetId: SPREADSHEET_ID, range: nomeAba,
@@ -269,6 +392,7 @@ async function updateLinha(nomeAba, rowIndex, linha) {
 }
 
 async function obterCabecalhos(nomeAba) {
+  if (_sheetsMock?.obterCabecalhos) return _sheetsMock.obterCabecalhos(nomeAba);
   const sheets = await getSheets();
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: SPREADSHEET_ID, range: `${nomeAba}!1:1`, valueRenderOption: 'FORMATTED_VALUE',
@@ -285,6 +409,7 @@ async function appendObjeto(nomeAba, objeto) {
 }
 
 async function atualizarPorID(nomeAba, id, dados, camposID = ['ID_MANIFESTACAO','ID_RNC','ID_APROVADOR','ID_SUGESTAO','ID_ANEXO','ID_EVENTO']) {
+  if (_sheetsMock?.atualizarPorID) return _sheetsMock.atualizarPorID(nomeAba, id, dados, camposID);
   const sheets = await getSheets();
   const res = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: nomeAba, valueRenderOption: 'FORMATTED_VALUE' });
   const rows = res.data.values || [];
@@ -325,6 +450,12 @@ async function registrarAuditoria(usuario, acao, idManifestacao, entidade, valor
     ];
     await appendLinha('LOG_SISTEMA', linha);
   } catch (e) { console.error('Erro auditoria:', e.message); }
+}
+
+// Filtra itens de teste (prefixo TESTE-GOLIVE) das métricas
+function isTeste(item) {
+  const campos = ['ID_MANIFESTACAO','ID_RNC','TITULO','NAO_CONFORMIDADE','Motivo da Reclamação','Descrição do Problema'];
+  return campos.some(c => String(item[c] || '').toUpperCase().startsWith('TESTE-GOLIVE'));
 }
 
 // ===== MOTOR DE REGRAS — MÚLTIPLOS SETORES =====
@@ -389,9 +520,13 @@ async function motorRegras(descricao, tipo, empresa) {
       .filter(p => p.TIPO_RECLAMACAO === 'TODOS' || (tipoID && (p.TIPO_RECLAMACAO || '').includes(tipoID)))
       .slice(0, 6).map(p => ({ id: p.ID_PERGUNTA, pergunta: p.PERGUNTA, obrigatoria: p.OBRIGATORIA === 'SIM' }));
 
-    const geraRNC = texto.includes('reincidência') || texto.includes('terceira') || texto.includes('repetiu') || prioridade === 'Alta';
+    // B6: geraRNC NUNCA é definido automaticamente por palavras-chave.
+    // RNC é sempre decisão humana. Motor de regras sinaliza para revisão, não cria RNC.
+    // rncSinalizado indica que o caso tem características que MERECEM revisão de RNC.
+    const rncSinalizado = texto.includes('reincidência') || texto.includes('terceira') || texto.includes('repetiu') || prioridade === 'Alta';
+    const geraRNC = false; // Imutável. RNC só é criado por decisão humana explícita.
 
-    return { tipoDetectado, tipoID, tipoConfianca, setores, regraAplicada, slaHoras, prioridade, procedimentoSugerido, perguntasNecessarias, geraRNC };
+    return { tipoDetectado, tipoID, tipoConfianca, setores, regraAplicada, slaHoras, prioridade, procedimentoSugerido, perguntasNecessarias, geraRNC, rncSinalizado };
   } catch (e) {
     console.error('Erro motor regras:', e.message);
     return { tipoDetectado: 'Não identificado', tipoConfianca: 0, setores: ['SAC'], slaHoras: 72, prioridade: 'Média', geraRNC: false };
@@ -476,8 +611,29 @@ function normalizarData(val) {
 // ROTAS
 // ===========================================================
 
-app.get('/api/health', (req, res) => {
-  res.json({ sucesso: true, status: 'ok', versao: '5.6.0', sistema: 'Assistente SAC Chiacchio', ts: new Date().toISOString() });
+app.get('/api/health', async (req, res) => {
+  const saude = {
+    sucesso: true, status: 'ok', versao: '5.6.0',
+    sistema: 'Assistente SAC Chiacchio', ts: new Date().toISOString(),
+    postgresql: 'não verificado',
+    sheets: 'não verificado',
+    demoAtivo: String(process.env.DEMO_LOGIN_ENABLED || 'false').toLowerCase() === 'true',
+  };
+  // Verificar PG (diferencia online/offline/vazio)
+  if (manifestacaoRepo) {
+    try {
+      const count = await manifestacaoRepo.findAll({ limit: 1 }).catch(() => null);
+      if (count === null) saude.postgresql = 'offline';
+      else if (count.length === 0) saude.postgresql = 'online_vazio';
+      else saude.postgresql = 'online_com_dados';
+    } catch (e) { saude.postgresql = 'offline'; saude.pgErro = e.message; }
+  } else { saude.postgresql = 'repositório_não_carregado'; }
+  // Verificar Sheets (rápido)
+  try {
+    const rows = await lerAba('MANIFESTACOES', 2).catch(() => null);
+    saude.sheets = rows !== null ? 'acessível' : 'inacessível';
+  } catch (e) { saude.sheets = 'erro'; }
+  res.json(saude);
 });
 
 app.get('/', (req, res) => {
@@ -485,6 +641,27 @@ app.get('/', (req, res) => {
 });
 
 // ===== MIDDLEWARE AUTH =====
+// Cache leve de status de usuário: evita ler Sheets a cada request.
+// TTL 2 minutos — usuário desativado expulso em até 2 min.
+const _statusCache = new Map(); // login → { status, ts }
+const _STATUS_CACHE_TTL = 2 * 60 * 1000;
+
+async function verificarStatusUsuario(login) {
+  const agora = Date.now();
+  const cached = _statusCache.get(login);
+  if (cached && (agora - cached.ts) < _STATUS_CACHE_TTL) return cached.status;
+  try {
+    const rows = await lerAba('USUARIOS', 1000);
+    const u = rows.find(r => normalizarTexto(r.USUARIO||'') === normalizarTexto(login));
+    const status = u ? (u.STATUS || 'ATIVO').toUpperCase() : 'ATIVO';
+    _statusCache.set(login, { status, ts: agora });
+    return status;
+  } catch(e) {
+    // Falha ao verificar: preservar sessão (fail-open) para evitar bloqueio por erro de Sheets
+    return 'ATIVO';
+  }
+}
+
 app.use('/api', async (req,res,next)=>{
   const publicPaths = new Set([
     '/health',
@@ -499,6 +676,12 @@ app.use('/api', async (req,res,next)=>{
   const token=header.startsWith('Bearer ')?header.slice(7):'';
   const payload=verificarToken(token);
   if(!payload) return res.status(401).json({sucesso:false,erro:'Sessão inválida ou expirada.'});
+  // Item10: verificar se usuário ainda está ativo (detecta desativação pós-login)
+  const status = await verificarStatusUsuario(payload.usuario);
+  if (status === 'INATIVO') {
+    _statusCache.delete(payload.usuario); // forçar re-verificação na próxima vez
+    return res.status(401).json({sucesso:false,erro:'Usuário inativo. Sessão encerrada.'});
+  }
   req.user=payload;
   next();
 });
@@ -594,7 +777,9 @@ app.post('/api/analise', async (req, res) => {
 
 app.post('/api/analise/similares', async (req, res) => {
   try {
-    const similares = await cerebroService.buscarCasosSimilares(req.body || {}, Number(req.body?.limite || 8));
+    // B2/Item11: isolar similares por empresa do usuário autenticado
+    const empresaFiltro = req.user?.empresa || null;
+    const similares = await cerebroService.buscarCasosSimilares(req.body || {}, Number(req.body?.limite || 8), empresaFiltro);
     res.json({ sucesso:true, total:similares.length, itens:similares });
   } catch(e) {
     res.status(500).json({ sucesso:false, erro:e.message, itens:[] });
@@ -633,13 +818,16 @@ app.post('/api/representantes/manifestacoes', requerPerfil('RCA / REPRESENTANTE'
 });
 
 // ===== MANIFESTAÇÕES =====
-app.get('/api/manifestacoes', async (req, res) => {
+app.get('/api/manifestacoes', middlewareEscopoEmpresa(), async (req, res) => {
   try {
     // F6: tenta PostgreSQL primeiro
     if (manifestacaoRepo) {
       try {
         const filtros = {};
-        if (req.query.empresaId) filtros.empresaId = req.query.empresaId;
+        // B2: empresa vem do usuário autenticado, não do frontend
+        const _isMasterMf = req.user && perfilCanonico(req.user.perfil) === 'MASTER';
+        if (_isMasterMf && req.query.empresaId) filtros.empresaId = req.query.empresaId;
+        else if (!_isMasterMf && req.user?.empresa) filtros.empresaId = req.user.empresa;
         if (req.query.status) filtros.status = req.query.status;
         const pgData = await manifestacaoRepo.findAll(filtros);
         if (pgData && pgData.length > 0) {
@@ -671,11 +859,13 @@ app.get('/api/manifestacoes', async (req, res) => {
       const rca=normalizarTexto(req.user.codigoRCA||req.user.usuario);
       data=data.filter(r=>normalizarTexto(r.USUARIO_CRIACAO||'')===normalizarTexto(req.user.usuario)||normalizarTexto(r.CODIGO_RCA||'')===rca||normalizarTexto(r.RCA||'')===rca);
     }
+    // B2: filtrar por empresa se não for MASTER
+    data = filtrarPorEmpresa(data, req, COLUNA_EMPRESA_ABA.MANIFESTACOES);
     res.json({ sucesso: true, total: data.length, itens: data });
   } catch (e) { res.status(500).json({ sucesso: false, erro: e.message, dados: [] }); }
 });
 
-app.get('/api/manifestacoes/:id', async (req, res) => {
+app.get('/api/manifestacoes/:id', middlewareEscopoEmpresa(), async (req, res) => {
   try {
     // F6: tenta PostgreSQL primeiro
     if (manifestacaoRepo) {
@@ -684,6 +874,13 @@ app.get('/api/manifestacoes/:id', async (req, res) => {
         if (!pg) pg = await manifestacaoRepo.findByIdOriginal(req.params.id).catch(() => null);
         if (!pg && !isNaN(req.params.id)) pg = await manifestacaoRepo.findById(req.params.id).catch(() => null);
         if (pg) {
+          // B2: verificar escopo de empresa no PG path
+          if (req._empresaScope) {
+            const empPg = pg.empresa?.nome || pg.empresaNome || '';
+            if (!pertenceEmpresa(req._empresaScope, empPg || '')) {
+              return res.status(403).json({ sucesso: false, erro: 'Acesso não autorizado para esta manifestação.' });
+            }
+          }
           const item = {
             ID_MANIFESTACAO: pg.protocolo || pg.idOriginal || String(pg.id),
             DATA_ABERTURA: pg.criadaEm?.toISOString?.() || '',
@@ -709,6 +906,10 @@ app.get('/api/manifestacoes/:id', async (req, res) => {
     const data = await lerAba('MANIFESTACOES', 2000).catch(()=>[]);
     const item = data.find(r => r.ID_MANIFESTACAO === req.params.id);
     if (!item) return res.status(404).json({ sucesso: false, erro: 'Manifestação não encontrada.' });
+    // B2: verificar escopo de empresa
+    if (req._empresaScope && !pertenceEmpresa(req._empresaScope, item.EMPRESA_RECLAMADA || '')) {
+      return res.status(403).json({ sucesso: false, erro: 'Acesso não autorizado para esta manifestação.' });
+    }
     res.json({ sucesso: true, manifestacao: item });
   } catch (e) { res.status(500).json({ sucesso: false, erro: e.message }); }
 });
@@ -719,7 +920,8 @@ app.post('/api/manifestacoes', requerPerfil('MASTER','ANALISTA SAC'), async (req
     if (!empresaReclamante || !descricao) return res.status(400).json({ sucesso:false, erro:'Empresa reclamante e descrição são obrigatórios.' });
     const empNorm = normalizarEmpresa(empresaReclamada);
     // Não bloqueia na criação de colunas — a aba já existe em produção
-    garantirAbaComCabecalhos('MANIFESTACOES',['ID_MANIFESTACAO','DATA_ABERTURA','DATA_REGISTRO','EMPRESA_RECLAMANTE','CONTATO','PRODUTO','LOTE','NFE','DESCRICAO','DESCRICAO_MANIFESTACAO','STATUS','TIPO','TIPO_SUGERIDO','SETOR_SUGERIDO','SETORES_SUGERIDOS','PROCEDIMENTO_SUGERIDO','SLA_HORAS','PRIORIDADE','RNC_SUGERIDO','EMPRESA_RECLAMADA','CANAL','CNPJ','TELEFONE','EMAIL','QUANTIDADE','VALOR','TRATATIVA_SUGERIDA','TRATATIVA_APLICAVEL','TRATATIVA_REALIZADA','STATUS_TRATATIVA','DEVOLUTIVA_SUGERIDA','DEVOLUTIVA_FINAL','DEVOLUTIVA_ENVIADA','ORIGEM_DOCUMENTO','ARQUIVO_ORIGEM','USUARIO_CRIACAO','ORIGEM','TIPO_CONFIRMADO','SETORES_CONFIRMADOS','ID_PROCEDIMENTO_APLICADO','GERA_RNC','DATA_INICIO_TRATATIVA','DATA_CONCLUSAO_TRATATIVA','DATA_DEVOLUTIVA','DATA_CONCLUSAO_MANIFESTACAO']).catch(()=>{});
+    // RNC_SINALIZADO: campo novo para indicar que o caso merece revisão de RNC (B6)
+    garantirAbaComCabecalhos('MANIFESTACOES',['ID_MANIFESTACAO','DATA_ABERTURA','DATA_REGISTRO','EMPRESA_RECLAMANTE','CONTATO','PRODUTO','LOTE','NFE','DESCRICAO','DESCRICAO_MANIFESTACAO','STATUS','TIPO','TIPO_SUGERIDO','SETOR_SUGERIDO','SETORES_SUGERIDOS','PROCEDIMENTO_SUGERIDO','SLA_HORAS','PRIORIDADE','RNC_SUGERIDO','RNC_SINALIZADO','EMPRESA_RECLAMADA','CANAL','CNPJ','TELEFONE','EMAIL','QUANTIDADE','VALOR','TRATATIVA_SUGERIDA','TRATATIVA_APLICAVEL','TRATATIVA_REALIZADA','STATUS_TRATATIVA','DEVOLUTIVA_SUGERIDA','DEVOLUTIVA_FINAL','DEVOLUTIVA_ENVIADA','ORIGEM_DOCUMENTO','ARQUIVO_ORIGEM','USUARIO_CRIACAO','ORIGEM','TIPO_CONFIRMADO','SETORES_CONFIRMADOS','ID_PROCEDIMENTO_APLICADO','GERA_RNC','DATA_INICIO_TRATATIVA','DATA_CONCLUSAO_TRATATIVA','DATA_DEVOLUTIVA','DATA_CONCLUSAO_MANIFESTACAO']).catch(()=>{});
     const id = await gerarProximoID('MANIFESTACOES','MAN','ID_MANIFESTACAO');
     const agora = new Date().toISOString();
     const tipoFinal = tipo || 'Reclamação';
@@ -736,7 +938,7 @@ app.post('/api/manifestacoes', requerPerfil('MASTER','ANALISTA SAC'), async (req
       USUARIO_CRIACAO:usuario||req.user?.usuario||'sistema', ORIGEM:req.body.origem||'SAC',
     };
     await appendObjeto('MANIFESTACOES', objeto);
-    // F6: dual-write para PostgreSQL (não-bloqueante)
+    // B3: dual-write para PostgreSQL — rastreia sucesso/falha (não-bloqueante)
     if (manifestacaoRepo) {
       manifestacaoRepo.upsertFromSheets({
         ID_MANIFESTACAO: id,
@@ -747,7 +949,13 @@ app.post('/api/manifestacoes', requerPerfil('MASTER','ANALISTA SAC'), async (req
         TIPO: tipoFinal,
         PRODUTO: objeto.PRODUTO,
         DATA_ABERTURA: agora,
-      }).catch(e => console.warn('[F6] dual-write PG falhou:', e.message));
+      }).then(() => {
+        console.info('[PG] dual-write manifestação OK:', id);
+      }).catch(e => {
+        console.error('[PG] dual-write manifestação FALHOU:', id, e.message);
+        // Registrar falha de dual-write no audit trail (não bloqueia resposta)
+        registrarAuditoria('sistema', 'DUALWRITE_PG_FALHOU', id, 'MANIFESTACOES', null, { erro: e.message }).catch(() => {});
+      });
     }
     registrarAuditoria(usuario||'sistema','CRIOU_MANIFESTAÇÃO',id,'MANIFESTACOES',null,{empresaReclamante,tipo:tipoFinal}).catch(()=>{});
     // Executar análise de IA de forma síncrona antes de responder
@@ -763,7 +971,8 @@ app.post('/api/manifestacoes', requerPerfil('MASTER','ANALISTA SAC'), async (req
           SETORES_SUGERIDOS:Array.isArray(analise.setores)?analise.setores.join(', '):(analise.setoresSugeridos||[]).join(', '),
           PROCEDIMENTO_SUGERIDO:analise.procedimentoSugerido?.nome||'',
           SLA_HORAS:analise.slaHoras||'', PRIORIDADE:analise.prioridade||'',
-          RNC_SUGERIDO:analise.geraRNC?'SIM':'NÃO', TRATATIVA_SUGERIDA:analise.tratativaSugerida?.sugestao||'',
+          // B6: RNC_SUGERIDO sempre NÃO — RNC só por decisão humana explícita
+          RNC_SUGERIDO:'NÃO', RNC_SINALIZADO:analise.rncSinalizado?'REVISAR':'', TRATATIVA_SUGERIDA:analise.tratativaSugerida?.sugestao||'',
           DEVOLUTIVA_SUGERIDA:analise.devolutivaSugerida||'', STATUS:'AGUARDANDO_DECISÃO'
         }).catch(()=>{});
       }
@@ -791,6 +1000,13 @@ app.post('/api/manifestacoes', requerPerfil('MASTER','ANALISTA SAC'), async (req
 app.patch('/api/manifestacoes/:id', requerPerfil('MASTER','ANALISTA SAC'), async (req, res) => {
   try {
     const { id } = req.params;
+    // B2/Item18: verificar pertencimento de empresa antes de gravar
+    const todas = await lerAba('MANIFESTACOES', 2000);
+    const itemExistente = todas.find(r => r.ID_MANIFESTACAO === id);
+    if (!itemExistente) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
+    if (!pertenceEmpresa(req.user?.empresa, itemExistente.EMPRESA_RECLAMADA)) {
+      return res.status(403).json({ sucesso:false, erro:'Acesso negado: manifestação pertence a outra empresa.' });
+    }
     const STATUS_VALIDOS = ['EM ANÁLISE','AGUARDANDO_DECISÃO','EM TRATAMENTO','AGUARDANDO_DEVOLUTIVA','ENCERRADA','REJEITADA','APROVADA'];
     const dados = {};
     const { status, tratativa, devolutiva, setor, responsavel, observacoes } = req.body || {};
@@ -818,6 +1034,10 @@ app.post('/api/manifestacoes/:id/decisao', requerPerfil('MASTER','ANALISTA SAC')
     const data = await lerAba('MANIFESTACOES',2000);
     const item = data.find(r => r.ID_MANIFESTACAO === id);
     if (!item) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
+    // B2/Item18: verificar pertencimento de empresa antes de gravar decisão
+    if (!pertenceEmpresa(req.user?.empresa, item.EMPRESA_RECLAMADA)) {
+      return res.status(403).json({ sucesso:false, erro:'Acesso negado: manifestação pertence a outra empresa.' });
+    }
     const agora = new Date().toISOString();
     const setoresStr = Array.isArray(setoresConfirmados) ? setoresConfirmados.join(', ') : (setoresConfirmados || '');
     const depStr = Array.isArray(setoresDependentes) ? setoresDependentes.join(', ') : (setoresDependentes || '');
@@ -1404,9 +1624,11 @@ app.post('/api/calculadora/parametros/logistica', requerPerfil('MASTER'), async(
 app.post('/api/calculadora/parametros/producao', requerPerfil('MASTER'), async(req,res)=>{try{garantirAbaComCabecalhos('PARAMETROS_PRODUCAO',PROD_HEADERS).catch(()=>{});const b=req.body||{};const obj={...b,ID:b.ID||await gerarProximoID('PARAMETROS_PRODUCAO','PROD','ID'),ATIVO:b.ATIVO||'SIM',DATA_ATUALIZACAO:new Date().toISOString(),USUARIO_ATUALIZACAO:req.user.usuario};await appendObjeto('PARAMETROS_PRODUCAO',obj);res.json({sucesso:true,item:obj});}catch(e){res.status(500).json({sucesso:false,erro:e.message});}});
 
 // ===== DASHBOARD =====
-app.get('/api/dashboard', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req, res) => {
+app.get('/api/dashboard', middlewareEscopoEmpresa(), requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req, res) => {
   try {
-    const [mans, recs] = await Promise.all([lerAba('MANIFESTACOES', 2000).catch(()=>[]), lerAbaReclamacoes(2000)]);
+    let [mans, recs] = await Promise.all([lerAba('MANIFESTACOES', 2000).catch(()=>[]), lerAbaReclamacoes(2000)]);
+    mans = filtrarPorEmpresa(mans, req, COLUNA_EMPRESA_ABA.MANIFESTACOES).filter(m => !isTeste(m));
+    recs = filtrarPorEmpresa(recs, req, COLUNA_EMPRESA_ABA['Reclamações']).filter(r => !isTeste(r));
     const emAndamento = mans.filter(m => !['FINALIZADA','ENCERRADA','CONCLUÍDA'].some(s => (m.STATUS||'').toUpperCase().includes(s))).length;
     const rncsAbertas = mans.filter(m => m.ID_RNC && m.ID_RNC !== '').length;
     const recComSLA = recs.filter(r => r['Dentro do prazo? '] || r['Dentro do prazo?']);
@@ -1442,13 +1664,16 @@ app.get('/api/dashboard', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), asy
 });
 
 // ===== RNC =====
-app.get('/api/rnc', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','SETOR RESPONSÁVEL','RCA / REPRESENTANTE'), async (req, res) => {
+app.get('/api/rnc', middlewareEscopoEmpresa(), requerPerfil('MASTER','ANALISTA SAC','APROVADOR','SETOR RESPONSÁVEL','RCA / REPRESENTANTE'), async (req, res) => {
   try {
     // F6: tenta PostgreSQL primeiro
     if (rncRepo) {
       try {
         const filtros = {};
-        if (req.query.empresaId) filtros.empresaId = req.query.empresaId;
+        // B2: empresa vem do usuário autenticado, não do frontend
+        const _isMasterRnc = req.user && perfilCanonico(req.user.perfil) === 'MASTER';
+        if (_isMasterRnc && req.query.empresaId) filtros.empresaId = req.query.empresaId;
+        else if (!_isMasterRnc && req.user?.empresa) filtros.empresaId = req.user.empresa;
         if (req.query.status) filtros.status = req.query.status;
         const pgData = await rncRepo.findAll(filtros);
         if (pgData && pgData.length > 0) {
@@ -1468,8 +1693,9 @@ app.get('/api/rnc', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','SETOR RESP
         }
       } catch (e) { console.warn('[F6] GET /rnc PG falhou:', e.message); }
     }
-    // Fallback Sheets
-    const data=await lerAba('BANCO_RNC',5000).catch(()=>[]);
+    // Fallback Sheets — B2: filtrar por empresa
+    let data=await lerAba('BANCO_RNC',5000).catch(()=>[]);
+    data = filtrarPorEmpresa(data, req, COLUNA_EMPRESA_ABA.BANCO_RNC);
     res.json({sucesso:true,total:data.length,itens:data});
   } catch (e) { res.status(500).json({sucesso:false,erro:e.message,dados:[]}); }
 });
@@ -1631,21 +1857,28 @@ app.get('/api/clientes/:cnpj', requerPerfil('MASTER','ANALISTA SAC','RCA / REPRE
 });
 
 // ===== RECLAMAÇÕES =====
-app.get('/api/reclamacoes', async (req, res) => {
+app.get('/api/reclamacoes', middlewareEscopoEmpresa(), async (req, res) => {
   try {
     const data=await lerAbaReclamacoes(2000);
-    const normalizado=data.map(r=>({
+    let normalizado=data.map(r=>({
       ...r,
       'Data do Registro':normalizarData(r['Data do Registro']),
       'Empresa':r['Empresa']||''
     })).filter(r=>r['Empresa'] && r['Empresa'].trim() && !['TR01','TR08'].includes(r['Empresa'].trim()));
+    // B2: filtrar por empresa do usuário
+    normalizado = filtrarPorEmpresa(normalizado, req, COLUNA_EMPRESA_ABA['Reclamações']);
     res.json({sucesso:true,total:normalizado.length,itens:normalizado});
   } catch (e) { res.status(500).json({sucesso:false,erro:e.message,dados:[]}); }
 });
 
 // ===== HISTORICO =====
-app.get('/api/historico', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL'), async (req, res) => {
-  try { const data=await lerAba('BANCO_HISTORICO',1000).catch(()=>[]); res.json({sucesso:true,total:data.length,itens:data}); }
+app.get('/api/historico', middlewareEscopoEmpresa(), requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL'), async (req, res) => {
+  try {
+    let data=await lerAba('BANCO_HISTORICO',1000).catch(()=>[]);
+    // B2: filtrar por empresa se não for MASTER
+    data = filtrarPorEmpresa(data, req, COLUNA_EMPRESA_ABA.BANCO_HISTORICO);
+    res.json({sucesso:true,total:data.length,itens:data});
+  }
   catch (e) { res.status(500).json({sucesso:false,erro:e.message,dados:[]}); }
 });
 
@@ -1690,11 +1923,13 @@ app.get('/api/setores-unicos', async (req, res) => {
   }
 });
 
-app.get('/api/setores', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
+app.get('/api/setores', middlewareEscopoEmpresa(), requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
   try {
     // GET puro — sem criar/escrever abas. Se não existe, retorna vazio e frontend usa fallback.
     const data = await lerAba('CONFIG_SETORES', 500).catch(()=>[]);
-    const itens = data.map(s => ({ ...s, _counts: {} }));
+    // Config: sem empresa = global (todos veem). Com empresa = apenas essa empresa + MASTER.
+    const filtrado = filtrarPorEmpresaConfig(data, req, 'EMPRESA');
+    const itens = filtrado.map(s => ({ ...s, _counts: {} }));
     res.json({ sucesso:true, total:itens.length, itens });
   } catch (e) { res.status(500).json({ sucesso:false, erro:e.message, itens:[] }); }
 });
@@ -2691,18 +2926,20 @@ app.put('/api/regras-aprovacao/:id', requerPerfil('MASTER'), async (req,res)=>{
   } catch(e){res.status(500).json({sucesso:false,erro:e.message});}
 });
 
-// Listar fila de aprovação (filtrada por perfil)
-app.get('/api/fila-aprovacao', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req,res)=>{
+// Listar fila de aprovação (filtrada por perfil e empresa)
+app.get('/api/fila-aprovacao', middlewareEscopoEmpresa(), requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req,res)=>{
   try {
     garantirAbaComCabecalhos('FILA_APROVACAO', FILA_APROV_HEADERS).catch(()=>{});
     const u = req.user;
     const fila = await lerAba('FILA_APROVACAO',2000).catch(()=>[]);
-    let itens = fila;
+    // B2: filtrar por empresa primeiro
+    const filaEmpresa = filtrarPorEmpresa(fila, req, COLUNA_EMPRESA_ABA.FILA_APROVACAO);
+    let itens = filaEmpresa;
     const n = v => normalizarTexto(v);
     if(perfilCanonico(u.perfil) === 'ANALISTA SAC') {
-      itens = fila.filter(x => n(x.CRIADO_POR||'') === n(u.usuario));
+      itens = filaEmpresa.filter(x => n(x.CRIADO_POR||'') === n(u.usuario));
     } else if(perfilCanonico(u.perfil) === 'APROVADOR') {
-      itens = fila.filter(x => n(x.ID_APROVADOR||'') === n(u.usuario) || n(x.NOME_APROVADOR||'') === n(u.nome||u.usuario) || n(x.ID_APROVADOR||'') === n(u.id||''));
+      itens = filaEmpresa.filter(x => n(x.ID_APROVADOR||'') === n(u.usuario) || n(x.NOME_APROVADOR||'') === n(u.nome||u.usuario) || n(x.ID_APROVADOR||'') === n(u.id||''));
     }
     const pendentes = itens.filter(x=>x.STATUS==='PENDENTE').length;
     res.json({sucesso:true,total:itens.length,pendentes,itens});
@@ -2994,11 +3231,12 @@ app.get('/api/public/empresas', publicRateLimit, async (req, res) => {
 
 // ===== BIBLIOTECA DE FICHAS =====
 // Listar fichas com filtros e paginação
-app.get('/api/biblioteca/fichas', requerPerfil('MASTER','ADMINISTRADOR','ANALISTA SAC','SAC','APROVADOR','SETOR RESPONSÁVEL','GESTOR DE SETOR','USUÁRIO DE SETOR'), async (req, res) => {
+app.get('/api/biblioteca/fichas', middlewareEscopoEmpresa(), requerPerfil('MASTER','ADMINISTRADOR','ANALISTA SAC','SAC','APROVADOR','SETOR RESPONSÁVEL','GESTOR DE SETOR','USUÁRIO DE SETOR'), async (req, res) => {
   try {
     const { ano, mes, empresa, setor, tipo, status, q, page = '1', limit = '50' } = req.query;
     const fichas = await lerAba('FICHAS_BIBLIOTECA', 5000).catch(() => []);
-    let filtered = fichas;
+    // B2: aplicar isolamento de empresa (usuário não-MASTER só vê sua empresa)
+    let filtered = filtrarPorEmpresaConfig(fichas, req, 'EMPRESA');
     if (ano) filtered = filtered.filter(f => (f.ANO || '') === String(ano));
     if (mes) filtered = filtered.filter(f => (f.MES || '') === String(mes).padStart(2,'0'));
     if (empresa) filtered = filtered.filter(f => normalizarTexto(f.EMPRESA||'').includes(normalizarTexto(empresa)));

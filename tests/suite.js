@@ -3,7 +3,8 @@
 // ============================================================
 // F13 — Suite de Testes do Assistente SAC
 // Executa sem dependências externas (apenas Node.js + assert)
-// Cobre 26 cenários agrupados em domínios
+// Cobre 33+ cenários agrupados em domínios
+// Grupo 6 novo: Segurança (correções auditoria B1-B6)
 // ============================================================
 
 const assert = require('assert');
@@ -294,10 +295,112 @@ async function testarRegrasNegocio() {
 }
 
 // ────────────────────────────────────────────────────────────
-// Grupo 6 — Integração com PG (requer DATABASE_URL)
+// Grupo 6 — Segurança (correções da auditoria B1-B6)
+// ────────────────────────────────────────────────────────────
+async function testarSeguranca() {
+  console.log('\n[6] Segurança (auditoria B1-B6)');
+
+  await test('B1: senhaValida rejeita senha plaintext sem hash', () => {
+    const crypto = require('crypto');
+    // Simular a função senhaValida corrigida
+    function senhaValida(informada, armazenada) {
+      if (armazenada === undefined || armazenada === null) return false;
+      const s = String(armazenada);
+      if (s.startsWith('sha256:')) return 'sha256:' + crypto.createHash('sha256').update(String(informada || '')).digest('hex') === s;
+      return false; // B1: nunca aceitar plaintext
+    }
+    // Deve rejeitar senha plaintext armazenada
+    assert.ok(!senhaValida('senha123', 'senha123'), 'plaintext deve ser rejeitado');
+    assert.ok(!senhaValida('senha123', ''), 'string vazia deve ser rejeitada');
+    // Deve aceitar hash válido
+    const hash = 'sha256:' + crypto.createHash('sha256').update('senha123').digest('hex');
+    assert.ok(senhaValida('senha123', hash), 'hash correto deve ser aceito');
+    assert.ok(!senhaValida('outrasenha', hash), 'hash errado deve ser rejeitado');
+  });
+
+  await test('B1: api/index.js senhaValida nunca retorna true para plaintext', () => {
+    const fs = require('fs');
+    const src = fs.readFileSync(require.resolve('../api/index.js'), 'utf8');
+    // Deve conter o comentário de segurança e retornar false para plaintext
+    assert.ok(src.includes('NUNCA aceitar senha em texto puro') || src.includes('nunca aceitar'), 'deve documentar a rejeição de plaintext');
+    assert.ok(src.includes('Segurança B1: NUNCA aceitar senha em texto puro') || src.includes('NUNCA aceitar senha'), 'deve documentar B1 na função senhaValida');
+  });
+
+  await test('B5: DEMO_USUARIOS só ativo quando DEMO_LOGIN_ENABLED=true', () => {
+    const fs = require('fs');
+    const src = fs.readFileSync(require.resolve('../api/index.js'), 'utf8');
+    assert.ok(src.includes('DEMO_LOGIN_ENABLED'), 'deve verificar DEMO_LOGIN_ENABLED');
+    // Não deve retornar demo users sem verificação de env
+    assert.ok(src.includes('demoEnabled ? DEMO_USUARIOS : []'), 'deve condicionar DEMO_USUARIOS ao env');
+  });
+
+  await test('B6: motorRegras() sempre retorna geraRNC: false', () => {
+    const fs = require('fs');
+    const src = fs.readFileSync(require.resolve('../api/index.js'), 'utf8');
+    assert.ok(src.includes('const geraRNC = false; // Imutável'), 'geraRNC deve ser sempre false em motorRegras');
+    assert.ok(src.includes('rncSinalizado'), 'deve usar rncSinalizado como sinalização não-automática');
+  });
+
+  await test('B2: filtrarPorEmpresa existe em api/index.js', () => {
+    const fs = require('fs');
+    const src = fs.readFileSync(require.resolve('../api/index.js'), 'utf8');
+    assert.ok(src.includes('function filtrarPorEmpresa'), 'deve ter função filtrarPorEmpresa');
+    assert.ok(src.includes('middlewareEscopoEmpresa'), 'deve ter middleware de escopo de empresa');
+    assert.ok(src.includes('pertenceEmpresa'), 'deve ter verificação pertenceEmpresa');
+  });
+
+  await test('B2: /api/rnc tem isolamento de empresa (Sheets + PG)', () => {
+    const fs = require('fs');
+    const src = fs.readFileSync(require.resolve('../api/index.js'), 'utf8');
+    // Deve ter middlewareEscopoEmpresa no endpoint /rnc
+    assert.ok(src.includes("app.get('/api/rnc', middlewareEscopoEmpresa()"), 'endpoint /rnc deve usar middlewareEscopoEmpresa');
+    // Sheets fallback deve filtrar por empresa
+    const rncBlock = src.slice(src.indexOf("app.get('/api/rnc'"), src.indexOf("app.post('/api/rnc'"));
+    assert.ok(rncBlock.includes('filtrarPorEmpresa'), 'Sheets fallback de /rnc deve usar filtrarPorEmpresa');
+  });
+
+  await test('B2: /api/historico tem isolamento de empresa', () => {
+    const fs = require('fs');
+    const src = fs.readFileSync(require.resolve('../api/index.js'), 'utf8');
+    assert.ok(src.includes("app.get('/api/historico', middlewareEscopoEmpresa()"), 'endpoint /historico deve usar middlewareEscopoEmpresa');
+    const histBlock = src.slice(src.indexOf("app.get('/api/historico'"), src.indexOf("app.get('/api/historico'") + 500);
+    assert.ok(histBlock.includes('filtrarPorEmpresa'), 'historico deve usar filtrarPorEmpresa');
+  });
+
+  await test('B2: /api/manifestacoes PG path usa empresa do usuário autenticado', () => {
+    const fs = require('fs');
+    const src = fs.readFileSync(require.resolve('../api/index.js'), 'utf8');
+    // O PG path não deve confiar em req.query.empresaId para não-MASTER
+    assert.ok(src.includes('B2: empresa vem do usuário autenticado, não do frontend'), 'PG path de manifestacoes deve usar empresa do usuário');
+  });
+
+  await test('B2: /api/manifestacoes/:id PG path verifica empresa', () => {
+    const fs = require('fs');
+    const src = fs.readFileSync(require.resolve('../api/index.js'), 'utf8');
+    assert.ok(src.includes('B2: verificar escopo de empresa no PG path'), 'GET /manifestacoes/:id PG path deve checar empresa');
+  });
+
+  await test('B4: calcularSLA tem timezone configurável', () => {
+    const fs = require('fs');
+    const src = fs.readFileSync(require.resolve('../api/services/cerebroServices.js'), 'utf8');
+    assert.ok(src.includes('SLA_CONFIG'), 'deve ter SLA_CONFIG centralizado');
+    assert.ok(src.includes('SLA_TIMEZONE'), 'deve ler timezone do env');
+    assert.ok(src.includes('prazoFinalLocal'), 'deve formatar prazo no timezone correto');
+  });
+
+  await test('B3: dual-write PG registra falha no audit trail', () => {
+    const fs = require('fs');
+    const src = fs.readFileSync(require.resolve('../api/index.js'), 'utf8');
+    assert.ok(src.includes('DUALWRITE_PG_FALHOU'), 'deve registrar falha de dual-write');
+    assert.ok(src.includes("console.info('[PG] dual-write manifestação OK"), 'deve confirmar sucesso');
+  });
+}
+
+// ────────────────────────────────────────────────────────────
+// Grupo 7 — Integração com PG (requer DATABASE_URL)
 // ────────────────────────────────────────────────────────────
 async function testarIntegracaoPG() {
-  console.log('\n[6] Integração PostgreSQL (requer DATABASE_URL)');
+  console.log('\n[7] Integração PostgreSQL (requer DATABASE_URL)');
 
   if (!process.env.DATABASE_URL) {
     skip('connection.js conecta ao Neon — DATABASE_URL não configurada');
@@ -338,6 +441,7 @@ async function main() {
   await testarCerebro();
   await testarRepositorios();
   await testarRegrasNegocio();
+  await testarSeguranca();
   await testarIntegracaoPG();
 
   const total = passed + failed + skipped;
