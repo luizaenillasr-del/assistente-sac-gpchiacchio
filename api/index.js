@@ -87,6 +87,45 @@ const SESSION_TTL_MS = 8 * 60 * 60 * 1000;
 function normalizarTexto(v){
   return String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
 }
+
+// \u2500\u2500\u2500 Mapa can\u00f4nico de empresas do Grupo Chiacchio \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+// C\u00f3digo can\u00f4nico \u2192 lista de grafias aceitas (normalizadas)
+const EMPRESA_MAP = {
+  CHIACCHIO: ['chiacchio embalagens', 'chiachio embalagens', 'chiacchio'],
+  PLASCHIO:  ['plaschio'],
+  TUBAHIA:   ['tubahia', 'cesbap'],
+  MASTER:    ['grupo chiacchio'], // empresa do usu\u00e1rio MASTER = acesso global
+};
+
+// Coluna de empresa correta por aba
+const COLUNA_EMPRESA_ABA = {
+  MANIFESTACOES:              'EMPRESA_RECLAMADA',
+  'Reclama\u00e7\u00f5es':              'Empresa',
+  'Reclama\u00e7\u00f5es + devolutiva': 'Empresa',
+  BANCO_HISTORICO:            'DRV_EMPRESA_NORMALIZADA',
+  BANCO_RNC:                  'EMPRESA_RECLAMADA',
+  DEVOLUTIVAS:                'EMPRESA',
+  FILA_APROVACAO:             'EMPRESA',
+  CEREBRO_APRENDIZADO:        'EMPRESA',
+  PADROES_VALIDADOS:          'EMPRESA',
+};
+
+// Abas de configura\u00e7\u00e3o: sem empresa = global (vis\u00edvel para todos)
+const ABAS_CONFIGURACAO = new Set([
+  'CONFIG_SETORES','REGRAS_SETORES','PROCEDIMENTOS','POLITICAS','CAUSAS',
+  'MATRIZ_CONHECIMENTO','MATRIZ_RISCOS','FAQ_SETORES',
+  'TIPOS_RECLAMACAO','REGRAS_ROTEAMENTO','SLA_ESCALONAMENTO','PERGUNTAS_ANALISE',
+]);
+
+// Retorna o c\u00f3digo can\u00f4nico (CHIACCHIO | PLASCHIO | TUBAHIA | MASTER) ou null
+function empresaCanonica(texto) {
+  const norm = normalizarTexto(texto || '');
+  if (!norm) return null;
+  for (const [cod, grafias] of Object.entries(EMPRESA_MAP)) {
+    if (grafias.some(g => norm === g)) return cod;
+  }
+  return null;
+}
 function b64url(v){ return Buffer.from(v).toString('base64url'); }
 function assinarToken(payload){
   const body=b64url(JSON.stringify(payload));
@@ -197,39 +236,50 @@ function requerPerfil(...perfis){
   };
 }
 
-// B2: Isolamento de empresa — verifica se o registro pertence à empresa do usuário
-// MASTER tem acesso global. Demais perfis só acessam sua empresa.
+// B2: Isolamento de empresa — comparação por código canônico
 function pertenceEmpresa(userEmpresa, registroEmpresa) {
-  if (!userEmpresa) return true; // sem empresa no token = acesso permitido (usuário legado)
-  const perfNorm = normalizarTexto(userEmpresa);
-  const recNorm = normalizarTexto(registroEmpresa || '');
-  if (!recNorm) return true; // registro sem empresa = acesso permitido
-  // Match parcial: "chiacchio" matches "chiacchio embalagens"
-  return recNorm.includes(perfNorm) || perfNorm.includes(recNorm);
+  if (!userEmpresa) return true;
+  const userCod = empresaCanonica(userEmpresa);
+  if (!userCod || userCod === 'MASTER') return true; // MASTER vê tudo
+  const recCod = empresaCanonica(registroEmpresa || '');
+  if (!recCod) return false; // empresa desconhecida = invisível para não-MASTER
+  return userCod === recCod;
 }
 
-function middlewareEscopoEmpresa(campoEmpresa = 'EMPRESA_RECLAMADA') {
+function middlewareEscopoEmpresa() {
   return (req, res, next) => {
     if (!req.user) return next();
     const perfil = perfilCanonico(req.user.perfil);
     if (perfil === 'MASTER') return next(); // MASTER tem acesso global
-    // Para demais perfis, marcar empresa do usuário para filtrar na query
     req._empresaScope = req.user.empresa || null;
     next();
   };
 }
 
-// Filtra array de registros pelo escopo de empresa do usuário
-function filtrarPorEmpresa(itens, req, camposEmpresa = ['EMPRESA_RECLAMADA','EMPRESA','EMPRESA_RECLAMANTE']) {
+// Filtra itens de atendimento pelo escopo de empresa do usuário.
+// campoEmpresa: coluna exata do campo de empresa nesta aba (use COLUNA_EMPRESA_ABA).
+// Sem empresa no item → invisível para não-MASTER (dado sem dono).
+function filtrarPorEmpresa(itens, req, campoEmpresa) {
   if (!req._empresaScope) return itens;
-  const scope = normalizarTexto(req._empresaScope);
+  const userCod = empresaCanonica(req._empresaScope);
+  if (!userCod || userCod === 'MASTER') return itens;
   return itens.filter(item => {
-    // Reúne os valores não-vazios dos campos de empresa do item
-    const vals = camposEmpresa.map(c => normalizarTexto(item[c] || '')).filter(Boolean);
-    // Se nenhum campo de empresa existe no item, permite (dado legado sem empresa)
-    if (!vals.length) return true;
-    // Se algum campo não-vazio bate com o scope, permite
-    return vals.some(val => val.includes(scope) || scope.includes(val));
+    const val = item[campoEmpresa] || '';
+    if (!val) return false;
+    return empresaCanonica(val) === userCod;
+  });
+}
+
+// Filtra itens de configuração/conhecimento.
+// Sem empresa no item → global (visível para todos). Com empresa → apenas daquela empresa e MASTER.
+function filtrarPorEmpresaConfig(itens, req, campoEmpresa = 'EMPRESA') {
+  if (!req._empresaScope) return itens;
+  const userCod = empresaCanonica(req._empresaScope);
+  if (!userCod || userCod === 'MASTER') return itens;
+  return itens.filter(item => {
+    const val = item[campoEmpresa] || '';
+    if (!val) return true; // sem empresa = global
+    return empresaCanonica(val) === userCod;
   });
 }
 
@@ -763,7 +813,7 @@ app.get('/api/manifestacoes', middlewareEscopoEmpresa(), async (req, res) => {
       data=data.filter(r=>normalizarTexto(r.USUARIO_CRIACAO||'')===normalizarTexto(req.user.usuario)||normalizarTexto(r.CODIGO_RCA||'')===rca||normalizarTexto(r.RCA||'')===rca);
     }
     // B2: filtrar por empresa se não for MASTER
-    data = filtrarPorEmpresa(data, req, ['EMPRESA_RECLAMADA','EMPRESA_RECLAMANTE']);
+    data = filtrarPorEmpresa(data, req, COLUNA_EMPRESA_ABA.MANIFESTACOES);
     res.json({ sucesso: true, total: data.length, itens: data });
   } catch (e) { res.status(500).json({ sucesso: false, erro: e.message, dados: [] }); }
 });
@@ -780,7 +830,7 @@ app.get('/api/manifestacoes/:id', middlewareEscopoEmpresa(), async (req, res) =>
           // B2: verificar escopo de empresa no PG path
           if (req._empresaScope) {
             const empPg = pg.empresa?.nome || pg.empresaNome || '';
-            if (!pertenceEmpresa(req._empresaScope, empPg)) {
+            if (!pertenceEmpresa(req._empresaScope, empPg || '')) {
               return res.status(403).json({ sucesso: false, erro: 'Acesso não autorizado para esta manifestação.' });
             }
           }
@@ -810,7 +860,7 @@ app.get('/api/manifestacoes/:id', middlewareEscopoEmpresa(), async (req, res) =>
     const item = data.find(r => r.ID_MANIFESTACAO === req.params.id);
     if (!item) return res.status(404).json({ sucesso: false, erro: 'Manifestação não encontrada.' });
     // B2: verificar escopo de empresa
-    if (req._empresaScope && !pertenceEmpresa(req._empresaScope, item.EMPRESA_RECLAMADA || item.EMPRESA_RECLAMANTE)) {
+    if (req._empresaScope && !pertenceEmpresa(req._empresaScope, item.EMPRESA_RECLAMADA || '')) {
       return res.status(403).json({ sucesso: false, erro: 'Acesso não autorizado para esta manifestação.' });
     }
     res.json({ sucesso: true, manifestacao: item });
@@ -1519,8 +1569,8 @@ app.post('/api/calculadora/parametros/producao', requerPerfil('MASTER'), async(r
 app.get('/api/dashboard', middlewareEscopoEmpresa(), requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req, res) => {
   try {
     let [mans, recs] = await Promise.all([lerAba('MANIFESTACOES', 2000).catch(()=>[]), lerAbaReclamacoes(2000)]);
-    mans = filtrarPorEmpresa(mans, req, ['EMPRESA','Empresa']).filter(m => !isTeste(m));
-    recs = filtrarPorEmpresa(recs, req, ['Empresa','EMPRESA']).filter(r => !isTeste(r));
+    mans = filtrarPorEmpresa(mans, req, COLUNA_EMPRESA_ABA.MANIFESTACOES).filter(m => !isTeste(m));
+    recs = filtrarPorEmpresa(recs, req, COLUNA_EMPRESA_ABA['Reclamações']).filter(r => !isTeste(r));
     const emAndamento = mans.filter(m => !['FINALIZADA','ENCERRADA','CONCLUÍDA'].some(s => (m.STATUS||'').toUpperCase().includes(s))).length;
     const rncsAbertas = mans.filter(m => m.ID_RNC && m.ID_RNC !== '').length;
     const recComSLA = recs.filter(r => r['Dentro do prazo? '] || r['Dentro do prazo?']);
@@ -1587,7 +1637,7 @@ app.get('/api/rnc', middlewareEscopoEmpresa(), requerPerfil('MASTER','ANALISTA S
     }
     // Fallback Sheets — B2: filtrar por empresa
     let data=await lerAba('BANCO_RNC',5000).catch(()=>[]);
-    data = filtrarPorEmpresa(data, req, ['EMPRESA','EMPRESA_RECLAMADA']);
+    data = filtrarPorEmpresa(data, req, COLUNA_EMPRESA_ABA.BANCO_RNC);
     res.json({sucesso:true,total:data.length,itens:data});
   } catch (e) { res.status(500).json({sucesso:false,erro:e.message,dados:[]}); }
 });
@@ -1766,7 +1816,7 @@ app.get('/api/historico', middlewareEscopoEmpresa(), requerPerfil('MASTER','ANAL
   try {
     let data=await lerAba('BANCO_HISTORICO',1000).catch(()=>[]);
     // B2: filtrar por empresa se não for MASTER
-    data = filtrarPorEmpresa(data, req, ['EMPRESA_RECLAMADA','EMPRESA','EMPRESA_RECLAMANTE']);
+    data = filtrarPorEmpresa(data, req, COLUNA_EMPRESA_ABA.BANCO_HISTORICO);
     res.json({sucesso:true,total:data.length,itens:data});
   }
   catch (e) { res.status(500).json({sucesso:false,erro:e.message,dados:[]}); }
@@ -3122,7 +3172,7 @@ app.get('/api/biblioteca/fichas', middlewareEscopoEmpresa(), requerPerfil('MASTE
     const { ano, mes, empresa, setor, tipo, status, q, page = '1', limit = '50' } = req.query;
     const fichas = await lerAba('FICHAS_BIBLIOTECA', 5000).catch(() => []);
     // B2: aplicar isolamento de empresa (usuário não-MASTER só vê sua empresa)
-    let filtered = filtrarPorEmpresa(fichas, req, ['EMPRESA']);
+    let filtered = filtrarPorEmpresaConfig(fichas, req, 'EMPRESA');
     if (ano) filtered = filtered.filter(f => (f.ANO || '') === String(ano));
     if (mes) filtered = filtered.filter(f => (f.MES || '') === String(mes).padStart(2,'0'));
     if (empresa) filtered = filtered.filter(f => normalizarTexto(f.EMPRESA||'').includes(normalizarTexto(empresa)));
