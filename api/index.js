@@ -8,6 +8,11 @@ const mcService = require('./services/matrizConhecimentoService');
 const documentService = require('./services/documentService');
 const { tratativaEngine, devolutivaEngine, assertividade: assertividadeService } = cerebroService;
 
+// Injeção de mock Sheets para testes — nunca ativo em produção (env var não existe em prod)
+const _sheetsMock = process.env.SHEETS_MOCK_PATH ? (() => { try { return require(process.env.SHEETS_MOCK_PATH); } catch(e) { console.warn('[MOCK] falhou ao carregar:', e.message); return null; } })() : null;
+// Flag de leitura PG: padrão false = leituras sempre do Sheets (seguro ao configurar DATABASE_URL)
+const PG_LEITURA_ATIVA = String(process.env.PG_LEITURA_ATIVA || 'false').toLowerCase() === 'true';
+
 // Repositórios PostgreSQL (F4/F7) — falha silenciosa, fallback para Sheets
 let usuarioRepo, manifestacaoRepo, rncRepo, empresaRepo, conhecimentoRepo;
 try {
@@ -219,17 +224,20 @@ function filtrarPorEmpresa(itens, req, camposEmpresa = ['EMPRESA_RECLAMADA','EMP
   if (!req._empresaScope) return itens;
   const scope = normalizarTexto(req._empresaScope);
   return itens.filter(item => {
-    return camposEmpresa.some(campo => {
-      const val = normalizarTexto(item[campo] || '');
-      return !val || val.includes(scope) || scope.includes(val);
-    });
+    // Reúne os valores não-vazios dos campos de empresa do item
+    const vals = camposEmpresa.map(c => normalizarTexto(item[c] || '')).filter(Boolean);
+    // Se nenhum campo de empresa existe no item, permite (dado legado sem empresa)
+    if (!vals.length) return true;
+    // Se algum campo não-vazio bate com o scope, permite
+    return vals.some(val => val.includes(scope) || scope.includes(val));
   });
 }
 
 async function carregarUsuarioPorLogin(login){
   const alvo=normalizarTexto(login);
   const demoEnabled=String(process.env.DEMO_LOGIN_ENABLED||'false').toLowerCase()==='true';
-  if(demoEnabled){
+  const emProducao = process.env.NODE_ENV==='production' || process.env.VERCEL_ENV==='production';
+  if(demoEnabled && !emProducao){
     const demo=DEMO_USUARIOS.find(u=>normalizarTexto(u.USUARIO)===alvo);
     if(demo) return demo;
   }
@@ -276,6 +284,7 @@ async function getSheets() {
 }
 
 async function lerAba(nomeAba, maxRows) {
+  if (_sheetsMock?.lerAba) return _sheetsMock.lerAba(nomeAba, maxRows);
   const sheets = await getSheets();
   const range = maxRows ? `${nomeAba}!A1:AZ${maxRows}` : nomeAba;
   const res = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range });
@@ -291,12 +300,14 @@ async function lerAba(nomeAba, maxRows) {
 
 // Tenta 'Reclamações + devolutiva' primeiro; cai para 'Reclamações' se vazio
 async function lerAbaReclamacoes(max = 2000) {
+  if (_sheetsMock?.lerAbaReclamacoes) return _sheetsMock.lerAbaReclamacoes(max);
   const r1 = await lerAba('Reclamações + devolutiva', max).catch(() => []);
   if (r1.length > 0) return r1;
   return lerAba('Reclamações', max).catch(() => []);
 }
 
 async function appendLinha(nomeAba, linha) {
+  if (_sheetsMock?.appendLinha) return _sheetsMock.appendLinha(nomeAba, linha);
   const sheets = await getSheets();
   await sheets.spreadsheets.values.append({
     spreadsheetId: SPREADSHEET_ID, range: nomeAba,
@@ -313,6 +324,7 @@ async function updateLinha(nomeAba, rowIndex, linha) {
 }
 
 async function obterCabecalhos(nomeAba) {
+  if (_sheetsMock?.obterCabecalhos) return _sheetsMock.obterCabecalhos(nomeAba);
   const sheets = await getSheets();
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: SPREADSHEET_ID, range: `${nomeAba}!1:1`, valueRenderOption: 'FORMATTED_VALUE',
@@ -329,6 +341,7 @@ async function appendObjeto(nomeAba, objeto) {
 }
 
 async function atualizarPorID(nomeAba, id, dados, camposID = ['ID_MANIFESTACAO','ID_RNC','ID_APROVADOR','ID_SUGESTAO','ID_ANEXO','ID_EVENTO']) {
+  if (_sheetsMock?.atualizarPorID) return _sheetsMock.atualizarPorID(nomeAba, id, dados, camposID);
   const sheets = await getSheets();
   const res = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: nomeAba, valueRenderOption: 'FORMATTED_VALUE' });
   const rows = res.data.values || [];
@@ -369,6 +382,12 @@ async function registrarAuditoria(usuario, acao, idManifestacao, entidade, valor
     ];
     await appendLinha('LOG_SISTEMA', linha);
   } catch (e) { console.error('Erro auditoria:', e.message); }
+}
+
+// Filtra itens de teste (prefixo TESTE-GOLIVE) das métricas
+function isTeste(item) {
+  const campos = ['ID_MANIFESTACAO','ID_RNC','TITULO','NAO_CONFORMIDADE','Motivo da Reclamação','Descrição do Problema'];
+  return campos.some(c => String(item[c] || '').toUpperCase().startsWith('TESTE-GOLIVE'));
 }
 
 // ===== MOTOR DE REGRAS — MÚLTIPLOS SETORES =====
@@ -1497,9 +1516,11 @@ app.post('/api/calculadora/parametros/logistica', requerPerfil('MASTER'), async(
 app.post('/api/calculadora/parametros/producao', requerPerfil('MASTER'), async(req,res)=>{try{garantirAbaComCabecalhos('PARAMETROS_PRODUCAO',PROD_HEADERS).catch(()=>{});const b=req.body||{};const obj={...b,ID:b.ID||await gerarProximoID('PARAMETROS_PRODUCAO','PROD','ID'),ATIVO:b.ATIVO||'SIM',DATA_ATUALIZACAO:new Date().toISOString(),USUARIO_ATUALIZACAO:req.user.usuario};await appendObjeto('PARAMETROS_PRODUCAO',obj);res.json({sucesso:true,item:obj});}catch(e){res.status(500).json({sucesso:false,erro:e.message});}});
 
 // ===== DASHBOARD =====
-app.get('/api/dashboard', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req, res) => {
+app.get('/api/dashboard', middlewareEscopoEmpresa(), requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req, res) => {
   try {
-    const [mans, recs] = await Promise.all([lerAba('MANIFESTACOES', 2000).catch(()=>[]), lerAbaReclamacoes(2000)]);
+    let [mans, recs] = await Promise.all([lerAba('MANIFESTACOES', 2000).catch(()=>[]), lerAbaReclamacoes(2000)]);
+    mans = filtrarPorEmpresa(mans, req, ['EMPRESA','Empresa']).filter(m => !isTeste(m));
+    recs = filtrarPorEmpresa(recs, req, ['Empresa','EMPRESA']).filter(r => !isTeste(r));
     const emAndamento = mans.filter(m => !['FINALIZADA','ENCERRADA','CONCLUÍDA'].some(s => (m.STATUS||'').toUpperCase().includes(s))).length;
     const rncsAbertas = mans.filter(m => m.ID_RNC && m.ID_RNC !== '').length;
     const recComSLA = recs.filter(r => r['Dentro do prazo? '] || r['Dentro do prazo?']);
