@@ -1197,7 +1197,7 @@
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
     Visão Geral
   </div>
-  <div class="sidebar-item" onclick="navigate('acompanhamento', this)" style="display:none">
+  <div class="sidebar-item" onclick="navigate('acompanhamento', this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
     Acompanhamento
   </div>
@@ -1216,12 +1216,12 @@
   </div>
 
   <div class="sidebar-section">Gestão</div>
-  <div class="sidebar-item" onclick="navigate('aprovadores', this)" style="display:none">Central de Aprovação</div>
-  <div class="sidebar-item" data-v5-page="representantes" onclick="navigate('representantes', this)" style="display:none">
+  <div class="sidebar-item" onclick="navigate('aprovadores', this)">Central de Aprovação</div>
+  <div class="sidebar-item" data-v5-page="representantes" onclick="navigate('representantes', this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/><path d="M21 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
     Representantes
   </div>
-  <div class="sidebar-item" data-v5-page="setor-responsavel" onclick="navigate('setor-responsavel', this)" style="display:none">
+  <div class="sidebar-item" data-v5-page="setor-responsavel" onclick="navigate('setor-responsavel', this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 7 7 3-7 3-3 7-3-7-7-3 7-3 3-7z"/></svg>
     Minha fila
   </div>
@@ -1238,32 +1238,46 @@
     Setores
   </div>
 
-  <div class="sidebar-item" onclick="navigate('biblioteca-fichas', this)" style="display:none">
+  <div class="sidebar-item" onclick="navigate('biblioteca-fichas', this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/></svg>
     Arquivo de Fichas
   </div>
 
-  <div class="sidebar-section" style="display:none">Inteligência</div>
-  <div class="sidebar-item" onclick="navigate('cerebro', this)" style="display:none">Central de Dados</div>
-  <div class="sidebar-item" onclick="navigate('painel-maquina', this)" style="display:none">Painel da Máquina</div>
-  <div class="sidebar-item" onclick="navigate('sugestoes-melhoria', this)" style="display:none">Sugestões IA</div>
-  <div class="sidebar-item" onclick="navigate('prazos-regionais', this)" style="display:none">Prazos Regionais</div>
+  <div class="sidebar-section">Inteligência</div>
+  <div class="sidebar-item" onclick="navigate('cerebro', this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+    Central de Dados
+  </div>
+  <div class="sidebar-item" onclick="navigate('painel-maquina', this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    Painel da Máquina
+  </div>
+  <div class="sidebar-item" onclick="navigate('sugestoes-melhoria', this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    Sugestões IA
+  </div>
+  <div class="sidebar-item" onclick="navigate('prazos-regionais', this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/><path d="M2 12h3M19 12h3M12 2v3M12 19v3"/></svg>
+    Prazos Regionais
+  </div>
 
   <div class="sidebar-section">Regras</div>
   <div class="sidebar-item" onclick="navigate('matriz', this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>
     Matriz de Tratamento
   </div>
-  <div class="sidebar-item" onclick="navigate('causas', this)" style="display:none">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a2 2 0 0 0-2 2v4"/><circle cx="9" cy="7" r="4"/></svg>
+  <div class="sidebar-item" onclick="navigate('causas', this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a2 2 0 0 0-2 2v4"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
     Causas e Subcausas
   </div>
   <div class="sidebar-item" onclick="navigate('base-conhecimento', this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
     Base de Conhecimento
   </div>
-
-  <div class="sidebar-item" onclick="navigate('matriz-conhecimento', this)" style="display:none">Matriz de Conhecimento</div>
+  <div class="sidebar-item" onclick="navigate('matriz-conhecimento', this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>
+    Matriz de Conhecimento
+  </div>
 
   <div class="sidebar-bottom">
     <div class="sidebar-link">
