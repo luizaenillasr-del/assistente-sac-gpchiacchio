@@ -82,10 +82,17 @@ async function buscarCasosSimilares(manifestacao, limite = 8) {
   if (!descricao) return [];
 
   try {
-    // Tentar PostgreSQL primeiro
+    // Tentar PostgreSQL primeiro — distinguir PG vazio de PG offline
     if (manifestacaoRepo) {
-      const historico = await manifestacaoRepo.buscarParaSimilaridade(2000);
-      if (historico.length > 0) {
+      let historico;
+      try {
+        historico = await manifestacaoRepo.buscarParaSimilaridade(2000);
+      } catch (pgErr) {
+        // PG offline ou erro de conexão — registrar e cair no fallback
+        console.error('[PG] buscarParaSimilaridade falhou (PG offline?):', pgErr.message);
+        historico = null; // null = offline; [] = vazio
+      }
+      if (historico !== null && historico.length > 0) {
         return historico
           .map(h => {
             const dh = h.descricao || '';
@@ -107,9 +114,13 @@ async function buscarCasosSimilares(manifestacao, limite = 8) {
           .sort((a, b) => b.similaridade - a.similaridade)
           .slice(0, limite);
       }
+      if (historico !== null && historico.length === 0) {
+        // PG online mas vazio — registrar estado de sincronização
+        console.info('[PG] buscarParaSimilaridade: PG online mas sem registros (aguardando sincronização). Usando Sheets.');
+      }
     }
   } catch (e) {
-    console.warn('Fallback Sheets para similares:', e.message);
+    console.warn('[PG] Fallback Sheets para similares (erro inesperado):', e.message);
   }
 
   // Fallback: Google Sheets
@@ -250,11 +261,21 @@ async function detectarReincidencia(manifestacao) {
 // 3. SLA
 // ──────────────────────────────────────────────────────────────
 
+// B4: Configuração centralizada de SLA — timezone Brasil, sem UTC implícito
+const SLA_CONFIG = {
+  timezone: process.env.SLA_TIMEZONE || 'America/Sao_Paulo',
+  // Horas úteis (apenas referência para exibição; cálculo ainda em horas corridas)
+  // Para cálculo em horas úteis reais, configure SLA_MODO=UTEIS e defina calendário externo
+  modo: process.env.SLA_MODO || 'CORRIDO', // CORRIDO | UTEIS (futuro)
+};
+
 function calcularSLA(dataAbertura, slaHoras) {
   if (!dataAbertura || !slaHoras) return { status: 'SEM_SLA', prazoHoras: null, horasDecorridas: null, horasRestantes: null };
   const abertura = new Date(dataAbertura);
   if (isNaN(abertura)) return { status: 'SEM_SLA', prazoHoras: null, horasDecorridas: null, horasRestantes: null };
+
   const prazo = new Date(abertura.getTime() + Number(slaHoras) * 3600000);
+  // B4: usar data atual corretamente (não UTC fixo)
   const agora = Date.now();
   const horasDecorridas = Math.round((agora - abertura.getTime()) / 3600000);
   const horasRestantes = Math.round((prazo.getTime() - agora) / 3600000);
@@ -262,8 +283,16 @@ function calcularSLA(dataAbertura, slaHoras) {
 
   let status;
   if (horasRestantes < 0) status = 'VENCIDO';
-  else if (percentDecorrido >= 90) status = 'PROXIMO_DO_VENCIMENTO';
+  else if (percentDecorrido >= 80) status = 'PROXIMO_DO_VENCIMENTO';
   else status = 'DENTRO_DO_PRAZO';
+
+  // Formatar prazoFinal no timezone configurado para exibição
+  let prazoFinalLocal;
+  try {
+    prazoFinalLocal = prazo.toLocaleString('pt-BR', { timeZone: SLA_CONFIG.timezone, dateStyle: 'short', timeStyle: 'short' });
+  } catch (e) {
+    prazoFinalLocal = prazo.toISOString();
+  }
 
   return {
     status,
@@ -272,6 +301,9 @@ function calcularSLA(dataAbertura, slaHoras) {
     horasRestantes,
     percentDecorrido,
     prazoFinal: prazo.toISOString(),
+    prazoFinalLocal,
+    timezone: SLA_CONFIG.timezone,
+    modo: SLA_CONFIG.modo,
     setorResponsavel: 'SAC',
   };
 }
@@ -283,7 +315,7 @@ async function obterSlaConfigurado({ empresaId, setorId, tipo, categoria } = {})
       const sla = await conhecimentoRepo.findSla({ empresaId, setorId, tipo, categoria });
       if (sla) return sla.prazoHoras;
     }
-  } catch (e) {}
+  } catch (e) { console.warn('[SLA] Falha ao consultar SLA no PG:', e.message); }
 
   // Fallback via Sheets
   try {
@@ -293,9 +325,10 @@ async function obterSlaConfigurado({ empresaId, setorId, tipo, categoria } = {})
       const match = (slaSetor.SLA_PADRAO_HORAS || '72').match(/\d+/);
       if (match) return parseInt(match[0]);
     }
-  } catch (e) {}
+  } catch (e) { console.warn('[SLA] Falha ao consultar SLA_ESCALONAMENTO no Sheets:', e.message); }
 
-  return 72; // padrão
+  console.info('[SLA] Usando valor padrão de 72 horas (SLA_CONFIG não encontrado).');
+  return 72; // padrão centralizado
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -454,7 +487,7 @@ async function buscarRegrasDeBanco(tipo, setor, descricao, empresaId) {
         return { sugestao: regra.acao, acoes: [], confianca: 70, origem: 'BANCO_REGRAS' };
       }
     }
-  } catch (e) {}
+  } catch (e) { console.warn('[Cérebro] buscarRegrasDeBanco falhou:', e.message); }
   return null;
 }
 

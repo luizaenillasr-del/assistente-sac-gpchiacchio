@@ -69,6 +69,13 @@ if (!process.env.SESSION_SECRET || process.env.SESSION_SECRET.length < 32) {
   console.error('FATAL: SESSION_SECRET não definida ou com menos de 32 caracteres. Defina SESSION_SECRET nas variáveis de ambiente.');
   if (process.env.NODE_ENV === 'production') process.exit(1);
 }
+// B5: Aviso explícito sobre usuários demo em produção
+if (String(process.env.DEMO_LOGIN_ENABLED || 'false').toLowerCase() === 'true' && process.env.NODE_ENV === 'production') {
+  console.error('[SEGURANÇA B5] DEMO_LOGIN_ENABLED=true em NODE_ENV=production. Usuários demo ATIVOS em produção. Defina DEMO_LOGIN_ENABLED=false imediatamente.');
+}
+if (String(process.env.DEMO_LOGIN_ENABLED || 'false').toLowerCase() !== 'true') {
+  console.info('[SEGURANÇA] Usuários demo desabilitados (DEMO_LOGIN_ENABLED != true). Correto para produção.');
+}
 const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex');
 const SESSION_TTL_MS = 8 * 60 * 60 * 1000;
 
@@ -95,8 +102,11 @@ function verificarToken(token){
 function senhaValida(informada, armazenada){
   if(armazenada === undefined || armazenada === null) return false;
   const s=String(armazenada);
+  // Segurança B1: NUNCA aceitar senha em texto puro. Apenas hashes são válidos.
   if(s.startsWith('sha256:')) return 'sha256:'+crypto.createHash('sha256').update(String(informada||'')).digest('hex')===s;
-  return String(informada||'')===s;
+  // Senha sem hash no storage = configuração inválida. Rejeitar para forçar migração.
+  console.warn('[SEGURANÇA] Tentativa de login com senha sem hash no storage. Configure sha256: no campo SENHA.');
+  return false;
 }
 
 const DEMO_USUARIOS = [
@@ -180,6 +190,40 @@ function requerPerfil(...perfis){
     if(!permitido) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado para este perfil.'});
     next();
   };
+}
+
+// B2: Isolamento de empresa — verifica se o registro pertence à empresa do usuário
+// MASTER tem acesso global. Demais perfis só acessam sua empresa.
+function pertenceEmpresa(userEmpresa, registroEmpresa) {
+  if (!userEmpresa) return true; // sem empresa no token = acesso permitido (usuário legado)
+  const perfNorm = normalizarTexto(userEmpresa);
+  const recNorm = normalizarTexto(registroEmpresa || '');
+  if (!recNorm) return true; // registro sem empresa = acesso permitido
+  // Match parcial: "chiacchio" matches "chiacchio embalagens"
+  return recNorm.includes(perfNorm) || perfNorm.includes(recNorm);
+}
+
+function middlewareEscopoEmpresa(campoEmpresa = 'EMPRESA_RECLAMADA') {
+  return (req, res, next) => {
+    if (!req.user) return next();
+    const perfil = perfilCanonico(req.user.perfil);
+    if (perfil === 'MASTER') return next(); // MASTER tem acesso global
+    // Para demais perfis, marcar empresa do usuário para filtrar na query
+    req._empresaScope = req.user.empresa || null;
+    next();
+  };
+}
+
+// Filtra array de registros pelo escopo de empresa do usuário
+function filtrarPorEmpresa(itens, req, camposEmpresa = ['EMPRESA_RECLAMADA','EMPRESA','EMPRESA_RECLAMANTE']) {
+  if (!req._empresaScope) return itens;
+  const scope = normalizarTexto(req._empresaScope);
+  return itens.filter(item => {
+    return camposEmpresa.some(campo => {
+      const val = normalizarTexto(item[campo] || '');
+      return !val || val.includes(scope) || scope.includes(val);
+    });
+  });
 }
 
 async function carregarUsuarioPorLogin(login){
@@ -389,9 +433,13 @@ async function motorRegras(descricao, tipo, empresa) {
       .filter(p => p.TIPO_RECLAMACAO === 'TODOS' || (tipoID && (p.TIPO_RECLAMACAO || '').includes(tipoID)))
       .slice(0, 6).map(p => ({ id: p.ID_PERGUNTA, pergunta: p.PERGUNTA, obrigatoria: p.OBRIGATORIA === 'SIM' }));
 
-    const geraRNC = texto.includes('reincidência') || texto.includes('terceira') || texto.includes('repetiu') || prioridade === 'Alta';
+    // B6: geraRNC NUNCA é definido automaticamente por palavras-chave.
+    // RNC é sempre decisão humana. Motor de regras sinaliza para revisão, não cria RNC.
+    // rncSinalizado indica que o caso tem características que MERECEM revisão de RNC.
+    const rncSinalizado = texto.includes('reincidência') || texto.includes('terceira') || texto.includes('repetiu') || prioridade === 'Alta';
+    const geraRNC = false; // Imutável. RNC só é criado por decisão humana explícita.
 
-    return { tipoDetectado, tipoID, tipoConfianca, setores, regraAplicada, slaHoras, prioridade, procedimentoSugerido, perguntasNecessarias, geraRNC };
+    return { tipoDetectado, tipoID, tipoConfianca, setores, regraAplicada, slaHoras, prioridade, procedimentoSugerido, perguntasNecessarias, geraRNC, rncSinalizado };
   } catch (e) {
     console.error('Erro motor regras:', e.message);
     return { tipoDetectado: 'Não identificado', tipoConfianca: 0, setores: ['SAC'], slaHoras: 72, prioridade: 'Média', geraRNC: false };
@@ -476,8 +524,29 @@ function normalizarData(val) {
 // ROTAS
 // ===========================================================
 
-app.get('/api/health', (req, res) => {
-  res.json({ sucesso: true, status: 'ok', versao: '5.6.0', sistema: 'Assistente SAC Chiacchio', ts: new Date().toISOString() });
+app.get('/api/health', async (req, res) => {
+  const saude = {
+    sucesso: true, status: 'ok', versao: '5.6.0',
+    sistema: 'Assistente SAC Chiacchio', ts: new Date().toISOString(),
+    postgresql: 'não verificado',
+    sheets: 'não verificado',
+    demoAtivo: String(process.env.DEMO_LOGIN_ENABLED || 'false').toLowerCase() === 'true',
+  };
+  // Verificar PG (diferencia online/offline/vazio)
+  if (manifestacaoRepo) {
+    try {
+      const count = await manifestacaoRepo.findAll({ limit: 1 }).catch(() => null);
+      if (count === null) saude.postgresql = 'offline';
+      else if (count.length === 0) saude.postgresql = 'online_vazio';
+      else saude.postgresql = 'online_com_dados';
+    } catch (e) { saude.postgresql = 'offline'; saude.pgErro = e.message; }
+  } else { saude.postgresql = 'repositório_não_carregado'; }
+  // Verificar Sheets (rápido)
+  try {
+    const rows = await lerAba('MANIFESTACOES', 2).catch(() => null);
+    saude.sheets = rows !== null ? 'acessível' : 'inacessível';
+  } catch (e) { saude.sheets = 'erro'; }
+  res.json(saude);
 });
 
 app.get('/', (req, res) => {
@@ -633,7 +702,7 @@ app.post('/api/representantes/manifestacoes', requerPerfil('RCA / REPRESENTANTE'
 });
 
 // ===== MANIFESTAÇÕES =====
-app.get('/api/manifestacoes', async (req, res) => {
+app.get('/api/manifestacoes', middlewareEscopoEmpresa(), async (req, res) => {
   try {
     // F6: tenta PostgreSQL primeiro
     if (manifestacaoRepo) {
@@ -671,11 +740,13 @@ app.get('/api/manifestacoes', async (req, res) => {
       const rca=normalizarTexto(req.user.codigoRCA||req.user.usuario);
       data=data.filter(r=>normalizarTexto(r.USUARIO_CRIACAO||'')===normalizarTexto(req.user.usuario)||normalizarTexto(r.CODIGO_RCA||'')===rca||normalizarTexto(r.RCA||'')===rca);
     }
+    // B2: filtrar por empresa se não for MASTER
+    data = filtrarPorEmpresa(data, req, ['EMPRESA_RECLAMADA','EMPRESA_RECLAMANTE']);
     res.json({ sucesso: true, total: data.length, itens: data });
   } catch (e) { res.status(500).json({ sucesso: false, erro: e.message, dados: [] }); }
 });
 
-app.get('/api/manifestacoes/:id', async (req, res) => {
+app.get('/api/manifestacoes/:id', middlewareEscopoEmpresa(), async (req, res) => {
   try {
     // F6: tenta PostgreSQL primeiro
     if (manifestacaoRepo) {
@@ -709,6 +780,10 @@ app.get('/api/manifestacoes/:id', async (req, res) => {
     const data = await lerAba('MANIFESTACOES', 2000).catch(()=>[]);
     const item = data.find(r => r.ID_MANIFESTACAO === req.params.id);
     if (!item) return res.status(404).json({ sucesso: false, erro: 'Manifestação não encontrada.' });
+    // B2: verificar escopo de empresa
+    if (req._empresaScope && !pertenceEmpresa(req._empresaScope, item.EMPRESA_RECLAMADA || item.EMPRESA_RECLAMANTE)) {
+      return res.status(403).json({ sucesso: false, erro: 'Acesso não autorizado para esta manifestação.' });
+    }
     res.json({ sucesso: true, manifestacao: item });
   } catch (e) { res.status(500).json({ sucesso: false, erro: e.message }); }
 });
@@ -719,7 +794,8 @@ app.post('/api/manifestacoes', requerPerfil('MASTER','ANALISTA SAC'), async (req
     if (!empresaReclamante || !descricao) return res.status(400).json({ sucesso:false, erro:'Empresa reclamante e descrição são obrigatórios.' });
     const empNorm = normalizarEmpresa(empresaReclamada);
     // Não bloqueia na criação de colunas — a aba já existe em produção
-    garantirAbaComCabecalhos('MANIFESTACOES',['ID_MANIFESTACAO','DATA_ABERTURA','DATA_REGISTRO','EMPRESA_RECLAMANTE','CONTATO','PRODUTO','LOTE','NFE','DESCRICAO','DESCRICAO_MANIFESTACAO','STATUS','TIPO','TIPO_SUGERIDO','SETOR_SUGERIDO','SETORES_SUGERIDOS','PROCEDIMENTO_SUGERIDO','SLA_HORAS','PRIORIDADE','RNC_SUGERIDO','EMPRESA_RECLAMADA','CANAL','CNPJ','TELEFONE','EMAIL','QUANTIDADE','VALOR','TRATATIVA_SUGERIDA','TRATATIVA_APLICAVEL','TRATATIVA_REALIZADA','STATUS_TRATATIVA','DEVOLUTIVA_SUGERIDA','DEVOLUTIVA_FINAL','DEVOLUTIVA_ENVIADA','ORIGEM_DOCUMENTO','ARQUIVO_ORIGEM','USUARIO_CRIACAO','ORIGEM','TIPO_CONFIRMADO','SETORES_CONFIRMADOS','ID_PROCEDIMENTO_APLICADO','GERA_RNC','DATA_INICIO_TRATATIVA','DATA_CONCLUSAO_TRATATIVA','DATA_DEVOLUTIVA','DATA_CONCLUSAO_MANIFESTACAO']).catch(()=>{});
+    // RNC_SINALIZADO: campo novo para indicar que o caso merece revisão de RNC (B6)
+    garantirAbaComCabecalhos('MANIFESTACOES',['ID_MANIFESTACAO','DATA_ABERTURA','DATA_REGISTRO','EMPRESA_RECLAMANTE','CONTATO','PRODUTO','LOTE','NFE','DESCRICAO','DESCRICAO_MANIFESTACAO','STATUS','TIPO','TIPO_SUGERIDO','SETOR_SUGERIDO','SETORES_SUGERIDOS','PROCEDIMENTO_SUGERIDO','SLA_HORAS','PRIORIDADE','RNC_SUGERIDO','RNC_SINALIZADO','EMPRESA_RECLAMADA','CANAL','CNPJ','TELEFONE','EMAIL','QUANTIDADE','VALOR','TRATATIVA_SUGERIDA','TRATATIVA_APLICAVEL','TRATATIVA_REALIZADA','STATUS_TRATATIVA','DEVOLUTIVA_SUGERIDA','DEVOLUTIVA_FINAL','DEVOLUTIVA_ENVIADA','ORIGEM_DOCUMENTO','ARQUIVO_ORIGEM','USUARIO_CRIACAO','ORIGEM','TIPO_CONFIRMADO','SETORES_CONFIRMADOS','ID_PROCEDIMENTO_APLICADO','GERA_RNC','DATA_INICIO_TRATATIVA','DATA_CONCLUSAO_TRATATIVA','DATA_DEVOLUTIVA','DATA_CONCLUSAO_MANIFESTACAO']).catch(()=>{});
     const id = await gerarProximoID('MANIFESTACOES','MAN','ID_MANIFESTACAO');
     const agora = new Date().toISOString();
     const tipoFinal = tipo || 'Reclamação';
@@ -736,7 +812,7 @@ app.post('/api/manifestacoes', requerPerfil('MASTER','ANALISTA SAC'), async (req
       USUARIO_CRIACAO:usuario||req.user?.usuario||'sistema', ORIGEM:req.body.origem||'SAC',
     };
     await appendObjeto('MANIFESTACOES', objeto);
-    // F6: dual-write para PostgreSQL (não-bloqueante)
+    // B3: dual-write para PostgreSQL — rastreia sucesso/falha (não-bloqueante)
     if (manifestacaoRepo) {
       manifestacaoRepo.upsertFromSheets({
         ID_MANIFESTACAO: id,
@@ -747,7 +823,13 @@ app.post('/api/manifestacoes', requerPerfil('MASTER','ANALISTA SAC'), async (req
         TIPO: tipoFinal,
         PRODUTO: objeto.PRODUTO,
         DATA_ABERTURA: agora,
-      }).catch(e => console.warn('[F6] dual-write PG falhou:', e.message));
+      }).then(() => {
+        console.info('[PG] dual-write manifestação OK:', id);
+      }).catch(e => {
+        console.error('[PG] dual-write manifestação FALHOU:', id, e.message);
+        // Registrar falha de dual-write no audit trail (não bloqueia resposta)
+        registrarAuditoria('sistema', 'DUALWRITE_PG_FALHOU', id, 'MANIFESTACOES', null, { erro: e.message }).catch(() => {});
+      });
     }
     registrarAuditoria(usuario||'sistema','CRIOU_MANIFESTAÇÃO',id,'MANIFESTACOES',null,{empresaReclamante,tipo:tipoFinal}).catch(()=>{});
     // Executar análise de IA de forma síncrona antes de responder
@@ -763,7 +845,8 @@ app.post('/api/manifestacoes', requerPerfil('MASTER','ANALISTA SAC'), async (req
           SETORES_SUGERIDOS:Array.isArray(analise.setores)?analise.setores.join(', '):(analise.setoresSugeridos||[]).join(', '),
           PROCEDIMENTO_SUGERIDO:analise.procedimentoSugerido?.nome||'',
           SLA_HORAS:analise.slaHoras||'', PRIORIDADE:analise.prioridade||'',
-          RNC_SUGERIDO:analise.geraRNC?'SIM':'NÃO', TRATATIVA_SUGERIDA:analise.tratativaSugerida?.sugestao||'',
+          // B6: RNC_SUGERIDO sempre NÃO — RNC só por decisão humana explícita
+          RNC_SUGERIDO:'NÃO', RNC_SINALIZADO:analise.rncSinalizado?'REVISAR':'', TRATATIVA_SUGERIDA:analise.tratativaSugerida?.sugestao||'',
           DEVOLUTIVA_SUGERIDA:analise.devolutivaSugerida||'', STATUS:'AGUARDANDO_DECISÃO'
         }).catch(()=>{});
       }
