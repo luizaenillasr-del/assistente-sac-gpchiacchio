@@ -1637,8 +1637,218 @@ app.post('/api/calculadora/calcular', requerPerfil('MASTER','ANALISTA SAC','SETO
     res.json({sucesso:true,resultado:{tipo,tempoProducao:prazoProd||null,prazoTransporte:prazoTrans||null,dataProducaoEstimada:dataProdEst,dataEntregaEstimada:dataEntEst,desvioProducao:desvioProd,desvioTransporte:desvioTrans,desvioDias,etapaDesvio:etapa,statusPrazo:status,parametroLogistica:log,parametroProducao:prod}});
   }catch(e){res.status(500).json({sucesso:false,erro:e.message});}
 });
-app.post('/api/calculadora/parametros/logistica', requerPerfil('MASTER'), async(req,res)=>{try{garantirAbaComCabecalhos('PARAMETROS_LOGISTICA',LOG_HEADERS).catch(()=>{});const b=req.body||{};const obj={...b,ID:b.ID||await gerarProximoID('PARAMETROS_LOGISTICA','LOG','ID'),ATIVO:b.ATIVO||'SIM',DATA_ATUALIZACAO:new Date().toISOString(),USUARIO_ATUALIZACAO:req.user.usuario};await appendObjeto('PARAMETROS_LOGISTICA',obj);res.json({sucesso:true,item:obj});}catch(e){res.status(500).json({sucesso:false,erro:e.message});}});
+app.post('/api/calculadora/parametros/logistica', requerPerfil('MASTER','ANALISTA SAC'), async(req,res)=>{try{await garantirAbaComCabecalhos('PARAMETROS_LOGISTICA',LOG_HEADERS);const b=req.body||{};const obj={...b,ID:b.ID||await gerarProximoID('PARAMETROS_LOGISTICA','LOG','ID'),ATIVO:b.ATIVO||'SIM',DATA_ATUALIZACAO:new Date().toISOString(),USUARIO_ATUALIZACAO:req.user.usuario};await appendObjeto('PARAMETROS_LOGISTICA',obj);res.json({sucesso:true,item:obj});}catch(e){res.status(500).json({sucesso:false,erro:e.message});}});
+app.patch('/api/calculadora/parametros/logistica/:id', requerPerfil('MASTER','ANALISTA SAC'), async(req,res)=>{try{const dados={...req.body,DATA_ATUALIZACAO:new Date().toISOString(),USUARIO_ATUALIZACAO:req.user.usuario};await atualizarPorID('PARAMETROS_LOGISTICA',req.params.id,dados,['ID']);res.json({sucesso:true});}catch(e){res.status(500).json({sucesso:false,erro:e.message});}});
+app.delete('/api/calculadora/parametros/logistica/:id', requerPerfil('MASTER','ANALISTA SAC'), async(req,res)=>{try{await atualizarPorID('PARAMETROS_LOGISTICA',req.params.id,{ATIVO:'NAO',DATA_ATUALIZACAO:new Date().toISOString(),USUARIO_ATUALIZACAO:req.user.usuario},['ID']);res.json({sucesso:true});}catch(e){res.status(500).json({sucesso:false,erro:e.message});}});
 app.post('/api/calculadora/parametros/producao', requerPerfil('MASTER'), async(req,res)=>{try{garantirAbaComCabecalhos('PARAMETROS_PRODUCAO',PROD_HEADERS).catch(()=>{});const b=req.body||{};const obj={...b,ID:b.ID||await gerarProximoID('PARAMETROS_PRODUCAO','PROD','ID'),ATIVO:b.ATIVO||'SIM',DATA_ATUALIZACAO:new Date().toISOString(),USUARIO_ATUALIZACAO:req.user.usuario};await appendObjeto('PARAMETROS_PRODUCAO',obj);res.json({sucesso:true,item:obj});}catch(e){res.status(500).json({sucesso:false,erro:e.message});}});
+
+// ════════════════════════════════════════════════════════════════
+// CALCULADORA DE ATRASO — ANÁLISE COMPLETA (prazo prometido + regional)
+// ════════════════════════════════════════════════════════════════
+
+// Gatilhos que indicam reclamação de atraso
+const GATILHOS_ATRASO = ['atraso','atrasado','atrasada','demora','demorou','demorado','demorada','entrega atrasada','pedido nao chegou','pedido não chegou','nao chegou','não chegou','nao recebeu','não recebeu','prazo ultrapassado','fora do prazo','nao chegou','previsao de entrega ultrapassada','previsão de entrega ultrapassada','produto nao recebido','produto não recebido','nao foi entregue','não foi entregue','transporte demorando','demora na entrega','demora no transporte','ainda nao recebi','ainda não recebi','entrega fora do prazo'];
+
+function detectarGatilhoAtraso(texto) {
+  if (!texto) return false;
+  const t = normalizarTexto(texto);
+  return GATILHOS_ATRASO.some(g => t.includes(normalizarTexto(g)));
+}
+
+// Busca prazo regional com suporte a múltiplas correspondências
+function buscarPrazoRegional(rows, { cidade, uf, regiao } = {}) {
+  const ativos = rows.filter(ativoAgora);
+  if (!cidade && !uf && !regiao) return { encontrado: false, motivo: 'SEM_LOCALIZACAO', itens: [] };
+
+  const cN = normalizarTexto(cidade||'');
+  const ufN = normalizarTexto(uf||'');
+  const regN = normalizarTexto(regiao||'');
+
+  const scoreItem = r => {
+    let s = 0;
+    if (cN && normalizarTexto(r.CIDADE||'') === cN) s += 100;
+    if (ufN && normalizarTexto(r.UF||'') === ufN) s += 20;
+    if (regN && normalizarTexto(r.REGIAO||'') === regN) s += 10;
+    return s;
+  };
+
+  const com_score = ativos.map(r => ({ ...r, _score: scoreItem(r) })).filter(r => r._score > 0).sort((a,b) => b._score - a._score);
+  if (com_score.length === 0) return { encontrado: false, motivo: 'SEM_REFERENCIA', itens: [] };
+
+  const top = com_score[0]._score;
+  const empatados = com_score.filter(r => r._score === top);
+  if (empatados.length > 1 && top < 100) {
+    return { encontrado: false, motivo: 'MULTIPLAS_REFERENCIAS', itens: empatados };
+  }
+  return { encontrado: true, item: com_score[0], itens: [com_score[0]] };
+}
+
+// Classifica o nível do diagnóstico
+function classificarNivelAtraso({ prazoPrometido, prazoRealizado, prazoMedioRegional }) {
+  const temPrometido = prazoPrometido !== null && prazoPrometido !== undefined && !isNaN(Number(prazoPrometido));
+  const temRealizado = prazoRealizado !== null && prazoRealizado !== undefined && !isNaN(Number(prazoRealizado));
+  const temRegional = prazoMedioRegional !== null && prazoMedioRegional !== undefined && !isNaN(Number(prazoMedioRegional));
+
+  if (!temRealizado) return 'DADOS_INSUFICIENTES';
+
+  const atrasadoPrometido = temPrometido && Number(prazoRealizado) > Number(prazoPrometido);
+  const acimaMediaRegional = temRegional && Number(prazoRealizado) > Number(prazoMedioRegional);
+
+  if (atrasadoPrometido && acimaMediaRegional) return 'ATRASO_E_ACIMA_DA_MEDIA_REGIONAL';
+  if (atrasadoPrometido) return 'ATRASO_EM_RELACAO_AO_PRAZO_PROMETIDO';
+  if (acimaMediaRegional) return 'ACIMA_DA_MEDIA_REGIONAL';
+  return 'DENTRO_DO_PADRAO_REGIONAL';
+}
+
+// Identifica etapa provável do atraso com base nas datas
+function identificarEtapaAtraso(b) {
+  const etapas = [];
+  const diffOpt = (de, ate) => { const d = diffDias(de, ate); return d !== null ? d : null; };
+
+  if (b.dataInicioProducao && b.dataFimProducao) {
+    const durProd = diffOpt(b.dataInicioProducao, b.dataFimProducao);
+    const prazoProd = b.prazoPrevistoProd ? Number(b.prazoPrevistoProd) : null;
+    if (durProd !== null) {
+      const desvio = prazoProd !== null ? durProd - prazoProd : null;
+      etapas.push({ etapa: 'PRODUCAO', duracao: durProd, prazoEsperado: prazoProd, desvio, status: desvio !== null ? (desvio > 0 ? 'ATRASADO' : 'NO_PRAZO') : 'SEM_PARAMETRO' });
+    }
+  }
+  if (b.dataFimProducao && b.dataExpedicao) {
+    const durExp = diffOpt(b.dataFimProducao, b.dataExpedicao);
+    etapas.push({ etapa: 'EXPEDICAO', duracao: durExp, prazoEsperado: null, desvio: null, status: durExp !== null && durExp > 3 ? 'ATRASADO' : (durExp !== null ? 'NO_PRAZO' : 'SEM_DADO') });
+  }
+  if (b.dataExpedicao && b.dataEntrega) {
+    const durTrans = diffOpt(b.dataExpedicao, b.dataEntrega);
+    const prazoReg = b.prazoMedioRegional ? Number(b.prazoMedioRegional) : null;
+    const desvio = prazoReg !== null && durTrans !== null ? durTrans - prazoReg : null;
+    etapas.push({ etapa: 'TRANSPORTE', duracao: durTrans, prazoEsperado: prazoReg, desvio, status: desvio !== null ? (desvio > 0 ? 'ACIMA_DA_MEDIA' : 'DENTRO_DO_PADRAO') : (durTrans !== null ? 'SEM_REFERENCIA_REGIONAL' : 'SEM_DADO') });
+  }
+  if (b.dataEntrega && b.dataImplantacao) {
+    const durImpl = diffOpt(b.dataEntrega, b.dataImplantacao);
+    etapas.push({ etapa: 'IMPLANTACAO', duracao: durImpl, prazoEsperado: null, desvio: null, status: 'INFORMATIVO' });
+  }
+
+  // Origem provável
+  const atrasadas = etapas.filter(e => e.status === 'ATRASADO' || e.status === 'ACIMA_DA_MEDIA');
+  let origemProvavel = 'NAO_IDENTIFICADO';
+  if (atrasadas.length === 1) origemProvavel = atrasadas[0].etapa;
+  else if (atrasadas.length > 1) origemProvavel = 'MISTO';
+
+  return { etapas, origemProvavel };
+}
+
+// POST /api/calculadora/analisar-atraso — análise completa integrada
+app.post('/api/calculadora/analisar-atraso', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
+  try {
+    const b = req.body || {};
+    const logs = await lerAba('PARAMETROS_LOGISTICA', 2000).catch(() => []);
+
+    // Busca prazo regional
+    const buscaRegional = buscarPrazoRegional(logs, { cidade: b.cidade, uf: b.uf, regiao: b.regiao });
+
+    const prazoMedioRegional = buscaRegional.encontrado
+      ? Number(buscaRegional.item.PRAZO_TRANSPORTE_DIAS || buscaRegional.item.PRAZO_MAX_DIAS || 0) || null
+      : null;
+    const prazoMinRegional = buscaRegional.encontrado ? Number(buscaRegional.item.PRAZO_MIN_DIAS || 0) || null : null;
+    const prazoMaxRegional = buscaRegional.encontrado ? Number(buscaRegional.item.PRAZO_MAX_DIAS || 0) || null : null;
+
+    const prazoPrometido = b.prazoPrometido !== undefined && b.prazoPrometido !== '' ? Number(b.prazoPrometido) : null;
+    const prazoRealizado = b.prazoRealizado !== undefined && b.prazoRealizado !== '' ? Number(b.prazoRealizado) : null;
+
+    const atrasoDiasPrometido = prazoPrometido !== null && prazoRealizado !== null ? prazoRealizado - prazoPrometido : null;
+    const desvioMediaRegional = prazoMedioRegional !== null && prazoRealizado !== null ? prazoRealizado - prazoMedioRegional : null;
+
+    const nivel = classificarNivelAtraso({ prazoPrometido, prazoRealizado, prazoMedioRegional });
+    const { etapas, origemProvavel } = identificarEtapaAtraso({ ...b, prazoMedioRegional });
+
+    // Confiança do diagnóstico
+    let confianca = 'BAIXO';
+    const dadosDisponiveis = [prazoPrometido, prazoRealizado, prazoMedioRegional, b.dataExpedicao, b.dataEntrega].filter(v => v !== null && v !== undefined && v !== '').length;
+    if (dadosDisponiveis >= 4) confianca = 'ALTO';
+    else if (dadosDisponiveis >= 2) confianca = 'MEDIO';
+
+    res.json({
+      sucesso: true,
+      analise: {
+        nivel,
+        prazoPrometido,
+        prazoRealizado,
+        prazoMedioRegional,
+        prazoMinRegional,
+        prazoMaxRegional,
+        atrasoDiasPrometido,
+        desvioMediaRegional,
+        referenciaRegional: buscaRegional.encontrado ? {
+          cidade: buscaRegional.item.CIDADE,
+          uf: buscaRegional.item.UF,
+          regiao: buscaRegional.item.REGIAO,
+          modalidade: buscaRegional.item.MODALIDADE || '',
+          fonte: buscaRegional.item.FONTE || '',
+          vigenciaInicio: buscaRegional.item.VIGENCIA_INICIO || '',
+        } : null,
+        statusBuscaRegional: buscaRegional.motivo || 'OK',
+        multiplosResultados: buscaRegional.motivo === 'MULTIPLAS_REFERENCIAS' ? buscaRegional.itens.map(i => ({ cidade: i.CIDADE, uf: i.UF, regiao: i.REGIAO, prazo: i.PRAZO_TRANSPORTE_DIAS })) : null,
+        etapas,
+        origemProvavel,
+        confianca,
+        cidade: b.cidade || '',
+        uf: b.uf || '',
+        regiao: b.regiao || '',
+        analisadoEm: new Date().toISOString(),
+        analisadoPor: req.user.usuario,
+        classificacaoIA: nivel,
+      }
+    });
+  } catch (e) { res.status(500).json({ sucesso: false, erro: e.message }); }
+});
+
+// PATCH /api/manifestacoes/:id/diagnostico-atraso — salva diagnóstico na manifestação
+app.patch('/api/manifestacoes/:id/diagnostico-atraso', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
+  try {
+    const b = req.body || {};
+    const dados = {
+      HOUVE_ATRASO: b.houveAtraso || '',
+      PRAZO_PROMETIDO_DIAS: b.prazoPrometido != null ? String(b.prazoPrometido) : '',
+      PRAZO_REALIZADO_DIAS: b.prazoRealizado != null ? String(b.prazoRealizado) : '',
+      PRAZO_MEDIO_REGIONAL_DIAS: b.prazoMedioRegional != null ? String(b.prazoMedioRegional) : '',
+      ATRASO_DIAS: b.atrasoDiasPrometido != null ? String(b.atrasoDiasPrometido) : '',
+      DESVIO_MEDIA_REGIONAL_DIAS: b.desvioMediaRegional != null ? String(b.desvioMediaRegional) : '',
+      CIDADE_DESTINO: b.cidade || '',
+      UF_DESTINO: b.uf || '',
+      REGIAO_DESTINO: b.regiao || '',
+      ORIGEM_PROVAVEL_ATRASO: b.origemProvavel || '',
+      SETOR_RELACIONADO_ATRASO: b.setorRelacionado || '',
+      NIVEL_DIAGNOSTICO_ATRASO: b.nivel || '',
+      CONFIANCA_DIAGNOSTICO_ATRASO: b.confianca || '',
+      JUSTIFICATIVA_ATRASO: b.justificativa || '',
+      CLASSIFICACAO_IA_ATRASO: b.classificacaoIA || '',
+      CLASSIFICACAO_ANALISTA_ATRASO: b.classificacaoAnalista || b.nivel || '',
+      ACERTO_IA_ATRASO: b.classificacaoIA && b.classificacaoAnalista ? (b.classificacaoIA === b.classificacaoAnalista ? 'SIM' : 'NÃO') : '',
+      DATA_ANALISE_ATRASO: new Date().toISOString(),
+      USUARIO_ANALISE_ATRASO: req.user.usuario,
+    };
+    await atualizarPorID('MANIFESTACOES', req.params.id, dados, ['ID_MANIFESTACAO']);
+    registrarAuditoria(req.user.usuario, 'DIAGNOSTICO_ATRASO', req.params.id, 'MANIFESTACOES', null, dados).catch(() => {});
+    res.json({ sucesso: true });
+  } catch (e) { res.status(500).json({ sucesso: false, erro: e.message }); }
+});
+
+// GET /api/calculadora/prazos-regionais — listagem paginada para a tela de gestão
+app.get('/api/calculadora/prazos-regionais', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
+  try {
+    await garantirAbaComCabecalhos('PARAMETROS_LOGISTICA', LOG_HEADERS);
+    let rows = await lerAba('PARAMETROS_LOGISTICA', 5000).catch(() => []);
+    const { q, uf, regiao, ativo = 'SIM' } = req.query;
+    if (ativo) rows = rows.filter(r => normalizarTexto(r.ATIVO||'SIM') === normalizarTexto(ativo));
+    if (uf) rows = rows.filter(r => normalizarTexto(r.UF||'') === normalizarTexto(uf));
+    if (regiao) rows = rows.filter(r => normalizarTexto(r.REGIAO||'') === normalizarTexto(regiao));
+    if (q) { const qN = normalizarTexto(q); rows = rows.filter(r => normalizarTexto(r.CIDADE||'').includes(qN) || normalizarTexto(r.UF||'').includes(qN) || normalizarTexto(r.REGIAO||'').includes(qN)); }
+    rows = rows.sort((a,b) => (a.UF||'').localeCompare(b.UF||'') || (a.CIDADE||'').localeCompare(b.CIDADE||''));
+    const ufs = [...new Set(await lerAba('PARAMETROS_LOGISTICA', 5000).catch(()=>[]).then(r => r.map(x => x.UF).filter(Boolean)))].sort();
+    const regioes = [...new Set(await lerAba('PARAMETROS_LOGISTICA', 5000).catch(()=>[]).then(r => r.map(x => x.REGIAO).filter(Boolean)))].sort();
+    res.json({ sucesso: true, total: rows.length, itens: rows, filtros: { ufs, regioes } });
+  } catch (e) { res.status(500).json({ sucesso: false, erro: e.message }); }
+});
 
 // ===== DASHBOARD =====
 app.get('/api/dashboard', middlewareEscopoEmpresa(), requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req, res) => {

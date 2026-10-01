@@ -1256,6 +1256,11 @@
     Sugestões IA
   </div>
 
+  <div class="sidebar-item" onclick="navigate('prazos-regionais', this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/><path d="M2 12h3M19 12h3M12 2v3M12 19v3"/></svg>
+    Prazos Regionais
+  </div>
+
   <div class="sidebar-section">Regras</div>
   <div class="sidebar-item" onclick="navigate('matriz', this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>
@@ -3020,6 +3025,7 @@
             <button class="cen-tab active" onclick="cenTab('dados',this)">Dados</button>
             <button class="cen-tab" onclick="cenTab('tratativa',this)">Tratativa</button>
             <button class="cen-tab" onclick="cenTab('devolutiva',this)">Devolutiva</button>
+            <button class="cen-tab" id="cen-tab-atraso" onclick="cenTab('atraso',this)" style="display:none">⏱ Atraso</button>
             <button class="cen-tab" onclick="cenTab('rnc',this)">RNC</button>
             <button class="cen-tab" onclick="cenTab('timeline',this)">Timeline</button>
             <button class="cen-tab" onclick="cenTab('historico',this)">Histórico</button>
@@ -3156,6 +3162,151 @@
               <div class="cen-card-title">Histórico da Manifestação</div>
               <div id="cen-historico-corpo" style="font-size:12px;color:var(--gray-400)">Carregando...</div>
             </div>
+          </div>
+
+          <!-- TAB: CALCULADORA DE ATRASO -->
+          <div id="centab-atraso" class="cen-tabpanel" style="display:none;padding:16px">
+            <div class="cen-card" style="margin-bottom:12px">
+              <div class="cen-card-title" style="display:flex;align-items:center;justify-content:space-between">
+                <span>⏱ Calculadora de Atraso</span>
+                <button class="btn btn-secondary" style="font-size:11px;padding:3px 8px" onclick="cenExecutarCalculadoraAtraso()">Recalcular</button>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+                <div>
+                  <label style="font-size:11px;font-weight:600;color:var(--gray-500);display:block;margin-bottom:3px">Cidade de destino</label>
+                  <input id="cenc-cidade" class="input" style="font-size:12px" placeholder="Salvador">
+                </div>
+                <div>
+                  <label style="font-size:11px;font-weight:600;color:var(--gray-500);display:block;margin-bottom:3px">UF</label>
+                  <input id="cenc-uf" class="input" style="font-size:12px" maxlength="2" placeholder="BA" oninput="this.value=this.value.toUpperCase()">
+                </div>
+                <div>
+                  <label style="font-size:11px;font-weight:600;color:var(--gray-500);display:block;margin-bottom:3px">Prazo prometido ao cliente (dias)</label>
+                  <input id="cenc-prazo-prom" class="input" type="number" min="0" style="font-size:12px" placeholder="5">
+                </div>
+                <div>
+                  <label style="font-size:11px;font-weight:600;color:var(--gray-500);display:block;margin-bottom:3px">Prazo realizado (dias)</label>
+                  <input id="cenc-prazo-real" class="input" type="number" min="0" style="font-size:12px" placeholder="8">
+                </div>
+                <div>
+                  <label style="font-size:11px;font-weight:600;color:var(--gray-500);display:block;margin-bottom:3px">Data expedição</label>
+                  <input id="cenc-expedicao" class="input" type="date" style="font-size:12px">
+                </div>
+                <div>
+                  <label style="font-size:11px;font-weight:600;color:var(--gray-500);display:block;margin-bottom:3px">Data entrega real</label>
+                  <input id="cenc-entrega" class="input" type="date" style="font-size:12px">
+                </div>
+                <div>
+                  <label style="font-size:11px;font-weight:600;color:var(--gray-500);display:block;margin-bottom:3px">Início produção</label>
+                  <input id="cenc-inicio-prod" class="input" type="date" style="font-size:12px">
+                </div>
+                <div>
+                  <label style="font-size:11px;font-weight:600;color:var(--gray-500);display:block;margin-bottom:3px">Fim produção</label>
+                  <input id="cenc-fim-prod" class="input" type="date" style="font-size:12px">
+                </div>
+              </div>
+              <button class="btn btn-primary" style="font-size:12px;width:100%" onclick="cenExecutarCalculadoraAtraso()">Analisar Atraso</button>
+            </div>
+
+            <!-- RESULTADO DA CALCULADORA -->
+            <div id="cen-calc-resultado" style="display:none">
+
+              <!-- Nível do diagnóstico -->
+              <div id="cen-calc-nivel" class="cen-card" style="margin-bottom:10px;border-left:4px solid var(--gray-300)">
+                <div style="font-size:14px;font-weight:800" id="cen-calc-nivel-texto">—</div>
+                <div style="font-size:11px;color:var(--gray-500);margin-top:2px" id="cen-calc-nivel-desc">—</div>
+              </div>
+
+              <!-- Comparativo em 3 colunas -->
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
+                <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:10px;text-align:center">
+                  <div style="font-size:10px;color:#0369a1;font-weight:700;text-transform:uppercase;margin-bottom:4px">Prazo Prometido</div>
+                  <div style="font-size:22px;font-weight:800;color:#0369a1" id="cen-calc-prom">—</div>
+                  <div style="font-size:10px;color:#0369a1">dias</div>
+                </div>
+                <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:10px;text-align:center">
+                  <div style="font-size:10px;color:#c2410c;font-weight:700;text-transform:uppercase;margin-bottom:4px">Prazo Realizado</div>
+                  <div style="font-size:22px;font-weight:800;color:#c2410c" id="cen-calc-real">—</div>
+                  <div style="font-size:10px;color:#c2410c">dias</div>
+                </div>
+                <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px;text-align:center">
+                  <div style="font-size:10px;color:#15803d;font-weight:700;text-transform:uppercase;margin-bottom:4px">Média Regional</div>
+                  <div style="font-size:22px;font-weight:800;color:#15803d" id="cen-calc-reg">—</div>
+                  <div style="font-size:10px;color:#15803d">dias</div>
+                </div>
+              </div>
+
+              <!-- Desvios -->
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+                <div style="background:white;border:1px solid var(--gray-200);border-radius:8px;padding:10px">
+                  <div style="font-size:10px;font-weight:700;color:var(--gray-500);text-transform:uppercase;margin-bottom:4px">Atraso vs. Prazo Prometido</div>
+                  <div style="font-size:18px;font-weight:800" id="cen-calc-desvio-prom">—</div>
+                </div>
+                <div style="background:white;border:1px solid var(--gray-200);border-radius:8px;padding:10px">
+                  <div style="font-size:10px;font-weight:700;color:var(--gray-500);text-transform:uppercase;margin-bottom:4px">Desvio vs. Média Regional</div>
+                  <div style="font-size:18px;font-weight:800" id="cen-calc-desvio-reg">—</div>
+                </div>
+              </div>
+
+              <!-- Diagnóstico por etapa -->
+              <div class="cen-card" style="margin-bottom:10px">
+                <div class="cen-card-title">Diagnóstico por Etapa</div>
+                <div id="cen-calc-etapas" style="display:flex;flex-direction:column;gap:6px;margin-top:8px"></div>
+              </div>
+
+              <!-- Origem + Confiança -->
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+                <div style="background:white;border:1px solid var(--gray-200);border-radius:8px;padding:10px">
+                  <div style="font-size:10px;font-weight:700;color:var(--gray-500);text-transform:uppercase;margin-bottom:4px">Origem Provável</div>
+                  <div style="font-size:13px;font-weight:700;color:var(--gray-900)" id="cen-calc-origem">—</div>
+                </div>
+                <div style="background:white;border:1px solid var(--gray-200);border-radius:8px;padding:10px">
+                  <div style="font-size:10px;font-weight:700;color:var(--gray-500);text-transform:uppercase;margin-bottom:4px">Nível de Confiança</div>
+                  <div style="font-size:13px;font-weight:700" id="cen-calc-confianca">—</div>
+                </div>
+              </div>
+
+              <!-- Referência regional usada -->
+              <div id="cen-calc-ref-regional" style="display:none;background:#f8fafc;border:1px solid var(--gray-200);border-radius:8px;padding:10px;margin-bottom:10px;font-size:11px;color:var(--gray-600)"></div>
+
+              <!-- Setor relacionado + Classificação do analista -->
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+                <div>
+                  <label style="font-size:11px;font-weight:600;color:var(--gray-500);display:block;margin-bottom:3px">Setor relacionado</label>
+                  <select id="cenc-setor-rel" class="select" style="font-size:12px;width:100%">
+                    <option value="">Não identificado</option>
+                    <option value="PRODUCAO">Produção</option>
+                    <option value="EXPEDICAO">Expedição</option>
+                    <option value="LOGISTICA">Logística / Transporte</option>
+                    <option value="IMPLANTACAO">Implantação</option>
+                    <option value="COMERCIAL">Comercial</option>
+                    <option value="CLIENTE">Cliente</option>
+                    <option value="MISTO">Misto</option>
+                  </select>
+                </div>
+                <div>
+                  <label style="font-size:11px;font-weight:600;color:var(--gray-500);display:block;margin-bottom:3px">Classificação do analista</label>
+                  <select id="cenc-class-analista" class="select" style="font-size:12px;width:100%">
+                    <option value="">Confirmar diagnóstico da IA</option>
+                    <option value="DENTRO_DO_PADRAO_REGIONAL">Dentro do padrão regional</option>
+                    <option value="ACIMA_DA_MEDIA_REGIONAL">Acima da média regional</option>
+                    <option value="ATRASO_EM_RELACAO_AO_PRAZO_PROMETIDO">Atraso vs. prazo prometido</option>
+                    <option value="ATRASO_E_ACIMA_DA_MEDIA_REGIONAL">Atraso + acima da média</option>
+                    <option value="DADOS_INSUFICIENTES">Dados insuficientes</option>
+                  </select>
+                </div>
+              </div>
+              <div style="margin-bottom:10px">
+                <label style="font-size:11px;font-weight:600;color:var(--gray-500);display:block;margin-bottom:3px">Justificativa / Observações</label>
+                <textarea id="cenc-justificativa" class="input" rows="2" style="width:100%;box-sizing:border-box;font-size:12px;resize:vertical" placeholder="Informe a causa identificada, evidências utilizadas ou contexto relevante..."></textarea>
+              </div>
+              <button class="btn btn-primary" style="width:100%;font-size:12px" onclick="cenSalvarDiagnosticoAtraso()">
+                ✓ Confirmar e Salvar Diagnóstico
+              </button>
+            </div>
+
+            <div id="cen-calc-multiplos" style="display:none;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px;margin-top:8px;font-size:12px"></div>
+            <div id="cen-calc-sem-ref" style="display:none;background:#f1f5f9;border:1px solid var(--gray-200);border-radius:8px;padding:12px;margin-top:8px;font-size:12px;color:var(--gray-500)"></div>
           </div>
 
           <!-- Ações principais (sticky bottom) -->
@@ -4031,6 +4182,158 @@
 </div>
 
 <!-- ===== BIBLIOTECA DE FICHAS ===== -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- PRAZOS MÉDIOS POR REGIÃO                                     -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<div class="page" id="page-prazos-regionais">
+  <div style="padding:24px 24px 0;display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px">
+    <div>
+      <h1 style="font-size:22px;font-weight:800;color:var(--gray-900);margin:0 0 4px">Prazos Médios por Região</h1>
+      <p style="font-size:13px;color:var(--gray-500);margin:0">Base de referência utilizada pela Calculadora de Atraso para comparar o tempo realizado com o comportamento médio esperado por região.</p>
+    </div>
+    <button class="btn btn-primary" style="font-size:13px" onclick="abrirModalPrazoRegional()">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Novo Prazo Regional
+    </button>
+  </div>
+
+  <!-- Barra de filtros -->
+  <div style="padding:16px 24px 0;display:flex;gap:8px;flex-wrap:wrap">
+    <div style="position:relative;flex:1;min-width:200px">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--gray-400)"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input id="pr-f-q" class="input" type="text" placeholder="Buscar cidade, UF ou região..." style="padding-left:36px;width:100%;box-sizing:border-box" oninput="filtrarPrazosRegionais()">
+    </div>
+    <select id="pr-f-uf" class="select" style="min-width:80px" onchange="filtrarPrazosRegionais()">
+      <option value="">Todos UFs</option>
+    </select>
+    <select id="pr-f-regiao" class="select" style="min-width:130px" onchange="filtrarPrazosRegionais()">
+      <option value="">Todas regiões</option>
+    </select>
+    <button class="btn btn-secondary" style="font-size:12px" onclick="carregarPrazosRegionais()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.68-4.18"/></svg>
+      Atualizar
+    </button>
+  </div>
+
+  <!-- Contagem -->
+  <div style="padding:10px 24px 0;display:flex;align-items:center;gap:16px">
+    <span style="font-size:13px;color:var(--gray-500)" id="pr-count">—</span>
+    <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:6px 12px;font-size:12px;color:#92400e">
+      <strong>Referência operacional.</strong> Os prazos aqui cadastrados são usados como comparativo pela Calculadora de Atraso. Não substituem o prazo prometido ao cliente.
+    </div>
+  </div>
+
+  <!-- Tabela -->
+  <div style="padding:12px 24px 32px">
+    <div style="background:white;border:1px solid var(--gray-200);border-radius:10px;overflow:hidden">
+      <div id="pr-loading" style="text-align:center;padding:40px;color:var(--gray-400)">
+        <div class="spinner" style="margin:0 auto 8px"></div>Carregando...
+      </div>
+      <div id="pr-empty" style="display:none;text-align:center;padding:48px;color:var(--gray-400)">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin:0 auto 10px;display:block;color:var(--gray-300)"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <div style="font-weight:600;margin-bottom:4px">Nenhum prazo cadastrado</div>
+        <div style="font-size:12px">Clique em "Novo Prazo Regional" para começar</div>
+      </div>
+      <div style="overflow-x:auto" id="pr-table-wrap" style="display:none">
+        <table class="table" id="pr-table">
+          <thead>
+            <tr>
+              <th>UF</th>
+              <th>CIDADE</th>
+              <th>REGIÃO</th>
+              <th style="text-align:center">PRAZO MÉDIO</th>
+              <th style="text-align:center">MÍN</th>
+              <th style="text-align:center">MÁX</th>
+              <th>MODALIDADE</th>
+              <th>TIPO DIA</th>
+              <th>FONTE</th>
+              <th>VIGÊNCIA</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="pr-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PRAZO REGIONAL -->
+<div id="modal-prazo-regional" class="modal-overlay" style="display:none" onclick="if(event.target===this)fecharModalPrazoRegional()">
+  <div class="modal-box" style="max-width:600px">
+    <div class="modal-header">
+      <h3 id="pr-modal-titulo">Novo Prazo Regional</h3>
+      <button class="modal-close" onclick="fecharModalPrazoRegional()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div>
+          <label style="font-size:12px;font-weight:600;color:var(--gray-600);display:block;margin-bottom:4px">UF <span style="color:var(--red)">*</span></label>
+          <input id="pr-uf" class="input" maxlength="2" placeholder="BA" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()">
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:600;color:var(--gray-600);display:block;margin-bottom:4px">Cidade</label>
+          <input id="pr-cidade" class="input" placeholder="Salvador">
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:600;color:var(--gray-600);display:block;margin-bottom:4px">Região</label>
+          <input id="pr-regiao" class="input" placeholder="Nordeste, Sudoeste BA...">
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:600;color:var(--gray-600);display:block;margin-bottom:4px">Modalidade</label>
+          <select id="pr-modalidade" class="select">
+            <option value="">Não especificada</option>
+            <option value="FROTA_PROPRIA">Frota própria</option>
+            <option value="TRANSPORTADORA">Transportadora</option>
+            <option value="MOTOBOY">Motoboy</option>
+            <option value="CORREIOS">Correios</option>
+            <option value="AEREO">Aéreo</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:600;color:var(--gray-600);display:block;margin-bottom:4px">Prazo Médio (dias) <span style="color:var(--red)">*</span></label>
+          <input id="pr-prazo-medio" class="input" type="number" min="0" step="0.5" placeholder="3">
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:600;color:var(--gray-600);display:block;margin-bottom:4px">Prazo Mínimo (dias)</label>
+          <input id="pr-prazo-min" class="input" type="number" min="0" step="0.5" placeholder="1">
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:600;color:var(--gray-600);display:block;margin-bottom:4px">Prazo Máximo (dias)</label>
+          <input id="pr-prazo-max" class="input" type="number" min="0" step="0.5" placeholder="5">
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:600;color:var(--gray-600);display:block;margin-bottom:4px">Tipo de dia</label>
+          <select id="pr-tipo-dia" class="select">
+            <option value="CORRIDOS">Dias corridos</option>
+            <option value="UTEIS">Dias úteis</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:600;color:var(--gray-600);display:block;margin-bottom:4px">Vigência início</label>
+          <input id="pr-vigencia-inicio" class="input" type="date">
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:600;color:var(--gray-600);display:block;margin-bottom:4px">Vigência fim</label>
+          <input id="pr-vigencia-fim" class="input" type="date">
+        </div>
+        <div style="grid-column:1/-1">
+          <label style="font-size:12px;font-weight:600;color:var(--gray-600);display:block;margin-bottom:4px">Fonte / Referência</label>
+          <input id="pr-fonte" class="input" placeholder="Histórico operacional, transportadora X, contrato...">
+        </div>
+        <div style="grid-column:1/-1">
+          <label style="font-size:12px;font-weight:600;color:var(--gray-600);display:block;margin-bottom:4px">Observações</label>
+          <textarea id="pr-obs" class="input" rows="2" placeholder="Informações complementares..." style="width:100%;box-sizing:border-box;resize:vertical"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer" style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-secondary" onclick="fecharModalPrazoRegional()">Cancelar</button>
+      <button class="btn btn-primary" id="pr-btn-salvar" onclick="salvarPrazoRegional()">Salvar</button>
+    </div>
+  </div>
+</div>
+
 <div class="page" id="page-biblioteca-fichas">
 
   <!-- CABEÇALHO -->
@@ -13036,6 +13339,354 @@ async function mudarStatusMC(id, novoStatus) {
       }
     }
   });
+})();
+</script>
+
+<!-- ===== PRAZOS REGIONAIS + CALCULADORA DE ATRASO ===== -->
+<script>
+(function(){
+  // ─── PRAZOS REGIONAIS ────────────────────────────────────────────────────
+  let _prazosData = [];
+  let _prazoEditId = null;
+
+  window.carregarPrazosRegionais = async function(){
+    const loading=document.getElementById('pr-loading');
+    const wrap=document.getElementById('pr-table-wrap');
+    const empty=document.getElementById('pr-empty');
+    if(loading) loading.style.display='block';
+    if(wrap) wrap.style.display='none';
+    if(empty) empty.style.display='none';
+    const d = await api('/api/calculadora/prazos-regionais');
+    if(loading) loading.style.display='none';
+    if(!d.sucesso){ alert('Erro ao carregar prazos regionais.'); return; }
+    _prazosData = d.items || d.parametros || [];
+    // populate UF/region selects
+    const ufs=[...new Set(_prazosData.map(r=>r.UF).filter(Boolean))].sort();
+    const regs=[...new Set(_prazosData.map(r=>r.REGIAO).filter(Boolean))].sort();
+    const ufSel=document.getElementById('pr-f-uf');
+    if(ufSel){ const v=ufSel.value; ufSel.innerHTML='<option value="">Todos UFs</option>'+ufs.map(u=>`<option value="${esc(u)}">${esc(u)}</option>`).join(''); ufSel.value=v; }
+    const regSel=document.getElementById('pr-f-regiao');
+    if(regSel){ const v=regSel.value; regSel.innerHTML='<option value="">Todas regiões</option>'+regs.map(r=>`<option value="${esc(r)}">${esc(r)}</option>`).join(''); regSel.value=v; }
+    filtrarPrazosRegionais();
+  };
+
+  window.filtrarPrazosRegionais = function(){
+    const q = (document.getElementById('pr-f-q')?.value||'').toLowerCase();
+    const uf = document.getElementById('pr-f-uf')?.value||'';
+    const reg = document.getElementById('pr-f-regiao')?.value||'';
+    const rows = _prazosData.filter(r=>{
+      if(uf && r.UF!==uf) return false;
+      if(reg && r.REGIAO!==reg) return false;
+      if(q && !JSON.stringify(r).toLowerCase().includes(q)) return false;
+      return true;
+    });
+    const tbody = document.getElementById('pr-tbody');
+    const wrap=document.getElementById('pr-table-wrap');
+    const empty=document.getElementById('pr-empty');
+    const count=document.getElementById('pr-count');
+    if(count) count.textContent=rows.length+' registro'+(rows.length!==1?'s':'');
+    if(!rows.length){
+      if(wrap) wrap.style.display='none';
+      if(empty) empty.style.display='block';
+      return;
+    }
+    if(wrap) wrap.style.display='block';
+    if(empty) empty.style.display='none';
+    if(!tbody) return;
+    tbody.innerHTML = rows.map(r=>`
+      <tr>
+        <td style="font-weight:600">${esc(r.UF||'—')}</td>
+        <td>${esc(r.CIDADE||'—')}</td>
+        <td>${esc(r.REGIAO||'—')}</td>
+        <td style="text-align:center;font-weight:700">${r.PRAZO_TRANSPORTE_DIAS||'—'}</td>
+        <td style="text-align:center">${r.PRAZO_MIN_DIAS||'—'}</td>
+        <td style="text-align:center">${r.PRAZO_MAX_DIAS||'—'}</td>
+        <td>${esc(r.TIPO_DIA||'—')}</td>
+        <td style="font-size:11px">${esc(r.FONTE||'—')}</td>
+        <td style="font-size:11px">${esc(r.VIGENCIA_INICIO||'')}${r.VIGENCIA_FIM?' – '+esc(r.VIGENCIA_FIM):''}</td>
+        <td><span style="font-size:10px;padding:2px 6px;border-radius:10px;background:${r.ATIVO==='SIM'?'#dcfce7':'#fee2e2'};color:${r.ATIVO==='SIM'?'#15803d':'#dc2626'}">${r.ATIVO==='SIM'?'Ativo':'Inativo'}</span></td>
+        <td style="white-space:nowrap">
+          <button class="btn btn-secondary" style="font-size:10px;padding:2px 6px;margin-right:2px" onclick="abrirModalPrazoRegional('${esc(r.ID)}')">✏️</button>
+          <button class="btn" style="font-size:10px;padding:2px 6px;background:#fee2e2;color:#dc2626;border:none;cursor:pointer" onclick="desativarPrazoRegional('${esc(r.ID)}')">🗑</button>
+        </td>
+      </tr>`).join('');
+  };
+
+  window.abrirModalPrazoRegional = function(id){
+    _prazoEditId = id || null;
+    const m = document.getElementById('modal-prazo-regional');
+    if(!m) return;
+    ['pr-uf','pr-cidade','pr-regiao','pr-modalidade','pr-tipo-dia','pr-prazo-medio','pr-prazo-min','pr-prazo-max','pr-vigencia-inicio','pr-vigencia-fim','pr-fonte','pr-obs'].forEach(fid=>{
+      const el=document.getElementById(fid); if(el) el.value='';
+    });
+    const titulo=document.getElementById('pr-modal-titulo');
+    if(titulo) titulo.textContent=id?'Editar Prazo Regional':'Novo Prazo Regional';
+    if(id){
+      const r=_prazosData.find(x=>x.ID===id);
+      if(r){
+        _setVal('pr-uf', r.UF);
+        _setVal('pr-cidade', r.CIDADE);
+        _setVal('pr-regiao', r.REGIAO);
+        _setVal('pr-modalidade', r.MODALIDADE);
+        _setVal('pr-tipo-dia', r.TIPO_DIA);
+        _setVal('pr-prazo-medio', r.PRAZO_TRANSPORTE_DIAS);
+        _setVal('pr-prazo-min', r.PRAZO_MIN_DIAS);
+        _setVal('pr-prazo-max', r.PRAZO_MAX_DIAS);
+        _setVal('pr-vigencia-inicio', r.VIGENCIA_INICIO);
+        _setVal('pr-vigencia-fim', r.VIGENCIA_FIM);
+        _setVal('pr-fonte', r.FONTE);
+        _setVal('pr-obs', r.OBSERVACAO);
+      }
+    }
+    m.style.display='flex';
+  };
+
+  function _setVal(id, v){ const el=document.getElementById(id); if(el) el.value=v||''; }
+
+  window.fecharModalPrazoRegional = function(){
+    const m=document.getElementById('modal-prazo-regional'); if(m) m.style.display='none';
+  };
+
+  window.salvarPrazoRegional = async function(){
+    const uf=(document.getElementById('pr-uf')?.value||'').trim();
+    const media=(document.getElementById('pr-prazo-medio')?.value||'').trim();
+    if(!uf||!media){alert('UF e Prazo Médio são obrigatórios.');return;}
+    const body={
+      UF:uf,
+      CIDADE:(document.getElementById('pr-cidade')?.value||'').trim(),
+      REGIAO:(document.getElementById('pr-regiao')?.value||'').trim(),
+      MODALIDADE:(document.getElementById('pr-modalidade')?.value||'').trim(),
+      TIPO_DIA:(document.getElementById('pr-tipo-dia')?.value||'').trim()||'UTIL',
+      PRAZO_TRANSPORTE_DIAS:Number(media)||0,
+      PRAZO_MIN_DIAS:Number(document.getElementById('pr-prazo-min')?.value||0)||0,
+      PRAZO_MAX_DIAS:Number(document.getElementById('pr-prazo-max')?.value||0)||0,
+      VIGENCIA_INICIO:(document.getElementById('pr-vigencia-inicio')?.value||'').trim(),
+      VIGENCIA_FIM:(document.getElementById('pr-vigencia-fim')?.value||'').trim(),
+      FONTE:(document.getElementById('pr-fonte')?.value||'').trim(),
+      OBSERVACAO:(document.getElementById('pr-obs')?.value||'').trim(),
+    };
+    const btn=document.getElementById('pr-btn-salvar');
+    if(btn){btn.disabled=true;btn.textContent='Salvando…';}
+    let d;
+    if(_prazoEditId){
+      d=await api('/api/calculadora/parametros/logistica/'+encodeURIComponent(_prazoEditId),'PATCH',body);
+    } else {
+      d=await api('/api/calculadora/parametros/logistica','POST',body);
+    }
+    if(btn){btn.disabled=false;btn.textContent='Salvar';}
+    if(!d.sucesso){alert('Erro: '+(d.erro||d.mensagem));return;}
+    fecharModalPrazoRegional();
+    carregarPrazosRegionais();
+  };
+
+  window.desativarPrazoRegional = async function(id){
+    if(!confirm('Desativar este prazo regional?')) return;
+    const d=await api('/api/calculadora/parametros/logistica/'+encodeURIComponent(id),'DELETE');
+    if(!d.sucesso){alert('Erro: '+(d.erro||d.mensagem));return;}
+    carregarPrazosRegionais();
+  };
+
+  if(typeof pageLoaders!=='undefined') pageLoaders['prazos-regionais']=window.carregarPrazosRegionais;
+  document.addEventListener('DOMContentLoaded',function(){ if(typeof pageLoaders!=='undefined') pageLoaders['prazos-regionais']=window.carregarPrazosRegionais; });
+
+  // ─── CALCULADORA DE ATRASO — Central SAC ────────────────────────────────
+  let _cenCalcAnalise = null;
+  const GATILHOS_ATRASO_FRONT = ['atraso','atrasado','demora','entrega atrasada','pedido não chegou','prazo ultrapassado','fora do prazo','previsão de entrega ultrapassada','produto não recebido','transporte demorando','demora na entrega','ainda não recebi','entrega fora do prazo','não chegou','não foi entregue','sem previsão','atraso na entrega'];
+
+  function _detectarGatilhoFront(texto){
+    if(!texto) return false;
+    const t=texto.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+    return GATILHOS_ATRASO_FRONT.some(g=>t.includes(g.normalize('NFD').replace(/[̀-ͯ]/g,'')));
+  }
+
+  // Patch cenSelecionarMan to auto-show/hide atraso tab
+  const _origCenSelecionarMan = window.cenSelecionarMan;
+  if(typeof _origCenSelecionarMan==='function'){
+    window.cenSelecionarMan = async function(id){
+      await _origCenSelecionarMan(id);
+      // Auto show/hide atraso tab
+      const tabBtn=document.getElementById('cen-tab-atraso');
+      if(!tabBtn) return;
+      // get description from loaded UI
+      const descEl=document.getElementById('cd-descricao');
+      const desc=(descEl?.textContent||'');
+      const rel=document.getElementById('cd-relato')?.textContent||'';
+      const temGatilho=_detectarGatilhoFront(desc)||_detectarGatilhoFront(rel);
+      tabBtn.style.display=temGatilho?'':'none';
+      if(!temGatilho){
+        // hide result if tab was active
+        const panel=document.getElementById('centab-atraso');
+        if(panel?.classList.contains('active')){ cenTab('dados',document.querySelector('.cen-tab[onclick*="dados"]')); }
+      }
+    };
+  }
+
+  window.cenExecutarCalculadoraAtraso = async function(){
+    const btn=document.querySelector('button[onclick="cenExecutarCalculadoraAtraso()"]');
+    if(btn){btn.disabled=true;btn.textContent='Analisando…';}
+
+    const body={
+      cidade:(document.getElementById('cenc-cidade')?.value||'').trim(),
+      uf:(document.getElementById('cenc-uf')?.value||'').trim(),
+      prazoPrometido:Number(document.getElementById('cenc-prazo-prom')?.value||0)||null,
+      prazoRealizado:Number(document.getElementById('cenc-prazo-real')?.value||0)||null,
+      dataExpedicao:(document.getElementById('cenc-expedicao')?.value||'').trim()||null,
+      dataEntrega:(document.getElementById('cenc-entrega')?.value||'').trim()||null,
+      inicioProducao:(document.getElementById('cenc-inicio-prod')?.value||'').trim()||null,
+      fimProducao:(document.getElementById('cenc-fim-prod')?.value||'').trim()||null,
+      manifestacaoId:_cenAtual||null,
+    };
+
+    const d=await api('/api/calculadora/analisar-atraso','POST',body);
+    if(btn){btn.disabled=false;btn.textContent='Analisar Atraso';}
+    if(!d.sucesso){alert('Erro na análise: '+(d.erro||d.mensagem));return;}
+    _cenCalcAnalise=d.analise||d;
+    cenRenderCalcResultado(_cenCalcAnalise);
+  };
+
+  window.cenRenderCalcResultado = function(d){
+    const res=document.getElementById('cen-calc-resultado');
+    if(res) res.style.display='block';
+    const multiplos=document.getElementById('cen-calc-multiplos');
+    const semRef=document.getElementById('cen-calc-sem-ref');
+
+    // Multiple regional refs
+    if(d.multiplosResultados?.length>1){
+      if(multiplos){
+        multiplos.style.display='block';
+        multiplos.innerHTML='<div style="font-weight:600;margin-bottom:8px">Múltiplas referências encontradas. Selecione uma:</div>'+
+          d.multiplosResultados.map(r=>`
+          <div style="border:1px solid var(--border);border-radius:6px;padding:8px 10px;cursor:pointer;margin-bottom:6px;background:white" onclick="alert('Selecionar referência específica: funcionalidade disponível em breve.')">
+            <span style="font-weight:600">${esc(r.cidade||r.regiao||r.uf||'—')}</span>
+            <span style="font-size:11px;color:var(--gray-500);margin-left:8px">${r.prazo||'?'} dias</span>
+          </div>`).join('');
+      }
+      if(semRef) semRef.style.display='none';
+      return;
+    }
+    if(multiplos) multiplos.style.display='none';
+
+    // No regional ref
+    const statusBusca=d.statusBuscaRegional||'';
+    if(!d.referenciaRegional && statusBusca && statusBusca!=='OK'){
+      if(semRef){
+        semRef.style.display='block';
+        const motivos={'SEM_LOCALIZACAO':'Nenhuma cidade/UF informada. Preencha os dados de destino para buscar a referência regional.','SEM_REFERENCIA':'Não há prazo regional cadastrado para este destino. O diagnóstico se baseará apenas no prazo prometido.','MULTIPLAS_REFERENCIAS':'Múltiplas referências encontradas para este destino.'};
+        semRef.textContent=motivos[statusBusca]||'Sem referência regional cadastrada para este destino.';
+      }
+    } else {
+      if(semRef) semRef.style.display='none';
+    }
+
+    // Nivel
+    const nivelMap={
+      DENTRO_DO_PADRAO_REGIONAL:{label:'Dentro do Padrão Regional',color:'#15803d',bg:'#dcfce7'},
+      ACIMA_DA_MEDIA_REGIONAL:{label:'Acima da Média Regional',color:'#92400e',bg:'#fef3c7'},
+      ATRASO_EM_RELACAO_AO_PRAZO_PROMETIDO:{label:'Atraso em Relação ao Prazo Prometido',color:'#b45309',bg:'#ffedd5'},
+      ATRASO_E_ACIMA_DA_MEDIA_REGIONAL:{label:'Atraso e Acima da Média Regional',color:'#dc2626',bg:'#fee2e2'},
+      DADOS_INSUFICIENTES:{label:'Dados Insuficientes',color:'#6b7280',bg:'#f3f4f6'},
+    };
+    const nv=nivelMap[d.nivel]||{label:d.nivel||'—',color:'#6b7280',bg:'#f3f4f6'};
+    const nivelEl=document.getElementById('cen-calc-nivel');
+    if(nivelEl){nivelEl.style.background=nv.bg;nivelEl.style.borderLeftColor=nv.color;}
+    const nivelTexto=document.getElementById('cen-calc-nivel-texto');
+    if(nivelTexto){nivelTexto.textContent=nv.label;nivelTexto.style.color=nv.color;}
+
+    // 3 prazo values
+    const _cv=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v!=null?String(v):'—';};
+    _cv('cen-calc-prom', d.prazoPrometido);
+    _cv('cen-calc-real', d.prazoRealizado);
+    _cv('cen-calc-reg', d.prazoMedioRegional);
+
+    // Desvios
+    const _cvd=(id,v)=>{
+      const el=document.getElementById(id);
+      if(!el) return;
+      if(v==null){el.textContent='—';el.style.color='var(--gray-500)';return;}
+      el.textContent=(v>0?'+':'')+v+'d';
+      el.style.color=v>0?'#dc2626':v<0?'#15803d':'#6b7280';
+    };
+    _cvd('cen-calc-desvio-prom', d.atrasoDiasPrometido);
+    _cvd('cen-calc-desvio-reg', d.desvioMediaRegional);
+
+    // Etapas
+    const etapasEl=document.getElementById('cen-calc-etapas');
+    if(etapasEl && d.etapas?.length){
+      etapasEl.innerHTML=d.etapas.map(e=>`
+        <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
+          <span style="font-size:11px;font-weight:600;min-width:80px;color:var(--gray-700)">${esc(e.etapa||'')}</span>
+          <span style="font-size:11px;flex:1;color:var(--gray-600)">${esc(e.descricao||'')}</span>
+          ${e.desvio!=null?`<span style="font-size:11px;font-weight:700;color:${e.desvio>0?'#dc2626':'#15803d'}">${e.desvio>0?'+':''}${e.desvio}d</span>`:''}
+        </div>`).join('');
+    } else if(etapasEl){ etapasEl.innerHTML='<div style="font-size:11px;color:var(--gray-400)">Sem dados de etapa informados.</div>'; }
+
+    // Origem e confiança
+    const origEl=document.getElementById('cen-calc-origem');
+    if(origEl) origEl.textContent=d.origemProvavelAtraso||'—';
+    const confEl=document.getElementById('cen-calc-confianca');
+    if(confEl){
+      const cv=d.confianca||'';
+      confEl.textContent=cv;
+      confEl.style.color=cv==='ALTO'?'#15803d':cv==='MEDIO'?'#92400e':'#dc2626';
+    }
+    // Ref regional usada
+    const refEl=document.getElementById('cen-calc-ref-regional');
+    if(refEl){
+      if(d.referenciaRegional){
+        const r=d.referenciaRegional;
+        refEl.style.display='block';
+        refEl.textContent=`Referência: ${r.cidade||r.regiao||r.uf||'—'} — ${d.prazoMedioRegional||'?'} dias (Fonte: ${r.fonte||'—'})`;
+      } else { refEl.style.display='none'; }
+    }
+  };
+
+  window.cenSelecionarRefRegional = async function(refId){
+    if(!_cenCalcAnalise?.itens) return;
+    const ref=_cenCalcAnalise.itens.find(r=>r.ID===refId);
+    if(!ref) return;
+    // re-run analysis with selected ref
+    const d=await api('/api/calculadora/analisar-atraso','POST',{
+      ...(_cenCalcAnalise._bodyOriginal||{}),
+      referenciaId:refId,
+      manifestacaoId:_cenAtual||null,
+    });
+    if(!d.sucesso){alert('Erro: '+(d.erro||d.mensagem));return;}
+    _cenCalcAnalise=d;
+    cenRenderCalcResultado(d);
+  };
+
+  window.cenSalvarDiagnosticoAtraso = async function(){
+    if(!_cenAtual){alert('Nenhuma manifestação selecionada.');return;}
+    const setor=(document.getElementById('cenc-setor-rel')?.value||'').trim();
+    const classAnalista=(document.getElementById('cenc-class-analista')?.value||'').trim();
+    const just=(document.getElementById('cenc-justificativa')?.value||'').trim();
+    if(!just){alert('Informe a justificativa antes de salvar.');return;}
+
+    const body={
+      nivelDiagnostico:_cenCalcAnalise?.nivel||'DADOS_INSUFICIENTES',
+      prazoPrometidoDias:_cenCalcAnalise?.prazoPrometido||null,
+      prazoRealizadoDias:_cenCalcAnalise?.prazoRealizado||null,
+      prazoMedioRegionalDias:_cenCalcAnalise?.prazoMedioRegional||null,
+      atrasoDias:_cenCalcAnalise?.atrasoDiasPrometido||null,
+      desvioMediaRegionalDias:_cenCalcAnalise?.desvioMediaRegional||null,
+      cidadeDestino:(document.getElementById('cenc-cidade')?.value||'').trim(),
+      ufDestino:(document.getElementById('cenc-uf')?.value||'').trim(),
+      origemProvavelAtraso:_cenCalcAnalise?.origemProvavel||null,
+      setorRelacionado:setor,
+      confiancaDiagnostico:_cenCalcAnalise?.confianca||null,
+      classificacaoIA:_cenCalcAnalise?.classificacaoIA||null,
+      classificacaoAnalista:classAnalista,
+      justificativa:just,
+    };
+
+    const btn=document.querySelector('button[onclick="cenSalvarDiagnosticoAtraso()"]');
+    if(btn){btn.disabled=true;btn.textContent='Salvando…';}
+    const d=await api('/api/manifestacoes/'+encodeURIComponent(_cenAtual)+'/diagnostico-atraso','PATCH',body);
+    if(btn){btn.disabled=false;btn.textContent='Confirmar e Salvar Diagnóstico';}
+    if(!d.sucesso){alert('Erro ao salvar: '+(d.erro||d.mensagem));return;}
+    alert('Diagnóstico salvo com sucesso!');
+  };
+
 })();
 </script>
 
