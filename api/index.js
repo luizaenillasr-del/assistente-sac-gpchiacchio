@@ -3473,6 +3473,93 @@ app.post('/api/biblioteca/fichas/:id/regenerar-pdf', requerPerfil('MASTER','ADMI
   } catch(e) { res.status(500).json({ sucesso: false, erro: e.message }); }
 });
 
+// ═══ IMPORTAR FICHA HISTÓRICA (PDF/DOCX via IA) ═══════════════════════════
+app.post('/api/biblioteca/importar-ficha', requerPerfil('MASTER','ADMINISTRADOR','ANALISTA SAC','SAC'), async (req, res) => {
+  try {
+    // Aceita multipart/form-data mas sem salvar em disco (serverless)
+    // Lê o body como buffer via express raw e faz extração textual mínima
+    const contentType = req.headers['content-type'] || '';
+    if (!contentType.includes('multipart/form-data')) {
+      return res.status(400).json({ sucesso: false, erro: 'Envie um arquivo via multipart/form-data.' });
+    }
+
+    // Extração simples: usa busboy para ler o arquivo
+    const Busboy = (() => { try { return require('busboy'); } catch { return null; } })();
+    if (!Busboy) return res.status(503).json({ sucesso: false, erro: 'Módulo de upload não disponível neste ambiente.' });
+
+    const bb = Busboy({ headers: req.headers, limits: { fileSize: 10 * 1024 * 1024 } });
+    let nomeArquivo = ''; let mimeType = ''; let chunks = [];
+
+    await new Promise((resolve, reject) => {
+      bb.on('file', (name, stream, info) => {
+        nomeArquivo = info.filename; mimeType = info.mimeType;
+        stream.on('data', c => chunks.push(c));
+        stream.on('end', () => {});
+        stream.on('error', reject);
+      });
+      bb.on('finish', resolve);
+      bb.on('error', reject);
+      req.pipe(bb);
+    });
+
+    if (chunks.length === 0) return res.status(400).json({ sucesso: false, erro: 'Arquivo não recebido.' });
+    const buffer = Buffer.concat(chunks);
+
+    // Extrai texto do arquivo para passar à IA
+    let textoExtraido = '';
+    if (mimeType === 'application/pdf' || nomeArquivo.match(/\.pdf$/i)) {
+      // Tenta extração básica de texto de PDF (sem lib pesada — busca strings ASCII)
+      textoExtraido = buffer.toString('latin1').replace(/[^\x20-\x7E\n\r\t]/g, ' ').replace(/\s+/g, ' ').substring(0, 4000);
+    } else {
+      // DOCX: extrai XML interno
+      textoExtraido = buffer.toString('utf8', 0, 8000).replace(/[^\x20-\x7E\n\r\tÀ-ɏ]/g, ' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').substring(0, 4000);
+    }
+
+    // Usa IA para extrair campos estruturados
+    const Anthropic = (() => { try { return require('@anthropic-ai/sdk'); } catch { return null; } })();
+    let dadosExtraidos = {};
+    if (Anthropic && process.env.ANTHROPIC_API_KEY) {
+      const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+      const msg = await client.messages.create({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 512,
+        messages: [{ role: 'user', content: `Extraia dados desta ficha de reclamação e retorne APENAS JSON válido com os campos: protocolo, data_registro (ISO), nome_cliente, empresa, setor, tipo_manifestacao, motivo, colaborador. Se não encontrar um campo, use null. Texto da ficha:\n\n${textoExtraido}` }]
+      });
+      try { dadosExtraidos = JSON.parse(msg.content[0].text.replace(/```json?|```/g,'')); } catch {}
+    }
+
+    // Gera ID e registra na aba FICHAS_BIBLIOTECA
+    const idFicha = 'FH-' + Date.now();
+    const agora = new Date().toISOString();
+    const obj = {
+      ID_FICHA: idFicha,
+      ID_MANIFESTACAO: '',
+      PROTOCOLO: dadosExtraidos.protocolo || nomeArquivo.replace(/\.\w+$/, ''),
+      DATA_REGISTRO: dadosExtraidos.data_registro || agora,
+      NOME_CLIENTE: dadosExtraidos.nome_cliente || '',
+      EMPRESA: dadosExtraidos.empresa || '',
+      SETOR_RECEBIMENTO: dadosExtraidos.setor || '',
+      TIPO_MANIFESTACAO: dadosExtraidos.tipo_manifestacao || 'Reclamação',
+      MOTIVO: dadosExtraidos.motivo || '',
+      COLABORADOR_RECEBIMENTO: dadosExtraidos.colaborador || '',
+      STATUS: 'IMPORTADA',
+      ORIGEM: 'IMPORTACAO_MANUAL',
+      ARQUIVO_NOME: nomeArquivo,
+      PDF_DRIVE_ID: '',
+      PDF_DRIVE_URL: '',
+      VERSAO: '1',
+      DATA_CRIACAO: agora,
+      CRIADO_POR: req.user.usuario || '',
+    };
+
+    const FICHAS_HEADERS = ['ID_FICHA','ID_MANIFESTACAO','PROTOCOLO','DATA_REGISTRO','NOME_CLIENTE','EMPRESA','SETOR_RECEBIMENTO','TIPO_MANIFESTACAO','MOTIVO','COLABORADOR_RECEBIMENTO','STATUS','ORIGEM','ARQUIVO_NOME','PDF_DRIVE_ID','PDF_DRIVE_URL','VERSAO','DATA_CRIACAO','CRIADO_POR'];
+    await garantirAbaComCabecalhos('FICHAS_BIBLIOTECA', FICHAS_HEADERS);
+    await appendObjeto('FICHAS_BIBLIOTECA', obj);
+    registrarAuditoria(req.user.usuario, 'IMPORTOU_FICHA_HISTORICA', idFicha, 'FICHAS_BIBLIOTECA', null, { arquivo: nomeArquivo }).catch(()=>{});
+    res.json({ sucesso: true, idFicha, protocolo: obj.PROTOCOLO, dados: dadosExtraidos });
+  } catch(e) { res.status(500).json({ sucesso: false, erro: e.message }); }
+});
+
 // ===== MATRIZ DE CONHECIMENTO =====
 
 const MC_PERFIS_EDITOR = new Set(['MASTER','ADMINISTRADOR','ANALISTA SAC','GESTOR SAC']);
@@ -3687,6 +3774,28 @@ async function garantirAbasPermissoes() {
 }
 garantirAbasPermissoes();
 
+// ── E-mail via Gmail API (mesma conta de serviço) ────────────────────────────
+async function enviarEmailAcesso({ para, nome, login, senha, perfil, empresa }) {
+  try {
+    const gmailUser = process.env.GMAIL_REMETENTE || process.env.GMAIL_USER;
+    if (!gmailUser) { console.warn('[EMAIL] GMAIL_REMETENTE não configurado — e-mail não enviado.'); return false; }
+    const auth = await getAuth();
+    const { google } = require('googleapis');
+    const gmail = google.gmail({ version: 'v1', auth });
+    const assunto = 'Acesso aprovado — Assistente SAC Grupo Chiacchio';
+    const corpo = `Olá, ${nome}!\n\nSeu acesso ao Assistente SAC foi aprovado.\n\nDados de acesso:\n  Usuário: ${login}\n  Senha:   ${senha}\n  Perfil:  ${perfil}\n  Empresa: ${empresa}\n\nAcesse: ${process.env.APP_URL || 'https://assistente-sac-gpchiacchio.vercel.app'}\n\nPor segurança, altere sua senha no primeiro acesso.\n\nEquipe SAC — Grupo Chiacchio`;
+    const raw = Buffer.from(
+      `To: ${para}\r\nSubject: ${assunto}\r\nContent-Type: text/plain; charset=utf-8\r\n\r\n${corpo}`
+    ).toString('base64url');
+    await gmail.users.messages.send({ userId: gmailUser, requestBody: { raw } });
+    console.log(`[EMAIL] Enviado para ${para}`);
+    return true;
+  } catch(e) {
+    console.warn('[EMAIL] Falha ao enviar e-mail:', e.message);
+    return false;
+  }
+}
+
 // ── Auditoria de acesso ───────────────────────────────────────────────────────
 async function registrarAuditoriaAcesso(usuarioAfetado, acao, modulo, empresa, anterior, novo, executadoPor) {
   try {
@@ -3827,6 +3936,7 @@ app.post('/api/public/solicitar-acesso', async (req, res) => {
       DECIDIDO_POR: '',
       MOTIVO_REJEICAO: '',
     };
+    await garantirAbaComCabecalhos('SOLICITACOES_ACESSO', SOLICITACOES_HEADERS);
     await appendObjeto('SOLICITACOES_ACESSO', obj);
     await registrarAuditoriaAcesso(emailNorm, 'SOLICITACAO_CRIADA', '', empCod, '', 'PENDENTE', 'sistema');
     res.json({sucesso:true, id, mensagem:'Solicitação enviada. Aguarde aprovação do MASTER.'});
@@ -3948,6 +4058,8 @@ app.post('/api/admin/solicitacoes/:id/aprovar', requerPerfil('MASTER'), async (r
     await registrarAuditoriaAcesso(item.EMAIL, 'USUARIO_CRIADO_POR_APROVACAO', '', empCod, '', JSON.stringify({perfil:perfilNorm,empresa:empCod,modulos:modulosConfig}), req.user.usuario||'MASTER');
     invalidarCachePermissoes(item.EMAIL);
     res.json({sucesso:true, idUsuario, login, mensagem:'Usuário criado e ativo.', senhaGerada: !senha?.trim() ? senhaFinal : undefined});
+    // Envia e-mail com credenciais (fire-and-forget)
+    enviarEmailAcesso({ para: item.EMAIL, nome: item.NOME, login, senha: senhaFinal, perfil: perfilNorm, empresa: empCod }).catch(()=>{});
   } catch(e) { res.status(500).json({sucesso:false,erro:e.message}); }
 });
 
