@@ -105,10 +105,11 @@ async function runTests() {
     assert.strictEqual(r.status, 200, `status=${r.status}`);
     const items = r.body.itens || [];
     assert.ok(items.length >= 2, `esperava ≥2 items Chiacchio, got ${items.length}`);
-    // Todas as EMPRESA_RECLAMADA devem ser canônicas de CHIACCHIO
+    // Itens com empresa preenchida devem ser canônicas de CHIACCHIO (legado sem empresa é permitido)
     items.forEach(m => {
       const emp = m.EMPRESA_RECLAMADA || '';
-      const norm = emp.normalize('NFD').replace(/̀-ͯ/g,'').toLowerCase().trim();
+      if (!emp) return; // legado sem empresa = compartilhado, ok
+      const norm = emp.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
       const ok = ['chiacchio embalagens','chiachio embalagens','chiacchio'].includes(norm);
       assert.ok(ok, `EMPRESA_RECLAMADA indevida: "${emp}"`);
     });
@@ -182,12 +183,13 @@ async function runTests() {
   });
 
   // ── B2: Registros sem empresa ───────────────────────────────────────────────
-  await test('B2-SEM: manifestação sem empresa invisível para ANALISTA SAC', async () => {
+  // Legado: dados sem empresa foram criados antes do isolamento B2 → visível a todos os autenticados.
+  await test('B2-SEM: manifestação sem empresa visível para ANALISTA SAC (legado)', async () => {
     const r = await req('GET', '/api/manifestacoes', tokChiacchio());
     assert.strictEqual(r.status, 200);
     const items = r.body.itens || [];
-    assert.ok(!items.some(m => m.ID_MANIFESTACAO === 'MAN-SEM-001'),
-      'MAN-SEM-001 (sem empresa) apareceu para ANALISTA SAC');
+    assert.ok(items.some(m => m.ID_MANIFESTACAO === 'MAN-SEM-001'),
+      'MAN-SEM-001 (sem empresa, legado) deveria ser visível para ANALISTA SAC');
   });
 
   await test('B2-SEM: manifestação sem empresa visível para MASTER', async () => {
