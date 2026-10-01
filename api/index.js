@@ -7,6 +7,7 @@ const cerebroService = require('./services/cerebroServices');
 const mcService = require('./services/matrizConhecimentoService');
 const documentService = require('./services/documentService');
 const { tratativaEngine, devolutivaEngine, assertividade: assertividadeService } = cerebroService;
+const permissoesService = require('./services/permissoesService');
 
 // Injeção de mock Sheets para testes — nunca ativo em produção (env var não existe em prod)
 const _sheetsMock = process.env.SHEETS_MOCK_PATH ? (() => { try { return require(process.env.SHEETS_MOCK_PATH); } catch(e) { console.warn('[MOCK] falhou ao carregar:', e.message); return null; } })() : null;
@@ -683,7 +684,9 @@ app.use('/api', async (req,res,next)=>{
     '/auth/login',
     '/auth/forgot-password',
     '/bootstrap',
-    // rotas de debug/importação removidas por segurança
+    '/public/solicitar-acesso',
+    '/public/reclamacoes',
+    '/public/empresas',
   ]);
   if(publicPaths.has(req.path)) return next();
   const header=req.headers.authorization||'';
@@ -3651,6 +3654,469 @@ Retorne apenas o JSON, sem markdown, sem explicação.`;
     res.json({ sucesso: true, campos });
   } catch (e) { res.status(500).json({ sucesso: false, erro: e.message }); }
 });
+
+// ╔══════════════════════════════════════════════════════════════════════════╗
+// ║  SISTEMA DE PERMISSÕES — SOLICITAÇÕES, PERFIS, MÓDULOS, COMPETÊNCIAS    ║
+// ╚══════════════════════════════════════════════════════════════════════════╝
+
+const { NIVEIS, MODULOS_SISTEMA, PERFIS_VALIDOS, COMPETENCIAS_VALIDAS,
+        normalizarPerfil, resolverNivelModulo, temCompetencia } = permissoesService;
+
+// Cabeçalhos das novas abas
+const SOLICITACOES_HEADERS = [
+  'ID_SOLICITACAO','NOME','EMAIL','EMPRESA','SETOR','CARGO','TELEFONE','JUSTIFICATIVA',
+  'STATUS','DATA_CRIACAO','DATA_DECISAO','DECIDIDO_POR','MOTIVO_REJEICAO',
+];
+const PERMISSOES_HEADERS = [
+  'ID_PERMISSAO','USUARIO_ID','USUARIO_EMAIL','EMPRESA','PERFIL',
+  'MODULO','NIVEL','COMPETENCIAS','STATUS',
+  'CRIADO_EM','CRIADO_POR','ATUALIZADO_EM','ATUALIZADO_POR',
+];
+const AUDITORIA_ACESSO_HEADERS = [
+  'ID_AUDITORIA','DATA_HORA','USUARIO_AFETADO','ACAO','MODULO','EMPRESA',
+  'PERMISSAO_ANTERIOR','PERMISSAO_NOVA','EXECUTADO_POR',
+];
+
+// Garante estrutura das abas ao inicializar
+async function garantirAbasPermissoes() {
+  await Promise.all([
+    garantirAbaComCabecalhos('SOLICITACOES_ACESSO', SOLICITACOES_HEADERS),
+    garantirAbaComCabecalhos('PERMISSOES_USUARIO', PERMISSOES_HEADERS),
+    garantirAbaComCabecalhos('AUDITORIA_ACESSO', AUDITORIA_ACESSO_HEADERS),
+  ]).catch(e => console.warn('[PERM] Falha ao garantir abas de permissão:', e.message));
+}
+garantirAbasPermissoes();
+
+// ── Auditoria de acesso ───────────────────────────────────────────────────────
+async function registrarAuditoriaAcesso(usuarioAfetado, acao, modulo, empresa, anterior, novo, executadoPor) {
+  try {
+    const id = `AUD-${Date.now().toString(36).toUpperCase()}`;
+    const linha = [
+      id, new Date().toISOString(), usuarioAfetado, acao, modulo||'', empresa||'',
+      typeof anterior==='object'?JSON.stringify(anterior):(anterior||''),
+      typeof novo==='object'?JSON.stringify(novo):(novo||''),
+      executadoPor||'sistema',
+    ];
+    await appendLinha('AUDITORIA_ACESSO', linha);
+  } catch(e) { console.error('[AUDITORIA_ACESSO]', e.message); }
+}
+
+// ── Cache de permissões individuais (TTL 5 min) ───────────────────────────────
+const _permCache = new Map();
+async function carregarPermissoesUsuario(emailOuId) {
+  const k = String(emailOuId||'').toLowerCase();
+  const cached = _permCache.get(k);
+  if (cached && Date.now() < cached.exp) return cached.data;
+  const rows = await lerAba('PERMISSOES_USUARIO', 2000).catch(() => []);
+  const userRows = rows.filter(r =>
+    String(r.USUARIO_ID||'').toLowerCase()===k || String(r.USUARIO_EMAIL||'').toLowerCase()===k
+  );
+  const modulos = {};
+  const competencias = [];
+  for (const r of userRows) {
+    if (r.MODULO && r.NIVEL!==undefined) modulos[r.MODULO] = Number(r.NIVEL)||0;
+    if (r.COMPETENCIAS) r.COMPETENCIAS.split(',').map(c=>c.trim()).filter(Boolean).forEach(c=>competencias.push(c));
+  }
+  const data = { modulos, competencias: [...new Set(competencias)] };
+  _permCache.set(k, { data, exp: Date.now()+5*60*1000 });
+  return data;
+}
+function invalidarCachePermissoes(emailOuId) {
+  _permCache.delete(String(emailOuId||'').toLowerCase());
+}
+
+// ── Middleware: verifica nível mínimo em módulo ───────────────────────────────
+function requerModulo(modulo, nivelMinimo = NIVEIS.CONSULTA) {
+  return async (req, res, next) => {
+    try {
+      const user = req.user;
+      if (!user) return res.status(401).json({sucesso:false,erro:'Não autenticado.'});
+      const perfil = normalizarPerfil(user.perfil);
+      if (perfil === 'MASTER') return next();
+      const uid = user.id||user.ID_USUARIO||user.email||user.EMAIL||user.usuario||user.USUARIO||'';
+      const perms = await carregarPermissoesUsuario(uid);
+      const nivel = resolverNivelModulo(user.perfil, modulo, perms.modulos);
+      if (nivel < nivelMinimo) {
+        return res.status(403).json({sucesso:false,erro:`Sem permissão para ${modulo}. Nível requerido: ${nivelMinimo}, seu nível: ${nivel}.`});
+      }
+      req._nivelModulo = nivel;
+      req._permissoes = perms;
+      next();
+    } catch(e) { res.status(500).json({sucesso:false,erro:e.message}); }
+  };
+}
+
+// ── Middleware: verifica competência de aprovação ─────────────────────────────
+function requerCompetencia(competencia) {
+  return async (req, res, next) => {
+    try {
+      const user = req.user;
+      if (!user) return res.status(401).json({sucesso:false,erro:'Não autenticado.'});
+      if (normalizarPerfil(user.perfil) === 'MASTER') return next();
+      const uid = user.id||user.ID_USUARIO||user.email||user.EMAIL||user.usuario||user.USUARIO||'';
+      const perms = await carregarPermissoesUsuario(uid);
+      if (!temCompetencia(perms.competencias, competencia)) {
+        return res.status(403).json({sucesso:false,erro:`Sem competência para ${competencia}.`});
+      }
+      next();
+    } catch(e) { res.status(500).json({sucesso:false,erro:e.message}); }
+  };
+}
+
+// ── Validação de email ────────────────────────────────────────────────────────
+function emailValido(v) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v||'')); }
+
+// ═════════════════════════════════════════════════════════════════════════════
+// 1. SOLICITAÇÃO DE ACESSO (público — rate-limited)
+// ═════════════════════════════════════════════════════════════════════════════
+
+// Rate limit simples para solicitações (em memória)
+const _solicitacaoRate = new Map();
+function rateLimitSolicitacao(ip) {
+  const now = Date.now();
+  const entry = _solicitacaoRate.get(ip) || { count:0, reset: now+60000 };
+  if (now > entry.reset) { entry.count=0; entry.reset=now+60000; }
+  entry.count++;
+  _solicitacaoRate.set(ip, entry);
+  return entry.count <= 5;
+}
+
+app.post('/api/public/solicitar-acesso', async (req, res) => {
+  const ip = req.headers['x-forwarded-for']?.split(',')[0]||req.socket?.remoteAddress||'';
+  if (!rateLimitSolicitacao(ip)) return res.status(429).json({sucesso:false,erro:'Muitas solicitações. Aguarde um minuto.'});
+  try {
+    const { nome, email, empresa, setor, cargo, telefone, justificativa } = req.body||{};
+    // Validações
+    if (!nome?.trim()) return res.status(400).json({sucesso:false,erro:'Nome obrigatório.'});
+    if (!email?.trim() || !emailValido(email)) return res.status(400).json({sucesso:false,erro:'E-mail inválido.'});
+    if (!empresa?.trim()) return res.status(400).json({sucesso:false,erro:'Empresa obrigatória.'});
+    if (!setor?.trim()) return res.status(400).json({sucesso:false,erro:'Setor obrigatório.'});
+    if (!cargo?.trim()) return res.status(400).json({sucesso:false,erro:'Cargo obrigatório.'});
+    if (!justificativa?.trim()) return res.status(400).json({sucesso:false,erro:'Justificativa obrigatória.'});
+
+    // Valida empresa canônica (não aceita "Grupo Chiacchio" como empresa operacional)
+    const empCod = empresaCanonica(empresa);
+    if (!empCod || empCod === 'MASTER') {
+      return res.status(400).json({sucesso:false,erro:'Empresa inválida. Use: CHIACCHIO EMBALAGENS, PLASCHIO ou TUBAHIA.'});
+    }
+
+    // Verifica duplicidade de e-mail em usuários ativos
+    const usuarios = await carregarUsuarios();
+    const emailNorm = String(email).toLowerCase().trim();
+    const jaUsuario = usuarios.find(u => String(u.EMAIL||'').toLowerCase().trim()===emailNorm && normalizarTexto(u.STATUS||'ATIVO')!=='inativo' && normalizarTexto(u.STATUS||'ATIVO')!=='rejeitado');
+    if (jaUsuario) return res.status(409).json({sucesso:false,erro:'E-mail já possui conta ativa no sistema.'});
+
+    // Verifica solicitação PENDENTE duplicada
+    const solicitacoes = await lerAba('SOLICITACOES_ACESSO', 1000).catch(()=>[]);
+    const pendente = solicitacoes.find(s => String(s.EMAIL||'').toLowerCase().trim()===emailNorm && s.STATUS==='PENDENTE');
+    if (pendente) return res.status(409).json({sucesso:false,erro:'Já existe uma solicitação pendente para este e-mail.'});
+
+    const id = `SOL-${Date.now().toString(36).toUpperCase()}`;
+    const obj = {
+      ID_SOLICITACAO: id,
+      NOME: nome.trim(),
+      EMAIL: emailNorm,
+      EMPRESA: empCod,
+      SETOR: setor.trim(),
+      CARGO: cargo.trim(),
+      TELEFONE: (telefone||'').trim(),
+      JUSTIFICATIVA: justificativa.trim(),
+      STATUS: 'PENDENTE',
+      DATA_CRIACAO: new Date().toISOString(),
+      DATA_DECISAO: '',
+      DECIDIDO_POR: '',
+      MOTIVO_REJEICAO: '',
+    };
+    await appendObjeto('SOLICITACOES_ACESSO', obj);
+    await registrarAuditoriaAcesso(emailNorm, 'SOLICITACAO_CRIADA', '', empCod, '', 'PENDENTE', 'sistema');
+    res.json({sucesso:true, id, mensagem:'Solicitação enviada. Aguarde aprovação do MASTER.'});
+  } catch(e) { res.status(500).json({sucesso:false,erro:e.message}); }
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// 2. PAINEL DO MASTER — SOLICITAÇÕES
+// ═════════════════════════════════════════════════════════════════════════════
+
+app.get('/api/admin/solicitacoes', requerPerfil('MASTER'), async (req, res) => {
+  try {
+    let rows = await lerAba('SOLICITACOES_ACESSO', 2000).catch(()=>[]);
+    if (req.query.status) rows = rows.filter(r => r.STATUS===req.query.status.toUpperCase());
+    if (req.query.empresa) rows = rows.filter(r => empresaCanonica(r.EMPRESA)===empresaCanonica(req.query.empresa));
+    res.json({sucesso:true, total:rows.length, itens:rows});
+  } catch(e) { res.status(500).json({sucesso:false,erro:e.message}); }
+});
+
+app.get('/api/admin/solicitacoes/:id', requerPerfil('MASTER'), async (req, res) => {
+  try {
+    const rows = await lerAba('SOLICITACOES_ACESSO', 2000).catch(()=>[]);
+    const item = rows.find(r => r.ID_SOLICITACAO===req.params.id);
+    if (!item) return res.status(404).json({sucesso:false,erro:'Solicitação não encontrada.'});
+    res.json({sucesso:true, item});
+  } catch(e) { res.status(500).json({sucesso:false,erro:e.message}); }
+});
+
+app.post('/api/admin/solicitacoes/:id/rejeitar', requerPerfil('MASTER'), async (req, res) => {
+  try {
+    const { motivo } = req.body||{};
+    if (!motivo?.trim()) return res.status(400).json({sucesso:false,erro:'Motivo da rejeição obrigatório.'});
+    const rows = await lerAba('SOLICITACOES_ACESSO', 2000).catch(()=>[]);
+    const item = rows.find(r => r.ID_SOLICITACAO===req.params.id);
+    if (!item) return res.status(404).json({sucesso:false,erro:'Solicitação não encontrada.'});
+    if (item.STATUS!=='PENDENTE') return res.status(400).json({sucesso:false,erro:`Solicitação já ${item.STATUS}.`});
+
+    await atualizarPorID('SOLICITACOES_ACESSO', req.params.id, {
+      STATUS:'REJEITADA', DATA_DECISAO:new Date().toISOString(),
+      DECIDIDO_POR:req.user.usuario||req.user.email||'MASTER',
+      MOTIVO_REJEICAO: motivo.trim(),
+    }, ['ID_SOLICITACAO']);
+    await registrarAuditoriaAcesso(item.EMAIL, 'SOLICITACAO_REJEITADA', '', item.EMPRESA, 'PENDENTE', 'REJEITADA', req.user.usuario||'MASTER');
+    res.json({sucesso:true, mensagem:'Solicitação rejeitada.'});
+  } catch(e) { res.status(500).json({sucesso:false,erro:e.message}); }
+});
+
+// Aprovação: cria o usuário com STATUS=ATIVO e define permissões
+app.post('/api/admin/solicitacoes/:id/aprovar', requerPerfil('MASTER'), async (req, res) => {
+  try {
+    const { perfil, empresa, setor, modulosNiveis, competencias, senha } = req.body||{};
+
+    // Valida campos obrigatórios
+    if (!perfil) return res.status(400).json({sucesso:false,erro:'Perfil obrigatório.'});
+    const perfilNorm = normalizarPerfil(perfil);
+    if (!PERFIS_VALIDOS.includes(perfilNorm)) return res.status(400).json({sucesso:false,erro:`Perfil inválido. Use: ${PERFIS_VALIDOS.join(', ')}.`});
+    if (!empresa) return res.status(400).json({sucesso:false,erro:'Empresa obrigatória.'});
+    const empCod = empresaCanonica(empresa);
+    if (!empCod) return res.status(400).json({sucesso:false,erro:'Empresa inválida.'});
+
+    const rows = await lerAba('SOLICITACOES_ACESSO', 2000).catch(()=>[]);
+    const item = rows.find(r => r.ID_SOLICITACAO===req.params.id);
+    if (!item) return res.status(404).json({sucesso:false,erro:'Solicitação não encontrada.'});
+    if (item.STATUS!=='PENDENTE') return res.status(400).json({sucesso:false,erro:`Solicitação já ${item.STATUS}.`});
+
+    // Gera usuário (login = parte antes do @ do email)
+    const login = item.EMAIL.split('@')[0].replace(/[^a-z0-9.]/gi,'.');
+    const senhaFinal = senha?.trim() || crypto.randomBytes(8).toString('hex');
+    const senhaHash = 'sha256:'+crypto.createHash('sha256').update(senhaFinal).digest('hex');
+    const idUsuario = await gerarProximoID('USUARIOS','USR','ID_USUARIO');
+    const novoUsuario = {
+      ID_USUARIO: idUsuario,
+      USUARIO: login,
+      EMAIL: item.EMAIL,
+      NOME: item.NOME,
+      PERFIL: perfilNorm,
+      EMPRESA: empCod,
+      SETOR: setor||item.SETOR||'',
+      CARGO: item.CARGO||'',
+      STATUS: 'ATIVO',
+      SENHA: senhaHash,
+      DATA_CRIACAO: new Date().toISOString(),
+      DATA_APROVACAO: new Date().toISOString(),
+      APROVADO_POR: req.user.usuario||req.user.email||'MASTER',
+      DATA_ULTIMA_ALTERACAO: new Date().toISOString(),
+      ALTERADO_POR: req.user.usuario||req.user.email||'MASTER',
+      ULTIMO_ACESSO: '',
+      CODIGO_RCA: '',
+    };
+    await appendObjeto('USUARIOS', novoUsuario);
+
+    // Salva permissões individuais por módulo
+    const modulosConfig = modulosNiveis || {};
+    const competenciasStr = Array.isArray(competencias) ? competencias.join(',') : (competencias||'');
+    const idPerm = await gerarProximoID('PERMISSOES_USUARIO','PERM','ID_PERMISSAO');
+    const permObj = {
+      ID_PERMISSAO: idPerm,
+      USUARIO_ID: idUsuario,
+      USUARIO_EMAIL: item.EMAIL,
+      EMPRESA: empCod,
+      PERFIL: perfilNorm,
+      MODULO: JSON.stringify(modulosConfig),
+      NIVEL: '',
+      COMPETENCIAS: competenciasStr,
+      STATUS: 'ATIVO',
+      CRIADO_EM: new Date().toISOString(),
+      CRIADO_POR: req.user.usuario||'MASTER',
+      ATUALIZADO_EM: new Date().toISOString(),
+      ATUALIZADO_POR: req.user.usuario||'MASTER',
+    };
+    await appendObjeto('PERMISSOES_USUARIO', permObj);
+
+    // Marca solicitação como APROVADA
+    await atualizarPorID('SOLICITACOES_ACESSO', req.params.id, {
+      STATUS:'APROVADA', DATA_DECISAO:new Date().toISOString(),
+      DECIDIDO_POR:req.user.usuario||'MASTER', MOTIVO_REJEICAO:'',
+    }, ['ID_SOLICITACAO']);
+
+    await registrarAuditoriaAcesso(item.EMAIL, 'USUARIO_CRIADO_POR_APROVACAO', '', empCod, '', JSON.stringify({perfil:perfilNorm,empresa:empCod,modulos:modulosConfig}), req.user.usuario||'MASTER');
+    invalidarCachePermissoes(item.EMAIL);
+    res.json({sucesso:true, idUsuario, login, mensagem:'Usuário criado e ativo.', senhaGerada: !senha?.trim() ? senhaFinal : undefined});
+  } catch(e) { res.status(500).json({sucesso:false,erro:e.message}); }
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// 3. ADMINISTRAÇÃO DE USUÁRIOS (MASTER)
+// ═════════════════════════════════════════════════════════════════════════════
+
+app.get('/api/admin/usuarios', requerPerfil('MASTER'), async (req, res) => {
+  try {
+    let usuarios = await carregarUsuarios();
+    // Filtra sem expor senha
+    let lista = usuarios.map(u => ({
+      id: u.ID_USUARIO,
+      usuario: u.USUARIO||u.EMAIL,
+      nome: u.NOME||u.USUARIO,
+      email: u.EMAIL||'',
+      empresa: u.EMPRESA||'',
+      setor: u.SETOR||'',
+      cargo: u.CARGO||'',
+      perfil: u.PERFIL||'',
+      status: u.STATUS||'ATIVO',
+      dataCriacao: u.DATA_CRIACAO||'',
+      dataAprovacao: u.DATA_APROVACAO||'',
+      aprovadoPor: u.APROVADO_POR||'',
+      ultimoAcesso: u.ULTIMO_ACESSO||'',
+    }));
+    if (req.query.empresa) lista=lista.filter(u=>empresaCanonica(u.empresa)===empresaCanonica(req.query.empresa));
+    if (req.query.perfil) lista=lista.filter(u=>normalizarPerfil(u.perfil)===normalizarPerfil(req.query.perfil));
+    if (req.query.status) lista=lista.filter(u=>(u.status||'').toUpperCase()===req.query.status.toUpperCase());
+    if (req.query.setor) lista=lista.filter(u=>normalizarTexto(u.setor||'')===normalizarTexto(req.query.setor));
+    res.json({sucesso:true, total:lista.length, itens:lista});
+  } catch(e) { res.status(500).json({sucesso:false,erro:e.message}); }
+});
+
+app.get('/api/admin/usuarios/:id', requerPerfil('MASTER'), async (req, res) => {
+  try {
+    const usuarios = await carregarUsuarios();
+    const u = usuarios.find(u2=>u2.ID_USUARIO===req.params.id||u2.USUARIO===req.params.id);
+    if (!u) return res.status(404).json({sucesso:false,erro:'Usuário não encontrado.'});
+    const perms = await carregarPermissoesUsuario(u.EMAIL||u.USUARIO||u.ID_USUARIO);
+    res.json({sucesso:true, usuario:{
+      id:u.ID_USUARIO, usuario:u.USUARIO, nome:u.NOME, email:u.EMAIL||'',
+      empresa:u.EMPRESA||'', setor:u.SETOR||'', cargo:u.CARGO||'',
+      perfil:u.PERFIL||'', status:u.STATUS||'ATIVO',
+      dataCriacao:u.DATA_CRIACAO||'', aprovadoPor:u.APROVADO_POR||'',
+      ultimoAcesso:u.ULTIMO_ACESSO||'',
+    }, permissoes:perms});
+  } catch(e) { res.status(500).json({sucesso:false,erro:e.message}); }
+});
+
+app.patch('/api/admin/usuarios/:id/permissoes', requerPerfil('MASTER'), async (req, res) => {
+  try {
+    const { perfil, empresa, setor, modulosNiveis, competencias } = req.body||{};
+    const usuarios = await carregarUsuarios();
+    const u = usuarios.find(u2=>u2.ID_USUARIO===req.params.id||u2.USUARIO===req.params.id);
+    if (!u) return res.status(404).json({sucesso:false,erro:'Usuário não encontrado.'});
+
+    const anterior = { perfil:u.PERFIL, empresa:u.EMPRESA };
+    const updates = { DATA_ULTIMA_ALTERACAO:new Date().toISOString(), ALTERADO_POR:req.user.usuario||'MASTER' };
+    if (perfil) {
+      const pNorm = normalizarPerfil(perfil);
+      if (!PERFIS_VALIDOS.includes(pNorm)) return res.status(400).json({sucesso:false,erro:`Perfil inválido.`});
+      updates.PERFIL = pNorm;
+    }
+    if (empresa) {
+      const eCod = empresaCanonica(empresa);
+      if (!eCod) return res.status(400).json({sucesso:false,erro:'Empresa inválida.'});
+      updates.EMPRESA = eCod;
+    }
+    if (setor) updates.SETOR = setor;
+    await atualizarPorID('USUARIOS', u.ID_USUARIO||u.USUARIO, updates, ['ID_USUARIO','USUARIO','EMAIL']);
+
+    // Atualiza linha de permissões
+    if (modulosNiveis !== undefined || competencias !== undefined) {
+      const permsRows = await lerAba('PERMISSOES_USUARIO', 2000).catch(()=>[]);
+      const permRow = permsRows.find(r => r.USUARIO_EMAIL===u.EMAIL||r.USUARIO_ID===u.ID_USUARIO);
+      const modJson = modulosNiveis ? JSON.stringify(modulosNiveis) : (permRow?.MODULO||'{}');
+      const compStr = Array.isArray(competencias)?competencias.join(','):(competencias||permRow?.COMPETENCIAS||'');
+      if (permRow) {
+        await atualizarPorID('PERMISSOES_USUARIO', permRow.ID_PERMISSAO, {
+          MODULO:modJson, COMPETENCIAS:compStr,
+          ATUALIZADO_EM:new Date().toISOString(), ATUALIZADO_POR:req.user.usuario||'MASTER',
+          PERFIL: updates.PERFIL||permRow.PERFIL,
+        }, ['ID_PERMISSAO']);
+      } else {
+        const id2 = await gerarProximoID('PERMISSOES_USUARIO','PERM','ID_PERMISSAO');
+        await appendObjeto('PERMISSOES_USUARIO', {
+          ID_PERMISSAO:id2, USUARIO_ID:u.ID_USUARIO, USUARIO_EMAIL:u.EMAIL||u.USUARIO,
+          EMPRESA:updates.EMPRESA||u.EMPRESA, PERFIL:updates.PERFIL||u.PERFIL,
+          MODULO:modJson, NIVEL:'', COMPETENCIAS:compStr, STATUS:'ATIVO',
+          CRIADO_EM:new Date().toISOString(), CRIADO_POR:req.user.usuario||'MASTER',
+          ATUALIZADO_EM:new Date().toISOString(), ATUALIZADO_POR:req.user.usuario||'MASTER',
+        });
+      }
+    }
+    invalidarCachePermissoes(u.EMAIL||u.USUARIO||u.ID_USUARIO);
+    await registrarAuditoriaAcesso(u.EMAIL||u.USUARIO, 'PERMISSOES_ALTERADAS', JSON.stringify(modulosNiveis||{}), empresa||u.EMPRESA, JSON.stringify(anterior), JSON.stringify(updates), req.user.usuario||'MASTER');
+    res.json({sucesso:true, mensagem:'Permissões atualizadas.'});
+  } catch(e) { res.status(500).json({sucesso:false,erro:e.message}); }
+});
+
+app.post('/api/admin/usuarios/:id/ativar', requerPerfil('MASTER'), async (req, res) => {
+  try {
+    const usuarios = await carregarUsuarios();
+    const u = usuarios.find(u2=>u2.ID_USUARIO===req.params.id||u2.USUARIO===req.params.id);
+    if (!u) return res.status(404).json({sucesso:false,erro:'Usuário não encontrado.'});
+    await atualizarPorID('USUARIOS', u.ID_USUARIO||u.USUARIO, {STATUS:'ATIVO',DATA_ULTIMA_ALTERACAO:new Date().toISOString(),ALTERADO_POR:req.user.usuario||'MASTER'}, ['ID_USUARIO','USUARIO','EMAIL']);
+    invalidarCachePermissoes(u.EMAIL||u.USUARIO||u.ID_USUARIO);
+    _statusCache.delete(normalizarTexto(u.USUARIO||u.EMAIL||u.ID_USUARIO));
+    await registrarAuditoriaAcesso(u.EMAIL||u.USUARIO, 'USUARIO_ATIVADO', '', u.EMPRESA, u.STATUS||'INATIVO', 'ATIVO', req.user.usuario||'MASTER');
+    res.json({sucesso:true, mensagem:'Usuário ativado.'});
+  } catch(e) { res.status(500).json({sucesso:false,erro:e.message}); }
+});
+
+app.post('/api/admin/usuarios/:id/desativar', requerPerfil('MASTER'), async (req, res) => {
+  try {
+    const usuarios = await carregarUsuarios();
+    const u = usuarios.find(u2=>u2.ID_USUARIO===req.params.id||u2.USUARIO===req.params.id);
+    if (!u) return res.status(404).json({sucesso:false,erro:'Usuário não encontrado.'});
+    if (normalizarPerfil(u.PERFIL)==='MASTER' && u.ID_USUARIO===req.user.id) return res.status(400).json({sucesso:false,erro:'Não pode desativar a si mesmo.'});
+    await atualizarPorID('USUARIOS', u.ID_USUARIO||u.USUARIO, {STATUS:'INATIVO',DATA_ULTIMA_ALTERACAO:new Date().toISOString(),ALTERADO_POR:req.user.usuario||'MASTER'}, ['ID_USUARIO','USUARIO','EMAIL']);
+    invalidarCachePermissoes(u.EMAIL||u.USUARIO||u.ID_USUARIO);
+    _statusCache.delete(normalizarTexto(u.USUARIO||u.EMAIL||u.ID_USUARIO));
+    await registrarAuditoriaAcesso(u.EMAIL||u.USUARIO, 'USUARIO_DESATIVADO', '', u.EMPRESA, u.STATUS||'ATIVO', 'INATIVO', req.user.usuario||'MASTER');
+    res.json({sucesso:true, mensagem:'Usuário desativado. Acesso revogado imediatamente.'});
+  } catch(e) { res.status(500).json({sucesso:false,erro:e.message}); }
+});
+
+app.get('/api/admin/auditoria-acesso', requerPerfil('MASTER','AUDITOR'), async (req, res) => {
+  try {
+    let rows = await lerAba('AUDITORIA_ACESSO', 2000).catch(()=>[]);
+    if (req.query.usuario) rows=rows.filter(r=>String(r.USUARIO_AFETADO||'').toLowerCase().includes(req.query.usuario.toLowerCase()));
+    if (req.query.acao) rows=rows.filter(r=>r.ACAO===req.query.acao.toUpperCase());
+    res.json({sucesso:true, total:rows.length, itens:rows.reverse()});
+  } catch(e) { res.status(500).json({sucesso:false,erro:e.message}); }
+});
+
+// ── Permissões do usuário logado (para frontend) ──────────────────────────────
+app.get('/api/auth/permissoes', async (req, res) => {
+  try {
+    if (!req.user) return res.status(401).json({sucesso:false,erro:'Não autenticado.'});
+    const uid = req.user.id||req.user.ID_USUARIO||req.user.email||req.user.EMAIL||req.user.usuario||req.user.USUARIO||'';
+    const perms = await carregarPermissoesUsuario(uid);
+    const perfil = normalizarPerfil(req.user.perfil);
+
+    const niveis = {};
+    const { MODULOS_SISTEMA: MODS, resolverNivelModulo: rnm } = permissoesService;
+    for (const m of MODS) {
+      niveis[m] = rnm(req.user.perfil, m, perms.modulos);
+    }
+    const cerebroPerms = permissoesService.CEREBRO_PERMISSOES_PADRAO[perfil] || permissoesService.CEREBRO_PERMISSOES_PADRAO['CONSULTA'];
+    res.json({sucesso:true, perfil, empresa:req.user.empresa, modulos:niveis, competencias:perms.competencias, cerebro:cerebroPerms});
+  } catch(e) { res.status(500).json({sucesso:false,erro:e.message}); }
+});
+
+// ── Configurações globais para o frontend (perfis, módulos, níveis) ───────────
+app.get('/api/admin/config-permissoes', requerPerfil('MASTER'), (req, res) => {
+  res.json({
+    sucesso:true,
+    perfis: permissoesService.PERFIS_VALIDOS,
+    modulos: permissoesService.MODULOS_SISTEMA,
+    niveis: permissoesService.NIVEIS,
+    competencias: permissoesService.COMPETENCIAS_VALIDAS,
+  });
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// CATCH ALL
+// ═════════════════════════════════════════════════════════════════════════════
 
 // ===== CATCH ALL =====
 app.use((req, res) => {
