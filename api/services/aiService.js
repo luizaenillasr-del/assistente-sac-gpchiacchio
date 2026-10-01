@@ -17,7 +17,7 @@ async function chamarAnthropic(prompt, opcoes = {}) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error('ANTHROPIC_API_KEY não configurada');
 
-  const model = opcoes.model || 'claude-haiku-4-5-20251001';
+  const model = opcoes.model || process.env.AI_MODEL || 'claude-haiku-4-5';
   const maxTokens = opcoes.maxTokens || 1024;
 
   const resp = await fetch('https://api.anthropic.com/v1/messages', {
