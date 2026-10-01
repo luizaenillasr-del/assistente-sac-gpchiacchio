@@ -583,6 +583,8 @@
         <button class="tab-btn" onclick="switchModalTab('aprovacao',this)">✅ Aprovação</button>
         <button class="tab-btn" onclick="switchModalTab('analise',this)">🤖 IA</button>
         <button class="tab-btn" onclick="switchModalTab('historico',this)" id="modal-tab-btn-historico">📜 Histórico</button>
+        <button class="tab-btn" onclick="switchModalTab('rnc',this)" id="modal-tab-btn-rnc">📌 RNC vinculada</button>
+        <button class="tab-btn" onclick="switchModalTab('hist-cliente',this)" id="modal-tab-btn-hist-cliente">👤 Histórico do cliente</button>
       </div>
 
       <div style="padding:20px;overflow-y:auto;max-height:62vh">
@@ -635,6 +637,20 @@
         <div id="modal-tab-historico" style="display:none">
           <div id="modal-historico-timeline">
             <div style="text-align:center;color:var(--gray-400);padding:24px;font-size:13px">Carregando histórico...</div>
+          </div>
+        </div>
+
+        <!-- Tab RNC vinculada -->
+        <div id="modal-tab-rnc" style="display:none">
+          <div id="modal-rnc-content">
+            <div style="text-align:center;color:var(--gray-400);padding:24px;font-size:13px">Carregando RNCs vinculadas...</div>
+          </div>
+        </div>
+
+        <!-- Tab Histórico do cliente -->
+        <div id="modal-tab-hist-cliente" style="display:none">
+          <div id="modal-hist-cliente-content">
+            <div style="text-align:center;color:var(--gray-400);padding:24px;font-size:13px">Carregando histórico do cliente...</div>
           </div>
         </div>
 
@@ -1792,19 +1808,14 @@
 
         <!-- ASIDE -->
         <div class="aside">
+          <!-- Resumo da ficha -->
           <div class="section-card">
-            <div class="section-title" style="margin-bottom:12px;font-size:13px">
-              <svg style="display:inline;width:14px;height:14px;margin-right:6px;vertical-align:-2px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-              Etapas da manifestação
+            <div style="font-size:12px;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:6px;color:var(--gray-900)">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              Resumo da ficha
             </div>
-            <div style="display:flex;flex-direction:column;gap:8px;font-size:12px">
-              <div style="display:flex;align-items:center;gap:8px"><div style="width:18px;height:18px;background:var(--green);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div><span style="font-weight:600">1. Registro</span></div>
-              <div style="display:flex;align-items:center;gap:8px"><div style="width:18px;height:18px;background:var(--gray-200);border-radius:50%;flex-shrink:0"></div><div><div style="font-weight:500">2. Análise Inteligente</div><div style="color:var(--gray-400);font-size:11px">Automática após registro</div></div></div>
-              <div style="display:flex;align-items:center;gap:8px"><div style="width:18px;height:18px;background:var(--gray-200);border-radius:50%;flex-shrink:0"></div><div><div style="font-weight:500">3. Decisão da analista</div><div style="color:var(--gray-400);font-size:11px">Aceitar, editar ou rejeitar</div></div></div>
-              <div style="display:flex;align-items:center;gap:8px"><div style="width:18px;height:18px;background:var(--gray-200);border-radius:50%;flex-shrink:0"></div><div><div style="font-weight:500">4. Encaminhamento aos setores</div><div style="color:var(--gray-400);font-size:11px">Um ou mais setores</div></div></div>
-              <div style="display:flex;align-items:center;gap:8px"><div style="width:18px;height:18px;background:var(--gray-200);border-radius:50%;flex-shrink:0"></div><div><div style="font-weight:500">5. Resposta dos setores</div><div style="color:var(--gray-400);font-size:11px">Cada setor responde separadamente</div></div></div>
-              <div style="display:flex;align-items:center;gap:8px"><div style="width:18px;height:18px;background:var(--gray-200);border-radius:50%;flex-shrink:0"></div><div><div style="font-weight:500">6. Devolutiva ao cliente</div></div></div>
-              <div style="display:flex;align-items:center;gap:8px"><div style="width:18px;height:18px;background:var(--gray-200);border-radius:50%;flex-shrink:0"></div><div><div style="font-weight:500">7. Validação e encerramento</div></div></div>
+            <div id="nm-resumo-ficha" style="display:flex;flex-direction:column;gap:6px;font-size:12px">
+              <!-- Itens populados pelo JS -->
             </div>
           </div>
 
@@ -5411,12 +5422,14 @@ let _nmDecisao = null; // 'aceita' | 'editada' | 'rejeitada'
 function selectCanal(btn) {
   btn.closest('.canal-btns').querySelectorAll('.canal-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
+  atualizarResumoFicha();
 }
 
 function selectTipo(btn) {
   btn.closest('.tipo-btns').querySelectorAll('.canal-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   agendarAnalise();
+  atualizarResumoFicha();
 }
 
 function onCnpjChange() {
@@ -5429,6 +5442,40 @@ function onDescricaoChange() {
   const el = document.getElementById('nm-chars');
   if (el) el.textContent = `${desc.length} caracteres${desc.length < 30 ? ' — digite ao menos 30 para análise automática' : ' — analisando...'}`;
   agendarAnalise();
+  atualizarResumoFicha();
+}
+
+function atualizarResumoFicha() {
+  const el = document.getElementById('nm-resumo-ficha');
+  if (!el) return;
+  const v = id => (document.getElementById(id)?.value || '').trim();
+  const canal = document.querySelector('.canal-btns .canal-btn.active');
+  const tipo = document.querySelector('.tipo-btns .canal-btn.active');
+  const iaVisible = document.getElementById('painel-analise')?.style.display !== 'none';
+  const evidencias = document.getElementById('nm-evidencias-list')?.children.length || 0;
+  const secoes = [
+    { label: '1. Dados do Registro', ok: !!canal },
+    { label: '2. Dados do Cliente', ok: !!(v('nm-nome') || v('nm-empresa')) },
+    { label: '3. Tipo e descrição', ok: !!(tipo && v('nm-descricao').length >= 30) },
+    { label: '4. Produto (opcional)', ok: !!(v('nm-produto') || v('nm-lote')), opcional: true },
+    { label: '5. Evidências (opcional)', ok: evidencias > 0, opcional: true },
+    { label: '6. Análise IA', ok: iaVisible },
+    { label: '7. Pronto para registrar', ok: !!(canal && (v('nm-nome')||v('nm-empresa')) && v('nm-descricao').length >= 30) },
+  ];
+  const preenchidos = secoes.filter(s => s.ok && !s.opcional).length;
+  const obrigatorios = secoes.filter(s => !s.opcional).length;
+  el.innerHTML = secoes.map(s => `
+    <div style="display:flex;align-items:center;gap:8px">
+      <div style="width:16px;height:16px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;${s.ok ? 'background:var(--green)' : s.opcional ? 'background:var(--gray-100);border:1px dashed var(--gray-300)' : 'background:var(--gray-200)'}">
+        ${s.ok ? '<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
+      </div>
+      <span style="font-weight:${s.ok?'600':'400'};color:${s.ok?'var(--gray-900)':s.opcional?'var(--gray-400)':'var(--gray-600)'}">${s.label}</span>
+    </div>`).join('');
+  const btnReg = document.querySelector('[onclick="registrarManifestacao()"]');
+  if (btnReg) {
+    const pronto = secoes[6].ok;
+    btnReg.style.opacity = pronto ? '1' : '0.7';
+  }
 }
 
 function agendarAnalise() {
@@ -5452,6 +5499,7 @@ async function executarAnaliseIA() {
   // Mostrar painel
   const painel = document.getElementById('painel-analise');
   painel.style.display = 'block';
+  atualizarResumoFicha();
   document.getElementById('ia-analisando').style.display = 'block';
   document.getElementById('ia-resultado').style.display = 'none';
   document.getElementById('ia-loading').style.display = 'block';
@@ -5747,6 +5795,12 @@ async function initNovaManifestacao() {
       Object.entries(rascunho).forEach(([id, val]) => { const el = document.getElementById(id); if (el && val) el.value = val; });
     }
   } catch(e) { /* ignora erro de localStorage */ }
+  // Hook oninput para campos de cliente dispararem atualização do resumo
+  ['nm-nome','nm-empresa','nm-tel','nm-email','nm-produto','nm-lote'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el && !el._resumoHooked) { el.addEventListener('input', atualizarResumoFicha); el._resumoHooked = true; }
+  });
+  atualizarResumoFicha();
 }
 
 function limparBuscaCnpj() {
@@ -5866,13 +5920,15 @@ function fecharModal() {
 }
 
 function switchModalTab(tab, btn) {
-  ['ciclo','dados','tratativa','aprovacao','analise','historico'].forEach(t => {
+  ['ciclo','dados','tratativa','aprovacao','analise','historico','rnc','hist-cliente'].forEach(t => {
     const el = document.getElementById(`modal-tab-${t}`);
     if (el) el.style.display = t === tab ? 'block' : 'none';
   });
   document.querySelectorAll('#modal-tabs .tab-btn').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
   if (tab === 'historico') _loadDossieHistorico();
+  if (tab === 'rnc') _loadDossieRNC();
+  if (tab === 'hist-cliente') _loadHistoricoCliente();
 }
 
 let _dossieItem = null;
@@ -6181,6 +6237,86 @@ async function _loadDossieHistorico() {
   </div>${vizHtml}`;
 }
 
+
+async function _loadDossieRNC() {
+  const el = document.getElementById('modal-rnc-content');
+  const m = _dossieItem;
+  if (!m) { el.innerHTML = '<div style="color:var(--gray-400);padding:20px;text-align:center">Sem dados.</div>'; return; }
+  el.innerHTML = '<div style="text-align:center;padding:20px"><div class="spinner"></div></div>';
+  try {
+    const data = await _apiFetch('/api/rnc?limit=200', 8000).catch(() => ({ rncs: [], itens: [] }));
+    const rncs = (data.rncs || data.itens || []).filter(r =>
+      r.ID_MANIFESTACAO === m.ID_MANIFESTACAO ||
+      r.ID_MANIFESTACAO_ORIGEM === m.ID_MANIFESTACAO ||
+      r.PROTOCOLO === m.ID_MANIFESTACAO ||
+      (r.COMPETENCIA && r.COMPETENCIA.includes(m.ID_MANIFESTACAO))
+    );
+    if (!rncs.length) {
+      el.innerHTML = '<div style="text-align:center;color:var(--gray-400);padding:32px;font-size:13px">Nenhuma RNC vinculada a esta manifestação.</div>';
+      return;
+    }
+    el.innerHTML = rncs.map(r => `
+      <div style="border:1px solid var(--gray-100);border-radius:10px;padding:14px;margin-bottom:10px;background:white">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px">
+          <div style="font-size:14px;font-weight:700;color:var(--gray-900)">${esc(r.ID_RNC||r.NUMERO_RNC||'RNC')}</div>
+          <span style="background:var(--gray-50);border:1px solid var(--gray-200);border-radius:6px;padding:2px 8px;font-size:11px;font-weight:600;color:var(--gray-700)">${esc(r.STATUS||'')}</span>
+        </div>
+        <div style="font-size:12px;color:var(--gray-600);line-height:1.6">
+          <div><strong>Tipo:</strong> ${esc(r.TIPO_RNC||r.TIPO||'--')}</div>
+          <div><strong>Setor:</strong> ${esc(r.SETOR||r.SETOR_RESPONSAVEL||'--')}</div>
+          <div><strong>Aberta em:</strong> ${_fmtDataCurta(r.DATA_ABERTURA||r.DATA_CRIACAO)}</div>
+          ${r.DESCRICAO ? `<div style="margin-top:6px;color:var(--gray-500)">${esc(r.DESCRICAO.slice(0,180))}</div>` : ''}
+        </div>
+      </div>`).join('');
+  } catch(e) {
+    el.innerHTML = `<div style="color:var(--gray-400);padding:20px;text-align:center">Erro ao carregar RNCs: ${esc(e.message)}</div>`;
+  }
+}
+
+async function _loadHistoricoCliente() {
+  const el = document.getElementById('modal-hist-cliente-content');
+  const m = _dossieItem;
+  if (!m) { el.innerHTML = '<div style="color:var(--gray-400);padding:20px;text-align:center">Sem dados.</div>'; return; }
+  const empresa = m.EMPRESA_RECLAMANTE || m.EMPRESA_RECLAMADA || '';
+  const contato = m.CONTATO || m.NOME_CLIENTE || m.CLIENTE_NOME || '';
+  if (!empresa && !contato) {
+    el.innerHTML = '<div style="text-align:center;color:var(--gray-400);padding:32px;font-size:13px">Sem identificação de cliente para buscar histórico.</div>';
+    return;
+  }
+  el.innerHTML = '<div style="text-align:center;padding:20px"><div class="spinner"></div></div>';
+  try {
+    const data = await _apiFetch('/api/manifestacoes?limit=500', 10000).catch(() => ({ manifestacoes: [], itens: [] }));
+    const todas = data.manifestacoes || data.itens || [];
+    const historico = todas.filter(x =>
+      x.ID_MANIFESTACAO !== m.ID_MANIFESTACAO &&
+      ((empresa && (x.EMPRESA_RECLAMANTE||x.EMPRESA_RECLAMADA||'').toLowerCase() === empresa.toLowerCase()) ||
+       (contato && (x.CONTATO||x.NOME_CLIENTE||x.CLIENTE_NOME||'').toLowerCase() === contato.toLowerCase()))
+    ).sort((a,b) => {
+      const da = new Date(b.DATA_ABERTURA||b.DATA_REGISTRO||0);
+      const db = new Date(a.DATA_ABERTURA||a.DATA_REGISTRO||0);
+      return da - db;
+    });
+    if (!historico.length) {
+      el.innerHTML = `<div style="text-align:center;color:var(--gray-400);padding:32px;font-size:13px">Nenhuma manifestação anterior encontrada para ${esc(empresa||contato)}.</div>`;
+      return;
+    }
+    el.innerHTML = `<div style="margin-bottom:12px;font-size:12px;color:var(--gray-500)">${historico.length} manifestação(ões) anterior(es) — ${esc(empresa||contato)}</div>` +
+      historico.slice(0,20).map(x => `
+        <div style="border:1px solid var(--gray-100);border-radius:8px;padding:12px;margin-bottom:8px;background:white;cursor:pointer" onclick="abrirDossie(${JSON.stringify(x).replace(/"/g,'&quot;')})">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:4px">
+            <div style="font-size:13px;font-weight:700;color:var(--gray-900)">${esc(x.ID_MANIFESTACAO||'--')}</div>
+            <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
+              <span style="background:var(--gray-50);border:1px solid var(--gray-200);border-radius:5px;padding:2px 7px;font-size:11px;font-weight:600">${esc(x.TIPO||x.TIPO_CONFIRMADO||'--')}</span>
+              <span style="font-size:11px;color:var(--gray-400)">${_fmtDataCurta(x.DATA_ABERTURA||x.DATA_REGISTRO)}</span>
+            </div>
+          </div>
+          <div style="font-size:12px;color:var(--gray-500)">${esc((x.DESCRICAO_ORIGINAL||x.DESCRICAO||x.DESCRICAO_RECLAMACAO||'').slice(0,100))}</div>
+          <div style="font-size:11px;color:var(--gray-400);margin-top:4px">Status: ${esc(x.STATUS||'--')}</div>
+        </div>`).join('');
+  } catch(e) {
+    el.innerHTML = `<div style="color:var(--gray-400);padding:20px;text-align:center">Erro ao carregar histórico: ${esc(e.message)}</div>`;
+  }
+}
 
 let _acompData = [];
 window._acompData = _acompData;
