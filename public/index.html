@@ -4952,6 +4952,7 @@ function _proxPassos(m) {
 function abrirDossie(item) {
   if (!item) return;
   _dossieItem = item;
+  window._dossieItem = item;
   const isMan = !!item.ID_MANIFESTACAO;
 
   const id    = isMan ? item.ID_MANIFESTACAO : ('REC-' + Math.random().toString(36).slice(2,7).toUpperCase());
@@ -5154,6 +5155,10 @@ function abrirDossie(item) {
 
   document.getElementById('modal-dossie').style.display = 'flex';
   switchModalTab('ciclo', document.querySelector('#modal-tabs .tab-btn'));
+  // Registra visualização em background (não bloqueia abertura)
+  if (item.ID_MANIFESTACAO) {
+    _apiFetch(`/api/manifestacoes/${encodeURIComponent(item.ID_MANIFESTACAO)}/visualizacao`, 5000, {method:'POST'}).catch(()=>{});
+  }
 }
 
 async function _loadDossieHistorico() {
@@ -5181,6 +5186,15 @@ async function _loadDossieHistorico() {
       if (!eventos.some(e => e.acao === l.ACAO)) push(l.DATA_HORA||l.DATA, l.ACAO||'Ação', l.USUARIO||'Sistema', l.DETALHES||'');
     });
   } catch {}
+  // Carrega visualizações
+  let vizHtml = '';
+  try {
+    const viz = await _apiFetch(`/api/manifestacoes/${encodeURIComponent(m.ID_MANIFESTACAO)}/visualizacoes`, 6000).catch(()=>({itens:[]}));
+    const vits = viz.itens || [];
+    if (vits.length) {
+      vizHtml = `<div style="margin-top:20px;border-top:1px solid var(--gray-100);padding-top:14px"><div style="font-size:11px;font-weight:700;color:var(--gray-500);letter-spacing:.05em;margin-bottom:8px;text-transform:uppercase">Visualizado por</div><div style="display:flex;flex-wrap:wrap;gap:6px">${vits.map(v=>`<div style="background:var(--gray-50);border:1px solid var(--gray-100);border-radius:6px;padding:4px 8px;font-size:11px"><span style="font-weight:600;color:var(--gray-800)">${esc(v.NOME||v.USUARIO)}</span> <span style="color:var(--gray-400)">${esc(v.PERFIL||'')}</span> <span style="color:var(--gray-300)">·</span> <span style="color:var(--gray-400)">${_fmtData(v.DATA_HORA)}</span></div>`).join('')}</div></div>`;
+    }
+  } catch {}
   if (!eventos.length) { el.innerHTML='<div style="color:var(--gray-400);padding:20px;text-align:center;font-size:13px">Nenhum evento registrado.</div>'; return; }
   el.innerHTML = `<div style="position:relative;padding-left:28px">
     <div style="position:absolute;left:10px;top:0;bottom:0;width:2px;background:var(--gray-100)"></div>
@@ -5196,7 +5210,7 @@ async function _loadDossieHistorico() {
         ${ev.obs ? `<div style="font-size:12px;color:var(--gray-500);margin-top:4px;line-height:1.5">${ev.obs}</div>` : ''}
       </div>
     </div>`).join('')}
-  </div>`;
+  </div>${vizHtml}`;
 }
 
 
@@ -6493,7 +6507,9 @@ loadVisaoGeral();
       if(results[1].status==='rejected'){console.error('Reclamacoes:',results[1].reason);const kpiRec=document.getElementById('kpi-reclamacoes');if(kpiRec)kpiRec.textContent='Erro ao carregar';}
 
       const _NAO_EMP=new Set(['TR01','TR08','SAC','RNC']);
+      const _EMPRESAS_FIXAS=['CHIACCHIO EMBALAGENS','PLASCHIO','TuBahia/Cesbap'];
       const empSet=new Set(['Todas']);
+      _EMPRESAS_FIXAS.forEach(e=>empSet.add(e));
       _dashData.recs.forEach(x=>{const e=(x.Empresa||'').trim();if(e&&!_NAO_EMP.has(e.toUpperCase()))empSet.add(x.Empresa);});
       _dashData.mans.forEach(x=>{const e=(x.EMPRESA_RECLAMADA||'').trim();if(e&&!_NAO_EMP.has(e.toUpperCase()))empSet.add(x.EMPRESA_RECLAMADA);});
       const emp=document.getElementById('filtro-empresa-select');
@@ -6501,8 +6517,10 @@ loadVisaoGeral();
       const setores=['Todos','SAC','Qualidade','Produção','Logística','Comercial','Financeiro','Faturamento / Expedição'];
       const sel=document.getElementById('filtro-setor-select'); if(sel)sel.innerHTML=setores.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('');
 
-      if(typeof aplicarFiltros==='function') aplicarFiltros();
-      else renderDashboard(calcDashboard(_dashData.mans,_dashData.recs,_dashFiltroEmpresa,_dashFiltroSetor));
+      try{
+        if(typeof aplicarFiltros==='function') aplicarFiltros();
+        else renderDashboard(calcDashboard(_dashData.mans,_dashData.recs,_dashFiltroEmpresa,_dashFiltroSetor));
+      }catch(re){console.error('Erro ao renderizar dashboard:',re);}
       if(last)last.textContent='Última atualização: '+now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
     }catch(e){
       console.error('Erro Visão Geral V3',e);
@@ -9884,8 +9902,9 @@ console.log('[base-conhecimento-setores] carregado');
   };
 
   window.gerarFichaPDF = function() {
-    const item = window._dossieItem;
+    const item = window._dossieItem || _dossieItem;
     if (!item) { alert('Nenhuma manifestação aberta.'); return; }
+    if (!window.jspdf) { alert('Biblioteca de PDF ainda carregando. Aguarde alguns segundos e tente novamente.'); return; }
 
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ unit: 'mm', format: 'a4' });

@@ -901,6 +901,26 @@ app.post('/api/manifestacoes/:id/tratativa/decisao', requerPerfil('MASTER','ANAL
 // DEVOLUTIVAS ESTRUTURADAS
 // ============================================================
 
+// Registrar e listar visualizações de uma manifestação
+app.post('/api/manifestacoes/:id/visualizacao', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','SETOR RESPONSÁVEL'), async (req,res)=>{
+  try {
+    const id=req.params.id;
+    const agora=new Date().toISOString();
+    await garantirAbaComCabecalhos('LOG_VISUALIZACOES',['ID_MANIFESTACAO','USUARIO','NOME','PERFIL','DATA_HORA']).catch(()=>{});
+    await appendObjeto('LOG_VISUALIZACOES',{ID_MANIFESTACAO:id,USUARIO:req.user.usuario,NOME:req.user.nome||req.user.usuario,PERFIL:req.user.perfil,DATA_HORA:agora});
+    res.json({sucesso:true});
+  } catch(e){ res.json({sucesso:false,erro:e.message}); }
+});
+
+app.get('/api/manifestacoes/:id/visualizacoes', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req,res)=>{
+  try {
+    const id=req.params.id;
+    const rows=await lerAba('LOG_VISUALIZACOES',5000).catch(()=>[]);
+    const itens=rows.filter(r=>r.ID_MANIFESTACAO===id);
+    res.json({sucesso:true,total:itens.length,itens});
+  } catch(e){ res.status(500).json({sucesso:false,erro:e.message,itens:[]}); }
+});
+
 app.get('/api/manifestacoes/:id/devolutivas', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req,res)=>{
   try {
     const devs = await devolutivaEngine.buscarDevolutivasPorManifestacao(req.params.id);
@@ -2039,7 +2059,7 @@ const ABAS_PERMITIDAS = [
   'PARAMETROS_LOGISTICA','PARAMETROS_PRODUCAO',
   'ANEXOS','DOCUMENTOS_SETORES','APROVADOR_COMPETENCIAS','CONHECIMENTO_SETORES',
   'Reclamações + devolutiva', // P023: fonte oficial para "Reclamações do período"
-  'SLA_ESCALONAMENTO','PERGUNTAS_ANALISE',
+  'SLA_ESCALONAMENTO','PERGUNTAS_ANALISE','LOG_VISUALIZACOES',
 ];
 
 app.get('/api/planilha/abas', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
