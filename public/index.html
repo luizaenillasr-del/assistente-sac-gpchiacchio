@@ -3579,98 +3579,133 @@
   <div class="page-header" style="flex-wrap:wrap;gap:12px">
     <div>
       <h1>Biblioteca de Fichas</h1>
-      <p>Arquivo digital das fichas de reclamações e manifestações.</p>
+      <p>Visão consolidada de manifestações, reclamações e tratativas.</p>
     </div>
     <button class="btn btn-primary" onclick="loadBiblioteca(true)">⟳ Atualizar</button>
   </div>
 
-  <!-- Stats -->
-  <div class="kpi-row" id="bib-kpis" style="padding:0 24px 16px">
-    <div class="kpi-card"><div class="kpi-label">Total de Fichas</div><div class="kpi-value" id="bib-stat-total">—</div></div>
-    <div class="kpi-card"><div class="kpi-label">Fichas do Mês</div><div class="kpi-value" id="bib-stat-mes">—</div></div>
-    <div class="kpi-card"><div class="kpi-label">Fichas do Ano</div><div class="kpi-value" id="bib-stat-ano">—</div></div>
-    <div class="kpi-card"><div class="kpi-label">Com Evidências</div><div class="kpi-value" id="bib-stat-ev">—</div></div>
+  <!-- Barra de pesquisa principal -->
+  <div style="padding:0 24px 20px">
+    <div style="position:relative">
+      <span style="position:absolute;left:16px;top:50%;transform:translateY(-50%);font-size:18px;pointer-events:none">🔍</span>
+      <input id="bib-f-q" class="input" type="text" placeholder="Pesquisar por protocolo, cliente, empresa, motivo, colaborador..." style="width:100%;padding-left:48px;padding-top:14px;padding-bottom:14px;font-size:15px;border-radius:14px;box-shadow:0 2px 8px rgba(0,0,0,.06)" onkeydown="if(event.key==='Enter')loadBiblioteca(true)">
+    </div>
+  </div>
+
+  <!-- 6 KPI cards em linha -->
+  <div style="padding:0 24px 20px;display:grid;grid-template-columns:repeat(6,1fr);gap:12px" id="bib-kpis">
+    <div class="kpi-card" style="text-align:center">
+      <div class="kpi-label">Total Geral</div>
+      <div class="kpi-value" id="bib-stat-total" style="font-size:28px">—</div>
+    </div>
+    <div class="kpi-card" style="text-align:center">
+      <div class="kpi-label">Este Mês</div>
+      <div class="kpi-value" id="bib-stat-mes" style="font-size:28px">—</div>
+    </div>
+    <div class="kpi-card" style="text-align:center">
+      <div class="kpi-label">Este Ano</div>
+      <div class="kpi-value" id="bib-stat-ano" style="font-size:28px">—</div>
+    </div>
+    <div class="kpi-card" style="text-align:center">
+      <div class="kpi-label">Com Evidências</div>
+      <div class="kpi-value" id="bib-stat-ev" style="font-size:28px;color:var(--blue-600,#2563eb)">—</div>
+    </div>
+    <div class="kpi-card" style="text-align:center">
+      <div class="kpi-label">Com Tratativa</div>
+      <div class="kpi-value" id="bib-stat-trat" style="font-size:28px;color:var(--green-600,#16a34a)">—</div>
+    </div>
+    <div class="kpi-card" style="text-align:center">
+      <div class="kpi-label">Reincidentes</div>
+      <div class="kpi-value" id="bib-stat-reinc" style="font-size:28px;color:var(--red-600,#dc2626)">—</div>
+    </div>
   </div>
 
   <!-- Filtros -->
-  <div style="padding:0 24px 16px">
-    <div style="background:white;border:1px solid var(--gray-200);border-radius:12px;padding:20px">
-      <div style="font-size:13px;font-weight:700;margin-bottom:14px;color:var(--gray-700)">FILTROS</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:12px">
-        <div>
-          <label style="font-size:11px;font-weight:600;color:var(--gray-500);display:block;margin-bottom:4px">ANO</label>
-          <select id="bib-f-ano" class="select" style="width:100%">
-            <option value="">Todos</option>
-          </select>
+  <div style="padding:0 24px 20px">
+    <details id="bib-filtros-details" style="background:white;border:1px solid var(--gray-200);border-radius:12px;overflow:hidden">
+      <summary style="padding:14px 20px;font-size:13px;font-weight:700;color:var(--gray-700);cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px">
+        <span>⚙</span> FILTROS AVANÇADOS <span id="bib-filtros-badge" style="display:none;background:var(--primary,#2563eb);color:#fff;font-size:10px;border-radius:99px;padding:2px 7px;margin-left:4px">ativos</span>
+      </summary>
+      <div style="padding:16px 20px;border-top:1px solid var(--gray-100)">
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:12px">
+          <div>
+            <label style="font-size:11px;font-weight:600;color:var(--gray-500);display:block;margin-bottom:4px">ANO</label>
+            <select id="bib-f-ano" class="select" style="width:100%" onchange="loadBiblioteca(true)">
+              <option value="">Todos</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:600;color:var(--gray-500);display:block;margin-bottom:4px">MÊS</label>
+            <select id="bib-f-mes" class="select" style="width:100%" onchange="loadBiblioteca(true)">
+              <option value="">Todos</option>
+              <option value="01">Janeiro</option><option value="02">Fevereiro</option><option value="03">Março</option>
+              <option value="04">Abril</option><option value="05">Maio</option><option value="06">Junho</option>
+              <option value="07">Julho</option><option value="08">Agosto</option><option value="09">Setembro</option>
+              <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:600;color:var(--gray-500);display:block;margin-bottom:4px">EMPRESA</label>
+            <select id="bib-f-empresa" class="select" style="width:100%" onchange="loadBiblioteca(true)">
+              <option value="">Todas</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:600;color:var(--gray-500);display:block;margin-bottom:4px">TIPO</label>
+            <select id="bib-f-tipo" class="select" style="width:100%" onchange="loadBiblioteca(true)">
+              <option value="">Todos</option>
+              <option value="Reclamação">Reclamação</option>
+              <option value="Dúvida">Dúvida</option>
+              <option value="Sugestão">Sugestão</option>
+              <option value="Elogio">Elogio</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:600;color:var(--gray-500);display:block;margin-bottom:4px">STATUS</label>
+            <select id="bib-f-status" class="select" style="width:100%" onchange="loadBiblioteca(true)">
+              <option value="">Todos</option>
+              <option value="NOVA">NOVA</option>
+              <option value="EM ANÁLISE">EM ANÁLISE</option>
+              <option value="RESOLVIDA">RESOLVIDA</option>
+            </select>
+          </div>
         </div>
-        <div>
-          <label style="font-size:11px;font-weight:600;color:var(--gray-500);display:block;margin-bottom:4px">MÊS</label>
-          <select id="bib-f-mes" class="select" style="width:100%">
-            <option value="">Todos</option>
-            <option value="01">Janeiro</option><option value="02">Fevereiro</option><option value="03">Março</option>
-            <option value="04">Abril</option><option value="05">Maio</option><option value="06">Junho</option>
-            <option value="07">Julho</option><option value="08">Agosto</option><option value="09">Setembro</option>
-            <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
-          </select>
-        </div>
-        <div>
-          <label style="font-size:11px;font-weight:600;color:var(--gray-500);display:block;margin-bottom:4px">EMPRESA</label>
-          <select id="bib-f-empresa" class="select" style="width:100%">
-            <option value="">Todas</option>
-          </select>
-        </div>
-        <div>
-          <label style="font-size:11px;font-weight:600;color:var(--gray-500);display:block;margin-bottom:4px">TIPO</label>
-          <select id="bib-f-tipo" class="select" style="width:100%">
-            <option value="">Todos</option>
-            <option value="Reclamação">Reclamação</option>
-            <option value="Dúvida">Dúvida</option>
-            <option value="Sugestão">Sugestão</option>
-            <option value="Elogio">Elogio</option>
-          </select>
-        </div>
-        <div>
-          <label style="font-size:11px;font-weight:600;color:var(--gray-500);display:block;margin-bottom:4px">STATUS</label>
-          <select id="bib-f-status" class="select" style="width:100%">
-            <option value="">Todos</option>
-            <option value="NOVA">NOVA</option>
-            <option value="EM ANÁLISE">EM ANÁLISE</option>
-            <option value="RESOLVIDA">RESOLVIDA</option>
-          </select>
-        </div>
-        <div style="grid-column:1/-1">
-          <label style="font-size:11px;font-weight:600;color:var(--gray-500);display:block;margin-bottom:4px">PESQUISAR</label>
-          <input id="bib-f-q" class="input" type="text" placeholder="Protocolo, cliente, colaborador, motivo..." style="width:100%" onkeydown="if(event.key==='Enter')loadBiblioteca(true)">
-        </div>
+        <button class="btn btn-secondary" onclick="limparFiltrosBib()" style="font-size:12px">✕ Limpar filtros</button>
       </div>
-      <div style="display:flex;gap:10px">
-        <button class="btn btn-primary" onclick="loadBiblioteca(true)">FILTRAR</button>
-        <button class="btn btn-secondary" onclick="limparFiltrosBib()">LIMPAR FILTROS</button>
+    </details>
+  </div>
+
+  <!-- Por empresa -->
+  <div style="padding:0 24px 20px">
+    <div style="font-size:13px;font-weight:700;color:var(--gray-700);margin-bottom:12px;text-transform:uppercase;letter-spacing:.05em">Por Empresa</div>
+    <div id="bib-por-empresa" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px">
+      <div style="color:var(--gray-400);font-size:13px;padding:20px">Carregando...</div>
+    </div>
+  </div>
+
+  <!-- Evolução por mês -->
+  <div style="padding:0 24px 20px">
+    <div style="font-size:13px;font-weight:700;color:var(--gray-700);margin-bottom:12px;text-transform:uppercase;letter-spacing:.05em">Evolução por Mês</div>
+    <div style="overflow-x:auto;padding-bottom:8px">
+      <div id="bib-por-mes" style="display:flex;gap:10px;min-width:max-content">
+        <div style="color:var(--gray-400);font-size:13px;padding:20px">Carregando...</div>
       </div>
     </div>
   </div>
 
-  <!-- Navegação hierárquica (anos/meses) -->
-  <div id="bib-hierarquia" style="padding:0 24px 16px;display:none">
-    <div style="background:white;border:1px solid var(--gray-200);border-radius:12px;padding:16px">
-      <div style="font-size:12px;font-weight:700;color:var(--gray-500);margin-bottom:12px;text-transform:uppercase;letter-spacing:.05em">Navegação por Período</div>
-      <div id="bib-hier-content"></div>
-    </div>
-  </div>
-
-  <!-- Tabela -->
+  <!-- Lista de fichas -->
   <div style="padding:0 24px 32px">
     <div style="background:white;border:1px solid var(--gray-200);border-radius:12px;overflow:hidden">
-      <div style="padding:16px 20px;border-bottom:1px solid var(--gray-200);display:flex;align-items:center;justify-content:space-between">
+      <div style="padding:14px 20px;border-bottom:1px solid var(--gray-200);display:flex;align-items:center;justify-content:space-between">
         <div style="font-size:13px;font-weight:700;color:var(--gray-900)">FICHAS <span id="bib-count" style="color:var(--gray-400);font-weight:400"></span></div>
-        <div style="display:flex;align-items:center;gap:10px">
-          <button id="bib-prev-btn" class="btn btn-secondary" style="padding:4px 10px;font-size:12px" onclick="bibChangePage(-1)">‹ Ant.</button>
+        <div style="display:flex;align-items:center;gap:8px">
+          <button id="bib-prev-btn" class="btn btn-secondary" style="padding:4px 10px;font-size:12px" onclick="bibChangePage(-1)">‹</button>
           <span id="bib-page-info" style="font-size:12px;color:var(--gray-500)"></span>
-          <button id="bib-next-btn" class="btn btn-secondary" style="padding:4px 10px;font-size:12px" onclick="bibChangePage(1)">Prox. ›</button>
+          <button id="bib-next-btn" class="btn btn-secondary" style="padding:4px 10px;font-size:12px" onclick="bibChangePage(1)">›</button>
         </div>
       </div>
       <div id="bib-loading" style="text-align:center;padding:40px;color:var(--gray-400);display:none">Carregando fichas...</div>
-      <div id="bib-empty" style="text-align:center;padding:40px;color:var(--gray-400);display:none">Nenhuma ficha encontrada para os filtros selecionados.</div>
+      <div id="bib-empty" style="text-align:center;padding:40px;color:var(--gray-400);display:none">Nenhuma ficha encontrada.</div>
       <div style="overflow-x:auto">
         <table class="table" id="bib-table" style="display:none">
           <thead>
@@ -3681,9 +3716,7 @@
               <th>EMPRESA</th>
               <th>TIPO</th>
               <th>SETOR</th>
-              <th>COLABORADOR</th>
               <th>STATUS</th>
-              <th>PDF</th>
               <th>EVIDÊNCIAS</th>
               <th>AÇÕES</th>
             </tr>
@@ -3760,6 +3793,12 @@ async function loadBiblioteca(reset) {
   const empresa = document.getElementById('bib-f-empresa')?.value||'';
   const tipo = document.getElementById('bib-f-tipo')?.value||'';
   const status = document.getElementById('bib-f-status')?.value||'';
+
+  // Indicar filtros ativos
+  const filtrosAtivos = !!(q||ano||mes||empresa||tipo||status);
+  const badge = document.getElementById('bib-filtros-badge');
+  if (badge) badge.style.display = filtrosAtivos ? '' : 'none';
+
   const params = new URLSearchParams({ page: _bibPage, limit: 50 });
   if (q) params.set('q', q);
   if (ano) params.set('ano', ano);
@@ -3768,6 +3807,11 @@ async function loadBiblioteca(reset) {
   if (tipo) params.set('tipo', tipo);
   if (status) params.set('status', status);
 
+  const statsParams = new URLSearchParams();
+  if (empresa) statsParams.set('empresa', empresa);
+  if (ano) statsParams.set('ano', ano);
+  if (mes) statsParams.set('mes', mes);
+
   document.getElementById('bib-loading').style.display='block';
   document.getElementById('bib-table').style.display='none';
   document.getElementById('bib-empty').style.display='none';
@@ -3775,18 +3819,23 @@ async function loadBiblioteca(reset) {
   try {
     const [fichasRes, statsRes] = await Promise.all([
       fetch(API+'/api/biblioteca/fichas?'+params, {headers:{'Authorization':'Bearer '+tok}}).then(r=>r.json()),
-      fetch(API+'/api/biblioteca/stats?'+(empresa?'empresa='+encodeURIComponent(empresa):''), {headers:{'Authorization':'Bearer '+tok}}).then(r=>r.json()).catch(()=>({sucesso:false})),
+      fetch(API+'/api/biblioteca/stats?'+statsParams, {headers:{'Authorization':'Bearer '+tok}}).then(r=>r.json()).catch(()=>({sucesso:false})),
     ]);
 
     // Stats
     if (statsRes.sucesso) {
       _bibStats = statsRes;
-      document.getElementById('bib-stat-total').textContent = statsRes.totalFichas ?? '—';
-      document.getElementById('bib-stat-mes').textContent = statsRes.fichasDoMes ?? '—';
-      document.getElementById('bib-stat-ano').textContent = statsRes.fichasDoAno ?? '—';
-      document.getElementById('bib-stat-ev').textContent = statsRes.comEvidencias ?? '—';
-      renderBibHierarquia(statsRes.porAnoMes || {});
-      renderBibAnoOptions(Object.keys(statsRes.porAnoMes || {}).sort().reverse());
+      document.getElementById('bib-stat-total').textContent = (statsRes.totalFichas ?? 0).toLocaleString('pt-BR');
+      document.getElementById('bib-stat-mes').textContent = (statsRes.fichasDoMes ?? 0).toLocaleString('pt-BR');
+      document.getElementById('bib-stat-ano').textContent = (statsRes.fichasDoAno ?? 0).toLocaleString('pt-BR');
+      document.getElementById('bib-stat-ev').textContent = (statsRes.comEvidencias ?? 0).toLocaleString('pt-BR');
+      document.getElementById('bib-stat-trat').textContent = (statsRes.comTratativa ?? 0).toLocaleString('pt-BR');
+      document.getElementById('bib-stat-reinc').textContent = (statsRes.reincidentes ?? 0).toLocaleString('pt-BR');
+      renderBibPorEmpresa(statsRes.porEmpresaDetalhe || {});
+      renderBibPorMes(statsRes.porMes || []);
+      renderBibAnoOptions(Object.keys(statsRes.porEmpresa || {}).length > 0
+        ? [...new Set((statsRes.porMes||[]).map(m=>m.ano))].sort().reverse()
+        : []);
       renderBibEmpresaOptions(Object.keys(statsRes.porEmpresa || {}));
     }
 
@@ -3795,7 +3844,7 @@ async function loadBiblioteca(reset) {
     if (!fichasRes.sucesso) { document.getElementById('bib-empty').style.display='block'; return; }
     _bibTotalPages = fichasRes.pages || 1;
     document.getElementById('bib-count').textContent = `(${fichasRes.total} ficha${fichasRes.total !== 1 ? 's' : ''})`;
-    document.getElementById('bib-page-info').textContent = `Página ${fichasRes.page} de ${_bibTotalPages}`;
+    document.getElementById('bib-page-info').textContent = `Pág. ${fichasRes.page}/${_bibTotalPages}`;
     document.getElementById('bib-prev-btn').disabled = fichasRes.page <= 1;
     document.getElementById('bib-next-btn').disabled = fichasRes.page >= _bibTotalPages;
 
@@ -3808,19 +3857,16 @@ async function loadBiblioteca(reset) {
     document.getElementById('bib-tbody').innerHTML = fichasRes.fichas.map(f => {
       const dt = f.DATA_REGISTRO ? new Date(f.DATA_REGISTRO).toLocaleDateString('pt-BR') : (f.ANO&&f.MES?`${meses[parseInt(f.MES)]}/${f.ANO}`:'—');
       const evCount = parseInt(f.TOTAL_EVIDENCIAS||0);
-      const hasPdf = !!f.PDF_DRIVE_URL;
       const statusCls = (f.STATUS||'').toLowerCase().includes('nova')?'status-recebida':(f.STATUS||'').toLowerCase().includes('análise')?'status-em-analise':'status-encerrada';
       return `<tr>
         <td><span style="font-family:monospace;font-size:12px;font-weight:600">${escHtml(f.PROTOCOLO||f.ID_MANIFESTACAO||'—')}</span></td>
         <td style="white-space:nowrap">${dt}</td>
-        <td>${escHtml(f.NOME_CLIENTE||'—')}</td>
+        <td>${escHtml(f.NOME_CLIENTE||f.ORIG_CONTATO||'—')}</td>
         <td>${escHtml(f.EMPRESA||'—')}</td>
-        <td><span class="badge" style="background:${f.TIPO_MANIFESTACAO==='Reclamação'?'var(--red-light)':f.TIPO_MANIFESTACAO==='Elogio'?'var(--green-light)':'var(--yellow-light)'}; color:var(--gray-700)">${escHtml(f.TIPO_MANIFESTACAO||'—')}</span></td>
-        <td>${escHtml(f.SETOR_RECEBIMENTO||'—')}</td>
-        <td>${escHtml(f.COLABORADOR_RECEBIMENTO||'—')}</td>
+        <td><span class="badge" style="background:${(f.TIPO_MANIFESTACAO||f.TIPO||'')===('Reclamação')?'var(--red-light)':'var(--yellow-light)'};color:var(--gray-700)">${escHtml(f.TIPO_MANIFESTACAO||f.TIPO||'Reclamação')}</span></td>
+        <td>${escHtml(f.SETOR_RECEBIMENTO||f.SETOR_DESTINO||'—')}</td>
         <td><span class="status-badge ${statusCls}">${escHtml(f.STATUS||'—')}</span></td>
-        <td>${hasPdf?`<a href="${escHtml(f.PDF_DRIVE_URL)}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary" style="padding:3px 8px;font-size:11px">📄 PDF</a>`:'<span style="color:var(--gray-400);font-size:12px">—</span>'}</td>
-        <td>${evCount>0?`<span style="font-size:12px;color:var(--gray-700)">📎 ${evCount}</span>`:'<span style="color:var(--gray-400);font-size:12px">—</span>'}</td>
+        <td>${evCount>0?`<span style="font-size:12px">📎 ${evCount}</span>`:'<span style="color:var(--gray-400);font-size:12px">—</span>'}</td>
         <td><button class="btn btn-secondary" style="padding:3px 8px;font-size:11px" onclick="openBibFicha('${escHtml(f.ID_MANIFESTACAO||f.PROTOCOLO||'')}')">ABRIR</button></td>
       </tr>`;
     }).join('');
@@ -3840,7 +3886,7 @@ function bibChangePage(delta) {
 
 function limparFiltrosBib() {
   ['bib-f-ano','bib-f-mes','bib-f-empresa','bib-f-tipo','bib-f-status'].forEach(id => { const el=document.getElementById(id); if(el)el.value=''; });
-  document.getElementById('bib-f-q').value='';
+  const q = document.getElementById('bib-f-q'); if(q) q.value='';
   loadBiblioteca(true);
 }
 
@@ -3859,25 +3905,54 @@ function renderBibEmpresaOptions(empresas) {
   sel.innerHTML = '<option value="">Todas</option>' + unique.map(e => `<option value="${escHtml(e)}"${e===cur?' selected':''}>${escHtml(e)}</option>`).join('');
 }
 
-function renderBibHierarquia(porAnoMes) {
-  const wrap = document.getElementById('bib-hierarquia');
-  const cont = document.getElementById('bib-hier-content');
-  const anos = Object.keys(porAnoMes).sort().reverse();
-  if (anos.length === 0) { wrap.style.display='none'; return; }
-  wrap.style.display='block';
-  const nomMes = {' 01':'Jan','02':'Fev','03':'Mar','04':'Abr','05':'Mai','06':'Jun','07':'Jul','08':'Ago','09':'Set','10':'Out','11':'Nov','12':'Dez'};
-  cont.innerHTML = anos.map(ano => {
-    const meses = porAnoMes[ano];
-    const mesHtml = Object.keys(meses).sort().map(m => {
-      const nm = ({' 01':'Janeiro','02':'Fevereiro','03':'Março','04':'Abril','05':'Maio','06':'Junho','07':'Julho','08':'Agosto','09':'Setembro','10':'Outubro','11':'Novembro','12':'Dezembro'})[m] || m;
-      return `<button onclick="document.getElementById('bib-f-ano').value='${ano}';document.getElementById('bib-f-mes').value='${m}';loadBiblioteca(true)" style="background:var(--gray-50);border:1px solid var(--gray-200);border-radius:8px;padding:8px 12px;font-size:12px;cursor:pointer;text-align:left">
-        <div style="font-weight:600;color:var(--gray-700)">${nm}</div>
-        <div style="color:var(--gray-400);font-size:11px">${meses[m]} ficha${meses[m]!==1?'s':''}</div>
-      </button>`;
-    }).join('');
-    return `<div style="margin-bottom:16px"><div style="font-size:16px;font-weight:800;color:var(--gray-900);margin-bottom:8px;cursor:pointer" onclick="document.getElementById('bib-f-ano').value='${ano}';document.getElementById('bib-f-mes').value='';loadBiblioteca(true)">${ano}</div><div style="display:flex;flex-wrap:wrap;gap:8px">${mesHtml}</div></div>`;
+function renderBibPorEmpresa(porEmpresaDetalhe) {
+  const wrap = document.getElementById('bib-por-empresa');
+  if (!wrap) return;
+  const empresas = Object.entries(porEmpresaDetalhe).sort((a,b) => b[1].total - a[1].total);
+  if (empresas.length === 0) {
+    wrap.innerHTML = '<div style="color:var(--gray-400);font-size:13px;padding:12px">Nenhum dado disponível.</div>';
+    return;
+  }
+  wrap.innerHTML = empresas.map(([emp, d]) => {
+    const pct = v => d.total > 0 ? Math.round(v/d.total*100) : 0;
+    return `<div style="background:white;border:1px solid var(--gray-200);border-radius:12px;padding:16px;cursor:pointer" onclick="document.getElementById('bib-f-empresa').value='${escHtml(emp)}';document.getElementById('bib-filtros-details').open=true;loadBiblioteca(true)">
+      <div style="font-size:13px;font-weight:700;color:var(--gray-900);margin-bottom:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escHtml(emp)}">${escHtml(emp)}</div>
+      <div style="font-size:26px;font-weight:800;color:var(--primary,#2563eb);margin-bottom:8px">${d.total}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:11px;color:var(--gray-500)">
+        <span>🔧 Tratativa: <b style="color:var(--gray-700)">${pct(d.comTratativa)}%</b></span>
+        <span>📤 Devolutiva: <b style="color:var(--gray-700)">${pct(d.comDevolutiva)}%</b></span>
+        <span>📎 Evidência: <b style="color:var(--gray-700)">${pct(d.comEvidencia)}%</b></span>
+        <span>⚠ Reinc.: <b style="color:${d.reincidentes>0?'var(--red-600,#dc2626)':'var(--gray-700)'}"> ${d.reincidentes}</b></span>
+      </div>
+    </div>`;
   }).join('');
 }
+
+function renderBibPorMes(porMes) {
+  const wrap = document.getElementById('bib-por-mes');
+  if (!wrap) return;
+  if (!porMes || porMes.length === 0) {
+    wrap.innerHTML = '<div style="color:var(--gray-400);font-size:13px;padding:12px">Nenhum dado disponível.</div>';
+    return;
+  }
+  const nomMes = {'01':'Jan','02':'Fev','03':'Mar','04':'Abr','05':'Mai','06':'Jun','07':'Jul','08':'Ago','09':'Set','10':'Out','11':'Nov','12':'Dez'};
+  const maxFichas = Math.max(...porMes.map(m => m.fichas || 0), 1);
+  wrap.innerHTML = porMes.slice(-18).map(m => {
+    const label = `${nomMes[m.mes]||m.mes}/${m.ano}`;
+    const barH = Math.max(Math.round((m.fichas||0)/maxFichas*60), 2);
+    return `<div style="display:flex;flex-direction:column;align-items:center;cursor:pointer;min-width:72px"
+      onclick="document.getElementById('bib-f-ano').value='${m.ano}';document.getElementById('bib-f-mes').value='${m.mes}';document.getElementById('bib-filtros-details').open=true;loadBiblioteca(true)">
+      <div style="width:48px;height:60px;display:flex;align-items:flex-end;justify-content:center">
+        <div style="width:32px;height:${barH}px;background:var(--primary,#2563eb);border-radius:4px 4px 0 0;opacity:.85"></div>
+      </div>
+      <div style="font-size:11px;font-weight:700;color:var(--gray-900);margin-top:4px">${m.fichas||0}</div>
+      <div style="font-size:10px;color:var(--gray-400);white-space:nowrap">${label}</div>
+      ${(m.comTratativa||0)>0?`<div style="font-size:9px;color:var(--green-600,#16a34a)">🔧 ${m.comTratativa}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function renderBibHierarquia() {} // legado — mantido para evitar erros de ref
 
 async function openBibFicha(id) {
   const tok = sessionStorage.getItem('sac-token');

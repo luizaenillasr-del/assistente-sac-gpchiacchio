@@ -245,6 +245,13 @@ async function lerAba(nomeAba, maxRows) {
   });
 }
 
+// Tenta 'Reclamações + devolutiva' primeiro; cai para 'Reclamações' se vazio
+async function lerAbaReclamacoes(max = 2000) {
+  const r1 = await lerAba('Reclamações + devolutiva', max).catch(() => []);
+  if (r1.length > 0) return r1;
+  return lerAba('Reclamações', max).catch(() => []);
+}
+
 async function appendLinha(nomeAba, linha) {
   const sheets = await getSheets();
   await sheets.spreadsheets.values.append({
@@ -1399,7 +1406,7 @@ app.post('/api/calculadora/parametros/producao', requerPerfil('MASTER'), async(r
 // ===== DASHBOARD =====
 app.get('/api/dashboard', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req, res) => {
   try {
-    const [mans, recs] = await Promise.all([lerAba('MANIFESTACOES', 2000).catch(()=>[]), lerAba('Reclamações + devolutiva', 2000).catch(()=>[])]);
+    const [mans, recs] = await Promise.all([lerAba('MANIFESTACOES', 2000).catch(()=>[]), lerAbaReclamacoes(2000)]);
     const emAndamento = mans.filter(m => !['FINALIZADA','ENCERRADA','CONCLUÍDA'].some(s => (m.STATUS||'').toUpperCase().includes(s))).length;
     const rncsAbertas = mans.filter(m => m.ID_RNC && m.ID_RNC !== '').length;
     const recComSLA = recs.filter(r => r['Dentro do prazo? '] || r['Dentro do prazo?']);
@@ -1430,7 +1437,7 @@ app.get('/api/dashboard', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), asy
       const diff=Math.floor((agora-dc)/86400000); const idx=11-Math.floor(diff/7);
       if(idx>=0&&idx<12)semanas[idx].count++;
     });
-    res.json({sucesso:true,fontesDados:{manifestacoes:'Google Sheets (MANIFESTACOES)',reclamacoes:"Google Sheets (Reclamações + devolutiva)"},dados:{kpis:{emAndamento,totalManifestacoes:mans.length,totalReclamacoes:recs.length,rncsAbertas,slaPercent:slaPercent!==null?slaPercent:'Sem dados',foraPrazo:recComSLA.length-dentroPrazo},statusCount,porEmpresa,motivos:Object.entries(motivos).sort((a,b)=>b[1]-a[1]).slice(0,10).map(([m,c])=>({motivo:m,count:c})),semanas}});
+    res.json({sucesso:true,fontesDados:{manifestacoes:'Google Sheets (MANIFESTACOES)',reclamacoes:'Google Sheets (Reclamações)'},dados:{kpis:{emAndamento,totalManifestacoes:mans.length,totalReclamacoes:recs.length,rncsAbertas,slaPercent:slaPercent!==null?slaPercent:'Sem dados',foraPrazo:recComSLA.length-dentroPrazo},statusCount,porEmpresa,motivos:Object.entries(motivos).sort((a,b)=>b[1]-a[1]).slice(0,10).map(([m,c])=>({motivo:m,count:c})),semanas}});
   } catch (e) { console.error(e); res.status(500).json({ sucesso:false, erro:e.message, dados:{} }); }
 });
 
@@ -1582,7 +1589,7 @@ app.get('/api/empresas', async (req, res) => {
     }
     const res2 = await sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
-      range: 'Reclamações + devolutiva!A1:Z1000',
+      range: 'Reclamações!A1:Z1000',
       valueRenderOption: 'FORMATTED_VALUE'
     }).catch(() => ({ data: { values: [] } }));
     const recRows = res2.data.values || [];
@@ -1626,7 +1633,7 @@ app.get('/api/clientes/:cnpj', requerPerfil('MASTER','ANALISTA SAC','RCA / REPRE
 // ===== RECLAMAÇÕES =====
 app.get('/api/reclamacoes', async (req, res) => {
   try {
-    const data=await lerAba('Reclamações + devolutiva',2000).catch(()=>[]);
+    const data=await lerAbaReclamacoes(2000);
     const normalizado=data.map(r=>({
       ...r,
       'Data do Registro':normalizarData(r['Data do Registro']),
@@ -1942,9 +1949,10 @@ app.get('/api/caso/:fonte/:id', async (req, res) => {
       'MANIFESTACOES': 'MANIFESTACOES',
       'SAC_ANALISE_DEFINITIVA': 'SAC_ANALISE_DEFINITIVA',
       'ANALISE': 'SAC_ANALISE_DEFINITIVA',
-      'RECLAMACOES': 'Reclamações + devolutiva',
-      'Reclamacoes': 'Reclamações + devolutiva',
-      'Reclamações + devolutiva': 'Reclamações + devolutiva',
+      'RECLAMACOES': 'Reclamações',
+      'Reclamacoes': 'Reclamações',
+      'Reclamações + devolutiva': 'Reclamações',
+      'Reclamações': 'Reclamações',
     };
     const camposId = ['ID_HISTORICO','ID_MANIFESTACAO','ID_ANALISE','ID','id'];
     const fonteNorm = mapaFontes[fonteRaw] || mapaFontes[fonteRaw.toUpperCase()] || fonteRaw;
@@ -2058,7 +2066,7 @@ const ABAS_PERMITIDAS = [
   'MATRIZ_DECISAO','TIPOS_RECLAMACAO','REGRAS_ROTEAMENTO',
   'PARAMETROS_LOGISTICA','PARAMETROS_PRODUCAO',
   'ANEXOS','DOCUMENTOS_SETORES','APROVADOR_COMPETENCIAS','CONHECIMENTO_SETORES',
-  'Reclamações + devolutiva', // P023: fonte oficial para "Reclamações do período"
+  'Reclamações + devolutiva', 'Reclamações', // P023: fonte oficial para "Reclamações do período"
   'SLA_ESCALONAMENTO','PERGUNTAS_ANALISE','LOG_VISUALIZACOES',
 ];
 
@@ -3019,36 +3027,138 @@ app.get('/api/biblioteca/fichas', requerPerfil('MASTER','ADMINISTRADOR','ANALIST
   } catch(e) { res.status(500).json({ sucesso: false, erro: e.message }); }
 });
 
-// Stats da biblioteca (respeitam filtros de ano/mes/empresa)
+// Stats da biblioteca (usa BANCO_HISTORICO + MANIFESTACOES como fontes principais)
 app.get('/api/biblioteca/stats', requerPerfil('MASTER','ADMINISTRADOR','ANALISTA SAC','SAC','APROVADOR','SETOR RESPONSÁVEL','GESTOR DE SETOR','USUÁRIO DE SETOR'), async (req, res) => {
   try {
     const { ano, mes, empresa } = req.query;
-    const fichas = await lerAba('FICHAS_BIBLIOTECA', 5000).catch(() => []);
-    let base = fichas;
-    if (empresa) base = base.filter(f => normalizarTexto(f.EMPRESA||'').includes(normalizarTexto(empresa)));
+    const [historico, mans, recs] = await Promise.all([
+      lerAba('BANCO_HISTORICO', 5000).catch(() => []),
+      lerAba('MANIFESTACOES', 5000).catch(() => []),
+      lerAbaReclamacoes(5000),
+    ]);
+
     const agora = new Date();
     const anoAtual = agora.getFullYear().toString();
     const mesAtual = String(agora.getMonth() + 1).padStart(2,'0');
-    const doAno = base.filter(f => (f.ANO||'') === anoAtual);
-    const doMes = doAno.filter(f => (f.MES||'') === mesAtual);
-    // Por empresa
-    const porEmpresa = {};
-    base.forEach(f => { const e = f.EMPRESA||'Não informada'; porEmpresa[e] = (porEmpresa[e]||0)+1; });
-    // Por tipo
-    const porTipo = {};
-    base.forEach(f => { const t = f.TIPO_MANIFESTACAO||'Reclamação'; porTipo[t] = (porTipo[t]||0)+1; });
-    // Por ano/mes para navegação hierárquica
-    const porAnoMes = {};
-    base.forEach(f => {
-      const a = f.ANO || 'S/A'; const m = f.MES || '00';
-      if (!porAnoMes[a]) porAnoMes[a] = {};
-      porAnoMes[a][m] = (porAnoMes[a][m]||0)+1;
+
+    function extrairAnoMes(item) {
+      const raw = item.ORIG_DATA_ABERTURA || item.DATA_REGISTRO || item.DATA_ABERTURA || item['Data do Registro'] || '';
+      let d;
+      if (typeof raw === 'number') d = new Date((raw - 25569) * 86400000);
+      else d = new Date(raw);
+      if (!d || isNaN(d)) return { ano: 'S/A', mes: '00' };
+      return { ano: String(d.getFullYear()), mes: String(d.getMonth() + 1).padStart(2, '0') };
+    }
+
+    // Normalizar fichas de BANCO_HISTORICO
+    let fichas = historico.map(h => ({
+      ID: h.ID_HISTORICO || h.ID || '',
+      EMPRESA: normalizarEmpresa(h.ORIG_EMPRESA || '') || h.ORIG_EMPRESA || '',
+      TIPO: h.COMP_TIPO_PROBLEMA_VALIDADO || 'Reclamação',
+      STATUS: h.ORIG_STATUS || '',
+      COM_TRATATIVA: !!(h.COMP_TRATATIVA_ADOTADA || h.COMP_ACAO_CORRETIVA),
+      COM_DEVOLUTIVA: !!(h.COMP_DEVOLUTIVA_CLIENTE || h.COMP_RETORNO_CLIENTE),
+      COM_EVIDENCIA: !!(h.ORIG_EVIDENCIA || h.EVIDENCIA_URL),
+      REINCIDENTE: false,
+      _DATA: extrairAnoMes(h),
+      _SRC: 'HISTORICO',
+    }));
+
+    // Identificar reincidentes por cliente
+    const contatoCount = {};
+    historico.forEach(h => {
+      const c = (h.ORIG_CONTATO || '').trim();
+      if (c) contatoCount[c] = (contatoCount[c] || 0) + 1;
     });
-    const comEvidencias = base.filter(f => parseInt(f.TOTAL_EVIDENCIAS||0) > 0).length;
-    let scope = base;
-    if (ano) scope = scope.filter(f => (f.ANO||'') === String(ano));
-    if (mes) scope = scope.filter(f => (f.MES||'') === String(mes).padStart(2,'0'));
-    res.json({ sucesso: true, totalFichas: scope.length, fichasDoMes: doMes.length, fichasDoAno: doAno.length, porEmpresa, porTipo, porAnoMes, comEvidencias });
+    fichas.forEach(f => { if (contatoCount[(historico.find(h => (h.ID_HISTORICO||h.ID) === f.ID)||{}).ORIG_CONTATO||''] > 1) f.REINCIDENTE = true; });
+
+    // Complementar com fichas do MANIFESTACOES não já cobertas
+    const idsHistorico = new Set(historico.map(h => h.ID_HISTORICO || h.ID));
+    mans.forEach(m => {
+      if (!idsHistorico.has(m.ID_MANIFESTACAO)) {
+        fichas.push({
+          ID: m.ID_MANIFESTACAO,
+          EMPRESA: normalizarEmpresa(m.EMPRESA_RECLAMADA || '') || m.EMPRESA_RECLAMADA || '',
+          TIPO: m.TIPO || m.TIPO_MANIFESTACAO || 'Reclamação',
+          STATUS: m.STATUS || '',
+          COM_TRATATIVA: !!(m.TRATATIVA || m.ACAO_CORRETIVA),
+          COM_DEVOLUTIVA: !!(m.DEVOLUTIVA || m.RETORNO_CLIENTE),
+          COM_EVIDENCIA: false,
+          REINCIDENTE: false,
+          _DATA: extrairAnoMes(m),
+          _SRC: 'MANIFESTACOES',
+        });
+      }
+    });
+
+    // Aplicar filtros
+    let base = fichas;
+    if (empresa) base = base.filter(f => normalizarTexto(f.EMPRESA||'').includes(normalizarTexto(empresa)));
+    if (ano) base = base.filter(f => f._DATA.ano === String(ano));
+    if (mes) base = base.filter(f => f._DATA.mes === String(mes).padStart(2,'0'));
+
+    const doAno = fichas.filter(f => f._DATA.ano === anoAtual);
+    const doMes = doAno.filter(f => f._DATA.mes === mesAtual);
+
+    // KPIs globais (sem filtro ano/mes/empresa para cards de overview)
+    const totalGlobal = fichas.length;
+
+    // Por empresa — detalhe com múltiplos indicadores
+    const porEmpresaDetalhe = {};
+    fichas.forEach(f => {
+      const e = f.EMPRESA || 'Não informada';
+      if (!porEmpresaDetalhe[e]) porEmpresaDetalhe[e] = { total: 0, comTratativa: 0, comDevolutiva: 0, comEvidencia: 0, reincidentes: 0 };
+      porEmpresaDetalhe[e].total++;
+      if (f.COM_TRATATIVA) porEmpresaDetalhe[e].comTratativa++;
+      if (f.COM_DEVOLUTIVA) porEmpresaDetalhe[e].comDevolutiva++;
+      if (f.COM_EVIDENCIA) porEmpresaDetalhe[e].comEvidencia++;
+      if (f.REINCIDENTE) porEmpresaDetalhe[e].reincidentes++;
+    });
+
+    // Por mês — últimos 12 meses
+    const porMes = {};
+    const recsMapped = recs.map(r => ({ _DATA: extrairAnoMes(r), COM_TRATATIVA: false, COM_DEVOLUTIVA: !!(r['Devolutiva']||r['DEVOLUTIVA']) }));
+    fichas.forEach(f => {
+      const key = `${f._DATA.ano}-${f._DATA.mes}`;
+      if (!porMes[key]) porMes[key] = { ano: f._DATA.ano, mes: f._DATA.mes, fichas: 0, comTratativa: 0, comDevolutiva: 0, reincidentes: 0 };
+      porMes[key].fichas++;
+      if (f.COM_TRATATIVA) porMes[key].comTratativa++;
+      if (f.COM_DEVOLUTIVA) porMes[key].comDevolutiva++;
+      if (f.REINCIDENTE) porMes[key].reincidentes++;
+    });
+    // adicionar contagem de reclamações por mês
+    recsMapped.forEach(r => {
+      const key = `${r._DATA.ano}-${r._DATA.mes}`;
+      if (porMes[key]) porMes[key].reclamacoes = (porMes[key].reclamacoes || 0) + 1;
+    });
+
+    // Ordenar por ano-mes
+    const porMesOrdenado = Object.values(porMes).sort((a, b) => {
+      const ka = `${a.ano}-${a.mes}`; const kb = `${b.ano}-${b.mes}`;
+      return ka.localeCompare(kb);
+    }).slice(-24); // últimos 24 meses
+
+    // Legado porEmpresa simples
+    const porEmpresa = {};
+    Object.entries(porEmpresaDetalhe).forEach(([e, v]) => { porEmpresa[e] = v.total; });
+
+    const comEvidencias = fichas.filter(f => f.COM_EVIDENCIA).length;
+    const comTratativa = fichas.filter(f => f.COM_TRATATIVA).length;
+    const reincidentes = fichas.filter(f => f.REINCIDENTE).length;
+
+    res.json({
+      sucesso: true,
+      totalFichas: totalGlobal,
+      fichasDoMes: doMes.length,
+      fichasDoAno: doAno.length,
+      comEvidencias,
+      comTratativa,
+      reincidentes,
+      porEmpresa,
+      porEmpresaDetalhe,
+      porMes: porMesOrdenado,
+      filtrado: { total: base.length },
+    });
   } catch(e) { res.status(500).json({ sucesso: false, erro: e.message }); }
 });
 
