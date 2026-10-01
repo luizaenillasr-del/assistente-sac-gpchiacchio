@@ -349,6 +349,37 @@ async function testarSeguranca() {
     assert.ok(src.includes('pertenceEmpresa'), 'deve ter verificação pertenceEmpresa');
   });
 
+  await test('B2: /api/rnc tem isolamento de empresa (Sheets + PG)', () => {
+    const fs = require('fs');
+    const src = fs.readFileSync(require.resolve('../api/index.js'), 'utf8');
+    // Deve ter middlewareEscopoEmpresa no endpoint /rnc
+    assert.ok(src.includes("app.get('/api/rnc', middlewareEscopoEmpresa()"), 'endpoint /rnc deve usar middlewareEscopoEmpresa');
+    // Sheets fallback deve filtrar por empresa
+    const rncBlock = src.slice(src.indexOf("app.get('/api/rnc'"), src.indexOf("app.post('/api/rnc'"));
+    assert.ok(rncBlock.includes('filtrarPorEmpresa'), 'Sheets fallback de /rnc deve usar filtrarPorEmpresa');
+  });
+
+  await test('B2: /api/historico tem isolamento de empresa', () => {
+    const fs = require('fs');
+    const src = fs.readFileSync(require.resolve('../api/index.js'), 'utf8');
+    assert.ok(src.includes("app.get('/api/historico', middlewareEscopoEmpresa()"), 'endpoint /historico deve usar middlewareEscopoEmpresa');
+    const histBlock = src.slice(src.indexOf("app.get('/api/historico'"), src.indexOf("app.get('/api/historico'") + 500);
+    assert.ok(histBlock.includes('filtrarPorEmpresa'), 'historico deve usar filtrarPorEmpresa');
+  });
+
+  await test('B2: /api/manifestacoes PG path usa empresa do usuário autenticado', () => {
+    const fs = require('fs');
+    const src = fs.readFileSync(require.resolve('../api/index.js'), 'utf8');
+    // O PG path não deve confiar em req.query.empresaId para não-MASTER
+    assert.ok(src.includes('B2: empresa vem do usuário autenticado, não do frontend'), 'PG path de manifestacoes deve usar empresa do usuário');
+  });
+
+  await test('B2: /api/manifestacoes/:id PG path verifica empresa', () => {
+    const fs = require('fs');
+    const src = fs.readFileSync(require.resolve('../api/index.js'), 'utf8');
+    assert.ok(src.includes('B2: verificar escopo de empresa no PG path'), 'GET /manifestacoes/:id PG path deve checar empresa');
+  });
+
   await test('B4: calcularSLA tem timezone configurável', () => {
     const fs = require('fs');
     const src = fs.readFileSync(require.resolve('../api/services/cerebroServices.js'), 'utf8');

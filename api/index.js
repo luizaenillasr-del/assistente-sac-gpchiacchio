@@ -708,7 +708,10 @@ app.get('/api/manifestacoes', middlewareEscopoEmpresa(), async (req, res) => {
     if (manifestacaoRepo) {
       try {
         const filtros = {};
-        if (req.query.empresaId) filtros.empresaId = req.query.empresaId;
+        // B2: empresa vem do usuário autenticado, não do frontend
+        const _isMasterMf = req.user && perfilCanonico(req.user.perfil) === 'MASTER';
+        if (_isMasterMf && req.query.empresaId) filtros.empresaId = req.query.empresaId;
+        else if (!_isMasterMf && req.user?.empresa) filtros.empresaId = req.user.empresa;
         if (req.query.status) filtros.status = req.query.status;
         const pgData = await manifestacaoRepo.findAll(filtros);
         if (pgData && pgData.length > 0) {
@@ -755,6 +758,13 @@ app.get('/api/manifestacoes/:id', middlewareEscopoEmpresa(), async (req, res) =>
         if (!pg) pg = await manifestacaoRepo.findByIdOriginal(req.params.id).catch(() => null);
         if (!pg && !isNaN(req.params.id)) pg = await manifestacaoRepo.findById(req.params.id).catch(() => null);
         if (pg) {
+          // B2: verificar escopo de empresa no PG path
+          if (req._empresaScope) {
+            const empPg = pg.empresa?.nome || pg.empresaNome || '';
+            if (!pertenceEmpresa(req._empresaScope, empPg)) {
+              return res.status(403).json({ sucesso: false, erro: 'Acesso não autorizado para esta manifestação.' });
+            }
+          }
           const item = {
             ID_MANIFESTACAO: pg.protocolo || pg.idOriginal || String(pg.id),
             DATA_ABERTURA: pg.criadaEm?.toISOString?.() || '',
@@ -1525,13 +1535,16 @@ app.get('/api/dashboard', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), asy
 });
 
 // ===== RNC =====
-app.get('/api/rnc', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','SETOR RESPONSÁVEL','RCA / REPRESENTANTE'), async (req, res) => {
+app.get('/api/rnc', middlewareEscopoEmpresa(), requerPerfil('MASTER','ANALISTA SAC','APROVADOR','SETOR RESPONSÁVEL','RCA / REPRESENTANTE'), async (req, res) => {
   try {
     // F6: tenta PostgreSQL primeiro
     if (rncRepo) {
       try {
         const filtros = {};
-        if (req.query.empresaId) filtros.empresaId = req.query.empresaId;
+        // B2: empresa vem do usuário autenticado, não do frontend
+        const _isMasterRnc = req.user && perfilCanonico(req.user.perfil) === 'MASTER';
+        if (_isMasterRnc && req.query.empresaId) filtros.empresaId = req.query.empresaId;
+        else if (!_isMasterRnc && req.user?.empresa) filtros.empresaId = req.user.empresa;
         if (req.query.status) filtros.status = req.query.status;
         const pgData = await rncRepo.findAll(filtros);
         if (pgData && pgData.length > 0) {
@@ -1551,8 +1564,9 @@ app.get('/api/rnc', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','SETOR RESP
         }
       } catch (e) { console.warn('[F6] GET /rnc PG falhou:', e.message); }
     }
-    // Fallback Sheets
-    const data=await lerAba('BANCO_RNC',5000).catch(()=>[]);
+    // Fallback Sheets — B2: filtrar por empresa
+    let data=await lerAba('BANCO_RNC',5000).catch(()=>[]);
+    data = filtrarPorEmpresa(data, req, ['EMPRESA','EMPRESA_RECLAMADA']);
     res.json({sucesso:true,total:data.length,itens:data});
   } catch (e) { res.status(500).json({sucesso:false,erro:e.message,dados:[]}); }
 });
@@ -1727,8 +1741,13 @@ app.get('/api/reclamacoes', async (req, res) => {
 });
 
 // ===== HISTORICO =====
-app.get('/api/historico', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL'), async (req, res) => {
-  try { const data=await lerAba('BANCO_HISTORICO',1000).catch(()=>[]); res.json({sucesso:true,total:data.length,itens:data}); }
+app.get('/api/historico', middlewareEscopoEmpresa(), requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL'), async (req, res) => {
+  try {
+    let data=await lerAba('BANCO_HISTORICO',1000).catch(()=>[]);
+    // B2: filtrar por empresa se não for MASTER
+    data = filtrarPorEmpresa(data, req, ['EMPRESA_RECLAMADA','EMPRESA','EMPRESA_RECLAMANTE']);
+    res.json({sucesso:true,total:data.length,itens:data});
+  }
   catch (e) { res.status(500).json({sucesso:false,erro:e.message,dados:[]}); }
 });
 
@@ -3077,11 +3096,12 @@ app.get('/api/public/empresas', publicRateLimit, async (req, res) => {
 
 // ===== BIBLIOTECA DE FICHAS =====
 // Listar fichas com filtros e paginação
-app.get('/api/biblioteca/fichas', requerPerfil('MASTER','ADMINISTRADOR','ANALISTA SAC','SAC','APROVADOR','SETOR RESPONSÁVEL','GESTOR DE SETOR','USUÁRIO DE SETOR'), async (req, res) => {
+app.get('/api/biblioteca/fichas', middlewareEscopoEmpresa(), requerPerfil('MASTER','ADMINISTRADOR','ANALISTA SAC','SAC','APROVADOR','SETOR RESPONSÁVEL','GESTOR DE SETOR','USUÁRIO DE SETOR'), async (req, res) => {
   try {
     const { ano, mes, empresa, setor, tipo, status, q, page = '1', limit = '50' } = req.query;
     const fichas = await lerAba('FICHAS_BIBLIOTECA', 5000).catch(() => []);
-    let filtered = fichas;
+    // B2: aplicar isolamento de empresa (usuário não-MASTER só vê sua empresa)
+    let filtered = filtrarPorEmpresa(fichas, req, ['EMPRESA']);
     if (ano) filtered = filtered.filter(f => (f.ANO || '') === String(ano));
     if (mes) filtered = filtered.filter(f => (f.MES || '') === String(mes).padStart(2,'0'));
     if (empresa) filtered = filtered.filter(f => normalizarTexto(f.EMPRESA||'').includes(normalizarTexto(empresa)));
