@@ -3935,75 +3935,127 @@
     </div>
   </div>
 
-  <!-- ===== PAINEL DA MÁQUINA ===== -->
+  <!-- ===== INDICADORES ===== -->
   <div class="page" id="page-painel-maquina">
     <div class="topbar">
-      <div class="breadcrumb">Inteligência / <span>Painel da Máquina</span></div>
-      <div class="page-header">
-        <h1 class="page-title">Painel da Máquina</h1>
-        <div class="page-actions">
-          <select id="pm-filtro-empresa" class="form-input" style="width:160px" onchange="loadPainelMaquina()"><option value="">Todas as empresas</option></select>
-          <select id="pm-filtro-setor" class="form-input" style="width:140px" onchange="loadPainelMaquina()"><option value="">Todos os setores</option></select>
-          <button class="btn btn-secondary" onclick="loadPainelMaquina()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-            Atualizar
-          </button>
+      <div class="topbar-left">
+        <div class="breadcrumb">Indicadores / <span>Indicadores</span></div>
+        <div class="page-header">
+          <h1 class="page-title">Indicadores</h1>
         </div>
+      </div>
+      <div class="topbar-right">
+        <button class="btn btn-secondary" onclick="loadPainelMaquina()">Atualizar</button>
       </div>
     </div>
-    <div class="content" style="padding:0 28px 28px">
-      <!-- Indicador de sincronização -->
-      <div id="sync-indicator" style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--gray-400);margin-bottom:16px">
-        <div id="sync-dot" style="width:8px;height:8px;border-radius:50%;background:var(--gray-300)"></div>
-        <span id="sync-text">Carregando...</span>
+    <div class="content">
+
+      <!-- Tabs: Indicadores / Validação da IA / Comparativo -->
+      <div id="ind-tabs-bar" style="display:flex;gap:2px;border-bottom:1px solid #E4E4E4;overflow-x:auto;margin-bottom:20px">
+        <button onclick="switchIndTab('indicadores',this)" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#1F1F1F;border-bottom:2px solid #C70602;margin-bottom:-1px;font-weight:700;font-family:inherit">Indicadores</button>
+        <button onclick="switchIndTab('ia',this)" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Validação da IA</button>
+        <button onclick="switchIndTab('comparativo',this)" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Comparativo</button>
       </div>
 
-      <!-- KPIs principais -->
-      <div class="kpi-grid" id="pm-kpis" style="margin-bottom:20px">
-        <div class="kpi-card"><div class="kpi-label">Total de Manifestações</div><div class="kpi-value" id="pm-total">--</div></div>
-        <div class="kpi-card highlight"><div class="kpi-label">Assertividade da IA</div><div class="kpi-value" id="pm-assert" style="color:var(--green)">--%</div></div>
-        <div class="kpi-card"><div class="kpi-label">Taxa de Resolução</div><div class="kpi-value" id="pm-resolucao">--%</div></div>
-        <div class="kpi-card"><div class="kpi-label">Análises Avaliadas</div><div class="kpi-value" id="pm-avaliadas">--</div></div>
-        <div class="kpi-card"><div class="kpi-label">Pontuação Média IA</div><div class="kpi-value" id="pm-pontuacao">--</div></div>
-        <div class="kpi-card"><div class="kpi-label">Causas Cadastradas</div><div class="kpi-value" id="pm-causas">--</div></div>
-      </div>
+      <!-- TAB: INDICADORES -->
+      <div id="ind-tab-indicadores">
+        <!-- Filtros -->
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px">
+          <select id="pm-filtro-empresa" onchange="loadPainelMaquina()" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:13px;font-family:inherit">
+            <option value="">Todas as empresas</option>
+            <option value="CHIACCHIO">Chiacchio Embalagens</option>
+            <option value="PLASCHIO">Plaschio</option>
+            <option value="TUBAHIA">Tubahia</option>
+          </select>
+          <select id="pm-filtro-setor" onchange="loadPainelMaquina()" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:13px;font-family:inherit">
+            <option value="">Todos os setores</option>
+          </select>
+          <select id="pm-filtro-periodo" onchange="loadPainelMaquina()" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:13px;font-family:inherit">
+            <option value="30">Últimos 30 dias</option>
+            <option value="90">Últimos 90 dias</option>
+            <option value="180">Últimos 180 dias</option>
+            <option value="365">Último ano</option>
+          </select>
+        </div>
 
-      <!-- SLA Status -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
-        <div class="section-card">
-          <div class="section-title">Status SLA (Casos em Aberto)</div>
-          <div id="pm-sla" style="display:flex;gap:12px;margin-top:12px">
-            <div style="flex:1;text-align:center;padding:16px;background:var(--green-light);border-radius:10px">
-              <div style="font-size:28px;font-weight:800;color:var(--green)" id="pm-sla-ok">--</div>
-              <div style="font-size:11px;color:var(--gray-500);margin-top:4px">No prazo</div>
-            </div>
-            <div style="flex:1;text-align:center;padding:16px;background:var(--yellow-light);border-radius:10px">
-              <div style="font-size:28px;font-weight:800;color:var(--yellow)" id="pm-sla-alerta">--</div>
-              <div style="font-size:11px;color:var(--gray-500);margin-top:4px">Em alerta (75%+)</div>
-            </div>
-            <div style="flex:1;text-align:center;padding:16px;background:var(--red-light);border-radius:10px">
-              <div style="font-size:28px;font-weight:800;color:var(--red)" id="pm-sla-vencido">--</div>
-              <div style="font-size:11px;color:var(--gray-500);margin-top:4px">Vencido</div>
-            </div>
+        <!-- KPI cards -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:16px" id="pm-kpis">
+          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px"><span style="font-size:12.5px;color:#666464">Total de manifestações</span><span style="font-size:24px;font-weight:600;margin-top:2px" id="pm-total">--</span><span style="font-size:11.5px;color:#8A8888">período selecionado</span></div>
+          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px"><span style="font-size:12.5px;color:#666464">Assertividade da IA</span><span style="font-size:24px;font-weight:600;margin-top:2px;color:#1E6B3A" id="pm-assert">--%</span><span style="font-size:11.5px;color:#8A8888">sugestões aceitas</span></div>
+          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px"><span style="font-size:12.5px;color:#666464">Taxa de resolução</span><span style="font-size:24px;font-weight:600;margin-top:2px" id="pm-resolucao">--%</span><span style="font-size:11.5px;color:#8A8888">encerradas no prazo</span></div>
+          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px"><span style="font-size:12.5px;color:#666464">Análises avaliadas</span><span style="font-size:24px;font-weight:600;margin-top:2px" id="pm-avaliadas">--</span><span style="font-size:11.5px;color:#8A8888">com feedback</span></div>
+          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px"><span style="font-size:12.5px;color:#666464">Pontuação média IA</span><span style="font-size:24px;font-weight:600;margin-top:2px" id="pm-pontuacao">--</span><span style="font-size:11.5px;color:#8A8888">de 5</span></div>
+          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px"><span style="font-size:12.5px;color:#666464">Causas cadastradas</span><span style="font-size:24px;font-weight:600;margin-top:2px" id="pm-causas">--</span><span style="font-size:11.5px;color:#8A8888">no Cérebro</span></div>
+          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px"><span style="font-size:12.5px;color:#666464">Fora do SLA</span><span style="font-size:24px;font-weight:600;margin-top:2px;color:#A80502" id="pm-sla-vencido">--</span><span style="font-size:11.5px;color:#8A8888">prazo ultrapassado</span></div>
+        </div>
+
+        <!-- Column charts -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:16px;margin-bottom:16px">
+          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:18px 20px;display:flex;flex-direction:column;gap:14px">
+            <div><div style="font-weight:600;font-size:14.5px">Manifestações por mês</div><div style="font-size:12.5px;color:#8A8888">Total de manifestações registradas</div></div>
+            <div id="pm-chart-mes" style="display:flex;align-items:flex-end;gap:6px;height:170px"><div style="color:#8A8888;font-size:13px;align-self:center;width:100%;text-align:center">Carregando...</div></div>
+          </div>
+          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:18px 20px;display:flex;flex-direction:column;gap:14px">
+            <div><div style="font-weight:600;font-size:14.5px">Por tipo de manifestação</div><div style="font-size:12.5px;color:#8A8888">Reclamação, Elogio, Sugestão…</div></div>
+            <div id="pm-chart-tipo" style="display:flex;align-items:flex-end;gap:6px;height:170px"><div style="color:#8A8888;font-size:13px;align-self:center;width:100%;text-align:center">Carregando...</div></div>
           </div>
         </div>
-        <div class="section-card">
-          <div class="section-title">Assertividade por Critério</div>
-          <div id="pm-criterios" style="margin-top:12px"></div>
+
+        <!-- Bar charts -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:16px">
+          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:18px 20px;display:flex;flex-direction:column;gap:14px">
+            <div><div style="font-weight:600;font-size:14.5px">Top setores responsáveis</div><div style="font-size:12.5px;color:#8A8888">Por volume de manifestações</div></div>
+            <div id="pm-setores" style="display:flex;flex-direction:column;gap:10px"></div>
+          </div>
+          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:18px 20px;display:flex;flex-direction:column;gap:14px">
+            <div><div style="font-weight:600;font-size:14.5px">Top causas identificadas</div><div style="font-size:12.5px;color:#8A8888">Por frequência no período</div></div>
+            <div id="pm-topCausas" style="display:flex;flex-direction:column;gap:10px"></div>
+          </div>
+          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:18px 20px;display:flex;flex-direction:column;gap:14px">
+            <div><div style="font-weight:600;font-size:14.5px">Assertividade por critério</div><div style="font-size:12.5px;color:#8A8888">Desempenho da IA por campo</div></div>
+            <div id="pm-criterios" style="display:flex;flex-direction:column;gap:10px"></div>
+          </div>
+          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:18px 20px;display:flex;flex-direction:column;gap:14px">
+            <div><div style="font-weight:600;font-size:14.5px">SLA — casos em aberto</div><div style="font-size:12.5px;color:#8A8888">No prazo / alerta / vencido</div></div>
+            <div id="pm-sla" style="display:flex;flex-direction:column;gap:10px"></div>
+          </div>
         </div>
       </div>
 
-      <!-- Top Setores e Top Causas -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-        <div class="section-card">
-          <div class="section-title">Top Setores Responsáveis</div>
-          <div id="pm-setores" style="margin-top:12px"></div>
+      <!-- TAB: VALIDAÇÃO DA IA -->
+      <div id="ind-tab-ia" style="display:none">
+        <div style="background:#F1EFF8;color:#7F0401;border-radius:10px;padding:14px 18px;font-size:13.5px;line-height:1.55;margin-bottom:16px">Estes indicadores são <strong>métricas operacionais</strong>, calculadas automaticamente a partir das decisões registradas pelos analistas (aceitar, editar ou rejeitar cada sugestão). Não representam uma avaliação subjetiva da IA.</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:16px">
+          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px"><span style="font-size:12.5px;color:#666464">Total de análises</span><span style="font-size:24px;font-weight:600;margin-top:2px" id="ia-total">--</span></div>
+          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px"><span style="font-size:12.5px;color:#666464">Aceitas sem edição</span><span style="font-size:24px;font-weight:600;margin-top:2px;color:#1E6B3A" id="ia-aceitas">--</span></div>
+          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px"><span style="font-size:12.5px;color:#666464">Aceitas com edição</span><span style="font-size:24px;font-weight:600;margin-top:2px;color:#7A4C00" id="ia-editadas">--</span></div>
+          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px"><span style="font-size:12.5px;color:#666464">Rejeitadas</span><span style="font-size:24px;font-weight:600;margin-top:2px;color:#A80502" id="ia-rejeitadas">--</span></div>
         </div>
-        <div class="section-card">
-          <div class="section-title">Top Causas Identificadas</div>
-          <div id="pm-topCausas" style="margin-top:12px"></div>
+        <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:18px 20px;margin-bottom:16px">
+          <div style="font-weight:600;font-size:14.5px;margin-bottom:14px">Decisões sobre as sugestões</div>
+          <div id="ia-bar-decisoes" style="display:flex;flex-direction:column;gap:10px"></div>
         </div>
       </div>
+
+      <!-- TAB: COMPARATIVO -->
+      <div id="ind-tab-comparativo" style="display:none">
+        <div style="font-size:13px;color:#545252;max-width:760px;margin-bottom:16px">Impacto operacional do Assistente SAC. "Processo anterior" corresponde aos 6 meses antes da implantação; "Com Assistente", ao período atual. Dados calculados automaticamente.</div>
+        <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;overflow-x:auto">
+          <table style="border-collapse:collapse;width:100%;min-width:720px">
+            <thead><tr style="background:#FAFAFA">
+              <th style="text-align:left;font-weight:500;font-size:12px;color:#666464;padding:10px 20px;border-bottom:1px solid #E4E4E4">Indicador</th>
+              <th style="text-align:left;font-weight:500;font-size:12px;color:#666464;padding:10px 20px;border-bottom:1px solid #E4E4E4">Processo anterior</th>
+              <th style="text-align:left;font-weight:500;font-size:12px;color:#666464;padding:10px 20px;border-bottom:1px solid #E4E4E4">Com Assistente</th>
+              <th style="text-align:left;font-weight:500;font-size:12px;color:#666464;padding:10px 20px;border-bottom:1px solid #E4E4E4">Variação</th>
+              <th style="text-align:left;font-weight:500;font-size:12px;color:#666464;padding:10px 20px;border-bottom:1px solid #E4E4E4">Como é medido</th>
+            </tr></thead>
+            <tbody id="pm-comparativo-body">
+              <tr><td colspan="5" style="padding:24px;text-align:center;color:#8A8888;font-size:13px">Carregando dados comparativos...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
     </div>
   </div>
 
@@ -11468,9 +11520,19 @@ console.log('[base-conhecimento-setores] carregado');
 // ── Painel da Máquina ──────────────────────────────────────
 let _pmUltimaSync = null;
 
+function switchIndTab(tab, btn) {
+  ['indicadores','ia','comparativo'].forEach(t => {
+    const el = document.getElementById('ind-tab-'+t);
+    if (el) el.style.display = t === tab ? '' : 'none';
+  });
+  document.querySelectorAll('#ind-tabs-bar button').forEach(b => {
+    b.style.color = '#666464'; b.style.fontWeight = '500'; b.style.borderBottom = '2px solid transparent';
+  });
+  if (btn) { btn.style.color = '#1F1F1F'; btn.style.fontWeight = '700'; btn.style.borderBottom = '2px solid #C70602'; }
+}
+
 async function loadPainelMaquina() {
   try {
-    atualizarSyncIndicator('carregando');
     const empresa = document.getElementById('pm-filtro-empresa')?.value || '';
     const setor = document.getElementById('pm-filtro-setor')?.value || '';
     let url = (window.SAC_API||'') + '/api/painel-maquina';
@@ -11491,66 +11553,59 @@ async function loadPainelMaquina() {
     document.getElementById('pm-pontuacao').textContent = m.pontuacaoMedia ? m.pontuacaoMedia + '/100' : '--';
     document.getElementById('pm-causas').textContent = res.totalCausasCadastradas ?? '--';
 
-    // SLA
-    document.getElementById('pm-sla-ok').textContent = res.sla?.ok ?? 0;
-    document.getElementById('pm-sla-alerta').textContent = res.sla?.alerta ?? 0;
-    document.getElementById('pm-sla-vencido').textContent = res.sla?.vencido ?? 0;
+    // SLA bars
+    const slaDiv = document.getElementById('pm-sla');
+    if (slaDiv) {
+      const sla = res.sla || {};
+      const slaItems = [
+        {l:'No prazo', v:sla.ok||0, c:'#1E6B3A'},
+        {l:'Em alerta (75%+)', v:sla.alerta||0, c:'#7A4C00'},
+        {l:'Vencido', v:sla.vencido||0, c:'#A80502'},
+      ];
+      const maxSla = Math.max(...slaItems.map(x=>x.v), 1);
+      slaDiv.innerHTML = slaItems.map(x=>`
+        <div style="display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) 48px;align-items:center;gap:10px;font-size:12.5px">
+          <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${x.l}</span>
+          <div style="height:8px;background:#EFEFEF;border-radius:4px;overflow:hidden"><div style="height:100%;width:${Math.round(x.v/maxSla*100)}%;background:${x.c};border-radius:4px"></div></div>
+          <span style="text-align:right;font-variant-numeric:tabular-nums">${x.v}</span>
+        </div>`).join('');
+    }
+
+    // Bar render helper
+    const renderBar = (el, items, labelKey, valueKey, color) => {
+      if (!el || !items?.length) { if (el) el.innerHTML = '<div style="font-size:13px;color:#8A8888">Sem dados</div>'; return; }
+      const maxV = Math.max(...items.map(x=>x[valueKey]||0), 1);
+      el.innerHTML = items.slice(0,8).map(x=>`
+        <div style="display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) 48px;align-items:center;gap:10px;font-size:12.5px">
+          <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(String(x[labelKey]||'—'))}</span>
+          <div style="height:8px;background:#EFEFEF;border-radius:4px;overflow:hidden"><div style="height:100%;width:${Math.round((x[valueKey]||0)/maxV*100)}%;background:${color};border-radius:4px"></div></div>
+          <span style="text-align:right;font-variant-numeric:tabular-nums">${x[valueKey]||0}</span>
+        </div>`).join('');
+    };
+
+    renderBar(document.getElementById('pm-setores'), res.topSetores, 'setor', 'total', '#C70602');
+    renderBar(document.getElementById('pm-topCausas'), res.topCausas, 'causa', 'total', '#C9922A');
 
     // Critérios
     const crit = document.getElementById('pm-criterios');
     if (crit) {
       const total = m.totalAvaliados || 1;
       const crits = [
-        {label:'Decisão aceita', v: Math.round((m.totalAceitos||0)/total*100)},
-        {label:'Taxa de resolução', v: m.taxaResolucao||0},
-        {label:'Pontuação média', v: m.pontuacaoMedia||0},
+        {l:'Decisão aceita', v:Math.round((m.totalAceitos||0)/total*100)},
+        {l:'Taxa de resolução', v:m.taxaResolucao||0},
+        {l:'Pontuação média', v:m.pontuacaoMedia||0},
       ];
+      const maxCrit = Math.max(...crits.map(x=>x.v), 1);
       crit.innerHTML = crits.map(c=>`
-        <div style="margin-bottom:10px">
-          <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
-            <span>${c.label}</span><strong>${c.v}%</strong>
-          </div>
-          <div style="height:6px;background:var(--gray-200);border-radius:3px">
-            <div style="height:6px;background:${c.v>=70?'var(--green)':c.v>=40?'var(--yellow)':'var(--red)'};border-radius:3px;width:${Math.min(c.v,100)}%"></div>
-          </div>
+        <div style="display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) 48px;align-items:center;gap:10px;font-size:12.5px">
+          <span>${c.l}</span>
+          <div style="height:8px;background:#EFEFEF;border-radius:4px;overflow:hidden"><div style="height:100%;width:${Math.round(c.v/maxCrit*100)}%;background:#24508F;border-radius:4px"></div></div>
+          <span style="text-align:right;font-variant-numeric:tabular-nums">${c.v}%</span>
         </div>`).join('');
     }
 
-    // Top setores
-    const setDiv = document.getElementById('pm-setores');
-    if (setDiv && res.topSetores) {
-      const maxV = res.topSetores[0]?.total || 1;
-      setDiv.innerHTML = res.topSetores.length ? res.topSetores.map(s=>`
-        <div style="margin-bottom:8px">
-          <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
-            <span>${s.setor}</span><strong>${s.total}</strong>
-          </div>
-          <div style="height:5px;background:var(--gray-200);border-radius:3px">
-            <div style="height:5px;background:var(--red);border-radius:3px;width:${Math.round(s.total/maxV*100)}%"></div>
-          </div>
-        </div>`).join('') : '<div style="color:var(--gray-400);font-size:12px">Nenhum dado.</div>';
-    }
-
-    // Top causas
-    const causDiv = document.getElementById('pm-topCausas');
-    if (causDiv && res.topCausas) {
-      const maxC = res.topCausas[0]?.total || 1;
-      causDiv.innerHTML = res.topCausas.length ? res.topCausas.map(c=>`
-        <div style="margin-bottom:8px">
-          <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
-            <span style="max-width:70%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${c.causa}</span><strong>${c.total}</strong>
-          </div>
-          <div style="height:5px;background:var(--gray-200);border-radius:3px">
-            <div style="height:5px;background:var(--orange);border-radius:3px;width:${Math.round(c.total/maxC*100)}%"></div>
-          </div>
-        </div>`).join('') : '<div style="color:var(--gray-400);font-size:12px">Nenhuma causa classificada.</div>';
-    }
-
-    _pmUltimaSync = new Date();
-    atualizarSyncIndicator('ok');
   } catch(e) {
     console.error('Erro Painel da Máquina:', e);
-    atualizarSyncIndicator('erro');
   }
 }
 
