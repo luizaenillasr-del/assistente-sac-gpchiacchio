@@ -1957,43 +1957,66 @@
   <!-- ===== ACOMPANHAMENTO ===== -->
   <div class="page" id="page-acompanhamento">
     <div class="topbar">
-      <div class="breadcrumb">Atendimento / <span>Acompanhamento</span></div>
-      <div class="page-header">
-        <h1 class="page-title">Central de Acompanhamento</h1>
-        <div style="display:flex;gap:8px">
-          <button class="btn btn-secondary" onclick="loadAcompanhamento()" title="Atualizar">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.08-4"/></svg>
-            Atualizar
-          </button>
-          <button class="btn btn-primary" onclick="navigate('nova-manifestacao', document.querySelector('[onclick*=nova-manifestacao]'))">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:14px;height:14px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Nova manifestação
-          </button>
+      <div class="topbar-left">
+        <div class="breadcrumb">Atendimento / <span>Pendências</span></div>
+        <div class="page-header">
+          <h1 class="page-title">Pendências</h1>
         </div>
       </div>
+      <div class="topbar-right">
+        <button class="btn btn-secondary" onclick="loadAcompanhamento()">Atualizar</button>
+        <button class="btn btn-primary" onclick="navigate('nova-manifestacao', document.querySelector('[onclick*=nova-manifestacao]'))">+ Nova manifestação</button>
+      </div>
     </div>
-    <div class="content" style="padding:0 24px 32px">
+    <div class="content">
 
-      <!-- KPIs rápidos -->
-      <div class="kpi-grid" style="grid-template-columns:repeat(7,1fr);margin-bottom:18px" id="acomp-kpis">
-        <div class="kpi-card" style="cursor:pointer" onclick="acompFiltrarStatus('')"><div class="kpi-label">Total</div><div class="kpi-value" id="ac-total">--</div></div>
-        <div class="kpi-card highlight" style="cursor:pointer" onclick="acompFiltrarStatus('EM ANÁLISE')"><div class="kpi-label">Em análise</div><div class="kpi-value" id="ac-analise">--</div></div>
-        <div class="kpi-card" style="cursor:pointer" onclick="acompFiltrarStatus('AGUARDANDO')"><div class="kpi-label">Aguard. decisão</div><div class="kpi-value" id="ac-decisao">--</div></div>
-        <div class="kpi-card" style="cursor:pointer" onclick="acompFiltrarStatus('EM TRATAMENTO')"><div class="kpi-label">Em tratamento</div><div class="kpi-value" id="ac-tratamento">--</div></div>
-        <div class="kpi-card" style="cursor:pointer" onclick="acompFiltrarStatus('APROVADA')"><div class="kpi-label">Aprovadas</div><div class="kpi-value" id="ac-aprovadas">--</div></div>
-        <div class="kpi-card" style="cursor:pointer" onclick="acompFiltrarStatus('ENCERRADA')"><div class="kpi-label">Encerradas</div><div class="kpi-value" id="ac-encerradas">--</div></div>
-        <div class="kpi-card" style="cursor:pointer;border-color:#FCA5A5" onclick="acompFiltrarStatus('VENCIDO')"><div class="kpi-label" style="color:#DC2626">Fora do SLA</div><div class="kpi-value" id="ac-vencidos" style="color:#DC2626">--</div></div>
+      <!-- KPIs coloridos -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:16px">
+        <button onclick="acompFiltrarStatus('')" style="white-space:normal;text-align:left;border:1px solid #E4E4E4;background:#fff;border-radius:10px;padding:16px 18px;cursor:pointer;display:flex;flex-direction:column;gap:4px">
+          <span style="font-size:13px;color:#545252;font-weight:500">Total em aberto</span>
+          <span style="font-size:30px;font-weight:600;color:#545252" id="ac-total">--</span>
+          <span style="font-size:12px;color:#666464">manifestações ativas</span>
+        </button>
+        <button onclick="acompFiltrarStatus('VENCIDO')" style="white-space:normal;text-align:left;border:1px solid #FDECEC;background:#FFF8F8;border-radius:10px;padding:16px 18px;cursor:pointer;display:flex;flex-direction:column;gap:4px">
+          <span style="font-size:13px;color:#A80502;font-weight:500">Fora do SLA</span>
+          <span style="font-size:30px;font-weight:600;color:#A80502" id="ac-vencidos">--</span>
+          <span style="font-size:12px;color:#666464">prazo ultrapassado</span>
+        </button>
+        <button onclick="acompFiltrarStatus('EM ANÁLISE')" style="white-space:normal;text-align:left;border:1px solid #E6EEF8;background:#F5F8FD;border-radius:10px;padding:16px 18px;cursor:pointer;display:flex;flex-direction:column;gap:4px">
+          <span style="font-size:13px;color:#24508F;font-weight:500">Em análise</span>
+          <span style="font-size:30px;font-weight:600;color:#24508F" id="ac-analise">--</span>
+          <span style="font-size:12px;color:#666464">aguardando análise SAC</span>
+        </button>
+        <button onclick="acompFiltrarStatus('AGUARDANDO')" style="white-space:normal;text-align:left;border:1px solid #FBF0D9;background:#FFFBEF;border-radius:10px;padding:16px 18px;cursor:pointer;display:flex;flex-direction:column;gap:4px">
+          <span style="font-size:13px;color:#7A4C00;font-weight:500">Aguard. decisão</span>
+          <span style="font-size:30px;font-weight:600;color:#7A4C00" id="ac-decisao">--</span>
+          <span style="font-size:12px;color:#666464">aguardando setores</span>
+        </button>
+        <button onclick="acompFiltrarStatus('EM TRATAMENTO')" style="white-space:normal;text-align:left;border:1px solid #E6EEF8;background:#F5F8FD;border-radius:10px;padding:16px 18px;cursor:pointer;display:flex;flex-direction:column;gap:4px">
+          <span style="font-size:13px;color:#24508F;font-weight:500">Em tratamento</span>
+          <span style="font-size:30px;font-weight:600;color:#24508F" id="ac-tratamento">--</span>
+          <span style="font-size:12px;color:#666464">tratativa em andamento</span>
+        </button>
+        <button onclick="acompFiltrarStatus('APROVADA')" style="white-space:normal;text-align:left;border:1px solid #E6F2EA;background:#F4FAF5;border-radius:10px;padding:16px 18px;cursor:pointer;display:flex;flex-direction:column;gap:4px">
+          <span style="font-size:13px;color:#1E6B3A;font-weight:500">Aprovadas</span>
+          <span style="font-size:30px;font-weight:600;color:#1E6B3A" id="ac-aprovadas">--</span>
+          <span style="font-size:12px;color:#666464">aguardando devolutiva</span>
+        </button>
+        <button onclick="acompFiltrarStatus('ENCERRADA')" style="white-space:normal;text-align:left;border:1px solid #E4E4E4;background:#FAFAFA;border-radius:10px;padding:16px 18px;cursor:pointer;display:flex;flex-direction:column;gap:4px">
+          <span style="font-size:13px;color:#545252;font-weight:500">Encerradas</span>
+          <span style="font-size:30px;font-weight:600;color:#545252" id="ac-encerradas">--</span>
+          <span style="font-size:12px;color:#666464">período selecionado</span>
+        </button>
       </div>
 
-      <!-- Filtros -->
-      <div class="card card-pad" style="margin-bottom:14px">
-        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-          <div class="search-wrap" style="flex:1;min-width:200px">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input class="search-input" placeholder="Buscar por ID, cliente, empresa, produto..." id="acomp-search" oninput="filtrarAcompanhamento()">
-          </div>
-          <select id="acomp-status-filter" onchange="filtrarAcompanhamento()" style="padding:8px 10px;border:1px solid var(--gray-200);border-radius:8px;font-size:12px;outline:none;min-width:150px">
-            <option value="">Todos os status</option>
+      <!-- Filtros inline -->
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;align-items:flex-end">
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:#666464">Busca
+          <input id="acomp-search" oninput="filtrarAcompanhamento()" placeholder="Nº, cliente, empresa…" style="height:34px;min-width:180px;border:1px solid #D6D6D6;border-radius:7px;padding:0 10px;background:#fff;font-size:13px;font-family:inherit">
+        </label>
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:#666464">Status
+          <select id="acomp-status-filter" onchange="filtrarAcompanhamento()" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:13px;font-family:inherit">
+            <option value="">Todos</option>
             <option value="EM ANÁLISE">Em análise</option>
             <option value="AGUARDANDO">Aguardando decisão</option>
             <option value="EM TRATAMENTO">Em tratamento</option>
@@ -2002,63 +2025,46 @@
             <option value="ENCERRADA">Encerradas</option>
             <option value="REJEITADA">Rejeitadas</option>
           </select>
-          <select id="acomp-empresa-filter" onchange="filtrarAcompanhamento()" style="padding:8px 10px;border:1px solid var(--gray-200);border-radius:8px;font-size:12px;outline:none">
-            <option value="">Todas as empresas</option>
-            <option value="CHIACCHIO">Chiacchio Embalagens</option>
+        </label>
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:#666464">Empresa
+          <select id="acomp-empresa-filter" onchange="filtrarAcompanhamento()" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:13px;font-family:inherit">
+            <option value="">Todas</option>
+            <option value="CHIACCHIO">Chiacchio</option>
             <option value="PLASCHIO">Plaschio</option>
-            <option value="TUBAHIA">Tubahia / Cesbap</option>
+            <option value="TUBAHIA">Tubahia</option>
           </select>
-          <select id="acomp-tipo-filter" onchange="filtrarAcompanhamento()" style="padding:8px 10px;border:1px solid var(--gray-200);border-radius:8px;font-size:12px;outline:none">
-            <option value="">Todos os tipos</option>
+        </label>
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:#666464">Tipo
+          <select id="acomp-tipo-filter" onchange="filtrarAcompanhamento()" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:13px;font-family:inherit">
+            <option value="">Todos</option>
             <option value="Reclamação">Reclamação</option>
             <option value="Elogio">Elogio</option>
             <option value="Sugestão">Sugestão</option>
             <option value="Informação">Informação</option>
             <option value="Devolução">Devolução</option>
           </select>
-          <select id="acomp-setor-filter" onchange="filtrarAcompanhamento()" style="padding:8px 10px;border:1px solid var(--gray-200);border-radius:8px;font-size:12px;outline:none">
-            <option value="">Todos os setores</option>
+        </label>
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:#666464">Setor
+          <select id="acomp-setor-filter" onchange="filtrarAcompanhamento()" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:13px;font-family:inherit">
+            <option value="">Todos</option>
           </select>
-          <select id="acomp-periodo-filter" onchange="filtrarAcompanhamento()" style="padding:8px 10px;border:1px solid var(--gray-200);border-radius:8px;font-size:12px;outline:none">
-            <option value="0">Qualquer período</option>
+        </label>
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:#666464">Período
+          <select id="acomp-periodo-filter" onchange="filtrarAcompanhamento()" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:13px;font-family:inherit">
+            <option value="0">Qualquer</option>
             <option value="7">Últimos 7 dias</option>
             <option value="15">Últimos 15 dias</option>
             <option value="30">Últimos 30 dias</option>
             <option value="60">Últimos 60 dias</option>
             <option value="90">Últimos 90 dias</option>
           </select>
-          <button class="btn btn-secondary" onclick="limparFiltrosAcomp()" style="font-size:12px">✕ Limpar</button>
-        </div>
+        </label>
+        <button onclick="limparFiltrosAcomp()" style="height:34px;align-self:flex-end;border:1px solid #D6D6D6;background:#fff;border-radius:7px;padding:0 12px;cursor:pointer;font-size:13px;color:#545252;font-family:inherit">Limpar</button>
+        <div style="margin-left:auto;font-size:12px;color:#8A8888;align-self:flex-end;padding-bottom:6px" id="acomp-total">--</div>
       </div>
 
-      <!-- Tabela central de acompanhamento -->
-      <div class="card">
-        <div style="padding:12px 16px;border-bottom:1px solid var(--gray-100);display:flex;align-items:center;justify-content:space-between">
-          <div style="font-size:14px;font-weight:700">Todas as manifestações</div>
-          <div style="font-size:12px;color:var(--gray-400)" id="acomp-total">Carregando...</div>
-        </div>
-        <div style="overflow-x:auto">
-          <table class="banco-table" style="min-width:900px">
-            <thead>
-              <tr>
-                <th>Nº / Data</th>
-                <th>Cliente / Empresa</th>
-                <th>Tipo</th>
-                <th>Empresa reclamada</th>
-                <th>Setor</th>
-                <th>Status / Etapa</th>
-                <th>SLA</th>
-                <th>Próxima ação</th>
-                <th>Responsável</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody id="acomp-body">
-              <tr><td colspan="10"><div class="loading"><div class="spinner"></div> Carregando...</div></td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <!-- Grupos por prazo -->
+      <div id="acomp-grupos" style="display:flex;flex-direction:column;gap:12px"></div>
 
     </div>
   </div>
@@ -2066,26 +2072,34 @@
 
   <!-- ===== CENTRAL DE APROVAÇÃO (MULTI-PERFIL) ===== -->
   <div class="page" id="page-aprovadores">
-    <div class="topbar"><div class="breadcrumb">Gestão / <span>Central de Aprovação</span></div><div class="topbar-right"><span id="aprovador-nome-top"></span></div></div>
-    <div class="page-content">
-      <div class="page-header"><div><h1>Central de Aprovação</h1><p id="aprov-page-desc">Gerencie aprovadores, regras e pendências.</p></div></div>
+    <div class="topbar">
+      <div class="topbar-left">
+        <div class="breadcrumb">Gestão / <span>Central de Aprovação</span></div>
+        <div class="page-header">
+          <h1 class="page-title">Central de Aprovação</h1>
+        </div>
+      </div>
+      <div class="topbar-right"><span id="aprovador-nome-top" style="font-size:13px;color:#8A8888"></span></div>
+    </div>
+    <div class="content">
+      <div id="aprov-page-desc" style="font-size:13px;color:#545252;margin-bottom:16px"></div>
       <!-- Tabs dinâmicos por perfil -->
-      <div class="tabs-bar" id="aprov-tabs" style="margin-bottom:16px">
-        <button class="tab-btn active" onclick="aprvTab('pendencias',this)" id="aprtab-pendencias">Pendências</button>
-        <button class="tab-btn" onclick="aprvTab('fila-sac',this)" id="aprtab-fila-sac" style="display:none">Fila SAC</button>
-        <button class="tab-btn" onclick="aprvTab('aprovadores',this)" id="aprtab-aprovadores" style="display:none">Aprovadores</button>
-        <button class="tab-btn" onclick="aprvTab('competencias',this)" id="aprtab-competencias" style="display:none">Competências</button>
-        <button class="tab-btn" onclick="aprvTab('regras',this)" id="aprtab-regras" style="display:none">Regras</button>
-        <button class="tab-btn" onclick="aprvTab('historico',this)" id="aprtab-historico" style="display:none">Histórico</button>
+      <div id="aprov-tabs" style="display:flex;gap:2px;border-bottom:1px solid #E4E4E4;overflow-x:auto;margin-bottom:20px">
+        <button onclick="aprvTab('pendencias',this)" id="aprtab-pendencias" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#1F1F1F;border-bottom:2px solid #C70602;margin-bottom:-1px;font-weight:700;font-family:inherit">Pendências</button>
+        <button onclick="aprvTab('fila-sac',this)" id="aprtab-fila-sac" style="display:none;border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Fila SAC</button>
+        <button onclick="aprvTab('aprovadores',this)" id="aprtab-aprovadores" style="display:none;border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Aprovadores</button>
+        <button onclick="aprvTab('competencias',this)" id="aprtab-competencias" style="display:none;border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Competências</button>
+        <button onclick="aprvTab('regras',this)" id="aprtab-regras" style="display:none;border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Regras</button>
+        <button onclick="aprvTab('historico',this)" id="aprtab-historico" style="display:none;border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Histórico</button>
       </div>
 
       <!-- TAB: PENDÊNCIAS (APROVADOR / MASTER) -->
       <div id="aprtab-panel-pendencias">
-        <div class="kpi-grid">
-          <div class="kpi-card"><div class="kpi-label">SAC</div><div class="kpi-value" id="ap-saca">--</div><div class="kpi-sub">pendências</div></div>
-          <div class="kpi-card"><div class="kpi-label">RNC</div><div class="kpi-value" id="ap-rnca">--</div><div class="kpi-sub">pendentes</div></div>
-          <div class="kpi-card highlight"><div class="kpi-label">Total</div><div class="kpi-value" id="ap-total">--</div><div class="kpi-sub">minhas pendências</div></div>
-          <div class="kpi-card"><div class="kpi-label">Sugestões</div><div class="kpi-value" id="ap-sugestoes">--</div><div class="kpi-sub">enviadas ao SAC</div></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:16px">
+          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px"><div style="font-size:12.5px;color:#666464">SAC</div><div style="font-size:26px;font-weight:600;margin-top:2px" id="ap-saca">--</div><div style="font-size:11.5px;color:#8A8888">pendências</div></div>
+          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px"><div style="font-size:12.5px;color:#666464">RNC</div><div style="font-size:26px;font-weight:600;margin-top:2px" id="ap-rnca">--</div><div style="font-size:11.5px;color:#8A8888">pendentes</div></div>
+          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px"><div style="font-size:12.5px;color:#666464">Total</div><div style="font-size:26px;font-weight:600;margin-top:2px" id="ap-total">--</div><div style="font-size:11.5px;color:#8A8888">minhas pendências</div></div>
+          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px"><div style="font-size:12.5px;color:#666464">Sugestões</div><div style="font-size:26px;font-weight:600;margin-top:2px" id="ap-sugestoes">--</div><div style="font-size:11.5px;color:#8A8888">enviadas ao SAC</div></div>
         </div>
         <div class="section-card" style="margin-top:14px"><div class="section-title">APROVAÇÕES SAC</div><div style="font-size:11px;color:var(--gray-400);margin-bottom:10px">Manifestações aguardando sua análise.</div><div id="ap-sac-queue"></div></div>
         <div class="section-card" style="margin-top:14px"><div class="section-title">RNCs PENDENTES</div><div style="font-size:11px;color:var(--gray-400);margin-bottom:10px">Somente RNCs dentro da sua competência e empresa.</div><div id="ap-rnc-queue"></div></div>
@@ -6654,63 +6668,87 @@ function filtrarAcompanhamento() {
 }
 
 function renderAcompanhamento(data) {
-  const total = document.getElementById('acomp-total');
-  if (total) total.textContent = `${data.length} solicitação(ões)`;
+  const totalEl = document.getElementById('acomp-total');
+  if (totalEl) totalEl.textContent = `${data.length} manifestação(ões)`;
+  const container = document.getElementById('acomp-grupos');
+  if (!container) return;
   const agora = Date.now();
-  const body = document.getElementById('acomp-body');
-  if (!body) return;
+
   if (!data.length) {
-    body.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--gray-400)">Nenhuma solicitação encontrada</td></tr>';
+    container.innerHTML = '<div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:24px;text-align:center;font-size:13px;color:#8A8888">Nenhuma manifestação encontrada com os filtros aplicados.</div>';
     return;
   }
-  body.innerHTML = data.slice(0, 100).map(m => {
-    const info = getStatusInfo(m.STATUS);
-    const setor = m.SETOR_DESTINADO || m.SETOR_CONFIRMADO || m.SETOR_SUGERIDO || '—';
+
+  // Group by SLA deadline
+  const grupos = [
+    { t: 'Fora do prazo', key: 'atrasada', items: [] },
+    { t: 'Vence hoje', key: 'hoje', items: [] },
+    { t: 'Esta semana', key: 'semana', items: [] },
+    { t: 'Próximos 30 dias', key: 'mes', items: [] },
+    { t: 'Sem prazo definido / Encerradas', key: 'outro', items: [] },
+  ];
+
+  data.forEach(m => {
+    const s = (m.STATUS || '').toUpperCase();
+    const encerrada = s.includes('ENCERRADA') || s.includes('FINALIZADA');
     const dataAb = m.DATA_ABERTURA || m.DATA_REGISTRO || m.DATA_CRIACAO;
     const slaH = parseFloat(m.SLA_HORAS) || 72;
-    let slaHtml = '—';
-    if (dataAb) {
+    let grupo = 'outro';
+    if (!encerrada && dataAb) {
       const limite = new Date(dataAb).getTime() + slaH * 3600000;
       const diff = limite - agora;
-      const s = (m.STATUS||'').toUpperCase();
-      const encerrada = s.includes('ENCERRADA') || s.includes('FINALIZADA');
-      if (encerrada) {
-        slaHtml = '<span style="color:#6B7280;font-size:11px">Encerrada</span>';
-      } else if (diff < 0) {
-        const h = Math.abs(Math.round(diff / 3600000));
-        slaHtml = `<span style="color:#DC2626;font-weight:700;font-size:11px">⚠ +${h}h</span>`;
-      } else if (diff < 4 * 3600000) {
-        const h = Math.round(diff / 3600000);
-        slaHtml = `<span style="color:#D97706;font-weight:600;font-size:11px">⚡ ${h}h</span>`;
-      } else {
-        const h = Math.round(diff / 3600000);
-        slaHtml = `<span style="color:#059669;font-size:11px">${h}h</span>`;
-      }
+      if (diff < 0) grupo = 'atrasada';
+      else if (diff < 86400000) grupo = 'hoje';
+      else if (diff < 7 * 86400000) grupo = 'semana';
+      else if (diff < 30 * 86400000) grupo = 'mes';
+      else grupo = 'outro';
     }
-    const prox = typeof _proxPassos === 'function' ? _proxPassos(m) : null;
-    const proxHtml = prox
-      ? `<div style="font-size:11px;color:var(--gray-700)">${prox.acao}</div><div style="font-size:10px;color:var(--gray-400)">${prox.quem}</div>`
-      : '<span style="font-size:11px;color:var(--gray-400)">—</span>';
-    const resp = m.RESPONSAVEL || m.ANALISTA || '—';
-    return `<tr>
-      <td>
-        <div style="font-weight:700;font-size:12px">${m.ID_MANIFESTACAO || '--'}</div>
-        <div style="font-size:11px;color:var(--gray-400)">${dataAb ? new Date(dataAb).toLocaleDateString('pt-BR') : '--'}</div>
-      </td>
-      <td>
-        <div style="font-size:12px;font-weight:600">${m.EMPRESA_NORMALIZADA || m.EMPRESA_RECLAMANTE || '--'}</div>
-        <div style="font-size:11px;color:var(--gray-400)">${m.CONTATO || '--'}</div>
-      </td>
-      <td style="font-size:12px">${m.TIPO || m.TIPO_CONFIRMADO || 'Reclamação'}</td>
-      <td style="font-size:12px">${m.EMPRESA_RECLAMADA || '--'}</td>
-      <td style="font-size:12px">${setor}</td>
-      <td><span style="display:inline-flex;padding:3px 8px;border-radius:20px;font-size:11px;font-weight:600;background:${info.bg};color:${info.color}">${info.label}</span></td>
-      <td>${slaHtml}</td>
-      <td>${proxHtml}</td>
-      <td style="font-size:11px;color:var(--gray-600)">${resp}</td>
-      <td><a class="link-abrir" onclick="abrirDossieIdx(${_storeRow(m)})">Abrir</a></td>
-    </tr>`;
-  }).join('');
+    grupos.find(g => g.key === grupo)?.items.push(m);
+  });
+
+  const prazoStyle = (m) => {
+    const s = (m.STATUS || '').toUpperCase();
+    const enc = s.includes('ENCERRADA') || s.includes('FINALIZADA');
+    const dataAb = m.DATA_ABERTURA || m.DATA_REGISTRO || m.DATA_CRIACAO;
+    if (enc) return { bg:'#EEEEEE', fg:'#545252', t:'Encerrada' };
+    if (!dataAb) return { bg:'#EEEEEE', fg:'#545252', t:'—' };
+    const slaH = parseFloat(m.SLA_HORAS) || 72;
+    const diff = new Date(dataAb).getTime() + slaH * 3600000 - agora;
+    if (diff < 0) {
+      const h = Math.abs(Math.round(diff / 3600000));
+      return { bg:'#FDECEC', fg:'#A80502', t:`+${h}h de atraso` };
+    }
+    if (diff < 86400000) {
+      const h = Math.round(diff / 3600000);
+      return { bg:'#FBF0D9', fg:'#7A4C00', t:`${h}h restantes` };
+    }
+    const d = Math.round(diff / 86400000);
+    return { bg:'#E6F2EA', fg:'#1E6B3A', t:`${d}d restantes` };
+  };
+
+  container.innerHTML = grupos
+    .filter(g => g.items.length > 0)
+    .map(g => `
+      <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;overflow:hidden">
+        <div style="padding:14px 20px;border-bottom:1px solid #EFEFEF;display:flex;justify-content:space-between;align-items:center">
+          <span style="font-weight:600;font-size:14.5px">${esc(g.t)}</span>
+          <span style="font-size:12.5px;color:#8A8888">${g.items.length} manifestação(ões)</span>
+        </div>
+        ${g.items.slice(0, 50).map(m => {
+          const pz = prazoStyle(m);
+          const mot = m.MOTIVO || m.MOTIVO_CONFIRMADO || m.TIPO || 'Reclamação';
+          const acao = m.PROXIMA_ACAO || (typeof _proxPassos === 'function' ? (_proxPassos(m)?.acao || '—') : '—');
+          const cli = m.EMPRESA_NORMALIZADA || m.EMPRESA_RECLAMANTE || m.CONTATO || '—';
+          return `<div style="display:grid;grid-template-columns:96px minmax(0,1fr) minmax(0,1fr) 140px 60px;gap:14px;align-items:center;padding:11px 20px;border-bottom:1px solid #EFEFEF;font-size:13px">
+            <span style="font-variant-numeric:tabular-nums;font-weight:500">${esc(m.ID_MANIFESTACAO || '--')}</span>
+            <span style="min-width:0"><div>${esc(cli)}</div><div style="font-size:12px;color:#8A8888">${esc(mot)}</div></span>
+            <span>${esc(acao)}</span>
+            <span style="justify-self:start;padding:2px 8px;border-radius:99px;white-space:nowrap;font-size:12px;font-weight:500;background:${pz.bg};color:${pz.fg}">${esc(pz.t)}</span>
+            <button onclick="abrirDossieIdx(${_storeRow(m)})" style="border:0;background:none;color:#A80502;cursor:pointer;font-weight:500;text-align:right;padding:0;font-size:13px;font-family:inherit">Abrir</button>
+          </div>`;
+        }).join('')}
+      </div>
+    `).join('') || '<div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:24px;text-align:center;font-size:13px;color:#8A8888">Nenhuma manifestação encontrada.</div>';
 }
 
 
@@ -8374,7 +8412,12 @@ loadVisaoGeral();
   window.aprvTab = function(tab, btn){
     const panels=['pendencias','fila-sac','aprovadores','competencias','regras','historico'];
     panels.forEach(p=>{ const el=document.getElementById('aprtab-panel-'+p); if(el) el.style.display=p===tab?'':'none'; });
-    if(btn){ document.querySelectorAll('#aprov-tabs .tab-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); }
+    if(btn){
+      document.querySelectorAll('#aprov-tabs button').forEach(b=>{
+        b.style.color='#666464'; b.style.fontWeight='500'; b.style.borderBottom='2px solid transparent';
+      });
+      btn.style.color='#1F1F1F'; btn.style.fontWeight='700'; btn.style.borderBottom='2px solid #C70602';
+    }
     if(tab==='pendencias') loadAprovadorV5();
     if(tab==='fila-sac') carregarFilaSac();
     if(tab==='aprovadores') carregarAprovadoresAdmin();
