@@ -8,63 +8,68 @@
 <style>
   :root {
     --red: #C70602;
-    --red-dark: #9E0501;
+    --red-dark: #A80502;
     --red-light: #FDEAEA;
-    --sidebar-bg: #1C1C1C;
-    --sidebar-text: #E8E8E8;
+    --sidebar-bg: #ffffff;
+    --sidebar-text: #545252;
     --sidebar-active: #C70602;
     --brand-gray: #929090;
     --white: #FFFFFF;
-    --gray-50: #F9FAFB;
-    --gray-100: #F3F4F6;
-    --gray-200: #E5E7EB;
-    --gray-300: #D1D5DB;
+    --gray-50: #F4F4F4;
+    --gray-100: #F4F4F4;
+    --gray-200: #E4E4E4;
+    --gray-300: #D6D6D6;
     --gray-400: #929090;
-    --gray-500: #6B7280;
-    --gray-700: #374151;
-    --gray-900: #111827;
+    --gray-500: #666464;
+    --gray-600: #545252;
+    --gray-700: #3A3939;
+    --gray-900: #1F1F1F;
     --yellow: #F59E0B;
     --yellow-light: #FEF3C7;
     --green: #10B981;
     --green-light: #D1FAE5;
     --orange: #F97316;
     --orange-light: #FED7AA;
+    --table-head: #FAFAFA;
+    --table-row-border: #EFEFEF;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Montserrat', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--gray-50); color: var(--gray-900); display: flex; height: 100vh; overflow: hidden; font-size: 14px; }
+  body { font-family: 'Montserrat', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #F4F4F4; color: #1F1F1F; display: flex; height: 100vh; overflow: hidden; font-size: 14px; -webkit-font-smoothing: antialiased; }
 
   /* SIDEBAR */
-  .sidebar { width: 190px; background: var(--sidebar-bg); color: var(--sidebar-text); display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto; border-right: 3px solid var(--red); }
-  .sidebar-logo { padding: 18px 16px 14px; border-bottom: 1px solid rgba(255,255,255,0.07); }
-  .sidebar-logo h2 { font-size: 11px; font-weight: 700; color: white; line-height: 1.3; letter-spacing: 0.06em; text-transform: uppercase; }
-  .sidebar-logo p { font-size: 10px; color: var(--brand-gray); margin-top: 2px; letter-spacing: 0.04em; }
-  .sidebar-section { padding: 18px 14px 5px; font-size: 9.5px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--brand-gray); opacity: 0.7; }
-  .sidebar-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; cursor: pointer; border-radius: 6px; margin: 1px 8px; color: rgba(255,255,255,0.6); font-size: 12.5px; font-weight: 500; transition: all 0.15s; letter-spacing: 0.01em; }
-  .sidebar-item:hover { background: rgba(255,255,255,0.07); color: white; }
-  .sidebar-item.active { background: var(--red); color: white; font-weight: 600; }
+  .sidebar { width: 200px; background: #fff; color: #545252; display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto; border-right: 1px solid #E4E4E4; }
+  .sidebar-logo { padding: 18px 12px 18px; border-bottom: 0; }
+  .sidebar-logo h2 { font-size: 13.5px; font-weight: 700; color: #1F1F1F; line-height: 1.2; }
+  .sidebar-logo p { font-size: 11px; color: #929090; margin-top: 1px; letter-spacing: 0.04em; }
+  .sidebar-section { padding: 4px 10px; font-size: 10.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #929090; margin-bottom: 2px; margin-top: 14px; }
+  .sidebar-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; cursor: pointer; border-radius: 7px; margin: 1px 2px; color: #545252; font-size: 13.5px; font-weight: 500; transition: all 0.15s; }
+  .sidebar-item:hover { background: #F4F4F4; color: #1F1F1F; }
+  .sidebar-item.active { background: transparent; color: #C70602; font-weight: 600; }
   .sidebar-item svg { width: 15px; height: 15px; flex-shrink: 0; }
-  .sidebar-bottom { margin-top: auto; padding: 12px 8px; border-top: 1px solid rgba(255,255,255,0.07); }
-  .sidebar-link { font-size: 11px; color: rgba(255,255,255,0.35); display: flex; align-items: center; gap: 4px; padding: 4px; cursor: pointer; }
-  .sidebar-link:hover { color: rgba(255,255,255,0.65); }
+  .sidebar-bottom { margin-top: auto; padding: 14px 8px 0; border-top: 1px solid #E4E4E4; }
+  .sidebar-link { font-size: 12.5px; color: #666464; display: flex; align-items: center; gap: 4px; padding: 4px; cursor: pointer; }
+  .sidebar-link:hover { color: #C70602; }
   .sidebar-user { display: flex; align-items: center; gap: 8px; padding: 8px; margin-top: 8px; }
-  .sidebar-user-avatar { width: 32px; height: 32px; background: var(--red); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 12px; font-weight: 700; flex-shrink: 0; }
+  .sidebar-user-avatar { width: 32px; height: 32px; background: #EEEEEE; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #545252; font-size: 12px; font-weight: 700; flex-shrink: 0; }
   .sidebar-user-info { min-width: 0; }
-  .sidebar-user-name { font-size: 12px; font-weight: 600; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .sidebar-user-role { font-size: 10px; color: var(--brand-gray); letter-spacing: 0.03em; }
+  .sidebar-user-name { font-size: 13px; font-weight: 500; color: #1F1F1F; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sidebar-user-role { font-size: 11.5px; color: #929090; letter-spacing: 0.03em; }
 
   /* MAIN */
   .main { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
   .page { display: none; flex-direction: column; flex: 1; }
   .page.active { display: flex; }
 
-  /* TOPBAR */
-  .topbar { padding: 20px 28px 0; }
-  .breadcrumb { font-size: 12px; color: var(--gray-400); margin-bottom: 4px; }
-  .breadcrumb span { color: var(--gray-500); }
-  .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
-  .page-title { font-size: 24px; font-weight: 700; color: var(--gray-900); }
-  .page-actions { display: flex; align-items: center; gap: 10px; }
+  /* TOPBAR / HEADER */
+  .topbar { position: sticky; top: 0; z-index: 5; background: rgba(255,255,255,.95); backdrop-filter: blur(8px); border-bottom: 1px solid #E4E4E4; padding: 12px 28px; }
+  .breadcrumb { font-size: 12px; color: #929090; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .breadcrumb span { color: #666464; }
+  .page-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 0; }
+  .page-title { font-size: 20px; font-weight: 600; letter-spacing: -.01em; color: #1F1F1F; margin: 0; }
+  .page-actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
   .badge-mockup { font-size: 11px; color: var(--gray-400); }
+  /* content padding below topbar */
+  .content { padding: 20px 28px 28px; flex: 1; }
 
   /* BUTTONS */
   .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s; }
@@ -76,22 +81,23 @@
   .btn-ghost:hover { background: var(--red-light); }
   .btn svg { width: 14px; height: 14px; }
 
-  /* CONTENT */
-  .content { padding: 0 28px 28px; flex: 1; }
+  /* CONTENT — kept for backward compat, real rule is near topbar */
 
   /* CARDS */
-  .card { background: white; border: 1px solid var(--gray-200); border-radius: 12px; }
+  .card { background: white; border: 1px solid #E4E4E4; border-radius: 10px; }
   .card-pad { padding: 20px; }
 
   /* KPI GRID */
-  .kpi-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 20px; }
-  .kpi-card { background: white; border: 1px solid var(--gray-200); border-radius: 12px; padding: 16px; }
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .kpi-card { background: white; border: 1px solid #E4E4E4; border-radius: 10px; padding: 14px 16px; cursor: pointer; transition: border-color .15s; }
+  .kpi-card:hover { border-color: #C4C4C4; }
   .kpi-card.highlight { background: var(--red); color: white; border-color: var(--red); }
-  .kpi-label { font-size: 12px; font-weight: 500; opacity: 0.75; margin-bottom: 8px; line-height: 1.3; }
-  .kpi-value { font-size: 28px; font-weight: 800; line-height: 1; margin-bottom: 4px; }
-  .kpi-delta { font-size: 11px; opacity: 0.7; display: flex; align-items: center; gap: 3px; }
+  .kpi-label { font-size: 12.5px; color: #666464; margin-bottom: 6px; line-height: 1.3; }
+  .kpi-value { font-size: 26px; font-weight: 600; letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1; margin-bottom: 4px; }
+  .kpi-delta { font-size: 11.5px; color: #929090; display: flex; align-items: center; gap: 3px; }
   .kpi-delta.up { color: var(--green); }
   .kpi-delta.down { color: var(--red); }
+  .kpi-card.highlight .kpi-label { color: rgba(255,255,255,0.8); }
   .kpi-card.highlight .kpi-delta { color: rgba(255,255,255,0.75); }
 
   /* CENTRAL SAC */
@@ -125,10 +131,10 @@
 
   /* FILTERS */
   .filters { display: flex; align-items: center; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
-  .filter-group { display: flex; background: white; border: 1px solid var(--gray-200); border-radius: 8px; overflow: hidden; }
-  .filter-btn { padding: 6px 12px; font-size: 12px; font-weight: 500; cursor: pointer; border: none; background: transparent; color: var(--gray-500); transition: all 0.1s; }
-  .filter-btn.active { background: var(--red); color: white; }
-  .filter-btn:hover:not(.active) { background: var(--gray-50); }
+  .filter-group { display: flex; gap: 6px; flex-wrap: wrap; }
+  .filter-btn { padding: 6px 12px; font-size: 12.5px; font-weight: 500; cursor: pointer; border: 1px solid #D6D6D6; border-radius: 99px; background: #fff; color: #545252; transition: all 0.1s; white-space: nowrap; }
+  .filter-btn.active { background: #C70602; color: white; border-color: #C70602; }
+  .filter-btn:hover:not(.active) { border-color: #C70602; color: #C70602; }
   .filter-select { display: flex; align-items: center; gap: 4px; padding: 6px 10px; background: white; border: 1px solid var(--gray-200); border-radius: 8px; font-size: 12px; cursor: pointer; color: var(--gray-700); }
   .filter-select strong { color: var(--gray-900); }
   .filter-select svg { width: 12px; height: 12px; color: var(--gray-400); }
@@ -139,7 +145,7 @@
   .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 16px; }
 
   /* SECTION CARD */
-  .section-card { background: white; border: 1px solid var(--gray-200); border-radius: 12px; padding: 20px; }
+  .section-card { background: white; border: 1px solid #E4E4E4; border-radius: 10px; padding: 20px; }
   .cd-tab { background:none; border:none; border-bottom:3px solid transparent; padding:8px 14px; font-size:13px; font-weight:500; color:var(--gray-500); cursor:pointer; margin-bottom:-2px; transition:all 0.15s; white-space:nowrap; }
   .cd-tab:hover { color:var(--gray-800); }
   .cd-tab.active { color:var(--red); border-bottom-color:var(--red); }
@@ -224,7 +230,7 @@
   .proc-seg { height: 100%; }
 
   /* STEPPER */
-  .stepper { display: flex; align-items: center; gap: 0; margin-bottom: 24px; background: white; border: 1px solid var(--gray-200); border-radius: 12px; padding: 14px 20px; overflow-x: auto; }
+  .stepper { display: flex; align-items: center; gap: 0; margin-bottom: 24px; background: white; border: 1px solid var(--gray-200); border-radius: 10px; padding: 14px 20px; overflow-x: auto; }
   .step { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
   .step-num { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
   .step-num.done { background: var(--red); color: white; }
@@ -238,7 +244,7 @@
   .step-line.done { background: var(--red); }
 
   /* MANIFESTACAO HEADER */
-  .man-header { background: white; border: 1px solid var(--gray-200); border-radius: 12px; padding: 14px 20px; display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+  .man-header { background: white; border: 1px solid var(--gray-200); border-radius: 10px; padding: 14px 20px; display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
   .man-header-icon { width: 36px; height: 36px; background: var(--red-light); border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
   .man-header-num { font-size: 16px; font-weight: 800; }
   .man-header-tags { display: flex; gap: 6px; }
@@ -251,7 +257,7 @@
   .man-header-sub { font-size: 11px; color: var(--gray-400); margin-top: 2px; }
 
   /* FORM */
-  .form-section { background: white; border: 1px solid var(--gray-200); border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+  .form-section { background: white; border: 1px solid var(--gray-200); border-radius: 10px; padding: 20px; margin-bottom: 16px; }
   .form-section-title { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
   .form-section-icon { width: 28px; height: 28px; background: var(--red-light); border-radius: 6px; display: flex; align-items: center; justify-content: center; }
   .form-section-icon svg { width: 14px; height: 14px; color: var(--red); }
@@ -323,7 +329,7 @@
   .tab-btn.active { background: white; color: var(--gray-900); box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
 
   /* ANALISE IA */
-  .ia-card { background: white; border: 1px solid var(--gray-200); border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+  .ia-card { background: white; border: 1px solid var(--gray-200); border-radius: 10px; padding: 20px; margin-bottom: 16px; }
   .ia-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
   .ia-title { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 700; }
   .ia-title-icon { width: 28px; height: 28px; background: linear-gradient(135deg, #F97316, #C8102E); border-radius: 6px; display: flex; align-items: center; justify-content: center; }
@@ -341,7 +347,7 @@
 
   /* SETORES PAGE */
   .setores-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 20px; }
-  .setor-kpi { background: white; border: 1px solid var(--gray-200); border-radius: 12px; padding: 16px; cursor: pointer; transition: all 0.15s; }
+  .setor-kpi { background: white; border: 1px solid var(--gray-200); border-radius: 10px; padding: 16px; cursor: pointer; transition: all 0.15s; }
   .setor-kpi:hover { border-color: var(--red); }
   .setor-kpi h3 { font-size: 14px; font-weight: 700; margin-bottom: 6px; }
   .setor-kpi .num-big { font-size: 24px; font-weight: 800; color: var(--red); }
@@ -483,39 +489,55 @@
 </style>
 </head>
 <style>
-  .login-screen { position: fixed; inset: 0; background: var(--sidebar-bg); display: flex; align-items: center; justify-content: center; z-index: 9999; padding: 20px; overflow-y: auto; }
-  .login-wrap { display: flex; flex-direction: column; align-items: center; gap: 20px; width: 100%; max-width: 400px; }
-  .login-header { text-align: center; margin-bottom: 4px; }
-  .login-header img { height: 48px; margin-bottom: 10px; filter: brightness(0) invert(1); }
-  .login-header h1 { font-size: 18px; font-weight: 800; color: white; letter-spacing: 0.06em; }
-  .login-box { background: white; border-radius: 16px; padding: 32px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.4); }
-  .login-title { font-size: 16px; font-weight: 800; color: var(--gray-900); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
-  .login-sub { font-size: 12px; color: var(--gray-400); margin-bottom: 22px; }
+  /* LOGIN — split-screen */
+  .login-screen { position: fixed; inset: 0; z-index: 9999; overflow-y: auto; }
+  .login-split { min-height: 100vh; display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); }
+  .login-left { background: #C70602; color: #fff; padding: 48px 56px; display: flex; flex-direction: column; justify-content: space-between; gap: 40px; }
+  .login-left-brand { display: flex; align-items: center; gap: 14px; }
+  .login-left-brand-text { }
+  .login-left-brand-name { font-weight: 700; font-size: 15px; letter-spacing: .02em; }
+  .login-left-brand-sub { font-size: 12.5px; color: #FFE1E0; }
+  .login-left-hero { max-width: 440px; }
+  .login-left-hero h2 { font-size: 30px; font-weight: 600; line-height: 1.2; }
+  .login-left-hero p { color: #FFE1E0; line-height: 1.6; margin: 14px 0 28px; font-size: 13.5px; }
+  .login-steps { display: flex; flex-direction: column; gap: 10px; font-size: 13px; color: #fff; }
+  .login-step { display: flex; gap: 12px; align-items: center; }
+  .login-step-n { font-variant-numeric: tabular-nums; color: #FFC2BF; font-weight: 700; min-width: 20px; }
+  .login-left-footer { font-size: 12px; color: #FFE1E0; display: flex; gap: 16px; flex-wrap: wrap; }
+  .login-right { display: grid; place-items: center; padding: 48px 24px; background: #fff; }
+  .login-wrap { display: flex; flex-direction: column; gap: 18px; width: 100%; max-width: 380px; }
+  .login-header { margin-bottom: 2px; }
+  .login-header img { height: 44px; display: block; margin-bottom: 10px; }
+  .login-header h1 { font-size: 22px; font-weight: 700; color: #1F1F1F; }
+  .login-header p { font-size: 13px; color: #666464; margin-top: 4px; }
+  .login-box { width: 100%; }
+  .login-title { font-size: 22px; font-weight: 700; color: #1F1F1F; margin-bottom: 4px; }
+  .login-sub { font-size: 13px; color: #666464; margin-bottom: 18px; }
   .login-field { margin-bottom: 14px; }
-  .login-label { font-size: 12px; font-weight: 600; color: var(--gray-500); margin-bottom: 5px; display: block; }
-  .login-input { width: 100%; padding: 10px 12px; border: 1px solid var(--gray-200); border-radius: 8px; font-size: 14px; outline: none; font-family: inherit; }
-  .login-input:focus { border-color: var(--red); box-shadow: 0 0 0 3px var(--red-light); }
-  .login-btn { width: 100%; padding: 11px; background: var(--red); color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; margin-top: 8px; font-family: inherit; }
-  .login-btn:hover { background: var(--red-dark); }
-  .login-error { background: #FEE2E2; color: #DC2626; font-size: 12px; padding: 8px 12px; border-radius: 6px; margin-top: 10px; display: none; }
-  .login-divider { display: flex; align-items: center; gap: 10px; margin: 6px 0; }
-  .login-divider::before, .login-divider::after { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,0.15); }
-  .login-divider span { font-size: 11px; color: rgba(255,255,255,0.45); white-space: nowrap; }
-  .login-portal-box { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 16px; padding: 24px; width: 100%; text-align: center; }
-  .login-portal-box h3 { font-size: 13px; font-weight: 700; color: white; margin-bottom: 6px; }
-  .login-portal-box p { font-size: 12px; color: rgba(255,255,255,0.55); margin-bottom: 16px; line-height: 1.5; }
-  .btn-portal { display: block; width: 100%; padding: 12px; background: transparent; color: white; border: 2px solid rgba(255,255,255,0.4); border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; transition: all 0.2s; }
-  .btn-portal:hover { background: rgba(255,255,255,0.12); border-color: white; }
+  .login-label { font-size: 12.5px; color: #545252; margin-bottom: 6px; display: block; }
+  .login-input { width: 100%; padding: 10px 12px; border: 1px solid #D6D6D6; border-radius: 8px; font-size: 14px; outline: none; font-family: inherit; background: #fff; }
+  .login-input:focus { border-color: #C70602; box-shadow: 0 0 0 2px rgba(199,6,2,.1); }
+  .login-btn { width: 100%; padding: 11px; background: #C70602; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; }
+  .login-btn:hover { background: #A80502; }
+  .login-error { background: #F9E3E3; color: #8E1A24; font-size: 13px; padding: 10px 12px; border-radius: 8px; margin-top: 10px; display: none; }
+  .login-divider { display: flex; align-items: center; gap: 10px; margin: 4px 0; }
+  .login-divider::before, .login-divider::after { content: ''; flex: 1; height: 1px; background: #E4E4E4; }
+  .login-divider span { font-size: 11px; color: #929090; white-space: nowrap; }
+  .login-portal-box { border-top: 1px solid #E4E4E4; padding-top: 16px; width: 100%; }
+  .login-portal-box h3 { font-size: 12px; color: #666464; margin-bottom: 10px; }
+  .login-portal-box p { font-size: 12px; color: #929090; margin-bottom: 14px; line-height: 1.5; }
+  .btn-portal { display: block; width: 100%; padding: 11px; background: transparent; color: #1F1F1F; border: 1.5px solid #D6D6D6; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; transition: all 0.2s; }
+  .btn-portal:hover { border-color: #C70602; color: #C70602; }
 
   /* PORTAL PÚBLICO — Formulário sem login */
   .portal-screen { position: fixed; inset: 0; background: var(--gray-50); z-index: 10000; display: none; overflow-y: auto; }
-  .portal-header { background: var(--sidebar-bg); padding: 16px 24px; display: flex; align-items: center; gap: 16px; }
+  .portal-header { background: #C70602; padding: 16px 24px; display: flex; align-items: center; gap: 16px; }
   .portal-header img { height: 36px; filter: brightness(0) invert(1); }
   .portal-header-title { color: white; }
   .portal-header-title h1 { font-size: 14px; font-weight: 800; letter-spacing: 0.05em; }
-  .portal-header-title p { font-size: 11px; color: rgba(255,255,255,0.5); }
+  .portal-header-title p { font-size: 11px; color: rgba(255,255,255,0.7); }
   .portal-content { max-width: 680px; margin: 0 auto; padding: 32px 20px 60px; }
-  .portal-section { background: white; border: 1px solid var(--gray-200); border-radius: 12px; padding: 24px; margin-bottom: 16px; }
+  .portal-section { background: white; border: 1px solid var(--gray-200); border-radius: 10px; padding: 24px; margin-bottom: 16px; }
   .portal-section-title { font-size: 13px; font-weight: 700; color: var(--gray-900); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
   .portal-section-sub { font-size: 12px; color: var(--gray-400); margin-bottom: 18px; }
   .portal-field { margin-bottom: 14px; }
@@ -540,7 +562,7 @@
   .portal-hint { font-size: 11px; color: var(--gray-400); margin-top: 5px; }
   .portal-success { text-align: center; padding: 48px 24px; }
   .portal-success-icon { width: 72px; height: 72px; background: var(--green-light); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; }
-  .portal-protocol { background: var(--gray-50); border: 2px dashed var(--gray-300); border-radius: 12px; padding: 20px; margin: 20px 0; }
+  .portal-protocol { background: var(--gray-50); border: 2px dashed var(--gray-300); border-radius: 10px; padding: 20px; margin: 20px 0; }
   .portal-protocol-label { font-size: 12px; font-weight: 600; color: var(--gray-400); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
   .portal-protocol-num { font-size: 28px; font-weight: 800; color: var(--gray-900); letter-spacing: 0.05em; }
   @media (max-width: 600px) {
@@ -660,55 +682,85 @@
 </div>
 
 <div class="login-screen" id="login-screen">
-  <div class="login-wrap">
-    <!-- Cabeçalho institucional -->
-    <div class="login-header">
-      <img src="/logo-chiacchio.png" alt="Grupo Chiacchio">
-      <h1>SAC GRUPO CHIACCHIO</h1>
-    </div>
-
-    <!-- Caixa de login -->
-    <div class="login-box">
-      <div class="login-title">ACESSO AO SAC</div>
-      <div class="login-sub">Informe suas credenciais para acessar o sistema.</div>
-      <div class="login-field">
-        <label class="login-label">Usuário</label>
-        <input class="login-input" type="text" id="login-user" placeholder="seu usuário" autocomplete="username" onkeydown="if(event.key==='Enter')document.getElementById('login-senha').focus()">
+  <div class="login-split">
+    <!-- PAINEL ESQUERDO — vermelho -->
+    <div class="login-left">
+      <div class="login-left-brand">
+        <img src="/simbolo-branco.png" alt="Grupo Chiacchio" style="width:44px;height:auto;display:block">
+        <div class="login-left-brand-text">
+          <div class="login-left-brand-name">GRUPO CHIACCHIO</div>
+          <div class="login-left-brand-sub">Assistente SAC</div>
+        </div>
       </div>
-      <div class="login-field">
-        <label class="login-label">Senha</label>
-        <input class="login-input" type="password" id="login-senha" placeholder="sua senha" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+      <div class="login-left-hero">
+        <h2>Gestão inteligente de manifestações do SAC</h2>
+        <p>Registre, analise, encaminhe e acompanhe cada manifestação em um único lugar, com rastreabilidade, praticidade e histórico completo.</p>
+        <div class="login-steps">
+          <div class="login-step"><span class="login-step-n">01</span>SAC registra a manifestação e a IA auxilia na análise</div>
+          <div class="login-step"><span class="login-step-n">02</span>Analista valida e encaminha ao setor responsável</div>
+          <div class="login-step"><span class="login-step-n">03</span>Tratativa e aprovação quando necessárias</div>
+          <div class="login-step"><span class="login-step-n">04</span>Devolutiva ao cliente e histórico permanente</div>
+        </div>
       </div>
-      <button class="login-btn" onclick="doLogin()">ENTRAR</button>
-      <div class="login-error" id="login-error">Usuário ou senha inválidos.</div>
-      <div style="margin-top:16px;text-align:center;display:flex;flex-direction:column;gap:8px">
-        <button class="btn btn-secondary" style="width:100%;font-size:13px;padding:10px" onclick="abrirSolicitacaoAcesso()">Solicitar acesso à plataforma</button>
-        <span style="font-size:12px;color:#9CA3AF;cursor:pointer" onclick="abrirEsqueciSenha()">Esqueci minha senha</span>
-        <span style="font-size:12px;color:#9CA3AF;cursor:pointer" onclick="toggleBootstrap()">Primeiro acesso? Criar conta administradora</span>
+      <div class="login-left-footer">
+        <span>Chiacchio · Plaschio · Cesbap</span>
+        <span>Versão 1.0</span>
       </div>
     </div>
 
-    <!-- Divisor -->
-    <div class="login-divider"><span>OU</span></div>
+    <!-- PAINEL DIREITO — branco -->
+    <div class="login-right">
+      <div class="login-wrap">
+        <!-- Cabeçalho -->
+        <div class="login-header">
+          <img src="/logo-chiacchio.png" alt="Grupo Chiacchio" style="width:150px;height:auto;display:block;margin-bottom:10px">
+          <h1>Entrar</h1>
+          <p>Use seu e-mail ou usuário corporativo. O perfil de acesso é identificado automaticamente.</p>
+        </div>
 
-    <!-- Portal do funcionário -->
-    <div class="login-portal-box">
-      <h3>RECEBEU UMA MANIFESTAÇÃO DE CLIENTE?</h3>
-      <p>Registre reclamações, dúvidas, sugestões ou elogios diretamente para o SAC, sem precisar de login.</p>
-      <button class="btn-portal" onclick="abrirPortalPublico()">REGISTRAR MANIFESTAÇÃO</button>
-    </div>
+        <!-- Caixa de login -->
+        <div class="login-box">
+          <div class="login-field">
+            <label class="login-label">E-mail ou usuário</label>
+            <input class="login-input" type="text" id="login-user" placeholder="nome@grupochiacchio.com.br" autocomplete="username" onkeydown="if(event.key==='Enter')document.getElementById('login-senha').focus()">
+          </div>
+          <div class="login-field">
+            <label class="login-label">Senha</label>
+            <input class="login-input" type="password" id="login-senha" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+          </div>
+          <div style="display:flex;justify-content:flex-end;margin-bottom:14px">
+            <span style="font-size:13px;color:#A80502;cursor:pointer" onclick="abrirEsqueciSenha()">Esqueci minha senha</span>
+          </div>
+          <button class="login-btn" onclick="doLogin()">Entrar</button>
+          <div class="login-error" id="login-error">E-mail ou senha inválidos. Verifique os dados e tente novamente.</div>
+        </div>
 
-    <!-- BOOTSTRAP — só aparece quando não há usuários -->
-    <div class="login-box" id="bootstrap-box" style="display:none">
-      <div style="font-size:14px;font-weight:700;margin-bottom:12px;color:#111827">Criar conta administradora</div>
-      <div style="font-size:12px;color:#6B7280;margin-bottom:14px">Use apenas na configuração inicial. Após criar o primeiro usuário, este formulário deixa de funcionar.</div>
-      <div style="display:flex;flex-direction:column;gap:10px">
-        <input id="bs-usuario" class="login-input" placeholder="Login (ex: luiza)" autocomplete="off">
-        <input id="bs-nome" class="login-input" placeholder="Nome completo">
-        <input id="bs-senha" type="password" class="login-input" placeholder="Senha (mín. 6 caracteres)">
+        <!-- Divisor -->
+        <div class="login-divider"><span>ou</span></div>
+
+        <!-- Portal do funcionário -->
+        <div class="login-portal-box">
+          <h3>Acesso de demonstração ou sem conta?</h3>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <button class="btn-portal" onclick="abrirPortalPublico()">Registrar Manifestação (sem login)</button>
+            <button style="background:none;border:0;color:#A80502;cursor:pointer;padding:0;font-size:13px;text-align:left;font-family:inherit" onclick="abrirSolicitacaoAcesso()">Não tem conta? Solicitar acesso</button>
+            <span style="font-size:11px;color:#929090;cursor:pointer" onclick="toggleBootstrap()">Primeiro acesso? Criar conta administradora</span>
+          </div>
+        </div>
+
+        <!-- BOOTSTRAP — só aparece quando não há usuários -->
+        <div id="bootstrap-box" style="display:none;background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:20px">
+          <div style="font-size:14px;font-weight:700;margin-bottom:12px;color:#1F1F1F">Criar conta administradora</div>
+          <div style="font-size:12px;color:#666464;margin-bottom:14px">Use apenas na configuração inicial. Após criar o primeiro usuário, este formulário deixa de funcionar.</div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <input id="bs-usuario" class="login-input" placeholder="Login (ex: luiza)" autocomplete="off">
+            <input id="bs-nome" class="login-input" placeholder="Nome completo">
+            <input id="bs-senha" type="password" class="login-input" placeholder="Senha (mín. 6 caracteres)">
+          </div>
+          <button class="login-btn" style="margin-top:10px" onclick="doBootstrap()">Criar administrador</button>
+          <div id="bs-feedback" style="display:none;font-size:12px;padding:8px;border-radius:6px;margin-top:8px"></div>
+        </div>
       </div>
-      <button class="login-btn" style="margin-top:10px" onclick="doBootstrap()">Criar administrador</button>
-      <div id="bs-feedback" style="display:none;font-size:12px;padding:8px;border-radius:6px;margin-top:8px"></div>
     </div>
   </div>
 </div>
@@ -1299,9 +1351,13 @@
 <!-- SIDEBAR -->
 <nav class="sidebar">
   <div class="sidebar-logo">
-    <img src="/logo-chiacchio.png" alt="Grupo Chiacchio" style="width:130px;display:block;margin-bottom:6px;filter:brightness(0) invert(1);opacity:0.9">
-    <div style="font-size:9px;color:rgba(255,255,255,0.55);letter-spacing:0.05em;font-weight:500;margin-bottom:2px">Gestão de Manifestações</div>
-    <h2 style="font-size:11px;font-weight:700;color:white;letter-spacing:0.04em">SAC · Grupo Chiacchio</h2>
+    <div style="display:flex;align-items:center;gap:10px;padding:2px 8px 18px">
+      <img src="/simbolo-vermelho.png" alt="" style="width:30px;height:auto;display:block">
+      <div style="white-space:nowrap">
+        <div style="font-weight:700;font-size:13.5px;color:#1F1F1F">Assistente SAC</div>
+        <div style="font-size:11px;color:#929090;letter-spacing:.04em">GRUPO CHIACCHIO</div>
+      </div>
+    </div>
   </div>
 
   <div class="sidebar-section">Atendimento</div>
@@ -1404,7 +1460,7 @@
         <div class="sidebar-user-role" id="sidebar-user-role">Perfil</div>
       </div>
     </div>
-    <button onclick="doLogout()" style="margin-top:10px;width:100%;background:none;border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.6);border-radius:6px;padding:7px 10px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all 0.15s" onmouseover="this.style.background='rgba(199,6,2,0.2)';this.style.color='#fff'" onmouseout="this.style.background='none';this.style.color='rgba(255,255,255,0.6)'">
+    <button onclick="doLogout()" style="margin-top:10px;width:100%;background:none;border:0;color:#666464;border-radius:6px;padding:4px 0;font-size:12.5px;cursor:pointer;display:flex;align-items:center;gap:6px;font-family:inherit;text-align:left;transition:color 0.15s" onmouseover="this.style.color='#C70602'" onmouseout="this.style.color='#666464'">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
       Sair
     </button>
