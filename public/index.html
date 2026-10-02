@@ -2397,95 +2397,91 @@
   <!-- ===== BANCO DE RNC ===== -->
   <div class="page" id="page-banco-rnc">
     <div class="topbar">
-      <div class="breadcrumb">Gestão / <span>Banco de RNC</span></div>
-      <div class="page-header">
-        <h1 class="page-title">Banco de RNC</h1>
-        <div class="page-actions">
-          <button class="btn btn-secondary" onclick="exportarRNC()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Exportar
-          </button>
-          <button class="btn btn-primary" onclick="abrirEditorRNC({})">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Nova RNC
-          </button>
+      <div class="topbar-left">
+        <div class="breadcrumb">Gestão / <span>RNC</span></div>
+        <div class="page-header">
+          <h1 class="page-title">RNC</h1>
+          <div class="page-actions">
+            <button class="btn btn-secondary" onclick="exportarRNC()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Exportar
+            </button>
+            <button class="btn btn-primary" onclick="abrirEditorRNC({})">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Nova RNC
+            </button>
+          </div>
         </div>
       </div>
     </div>
-    <div class="content">
-      <!-- KPIs -->
-      <div class="kpi-grid">
-        <div class="kpi-card highlight">
-          <div class="kpi-label">RNCs abertas</div>
-          <div class="kpi-value" id="rnc-abertas">--</div>
-          <div class="kpi-delta">carregando</div>
+    <div class="content" style="display:flex;flex-direction:column;gap:16px">
+
+      <!-- Info card -->
+      <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 18px;display:flex;flex-direction:column;gap:8px;font-size:13px;line-height:1.5">
+        <div style="font-weight:700">Quando uma RNC é aberta</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          <span style="background:#F4F4F4;border-radius:6px;padding:4px 9px">1 · Reclamação de cliente via Comercial (registrada sempre; procedência definida na avaliação)</span>
+          <span style="background:#F4F4F4;border-radius:6px;padding:4px 9px">2 · Auditoria externa (certificadora, órgão regulador ou cliente)</span>
+          <span style="background:#F4F4F4;border-radius:6px;padding:4px 9px">3 · Auditoria interna (SGQ, processo ou BPF)</span>
+          <span style="background:#F4F4F4;border-radius:6px;padding:4px 9px">4 · Desvio de especificação de matéria-prima (inspeção de recebimento)</span>
         </div>
-        <div class="kpi-card">
-          <div class="kpi-label">Vencendo em 7 dias</div>
-          <div class="kpi-value" id="rnc-vencendo">--</div>
-          <div class="kpi-delta">Ação corretiva perto do prazo</div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-label">Em verificação de eficácia</div>
-          <div class="kpi-value">3</div>
-          <div class="kpi-delta">Aguardando conferência</div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-label">Encerradas no mês</div>
-          <div class="kpi-value">9</div>
-          <div class="kpi-delta up">↑ +1 vs. mês anterior</div>
-        </div>
+        <div style="color:#545252">Reclamações registradas pelo SAC <strong>não geram RNC</strong>: seguem a Ficha de Encaminhamento de Manifestação e a tratativa dos setores.</div>
       </div>
 
-      <!-- Filters -->
-      <div class="card card-pad" style="margin-bottom:16px;display:flex;gap:10px;align-items:center">
-        <div class="search-wrap">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input class="search-input" placeholder="Buscar por nº da RNC, causa raiz ou responsável">
+      <!-- KPIs -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px">
+        <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px">
+          <div style="font-size:12.5px;color:#666464">RNCs abertas</div>
+          <div style="font-size:24px;font-weight:600;margin-top:4px" id="rnc-abertas">--</div>
         </div>
-        <div class="filter-select"><span>Setor</span><strong>Todos</strong><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
-        <div class="filter-select"><span>Status</span><strong>Todos</strong><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
-        <div class="filter-select"><span>Prazo</span><strong>Todos</strong><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+        <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px">
+          <div style="font-size:12.5px;color:#666464">Vencendo em 7 dias</div>
+          <div style="font-size:24px;font-weight:600;margin-top:4px" id="rnc-vencendo">--</div>
+        </div>
+        <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px">
+          <div style="font-size:12.5px;color:#666464">Em verificação de eficácia</div>
+          <div style="font-size:24px;font-weight:600;margin-top:4px" id="rnc-eficacia">--</div>
+        </div>
+        <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px">
+          <div style="font-size:12.5px;color:#666464">Encerradas no mês</div>
+          <div style="font-size:24px;font-weight:600;margin-top:4px" id="rnc-encerradas">--</div>
+        </div>
       </div>
 
       <!-- Table -->
-      <div class="card" style="margin-bottom:16px">
-        <table class="rnc-table">
+      <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;overflow-x:auto">
+        <table style="border-collapse:collapse;width:100%;min-width:880px;font-size:13px">
           <thead>
-            <tr>
-              <th>Nº RNC</th><th>Origem</th><th>Setor</th><th>Causa raiz e ação corretiva ou preventiva</th><th>Responsável</th><th>Prazo</th><th>Status</th>
+            <tr style="background:#FAFAFA">
+              <th style="text-align:left;font-weight:600;font-size:11.5px;color:#666464;padding:10px 14px;border-bottom:1px solid #E4E4E4">Nº RNC</th>
+              <th style="text-align:left;font-weight:600;font-size:11.5px;color:#666464;padding:10px 14px;border-bottom:1px solid #E4E4E4">MANIFESTAÇÃO</th>
+              <th style="text-align:left;font-weight:600;font-size:11.5px;color:#666464;padding:10px 14px;border-bottom:1px solid #E4E4E4">SETOR</th>
+              <th style="text-align:left;font-weight:600;font-size:11.5px;color:#666464;padding:10px 14px;border-bottom:1px solid #E4E4E4">PROBLEMA / CAUSA RAIZ</th>
+              <th style="text-align:left;font-weight:600;font-size:11.5px;color:#666464;padding:10px 14px;border-bottom:1px solid #E4E4E4">RESPONSÁVEL</th>
+              <th style="text-align:left;font-weight:600;font-size:11.5px;color:#666464;padding:10px 14px;border-bottom:1px solid #E4E4E4">PRAZO</th>
+              <th style="text-align:left;font-weight:600;font-size:11.5px;color:#666464;padding:10px 14px;border-bottom:1px solid #E4E4E4">STATUS</th>
             </tr>
           </thead>
           <tbody id="rnc-body">
-            <tr><td colspan="7"><div class="loading"><div class="spinner"></div> Carregando RNCs...</div></td></tr>
+            <tr><td colspan="7" style="padding:40px;text-align:center;color:#8A8888;font-size:13px"><div class="spinner" style="margin:0 auto 8px"></div>Carregando...</td></tr>
           </tbody>
         </table>
-        <div class="pagination" style="padding:12px 16px;border-top:1px solid var(--gray-100)">
-          <div class="pagination-info">Mostrando 1–8 de 21</div>
-          <div class="pagination-btns">
-            <button class="page-btn">←</button>
-            <button class="page-btn active">1</button>
-            <button class="page-btn">2</button>
-            <button class="page-btn">3</button>
-            <button class="page-btn">→</button>
-          </div>
-        </div>
       </div>
 
-      <!-- Bottom grid -->
-      <div class="grid-2">
-        <div class="section-card">
-          <div class="section-title">Causas recorrentes</div>
-          <div class="section-sub">Mesma causa em mais de uma RNC nos últimos 90 dias</div>
-          <div id="causas-list">
-            <div class="loading"><div class="spinner"></div></div>
+      <!-- Bottom grid: causas + setores -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:16px;align-items:start">
+        <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:20px;display:flex;flex-direction:column;gap:12px">
+          <div style="font-weight:700;font-size:14px">Causas recorrentes</div>
+          <div style="font-size:12px;color:#8A8888">Mesma causa em mais de uma RNC nos últimos 90 dias</div>
+          <div id="causas-list" style="display:flex;flex-direction:column;gap:8px">
+            <div style="text-align:center;padding:20px;color:#8A8888"><div class="spinner" style="margin:0 auto 8px"></div></div>
           </div>
         </div>
-        <div class="section-card">
-          <div class="section-title">Abertas por setor</div>
-          <div class="section-sub" id="rnc-abertas-sub">-- RNCs abertas</div>
-          <div id="rnc-setor-list">
-            <div class="loading"><div class="spinner"></div></div>
+        <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:20px;display:flex;flex-direction:column;gap:12px">
+          <div style="font-weight:700;font-size:14px">Abertas por setor</div>
+          <div style="font-size:12px;color:#8A8888" id="rnc-abertas-sub">-- RNCs abertas</div>
+          <div id="rnc-setor-list" style="display:flex;flex-direction:column;gap:8px">
+            <div style="text-align:center;padding:20px;color:#8A8888"><div class="spinner" style="margin:0 auto 8px"></div></div>
           </div>
         </div>
       </div>
@@ -3650,30 +3646,60 @@
   <!-- ===== CENTRAL DE DADOS ===== -->
   <div class="page" id="page-cerebro">
     <div class="topbar">
-      <div class="breadcrumb">Inteligência / <span>Central de Dados</span></div>
-      <div class="page-header">
-        <h1 class="page-title">Central de Dados</h1>
-        <div class="page-actions">
-          <span style="font-size:12px;color:var(--gray-400)" id="cerebro-status"></span>
+      <div class="topbar-left">
+        <div class="breadcrumb">Conhecimento / <span>Cérebro</span></div>
+        <div class="page-header">
+          <h1 class="page-title">Cérebro</h1>
+          <div class="page-actions">
+            <button class="btn btn-primary" onclick="abrirModalSetorCerebro()">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Nova regra
+            </button>
+          </div>
         </div>
       </div>
     </div>
     <div class="content" style="padding:0 28px 28px">
 
       <!-- Tab bar -->
-      <div style="display:flex;gap:2px;flex-wrap:wrap;margin-bottom:18px;border-bottom:2px solid var(--gray-100);padding-bottom:0">
-        <button class="cd-tab active" onclick="cdTab('manifestacoes',this)">📋 Manifestações</button>
-        <button class="cd-tab" onclick="cdTab('rnc',this)">📄 RNC</button>
-        <button class="cd-tab" onclick="cdTab('historico',this)">📚 Histórico</button>
-        <button class="cd-tab" onclick="cdTab('setores',this)">🏢 Setores</button>
-        <button class="cd-tab" onclick="cdTab('produtos',this)">📦 Produtos</button>
-        <button class="cd-tab" onclick="cdTab('usuarios',this)">👥 Usuários</button>
-        <button class="cd-tab" onclick="cdTab('representantes',this)">🔗 Representantes</button>
-        <button class="cd-tab" onclick="cdTab('causas-cd',this)">⚙️ Causas</button>
-        <button class="cd-tab" onclick="cdTab('auditoria',this)">🔍 Auditoria</button>
-        <button class="cd-tab" onclick="cdTab('ia',this)">🤖 Análise IA</button>
-        <button class="cd-tab" onclick="cdTab('todas-abas',this)">🗂️ Todas as Abas</button>
+      <div id="cerebro-tabbar" style="display:flex;gap:2px;border-bottom:1px solid #E4E4E4;overflow-x:auto;scrollbar-width:none;margin-bottom:18px">
+        <button id="cd-tab-btn-inicio" onclick="cdTab('inicio',this)" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#1F1F1F;border-bottom:2px solid #C70602;margin-bottom:-1px;font-weight:700;font-family:inherit">Início</button>
+        <button id="cd-tab-btn-setores" onclick="cdTab('setores',this)" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Setores</button>
+        <button id="cd-tab-btn-matriz" onclick="cdTab('matriz-cb',this)" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Matriz</button>
+        <button id="cd-tab-btn-causas-cd" onclick="cdTab('causas-cd',this)" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Causas</button>
+        <button id="cd-tab-btn-aprovacao" onclick="cdTab('aprovacao-cb',this)" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Aprovação</button>
+        <button id="cd-tab-btn-auditoria" onclick="cdTab('auditoria',this)" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Auditoria</button>
+        <button id="cd-tab-btn-ia" onclick="cdTab('ia',this)" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Análise IA</button>
       </div>
+
+      <!-- Início (sector home cards) -->
+      <div class="cd-panel" id="cdp-inicio">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:16px;margin-bottom:16px">
+          <div style="background:#C70602;color:#fff;border-radius:12px;padding:22px 24px;display:flex;flex-direction:column;gap:10px">
+            <div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;font-weight:600;opacity:.9">Conhecimento atualizado</div>
+            <div style="display:flex;align-items:baseline;gap:10px"><span style="font-size:44px;font-weight:700;letter-spacing:-.02em" id="cb-pct-atualizado">—</span><span style="font-size:14px">dos conteúdos revisados</span></div>
+            <div style="height:6px;background:rgba(255,255,255,.3);border-radius:3px;overflow:hidden"><div id="cb-bar-atualizado" style="height:100%;background:#fff;width:0"></div></div>
+            <div style="font-size:12.5px" id="cb-ultima-atualizacao">Última atualização: —</div>
+          </div>
+          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:12px;padding:20px 22px;display:flex;flex-direction:column;gap:12px">
+            <div style="font-weight:700;font-size:14.5px">O que a IA considera ao analisar uma manifestação</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px">
+              <span style="border:1px solid #E4E4E4;border-radius:99px;padding:4px 10px;font-size:12px">Regras operacionais dos setores</span>
+              <span style="border:1px solid #E4E4E4;border-radius:99px;padding:4px 10px;font-size:12px">Procedimentos aprovados</span>
+              <span style="border:1px solid #E4E4E4;border-radius:99px;padding:4px 10px;font-size:12px">Políticas internas</span>
+              <span style="border:1px solid #E4E4E4;border-radius:99px;padding:4px 10px;font-size:12px">FAQ dos setores</span>
+              <span style="border:1px solid #E4E4E4;border-radius:99px;padding:4px 10px;font-size:12px">SLA e responsáveis</span>
+              <span style="border:1px solid #E4E4E4;border-radius:99px;padding:4px 10px;font-size:12px">Causas raiz cadastradas</span>
+            </div>
+            <div style="font-size:12.5px;color:#666464;line-height:1.5">Somente conteúdos <strong style="color:#1F1F1F">ativos e aprovados</strong> e marcados como disponíveis para a IA entram na análise.</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px" id="cb-setor-cards">
+          <div style="text-align:center;padding:32px;color:#8A8888;grid-column:1/-1"><div class="spinner" style="margin:0 auto 8px"></div>Carregando setores...</div>
+        </div>
+      </div>
+
+      <!-- Hidden panels preserved for JS functions -->
 
       <!-- ── MANIFESTAÇÕES ── -->
       <div class="cd-panel" id="cdp-manifestacoes">
@@ -3906,6 +3932,20 @@
           <div id="cerebro-ultimas" style="margin-top:12px;color:var(--gray-400);font-size:13px">
             <button class="btn btn-secondary" style="margin-top:8px" onclick="loadUltimasAnalises()">Carregar histórico</button>
           </div>
+        </div>
+      </div>
+
+      <!-- New tab panels -->
+      <div class="cd-panel" id="cdp-matriz-cb" style="display:none">
+        <div style="font-size:13px;color:#545252;line-height:1.55;margin-bottom:16px">Matriz de encaminhamento: define qual setor é responsável (principal e apoio) para cada tipo e motivo de manifestação.</div>
+        <div id="cb-matriz-content" style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;overflow-x:auto">
+          <div style="text-align:center;padding:40px;color:#8A8888"><div class="spinner" style="margin:0 auto 8px"></div>Carregando...</div>
+        </div>
+      </div>
+      <div class="cd-panel" id="cdp-aprovacao-cb" style="display:none">
+        <div style="font-size:13px;color:#545252;line-height:1.55;margin-bottom:16px">Conteúdos do Cérebro aguardando aprovação antes de serem utilizados pela IA.</div>
+        <div id="cb-aprovacao-content" style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;overflow-x:auto">
+          <div style="text-align:center;padding:40px;color:#8A8888"><div class="spinner" style="margin:0 auto 8px"></div>Carregando...</div>
         </div>
       </div>
 
@@ -7698,7 +7738,7 @@ const pageLoaders = window.pageLoaders = {
   'setores': loadSetores,
   'matriz': loadMatriz,
   'base-conhecimento': loadBaseConhecimento,
-  'cerebro': ()=>{ cdLoadMan(); },
+  'cerebro': ()=>{ const btn=document.getElementById('cd-tab-btn-inicio'); cdTab('inicio',btn); },
   'painel-maquina': (...a) => loadPainelMaquina(...a),
   'causas': (...a) => loadCausas(...a),
   'sugestoes-melhoria': (...a) => loadSugestoesMelhoria(...a),
@@ -11975,13 +12015,20 @@ async function gerarSugestaoMelhoriaAuto(idManifestacao) {
 let _cdData = { man:[], rnc:[], hist:[], set:[], prod:[], usr:[], rep:[], caus:[], aud:[] };
 
 function cdTab(name, btn) {
-  document.querySelectorAll('.cd-tab').forEach(b=>b.classList.remove('active'));
   document.querySelectorAll('.cd-panel').forEach(p=>p.style.display='none');
-  btn.classList.add('active');
+  // Update tab button styles (inline style approach matching mockup)
+  document.querySelectorAll('#cerebro-tabbar button').forEach(b=>{
+    b.style.color='#666464'; b.style.fontWeight='500'; b.style.borderBottom='2px solid transparent';
+  });
+  if (btn) { btn.style.color='#1F1F1F'; btn.style.fontWeight='700'; btn.style.borderBottom='2px solid #C70602'; }
+  // Legacy .cd-tab support
+  document.querySelectorAll('.cd-tab').forEach(b=>b.classList.remove('active'));
+  if (btn && btn.classList.contains('cd-tab')) btn.classList.add('active');
   const panel = document.getElementById('cdp-'+name);
   if (panel) panel.style.display='block';
   // lazy load
-  if (name==='manifestacoes' && !_cdData.man.length) cdLoadMan();
+  if (name==='inicio') cdLoadCerebroHome();
+  else if (name==='manifestacoes' && !_cdData.man.length) cdLoadMan();
   else if (name==='rnc' && !_cdData.rnc.length) cdLoadRnc();
   else if (name==='historico' && !_cdData.hist.length) cdLoadHist();
   else if (name==='setores') cdLoadSetores();
@@ -11991,6 +12038,30 @@ function cdTab(name, btn) {
   else if (name==='causas-cd' && !_cdData.caus.length) cdLoadCaus();
   else if (name==='auditoria' && !_cdData.aud.length) cdLoadAud();
   else if (name==='todas-abas') cdLoadTodasAbas();
+  else if (name==='ia') {} // IA panel already loaded
+}
+
+async function cdLoadCerebroHome() {
+  const cardsEl = document.getElementById('cb-setor-cards');
+  if (!cardsEl) return;
+  try {
+    const d = await _apiFetch('/api/setores', 10000).catch(()=>({itens:[]}));
+    const setores = d.itens || d.setores || [];
+    if (!setores.length) {
+      cardsEl.innerHTML = '<div style="text-align:center;padding:32px;color:#8A8888;grid-column:1/-1">Nenhum setor cadastrado.</div>';
+      return;
+    }
+    cardsEl.innerHTML = setores.map(s=>`
+      <button onclick="abrirFichaSetor(${JSON.stringify(s.SETOR||s.nome||s.NOME||'')})" style="white-space:normal;text-align:left;background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:16px 18px;cursor:pointer;display:flex;flex-direction:column;gap:6px;min-height:112px;font-family:inherit">
+        <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline">
+          <span style="font-weight:700;font-size:14px">${s.SETOR||s.nome||s.NOME||'—'}</span>
+          <span style="font-size:12px;color:#929090">${s.EMPRESA||''}</span>
+        </div>
+        <span style="font-size:12.5px;color:#666464;line-height:1.45">${s.DESCRICAO||s.descricao||'Regras, procedimentos, políticas e FAQ do setor'}</span>
+      </button>`).join('');
+  } catch(e) {
+    cardsEl.innerHTML = '<div style="text-align:center;padding:32px;color:#8A8888;grid-column:1/-1">Erro ao carregar setores.</div>';
+  }
 }
 
 function cdRender(tbodyId, loadId, rows, cols, empty='Sem dados.') {
