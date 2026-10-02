@@ -243,7 +243,7 @@ function requerPerfil(...perfis){
 
 // B2: Isolamento de empresa — comparação por código canônico
 function pertenceEmpresa(userEmpresa, registroEmpresa) {
-  if (!userEmpresa) return true;
+  if (!userEmpresa || String(userEmpresa).trim() === '') return false; // empresa vazia = sem acesso (não é MASTER)
   const userCod = empresaCanonica(userEmpresa);
   if (!userCod || userCod === 'MASTER') return true; // MASTER vê tudo
   const recCod = empresaCanonica(registroEmpresa || '');
@@ -689,7 +689,7 @@ async function verificarStatusUsuario(login) {
   try {
     const rows = await lerAba('USUARIOS', 1000);
     const u = rows.find(r => normalizarTexto(r.USUARIO||'') === normalizarTexto(login));
-    const status = u ? (u.STATUS || 'ATIVO').toUpperCase() : 'ATIVO';
+    const status = u ? (u.STATUS || 'ATIVO').toUpperCase() : 'INATIVO';
     _statusCache.set(login, { status, ts: agora });
     return status;
   } catch(e) {
@@ -885,9 +885,10 @@ app.post('/api/auth/reset-password', async (req,res)=>{
     return res.status(500).json({sucesso:false, erro:'Erro ao atualizar senha.'});
   }
 
-  // Marcar token como usado
+  // Marcar token como usado e invalidar cache imediatamente (impede reutilização em janela de 60s)
   try {
     await atualizarPorID('RESET_TOKENS', token, {USADO:'SIM'}, ['TOKEN']);
+    invalidarCacheAba('RESET_TOKENS');
   } catch(e) { /* não crítico */ }
 
   await registrarAuditoria(registro.USUARIO,'SENHA_REDEFINIDA_VIA_TOKEN',null,'AUTH',null,{});
@@ -907,7 +908,7 @@ app.post('/api/analise', async (req, res) => {
   }
 });
 
-app.post('/api/analise/similares', async (req, res) => {
+app.post('/api/analise/similares', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','SETOR RESPONSÁVEL'), async (req, res) => {
   try {
     // B2/Item11: isolar similares por empresa do usuário autenticado
     const empresaFiltro = req.user?.empresa || null;
@@ -950,7 +951,7 @@ app.post('/api/representantes/manifestacoes', requerPerfil('RCA / REPRESENTANTE'
 });
 
 // ===== MANIFESTAÇÕES =====
-app.get('/api/manifestacoes', middlewareEscopoEmpresa(), async (req, res) => {
+app.get('/api/manifestacoes', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','SETOR RESPONSÁVEL','GESTOR SAC','CONSULTA','AUDITOR','RCA / REPRESENTANTE'), middlewareEscopoEmpresa(), async (req, res) => {
   try {
     // F6: tenta PostgreSQL primeiro
     if (manifestacaoRepo) {
@@ -1354,8 +1355,9 @@ app.post('/api/devolutivas/:idDev/decisao', requerPerfil('MASTER','ANALISTA SAC'
 
 app.get('/api/assertividade/metricas', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
   try {
+    const _perfAss = perfilCanonico(req.user?.perfil||'');
     const filtros = {
-      empresa: req.query.empresa,
+      empresa: _perfAss === 'MASTER' ? (req.query.empresa||undefined) : (req.user?.empresa||undefined),
       tipoManifestacao: req.query.tipo,
       categoria: req.query.categoria,
       setor: req.query.setor,
@@ -2107,8 +2109,11 @@ app.post('/api/rnc/:id/visualizacao', requerPerfil('APROVADOR','MASTER'), async 
   }catch(e){res.status(500).json({sucesso:false,erro:e.message});}
 });
 
-app.get('/api/rnc/:id/eventos', async(req,res)=>{
-  try{const data=await lerAba('RNC_EVENTOS',5000);res.json({sucesso:true,itens:data.filter(x=>x.ID_RNC===req.params.id)});}
+app.get('/api/rnc/:id/eventos', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','SETOR RESPONSÁVEL'), async(req,res)=>{
+  try{
+    const rnc=(await lerAba('BANCO_RNC',5000)).find(x=>x.ID_RNC===req.params.id);
+    if(rnc && !pertenceEmpresa(req.user?.empresa, rnc.EMPRESA_RECLAMADA)) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado.'});
+    const data=await lerAba('RNC_EVENTOS',5000);res.json({sucesso:true,itens:data.filter(x=>x.ID_RNC===req.params.id)});}
   catch(e){res.status(500).json({sucesso:false,erro:e.message,itens:[]});}
 });
 
@@ -2116,6 +2121,7 @@ app.patch('/api/rnc/:id/execucao', requerPerfil('SETOR RESPONSÁVEL','MASTER','A
   try{
     const rnc=(await lerAba('BANCO_RNC',5000)).find(x=>x.ID_RNC===req.params.id);
     if(!rnc) return res.status(404).json({sucesso:false,erro:'RNC não encontrada.'});
+    if(!pertenceEmpresa(req.user?.empresa, rnc.EMPRESA_RECLAMADA)) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado para esta RNC.'});
     const b=req.body||{}; const dados={};
     const campos=['CAUSA','ACAO_CONTENCAO','ACAO_CORRETIVA','RESPONSAVEL_ACAO','PRAZO_ACAO','STATUS_ACAO','RESPONSAVEL_EFICACIA','DATA_EFICACIA','RESULTADO_EFICACIA'];
     for(const c of campos){if(b[c]!==undefined)dados[c]=b[c];}
@@ -2127,7 +2133,11 @@ app.patch('/api/rnc/:id/execucao', requerPerfil('SETOR RESPONSÁVEL','MASTER','A
 
 app.get('/api/rnc-metricas', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
   try{
-    const data=await lerAba('BANCO_RNC',5000); const now=Date.now();
+    const _perfRnc = perfilCanonico(req.user?.perfil||'');
+    const _empRnc = _perfRnc === 'MASTER' ? null : (req.user?.empresa||null);
+    let data=await lerAba('BANCO_RNC',5000);
+    if (_empRnc) data = data.filter(x=>pertenceEmpresa(_empRnc, x.EMPRESA_RECLAMADA||''));
+    const now=Date.now();
     const pend=data.filter(x=>!['APROVADA','ENCERRADA','CANCELADA','REJEITADA'].includes(String(x.STATUS||'').toUpperCase()));
     const aprov=data.filter(x=>String(x.STATUS||'').toUpperCase()==='APROVADA');
     const overdue=pend.filter(x=>x.PRAZO&&!isNaN(Date.parse(x.PRAZO))&&Date.parse(x.PRAZO)<now);
@@ -2186,7 +2196,9 @@ app.get('/api/clientes/:cnpj', requerPerfil('MASTER','ANALISTA SAC','RCA / REPRE
     const cnpj=req.params.cnpj.replace(/\D/g,'');
     if(cnpj.length < 8) return res.json({sucesso:true,encontrado:false,cliente:null,historico:[]});
     const historico=await lerAba('BANCO_HISTORICO',2000).catch(()=>[]);
+    const userEmp = perfilCanonico(req.user?.perfil||'') === 'MASTER' ? null : (req.user?.empresa||'');
     const casos=historico.filter(h=>{
+      if(userEmp && !pertenceEmpresa(userEmp, h.ORIG_EMPRESA||h.EMPRESA_RECLAMADA||'')) return false;
       // Busca pelo campo CNPJ dedicado primeiro
       const hcnpj=(h.ORIG_CNPJ||h.CNPJ||'').replace(/\D/g,'');
       if(hcnpj.length >= 8) return hcnpj === cnpj;
@@ -2201,7 +2213,7 @@ app.get('/api/clientes/:cnpj', requerPerfil('MASTER','ANALISTA SAC','RCA / REPRE
 });
 
 // ===== RECLAMAÇÕES =====
-app.get('/api/reclamacoes', middlewareEscopoEmpresa(), async (req, res) => {
+app.get('/api/reclamacoes', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','SETOR RESPONSÁVEL','GESTOR SAC'), middlewareEscopoEmpresa(), async (req, res) => {
   try {
     const data=await lerAbaReclamacoes(2000);
     let normalizado=data.map(r=>({
@@ -2358,7 +2370,8 @@ app.post('/api/politicas', requerPerfil('MASTER','ANALISTA SAC'), async (req, re
   try {
     await garantirAbaComCabecalhos('POLITICAS',['ID_POLITICA','POLITICA','SETOR_RESPONSAVEL','DESCRICAO','RESPONSAVEL','ATIVO','DATA_CRIACAO']).catch(()=>{});
     const id = await gerarProximoID('POLITICAS','POL','ID_POLITICA');
-    const obj = { ID_POLITICA: id, ...req.body, DATA_CRIACAO: new Date().toLocaleDateString('pt-BR'), ATIVO: 'SIM' };
+    const b = req.body||{};
+    const obj = { ID_POLITICA: id, POLITICA: b.POLITICA||b.politica||'', SETOR_RESPONSAVEL: b.SETOR_RESPONSAVEL||b.setor||'', DESCRICAO: b.DESCRICAO||b.descricao||'', RESPONSAVEL: b.RESPONSAVEL||b.responsavel||'', DATA_CRIACAO: new Date().toLocaleDateString('pt-BR'), ATIVO: 'SIM' };
     await appendObjeto('POLITICAS', obj);
     res.json({ sucesso: true, id });
   } catch (e) { res.status(500).json({ sucesso: false, erro: e.message }); }
@@ -2367,7 +2380,8 @@ app.post('/api/procedimentos', requerPerfil('MASTER','ANALISTA SAC'), async (req
   try {
     await garantirAbaComCabecalhos('PROCEDIMENTOS',['ID_PROCEDIMENTO','NOME','SETOR_RESPONSAVEL','DESCRICAO','PASSOS','ATIVO','DATA_CRIACAO']).catch(()=>{});
     const id = await gerarProximoID('PROCEDIMENTOS','PROC','ID_PROCEDIMENTO');
-    const obj = { ID_PROCEDIMENTO: id, NOME: req.body.POLITICA || req.body.NOME || '', ...req.body, DATA_CRIACAO: new Date().toLocaleDateString('pt-BR'), ATIVO: 'SIM' };
+    const b = req.body||{};
+    const obj = { ID_PROCEDIMENTO: id, NOME: b.POLITICA||b.NOME||b.nome||'', SETOR_RESPONSAVEL: b.SETOR_RESPONSAVEL||b.setor||'', DESCRICAO: b.DESCRICAO||b.descricao||'', PASSOS: b.PASSOS||b.passos||'', DATA_CRIACAO: new Date().toLocaleDateString('pt-BR'), ATIVO: 'SIM' };
     await appendObjeto('PROCEDIMENTOS', obj);
     res.json({ sucesso: true, id });
   } catch (e) { res.status(500).json({ sucesso: false, erro: e.message }); }
@@ -2395,7 +2409,18 @@ app.patch('/api/matriz/:id', requerPerfil('MASTER','ANALISTA SAC'), async (req, 
   try {
     const id = req.params.id;
     garantirAbaComCabecalhos('MATRIZ_DECISAO', ['ID_MATRIZ','TEMA','SETOR_PRINCIPAL','SETORES_APOIO','SLA_HORAS','PRIORIDADE','GERA_RNC','APROVACAO','FOLLOW_UP','REGRAS']).catch(()=>{});
-    const reg = await atualizarPorID('MATRIZ_DECISAO', id, req.body, ['ID_MATRIZ','ID']);
+    const b = req.body||{};
+    const dados = {};
+    if (b.TEMA!==undefined) dados.TEMA=b.TEMA;
+    if (b.SETOR_PRINCIPAL!==undefined) dados.SETOR_PRINCIPAL=b.SETOR_PRINCIPAL;
+    if (b.SETORES_APOIO!==undefined) dados.SETORES_APOIO=b.SETORES_APOIO;
+    if (b.SLA_HORAS!==undefined) dados.SLA_HORAS=b.SLA_HORAS;
+    if (b.PRIORIDADE!==undefined) dados.PRIORIDADE=b.PRIORIDADE;
+    if (b.GERA_RNC!==undefined) dados.GERA_RNC=b.GERA_RNC;
+    if (b.APROVACAO!==undefined) dados.APROVACAO=b.APROVACAO;
+    if (b.FOLLOW_UP!==undefined) dados.FOLLOW_UP=b.FOLLOW_UP;
+    if (b.REGRAS!==undefined) dados.REGRAS=b.REGRAS;
+    const reg = await atualizarPorID('MATRIZ_DECISAO', id, dados, ['ID_MATRIZ','ID']);
     if (!reg) return res.status(404).json({ sucesso: false, erro: 'Regra não encontrada.' });
     res.json({ sucesso: true, linha: reg.linha });
   } catch (e) { res.status(500).json({ sucesso: false, erro: e.message }); }
@@ -2516,7 +2541,7 @@ app.get('/api/validacoes', requerPerfil('MASTER','ANALISTA SAC'), async (req, re
 
 
 // ===== ROTA: BUSCAR CASO POR FONTE E ID =====
-app.get('/api/caso/:fonte/:id', async (req, res) => {
+app.get('/api/caso/:fonte/:id', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','SETOR RESPONSÁVEL'), async (req, res) => {
   try {
     const fonteRaw = decodeURIComponent(req.params.fonte || '');
     const id = decodeURIComponent(req.params.id || '');
@@ -2559,6 +2584,11 @@ app.get('/api/caso/:fonte/:id', async (req, res) => {
     }
 
     if (!item) return res.status(404).json({ sucesso: false, erro: `Caso "${id}" não encontrado.` });
+    // Isolamento de empresa: MASTER vê tudo, demais só veem da própria empresa
+    const empItem = item.EMPRESA_RECLAMADA || item.ORIG_EMPRESA || item.EMPRESA || '';
+    if (!pertenceEmpresa(req.user?.empresa, empItem)) {
+      return res.status(403).json({ sucesso: false, erro: 'Acesso não autorizado para este caso.' });
+    }
     res.json({ sucesso: true, caso: { ...item, _fonte_real: fonteReal } });
   } catch(e) {
     console.error('/api/caso erro:', e.message);
@@ -2724,9 +2754,18 @@ app.post('/api/usuarios', requerPerfil('MASTER'), async (req,res)=>{
 });
 app.patch('/api/usuarios/:id', requerPerfil('MASTER'), async (req,res)=>{
   try{
-    const b=req.body||{}; const dados={...b};
-    if(dados.perfil){dados.PERFIL=perfilCanonico(dados.perfil);delete dados.perfil;}
-    if(dados.senha){dados.SENHA_HASH='sha256:'+crypto.createHash('sha256').update(String(dados.senha)).digest('hex');delete dados.senha;}
+    const b=req.body||{};
+    // Whitelist de campos permitidos — impede mass assignment
+    const dados={};
+    if(b.nome!==undefined) dados.NOME=b.nome;
+    if(b.email!==undefined) dados.EMAIL=b.email;
+    if(b.setor!==undefined) dados.SETOR=b.setor;
+    if(b.status!==undefined) dados.STATUS=b.status;
+    if(b.codigoRCA!==undefined) dados.CODIGO_RCA=b.codigoRCA;
+    if(b.perfil||b.PERFIL) dados.PERFIL=perfilCanonico(b.perfil||b.PERFIL);
+    if(b.empresa||b.EMPRESA) { const ec=empresaCanonica(b.empresa||b.EMPRESA); if(ec) dados.EMPRESA=ec; }
+    if(b.senha){dados.SENHA_HASH='sha256:'+crypto.createHash('sha256').update(String(b.senha)).digest('hex');}
+    dados.DATA_ULTIMA_ALTERACAO=new Date().toISOString(); dados.ALTERADO_POR=req.user.usuario;
     await atualizarPorID('USUARIOS',req.params.id,dados,['ID_USUARIO','USUARIO','EMAIL']);
     await registrarAuditoria(req.user.usuario,'ATUALIZOU_USUARIO',req.params.id,'USUARIOS',null,{campos:Object.keys(b)});
     res.json({sucesso:true});
@@ -2796,7 +2835,7 @@ app.post('/api/anexos', requerPerfil('MASTER','ANALISTA SAC'), async (req,res) =
 });
 
 // ===== DOCUMENTOS =====
-app.post('/api/documentos/extrair', async (req,res) => {
+app.post('/api/documentos/extrair', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','SETOR RESPONSÁVEL'), async (req,res) => {
   try {
     const {arquivo,tipoDocumento='FICHA_RECLAMACAO'}=req.body||{};
     if(!arquivo?.dataBase64) return res.status(400).json({sucesso:false,erro:'Arquivo não informado.'});
@@ -2920,7 +2959,13 @@ app.post('/api/causas/popular-historico', requerPerfil('MASTER','ANALISTA SAC'),
 
 app.patch('/api/causas/:id', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
   try {
-    const dados = req.body||{};
+    const b = req.body||{};
+    const dados = {};
+    if (b.CAUSA!==undefined) dados.CAUSA=b.CAUSA;
+    if (b.SUBCAUSA!==undefined) dados.SUBCAUSA=b.SUBCAUSA;
+    if (b.DESCRICAO!==undefined) dados.DESCRICAO=b.DESCRICAO;
+    if (b.SETOR!==undefined) dados.SETOR=b.SETOR;
+    if (b.ATIVO!==undefined) dados.ATIVO=b.ATIVO;
     const r = await atualizarPorID('CAUSAS', req.params.id, dados, ['ID_CAUSA']);
     if (!r) return res.status(404).json({sucesso:false,erro:'Causa não encontrada.'});
     res.json({sucesso:true});
@@ -2928,10 +2973,16 @@ app.patch('/api/causas/:id', requerPerfil('MASTER','ANALISTA SAC'), async (req,r
 });
 
 // ===== ASSERTIVIDADE DA IA =====
-app.post('/api/assertividade-ia', async (req,res)=>{
+app.post('/api/assertividade-ia', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','SETOR RESPONSÁVEL'), async (req,res)=>{
   try {
     const {idManifestacao, decisaoAceita, causaConfirmada, subcausaConfirmada, setorConfirmado, tratativaAceita, devolutivaAceita, observacao} = req.body||{};
     if (!idManifestacao) return res.status(400).json({sucesso:false,erro:'ID da manifestação é obrigatório.'});
+    // Verificar isolamento de empresa
+    const mans = await lerAba('MANIFESTACOES', 5000).catch(()=>[]);
+    const mRef = mans.find(m=>m.ID_MANIFESTACAO===idManifestacao);
+    if (mRef && !pertenceEmpresa(req.user?.empresa, mRef.EMPRESA_RECLAMADA)) {
+      return res.status(403).json({sucesso:false,erro:'Acesso não autorizado para esta manifestação.'});
+    }
     const id = await gerarProximoID('ASSERTIVIDADE_IA','ASS','ID_ASSERTIVIDADE');
     const obj = {
       ID_ASSERTIVIDADE:id, ID_MANIFESTACAO:idManifestacao,
@@ -2967,7 +3018,10 @@ app.post('/api/assertividade-ia', async (req,res)=>{
 // ===== PAINEL DA MÁQUINA =====
 app.get('/api/painel-maquina', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req,res)=>{
   try {
-    const {empresa, setor, de, ate} = req.query;
+    const {setor, de, ate} = req.query;
+    // Empresa sempre do JWT — MASTER pode filtrar por query, demais fixo no JWT
+    const perfil = perfilCanonico(req.user?.perfil||'');
+    const empresaFiltro = perfil === 'MASTER' ? (req.query.empresa||null) : (req.user?.empresa||null);
     const [mans, asserts, causas] = await Promise.all([
       lerAba('MANIFESTACOES', 5000),
       lerAba('ASSERTIVIDADE_IA', 5000).catch(()=>[]),
@@ -2975,7 +3029,7 @@ app.get('/api/painel-maquina', requerPerfil('MASTER','ANALISTA SAC','APROVADOR')
     ]);
 
     let filtradas = mans;
-    if (empresa) filtradas = filtradas.filter(m=>String(m.EMPRESA_RECLAMADA||'').toLowerCase().includes(empresa.toLowerCase()));
+    if (empresaFiltro) filtradas = filtradas.filter(m=>String(m.EMPRESA_RECLAMADA||'').toLowerCase().includes(empresaFiltro.toLowerCase()));
     if (setor) filtradas = filtradas.filter(m=>String(m.SETOR_RESPONSAVEL||'').toLowerCase().includes(setor.toLowerCase()));
     if (de) filtradas = filtradas.filter(m=>{ const d=new Date(m.DATA_CRIACAO||m.DATA_ABERTURA||0); return d>=new Date(de); });
     if (ate) filtradas = filtradas.filter(m=>{ const d=new Date(m.DATA_CRIACAO||m.DATA_ABERTURA||0); return d<=new Date(ate+'T23:59:59'); });
@@ -3031,7 +3085,7 @@ app.get('/api/sugestoes-melhoria', requerPerfil('MASTER','ANALISTA SAC','APROVAD
   } catch(e){ res.status(500).json({sucesso:false,erro:e.message,itens:[]}); }
 });
 
-app.post('/api/sugestoes-melhoria', async (req,res)=>{
+app.post('/api/sugestoes-melhoria', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','SETOR RESPONSÁVEL'), async (req,res)=>{
   try {
     const {idManifestacao, tipo, titulo, descricao, setor, prioridade} = req.body||{};
     if (!titulo||!descricao) return res.status(400).json({sucesso:false,erro:'Título e descrição são obrigatórios.'});
@@ -3071,17 +3125,20 @@ app.patch('/api/sugestoes-melhoria/:id', requerPerfil('MASTER','APROVADOR'), asy
 });
 
 // ===== CONTEXTO DO CLIENTE =====
-app.get('/api/cliente-contexto', async (req,res)=>{
+app.get('/api/cliente-contexto', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','SETOR RESPONSÁVEL'), async (req,res)=>{
   try {
-    const {cliente, empresa} = req.query;
+    const {cliente} = req.query;
     if (!cliente) return res.status(400).json({sucesso:false,erro:'Cliente é obrigatório.'});
+    // Empresa vem sempre do JWT, nunca do query string
+    const perfil = perfilCanonico(req.user?.perfil||'');
+    const empresaJwt = perfil === 'MASTER' ? '' : (req.user?.empresa||'');
     const norm = v=>String(v||'').toLowerCase().trim();
     const [mans, hist] = await Promise.all([
       lerAba('MANIFESTACOES', 5000),
       lerAba('BANCO_HISTORICO', 5000).catch(()=>[]),
     ]);
     const clienteNorm = norm(cliente);
-    const empresaNorm = empresa?norm(empresa):'';
+    const empresaNorm = empresaJwt?norm(empresaJwt):'';
     const casosMan = mans.filter(m=>norm(m.CONTATO||m.EMPRESA_RECLAMANTE||'').includes(clienteNorm)&&(!empresaNorm||norm(m.EMPRESA_RECLAMADA||'').includes(empresaNorm)));
     const casosHist = hist.filter(h=>norm(h.ORIG_CONTATO||h.EMPRESA_RECLAMANTE||'').includes(clienteNorm)&&(!empresaNorm||norm(h.ORIG_EMPRESA||h.EMPRESA_RECLAMADA||'').includes(empresaNorm)));
     const todosCasos = [...casosMan.map(m=>({id:m.ID_MANIFESTACAO,fonte:'MANIFESTACOES',data:m.DATA_CRIACAO||m.DATA_ABERTURA,status:m.STATUS,tipo:m.TIPO||'',produto:m.PRODUTO||'',causa:m.CAUSA_RAIZ||m.CAUSA_CONFIRMADA||'',descricao:(m.DESCRICAO_RECLAMACAO||m.DESCRICAO||'').slice(0,200)})),...casosHist.map(h=>({id:h.ID_HISTORICO||h.ID_MANIFESTACAO,fonte:'BANCO_HISTORICO',data:h.ORIG_DATA_ABERTURA||h.DATA_ABERTURA,status:h.STATUS_FINAL||h.STATUS||'',tipo:h.COMP_TIPO_PROBLEMA_VALIDADO||h.TIPO||'',produto:h.ORIG_PRODUTO||h.PRODUTO||'',causa:h.COMP_CAUSA_PROVAVEL||h.CAUSA_RAIZ||'',descricao:(h.ORIG_DESCRICAO_RECLAMACAO||h.DESCRICAO||'').slice(0,200)}))];
@@ -3089,7 +3146,7 @@ app.get('/api/cliente-contexto', async (req,res)=>{
     const produtos = [...new Set(todosCasos.map(c=>c.produto).filter(Boolean))];
     const causasFreq = {};
     todosCasos.forEach(c=>{if(c.causa)causasFreq[c.causa]=(causasFreq[c.causa]||0)+1;});
-    res.json({sucesso:true,cliente,empresa:empresa||'',totalCasos:todosCasos.length,casos:todosCasos.slice(0,20),produtos,causasRecorrentes:Object.entries(causasFreq).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([c,n])=>({causa:c,ocorrencias:n}))});
+    res.json({sucesso:true,cliente,empresa:empresaJwt||'',totalCasos:todosCasos.length,casos:todosCasos.slice(0,20),produtos,causasRecorrentes:Object.entries(causasFreq).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([c,n])=>({causa:c,ocorrencias:n}))});
   } catch(e){ res.status(500).json({sucesso:false,erro:e.message}); }
 });
 
@@ -3324,12 +3381,14 @@ app.post('/api/fila-aprovacao/:id/decidir', requerPerfil('APROVADOR','MASTER'), 
     const item = fila.find(x => String(x.ID_FILA||'') === String(req.params.id));
     if(!item) return res.status(404).json({sucesso:false,erro:'Item não encontrado na fila.'});
     if(item.STATUS !== 'PENDENTE') return res.status(409).json({sucesso:false,erro:'Este item não está mais pendente.'});
-    // APROVADOR: bloquear autoaprovação
-    if(perfilCanonico(req.user.perfil) === 'APROVADOR') {
-      const n = v => normalizarTexto(v);
-      if(n(item.CRIADO_POR||'') === n(req.user.usuario)) {
-        return res.status(403).json({sucesso:false,erro:'Autoaprovação não permitida. Você não pode aprovar um item que você mesmo enviou para aprovação.'});
-      }
+    // Bloquear autoaprovação para todos os perfis (incluindo MASTER)
+    const n = v => normalizarTexto(v);
+    if(n(item.CRIADO_POR||'') === n(req.user.usuario)) {
+      return res.status(403).json({sucesso:false,erro:'Autoaprovação não permitida. Você não pode aprovar um item que você mesmo enviou para aprovação.'});
+    }
+    // Verificar isolamento de empresa para APROVADOR (MASTER tem acesso global)
+    if(perfilCanonico(req.user.perfil) !== 'MASTER' && item.EMPRESA && !pertenceEmpresa(req.user?.empresa, item.EMPRESA)) {
+      return res.status(403).json({sucesso:false,erro:'Acesso não autorizado para este item de aprovação.'});
     }
     const now = new Date().toISOString();
     await atualizarPorID('FILA_APROVACAO',req.params.id,{STATUS:decisao,NOME_APROVADOR:req.user.nome||req.user.usuario,DATA_DECISAO:now,OBSERVACOES:observacoes||''},['ID_FILA']);
