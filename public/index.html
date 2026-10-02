@@ -7535,6 +7535,10 @@ async function loadSetores() {
   } catch (e) {
     console.error('Erro setores:', e);
     if (grid) grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:24px;color:var(--red)">Erro ao carregar setores: ${esc(e.message)}</div>`;
+    const empty = '<div style="text-align:center;padding:16px;color:var(--gray-400);font-size:12px">Sem dados</div>';
+    const hb = document.getElementById('heatmap-body'); if(hb) hb.innerHTML='<tr><td colspan="9" style="text-align:center;padding:16px;color:var(--gray-400)">Sem dados</td></tr>';
+    const tl = document.getElementById('tempo-list'); if(tl) tl.innerHTML=empty;
+    const sl = document.getElementById('sem-resp-list'); if(sl) sl.innerHTML=empty;
   }
 }
 
@@ -8293,7 +8297,7 @@ window.navigate = function(page, el) {
   window.loadMatriz=async function(){
     const body=document.getElementById('matriz-body'); if(body)body.innerHTML='<tr><td colspan="9"><div class="loading"><div class="spinner"></div> Carregando matriz...</div></td></tr>';
     try{
-      const res=await jsonFetch('/api/matriz'); const regras=res.itens||[];
+      const res=await jsonFetch('/api/matriz-tratamento'); const regras=res.itens||[];
       window._matrizData=regras;
       if(!body)return;
       body.innerHTML=regras.map((r,i)=>{
@@ -8674,7 +8678,7 @@ window.navigate = function(page, el) {
   }
   async function loadSolicitacoesEmbutido(){
     try{
-      const d=await json5('/api/solicitacoes-acesso').catch(()=>({itens:[]}));
+      const d=await json5('/api/admin/solicitacoes').catch(()=>({itens:[]}));
       const reqs=(d.itens||[]);
       const pend=reqs.filter(x=>x.STATUS==='PENDENTE');
       const setEl=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
@@ -8693,7 +8697,7 @@ window.navigate = function(page, el) {
             <span style="margin-left:auto;padding:2px 9px;border-radius:99px;font-size:11.5px;font-weight:600;background:${stBg};color:${stFg}">${esc5(r.STATUS||r.status||'')}</span>
           </div>
           <div style="font-size:13px;color:#545252;margin-top:6px">Motivo: ${esc5(r.MOTIVO||r.motivo||'—')}</div>
-          ${r.STATUS==='PENDENTE'?`<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><button onclick="abrirConfigAcesso('${esc5(r.id||r.ID)}')" style="border:1px solid #D6D6D6;background:#fff;border-radius:7px;padding:7px 12px;cursor:pointer;font-size:12.5px;color:#A80502">Rejeitar</button><button onclick="abrirConfigAcesso('${esc5(r.id||r.ID)}')" style="border:0;background:#1F1F1F;color:#fff;border-radius:7px;padding:7px 14px;cursor:pointer;font-size:12.5px;font-weight:600">Aprovar com este perfil</button></div>`:''}
+          ${r.STATUS==='PENDENTE'?`<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><button onclick="abrirConfigAcesso('${esc5(r.ID_SOLICITACAO||r.id||r.ID)}')" style="border:1px solid #D6D6D6;background:#fff;border-radius:7px;padding:7px 12px;cursor:pointer;font-size:12.5px;color:#A80502">Rejeitar</button><button onclick="abrirConfigAcesso('${esc5(r.ID_SOLICITACAO||r.id||r.ID)}')" style="border:0;background:#1F1F1F;color:#fff;border-radius:7px;padding:7px 14px;cursor:pointer;font-size:12.5px;font-weight:600">Aprovar com este perfil</button></div>`:''}
         </div>`;
       }).join('');
     }catch(e){console.error('Solicitações:',e);}
@@ -8740,7 +8744,7 @@ window.navigate = function(page, el) {
   let _aprvData = { aprovadores:[], competencias:[], relacionamentos:[], regras:[] };
 
   // Helper: fechar qualquer modal
-  window.fecharModal = function(id){ const el=document.getElementById(id); if(el) el.style.display='none'; };
+  window.fecharModal = function(id){ if(!id){ document.getElementById('modal-dossie').style.display='none'; return; } const el=document.getElementById(id); if(el) el.style.display='none'; };
 
   // Configurar tabs e UI por perfil ao entrar na página
   function setupAprovacaoUI(){
@@ -13724,7 +13728,7 @@ async function mudarStatusMC(id, novoStatus) {
       if(dashAlert){if(pendCount>0){dashAlert.style.display='flex';}else{dashAlert.style.display='none';}}
       if(!a.length){ el.innerHTML='<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--gray-400)">Nenhuma solicitação encontrada.</td></tr>'; return; }
       el.innerHTML=a.map(s=>{
-        const id=s.ID||s.id;
+        const id=s.ID_SOLICITACAO||s.ID||s.id;
         const st=String(s.STATUS||'PENDENTE').toUpperCase();
         const stColor=st==='PENDENTE'?'var(--orange)':st==='APROVADA'?'var(--green)':st==='REJEITADA'?'var(--red)':'var(--gray-400)';
         return `<tr>
