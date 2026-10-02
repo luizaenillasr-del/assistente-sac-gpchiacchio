@@ -3,6 +3,10 @@ const cors = require('cors');
 const crypto = require('crypto');
 const { Readable } = require('stream');
 const { google } = require('googleapis');
+const { Resend } = require('resend');
+const _resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+const EMAIL_FROM = process.env.EMAIL_FROM || 'SAC Grupo Chiacchio <noreply@grupochiacchio.com.br>';
+const APP_URL = (process.env.APP_URL || 'https://assistente-sac.vercel.app').replace(/\/$/, '');
 const cerebroService = require('./services/cerebroServices');
 const mcService = require('./services/matrizConhecimentoService');
 const documentService = require('./services/documentService');
@@ -366,19 +370,34 @@ async function _sheetsGetComRetry(sheets, params, tentativas = 3) {
   }
 }
 
+// Cache em memória para leituras do Sheets (60 s TTL) — evita quota exceeded
+const _lerAbaCache = new Map();
+const LER_ABA_TTL_MS = 60_000;
+
 async function lerAba(nomeAba, maxRows) {
   if (_sheetsMock?.lerAba) return _sheetsMock.lerAba(nomeAba, maxRows);
+  const cacheKey = `${nomeAba}|${maxRows||''}`;
+  const cached = _lerAbaCache.get(cacheKey);
+  if (cached && (Date.now() - cached.ts) < LER_ABA_TTL_MS) return cached.data;
   const sheets = await getSheets();
   const range = maxRows ? `${nomeAba}!A1:AZ${maxRows}` : nomeAba;
   const res = await _sheetsGetComRetry(sheets, { spreadsheetId: SPREADSHEET_ID, range });
   const rows = res.data.values || [];
-  if (rows.length < 2) return [];
+  if (rows.length < 2) { _lerAbaCache.set(cacheKey, { data: [], ts: Date.now() }); return []; }
   const headers = rows[0];
-  return rows.slice(1).map(row => {
+  const data = rows.slice(1).map(row => {
     const obj = {};
     headers.forEach((h, i) => { if (h) obj[h] = row[i] || ''; });
     return obj;
   });
+  _lerAbaCache.set(cacheKey, { data, ts: Date.now() });
+  return data;
+}
+
+function invalidarCacheAba(nomeAba) {
+  for (const key of _lerAbaCache.keys()) {
+    if (key.startsWith(nomeAba + '|')) _lerAbaCache.delete(key);
+  }
 }
 
 // Tenta 'Reclamações + devolutiva' primeiro; cai para 'Reclamações' se vazio
@@ -420,6 +439,7 @@ async function appendObjeto(nomeAba, objeto) {
   if (!headers.length) throw new Error(`A aba "${nomeAba}" não possui cabeçalhos.`);
   const linha = headers.map(h => objeto[h] !== undefined ? objeto[h] : '');
   await appendLinha(nomeAba, linha);
+  invalidarCacheAba(nomeAba);
   return { headers, linha };
 }
 
@@ -441,6 +461,7 @@ async function atualizarPorID(nomeAba, id, dados, camposID = ['ID_MANIFESTACAO',
   const valores = [...rows[rowIndex-1]];
   headers.forEach((h,i)=>{ if(Object.prototype.hasOwnProperty.call(dados,h)) valores[i]=dados[h]; });
   await updateLinha(nomeAba,rowIndex,valores);
+  invalidarCacheAba(nomeAba);
   return { rowIndex, headers, valores };
 }
 
@@ -683,6 +704,7 @@ app.use('/api', async (req,res,next)=>{
     '/',
     '/auth/login',
     '/auth/forgot-password',
+    '/auth/reset-password',
     '/bootstrap',
     '/public/solicitar-acesso',
     '/public/reclamacoes',
@@ -773,10 +795,102 @@ app.post('/api/auth/refresh', async (req,res)=>{
 });
 
 app.post('/api/auth/forgot-password', async (req,res)=>{
-  const login=req.body?.usuario||req.body?.email||'';
+  const login=(req.body?.usuario||req.body?.email||'').trim().toLowerCase();
   if(!login) return res.status(400).json({sucesso:false,erro:'Informe usuário ou e-mail.'});
   await registrarAuditoria(login,'SOLICITOU_RECUPERACAO_SENHA',null,'AUTH',null,{});
-  res.json({sucesso:true,mensagem:'Solicitação registrada. O administrador deverá redefinir a senha.'});
+
+  // Localizar usuário
+  let usuarios = [];
+  try { usuarios = await lerAba('USUARIOS', 500); } catch(e) {}
+  const usuario = usuarios.find(u => {
+    const u_login = (u.USUARIO||u.EMAIL||'').trim().toLowerCase();
+    const u_email = (u.EMAIL||'').trim().toLowerCase();
+    return u_login === login || u_email === login;
+  });
+
+  // Resposta genérica independente de o usuário existir (evita enumeração)
+  const MSG_OK = 'Se o usuário existir, um link de redefinição será enviado para o e-mail cadastrado.';
+
+  if (!usuario || !usuario.EMAIL) {
+    return res.json({sucesso:true, mensagem: MSG_OK});
+  }
+
+  if (!_resend) {
+    // Sem serviço de e-mail configurado — fallback manual
+    console.warn('[forgot-password] RESEND_API_KEY não configurada. Envio ignorado para:', login);
+    return res.json({sucesso:true, mensagem:'Solicitação registrada. O administrador deverá redefinir a senha.'});
+  }
+
+  // Gerar token seguro de 1h
+  const token = crypto.randomBytes(32).toString('hex');
+  const expMs = Date.now() + 60 * 60 * 1000;
+
+  // Gravar token na aba RESET_TOKENS (cria linha; não precisa de aba pré-existente)
+  try {
+    await appendObjeto('RESET_TOKENS', {
+      TOKEN: token,
+      USUARIO: usuario.USUARIO || usuario.EMAIL,
+      EMAIL: usuario.EMAIL,
+      EXP: new Date(expMs).toISOString(),
+      USADO: 'NAO',
+    });
+  } catch(e) {
+    console.error('[forgot-password] erro ao gravar token:', e.message);
+    return res.status(500).json({sucesso:false, erro:'Erro interno ao gerar token.'});
+  }
+
+  const link = `${APP_URL}/#reset-password?token=${token}`;
+  try {
+    await _resend.emails.send({
+      from: EMAIL_FROM,
+      to: usuario.EMAIL,
+      subject: 'Redefinição de senha — SAC Grupo Chiacchio',
+      html: `
+        <p>Olá, <strong>${usuario.NOME||usuario.USUARIO}</strong>.</p>
+        <p>Recebemos uma solicitação de redefinição de senha para sua conta no <strong>Assistente SAC</strong>.</p>
+        <p><a href="${link}" style="background:#c8571a;color:#fff;padding:10px 20px;border-radius:4px;text-decoration:none;display:inline-block;margin:12px 0">Redefinir minha senha</a></p>
+        <p>Este link é válido por <strong>1 hora</strong>. Se você não solicitou a redefinição, ignore este e-mail.</p>
+        <hr style="margin:20px 0;border:none;border-top:1px solid #eee">
+        <p style="color:#999;font-size:12px">SAC Grupo Chiacchio — sistema interno</p>
+      `,
+    });
+    await registrarAuditoria(login,'EMAIL_RESET_ENVIADO',null,'AUTH',null,{email:usuario.EMAIL});
+  } catch(e) {
+    console.error('[forgot-password] erro ao enviar e-mail:', e.message);
+    return res.status(500).json({sucesso:false, erro:'Erro ao enviar e-mail. Tente novamente.'});
+  }
+
+  res.json({sucesso:true, mensagem: MSG_OK});
+});
+
+app.post('/api/auth/reset-password', async (req,res)=>{
+  const { token, novaSenha } = req.body || {};
+  if (!token || !novaSenha) return res.status(400).json({sucesso:false, erro:'Token e nova senha são obrigatórios.'});
+  if (novaSenha.length < 6) return res.status(400).json({sucesso:false, erro:'Senha deve ter ao menos 6 caracteres.'});
+
+  let tokens = [];
+  try { tokens = await lerAba('RESET_TOKENS', 1000); } catch(e) {}
+  const registro = tokens.find(t => t.TOKEN === token && t.USADO === 'NAO');
+  if (!registro) return res.status(400).json({sucesso:false, erro:'Token inválido ou já utilizado.'});
+  if (Date.now() > new Date(registro.EXP).getTime()) return res.status(400).json({sucesso:false, erro:'Token expirado. Solicite um novo link.'});
+
+  // Hash da nova senha
+  const hash = 'sha256:' + crypto.createHash('sha256').update(novaSenha).digest('hex');
+
+  // Atualizar senha do usuário
+  try {
+    await atualizarPorID('USUARIOS', registro.USUARIO, {SENHA: hash}, ['USUARIO','EMAIL']);
+  } catch(e) {
+    return res.status(500).json({sucesso:false, erro:'Erro ao atualizar senha.'});
+  }
+
+  // Marcar token como usado
+  try {
+    await atualizarPorID('RESET_TOKENS', token, {USADO:'SIM'}, ['TOKEN']);
+  } catch(e) { /* não crítico */ }
+
+  await registrarAuditoria(registro.USUARIO,'SENHA_REDEFINIDA_VIA_TOKEN',null,'AUTH',null,{});
+  res.json({sucesso:true, mensagem:'Senha redefinida com sucesso. Faça login com a nova senha.'});
 });
 
 // ===== ANÁLISE IA =====
@@ -1120,6 +1234,7 @@ app.post('/api/manifestacoes/:id/tratativa/decisao', requerPerfil('MASTER','ANAL
     const data = await lerAba('MANIFESTACOES',2000);
     const m = data.find(r=>r.ID_MANIFESTACAO===req.params.id);
     if (!m) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
+    if(!pertenceEmpresa(req.user?.empresa, m.EMPRESA_RECLAMADA)) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado para esta manifestação.'});
     await assertividadeService.registrarDecisao({
       idManifestacao: req.params.id,
       tipoRegistro: 'TRATATIVA',
@@ -1637,8 +1752,218 @@ app.post('/api/calculadora/calcular', requerPerfil('MASTER','ANALISTA SAC','SETO
     res.json({sucesso:true,resultado:{tipo,tempoProducao:prazoProd||null,prazoTransporte:prazoTrans||null,dataProducaoEstimada:dataProdEst,dataEntregaEstimada:dataEntEst,desvioProducao:desvioProd,desvioTransporte:desvioTrans,desvioDias,etapaDesvio:etapa,statusPrazo:status,parametroLogistica:log,parametroProducao:prod}});
   }catch(e){res.status(500).json({sucesso:false,erro:e.message});}
 });
-app.post('/api/calculadora/parametros/logistica', requerPerfil('MASTER'), async(req,res)=>{try{garantirAbaComCabecalhos('PARAMETROS_LOGISTICA',LOG_HEADERS).catch(()=>{});const b=req.body||{};const obj={...b,ID:b.ID||await gerarProximoID('PARAMETROS_LOGISTICA','LOG','ID'),ATIVO:b.ATIVO||'SIM',DATA_ATUALIZACAO:new Date().toISOString(),USUARIO_ATUALIZACAO:req.user.usuario};await appendObjeto('PARAMETROS_LOGISTICA',obj);res.json({sucesso:true,item:obj});}catch(e){res.status(500).json({sucesso:false,erro:e.message});}});
+app.post('/api/calculadora/parametros/logistica', requerPerfil('MASTER','ANALISTA SAC'), async(req,res)=>{try{await garantirAbaComCabecalhos('PARAMETROS_LOGISTICA',LOG_HEADERS);const b=req.body||{};const obj={...b,ID:b.ID||await gerarProximoID('PARAMETROS_LOGISTICA','LOG','ID'),ATIVO:b.ATIVO||'SIM',DATA_ATUALIZACAO:new Date().toISOString(),USUARIO_ATUALIZACAO:req.user.usuario};await appendObjeto('PARAMETROS_LOGISTICA',obj);res.json({sucesso:true,item:obj});}catch(e){res.status(500).json({sucesso:false,erro:e.message});}});
+app.patch('/api/calculadora/parametros/logistica/:id', requerPerfil('MASTER','ANALISTA SAC'), async(req,res)=>{try{const dados={...req.body,DATA_ATUALIZACAO:new Date().toISOString(),USUARIO_ATUALIZACAO:req.user.usuario};await atualizarPorID('PARAMETROS_LOGISTICA',req.params.id,dados,['ID']);res.json({sucesso:true});}catch(e){res.status(500).json({sucesso:false,erro:e.message});}});
+app.delete('/api/calculadora/parametros/logistica/:id', requerPerfil('MASTER','ANALISTA SAC'), async(req,res)=>{try{await atualizarPorID('PARAMETROS_LOGISTICA',req.params.id,{ATIVO:'NAO',DATA_ATUALIZACAO:new Date().toISOString(),USUARIO_ATUALIZACAO:req.user.usuario},['ID']);res.json({sucesso:true});}catch(e){res.status(500).json({sucesso:false,erro:e.message});}});
 app.post('/api/calculadora/parametros/producao', requerPerfil('MASTER'), async(req,res)=>{try{garantirAbaComCabecalhos('PARAMETROS_PRODUCAO',PROD_HEADERS).catch(()=>{});const b=req.body||{};const obj={...b,ID:b.ID||await gerarProximoID('PARAMETROS_PRODUCAO','PROD','ID'),ATIVO:b.ATIVO||'SIM',DATA_ATUALIZACAO:new Date().toISOString(),USUARIO_ATUALIZACAO:req.user.usuario};await appendObjeto('PARAMETROS_PRODUCAO',obj);res.json({sucesso:true,item:obj});}catch(e){res.status(500).json({sucesso:false,erro:e.message});}});
+
+// ════════════════════════════════════════════════════════════════
+// CALCULADORA DE ATRASO — ANÁLISE COMPLETA (prazo prometido + regional)
+// ════════════════════════════════════════════════════════════════
+
+// Gatilhos que indicam reclamação de atraso
+const GATILHOS_ATRASO = ['atraso','atrasado','atrasada','demora','demorou','demorado','demorada','entrega atrasada','pedido nao chegou','pedido não chegou','nao chegou','não chegou','nao recebeu','não recebeu','prazo ultrapassado','fora do prazo','nao chegou','previsao de entrega ultrapassada','previsão de entrega ultrapassada','produto nao recebido','produto não recebido','nao foi entregue','não foi entregue','transporte demorando','demora na entrega','demora no transporte','ainda nao recebi','ainda não recebi','entrega fora do prazo'];
+
+function detectarGatilhoAtraso(texto) {
+  if (!texto) return false;
+  const t = normalizarTexto(texto);
+  return GATILHOS_ATRASO.some(g => t.includes(normalizarTexto(g)));
+}
+
+// Busca prazo regional com suporte a múltiplas correspondências
+function buscarPrazoRegional(rows, { cidade, uf, regiao } = {}) {
+  const ativos = rows.filter(ativoAgora);
+  if (!cidade && !uf && !regiao) return { encontrado: false, motivo: 'SEM_LOCALIZACAO', itens: [] };
+
+  const cN = normalizarTexto(cidade||'');
+  const ufN = normalizarTexto(uf||'');
+  const regN = normalizarTexto(regiao||'');
+
+  const scoreItem = r => {
+    let s = 0;
+    if (cN && normalizarTexto(r.CIDADE||'') === cN) s += 100;
+    if (ufN && normalizarTexto(r.UF||'') === ufN) s += 20;
+    if (regN && normalizarTexto(r.REGIAO||'') === regN) s += 10;
+    return s;
+  };
+
+  const com_score = ativos.map(r => ({ ...r, _score: scoreItem(r) })).filter(r => r._score > 0).sort((a,b) => b._score - a._score);
+  if (com_score.length === 0) return { encontrado: false, motivo: 'SEM_REFERENCIA', itens: [] };
+
+  const top = com_score[0]._score;
+  const empatados = com_score.filter(r => r._score === top);
+  if (empatados.length > 1 && top < 100) {
+    return { encontrado: false, motivo: 'MULTIPLAS_REFERENCIAS', itens: empatados };
+  }
+  return { encontrado: true, item: com_score[0], itens: [com_score[0]] };
+}
+
+// Classifica o nível do diagnóstico
+function classificarNivelAtraso({ prazoPrometido, prazoRealizado, prazoMedioRegional }) {
+  const temPrometido = prazoPrometido !== null && prazoPrometido !== undefined && !isNaN(Number(prazoPrometido));
+  const temRealizado = prazoRealizado !== null && prazoRealizado !== undefined && !isNaN(Number(prazoRealizado));
+  const temRegional = prazoMedioRegional !== null && prazoMedioRegional !== undefined && !isNaN(Number(prazoMedioRegional));
+
+  if (!temRealizado) return 'DADOS_INSUFICIENTES';
+
+  const atrasadoPrometido = temPrometido && Number(prazoRealizado) > Number(prazoPrometido);
+  const acimaMediaRegional = temRegional && Number(prazoRealizado) > Number(prazoMedioRegional);
+
+  if (atrasadoPrometido && acimaMediaRegional) return 'ATRASO_E_ACIMA_DA_MEDIA_REGIONAL';
+  if (atrasadoPrometido) return 'ATRASO_EM_RELACAO_AO_PRAZO_PROMETIDO';
+  if (acimaMediaRegional) return 'ACIMA_DA_MEDIA_REGIONAL';
+  return 'DENTRO_DO_PADRAO_REGIONAL';
+}
+
+// Identifica etapa provável do atraso com base nas datas
+function identificarEtapaAtraso(b) {
+  const etapas = [];
+  const diffOpt = (de, ate) => { const d = diffDias(de, ate); return d !== null ? d : null; };
+
+  if (b.dataInicioProducao && b.dataFimProducao) {
+    const durProd = diffOpt(b.dataInicioProducao, b.dataFimProducao);
+    const prazoProd = b.prazoPrevistoProd ? Number(b.prazoPrevistoProd) : null;
+    if (durProd !== null) {
+      const desvio = prazoProd !== null ? durProd - prazoProd : null;
+      etapas.push({ etapa: 'PRODUCAO', duracao: durProd, prazoEsperado: prazoProd, desvio, status: desvio !== null ? (desvio > 0 ? 'ATRASADO' : 'NO_PRAZO') : 'SEM_PARAMETRO' });
+    }
+  }
+  if (b.dataFimProducao && b.dataExpedicao) {
+    const durExp = diffOpt(b.dataFimProducao, b.dataExpedicao);
+    etapas.push({ etapa: 'EXPEDICAO', duracao: durExp, prazoEsperado: null, desvio: null, status: durExp !== null && durExp > 3 ? 'ATRASADO' : (durExp !== null ? 'NO_PRAZO' : 'SEM_DADO') });
+  }
+  if (b.dataExpedicao && b.dataEntrega) {
+    const durTrans = diffOpt(b.dataExpedicao, b.dataEntrega);
+    const prazoReg = b.prazoMedioRegional ? Number(b.prazoMedioRegional) : null;
+    const desvio = prazoReg !== null && durTrans !== null ? durTrans - prazoReg : null;
+    etapas.push({ etapa: 'TRANSPORTE', duracao: durTrans, prazoEsperado: prazoReg, desvio, status: desvio !== null ? (desvio > 0 ? 'ACIMA_DA_MEDIA' : 'DENTRO_DO_PADRAO') : (durTrans !== null ? 'SEM_REFERENCIA_REGIONAL' : 'SEM_DADO') });
+  }
+  if (b.dataEntrega && b.dataImplantacao) {
+    const durImpl = diffOpt(b.dataEntrega, b.dataImplantacao);
+    etapas.push({ etapa: 'IMPLANTACAO', duracao: durImpl, prazoEsperado: null, desvio: null, status: 'INFORMATIVO' });
+  }
+
+  // Origem provável
+  const atrasadas = etapas.filter(e => e.status === 'ATRASADO' || e.status === 'ACIMA_DA_MEDIA');
+  let origemProvavel = 'NAO_IDENTIFICADO';
+  if (atrasadas.length === 1) origemProvavel = atrasadas[0].etapa;
+  else if (atrasadas.length > 1) origemProvavel = 'MISTO';
+
+  return { etapas, origemProvavel };
+}
+
+// POST /api/calculadora/analisar-atraso — análise completa integrada
+app.post('/api/calculadora/analisar-atraso', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
+  try {
+    const b = req.body || {};
+    const logs = await lerAba('PARAMETROS_LOGISTICA', 2000).catch(() => []);
+
+    // Busca prazo regional
+    const buscaRegional = buscarPrazoRegional(logs, { cidade: b.cidade, uf: b.uf, regiao: b.regiao });
+
+    const prazoMedioRegional = buscaRegional.encontrado
+      ? Number(buscaRegional.item.PRAZO_TRANSPORTE_DIAS || buscaRegional.item.PRAZO_MAX_DIAS || 0) || null
+      : null;
+    const prazoMinRegional = buscaRegional.encontrado ? Number(buscaRegional.item.PRAZO_MIN_DIAS || 0) || null : null;
+    const prazoMaxRegional = buscaRegional.encontrado ? Number(buscaRegional.item.PRAZO_MAX_DIAS || 0) || null : null;
+
+    const prazoPrometido = b.prazoPrometido !== undefined && b.prazoPrometido !== '' ? Number(b.prazoPrometido) : null;
+    const prazoRealizado = b.prazoRealizado !== undefined && b.prazoRealizado !== '' ? Number(b.prazoRealizado) : null;
+
+    const atrasoDiasPrometido = prazoPrometido !== null && prazoRealizado !== null ? prazoRealizado - prazoPrometido : null;
+    const desvioMediaRegional = prazoMedioRegional !== null && prazoRealizado !== null ? prazoRealizado - prazoMedioRegional : null;
+
+    const nivel = classificarNivelAtraso({ prazoPrometido, prazoRealizado, prazoMedioRegional });
+    const { etapas, origemProvavel } = identificarEtapaAtraso({ ...b, prazoMedioRegional });
+
+    // Confiança do diagnóstico
+    let confianca = 'BAIXO';
+    const dadosDisponiveis = [prazoPrometido, prazoRealizado, prazoMedioRegional, b.dataExpedicao, b.dataEntrega].filter(v => v !== null && v !== undefined && v !== '').length;
+    if (dadosDisponiveis >= 4) confianca = 'ALTO';
+    else if (dadosDisponiveis >= 2) confianca = 'MEDIO';
+
+    res.json({
+      sucesso: true,
+      analise: {
+        nivel,
+        prazoPrometido,
+        prazoRealizado,
+        prazoMedioRegional,
+        prazoMinRegional,
+        prazoMaxRegional,
+        atrasoDiasPrometido,
+        desvioMediaRegional,
+        referenciaRegional: buscaRegional.encontrado ? {
+          cidade: buscaRegional.item.CIDADE,
+          uf: buscaRegional.item.UF,
+          regiao: buscaRegional.item.REGIAO,
+          modalidade: buscaRegional.item.MODALIDADE || '',
+          fonte: buscaRegional.item.FONTE || '',
+          vigenciaInicio: buscaRegional.item.VIGENCIA_INICIO || '',
+        } : null,
+        statusBuscaRegional: buscaRegional.motivo || 'OK',
+        multiplosResultados: buscaRegional.motivo === 'MULTIPLAS_REFERENCIAS' ? buscaRegional.itens.map(i => ({ cidade: i.CIDADE, uf: i.UF, regiao: i.REGIAO, prazo: i.PRAZO_TRANSPORTE_DIAS })) : null,
+        etapas,
+        origemProvavel,
+        confianca,
+        cidade: b.cidade || '',
+        uf: b.uf || '',
+        regiao: b.regiao || '',
+        analisadoEm: new Date().toISOString(),
+        analisadoPor: req.user.usuario,
+        classificacaoIA: nivel,
+      }
+    });
+  } catch (e) { res.status(500).json({ sucesso: false, erro: e.message }); }
+});
+
+// PATCH /api/manifestacoes/:id/diagnostico-atraso — salva diagnóstico na manifestação
+app.patch('/api/manifestacoes/:id/diagnostico-atraso', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
+  try {
+    const b = req.body || {};
+    const dados = {
+      HOUVE_ATRASO: b.houveAtraso || '',
+      PRAZO_PROMETIDO_DIAS: b.prazoPrometido != null ? String(b.prazoPrometido) : '',
+      PRAZO_REALIZADO_DIAS: b.prazoRealizado != null ? String(b.prazoRealizado) : '',
+      PRAZO_MEDIO_REGIONAL_DIAS: b.prazoMedioRegional != null ? String(b.prazoMedioRegional) : '',
+      ATRASO_DIAS: b.atrasoDiasPrometido != null ? String(b.atrasoDiasPrometido) : '',
+      DESVIO_MEDIA_REGIONAL_DIAS: b.desvioMediaRegional != null ? String(b.desvioMediaRegional) : '',
+      CIDADE_DESTINO: b.cidade || '',
+      UF_DESTINO: b.uf || '',
+      REGIAO_DESTINO: b.regiao || '',
+      ORIGEM_PROVAVEL_ATRASO: b.origemProvavel || '',
+      SETOR_RELACIONADO_ATRASO: b.setorRelacionado || '',
+      NIVEL_DIAGNOSTICO_ATRASO: b.nivel || '',
+      CONFIANCA_DIAGNOSTICO_ATRASO: b.confianca || '',
+      JUSTIFICATIVA_ATRASO: b.justificativa || '',
+      CLASSIFICACAO_IA_ATRASO: b.classificacaoIA || '',
+      CLASSIFICACAO_ANALISTA_ATRASO: b.classificacaoAnalista || b.nivel || '',
+      ACERTO_IA_ATRASO: b.classificacaoIA && b.classificacaoAnalista ? (b.classificacaoIA === b.classificacaoAnalista ? 'SIM' : 'NÃO') : '',
+      DATA_ANALISE_ATRASO: new Date().toISOString(),
+      USUARIO_ANALISE_ATRASO: req.user.usuario,
+    };
+    await atualizarPorID('MANIFESTACOES', req.params.id, dados, ['ID_MANIFESTACAO']);
+    registrarAuditoria(req.user.usuario, 'DIAGNOSTICO_ATRASO', req.params.id, 'MANIFESTACOES', null, dados).catch(() => {});
+    res.json({ sucesso: true });
+  } catch (e) { res.status(500).json({ sucesso: false, erro: e.message }); }
+});
+
+// GET /api/calculadora/prazos-regionais — listagem paginada para a tela de gestão
+app.get('/api/calculadora/prazos-regionais', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
+  try {
+    await garantirAbaComCabecalhos('PARAMETROS_LOGISTICA', LOG_HEADERS);
+    let rows = await lerAba('PARAMETROS_LOGISTICA', 5000).catch(() => []);
+    const { q, uf, regiao, ativo = 'SIM' } = req.query;
+    if (ativo) rows = rows.filter(r => normalizarTexto(r.ATIVO||'SIM') === normalizarTexto(ativo));
+    if (uf) rows = rows.filter(r => normalizarTexto(r.UF||'') === normalizarTexto(uf));
+    if (regiao) rows = rows.filter(r => normalizarTexto(r.REGIAO||'') === normalizarTexto(regiao));
+    if (q) { const qN = normalizarTexto(q); rows = rows.filter(r => normalizarTexto(r.CIDADE||'').includes(qN) || normalizarTexto(r.UF||'').includes(qN) || normalizarTexto(r.REGIAO||'').includes(qN)); }
+    rows = rows.sort((a,b) => (a.UF||'').localeCompare(b.UF||'') || (a.CIDADE||'').localeCompare(b.CIDADE||''));
+    const ufs = [...new Set(await lerAba('PARAMETROS_LOGISTICA', 5000).catch(()=>[]).then(r => r.map(x => x.UF).filter(Boolean)))].sort();
+    const regioes = [...new Set(await lerAba('PARAMETROS_LOGISTICA', 5000).catch(()=>[]).then(r => r.map(x => x.REGIAO).filter(Boolean)))].sort();
+    res.json({ sucesso: true, total: rows.length, itens: rows, filtros: { ufs, regioes } });
+  } catch (e) { res.status(500).json({ sucesso: false, erro: e.message }); }
+});
 
 // ===== DASHBOARD =====
 app.get('/api/dashboard', middlewareEscopoEmpresa(), requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req, res) => {
@@ -1763,6 +2088,7 @@ app.post('/api/rnc/:id/decisao', requerPerfil('APROVADOR','MASTER'), async (req,
     if(!decisao) return res.status(400).json({sucesso:false,erro:'Decisão é obrigatória.'});
     const rnc=(await lerAba('BANCO_RNC',5000).catch(()=>[])).find(x=>x.ID_RNC===req.params.id);
     if(!rnc) return res.status(404).json({sucesso:false,erro:'RNC não encontrada.'});
+    if(!pertenceEmpresa(req.user?.empresa, rnc.EMPRESA_RECLAMADA)) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado para esta RNC.'});
     const d=String(decisao).toUpperCase();
     if(d!=='APROVAR'&&(!observacoes||!String(observacoes).trim())) return res.status(400).json({sucesso:false,erro:'Justificativa é obrigatória.'});
     const status=d==='APROVAR'?'APROVADA':(d==='REJEITAR'?'REJEITADA':'DEVOLVIDA'); const agora=new Date().toISOString();
@@ -3431,6 +3757,38 @@ app.get('/api/biblioteca/fichas/:id', requerPerfil('MASTER','ADMINISTRADOR','ANA
   } catch(e) { res.status(500).json({ sucesso: false, erro: e.message }); }
 });
 
+// Download direto do PDF de uma manifestação
+app.get('/api/manifestacoes/:id/pdf', requerPerfil('MASTER','ANALISTA SAC','GESTOR SAC','APROVADOR','SETOR RESPONSÁVEL','CONSULTA','AUDITOR','RCA / REPRESENTANTE'), async (req, res) => {
+  try {
+    if (!gerarFichaPDF) return res.status(503).json({ sucesso: false, erro: 'Serviço de PDF não disponível.' });
+    const mans = await lerAba('MANIFESTACOES', 5000).catch(() => []);
+    const man = mans.find(m => m.ID_MANIFESTACAO === req.params.id);
+    if (!man) return res.status(404).json({ sucesso: false, erro: 'Manifestação não encontrada.' });
+    const evs = await lerAba('EVIDENCIAS', 2000).catch(() => []);
+    const evidencias = evs.filter(e => e.ID_MANIFESTACAO === man.ID_MANIFESTACAO);
+    const dtReg = new Date(man.DATA_REGISTRO || man.DATA_ABERTURA || Date.now());
+    const dataRegistroFmt = dtReg.toLocaleDateString('pt-BR') + ' ' + dtReg.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
+    const dadosPDF = {
+      protocolo: man.ID_MANIFESTACAO, dataRegistroFmt,
+      setorRecebimento: man.SETOR_RECEBIMENTO || man.SETOR_REGISTRANTE || '',
+      colaboradorRecebimento: man.COLABORADOR_RECEBIMENTO || man.REGISTRADO_POR || '',
+      nomeCliente: man.NOME_CLIENTE || man.CLIENTE_NOME || man.CONTATO || '',
+      empresa: man.EMPRESA_RECLAMADA || man.EMPRESA_RECLAMANTE || '',
+      telefone: man.TELEFONE || '', email: man.EMAIL || '',
+      canalRecebimento: man.CANAL || '', tipoManifestacao: man.TIPO || man.TIPO_MANIFESTACAO || 'Reclamação',
+      motivoManifestacao: man.MOTIVO || '', descricaoOriginal: man.DESCRICAO_ORIGINAL || man.DESCRICAO || man.DESCRICAO_RECLAMACAO || '',
+      produto: man.PRODUTO || '', lote: man.LOTE || '', quantidadeAfetada: man.QUANTIDADE || '',
+      observacoes: man.OBSERVACOES || '', totalEvidencias: evidencias.length,
+    };
+    const pdfBuffer = await gerarFichaPDF(dadosPDF);
+    const pdfNome = `Ficha_${man.ID_MANIFESTACAO}.pdf`;
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${pdfNome}"`);
+    res.setHeader('Content-Length', pdfBuffer.length);
+    res.send(pdfBuffer);
+  } catch(e) { res.status(500).json({ sucesso: false, erro: e.message }); }
+});
+
 // Regenerar PDF de uma ficha (MASTER/ADMINISTRADOR/SAC)
 app.post('/api/biblioteca/fichas/:id/regenerar-pdf', requerPerfil('MASTER','ADMINISTRADOR','ANALISTA SAC','SAC'), async (req, res) => {
   try {
@@ -3470,6 +3828,93 @@ app.post('/api/biblioteca/fichas/:id/regenerar-pdf', requerPerfil('MASTER','ADMI
     registrarAuditoria(req.user.usuario, 'REGENEROU_PDF_BIBLIOTECA', ficha.ID_MANIFESTACAO, 'FICHAS_BIBLIOTECA', null, { versao: novaVersao }).catch(() => {});
     const pdfBase64 = pdfBuffer.toString('base64');
     res.json({ sucesso: true, pdfBase64, pdfNome, versao: novaVersao, pdfDriveUrl });
+  } catch(e) { res.status(500).json({ sucesso: false, erro: e.message }); }
+});
+
+// ═══ IMPORTAR FICHA HISTÓRICA (PDF/DOCX via IA) ═══════════════════════════
+app.post('/api/biblioteca/importar-ficha', requerPerfil('MASTER','ADMINISTRADOR','ANALISTA SAC','SAC'), async (req, res) => {
+  try {
+    // Aceita multipart/form-data mas sem salvar em disco (serverless)
+    // Lê o body como buffer via express raw e faz extração textual mínima
+    const contentType = req.headers['content-type'] || '';
+    if (!contentType.includes('multipart/form-data')) {
+      return res.status(400).json({ sucesso: false, erro: 'Envie um arquivo via multipart/form-data.' });
+    }
+
+    // Extração simples: usa busboy para ler o arquivo
+    const Busboy = (() => { try { return require('busboy'); } catch { return null; } })();
+    if (!Busboy) return res.status(503).json({ sucesso: false, erro: 'Módulo de upload não disponível neste ambiente.' });
+
+    const bb = Busboy({ headers: req.headers, limits: { fileSize: 10 * 1024 * 1024 } });
+    let nomeArquivo = ''; let mimeType = ''; let chunks = [];
+
+    await new Promise((resolve, reject) => {
+      bb.on('file', (name, stream, info) => {
+        nomeArquivo = info.filename; mimeType = info.mimeType;
+        stream.on('data', c => chunks.push(c));
+        stream.on('end', () => {});
+        stream.on('error', reject);
+      });
+      bb.on('finish', resolve);
+      bb.on('error', reject);
+      req.pipe(bb);
+    });
+
+    if (chunks.length === 0) return res.status(400).json({ sucesso: false, erro: 'Arquivo não recebido.' });
+    const buffer = Buffer.concat(chunks);
+
+    // Extrai texto do arquivo para passar à IA
+    let textoExtraido = '';
+    if (mimeType === 'application/pdf' || nomeArquivo.match(/\.pdf$/i)) {
+      // Tenta extração básica de texto de PDF (sem lib pesada — busca strings ASCII)
+      textoExtraido = buffer.toString('latin1').replace(/[^\x20-\x7E\n\r\t]/g, ' ').replace(/\s+/g, ' ').substring(0, 4000);
+    } else {
+      // DOCX: extrai XML interno
+      textoExtraido = buffer.toString('utf8', 0, 8000).replace(/[^\x20-\x7E\n\r\tÀ-ɏ]/g, ' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').substring(0, 4000);
+    }
+
+    // Usa IA para extrair campos estruturados
+    const Anthropic = (() => { try { return require('@anthropic-ai/sdk'); } catch { return null; } })();
+    let dadosExtraidos = {};
+    if (Anthropic && process.env.ANTHROPIC_API_KEY) {
+      const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+      const msg = await client.messages.create({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 512,
+        messages: [{ role: 'user', content: `Extraia dados desta ficha de reclamação e retorne APENAS JSON válido com os campos: protocolo, data_registro (ISO), nome_cliente, empresa, setor, tipo_manifestacao, motivo, colaborador. Se não encontrar um campo, use null. Texto da ficha:\n\n${textoExtraido}` }]
+      });
+      try { dadosExtraidos = JSON.parse(msg.content[0].text.replace(/```json?|```/g,'')); } catch {}
+    }
+
+    // Gera ID e registra na aba FICHAS_BIBLIOTECA
+    const idFicha = 'FH-' + Date.now();
+    const agora = new Date().toISOString();
+    const obj = {
+      ID_FICHA: idFicha,
+      ID_MANIFESTACAO: '',
+      PROTOCOLO: dadosExtraidos.protocolo || nomeArquivo.replace(/\.\w+$/, ''),
+      DATA_REGISTRO: dadosExtraidos.data_registro || agora,
+      NOME_CLIENTE: dadosExtraidos.nome_cliente || '',
+      EMPRESA: dadosExtraidos.empresa || '',
+      SETOR_RECEBIMENTO: dadosExtraidos.setor || '',
+      TIPO_MANIFESTACAO: dadosExtraidos.tipo_manifestacao || 'Reclamação',
+      MOTIVO: dadosExtraidos.motivo || '',
+      COLABORADOR_RECEBIMENTO: dadosExtraidos.colaborador || '',
+      STATUS: 'IMPORTADA',
+      ORIGEM: 'IMPORTACAO_MANUAL',
+      ARQUIVO_NOME: nomeArquivo,
+      PDF_DRIVE_ID: '',
+      PDF_DRIVE_URL: '',
+      VERSAO: '1',
+      DATA_CRIACAO: agora,
+      CRIADO_POR: req.user.usuario || '',
+    };
+
+    const FICHAS_HEADERS = ['ID_FICHA','ID_MANIFESTACAO','PROTOCOLO','DATA_REGISTRO','NOME_CLIENTE','EMPRESA','SETOR_RECEBIMENTO','TIPO_MANIFESTACAO','MOTIVO','COLABORADOR_RECEBIMENTO','STATUS','ORIGEM','ARQUIVO_NOME','PDF_DRIVE_ID','PDF_DRIVE_URL','VERSAO','DATA_CRIACAO','CRIADO_POR'];
+    await garantirAbaComCabecalhos('FICHAS_BIBLIOTECA', FICHAS_HEADERS);
+    await appendObjeto('FICHAS_BIBLIOTECA', obj);
+    registrarAuditoria(req.user.usuario, 'IMPORTOU_FICHA_HISTORICA', idFicha, 'FICHAS_BIBLIOTECA', null, { arquivo: nomeArquivo }).catch(()=>{});
+    res.json({ sucesso: true, idFicha, protocolo: obj.PROTOCOLO, dados: dadosExtraidos });
   } catch(e) { res.status(500).json({ sucesso: false, erro: e.message }); }
 });
 
@@ -3687,6 +4132,28 @@ async function garantirAbasPermissoes() {
 }
 garantirAbasPermissoes();
 
+// ── E-mail via Gmail API (mesma conta de serviço) ────────────────────────────
+async function enviarEmailAcesso({ para, nome, login, senha, perfil, empresa }) {
+  try {
+    const gmailUser = process.env.GMAIL_REMETENTE || process.env.GMAIL_USER;
+    if (!gmailUser) { console.warn('[EMAIL] GMAIL_REMETENTE não configurado — e-mail não enviado.'); return false; }
+    const auth = await getAuth();
+    const { google } = require('googleapis');
+    const gmail = google.gmail({ version: 'v1', auth });
+    const assunto = 'Acesso aprovado — Assistente SAC Grupo Chiacchio';
+    const corpo = `Olá, ${nome}!\n\nSeu acesso ao Assistente SAC foi aprovado.\n\nDados de acesso:\n  Usuário: ${login}\n  Senha:   ${senha}\n  Perfil:  ${perfil}\n  Empresa: ${empresa}\n\nAcesse: ${process.env.APP_URL || 'https://assistente-sac-gpchiacchio.vercel.app'}\n\nPor segurança, altere sua senha no primeiro acesso.\n\nEquipe SAC — Grupo Chiacchio`;
+    const raw = Buffer.from(
+      `To: ${para}\r\nSubject: ${assunto}\r\nContent-Type: text/plain; charset=utf-8\r\n\r\n${corpo}`
+    ).toString('base64url');
+    await gmail.users.messages.send({ userId: gmailUser, requestBody: { raw } });
+    console.log(`[EMAIL] Enviado para ${para}`);
+    return true;
+  } catch(e) {
+    console.warn('[EMAIL] Falha ao enviar e-mail:', e.message);
+    return false;
+  }
+}
+
 // ── Auditoria de acesso ───────────────────────────────────────────────────────
 async function registrarAuditoriaAcesso(usuarioAfetado, acao, modulo, empresa, anterior, novo, executadoPor) {
   try {
@@ -3827,6 +4294,7 @@ app.post('/api/public/solicitar-acesso', async (req, res) => {
       DECIDIDO_POR: '',
       MOTIVO_REJEICAO: '',
     };
+    await garantirAbaComCabecalhos('SOLICITACOES_ACESSO', SOLICITACOES_HEADERS);
     await appendObjeto('SOLICITACOES_ACESSO', obj);
     await registrarAuditoriaAcesso(emailNorm, 'SOLICITACAO_CRIADA', '', empCod, '', 'PENDENTE', 'sistema');
     res.json({sucesso:true, id, mensagem:'Solicitação enviada. Aguarde aprovação do MASTER.'});
@@ -3948,6 +4416,8 @@ app.post('/api/admin/solicitacoes/:id/aprovar', requerPerfil('MASTER'), async (r
     await registrarAuditoriaAcesso(item.EMAIL, 'USUARIO_CRIADO_POR_APROVACAO', '', empCod, '', JSON.stringify({perfil:perfilNorm,empresa:empCod,modulos:modulosConfig}), req.user.usuario||'MASTER');
     invalidarCachePermissoes(item.EMAIL);
     res.json({sucesso:true, idUsuario, login, mensagem:'Usuário criado e ativo.', senhaGerada: !senha?.trim() ? senhaFinal : undefined});
+    // Envia e-mail com credenciais (fire-and-forget)
+    enviarEmailAcesso({ para: item.EMAIL, nome: item.NOME, login, senha: senhaFinal, perfil: perfilNorm, empresa: empCod }).catch(()=>{});
   } catch(e) { res.status(500).json({sucesso:false,erro:e.message}); }
 });
 
