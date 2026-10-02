@@ -211,27 +211,27 @@
   .fila-table td { padding: 10px 12px; font-size: 13px; border-bottom: 1px solid var(--gray-100); }
   .fila-table tr:last-child td { border-bottom: none; }
   .fila-table .num { font-weight: 700; color: var(--gray-900); }
-  .prazo-badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
-  .prazo-badge.atrasado { background: #FEE2E2; color: #DC2626; }
-  .prazo-badge.vence { background: var(--yellow-light); color: #92400E; }
-  .prazo-badge.ok { background: var(--green-light); color: #065F46; }
+  .prazo-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 99px; font-size: 12px; font-weight: 500; white-space: nowrap; }
+  .prazo-badge.atrasado { background: #FDECEC; color: #A80502; }
+  .prazo-badge.vence { background: #FBF0D9; color: #7A4C00; }
+  .prazo-badge.ok { background: #E6F2EA; color: #1E6B3A; }
   .link-abrir { color: var(--red); font-weight: 600; font-size: 13px; cursor: pointer; text-decoration: none; }
   .link-abrir:hover { text-decoration: underline; }
 
   /* STATUS BADGE */
-  .status-badge { display: inline-flex; align-items: center; padding: 3px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
-  .status-badge.em-andamento { background: #EFF6FF; color: #1D4ED8; }
-  .status-badge.encerrada { background: var(--green-light); color: #065F46; }
-  .status-badge.atrasada { background: #FEE2E2; color: #DC2626; }
-  .status-badge.registro { background: var(--gray-100); color: var(--gray-600); }
-  .status-badge.setores { background: #F3E8FF; color: #7C3AED; }
-  .status-badge.decisao { background: #FEF3C7; color: #92400E; }
-  .status-badge.devolutiva { background: #ECFDF5; color: #065F46; }
+  .status-badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 99px; font-size: 12px; font-weight: 500; white-space: nowrap; }
+  .status-badge.em-andamento { background: #E6EEF8; color: #24508F; }
+  .status-badge.encerrada { background: #E6F2EA; color: #1E6B3A; }
+  .status-badge.atrasada { background: #FDECEC; color: #A80502; }
+  .status-badge.registro { background: #EEEEEE; color: #545252; }
+  .status-badge.setores { background: #E6EEF8; color: #24508F; }
+  .status-badge.decisao { background: #FBF0D9; color: #7A4C00; }
+  .status-badge.devolutiva { background: #E6F2EA; color: #1E6B3A; }
 
   /* PROCEDENCIA BADGE */
-  .proc-badge { display: inline-flex; padding: 3px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
-  .proc-badge.procedente { background: #ECFDF5; color: #065F46; }
-  .proc-badge.parcialmente { background: var(--yellow-light); color: #92400E; }
+  .proc-badge { display: inline-flex; padding: 2px 8px; border-radius: 99px; font-size: 12px; font-weight: 500; white-space: nowrap; }
+  .proc-badge.procedente { background: #E6F2EA; color: #1E6B3A; }
+  .proc-badge.parcialmente { background: #FBF0D9; color: #7A4C00; }
 
   /* PROGRESS BAR */
   .progress-bar { height: 6px; background: var(--gray-100); border-radius: 3px; overflow: hidden; }
@@ -593,9 +593,9 @@
       <div style="flex:1;min-width:0">
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
           <div style="font-size:17px;font-weight:800;color:var(--gray-900)" id="modal-titulo">Manifestação</div>
-          <span id="modal-status-badge" style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700"></span>
-          <span id="modal-sla-badge" style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700"></span>
-          <span id="modal-pri-badge" style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;display:none"></span>
+          <span id="modal-status-badge" style="padding:2px 8px;border-radius:99px;font-size:12px;font-weight:500;white-space:nowrap"></span>
+          <span id="modal-sla-badge" style="padding:2px 8px;border-radius:99px;font-size:12px;font-weight:500;white-space:nowrap"></span>
+          <span id="modal-pri-badge" style="padding:2px 8px;border-radius:99px;font-size:12px;font-weight:500;white-space:nowrap;display:none"></span>
         </div>
         <div style="font-size:12px;color:var(--gray-400);margin-top:3px" id="modal-subtitulo">—</div>
       </div>
