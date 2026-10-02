@@ -7535,6 +7535,10 @@ async function loadSetores() {
   } catch (e) {
     console.error('Erro setores:', e);
     if (grid) grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:24px;color:var(--red)">Erro ao carregar setores: ${esc(e.message)}</div>`;
+    const empty = '<div style="text-align:center;padding:16px;color:var(--gray-400);font-size:12px">Sem dados</div>';
+    const hb = document.getElementById('heatmap-body'); if(hb) hb.innerHTML='<tr><td colspan="9" style="text-align:center;padding:16px;color:var(--gray-400)">Sem dados</td></tr>';
+    const tl = document.getElementById('tempo-list'); if(tl) tl.innerHTML=empty;
+    const sl = document.getElementById('sem-resp-list'); if(sl) sl.innerHTML=empty;
   }
 }
 
@@ -8293,7 +8297,7 @@ window.navigate = function(page, el) {
   window.loadMatriz=async function(){
     const body=document.getElementById('matriz-body'); if(body)body.innerHTML='<tr><td colspan="9"><div class="loading"><div class="spinner"></div> Carregando matriz...</div></td></tr>';
     try{
-      const res=await jsonFetch('/api/matriz'); const regras=res.itens||[];
+      const res=await jsonFetch('/api/matriz-tratamento'); const regras=res.itens||[];
       window._matrizData=regras;
       if(!body)return;
       body.innerHTML=regras.map((r,i)=>{
@@ -8674,7 +8678,7 @@ window.navigate = function(page, el) {
   }
   async function loadSolicitacoesEmbutido(){
     try{
-      const d=await json5('/api/solicitacoes-acesso').catch(()=>({itens:[]}));
+      const d=await json5('/api/admin/solicitacoes').catch(()=>({itens:[]}));
       const reqs=(d.itens||[]);
       const pend=reqs.filter(x=>x.STATUS==='PENDENTE');
       const setEl=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
@@ -8740,7 +8744,7 @@ window.navigate = function(page, el) {
   let _aprvData = { aprovadores:[], competencias:[], relacionamentos:[], regras:[] };
 
   // Helper: fechar qualquer modal
-  window.fecharModal = function(id){ const el=document.getElementById(id); if(el) el.style.display='none'; };
+  window.fecharModal = function(id){ if(!id){ document.getElementById('modal-dossie').style.display='none'; return; } const el=document.getElementById(id); if(el) el.style.display='none'; };
 
   // Configurar tabs e UI por perfil ao entrar na página
   function setupAprovacaoUI(){
