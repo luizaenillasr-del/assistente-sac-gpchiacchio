@@ -323,9 +323,9 @@
 
   /* BANCO TABLE */
   .banco-table { width: 100%; border-collapse: collapse; }
-  .banco-table th { text-align: left; font-size: 11px; font-weight: 600; color: var(--gray-400); padding: 10px 12px; background: var(--gray-50); border-bottom: 1px solid var(--gray-200); }
-  .banco-table td { padding: 12px 12px; font-size: 13px; border-bottom: 1px solid var(--gray-100); vertical-align: middle; }
-  .banco-table tr:hover td { background: var(--gray-50); }
+  .banco-table th { text-align: left; font-size: 12px; font-weight: 500; color: #666464; padding: 10px 12px; background: #FAFAFA; border-bottom: 1px solid #E4E4E4; white-space: nowrap; }
+  .banco-table td { padding: 10px 12px; font-size: 13px; border-bottom: 1px solid #EFEFEF; vertical-align: middle; }
+  .banco-table tr:hover td { background: #FAFAFA; }
   .banco-table tr:last-child td { border-bottom: none; }
   .cliente-primary { font-weight: 600; color: var(--gray-900); }
   .cliente-secondary { font-size: 11px; color: var(--gray-400); margin-top: 1px; }
@@ -2299,31 +2299,52 @@
     </div>
     <div class="content">
       <!-- Search + filters -->
-      <div class="card card-pad" style="margin-bottom:16px">
-        <div style="display:flex;gap:10px;margin-bottom:10px">
-          <div class="search-wrap">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input class="search-input" placeholder="Buscar por protocolo, cliente, CNPJ, NFe ou lote" id="banco-search" oninput="filtrarBanco()">
-          </div>
-        </div>
-        <div class="filters" style="margin-bottom:0;position:relative">
-          <div class="filter-select" id="bflt-status" onclick="abrirFiltroDropdown('status',this)" style="cursor:pointer"><span>Status</span><strong id="bflt-status-label">Todos</strong><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
-          <div class="filter-select" id="bflt-tipo" onclick="abrirFiltroDropdown('tipo',this)" style="cursor:pointer"><span>Tipo</span><strong id="bflt-tipo-label">Todos</strong><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
-          <div class="filter-select" id="bflt-setor" onclick="abrirFiltroDropdown('setor',this)" style="cursor:pointer"><span>Setor</span><strong id="bflt-setor-label">Todos</strong><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
-          <div class="filter-select" id="bflt-empresa" onclick="abrirFiltroDropdown('empresa',this)" style="cursor:pointer"><span>Empresa</span><strong id="bflt-empresa-label">Todas</strong><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
-          <div class="filter-select" id="bflt-periodo" onclick="abrirFiltroDropdown('periodo',this)" style="cursor:pointer"><span>Período</span><strong id="bflt-periodo-label">Todos</strong><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
-          <div class="filter-select" id="bflt-procedencia" onclick="abrirFiltroDropdown('procedencia',this)" style="cursor:pointer"><span>Procedência</span><strong id="bflt-procedencia-label">Todas</strong><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
-          <div id="banco-filter-dropdown" style="display:none;position:absolute;top:100%;left:0;z-index:200;background:white;border:1px solid var(--gray-200);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.12);min-width:180px;padding:6px 0;max-height:260px;overflow-y:auto"></div>
-        </div>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px">
+        <input placeholder="Pesquisar nº, cliente, CNPJ ou motivo" id="banco-search" oninput="filtrarBanco()" style="flex:1;min-width:240px;height:36px;border:1px solid #D6D6D6;border-radius:7px;padding:0 12px;background:#fff;font-size:13px;font-family:inherit">
+        <select id="bflt-tipo-sel" onchange="filtrarBanco()" style="height:36px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:13px;font-family:inherit">
+          <option value="">Tipo: todos</option>
+          <option value="Reclamação">Reclamação</option>
+          <option value="Dúvida">Dúvida</option>
+          <option value="Sugestão">Sugestão</option>
+          <option value="Elogio">Elogio</option>
+        </select>
+        <select id="bflt-empresa-sel" onchange="filtrarBanco()" style="height:36px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:13px;font-family:inherit">
+          <option value="">Empresa: todas</option>
+          <option value="CHIACCHIO EMBALAGENS">Chiacchio</option>
+          <option value="PLASCHIO">Plaschio</option>
+          <option value="TUBAHIA">Tubahia</option>
+        </select>
+        <select id="bflt-setor-sel" onchange="filtrarBanco()" style="height:36px;min-width:120px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:13px;font-family:inherit">
+          <option value="">Setor: todos</option>
+        </select>
+        <select id="bflt-periodo-sel" onchange="filtrarBanco()" style="height:36px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:13px;font-family:inherit">
+          <option value="">Período: todos</option>
+          <option value="hoje">Hoje</option>
+          <option value="7">7 dias</option>
+          <option value="30">30 dias</option>
+          <option value="90">90 dias</option>
+        </select>
+      </div>
+      <!-- hidden compat filter elements used by JS -->
+      <div style="display:none">
+        <div id="bflt-status"></div><div id="bflt-tipo"></div><div id="bflt-setor"></div>
+        <div id="bflt-empresa"></div><div id="bflt-periodo"></div><div id="bflt-procedencia"></div>
+        <strong id="bflt-status-label"></strong><strong id="bflt-tipo-label"></strong>
+        <strong id="bflt-setor-label"></strong><strong id="bflt-empresa-label"></strong>
+        <strong id="bflt-periodo-label"></strong><strong id="bflt-procedencia-label"></strong>
+        <div id="banco-filter-dropdown"></div>
       </div>
 
-      <!-- Tabs -->
-      <div class="tabs-bar" id="banco-tabs">
-        <button class="tab-btn active" onclick="filterBancoTab(this, 'todas')">Todas · <span id="tab-total">--</span></button>
-        <button class="tab-btn" onclick="filterBancoTab(this, 'atrasadas')">Atrasadas · <span id="tab-atrasadas">--</span></button>
-        <button class="tab-btn" onclick="filterBancoTab(this, 'aguardando')">Aguardando setor · <span id="tab-aguardando">--</span></button>
-        <button class="tab-btn" onclick="filterBancoTab(this, 'minhas')">Minhas · <span id="tab-minhas">--</span></button>
-        <button class="tab-btn" onclick="filterBancoTab(this, 'encerradas')">Encerradas · <span id="tab-encerradas">--</span></button>
+      <!-- Status tabs — pill style -->
+      <div id="banco-tabs" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px">
+        <button class="tab-btn active" onclick="filterBancoTab(this, 'todas')" style="border:1px solid #1F1F1F;background:#1F1F1F;color:#fff;border-radius:99px;padding:6px 12px;font-size:12.5px;font-weight:500;cursor:pointer;white-space:nowrap">Todas · <span id="tab-total">--</span></button>
+        <button class="tab-btn" onclick="filterBancoTab(this, 'atrasadas')" style="border:1px solid #E4E4E4;background:#fff;color:#545252;border-radius:99px;padding:6px 12px;font-size:12.5px;font-weight:500;cursor:pointer;white-space:nowrap">Atrasadas · <span id="tab-atrasadas">--</span></button>
+        <button class="tab-btn" onclick="filterBancoTab(this, 'aguardando')" style="border:1px solid #E4E4E4;background:#fff;color:#545252;border-radius:99px;padding:6px 12px;font-size:12.5px;font-weight:500;cursor:pointer;white-space:nowrap">Aguardando setor · <span id="tab-aguardando">--</span></button>
+        <button class="tab-btn" onclick="filterBancoTab(this, 'minhas')" style="border:1px solid #E4E4E4;background:#fff;color:#545252;border-radius:99px;padding:6px 12px;font-size:12.5px;font-weight:500;cursor:pointer;white-space:nowrap">Minhas · <span id="tab-minhas">--</span></button>
+        <button class="tab-btn" onclick="filterBancoTab(this, 'encerradas')" style="border:1px solid #E4E4E4;background:#fff;color:#545252;border-radius:99px;padding:6px 12px;font-size:12.5px;font-weight:500;cursor:pointer;white-space:nowrap">Encerradas · <span id="tab-encerradas">--</span></button>
+        <div style="flex:1"></div>
+        <button onclick="exportarManifestacoes()" style="border:1px solid #D6D6D6;background:#fff;border-radius:7px;padding:7px 12px;cursor:pointer;font-size:13px;font-family:inherit">Exportar</button>
+        <button onclick="navigate('nova-manifestacao', document.querySelector('[onclick*=nova-manifestacao]'))" style="border:0;background:#C70602;color:#fff;border-radius:7px;padding:8px 14px;cursor:pointer;font-size:13px;font-weight:500;font-family:inherit">Nova manifestação</button>
       </div>
 
       <!-- Table -->
@@ -6769,12 +6790,27 @@ window.setBancoData = function(d) { bancoData = d; };
 function filterBancoTab(btn, filter) {
   bancoFilter = filter;
   bancoPagina = 1;
-  document.querySelectorAll('#banco-tabs .tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('#banco-tabs .tab-btn').forEach(b => {
+    b.classList.remove('active');
+    b.style.background = '#fff'; b.style.color = '#545252'; b.style.borderColor = '#E4E4E4';
+  });
   btn.classList.add('active');
+  btn.style.background = '#1F1F1F'; btn.style.color = '#fff'; btn.style.borderColor = '#1F1F1F';
   renderBanco();
 }
 
-function filtrarBanco() { bancoPagina = 1; renderBanco(); }
+function filtrarBanco() {
+  bancoPagina = 1;
+  const tipo = document.getElementById('bflt-tipo-sel')?.value || '';
+  const empresa = document.getElementById('bflt-empresa-sel')?.value || '';
+  const setor = document.getElementById('bflt-setor-sel')?.value || '';
+  const periodo = document.getElementById('bflt-periodo-sel')?.value || '';
+  bancoFiltros.tipo = tipo;
+  bancoFiltros.empresa = empresa;
+  bancoFiltros.setor = setor;
+  bancoFiltros.periodo = periodo ? parseInt(periodo) : null;
+  renderBanco();
+}
 
 function renderBanco() {
   const search = (document.getElementById('banco-search')?.value || '').toLowerCase();
