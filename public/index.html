@@ -1244,7 +1244,7 @@
   <div class="sidebar-item" data-v5-page="usuarios" onclick="navigate('usuarios', this)" style="position:relative">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><path d="M17 3a4 4 0 0 1 0 8"/></svg>
     Usuários e Acessos
-    <span id="badge-solicitacoes" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);background:#C8102E;color:white;font-size:10px;font-weight:700;border-radius:10px;padding:1px 6px;min-width:18px;text-align:center"></span>
+    <span id="badge-solicitacoes" onclick="event.stopPropagation();abrirPainelNotificacoes()" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);background:#C8102E;color:white;font-size:10px;font-weight:700;border-radius:10px;padding:1px 6px;min-width:18px;text-align:center;cursor:pointer" title="Ver solicitações pendentes"></span>
   </div>
   <div class="sidebar-item" onclick="navigate('banco-rnc', this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
@@ -2889,6 +2889,30 @@
           <button class="btn btn-danger" onclick="rejeitarSolicitacaoModal()">Rejeitar</button>
           <button class="btn btn-primary" onclick="aprovarSolicitacao()">Aprovar e Ativar Usuário</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== PAINEL DE NOTIFICAÇÕES — SOLICITAÇÕES PENDENTES ===== -->
+  <div id="modal-notificacoes" style="display:none;position:fixed;inset:0;z-index:99990;background:rgba(0,0,0,.45)" onclick="if(event.target===this)fecharPainelNotificacoes()">
+    <div style="position:absolute;top:0;right:0;width:420px;max-width:96vw;height:100vh;background:var(--white,#fff);box-shadow:-4px 0 24px rgba(0,0,0,.18);display:flex;flex-direction:column;overflow:hidden">
+      <!-- Header -->
+      <div style="padding:18px 20px;border-bottom:1px solid var(--gray-100);display:flex;align-items:center;justify-content:space-between;background:var(--white,#fff)">
+        <div>
+          <div style="font-size:16px;font-weight:800;color:var(--gray-900)">Solicitações de Acesso</div>
+          <div style="font-size:12px;color:var(--gray-400);margin-top:2px" id="notif-subtitulo">Aguardando análise</div>
+        </div>
+        <button onclick="fecharPainelNotificacoes()" style="background:none;border:none;font-size:22px;color:var(--gray-400);cursor:pointer;line-height:1">×</button>
+      </div>
+      <!-- Lista -->
+      <div style="flex:1;overflow-y:auto;padding:16px" id="notif-lista">
+        <div style="text-align:center;padding:40px;color:var(--gray-400)"><div class="spinner"></div></div>
+      </div>
+      <!-- Footer -->
+      <div style="padding:14px 20px;border-top:1px solid var(--gray-100);background:var(--gray-50)">
+        <button class="btn btn-secondary" style="width:100%;justify-content:center;font-size:13px" onclick="fecharPainelNotificacoes();navigate('usuarios',document.querySelector('[data-v5-page=usuarios]'));setTimeout(()=>switchUsrTab&&switchUsrTab('solicitacoes'),400)">
+          Ver todas em Usuários e Acessos →
+        </button>
       </div>
     </div>
   </div>
@@ -12897,6 +12921,75 @@ async function mudarStatusMC(id, novoStatus) {
     const m=document.getElementById('modal-config-acesso');
     if(m) m.style.display='none';
     _solAtual=null;
+  };
+
+  // ── PAINEL DE NOTIFICAÇÕES RÁPIDAS ─────────────────────────
+  window.abrirPainelNotificacoes = async function(){
+    const m=document.getElementById('modal-notificacoes');
+    if(!m) return;
+    m.style.display='block';
+    const lista=document.getElementById('notif-lista');
+    const sub=document.getElementById('notif-subtitulo');
+    lista.innerHTML='<div style="text-align:center;padding:40px;color:var(--gray-400)"><div class="spinner"></div></div>';
+    try{
+      const d=await api2('/api/admin/solicitacoes?status=PENDENTE');
+      const itens=(d.itens||d.solicitacoes||[]).filter(s=>String(s.STATUS||'').toUpperCase()==='PENDENTE');
+      sub.textContent=itens.length?`${itens.length} aguardando análise`:'Nenhuma pendente';
+      if(!itens.length){
+        lista.innerHTML='<div style="text-align:center;padding:40px;color:var(--gray-400);font-size:13px">✅ Nenhuma solicitação pendente.</div>';
+        return;
+      }
+      lista.innerHTML=itens.map(s=>{
+        const id=s.ID_SOLICITACAO||s.ID||s.id||'';
+        const dt=s.DATA_CRIACAO?new Date(s.DATA_CRIACAO).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'--';
+        return `<div style="border:1px solid var(--gray-100);border-radius:10px;padding:14px;margin-bottom:10px;background:white" id="notif-card-${esc2(id)}">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px">
+            <div>
+              <div style="font-size:14px;font-weight:700;color:var(--gray-900)">${esc2(s.NOME||'—')}</div>
+              <div style="font-size:12px;color:var(--gray-500)">${esc2(s.EMAIL||'')}</div>
+            </div>
+            <span style="background:#FEF3C7;color:#92400E;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:700;flex-shrink:0">PENDENTE</span>
+          </div>
+          <div style="font-size:12px;color:var(--gray-600);margin-bottom:10px;display:grid;grid-template-columns:1fr 1fr;gap:4px">
+            <div><strong>Empresa:</strong> ${esc2(s.EMPRESA||'—')}</div>
+            <div><strong>Setor:</strong> ${esc2(s.SETOR||'—')}</div>
+            <div><strong>Cargo:</strong> ${esc2(s.CARGO||'—')}</div>
+            <div><strong>Solicitado:</strong> ${dt}</div>
+          </div>
+          ${s.JUSTIFICATIVA?`<div style="background:var(--gray-50);border-radius:6px;padding:8px;font-size:11px;color:var(--gray-600);margin-bottom:10px;line-height:1.5"><em>${esc2(s.JUSTIFICATIVA.slice(0,180))}</em></div>`:''}
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-primary" style="flex:1;justify-content:center;font-size:12px" onclick="fecharPainelNotificacoes();abrirConfigAcesso('${esc2(id)}')">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+              Configurar e Aprovar
+            </button>
+            <button class="btn btn-danger" style="font-size:12px;padding:8px 12px" onclick="rejeitarRapido('${esc2(id)}',this)" title="Rejeitar">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              Rejeitar
+            </button>
+          </div>
+        </div>`;
+      }).join('');
+    }catch(e){
+      lista.innerHTML=`<div style="text-align:center;padding:30px;color:var(--gray-400);font-size:13px">Erro ao carregar solicitações.</div>`;
+    }
+  };
+
+  window.fecharPainelNotificacoes = function(){
+    const m=document.getElementById('modal-notificacoes');
+    if(m) m.style.display='none';
+  };
+
+  window.rejeitarRapido = async function(solId, btn){
+    const motivo=prompt('Motivo da rejeição (opcional):');
+    if(motivo===null) return; // cancelou
+    btn.disabled=true; btn.textContent='Rejeitando...';
+    try{
+      await api2('/api/admin/solicitacoes/'+encodeURIComponent(solId)+'/rejeitar',{method:'POST',body:JSON.stringify({motivo:motivo||'Não atende aos critérios de acesso.'})});
+      const card=document.getElementById('notif-card-'+solId);
+      if(card){card.style.opacity='.5';card.style.pointerEvents='none';card.querySelector('[style*="PENDENTE"]').textContent='REJEITADA';card.querySelector('[style*="FEF3C7"]').style.background='#FEE2E2';card.querySelector('[style*="92400E"]').style.color='#991B1B';}
+      checarSolicitacoesPendentes && checarSolicitacoesPendentes();
+      typeof loadSolicitacoes==='function' && loadSolicitacoes();
+    }catch(e){ alert('Erro: '+e.message); btn.disabled=false; btn.textContent='Rejeitar'; }
   };
 
   window.aprovarSolicitacao = async function(){
