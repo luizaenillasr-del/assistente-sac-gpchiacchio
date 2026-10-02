@@ -3028,6 +3028,7 @@
             <div class="field"><label>Perfil</label><select id="edit-perm-perfil"><option value="">Manter atual</option><option value="MASTER">MASTER</option><option value="GESTOR_SAC">GESTOR_SAC</option><option value="ANALISTA_SAC">ANALISTA_SAC</option><option value="REPRESENTANTE">REPRESENTANTE</option><option value="APROVADOR">APROVADOR</option><option value="CONSULTA">CONSULTA</option><option value="AUDITOR">AUDITOR</option></select></div>
             <div class="field"><label>Empresa</label><select id="edit-perm-empresa"><option value="">Manter atual</option><option value="TODAS">Todas as empresas</option><option value="CHIACCHIO EMBALAGENS">Chiacchio Embalagens</option><option value="PLASCHIO">Plaschio</option><option value="TUBAHIA">Tubahia</option></select></div>
             <div class="field"><label>Setor</label><input id="edit-perm-setor" placeholder="Setor"></div>
+            <div class="field"><label>E-mail</label><input id="edit-perm-email" type="email" placeholder="usuario@empresa.com.br"></div>
           </div>
         </div>
         <div class="form-section"><div class="form-section-title">Permissões por Módulo</div>
@@ -13135,6 +13136,7 @@ async function mudarStatusMC(id, novoStatus) {
       setEP('edit-perm-perfil',u.PERFIL||u.perfil||'ANALISTA_SAC');
       setEP('edit-perm-empresa',u.EMPRESA||u.empresa);
       setEP('edit-perm-setor',u.SETOR||u.setor);
+      setEP('edit-perm-email',u.EMAIL||u.email||'');
       document.getElementById('edit-perm-uid').value=uid;
       document.getElementById('edit-perm-sub').textContent=(u.NOME||u.nome||'')+(u.EMAIL||u.email?' · '+(u.EMAIL||u.email):'');
       document.getElementById('edit-perm-error').style.display='none';
@@ -13165,6 +13167,7 @@ async function mudarStatusMC(id, novoStatus) {
     _editPermUid=uid;
     const perfil=document.getElementById('edit-perm-perfil')?.value||'';
     const empresa=document.getElementById('edit-perm-empresa')?.value||'';
+    const email=document.getElementById('edit-perm-email')?.value.trim()||'';
     // Se ambos vazios = "Manter atual", ok — o backend usa o valor já salvo
     const modulosNiveis={};
     MODULOS.forEach(mod=>{
@@ -13179,7 +13182,7 @@ async function mudarStatusMC(id, novoStatus) {
     try{
       await api2('/api/admin/usuarios/'+encodeURIComponent(uid)+'/permissoes',{
         method:'PATCH',
-        body:JSON.stringify({perfil,empresa,modulosNiveis,competencias})
+        body:JSON.stringify({perfil,empresa,email,modulosNiveis,competencias})
       });
       alert('Permissões atualizadas com sucesso.');
       document.getElementById('modal-edit-permissoes').style.display='none';

@@ -4470,7 +4470,7 @@ app.get('/api/admin/usuarios/:id', requerPerfil('MASTER'), async (req, res) => {
 
 app.patch('/api/admin/usuarios/:id/permissoes', requerPerfil('MASTER'), async (req, res) => {
   try {
-    const { perfil, empresa, setor, modulosNiveis, competencias } = req.body||{};
+    const { perfil, empresa, setor, email, modulosNiveis, competencias } = req.body||{};
     const usuarios = await carregarUsuarios();
     const u = usuarios.find(u2=>u2.ID_USUARIO===req.params.id||u2.USUARIO===req.params.id);
     if (!u) return res.status(404).json({sucesso:false,erro:'Usuário não encontrado.'});
@@ -4488,6 +4488,7 @@ app.patch('/api/admin/usuarios/:id/permissoes', requerPerfil('MASTER'), async (r
       updates.EMPRESA = eCod;
     }
     if (setor) updates.SETOR = setor;
+    if (email) updates.EMAIL = email;
     await atualizarPorID('USUARIOS', u.ID_USUARIO||u.USUARIO, updates, ['ID_USUARIO','USUARIO','EMAIL']);
 
     // Atualiza linha de permissões
