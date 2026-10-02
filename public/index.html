@@ -683,6 +683,7 @@
       <div class="login-error" id="login-error">Usuário ou senha inválidos.</div>
       <div style="margin-top:16px;text-align:center;display:flex;flex-direction:column;gap:8px">
         <button class="btn btn-secondary" style="width:100%;font-size:13px;padding:10px" onclick="abrirSolicitacaoAcesso()">Solicitar acesso à plataforma</button>
+        <span style="font-size:12px;color:#9CA3AF;cursor:pointer" onclick="abrirEsqueciSenha()">Esqueci minha senha</span>
         <span style="font-size:12px;color:#9CA3AF;cursor:pointer" onclick="toggleBootstrap()">Primeiro acesso? Criar conta administradora</span>
       </div>
     </div>
@@ -709,6 +710,45 @@
       <button class="login-btn" style="margin-top:10px" onclick="doBootstrap()">Criar administrador</button>
       <div id="bs-feedback" style="display:none;font-size:12px;padding:8px;border-radius:6px;margin-top:8px"></div>
     </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- MODAL ESQUECI SENHA                                          -->
+<!-- ============================================================ -->
+<div id="modal-esqueci-senha" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:99999;display:none;align-items:center;justify-content:center;padding:20px">
+  <div style="background:white;border-radius:16px;max-width:420px;width:100%;padding:32px;box-shadow:0 20px 60px rgba(0,0,0,.4)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div style="font-size:16px;font-weight:800;color:#111827">RECUPERAR SENHA</div>
+      <button onclick="fecharEsqueciSenha()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#6B7280">×</button>
+    </div>
+    <p style="font-size:13px;color:#6B7280;margin-bottom:18px">Informe seu usuário ou e-mail cadastrado. Se existir no sistema, você receberá um link para redefinição.</p>
+    <div style="margin-bottom:14px">
+      <label style="font-size:12px;font-weight:600;color:#6B7280;display:block;margin-bottom:5px">Usuário ou e-mail</label>
+      <input id="esqueci-login" class="login-input" type="text" placeholder="seu.usuario ou email@empresa.com" autocomplete="username">
+    </div>
+    <button onclick="enviarRecuperacaoSenha()" style="width:100%;padding:11px;background:#c8571a;color:white;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">ENVIAR LINK</button>
+    <div id="esqueci-feedback" style="display:none;margin-top:12px;font-size:12px;padding:10px;border-radius:6px"></div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- MODAL REDEFINIR SENHA (via token do e-mail)                  -->
+<!-- ============================================================ -->
+<div id="modal-reset-senha" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:99999;align-items:center;justify-content:center;padding:20px">
+  <div style="background:white;border-radius:16px;max-width:420px;width:100%;padding:32px;box-shadow:0 20px 60px rgba(0,0,0,.4)">
+    <div style="font-size:16px;font-weight:800;color:#111827;margin-bottom:6px">NOVA SENHA</div>
+    <p style="font-size:13px;color:#6B7280;margin-bottom:18px">Escolha uma nova senha para sua conta.</p>
+    <div style="margin-bottom:12px">
+      <label style="font-size:12px;font-weight:600;color:#6B7280;display:block;margin-bottom:5px">Nova senha (mín. 6 caracteres)</label>
+      <input id="reset-nova-senha" type="password" class="login-input" placeholder="••••••••" autocomplete="new-password">
+    </div>
+    <div style="margin-bottom:16px">
+      <label style="font-size:12px;font-weight:600;color:#6B7280;display:block;margin-bottom:5px">Confirmar senha</label>
+      <input id="reset-confirmar-senha" type="password" class="login-input" placeholder="••••••••" autocomplete="new-password">
+    </div>
+    <button onclick="confirmarResetSenha()" style="width:100%;padding:11px;background:#c8571a;color:white;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">REDEFINIR SENHA</button>
+    <div id="reset-feedback" style="display:none;margin-top:12px;font-size:12px;padding:10px;border-radius:6px"></div>
   </div>
 </div>
 
@@ -969,6 +1009,62 @@
     const el = document.getElementById('bootstrap-box');
     el.style.display = el.style.display === 'none' ? 'flex' : 'none';
     if (el.style.display === 'flex') el.style.flexDirection = 'column';
+  }
+
+  function abrirEsqueciSenha() {
+    const m = document.getElementById('modal-esqueci-senha');
+    m.style.display = 'flex';
+    document.getElementById('esqueci-feedback').style.display = 'none';
+    document.getElementById('esqueci-login').value = '';
+    setTimeout(() => document.getElementById('esqueci-login').focus(), 100);
+  }
+  function fecharEsqueciSenha() {
+    document.getElementById('modal-esqueci-senha').style.display = 'none';
+  }
+  async function enviarRecuperacaoSenha() {
+    const login = document.getElementById('esqueci-login').value.trim();
+    const fb = document.getElementById('esqueci-feedback');
+    if (!login) { fb.style.display='block'; fb.style.background='#FEE2E2'; fb.style.color='#DC2626'; fb.textContent='Informe seu usuário ou e-mail.'; return; }
+    fb.style.display='block'; fb.style.background='#EFF6FF'; fb.style.color='#1D4ED8'; fb.textContent='Enviando…';
+    try {
+      const r = await fetch('/api/auth/forgot-password', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({usuario:login})});
+      const d = await r.json();
+      fb.style.background = '#D1FAE5'; fb.style.color = '#065F46';
+      fb.textContent = d.mensagem || 'Verifique seu e-mail.';
+    } catch(e) {
+      fb.style.background='#FEE2E2'; fb.style.color='#DC2626'; fb.textContent='Erro ao enviar. Tente novamente.';
+    }
+  }
+
+  // Abre modal de reset se URL contém token (#reset-password?token=xxx)
+  function verificarTokenReset() {
+    const hash = window.location.hash || '';
+    if (!hash.includes('reset-password')) return;
+    const tokenMatch = hash.match(/token=([a-f0-9]{64})/);
+    if (!tokenMatch) return;
+    window._resetToken = tokenMatch[1];
+    const m = document.getElementById('modal-reset-senha');
+    m.style.display = 'flex';
+  }
+  async function confirmarResetSenha() {
+    const nova = document.getElementById('reset-nova-senha').value;
+    const conf = document.getElementById('reset-confirmar-senha').value;
+    const fb = document.getElementById('reset-feedback');
+    if (!nova || nova.length < 6) { fb.style.display='block'; fb.style.background='#FEE2E2'; fb.style.color='#DC2626'; fb.textContent='Senha deve ter ao menos 6 caracteres.'; return; }
+    if (nova !== conf) { fb.style.display='block'; fb.style.background='#FEE2E2'; fb.style.color='#DC2626'; fb.textContent='As senhas não coincidem.'; return; }
+    fb.style.display='block'; fb.style.background='#EFF6FF'; fb.style.color='#1D4ED8'; fb.textContent='Redefinindo…';
+    try {
+      const r = await fetch('/api/auth/reset-password', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:window._resetToken, novaSenha:nova})});
+      const d = await r.json();
+      if (d.sucesso) {
+        fb.style.background='#D1FAE5'; fb.style.color='#065F46'; fb.textContent='Senha redefinida! Faça login com a nova senha.';
+        setTimeout(() => { document.getElementById('modal-reset-senha').style.display='none'; window.location.hash=''; }, 2500);
+      } else {
+        fb.style.background='#FEE2E2'; fb.style.color='#DC2626'; fb.textContent = d.erro || 'Erro ao redefinir senha.';
+      }
+    } catch(e) {
+      fb.style.background='#FEE2E2'; fb.style.color='#DC2626'; fb.textContent='Erro de conexão.';
+    }
   }
 
   async function doBootstrap() {
@@ -13978,6 +14074,12 @@ async function mudarStatusMC(id, novoStatus) {
   };
 
 })();
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  if (typeof verificarTokenReset === 'function') verificarTokenReset();
+});
 </script>
 
 </body>

@@ -18,7 +18,8 @@
     "cors": "^2.8.5",
     "express": "^4.21.2",
     "googleapis": "^144.0.0",
-    "pdfkit": "^0.20.2"
+    "pdfkit": "^0.20.2",
+    "resend": "^6.32.0"
   },
   "devDependencies": {
     "prisma": "^6.19.3"

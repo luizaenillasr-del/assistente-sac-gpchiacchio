@@ -3,6 +3,10 @@ const cors = require('cors');
 const crypto = require('crypto');
 const { Readable } = require('stream');
 const { google } = require('googleapis');
+const { Resend } = require('resend');
+const _resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+const EMAIL_FROM = process.env.EMAIL_FROM || 'SAC Grupo Chiacchio <noreply@grupochiacchio.com.br>';
+const APP_URL = (process.env.APP_URL || 'https://assistente-sac.vercel.app').replace(/\/$/, '');
 const cerebroService = require('./services/cerebroServices');
 const mcService = require('./services/matrizConhecimentoService');
 const documentService = require('./services/documentService');
@@ -700,6 +704,7 @@ app.use('/api', async (req,res,next)=>{
     '/',
     '/auth/login',
     '/auth/forgot-password',
+    '/auth/reset-password',
     '/bootstrap',
     '/public/solicitar-acesso',
     '/public/reclamacoes',
@@ -790,10 +795,102 @@ app.post('/api/auth/refresh', async (req,res)=>{
 });
 
 app.post('/api/auth/forgot-password', async (req,res)=>{
-  const login=req.body?.usuario||req.body?.email||'';
+  const login=(req.body?.usuario||req.body?.email||'').trim().toLowerCase();
   if(!login) return res.status(400).json({sucesso:false,erro:'Informe usuário ou e-mail.'});
   await registrarAuditoria(login,'SOLICITOU_RECUPERACAO_SENHA',null,'AUTH',null,{});
-  res.json({sucesso:true,mensagem:'Solicitação registrada. O administrador deverá redefinir a senha.'});
+
+  // Localizar usuário
+  let usuarios = [];
+  try { usuarios = await lerAba('USUARIOS', 500); } catch(e) {}
+  const usuario = usuarios.find(u => {
+    const u_login = (u.USUARIO||u.EMAIL||'').trim().toLowerCase();
+    const u_email = (u.EMAIL||'').trim().toLowerCase();
+    return u_login === login || u_email === login;
+  });
+
+  // Resposta genérica independente de o usuário existir (evita enumeração)
+  const MSG_OK = 'Se o usuário existir, um link de redefinição será enviado para o e-mail cadastrado.';
+
+  if (!usuario || !usuario.EMAIL) {
+    return res.json({sucesso:true, mensagem: MSG_OK});
+  }
+
+  if (!_resend) {
+    // Sem serviço de e-mail configurado — fallback manual
+    console.warn('[forgot-password] RESEND_API_KEY não configurada. Envio ignorado para:', login);
+    return res.json({sucesso:true, mensagem:'Solicitação registrada. O administrador deverá redefinir a senha.'});
+  }
+
+  // Gerar token seguro de 1h
+  const token = crypto.randomBytes(32).toString('hex');
+  const expMs = Date.now() + 60 * 60 * 1000;
+
+  // Gravar token na aba RESET_TOKENS (cria linha; não precisa de aba pré-existente)
+  try {
+    await appendObjeto('RESET_TOKENS', {
+      TOKEN: token,
+      USUARIO: usuario.USUARIO || usuario.EMAIL,
+      EMAIL: usuario.EMAIL,
+      EXP: new Date(expMs).toISOString(),
+      USADO: 'NAO',
+    });
+  } catch(e) {
+    console.error('[forgot-password] erro ao gravar token:', e.message);
+    return res.status(500).json({sucesso:false, erro:'Erro interno ao gerar token.'});
+  }
+
+  const link = `${APP_URL}/#reset-password?token=${token}`;
+  try {
+    await _resend.emails.send({
+      from: EMAIL_FROM,
+      to: usuario.EMAIL,
+      subject: 'Redefinição de senha — SAC Grupo Chiacchio',
+      html: `
+        <p>Olá, <strong>${usuario.NOME||usuario.USUARIO}</strong>.</p>
+        <p>Recebemos uma solicitação de redefinição de senha para sua conta no <strong>Assistente SAC</strong>.</p>
+        <p><a href="${link}" style="background:#c8571a;color:#fff;padding:10px 20px;border-radius:4px;text-decoration:none;display:inline-block;margin:12px 0">Redefinir minha senha</a></p>
+        <p>Este link é válido por <strong>1 hora</strong>. Se você não solicitou a redefinição, ignore este e-mail.</p>
+        <hr style="margin:20px 0;border:none;border-top:1px solid #eee">
+        <p style="color:#999;font-size:12px">SAC Grupo Chiacchio — sistema interno</p>
+      `,
+    });
+    await registrarAuditoria(login,'EMAIL_RESET_ENVIADO',null,'AUTH',null,{email:usuario.EMAIL});
+  } catch(e) {
+    console.error('[forgot-password] erro ao enviar e-mail:', e.message);
+    return res.status(500).json({sucesso:false, erro:'Erro ao enviar e-mail. Tente novamente.'});
+  }
+
+  res.json({sucesso:true, mensagem: MSG_OK});
+});
+
+app.post('/api/auth/reset-password', async (req,res)=>{
+  const { token, novaSenha } = req.body || {};
+  if (!token || !novaSenha) return res.status(400).json({sucesso:false, erro:'Token e nova senha são obrigatórios.'});
+  if (novaSenha.length < 6) return res.status(400).json({sucesso:false, erro:'Senha deve ter ao menos 6 caracteres.'});
+
+  let tokens = [];
+  try { tokens = await lerAba('RESET_TOKENS', 1000); } catch(e) {}
+  const registro = tokens.find(t => t.TOKEN === token && t.USADO === 'NAO');
+  if (!registro) return res.status(400).json({sucesso:false, erro:'Token inválido ou já utilizado.'});
+  if (Date.now() > new Date(registro.EXP).getTime()) return res.status(400).json({sucesso:false, erro:'Token expirado. Solicite um novo link.'});
+
+  // Hash da nova senha
+  const hash = 'sha256:' + crypto.createHash('sha256').update(novaSenha).digest('hex');
+
+  // Atualizar senha do usuário
+  try {
+    await atualizarPorID('USUARIOS', registro.USUARIO, {SENHA: hash}, ['USUARIO','EMAIL']);
+  } catch(e) {
+    return res.status(500).json({sucesso:false, erro:'Erro ao atualizar senha.'});
+  }
+
+  // Marcar token como usado
+  try {
+    await atualizarPorID('RESET_TOKENS', token, {USADO:'SIM'}, ['TOKEN']);
+  } catch(e) { /* não crítico */ }
+
+  await registrarAuditoria(registro.USUARIO,'SENHA_REDEFINIDA_VIA_TOKEN',null,'AUTH',null,{});
+  res.json({sucesso:true, mensagem:'Senha redefinida com sucesso. Faça login com a nova senha.'});
 });
 
 // ===== ANÁLISE IA =====
