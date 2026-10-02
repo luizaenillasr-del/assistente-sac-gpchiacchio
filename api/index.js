@@ -880,7 +880,7 @@ app.post('/api/auth/reset-password', async (req,res)=>{
 
   // Atualizar senha do usuário
   try {
-    await atualizarPorID('USUARIOS', registro.USUARIO, {SENHA: hash}, ['USUARIO','EMAIL']);
+    await atualizarPorID('USUARIOS', registro.USUARIO, {SENHA: hash, SENHA_HASH: hash}, ['USUARIO','EMAIL']);
   } catch(e) {
     return res.status(500).json({sucesso:false, erro:'Erro ao atualizar senha.'});
   }
