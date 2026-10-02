@@ -155,8 +155,8 @@
   .filter-last { margin-left: auto; font-size: 11px; color: var(--gray-400); }
 
   /* GRID 2/3 */
-  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
-  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .grid-2 { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,420px),1fr)); gap: 16px; margin-bottom: 16px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,300px),1fr)); gap: 16px; margin-bottom: 16px; }
 
   /* SECTION CARD */
   .section-card { background: white; border: 1px solid #E4E4E4; border-radius: 10px; padding: 20px; }
@@ -244,7 +244,7 @@
   .proc-seg { height: 100%; }
 
   /* STEPPER */
-  .stepper { display: flex; align-items: center; gap: 0; margin-bottom: 24px; background: white; border: 1px solid var(--gray-200); border-radius: 10px; padding: 14px 20px; overflow-x: auto; }
+  .stepper { display: none; }
   .step { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
   .step-num { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
   .step-num.done { background: var(--red); color: white; }
@@ -271,12 +271,11 @@
   .man-header-sub { font-size: 11px; color: var(--gray-400); margin-top: 2px; }
 
   /* FORM */
-  .form-section { background: white; border: 1px solid var(--gray-200); border-radius: 10px; padding: 20px; margin-bottom: 16px; }
-  .form-section-title { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
-  .form-section-icon { width: 28px; height: 28px; background: var(--red-light); border-radius: 6px; display: flex; align-items: center; justify-content: center; }
-  .form-section-icon svg { width: 14px; height: 14px; color: var(--red); }
-  .form-section-name { font-size: 14px; font-weight: 700; }
-  .form-section-desc { font-size: 12px; color: var(--gray-400); margin-bottom: 16px; margin-left: 36px; }
+  .form-section { background: white; border: 1px solid #E4E4E4; border-radius: 10px; padding: 20px; margin-bottom: 0; display: flex; flex-direction: column; gap: 14px; }
+  .form-section-title { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 0; }
+  .form-section-icon { display: none; }
+  .form-section-name { font-weight: 600; font-size: 15px; }
+  .form-section-desc { font-size: 12.5px; color: #8A8888; margin-bottom: 0; margin-left: 0; }
   .form-row { display: grid; gap: 12px; margin-bottom: 12px; }
   .form-row.cols-4 { grid-template-columns: repeat(4, 1fr); }
   .form-row.cols-2 { grid-template-columns: 1fr 1fr; }
@@ -292,9 +291,9 @@
 
   /* CANAL BTNS */
   .canal-btns { display: flex; gap: 6px; flex-wrap: wrap; }
-  .canal-btn { padding: 6px 12px; border-radius: 20px; border: 1px solid var(--gray-200); background: white; font-size: 12px; font-weight: 500; cursor: pointer; color: var(--gray-600); }
-  .canal-btn.active { background: var(--red); color: white; border-color: var(--red); }
-  .canal-btn:hover:not(.active) { border-color: var(--red); color: var(--red); }
+  .canal-btn { padding: 7px 12px; border-radius: 7px; border: 1px solid #D6D6D6; background: white; font-size: 13px; font-weight: 400; cursor: pointer; color: #545252; font-family: inherit; }
+  .canal-btn.active { background: #1F1F1F; color: white; border-color: #1F1F1F; }
+  .canal-btn:hover:not(.active) { border-color: #C70602; color: #C70602; }
 
   /* TIPO BTNS */
   .tipo-btns { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
@@ -316,9 +315,11 @@
   .resumo-sub { font-size: 11px; color: var(--gray-400); }
 
   /* LAYOUT COM ASIDE */
-  .page-layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; }
+  .page-layout { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; }
+  .page-layout > :first-child { flex: 999 1 480px; display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  .page-layout-sidebar { flex: 1 1 260px; position: sticky; top: 86px; display: flex; flex-direction: column; gap: 12px; }
   .page-layout-wide { display: grid; grid-template-columns: 1fr 240px; gap: 16px; }
-  .aside { display: flex; flex-direction: column; gap: 12px; }
+  .aside { flex: 1 1 260px; position: sticky; top: 86px; display: flex; flex-direction: column; gap: 12px; }
 
   /* BANCO TABLE */
   .banco-table { width: 100%; border-collapse: collapse; }
@@ -477,9 +478,9 @@
     .kpi-grid, .setores-grid { grid-template-columns: repeat(3, 1fr); }
   }
 
-  .upload-box{border:1.5px dashed #D7A0A8;background:#FFF8F9;border-radius:10px;padding:18px;text-align:center;cursor:pointer;transition:.15s}
-  .upload-box:hover{border-color:var(--red);background:#FFF3F5}
-  .upload-box.drag{border-color:var(--red);background:#FDECEF}
+  .upload-box{border:1.5px dashed #CFCFCF;background:#FAFAFA;border-radius:8px;padding:20px;cursor:pointer;transition:.15s;display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
+  .upload-box:hover{border-color:#C70602;background:#FFF8F8}
+  .upload-box.drag{border-color:#C70602;background:#FDECEC}
   .upload-list{display:flex;flex-direction:column;gap:6px;margin-top:8px}
   .upload-item{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;border:1px solid var(--gray-200);border-radius:8px;background:#fff;font-size:12px}
   .upload-item small{color:var(--gray-400)}
@@ -1905,7 +1906,8 @@
             </div>
             <input id="nm-evidencias" type="file" multiple accept=".pdf,image/*,.doc,.docx,.xls,.xlsx" style="display:none" onchange="adicionarEvidencias(this.files)">
             <div id="nm-upload-box" class="upload-box" onclick="document.getElementById('nm-evidencias').click()" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="event.preventDefault();this.classList.remove('drag');adicionarEvidencias(event.dataTransfer.files)">
-              <div style="font-size:22px;margin-bottom:5px">↑</div><strong style="font-size:13px">Arraste arquivos aqui</strong><div style="font-size:11px;color:var(--gray-400);margin-top:3px">ou clique para adicionar fotos, NF e evidências</div>
+              <div id="nm-evidencias-chips" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+              <span style="font-size:12.5px;color:#666464">Arraste arquivos aqui ou <span style="color:#A80502;font-weight:500">selecione</span> · até 50 MB</span>
             </div>
             <div id="nm-evidencias-list" class="upload-list"></div>
           </div>
@@ -1931,30 +1933,22 @@
 
         <!-- ASIDE -->
         <div class="aside">
-          <!-- Resumo da ficha -->
-          <div class="section-card">
-            <div style="font-size:12px;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:6px;color:var(--gray-900)">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-              Resumo da ficha
-            </div>
-            <div id="nm-resumo-ficha" style="display:flex;flex-direction:column;gap:6px;font-size:12px">
-              <!-- Itens populados pelo JS -->
-            </div>
+          <!-- Card vermelho: Análise com IA -->
+          <div style="background:#C70602;color:#fff;border-radius:10px;padding:18px;display:flex;flex-direction:column;gap:12px">
+            <div style="font-weight:700;font-size:14px">Análise com IA</div>
+            <div style="font-size:12.5px;color:#FFE1E0;line-height:1.55">A IA consulta histórico, Cérebro, Matriz de tratamento e Políticas e sugere tipo, categoria, motivo, causa provável, setor, prioridade, casos similares, reincidência e checklist. Você aceita, edita ou rejeita cada sugestão.</div>
+            <button onclick="registrarManifestacao()" style="height:42px;border:0;background:#fff;color:#C70602;border-radius:8px;font-weight:700;cursor:pointer;font-size:13px;font-family:inherit">Analisar manifestação com IA</button>
+            <button onclick="salvarRascunho()" style="height:36px;border:1px solid rgba(255,255,255,.5);background:transparent;color:#fff;border-radius:8px;cursor:pointer;font-size:13px;font-family:inherit">Salvar rascunho</button>
           </div>
 
-          <div class="section-card" id="nm-verificacao-card">
-            <div style="font-size:12px;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:6px">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-              Verificação automática
-            </div>
-            <div style="font-size:12px;color:var(--gray-500)" id="nm-verificacao-status">Aguardando NFe/lote para verificar duplicidades...</div>
+          <!-- Verificação automática -->
+          <div class="section-card" id="nm-verificacao-card" style="font-size:13px;gap:10px;display:flex;flex-direction:column">
+            <div style="font-weight:600;font-size:13.5px">Verificação automática</div>
+            <div style="color:#8A8888;font-size:13px" id="nm-verificacao-status">Aguardando NFe/lote para verificar duplicidades...</div>
           </div>
 
-          <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="registrarManifestacao()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-            Registrar e enviar para análise
-          </button>
-          <button class="btn btn-secondary" style="width:100%;justify-content:center;margin-top:6px" onclick="salvarRascunho()">Salvar rascunho</button>
+          <!-- Resumo da ficha (hidden compat) -->
+          <div id="nm-resumo-ficha" style="display:none"></div>
         </div>
       </div>
     </div>
