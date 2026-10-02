@@ -2487,6 +2487,9 @@
               Voltar à lista
             </button>
           </div>
+          <div id="setor-lista-btn">
+            <button class="btn btn-primary" onclick="abrirModalNovoSetor()">+ Novo setor</button>
+          </div>
         </div>
       </div>
     </div>
@@ -4650,6 +4653,41 @@
         </div>
       </div>
 
+    </div>
+  </div>
+</div>
+
+<!-- MODAL NOVO/EDITAR SETOR -->
+<div id="modal-setor" class="modal-overlay" style="display:none" onclick="if(event.target===this)fecharModalSetor()">
+  <div class="modal-box" style="max-width:560px">
+    <div class="modal-header">
+      <div><div id="modal-setor-titulo" style="font-size:18px;font-weight:800">Novo setor</div></div>
+      <button class="modal-close" onclick="fecharModalSetor()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-section">
+        <div class="field-grid">
+          <div class="field" style="grid-column:1/-1"><label>Nome do setor *</label><input id="set-nome" placeholder="Ex: Qualidade, Logística..."></div>
+          <div class="field" style="grid-column:1/-1"><label>Descrição</label><input id="set-descricao" placeholder="Breve descrição das responsabilidades"></div>
+          <div class="field"><label>Responsável</label><input id="set-responsavel" placeholder="Nome do responsável"></div>
+          <div class="field"><label>Empresa</label>
+            <select id="set-empresa">
+              <option value="">Todas</option>
+              <option value="CHIACCHIO">Chiacchio</option>
+              <option value="PLASCHIO">Plaschio</option>
+              <option value="TUBAHIA/CESBAP">Tubahia/Cesbap</option>
+            </select>
+          </div>
+          <div class="field"><label>SLA (horas)</label><input id="set-sla" type="number" placeholder="72" value="72"></div>
+          <div class="field"><label>Status</label>
+            <select id="set-ativo"><option value="SIM">Ativo</option><option value="NÃO">Inativo</option></select>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px">
+        <button class="btn btn-secondary" onclick="fecharModalSetor()">Cancelar</button>
+        <button class="btn btn-primary" id="set-salvar-btn" onclick="salvarSetor()">Criar setor</button>
+      </div>
     </div>
   </div>
 </div>
@@ -7466,8 +7504,9 @@ async function loadSetores() {
           </div>
           ${countsBadge}
           ${avg ? `<div style="margin-top:8px;font-size:11px;color:var(--gray-500);text-align:right">Tempo médio: <strong>${avg}h</strong></div>` : ''}
-          <div style="margin-top:10px">
-            <button class="btn btn-primary" style="width:100%;font-size:12px;padding:6px" onclick="event.stopPropagation();abrirFichaSetor('${nomeSetor}')">VER SETOR</button>
+          <div style="margin-top:10px;display:flex;gap:6px">
+            <button class="btn btn-primary" style="flex:1;font-size:12px;padding:6px" onclick="event.stopPropagation();abrirFichaSetor('${nomeSetor}')">VER SETOR</button>
+            <button class="btn btn-secondary" style="font-size:12px;padding:6px 10px" title="Editar setor" onclick="event.stopPropagation();editarSetorPorId('${_e(s.ID_SETOR||'')}','${nomeSetor}')">✎</button>
           </div>
         </div>`;
     }).join('') || '<div style="grid-column:1/-1;text-align:center;padding:24px;color:var(--gray-400)">Nenhum setor encontrado para este filtro</div>';
@@ -7546,8 +7585,55 @@ function voltarSetores() {
   document.getElementById('setores-lista-view').style.display = 'block';
   document.getElementById('setores-detalhe-view').style.display = 'none';
   document.getElementById('setor-detalhe-btn').style.display = 'none';
+  document.getElementById('setor-lista-btn').style.display = 'block';
   _setorAtual = null;
 }
+
+let _setorEditandoId = null;
+window.editarSetorPorId = function(id, nome) {
+  const s = _setoresConfig.find(x => x.ID_SETOR === id || x.SETOR === nome);
+  abrirModalNovoSetor(s || null);
+};
+window.abrirModalNovoSetor = function(setor) {
+  _setorEditandoId = setor ? (setor.ID_SETOR || null) : null;
+  document.getElementById('modal-setor-titulo').textContent = setor ? 'Editar setor' : 'Novo setor';
+  document.getElementById('set-nome').value = setor ? (setor.SETOR || '') : '';
+  document.getElementById('set-descricao').value = setor ? (setor.DESCRICAO || '') : '';
+  document.getElementById('set-responsavel').value = setor ? (setor.RESPONSAVEL || '') : '';
+  document.getElementById('set-empresa').value = setor ? (setor.EMPRESA || '') : '';
+  document.getElementById('set-sla').value = setor ? (setor.SLA_HORAS || '72') : '72';
+  document.getElementById('set-ativo').value = setor ? (setor.ATIVO || 'SIM') : 'SIM';
+  document.getElementById('set-salvar-btn').textContent = setor ? 'Salvar alterações' : 'Criar setor';
+  document.getElementById('modal-setor').style.display = 'flex';
+};
+window.fecharModalSetor = function() { document.getElementById('modal-setor').style.display = 'none'; };
+window.salvarSetor = async function() {
+  const nome = document.getElementById('set-nome').value.trim();
+  if (!nome) { alert('Nome do setor é obrigatório.'); return; }
+  const body = {
+    SETOR: nome,
+    DESCRICAO: document.getElementById('set-descricao').value.trim(),
+    RESPONSAVEL: document.getElementById('set-responsavel').value.trim(),
+    EMPRESA: document.getElementById('set-empresa').value,
+    SLA_HORAS: document.getElementById('set-sla').value || '72',
+    ATIVO: document.getElementById('set-ativo').value,
+  };
+  try {
+    const btn = document.getElementById('set-salvar-btn');
+    btn.disabled = true; btn.textContent = 'Salvando...';
+    if (_setorEditandoId) {
+      await json5('/api/setores/' + encodeURIComponent(_setorEditandoId), { method: 'PATCH', body: JSON.stringify(body) });
+    } else {
+      await json5('/api/setores', { method: 'POST', body: JSON.stringify(body) });
+    }
+    fecharModalSetor();
+    loadSetores();
+  } catch(e) {
+    alert('Erro ao salvar setor: ' + e.message);
+    const btn = document.getElementById('set-salvar-btn');
+    btn.disabled = false; btn.textContent = _setorEditandoId ? 'Salvar alterações' : 'Criar setor';
+  }
+};
 
 function switchFichaTab(tab, btn) {
   ['casos','conhecimento','rnc','desempenho'].forEach(t => {
@@ -7562,6 +7648,7 @@ async function abrirFichaSetor(nomeSetor) {
   document.getElementById('setores-lista-view').style.display = 'none';
   document.getElementById('setores-detalhe-view').style.display = 'block';
   document.getElementById('setor-detalhe-btn').style.display = 'block';
+  document.getElementById('setor-lista-btn').style.display = 'none';
 
   // Ativar primeira tab
   switchFichaTab('casos', document.querySelector('#ficha-tabs .tab-btn'));
