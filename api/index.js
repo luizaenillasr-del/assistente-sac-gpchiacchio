@@ -1234,6 +1234,7 @@ app.post('/api/manifestacoes/:id/tratativa/decisao', requerPerfil('MASTER','ANAL
     const data = await lerAba('MANIFESTACOES',2000);
     const m = data.find(r=>r.ID_MANIFESTACAO===req.params.id);
     if (!m) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
+    if(!pertenceEmpresa(req.user?.empresa, m.EMPRESA_RECLAMADA)) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado para esta manifestação.'});
     await assertividadeService.registrarDecisao({
       idManifestacao: req.params.id,
       tipoRegistro: 'TRATATIVA',
@@ -2087,6 +2088,7 @@ app.post('/api/rnc/:id/decisao', requerPerfil('APROVADOR','MASTER'), async (req,
     if(!decisao) return res.status(400).json({sucesso:false,erro:'Decisão é obrigatória.'});
     const rnc=(await lerAba('BANCO_RNC',5000).catch(()=>[])).find(x=>x.ID_RNC===req.params.id);
     if(!rnc) return res.status(404).json({sucesso:false,erro:'RNC não encontrada.'});
+    if(!pertenceEmpresa(req.user?.empresa, rnc.EMPRESA_RECLAMADA)) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado para esta RNC.'});
     const d=String(decisao).toUpperCase();
     if(d!=='APROVAR'&&(!observacoes||!String(observacoes).trim())) return res.status(400).json({sucesso:false,erro:'Justificativa é obrigatória.'});
     const status=d==='APROVAR'?'APROVADA':(d==='REJEITAR'?'REJEITADA':'DEVOLVIDA'); const agora=new Date().toISOString();
