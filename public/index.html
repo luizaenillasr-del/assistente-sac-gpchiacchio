@@ -8697,7 +8697,7 @@ window.navigate = function(page, el) {
             <span style="margin-left:auto;padding:2px 9px;border-radius:99px;font-size:11.5px;font-weight:600;background:${stBg};color:${stFg}">${esc5(r.STATUS||r.status||'')}</span>
           </div>
           <div style="font-size:13px;color:#545252;margin-top:6px">Motivo: ${esc5(r.MOTIVO||r.motivo||'—')}</div>
-          ${r.STATUS==='PENDENTE'?`<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><button onclick="abrirConfigAcesso('${esc5(r.id||r.ID)}')" style="border:1px solid #D6D6D6;background:#fff;border-radius:7px;padding:7px 12px;cursor:pointer;font-size:12.5px;color:#A80502">Rejeitar</button><button onclick="abrirConfigAcesso('${esc5(r.id||r.ID)}')" style="border:0;background:#1F1F1F;color:#fff;border-radius:7px;padding:7px 14px;cursor:pointer;font-size:12.5px;font-weight:600">Aprovar com este perfil</button></div>`:''}
+          ${r.STATUS==='PENDENTE'?`<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><button onclick="abrirConfigAcesso('${esc5(r.ID_SOLICITACAO||r.id||r.ID)}')" style="border:1px solid #D6D6D6;background:#fff;border-radius:7px;padding:7px 12px;cursor:pointer;font-size:12.5px;color:#A80502">Rejeitar</button><button onclick="abrirConfigAcesso('${esc5(r.ID_SOLICITACAO||r.id||r.ID)}')" style="border:0;background:#1F1F1F;color:#fff;border-radius:7px;padding:7px 14px;cursor:pointer;font-size:12.5px;font-weight:600">Aprovar com este perfil</button></div>`:''}
         </div>`;
       }).join('');
     }catch(e){console.error('Solicitações:',e);}
@@ -13728,7 +13728,7 @@ async function mudarStatusMC(id, novoStatus) {
       if(dashAlert){if(pendCount>0){dashAlert.style.display='flex';}else{dashAlert.style.display='none';}}
       if(!a.length){ el.innerHTML='<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--gray-400)">Nenhuma solicitação encontrada.</td></tr>'; return; }
       el.innerHTML=a.map(s=>{
-        const id=s.ID||s.id;
+        const id=s.ID_SOLICITACAO||s.ID||s.id;
         const st=String(s.STATUS||'PENDENTE').toUpperCase();
         const stColor=st==='PENDENTE'?'var(--orange)':st==='APROVADA'?'var(--green)':st==='REJEITADA'?'var(--red)':'var(--gray-400)';
         return `<tr>
