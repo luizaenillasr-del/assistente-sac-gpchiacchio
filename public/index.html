@@ -505,7 +505,7 @@
 </head>
 <style>
   /* LOGIN — split-screen */
-  .login-screen { position: fixed; inset: 0; z-index: 9999; overflow-y: auto; background: #fff; }
+  .login-screen { position: fixed; inset: 0; z-index: 9999; overflow-y: auto; background: #F4F4F4; }
   .login-split { min-height: 100vh; display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); }
   .login-left { background: #C70602; color: #fff; padding: 48px 56px; display: flex; flex-direction: column; justify-content: space-between; gap: 40px; }
   .login-left-brand { display: flex; align-items: center; gap: 14px; }
@@ -519,7 +519,7 @@
   .login-step { display: flex; gap: 12px; align-items: center; }
   .login-step-n { font-variant-numeric: tabular-nums; color: #FFC2BF; font-weight: 700; min-width: 20px; }
   .login-left-footer { font-size: 12px; color: #FFE1E0; display: flex; gap: 16px; flex-wrap: wrap; }
-  .login-right { display: grid; place-items: center; padding: 48px 24px; background: #fff; }
+  .login-right { display: grid; place-items: center; padding: 48px 24px; background: #F4F4F4; }
   .login-wrap { display: flex; flex-direction: column; gap: 18px; width: 100%; max-width: 380px; }
   .login-header { margin-bottom: 2px; }
   .login-header img { height: 44px; display: block; margin-bottom: 10px; }
@@ -725,49 +725,29 @@
         </div>
       </div>
       <div class="login-left-footer">
-        <span>Chiacchio · Plaschio · Cesbap</span>
-        <span>Versão 1.0</span>
+        <span>Ambiente: Homologação</span><span>Versão 1.0</span><span>Chiacchio · Plaschio · Tubahia</span>
       </div>
     </div>
 
-    <!-- PAINEL DIREITO — branco -->
+    <!-- PAINEL DIREITO -->
     <div class="login-right">
-      <div class="login-wrap">
-        <!-- Cabeçalho -->
-        <div class="login-header">
-          <img src="/logo-chiacchio.png" alt="Grupo Chiacchio" style="width:150px;height:auto;display:block;margin-bottom:10px">
-          <h1>Entrar</h1>
-          <p>Use seu e-mail ou usuário corporativo. O perfil de acesso é identificado automaticamente.</p>
+      <div style="width:100%;max-width:380px;display:flex;flex-direction:column;gap:18px">
+        <img src="/logo-chiacchio.png" alt="Grupo Chiacchio" style="width:150px;height:auto;display:block;margin-bottom:6px">
+        <div>
+          <div style="font-size:22px;font-weight:700">Entrar</div>
+          <div style="color:#666464;font-size:13px;margin-top:4px">Use seu e-mail corporativo. O perfil de acesso é identificado automaticamente.</div>
         </div>
-
-        <!-- Caixa de login -->
-        <div class="login-box">
-          <div class="login-field">
-            <label class="login-label">E-mail ou usuário</label>
-            <input class="login-input" type="text" id="login-user" placeholder="nome@grupochiacchio.com.br" autocomplete="username" onkeydown="if(event.key==='Enter')document.getElementById('login-senha').focus()">
-          </div>
-          <div class="login-field">
-            <label class="login-label">Senha</label>
-            <input class="login-input" type="password" id="login-senha" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
-          </div>
-          <div style="display:flex;justify-content:flex-end;margin-bottom:14px">
-            <span style="font-size:13px;color:#A80502;cursor:pointer" onclick="abrirEsqueciSenha()">Esqueci minha senha</span>
-          </div>
-          <button class="login-btn" onclick="doLogin()">Entrar</button>
-          <div class="login-error" id="login-error">E-mail ou senha inválidos. Verifique os dados e tente novamente.</div>
+        <div id="login-error" style="display:none;background:#F9E3E3;color:#8E1A24;border-radius:8px;padding:10px 12px;font-size:13px">E-mail ou senha inválidos.</div>
+        <label style="display:flex;flex-direction:column;gap:6px;font-size:12.5px;color:#545252">E-mail ou usuário<input id="login-user" type="text" placeholder="nome@grupochiacchio.com.br" autocomplete="username" style="height:42px;border:1px solid #D6D6D6;border-radius:8px;padding:0 12px;background:#fff;font-size:14px;font-family:inherit" onkeydown="if(event.key==='Enter')document.getElementById('login-senha').focus()"></label>
+        <label style="display:flex;flex-direction:column;gap:6px;font-size:12.5px;color:#545252">Senha<input id="login-senha" type="password" placeholder="••••••••" autocomplete="current-password" style="height:42px;border:1px solid #D6D6D6;border-radius:8px;padding:0 12px;background:#fff;font-size:14px;font-family:inherit" onkeydown="if(event.key==='Enter')doLogin()"></label>
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px">
+          <label style="display:flex;gap:8px;align-items:center;color:#545252;cursor:pointer"><input type="checkbox" checked style="accent-color:#C70602">Manter sessão por 8h</label>
+          <button onclick="abrirEsqueciSenha()" style="background:none;border:0;color:#A80502;cursor:pointer;padding:0;font-family:inherit;font-size:13px">Esqueci minha senha</button>
         </div>
-
-        <!-- Divisor -->
-        <div class="login-divider"><span>ou</span></div>
-
-        <!-- Portal do funcionário -->
-        <div class="login-portal-box">
-          <h3>Acesso de demonstração ou sem conta?</h3>
-          <div style="display:flex;flex-direction:column;gap:8px">
-            <button class="btn-portal" onclick="abrirPortalPublico()">Registrar Manifestação (sem login)</button>
-            <button style="background:none;border:0;color:#A80502;cursor:pointer;padding:0;font-size:13px;text-align:left;font-family:inherit" onclick="abrirSolicitacaoAcesso()">Não tem conta? Solicitar acesso</button>
-            <span style="font-size:11px;color:#929090;cursor:pointer" onclick="toggleBootstrap()">Primeiro acesso? Criar conta administradora</span>
-          </div>
+        <button onclick="doLogin()" class="login-btn">Entrar</button>
+        <div style="font-size:12px;color:#8A8888">A sessão expira após 30 minutos sem atividade.</div>
+        <div style="border-top:1px solid #E4E4E4;padding-top:16px">
+          <button onclick="abrirSolicitacaoAcesso()" style="background:none;border:0;color:#A80502;cursor:pointer;padding:0;font-family:inherit;font-size:13px;text-align:left">Não tem conta? Solicitar acesso</button>
         </div>
 
         <!-- BOOTSTRAP — só aparece quando não há usuários -->
