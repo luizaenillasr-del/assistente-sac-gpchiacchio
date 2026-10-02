@@ -506,7 +506,8 @@
 <style>
   /* LOGIN — split-screen */
   .login-screen { position: fixed; inset: 0; z-index: 9999; overflow-y: auto; background: #F4F4F4; }
-  .login-split { min-height: 100vh; display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); }
+  .login-split { min-height: 100vh; display: grid; grid-template-columns: 1fr 1fr; }
+  @media (max-width: 680px) { .login-split { grid-template-columns: 1fr; } }
   .login-left { background: #C70602; color: #fff; padding: 48px 56px; display: flex; flex-direction: column; justify-content: space-between; gap: 40px; }
   .login-left-brand { display: flex; align-items: center; gap: 14px; }
   .login-left-brand-text { }
@@ -5825,8 +5826,8 @@ async function loadVisaoGeral() {
     checarSolicitacoesPendentes();
 
     const [manRes, recRes] = await Promise.all([
-      _apiFetch('/api/manifestacoes', 15000).catch(() => ({ itens: [] })),
-      _apiFetch('/api/reclamacoes', 15000).catch(() => ({ itens: [] }))
+      _apiFetch('/api/manifestacoes', 30000).catch(() => ({ itens: [] })),
+      _apiFetch('/api/reclamacoes', 30000).catch(() => ({ itens: [] }))
     ]);
 
     _dashData.mans = manRes.itens || [];
@@ -5856,6 +5857,12 @@ async function loadVisaoGeral() {
 
   } catch (err) {
     console.error('Erro ao carregar visão geral:', err);
+    // Limpar spinners para não ficarem travados
+    ['etapas-list','donut-wrap','proc-content','bar-chart-wrap','fila-body','empresa-cards','top-motivos'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el && el.querySelector('.spinner')) el.innerHTML = '<div style="text-align:center;padding:16px;color:var(--gray-400);font-size:12px">Erro ao carregar. Tente atualizar a página.</div>';
+    });
+    const lu = document.getElementById('last-update'); if (lu) lu.textContent = 'Erro ao atualizar';
   }
 }
 
@@ -6246,7 +6253,7 @@ async function initNovaManifestacao() {
   const userName = _userObj.NOME || _userObj.nome || _userObj.USUARIO || _userObj.usuario || 'Analista SAC';
   document.getElementById('nm-atendente').value = userName;
   try {
-    const res = await _apiFetch('/api/manifestacoes', 10000);
+    const res = await _apiFetch('/api/manifestacoes', 25000);
     const count = (res.total || (res.itens||[]).length) + 1;
     document.getElementById('nm-num').value = String(count).padStart(4,'0') + '/' + new Date().getFullYear();
   } catch { document.getElementById('nm-num').value = '----/' + new Date().getFullYear(); }
@@ -6725,7 +6732,7 @@ async function _loadDossieRNC() {
   if (!m) { el.innerHTML = '<div style="color:var(--gray-400);padding:20px;text-align:center">Sem dados.</div>'; return; }
   el.innerHTML = '<div style="text-align:center;padding:20px"><div class="spinner"></div></div>';
   try {
-    const data = await _apiFetch('/api/rnc?limit=200', 8000).catch(() => ({ rncs: [], itens: [] }));
+    const data = await _apiFetch('/api/rnc?limit=200', 25000).catch(() => ({ rncs: [], itens: [] }));
     const rncs = (data.rncs || data.itens || []).filter(r =>
       r.ID_MANIFESTACAO === m.ID_MANIFESTACAO ||
       r.ID_MANIFESTACAO_ORIGEM === m.ID_MANIFESTACAO ||
@@ -6766,7 +6773,7 @@ async function _loadHistoricoCliente() {
   }
   el.innerHTML = '<div style="text-align:center;padding:20px"><div class="spinner"></div></div>';
   try {
-    const data = await _apiFetch('/api/manifestacoes?limit=500', 10000).catch(() => ({ manifestacoes: [], itens: [] }));
+    const data = await _apiFetch('/api/manifestacoes?limit=500', 25000).catch(() => ({ manifestacoes: [], itens: [] }));
     const todas = data.manifestacoes || data.itens || [];
     const historico = todas.filter(x =>
       x.ID_MANIFESTACAO !== m.ID_MANIFESTACAO &&
@@ -6819,7 +6826,7 @@ function getStatusInfo(status) {
 
 async function loadAcompanhamento() {
   try {
-    const res = await _apiFetch('/api/manifestacoes', 15000);
+    const res = await _apiFetch('/api/manifestacoes', 30000);
     _acompData = res.itens || [];
     window._acompData = _acompData;
 
@@ -7086,7 +7093,7 @@ document.addEventListener('click', function(e) {
 
 async function loadBancoManifestacoes() {
   try {
-    const res = await _apiFetch('/api/manifestacoes', 15000);
+    const res = await _apiFetch('/api/manifestacoes', 30000);
     bancoData = res.itens || [];
     _bancoDataFull = [...bancoData];
     window.bancoData = bancoData;
@@ -7260,7 +7267,7 @@ async function loadBancoRNC() {
       const rncs=[{ID_RNC:'RNC-139/26',ID_MANIFESTACAO:'SAC-2026-00125',SETOR_DESTINADO:'Qualidade',CAUSA_PROVAVEL:'Avaria na embalagem durante transporte',RESPONSAVEL:'Carlos Oliveira',DATA_FINALIZACAO:'30/09/2026'},{ID_RNC:'RNC-140/26',ID_MANIFESTACAO:'SAC-2026-00131',SETOR_DESTINADO:'Qualidade',CAUSA_PROVAVEL:'Em análise',RESPONSAVEL:'Maria Santos',DATA_FINALIZACAO:'02/10/2026'}];
       document.getElementById('rnc-abertas').textContent=rncs.length;document.getElementById('rnc-abertas-sub').textContent=rncs.length+' RNCs abertas';document.getElementById('rnc-vencendo').textContent='1';document.getElementById('rnc-body').innerHTML=rncs.map(m=>`<tr><td style="font-weight:700">${m.ID_RNC}</td><td><a style="color:var(--red);font-weight:600">${m.ID_MANIFESTACAO}</a></td><td>${m.SETOR_DESTINADO}</td><td><div>${m.CAUSA_PROVAVEL}</div><div class="rnc-acao">Ação: em tratamento</div></td><td>${m.RESPONSAVEL}</td><td>${m.DATA_FINALIZACAO}</td><td><span class="status-badge em-andamento">Em tratamento</span></td></tr>`).join('');document.getElementById('causas-list').innerHTML='<div style="font-size:12px;margin-bottom:8px">Avaria na embalagem <b>1</b></div><div style="font-size:12px">Em análise <b>1</b></div>';document.getElementById('rnc-setor-list').innerHTML='<div style="font-size:12px">Qualidade <b>2</b></div>';return;
     }
-    const res = await _apiFetch('/api/manifestacoes', 15000);
+    const res = await _apiFetch('/api/manifestacoes', 30000);
     const mans = res.itens || [];
     const rncs = mans.filter(m => m.ID_RNC || m.RNC_SUGERIDO === 'SIM');
     window._rncDataFull = rncs;
@@ -7355,8 +7362,8 @@ async function loadSetores() {
   const grid = document.getElementById('setores-grid');
   try {
     const [setRes, manRes, conhecRes] = await Promise.all([
-      _apiFetch('/api/setores', 15000).catch(e => ({ sucesso: false, erro: e.message, itens: [] })),
-      _apiFetch('/api/manifestacoes', 15000).catch(() => ({ itens: [] })),
+      _apiFetch('/api/setores', 30000).catch(e => ({ sucesso: false, erro: e.message, itens: [] })),
+      _apiFetch('/api/manifestacoes', 30000).catch(() => ({ itens: [] })),
       _apiFetch('/api/conhecimento', 15000).catch(() => ({ itens: [] })),
     ]);
     if(setRes?.sucesso===false) {
@@ -7956,8 +7963,7 @@ window.navigate = function(page, el) {
   if (pageLoaders[page]) pageLoaders[page]();
 };
 
-// Init
-loadVisaoGeral();
+// Init: não chamar loadVisaoGeral() aqui — boot() cuida disso após autenticação
 </script>
 
 <script>
@@ -12126,7 +12132,7 @@ async function loadRCA() {
   if (!listEl) return;
   listEl.innerHTML = '<div style="text-align:center;padding:24px;color:#8A8888;font-size:13px">Carregando…</div>';
   try {
-    const d = await _apiFetch('/api/rnc', 15000).catch(() => ({ itens: [] }));
+    const d = await _apiFetch('/api/rnc', 30000).catch(() => ({ itens: [] }));
     const itens = d.itens || d.rncs || [];
     if (!itens.length) {
       listEl.innerHTML = '<div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:16px 14px;font-size:13px;color:#8A8888">Nenhuma RNC atribuída.</div>';
