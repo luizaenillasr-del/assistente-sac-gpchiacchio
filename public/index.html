@@ -1241,9 +1241,10 @@
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 7 7 3-7 3-3 7-3-7-7-3 7-3 3-7z"/></svg>
     Minha fila
   </div>
-  <div class="sidebar-item" data-v5-page="usuarios" onclick="navigate('usuarios', this)">
+  <div class="sidebar-item" data-v5-page="usuarios" onclick="navigate('usuarios', this)" style="position:relative">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><path d="M17 3a4 4 0 0 1 0 8"/></svg>
     Usuários e Acessos
+    <span id="badge-solicitacoes" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);background:#C8102E;color:white;font-size:10px;font-weight:700;border-radius:10px;padding:1px 6px;min-width:18px;text-align:center"></span>
   </div>
   <div class="sidebar-item" onclick="navigate('banco-rnc', this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
@@ -1365,6 +1366,9 @@
         </a>
         <span class="filter-last" id="last-update">Última atualização: --:--</span>
       </div>
+
+      <!-- Alerta de solicitações pendentes (MASTER only) -->
+      <div id="dash-alert-solicitacoes" style="display:none;align-items:center;gap:10px;background:#FEF3C7;border:1px solid #F59E0B;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:#92400E"></div>
 
       <!-- KPIs Principais — 5 cards conforme mockup -->
       <div class="kpi-grid" style="grid-template-columns:repeat(5,1fr);margin-bottom:16px">
@@ -5344,10 +5348,38 @@ function renderDashboard(data) {
   }
 }
 
+async function checarSolicitacoesPendentes() {
+  try {
+    let _u = {}; try { _u = JSON.parse(sessionStorage.getItem('sac-user')||'{}'); } catch {}
+    const perfil = (_u.PERFIL||_u.perfil||'').toUpperCase();
+    if (!perfil.includes('MASTER')) return;
+    const data = await _apiFetch('/api/admin/solicitacoes?status=PENDENTE', 8000).catch(() => null);
+    if (!data) return;
+    const pending = (data.itens||data.solicitacoes||[]).filter(s => s.STATUS === 'PENDENTE').length;
+    const badge = document.getElementById('badge-solicitacoes');
+    if (badge) {
+      if (pending > 0) { badge.textContent = pending; badge.style.display = 'inline-block'; }
+      else { badge.style.display = 'none'; }
+    }
+    // Alerta no dashboard se houver pendentes
+    const dashAlert = document.getElementById('dash-alert-solicitacoes');
+    if (dashAlert) {
+      if (pending > 0) {
+        dashAlert.style.display = 'flex';
+        dashAlert.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <span><strong>${pending} solicitação(ões) de acesso pendente(s).</strong> <a href="#" style="color:inherit;text-decoration:underline" onclick="event.preventDefault();navigate('usuarios',document.querySelector('[data-v5-page=usuarios]'));setTimeout(()=>switchUsrTab&&switchUsrTab('solicitacoes'),400)">Clique aqui para analisar</a>.</span>`;
+      } else {
+        dashAlert.style.display = 'none';
+      }
+    }
+  } catch(e) { /* silencioso */ }
+}
+
 async function loadVisaoGeral() {
   try {
     const now = new Date();
     document.getElementById('last-update').textContent = 'Última atualização: ' + now.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
+    checarSolicitacoesPendentes();
 
     const [manRes, recRes] = await Promise.all([
       _apiFetch('/api/manifestacoes', 15000).catch(() => ({ itens: [] })),
@@ -8049,7 +8081,7 @@ loadVisaoGeral();
     }
 
     if(role()==='RCA / REPRESENTANTE') await loadRcaHome();
-    if(role()==='MASTER') await loadUsuariosV5();
+    if(role()==='MASTER') { await loadUsuariosV5(); checarSolicitacoesPendentes && checarSolicitacoesPendentes(); }
     if(role()==='APROVADOR'||role()==='MASTER') await loadAprovadorV5();
     if(role()==='ANALISTA SAC') setupAprovacaoUI();
   };
@@ -12795,9 +12827,14 @@ async function mudarStatusMC(id, novoStatus) {
       const q=status?'?status='+encodeURIComponent(status):'';
       const d=await api2('/api/admin/solicitacoes'+q);
       const a=d.solicitacoes||d.itens||[];
-      // Atualizar KPI pendentes
+      // Atualizar KPI pendentes + badge sidebar
       const kpiEl=document.getElementById('usr-pendentes');
-      if(kpiEl) kpiEl.textContent=a.filter(x=>String(x.STATUS||'').toUpperCase()==='PENDENTE').length;
+      const pendCount=a.filter(x=>String(x.STATUS||'').toUpperCase()==='PENDENTE').length;
+      if(kpiEl) kpiEl.textContent=pendCount;
+      const badge=document.getElementById('badge-solicitacoes');
+      if(badge){if(pendCount>0){badge.textContent=pendCount;badge.style.display='inline-block';}else{badge.style.display='none';}}
+      const dashAlert=document.getElementById('dash-alert-solicitacoes');
+      if(dashAlert){if(pendCount>0){dashAlert.style.display='flex';}else{dashAlert.style.display='none';}}
       if(!a.length){ el.innerHTML='<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--gray-400)">Nenhuma solicitação encontrada.</td></tr>'; return; }
       el.innerHTML=a.map(s=>{
         const id=s.ID||s.id;
