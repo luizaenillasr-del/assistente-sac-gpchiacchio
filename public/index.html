@@ -4432,150 +4432,101 @@
 <!-- PRAZOS MÉDIOS POR REGIÃO                                     -->
 <!-- ══════════════════════════════════════════════════════════════ -->
 <div class="page" id="page-prazos-regionais">
-  <div style="padding:24px 24px 0;display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px">
-    <div>
-      <h1 style="font-size:22px;font-weight:800;color:var(--gray-900);margin:0 0 4px">Prazos Médios por Região</h1>
-      <p style="font-size:13px;color:var(--gray-500);margin:0">Base de referência utilizada pela Calculadora de Atraso para comparar o tempo realizado com o comportamento médio esperado por região.</p>
-    </div>
-    <button class="btn btn-primary" style="font-size:13px" onclick="abrirModalPrazoRegional()">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      Novo Prazo Regional
-    </button>
-  </div>
-
-  <!-- Barra de filtros -->
-  <div style="padding:16px 24px 0;display:flex;gap:8px;flex-wrap:wrap">
-    <div style="position:relative;flex:1;min-width:200px">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--gray-400)"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      <input id="pr-f-q" class="input" type="text" placeholder="Buscar cidade, UF ou região..." style="padding-left:36px;width:100%;box-sizing:border-box" oninput="filtrarPrazosRegionais()">
-    </div>
-    <select id="pr-f-uf" class="select" style="min-width:80px" onchange="filtrarPrazosRegionais()">
-      <option value="">Todos UFs</option>
-    </select>
-    <select id="pr-f-regiao" class="select" style="min-width:130px" onchange="filtrarPrazosRegionais()">
-      <option value="">Todas regiões</option>
-    </select>
-    <button class="btn btn-secondary" style="font-size:12px" onclick="carregarPrazosRegionais()">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.68-4.18"/></svg>
-      Atualizar
-    </button>
-  </div>
-
-  <!-- Contagem -->
-  <div style="padding:10px 24px 0;display:flex;align-items:center;gap:16px">
-    <span style="font-size:13px;color:var(--gray-500)" id="pr-count">—</span>
-    <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:6px 12px;font-size:12px;color:#92400e">
-      <strong>Referência operacional.</strong> Os prazos aqui cadastrados são usados como comparativo pela Calculadora de Atraso. Não substituem o prazo prometido ao cliente.
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="breadcrumb">Administração / <span>Configurações</span></div>
+      <div class="page-header"><h1 class="page-title">Configurações</h1></div>
     </div>
   </div>
+  <div class="content" style="display:flex;flex-direction:column;gap:16px">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:16px;align-items:start">
 
-  <!-- Tabela -->
-  <div style="padding:12px 24px 32px">
-    <div style="background:white;border:1px solid var(--gray-200);border-radius:10px;overflow:hidden">
-      <div id="pr-loading" style="text-align:center;padding:40px;color:var(--gray-400)">
-        <div class="spinner" style="margin:0 auto 8px"></div>Carregando...
+      <!-- Empresas do grupo -->
+      <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:18px 20px">
+        <div style="font-weight:700;font-size:14.5px;color:#1F1F1F;margin-bottom:12px">Empresas do grupo</div>
+        <div style="display:flex;flex-direction:column;gap:0">
+          <div style="display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:8px 0;border-top:1px solid #EFEFEF;color:#1F1F1F">
+            <span>Chiacchio Embalagens</span><span style="color:#1E6B3A;background:#E6F2EA;border-radius:99px;padding:2px 10px;font-size:11.5px;font-weight:600">Ativa</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:8px 0;border-top:1px solid #EFEFEF;color:#1F1F1F">
+            <span>Plaschio</span><span style="color:#1E6B3A;background:#E6F2EA;border-radius:99px;padding:2px 10px;font-size:11.5px;font-weight:600">Ativa</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:8px 0;border-top:1px solid #EFEFEF;color:#1F1F1F">
+            <span>Tubahia</span><span style="color:#1E6B3A;background:#E6F2EA;border-radius:99px;padding:2px 10px;font-size:11.5px;font-weight:600">Ativa</span>
+          </div>
+        </div>
       </div>
-      <div id="pr-empty" style="display:none;text-align:center;padding:48px;color:var(--gray-400)">
-        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin:0 auto 10px;display:block;color:var(--gray-300)"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-        <div style="font-weight:600;margin-bottom:4px">Nenhum prazo cadastrado</div>
-        <div style="font-size:12px">Clique em "Novo Prazo Regional" para começar</div>
-      </div>
-      <div style="overflow-x:auto" id="pr-table-wrap" style="display:none">
-        <table class="table" id="pr-table">
-          <thead>
-            <tr>
-              <th>UF</th>
-              <th>CIDADE</th>
-              <th>REGIÃO</th>
-              <th style="text-align:center">PRAZO MÉDIO</th>
-              <th style="text-align:center">MÍN</th>
-              <th style="text-align:center">MÁX</th>
-              <th>MODALIDADE</th>
-              <th>TIPO DIA</th>
-              <th>FONTE</th>
-              <th>VIGÊNCIA</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="pr-tbody"></tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-</div>
 
-<!-- MODAL PRAZO REGIONAL -->
-<div id="modal-prazo-regional" class="modal-overlay" style="display:none" onclick="if(event.target===this)fecharModalPrazoRegional()">
-  <div class="modal-box" style="max-width:600px">
-    <div class="modal-header">
-      <h3 id="pr-modal-titulo">Novo Prazo Regional</h3>
-      <button class="modal-close" onclick="fecharModalPrazoRegional()">✕</button>
-    </div>
-    <div class="modal-body">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-        <div>
-          <label style="font-size:12px;font-weight:600;color:var(--gray-600);display:block;margin-bottom:4px">UF <span style="color:var(--red)">*</span></label>
-          <input id="pr-uf" class="input" maxlength="2" placeholder="BA" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()">
-        </div>
-        <div>
-          <label style="font-size:12px;font-weight:600;color:var(--gray-600);display:block;margin-bottom:4px">Cidade</label>
-          <input id="pr-cidade" class="input" placeholder="Salvador">
-        </div>
-        <div>
-          <label style="font-size:12px;font-weight:600;color:var(--gray-600);display:block;margin-bottom:4px">Região</label>
-          <input id="pr-regiao" class="input" placeholder="Nordeste, Sudoeste BA...">
-        </div>
-        <div>
-          <label style="font-size:12px;font-weight:600;color:var(--gray-600);display:block;margin-bottom:4px">Modalidade</label>
-          <select id="pr-modalidade" class="select">
-            <option value="">Não especificada</option>
-            <option value="FROTA_PROPRIA">Frota própria</option>
-            <option value="TRANSPORTADORA">Transportadora</option>
-            <option value="MOTOBOY">Motoboy</option>
-            <option value="CORREIOS">Correios</option>
-            <option value="AEREO">Aéreo</option>
-          </select>
-        </div>
-        <div>
-          <label style="font-size:12px;font-weight:600;color:var(--gray-600);display:block;margin-bottom:4px">Prazo Médio (dias) <span style="color:var(--red)">*</span></label>
-          <input id="pr-prazo-medio" class="input" type="number" min="0" step="0.5" placeholder="3">
-        </div>
-        <div>
-          <label style="font-size:12px;font-weight:600;color:var(--gray-600);display:block;margin-bottom:4px">Prazo Mínimo (dias)</label>
-          <input id="pr-prazo-min" class="input" type="number" min="0" step="0.5" placeholder="1">
-        </div>
-        <div>
-          <label style="font-size:12px;font-weight:600;color:var(--gray-600);display:block;margin-bottom:4px">Prazo Máximo (dias)</label>
-          <input id="pr-prazo-max" class="input" type="number" min="0" step="0.5" placeholder="5">
-        </div>
-        <div>
-          <label style="font-size:12px;font-weight:600;color:var(--gray-600);display:block;margin-bottom:4px">Tipo de dia</label>
-          <select id="pr-tipo-dia" class="select">
-            <option value="CORRIDOS">Dias corridos</option>
-            <option value="UTEIS">Dias úteis</option>
-          </select>
-        </div>
-        <div>
-          <label style="font-size:12px;font-weight:600;color:var(--gray-600);display:block;margin-bottom:4px">Vigência início</label>
-          <input id="pr-vigencia-inicio" class="input" type="date">
-        </div>
-        <div>
-          <label style="font-size:12px;font-weight:600;color:var(--gray-600);display:block;margin-bottom:4px">Vigência fim</label>
-          <input id="pr-vigencia-fim" class="input" type="date">
-        </div>
-        <div style="grid-column:1/-1">
-          <label style="font-size:12px;font-weight:600;color:var(--gray-600);display:block;margin-bottom:4px">Fonte / Referência</label>
-          <input id="pr-fonte" class="input" placeholder="Histórico operacional, transportadora X, contrato...">
-        </div>
-        <div style="grid-column:1/-1">
-          <label style="font-size:12px;font-weight:600;color:var(--gray-600);display:block;margin-bottom:4px">Observações</label>
-          <textarea id="pr-obs" class="input" rows="2" placeholder="Informações complementares..." style="width:100%;box-sizing:border-box;resize:vertical"></textarea>
+      <!-- Canais de entrada -->
+      <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:18px 20px">
+        <div style="font-weight:700;font-size:14.5px;color:#1F1F1F;margin-bottom:12px">Canais de entrada</div>
+        <div style="display:flex;flex-direction:column;gap:0">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:13px;padding:8px 0;border-top:1px solid #EFEFEF;color:#1F1F1F">
+            <span>Telefone</span><span style="color:#1E6B3A;background:#E6F2EA;border-radius:99px;padding:2px 10px;font-size:11.5px;font-weight:600">Ativo</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:13px;padding:8px 0;border-top:1px solid #EFEFEF;color:#1F1F1F">
+            <span>WhatsApp</span>
+            <div style="display:flex;align-items:center;gap:6px">
+              <span style="color:#1E6B3A;background:#E6F2EA;border-radius:99px;padding:2px 10px;font-size:11.5px;font-weight:600">Ativo</span>
+              <span style="color:#545252;font-size:11.5px">integração</span>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:13px;padding:8px 0;border-top:1px solid #EFEFEF;color:#1F1F1F">
+            <span>E-mail</span><span style="color:#545252;font-size:12px">sac@grupochiacchio.com.br</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:13px;padding:8px 0;border-top:1px solid #EFEFEF;color:#1F1F1F">
+            <span>Site</span><span style="color:#545252;font-size:12px">Formulário</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:13px;padding:8px 0;border-top:1px solid #EFEFEF;color:#1F1F1F">
+            <span>Pesquisa de satisfação</span><span style="color:#1E6B3A;background:#E6F2EA;border-radius:99px;padding:2px 10px;font-size:11.5px;font-weight:600">Ativo</span>
+          </div>
         </div>
       </div>
-    </div>
-    <div class="modal-footer" style="display:flex;gap:8px;justify-content:flex-end">
-      <button class="btn btn-secondary" onclick="fecharModalPrazoRegional()">Cancelar</button>
-      <button class="btn btn-primary" id="pr-btn-salvar" onclick="salvarPrazoRegional()">Salvar</button>
+
+      <!-- Numeração e prazos -->
+      <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:18px 20px">
+        <div style="font-weight:700;font-size:14.5px;color:#1F1F1F;margin-bottom:12px">Numeração e prazos</div>
+        <div style="display:flex;flex-direction:column;gap:0">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;font-size:13px;padding:8px 0;border-top:1px solid #EFEFEF;color:#1F1F1F">
+            <span style="color:#545252">Formato do número</span><span style="text-align:right">MAN-0001</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;font-size:13px;padding:8px 0;border-top:1px solid #EFEFEF;color:#1F1F1F">
+            <span style="color:#545252">Contagem do prazo</span><span style="text-align:right">Horas corridas</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;font-size:13px;padding:8px 0;border-top:1px solid #EFEFEF;color:#1F1F1F">
+            <span style="color:#545252">Cobrança automática</span><span style="text-align:right">Após 24h sem abrir a ficha</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;font-size:13px;padding:8px 0;border-top:1px solid #EFEFEF;color:#1F1F1F">
+            <span style="color:#545252">Follow-up pós-atendimento</span><span style="text-align:right">2 a 7 dias</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Segurança e retenção -->
+      <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:18px 20px">
+        <div style="font-weight:700;font-size:14.5px;color:#1F1F1F;margin-bottom:12px">Segurança e retenção</div>
+        <div style="display:flex;flex-direction:column;gap:0">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;font-size:13px;padding:8px 0;border-top:1px solid #EFEFEF;color:#1F1F1F">
+            <span style="color:#545252">Expiração da sessão</span><span style="text-align:right">30 min sem atividade</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;font-size:13px;padding:8px 0;border-top:1px solid #EFEFEF;color:#1F1F1F">
+            <span style="color:#545252">Retenção de manifestações</span><span style="text-align:right">Permanente</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;font-size:13px;padding:8px 0;border-top:1px solid #EFEFEF;color:#1F1F1F">
+            <span style="color:#545252">Log de auditoria</span>
+            <div style="display:flex;align-items:center;gap:6px;text-align:right">
+              <span>Permanente</span><span style="color:#545252;font-size:11.5px">ISO 9001</span>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;font-size:13px;padding:8px 0;border-top:1px solid #EFEFEF;color:#1F1F1F">
+            <span style="color:#545252">Ambiente</span>
+            <div style="display:flex;align-items:center;gap:6px;text-align:right">
+              <span>Homologação</span><span style="color:#545252;font-size:11.5px">v1.0</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
