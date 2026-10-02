@@ -454,9 +454,9 @@
   @keyframes spin { to { transform: rotate(360deg); } }
 
   /* MODAL DOSSIÊ */
-  .modal-overlay { position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto; }
-  .modal-box { background:white;border-radius:16px;width:100%;max-width:900px;box-shadow:0 20px 60px rgba(0,0,0,0.3);margin:auto; }
-  .modal-header { padding:20px 24px;border-bottom:1px solid var(--gray-100);display:flex;align-items:center;justify-content:space-between; }
+  .modal-overlay { position:fixed;inset:0;background:rgba(20,20,20,.45);z-index:1000;display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto; }
+  .modal-box { background:white;border-radius:12px;width:100%;max-width:900px;box-shadow:0 8px 24px rgba(0,0,0,.18);margin:auto; }
+  .modal-header { padding:16px 20px;border-bottom:1px solid #E4E4E4;display:flex;align-items:center;justify-content:space-between; }
   .modal-body { padding:20px 24px;max-height:80vh;overflow-y:auto; }
   .modal-close { width:32px;height:32px;border-radius:8px;border:1px solid var(--gray-200);background:white;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--gray-400); }
   .modal-close:hover { background:var(--gray-50);color:var(--gray-700); }
@@ -613,15 +613,15 @@
 
     <div class="modal-body" style="padding:0">
       <!-- Tabs -->
-      <div class="tabs-bar" id="modal-tabs" style="padding:0 20px;margin:0;border-bottom:1px solid var(--gray-100)">
-        <button class="tab-btn active" onclick="switchModalTab('ciclo',this)">📋 Ciclo de Vida</button>
-        <button class="tab-btn" onclick="switchModalTab('dados',this)">📄 Dados</button>
-        <button class="tab-btn" onclick="switchModalTab('tratativa',this)">🔧 Tratativas</button>
-        <button class="tab-btn" onclick="switchModalTab('aprovacao',this)">✅ Aprovação</button>
-        <button class="tab-btn" onclick="switchModalTab('analise',this)">🤖 IA</button>
-        <button class="tab-btn" onclick="switchModalTab('historico',this)" id="modal-tab-btn-historico">📜 Histórico</button>
-        <button class="tab-btn" onclick="switchModalTab('rnc',this)" id="modal-tab-btn-rnc">📌 RNC vinculada</button>
-        <button class="tab-btn" onclick="switchModalTab('hist-cliente',this)" id="modal-tab-btn-hist-cliente">👤 Histórico do cliente</button>
+      <div id="modal-tabs" style="display:flex;gap:2px;border-bottom:1px solid #E4E4E4;overflow-x:auto;padding:0 20px;background:#fff">
+        <button class="tab-btn active" onclick="switchModalTab('ciclo',this)" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#1F1F1F;border-bottom:2px solid #C70602;margin-bottom:-1px;font-weight:700;font-family:inherit">Dados gerais</button>
+        <button class="tab-btn" onclick="switchModalTab('dados',this)" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Dados completos</button>
+        <button class="tab-btn" onclick="switchModalTab('tratativa',this)" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Tratativa</button>
+        <button class="tab-btn" onclick="switchModalTab('aprovacao',this)" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Aprovação</button>
+        <button class="tab-btn" onclick="switchModalTab('analise',this)" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Análise IA</button>
+        <button class="tab-btn" onclick="switchModalTab('historico',this)" id="modal-tab-btn-historico" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Histórico</button>
+        <button class="tab-btn" onclick="switchModalTab('rnc',this)" id="modal-tab-btn-rnc" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">RNC vinculada</button>
+        <button class="tab-btn" onclick="switchModalTab('hist-cliente',this)" id="modal-tab-btn-hist-cliente" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Histórico do cliente</button>
       </div>
 
       <div style="padding:20px;overflow-y:auto;max-height:62vh">
@@ -6115,8 +6115,14 @@ function switchModalTab(tab, btn) {
     const el = document.getElementById(`modal-tab-${t}`);
     if (el) el.style.display = t === tab ? 'block' : 'none';
   });
-  document.querySelectorAll('#modal-tabs .tab-btn').forEach(b => b.classList.remove('active'));
-  if (btn) btn.classList.add('active');
+  document.querySelectorAll('#modal-tabs .tab-btn').forEach(b => {
+    b.classList.remove('active');
+    b.style.color = '#666464'; b.style.fontWeight = '500'; b.style.borderBottom = '2px solid transparent';
+  });
+  if (btn) {
+    btn.classList.add('active');
+    btn.style.color = '#1F1F1F'; btn.style.fontWeight = '700'; btn.style.borderBottom = '2px solid #C70602';
+  }
   if (tab === 'historico') _loadDossieHistorico();
   if (tab === 'rnc') _loadDossieRNC();
   if (tab === 'hist-cliente') _loadHistoricoCliente();
