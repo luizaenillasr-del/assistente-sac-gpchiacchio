@@ -1446,44 +1446,52 @@
     </div>
     <div class="content">
       <!-- Filters -->
-      <div class="filters">
-        <div class="filter-group">
-          <button class="filter-btn">Hoje</button>
-          <button class="filter-btn">7 dias</button>
-          <button class="filter-btn active">30 dias</button>
-          <button class="filter-btn">Personalizado</button>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end">
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:#666464">Período
+          <select id="filtro-periodo-select" onchange="aplicarFiltros()" style="height:34px;min-width:120px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:13px;font-family:inherit">
+            <option value="hoje">Hoje</option>
+            <option value="7dias">Últimos 7 dias</option>
+            <option value="30dias" selected>Últimos 30 dias</option>
+            <option value="90dias">Últimos 90 dias</option>
+            <option value="personalizado">Personalizado</option>
+          </select>
+        </label>
+        <div id="filtro-periodo-custom" style="display:none;align-items:flex-end;gap:6px">
+          <label style="display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:#666464">De
+            <input type="date" id="filtro-data-inicio" onchange="aplicarFiltros()" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:13px;font-family:inherit">
+          </label>
+          <label style="display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:#666464">Até
+            <input type="date" id="filtro-data-fim" onchange="aplicarFiltros()" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:13px;font-family:inherit">
+          </label>
         </div>
-        <div id="filtro-periodo-custom" style="display:none;align-items:center;gap:6px;background:white;border:1px solid var(--gray-200);border-radius:8px;padding:5px 10px">
-          <span style="font-size:12px;color:var(--gray-500)">De</span>
-          <input type="date" id="filtro-data-inicio" onchange="aplicarFiltros()" style="border:none;font-size:12px;outline:none;cursor:pointer;background:transparent">
-          <span style="font-size:12px;color:var(--gray-500)">até</span>
-          <input type="date" id="filtro-data-fim" onchange="aplicarFiltros()" style="border:none;font-size:12px;outline:none;cursor:pointer;background:transparent">
-        </div>
-        <div style="display:flex;align-items:center;gap:6px;background:white;border:1px solid var(--gray-200);border-radius:8px;padding:5px 10px">
-          <span style="font-size:12px;color:var(--gray-500)">Empresa</span>
-          <select id="filtro-empresa-select" onchange="aplicarFiltros()" style="border:none;font-size:12px;font-weight:600;color:var(--gray-900);outline:none;background:transparent;cursor:pointer">
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:#666464">Empresa
+          <select id="filtro-empresa-select" onchange="aplicarFiltros()" style="height:34px;min-width:120px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:13px;font-family:inherit">
             <option value="Todas">Todas</option>
           </select>
-        </div>
-        <div style="display:flex;align-items:center;gap:6px;background:white;border:1px solid var(--gray-200);border-radius:8px;padding:5px 10px">
-          <span style="font-size:12px;color:var(--gray-500)">Setor</span>
-          <select id="filtro-setor-select" onchange="aplicarFiltros()" style="border:none;font-size:12px;font-weight:600;color:var(--gray-900);outline:none;background:transparent;cursor:pointer">
+        </label>
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:#666464">Setor
+          <select id="filtro-setor-select" onchange="aplicarFiltros()" style="height:34px;min-width:120px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:13px;font-family:inherit">
             <option value="Todos">Todos</option>
           </select>
-        </div>
-        <a href="https://script.google.com/macros/s/AKfycbxjRAEopqf9DsClRzJFoa28Jq8VSc8KBrpuot8emFF4oxHNZ7nsOqe2hRLjJxh8fjg-/exec" target="_blank" style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;background:white;border:1px solid var(--gray-200);border-radius:8px;font-size:12px;font-weight:600;color:var(--gray-700);text-decoration:none">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-          Painel de Resultados
-        </a>
-        <span class="filter-last" id="last-update">Última atualização: --:--</span>
+        </label>
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:#666464">Canal
+          <select style="height:34px;min-width:110px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:13px;font-family:inherit">
+            <option>Todos os canais</option>
+            <option>E-mail</option>
+            <option>Telefone</option>
+            <option>WhatsApp</option>
+            <option>Presencial</option>
+          </select>
+        </label>
+        <div style="margin-left:auto;font-size:12px;color:#8A8888;align-self:flex-end;padding-bottom:6px" id="last-update">Dados em tempo real · atualizado --:--</div>
       </div>
 
       <!-- Alerta de solicitações pendentes (MASTER only) -->
       <div id="dash-alert-solicitacoes" style="display:none;align-items:center;gap:10px;background:#FEF3C7;border:1px solid #F59E0B;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:#92400E"></div>
 
-      <!-- KPIs Principais — 5 cards conforme mockup -->
-      <div class="kpi-grid" style="grid-template-columns:repeat(5,1fr);margin-bottom:16px">
-        <div class="kpi-card highlight" style="cursor:pointer" onclick="navigate('banco-manifestacoes', document.querySelector('[onclick*=banco-manifestacoes]'))">
+      <!-- KPIs Principais -->
+      <div class="kpi-grid" style="grid-template-columns:repeat(auto-fill,minmax(170px,1fr));margin-bottom:16px">
+        <div class="kpi-card" style="cursor:pointer" onclick="navigate('banco-manifestacoes', document.querySelector('[onclick*=banco-manifestacoes]'))">
           <div class="kpi-label">Manifestações em andamento</div>
           <div class="kpi-value" id="kpi-reclamacoes">--</div>
           <div class="kpi-delta" id="kpi-rec-pct">no período selecionado</div>
@@ -5514,7 +5522,7 @@ async function checarSolicitacoesPendentes() {
 async function loadVisaoGeral() {
   try {
     const now = new Date();
-    document.getElementById('last-update').textContent = 'Última atualização: ' + now.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
+    const luEl = document.getElementById('last-update'); if(luEl) luEl.textContent = 'Dados em tempo real · atualizado ' + now.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
     checarSolicitacoesPendentes();
 
     const [manRes, recRes] = await Promise.all([
@@ -8695,28 +8703,22 @@ loadVisaoGeral();
   // no código original. Adicionamos período.
   window._dashFiltroPeriodoDias = 30; // padrão
 
-  // Interceptar cliques nos botões de período
+  // Interceptar mudança no select de período
   document.addEventListener('DOMContentLoaded', () => {
-    document.querySelectorAll('.filter-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const txt = btn.textContent.trim();
-        if (txt === 'Hoje') window._dashFiltroPeriodoDias = 1;
-        else if (txt === '7 dias') window._dashFiltroPeriodoDias = 7;
-        else if (txt === '30 dias') window._dashFiltroPeriodoDias = 30;
-        else if (txt === 'Personalizado') window._dashFiltroPeriodoDias = null;
-
-        // Mostrar/esconder seletor de datas personalizadas
+    const periodoSel = document.getElementById('filtro-periodo-select');
+    if (periodoSel) {
+      periodoSel.addEventListener('change', () => {
+        const val = periodoSel.value;
+        if (val === 'hoje') window._dashFiltroPeriodoDias = 1;
+        else if (val === '7dias') window._dashFiltroPeriodoDias = 7;
+        else if (val === '30dias') window._dashFiltroPeriodoDias = 30;
+        else if (val === '90dias') window._dashFiltroPeriodoDias = 90;
+        else window._dashFiltroPeriodoDias = null;
         const customDiv = document.getElementById('filtro-periodo-custom');
-        if (customDiv) customDiv.style.display = txt === 'Personalizado' ? 'flex' : 'none';
-
-        // Atualizar visual do botão ativo
-        btn.closest('.filter-group')?.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-
-        // Re-renderizar o dashboard com o novo período
+        if (customDiv) customDiv.style.display = val === 'personalizado' ? 'flex' : 'none';
         if (typeof aplicarFiltros === 'function') aplicarFiltros();
       });
-    });
+    }
   });
 
   // ──────────────────────────────────────────────────────────
