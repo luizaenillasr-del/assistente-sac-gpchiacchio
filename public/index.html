@@ -2874,51 +2874,70 @@
   <!-- ===== BASE DE CONHECIMENTO ===== -->
   <div class="page" id="page-base-conhecimento">
     <div class="topbar">
-      <div class="breadcrumb">Regras / <span>Base de Conhecimento</span></div>
-      <div class="page-header">
-        <h1 class="page-title">Base de Conhecimento</h1>
-        <button class="btn btn-primary" onclick="abrirModalNovoDoc()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          Novo documento
-        </button>
+      <div class="topbar-left">
+        <div class="breadcrumb">Conhecimento / <span>Banco de casos</span></div>
+        <div class="page-header"><h1 class="page-title">Banco de casos</h1></div>
       </div>
     </div>
-    <div class="content" style="padding-bottom:0">
-      <div class="bc-layout" style="height:calc(100vh - 140px)">
-        <!-- BC Sidebar -->
-        <div class="bc-sidebar">
-          <div class="bc-sidebar-section">Setor</div>
-          <div class="bc-sidebar-item active"><span>Todos</span><span class="bc-sidebar-count" id="bc-total">--</span></div>
-          <div class="bc-sidebar-item" onclick="filterBC('setor','Logística',this)"><span>Logística</span><span class="bc-sidebar-count" id="bc-cnt-logistica">--</span></div>
-          <div class="bc-sidebar-item" onclick="filterBC('setor','Qualidade',this)"><span>Qualidade</span><span class="bc-sidebar-count" id="bc-cnt-qualidade">--</span></div>
-          <div class="bc-sidebar-item" onclick="filterBC('setor','Comercial',this)"><span>Comercial</span><span class="bc-sidebar-count" id="bc-cnt-comercial">--</span></div>
-          <div class="bc-sidebar-item" onclick="filterBC('setor','Financeiro',this)"><span>Financeiro</span><span class="bc-sidebar-count" id="bc-cnt-financeiro">--</span></div>
-          <div class="bc-sidebar-item" onclick="filterBC('setor','Outros',this)"><span>Outros</span><span class="bc-sidebar-count" id="bc-cnt-outros">--</span></div>
+    <div class="content" style="display:flex;flex-direction:column;gap:16px">
+      <!-- Tabs -->
+      <div id="banco-tabs" style="display:flex;gap:2px;border-bottom:1px solid #E4E4E4;overflow-x:auto">
+        <button onclick="bancoTab('registros',this)" id="bancotab-registros" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#1F1F1F;border-bottom:2px solid #C70602;margin-bottom:-1px;font-weight:700;font-family:inherit">Registros</button>
+        <button onclick="bancoTab('analise',this)" id="bancotab-analise" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Análise do banco</button>
+      </div>
 
-          <div class="bc-sidebar-section">Tipo</div>
-          <div class="bc-sidebar-item" onclick="filterBC('tipo','Política',this)"><span>Política</span><span class="bc-sidebar-count" id="bc-cnt-politica">--</span></div>
-          <div class="bc-sidebar-item" onclick="filterBC('tipo','Procedimento',this)"><span>Procedimento</span><span class="bc-sidebar-count" id="bc-cnt-procedimento">--</span></div>
-          <div class="bc-sidebar-item" onclick="filterBC('tipo','Resposta-modelo',this)"><span>Resposta-modelo</span><span class="bc-sidebar-count" id="bc-cnt-resposta">--</span></div>
-          <div class="bc-sidebar-item" onclick="filterBC('tipo','FAQ',this)"><span>FAQ</span><span class="bc-sidebar-count" id="bc-cnt-faq">--</span></div>
-          <div class="bc-sidebar-item" onclick="filterBC('tipo','Caso exemplar',this)"><span>Caso exemplar</span><span class="bc-sidebar-count" id="bc-cnt-caso">--</span></div>
-
-          <div class="bc-sidebar-section">Status</div>
-          <div class="bc-sidebar-item" onclick="filterBC('status','Vigente',this)"><span>Vigente</span><span class="bc-sidebar-count" id="bc-cnt-vigente">--</span></div>
-          <div class="bc-sidebar-item" onclick="filterBC('status','Revisão vencida',this)"><span>Revisão vencida</span><span class="bc-sidebar-count" id="bc-cnt-vencida">--</span></div>
-          <div class="bc-sidebar-item" onclick="filterBC('status','Rascunho',this)"><span>Rascunho</span><span class="bc-sidebar-count" id="bc-cnt-rascunho">--</span></div>
+      <!-- Tab: Registros -->
+      <div id="banco-tab-registros">
+        <!-- Filtros -->
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px">
+          <input id="banco-search" oninput="filtrarBancoHistorico()" placeholder="Pesquisar no banco de casos" style="flex:1;min-width:220px;height:36px;border:1px solid #D6D6D6;border-radius:7px;padding:0 12px;background:#fff;font-size:13px;font-family:inherit">
+          <select id="banco-fil-qualidade" onchange="filtrarBancoHistorico()" style="height:36px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:13px;font-family:inherit"><option value="">Qualidade: todas</option><option>Completo</option><option>Parcial</option><option>Incompleto</option></select>
+          <select id="banco-fil-setor" onchange="filtrarBancoHistorico()" style="height:36px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:13px;font-family:inherit"><option value="">Setor: todos</option><option>Logística</option><option>Qualidade</option><option>Comercial</option><option>Financeiro</option><option>Expedição</option></select>
+          <button onclick="abrirImportarHistorico()" style="border:0;background:#C70602;color:#fff;border-radius:7px;padding:9px 14px;cursor:pointer;font-size:13px;font-weight:500;font-family:inherit">Importar histórico</button>
         </div>
-
-        <!-- BC List -->
-        <div class="bc-list" id="bc-list">
-          <div class="loading"><div class="spinner"></div> Carregando base...</div>
+        <!-- KPIs -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin-bottom:16px">
+          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px"><div style="font-size:12.5px;color:#666464">Total de casos</div><div style="font-size:24px;font-weight:600;margin-top:4px;color:#1F1F1F" id="banco-kpi-total">--</div></div>
+          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px"><div style="font-size:12.5px;color:#666464">Completos</div><div style="font-size:24px;font-weight:600;margin-top:4px;color:#1E6B3A" id="banco-kpi-completo">--</div></div>
+          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px"><div style="font-size:12.5px;color:#666464">Parciais</div><div style="font-size:24px;font-weight:600;margin-top:4px;color:#7A4C00" id="banco-kpi-parcial">--</div></div>
+          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px"><div style="font-size:12.5px;color:#666464">Incompletos</div><div style="font-size:24px;font-weight:600;margin-top:4px;color:#A80502" id="banco-kpi-incompleto">--</div></div>
         </div>
+        <!-- Tabela -->
+        <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;overflow-x:auto">
+          <table style="border-collapse:collapse;width:100%;min-width:1400px;font-size:13px">
+            <thead><tr style="background:#FAFAFA">
+              <th style="text-align:left;font-weight:500;font-size:12px;color:#666464;padding:10px 12px;border-bottom:1px solid #E4E4E4;white-space:nowrap">Nº</th>
+              <th style="text-align:left;font-weight:500;font-size:12px;color:#666464;padding:10px 12px;border-bottom:1px solid #E4E4E4;white-space:nowrap">Data</th>
+              <th style="text-align:left;font-weight:500;font-size:12px;color:#666464;padding:10px 12px;border-bottom:1px solid #E4E4E4;white-space:nowrap">Empresa</th>
+              <th style="text-align:left;font-weight:500;font-size:12px;color:#666464;padding:10px 12px;border-bottom:1px solid #E4E4E4">Cliente</th>
+              <th style="text-align:left;font-weight:500;font-size:12px;color:#666464;padding:10px 12px;border-bottom:1px solid #E4E4E4">Manifestação</th>
+              <th style="text-align:left;font-weight:500;font-size:12px;color:#666464;padding:10px 12px;border-bottom:1px solid #E4E4E4">Tipo</th>
+              <th style="text-align:left;font-weight:500;font-size:12px;color:#666464;padding:10px 12px;border-bottom:1px solid #E4E4E4">Motivo</th>
+              <th style="text-align:left;font-weight:500;font-size:12px;color:#666464;padding:10px 12px;border-bottom:1px solid #E4E4E4">Causa</th>
+              <th style="text-align:left;font-weight:500;font-size:12px;color:#666464;padding:10px 12px;border-bottom:1px solid #E4E4E4">Setor</th>
+              <th style="text-align:left;font-weight:500;font-size:12px;color:#666464;padding:10px 12px;border-bottom:1px solid #E4E4E4">Tratativa</th>
+              <th style="text-align:left;font-weight:500;font-size:12px;color:#666464;padding:10px 12px;border-bottom:1px solid #E4E4E4">Resultado</th>
+              <th style="text-align:left;font-weight:500;font-size:12px;color:#666464;padding:10px 12px;border-bottom:1px solid #E4E4E4">Qualidade</th>
+              <th style="text-align:left;font-weight:500;font-size:12px;color:#666464;padding:10px 12px;border-bottom:1px solid #E4E4E4"></th>
+            </tr></thead>
+            <tbody id="banco-tbody"><tr><td colspan="13" style="text-align:center;padding:40px;color:#8A8888;font-size:13px">Carregando banco de casos...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
 
-        <!-- BC Detail -->
-        <div class="bc-detail" id="bc-detail">
-          <div style="display:flex;align-items:center;justify-content:center;height:100%;flex-direction:column;gap:8px;color:var(--gray-300)">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-            <span style="font-size:13px">Selecione um documento</span>
-          </div>
+      <!-- Tab: Análise do banco -->
+      <div id="banco-tab-analise" style="display:none">
+        <div style="font-size:13px;color:#545252;max-width:820px;line-height:1.55;margin-bottom:14px">O banco de casos também é analisado de forma independente da IA: padrões, recorrências e problemas de qualidade dos dados são detectados por estatística sobre os registros e viram alertas, sugestões de regra no Cérebro ou RNC.</div>
+        <!-- KPIs análise -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin-bottom:16px">
+          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px"><div style="font-size:12.5px;color:#666464">Casos analisados</div><div style="font-size:24px;font-weight:700;margin-top:4px" id="banco-an-total">--</div><div style="font-size:11.5px;color:#8A8888">banco completo</div></div>
+          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px"><div style="font-size:12.5px;color:#666464">Padrões detectados</div><div style="font-size:24px;font-weight:700;margin-top:4px" id="banco-an-padroes">--</div><div style="font-size:11.5px;color:#8A8888">recorrências</div></div>
+          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px"><div style="font-size:12.5px;color:#666464">Campos incompletos</div><div style="font-size:24px;font-weight:700;margin-top:4px;color:#A80502" id="banco-an-incompletos">--</div><div style="font-size:11.5px;color:#8A8888">reduzem precisão da IA</div></div>
+        </div>
+        <!-- Qualidade dos dados -->
+        <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;overflow:hidden">
+          <div style="padding:14px 20px;border-bottom:1px solid #EFEFEF"><div style="font-weight:700;font-size:14.5px">Qualidade dos dados</div><div style="font-size:12.5px;color:#8A8888">Registros incompletos reduzem a precisão da IA e das análises</div></div>
+          <div id="banco-an-qualidade"><div style="padding:24px;text-align:center;color:#8A8888;font-size:13px">Carregando análise...</div></div>
         </div>
       </div>
     </div>
@@ -2940,49 +2959,54 @@
 
   <!-- ===== USUÁRIOS E ACESSOS ===== -->
   <div class="page" id="page-usuarios">
-    <div class="topbar"><div class="breadcrumb">Administração / <span>Usuários e Acessos</span></div></div>
-    <div class="page-content" style="padding:0 28px 28px">
-      <div class="page-header">
-        <div><h1>Usuários e Acessos</h1><p>Gerencie usuários, solicitações de acesso, perfis e permissões.</p></div>
-        <button class="btn btn-primary" onclick="abrirModalUsuario()">＋ Novo usuário</button>
+    <div class="topbar">
+      <div class="topbar-left">
+        <div class="breadcrumb">Administração / <span>Usuários e permissões</span></div>
+        <div class="page-header"><h1 class="page-title">Usuários e permissões</h1></div>
       </div>
-
-      <!-- KPIs -->
-      <div class="portal-kpis">
-        <div class="portal-kpi"><div class="portal-kpi-label">Usuários ativos</div><div class="portal-kpi-value" id="usr-ativos">--</div></div>
-        <div class="portal-kpi"><div class="portal-kpi-label">Solicitações pendentes</div><div class="portal-kpi-value" id="usr-sol-pendentes" style="color:var(--yellow)">--</div></div>
-        <div class="portal-kpi"><div class="portal-kpi-label">Aprovadores</div><div class="portal-kpi-value" id="usr-aprov">--</div></div>
-        <div class="portal-kpi"><div class="portal-kpi-label">Analistas SAC</div><div class="portal-kpi-value" id="usr-analistas">--</div></div>
-      </div>
-
-      <!-- Abas -->
-      <div style="display:flex;gap:0;border-bottom:2px solid var(--gray-200);margin-bottom:20px">
-        <button id="usr-tab-usuarios" onclick="switchUsrTab('usuarios')" style="background:none;border:none;border-bottom:2px solid var(--primary);margin-bottom:-2px;padding:10px 20px;font-weight:700;font-size:13px;color:var(--primary);cursor:pointer">Usuários</button>
-        <button id="usr-tab-solicitacoes" onclick="switchUsrTab('solicitacoes')" style="background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;padding:10px 20px;font-weight:600;font-size:13px;color:var(--gray-500);cursor:pointer">Solicitações de Acesso</button>
-        <button id="usr-tab-auditoria" onclick="switchUsrTab('auditoria')" style="background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;padding:10px 20px;font-weight:600;font-size:13px;color:var(--gray-500);cursor:pointer">Auditoria de Acesso</button>
-      </div>
-
-      <!-- Tab: Usuários -->
-      <div id="usr-panel-usuarios">
-        <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
-          <select id="usr-fil-empresa" class="select" style="width:180px" onchange="loadUsuariosV5()"><option value="">Todas as empresas</option><option>CHIACCHIO</option><option>PLASCHIO</option><option>TUBAHIA</option></select>
-          <select id="usr-fil-perfil" class="select" style="width:180px" onchange="loadUsuariosV5()"><option value="">Todos os perfis</option><option>MASTER</option><option>GESTOR_SAC</option><option>ANALISTA_SAC</option><option>REPRESENTANTE</option><option>APROVADOR</option><option>CONSULTA</option><option>AUDITOR</option></select>
-          <select id="usr-fil-status" class="select" style="width:160px" onchange="loadUsuariosV5()"><option value="">Todos os status</option><option>ATIVO</option><option>INATIVO</option></select>
+    </div>
+    <div class="content" style="display:flex;flex-direction:column;gap:16px">
+      <!-- Solicitações de acesso -->
+      <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;overflow:hidden">
+        <div style="padding:14px 20px;border-bottom:1px solid #EFEFEF;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
+          <div><div style="font-weight:700;font-size:14.5px">Solicitações de acesso</div><div style="font-size:12.5px;color:#8A8888">Enviadas pela página inicial. Nenhum acesso é liberado sem aprovação do MASTER.</div></div>
+          <span style="font-size:12.5px;color:#666464" id="usr-req-pend-txt">--</span>
         </div>
-        <div class="card"><table class="simple-table"><thead><tr><th>Usuário</th><th>Nome</th><th>Empresa</th><th>Perfil</th><th>Status</th><th>Criado em</th><th>Último acesso</th><th></th></tr></thead><tbody id="usuarios-body"><tr><td colspan="8" style="text-align:center;padding:20px;color:var(--gray-400)">Carregando...</td></tr></tbody></table></div>
+        <div id="usr-solicitacoes-lista"><div style="padding:24px;text-align:center;color:#8A8888;font-size:13px">Carregando solicitações...</div></div>
       </div>
 
-      <!-- Tab: Solicitações -->
-      <div id="usr-panel-solicitacoes" style="display:none">
-        <div style="display:flex;gap:10px;margin-bottom:14px">
-          <select id="sol-fil-status" class="select" style="width:180px" onchange="loadSolicitacoes()"><option value="">Todos os status</option><option>PENDENTE</option><option>APROVADA</option><option>REJEITADA</option><option>CANCELADA</option></select>
-        </div>
-        <div class="card"><table class="simple-table"><thead><tr><th>Nome</th><th>E-mail</th><th>Empresa</th><th>Setor</th><th>Cargo</th><th>Data</th><th>Status</th><th></th></tr></thead><tbody id="sol-body"><tr><td colspan="8" style="text-align:center;padding:20px;color:var(--gray-400)">Carregando...</td></tr></tbody></table></div>
+      <!-- Busca + botão -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <input id="usr-search" oninput="filtrarUsuariosV5()" placeholder="Pesquisar usuário" style="flex:1;min-width:220px;height:36px;border:1px solid #D6D6D6;border-radius:7px;padding:0 12px;background:#fff;font-size:13px;font-family:inherit">
+        <button onclick="abrirModalUsuario()" style="border:0;background:#C70602;color:#fff;border-radius:7px;padding:9px 14px;cursor:pointer;font-size:13px;font-weight:500;font-family:inherit">Cadastrar usuário</button>
       </div>
 
-      <!-- Tab: Auditoria -->
-      <div id="usr-panel-auditoria" style="display:none">
-        <div class="card"><table class="simple-table"><thead><tr><th>Data/Hora</th><th>Usuário afetado</th><th>Ação</th><th>Empresa</th><th>Módulo</th><th>Executado por</th></tr></thead><tbody id="aud-acesso-body"><tr><td colspan="6" style="text-align:center;padding:20px;color:var(--gray-400)">Carregando...</td></tr></tbody></table></div>
+      <!-- Tabela usuários -->
+      <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;overflow-x:auto">
+        <table style="border-collapse:collapse;width:100%;min-width:960px;font-size:13px">
+          <thead><tr style="background:#FAFAFA">
+            <th style="text-align:left;font-weight:500;font-size:12px;color:#666464;padding:10px 14px;border-bottom:1px solid #E4E4E4">Nome</th>
+            <th style="text-align:left;font-weight:500;font-size:12px;color:#666464;padding:10px 14px;border-bottom:1px solid #E4E4E4">E-mail</th>
+            <th style="text-align:left;font-weight:500;font-size:12px;color:#666464;padding:10px 14px;border-bottom:1px solid #E4E4E4">Setor</th>
+            <th style="text-align:left;font-weight:500;font-size:12px;color:#666464;padding:10px 14px;border-bottom:1px solid #E4E4E4">Empresa</th>
+            <th style="text-align:left;font-weight:500;font-size:12px;color:#666464;padding:10px 14px;border-bottom:1px solid #E4E4E4">Criado em</th>
+            <th style="text-align:left;font-weight:500;font-size:12px;color:#666464;padding:10px 14px;border-bottom:1px solid #E4E4E4">Perfil</th>
+            <th style="text-align:left;font-weight:500;font-size:12px;color:#666464;padding:10px 14px;border-bottom:1px solid #E4E4E4">Status</th>
+            <th style="text-align:left;font-weight:500;font-size:12px;color:#666464;padding:10px 14px;border-bottom:1px solid #E4E4E4"></th>
+          </tr></thead>
+          <tbody id="usuarios-body"><tr><td colspan="8" style="text-align:center;padding:40px;color:#8A8888;font-size:13px">Carregando usuários...</td></tr></tbody>
+        </table>
+      </div>
+
+      <!-- Perfis de acesso -->
+      <div style="font-weight:600;font-size:15px;margin-top:4px">Perfis de acesso</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px">
+        <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:8px"><div style="display:flex;justify-content:space-between"><span style="font-weight:600">SAC / Analista</span><span style="font-size:12px;color:#8A8888" id="usr-cnt-sac">--</span></div><div style="display:flex;gap:8px;font-size:13px"><span style="color:#22603A">✓</span>Registra manifestações</div><div style="display:flex;gap:8px;font-size:13px"><span style="color:#22603A">✓</span>Analisa com a IA</div><div style="display:flex;gap:8px;font-size:13px"><span style="color:#22603A">✓</span>Encaminha aos setores</div><div style="display:flex;gap:8px;font-size:13px"><span style="color:#22603A">✓</span>Registra devolutiva</div></div>
+        <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:8px"><div style="display:flex;justify-content:space-between"><span style="font-weight:600">Setor responsável</span><span style="font-size:12px;color:#8A8888" id="usr-cnt-setor">--</span></div><div style="display:flex;gap:8px;font-size:13px"><span style="color:#22603A">✓</span>Visualiza manifestações atribuídas</div><div style="display:flex;gap:8px;font-size:13px"><span style="color:#22603A">✓</span>Registra tratativa</div><div style="display:flex;gap:8px;font-size:13px"><span style="color:#22603A">✓</span>Anexa evidências</div></div>
+        <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:8px"><div style="display:flex;justify-content:space-between"><span style="font-weight:600">Aprovador</span><span style="font-size:12px;color:#8A8888" id="usr-cnt-aprov">--</span></div><div style="display:flex;gap:8px;font-size:13px"><span style="color:#22603A">✓</span>Aprova ou reprova etapas</div><div style="display:flex;gap:8px;font-size:13px"><span style="color:#22603A">✓</span>Solicita ajustes</div></div>
+        <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:8px"><div style="display:flex;justify-content:space-between"><span style="font-weight:600">Gestor</span><span style="font-size:12px;color:#8A8888" id="usr-cnt-gestor">--</span></div><div style="display:flex;gap:8px;font-size:13px"><span style="color:#22603A">✓</span>Acesso aos indicadores</div><div style="display:flex;gap:8px;font-size:13px"><span style="color:#22603A">✓</span>Acesso à auditoria</div></div>
+        <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:8px"><div style="display:flex;justify-content:space-between"><span style="font-weight:600">Representante</span><span style="font-size:12px;color:#8A8888" id="usr-cnt-rep">--</span></div><div style="display:flex;gap:8px;font-size:13px"><span style="color:#22603A">✓</span>Visualiza manifestações permitidas</div><div style="display:flex;gap:8px;font-size:13px"><span style="color:#22603A">✓</span>Registra RCA quando autorizado</div></div>
+        <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:8px"><div style="display:flex;justify-content:space-between"><span style="font-weight:600">Administrador</span><span style="font-size:12px;color:#8A8888" id="usr-cnt-admin">--</span></div><div style="display:flex;gap:8px;font-size:13px"><span style="color:#22603A">✓</span>Acesso completo</div><div style="display:flex;gap:8px;font-size:13px"><span style="color:#22603A">✓</span>Usuários, perfis e configurações</div></div>
       </div>
     </div>
   </div>
@@ -7473,105 +7497,123 @@ async function loadMatriz() {
   } catch (e) { console.error(e); }
 }
 
-// ===== BASE DE CONHECIMENTO =====
+// ===== BANCO DE CASOS (historico) =====
 let bcData = [];
+
+function bancoTab(tab, btn) {
+  ['registros','analise'].forEach(t => {
+    const el = document.getElementById('banco-tab-'+t);
+    if (el) el.style.display = t === tab ? '' : 'none';
+  });
+  document.querySelectorAll('#banco-tabs button').forEach(b => {
+    b.style.color = '#666464'; b.style.fontWeight = '500'; b.style.borderBottom = '2px solid transparent';
+  });
+  if (btn) { btn.style.color = '#1F1F1F'; btn.style.fontWeight = '700'; btn.style.borderBottom = '2px solid #C70602'; }
+  if (tab === 'analise') renderBancoAnalise();
+}
+
 async function loadBaseConhecimento() {
   try {
-    const [polRes, procRes] = await Promise.all([
-      _apiFetch('/api/politicas', 15000).catch(() => ({ itens: [] })),
-      _apiFetch('/api/procedimentos', 15000).catch(() => ({ itens: [] }))
-    ]);
-
-    const pols = (polRes.itens || []).map(p => ({ ...p, _tipo: 'Política', _nome: p.POLITICA || p.ID_POLITICA }));
-    const procs = (procRes.itens || []).map(p => ({ ...p, _tipo: 'Procedimento', _nome: p.NOME || p.ID_PROCEDIMENTO }));
-
-    bcData = [...pols, ...procs];
-    document.getElementById('bc-total').textContent = bcData.length || 0;
-
-    // Contadores dinâmicos da sidebar
-    const cnt = (fn) => bcData.filter(fn).length;
-    const setEl = (id, v) => { const el = document.getElementById(id); if(el) el.textContent = v; };
-    setEl('bc-cnt-logistica', cnt(d => (d.SETOR_RESPONSAVEL||d.SETOR||'').includes('Logística')));
-    setEl('bc-cnt-qualidade', cnt(d => (d.SETOR_RESPONSAVEL||d.SETOR||'').includes('Qualidade')));
-    setEl('bc-cnt-comercial', cnt(d => (d.SETOR_RESPONSAVEL||d.SETOR||'').includes('Comercial')));
-    setEl('bc-cnt-financeiro', cnt(d => (d.SETOR_RESPONSAVEL||d.SETOR||'').includes('Financeiro')));
-    const setoresConhecidos = ['Logística','Qualidade','Comercial','Financeiro'];
-    setEl('bc-cnt-outros', cnt(d => !setoresConhecidos.some(s => (d.SETOR_RESPONSAVEL||d.SETOR||'').includes(s))));
-    setEl('bc-cnt-politica', cnt(d => d._tipo === 'Política'));
-    setEl('bc-cnt-procedimento', cnt(d => d._tipo === 'Procedimento'));
-    setEl('bc-cnt-resposta', cnt(d => d._tipo === 'Resposta-modelo'));
-    setEl('bc-cnt-faq', cnt(d => d._tipo === 'FAQ'));
-    setEl('bc-cnt-caso', cnt(d => d._tipo === 'Caso exemplar'));
-    setEl('bc-cnt-vigente', cnt(d => d.ATIVO === 'SIM'));
-    setEl('bc-cnt-vencida', cnt(d => d.ATIVO === 'REVISAO_VENCIDA'));
-    setEl('bc-cnt-rascunho', cnt(d => d.ATIVO !== 'SIM' && d.ATIVO !== 'REVISAO_VENCIDA'));
-
-    renderBC(bcData);
+    const res = await _apiFetch('/api/manifestacoes?status=FINALIZADA&limit=500', 20000).catch(() => ({ manifestacoes: [] }));
+    bcData = (res.manifestacoes || res.itens || []);
+    renderBancoRegistros(bcData);
+    const total = bcData.length;
+    const setEl = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    setEl('banco-kpi-total', total);
+    const qComp = bcData.filter(m => m.CAUSA && m.TRATATIVA && m.MOTIVO).length;
+    const qInc = bcData.filter(m => !m.CAUSA || !m.TRATATIVA).length;
+    setEl('banco-kpi-completo', qComp);
+    setEl('banco-kpi-parcial', total - qComp - qInc);
+    setEl('banco-kpi-incompleto', qInc);
+    setEl('banco-an-total', total);
+    setEl('banco-an-incompletos', qInc);
   } catch (e) {
-    console.error('Erro base conhecimento:', e);
-    const el = document.getElementById('bc-list');
-    if(el) el.innerHTML = `<div style="color:var(--gray-400);font-size:12px;padding:16px;text-align:center">Erro ao carregar: ${esc(e.message)}</div>`;
+    console.error('Erro banco de casos:', e);
+    const el = document.getElementById('banco-tbody');
+    if (el) el.innerHTML = `<tr><td colspan="13" style="text-align:center;padding:40px;color:#8A8888;font-size:13px">Erro ao carregar banco de casos</td></tr>`;
   }
 }
 
-function filterBC(field, val, el) {
-  document.querySelectorAll('.bc-sidebar-item').forEach(i => i.classList.remove('active'));
-  el.classList.add('active');
-  const filtered = bcData.filter(d => {
-    if (field === 'tipo') return d._tipo === val;
-    if (field === 'setor') return (d.SETOR_RESPONSAVEL || d.SETOR || '').includes(val);
-    if (field === 'status') return (d.ATIVO === 'SIM' ? 'Vigente' : 'Rascunho') === val;
+function filtrarBancoHistorico() {
+  const q = (document.getElementById('banco-search')?.value || '').toLowerCase();
+  const qual = document.getElementById('banco-fil-qualidade')?.value || '';
+  const setor = document.getElementById('banco-fil-setor')?.value || '';
+  const filtered = bcData.filter(m => {
+    const str = [m.ID_MANIFESTACAO,m.CLIENTE,m.EMPRESA,m.MOTIVO,m.CAUSA,m.SETOR_RESPONSAVEL].join(' ').toLowerCase();
+    if (q && !str.includes(q)) return false;
+    if (setor && !(m.SETOR_RESPONSAVEL||'').includes(setor)) return false;
+    if (qual) {
+      const isComp = m.CAUSA && m.TRATATIVA && m.MOTIVO;
+      const isInc = !m.CAUSA || !m.TRATATIVA;
+      if (qual === 'Completo' && !isComp) return false;
+      if (qual === 'Incompleto' && !isInc) return false;
+      if (qual === 'Parcial' && (isComp || isInc)) return false;
+    }
     return true;
   });
-  renderBC(filtered);
+  renderBancoRegistros(filtered);
 }
 
-function renderBC(items) {
-  document.getElementById('bc-list').innerHTML = items.slice(0,15).map((item, i) => `
-    <div class="bc-item ${i === 0 ? 'active' : ''}" onclick="showBCDetail(_storeRow(item), this)">
-      <div class="bc-item-title">${item._nome || item.POLITICA || 'Documento'}</div>
-      <div class="bc-item-tags">
-        <span class="bc-tag red">${item.SETOR_RESPONSAVEL || item.SETOR || 'Geral'}</span>
-        <span class="bc-tag">${item._tipo}</span>
-        <span class="bc-tag ${item.ATIVO === 'SIM' ? 'vigente' : ''}">${item.ATIVO === 'SIM' ? 'Vigente' : 'Rascunho'}</span>
-      </div>
-    </div>
-  `).join('') || '<div style="color:var(--gray-400);font-size:12px;padding:16px;text-align:center">Nenhum documento encontrado</div>';
-
-  // Show first
-  if (items[0]) showBCDetail(items[0], null);
-}
-
-function showBCDetail(item, el) {
-  if (el) {
-    document.querySelectorAll('.bc-item').forEach(i => i.classList.remove('active'));
-    el.classList.add('active');
+function renderBancoRegistros(items) {
+  const tbody = document.getElementById('banco-tbody');
+  if (!tbody) return;
+  if (!items.length) {
+    tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;padding:40px;color:#8A8888;font-size:13px">Nenhum caso encontrado</td></tr>';
+    return;
   }
-  document.getElementById('bc-detail').innerHTML = `
-    <div class="bc-detail-badges">
-      <span class="bc-tag vigente">Vigente</span>
-      <span class="bc-tag red">${item.SETOR_RESPONSAVEL || item.SETOR || 'Geral'}</span>
-      <span class="bc-tag">${item._tipo}</span>
-    </div>
-    <div class="bc-detail-title">${item._nome || 'Documento'}</div>
-    <div class="bc-meta-grid">
-      <div class="bc-meta-item"><div class="bc-meta-label">Versão</div><div class="bc-meta-val">1.0 · vigente</div></div>
-      <div class="bc-meta-item"><div class="bc-meta-label">Dono</div><div class="bc-meta-val">${item.RESPONSAVEL || '[Nome]'}</div></div>
-      <div class="bc-meta-item"><div class="bc-meta-label">Próxima revisão</div><div class="bc-meta-val">02/12/2026</div></div>
-      <div class="bc-meta-item"><div class="bc-meta-label">Uso pela IA</div><div class="bc-meta-val">-- análises</div></div>
-    </div>
-    <div style="font-size:12px;font-weight:600;color:var(--gray-500);margin-bottom:6px">Trecho do documento</div>
-    <div style="font-size:13px;color:var(--gray-700);line-height:1.6;background:var(--gray-50);padding:12px;border-radius:8px;margin-bottom:12px">${item.DESCRICAO || item.LIMITES_APROVACAO || 'Conteúdo do documento disponível ao abrir.'}</div>
-    <div class="alert-box blue" style="font-size:11px;margin-bottom:16px">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-      Só documentos vigentes alimentam a IA. Documentos com revisão vencida ficam de fora até serem atualizados.
-    </div>
-    <button class="btn btn-primary" style="width:100%;justify-content:center;margin-bottom:8px" onclick="abrirDocBC(${_storeRow(item)})">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-      Abrir documento
-    </button>
-    <button class="btn btn-secondary" style="width:100%;justify-content:center">Solicitar revisão</button>
-  `;
+  const isComp = m => m.CAUSA && m.TRATATIVA && m.MOTIVO;
+  const isInc = m => !m.CAUSA || !m.TRATATIVA;
+  const qualBadge = m => {
+    if (isComp(m)) return '<span style="padding:2px 8px;border-radius:99px;white-space:nowrap;font-size:12px;font-weight:500;background:#E6F2EA;color:#1E6B3A">Completo</span>';
+    if (isInc(m)) return '<span style="padding:2px 8px;border-radius:99px;white-space:nowrap;font-size:12px;font-weight:500;background:#FDECEC;color:#A80502">Incompleto</span>';
+    return '<span style="padding:2px 8px;border-radius:99px;white-space:nowrap;font-size:12px;font-weight:500;background:#FBF0D9;color:#7A4C00">Parcial</span>';
+  };
+  tbody.innerHTML = items.slice(0, 100).map(m => `
+    <tr style="border-bottom:1px solid #EFEFEF">
+      <td style="padding:10px 12px;font-variant-numeric:tabular-nums;font-weight:500;white-space:nowrap">${esc(m.ID_MANIFESTACAO||'')}</td>
+      <td style="padding:10px 12px;white-space:nowrap">${fmtDate(m.DATA_ABERTURA||m.DATA_CRIACAO||'')}</td>
+      <td style="padding:10px 12px;white-space:nowrap">${esc(m.EMPRESA||'')}</td>
+      <td style="padding:10px 12px">${esc(m.CLIENTE||m.NOME_CLIENTE||'')}</td>
+      <td style="padding:10px 12px;min-width:200px">${esc(m.DESCRICAO||m.MANIFESTACAO||'')}</td>
+      <td style="padding:10px 12px">${esc(m.TIPO||'')}</td>
+      <td style="padding:10px 12px">${esc(m.MOTIVO||'')}</td>
+      <td style="padding:10px 12px">${esc(m.CAUSA||'—')}</td>
+      <td style="padding:10px 12px">${esc(m.SETOR_RESPONSAVEL||m.SETOR||'')}</td>
+      <td style="padding:10px 12px">${esc(m.TRATATIVA||'—')}</td>
+      <td style="padding:10px 12px">${esc(m.PROCEDENCIA||m.RESULTADO||'—')}</td>
+      <td style="padding:10px 12px">${qualBadge(m)}</td>
+      <td style="padding:10px 12px;white-space:nowrap"><div style="display:flex;gap:10px;font-size:12.5px"><button onclick="navigate('detalhe-manifestacao')" style="border:0;background:none;padding:0;color:#A80502;cursor:pointer">Ver</button></div></td>
+    </tr>`).join('');
+}
+
+function renderBancoAnalise() {
+  const total = bcData.length;
+  const setEl = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  const campos = ['CAUSA','TRATATIVA','MOTIVO','SETOR_RESPONSAVEL','PROCEDENCIA'];
+  const labels = ['Causa registrada','Tratativa registrada','Motivo registrado','Setor responsável','Procedência'];
+  const max = total || 1;
+  const el = document.getElementById('banco-an-qualidade');
+  if (!el) return;
+  const padroes = [...new Set(bcData.map(m => m.CAUSA).filter(Boolean))].length;
+  setEl('banco-an-padroes', padroes);
+  setEl('banco-an-total', total);
+  setEl('banco-an-incompletos', bcData.filter(m => !m.CAUSA || !m.TRATATIVA).length);
+  if (!total) { el.innerHTML = '<div style="padding:24px;text-align:center;color:#8A8888;font-size:13px">Nenhum dado disponível</div>'; return; }
+  el.innerHTML = campos.map((c, i) => {
+    const v = bcData.filter(m => m[c]).length;
+    const pct = Math.round(v / max * 100);
+    const color = pct >= 85 ? '#2F7A4B' : pct >= 70 ? '#B07A12' : '#C70602';
+    return `<div style="display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) 60px 110px;gap:12px;align-items:center;padding:10px 20px;border-bottom:1px solid #EFEFEF;font-size:13px">
+      <span style="font-weight:500">${labels[i]}</span>
+      <div style="height:8px;background:#EFEFEF;border-radius:4px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${color};border-radius:4px"></div></div>
+      <span style="text-align:right;font-variant-numeric:tabular-nums;font-weight:600">${pct}%</span>
+      <button onclick="bancoTab('registros',document.getElementById('bancotab-registros'))" style="border:0;background:none;color:#A80502;cursor:pointer;font-size:12.5px;font-weight:600;text-align:right;padding:0">Corrigir</button>
+    </div>`;
+  }).join('');
+}
+
+function abrirImportarHistorico() {
+  mostrarToast('Importação de histórico: funcionalidade em desenvolvimento');
 }
 
 function abrirDocBC(idx) {
@@ -8390,8 +8432,68 @@ loadVisaoGeral();
   window.visualizarMinhaManifestacao=async function(id){try{const d=await json5('/api/manifestacoes/'+encodeURIComponent(id));abrirDossie(d.manifestacao)}catch(e){alert(e.message)}};
 
   // ===== USUÁRIOS =====
+  let _usrAllData = [];
   async function loadUsuariosV5(){
-    try{const d=await json5('/api/usuarios');const a=d.itens||[];document.getElementById('usr-ativos').textContent=a.filter(x=>String(x.status).toUpperCase()==='ATIVO').length;document.getElementById('usr-rca').textContent=a.filter(x=>x.perfil===ROLE['RCA / REPRESENTANTE']).length;document.getElementById('usr-aprov').textContent=a.filter(x=>x.perfil==='APROVADOR').length;document.getElementById('usr-analistas').textContent=a.filter(x=>x.perfil==='ANALISTA SAC').length;document.getElementById('usuarios-body').innerHTML=a.map(x=>`<tr><td><strong>${esc5(x.nome)}</strong><div style="font-size:10px;color:var(--gray-400)">${esc5(x.usuario)} · ${esc5(x.email)}</div></td><td><span class="role-pill">${esc5(x.perfil)}</span></td><td>${esc5(x.empresa||'—')}</td><td>${esc5(x.setor||'—')}</td><td>${esc5(x.status)}</td><td>${fmt5(x.ultimoAcesso)}</td><td><button class="btn btn-secondary" onclick="editarUsuarioV5('${esc5(x.id)}')">Editar</button></td></tr>`).join('')||'<tr><td colspan="7">Nenhum usuário cadastrado.</td></tr>'}catch(e){document.getElementById('usuarios-body').innerHTML=`<tr><td colspan="7">${esc5(e.message)}</td></tr>`}
+    try{
+      const d=await json5('/api/usuarios');
+      _usrAllData=d.itens||[];
+      const a=_usrAllData;
+      const setEl=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+      setEl('usr-cnt-sac', a.filter(x=>['ANALISTA SAC','MASTER','GESTOR SAC'].includes(x.perfil)).length+' usuários');
+      setEl('usr-cnt-setor', a.filter(x=>x.perfil==='SETOR RESPONSÁVEL').length+' usuários');
+      setEl('usr-cnt-aprov', a.filter(x=>x.perfil==='APROVADOR').length+' usuários');
+      setEl('usr-cnt-gestor', a.filter(x=>x.perfil==='GESTOR SAC').length+' usuários');
+      setEl('usr-cnt-rep', a.filter(x=>x.perfil==='RCA / REPRESENTANTE').length+' usuários');
+      setEl('usr-cnt-admin', a.filter(x=>x.perfil==='MASTER').length+' usuários');
+      renderUsuariosV5(a);
+      // Carregar solicitações
+      await loadSolicitacoesEmbutido();
+    }catch(e){document.getElementById('usuarios-body').innerHTML=`<tr><td colspan="8" style="text-align:center;padding:24px;color:#8A8888">${esc5(e.message)}</td></tr>`}
+  }
+  function filtrarUsuariosV5(){
+    const q=(document.getElementById('usr-search')?.value||'').toLowerCase();
+    const filtered=_usrAllData.filter(x=>[x.nome,x.email,x.usuario,x.empresa,x.perfil].join(' ').toLowerCase().includes(q));
+    renderUsuariosV5(filtered);
+  }
+  function renderUsuariosV5(a){
+    const stBg=(s)=>String(s).toUpperCase()==='ATIVO'?'#E6F2EA':'#EEEEEE';
+    const stFg=(s)=>String(s).toUpperCase()==='ATIVO'?'#1E6B3A':'#545252';
+    document.getElementById('usuarios-body').innerHTML=a.map(x=>`<tr style="border-bottom:1px solid #EFEFEF">
+      <td style="padding:10px 14px;font-weight:500">${esc5(x.nome||'')}</td>
+      <td style="padding:10px 14px;color:#545252">${esc5(x.email||'')}</td>
+      <td style="padding:10px 14px">${esc5(x.setor||'—')}</td>
+      <td style="padding:10px 14px">${esc5(x.empresa||'—')}</td>
+      <td style="padding:10px 14px">${fmt5(x.dataCriacao||x.DATA_CRIACAO||'')}</td>
+      <td style="padding:10px 14px"><span style="padding:2px 8px;border-radius:99px;white-space:nowrap;font-size:12px;font-weight:500;background:#F1EFF8;color:#A80502">${esc5(x.perfil||'')}</span></td>
+      <td style="padding:10px 14px"><span style="padding:2px 8px;border-radius:99px;white-space:nowrap;font-size:12px;font-weight:500;background:${stBg(x.status)};color:${stFg(x.status)}">${esc5(x.status||'')}</span></td>
+      <td style="padding:10px 14px"><button onclick="editarUsuarioV5('${esc5(x.id)}')" style="border:0;background:none;color:#A80502;cursor:pointer;padding:0;font-size:13px">Editar</button></td>
+    </tr>`).join('')||'<tr><td colspan="8" style="text-align:center;padding:40px;color:#8A8888;font-size:13px">Nenhum usuário cadastrado</td></tr>';
+  }
+  async function loadSolicitacoesEmbutido(){
+    try{
+      const d=await json5('/api/solicitacoes-acesso').catch(()=>({itens:[]}));
+      const reqs=(d.itens||[]);
+      const pend=reqs.filter(x=>x.STATUS==='PENDENTE');
+      const setEl=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+      setEl('usr-req-pend-txt', pend.length ? `${pend.length} pendente(s)` : 'Nenhuma pendente');
+      const el=document.getElementById('usr-solicitacoes-lista');
+      if(!el) return;
+      if(!reqs.length){el.innerHTML='<div style="padding:24px 20px;font-size:13px;color:#8A8888">Nenhuma solicitação de acesso registrada.</div>';return;}
+      el.innerHTML=reqs.slice(0,10).map(r=>{
+        const stBg={'PENDENTE':'#FBF0D9','APROVADA':'#E6F2EA','REJEITADA':'#FDECEC'}[r.STATUS]||'#EEEEEE';
+        const stFg={'PENDENTE':'#7A4C00','APROVADA':'#1E6B3A','REJEITADA':'#A80502'}[r.STATUS]||'#545252';
+        return `<div style="padding:14px 20px;border-bottom:1px solid #EFEFEF">
+          <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+            <span style="font-weight:600;font-size:13.5px">${esc5(r.NOME||r.nome||'')}</span>
+            <span style="font-size:12.5px;color:#666464">${esc5(r.EMAIL||r.email||'')} · ${esc5(r.EMPRESA||r.empresa||'')} · ${esc5(r.SETOR||r.setor||'')}</span>
+            <span style="font-size:12px;color:#8A8888">${esc5(r.ID||r.id||'')} · ${fmt5(r.DATA_SOLICITACAO||r.dataSolicitacao||'')}</span>
+            <span style="margin-left:auto;padding:2px 9px;border-radius:99px;font-size:11.5px;font-weight:600;background:${stBg};color:${stFg}">${esc5(r.STATUS||r.status||'')}</span>
+          </div>
+          <div style="font-size:13px;color:#545252;margin-top:6px">Motivo: ${esc5(r.MOTIVO||r.motivo||'—')}</div>
+          ${r.STATUS==='PENDENTE'?`<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><button onclick="abrirConfigAcesso('${esc5(r.id||r.ID)}')" style="border:1px solid #D6D6D6;background:#fff;border-radius:7px;padding:7px 12px;cursor:pointer;font-size:12.5px;color:#A80502">Rejeitar</button><button onclick="abrirConfigAcesso('${esc5(r.id||r.ID)}')" style="border:0;background:#1F1F1F;color:#fff;border-radius:7px;padding:7px 14px;cursor:pointer;font-size:12.5px;font-weight:600">Aprovar com este perfil</button></div>`:''}
+        </div>`;
+      }).join('');
+    }catch(e){console.error('Solicitações:',e);}
   }
   window.loadUsuariosV5=loadUsuariosV5;
   window.abrirModalUsuario=function(){document.getElementById('modal-usuario-v5').style.display='flex'};window.fecharModalUsuario=function(){document.getElementById('modal-usuario-v5').style.display='none'};
@@ -13026,15 +13128,9 @@ async function mudarStatusMC(id, novoStatus) {
 
   // ── TABS USUÁRIOS ───────────────────────────────────────────
   window.switchUsrTab = function(tab){
-    ['usuarios','solicitacoes','auditoria'].forEach(t=>{
-      const btn=document.getElementById('usr-tab-'+t);
-      const panel=document.getElementById('usr-panel-'+t);
-      if(btn){ btn.style.borderBottomColor=t===tab?'var(--primary)':'transparent'; btn.style.color=t===tab?'var(--primary)':'var(--gray-500)'; btn.style.fontWeight=t===tab?'700':'600'; }
-      if(panel) panel.style.display=t===tab?'':'none';
-    });
-    if(tab==='usuarios') loadUsuariosAdmin();
-    if(tab==='solicitacoes') loadSolicitacoes();
-    if(tab==='auditoria') loadAuditoriaAcesso();
+    // Layout redesenhado: sem abas separadas, tudo em scroll
+    if(tab==='solicitacoes') loadSolicitacoesEmbutido?.();
+    else loadUsuariosV5?.();
   };
 
   // ── CARREGAR USUÁRIOS (novo endpoint) ───────────────────────
