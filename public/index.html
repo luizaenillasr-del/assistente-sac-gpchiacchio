@@ -42,10 +42,12 @@
   .sidebar-logo h2 { font-size: 13.5px; font-weight: 700; color: #1F1F1F; line-height: 1.2; }
   .sidebar-logo p { font-size: 11px; color: #929090; margin-top: 1px; letter-spacing: 0.04em; }
   .sidebar-section { padding: 4px 10px; font-size: 10.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #929090; margin-bottom: 2px; margin-top: 14px; }
-  .sidebar-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; cursor: pointer; border-radius: 7px; margin: 1px 2px; color: #545252; font-size: 13.5px; font-weight: 500; transition: all 0.15s; }
+  .sidebar-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; cursor: pointer; border-radius: 7px; margin: 0; color: #545252; font-size: 13.5px; font-weight: 500; width: 100%; text-align: left; border: 0; background: transparent; font-family: inherit; }
   .sidebar-item:hover { background: #F4F4F4; color: #1F1F1F; }
   .sidebar-item.active { background: #FDECEC; color: #C70602; font-weight: 600; }
-  .sidebar-item svg { width: 15px; height: 15px; flex-shrink: 0; }
+  .sidebar-item svg { display: none; }
+  .sidebar-dot { width: 6px; height: 6px; border-radius: 2px; flex-shrink: 0; background: #D0D0D0; }
+  .sidebar-item.active .sidebar-dot { background: #C70602; }
   .sidebar-bottom { margin-top: auto; padding: 14px 8px 0; border-top: 1px solid #E4E4E4; }
   .sidebar-link { font-size: 12.5px; color: #666464; display: flex; align-items: center; gap: 4px; padding: 4px; cursor: pointer; }
   .sidebar-link:hover { color: #C70602; }
@@ -61,12 +63,24 @@
   .page.active { display: flex; }
 
   /* TOPBAR / HEADER */
-  .topbar { position: sticky; top: 0; z-index: 5; background: rgba(255,255,255,.95); backdrop-filter: blur(8px); border-bottom: 1px solid #E4E4E4; padding: 12px 28px; }
-  .breadcrumb { font-size: 12px; color: #929090; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .breadcrumb span { color: #666464; }
-  .page-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 0; }
-  .page-title { font-size: 20px; font-weight: 600; letter-spacing: -.01em; color: #1F1F1F; margin: 0; }
+  .topbar { position: sticky; top: 0; z-index: 5; background: rgba(255,255,255,.95); backdrop-filter: blur(8px); border-bottom: 1px solid #E4E4E4; padding: 12px 28px; display: flex; align-items: center; gap: 14px; }
+  .topbar-left { flex: 1 1 auto; min-width: 180px; overflow: hidden; }
+  .breadcrumb { font-size: 12px; color: #8A8888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .page-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 0; flex-wrap: nowrap; }
+  .topbar-left .page-header { justify-content: flex-start; }
+  .topbar-left .page-actions { display: none; }
+  .page-title { font-size: 20px; font-weight: 600; letter-spacing: -.01em; color: #1F1F1F; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .page-actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+  .topbar-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+  .topbar-search { flex: 0 1 260px; min-width: 90px; height: 36px; border: 1px solid #D6D6D6; border-radius: 8px; padding: 0 12px; background: #fff; font-size: 13px; font-family: inherit; outline: none; }
+  .topbar-search:focus { border-color: #C70602; }
+  .topbar-notif { flex: none; white-space: nowrap; height: 36px; display: flex; align-items: center; gap: 8px; border: 1px solid #D6D6D6; background: #fff; border-radius: 8px; padding: 0 12px; cursor: pointer; font-size: 13px; font-family: inherit; }
+  .topbar-notif:hover { background: #F4F4F4; }
+  .topbar-notif-badge { background: #C70602; color: #fff; border-radius: 99px; white-space: nowrap; font-size: 11px; padding: 1px 7px; font-weight: 600; }
+  .topbar-user { flex: none; white-space: nowrap; display: flex; align-items: center; gap: 10px; border: 0; background: none; cursor: pointer; text-align: left; padding: 0; font-family: inherit; }
+  .topbar-user-avatar { width: 34px; height: 34px; border-radius: 50%; background: #EEEEEE; display: grid; place-items: center; font-weight: 600; font-size: 12.5px; color: #545252; flex-shrink: 0; }
+  .topbar-user-name { font-size: 13px; font-weight: 500; color: #1F1F1F; }
+  .topbar-user-role { font-size: 11.5px; color: #8A8888; }
   .badge-mockup { font-size: 11px; color: var(--gray-400); }
   /* content padding below topbar */
   .content { padding: 24px 28px 56px; flex: 1; }
@@ -700,6 +714,13 @@
           <div class="login-step"><span class="login-step-n">02</span>Analista valida e encaminha ao setor responsável</div>
           <div class="login-step"><span class="login-step-n">03</span>Tratativa e aprovação quando necessárias</div>
           <div class="login-step"><span class="login-step-n">04</span>Devolutiva ao cliente e histórico permanente</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;margin-top:32px;max-width:420px">
+          <button onclick="abrirPortalPublico()" style="height:54px;border:0;background:#fff;color:#C70602;border-radius:10px;font-weight:700;font-size:15px;letter-spacing:.04em;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.18);font-family:inherit">+ REGISTRAR MANIFESTAÇÃO</button>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">
+            <button onclick="document.getElementById('login-screen').scrollTop=0" style="height:44px;border:1.5px solid #fff;background:transparent;color:#fff;border-radius:10px;font-weight:700;font-size:12.5px;letter-spacing:.04em;cursor:pointer;font-family:inherit">ENTRAR NO SISTEMA</button>
+            <button onclick="abrirSolicitacaoAcesso()" style="height:44px;border:1.5px solid rgba(255,255,255,.7);background:transparent;color:#fff;border-radius:10px;font-weight:700;font-size:12.5px;letter-spacing:.04em;cursor:pointer;font-family:inherit">SOLICITAR ACESSO</button>
+          </div>
         </div>
       </div>
       <div class="login-left-footer">
@@ -1361,109 +1382,47 @@
   </div>
 
   <div class="sidebar-section">Atendimento</div>
-  <div class="sidebar-item active" onclick="navigate('visao-geral', this)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-    Visão Geral
-  </div>
-  <div class="sidebar-item" onclick="navigate('acompanhamento', this)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-    Acompanhamento
-  </div>
-  <div class="sidebar-item" onclick="navigate('nova-manifestacao', this)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-    Nova Manifestação
-  </div>
-  <div class="sidebar-item" onclick="navigate('banco-manifestacoes', this)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-    Banco de Manifestações
-  </div>
-
-  <div class="sidebar-item" id="sidebar-central-sac" style="display:none" onclick="navigate('central-sac', this)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-    Minha Central SAC
+  <div style="display:flex;flex-direction:column;gap:2px">
+    <button class="sidebar-item active" onclick="navigate('visao-geral', this)"><span class="sidebar-dot"></span>Dashboard</button>
+    <button class="sidebar-item" onclick="navigate('nova-manifestacao', this)"><span class="sidebar-dot"></span>Nova manifestação</button>
+    <button class="sidebar-item" onclick="navigate('banco-manifestacoes', this)"><span class="sidebar-dot"></span>Manifestações</button>
+    <button class="sidebar-item" onclick="navigate('acompanhamento', this)"><span class="sidebar-dot"></span>Pendências</button>
+    <button class="sidebar-item" id="sidebar-central-sac" style="display:none" onclick="navigate('central-sac', this)"><span class="sidebar-dot"></span>Minha Central SAC</button>
   </div>
 
   <div class="sidebar-section">Gestão</div>
-  <div class="sidebar-item" onclick="navigate('aprovadores', this)">Central de Aprovação</div>
-  <div class="sidebar-item" data-v5-page="representantes" onclick="navigate('representantes', this)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/><path d="M21 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-    Representantes
-  </div>
-  <div class="sidebar-item" data-v5-page="setor-responsavel" onclick="navigate('setor-responsavel', this)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 7 7 3-7 3-3 7-3-7-7-3 7-3 3-7z"/></svg>
-    Minha fila
-  </div>
-  <div class="sidebar-item" data-v5-page="usuarios" onclick="navigate('usuarios', this)" style="position:relative">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><path d="M17 3a4 4 0 0 1 0 8"/></svg>
-    Usuários e Acessos
-    <span id="badge-solicitacoes" onclick="event.stopPropagation();abrirPainelNotificacoes()" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);background:#C8102E;color:white;font-size:10px;font-weight:700;border-radius:10px;padding:1px 6px;min-width:18px;text-align:center;cursor:pointer" title="Ver solicitações pendentes"></span>
-  </div>
-  <div class="sidebar-item" onclick="navigate('banco-rnc', this)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-    Banco de RNC
-  </div>
-  <div class="sidebar-item" onclick="navigate('setores', this)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 19.07a10 10 0 0 1 0-14.14"/></svg>
-    Setores
+  <div style="display:flex;flex-direction:column;gap:2px">
+    <button class="sidebar-item" onclick="navigate('aprovadores', this)"><span class="sidebar-dot"></span>Central de Aprovação</button>
+    <button class="sidebar-item" onclick="navigate('banco-rnc', this)"><span class="sidebar-dot"></span>Central de RCA</button>
+    <button class="sidebar-item" data-v5-page="setor-responsavel" onclick="navigate('setor-responsavel', this)"><span class="sidebar-dot"></span>Minha fila</button>
+    <button class="sidebar-item" data-v5-page="usuarios" onclick="navigate('usuarios', this)" style="position:relative"><span class="sidebar-dot"></span>Usuários e Permissões<span id="badge-solicitacoes" onclick="event.stopPropagation();abrirPainelNotificacoes()" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);background:#C8102E;color:white;font-size:10px;font-weight:700;border-radius:10px;padding:1px 6px;min-width:18px;text-align:center;cursor:pointer" title="Ver solicitações pendentes"></span></button>
+    <button class="sidebar-item" data-v5-page="representantes" onclick="navigate('representantes', this)"><span class="sidebar-dot"></span>Representantes</button>
+    <button class="sidebar-item" onclick="navigate('setores', this)"><span class="sidebar-dot"></span>Setores</button>
+    <button class="sidebar-item" onclick="navigate('biblioteca-fichas', this)"><span class="sidebar-dot"></span>Arquivo de Fichas</button>
   </div>
 
-  <div class="sidebar-item" onclick="navigate('biblioteca-fichas', this)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/></svg>
-    Arquivo de Fichas
+  <div class="sidebar-section">Conhecimento</div>
+  <div style="display:flex;flex-direction:column;gap:2px">
+    <button class="sidebar-item" onclick="navigate('cerebro', this)"><span class="sidebar-dot"></span>Cérebro</button>
+    <button class="sidebar-item" onclick="navigate('base-conhecimento', this)"><span class="sidebar-dot"></span>Banco de casos</button>
+    <button class="sidebar-item" onclick="navigate('matriz', this)"><span class="sidebar-dot"></span>Matriz de Tratamento</button>
+    <button class="sidebar-item" onclick="navigate('causas', this)"><span class="sidebar-dot"></span>Causas e Subcausas</button>
+    <button class="sidebar-item" onclick="navigate('matriz-conhecimento', this)"><span class="sidebar-dot"></span>Matriz de Conhecimento</button>
   </div>
 
-  <div class="sidebar-section">Inteligência</div>
-  <div class="sidebar-item" onclick="navigate('cerebro', this)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
-    Central de Dados
-  </div>
-  <div class="sidebar-item" onclick="navigate('painel-maquina', this)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-    Painel da Máquina
-  </div>
-  <div class="sidebar-item" onclick="navigate('sugestoes-melhoria', this)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-    Sugestões IA
-  </div>
-  <div class="sidebar-item" onclick="navigate('prazos-regionais', this)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/><path d="M2 12h3M19 12h3M12 2v3M12 19v3"/></svg>
-    Prazos Regionais
-  </div>
-
-  <div class="sidebar-section">Regras</div>
-  <div class="sidebar-item" onclick="navigate('matriz', this)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>
-    Matriz de Tratamento
-  </div>
-  <div class="sidebar-item" onclick="navigate('causas', this)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a2 2 0 0 0-2 2v4"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-    Causas e Subcausas
-  </div>
-  <div class="sidebar-item" onclick="navigate('base-conhecimento', this)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-    Base de Conhecimento
-  </div>
-  <div class="sidebar-item" onclick="navigate('matriz-conhecimento', this)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>
-    Matriz de Conhecimento
+  <div class="sidebar-section">Indicadores</div>
+  <div style="display:flex;flex-direction:column;gap:2px">
+    <button class="sidebar-item" onclick="navigate('painel-maquina', this)"><span class="sidebar-dot"></span>Indicadores</button>
+    <button class="sidebar-item" onclick="navigate('sugestoes-melhoria', this)"><span class="sidebar-dot"></span>Pesquisa de Satisfação</button>
+    <button class="sidebar-item" onclick="navigate('prazos-regionais', this)"><span class="sidebar-dot"></span>Configurações</button>
   </div>
 
   <div class="sidebar-bottom">
-    <div class="sidebar-link">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-      Painel de satisfação geral
-    </div>
-    <div class="sidebar-user">
-      <div class="sidebar-user-avatar" id="sidebar-avatar">US</div>
-      <div class="sidebar-user-info">
-        <div class="sidebar-user-name" id="sidebar-user-name">Usuário</div>
-        <div class="sidebar-user-role" id="sidebar-user-role">Perfil</div>
-      </div>
-    </div>
-    <button onclick="doLogout()" style="margin-top:10px;width:100%;background:none;border:0;color:#666464;border-radius:6px;padding:4px 0;font-size:12.5px;cursor:pointer;display:flex;align-items:center;gap:6px;font-family:inherit;text-align:left;transition:color 0.15s" onmouseover="this.style.color='#C70602'" onmouseout="this.style.color='#666464'">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-      Sair
-    </button>
+    <!-- hidden compat elements used by JS -->
+    <span id="sidebar-avatar" style="display:none"></span>
+    <span id="sidebar-user-name" style="display:none"></span>
+    <span id="sidebar-user-role" style="display:none"></span>
+    <button onclick="doLogout()" style="width:100%;background:none;border:0;color:#666464;padding:4px 0;font-size:12.5px;cursor:pointer;display:flex;align-items:center;gap:6px;font-family:inherit;text-align:left;transition:color 0.15s" onmouseover="this.style.color='#C70602'" onmouseout="this.style.color='#666464'">Sair</button>
   </div>
 </nav>
 
@@ -8213,9 +8172,15 @@ loadVisaoGeral();
 
   function setUserChrome(){
     const u=sess();if(!u)return;
-    document.getElementById('sidebar-user-name').textContent=u.nome||u.usuario||'Usuário';
-    document.getElementById('sidebar-user-role').textContent=u.perfil||'Perfil';
-    document.getElementById('sidebar-avatar').textContent=initials(u.nome||u.usuario);
+    const ini=initials(u.nome||u.usuario);
+    // sidebar bottom (removed, but keep for compat)
+    const sn=document.getElementById('sidebar-user-name'); if(sn)sn.textContent=u.nome||u.usuario||'Usuário';
+    const sr=document.getElementById('sidebar-user-role'); if(sr)sr.textContent=u.perfil||'Perfil';
+    const sa=document.getElementById('sidebar-avatar'); if(sa)sa.textContent=ini;
+    // topbar user (may be multiple due to injection)
+    document.querySelectorAll('#topbar-user-ini,[id=topbar-user-ini]').forEach(el=>el.textContent=ini);
+    document.querySelectorAll('[id=topbar-user-name]').forEach(el=>el.textContent=u.nome||u.usuario||'Usuário');
+    document.querySelectorAll('[id=topbar-user-role]').forEach(el=>el.textContent=u.perfil||u.setor||'SAC');
   }
 
   const allowed={
@@ -8235,7 +8200,9 @@ loadVisaoGeral();
     document.querySelectorAll('.sidebar-section').forEach(sec=>{
       let next=sec.nextElementSibling; let hasVisible=false;
       while(next && !next.classList.contains('sidebar-section')){
-        if(next.style.display!=='none') hasVisible=true;
+        // check both direct items and items nested in wrapper divs
+        if(next.classList && next.classList.contains('sidebar-item') && next.style.display!=='none') hasVisible=true;
+        if(next.querySelectorAll) { next.querySelectorAll('.sidebar-item').forEach(it=>{ if(it.style.display!=='none') hasVisible=true; }); }
         next=next.nextElementSibling;
       }
       sec.style.display=hasVisible?'block':'none';
@@ -14139,6 +14106,49 @@ async function mudarStatusMC(id, novoStatus) {
 document.addEventListener('DOMContentLoaded', function() {
   if (typeof verificarTokenReset === 'function') verificarTokenReset();
 });
+</script>
+
+<script>
+// ===== TOPBAR HEADER RESTRUCTURE =====
+// Wrap topbar contents in .topbar-left and add shared right side
+document.addEventListener('DOMContentLoaded', function() {
+  const topbarRight = `
+    <div class="topbar-right" id="topbar-right-shared">
+      <input class="topbar-search" placeholder="Buscar por nº, cliente, CNPJ, NF…" id="topbar-global-search" onkeydown="if(event.key==='Enter'&&this.value.trim()){navigate('banco-manifestacoes',document.querySelector('[onclick*=banco-manifestacoes]'))}">
+      <button class="topbar-notif" onclick="navigate('aprovadores',document.querySelector('[onclick*=aprovadores]'))">Notificações<span class="topbar-notif-badge" id="topbar-notif-count">3</span></button>
+      <button class="topbar-user" onclick="navigate('usuarios',document.querySelector('[onclick*=usuarios]'))">
+        <span class="topbar-user-avatar" id="topbar-user-ini">US</span>
+        <span style="display:flex;flex-direction:column"><span class="topbar-user-name" id="topbar-user-name">Usuário</span><span class="topbar-user-role" id="topbar-user-role">SAC</span></span>
+      </button>
+    </div>`;
+
+  document.querySelectorAll('.topbar').forEach(tb => {
+    // Skip if already restructured
+    if (tb.querySelector('.topbar-left')) return;
+    // Collect existing children
+    const children = Array.from(tb.childNodes);
+    const wrapper = document.createElement('div');
+    wrapper.className = 'topbar-left';
+    children.forEach(c => wrapper.appendChild(c));
+    tb.appendChild(wrapper);
+    tb.insertAdjacentHTML('beforeend', topbarRight.replace('id="topbar-right-shared"', ''));
+  });
+});
+
+// Update topbar user info after login
+function updateTopbarUser(user) {
+  if (!user) return;
+  document.querySelectorAll('#topbar-user-ini').forEach(el => { el.textContent = (user.nome||user.usuario||'US').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase(); });
+  document.querySelectorAll('#topbar-user-name').forEach(el => { el.textContent = user.nome || user.usuario || 'Usuário'; });
+  document.querySelectorAll('#topbar-user-role').forEach(el => { el.textContent = user.perfil || user.setor || 'SAC'; });
+  // also update sidebar bottom
+  const sideAvatar = document.getElementById('sidebar-avatar');
+  if (sideAvatar) sideAvatar.textContent = (user.nome||user.usuario||'US').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  const sideName = document.getElementById('sidebar-user-name');
+  if (sideName) sideName.textContent = user.nome || user.usuario || 'Usuário';
+  const sideRole = document.getElementById('sidebar-user-role');
+  if (sideRole) sideRole.textContent = user.perfil || user.setor || 'SAC';
+}
 </script>
 
 </body>
