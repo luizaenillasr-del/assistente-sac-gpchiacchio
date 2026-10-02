@@ -825,8 +825,9 @@ app.post('/api/auth/forgot-password', async (req,res)=>{
   const token = crypto.randomBytes(32).toString('hex');
   const expMs = Date.now() + 60 * 60 * 1000;
 
-  // Gravar token na aba RESET_TOKENS (cria linha; não precisa de aba pré-existente)
+  // Gravar token na aba RESET_TOKENS (cria aba se não existir)
   try {
+    await garantirAbaComCabecalhos('RESET_TOKENS', ['TOKEN','USUARIO','EMAIL','EXP','USADO']);
     await appendObjeto('RESET_TOKENS', {
       TOKEN: token,
       USUARIO: usuario.USUARIO || usuario.EMAIL,
