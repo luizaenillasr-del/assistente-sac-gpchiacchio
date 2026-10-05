@@ -17278,202 +17278,283 @@ async function mudarStatusMC(id, novoStatus) {
 <!-- ALIMENTAÇÃO DA FERRAMENTA                                    -->
 <!-- ============================================================ -->
 <div class="page" id="page-alimentacao" style="background:#F4F4F4;overflow-y:auto">
+<!-- AL-STYLE-INICIO: estilos exclusivos da tela Alimentação (prefixo .al-) -->
 <style>
-.alim-card{background:#fff;border:1px solid #E4E4E4;border-radius:12px;padding:20px 22px;display:flex;flex-direction:column;gap:8px;position:relative}
-.alim-card-title{font-size:13px;font-weight:700;color:#1F1F1F}
-.alim-card-sub{font-size:11.5px;color:#929090}
-.alim-badge{display:inline-flex;align-items:center;gap:4px;border-radius:20px;padding:2px 10px;font-size:11px;font-weight:600}
-.alim-badge-ok{background:#E6F2EA;color:#1E6B3A}
-.alim-badge-warn{background:#FFF3E0;color:#7A4C00}
-.alim-badge-err{background:#FDECEC;color:#A80502}
-.alim-status-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;display:inline-block}
-.alim-status-dot.ok{background:#22C55E}
-.alim-status-dot.warn{background:#F59E0B}
-.alim-status-dot.err{background:#EF4444}
-.alim-btn{height:34px;border:1px solid #D6D6D6;background:#fff;border-radius:7px;padding:0 14px;cursor:pointer;font-size:12.5px;font-weight:600;font-family:Montserrat,system-ui,sans-serif;color:#1F1F1F;transition:background .12s,border-color .12s}
-.alim-btn:hover{background:#F4F4F4}
-.alim-btn-primary{background:#C70602;border-color:#C70602;color:#fff}
-.alim-btn-primary:hover{background:#A80502;border-color:#A80502}
-.alim-section-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#929090;margin:0 0 10px}
-.alim-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
-
-/* Wizard */
-.alim-wizard{background:#fff;border-radius:14px;border:1px solid #E4E4E4;overflow:hidden}
-.alim-wizard-steps{display:flex;border-bottom:1px solid #E4E4E4;padding:0 20px;gap:0;overflow-x:auto}
-.alim-wizard-step{padding:12px 16px;font-size:12px;font-weight:600;color:#929090;border-bottom:2px solid transparent;white-space:nowrap;cursor:default}
-.alim-wizard-step.ativo{color:#C70602;border-bottom-color:#C70602}
-.alim-wizard-step.concluido{color:#1E6B3A}
-.alim-wizard-body{padding:24px}
-.alim-wizard-footer{padding:16px 24px;border-top:1px solid #E4E4E4;display:flex;justify-content:space-between;gap:10px}
-
-/* Tabela histórico */
-.alim-hist-row{display:grid;grid-template-columns:150px 120px 1fr 80px;gap:12px;padding:9px 12px;border-bottom:1px solid #F4F4F4;font-size:12.5px;align-items:center}
-.alim-hist-row:hover{background:#FAFAFA}
-.alim-hist-header{background:#F9F9F9;font-weight:700;font-size:11px;color:#929090;text-transform:uppercase;letter-spacing:.04em}
+#page-alimentacao{--al-ok-bg:#E6F2EA;--al-ok-fg:#1E6B3A;--al-warn-bg:#FBF0D9;--al-warn-fg:#7A4C00;--al-info-bg:#E6EEF8;--al-info-fg:#24508F;--al-err-bg:#FDECEC;--al-err-fg:#A80502;--al-mute-bg:#EEEEEE;--al-mute-fg:#545252}
+.al-wrap{padding:22px 28px 60px;display:flex;flex-direction:column;gap:16px;font-family:Montserrat,system-ui,sans-serif;color:#1F1F1F;font-size:14px}
+.al-wrap button,.al-modal button,.al-wrap select,.al-modal select,.al-modal input{font-family:inherit}
+.al-wrap button,.al-modal button{white-space:nowrap}
+.al-head{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap}
+.al-crumb{font-size:12px;color:#929090}
+.al-title{font-size:24px;font-weight:700;margin-top:2px}
+.al-lead{font-size:13px;color:#666464;line-height:1.5;margin-top:4px;max-width:760px}
+.al-btn-primary{border:0;background:#C70602;color:#fff;border-radius:8px;padding:10px 16px;cursor:pointer;font-size:13px;font-weight:700}
+.al-btn-primary:hover{background:#A80502}
+.al-btn-ghost{border:1px solid #D6D6D6;background:#fff;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:13px}
+.al-btn-ghost:hover{background:#F4F4F4}
+.al-btn-sm{border:1px solid #D6D6D6;background:#fff;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:12px;font-weight:600}
+.al-btn-sm:hover{background:#F4F4F4}
+.al-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.al-stat{background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:4px}
+.al-stat-l{font-size:11px;font-weight:700;letter-spacing:.05em;color:#545252}
+.al-stat-v{font-size:26px;font-weight:700;font-variant-numeric:tabular-nums}
+.al-stat-d{font-size:11.5px;color:#929090}
+.al-rules{background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:12px 16px;display:flex;flex-wrap:wrap;gap:8px 22px;font-size:12.5px;color:#3A3939;line-height:1.5}
+.al-chips{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.al-chip{border:1px solid #D6D6D6;background:#fff;color:#3A3939;border-radius:99px;padding:6px 14px;font-size:12.5px;font-weight:600;cursor:pointer}
+.al-chip.on{border-color:#1F1F1F;background:#1F1F1F;color:#fff}
+.al-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:12px}
+.al-card{background:#fff;border:1px solid #E4E4E4;border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.al-card-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.al-card-grp{font-size:10.5px;font-weight:700;letter-spacing:.07em;color:#929090}
+.al-card-name{font-weight:700;font-size:14.5px;line-height:1.3}
+.al-pill{padding:3px 9px;border-radius:99px;font-size:10.5px;font-weight:700;white-space:nowrap}
+.al-pill.ok{background:var(--al-ok-bg);color:var(--al-ok-fg)}
+.al-pill.warn{background:var(--al-warn-bg);color:var(--al-warn-fg)}
+.al-pill.info{background:var(--al-info-bg);color:var(--al-info-fg)}
+.al-pill.err{background:var(--al-err-bg);color:var(--al-err-fg)}
+.al-pill.mute{background:var(--al-mute-bg);color:var(--al-mute-fg)}
+.al-card-desc{font-size:12.5px;color:#666464;line-height:1.5}
+.al-feeds{display:flex;gap:5px;flex-wrap:wrap}
+.al-feeds b{font-size:11px;color:#929090;font-weight:600}
+.al-feeds span{font-size:11px;background:#F4F4F4;border-radius:5px;padding:2px 7px;color:#3A3939}
+.al-card-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;border-top:1px solid #EFEFEF;padding-top:10px;margin-top:auto}
+.al-card-n{font-size:18px;font-weight:700;font-variant-numeric:tabular-nums}
+.al-card-last{font-size:11px;color:#929090}
+.al-btn-imp{border:1px solid #C70602;background:#fff;color:#A80502;border-radius:7px;padding:7px 12px;cursor:pointer;font-size:12.5px;font-weight:700}
+.al-btn-imp:hover{background:#FFF5F5}
+.al-btn-imp:disabled{border-color:#D6D6D6;color:#929090;background:#F4F4F4;cursor:not-allowed}
+.al-card-fmt{font-size:10.5px;color:#929090}
+.al-card-why{font-size:11.5px;color:#7A4C00;background:#FBF0D9;border-radius:6px;padding:6px 9px;line-height:1.45}
+.al-card-links{display:flex;gap:12px;flex-wrap:wrap}
+.al-link{border:0;background:none;padding:0;color:#A80502;cursor:pointer;font-size:11.5px;font-weight:600}
+.al-link:hover{text-decoration:underline}
+.al-low{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start}
+.al-panel{background:#fff;border:1px solid #E4E4E4;border-radius:12px;overflow:hidden}
+.al-panel-h{padding:12px 16px;border-bottom:1px solid #EFEFEF;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center}
+.al-table{border-collapse:collapse;width:100%;min-width:820px;font-size:12.5px}
+.al-table th{text-align:left;font-weight:600;font-size:11.5px;color:#666464;padding:9px 12px;border-bottom:1px solid #E4E4E4;white-space:nowrap;background:#FAFAFA}
+.al-table td{padding:9px 12px;border-bottom:1px solid #EFEFEF;vertical-align:middle}
+.al-act{border:0;background:none;padding:0;color:#A80502;cursor:pointer;font-size:12px;font-weight:600}
+.al-act:disabled{color:#B5B3B3;cursor:not-allowed}
+.al-empty{padding:22px 16px;text-align:center;color:#929090;font-size:13px}
+.al-pend{flex:1 1 280px;max-width:100%;background:#fff;border:1px solid #E4E4E4;border-radius:12px;padding:12px 16px;display:flex;flex-direction:column;gap:4px}
+/* Assistente (modal) */
+.al-modal{display:none;position:fixed;inset:0;background:rgba(20,20,20,.5);z-index:9999;place-items:center;padding:20px;font-family:Montserrat,system-ui,sans-serif;color:#1F1F1F}
+.al-modal.open{display:grid}
+.al-dlg{width:min(820px,100%);max-height:100%;display:flex;flex-direction:column;background:#fff;border-radius:12px;overflow:hidden}
+.al-dlg-h{padding:14px 20px;border-bottom:1px solid #E4E4E4;display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.al-dlg-eyebrow{font-size:11px;color:#929090;font-weight:700;letter-spacing:.06em}
+.al-dlg-title{font-weight:700;font-size:17px}
+.al-x{border:0;background:none;cursor:pointer;font-size:24px;color:#666464;padding:0 4px;line-height:1}
+.al-steps{display:flex;gap:4px;padding:12px 20px;border-bottom:1px solid #EFEFEF;overflow-x:auto}
+.al-step{flex:1;min-width:110px;display:flex;flex-direction:column;gap:6px}
+.al-step i{height:4px;border-radius:2px;background:#E4E4E4;display:block}
+.al-step.on i,.al-step.done i{background:#C70602}
+.al-step span{font-size:11.5px;font-weight:500;color:#929090;white-space:nowrap}
+.al-step.on span{font-weight:700;color:#1F1F1F}
+.al-dlg-b{flex:1;overflow:auto;padding:18px 20px;display:flex;flex-direction:column;gap:14px;font-size:13px}
+.al-dlg-f{padding:12px 20px;border-top:1px solid #E4E4E4;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center}
+.al-src-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
+.al-src{text-align:left;border:1.5px solid #E4E4E4;background:#fff;border-radius:9px;padding:10px 12px;cursor:pointer;display:flex;flex-direction:column;gap:2px;white-space:normal!important}
+.al-src.on{border-color:#C70602;background:#FFF8F8}
+.al-src:disabled{background:#F4F4F4;cursor:not-allowed;color:#929090}
+.al-src b{font-size:13px}
+.al-src small{font-size:11px;color:#929090}
+.al-lbl{display:flex;flex-direction:column;gap:4px;font-size:12px;color:#666464;font-weight:600;max-width:320px}
+.al-sel{height:38px;border:1px solid #D6D6D6;border-radius:7px;padding:0 10px;background:#fff;font-size:13px;color:#1F1F1F}
+.al-sel.sm{height:32px;border-radius:6px;padding:0 6px;font-size:12.5px;min-width:200px}
+.al-drop{border:2px dashed #CFCFCF;background:#FAFAFA;border-radius:10px;padding:28px 16px;cursor:pointer;display:flex;flex-direction:column;gap:6px;align-items:center;white-space:normal!important;text-align:center}
+.al-drop.over{border-color:#C70602;background:#FFF8F8}
+.al-note{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center;background:#F7F7F7;border-radius:8px;padding:10px 12px;font-size:12.5px}
+.al-file{display:flex;gap:12px;align-items:center;border:1px solid #E4E4E4;border-radius:8px;padding:10px 12px}
+.al-file-ext{width:38px;height:44px;border-radius:5px;background:#1E6B3A;color:#fff;display:grid;place-items:center;font-size:10px;font-weight:700;flex:none}
+.al-file-ext.pdf{background:#C70602}.al-file-ext.docx{background:#24508F}
+.al-map{overflow-x:auto;border:1px solid #E4E4E4;border-radius:9px}
+.al-map table{border-collapse:collapse;width:100%;min-width:600px;font-size:12.5px}
+.al-map th{text-align:left;padding:8px 12px;font-size:11.5px;color:#666464;font-weight:600;background:#FAFAFA}
+.al-map td{padding:7px 12px;border-top:1px solid #EFEFEF}
+.al-vk{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px}
+.al-vk div{border-radius:9px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
+.al-vk b{font-size:11px}.al-vk span{font-size:24px;font-weight:700;font-variant-numeric:tabular-nums}
+.al-dupo{display:flex;gap:8px;flex-wrap:wrap}
+.al-dupo button{border:1.5px solid #D6D6D6;background:#fff;border-radius:8px;padding:8px 12px;cursor:pointer;font-size:12.5px;font-weight:600;white-space:normal;text-align:left}
+.al-dupo button.on{border-color:#C70602;background:#FFF8F8}
+.al-dupo button:disabled{background:#F4F4F4;color:#929090;cursor:not-allowed}
+.al-errs{border:1px solid #E4E4E4;border-radius:8px;overflow:hidden;max-height:220px;overflow-y:auto}
+.al-errs div{display:grid;grid-template-columns:150px minmax(0,1fr);gap:10px;padding:8px 12px;border-top:1px solid #EFEFEF;font-size:12.5px}
+.al-errs div:first-child{border-top:0}
+.al-sum{background:#F7F7F7;border-radius:10px;padding:14px 16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px 16px}
+.al-sum small{display:block;font-size:10.5px;color:#929090;font-weight:600}
+.al-sum b{font-size:13px;overflow-wrap:anywhere}
+.al-block{font-size:12px;color:#A80502}
+.al-alert{border-radius:8px;padding:10px 12px;font-size:12.5px}
+.al-alert.err{background:#FDECEC;border:1px solid #F3CFCF;color:#7F0401}
+.al-alert.ok{background:#E6F2EA;color:#1E6B3A}
+.al-alert.warn{background:#FBF0D9;color:#7A4C00}
+.al-next{border:0;color:#fff;border-radius:8px;padding:9px 18px;cursor:pointer;font-size:13px;font-weight:700;background:#C70602}
+.al-next.off{background:#C4C4C4}
+.al-toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#1F1F1F;color:#fff;padding:11px 16px;border-radius:8px;font-size:13px;z-index:10000;max-width:92vw;font-family:Montserrat,system-ui,sans-serif}
+.al-form-in{border:1px solid #D6D6D6;border-radius:7px;padding:0 10px;height:36px;font-size:13px;font-family:inherit;width:100%;box-sizing:border-box}
+textarea.al-form-in{height:auto;padding:8px 10px;resize:vertical}
 </style>
+<!-- AL-STYLE-FIM -->
 
-<div style="padding:20px 24px 0;display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap">
-  <div>
-    <div style="font-size:12px;color:#929090;font-family:Montserrat,system-ui,sans-serif">Administração / Alimentação da ferramenta</div>
-    <div style="font-size:22px;font-weight:700;margin-top:2px;font-family:Montserrat,system-ui,sans-serif;color:#1F1F1F">Alimentação da ferramenta</div>
-    <div style="font-size:13px;color:#666464;line-height:1.5;margin-top:4px;font-family:Montserrat,system-ui,sans-serif">Importe e atualize as fontes de dados que alimentam o SAC: histórico, cadastros, conhecimento e regras.</div>
-  </div>
-  <div style="display:flex;gap:8px;flex-wrap:wrap">
-    <button class="alim-btn" onclick="loadAlimentacao()">↻ Atualizar status</button>
-  </div>
-</div>
-
-<!-- KPIs rápidos -->
-<div id="alim-kpis" style="margin:16px 24px 0;display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px">
-  <div class="alim-card" style="flex-direction:row;align-items:center;gap:14px;padding:14px 18px">
+<div class="al-wrap">
+  <div class="al-head">
     <div>
-      <div style="font-size:22px;font-weight:800;color:#1F1F1F" id="alim-kpi-total">–</div>
-      <div style="font-size:11.5px;color:#929090">Fontes ativas</div>
+      <div class="al-crumb">Administração / Alimentação da ferramenta</div>
+      <div class="al-title">Alimentação da ferramenta</div>
+      <div class="al-lead">Local único para carregar o histórico, os cadastros e os documentos que abastecem o Assistente SAC. Cada carga passa por conferência antes de entrar na base.</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="al-btn-ghost" onclick="loadAlimentacao()">↻ Atualizar status</button>
+      <button class="al-btn-primary" onclick="alOpen(null)">+ Nova importação</button>
     </div>
   </div>
-  <div class="alim-card" style="flex-direction:row;align-items:center;gap:14px;padding:14px 18px">
-    <div>
-      <div style="font-size:22px;font-weight:800;color:#22C55E" id="alim-kpi-ok">–</div>
-      <div style="font-size:11.5px;color:#929090">Com registros</div>
-    </div>
-  </div>
-  <div class="alim-card" style="flex-direction:row;align-items:center;gap:14px;padding:14px 18px">
-    <div>
-      <div style="font-size:22px;font-weight:800;color:#F59E0B" id="alim-kpi-vazio">–</div>
-      <div style="font-size:11.5px;color:#929090">Vazias</div>
-    </div>
-  </div>
-  <div class="alim-card" style="flex-direction:row;align-items:center;gap:14px;padding:14px 18px">
-    <div>
-      <div style="font-size:22px;font-weight:800;color:#C70602" id="alim-kpi-importacoes">–</div>
-      <div style="font-size:11.5px;color:#929090">Importações (total)</div>
-    </div>
-  </div>
-</div>
 
-<!-- FONTES DE DADOS -->
-<div style="margin:20px 24px 0">
-  <div class="alim-section-title">Histórico de manifestações</div>
-  <div class="alim-grid" id="alim-grid-historico">
-    <div class="alim-card"><div class="alim-card-title">Banco de casos (histórico)</div><div class="alim-card-sub">Aba: BANCO_HISTORICO</div><div id="alim-s-BANCO_HISTORICO" style="margin-top:4px"><span class="alim-badge alim-badge-warn">Carregando...</span></div><div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><button class="alim-btn alim-btn-primary" onclick="abrirFormAlim('BANCO_HISTORICO')">+ Cadastrar</button><button class="alim-btn" onclick="abrirWizardAlim('BANCO_HISTORICO','Banco de Casos','Histórico de manifestações antigas — colunas: EMPRESA, CLIENTE, CNPJ, TIPO, MOTIVO, DATA')">↑ Importar CSV</button></div></div>
-    <div class="alim-card"><div class="alim-card-title">Manifestações ativas</div><div class="alim-card-sub">Aba: MANIFESTACOES</div><div id="alim-s-MANIFESTACOES" style="margin-top:4px"><span class="alim-badge alim-badge-warn">Carregando...</span></div><div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><button class="alim-btn alim-btn-primary" onclick="navigate('nova-manifestacao',document.querySelector('[onclick*=nova-manifestacao]'))">+ Nova manifestação</button><button class="alim-btn" onclick="navigate('banco-manifestacoes',document.querySelector('[onclick*=banco-manifestacoes]'))">Ver manifestações →</button></div></div>
-  </div>
-</div>
+  <div class="al-stats" id="al-stats"></div>
 
-<div style="margin:20px 24px 0">
-  <div class="alim-section-title">Cadastros</div>
-  <div class="alim-grid" id="alim-grid-cadastros">
-    <div class="alim-card"><div class="alim-card-title">Causas e Subcausas</div><div class="alim-card-sub">Aba: CAUSAS</div><div id="alim-s-CAUSAS" style="margin-top:4px"><span class="alim-badge alim-badge-warn">Carregando...</span></div><div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><button class="alim-btn alim-btn-primary" onclick="abrirFormAlim('CAUSAS')">+ Cadastrar</button><button class="alim-btn" onclick="abrirWizardAlim('CAUSAS','Causas e Subcausas','Colunas recomendadas: ID_CAUSA, CATEGORIA, TIPO, CAUSA, SUBCAUSA, SETOR_RESPONSAVEL, PALAVRAS_CHAVE')">↑ Importar CSV</button></div></div>
-    <div class="alim-card"><div class="alim-card-title">Setores e SLAs</div><div class="alim-card-sub">Aba: CONFIG_SETORES</div><div id="alim-s-CONFIG_SETORES" style="margin-top:4px"><span class="alim-badge alim-badge-warn">Carregando...</span></div><div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><button class="alim-btn alim-btn-primary" onclick="abrirFormAlim('CONFIG_SETORES')">+ Cadastrar</button><button class="alim-btn" onclick="abrirWizardAlim('CONFIG_SETORES','Setores e SLAs','Colunas recomendadas: NOME_SETOR, EMPRESA, SLA_HORAS, EMAIL_RESPONSAVEL, ATIVO')">↑ Importar CSV</button></div></div>
-    <div class="alim-card"><div class="alim-card-title">Produtos</div><div class="alim-card-sub">Aba: PRODUTOS</div><div id="alim-s-PRODUTOS" style="margin-top:4px"><span class="alim-badge alim-badge-warn">Carregando...</span></div><div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><button class="alim-btn alim-btn-primary" onclick="abrirFormAlim('PRODUTOS')">+ Cadastrar</button><button class="alim-btn" onclick="abrirWizardAlim('PRODUTOS','Produtos','Colunas recomendadas: EMPRESA, PRODUTO, CODIGO, FAMILIA, LINHA, ATIVO')">↑ Importar CSV</button></div></div>
-    <div class="alim-card"><div class="alim-card-title">Representantes (RCA)</div><div class="alim-card-sub">Aba: REPRESENTANTES</div><div id="alim-s-REPRESENTANTES" style="margin-top:4px"><span class="alim-badge alim-badge-warn">Carregando...</span></div><div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><button class="alim-btn alim-btn-primary" onclick="abrirFormAlim('REPRESENTANTES')">+ Cadastrar</button><button class="alim-btn" onclick="abrirWizardAlim('REPRESENTANTES','Representantes','Colunas recomendadas: NOME, CODIGO_RCA, EMAIL, EMPRESA, REGIAO, ATIVO')">↑ Importar CSV</button></div></div>
-    <div class="alim-card"><div class="alim-card-title">RNCs</div><div class="alim-card-sub">Aba: BANCO_RNC</div><div id="alim-s-BANCO_RNC" style="margin-top:4px"><span class="alim-badge alim-badge-warn">Carregando...</span></div><button class="alim-btn" style="margin-top:10px;align-self:flex-start" onclick="navigate('banco-rnc',document.querySelector('[onclick*=banco-rnc]'))">Ver RNCs →</button></div>
-    <div class="alim-card"><div class="alim-card-title">Arquivo de Fichas</div><div class="alim-card-sub">Aba: FICHAS_BIBLIOTECA</div><div id="alim-s-FICHAS_BIBLIOTECA" style="margin-top:4px"><span class="alim-badge alim-badge-warn">Carregando...</span></div><button class="alim-btn" style="margin-top:10px;align-self:flex-start" onclick="navigate('biblioteca-fichas',document.querySelector('[onclick*=biblioteca-fichas]'))">Ver arquivo →</button></div>
+  <div class="al-rules">
+    <span style="font-weight:700">Regras da alimentação</span>
+    <span>1. Nada entra na base sem conferência.</span>
+    <span>2. O arquivo original fica guardado sem alteração <em style="color:#7A4C00">(ainda não disponível)</em>.</span>
+    <span>3. Duplicados são identificados antes da carga.</span>
+    <span>4. Documentos de conhecimento passam pela validação do Cérebro <em style="color:#7A4C00">(ainda não disponível)</em>.</span>
+    <span>5. Toda carga fica no histórico; desfazer em até 24 h <em style="color:#7A4C00">(ainda não disponível)</em>.</span>
   </div>
-</div>
 
-<div style="margin:20px 24px 0">
-  <div class="alim-section-title">Conhecimento — Cérebro SAC</div>
-  <div class="alim-grid">
-    <div class="alim-card"><div class="alim-card-title">Matriz de Tratamento</div><div class="alim-card-sub">Aba: MATRIZ_TRATAMENTO</div><div id="alim-s-MATRIZ_TRATAMENTO" style="margin-top:4px"><span class="alim-badge alim-badge-warn">Carregando...</span></div><div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><button class="alim-btn alim-btn-primary" onclick="abrirFormAlim('MATRIZ_TRATAMENTO')">+ Cadastrar</button><button class="alim-btn" onclick="abrirWizardAlim('MATRIZ_TRATAMENTO','Matriz de Tratamento','Colunas recomendadas: TIPO_MANIFESTACAO, EMPRESA, CAUSA, SUBCAUSA, SETOR_RESPONSAVEL, SLA_HORAS, PRIORIDADE, TRATATIVA_PADRAO, DEVOLUTIVA_PADRAO')">↑ Importar CSV</button></div></div>
-    <div class="alim-card"><div class="alim-card-title">Procedimentos operacionais</div><div class="alim-card-sub">Aba: PROCEDIMENTOS</div><div id="alim-s-PROCEDIMENTOS" style="margin-top:4px"><span class="alim-badge alim-badge-warn">Carregando...</span></div><div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><button class="alim-btn alim-btn-primary" onclick="abrirFormAlim('PROCEDIMENTOS')">+ Cadastrar</button><button class="alim-btn" onclick="abrirWizardAlim('PROCEDIMENTOS','Procedimentos','Colunas recomendadas: SETOR, EMPRESA, NOME, OBJETIVO, QUANDO_USAR, PASSOS, RESPONSAVEL')">↑ Importar CSV</button></div></div>
-    <div class="alim-card"><div class="alim-card-title">Políticas</div><div class="alim-card-sub">Aba: POLITICAS</div><div id="alim-s-POLITICAS" style="margin-top:4px"><span class="alim-badge alim-badge-warn">Carregando...</span></div><div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><button class="alim-btn alim-btn-primary" onclick="abrirFormAlim('POLITICAS')">+ Cadastrar</button><button class="alim-btn" onclick="abrirWizardAlim('POLITICAS','Políticas','Colunas recomendadas: SETOR, EMPRESA, NOME, OBJETIVO, REGRA_OFICIAL, LIMITES, CONDICOES')">↑ Importar CSV</button></div></div>
-    <div class="alim-card"><div class="alim-card-title">Pesquisas de Satisfação</div><div class="alim-card-sub">Aba: PESQUISAS_SATISFACAO</div><div id="alim-s-PESQUISAS_SATISFACAO" style="margin-top:4px"><span class="alim-badge alim-badge-warn">Carregando...</span></div><button class="alim-btn alim-btn-primary" style="margin-top:10px;align-self:flex-start" onclick="abrirWizardAlim('PESQUISAS_SATISFACAO','Pesquisas de Satisfação','Colunas recomendadas: ID_MANIFESTACAO, EMPRESA, CLIENTE, NOTA_GERAL, NOTA_ATENDIMENTO, NOTA_RESOLUCAO, COMENTARIO, DATA')">↑ Importar pesquisas</button></div>
-  </div>
-</div>
+  <div class="al-chips" id="al-chips"></div>
+  <div class="al-cards" id="al-cards"></div>
 
-<!-- HISTÓRICO DE IMPORTAÇÕES -->
-<div style="margin:20px 24px 32px">
-  <div class="alim-section-title">Histórico de importações</div>
-  <div class="alim-card" style="padding:0;gap:0;overflow:hidden">
-    <div class="alim-hist-row alim-hist-header">
-      <span>Data/hora</span><span>Usuário</span><span>Ação / Destino</span><span>Registros</span>
+  <div class="al-low">
+    <div class="al-panel" style="flex:999 1 600px;min-width:0">
+      <div class="al-panel-h"><span style="font-weight:700;font-size:14px">Histórico de importações</span><span style="font-size:12px;color:#666464" id="al-hist-count"></span></div>
+      <div style="overflow-x:auto"><table class="al-table">
+        <thead><tr><th>Data</th><th>Fonte / destino</th><th>Empresa</th><th>Usuário</th><th>Registros</th><th>Status</th><th></th></tr></thead>
+        <tbody id="al-hist-body"><tr><td colspan="7" class="al-empty">Carregando histórico...</td></tr></tbody>
+      </table></div>
     </div>
-    <div id="alim-hist-body" style="max-height:320px;overflow-y:auto">
-      <div style="padding:20px;text-align:center;color:#929090;font-size:13px">Carregando histórico...</div>
+    <div class="al-pend">
+      <span style="font-weight:700;font-size:14px">Pendências de dados</span>
+      <span style="font-size:12px;color:#666464;line-height:1.5;margin-bottom:6px">Campos vazios ou inconsistentes encontrados nas cargas já feitas.</span>
+      <div class="al-card-why">Ainda não disponível: o sistema não tem verificação de pendências de dados por carga. Nenhum número é exibido para não mostrar dados que não existem.</div>
     </div>
   </div>
 </div>
 
-<!-- MODAL CADASTRO DIRETO -->
-<div id="modal-alim-form" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;align-items:center;justify-content:center;padding:20px">
-  <div style="background:#fff;border-radius:16px;max-width:600px;width:100%;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.35)">
-    <div style="padding:20px 24px 16px;border-bottom:1px solid #E4E4E4;display:flex;justify-content:space-between;align-items:center">
-      <div>
-        <div style="font-size:15px;font-weight:800;color:#1F1F1F" id="alim-form-titulo">Cadastrar</div>
-        <div style="font-size:12px;color:#929090;margin-top:2px" id="alim-form-sub"></div>
-      </div>
-      <button onclick="fecharFormAlim()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#929090;line-height:1">×</button>
+<!-- MODAL CADASTRO DIRETO (preservado) -->
+<div class="al-modal" id="modal-alim-form">
+  <div class="al-dlg" style="width:min(600px,100%)">
+    <div class="al-dlg-h">
+      <div><div class="al-dlg-title" id="alim-form-titulo">Cadastrar</div><div style="font-size:12px;color:#929090;margin-top:2px" id="alim-form-sub"></div></div>
+      <button class="al-x" onclick="fecharFormAlim()">×</button>
     </div>
-    <div style="flex:1;overflow-y:auto;padding:20px 24px" id="alim-form-body"></div>
-    <div id="alim-form-msg" style="display:none;margin:0 24px 0;padding:10px 14px;border-radius:8px;font-size:13px"></div>
-    <div style="padding:14px 24px;border-top:1px solid #E4E4E4;display:flex;justify-content:flex-end;gap:10px">
-      <button class="alim-btn" onclick="fecharFormAlim()">Cancelar</button>
-      <button class="alim-btn alim-btn-primary" id="alim-form-btn-salvar" onclick="salvarFormAlim()">Salvar registro</button>
+    <div class="al-dlg-b" id="alim-form-body"></div>
+    <div id="alim-form-msg" style="display:none;margin:0 20px 8px"></div>
+    <div class="al-dlg-f" style="justify-content:flex-end">
+      <button class="al-btn-ghost" onclick="fecharFormAlim()">Cancelar</button>
+      <button class="al-next" id="alim-form-btn-salvar" onclick="salvarFormAlim()">Salvar registro</button>
     </div>
   </div>
 </div>
 
-<!-- MODAL WIZARD IMPORTAÇÃO -->
-<div id="modal-alim-wizard" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;align-items:center;justify-content:center;padding:20px">
-  <div style="background:#fff;border-radius:16px;max-width:680px;width:100%;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.35)">
-    <div style="padding:20px 24px 16px;border-bottom:1px solid #E4E4E4;display:flex;justify-content:space-between;align-items:center">
-      <div>
-        <div style="font-size:15px;font-weight:800;color:#1F1F1F" id="alim-wiz-titulo">Importar dados</div>
-        <div style="font-size:12px;color:#929090;margin-top:2px" id="alim-wiz-sub"></div>
-      </div>
-      <button onclick="fecharWizardAlim()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#929090;line-height:1">×</button>
+<!-- ASSISTENTE DE IMPORTAÇÃO -->
+<div class="al-modal" id="al-wiz">
+  <div class="al-dlg">
+    <div class="al-dlg-h">
+      <div><div class="al-dlg-eyebrow">NOVA IMPORTAÇÃO</div><div class="al-dlg-title" id="al-wiz-title">Escolha a fonte</div></div>
+      <button class="al-x" onclick="alClose()">×</button>
     </div>
-
-    <!-- Steps indicator -->
-    <div style="padding:12px 24px 0;display:flex;gap:6px;align-items:center" id="alim-wiz-steps">
-      <span id="alim-step-1" class="alim-wizard-step ativo">1 · Arquivo</span>
-      <span style="color:#D0D0D0;font-size:12px">›</span>
-      <span id="alim-step-2" class="alim-wizard-step">2 · Prévia</span>
-      <span style="color:#D0D0D0;font-size:12px">›</span>
-      <span id="alim-step-3" class="alim-wizard-step">3 · Mapeamento</span>
-      <span style="color:#D0D0D0;font-size:12px">›</span>
-      <span id="alim-step-4" class="alim-wizard-step">4 · Validação</span>
-      <span style="color:#D0D0D0;font-size:12px">›</span>
-      <span id="alim-step-5" class="alim-wizard-step">5 · Confirmar</span>
-    </div>
-
-    <div style="flex:1;overflow-y:auto;padding:20px 24px" id="alim-wiz-body"></div>
-
-    <div style="padding:14px 24px;border-top:1px solid #E4E4E4;display:flex;justify-content:space-between;gap:10px">
-      <button class="alim-btn" id="alim-wiz-btn-back" onclick="alimWizPrev()" style="display:none">← Voltar</button>
-      <div style="flex:1"></div>
-      <button class="alim-btn" onclick="fecharWizardAlim()">Cancelar</button>
-      <button class="alim-btn alim-btn-primary" id="alim-wiz-btn-next" onclick="alimWizNext()">Avançar →</button>
+    <div class="al-steps" id="al-wiz-steps"></div>
+    <div class="al-dlg-b" id="al-wiz-body"></div>
+    <div class="al-dlg-f">
+      <button class="al-btn-ghost" id="al-wiz-back" onclick="alBack()">Cancelar</button>
+      <div style="display:flex;gap:10px;align-items:center"><span class="al-block" id="al-wiz-block"></span><button class="al-next" id="al-wiz-next" onclick="alNext()">Continuar →</button></div>
     </div>
   </div>
 </div>
 
 </div><!-- /page-alimentacao -->
-
 <script>
 // ===== ALIMENTAÇÃO DA FERRAMENTA =====
 (function(){
 
-let _alimAba = '';
-let _alimTitulo = '';
-let _alimDica = '';
-let _alimStep = 1;
-let _alimRows = []; // parsed CSV/JSON rows
-let _alimCols = []; // columns from file
-let _alimSheetHeaders = []; // existing headers on destination sheet
-let _alimMapa = {}; // { colArquivo: colDestino }
-let _alimValidados = []; // rows after validation
-let _alimDuplicados = 0;
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtN = n => Number(n||0).toLocaleString('pt-BR');
+const tok = () => sessionStorage.getItem('sac-token');
+const authH = () => ({'Authorization':'Bearer '+tok()});
+const norm = s => String(s==null?'':s).normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[\s_\-\.]+/g,'');
+const $ = id => document.getElementById(id);
 
-function fmt(v){ return v||'–'; }
+const EMPRESAS = ['Todas as empresas','Chiacchio Embalagens','Plaschio','Tubahia'];
+const MAX_BYTES = 4*1024*1024; // limite do corpo de requisição da Vercel (~4,5 MB)
+const LOTE = 150;
 
-// ===== FORMULÁRIO DE CADASTRO DIRETO =====
+// Fontes. imp=true => existe backend de importação (POST /api/planilha/:aba/importar).
+const SRC = [
+  {id:'fichas',grp:'hist',nome:'Fichas de reclamação antigas',doc:true,aba:'FICHAS_BIBLIOTECA',imp:false,
+    desc:'Fichas em papel digitalizadas ou arquivos anteriores à ferramenta. O original fica guardado e os dados vão para o banco.',
+    feeds:['Arquivo de Fichas','Banco de casos','Reincidência'],fmt:'PDF, DOCX, JPG',
+    why:'Sem backend de importação em lote de fichas (leitura OCR/IA, conferência e arquivamento pela data original). Use a tela Arquivo de Fichas.',view:'biblioteca-fichas'},
+  {id:'manif',grp:'hist',nome:'Planilha de manifestações',aba:'BANCO_HISTORICO',imp:true,docx:true,form:'BANCO_HISTORICO',
+    desc:'Controle de manifestações mantido em planilha antes da ferramenta.',
+    feeds:['Banco de casos','Indicadores','Relatórios'],fmt:'CSV, JSON ou .docx (ficha). XLSX: exporte como CSV.',
+    hint:'Colunas da aba BANCO_HISTORICO'},
+  {id:'rnc',grp:'hist',nome:'RNCs antigas (RT-0001)',doc:true,aba:'BANCO_RNC',imp:false,
+    desc:'Relatórios de Não Conformidade já concluídos, com causa raiz, ações e eficácia.',
+    feeds:['Central de RCA','Cérebro','Causas e Subcausas'],fmt:'PDF, DOCX',
+    why:'Sem backend de importação de RNCs antigas. A carga hoje é feita pela própria Central de RCA.',view:'banco-rnc'},
+  {id:'pesq',grp:'hist',nome:'Pesquisas de satisfação antigas',aba:'PESQUISAS_SATISFACAO',imp:true,
+    desc:'Respostas de pesquisas feitas fora da ferramenta (formulários, planilhas).',
+    feeds:['Pesquisa de Satisfação','Relatório mensal'],fmt:'CSV ou JSON. XLSX: exporte como CSV.'},
+  {id:'cli',grp:'cad',nome:'Clientes',aba:null,imp:false,
+    desc:'Razão social, CNPJ, código, contato, cidade/UF, vendedor e representante.',
+    feeds:['Nova manifestação','Reincidência','Pesquisas'],fmt:'XLSX, CSV',
+    why:'Não existe cadastro de clientes com importação no backend (a consulta por CNPJ usa o Banco de casos).'},
+  {id:'prod',grp:'cad',nome:'Produtos e lotes',aba:'PRODUTOS',imp:true,form:'PRODUTOS',
+    desc:'Catálogo de produtos por empresa, códigos e lotes de produção.',
+    feeds:['Nova manifestação','RNC'],fmt:'CSV ou JSON. XLSX: exporte como CSV.'},
+  {id:'setor',grp:'cad',nome:'Setores e responsáveis',aba:'CONFIG_SETORES',imp:true,form:'CONFIG_SETORES',
+    desc:'Setores de cada empresa, responsáveis, substitutos e prazos (SLA).',
+    feeds:['Encaminhamento','Matriz de Tratamento','Notificações'],fmt:'CSV ou JSON. XLSX: exporte como CSV.'},
+  {id:'rep',grp:'cad',nome:'Representantes e vendedores',aba:'REPRESENTANTES',imp:true,form:'REPRESENTANTES',
+    desc:'Carteira de cada representante e vendedor, com região e contato.',
+    feeds:['Representantes','Nova manifestação'],fmt:'CSV ou JSON. XLSX: exporte como CSV.'},
+  {id:'causa',grp:'cad',nome:'Causas e subcausas',aba:'CAUSAS',imp:true,form:'CAUSAS',
+    desc:'Lista oficial de categorias, motivos, causas e subcausas usada na classificação.',
+    feeds:['Causas e Subcausas','Análise da IA'],fmt:'CSV ou JSON. XLSX: exporte como CSV.'},
+  {id:'conh',grp:'conh',nome:'Documentos de conhecimento',doc:true,aba:null,imp:false,
+    desc:'Procedimentos, POPs, políticas comerciais, especificações técnicas e manuais.',
+    feeds:['Cérebro (após validação)','Análise da IA'],fmt:'PDF, DOCX, XLSX',
+    why:'Sem backend de upload de documentos nem fila de validação do Cérebro.'},
+  // Fontes que já existiam nesta tela e continuam disponíveis
+  {id:'matriz',grp:'conh',nome:'Matriz de Tratamento',aba:'MATRIZ_TRATAMENTO',imp:true,form:'MATRIZ_TRATAMENTO',
+    desc:'Regras de tratamento por tipo, causa e subcausa (setor, SLA, prioridade, tratativa e devolutiva padrão).',
+    feeds:['Matriz de Tratamento','Cérebro'],fmt:'CSV ou JSON. XLSX: exporte como CSV.'},
+  {id:'proc',grp:'conh',nome:'Procedimentos operacionais',aba:'PROCEDIMENTOS',imp:true,form:'PROCEDIMENTOS',
+    desc:'Procedimentos por setor e empresa, com objetivo, quando usar e passos.',
+    feeds:['Cérebro','Análise da IA'],fmt:'CSV ou JSON. XLSX: exporte como CSV.'},
+  {id:'pol',grp:'conh',nome:'Políticas',aba:'POLITICAS',imp:true,form:'POLITICAS',
+    desc:'Políticas por setor e empresa, com regra oficial, limites e condições.',
+    feeds:['Cérebro','Análise da IA'],fmt:'CSV ou JSON. XLSX: exporte como CSV.'}
+];
+const GRP = {hist:'HISTÓRICO',cad:'CADASTROS',conh:'CONHECIMENTO'};
+const ABA_NOME = {}; SRC.forEach(s=>{ if(s.aba && !ABA_NOME[s.aba]) ABA_NOME[s.aba]=s.nome; });
+
+let S = {grp:'all', status:null, hist:null, err:''};
+let W = null;
+let _toastT;
+
+function toast(t){
+  let el=$('al-toast'); if(!el){ el=document.createElement('div'); el.id='al-toast'; el.className='al-toast'; document.body.appendChild(el); }
+  el.textContent=t; el.style.display='block'; clearTimeout(_toastT); _toastT=setTimeout(()=>{el.style.display='none';},3500);
+}
+
+// ===== FORMULÁRIO DE CADASTRO DIRETO (preservado) =====
 const ALIM_FORM_CONFIG = {
   BANCO_HISTORICO: {
-    titulo: 'Novo caso no Histórico',
-    sub: 'Registro histórico de manifestação',
-    endpoint: null, // usa /api/planilha/BANCO_HISTORICO/importar
+    titulo: 'Novo caso no Histórico', sub: 'Registro histórico de manifestação', endpoint: null,
     campos: [
       {id:'EMPRESA',label:'Empresa',type:'text',req:true},
       {id:'CLIENTE',label:'Cliente / Razão Social',type:'text'},
@@ -17490,9 +17571,7 @@ const ALIM_FORM_CONFIG = {
     ]
   },
   CAUSAS: {
-    titulo: 'Nova Causa',
-    sub: 'Cadastro no banco de causas e subcausas',
-    endpoint: '/api/causas',
+    titulo: 'Nova Causa', sub: 'Cadastro no banco de causas e subcausas', endpoint: '/api/causas',
     campos: [
       {id:'categoria',label:'Categoria',type:'text',req:true,ph:'Ex: Qualidade do Produto'},
       {id:'tipo',label:'Tipo',type:'text',ph:'Ex: Reclamação'},
@@ -17503,9 +17582,7 @@ const ALIM_FORM_CONFIG = {
     ]
   },
   CONFIG_SETORES: {
-    titulo: 'Novo Setor',
-    sub: 'Cadastro de setor e SLA',
-    endpoint: '/api/setores',
+    titulo: 'Novo Setor', sub: 'Cadastro de setor e SLA', endpoint: '/api/setores',
     campos: [
       {id:'SETOR',label:'Nome do setor',type:'text',req:true},
       {id:'EMPRESA',label:'Empresa',type:'text'},
@@ -17515,9 +17592,7 @@ const ALIM_FORM_CONFIG = {
     ]
   },
   PRODUTOS: {
-    titulo: 'Novo Produto',
-    sub: 'Cadastro de produto',
-    endpoint: null, // usa /api/planilha/PRODUTOS/importar
+    titulo: 'Novo Produto', sub: 'Cadastro de produto', endpoint: null,
     campos: [
       {id:'EMPRESA',label:'Empresa',type:'text',req:true},
       {id:'PRODUTO',label:'Nome do produto',type:'text',req:true},
@@ -17528,9 +17603,7 @@ const ALIM_FORM_CONFIG = {
     ]
   },
   REPRESENTANTES: {
-    titulo: 'Novo Representante',
-    sub: 'Cadastro de representante (RCA)',
-    endpoint: null, // usa /api/planilha/REPRESENTANTES/importar
+    titulo: 'Novo Representante', sub: 'Cadastro de representante (RCA)', endpoint: null,
     campos: [
       {id:'NOME',label:'Nome',type:'text',req:true},
       {id:'CODIGO_RCA',label:'Código RCA',type:'text'},
@@ -17541,9 +17614,7 @@ const ALIM_FORM_CONFIG = {
     ]
   },
   MATRIZ_TRATAMENTO: {
-    titulo: 'Nova Regra de Tratamento',
-    sub: 'Matriz de Tratamento — Cérebro SAC',
-    endpoint: null,
+    titulo: 'Nova Regra de Tratamento', sub: 'Matriz de Tratamento — Cérebro SAC', endpoint: null,
     campos: [
       {id:'TIPO_MANIFESTACAO',label:'Tipo de manifestação',type:'select',opts:['Reclamação','Elogio','Sugestão','Dúvida','Informação'],req:true},
       {id:'EMPRESA',label:'Empresa',type:'text'},
@@ -17557,9 +17628,7 @@ const ALIM_FORM_CONFIG = {
     ]
   },
   PROCEDIMENTOS: {
-    titulo: 'Novo Procedimento',
-    sub: 'Procedimento operacional',
-    endpoint: null,
+    titulo: 'Novo Procedimento', sub: 'Procedimento operacional', endpoint: null,
     campos: [
       {id:'NOME',label:'Nome do procedimento',type:'text',req:true},
       {id:'SETOR',label:'Setor',type:'text'},
@@ -17571,9 +17640,7 @@ const ALIM_FORM_CONFIG = {
     ]
   },
   POLITICAS: {
-    titulo: 'Nova Política',
-    sub: 'Política operacional',
-    endpoint: null,
+    titulo: 'Nova Política', sub: 'Política operacional', endpoint: null,
     campos: [
       {id:'NOME',label:'Nome da política',type:'text',req:true},
       {id:'SETOR',label:'Setor',type:'text'},
@@ -17592,424 +17659,509 @@ window.abrirFormAlim = function(tipo){
   const cfg = ALIM_FORM_CONFIG[tipo];
   if(!cfg) return;
   _alimFormTipo = tipo;
-  document.getElementById('alim-form-titulo').textContent = cfg.titulo;
-  document.getElementById('alim-form-sub').textContent = cfg.sub;
-  const msg = document.getElementById('alim-form-msg');
-  msg.style.display='none';
-  const btn = document.getElementById('alim-form-btn-salvar');
-  btn.textContent='Salvar registro'; btn.disabled=false;
+  $('alim-form-titulo').textContent = cfg.titulo;
+  $('alim-form-sub').textContent = cfg.sub;
+  $('alim-form-msg').style.display='none';
+  const btn = $('alim-form-btn-salvar');
+  btn.textContent='Salvar registro'; btn.disabled=false; btn.onclick=window.salvarFormAlim;
 
   function inp(f){
     const id='af-'+f.id;
     const req=f.req?'<span style="color:#C70602">*</span>':'';
-    const lbl=`<label for="${id}" style="font-size:12px;font-weight:600;color:#545252;margin-bottom:4px;display:block">${f.label} ${req}</label>`;
-    if(f.type==='textarea') return `<div style="display:flex;flex-direction:column">${lbl}<textarea id="${id}" rows="3" placeholder="${f.ph||''}" style="border:1px solid #D6D6D6;border-radius:7px;padding:8px 10px;font-size:13px;font-family:inherit;resize:vertical"></textarea></div>`;
-    if(f.type==='select') return `<div style="display:flex;flex-direction:column">${lbl}<select id="${id}" style="border:1px solid #D6D6D6;border-radius:7px;padding:0 10px;height:36px;font-size:13px;font-family:inherit"><option value="">— Selecione —</option>${(f.opts||[]).map(o=>`<option value="${o}">${o}</option>`).join('')}</select></div>`;
-    return `<div style="display:flex;flex-direction:column">${lbl}<input id="${id}" type="${f.type}" placeholder="${f.ph||''}" style="border:1px solid #D6D6D6;border-radius:7px;padding:0 10px;height:36px;font-size:13px;font-family:inherit"></div>`;
+    const lbl=`<label for="${id}" style="font-size:12px;font-weight:600;color:#545252;margin-bottom:4px;display:block">${esc(f.label)} ${req}</label>`;
+    if(f.type==='textarea') return `<div>${lbl}<textarea id="${id}" rows="3" placeholder="${esc(f.ph||'')}" class="al-form-in"></textarea></div>`;
+    if(f.type==='select') return `<div>${lbl}<select id="${id}" class="al-form-in"><option value="">— Selecione —</option>${(f.opts||[]).map(o=>`<option value="${esc(o)}">${esc(o)}</option>`).join('')}</select></div>`;
+    return `<div>${lbl}<input id="${id}" type="${f.type}" placeholder="${esc(f.ph||'')}" class="al-form-in"></div>`;
   }
-
-  document.getElementById('alim-form-body').innerHTML=`<div style="display:flex;flex-direction:column;gap:14px">${cfg.campos.map(inp).join('')}</div>`;
-  document.getElementById('modal-alim-form').style.display='flex';
+  $('alim-form-body').innerHTML=cfg.campos.map(inp).join('');
+  $('modal-alim-form').classList.add('open');
 };
 
-window.fecharFormAlim = function(){
-  document.getElementById('modal-alim-form').style.display='none';
-};
+window.fecharFormAlim = function(){ $('modal-alim-form').classList.remove('open'); };
 
 window.salvarFormAlim = async function(){
   const cfg = ALIM_FORM_CONFIG[_alimFormTipo];
   if(!cfg) return;
-  const tok=sessionStorage.getItem('sac-token');
-  const btn=document.getElementById('alim-form-btn-salvar');
-  const msg=document.getElementById('alim-form-msg');
-
-  // Collect values
+  const btn=$('alim-form-btn-salvar');
+  const msg=$('alim-form-msg');
   const obj={};
   for(const f of cfg.campos){
-    const el=document.getElementById('af-'+f.id);
+    const el=$('af-'+f.id);
     if(!el) continue;
     const v=el.value.trim();
-    if(f.req && !v){ el.style.borderColor='#C70602'; el.focus(); mostrarToast('Preencha o campo: '+f.label); return; }
+    if(f.req && !v){ el.style.borderColor='#C70602'; el.focus(); toast('Preencha o campo: '+f.label); return; }
     el.style.borderColor='';
     if(v) obj[f.id]=v;
   }
-
   btn.textContent='Salvando…'; btn.disabled=true;
   msg.style.display='none';
-
   try {
-    let url, payload, method='POST';
-    if(cfg.endpoint){
-      url = API + cfg.endpoint;
-      payload = obj;
-    } else {
-      url = API + '/api/planilha/'+encodeURIComponent(_alimFormTipo)+'/importar';
-      payload = { itens:[obj] };
-    }
-    const r=await fetch(url,{method,headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    let url, payload;
+    if(cfg.endpoint){ url = API + cfg.endpoint; payload = obj; }
+    else { url = API + '/api/planilha/'+encodeURIComponent(_alimFormTipo)+'/importar'; payload = { itens:[obj] }; }
+    const r=await fetch(url,{method:'POST',headers:Object.assign({'Content-Type':'application/json'},authH()),body:JSON.stringify(payload)});
     const d=await r.json();
     if(d.sucesso||d.id||d.setor||d.causa){
-      msg.style.cssText='display:block;margin:0 24px 8px;padding:10px 14px;border-radius:8px;font-size:13px;background:#E6F2EA;color:#1E6B3A';
+      msg.className='al-alert ok'; msg.style.display='block';
       msg.textContent='✓ Registro salvo com sucesso!';
-      btn.textContent='Fechar';
-      btn.disabled=false;
+      btn.textContent='Fechar'; btn.disabled=false;
       btn.onclick=function(){ fecharFormAlim(); loadAlimentacao(); btn.onclick=window.salvarFormAlim; };
-      // Reset fields for adding another
       setTimeout(()=>{
-        document.getElementById('alim-form-body').querySelectorAll('input,textarea,select').forEach(el=>{ if(el.type!=='hidden') el.value=''; });
+        $('alim-form-body').querySelectorAll('input,textarea,select').forEach(el=>{ el.value=''; });
         msg.style.display='none';
-        btn.textContent='Salvar registro'; btn.disabled=false;
-        btn.onclick=window.salvarFormAlim;
+        btn.textContent='Salvar registro'; btn.disabled=false; btn.onclick=window.salvarFormAlim;
       }, 2000);
     } else {
-      msg.style.cssText='display:block;margin:0 24px 8px;padding:10px 14px;border-radius:8px;font-size:13px;background:#FDECEC;color:#A80502';
+      msg.className='al-alert err'; msg.style.display='block';
       msg.textContent='Erro: '+(d.erro||'Falha ao salvar.');
       btn.textContent='Salvar registro'; btn.disabled=false;
     }
   } catch(e){
-    msg.style.cssText='display:block;margin:0 24px 8px;padding:10px 14px;border-radius:8px;font-size:13px;background:#FDECEC;color:#A80502';
+    msg.className='al-alert err'; msg.style.display='block';
     msg.textContent='Erro de rede: '+e.message;
     btn.textContent='Salvar registro'; btn.disabled=false;
   }
 };
 
-function statusBadge(aba, total){
-  const el = document.getElementById('alim-s-'+aba);
-  if(!el) return;
-  if(total===null){ el.innerHTML='<span class="alim-badge alim-badge-err"><span class="alim-status-dot err"></span> Erro</span>'; return; }
-  if(total===0){ el.innerHTML='<span class="alim-badge alim-badge-warn"><span class="alim-status-dot warn"></span> Vazia</span>'; return; }
-  el.innerHTML='<span class="alim-badge alim-badge-ok"><span class="alim-status-dot ok"></span> '+total.toLocaleString('pt-BR')+' registros</span>';
+// ===== PÁGINA =====
+function parseLog(i){
+  let v=i.VALOR_NOVO, o={};
+  if(v && typeof v==='string'){ try{ o=JSON.parse(v); }catch(e){ o={}; } } else if(v && typeof v==='object') o=v;
+  const aba=o.aba||i.ENTIDADE||'';
+  const total=Number(o.total!=null?o.total:parseInt(String(i.ID_MANIFESTACAO||'').replace(/\D/g,''),10))||0;
+  const t=i.DATA_HORA?new Date(i.DATA_HORA):null;
+  return {t:(t&&!isNaN(t))?t:null,user:i.USUARIO||'—',aba,total};
 }
+// Junta lotes consecutivos (mesmo usuário e aba, até 15 min) de uma mesma importação grande.
+function agruparHist(itens){
+  const out=[];
+  for(const raw of itens){
+    const r=parseLog(raw);
+    const p=out[out.length-1];
+    if(p && p.user===r.user && p.aba===r.aba && p.t && r.t && Math.abs(p.t0-r.t)<15*60*1000){ p.total+=r.total; p.lotes++; p.t0=r.t; continue; }
+    out.push({t:r.t,t0:r.t,user:r.user,aba:r.aba,total:r.total,lotes:1});
+  }
+  return out;
+}
+function fmtData(d){ return d? d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '—'; }
 
-window.loadAlimentacao = async function(){
-  const tok = sessionStorage.getItem('sac-token');
-  if(!tok) return;
+function render(){
+  const st = S.status, fontes = (st&&st.fontes)||{};
+  const hist = S.hist ? agruparHist(S.hist) : [];
+  const lastByAba = {}; hist.forEach(h=>{ if(h.aba && !lastByAba[h.aba]) lastByAba[h.aba]=h.t; }); // hist já vem do mais novo p/ o mais antigo
 
-  // Reset KPIs
-  ['alim-kpi-total','alim-kpi-ok','alim-kpi-vazio','alim-kpi-importacoes'].forEach(id=>{
-    const el=document.getElementById(id); if(el) el.textContent='–';
-  });
+  const info = s => (s.aba && fontes[s.aba]) || null;
+  const carregada = s => { const i=info(s); return !!(i && i.ok && i.total>0); };
+  const total = SRC.length;
+  const done = SRC.filter(carregada).length;
+  const indisp = SRC.filter(s=>!s.imp).length;
+  const semCarga = SRC.filter(s=>s.imp && !carregada(s)).length;
+  const registros = SRC.reduce((a,s)=>{ const i=info(s); return a+((i&&i.ok)?i.total:0); },0);
+  const cap = Object.values(fontes).some(f=>f.total>=5000);
 
-  // Reset all badges
-  ['BANCO_HISTORICO','MANIFESTACOES','CAUSAS','CONFIG_SETORES','PRODUTOS','REPRESENTANTES',
-   'BANCO_RNC','FICHAS_BIBLIOTECA','MATRIZ_TRATAMENTO','PROCEDIMENTOS','POLITICAS','PESQUISAS_SATISFACAO']
-  .forEach(aba=>{
-    const el=document.getElementById('alim-s-'+aba);
-    if(el) el.innerHTML='<span class="alim-badge alim-badge-warn">Carregando...</span>';
-  });
+  $('al-stats').innerHTML = [
+    ['FONTES CARREGADAS', st?(done+' de '+total):'–', st?(semCarga+' sem carga · '+indisp+' sem importação disponível'):'carregando…', '#1F1F1F'],
+    ['REGISTROS NA BASE', st?fmtN(registros):'–', st?('somando as fontes lidas'+(cap?' (leitura limitada a 5.000 por aba)':'')):'carregando…', '#24508F'],
+    ['AGUARDANDO VALIDAÇÃO', '—', 'fila de validação do Cérebro ainda não disponível', '#7A4C00'],
+    ['PENDÊNCIAS DE DADOS', '—', 'verificação de pendências ainda não disponível', '#C70602']
+  ].map(k=>`<div class="al-stat"><span class="al-stat-l">${k[0]}</span><span class="al-stat-v" style="color:${k[3]}">${esc(k[1])}</span><span class="al-stat-d">${esc(k[2])}</span></div>`).join('');
 
-  try {
-    const [statusRes, histRes] = await Promise.allSettled([
-      fetch(API+'/api/alimentacao/status',{headers:{'Authorization':'Bearer '+tok}}).then(r=>r.json()),
-      fetch(API+'/api/alimentacao/historico',{headers:{'Authorization':'Bearer '+tok}}).then(r=>r.json())
-    ]);
+  $('al-chips').innerHTML = [['all','Todas as fontes'],['hist','Histórico'],['cad','Cadastros'],['conh','Conhecimento']]
+    .map(c=>`<button class="al-chip${S.grp===c[0]?' on':''}" onclick="alGrp('${c[0]}')">${c[1]}</button>`).join('');
 
-    if(statusRes.status==='fulfilled' && statusRes.value.sucesso){
-      const fontes = statusRes.value.fontes||{};
-      let totalFontes=0, totalOk=0, totalVazio=0;
-      for(const [aba, info] of Object.entries(fontes)){
-        totalFontes++;
-        if(info.total>0) totalOk++; else totalVazio++;
-        statusBadge(aba, info.ok ? info.total : null);
-      }
-      const kpiTotal=document.getElementById('alim-kpi-total');
-      const kpiOk=document.getElementById('alim-kpi-ok');
-      const kpiVazio=document.getElementById('alim-kpi-vazio');
-      if(kpiTotal) kpiTotal.textContent=totalFontes;
-      if(kpiOk) kpiOk.textContent=totalOk;
-      if(kpiVazio) kpiVazio.textContent=totalVazio;
-    }
-
-    if(histRes.status==='fulfilled' && histRes.value.sucesso){
-      const itens = histRes.value.itens||[];
-      const kpiImp=document.getElementById('alim-kpi-importacoes');
-      if(kpiImp) kpiImp.textContent=histRes.value.total||0;
-      renderHistorico(itens);
-    }
-  } catch(e){ console.error('[alimentacao]',e); }
-};
-
-function renderHistorico(itens){
-  const body=document.getElementById('alim-hist-body');
-  if(!body) return;
-  if(!itens.length){ body.innerHTML='<div style="padding:20px;text-align:center;color:#929090;font-size:13px">Nenhuma importação registrada ainda.</div>'; return; }
-  body.innerHTML = itens.map(i=>{
-    const dt = i.DATA_HORA ? new Date(i.DATA_HORA).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}) : '–';
-    const aba = i.ENTIDADE||i.ID_MANIFESTACAO||'–';
-    const total = i.VALOR_NOVO ? (typeof i.VALOR_NOVO==='string' ? i.VALOR_NOVO : JSON.stringify(i.VALOR_NOVO)) : '–';
-    return `<div class="alim-hist-row">
-      <span style="color:#545252">${dt}</span>
-      <span style="font-weight:600">${i.USUARIO||'–'}</span>
-      <span style="color:#1F1F1F">${aba}</span>
-      <span style="color:#22C55E;font-weight:600">${total}</span>
+  const errMsg = S.err ? `<div class="al-alert err" style="grid-column:1/-1">${esc(S.err)}</div>` : '';
+  $('al-cards').innerHTML = errMsg + SRC.filter(s=>S.grp==='all'||s.grp===S.grp).map(s=>{
+    const i=info(s);
+    let pill;
+    if(!st) pill=['mute','Carregando…'];
+    else if(!s.aba) pill=['mute','Sem fonte no sistema'];
+    else if(!i || !i.ok) pill=['err','Erro de leitura'];
+    else if(i.total>0) pill=['ok','Carregado'];
+    else pill=['err','Não carregado'];
+    const n = (i&&i.ok) ? (i.total>0 ? fmtN(i.total)+(s.doc?' itens':' registros') : 'Nenhum registro') : '—';
+    const lt = s.aba && lastByAba[s.aba];
+    const last = lt ? ('Última carga em '+lt.toLocaleDateString('pt-BR')) : (i&&i.ok&&i.total>0 ? 'Sem carga registrada neste histórico' : (s.aba?'Ainda não carregado':'—'));
+    const links=[];
+    if(s.form) links.push(`<button class="al-link" onclick="abrirFormAlim('${s.form}')">+ Cadastrar manualmente</button>`);
+    if(s.view) links.push(`<button class="al-link" onclick="navigate('${s.view}',document.querySelector('[onclick*=${s.view}]'))">Abrir tela →</button>`);
+    return `<div class="al-card">
+      <div class="al-card-top"><div style="display:flex;flex-direction:column;gap:3px;min-width:0"><span class="al-card-grp">${GRP[s.grp]}</span><span class="al-card-name">${esc(s.nome)}</span></div><span class="al-pill ${pill[0]}">${pill[1]}</span></div>
+      <span class="al-card-desc">${esc(s.desc)}</span>
+      <div class="al-feeds"><b>Alimenta:</b>${s.feeds.map(f=>`<span>${esc(f)}</span>`).join('')}</div>
+      ${s.imp?'':`<div class="al-card-why">Importação indisponível: ${esc(s.why)}</div>`}
+      <div class="al-card-foot"><div style="display:flex;flex-direction:column;gap:1px;min-width:0"><span class="al-card-n">${esc(n)}</span><span class="al-card-last">${esc(last)}</span></div>
+        <button class="al-btn-imp" ${s.imp?`onclick="alOpen('${s.id}')"`:'disabled title="'+esc(s.why)+'"'}>Importar</button></div>
+      ${links.length?`<div class="al-card-links">${links.join('')}</div>`:''}
+      <span class="al-card-fmt">${esc(s.fmt)}</span>
     </div>`;
   }).join('');
+
+  $('al-hist-count').textContent = S.hist ? (hist.length+' importações') : '';
+  const hb=$('al-hist-body');
+  if(!S.hist) hb.innerHTML='<tr><td colspan="7" class="al-empty">Carregando histórico...</td></tr>';
+  else if(!hist.length) hb.innerHTML='<tr><td colspan="7" class="al-empty">Nenhuma importação registrada ainda.</td></tr>';
+  else hb.innerHTML=hist.map(h=>`<tr>
+    <td style="white-space:nowrap;color:#545252">${esc(fmtData(h.t))}</td>
+    <td><div style="display:flex;flex-direction:column;gap:2px"><span style="font-weight:600">${esc(ABA_NOME[h.aba]||h.aba||'—')}</span><span style="font-size:11px;color:#929090">aba ${esc(h.aba||'—')}${h.lotes>1?' · '+h.lotes+' lotes':''}</span></div></td>
+    <td style="white-space:nowrap;color:#929090">—</td>
+    <td style="white-space:nowrap">${esc(h.user)}</td>
+    <td style="white-space:nowrap;font-variant-numeric:tabular-nums"><span style="color:#1E6B3A;font-weight:700">${fmtN(h.total)}</span> <span style="color:#929090">· dup. e erros não registrados</span></td>
+    <td><span class="al-pill ok">Concluída</span></td>
+    <td style="white-space:nowrap"><div style="display:flex;gap:10px"><button class="al-act" disabled title="Relatório por carga ainda não disponível">Relatório</button><button class="al-act" disabled title="Desfazer ainda não disponível: os registros não guardam o identificador da carga">Desfazer</button></div></td>
+  </tr>`).join('');
 }
 
-// ── WIZARD ───────────────────────────────────────────────────────
+window.alGrp = function(g){ S.grp=g; render(); };
 
-window.abrirWizardAlim = function(aba, titulo, dica){
-  _alimAba = aba;
-  _alimTitulo = titulo;
-  _alimDica = dica;
-  _alimStep = 1;
-  _alimRows = [];
-  _alimCols = [];
-  _alimSheetHeaders = [];
-  _alimMapa = {};
-  _alimValidados = [];
-  _alimDuplicados = 0;
-
-  document.getElementById('alim-wiz-titulo').textContent = 'Importar: '+titulo;
-  document.getElementById('alim-wiz-sub').textContent = 'Aba de destino: '+aba;
-  document.getElementById('modal-alim-wizard').style.display='flex';
-  alimWizRender();
+window.loadAlimentacao = async function(){
+  if(!tok()) return;
+  S.err='';
+  render();
+  const [a,b] = await Promise.allSettled([
+    fetch(API+'/api/alimentacao/status',{headers:authH()}).then(r=>r.json()),
+    fetch(API+'/api/alimentacao/historico',{headers:authH()}).then(r=>r.json())
+  ]);
+  if(a.status==='fulfilled' && a.value.sucesso) S.status=a.value;
+  else { S.status=S.status||{fontes:{}}; S.err='Não foi possível ler o status das fontes ('+(a.status==='fulfilled'?(a.value.erro||'erro'):a.reason&&a.reason.message)+').'; }
+  if(b.status==='fulfilled' && b.value.sucesso) S.hist=b.value.itens||[];
+  else { S.hist=S.hist||[]; }
+  render();
 };
 
-window.fecharWizardAlim = function(){
-  document.getElementById('modal-alim-wizard').style.display='none';
-};
+// ===== ASSISTENTE DE IMPORTAÇÃO =====
+const srcOf = id => SRC.find(s=>s.id===id);
 
-function alimSetStep(n){
-  _alimStep=n;
-  [1,2,3,4,5].forEach(i=>{
-    const el=document.getElementById('alim-step-'+i);
-    if(!el) return;
-    el.classList.remove('ativo','concluido');
-    if(i===n) el.classList.add('ativo');
-    else if(i<n) el.classList.add('concluido');
-  });
+window.alOpen = function(id){
+  W = {step: id?2:1, src: id||null, emp: EMPRESAS[0], files: [], dup:'ignorar', headers:null, map:{}, check:{}, req:[], res:null, busy:false, done:null, progress:''};
+  $('al-wiz').classList.add('open');
+  wizRender();
+};
+window.alClose = function(){ $('al-wiz').classList.remove('open'); W=null; };
+
+function allRows(){ const rows=[]; (W.files||[]).forEach(f=>{ if(!f.err) f.rows.forEach((r,i)=>rows.push({r,ref:f.name+' · linha '+(i+2)})); }); return rows; }
+function allCols(){ const c=[]; (W.files||[]).forEach(f=>{ if(!f.err) f.cols.forEach(x=>{ if(!c.includes(x)) c.push(x); }); }); return c; }
+const okFiles = () => W.files.filter(f=>!f.err);
+
+function blockText(){
+  if(W.done) return '';
+  const s = W.src && srcOf(W.src);
+  if(W.step===1 && !s) return 'Escolha a fonte.';
+  if(W.step===2){ if(W.busy) return 'Lendo arquivos…'; if(!okFiles().length) return 'Selecione ao menos um arquivo.'; }
+  if(W.step===3){
+    if(W.busy) return 'Aguarde…';
+    if(!W.headers || !W.headers.length) return 'A aba de destino não tem cabeçalhos.';
+    const used=Object.values(W.map).filter(Boolean);
+    if(!used.length) return 'Relacione ao menos um campo.';
+    if(missing().length) return 'Relacione os campos obrigatórios.';
+    if(dupTargets().length) return 'Há campos usados por mais de uma coluna.';
+  }
+  if(W.step===4){ if(W.busy) return 'Validando…'; if(!W.res || W.res.okRows.length===0) return 'Nenhum registro válido para importar.'; }
+  if(W.step===5 && W.busy) return 'Importando… '+W.progress;
+  return '';
+}
+function missing(){ const used=Object.values(W.map).filter(Boolean); return W.req.filter(h=>!used.includes(h)); }
+function dupTargets(){ const seen={},d=[]; Object.values(W.map).filter(Boolean).forEach(t=>{ if(seen[t]&&!d.includes(t)) d.push(t); seen[t]=1; }); return d; }
+
+function wizRender(){
+  if(!W) return;
+  const s = W.src && srcOf(W.src);
+  const doc = false;
+  $('al-wiz-title').textContent = s ? s.nome : 'Escolha a fonte';
+  const STEPS=['Fonte e empresa','Arquivo','Mapear colunas','Validar','Confirmar'];
+  $('al-wiz-steps').innerHTML = STEPS.map((l,i)=>`<div class="al-step${i+1===W.step?' on':''}${i+1<W.step?' done':''}"><i></i><span>${i+1}. ${l}</span></div>`).join('');
+  const b=$('al-wiz-body');
+  if(W.done) b.innerHTML = stepDone();
+  else if(W.step===1) b.innerHTML = step1();
+  else if(W.step===2) b.innerHTML = step2();
+  else if(W.step===3) b.innerHTML = step3();
+  else if(W.step===4) b.innerHTML = step4();
+  else b.innerHTML = step5();
+  const blk = blockText();
+  $('al-wiz-block').textContent = blk;
+  const nx=$('al-wiz-next');
+  nx.className='al-next'+(blk?' off':'');
+  nx.textContent = W.done ? 'Fechar' : (W.step===5 ? 'Confirmar importação' : W.step===3 ? 'Validar registros' : 'Continuar →');
+  if(W.done) $('al-wiz-block').textContent='';
+  const bk=$('al-wiz-back');
+  bk.textContent = (W.step===1 || W.done) ? (W.done?'':'Cancelar') : '← Voltar';
+  bk.style.visibility = W.done ? 'hidden' : '';
 }
 
-window.alimWizNext = async function(){
-  const btn=document.getElementById('alim-wiz-btn-next');
-  if(_alimStep===1){
-    // Parse file
-    const fi=document.getElementById('alim-file-input');
-    if(!fi||!fi.files.length){ alert('Selecione um arquivo.'); return; }
-    const f=fi.files[0];
-    btn.textContent='Lendo...'; btn.disabled=true;
-    try {
-      const ext = f.name.split('.').pop().toLowerCase();
+function step1(){
+  return `<span style="font-weight:700">O que você vai carregar?</span>
+  <div class="al-src-grid">${SRC.map(s=>`<button class="al-src${W.src===s.id?' on':''}" ${s.imp?`onclick="alPickSrc('${s.id}')"`:'disabled title="'+esc(s.why)+'"'}><b>${esc(s.nome)}</b><small>${s.imp?esc(s.fmt):'Importação indisponível'}</small></button>`).join('')}</div>
+  <label class="al-lbl">Empresa<select class="al-sel" onchange="alEmp(this.value)">${EMPRESAS.map(o=>`<option${o===W.emp?' selected':''}>${esc(o)}</option>`).join('')}</select></label>
+  <span style="font-size:12px;color:#666464">Use "Todas as empresas" quando o arquivo tiver uma coluna de empresa; cada registro fica vinculado à empresa indicada na linha. Ao escolher uma empresa, ela é gravada nos registros que vierem sem empresa (se a aba de destino tiver coluna de empresa).</span>`;
+}
+window.alPickSrc = function(id){ if(!W) return; if(W.src!==id){ W.src=id; W.files=[]; W.headers=null; W.map={}; W.res=null; } wizRender(); };
+window.alEmp = function(v){ if(W) W.emp=v; };
+
+function step2(){
+  const s=srcOf(W.src);
+  const acc = '.csv,.json,.txt'+(s.docx?',.docx':'');
+  return `<input type="file" id="al-file" multiple accept="${acc}" style="display:none" onchange="alFiles(this.files);this.value=''">
+  <button class="al-drop" id="al-drop" onclick="document.getElementById('al-file').click()" ondragover="event.preventDefault();this.classList.add('over')" ondragleave="this.classList.remove('over')" ondrop="event.preventDefault();this.classList.remove('over');alFiles(event.dataTransfer.files)">
+    <span style="font-size:22px">↑</span><span style="font-weight:600;font-size:13.5px">Arraste os arquivos ou clique para selecionar</span><span style="font-size:12px;color:#929090">${esc(s.fmt)} · até 4 MB por arquivo</span></button>
+  <div class="al-note"><span>Use o modelo padrão (colunas da aba ${esc(s.aba)}) para evitar erros de coluna.</span><button class="al-btn-sm" onclick="alModelo()">Baixar modelo de planilha</button></div>
+  ${W.files.map((f,i)=>`<div class="al-file"><span class="al-file-ext ${esc(f.ext)}">${esc(f.ext.toUpperCase())}</span><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font-weight:600;overflow-wrap:anywhere">${esc(f.name)}</span><span style="font-size:11.5px;color:${f.err?'#A80502':'#929090'}">${f.err?esc(f.err):('Planilha · '+fmtN(f.rows.length)+' linhas detectadas · '+(f.size/1024).toFixed(0)+' KB')}</span></div><button class="al-x" style="color:#A80502;font-size:18px" onclick="alDelFile(${i})">×</button></div>`).join('')}`;
+}
+window.alDelFile = function(i){ W.files.splice(i,1); W.headers=null; wizRender(); };
+
+window.alFiles = async function(list){
+  if(!W) return;
+  const s=srcOf(W.src);
+  W.busy=true; wizRender();
+  for(const f of Array.from(list||[])){
+    const ext=(f.name.split('.').pop()||'').toLowerCase();
+    if(W.files.some(x=>x.name===f.name && x.size===f.size)) continue;
+    const entry={name:f.name,size:f.size,ext,rows:[],cols:[],err:''};
+    try{
+      if(f.size>MAX_BYTES) throw new Error('Arquivo acima de 4 MB.');
       if(ext==='docx'){
-        // Upload para parse no servidor
+        if(!s.docx) throw new Error('Formato .docx não aceito nesta fonte.');
         const fd=new FormData(); fd.append('file', f);
-        const tok=sessionStorage.getItem('sac-token');
-        const res=await fetch('/api/alimentacao/upload-docx',{method:'POST',headers:{Authorization:'Bearer '+tok},body:fd});
+        const res=await fetch('/api/alimentacao/upload-docx',{method:'POST',headers:authH(),body:fd});
         const d=await res.json();
         if(!d.sucesso) throw new Error(d.erro||'Erro ao processar .docx');
-        _alimRows=[d.objeto];
-        _alimCols=Object.keys(d.objeto);
+        entry.rows=[d.objeto];
+      } else if(['xlsx','xls','doc','pdf','pptx','ppt','odt','ods','zip','bin','jpg','jpeg','png'].includes(ext)){
+        throw new Error('Formato .'+ext+' não suportado. Exporte como CSV ou JSON.');
       } else {
-        const binExts=['xlsx','doc','xls','pdf','pptx','ppt','odt','ods','zip','bin'];
-        if(binExts.includes(ext)) throw new Error('Formato não suportado: .'+ext+'. Use CSV, JSON ou .docx.');
-        const text = await f.text();
-        if(text.startsWith('PK') || /[\x00-\x08\x0E-\x1F]{10}/.test(text.slice(0,500)))
-          throw new Error('Arquivo binário detectado. Use CSV, JSON ou .docx.');
+        const text=await f.text();
+        if(text.startsWith('PK') || /[\x00-\x08\x0E-\x1F]{10}/.test(text.slice(0,500))) throw new Error('Arquivo binário detectado. Use CSV ou JSON.');
         if(ext==='json'){
           const parsed=JSON.parse(text);
-          _alimRows=Array.isArray(parsed)?parsed:(parsed.itens||parsed.data||[parsed]);
-        } else {
-          _alimRows=parseCSV(text);
-        }
+          entry.rows=Array.isArray(parsed)?parsed:(parsed.itens||parsed.data||[parsed]);
+        } else entry.rows=parseCSV(text);
       }
-      if(!_alimRows.length) throw new Error('Arquivo vazio ou formato inválido.');
-      _alimCols=Object.keys(_alimRows[0]);
-      alimSetStep(2);
-    } catch(e){ alert('Erro ao ler arquivo: '+e.message); }
-    btn.textContent='Avançar →'; btn.disabled=false;
-    alimWizRender();
-  } else if(_alimStep===2){
-    // Fetch sheet headers for auto-mapping
-    try {
-      const tok=sessionStorage.getItem('sac-token');
-      const r=await fetch(API+'/api/planilha/'+encodeURIComponent(_alimAba)+'/cabecalhos',{headers:{Authorization:'Bearer '+tok}});
-      const d=await r.json();
-      _alimSheetHeaders = (d.cabecalhos||[]);
-    } catch(e){ _alimSheetHeaders=[]; }
-    alimSetStep(3); alimWizRender();
-  } else if(_alimStep===3){
-    // Coleta mapeamento
-    _alimMapa={};
-    document.querySelectorAll('[data-alim-col]').forEach(sel=>{
-      if(sel.value) _alimMapa[sel.dataset.alimCol]=sel.value;
-    });
-    alimSetStep(4); alimWizRender();
-  } else if(_alimStep===4){
-    // Validação já foi feita ao renderizar
-    alimSetStep(5); alimWizRender();
-  } else if(_alimStep===5){
-    await alimImportar();
+      entry.rows=entry.rows.filter(r=>r && typeof r==='object');
+      if(!entry.rows.length) throw new Error('Arquivo vazio ou formato inválido.');
+      entry.cols=[]; entry.rows.forEach(r=>Object.keys(r).forEach(k=>{ if(!entry.cols.includes(k)) entry.cols.push(k); }));
+    }catch(e){ entry.err=e.message; }
+    W.files.push(entry);
   }
-  // update back button
-  document.getElementById('alim-wiz-btn-back').style.display=_alimStep>1?'':'none';
+  W.busy=false; W.headers=null; W.res=null; wizRender();
 };
-
-window.alimWizPrev = function(){
-  if(_alimStep>1){ alimSetStep(_alimStep-1); alimWizRender(); }
-  document.getElementById('alim-wiz-btn-back').style.display=_alimStep>1?'':'none';
-};
-
-function alimWizRender(){
-  const body=document.getElementById('alim-wiz-body');
-  const btnNext=document.getElementById('alim-wiz-btn-next');
-  if(!body) return;
-
-  if(_alimStep===1){
-    btnNext.textContent='Avançar →';
-    body.innerHTML=`
-      <div style="font-size:13px;color:#545252;margin-bottom:16px;line-height:1.6">
-        <strong>Dica de colunas:</strong> ${_alimDica}
-      </div>
-      <div style="background:#F4F4F4;border-radius:8px;padding:16px 18px;margin-bottom:18px;font-size:12.5px;color:#545252;line-height:1.7">
-        <strong>Formatos aceitos:</strong> CSV, JSON ou Word (.docx) — fichas de manifestação.<br>
-        Para planilhas Excel, exporte como CSV primeiro. A primeira linha do CSV deve ser o cabeçalho.
-      </div>
-      <label style="display:flex;flex-direction:column;gap:8px;font-size:12.5px;font-weight:600;color:#545252">
-        Selecionar arquivo
-        <input id="alim-file-input" type="file" accept=".csv,.json,.txt,.docx" style="border:1.5px dashed #D6D6D6;border-radius:8px;padding:14px;font-size:13px;cursor:pointer">
-      </label>`;
-  } else if(_alimStep===2){
-    btnNext.textContent='Avançar →';
-    const sample=_alimRows.slice(0,5);
-    const cols=_alimCols;
-    body.innerHTML=`
-      <div style="font-size:13px;color:#545252;margin-bottom:12px"><strong>${_alimRows.length}</strong> linha(s) detectadas. Prévia das primeiras 5:</div>
-      <div style="overflow-x:auto;border-radius:8px;border:1px solid #E4E4E4">
-        <table style="width:100%;border-collapse:collapse;font-size:12px">
-          <thead><tr style="background:#F9F9F9">${cols.map(c=>`<th style="padding:8px 10px;text-align:left;font-weight:700;color:#545252;border-bottom:1px solid #E4E4E4;white-space:nowrap">${c}</th>`).join('')}</tr></thead>
-          <tbody>${sample.map(row=>`<tr style="border-bottom:1px solid #F4F4F4">${cols.map(c=>`<td style="padding:7px 10px;color:#1F1F1F;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${row[c]??''}</td>`).join('')}</tr>`).join('')}</tbody>
-        </table>
-      </div>`;
-  } else if(_alimStep===3){
-    btnNext.textContent='Avançar →';
-    // Auto-match CSV columns to sheet headers (case-insensitive, normalize underscores/spaces)
-    function alimAutoMatch(col){
-      if(!_alimSheetHeaders.length) return col;
-      const norm = s => s.toLowerCase().replace(/[\s_-]+/g,'');
-      const n = norm(col);
-      // exact
-      let m = _alimSheetHeaders.find(h => norm(h)===n);
-      if(m) return m;
-      // contains
-      m = _alimSheetHeaders.find(h => norm(h).includes(n) || n.includes(norm(h)));
-      if(m) return m;
-      return col;
-    }
-    const optList = _alimSheetHeaders.length
-      ? `<datalist id="alim-hdr-list">${_alimSheetHeaders.map(h=>`<option value="${h}">`).join('')}</datalist>`
-      : '';
-    body.innerHTML=`
-      ${optList}
-      <div style="font-size:13px;color:#545252;margin-bottom:8px">Mapeie as colunas do arquivo para os campos de destino na aba <strong>${_alimAba}</strong>.</div>
-      ${_alimSheetHeaders.length?`<div style="font-size:12px;color:#1E6B3A;background:#E6F2EA;border-radius:6px;padding:8px 12px;margin-bottom:12px">✓ ${_alimSheetHeaders.length} colunas da planilha carregadas — sugestões automáticas aplicadas.</div>`:''}
-      <div style="display:flex;flex-direction:column;gap:8px">
-        ${_alimCols.map(c=>`
-          <div style="display:flex;align-items:center;gap:12px">
-            <div style="width:180px;font-size:12.5px;font-weight:600;color:#1F1F1F;flex-shrink:0">${c}</div>
-            <div style="color:#D0D0D0;font-size:14px">→</div>
-            <input data-alim-col="${c}" list="alim-hdr-list" style="flex:1;height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 10px;font-size:12.5px;font-family:inherit" placeholder="Nome da coluna destino" value="${alimAutoMatch(c)}">
-          </div>`).join('')}
-      </div>`;
-  } else if(_alimStep===4){
-    btnNext.textContent='Avançar →';
-    // Apply mapping
-    _alimValidados=_alimRows.map(row=>{
-      const mapped={};
-      for(const [src,dest] of Object.entries(_alimMapa)){
-        if(dest) mapped[dest]=row[src]??'';
-      }
-      // also include unmapped fields as-is if no mapping was set
-      if(!Object.keys(_alimMapa).length) return {...row};
-      return mapped;
-    }).filter(r=>Object.values(r).some(v=>String(v).trim()));
-    _alimDuplicados=0;
-    const seen=new Set();
-    const chave=Object.keys(_alimValidados[0]||{})[0]||'';
-    if(chave){
-      _alimValidados.forEach(r=>{const k=r[chave];if(seen.has(k))_alimDuplicados++;else seen.add(k);});
-    }
-    body.innerHTML=`
-      <div style="display:flex;flex-direction:column;gap:12px">
-        <div style="background:#E6F2EA;border-radius:8px;padding:14px 18px;font-size:13px;color:#1E6B3A">
-          ✓ <strong>${_alimValidados.length}</strong> linha(s) válidas prontas para importar.
-        </div>
-        ${_alimDuplicados?`<div style="background:#FFF3E0;border-radius:8px;padding:14px 18px;font-size:13px;color:#7A4C00">
-          ⚠ <strong>${_alimDuplicados}</strong> possível(is) duplicata(s) detectada(s) pela primeira coluna. Serão inseridas mesmo assim (a aba de destino pode ter suas próprias deduplicações).
-        </div>`:''}
-        <div style="background:#F4F4F4;border-radius:8px;padding:12px 16px;font-size:12.5px;color:#545252">
-          Destino: <strong>${_alimAba}</strong><br>
-          Colunas mapeadas: <strong>${Object.keys(_alimMapa).length||_alimCols.length}</strong>
-        </div>
-      </div>`;
-  } else if(_alimStep===5){
-    btnNext.textContent='Confirmar e Importar';
-    body.innerHTML=`
-      <div style="display:flex;flex-direction:column;gap:14px">
-        <div style="font-size:15px;font-weight:700;color:#1F1F1F">Confirmar importação</div>
-        <div style="font-size:13px;color:#545252;line-height:1.7">
-          Você está prestes a inserir <strong>${_alimValidados.length} linha(s)</strong> na aba <strong>${_alimAba}</strong> da planilha do SAC.<br>
-          Esta operação é registrada no log de auditoria.<br>
-          <span style="color:#C70602"><strong>Atenção:</strong> os dados serão adicionados ao final da aba, sem substituir os existentes.</span>
-        </div>
-        <div id="alim-resultado" style="display:none"></div>
-      </div>`;
-  }
-}
-
-async function alimImportar(){
-  const tok=sessionStorage.getItem('sac-token');
-  if(!tok) return;
-  const btn=document.getElementById('alim-wiz-btn-next');
-  btn.textContent='Importando...'; btn.disabled=true;
-  const res_el=document.getElementById('alim-resultado');
-
-  try {
-    const payload={ itens: _alimValidados };
-    const r=await fetch(API+'/api/planilha/'+encodeURIComponent(_alimAba)+'/importar',{
-      method:'POST',
-      headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},
-      body:JSON.stringify(payload)
-    });
-    const data=await r.json();
-    if(res_el){
-      if(data.sucesso){
-        res_el.style.display='block';
-        res_el.innerHTML=`<div style="background:#E6F2EA;border-radius:8px;padding:14px 18px;font-size:13px;color:#1E6B3A">✓ Importação concluída! <strong>${data.criados}</strong> registro(s) inserido(s) em <strong>${data.aba}</strong>.</div>`;
-        btn.textContent='Fechar'; btn.disabled=false;
-        btn.onclick=function(){ fecharWizardAlim(); loadAlimentacao(); btn.onclick=window.alimWizNext; };
-      } else {
-        res_el.style.display='block';
-        res_el.innerHTML=`<div style="background:#FDECEC;border-radius:8px;padding:14px 18px;font-size:13px;color:#A80502">Erro: ${data.erro||'Falha na importação.'}</div>`;
-        btn.textContent='Tentar novamente'; btn.disabled=false;
-      }
-    }
-  } catch(e){
-    if(res_el){ res_el.style.display='block'; res_el.innerHTML=`<div style="background:#FDECEC;border-radius:8px;padding:14px 18px;font-size:13px;color:#A80502">Erro de rede: ${e.message}</div>`; }
-    btn.textContent='Tentar novamente'; btn.disabled=false;
-  }
-}
 
 function parseCSV(text){
-  const lines=text.split(/\r?\n/).filter(l=>l.trim());
-  if(!lines.length) return [];
-  const sep=lines[0].includes(';')?';':',';
-  const headers=lines[0].split(sep).map(h=>h.replace(/^"|"$/g,'').trim());
-  return lines.slice(1).map(line=>{
-    const vals=line.split(sep).map(v=>v.replace(/^"|"$/g,'').trim());
-    const obj={};
-    headers.forEach((h,i)=>{ obj[h]=vals[i]??''; });
-    return obj;
+  text=text.replace(/^﻿/,'');
+  const first=text.split(/\r?\n/,1)[0]||'';
+  const cnt=ch=>first.split(ch).length-1;
+  const sep=(cnt(';')>=cnt(',') && cnt(';')>=cnt('\t'))?';':(cnt('\t')>cnt(',')?'\t':',');
+  const rows=[]; let row=[],cur='',q=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(q){ if(c==='"'){ if(text[i+1]==='"'){cur+='"';i++;} else q=false; } else cur+=c; }
+    else if(c==='"') q=true;
+    else if(c===sep){ row.push(cur); cur=''; }
+    else if(c==='\n'||c==='\r'){ if(c==='\r'&&text[i+1]==='\n') i++; row.push(cur); cur=''; rows.push(row); row=[]; }
+    else cur+=c;
+  }
+  if(cur!==''||row.length){ row.push(cur); rows.push(row); }
+  const lines=rows.filter(r=>r.some(v=>String(v).trim()));
+  if(lines.length<2) return [];
+  const headers=lines[0].map(h=>String(h).trim());
+  return lines.slice(1).map(l=>{ const o={}; headers.forEach((h,i)=>{ if(h) o[h]=(l[i]??'').trim(); }); return o; });
+}
+
+function downloadBlob(name, text){
+  const blob=new Blob(['﻿'+text],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name;
+  document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },500);
+}
+const csvCell = v => '"'+String(v==null?'':v).replace(/"/g,'""')+'"';
+
+async function loadHeaders(){
+  const s=srcOf(W.src);
+  try{
+    const r=await fetch(API+'/api/planilha/'+encodeURIComponent(s.aba)+'/cabecalhos',{headers:authH()});
+    const d=await r.json();
+    return d.cabecalhos||[];
+  }catch(e){ return []; }
+}
+window.alModelo = async function(){
+  const s=srcOf(W.src);
+  const h=await loadHeaders();
+  if(!h.length) return toast('Não foi possível ler as colunas da aba '+s.aba+'.');
+  downloadBlob('modelo_'+s.aba.toLowerCase()+'.csv', h.map(csvCell).join(';')+'\n');
+};
+
+function prepMap(){
+  const s=srcOf(W.src), cfg=ALIM_FORM_CONFIG[s.form];
+  W.req = cfg ? W.headers.filter(h=>cfg.campos.some(c=>c.req && norm(c.id)===norm(h))) : [];
+  W.map={}; W.check={};
+  const cols=allCols(), used=new Set();
+  cols.forEach(c=>{ // 1ª passada: nome idêntico
+    const m=W.headers.find(h=>norm(h)===norm(c) && !used.has(h));
+    W.map[c]=m||''; if(m) used.add(m);
+  });
+  cols.forEach(c=>{ // 2ª passada: correspondência aproximada (marcada "conferir")
+    if(W.map[c]) return;
+    const n=norm(c);
+    const m=W.headers.find(h=>!used.has(h) && n.length>=4 && norm(h).length>=4 && (norm(h).includes(n)||n.includes(norm(h))));
+    if(m){ W.map[c]=m; W.check[c]=true; used.add(m); }
   });
 }
 
-// Show sidebar item for MASTER users (also handled via applyRoleUI allowed list)
+function step3(){
+  const cols=allCols(), rows=allRows();
+  if(!W.headers || !W.headers.length) return `<div class="al-alert err">Não foi possível ler os cabeçalhos da aba de destino. Verifique se a aba ${esc(srcOf(W.src).aba)} existe e tem a primeira linha preenchida.</div>`;
+  const ex=c=>{ const r=rows.find(x=>String(x.r[c]==null?'':x.r[c]).trim()); return r?String(r.r[c]).slice(0,80):''; };
+  const miss=missing(), dt=dupTargets();
+  return `<span style="line-height:1.5">Relacione cada coluna do arquivo a um campo da ferramenta (coluna da aba ${esc(srcOf(W.src).aba)}). Campos marcados com * são obrigatórios. Colunas sem campo são ignoradas.</span>
+  <div class="al-map"><table><thead><tr><th>Coluna no arquivo</th><th>Exemplo</th><th>Campo na ferramenta</th></tr></thead><tbody>
+  ${cols.map((c,i)=>`<tr style="background:${W.map[c]?'#fff':'#FAFAFA'}"><td style="font-weight:600">${esc(c)}</td><td style="color:#666464;max-width:200px;overflow-wrap:anywhere">${esc(ex(c))}</td>
+    <td><div style="display:flex;gap:8px;align-items:center"><select class="al-sel sm" onchange="alMap(${i},this.value)"><option value="">Ignorar coluna</option>${W.headers.map(h=>`<option value="${esc(h)}"${W.map[c]===h?' selected':''}>${esc(h)}${W.req.includes(h)?' *':''}</option>`).join('')}</select>${W.check[c]&&W.map[c]?'<span class="al-pill warn">conferir</span>':''}</div></td></tr>`).join('')}
+  </tbody></table></div>
+  ${miss.length?`<div class="al-alert err">Obrigatório sem coluna: ${esc(miss.join(', '))}</div>`:''}
+  ${dt.length?`<div class="al-alert err">Mais de uma coluna aponta para o mesmo campo: ${esc(dt.join(', '))}</div>`:''}`;
+}
+window.alMap = function(i,v){ const c=allCols()[i]; W.map[c]=v; delete W.check[c]; W.res=null; wizRender(); };
+
+// ----- validação -----
+function cnpjOk(v){
+  const d=String(v).replace(/\D/g,''); if(d.length!==14 || /^(\d)\1+$/.test(d)) return false;
+  const calc=(b,p)=>{ let s=0; for(let i=0;i<p.length;i++) s+=Number(b[i])*p[i]; const r=s%11; return r<2?0:11-r; };
+  const p1=[5,4,3,2,9,8,7,6,5,4,3,2], p2=[6,5,4,3,2,9,8,7,6,5,4,3,2];
+  return calc(d,p1)===Number(d[12]) && calc(d.slice(0,13),p2)===Number(d[13]);
+}
+function dataOk(v){ // retorna '' se ok, senão motivo
+  const s=String(v).trim(); let d,m,y;
+  let x=s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})(?:[ T,].*)?$/);
+  if(x){ d=+x[1]; m=+x[2]; y=+x[3]; if(y<100) y+=2000; }
+  else { x=s.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T].*)?$/); if(!x) return 'formato de data não reconhecido'; y=+x[1]; m=+x[2]; d=+x[3]; }
+  const dt=new Date(y,m-1,d);
+  if(dt.getFullYear()!==y||dt.getMonth()!==m-1||dt.getDate()!==d) return 'a data não existe';
+  if(dt>new Date()) return 'data no futuro';
+  return '';
+}
+const isCnpjH = h => /cnpj/i.test(h) && !/nome|razao/i.test(h);
+const isDataH = h => /(^|_)(data|date)(_|$)/i.test(h) || /^data/i.test(h);
+const rowKey = (o,hs) => hs.map(h=>norm(o[h])).join('|');
+
+function mapRows(){
+  const targets=[...new Set(Object.values(W.map).filter(Boolean))];
+  const empH = W.headers.find(h=>/^(orig)?empresa$/.test(norm(h)));
+  const out=[];
+  allRows().forEach(({r,ref})=>{
+    const o={};
+    Object.entries(W.map).forEach(([c,t])=>{ if(t) o[t]=String(r[c]==null?'':r[c]).trim(); });
+    if(!Object.values(o).some(v=>v)) return; // linha vazia
+    if(W.emp!==EMPRESAS[0] && empH && !o[empH]) o[empH]=W.emp;
+    out.push({o,ref});
+  });
+  return {targets,out,empH};
+}
+
+async function validar(){
+  const s=srcOf(W.src);
+  const {targets,out}=mapRows();
+  let baseKeys=new Set(), baseErr='';
+  try{
+    const r=await fetch(API+'/api/planilha/'+encodeURIComponent(s.aba)+'?max=5000',{headers:authH()});
+    const d=await r.json();
+    if(d.sucesso) (d.itens||[]).forEach(b=>{ const k=rowKey(b,targets); if(k.replace(/\|/g,'')) baseKeys.add(k); });
+    else baseErr=d.erro||'erro ao ler a base';
+  }catch(e){ baseErr=e.message; }
+  const erros=[], okRows=[]; let dups=0; const seen=new Set();
+  out.forEach(({o,ref})=>{
+    const es=[];
+    W.req.forEach(h=>{ if(!o[h]) es.push(['Campo obrigatório vazio', h+' em branco']); });
+    targets.forEach(h=>{
+      const v=o[h]; if(!v) return;
+      if(isCnpjH(h) && !cnpjOk(v)) es.push(['CNPJ inválido','"'+v+'" não é um CNPJ válido ('+h+')']);
+      else if(isDataH(h)){ const m=dataOk(v); if(m) es.push(['Data inválida','"'+v+'": '+m+' ('+h+')']); }
+    });
+    if(es.length){ es.forEach(e=>erros.push({ref,t:e[0],d:e[1]})); return; }
+    const k=rowKey(o,targets);
+    if(baseKeys.has(k) || seen.has(k)){ dups++; return; }
+    seen.add(k); okRows.push(o);
+  });
+  const linhasComErro = new Set(erros.map(e=>e.ref)).size;
+  W.res={total:out.length, okRows, dups, erros, linhasComErro, baseErr, targets};
+}
+
+function step4(){
+  const R=W.res;
+  if(!R) return '<div class="al-empty">Validando…</div>';
+  const vk=[['TOTAL LIDO',R.total,'#F4F4F4','#1F1F1F'],['VÁLIDOS',R.okRows.length,'#E6F2EA','#1E6B3A'],['DUPLICADOS',R.dups,'#FBF0D9','#7A4C00'],['COM ERRO',R.linhasComErro,'#FDECEC','#A80502']];
+  const lista=R.erros.slice(0,200);
+  return `<div class="al-vk">${vk.map(k=>`<div style="background:${k[2]}"><b style="color:${k[3]}">${k[0]}</b><span style="color:${k[3]}">${fmtN(k[1])}</span></div>`).join('')}</div>
+  ${R.baseErr?`<div class="al-alert warn">Não foi possível comparar com a base existente (${esc(R.baseErr)}). Só foram detectados duplicados dentro do próprio arquivo.</div>`:''}
+  <div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12.5px;font-weight:700">Registros duplicados</span>
+    <span style="font-size:12px;color:#666464">Mesmos valores em todos os campos mapeados de um registro já existente na aba (lida até 5.000 linhas) ou repetido no arquivo.</span>
+    <div class="al-dupo"><button class="on">Ignorar duplicados (manter o que já está na base)</button><button disabled title="Atualização de registros existentes (nova versão e auditoria) ainda não tem backend">Atualizar existentes (indisponível: sem suporte no backend)</button></div></div>
+  <div style="display:flex;flex-direction:column;gap:6px"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center"><span style="font-size:12.5px;font-weight:700">Registros com erro (não serão importados)</span><button class="al-btn-sm" onclick="alErrRep()">Baixar relatório de erros</button></div>
+    <div class="al-errs">${lista.length?lista.map(e=>`<div><span style="color:#929090">${esc(e.ref)}</span><span><strong style="color:#A80502">${esc(e.t)}</strong> · ${esc(e.d)}</span></div>`).join('')+(R.erros.length>200?`<div><span></span><span style="color:#929090">… e mais ${fmtN(R.erros.length-200)} (veja o relatório)</span></div>`:''):'<div><span style="color:#929090">—</span><span><strong>Nenhum erro</strong> · todos os registros passaram na validação</span></div>'}</div></div>`;
+}
+window.alErrRep = function(){
+  const R=W&&W.res; if(!R) return;
+  downloadBlob('relatorio_erros_'+srcOf(W.src).aba.toLowerCase()+'.csv', ['Origem','Tipo','Detalhe'].map(csvCell).join(';')+'\n'+R.erros.map(e=>[e.ref,e.t,e.d].map(csvCell).join(';')).join('\n'));
+};
+
+function step5(){
+  const s=srcOf(W.src), R=W.res, {empH}=mapRows();
+  const sum=[['Fonte',s.nome],['Empresa',W.emp],['Arquivos',okFiles().map(f=>f.name).join(', ')],['Registros a importar',fmtN(R.okRows.length)],['Duplicados',fmtN(R.dups)+' ignorados'],['Com erro (fora da carga)',fmtN(R.linhasComErro)]];
+  const after=['Dados passam a alimentar: '+s.feeds.join(', ')+'.','As linhas são adicionadas ao final da aba '+s.aba+' da planilha do SAC, sem alterar as existentes.','A carga é registrada no log de auditoria do sistema (aparece no histórico acima).','O arquivo original NÃO é guardado pelo sistema e a carga NÃO pode ser desfeita automaticamente: funcionalidades ainda não disponíveis.'];
+  if(W.emp!==EMPRESAS[0] && !empH) after.push('Atenção: a aba '+s.aba+' não tem coluna de empresa; a empresa escolhida não será gravada.');
+  return `<div class="al-sum">${sum.map(x=>`<div><small>${esc(x[0])}</small><b>${esc(x[1])}</b></div>`).join('')}</div>
+  <div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12.5px;font-weight:700">Depois da confirmação</span>${after.map(a=>`<span style="font-size:12.5px;color:#3A3939;line-height:1.5">· ${esc(a)}</span>`).join('')}</div>`;
+}
+
+function stepDone(){
+  const d=W.done;
+  return `<div class="al-alert ${d.erro?'err':'ok'}">${d.erro?('Importação interrompida: '+esc(d.erro)+'. '):''}<strong>${fmtN(d.criados)}</strong> de ${fmtN(d.total)} registro(s) inserido(s) em <strong>${esc(d.aba)}</strong>.${d.erro&&d.criados?' Os lotes já inseridos permanecem na aba; não reenvie o mesmo arquivo sem conferir para evitar duplicidade.':''}</div>`;
+}
+
+window.alBack = function(){ if(!W) return; if(W.step===1) return alClose(); W.step--; wizRender(); };
+
+window.alNext = async function(){
+  if(!W) return;
+  if(W.done){ alClose(); loadAlimentacao(); return; }
+  const blk=blockText();
+  if(blk) return toast(blk);
+  if(W.step===2){
+    W.busy=true; wizRender();
+    W.headers = await loadHeaders();
+    W.busy=false;
+    if(!W.headers.length){ W.step=3; wizRender(); return; }
+    prepMap(); W.step=3; wizRender();
+  } else if(W.step===3){
+    W.busy=true; wizRender();
+    await validar();
+    W.busy=false; W.step=4; wizRender();
+  } else if(W.step===4){ W.step=5; wizRender(); }
+  else if(W.step===5){ await importar(); }
+  else { W.step++; wizRender(); }
+};
+
+async function importar(){
+  const s=srcOf(W.src), itens=W.res.okRows.map(o=>{ const c={}; Object.keys(o).forEach(k=>{ let v=o[k]; if(typeof v==='string' && /^[=]/.test(v)) v="'"+v; c[k]=v; }); return c; });
+  W.busy=true; W.progress='0/'+itens.length; wizRender();
+  let criados=0, erro='';
+  try{
+    for(let i=0;i<itens.length;i+=LOTE){
+      const lote=itens.slice(i,i+LOTE);
+      const r=await fetch(API+'/api/planilha/'+encodeURIComponent(s.aba)+'/importar',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},authH()),body:JSON.stringify({itens:lote})});
+      const d=await r.json();
+      if(!d.sucesso) throw new Error(d.erro||'Falha na importação');
+      criados+=d.criados||lote.length;
+      W.progress=criados+'/'+itens.length;
+      $('al-wiz-block').textContent='Importando… '+W.progress;
+    }
+  }catch(e){ erro=e.message; }
+  W.busy=false;
+  W.done={criados,total:itens.length,aba:s.aba,erro};
+  wizRender();
+}
+
+// Item do menu visível para MASTER (também tratado por applyRoleUI)
 document.addEventListener('DOMContentLoaded', function(){
-  const tok=sessionStorage.getItem('sac-token');
-  if(tok){ try { const p=JSON.parse(atob(tok.split('.')[1])); if(p.perfil==='MASTER'){ const s=document.getElementById('sidebar-alimentacao'); if(s) s.style.display=''; } } catch(e){} }
+  const t=tok();
+  if(t){ try { const p=JSON.parse(atob(t.split('.')[1])); if(p.perfil==='MASTER'){ const s=$('sidebar-alimentacao'); if(s) s.style.display=''; } } catch(e){} }
+  render();
 });
 
-// Also hook after login
 const _alimOrigBoot = window.boot;
 if(typeof window.boot==='function'){
   window.boot = function(){
@@ -18017,13 +18169,12 @@ if(typeof window.boot==='function'){
   };
 }
 
-// Expose post-login hook
 const _alimOrigLogin = window.afterLogin || (window.afterLogin=function(){});
 const _alimPrevAfterLogin = window.afterLogin;
 window.afterLogin = function(user){
   _alimPrevAfterLogin(user);
   if(user&&user.perfil==='MASTER'){
-    const s=document.getElementById('sidebar-alimentacao');
+    const s=$('sidebar-alimentacao');
     if(s) s.style.display='';
   }
 };
