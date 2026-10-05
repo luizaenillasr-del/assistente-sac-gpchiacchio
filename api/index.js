@@ -10,6 +10,7 @@ const APP_URL = (process.env.APP_URL || 'https://assistente-sac.vercel.app').rep
 const cerebroService = require('./services/cerebroServices');
 const mcService = require('./services/matrizConhecimentoService');
 const documentService = require('./services/documentService');
+const aiService = require('./services/aiService');
 const { tratativaEngine, devolutivaEngine, assertividade: assertividadeService } = cerebroService;
 const permissoesService = require('./services/permissoesService');
 
@@ -2430,8 +2431,7 @@ app.post('/api/extrair-campos-setor', requerPerfil('MASTER','ANALISTA SAC'), asy
   try {
     const { texto } = req.body;
     if (!texto) return res.status(400).json({ sucesso: false, erro: 'Texto obrigatório.' });
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) return res.status(400).json({ sucesso: false, erro: 'ANTHROPIC_API_KEY não configurada.' });
+    if (!aiService.isDisponivel()) return res.status(400).json({ sucesso: false, erro: 'Serviço de IA não configurado.' });
 
     const prompt = `Você é um assistente que extrai informações de documentos internos de empresas para preencher cadastros de setores.
 
@@ -2448,15 +2448,9 @@ Retorne APENAS o JSON, sem explicações.
 TEXTO DO DOCUMENTO:
 ${texto.slice(0, 6000)}`;
 
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: 'claude-haiku-4-5', max_tokens: 1200, messages: [{ role: 'user', content: prompt }] }),
-    });
-    const data = await resp.json();
-    const raw = data.content?.[0]?.text || '{}';
-    const jsonMatch = raw.match(/\{[\s\S]*\}/);
-    const campos = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
+    const resultado = await aiService.chamar(prompt, { maxTokens: 1200, contexto: 'extrair-campos-setor' });
+    if (!resultado.disponivel) return res.status(503).json({ sucesso: false, erro: resultado.erro || 'IA indisponível' });
+    const campos = aiService.extrairJSON(resultado.texto) || {};
     res.json({ sucesso: true, campos });
   } catch (e) { res.status(500).json({ sucesso: false, erro: e.message }); }
 });
@@ -3948,16 +3942,13 @@ app.post('/api/biblioteca/importar-ficha', requerPerfil('MASTER','ADMINISTRADOR'
     }
 
     // Usa IA para extrair campos estruturados
-    const Anthropic = (() => { try { return require('@anthropic-ai/sdk'); } catch { return null; } })();
     let dadosExtraidos = {};
-    if (Anthropic && process.env.ANTHROPIC_API_KEY) {
-      const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-      const msg = await client.messages.create({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 512,
-        messages: [{ role: 'user', content: `Extraia dados desta ficha de reclamação e retorne APENAS JSON válido com os campos: protocolo, data_registro (ISO), nome_cliente, empresa, setor, tipo_manifestacao, motivo, colaborador. Se não encontrar um campo, use null. Texto da ficha:\n\n${textoExtraido}` }]
-      });
-      try { dadosExtraidos = JSON.parse(msg.content[0].text.replace(/```json?|```/g,'')); } catch {}
+    if (aiService.isDisponivel()) {
+      const resultado = await aiService.chamar(
+        `Extraia dados desta ficha de reclamação e retorne APENAS JSON válido com os campos: protocolo, data_registro (ISO), nome_cliente, empresa, setor, tipo_manifestacao, motivo, colaborador. Se não encontrar um campo, use null. Texto da ficha:\n\n${textoExtraido}`,
+        { maxTokens: 512, contexto: 'importar-ficha' }
+      );
+      if (resultado.disponivel) dadosExtraidos = aiService.extrairJSON(resultado.texto) || {};
     }
 
     // Gera ID e registra na aba FICHAS_BIBLIOTECA
@@ -4139,8 +4130,7 @@ app.post('/api/ia/extrair-setor', requerPerfil('MASTER','ANALISTA SAC','ADMINIST
   try {
     const { texto, setor } = req.body || {};
     if (!texto || texto.trim().length < 20) return res.status(400).json({ sucesso: false, erro: 'Texto muito curto.' });
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) return res.status(400).json({ sucesso: false, erro: 'ANTHROPIC_API_KEY não configurada.' });
+    if (!aiService.isDisponivel()) return res.status(400).json({ sucesso: false, erro: 'Serviço de IA não configurado.' });
     const prompt = `Você é um assistente que extrai informações estruturadas sobre setores de SAC a partir de documentos.
 
 Setor: ${setor || '(não informado)'}
@@ -4159,17 +4149,9 @@ Extraia as seguintes informações do texto acima e retorne SOMENTE um JSON vál
 - SLA_HORAS: prazo em horas (número inteiro, somente se explícito)
 
 Retorne apenas o JSON, sem markdown, sem explicação.`;
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 1024, messages: [{ role: 'user', content: prompt }] })
-    });
-    const data = await resp.json();
-    const raw = data?.content?.[0]?.text || '';
-    let campos = {};
-    try { campos = JSON.parse(raw.replace(/^```json\s*/,'').replace(/```$/,'')); } catch(e) {
-      const m = raw.match(/\{[\s\S]*\}/); if (m) try { campos = JSON.parse(m[0]); } catch(e2) {}
-    }
+    const resultado = await aiService.chamar(prompt, { maxTokens: 1024, contexto: 'extrair-setor' });
+    if (!resultado.disponivel) return res.status(503).json({ sucesso: false, erro: resultado.erro || 'IA indisponível' });
+    const campos = aiService.extrairJSON(resultado.texto) || {};
     res.json({ sucesso: true, campos });
   } catch (e) { res.status(500).json({ sucesso: false, erro: e.message }); }
 });

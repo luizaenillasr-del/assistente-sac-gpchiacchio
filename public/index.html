@@ -13055,7 +13055,6 @@ async function cdLoadProd() {
     renderCdProd();
   } catch(e) { if(loading) { loading.style.display='block'; loading.textContent='Erro: '+e.message; } }
 }
-function loadCerebroProdutos() { cdLoadProd(); }
 function renderCdProd(q='') {
   const loading = document.getElementById('cerebro-produtos-loading');
   const tabela = document.getElementById('cerebro-produtos-tabela');
