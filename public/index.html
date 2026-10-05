@@ -8361,9 +8361,10 @@ window.navigate = function(page, el) {
     const encerradas=r.filter(isClosed).length + m.filter(isClosed).length;
     const emAndamento=m.filter(x=>!isClosed(x) && String(x.STATUS||'').trim()!=='').length;
 
-    const recComSLA=r.filter(x=>x['Dentro do prazo? ']!==undefined || x['Dentro do prazo?']!==undefined || x.DENTRO_DO_SLA!==undefined);
-    const dentroPrazo=recComSLA.filter(x=>/^SIM$|^S$/i.test(String(x['Dentro do prazo? ']??x['Dentro do prazo?']??x.DENTRO_DO_SLA??''))).length;
-    const foraPrazo=recComSLA.filter(x=>/^N(AO|ÃO)$|^N$/i.test(String(x['Dentro do prazo? ']??x['Dentro do prazo?']??x.DENTRO_DO_SLA??''))).length;
+    const _getSLA=x=>(x['Dentro do Prazo? Cliente']||x['Dentro do Prazo? Setor']||x['Dentro do prazo? ']||x['Dentro do prazo?']||x.DENTRO_DO_SLA||'').toString().toUpperCase().trim();
+    const recComSLA=r.filter(x=>_getSLA(x)!=='');
+    const dentroPrazo=recComSLA.filter(x=>{const v=_getSLA(x);return v==='SIM'||v==='S';}).length;
+    const foraPrazo=recComSLA.filter(x=>{const v=_getSLA(x);return v==='NÃO'||v==='NAO'||v==='N';}).length;
     const slaPercent=recComSLA.length?Math.round(dentroPrazo/recComSLA.length*100):0;
 
     const tempos=[...r,...m].map(recordHours).filter(v=>v!==null && isFinite(v) && v>=0 && v<=10000);
@@ -8398,8 +8399,8 @@ window.navigate = function(page, el) {
       if(!porEmpresa[emp])porEmpresa[emp]={total:0,finaliz:0,sla:0,semSLA:0,foraSLA:0};
       porEmpresa[emp].total++;
       if(isClosed(x))porEmpresa[emp].finaliz++;
-      const sv=norm(x['Dentro do prazo? ']??x['Dentro do prazo?']??'');
-      if(sv==='SIM')porEmpresa[emp].sla++; else if(sv==='NAO')porEmpresa[emp].foraSLA++; else porEmpresa[emp].semSLA++;
+      const sv=_getSLA(x);
+      if(sv==='SIM')porEmpresa[emp].sla++; else if(sv==='NÃO'||sv==='NAO')porEmpresa[emp].foraSLA++; else porEmpresa[emp].semSLA++;
     });
 
     const pendSetor={};
@@ -8466,12 +8467,20 @@ window.navigate = function(page, el) {
       try{
         if(typeof aplicarFiltros==='function') aplicarFiltros();
         else renderDashboard(calcDashboard(_dashData.mans,_dashData.recs,_dashFiltroEmpresa,_dashFiltroSetor));
-      }catch(re){console.error('Erro ao renderizar dashboard:',re);}
+      }catch(re){
+        console.error('Erro ao renderizar dashboard:',re);
+        ['etapas-list','donut-wrap','proc-content','bar-chart-wrap','fila-body','empresa-cards','top-motivos','ptable-body'].forEach(id=>{
+          const el=document.getElementById(id);if(el&&el.querySelector&&el.querySelector('.spinner'))el.innerHTML='<div style="text-align:center;padding:16px;color:var(--gray-400,#9ca3af);font-size:12px">—</div>';
+        });
+      }
       if(last)last.textContent='Última atualização: '+now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
     }catch(e){
       console.error('Erro Visão Geral V3',e);
       const last=document.getElementById('last-update'); if(last)last.textContent='Erro ao atualizar';
       const kpiRec=document.getElementById('kpi-reclamacoes'); if(kpiRec)kpiRec.textContent='Erro ao carregar';
+      ['etapas-list','donut-wrap','proc-content','bar-chart-wrap','fila-body','empresa-cards','top-motivos','ptable-body'].forEach(id=>{
+        const el=document.getElementById(id);if(el)el.innerHTML='<div style="text-align:center;padding:16px;color:var(--gray-400,#9ca3af);font-size:12px">—</div>';
+      });
     }
   };
 
@@ -8774,8 +8783,8 @@ window.navigate = function(page, el) {
     pageLoaders['matriz']=window.loadMatriz;
   }
 
-  // Primeiro carregamento V3.
-  window.loadVisaoGeral();
+  // Primeiro carregamento V3 — só executa se já autenticado.
+  if(sessionStorage.getItem('sac-token')) window.loadVisaoGeral();
 })();
 
 </script>
