@@ -3761,8 +3761,9 @@ app.get('/api/biblioteca/stats', requerPerfil('MASTER','ADMINISTRADOR','ANALISTA
     const recsMapped = recs.map(r => ({ _DATA: extrairAnoMes(r), COM_TRATATIVA: false, COM_DEVOLUTIVA: !!(r['Devolutiva']||r['DEVOLUTIVA']) }));
     fichas.forEach(f => {
       const key = `${f._DATA.ano}-${f._DATA.mes}`;
-      if (!porMes[key]) porMes[key] = { ano: f._DATA.ano, mes: f._DATA.mes, fichas: 0, comTratativa: 0, comDevolutiva: 0, reincidentes: 0 };
+      if (!porMes[key]) porMes[key] = { ano: f._DATA.ano, mes: f._DATA.mes, fichas: 0, comTratativa: 0, comDevolutiva: 0, reincidentes: 0, sistema: 0, historica: 0 };
       porMes[key].fichas++;
+      if (f._SRC === 'HISTORICO') porMes[key].historica++; else porMes[key].sistema++;
       if (f.COM_TRATATIVA) porMes[key].comTratativa++;
       if (f.COM_DEVOLUTIVA) porMes[key].comDevolutiva++;
       if (f.REINCIDENTE) porMes[key].reincidentes++;
@@ -3778,6 +3779,18 @@ app.get('/api/biblioteca/stats', requerPerfil('MASTER','ADMINISTRADOR','ANALISTA
       const ka = `${a.ano}-${a.mes}`; const kb = `${b.ano}-${b.mes}`;
       return ka.localeCompare(kb);
     }).slice(-24); // últimos 24 meses
+
+    // Árvore empresa > ano > mês
+    const arvore = {};
+    fichas.forEach(f => {
+      const emp = f.EMPRESA || 'Não informada';
+      const ano = f._DATA.ano; const mes = f._DATA.mes;
+      if (!arvore[emp]) arvore[emp] = { total: 0, anos: {} };
+      arvore[emp].total++;
+      if (!arvore[emp].anos[ano]) arvore[emp].anos[ano] = { total: 0, meses: {} };
+      arvore[emp].anos[ano].total++;
+      arvore[emp].anos[ano].meses[mes] = (arvore[emp].anos[ano].meses[mes] || 0) + 1;
+    });
 
     // Legado porEmpresa simples
     const porEmpresa = {};
@@ -3798,6 +3811,7 @@ app.get('/api/biblioteca/stats', requerPerfil('MASTER','ADMINISTRADOR','ANALISTA
       porEmpresa,
       porEmpresaDetalhe,
       porMes: porMesOrdenado,
+      arvore,
       filtrado: { total: base.length },
     });
   } catch(e) { res.status(500).json({ sucesso: false, erro: e.message }); }
