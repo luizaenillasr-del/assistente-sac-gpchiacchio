@@ -1690,39 +1690,13 @@
 
       <div class="page-layout">
         <div>
-          <!-- Seção 1 — Registro -->
-          <div class="form-section">
-            <div class="form-section-title">
-              <div class="form-section-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
-              <div class="form-section-name">1. Dados do Registro SAC</div>
-            </div>
-            <div class="form-section-desc">Preenchidos automaticamente, exceto o canal</div>
-            <div class="form-row cols-4">
-              <div class="form-group"><label class="form-label">Data do registro</label><input class="form-input" id="nm-data" type="date" title="Preenchida automaticamente com a data de hoje"></div>
-              <div class="form-group"><label class="form-label">Nº da reclamação</label><input class="form-input" readonly id="nm-num" value="..." title="Gerado automaticamente ao registrar"></div>
-              <div class="form-group"><label class="form-label">Setor de entrada</label><input class="form-input" readonly value="SAC"></div>
-              <div class="form-group"><label class="form-label">Atendente</label><input class="form-input" readonly id="nm-atendente"></div>
-            </div>
-            <div class="form-group">
-              <label class="form-label" style="margin-bottom:6px">Canal de atendimento</label>
-              <div class="canal-btns">
-                <button class="canal-btn" onclick="selectCanal(this)">Telefone</button>
-                <button class="canal-btn active" onclick="selectCanal(this)">WhatsApp</button>
-                <button class="canal-btn" onclick="selectCanal(this)">E-mail</button>
-                <button class="canal-btn" onclick="selectCanal(this)">Presencial</button>
-                <button class="canal-btn" onclick="selectCanal(this)">Pesquisa de Satisfação</button>
-                <button class="canal-btn" onclick="selectCanal(this)">Outro</button>
-              </div>
-            </div>
-          </div>
-
           <!-- Seção 2 — Cliente -->
           <div class="form-section">
             <div class="form-section-title">
               <div class="form-section-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
-              <div class="form-section-name">2. Dados do Cliente</div>
+              <div class="form-section-name">1. Dados do cliente</div>
             </div>
-            <div class="form-section-desc">Digite o CNPJ para buscar no histórico</div>
+            <div class="form-section-desc">Digite o CNPJ para buscar no cadastro e no histórico</div>
             <div class="form-row" style="display:flex;gap:10px;margin-bottom:12px">
               <div class="form-group" style="flex:1"><label class="form-label">CNPJ</label><input class="form-input" placeholder="00.000.000/0001-00" id="nm-cnpj" oninput="onCnpjChange()"></div>
               <div style="padding-top:18px;display:flex;gap:6px">
@@ -1750,11 +1724,37 @@
             </div>
           </div>
 
+          <!-- Seção 1 — Registro -->
+          <div class="form-section">
+            <div class="form-section-title">
+              <div class="form-section-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+              <div class="form-section-name">2. Dados da manifestação</div>
+            </div>
+            <div class="form-section-desc">Preenchidos automaticamente, exceto o canal</div>
+            <div class="form-row cols-4">
+              <div class="form-group"><label class="form-label">Data do registro</label><input class="form-input" id="nm-data" type="date" title="Preenchida automaticamente com a data de hoje"></div>
+              <div class="form-group"><label class="form-label">Nº da reclamação</label><input class="form-input" readonly id="nm-num" value="..." title="Gerado automaticamente ao registrar"></div>
+              <div class="form-group"><label class="form-label">Setor de entrada</label><input class="form-input" readonly value="SAC"></div>
+              <div class="form-group"><label class="form-label">Atendente</label><input class="form-input" readonly id="nm-atendente"></div>
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="margin-bottom:6px">Canal de atendimento</label>
+              <div class="canal-btns">
+                <button class="canal-btn" onclick="selectCanal(this)">Telefone</button>
+                <button class="canal-btn active" onclick="selectCanal(this)">WhatsApp</button>
+                <button class="canal-btn" onclick="selectCanal(this)">E-mail</button>
+                <button class="canal-btn" onclick="selectCanal(this)">Presencial</button>
+                <button class="canal-btn" onclick="selectCanal(this)">Pesquisa de Satisfação</button>
+                <button class="canal-btn" onclick="selectCanal(this)">Outro</button>
+              </div>
+            </div>
+          </div>
+
           <!-- Seção 3 — Manifestação + Análise IA -->
           <div class="form-section">
             <div class="form-section-title">
               <div class="form-section-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
-              <div class="form-section-name">3. Informações da Manifestação</div>
+              <div class="form-section-name">Tipo e descrição da manifestação</div>
             </div>
             <div class="form-section-desc">Procedência e encaminhamento são definidos após a análise</div>
             <div class="form-group" style="margin-bottom:12px">
@@ -1894,7 +1894,7 @@
           <div class="form-section">
             <div class="form-section-title">
               <div class="form-section-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05 12.25 20.24a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></div>
-              <div><div class="form-section-name">Evidências e documentos</div><div class="form-section-desc">Fotos, NF, laudos e documentos da manifestação</div></div>
+              <div><div class="form-section-name">3. Evidências</div><div class="form-section-desc">Fotos, PDFs, vídeos, prints, documentos e áudios</div></div>
             </div>
             <div class="doc-import-card">
               <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
@@ -1917,9 +1917,9 @@
           <div class="form-section">
             <div class="form-section-title">
               <div class="form-section-icon" style="background:#FEF3C7"><svg viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div>
-              <div class="form-section-name">4. Informações do Produto</div>
+              <div class="form-section-name">4. Identificação inicial</div>
             </div>
-            <div class="form-section-desc">Quando aplicável — ajuda a refinar a análise</div>
+            <div class="form-section-desc">Quando aplicável. Lote e NF permitem rastreabilidade.</div>
             <div class="form-row cols-3">
               <div class="form-group"><label class="form-label">Produto</label><input class="form-input" placeholder="[Produto]" id="nm-produto" oninput="agendarAnalise()"></div>
               <div class="form-group"><label class="form-label">Lote</label><input class="form-input" placeholder="L-0000" id="nm-lote" oninput="agendarAnalise()"></div>
