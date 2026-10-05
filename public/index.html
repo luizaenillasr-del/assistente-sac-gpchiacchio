@@ -5027,236 +5027,267 @@
 </div>
 
 <div class="page" id="page-biblioteca-fichas" style="background:#F4F4F4;padding:0;position:relative">
+<!-- ===== ARQUIVO DE FICHAS: estilos (prefixo af-) — início ===== -->
 <style>
-.bib-badge-sistema{background:#FDECEC;color:#A80502;border-radius:5px;padding:2px 7px;font-size:11px;font-weight:600}
-.bib-badge-historica{background:#EEEEEE;color:#3A3939;border-radius:5px;padding:2px 7px;font-size:11px;font-weight:600}
-.bib-badge-aberta{background:#E6EEF8;color:#24508F;border-radius:5px;padding:2px 7px;font-size:11px;font-weight:600}
-.bib-badge-tratativa{background:#FBF0D9;color:#7A4C00;border-radius:5px;padding:2px 7px;font-size:11px;font-weight:600}
-.bib-badge-concluida{background:#E6F2EA;color:#1E6B3A;border-radius:5px;padding:2px 7px;font-size:11px;font-weight:600}
-.bib-kpi-btn{text-align:left;border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:2px;cursor:pointer;white-space:normal;border:1px solid #E4E4E4;transition:border-color .15s,box-shadow .15s}
-.bib-kpi-btn:hover{box-shadow:0 2px 8px rgba(0,0,0,.08)}
-.bib-kpi-btn.ativo{border-color:#C70602 !important;box-shadow:0 0 0 2px rgba(199,6,2,.15)}
-#bib-painel{position:fixed;top:0;right:-420px;width:420px;height:100vh;background:#fff;border-left:1px solid #E4E4E4;box-shadow:-4px 0 20px rgba(0,0,0,.1);z-index:300;transition:right .25s ease;overflow-y:auto;display:flex;flex-direction:column}
-#bib-painel.aberto{right:0}
-.bib-row{cursor:pointer;transition:background .12s}
-.bib-row:hover{background:#FDF8F8}
-.bib-row.ativa{background:#FDECEC}
-.bib-filtro-select{height:36px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:12.5px;color:#1F1F1F;font-weight:500;font-family:Montserrat,system-ui,sans-serif}
-.bib-filtro-select.ativo{border-color:#C70602}
-.bib-filtro-input{height:36px;border:1px solid #D6D6D6;border-radius:7px;padding:0 12px;background:#fff;font-size:13px;font-weight:400;color:#1F1F1F;font-family:Montserrat,system-ui,sans-serif}
-.bib-filtro-input.ativo{border-color:#C70602}
-.bib-arvore-btn{display:flex;justify-content:space-between;border:0;background:none;border-radius:6px;padding:7px 8px;cursor:pointer;font-family:Montserrat,system-ui,sans-serif;width:100%;text-align:left;transition:background .12s}
-.bib-arvore-btn:hover{background:#F4F4F4}
-.bib-arvore-btn.ativa{background:#FDECEC;color:#A80502}
+.af-root{font-family:Montserrat,system-ui,sans-serif;color:#1F1F1F;-webkit-font-smoothing:antialiased;font-size:14px}
+.af-root *{box-sizing:border-box}
+.af-root button,.af-root input,.af-root select{font:inherit;color:inherit}
+.af-root button{white-space:nowrap}
+.af-main{padding:22px 28px 60px;display:flex;flex-direction:column;gap:16px}
+.af-head{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap}
+.af-crumb{font-size:12px;color:#929090}
+.af-title{font-size:24px;font-weight:700;margin-top:2px}
+.af-sub{font-size:13px;color:#666464;line-height:1.5;margin-top:4px;max-width:760px}
+.af-actions{display:flex;gap:8px;flex-wrap:wrap}
+.af-btn{border:1px solid #D6D6D6;background:#fff;border-radius:8px;padding:9px 14px;cursor:pointer;font-size:13px;font-weight:600;text-decoration:none;color:#1F1F1F;display:inline-flex;align-items:center;gap:6px}
+.af-btn:hover{background:#FAFAFA}
+.af-btn-red{border:0;background:#C70602;color:#fff}
+.af-btn-red:hover{background:#A80502}
+.af-btn-red[disabled]{opacity:.7;cursor:default}
+.af-btn-dark{border:0;background:#1F1F1F;color:#fff}
+.af-btn-dark:hover{background:#3A3939}
+.af-btn-sm{border:1px solid #D6D6D6;background:#fff;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:12px;text-decoration:none;color:#1F1F1F}
+.af-btn-sm:hover{background:#FAFAFA}
+.af-btn-sm[disabled]{opacity:.5;cursor:default}
+.af-aviso{background:#FFFBEF;border:1px solid #F1E2B5;border-radius:10px;padding:12px 16px;font-size:13px;line-height:1.55;color:#5E3B00}
+.af-filtros{background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:12px 14px;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
+.af-lbl{display:flex;flex-direction:column;gap:4px;font-size:11px;color:#666464;font-weight:600}
+.af-input{height:36px;border:1px solid #D6D6D6;border-radius:7px;padding:0 12px;background:#fff;font-size:13px;font-weight:400;color:#1F1F1F}
+.af-select{height:36px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:12.5px;color:#1F1F1F;font-weight:500;min-width:120px}
+.af-input.ativo,.af-select.ativo{border-color:#C70602}
+.af-limpar{height:36px;border:1px solid #D6D6D6;background:#fff;border-radius:7px;padding:0 12px;cursor:pointer;font-size:12.5px;color:#A80502;font-weight:600}
+.af-kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
+.af-kpi{text-align:left;background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:2px;cursor:pointer;white-space:normal !important}
+.af-kpi.static{cursor:default}
+.af-kpi.red{background:#FFF8F8;border-color:#F3CFCF}
+.af-kpi.ativo{background:rgba(31,31,31,.05);border-color:#1F1F1F}
+.af-kpi-l{font-size:11px;font-weight:700;letter-spacing:.05em;color:#545252}
+.af-kpi.red .af-kpi-l{color:#A80502}
+.af-kpi-v{font-size:26px;font-weight:700;font-variant-numeric:tabular-nums}
+.af-kpi-d{font-size:11.5px;color:#929090}
+.af-duo{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr));gap:14px}
+.af-card{background:#fff;border:1px solid #E4E4E4;border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.af-card-t{font-size:12px;font-weight:700;letter-spacing:.06em;color:#545252}
+.af-emp{display:grid;grid-template-columns:56px minmax(0,1fr) 14px;gap:12px;align-items:center;text-align:left;border:1.5px solid #E4E4E4;background:#FAFAFA;border-radius:10px;padding:10px 14px;cursor:pointer;white-space:normal !important;width:100%}
+.af-emp.on{border-color:#C70602;background:#FFF8F8}
+.af-emp-n{font-size:26px;font-weight:700;color:#C70602;font-variant-numeric:tabular-nums}
+.af-emp-b{min-width:0;display:flex;flex-direction:column;gap:5px}
+.af-emp-m{display:flex;gap:4px 12px;flex-wrap:wrap;font-size:11.5px;color:#666464}
+.af-emp-m span{white-space:nowrap}
+.af-bar{display:block;height:5px;border-radius:3px;background:#F0F0F0;overflow:hidden;position:relative}
+.af-bar i{display:block;position:absolute;left:0;top:0;bottom:0;background:#1E6B3A}
+.af-leg{display:flex;gap:10px;font-size:11px;color:#666464}
+.af-leg span{display:flex;gap:4px;align-items:center}
+.af-leg i{width:10px;height:10px;border-radius:2px;display:inline-block}
+.af-meses{display:flex;align-items:flex-end;gap:4px;height:170px}
+.af-mes{flex:1;min-width:0;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:3px;border:0;background:none;padding:0;cursor:pointer}
+.af-mes-n{font-size:10.5px;font-weight:700;color:#3A3939}
+.af-mes-b{width:100%;max-width:28px;display:flex;flex-direction:column;border-radius:3px 3px 0 0;overflow:hidden;outline-offset:2px}
+.af-mes-b.on{outline:2px solid #1F1F1F}
+.af-meses-l{display:flex;gap:4px}
+.af-meses-l span{flex:1;min-width:0;text-align:center;font-size:10px;color:#666464;white-space:nowrap;overflow:hidden}
+.af-corpo{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start}
+.af-arvore{flex:1 1 220px;max-width:100%;background:#fff;border:1px solid #E4E4E4;border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:2px}
+.af-tr-e,.af-tr-a,.af-tr-m{display:flex;justify-content:space-between;gap:8px;border:0;background:transparent;border-radius:6px;cursor:pointer;text-align:left;width:100%}
+.af-tr-e{padding:8px;font-weight:700;font-size:13px}
+.af-tr-e.on{background:#F4F4F4}
+.af-tr-a{padding:6px 8px 6px 22px;font-size:12.5px;font-weight:600}
+.af-tr-m{border-left:2px solid #E4E4E4;border-radius:0;padding:5px 8px 5px 12px;margin-left:34px;width:calc(100% - 34px);font-size:12.5px;color:#3A3939;font-weight:500}
+.af-tr-m.on{background:#FDECEC;color:#A80502;font-weight:700;border-left-color:#C70602}
+.af-tr-n{font-size:12px;color:#929090;font-weight:500;font-variant-numeric:tabular-nums}
+.af-lista{flex:999 1 600px;min-width:0;background:#fff;border:1px solid #E4E4E4;border-radius:12px;overflow:hidden}
+.af-lista-h{padding:12px 16px;border-bottom:1px solid #EFEFEF;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center}
+.af-tbl{border-collapse:collapse;width:100%;min-width:860px;font-size:12.5px}
+.af-tbl th{text-align:left;font-weight:600;font-size:11.5px;color:#666464;padding:9px 12px;border-bottom:1px solid #E4E4E4;white-space:nowrap;background:#FAFAFA}
+.af-tbl td{padding:9px 12px;border-bottom:1px solid #EFEFEF}
+.af-row{cursor:pointer}
+.af-row:hover{background:#FAFAFA}
+.af-row.ativa{background:#FDECEC}
+.af-pill{padding:2px 8px;border-radius:99px;font-size:10.5px;font-weight:700;white-space:nowrap;display:inline-block}
+.af-pill.lg{padding:3px 9px;font-size:11px}
+.af-or-sistema{background:#FDECEC;color:#A80502}
+.af-or-hist{background:#EEEEEE;color:#3A3939}
+.af-st-aberta{background:#E6EEF8;color:#24508F}
+.af-st-trat{background:#FBF0D9;color:#7A4C00}
+.af-st-conc{background:#E6F2EA;color:#1E6B3A}
+.af-vazio{padding:34px 16px;text-align:center;display:flex;flex-direction:column;gap:8px;align-items:center}
+.af-mais{padding:10px;text-align:center}
+.af-mais button,.af-vazio button{border:1px solid #D6D6D6;background:#fff;border-radius:7px;padding:7px 14px;cursor:pointer;font-size:12.5px}
+.af-ov{position:fixed;inset:0;background:rgba(20,20,20,.45);z-index:300;display:none;justify-content:flex-end}
+.af-ov.on{display:flex}
+.af-dr{width:min(720px,100%);height:100%;background:#F4F4F4;display:flex;flex-direction:column}
+.af-dr-h{background:#fff;padding:14px 20px;border-bottom:1px solid #E4E4E4;display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.af-dr-b{flex:1;overflow:auto;padding:16px 20px;display:flex;flex-direction:column;gap:14px}
+.af-dr-f{background:#fff;border-top:1px solid #E4E4E4;padding:12px 20px;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.af-box{background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px}
+.af-k{font-size:10.5px;color:#929090;font-weight:600}
+.af-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px 16px}
+.af-doc{display:flex;gap:12px;align-items:center;border:1px solid #EFEFEF;border-radius:8px;padding:10px 12px}
+.af-doc-x{width:38px;height:44px;border-radius:5px;color:#fff;display:grid;place-items:center;font-size:10px;font-weight:700;flex:none}
+.af-x{border:0;background:none;cursor:pointer;font-size:24px;color:#666464;padding:0 4px;line-height:1}
+.af-md{position:fixed;inset:0;background:rgba(20,20,20,.5);z-index:310;display:none;place-items:center;padding:20px}
+.af-md.on{display:grid}
+.af-md-c{width:min(620px,100%);max-height:100%;overflow:auto;background:#fff;border-radius:12px}
+.af-drop{border:2px dashed #CFCFCF;background:#FAFAFA;border-radius:10px;padding:26px 16px;cursor:pointer;display:flex;flex-direction:column;gap:6px;align-items:center;white-space:normal !important;width:100%}
+.af-drop.over{border-color:#C70602;background:#FFF8F8}
+.af-arq{border:1px solid #E4E4E4;border-radius:9px;padding:10px 12px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 10px;align-items:center}
+.af-arq-c{grid-column:1 / -1;display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}
+.af-arq-c .af-lbl{gap:3px}
+.af-arq-c select,.af-arq-c input{height:32px;border:1px solid #D6D6D6;border-radius:6px;padding:0 6px;background:#fff;font-size:12.5px}
+.af-toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#1F1F1F;color:#fff;padding:11px 16px;border-radius:8px;font-size:13px;z-index:400;max-width:92vw;display:none}
+.af-toast.on{display:block}
+@media (max-width:640px){.af-main{padding:16px 14px 48px}.af-dr-b{padding:14px}.af-title{font-size:21px}}
 </style>
+<!-- ===== ARQUIVO DE FICHAS: estilos — fim ===== -->
 
-  <!-- CABEÇALHO -->
-  <div style="padding:20px 24px 0;display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap">
-    <div>
-      <div style="font-size:12px;color:#929090;font-family:Montserrat,system-ui,sans-serif">Gestão / Arquivo de Fichas</div>
-      <div style="font-size:22px;font-weight:700;margin-top:2px;font-family:Montserrat,system-ui,sans-serif;color:#1F1F1F">Arquivo de Fichas</div>
-      <div style="font-size:13px;color:#666464;line-height:1.5;margin-top:4px;font-family:Montserrat,system-ui,sans-serif">Histórico completo das fichas de reclamação: as anteriores à ferramenta, as criadas no sistema e as concluídas. Organizado por empresa, ano e mês.</div>
-    </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <a href="/fichas.html" target="_blank" style="border:1px solid #D6D6D6;background:#fff;border-radius:8px;padding:9px 14px;cursor:pointer;font-size:13px;font-weight:600;font-family:Montserrat,system-ui,sans-serif;color:#1F1F1F;text-decoration:none;display:inline-flex;align-items:center;gap:6px">Modelos de ficha (nova e antiga) ↗</a>
-      <button onclick="abrirModalImportarFicha()" style="border:1px solid #D6D6D6;background:#fff;border-radius:8px;padding:9px 14px;cursor:pointer;font-size:13px;font-weight:600;font-family:Montserrat,system-ui,sans-serif;color:#1F1F1F">↑ Importar fichas (PDF/DOCX)</button>
-      <button onclick="loadBiblioteca(true)" style="border:0;background:#C70602;color:#fff;border-radius:8px;padding:9px 14px;cursor:pointer;font-size:13px;font-weight:600;font-family:Montserrat,system-ui,sans-serif" id="bib-btn-refresh">↻ Atualizar</button>
-    </div>
-  </div>
-
-  <!-- AVISO -->
-  <div style="margin:12px 24px 0;background:#FFFBEF;border:1px solid #F1E2B5;border-radius:10px;padding:12px 16px;font-size:13px;line-height:1.55;color:#5E3B00;font-family:Montserrat,system-ui,sans-serif">Os números abaixo incluem as fichas <strong>criadas no sistema</strong> e as <strong>fichas históricas importadas</strong> (PDF ou DOCX de antes da ferramenta). Cada ficha importada fica arquivada pela empresa, mês e ano da reclamação original, não pela data da importação.</div>
-
-  <!-- FILTROS -->
-  <div style="margin:12px 24px 0;background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:12px 14px;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end">
-    <label style="flex:1 1 240px;display:flex;flex-direction:column;gap:4px;font-size:11px;color:#666464;font-weight:600;font-family:Montserrat,system-ui,sans-serif">Buscar
-      <input id="bib-f-q" class="bib-filtro-input" type="text" placeholder="Protocolo, cliente, CNPJ, motivo, colaborador…" onkeydown="if(event.key==='Enter')loadBiblioteca(true)" oninput="_bibFiltroAtualizar('bib-f-q','input')">
-    </label>
-    <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:#666464;font-weight:600;font-family:Montserrat,system-ui,sans-serif">Ano
-      <select id="bib-f-ano" class="bib-filtro-select" style="min-width:100px" onchange="_bibFiltroAtualizar('bib-f-ano','select');loadBiblioteca(true)"><option value="">Todos</option></select>
-    </label>
-    <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:#666464;font-weight:600;font-family:Montserrat,system-ui,sans-serif">Mês
-      <select id="bib-f-mes" class="bib-filtro-select" style="min-width:120px" onchange="_bibFiltroAtualizar('bib-f-mes','select');loadBiblioteca(true)">
-        <option value="">Todos</option>
-        <option value="01">Janeiro</option><option value="02">Fevereiro</option><option value="03">Março</option>
-        <option value="04">Abril</option><option value="05">Maio</option><option value="06">Junho</option>
-        <option value="07">Julho</option><option value="08">Agosto</option><option value="09">Setembro</option>
-        <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
-      </select>
-    </label>
-    <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:#666464;font-weight:600;font-family:Montserrat,system-ui,sans-serif">Empresa
-      <select id="bib-f-empresa" class="bib-filtro-select" style="min-width:130px" onchange="_bibFiltroAtualizar('bib-f-empresa','select');loadBiblioteca(true)"><option value="">Todas</option></select>
-    </label>
-    <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:#666464;font-weight:600;font-family:Montserrat,system-ui,sans-serif">Tipo
-      <select id="bib-f-tipo" class="bib-filtro-select" style="min-width:120px" onchange="_bibFiltroAtualizar('bib-f-tipo','select');loadBiblioteca(true)">
-        <option value="">Todos</option>
-        <option value="Reclamação">Reclamação</option><option value="Sugestão">Sugestão</option>
-        <option value="Solicitação">Solicitação</option><option value="Elogio">Elogio</option>
-      </select>
-    </label>
-    <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:#666464;font-weight:600;font-family:Montserrat,system-ui,sans-serif">Origem
-      <select id="bib-f-origem" class="bib-filtro-select" style="min-width:110px" onchange="_bibFiltroAtualizar('bib-f-origem','select');loadBiblioteca(true)">
-        <option value="">Todas</option><option value="SISTEMA">Sistema</option><option value="IMPORTADA">Histórica</option>
-      </select>
-    </label>
-    <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:#666464;font-weight:600;font-family:Montserrat,system-ui,sans-serif">Status
-      <select id="bib-f-status" class="bib-filtro-select" style="min-width:120px" onchange="_bibFiltroAtualizar('bib-f-status','select');loadBiblioteca(true)">
-        <option value="">Todos</option>
-        <option value="ABERTA">Aberta</option><option value="EM_TRATATIVA">Em tratativa</option><option value="CONCLUIDA">Concluída</option>
-      </select>
-    </label>
-    <button onclick="limparFiltrosBib()" style="height:36px;border:1px solid #D6D6D6;background:#fff;border-radius:7px;padding:0 12px;cursor:pointer;font-size:12.5px;color:#A80502;font-weight:600;font-family:Montserrat,system-ui,sans-serif">× Limpar</button>
-  </div>
-
-  <!-- 6 KPI CARDS -->
-  <div style="padding:12px 24px 0;display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:10px">
-    <button class="bib-kpi-btn" style="background:#fff;pointer-events:none;gap:4px">
-      <span style="font-size:10.5px;font-weight:700;letter-spacing:.06em;color:#545252;font-family:Montserrat,system-ui,sans-serif">TOTAL GERAL</span>
-      <span style="display:block;width:28px;height:3px;border-radius:2px;background:#1F1F1F;margin:2px 0 4px"></span>
-      <span style="font-size:28px;font-weight:700;color:#1F1F1F;font-variant-numeric:tabular-nums;font-family:Montserrat,system-ui,sans-serif;line-height:1" id="bib-stat-total">—</span>
-      <span style="font-size:11px;color:#929090;font-family:Montserrat,system-ui,sans-serif;margin-top:2px">fichas arquivadas</span>
-    </button>
-    <button class="bib-kpi-btn" style="background:#fff;pointer-events:none;gap:4px">
-      <span style="font-size:10.5px;font-weight:700;letter-spacing:.06em;color:#545252;font-family:Montserrat,system-ui,sans-serif">ESTE MÊS</span>
-      <span style="display:block;width:28px;height:3px;border-radius:2px;background:#24508F;margin:2px 0 4px"></span>
-      <span style="font-size:28px;font-weight:700;color:#24508F;font-variant-numeric:tabular-nums;font-family:Montserrat,system-ui,sans-serif;line-height:1" id="bib-stat-mes">—</span>
-      <span style="font-size:11px;color:#929090;font-family:Montserrat,system-ui,sans-serif;margin-top:2px">pela data da reclamação</span>
-    </button>
-    <button class="bib-kpi-btn" style="background:#fff;pointer-events:none;gap:4px">
-      <span style="font-size:10.5px;font-weight:700;letter-spacing:.06em;color:#545252;font-family:Montserrat,system-ui,sans-serif">ESTE ANO</span>
-      <span style="display:block;width:28px;height:3px;border-radius:2px;background:#1F1F1F;margin:2px 0 4px"></span>
-      <span style="font-size:28px;font-weight:700;color:#1F1F1F;font-variant-numeric:tabular-nums;font-family:Montserrat,system-ui,sans-serif;line-height:1" id="bib-stat-ano">—</span>
-      <span style="font-size:11px;color:#929090;font-family:Montserrat,system-ui,sans-serif;margin-top:2px">pela data da reclamação</span>
-    </button>
-    <button class="bib-kpi-btn" style="background:#fff;gap:4px" id="bib-kpi-ev" onclick="bibToggleFiltroExtra('evidencia')">
-      <span style="font-size:10.5px;font-weight:700;letter-spacing:.06em;color:#545252;font-family:Montserrat,system-ui,sans-serif">COM EVIDÊNCIAS</span>
-      <span style="display:block;width:28px;height:3px;border-radius:2px;background:#1F1F1F;margin:2px 0 4px"></span>
-      <span style="font-size:28px;font-weight:700;color:#1F1F1F;font-variant-numeric:tabular-nums;font-family:Montserrat,system-ui,sans-serif;line-height:1" id="bib-stat-ev">—</span>
-      <span style="font-size:11px;color:#929090;font-family:Montserrat,system-ui,sans-serif;margin-top:2px">clique para filtrar</span>
-    </button>
-    <button class="bib-kpi-btn" style="background:#fff;gap:4px" id="bib-kpi-trat" onclick="bibToggleFiltroExtra('tratativa')">
-      <span style="font-size:10.5px;font-weight:700;letter-spacing:.06em;color:#545252;font-family:Montserrat,system-ui,sans-serif">COM TRATATIVA</span>
-      <span style="display:block;width:28px;height:3px;border-radius:2px;background:#1E6B3A;margin:2px 0 4px"></span>
-      <span style="font-size:28px;font-weight:700;color:#1E6B3A;font-variant-numeric:tabular-nums;font-family:Montserrat,system-ui,sans-serif;line-height:1" id="bib-stat-trat">—</span>
-      <span style="font-size:11px;color:#929090;font-family:Montserrat,system-ui,sans-serif;margin-top:2px">clique para filtrar</span>
-    </button>
-    <button class="bib-kpi-btn" style="background:#fff;gap:4px" id="bib-kpi-reinc" onclick="bibToggleFiltroExtra('reincidente')">
-      <span style="font-size:10.5px;font-weight:700;letter-spacing:.06em;color:#A80502;font-family:Montserrat,system-ui,sans-serif">REINCIDENTES</span>
-      <span style="display:block;width:28px;height:3px;border-radius:2px;background:#C70602;margin:2px 0 4px"></span>
-      <span style="font-size:28px;font-weight:700;color:#C70602;font-variant-numeric:tabular-nums;font-family:Montserrat,system-ui,sans-serif;line-height:1" id="bib-stat-reinc">—</span>
-      <span style="font-size:11px;color:#929090;font-family:Montserrat,system-ui,sans-serif;margin-top:2px">clique para filtrar</span>
-    </button>
-  </div>
-
-  <!-- POR EMPRESA + EVOLUÇÃO POR MÊS -->
-  <div style="padding:12px 24px 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr));gap:14px">
-    <div style="background:#fff;border:1px solid #E4E4E4;border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:10px">
-      <span style="font-size:12px;font-weight:700;letter-spacing:.06em;color:#545252;font-family:Montserrat,system-ui,sans-serif">POR EMPRESA</span>
-      <div id="bib-por-empresa" style="display:flex;flex-direction:column;gap:8px"><div style="color:#929090;font-size:13px">Carregando…</div></div>
-    </div>
-    <div style="background:#fff;border:1px solid #E4E4E4;border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:10px">
-      <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:baseline">
-        <span style="font-size:12px;font-weight:700;letter-spacing:.06em;color:#545252;font-family:Montserrat,system-ui,sans-serif">EVOLUÇÃO POR MÊS</span>
-        <span style="display:flex;gap:10px;font-size:11px;color:#666464;font-family:Montserrat,system-ui,sans-serif">
-          <span style="display:flex;gap:4px;align-items:center"><span style="width:10px;height:10px;border-radius:2px;background:#C70602;display:inline-block"></span>Sistema</span>
-          <span style="display:flex;gap:4px;align-items:center"><span style="width:10px;height:10px;border-radius:2px;background:#929090;display:inline-block"></span>Histórica</span>
-        </span>
+<div class="af-root">
+  <div class="af-main">
+    <!-- CABEÇALHO -->
+    <div class="af-head">
+      <div style="min-width:0">
+        <div class="af-crumb">Gestão / Arquivo de Fichas</div>
+        <div class="af-title">Arquivo de Fichas</div>
+        <div class="af-sub">Histórico completo das fichas de reclamação: as anteriores à ferramenta, as criadas no sistema e as concluídas. Organizado por empresa, ano e mês.</div>
       </div>
-      <div id="bib-por-mes" style="display:flex;align-items:flex-end;gap:4px;height:160px"><div style="color:#929090;font-size:13px">Carregando…</div></div>
+      <div class="af-actions">
+        <button class="af-btn" onclick="abrirModalImportarFicha()">↑ Importar fichas (PDF/DOCX)</button>
+        <button class="af-btn af-btn-red" id="bib-btn-refresh" onclick="loadBiblioteca(true,true)">↻ Atualizar</button>
+      </div>
     </div>
-  </div>
 
-  <!-- ÁRVORE + TABELA -->
-  <div style="padding:12px 24px 32px;display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start">
-    <!-- Árvore -->
-    <div style="flex:0 0 220px;max-width:100%;background:#fff;border:1px solid #E4E4E4;border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:2px">
-      <span style="font-size:12px;font-weight:700;letter-spacing:.06em;color:#545252;font-family:Montserrat,system-ui,sans-serif;padding:4px 8px 8px;display:block">ARQUIVO</span>
-      <div id="bib-arvore"><div style="color:#929090;font-size:12px;padding:8px">Carregando…</div></div>
+    <!-- AVISO -->
+    <div class="af-aviso">Os números abaixo incluem as fichas <strong>criadas no sistema</strong> e as <strong>fichas históricas importadas</strong> (PDF ou DOCX de antes da ferramenta). Cada ficha importada fica arquivada pela empresa, mês e ano da reclamação original, não pela data da importação.</div>
+
+    <!-- FILTROS -->
+    <div class="af-filtros">
+      <label class="af-lbl" style="flex:1 1 260px">Buscar
+        <input id="bib-f-q" class="af-input" type="text" placeholder="Protocolo, cliente, CNPJ, motivo, colaborador…" oninput="afBuscaDigitou()" onkeydown="if(event.key==='Enter')afBuscaAgora()">
+      </label>
+      <label class="af-lbl">Ano
+        <select id="bib-f-ano" class="af-select" onchange="afFiltroMudou()"><option value="">Todos</option></select>
+      </label>
+      <label class="af-lbl">Mês
+        <select id="bib-f-mes" class="af-select" onchange="afFiltroMudou()">
+          <option value="">Todos os meses</option>
+          <option value="01">Janeiro</option><option value="02">Fevereiro</option><option value="03">Março</option>
+          <option value="04">Abril</option><option value="05">Maio</option><option value="06">Junho</option>
+          <option value="07">Julho</option><option value="08">Agosto</option><option value="09">Setembro</option>
+          <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
+        </select>
+      </label>
+      <label class="af-lbl">Empresa
+        <select id="bib-f-empresa" class="af-select" onchange="afFiltroMudou()"><option value="">Todas</option></select>
+      </label>
+      <label class="af-lbl">Tipo
+        <select id="bib-f-tipo" class="af-select" onchange="afFiltroMudou()">
+          <option value="">Todos</option>
+          <option value="Reclamação">Reclamação</option><option value="Sugestão">Sugestão</option>
+          <option value="Solicitação">Solicitação</option><option value="Elogio">Elogio</option>
+        </select>
+      </label>
+      <label class="af-lbl">Origem
+        <select id="bib-f-origem" class="af-select" onchange="afFiltroMudou()">
+          <option value="">Todas</option><option value="SISTEMA">Criada no sistema</option><option value="IMPORTADA">Histórica importada</option>
+        </select>
+      </label>
+      <label class="af-lbl">Status
+        <select id="bib-f-status" class="af-select" onchange="afFiltroMudou()">
+          <option value="">Todos</option>
+          <option value="ABERTA">Aberta</option><option value="EM_TRATATIVA">Em tratativa</option><option value="CONCLUIDA">Concluída</option>
+        </select>
+      </label>
+      <button class="af-limpar" onclick="limparFiltrosBib()">× Limpar</button>
     </div>
-    <!-- Tabela -->
-    <div style="flex:1 1 400px;min-width:0;display:flex;flex-direction:column;gap:0">
-      <div style="background:#fff;border:1px solid #E4E4E4;border-radius:12px;overflow:hidden">
-        <div style="padding:12px 16px;border-bottom:1px solid #E4E4E4;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
-          <div style="font-size:15px;font-weight:700;color:#1F1F1F;font-family:Montserrat,system-ui,sans-serif">Fichas</div>
-          <div id="bib-count" style="color:#929090;font-weight:400;font-size:12px;font-family:Montserrat,system-ui,sans-serif"></div>
+
+    <!-- 6 INDICADORES -->
+    <div class="af-kpis" id="bib-kpis"></div>
+
+    <!-- POR EMPRESA + EVOLUÇÃO POR MÊS -->
+    <div class="af-duo">
+      <div class="af-card">
+        <span class="af-card-t">POR EMPRESA</span>
+        <div id="bib-por-empresa" style="display:flex;flex-direction:column;gap:10px"><div style="color:#929090;font-size:13px">Carregando…</div></div>
+      </div>
+      <div class="af-card">
+        <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:baseline">
+          <span class="af-card-t">EVOLUÇÃO POR MÊS</span>
+          <span class="af-leg"><span><i style="background:#C70602"></i>Sistema</span><span><i style="background:#929090"></i>Histórica</span></span>
         </div>
-        <div id="bib-loading" style="text-align:center;padding:40px;color:#929090;display:none;font-family:Montserrat,system-ui,sans-serif;font-size:13px">
-          <div class="spinner" style="margin:0 auto 8px"></div>Carregando fichas…
-        </div>
-        <div id="bib-empty" style="text-align:center;padding:48px;color:#929090;display:none">
-          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin:0 auto 12px;display:block;color:#D6D6D6"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-          <div style="font-size:14px;font-weight:600;color:#666464;margin-bottom:4px;font-family:Montserrat,system-ui,sans-serif">Nenhuma ficha encontrada</div>
-          <div style="font-size:12px;color:#929090;font-family:Montserrat,system-ui,sans-serif">Ajuste os filtros ou importe fichas históricas</div>
-          <button onclick="limparFiltrosBib()" style="margin-top:12px;border:1px solid #D6D6D6;background:#fff;border-radius:7px;padding:6px 14px;cursor:pointer;font-size:12px;font-family:Montserrat,system-ui,sans-serif;color:#A80502;font-weight:600">Limpar filtros</button>
+        <div id="bib-por-mes"><div style="color:#929090;font-size:13px">Carregando…</div></div>
+      </div>
+    </div>
+
+    <!-- ÁRVORE + TABELA -->
+    <div class="af-corpo">
+      <div class="af-arvore">
+        <span class="af-card-t" style="padding:4px 8px 8px">ARQUIVO</span>
+        <div id="bib-arvore"><div style="color:#929090;font-size:12px;padding:8px">Carregando…</div></div>
+      </div>
+      <div class="af-lista">
+        <div class="af-lista-h">
+          <span id="bib-titulo" style="font-weight:700;font-size:14px">Fichas</span>
+          <span id="bib-count" style="font-size:12px;color:#666464"></span>
         </div>
         <div style="overflow-x:auto">
-          <table style="border-collapse:collapse;width:100%;font-size:13px;font-family:Montserrat,system-ui,sans-serif" id="bib-table">
-            <thead>
-              <tr style="background:#FAFAFA">
-                <th style="text-align:left;padding:10px 12px;border-bottom:1px solid #E4E4E4;font-weight:600;font-size:11px;color:#666464;white-space:nowrap">PROTOCOLO</th>
-                <th style="text-align:left;padding:10px 12px;border-bottom:1px solid #E4E4E4;font-weight:600;font-size:11px;color:#666464;white-space:nowrap">DATA</th>
-                <th style="text-align:left;padding:10px 12px;border-bottom:1px solid #E4E4E4;font-weight:600;font-size:11px;color:#666464">EMPRESA</th>
-                <th style="text-align:left;padding:10px 12px;border-bottom:1px solid #E4E4E4;font-weight:600;font-size:11px;color:#666464">CLIENTE</th>
-                <th style="text-align:left;padding:10px 12px;border-bottom:1px solid #E4E4E4;font-weight:600;font-size:11px;color:#666464">TIPO</th>
-                <th style="text-align:left;padding:10px 12px;border-bottom:1px solid #E4E4E4;font-weight:600;font-size:11px;color:#666464">MOTIVO</th>
-                <th style="text-align:left;padding:10px 12px;border-bottom:1px solid #E4E4E4;font-weight:600;font-size:11px;color:#666464">ORIGEM</th>
-                <th style="text-align:center;padding:10px 12px;border-bottom:1px solid #E4E4E4;font-weight:600;font-size:11px;color:#666464">EVID.</th>
-                <th style="text-align:left;padding:10px 12px;border-bottom:1px solid #E4E4E4;font-weight:600;font-size:11px;color:#666464">STATUS</th>
-              </tr>
-            </thead>
+          <table class="af-tbl" id="bib-table">
+            <thead><tr><th>Protocolo</th><th>Data</th><th>Empresa</th><th>Cliente</th><th>Tipo</th><th>Motivo</th><th>Origem</th><th>Evidências</th><th>Status</th></tr></thead>
             <tbody id="bib-tbody"></tbody>
           </table>
         </div>
-        <div id="bib-carregar-mais" style="display:none;padding:12px;text-align:center">
-          <button onclick="bibCarregarMais()" style="border:1px solid #D6D6D6;background:#fff;border-radius:7px;padding:8px 20px;cursor:pointer;font-size:13px;font-weight:600;font-family:Montserrat,system-ui,sans-serif;color:#1F1F1F">Carregar mais</button>
+        <div id="bib-loading" style="text-align:center;padding:34px;color:#929090;display:none;font-size:13px">Carregando fichas…</div>
+        <div id="bib-empty" class="af-vazio" style="display:none">
+          <span style="font-weight:600" id="bib-empty-t">Nenhuma ficha neste recorte</span>
+          <span style="font-size:12.5px;color:#929090;display:none" id="bib-empty-d"></span>
+          <button onclick="limparFiltrosBib()">Limpar filtros</button>
         </div>
+        <div id="bib-carregar-mais" class="af-mais" style="display:none"><button onclick="bibCarregarMais()">Carregar mais</button></div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- PAINEL LATERAL DA FICHA -->
-<div id="bib-painel">
-  <div style="padding:14px 16px;border-bottom:1px solid #E4E4E4;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
-    <div id="bib-painel-titulo" style="font-size:14px;font-weight:700;color:#1F1F1F;font-family:Montserrat,system-ui,sans-serif">Ficha</div>
-    <button onclick="closeBibPainel()" style="border:0;background:none;cursor:pointer;font-size:18px;color:#929090;line-height:1">✕</button>
-  </div>
-  <div id="bib-painel-body" style="padding:16px;flex:1;overflow-y:auto;font-family:Montserrat,system-ui,sans-serif;font-size:13px">
-    <div style="text-align:center;color:#929090;padding:30px">Carregando…</div>
+<!-- DETALHE DA FICHA (painel lateral) -->
+<div class="af-ov af-root" id="bib-painel-overlay" onclick="closeBibPainel()">
+  <div class="af-dr" id="bib-painel" onclick="event.stopPropagation()">
+    <div class="af-dr-h">
+      <div style="display:flex;flex-direction:column;gap:4px;min-width:0" id="bib-painel-head">
+        <span class="af-k" style="letter-spacing:.06em">FICHA DE RECLAMAÇÃO</span>
+        <span style="font-weight:700;font-size:18px" id="bib-painel-titulo">Ficha</span>
+      </div>
+      <button class="af-x" onclick="closeBibPainel()" aria-label="Fechar">×</button>
+    </div>
+    <div class="af-dr-b" id="bib-painel-body"><div style="text-align:center;color:#929090;padding:30px">Carregando…</div></div>
+    <div class="af-dr-f" id="bib-painel-foot"></div>
   </div>
 </div>
-<div id="bib-painel-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.25);z-index:299" onclick="closeBibPainel()"></div>
 
 <!-- MODAL IMPORTAR FICHAS -->
-<div id="modal-importar-ficha" class="modal-overlay" style="display:none" onclick="if(event.target===this)fecharModalImportarFicha()">
-  <div class="modal-box" style="max-width:620px;max-height:90vh;overflow-y:auto">
-    <div class="modal-header">
-      <h3>Importar fichas históricas</h3>
-      <button class="modal-close" onclick="fecharModalImportarFicha()">✕</button>
+<div class="af-md af-root" id="modal-importar-ficha" onclick="if(event.target===this)fecharModalImportarFicha()">
+  <div class="af-md-c">
+    <div style="padding:16px 20px;border-bottom:1px solid #E4E4E4;display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+      <div><div style="font-weight:700;font-size:17px">Importar fichas históricas</div><div style="font-size:12.5px;color:#666464">Fichas em PDF ou DOCX de antes da ferramenta. Cada arquivo vira uma ficha arquivada.</div></div>
+      <button class="af-x" onclick="fecharModalImportarFicha()" aria-label="Fechar">×</button>
     </div>
-    <div class="modal-body">
-      <p style="font-size:13px;color:#666464;margin:0 0 14px;line-height:1.5">Envie fichas em <strong>PDF ou DOCX</strong> (até 20 MB por arquivo). Informe empresa e data da reclamação original — é como a ficha será arquivada.</p>
-      <div id="importar-dropzone" style="border:2px dashed #D6D6D6;border-radius:10px;padding:28px;text-align:center;cursor:pointer;transition:border-color .2s"
-           onclick="document.getElementById('importar-file-input').click()"
-           ondragover="event.preventDefault();this.style.borderColor='#C70602'"
-           ondragleave="this.style.borderColor='#D6D6D6'"
-           ondrop="handleImportarDrop(event)">
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#929090" stroke-width="1.5" style="margin:0 auto 10px;display:block"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-        <div style="font-size:14px;font-weight:600;color:#1F1F1F;margin-bottom:4px;font-family:Montserrat,system-ui,sans-serif">Arraste arquivos aqui ou clique para selecionar</div>
-        <div style="font-size:12px;color:#929090;font-family:Montserrat,system-ui,sans-serif">PDF, DOCX • até 10 arquivos • 20 MB por arquivo</div>
-        <input id="importar-file-input" type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple style="display:none" onchange="handleImportarFiles(this.files)">
-      </div>
-      <div id="importar-file-list" style="margin-top:12px;display:flex;flex-direction:column;gap:10px"></div>
-      <div id="importar-status" style="display:none;margin-top:12px;padding:10px 14px;border-radius:8px;font-size:13px;font-family:Montserrat,system-ui,sans-serif"></div>
-    </div>
-    <div class="modal-footer" style="display:flex;gap:8px;justify-content:flex-end">
-      <button class="btn btn-secondary" onclick="fecharModalImportarFicha()">Cancelar</button>
-      <button style="border:0;background:#C70602;color:#fff;border-radius:8px;padding:9px 18px;cursor:pointer;font-size:13px;font-weight:600;font-family:Montserrat,system-ui,sans-serif" id="importar-btn-enviar" onclick="enviarFichasImportadas()" disabled>
-        Importar fichas
+    <div style="padding:16px 20px;display:flex;flex-direction:column;gap:12px">
+      <button class="af-drop" id="importar-dropzone" onclick="document.getElementById('importar-file-input').click()" ondragover="event.preventDefault();this.classList.add('over')" ondragleave="this.classList.remove('over')" ondrop="handleImportarDrop(event)">
+        <span style="font-size:22px">↑</span>
+        <span style="font-weight:600;font-size:13.5px">Arraste os arquivos ou clique para selecionar</span>
+        <span style="font-size:12px;color:#929090">PDF ou DOCX · até 20 MB por arquivo</span>
       </button>
+      <input id="importar-file-input" type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple style="display:none" onchange="handleImportarFiles(this.files);this.value=''">
+      <div id="importar-file-list" style="display:flex;flex-direction:column;gap:12px"></div>
+      <div id="importar-status" style="display:none;padding:10px 14px;border-radius:8px;font-size:13px"></div>
+      <span style="font-size:12px;color:#666464;line-height:1.5">Empresa e data devem ser conferidas por você: quando o nome do arquivo traz empresa e data, eles são sugeridos, mas o conteúdo do documento não é lido na tela. A ficha fica arquivada pela data da reclamação original. O arquivo original é preservado sem alteração.</span>
+    </div>
+    <div style="padding:12px 20px 18px;display:flex;justify-content:flex-end;gap:8px">
+      <button class="af-btn" onclick="fecharModalImportarFicha()">Cancelar</button>
+      <button class="af-btn af-btn-red" id="importar-btn-enviar" onclick="enviarFichasImportadas()" style="background:#C4C4C4;font-weight:700;padding:9px 18px">Importar fichas</button>
     </div>
   </div>
 </div>
+<div class="af-toast af-root" id="af-toast"></div>
+</div>
+
 
 <!-- MODAL CONTEXTO DO CLIENTE -->
 <div id="modal-cliente-ctx" style="display:none" class="modal-overlay" onclick="if(event.target===this)this.style.display='none'">
@@ -5435,469 +5466,573 @@ function navigate(page, el) {
   if (page === 'alimentacao' && typeof window.loadAlimentacao === 'function') window.loadAlimentacao();
 }
 
-// ===== BIBLIOTECA DE FICHAS =====
+// ===== ARQUIVO DE FICHAS (page-biblioteca-fichas) — início =====
+// Dados: GET /api/biblioteca/fichas, /api/biblioteca/stats, /api/biblioteca/fichas/:id, POST /api/biblioteca/importar-ficha
+const AF_MN = ['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+const AF_MS = ['', 'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+const AF_ORIGEM = { SISTEMA: ['Criada no sistema', 'af-or-sistema'], IMPORTADA: ['Histórica importada', 'af-or-hist'] };
+const AF_STATUS = { ABERTA: ['Aberta', 'af-st-aberta'], EM_TRATATIVA: ['Em tratativa', 'af-st-trat'], CONCLUIDA: ['Concluída', 'af-st-conc'] };
+const AF_FILTROS = [['q', 'bib-f-q'], ['ano', 'bib-f-ano'], ['mes', 'bib-f-mes'], ['empresa', 'bib-f-empresa'], ['tipo', 'bib-f-tipo'], ['origem', 'bib-f-origem'], ['status', 'bib-f-status']];
+
 let _bibPage = 1;
 let _bibTotalPages = 1;
 let _bibStats = null;
-let _bibFiltroExtra = null; // 'evidencia'|'tratativa'|'reincidente'
+let _bibFiltroExtra = ''; // ''|'evidencia'|'tratativa'|'reincidente'
 let _bibFichasAcum = [];
-let _bibArvoreAberto = {}; // { empresaKey: true, 'empresaKey/ano': true }
+let _afReq = 0;
+let _afTree = { emp: null, ano: null };
+let _afRefs = [];
+let _afEmpList = [];
+let _afMesList = [];
+let _afFichaAtual = null;
+let _afBuscaT = null;
+let _afToastT = null;
 
-function _bibFiltroAtualizar(id, tipo) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  const ativo = tipo === 'select' ? !!el.value : !!el.value.trim();
-  el.classList.toggle('ativo', ativo);
+const _afEl = id => document.getElementById(id);
+function _afTok() { return sessionStorage.getItem('sac-token'); }
+function _afNum(n) { return (n ?? 0).toLocaleString('pt-BR'); }
+function _afPct(a, n) { return n ? Math.round(a / n * 100) + '%' : '—'; }
+
+function afToast(msg) {
+  const t = _afEl('af-toast'); if (!t) return;
+  t.textContent = msg; t.classList.add('on');
+  clearTimeout(_afToastT); _afToastT = setTimeout(() => t.classList.remove('on'), 3200);
+}
+
+function afFiltros() {
+  const o = {};
+  AF_FILTROS.forEach(([k, id]) => { o[k] = (_afEl(id)?.value || '').trim(); });
+  return o;
+}
+
+function _bibFiltroAtualizar(id) {
+  const el = _afEl(id); if (!el) return;
+  el.classList.toggle('ativo', !!String(el.value || '').trim());
+}
+function afMarcarAtivos() { AF_FILTROS.forEach(([, id]) => _bibFiltroAtualizar(id)); }
+
+function afFiltroMudou() { afMarcarAtivos(); closeBibPainel(); loadBiblioteca(true); }
+function afBuscaDigitou() { _bibFiltroAtualizar('bib-f-q'); clearTimeout(_afBuscaT); _afBuscaT = setTimeout(() => loadBiblioteca(true), 450); }
+function afBuscaAgora() { clearTimeout(_afBuscaT); loadBiblioteca(true); }
+
+// define o valor de um <select> garantindo que a opção exista
+function afSetSelect(id, v) {
+  const sel = _afEl(id); if (!sel) return;
+  if (v && ![...sel.options].some(o => o.value === v)) sel.add(new Option(v, v));
+  sel.value = v || '';
 }
 
 function bibToggleFiltroExtra(tipo) {
-  _bibFiltroExtra = _bibFiltroExtra === tipo ? null : tipo;
-  ['ev','trat','reinc'].forEach(k => {
-    const map = {ev:'evidencia',trat:'tratativa',reinc:'reincidente'};
-    document.getElementById('bib-kpi-'+k)?.classList.toggle('ativo', _bibFiltroExtra === map[k]);
-  });
+  _bibFiltroExtra = _bibFiltroExtra === tipo ? '' : tipo;
   loadBiblioteca(true);
 }
 
-async function loadBiblioteca(reset) {
-  if (reset) { _bibPage = 1; _bibFichasAcum = []; }
-  const tok = sessionStorage.getItem('sac-token');
+async function loadBiblioteca(reset, manual) {
+  if (reset === undefined) reset = true;
+  const tok = _afTok();
   if (!tok) return;
-  const q = (document.getElementById('bib-f-q')?.value||'').trim();
-  const ano = document.getElementById('bib-f-ano')?.value||'';
-  const mes = document.getElementById('bib-f-mes')?.value||'';
-  const empresa = document.getElementById('bib-f-empresa')?.value||'';
-  const tipo = document.getElementById('bib-f-tipo')?.value||'';
-  const origem = document.getElementById('bib-f-origem')?.value||'';
-  const status = document.getElementById('bib-f-status')?.value||'';
-
+  const my = ++_afReq;
+  if (reset) { _bibPage = 1; }
+  const F = afFiltros();
   const params = new URLSearchParams({ page: _bibPage, limit: 25 });
-  if (q) params.set('q', q);
-  if (ano) params.set('ano', ano);
-  if (mes) params.set('mes', mes);
-  if (empresa) params.set('empresa', empresa);
-  if (tipo) params.set('tipo', tipo);
-  if (status) params.set('status', status);
-  if (_bibFiltroExtra === 'evidencia') params.set('com_evidencia', '1');
-  if (_bibFiltroExtra === 'tratativa') params.set('com_tratativa', '1');
-  if (_bibFiltroExtra === 'reincidente') params.set('reincidente', '1');
+  const sp = new URLSearchParams();
+  Object.entries(F).forEach(([k, v]) => { if (v) { params.set(k, v); sp.set(k, v); } });
+  if (_bibFiltroExtra) params.set('extra', _bibFiltroExtra);
 
-  const statsParams = new URLSearchParams();
-  if (empresa) statsParams.set('empresa', empresa);
-  if (ano) statsParams.set('ano', ano);
-  if (mes) statsParams.set('mes', mes);
-
+  const btn = _afEl('bib-btn-refresh');
   if (reset) {
-    document.getElementById('bib-loading').style.display='block';
-    document.getElementById('bib-table').style.display='none';
-    document.getElementById('bib-table').style.display='none';
-    document.getElementById('bib-empty').style.display='none';
-    document.getElementById('bib-carregar-mais').style.display='none';
-    document.getElementById('bib-tbody').innerHTML='';
+    _afEl('bib-loading').style.display = 'block';
+    _afEl('bib-empty').style.display = 'none';
+    _afEl('bib-carregar-mais').style.display = 'none';
+    _afEl('bib-count').textContent = '';
+    if (btn) { btn.disabled = true; btn.textContent = 'Atualizando…'; }
   }
 
   try {
-    const promises = [fetch(API+'/api/biblioteca/fichas?'+params, {headers:{'Authorization':'Bearer '+tok}}).then(r=>r.json())];
-    if (reset) promises.push(fetch(API+'/api/biblioteca/stats?'+statsParams, {headers:{'Authorization':'Bearer '+tok}}).then(r=>r.json()).catch(()=>({sucesso:false})));
-    const results = await Promise.all(promises);
-    const fichasRes = results[0];
-    const statsRes = reset ? results[1] : null;
+    const H = { headers: { 'Authorization': 'Bearer ' + tok } };
+    const reqs = [fetch(API + '/api/biblioteca/fichas?' + params, H).then(r => r.json())];
+    if (reset) reqs.push(fetch(API + '/api/biblioteca/stats?' + sp, H).then(r => r.json()).catch(() => ({ sucesso: false })));
+    const [fichasRes, statsRes] = await Promise.all(reqs);
+    if (my !== _afReq) return; // resposta antiga
 
-    if (statsRes && statsRes.sucesso) {
-      _bibStats = statsRes;
-      document.getElementById('bib-stat-total').textContent = (statsRes.totalFichas ?? 0).toLocaleString('pt-BR');
-      document.getElementById('bib-stat-mes').textContent = (statsRes.fichasDoMes ?? 0).toLocaleString('pt-BR');
-      document.getElementById('bib-stat-ano').textContent = (statsRes.fichasDoAno ?? 0).toLocaleString('pt-BR');
-      document.getElementById('bib-stat-ev').textContent = (statsRes.comEvidencias ?? 0).toLocaleString('pt-BR');
-      document.getElementById('bib-stat-trat').textContent = (statsRes.comTratativa ?? 0).toLocaleString('pt-BR');
-      document.getElementById('bib-stat-reinc').textContent = (statsRes.reincidentes ?? 0).toLocaleString('pt-BR');
-      renderBibPorEmpresa(statsRes.porEmpresaDetalhe || {});
-      renderBibPorMes((statsRes.porMes || []).slice(-12));
-      renderBibArvore(statsRes.arvore || {});
-      renderBibAnoOptions([...new Set((statsRes.porMes||[]).map(m=>m.ano))].sort().reverse());
-      renderBibEmpresaOptions(Object.keys(statsRes.porEmpresa || {}));
+    if (reset) {
+      if (statsRes && statsRes.sucesso) {
+        _bibStats = statsRes;
+        afRenderKpis(statsRes);
+        afRenderPorEmpresa(statsRes.porEmpresaDetalhe || {});
+        afRenderPorMes(statsRes.porMes || []);
+        afRenderArvore(statsRes.arvore || {});
+        afRenderOpcoes(statsRes);
+      } else {
+        _bibStats = null;
+        afRenderKpis(null);
+      }
     }
 
-    document.getElementById('bib-loading').style.display='none';
-    if (!fichasRes.sucesso) { document.getElementById('bib-empty').style.display='block'; return; }
-
+    _afEl('bib-loading').style.display = 'none';
+    afRenderTitulo();
+    if (!fichasRes.sucesso) {
+      _afEl('bib-table').style.display = 'none';
+      afMostrarVazio('Não foi possível carregar as fichas', fichasRes.erro || 'Tente atualizar a página.');
+      return;
+    }
     _bibTotalPages = fichasRes.pages || 1;
     const total = fichasRes.total ?? 0;
-
-    if (reset && total === 0) { document.getElementById('bib-empty').style.display='block'; return; }
-
-    _bibFichasAcum = reset ? (fichasRes.fichas||[]) : [..._bibFichasAcum, ...(fichasRes.fichas||[])];
-    _renderBibTabela(_bibFichasAcum);
-    document.getElementById('bib-table').style.display='table';
-    document.getElementById('bib-count').textContent = `Mostrando ${_bibFichasAcum.length.toLocaleString('pt-BR')} de ${total.toLocaleString('pt-BR')}`;
-
-    const temMais = fichasRes.page < _bibTotalPages;
-    document.getElementById('bib-carregar-mais').style.display = temMais ? 'block' : 'none';
-
-  } catch(e) {
-    document.getElementById('bib-loading').style.display='none';
-    document.getElementById('bib-empty').style.display='block';
-    document.getElementById('bib-empty').querySelector('div')?.remove();
+    _bibFichasAcum = reset ? (fichasRes.fichas || []) : [..._bibFichasAcum, ...(fichasRes.fichas || [])];
+    afRenderTabela(_bibFichasAcum);
+    _afEl('bib-table').style.display = '';
+    _afEl('bib-count').textContent = `Mostrando ${_afNum(_bibFichasAcum.length)} de ${_afNum(total)}`;
+    if (total === 0) afMostrarVazio('Nenhuma ficha neste recorte', '');
+    _afEl('bib-carregar-mais').style.display = fichasRes.page < _bibTotalPages ? 'block' : 'none';
+    if (manual) afToast('Arquivo atualizado com as manifestações mais recentes.');
+  } catch (e) {
+    if (my !== _afReq) return;
+    _afEl('bib-loading').style.display = 'none';
+    _afEl('bib-table').style.display = 'none';
+    afMostrarVazio('Não foi possível carregar as fichas', e.message || 'Erro de conexão.');
+  } finally {
+    if (reset && my === _afReq && btn) { btn.disabled = false; btn.textContent = '↻ Atualizar'; }
   }
 }
 
-function bibCarregarMais() {
-  _bibPage++;
-  loadBiblioteca(false);
+function afMostrarVazio(titulo, detalhe) {
+  _afEl('bib-empty').style.display = 'flex';
+  _afEl('bib-empty-t').textContent = titulo;
+  const d = _afEl('bib-empty-d');
+  d.textContent = detalhe || ''; d.style.display = detalhe ? 'block' : 'none';
 }
 
-function _nomMes(m) {
-  return {'01':'Jan','02':'Fev','03':'Mar','04':'Abr','05':'Mai','06':'Jun','07':'Jul','08':'Ago','09':'Set','10':'Out','11':'Nov','12':'Dez'}[m]||m;
+function bibCarregarMais() { _bibPage++; loadBiblioteca(false); }
+
+function afRenderTitulo() {
+  const F = afFiltros();
+  const p = [];
+  if (F.empresa) p.push(F.empresa);
+  if (F.mes) p.push(AF_MN[+F.mes] || F.mes);
+  if (F.ano) p.push(F.ano);
+  const ex = { reincidente: ' · reincidentes', evidencia: ' · com evidências', tratativa: ' · com tratativa' }[_bibFiltroExtra] || '';
+  _afEl('bib-titulo').textContent = 'Fichas' + (p.length ? ' · ' + p.join(' · ') : '') + ex;
 }
 
-function _bibStatusBadge(status) {
-  const s = (status||'').toUpperCase();
-  if (s.includes('CONCLU') || s.includes('RESOLV') || s.includes('ENCERR') || s.includes('FINALIZ')) return `<span class="bib-badge-concluida">${escHtml(status)}</span>`;
-  if (s.includes('TRATATIVA') || s.includes('ANÁLISE') || s.includes('ANALISE') || s.includes('ANDAMENTO')) return `<span class="bib-badge-tratativa">${escHtml(status)}</span>`;
-  return `<span class="bib-badge-aberta">${escHtml(status||'Aberta')}</span>`;
+function afRenderOpcoes(s) {
+  const ano = _afEl('bib-f-ano'), emp = _afEl('bib-f-empresa');
+  const va = ano.value, ve = emp.value;
+  const anos = s.anos || [];
+  ano.innerHTML = '<option value="">Todos</option>' + anos.map(a => `<option value="${escHtml(a)}">${escHtml(a)}</option>`).join('');
+  const emps = Object.keys(s.porEmpresa || {}).sort();
+  emp.innerHTML = '<option value="">Todas</option>' + emps.map(e => `<option value="${escHtml(e)}">${escHtml(e)}</option>`).join('');
+  afSetSelect('bib-f-ano', va); afSetSelect('bib-f-empresa', ve);
+  afMarcarAtivos();
 }
 
-function _bibOrigemBadge(origem) {
-  if ((origem||'').includes('IMPORT') || (origem||'').includes('HISTOR')) return '<span class="bib-badge-historica">Histórica</span>';
-  return '<span class="bib-badge-sistema">Sistema</span>';
+function afRenderKpis(s) {
+  const wrap = _afEl('bib-kpis'); if (!wrap) return;
+  const agora = new Date();
+  const total = s ? s.totalFichas : 0;
+  const K = (l, v, d, cor, extra, red, estatico) => {
+    const on = extra && _bibFiltroExtra === extra;
+    const cls = 'af-kpi' + (red ? ' red' : '') + (on ? ' ativo' : '') + (estatico ? ' static' : '');
+    const clk = estatico ? '' : ` onclick="bibToggleFiltroExtra('${extra}')"`;
+    return `<button class="${cls}"${clk}><span class="af-kpi-l">${l}</span><span class="af-kpi-v" style="color:${cor}">${s ? _afNum(v) : '—'}</span><span class="af-kpi-d">${escHtml(s ? d : '')}</span></button>`;
+  };
+  wrap.innerHTML = [
+    K('TOTAL GERAL', s?.totalFichas, s ? `${_afNum(s.historicas)} históricas · ${_afNum(s.sistema)} no sistema` : '', '#1F1F1F', '', false, true),
+    K('ESTE MÊS', s?.fichasDoMes, `${AF_MN[agora.getMonth() + 1].toLowerCase()}/${agora.getFullYear()}`, '#24508F', '', false, true),
+    K('ESTE ANO', s?.fichasDoAno, String(agora.getFullYear()), '#5B3FA0', '', false, true),
+    K('COM EVIDÊNCIAS', s?.comEvidencias, `${_afPct(s?.comEvidencias, total)} documentadas`, '#0E7C86', 'evidencia'),
+    K('COM TRATATIVA', s?.comTratativa, `${_afPct(s?.comTratativa, total)} concluídas`, '#1E6B3A', 'tratativa'),
+    K('REINCIDENTES', s?.reincidentes, `${_afNum(s?.reincidentesFichas)} fichas · clientes com 2+ reclamações em 12 meses`, '#C70602', 'reincidente', true),
+  ].join('');
 }
 
-function _renderBibTabela(fichas) {
-  document.getElementById('bib-tbody').innerHTML = fichas.map(f => {
-    const dt = f.DATA_REGISTRO ? new Date(f.DATA_REGISTRO).toLocaleDateString('pt-BR') : (f.ANO&&f.MES?`${_nomMes(f.MES)}/${f.ANO}`:'—');
-    const evCount = parseInt(f.TOTAL_EVIDENCIAS||0);
-    const reinc = f.REINCIDENTE ? '<span title="Reincidente" style="color:#A80502;font-weight:700;margin-left:4px">⚠</span>' : '';
-    const cliente = escHtml(f.NOME_CLIENTE||f.ORIG_CONTATO||'—');
-    const motivo = escHtml((f.MOTIVO||'').slice(0,60) + ((f.MOTIVO||'').length>60?'…':''));
-    const id = escHtml(f.ID_MANIFESTACAO||f.PROTOCOLO||'');
-    return `<tr class="bib-row" onclick="openBibFicha('${id}', this)">
-      <td style="padding:10px 12px;border-bottom:1px solid #F0F0F0;white-space:nowrap"><span style="font-family:monospace;font-size:12px;font-weight:600;color:#1F1F1F">${escHtml(f.PROTOCOLO||f.ID_MANIFESTACAO||'—')}</span></td>
-      <td style="padding:10px 12px;border-bottom:1px solid #F0F0F0;white-space:nowrap;font-size:12px;color:#666464">${dt}</td>
-      <td style="padding:10px 12px;border-bottom:1px solid #F0F0F0;font-size:12px;max-width:130px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(f.EMPRESA||'—')}</td>
-      <td style="padding:10px 12px;border-bottom:1px solid #F0F0F0;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${cliente}${reinc}</td>
-      <td style="padding:10px 12px;border-bottom:1px solid #F0F0F0;font-size:12px;white-space:nowrap">${escHtml(f.TIPO_MANIFESTACAO||f.TIPO||'—')}</td>
-      <td style="padding:10px 12px;border-bottom:1px solid #F0F0F0;font-size:12px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#666464">${motivo||'—'}</td>
-      <td style="padding:10px 12px;border-bottom:1px solid #F0F0F0">${_bibOrigemBadge(f.ORIGEM||'')}</td>
-      <td style="padding:10px 12px;border-bottom:1px solid #F0F0F0;text-align:center;font-size:12px">${evCount>0?`<span style="color:#24508F;font-weight:600">📎 ${evCount}</span>`:'<span style="color:#D6D6D6">—</span>'}</td>
-      <td style="padding:10px 12px;border-bottom:1px solid #F0F0F0">${_bibStatusBadge(f.STATUS)}</td>
-    </tr>`;
+function afRenderPorEmpresa(det) {
+  const wrap = _afEl('bib-por-empresa'); if (!wrap) return;
+  const ents = Object.entries(det).sort((a, b) => b[1].total - a[1].total);
+  _afEmpList = ents.map(e => e[0]);
+  if (!ents.length) { wrap.innerHTML = '<div style="color:#929090;font-size:13px">Nenhum dado.</div>'; return; }
+  const sel = _afEl('bib-f-empresa')?.value || '';
+  wrap.innerHTML = ents.map(([emp, d], i) => {
+    const on = sel && sel === emp;
+    const wT = d.total ? Math.round(d.comTratativa / d.total * 100) : 0;
+    return `<button class="af-emp${on ? ' on' : ''}" onclick="afEmpresaClick(${i})">
+      <span class="af-emp-n">${_afNum(d.total)}</span>
+      <span class="af-emp-b"><span style="font-weight:700;font-size:13.5px;letter-spacing:.03em">${escHtml(emp)}</span>
+        <span class="af-emp-m"><span>Tratativa ${_afPct(d.comTratativa, d.total)}</span><span>Evidência ${_afPct(d.comEvidencia, d.total)}</span><span>${_afNum(d.historicas)} históricas</span>${d.reincidentes > 0 ? `<span style="color:#A80502;font-weight:600">⚠ ${_afNum(d.reincidentes)} reincidentes</span>` : ''}</span>
+        <span class="af-bar"><i style="width:${wT}%"></i></span></span>
+      <span style="color:#929090">›</span></button>`;
   }).join('');
 }
 
+function afEmpresaClick(i) {
+  const emp = _afEmpList[i]; if (emp === undefined) return;
+  afSetSelect('bib-f-empresa', (_afEl('bib-f-empresa').value === emp) ? '' : emp);
+  afFiltroMudou();
+}
+
+function afRenderPorMes(porMes) {
+  const wrap = _afEl('bib-por-mes'); if (!wrap) return;
+  _afMesList = porMes;
+  if (!porMes.length) { wrap.innerHTML = '<div style="color:#929090;font-size:13px">Nenhum dado.</div>'; return; }
+  const mx = Math.max(1, ...porMes.map(m => m.fichas || 0));
+  const fa = _afEl('bib-f-ano')?.value, fm = _afEl('bib-f-mes')?.value;
+  const barras = porMes.map((m, i) => {
+    const on = fa === m.ano && fm === m.mes;
+    const hS = (m.sistema || 0) / mx * 130, hH = (m.historica || 0) / mx * 130;
+    const t = `${AF_MN[+m.mes]}/${m.ano}: ${m.sistema || 0} no sistema, ${m.historica || 0} históricas`;
+    return `<button class="af-mes" onclick="afMesClick(${i})" title="${escHtml(t)}"><span class="af-mes-n">${m.fichas || 0}</span><span class="af-mes-b${on ? ' on' : ''}"><span style="height:${hS}px;background:#C70602"></span><span style="height:${hH}px;background:#929090"></span></span></button>`;
+  }).join('');
+  const rot = porMes.map(m => `<span>${AF_MS[+m.mes]}/${String(m.ano).slice(2)}</span>`).join('');
+  wrap.innerHTML = `<div class="af-meses">${barras}</div><div class="af-meses-l" style="margin-top:10px">${rot}</div>`;
+}
+
+function afMesClick(i) {
+  const m = _afMesList[i]; if (!m) return;
+  const on = _afEl('bib-f-ano').value === m.ano && _afEl('bib-f-mes').value === m.mes;
+  afSetSelect('bib-f-ano', on ? '' : m.ano); afSetSelect('bib-f-mes', on ? '' : m.mes);
+  afFiltroMudou();
+}
+
+function afRenderArvore(arvore) {
+  const wrap = _afEl('bib-arvore'); if (!wrap) return;
+  const emps = Object.entries(arvore).sort((a, b) => b[1].total - a[1].total);
+  _afRefs = [];
+  if (!emps.length) { wrap.innerHTML = '<div style="color:#929090;font-size:12px;padding:8px">Nenhum dado.</div>'; return; }
+  if (_afTree.emp === null && !_afTree.init) {
+    const [e0, d0] = emps[0];
+    _afTree = { emp: e0, ano: Object.keys(d0.anos).sort().reverse()[0] || null, init: true };
+  }
+  const fe = _afEl('bib-f-empresa')?.value, fa = _afEl('bib-f-ano')?.value, fm = _afEl('bib-f-mes')?.value;
+  const ref = r => { _afRefs.push(r); return _afRefs.length - 1; };
+  let h = '';
+  for (const [emp, ed] of emps) {
+    const eo = _afTree.emp === emp;
+    h += `<button class="af-tr-e${eo ? ' on' : ''}" onclick="afTreeClick(${ref({ t: 'e', emp })})"><span>${eo ? '▾' : '▸'} ${escHtml(emp)}</span><span class="af-tr-n">${_afNum(ed.total)}</span></button>`;
+    if (!eo) continue;
+    for (const [ano, ad] of Object.entries(ed.anos).sort((a, b) => b[0].localeCompare(a[0]))) {
+      const ao = _afTree.ano === ano;
+      h += `<button class="af-tr-a" onclick="afTreeClick(${ref({ t: 'a', emp, ano })})"><span>${ao ? '▾' : '▸'} ${escHtml(ano === 'S/A' ? 'Sem data' : ano)}</span><span class="af-tr-n">${_afNum(ad.total)}</span></button>`;
+      if (!ao) continue;
+      for (const [mes, n] of Object.entries(ad.meses).sort((a, b) => b[0].localeCompare(a[0]))) {
+        const on = fe === emp && fa === ano && fm === mes;
+        h += `<button class="af-tr-m${on ? ' on' : ''}" onclick="afTreeClick(${ref({ t: 'm', emp, ano, mes })})"><span>${escHtml(mes === '00' ? 'Sem data' : (AF_MN[+mes] || mes))}</span><span style="font-variant-numeric:tabular-nums">${_afNum(n)}</span></button>`;
+      }
+    }
+  }
+  wrap.innerHTML = h;
+}
+
+function afTreeClick(i) {
+  const r = _afRefs[i]; if (!r) return;
+  if (r.t === 'e') {
+    const abre = _afTree.emp !== r.emp;
+    const anos = abre ? Object.keys(_bibStats?.arvore?.[r.emp]?.anos || {}).sort().reverse() : [];
+    _afTree = { emp: abre ? r.emp : null, ano: anos[0] || null, init: true };
+    afRenderArvore(_bibStats?.arvore || {});
+  } else if (r.t === 'a') {
+    _afTree = { emp: r.emp, ano: _afTree.ano === r.ano ? null : r.ano, init: true };
+    afRenderArvore(_bibStats?.arvore || {});
+  } else {
+    afSetSelect('bib-f-empresa', r.emp); afSetSelect('bib-f-ano', r.ano); afSetSelect('bib-f-mes', r.mes);
+    afFiltroMudou();
+  }
+}
+
 function limparFiltrosBib() {
-  ['bib-f-ano','bib-f-mes','bib-f-empresa','bib-f-tipo','bib-f-origem','bib-f-status'].forEach(id => {
-    const el=document.getElementById(id);
-    if(el){ el.value=''; el.classList.remove('ativo'); }
-  });
-  const q = document.getElementById('bib-f-q');
-  if(q){ q.value=''; q.classList.remove('ativo'); }
-  _bibFiltroExtra = null;
-  ['ev','trat','reinc'].forEach(k => document.getElementById('bib-kpi-'+k)?.classList.remove('ativo'));
+  AF_FILTROS.forEach(([, id]) => { const el = _afEl(id); if (el) { el.value = ''; el.classList.remove('ativo'); } });
+  _bibFiltroExtra = '';
   closeBibPainel();
   loadBiblioteca(true);
 }
 
-function renderBibAnoOptions(anos) {
-  const sel = document.getElementById('bib-f-ano');
-  if (!sel) return;
-  const cur = sel.value;
-  sel.innerHTML = '<option value="">Todos</option>' + anos.map(a => `<option value="${a}"${a===cur?' selected':''}>${a}</option>`).join('');
+// --- tabela ---
+function afFmtData(f) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(f.DATA_REGISTRO || '');
+  if (m) return `${m[3]}/${m[2]}/${m[1]}`;
+  return f.ANO && f.ANO !== 'S/A' ? `${AF_MS[+f.MES] || f.MES}/${f.ANO}` : '—';
 }
-
-function renderBibEmpresaOptions(empresas) {
-  const sel = document.getElementById('bib-f-empresa');
-  if (!sel) return;
-  const cur = sel.value;
-  sel.innerHTML = '<option value="">Todas</option>' + [...new Set(empresas)].sort().map(e => `<option value="${escHtml(e)}"${e===cur?' selected':''}>${escHtml(e)}</option>`).join('');
+function afFmtQuando(v) {
+  if (!v) return '—';
+  const s = String(v);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return afFmtData({ DATA_REGISTRO: s });
+  const d = new Date(s);
+  if (isNaN(d)) return afFmtData({ DATA_REGISTRO: s }) !== '—' ? afFmtData({ DATA_REGISTRO: s }) : escHtml(s);
+  return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 }
+function afPill(mapa, chave, lg) {
+  const m = mapa[chave] || [chave || '—', 'af-st-aberta'];
+  return `<span class="af-pill${lg ? ' lg' : ''} ${m[1]}">${escHtml(m[0])}</span>`;
+}
+function _bibStatusBadge(st) { return afPill(AF_STATUS, st); }
+function _bibOrigemBadge(o) { return afPill(AF_ORIGEM, o); }
 
-function renderBibPorEmpresa(porEmpresaDetalhe) {
-  const wrap = document.getElementById('bib-por-empresa');
-  if (!wrap) return;
-  const empresas = Object.entries(porEmpresaDetalhe).sort((a,b) => b[1].total - a[1].total);
-  if (!empresas.length) { wrap.innerHTML = '<div style="color:#929090;font-size:13px">Nenhum dado.</div>'; return; }
-  wrap.innerHTML = empresas.map(([emp, d]) => {
-    const pct = v => d.total > 0 ? Math.round(v/d.total*100) : 0;
-    const ptrat = pct(d.comTratativa);
-    const selVal = escHtml(emp);
-    return `<button onclick="document.getElementById('bib-f-empresa').value='${selVal}';_bibFiltroAtualizar('bib-f-empresa','select');loadBiblioteca(true)"
-      style="display:grid;grid-template-columns:52px minmax(0,1fr) 14px;gap:12px;align-items:center;text-align:left;border:1.5px solid #E4E4E4;background:#fff;border-radius:10px;padding:10px 14px;cursor:pointer;white-space:normal;width:100%;font-family:Montserrat,system-ui,sans-serif;transition:border-color .15s"
-      onmouseenter="this.style.borderColor='#C70602'" onmouseleave="this.style.borderColor='#E4E4E4'">
-      <span style="font-size:24px;font-weight:700;color:#C70602;font-variant-numeric:tabular-nums">${d.total}</span>
-      <span style="display:flex;flex-direction:column;gap:5px;min-width:0">
-        <span style="font-weight:700;font-size:13px">${escHtml(emp)}</span>
-        <span style="display:flex;gap:4px 12px;flex-wrap:wrap;font-size:11.5px;color:#666464">
-          <span>Tratativa ${ptrat}%</span>
-          <span>Evidência ${pct(d.comEvidencia)}%</span>
-          ${d.reincidentes>0?`<span style="color:#A80502;font-weight:600">⚠ ${d.reincidentes} reincid.</span>`:''}
-        </span>
-        <span style="display:block;height:5px;border-radius:3px;background:#F0F0F0;overflow:hidden;position:relative">
-          <span style="display:block;position:absolute;left:0;top:0;bottom:0;width:${ptrat}%;background:#1E6B3A"></span>
-        </span>
-      </span>
-      <span style="color:#929090">›</span>
-    </button>`;
+function afRenderTabela(fichas) {
+  const ativa = _afFichaAtual?.ficha?.PROTOCOLO;
+  _afEl('bib-tbody').innerHTML = fichas.map((f, i) => {
+    const ev = parseInt(f.TOTAL_EVIDENCIAS || 0);
+    const re = f.REINCIDENTE ? `<span style="font-size:10.5px;font-weight:700;color:#A80502">⚠ reincidente · ${f.REINCIDENTE_N} fichas em 12 meses</span>` : '';
+    return `<tr class="af-row${ativa && ativa === f.PROTOCOLO ? ' ativa' : ''}" onclick="afAbrirFicha(${i})">
+      <td style="font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums">${escHtml(f.PROTOCOLO || f.ID_MANIFESTACAO || '—')}</td>
+      <td style="white-space:nowrap;color:#545252">${escHtml(afFmtData(f))}</td>
+      <td>${escHtml(f.EMPRESA || '—')}</td>
+      <td style="max-width:220px"><div style="display:flex;flex-direction:column;gap:2px"><span>${escHtml(f.NOME_CLIENTE || '—')}</span>${re}</div></td>
+      <td>${escHtml(f.TIPO_MANIFESTACAO || '—')}</td>
+      <td style="max-width:200px">${escHtml(f.MOTIVO || '—')}</td>
+      <td>${_bibOrigemBadge(f.ORIGEM)}</td>
+      <td style="white-space:nowrap;color:#545252">${ev ? ev + (ev > 1 ? ' arquivos' : ' arquivo') : '—'}</td>
+      <td>${_bibStatusBadge(f.STATUS)}</td>
+    </tr>`;
   }).join('');
 }
 
-function renderBibPorMes(porMes) {
-  const wrap = document.getElementById('bib-por-mes');
-  if (!wrap) return;
-  if (!porMes?.length) { wrap.innerHTML = '<div style="color:#929090;font-size:13px">Nenhum dado.</div>'; return; }
-  const maxTotal = Math.max(...porMes.map(m => m.fichas || 0), 1);
-  const BAR_H = 120;
-  wrap.innerHTML = porMes.map(m => {
-    const hS = Math.max(Math.round((m.sistema||0)/maxTotal*BAR_H), (m.sistema||0)>0?2:0);
-    const hH = Math.max(Math.round((m.historica||0)/maxTotal*BAR_H), (m.historica||0)>0?2:0);
-    const label = _nomMes(m.mes);
-    const isSelected = document.getElementById('bib-f-ano')?.value===m.ano && document.getElementById('bib-f-mes')?.value===m.mes;
-    return `<button onclick="document.getElementById('bib-f-ano').value='${m.ano}';document.getElementById('bib-f-mes').value='${m.mes}';_bibFiltroAtualizar('bib-f-ano','select');_bibFiltroAtualizar('bib-f-mes','select');loadBiblioteca(true)"
-      title="${label}/${m.ano}: ${m.fichas||0} (${m.sistema||0} sistema, ${m.historica||0} hist.)"
-      style="flex:1;min-width:0;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:3px;border:0;background:none;padding:0 1px;cursor:pointer">
-      <span style="font-size:10.5px;font-weight:700;color:#3A3939;font-family:Montserrat,system-ui,sans-serif">${m.fichas||0}</span>
-      <span style="width:100%;max-width:28px;display:flex;flex-direction:column;border-radius:3px 3px 0 0;overflow:hidden;outline:${isSelected?'2px solid #C70602':'none'};outline-offset:2px">
-        <span style="height:${hS}px;background:#C70602;display:block"></span>
-        <span style="height:${hH}px;background:#929090;display:block"></span>
-        ${(!hS&&!hH)?'<span style="height:3px;background:#E4E4E4;display:block"></span>':''}
-      </span>
-      <span style="font-size:10px;color:#666464;font-family:Montserrat,system-ui,sans-serif;white-space:nowrap;overflow:hidden;max-width:100%">${label}</span>
-    </button>`;
-  }).join('');
+// --- detalhe da ficha ---
+function afAbrirFicha(i) {
+  const f = _bibFichasAcum[i]; if (!f) return;
+  openBibFicha(f.PROTOCOLO || f.ID_MANIFESTACAO);
 }
 
-function renderBibArvore(arvore) {
-  const wrap = document.getElementById('bib-arvore');
-  if (!wrap) return;
-  const empresas = Object.entries(arvore).sort((a,b) => b[1].total - a[1].total);
-  if (!empresas.length) { wrap.innerHTML = '<div style="color:#929090;font-size:12px;padding:8px">Nenhum dado.</div>'; return; }
-  let html = '';
-  const anoAtual = new Date().getFullYear().toString();
-  for (const [emp, empData] of empresas) {
-    const eKey = emp;
-    const eOpen = _bibArvoreAberto[eKey] ?? true;
-    html += `<button class="bib-arvore-btn" onclick="bibArvoreToggle('${escHtml(eKey)}')" style="font-weight:700;font-size:13px">
-      <span>${eOpen?'▾':'▸'} ${escHtml(emp)}</span><span style="font-size:12px;color:#929090;font-weight:500">${empData.total}</span>
-    </button>`;
-    if (eOpen) {
-      for (const [ano, anoData] of Object.entries(empData.anos).sort((a,b) => b[0].localeCompare(a[0]))) {
-        const aKey = `${eKey}/${ano}`;
-        const aOpen = _bibArvoreAberto[aKey] ?? (ano === anoAtual);
-        html += `<button class="bib-arvore-btn" onclick="bibArvoreToggle('${escHtml(aKey)}')" style="padding-left:20px;font-size:12.5px;font-weight:600">
-          <span>${aOpen?'▾':'▸'} ${escHtml(ano)}</span><span style="font-size:11px;color:#929090;font-weight:500">${anoData.total}</span>
-        </button>`;
-        if (aOpen) {
-          for (const [mes, cnt] of Object.entries(anoData.meses).sort((a,b) => b[0].localeCompare(a[0]))) {
-            const isSel = document.getElementById('bib-f-empresa')?.value===emp && document.getElementById('bib-f-ano')?.value===ano && document.getElementById('bib-f-mes')?.value===mes;
-            html += `<button class="bib-arvore-btn${isSel?' ativa':''}" onclick="bibArvoreSelect('${escHtml(emp)}','${ano}','${mes}')" style="padding-left:36px;font-size:12px">
-              <span>${_nomMes(mes)}</span><span style="font-size:11px;color:#929090;font-weight:500">${cnt}</span>
-            </button>`;
-          }
-        }
-      }
-    }
-  }
-  wrap.innerHTML = html;
+function _afExt(nome, mime) {
+  const n = String(nome || '').toLowerCase(), m = String(mime || '').toLowerCase();
+  if (n.endsWith('.pdf') || m === 'application/pdf') return ['PDF', '#C70602'];
+  if (n.endsWith('.docx') || n.endsWith('.doc') || m.includes('word')) return ['DOCX', '#24508F'];
+  if (m.startsWith('image/') || /\.(jpe?g|png|gif|webp)$/.test(n)) return [/\.png$/.test(n) ? 'PNG' : 'JPG', '#0E7C86'];
+  if (m.startsWith('video/')) return ['VÍDEO', '#5B3FA0'];
+  const e = (n.split('.').pop() || 'ARQ').toUpperCase().slice(0, 4);
+  return [e, '#666464'];
+}
+function _afDoc(nome, ext, cor, meta, acao) {
+  return `<div class="af-doc"><span class="af-doc-x" style="background:${cor}">${escHtml(ext)}</span><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font-size:13px;font-weight:600;overflow-wrap:anywhere">${escHtml(nome)}</span><span style="font-size:11.5px;color:#929090">${escHtml(meta)}</span></div>${acao}</div>`;
+}
+function _afAbrirLink(url) {
+  return url ? `<a class="af-btn-sm" href="${escHtml(url)}" target="_blank" rel="noopener">Abrir</a>` : '<button class="af-btn-sm" disabled title="Arquivo sem link disponível">Abrir</button>';
 }
 
-function bibArvoreToggle(key) {
-  _bibArvoreAberto[key] = !(_bibArvoreAberto[key] ?? true);
-  if (_bibStats) renderBibArvore(_bibStats.arvore||{});
-}
-
-function bibArvoreSelect(emp, ano, mes) {
-  document.getElementById('bib-f-empresa').value = emp;
-  document.getElementById('bib-f-ano').value = ano;
-  document.getElementById('bib-f-mes').value = mes;
-  ['bib-f-empresa','bib-f-ano','bib-f-mes'].forEach(id => _bibFiltroAtualizar(id,'select'));
-  loadBiblioteca(true);
-}
-
-function renderBibHierarquia() {} // legado
-
-async function openBibFicha(id, rowEl) {
-  const tok = sessionStorage.getItem('sac-token');
+async function openBibFicha(id) {
+  const tok = _afTok();
   if (!tok || !id) return;
-  // highlight row
-  document.querySelectorAll('.bib-row').forEach(r => r.classList.remove('ativa'));
-  rowEl?.classList.add('ativa');
-
-  const painel = document.getElementById('bib-painel');
-  const overlay = document.getElementById('bib-painel-overlay');
-  painel.classList.add('aberto');
-  overlay.style.display = 'block';
-  document.getElementById('bib-painel-titulo').textContent = 'Ficha ' + id;
-  document.getElementById('bib-painel-body').innerHTML = '<div style="text-align:center;color:#929090;padding:30px;font-family:Montserrat,system-ui,sans-serif">Carregando…</div>';
-
+  const ov = _afEl('bib-painel-overlay');
+  ov.classList.add('on');
+  _afFichaAtual = null;
+  _afEl('bib-painel-titulo').textContent = id;
+  _afEl('bib-painel-body').innerHTML = '<div style="text-align:center;color:#929090;padding:30px">Carregando…</div>';
+  _afEl('bib-painel-foot').innerHTML = '';
   try {
-    const r = await fetch(API+'/api/biblioteca/fichas/'+encodeURIComponent(id), {headers:{'Authorization':'Bearer '+tok}});
+    const r = await fetch(API + '/api/biblioteca/fichas/' + encodeURIComponent(id), { headers: { 'Authorization': 'Bearer ' + tok } });
     const d = await r.json();
-    if (!d.sucesso) throw new Error(d.erro||'Não encontrada');
-    const f = d.ficha; const evs = d.evidencias || [];
-    document.getElementById('bib-painel-titulo').textContent = f.PROTOCOLO || id;
-    const dt = f.DATA_REGISTRO ? new Date(f.DATA_REGISTRO).toLocaleDateString('pt-BR') : (f.ANO&&f.MES?`${_nomMes(f.MES)}/${f.ANO}`:'—');
-    const hasPdf = !!f.PDF_DRIVE_URL;
-    document.getElementById('bib-painel-body').innerHTML = `
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
-        ${_bibOrigemBadge(f.ORIGEM||'')}
-        ${_bibStatusBadge(f.STATUS)}
-        ${f.REINCIDENTE?'<span style="background:#FDECEC;color:#A80502;border-radius:5px;padding:2px 7px;font-size:11px;font-weight:700">⚠ Reincidente</span>':''}
-      </div>
-      <div style="font-size:12px;color:#666464;margin-bottom:2px">${escHtml(f.EMPRESA||'—')}</div>
-      <div style="font-size:14px;font-weight:700;margin-bottom:14px;color:#1F1F1F">${escHtml(f.NOME_CLIENTE||f.ORIG_CONTATO||'—')}</div>
-
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 14px;margin-bottom:14px">
-        <div><div style="font-size:10px;color:#929090;font-weight:600;text-transform:uppercase;margin-bottom:2px">Data reclamação</div><div style="font-size:13px">${dt}</div></div>
-        <div><div style="font-size:10px;color:#929090;font-weight:600;text-transform:uppercase;margin-bottom:2px">Tipo</div><div style="font-size:13px">${escHtml(f.TIPO_MANIFESTACAO||f.TIPO||'—')}</div></div>
-        ${f.CNPJ_CPF?`<div><div style="font-size:10px;color:#929090;font-weight:600;text-transform:uppercase;margin-bottom:2px">CNPJ/CPF</div><div style="font-size:13px">${escHtml(f.CNPJ_CPF)}</div></div>`:''}
-        ${f.COLABORADOR_RECEBIMENTO?`<div><div style="font-size:10px;color:#929090;font-weight:600;text-transform:uppercase;margin-bottom:2px">Colaborador</div><div style="font-size:13px">${escHtml(f.COLABORADOR_RECEBIMENTO)}</div></div>`:''}
-      </div>
-
-      ${f.MOTIVO?`<div style="margin-bottom:12px"><div style="font-size:10px;color:#929090;font-weight:600;text-transform:uppercase;margin-bottom:4px">Motivo</div><div style="font-size:13px;color:#1F1F1F">${escHtml(f.MOTIVO)}</div></div>`:''}
-      ${f.DESCRICAO_ORIGINAL||f.DESCRICAO?`<div style="margin-bottom:12px"><div style="font-size:10px;color:#929090;font-weight:600;text-transform:uppercase;margin-bottom:4px">Descrição</div><div style="font-size:13px;color:#1F1F1F;line-height:1.5">${escHtml(f.DESCRICAO_ORIGINAL||f.DESCRICAO||'')}</div></div>`:''}
-      ${f.TRATATIVA||f.ACAO_CORRETIVA?`<div style="margin-bottom:12px"><div style="font-size:10px;color:#929090;font-weight:600;text-transform:uppercase;margin-bottom:4px">Tratativa</div><div style="font-size:13px;color:#1F1F1F;line-height:1.5">${escHtml(f.TRATATIVA||f.ACAO_CORRETIVA||'')}</div></div>`:''}
-
-      <div style="border-top:1px solid #F0F0F0;padding-top:12px;margin-top:4px">
-        <div style="font-size:11px;font-weight:700;color:#545252;letter-spacing:.06em;margin-bottom:8px">DOCUMENTOS E EVIDÊNCIAS</div>
-        ${hasPdf?`<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#F4F4F4;border-radius:8px;margin-bottom:8px">
-          <span>📄</span>
-          <div style="flex:1;font-size:13px;font-weight:600">${escHtml(f.PDF_NOME||'Ficha de reclamação.pdf')}</div>
-          <a href="${escHtml(f.PDF_DRIVE_URL)}" target="_blank" rel="noopener" style="border:1px solid #D6D6D6;background:#fff;border-radius:7px;padding:5px 10px;font-size:12px;font-weight:600;text-decoration:none;color:#1F1F1F;white-space:nowrap">Abrir</a>
-        </div>`:''}
-        ${evs.map(ev=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#F4F4F4;border-radius:8px;margin-bottom:6px">
-          <span>${ev.TIPO_MIME?.startsWith('image/')?'🖼️':ev.TIPO_MIME?.startsWith('video/')?'🎬':'📎'}</span>
-          <div style="flex:1;min-width:0;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(ev.NOME||'Arquivo')}</div>
-          ${ev.DRIVE_URL?`<a href="${escHtml(ev.DRIVE_URL)}" target="_blank" rel="noopener" style="border:1px solid #D6D6D6;background:#fff;border-radius:7px;padding:5px 10px;font-size:12px;font-weight:600;text-decoration:none;color:#1F1F1F;white-space:nowrap">Abrir</a>`:''}
-        </div>`).join('')}
-        ${!hasPdf&&!evs.length?'<div style="color:#929090;font-size:12px">Sem documentos.</div>':''}
-      </div>
-
-      <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">
-        ${f.ID_MANIFESTACAO?`<button onclick="if(window.abrirDossie)window.abrirDossie('${escHtml(f.ID_MANIFESTACAO)}');closeBibPainel()" style="flex:1;border:0;background:#C70602;color:#fff;border-radius:8px;padding:9px 14px;cursor:pointer;font-size:13px;font-weight:600;font-family:Montserrat,system-ui,sans-serif">Ver dossiê completo</button>`:''}
-        <button onclick="closeBibPainel()" style="border:1px solid #D6D6D6;background:#fff;border-radius:8px;padding:9px 14px;cursor:pointer;font-size:13px;font-weight:600;font-family:Montserrat,system-ui,sans-serif">Fechar</button>
-      </div>
-    `;
-  } catch(e) {
-    document.getElementById('bib-painel-body').innerHTML = `<div style="color:#C70602;padding:20px;font-family:Montserrat,system-ui,sans-serif">Erro: ${escHtml(e.message)}</div>`;
+    if (!d.sucesso) throw new Error(d.erro || 'Ficha não encontrada.');
+    afRenderFicha(d.ficha, d.evidencias || [], d.historico || []);
+    document.querySelectorAll('#bib-tbody .af-row').forEach((tr, i) => tr.classList.toggle('ativa', _bibFichasAcum[i]?.PROTOCOLO === d.ficha.PROTOCOLO));
+  } catch (e) {
+    _afEl('bib-painel-body').innerHTML = `<div style="color:#C70602;padding:20px">Erro: ${escHtml(e.message)}</div>`;
   }
+}
+
+function afRenderFicha(f, evs, hist) {
+  _afFichaAtual = { ficha: f, evidencias: evs };
+  const imp = f.ORIGEM === 'IMPORTADA';
+  _afEl('bib-painel-head').innerHTML = `<span class="af-k" style="letter-spacing:.06em">FICHA DE RECLAMAÇÃO</span>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span style="font-weight:700;font-size:18px" id="bib-painel-titulo">${escHtml(f.PROTOCOLO)}</span>${afPill(AF_ORIGEM, f.ORIGEM, true)}${afPill(AF_STATUS, f.STATUS, true)}</div>
+    <span style="font-size:12.5px;color:#545252">${escHtml(f.EMPRESA || '—')} · ${escHtml(afFmtData(f))}</span>`;
+
+  const campos = [
+    ['Cliente', f.NOME_CLIENTE], ['CNPJ', f.CNPJ_CPF], ['Tipo', f.TIPO_MANIFESTACAO], ['Motivo', f.MOTIVO],
+    ['Colaborador responsável', f.COLABORADOR_RECEBIMENTO], ['Empresa', f.EMPRESA], ['Data da reclamação', afFmtData(f)],
+    ['Arquivada em', f.ANO && f.ANO !== 'S/A' ? `${AF_MN[+f.MES] || f.MES}/${f.ANO}` : '—'],
+  ];
+  const desc = f.DESCRICAO || (imp ? 'Conteúdo disponível no documento original anexado. Ficha anterior à ferramenta.' : '—');
+  const trat = f.TRATATIVA || (imp ? 'Consulte a tratativa na ficha original.' : (f.COM_TRATATIVA ? 'Tratativa concluída.' : 'Tratativa não concluída.'));
+
+  const docs = [];
+  if (imp) {
+    const [ext, cor] = _afExt(f.ARQUIVO_NOME || f.PDF_NOME, '');
+    docs.push(_afDoc(f.ARQUIVO_NOME || f.PDF_NOME || 'Ficha original', ext, cor,
+      'Ficha original · importada' + (f.IMPORTADO_EM ? ' em ' + afFmtQuando(f.IMPORTADO_EM).replace(/<[^>]*>/g, '') : '') + (f.IMPORTADO_POR ? ' por ' + f.IMPORTADO_POR : ''),
+      _afAbrirLink(f.PDF_DRIVE_URL)));
+  } else {
+    docs.push(_afDoc(f.PDF_NOME || ('Ficha_' + f.PROTOCOLO + '.pdf'), 'PDF', '#C70602', 'Gerada pelo sistema a partir da manifestação',
+      f.PDF_DRIVE_URL ? _afAbrirLink(f.PDF_DRIVE_URL) : '<button class="af-btn-sm" onclick="afBaixarPdf()">Abrir</button>'));
+  }
+  evs.forEach(ev => {
+    const [ext, cor] = _afExt(ev.NOME, ev.TIPO_MIME);
+    docs.push(_afDoc(ev.NOME || 'Arquivo', ext, cor, 'Evidência' + (ev.USUARIO ? ' · anexada por ' + ev.USUARIO : ''), _afAbrirLink(ev.DRIVE_URL)));
+  });
+
+  const hh = [...hist].reverse().map(h => `<div style="display:grid;grid-template-columns:14px minmax(0,1fr);gap:12px"><div style="display:flex;flex-direction:column;align-items:center"><span style="width:10px;height:10px;border-radius:50%;background:#929090;margin-top:4px;flex:none"></span><span style="flex:1;width:2px;background:#EFEFEF"></span></div><div style="padding-bottom:12px"><div style="font-size:11.5px;color:#929090">${afFmtQuando(h.em)}</div><div style="font-size:13px">${escHtml(h.texto)}</div></div></div>`).join('');
+
+  _afEl('bib-painel-body').innerHTML = `
+    ${f.REINCIDENTE ? `<div style="background:#FDECEC;border:1.5px solid #C70602;border-radius:10px;padding:12px 14px;font-size:13px;color:#7F0401"><strong>Cliente reincidente:</strong> ${f.REINCIDENTE_N} fichas nos últimos 12 meses (${escHtml((f.REINCIDENTE_IDS || []).join(', '))}).</div>` : ''}
+    <div class="af-box af-grid">${campos.map(([l, v]) => `<div><div class="af-k">${escHtml(l)}</div><div style="font-size:13px;overflow-wrap:anywhere">${escHtml(v || '—')}</div></div>`).join('')}</div>
+    <div class="af-box" style="display:flex;flex-direction:column;gap:6px"><span class="af-k">DESCRIÇÃO DA RECLAMAÇÃO</span><span style="font-size:13.5px;line-height:1.55;white-space:pre-wrap">${escHtml(desc)}</span><span class="af-k" style="margin-top:6px">TRATATIVA</span><span style="font-size:13.5px;line-height:1.55;white-space:pre-wrap">${escHtml(trat)}</span></div>
+    <div class="af-box" style="display:flex;flex-direction:column;gap:10px"><span style="font-weight:700;font-size:14px">Documentos e evidências</span>${docs.join('')}${evs.length ? '' : '<span style="font-size:12.5px;color:#929090">Nenhuma evidência anexada.</span>'}</div>
+    <div class="af-box"><div style="font-weight:700;font-size:14px;margin-bottom:10px">Histórico</div>${hh || '<span style="font-size:12.5px;color:#929090">Sem eventos registrados.</span>'}</div>`;
+
+  _afEl('bib-painel-foot').innerHTML =
+    (f.ID_MANIFESTACAO ? `<button class="af-btn" onclick="if(window.abrirDossie)window.abrirDossie(${escHtml(JSON.stringify(f.ID_MANIFESTACAO))});closeBibPainel()">Ver dossiê completo</button>` : '') +
+    `<a class="af-btn" href="/fichas.html" target="_blank" rel="noopener">Ver modelo da ficha</a>` +
+    `<button class="af-btn af-btn-dark" onclick="afBaixarPdf()">${imp ? 'Abrir ficha original' : 'Baixar PDF da ficha'}</button>`;
+}
+
+async function afBaixarPdf() {
+  const f = _afFichaAtual?.ficha; if (!f) return;
+  if (f.ORIGEM === 'IMPORTADA') {
+    if (f.PDF_DRIVE_URL) window.open(f.PDF_DRIVE_URL, '_blank', 'noopener');
+    else afToast('O arquivo original desta ficha não está disponível.');
+    return;
+  }
+  const tok = _afTok(); if (!tok || !f.ID_MANIFESTACAO) return;
+  try {
+    const r = await fetch(API + '/api/manifestacoes/' + encodeURIComponent(f.ID_MANIFESTACAO) + '/pdf', { headers: { 'Authorization': 'Bearer ' + tok } });
+    if (!r.ok) { let m = 'Não foi possível gerar o PDF.'; try { m = (await r.json()).erro || m; } catch (_) {} throw new Error(m); }
+    const url = URL.createObjectURL(await r.blob());
+    const a = document.createElement('a'); a.href = url; a.download = 'Ficha_' + f.PROTOCOLO + '.pdf';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    afToast('PDF da ficha ' + f.PROTOCOLO + ' gerado.');
+  } catch (e) { afToast(e.message); }
 }
 
 function closeBibPainel() {
-  document.getElementById('bib-painel')?.classList.remove('aberto');
-  document.getElementById('bib-painel-overlay').style.display='none';
-  document.querySelectorAll('.bib-row').forEach(r => r.classList.remove('ativa'));
+  _afEl('bib-painel-overlay')?.classList.remove('on');
+  _afFichaAtual = null;
+  document.querySelectorAll('#bib-tbody .af-row').forEach(r => r.classList.remove('ativa'));
 }
-
 // compat alias para código que chama closeBibFichaModal
 function closeBibFichaModal() { closeBibPainel(); }
 
 // ===== IMPORTAR FICHAS (PDF/DOCX) =====
-let _importarFiles = [];
+const AF_EMP_IMP = [['CHIACCHIO', 'Chiacchio Embalagens'], ['PLASCHIO', 'Plaschio'], ['TUBAHIA', 'Tubahia']];
+const AF_TIPOS = ['Reclamação', 'Sugestão', 'Solicitação', 'Elogio'];
+const AF_MAX_MB = 20;
+let _importarFiles = []; // [{ file, emp, data, tipo, sug }]
+let _afImportando = false;
+
+function _afHojeISO() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+
+// sugestão a partir do NOME do arquivo (o conteúdo do documento não é lido aqui)
+function afInferirDoNome(nome) {
+  const out = { emp: '', data: '' };
+  const n = String(nome).toLowerCase();
+  if (/chiacch|embalag/.test(n)) out.emp = 'CHIACCHIO'; else if (/plasch/.test(n)) out.emp = 'PLASCHIO'; else if (/tubah/.test(n)) out.emp = 'TUBAHIA';
+  let y, m, d, mt;
+  if ((mt = /(\d{4})[-_.](\d{1,2})[-_.](\d{1,2})/.exec(nome))) { y = +mt[1]; m = +mt[2]; d = +mt[3]; }
+  else if ((mt = /(\d{1,2})[-_.](\d{1,2})[-_.](\d{4})/.exec(nome))) { d = +mt[1]; m = +mt[2]; y = +mt[3]; }
+  if (y) {
+    const dt = new Date(y, m - 1, d);
+    const iso = y + '-' + String(m).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+    if (dt.getFullYear() === y && dt.getMonth() === m - 1 && dt.getDate() === d && iso <= _afHojeISO()) out.data = iso;
+  }
+  return out;
+}
 
 function abrirModalImportarFicha() {
   _importarFiles = [];
-  document.getElementById('importar-file-list').innerHTML = '';
-  document.getElementById('importar-status').style.display = 'none';
-  document.getElementById('importar-btn-enviar').disabled = true;
-  document.getElementById('importar-file-input').value = '';
-  document.getElementById('modal-importar-ficha').style.display = 'flex';
+  _afEl('importar-status').style.display = 'none';
+  afImpRender();
+  _afEl('modal-importar-ficha').classList.add('on');
 }
-
 function fecharModalImportarFicha() {
-  document.getElementById('modal-importar-ficha').style.display = 'none';
+  if (_afImportando) return;
+  _afEl('modal-importar-ficha').classList.remove('on');
 }
-
 function handleImportarDrop(ev) {
   ev.preventDefault();
-  document.getElementById('importar-dropzone').style.borderColor = '#D6D6D6';
+  _afEl('importar-dropzone').classList.remove('over');
   handleImportarFiles(ev.dataTransfer.files);
 }
-
 function handleImportarFiles(files) {
-  if (files.length > 0) {
-    const allowed = ['application/pdf','application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
-    const novos = Array.from(files).filter(f => allowed.includes(f.type) || f.name.match(/\.(pdf|docx)$/i));
-    if (novos.length === 0 && files.length > 0) { alert('Selecione arquivos PDF ou DOCX.'); return; }
-    _importarFiles = [..._importarFiles, ...novos].slice(0, 10);
-  }
-  const hoje = new Date(); hoje.setHours(23,59,59,999);
-  const empresasOpts = '<option value="">Selecione…</option><option value="CHIACCHIO">Chiacchio Embalagens</option><option value="PLASCHIO">Plaschio</option><option value="TUBAHIA">Tubahia</option>';
-  const list = document.getElementById('importar-file-list');
-  list.innerHTML = _importarFiles.map((f, i) => `
-    <div style="border:1px solid #E4E4E4;border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:10px;background:#fff">
-      <div style="display:flex;align-items:center;gap:8px">
-        <span style="font-size:18px">${f.name.match(/\.pdf$/i)?'📄':'📝'}</span>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:Montserrat,system-ui,sans-serif">${escHtml(f.name)}</div>
-          <div style="font-size:11px;color:#929090;font-family:Montserrat,system-ui,sans-serif">${(f.size/1024/1024).toFixed(2)} MB</div>
-        </div>
-        <button onclick="_importarFiles.splice(${i},1);handleImportarFiles([])" style="border:none;background:none;cursor:pointer;color:#929090;font-size:16px" title="Remover">✕</button>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
-        <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:#666464;font-weight:600;font-family:Montserrat,system-ui,sans-serif">Empresa*
-          <select id="imp-emp-${i}" required style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:12px;font-family:Montserrat,system-ui,sans-serif">${empresasOpts}</select>
-        </label>
-        <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:#666464;font-weight:600;font-family:Montserrat,system-ui,sans-serif">Data da reclamação*
-          <input type="date" id="imp-data-${i}" required max="${hoje.toISOString().slice(0,10)}" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:12px;font-family:Montserrat,system-ui,sans-serif">
-        </label>
-        <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:#666464;font-weight:600;font-family:Montserrat,system-ui,sans-serif">Tipo
-          <select id="imp-tipo-${i}" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:12px;font-family:Montserrat,system-ui,sans-serif">
-            <option value="Reclamação">Reclamação</option><option value="Sugestão">Sugestão</option>
-            <option value="Solicitação">Solicitação</option><option value="Elogio">Elogio</option>
-          </select>
-        </label>
+  const rej = [];
+  Array.from(files || []).forEach(f => {
+    if (!/\.(pdf|docx)$/i.test(f.name)) { rej.push(`${f.name}: somente PDF ou DOCX`); return; }
+    if (f.size > AF_MAX_MB * 1024 * 1024) { rej.push(`${f.name}: acima de ${AF_MAX_MB} MB`); return; }
+    if (f.size === 0) { rej.push(`${f.name}: arquivo vazio`); return; }
+    if (_importarFiles.length >= 20) { rej.push(`${f.name}: limite de 20 arquivos por vez`); return; }
+    const s = afInferirDoNome(f.name);
+    _importarFiles.push({ file: f, emp: s.emp, data: s.data, tipo: 'Reclamação', sug: !!(s.emp || s.data) });
+  });
+  if (rej.length) afImpMsg('Não adicionados:<br>' + rej.map(r => '• ' + escHtml(r)).join('<br>'), 'erro');
+  else _afEl('importar-status').style.display = 'none';
+  afImpRender();
+}
+function afImpMsg(html, tipo) {
+  const el = _afEl('importar-status');
+  el.style.display = 'block';
+  el.style.background = tipo === 'ok' ? '#E6F2EA' : tipo === 'info' ? '#E6EEF8' : '#FDECEC';
+  el.style.color = tipo === 'ok' ? '#1E6B3A' : tipo === 'info' ? '#24508F' : '#A80502';
+  el.innerHTML = html;
+}
+function afImpMeta(x) {
+  return x.data ? (x.sug ? 'Sugerido pelo nome do arquivo · confira empresa e data' : 'Confira empresa e data antes de importar') : 'Data não identificada · preencha antes de importar';
+}
+function afImpPronto() { return _importarFiles.length > 0 && _importarFiles.every(x => x.emp && x.data && x.data <= _afHojeISO()); }
+
+function afImpRender() {
+  const hoje = _afHojeISO();
+  _afEl('importar-file-list').innerHTML = _importarFiles.map((x, i) => `
+    <div class="af-arq">
+      <div style="min-width:0"><div style="font-size:13px;font-weight:600;overflow-wrap:anywhere">${escHtml(x.file.name)}</div><div id="imp-meta-${i}" style="font-size:11.5px;color:${x.data ? '#666464' : '#A80502'}">${afImpMeta(x)} · ${(x.file.size / 1048576).toFixed(2)} MB</div></div>
+      <button onclick="afImpRemover(${i})" style="border:0;background:none;color:#A80502;cursor:pointer;font-size:16px" title="Remover" aria-label="Remover">×</button>
+      <div class="af-arq-c">
+        <label class="af-lbl">Empresa<select id="imp-emp-${i}" onchange="afImpUp(${i},'emp',this.value)"><option value="">Selecione…</option>${AF_EMP_IMP.map(([v, l]) => `<option value="${v}"${x.emp === v ? ' selected' : ''}>${l}</option>`).join('')}</select></label>
+        <label class="af-lbl">Data da reclamação<input type="date" id="imp-data-${i}" value="${escHtml(x.data)}" max="${hoje}" onchange="afImpUp(${i},'data',this.value)" style="border-color:${x.data ? '#D6D6D6' : '#C70602'}"></label>
+        <label class="af-lbl">Tipo<select id="imp-tipo-${i}" onchange="afImpUp(${i},'tipo',this.value)">${AF_TIPOS.map(t => `<option value="${t}"${x.tipo === t ? ' selected' : ''}>${t}</option>`).join('')}</select></label>
       </div>
     </div>`).join('');
-  document.getElementById('importar-btn-enviar').disabled = _importarFiles.length === 0;
+  afImpBotao();
+}
+function afImpRemover(i) { _importarFiles.splice(i, 1); afImpRender(); }
+function afImpUp(i, k, v) {
+  const x = _importarFiles[i]; if (!x) return;
+  x[k] = v; x.sug = false;
+  if (k === 'data') {
+    const inp = _afEl('imp-data-' + i); if (inp) inp.style.borderColor = v ? '#D6D6D6' : '#C70602';
+    const m = _afEl('imp-meta-' + i); if (m) { m.textContent = afImpMeta(x) + ' · ' + (x.file.size / 1048576).toFixed(2) + ' MB'; m.style.color = v ? '#666464' : '#A80502'; }
+  }
+  afImpBotao();
+}
+function afImpBotao() {
+  const b = _afEl('importar-btn-enviar'); if (!b) return;
+  const n = _importarFiles.length;
+  b.textContent = _afImportando ? 'Importando…' : 'Importar ' + (n || '') + (n === 1 ? ' ficha' : ' fichas');
+  b.style.background = afImpPronto() && !_afImportando ? '#C70602' : '#C4C4C4';
 }
 
 async function enviarFichasImportadas() {
-  const tok = sessionStorage.getItem('sac-token');
-  if (!tok || !_importarFiles.length) return;
-  const hoje = new Date(); hoje.setHours(0,0,0,0);
-  // Validar campos obrigatórios
-  for (let i = 0; i < _importarFiles.length; i++) {
-    const emp = document.getElementById(`imp-emp-${i}`)?.value;
-    const data = document.getElementById(`imp-data-${i}`)?.value;
-    if (!emp) { alert(`Selecione a empresa para o arquivo ${_importarFiles[i].name}.`); return; }
-    if (!data) { alert(`Informe a data da reclamação para ${_importarFiles[i].name}.`); return; }
-    const dtVal = new Date(data + 'T00:00:00');
-    if (dtVal > hoje) { alert(`A data da reclamação não pode ser futura (${_importarFiles[i].name}).`); return; }
+  const tok = _afTok();
+  if (!tok || _afImportando) return;
+  if (!_importarFiles.length) { afToast('Selecione ao menos um arquivo.'); return; }
+  const hoje = _afHojeISO();
+  for (const x of _importarFiles) {
+    if (!x.emp) { afToast(`Selecione a empresa de "${x.file.name}".`); return; }
+    if (!x.data) { afToast('Preencha a data da reclamação de todos os arquivos.'); return; }
+    if (x.data > hoje) { afToast('A data da reclamação não pode ser futura.'); return; }
   }
-  const btn = document.getElementById('importar-btn-enviar');
-  const statusEl = document.getElementById('importar-status');
-  btn.disabled = true; btn.textContent = 'Importando…';
-  statusEl.style.display = 'block'; statusEl.style.background = '#EEF4FF'; statusEl.style.color = '#24508F';
-  statusEl.textContent = `Enviando ${_importarFiles.length} arquivo(s)…`;
-
-  let ok = 0, erros = [];
-  for (let i = 0; i < _importarFiles.length; i++) {
-    const file = _importarFiles[i];
+  _afImportando = true; afImpBotao();
+  afImpMsg(`Enviando ${_importarFiles.length} arquivo(s)…`, 'info');
+  const falhas = []; let ok = 0;
+  const restantes = [];
+  for (const x of _importarFiles) {
     try {
       const fd = new FormData();
-      fd.append('arquivo', file);
-      fd.append('empresa', document.getElementById(`imp-emp-${i}`)?.value||'');
-      fd.append('data_reclamacao', document.getElementById(`imp-data-${i}`)?.value||'');
-      fd.append('tipo', document.getElementById(`imp-tipo-${i}`)?.value||'Reclamação');
-      const r = await fetch(API + '/api/biblioteca/importar-ficha', {
-        method: 'POST', headers: { 'Authorization': 'Bearer ' + tok }, body: fd
-      });
-      const d = await r.json();
-      if (d.sucesso) ok++; else erros.push(`${file.name}: ${d.erro||'Erro desconhecido'}`);
-    } catch(e) { erros.push(`${file.name}: ${e.message}`); }
+      fd.append('empresa', x.emp); fd.append('data_reclamacao', x.data); fd.append('tipo', x.tipo);
+      fd.append('arquivo', x.file); // arquivo por último: os campos já chegam antes no stream
+      const r = await fetch(API + '/api/biblioteca/importar-ficha', { method: 'POST', headers: { 'Authorization': 'Bearer ' + tok }, body: fd });
+      const d = await r.json().catch(() => ({ sucesso: false, erro: 'Resposta inválida (HTTP ' + r.status + ')' }));
+      if (d.sucesso) ok++; else { falhas.push(`${x.file.name}: ${d.erro || 'Erro desconhecido'}`); restantes.push(x); }
+    } catch (e) { falhas.push(`${x.file.name}: ${e.message}`); restantes.push(x); }
   }
-
-  btn.textContent = 'Importar fichas';
-  if (!erros.length) {
-    statusEl.style.background = '#E6F2EA'; statusEl.style.color = '#1E6B3A';
-    statusEl.textContent = `✓ ${ok} ficha(s) importada(s) com sucesso! Atualizando…`;
-    _importarFiles = []; document.getElementById('importar-file-list').innerHTML = '';
-    setTimeout(() => { fecharModalImportarFicha(); loadBiblioteca(true); }, 1500);
+  _afImportando = false;
+  _importarFiles = restantes;
+  afImpRender();
+  if (!falhas.length) {
+    _afEl('importar-status').style.display = 'none';
+    _afEl('modal-importar-ficha').classList.remove('on');
+    afToast(`${ok} ${ok === 1 ? 'ficha importada e arquivada' : 'fichas importadas e arquivadas'} pela data da reclamação.`);
+    loadBiblioteca(true);
   } else {
-    btn.disabled = false;
-    statusEl.style.background = '#FDECEC'; statusEl.style.color = '#A80502';
-    statusEl.innerHTML = `${ok>0?`✓ ${ok} importada(s). `:''}Erros:<br>` + erros.map(e=>`• ${escHtml(e)}`).join('<br>');
+    afImpMsg((ok ? `✓ ${ok} importada(s). ` : '') + 'Erros:<br>' + falhas.map(e => '• ' + escHtml(e)).join('<br>'), 'erro');
+    if (ok) loadBiblioteca(true);
   }
 }
+// ===== ARQUIVO DE FICHAS — fim =====
 
 // escHtml — escapa HTML (auto-contido, não depende de esc global)
 function escHtml(s) { return String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }

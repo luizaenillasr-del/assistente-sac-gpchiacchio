@@ -3927,230 +3927,322 @@ app.get('/api/public/empresas', publicRateLimit, async (req, res) => {
 });
 
 // ===== BIBLIOTECA DE FICHAS =====
+// Fonte unificada do Arquivo de Fichas: MANIFESTACOES (criadas no sistema), FICHAS_BIBLIOTECA
+// (índice do portal + fichas importadas) e BANCO_HISTORICO (anteriores à ferramenta).
+// Listagem, indicadores, árvore e detalhe leem do MESMO conjunto — antes, os indicadores liam campos
+// inexistentes (TRATATIVA/ACAO_CORRETIVA em MANIFESTACOES; evidências fixas em false) e ficavam zerados.
+const FICHAS_BIB_IMPORT_HEADERS = [
+  'ID_FICHA','ID_MANIFESTACAO','PROTOCOLO','DATA_REGISTRO','ANO','MES','EMPRESA','SETOR_RECEBIMENTO',
+  'COLABORADOR_RECEBIMENTO','NOME_CLIENTE','CNPJ','TIPO_MANIFESTACAO','MOTIVO','STATUS','ORIGEM','ARQUIVO_NOME',
+  'PDF_DRIVE_ID','PDF_DRIVE_URL','PDF_NOME','TOTAL_EVIDENCIAS','VERSAO','CREATED_AT','DATA_CRIACAO','CRIADO_POR',
+  'DATA_IMPORTACAO','IMPORTADO_POR',
+];
+
+function _bibData(raw) {
+  if (raw === undefined || raw === null || raw === '') return null;
+  let y, m, d;
+  if (typeof raw === 'number') {
+    const dt = new Date(Math.round((raw - 25569) * 86400000));
+    if (isNaN(dt)) return null;
+    y = dt.getUTCFullYear(); m = dt.getUTCMonth() + 1; d = dt.getUTCDate();
+  } else {
+    const s = String(raw).trim();
+    let mt;
+    if ((mt = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/))) { y = +mt[1]; m = +mt[2]; d = +mt[3]; }
+    else if ((mt = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/))) { d = +mt[1]; m = +mt[2]; y = +mt[3]; if (y < 100) y += 2000; }
+    else { const dt = new Date(s); if (isNaN(dt)) return null; y = dt.getFullYear(); m = dt.getMonth() + 1; d = dt.getDate(); }
+  }
+  if (!y || m < 1 || m > 12 || d < 1 || d > 31 || y < 1990 || y > 2100) return null;
+  const mm = String(m).padStart(2, '0'), dd = String(d).padStart(2, '0');
+  return { ano: String(y), mes: mm, dia: dd, iso: `${y}-${mm}-${dd}` };
+}
+
+function _bibStatus(raw) {
+  const s = normalizarTexto(raw);
+  if (/conclu|finaliz|encerr|resolv|importad|arquiv/.test(s)) return 'CONCLUIDA';
+  if (/tratativa|analise|andamento|setor|aprova|devolutiva|aguard|decisao|encaminh/.test(s)) return 'EM_TRATATIVA';
+  return 'ABERTA';
+}
+
+function _bibEmpresa(raw) {
+  const r = String(raw || '').trim();
+  return normalizarEmpresa(r) || r || 'Não informada';
+}
+
+function _bibDigitos(v) { return String(v || '').replace(/\D/g, ''); }
+
+async function carregarFichasBiblioteca(req) {
+  const [mans, hist, fb, evs, anx] = await Promise.all([
+    lerAba('MANIFESTACOES', 5000).catch(() => []),
+    lerAba('BANCO_HISTORICO', 5000).catch(() => []),
+    lerAba('FICHAS_BIBLIOTECA', 5000).catch(() => []),
+    lerAba('EVIDENCIAS', 5000).catch(() => []),
+    lerAba('ANEXOS', 5000).catch(() => []),
+  ]);
+  const evMap = {};
+  evs.forEach(e => { const k = String(e.ID_MANIFESTACAO || '').trim(); if (k) evMap[k] = (evMap[k] || 0) + 1; });
+  const anxMap = {};
+  anx.forEach(a => {
+    const t = normalizarTexto(a.TIPO_ENTIDADE), c = normalizarTexto(a.CATEGORIA);
+    if (t === 'setor' || t === 'rnc') return;
+    if (c && c !== 'evidencia') return;
+    const k = String(a.ID_ENTIDADE || '').trim(); if (k) anxMap[k] = (anxMap[k] || 0) + 1;
+  });
+  const fbPorMan = {};
+  fb.forEach(f => { if (f.ID_MANIFESTACAO) fbPorMan[String(f.ID_MANIFESTACAO).trim()] = f; });
+
+  const out = [];
+  const vistos = new Set();
+  const nEv = (id, extra) => Math.max((evMap[id] || 0) + (anxMap[id] || 0), parseInt(extra || 0) || 0);
+
+  // 1) Criadas no sistema (ou importadas via documento — ORIGEM=DOCUMENTO)
+  mans.forEach(m => {
+    if (isTeste(m)) return;
+    const id = String(m.ID_MANIFESTACAO || '').trim(); if (!id) return;
+    vistos.add(id);
+    const idx = fbPorMan[id] || {};
+    const dt = _bibData(m.DATA_REGISTRO || m.DATA_ABERTURA || idx.DATA_REGISTRO);
+    const status = _bibStatus(m.STATUS);
+    const stT = normalizarTexto(m.STATUS_TRATATIVA);
+    const comTrat = ['concluida', 'concluido', 'aceita', 'editada'].includes(stT) || !!String(m.DATA_CONCLUSAO_TRATATIVA || '').trim() || status === 'CONCLUIDA';
+    const doc = normalizarTexto(m.ORIGEM) === 'documento' || !!m.ARQUIVO_ORIGEM;
+    out.push({
+      ID_FICHA: idx.ID_FICHA || `FIC-${id}`, ID_MANIFESTACAO: id, PROTOCOLO: id,
+      DATA_REGISTRO: dt ? dt.iso : '', ANO: dt ? dt.ano : 'S/A', MES: dt ? dt.mes : '00', DIA: dt ? dt.dia : '',
+      EMPRESA: _bibEmpresa(m.EMPRESA_RECLAMADA || m.EMPRESA_RECLAMANTE || idx.EMPRESA),
+      NOME_CLIENTE: m.NOME_CLIENTE || m.CLIENTE_NOME || m.CONTATO || idx.NOME_CLIENTE || '',
+      CNPJ_CPF: m.CNPJ || m.CNPJ_CPF || m.CNPJ_CLIENTE || '',
+      TIPO_MANIFESTACAO: m.TIPO_MANIFESTACAO || m.TIPO || idx.TIPO_MANIFESTACAO || 'Reclamação',
+      MOTIVO: m.MOTIVO || idx.MOTIVO || '',
+      COLABORADOR_RECEBIMENTO: m.COLABORADOR_RECEBIMENTO || m.REGISTRADO_POR || m.USUARIO_CRIACAO || '',
+      ORIGEM: doc ? 'IMPORTADA' : 'SISTEMA', STATUS: doc ? 'CONCLUIDA' : status, COM_TRATATIVA: doc ? true : comTrat,
+      TOTAL_EVIDENCIAS: nEv(id, idx.TOTAL_EVIDENCIAS),
+      ARQUIVO_NOME: m.ARQUIVO_ORIGEM || '',
+      PDF_DRIVE_URL: m.PDF_DRIVE_URL || idx.PDF_DRIVE_URL || '', PDF_NOME: m.PDF_NOME || idx.PDF_NOME || '',
+      _DESC: m.DESCRICAO_ORIGINAL || m.DESCRICAO || m.DESCRICAO_RECLAMACAO || '',
+      _TRAT: m.TRATATIVA_REALIZADA || '',
+      _CONCLUSAO: m.DATA_CONCLUSAO_TRATATIVA || '',
+    });
+  });
+
+  // 2) Fichas históricas importadas pelo Arquivo (sem manifestação associada)
+  fb.forEach(f => {
+    const mid = String(f.ID_MANIFESTACAO || '').trim();
+    if (mid) return; // já coberta por MANIFESTACOES (ou manifestação removida)
+    const pid = String(f.PROTOCOLO || f.ID_FICHA || '').trim();
+    if (!pid || vistos.has('F:' + pid)) return;
+    vistos.add('F:' + pid);
+    const dt = _bibData(f.DATA_REGISTRO) || (f.ANO && f.MES ? { ano: String(f.ANO), mes: String(f.MES).padStart(2, '0'), dia: '', iso: '' } : null);
+    out.push({
+      ID_FICHA: f.ID_FICHA || pid, ID_MANIFESTACAO: '', PROTOCOLO: pid,
+      DATA_REGISTRO: dt ? dt.iso : '', ANO: dt ? dt.ano : 'S/A', MES: dt ? dt.mes : '00', DIA: dt ? dt.dia : '',
+      EMPRESA: _bibEmpresa(f.EMPRESA), NOME_CLIENTE: f.NOME_CLIENTE || '', CNPJ_CPF: f.CNPJ || '',
+      TIPO_MANIFESTACAO: f.TIPO_MANIFESTACAO || 'Reclamação', MOTIVO: f.MOTIVO || '',
+      COLABORADOR_RECEBIMENTO: f.COLABORADOR_RECEBIMENTO || '',
+      ORIGEM: 'IMPORTADA', STATUS: 'CONCLUIDA', COM_TRATATIVA: true,
+      TOTAL_EVIDENCIAS: nEv(String(f.ID_FICHA || '').trim(), f.TOTAL_EVIDENCIAS),
+      ARQUIVO_NOME: f.ARQUIVO_NOME || '', PDF_DRIVE_URL: f.PDF_DRIVE_URL || '', PDF_NOME: f.PDF_NOME || f.ARQUIVO_NOME || '',
+      IMPORTADO_POR: f.IMPORTADO_POR || f.CRIADO_POR || '', IMPORTADO_EM: f.DATA_IMPORTACAO || f.DATA_CRIACAO || f.CREATED_AT || '',
+      _DESC: '', _TRAT: '', _CONCLUSAO: '',
+    });
+  });
+
+  // 3) Históricas (BANCO_HISTORICO)
+  hist.forEach(h => {
+    const id = String(h.ID_HISTORICO || h.ID || '').trim();
+    if (!id || vistos.has(id)) return;
+    vistos.add(id);
+    const dt = _bibData(h.ORIG_DATA_ABERTURA || h.DATA_ABERTURA || h['Data de Registro']);
+    const trat = String(h.COMP_TRATATIVA_ADOTADA || h.COMP_ACAO_CORRETIVA || h.TRATATIVA_REALIZADA || '').trim();
+    const ev = h.ORIG_EVIDENCIA || h.EVIDENCIA_URL ? 1 : 0;
+    out.push({
+      ID_FICHA: id, ID_MANIFESTACAO: '', PROTOCOLO: id,
+      DATA_REGISTRO: dt ? dt.iso : '', ANO: dt ? dt.ano : 'S/A', MES: dt ? dt.mes : '00', DIA: dt ? dt.dia : '',
+      EMPRESA: _bibEmpresa(h.ORIG_EMPRESA), NOME_CLIENTE: h.ORIG_CONTATO || '', CNPJ_CPF: h.ORIG_CNPJ || h.CNPJ || '',
+      TIPO_MANIFESTACAO: h.TIPO_MANIFESTACAO || 'Reclamação',
+      MOTIVO: h.COMP_TIPO_PROBLEMA_VALIDADO || String(h.ORIG_DESCRICAO_RECLAMACAO || '').slice(0, 80),
+      COLABORADOR_RECEBIMENTO: h.ORIG_ATENDENTE || '',
+      ORIGEM: 'IMPORTADA', STATUS: 'CONCLUIDA', COM_TRATATIVA: true,
+      TOTAL_EVIDENCIAS: Math.max(ev, nEv(id)),
+      ARQUIVO_NOME: '', PDF_DRIVE_URL: '', PDF_NOME: '',
+      _DESC: h.ORIG_DESCRICAO_RECLAMACAO || '', _TRAT: trat, _CONCLUSAO: '',
+    });
+  });
+
+  // Escopo por empresa do usuário (não-MASTER)
+  const escopo = filtrarPorEmpresaConfig(out, req, 'EMPRESA');
+
+  // Reincidência: mesmo CNPJ (ou, sem CNPJ, mesmo nome de cliente) com 2+ reclamações em janela de 12 meses
+  const chave = f => { const d = _bibDigitos(f.CNPJ_CPF); return d.length >= 8 ? 'c:' + d : (f.NOME_CLIENTE ? 'n:' + normalizarTexto(f.NOME_CLIENTE) : ''); };
+  const mIdx = f => (f.ANO === 'S/A' ? null : parseInt(f.ANO) * 12 + parseInt(f.MES));
+  const grupos = {};
+  escopo.forEach(f => {
+    f._K = chave(f); f._I = mIdx(f);
+    if (f._K && f._I !== null && normalizarTexto(f.TIPO_MANIFESTACAO).startsWith('reclama')) (grupos[f._K] = grupos[f._K] || []).push(f);
+  });
+  escopo.forEach(f => {
+    f.REINCIDENTE = false; f.REINCIDENTE_N = 0; f.REINCIDENTE_IDS = [];
+    if (!f._K || f._I === null || !normalizarTexto(f.TIPO_MANIFESTACAO).startsWith('reclama')) return;
+    const par = (grupos[f._K] || []).filter(x => Math.abs(x._I - f._I) <= 11);
+    if (par.length >= 2) { f.REINCIDENTE = true; f.REINCIDENTE_N = par.length; f.REINCIDENTE_IDS = par.map(x => x.PROTOCOLO); }
+  });
+  return escopo;
+}
+
+function _bibFiltrar(fichas, qs, { ignorar = [] } = {}) {
+  const { ano, mes, empresa, tipo, origem, status, q, extra } = qs;
+  let r = fichas;
+  const ig = k => ignorar.includes(k);
+  if (ano && !ig('ano')) r = r.filter(f => f.ANO === String(ano));
+  if (mes && !ig('mes')) r = r.filter(f => f.MES === String(mes).padStart(2, '0'));
+  if (empresa && !ig('empresa')) r = r.filter(f => normalizarTexto(f.EMPRESA).includes(normalizarTexto(empresa)));
+  if (tipo && !ig('tipo')) r = r.filter(f => normalizarTexto(f.TIPO_MANIFESTACAO).includes(normalizarTexto(tipo)));
+  if (origem && !ig('origem')) r = r.filter(f => f.ORIGEM === String(origem).toUpperCase());
+  if (status && !ig('status')) r = r.filter(f => f.STATUS === String(status).toUpperCase());
+  if (q && !ig('q')) {
+    const nq = normalizarTexto(q), dq = _bibDigitos(q);
+    r = r.filter(f =>
+      normalizarTexto([f.PROTOCOLO, f.NOME_CLIENTE, f.CNPJ_CPF, f.MOTIVO, f.COLABORADOR_RECEBIMENTO, f.EMPRESA].join(' ')).includes(nq) ||
+      (dq.length >= 4 && _bibDigitos(f.CNPJ_CPF).includes(dq)));
+  }
+  if (extra === 'evidencia' && !ig('extra')) r = r.filter(f => f.TOTAL_EVIDENCIAS > 0);
+  if (extra === 'tratativa' && !ig('extra')) r = r.filter(f => f.COM_TRATATIVA);
+  if (extra === 'reincidente' && !ig('extra')) r = r.filter(f => f.REINCIDENTE);
+  return r;
+}
+
 // Listar fichas com filtros e paginação
 app.get('/api/biblioteca/fichas', middlewareEscopoEmpresa(), requerPerfil('MASTER','ADMINISTRADOR','ANALISTA SAC','SAC','APROVADOR','SETOR RESPONSÁVEL','GESTOR DE SETOR','USUÁRIO DE SETOR'), async (req, res) => {
   try {
-    const { ano, mes, empresa, setor, tipo, status, q, page = '1', limit = '50' } = req.query;
-    let fichas = await lerAba('FICHAS_BIBLIOTECA', 5000).catch(() => []);
-    // Fallback: when FICHAS_BIBLIOTECA is empty, use BANCO_HISTORICO mapped to expected fields
-    if (!fichas.length) {
-      const hist = await lerAba('BANCO_HISTORICO', 5000).catch(() => []);
-      fichas = hist.map(h => ({
-        PROTOCOLO: h.ID_HISTORICO || h.ID_MANIFESTACAO || '',
-        ID_MANIFESTACAO: h.ID_HISTORICO || h.ID_MANIFESTACAO || '',
-        NOME_CLIENTE: h.ORIG_CONTATO || '',
-        EMPRESA: normalizarEmpresa(h.ORIG_EMPRESA || '') || h.ORIG_EMPRESA || '',
-        DATA_REGISTRO: h.ORIG_DATA_ABERTURA || h.DATA_ABERTURA || h['Data de Registro'] || '',
-        TIPO_MANIFESTACAO: h.COMP_TIPO_PROBLEMA_VALIDADO || 'Reclamação',
-        MOTIVO: h.COMP_TIPO_PROBLEMA_VALIDADO || h.ORIG_DESCRICAO_RECLAMACAO?.slice(0,80) || '',
-        STATUS: h.ORIG_STATUS || h.STATUS_FINAL || '',
-        ORIGEM: 'HISTORICA',
-        ANO: h.ORIG_DATA_ABERTURA ? String(new Date(h.ORIG_DATA_ABERTURA).getFullYear()) : '',
-        MES: h.ORIG_DATA_ABERTURA ? String(new Date(h.ORIG_DATA_ABERTURA).getMonth()+1).padStart(2,'0') : '',
-        REINCIDENTE: false,
-        COM_TRATATIVA: !!(h.COMP_TRATATIVA_ADOTADA || h.COMP_ACAO_CORRETIVA),
-      }));
-    }
-    // B2: aplicar isolamento de empresa (usuário não-MASTER só vê sua empresa)
-    let filtered = filtrarPorEmpresaConfig(fichas, req, 'EMPRESA');
-    if (ano) filtered = filtered.filter(f => (f.ANO || '') === String(ano));
-    if (mes) filtered = filtered.filter(f => (f.MES || '') === String(mes).padStart(2,'0'));
-    if (empresa) filtered = filtered.filter(f => normalizarTexto(f.EMPRESA||'').includes(normalizarTexto(empresa)));
-    if (setor) filtered = filtered.filter(f => normalizarTexto(f.SETOR_RECEBIMENTO||'').includes(normalizarTexto(setor)));
-    if (tipo) filtered = filtered.filter(f => normalizarTexto(f.TIPO_MANIFESTACAO||'').includes(normalizarTexto(tipo)));
-    if (status) filtered = filtered.filter(f => normalizarTexto(f.STATUS||'').includes(normalizarTexto(status)));
-    if (q) {
-      const nq = normalizarTexto(q);
-      filtered = filtered.filter(f =>
-        normalizarTexto(f.PROTOCOLO||'').includes(nq) ||
-        normalizarTexto(f.NOME_CLIENTE||'').includes(nq) ||
-        normalizarTexto(f.EMPRESA||'').includes(nq) ||
-        normalizarTexto(f.COLABORADOR_RECEBIMENTO||'').includes(nq) ||
-        normalizarTexto(f.MOTIVO||'').includes(nq)
-      );
-    }
-    // Sort desc por data
-    filtered.sort((a, b) => (b.DATA_REGISTRO || b.CREATED_AT || '').localeCompare(a.DATA_REGISTRO || a.CREATED_AT || ''));
+    const { page = '1', limit = '50' } = req.query;
+    const qs = { ...req.query };
+    // compat com parâmetros antigos
+    if (!qs.extra) qs.extra = req.query.com_evidencia ? 'evidencia' : req.query.com_tratativa ? 'tratativa' : req.query.reincidente ? 'reincidente' : '';
+    const todas = await carregarFichasBiblioteca(req);
+    const filtered = _bibFiltrar(todas, qs);
+    filtered.sort((a, b) => (b.DATA_REGISTRO || '').localeCompare(a.DATA_REGISTRO || '') || String(b.PROTOCOLO).localeCompare(String(a.PROTOCOLO)));
     const pageNum = Math.max(1, parseInt(page) || 1);
     const limitNum = Math.min(100, Math.max(1, parseInt(limit) || 50));
     const total = filtered.length;
     const items = filtered.slice((pageNum - 1) * limitNum, pageNum * limitNum);
-    // Remove PDF Drive IDs from list response (available on detail)
-    const safe = items.map(({ PDF_DRIVE_ID, ...rest }) => rest);
+    const safe = items.map(({ _DESC, _TRAT, _CONCLUSAO, _K, _I, PDF_DRIVE_ID, ...rest }) => rest);
     res.json({ sucesso: true, total, page: pageNum, limit: limitNum, pages: Math.ceil(total / limitNum), fichas: safe });
   } catch(e) { res.status(500).json({ sucesso: false, erro: e.message }); }
 });
 
-// Stats da biblioteca (usa BANCO_HISTORICO + MANIFESTACOES como fontes principais)
-app.get('/api/biblioteca/stats', requerPerfil('MASTER','ADMINISTRADOR','ANALISTA SAC','SAC','APROVADOR','SETOR RESPONSÁVEL','GESTOR DE SETOR','USUÁRIO DE SETOR'), async (req, res) => {
+// Indicadores, por empresa, evolução por mês e árvore (respeitam os filtros ativos)
+app.get('/api/biblioteca/stats', middlewareEscopoEmpresa(), requerPerfil('MASTER','ADMINISTRADOR','ANALISTA SAC','SAC','APROVADOR','SETOR RESPONSÁVEL','GESTOR DE SETOR','USUÁRIO DE SETOR'), async (req, res) => {
   try {
-    const { ano, mes, empresa } = req.query;
-    const [historico, mans, recs] = await Promise.all([
-      lerAba('BANCO_HISTORICO', 5000).catch(() => []),
-      lerAba('MANIFESTACOES', 5000).catch(() => []),
-      lerAbaReclamacoes(5000),
-    ]);
-
+    const qs = { ...req.query };
+    const todas = await carregarFichasBiblioteca(req);
     const agora = new Date();
-    const anoAtual = agora.getFullYear().toString();
-    const mesAtual = String(agora.getMonth() + 1).padStart(2,'0');
+    const anoAtual = String(agora.getFullYear()), mesAtual = String(agora.getMonth() + 1).padStart(2, '0');
 
-    function extrairAnoMes(item) {
-      const raw = item.ORIG_DATA_ABERTURA || item.DATA_REGISTRO || item.DATA_ABERTURA || item['Data de Registro'] || item['Data do Registro'] || '';
-      let d;
-      if (typeof raw === 'number') d = new Date((raw - 25569) * 86400000);
-      else d = new Date(raw);
-      if (!d || isNaN(d)) return { ano: 'S/A', mes: '00' };
-      return { ano: String(d.getFullYear()), mes: String(d.getMonth() + 1).padStart(2, '0') };
+    // Base dos KPIs: todos os filtros, exceto o "extra" (clicar num card não zera os outros cards)
+    const base = _bibFiltrar(todas, qs, { ignorar: ['extra'] });
+    const distinct = l => new Set(l.map(f => (f._K || f.PROTOCOLO))).size;
+    const reincL = base.filter(f => f.REINCIDENTE);
+
+    // Por empresa: respeita os filtros menos empresa (para o card de cada empresa continuar visível)
+    const baseEmp = _bibFiltrar(todas, qs, { ignorar: ['extra', 'empresa'] });
+    const porEmpresaDetalhe = {};
+    baseEmp.forEach(f => {
+      const e = f.EMPRESA;
+      const d = porEmpresaDetalhe[e] = porEmpresaDetalhe[e] || { total: 0, comTratativa: 0, comEvidencia: 0, historicas: 0, reincidentes: 0, _k: new Set() };
+      d.total++;
+      if (f.COM_TRATATIVA) d.comTratativa++;
+      if (f.TOTAL_EVIDENCIAS > 0) d.comEvidencia++;
+      if (f.ORIGEM === 'IMPORTADA') d.historicas++;
+      if (f.REINCIDENTE) d._k.add(f._K || f.PROTOCOLO);
+    });
+    Object.values(porEmpresaDetalhe).forEach(d => { d.reincidentes = d._k.size; delete d._k; });
+
+    // Evolução: últimos 12 meses (a partir do mês atual), ignorando ano/mês para manter o gráfico navegável
+    const baseMes = _bibFiltrar(todas, qs, { ignorar: ['extra', 'ano', 'mes'] });
+    const porMesMap = {};
+    baseMes.forEach(f => {
+      if (f.ANO === 'S/A') return;
+      const key = `${f.ANO}-${f.MES}`;
+      const m = porMesMap[key] = porMesMap[key] || { ano: f.ANO, mes: f.MES, fichas: 0, sistema: 0, historica: 0 };
+      m.fichas++; if (f.ORIGEM === 'IMPORTADA') m.historica++; else m.sistema++;
+    });
+    const porMes = [];
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(agora.getFullYear(), agora.getMonth() - i, 1);
+      const a = String(d.getFullYear()), m = String(d.getMonth() + 1).padStart(2, '0');
+      porMes.push(porMesMap[`${a}-${m}`] || { ano: a, mes: m, fichas: 0, sistema: 0, historica: 0 });
     }
 
-    // Normalizar fichas de BANCO_HISTORICO
-    let fichas = historico.map(h => ({
-      ID: h.ID_HISTORICO || h.ID || '',
-      EMPRESA: normalizarEmpresa(h.ORIG_EMPRESA || '') || h.ORIG_EMPRESA || '',
-      TIPO: h.COMP_TIPO_PROBLEMA_VALIDADO || 'Reclamação',
-      STATUS: h.ORIG_STATUS || '',
-      COM_TRATATIVA: !!(h.COMP_TRATATIVA_ADOTADA || h.COMP_ACAO_CORRETIVA),
-      COM_DEVOLUTIVA: !!(h.COMP_DEVOLUTIVA_CLIENTE || h.COMP_RETORNO_CLIENTE),
-      COM_EVIDENCIA: !!(h.ORIG_EVIDENCIA || h.EVIDENCIA_URL),
-      REINCIDENTE: false,
-      _DATA: extrairAnoMes(h),
-      _SRC: 'HISTORICO',
-    }));
-
-    // Identificar reincidentes por cliente
-    const contatoCount = {};
-    historico.forEach(h => {
-      const c = (h.ORIG_CONTATO || '').trim();
-      if (c) contatoCount[c] = (contatoCount[c] || 0) + 1;
-    });
-    fichas.forEach(f => { if (contatoCount[(historico.find(h => (h.ID_HISTORICO||h.ID) === f.ID)||{}).ORIG_CONTATO||''] > 1) f.REINCIDENTE = true; });
-
-    // Complementar com fichas do MANIFESTACOES não já cobertas
-    const idsHistorico = new Set(historico.map(h => h.ID_HISTORICO || h.ID));
-    mans.forEach(m => {
-      if (!idsHistorico.has(m.ID_MANIFESTACAO)) {
-        fichas.push({
-          ID: m.ID_MANIFESTACAO,
-          EMPRESA: normalizarEmpresa(m.EMPRESA_RECLAMADA || '') || m.EMPRESA_RECLAMADA || '',
-          TIPO: m.TIPO || m.TIPO_MANIFESTACAO || 'Reclamação',
-          STATUS: m.STATUS || '',
-          COM_TRATATIVA: !!(m.TRATATIVA || m.ACAO_CORRETIVA),
-          COM_DEVOLUTIVA: !!(m.DEVOLUTIVA || m.RETORNO_CLIENTE),
-          COM_EVIDENCIA: false,
-          REINCIDENTE: false,
-          _DATA: extrairAnoMes(m),
-          _SRC: 'MANIFESTACOES',
-        });
-      }
-    });
-
-    // Aplicar filtros
-    let base = fichas;
-    if (empresa) base = base.filter(f => normalizarTexto(f.EMPRESA||'').includes(normalizarTexto(empresa)));
-    if (ano) base = base.filter(f => f._DATA.ano === String(ano));
-    if (mes) base = base.filter(f => f._DATA.mes === String(mes).padStart(2,'0'));
-
-    const doAno = fichas.filter(f => f._DATA.ano === anoAtual);
-    const doMes = doAno.filter(f => f._DATA.mes === mesAtual);
-
-    // KPIs globais (sem filtro ano/mes/empresa para cards de overview)
-    const totalGlobal = fichas.length;
-
-    // Por empresa — detalhe com múltiplos indicadores
-    const porEmpresaDetalhe = {};
-    fichas.forEach(f => {
-      const e = f.EMPRESA || 'Não informada';
-      if (!porEmpresaDetalhe[e]) porEmpresaDetalhe[e] = { total: 0, comTratativa: 0, comDevolutiva: 0, comEvidencia: 0, reincidentes: 0 };
-      porEmpresaDetalhe[e].total++;
-      if (f.COM_TRATATIVA) porEmpresaDetalhe[e].comTratativa++;
-      if (f.COM_DEVOLUTIVA) porEmpresaDetalhe[e].comDevolutiva++;
-      if (f.COM_EVIDENCIA) porEmpresaDetalhe[e].comEvidencia++;
-      if (f.REINCIDENTE) porEmpresaDetalhe[e].reincidentes++;
-    });
-
-    // Por mês — últimos 12 meses
-    const porMes = {};
-    const recsMapped = recs.map(r => ({ _DATA: extrairAnoMes(r), COM_TRATATIVA: false, COM_DEVOLUTIVA: !!(r['Devolutiva']||r['DEVOLUTIVA']) }));
-    fichas.forEach(f => {
-      const key = `${f._DATA.ano}-${f._DATA.mes}`;
-      if (!porMes[key]) porMes[key] = { ano: f._DATA.ano, mes: f._DATA.mes, fichas: 0, comTratativa: 0, comDevolutiva: 0, reincidentes: 0, sistema: 0, historica: 0 };
-      porMes[key].fichas++;
-      if (f._SRC === 'HISTORICO') porMes[key].historica++; else porMes[key].sistema++;
-      if (f.COM_TRATATIVA) porMes[key].comTratativa++;
-      if (f.COM_DEVOLUTIVA) porMes[key].comDevolutiva++;
-      if (f.REINCIDENTE) porMes[key].reincidentes++;
-    });
-    // adicionar contagem de reclamações por mês
-    recsMapped.forEach(r => {
-      const key = `${r._DATA.ano}-${r._DATA.mes}`;
-      if (porMes[key]) porMes[key].reclamacoes = (porMes[key].reclamacoes || 0) + 1;
-    });
-
-    // Ordenar por ano-mes
-    const porMesOrdenado = Object.values(porMes).sort((a, b) => {
-      const ka = `${a.ano}-${a.mes}`; const kb = `${b.ano}-${b.mes}`;
-      return ka.localeCompare(kb);
-    }).slice(-24); // últimos 24 meses
-
-    // Árvore empresa > ano > mês
+    // Árvore empresa > ano > mês (somente escopo do usuário)
     const arvore = {};
-    fichas.forEach(f => {
-      const emp = f.EMPRESA || 'Não informada';
-      const ano = f._DATA.ano; const mes = f._DATA.mes;
-      if (!arvore[emp]) arvore[emp] = { total: 0, anos: {} };
-      arvore[emp].total++;
-      if (!arvore[emp].anos[ano]) arvore[emp].anos[ano] = { total: 0, meses: {} };
-      arvore[emp].anos[ano].total++;
-      arvore[emp].anos[ano].meses[mes] = (arvore[emp].anos[ano].meses[mes] || 0) + 1;
+    todas.forEach(f => {
+      const e = arvore[f.EMPRESA] = arvore[f.EMPRESA] || { total: 0, anos: {} };
+      e.total++;
+      const a = e.anos[f.ANO] = e.anos[f.ANO] || { total: 0, meses: {} };
+      a.total++; a.meses[f.MES] = (a.meses[f.MES] || 0) + 1;
     });
-
-    // Legado porEmpresa simples
-    const porEmpresa = {};
-    Object.entries(porEmpresaDetalhe).forEach(([e, v]) => { porEmpresa[e] = v.total; });
-
-    const comEvidencias = fichas.filter(f => f.COM_EVIDENCIA).length;
-    const comTratativa = fichas.filter(f => f.COM_TRATATIVA).length;
-    const reincidentes = fichas.filter(f => f.REINCIDENTE).length;
+    const porEmpresa = {}; Object.keys(arvore).forEach(e => { porEmpresa[e] = arvore[e].total; });
+    const anos = [...new Set(todas.map(f => f.ANO).filter(a => a !== 'S/A'))].sort().reverse();
 
     res.json({
       sucesso: true,
-      totalFichas: totalGlobal,
-      fichasDoMes: doMes.length,
-      fichasDoAno: doAno.length,
-      comEvidencias,
-      comTratativa,
-      reincidentes,
-      porEmpresa,
-      porEmpresaDetalhe,
-      porMes: porMesOrdenado,
-      arvore,
-      filtrado: { total: base.length },
+      totalFichas: base.length,
+      fichasDoMes: base.filter(f => f.ANO === anoAtual && f.MES === mesAtual).length,
+      fichasDoAno: base.filter(f => f.ANO === anoAtual).length,
+      comEvidencias: base.filter(f => f.TOTAL_EVIDENCIAS > 0).length,
+      comTratativa: base.filter(f => f.COM_TRATATIVA).length,
+      reincidentes: distinct(reincL),
+      reincidentesFichas: reincL.length,
+      historicas: base.filter(f => f.ORIGEM === 'IMPORTADA').length,
+      sistema: base.filter(f => f.ORIGEM === 'SISTEMA').length,
+      porEmpresa, porEmpresaDetalhe, porMes, arvore, anos,
     });
   } catch(e) { res.status(500).json({ sucesso: false, erro: e.message }); }
 });
 
-// Detalhe de uma ficha (inclui PDF Drive URL)
-app.get('/api/biblioteca/fichas/:id', requerPerfil('MASTER','ADMINISTRADOR','ANALISTA SAC','SAC','APROVADOR','SETOR RESPONSÁVEL','GESTOR DE SETOR','USUÁRIO DE SETOR'), async (req, res) => {
+// Detalhe de uma ficha (valida escopo de empresa por ID: fora do escopo => 403)
+app.get('/api/biblioteca/fichas/:id', middlewareEscopoEmpresa(), requerPerfil('MASTER','ADMINISTRADOR','ANALISTA SAC','SAC','APROVADOR','SETOR RESPONSÁVEL','GESTOR DE SETOR','USUÁRIO DE SETOR'), async (req, res) => {
   try {
-    const fichas = await lerAba('FICHAS_BIBLIOTECA', 5000).catch(() => []);
-    const ficha = fichas.find(f => f.ID_FICHA === req.params.id || f.ID_MANIFESTACAO === req.params.id || f.PROTOCOLO === req.params.id);
-    if (!ficha) return res.status(404).json({ sucesso: false, erro: 'Ficha não encontrada.' });
-    // Buscar evidências
-    const evs = await lerAba('EVIDENCIAS', 2000).catch(() => []);
-    const evidencias = evs.filter(e => e.ID_MANIFESTACAO === ficha.ID_MANIFESTACAO);
-    registrarAuditoria(req.user.usuario, 'VISUALIZOU_FICHA_BIBLIOTECA', ficha.ID_MANIFESTACAO, 'FICHAS_BIBLIOTECA', null, {}).catch(() => {});
-    res.json({ sucesso: true, ficha, evidencias });
+    const id = String(req.params.id || '').trim();
+    const todas = await carregarFichasBiblioteca(req);
+    let ficha = todas.find(f => f.PROTOCOLO === id || f.ID_MANIFESTACAO === id || f.ID_FICHA === id);
+    if (!ficha) {
+      // existe mas fora do escopo do usuário?
+      const total = await (async () => { const r0 = { ...req, _empresaScope: null }; return carregarFichasBiblioteca(r0); })();
+      if (total.some(f => f.PROTOCOLO === id || f.ID_MANIFESTACAO === id || f.ID_FICHA === id)) return res.status(403).json({ sucesso: false, erro: 'Sem permissão para esta ficha.' });
+      return res.status(404).json({ sucesso: false, erro: 'Ficha não encontrada.' });
+    }
+    const [evs, anx] = await Promise.all([lerAba('EVIDENCIAS', 5000).catch(() => []), lerAba('ANEXOS', 5000).catch(() => [])]);
+    const ids = new Set([ficha.ID_MANIFESTACAO, ficha.PROTOCOLO, ficha.ID_FICHA].filter(Boolean));
+    const evidencias = [
+      ...evs.filter(e => ids.has(String(e.ID_MANIFESTACAO || '').trim())).map(e => ({ NOME: e.NOME, TIPO_MIME: e.TIPO_MIME, TAMANHO: e.TAMANHO, DRIVE_URL: e.DRIVE_URL, DATA_UPLOAD: e.DATA_UPLOAD, USUARIO: ficha.COLABORADOR_RECEBIMENTO || '' })),
+      ...anx.filter(a => ids.has(String(a.ID_ENTIDADE || '').trim()) && !['setor', 'rnc'].includes(normalizarTexto(a.TIPO_ENTIDADE)) && (!a.CATEGORIA || normalizarTexto(a.CATEGORIA) === 'evidencia'))
+        .map(a => ({ NOME: a.NOME_ARQUIVO, TIPO_MIME: a.MIME_TYPE, TAMANHO: a.TAMANHO, DRIVE_URL: a.URL_ARQUIVO, DATA_UPLOAD: a.DATA_UPLOAD, USUARIO: a.USUARIO_UPLOAD || '' })),
+    ];
+    const historico = [];
+    if (ficha.ORIGEM === 'IMPORTADA') {
+      if (ficha.IMPORTADO_EM) historico.push({ em: ficha.IMPORTADO_EM, texto: `Ficha histórica importada${ficha.ARQUIVO_NOME ? ' (' + ficha.ARQUIVO_NOME + ')' : ''}${ficha.IMPORTADO_POR ? ' por ' + ficha.IMPORTADO_POR : ''}` });
+      historico.push({ em: ficha.DATA_REGISTRO, texto: 'Data da reclamação original' });
+    } else {
+      historico.push({ em: ficha.DATA_REGISTRO, texto: `Manifestação registrada${ficha.COLABORADOR_RECEBIMENTO ? ' por ' + ficha.COLABORADOR_RECEBIMENTO : ''}` });
+      if (ficha._CONCLUSAO) historico.push({ em: ficha._CONCLUSAO, texto: 'Tratativa concluída' });
+    }
+    registrarAuditoria(req.user.usuario, 'VISUALIZOU_FICHA_BIBLIOTECA', ficha.ID_MANIFESTACAO || ficha.PROTOCOLO, 'FICHAS_BIBLIOTECA', null, {}).catch(() => {});
+    const { _DESC, _TRAT, _CONCLUSAO, _K, _I, ...pub } = ficha;
+    res.json({ sucesso: true, ficha: { ...pub, DESCRICAO: _DESC, TRATATIVA: _TRAT }, evidencias, historico });
   } catch(e) { res.status(500).json({ sucesso: false, erro: e.message }); }
 });
 
 // Download direto do PDF de uma manifestação
-app.get('/api/manifestacoes/:id/pdf', requerPerfil('MASTER','ANALISTA SAC','GESTOR SAC','APROVADOR','SETOR RESPONSÁVEL','CONSULTA','AUDITOR','RCA / REPRESENTANTE'), async (req, res) => {
+app.get('/api/manifestacoes/:id/pdf', middlewareEscopoEmpresa(), requerPerfil('MASTER','ANALISTA SAC','GESTOR SAC','APROVADOR','SETOR RESPONSÁVEL','CONSULTA','AUDITOR','RCA / REPRESENTANTE'), async (req, res) => {
   try {
     if (!gerarFichaPDF) return res.status(503).json({ sucesso: false, erro: 'Serviço de PDF não disponível.' });
     const mans = await lerAba('MANIFESTACOES', 5000).catch(() => []);
     const man = mans.find(m => m.ID_MANIFESTACAO === req.params.id);
     if (!man) return res.status(404).json({ sucesso: false, erro: 'Manifestação não encontrada.' });
+    if (filtrarPorEmpresaConfig([{ EMPRESA: man.EMPRESA_RECLAMADA || man.EMPRESA_RECLAMANTE || '' }], req, 'EMPRESA').length === 0) {
+      return res.status(403).json({ sucesso: false, erro: 'Sem permissão para esta ficha.' });
+    }
     const evs = await lerAba('EVIDENCIAS', 2000).catch(() => []);
     const evidencias = evs.filter(e => e.ID_MANIFESTACAO === man.ID_MANIFESTACAO);
     const dtReg = new Date(man.DATA_REGISTRO || man.DATA_ABERTURA || Date.now());
@@ -4169,6 +4261,7 @@ app.get('/api/manifestacoes/:id/pdf', requerPerfil('MASTER','ANALISTA SAC','GEST
     };
     const pdfBuffer = await gerarFichaPDF(dadosPDF);
     const pdfNome = `Ficha_${man.ID_MANIFESTACAO}.pdf`;
+    registrarAuditoria(req.user?.usuario, 'BAIXOU_PDF_FICHA', man.ID_MANIFESTACAO, 'MANIFESTACOES', null, {}).catch(() => {});
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${pdfNome}"`);
     res.setHeader('Content-Length', pdfBuffer.length);
@@ -4218,28 +4311,29 @@ app.post('/api/biblioteca/fichas/:id/regenerar-pdf', requerPerfil('MASTER','ADMI
   } catch(e) { res.status(500).json({ sucesso: false, erro: e.message }); }
 });
 
-// ═══ IMPORTAR FICHA HISTÓRICA (PDF/DOCX via IA) ═══════════════════════════
-app.post('/api/biblioteca/importar-ficha', requerPerfil('MASTER','ADMINISTRADOR','ANALISTA SAC','SAC'), async (req, res) => {
+// ═══ IMPORTAR FICHA HISTÓRICA (PDF/DOCX) ═══════════════════════════
+// Cada arquivo vira uma ficha ORIGEM=IMPORTADA / STATUS=CONCLUIDA, protocolo HIST-AAAA-NNN, arquivada pela
+// data da reclamação informada (não pela data da importação). O original é preservado no Drive sem alteração.
+app.post('/api/biblioteca/importar-ficha', middlewareEscopoEmpresa(), requerPerfil('MASTER','ADMINISTRADOR','ANALISTA SAC','SAC'), async (req, res) => {
   try {
-    // Aceita multipart/form-data mas sem salvar em disco (serverless)
-    // Lê o body como buffer via express raw e faz extração textual mínima
     const contentType = req.headers['content-type'] || '';
     if (!contentType.includes('multipart/form-data')) {
       return res.status(400).json({ sucesso: false, erro: 'Envie um arquivo via multipart/form-data.' });
     }
-
-    // Extração simples: usa busboy para ler o arquivo
     const Busboy = (() => { try { return require('busboy'); } catch { return null; } })();
     if (!Busboy) return res.status(503).json({ sucesso: false, erro: 'Módulo de upload não disponível neste ambiente.' });
 
-    const bb = Busboy({ headers: req.headers, limits: { fileSize: 10 * 1024 * 1024 } });
-    let nomeArquivo = ''; let mimeType = ''; let chunks = [];
+    const MAX_MB = 20;
+    const bb = Busboy({ headers: req.headers, limits: { fileSize: MAX_MB * 1024 * 1024, files: 1 } });
+    let nomeArquivo = ''; let mimeType = ''; const chunks = []; let truncado = false;
+    const campos = {};
 
     await new Promise((resolve, reject) => {
+      bb.on('field', (name, val) => { campos[name] = String(val || '').trim(); });
       bb.on('file', (name, stream, info) => {
         nomeArquivo = info.filename; mimeType = info.mimeType;
         stream.on('data', c => chunks.push(c));
-        stream.on('end', () => {});
+        stream.on('limit', () => { truncado = true; });
         stream.on('error', reject);
       });
       bb.on('finish', resolve);
@@ -4247,58 +4341,77 @@ app.post('/api/biblioteca/importar-ficha', requerPerfil('MASTER','ADMINISTRADOR'
       req.pipe(bb);
     });
 
+    if (truncado) return res.status(400).json({ sucesso: false, erro: `Arquivo acima de ${MAX_MB} MB.` });
     if (chunks.length === 0) return res.status(400).json({ sucesso: false, erro: 'Arquivo não recebido.' });
+    if (!/\.(pdf|docx)$/i.test(nomeArquivo || '')) return res.status(400).json({ sucesso: false, erro: 'Somente arquivos PDF ou DOCX.' });
     const buffer = Buffer.concat(chunks);
 
-    // Extrai texto do arquivo para passar à IA
+    // Campos obrigatórios informados/conferidos pelo usuário
+    const empresa = campos.empresa ? _bibEmpresa(campos.empresa) : '';
+    if (!empresa || empresa === 'Não informada') return res.status(400).json({ sucesso: false, erro: 'Informe a empresa.' });
+    const dt = _bibData(campos.data_reclamacao);
+    if (!dt) return res.status(400).json({ sucesso: false, erro: 'Informe a data da reclamação.' });
+    if (dt.iso > new Date().toISOString().slice(0, 10)) return res.status(400).json({ sucesso: false, erro: 'A data da reclamação não pode ser futura.' });
+    if (req._empresaScope && empresaCanonica(req._empresaScope) !== empresaCanonica(empresa)) {
+      return res.status(403).json({ sucesso: false, erro: 'Sem permissão para importar fichas desta empresa.' });
+    }
+    const tiposOk = ['Reclamação', 'Sugestão', 'Solicitação', 'Elogio'];
+    const tipo = tiposOk.includes(campos.tipo) ? campos.tipo : 'Reclamação';
+
+    // Extração opcional por IA (cliente/CNPJ/motivo); empresa, data e tipo vêm sempre do usuário
     let textoExtraido = '';
-    if (mimeType === 'application/pdf' || nomeArquivo.match(/\.pdf$/i)) {
-      // Tenta extração básica de texto de PDF (sem lib pesada — busca strings ASCII)
+    if (/\.pdf$/i.test(nomeArquivo)) {
       textoExtraido = buffer.toString('latin1').replace(/[^\x20-\x7E\n\r\t]/g, ' ').replace(/\s+/g, ' ').substring(0, 4000);
     } else {
-      // DOCX: extrai XML interno
       textoExtraido = buffer.toString('utf8', 0, 8000).replace(/[^\x20-\x7E\n\r\tÀ-ɏ]/g, ' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').substring(0, 4000);
     }
-
-    // Usa IA para extrair campos estruturados
     let dadosExtraidos = {};
-    if (aiService.isDisponivel()) {
-      const resultado = await aiService.chamar(
-        `Extraia dados desta ficha de reclamação e retorne APENAS JSON válido com os campos: protocolo, data_registro (ISO), nome_cliente, empresa, setor, tipo_manifestacao, motivo, colaborador. Se não encontrar um campo, use null. Texto da ficha:\n\n${textoExtraido}`,
-        { maxTokens: 512, contexto: 'importar-ficha' }
-      );
-      if (resultado.disponivel) dadosExtraidos = aiService.extrairJSON(resultado.texto) || {};
+    try {
+      if (aiService.isDisponivel()) {
+        const resultado = await aiService.chamar(
+          `Extraia dados desta ficha de reclamação e retorne APENAS JSON válido com os campos: nome_cliente, cnpj, motivo, colaborador. Se não encontrar um campo, use null. Texto da ficha:\n\n${textoExtraido}`,
+          { maxTokens: 512, contexto: 'importar-ficha' }
+        );
+        if (resultado.disponivel) dadosExtraidos = aiService.extrairJSON(resultado.texto) || {};
+      }
+    } catch (aiErr) { console.warn('[BIBLIOTECA] extração IA falhou:', aiErr.message); }
+
+    // Preserva o original, sem alteração
+    let driveId = '', driveUrl = '';
+    try {
+      const up = await uploadArquivoDrive(nomeArquivo, mimeType || (/\.pdf$/i.test(nomeArquivo) ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'), buffer);
+      driveId = up.id || ''; driveUrl = up.webViewLink || up.webContentLink || '';
+    } catch (upErr) {
+      console.error('[BIBLIOTECA] upload do original falhou:', upErr.message);
+      return res.status(502).json({ sucesso: false, erro: 'Não foi possível armazenar o arquivo original (Drive). Nada foi importado.' });
     }
 
-    // Gera ID e registra na aba FICHAS_BIBLIOTECA
-    const idFicha = 'FH-' + Date.now();
-    const agora = new Date().toISOString();
-    const obj = {
-      ID_FICHA: idFicha,
-      ID_MANIFESTACAO: '',
-      PROTOCOLO: dadosExtraidos.protocolo || nomeArquivo.replace(/\.\w+$/, ''),
-      DATA_REGISTRO: dadosExtraidos.data_registro || agora,
-      NOME_CLIENTE: dadosExtraidos.nome_cliente || '',
-      EMPRESA: dadosExtraidos.empresa || '',
-      SETOR_RECEBIMENTO: dadosExtraidos.setor || '',
-      TIPO_MANIFESTACAO: dadosExtraidos.tipo_manifestacao || 'Reclamação',
-      MOTIVO: dadosExtraidos.motivo || '',
-      COLABORADOR_RECEBIMENTO: dadosExtraidos.colaborador || '',
-      STATUS: 'IMPORTADA',
-      ORIGEM: 'IMPORTACAO_MANUAL',
-      ARQUIVO_NOME: nomeArquivo,
-      PDF_DRIVE_ID: '',
-      PDF_DRIVE_URL: '',
-      VERSAO: '1',
-      DATA_CRIACAO: agora,
-      CRIADO_POR: req.user.usuario || '',
-    };
+    // Protocolo HIST-AAAA-NNN
+    await garantirAbaComCabecalhos('FICHAS_BIBLIOTECA', FICHAS_BIB_IMPORT_HEADERS);
+    const existentes = await lerAba('FICHAS_BIBLIOTECA', 5000).catch(() => []);
+    const prefixo = `HIST-${dt.ano}-`;
+    let seq = 0;
+    existentes.forEach(f => { const p = String(f.PROTOCOLO || ''); if (p.startsWith(prefixo)) seq = Math.max(seq, parseInt(p.slice(prefixo.length)) || 0); });
+    const protocolo = prefixo + String(seq + 1).padStart(3, '0');
 
-    const FICHAS_HEADERS = ['ID_FICHA','ID_MANIFESTACAO','PROTOCOLO','DATA_REGISTRO','NOME_CLIENTE','EMPRESA','SETOR_RECEBIMENTO','TIPO_MANIFESTACAO','MOTIVO','COLABORADOR_RECEBIMENTO','STATUS','ORIGEM','ARQUIVO_NOME','PDF_DRIVE_ID','PDF_DRIVE_URL','VERSAO','DATA_CRIACAO','CRIADO_POR'];
-    await garantirAbaComCabecalhos('FICHAS_BIBLIOTECA', FICHAS_HEADERS);
+    const idFicha = 'FH-' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).slice(2, 4).toUpperCase();
+    const agora = new Date().toISOString();
+    const usuario = req.user.usuario || '';
+    const obj = {
+      ID_FICHA: idFicha, ID_MANIFESTACAO: '', PROTOCOLO: protocolo,
+      DATA_REGISTRO: dt.iso, ANO: dt.ano, MES: dt.mes,
+      EMPRESA: empresa, SETOR_RECEBIMENTO: '',
+      COLABORADOR_RECEBIMENTO: dadosExtraidos.colaborador || '',
+      NOME_CLIENTE: dadosExtraidos.nome_cliente || '', CNPJ: dadosExtraidos.cnpj || '',
+      TIPO_MANIFESTACAO: tipo, MOTIVO: dadosExtraidos.motivo || '',
+      STATUS: 'CONCLUIDA', ORIGEM: 'IMPORTADA', ARQUIVO_NOME: nomeArquivo,
+      PDF_DRIVE_ID: driveId, PDF_DRIVE_URL: driveUrl, PDF_NOME: nomeArquivo,
+      TOTAL_EVIDENCIAS: 0, VERSAO: '1', CREATED_AT: agora, DATA_CRIACAO: agora, CRIADO_POR: usuario,
+      DATA_IMPORTACAO: agora, IMPORTADO_POR: usuario,
+    };
     await appendObjeto('FICHAS_BIBLIOTECA', obj);
-    registrarAuditoria(req.user.usuario, 'IMPORTOU_FICHA_HISTORICA', idFicha, 'FICHAS_BIBLIOTECA', null, { arquivo: nomeArquivo }).catch(()=>{});
-    res.json({ sucesso: true, idFicha, protocolo: obj.PROTOCOLO, dados: dadosExtraidos });
+    registrarAuditoria(usuario, 'IMPORTOU_FICHA_HISTORICA', idFicha, 'FICHAS_BIBLIOTECA', null, { arquivo: nomeArquivo, protocolo, empresa, dataReclamacao: dt.iso }).catch(() => {});
+    res.json({ sucesso: true, idFicha, protocolo, dados: dadosExtraidos });
   } catch(e) { res.status(500).json({ sucesso: false, erro: e.message }); }
 });
 
