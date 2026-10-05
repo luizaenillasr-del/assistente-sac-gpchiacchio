@@ -4692,217 +4692,228 @@
   </div>
 </div>
 
-<div class="page" id="page-biblioteca-fichas">
+<div class="page" id="page-biblioteca-fichas" style="background:#F4F4F4;padding:0;position:relative">
+<style>
+.bib-badge-sistema{background:#FDECEC;color:#A80502;border-radius:5px;padding:2px 7px;font-size:11px;font-weight:600}
+.bib-badge-historica{background:#EEEEEE;color:#3A3939;border-radius:5px;padding:2px 7px;font-size:11px;font-weight:600}
+.bib-badge-aberta{background:#E6EEF8;color:#24508F;border-radius:5px;padding:2px 7px;font-size:11px;font-weight:600}
+.bib-badge-tratativa{background:#FBF0D9;color:#7A4C00;border-radius:5px;padding:2px 7px;font-size:11px;font-weight:600}
+.bib-badge-concluida{background:#E6F2EA;color:#1E6B3A;border-radius:5px;padding:2px 7px;font-size:11px;font-weight:600}
+.bib-kpi-btn{text-align:left;border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:2px;cursor:pointer;white-space:normal;border:1px solid #E4E4E4;transition:border-color .15s,box-shadow .15s}
+.bib-kpi-btn:hover{box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.bib-kpi-btn.ativo{border-color:#C70602 !important;box-shadow:0 0 0 2px rgba(199,6,2,.15)}
+#bib-painel{position:fixed;top:0;right:-420px;width:420px;height:100vh;background:#fff;border-left:1px solid #E4E4E4;box-shadow:-4px 0 20px rgba(0,0,0,.1);z-index:300;transition:right .25s ease;overflow-y:auto;display:flex;flex-direction:column}
+#bib-painel.aberto{right:0}
+.bib-row{cursor:pointer;transition:background .12s}
+.bib-row:hover{background:#FDF8F8}
+.bib-row.ativa{background:#FDECEC}
+.bib-filtro-select{height:36px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:12.5px;color:#1F1F1F;font-weight:500;font-family:Montserrat,system-ui,sans-serif}
+.bib-filtro-select.ativo{border-color:#C70602}
+.bib-filtro-input{height:36px;border:1px solid #D6D6D6;border-radius:7px;padding:0 12px;background:#fff;font-size:13px;font-weight:400;color:#1F1F1F;font-family:Montserrat,system-ui,sans-serif}
+.bib-filtro-input.ativo{border-color:#C70602}
+.bib-arvore-btn{display:flex;justify-content:space-between;border:0;background:none;border-radius:6px;padding:7px 8px;cursor:pointer;font-family:Montserrat,system-ui,sans-serif;width:100%;text-align:left;transition:background .12s}
+.bib-arvore-btn:hover{background:#F4F4F4}
+.bib-arvore-btn.ativa{background:#FDECEC;color:#A80502}
+</style>
 
   <!-- CABEÇALHO -->
-  <div style="padding:24px 24px 0;display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px">
+  <div style="padding:20px 24px 0;display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap">
     <div>
-      <h1 style="font-size:22px;font-weight:800;color:var(--gray-900);margin:0 0 4px">Arquivo de Fichas</h1>
-      <p style="font-size:13px;color:var(--gray-500);margin:0">Histórico completo de fichas de reclamação — anteriores à ferramenta, criadas no sistema e concluídas. Organizado por empresa, mês e ano.</p>
+      <div style="font-size:12px;color:#929090;font-family:Montserrat,system-ui,sans-serif">Gestão / Arquivo de Fichas</div>
+      <div style="font-size:22px;font-weight:700;margin-top:2px;font-family:Montserrat,system-ui,sans-serif;color:#1F1F1F">Arquivo de Fichas</div>
+      <div style="font-size:13px;color:#666464;line-height:1.5;margin-top:4px;font-family:Montserrat,system-ui,sans-serif">Histórico completo das fichas de reclamação: as anteriores à ferramenta, as criadas no sistema e as concluídas. Organizado por empresa, ano e mês.</div>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button class="btn btn-secondary" style="font-size:13px" onclick="abrirModalImportarFicha()">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-        Importar Fichas (PDF/DOCX)
-      </button>
-      <button class="btn btn-primary" style="font-size:13px" onclick="loadBiblioteca(true)">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.68-4.18"/></svg>
-        Atualizar
-      </button>
+      <button onclick="abrirModalImportarFicha()" style="border:1px solid #D6D6D6;background:#fff;border-radius:8px;padding:9px 14px;cursor:pointer;font-size:13px;font-weight:600;font-family:Montserrat,system-ui,sans-serif;color:#1F1F1F">↑ Importar fichas (PDF/DOCX)</button>
+      <button onclick="loadBiblioteca(true)" style="border:0;background:#C70602;color:#fff;border-radius:8px;padding:9px 14px;cursor:pointer;font-size:13px;font-weight:600;font-family:Montserrat,system-ui,sans-serif" id="bib-btn-refresh">↻ Atualizar</button>
     </div>
   </div>
 
-  <!-- AVISO CONTEXTUAL -->
-  <div style="margin:16px 24px 0;padding:10px 16px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;display:flex;align-items:flex-start;gap:10px">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" style="flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-    <p style="margin:0;font-size:12px;color:#92400e;line-height:1.5">
-      <strong>Os números abaixo refletem as fichas já registradas no sistema</strong> (manifestações do Google Sheets). Use <strong>Importar Fichas</strong> para adicionar fichas históricas em PDF ou DOCX que existiam antes da ferramenta — elas ficam arquivadas aqui, separadas por empresa, mês e ano.
-    </p>
-  </div>
+  <!-- AVISO -->
+  <div style="margin:12px 24px 0;background:#FFFBEF;border:1px solid #F1E2B5;border-radius:10px;padding:12px 16px;font-size:13px;line-height:1.55;color:#5E3B00;font-family:Montserrat,system-ui,sans-serif">Os números abaixo incluem as fichas <strong>criadas no sistema</strong> e as <strong>fichas históricas importadas</strong> (PDF ou DOCX de antes da ferramenta). Cada ficha importada fica arquivada pela empresa, mês e ano da reclamação original, não pela data da importação.</div>
 
-  <!-- BARRA DE PESQUISA + FILTROS RÁPIDOS -->
-  <div style="padding:16px 24px 0">
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <div style="position:relative;flex:1;min-width:240px">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--gray-400)"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input id="bib-f-q" class="input" type="text" placeholder="Protocolo, cliente, empresa, motivo, colaborador..." style="padding-left:40px;width:100%;box-sizing:border-box" onkeydown="if(event.key==='Enter')loadBiblioteca(true)">
-      </div>
-      <select id="bib-f-ano" class="select" style="min-width:100px" onchange="loadBiblioteca(true)">
-        <option value="">Todos anos</option>
-      </select>
-      <select id="bib-f-mes" class="select" style="min-width:120px" onchange="loadBiblioteca(true)">
-        <option value="">Todos meses</option>
+  <!-- FILTROS -->
+  <div style="margin:12px 24px 0;background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:12px 14px;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end">
+    <label style="flex:1 1 240px;display:flex;flex-direction:column;gap:4px;font-size:11px;color:#666464;font-weight:600;font-family:Montserrat,system-ui,sans-serif">Buscar
+      <input id="bib-f-q" class="bib-filtro-input" type="text" placeholder="Protocolo, cliente, CNPJ, motivo, colaborador…" onkeydown="if(event.key==='Enter')loadBiblioteca(true)" oninput="_bibFiltroAtualizar('bib-f-q','input')">
+    </label>
+    <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:#666464;font-weight:600;font-family:Montserrat,system-ui,sans-serif">Ano
+      <select id="bib-f-ano" class="bib-filtro-select" style="min-width:100px" onchange="_bibFiltroAtualizar('bib-f-ano','select');loadBiblioteca(true)"><option value="">Todos</option></select>
+    </label>
+    <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:#666464;font-weight:600;font-family:Montserrat,system-ui,sans-serif">Mês
+      <select id="bib-f-mes" class="bib-filtro-select" style="min-width:120px" onchange="_bibFiltroAtualizar('bib-f-mes','select');loadBiblioteca(true)">
+        <option value="">Todos</option>
         <option value="01">Janeiro</option><option value="02">Fevereiro</option><option value="03">Março</option>
         <option value="04">Abril</option><option value="05">Maio</option><option value="06">Junho</option>
         <option value="07">Julho</option><option value="08">Agosto</option><option value="09">Setembro</option>
         <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
       </select>
-      <select id="bib-f-empresa" class="select" style="min-width:130px" onchange="loadBiblioteca(true)">
-        <option value="">Todas empresas</option>
+    </label>
+    <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:#666464;font-weight:600;font-family:Montserrat,system-ui,sans-serif">Empresa
+      <select id="bib-f-empresa" class="bib-filtro-select" style="min-width:130px" onchange="_bibFiltroAtualizar('bib-f-empresa','select');loadBiblioteca(true)"><option value="">Todas</option></select>
+    </label>
+    <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:#666464;font-weight:600;font-family:Montserrat,system-ui,sans-serif">Tipo
+      <select id="bib-f-tipo" class="bib-filtro-select" style="min-width:120px" onchange="_bibFiltroAtualizar('bib-f-tipo','select');loadBiblioteca(true)">
+        <option value="">Todos</option>
+        <option value="Reclamação">Reclamação</option><option value="Sugestão">Sugestão</option>
+        <option value="Solicitação">Solicitação</option><option value="Elogio">Elogio</option>
       </select>
-      <select id="bib-f-tipo" class="select" style="min-width:120px" onchange="loadBiblioteca(true)">
-        <option value="">Todos tipos</option>
-        <option value="Reclamação">Reclamação</option>
-        <option value="Dúvida">Dúvida</option>
-        <option value="Sugestão">Sugestão</option>
-        <option value="Elogio">Elogio</option>
+    </label>
+    <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:#666464;font-weight:600;font-family:Montserrat,system-ui,sans-serif">Origem
+      <select id="bib-f-origem" class="bib-filtro-select" style="min-width:110px" onchange="_bibFiltroAtualizar('bib-f-origem','select');loadBiblioteca(true)">
+        <option value="">Todas</option><option value="SISTEMA">Sistema</option><option value="IMPORTADA">Histórica</option>
       </select>
-      <select id="bib-f-status" class="select" style="min-width:120px" onchange="loadBiblioteca(true)">
-        <option value="">Todos status</option>
-        <option value="NOVA">Nova</option>
-        <option value="EM ANÁLISE">Em Análise</option>
-        <option value="RESOLVIDA">Resolvida</option>
-        <option value="CONCLUIDA">Concluída</option>
-        <option value="ENCERRADA">Encerrada</option>
+    </label>
+    <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:#666464;font-weight:600;font-family:Montserrat,system-ui,sans-serif">Status
+      <select id="bib-f-status" class="bib-filtro-select" style="min-width:120px" onchange="_bibFiltroAtualizar('bib-f-status','select');loadBiblioteca(true)">
+        <option value="">Todos</option>
+        <option value="ABERTA">Aberta</option><option value="EM_TRATATIVA">Em tratativa</option><option value="CONCLUIDA">Concluída</option>
       </select>
-      <button class="btn btn-secondary" style="font-size:12px;white-space:nowrap" onclick="limparFiltrosBib()">✕ Limpar</button>
+    </label>
+    <button onclick="limparFiltrosBib()" style="height:36px;border:1px solid #D6D6D6;background:#fff;border-radius:7px;padding:0 12px;cursor:pointer;font-size:12.5px;color:#A80502;font-weight:600;font-family:Montserrat,system-ui,sans-serif">× Limpar</button>
+  </div>
+
+  <!-- 6 KPI CARDS -->
+  <div style="padding:12px 24px 0;display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px">
+    <button class="bib-kpi-btn" style="background:#fff;pointer-events:none">
+      <span style="font-size:11px;font-weight:700;letter-spacing:.05em;color:#545252;font-family:Montserrat,system-ui,sans-serif">TOTAL GERAL</span>
+      <span style="font-size:26px;font-weight:700;color:#1F1F1F;font-variant-numeric:tabular-nums;font-family:Montserrat,system-ui,sans-serif" id="bib-stat-total">—</span>
+      <span style="font-size:11.5px;color:#929090;font-family:Montserrat,system-ui,sans-serif">fichas arquivadas</span>
+    </button>
+    <button class="bib-kpi-btn" style="background:#fff;pointer-events:none">
+      <span style="font-size:11px;font-weight:700;letter-spacing:.05em;color:#545252;font-family:Montserrat,system-ui,sans-serif">ESTE MÊS</span>
+      <span style="font-size:26px;font-weight:700;color:#24508F;font-variant-numeric:tabular-nums;font-family:Montserrat,system-ui,sans-serif" id="bib-stat-mes">—</span>
+      <span style="font-size:11.5px;color:#929090;font-family:Montserrat,system-ui,sans-serif">pela data da reclamação</span>
+    </button>
+    <button class="bib-kpi-btn" style="background:#fff;pointer-events:none">
+      <span style="font-size:11px;font-weight:700;letter-spacing:.05em;color:#545252;font-family:Montserrat,system-ui,sans-serif">ESTE ANO</span>
+      <span style="font-size:26px;font-weight:700;color:#1F1F1F;font-variant-numeric:tabular-nums;font-family:Montserrat,system-ui,sans-serif" id="bib-stat-ano">—</span>
+      <span style="font-size:11.5px;color:#929090;font-family:Montserrat,system-ui,sans-serif">pela data da reclamação</span>
+    </button>
+    <button class="bib-kpi-btn" style="background:#fff" id="bib-kpi-ev" onclick="bibToggleFiltroExtra('evidencia')">
+      <span style="font-size:11px;font-weight:700;letter-spacing:.05em;color:#545252;font-family:Montserrat,system-ui,sans-serif">COM EVIDÊNCIAS</span>
+      <span style="font-size:26px;font-weight:700;color:#1F1F1F;font-variant-numeric:tabular-nums;font-family:Montserrat,system-ui,sans-serif" id="bib-stat-ev">—</span>
+      <span style="font-size:11.5px;color:#929090;font-family:Montserrat,system-ui,sans-serif">clique para filtrar</span>
+    </button>
+    <button class="bib-kpi-btn" style="background:#fff" id="bib-kpi-trat" onclick="bibToggleFiltroExtra('tratativa')">
+      <span style="font-size:11px;font-weight:700;letter-spacing:.05em;color:#545252;font-family:Montserrat,system-ui,sans-serif">COM TRATATIVA</span>
+      <span style="font-size:26px;font-weight:700;color:#1E6B3A;font-variant-numeric:tabular-nums;font-family:Montserrat,system-ui,sans-serif" id="bib-stat-trat">—</span>
+      <span style="font-size:11.5px;color:#929090;font-family:Montserrat,system-ui,sans-serif">clique para filtrar</span>
+    </button>
+    <button class="bib-kpi-btn" style="background:#fff" id="bib-kpi-reinc" onclick="bibToggleFiltroExtra('reincidente')">
+      <span style="font-size:11px;font-weight:700;letter-spacing:.05em;color:#A80502;font-family:Montserrat,system-ui,sans-serif">REINCIDENTES</span>
+      <span style="font-size:26px;font-weight:700;color:#C70602;font-variant-numeric:tabular-nums;font-family:Montserrat,system-ui,sans-serif" id="bib-stat-reinc">—</span>
+      <span style="font-size:11.5px;color:#929090;font-family:Montserrat,system-ui,sans-serif">clique para filtrar</span>
+    </button>
+  </div>
+
+  <!-- POR EMPRESA + EVOLUÇÃO POR MÊS -->
+  <div style="padding:12px 24px 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr));gap:14px">
+    <div style="background:#fff;border:1px solid #E4E4E4;border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+      <span style="font-size:12px;font-weight:700;letter-spacing:.06em;color:#545252;font-family:Montserrat,system-ui,sans-serif">POR EMPRESA</span>
+      <div id="bib-por-empresa" style="display:flex;flex-direction:column;gap:8px"><div style="color:#929090;font-size:13px">Carregando…</div></div>
+    </div>
+    <div style="background:#fff;border:1px solid #E4E4E4;border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:baseline">
+        <span style="font-size:12px;font-weight:700;letter-spacing:.06em;color:#545252;font-family:Montserrat,system-ui,sans-serif">EVOLUÇÃO POR MÊS</span>
+        <span style="display:flex;gap:10px;font-size:11px;color:#666464;font-family:Montserrat,system-ui,sans-serif">
+          <span style="display:flex;gap:4px;align-items:center"><span style="width:10px;height:10px;border-radius:2px;background:#C70602;display:inline-block"></span>Sistema</span>
+          <span style="display:flex;gap:4px;align-items:center"><span style="width:10px;height:10px;border-radius:2px;background:#929090;display:inline-block"></span>Histórica</span>
+        </span>
+      </div>
+      <div id="bib-por-mes" style="display:flex;align-items:flex-end;gap:4px;height:160px"><div style="color:#929090;font-size:13px">Carregando…</div></div>
     </div>
   </div>
 
-  <!-- KPIs -->
-  <div style="padding:16px 24px 0;display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px" id="bib-kpis">
-    <div style="background:white;border:1px solid var(--gray-200);border-radius:10px;padding:14px 16px">
-      <div style="font-size:11px;color:var(--gray-500);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Total Geral</div>
-      <div style="font-size:26px;font-weight:800;color:var(--gray-900);line-height:1" id="bib-stat-total">—</div>
-      <div style="font-size:11px;color:var(--gray-400);margin-top:3px">manifestações</div>
+  <!-- ÁRVORE + TABELA -->
+  <div style="padding:12px 24px 32px;display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start">
+    <!-- Árvore -->
+    <div style="flex:0 0 220px;max-width:100%;background:#fff;border:1px solid #E4E4E4;border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:2px">
+      <span style="font-size:12px;font-weight:700;letter-spacing:.06em;color:#545252;font-family:Montserrat,system-ui,sans-serif;padding:4px 8px 8px;display:block">ARQUIVO</span>
+      <div id="bib-arvore"><div style="color:#929090;font-size:12px;padding:8px">Carregando…</div></div>
     </div>
-    <div style="background:white;border:1px solid var(--gray-200);border-radius:10px;padding:14px 16px">
-      <div style="font-size:11px;color:var(--gray-500);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Este Mês</div>
-      <div style="font-size:26px;font-weight:800;color:#2563eb;line-height:1" id="bib-stat-mes">—</div>
-      <div style="font-size:11px;color:var(--gray-400);margin-top:3px">registradas</div>
-    </div>
-    <div style="background:white;border:1px solid var(--gray-200);border-radius:10px;padding:14px 16px">
-      <div style="font-size:11px;color:var(--gray-500);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Este Ano</div>
-      <div style="font-size:26px;font-weight:800;color:#7c3aed;line-height:1" id="bib-stat-ano">—</div>
-      <div style="font-size:11px;color:var(--gray-400);margin-top:3px">registradas</div>
-    </div>
-    <div style="background:white;border:1px solid var(--gray-200);border-radius:10px;padding:14px 16px">
-      <div style="font-size:11px;color:var(--gray-500);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Com Evidências</div>
-      <div style="font-size:26px;font-weight:800;color:#0891b2;line-height:1" id="bib-stat-ev">—</div>
-      <div style="font-size:11px;color:var(--gray-400);margin-top:3px">documentadas</div>
-    </div>
-    <div style="background:white;border:1px solid var(--gray-200);border-radius:10px;padding:14px 16px">
-      <div style="font-size:11px;color:var(--gray-500);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Com Tratativa</div>
-      <div style="font-size:26px;font-weight:800;color:#16a34a;line-height:1" id="bib-stat-trat">—</div>
-      <div style="font-size:11px;color:var(--gray-400);margin-top:3px">resolvidas</div>
-    </div>
-    <div style="background:white;border:1px solid #fca5a5;border-radius:10px;padding:14px 16px;background:#fff5f5">
-      <div style="font-size:11px;color:#b91c1c;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Reincidentes</div>
-      <div style="font-size:26px;font-weight:800;color:#dc2626;line-height:1" id="bib-stat-reinc">—</div>
-      <div style="font-size:11px;color:#ef4444;margin-top:3px">atenção</div>
-    </div>
-  </div>
-
-  <!-- POR EMPRESA + EVOLUÇÃO — duas colunas -->
-  <div style="padding:16px 24px 0;display:grid;grid-template-columns:1fr 1fr;gap:12px">
-    <div style="background:white;border:1px solid var(--gray-200);border-radius:10px;padding:16px">
-      <div style="font-size:12px;font-weight:700;color:var(--gray-700);text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px">Por Empresa</div>
-      <div id="bib-por-empresa" style="display:flex;flex-direction:column;gap:8px">
-        <div style="color:var(--gray-400);font-size:13px">Carregando...</div>
-      </div>
-    </div>
-    <div style="background:white;border:1px solid var(--gray-200);border-radius:10px;padding:16px;overflow:hidden">
-      <div style="font-size:12px;font-weight:700;color:var(--gray-700);text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px">Evolução por Mês</div>
-      <div style="overflow-x:auto">
-        <div id="bib-por-mes" style="display:flex;gap:6px;align-items:flex-end;min-width:max-content;padding-bottom:4px">
-          <div style="color:var(--gray-400);font-size:13px">Carregando...</div>
+    <!-- Tabela -->
+    <div style="flex:1 1 400px;min-width:0;display:flex;flex-direction:column;gap:0">
+      <div style="background:#fff;border:1px solid #E4E4E4;border-radius:12px;overflow:hidden">
+        <div style="padding:10px 14px;border-bottom:1px solid #E4E4E4;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+          <div style="font-size:13px;font-weight:700;color:#1F1F1F;font-family:Montserrat,system-ui,sans-serif">
+            Fichas arquivadas <span id="bib-count" style="color:#929090;font-weight:400;font-size:12px;margin-left:4px"></span>
+          </div>
         </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- LISTA DE FICHAS -->
-  <div style="padding:16px 24px 32px">
-    <div style="background:white;border:1px solid var(--gray-200);border-radius:10px;overflow:hidden">
-      <div style="padding:12px 16px;border-bottom:1px solid var(--gray-100);display:flex;align-items:center;justify-content:space-between">
-        <div style="font-size:13px;font-weight:700;color:var(--gray-900)">
-          Manifestações Arquivadas
-          <span id="bib-count" style="color:var(--gray-400);font-weight:400;font-size:12px;margin-left:6px"></span>
+        <div id="bib-loading" style="text-align:center;padding:40px;color:#929090;display:none;font-family:Montserrat,system-ui,sans-serif;font-size:13px">
+          <div class="spinner" style="margin:0 auto 8px"></div>Carregando fichas…
         </div>
-        <div style="display:flex;align-items:center;gap:6px">
-          <button id="bib-prev-btn" class="btn btn-secondary" style="padding:4px 10px;font-size:12px" onclick="bibChangePage(-1)">‹</button>
-          <span id="bib-page-info" style="font-size:12px;color:var(--gray-500);white-space:nowrap"></span>
-          <button id="bib-next-btn" class="btn btn-secondary" style="padding:4px 10px;font-size:12px" onclick="bibChangePage(1)">›</button>
+        <div id="bib-empty" style="text-align:center;padding:48px;color:#929090;display:none">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin:0 auto 12px;display:block;color:#D6D6D6"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <div style="font-size:14px;font-weight:600;color:#666464;margin-bottom:4px;font-family:Montserrat,system-ui,sans-serif">Nenhuma ficha encontrada</div>
+          <div style="font-size:12px;color:#929090;font-family:Montserrat,system-ui,sans-serif">Ajuste os filtros ou importe fichas históricas</div>
+          <button onclick="limparFiltrosBib()" style="margin-top:12px;border:1px solid #D6D6D6;background:#fff;border-radius:7px;padding:6px 14px;cursor:pointer;font-size:12px;font-family:Montserrat,system-ui,sans-serif;color:#A80502;font-weight:600">Limpar filtros</button>
         </div>
-      </div>
-      <div id="bib-loading" style="text-align:center;padding:40px;color:var(--gray-400);display:none">
-        <div class="spinner" style="margin:0 auto 8px"></div>
-        Carregando manifestações...
-      </div>
-      <div id="bib-empty" style="text-align:center;padding:48px;color:var(--gray-400);display:none">
-        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin:0 auto 12px;display:block;color:var(--gray-300)"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-        <div style="font-size:14px;font-weight:600;color:var(--gray-500);margin-bottom:4px">Nenhuma manifestação encontrada</div>
-        <div style="font-size:12px;color:var(--gray-400)">Tente ajustar os filtros ou importe fichas históricas em PDF/DOCX</div>
-        <button class="btn btn-secondary" style="margin-top:12px;font-size:12px" onclick="abrirModalImportarFicha()">Importar Fichas</button>
-      </div>
-      <div style="overflow-x:auto">
-        <table class="table" id="bib-table" style="display:none">
-          <thead>
-            <tr>
-              <th style="white-space:nowrap">PROTOCOLO</th>
-              <th style="white-space:nowrap">DATA</th>
-              <th>CLIENTE</th>
-              <th>EMPRESA</th>
-              <th>TIPO</th>
-              <th>SETOR</th>
-              <th style="white-space:nowrap">STATUS</th>
-              <th style="text-align:center">EVID.</th>
-              <th style="text-align:center">TRAT.</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="bib-tbody"></tbody>
-        </table>
+        <div style="overflow-x:auto">
+          <table style="border-collapse:collapse;width:100%;font-size:13px;font-family:Montserrat,system-ui,sans-serif" id="bib-table">
+            <thead>
+              <tr style="background:#FAFAFA">
+                <th style="text-align:left;padding:10px 12px;border-bottom:1px solid #E4E4E4;font-weight:600;font-size:11px;color:#666464;white-space:nowrap">PROTOCOLO</th>
+                <th style="text-align:left;padding:10px 12px;border-bottom:1px solid #E4E4E4;font-weight:600;font-size:11px;color:#666464;white-space:nowrap">DATA</th>
+                <th style="text-align:left;padding:10px 12px;border-bottom:1px solid #E4E4E4;font-weight:600;font-size:11px;color:#666464">EMPRESA</th>
+                <th style="text-align:left;padding:10px 12px;border-bottom:1px solid #E4E4E4;font-weight:600;font-size:11px;color:#666464">CLIENTE</th>
+                <th style="text-align:left;padding:10px 12px;border-bottom:1px solid #E4E4E4;font-weight:600;font-size:11px;color:#666464">TIPO</th>
+                <th style="text-align:left;padding:10px 12px;border-bottom:1px solid #E4E4E4;font-weight:600;font-size:11px;color:#666464">MOTIVO</th>
+                <th style="text-align:left;padding:10px 12px;border-bottom:1px solid #E4E4E4;font-weight:600;font-size:11px;color:#666464">ORIGEM</th>
+                <th style="text-align:center;padding:10px 12px;border-bottom:1px solid #E4E4E4;font-weight:600;font-size:11px;color:#666464">EVID.</th>
+                <th style="text-align:left;padding:10px 12px;border-bottom:1px solid #E4E4E4;font-weight:600;font-size:11px;color:#666464">STATUS</th>
+              </tr>
+            </thead>
+            <tbody id="bib-tbody"></tbody>
+          </table>
+        </div>
+        <div id="bib-carregar-mais" style="display:none;padding:12px;text-align:center">
+          <button onclick="bibCarregarMais()" style="border:1px solid #D6D6D6;background:#fff;border-radius:7px;padding:8px 20px;cursor:pointer;font-size:13px;font-weight:600;font-family:Montserrat,system-ui,sans-serif;color:#1F1F1F">Carregar mais</button>
+        </div>
       </div>
     </div>
   </div>
 </div>
+
+<!-- PAINEL LATERAL DA FICHA -->
+<div id="bib-painel">
+  <div style="padding:14px 16px;border-bottom:1px solid #E4E4E4;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+    <div id="bib-painel-titulo" style="font-size:14px;font-weight:700;color:#1F1F1F;font-family:Montserrat,system-ui,sans-serif">Ficha</div>
+    <button onclick="closeBibPainel()" style="border:0;background:none;cursor:pointer;font-size:18px;color:#929090;line-height:1">✕</button>
+  </div>
+  <div id="bib-painel-body" style="padding:16px;flex:1;overflow-y:auto;font-family:Montserrat,system-ui,sans-serif;font-size:13px">
+    <div style="text-align:center;color:#929090;padding:30px">Carregando…</div>
+  </div>
+</div>
+<div id="bib-painel-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.25);z-index:299" onclick="closeBibPainel()"></div>
 
 <!-- MODAL IMPORTAR FICHAS -->
 <div id="modal-importar-ficha" class="modal-overlay" style="display:none" onclick="if(event.target===this)fecharModalImportarFicha()">
-  <div class="modal-box" style="max-width:560px">
+  <div class="modal-box" style="max-width:620px;max-height:90vh;overflow-y:auto">
     <div class="modal-header">
-      <h3>Importar Fichas Históricas</h3>
+      <h3>Importar fichas históricas</h3>
       <button class="modal-close" onclick="fecharModalImportarFicha()">✕</button>
     </div>
     <div class="modal-body">
-      <p style="font-size:13px;color:var(--gray-600);margin-bottom:16px">
-        Envie fichas de atendimento já preenchidas em <strong>PDF</strong> ou <strong>DOCX</strong>. O sistema vai extrair os dados e registrá-los no histórico.
-      </p>
-      <div id="importar-dropzone" style="border:2px dashed var(--gray-300);border-radius:10px;padding:32px;text-align:center;cursor:pointer;transition:border-color .2s"
+      <p style="font-size:13px;color:#666464;margin:0 0 14px;line-height:1.5">Envie fichas em <strong>PDF ou DOCX</strong> (até 20 MB por arquivo). Informe empresa e data da reclamação original — é como a ficha será arquivada.</p>
+      <div id="importar-dropzone" style="border:2px dashed #D6D6D6;border-radius:10px;padding:28px;text-align:center;cursor:pointer;transition:border-color .2s"
            onclick="document.getElementById('importar-file-input').click()"
-           ondragover="event.preventDefault();this.style.borderColor='var(--red)'"
-           ondragleave="this.style.borderColor='var(--gray-300)'"
+           ondragover="event.preventDefault();this.style.borderColor='#C70602'"
+           ondragleave="this.style.borderColor='#D6D6D6'"
            ondrop="handleImportarDrop(event)">
-        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--gray-400);margin:0 auto 10px;display:block"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-        <div style="font-size:14px;font-weight:600;color:var(--gray-700);margin-bottom:4px">Arraste arquivos aqui ou clique para selecionar</div>
-        <div style="font-size:12px;color:var(--gray-400)">PDF, DOCX • até 10 arquivos • 10MB por arquivo</div>
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#929090" stroke-width="1.5" style="margin:0 auto 10px;display:block"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <div style="font-size:14px;font-weight:600;color:#1F1F1F;margin-bottom:4px;font-family:Montserrat,system-ui,sans-serif">Arraste arquivos aqui ou clique para selecionar</div>
+        <div style="font-size:12px;color:#929090;font-family:Montserrat,system-ui,sans-serif">PDF, DOCX • até 10 arquivos • 20 MB por arquivo</div>
         <input id="importar-file-input" type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple style="display:none" onchange="handleImportarFiles(this.files)">
       </div>
-      <div id="importar-file-list" style="margin-top:12px;display:flex;flex-direction:column;gap:6px"></div>
-      <div id="importar-status" style="display:none;margin-top:12px;padding:10px 14px;border-radius:8px;font-size:13px"></div>
-      <div style="margin-top:8px;padding:10px 14px;background:#f0f9ff;border-radius:8px;font-size:12px;color:#0369a1">
-        <strong>Como funciona:</strong> O sistema lê o conteúdo do arquivo, extrai protocolo, data, cliente, tipo, setor e motivo com ajuda da IA, e cria o registro no histórico para consulta. Revise os dados após a importação.
-      </div>
+      <div id="importar-file-list" style="margin-top:12px;display:flex;flex-direction:column;gap:10px"></div>
+      <div id="importar-status" style="display:none;margin-top:12px;padding:10px 14px;border-radius:8px;font-size:13px;font-family:Montserrat,system-ui,sans-serif"></div>
     </div>
     <div class="modal-footer" style="display:flex;gap:8px;justify-content:flex-end">
       <button class="btn btn-secondary" onclick="fecharModalImportarFicha()">Cancelar</button>
-      <button class="btn btn-primary" id="importar-btn-enviar" onclick="enviarFichasImportadas()" disabled>
-        Importar Fichas
+      <button style="border:0;background:#C70602;color:#fff;border-radius:8px;padding:9px 18px;cursor:pointer;font-size:13px;font-weight:600;font-family:Montserrat,system-ui,sans-serif" id="importar-btn-enviar" onclick="enviarFichasImportadas()" disabled>
+        Importar fichas
       </button>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL DOSSIÊ DA FICHA (Arquivo de Fichas) -->
-<div id="modal-bib-ficha" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeBibFichaModal()">
-  <div class="modal-box" style="max-width:780px;max-height:90vh;overflow-y:auto">
-    <div class="modal-header">
-      <h3 id="bib-modal-titulo">Ficha</h3>
-      <button class="modal-close" onclick="closeBibFichaModal()">✕</button>
-    </div>
-    <div class="modal-body" id="bib-modal-body">
-      <div style="text-align:center;color:var(--gray-400);padding:30px">Carregando...</div>
     </div>
   </div>
 </div>
@@ -5069,9 +5080,28 @@ function navigate(page, el) {
 let _bibPage = 1;
 let _bibTotalPages = 1;
 let _bibStats = null;
+let _bibFiltroExtra = null; // 'evidencia'|'tratativa'|'reincidente'
+let _bibFichasAcum = [];
+let _bibArvoreAberto = {}; // { empresaKey: true, 'empresaKey/ano': true }
+
+function _bibFiltroAtualizar(id, tipo) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const ativo = tipo === 'select' ? !!el.value : !!el.value.trim();
+  el.classList.toggle('ativo', ativo);
+}
+
+function bibToggleFiltroExtra(tipo) {
+  _bibFiltroExtra = _bibFiltroExtra === tipo ? null : tipo;
+  ['ev','trat','reinc'].forEach(k => {
+    const map = {ev:'evidencia',trat:'tratativa',reinc:'reincidente'};
+    document.getElementById('bib-kpi-'+k)?.classList.toggle('ativo', _bibFiltroExtra === map[k]);
+  });
+  loadBiblioteca(true);
+}
 
 async function loadBiblioteca(reset) {
-  if (reset) _bibPage = 1;
+  if (reset) { _bibPage = 1; _bibFichasAcum = []; }
   const tok = sessionStorage.getItem('sac-token');
   if (!tok) return;
   const q = (document.getElementById('bib-f-q')?.value||'').trim();
@@ -5079,38 +5109,42 @@ async function loadBiblioteca(reset) {
   const mes = document.getElementById('bib-f-mes')?.value||'';
   const empresa = document.getElementById('bib-f-empresa')?.value||'';
   const tipo = document.getElementById('bib-f-tipo')?.value||'';
+  const origem = document.getElementById('bib-f-origem')?.value||'';
   const status = document.getElementById('bib-f-status')?.value||'';
 
-  // Indicar filtros ativos
-  const filtrosAtivos = !!(q||ano||mes||empresa||tipo||status);
-  const badge = document.getElementById('bib-filtros-badge');
-  if (badge) badge.style.display = filtrosAtivos ? '' : 'none';
-
-  const params = new URLSearchParams({ page: _bibPage, limit: 50 });
+  const params = new URLSearchParams({ page: _bibPage, limit: 25 });
   if (q) params.set('q', q);
   if (ano) params.set('ano', ano);
   if (mes) params.set('mes', mes);
   if (empresa) params.set('empresa', empresa);
   if (tipo) params.set('tipo', tipo);
   if (status) params.set('status', status);
+  if (_bibFiltroExtra === 'evidencia') params.set('com_evidencia', '1');
+  if (_bibFiltroExtra === 'tratativa') params.set('com_tratativa', '1');
+  if (_bibFiltroExtra === 'reincidente') params.set('reincidente', '1');
 
   const statsParams = new URLSearchParams();
   if (empresa) statsParams.set('empresa', empresa);
   if (ano) statsParams.set('ano', ano);
   if (mes) statsParams.set('mes', mes);
 
-  document.getElementById('bib-loading').style.display='block';
-  document.getElementById('bib-table').style.display='none';
-  document.getElementById('bib-empty').style.display='none';
+  if (reset) {
+    document.getElementById('bib-loading').style.display='block';
+    document.getElementById('bib-table').style.display='none';
+    document.getElementById('bib-table').style.display='none';
+    document.getElementById('bib-empty').style.display='none';
+    document.getElementById('bib-carregar-mais').style.display='none';
+    document.getElementById('bib-tbody').innerHTML='';
+  }
 
   try {
-    const [fichasRes, statsRes] = await Promise.all([
-      fetch(API+'/api/biblioteca/fichas?'+params, {headers:{'Authorization':'Bearer '+tok}}).then(r=>r.json()),
-      fetch(API+'/api/biblioteca/stats?'+statsParams, {headers:{'Authorization':'Bearer '+tok}}).then(r=>r.json()).catch(()=>({sucesso:false})),
-    ]);
+    const promises = [fetch(API+'/api/biblioteca/fichas?'+params, {headers:{'Authorization':'Bearer '+tok}}).then(r=>r.json())];
+    if (reset) promises.push(fetch(API+'/api/biblioteca/stats?'+statsParams, {headers:{'Authorization':'Bearer '+tok}}).then(r=>r.json()).catch(()=>({sucesso:false})));
+    const results = await Promise.all(promises);
+    const fichasRes = results[0];
+    const statsRes = reset ? results[1] : null;
 
-    // Stats
-    if (statsRes.sucesso) {
+    if (statsRes && statsRes.sucesso) {
       _bibStats = statsRes;
       document.getElementById('bib-stat-total').textContent = (statsRes.totalFichas ?? 0).toLocaleString('pt-BR');
       document.getElementById('bib-stat-mes').textContent = (statsRes.fichasDoMes ?? 0).toLocaleString('pt-BR');
@@ -5119,63 +5153,88 @@ async function loadBiblioteca(reset) {
       document.getElementById('bib-stat-trat').textContent = (statsRes.comTratativa ?? 0).toLocaleString('pt-BR');
       document.getElementById('bib-stat-reinc').textContent = (statsRes.reincidentes ?? 0).toLocaleString('pt-BR');
       renderBibPorEmpresa(statsRes.porEmpresaDetalhe || {});
-      renderBibPorMes(statsRes.porMes || []);
-      renderBibAnoOptions(Object.keys(statsRes.porEmpresa || {}).length > 0
-        ? [...new Set((statsRes.porMes||[]).map(m=>m.ano))].sort().reverse()
-        : []);
+      renderBibPorMes((statsRes.porMes || []).slice(-12));
+      renderBibArvore(statsRes.arvore || {});
+      renderBibAnoOptions([...new Set((statsRes.porMes||[]).map(m=>m.ano))].sort().reverse());
       renderBibEmpresaOptions(Object.keys(statsRes.porEmpresa || {}));
     }
 
-    // Fichas
     document.getElementById('bib-loading').style.display='none';
     if (!fichasRes.sucesso) { document.getElementById('bib-empty').style.display='block'; return; }
-    _bibTotalPages = fichasRes.pages || 1;
-    document.getElementById('bib-count').textContent = `(${fichasRes.total} ficha${fichasRes.total !== 1 ? 's' : ''})`;
-    document.getElementById('bib-page-info').textContent = `Pág. ${fichasRes.page}/${_bibTotalPages}`;
-    document.getElementById('bib-prev-btn').disabled = fichasRes.page <= 1;
-    document.getElementById('bib-next-btn').disabled = fichasRes.page >= _bibTotalPages;
 
-    if (!fichasRes.fichas || fichasRes.fichas.length === 0) {
-      document.getElementById('bib-empty').style.display='block';
-      return;
-    }
+    _bibTotalPages = fichasRes.pages || 1;
+    const total = fichasRes.total ?? 0;
+    document.getElementById('bib-count').textContent = `(${total.toLocaleString('pt-BR')} ficha${total !== 1 ? 's' : ''})`;
+
+    if (reset && total === 0) { document.getElementById('bib-empty').style.display='block'; return; }
+
+    _bibFichasAcum = reset ? (fichasRes.fichas||[]) : [..._bibFichasAcum, ...(fichasRes.fichas||[])];
+    _renderBibTabela(_bibFichasAcum);
     document.getElementById('bib-table').style.display='table';
-    const meses = ['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-    document.getElementById('bib-tbody').innerHTML = fichasRes.fichas.map(f => {
-      const dt = f.DATA_REGISTRO ? new Date(f.DATA_REGISTRO).toLocaleDateString('pt-BR') : (f.ANO&&f.MES?`${meses[parseInt(f.MES)]}/${f.ANO}`:'—');
-      const evCount = parseInt(f.TOTAL_EVIDENCIAS||0);
-      const statusCls = (f.STATUS||'').toLowerCase().includes('nova')?'status-recebida':(f.STATUS||'').toLowerCase().includes('análise')?'status-em-analise':'status-encerrada';
-      const origemTag = (f.ORIGEM||'') === 'IMPORTACAO_MANUAL' ? '<span style="font-size:10px;background:#fef3c7;color:#92400e;border-radius:4px;padding:1px 5px;margin-left:4px">importada</span>' : '';
-      return `<tr>
-        <td><span style="font-family:monospace;font-size:12px;font-weight:600">${escHtml(f.PROTOCOLO||f.ID_MANIFESTACAO||'—')}</span>${origemTag}</td>
-        <td style="white-space:nowrap;font-size:12px">${dt}</td>
-        <td style="max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escHtml(f.NOME_CLIENTE||'')}">${escHtml(f.NOME_CLIENTE||f.ORIG_CONTATO||'—')}</td>
-        <td style="font-size:12px">${escHtml(f.EMPRESA||'—')}</td>
-        <td><span class="badge" style="font-size:11px;background:${(f.TIPO_MANIFESTACAO||f.TIPO||'').includes('Reclam')?'#fee2e2':((f.TIPO_MANIFESTACAO||f.TIPO||'').includes('Elogio')?'#dcfce7':'#fef9c3')};color:var(--gray-700)">${escHtml(f.TIPO_MANIFESTACAO||f.TIPO||'Reclamação')}</span></td>
-        <td style="font-size:12px;max-width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(f.SETOR_RECEBIMENTO||f.SETOR_DESTINO||'—')}</td>
-        <td><span class="status-badge ${statusCls}" style="font-size:11px">${escHtml(f.STATUS||'—')}</span></td>
-        <td style="text-align:center">${evCount>0?`<span style="font-size:12px;color:#0891b2">📎 ${evCount}</span>`:'<span style="color:var(--gray-300)">—</span>'}</td>
-        <td style="text-align:center">${f.COM_TRATATIVA||f.TRATATIVA_STATUS?'<span style="color:#16a34a;font-size:14px">✓</span>':'<span style="color:var(--gray-300)">—</span>'}</td>
-        <td><button class="btn btn-secondary" style="padding:3px 8px;font-size:11px;white-space:nowrap" onclick="openBibFicha('${escHtml(f.ID_MANIFESTACAO||f.PROTOCOLO||'')}')">Ver ficha</button></td>
-      </tr>`;
-    }).join('');
+
+    const temMais = fichasRes.page < _bibTotalPages;
+    document.getElementById('bib-carregar-mais').style.display = temMais ? 'block' : 'none';
+
   } catch(e) {
     document.getElementById('bib-loading').style.display='none';
     document.getElementById('bib-empty').style.display='block';
-    document.getElementById('bib-empty').textContent = 'Erro ao carregar fichas: ' + e.message;
+    document.getElementById('bib-empty').querySelector('div')?.remove();
   }
 }
 
-function bibChangePage(delta) {
-  const np = _bibPage + delta;
-  if (np < 1 || np > _bibTotalPages) return;
-  _bibPage = np;
+function bibCarregarMais() {
+  _bibPage++;
   loadBiblioteca(false);
 }
 
+function _nomMes(m) {
+  return {'01':'Jan','02':'Fev','03':'Mar','04':'Abr','05':'Mai','06':'Jun','07':'Jul','08':'Ago','09':'Set','10':'Out','11':'Nov','12':'Dez'}[m]||m;
+}
+
+function _bibStatusBadge(status) {
+  const s = (status||'').toUpperCase();
+  if (s.includes('CONCLU') || s.includes('RESOLV') || s.includes('ENCERR') || s.includes('FINALIZ')) return `<span class="bib-badge-concluida">${escHtml(status)}</span>`;
+  if (s.includes('TRATATIVA') || s.includes('ANÁLISE') || s.includes('ANALISE') || s.includes('ANDAMENTO')) return `<span class="bib-badge-tratativa">${escHtml(status)}</span>`;
+  return `<span class="bib-badge-aberta">${escHtml(status||'Aberta')}</span>`;
+}
+
+function _bibOrigemBadge(origem) {
+  if ((origem||'').includes('IMPORT') || (origem||'').includes('HISTOR')) return '<span class="bib-badge-historica">Histórica</span>';
+  return '<span class="bib-badge-sistema">Sistema</span>';
+}
+
+function _renderBibTabela(fichas) {
+  document.getElementById('bib-tbody').innerHTML = fichas.map(f => {
+    const dt = f.DATA_REGISTRO ? new Date(f.DATA_REGISTRO).toLocaleDateString('pt-BR') : (f.ANO&&f.MES?`${_nomMes(f.MES)}/${f.ANO}`:'—');
+    const evCount = parseInt(f.TOTAL_EVIDENCIAS||0);
+    const reinc = f.REINCIDENTE ? '<span title="Reincidente" style="color:#A80502;font-weight:700;margin-left:4px">⚠</span>' : '';
+    const cliente = escHtml(f.NOME_CLIENTE||f.ORIG_CONTATO||'—');
+    const motivo = escHtml((f.MOTIVO||'').slice(0,60) + ((f.MOTIVO||'').length>60?'…':''));
+    const id = escHtml(f.ID_MANIFESTACAO||f.PROTOCOLO||'');
+    return `<tr class="bib-row" onclick="openBibFicha('${id}', this)">
+      <td style="padding:10px 12px;border-bottom:1px solid #F0F0F0;white-space:nowrap"><span style="font-family:monospace;font-size:12px;font-weight:600;color:#1F1F1F">${escHtml(f.PROTOCOLO||f.ID_MANIFESTACAO||'—')}</span></td>
+      <td style="padding:10px 12px;border-bottom:1px solid #F0F0F0;white-space:nowrap;font-size:12px;color:#666464">${dt}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #F0F0F0;font-size:12px;max-width:130px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(f.EMPRESA||'—')}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #F0F0F0;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${cliente}${reinc}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #F0F0F0;font-size:12px;white-space:nowrap">${escHtml(f.TIPO_MANIFESTACAO||f.TIPO||'—')}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #F0F0F0;font-size:12px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#666464">${motivo||'—'}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #F0F0F0">${_bibOrigemBadge(f.ORIGEM||'')}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #F0F0F0;text-align:center;font-size:12px">${evCount>0?`<span style="color:#24508F;font-weight:600">📎 ${evCount}</span>`:'<span style="color:#D6D6D6">—</span>'}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #F0F0F0">${_bibStatusBadge(f.STATUS)}</td>
+    </tr>`;
+  }).join('');
+}
+
 function limparFiltrosBib() {
-  ['bib-f-ano','bib-f-mes','bib-f-empresa','bib-f-tipo','bib-f-status'].forEach(id => { const el=document.getElementById(id); if(el)el.value=''; });
-  const q = document.getElementById('bib-f-q'); if(q) q.value='';
+  ['bib-f-ano','bib-f-mes','bib-f-empresa','bib-f-tipo','bib-f-origem','bib-f-status'].forEach(id => {
+    const el=document.getElementById(id);
+    if(el){ el.value=''; el.classList.remove('ativo'); }
+  });
+  const q = document.getElementById('bib-f-q');
+  if(q){ q.value=''; q.classList.remove('ativo'); }
+  _bibFiltroExtra = null;
+  ['ev','trat','reinc'].forEach(k => document.getElementById('bib-kpi-'+k)?.classList.remove('ativo'));
+  closeBibPainel();
   loadBiblioteca(true);
 }
 
@@ -5190,123 +5249,187 @@ function renderBibEmpresaOptions(empresas) {
   const sel = document.getElementById('bib-f-empresa');
   if (!sel) return;
   const cur = sel.value;
-  const unique = [...new Set(empresas)].sort();
-  sel.innerHTML = '<option value="">Todas</option>' + unique.map(e => `<option value="${escHtml(e)}"${e===cur?' selected':''}>${escHtml(e)}</option>`).join('');
+  sel.innerHTML = '<option value="">Todas</option>' + [...new Set(empresas)].sort().map(e => `<option value="${escHtml(e)}"${e===cur?' selected':''}>${escHtml(e)}</option>`).join('');
 }
 
 function renderBibPorEmpresa(porEmpresaDetalhe) {
   const wrap = document.getElementById('bib-por-empresa');
   if (!wrap) return;
   const empresas = Object.entries(porEmpresaDetalhe).sort((a,b) => b[1].total - a[1].total);
-  if (empresas.length === 0) {
-    wrap.innerHTML = '<div style="color:var(--gray-400);font-size:13px;padding:12px">Nenhum dado disponível.</div>';
-    return;
-  }
+  if (!empresas.length) { wrap.innerHTML = '<div style="color:#929090;font-size:13px">Nenhum dado.</div>'; return; }
   wrap.innerHTML = empresas.map(([emp, d]) => {
     const pct = v => d.total > 0 ? Math.round(v/d.total*100) : 0;
-    return `<div style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--gray-50,#f9fafb);border:1px solid var(--gray-200);border-radius:8px;cursor:pointer;transition:background .15s" onmouseenter="this.style.background='#f3f4f6'" onmouseleave="this.style.background='var(--gray-50,#f9fafb)'" onclick="document.getElementById('bib-f-empresa').value='${escHtml(emp)}';loadBiblioteca(true)">
-      <div style="font-size:22px;font-weight:800;color:#2563eb;min-width:36px;text-align:right;font-variant-numeric:tabular-nums">${d.total}</div>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:13px;font-weight:700;color:var(--gray-900);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(emp)}</div>
-        <div style="font-size:11px;color:var(--gray-400);margin-top:1px">Tratativa ${pct(d.comTratativa)}% · Evidência ${pct(d.comEvidencia)}%${d.reincidentes>0?' · <span style="color:#dc2626">⚠ '+d.reincidentes+' reinc.</span>':''}</div>
-      </div>
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--gray-300);flex-shrink:0"><polyline points="9 18 15 12 9 6"/></svg>
-    </div>`;
+    const ptrat = pct(d.comTratativa);
+    const selVal = escHtml(emp);
+    return `<button onclick="document.getElementById('bib-f-empresa').value='${selVal}';_bibFiltroAtualizar('bib-f-empresa','select');loadBiblioteca(true)"
+      style="display:grid;grid-template-columns:52px minmax(0,1fr) 14px;gap:12px;align-items:center;text-align:left;border:1.5px solid #E4E4E4;background:#fff;border-radius:10px;padding:10px 14px;cursor:pointer;white-space:normal;width:100%;font-family:Montserrat,system-ui,sans-serif;transition:border-color .15s"
+      onmouseenter="this.style.borderColor='#C70602'" onmouseleave="this.style.borderColor='#E4E4E4'">
+      <span style="font-size:24px;font-weight:700;color:#C70602;font-variant-numeric:tabular-nums">${d.total}</span>
+      <span style="display:flex;flex-direction:column;gap:5px;min-width:0">
+        <span style="font-weight:700;font-size:13px">${escHtml(emp)}</span>
+        <span style="display:flex;gap:4px 12px;flex-wrap:wrap;font-size:11.5px;color:#666464">
+          <span>Tratativa ${ptrat}%</span>
+          <span>Evidência ${pct(d.comEvidencia)}%</span>
+          ${d.reincidentes>0?`<span style="color:#A80502;font-weight:600">⚠ ${d.reincidentes} reincid.</span>`:''}
+        </span>
+        <span style="display:block;height:5px;border-radius:3px;background:#F0F0F0;overflow:hidden;position:relative">
+          <span style="display:block;position:absolute;left:0;top:0;bottom:0;width:${ptrat}%;background:#1E6B3A"></span>
+        </span>
+      </span>
+      <span style="color:#929090">›</span>
+    </button>`;
   }).join('');
 }
 
 function renderBibPorMes(porMes) {
   const wrap = document.getElementById('bib-por-mes');
   if (!wrap) return;
-  if (!porMes || porMes.length === 0) {
-    wrap.innerHTML = '<div style="color:var(--gray-400);font-size:13px;padding:12px">Nenhum dado disponível.</div>';
-    return;
-  }
-  const nomMes = {'01':'Jan','02':'Fev','03':'Mar','04':'Abr','05':'Mai','06':'Jun','07':'Jul','08':'Ago','09':'Set','10':'Out','11':'Nov','12':'Dez'};
-  const maxFichas = Math.max(...porMes.map(m => m.fichas || 0), 1);
-  wrap.innerHTML = porMes.slice(-18).map(m => {
-    const label = `${nomMes[m.mes]||m.mes}/${m.ano}`;
-    const barH = Math.max(Math.round((m.fichas||0)/maxFichas*60), 2);
-    return `<div style="display:flex;flex-direction:column;align-items:center;cursor:pointer;min-width:72px"
-      onclick="document.getElementById('bib-f-ano').value='${m.ano}';document.getElementById('bib-f-mes').value='${m.mes}';document.getElementById('bib-filtros-details').open=true;loadBiblioteca(true)">
-      <div style="width:48px;height:60px;display:flex;align-items:flex-end;justify-content:center">
-        <div style="width:32px;height:${barH}px;background:var(--primary,#2563eb);border-radius:4px 4px 0 0;opacity:.85"></div>
-      </div>
-      <div style="font-size:11px;font-weight:700;color:var(--gray-900);margin-top:4px">${m.fichas||0}</div>
-      <div style="font-size:10px;color:var(--gray-400);white-space:nowrap">${label}</div>
-      ${(m.comTratativa||0)>0?`<div style="font-size:9px;color:var(--green-600,#16a34a)">🔧 ${m.comTratativa}</div>`:''}
-    </div>`;
+  if (!porMes?.length) { wrap.innerHTML = '<div style="color:#929090;font-size:13px">Nenhum dado.</div>'; return; }
+  const maxTotal = Math.max(...porMes.map(m => m.fichas || 0), 1);
+  const BAR_H = 120;
+  wrap.innerHTML = porMes.map(m => {
+    const hS = Math.max(Math.round((m.sistema||0)/maxTotal*BAR_H), (m.sistema||0)>0?2:0);
+    const hH = Math.max(Math.round((m.historica||0)/maxTotal*BAR_H), (m.historica||0)>0?2:0);
+    const label = _nomMes(m.mes);
+    const isSelected = document.getElementById('bib-f-ano')?.value===m.ano && document.getElementById('bib-f-mes')?.value===m.mes;
+    return `<button onclick="document.getElementById('bib-f-ano').value='${m.ano}';document.getElementById('bib-f-mes').value='${m.mes}';_bibFiltroAtualizar('bib-f-ano','select');_bibFiltroAtualizar('bib-f-mes','select');loadBiblioteca(true)"
+      title="${label}/${m.ano}: ${m.fichas||0} (${m.sistema||0} sistema, ${m.historica||0} hist.)"
+      style="flex:1;min-width:0;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:3px;border:0;background:none;padding:0 1px;cursor:pointer">
+      <span style="font-size:10.5px;font-weight:700;color:#3A3939;font-family:Montserrat,system-ui,sans-serif">${m.fichas||0}</span>
+      <span style="width:100%;max-width:28px;display:flex;flex-direction:column;border-radius:3px 3px 0 0;overflow:hidden;outline:${isSelected?'2px solid #C70602':'none'};outline-offset:2px">
+        <span style="height:${hS}px;background:#C70602;display:block"></span>
+        <span style="height:${hH}px;background:#929090;display:block"></span>
+        ${(!hS&&!hH)?'<span style="height:3px;background:#E4E4E4;display:block"></span>':''}
+      </span>
+      <span style="font-size:10px;color:#666464;font-family:Montserrat,system-ui,sans-serif;white-space:nowrap;overflow:hidden;max-width:100%">${label}</span>
+    </button>`;
   }).join('');
 }
 
-function renderBibHierarquia() {} // legado — mantido para evitar erros de ref
+function renderBibArvore(arvore) {
+  const wrap = document.getElementById('bib-arvore');
+  if (!wrap) return;
+  const empresas = Object.entries(arvore).sort((a,b) => b[1].total - a[1].total);
+  if (!empresas.length) { wrap.innerHTML = '<div style="color:#929090;font-size:12px;padding:8px">Nenhum dado.</div>'; return; }
+  let html = '';
+  const anoAtual = new Date().getFullYear().toString();
+  for (const [emp, empData] of empresas) {
+    const eKey = emp;
+    const eOpen = _bibArvoreAberto[eKey] ?? true;
+    html += `<button class="bib-arvore-btn" onclick="bibArvoreToggle('${escHtml(eKey)}')" style="font-weight:700;font-size:13px">
+      <span>${eOpen?'▾':'▸'} ${escHtml(emp)}</span><span style="font-size:12px;color:#929090;font-weight:500">${empData.total}</span>
+    </button>`;
+    if (eOpen) {
+      for (const [ano, anoData] of Object.entries(empData.anos).sort((a,b) => b[0].localeCompare(a[0]))) {
+        const aKey = `${eKey}/${ano}`;
+        const aOpen = _bibArvoreAberto[aKey] ?? (ano === anoAtual);
+        html += `<button class="bib-arvore-btn" onclick="bibArvoreToggle('${escHtml(aKey)}')" style="padding-left:20px;font-size:12.5px;font-weight:600">
+          <span>${aOpen?'▾':'▸'} ${escHtml(ano)}</span><span style="font-size:11px;color:#929090;font-weight:500">${anoData.total}</span>
+        </button>`;
+        if (aOpen) {
+          for (const [mes, cnt] of Object.entries(anoData.meses).sort((a,b) => b[0].localeCompare(a[0]))) {
+            const isSel = document.getElementById('bib-f-empresa')?.value===emp && document.getElementById('bib-f-ano')?.value===ano && document.getElementById('bib-f-mes')?.value===mes;
+            html += `<button class="bib-arvore-btn${isSel?' ativa':''}" onclick="bibArvoreSelect('${escHtml(emp)}','${ano}','${mes}')" style="padding-left:36px;font-size:12px">
+              <span>${_nomMes(mes)}</span><span style="font-size:11px;color:#929090;font-weight:500">${cnt}</span>
+            </button>`;
+          }
+        }
+      }
+    }
+  }
+  wrap.innerHTML = html;
+}
 
-async function openBibFicha(id) {
+function bibArvoreToggle(key) {
+  _bibArvoreAberto[key] = !(_bibArvoreAberto[key] ?? true);
+  if (_bibStats) renderBibArvore(_bibStats.arvore||{});
+}
+
+function bibArvoreSelect(emp, ano, mes) {
+  document.getElementById('bib-f-empresa').value = emp;
+  document.getElementById('bib-f-ano').value = ano;
+  document.getElementById('bib-f-mes').value = mes;
+  ['bib-f-empresa','bib-f-ano','bib-f-mes'].forEach(id => _bibFiltroAtualizar(id,'select'));
+  loadBiblioteca(true);
+}
+
+function renderBibHierarquia() {} // legado
+
+async function openBibFicha(id, rowEl) {
   const tok = sessionStorage.getItem('sac-token');
   if (!tok || !id) return;
-  document.getElementById('modal-bib-ficha').style.display='flex';
-  document.getElementById('bib-modal-titulo').textContent = 'Ficha ' + id;
-  document.getElementById('bib-modal-body').innerHTML = '<div style="text-align:center;color:var(--gray-400);padding:30px">Carregando...</div>';
+  // highlight row
+  document.querySelectorAll('.bib-row').forEach(r => r.classList.remove('ativa'));
+  rowEl?.classList.add('ativa');
+
+  const painel = document.getElementById('bib-painel');
+  const overlay = document.getElementById('bib-painel-overlay');
+  painel.classList.add('aberto');
+  overlay.style.display = 'block';
+  document.getElementById('bib-painel-titulo').textContent = 'Ficha ' + id;
+  document.getElementById('bib-painel-body').innerHTML = '<div style="text-align:center;color:#929090;padding:30px;font-family:Montserrat,system-ui,sans-serif">Carregando…</div>';
+
   try {
     const r = await fetch(API+'/api/biblioteca/fichas/'+encodeURIComponent(id), {headers:{'Authorization':'Bearer '+tok}});
     const d = await r.json();
     if (!d.sucesso) throw new Error(d.erro||'Não encontrada');
     const f = d.ficha; const evs = d.evidencias || [];
+    document.getElementById('bib-painel-titulo').textContent = f.PROTOCOLO || id;
+    const dt = f.DATA_REGISTRO ? new Date(f.DATA_REGISTRO).toLocaleDateString('pt-BR') : (f.ANO&&f.MES?`${_nomMes(f.MES)}/${f.ANO}`:'—');
     const hasPdf = !!f.PDF_DRIVE_URL;
-    const evIcons = {'image/':'🖼️','audio/':'🎧','video/':'🎬','application/pdf':'📄'};
-    const evIcon = m => { for(const k of Object.keys(evIcons)) if(m&&m.startsWith(k)) return evIcons[k]; return '📎'; };
-    document.getElementById('bib-modal-titulo').textContent = 'Ficha ' + (f.PROTOCOLO||id);
-    document.getElementById('bib-modal-body').innerHTML = `
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
-        <div class="field-group"><label>Protocolo</label><div>${escHtml(f.PROTOCOLO||'—')}</div></div>
-        <div class="field-group"><label>Data</label><div>${f.DATA_REGISTRO?new Date(f.DATA_REGISTRO).toLocaleDateString('pt-BR'):'—'}</div></div>
-        <div class="field-group"><label>Cliente</label><div>${escHtml(f.NOME_CLIENTE||'—')}</div></div>
-        <div class="field-group"><label>Empresa</label><div>${escHtml(f.EMPRESA||'—')}</div></div>
-        <div class="field-group"><label>Setor</label><div>${escHtml(f.SETOR_RECEBIMENTO||'—')}</div></div>
-        <div class="field-group"><label>Colaborador</label><div>${escHtml(f.COLABORADOR_RECEBIMENTO||'—')}</div></div>
-        <div class="field-group"><label>Tipo</label><div>${escHtml(f.TIPO_MANIFESTACAO||'—')}</div></div>
-        <div class="field-group"><label>Status</label><div>${escHtml(f.STATUS||'—')}</div></div>
-        ${f.MOTIVO?`<div class="field-group" style="grid-column:1/-1"><label>Motivo</label><div>${escHtml(f.MOTIVO)}</div></div>`:''}
+    document.getElementById('bib-painel-body').innerHTML = `
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+        ${_bibOrigemBadge(f.ORIGEM||'')}
+        ${_bibStatusBadge(f.STATUS)}
+        ${f.REINCIDENTE?'<span style="background:#FDECEC;color:#A80502;border-radius:5px;padding:2px 7px;font-size:11px;font-weight:700">⚠ Reincidente</span>':''}
+      </div>
+      <div style="font-size:12px;color:#666464;margin-bottom:2px">${escHtml(f.EMPRESA||'—')}</div>
+      <div style="font-size:14px;font-weight:700;margin-bottom:14px;color:#1F1F1F">${escHtml(f.NOME_CLIENTE||f.ORIG_CONTATO||'—')}</div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 14px;margin-bottom:14px">
+        <div><div style="font-size:10px;color:#929090;font-weight:600;text-transform:uppercase;margin-bottom:2px">Data reclamação</div><div style="font-size:13px">${dt}</div></div>
+        <div><div style="font-size:10px;color:#929090;font-weight:600;text-transform:uppercase;margin-bottom:2px">Tipo</div><div style="font-size:13px">${escHtml(f.TIPO_MANIFESTACAO||f.TIPO||'—')}</div></div>
+        ${f.CNPJ_CPF?`<div><div style="font-size:10px;color:#929090;font-weight:600;text-transform:uppercase;margin-bottom:2px">CNPJ/CPF</div><div style="font-size:13px">${escHtml(f.CNPJ_CPF)}</div></div>`:''}
+        ${f.COLABORADOR_RECEBIMENTO?`<div><div style="font-size:10px;color:#929090;font-weight:600;text-transform:uppercase;margin-bottom:2px">Colaborador</div><div style="font-size:13px">${escHtml(f.COLABORADOR_RECEBIMENTO)}</div></div>`:''}
       </div>
 
-      <div style="border:1px solid var(--gray-200);border-radius:10px;padding:16px;margin-bottom:16px">
-        <div style="font-size:12px;font-weight:700;color:var(--gray-700);margin-bottom:10px">DOCUMENTO OFICIAL</div>
-        ${hasPdf ? `
-          <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--gray-50);border-radius:8px">
-            <span style="font-size:24px">📄</span>
-            <div style="flex:1"><div style="font-size:13px;font-weight:600">${escHtml(f.PDF_NOME||'Ficha de Reclamação / Manifestação.pdf')}</div><div style="font-size:11px;color:var(--gray-400)">Versão ${f.VERSAO||1}</div></div>
-            <a href="${escHtml(f.PDF_DRIVE_URL)}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary" style="font-size:12px;padding:6px 12px">📥 BAIXAR PDF</a>
-          </div>` :
-          '<div style="color:var(--gray-400);font-size:13px">PDF não disponível para esta ficha.</div>'
-        }
+      ${f.MOTIVO?`<div style="margin-bottom:12px"><div style="font-size:10px;color:#929090;font-weight:600;text-transform:uppercase;margin-bottom:4px">Motivo</div><div style="font-size:13px;color:#1F1F1F">${escHtml(f.MOTIVO)}</div></div>`:''}
+      ${f.DESCRICAO_ORIGINAL||f.DESCRICAO?`<div style="margin-bottom:12px"><div style="font-size:10px;color:#929090;font-weight:600;text-transform:uppercase;margin-bottom:4px">Descrição</div><div style="font-size:13px;color:#1F1F1F;line-height:1.5">${escHtml(f.DESCRICAO_ORIGINAL||f.DESCRICAO||'')}</div></div>`:''}
+      ${f.TRATATIVA||f.ACAO_CORRETIVA?`<div style="margin-bottom:12px"><div style="font-size:10px;color:#929090;font-weight:600;text-transform:uppercase;margin-bottom:4px">Tratativa</div><div style="font-size:13px;color:#1F1F1F;line-height:1.5">${escHtml(f.TRATATIVA||f.ACAO_CORRETIVA||'')}</div></div>`:''}
+
+      <div style="border-top:1px solid #F0F0F0;padding-top:12px;margin-top:4px">
+        <div style="font-size:11px;font-weight:700;color:#545252;letter-spacing:.06em;margin-bottom:8px">DOCUMENTOS E EVIDÊNCIAS</div>
+        ${hasPdf?`<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#F4F4F4;border-radius:8px;margin-bottom:8px">
+          <span>📄</span>
+          <div style="flex:1;font-size:13px;font-weight:600">${escHtml(f.PDF_NOME||'Ficha de reclamação.pdf')}</div>
+          <a href="${escHtml(f.PDF_DRIVE_URL)}" target="_blank" rel="noopener" style="border:1px solid #D6D6D6;background:#fff;border-radius:7px;padding:5px 10px;font-size:12px;font-weight:600;text-decoration:none;color:#1F1F1F;white-space:nowrap">Abrir</a>
+        </div>`:''}
+        ${evs.map(ev=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#F4F4F4;border-radius:8px;margin-bottom:6px">
+          <span>${ev.TIPO_MIME?.startsWith('image/')?'🖼️':ev.TIPO_MIME?.startsWith('video/')?'🎬':'📎'}</span>
+          <div style="flex:1;min-width:0;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(ev.NOME||'Arquivo')}</div>
+          ${ev.DRIVE_URL?`<a href="${escHtml(ev.DRIVE_URL)}" target="_blank" rel="noopener" style="border:1px solid #D6D6D6;background:#fff;border-radius:7px;padding:5px 10px;font-size:12px;font-weight:600;text-decoration:none;color:#1F1F1F;white-space:nowrap">Abrir</a>`:''}
+        </div>`).join('')}
+        ${!hasPdf&&!evs.length?'<div style="color:#929090;font-size:12px">Sem documentos.</div>':''}
       </div>
 
-      ${evs.length > 0 ? `
-      <div style="border:1px solid var(--gray-200);border-radius:10px;padding:16px;margin-bottom:16px">
-        <div style="font-size:12px;font-weight:700;color:var(--gray-700);margin-bottom:10px">EVIDÊNCIAS (${evs.length})</div>
-        <div style="display:flex;flex-direction:column;gap:8px">
-          ${evs.map(ev => `
-          <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--gray-50);border-radius:8px">
-            <span style="font-size:20px">${evIcon(ev.TIPO_MIME||'')}</span>
-            <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(ev.NOME||'Arquivo')}</div><div style="font-size:11px;color:var(--gray-400)">${ev.TIPO_MIME||''}${ev.TAMANHO?' · '+(parseInt(ev.TAMANHO)/1024).toFixed(0)+'KB':''}</div></div>
-            ${ev.DRIVE_URL?`<a href="${escHtml(ev.DRIVE_URL)}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary" style="font-size:11px;padding:4px 10px">Abrir</a>`:''}
-          </div>`).join('')}
-        </div>
-      </div>` : ''}
-
-      <div style="display:flex;gap:10px">
-        <button class="btn btn-primary" onclick="if(window.abrirDossie)window.abrirDossie('${escHtml(f.ID_MANIFESTACAO||'')}');closeBibFichaModal()">ABRIR DOSSIÊ</button>
-        <button class="btn btn-secondary" onclick="closeBibFichaModal()">Fechar</button>
+      <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">
+        ${f.ID_MANIFESTACAO?`<button onclick="if(window.abrirDossie)window.abrirDossie('${escHtml(f.ID_MANIFESTACAO)}');closeBibPainel()" style="flex:1;border:0;background:#C70602;color:#fff;border-radius:8px;padding:9px 14px;cursor:pointer;font-size:13px;font-weight:600;font-family:Montserrat,system-ui,sans-serif">Ver dossiê completo</button>`:''}
+        <button onclick="closeBibPainel()" style="border:1px solid #D6D6D6;background:#fff;border-radius:8px;padding:9px 14px;cursor:pointer;font-size:13px;font-weight:600;font-family:Montserrat,system-ui,sans-serif">Fechar</button>
       </div>
     `;
   } catch(e) {
-    document.getElementById('bib-modal-body').innerHTML = `<div style="color:var(--red);padding:20px">Erro: ${escHtml(e.message)}</div>`;
+    document.getElementById('bib-painel-body').innerHTML = `<div style="color:#C70602;padding:20px;font-family:Montserrat,system-ui,sans-serif">Erro: ${escHtml(e.message)}</div>`;
   }
 }
 
-function closeBibFichaModal() {
-  document.getElementById('modal-bib-ficha').style.display='none';
+function closeBibPainel() {
+  document.getElementById('bib-painel')?.classList.remove('aberto');
+  document.getElementById('bib-painel-overlay').style.display='none';
+  document.querySelectorAll('.bib-row').forEach(r => r.classList.remove('ativa'));
 }
+
+// compat alias para código que chama closeBibFichaModal
+function closeBibFichaModal() { closeBibPainel(); }
 
 // ===== IMPORTAR FICHAS (PDF/DOCX) =====
 let _importarFiles = [];
@@ -5326,71 +5449,94 @@ function fecharModalImportarFicha() {
 
 function handleImportarDrop(ev) {
   ev.preventDefault();
-  document.getElementById('importar-dropzone').style.borderColor = 'var(--gray-300)';
+  document.getElementById('importar-dropzone').style.borderColor = '#D6D6D6';
   handleImportarFiles(ev.dataTransfer.files);
 }
 
 function handleImportarFiles(files) {
-  const allowed = ['application/pdf','application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
-  const novos = Array.from(files).filter(f => allowed.includes(f.type) || f.name.match(/\.(pdf|docx)$/i));
-  if (novos.length === 0) { alert('Selecione arquivos PDF ou DOCX.'); return; }
-  _importarFiles = [..._importarFiles, ...novos].slice(0, 10);
+  if (files.length > 0) {
+    const allowed = ['application/pdf','application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    const novos = Array.from(files).filter(f => allowed.includes(f.type) || f.name.match(/\.(pdf|docx)$/i));
+    if (novos.length === 0 && files.length > 0) { alert('Selecione arquivos PDF ou DOCX.'); return; }
+    _importarFiles = [..._importarFiles, ...novos].slice(0, 10);
+  }
+  const hoje = new Date(); hoje.setHours(23,59,59,999);
+  const empresasOpts = '<option value="">Selecione…</option><option value="CHIACCHIO">Chiacchio Embalagens</option><option value="PLASCHIO">Plaschio</option><option value="TUBAHIA">Tubahia</option>';
   const list = document.getElementById('importar-file-list');
   list.innerHTML = _importarFiles.map((f, i) => `
-    <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--gray-50,#f9fafb);border:1px solid var(--gray-200);border-radius:8px">
-      <span style="font-size:18px">${f.name.match(/\.pdf$/i)?'📄':'📝'}</span>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(f.name)}</div>
-        <div style="font-size:11px;color:var(--gray-400)">${(f.size/1024/1024).toFixed(2)} MB</div>
+    <div style="border:1px solid #E4E4E4;border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:10px;background:#fff">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:18px">${f.name.match(/\.pdf$/i)?'📄':'📝'}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:Montserrat,system-ui,sans-serif">${escHtml(f.name)}</div>
+          <div style="font-size:11px;color:#929090;font-family:Montserrat,system-ui,sans-serif">${(f.size/1024/1024).toFixed(2)} MB</div>
+        </div>
+        <button onclick="_importarFiles.splice(${i},1);handleImportarFiles([])" style="border:none;background:none;cursor:pointer;color:#929090;font-size:16px" title="Remover">✕</button>
       </div>
-      <button onclick="_importarFiles.splice(${i},1);handleImportarFiles([])" style="border:none;background:none;cursor:pointer;color:var(--gray-400);font-size:16px" title="Remover">✕</button>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:#666464;font-weight:600;font-family:Montserrat,system-ui,sans-serif">Empresa*
+          <select id="imp-emp-${i}" required style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:12px;font-family:Montserrat,system-ui,sans-serif">${empresasOpts}</select>
+        </label>
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:#666464;font-weight:600;font-family:Montserrat,system-ui,sans-serif">Data da reclamação*
+          <input type="date" id="imp-data-${i}" required max="${hoje.toISOString().slice(0,10)}" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:12px;font-family:Montserrat,system-ui,sans-serif">
+        </label>
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:#666464;font-weight:600;font-family:Montserrat,system-ui,sans-serif">Tipo
+          <select id="imp-tipo-${i}" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:12px;font-family:Montserrat,system-ui,sans-serif">
+            <option value="Reclamação">Reclamação</option><option value="Sugestão">Sugestão</option>
+            <option value="Solicitação">Solicitação</option><option value="Elogio">Elogio</option>
+          </select>
+        </label>
+      </div>
     </div>`).join('');
   document.getElementById('importar-btn-enviar').disabled = _importarFiles.length === 0;
 }
 
 async function enviarFichasImportadas() {
   const tok = sessionStorage.getItem('sac-token');
-  if (!tok || _importarFiles.length === 0) return;
+  if (!tok || !_importarFiles.length) return;
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  // Validar campos obrigatórios
+  for (let i = 0; i < _importarFiles.length; i++) {
+    const emp = document.getElementById(`imp-emp-${i}`)?.value;
+    const data = document.getElementById(`imp-data-${i}`)?.value;
+    if (!emp) { alert(`Selecione a empresa para o arquivo ${_importarFiles[i].name}.`); return; }
+    if (!data) { alert(`Informe a data da reclamação para ${_importarFiles[i].name}.`); return; }
+    const dtVal = new Date(data + 'T00:00:00');
+    if (dtVal > hoje) { alert(`A data da reclamação não pode ser futura (${_importarFiles[i].name}).`); return; }
+  }
   const btn = document.getElementById('importar-btn-enviar');
   const statusEl = document.getElementById('importar-status');
-  btn.disabled = true;
-  btn.textContent = 'Importando...';
-  statusEl.style.display = 'block';
-  statusEl.style.background = '#eff6ff';
-  statusEl.style.color = '#1d4ed8';
-  statusEl.textContent = `Enviando ${_importarFiles.length} arquivo(s)… Aguarde, a IA irá extrair os dados.`;
+  btn.disabled = true; btn.textContent = 'Importando…';
+  statusEl.style.display = 'block'; statusEl.style.background = '#EEF4FF'; statusEl.style.color = '#24508F';
+  statusEl.textContent = `Enviando ${_importarFiles.length} arquivo(s)…`;
 
   let ok = 0, erros = [];
-  for (const file of _importarFiles) {
+  for (let i = 0; i < _importarFiles.length; i++) {
+    const file = _importarFiles[i];
     try {
       const fd = new FormData();
       fd.append('arquivo', file);
+      fd.append('empresa', document.getElementById(`imp-emp-${i}`)?.value||'');
+      fd.append('data_reclamacao', document.getElementById(`imp-data-${i}`)?.value||'');
+      fd.append('tipo', document.getElementById(`imp-tipo-${i}`)?.value||'Reclamação');
       const r = await fetch(API + '/api/biblioteca/importar-ficha', {
-        method: 'POST',
-        headers: { 'Authorization': 'Bearer ' + tok },
-        body: fd
+        method: 'POST', headers: { 'Authorization': 'Bearer ' + tok }, body: fd
       });
       const d = await r.json();
-      if (d.sucesso) ok++;
-      else erros.push(`${file.name}: ${d.erro || 'Erro desconhecido'}`);
-    } catch(e) {
-      erros.push(`${file.name}: ${e.message}`);
-    }
+      if (d.sucesso) ok++; else erros.push(`${file.name}: ${d.erro||'Erro desconhecido'}`);
+    } catch(e) { erros.push(`${file.name}: ${e.message}`); }
   }
 
-  btn.textContent = 'Importar Fichas';
-  if (erros.length === 0) {
-    statusEl.style.background = '#f0fdf4';
-    statusEl.style.color = '#15803d';
-    statusEl.textContent = `✓ ${ok} ficha(s) importada(s) com sucesso! Atualizando lista...`;
-    _importarFiles = [];
-    document.getElementById('importar-file-list').innerHTML = '';
+  btn.textContent = 'Importar fichas';
+  if (!erros.length) {
+    statusEl.style.background = '#E6F2EA'; statusEl.style.color = '#1E6B3A';
+    statusEl.textContent = `✓ ${ok} ficha(s) importada(s) com sucesso! Atualizando…`;
+    _importarFiles = []; document.getElementById('importar-file-list').innerHTML = '';
     setTimeout(() => { fecharModalImportarFicha(); loadBiblioteca(true); }, 1500);
   } else {
     btn.disabled = false;
-    statusEl.style.background = '#fff5f5';
-    statusEl.style.color = '#b91c1c';
-    statusEl.innerHTML = `${ok > 0 ? `✓ ${ok} importada(s). ` : ''}Erros:<br>` + erros.map(e => `• ${escHtml(e)}`).join('<br>');
+    statusEl.style.background = '#FDECEC'; statusEl.style.color = '#A80502';
+    statusEl.innerHTML = `${ok>0?`✓ ${ok} importada(s). `:''}Erros:<br>` + erros.map(e=>`• ${escHtml(e)}`).join('<br>');
   }
 }
 
@@ -7624,9 +7770,9 @@ window.salvarSetor = async function() {
     const btn = document.getElementById('set-salvar-btn');
     btn.disabled = true; btn.textContent = 'Salvando...';
     if (_setorEditandoId) {
-      await json5('/api/setores/' + encodeURIComponent(_setorEditandoId), { method: 'PATCH', body: JSON.stringify(body) });
+      await _apiFetch('/api/setores/' + encodeURIComponent(_setorEditandoId), 15000, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
     } else {
-      await json5('/api/setores', { method: 'POST', body: JSON.stringify(body) });
+      await _apiFetch('/api/setores', 15000, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
     }
     fecharModalSetor();
     loadSetores();
