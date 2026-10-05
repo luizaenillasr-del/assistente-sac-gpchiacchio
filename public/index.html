@@ -15469,18 +15469,18 @@ async function mudarStatusMC(id, novoStatus) {
 <div style="margin:20px 24px 0">
   <div class="alim-section-title">Histórico de manifestações</div>
   <div class="alim-grid" id="alim-grid-historico">
-    <div class="alim-card"><div class="alim-card-title">Banco de casos (histórico)</div><div class="alim-card-sub">Aba: BANCO_HISTORICO</div><div id="alim-s-BANCO_HISTORICO" style="margin-top:4px"><span class="alim-badge alim-badge-warn">Carregando...</span></div><button class="alim-btn alim-btn-primary" style="margin-top:10px;align-self:flex-start" onclick="abrirWizardAlim('BANCO_HISTORICO','Banco de Casos','Histórico de manifestações antigas — colunas: EMPRESA, CLIENTE, CNPJ, TIPO, MOTIVO, DATA')">↑ Importar dados</button></div>
-    <div class="alim-card"><div class="alim-card-title">Manifestações ativas</div><div class="alim-card-sub">Aba: MANIFESTACOES</div><div id="alim-s-MANIFESTACOES" style="margin-top:4px"><span class="alim-badge alim-badge-warn">Carregando...</span></div><button class="alim-btn" style="margin-top:10px;align-self:flex-start" onclick="navigate('banco-manifestacoes',document.querySelector('[onclick*=banco-manifestacoes]'))">Ver manifestações →</button></div>
+    <div class="alim-card"><div class="alim-card-title">Banco de casos (histórico)</div><div class="alim-card-sub">Aba: BANCO_HISTORICO</div><div id="alim-s-BANCO_HISTORICO" style="margin-top:4px"><span class="alim-badge alim-badge-warn">Carregando...</span></div><div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><button class="alim-btn alim-btn-primary" onclick="abrirFormAlim('BANCO_HISTORICO')">+ Cadastrar</button><button class="alim-btn" onclick="abrirWizardAlim('BANCO_HISTORICO','Banco de Casos','Histórico de manifestações antigas — colunas: EMPRESA, CLIENTE, CNPJ, TIPO, MOTIVO, DATA')">↑ Importar CSV</button></div></div>
+    <div class="alim-card"><div class="alim-card-title">Manifestações ativas</div><div class="alim-card-sub">Aba: MANIFESTACOES</div><div id="alim-s-MANIFESTACOES" style="margin-top:4px"><span class="alim-badge alim-badge-warn">Carregando...</span></div><div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><button class="alim-btn alim-btn-primary" onclick="navigate('nova-manifestacao',document.querySelector('[onclick*=nova-manifestacao]'))">+ Nova manifestação</button><button class="alim-btn" onclick="navigate('banco-manifestacoes',document.querySelector('[onclick*=banco-manifestacoes]'))">Ver manifestações →</button></div></div>
   </div>
 </div>
 
 <div style="margin:20px 24px 0">
   <div class="alim-section-title">Cadastros</div>
   <div class="alim-grid" id="alim-grid-cadastros">
-    <div class="alim-card"><div class="alim-card-title">Causas e Subcausas</div><div class="alim-card-sub">Aba: CAUSAS</div><div id="alim-s-CAUSAS" style="margin-top:4px"><span class="alim-badge alim-badge-warn">Carregando...</span></div><button class="alim-btn alim-btn-primary" style="margin-top:10px;align-self:flex-start" onclick="abrirWizardAlim('CAUSAS','Causas e Subcausas','Colunas recomendadas: ID_CAUSA, CATEGORIA, TIPO, CAUSA, SUBCAUSA, SETOR_RESPONSAVEL, PALAVRAS_CHAVE')">↑ Importar causas</button></div>
-    <div class="alim-card"><div class="alim-card-title">Setores e SLAs</div><div class="alim-card-sub">Aba: CONFIG_SETORES</div><div id="alim-s-CONFIG_SETORES" style="margin-top:4px"><span class="alim-badge alim-badge-warn">Carregando...</span></div><button class="alim-btn alim-btn-primary" style="margin-top:10px;align-self:flex-start" onclick="abrirWizardAlim('CONFIG_SETORES','Setores e SLAs','Colunas recomendadas: NOME_SETOR, EMPRESA, SLA_HORAS, EMAIL_RESPONSAVEL, ATIVO')">↑ Importar setores</button></div>
-    <div class="alim-card"><div class="alim-card-title">Produtos</div><div class="alim-card-sub">Aba: PRODUTOS</div><div id="alim-s-PRODUTOS" style="margin-top:4px"><span class="alim-badge alim-badge-warn">Carregando...</span></div><button class="alim-btn alim-btn-primary" style="margin-top:10px;align-self:flex-start" onclick="abrirWizardAlim('PRODUTOS','Produtos','Colunas recomendadas: EMPRESA, PRODUTO, CODIGO, FAMILIA, LINHA, ATIVO')">↑ Importar produtos</button></div>
-    <div class="alim-card"><div class="alim-card-title">Representantes (RCA)</div><div class="alim-card-sub">Aba: REPRESENTANTES</div><div id="alim-s-REPRESENTANTES" style="margin-top:4px"><span class="alim-badge alim-badge-warn">Carregando...</span></div><button class="alim-btn alim-btn-primary" style="margin-top:10px;align-self:flex-start" onclick="abrirWizardAlim('REPRESENTANTES','Representantes','Colunas recomendadas: NOME, CODIGO_RCA, EMAIL, EMPRESA, REGIAO, ATIVO')">↑ Importar representantes</button></div>
+    <div class="alim-card"><div class="alim-card-title">Causas e Subcausas</div><div class="alim-card-sub">Aba: CAUSAS</div><div id="alim-s-CAUSAS" style="margin-top:4px"><span class="alim-badge alim-badge-warn">Carregando...</span></div><div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><button class="alim-btn alim-btn-primary" onclick="abrirFormAlim('CAUSAS')">+ Cadastrar</button><button class="alim-btn" onclick="abrirWizardAlim('CAUSAS','Causas e Subcausas','Colunas recomendadas: ID_CAUSA, CATEGORIA, TIPO, CAUSA, SUBCAUSA, SETOR_RESPONSAVEL, PALAVRAS_CHAVE')">↑ Importar CSV</button></div></div>
+    <div class="alim-card"><div class="alim-card-title">Setores e SLAs</div><div class="alim-card-sub">Aba: CONFIG_SETORES</div><div id="alim-s-CONFIG_SETORES" style="margin-top:4px"><span class="alim-badge alim-badge-warn">Carregando...</span></div><div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><button class="alim-btn alim-btn-primary" onclick="abrirFormAlim('CONFIG_SETORES')">+ Cadastrar</button><button class="alim-btn" onclick="abrirWizardAlim('CONFIG_SETORES','Setores e SLAs','Colunas recomendadas: NOME_SETOR, EMPRESA, SLA_HORAS, EMAIL_RESPONSAVEL, ATIVO')">↑ Importar CSV</button></div></div>
+    <div class="alim-card"><div class="alim-card-title">Produtos</div><div class="alim-card-sub">Aba: PRODUTOS</div><div id="alim-s-PRODUTOS" style="margin-top:4px"><span class="alim-badge alim-badge-warn">Carregando...</span></div><div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><button class="alim-btn alim-btn-primary" onclick="abrirFormAlim('PRODUTOS')">+ Cadastrar</button><button class="alim-btn" onclick="abrirWizardAlim('PRODUTOS','Produtos','Colunas recomendadas: EMPRESA, PRODUTO, CODIGO, FAMILIA, LINHA, ATIVO')">↑ Importar CSV</button></div></div>
+    <div class="alim-card"><div class="alim-card-title">Representantes (RCA)</div><div class="alim-card-sub">Aba: REPRESENTANTES</div><div id="alim-s-REPRESENTANTES" style="margin-top:4px"><span class="alim-badge alim-badge-warn">Carregando...</span></div><div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><button class="alim-btn alim-btn-primary" onclick="abrirFormAlim('REPRESENTANTES')">+ Cadastrar</button><button class="alim-btn" onclick="abrirWizardAlim('REPRESENTANTES','Representantes','Colunas recomendadas: NOME, CODIGO_RCA, EMAIL, EMPRESA, REGIAO, ATIVO')">↑ Importar CSV</button></div></div>
     <div class="alim-card"><div class="alim-card-title">RNCs</div><div class="alim-card-sub">Aba: BANCO_RNC</div><div id="alim-s-BANCO_RNC" style="margin-top:4px"><span class="alim-badge alim-badge-warn">Carregando...</span></div><button class="alim-btn" style="margin-top:10px;align-self:flex-start" onclick="navigate('banco-rnc',document.querySelector('[onclick*=banco-rnc]'))">Ver RNCs →</button></div>
     <div class="alim-card"><div class="alim-card-title">Arquivo de Fichas</div><div class="alim-card-sub">Aba: FICHAS_BIBLIOTECA</div><div id="alim-s-FICHAS_BIBLIOTECA" style="margin-top:4px"><span class="alim-badge alim-badge-warn">Carregando...</span></div><button class="alim-btn" style="margin-top:10px;align-self:flex-start" onclick="navigate('biblioteca-fichas',document.querySelector('[onclick*=biblioteca-fichas]'))">Ver arquivo →</button></div>
   </div>
@@ -15489,9 +15489,9 @@ async function mudarStatusMC(id, novoStatus) {
 <div style="margin:20px 24px 0">
   <div class="alim-section-title">Conhecimento — Cérebro SAC</div>
   <div class="alim-grid">
-    <div class="alim-card"><div class="alim-card-title">Matriz de Tratamento</div><div class="alim-card-sub">Aba: MATRIZ_TRATAMENTO</div><div id="alim-s-MATRIZ_TRATAMENTO" style="margin-top:4px"><span class="alim-badge alim-badge-warn">Carregando...</span></div><button class="alim-btn alim-btn-primary" style="margin-top:10px;align-self:flex-start" onclick="abrirWizardAlim('MATRIZ_TRATAMENTO','Matriz de Tratamento','Colunas recomendadas: TIPO_MANIFESTACAO, EMPRESA, CAUSA, SUBCAUSA, SETOR_RESPONSAVEL, SLA_HORAS, PRIORIDADE, TRATATIVA_PADRAO, DEVOLUTIVA_PADRAO')">↑ Importar regras</button></div>
-    <div class="alim-card"><div class="alim-card-title">Procedimentos operacionais</div><div class="alim-card-sub">Aba: PROCEDIMENTOS</div><div id="alim-s-PROCEDIMENTOS" style="margin-top:4px"><span class="alim-badge alim-badge-warn">Carregando...</span></div><button class="alim-btn alim-btn-primary" style="margin-top:10px;align-self:flex-start" onclick="abrirWizardAlim('PROCEDIMENTOS','Procedimentos','Colunas recomendadas: SETOR, EMPRESA, NOME, OBJETIVO, QUANDO_USAR, PASSOS, RESPONSAVEL')">↑ Importar procedimentos</button></div>
-    <div class="alim-card"><div class="alim-card-title">Políticas</div><div class="alim-card-sub">Aba: POLITICAS</div><div id="alim-s-POLITICAS" style="margin-top:4px"><span class="alim-badge alim-badge-warn">Carregando...</span></div><button class="alim-btn alim-btn-primary" style="margin-top:10px;align-self:flex-start" onclick="abrirWizardAlim('POLITICAS','Políticas','Colunas recomendadas: SETOR, EMPRESA, NOME, OBJETIVO, REGRA_OFICIAL, LIMITES, CONDICOES')">↑ Importar políticas</button></div>
+    <div class="alim-card"><div class="alim-card-title">Matriz de Tratamento</div><div class="alim-card-sub">Aba: MATRIZ_TRATAMENTO</div><div id="alim-s-MATRIZ_TRATAMENTO" style="margin-top:4px"><span class="alim-badge alim-badge-warn">Carregando...</span></div><div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><button class="alim-btn alim-btn-primary" onclick="abrirFormAlim('MATRIZ_TRATAMENTO')">+ Cadastrar</button><button class="alim-btn" onclick="abrirWizardAlim('MATRIZ_TRATAMENTO','Matriz de Tratamento','Colunas recomendadas: TIPO_MANIFESTACAO, EMPRESA, CAUSA, SUBCAUSA, SETOR_RESPONSAVEL, SLA_HORAS, PRIORIDADE, TRATATIVA_PADRAO, DEVOLUTIVA_PADRAO')">↑ Importar CSV</button></div></div>
+    <div class="alim-card"><div class="alim-card-title">Procedimentos operacionais</div><div class="alim-card-sub">Aba: PROCEDIMENTOS</div><div id="alim-s-PROCEDIMENTOS" style="margin-top:4px"><span class="alim-badge alim-badge-warn">Carregando...</span></div><div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><button class="alim-btn alim-btn-primary" onclick="abrirFormAlim('PROCEDIMENTOS')">+ Cadastrar</button><button class="alim-btn" onclick="abrirWizardAlim('PROCEDIMENTOS','Procedimentos','Colunas recomendadas: SETOR, EMPRESA, NOME, OBJETIVO, QUANDO_USAR, PASSOS, RESPONSAVEL')">↑ Importar CSV</button></div></div>
+    <div class="alim-card"><div class="alim-card-title">Políticas</div><div class="alim-card-sub">Aba: POLITICAS</div><div id="alim-s-POLITICAS" style="margin-top:4px"><span class="alim-badge alim-badge-warn">Carregando...</span></div><div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><button class="alim-btn alim-btn-primary" onclick="abrirFormAlim('POLITICAS')">+ Cadastrar</button><button class="alim-btn" onclick="abrirWizardAlim('POLITICAS','Políticas','Colunas recomendadas: SETOR, EMPRESA, NOME, OBJETIVO, REGRA_OFICIAL, LIMITES, CONDICOES')">↑ Importar CSV</button></div></div>
     <div class="alim-card"><div class="alim-card-title">Pesquisas de Satisfação</div><div class="alim-card-sub">Aba: PESQUISAS_SATISFACAO</div><div id="alim-s-PESQUISAS_SATISFACAO" style="margin-top:4px"><span class="alim-badge alim-badge-warn">Carregando...</span></div><button class="alim-btn alim-btn-primary" style="margin-top:10px;align-self:flex-start" onclick="abrirWizardAlim('PESQUISAS_SATISFACAO','Pesquisas de Satisfação','Colunas recomendadas: ID_MANIFESTACAO, EMPRESA, CLIENTE, NOTA_GERAL, NOTA_ATENDIMENTO, NOTA_RESOLUCAO, COMENTARIO, DATA')">↑ Importar pesquisas</button></div>
   </div>
 </div>
@@ -15505,6 +15505,25 @@ async function mudarStatusMC(id, novoStatus) {
     </div>
     <div id="alim-hist-body" style="max-height:320px;overflow-y:auto">
       <div style="padding:20px;text-align:center;color:#929090;font-size:13px">Carregando histórico...</div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CADASTRO DIRETO -->
+<div id="modal-alim-form" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;align-items:center;justify-content:center;padding:20px">
+  <div style="background:#fff;border-radius:16px;max-width:600px;width:100%;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.35)">
+    <div style="padding:20px 24px 16px;border-bottom:1px solid #E4E4E4;display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-size:15px;font-weight:800;color:#1F1F1F" id="alim-form-titulo">Cadastrar</div>
+        <div style="font-size:12px;color:#929090;margin-top:2px" id="alim-form-sub"></div>
+      </div>
+      <button onclick="fecharFormAlim()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#929090;line-height:1">×</button>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:20px 24px" id="alim-form-body"></div>
+    <div id="alim-form-msg" style="display:none;margin:0 24px 0;padding:10px 14px;border-radius:8px;font-size:13px"></div>
+    <div style="padding:14px 24px;border-top:1px solid #E4E4E4;display:flex;justify-content:flex-end;gap:10px">
+      <button class="alim-btn" onclick="fecharFormAlim()">Cancelar</button>
+      <button class="alim-btn alim-btn-primary" id="alim-form-btn-salvar" onclick="salvarFormAlim()">Salvar registro</button>
     </div>
   </div>
 </div>
@@ -15562,6 +15581,211 @@ let _alimValidados = []; // rows after validation
 let _alimDuplicados = 0;
 
 function fmt(v){ return v||'–'; }
+
+// ===== FORMULÁRIO DE CADASTRO DIRETO =====
+const ALIM_FORM_CONFIG = {
+  BANCO_HISTORICO: {
+    titulo: 'Novo caso no Histórico',
+    sub: 'Registro histórico de manifestação',
+    endpoint: null, // usa /api/planilha/BANCO_HISTORICO/importar
+    campos: [
+      {id:'EMPRESA',label:'Empresa',type:'text',req:true},
+      {id:'CLIENTE',label:'Cliente / Razão Social',type:'text'},
+      {id:'CNPJ',label:'CNPJ',type:'text'},
+      {id:'TIPO',label:'Tipo de manifestação',type:'select',opts:['Reclamação','Elogio','Sugestão','Dúvida','Informação']},
+      {id:'MOTIVO',label:'Causa / Motivo',type:'text'},
+      {id:'DESCRICAO',label:'Descrição',type:'textarea',req:true},
+      {id:'PRODUTO',label:'Produto',type:'text'},
+      {id:'LOTE',label:'Lote',type:'text'},
+      {id:'DATA',label:'Data da ocorrência',type:'date'},
+      {id:'CANAL',label:'Canal',type:'select',opts:['E-mail','Telefone','WhatsApp','Portal','Presencial','Outro']},
+      {id:'RESOLUCAO',label:'Como foi resolvido',type:'textarea'},
+      {id:'TRATATIVA_REALIZADA',label:'Tratativa realizada',type:'textarea'},
+    ]
+  },
+  CAUSAS: {
+    titulo: 'Nova Causa',
+    sub: 'Cadastro no banco de causas e subcausas',
+    endpoint: '/api/causas',
+    campos: [
+      {id:'categoria',label:'Categoria',type:'text',req:true,ph:'Ex: Qualidade do Produto'},
+      {id:'tipo',label:'Tipo',type:'text',ph:'Ex: Reclamação'},
+      {id:'causa',label:'Causa',type:'text',req:true,ph:'Ex: Produto com defeito'},
+      {id:'subcausa',label:'Subcausa',type:'text',ph:'Ex: Embalagem danificada'},
+      {id:'setorResponsavel',label:'Setor responsável',type:'text'},
+      {id:'palavrasChave',label:'Palavras-chave',type:'text',ph:'separadas por vírgula'},
+    ]
+  },
+  CONFIG_SETORES: {
+    titulo: 'Novo Setor',
+    sub: 'Cadastro de setor e SLA',
+    endpoint: '/api/setores',
+    campos: [
+      {id:'SETOR',label:'Nome do setor',type:'text',req:true},
+      {id:'EMPRESA',label:'Empresa',type:'text'},
+      {id:'DESCRICAO',label:'Descrição',type:'textarea'},
+      {id:'RESPONSAVEL',label:'Responsável',type:'text'},
+      {id:'SLA_HORAS',label:'SLA (horas)',type:'number',ph:'72'},
+    ]
+  },
+  PRODUTOS: {
+    titulo: 'Novo Produto',
+    sub: 'Cadastro de produto',
+    endpoint: null, // usa /api/planilha/PRODUTOS/importar
+    campos: [
+      {id:'EMPRESA',label:'Empresa',type:'text',req:true},
+      {id:'PRODUTO',label:'Nome do produto',type:'text',req:true},
+      {id:'CODIGO',label:'Código',type:'text'},
+      {id:'CATEGORIA',label:'Categoria / Família',type:'text'},
+      {id:'LINHA',label:'Linha',type:'text'},
+      {id:'UNIDADE',label:'Unidade',type:'text',ph:'Ex: KG, UN, CX'},
+    ]
+  },
+  REPRESENTANTES: {
+    titulo: 'Novo Representante',
+    sub: 'Cadastro de representante (RCA)',
+    endpoint: null, // usa /api/planilha/REPRESENTANTES/importar
+    campos: [
+      {id:'NOME',label:'Nome',type:'text',req:true},
+      {id:'CODIGO_RCA',label:'Código RCA',type:'text'},
+      {id:'EMAIL',label:'E-mail',type:'email'},
+      {id:'EMPRESA',label:'Empresa',type:'text'},
+      {id:'REGIAO',label:'Região',type:'text'},
+      {id:'TELEFONE',label:'Telefone',type:'text'},
+    ]
+  },
+  MATRIZ_TRATAMENTO: {
+    titulo: 'Nova Regra de Tratamento',
+    sub: 'Matriz de Tratamento — Cérebro SAC',
+    endpoint: null,
+    campos: [
+      {id:'TIPO_MANIFESTACAO',label:'Tipo de manifestação',type:'select',opts:['Reclamação','Elogio','Sugestão','Dúvida','Informação'],req:true},
+      {id:'EMPRESA',label:'Empresa',type:'text'},
+      {id:'CAUSA',label:'Causa',type:'text',req:true},
+      {id:'SUBCAUSA',label:'Subcausa',type:'text'},
+      {id:'SETOR_RESPONSAVEL',label:'Setor responsável',type:'text'},
+      {id:'SLA_HORAS',label:'SLA (horas)',type:'number',ph:'72'},
+      {id:'PRIORIDADE',label:'Prioridade',type:'select',opts:['ALTA','MEDIA','BAIXA']},
+      {id:'TRATATIVA_PADRAO',label:'Tratativa padrão',type:'textarea'},
+      {id:'DEVOLUTIVA_PADRAO',label:'Devolutiva padrão',type:'textarea'},
+    ]
+  },
+  PROCEDIMENTOS: {
+    titulo: 'Novo Procedimento',
+    sub: 'Procedimento operacional',
+    endpoint: null,
+    campos: [
+      {id:'NOME',label:'Nome do procedimento',type:'text',req:true},
+      {id:'SETOR',label:'Setor',type:'text'},
+      {id:'EMPRESA',label:'Empresa',type:'text'},
+      {id:'OBJETIVO',label:'Objetivo',type:'textarea'},
+      {id:'QUANDO_USAR',label:'Quando usar',type:'textarea'},
+      {id:'PASSOS',label:'Passos (um por linha)',type:'textarea'},
+      {id:'RESPONSAVEL',label:'Responsável',type:'text'},
+    ]
+  },
+  POLITICAS: {
+    titulo: 'Nova Política',
+    sub: 'Política operacional',
+    endpoint: null,
+    campos: [
+      {id:'NOME',label:'Nome da política',type:'text',req:true},
+      {id:'SETOR',label:'Setor',type:'text'},
+      {id:'EMPRESA',label:'Empresa',type:'text'},
+      {id:'OBJETIVO',label:'Objetivo',type:'textarea'},
+      {id:'REGRA_OFICIAL',label:'Regra oficial',type:'textarea'},
+      {id:'LIMITES',label:'Limites / exceções',type:'textarea'},
+      {id:'CONDICOES',label:'Condições de aplicação',type:'textarea'},
+    ]
+  },
+};
+
+let _alimFormTipo = '';
+
+window.abrirFormAlim = function(tipo){
+  const cfg = ALIM_FORM_CONFIG[tipo];
+  if(!cfg) return;
+  _alimFormTipo = tipo;
+  document.getElementById('alim-form-titulo').textContent = cfg.titulo;
+  document.getElementById('alim-form-sub').textContent = cfg.sub;
+  const msg = document.getElementById('alim-form-msg');
+  msg.style.display='none';
+  const btn = document.getElementById('alim-form-btn-salvar');
+  btn.textContent='Salvar registro'; btn.disabled=false;
+
+  function inp(f){
+    const id='af-'+f.id;
+    const req=f.req?'<span style="color:#C70602">*</span>':'';
+    const lbl=`<label for="${id}" style="font-size:12px;font-weight:600;color:#545252;margin-bottom:4px;display:block">${f.label} ${req}</label>`;
+    if(f.type==='textarea') return `<div style="display:flex;flex-direction:column">${lbl}<textarea id="${id}" rows="3" placeholder="${f.ph||''}" style="border:1px solid #D6D6D6;border-radius:7px;padding:8px 10px;font-size:13px;font-family:inherit;resize:vertical"></textarea></div>`;
+    if(f.type==='select') return `<div style="display:flex;flex-direction:column">${lbl}<select id="${id}" style="border:1px solid #D6D6D6;border-radius:7px;padding:0 10px;height:36px;font-size:13px;font-family:inherit"><option value="">— Selecione —</option>${(f.opts||[]).map(o=>`<option value="${o}">${o}</option>`).join('')}</select></div>`;
+    return `<div style="display:flex;flex-direction:column">${lbl}<input id="${id}" type="${f.type}" placeholder="${f.ph||''}" style="border:1px solid #D6D6D6;border-radius:7px;padding:0 10px;height:36px;font-size:13px;font-family:inherit"></div>`;
+  }
+
+  document.getElementById('alim-form-body').innerHTML=`<div style="display:flex;flex-direction:column;gap:14px">${cfg.campos.map(inp).join('')}</div>`;
+  document.getElementById('modal-alim-form').style.display='flex';
+};
+
+window.fecharFormAlim = function(){
+  document.getElementById('modal-alim-form').style.display='none';
+};
+
+window.salvarFormAlim = async function(){
+  const cfg = ALIM_FORM_CONFIG[_alimFormTipo];
+  if(!cfg) return;
+  const tok=sessionStorage.getItem('sac-token');
+  const btn=document.getElementById('alim-form-btn-salvar');
+  const msg=document.getElementById('alim-form-msg');
+
+  // Collect values
+  const obj={};
+  for(const f of cfg.campos){
+    const el=document.getElementById('af-'+f.id);
+    if(!el) continue;
+    const v=el.value.trim();
+    if(f.req && !v){ el.style.borderColor='#C70602'; el.focus(); mostrarToast('Preencha o campo: '+f.label); return; }
+    el.style.borderColor='';
+    if(v) obj[f.id]=v;
+  }
+
+  btn.textContent='Salvando…'; btn.disabled=true;
+  msg.style.display='none';
+
+  try {
+    let url, payload, method='POST';
+    if(cfg.endpoint){
+      url = API + cfg.endpoint;
+      payload = obj;
+    } else {
+      url = API + '/api/planilha/'+encodeURIComponent(_alimFormTipo)+'/importar';
+      payload = { itens:[obj] };
+    }
+    const r=await fetch(url,{method,headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const d=await r.json();
+    if(d.sucesso||d.id||d.setor||d.causa){
+      msg.style.cssText='display:block;margin:0 24px 8px;padding:10px 14px;border-radius:8px;font-size:13px;background:#E6F2EA;color:#1E6B3A';
+      msg.textContent='✓ Registro salvo com sucesso!';
+      btn.textContent='Fechar';
+      btn.disabled=false;
+      btn.onclick=function(){ fecharFormAlim(); loadAlimentacao(); btn.onclick=window.salvarFormAlim; };
+      // Reset fields for adding another
+      setTimeout(()=>{
+        document.getElementById('alim-form-body').querySelectorAll('input,textarea,select').forEach(el=>{ if(el.type!=='hidden') el.value=''; });
+        msg.style.display='none';
+        btn.textContent='Salvar registro'; btn.disabled=false;
+        btn.onclick=window.salvarFormAlim;
+      }, 2000);
+    } else {
+      msg.style.cssText='display:block;margin:0 24px 8px;padding:10px 14px;border-radius:8px;font-size:13px;background:#FDECEC;color:#A80502';
+      msg.textContent='Erro: '+(d.erro||'Falha ao salvar.');
+      btn.textContent='Salvar registro'; btn.disabled=false;
+    }
+  } catch(e){
+    msg.style.cssText='display:block;margin:0 24px 8px;padding:10px 14px;border-radius:8px;font-size:13px;background:#FDECEC;color:#A80502';
+    msg.textContent='Erro de rede: '+e.message;
+    btn.textContent='Salvar registro'; btn.disabled=false;
+  }
+};
 
 function statusBadge(aba, total){
   const el = document.getElementById('alim-s-'+aba);
