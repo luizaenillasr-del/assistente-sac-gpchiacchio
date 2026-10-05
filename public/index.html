@@ -3666,7 +3666,7 @@
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:16px;margin-bottom:16px">
           <div style="background:#C70602;color:#fff;border-radius:12px;padding:22px 24px;display:flex;flex-direction:column;gap:10px">
             <div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;font-weight:600;opacity:.9">Conhecimento atualizado</div>
-            <div style="display:flex;align-items:baseline;gap:10px"><span style="font-size:44px;font-weight:700;letter-spacing:-.02em" id="cb-pct-atualizado">—</span><span style="font-size:14px">dos conteúdos revisados</span></div>
+            <div style="display:flex;align-items:baseline;gap:10px"><span style="font-size:40px;font-weight:700;letter-spacing:-.02em;color:#fff;min-width:80px;display:inline-block" id="cb-pct-atualizado">...</span><span style="font-size:14px;color:#fff">dos conteúdos revisados</span></div>
             <div style="height:6px;background:rgba(255,255,255,.3);border-radius:3px;overflow:hidden"><div id="cb-bar-atualizado" style="height:100%;background:#fff;width:0"></div></div>
             <div style="font-size:12.5px" id="cb-ultima-atualizacao">Última atualização: —</div>
           </div>
@@ -8057,8 +8057,43 @@ function renderBancoAnalise() {
   }).join('');
 }
 
-function abrirImportarHistorico() {
-  mostrarToast('Importação de histórico: funcionalidade em desenvolvimento');
+async function abrirImportarHistorico() {
+  const btn = document.querySelector('[onclick="abrirImportarHistorico()"]');
+  const orig = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = 'Importando...'; }
+  try {
+    const res = await _apiFetch('/api/historico', 20000).catch(() => ({ itens: [] }));
+    const hist = res.itens || [];
+    if (!hist.length) {
+      mostrarToast('Nenhum registro encontrado na aba BANCO_HISTORICO da planilha.');
+      return;
+    }
+    // Merge historical records into bcData (avoid duplicates by ID)
+    const existingIds = new Set(bcData.map(m => m.ID_MANIFESTACAO || m.ID_HISTORICO || ''));
+    const novos = hist.filter(h => {
+      const id = h.ID_HISTORICO || h.ID_MANIFESTACAO || '';
+      return id && !existingIds.has(id);
+    });
+    if (!novos.length) {
+      mostrarToast(`Histórico já sincronizado (${hist.length} registros).`);
+    } else {
+      bcData = [...bcData, ...novos];
+      renderBancoRegistros(bcData);
+      const total = bcData.length;
+      const setEl = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+      const qComp = bcData.filter(m => m.CAUSA && m.TRATATIVA && m.MOTIVO).length;
+      const qInc = bcData.filter(m => !m.CAUSA || !m.TRATATIVA).length;
+      setEl('banco-kpi-total', total);
+      setEl('banco-kpi-completo', qComp);
+      setEl('banco-kpi-parcial', total - qComp - qInc);
+      setEl('banco-kpi-incompleto', qInc);
+      mostrarToast(`${novos.length} registro(s) importado(s) do histórico.`);
+    }
+  } catch (e) {
+    mostrarToast('Erro ao importar histórico: ' + e.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = orig; }
+  }
 }
 
 function abrirDocBC(idx) {
@@ -12780,6 +12815,20 @@ async function cdLoadCerebroHome() {
   try {
     const d = await _apiFetch('/api/setores', 10000).catch(()=>({itens:[]}));
     const setores = d.itens || d.setores || [];
+    // Populate the knowledge percentage card
+    const pctEl = document.getElementById('cb-pct-atualizado');
+    const barEl = document.getElementById('cb-bar-atualizado');
+    const aulEl = document.getElementById('cb-ultima-atualizacao');
+    if (setores.length) {
+      const comDesc = setores.filter(s => (s.DESCRICAO||s.descricao||'').trim().length > 0).length;
+      const pct = Math.round(comDesc / setores.length * 100);
+      if (pctEl) pctEl.textContent = pct + '%';
+      if (barEl) barEl.style.width = pct + '%';
+      const datas = setores.map(s=>s.DATA_ATUALIZACAO||s.DATA_CRIACAO||'').filter(Boolean).sort().reverse();
+      if (aulEl) aulEl.textContent = 'Última atualização: ' + (datas[0] ? new Date(datas[0]).toLocaleDateString('pt-BR') : '—');
+    } else {
+      if (pctEl) pctEl.textContent = '0%';
+    }
     if (!setores.length) {
       cardsEl.innerHTML = '<div style="text-align:center;padding:32px;color:#8A8888;grid-column:1/-1">Nenhum setor cadastrado.</div>';
       return;
@@ -12793,6 +12842,8 @@ async function cdLoadCerebroHome() {
         <span style="font-size:12.5px;color:#666464;line-height:1.45">${s.DESCRICAO||s.descricao||'Regras, procedimentos, políticas e FAQ do setor'}</span>
       </button>`).join('');
   } catch(e) {
+    const pctEl = document.getElementById('cb-pct-atualizado');
+    if (pctEl) pctEl.textContent = '0%';
     cardsEl.innerHTML = '<div style="text-align:center;padding:32px;color:#8A8888;grid-column:1/-1">Erro ao carregar setores.</div>';
   }
 }
