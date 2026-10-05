@@ -5157,6 +5157,25 @@ app.post('/api/matriz-tratamento', requerPerfil('MASTER','ANALISTA SAC'), async 
   } catch(e){ res.status(500).json({sucesso:false,erro:e.message}); }
 });
 
+app.patch('/api/matriz-tratamento/:id', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
+  try {
+    const b = req.body||{};
+    const dados = {};
+    if (b.TIPO_MANIFESTACAO!==undefined) dados.TIPO_MANIFESTACAO=b.TIPO_MANIFESTACAO;
+    if (b.CAUSA!==undefined) dados.CAUSA=b.CAUSA;
+    if (b.SUBCAUSA!==undefined) dados.SUBCAUSA=b.SUBCAUSA;
+    if (b.SETOR_RESPONSAVEL!==undefined) dados.SETOR_RESPONSAVEL=b.SETOR_RESPONSAVEL;
+    if (b.SLA_HORAS!==undefined) dados.SLA_HORAS=b.SLA_HORAS;
+    if (b.PRIORIDADE!==undefined) dados.PRIORIDADE=b.PRIORIDADE;
+    if (b.TRATATIVA_PADRAO!==undefined) dados.TRATATIVA_PADRAO=b.TRATATIVA_PADRAO;
+    if (b.DEVOLUTIVA_PADRAO!==undefined) dados.DEVOLUTIVA_PADRAO=b.DEVOLUTIVA_PADRAO;
+    if (b.ATIVO!==undefined) dados.ATIVO=b.ATIVO;
+    const r = await atualizarPorID('MATRIZ_TRATAMENTO', req.params.id, dados, ['ID_REGRA']);
+    if (!r) return res.status(404).json({sucesso:false,erro:'Regra não encontrada.'});
+    res.json({sucesso:true});
+  } catch(e){ res.status(500).json({sucesso:false,erro:e.message}); }
+});
+
 // P021: garantir cabeçalhos do LOG_SISTEMA na inicialização
 const LOG_SISTEMA_HEADERS = ['DATA_HORA','USUARIO','ACAO','ID_MANIFESTACAO','ENTIDADE','VALOR_ANTERIOR','VALOR_NOVO'];
 garantirAbaComCabecalhos('LOG_SISTEMA', LOG_SISTEMA_HEADERS).catch(e => console.error('Aviso: não foi possível garantir cabeçalhos LOG_SISTEMA:', e.message));
