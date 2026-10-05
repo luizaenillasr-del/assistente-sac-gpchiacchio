@@ -36,7 +36,11 @@ const ALLOWED_ORIGINS = [
   'https://assistente-sac-gpchiacchio.vercel.app',
   'https://assistente-sac-gpchiacchio-grudfk40c-luiza4.vercel.app',
 ];
-const corsOptions = { origin: (origin, cb) => { if (!origin || ALLOWED_ORIGINS.includes(origin)) cb(null, true); else cb(new Error('CORS: origem não permitida')); }, credentials: true };
+const _ORIGIN_RE = /^https:\/\/assistente-sac-gpchiacchio[a-z0-9-]*\.vercel\.app$/;
+const corsOptions = { origin: (origin, cb) => {
+  if (!origin || ALLOWED_ORIGINS.includes(origin) || _ORIGIN_RE.test(origin)) cb(null, true);
+  else cb(null, false);
+}, credentials: true };
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 app.use(express.json({ limit: '25mb' }));
@@ -340,9 +344,11 @@ async function carregarUsuarioPorLogin(login){
 
 async function registrarAcessoUsuario(usuario){
   // F4: atualiza PostgreSQL se disponível
-  if (usuarioRepo && usuario._pgId) {
-    usuarioRepo.registrarAcesso(usuario._pgId).catch(() => {});
-  }
+  try {
+    if (usuarioRepo && usuario._pgId && typeof usuarioRepo.registrarAcesso === 'function') {
+      usuarioRepo.registrarAcesso(usuario._pgId).catch(() => {});
+    }
+  } catch(e) { console.warn('[F4] registrarAcesso PG:', e.message); }
   try{
     await atualizarPorID('USUARIOS',usuario.ID_USUARIO||usuario.USUARIO||usuario.EMAIL,{ULTIMO_ACESSO:new Date().toISOString()},['ID_USUARIO','USUARIO','EMAIL']);
   }catch(e){}
@@ -4651,7 +4657,8 @@ app.use((req, res) => {
 });
 app.use((err, req, res, next) => {
   console.error(err);
-  res.status(500).json({ sucesso:false, erro:'Erro interno do servidor.' });
+  const msg = err?.status === 403 || err?.message?.includes('CORS') ? 'Origem não autorizada.' : 'Erro interno do servidor.';
+  res.status(err?.status || 500).json({ sucesso:false, erro: msg });
 });
 
 // P021: garantir cabeçalhos do LOG_SISTEMA na inicialização
