@@ -12139,6 +12139,8 @@ async function loadPainelMaquina() {
 
     // SLA bars
     const slaDiv = document.getElementById('pm-sla');
+    const slaVencidoEl = document.getElementById('pm-sla-vencido');
+    if (slaVencidoEl) slaVencidoEl.textContent = (res.sla?.vencido ?? 0);
     if (slaDiv) {
       const sla = res.sla || {};
       const slaItems = [
