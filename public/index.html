@@ -15534,7 +15534,13 @@ window.alimWizNext = async function(){
     const f=fi.files[0];
     btn.textContent='Lendo...'; btn.disabled=true;
     try {
+      const ext = f.name.split('.').pop().toLowerCase();
+      const binExts = ['docx','xlsx','doc','xls','pdf','pptx','ppt','odt','ods','zip','bin'];
+      if(binExts.includes(ext)) throw new Error('Formato não suportado: .'+ext+'. Use CSV (.csv) ou JSON (.json). Para planilhas Excel, exporte como CSV primeiro.');
       const text = await f.text();
+      // Detect binary content (PK header = zip/Office format)
+      if(text.startsWith('PK') || /[\x00-\x08\x0E-\x1F]{10}/.test(text.slice(0,500)))
+        throw new Error('Arquivo binário detectado. Use CSV (.csv) ou JSON (.json). Para planilhas Excel, exporte como CSV primeiro.');
       if(f.name.endsWith('.json')){
         const parsed=JSON.parse(text);
         _alimRows=Array.isArray(parsed)?parsed:(parsed.itens||parsed.data||[parsed]);
