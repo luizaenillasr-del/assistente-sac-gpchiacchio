@@ -1983,8 +1983,9 @@ app.get('/api/dashboard', middlewareEscopoEmpresa(), requerPerfil('MASTER','ANAL
     recs = filtrarPorEmpresaHistorico(recs, req, COLUNA_EMPRESA_ABA['Reclamações']).filter(r => !isTeste(r));
     const emAndamento = mans.filter(m => !['FINALIZADA','ENCERRADA','CONCLUÍDA'].some(s => (m.STATUS||'').toUpperCase().includes(s))).length;
     const rncsAbertas = mans.filter(m => m.ID_RNC && m.ID_RNC !== '').length;
-    const recComSLA = recs.filter(r => r['Dentro do prazo? '] || r['Dentro do prazo?']);
-    const dentroPrazo = recComSLA.filter(r => { const v=(r['Dentro do prazo? ']||r['Dentro do prazo?']||'').toUpperCase().trim(); return v==='SIM'||v==='S'; }).length;
+    const recComSLA = recs.filter(r => r['Dentro do Prazo? Cliente'] || r['Dentro do Prazo? Setor'] || r['Dentro do prazo? '] || r['Dentro do prazo?']);
+    const _getSLA = r => (r['Dentro do Prazo? Cliente'] || r['Dentro do Prazo? Setor'] || r['Dentro do prazo? '] || r['Dentro do prazo?'] || '').toUpperCase().trim();
+    const dentroPrazo = recComSLA.filter(r => { const v=_getSLA(r); return v==='SIM'||v==='S'; }).length;
     const slaPercent = recComSLA.length > 0 ? Math.round(dentroPrazo/recComSLA.length*100) : null;
     const porEmpresa = {};
     recs.forEach(r => {
@@ -1994,18 +1995,18 @@ app.get('/api/dashboard', middlewareEscopoEmpresa(), requerPerfil('MASTER','ANAL
       porEmpresa[emp].total++;
       const st=(r['Status']||r['Situação Final']||'').toUpperCase();
       if(st.includes('FINALIZ')||st.includes('CONCLUÍD'))porEmpresa[emp].finaliz++;
-      const slaV=(r['Dentro do prazo? ']||r['Dentro do prazo?']||'').toUpperCase().trim();
+      const slaV=_getSLA(r);
       if(slaV==='SIM')porEmpresa[emp].sla++; else if(slaV==='NÃO'||slaV==='NAO')porEmpresa[emp].foraSLA++;
     });
     const motivos = {};
-    recs.forEach(r=>{const m=(r['Motivo da Reclamação']||'').trim();if(m&&m!=='Não identificado')motivos[m]=(motivos[m]||0)+1;});
+    recs.forEach(r=>{const m=(r['Motivo da Reclamação']||r['Setor']||'').trim();if(m&&m!=='Não identificado')motivos[m]=(motivos[m]||0)+1;});
     const statusCount = {};
     mans.forEach(m=>{const s=m.STATUS||'EM ANÁLISE';statusCount[s]=(statusCount[s]||0)+1;});
     const semanas = [];
     const agora = new Date();
     for(let i=11;i>=0;i--){const d=new Date(agora);d.setDate(d.getDate()-i*7);semanas.push({label:d.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'}).replace('.',''),count:0});}
     recs.forEach(r=>{
-      let dc; const dv=r['Data do Registro'];
+      let dc; const dv=r['Data de Registro']||r['Data do Registro'];
       if(typeof dv==='number')dc=new Date((dv-25569)*86400*1000); else dc=new Date(dv);
       if(!dc||isNaN(dc))return;
       const diff=Math.floor((agora-dc)/86400000); const idx=11-Math.floor(diff/7);
@@ -2225,7 +2226,7 @@ app.get('/api/reclamacoes', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','SE
     const data=await lerAbaReclamacoes(2000);
     let normalizado=data.map(r=>({
       ...r,
-      'Data do Registro':normalizarData(r['Data do Registro']),
+      'Data do Registro':normalizarData(r['Data de Registro']||r['Data do Registro']),
       'Empresa':r['Empresa']||''
     })).filter(r=>!['TR01','TR08'].includes((r['Empresa']||'').trim()));
     // B2: legado sem empresa = global; com empresa = apenas daquela empresa
