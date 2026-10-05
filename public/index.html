@@ -4166,6 +4166,50 @@
     </div>
   </div>
 
+<!-- ps-* INÍCIO: estilos da tela Pesquisa de Satisfação -->
+<style>
+.ps-card{background:#fff;border:1px solid #E4E4E4;border-radius:10px;overflow:hidden;margin-bottom:14px}
+.ps-card-h{padding:12px 16px;border-bottom:1px solid #EFEFEF;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center;font-weight:700;font-size:14px}
+.ps-body{padding:14px 16px}
+.ps-muted{font-size:12px;color:#666464;font-weight:400}
+.ps-grid-emp{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+.ps-grid-2{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px}
+.ps-kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin-bottom:14px}
+.ps-kpi{background:#fff;border:1px solid #E4E4E4;border-top:3px solid #C70602;border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:3px}
+.ps-kl{font-size:11px;font-weight:600;letter-spacing:.04em;color:#666464}
+.ps-kv{font-size:24px;font-weight:700;font-variant-numeric:tabular-nums}
+.ps-big{font-size:24px;font-weight:700;font-variant-numeric:tabular-nums}
+.ps-th{text-align:left;font-weight:600;font-size:11.5px;color:#666464;padding:9px 12px;border-bottom:1px solid #E4E4E4;white-space:nowrap}
+.ps-td{padding:9px 12px;font-size:12.5px}
+.ps-tr{border-bottom:1px solid #EFEFEF}
+.ps-tr:hover{background:#FAFAFA}
+.ps-low{background:#FFFBEF}
+.ps-nota{display:inline-block;min-width:30px;padding:3px 6px;border-radius:6px;font-weight:600;font-variant-numeric:tabular-nums}
+.ps-n-bad{background:#FDECEC;color:#A80502;font-weight:700}
+.ps-n-mid{background:#FBF0D9;color:#7A4C00}
+.ps-n-ok{background:#E6F2EA;color:#1E6B3A}
+.ps-pill{padding:2px 8px;border-radius:99px;font-size:10.5px;font-weight:700;white-space:nowrap}
+.ps-pill-red{background:#C70602;color:#fff}
+.ps-pill-gray{background:#EEEEEE;color:#545252}
+.ps-det{border:1px solid #E4E4E4;border-radius:8px;margin-bottom:8px;padding:0 12px}
+.ps-det summary{cursor:pointer;padding:10px 0;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.ps-mes{display:flex;justify-content:space-between;gap:10px;width:100%;border:0;border-top:1px solid #EFEFEF;background:none;padding:9px 4px;cursor:pointer;font-size:13px;text-align:left;font-family:inherit}
+.ps-mes:hover{background:#FAFAFA}
+.ps-bar{display:flex;align-items:center;gap:8px;margin:6px 0;font-size:12px}
+.ps-bar-l{flex:0 0 38%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#545252}
+.ps-bar-t{flex:1;height:8px;background:#EEEEEE;border-radius:99px;overflow:hidden}
+.ps-bar-t span{display:block;height:100%;border-radius:99px}
+.ps-bar-v{flex:0 0 32px;text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+.ps-cols{display:flex;align-items:flex-end;gap:6px;height:170px}
+.ps-col{flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:3px;font-size:10.5px;color:#666464}
+.ps-col-b{width:100%;background:#C70602;border-radius:4px 4px 0 0;min-height:2px}
+.ps-col-v{font-weight:700;color:#1F1F1F}
+.ps-com{border:1px solid #E4E4E4;border-radius:8px;padding:10px 12px;margin-bottom:8px;font-size:13px}
+.ps-com-low{border-color:#D9A400;background:#FFFBEF}
+.ps-pend{background:#FBF0D9;border:1px solid #D9A400;color:#5E3B00;border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:6px;font-size:13px;line-height:1.5}
+</style>
+<!-- ps-* FIM -->
+
   <!-- ===== SUGESTÕES DE MELHORIA ===== -->
   <div class="page" id="page-sugestoes-melhoria">
     <div class="topbar">
@@ -4175,7 +4219,7 @@
           <h1 class="page-title">CENTRO DAS PESQUISAS</h1>
           <div class="page-actions">
             <button class="btn btn-secondary" onclick="cpTab('notificacoes',document.getElementById('cp-tab-btn-notificacoes'))">Notificações</button>
-            <button class="btn btn-primary" onclick="alert('Links das pesquisas:\n/pesquisa/chiacchio\n/pesquisa/plaschio\n/pesquisa/tubahia')">Links das pesquisas</button>
+            <button class="btn btn-primary" onclick="cpOpenLinks()">Links das pesquisas</button>
           </div>
         </div>
       </div>
@@ -4191,13 +4235,14 @@
         <button id="cp-tab-btn-dashboard" onclick="cpTab('dashboard',this)" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Dashboard</button>
         <button id="cp-tab-btn-comentarios" onclick="cpTab('comentarios',this)" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Comentários</button>
         <button id="cp-tab-btn-ocorrencias" onclick="cpTab('ocorrencias',this)" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Ocorrências</button>
+        <button id="cp-tab-btn-editor" onclick="cpTab('editor',this)" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Editor do questionário</button>
         <button id="cp-tab-btn-notificacoes" onclick="cpTab('notificacoes',this)" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Notificações</button>
       </div>
 
       <!-- Filters card -->
-      <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:12px 14px;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:14px">
+      <div id="cp-filtros" style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:12px 14px;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:14px">
         <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:#666464;font-weight:600">EMPRESA
-          <select id="cp-f-empresa" onchange="cpLoad()" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:12.5px;color:#1F1F1F;font-weight:500">
+          <select id="cp-f-empresa" onchange="cpAplica()" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:12.5px;color:#1F1F1F;font-weight:500">
             <option value="">Todas</option>
             <option value="Chiacchio">Chiacchio</option>
             <option value="Plaschio">Plaschio</option>
@@ -4205,12 +4250,12 @@
           </select>
         </label>
         <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:#666464;font-weight:600">ANO
-          <select id="cp-f-ano" onchange="cpLoad()" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:12.5px;color:#1F1F1F;font-weight:500">
+          <select id="cp-f-ano" onchange="cpAplica()" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:12.5px;color:#1F1F1F;font-weight:500">
             <option value="">Todos</option>
           </select>
         </label>
         <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:#666464;font-weight:600">MÊS
-          <select id="cp-f-mes" onchange="cpLoad()" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:12.5px;color:#1F1F1F;font-weight:500">
+          <select id="cp-f-mes" onchange="cpAplica()" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:12.5px;color:#1F1F1F;font-weight:500">
             <option value="">Todos</option>
           </select>
         </label>
@@ -4242,7 +4287,7 @@
           <div style="background:#fff;border:1px solid #E4E4E4;border-top:3px solid #C70602;border-radius:10px;padding:12px 14px"><span style="font-size:11px;font-weight:600;letter-spacing:.04em;color:#666464">TOTAL</span><div style="font-size:24px;font-weight:700;margin-top:2px" id="cp-kpi-total">—</div></div>
           <div style="background:#fff;border:1px solid #E4E4E4;border-top:3px solid #D9A400;border-radius:10px;padding:12px 14px"><span style="font-size:11px;font-weight:600;letter-spacing:.04em;color:#666464">NOTA ≤ 6</span><div style="font-size:24px;font-weight:700;margin-top:2px" id="cp-kpi-baixa">—</div></div>
           <div style="background:#fff;border:1px solid #E4E4E4;border-top:3px solid #1E6B3A;border-radius:10px;padding:12px 14px"><span style="font-size:11px;font-weight:600;letter-spacing:.04em;color:#666464">MÉDIA GERAL</span><div style="font-size:24px;font-weight:700;margin-top:2px" id="cp-kpi-media">—</div></div>
-          <div style="background:#fff;border:1px solid #E4E4E4;border-top:3px solid #24508F;border-radius:10px;padding:12px 14px"><span style="font-size:11px;font-weight:600;letter-spacing:.04em;color:#666464">OCORRÊNCIAS</span><div style="font-size:24px;font-weight:700;margin-top:2px" id="cp-kpi-ocorrencias">—</div></div>
+          <div style="background:#fff;border:1px solid #E4E4E4;border-top:3px solid #24508F;border-radius:10px;padding:12px 14px"><span style="font-size:11px;font-weight:600;letter-spacing:.04em;color:#666464">COM COMENTÁRIO</span><div style="font-size:24px;font-weight:700;margin-top:2px" id="cp-kpi-com">—</div></div>
         </div>
         <!-- Pesquisas table -->
         <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;overflow:hidden">
@@ -4252,44 +4297,51 @@
           </div>
           <div style="overflow-x:auto">
             <table style="border-collapse:collapse;width:100%;min-width:980px;font-size:12.5px">
-              <thead><tr style="background:#FAFAFA">
-                <th style="text-align:left;font-weight:600;font-size:11.5px;color:#666464;padding:9px 12px;border-bottom:1px solid #E4E4E4">ID</th>
-                <th style="text-align:left;font-weight:600;font-size:11.5px;color:#666464;padding:9px 12px;border-bottom:1px solid #E4E4E4">DATA</th>
-                <th style="text-align:left;font-weight:600;font-size:11.5px;color:#666464;padding:9px 12px;border-bottom:1px solid #E4E4E4">EMPRESA</th>
-                <th style="text-align:left;font-weight:600;font-size:11.5px;color:#666464;padding:9px 12px;border-bottom:1px solid #E4E4E4">CLIENTE</th>
-                <th style="text-align:left;font-weight:600;font-size:11.5px;color:#666464;padding:9px 12px;border-bottom:1px solid #E4E4E4">NOTAS</th>
-                <th style="text-align:left;font-weight:600;font-size:11.5px;color:#666464;padding:9px 12px;border-bottom:1px solid #E4E4E4">STATUS</th>
-              </tr></thead>
+              <thead><tr style="background:#FAFAFA" id="cp-thead"></tr></thead>
               <tbody id="cp-tbody">
-                <tr><td colspan="6" style="padding:40px;text-align:center;color:#8A8888"><div class="spinner" style="margin:0 auto 8px"></div>Carregando...</td></tr>
+                <tr><td colspan="7" style="padding:40px;text-align:center;color:#8A8888"><div class="spinner" style="margin:0 auto 8px"></div>Carregando...</td></tr>
               </tbody>
             </table>
           </div>
+          <div id="cp-more" style="display:none;padding:10px;text-align:center"><button onclick="cpMais()" style="border:1px solid #D6D6D6;background:#fff;border-radius:7px;padding:7px 14px;cursor:pointer;font-size:12.5px">Carregar mais</button></div>
         </div>
       </div>
 
       <div id="cp-panel-anomes" style="display:none">
-        <div style="text-align:center;padding:48px;color:#8A8888">Por ano e mês — em breve.</div>
+        <div class="ps-card"><div class="ps-card-h"><span>Respostas por ano e mês</span><span class="ps-muted">Clique em um mês para ver as respostas</span></div><div id="cp-tree" class="ps-body"></div></div>
       </div>
       <div id="cp-panel-empresa" style="display:none">
-        <div style="text-align:center;padding:48px;color:#8A8888">Por empresa — em breve.</div>
+        <div class="ps-muted" style="margin-bottom:10px">Indicadores calculados separadamente para cada empresa, sem comparação entre elas.</div>
+        <div id="cp-empresas" class="ps-grid-emp"></div>
       </div>
       <div id="cp-panel-dashboard" style="display:none">
-        <div style="text-align:center;padding:48px;color:#8A8888">Dashboard — em breve.</div>
+        <div id="cp-dash-kpis" class="ps-kpis"></div>
+        <div class="ps-grid-2">
+          <div class="ps-card"><div class="ps-card-h"><span>Média por critério</span><span class="ps-muted">escala 0 a 10</span></div><div id="cp-dash-crit" class="ps-body"></div></div>
+          <div class="ps-card"><div class="ps-card-h"><span>Respostas por mês</span><span class="ps-muted">últimos 12 meses do recorte</span></div><div id="cp-dash-meses" class="ps-body"></div></div>
+        </div>
       </div>
       <div id="cp-panel-comentarios" style="display:none">
-        <div style="text-align:center;padding:48px;color:#8A8888">Comentários — em breve.</div>
+        <div class="ps-card">
+          <div class="ps-card-h"><span>Comentários abertos</span>
+            <label class="ps-muted" style="display:flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" id="cp-com-baixa" onchange="cpRenderComentarios()"> Somente com nota ≤ 6</label>
+          </div>
+          <div id="cp-com-lista" class="ps-body"></div>
+        </div>
       </div>
       <div id="cp-panel-ocorrencias" style="display:none">
-        <div style="text-align:center;padding:48px;color:#8A8888">Ocorrências — em breve.</div>
+        <div class="ps-pend"><strong>Ocorrências de pesquisa — indisponível</strong><span>As respostas hoje vêm de uma planilha somente leitura. O registro de ocorrências (OCP), a decisão do analista e o vínculo com manifestações formais ainda não têm tabela nem endpoint no sistema, por isso esta aba não exibe dados.</span></div>
+      </div>
+      <div id="cp-panel-editor" style="display:none">
+        <div class="ps-pend"><strong>Editor do questionário — indisponível</strong><span>Questionários com versões, pré-visualização e publicação, e a pesquisa pública por token único, ainda não existem no backend (a pesquisa pública atual é /pesquisa/chiacchio, /pesquisa/plaschio e /pesquisa/tubahia, com formulário fixo).</span></div>
       </div>
       <div id="cp-panel-notificacoes" style="display:none">
-        <div style="text-align:center;padding:48px;color:#8A8888">Notificações — em breve.</div>
+        <div class="ps-pend"><strong>Notificações por setor — indisponível</strong><span>Dependem das ocorrências de pesquisa, que ainda não têm backend. Quando existirem, cada setor verá aqui apenas as ocorrências recebidas.</span></div>
       </div>
     </div>
   </div>
 
-  <!-- ===== MATRIZ DE CONHECIMENTO ===== -->
+<!-- ===== MATRIZ DE CONHECIMENTO ===== -->
   <div class="page" id="page-matriz-conhecimento">
     <div class="topbar">
       <div class="breadcrumb">Inteligência / <span>Matriz de Conhecimento</span></div>
@@ -13265,6 +13317,42 @@ function auditExport() {
 }
 
 // ── Centro das Pesquisas ───────────────────────────────────
+// Fonte: GET /api/pesquisas/relatorio (linhas da planilha de respostas, somente leitura).
+// Agregações (ano/mês, empresa, dashboard, comentários) calculadas no cliente.
+const _cp = { all: null, cols: null, filtered: [], page: 1 };
+const CP_MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const CP_LIMITE = 6;
+function cpEsc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function cpNum(v) { const n = parseFloat(String(v == null ? '' : v).replace(',', '.')); return isNaN(n) ? null : n; }
+function cpData(raw) {
+  const m = String(raw || '').match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+  const d = m ? new Date(+m[3], +m[2] - 1, +m[1]) : new Date(raw);
+  return isNaN(d) ? null : d;
+}
+function cpDetectaCols(itens) {
+  const heads = []; itens.forEach(r => Object.keys(r).forEach(h => { if (!heads.includes(h)) heads.push(h); }));
+  const data = heads.find(h => /data|timestamp|carimbo|hora/i.test(h)) || heads[0];
+  const emp = heads.find(h => /empresa/i.test(h) && !/nome|cliente|raz/i.test(h)) || heads.find(h => /empresa/i.test(h));
+  const cli = heads.find(h => h !== emp && /cliente|raz[aã]o|nome/i.test(h));
+  const com = heads.filter(h => /observ|coment|sugest|elogio|mensag/i.test(h));
+  const notas = heads.filter(h => !/data|timestamp|carimbo|hora|nome|email|cpf|cnpj|observ|coment|empresa|cliente|raz/i.test(h) && h !== data && h !== emp && itens.some(r => { const n = cpNum(r[h]); return n !== null && n >= 0 && n <= 10; }));
+  return { data, emp, cli, com, notas };
+}
+function cpPrepara(itens) {
+  const c = _cp.cols = cpDetectaCols(itens);
+  return itens.map((r, i) => {
+    const d = cpData(r[c.data]);
+    const ns = c.notas.map(h => cpNum(r[h])).filter(n => n !== null && n >= 0 && n <= 10);
+    const media = ns.length ? ns.reduce((a, b) => a + b, 0) / ns.length : null;
+    const comentario = c.com.map(h => String(r[h] || '').trim()).filter(Boolean).join(' · ');
+    return { n: i + 1, raw: r, d, ano: d ? d.getFullYear() : null, mes: d ? d.getMonth() + 1 : null,
+      dataTxt: d ? d.toLocaleDateString('pt-BR') : String(r[c.data] || ''), emp: c.emp ? String(r[c.emp] || '') : '', cli: c.cli ? String(r[c.cli] || '') : '',
+      notas: c.notas.map(h => cpNum(r[h])), media, baixa: ns.some(n => n <= CP_LIMITE), comentario };
+  }).sort((a, b) => (b.d || 0) - (a.d || 0));
+}
+function cpEmpKey(s) { s = String(s || '').toLowerCase(); return s.includes('plaschio') ? 'Plaschio' : s.includes('tubahia') ? 'Tubahia' : s.includes('chiacchio') ? 'Chiacchio' : ''; }
+function cpAvg(arr) { const v = arr.filter(x => x !== null && x !== undefined); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; }
+function cpFmt(n) { return n === null || n === undefined ? '—' : n.toFixed(1).replace('.', ','); }
 function cpTab(name, btn) {
   document.querySelectorAll('[id^="cp-panel-"]').forEach(p => p.style.display = 'none');
   document.querySelectorAll('#cp-tabbar button').forEach(b => {
@@ -13273,72 +13361,130 @@ function cpTab(name, btn) {
   if (btn) { btn.style.color = '#1F1F1F'; btn.style.fontWeight = '700'; btn.style.borderBottom = '2px solid #C70602'; }
   const panel = document.getElementById('cp-panel-' + name);
   if (panel) panel.style.display = 'block';
-  if (name === 'geral') cpLoad();
+  const semFiltro = ['ocorrencias', 'editor', 'notificacoes'].includes(name);
+  const fb = document.getElementById('cp-filtros'); if (fb) fb.style.display = (semFiltro || name === 'anomes') ? 'none' : 'flex';
+  cpRender();
 }
-
 function cpClearFilters() {
-  const e = document.getElementById('cp-f-empresa');
-  const a = document.getElementById('cp-f-ano');
-  const m = document.getElementById('cp-f-mes');
-  if (e) e.value = ''; if (a) a.value = ''; if (m) m.value = '';
-  cpLoad();
+  ['cp-f-empresa', 'cp-f-ano', 'cp-f-mes'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
+  cpAplica();
 }
-
+function cpOpenLinks() {
+  const o = location.origin;
+  alert('Links das pesquisas públicas:\n' + o + '/pesquisa/chiacchio\n' + o + '/pesquisa/plaschio\n' + o + '/pesquisa/tubahia');
+}
+function cpAbrirMes(ano, mes) {
+  document.getElementById('cp-f-ano').value = String(ano);
+  document.getElementById('cp-f-mes').value = String(mes);
+  cpTab('geral', document.getElementById('cp-tab-btn-geral'));
+  cpAplica();
+}
 async function cpLoad() {
-  const empresa = (document.getElementById('cp-f-empresa') || {}).value || '';
-  const ano = (document.getElementById('cp-f-ano') || {}).value || '';
-  const mes = (document.getElementById('cp-f-mes') || {}).value || '';
   const tbody = document.getElementById('cp-tbody');
-  const countTxt = document.getElementById('cp-count-txt');
-  if (tbody) tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:#8A8888">Carregando...</td></tr>';
+  if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:#8A8888">Carregando...</td></tr>';
   try {
-    const params = new URLSearchParams();
-    if (empresa) params.set('empresa', empresa);
-    if (ano) params.set('ano', ano);
-    if (mes) params.set('mes', mes);
-    const url = '/api/pesquisas/resumo' + (params.toString() ? '?' + params : '');
-    const d = await _apiFetch(url, 15000).catch(() => ({}));
-    const itens = d.itens || d.pesquisas || [];
-    const total = d.total ?? itens.length;
-    const baixaNota = d.baixaNota ?? itens.filter(i => Number(i.NOTA || i.nota) <= 6).length;
-    const mediaNota = d.mediaNota ?? (itens.reduce((s, i) => s + Number(i.NOTA || i.nota || 0), 0) / (itens.length || 1)).toFixed(1);
-    const ocorrencias = d.ocorrencias ?? itens.filter(i => i.OCORRENCIA || i.ocorrencia).length;
-
-    const el = id => document.getElementById(id);
-    if (el('cp-kpi-total')) el('cp-kpi-total').textContent = total;
-    if (el('cp-kpi-baixa')) el('cp-kpi-baixa').textContent = baixaNota;
-    if (el('cp-kpi-media')) el('cp-kpi-media').textContent = mediaNota;
-    if (el('cp-kpi-ocorrencias')) el('cp-kpi-ocorrencias').textContent = ocorrencias;
-
-    if (countTxt) countTxt.textContent = total + ' resposta' + (total !== 1 ? 's' : '');
-
-    if (tbody) {
-      if (!itens.length) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:#8A8888">Nenhuma resposta encontrada.</td></tr>';
-      } else {
-        const statusColor = n => n <= 6 ? 'background:#FDECEC;color:#A80502' : n <= 8 ? 'background:#FBF0D9;color:#7A4C00' : 'background:#E6F2EA;color:#1E6B3A';
-        tbody.innerHTML = itens.map(i => {
-          const nota = Number(i.NOTA || i.nota || 0);
-          const data = i.DATA || i.data || '';
-          const emp = i.EMPRESA || i.empresa || '';
-          const cliente = i.CLIENTE || i.cliente || '';
-          const comentario = i.COMENTARIO || i.comentario || '';
-          const manifestacao = i.MANIFESTACAO || i.manifestacao || '';
-          return `<tr style="border-bottom:1px solid #EFEFEF">
-            <td style="padding:10px 12px;font-size:13px">${data}</td>
-            <td style="padding:10px 12px;font-size:13px">${emp}</td>
-            <td style="padding:10px 12px;font-size:13px">${cliente}</td>
-            <td style="padding:10px 12px;font-size:13px"><span style="display:inline-block;border-radius:99px;padding:2px 10px;font-size:12px;font-weight:700;${statusColor(nota)}">${nota}</span></td>
-            <td style="padding:10px 12px;font-size:13px;max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${comentario}</td>
-            <td style="padding:10px 12px;font-size:13px">${manifestacao ? '<a href="#" onclick="navigate(\'detalhe\',\''+manifestacao+'\');return false" style="color:#C70602;font-weight:600">#'+manifestacao+'</a>' : '—'}</td>
-          </tr>`;
-        }).join('');
-      }
-    }
-  } catch(e) {
-    if (tbody) tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:#8A8888">Erro ao carregar pesquisas.</td></tr>';
+    const d = await _apiFetch('/api/pesquisas/relatorio', 30000);
+    if (d && d.sucesso === false) throw new Error(d.erro || 'erro');
+    _cp.all = cpPrepara(d.itens || []);
+    const anos = [...new Set(_cp.all.map(r => r.ano).filter(Boolean))].sort((a, b) => b - a);
+    const sa = document.getElementById('cp-f-ano'), sm = document.getElementById('cp-f-mes');
+    const va = sa.value, vm = sm.value;
+    sa.innerHTML = '<option value="">Todos</option>' + anos.map(a => '<option value="' + a + '">' + a + '</option>').join('');
+    sm.innerHTML = '<option value="">Todos</option>' + CP_MESES.map((m, i) => '<option value="' + (i + 1) + '">' + m + '</option>').join('');
+    sa.value = va; sm.value = vm;
+    cpAplica();
+  } catch (e) {
+    _cp.all = null;
+    if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:#8A8888">Erro ao carregar pesquisas.</td></tr>';
     console.error('cpLoad error', e);
   }
+}
+function cpAplica() {
+  if (!_cp.all) return;
+  const emp = document.getElementById('cp-f-empresa').value, ano = document.getElementById('cp-f-ano').value, mes = document.getElementById('cp-f-mes').value;
+  _cp.filtered = _cp.all.filter(r => (!emp || cpEmpKey(r.emp) === emp) && (!ano || r.ano === +ano) && (!mes || r.mes === +mes));
+  _cp.page = 1;
+  cpRender();
+}
+function cpRender() {
+  if (!_cp.all) return;
+  const vis = [...document.querySelectorAll('[id^="cp-panel-"]')].find(p => p.style.display !== 'none');
+  const id = vis ? vis.id.replace('cp-panel-', '') : 'geral';
+  if (id === 'geral') cpRenderGeral();
+  else if (id === 'anomes') cpRenderArvore();
+  else if (id === 'empresa') cpRenderEmpresas();
+  else if (id === 'dashboard') cpRenderDash();
+  else if (id === 'comentarios') cpRenderComentarios();
+}
+function cpStats(lista) {
+  return { total: lista.length, baixa: lista.filter(r => r.baixa).length, media: cpAvg(lista.map(r => r.media)), comentarios: lista.filter(r => r.comentario).length };
+}
+function cpNotaChip(n) {
+  if (n === null) return '<span class="ps-nota" style="color:#929090">—</span>';
+  const c = n <= CP_LIMITE ? 'ps-n-bad' : n <= 8 ? 'ps-n-mid' : 'ps-n-ok';
+  return '<span class="ps-nota ' + c + '">' + (Number.isInteger(n) ? n : cpFmt(n)) + '</span>';
+}
+function cpRenderGeral() {
+  const l = _cp.filtered, s = cpStats(l), el = id => document.getElementById(id);
+  el('cp-kpi-total').textContent = s.total;
+  el('cp-kpi-baixa').textContent = s.baixa;
+  el('cp-kpi-media').textContent = cpFmt(s.media);
+  el('cp-kpi-com').textContent = s.comentarios;
+  el('cp-count-txt').textContent = s.total + ' resposta' + (s.total !== 1 ? 's' : '');
+  const th = el('cp-thead'), c = _cp.cols;
+  th.innerHTML = ['LINHA', 'DATA', 'EMPRESA', 'CLIENTE'].concat(c.notas.map(h => cpEsc(h.length > 22 ? h.slice(0, 21) + '…' : h).toUpperCase()), ['SINAL'])
+    .map(x => '<th class="ps-th">' + x + '</th>').join('');
+  const tb = el('cp-tbody');
+  if (!l.length) { tb.innerHTML = '<tr><td colspan="' + (5 + c.notas.length) + '" style="text-align:center;padding:30px;color:#666464">Nenhuma pesquisa neste recorte. Ajuste ou limpe os filtros.</td></tr>'; el('cp-more').style.display = 'none'; return; }
+  const vis = l.slice(0, _cp.page * 50);
+  tb.innerHTML = vis.map(r => '<tr class="ps-tr' + (r.baixa ? ' ps-low' : '') + '"><td class="ps-td" style="font-weight:600">#' + r.n + '</td><td class="ps-td">' + cpEsc(r.dataTxt) + '</td><td class="ps-td">' + cpEsc(r.emp || '—') + '</td><td class="ps-td" style="max-width:220px">' + cpEsc(r.cli || '—') + '</td>'
+    + r.notas.map(n => '<td class="ps-td" style="text-align:center">' + cpNotaChip(n) + '</td>').join('')
+    + '<td class="ps-td">' + (r.baixa ? '<span class="ps-pill ps-pill-red">NOTA ≤ 6</span>' : '<span class="ps-pill ps-pill-gray">SEM ALERTA</span>') + '</td></tr>').join('');
+  el('cp-more').style.display = vis.length < l.length ? 'block' : 'none';
+}
+function cpMais() { _cp.page++; cpRenderGeral(); }
+function cpRenderArvore() {
+  const base = _cp.all, anos = {};
+  base.forEach(r => { if (!r.ano) return; ((anos[r.ano] = anos[r.ano] || {})[r.mes] = anos[r.ano][r.mes] || []).push(r); });
+  const box = document.getElementById('cp-tree');
+  const ks = Object.keys(anos).sort((a, b) => b - a);
+  if (!ks.length) { box.innerHTML = '<div class="ps-muted" style="padding:20px;text-align:center">Nenhuma resposta registrada.</div>'; return; }
+  box.innerHTML = ks.map((a, i) => {
+    const todos = Object.values(anos[a]).flat(), s = cpStats(todos);
+    return '<details class="ps-det"' + (i === 0 ? ' open' : '') + '><summary><strong>' + a + '</strong><span class="ps-muted">' + s.total + ' respostas · média ' + cpFmt(s.media) + ' · ' + s.baixa + ' com nota ≤ 6</span></summary>'
+      + Object.keys(anos[a]).sort((x, y) => y - x).map(m => { const sm = cpStats(anos[a][m]);
+        return '<button class="ps-mes" onclick="cpAbrirMes(' + a + ',' + m + ')"><span>' + CP_MESES[m - 1] + '</span><span class="ps-muted">' + sm.total + ' respostas · média ' + cpFmt(sm.media) + (sm.baixa ? ' · <b style="color:#A80502">' + sm.baixa + ' ≤ 6</b>' : '') + '</span></button>'; }).join('')
+      + '</details>';
+  }).join('');
+}
+function cpRenderEmpresas() {
+  const ano = document.getElementById('cp-f-ano').value, mes = document.getElementById('cp-f-mes').value;
+  const base = _cp.all.filter(r => (!ano || r.ano === +ano) && (!mes || r.mes === +mes));
+  document.getElementById('cp-empresas').innerHTML = ['Chiacchio', 'Plaschio', 'Tubahia'].map(e => {
+    const l = base.filter(r => cpEmpKey(r.emp) === e), s = cpStats(l);
+    const crit = _cp.cols.notas.map((h, i) => ({ h, m: cpAvg(l.map(r => r.notas[i])) }));
+    return '<div class="ps-card"><div class="ps-card-h"><span>' + e.toUpperCase() + '</span><span class="ps-muted">' + s.total + ' respostas</span></div><div class="ps-body">'
+      + '<div style="display:flex;gap:18px;margin-bottom:10px"><div><div class="ps-big">' + cpFmt(s.media) + '</div><div class="ps-muted">média geral</div></div><div><div class="ps-big" style="color:#A80502">' + s.baixa + '</div><div class="ps-muted">nota ≤ 6</div></div><div><div class="ps-big">' + s.comentarios + '</div><div class="ps-muted">comentários</div></div></div>'
+      + crit.map(c => cpBarra(c.h, c.m)).join('') + '</div></div>';
+  }).join('');
+}
+function cpBarra(rot, v) {
+  const pct = v === null ? 0 : Math.round(v * 10), cor = v === null ? '#D6D6D6' : v <= CP_LIMITE ? '#C70602' : v <= 8 ? '#D9A400' : '#1E6B3A';
+  return '<div class="ps-bar"><span class="ps-bar-l" title="' + cpEsc(rot) + '">' + cpEsc(rot) + '</span><span class="ps-bar-t"><span style="width:' + pct + '%;background:' + cor + '"></span></span><span class="ps-bar-v">' + cpFmt(v) + '</span></div>';
+}
+function cpRenderDash() {
+  const l = _cp.filtered, s = cpStats(l);
+  const k = (t, v, c) => '<div class="ps-kpi" style="border-top-color:' + c + '"><span class="ps-kl">' + t + '</span><span class="ps-kv">' + v + '</span></div>';
+  document.getElementById('cp-dash-kpis').innerHTML = k('RESPOSTAS', s.total, '#C70602') + k('MÉDIA GERAL', cpFmt(s.media), '#1E6B3A') + k('NOTA ≤ 6', s.baixa, '#D9A400') + k('% COM NOTA ≤ 6', s.total ? Math.round(s.baixa * 100 / s.total) + '%' : '—', '#24508F');
+  document.getElementById('cp-dash-crit').innerHTML = _cp.cols.notas.length ? _cp.cols.notas.map((h, i) => cpBarra(h, cpAvg(l.map(r => r.notas[i])))).join('') : '<div class="ps-muted">Nenhuma coluna de nota identificada.</div>';
+  const meses = {}; l.forEach(r => { if (r.ano) { const k2 = r.ano + '-' + String(r.mes).padStart(2, '0'); meses[k2] = (meses[k2] || 0) + 1; } });
+  const ks = Object.keys(meses).sort().slice(-12), mx = Math.max(1, ...ks.map(x => meses[x]));
+  document.getElementById('cp-dash-meses').innerHTML = ks.length ? '<div class="ps-cols">' + ks.map(x => '<div class="ps-col"><span class="ps-col-v">' + meses[x] + '</span><span class="ps-col-b" style="height:' + Math.round(meses[x] * 100 / mx) + '%"></span><span class="ps-col-l">' + x.slice(5) + '/' + x.slice(2, 4) + '</span></div>').join('') + '</div>' : '<div class="ps-muted">Sem dados no recorte.</div>';
+}
+function cpRenderComentarios() {
+  const so = document.getElementById('cp-com-baixa').checked;
+  const l = _cp.filtered.filter(r => r.comentario && (!so || r.baixa)).slice(0, 200);
+  document.getElementById('cp-com-lista').innerHTML = l.length ? l.map(r => '<div class="ps-com' + (r.baixa ? ' ps-com-low' : '') + '"><div class="ps-muted">' + cpEsc(r.dataTxt) + ' · ' + cpEsc(r.emp || '—') + ' · ' + cpEsc(r.cli || '—') + ' · média ' + cpFmt(r.media) + (r.baixa ? ' · <b style="color:#A80502">NOTA ≤ 6</b>' : '') + '</div><div style="margin-top:4px;line-height:1.5;white-space:pre-line">' + cpEsc(r.comentario) + '</div></div>').join('') : '<div class="ps-muted" style="padding:20px;text-align:center">Nenhum comentário neste recorte.</div>';
 }
 
 // ── Sugestões de Melhoria ──────────────────────────────────
