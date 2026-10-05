@@ -4950,306 +4950,488 @@
      RELATÓRIO DE SATISFAÇÃO
 ════════════════════════════════════════════════════════════ -->
 <div class="page" id="page-relatorio-satisfacao" style="background:#F4F4F4;overflow-y:auto">
+<!-- INÍCIO ESTILOS RELATÓRIO DE SATISFAÇÃO (.rs-*) -->
 <style>
-.rel-card{background:#fff;border:1px solid #E4E4E4;border-radius:12px;padding:18px 20px}
-.rel-secao-titulo{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#929090;margin:0 0 8px}
-.rel-secao-textarea{width:100%;box-sizing:border-box;border:1px solid #D6D6D6;border-radius:7px;padding:10px 12px;font-size:13px;font-family:Montserrat,system-ui,sans-serif;resize:vertical;color:#1F1F1F;line-height:1.6}
-.rel-secao-textarea:focus{border-color:#C70602;outline:none}
-.rel-criterio-card{background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:6px}
-.rel-nota-grande{font-size:36px;font-weight:700;color:#1F1F1F;letter-spacing:-.02em}
-.rel-bar-bg{height:6px;background:#F4F4F4;border-radius:3px;overflow:hidden;flex:1}
-.rel-bar-fill{height:100%;border-radius:3px;background:#C70602}
-.rel-mes-row{display:grid;grid-template-columns:80px 70px 70px 70px 70px 70px 1fr;gap:8px;padding:8px 12px;border-bottom:1px solid #F4F4F4;font-size:12px;align-items:center}
-.rel-mes-row:hover{background:#FAFAFA}
-.rel-grafico-barra{display:flex;flex-direction:column;gap:4px;align-items:center;flex:1}
-.rel-grafico-barra-fill{background:#C70602;border-radius:3px 3px 0 0;min-height:2px;transition:height .3s}
-.rel-grafico-eixo{display:flex;align-items:flex-end;gap:6px;padding:0 8px}
-.rel-badge-empresa{border-radius:99px;padding:3px 10px;font-size:11px;font-weight:600}
-.rel-diretoria-aviso{background:#FFFBEF;border:1px solid #F1E2B5;border-radius:10px;padding:10px 14px;font-size:13px;color:#5E3B00;margin-bottom:14px;display:none}
+#page-relatorio-satisfacao{--rs-green:#1E6B3A;--rs-green-bg:#E6F2EA;--rs-amber:#B07A12;--rs-amber-fg:#7A4C00;--rs-amber-bg:#FBF0D9;--rs-blue:#24508F;--rs-blue-bg:#E6EEF8;--rs-red-bg:#FDECEC;--rs-red-fg:#A80502;--rs-gray-bg:#EEEEEE;--rs-gray-fg:#545252}
+.rs-top{background:#fff;border-bottom:1px solid #E4E4E4;padding:12px 24px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.rs-top-title{display:flex;flex-direction:column}
+.rs-top-title b{font-size:20px;font-weight:700;letter-spacing:-.01em}
+.rs-top-title span{font-size:12px;color:#929090;margin-top:2px}
+.rs-top-actions{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.rs-switch{display:flex;align-items:center;gap:8px;border:1px solid #D6D6D6;background:#fff;border-radius:8px;padding:7px 12px;cursor:pointer;font-size:12.5px;font-family:inherit}
+.rs-switch i{width:30px;height:17px;border-radius:99px;padding:2px;display:flex;justify-content:flex-start;background:#C4C4C4}
+.rs-switch i b{width:13px;height:13px;border-radius:50%;background:#fff;display:block}
+.rs-switch.on i{justify-content:flex-end;background:#C70602}
+.rs-btn-out{border:1px solid #1F1F1F;background:#fff;border-radius:8px;padding:8px 12px;cursor:pointer;font-size:12.5px;font-weight:600;font-family:inherit}
+.rs-btn-send{border:0;background:#C70602;color:#fff;border-radius:8px;padding:9px 14px;font-size:12.5px;font-weight:700;font-family:inherit}
+.rs-btn-send:disabled{background:#D6D6D6;color:#929090;cursor:not-allowed}
+.rs-filtros{max-width:1120px;width:100%;margin:0 auto;padding:16px 20px 0;display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.rs-chips{display:flex;gap:6px;flex-wrap:wrap}
+.rs-chip{border:1px solid #D6D6D6;background:#fff;color:#3A3939;border-radius:99px;padding:7px 13px;font-size:12.5px;cursor:pointer;font-weight:600;font-family:inherit}
+.rs-chip.on{border-color:#1F1F1F;background:#1F1F1F;color:#fff}
+.rs-chip.sq{border-radius:7px;height:34px;padding:0 10px;font-size:12px;font-weight:500}
+.rs-lbl{display:flex;flex-direction:column;gap:4px;font-size:11px;color:#666464;font-weight:600}
+.rs-sel{height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:12.5px;color:#1F1F1F;font-family:inherit}
+.rs-note{font-size:11.5px;color:#929090;flex-basis:100%}
+.rs-body{max-width:1120px;width:100%;margin:0 auto;padding:16px 20px 60px;display:flex;flex-direction:column;gap:16px}
+.rs-card{background:#fff;border:1px solid #E4E4E4;border-radius:12px;padding:18px 20px;display:flex;flex-direction:column;gap:10px}
+.rs-card-flush{padding:0;overflow:hidden;gap:0}
+.rs-card-h{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline}
+.rs-card-h b{font-size:15px;font-weight:700}
+.rs-sub{font-size:12px;color:#666464}
+.rs-masthead-top{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;padding:18px 22px;border-bottom:3px solid #B9171A}
+.rs-masthead-top img{height:46px;width:auto;max-width:60%;display:block}
+.rs-masthead-body{padding:20px 22px;display:flex;flex-wrap:wrap;gap:20px;align-items:flex-end;justify-content:space-between}
+.rs-kicker{font-size:11.5px;font-weight:700;letter-spacing:.1em;color:#666464}
+.rs-h1{font-size:26px;font-weight:700;line-height:1.2;margin-top:4px}
+.rs-meta-box{border:1.5px solid #1F1F1F;border-radius:10px;padding:10px 18px;text-align:center}
+.rs-meta-box small{display:block;font-size:10.5px;font-weight:700;letter-spacing:.08em;color:#545252;white-space:nowrap}
+.rs-meta-box b{font-size:26px;font-weight:700;color:var(--rs-green)}
+.rs-grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:16px}
+.rs-hero{color:#fff;border-radius:12px;padding:22px 24px;display:flex;flex-direction:column;gap:6px}
+.rs-hero-v{font-size:56px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.rs-resumo{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 18px}
+.rs-resumo small{display:block;font-size:11px;font-weight:600;color:#666464}
+.rs-resumo b{display:block;font-size:21px;font-weight:700;font-variant-numeric:tabular-nums}
+.rs-resumo span{font-size:11.5px;color:#929090}
+.rs-chart{position:relative;height:220px;display:flex;align-items:flex-end;gap:8px;padding-top:18px}
+.rs-chart-meta{position:absolute;left:0;right:0;border-top:2px dashed #1F1F1F;opacity:.55}
+.rs-bar{flex:1;min-width:0;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:4px;border:0;background:none;padding:0;cursor:pointer;font-family:inherit}
+.rs-bar span{font-size:11px;font-weight:700;font-variant-numeric:tabular-nums}
+.rs-bar div{width:100%;max-width:46px;border-radius:4px 4px 0 0}
+.rs-chart-x{display:flex;gap:8px}
+.rs-chart-x>div{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px}
+.rs-chart-x .lb{font-size:11px;color:#3A3939;white-space:nowrap}
+.rs-chart-x .nb{width:100%;max-width:46px;height:30px;display:flex;align-items:flex-end}
+.rs-chart-x .nb i{display:block;width:100%;background:#D6D6D6;border-radius:3px 3px 0 0}
+.rs-chart-x .nn{font-size:10.5px;color:#929090;white-space:nowrap}
+.rs-crit-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr));gap:12px}
+.rs-crit{background:#fff;border:1px solid #E4E4E4;border-top:3px solid #ccc;border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:6px}
+.rs-crit-l{font-size:11.5px;font-weight:700;letter-spacing:.06em;color:#545252}
+.rs-crit-v{display:flex;align-items:baseline;gap:8px}
+.rs-crit-v b{font-size:30px;font-weight:700;font-variant-numeric:tabular-nums}
+.rs-crit-v span{font-size:13px;font-weight:700}
+.rs-spark{display:flex;align-items:flex-end;gap:3px;height:38px;margin-top:4px}
+.rs-spark i{flex:1;border-radius:2px 2px 0 0;display:block}
+.rs-tbl{border-collapse:collapse;width:100%;min-width:720px;font-size:13px}
+.rs-tbl th{text-align:center;font-weight:600;font-size:11.5px;color:#666464;padding:9px 10px;border-bottom:1px solid #E4E4E4;white-space:nowrap;background:#FAFAFA}
+.rs-tbl td{padding:5px 6px;text-align:center;border-bottom:1px solid #EFEFEF}
+.rs-tbl td:first-child{padding:8px 12px;font-weight:700;white-space:nowrap}
+.rs-pill{display:inline-block;min-width:54px;padding:5px 8px;border-radius:6px;font-variant-numeric:tabular-nums}
+.rs-leg{display:flex;gap:10px;font-size:11.5px;color:#545252;align-items:center;flex-wrap:wrap}
+.rs-leg span{display:flex;gap:4px;align-items:center;white-space:nowrap}
+.rs-leg i{width:12px;height:12px;border-radius:3px;display:inline-block}
+.rs-src{font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px}
+.rs-sec-act{display:flex;gap:8px;align-items:center}
+.rs-btn-sm{border:1px solid #D6D6D6;background:#fff;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:12px;font-family:inherit}
+.rs-p{margin:0;font-size:14px;line-height:1.65;color:#2B2A2A}
+.rs-ta{width:100%;border:1px solid #D6D6D6;border-radius:8px;padding:10px 12px;font-size:13.5px;line-height:1.6;resize:vertical;background:#fff;font-family:inherit}
+.rs-ta:focus{border-color:#C70602;outline:none}
+.rs-edit-act{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.rs-link-btn{border:0;background:none;color:#A80502;cursor:pointer;font-size:12.5px;font-weight:600;font-family:inherit}
+.rs-grid-wide{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:16px}
+.rs-motivo{display:grid;grid-template-columns:150px minmax(0,1fr) 34px;gap:10px;align-items:center;font-size:13px}
+.rs-motivo div{height:10px;background:#F4F4F4;border-radius:5px;overflow:hidden}
+.rs-motivo div i{display:block;height:100%;background:#B9171A}
+.rs-trat{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.rs-trat>div{background:#FAFAFA;border-radius:9px;padding:10px 12px}
+.rs-trat small{display:block;font-size:11px;font-weight:600;color:#666464}
+.rs-trat b{font-size:22px;font-weight:700}
+.rs-baixa{padding:8px 10px;background:#FFF8F8;border:1px solid #F3CFCF;border-radius:8px;display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.rs-hist-h{width:100%;display:flex;gap:12px;align-items:center;border:0;padding:12px 18px;cursor:pointer;text-align:left;font-family:inherit;background:#fff}
+.rs-hist-h.cur{background:#FFF8F8}
+.rs-hist-b{padding:0 18px 14px;display:flex;flex-direction:column;gap:8px;border-bottom:1px solid #EFEFEF}
+.rs-hist-b p{margin:0;font-size:13.5px;line-height:1.65;color:#2B2A2A}
+.rs-aviso{background:#FFFBEF;border:1px solid #F1E2B5;border-radius:10px;padding:10px 14px;font-size:13px;color:#5E3B00}
+.rs-vazio{text-align:center;padding:40px;color:#929090;font-size:13px}
+.rs-toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#1F1F1F;color:#fff;padding:11px 16px;border-radius:8px;font-size:13px;z-index:90;max-width:92vw}
+@media(max-width:640px){.rs-motivo{grid-template-columns:100px minmax(0,1fr) 30px}.rs-top{padding:12px 16px}}
+/* Baixar PDF: o botão aplica a classe rs-printing no body antes de window.print() */
+@media print{
+  body.rs-printing{display:block!important;height:auto!important;overflow:visible!important;background:#fff!important}
+  body.rs-printing .sidebar{display:none!important}
+  body.rs-printing .main{display:block!important;overflow:visible!important}
+  body.rs-printing .page{display:none!important}
+  body.rs-printing #page-relatorio-satisfacao{display:block!important;overflow:visible!important;background:#fff!important}
+  body.rs-printing .rs-noprint{display:none!important}
+  body.rs-printing .rs-card,body.rs-printing .rs-crit,body.rs-printing .rs-hero{break-inside:avoid}
+  body.rs-printing *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  body.rs-printing .rs-body{max-width:none;padding:0}
+  body.rs-printing .rs-toast{display:none!important}
+}
 </style>
+<!-- FIM ESTILOS RELATÓRIO DE SATISFAÇÃO -->
 
-<!-- CABEÇALHO -->
-<div style="padding:20px 24px 0;display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap">
-  <div>
-    <div style="font-size:12px;color:#929090;font-family:Montserrat,system-ui,sans-serif">Relacionamento / <span>Relatório de Satisfação</span></div>
-    <div style="font-size:24px;font-weight:700;margin-top:2px;font-family:Montserrat,system-ui,sans-serif;color:#1F1F1F">Relatório de Satisfação</div>
-    <div style="font-size:13px;color:#666464;line-height:1.5;margin-top:4px;font-family:Montserrat,system-ui,sans-serif">Relatório mensal para Diretoria e Presidência · Grupo Chiacchio</div>
-  </div>
-  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-    <div id="rel-modo-diretoria-badge" style="display:none;background:#E6EEF8;color:#24508F;border-radius:99px;padding:4px 12px;font-size:11px;font-weight:700">VISÃO DA DIRETORIA</div>
-    <button onclick="relToggleDiretoria()" id="rel-btn-diretoria" class="btn btn-secondary" style="font-size:12px">Visão da Diretoria</button>
-    <button onclick="relAbrirModalEnvio()" class="btn btn-primary" style="font-size:12px">Enviar à Diretoria</button>
+<div class="rs-top rs-noprint">
+  <div class="rs-top-title"><b>Relatório de Satisfação</b><span id="rel-topsub">Pesquisa de satisfação · relatório mensal para Diretoria e Presidência</span></div>
+  <div class="rs-top-actions">
+    <button type="button" class="rs-switch" id="rel-btn-diretoria" onclick="relToggleDiretoria()"><i><b></b></i>Visão da Diretoria</button>
+    <button type="button" class="rs-btn-out" onclick="relBaixarPdf()">Baixar PDF</button>
+    <button type="button" class="rs-btn-send" id="rel-btn-enviar" disabled title="Envio por link ou e-mail ainda não está disponível: o sistema não possui página pública de leitura nem envio de e-mail para este relatório.">Enviar para Diretoria e Presidência</button>
   </div>
 </div>
 
-<!-- AVISO DIRETORIA -->
-<div id="rel-diretoria-aviso" class="rel-diretoria-aviso" style="margin:12px 24px 0">
-  ⭐ Modo de visualização da Diretoria ativo. Seções de análise são somente leitura.
+<div class="rs-filtros rs-noprint">
+  <div class="rs-chips" id="rel-chips-empresa"></div>
+  <select id="rel-f-empresa" onchange="relCarregar()" style="display:none">
+    <option value="Chiacchio Embalagens">Chiacchio Embalagens</option>
+    <option value="Plaschio">Plaschio</option>
+    <option value="Tubahia">Tubahia</option>
+  </select>
+  <label class="rs-lbl">Ano<select id="rel-f-ano" class="rs-sel" onchange="relCarregar()"></select></label>
+  <label class="rs-lbl">Mês de referência<select id="rel-f-mes" class="rs-sel" onchange="relCarregar()"></select></label>
+  <div class="rs-lbl">Período<div class="rs-chips" id="rel-chips-periodo" style="gap:4px"></div></div>
+  <label class="rs-lbl" id="rel-meta-wrap">Meta<input type="number" step="0.1" min="0" max="10" value="8.5" id="rel-f-meta" class="rs-sel" style="width:76px" onchange="relMudarMeta(this.value)"></label>
+  <button type="button" onclick="relCarregar()" class="btn btn-primary" style="height:34px;font-size:12px">↻ Atualizar</button>
+  <span class="rs-note">Os números vêm da planilha de pesquisas e são atualizados automaticamente. Histórico dos últimos 12 meses. A meta é apenas de visualização nesta tela.</span>
 </div>
 
-<!-- FILTROS -->
-<div style="margin:12px 24px 0;background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:12px 14px;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end">
-  <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:#666464;font-weight:600;font-family:Montserrat,system-ui,sans-serif">EMPRESA
-    <select id="rel-f-empresa" onchange="relCarregar()" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:12.5px;color:#1F1F1F;font-family:Montserrat,system-ui,sans-serif">
-      <option value="Chiacchio Embalagens">Chiacchio Embalagens</option>
-      <option value="Plaschio">Plaschio</option>
-      <option value="Tubahia">Tubahia</option>
-    </select>
-  </label>
-  <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:#666464;font-weight:600;font-family:Montserrat,system-ui,sans-serif">ANO
-    <select id="rel-f-ano" onchange="relCarregar()" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:12.5px;color:#1F1F1F;font-family:Montserrat,system-ui,sans-serif">
-    </select>
-  </label>
-  <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:#666464;font-weight:600;font-family:Montserrat,system-ui,sans-serif">MÊS
-    <select id="rel-f-mes" onchange="relCarregar()" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:12.5px;color:#1F1F1F;font-family:Montserrat,system-ui,sans-serif">
-    </select>
-  </label>
-  <button onclick="relCarregar()" class="btn btn-primary" style="height:34px;font-size:12px">↻ Atualizar</button>
-</div>
-
-<!-- CONTEÚDO -->
-<div style="padding:16px 24px 32px;display:flex;flex-direction:column;gap:16px" id="rel-conteudo">
-  <!-- indicador carregando -->
-  <div id="rel-loading" style="text-align:center;padding:40px;color:#929090;font-size:13px;font-family:Montserrat,system-ui,sans-serif">Carregando...</div>
-</div>
-
-<!-- MODAL ENVIO -->
-<div id="rel-modal-envio" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;display:none;align-items:center;justify-content:center" onclick="if(event.target===this)relFecharModalEnvio()">
-  <div style="background:#fff;border-radius:12px;padding:24px;max-width:480px;width:calc(100% - 32px);display:flex;flex-direction:column;gap:14px">
-    <div style="font-size:18px;font-weight:700;font-family:Montserrat,system-ui,sans-serif">Enviar à Diretoria</div>
-    <div style="font-size:13px;color:#666464;font-family:Montserrat,system-ui,sans-serif">O relatório será disponibilizado via link. Copie e envie para os destinatários.</div>
-    <div style="background:#F4F4F4;border-radius:8px;padding:10px 12px;font-size:12px;font-family:monospace;word-break:break-all;color:#1F1F1F" id="rel-link-compartilhar">—</div>
-    <div style="font-size:12px;color:#929090;font-family:Montserrat,system-ui,sans-serif">Link gerado em: <span id="rel-link-data">—</span></div>
-    <div style="display:flex;gap:8px;justify-content:flex-end">
-      <button onclick="relFecharModalEnvio()" class="btn btn-secondary" style="font-size:12px">Fechar</button>
-      <button onclick="relCopiarLink()" class="btn btn-primary" style="font-size:12px">Copiar link</button>
-    </div>
-  </div>
+<div class="rs-body" id="rel-conteudo">
+  <div id="rel-loading" class="rs-vazio">Carregando...</div>
 </div>
 
 <script>
 (function(){
-  const MESES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-  let _relDiretoria=false;
-  let _relDados=null;
+  const MN=['','janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  const MS=['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const EMPRESAS=[['Chiacchio Embalagens','Chiacchio Embalagens'],['Plaschio','Plaschio'],['Tubahia','Tubahia']];
+  const LOGOS={'Chiacchio Embalagens':['/assets/logo-chiacchio-embalagens.svg','#B9171A'],'Plaschio':['/assets/logo-plaschio.svg','#B9171A'],'Tubahia':['/assets/logo-tubahia.svg','#2B2070']};
+  const GREEN='#1E6B3A', RED='#C70602', AMB='#B07A12';
+  const SEC=[['desempenho','Desempenho geral'],['analise_critica','Análise crítica dos resultados'],['pontos_fortes','Pontos fortes'],['oportunidades','Oportunidades de melhoria'],['acoes','Ações recomendadas']];
+  const CR=[['ATENDIMENTO','at','atendimento'],['PRAZO DE ENTREGA','pr','prazo de entrega'],['QUALIDADE','qu','qualidade'],['RECOMENDAÇÃO','re','recomendação']];
+  const NOTA_CRITICA=6;
+  let _dir=false,_d=null,_per=6,_meta=8.5,_edit=null,_openM=null,_allOpen=false,_autos={},_toastT=null;
 
-  function relEsc(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));}
+  function esc(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));}
+  function num(v){if(v==null||v==='')return null;const n=parseFloat(String(v).replace(',','.'));return isFinite(n)?n:null;}
+  function f2(v){return v==null?'—':v.toFixed(2).replace('.',',');}
+  function sgn(d){return (d>0?'+':d<0?'−':'±')+Math.abs(d).toFixed(2).replace('.',',');}
+  function ml(k){return MS[+k.slice(5)]+'/'+k.slice(2,4);}
+  function mword(k){return MN[+k.slice(5)];}
+  function mlong(k){const w=mword(k);return w.charAt(0).toUpperCase()+w.slice(1)+'/'+k.slice(0,4);}
+  function col(v){return v>=_meta?GREEN:v>=7?AMB:RED;}
+  function cell(v){return v>=_meta?['#E6F2EA','#1E6B3A']:v>=7?['#FBF0D9','#7A4C00']:['#FDECEC','#A80502'];}
+  function sc(v){return Math.max(2,(v-5)/5*100);}
+  function metaTxt(){return String(_meta).replace('.',',');}
+  function cap(s){return s.charAt(0).toUpperCase()+s.slice(1);}
 
-  function relFmt(v){const n=parseFloat(String(v).replace(',','.'));return isNaN(n)?'—':n.toFixed(1);}
+  function _val(id){return document.getElementById(id);}
+  function _empresa(){return _val('rel-f-empresa')?.value||'Chiacchio Embalagens';}
+  function _refKey(){const a=_val('rel-f-ano')?.value,m=_val('rel-f-mes')?.value;return a+'-'+String(m).padStart(2,'0');}
 
-  function _relPopulaFiltros(){
-    const anoEl=document.getElementById('rel-f-ano');
-    const mesEl=document.getElementById('rel-f-mes');
-    if(anoEl&&!anoEl.options.length){
-      const cur=new Date().getFullYear();
-      for(let y=cur;y>=cur-3;y--){const o=document.createElement('option');o.value=y;o.textContent=y;if(y===cur)o.selected=true;anoEl.appendChild(o);}
-    }
-    if(mesEl&&!mesEl.options.length){
-      MESES.forEach((m,i)=>{const o=document.createElement('option');o.value=i+1;o.textContent=m;if(i+1===new Date().getMonth()+1)o.selected=true;mesEl.appendChild(o);});
-    }
+  function _toast(t){
+    let el=_val('rel-toast');
+    if(!el){el=document.createElement('div');el.id='rel-toast';el.className='rs-toast rs-noprint';document.getElementById('page-relatorio-satisfacao').appendChild(el);}
+    el.textContent=t;el.style.display='';
+    clearTimeout(_toastT);_toastT=setTimeout(()=>{el.style.display='none';},2800);
   }
 
-  window.relCarregar = async function(){
-    _relPopulaFiltros();
-    const empresa=document.getElementById('rel-f-empresa')?.value||'Chiacchio Embalagens';
-    const ano=document.getElementById('rel-f-ano')?.value||new Date().getFullYear();
-    const mes=document.getElementById('rel-f-mes')?.value||new Date().getMonth()+1;
-    const cont=document.getElementById('rel-conteudo');
-    const load=document.getElementById('rel-loading');
-    if(load) load.style.display='';
-    if(cont) cont.querySelectorAll(':not(#rel-loading)').forEach(e=>e.remove());
+  function _populaFiltros(){
+    const anoEl=_val('rel-f-ano'),mesEl=_val('rel-f-mes');
+    const hoje=new Date();
+    // mês de referência padrão: último mês fechado
+    const ref=new Date(hoje.getFullYear(),hoje.getMonth()-1,1);
+    if(anoEl&&!anoEl.options.length){
+      const cur=hoje.getFullYear();
+      for(let y=cur;y>=cur-3;y--){const o=document.createElement('option');o.value=y;o.textContent=y;if(y===ref.getFullYear())o.selected=true;anoEl.appendChild(o);}
+    }
+    if(mesEl&&!mesEl.options.length){
+      for(let m=1;m<=12;m++){const o=document.createElement('option');o.value=m;o.textContent=cap(MN[m]);if(m===ref.getMonth()+1)o.selected=true;mesEl.appendChild(o);}
+    }
+    _renderChips();
+  }
 
-    let dados={sucesso:false,itens:[],media_geral:null,criterios:[]};
+  function _renderChips(){
+    const emp=_empresa();
+    const ce=_val('rel-chips-empresa');
+    if(ce) ce.innerHTML=EMPRESAS.map(([v,l])=>`<button type="button" class="rs-chip${emp===v?' on':''}" onclick="relSelEmpresa('${v}')">${esc(l)}</button>`).join('');
+    const cp=_val('rel-chips-periodo');
+    if(cp) cp.innerHTML=[[6,'Últimos 6 meses'],[12,'12 meses']].map(([v,l])=>`<button type="button" class="rs-chip sq${_per===v?' on':''}" onclick="relSelPeriodo(${v})">${l}</button>`).join('');
+  }
+  window.relSelEmpresa=function(v){const s=_val('rel-f-empresa');if(s)s.value=v;_edit=null;_openM=null;_renderChips();relCarregar();};
+  window.relSelPeriodo=function(v){_per=v;_renderChips();_renderizar();};
+  window.relMudarMeta=function(v){const n=num(v);if(n!=null&&n>0&&n<=10){_meta=n;_renderizar();}};
+
+  window.relCarregar=async function(){
+    _populaFiltros();
+    const empresa=_empresa();
+    const ano=_val('rel-f-ano')?.value,mes=_val('rel-f-mes')?.value;
+    const cont=_val('rel-conteudo');
+    if(cont) cont.innerHTML='<div id="rel-loading" class="rs-vazio">Carregando...</div>';
+    _edit=null;
+    let dados=null,erro=false;
     try{
       const tok=sessionStorage.getItem('sac-token');
       const r=await fetch(`/api/pesquisas/relatorio?empresa=${encodeURIComponent(empresa)}&ano=${ano}&mes=${mes}`,{headers:tok?{Authorization:'Bearer '+tok}:{}});
-      if(r.ok) dados=await r.json();
-    }catch(e){}
-
-    if(load) load.style.display='none';
-    _relDados=dados;
-    _relRenderizar(empresa, Number(ano), Number(mes), dados);
+      if(r.ok) dados=await r.json(); else erro=true;
+    }catch(e){erro=true;}
+    _d=erro?null:dados;
+    _renderizar(erro);
   };
 
-  function _relRenderizar(empresa, ano, mes, d){
-    const cont=document.getElementById('rel-conteudo');
+  // ── séries a partir do histórico da API ──
+  function _serie(){
+    const d=_d||{};
+    const s=(d.historico||[]).map(h=>{
+      const at=num(h.atendimento),pr=num(h.prazo),qu=num(h.qualidade),re=num(h.recomendacao);
+      const vs=[at,pr,qu,re].filter(v=>v!=null);
+      const ind=vs.length?vs.reduce((a,b)=>a+b,0)/vs.length:num(h.media);
+      return {k:h.mes,at,pr,qu,re,n:h.total||0,ind};
+    }).filter(r=>r.n>0&&r.ind!=null);
+    const ref=_refKey();
+    if(!s.some(r=>r.k===ref)){
+      const g={};(d.criterios||[]).forEach(c=>{g[c.criterio]=num(c.media);});
+      const vs=[g.atendimento,g.prazo,g.qualidade,g.recomendacao].filter(v=>v!=null);
+      const n=(d.itens||[]).length;
+      if(vs.length&&n>0) s.push({k:ref,at:g.atendimento??null,pr:g.prazo??null,qu:g.qualidade??null,re:g.recomendacao??null,n,ind:vs.reduce((a,b)=>a+b,0)/vs.length});
+      s.sort((a,b)=>a.k<b.k?-1:1);
+    }
+    return s;
+  }
+
+  // ── itens individuais (notas baixas, motivo da compra) ──
+  const RE_NAO_NOTA=/data|timestamp|carimbo|hora|nome|email|cpf|cnpj|observ|coment|empresa/i;
+  function _medItem(it){
+    const ns=Object.keys(it).filter(k=>!RE_NAO_NOTA.test(k)).map(k=>num(it[k])).filter(n=>n!=null&&n>0&&n<=10);
+    return ns.length?ns.reduce((a,b)=>a+b,0)/ns.length:null;
+  }
+  function _chave(it,re){return Object.keys(it).find(k=>re.test(k));}
+
+  // ── textos gerados pelos números ──
+  function _auto(s,ctx){
+    const {cur,prev,ref,ser,ri,per,bestK,worstK}=ctx;
+    const ch=CR.map(([,k,nm])=>({k,nm,v:cur[k],d:prev&&cur[k]!=null&&prev[k]!=null?cur[k]-prev[k]:0})).filter(x=>x.v!=null);
+    const above=cur.ind>=_meta;
+    const prevK=prev?prev.k:null;
+    if(s==='desempenho'){
+      const p=[];
+      p.push(cap(mword(ref))+' de '+ref.slice(0,4)+' registrou indicador de '+f2(cur.ind)+(prev?', '+(cur.ind>=prev.ind?'acima':'abaixo')+' do mês anterior ('+f2(prev.ind)+')':'')+', '+(above?'acima':'abaixo')+' da meta de '+metaTxt()+'.'+(per.length>1&&ref===bestK?' É o melhor resultado do período analisado.':per.length>1&&ref===worstK?' É o menor resultado do período analisado.':''));
+      if(prev){
+        const up=ch.filter(x=>x.d>0.005),dn=ch.filter(x=>x.d<-0.005);
+        p.push((up.length?'Evoluíram: '+up.map(x=>x.nm+' ('+f2(prev[x.k])+' → '+f2(x.v)+')').join(', ')+'. ':'')+(dn.length?'Recuaram: '+dn.map(x=>x.nm+' ('+f2(prev[x.k])+' → '+f2(x.v)+')').join(', ')+'.':'Nenhum critério recuou.'));
+      }
+      p.push('O mês teve '+cur.n+' respostas'+(cur.n<10?', uma base pequena: poucas avaliações podem mudar bastante o resultado.':'.'));
+      return p.join('\n');
+    }
+    if(s==='analise_critica'){
+      let t='';
+      if(prev&&ch.length){
+        const srt=ch.slice().sort((a,b)=>a.d-b.d),w=srt[0],b=srt[srt.length-1];
+        t=w.d>=0?'Todos os critérios evoluíram em relação ao mês anterior. O maior avanço foi em '+b.nm+' ('+sgn(b.d)+') e o menor em '+w.nm+' ('+sgn(w.d)+'). '
+          :b.d<=0?'Todos os critérios recuaram ou ficaram estáveis. A maior queda foi em '+w.nm+' ('+sgn(w.d)+'). '
+          :'A maior queda foi em '+w.nm+' ('+sgn(w.d)+') e o maior avanço em '+b.nm+' ('+sgn(b.d)+'). ';
+      }
+      t+=above?'Mesmo assim, o indicador geral segue dentro da meta.':'O indicador geral está abaixo da meta e precisa de acompanhamento mais próximo.';
+      const ab=ch.filter(x=>x.v<_meta);
+      t+=ab.length?'\nCritérios abaixo da meta: '+ab.map(x=>x.nm+' ('+f2(x.v)+')').join(', ')+'.':'\nTodos os critérios estão dentro da meta.';
+      return t;
+    }
+    if(s==='pontos_fortes'){
+      return ch.filter(x=>x.v>=_meta).sort((a,b)=>b.v-a.v).map(x=>cap(x.nm)+' com '+f2(x.v)+(prev?' ('+sgn(x.d)+' vs '+ml(prevK)+')':'')+', dentro da meta.').join('\n')||'Nenhum critério atingiu a meta neste mês.';
+    }
+    if(s==='oportunidades'){
+      const l=ch.filter(x=>x.v<_meta||x.d<-0.3).sort((a,b)=>a.v-b.v);
+      return l.length?l.map(x=>cap(x.nm)+' com '+f2(x.v)+(x.v<_meta?', abaixo da meta':'')+(x.d<-0.3?', queda de '+Math.abs(x.d).toFixed(2).replace('.',',')+' em relação ao mês anterior':'')+'.').join('\n'):'Sem critérios abaixo da meta ou com queda relevante. Manter o acompanhamento para preservar o resultado.';
+    }
+    // acoes
+    const A={pr:'Acompanhar com a Logística as entregas do mês e as notas baixas de prazo registradas nas pesquisas.',qu:'Acompanhar com a Qualidade as avaliações e comentários sobre produto para identificar se há ocorrência específica ou padrão recorrente.',at:'Manter o acompanhamento dos atendimentos realizados pelos RCA, em conjunto com a Gerência Comercial.',re:'Acompanhar a recomendação junto aos demais critérios para entender o que influencia a percepção geral dos clientes.'};
+    const l=ch.filter(x=>x.v<_meta||x.d<-0.3).map(x=>A[x.k]);
+    if(cur.n<10) l.push('Ampliar a base de respostas, reforçando o envio da pesquisa por WhatsApp e e-mail.');
+    return (l.length?l:['Manter o acompanhamento mensal dos quatro critérios e das notas baixas registradas nas pesquisas.']).join('\n');
+  }
+  function _textoMes(r,p){
+    let t='Indicador de '+f2(r.ind)+' com '+r.n+' respostas. Atendimento '+f2(r.at)+', prazo de entrega '+f2(r.pr)+', qualidade '+f2(r.qu)+' e recomendação '+f2(r.re)+'.';
+    if(p){const d=r.ind-p.ind;t+=' Em relação a '+mword(p.k)+', o indicador '+(d>0.005?'subiu':d<-0.005?'recuou':'ficou estável')+' ('+f2(p.ind)+' → '+f2(r.ind)+').';}
+    t+=r.ind>=_meta?' Resultado dentro da meta de '+metaTxt()+'.':' Resultado abaixo da meta de '+metaTxt()+'.';
+    return t;
+  }
+
+  function _renderizar(erro){
+    const cont=_val('rel-conteudo');
     if(!cont) return;
-    const nomeMes=MESES[mes-1]||'';
-    const itens=d.itens||[];
-    const mediaGeral=d.media_geral||null;
-    const criterios=d.criterios||[];
-    const historico=d.historico||[];
+    const sub=_val('rel-topsub');
+    if(sub) sub.textContent=_dir?'Visão da Diretoria · somente leitura':'Pesquisa de satisfação · relatório mensal para Diretoria e Presidência';
+    const metaW=_val('rel-meta-wrap');if(metaW) metaW.style.display=_dir?'none':'';
+    if(erro||!_d){cont.innerHTML='<div class="rs-vazio">Não foi possível carregar o relatório. Verifique sua conexão ou permissão e use “Atualizar”.</div>';return;}
+    const empresa=_empresa(),ref=_refKey();
+    const ser=_serie();
+    const ri=ser.findIndex(r=>r.k===ref);
+    if(ri<0){cont.innerHTML=`<div class="rs-vazio">Sem respostas de ${esc(empresa)} em ${esc(mlong(ref))}. Escolha outro mês ou empresa.</div>`;return;}
+    const cur=ser[ri],prev=ri>0?ser[ri-1]:null;
+    const per=ser.slice(Math.max(0,ri-_per+1),ri+1);
+    const avg=per.reduce((a,r)=>a+r.ind,0)/per.length;
+    const bestK=per.reduce((a,r)=>r.ind>a.ind?r:a,per[0]).k,worstK=per.reduce((a,r)=>r.ind<a.ind?r:a,per[0]).k;
+    const best=per.find(r=>r.k===bestK),worst=per.find(r=>r.k===worstK);
+    let streak=0;for(let i=ri;i>=0&&ser[i].ind>=_meta;i--)streak++;
+    const total=per.reduce((a,r)=>a+r.n,0);
+    const above=cur.ind>=_meta;
+    const lg=LOGOS[empresa]||LOGOS['Chiacchio Embalagens'];
+    const ctx={cur,prev,ref,ser,ri,per,bestK,worstK};
+    const textos=_d.textos||{};
+    _autos={};
+    let h='';
 
-    let html='';
+    // Cabeçalho do relatório
+    h+=`<div class="rs-card rs-card-flush">
+      <div class="rs-masthead-top" style="border-bottom-color:${lg[1]}"><img src="${lg[0]}" alt="${esc(empresa)}"><span class="rs-sub">Dados atualizados automaticamente pelas pesquisas</span></div>
+      <div class="rs-masthead-body">
+        <div style="min-width:0"><div class="rs-kicker">RELATÓRIO DE PESQUISA DE SATISFAÇÃO DE CLIENTES</div><div class="rs-h1">${esc(empresa.toUpperCase())} · ${esc(mlong(ref))}</div></div>
+        <div class="rs-meta-box"><small>META DE SATISFAÇÃO GERAL</small><b>≥ ${metaTxt()}</b></div>
+      </div></div>`;
 
-    // HERO
-    html+=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px">`;
-    const mediaVal=mediaGeral!=null?relFmt(mediaGeral):'—';
-    const cor=mediaGeral>=9?'#1E6B3A':mediaGeral>=7?'#7A4C00':'#A80502';
-    const bg=mediaGeral>=9?'#E6F2EA':mediaGeral>=7?'#FBF0D9':'#FDECEC';
-    html+=`<div class="rel-card" style="background:${bg};border-color:${cor}20">
-      <div class="rel-secao-titulo" style="color:${cor}">${relEsc(empresa)} · ${relEsc(nomeMes)} ${ano}</div>
-      <div class="rel-nota-grande" style="color:${cor}">${mediaVal}</div>
-      <div style="font-size:12px;color:${cor};font-weight:600">Nota média geral</div>
-      <div style="font-size:11px;color:${cor};margin-top:4px">${itens.length} respondente${itens.length!==1?'s':''}</div>
+    // Indicador + resumo
+    h+=`<div class="rs-grid2">
+      <div class="rs-hero" style="background:${above?GREEN:RED}">
+        <span style="font-size:11.5px;font-weight:700;letter-spacing:.1em;opacity:.9">INDICADOR DO MÊS</span>
+        <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap"><span class="rs-hero-v">${f2(cur.ind)}</span><span style="font-size:15px;font-weight:600">${prev?esc(sgn(cur.ind-prev.ind)+' vs '+ml(prev.k)):''}</span></div>
+        <span style="font-size:13.5px;font-weight:600">${above?'Acima da meta de '+metaTxt()+(streak>1?' · '+streak+'º mês consecutivo':''):'Abaixo da meta de '+metaTxt()+' · faltam '+(_meta-cur.ind).toFixed(2).replace('.',',')}</span>
+        <span style="font-size:12.5px;opacity:.92">${cur.n} respostas em ${esc(mword(ref))}${cur.n<10?' · base pequena, resultado sensível a poucas avaliações':''}</span>
+      </div>
+      <div class="rs-card rs-resumo" style="display:grid">
+        <div><small>Média do indicador no período</small><b>${f2(avg)}</b><span>${ml(per[0].k)} a ${ml(ref)}</span></div>
+        <div><small>Melhor resultado</small><b style="color:${GREEN}">${f2(best.ind)}</b><span>${ml(bestK)}</span></div>
+        <div><small>Pior resultado</small><b style="color:${RED}">${f2(worst.ind)}</b><span>${ml(worstK)}</span></div>
+        <div><small>Total de respostas no período</small><b>${total}</b><span>${per.length} ${per.length===1?'mês':'meses'}</span></div>
+      </div></div>`;
+
+    // Evolução
+    const nMax=Math.max(...per.map(r=>r.n));
+    h+=`<div class="rs-card">
+      <div class="rs-card-h"><b>Evolução do indicador</b><span class="rs-sub">Média de atendimento, prazo, qualidade e recomendação · linha tracejada = meta ${metaTxt()}</span></div>
+      <div class="rs-chart"><div class="rs-chart-meta" style="bottom:calc(${sc(_meta)}% * 202 / 220)"></div>
+      ${per.map(r=>{const on=r.k===ref,c=col(r.ind);return `<button type="button" class="rs-bar" onclick="relIrMes('${r.k}')" title="${esc(mlong(r.k))}"><span style="color:${c}">${f2(r.ind)}</span><div style="height:${sc(r.ind)}%;background:${c};opacity:${on?1:.72};outline:${on?'2px solid '+c:'none'};outline-offset:2px"></div></button>`;}).join('')}
+      </div>
+      <div class="rs-chart-x">${per.map(r=>`<div><span class="lb" style="font-weight:${r.k===ref?700:500}">${ml(r.k)}</span><div class="nb"><i style="height:${Math.max(6,r.n/nMax*100)}%"></i></div><span class="nn">${r.n}</span></div>`).join('')}</div>
     </div>`;
 
     // Critérios
-    const critLabels={atendimento:'Atendimento',prazo:'Prazo',qualidade:'Qualidade',recomendacao:'Recomendaria'};
-    ['atendimento','prazo','qualidade','recomendacao'].forEach(crit=>{
-      const obj=criterios.find(c=>(c.criterio||'').toLowerCase()===crit)||{};
-      const nota=obj.media!=null?relFmt(obj.media):'—';
-      const pct=obj.media!=null?Math.round((parseFloat(obj.media)/10)*100):0;
-      html+=`<div class="rel-criterio-card">
-        <div class="rel-secao-titulo">${critLabels[crit]||crit}</div>
-        <div style="font-size:24px;font-weight:700;color:#1F1F1F">${nota}</div>
-        <div style="display:flex;align-items:center;gap:6px;margin-top:4px">
-          <div class="rel-bar-bg"><div class="rel-bar-fill" style="width:${pct}%"></div></div>
-          <span style="font-size:11px;color:#929090;white-space:nowrap">${pct}%</span>
-        </div>
-      </div>`;
+    h+=`<div class="rs-crit-grid">`+CR.map(([l,k])=>{
+      const v=cur[k];if(v==null)return `<div class="rs-crit"><span class="rs-crit-l">${l}</span><span class="rs-sub">Sem dados neste mês</span></div>`;
+      const d=prev&&prev[k]!=null?v-prev[k]:0,c=col(v);
+      return `<div class="rs-crit" style="border-top-color:${c}"><span class="rs-crit-l">${l}</span>
+        <div class="rs-crit-v"><b>${f2(v)}</b><span style="color:${d>0.005?GREEN:d<-0.005?RED:'#666464'}">${prev&&prev[k]!=null?sgn(d):''}</span></div>
+        <span style="font-size:12px;color:${c};font-weight:600">${v>=_meta?'Dentro da meta':'Abaixo da meta'}</span>
+        <div class="rs-spark">${per.map(m=>m[k]==null?'':`<i title="${esc(ml(m.k)+': '+f2(m[k]))}" style="height:${sc(m[k])}%;background:${col(m[k])};opacity:${m.k===ref?1:.55}"></i>`).join('')}</div></div>`;
+    }).join('')+`</div>`;
+
+    // Tabela mensal
+    h+=`<div class="rs-card rs-card-flush">
+      <div style="padding:14px 18px;border-bottom:1px solid #EFEFEF;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><b style="font-size:15px">Resultado mensal</b>
+      <div class="rs-leg"><span><i style="background:#E6F2EA"></i>na meta</span><span><i style="background:#FBF0D9"></i>7 a meta</span><span><i style="background:#FDECEC"></i>abaixo de 7</span></div></div>
+      <div style="overflow-x:auto"><table class="rs-tbl"><thead><tr>${['Mês','Atendimento','Prazo de entrega','Qualidade','Recomendação','Indicador','Respostas'].map(c=>`<th>${c}</th>`).join('')}</tr></thead><tbody>
+      ${per.slice().reverse().map(r=>`<tr style="background:${r.k===ref?'#FFF8F8':'#fff'}"><td>${ml(r.k)}</td>${[r.at,r.pr,r.qu,r.re,r.ind].map((v,i)=>{if(v==null)return '<td>—</td>';const cc=cell(v);return `<td><span class="rs-pill" style="background:${cc[0]};color:${cc[1]};font-weight:${i===4?700:500}">${f2(v)}</span></td>`;}).join('')}<td style="color:#545252;font-variant-numeric:tabular-nums">${r.n}</td></tr>`).join('')}
+      </tbody></table></div></div>`;
+
+    // Seções de texto
+    SEC.forEach(([id,titulo])=>{
+      const auto=_auto(id,ctx);_autos[id]=auto;
+      const saved=String(textos[id]||'').trim();
+      const txt=saved||auto;
+      const ed=_edit===id;
+      const src=saved?['Texto do analista','#E6EEF8','#24508F']:['Gerado automaticamente pelos dados','#FBF0D9','#7A4C00'];
+      h+=`<div class="rs-card"><div class="rs-card-h" style="align-items:center"><b>${esc(titulo)}</b>
+        <div class="rs-sec-act rs-noprint"><span class="rs-src" style="background:${src[1]};color:${src[2]}">${src[0]}</span>${(!_dir&&!ed)?`<button type="button" class="rs-btn-sm" onclick="relEditar('${id}')">Editar texto</button>`:''}</div></div>`;
+      if(ed){
+        h+=`<textarea id="rel-txt-${id}" class="rs-ta" rows="7">${esc(_editV(id,txt))}</textarea>
+        <div class="rs-edit-act"><button type="button" class="rs-link-btn" style="margin-right:auto" onclick="relRegerar('${id}')">Restaurar texto gerado pelos dados</button><button type="button" class="rs-btn-sm" style="padding:7px 12px" onclick="relCancelar()">Cancelar</button><button type="button" class="rs-btn-sm" style="padding:7px 14px;background:#1F1F1F;color:#fff;border-color:#1F1F1F;font-weight:600" onclick="relSalvarTexto('${id}')">Salvar</button></div>`;
+      }else{
+        h+=txt.split('\n').filter(Boolean).map(p=>`<p class="rs-p">${esc(p)}</p>`).join('');
+      }
+      h+=`</div>`;
     });
-    html+=`</div>`;
 
-    // Gráfico evolução + tabela mensal
-    if(historico.length){
-      const max=Math.max(...historico.map(h=>parseFloat(h.media||0)||0),10);
-      html+=`<div class="rel-card">
-        <div class="rel-secao-titulo">Evolução mensal</div>
-        <div class="rel-grafico-eixo" style="height:120px;margin-bottom:8px">
-          ${historico.slice(-12).map(h=>{
-            const v=parseFloat(h.media||0)||0;
-            const h2=Math.round((v/max)*100);
-            const cor2=v>=9?'#1E6B3A':v>=7?'#7A4C00':'#C70602';
-            return `<div class="rel-grafico-barra">
-              <div style="font-size:10px;font-weight:700;color:${cor2}">${relFmt(v)}</div>
-              <div class="rel-grafico-barra-fill" style="height:${h2}px;background:${cor2};width:28px;border-radius:3px 3px 0 0"></div>
-              <div style="font-size:10px;color:#929090;white-space:nowrap">${relEsc(h.mes_label||h.mes||'')}</div>
-            </div>`;
-          }).join('')}
-        </div>
-        <div style="overflow-x:auto">
-          <div class="rel-mes-row" style="background:#F9F9F9;font-weight:700;font-size:11px;color:#929090;text-transform:uppercase;letter-spacing:.04em">
-            <span>Mês</span><span>Geral</span><span>Atend.</span><span>Prazo</span><span>Qualid.</span><span>Recom.</span><span>Respostas</span>
-          </div>
-          ${historico.slice(-12).map(h=>{
-            const v=parseFloat(h.media||0)||0;
-            const cl=v>=9?'color:#1E6B3A':v>=7?'color:#7A4C00':'color:#A80502';
-            return `<div class="rel-mes-row">
-              <span style="font-weight:600">${relEsc(h.mes_label||h.mes||'')}</span>
-              <span style="font-weight:700;${cl}">${relFmt(h.media)}</span>
-              <span>${relFmt(h.atendimento)}</span>
-              <span>${relFmt(h.prazo)}</span>
-              <span>${relFmt(h.qualidade)}</span>
-              <span>${relFmt(h.recomendacao)}</span>
-              <span>${h.total||0}</span>
-            </div>`;
-          }).join('')}
-        </div>
-      </div>`;
+    // Motivo da compra (se a planilha tiver a coluna) + notas baixas
+    const itens=_d.itens||[];
+    const kMot=itens.length?_chave(itens[0],/motivo/i):null;
+    let motivos=[];
+    if(kMot){
+      const cnt={};itens.forEach(it=>{const v=String(it[kMot]||'').trim();if(v)cnt[v]=(cnt[v]||0)+1;});
+      motivos=Object.entries(cnt).sort((a,b)=>b[1]-a[1]).slice(0,6);
     }
+    const mMax=Math.max(1,...motivos.map(m=>m[1]));
+    const kNome=itens.length?(_chave(itens[0],/nome|cliente|raz[aã]o/i)):null;
+    const kCom=itens.length?(_chave(itens[0],/observ|coment/i)):null;
+    const baixas=itens.map(it=>({it,m:_medItem(it)})).filter(x=>x.m!=null&&x.m<=NOTA_CRITICA);
+    h+=`<div class="rs-grid-wide">
+      <div class="rs-card"><div class="rs-card-h"><b>Motivo da compra</b><span class="rs-sub">${motivos.length?itens.length+' respostas · '+esc(mword(ref)):''}</span></div>
+        ${motivos.length?motivos.map(([l,n])=>`<div class="rs-motivo"><span>${esc(l)}</span><div><i style="width:${n/mMax*100}%"></i></div><span style="text-align:right;font-weight:700">${n}</span></div>`).join(''):'<span style="font-size:13px;color:#666464">Sem respostas sobre o motivo da compra neste mês.</span>'}
+      </div>
+      <div class="rs-card"><div class="rs-card-h"><b style="white-space:nowrap">Notas baixas e tratativas</b></div>
+        <div class="rs-trat"><div><small>Pesquisas com nota ≤ ${NOTA_CRITICA}</small><b style="color:${RED}">${baixas.length}</b></div><div><small>Respostas no mês</small><b>${cur.n}</b></div></div>
+        <span class="rs-sub" style="line-height:1.5">Nota ≤ ${NOTA_CRITICA} é sinalizada para análise do SAC; ocorrência e manifestação formal são decisões do SAC.</span>
+        ${baixas.length?`<div style="display:flex;flex-direction:column;gap:8px">${baixas.map(({it,m})=>`<div class="rs-baixa"><div><div style="font-size:12px;font-weight:600">${esc(kNome?it[kNome]:'—')||'—'}</div><div style="font-size:11px;color:#666464;margin-top:2px">${esc(kCom?it[kCom]:'')}</div></div><span style="font-size:18px;font-weight:700;color:#C70602;white-space:nowrap">${f2(m)}</span></div>`).join('')}</div>`:''}
+      </div></div>`;
 
-    // Seções de análise editáveis
-    const secoes=[
-      {id:'desempenho',label:'Desempenho do período',ph:'Descreva o desempenho geral neste período...'},
-      {id:'analise_critica',label:'Análise crítica',ph:'Pontos que merecem atenção da gestão...'},
-      {id:'pontos_fortes',label:'Pontos fortes',ph:'O que se destacou positivamente...'},
-      {id:'oportunidades',label:'Oportunidades de melhoria',ph:'O que pode ser aprimorado...'},
-      {id:'acoes',label:'Ações planejadas',ph:'Ações definidas para o próximo período...'},
-    ];
-    const textos=d.textos||{};
-    const ro=_relDiretoria?'readonly':'';
-    html+=`<div class="rel-card"><div style="display:flex;flex-direction:column;gap:14px">`;
-    secoes.forEach(s=>{
-      html+=`<div>
-        <div class="rel-secao-titulo">${relEsc(s.label)}</div>
-        <textarea id="rel-txt-${relEsc(s.id)}" class="rel-secao-textarea" rows="4" placeholder="${relEsc(s.ph)}" ${ro} onchange="relSalvarTexto('${relEsc(s.id)}')">${relEsc(textos[s.id]||'')}</textarea>
-      </div>`;
-    });
-    html+=`<div style="display:flex;justify-content:flex-end"><button onclick="relSalvarTodosTextos()" class="btn btn-primary" style="font-size:12px" ${_relDiretoria?'disabled':''}>Salvar análise</button></div>`;
-    html+=`</div></div>`;
+    // Análise mensal (acordeão)
+    h+=`<div class="rs-card rs-card-flush">
+      <div style="padding:14px 18px;border-bottom:1px solid #EFEFEF;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><b style="font-size:15px">Análise mensal dos resultados</b><button type="button" class="rs-link-btn rs-noprint" onclick="relToggleTodos()">${_allOpen?'Recolher todos':'Expandir todos'}</button></div>
+      ${ser.slice(0,ri+1).map((r,i,arr)=>({r,p:i>0?arr[i-1]:null})).reverse().map(({r,p})=>{
+        const op=_allOpen||(_openM||ref)===r.k;
+        return `<div style="border-bottom:1px solid #EFEFEF"><button type="button" class="rs-hist-h${r.k===ref?' cur':''}" onclick="relToggleMes('${r.k}')"><span style="font-weight:700;font-size:13.5px;min-width:70px">${ml(r.k)}</span><span style="font-weight:700;font-size:13.5px;color:${col(r.ind)};white-space:nowrap">Indicador ${f2(r.ind)}</span><span style="font-size:12px;color:#929090;white-space:nowrap">${r.n} respostas</span><span style="margin-left:auto;color:#929090">${op?'−':'+'}</span></button>${op?`<div class="rs-hist-b" style="border-bottom:0"><p>${esc(_textoMes(r,p))}</p></div>`:''}</div>`;
+      }).join('')}
+    </div>`;
 
-    // Notas baixas
-    const baixas=itens.filter(i=>parseFloat(i.MEDIA||i.media||10)<7);
-    if(baixas.length){
-      html+=`<div class="rel-card">
-        <div class="rel-secao-titulo">Notas baixas e tratativas (${baixas.length})</div>
-        <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
-          ${baixas.map(i=>`<div style="padding:8px 10px;background:#FFF8F8;border:1px solid #F3CFCF;border-radius:8px;display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
-            <div>
-              <div style="font-size:12px;font-weight:600;color:#1F1F1F">${relEsc(i.NOME||i.nome||i.CLIENTE||'—')}</div>
-              <div style="font-size:11px;color:#666464;margin-top:2px">${relEsc(i.COMENTARIO||i.comentario||i.OBSERVACAO||'')}</div>
-            </div>
-            <span style="font-size:18px;font-weight:700;color:#C70602;white-space:nowrap">${relFmt(i.MEDIA||i.media)}</span>
-          </div>`).join('')}
-        </div>
-      </div>`;
-    }
-
-    cont.insertAdjacentHTML('beforeend',html);
+    cont.innerHTML=h;
   }
+  function _editV(id,txt){return _editTxt[id]!=null?_editTxt[id]:txt;}
+  let _editTxt={};
 
-  window.relSalvarTexto = async function(id){
-    const empresa=document.getElementById('rel-f-empresa')?.value||'';
-    const ano=document.getElementById('rel-f-ano')?.value||'';
-    const mes=document.getElementById('rel-f-mes')?.value||'';
-    const val=document.getElementById('rel-txt-'+id)?.value||'';
+  window.relIrMes=function(k){
+    const a=_val('rel-f-ano'),m=_val('rel-f-mes');
+    if(a)a.value=k.slice(0,4);if(m)m.value=String(+k.slice(5));
+    _openM=k;
+    relCarregar();
+  };
+  window.relToggleMes=function(k){
+    const ref=_refKey();const op=_allOpen||(_openM||ref)===k;
+    _allOpen=false;_openM=op?'none':k;_renderizar();
+  };
+  window.relToggleTodos=function(){_allOpen=!_allOpen;_renderizar();};
+
+  window.relEditar=function(id){_edit=id;_editTxt={};_renderizar();};
+  window.relCancelar=function(){_edit=null;_editTxt={};_renderizar();};
+  window.relRegerar=function(id){
+    const ta=_val('rel-txt-'+id);
+    if(ta&&_autos[id]!=null) ta.value=_autos[id];
+  };
+  window.relSalvarTexto=async function(id){
+    const ta=_val('rel-txt-'+id);
+    const valor=(ta?ta.value:'').trim();
+    const empresa=_empresa();
+    const ano=_val('rel-f-ano')?.value,mes=_val('rel-f-mes')?.value;
     const tok=sessionStorage.getItem('sac-token');
     try{
-      await fetch('/api/pesquisas/relatorio-texto',{
+      const r=await fetch('/api/pesquisas/relatorio-texto',{
         method:'POST',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/json'},
-        body:JSON.stringify({empresa,ano,mes,campo:id,valor:val})
+        body:JSON.stringify({empresa,ano,mes,campo:id,valor})
       });
-    }catch(e){}
+      const j=await r.json().catch(()=>({}));
+      if(!r.ok||j.sucesso===false){_toast('Não foi possível salvar o texto.'+(j.erro?' '+j.erro:''));return;}
+    }catch(e){_toast('Não foi possível salvar o texto.');return;}
+    if(!_d.textos) _d.textos={};
+    _d.textos[id]=valor;
+    _edit=null;_editTxt={};
+    _renderizar();
+    _toast('Texto salvo no relatório de '+mword(_refKey())+'.');
   };
 
-  window.relSalvarTodosTextos = async function(){
-    const ids=['desempenho','analise_critica','pontos_fortes','oportunidades','acoes'];
-    for(const id of ids) await relSalvarTexto(id);
-    const btn=document.querySelector('[onclick="relSalvarTodosTextos()"]');
-    if(btn){const orig=btn.textContent;btn.textContent='Salvo ✓';setTimeout(()=>{btn.textContent=orig;},2000);}
+  window.relToggleDiretoria=function(){
+    _dir=!_dir;_edit=null;_editTxt={};
+    const btn=_val('rel-btn-diretoria');
+    if(btn) btn.classList.toggle('on',_dir);
+    _renderizar();
   };
 
-  window.relToggleDiretoria = function(){
-    _relDiretoria=!_relDiretoria;
-    const badge=document.getElementById('rel-modo-diretoria-badge');
-    const aviso=document.getElementById('rel-diretoria-aviso');
-    const btn=document.getElementById('rel-btn-diretoria');
-    if(badge) badge.style.display=_relDiretoria?'':'none';
-    if(aviso) aviso.style.display=_relDiretoria?'':'none';
-    if(btn) btn.textContent=_relDiretoria?'Sair da visão':'Visão da Diretoria';
-    document.querySelectorAll('.rel-secao-textarea').forEach(t=>{
-      if(_relDiretoria) t.setAttribute('readonly','');else t.removeAttribute('readonly');
-    });
-  };
-
-  window.relAbrirModalEnvio = function(){
-    const modal=document.getElementById('rel-modal-envio');
-    const empresa=document.getElementById('rel-f-empresa')?.value||'';
-    const ano=document.getElementById('rel-f-ano')?.value||'';
-    const mes=document.getElementById('rel-f-mes')?.value||'';
-    if(modal){
-      modal.style.display='flex';
-      const link=window.location.origin+'/relatorio-satisfacao?empresa='+encodeURIComponent(empresa)+'&ano='+ano+'&mes='+mes;
-      const linkEl=document.getElementById('rel-link-compartilhar');
-      const dataEl=document.getElementById('rel-link-data');
-      if(linkEl) linkEl.textContent=link;
-      if(dataEl) dataEl.textContent=new Date().toLocaleString('pt-BR');
-    }
-  };
-
-  window.relFecharModalEnvio=function(){const m=document.getElementById('rel-modal-envio');if(m)m.style.display='none';};
-  window.relCopiarLink=function(){
-    const t=document.getElementById('rel-link-compartilhar')?.textContent||'';
-    navigator.clipboard.writeText(t).then(()=>{
-      const b=document.querySelector('[onclick="relCopiarLink()"]');
-      if(b){const o=b.textContent;b.textContent='Copiado!';setTimeout(()=>{b.textContent=o;},2000);}
-    }).catch(()=>{});
+  window.relBaixarPdf=function(){
+    document.body.classList.add('rs-printing');
+    const fim=function(){document.body.classList.remove('rs-printing');window.removeEventListener('afterprint',fim);};
+    window.addEventListener('afterprint',fim);
+    try{window.print();}catch(e){fim();}
   };
 
   document.addEventListener('DOMContentLoaded',function(){
-    _relPopulaFiltros();
-    if(typeof pageLoaders!=='undefined') pageLoaders['relatorio-satisfacao']=function(){_relPopulaFiltros();relCarregar();};
+    _populaFiltros();
+    if(typeof pageLoaders!=='undefined') pageLoaders['relatorio-satisfacao']=function(){_populaFiltros();relCarregar();};
   });
 })();
 </script>
