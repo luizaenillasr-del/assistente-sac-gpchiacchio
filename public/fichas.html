@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fichas de Manifestação · Grupo Chiacchio</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#E8E8E8;font-family:Montserrat,system-ui,sans-serif;color:#1F1F1F;-webkit-font-smoothing:antialiased}
+
+/* ── BARRA DE NAVEGAÇÃO ── */
+#nav-bar{position:fixed;top:0;left:0;right:0;z-index:100;background:#1F1F1F;color:#fff;display:flex;align-items:center;gap:12px;padding:0 20px;height:48px;font-size:13px}
+#nav-bar .logo{font-weight:700;color:#C70602;font-size:14px;letter-spacing:.02em}
+#nav-bar .sep{color:#555;margin:0 4px}
+#nav-bar .titulo{font-weight:600;color:#E4E4E4}
+#nav-bar .spacer{flex:1}
+.nav-pg-btn{background:none;border:1px solid #444;color:#ccc;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px;font-family:Montserrat,system-ui,sans-serif;transition:all .15s}
+.nav-pg-btn:hover,.nav-pg-btn.ativo{background:#C70602;border-color:#C70602;color:#fff}
+#btn-imprimir{background:#C70602;border:0;color:#fff;border-radius:6px;padding:6px 14px;cursor:pointer;font-size:12.5px;font-weight:600;font-family:Montserrat,system-ui,sans-serif;margin-left:8px}
+#btn-imprimir:hover{background:#A80502}
+
+/* ── LISTA DE PÁGINAS (sidebar) ── */
+#paginas-menu{position:fixed;top:48px;left:0;bottom:0;width:180px;background:#fff;border-right:1px solid #D6D6D6;overflow-y:auto;padding:10px 8px;z-index:90}
+.pg-item{display:block;width:100%;text-align:left;border:0;background:none;border-radius:7px;padding:7px 10px;cursor:pointer;font-size:11.5px;font-family:Montserrat,system-ui,sans-serif;color:#545252;line-height:1.35;transition:background .12s}
+.pg-item:hover{background:#F4F4F4}
+.pg-item.ativo{background:#FDECEC;color:#A80502;font-weight:600}
+.pg-item .pg-num{display:block;font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#929090;margin-bottom:1px}
+.pg-item.ativo .pg-num{color:#C70602}
+.pg-grupo-label{font-size:9.5px;font-weight:700;letter-spacing:.1em;color:#929090;padding:10px 10px 4px;text-transform:uppercase}
+
+/* ── ÁREA DE CONTEÚDO ── */
+#conteudo{margin-left:180px;padding-top:48px}
+.pagina-wrap{display:none;padding:28px 40px 40px}
+.pagina-wrap.visivel{display:block}
+
+/* ── FOLHA A4 ── */
+.folha{width:210mm;background:#fff;margin:0 auto;box-shadow:0 2px 16px rgba(0,0,0,.18);position:relative}
+.folha-inner{padding:12mm 13mm;display:flex;flex-direction:column;gap:3.2mm;font-size:8.6pt;line-height:1.3;min-height:297mm}
+
+/* ── COMPONENTES DE FICHA ── */
+.sec-header{background:#C70602;color:#fff;font-weight:700;font-size:8pt;letter-spacing:.06em;padding:1.4mm 2.5mm}
+.sec-header-cinza{font-weight:700;font-size:8.8pt;border-bottom:1px solid #1F1F1F;padding-bottom:1mm;margin-bottom:1mm}
+.campo-label{font-size:6.8pt;color:#666464}
+.campo-linha{border-bottom:1px solid #929090;height:5mm}
+.campo-box{border:1px solid #929090}
+.grid-4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1.8mm 3mm}
+.grid-3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1.8mm 3mm}
+.grid-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.8mm 3mm}
+.grid-5{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:1.8mm 3mm}
+.grid-kv{display:grid;grid-template-columns:auto minmax(0,1fr);gap:1.6mm 4mm;align-items:center}
+.rodape{margin-top:auto;display:flex;justify-content:space-between;font-size:6.8pt;color:#929090;border-top:1px solid #E4E4E4;padding-top:2mm}
+table.ficha{border-collapse:collapse;width:100%}
+table.ficha th{text-align:left;padding:1.2mm 2mm;border:1px solid #CFCFCF;background:#F4F4F4;font-size:7.8pt}
+table.ficha td{padding:1.5mm 2mm;border:1px solid #CFCFCF;font-size:7.8pt}
+.rnc-cabecalho{display:grid;grid-template-columns:42mm minmax(0,1fr) 40mm;border:1px solid #1F1F1F;font-size:7.4pt}
+.rnc-cab-logo{grid-row:span 2;border-right:1px solid #1F1F1F;display:grid;place-items:center;padding:1.5mm}
+.rnc-cab-c1{padding:1.5mm 2.5mm;border-right:1px solid #1F1F1F;border-bottom:1px solid #1F1F1F}
+.rnc-cab-c2{padding:1.5mm 2.5mm;border-bottom:1px solid #1F1F1F}
+.rnc-cab-c3{padding:1.5mm 2.5mm;border-right:1px solid #1F1F1F}
+.rnc-cab-c4{padding:1.5mm 2.5mm}
+.ev-area{flex:1;border:1.5px dashed #CFCFCF;display:grid;place-items:center;color:#929090;font-size:8pt;min-height:200mm}
+.causa-raiz{display:grid;grid-template-columns:30mm minmax(0,1fr);gap:3mm;align-items:end;background:#FDF2F2;padding:2mm}
+
+@media print{
+  #nav-bar,#paginas-menu{display:none!important}
+  #conteudo{margin-left:0;padding-top:0}
+  .pagina-wrap{display:block!important;padding:0!important}
+  .folha{box-shadow:none;page-break-after:always;width:100%}
+  .folha-inner{padding:12mm 13mm;min-height:auto}
+}
+</style>
+</head>
+<body>
+
+<!-- BARRA SUPERIOR -->
+<div id="nav-bar">
+  <span class="logo">Grupo Chiacchio</span>
+  <span class="sep">·</span>
+  <span class="titulo">Fichas de Manifestação</span>
+  <span class="spacer"></span>
+  <button class="nav-pg-btn" onclick="irPagina(0)">« Anterior</button>
+  <span id="nav-info" style="font-size:11px;color:#aaa;min-width:70px;text-align:center">1 / 8</span>
+  <button class="nav-pg-btn" onclick="irPagina(1)">Próxima »</button>
+  <button id="btn-imprimir" onclick="window.print()">⎙ Imprimir / PDF</button>
+</div>
+
+<!-- SIDEBAR DE PÁGINAS -->
+<div id="paginas-menu">
+  <div class="pg-grupo-label">Ficha de Manifestação</div>
+  <button class="pg-item ativo" onclick="mostrarPagina(0)"><span class="pg-num">PÁG 1</span>Dados · Manifestação · Análise · Encaminhamento</button>
+  <button class="pg-item" onclick="mostrarPagina(1)"><span class="pg-num">PÁG 2</span>Tratativa · Aprovações · Devolutiva · Encerramento</button>
+
+  <div class="pg-grupo-label" style="margin-top:6px">Ficha Oficial (em uso)</div>
+  <button class="pg-item" onclick="mostrarPagina(2)"><span class="pg-num">PÁG 3</span>Ficha de Encaminhamento de Manifestação</button>
+
+  <div class="pg-grupo-label" style="margin-top:6px">RNC RT-0001</div>
+  <button class="pg-item" onclick="mostrarPagina(3)"><span class="pg-num">PÁG 4 · 1/5</span>Dados de Entrada · Ações de Correção</button>
+  <button class="pg-item" onclick="mostrarPagina(4)"><span class="pg-num">PÁG 5 · 2/5</span>Análise de Causa · Ação de Correção</button>
+  <button class="pg-item" onclick="mostrarPagina(5)"><span class="pg-num">PÁG 6 · 3/5</span>Evidência da NC</button>
+  <button class="pg-item" onclick="mostrarPagina(6)"><span class="pg-num">PÁG 7 · 4/5</span>Evidência das Ações</button>
+  <button class="pg-item" onclick="mostrarPagina(7)"><span class="pg-num">PÁG 8 · 5/5</span>Evidência da Eficácia</button>
+</div>
+
+<!-- CONTEÚDO -->
+<div id="conteudo">
+
+<!-- ══════════════════════════════════════════════════════════
+     PÁG 1 · Ficha de Manifestação (modelo novo) · p1
+     ══════════════════════════════════════════════════════════ -->
+<div class="pagina-wrap visivel" id="pg-0">
+<div class="folha">
+<div class="folha-inner">
+
+  <!-- Cabeçalho -->
+  <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #C70602;padding-bottom:3mm;gap:6mm">
+    <img src="/logo-chiacchio.png" alt="Grupo Chiacchio" style="height:15mm;width:auto;display:block">
+    <div style="flex:1">
+      <div style="font-size:7.5pt;letter-spacing:.12em;color:#C70602;font-weight:700">SAC · ASSISTENTE SAC</div>
+      <div style="font-size:13pt;font-weight:700">Ficha de Manifestação</div>
+      <div style="font-size:7.5pt;color:#666464">Modelo novo · preenchido dentro da ferramenta · documento controlado ISO 9001</div>
+    </div>
+    <div style="border:1px solid #1F1F1F;padding:2mm 3mm;text-align:right;font-size:7.5pt;line-height:1.5">
+      <div>Nº <strong style="font-size:10pt">MAN-______</strong></div>
+      <div>Abertura ___/___/______ ___:___</div>
+    </div>
+  </div>
+
+  <!-- 1. Dados do Cliente -->
+  <div class="sec-header">1. DADOS DO CLIENTE</div>
+  <div class="grid-4">
+    <div style="grid-column:span 2"><div class="campo-label">Razão social</div><div class="campo-linha"></div></div>
+    <div><div class="campo-label">CNPJ</div><div class="campo-linha"></div></div>
+    <div><div class="campo-label">Código do cliente</div><div class="campo-linha"></div></div>
+    <div><div class="campo-label">Nome do contato</div><div class="campo-linha"></div></div>
+    <div><div class="campo-label">Telefone</div><div class="campo-linha"></div></div>
+    <div><div class="campo-label">E-mail</div><div class="campo-linha"></div></div>
+    <div><div class="campo-label">Cidade/UF</div><div class="campo-linha"></div></div>
+  </div>
+
+  <!-- 2. Dados da Manifestação -->
+  <div class="sec-header">2. DADOS DA MANIFESTAÇÃO</div>
+  <div class="grid-kv">
+    <span class="campo-label">Empresa</span><span>☐ Chiacchio &nbsp; ☐ Plaschio &nbsp; ☐ Cesbap &nbsp; ☐ Outra: __________</span>
+    <span class="campo-label">Canal de entrada</span><span>☐ Telefone &nbsp; ☐ WhatsApp &nbsp; ☐ E-mail &nbsp; ☐ Presencial &nbsp; ☐ Site &nbsp; ☐ Representante &nbsp; ☐ Pesquisa de satisfação</span>
+    <span class="campo-label">Tipo</span><span>☐ Reclamação &nbsp; ☐ Solicitação &nbsp; ☐ Sugestão &nbsp; ☐ Elogio &nbsp; ☐ Dúvida &nbsp; ☐ Denúncia</span>
+  </div>
+  <div><div class="campo-label">Descrição da manifestação do cliente</div><div class="campo-box" style="height:20mm"></div></div>
+  <div class="grid-5">
+    <div style="grid-column:span 2"><div class="campo-label">Produto</div><div class="campo-linha"></div></div>
+    <div><div class="campo-label">Pedido</div><div class="campo-linha"></div></div>
+    <div><div class="campo-label">NF</div><div class="campo-linha"></div></div>
+    <div><div class="campo-label">Lote</div><div class="campo-linha"></div></div>
+    <div><div class="campo-label">Data de entrega</div><div class="campo-linha"></div></div>
+    <div><div class="campo-label">Transportadora</div><div class="campo-linha"></div></div>
+    <div><div class="campo-label">Vendedor</div><div class="campo-linha"></div></div>
+    <div><div class="campo-label">Representante</div><div class="campo-linha"></div></div>
+    <div><div class="campo-label">Quantidade envolvida</div><div class="campo-linha"></div></div>
+  </div>
+  <div><span class="campo-label">Evidências anexadas &nbsp;</span>☐ Fotos &nbsp; ☐ PDF &nbsp; ☐ Vídeo &nbsp; ☐ Prints &nbsp; ☐ Documentos &nbsp; ☐ Áudio &nbsp; Qtde: ____</div>
+
+  <!-- 3. Análise da IA -->
+  <div class="sec-header">3. ANÁLISE DA IA E VALIDAÇÃO DO SAC</div>
+  <table class="ficha">
+    <thead><tr><th style="width:22%">Campo</th><th>Sugestão da IA</th><th>Decisão do SAC</th><th style="width:24%">Aceita / Editada / Rejeitada</th></tr></thead>
+    <tbody>
+      <tr><td>Categoria / Motivo</td><td></td><td></td><td style="text-align:center">☐ A &nbsp; ☐ E &nbsp; ☐ R</td></tr>
+      <tr><td>Causa / Subcausa</td><td></td><td></td><td style="text-align:center">☐ A &nbsp; ☐ E &nbsp; ☐ R</td></tr>
+      <tr><td>Setor responsável</td><td></td><td></td><td style="text-align:center">☐ A &nbsp; ☐ E &nbsp; ☐ R</td></tr>
+      <tr><td>Prioridade</td><td></td><td></td><td style="text-align:center">☐ A &nbsp; ☐ E &nbsp; ☐ R</td></tr>
+    </tbody>
+  </table>
+  <div class="grid-3">
+    <div><div class="campo-label">Reincidente?</div><div>☐ Sim &nbsp; ☐ Não &nbsp; Ocorrências: ____</div></div>
+    <div><div class="campo-label">Casos similares (nº)</div><div class="campo-linha"></div></div>
+    <div><div class="campo-label">Procedência</div><div>☐ Sim &nbsp; ☐ Não &nbsp; ☐ Parcial</div></div>
+  </div>
+  <div><div class="campo-label">Motivo da divergência com a IA / justificativa da procedência</div><div class="campo-box" style="height:9mm"></div></div>
+
+  <!-- 4. Encaminhamento -->
+  <div class="sec-header">4. ENCAMINHAMENTO</div>
+  <div class="grid-4">
+    <div style="grid-column:span 2"><div class="campo-label">Setor principal / setores de apoio</div><div class="campo-linha"></div></div>
+    <div><div class="campo-label">Data de encaminhamento</div><div class="campo-linha"></div></div>
+    <div><div class="campo-label">Prazo (SLA) / data limite</div><div class="campo-linha"></div></div>
+  </div>
+
+  <div class="rodape"><span>Grupo Chiacchio · Assistente SAC · FR-SAC-01 rev. 2026</span><span>Página 1 de 2</span></div>
+</div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     PÁG 2 · Ficha de Manifestação (modelo novo) · p2
+     ══════════════════════════════════════════════════════════ -->
+<div class="pagina-wrap" id="pg-1">
+<div class="folha">
+<div class="folha-inner" style="gap:2.5mm">
+
+  <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #C70602;padding-bottom:2.5mm">
+    <span style="font-weight:700;font-size:10pt">Ficha de Manifestação · continuação</span>
+    <span style="font-size:8pt">Nº <strong>MAN-______</strong></span>
+  </div>
+
+  <!-- 5. Tratativa do Setor -->
+  <div class="sec-header">5. TRATATIVA DO SETOR · uma por setor acionado</div>
+  <div style="border:1px solid #CFCFCF;padding:2.5mm;display:flex;flex-direction:column;gap:2mm">
+    <div class="grid-3">
+      <div><div class="campo-label">Setor</div><div class="campo-linha"></div></div>
+      <div><div class="campo-label">Responsável</div><div class="campo-linha"></div></div>
+      <div><div class="campo-label">Data da resposta</div><div class="campo-linha"></div></div>
+    </div>
+    <div><div class="campo-label">O que aconteceu?</div><div class="campo-linha" style="height:7mm"></div></div>
+    <div><div class="campo-label">Qual foi a causa da ocorrência?</div><div class="campo-linha" style="height:7mm"></div></div>
+    <div><div class="campo-label">Como o caso foi resolvido para este cliente?</div><div class="campo-linha" style="height:7mm"></div></div>
+    <div><div class="campo-label">Ação para evitar novas ocorrências · responsável · prazo</div><div class="campo-linha" style="height:7mm"></div></div>
+    <div style="display:flex;gap:6mm;flex-wrap:wrap">
+      <span>Responsabilidade do setor: ☐ Sim ☐ Não ☐ Parcial</span>
+      <span>Comunicar à Qualidade: ☐ Sim ☐ Não</span>
+      <span>Status: ☐ Resolvida ☐ Aguardando terceiro ☐ Aguardando cliente</span>
+    </div>
+  </div>
+  <div style="font-size:7pt;color:#666464">Reclamação registrada pelo SAC não gera RNC. RNC é aberta só por reclamação via Comercial, auditoria externa, auditoria interna ou desvio de especificação de matéria-prima. Para mais de um setor, a ferramenta gera um bloco 5 por setor. Em papel, use uma folha adicional por setor.</div>
+
+  <!-- 6. Aprovações -->
+  <div class="sec-header">6. APROVAÇÕES</div>
+  <div class="grid-4">
+    <div style="grid-column:span 2"><div class="campo-label">Item a aprovar (reposição, devolução, compensação, resposta)</div><div class="campo-linha"></div></div>
+    <div><div class="campo-label">Aprovação (tipo / valor)</div><div class="campo-linha"></div></div>
+    <div><div class="campo-label">Aprovador · data</div><div class="campo-linha"></div></div>
+  </div>
+
+  <!-- 7. Devolutiva ao Cliente -->
+  <div class="sec-header">7. DEVOLUTIVA AO CLIENTE</div>
+  <div style="display:flex;gap:6mm;flex-wrap:wrap">
+    <span>Texto sugerido pela IA: ☐ Aceito ☐ Editado ☐ Rejeitado</span>
+    <span>Canal: ☐ WhatsApp ☐ E-mail ☐ Telefone ☐ Carta</span>
+  </div>
+  <div><div class="campo-label">Texto final enviado (baseado nos fatos da tratativa, sem assumir culpa antecipadamente)</div><div class="campo-box" style="height:18mm"></div></div>
+  <div class="grid-3">
+    <div><div class="campo-label">Responsável</div><div class="campo-linha"></div></div>
+    <div><div class="campo-label">Data de envio</div><div class="campo-linha"></div></div>
+    <div><div class="campo-label">Confirmação de envio</div><div>☐ Sim</div></div>
+  </div>
+
+  <!-- 8. Encerramento e Histórico -->
+  <div class="sec-header">8. ENCERRAMENTO E HISTÓRICO</div>
+  <div class="grid-4">
+    <div><div class="campo-label">Cliente informado</div><div>☐ Sim ☐ Não</div></div>
+    <div><div class="campo-label">Manifestação resolvida</div><div>☐ Sim ☐ Não</div></div>
+    <div><div class="campo-label">Data de finalização</div><div class="campo-linha"></div></div>
+    <div><div class="campo-label">Follow-up previsto</div><div class="campo-linha"></div></div>
+  </div>
+  <table class="ficha" style="font-size:7.6pt">
+    <thead><tr><th style="width:18%">Etapa</th><th style="width:22%">Data e hora</th><th>Responsável</th></tr></thead>
+    <tbody>
+      <tr><td style="padding:1.5mm 2mm">Aberta</td><td></td><td></td></tr>
+      <tr><td style="padding:1.5mm 2mm">Analisada</td><td></td><td></td></tr>
+      <tr><td style="padding:1.5mm 2mm">Encaminhada</td><td></td><td></td></tr>
+      <tr><td style="padding:1.5mm 2mm">Em tratativa</td><td></td><td></td></tr>
+      <tr><td style="padding:1.5mm 2mm">Devolutiva</td><td></td><td></td></tr>
+      <tr><td style="padding:1.5mm 2mm">Finalizada</td><td></td><td></td></tr>
+    </tbody>
+  </table>
+
+  <div class="rodape"><span>Na ferramenta, todos os campos são preenchidos digitalmente e registrados na auditoria.</span><span>Página 2 de 2</span></div>
+</div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     PÁG 3 · Ficha de Encaminhamento de Manifestação (oficial)
+     ══════════════════════════════════════════════════════════ -->
+<div class="pagina-wrap" id="pg-2">
+<div class="folha">
+<div class="folha-inner" style="gap:2.3mm">
+
+  <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #929090;padding-bottom:3mm;gap:6mm">
+    <img src="/logo-chiacchio.png" alt="Grupo Chiacchio" style="height:15mm;width:auto;display:block">
+    <div style="flex:1">
+      <div style="font-size:7.5pt;letter-spacing:.12em;color:#666464;font-weight:700">SAC · MODELO OFICIAL EM USO</div>
+      <div style="font-size:13pt;font-weight:700">FICHA DE ENCAMINHAMENTO DE MANIFESTAÇÃO</div>
+      <div style="font-size:7.5pt;color:#666464">Reproduz a ficha de reclamação vigente · usada também para importar fichas antigas no banco de casos</div>
+    </div>
+  </div>
+
+  <div class="sec-header-cinza">1. Dados do Registro SAC</div>
+  <div class="grid-4">
+    <div><div class="campo-label">Data do Registro</div><div class="campo-linha"></div></div>
+    <div><div class="campo-label">Setor</div><div class="campo-linha" style="padding-top:.6mm">SAC</div></div>
+    <div><div class="campo-label">Nº Reclamação</div><div class="campo-linha"></div></div>
+    <div><div class="campo-label">Atendente</div><div class="campo-linha"></div></div>
+  </div>
+  <div><span class="campo-label">Canal de Atendimento: &nbsp;</span>( ) Telefone &nbsp; ( ) WhatsApp &nbsp; ( ) E-mail &nbsp; ( ) Presencial &nbsp; ( ) Pesquisa de Satisfação &nbsp; ( ) Outro</div>
+
+  <div class="sec-header-cinza">2. Dados do Cliente</div>
+  <div class="grid-3">
+    <div><div class="campo-label">Nome do Cliente</div><div class="campo-linha"></div></div>
+    <div><div class="campo-label">Empresa / Razão Social</div><div class="campo-linha"></div></div>
+    <div><div class="campo-label">CNPJ</div><div class="campo-linha"></div></div>
+    <div><div class="campo-label">Telefone / WhatsApp</div><div class="campo-linha"></div></div>
+    <div style="grid-column:span 2"><div class="campo-label">E-mail</div><div class="campo-linha"></div></div>
+  </div>
+
+  <div class="sec-header-cinza">3. Informações da Manifestação</div>
+  <div>Tipo de Manifestação: [ ] Reclamação &nbsp; [ ] Dúvida &nbsp; [ ] Sugestão &nbsp; [ ] Elogio</div>
+  <div>A reclamação é procedente? &nbsp; [ ] Sim &nbsp; [ ] Não &nbsp; [ ] Parcialmente</div>
+  <div><div class="campo-label">Justifique.</div><div class="campo-linha" style="height:7mm"></div></div>
+  <div><div class="campo-label">Descrição Detalhada da Manifestação:</div><div class="campo-box" style="height:16mm"></div></div>
+
+  <div class="sec-header-cinza">4. Informações do Produto (quando aplicável)</div>
+  <div class="grid-3">
+    <div><div class="campo-label">Produto</div><div class="campo-linha"></div></div>
+    <div><div class="campo-label">Lote</div><div class="campo-linha"></div></div>
+    <div><div class="campo-label">NFe</div><div class="campo-linha"></div></div>
+  </div>
+
+  <div class="sec-header-cinza">5. Encaminhamento</div>
+  <div class="grid-2">
+    <div><div class="campo-label">Data de Encaminhamento</div><div class="campo-linha"></div></div>
+    <div><div class="campo-label">Prazo para Retorno ao SAC</div><div class="campo-linha" style="padding-top:.6mm">72 horas.</div></div>
+  </div>
+
+  <div class="sec-header-cinza">6. Resposta do Setor</div>
+  <div class="grid-2" style="gap:2mm 4mm">
+    <div>
+      <div style="font-size:7.4pt;font-weight:600">O que aconteceu?</div>
+      <div style="font-size:6.6pt;color:#666464">(Descreva objetivamente o que aconteceu.)</div>
+      <div class="campo-box" style="height:10mm;margin-top:1mm"></div>
+    </div>
+    <div>
+      <div style="font-size:7.4pt;font-weight:600">Qual foi a causa da ocorrência?</div>
+      <div style="font-size:6.6pt;color:#666464">(Por que isso aconteceu?)</div>
+      <div class="campo-box" style="height:10mm;margin-top:1mm"></div>
+    </div>
+    <div>
+      <div style="font-size:7.4pt;font-weight:600">Como o caso foi resolvido para este cliente?</div>
+      <div style="font-size:6.6pt;color:#666464">(O que foi feito para solucionar esta reclamação específica?)</div>
+      <div class="campo-box" style="height:10mm;margin-top:1mm"></div>
+    </div>
+    <div>
+      <div style="font-size:7.4pt;font-weight:600">Qual ação será adotada para evitar novas ocorrências?</div>
+      <div style="font-size:6.6pt;color:#666464">(Informar a ação corretiva ou preventiva que será implementada.)</div>
+      <div class="campo-box" style="height:10mm;margin-top:1mm"></div>
+    </div>
+  </div>
+  <div class="grid-2" style="gap:1.8mm 4mm">
+    <div><div class="campo-label">Responsável pela ação de melhoria</div><div class="campo-linha"></div></div>
+    <div><div class="campo-label">Prazo para implementação da ação</div><div class="campo-linha"></div></div>
+  </div>
+
+  <div class="sec-header-cinza">7. Validação do SAC</div>
+  <div class="grid-3">
+    <div><div class="campo-label">Data de Retorno ao Cliente</div><div class="campo-linha"></div></div>
+    <div><div class="campo-label">Cliente Informado</div><div>( ) Sim &nbsp; ( ) Não</div></div>
+    <div><div class="campo-label">Manifestação Resolvida</div><div>( ) Sim &nbsp; ( ) Não</div></div>
+  </div>
+  <div><div class="campo-label">Observações Finais:</div><div class="campo-box" style="height:9mm"></div></div>
+
+  <div class="rodape"><span>Grupo Chiacchio · SAC · Ficha de Encaminhamento de Manifestação</span><span>Página 1 de 1</span></div>
+</div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     PÁG 4 · RNC RT-0001 · 1 de 5
+     ══════════════════════════════════════════════════════════ -->
+<div class="pagina-wrap" id="pg-3">
+<div class="folha">
+<div class="folha-inner" style="gap:3mm">
+  <div class="rnc-cabecalho">
+    <div class="rnc-cab-logo"><img src="/logo-chiacchio.png" alt="Grupo Chiacchio" style="height:13mm;width:auto"></div>
+    <div class="rnc-cab-c1"><strong>Empresa:</strong> Chiacchio Embalagens</div>
+    <div class="rnc-cab-c2"><strong>RT-0001</strong> &nbsp; Rev: 0000</div>
+    <div class="rnc-cab-c3"><strong>Tipo de Documento:</strong> Relatório de Não Conformidade<div style="font-size:6.4pt;color:#545252;margin-top:.6mm">Criado: Gildásio Jr – Coordenador de Qualidade/ Process · Aprovado: Deibson Veloso – Diretor de Produção</div></div>
+    <div class="rnc-cab-c4">Data: 20/03/26<br>1 de 5</div>
+  </div>
+
+  <div class="sec-header">DADOS DE ENTRADA</div>
+  <div class="grid-3" style="gap:2mm 3mm">
+    <div><div class="campo-label">EMITIDA POR:</div><div class="campo-linha"></div></div>
+    <div><div class="campo-label">RECEBIDO POR:</div><div class="campo-linha"></div></div>
+    <div><div class="campo-label">DATA VERIFICAÇÃO:</div><div class="campo-linha"></div></div>
+    <div><div class="campo-label">N° RNC:</div><div class="campo-linha"></div></div>
+    <div><div class="campo-label">SETOR:</div><div class="campo-linha"></div></div>
+    <div><div class="campo-label">LOTE:</div><div class="campo-linha"></div></div>
+    <div><div class="campo-label">OPERADOR:</div><div class="campo-linha"></div></div>
+    <div><div class="campo-label">PRODUTO:</div><div class="campo-linha"></div></div>
+    <div><div class="campo-label">QUANTIDADE:</div><div class="campo-linha"></div></div>
+    <div><div class="campo-label">CLIENTE:</div><div class="campo-linha"></div></div>
+    <div style="grid-column:span 2"><div class="campo-label">CONTATO:</div><div class="campo-linha"></div></div>
+  </div>
+
+  <div class="sec-header">ORIGEM DA NÃO CONFORMIDADE</div>
+  <div class="grid-3" style="gap:1.6mm 3mm">
+    <span style="white-space:nowrap">☐ ANÁLISE CRÍTICA DA ALTA DIREÇÃO</span>
+    <span style="white-space:nowrap">☐ AUDITORIA INTERNA</span>
+    <span style="white-space:nowrap">☐ AUDITORIA EXTERNA</span>
+    <span style="white-space:nowrap">☐ RNC EXTERNA</span>
+    <span style="white-space:nowrap">☐ INSPEÇÃO INTERNA</span>
+    <span style="white-space:nowrap">☐ AVALIAÇÃO SAC</span>
+  </div>
+
+  <table class="ficha" style="font-size:7.8pt">
+    <thead><tr><th>Tipo</th><th>Plano de Ação?</th><th>Procedente?</th><th>Devolução?</th></tr></thead>
+    <tbody><tr>
+      <td style="padding:1.5mm 2mm">☐ Real<br>☐ Potencial</td>
+      <td style="padding:1.5mm 2mm">☐ Sim<br>☐ Não</td>
+      <td style="padding:1.5mm 2mm">☐ Sim<br>☐ Não</td>
+      <td style="padding:1.5mm 2mm">☐ Sim<br>☐ Não</td>
+    </tr></tbody>
+  </table>
+
+  <div class="sec-header">DESCRIÇÃO DA NÃO CONFORMIDADE/ OBSERVAÇÃO</div>
+  <div class="campo-box" style="height:42mm"></div>
+
+  <div class="sec-header">AÇÕES DE CORREÇÃO IMEDIATA</div>
+  <table class="ficha" style="font-size:7.6pt">
+    <thead><tr><th>AÇÃO</th><th>RESPONSÁVEL</th><th>PRAZO</th></tr></thead>
+    <tbody>
+      <tr><td style="height:7mm"></td><td></td><td></td></tr>
+      <tr><td style="height:7mm"></td><td></td><td></td></tr>
+      <tr><td style="height:7mm"></td><td></td><td></td></tr>
+      <tr><td style="height:7mm"></td><td></td><td></td></tr>
+      <tr><td style="height:7mm"></td><td></td><td></td></tr>
+    </tbody>
+  </table>
+
+  <div class="rodape" style="margin-top:auto"><span>Na Central de RCA esta ficha é preenchida digitalmente, com evidências vinculadas e histórico de versões.</span></div>
+</div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     PÁG 5 · RNC RT-0001 · 2 de 5
+     ══════════════════════════════════════════════════════════ -->
+<div class="pagina-wrap" id="pg-4">
+<div class="folha">
+<div class="folha-inner" style="gap:3mm">
+  <div class="rnc-cabecalho">
+    <div class="rnc-cab-logo"><img src="/logo-chiacchio.png" alt="Grupo Chiacchio" style="height:13mm;width:auto"></div>
+    <div class="rnc-cab-c1"><strong>Empresa:</strong> Chiacchio Embalagens</div>
+    <div class="rnc-cab-c2"><strong>RT-0001</strong> &nbsp; Rev: 0000</div>
+    <div class="rnc-cab-c3"><strong>Tipo de Documento:</strong> Relatório de Não Conformidade<div style="font-size:6.4pt;color:#545252;margin-top:.6mm">Criado: Gildásio Jr – Coordenador de Qualidade/ Process · Aprovado: Deibson Veloso – Diretor de Produção</div></div>
+    <div class="rnc-cab-c4">Data: 20/03/26<br>2 de 5</div>
+  </div>
+
+  <div class="sec-header">ANÁLISE DE CAUSA:</div>
+
+  <div style="display:flex;flex-direction:column;gap:2.5mm">
+    <div style="display:grid;grid-template-columns:30mm minmax(0,1fr);gap:3mm;align-items:end">
+      <div style="font-size:7pt"><div class="campo-label">POR QUE OCORREU</div><strong>PROBLEMA 1:</strong></div>
+      <div class="campo-linha" style="height:9mm"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:30mm minmax(0,1fr);gap:3mm;align-items:end">
+      <div style="font-size:7pt"><div class="campo-label">POR QUE OCORREU</div><strong>PROBLEMA 2:</strong></div>
+      <div class="campo-linha" style="height:9mm"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:30mm minmax(0,1fr);gap:3mm;align-items:end">
+      <div style="font-size:7pt"><div class="campo-label">POR QUE OCORREU</div><strong>PROBLEMA 3:</strong></div>
+      <div class="campo-linha" style="height:9mm"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:30mm minmax(0,1fr);gap:3mm;align-items:end">
+      <div style="font-size:7pt"><div class="campo-label">POR QUE OCORREU</div><strong>PROBLEMA 4:</strong></div>
+      <div class="campo-linha" style="height:9mm"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:30mm minmax(0,1fr);gap:3mm;align-items:end">
+      <div style="font-size:7pt"><div class="campo-label">POR QUE OCORREU</div><strong>PROBLEMA 5:</strong></div>
+      <div class="campo-linha" style="height:9mm"></div>
+    </div>
+    <div class="causa-raiz">
+      <strong style="font-size:7.6pt;color:#A80502">CAUSA RAIZ:</strong>
+      <div class="campo-linha" style="height:11mm"></div>
+    </div>
+  </div>
+
+  <div class="sec-header">AÇÃO DE CORREÇÃO</div>
+  <table class="ficha" style="font-size:7.6pt">
+    <thead><tr><th>AÇÃO</th><th>RESPONSÁVEL</th><th>PRAZO</th><th>STATUS</th></tr></thead>
+    <tbody>
+      <tr><td style="height:7mm"></td><td></td><td></td><td></td></tr>
+      <tr><td style="height:7mm"></td><td></td><td></td><td></td></tr>
+      <tr><td style="height:7mm"></td><td></td><td></td><td></td></tr>
+      <tr><td style="height:7mm"></td><td></td><td></td><td></td></tr>
+      <tr><td style="height:7mm"></td><td></td><td></td><td></td></tr>
+    </tbody>
+  </table>
+
+  <div class="sec-header">VERIFICAÇÃO:</div>
+  <div class="campo-box" style="height:16mm"></div>
+  <div class="grid-2" style="gap:3mm">
+    <div style="border:1px solid #CFCFCF;padding:2.5mm;display:flex;flex-direction:column;gap:1.5mm">
+      <strong style="font-size:7.6pt">VERIFICAÇÃO DA EFICÁCIA:</strong>
+      <div>☐ CONFORME &nbsp; ☐ NÃO CONFORME</div>
+      <div><div class="campo-label">DATA:</div><div class="campo-linha"></div></div>
+    </div>
+    <div style="border:1px solid #CFCFCF;padding:2.5mm;display:flex;flex-direction:column;gap:1.5mm">
+      <strong style="font-size:7.6pt">NOVA NC:</strong>
+      <div>☐ SIM &nbsp; ☐ NÃO</div>
+      <div><div class="campo-label">DATA:</div><div class="campo-linha"></div></div>
+    </div>
+  </div>
+</div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     PÁG 6 · RNC RT-0001 · 3 de 5 — Evidência da NC
+     ══════════════════════════════════════════════════════════ -->
+<div class="pagina-wrap" id="pg-5">
+<div class="folha">
+<div class="folha-inner" style="gap:3mm">
+  <div class="rnc-cabecalho">
+    <div class="rnc-cab-logo"><img src="/logo-chiacchio.png" alt="Grupo Chiacchio" style="height:13mm;width:auto"></div>
+    <div class="rnc-cab-c1"><strong>Empresa:</strong> Chiacchio Embalagens</div>
+    <div class="rnc-cab-c2"><strong>RT-0001</strong> &nbsp; Rev: 0000</div>
+    <div class="rnc-cab-c3"><strong>Tipo de Documento:</strong> Relatório de Não Conformidade<div style="font-size:6.4pt;color:#545252;margin-top:.6mm">Criado: Gildásio Jr – Coordenador de Qualidade/ Process · Aprovado: Deibson Veloso – Diretor de Produção</div></div>
+    <div class="rnc-cab-c4">Data: 20/03/26<br>3 de 5</div>
+  </div>
+  <div class="sec-header">ANEXO DE EVIDÊNCIA DA NC:</div>
+  <div class="ev-area">Espaço para fotos, registros e documentos</div>
+</div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     PÁG 7 · RNC RT-0001 · 4 de 5 — Evidência das Ações
+     ══════════════════════════════════════════════════════════ -->
+<div class="pagina-wrap" id="pg-6">
+<div class="folha">
+<div class="folha-inner" style="gap:3mm">
+  <div class="rnc-cabecalho">
+    <div class="rnc-cab-logo"><img src="/logo-chiacchio.png" alt="Grupo Chiacchio" style="height:13mm;width:auto"></div>
+    <div class="rnc-cab-c1"><strong>Empresa:</strong> Chiacchio Embalagens</div>
+    <div class="rnc-cab-c2"><strong>RT-0001</strong> &nbsp; Rev: 0000</div>
+    <div class="rnc-cab-c3"><strong>Tipo de Documento:</strong> Relatório de Não Conformidade<div style="font-size:6.4pt;color:#545252;margin-top:.6mm">Criado: Gildásio Jr – Coordenador de Qualidade/ Process · Aprovado: Deibson Veloso – Diretor de Produção</div></div>
+    <div class="rnc-cab-c4">Data: 20/03/26<br>4 de 5</div>
+  </div>
+  <div class="sec-header">EVIDÊNCIA DAS AÇÕES:</div>
+  <div class="ev-area">Espaço para fotos, registros e documentos</div>
+</div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     PÁG 8 · RNC RT-0001 · 5 de 5 — Evidência da Eficácia
+     ══════════════════════════════════════════════════════════ -->
+<div class="pagina-wrap" id="pg-7">
+<div class="folha">
+<div class="folha-inner" style="gap:3mm">
+  <div class="rnc-cabecalho">
+    <div class="rnc-cab-logo"><img src="/logo-chiacchio.png" alt="Grupo Chiacchio" style="height:13mm;width:auto"></div>
+    <div class="rnc-cab-c1"><strong>Empresa:</strong> Chiacchio Embalagens</div>
+    <div class="rnc-cab-c2"><strong>RT-0001</strong> &nbsp; Rev: 0000</div>
+    <div class="rnc-cab-c3"><strong>Tipo de Documento:</strong> Relatório de Não Conformidade<div style="font-size:6.4pt;color:#545252;margin-top:.6mm">Criado: Gildásio Jr – Coordenador de Qualidade/ Process · Aprovado: Deibson Veloso – Diretor de Produção</div></div>
+    <div class="rnc-cab-c4">Data: 20/03/26<br>5 de 5</div>
+  </div>
+  <div class="sec-header">EVIDÊNCIA DA EFICÁCIA:</div>
+  <div class="ev-area">Espaço para fotos, registros e documentos</div>
+</div>
+</div>
+</div>
+
+</div><!-- #conteudo -->
+
+<script>
+var _pg = 0;
+var _total = 8;
+
+function mostrarPagina(idx) {
+  document.querySelectorAll('.pagina-wrap').forEach(function(el,i){ el.classList.toggle('visivel', i===idx); });
+  document.querySelectorAll('.pg-item').forEach(function(el,i){ el.classList.toggle('ativo', i===idx); });
+  document.getElementById('nav-info').textContent = (idx+1) + ' / ' + _total;
+  _pg = idx;
+  window.scrollTo(0,0);
+}
+
+function irPagina(dir) {
+  var n = _pg + (dir === 0 ? -1 : 1);
+  if(n >= 0 && n < _total) mostrarPagina(n);
+}
+
+document.addEventListener('keydown', function(e) {
+  if(e.key === 'ArrowRight' || e.key === 'ArrowDown') irPagina(1);
+  if(e.key === 'ArrowLeft' || e.key === 'ArrowUp') irPagina(0);
+});
+</script>
+</body>
+</html>
