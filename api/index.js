@@ -2515,6 +2515,278 @@ app.get('/api/pesquisas/resumo', requerPerfil('MASTER','ANALISTA SAC','SETOR RES
   }
 });
 
+// ===== ROTAS: RELATÓRIO DE SATISFAÇÃO =====
+app.get('/api/pesquisas/relatorio', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req, res) => {
+  try {
+    const { empresa = '', ano, mes } = req.query;
+    const pesquisaId = process.env.PESQUISA_SPREADSHEET_ID || '1h0NroiziE1z52mKIFQFYTltKqcG20mScPfIgGuk1gV4';
+    const pesquisaAba = process.env.PESQUISA_ABA || 'Respostas ao formulário 1';
+    const sheets = await getSheets();
+    const result = await sheets.spreadsheets.values.get({
+      spreadsheetId: pesquisaId,
+      range: pesquisaAba,
+      valueRenderOption: 'FORMATTED_VALUE',
+    });
+    const rows = result.data.values || [];
+    if (rows.length < 2) return res.json({ sucesso: true, itens: [], media_geral: null, criterios: [], historico: [], textos: {} });
+    const headers = rows[0];
+    const dados = rows.slice(1).map(row => {
+      const obj = {};
+      headers.forEach((h, i) => { if (h) obj[h] = row[i] || ''; });
+      return obj;
+    });
+
+    const colData = headers.find(h => /data|timestamp|carimbo|hora/i.test(h)) || headers[0];
+    const colEmpresa = headers.find(h => /empresa/i.test(h));
+    const colNota = headers.filter(h => !/data|timestamp|carimbo|hora|nome|email|cpf|cnpj|observ|coment|empresa/i.test(h) && h !== colData && h !== colEmpresa);
+
+    function _parseFiltro(row) {
+      const raw = row[colData] || '';
+      const partes = raw.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+      const d = partes ? new Date(+partes[3], +partes[2]-1, +partes[1]) : new Date(raw);
+      if (isNaN(d)) return null;
+      const anoR = d.getFullYear();
+      const mesR = d.getMonth() + 1;
+      if (ano && Number(ano) !== anoR) return null;
+      if (mes && Number(mes) !== mesR) return null;
+      if (empresa && colEmpresa && !String(row[colEmpresa]||'').toLowerCase().includes(empresa.toLowerCase())) return null;
+      return { d, anoR, mesR };
+    }
+
+    function _media(row) {
+      const notas = colNota.map(c => parseFloat(String(row[c]||'').replace(',','.'))).filter(n => !isNaN(n) && n > 0);
+      if (!notas.length) return null;
+      return notas.reduce((a,b)=>a+b,0)/notas.length;
+    }
+
+    const filtrados = dados.filter(r => _parseFiltro(r) !== null);
+    const medias = filtrados.map(_media).filter(n => n !== null);
+    const mediaGeral = medias.length ? medias.reduce((a,b)=>a+b,0)/medias.length : null;
+
+    // Critérios (detecta por palavra-chave no header)
+    const mapCrit = { atendimento:/atend/i, prazo:/prazo|entrega/i, qualidade:/qualid/i, recomendacao:/recom/i };
+    const criterios = Object.entries(mapCrit).map(([crit,re]) => {
+      const col = colNota.find(h => re.test(h));
+      if (!col) return null;
+      const ns = filtrados.map(r => parseFloat(String(r[col]||'').replace(',','.'))).filter(n => !isNaN(n) && n > 0);
+      return { criterio: crit, media: ns.length ? ns.reduce((a,b)=>a+b,0)/ns.length : null, total: ns.length };
+    }).filter(Boolean);
+
+    // Histórico mensal (últimos 12 meses)
+    const agora = new Date();
+    const historico = [];
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(agora.getFullYear(), agora.getMonth() - i, 1);
+      const anoH = d.getFullYear();
+      const mesH = d.getMonth() + 1;
+      const mesLabel = d.toLocaleString('pt-BR',{month:'short',year:'2-digit'});
+      const grupo = dados.filter(r => {
+        const info = _parseFiltro({ ...r, [colData]: r[colData] });
+        if (!info) {
+          const raw = r[colData]||'';
+          const partes = raw.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+          const dd = partes ? new Date(+partes[3],+partes[2]-1,+partes[1]) : new Date(raw);
+          if (isNaN(dd)) return false;
+          if (empresa && colEmpresa && !String(r[colEmpresa]||'').toLowerCase().includes(empresa.toLowerCase())) return false;
+          return dd.getFullYear()===anoH && dd.getMonth()+1===mesH;
+        }
+        return info.anoR===anoH && info.mesR===mesH;
+      });
+      const ms = grupo.map(_media).filter(n=>n!==null);
+      const crit = {};
+      Object.entries(mapCrit).forEach(([c,re])=>{
+        const col=colNota.find(h=>re.test(h));
+        if(!col){crit[c]=null;return;}
+        const ns=grupo.map(r=>parseFloat(String(r[col]||'').replace(',','.'))).filter(n=>!isNaN(n)&&n>0);
+        crit[c]=ns.length?ns.reduce((a,b)=>a+b,0)/ns.length:null;
+      });
+      historico.push({ mes: `${anoH}-${String(mesH).padStart(2,'0')}`, mes_label: mesLabel, media: ms.length?ms.reduce((a,b)=>a+b,0)/ms.length:null, total: ms.length, ...crit });
+    }
+
+    // Textos salvos
+    let textos = {};
+    try {
+      const txtRows = await lerAba('RELATORIO_SAC_TEXTOS', 500).catch(()=>[]);
+      const chave = `${empresa}|${ano}|${mes}`;
+      const row = txtRows.find(r => r.CHAVE === chave);
+      if (row) textos = JSON.parse(row.TEXTOS || '{}');
+    } catch(e) {}
+
+    res.json({ sucesso: true, itens: filtrados, media_geral: mediaGeral, criterios, historico, textos });
+  } catch (e) {
+    res.status(500).json({ sucesso: false, erro: e.message, itens: [], media_geral: null, criterios: [], historico: [], textos: {} });
+  }
+});
+
+app.post('/api/pesquisas/relatorio-texto', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req, res) => {
+  try {
+    const { empresa = '', ano, mes, campo, valor } = req.body || {};
+    if (!empresa || !ano || !mes || !campo) return res.status(400).json({ sucesso: false, erro: 'empresa, ano, mes e campo são obrigatórios.' });
+    const chave = `${empresa}|${ano}|${mes}`;
+    const sheets = await getSheets();
+    const spreadsheetId = process.env.SPREADSHEET_ID;
+    const aba = 'RELATORIO_SAC_TEXTOS';
+
+    await garantirAbaComCabecalhos(aba, ['CHAVE','TEXTOS','ATUALIZADO_EM','ATUALIZADO_POR']);
+    invalidarCacheAba(aba);
+    const rows = await lerAba(aba, 500);
+    const idx = rows.findIndex(r => r.CHAVE === chave);
+    let textos = {};
+    if (idx >= 0) {
+      try { textos = JSON.parse(rows[idx].TEXTOS || '{}'); } catch(e) {}
+    }
+    textos[campo] = valor;
+    const novaLinha = [chave, JSON.stringify(textos), new Date().toISOString(), req.usuario?.nome || req.usuario?.usuario || ''];
+    if (idx >= 0) {
+      // Atualiza linha existente (linha = idx + 2 por causa do cabeçalho)
+      await sheets.spreadsheets.values.update({
+        spreadsheetId,
+        range: `${aba}!A${idx+2}`,
+        valueInputOption: 'RAW',
+        requestBody: { values: [novaLinha] }
+      });
+    } else {
+      await appendObjeto(aba, { CHAVE: chave, TEXTOS: JSON.stringify(textos), ATUALIZADO_EM: new Date().toISOString(), ATUALIZADO_POR: req.usuario?.nome || '' });
+    }
+    invalidarCacheAba(aba);
+    res.json({ sucesso: true });
+  } catch (e) {
+    res.status(500).json({ sucesso: false, erro: e.message });
+  }
+});
+
+// ===== ROTA PÚBLICA: PESQUISA DE SATISFAÇÃO =====
+const _pesquisaPublicaHTML = (empresa) => {
+  const titulo = empresa === 'chiacchio' ? 'Chiacchio Embalagens' : empresa === 'plaschio' ? 'Plaschio' : empresa === 'tubahia' ? 'Tubahia' : 'Grupo Chiacchio';
+  return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pesquisa de Satisfação · ${titulo}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Montserrat,system-ui,sans-serif;background:#F4F4F4;color:#1F1F1F;min-height:100vh}
+.container{max-width:560px;margin:0 auto;padding:24px 16px}
+.header{background:#fff;border-radius:12px;padding:24px;text-align:center;margin-bottom:16px;border:1px solid #E4E4E4}
+.header img{max-height:48px;margin-bottom:12px}
+.header h1{font-size:20px;font-weight:700;color:#1F1F1F}
+.header p{font-size:13px;color:#666464;margin-top:6px}
+.card{background:#fff;border-radius:12px;padding:20px;margin-bottom:12px;border:1px solid #E4E4E4}
+.card label{display:block;font-size:13px;font-weight:600;margin-bottom:12px;color:#1F1F1F}
+.notas{display:flex;gap:6px;flex-wrap:wrap}
+.nota-btn{width:40px;height:40px;border:1px solid #D6D6D6;border-radius:8px;background:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s}
+.nota-btn:hover{border-color:#C70602;color:#C70602}
+.nota-btn.ativa{background:#C70602;border-color:#C70602;color:#fff}
+textarea{width:100%;border:1px solid #D6D6D6;border-radius:8px;padding:10px;font-size:13px;font-family:Montserrat,system-ui,sans-serif;resize:vertical;min-height:80px}
+textarea:focus{border-color:#C70602;outline:none}
+.btn-enviar{width:100%;background:#C70602;color:#fff;border:none;border-radius:8px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;font-family:Montserrat,system-ui,sans-serif}
+.btn-enviar:hover{background:#A80502}
+.confirmacao{display:none;background:#E6F2EA;border:1px solid #A8D8B5;border-radius:12px;padding:24px;text-align:center}
+.confirmacao h2{color:#1E6B3A;font-size:18px;margin-bottom:8px}
+.confirmacao p{color:#1E6B3A;font-size:13px}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div style="font-size:24px;font-weight:700;color:#C70602;margin-bottom:8px">${titulo}</div>
+    <h1>Pesquisa de Satisfação</h1>
+    <p>Sua opinião é muito importante para nós. Leva menos de 2 minutos.</p>
+  </div>
+  <form id="form-pesquisa" onsubmit="enviarPesquisa(event)">
+    <div class="card">
+      <label>Seu nome (opcional)</label>
+      <input type="text" id="pq-nome" name="nome" placeholder="Nome completo" style="width:100%;border:1px solid #D6D6D6;border-radius:8px;padding:10px;font-size:13px;font-family:inherit;margin-bottom:12px">
+      <label>Empresa</label>
+      <input type="text" id="pq-empresa-cliente" name="empresa_cliente" placeholder="Nome da sua empresa" style="width:100%;border:1px solid #D6D6D6;border-radius:8px;padding:10px;font-size:13px;font-family:inherit">
+    </div>
+    ${['Atendimento','Prazo de entrega','Qualidade do produto','Recomendaria a empresa'].map((q,i)=>`
+    <div class="card">
+      <label>${q}</label>
+      <div class="notas" data-campo="${q.toLowerCase().replace(/[^a-z]/g,'_')}">
+        ${[1,2,3,4,5,6,7,8,9,10].map(n=>`<button type="button" class="nota-btn" data-nota="${n}" onclick="selecionarNota(this)">${n}</button>`).join('')}
+      </div>
+    </div>`).join('')}
+    <div class="card">
+      <label>Comentário (opcional)</label>
+      <textarea id="pq-comentario" name="comentario" placeholder="O que podemos melhorar? O que foi especialmente bom?"></textarea>
+    </div>
+    <button type="submit" class="btn-enviar">Enviar pesquisa</button>
+  </form>
+  <div class="confirmacao" id="confirmacao">
+    <h2>Obrigado pelo seu feedback!</h2>
+    <p>Sua resposta foi registrada com sucesso. Ela nos ajuda a melhorar continuamente.</p>
+  </div>
+</div>
+<script>
+function selecionarNota(btn){
+  const grupo=btn.closest('[data-campo]');
+  grupo.querySelectorAll('.nota-btn').forEach(b=>b.classList.remove('ativa'));
+  btn.classList.add('ativa');
+}
+async function enviarPesquisa(e){
+  e.preventDefault();
+  const btn=document.querySelector('.btn-enviar');
+  btn.disabled=true;btn.textContent='Enviando...';
+  const dados={
+    empresa:'${titulo}',
+    nome:document.getElementById('pq-nome').value,
+    empresa_cliente:document.getElementById('pq-empresa-cliente').value,
+    comentario:document.getElementById('pq-comentario').value,
+    data:new Date().toISOString()
+  };
+  document.querySelectorAll('[data-campo]').forEach(g=>{
+    const ativa=g.querySelector('.nota-btn.ativa');
+    dados[g.dataset.campo]=ativa?ativa.dataset.nota:'';
+  });
+  try{
+    await fetch('/api/pesquisas/resposta-publica',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(dados)
+    });
+  }catch(err){}
+  document.getElementById('form-pesquisa').style.display='none';
+  document.getElementById('confirmacao').style.display='block';
+}
+</script>
+</body>
+</html>`;
+};
+
+app.get('/pesquisa/:empresa', (req, res) => {
+  const empresa = String(req.params.empresa || '').toLowerCase().replace(/[^a-z]/g, '');
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(_pesquisaPublicaHTML(empresa));
+});
+
+app.post('/api/pesquisas/resposta-publica', async (req, res) => {
+  try {
+    const body = req.body || {};
+    const aba = 'PESQUISA_RESPOSTAS';
+    await garantirAbaComCabecalhos(aba, ['DATA','EMPRESA','NOME','EMPRESA_CLIENTE','ATENDIMENTO','PRAZO_DE_ENTREGA','QUALIDADE_DO_PRODUTO','RECOMENDARIA_A_EMPRESA','COMENTARIO','IP']);
+    const ip = req.ip || req.headers['x-forwarded-for'] || '';
+    await appendObjeto(aba, {
+      DATA: new Date().toISOString(),
+      EMPRESA: body.empresa || '',
+      NOME: body.nome || '',
+      EMPRESA_CLIENTE: body.empresa_cliente || '',
+      ATENDIMENTO: body.atendimento || body['atendimento'] || '',
+      PRAZO_DE_ENTREGA: body.prazo_de_entrega || body['prazo_de_entrega'] || '',
+      QUALIDADE_DO_PRODUTO: body.qualidade_do_produto || body['qualidade_do_produto'] || '',
+      RECOMENDARIA_A_EMPRESA: body.recomendaria_a_empresa || body['recomendaria_a_empresa'] || '',
+      COMENTARIO: body.comentario || '',
+      IP: ip,
+    });
+    invalidarCacheAba(aba);
+    res.json({ sucesso: true });
+  } catch (e) {
+    res.status(500).json({ sucesso: false, erro: e.message });
+  }
+});
+
 app.get('/api/tipos', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
   try { const data=await lerAba('TIPOS_RECLAMACAO',200).catch(()=>[]); res.json({sucesso:true,total:data.length,itens:data}); }
   catch (e) { res.status(500).json({sucesso:false,erro:e.message,dados:[]}); }

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="60" viewBox="0 0 160 60">
+  <rect width="160" height="60" rx="6" fill="#fff"/>
+  <rect x="0" y="0" width="8" height="60" rx="3" fill="#C70602"/>
+  <text x="18" y="34" font-family="Montserrat,Arial,sans-serif" font-size="18" font-weight="700" fill="#1F1F1F">PLASCHIO</text>
+</svg>
