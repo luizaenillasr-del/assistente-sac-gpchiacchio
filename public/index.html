@@ -7624,9 +7624,9 @@ window.salvarSetor = async function() {
     const btn = document.getElementById('set-salvar-btn');
     btn.disabled = true; btn.textContent = 'Salvando...';
     if (_setorEditandoId) {
-      await json5('/api/setores/' + encodeURIComponent(_setorEditandoId), { method: 'PATCH', body: JSON.stringify(body) });
+      await _apiFetch('/api/setores/' + encodeURIComponent(_setorEditandoId), 15000, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
     } else {
-      await json5('/api/setores', { method: 'POST', body: JSON.stringify(body) });
+      await _apiFetch('/api/setores', 15000, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
     }
     fecharModalSetor();
     loadSetores();
