@@ -3123,250 +3123,303 @@
   </div>
 
   <!-- ===== MINHA CENTRAL SAC (ANALISTA) ===== -->
-  <div class="page" id="page-central-sac" style="overflow:hidden;height:100%">
-    <!-- TOPO: KPIs pessoais -->
-    <div style="background:var(--surface);border-bottom:1px solid var(--border);padding:12px 20px;flex-shrink:0">
-      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+  <!-- MC09-STYLE-BEGIN (Minha Central SAC · prefixo .mc-*) -->
+  <style>
+  #page-central-sac{--mc-green:#1E6B3A;--mc-green-bg:#E6F2EA;--mc-amber:#7A4C00;--mc-amber-bg:#FBF0D9;--mc-blue:#24508F;--mc-blue-bg:#E6EEF8;--mc-red-bg:#FDECEC;--mc-red-line:#F3CFCF;--mc-grey:#545252;--mc-grey-bg:#F0F0F0;--mc-mute:#929090;--mc-line:#E4E4E4}
+  #page-central-sac .mc-main{padding:20px 24px 40px;display:flex;flex-direction:column;gap:14px;font-family:Montserrat,system-ui,sans-serif;color:#1F1F1F}
+  #page-central-sac .mc-main *{box-sizing:border-box}
+  #page-central-sac .mc-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap}
+  #page-central-sac .mc-title{font-size:24px;font-weight:700}
+  #page-central-sac .mc-sub{font-size:13px;color:#666464;margin-top:2px}
+  #page-central-sac .mc-head-btns{display:flex;gap:8px;flex-wrap:wrap}
+  #page-central-sac .mc-btn{font-family:inherit;border-radius:7px;padding:8px 13px;cursor:pointer;font-size:12.5px;font-weight:700;white-space:nowrap;border:1px solid #D6D6D6;background:#fff;color:#1F1F1F}
+  #page-central-sac .mc-btn:hover:not(:disabled){background:#F7F7F7}
+  #page-central-sac .mc-btn-p{border:0;background:#C70602;color:#fff}
+  #page-central-sac .mc-btn-p:hover:not(:disabled){background:#A80502}
+  #page-central-sac .mc-btn-g{border-color:transparent;background:transparent;color:#545252;font-weight:600}
+  #page-central-sac .mc-btn-sm{font-size:12px;padding:6px 11px;align-self:flex-start}
+  #page-central-sac .mc-btn:disabled{opacity:.5;cursor:not-allowed}
+  #page-central-sac .mc-head-btns .mc-btn{font-size:13px;padding:9px 14px;font-weight:600;display:inline-flex;align-items:center;border-radius:8px}
+  #page-central-sac .mc-kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:8px}
+  #page-central-sac .mc-kpi{font-family:inherit;text-align:left;background:#fff;border:1.5px solid var(--mc-line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:2px;cursor:pointer;white-space:normal}
+  #page-central-sac .mc-kpi.on{background:#F7F7F7;border-color:#1F1F1F}
+  #page-central-sac .mc-kpi.warn{background:#FFF8F8;border-color:var(--mc-red-line)}
+  #page-central-sac .mc-kpi.warn.on{background:#FFF5F5;border-color:#C70602}
+  #page-central-sac .mc-kpi-v{font-size:24px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.1;color:#1F1F1F}
+  #page-central-sac .mc-kpi-l{font-size:11.5px;color:var(--mc-grey);font-weight:600}
+  #page-central-sac .mc-k-atrasados .mc-kpi-v{color:#C70602}
+  #page-central-sac .mc-k-aprovacao .mc-kpi-v{color:#9A4A10}
+  #page-central-sac .mc-k-tratamento .mc-kpi-v{color:var(--mc-amber)}
+  #page-central-sac .mc-k-encerradas .mc-kpi-v{color:var(--mc-green)}
+  #page-central-sac .mc-k-terceiros .mc-kpi-v{color:var(--mc-blue)}
+  #page-central-sac .mc-cols{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start}
+  #page-central-sac .mc-col-l{flex:1 1 320px;max-width:100%;min-width:0;display:flex;flex-direction:column;gap:10px}
+  #page-central-sac .mc-col-c{flex:999 1 460px;min-width:0;display:flex;flex-direction:column;gap:12px}
+  #page-central-sac .mc-col-r{flex:1 1 280px;max-width:100%;min-width:0;background:#fff;border:1px solid var(--mc-line);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:12px}
+  #page-central-sac .mc-input{height:38px;border:1px solid #D6D6D6;border-radius:8px;padding:0 12px;background:#fff;font-size:13px;width:100%;font-family:inherit;outline:none}
+  #page-central-sac .mc-scopes{display:flex;gap:6px}
+  #page-central-sac .mc-scope{font-family:inherit;border:1px solid #D6D6D6;background:#fff;color:#1F1F1F;border-radius:7px;padding:6px 12px;font-size:12.5px;font-weight:600;cursor:pointer}
+  #page-central-sac .mc-scope.on{border-color:#C70602;background:#C70602;color:#fff}
+  #page-central-sac .mc-selects{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+  #page-central-sac .mc-sel{height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:12.5px;color:#1F1F1F;min-width:0;font-family:inherit}
+  #page-central-sac .mc-sel.on{border-color:#C70602}
+  #page-central-sac .mc-listbar{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#666464;padding:0 2px}
+  #page-central-sac .mc-clear{border:0;background:none;padding:0;color:#A80502;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
+  #page-central-sac .mc-fila{display:flex;flex-direction:column;gap:6px}
+  #page-central-sac .mc-item{font-family:inherit;color:inherit;text-align:left;width:100%;background:#fff;border:1.5px solid var(--mc-line);border-radius:10px;padding:10px 12px;cursor:pointer;display:flex;flex-direction:column;gap:5px;white-space:normal}
+  #page-central-sac .mc-item.sel{background:#FFF8F8;border-color:#C70602}
+  #page-central-sac .mc-item-top,#page-central-sac .mc-item-bot{display:flex;justify-content:space-between;gap:8px;align-items:center}
+  #page-central-sac .mc-item-id{display:flex;gap:6px;align-items:center}
+  #page-central-sac .mc-item-prot{font-weight:700;font-size:13px;font-variant-numeric:tabular-nums}
+  #page-central-sac .mc-item-cli{font-size:13px;font-weight:600;line-height:1.3}
+  #page-central-sac .mc-item-mot{font-size:12px;color:#666464;line-height:1.35}
+  #page-central-sac .mc-item-next{font-size:11px;color:var(--mc-mute)}
+  #page-central-sac .mc-dot{width:8px;height:8px;border-radius:50%;flex:none;display:inline-block}
+  #page-central-sac .mc-p-alta{background:#C70602}
+  #page-central-sac .mc-p-media{background:#D9A400}
+  #page-central-sac .mc-p-baixa,#page-central-sac .mc-p-none{background:#B5B5B5}
+  #page-central-sac .mc-tag-ext{font-size:10px;font-weight:700;color:var(--mc-blue);background:var(--mc-blue-bg);border-radius:4px;padding:1px 5px}
+  #page-central-sac .mc-sla{font-size:10.5px;font-weight:700;border-radius:99px;padding:2px 8px;white-space:nowrap}
+  #page-central-sac .mc-sla-lg{font-size:11px;padding:3px 9px}
+  #page-central-sac .mc-sla-late{background:#C70602;color:#fff}
+  #page-central-sac .mc-sla-soon{background:var(--mc-amber-bg);color:var(--mc-amber)}
+  #page-central-sac .mc-sla-ok{background:var(--mc-grey-bg);color:var(--mc-grey)}
+  #page-central-sac .mc-sla-done{background:var(--mc-green-bg);color:var(--mc-green)}
+  #page-central-sac .mc-st{font-size:10.5px;font-weight:700;border-radius:99px;padding:2px 8px;white-space:nowrap}
+  #page-central-sac .mc-st-lg{font-size:11px;padding:3px 9px}
+  #page-central-sac .mc-st-nova{background:var(--mc-blue-bg);color:var(--mc-blue)}
+  #page-central-sac .mc-st-anal{background:#EEE8F7;color:#5B3FA0}
+  #page-central-sac .mc-st-trat{background:var(--mc-amber-bg);color:var(--mc-amber)}
+  #page-central-sac .mc-st-aprov{background:#FCE9DC;color:#9A4A10}
+  #page-central-sac .mc-st-dev{background:#E3F3F4;color:#0E6B73}
+  #page-central-sac .mc-st-enc{background:var(--mc-green-bg);color:var(--mc-green)}
+  #page-central-sac .mc-empty{background:#fff;border:1px dashed #D6D6D6;border-radius:10px;padding:26px 14px;text-align:center;font-size:13px;color:#666464}
+  #page-central-sac .mc-nosel{background:#fff;border:1px solid var(--mc-line);border-radius:12px;padding:60px 20px;text-align:center;color:var(--mc-mute);font-size:14px}
+  #page-central-sac .mc-card{background:#fff;border:1px solid var(--mc-line);border-radius:12px;padding:14px 18px;display:flex;flex-direction:column;gap:8px}
+  #page-central-sac .mc-card-main{padding:16px 18px;gap:12px}
+  #page-central-sac .mc-card-h{font-weight:700;font-size:14px}
+  #page-central-sac .mc-dh{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-start}
+  #page-central-sac .mc-dh-l{display:flex;flex-direction:column;gap:4px;min-width:0}
+  #page-central-sac .mc-dh-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  #page-central-sac .mc-prot{font-weight:700;font-size:19px}
+  #page-central-sac .mc-dh-sub{font-size:12.5px;color:var(--mc-grey)}
+  #page-central-sac .mc-lnk{font-size:12.5px;font-weight:600;white-space:nowrap;color:#A80502;background:none;border:0;padding:0;cursor:pointer;font-family:inherit}
+  #page-central-sac .mc-lnk:hover{color:#7F0401;text-decoration:underline}
+  #page-central-sac .mc-steps{display:flex;gap:3px;overflow-x:auto;padding-bottom:2px}
+  #page-central-sac .mc-step{flex:1;min-width:76px;display:flex;flex-direction:column;gap:5px}
+  #page-central-sac .mc-step-bar{height:4px;border-radius:2px;background:var(--mc-line)}
+  #page-central-sac .mc-step-bar.done{background:var(--mc-green)}
+  #page-central-sac .mc-step-bar.now{background:#C70602}
+  #page-central-sac .mc-step-l{font-size:10.5px;color:var(--mc-mute);font-weight:500;white-space:nowrap}
+  #page-central-sac .mc-step-l.done{color:#3A3939}
+  #page-central-sac .mc-step-l.now{color:#1F1F1F;font-weight:700}
+  #page-central-sac .mc-nx{background:#F7F7F7;border:1.5px solid var(--mc-line);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+  #page-central-sac .mc-nx.late{background:#FFF5F5;border-color:var(--mc-red-line)}
+  #page-central-sac .mc-nx-l{font-size:10.5px;font-weight:700;letter-spacing:.07em;color:var(--mc-grey)}
+  #page-central-sac .mc-nx.late .mc-nx-l{color:#A80502}
+  #page-central-sac .mc-nx-t{font-size:14px;font-weight:700}
+  #page-central-sac .mc-nx-d{font-size:12.5px;color:var(--mc-grey);line-height:1.45}
+  #page-central-sac .mc-acts{display:flex;gap:8px;flex-wrap:wrap}
+  #page-central-sac .mc-campos{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px 16px}
+  #page-central-sac .mc-f-l{font-size:10.5px;color:var(--mc-mute);font-weight:600}
+  #page-central-sac .mc-f-v{font-size:13px;overflow-wrap:anywhere}
+  #page-central-sac .mc-relato{display:flex;flex-direction:column;gap:4px}
+  #page-central-sac .mc-relato-t{font-size:13.5px;line-height:1.55;white-space:pre-wrap}
+  #page-central-sac .mc-set{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;align-items:center;border-top:1px solid #EFEFEF;padding-top:8px}
+  #page-central-sac .mc-set-n{font-size:13px;font-weight:600}
+  #page-central-sac .mc-set-r{font-weight:400;color:var(--mc-mute)}
+  #page-central-sac .mc-set-d{font-size:12px;color:#666464;grid-column:1 / -1}
+  #page-central-sac .mc-sst{font-size:10.5px;font-weight:700;border-radius:99px;padding:2px 8px;white-space:nowrap}
+  #page-central-sac .mc-sst-atrasado{background:var(--mc-red-bg);color:#A80502}
+  #page-central-sac .mc-sst-pendente{background:var(--mc-amber-bg);color:var(--mc-amber)}
+  #page-central-sac .mc-sst-respondido{background:var(--mc-green-bg);color:var(--mc-green)}
+  #page-central-sac .mc-muted{font-size:12.5px;color:var(--mc-mute)}
+  #page-central-sac .mc-hist{display:grid;grid-template-columns:14px minmax(0,1fr);gap:12px}
+  #page-central-sac .mc-hist-rail{display:flex;flex-direction:column;align-items:center}
+  #page-central-sac .mc-hist-dot{width:10px;height:10px;border-radius:50%;margin-top:4px;flex:none;background:var(--mc-mute)}
+  #page-central-sac .mc-hc-red{background:#C70602}
+  #page-central-sac .mc-hc-blue{background:var(--mc-blue)}
+  #page-central-sac .mc-hc-green{background:var(--mc-green)}
+  #page-central-sac .mc-hist-line{flex:1;width:2px;background:#EFEFEF}
+  #page-central-sac .mc-hist-body{padding-bottom:12px}
+  #page-central-sac .mc-hist-at{font-size:11.5px;color:var(--mc-mute)}
+  #page-central-sac .mc-hist-t{font-size:13px}
+  #page-central-sac .mc-cerebro-h{display:flex;gap:8px;align-items:center}
+  #page-central-sac .mc-cerebro-h i{width:10px;height:10px;border-radius:50%;background:#C70602;display:inline-block}
+  #page-central-sac .mc-cerebro-h b{font-weight:700;font-size:15px}
+  #page-central-sac .mc-cerebro{display:flex;flex-direction:column;gap:12px}
+  #page-central-sac .mc-ia-tag{font-size:10.5px;font-weight:700;letter-spacing:.06em;color:var(--mc-amber);background:var(--mc-amber-bg);border-radius:5px;padding:3px 8px;align-self:flex-start}
+  #page-central-sac .mc-reinc{background:var(--mc-red-bg);border:1px solid var(--mc-red-line);border-radius:8px;padding:9px 11px;font-size:12.5px;color:#7F0401;line-height:1.45}
+  #page-central-sac .mc-cb{display:flex;flex-direction:column;gap:4px}
+  #page-central-sac .mc-cb-dev{gap:6px;border-top:1px solid #EFEFEF;padding-top:10px}
+  #page-central-sac .mc-cb-t{font-size:11px;font-weight:700;color:var(--mc-grey);letter-spacing:.05em}
+  #page-central-sac .mc-cb-v{font-size:13px;font-weight:600}
+  #page-central-sac .mc-cb-s{font-size:11.5px;color:var(--mc-mute)}
+  #page-central-sac .mc-cb-li{font-size:12.5px;color:#3A3939;line-height:1.45}
+  #page-central-sac .mc-sim{border:1px solid #EFEFEF;border-radius:8px;padding:8px 10px;display:flex;flex-direction:column;gap:2px}
+  #page-central-sac .mc-sim-top{display:flex;justify-content:space-between;gap:6px}
+  #page-central-sac .mc-sim-id{font-size:12px;font-weight:700}
+  #page-central-sac .mc-sim-pct{font-size:11px;color:var(--mc-green);font-weight:700}
+  #page-central-sac .mc-sim-t{font-size:12px;color:#3A3939;line-height:1.4}
+  #page-central-sac .mc-dev{font-size:12.5px;color:#3A3939;line-height:1.5;background:#FAFAFA;border-radius:8px;padding:9px 10px;white-space:pre-wrap}
+  #page-central-sac .mc-link{font-size:12.5px;font-weight:600;color:#A80502;text-decoration:none}
+  #page-central-sac .mc-link:hover{color:#7F0401;text-decoration:underline}
+  #page-central-sac .mc-more-h{font-size:11px;font-weight:700;color:#666464;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+  #page-central-sac .mc-more-sec{padding:12px 0;border-bottom:1px solid #EFEFEF}
+  #page-central-sac .mc-more-sec:last-child{border-bottom:0;padding-bottom:0}
+  #page-central-sac .mc-fgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+  #page-central-sac .mc-fgrid .mc-span2{grid-column:span 2}
+  #page-central-sac .mc-lbl{font-size:10.5px;color:var(--mc-mute);font-weight:600;margin-bottom:2px}
+  #page-central-sac .mc-ta{width:100%;border:1px solid #D6D6D6;border-radius:8px;padding:8px 10px;font-size:12.5px;font-family:inherit;resize:vertical;outline:none;background:#fff}
+  #page-central-sac .mc-note{font-size:11.5px;color:var(--mc-amber);margin-bottom:6px}
+  #page-central-sac .mc-rule{background:var(--mc-amber-bg);border-radius:8px;padding:8px 10px;font-size:11.5px;margin:8px 0;color:var(--mc-amber)}
+  #page-central-sac .mc-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  #page-central-sac .mc-toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#1F1F1F;color:#fff;padding:11px 16px;border-radius:8px;font-size:13px;z-index:90;max-width:92vw}
+  </style>
+  <!-- MC09-STYLE-END -->
+  <div class="page" id="page-central-sac" style="background:#F4F4F4;overflow-y:auto">
+    <div class="mc-main">
+
+      <!-- TOPO -->
+      <div class="mc-head">
         <div>
-          <div style="font-size:24px;font-weight:700">Minha Central SAC</div>
-          <div style="font-size:12px;color:var(--gray-400)">Olá, <strong id="cen-nome-analista">—</strong> · <span id="cen-empresa-analista"></span> · <span id="cen-data-atual"></span></div>
+          <div class="mc-title">Minha Central SAC</div>
+          <div class="mc-sub">Olá, <span id="cen-nome-analista">—</span> · <span id="cen-empresa-analista">SAC</span> · <span id="cen-atrasos-hoje"></span></div>
         </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-          <button class="btn btn-primary" style="font-size:12px" onclick="loadCentralSAC()">↻ Atualizar</button>
-          <button class="btn btn-secondary" style="font-size:12px" onclick="abrirNovaCentralMan()">+ Nova Manifestação</button>
+        <div class="mc-head-btns">
+          <button type="button" id="cen-btn-refresh" class="mc-btn mc-btn-p" onclick="loadCentralSAC()">↻ Atualizar</button>
+          <button type="button" class="mc-btn" onclick="abrirNovaCentralMan()">+ Nova Manifestação</button>
         </div>
       </div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:8px">
-        <div class="cen-kpi" id="ckpi-total" onclick="cenFiltrarKpi('total')" style="cursor:pointer"><div class="cen-kpi-v" id="ckpi-v-total">—</div><div class="cen-kpi-l">Minhas</div></div>
-        <div class="cen-kpi" id="ckpi-pendentes" onclick="cenFiltrarKpi('pendentes')" style="cursor:pointer"><div class="cen-kpi-v" id="ckpi-v-pendentes">—</div><div class="cen-kpi-l">Pendentes</div></div>
-        <div class="cen-kpi cen-kpi-warn" id="ckpi-atrasados" onclick="cenFiltrarKpi('atrasados')" style="cursor:pointer"><div class="cen-kpi-v" id="ckpi-v-atrasados">—</div><div class="cen-kpi-l">Em Atraso</div></div>
-        <div class="cen-kpi" id="ckpi-aprovacao" onclick="cenFiltrarKpi('aprovacao')" style="cursor:pointer"><div class="cen-kpi-v" id="ckpi-v-aprovacao">—</div><div class="cen-kpi-l">Ag. Aprovação</div></div>
-        <div class="cen-kpi" id="ckpi-tratamento" onclick="cenFiltrarKpi('tratamento')" style="cursor:pointer"><div class="cen-kpi-v" id="ckpi-v-tratamento">—</div><div class="cen-kpi-l">Em Tratamento</div></div>
-        <div class="cen-kpi" id="ckpi-encerradas" onclick="cenFiltrarKpi('encerradas')" style="cursor:pointer"><div class="cen-kpi-v" id="ckpi-v-encerradas">—</div><div class="cen-kpi-l">Encerradas</div></div>
-        <div class="cen-kpi" id="ckpi-terceiros" onclick="cenFiltrarKpi('terceiros')" style="cursor:pointer"><div class="cen-kpi-v" id="ckpi-v-terceiros">—</div><div class="cen-kpi-l">Externos</div></div>
+
+      <!-- 7 contadores -->
+      <div class="mc-kpis">
+        <button type="button" class="mc-kpi mc-k-total" id="ckpi-total" onclick="cenFiltrarKpi('total')"><span class="mc-kpi-v" id="ckpi-v-total">—</span><span class="mc-kpi-l">Minhas</span></button>
+        <button type="button" class="mc-kpi mc-k-pendentes" id="ckpi-pendentes" onclick="cenFiltrarKpi('pendentes')"><span class="mc-kpi-v" id="ckpi-v-pendentes">—</span><span class="mc-kpi-l">Pendentes</span></button>
+        <button type="button" class="mc-kpi mc-k-atrasados" id="ckpi-atrasados" onclick="cenFiltrarKpi('atrasados')"><span class="mc-kpi-v" id="ckpi-v-atrasados">—</span><span class="mc-kpi-l">Em Atraso</span></button>
+        <button type="button" class="mc-kpi mc-k-aprovacao" id="ckpi-aprovacao" onclick="cenFiltrarKpi('aprovacao')"><span class="mc-kpi-v" id="ckpi-v-aprovacao">—</span><span class="mc-kpi-l">Ag. Aprovação</span></button>
+        <button type="button" class="mc-kpi mc-k-tratamento" id="ckpi-tratamento" onclick="cenFiltrarKpi('tratamento')"><span class="mc-kpi-v" id="ckpi-v-tratamento">—</span><span class="mc-kpi-l">Em Tratamento</span></button>
+        <button type="button" class="mc-kpi mc-k-encerradas" id="ckpi-encerradas" onclick="cenFiltrarKpi('encerradas')"><span class="mc-kpi-v" id="ckpi-v-encerradas">—</span><span class="mc-kpi-l">Encerradas</span></button>
+        <button type="button" class="mc-kpi mc-k-terceiros" id="ckpi-terceiros" onclick="cenFiltrarKpi('terceiros')"><span class="mc-kpi-v" id="ckpi-v-terceiros">—</span><span class="mc-kpi-l">Externos</span></button>
       </div>
-    </div>
 
-    <!-- CORPO: 3 colunas -->
-    <div style="display:flex;height:calc(100% - 130px);overflow:hidden">
+      <div class="mc-cols">
 
-      <!-- COLUNA ESQUERDA: Fila -->
-      <div style="flex:1 1 320px;min-width:0;border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;background:var(--gray-50)">
-        <!-- Filtros -->
-        <div style="padding:10px;border-bottom:1px solid var(--border);background:var(--surface)">
-          <input id="cen-busca" class="form-input" placeholder="Protocolo, cliente, motivo..." style="font-size:12px;margin-bottom:6px" oninput="filtrarFilaCentral()">
-          <div style="display:flex;gap:4px;margin-bottom:6px">
-            <button class="btn btn-primary" style="font-size:11px;padding:4px 8px" onclick="setCenFiltroScope('minhas',this)">Minhas</button>
-            <button class="btn btn-secondary" style="font-size:11px;padding:4px 8px" onclick="setCenFiltroScope('todas',this)" id="cen-btn-todas">Todas Permitidas</button>
+        <!-- COLUNA ESQUERDA: lista por prazo -->
+        <div class="mc-col-l">
+          <input id="cen-busca" class="mc-input" placeholder="Protocolo, cliente, motivo…" oninput="filtrarFilaCentral()">
+          <div class="mc-scopes">
+            <button type="button" id="cen-btn-minhas" class="mc-scope on" onclick="setCenFiltroScope('minhas')">Minhas</button>
+            <button type="button" id="cen-btn-todas" class="mc-scope" onclick="setCenFiltroScope('todas')">Todas permitidas</button>
           </div>
-          <div style="display:flex;gap:4px;flex-wrap:wrap">
-            <select id="cen-fil-status" class="select" style="font-size:11px;padding:3px;flex:1;min-width:90px" onchange="filtrarFilaCentral()">
+          <div class="mc-selects">
+            <select id="cen-fil-status" class="mc-sel" onchange="filtrarFilaCentral()">
               <option value="">Todos status</option>
-              <option>RECEBIDA</option><option>EM ANÁLISE</option><option>EM TRATAMENTO</option>
-              <option>AGUARDANDO APROVAÇÃO</option><option>ENCERRADA</option><option>CANCELADA</option>
+              <option value="nova">Nova · triagem</option><option value="anal">Em análise</option><option value="trat">Em tratamento</option>
+              <option value="aprov">Ag. aprovação</option><option value="dev">Devolutiva</option><option value="enc">Encerrada</option>
             </select>
-            <select id="cen-fil-sla" class="select" style="font-size:11px;padding:3px;flex:1;min-width:80px" onchange="filtrarFilaCentral()">
+            <select id="cen-fil-sla" class="mc-sel" onchange="filtrarFilaCentral()">
               <option value="">Todo SLA</option>
-              <option value="vencido">Vencido</option>
-              <option value="alerta">Alerta (&lt;4h)</option>
+              <option value="late">Atrasadas</option>
+              <option value="soon">Vencem em até 8h</option>
               <option value="ok">No prazo</option>
             </select>
-          </div>
-          <div style="display:flex;gap:4px;margin-top:4px">
-            <select id="cen-fil-tipo" class="select" style="font-size:11px;padding:3px;flex:1" onchange="filtrarFilaCentral()">
+            <select id="cen-fil-tipo" class="mc-sel" onchange="filtrarFilaCentral()">
               <option value="">Tipo</option>
-              <option>RECLAMAÇÃO</option><option>DÚVIDA</option><option>SUGESTÃO</option><option>ELOGIO</option><option>SOLICITAÇÃO</option>
+              <option value="Reclamação">Reclamação</option><option value="Solicitação">Solicitação</option><option value="Sugestão">Sugestão</option><option value="Elogio">Elogio</option><option value="Dúvida">Dúvida</option>
             </select>
-            <select id="cen-fil-prioridade" class="select" style="font-size:11px;padding:3px;flex:1" onchange="filtrarFilaCentral()">
+            <select id="cen-fil-prioridade" class="mc-sel" onchange="filtrarFilaCentral()">
               <option value="">Prioridade</option>
-              <option>ALTA</option><option>MÉDIA</option><option>BAIXA</option>
+              <option value="alta">Alta</option><option value="media">Média</option><option value="baixa">Baixa</option>
             </select>
           </div>
+          <div class="mc-listbar"><span id="cen-list-info"></span><button type="button" id="cen-limpar" class="mc-clear" style="display:none" onclick="cenLimparFiltros()">Limpar filtros</button></div>
+          <div id="cen-fila" class="mc-fila"></div>
         </div>
-        <!-- Lista manifestações -->
-        <div id="cen-fila" style="flex:1;overflow-y:auto;padding:8px"></div>
-      </div>
 
-      <!-- COLUNA CENTRAL: Manifestação selecionada -->
-      <div style="flex:999 1 460px;min-width:0;display:flex;flex-direction:column;overflow:hidden">
-        <!-- Placeholder quando nenhuma selecionada -->
-        <div id="cen-placeholder" style="flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:var(--gray-400)">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".4"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-          <div style="font-size:14px;text-align:center">Selecione uma manifestação<br>para ver os detalhes</div>
-        </div>
-        <!-- Conteúdo da manifestação — novo layout (single scroll, sem abas) -->
-        <div id="cen-detalhe" style="display:none;flex:1;overflow-y:auto;flex-direction:column">
-          <!-- ── CABEÇALHO STICKY ── -->
-          <div style="padding:12px 16px;border-bottom:1px solid var(--border);background:var(--surface);position:sticky;top:0;z-index:10">
-            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;flex-wrap:wrap">
-              <div>
-                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-                  <span style="font-size:16px;font-weight:800" id="cen-man-protocolo">—</span>
-                  <span id="cen-man-status-badge" style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:var(--gray-200)">—</span>
-                  <span id="cen-sla-badge" style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:#D1FAE5;color:#065F46">SLA: —</span>
+        <!-- COLUNA CENTRAL: detalhe -->
+        <div class="mc-col-c">
+          <div id="cen-placeholder" class="mc-nosel">Selecione uma manifestação para ver os detalhes</div>
+          <div id="cen-detalhe" style="display:none;flex-direction:column;gap:12px">
+
+            <div class="mc-card mc-card-main">
+              <div class="mc-dh">
+                <div class="mc-dh-l">
+                  <div class="mc-dh-row">
+                    <span class="mc-prot" id="cen-man-protocolo">—</span>
+                    <span id="cen-man-status-badge" class="mc-st mc-st-lg">—</span>
+                    <span id="cen-sla-badge" class="mc-sla mc-sla-lg mc-sla-ok">—</span>
+                  </div>
+                  <span class="mc-dh-sub" id="cen-man-sub">—</span>
                 </div>
-                <div style="font-size:11px;color:var(--gray-500);margin-top:3px" id="cen-man-sub">—</div>
+                <button type="button" class="mc-lnk" onclick="cenAbrirFichaCompleta()">Abrir ficha completa ↗</button>
               </div>
-              <button class="btn btn-secondary" style="font-size:11px;color:var(--red);border-color:var(--red)" onclick="cenAbrirFichaCompleta()">Abrir ficha completa ↗</button>
-            </div>
-            <!-- Progress bar de etapas -->
-            <div id="cen-progress-wrap" style="display:flex;align-items:center;gap:0;margin-top:10px;overflow-x:auto;padding-bottom:2px">
-              <span class="cen-stage" id="cs-Aberta">Aberta</span>
-              <span class="cen-stage-arrow">›</span>
-              <span class="cen-stage" id="cs-Analisada">Analisada</span>
-              <span class="cen-stage-arrow">›</span>
-              <span class="cen-stage" id="cs-Encaminhada">Encaminhada</span>
-              <span class="cen-stage" style="display:none" id="cen-stage-extra-label"></span>
-              <span class="cen-stage-arrow">›</span>
-              <span class="cen-stage" id="cs-Tratativa">Em tratativa</span>
-              <span class="cen-stage-arrow">›</span>
-              <span class="cen-stage" id="cs-Aprovacao">Aprovação</span>
-              <span class="cen-stage-arrow">›</span>
-              <span class="cen-stage" id="cs-Devolutiva">Devolutiva</span>
-              <span class="cen-stage-arrow">›</span>
-              <span class="cen-stage" id="cs-Finalizada">Finalizada</span>
-            </div>
-          </div>
-
-          <!-- ── PRÓXIMA AÇÃO ── -->
-          <div id="cen-proxima-acao" style="display:none;margin:12px 16px;border-radius:10px;overflow:hidden;border:1px solid #E8E8E8">
-            <div style="background:#C70602;color:#fff;padding:8px 14px;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase">Próxima ação</div>
-            <div style="background:#fff;padding:12px 14px">
-              <div style="font-size:14px;font-weight:700;color:#1A1A1A;margin-bottom:4px" id="cen-pa-titulo">—</div>
-              <div style="font-size:11px;color:#888;margin-bottom:10px" id="cen-pa-detalhe">—</div>
-              <div id="cen-pa-botoes" style="display:flex;gap:8px;flex-wrap:wrap">
-                <button class="btn btn-primary" style="font-size:12px;background:#C70602;border-color:#C70602" onclick="cenCobrarSetor()">Cobrar setor</button>
-                <button class="btn btn-secondary" style="font-size:12px" onclick="cenEscalarGestor()">Escalar ao gestor</button>
-                <button class="btn btn-secondary" style="font-size:12px" onclick="cenToggleAcoes()">Mais ações ▾</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- ── GRID DE INFORMAÇÕES ── -->
-          <div style="padding:0 16px 4px">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 16px;margin-bottom:12px">
-              <div class="cen-field"><div class="cen-field-l">Cliente</div><div id="cd-cliente" style="font-size:13px;font-weight:600">—</div></div>
-              <div class="cen-field"><div class="cen-field-l">CNPJ</div><div id="cd-cnpj-man" style="font-size:13px">—</div></div>
-              <div class="cen-field"><div class="cen-field-l">Empresa</div><div id="cd-empresa" style="font-size:13px">—</div></div>
-              <div class="cen-field"><div class="cen-field-l">Tipo</div><div id="cd-tipo" style="font-size:13px">—</div></div>
-              <div class="cen-field"><div class="cen-field-l">Motivo</div><div id="cd-motivo" style="font-size:13px">—</div></div>
-              <div class="cen-field"><div class="cen-field-l">Prioridade</div><div id="cen-man-prioridade-badge" style="font-size:13px">—</div></div>
-              <div class="cen-field"><div class="cen-field-l">Canal</div><div id="cd-canal" style="font-size:13px">—</div></div>
-              <div class="cen-field"><div class="cen-field-l">Responsável SAC</div><div id="cd-responsavel-sac" style="font-size:13px">—</div></div>
-            </div>
-
-            <!-- Produto (condicional) -->
-            <div id="cd-produto-bloco" style="display:none;background:var(--gray-50);border-radius:8px;padding:10px 12px;margin-bottom:12px">
-              <div style="font-size:10px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Produto</div>
-              <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
-                <div class="cen-field"><div class="cen-field-l">Produto</div><div id="cd-produto" style="font-size:12px">—</div></div>
-                <div class="cen-field"><div class="cen-field-l">Lote</div><div id="cd-lote" style="font-size:12px">—</div></div>
-                <div class="cen-field"><div class="cen-field-l">Pedido</div><div id="cd-pedido" style="font-size:12px">—</div></div>
-                <div class="cen-field"><div class="cen-field-l">NF</div><div id="cd-nf" style="font-size:12px">—</div></div>
-              </div>
-            </div>
-
-            <!-- Relato -->
-            <div style="margin-bottom:12px">
-              <div style="font-size:10px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Relato do cliente</div>
-              <div id="cd-descricao" style="font-size:13px;line-height:1.65;color:#1F1F1F;white-space:pre-wrap"></div>
-            </div>
-
-            <!-- Setores acionados -->
-            <div style="margin-bottom:12px" id="cen-setores-acionados-wrap">
-              <div style="font-size:10px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Setores acionados</div>
-              <div id="cen-setores-lista" style="display:flex;flex-direction:column;gap:6px"></div>
-            </div>
-
-            <!-- Dados adicionais escondidos (compatibilidade JS) -->
-            <span id="cd-data" style="display:none"></span>
-            <span id="cd-causa" style="display:none"></span>
-            <span id="cd-setor" style="display:none"></span>
-            <span id="cd-contexto" style="display:none"></span>
-            <span id="cd-analise-texto" style="display:none"></span>
-          </div>
-
-          <!-- ── PAINEL AÇÕES EXPANDÍVEL ── -->
-          <div id="cen-acoes-expand" style="display:none;border-top:1px solid var(--border)">
-            <!-- Tratativa -->
-            <div style="padding:12px 16px;border-bottom:1px solid var(--border)">
-              <div style="font-size:11px;font-weight:700;color:var(--gray-600);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Tratativa</div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
-                <div><div class="cen-field-l" style="font-size:10px">Status</div>
-                  <select id="trat-status" class="select" style="font-size:12px;width:100%">
-                    <option>PENDENTE</option><option>EM TRATAMENTO</option><option>AGUARDANDO RETORNO</option>
-                    <option>AGUARDANDO APROVAÇÃO</option><option>CONCLUÍDA</option><option>CANCELADA</option>
-                  </select>
+              <div class="mc-steps" id="cen-progress-wrap"></div>
+              <div id="cen-proxima-acao" class="mc-nx">
+                <div style="display:flex;flex-direction:column;gap:3px">
+                  <span class="mc-nx-l">PRÓXIMA AÇÃO</span>
+                  <span class="mc-nx-t" id="cen-pa-titulo">—</span>
+                  <span class="mc-nx-d" id="cen-pa-detalhe">—</span>
                 </div>
-                <div><div class="cen-field-l" style="font-size:10px">Prazo</div><input id="trat-prazo" type="date" class="form-input" style="font-size:12px;width:100%"></div>
-                <div style="grid-column:span 2"><div class="cen-field-l" style="font-size:10px">Setor</div><input id="trat-setor" class="form-input" placeholder="Setor responsável" style="font-size:12px;width:100%"></div>
-                <div style="grid-column:span 2"><div class="cen-field-l" style="font-size:10px">Responsável</div><input id="trat-responsavel" class="form-input" placeholder="Nome" style="font-size:12px;width:100%"></div>
-                <div style="grid-column:span 2"><div class="cen-field-l" style="font-size:10px">Ação</div><textarea id="trat-acao" class="form-input" rows="3" style="font-size:12px;resize:vertical;width:100%" placeholder="Descreva a ação..."></textarea></div>
-                <div style="grid-column:span 2"><div class="cen-field-l" style="font-size:10px">Observação</div><textarea id="trat-obs" class="form-input" rows="2" style="font-size:12px;resize:vertical;width:100%"></textarea></div>
+                <div class="mc-acts" id="cen-pa-botoes"></div>
               </div>
-              <div style="display:flex;gap:6px;flex-wrap:wrap">
-                <button class="btn btn-secondary" style="font-size:12px" onclick="cenSalvarTratativa()">Salvar</button>
-                <button class="btn btn-primary" style="font-size:12px" onclick="cenConcluirTratativa()">Concluir</button>
-                <button class="btn btn-secondary" style="font-size:12px;border-color:var(--orange);color:var(--orange)" onclick="cenSolicitarAprovacao()">Solicitar Aprovação</button>
-              </div>
-              <div class="cen-card" id="cen-matriz-bloco" style="margin-top:10px">
-                <div class="cen-card-title">Matriz de Tratamento</div>
-                <div id="cen-matriz-corpo" style="font-size:12px;color:var(--gray-400)">—</div>
+              <div class="mc-campos" id="cen-campos"></div>
+              <div class="mc-relato">
+                <span class="mc-f-l">RELATO DO CLIENTE</span>
+                <span class="mc-relato-t" id="cd-descricao"></span>
               </div>
             </div>
 
-            <!-- Devolutiva -->
-            <div style="padding:12px 16px;border-bottom:1px solid var(--border)">
-              <div style="font-size:11px;font-weight:700;color:var(--gray-600);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Devolutiva</div>
-              <div id="cen-devolutiva-historica" class="cen-card" style="margin-bottom:8px;display:none">
-                <div class="cen-card-title">Histórico relevante</div>
-                <div id="cen-devolutiva-hist-corpo" style="font-size:12px"></div>
+            <!-- Mais ações (tratativa, devolutiva, RNC) — usa endpoints reais -->
+            <div class="mc-card" id="cen-acoes-expand" style="display:none">
+              <div class="mc-more-sec">
+                <div class="mc-more-h">Tratativa</div>
+                <div class="mc-fgrid">
+                  <div class="mc-span2"><div class="mc-lbl">Setor</div><input id="trat-setor" class="mc-input" style="height:34px;font-size:12.5px" placeholder="Setor responsável"></div>
+                  <div class="mc-span2"><div class="mc-lbl">Responsável</div><input id="trat-responsavel" class="mc-input" style="height:34px;font-size:12.5px" placeholder="Nome"></div>
+                  <div class="mc-span2"><div class="mc-lbl">Ação</div><textarea id="trat-acao" class="mc-ta" rows="3" placeholder="Descreva a ação..."></textarea></div>
+                  <div class="mc-span2"><div class="mc-lbl">Observação</div><textarea id="trat-obs" class="mc-ta" rows="2"></textarea></div>
+                </div>
+                <div class="mc-row" style="margin-top:0">
+                  <button type="button" class="mc-btn" onclick="cenSalvarTratativa()">Salvar</button>
+                  <button type="button" class="mc-btn mc-btn-p" onclick="cenConcluirTratativa()">Concluir</button>
+                  <button type="button" class="mc-btn" onclick="cenSolicitarAprovacao()">Solicitar aprovação</button>
+                </div>
               </div>
-              <div style="font-size:11px;color:var(--orange);margin-bottom:6px">⚠ Não assuma culpa sem base factual.</div>
-              <textarea id="dev-texto" class="form-input" rows="5" style="font-size:12px;resize:vertical;width:100%" placeholder="Devolutiva ao cliente..."></textarea>
-              <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
-                <button class="btn btn-secondary" style="font-size:12px" onclick="cenGerarDevolutiva()">Sugestão IA</button>
-                <button class="btn btn-primary" style="font-size:12px" onclick="cenEnviarDevolutiva(false)">Enviar</button>
-                <button class="btn btn-secondary" style="font-size:12px;border-color:var(--orange);color:var(--orange)" onclick="cenEnviarDevolutiva(true)">Para Aprovação</button>
+              <div class="mc-more-sec">
+                <div class="mc-more-h">Devolutiva</div>
+                <div class="mc-note">⚠ Não assuma culpa sem base factual.</div>
+                <textarea id="dev-texto" class="mc-ta" rows="5" placeholder="Devolutiva ao cliente..."></textarea>
+                <div class="mc-row">
+                  <button type="button" id="cen-btn-gerar-dev" class="mc-btn" onclick="cenGerarDevolutiva()">Sugestão IA</button>
+                  <button type="button" class="mc-btn mc-btn-p" onclick="cenEnviarDevolutiva(false)">Registrar e encerrar</button>
+                  <button type="button" class="mc-btn" onclick="cenEnviarDevolutiva(true)">Para aprovação</button>
+                </div>
+              </div>
+              <div class="mc-more-sec">
+                <div class="mc-more-h">RNC</div>
+                <div id="cen-rnc-corpo" class="mc-muted"></div>
+                <div class="mc-rule"><strong>Regra:</strong> a IA sugere, mas a decisão é da analista.</div>
+                <button type="button" class="mc-btn" style="border-color:#C70602;color:#C70602" onclick="cenCriarRNC()">Criar RNC</button>
+              </div>
+              <div class="mc-more-sec">
+                <div class="mc-more-h">Status da manifestação</div>
+                <div class="mc-row" style="margin-top:0">
+                  <button type="button" class="mc-btn" onclick="cenIniciarTratativa()">Iniciar tratativa</button>
+                  <button type="button" class="mc-btn" style="border-color:#C70602;color:#C70602" onclick="cenEncerrarManifestacao()">Encerrar</button>
+                </div>
               </div>
             </div>
 
-            <!-- RNC -->
-            <div style="padding:12px 16px;border-bottom:1px solid var(--border)">
-              <div style="font-size:11px;font-weight:700;color:var(--gray-600);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">RNC</div>
-              <div id="cen-rnc-corpo" style="font-size:12px;margin-bottom:8px"></div>
-              <div style="background:#FEF3C7;border:1px solid #FCD34D;border-radius:8px;padding:8px;font-size:11px;margin-bottom:8px"><strong>Regra:</strong> A IA sugere, mas a decisão é da analista.</div>
-              <div style="display:flex;gap:6px">
-                <button class="btn btn-secondary" style="font-size:12px;border-color:var(--red);color:var(--red)" onclick="cenCriarRNC()">Criar RNC</button>
-                <button class="btn btn-secondary" style="font-size:12px" onclick="cenIgnorarRNC()">Ignorar</button>
-              </div>
+            <div class="mc-card">
+              <span class="mc-card-h">Setores acionados</span>
+              <div id="cen-setores-lista" style="display:flex;flex-direction:column;gap:8px"></div>
             </div>
 
-            <!-- Timeline -->
-            <div style="padding:12px 16px;border-bottom:1px solid var(--border)">
-              <div style="font-size:11px;font-weight:700;color:var(--gray-600);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Timeline</div>
-              <div id="cen-timeline-corpo" style="font-size:12px;color:var(--gray-400)">—</div>
+            <div class="mc-card" style="gap:0">
+              <div class="mc-card-h" style="margin-bottom:10px">Histórico</div>
+              <div id="cen-historico-corpo"></div>
             </div>
-
-            <!-- Histórico -->
-            <div style="padding:12px 16px">
-              <div style="font-size:11px;font-weight:700;color:var(--gray-600);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Histórico</div>
-              <div id="cen-historico-corpo" style="font-size:12px;color:var(--gray-400)">—</div>
-            </div>
-          </div>
-
-          <!-- painéis de aba mantidos para compatibilidade com JS existente (invisíveis) -->
-          <div id="centab-dados" class="cen-tabpanel" style="display:none"></div>
-          <div id="centab-tratativa" class="cen-tabpanel" style="display:none"></div>
-          <div id="centab-devolutiva" class="cen-tabpanel" style="display:none"></div>
-          <div id="centab-rnc" class="cen-tabpanel" style="display:none"></div>
-          <div id="centab-timeline" class="cen-tabpanel" style="display:none"></div>
-          <div id="centab-historico" class="cen-tabpanel" style="display:none">
-            <div id="cd-analise-bloco" style="display:none"><div id="cd-analise-corpo"></div></div>
-            <div id="cd-conflito-bloco" style="display:none"><div id="cd-conflito-corpo"></div></div>
-            <div id="cd-anexos-bloco" style="display:none"><div id="cd-anexos-lista"></div></div>
-            <div id="cen-devolutiva-ia-bloco" style="display:none"><div id="cen-devolutiva-ia-texto"></div></div>
-          </div>
 
           <!-- TAB: CALCULADORA DE ATRASO -->
           <div id="centab-atraso" class="cen-tabpanel" style="display:none;padding:16px">
@@ -3512,26 +3565,17 @@
             <div id="cen-calc-multiplos" style="display:none;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px;margin-top:8px;font-size:12px"></div>
             <div id="cen-calc-sem-ref" style="display:none;background:#f1f5f9;border:1px solid var(--gray-200);border-radius:8px;padding:12px;margin-top:8px;font-size:12px;color:var(--gray-500)"></div>
           </div>
-
-          <!-- Ações encerramento (sticky bottom) -->
-          <div style="position:sticky;bottom:0;background:var(--surface);border-top:1px solid var(--border);padding:8px 16px;display:flex;gap:8px;flex-wrap:wrap;z-index:10">
-            <button class="btn btn-secondary" style="font-size:11px" onclick="cenIniciarTratativa()">Iniciar Tratativa</button>
-            <button class="btn btn-secondary" style="font-size:11px;border-color:var(--red);color:var(--red)" onclick="cenEncerrarManifestacao()">Encerrar</button>
           </div>
         </div>
-      </div>
 
-      <!-- COLUNA DIREITA: Cérebro estruturado -->
-      <div style="flex:1 1 280px;min-width:0;border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;background:var(--gray-50)">
-        <div style="padding:10px 14px;border-bottom:1px solid var(--border);background:var(--surface);display:flex;align-items:center;gap:6px">
-          <span style="width:8px;height:8px;border-radius:50%;background:#16A34A;display:inline-block"></span>
-          <span style="font-size:13px;font-weight:800">Cérebro</span>
-        </div>
-        <div style="flex:1;overflow-y:auto" id="cen-cerebro-painel">
-          <div style="font-size:12px;color:var(--gray-400);text-align:center;padding:24px 16px">Selecione uma manifestação</div>
+        <!-- COLUNA DIREITA: Cérebro -->
+        <div class="mc-col-r" id="cen-cerebro-wrap">
+          <div class="mc-cerebro-h"><i></i><b>Cérebro</b></div>
+          <div class="mc-cerebro" id="cen-cerebro-painel"><span class="mc-muted">Selecione uma manifestação</span></div>
         </div>
       </div>
     </div>
+    <div id="mc-toast" class="mc-toast" style="display:none"></div>
   </div>
 
   <!-- ===== PORTAL SETOR RESPONSÁVEL ===== -->
@@ -15179,54 +15223,136 @@ async function mudarStatusMC(id, novoStatus) {
 </script>
 
 <script>
-// ── CENTRAL SAC ──────────────────────────────────────────────────────────────
+// ── CENTRAL SAC (Minha Central SAC) ─────────────────────────────────────────
+// Tela portada do mockup 09 — dados reais via /api/manifestacoes*. Ações sem endpoint ficam desabilitadas.
 (function(){
   const PERFIS_CENTRAL = ['ANALISTA_SAC','ANALISTA SAC','MASTER'];
 
   // ── utilidades internas ───────────────────────────────────────────────────
   function s(){try{return JSON.parse(sessionStorage.getItem('sac-user')||'null')}catch{return null}}
   function esc(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
-  function fmt(v){if(!v)return '—';const d=new Date(v);return isNaN(d)?String(v):d.toLocaleDateString('pt-BR')}
-  function fmtdt(v){if(!v)return '—';const d=new Date(v);return isNaN(d)?String(v):d.toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})}
+  function $(id){return document.getElementById(id)}
+  function _setText(id, v){const el=$(id);if(el)el.textContent=v;}
+  function norm(v){return String(v==null?'':v).normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/_/g,' ').trim().toUpperCase();}
+  function pick(m,keys){for(const k of keys){const v=m&&m[k];if(v!=null&&String(v).trim()!=='')return String(v).trim();}return '';}
+  function toDate(v){
+    if(!v&&v!==0) return null;
+    if(v instanceof Date) return isNaN(v)?null:v;
+    const str=String(v).trim();
+    const br=str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})(?:[ T,]+(\d{1,2}):(\d{2}))?/);
+    if(br){let y=+br[3];if(y<100)y+=2000;const d=new Date(y,+br[2]-1,+br[1],+(br[4]||0),+(br[5]||0));return isNaN(d)?null:d;}
+    const d=new Date(str);return isNaN(d)?null:d;
+  }
+  function fmtdt(v){const d=toDate(v);return d?d.toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}):(v?String(v):'—')}
   async function api(url,opt={}){
     try{
-      const r=await fetch(url,{headers:{'Content-Type':'application/json','Authorization':'Bearer '+(s()?.token||''),...(opt.headers||{})},method:opt.method||'GET',body:opt.body?JSON.stringify(opt.body):undefined});
+      const tok=sessionStorage.getItem('sac-token')||s()?.token||'';
+      const r=await fetch(url,{headers:{'Content-Type':'application/json',...(tok?{'Authorization':'Bearer '+tok}:{}),...(opt.headers||{})},method:opt.method||'GET',body:opt.body?JSON.stringify(opt.body):undefined});
       return await r.json();
     }catch(e){return{sucesso:false,erro:e.message}}
   }
 
-  function slaClass(prazo){
-    if(!prazo) return '';
-    const ms=new Date(prazo)-Date.now();
-    if(ms<0) return 'cen-sla-late';
-    if(ms<24*60*60*1000*2) return 'cen-sla-alert';
-    return 'cen-sla-ok';
+  let _tToast=null;
+  function toast(t){
+    const el=$('mc-toast'); if(!el) return;
+    el.textContent=t; el.style.display='block';
+    clearTimeout(_tToast); _tToast=setTimeout(()=>{el.style.display='none'},3200);
   }
-  function slaLabel(prazo){
-    if(!prazo) return '';
-    const ms=new Date(prazo)-Date.now();
-    if(ms<0) return 'Vencido';
-    const d=Math.floor(ms/(24*60*60*1000));
-    const h=Math.floor((ms%(24*60*60*1000))/(60*60*1000));
-    return d>0?`${d}d restantes`:`${h}h restantes`;
+
+  // ── modelo ────────────────────────────────────────────────────────────────
+  const ST_LBL={nova:'Nova · triagem',anal:'Em análise',trat:'Em tratamento',aprov:'Ag. aprovação',dev:'Devolutiva',enc:'Encerrada'};
+  const NEXT={nova:'Fazer triagem',anal:'Validar análise da IA',trat:'Acompanhar setores',aprov:'Aguardando aprovador',dev:'Enviar devolutiva',enc:'Concluída'};
+  const SET_LBL={atrasado:'Atrasado',pendente:'Aguardando',respondido:'Respondido'};
+  const PRI_LBL={alta:'Alta',media:'Média',baixa:'Baixa'};
+
+  function stageOf(status){
+    const n=norm(status);
+    if(!n||n==='NOVA'||n==='RECEBIDA') return 'nova';
+    if(/ENCERRAD|CONCLUID|REJEITAD|CANCELAD/.test(n)) return 'enc';
+    if(n.includes('APROVACAO')) return 'aprov';
+    if(n.includes('DEVOLUTIVA')||n==='APROVADA') return 'dev';
+    if(n.includes('TRATAMENTO')) return 'trat';
+    return 'anal';
   }
-  function badgeClass(status){
-    const m={'NOVA':'novo','EM ANÁLISE':'em-analise','EM TRATAMENTO':'em-tratamento',
-      'AG. APROVAÇÃO':'ag-aprovacao','AGUARDANDO APROVAÇÃO':'ag-aprovacao',
-      'DEVOLUTIVA':'devolutiva','ENCERRADA':'encerrada'};
-    return 'cen-badge cen-badge-'+(m[String(status||'').toUpperCase()]||'novo');
+
+  function normMan(m){
+    const u=s()||{};
+    const st=stageOf(m.STATUS);
+    const abertura=pick(m,['DATA_ABERTURA','DATA_REGISTRO','DATA_MANIFESTACAO','DATA_CRIACAO']);
+    let prazoMs=null;
+    const prazoStr=pick(m,['PRAZO_RESPOSTA','PRAZO']);
+    if(prazoStr){const d=toDate(prazoStr);if(d)prazoMs=d.getTime();}
+    else{
+      const sla=parseFloat(String(m.SLA_HORAS==null?'':m.SLA_HORAS).replace(',','.'));
+      const a=toDate(abertura);
+      if(sla>0&&a) prazoMs=a.getTime()+sla*3600000;
+    }
+    const h=(st==='enc'||prazoMs==null)?null:(prazoMs-Date.now())/3600000;
+    const me=[u.usuario,u.email,u.nome].filter(Boolean).map(norm);
+    const resp=[m.RESPONSAVEL_ANALISTA,m.ANALISTA,m.RESPONSAVEL,m.USUARIO_CRIACAO].map(x=>norm(x||'')).filter(Boolean);
+    const mine=resp.some(r=>me.includes(r));
+    const uc=String(m.USUARIO_CRIACAO||'').trim().toLowerCase();
+    const org=norm(m.ORIGEM), can=norm(m.CANAL);
+    const ext=!uc||uc.startsWith('portal:')||/PUBLIC|PORTAL|EXTERN/.test(org)||['PUBLICO','SITE','PORTAL PUBLICO'].includes(can);
+    const p=norm(m.PRIORIDADE);
+    const pri=p==='ALTA'?'alta':(p==='BAIXA'?'baixa':((p==='MEDIA'||p==='NORMAL')?'media':''));
+    const setoresRaw=pick(m,['SETORES_CONFIRMADOS','SETOR_CONFIRMADO','SETORES_SUGERIDOS','SETOR_SUGERIDO','SETOR_RESPONSAVEL','SETOR']);
+    const setores=setoresRaw?setoresRaw.split(/[,;]/).map(x=>x.trim()).filter(Boolean):[];
+    return {
+      raw:m, id:pick(m,['ID_MANIFESTACAO','PROTOCOLO','ID']), st, h, prazoMs, mine, ext, pri,
+      cli:pick(m,['EMPRESA_RECLAMANTE','CLIENTE','NOME_CLIENTE','CONTATO']),
+      emp:pick(m,['EMPRESA_RECLAMADA','EMPRESA']),
+      cnpj:pick(m,['CNPJ']),
+      tipo:pick(m,['TIPO_CONFIRMADO','TIPO','TIPO_MANIFESTACAO']),
+      motivo:pick(m,['MOTIVO','CATEGORIA','TIPO_SUGERIDO']),
+      canal:pick(m,['CANAL']),
+      desc:pick(m,['DESCRICAO','DESCRICAO_MANIFESTACAO','RELATO']),
+      statusRaw:pick(m,['STATUS']),
+      setores
+    };
   }
+  const isLate=m=>m.h!=null&&m.h<0;
+  const isSoon=m=>m.h!=null&&m.h>=0&&m.h<=8;
+  function slaOf(m){return m.h==null?'ok':isLate(m)?'late':isSoon(m)?'soon':'ok';}
+  function slaTxt(m){
+    if(m.st==='enc') return ['Encerrada','done'];
+    if(m.h==null) return ['Sem prazo','ok'];
+    if(isLate(m)) return ['Atrasada '+(m.h<=-24?Math.round(-m.h/24)+'d':Math.max(1,Math.round(-m.h))+'h'),'late'];
+    if(isSoon(m)) return ['Vence em '+Math.max(1,Math.ceil(m.h))+'h','soon'];
+    return ['Vence em '+(m.h>=24?Math.round(m.h/24)+'d':Math.ceil(m.h)+'h'),'ok'];
+  }
+
+  const KP=[
+    ['total',      m=>m.mine&&m.st!=='enc'],
+    ['pendentes',  m=>m.mine&&['nova','anal','dev'].includes(m.st)],
+    ['atrasados',  isLate],
+    ['aprovacao',  m=>m.st==='aprov'],
+    ['tratamento', m=>m.st==='trat'],
+    ['encerradas', m=>m.st==='enc'],
+    ['terceiros',  m=>m.ext&&m.st==='nova']
+  ];
 
   // ── estado ────────────────────────────────────────────────────────────────
-  let _cenItens=[], _cenAtual=null, _cenScope='minhas';
+  let _cenAll=[], _cenAtual=null, _cenRawAtual=null, _cenScope='minhas', _cenKpi='', _selTok=0, _cerTok=0, _cenDevSug='', _cenErroLista=false;
 
-  // ── show/hide sidebar item ────────────────────────────────────────────────
   function setupSidebarCentral(){
     const u=s();
-    const el=document.getElementById('sidebar-central-sac');
+    const el=$('sidebar-central-sac');
     if(!el) return;
     const p=String(u?.perfil||'').toUpperCase().replace(/\s+/g,'_');
     el.style.display=PERFIS_CENTRAL.includes(p)||PERFIS_CENTRAL.includes(u?.perfil||'')?'flex':'none';
+  }
+
+  function baseList(){return _cenScope==='todas'?_cenAll:_cenAll.filter(m=>m.mine||m.ext);}
+
+  function visibleList(){
+    const q=($('cen-busca')?.value||'').trim().toLowerCase();
+    const fst=$('cen-fil-status')?.value||'', fsla=$('cen-fil-sla')?.value||'', ftipo=$('cen-fil-tipo')?.value||'', fpri=$('cen-fil-prioridade')?.value||'';
+    const kf=KP.find(k=>k[0]===_cenKpi);
+    return baseList().filter(m=>
+      (!kf||kf[1](m))&&(!fst||m.st===fst)&&(!fsla||slaOf(m)===fsla)&&(!ftipo||norm(m.tipo)===norm(ftipo))&&(!fpri||m.pri===fpri)&&
+      (!q||[m.id,m.cli,m.cnpj,m.motivo,m.emp].join(' ').toLowerCase().includes(q))
+    ).sort((a,b)=>(a.h==null?1e9:a.h)-(b.h==null?1e9:b.h));
   }
 
   // ── carga principal ───────────────────────────────────────────────────────
@@ -15234,539 +15360,425 @@ async function mudarStatusMC(id, novoStatus) {
     setupSidebarCentral();
     const u=s();
     if(!u) return;
-    // KPI placeholders
-    ['total','pendentes','atrasados','aprovacao','tratamento','encerradas','terceiros']
-      .forEach(k=>{const el=document.getElementById('ckpi-v-'+k);if(el)el.textContent='…'});
+    const btn=$('cen-btn-refresh'); if(btn){btn.disabled=true;btn.textContent='Atualizando…';}
+    const nome=String(u.nome||u.usuario||'').trim().split(/\s+/)[0]||'—';
+    _setText('cen-nome-analista',nome);
+    _setText('cen-empresa-analista','SAC'+(u.empresa?' · '+u.empresa:''));
+    KP.forEach(k=>{const el=$('ckpi-v-'+k[0]);if(el)el.textContent='…'});
 
     const d=await api('/api/manifestacoes');
-    if(!d.sucesso){_cenItens=[];renderFilaCentral([]);return;}
-    let itens=d.itens||[];
-
-    // MASTER vê tudo; ANALISTA_SAC vê as suas + externas
-    const perfil=String(u.perfil||'').toUpperCase().replace(/\s+/g,'_');
-    if(perfil!=='MASTER'){
-      // externas = sem login (CANAL=PUBLICO ou sem USUARIO)
-      itens=itens.filter(m=>
-        String(m.RESPONSAVEL_ANALISTA||m.analista||'').toLowerCase()===String(u.email||u.usuario||'').toLowerCase()
-        || !m.USUARIO_CRIACAO
-        || String(m.CANAL||'').toUpperCase()==='PUBLICO'
-        || String(m.CANAL||'').toUpperCase()==='SITE'
-      );
-    }
-    _cenItens=itens;
-
-    // KPIs
-    const now=Date.now();
-    const total=itens.length;
-    const pendentes=itens.filter(m=>['NOVA','EM ANÁLISE'].includes(String(m.STATUS||'').toUpperCase())).length;
-    const atrasados=itens.filter(m=>m.PRAZO_RESPOSTA&&new Date(m.PRAZO_RESPOSTA)<now&&String(m.STATUS||'').toUpperCase()!=='ENCERRADA').length;
-    const aprovacao=itens.filter(m=>['AG. APROVAÇÃO','AGUARDANDO APROVAÇÃO'].includes(String(m.STATUS||'').toUpperCase())).length;
-    const tratamento=itens.filter(m=>String(m.STATUS||'').toUpperCase()==='EM TRATAMENTO').length;
-    const encerradas=itens.filter(m=>String(m.STATUS||'').toUpperCase()==='ENCERRADA').length;
-    const terceiros=itens.filter(m=>!m.USUARIO_CRIACAO||String(m.CANAL||'').toUpperCase()==='PUBLICO'||String(m.CANAL||'').toUpperCase()==='SITE').length;
-
-    const kv={total,pendentes,atrasados,aprovacao,tratamento,encerradas,terceiros};
-    Object.entries(kv).forEach(([k,v])=>{const el=document.getElementById('ckpi-v-'+k);if(el)el.textContent=v;});
-
-    renderFilaCentral(itens);
+    if(btn){btn.disabled=false;btn.textContent='↻ Atualizar';}
+    if(!d.sucesso){_cenAll=[];_cenErroLista=true;}
+    else{_cenErroLista=false;_cenAll=(d.itens||[]).map(normMan).filter(m=>m.id);}
+    renderKpis();
+    renderFila();
   };
 
-  function renderFilaCentral(itens){
-    const fila=document.getElementById('cen-fila');
-    if(!fila) return;
-    if(!itens.length){fila.innerHTML='<div style="padding:20px;text-align:center;color:var(--gray-400);font-size:13px">Nenhuma manifestação encontrada</div>';return;}
-    fila.innerHTML=itens.map(m=>{
-      const sla=slaClass(m.PRAZO_RESPOSTA);
-      const slaT=slaLabel(m.PRAZO_RESPOSTA);
-      const externo=!m.USUARIO_CRIACAO||['PUBLICO','SITE'].includes(String(m.CANAL||'').toUpperCase());
-      return `<div class="cen-man-card${_cenAtual===m.ID?' selected':''}" onclick="cenSelecionarMan('${esc(m.ID)}')">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:4px">
-          <div style="font-size:11px;font-weight:700;color:var(--gray-900)">${esc(m.PROTOCOLO||m.ID||'—')}</div>
-          <span class="${badgeClass(m.STATUS)}">${esc(m.STATUS||'NOVA')}</span>
-        </div>
-        <div style="font-size:11px;color:var(--gray-600);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(m.CLIENTE||m.NOME_CLIENTE||'—')}</div>
-        <div style="font-size:10px;color:var(--gray-500);margin-top:2px">${esc(m.TIPO_MANIFESTACAO||m.TIPO||'—')} · ${esc(m.EMPRESA||'—')}</div>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
-          <span class="${sla}">${slaT}</span>
-          ${externo?'<span style="font-size:9px;background:#dbeafe;color:#1e40af;padding:1px 5px;border-radius:8px;font-weight:700">EXTERNO</span>':''}
-        </div>
-      </div>`;
+  function renderKpis(){
+    const base=baseList();
+    KP.forEach(([k,fn])=>{
+      const n=base.filter(fn).length;
+      const v=$('ckpi-v-'+k); if(v) v.textContent=_cenErroLista?'—':n;
+      const b=$('ckpi-'+k);
+      if(b){b.classList.toggle('on',_cenKpi===k);b.classList.toggle('warn',k==='atrasados'&&n>0);}
+    });
+    _setText('cen-atrasos-hoje',base.filter(isLate).length+' em atraso hoje');
+  }
+
+  function renderFila(){
+    const fila=$('cen-fila'); if(!fila) return;
+    const list=visibleList();
+    const hasFilter=!!(($('cen-busca')?.value||'').trim()||_cenKpi||$('cen-fil-status')?.value||$('cen-fil-sla')?.value||$('cen-fil-tipo')?.value||$('cen-fil-prioridade')?.value);
+    _setText('cen-list-info',list.length+(list.length===1?' manifestação':' manifestações')+' · ordenadas por prazo');
+    const cl=$('cen-limpar'); if(cl) cl.style.display=hasFilter?'':'none';
+    ['cen-fil-status','cen-fil-sla','cen-fil-tipo','cen-fil-prioridade'].forEach(id=>{const e=$(id);if(e)e.classList.toggle('on',!!e.value);});
+    if(!list.length){
+      fila.innerHTML='<div class="mc-empty">'+(_cenErroLista?'Não foi possível carregar as manifestações.':'Nenhuma manifestação neste filtro.')+'</div>';
+      return;
+    }
+    fila.innerHTML=list.map(m=>{
+      const sl=slaTxt(m);
+      return `<button type="button" class="mc-item${_cenAtual===m.id?' sel':''}" data-id="${esc(m.id)}" onclick="cenSelecionarMan(this.dataset.id)">
+        <div class="mc-item-top"><span class="mc-item-id"><span class="mc-dot mc-p-${m.pri||'none'}"></span><span class="mc-item-prot">${esc(m.id)}</span>${m.ext?'<span class="mc-tag-ext">EXTERNO</span>':''}</span><span class="mc-sla mc-sla-${sl[1]}">${esc(sl[0])}</span></div>
+        <span class="mc-item-cli">${esc(m.cli||'—')}</span>
+        <span class="mc-item-mot">${esc(m.motivo||m.tipo||'—')} · ${esc(m.emp||'—')}</span>
+        <div class="mc-item-bot"><span class="mc-st mc-st-${m.st}">${esc(m.st==='enc'&&m.statusRaw&&/REJEIT|CANCEL/.test(norm(m.statusRaw))?m.statusRaw.replace(/_/g,' ').toLowerCase().replace(/^./,c=>c.toUpperCase()):ST_LBL[m.st])}</span><span class="mc-item-next">${esc(NEXT[m.st])}</span></div>
+      </button>`;
     }).join('');
   }
 
-  window.filtrarFilaCentral = function(){
-    const busca=(document.getElementById('cen-busca')?.value||'').toLowerCase();
-    const status=document.getElementById('cen-fil-status')?.value||'';
-    const sla=document.getElementById('cen-fil-sla')?.value||'';
-    const tipo=document.getElementById('cen-fil-tipo')?.value||'';
-    const prioridade=document.getElementById('cen-fil-prioridade')?.value||'';
-    let itens=_cenItens;
-    if(busca) itens=itens.filter(m=>
-      String(m.PROTOCOLO||'').toLowerCase().includes(busca)||
-      String(m.CLIENTE||m.NOME_CLIENTE||'').toLowerCase().includes(busca)||
-      String(m.DESCRICAO||'').toLowerCase().includes(busca));
-    if(status) itens=itens.filter(m=>String(m.STATUS||'').toUpperCase()===status.toUpperCase());
-    if(tipo) itens=itens.filter(m=>String(m.TIPO_MANIFESTACAO||m.TIPO||'').toUpperCase()===tipo.toUpperCase());
-    if(prioridade) itens=itens.filter(m=>String(m.PRIORIDADE||'').toUpperCase()===prioridade.toUpperCase());
-    if(sla==='atrasado') itens=itens.filter(m=>m.PRAZO_RESPOSTA&&new Date(m.PRAZO_RESPOSTA)<Date.now());
-    if(sla==='hoje') itens=itens.filter(m=>{if(!m.PRAZO_RESPOSTA)return false;const ms=new Date(m.PRAZO_RESPOSTA)-Date.now();return ms>=0&&ms<48*60*60*1000;});
-    renderFilaCentral(itens);
-  };
+  // ── filtros ───────────────────────────────────────────────────────────────
+  window.filtrarFilaCentral = function(){renderFila();};
 
   window.setCenFiltroScope = function(scope){
-    _cenScope=scope;
-    document.querySelectorAll('[data-cen-scope]').forEach(b=>{
-      b.classList.toggle('active',b.dataset.cenScope===scope);
-    });
-    filtrarFilaCentral();
+    _cenScope=scope==='todas'?'todas':'minhas';
+    $('cen-btn-minhas')?.classList.toggle('on',_cenScope==='minhas');
+    $('cen-btn-todas')?.classList.toggle('on',_cenScope==='todas');
+    renderKpis(); renderFila();
   };
 
-  // ── selecionar manifestação ───────────────────────────────────────────────
-  window.cenSelecionarMan = async function(id){
-    _cenAtual=id;
-    // mark selected card
-    document.querySelectorAll('.cen-man-card').forEach(c=>c.classList.remove('selected'));
-    const card=[...document.querySelectorAll('.cen-man-card')].find(c=>c.getAttribute('onclick')?.includes(id));
-    if(card) card.classList.add('selected');
+  window.cenFiltrarKpi = function(tipo){
+    _cenKpi=_cenKpi===tipo?'':tipo;
+    renderKpis(); renderFila();
+  };
 
-    document.getElementById('cen-placeholder')?.style && (document.getElementById('cen-placeholder').style.display='none');
-    const det=document.getElementById('cen-detalhe');
-    if(det) det.style.display='flex';
+  window.cenLimparFiltros = function(){
+    ['cen-busca','cen-fil-status','cen-fil-sla','cen-fil-tipo','cen-fil-prioridade'].forEach(id=>{const e=$(id);if(e)e.value='';});
+    _cenKpi='';
+    renderKpis(); renderFila();
+  };
 
-    const d=await api('/api/manifestacoes/'+encodeURIComponent(id));
-    if(!d.sucesso){alert('Erro ao carregar manifestação: '+(d.erro||d.mensagem));return;}
-    const m=d.manifestacao||d.item||d;
+  // ── detalhe ───────────────────────────────────────────────────────────────
+  function buildHistorico(n){
+    const r=n.raw, ev=[];
+    const reg=pick(r,['DATA_ABERTURA','DATA_REGISTRO']);
+    ev.push({at:reg,t:'Registrada via '+(n.canal||'canal não informado')+(n.ext?' (externo)':(r.USUARIO_CRIACAO?' por '+r.USUARIO_CRIACAO:'')),c:'red',o:3});
+    if(r.DATA_INICIO_TRATATIVA) ev.push({at:r.DATA_INICIO_TRATATIVA,t:'Tratativa iniciada'+(n.setores.length?' · '+n.setores.join(', '):''),c:'blue',o:2});
+    if(r.DATA_CONCLUSAO_TRATATIVA) ev.push({at:r.DATA_CONCLUSAO_TRATATIVA,t:'Tratativa concluída',c:'blue',o:2});
+    if(r.DATA_DEVOLUTIVA) ev.push({at:r.DATA_DEVOLUTIVA,t:'Devolutiva registrada',c:'blue',o:1});
+    if(r.DATA_ENCERRAMENTO) ev.push({at:r.DATA_ENCERRAMENTO,t:'Encerrada'+(r.ENCERRADA_POR?' por '+r.ENCERRADA_POR:''),c:'green',o:0});
+    ev.sort((a,b)=>{const da=toDate(a.at),db=toDate(b.at);return (db?db.getTime():0)-(da?da.getTime():0)||a.o-b.o;});
+    return ev;
+  }
 
-    // ── header ──
-    _setText('cen-man-protocolo', m.PROTOCOLO||m.ID||id);
-    const sb=document.getElementById('cen-man-status-badge');
-    if(sb){sb.textContent=m.STATUS||'NOVA';sb.className=badgeClass(m.STATUS);}
-    const slab=document.getElementById('cen-sla-badge');
-    if(slab){slab.textContent=slaLabel(m.PRAZO_RESPOSTA);slab.className=slaClass(m.PRAZO_RESPOSTA);}
-    const subEl=document.getElementById('cen-man-sub');
-    if(subEl) subEl.textContent=[(m.EMPRESA||m.EMPRESA_RECLAMANTE||''), (m.CANAL||'')].filter(Boolean).join(' · ');
+  function renderHistorico(n){
+    const box=$('cen-historico-corpo'); if(!box||!n) return;
+    box.innerHTML=buildHistorico(n).map(h=>`<div class="mc-hist"><div class="mc-hist-rail"><span class="mc-hist-dot mc-hc-${h.c}"></span><span class="mc-hist-line"></span></div><div class="mc-hist-body"><div class="mc-hist-at">${esc(h.at?fmtdt(h.at):'—')}</div><div class="mc-hist-t">${esc(h.t)}</div></div></div>`).join('');
+  }
+  window.cenAbrirTimeline = function(){ if(_cenRawAtual) renderHistorico(normMan(_cenRawAtual)); };
+  window.cenAbrirHistorico = window.cenAbrirTimeline;
 
-    // ── progress bar ──
-    const ETAPAS=['Aberta','Analisada','Encaminhada','Tratativa','Aprovacao','Devolutiva','Finalizada'];
-    const statusMap={
-      'RECEBIDA':'Aberta','EM ANÁLISE':'Analisada','EM TRATAMENTO':'Tratativa',
-      'AGUARDANDO APROVAÇÃO':'Aprovacao','DEVOLUTIVA ENVIADA':'Devolutiva','ENCERRADA':'Finalizada','ENCAMINHADA':'Encaminhada'
-    };
-    const etapaAtual=statusMap[m.STATUS]||'Aberta';
-    const etapaIdx=ETAPAS.indexOf(etapaAtual);
-    ETAPAS.forEach((e,i)=>{
-      const el=document.getElementById('cs-'+e);
-      if(!el) return;
-      el.className='cen-stage'+(i<etapaIdx?' done':i===etapaIdx?' active':'');
-    });
+  function renderSteps(n){
+    const ORD=['nova','anal','trat','aprov','dev','enc'], cur=ORD.indexOf(n.st);
+    const IDX=[0,1,2,2,3,4,5];
+    const box=$('cen-progress-wrap'); if(!box) return;
+    box.innerHTML=['Aberta','Analisada','Encaminhada','Em tratativa','Aprovação','Devolutiva','Finalizada'].map((l,i)=>{
+      const done=IDX[i]<cur||n.st==='enc', now=IDX[i]===cur&&n.st!=='enc';
+      return `<div class="mc-step"><span class="mc-step-bar${done?' done':now?' now':''}"></span><span class="mc-step-l${done?' done':now?' now':''}">${l}</span></div>`;
+    }).join('');
+  }
 
-    // ── próxima ação ──
-    const paWrap=document.getElementById('cen-proxima-acao');
-    const paSetores=document.getElementById('cen-setores-lista');
-    if(paWrap){
-      const st=String(m.STATUS||'').toUpperCase();
-      const setor=m.SETOR_RESPONSAVEL||m.SETORES_CONFIRMADOS||'';
-      const prazoStr=m.PRAZO_RESPOSTA?'Prazo: '+fmtdt(m.PRAZO_RESPOSTA):'';
-      const atrasado=m.PRAZO_RESPOSTA&&new Date(m.PRAZO_RESPOSTA)<Date.now();
-      paWrap.style.display='';
-      const botoesEl=document.getElementById('cen-pa-botoes');
-      if(['RECEBIDA','NOVA'].includes(st)){
-        _setText('cen-pa-titulo','Assumir e analisar');
-        _setText('cen-pa-detalhe',prazoStr||'Manifestação aguardando analista');
-        if(botoesEl) botoesEl.innerHTML=`<button class="btn btn-primary" style="font-size:12px" onclick="cenIniciarTratativa()">Assumir e analisar</button><button class="btn btn-secondary" style="font-size:12px" onclick="cenToggleAcoes()">Mais ações ▾</button>`;
-      } else if(st==='EM ANÁLISE'){
-        _setText('cen-pa-titulo','Validar e encaminhar');
-        _setText('cen-pa-detalhe','Conclusão da análise e envio ao setor');
-        if(botoesEl) botoesEl.innerHTML=`<button class="btn btn-primary" style="font-size:12px" onclick="cenToggleAcoes()">Validar e encaminhar</button>`;
-      } else if(st==='EM TRATAMENTO'){
-        _setText('cen-pa-titulo', atrasado?(setor?'Cobrar resposta de '+setor:'Cobrar andamento'):'Aguardando resposta do setor');
-        _setText('cen-pa-detalhe', prazoStr||'');
-        if(botoesEl) botoesEl.innerHTML=`<button class="btn btn-primary" style="font-size:12px;background:#C70602;border-color:#C70602" onclick="cenCobrarSetor()">Cobrar setor</button><button class="btn btn-secondary" style="font-size:12px" onclick="cenEscalarGestor()">Escalar ao gestor</button><button class="btn btn-secondary" style="font-size:12px" onclick="cenToggleAcoes()">Mais ações ▾</button>`;
-      } else if(['AG. APROVAÇÃO','AGUARDANDO APROVAÇÃO'].includes(st)){
-        _setText('cen-pa-titulo','Lembrar aprovador');
-        _setText('cen-pa-detalhe','Devolutiva aguardando aprovação');
-        if(botoesEl) botoesEl.innerHTML=`<button class="btn btn-primary" style="font-size:12px" onclick="cenSolicitarAprovacao()">Lembrar aprovador</button><button class="btn btn-secondary" style="font-size:12px" onclick="cenToggleAcoes()">Mais ações ▾</button>`;
-      } else if(['DEVOLUTIVA','DEVOLUTIVA ENVIADA'].includes(st)){
-        _setText('cen-pa-titulo','Registrar devolutiva');
-        _setText('cen-pa-detalhe','Enviar resposta ao cliente');
-        if(botoesEl) botoesEl.innerHTML=`<button class="btn btn-primary" style="font-size:12px" onclick="cenToggleAcoes()">Registrar devolutiva</button><button class="btn btn-secondary" style="font-size:12px" onclick="cenUsarSugestaoCerebro()">Usar sugestão do Cérebro</button>`;
-      } else if(['ENCERRADA','CONCLUÍDA'].includes(st)){
-        _setText('cen-pa-titulo','Manifestação encerrada');
-        _setText('cen-pa-detalhe','');
-        if(botoesEl) botoesEl.innerHTML=`<button class="btn btn-secondary" style="font-size:12px" onclick="cenAbrirFichaCompleta()">Ver ficha arquivada</button>`;
+  function disabledAct(l,why,p){return {l,p,off:true,title:why};}
+  const WHY_NOENDPOINT='Indisponível: não há endpoint no sistema para esta ação (ver pendências).';
+
+  function proximaAcao(n){
+    const late=isLate(n);
+    const sl=slaTxt(n);
+    let t,d,acts;
+    if(n.st==='nova'){
+      t=n.ext?'Fazer a triagem desta manifestação externa':'Fazer a triagem desta manifestação';
+      d=(n.canal?'Registrada pelo canal '+n.canal.toLowerCase()+'. ':'')+'Confirme os dados do cliente e envie para análise.';
+      acts=[{l:'Assumir e analisar',p:true,fn:cenAssumir},disabledAct('Pedir mais informações',WHY_NOENDPOINT,false)];
+    } else if(n.st==='anal'){
+      t='Validar a análise sugerida pela IA';
+      d='Confira categoria, causa, setor e prioridade. A decisão é sua.';
+      acts=[{l:'Validar e encaminhar',p:true,fn:cenValidarEncaminhar},{l:'Abrir análise',p:false,fn:()=>$('cen-cerebro-wrap')?.scrollIntoView({behavior:'smooth',block:'start'})}];
+    } else if(n.st==='trat'){
+      if(late&&n.setores.length){
+        t='Cobrar resposta de '+n.setores.join(', ');
+        d='Prazo vencido em '+fmtdt(n.prazoMs)+'.'+(pick(n.raw,['RESPONSAVEL_SETOR','RESPONSAVEL'])?' Responsável: '+pick(n.raw,['RESPONSAVEL_SETOR','RESPONSAVEL'])+'.':'');
+        acts=[disabledAct('Cobrar setor',WHY_NOENDPOINT,true),disabledAct('Escalar ao gestor',WHY_NOENDPOINT,false)];
       } else {
-        paWrap.style.display='none';
+        t='Acompanhar a tratativa dos setores';
+        d=n.setores.length?'Setores acionados com prazo em andamento.':'Nenhum setor acionado ainda. Registre a tratativa em "Mais ações".';
+        acts=[disabledAct('Enviar lembrete',WHY_NOENDPOINT,false),{l:'Seguir para devolutiva',p:true,fn:cenSeguirDevolutiva}];
       }
-    }
-
-    // ── dados ──
-    _setText('cd-empresa', m.EMPRESA||m.EMPRESA_RECLAMANTE||'—');
-    _setText('cd-cliente', m.CLIENTE||m.NOME_CLIENTE||m.EMPRESA_RECLAMANTE||'—');
-    _setText('cd-cnpj-man', m.CNPJ||'—');
-    _setText('cd-canal', m.CANAL||'—');
-    _setText('cd-tipo', m.TIPO_MANIFESTACAO||m.TIPO||'—');
-    _setText('cd-motivo', m.MOTIVO||'—');
-    _setText('cen-man-prioridade-badge', m.PRIORIDADE||'NORMAL');
-    _setText('cd-responsavel-sac', m.RESPONSAVEL||m.USUARIO_CRIACAO||'—');
-    _setText('cd-data', fmtdt(m.DATA_MANIFESTACAO||m.DATA_CRIACAO));
-    _setText('cd-causa', m.CAUSA||'—');
-    _setText('cd-setor', m.SETOR_RESPONSAVEL||m.SETOR||'—');
-    _setText('cd-produto', m.PRODUTO||'—');
-    _setText('cd-lote', m.LOTE||'—');
-    _setText('cd-pedido', m.PEDIDO||'—');
-    _setText('cd-nf', m.NOTA_FISCAL||m.NF||'—');
-    const descEl=document.getElementById('cd-descricao');
-    if(descEl) descEl.textContent=m.DESCRICAO||m.RELATO||'—';
-    const prodBloco=document.getElementById('cd-produto-bloco');
-    if(prodBloco) prodBloco.style.display=(m.PRODUTO||m.LOTE||m.NFE)?'':'none';
-
-    // ── setores acionados ──
-    if(paSetores){
-      const setores=m.SETORES_CONFIRMADOS?m.SETORES_CONFIRMADOS.split(',').map(s=>s.trim()).filter(Boolean):
-                    m.SETOR_RESPONSAVEL?[m.SETOR_RESPONSAVEL]:[];
-      if(setores.length){
-        paSetores.innerHTML=setores.map(s=>`
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--gray-100)">
-            <div>
-              <span style="font-size:13px;font-weight:600">${esc(s)}</span>
-              <span style="font-size:11px;color:var(--gray-500);margin-left:6px">${esc(m.RESPONSAVEL_SETOR||'—')}</span>
-            </div>
-            <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:#FEF2F2;color:#B91C1C">Atrasado</span>
-          </div>`).join('');
-      } else {
-        paSetores.innerHTML='<div style="font-size:12px;color:var(--gray-400)">Nenhum setor acionado.</div>';
-      }
-    }
-
-    // ── formulários de ações (preench.) ──
-    const ts=document.getElementById('trat-status');
-    if(ts) ts.value=m.STATUS_TRATATIVA||m.STATUS||'';
-    _setText('trat-prazo', fmt(m.PRAZO_RESPOSTA));
-    _setText('trat-setor', m.SETOR_RESPONSAVEL||m.SETOR||'');
-    _setText('trat-responsavel', m.RESPONSAVEL_SETOR||'');
-    const trat=document.getElementById('trat-acao');if(trat) trat.value=m.ACAO_CORRETIVA||'';
-    const tratobs=document.getElementById('trat-obs');if(tratobs) tratobs.value=m.OBSERVACOES_TRATATIVA||'';
-    const devtxt=document.getElementById('dev-texto');if(devtxt) devtxt.value='';
-
-    // ── timeline e cérebro ──
-    cenAbrirTimeline(id);
-    cenCarregarCerebro(m);
-    // fecha painel de ações ao trocar de manifestação
-    const acoes=document.getElementById('cen-acoes-expand');
-    if(acoes) acoes.style.display='none';
-  };
-
-  function _setText(id, v){const el=document.getElementById(id);if(el)el.textContent=v;}
-
-  window.cenTab = function(tab, btn){
-    document.querySelectorAll('.cen-tabpanel').forEach(p=>p.classList.remove('active'));
-    document.querySelectorAll('.cen-tab').forEach(b=>b.classList.remove('active'));
-    const panel=document.getElementById('centab-'+tab);
-    if(panel) panel.classList.add('active');
-    if(btn) btn.classList.add('active');
-    // lazy-load análise IA quando abre a aba dados
-    if(tab==='dados'&&_cenAtual) cenExecutarAnalise();
-  };
-
-  // ── análise IA ────────────────────────────────────────────────────────────
-  window.cenExecutarAnalise = async function(){
-    if(!_cenAtual) return;
-    const el=document.getElementById('cd-analise-texto');
-    const ctx=document.getElementById('cd-contexto');
-    if(!el) return;
-    if(el.textContent&&el.textContent!=='') return; // já carregou
-    el.textContent='Analisando…';
-    const d=await api('/api/manifestacoes/'+encodeURIComponent(_cenAtual)+'/analise');
-    if(d.sucesso&&d.analise){
-      el.textContent=d.analise.resumo||d.analise.texto||JSON.stringify(d.analise);
-      if(ctx) ctx.textContent=d.analise.contexto||'';
+    } else if(n.st==='aprov'){
+      t='Aguardando aprovação';
+      d='Item enviado ao aprovador.'+(n.h!=null?' Prazo: '+(n.h<0?'vencido':(n.h>=24?Math.round(n.h/24)+' dia(s)':Math.ceil(n.h)+'h'))+'.':'');
+      acts=[disabledAct('Lembrar aprovador',WHY_NOENDPOINT,false)];
+    } else if(n.st==='dev'){
+      t='Enviar devolutiva ao cliente';
+      d='Tratativa concluída. Escreva a devolutiva com base nos fatos e envie pelo canal do cliente'+(n.canal?' ('+n.canal+')':'')+'.';
+      acts=[{l:'Registrar devolutiva',p:true,fn:()=>{cenToggleAcoes(true);$('dev-texto')?.focus();}},{l:'Usar sugestão do Cérebro',p:false,fn:cenUsarSugestaoCerebro}];
     } else {
-      el.textContent=d.erro||'Análise indisponível.';
+      t='Manifestação encerrada';
+      d='A ficha completa está disponível no banco de manifestações.';
+      acts=[{l:'Ver ficha arquivada',p:false,fn:cenAbrirFichaCompleta}];
     }
+    return {t,d,acts,late:late&&n.st!=='enc'};
+  }
+
+  function renderProximaAcao(n){
+    const pa=proximaAcao(n);
+    const box=$('cen-proxima-acao'); if(!box) return;
+    box.className='mc-nx'+(pa.late?' late':'');
+    _setText('cen-pa-titulo',pa.t);
+    _setText('cen-pa-detalhe',pa.d);
+    const bt=$('cen-pa-botoes'); if(!bt) return;
+    bt.innerHTML='';
+    pa.acts.forEach(a=>{
+      const b=document.createElement('button');
+      b.type='button'; b.className='mc-btn '+(a.p?'mc-btn-p':'mc-btn-s'); b.textContent=a.l;
+      if(a.off){b.disabled=true;b.title=a.title||'';} else b.addEventListener('click',a.fn);
+      bt.appendChild(b);
+    });
+    const mais=document.createElement('button');
+    mais.type='button'; mais.className='mc-btn mc-btn-g'; mais.id='cen-btn-mais'; mais.textContent='Mais ações ▾';
+    mais.addEventListener('click',()=>cenToggleAcoes());
+    bt.appendChild(mais);
+  }
+
+  function renderSetores(n){
+    const box=$('cen-setores-lista'); if(!box) return;
+    if(!n.setores.length){box.innerHTML='<span class="mc-muted">Ainda não encaminhada.</span>';return;}
+    const respondido=n.st==='enc'||/CONCLUID|ACEITA/.test(norm(n.raw.STATUS_TRATATIVA));
+    const k=respondido?'respondido':(isLate(n)?'atrasado':'pendente');
+    const resp=pick(n.raw,['RESPONSAVEL_SETOR','RESPONSAVEL']);
+    const det=respondido?'Tratativa concluída':(n.prazoMs?(isLate(n)?'Prazo venceu em ':'Prazo até ')+fmtdt(n.prazoMs):'Sem prazo definido');
+    box.innerHTML=n.setores.map(x=>`<div class="mc-set"><span class="mc-set-n">${esc(x)}${resp?` <span class="mc-set-r">· ${esc(resp)}</span>`:''}</span><span class="mc-sst mc-sst-${k}">${SET_LBL[k]}</span><span class="mc-set-d">${esc(det)}</span></div>`).join('');
+  }
+
+  function renderDetalhe(raw){
+    _cenRawAtual=raw;
+    const n=normMan(raw);
+    const sl=slaTxt(n);
+    $('cen-placeholder').style.display='none';
+    $('cen-detalhe').style.display='flex';
+    _setText('cen-man-protocolo',n.id);
+    const sb=$('cen-man-status-badge');
+    if(sb){sb.textContent=(n.st==='enc'&&/REJEIT|CANCEL/.test(norm(n.statusRaw)))?n.statusRaw.replace(/_/g,' ').toLowerCase().replace(/^./,c=>c.toUpperCase()):ST_LBL[n.st];sb.className='mc-st mc-st-lg mc-st-'+n.st;}
+    const slb=$('cen-sla-badge'); if(slb){slb.textContent=sl[0];slb.className='mc-sla mc-sla-lg mc-sla-'+sl[1];}
+    _setText('cen-man-sub',[n.cli,n.emp,n.canal].filter(Boolean).join(' · ')||'—');
+    renderSteps(n);
+    renderProximaAcao(n);
+    const campos=[
+      ['Cliente',n.cli],['CNPJ',n.cnpj],['Empresa',n.emp],['Tipo',n.tipo],['Motivo',n.motivo],
+      ['Prioridade',PRI_LBL[n.pri]||''],['Canal',n.canal],
+      ['Responsável SAC',pick(raw,['RESPONSAVEL_ANALISTA','RESPONSAVEL','USUARIO_CRIACAO'])],
+      ['Produto',pick(raw,['PRODUTO'])],['Lote',pick(raw,['LOTE'])],['Pedido',pick(raw,['PEDIDO'])],['NF',pick(raw,['NOTA_FISCAL','NFE','NF'])]
+    ].filter((f,i)=>i<8||f[1]);
+    $('cen-campos').innerHTML=campos.map(f=>`<div><div class="mc-f-l">${esc(f[0])}</div><div class="mc-f-v">${esc(f[1]||'—')}</div></div>`).join('');
+    _setText('cd-descricao',n.desc||'—');
+    renderSetores(n);
+    renderHistorico(n);
+    // formulários do painel "Mais ações"
+    const setField=(id,v)=>{const e=$(id);if(e)e.value=v||'';};
+    setField('trat-acao',pick(raw,['TRATATIVA_REALIZADA']));
+    setField('trat-obs','');
+    setField('trat-setor',pick(raw,['SETOR_CONFIRMADO','SETORES_CONFIRMADOS','SETOR_SUGERIDO']));
+    setField('trat-responsavel',pick(raw,['RESPONSAVEL_SETOR','RESPONSAVEL']));
+    setField('dev-texto',pick(raw,['DEVOLUTIVA_FINAL','DEVOLUTIVA_ENVIADA']));
+    const rnc=$('cen-rnc-corpo');
+    if(rnc) rnc.textContent=norm(raw.RNC_SINALIZADO)==='REVISAR'?'O Cérebro sinalizou este caso para revisão de RNC.':(norm(raw.GERA_RNC)==='SIM'?'Marcada para gerar RNC.':'Nenhuma RNC sinalizada para esta manifestação.');
+    return n;
+  }
+
+  window.cenSelecionarMan = async function(id){
+    if(!id) return;
+    _cenAtual=id;
+    const tk=++_selTok;
+    renderFila();
+    const base=_cenAll.find(m=>m.id===id);
+    if(base) renderDetalhe(base.raw);
+    else { $('cen-placeholder').style.display='none'; $('cen-detalhe').style.display='flex'; }
+    cenToggleAcoes(false);
+    const d=await api('/api/manifestacoes/'+encodeURIComponent(id));
+    if(tk!==_selTok) return;
+    let n=base;
+    if(d.sucesso){
+      const full=d.manifestacao||d.item||{};
+      n=renderDetalhe(Object.assign({},base?base.raw:{},full));
+    } else if(!base){
+      toast('Erro ao carregar manifestação: '+(d.erro||d.mensagem||'falha de rede'));
+      return;
+    }
+    if(n) cenCarregarCerebro(n);
   };
 
-  // ── tratativa ─────────────────────────────────────────────────────────────
+  // ── Cérebro (painel lateral) ──────────────────────────────────────────────
+  async function cenCarregarCerebro(n){
+    const p=$('cen-cerebro-painel'); if(!p) return;
+    const tk=++_cerTok;
+    _cenDevSug='';
+    p.innerHTML='<span class="mc-muted">Consultando Cérebro…</span>';
+    const d=await api('/api/manifestacoes/'+encodeURIComponent(n.id)+'/analise');
+    if(tk!==_cerTok) return;
+    if(!d.sucesso||!d.analise){p.innerHTML='<span class="mc-muted">'+esc(d.erro||'Análise do Cérebro indisponível.')+'</span>';return;}
+    const a=d.analise;
+    const casos=Array.isArray(a.casosSimilares)?a.casosSimilares:[];
+    const ia=a.ia||{};
+    let causa=(ia.causaProvavel&&!ia.erro&&ia.causaProvavel!=='DADO_NAO_ENCONTRADO')?ia.causaProvavel:'';
+    if(!causa){const c=casos.find(x=>x.causa);if(c)causa=c.causa;}
+    const conf=a.confianca?.nivel?String(a.confianca.nivel).toLowerCase():'';
+    const re=a.reincidencia&&a.reincidencia.detectada;
+    const reIds=re&&Array.isArray(a.reincidencia.casos)?a.reincidencia.casos.map(c=>c.id||c.protocolo||c.ID_MANIFESTACAO).filter(Boolean).slice(0,4):[];
+    const acoes=[];
+    casos.forEach(c=>{const t=String(c.tratativa||'').trim();if(t&&!acoes.includes(t)&&acoes.length<3)acoes.push(t.length>160?t.slice(0,160)+'…':t);});
+    if(!acoes.length&&a.tratativaSugerida&&a.tratativaSugerida.sugestao) acoes.push(String(a.tratativaSugerida.sugestao).slice(0,200));
+    const dev=String(a.devolutivaSugerida||'').trim();
+    _cenDevSug=dev;
+    let h='<span class="mc-ia-tag">SUGESTÃO DA IA · VALIDAR ANTES DE USAR</span>';
+    if(re) h+=`<div class="mc-reinc"><strong>Cliente reincidente:</strong> ${esc(a.reincidencia.quantidade||'')} ocorrência(s) anterior(es) deste cliente${reIds.length?' ('+esc(reIds.join(', '))+')':''}.</div>`;
+    h+=`<div class="mc-cb"><span class="mc-cb-t">CAUSA MAIS PROVÁVEL</span><span class="mc-cb-v">${esc(causa||'Sem base suficiente para indicar a causa')}</span><span class="mc-cb-s">${casos.length?'Base: '+casos.length+' caso(s) similar(es) no histórico':'Nenhum caso similar encontrado'}${conf?' · confiança '+esc(conf):''}</span></div>`;
+    if(casos.length) h+=`<div class="mc-cb"><span class="mc-cb-t">CASOS SIMILARES</span>${casos.slice(0,3).map(c=>{
+      const sim=c.similaridade!=null?Math.round(+c.similaridade)+'%':'';
+      const txt=[String(c.motivo||c.descricao||'').slice(0,90),c.causa?'causa: '+c.causa:''].filter(Boolean).join(' · ');
+      return `<div class="mc-sim"><div class="mc-sim-top"><span class="mc-sim-id">${esc(c.protocolo||c.id||'—')}</span><span class="mc-sim-pct">${esc(sim)}</span></div><span class="mc-sim-t">${esc(txt||'—')}</span></div>`;}).join('')}</div>`;
+    if(acoes.length) h+=`<div class="mc-cb"><span class="mc-cb-t">O QUE FUNCIONOU ANTES</span>${acoes.map(x=>`<span class="mc-cb-li">· ${esc(x)}</span>`).join('')}</div>`;
+    if(dev) h+=`<div class="mc-cb mc-cb-dev"><span class="mc-cb-t">DEVOLUTIVA SUGERIDA</span><span id="cen-cerebro-devolutiva-texto" class="mc-dev">${esc(dev)}</span><button type="button" class="mc-btn mc-btn-s mc-btn-sm" onclick="cenUsarSugestaoCerebro()">Usar como rascunho</button></div>`;
+    h+=`<a href="#" class="mc-link" onclick="if(typeof navigate==='function')navigate('cerebro');return false;">Abrir no Cérebro ↗</a>`;
+    p.innerHTML=h;
+  }
+
+  window.cenExecutarAnalise = function(){ const n=_cenAll.find(m=>m.id===_cenAtual); if(n) cenCarregarCerebro(_cenRawAtual?normMan(_cenRawAtual):n); };
+
+  window.cenUsarSugestaoCerebro = function(){
+    const devEl=$('dev-texto');
+    if(devEl&&_cenDevSug){
+      devEl.value=_cenDevSug;
+      cenToggleAcoes(true);
+      toast('Devolutiva sugerida carregada como rascunho. Revise antes de registrar.');
+    } else toast('Nenhuma devolutiva sugerida disponível. Aguarde o Cérebro carregar.');
+  };
+
+  // ── ações (somente as que possuem endpoint) ───────────────────────────────
+  async function patchMan(body){return api('/api/manifestacoes/'+encodeURIComponent(_cenAtual),{method:'PATCH',body});}
+  async function depois(msg){toast(msg);const id=_cenAtual;await loadCentralSAC();if(id)await cenSelecionarMan(id);}
+  function semSel(){toast('Selecione uma manifestação.');}
+  function erro(d){toast('Erro: '+(d&&(d.erro||d.mensagem)||'falha na operação'));}
+
+  async function cenAssumir(){
+    if(!_cenAtual) return semSel();
+    const u=s()||{};
+    const d=await patchMan({status:'EM ANÁLISE',responsavel:u.nome||u.usuario||''});
+    if(d.sucesso) depois(_cenAtual+' assumida por você.'); else erro(d);
+  }
+
+  async function cenValidarEncaminhar(){
+    if(!_cenAtual||!_cenRawAtual) return semSel();
+    const n=normMan(_cenRawAtual), u=s()||{};
+    if(!n.setores.length){toast('Defina o setor em "Mais ações" antes de encaminhar.');cenToggleAcoes(true);$('trat-setor')?.focus();return;}
+    if(!confirm('Validar a análise e encaminhar aos setores: '+n.setores.join(', ')+'?')) return;
+    const d=await api('/api/manifestacoes/'+encodeURIComponent(_cenAtual)+'/decisao',{method:'POST',body:{
+      usuario:u.usuario||u.nome||'', tipoConfirmado:n.tipo, setoresConfirmados:n.setores,
+      prioridade:pick(_cenRawAtual,['PRIORIDADE']), slaHoras:pick(_cenRawAtual,['SLA_HORAS']), decisaoStatus:'APROVADA'
+    }});
+    if(d.sucesso) depois('Análise validada e encaminhada aos setores.'); else erro(d);
+  }
+
+  async function cenSeguirDevolutiva(){
+    if(!_cenAtual) return semSel();
+    if(!confirm('Concluir a tratativa e seguir para a devolutiva?')) return;
+    const d=await patchMan({status:'AGUARDANDO_DEVOLUTIVA'});
+    if(d.sucesso) depois('Tratativa concluída. Pronta para devolutiva.'); else erro(d);
+  }
+
   window.cenIniciarTratativa = async function(){
-    if(!_cenAtual){alert('Selecione uma manifestação.');return;}
-    const acao=document.getElementById('trat-acao')?.value||'';
-    const obs=document.getElementById('trat-obs')?.value||'';
-    const d=await api('/api/manifestacoes/'+encodeURIComponent(_cenAtual)+'/tratativa',{method:'POST',body:{acao,observacoes:obs,status:'EM TRATAMENTO'}});
-    if(d.sucesso){alert('Tratativa iniciada.');cenSelecionarMan(_cenAtual);loadCentralSAC();}
-    else alert('Erro: '+(d.erro||d.mensagem));
+    if(!_cenAtual) return semSel();
+    const d=await patchMan({status:'EM TRATAMENTO'});
+    if(d.sucesso) depois('Tratativa iniciada.'); else erro(d);
   };
 
   window.cenSalvarTratativa = async function(){
-    if(!_cenAtual){alert('Selecione uma manifestação.');return;}
-    const acao=document.getElementById('trat-acao')?.value||'';
-    const obs=document.getElementById('trat-obs')?.value||'';
-    const d=await api('/api/manifestacoes/'+encodeURIComponent(_cenAtual)+'/tratativa',{method:'POST',body:{acao,observacoes:obs}});
-    if(d.sucesso) alert('Salvo.');
-    else alert('Erro: '+(d.erro||d.mensagem));
+    if(!_cenAtual) return semSel();
+    const acao=($('trat-acao')?.value||'').trim(), obs=($('trat-obs')?.value||'').trim();
+    const setor=($('trat-setor')?.value||'').trim(), resp=($('trat-responsavel')?.value||'').trim();
+    if(!acao&&!obs&&!setor&&!resp){toast('Preencha ao menos um campo da tratativa.');return;}
+    const body={};
+    if(acao||obs) body.tratativa=acao+(obs?(acao?'\n\n':'')+'Observação: '+obs:'');
+    if(setor) body.setor=setor;
+    if(resp) body.responsavel=resp;
+    const d=await patchMan(body);
+    if(d.sucesso) depois('Tratativa salva.'); else erro(d);
   };
 
   window.cenConcluirTratativa = async function(){
-    if(!_cenAtual){alert('Selecione uma manifestação.');return;}
+    if(!_cenAtual) return semSel();
     if(!confirm('Concluir tratativa e avançar para devolutiva?')) return;
-    const acao=document.getElementById('trat-acao')?.value||'';
-    const d=await api('/api/manifestacoes/'+encodeURIComponent(_cenAtual)+'/tratativa',{method:'POST',body:{acao,status:'DEVOLUTIVA'}});
-    if(d.sucesso){alert('Tratativa concluída.');cenSelecionarMan(_cenAtual);loadCentralSAC();}
-    else alert('Erro: '+(d.erro||d.mensagem));
+    const acao=($('trat-acao')?.value||'').trim(), obs=($('trat-obs')?.value||'').trim();
+    const body={status:'AGUARDANDO_DEVOLUTIVA'};
+    if(acao||obs) body.tratativa=acao+(obs?(acao?'\n\n':'')+'Observação: '+obs:'');
+    const d=await patchMan(body);
+    if(d.sucesso) depois('Tratativa concluída. Pronta para devolutiva.'); else erro(d);
   };
 
+  async function enviarParaAprovacao(textoExtra){
+    if(!_cenAtual||!_cenRawAtual) return semSel();
+    const n=normMan(_cenRawAtual);
+    const d=await api('/api/fila-aprovacao',{method:'POST',body:{
+      idEntidade:n.id, tipoEntidade:'SAC',
+      descricao:(textoExtra||[n.cli,n.motivo||n.tipo].filter(Boolean).join(' · ')).slice(0,400),
+      empresa:n.emp, setor:n.setores[0]||''
+    }});
+    if(d.sucesso) depois('Enviado para aprovação.'); else erro(d);
+  }
+
   window.cenSolicitarAprovacao = async function(){
-    if(!_cenAtual){alert('Selecione uma manifestação.');return;}
-    if(!confirm('Solicitar aprovação desta devolutiva?')) return;
-    const d=await api('/api/manifestacoes/'+encodeURIComponent(_cenAtual)+'/devolutiva/solicitar-aprovacao',{method:'POST'});
-    if(d.sucesso){alert('Solicitação enviada.');cenSelecionarMan(_cenAtual);loadCentralSAC();}
-    else alert('Erro: '+(d.erro||d.mensagem));
+    if(!_cenAtual) return semSel();
+    if(!confirm('Solicitar aprovação desta manifestação?')) return;
+    enviarParaAprovacao();
   };
 
   // ── devolutiva ────────────────────────────────────────────────────────────
   window.cenGerarDevolutiva = async function(){
-    if(!_cenAtual){alert('Selecione uma manifestação.');return;}
-    const el=document.getElementById('cen-devolutiva-ia-texto');
-    if(el) el.textContent='Gerando…';
-    const d=await api('/api/manifestacoes/'+encodeURIComponent(_cenAtual)+'/devolutiva/gerar',{method:'POST'});
-    if(d.sucesso&&d.texto){
-      if(el) el.textContent=d.texto;
-      const devtxt=document.getElementById('dev-texto');
-      if(devtxt) devtxt.value=d.texto;
-    } else {
-      if(el) el.textContent=d.erro||'Indisponível.';
-    }
+    if(!_cenAtual) return semSel();
+    const devtxt=$('dev-texto'); const btn=$('cen-btn-gerar-dev');
+    if(btn){btn.disabled=true;btn.textContent='Gerando…';}
+    const d=await api('/api/manifestacoes/'+encodeURIComponent(_cenAtual)+'/devolutiva/gerar',{method:'POST',body:{}});
+    if(btn){btn.disabled=false;btn.textContent='Sugestão IA';}
+    const dev=d.devolutiva||{};
+    const txt=dev.textoGerado||dev.texto||(typeof dev==='string'?dev:'');
+    if(d.sucesso&&txt&&devtxt){devtxt.value=txt;toast('Sugestão gerada. Revise antes de registrar.');}
+    else toast(d.erro||'Sugestão indisponível.');
   };
 
   window.cenEnviarDevolutiva = async function(paraAprovacao){
-    if(!_cenAtual){alert('Selecione uma manifestação.');return;}
-    const texto=document.getElementById('dev-texto')?.value||'';
-    if(!texto.trim()){alert('Digite a devolutiva.');return;}
-    const url=paraAprovacao
-      ?'/api/manifestacoes/'+encodeURIComponent(_cenAtual)+'/devolutiva/solicitar-aprovacao'
-      :'/api/manifestacoes/'+encodeURIComponent(_cenAtual)+'/devolutiva/enviar';
-    const d=await api(url,{method:'POST',body:{texto}});
-    if(d.sucesso){
-      alert(paraAprovacao?'Enviado para aprovação.':'Devolutiva registrada.');
-      cenSelecionarMan(_cenAtual);loadCentralSAC();
-    } else alert('Erro: '+(d.erro||d.mensagem));
+    if(!_cenAtual) return semSel();
+    const texto=($('dev-texto')?.value||'').trim();
+    if(!texto){toast('Digite a devolutiva.');return;}
+    if(paraAprovacao){
+      if(!confirm('Enviar esta manifestação para aprovação?')) return;
+      return enviarParaAprovacao('Devolutiva: '+texto);
+    }
+    if(!confirm('Registrar a devolutiva e encerrar a manifestação?')) return;
+    const d=await patchMan({devolutiva:texto,status:'ENCERRADA'});
+    if(d.sucesso) depois('Devolutiva registrada e manifestação encerrada.'); else erro(d);
   };
 
-  window.cenAceitarDevolutiva = async function(){
-    if(!_cenAtual){alert('Selecione uma manifestação.');return;}
-    if(!confirm('Aceitar devolutiva e encerrar manifestação?')) return;
-    const d=await api('/api/manifestacoes/'+encodeURIComponent(_cenAtual)+'/devolutiva/aceitar',{method:'POST'});
-    if(d.sucesso){alert('Encerrado.');cenSelecionarMan(_cenAtual);loadCentralSAC();}
-    else alert('Erro: '+(d.erro||d.mensagem));
+  // ── RNC / encerrar ────────────────────────────────────────────────────────
+  window.cenCriarRNC = function(){
+    if(!_cenAtual) return semSel();
+    // RNC NÃO é criada automaticamente — humano confirma e preenche no módulo de RNC
+    if(confirm('RNC é criada manualmente no módulo de RNC, vinculando esta manifestação ('+_cenAtual+'). Abrir o módulo agora?')){
+      if(typeof navigate==='function') navigate('banco-rnc');
+    }
   };
 
-  // ── RNC ───────────────────────────────────────────────────────────────────
-  window.cenCriarRNC = async function(){
-    if(!_cenAtual){alert('Selecione uma manifestação.');return;}
-    // RNC NÃO é criada automaticamente — humano confirma e preenche
-    alert('Para criar RNC, acesse o módulo de RNC e vincule esta manifestação manualmente.\n\nProtocolo: '+(_cenAtual));
-  };
-
-  window.cenIgnorarRNC = function(){
-    const el=document.getElementById('cen-rnc-corpo');
-    if(el) el.innerHTML='<p style="font-size:12px;color:var(--gray-500)">RNC descartada para esta manifestação.</p>';
-  };
-
-  // ── encerrar ──────────────────────────────────────────────────────────────
   window.cenEncerrarManifestacao = async function(){
-    if(!_cenAtual){alert('Selecione uma manifestação.');return;}
+    if(!_cenAtual) return semSel();
     if(!confirm('Encerrar esta manifestação?')) return;
-    const d=await api('/api/manifestacoes/'+encodeURIComponent(_cenAtual)+'/encerrar',{method:'POST'});
-    if(d.sucesso){alert('Manifestação encerrada.');_cenAtual=null;const det=document.getElementById('cen-detalhe');if(det)det.style.display='none';const ph=document.getElementById('cen-placeholder');if(ph)ph.style.display='';loadCentralSAC();}
-    else alert('Erro: '+(d.erro||d.mensagem));
+    const d=await patchMan({status:'ENCERRADA'});
+    if(d.sucesso) depois('Manifestação encerrada.'); else erro(d);
   };
 
-  window.cenRegistrarDecisao = async function(){
-    if(!_cenAtual){alert('Selecione uma manifestação.');return;}
-    const texto=prompt('Registrar decisão/observação:');
-    if(!texto) return;
-    const d=await api('/api/manifestacoes/'+encodeURIComponent(_cenAtual)+'/decisao',{method:'POST',body:{texto}});
-    if(d.sucesso) cenAbrirTimeline(_cenAtual);
-    else alert('Erro: '+(d.erro||d.mensagem));
-  };
-
-  // ── timeline ──────────────────────────────────────────────────────────────
-  window.cenAbrirTimeline = async function(id){
-    const corpo=document.getElementById('cen-timeline-corpo');
-    if(!corpo) return;
-    const mid=id||_cenAtual;
-    if(!mid){corpo.innerHTML='';return;}
-    corpo.innerHTML='<p style="font-size:12px;color:var(--gray-400)">Carregando…</p>';
-    const d=await api('/api/manifestacoes/'+encodeURIComponent(mid)+'/eventos');
-    if(!d.sucesso){corpo.innerHTML='<p style="font-size:12px;color:var(--gray-400)">Indisponível.</p>';return;}
-    const evs=d.itens||d.eventos||[];
-    if(!evs.length){corpo.innerHTML='<p style="font-size:12px;color:var(--gray-400)">Sem eventos registrados.</p>';return;}
-    corpo.innerHTML='<div style="position:relative;padding-left:16px">'+
-      evs.map(ev=>`<div style="margin-bottom:10px;border-left:2px solid var(--gray-200);padding-left:10px">
-        <div style="font-size:10px;font-weight:700;color:var(--gray-500);text-transform:uppercase">${esc(ev.TIPO_EVENTO||ev.tipo||'Evento')}</div>
-        <div style="font-size:11px;color:var(--gray-700);margin-top:1px">${esc(ev.DETALHES||ev.descricao||'')}</div>
-        <div style="font-size:10px;color:var(--gray-400);margin-top:2px">${fmtdt(ev.DATA_EVENTO||ev.data)} · ${esc(ev.USUARIO||ev.usuario||'—')}</div>
-      </div>`).join('')+'</div>';
-  };
-
-  // ── histórico ─────────────────────────────────────────────────────────────
-  window.cenAbrirHistorico = async function(){
-    const corpo=document.getElementById('cen-historico-corpo');
-    if(!corpo||!_cenAtual) return;
-    corpo.innerHTML='<p style="font-size:12px;color:var(--gray-400)">Carregando…</p>';
-    const d=await api('/api/manifestacoes/'+encodeURIComponent(_cenAtual)+'/historico');
-    if(!d.sucesso){corpo.innerHTML='<p style="font-size:12px;color:var(--gray-400)">Indisponível.</p>';return;}
-    const h=d.itens||d.historico||[];
-    if(!h.length){corpo.innerHTML='<p style="font-size:12px;color:var(--gray-400)">Sem histórico.</p>';return;}
-    corpo.innerHTML=h.map(item=>`<div style="padding:6px 0;border-bottom:1px solid var(--gray-100)">
-      <div style="font-size:10px;font-weight:700;color:var(--gray-500)">${fmtdt(item.DATA||item.data)}</div>
-      <div style="font-size:11px;color:var(--gray-700)">${esc(item.DESCRICAO||item.descricao||item.ACAO||'')}</div>
-      <div style="font-size:10px;color:var(--gray-400)">${esc(item.USUARIO||item.usuario||'—')}</div>
-    </div>`).join('');
-  };
-
-  // ── Cérebro painel (novo layout estruturado) ───────────────────────────────
-  async function cenCarregarCerebro(m){
-    const p=document.getElementById('cen-cerebro-painel');
-    if(!p) return;
-    p.innerHTML='<div style="padding:16px;font-size:12px;color:var(--gray-400);text-align:center">Consultando Cérebro…</div>';
-    let d={sucesso:false};
-    try{ d=await api('/api/cerebro/casos-similares',{method:'POST',body:{
-      tipo:m.TIPO_MANIFESTACAO||m.TIPO,motivo:m.MOTIVO,produto:m.PRODUTO,empresa:m.EMPRESA,descricao:(m.DESCRICAO||'').slice(0,300)
-    }}); }catch(e){}
-
-    const casos=(d.casos||d.itens||[]).slice(0,4);
-    const causa=d.causa||d.CAUSA||m.CAUSA||'';
-    const base=d.base_casos||d.BASE_CASOS||casos.length;
-    const confianca=d.confianca||d.CONFIANCA||'';
-
-    // Alerta de reincidente
-    const reincidente=(d.reincidente||m.REINCIDENTE||false);
-    const reincQtd=d.reincidente_qtd||'';
-
-    let html='';
-
-    // badge sugestão IA
-    html+=`<div class="cb-sugestao-ia">SUGESTÃO DA IA · VALIDAR ANTES DE USAR</div>`;
-
-    // alerta reincidente
-    if(reincidente||reincQtd){
-      html+=`<div class="cb-alerta">
-        <strong>Cliente reincidente:</strong> ${reincQtd||'múltiplas'} reclamações nos últimos 12 meses.
-      </div>`;
-    }
-
-    // Causa mais provável
-    if(causa){
-      html+=`<div class="cb-section">
-        <div class="cb-section-title">Causa mais provável</div>
-        <div style="font-size:13px;font-weight:700;color:var(--gray-900);margin-bottom:4px">${esc(causa)}</div>
-        ${base?`<div style="font-size:11px;color:var(--gray-500)">Base: ${base} casos validados${confianca?' · '+confianca:''}</div>`:''}
-      </div>`;
-    }
-
-    // Casos similares
-    if(casos.length){
-      html+=`<div class="cb-section">
-        <div class="cb-section-title">Casos similares</div>`;
-      html+=casos.map(c=>{
-        const pct=c.SIMILARIDADE?Math.round(parseFloat(c.SIMILARIDADE)*100)+'%':c.SCORE?Math.round(c.SCORE*100)+'%':'';
-        const desc=(c.MOTIVO||c.DESCRICAO||'').slice(0,60);
-        const sol=(c.SOLUCAO||c.TRATATIVA_REALIZADA||'').slice(0,50);
-        return `<div class="cb-similar">
-          <div>
-            <div style="font-size:12px;font-weight:700;color:var(--gray-900)">${esc(c.PROTOCOLO||c.ID||'—')}</div>
-            <div style="font-size:11px;color:var(--gray-600)">${esc(desc)}${desc.length>=60?'…':''}</div>
-            ${sol?`<div style="font-size:10px;color:#16A34A;margin-top:2px;font-weight:600">resolvido: ${esc(sol)}</div>`:''}
-          </div>
-          ${pct?`<span class="cb-pct">${pct}</span>`:''}
-        </div>`;
-      }).join('');
-      html+=`</div>`;
-    } else if(!causa){
-      html+=`<div style="padding:16px;font-size:12px;color:var(--gray-400);text-align:center">Nenhum caso similar encontrado.</div>`;
-    }
-
-    // O que funcionou antes
-    const historico=d.historico_solucoes||d.solucoes||[];
-    if(historico.length){
-      html+=`<div class="cb-section">
-        <div class="cb-section-title">O que funcionou antes</div>
-        <ul style="padding-left:14px;margin:0;display:flex;flex-direction:column;gap:4px">
-          ${historico.slice(0,4).map(h=>`<li style="font-size:11px;color:var(--gray-700)">${esc(h)}</li>`).join('')}
-        </ul>
-      </div>`;
-    }
-
-    // Devolutiva sugerida
-    const devSugerida=d.devolutiva_sugerida||d.devolutiva||'';
-    if(devSugerida){
-      html+=`<div class="cb-section">
-        <div class="cb-section-title">Devolutiva sugerida</div>
-        <div id="cen-cerebro-devolutiva-texto" style="font-size:12px;color:#1F1F1F;line-height:1.6;margin-bottom:8px">${esc(devSugerida)}</div>
-        <button onclick="cenUsarSugestaoCerebro()" style="border:1px solid #C70602;background:none;color:#C70602;border-radius:7px;padding:5px 12px;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit">Usar como rascunho</button>
-      </div>`;
-    } else {
-      html+=`<div id="cen-cerebro-devolutiva-texto" style="display:none"></div>`;
-    }
-
-    p.innerHTML=html;
-  }
-
-  // ── nova manifestação pela central ────────────────────────────────────────
+  // ── navegação / painel ────────────────────────────────────────────────────
   window.abrirNovaCentralMan = function(){
     if(typeof navigate==='function') navigate('nova-manifestacao', document.querySelector('[onclick*=nova-manifestacao]'));
   };
 
-  window.cenToggleAcoes = function(){
-    const el=document.getElementById('cen-acoes-expand');
-    if(!el) return;
-    el.style.display=el.style.display==='none'?'':'none';
+  window.cenToggleAcoes = function(forcar){
+    const el=$('cen-acoes-expand'); if(!el) return;
+    const abrir=typeof forcar==='boolean'?forcar:el.style.display==='none';
+    el.style.display=abrir?'':'none';
+    const b=$('cen-btn-mais'); if(b) b.textContent=abrir?'Mais ações ▴':'Mais ações ▾';
+    if(abrir&&typeof forcar!=='boolean') el.scrollIntoView({behavior:'smooth',block:'nearest'});
   };
 
   window.cenAbrirFichaCompleta = function(){
     if(_cenAtual && typeof navigate==='function') navigate('banco-manifestacoes');
   };
 
-  window.cenFiltrarKpi = function(tipo){
-    document.querySelectorAll('.cen-kpi').forEach(k=>k.classList.remove('ativo'));
-    document.getElementById('ckpi-'+tipo)?.classList.add('ativo');
-    const now=Date.now();
-    let itens=_cenItens;
-    if(tipo==='pendentes') itens=itens.filter(m=>['NOVA','EM ANÁLISE','RECEBIDA'].includes(String(m.STATUS||'').toUpperCase()));
-    else if(tipo==='atrasados') itens=itens.filter(m=>m.PRAZO_RESPOSTA&&new Date(m.PRAZO_RESPOSTA)<now&&!['ENCERRADA','CONCLUÍDA'].includes(String(m.STATUS||'').toUpperCase()));
-    else if(tipo==='aprovacao') itens=itens.filter(m=>['AG. APROVAÇÃO','AGUARDANDO APROVAÇÃO'].includes(String(m.STATUS||'').toUpperCase()));
-    else if(tipo==='tratamento') itens=itens.filter(m=>String(m.STATUS||'').toUpperCase()==='EM TRATAMENTO');
-    else if(tipo==='encerradas') itens=itens.filter(m=>['ENCERRADA','CONCLUÍDA'].includes(String(m.STATUS||'').toUpperCase()));
-    else if(tipo==='terceiros') itens=itens.filter(m=>!m.USUARIO_CRIACAO||['PUBLICO','SITE'].includes(String(m.CANAL||'').toUpperCase()));
-    renderFilaCentral(itens);
-  };
+  // Cobrar setor / Escalar ao gestor: não existe endpoint no sistema — mantidos como no-op informativo
+  window.cenCobrarSetor = function(){toast(WHY_NOENDPOINT);};
+  window.cenEscalarGestor = function(){toast(WHY_NOENDPOINT);};
 
-  window.cenUsarSugestaoCerebro = function(){
-    const devEl=document.getElementById('dev-texto');
-    const sugestaoEl=document.getElementById('cen-cerebro-devolutiva-texto');
-    if(devEl&&sugestaoEl&&sugestaoEl.textContent){
-      devEl.value=sugestaoEl.textContent;
-      const acoes=document.getElementById('cen-acoes-expand');
-      if(acoes) acoes.style.display='';
-    } else {
-      alert('Nenhuma devolutiva sugerida disponível. Aguarde o Cérebro carregar.');
-    }
-  };
-
-  window.cenCobrarSetor = async function(){
-    if(!_cenAtual){ alert('Selecione uma manifestação primeiro.'); return; }
-    const ok=confirm('Registrar cobrança ao setor responsável?');
-    if(!ok) return;
-    const d=await api('/api/manifestacoes/'+encodeURIComponent(_cenAtual)+'/acao',{method:'POST',body:{acao:'COBRAR_SETOR',observacao:'Cobrança via Central SAC'}}).catch(()=>({sucesso:false}));
-    if(d.sucesso) alert('Cobrança registrada com sucesso.');
-    else alert('Registrado localmente. Setor notificado.');
-  };
-
-  window.cenEscalarGestor = async function(){
-    if(!_cenAtual){ alert('Selecione uma manifestação primeiro.'); return; }
-    const obs=prompt('Motivo da escalação (opcional):','');
-    if(obs===null) return;
-    const d=await api('/api/manifestacoes/'+encodeURIComponent(_cenAtual)+'/acao',{method:'POST',body:{acao:'ESCALAR_GESTOR',observacao:obs||'Escalado via Central SAC'}}).catch(()=>({sucesso:false}));
-    alert(d.sucesso?'Escalado ao gestor.':'Escalação registrada localmente.');
+  window.cenTab = function(tab, btn){
+    document.querySelectorAll('.cen-tabpanel').forEach(p=>p.classList.remove('active'));
+    document.querySelectorAll('.cen-tab').forEach(b=>b.classList.remove('active'));
+    const panel=$('centab-'+tab);
+    if(panel) panel.classList.add('active');
+    if(btn) btn.classList.add('active');
   };
 
   // ── pageLoader + default page ─────────────────────────────────────────────
@@ -15782,7 +15794,7 @@ async function mudarStatusMC(id, novoStatus) {
         // aguarda navegação inicial estar pronta
         setTimeout(()=>{
           if(typeof navigate==='function'){
-            const el=document.getElementById('sidebar-central-sac');
+            const el=$('sidebar-central-sac');
             navigate('central-sac', el);
           }
         },200);
