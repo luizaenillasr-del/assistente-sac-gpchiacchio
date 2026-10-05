@@ -62,12 +62,16 @@ table.ficha td{padding:1.5mm 2mm;border:1px solid #CFCFCF;font-size:7.8pt}
 .ev-area{flex:1;border:1.5px dashed #CFCFCF;display:grid;place-items:center;color:#929090;font-size:8pt;min-height:200mm}
 .causa-raiz{display:grid;grid-template-columns:30mm minmax(0,1fr);gap:3mm;align-items:end;background:#FDF2F2;padding:2mm}
 
+@page{size:A4 portrait;margin:0}
 @media print{
+  html,body{background:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   #nav-bar,#paginas-menu{display:none!important}
   #conteudo{margin-left:0;padding-top:0}
   .pagina-wrap{display:block!important;padding:0!important}
-  .folha{box-shadow:none;page-break-after:always;width:100%}
-  .folha-inner{padding:12mm 13mm;min-height:auto}
+  .folha{box-shadow:none;margin:0;width:210mm;height:296.5mm;overflow:hidden;break-after:page;page-break-after:always}
+  .pagina-wrap:last-child .folha{break-after:auto;page-break-after:auto}
+  .folha-inner{padding:12mm 13mm;min-height:0;height:296.5mm}
+  .ev-area{min-height:0}
 }
 </style>
 </head>
@@ -114,7 +118,7 @@ table.ficha td{padding:1.5mm 2mm;border:1px solid #CFCFCF;font-size:7.8pt}
 
   <!-- Cabeçalho -->
   <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #C70602;padding-bottom:3mm;gap:6mm">
-    <img src="/logo-chiacchio.png" alt="Grupo Chiacchio" style="height:15mm;width:auto;display:block">
+    <img src="/assets/logo-chiacchio.png" alt="Grupo Chiacchio" style="height:15mm;width:auto;display:block">
     <div style="flex:1">
       <div style="font-size:7.5pt;letter-spacing:.12em;color:#C70602;font-weight:700">SAC · ASSISTENTE SAC</div>
       <div style="font-size:13pt;font-weight:700">Ficha de Manifestação</div>
@@ -276,7 +280,7 @@ table.ficha td{padding:1.5mm 2mm;border:1px solid #CFCFCF;font-size:7.8pt}
 <div class="folha-inner" style="gap:2.3mm">
 
   <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #929090;padding-bottom:3mm;gap:6mm">
-    <img src="/logo-chiacchio.png" alt="Grupo Chiacchio" style="height:15mm;width:auto;display:block">
+    <img src="/assets/logo-chiacchio.png" alt="Grupo Chiacchio" style="height:15mm;width:auto;display:block">
     <div style="flex:1">
       <div style="font-size:7.5pt;letter-spacing:.12em;color:#666464;font-weight:700">SAC · MODELO OFICIAL EM USO</div>
       <div style="font-size:13pt;font-weight:700">FICHA DE ENCAMINHAMENTO DE MANIFESTAÇÃO</div>
@@ -369,8 +373,8 @@ table.ficha td{padding:1.5mm 2mm;border:1px solid #CFCFCF;font-size:7.8pt}
 <div class="folha">
 <div class="folha-inner" style="gap:3mm">
   <div class="rnc-cabecalho">
-    <div class="rnc-cab-logo"><img src="/logo-chiacchio.png" alt="Grupo Chiacchio" style="height:13mm;width:auto"></div>
-    <div class="rnc-cab-c1"><strong>Empresa:</strong> ___________________________</div>
+    <div class="rnc-cab-logo"><img src="/assets/logo-chiacchio.png" alt="Grupo Chiacchio" style="height:13mm;width:auto"></div>
+    <div class="rnc-cab-c1"><strong>Empresa:</strong> Chiacchio Embalagens</div>
     <div class="rnc-cab-c2"><strong>RT-0001</strong> &nbsp; Rev: 0000</div>
     <div class="rnc-cab-c3"><strong>Tipo de Documento:</strong> Relatório de Não Conformidade<div style="font-size:6.4pt;color:#545252;margin-top:.6mm">Criado: Gildásio Jr – Coordenador de Qualidade/ Process · Aprovado: Deibson Veloso – Diretor de Produção</div></div>
     <div class="rnc-cab-c4">Data: 20/03/26<br>1 de 5</div>
@@ -438,8 +442,8 @@ table.ficha td{padding:1.5mm 2mm;border:1px solid #CFCFCF;font-size:7.8pt}
 <div class="folha">
 <div class="folha-inner" style="gap:3mm">
   <div class="rnc-cabecalho">
-    <div class="rnc-cab-logo"><img src="/logo-chiacchio.png" alt="Grupo Chiacchio" style="height:13mm;width:auto"></div>
-    <div class="rnc-cab-c1"><strong>Empresa:</strong> ___________________________</div>
+    <div class="rnc-cab-logo"><img src="/assets/logo-chiacchio.png" alt="Grupo Chiacchio" style="height:13mm;width:auto"></div>
+    <div class="rnc-cab-c1"><strong>Empresa:</strong> Chiacchio Embalagens</div>
     <div class="rnc-cab-c2"><strong>RT-0001</strong> &nbsp; Rev: 0000</div>
     <div class="rnc-cab-c3"><strong>Tipo de Documento:</strong> Relatório de Não Conformidade<div style="font-size:6.4pt;color:#545252;margin-top:.6mm">Criado: Gildásio Jr – Coordenador de Qualidade/ Process · Aprovado: Deibson Veloso – Diretor de Produção</div></div>
     <div class="rnc-cab-c4">Data: 20/03/26<br>2 de 5</div>
@@ -511,8 +515,8 @@ table.ficha td{padding:1.5mm 2mm;border:1px solid #CFCFCF;font-size:7.8pt}
 <div class="folha">
 <div class="folha-inner" style="gap:3mm">
   <div class="rnc-cabecalho">
-    <div class="rnc-cab-logo"><img src="/logo-chiacchio.png" alt="Grupo Chiacchio" style="height:13mm;width:auto"></div>
-    <div class="rnc-cab-c1"><strong>Empresa:</strong> ___________________________</div>
+    <div class="rnc-cab-logo"><img src="/assets/logo-chiacchio.png" alt="Grupo Chiacchio" style="height:13mm;width:auto"></div>
+    <div class="rnc-cab-c1"><strong>Empresa:</strong> Chiacchio Embalagens</div>
     <div class="rnc-cab-c2"><strong>RT-0001</strong> &nbsp; Rev: 0000</div>
     <div class="rnc-cab-c3"><strong>Tipo de Documento:</strong> Relatório de Não Conformidade<div style="font-size:6.4pt;color:#545252;margin-top:.6mm">Criado: Gildásio Jr – Coordenador de Qualidade/ Process · Aprovado: Deibson Veloso – Diretor de Produção</div></div>
     <div class="rnc-cab-c4">Data: 20/03/26<br>3 de 5</div>
@@ -530,8 +534,8 @@ table.ficha td{padding:1.5mm 2mm;border:1px solid #CFCFCF;font-size:7.8pt}
 <div class="folha">
 <div class="folha-inner" style="gap:3mm">
   <div class="rnc-cabecalho">
-    <div class="rnc-cab-logo"><img src="/logo-chiacchio.png" alt="Grupo Chiacchio" style="height:13mm;width:auto"></div>
-    <div class="rnc-cab-c1"><strong>Empresa:</strong> ___________________________</div>
+    <div class="rnc-cab-logo"><img src="/assets/logo-chiacchio.png" alt="Grupo Chiacchio" style="height:13mm;width:auto"></div>
+    <div class="rnc-cab-c1"><strong>Empresa:</strong> Chiacchio Embalagens</div>
     <div class="rnc-cab-c2"><strong>RT-0001</strong> &nbsp; Rev: 0000</div>
     <div class="rnc-cab-c3"><strong>Tipo de Documento:</strong> Relatório de Não Conformidade<div style="font-size:6.4pt;color:#545252;margin-top:.6mm">Criado: Gildásio Jr – Coordenador de Qualidade/ Process · Aprovado: Deibson Veloso – Diretor de Produção</div></div>
     <div class="rnc-cab-c4">Data: 20/03/26<br>4 de 5</div>
@@ -549,8 +553,8 @@ table.ficha td{padding:1.5mm 2mm;border:1px solid #CFCFCF;font-size:7.8pt}
 <div class="folha">
 <div class="folha-inner" style="gap:3mm">
   <div class="rnc-cabecalho">
-    <div class="rnc-cab-logo"><img src="/logo-chiacchio.png" alt="Grupo Chiacchio" style="height:13mm;width:auto"></div>
-    <div class="rnc-cab-c1"><strong>Empresa:</strong> ___________________________</div>
+    <div class="rnc-cab-logo"><img src="/assets/logo-chiacchio.png" alt="Grupo Chiacchio" style="height:13mm;width:auto"></div>
+    <div class="rnc-cab-c1"><strong>Empresa:</strong> Chiacchio Embalagens</div>
     <div class="rnc-cab-c2"><strong>RT-0001</strong> &nbsp; Rev: 0000</div>
     <div class="rnc-cab-c3"><strong>Tipo de Documento:</strong> Relatório de Não Conformidade<div style="font-size:6.4pt;color:#545252;margin-top:.6mm">Criado: Gildásio Jr – Coordenador de Qualidade/ Process · Aprovado: Deibson Veloso – Diretor de Produção</div></div>
     <div class="rnc-cab-c4">Data: 20/03/26<br>5 de 5</div>
