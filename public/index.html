@@ -1416,6 +1416,7 @@
     <button class="sidebar-item" onclick="navigate('auditoria', this)"><span class="sidebar-dot"></span>Auditoria</button>
     <button class="sidebar-item" onclick="navigate('prazos-regionais', this)"><span class="sidebar-dot"></span>Configurações</button>
     <button class="sidebar-item" onclick="navigate('sugestoes-melhoria', this)"><span class="sidebar-dot"></span>Pesquisa de Satisfação</button>
+    <button class="sidebar-item" onclick="navigate('relatorio-satisfacao', this)"><span class="sidebar-dot"></span>Relatório de Satisfação</button>
   </div>
 
   <div class="sidebar-bottom">
@@ -3127,7 +3128,7 @@
     <div style="background:var(--surface);border-bottom:1px solid var(--border);padding:12px 20px;flex-shrink:0">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">
         <div>
-          <div style="font-size:18px;font-weight:800">Minha Central SAC</div>
+          <div style="font-size:24px;font-weight:700">Minha Central SAC</div>
           <div style="font-size:12px;color:var(--gray-400)">Olá, <strong id="cen-nome-analista">—</strong> · <span id="cen-empresa-analista"></span> · <span id="cen-data-atual"></span></div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
@@ -3135,22 +3136,22 @@
           <button class="btn btn-secondary" style="font-size:12px" onclick="abrirNovaCentralMan()">+ Nova Manifestação</button>
         </div>
       </div>
-      <div style="display:flex;gap:10px;overflow-x:auto;padding-bottom:2px">
-        <div class="cen-kpi" id="ckpi-total"><div class="cen-kpi-v" id="ckpi-v-total">—</div><div class="cen-kpi-l">Minhas</div></div>
-        <div class="cen-kpi" id="ckpi-pendentes"><div class="cen-kpi-v" id="ckpi-v-pendentes">—</div><div class="cen-kpi-l">Pendentes</div></div>
-        <div class="cen-kpi cen-kpi-warn" id="ckpi-atrasados"><div class="cen-kpi-v" id="ckpi-v-atrasados">—</div><div class="cen-kpi-l">Em Atraso</div></div>
-        <div class="cen-kpi" id="ckpi-aprovacao"><div class="cen-kpi-v" id="ckpi-v-aprovacao">—</div><div class="cen-kpi-l">Ag. Aprovação</div></div>
-        <div class="cen-kpi" id="ckpi-tratamento"><div class="cen-kpi-v" id="ckpi-v-tratamento">—</div><div class="cen-kpi-l">Em Tratamento</div></div>
-        <div class="cen-kpi" id="ckpi-encerradas"><div class="cen-kpi-v" id="ckpi-v-encerradas">—</div><div class="cen-kpi-l">Encerradas</div></div>
-        <div class="cen-kpi" id="ckpi-terceiros"><div class="cen-kpi-v" id="ckpi-v-terceiros">—</div><div class="cen-kpi-l">Externos</div></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:8px">
+        <div class="cen-kpi" id="ckpi-total" onclick="cenFiltrarKpi('total')" style="cursor:pointer"><div class="cen-kpi-v" id="ckpi-v-total">—</div><div class="cen-kpi-l">Minhas</div></div>
+        <div class="cen-kpi" id="ckpi-pendentes" onclick="cenFiltrarKpi('pendentes')" style="cursor:pointer"><div class="cen-kpi-v" id="ckpi-v-pendentes">—</div><div class="cen-kpi-l">Pendentes</div></div>
+        <div class="cen-kpi cen-kpi-warn" id="ckpi-atrasados" onclick="cenFiltrarKpi('atrasados')" style="cursor:pointer"><div class="cen-kpi-v" id="ckpi-v-atrasados">—</div><div class="cen-kpi-l">Em Atraso</div></div>
+        <div class="cen-kpi" id="ckpi-aprovacao" onclick="cenFiltrarKpi('aprovacao')" style="cursor:pointer"><div class="cen-kpi-v" id="ckpi-v-aprovacao">—</div><div class="cen-kpi-l">Ag. Aprovação</div></div>
+        <div class="cen-kpi" id="ckpi-tratamento" onclick="cenFiltrarKpi('tratamento')" style="cursor:pointer"><div class="cen-kpi-v" id="ckpi-v-tratamento">—</div><div class="cen-kpi-l">Em Tratamento</div></div>
+        <div class="cen-kpi" id="ckpi-encerradas" onclick="cenFiltrarKpi('encerradas')" style="cursor:pointer"><div class="cen-kpi-v" id="ckpi-v-encerradas">—</div><div class="cen-kpi-l">Encerradas</div></div>
+        <div class="cen-kpi" id="ckpi-terceiros" onclick="cenFiltrarKpi('terceiros')" style="cursor:pointer"><div class="cen-kpi-v" id="ckpi-v-terceiros">—</div><div class="cen-kpi-l">Externos</div></div>
       </div>
     </div>
 
     <!-- CORPO: 3 colunas -->
-    <div style="display:grid;grid-template-columns:300px 1fr 300px;height:calc(100% - 130px);overflow:hidden">
+    <div style="display:flex;height:calc(100% - 130px);overflow:hidden">
 
       <!-- COLUNA ESQUERDA: Fila -->
-      <div style="border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;background:var(--gray-50)">
+      <div style="flex:1 1 320px;min-width:0;border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;background:var(--gray-50)">
         <!-- Filtros -->
         <div style="padding:10px;border-bottom:1px solid var(--border);background:var(--surface)">
           <input id="cen-busca" class="form-input" placeholder="Protocolo, cliente, motivo..." style="font-size:12px;margin-bottom:6px" oninput="filtrarFilaCentral()">
@@ -3187,7 +3188,7 @@
       </div>
 
       <!-- COLUNA CENTRAL: Manifestação selecionada -->
-      <div style="display:flex;flex-direction:column;overflow:hidden">
+      <div style="flex:999 1 460px;min-width:0;display:flex;flex-direction:column;overflow:hidden">
         <!-- Placeholder quando nenhuma selecionada -->
         <div id="cen-placeholder" style="flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:var(--gray-400)">
           <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".4"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
@@ -3233,7 +3234,7 @@
             <div style="background:#fff;padding:12px 14px">
               <div style="font-size:14px;font-weight:700;color:#1A1A1A;margin-bottom:4px" id="cen-pa-titulo">—</div>
               <div style="font-size:11px;color:#888;margin-bottom:10px" id="cen-pa-detalhe">—</div>
-              <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <div id="cen-pa-botoes" style="display:flex;gap:8px;flex-wrap:wrap">
                 <button class="btn btn-primary" style="font-size:12px;background:#C70602;border-color:#C70602" onclick="cenCobrarSetor()">Cobrar setor</button>
                 <button class="btn btn-secondary" style="font-size:12px" onclick="cenEscalarGestor()">Escalar ao gestor</button>
                 <button class="btn btn-secondary" style="font-size:12px" onclick="cenToggleAcoes()">Mais ações ▾</button>
@@ -3521,7 +3522,7 @@
       </div>
 
       <!-- COLUNA DIREITA: Cérebro estruturado -->
-      <div style="border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;background:var(--gray-50)">
+      <div style="flex:1 1 280px;min-width:0;border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;background:var(--gray-50)">
         <div style="padding:10px 14px;border-bottom:1px solid var(--border);background:var(--surface);display:flex;align-items:center;gap:6px">
           <span style="width:8px;height:8px;border-radius:50%;background:#16A34A;display:inline-block"></span>
           <span style="font-size:13px;font-weight:800">Cérebro</span>
@@ -4714,6 +4715,315 @@
       </div>
     </div>
   </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     RELATÓRIO DE SATISFAÇÃO
+════════════════════════════════════════════════════════════ -->
+<div class="page" id="page-relatorio-satisfacao" style="background:#F4F4F4;overflow-y:auto">
+<style>
+.rel-card{background:#fff;border:1px solid #E4E4E4;border-radius:12px;padding:18px 20px}
+.rel-secao-titulo{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#929090;margin:0 0 8px}
+.rel-secao-textarea{width:100%;box-sizing:border-box;border:1px solid #D6D6D6;border-radius:7px;padding:10px 12px;font-size:13px;font-family:Montserrat,system-ui,sans-serif;resize:vertical;color:#1F1F1F;line-height:1.6}
+.rel-secao-textarea:focus{border-color:#C70602;outline:none}
+.rel-criterio-card{background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:6px}
+.rel-nota-grande{font-size:36px;font-weight:700;color:#1F1F1F;letter-spacing:-.02em}
+.rel-bar-bg{height:6px;background:#F4F4F4;border-radius:3px;overflow:hidden;flex:1}
+.rel-bar-fill{height:100%;border-radius:3px;background:#C70602}
+.rel-mes-row{display:grid;grid-template-columns:80px 70px 70px 70px 70px 70px 1fr;gap:8px;padding:8px 12px;border-bottom:1px solid #F4F4F4;font-size:12px;align-items:center}
+.rel-mes-row:hover{background:#FAFAFA}
+.rel-grafico-barra{display:flex;flex-direction:column;gap:4px;align-items:center;flex:1}
+.rel-grafico-barra-fill{background:#C70602;border-radius:3px 3px 0 0;min-height:2px;transition:height .3s}
+.rel-grafico-eixo{display:flex;align-items:flex-end;gap:6px;padding:0 8px}
+.rel-badge-empresa{border-radius:99px;padding:3px 10px;font-size:11px;font-weight:600}
+.rel-diretoria-aviso{background:#FFFBEF;border:1px solid #F1E2B5;border-radius:10px;padding:10px 14px;font-size:13px;color:#5E3B00;margin-bottom:14px;display:none}
+</style>
+
+<!-- CABEÇALHO -->
+<div style="padding:20px 24px 0;display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap">
+  <div>
+    <div style="font-size:12px;color:#929090;font-family:Montserrat,system-ui,sans-serif">Relacionamento / <span>Relatório de Satisfação</span></div>
+    <div style="font-size:24px;font-weight:700;margin-top:2px;font-family:Montserrat,system-ui,sans-serif;color:#1F1F1F">Relatório de Satisfação</div>
+    <div style="font-size:13px;color:#666464;line-height:1.5;margin-top:4px;font-family:Montserrat,system-ui,sans-serif">Relatório mensal para Diretoria e Presidência · Grupo Chiacchio</div>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+    <div id="rel-modo-diretoria-badge" style="display:none;background:#E6EEF8;color:#24508F;border-radius:99px;padding:4px 12px;font-size:11px;font-weight:700">VISÃO DA DIRETORIA</div>
+    <button onclick="relToggleDiretoria()" id="rel-btn-diretoria" class="btn btn-secondary" style="font-size:12px">Visão da Diretoria</button>
+    <button onclick="relAbrirModalEnvio()" class="btn btn-primary" style="font-size:12px">Enviar à Diretoria</button>
+  </div>
+</div>
+
+<!-- AVISO DIRETORIA -->
+<div id="rel-diretoria-aviso" class="rel-diretoria-aviso" style="margin:12px 24px 0">
+  ⭐ Modo de visualização da Diretoria ativo. Seções de análise são somente leitura.
+</div>
+
+<!-- FILTROS -->
+<div style="margin:12px 24px 0;background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:12px 14px;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end">
+  <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:#666464;font-weight:600;font-family:Montserrat,system-ui,sans-serif">EMPRESA
+    <select id="rel-f-empresa" onchange="relCarregar()" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:12.5px;color:#1F1F1F;font-family:Montserrat,system-ui,sans-serif">
+      <option value="Chiacchio Embalagens">Chiacchio Embalagens</option>
+      <option value="Plaschio">Plaschio</option>
+      <option value="Tubahia">Tubahia</option>
+    </select>
+  </label>
+  <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:#666464;font-weight:600;font-family:Montserrat,system-ui,sans-serif">ANO
+    <select id="rel-f-ano" onchange="relCarregar()" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:12.5px;color:#1F1F1F;font-family:Montserrat,system-ui,sans-serif">
+    </select>
+  </label>
+  <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:#666464;font-weight:600;font-family:Montserrat,system-ui,sans-serif">MÊS
+    <select id="rel-f-mes" onchange="relCarregar()" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:12.5px;color:#1F1F1F;font-family:Montserrat,system-ui,sans-serif">
+    </select>
+  </label>
+  <button onclick="relCarregar()" class="btn btn-primary" style="height:34px;font-size:12px">↻ Atualizar</button>
+</div>
+
+<!-- CONTEÚDO -->
+<div style="padding:16px 24px 32px;display:flex;flex-direction:column;gap:16px" id="rel-conteudo">
+  <!-- indicador carregando -->
+  <div id="rel-loading" style="text-align:center;padding:40px;color:#929090;font-size:13px;font-family:Montserrat,system-ui,sans-serif">Carregando...</div>
+</div>
+
+<!-- MODAL ENVIO -->
+<div id="rel-modal-envio" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;display:none;align-items:center;justify-content:center" onclick="if(event.target===this)relFecharModalEnvio()">
+  <div style="background:#fff;border-radius:12px;padding:24px;max-width:480px;width:calc(100% - 32px);display:flex;flex-direction:column;gap:14px">
+    <div style="font-size:18px;font-weight:700;font-family:Montserrat,system-ui,sans-serif">Enviar à Diretoria</div>
+    <div style="font-size:13px;color:#666464;font-family:Montserrat,system-ui,sans-serif">O relatório será disponibilizado via link. Copie e envie para os destinatários.</div>
+    <div style="background:#F4F4F4;border-radius:8px;padding:10px 12px;font-size:12px;font-family:monospace;word-break:break-all;color:#1F1F1F" id="rel-link-compartilhar">—</div>
+    <div style="font-size:12px;color:#929090;font-family:Montserrat,system-ui,sans-serif">Link gerado em: <span id="rel-link-data">—</span></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button onclick="relFecharModalEnvio()" class="btn btn-secondary" style="font-size:12px">Fechar</button>
+      <button onclick="relCopiarLink()" class="btn btn-primary" style="font-size:12px">Copiar link</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const MESES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  let _relDiretoria=false;
+  let _relDados=null;
+
+  function relEsc(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));}
+
+  function relFmt(v){const n=parseFloat(String(v).replace(',','.'));return isNaN(n)?'—':n.toFixed(1);}
+
+  function _relPopulaFiltros(){
+    const anoEl=document.getElementById('rel-f-ano');
+    const mesEl=document.getElementById('rel-f-mes');
+    if(anoEl&&!anoEl.options.length){
+      const cur=new Date().getFullYear();
+      for(let y=cur;y>=cur-3;y--){const o=document.createElement('option');o.value=y;o.textContent=y;if(y===cur)o.selected=true;anoEl.appendChild(o);}
+    }
+    if(mesEl&&!mesEl.options.length){
+      MESES.forEach((m,i)=>{const o=document.createElement('option');o.value=i+1;o.textContent=m;if(i+1===new Date().getMonth()+1)o.selected=true;mesEl.appendChild(o);});
+    }
+  }
+
+  window.relCarregar = async function(){
+    _relPopulaFiltros();
+    const empresa=document.getElementById('rel-f-empresa')?.value||'Chiacchio Embalagens';
+    const ano=document.getElementById('rel-f-ano')?.value||new Date().getFullYear();
+    const mes=document.getElementById('rel-f-mes')?.value||new Date().getMonth()+1;
+    const cont=document.getElementById('rel-conteudo');
+    const load=document.getElementById('rel-loading');
+    if(load) load.style.display='';
+    if(cont) cont.querySelectorAll(':not(#rel-loading)').forEach(e=>e.remove());
+
+    let dados={sucesso:false,itens:[],media_geral:null,criterios:[]};
+    try{
+      const tok=sessionStorage.getItem('sac-token');
+      const r=await fetch(`/api/pesquisas/relatorio?empresa=${encodeURIComponent(empresa)}&ano=${ano}&mes=${mes}`,{headers:tok?{Authorization:'Bearer '+tok}:{}});
+      if(r.ok) dados=await r.json();
+    }catch(e){}
+
+    if(load) load.style.display='none';
+    _relDados=dados;
+    _relRenderizar(empresa, Number(ano), Number(mes), dados);
+  };
+
+  function _relRenderizar(empresa, ano, mes, d){
+    const cont=document.getElementById('rel-conteudo');
+    if(!cont) return;
+    const nomeMes=MESES[mes-1]||'';
+    const itens=d.itens||[];
+    const mediaGeral=d.media_geral||null;
+    const criterios=d.criterios||[];
+    const historico=d.historico||[];
+
+    let html='';
+
+    // HERO
+    html+=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px">`;
+    const mediaVal=mediaGeral!=null?relFmt(mediaGeral):'—';
+    const cor=mediaGeral>=9?'#1E6B3A':mediaGeral>=7?'#7A4C00':'#A80502';
+    const bg=mediaGeral>=9?'#E6F2EA':mediaGeral>=7?'#FBF0D9':'#FDECEC';
+    html+=`<div class="rel-card" style="background:${bg};border-color:${cor}20">
+      <div class="rel-secao-titulo" style="color:${cor}">${relEsc(empresa)} · ${relEsc(nomeMes)} ${ano}</div>
+      <div class="rel-nota-grande" style="color:${cor}">${mediaVal}</div>
+      <div style="font-size:12px;color:${cor};font-weight:600">Nota média geral</div>
+      <div style="font-size:11px;color:${cor};margin-top:4px">${itens.length} respondente${itens.length!==1?'s':''}</div>
+    </div>`;
+
+    // Critérios
+    const critLabels={atendimento:'Atendimento',prazo:'Prazo',qualidade:'Qualidade',recomendacao:'Recomendaria'};
+    ['atendimento','prazo','qualidade','recomendacao'].forEach(crit=>{
+      const obj=criterios.find(c=>(c.criterio||'').toLowerCase()===crit)||{};
+      const nota=obj.media!=null?relFmt(obj.media):'—';
+      const pct=obj.media!=null?Math.round((parseFloat(obj.media)/10)*100):0;
+      html+=`<div class="rel-criterio-card">
+        <div class="rel-secao-titulo">${critLabels[crit]||crit}</div>
+        <div style="font-size:24px;font-weight:700;color:#1F1F1F">${nota}</div>
+        <div style="display:flex;align-items:center;gap:6px;margin-top:4px">
+          <div class="rel-bar-bg"><div class="rel-bar-fill" style="width:${pct}%"></div></div>
+          <span style="font-size:11px;color:#929090;white-space:nowrap">${pct}%</span>
+        </div>
+      </div>`;
+    });
+    html+=`</div>`;
+
+    // Gráfico evolução + tabela mensal
+    if(historico.length){
+      const max=Math.max(...historico.map(h=>parseFloat(h.media||0)||0),10);
+      html+=`<div class="rel-card">
+        <div class="rel-secao-titulo">Evolução mensal</div>
+        <div class="rel-grafico-eixo" style="height:120px;margin-bottom:8px">
+          ${historico.slice(-12).map(h=>{
+            const v=parseFloat(h.media||0)||0;
+            const h2=Math.round((v/max)*100);
+            const cor2=v>=9?'#1E6B3A':v>=7?'#7A4C00':'#C70602';
+            return `<div class="rel-grafico-barra">
+              <div style="font-size:10px;font-weight:700;color:${cor2}">${relFmt(v)}</div>
+              <div class="rel-grafico-barra-fill" style="height:${h2}px;background:${cor2};width:28px;border-radius:3px 3px 0 0"></div>
+              <div style="font-size:10px;color:#929090;white-space:nowrap">${relEsc(h.mes_label||h.mes||'')}</div>
+            </div>`;
+          }).join('')}
+        </div>
+        <div style="overflow-x:auto">
+          <div class="rel-mes-row" style="background:#F9F9F9;font-weight:700;font-size:11px;color:#929090;text-transform:uppercase;letter-spacing:.04em">
+            <span>Mês</span><span>Geral</span><span>Atend.</span><span>Prazo</span><span>Qualid.</span><span>Recom.</span><span>Respostas</span>
+          </div>
+          ${historico.slice(-12).map(h=>{
+            const v=parseFloat(h.media||0)||0;
+            const cl=v>=9?'color:#1E6B3A':v>=7?'color:#7A4C00':'color:#A80502';
+            return `<div class="rel-mes-row">
+              <span style="font-weight:600">${relEsc(h.mes_label||h.mes||'')}</span>
+              <span style="font-weight:700;${cl}">${relFmt(h.media)}</span>
+              <span>${relFmt(h.atendimento)}</span>
+              <span>${relFmt(h.prazo)}</span>
+              <span>${relFmt(h.qualidade)}</span>
+              <span>${relFmt(h.recomendacao)}</span>
+              <span>${h.total||0}</span>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+    }
+
+    // Seções de análise editáveis
+    const secoes=[
+      {id:'desempenho',label:'Desempenho do período',ph:'Descreva o desempenho geral neste período...'},
+      {id:'analise_critica',label:'Análise crítica',ph:'Pontos que merecem atenção da gestão...'},
+      {id:'pontos_fortes',label:'Pontos fortes',ph:'O que se destacou positivamente...'},
+      {id:'oportunidades',label:'Oportunidades de melhoria',ph:'O que pode ser aprimorado...'},
+      {id:'acoes',label:'Ações planejadas',ph:'Ações definidas para o próximo período...'},
+    ];
+    const textos=d.textos||{};
+    const ro=_relDiretoria?'readonly':'';
+    html+=`<div class="rel-card"><div style="display:flex;flex-direction:column;gap:14px">`;
+    secoes.forEach(s=>{
+      html+=`<div>
+        <div class="rel-secao-titulo">${relEsc(s.label)}</div>
+        <textarea id="rel-txt-${relEsc(s.id)}" class="rel-secao-textarea" rows="4" placeholder="${relEsc(s.ph)}" ${ro} onchange="relSalvarTexto('${relEsc(s.id)}')">${relEsc(textos[s.id]||'')}</textarea>
+      </div>`;
+    });
+    html+=`<div style="display:flex;justify-content:flex-end"><button onclick="relSalvarTodosTextos()" class="btn btn-primary" style="font-size:12px" ${_relDiretoria?'disabled':''}>Salvar análise</button></div>`;
+    html+=`</div></div>`;
+
+    // Notas baixas
+    const baixas=itens.filter(i=>parseFloat(i.MEDIA||i.media||10)<7);
+    if(baixas.length){
+      html+=`<div class="rel-card">
+        <div class="rel-secao-titulo">Notas baixas e tratativas (${baixas.length})</div>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+          ${baixas.map(i=>`<div style="padding:8px 10px;background:#FFF8F8;border:1px solid #F3CFCF;border-radius:8px;display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+            <div>
+              <div style="font-size:12px;font-weight:600;color:#1F1F1F">${relEsc(i.NOME||i.nome||i.CLIENTE||'—')}</div>
+              <div style="font-size:11px;color:#666464;margin-top:2px">${relEsc(i.COMENTARIO||i.comentario||i.OBSERVACAO||'')}</div>
+            </div>
+            <span style="font-size:18px;font-weight:700;color:#C70602;white-space:nowrap">${relFmt(i.MEDIA||i.media)}</span>
+          </div>`).join('')}
+        </div>
+      </div>`;
+    }
+
+    cont.insertAdjacentHTML('beforeend',html);
+  }
+
+  window.relSalvarTexto = async function(id){
+    const empresa=document.getElementById('rel-f-empresa')?.value||'';
+    const ano=document.getElementById('rel-f-ano')?.value||'';
+    const mes=document.getElementById('rel-f-mes')?.value||'';
+    const val=document.getElementById('rel-txt-'+id)?.value||'';
+    const tok=sessionStorage.getItem('sac-token');
+    try{
+      await fetch('/api/pesquisas/relatorio-texto',{
+        method:'POST',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/json'},
+        body:JSON.stringify({empresa,ano,mes,campo:id,valor:val})
+      });
+    }catch(e){}
+  };
+
+  window.relSalvarTodosTextos = async function(){
+    const ids=['desempenho','analise_critica','pontos_fortes','oportunidades','acoes'];
+    for(const id of ids) await relSalvarTexto(id);
+    const btn=document.querySelector('[onclick="relSalvarTodosTextos()"]');
+    if(btn){const orig=btn.textContent;btn.textContent='Salvo ✓';setTimeout(()=>{btn.textContent=orig;},2000);}
+  };
+
+  window.relToggleDiretoria = function(){
+    _relDiretoria=!_relDiretoria;
+    const badge=document.getElementById('rel-modo-diretoria-badge');
+    const aviso=document.getElementById('rel-diretoria-aviso');
+    const btn=document.getElementById('rel-btn-diretoria');
+    if(badge) badge.style.display=_relDiretoria?'':'none';
+    if(aviso) aviso.style.display=_relDiretoria?'':'none';
+    if(btn) btn.textContent=_relDiretoria?'Sair da visão':'Visão da Diretoria';
+    document.querySelectorAll('.rel-secao-textarea').forEach(t=>{
+      if(_relDiretoria) t.setAttribute('readonly','');else t.removeAttribute('readonly');
+    });
+  };
+
+  window.relAbrirModalEnvio = function(){
+    const modal=document.getElementById('rel-modal-envio');
+    const empresa=document.getElementById('rel-f-empresa')?.value||'';
+    const ano=document.getElementById('rel-f-ano')?.value||'';
+    const mes=document.getElementById('rel-f-mes')?.value||'';
+    if(modal){
+      modal.style.display='flex';
+      const link=window.location.origin+'/relatorio-satisfacao?empresa='+encodeURIComponent(empresa)+'&ano='+ano+'&mes='+mes;
+      const linkEl=document.getElementById('rel-link-compartilhar');
+      const dataEl=document.getElementById('rel-link-data');
+      if(linkEl) linkEl.textContent=link;
+      if(dataEl) dataEl.textContent=new Date().toLocaleString('pt-BR');
+    }
+  };
+
+  window.relFecharModalEnvio=function(){const m=document.getElementById('rel-modal-envio');if(m)m.style.display='none';};
+  window.relCopiarLink=function(){
+    const t=document.getElementById('rel-link-compartilhar')?.textContent||'';
+    navigator.clipboard.writeText(t).then(()=>{
+      const b=document.querySelector('[onclick="relCopiarLink()"]');
+      if(b){const o=b.textContent;b.textContent='Copiado!';setTimeout(()=>{b.textContent=o;},2000);}
+    }).catch(()=>{});
+  };
+
+  document.addEventListener('DOMContentLoaded',function(){
+    _relPopulaFiltros();
+    if(typeof pageLoaders!=='undefined') pageLoaders['relatorio-satisfacao']=function(){_relPopulaFiltros();relCarregar();};
+  });
+})();
+</script>
 </div>
 
 <div class="page" id="page-biblioteca-fichas" style="background:#F4F4F4;padding:0;position:relative">
@@ -8889,8 +9199,8 @@ window.navigate = function(page, el) {
   }
 
   const allowed={
-    'MASTER':['visao-geral','acompanhamento','nova-manifestacao','banco-manifestacoes','aprovadores','banco-rnc','setores','biblioteca-fichas','matriz','base-conhecimento','representantes','usuarios','cerebro','painel-maquina','sugestoes-melhoria','causas','matriz-conhecimento','alimentacao','auditoria','prazos-regionais','similares','rca','central-sac'],
-    'ANALISTA SAC':['visao-geral','acompanhamento','nova-manifestacao','banco-manifestacoes','aprovadores','banco-rnc','setores','biblioteca-fichas','matriz','base-conhecimento','cerebro','painel-maquina','sugestoes-melhoria','causas','matriz-conhecimento'],
+    'MASTER':['visao-geral','acompanhamento','nova-manifestacao','banco-manifestacoes','aprovadores','banco-rnc','setores','biblioteca-fichas','matriz','base-conhecimento','representantes','usuarios','cerebro','painel-maquina','sugestoes-melhoria','relatorio-satisfacao','causas','matriz-conhecimento','alimentacao','auditoria','prazos-regionais','similares','rca','central-sac'],
+    'ANALISTA SAC':['visao-geral','acompanhamento','nova-manifestacao','banco-manifestacoes','aprovadores','banco-rnc','setores','biblioteca-fichas','matriz','base-conhecimento','cerebro','painel-maquina','sugestoes-melhoria','relatorio-satisfacao','causas','matriz-conhecimento'],
     'SETOR RESPONSÁVEL':['setor-responsavel','banco-rnc'],
     'APROVADOR':['aprovadores','banco-rnc'],
     'RCA / REPRESENTANTE':['representantes']
@@ -14674,12 +14984,36 @@ async function mudarStatusMC(id, novoStatus) {
     const paWrap=document.getElementById('cen-proxima-acao');
     const paSetores=document.getElementById('cen-setores-lista');
     if(paWrap){
+      const st=String(m.STATUS||'').toUpperCase();
       const setor=m.SETOR_RESPONSAVEL||m.SETORES_CONFIRMADOS||'';
       const prazoStr=m.PRAZO_RESPOSTA?'Prazo: '+fmtdt(m.PRAZO_RESPOSTA):'';
-      if(setor||m.STATUS==='EM TRATAMENTO'){
-        paWrap.style.display='';
-        _setText('cen-pa-titulo', setor?'Cobrar resposta de '+setor:'Verificar andamento');
-        _setText('cen-pa-detalhe', prazoStr||'Aguardando retorno do setor');
+      const atrasado=m.PRAZO_RESPOSTA&&new Date(m.PRAZO_RESPOSTA)<Date.now();
+      paWrap.style.display='';
+      const botoesEl=document.getElementById('cen-pa-botoes');
+      if(['RECEBIDA','NOVA'].includes(st)){
+        _setText('cen-pa-titulo','Assumir e analisar');
+        _setText('cen-pa-detalhe',prazoStr||'Manifestação aguardando analista');
+        if(botoesEl) botoesEl.innerHTML=`<button class="btn btn-primary" style="font-size:12px" onclick="cenIniciarTratativa()">Assumir e analisar</button><button class="btn btn-secondary" style="font-size:12px" onclick="cenToggleAcoes()">Mais ações ▾</button>`;
+      } else if(st==='EM ANÁLISE'){
+        _setText('cen-pa-titulo','Validar e encaminhar');
+        _setText('cen-pa-detalhe','Conclusão da análise e envio ao setor');
+        if(botoesEl) botoesEl.innerHTML=`<button class="btn btn-primary" style="font-size:12px" onclick="cenToggleAcoes()">Validar e encaminhar</button>`;
+      } else if(st==='EM TRATAMENTO'){
+        _setText('cen-pa-titulo', atrasado?(setor?'Cobrar resposta de '+setor:'Cobrar andamento'):'Aguardando resposta do setor');
+        _setText('cen-pa-detalhe', prazoStr||'');
+        if(botoesEl) botoesEl.innerHTML=`<button class="btn btn-primary" style="font-size:12px;background:#C70602;border-color:#C70602" onclick="cenCobrarSetor()">Cobrar setor</button><button class="btn btn-secondary" style="font-size:12px" onclick="cenEscalarGestor()">Escalar ao gestor</button><button class="btn btn-secondary" style="font-size:12px" onclick="cenToggleAcoes()">Mais ações ▾</button>`;
+      } else if(['AG. APROVAÇÃO','AGUARDANDO APROVAÇÃO'].includes(st)){
+        _setText('cen-pa-titulo','Lembrar aprovador');
+        _setText('cen-pa-detalhe','Devolutiva aguardando aprovação');
+        if(botoesEl) botoesEl.innerHTML=`<button class="btn btn-primary" style="font-size:12px" onclick="cenSolicitarAprovacao()">Lembrar aprovador</button><button class="btn btn-secondary" style="font-size:12px" onclick="cenToggleAcoes()">Mais ações ▾</button>`;
+      } else if(['DEVOLUTIVA','DEVOLUTIVA ENVIADA'].includes(st)){
+        _setText('cen-pa-titulo','Registrar devolutiva');
+        _setText('cen-pa-detalhe','Enviar resposta ao cliente');
+        if(botoesEl) botoesEl.innerHTML=`<button class="btn btn-primary" style="font-size:12px" onclick="cenToggleAcoes()">Registrar devolutiva</button><button class="btn btn-secondary" style="font-size:12px" onclick="cenUsarSugestaoCerebro()">Usar sugestão do Cérebro</button>`;
+      } else if(['ENCERRADA','CONCLUÍDA'].includes(st)){
+        _setText('cen-pa-titulo','Manifestação encerrada');
+        _setText('cen-pa-detalhe','');
+        if(botoesEl) botoesEl.innerHTML=`<button class="btn btn-secondary" style="font-size:12px" onclick="cenAbrirFichaCompleta()">Ver ficha arquivada</button>`;
       } else {
         paWrap.style.display='none';
       }
@@ -14982,6 +15316,18 @@ async function mudarStatusMC(id, novoStatus) {
       </div>`;
     }
 
+    // Devolutiva sugerida
+    const devSugerida=d.devolutiva_sugerida||d.devolutiva||'';
+    if(devSugerida){
+      html+=`<div class="cb-section">
+        <div class="cb-section-title">Devolutiva sugerida</div>
+        <div id="cen-cerebro-devolutiva-texto" style="font-size:12px;color:#1F1F1F;line-height:1.6;margin-bottom:8px">${esc(devSugerida)}</div>
+        <button onclick="cenUsarSugestaoCerebro()" style="border:1px solid #C70602;background:none;color:#C70602;border-radius:7px;padding:5px 12px;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit">Usar como rascunho</button>
+      </div>`;
+    } else {
+      html+=`<div id="cen-cerebro-devolutiva-texto" style="display:none"></div>`;
+    }
+
     p.innerHTML=html;
   }
 
@@ -14998,6 +15344,32 @@ async function mudarStatusMC(id, novoStatus) {
 
   window.cenAbrirFichaCompleta = function(){
     if(_cenAtual && typeof navigate==='function') navigate('banco-manifestacoes');
+  };
+
+  window.cenFiltrarKpi = function(tipo){
+    document.querySelectorAll('.cen-kpi').forEach(k=>k.classList.remove('ativo'));
+    document.getElementById('ckpi-'+tipo)?.classList.add('ativo');
+    const now=Date.now();
+    let itens=_cenItens;
+    if(tipo==='pendentes') itens=itens.filter(m=>['NOVA','EM ANÁLISE','RECEBIDA'].includes(String(m.STATUS||'').toUpperCase()));
+    else if(tipo==='atrasados') itens=itens.filter(m=>m.PRAZO_RESPOSTA&&new Date(m.PRAZO_RESPOSTA)<now&&!['ENCERRADA','CONCLUÍDA'].includes(String(m.STATUS||'').toUpperCase()));
+    else if(tipo==='aprovacao') itens=itens.filter(m=>['AG. APROVAÇÃO','AGUARDANDO APROVAÇÃO'].includes(String(m.STATUS||'').toUpperCase()));
+    else if(tipo==='tratamento') itens=itens.filter(m=>String(m.STATUS||'').toUpperCase()==='EM TRATAMENTO');
+    else if(tipo==='encerradas') itens=itens.filter(m=>['ENCERRADA','CONCLUÍDA'].includes(String(m.STATUS||'').toUpperCase()));
+    else if(tipo==='terceiros') itens=itens.filter(m=>!m.USUARIO_CRIACAO||['PUBLICO','SITE'].includes(String(m.CANAL||'').toUpperCase()));
+    renderFilaCentral(itens);
+  };
+
+  window.cenUsarSugestaoCerebro = function(){
+    const devEl=document.getElementById('dev-texto');
+    const sugestaoEl=document.getElementById('cen-cerebro-devolutiva-texto');
+    if(devEl&&sugestaoEl&&sugestaoEl.textContent){
+      devEl.value=sugestaoEl.textContent;
+      const acoes=document.getElementById('cen-acoes-expand');
+      if(acoes) acoes.style.display='';
+    } else {
+      alert('Nenhuma devolutiva sugerida disponível. Aguarde o Cérebro carregar.');
+    }
   };
 
   window.cenCobrarSetor = async function(){
