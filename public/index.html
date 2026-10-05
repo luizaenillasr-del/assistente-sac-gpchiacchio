@@ -15556,6 +15556,7 @@ let _alimDica = '';
 let _alimStep = 1;
 let _alimRows = []; // parsed CSV/JSON rows
 let _alimCols = []; // columns from file
+let _alimSheetHeaders = []; // existing headers on destination sheet
 let _alimMapa = {}; // { colArquivo: colDestino }
 let _alimValidados = []; // rows after validation
 let _alimDuplicados = 0;
@@ -15644,6 +15645,7 @@ window.abrirWizardAlim = function(aba, titulo, dica){
   _alimStep = 1;
   _alimRows = [];
   _alimCols = [];
+  _alimSheetHeaders = [];
   _alimMapa = {};
   _alimValidados = [];
   _alimDuplicados = 0;
@@ -15708,6 +15710,13 @@ window.alimWizNext = async function(){
     btn.textContent='Avançar →'; btn.disabled=false;
     alimWizRender();
   } else if(_alimStep===2){
+    // Fetch sheet headers for auto-mapping
+    try {
+      const tok=sessionStorage.getItem('sac-token');
+      const r=await fetch(API+'/api/planilha/'+encodeURIComponent(_alimAba)+'/cabecalhos',{headers:{Authorization:'Bearer '+tok}});
+      const d=await r.json();
+      _alimSheetHeaders = (d.cabecalhos||[]);
+    } catch(e){ _alimSheetHeaders=[]; }
     alimSetStep(3); alimWizRender();
   } else if(_alimStep===3){
     // Coleta mapeamento
@@ -15764,14 +15773,32 @@ function alimWizRender(){
       </div>`;
   } else if(_alimStep===3){
     btnNext.textContent='Avançar →';
+    // Auto-match CSV columns to sheet headers (case-insensitive, normalize underscores/spaces)
+    function alimAutoMatch(col){
+      if(!_alimSheetHeaders.length) return col;
+      const norm = s => s.toLowerCase().replace(/[\s_-]+/g,'');
+      const n = norm(col);
+      // exact
+      let m = _alimSheetHeaders.find(h => norm(h)===n);
+      if(m) return m;
+      // contains
+      m = _alimSheetHeaders.find(h => norm(h).includes(n) || n.includes(norm(h)));
+      if(m) return m;
+      return col;
+    }
+    const optList = _alimSheetHeaders.length
+      ? `<datalist id="alim-hdr-list">${_alimSheetHeaders.map(h=>`<option value="${h}">`).join('')}</datalist>`
+      : '';
     body.innerHTML=`
-      <div style="font-size:13px;color:#545252;margin-bottom:14px">Mapeie as colunas do arquivo para os campos de destino na aba <strong>${_alimAba}</strong>. Deixe em branco para ignorar a coluna.</div>
+      ${optList}
+      <div style="font-size:13px;color:#545252;margin-bottom:8px">Mapeie as colunas do arquivo para os campos de destino na aba <strong>${_alimAba}</strong>.</div>
+      ${_alimSheetHeaders.length?`<div style="font-size:12px;color:#1E6B3A;background:#E6F2EA;border-radius:6px;padding:8px 12px;margin-bottom:12px">✓ ${_alimSheetHeaders.length} colunas da planilha carregadas — sugestões automáticas aplicadas.</div>`:''}
       <div style="display:flex;flex-direction:column;gap:8px">
         ${_alimCols.map(c=>`
           <div style="display:flex;align-items:center;gap:12px">
             <div style="width:180px;font-size:12.5px;font-weight:600;color:#1F1F1F;flex-shrink:0">${c}</div>
             <div style="color:#D0D0D0;font-size:14px">→</div>
-            <input data-alim-col="${c}" style="flex:1;height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 10px;font-size:12.5px;font-family:inherit" placeholder="Nome da coluna destino" value="${c}">
+            <input data-alim-col="${c}" list="alim-hdr-list" style="flex:1;height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 10px;font-size:12.5px;font-family:inherit" placeholder="Nome da coluna destino" value="${alimAutoMatch(c)}">
           </div>`).join('')}
       </div>`;
   } else if(_alimStep===4){

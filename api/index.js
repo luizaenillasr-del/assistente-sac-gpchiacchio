@@ -2711,6 +2711,14 @@ app.get('/api/planilha/:aba', requerPerfil('MASTER','ANALISTA SAC'), async (req,
   } catch(e) { res.status(500).json({ sucesso:false, erro:e.message, itens:[] }); }
 });
 
+app.get('/api/planilha/:aba/cabecalhos', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
+  try {
+    const aba = req.params.aba.toUpperCase().replace(/[^A-Z0-9_]/g,'');
+    const headers = await obterCabecalhos(aba).catch(()=>[]);
+    res.json({ sucesso:true, aba, cabecalhos: headers });
+  } catch(e) { res.status(500).json({ sucesso:false, erro:e.message, cabecalhos:[] }); }
+});
+
 app.post('/api/planilha/:aba/importar', requerPerfil('MASTER'), async (req,res)=>{
   try {
     const aba = req.params.aba.toUpperCase().replace(/[^A-Z0-9_]/g,'');
@@ -2718,7 +2726,20 @@ app.post('/api/planilha/:aba/importar', requerPerfil('MASTER'), async (req,res)=
     if(!Array.isArray(itens)||!itens.length) return res.status(400).json({ sucesso:false, erro:'Nenhum item.' });
     if(cabecalhos && Array.isArray(cabecalhos)) await garantirAbaComCabecalhos(aba, cabecalhos);
     let criados=0;
-    for(const item of itens){ await appendObjeto(aba, item); criados++; }
+    const agora = new Date().toISOString();
+    for(const item of itens){
+      // For MANIFESTACOES, auto-fill required fields if missing
+      if(aba==='MANIFESTACOES'){
+        if(!item.ID_MANIFESTACAO) item.ID_MANIFESTACAO = await gerarProximoID('MANIFESTACOES','MAN','ID_MANIFESTACAO');
+        if(!item.DATA_ABERTURA) item.DATA_ABERTURA = agora;
+        if(!item.DATA_REGISTRO) item.DATA_REGISTRO = agora;
+        if(!item.STATUS) item.STATUS = 'ABERTA';
+        if(!item.USUARIO_CRIACAO) item.USUARIO_CRIACAO = req.user.usuario;
+        if(!item.ORIGEM) item.ORIGEM = 'IMPORTACAO';
+      }
+      await appendObjeto(aba, item);
+      criados++;
+    }
     await registrarAuditoria(req.user.usuario,'IMPORTOU_DADOS_PLANILHA',`${criados} linhas`,aba,null,{aba,total:criados});
     res.json({ sucesso:true, criados, aba });
   } catch(e) { res.status(500).json({ sucesso:false, erro:e.message }); }
