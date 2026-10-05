@@ -4709,6 +4709,134 @@ app.get('/api/alimentacao/historico', requerPerfil('MASTER'), async (req,res)=>{
   } catch(e){ res.status(500).json({sucesso:false,erro:e.message,itens:[]}); }
 });
 
+// POST /api/alimentacao/upload-docx — parse Word form → manifestação object
+app.post('/api/alimentacao/upload-docx', requerPerfil('MASTER','ANALISTA SAC'), (req,res)=>{
+  const Busboy = (() => { try { return require('busboy'); } catch { return null; } })();
+  const AdmZip = (() => { try { return require('adm-zip'); } catch { return null; } })();
+  if (!Busboy || !AdmZip) return res.status(500).json({sucesso:false,erro:'Dependências não disponíveis.'});
+  const bb = Busboy({ headers: req.headers });
+  const chunks = [];
+  let filename = '';
+  bb.on('file', (_field, file, info) => {
+    filename = info.filename || '';
+    file.on('data', d => chunks.push(d));
+  });
+  bb.on('finish', () => {
+    try {
+      const buf = Buffer.concat(chunks);
+      const zip = new AdmZip(buf);
+      const entry = zip.getEntry('word/document.xml');
+      if (!entry) return res.status(400).json({sucesso:false,erro:'Arquivo inválido: não é um .docx válido.'});
+      const xml = zip.readAsText(entry);
+      // Extract all text grouped by paragraph/table-cell
+      const nsR = /w:r[^a-zA-Z][^>]*>|<w:r>/g;
+      const textRe = /<w:t[^>]*>([^<]*)<\/w:t>/g;
+      const parRe = /<w:p[ >][\s\S]*?<\/w:p>/g;
+      const tcRe = /<w:tc[ >][\s\S]*?<\/w:tc>/g;
+      const trRe = /<w:tr[ >][\s\S]*?<\/w:tr>/g;
+      const tblRe = /<w:tbl[ >][\s\S]*?<\/w:tbl>/g;
+
+      function extractText(xmlFrag) {
+        let t='', m; const re=/<w:t[^>]*>([^<]*)<\/w:t>/g;
+        while((m=re.exec(xmlFrag))!==null) t+=m[1];
+        return t.trim();
+      }
+
+      // Parse tables into [{label, value}] pairs
+      const tables = [];
+      let tm; const tblRe2=/<w:tbl[ >][\s\S]*?<\/w:tbl>/g;
+      while((tm=tblRe2.exec(xml))!==null){
+        const rows=[];
+        let rm; const trRe2=/<w:tr[ >][\s\S]*?<\/w:tr>/g;
+        while((rm=trRe2.exec(tm[0]))!==null){
+          const cells=[];
+          let cm; const tcRe2=/<w:tc[ >][\s\S]*?<\/w:tc>/g;
+          while((cm=tcRe2.exec(rm[0]))!==null) cells.push(extractText(cm[0]));
+          if(cells.length) rows.push(cells);
+        }
+        tables.push(rows);
+      }
+
+      // Helper: find value in tables by label keyword
+      function findVal(keyword) {
+        for(const t of tables) for(const row of t){
+          for(let i=0;i<row.length-1;i++){
+            if(row[i].toLowerCase().includes(keyword.toLowerCase()) && row[i+1]) return row[i+1].trim();
+          }
+          if(row.length===1 && row[0].toLowerCase().includes(keyword.toLowerCase())){
+            // next row may be value
+            const ti=tables.indexOf(t), ri=t.indexOf(row);
+            if(t[ri+1]&&t[ri+1][0]) return t[ri+1][0].trim();
+          }
+        }
+        return '';
+      }
+
+      // Map Word form fields → MANIFESTACOES columns
+      const dataReg = findVal('Data do Registro');
+      const nRecl   = findVal('Nº Reclamação');
+      const atendente = findVal('Atendente');
+      const nomeCliente = findVal('Nome do Cliente');
+      const empresa = findVal('Empresa / Razão Social') || findVal('Empresa');
+      const cnpj = findVal('CNPJ');
+      const tel  = findVal('Telefone');
+      const email = findVal('E-mail');
+      const tipo = findVal('Tipo de Manifestação');
+      const motivo = findVal('Motivo da Manifestação');
+      const descricao = findVal('Descrição Detalhada');
+      const produto = findVal('Produto');
+      const lote = findVal('Lote');
+      const nfe = findVal('NFe');
+      const causaId = findVal('Causa Identificada');
+      const acaoCorr = findVal('Ação Corretiva');
+      const acaoPrev = findVal('Ação Preventiva');
+      const dataConc = findVal('Data da Conclusão') || findVal('Data de Conclusão');
+      const responsavel = findVal('Responsável pela Tratativa') || findVal('Responsável');
+      const dataRet = findVal('Data de Retorno');
+      const resolvida = findVal('Manifestação Resolvida');
+      const clienteInfo = findVal('Cliente Informado');
+      const obsFinais = findVal('Observações Finais') || findVal('Observações');
+
+      // Detect tipo from checkbox pattern [x] / (x)
+      let tipoLimpo = 'Reclamação';
+      if(/\[x\]\s*Reclamação|\(x\)\s*Reclamação/i.test(tipo)) tipoLimpo='Reclamação';
+      else if(/\[x\]\s*Dúvida|\(x\)\s*Dúvida/i.test(tipo)) tipoLimpo='Dúvida';
+      else if(/\[x\]\s*Sugestão|\(x\)\s*Sugestão/i.test(tipo)) tipoLimpo='Sugestão';
+      else if(/\[x\]\s*Elogio|\(x\)\s*Elogio/i.test(tipo)) tipoLimpo='Elogio';
+
+      const objeto = {
+        DATA_REGISTRO: dataReg,
+        EMPRESA_RECLAMANTE: empresa,
+        CNPJ: cnpj,
+        CONTATO: nomeCliente,
+        TELEFONE: tel,
+        EMAIL: email,
+        PRODUTO: produto,
+        LOTE: lote,
+        NFE: nfe,
+        TIPO: tipoLimpo,
+        DESCRICAO: descricao || motivo,
+        DESCRICAO_MANIFESTACAO: descricao || motivo,
+        STATUS: acaoCorr ? 'CONCLUIDA' : 'RECEBIDA',
+        STATUS_TRATATIVA: acaoCorr ? 'CONCLUIDA' : 'NÃO INICIADA',
+        CANAL: atendente ? 'FICHA' : '',
+        USUARIO_CRIACAO: atendente,
+        ORIGEM: 'DOCUMENTO',
+        ARQUIVO_ORIGEM: filename,
+        TRATATIVA_REALIZADA: acaoCorr,
+        DATA_CONCLUSAO_TRATATIVA: dataConc,
+        DEVOLUTIVA_FINAL: obsFinais,
+        DATA_DEVOLUTIVA: dataRet,
+      };
+      // Remove empty keys
+      Object.keys(objeto).forEach(k=>{ if(!objeto[k]) delete objeto[k]; });
+
+      res.json({sucesso:true,objeto,arquivo:filename,tabelas:tables.length});
+    } catch(e){ res.status(500).json({sucesso:false,erro:'Erro ao processar arquivo: '+e.message}); }
+  });
+  req.pipe(bb);
+});
+
 app.post('/api/matriz-tratamento', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
   try {
     const b = req.body||{};
