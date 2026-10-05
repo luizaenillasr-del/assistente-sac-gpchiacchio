@@ -5073,20 +5073,6 @@ app.get('/api/admin/config-permissoes', requerPerfil('MASTER'), (req, res) => {
   });
 });
 
-// ═════════════════════════════════════════════════════════════════════════════
-// CATCH ALL
-// ═════════════════════════════════════════════════════════════════════════════
-
-// ===== CATCH ALL =====
-app.use((req, res) => {
-  res.status(404).json({ sucesso:false, erro:`Rota não encontrada: ${req.method} ${req.path}` });
-});
-app.use((err, req, res, next) => {
-  console.error(err);
-  const msg = err?.status === 403 || err?.message?.includes('CORS') ? 'Origem não autorizada.' : 'Erro interno do servidor.';
-  res.status(err?.status || 500).json({ sucesso:false, erro: msg });
-});
-
 // ===== ALIMENTAÇÃO DA FERRAMENTA — STATUS DAS FONTES =====
 app.get('/api/alimentacao/status', requerPerfil('MASTER'), async (req,res)=>{
   try {
@@ -5287,6 +5273,18 @@ app.patch('/api/matriz-tratamento/:id', requerPerfil('MASTER','ANALISTA SAC'), a
     if (!r) return res.status(404).json({sucesso:false,erro:'Regra não encontrada.'});
     res.json({sucesso:true});
   } catch(e){ res.status(500).json({sucesso:false,erro:e.message}); }
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// CATCH ALL
+// ═════════════════════════════════════════════════════════════════════════════
+app.use((req, res) => {
+  res.status(404).json({ sucesso:false, erro:`Rota não encontrada: ${req.method} ${req.path}` });
+});
+app.use((err, req, res, next) => {
+  console.error(err);
+  const msg = err?.status === 403 || err?.message?.includes('CORS') ? 'Origem não autorizada.' : 'Erro interno do servidor.';
+  res.status(err?.status || 500).json({ sucesso:false, erro: msg });
 });
 
 // P021: garantir cabeçalhos do LOG_SISTEMA na inicialização
