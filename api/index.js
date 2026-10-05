@@ -4681,6 +4681,61 @@ app.use((err, req, res, next) => {
   res.status(err?.status || 500).json({ sucesso:false, erro: msg });
 });
 
+// ===== ALIMENTAÇÃO DA FERRAMENTA — STATUS DAS FONTES =====
+app.get('/api/alimentacao/status', requerPerfil('MASTER'), async (req,res)=>{
+  try {
+    const abas = [
+      'BANCO_HISTORICO','MANIFESTACOES','CAUSAS','CONFIG_SETORES',
+      'PRODUTOS','BANCO_RNC','FICHAS_BIBLIOTECA','MATRIZ_TRATAMENTO',
+      'REPRESENTANTES','PESQUISAS_SATISFACAO','POLITICAS','PROCEDIMENTOS'
+    ];
+    const resultados = await Promise.allSettled(abas.map(aba=>lerAba(aba,5000).then(r=>({aba,ok:true,total:r.length})).catch(()=>({aba,ok:false,total:0}))));
+    const fontes = {};
+    for(const r of resultados){
+      if(r.status==='fulfilled') fontes[r.value.aba]={ok:r.value.ok,total:r.value.total};
+    }
+    res.json({sucesso:true,fontes});
+  } catch(e){ res.status(500).json({sucesso:false,erro:e.message,fontes:{}}); }
+});
+
+app.get('/api/alimentacao/historico', requerPerfil('MASTER'), async (req,res)=>{
+  try {
+    const logs = await lerAba('LOG_SISTEMA',3000).catch(()=>[]);
+    const importacoes = logs
+      .filter(l=>l.ACAO==='IMPORTOU_DADOS_PLANILHA'||l.ACAO==='IMPORTOU_DADOS')
+      .slice(-100)
+      .reverse();
+    res.json({sucesso:true,total:importacoes.length,itens:importacoes});
+  } catch(e){ res.status(500).json({sucesso:false,erro:e.message,itens:[]}); }
+});
+
+app.post('/api/matriz-tratamento', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
+  try {
+    const b = req.body||{};
+    if(!b.TIPO_MANIFESTACAO&&!b.CAUSA) return res.status(400).json({sucesso:false,erro:'Tipo de manifestação ou causa são obrigatórios.'});
+    const id = await gerarProximoID('MATRIZ_TRATAMENTO','MTR','ID_REGRA');
+    const obj = {
+      ID_REGRA:id,
+      TIPO_MANIFESTACAO:b.TIPO_MANIFESTACAO||'',
+      EMPRESA:b.EMPRESA||'',
+      CAUSA:b.CAUSA||'',
+      SUBCAUSA:b.SUBCAUSA||'',
+      SETOR_RESPONSAVEL:b.SETOR_RESPONSAVEL||'',
+      SLA_HORAS:b.SLA_HORAS||'',
+      PRIORIDADE:b.PRIORIDADE||'NORMAL',
+      TRATATIVA_PADRAO:b.TRATATIVA_PADRAO||'',
+      DEVOLUTIVA_PADRAO:b.DEVOLUTIVA_PADRAO||'',
+      REQUER_APROVACAO:b.REQUER_APROVACAO||'NAO',
+      ATIVO:b.ATIVO!==false?'SIM':'NAO',
+      DATA_CRIACAO:new Date().toISOString(),
+      CRIADO_POR:req.user.usuario
+    };
+    await appendObjeto('MATRIZ_TRATAMENTO',obj);
+    await registrarAuditoria(req.user.usuario,'CRIOU_REGRA_MATRIZ',id,'MATRIZ_TRATAMENTO',null,{causa:obj.CAUSA});
+    res.json({sucesso:true,regra:obj});
+  } catch(e){ res.status(500).json({sucesso:false,erro:e.message}); }
+});
+
 // P021: garantir cabeçalhos do LOG_SISTEMA na inicialização
 const LOG_SISTEMA_HEADERS = ['DATA_HORA','USUARIO','ACAO','ID_MANIFESTACAO','ENTIDADE','VALOR_ANTERIOR','VALOR_NOVO'];
 garantirAbaComCabecalhos('LOG_SISTEMA', LOG_SISTEMA_HEADERS).catch(e => console.error('Aviso: não foi possível garantir cabeçalhos LOG_SISTEMA:', e.message));

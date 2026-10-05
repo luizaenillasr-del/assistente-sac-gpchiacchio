@@ -1398,6 +1398,7 @@
 
   <div class="sidebar-section">Administração</div>
   <div style="display:flex;flex-direction:column;gap:2px">
+    <button class="sidebar-item" id="sidebar-alimentacao" style="display:none" onclick="navigate('alimentacao', this)"><span class="sidebar-dot"></span>Alimentação da ferramenta</button>
     <button class="sidebar-item" data-v5-page="usuarios" onclick="navigate('usuarios', this)" style="position:relative"><span class="sidebar-dot"></span>Usuários<span id="badge-solicitacoes" onclick="event.stopPropagation();abrirPainelNotificacoes()" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);background:#C8102E;color:white;font-size:10px;font-weight:700;border-radius:10px;padding:1px 6px;min-width:18px;text-align:center;cursor:pointer" title="Ver solicitações pendentes"></span></button>
     <button class="sidebar-item" onclick="navigate('auditoria', this)"><span class="sidebar-dot"></span>Auditoria</button>
     <button class="sidebar-item" onclick="navigate('prazos-regionais', this)"><span class="sidebar-dot"></span>Configurações</button>
@@ -5080,6 +5081,7 @@ function navigate(page, el) {
   if (el) el.classList.add('active');
   if (page === 'biblioteca-fichas') loadBiblioteca(true);
   if (page === 'matriz-conhecimento') loadMatrizConhecimento();
+  if (page === 'alimentacao' && typeof window.loadAlimentacao === 'function') window.loadAlimentacao();
 }
 
 // ===== BIBLIOTECA DE FICHAS =====
@@ -8864,7 +8866,7 @@ window.navigate = function(page, el) {
   }
 
   const allowed={
-    'MASTER':['visao-geral','acompanhamento','nova-manifestacao','banco-manifestacoes','aprovadores','banco-rnc','setores','biblioteca-fichas','matriz','base-conhecimento','representantes','usuarios','cerebro','painel-maquina','sugestoes-melhoria','causas','matriz-conhecimento'],
+    'MASTER':['visao-geral','acompanhamento','nova-manifestacao','banco-manifestacoes','aprovadores','banco-rnc','setores','biblioteca-fichas','matriz','base-conhecimento','representantes','usuarios','cerebro','painel-maquina','sugestoes-melhoria','causas','matriz-conhecimento','alimentacao','auditoria','prazos-regionais','similares','rca','central-sac'],
     'ANALISTA SAC':['visao-geral','acompanhamento','nova-manifestacao','banco-manifestacoes','aprovadores','banco-rnc','setores','biblioteca-fichas','matriz','base-conhecimento','cerebro','painel-maquina','sugestoes-melhoria','causas','matriz-conhecimento'],
     'SETOR RESPONSÁVEL':['setor-responsavel','banco-rnc'],
     'APROVADOR':['aprovadores','banco-rnc'],
@@ -15166,6 +15168,496 @@ async function mudarStatusMC(id, novoStatus) {
     if(!d.sucesso){alert('Erro ao salvar: '+(d.erro||d.mensagem));return;}
     alert('Diagnóstico salvo com sucesso!');
   };
+
+})();
+</script>
+
+<!-- ============================================================ -->
+<!-- ALIMENTAÇÃO DA FERRAMENTA                                    -->
+<!-- ============================================================ -->
+<div class="page" id="page-alimentacao" style="background:#F4F4F4;overflow-y:auto">
+<style>
+.alim-card{background:#fff;border:1px solid #E4E4E4;border-radius:12px;padding:20px 22px;display:flex;flex-direction:column;gap:8px;position:relative}
+.alim-card-title{font-size:13px;font-weight:700;color:#1F1F1F}
+.alim-card-sub{font-size:11.5px;color:#929090}
+.alim-badge{display:inline-flex;align-items:center;gap:4px;border-radius:20px;padding:2px 10px;font-size:11px;font-weight:600}
+.alim-badge-ok{background:#E6F2EA;color:#1E6B3A}
+.alim-badge-warn{background:#FFF3E0;color:#7A4C00}
+.alim-badge-err{background:#FDECEC;color:#A80502}
+.alim-status-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;display:inline-block}
+.alim-status-dot.ok{background:#22C55E}
+.alim-status-dot.warn{background:#F59E0B}
+.alim-status-dot.err{background:#EF4444}
+.alim-btn{height:34px;border:1px solid #D6D6D6;background:#fff;border-radius:7px;padding:0 14px;cursor:pointer;font-size:12.5px;font-weight:600;font-family:Montserrat,system-ui,sans-serif;color:#1F1F1F;transition:background .12s,border-color .12s}
+.alim-btn:hover{background:#F4F4F4}
+.alim-btn-primary{background:#C70602;border-color:#C70602;color:#fff}
+.alim-btn-primary:hover{background:#A80502;border-color:#A80502}
+.alim-section-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#929090;margin:0 0 10px}
+.alim-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
+
+/* Wizard */
+.alim-wizard{background:#fff;border-radius:14px;border:1px solid #E4E4E4;overflow:hidden}
+.alim-wizard-steps{display:flex;border-bottom:1px solid #E4E4E4;padding:0 20px;gap:0;overflow-x:auto}
+.alim-wizard-step{padding:12px 16px;font-size:12px;font-weight:600;color:#929090;border-bottom:2px solid transparent;white-space:nowrap;cursor:default}
+.alim-wizard-step.ativo{color:#C70602;border-bottom-color:#C70602}
+.alim-wizard-step.concluido{color:#1E6B3A}
+.alim-wizard-body{padding:24px}
+.alim-wizard-footer{padding:16px 24px;border-top:1px solid #E4E4E4;display:flex;justify-content:space-between;gap:10px}
+
+/* Tabela histórico */
+.alim-hist-row{display:grid;grid-template-columns:150px 120px 1fr 80px;gap:12px;padding:9px 12px;border-bottom:1px solid #F4F4F4;font-size:12.5px;align-items:center}
+.alim-hist-row:hover{background:#FAFAFA}
+.alim-hist-header{background:#F9F9F9;font-weight:700;font-size:11px;color:#929090;text-transform:uppercase;letter-spacing:.04em}
+</style>
+
+<div style="padding:20px 24px 0;display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap">
+  <div>
+    <div style="font-size:12px;color:#929090;font-family:Montserrat,system-ui,sans-serif">Administração / Alimentação da ferramenta</div>
+    <div style="font-size:22px;font-weight:700;margin-top:2px;font-family:Montserrat,system-ui,sans-serif;color:#1F1F1F">Alimentação da ferramenta</div>
+    <div style="font-size:13px;color:#666464;line-height:1.5;margin-top:4px;font-family:Montserrat,system-ui,sans-serif">Importe e atualize as fontes de dados que alimentam o SAC: histórico, cadastros, conhecimento e regras.</div>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <button class="alim-btn" onclick="loadAlimentacao()">↻ Atualizar status</button>
+  </div>
+</div>
+
+<!-- KPIs rápidos -->
+<div id="alim-kpis" style="margin:16px 24px 0;display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px">
+  <div class="alim-card" style="flex-direction:row;align-items:center;gap:14px;padding:14px 18px">
+    <div>
+      <div style="font-size:22px;font-weight:800;color:#1F1F1F" id="alim-kpi-total">–</div>
+      <div style="font-size:11.5px;color:#929090">Fontes ativas</div>
+    </div>
+  </div>
+  <div class="alim-card" style="flex-direction:row;align-items:center;gap:14px;padding:14px 18px">
+    <div>
+      <div style="font-size:22px;font-weight:800;color:#22C55E" id="alim-kpi-ok">–</div>
+      <div style="font-size:11.5px;color:#929090">Com registros</div>
+    </div>
+  </div>
+  <div class="alim-card" style="flex-direction:row;align-items:center;gap:14px;padding:14px 18px">
+    <div>
+      <div style="font-size:22px;font-weight:800;color:#F59E0B" id="alim-kpi-vazio">–</div>
+      <div style="font-size:11.5px;color:#929090">Vazias</div>
+    </div>
+  </div>
+  <div class="alim-card" style="flex-direction:row;align-items:center;gap:14px;padding:14px 18px">
+    <div>
+      <div style="font-size:22px;font-weight:800;color:#C70602" id="alim-kpi-importacoes">–</div>
+      <div style="font-size:11.5px;color:#929090">Importações (total)</div>
+    </div>
+  </div>
+</div>
+
+<!-- FONTES DE DADOS -->
+<div style="margin:20px 24px 0">
+  <div class="alim-section-title">Histórico de manifestações</div>
+  <div class="alim-grid" id="alim-grid-historico">
+    <div class="alim-card"><div class="alim-card-title">Banco de casos (histórico)</div><div class="alim-card-sub">Aba: BANCO_HISTORICO</div><div id="alim-s-BANCO_HISTORICO" style="margin-top:4px"><span class="alim-badge alim-badge-warn">Carregando...</span></div><button class="alim-btn alim-btn-primary" style="margin-top:10px;align-self:flex-start" onclick="abrirWizardAlim('BANCO_HISTORICO','Banco de Casos','Histórico de manifestações antigas — colunas: EMPRESA, CLIENTE, CNPJ, TIPO, MOTIVO, DATA')">↑ Importar dados</button></div>
+    <div class="alim-card"><div class="alim-card-title">Manifestações ativas</div><div class="alim-card-sub">Aba: MANIFESTACOES</div><div id="alim-s-MANIFESTACOES" style="margin-top:4px"><span class="alim-badge alim-badge-warn">Carregando...</span></div><button class="alim-btn" style="margin-top:10px;align-self:flex-start" onclick="navigate('banco-manifestacoes',document.querySelector('[onclick*=banco-manifestacoes]'))">Ver manifestações →</button></div>
+  </div>
+</div>
+
+<div style="margin:20px 24px 0">
+  <div class="alim-section-title">Cadastros</div>
+  <div class="alim-grid" id="alim-grid-cadastros">
+    <div class="alim-card"><div class="alim-card-title">Causas e Subcausas</div><div class="alim-card-sub">Aba: CAUSAS</div><div id="alim-s-CAUSAS" style="margin-top:4px"><span class="alim-badge alim-badge-warn">Carregando...</span></div><button class="alim-btn alim-btn-primary" style="margin-top:10px;align-self:flex-start" onclick="abrirWizardAlim('CAUSAS','Causas e Subcausas','Colunas recomendadas: ID_CAUSA, CATEGORIA, TIPO, CAUSA, SUBCAUSA, SETOR_RESPONSAVEL, PALAVRAS_CHAVE')">↑ Importar causas</button></div>
+    <div class="alim-card"><div class="alim-card-title">Setores e SLAs</div><div class="alim-card-sub">Aba: CONFIG_SETORES</div><div id="alim-s-CONFIG_SETORES" style="margin-top:4px"><span class="alim-badge alim-badge-warn">Carregando...</span></div><button class="alim-btn alim-btn-primary" style="margin-top:10px;align-self:flex-start" onclick="abrirWizardAlim('CONFIG_SETORES','Setores e SLAs','Colunas recomendadas: NOME_SETOR, EMPRESA, SLA_HORAS, EMAIL_RESPONSAVEL, ATIVO')">↑ Importar setores</button></div>
+    <div class="alim-card"><div class="alim-card-title">Produtos</div><div class="alim-card-sub">Aba: PRODUTOS</div><div id="alim-s-PRODUTOS" style="margin-top:4px"><span class="alim-badge alim-badge-warn">Carregando...</span></div><button class="alim-btn alim-btn-primary" style="margin-top:10px;align-self:flex-start" onclick="abrirWizardAlim('PRODUTOS','Produtos','Colunas recomendadas: EMPRESA, PRODUTO, CODIGO, FAMILIA, LINHA, ATIVO')">↑ Importar produtos</button></div>
+    <div class="alim-card"><div class="alim-card-title">Representantes (RCA)</div><div class="alim-card-sub">Aba: REPRESENTANTES</div><div id="alim-s-REPRESENTANTES" style="margin-top:4px"><span class="alim-badge alim-badge-warn">Carregando...</span></div><button class="alim-btn alim-btn-primary" style="margin-top:10px;align-self:flex-start" onclick="abrirWizardAlim('REPRESENTANTES','Representantes','Colunas recomendadas: NOME, CODIGO_RCA, EMAIL, EMPRESA, REGIAO, ATIVO')">↑ Importar representantes</button></div>
+    <div class="alim-card"><div class="alim-card-title">RNCs</div><div class="alim-card-sub">Aba: BANCO_RNC</div><div id="alim-s-BANCO_RNC" style="margin-top:4px"><span class="alim-badge alim-badge-warn">Carregando...</span></div><button class="alim-btn" style="margin-top:10px;align-self:flex-start" onclick="navigate('banco-rnc',document.querySelector('[onclick*=banco-rnc]'))">Ver RNCs →</button></div>
+    <div class="alim-card"><div class="alim-card-title">Arquivo de Fichas</div><div class="alim-card-sub">Aba: FICHAS_BIBLIOTECA</div><div id="alim-s-FICHAS_BIBLIOTECA" style="margin-top:4px"><span class="alim-badge alim-badge-warn">Carregando...</span></div><button class="alim-btn" style="margin-top:10px;align-self:flex-start" onclick="navigate('biblioteca-fichas',document.querySelector('[onclick*=biblioteca-fichas]'))">Ver arquivo →</button></div>
+  </div>
+</div>
+
+<div style="margin:20px 24px 0">
+  <div class="alim-section-title">Conhecimento — Cérebro SAC</div>
+  <div class="alim-grid">
+    <div class="alim-card"><div class="alim-card-title">Matriz de Tratamento</div><div class="alim-card-sub">Aba: MATRIZ_TRATAMENTO</div><div id="alim-s-MATRIZ_TRATAMENTO" style="margin-top:4px"><span class="alim-badge alim-badge-warn">Carregando...</span></div><button class="alim-btn alim-btn-primary" style="margin-top:10px;align-self:flex-start" onclick="abrirWizardAlim('MATRIZ_TRATAMENTO','Matriz de Tratamento','Colunas recomendadas: TIPO_MANIFESTACAO, EMPRESA, CAUSA, SUBCAUSA, SETOR_RESPONSAVEL, SLA_HORAS, PRIORIDADE, TRATATIVA_PADRAO, DEVOLUTIVA_PADRAO')">↑ Importar regras</button></div>
+    <div class="alim-card"><div class="alim-card-title">Procedimentos operacionais</div><div class="alim-card-sub">Aba: PROCEDIMENTOS</div><div id="alim-s-PROCEDIMENTOS" style="margin-top:4px"><span class="alim-badge alim-badge-warn">Carregando...</span></div><button class="alim-btn alim-btn-primary" style="margin-top:10px;align-self:flex-start" onclick="abrirWizardAlim('PROCEDIMENTOS','Procedimentos','Colunas recomendadas: SETOR, EMPRESA, NOME, OBJETIVO, QUANDO_USAR, PASSOS, RESPONSAVEL')">↑ Importar procedimentos</button></div>
+    <div class="alim-card"><div class="alim-card-title">Políticas</div><div class="alim-card-sub">Aba: POLITICAS</div><div id="alim-s-POLITICAS" style="margin-top:4px"><span class="alim-badge alim-badge-warn">Carregando...</span></div><button class="alim-btn alim-btn-primary" style="margin-top:10px;align-self:flex-start" onclick="abrirWizardAlim('POLITICAS','Políticas','Colunas recomendadas: SETOR, EMPRESA, NOME, OBJETIVO, REGRA_OFICIAL, LIMITES, CONDICOES')">↑ Importar políticas</button></div>
+    <div class="alim-card"><div class="alim-card-title">Pesquisas de Satisfação</div><div class="alim-card-sub">Aba: PESQUISAS_SATISFACAO</div><div id="alim-s-PESQUISAS_SATISFACAO" style="margin-top:4px"><span class="alim-badge alim-badge-warn">Carregando...</span></div><button class="alim-btn alim-btn-primary" style="margin-top:10px;align-self:flex-start" onclick="abrirWizardAlim('PESQUISAS_SATISFACAO','Pesquisas de Satisfação','Colunas recomendadas: ID_MANIFESTACAO, EMPRESA, CLIENTE, NOTA_GERAL, NOTA_ATENDIMENTO, NOTA_RESOLUCAO, COMENTARIO, DATA')">↑ Importar pesquisas</button></div>
+  </div>
+</div>
+
+<!-- HISTÓRICO DE IMPORTAÇÕES -->
+<div style="margin:20px 24px 32px">
+  <div class="alim-section-title">Histórico de importações</div>
+  <div class="alim-card" style="padding:0;gap:0;overflow:hidden">
+    <div class="alim-hist-row alim-hist-header">
+      <span>Data/hora</span><span>Usuário</span><span>Ação / Destino</span><span>Registros</span>
+    </div>
+    <div id="alim-hist-body" style="max-height:320px;overflow-y:auto">
+      <div style="padding:20px;text-align:center;color:#929090;font-size:13px">Carregando histórico...</div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL WIZARD IMPORTAÇÃO -->
+<div id="modal-alim-wizard" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;align-items:center;justify-content:center;padding:20px">
+  <div style="background:#fff;border-radius:16px;max-width:680px;width:100%;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.35)">
+    <div style="padding:20px 24px 16px;border-bottom:1px solid #E4E4E4;display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-size:15px;font-weight:800;color:#1F1F1F" id="alim-wiz-titulo">Importar dados</div>
+        <div style="font-size:12px;color:#929090;margin-top:2px" id="alim-wiz-sub"></div>
+      </div>
+      <button onclick="fecharWizardAlim()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#929090;line-height:1">×</button>
+    </div>
+
+    <!-- Steps indicator -->
+    <div style="padding:12px 24px 0;display:flex;gap:6px;align-items:center" id="alim-wiz-steps">
+      <span id="alim-step-1" class="alim-wizard-step ativo">1 · Arquivo</span>
+      <span style="color:#D0D0D0;font-size:12px">›</span>
+      <span id="alim-step-2" class="alim-wizard-step">2 · Prévia</span>
+      <span style="color:#D0D0D0;font-size:12px">›</span>
+      <span id="alim-step-3" class="alim-wizard-step">3 · Mapeamento</span>
+      <span style="color:#D0D0D0;font-size:12px">›</span>
+      <span id="alim-step-4" class="alim-wizard-step">4 · Validação</span>
+      <span style="color:#D0D0D0;font-size:12px">›</span>
+      <span id="alim-step-5" class="alim-wizard-step">5 · Confirmar</span>
+    </div>
+
+    <div style="flex:1;overflow-y:auto;padding:20px 24px" id="alim-wiz-body"></div>
+
+    <div style="padding:14px 24px;border-top:1px solid #E4E4E4;display:flex;justify-content:space-between;gap:10px">
+      <button class="alim-btn" id="alim-wiz-btn-back" onclick="alimWizPrev()" style="display:none">← Voltar</button>
+      <div style="flex:1"></div>
+      <button class="alim-btn" onclick="fecharWizardAlim()">Cancelar</button>
+      <button class="alim-btn alim-btn-primary" id="alim-wiz-btn-next" onclick="alimWizNext()">Avançar →</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- /page-alimentacao -->
+
+<script>
+// ===== ALIMENTAÇÃO DA FERRAMENTA =====
+(function(){
+
+let _alimAba = '';
+let _alimTitulo = '';
+let _alimDica = '';
+let _alimStep = 1;
+let _alimRows = []; // parsed CSV/JSON rows
+let _alimCols = []; // columns from file
+let _alimMapa = {}; // { colArquivo: colDestino }
+let _alimValidados = []; // rows after validation
+let _alimDuplicados = 0;
+
+function fmt(v){ return v||'–'; }
+
+function statusBadge(aba, total){
+  const el = document.getElementById('alim-s-'+aba);
+  if(!el) return;
+  if(total===null){ el.innerHTML='<span class="alim-badge alim-badge-err"><span class="alim-status-dot err"></span> Erro</span>'; return; }
+  if(total===0){ el.innerHTML='<span class="alim-badge alim-badge-warn"><span class="alim-status-dot warn"></span> Vazia</span>'; return; }
+  el.innerHTML='<span class="alim-badge alim-badge-ok"><span class="alim-status-dot ok"></span> '+total.toLocaleString('pt-BR')+' registros</span>';
+}
+
+window.loadAlimentacao = async function(){
+  const tok = sessionStorage.getItem('sac-token');
+  if(!tok) return;
+
+  // Reset KPIs
+  ['alim-kpi-total','alim-kpi-ok','alim-kpi-vazio','alim-kpi-importacoes'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.textContent='–';
+  });
+
+  // Reset all badges
+  ['BANCO_HISTORICO','MANIFESTACOES','CAUSAS','CONFIG_SETORES','PRODUTOS','REPRESENTANTES',
+   'BANCO_RNC','FICHAS_BIBLIOTECA','MATRIZ_TRATAMENTO','PROCEDIMENTOS','POLITICAS','PESQUISAS_SATISFACAO']
+  .forEach(aba=>{
+    const el=document.getElementById('alim-s-'+aba);
+    if(el) el.innerHTML='<span class="alim-badge alim-badge-warn">Carregando...</span>';
+  });
+
+  try {
+    const [statusRes, histRes] = await Promise.allSettled([
+      fetch(API+'/api/alimentacao/status',{headers:{'Authorization':'Bearer '+tok}}).then(r=>r.json()),
+      fetch(API+'/api/alimentacao/historico',{headers:{'Authorization':'Bearer '+tok}}).then(r=>r.json())
+    ]);
+
+    if(statusRes.status==='fulfilled' && statusRes.value.sucesso){
+      const fontes = statusRes.value.fontes||{};
+      let totalFontes=0, totalOk=0, totalVazio=0;
+      for(const [aba, info] of Object.entries(fontes)){
+        totalFontes++;
+        if(info.total>0) totalOk++; else totalVazio++;
+        statusBadge(aba, info.ok ? info.total : null);
+      }
+      const kpiTotal=document.getElementById('alim-kpi-total');
+      const kpiOk=document.getElementById('alim-kpi-ok');
+      const kpiVazio=document.getElementById('alim-kpi-vazio');
+      if(kpiTotal) kpiTotal.textContent=totalFontes;
+      if(kpiOk) kpiOk.textContent=totalOk;
+      if(kpiVazio) kpiVazio.textContent=totalVazio;
+    }
+
+    if(histRes.status==='fulfilled' && histRes.value.sucesso){
+      const itens = histRes.value.itens||[];
+      const kpiImp=document.getElementById('alim-kpi-importacoes');
+      if(kpiImp) kpiImp.textContent=histRes.value.total||0;
+      renderHistorico(itens);
+    }
+  } catch(e){ console.error('[alimentacao]',e); }
+};
+
+function renderHistorico(itens){
+  const body=document.getElementById('alim-hist-body');
+  if(!body) return;
+  if(!itens.length){ body.innerHTML='<div style="padding:20px;text-align:center;color:#929090;font-size:13px">Nenhuma importação registrada ainda.</div>'; return; }
+  body.innerHTML = itens.map(i=>{
+    const dt = i.DATA_HORA ? new Date(i.DATA_HORA).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}) : '–';
+    const aba = i.ENTIDADE||i.ID_MANIFESTACAO||'–';
+    const total = i.VALOR_NOVO ? (typeof i.VALOR_NOVO==='string' ? i.VALOR_NOVO : JSON.stringify(i.VALOR_NOVO)) : '–';
+    return `<div class="alim-hist-row">
+      <span style="color:#545252">${dt}</span>
+      <span style="font-weight:600">${i.USUARIO||'–'}</span>
+      <span style="color:#1F1F1F">${aba}</span>
+      <span style="color:#22C55E;font-weight:600">${total}</span>
+    </div>`;
+  }).join('');
+}
+
+// ── WIZARD ───────────────────────────────────────────────────────
+
+window.abrirWizardAlim = function(aba, titulo, dica){
+  _alimAba = aba;
+  _alimTitulo = titulo;
+  _alimDica = dica;
+  _alimStep = 1;
+  _alimRows = [];
+  _alimCols = [];
+  _alimMapa = {};
+  _alimValidados = [];
+  _alimDuplicados = 0;
+
+  document.getElementById('alim-wiz-titulo').textContent = 'Importar: '+titulo;
+  document.getElementById('alim-wiz-sub').textContent = 'Aba de destino: '+aba;
+  document.getElementById('modal-alim-wizard').style.display='flex';
+  alimWizRender();
+};
+
+window.fecharWizardAlim = function(){
+  document.getElementById('modal-alim-wizard').style.display='none';
+};
+
+function alimSetStep(n){
+  _alimStep=n;
+  [1,2,3,4,5].forEach(i=>{
+    const el=document.getElementById('alim-step-'+i);
+    if(!el) return;
+    el.classList.remove('ativo','concluido');
+    if(i===n) el.classList.add('ativo');
+    else if(i<n) el.classList.add('concluido');
+  });
+}
+
+window.alimWizNext = async function(){
+  const btn=document.getElementById('alim-wiz-btn-next');
+  if(_alimStep===1){
+    // Parse file
+    const fi=document.getElementById('alim-file-input');
+    if(!fi||!fi.files.length){ alert('Selecione um arquivo.'); return; }
+    const f=fi.files[0];
+    btn.textContent='Lendo...'; btn.disabled=true;
+    try {
+      const text = await f.text();
+      if(f.name.endsWith('.json')){
+        const parsed=JSON.parse(text);
+        _alimRows=Array.isArray(parsed)?parsed:(parsed.itens||parsed.data||[parsed]);
+      } else {
+        _alimRows=parseCSV(text);
+      }
+      if(!_alimRows.length) throw new Error('Arquivo vazio ou formato inválido.');
+      _alimCols=Object.keys(_alimRows[0]);
+      alimSetStep(2);
+    } catch(e){ alert('Erro ao ler arquivo: '+e.message); }
+    btn.textContent='Avançar →'; btn.disabled=false;
+    alimWizRender();
+  } else if(_alimStep===2){
+    alimSetStep(3); alimWizRender();
+  } else if(_alimStep===3){
+    // Coleta mapeamento
+    _alimMapa={};
+    document.querySelectorAll('[data-alim-col]').forEach(sel=>{
+      if(sel.value) _alimMapa[sel.dataset.alimCol]=sel.value;
+    });
+    alimSetStep(4); alimWizRender();
+  } else if(_alimStep===4){
+    // Validação já foi feita ao renderizar
+    alimSetStep(5); alimWizRender();
+  } else if(_alimStep===5){
+    await alimImportar();
+  }
+  // update back button
+  document.getElementById('alim-wiz-btn-back').style.display=_alimStep>1?'':'none';
+};
+
+window.alimWizPrev = function(){
+  if(_alimStep>1){ alimSetStep(_alimStep-1); alimWizRender(); }
+  document.getElementById('alim-wiz-btn-back').style.display=_alimStep>1?'':'none';
+};
+
+function alimWizRender(){
+  const body=document.getElementById('alim-wiz-body');
+  const btnNext=document.getElementById('alim-wiz-btn-next');
+  if(!body) return;
+
+  if(_alimStep===1){
+    btnNext.textContent='Avançar →';
+    body.innerHTML=`
+      <div style="font-size:13px;color:#545252;margin-bottom:16px;line-height:1.6">
+        <strong>Dica de colunas:</strong> ${_alimDica}
+      </div>
+      <div style="background:#F4F4F4;border-radius:8px;padding:16px 18px;margin-bottom:18px;font-size:12.5px;color:#545252;line-height:1.7">
+        <strong>Formatos aceitos:</strong> CSV (separado por vírgula ou ponto-e-vírgula) ou JSON (array de objetos).<br>
+        A primeira linha do CSV deve ser o cabeçalho.
+      </div>
+      <label style="display:flex;flex-direction:column;gap:8px;font-size:12.5px;font-weight:600;color:#545252">
+        Selecionar arquivo
+        <input id="alim-file-input" type="file" accept=".csv,.json,.txt" style="border:1.5px dashed #D6D6D6;border-radius:8px;padding:14px;font-size:13px;cursor:pointer">
+      </label>`;
+  } else if(_alimStep===2){
+    btnNext.textContent='Avançar →';
+    const sample=_alimRows.slice(0,5);
+    const cols=_alimCols;
+    body.innerHTML=`
+      <div style="font-size:13px;color:#545252;margin-bottom:12px"><strong>${_alimRows.length}</strong> linha(s) detectadas. Prévia das primeiras 5:</div>
+      <div style="overflow-x:auto;border-radius:8px;border:1px solid #E4E4E4">
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead><tr style="background:#F9F9F9">${cols.map(c=>`<th style="padding:8px 10px;text-align:left;font-weight:700;color:#545252;border-bottom:1px solid #E4E4E4;white-space:nowrap">${c}</th>`).join('')}</tr></thead>
+          <tbody>${sample.map(row=>`<tr style="border-bottom:1px solid #F4F4F4">${cols.map(c=>`<td style="padding:7px 10px;color:#1F1F1F;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${row[c]??''}</td>`).join('')}</tr>`).join('')}</tbody>
+        </table>
+      </div>`;
+  } else if(_alimStep===3){
+    btnNext.textContent='Avançar →';
+    body.innerHTML=`
+      <div style="font-size:13px;color:#545252;margin-bottom:14px">Mapeie as colunas do arquivo para os campos de destino na aba <strong>${_alimAba}</strong>. Deixe em branco para ignorar a coluna.</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${_alimCols.map(c=>`
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="width:180px;font-size:12.5px;font-weight:600;color:#1F1F1F;flex-shrink:0">${c}</div>
+            <div style="color:#D0D0D0;font-size:14px">→</div>
+            <input data-alim-col="${c}" style="flex:1;height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 10px;font-size:12.5px;font-family:inherit" placeholder="Nome da coluna destino" value="${c}">
+          </div>`).join('')}
+      </div>`;
+  } else if(_alimStep===4){
+    btnNext.textContent='Avançar →';
+    // Apply mapping
+    _alimValidados=_alimRows.map(row=>{
+      const mapped={};
+      for(const [src,dest] of Object.entries(_alimMapa)){
+        if(dest) mapped[dest]=row[src]??'';
+      }
+      // also include unmapped fields as-is if no mapping was set
+      if(!Object.keys(_alimMapa).length) return {...row};
+      return mapped;
+    }).filter(r=>Object.values(r).some(v=>String(v).trim()));
+    _alimDuplicados=0;
+    const seen=new Set();
+    const chave=Object.keys(_alimValidados[0]||{})[0]||'';
+    if(chave){
+      _alimValidados.forEach(r=>{const k=r[chave];if(seen.has(k))_alimDuplicados++;else seen.add(k);});
+    }
+    body.innerHTML=`
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div style="background:#E6F2EA;border-radius:8px;padding:14px 18px;font-size:13px;color:#1E6B3A">
+          ✓ <strong>${_alimValidados.length}</strong> linha(s) válidas prontas para importar.
+        </div>
+        ${_alimDuplicados?`<div style="background:#FFF3E0;border-radius:8px;padding:14px 18px;font-size:13px;color:#7A4C00">
+          ⚠ <strong>${_alimDuplicados}</strong> possível(is) duplicata(s) detectada(s) pela primeira coluna. Serão inseridas mesmo assim (a aba de destino pode ter suas próprias deduplicações).
+        </div>`:''}
+        <div style="background:#F4F4F4;border-radius:8px;padding:12px 16px;font-size:12.5px;color:#545252">
+          Destino: <strong>${_alimAba}</strong><br>
+          Colunas mapeadas: <strong>${Object.keys(_alimMapa).length||_alimCols.length}</strong>
+        </div>
+      </div>`;
+  } else if(_alimStep===5){
+    btnNext.textContent='Confirmar e Importar';
+    body.innerHTML=`
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div style="font-size:15px;font-weight:700;color:#1F1F1F">Confirmar importação</div>
+        <div style="font-size:13px;color:#545252;line-height:1.7">
+          Você está prestes a inserir <strong>${_alimValidados.length} linha(s)</strong> na aba <strong>${_alimAba}</strong> da planilha do SAC.<br>
+          Esta operação é registrada no log de auditoria.<br>
+          <span style="color:#C70602"><strong>Atenção:</strong> os dados serão adicionados ao final da aba, sem substituir os existentes.</span>
+        </div>
+        <div id="alim-resultado" style="display:none"></div>
+      </div>`;
+  }
+}
+
+async function alimImportar(){
+  const tok=sessionStorage.getItem('sac-token');
+  if(!tok) return;
+  const btn=document.getElementById('alim-wiz-btn-next');
+  btn.textContent='Importando...'; btn.disabled=true;
+  const res_el=document.getElementById('alim-resultado');
+
+  try {
+    const payload={ itens: _alimValidados };
+    const r=await fetch(API+'/api/planilha/'+encodeURIComponent(_alimAba)+'/importar',{
+      method:'POST',
+      headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json'},
+      body:JSON.stringify(payload)
+    });
+    const data=await r.json();
+    if(res_el){
+      if(data.sucesso){
+        res_el.style.display='block';
+        res_el.innerHTML=`<div style="background:#E6F2EA;border-radius:8px;padding:14px 18px;font-size:13px;color:#1E6B3A">✓ Importação concluída! <strong>${data.criados}</strong> registro(s) inserido(s) em <strong>${data.aba}</strong>.</div>`;
+        btn.textContent='Fechar'; btn.disabled=false;
+        btn.onclick=function(){ fecharWizardAlim(); loadAlimentacao(); btn.onclick=window.alimWizNext; };
+      } else {
+        res_el.style.display='block';
+        res_el.innerHTML=`<div style="background:#FDECEC;border-radius:8px;padding:14px 18px;font-size:13px;color:#A80502">Erro: ${data.erro||'Falha na importação.'}</div>`;
+        btn.textContent='Tentar novamente'; btn.disabled=false;
+      }
+    }
+  } catch(e){
+    if(res_el){ res_el.style.display='block'; res_el.innerHTML=`<div style="background:#FDECEC;border-radius:8px;padding:14px 18px;font-size:13px;color:#A80502">Erro de rede: ${e.message}</div>`; }
+    btn.textContent='Tentar novamente'; btn.disabled=false;
+  }
+}
+
+function parseCSV(text){
+  const lines=text.split(/\r?\n/).filter(l=>l.trim());
+  if(!lines.length) return [];
+  const sep=lines[0].includes(';')?';':',';
+  const headers=lines[0].split(sep).map(h=>h.replace(/^"|"$/g,'').trim());
+  return lines.slice(1).map(line=>{
+    const vals=line.split(sep).map(v=>v.replace(/^"|"$/g,'').trim());
+    const obj={};
+    headers.forEach((h,i)=>{ obj[h]=vals[i]??''; });
+    return obj;
+  });
+}
+
+// Show sidebar item for MASTER users (also handled via applyRoleUI allowed list)
+document.addEventListener('DOMContentLoaded', function(){
+  const tok=sessionStorage.getItem('sac-token');
+  if(tok){ try { const p=JSON.parse(atob(tok.split('.')[1])); if(p.perfil==='MASTER'){ const s=document.getElementById('sidebar-alimentacao'); if(s) s.style.display=''; } } catch(e){} }
+});
+
+// Also hook after login
+const _alimOrigBoot = window.boot;
+if(typeof window.boot==='function'){
+  window.boot = function(){
+    if(_alimOrigBoot) _alimOrigBoot.apply(this,arguments);
+  };
+}
+
+// Expose post-login hook
+const _alimOrigLogin = window.afterLogin || (window.afterLogin=function(){});
+const _alimPrevAfterLogin = window.afterLogin;
+window.afterLogin = function(user){
+  _alimPrevAfterLogin(user);
+  if(user&&user.perfil==='MASTER'){
+    const s=document.getElementById('sidebar-alimentacao');
+    if(s) s.style.display='';
+  }
+};
 
 })();
 </script>
