@@ -6069,7 +6069,7 @@ function aplicarFiltros() {
   if (dias != null) {
     const corte = new Date(Date.now() - dias * 86400000);
     mans = mans.filter(m => { const d = parseDate(m.DATA_CRIACAO||m.DATA_ABERTURA); return d && d >= corte; });
-    recs = recs.filter(r => { const d = parseDate(r['Data do Registro']||r['DATA_ABERTURA']); return d && d >= corte; });
+    recs = recs.filter(r => { const d = parseDate(r['Data do Registro']||r['Data de Registro']||r['DATA_ABERTURA']); return d && d >= corte; });
   } else {
     // Personalizado: usar datas escolhidas pelo usuário
     const inicio = document.getElementById('filtro-data-inicio')?.value;
@@ -6078,7 +6078,7 @@ function aplicarFiltros() {
       const di = inicio ? new Date(inicio) : null;
       const df = fim ? new Date(fim + 'T23:59:59') : null;
       mans = mans.filter(m => { const d = parseDate(m.DATA_CRIACAO||m.DATA_ABERTURA); if(!d)return true; if(di&&d<di)return false; if(df&&d>df)return false; return true; });
-      recs = recs.filter(r => { const d = parseDate(r['Data do Registro']||r['DATA_ABERTURA']); if(!d)return true; if(di&&d<di)return false; if(df&&d>df)return false; return true; });
+      recs = recs.filter(r => { const d = parseDate(r['Data do Registro']||r['Data de Registro']||r['DATA_ABERTURA']); if(!d)return true; if(di&&d<di)return false; if(df&&d>df)return false; return true; });
     }
   }
 
@@ -8073,7 +8073,19 @@ async function abrirImportarHistorico() {
     const novos = hist.filter(h => {
       const id = h.ID_HISTORICO || h.ID_MANIFESTACAO || '';
       return id && !existingIds.has(id);
-    });
+    }).map(h => ({
+      ...h,
+      ID_MANIFESTACAO: h.ID_HISTORICO || h.ID_MANIFESTACAO || h['Nº Reclamação'] || '',
+      DATA_ABERTURA: h.ORIG_DATA_ABERTURA || h.DATA_ABERTURA || h['Data de Registro'] || h['Data do Registro'] || '',
+      EMPRESA: h.ORIG_EMPRESA || h.EMPRESA || h['Empresa'] || '',
+      CLIENTE: h.ORIG_CONTATO || h.NOME_CLIENTE || h['Cliente'] || '',
+      DESCRICAO: h.DESCRICAO || h.MANIFESTACAO || h['Motivo da Reclamação'] || '',
+      TIPO: h.TIPO || 'Reclamação',
+      SETOR_RESPONSAVEL: h.SETOR_RESPONSAVEL || h.SETOR || h['Setor'] || '',
+      CAUSA: h.COMP_CAUSA_RAIZ || h.CAUSA || '',
+      TRATATIVA: h.COMP_TRATATIVA_ADOTADA || h.COMP_ACAO_CORRETIVA || h.TRATATIVA || '',
+      MOTIVO: h.COMP_TIPO_PROBLEMA_VALIDADO || h.MOTIVO || h['Setor'] || '',
+    }));
     if (!novos.length) {
       mostrarToast(`Histórico já sincronizado (${hist.length} registros).`);
     } else {
@@ -8399,11 +8411,11 @@ window.navigate = function(page, el) {
     const agora=new Date(); const semanas=[];
     for(let i=11;i>=0;i--){const d=new Date(agora);d.setDate(d.getDate()-i*7);semanas.push({label:d.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'}).replace('.',''),count:0,current:i===0});}
     r.forEach(x=>{
-      const dc=parseDate(x['Data do Registro']||x.DATA_ABERTURA||x.DATA_CRIACAO); if(!dc)return;
+      const dc=parseDate(x['Data do Registro']||x['Data de Registro']||x.DATA_ABERTURA||x.DATA_CRIACAO); if(!dc)return;
       const diff=Math.floor((agora-dc)/86400000); const idx=11-Math.floor(diff/7); if(idx>=0&&idx<12)semanas[idx].count++;
     });
 
-    return {total,encerradas,emAndamento,dentroPrazo,foraPrazo,slaPercent,tempoMedio,rncs,emAberto,tipos,motivos,porEmpresa,pendSetor,semanas,empresasSet:[...new Set([...r.map(x=>x.Empresa||x.EMPRESA).filter(Boolean),...m.map(x=>x.EMPRESA_RECLAMADA).filter(Boolean)])],setoresNomes:[],recComSLA};
+    return {total,encerradas,emAndamento,dentroPrazo,foraPrazo,slaPercent,tempoMedio,rncs,emAberto,tipos,motivos,porEmpresa,pendSetor,semanas,empresasSet:[...new Set([...r.map(x=>x.Empresa||x.EMPRESA).filter(Boolean),...m.map(x=>x.EMPRESA_RECLAMADA).filter(Boolean)])],setoresNomes:[],recComSLA,_filteredRecs:r,_filteredMans:m};
   };
 
   window.renderDashboard = function(data){
@@ -12816,7 +12828,18 @@ async function cdLoadCerebroHome() {
   if (!cardsEl) return;
   try {
     const d = await _apiFetch('/api/setores', 10000).catch(()=>({itens:[]}));
-    const setores = d.itens || d.setores || [];
+    let setores = d.itens || d.setores || [];
+    if (!setores.length) {
+      setores = [
+        {SETOR:'Qualidade',DESCRICAO:'Controle e garantia de qualidade dos produtos',ATIVO:'SIM'},
+        {SETOR:'Produção',DESCRICAO:'Fabricação e processos produtivos',ATIVO:'SIM'},
+        {SETOR:'Logística',DESCRICAO:'Distribuição, transporte e entregas',ATIVO:'SIM'},
+        {SETOR:'Comercial',DESCRICAO:'Vendas e relacionamento comercial',ATIVO:'SIM'},
+        {SETOR:'Financeiro',DESCRICAO:'Faturamento, cobrança e pagamentos',ATIVO:'SIM'},
+        {SETOR:'SAC',DESCRICAO:'Serviço de Atendimento ao Cliente',ATIVO:'SIM'},
+        {SETOR:'Faturamento',DESCRICAO:'Processamento de pedidos e notas fiscais',ATIVO:'SIM'},
+      ];
+    }
     // Populate the knowledge percentage card
     const pctEl = document.getElementById('cb-pct-atualizado');
     const barEl = document.getElementById('cb-bar-atualizado');
@@ -12830,10 +12853,6 @@ async function cdLoadCerebroHome() {
       if (aulEl) aulEl.textContent = 'Última atualização: ' + (datas[0] ? new Date(datas[0]).toLocaleDateString('pt-BR') : '—');
     } else {
       if (pctEl) pctEl.textContent = '0%';
-    }
-    if (!setores.length) {
-      cardsEl.innerHTML = '<div style="text-align:center;padding:32px;color:#8A8888;grid-column:1/-1">Nenhum setor cadastrado.</div>';
-      return;
     }
     cardsEl.innerHTML = setores.map(s=>`
       <button onclick="abrirFichaSetor(${JSON.stringify(s.SETOR||s.nome||s.NOME||'')})" style="white-space:normal;text-align:left;background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:16px 18px;cursor:pointer;display:flex;flex-direction:column;gap:6px;min-height:112px;font-family:inherit">

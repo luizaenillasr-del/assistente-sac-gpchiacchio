@@ -3638,7 +3638,26 @@ app.get('/api/public/empresas', publicRateLimit, async (req, res) => {
 app.get('/api/biblioteca/fichas', middlewareEscopoEmpresa(), requerPerfil('MASTER','ADMINISTRADOR','ANALISTA SAC','SAC','APROVADOR','SETOR RESPONSÁVEL','GESTOR DE SETOR','USUÁRIO DE SETOR'), async (req, res) => {
   try {
     const { ano, mes, empresa, setor, tipo, status, q, page = '1', limit = '50' } = req.query;
-    const fichas = await lerAba('FICHAS_BIBLIOTECA', 5000).catch(() => []);
+    let fichas = await lerAba('FICHAS_BIBLIOTECA', 5000).catch(() => []);
+    // Fallback: when FICHAS_BIBLIOTECA is empty, use BANCO_HISTORICO mapped to expected fields
+    if (!fichas.length) {
+      const hist = await lerAba('BANCO_HISTORICO', 5000).catch(() => []);
+      fichas = hist.map(h => ({
+        PROTOCOLO: h.ID_HISTORICO || h.ID_MANIFESTACAO || '',
+        ID_MANIFESTACAO: h.ID_HISTORICO || h.ID_MANIFESTACAO || '',
+        NOME_CLIENTE: h.ORIG_CONTATO || '',
+        EMPRESA: normalizarEmpresa(h.ORIG_EMPRESA || '') || h.ORIG_EMPRESA || '',
+        DATA_REGISTRO: h.ORIG_DATA_ABERTURA || h.DATA_ABERTURA || h['Data de Registro'] || '',
+        TIPO_MANIFESTACAO: h.COMP_TIPO_PROBLEMA_VALIDADO || 'Reclamação',
+        MOTIVO: h.COMP_TIPO_PROBLEMA_VALIDADO || h.ORIG_DESCRICAO_RECLAMACAO?.slice(0,80) || '',
+        STATUS: h.ORIG_STATUS || h.STATUS_FINAL || '',
+        ORIGEM: 'HISTORICA',
+        ANO: h.ORIG_DATA_ABERTURA ? String(new Date(h.ORIG_DATA_ABERTURA).getFullYear()) : '',
+        MES: h.ORIG_DATA_ABERTURA ? String(new Date(h.ORIG_DATA_ABERTURA).getMonth()+1).padStart(2,'0') : '',
+        REINCIDENTE: false,
+        COM_TRATATIVA: !!(h.COMP_TRATATIVA_ADOTADA || h.COMP_ACAO_CORRETIVA),
+      }));
+    }
     // B2: aplicar isolamento de empresa (usuário não-MASTER só vê sua empresa)
     let filtered = filtrarPorEmpresaConfig(fichas, req, 'EMPRESA');
     if (ano) filtered = filtered.filter(f => (f.ANO || '') === String(ano));
@@ -3684,7 +3703,7 @@ app.get('/api/biblioteca/stats', requerPerfil('MASTER','ADMINISTRADOR','ANALISTA
     const mesAtual = String(agora.getMonth() + 1).padStart(2,'0');
 
     function extrairAnoMes(item) {
-      const raw = item.ORIG_DATA_ABERTURA || item.DATA_REGISTRO || item.DATA_ABERTURA || item['Data do Registro'] || '';
+      const raw = item.ORIG_DATA_ABERTURA || item.DATA_REGISTRO || item.DATA_ABERTURA || item['Data de Registro'] || item['Data do Registro'] || '';
       let d;
       if (typeof raw === 'number') d = new Date((raw - 25569) * 86400000);
       else d = new Date(raw);
