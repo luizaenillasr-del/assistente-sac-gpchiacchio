@@ -2866,7 +2866,7 @@
     </div>
     <div class="content" style="display:flex;flex-direction:column;gap:16px">
       <!-- Tabs -->
-      <div id="banco-tabs" style="display:flex;gap:2px;border-bottom:1px solid #E4E4E4;overflow-x:auto">
+      <div id="banco-historico-tabs" style="display:flex;gap:2px;border-bottom:1px solid #E4E4E4;overflow-x:auto">
         <button onclick="bancoTab('registros',this)" id="bancotab-registros" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#1F1F1F;border-bottom:2px solid #C70602;margin-bottom:-1px;font-weight:700;font-family:inherit">Registros</button>
         <button onclick="bancoTab('analise',this)" id="bancotab-analise" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Análise do banco</button>
       </div>
@@ -2875,7 +2875,7 @@
       <div id="banco-tab-registros">
         <!-- Filtros -->
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px">
-          <input id="banco-search" oninput="filtrarBancoHistorico()" placeholder="Pesquisar no banco de casos" style="flex:1;min-width:220px;height:36px;border:1px solid #D6D6D6;border-radius:7px;padding:0 12px;background:#fff;font-size:13px;font-family:inherit">
+          <input id="banco-historico-search" oninput="filtrarBancoHistorico()" placeholder="Pesquisar no banco de casos" style="flex:1;min-width:220px;height:36px;border:1px solid #D6D6D6;border-radius:7px;padding:0 12px;background:#fff;font-size:13px;font-family:inherit">
           <select id="banco-fil-qualidade" onchange="filtrarBancoHistorico()" style="height:36px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:13px;font-family:inherit"><option value="">Qualidade: todas</option><option>Completo</option><option>Parcial</option><option>Incompleto</option></select>
           <select id="banco-fil-setor" onchange="filtrarBancoHistorico()" style="height:36px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:13px;font-family:inherit"><option value="">Setor: todos</option><option>Logística</option><option>Qualidade</option><option>Comercial</option><option>Financeiro</option><option>Expedição</option></select>
           <button onclick="abrirImportarHistorico()" style="border:0;background:#C70602;color:#fff;border-radius:7px;padding:9px 14px;cursor:pointer;font-size:13px;font-weight:500;font-family:inherit">Importar histórico</button>
@@ -5396,6 +5396,7 @@ async function enviarFichasImportadas() {
 
 // escHtml — escapa HTML (auto-contido, não depende de esc global)
 function escHtml(s) { return String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
+window.esc = escHtml;
 
 // ===== HELPERS =====
 function fmtDate(d) {
@@ -6018,6 +6019,7 @@ async function executarAnaliseIA() {
 
   // Mostrar painel
   const painel = document.getElementById('painel-analise');
+  if (!painel) return;
   painel.style.display = 'block';
   atualizarResumoFicha();
   document.getElementById('ia-analisando').style.display = 'block';
@@ -7797,7 +7799,7 @@ function bancoTab(tab, btn) {
     const el = document.getElementById('banco-tab-'+t);
     if (el) el.style.display = t === tab ? '' : 'none';
   });
-  document.querySelectorAll('#banco-tabs button').forEach(b => {
+  document.querySelectorAll('#banco-historico-tabs button').forEach(b => {
     b.style.color = '#666464'; b.style.fontWeight = '500'; b.style.borderBottom = '2px solid transparent';
   });
   if (btn) { btn.style.color = '#1F1F1F'; btn.style.fontWeight = '700'; btn.style.borderBottom = '2px solid #C70602'; }
@@ -7827,7 +7829,7 @@ async function loadBaseConhecimento() {
 }
 
 function filtrarBancoHistorico() {
-  const q = (document.getElementById('banco-search')?.value || '').toLowerCase();
+  const q = (document.getElementById('banco-historico-search')?.value || '').toLowerCase();
   const qual = document.getElementById('banco-fil-qualidade')?.value || '';
   const setor = document.getElementById('banco-fil-setor')?.value || '';
   const filtered = bcData.filter(m => {
@@ -9802,7 +9804,7 @@ function patchAcompPage(){
       <div style="display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap">
         <div class="search-wrap" style="flex:1;min-width:200px">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input class="search-input" placeholder="Buscar por ID, cliente, empresa, contato..." id="acomp-search" oninput="aplicarFiltrosAcomp()">
+          <input class="search-input" placeholder="Buscar por ID, cliente, empresa, contato..." id="acomp-search-v2" oninput="aplicarFiltrosAcomp()">
         </div>
         <button class="btn btn-secondary" onclick="loadAcompanhamento()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.08-4"/></svg>
@@ -10004,7 +10006,7 @@ function patchKPICards(){
 
 // ── APLICAR FILTROS ───────────────────────────────────────────
 window.aplicarFiltrosAcomp = function(){
-  const busca = norm(document.getElementById('acomp-search')?.value||'');
+  const busca = norm((document.getElementById('acomp-search-v2')||document.getElementById('acomp-search'))?.value||'');
   const status = document.getElementById('af-status')?.value||'';
   const empresa = document.getElementById('af-empresa')?.value||'';
   const setor = document.getElementById('af-setor')?.value||'';
@@ -10108,7 +10110,7 @@ window.limparFiltrosAcomp = function(){
   window._acompStatusFiltro = '';
   document.querySelectorAll('.kpi-card-operacional').forEach(k => k.classList.remove('ativo'));
   document.querySelectorAll('#acomp-kpis .kpi-card').forEach(k => k.classList.remove('ativo'));
-  ['acomp-search','af-status','af-empresa','af-setor','af-prioridade','af-sla','af-ia','af-periodo']
+  ['acomp-search-v2','af-status','af-empresa','af-setor','af-prioridade','af-sla','af-ia','af-periodo']
     .forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
   renderAcompanhamentoV2(_acompData);
 };
@@ -14947,12 +14949,12 @@ document.addEventListener('DOMContentLoaded', function() {
 // Wrap topbar contents in .topbar-left and add shared right side
 document.addEventListener('DOMContentLoaded', function() {
   const topbarRight = `
-    <div class="topbar-right" id="topbar-right-shared">
-      <input class="topbar-search" placeholder="Buscar por nº, cliente, CNPJ, NF…" id="topbar-global-search" onkeydown="if(event.key==='Enter'&&this.value.trim()){navigate('banco-manifestacoes',document.querySelector('[onclick*=banco-manifestacoes]'))}">
-      <button class="topbar-notif" onclick="navigate('aprovadores',document.querySelector('[onclick*=aprovadores]'))">Notificações<span class="topbar-notif-badge" id="topbar-notif-count">3</span></button>
+    <div class="topbar-right">
+      <input class="topbar-search topbar-global-search" placeholder="Buscar por nº, cliente, CNPJ, NF…" onkeydown="if(event.key==='Enter'&&this.value.trim()){navigate('banco-manifestacoes',document.querySelector('[onclick*=banco-manifestacoes]'))}">
+      <button class="topbar-notif" onclick="navigate('aprovadores',document.querySelector('[onclick*=aprovadores]'))">Notificações<span class="topbar-notif-badge topbar-notif-count">0</span></button>
       <button class="topbar-user" onclick="navigate('usuarios',document.querySelector('[onclick*=usuarios]'))">
-        <span class="topbar-user-avatar" id="topbar-user-ini">US</span>
-        <span style="display:flex;flex-direction:column"><span class="topbar-user-name" id="topbar-user-name">Usuário</span><span class="topbar-user-role" id="topbar-user-role">SAC</span></span>
+        <span class="topbar-user-avatar topbar-user-ini">US</span>
+        <span style="display:flex;flex-direction:column"><span class="topbar-user-name">Usuário</span><span class="topbar-user-role">SAC</span></span>
       </button>
     </div>`;
 
@@ -14965,16 +14967,16 @@ document.addEventListener('DOMContentLoaded', function() {
     wrapper.className = 'topbar-left';
     children.forEach(c => wrapper.appendChild(c));
     tb.appendChild(wrapper);
-    tb.insertAdjacentHTML('beforeend', topbarRight.replace('id="topbar-right-shared"', ''));
+    tb.insertAdjacentHTML('beforeend', topbarRight);
   });
 });
 
 // Update topbar user info after login
 function updateTopbarUser(user) {
   if (!user) return;
-  document.querySelectorAll('#topbar-user-ini').forEach(el => { el.textContent = (user.nome||user.usuario||'US').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase(); });
-  document.querySelectorAll('#topbar-user-name').forEach(el => { el.textContent = user.nome || user.usuario || 'Usuário'; });
-  document.querySelectorAll('#topbar-user-role').forEach(el => { el.textContent = user.perfil || user.setor || 'SAC'; });
+  document.querySelectorAll('.topbar-user-ini').forEach(el => { el.textContent = (user.nome||user.usuario||'US').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase(); });
+  document.querySelectorAll('.topbar-user-name').forEach(el => { el.textContent = user.nome || user.usuario || 'Usuário'; });
+  document.querySelectorAll('.topbar-user-role').forEach(el => { el.textContent = user.perfil || user.setor || 'SAC'; });
   // also update sidebar bottom
   const sideAvatar = document.getElementById('sidebar-avatar');
   if (sideAvatar) sideAvatar.textContent = (user.nome||user.usuario||'US').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();

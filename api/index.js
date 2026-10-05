@@ -2091,7 +2091,7 @@ app.post('/api/rnc/:id/decisao', requerPerfil('APROVADOR','MASTER'), async (req,
     if(!decisao) return res.status(400).json({sucesso:false,erro:'Decisão é obrigatória.'});
     const rnc=(await lerAba('BANCO_RNC',5000).catch(()=>[])).find(x=>x.ID_RNC===req.params.id);
     if(!rnc) return res.status(404).json({sucesso:false,erro:'RNC não encontrada.'});
-    if(!pertenceEmpresa(req.user?.empresa, rnc.EMPRESA_RECLAMADA)) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado para esta RNC.'});
+    if(!pertenceEmpresa(req.user?.empresa, rnc.EMPRESA)) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado para esta RNC.'});
     const d=String(decisao).toUpperCase();
     if(d!=='APROVAR'&&(!observacoes||!String(observacoes).trim())) return res.status(400).json({sucesso:false,erro:'Justificativa é obrigatória.'});
     const status=d==='APROVAR'?'APROVADA':(d==='REJEITAR'?'REJEITADA':'DEVOLVIDA'); const agora=new Date().toISOString();
@@ -2112,7 +2112,7 @@ app.post('/api/rnc/:id/visualizacao', requerPerfil('APROVADOR','MASTER'), async 
 app.get('/api/rnc/:id/eventos', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','SETOR RESPONSÁVEL'), async(req,res)=>{
   try{
     const rnc=(await lerAba('BANCO_RNC',5000)).find(x=>x.ID_RNC===req.params.id);
-    if(rnc && !pertenceEmpresa(req.user?.empresa, rnc.EMPRESA_RECLAMADA)) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado.'});
+    if(rnc && !pertenceEmpresa(req.user?.empresa, rnc.EMPRESA)) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado.'});
     const data=await lerAba('RNC_EVENTOS',5000);res.json({sucesso:true,itens:data.filter(x=>x.ID_RNC===req.params.id)});}
   catch(e){res.status(500).json({sucesso:false,erro:e.message,itens:[]});}
 });
@@ -2121,7 +2121,7 @@ app.patch('/api/rnc/:id/execucao', requerPerfil('SETOR RESPONSÁVEL','MASTER','A
   try{
     const rnc=(await lerAba('BANCO_RNC',5000)).find(x=>x.ID_RNC===req.params.id);
     if(!rnc) return res.status(404).json({sucesso:false,erro:'RNC não encontrada.'});
-    if(!pertenceEmpresa(req.user?.empresa, rnc.EMPRESA_RECLAMADA)) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado para esta RNC.'});
+    if(!pertenceEmpresa(req.user?.empresa, rnc.EMPRESA)) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado para esta RNC.'});
     const b=req.body||{}; const dados={};
     const campos=['CAUSA','ACAO_CONTENCAO','ACAO_CORRETIVA','RESPONSAVEL_ACAO','PRAZO_ACAO','STATUS_ACAO','RESPONSAVEL_EFICACIA','DATA_EFICACIA','RESULTADO_EFICACIA'];
     for(const c of campos){if(b[c]!==undefined)dados[c]=b[c];}
@@ -2136,7 +2136,7 @@ app.get('/api/rnc-metricas', requerPerfil('MASTER','ANALISTA SAC'), async (req,r
     const _perfRnc = perfilCanonico(req.user?.perfil||'');
     const _empRnc = _perfRnc === 'MASTER' ? null : (req.user?.empresa||null);
     let data=await lerAba('BANCO_RNC',5000);
-    if (_empRnc) data = data.filter(x=>pertenceEmpresa(_empRnc, x.EMPRESA_RECLAMADA||''));
+    if (_empRnc) data = data.filter(x=>pertenceEmpresa(_empRnc, x.EMPRESA||''));
     const now=Date.now();
     const pend=data.filter(x=>!['APROVADA','ENCERRADA','CANCELADA','REJEITADA'].includes(String(x.STATUS||'').toUpperCase()));
     const aprov=data.filter(x=>String(x.STATUS||'').toUpperCase()==='APROVADA');
@@ -2381,7 +2381,7 @@ app.post('/api/procedimentos', requerPerfil('MASTER','ANALISTA SAC'), async (req
     await garantirAbaComCabecalhos('PROCEDIMENTOS',['ID_PROCEDIMENTO','NOME','SETOR_RESPONSAVEL','DESCRICAO','PASSOS','ATIVO','DATA_CRIACAO']).catch(()=>{});
     const id = await gerarProximoID('PROCEDIMENTOS','PROC','ID_PROCEDIMENTO');
     const b = req.body||{};
-    const obj = { ID_PROCEDIMENTO: id, NOME: b.POLITICA||b.NOME||b.nome||'', SETOR_RESPONSAVEL: b.SETOR_RESPONSAVEL||b.setor||'', DESCRICAO: b.DESCRICAO||b.descricao||'', PASSOS: b.PASSOS||b.passos||'', DATA_CRIACAO: new Date().toLocaleDateString('pt-BR'), ATIVO: 'SIM' };
+    const obj = { ID_PROCEDIMENTO: id, NOME: b.NOME||b.nome||'', SETOR_RESPONSAVEL: b.SETOR_RESPONSAVEL||b.setor||'', DESCRICAO: b.DESCRICAO||b.descricao||'', PASSOS: b.PASSOS||b.passos||'', DATA_CRIACAO: new Date().toLocaleDateString('pt-BR'), ATIVO: 'SIM' };
     await appendObjeto('PROCEDIMENTOS', obj);
     res.json({ sucesso: true, id });
   } catch (e) { res.status(500).json({ sucesso: false, erro: e.message }); }
@@ -3190,7 +3190,7 @@ async function bootstrapHandler(req, res) {
     }
     const obj = { ID_USUARIO: 'USR-0001', USUARIO: usuario, EMAIL: '', NOME: nome, PERFIL: 'MASTER', EMPRESA: 'Grupo Chiacchio', SETOR: 'SAC', CODIGO_RCA: '', STATUS: 'ATIVO', SENHA_HASH: hash, DATA_CRIACAO: new Date().toISOString(), ULTIMO_ACESSO: '' };
     await appendObjeto('USUARIOS', obj);
-    res.json({ sucesso: true, mensagem: `Usuário MASTER "${usuario}" criado com sucesso. Agora você pode logar normalmente.`, id: 'USR-001' });
+    res.json({ sucesso: true, mensagem: `Usuário MASTER "${usuario}" criado com sucesso. Agora você pode logar normalmente.`, id: 'USR-0001' });
   } catch (e) {
     console.error('Bootstrap erro:', e);
     res.status(500).json({ sucesso: false, erro: e.message });
@@ -4106,7 +4106,7 @@ app.post('/api/matriz-conhecimento/:id/excecoes', async (req, res) => {
 app.delete('/api/matriz-conhecimento/:id/excecoes/:exId', async (req, res) => {
   try {
     if (!podeMC(req.user?.perfil, 'editar')) return res.status(403).json({ sucesso: false, erro: 'Sem permissão.' });
-    await sheets.atualizarPorID('MC_EXCECOES', req.params.exId, { ATIVO: 'NÃO' }, ['ID']);
+    await atualizarPorID('MC_EXCECOES', req.params.exId, { ATIVO: 'NÃO' }, ['ID']);
     res.json({ sucesso: true });
   } catch (e) { res.status(500).json({ sucesso: false, erro: e.message }); }
 });
