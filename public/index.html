@@ -12833,6 +12833,78 @@ function cdTab(name, btn) {
   else if (name==='auditoria' && !_cdData.aud.length) cdLoadAud();
   else if (name==='todas-abas') cdLoadTodasAbas();
   else if (name==='ia') {} // IA panel already loaded
+  else if (name==='matriz-cb') cdLoadMatrizCb();
+  else if (name==='aprovacao-cb') cdLoadAprovacaoCb();
+}
+
+async function cdLoadMatrizCb() {
+  const el = document.getElementById('cb-matriz-content');
+  if (!el) return;
+  el.innerHTML = '<div style="text-align:center;padding:40px;color:#8A8888"><div class="spinner" style="margin:0 auto 8px"></div>Carregando...</div>';
+  try {
+    const r = await _apiFetch('/api/matriz-tratamento').catch(()=>({sucesso:false,itens:[]}));
+    const itens = r.itens || r.data || [];
+    if (!itens.length) {
+      el.innerHTML = '<div style="padding:40px;text-align:center;color:#929090;font-size:13px">Nenhuma regra cadastrada ainda. Acesse <strong>Alimentação da Ferramenta</strong> para importar a Matriz de Tratamento.</div>';
+      return;
+    }
+    const esc6 = v => String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    el.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:12.5px">
+      <thead><tr style="background:#F9F9F9;border-bottom:2px solid #E4E4E4">
+        <th style="padding:10px 12px;text-align:left;font-weight:700;color:#545252">Tipo</th>
+        <th style="padding:10px 12px;text-align:left;font-weight:700;color:#545252">Causa</th>
+        <th style="padding:10px 12px;text-align:left;font-weight:700;color:#545252">Empresa</th>
+        <th style="padding:10px 12px;text-align:left;font-weight:700;color:#545252">Setor responsável</th>
+        <th style="padding:10px 12px;text-align:left;font-weight:700;color:#545252">SLA (h)</th>
+        <th style="padding:10px 12px;text-align:left;font-weight:700;color:#545252">Prioridade</th>
+        <th style="padding:10px 12px;text-align:left;font-weight:700;color:#545252">Ativo</th>
+      </tr></thead>
+      <tbody>${itens.map((r,i)=>`<tr style="border-bottom:1px solid #F4F4F4${i%2===0?'':';background:#FAFAFA'}">
+        <td style="padding:9px 12px">${esc6(r.TIPO_MANIFESTACAO||'')}</td>
+        <td style="padding:9px 12px">${esc6(r.CAUSA||'')}${r.SUBCAUSA?` <span style="color:#929090">/ ${esc6(r.SUBCAUSA)}</span>`:''}</td>
+        <td style="padding:9px 12px">${esc6(r.EMPRESA||'Todas')}</td>
+        <td style="padding:9px 12px;font-weight:600">${esc6(r.SETOR_RESPONSAVEL||'')}</td>
+        <td style="padding:9px 12px">${esc6(r.SLA_HORAS||'')}</td>
+        <td style="padding:9px 12px"><span style="padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600;background:${r.PRIORIDADE==='ALTA'?'#FDECEC;color:#A80502':r.PRIORIDADE==='URGENTE'?'#FDE68A;color:#92400E':'#F4F4F4;color:#545252'}">${esc6(r.PRIORIDADE||'NORMAL')}</span></td>
+        <td style="padding:9px 12px"><span style="color:${(r.ATIVO||'SIM')==='SIM'?'#22C55E':'#929090'};font-weight:600">${esc6(r.ATIVO||'SIM')}</span></td>
+      </tr>`).join('')}</tbody>
+    </table>`;
+  } catch(e) {
+    if (el) el.innerHTML = '<div style="padding:24px;text-align:center;color:#A80502;font-size:13px">Erro ao carregar matriz: ' + e.message + '</div>';
+  }
+}
+
+async function cdLoadAprovacaoCb() {
+  const el = document.getElementById('cb-aprovacao-content');
+  if (!el) return;
+  el.innerHTML = '<div style="text-align:center;padding:40px;color:#8A8888"><div class="spinner" style="margin:0 auto 8px"></div>Carregando...</div>';
+  try {
+    // Load pending content from causas and matriz (ATIVO !== 'SIM' or STATUS === 'PENDENTE')
+    const [causasRes, matrizRes] = await Promise.allSettled([
+      _apiFetch('/api/causas').catch(()=>({itens:[]})),
+      _apiFetch('/api/matriz-tratamento').catch(()=>({itens:[]}))
+    ]);
+    const causas = (causasRes.value?.itens||[]).filter(c=>(c.ATIVO||'SIM')!=='SIM');
+    const regras = (matrizRes.value?.itens||[]).filter(r=>(r.ATIVO||'SIM')!=='SIM');
+    const total = causas.length + regras.length;
+    if (!total) {
+      el.innerHTML = '<div style="padding:32px;text-align:center;color:#1E6B3A;font-size:13px">✓ Nenhum conteúdo pendente de aprovação.</div>';
+      return;
+    }
+    const esc6 = v => String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    let html = `<div style="padding:16px 20px;font-size:13px;color:#7A4C00;background:#FFF3E0;border-bottom:1px solid #E4E4E4"><strong>${total}</strong> item(ns) inativo(s) / aguardando ativação.</div>`;
+    if (causas.length) {
+      html += `<div style="padding:12px 16px;font-size:11px;font-weight:700;text-transform:uppercase;color:#929090;border-bottom:1px solid #F4F4F4">Causas inativas (${causas.length})</div>`;
+      html += causas.map(c=>`<div style="padding:10px 16px;border-bottom:1px solid #F4F4F4;font-size:12.5px;display:flex;justify-content:space-between;align-items:center"><span><strong>${esc6(c.CAUSA||'')}</strong>${c.SUBCAUSA?` — ${esc6(c.SUBCAUSA)}`:''}</span><span style="color:#929090">${esc6(c.CATEGORIA||'')}</span></div>`).join('');
+    }
+    if (regras.length) {
+      html += `<div style="padding:12px 16px;font-size:11px;font-weight:700;text-transform:uppercase;color:#929090;border-bottom:1px solid #F4F4F4;margin-top:4px">Regras de matriz inativas (${regras.length})</div>`;
+      html += regras.map(r=>`<div style="padding:10px 16px;border-bottom:1px solid #F4F4F4;font-size:12.5px;display:flex;justify-content:space-between;align-items:center"><span><strong>${esc6(r.TIPO_MANIFESTACAO||'')}</strong>${r.CAUSA?` — ${esc6(r.CAUSA)}`:''}</span><span style="color:#929090">${esc6(r.SETOR_RESPONSAVEL||'')}</span></div>`).join('');
+    }
+    el.innerHTML = html;
+  } catch(e) {
+    if (el) el.innerHTML = '<div style="padding:24px;text-align:center;color:#A80502;font-size:13px">Erro: ' + e.message + '</div>';
+  }
 }
 
 async function cdLoadCerebroHome() {
