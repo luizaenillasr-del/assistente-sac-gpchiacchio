@@ -3656,6 +3656,151 @@
     </div>
   </div>
 
+  <!-- ===== CÉREBRO: ESTILOS cb-* (início) ===== -->
+  <style>
+    #page-cerebro{--cb-green-bg:#E6F2EA;--cb-green:#1E6B3A;--cb-amber-bg:#FBF0D9;--cb-amber:#7A4C00;--cb-blue-bg:#E6EEF8;--cb-blue:#24508F;--cb-gray-bg:#EEEEEE;--cb-gray:#545252;--cb-red-bg:#FDECEC;--cb-red:#A80502}
+    #page-cerebro .cb-nav{display:flex;gap:2px;border-bottom:1px solid #E4E4E4;overflow-x:auto;scrollbar-width:none;margin-bottom:18px}
+    #page-cerebro .cb-nav-btn{border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit}
+    #page-cerebro .cb-nav-btn:hover{color:#1F1F1F}
+    #page-cerebro .cb-nav-btn.cb-on{color:#1F1F1F;border-bottom-color:#C70602;font-weight:700}
+    #page-cerebro .cb-intro{font-size:13px;color:#545252;max-width:820px;line-height:1.55;margin-bottom:16px}
+    #page-cerebro .cb-stack{display:flex;flex-direction:column;gap:12px}
+    #page-cerebro .cb-hero{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:16px;margin-bottom:16px}
+    #page-cerebro .cb-hero-red{background:#C70602;color:#fff;border-radius:12px;padding:22px 24px;display:flex;flex-direction:column;gap:10px}
+    #page-cerebro .cb-card{background:#fff;border:1px solid #E4E4E4;border-radius:10px}
+    #page-cerebro .cb-card-pad{padding:20px 22px;display:flex;flex-direction:column;gap:12px;border-radius:12px}
+    #page-cerebro .cb-chip{border:1px solid #E4E4E4;border-radius:99px;padding:4px 10px;font-size:12px;white-space:nowrap}
+    #page-cerebro .cb-hgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+    #page-cerebro .cb-hcard{white-space:normal;text-align:left;background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:16px 18px;cursor:pointer;display:flex;flex-direction:column;gap:6px;min-height:112px;font-family:inherit;color:inherit}
+    #page-cerebro .cb-hcard:hover{border-color:#C70602}
+    #page-cerebro .cb-hcard-h{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+    #page-cerebro .cb-muted{color:#929090;font-size:12px}
+    #page-cerebro .cb-sgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+    #page-cerebro .cb-scard{background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:12px}
+    #page-cerebro .cb-scard-k{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;font-size:11.5px;color:#666464}
+    #page-cerebro .cb-scard-k b{display:block;font-size:20px;font-weight:700;color:#1F1F1F}
+    #page-cerebro .cb-scard-m{font-size:12px;color:#666464;display:flex;flex-direction:column;gap:2px}
+    #page-cerebro .cb-btn-outline{border:1px solid #C70602;background:#fff;color:#C70602;border-radius:7px;padding:8px 10px;cursor:pointer;font-size:12px;font-weight:700;letter-spacing:.04em;font-family:inherit}
+    #page-cerebro .cb-btn-outline:hover{background:#C70602;color:#fff}
+    #page-cerebro .cb-btn-add{white-space:normal;border:1.5px dashed #CFCFCF;background:transparent;border-radius:10px;padding:16px;cursor:pointer;color:#666464;font-size:13px;min-height:180px;font-family:inherit}
+    #page-cerebro .cb-btn-add:hover{border-color:#C70602;color:#C70602}
+    #page-cerebro .cb-btn{border:1px solid #D6D6D6;background:#fff;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:12px;font-family:inherit;color:#1F1F1F}
+    #page-cerebro .cb-btn:hover{border-color:#929090}
+    #page-cerebro .cb-btn[disabled]{opacity:.5;cursor:not-allowed}
+    #page-cerebro .cb-btn-red{color:#A80502}
+    #page-cerebro .cb-btn-dark{border:1px solid #1F1F1F;background:#fff;border-radius:7px;padding:8px 12px;cursor:pointer;font-size:12.5px;font-weight:600;font-family:inherit;color:#1F1F1F}
+    #page-cerebro .cb-btn-prim{border:0;background:#C70602;color:#fff;border-radius:7px;padding:8px 12px;cursor:pointer;font-size:12.5px;font-weight:700;font-family:inherit;white-space:nowrap}
+    #page-cerebro .cb-btn-prim:hover{background:#A80502}
+    #page-cerebro .cb-btn-prim[disabled]{opacity:.5;cursor:not-allowed}
+    #page-cerebro .cb-link{border:0;background:none;padding:0;color:#A80502;cursor:pointer;font-weight:600;font-size:12.5px;font-family:inherit}
+    #page-cerebro .cb-info{background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:16px 20px;display:flex;gap:28px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+    #page-cerebro .cb-info div div{font-size:11.5px;color:#929090}
+    #page-cerebro .cb-info div span{font-weight:600;font-size:13px}
+    #page-cerebro .cb-title{font-size:20px;font-weight:700;letter-spacing:-.01em}
+    #page-cerebro .cb-pills{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+    #page-cerebro .cb-pill{border:1px solid #D6D6D6;background:#fff;color:#3A3939;border-radius:8px;padding:7px 13px;font-size:13px;cursor:pointer;font-weight:600;font-family:inherit}
+    #page-cerebro .cb-pill span{font-weight:400;opacity:.75}
+    #page-cerebro .cb-pill.cb-on{background:#1F1F1F;border-color:#1F1F1F;color:#fff}
+    #page-cerebro .cb-fchip{border:1px solid #D6D6D6;background:#fff;color:#3A3939;border-radius:99px;padding:5px 11px;font-size:12px;cursor:pointer;font-family:inherit}
+    #page-cerebro .cb-fchip.cb-on{background:#1F1F1F;border-color:#1F1F1F;color:#fff}
+    #page-cerebro .cb-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+    #page-cerebro .cb-search{flex:1;min-width:220px;height:36px;border:1px solid #D6D6D6;border-radius:7px;padding:0 12px;background:#fff;font-size:13px;font-family:inherit}
+    #page-cerebro .cb-empty{background:#fff;border:1px dashed #CFCFCF;border-radius:10px;padding:28px;text-align:center;color:#666464;font-size:13px}
+    #page-cerebro .cb-rule{background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:18px 20px;display:flex;flex-direction:column;gap:12px}
+    #page-cerebro .cb-rule.cb-off{opacity:.6}
+    #page-cerebro .cb-rule-h{display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap}
+    #page-cerebro .cb-rule-t{flex:1;min-width:220px;font-weight:700;font-size:14.5px;line-height:1.35}
+    #page-cerebro .cb-st{padding:3px 9px;border-radius:99px;font-size:11.5px;font-weight:600;white-space:nowrap}
+    #page-cerebro .cb-st-green{background:var(--cb-green-bg);color:var(--cb-green)}
+    #page-cerebro .cb-st-amber{background:var(--cb-amber-bg);color:var(--cb-amber)}
+    #page-cerebro .cb-st-blue{background:var(--cb-blue-bg);color:var(--cb-blue)}
+    #page-cerebro .cb-st-gray{background:var(--cb-gray-bg);color:var(--cb-gray)}
+    #page-cerebro .cb-st-red{background:var(--cb-red-bg);color:var(--cb-red)}
+    #page-cerebro .cb-box{display:grid;grid-template-columns:70px minmax(0,1fr);gap:8px 12px;font-size:13.5px;line-height:1.5;background:#FAFAFA;border-radius:8px;padding:12px 14px;white-space:pre-line}
+    #page-cerebro .cb-box b{font-size:11px;font-weight:700;color:#929090;letter-spacing:.06em;padding-top:2px}
+    #page-cerebro .cb-box b.cb-acao{color:#C70602}
+    #page-cerebro .cb-meta{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;font-size:12.5px}
+    #page-cerebro .cb-meta div div{font-size:11px;color:#929090}
+    #page-cerebro .cb-meta div span{font-weight:500;overflow-wrap:anywhere}
+    #page-cerebro .cb-flags{display:flex;gap:6px;flex-wrap:wrap}
+    #page-cerebro .cb-flags span{border:1px solid #E4E4E4;border-radius:6px;padding:3px 8px;font-size:11.5px;color:#545252;white-space:nowrap}
+    #page-cerebro .cb-actions{display:flex;gap:6px;flex-wrap:wrap;align-items:center;border-top:1px solid #EFEFEF;padding-top:12px}
+    #page-cerebro .cb-tg-b{display:flex;align-items:center;gap:8px;border:0;background:none;cursor:pointer;font-size:12.5px;padding:0 8px 0 0;font-family:inherit;color:#1F1F1F}
+    #page-cerebro .cb-tg{width:34px;height:19px;border-radius:99px;padding:2px;display:flex;justify-content:flex-start;background:#CFCFCF;flex:none}
+    #page-cerebro .cb-tg i{width:15px;height:15px;border-radius:50%;background:#fff;display:block}
+    #page-cerebro .cb-tg.cb-on{justify-content:flex-end;background:#1E6B3A}
+    #page-cerebro .cb-acc{background:#fff;border:1px solid #E4E4E4;border-radius:10px;overflow:hidden}
+    #page-cerebro .cb-acc-h{white-space:normal;width:100%;display:flex;gap:10px;align-items:center;flex-wrap:wrap;border:0;background:none;padding:16px 20px;cursor:pointer;text-align:left;font-family:inherit;color:inherit}
+    #page-cerebro .cb-acc-h .cb-rule-t{font-size:14.5px}
+    #page-cerebro .cb-acc-b{padding:0 20px 18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:18px}
+    #page-cerebro .cb-faq{border-bottom:1px solid #EFEFEF}
+    #page-cerebro .cb-faq:last-child{border-bottom:0}
+    #page-cerebro .cb-faq .cb-acc-h{padding:14px 20px}
+    #page-cerebro .cb-fld{font-size:13px;line-height:1.5;margin-bottom:10px}
+    #page-cerebro .cb-fld > div{font-size:11px;color:#929090}
+    #page-cerebro .cb-steps{display:flex;flex-direction:column;gap:8px}
+    #page-cerebro .cb-step{display:grid;grid-template-columns:26px minmax(0,1fr);gap:10px;font-size:13.5px;align-items:start}
+    #page-cerebro .cb-step b{width:22px;height:22px;border-radius:50%;background:#FDECEC;color:#A80502;font-size:11px;font-weight:700;display:grid;place-items:center}
+    #page-cerebro .cb-pgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:14px}
+    #page-cerebro .cb-people{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+    #page-cerebro .cb-person{background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:8px}
+    #page-cerebro .cb-ini{width:38px;height:38px;border-radius:50%;background:#EEEEEE;display:grid;place-items:center;font-weight:700;font-size:12.5px;color:#545252;flex:none}
+    #page-cerebro .cb-tag{background:#F4F4F4;border-radius:6px;padding:3px 8px;font-size:11.5px}
+    #page-cerebro .cb-slag{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin-bottom:12px}
+    #page-cerebro .cb-slag label{background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:8px;font-size:12.5px;color:#666464}
+    #page-cerebro .cb-slag input{width:80px;height:38px;border:1px solid #D6D6D6;border-radius:7px;padding:0 10px;font-size:18px;font-weight:700;color:#1F1F1F;background:#fff;font-family:inherit}
+    #page-cerebro .cb-tblw{background:#fff;border:1px solid #E4E4E4;border-radius:10px;overflow-x:auto}
+    #page-cerebro .cb-tbl{border-collapse:collapse;width:100%;font-size:13px}
+    #page-cerebro .cb-tbl th{text-align:left;font-weight:600;font-size:12px;color:#666464;padding:10px 14px;border-bottom:1px solid #E4E4E4;background:#FAFAFA;white-space:nowrap}
+    #page-cerebro .cb-tbl td{padding:10px 14px;border-bottom:1px solid #EFEFEF;vertical-align:middle}
+    #page-cerebro .cb-banner{border-radius:10px;padding:12px 16px;font-size:13px;line-height:1.5;display:flex;gap:10px;align-items:center;margin-bottom:12px}
+    #page-cerebro .cb-banner-red{background:#FDECEC;color:#7F0401}
+    #page-cerebro .cb-banner-red:before{content:"";width:8px;height:8px;border-radius:50%;background:#C70602;flex:none}
+    #page-cerebro .cb-banner-amber{background:#FBF0D9;color:#6A4200}
+    #page-cerebro .cb-doc-t{font-size:11px;font-weight:700;border-radius:4px;padding:3px 7px;background:#EEEEEE;color:#545252}
+    #page-cerebro .cb-mh{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;font-size:10.5px;font-weight:700;letter-spacing:.06em;color:#929090;padding:0 16px;min-width:0;margin-bottom:8px}
+    #page-cerebro .cb-mrow{background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:10px;margin-bottom:10px}
+    #page-cerebro .cb-mrow.cb-off{opacity:.5}
+    #page-cerebro .cb-msteps{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;align-items:stretch}
+    #page-cerebro .cb-mstep{background:#F4F4F4;color:#1F1F1F;border-radius:7px;padding:9px 10px;font-size:12px;line-height:1.35;min-width:0;overflow-wrap:anywhere}
+    #page-cerebro .cb-mstep.cb-first{background:#C70602;color:#fff}
+    #page-cerebro .cb-mstep.cb-last{background:#1F1F1F;color:#fff}
+    #page-cerebro .cb-mfoot{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;font-size:12px;color:#666464}
+    #page-cerebro .cb-mwrap{overflow-x:auto}
+    #page-cerebro .cb-mwrap > div{min-width:860px}
+    #page-cerebro .cb-tree{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr));gap:14px;align-items:start}
+    #page-cerebro .cb-tree-c{background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:12px}
+    #page-cerebro .cb-tree-k{border-left:2px solid #C70602;padding:2px 0 2px 12px;display:flex;flex-direction:column;gap:6px}
+    #page-cerebro .cb-tree-s{background:#F4F4F4;border-radius:6px;padding:4px 9px;font-size:12px}
+    #page-cerebro .cb-tree-s.cb-off{color:#929090;text-decoration:line-through}
+    #page-cerebro .cb-btn-dash{border:1px dashed #CFCFCF;background:none;border-radius:7px;padding:7px;cursor:pointer;font-size:12px;color:#666464;font-family:inherit}
+    #page-cerebro .cb-flow{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:12.5px;color:#666464;margin-bottom:12px}
+    #page-cerebro .cb-flow span span{background:#fff;border:1px solid #E4E4E4;border-radius:99px;padding:4px 10px;color:#1F1F1F;font-weight:600;white-space:nowrap}
+    #page-cerebro .cb-board{display:grid;grid-template-columns:repeat(5,minmax(220px,1fr));gap:12px;overflow-x:auto;padding-bottom:4px}
+    #page-cerebro .cb-col{background:#EEEEEE;border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:8px;min-height:200px}
+    #page-cerebro .cb-col-h{display:flex;justify-content:space-between;padding:2px 4px;font-size:12.5px;font-weight:700;white-space:nowrap}
+    #page-cerebro .cb-col-h span+span{color:#929090}
+    #page-cerebro .cb-it{background:#fff;border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:6px;font-size:12.5px}
+    #page-cerebro .cb-it small{font-size:11px;color:#929090}
+    #page-cerebro .cb-it strong{font-weight:600;line-height:1.35}
+    #page-cerebro .cb-it em{font-style:normal;font-size:11.5px;color:#666464}
+    #page-cerebro .cb-it-a{display:flex;gap:6px;justify-content:flex-end}
+    #page-cerebro .cb-it-a button{border:0;background:#C70602;color:#fff;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11.5px;font-weight:600;font-family:inherit}
+    #page-cerebro .cb-drawer{position:fixed;inset:0;background:rgba(20,20,20,.45);z-index:1000;display:none;justify-content:flex-end}
+    #page-cerebro .cb-drawer.cb-open{display:flex}
+    #page-cerebro .cb-drawer-p{width:min(640px,100%);height:100%;background:#fff;display:flex;flex-direction:column}
+    #page-cerebro .cb-drawer-h{padding:18px 24px;border-bottom:1px solid #E4E4E4;display:flex;justify-content:space-between;align-items:center}
+    #page-cerebro .cb-drawer-b{flex:1;overflow:auto;padding:20px 24px;display:flex;flex-direction:column;gap:14px}
+    #page-cerebro .cb-drawer-f{padding:14px 24px;border-top:1px solid #E4E4E4;display:flex;justify-content:flex-end;gap:8px}
+    #page-cerebro .cb-lbl{display:flex;flex-direction:column;gap:5px;font-size:12px;color:#545252;font-weight:600}
+    #page-cerebro .cb-lbl input,#page-cerebro .cb-lbl select,#page-cerebro .cb-lbl textarea{border:1px solid #D6D6D6;border-radius:7px;padding:9px 11px;font-size:13px;font-weight:400;line-height:1.5;background:#fff;color:#1F1F1F;font-family:inherit}
+    #page-cerebro .cb-lbl input,#page-cerebro .cb-lbl select{height:38px;padding:0 11px}
+    #page-cerebro .cb-lbl textarea{resize:vertical}
+    #page-cerebro .cb-err{color:#A80502;background:#FDECEC;border-radius:6px;padding:10px;font-size:13px;display:none}
+    #page-cerebro #cdp-auditoria .table th{text-align:left;font-weight:600;font-size:12px;color:#666464;background:#FAFAFA}
+    @media (max-width:760px){#page-cerebro .cb-mh{display:none}#page-cerebro .cb-msteps{grid-template-columns:repeat(2,minmax(0,1fr))}#page-cerebro .cb-mwrap > div{min-width:0}}
+  </style>
+  <!-- ===== CÉREBRO: ESTILOS cb-* (fim) ===== -->
   <!-- ===== CÉREBRO IA ===== -->
   <!-- ===== CENTRAL DE DADOS ===== -->
   <div class="page" id="page-cerebro">
@@ -3665,7 +3810,7 @@
         <div class="page-header">
           <h1 class="page-title">Cérebro</h1>
           <div class="page-actions">
-            <button class="btn btn-primary" onclick="abrirModalSetorCerebro()">
+            <button class="btn btn-primary" id="cb-btn-nova-regra" onclick="cbNovaRegra()">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
               Nova regra
             </button>
@@ -3676,40 +3821,45 @@
     <div class="content" style="padding:0 28px 28px">
 
       <!-- Tab bar -->
-      <div id="cerebro-tabbar" style="display:flex;gap:2px;border-bottom:1px solid #E4E4E4;overflow-x:auto;scrollbar-width:none;margin-bottom:18px">
-        <button id="cd-tab-btn-inicio" onclick="cdTab('inicio',this)" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#1F1F1F;border-bottom:2px solid #C70602;margin-bottom:-1px;font-weight:700;font-family:inherit">Início</button>
-        <button id="cd-tab-btn-setores" onclick="cdTab('setores',this)" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Setores</button>
-        <button id="cd-tab-btn-matriz" onclick="cdTab('matriz-cb',this)" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Matriz</button>
-        <button id="cd-tab-btn-causas-cd" onclick="cdTab('causas-cd',this)" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Causas</button>
-        <button id="cd-tab-btn-aprovacao" onclick="cdTab('aprovacao-cb',this)" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Aprovação</button>
-        <button id="cd-tab-btn-auditoria" onclick="cdTab('auditoria',this)" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Auditoria</button>
-        <button id="cd-tab-btn-ia" onclick="cdTab('ia',this)" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Análise IA</button>
+      <div id="cerebro-tabbar" class="cb-nav">
+        <button class="cb-nav-btn cb-on" data-tab="inicio" id="cd-tab-btn-inicio" onclick="cdTab('inicio')">Início</button>
+        <button class="cb-nav-btn" data-tab="setores" id="cd-tab-btn-setores" onclick="cdTab('setores')">Regras dos setores</button>
+        <button class="cb-nav-btn" data-tab="matriz-cb" id="cd-tab-btn-matriz" onclick="cdTab('matriz-cb')">Matriz de tratamento</button>
+        <button class="cb-nav-btn" data-tab="causas-cd" id="cd-tab-btn-causas-cd" onclick="cdTab('causas-cd')">Causas e subcausas</button>
+        <button class="cb-nav-btn" data-tab="aprovacao-cb" id="cd-tab-btn-aprovacao" onclick="cdTab('aprovacao-cb')">Aprovação do conhecimento</button>
+        <button class="cb-nav-btn" data-tab="versoes-cb" id="cd-tab-btn-versoes" onclick="cdTab('versoes-cb')">Histórico de versões</button>
+        <button class="cb-nav-btn" data-tab="auditoria" id="cd-tab-btn-auditoria" onclick="cdTab('auditoria')">Auditoria</button>
+        <button class="cb-nav-btn" data-tab="calc" id="cd-tab-btn-calc" onclick="cbIrCalculadora()">Calculadora de atraso</button>
+        <button class="cb-nav-btn" data-tab="ia" id="cd-tab-btn-ia" onclick="cdTab('ia')">Análise IA</button>
       </div>
 
-      <!-- Início (sector home cards) -->
+      <!-- Início -->
       <div class="cd-panel" id="cdp-inicio">
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:16px;margin-bottom:16px">
-          <div style="background:#C70602;color:#fff;border-radius:12px;padding:22px 24px;display:flex;flex-direction:column;gap:10px">
+        <div class="cb-hero">
+          <div class="cb-hero-red">
             <div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;font-weight:600;opacity:.9">Conhecimento atualizado</div>
-            <div style="display:flex;align-items:baseline;gap:10px"><span style="font-size:40px;font-weight:700;letter-spacing:-.02em;color:#fff;min-width:80px;display:inline-block" id="cb-pct-atualizado">...</span><span style="font-size:14px;color:#fff">dos conteúdos revisados</span></div>
+            <div style="display:flex;align-items:baseline;gap:10px"><span style="font-size:44px;font-weight:700;letter-spacing:-.02em;color:#fff;min-width:80px;display:inline-block" id="cb-pct-atualizado">...</span><span style="font-size:14px;color:#fff">dos conteúdos revisados</span></div>
             <div style="height:6px;background:rgba(255,255,255,.3);border-radius:3px;overflow:hidden"><div id="cb-bar-atualizado" style="height:100%;background:#fff;width:0"></div></div>
             <div style="font-size:12.5px" id="cb-ultima-atualizacao">Última atualização: —</div>
           </div>
-          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:12px;padding:20px 22px;display:flex;flex-direction:column;gap:12px">
+          <div class="cb-card cb-card-pad">
             <div style="font-weight:700;font-size:14.5px">O que a IA considera ao analisar uma manifestação</div>
             <div style="display:flex;flex-wrap:wrap;gap:6px">
-              <span style="border:1px solid #E4E4E4;border-radius:99px;padding:4px 10px;font-size:12px">Regras operacionais dos setores</span>
-              <span style="border:1px solid #E4E4E4;border-radius:99px;padding:4px 10px;font-size:12px">Procedimentos aprovados</span>
-              <span style="border:1px solid #E4E4E4;border-radius:99px;padding:4px 10px;font-size:12px">Políticas internas</span>
-              <span style="border:1px solid #E4E4E4;border-radius:99px;padding:4px 10px;font-size:12px">FAQ dos setores</span>
-              <span style="border:1px solid #E4E4E4;border-radius:99px;padding:4px 10px;font-size:12px">SLA e responsáveis</span>
-              <span style="border:1px solid #E4E4E4;border-radius:99px;padding:4px 10px;font-size:12px">Causas raiz cadastradas</span>
+              <span class="cb-chip">Histórico de manifestações similares</span>
+              <span class="cb-chip">Regras do setor</span>
+              <span class="cb-chip">Procedimentos</span>
+              <span class="cb-chip">Políticas</span>
+              <span class="cb-chip">Matriz de tratamento</span>
+              <span class="cb-chip">FAQ</span>
+              <span class="cb-chip">Documentos anexados</span>
+              <span class="cb-chip">SLAs</span>
+              <span class="cb-chip">Causas e subcausas</span>
             </div>
-            <div style="font-size:12.5px;color:#666464;line-height:1.5">Somente conteúdos <strong style="color:#1F1F1F">ativos e aprovados</strong> e marcados como disponíveis para a IA entram na análise.</div>
+            <div style="font-size:12.5px;color:#666464;line-height:1.5">Somente conteúdos <strong style="color:#1F1F1F">ativos e aprovados</strong> e marcados como disponíveis para a IA entram na análise. O Cérebro é a fonte estruturada e oficial de conhecimento da plataforma.</div>
           </div>
         </div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px" id="cb-setor-cards">
-          <div style="text-align:center;padding:32px;color:#8A8888;grid-column:1/-1"><div class="spinner" style="margin:0 auto 8px"></div>Carregando setores...</div>
+        <div class="cb-hgrid" id="cb-home-cards">
+          <div style="text-align:center;padding:32px;color:#8A8888;grid-column:1/-1"><div class="spinner" style="margin:0 auto 8px"></div>Carregando...</div>
         </div>
       </div>
 
@@ -3766,26 +3916,19 @@
         <div id="cd-hist-loading" style="padding:24px;text-align:center;color:var(--gray-400);font-size:13px">Carregando...</div>
       </div>
 
-      <!-- ── SETORES ── -->
+      <!-- ── SETORES (Regras dos setores) ── -->
       <div class="cd-panel" id="cdp-setores" style="display:none">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
-          <input class="form-input" id="cd-set-busca" placeholder="Buscar setor…" style="width:220px" oninput="cdFiltrar('set')">
-          <div style="display:flex;gap:8px">
-            <label class="btn btn-secondary" style="cursor:pointer;margin:0" title="Importar CSV com colunas: SETOR, EMPRESA, RESPONSAVEL, SLA_HORAS, ATIVO">
-              📥 Importar CSV
-              <input type="file" id="upload-setores-input" accept=".csv,.txt" style="display:none" onchange="handleUploadSetores(this)">
-            </label>
-            <button class="btn btn-primary" onclick="abrirModalSetorCerebro()">+ Novo Setor</button>
-          </div>
+        <div class="cb-intro">Cadastre as regras operacionais que devem ser consideradas pelo Assistente SAC durante a análise, encaminhamento e tratamento das manifestações.</div>
+        <div class="cb-bar">
+          <input class="cb-search" id="cd-set-busca" placeholder="Buscar setor…" oninput="cdFiltrar('set')">
+          <label class="cb-btn-dark" style="cursor:pointer;margin:0" title="Importar CSV com colunas: SETOR, EMPRESA, RESPONSAVEL, SLA_HORAS, ATIVO">
+            Importar CSV
+            <input type="file" id="upload-setores-input" accept=".csv,.txt" style="display:none" onchange="handleUploadSetores(this)">
+          </label>
         </div>
         <div id="setores-import-status" style="font-size:13px;color:var(--gray-400);margin-bottom:8px"></div>
         <div id="cerebro-setores-loading" style="padding:24px;text-align:center;color:var(--gray-400);font-size:13px">Carregando...</div>
-        <div id="cerebro-setores-tabela" style="display:none;overflow-x:auto">
-          <table class="table" style="width:100%">
-            <thead><tr><th>ID</th><th>Setor</th><th>Empresa</th><th>Responsável</th><th>SLA (h)</th><th>Status</th><th></th></tr></thead>
-            <tbody id="cerebro-setores-tbody"></tbody>
-          </table>
-        </div>
+        <div class="cb-sgrid" id="cb-setores-grid" style="display:none"></div>
       </div>
 
       <!-- ── PRODUTOS ── -->
@@ -3848,18 +3991,15 @@
 
       <!-- ── CAUSAS ── -->
       <div class="cd-panel" id="cdp-causas-cd" style="display:none">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
-          <input class="form-input" id="cd-caus-busca" placeholder="Buscar causa…" style="width:220px" oninput="cdFiltrar('caus')">
-          <div style="display:flex;gap:8px;align-items:center">
-            <span id="cd-caus-count" style="font-size:12px;color:var(--gray-400)"></span>
-            <button class="btn btn-secondary" style="font-size:12px;padding:5px 12px" onclick="cdPopularCausas(this)" title="Extrai causas únicas do BANCO_HISTORICO e cadastra automaticamente">⚡ Extrair do Histórico</button>
-          </div>
+        <div class="cb-intro">Cadastro hierárquico usado pela IA na classificação: Categoria → Causa → Subcausa.</div>
+        <div class="cb-bar">
+          <input class="cb-search" id="cd-caus-busca" placeholder="Buscar causa…" oninput="cdFiltrar('caus')">
+          <span id="cd-caus-count" class="cb-muted"></span>
+          <button class="cb-btn-dark" onclick="cdPopularCausas(this)" title="Extrai causas únicas do BANCO_HISTORICO e cadastra automaticamente">Extrair do Histórico</button>
+          <button class="cb-btn-dark" onclick="cbFormCausa()">+ Nova causa</button>
         </div>
-        <div style="overflow-x:auto"><table class="table" style="width:100%">
-          <thead><tr><th>ID</th><th>Categoria</th><th>Tipo</th><th>Causa</th><th>Subcausa</th><th>Setor</th><th>Ativo</th></tr></thead>
-          <tbody id="cd-caus-tbody"></tbody>
-        </table></div>
         <div id="cd-caus-loading" style="padding:24px;text-align:center;color:var(--gray-400);font-size:13px">Carregando...</div>
+        <div class="cb-tree" id="cd-caus-tree"></div>
       </div>
 
       <!-- ── AUDITORIA ── -->
@@ -3949,17 +4089,54 @@
         </div>
       </div>
 
-      <!-- New tab panels -->
+      <!-- Página do setor (Regras / Procedimentos / Políticas / FAQ / SLA / Responsáveis / Documentos) -->
+      <div class="cd-panel" id="cdp-setor-cb" style="display:none">
+        <div style="margin-bottom:10px"><button class="cb-link" onclick="cbVoltarSetores()">← Voltar</button></div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:14px">
+          <div style="min-width:0"><div class="cb-title" id="cb-setor-titulo"></div><div style="font-size:13px;color:#666464;margin-top:2px" id="cb-setor-sub"></div></div>
+        </div>
+        <div id="cb-setor-info"></div>
+        <div id="cb-setor-chips" class="cb-pills"></div>
+        <div id="cb-setor-pills" class="cb-pills"></div>
+        <div id="cb-setor-body"></div>
+      </div>
+
+      <!-- Matriz de tratamento -->
       <div class="cd-panel" id="cdp-matriz-cb" style="display:none">
-        <div style="font-size:13px;color:#545252;line-height:1.55;margin-bottom:16px">Matriz de encaminhamento: define qual setor é responsável (principal e apoio) para cada tipo e motivo de manifestação.</div>
-        <div id="cb-matriz-content" style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;overflow-x:auto">
+        <div class="cb-bar" style="justify-content:space-between">
+          <span class="cb-intro" style="margin:0;flex:1;min-width:240px">Relaciona cada problema ao caminho de tratamento. A IA usa a matriz para sugerir setor, regra e procedimento. Clique em “Editar” para alterar uma linha.</span>
+          <button class="cb-btn-dark" id="cb-btn-nova-linha" onclick="cbFormMatriz()">+ Nova linha</button>
+        </div>
+        <div id="cb-matriz-content" class="cb-mwrap">
           <div style="text-align:center;padding:40px;color:#8A8888"><div class="spinner" style="margin:0 auto 8px"></div>Carregando...</div>
         </div>
       </div>
+
+      <!-- Aprovação do conhecimento -->
       <div class="cd-panel" id="cdp-aprovacao-cb" style="display:none">
-        <div style="font-size:13px;color:#545252;line-height:1.55;margin-bottom:16px">Conteúdos do Cérebro aguardando aprovação antes de serem utilizados pela IA.</div>
-        <div id="cb-aprovacao-content" style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;overflow-x:auto">
+        <div class="cb-flow"><span><span>Rascunho</span> →</span><span><span>Em revisão</span> →</span><span><span>Aguardando aprovação</span> →</span><span><span>Aprovado</span> →</span><span><span>Ativo</span></span></div>
+        <div class="cb-intro">Novo conhecimento só passa a ser considerado oficial, e usado pela IA, depois de aprovado e ativado.</div>
+        <div id="cb-aprovacao-content">
           <div style="text-align:center;padding:40px;color:#8A8888"><div class="spinner" style="margin:0 auto 8px"></div>Carregando...</div>
+        </div>
+      </div>
+
+      <!-- Histórico de versões -->
+      <div class="cd-panel" id="cdp-versoes-cb" style="display:none">
+        <div class="cb-empty">
+          <strong style="display:block;color:#1F1F1F;margin-bottom:6px">Histórico de versões indisponível</strong>
+          O sistema ainda não versiona regras, procedimentos, políticas, documentos e matriz (não há versão anterior armazenada no cadastro).
+          Enquanto isso, o registro de quem criou e alterou cada conteúdo pode ser consultado na aba <a href="#" onclick="cdTab('auditoria');return false">Auditoria</a>.
+        </div>
+      </div>
+
+      <!-- Drawer de formulário (regra, procedimento, política, FAQ, matriz, causa) -->
+      <div class="cb-drawer" id="cb-drawer" onclick="if(event.target===this)cbFecharForm()">
+        <div class="cb-drawer-p">
+          <div class="cb-drawer-h"><div><div style="font-size:12px;color:#929090" id="cb-form-meta"></div><div style="font-weight:700;font-size:17px" id="cb-form-title"></div></div><button onclick="cbFecharForm()" style="border:0;background:none;cursor:pointer;font-size:22px;color:#666464;padding:0 4px">×</button></div>
+          <div class="cb-drawer-b" id="cb-form-body"></div>
+          <div style="padding:0 24px"><div class="cb-err" id="cb-form-err"></div></div>
+          <div class="cb-drawer-f"><button class="cb-btn-dark" style="font-weight:400" onclick="cbFecharForm()">Cancelar</button><button class="cb-btn-prim" id="cb-form-save" onclick="cbSalvarForm()">Salvar</button></div>
         </div>
       </div>
 
@@ -13556,14 +13733,9 @@ let _cdData = { man:[], rnc:[], hist:[], set:[], prod:[], usr:[], rep:[], caus:[
 
 function cdTab(name, btn) {
   document.querySelectorAll('.cd-panel').forEach(p=>p.style.display='none');
-  // Update tab button styles (inline style approach matching mockup)
-  document.querySelectorAll('#cerebro-tabbar button').forEach(b=>{
-    b.style.color='#666464'; b.style.fontWeight='500'; b.style.borderBottom='2px solid transparent';
-  });
-  if (btn) { btn.style.color='#1F1F1F'; btn.style.fontWeight='700'; btn.style.borderBottom='2px solid #C70602'; }
-  // Legacy .cd-tab support
-  document.querySelectorAll('.cd-tab').forEach(b=>b.classList.remove('active'));
-  if (btn && btn.classList.contains('cd-tab')) btn.classList.add('active');
+  // aba do menu destacada (a página do setor pertence a "Regras dos setores"; visão geral pertence a "Início")
+  const navKey = name==='setor-cb' ? (CB.setor==='*' ? 'inicio' : 'setores') : name;
+  document.querySelectorAll('#cerebro-tabbar .cb-nav-btn').forEach(b=>b.classList.toggle('cb-on', b.getAttribute('data-tab')===navKey));
   const panel = document.getElementById('cdp-'+name);
   if (panel) panel.style.display='block';
   // lazy load
@@ -13575,7 +13747,7 @@ function cdTab(name, btn) {
   else if (name==='produtos') { cdLoadProd(); }
   else if (name==='usuarios' && !_cdData.usr.length) cdLoadUsr();
   else if (name==='representantes' && !_cdData.rep.length) cdLoadRep();
-  else if (name==='causas-cd' && !_cdData.caus.length) cdLoadCaus();
+  else if (name==='causas-cd') { _cdData.caus=[]; cdLoadCaus(); }
   else if (name==='auditoria' && !_cdData.aud.length) cdLoadAud();
   else if (name==='todas-abas') cdLoadTodasAbas();
   else if (name==='ia') {} // IA panel already loaded
@@ -13586,132 +13758,141 @@ function cdTab(name, btn) {
 async function cdLoadMatrizCb() {
   const el = document.getElementById('cb-matriz-content');
   if (!el) return;
-  el.innerHTML = '<div style="text-align:center;padding:40px;color:#8A8888"><div class="spinner" style="margin:0 auto 8px"></div>Carregando...</div>';
+  const novo = document.getElementById('cb-btn-nova-linha');
+  if (novo) novo.style.display = cbPode() ? '' : 'none';
+  el.innerHTML = cbSpin();
   try {
-    const r = await _apiFetch('/api/matriz-tratamento').catch(()=>({sucesso:false,itens:[]}));
+    await cbCarregarSetores().catch(()=>[]);
+    const r = await _apiFetch('/api/matriz-tratamento').catch(()=>({itens:[]}));
     const itens = r.itens || r.data || [];
+    CB.mat = itens;
     if (!itens.length) {
-      el.innerHTML = '<div style="padding:40px;text-align:center;color:#929090;font-size:13px">Nenhuma regra cadastrada ainda. Acesse <strong>Alimentação da Ferramenta</strong> para importar a Matriz de Tratamento.</div>';
+      el.innerHTML = '<div class="cb-empty">Nenhuma linha cadastrada ainda. Use “+ Nova linha” ou importe a Matriz de Tratamento em <strong>Alimentação da Ferramenta</strong>.</div>';
       return;
     }
-    const esc6 = v => String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-    el.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:12.5px">
-      <thead><tr style="background:#F9F9F9;border-bottom:2px solid #E4E4E4">
-        <th style="padding:10px 12px;text-align:left;font-weight:700;color:#545252">Tipo</th>
-        <th style="padding:10px 12px;text-align:left;font-weight:700;color:#545252">Causa</th>
-        <th style="padding:10px 12px;text-align:left;font-weight:700;color:#545252">Empresa</th>
-        <th style="padding:10px 12px;text-align:left;font-weight:700;color:#545252">Setor responsável</th>
-        <th style="padding:10px 12px;text-align:left;font-weight:700;color:#545252">SLA (h)</th>
-        <th style="padding:10px 12px;text-align:left;font-weight:700;color:#545252">Prioridade</th>
-        <th style="padding:10px 12px;text-align:left;font-weight:700;color:#545252">Ativo</th>
-      </tr></thead>
-      <tbody>${itens.map((r,i)=>`<tr style="border-bottom:1px solid #F4F4F4${i%2===0?'':';background:#FAFAFA'}">
-        <td style="padding:9px 12px">${esc6(r.TIPO_MANIFESTACAO||'')}</td>
-        <td style="padding:9px 12px">${esc6(r.CAUSA||'')}${r.SUBCAUSA?` <span style="color:#929090">/ ${esc6(r.SUBCAUSA)}</span>`:''}</td>
-        <td style="padding:9px 12px">${esc6(r.EMPRESA||'Todas')}</td>
-        <td style="padding:9px 12px;font-weight:600">${esc6(r.SETOR_RESPONSAVEL||'')}</td>
-        <td style="padding:9px 12px">${esc6(r.SLA_HORAS||'')}</td>
-        <td style="padding:9px 12px"><span style="padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600;background:${r.PRIORIDADE==='ALTA'?'#FDECEC;color:#A80502':r.PRIORIDADE==='URGENTE'?'#FDE68A;color:#92400E':'#F4F4F4;color:#545252'}">${esc6(r.PRIORIDADE||'NORMAL')}</span></td>
-        <td style="padding:9px 12px"><span style="color:${(r.ATIVO||'SIM')==='SIM'?'#22C55E':'#929090'};font-weight:600">${esc6(r.ATIVO||'SIM')}</span></td>
-      </tr>`).join('')}</tbody>
-    </table>`;
+    const pode = cbPode();
+    const H = ['PROBLEMA','CAUSA','SETOR','SLA','TRATATIVA','APROVAÇÃO','DEVOLUTIVA'];
+    let html = '<div><div class="cb-mh">' + H.map(h=>`<span>${h}</span>`).join('') + '</div>';
+    html += itens.map((m,i)=>{
+      const ativo = !cbNorm(m.ATIVO||'SIM').startsWith('n');
+      const steps = [
+        m.TIPO_MANIFESTACAO || '—',
+        (m.CAUSA||'—') + (m.SUBCAUSA ? ' / ' + m.SUBCAUSA : ''),
+        m.SETOR_RESPONSAVEL || '—',
+        (m.SLA_HORAS ? m.SLA_HORAS + 'h' : '—') + (m.PRIORIDADE ? ' · ' + m.PRIORIDADE : ''),
+        m.TRATATIVA_PADRAO || '—',
+        cbNorm(m.REQUER_APROVACAO)==='sim' ? 'Requer aprovação' : 'Não se aplica',
+        m.DEVOLUTIVA_PADRAO || '—'
+      ];
+      return `<div class="cb-mrow${ativo?'':' cb-off'}"><div class="cb-msteps">${steps.map((s,j)=>`<div class="cb-mstep${j===0?' cb-first':j===6?' cb-last':''}"><span>${cbEsc(s)}</span></div>`).join('')}</div>
+        <div class="cb-mfoot"><span>${cbEsc(m.EMPRESA||'Todas as empresas')} · ${cbEsc(m.CRIADO_POR||'—')} · ${cbData(m.DATA_CRIACAO)}</span>
+        ${pode ? `<div style="display:flex;gap:8px"><button class="cb-btn" style="background:#1F1F1F;color:#fff;border-color:#1F1F1F;font-weight:600" onclick="cbFormMatriz(${i})">Editar</button></div>` : ''}</div></div>`;
+    }).join('') + '</div>';
+    el.innerHTML = html;
   } catch(e) {
-    if (el) el.innerHTML = '<div style="padding:24px;text-align:center;color:#A80502;font-size:13px">Erro ao carregar matriz: ' + e.message + '</div>';
+    el.innerHTML = '<div class="cb-empty" style="color:#A80502">Erro ao carregar matriz: ' + cbEsc(e.message) + '</div>';
   }
 }
-
 async function cdLoadAprovacaoCb() {
   const el = document.getElementById('cb-aprovacao-content');
   if (!el) return;
-  el.innerHTML = '<div style="text-align:center;padding:40px;color:#8A8888"><div class="spinner" style="margin:0 auto 8px"></div>Carregando...</div>';
+  el.innerHTML = cbSpin();
   try {
-    // Load pending content from causas and matriz (ATIVO !== 'SIM' or STATUS === 'PENDENTE')
-    const [causasRes, matrizRes] = await Promise.allSettled([
-      _apiFetch('/api/causas').catch(()=>({itens:[]})),
-      _apiFetch('/api/matriz-tratamento').catch(()=>({itens:[]}))
+    cbInvalidar();
+    const [scan, causasR] = await Promise.all([
+      cbScan(),
+      _apiFetch('/api/causas').catch(()=>({itens:[]}))
     ]);
-    const causas = (causasRes.value?.itens||[]).filter(c=>(c.ATIVO||'SIM')!=='SIM');
-    const regras = (matrizRes.value?.itens||[]).filter(r=>(r.ATIVO||'SIM')!=='SIM');
-    const total = causas.length + regras.length;
-    if (!total) {
-      el.innerHTML = '<div style="padding:32px;text-align:center;color:#1E6B3A;font-size:13px">✓ Nenhum conteúdo pendente de aprovação.</div>';
-      return;
-    }
-    const esc6 = v => String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-    let html = `<div style="padding:16px 20px;font-size:13px;color:#7A4C00;background:#FFF3E0;border-bottom:1px solid #E4E4E4"><strong>${total}</strong> item(ns) inativo(s) / aguardando ativação.</div>`;
-    if (causas.length) {
-      html += `<div style="padding:12px 16px;font-size:11px;font-weight:700;text-transform:uppercase;color:#929090;border-bottom:1px solid #F4F4F4">Causas inativas (${causas.length})</div>`;
-      html += causas.map(c=>`<div style="padding:10px 16px;border-bottom:1px solid #F4F4F4;font-size:12.5px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><span><strong>${esc6(c.CAUSA||'')}</strong>${c.SUBCAUSA?` — ${esc6(c.SUBCAUSA)}`:''} <span style="color:#929090;font-size:11.5px">${esc6(c.CATEGORIA||'')}</span></span><button onclick="cdAprovarCausa(${JSON.stringify(c.ID||c.id||'')})" style="flex:none;border:0;background:#1E6B3A;color:#fff;border-radius:7px;padding:6px 14px;cursor:pointer;font-size:12px;font-weight:600;font-family:inherit">✓ Ativar</button></div>`).join('');
-    }
-    if (regras.length) {
-      html += `<div style="padding:12px 16px;font-size:11px;font-weight:700;text-transform:uppercase;color:#929090;border-bottom:1px solid #F4F4F4;margin-top:4px">Regras de matriz inativas (${regras.length})</div>`;
-      html += regras.map(r=>`<div style="padding:10px 16px;border-bottom:1px solid #F4F4F4;font-size:12.5px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><span><strong>${esc6(r.TIPO_MANIFESTACAO||'')}</strong>${r.CAUSA?` — ${esc6(r.CAUSA)}`:''} <span style="color:#929090;font-size:11.5px">${esc6(r.SETOR_RESPONSAVEL||'')}</span></span><button onclick="cdAprovarRegra(${JSON.stringify(r.ID||r.id||'')})" style="flex:none;border:0;background:#1E6B3A;color:#fff;border-radius:7px;padding:6px 14px;cursor:pointer;font-size:12px;font-weight:600;font-family:inherit">✓ Ativar</button></div>`).join('');
-    }
-    el.innerHTML = html;
+    const pode = cbPode();
+    CB.acoes = [];
+    const rev = [], ativo = [];
+    const por = (x) => (x.USUARIO || x.USUARIO_ATUALIZACAO || x.CRIADO_POR || '—') + ' · ' + cbData(x.DATA_ATUALIZACAO || x.DATA_UPLOAD || x.DATA_CRIACAO);
+    scan.forEach(x=>{
+      const t = CB_TIPOS[x._tipo], st = cbStatus(x.STATUS);
+      const it = { kind: t.kind, setor: x._setor, t: x[t.nome] || '—', by: por(x) };
+      if (st.k === 'revisao') {
+        if (pode) { CB.acoes.push(async()=>{ await cbSetStatus(x._tipo, x, 'VALIDADA'); }); it.a = CB.acoes.length-1; }
+        rev.push(it);
+      } else if (st.k === 'ativa') ativo.push(it);
+    });
+    (causasR.itens||[]).forEach(c=>{
+      const on = !cbNorm(c.ATIVO||'SIM').startsWith('n');
+      const it = { kind: 'Causa', setor: c.SETOR_RESPONSAVEL || '—', t: (c.CAUSA||'—') + (c.SUBCAUSA ? ' / ' + c.SUBCAUSA : ''), by: por(c) };
+      if (on) ativo.push(it);
+      else { if (pode) { CB.acoes.push(async()=>{ await cdAprovarCausa(c.ID_CAUSA||c.ID||c.id, true); }); it.a = CB.acoes.length-1; } rev.push(it); }
+    });
+    const cols = [['Rascunho', []], ['Em revisão', rev], ['Aguardando aprovação', []], ['Aprovado', []], ['Ativo', ativo]];
+    const card = it => `<div class="cb-it"><small>${cbEsc(it.kind)} · ${cbEsc(it.setor)}</small><strong>${cbEsc(it.t)}</strong><em>${cbEsc(it.by)}</em>${it.a != null ? `<div class="cb-it-a"><button onclick="cbAprovarAcao(${it.a})">Aprovar e ativar</button></div>` : ''}</div>`;
+    el.innerHTML = '<div class="cb-board">' + cols.map(([l, items])=>{
+      const vis = items.slice(0, 12), resto = items.length - vis.length;
+      return `<div class="cb-col"><div class="cb-col-h"><span>${l}</span><span>${items.length}</span></div>${vis.map(card).join('')}${resto > 0 ? `<div class="cb-muted" style="text-align:center">+ ${resto} itens</div>` : ''}</div>`;
+    }).join('') + '</div>';
   } catch(e) {
-    if (el) el.innerHTML = '<div style="padding:24px;text-align:center;color:#A80502;font-size:13px">Erro: ' + e.message + '</div>';
+    el.innerHTML = '<div class="cb-empty" style="color:#A80502">Erro: ' + cbEsc(e.message) + '</div>';
   }
 }
-
-async function cdAprovarCausa(id) {
-  if (!id) return;
-  try {
-    await _apiFetch('/api/causas/' + encodeURIComponent(id), 15000, { method: 'PATCH', body: JSON.stringify({ ATIVO: 'SIM' }) });
-    cdLoadAprovacaoCb();
-  } catch(e) { alert('Erro ao ativar causa: ' + e.message); }
+async function cbAprovarAcao(i) {
+  const fn = CB.acoes[i]; if (!fn) return;
+  try { await fn(); cdLoadAprovacaoCb(); }
+  catch(e) { alert('Erro ao aprovar: ' + e.message); }
 }
 
-async function cdAprovarRegra(id) {
-  if (!id) return;
-  try {
-    await _apiFetch('/api/matriz-tratamento/' + encodeURIComponent(id), 15000, { method: 'PATCH', body: JSON.stringify({ ATIVO: 'SIM' }) });
-    cdLoadAprovacaoCb();
-  } catch(e) { alert('Erro ao ativar regra: ' + e.message); }
+async function cdAprovarCausa(id, semRecarregar) {
+  if (!id) throw new Error('Registro sem identificador.');
+  await _apiFetch('/api/causas/' + encodeURIComponent(id), 15000, { method: 'PATCH', headers: CB_JSON, body: JSON.stringify({ ATIVO: 'SIM' }) });
+  if (!semRecarregar) cdLoadAprovacaoCb();
+}
+
+async function cdAprovarRegra(id, semRecarregar) {
+  if (!id) throw new Error('Registro sem identificador.');
+  await _apiFetch('/api/matriz-tratamento/' + encodeURIComponent(id), 15000, { method: 'PATCH', headers: CB_JSON, body: JSON.stringify({ ATIVO: 'SIM' }) });
+  if (!semRecarregar) cdLoadAprovacaoCb();
 }
 
 async function cdLoadCerebroHome() {
-  const cardsEl = document.getElementById('cb-setor-cards');
+  const cardsEl = document.getElementById('cb-home-cards');
   if (!cardsEl) return;
+  const pctEl = document.getElementById('cb-pct-atualizado');
+  const barEl = document.getElementById('cb-bar-atualizado');
+  const aulEl = document.getElementById('cb-ultima-atualizacao');
   try {
-    const d = await _apiFetch('/api/setores', 10000).catch(()=>({itens:[]}));
-    let setores = d.itens || d.setores || [];
-    if (!setores.length) {
-      setores = [
-        {SETOR:'Qualidade',DESCRICAO:'Controle e garantia de qualidade dos produtos',ATIVO:'SIM'},
-        {SETOR:'Produção',DESCRICAO:'Fabricação e processos produtivos',ATIVO:'SIM'},
-        {SETOR:'Logística',DESCRICAO:'Distribuição, transporte e entregas',ATIVO:'SIM'},
-        {SETOR:'Comercial',DESCRICAO:'Vendas e relacionamento comercial',ATIVO:'SIM'},
-        {SETOR:'Financeiro',DESCRICAO:'Faturamento, cobrança e pagamentos',ATIVO:'SIM'},
-        {SETOR:'SAC',DESCRICAO:'Serviço de Atendimento ao Cliente',ATIVO:'SIM'},
-        {SETOR:'Faturamento',DESCRICAO:'Processamento de pedidos e notas fiscais',ATIVO:'SIM'},
-      ];
-    }
-    // Populate the knowledge percentage card
-    const pctEl = document.getElementById('cb-pct-atualizado');
-    const barEl = document.getElementById('cb-bar-atualizado');
-    const aulEl = document.getElementById('cb-ultima-atualizacao');
-    if (setores.length) {
-      const comDesc = setores.filter(s => (s.DESCRICAO||s.descricao||'').trim().length > 0).length;
-      const pct = Math.round(comDesc / setores.length * 100);
-      if (pctEl) pctEl.textContent = pct + '%';
-      if (barEl) barEl.style.width = pct + '%';
-      const datas = setores.map(s=>s.DATA_ATUALIZACAO||s.DATA_CRIACAO||'').filter(Boolean).sort().reverse();
-      if (aulEl) aulEl.textContent = 'Última atualização: ' + (datas[0] ? new Date(datas[0]).toLocaleDateString('pt-BR') : '—');
-    } else {
-      if (pctEl) pctEl.textContent = '0%';
-    }
-    cardsEl.innerHTML = setores.map(s=>`
-      <button onclick="abrirFichaSetor(${JSON.stringify(s.SETOR||s.nome||s.NOME||'')})" style="white-space:normal;text-align:left;background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:16px 18px;cursor:pointer;display:flex;flex-direction:column;gap:6px;min-height:112px;font-family:inherit">
-        <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline">
-          <span style="font-weight:700;font-size:14px">${s.SETOR||s.nome||s.NOME||'—'}</span>
-          <span style="font-size:12px;color:#929090">${s.EMPRESA||''}</span>
-        </div>
-        <span style="font-size:12.5px;color:#666464;line-height:1.45">${s.DESCRICAO||s.descricao||'Regras, procedimentos, políticas e FAQ do setor'}</span>
-      </button>`).join('');
+    cbInvalidar();
+    const [sets, , mat, caus] = await Promise.all([
+      cbCarregarSetores(true).catch(()=>[]),
+      cbCarregarCounts(true),
+      _apiFetch('/api/matriz-tratamento', 15000).catch(()=>({itens:[]})),
+      _apiFetch('/api/causas', 15000).catch(()=>({itens:[]}))
+    ]);
+    const nMat = (mat.itens || mat.data || []).length;
+    const nCaus = new Set((caus.itens||[]).map(x=>(x.CATEGORIA||'')+'|'+(x.CAUSA||''))).size;
+    const cards = [
+      ['Setores', sets.length, 'Página de cada setor com regras, SLA e responsáveis', "cdTab('setores')"],
+      ['Regras', cbCountTodos('regras'), 'Regras operacionais por setor', "cbAbrirSetor('*','regras')"],
+      ['Procedimentos', cbCountTodos('procedimentos'), 'Passo a passo operacional por setor', "cbAbrirSetor('*','procedimentos')"],
+      ['Políticas', cbCountTodos('politicas'), 'Políticas internas e condições de aprovação', "cbAbrirSetor('*','politicas')"],
+      ['Matriz de Tratamento', nMat + ' linhas', 'Caminho do problema até a devolutiva', "cdTab('matriz-cb')"],
+      ['FAQ', cbCountTodos('faqs'), 'Perguntas frequentes por setor', "cbAbrirSetor('*','faq')"],
+      ['Base de Conhecimento', '', 'Planilhas, PDFs e documentos usados como fonte', "cbAbrirSetor('*','documentos')"],
+      ['SLAs', '', 'Prazos por etapa e setor', "cbAbrirSetor('*','sla')"],
+      ['Causas e Subcausas', nCaus + ' causas', 'Categoria → causa → subcausa', "cdTab('causas-cd')"],
+      ['Histórico de versões', '', 'Versões anteriores preservadas', "cdTab('versoes-cb')"]
+    ];
+    cardsEl.innerHTML = cards.map(c=>`<button class="cb-hcard" onclick="${c[3]}"><div class="cb-hcard-h"><span style="font-weight:700;font-size:14px">${c[0]}</span><span class="cb-muted" style="font-variant-numeric:tabular-nums">${c[1]}</span></div><span style="font-size:12.5px;color:#666464;line-height:1.45">${c[2]}</span></button>`).join('');
   } catch(e) {
-    const pctEl = document.getElementById('cb-pct-atualizado');
-    if (pctEl) pctEl.textContent = '0%';
-    cardsEl.innerHTML = '<div style="text-align:center;padding:32px;color:#8A8888;grid-column:1/-1">Erro ao carregar setores.</div>';
+    cardsEl.innerHTML = '<div style="text-align:center;padding:32px;color:#8A8888;grid-column:1/-1">Erro ao carregar o Cérebro.</div>';
+  }
+  // Indicador "conhecimento atualizado": conteúdos já revisados (ativos/inativos) sobre o total de conteúdos dos setores
+  try {
+    const scan = await cbScan();
+    const total = scan.length;
+    const pend = scan.filter(x=>cbStatus(x.STATUS).k==='revisao').length;
+    const pct = total ? Math.round((total - pend) / total * 100) : 0;
+    if (pctEl) pctEl.textContent = total ? pct + '%' : '—';
+    if (barEl) barEl.style.width = pct + '%';
+    const datas = scan.map(x=>x.DATA_ATUALIZACAO||x.DATA_UPLOAD||'').filter(Boolean).sort().reverse();
+    if (aulEl) aulEl.textContent = 'Última atualização: ' + (datas[0] ? cbData(datas[0]) : '—') + ' · ' + pend + ' conteúdos aguardando aprovação';
+  } catch(e) {
+    if (pctEl) pctEl.textContent = '—';
   }
 }
 
@@ -13879,35 +14060,449 @@ async function cdHistDetalhe(idx) {
 
 // ── SETORES ──
 let _cerebroSetoresData = [];
+// ===== CÉREBRO (cb-*): núcleo, Regras dos setores e página do setor =====
+const CB = { setores: [], counts: null, setor: null, aba: 'regras', fSet: '', cache: {}, q: '', stF: 'Todas', open: {}, lista: [], tok: 0, scan: null, form: null, mat: [], causaRefs: [], acoes: [] };
+const CB_TIPOS = {
+  regras:        { api: 'regras',        id: 'ID_REGRA', nome: 'NOME',     kind: 'Regra' },
+  procedimentos: { api: 'procedimentos', id: 'ID_PROC',  nome: 'NOME',     kind: 'Procedimento' },
+  politicas:     { api: 'politicas',     id: 'ID_POL',   nome: 'NOME',     kind: 'Política' },
+  faq:           { api: 'faq',           id: 'ID_FAQ',   nome: 'PERGUNTA', kind: 'FAQ' },
+  documentos:    { api: 'documentos',    id: 'ID_DOC',   nome: 'NOME',     kind: 'Documento' }
+};
+const CB_ABAS = [['regras', 'Regras'], ['procedimentos', 'Procedimentos'], ['politicas', 'Políticas'], ['faq', 'FAQ'], ['sla', 'SLA'], ['responsaveis', 'Responsáveis'], ['documentos', 'Documentos']];
+const CB_JSON = { 'Content-Type': 'application/json' };
+
+function cbEsc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+function cbNorm(v) { return String(v == null ? '' : v).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim(); }
+function cbData(v) { if (!v) return '—'; const d = new Date(v); return isNaN(d) ? cbEsc(v) : d.toLocaleDateString('pt-BR'); }
+function cbVal(v) { return (v == null || String(v).trim() === '') ? '—' : cbEsc(v); }
+function cbPode() {
+  try { const u = JSON.parse(sessionStorage.getItem('sac-user') || '{}'); const p = String(u.PERFIL || u.perfil || '').toUpperCase(); return p.includes('MASTER') || p.includes('ANALISTA'); } catch (e) { return false; }
+}
+function cbStatus(s) {
+  const u = cbNorm(s);
+  if (u === 'validada' || u === 'ativa' || u === 'ativo' || u === 'vigente' || u === 'aprovada' || u === 'aprovado') return { t: 'Ativa', c: 'green', k: 'ativa' };
+  if (u === 'obsoleta' || u === 'expirada' || u === 'inativa' || u === 'inativo') return { t: 'Inativa', c: 'gray', k: 'inativa' };
+  return { t: 'Em revisão', c: 'amber', k: 'revisao' };
+}
+function cbPill(st) { return `<span class="cb-st cb-st-${st.c}">${st.t}</span>`; }
+function cbSpin() { return '<div style="text-align:center;padding:40px;color:#8A8888"><div class="spinner" style="margin:0 auto 8px"></div>Carregando...</div>'; }
+function cbErro(e) { return '<div class="cb-empty" style="color:#A80502">Erro ao carregar: ' + cbEsc(e && e.message || e) + '</div>'; }
+
+async function cbCarregarSetores(force) {
+  if (CB.setores.length && !force) return CB.setores;
+  const r = await _apiFetch('/api/setores', 20000).catch(() => ({ itens: [] }));
+  CB.setores = (r.itens || []).filter(s => s && s.SETOR);
+  _cerebroSetoresData = CB.setores;
+  return CB.setores;
+}
+async function cbCarregarCounts(force) {
+  if (CB.counts && !force) return CB.counts;
+  const r = await _apiFetch('/api/setores/counts', 30000).catch(() => ({ counts: {} }));
+  CB.counts = r.counts || {};
+  return CB.counts;
+}
+function cbCount(nome, k) {
+  const c = CB.counts || {};
+  for (const n in c) { if (cbNorm(n) === cbNorm(nome)) return c[n][k] || 0; }
+  return 0;
+}
+function cbCountTodos(k) { return Object.values(CB.counts || {}).reduce((a, x) => a + (x[k] || 0), 0); }
+async function cbItens(setor, tipo) {
+  const key = setor + '|' + tipo;
+  if (CB.cache[key]) return CB.cache[key];
+  const r = await _apiFetch('/api/setores/' + encodeURIComponent(setor) + '/' + CB_TIPOS[tipo].api, 30000);
+  const itens = (r.itens || []).map(x => Object.assign({}, x, { _setor: setor }));
+  CB.cache[key] = itens;
+  return itens;
+}
+async function cbItensTodos(tipo) {
+  const sets = await cbCarregarSetores();
+  const arr = await Promise.all(sets.map(s => cbItens(s.SETOR, tipo).catch(() => [])));
+  return [].concat(...arr);
+}
+function cbInvalidar() { CB.cache = {}; CB.scan = null; CB.counts = null; }
+async function cbScan() {
+  if (CB.scan) return CB.scan;
+  const tipos = ['regras', 'procedimentos', 'politicas', 'faq', 'documentos'];
+  const parts = await Promise.all(tipos.map(t => cbItensTodos(t).then(a => a.map(x => Object.assign({ _tipo: t }, x))).catch(() => [])));
+  CB.scan = [].concat(...parts);
+  return CB.scan;
+}
+function cbRefresh() {
+  const vis = id => { const p = document.getElementById(id); return p && p.style.display !== 'none'; };
+  if (vis('cdp-setor-cb')) cbRenderSetor();
+  else if (vis('cdp-setores')) cdLoadSetores();
+  else if (vis('cdp-matriz-cb')) cdLoadMatrizCb();
+  else if (vis('cdp-causas-cd')) { _cdData.caus = []; cdLoadCaus(); }
+  else if (vis('cdp-aprovacao-cb')) cdLoadAprovacaoCb();
+  else if (vis('cdp-inicio')) cdLoadCerebroHome();
+}
+
+// ── Regras dos setores (cards) ──
 async function cdLoadSetores() {
   const loading = document.getElementById('cerebro-setores-loading');
-  const tabela = document.getElementById('cerebro-setores-tabela');
-  const tbody = document.getElementById('cerebro-setores-tbody');
-  if (loading) loading.style.display='block';
-  if (tabela) tabela.style.display='none';
+  const grid = document.getElementById('cb-setores-grid');
+  if (loading) { loading.style.display = 'block'; loading.textContent = 'Carregando...'; }
+  if (grid) grid.style.display = 'none';
   try {
-    const r = await _apiFetch('/api/setores');
-    _cerebroSetoresData = r.itens || [];
-    if (tbody) tbody.innerHTML = _cerebroSetoresData.length === 0
-      ? '<tr><td colspan="7" style="text-align:center;color:var(--gray-400);padding:20px">Nenhum setor cadastrado. Clique em "+ Novo Setor" para adicionar.</td></tr>'
-      : _cerebroSetoresData.map(s => `
-        <tr>
-          <td style="font-size:11px;color:var(--gray-400)">${esc5(s.ID_SETOR||'')}</td>
-          <td><strong>${esc5(s.SETOR||'')}</strong></td>
-          <td>${esc5(s.EMPRESA||'')}</td>
-          <td>${esc5(s.RESPONSAVEL||'')}</td>
-          <td>${esc5(s.SLA_HORAS||'')}</td>
-          <td><span class="badge ${(s.ATIVO||'SIM')==='SIM'?'badge-green':'badge-gray'}">${esc5(s.ATIVO||'SIM')}</span></td>
-          <td><button class="btn btn-secondary" style="padding:3px 10px;font-size:12px" onclick="editarSetorCerebro('${esc5(s.ID_SETOR)}')">✏️ Editar</button></td>
-        </tr>`).join('');
-    if (loading) loading.style.display='none';
-    if (tabela) tabela.style.display='block';
-  } catch(e) {
-    if (loading) { loading.style.display='block'; loading.textContent='Erro ao carregar setores: '+e.message; }
+    cbInvalidar();
+    await Promise.all([cbCarregarSetores(true), cbCarregarCounts(true)]);
+    renderCdSet();
+    if (loading) loading.style.display = 'none';
+    if (grid) grid.style.display = 'grid';
+  } catch (e) {
+    if (loading) { loading.style.display = 'block'; loading.textContent = 'Erro ao carregar setores: ' + e.message; }
   }
 }
 function loadCerebroSetores() { cdLoadSetores(); }
-function renderCdSet() { cdLoadSetores(); }
+function renderCdSet() {
+  const grid = document.getElementById('cb-setores-grid');
+  if (!grid) return;
+  const q = cbNorm(document.getElementById('cd-set-busca')?.value || '');
+  const pode = cbPode();
+  const lista = CB.setores.map((s, i) => ({ s, i })).filter(x => !q || cbNorm(x.s.SETOR + ' ' + (x.s.EMPRESA || '') + ' ' + (x.s.RESPONSAVEL || '')).includes(q));
+  grid.innerHTML = lista.map(({ s, i }) => {
+    const inativo = cbNorm(s.ATIVO || 'SIM').startsWith('n');
+    return `<div class="cb-scard"${inativo ? ' style="opacity:.6"' : ''}>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="font-weight:700;font-size:15px">${cbEsc(s.SETOR)}</span><span class="cb-muted">${cbEsc(inativo ? 'Inativo' : (s.EMPRESA || ''))}</span></div>
+      <div class="cb-scard-k"><div><b>${cbCount(s.SETOR, 'regras')}</b>regras</div><div><b>${cbCount(s.SETOR, 'procedimentos')}</b>procedimentos</div><div><b>${s.SLA_HORAS ? cbEsc(s.SLA_HORAS) + 'h' : '—'}</b>SLA</div></div>
+      <div class="cb-scard-m"><span>Gestão: ${cbVal(s.RESPONSAVEL)}</span><span>Atualizado em ${cbData(s.DATA_ATUALIZACAO || s.DATA_CRIACAO)}</span></div>
+      <button class="cb-btn-outline" onclick="cbAbrirSetorIdx(${i})">ACESSAR REGRAS</button>
+      ${pode ? `<button class="cb-link" style="text-align:left" onclick="editarSetorCerebro('${cbEsc(s.ID_SETOR || '')}')">Editar informações do setor</button>` : ''}
+    </div>`;
+  }).join('') + (pode ? '<button class="cb-btn-add" onclick="abrirModalSetorCerebro()">+ Adicionar setor</button>' : '');
+  if (!lista.length && !pode) grid.innerHTML = '<div class="cb-empty" style="grid-column:1/-1">Nenhum setor encontrado.</div>';
+}
+function cbAbrirSetorIdx(i) { const s = CB.setores[i]; if (s) cbAbrirSetor(s.SETOR, 'regras'); }
+
+// ── Página do setor ──
+function cbAbrirSetor(nome, aba) {
+  CB.setor = nome; CB.aba = aba || 'regras'; CB.q = ''; CB.stF = 'Todas'; CB.open = {}; CB.fSet = '';
+  cdTab('setor-cb');
+  cbRenderSetor();
+}
+function cbVoltarSetores() { cdTab(CB.setor === '*' ? 'inicio' : 'setores'); }
+function cbIrAba(a) { CB.aba = a; CB.q = ''; CB.stF = 'Todas'; CB.open = {}; cbRenderSetor(); }
+function cbFiltroSetor(i) { CB.fSet = i < 0 ? '' : (CB.setores[i] ? CB.setores[i].SETOR : ''); cbRenderSetor(); }
+
+async function cbRenderSetor() {
+  const todos = CB.setor === '*';
+  const body = document.getElementById('cb-setor-body');
+  if (!body) return;
+  body.innerHTML = cbSpin();
+  try { await Promise.all([cbCarregarSetores(), cbCarregarCounts()]); } catch (e) { body.innerHTML = cbErro(e); return; }
+  const cfg = todos ? null : (CB.setores.find(s => cbNorm(s.SETOR) === cbNorm(CB.setor)) || { SETOR: CB.setor });
+  CB.cfg = cfg;
+  const abaLbl = (CB_ABAS.find(a => a[0] === CB.aba) || [, ''])[1];
+  document.getElementById('cb-setor-titulo').textContent = todos ? abaLbl + ' · todos os setores' : 'REGRAS — ' + String(CB.setor).toUpperCase();
+  document.getElementById('cb-setor-sub').textContent = todos ? 'Visão consolidada de todos os setores. Filtre por setor abaixo.' : 'Regras, procedimentos, políticas, FAQ, SLA, responsáveis e documentos do setor.';
+  const info = document.getElementById('cb-setor-info');
+  if (!todos) {
+    const campos = [['Empresa', cfg.EMPRESA || 'TODAS'], ['Gestão do conhecimento', cfg.RESPONSAVEL], ['Substituto', cfg.SUBSTITUTO], ['SLA total', cfg.SLA_HORAS ? cfg.SLA_HORAS + 'h' : ''], ['Atualizado em', cfg.DATA_ATUALIZACAO ? cbData(cfg.DATA_ATUALIZACAO) : ''], ['Status', cbNorm(cfg.ATIVO || 'SIM').startsWith('n') ? 'Inativo' : 'Ativo']];
+    info.innerHTML = '<div class="cb-info">' + campos.map(c => `<div><div>${c[0]}</div><span>${cbVal(c[1])}</span></div>`).join('') + '</div>';
+  } else info.innerHTML = '';
+  const chips = document.getElementById('cb-setor-chips');
+  chips.innerHTML = todos ? `<button class="cb-fchip${CB.fSet ? '' : ' cb-on'}" onclick="cbFiltroSetor(-1)">Todos os setores</button>` + CB.setores.map((s, i) => `<button class="cb-fchip${cbNorm(CB.fSet) === cbNorm(s.SETOR) ? ' cb-on' : ''}" onclick="cbFiltroSetor(${i})">${cbEsc(s.SETOR)}</button>`).join('') : '';
+  const cntKey = { regras: 'regras', procedimentos: 'procedimentos', politicas: 'politicas', faq: 'faqs' };
+  document.getElementById('cb-setor-pills').innerHTML = CB_ABAS.map(([k, l]) => {
+    const n = cntKey[k] ? (todos ? cbCountTodos(cntKey[k]) : cbCount(CB.setor, cntKey[k])) : null;
+    return `<button class="cb-pill${CB.aba === k ? ' cb-on' : ''}" onclick="cbIrAba('${k}')">${l}${n == null ? '' : ' <span>' + n + '</span>'}</button>`;
+  }).join('');
+  cbRenderAba();
+}
+
+async function cbRenderAba() {
+  const todos = CB.setor === '*';
+  const body = document.getElementById('cb-setor-body');
+  const aba = CB.aba;
+  const tok = ++CB.tok;
+  if (aba === 'sla') { body.innerHTML = cbHtmlSla(); return; }
+  if (aba === 'responsaveis') { body.innerHTML = cbHtmlResp(); return; }
+  body.innerHTML = cbSpin();
+  let itens;
+  try { itens = todos ? await cbItensTodos(aba) : await cbItens(CB.setor, aba); } catch (e) { if (tok === CB.tok) body.innerHTML = cbErro(e); return; }
+  if (tok !== CB.tok) return;
+  if (todos && CB.fSet) itens = itens.filter(x => cbNorm(x._setor) === cbNorm(CB.fSet));
+  CB.lista = itens;
+  cbPintar();
+}
+function cbPintar() {
+  const body = document.getElementById('cb-setor-body');
+  if (!body) return;
+  body.innerHTML = cbToolbar() + '<div id="cb-lista" class="cb-stack">' + cbLista() + '</div>';
+}
+function cbBusca(v) { CB.q = v; const el = document.getElementById('cb-lista'); if (el) el.innerHTML = cbLista(); }
+function cbFiltroStatus(s) { CB.stF = s; cbPintar(); }
+function cbToolbar() {
+  const aba = CB.aba, pode = cbPode();
+  const novo = { regras: '+ Nova regra', procedimentos: '+ Novo procedimento', politicas: '+ Nova política', faq: '+ Nova pergunta' }[aba];
+  let h = '<div class="cb-bar">';
+  h += `<input class="cb-search" value="${cbEsc(CB.q)}" oninput="cbBusca(this.value)" placeholder="${aba === 'regras' ? 'Pesquisar regra, condição ou ação' : 'Pesquisar'}">`;
+  if (aba !== 'documentos') h += ['Todas', 'Ativa', 'Em revisão', 'Inativa'].map(s => `<button class="cb-fchip${CB.stF === s ? ' cb-on' : ''}" onclick="cbFiltroStatus('${s}')">${s}</button>`).join('');
+  if (novo && pode) h += `<button class="cb-btn-dark" onclick="cbAbrirForm('${aba}')">${novo}</button>`;
+  if (aba === 'documentos') {
+    h += `<button class="cb-btn-dark" onclick="navigate('alimentacao')" title="Importação de planilhas está em Alimentação da Ferramenta">Importar regras da planilha</button>`;
+    if (pode) h += `<label class="cb-btn-prim" style="cursor:pointer;${CB.setor === '*' ? 'opacity:.5;pointer-events:none' : ''}" title="${CB.setor === '*' ? 'Abra um setor para anexar documentos' : ''}">+ ANEXAR DOCUMENTO<input type="file" accept=".xlsx,.xls,.csv,.pdf,.doc,.docx,.png,.jpg,.jpeg,.txt" style="display:none" onchange="cbAnexar(this)"></label>`;
+  }
+  return h + '</div>';
+}
+function cbVisiveis() {
+  const q = cbNorm(CB.q);
+  return CB.lista.map((x, i) => ({ x, i })).filter(({ x }) => {
+    if (CB.aba !== 'documentos' && CB.stF !== 'Todas' && cbStatus(x.STATUS).t !== CB.stF) return false;
+    return !q || cbNorm(Object.keys(x).filter(k => k.charAt(0) !== '_').map(k => x[k]).join(' ')).includes(q);
+  });
+}
+function cbLista() {
+  const vis = cbVisiveis();
+  if (!vis.length) {
+    const msgs = { regras: 'Nenhuma regra encontrada.' + (cbPode() ? ' Use “+ Nova regra” ou importe de uma planilha na aba Documentos.' : ''), documentos: 'Nenhum documento anexado a este setor.' };
+    return `<div class="cb-empty">${msgs[CB.aba] || 'Nenhum item encontrado.'}</div>`;
+  }
+  const fn = { regras: cbCardRegra, procedimentos: cbCardProc, politicas: cbCardPol, faq: cbCardFaq, documentos: null }[CB.aba];
+  if (CB.aba === 'documentos') return cbHtmlDocs(vis);
+  if (CB.aba === 'politicas') return '<div class="cb-pgrid">' + vis.map(({ x, i }) => cbCardPol(x, i)).join('') + '</div>';
+  if (CB.aba === 'faq') return '<div class="cb-acc">' + vis.map(({ x, i }) => cbCardFaq(x, i)).join('') + '</div>';
+  return vis.map(({ x, i }) => fn(x, i)).join('');
+}
+function cbSetorTxt(x) { return CB.setor === '*' ? cbEsc(x._setor) : ''; }
+function cbMeta(pares) { return '<div class="cb-meta">' + pares.filter(p => p[1] != null && String(p[1]).trim() !== '').map(p => `<div><div>${p[0]}</div><span>${cbEsc(p[1])}</span></div>`).join('') + '</div>'; }
+function cbAcoes(tipo, x, i) {
+  if (!cbPode()) return '';
+  const st = cbStatus(x.STATUS);
+  const lbl = st.k === 'ativa' ? 'Ativa' : st.k === 'inativa' ? 'Inativa' : 'Aprovar e ativar';
+  return `<div class="cb-actions"><button class="cb-tg-b" onclick="cbToggle(${i})"><span class="cb-tg${st.k === 'ativa' ? ' cb-on' : ''}"><i></i></span>${lbl}</button><span style="flex:1"></span><button class="cb-btn" onclick="cbAbrirForm('${tipo}',${i})">Editar</button></div>`;
+}
+function cbCardRegra(x, i) {
+  const st = cbStatus(x.STATUS);
+  const flags = [];
+  if (cbNorm(x.NECESSITA_APROVACAO) === 'sim') flags.push('Exige aprovação');
+  if (x.EXCECOES) flags.push('Possui exceções');
+  return `<div class="cb-rule${st.k === 'inativa' ? ' cb-off' : ''}">
+    <div class="cb-rule-h"><div class="cb-rule-t">${cbVal(x.NOME)}</div>${cbPill(st)}</div>
+    <div class="cb-box"><b>REGRA</b><span>${cbVal(x.CONDICAO)}</span><b class="cb-acao">AÇÃO</b><span>${cbVal(x.ACAO)}</span></div>
+    ${cbMeta([['Setor', CB.setor === '*' ? x._setor : ''], ['Prioridade', x.PRIORIDADE], ['Aplicação', cbNorm(x.AUTOMATICA) === 'sim' ? 'Automática' : 'Orientativa'], ['SLA', x.SLA], ['Quem aprova', x.QUEM_APROVA], ['Empresa', x.EMPRESA], ['Gatilhos', x.PALAVRAS_GATILHO], ['Fonte', x.FONTE], ['Atualizado', (x.DATA_ATUALIZACAO ? cbData(x.DATA_ATUALIZACAO) + ' · ' : '') + (x.USUARIO || '')]])}
+    ${flags.length ? '<div class="cb-flags">' + flags.map(f => `<span>${f}</span>`).join('') + '</div>' : ''}
+    ${cbAcoes('regras', x, i)}
+  </div>`;
+}
+function cbPassos(txt) {
+  return String(txt || '').split(/\r?\n|;/).map(s => s.replace(/^\s*(\d+[.)\-:]|[-•*])\s*/, '').trim()).filter(Boolean);
+}
+function cbToggleOpen(k) { CB.open[k] = !CB.open[k]; const el = document.getElementById('cb-lista'); if (el) el.innerHTML = cbLista(); }
+function cbCardProc(x, i) {
+  const st = cbStatus(x.STATUS), aberto = !!CB.open['p' + i];
+  const passos = cbPassos(x.PASSOS);
+  return `<div class="cb-acc">
+    <button class="cb-acc-h" onclick="cbToggleOpen('p${i}')"><span class="cb-rule-t">${cbVal(x.NOME)}</span><span class="cb-muted">${cbEsc(x._setor || '')}</span>${cbPill(st)}<span style="color:#929090;font-size:16px">${aberto ? '−' : '+'}</span></button>
+    ${aberto ? `<div class="cb-acc-b">
+      <div>${[['Objetivo', x.OBJETIVO], ['Quando usar', x.QUANDO_USAR], ['Responsável', x.RESPONSAVEL], ['Setores envolvidos', x.SETORES_ENVOLVIDOS], ['Resultado esperado', x.RESULTADO_ESPERADO], ['Prazo', x.PRAZO], ['Fonte', x.FONTE]].filter(p => p[1]).map(p => `<div class="cb-fld"><div>${p[0]}</div>${cbEsc(p[1])}</div>`).join('')}</div>
+      <div class="cb-steps"><div class="cb-muted">Passo a passo</div>${passos.length ? passos.map((s, n) => `<div class="cb-step"><b>${n + 1}</b><span style="padding-top:2px">${cbEsc(s)}</span></div>`).join('') : '<span class="cb-muted">Sem passos cadastrados.</span>'}</div>
+    </div>${cbPode() ? '<div style="padding:0 20px 16px">' + cbAcoes('procedimentos', x, i) + '</div>' : ''}` : ''}
+  </div>`;
+}
+function cbCardPol(x, i) {
+  const st = cbStatus(x.STATUS);
+  return `<div class="cb-rule${st.k === 'inativa' ? ' cb-off' : ''}">
+    <div class="cb-rule-h"><div class="cb-rule-t">${cbVal(x.NOME)}</div>${cbPill(st)}</div>
+    <div style="font-size:13px;color:#545252;line-height:1.5">${cbVal(x.OBJETIVO)}</div>
+    <div class="cb-box" style="font-size:13px;grid-template-columns:70px minmax(0,1fr)"><b>SE</b><span>${cbVal(x.CONDICOES)}</span><b>REGRA</b><span>${cbVal(x.REGRA_OFICIAL)}</span><b class="cb-acao">LIMITES</b><span>${cbVal(x.LIMITES)}</span></div>
+    ${cbMeta([['Setor', CB.setor === '*' ? x._setor : ''], ['Quem aprova', x.QUEM_APROVA], ['Prazo', x.PRAZO], ['Vigência', x.VIGENCIA], ['Exceções', x.EXCECOES], ['Empresa', x.EMPRESA], ['Fonte', x.FONTE], ['Atualizado', (x.DATA_ATUALIZACAO ? cbData(x.DATA_ATUALIZACAO) + ' · ' : '') + (x.USUARIO || '')]])}
+    ${cbAcoes('politicas', x, i)}
+  </div>`;
+}
+function cbCardFaq(x, i) {
+  const st = cbStatus(x.STATUS), aberto = !!CB.open['f' + i];
+  return `<div class="cb-faq">
+    <button class="cb-acc-h" onclick="cbToggleOpen('f${i}')"><span style="flex:1;font-size:14px;font-weight:600">${cbVal(x.PERGUNTA)}</span>${cbPill(st)}<span style="color:#929090;font-size:16px">${aberto ? '−' : '+'}</span></button>
+    ${aberto ? `<div style="padding:0 20px 16px;display:flex;flex-direction:column;gap:12px"><div style="font-size:13.5px;line-height:1.6;max-width:780px;white-space:pre-line">${cbVal(x.RESPOSTA)}</div>
+      <div style="display:flex;gap:18px;flex-wrap:wrap;font-size:12px;color:#666464"><span>Setor: ${cbEsc(x._setor || '')}</span>${x.PALAVRAS_CHAVE_FAQ ? `<span>Palavras relacionadas: ${cbEsc(x.PALAVRAS_CHAVE_FAQ)}</span>` : ''}${x.USUARIO_ATUALIZACAO ? `<span>Responsável: ${cbEsc(x.USUARIO_ATUALIZACAO)}</span>` : ''}<span>Atualizado em ${cbData(x.DATA_ATUALIZACAO)}</span></div>
+      ${cbAcoes('faq', x, i)}</div>` : ''}
+  </div>`;
+}
+
+// SLA
+const CB_SLA = [['SLA_ANALISE_TECNICA', 'SLA de análise'], ['SLA_RETORNO_SAC', 'SLA de devolutiva'], ['SLA_CRITICO', 'SLA crítico'], ['SLA_HORAS', 'SLA total']];
+function cbHtmlSla() {
+  if (CB.setor === '*') {
+    const sets = CB.setores.filter(s => !CB.fSet || cbNorm(s.SETOR) === cbNorm(CB.fSet));
+    return `<div class="cb-tblw"><table class="cb-tbl" style="min-width:640px"><thead><tr><th>Setor</th>${CB_SLA.map(c => `<th>${c[1]}</th>`).join('')}</tr></thead><tbody>${sets.map(s => `<tr><td style="font-weight:600">${cbEsc(s.SETOR)}</td>${CB_SLA.map(c => `<td>${s[c[0]] ? cbEsc(s[c[0]]) + 'h' : '—'}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+  }
+  const cfg = CB.cfg || {}, pode = cbPode();
+  return `<div class="cb-slag">${CB_SLA.map((c, n) => `<label>${c[1]}<div style="display:flex;align-items:center;gap:6px"><input type="number" min="0" id="cb-sla-${n}" value="${cbEsc(cfg[c[0]] || '')}"${pode ? '' : ' disabled'}><span style="font-size:13px">horas</span></div></label>`).join('')}</div>
+    ${pode ? '<div style="margin-bottom:12px"><button class="cb-btn-prim" onclick="cbSalvarSla()">Salvar SLAs</button><span id="cb-sla-msg" class="cb-muted" style="margin-left:10px"></span></div>' : ''}
+    <div class="cb-card" style="overflow:hidden">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 20px;gap:10px;flex-wrap:wrap"><div><div style="font-weight:700;font-size:14.5px">Exceções de SLA</div><div style="font-size:12.5px;color:#929090">Por tipo de manifestação, prioridade, causa, empresa ou situação específica</div></div><button class="cb-btn" disabled title="Cadastro de exceções de SLA ainda não está disponível no sistema">+ Adicionar exceção</button></div>
+      <div style="padding:0 20px 16px;font-size:12.5px;color:#666464">O cadastro de exceções de SLA ainda não existe no sistema. Os prazos acima valem para todo o setor.</div>
+    </div>`;
+}
+async function cbSalvarSla() {
+  const cfg = CB.cfg || {}, msg = document.getElementById('cb-sla-msg');
+  const body = { ATIVO: cfg.ATIVO || 'SIM' };
+  CB_SLA.forEach((c, n) => { body[c[0]] = document.getElementById('cb-sla-' + n).value.trim(); });
+  if (msg) msg.textContent = 'Salvando...';
+  try {
+    await _apiFetch('/api/setores/' + encodeURIComponent(CB.setor) + '/operacional', 20000, { method: 'PATCH', headers: CB_JSON, body: JSON.stringify(body) });
+    Object.assign(cfg, body);
+    if (msg) msg.textContent = 'SLAs salvos.';
+  } catch (e) { if (msg) msg.textContent = 'Erro: ' + e.message; }
+}
+
+// Responsáveis
+function cbHtmlResp() {
+  const sets = CB.setor === '*' ? CB.setores.filter(s => !CB.fSet || cbNorm(s.SETOR) === cbNorm(CB.fSet)) : [CB.cfg || {}];
+  const pessoas = [];
+  sets.forEach(s => {
+    const comp = String(s.COMPETENCIAS || '').split(/[,;\n]/).map(t => t.trim()).filter(Boolean);
+    if (s.RESPONSAVEL) pessoas.push({ n: s.RESPONSAVEL, papel: 'Gestão do conhecimento', e: s.EMAIL_RESPONSAVEL, setor: s.SETOR, c: comp });
+    if (s.SUBSTITUTO) pessoas.push({ n: s.SUBSTITUTO, papel: 'Substituto', e: '', setor: s.SETOR, c: [] });
+    if (s.ESCALONAMENTO_RESPONSAVEL) pessoas.push({ n: s.ESCALONAMENTO_RESPONSAVEL, papel: 'Escalonamento', e: '', setor: s.SETOR, c: s.ESCALONAMENTO_CONDICAO ? [s.ESCALONAMENTO_CONDICAO] : [] });
+    if (s.RNC_RESPONSAVEL) pessoas.push({ n: s.RNC_RESPONSAVEL, papel: 'Responsável por RNC', e: '', setor: s.SETOR, c: s.RNC_CRITERIO ? [s.RNC_CRITERIO] : [] });
+  });
+  if (!pessoas.length) return '<div class="cb-empty">Nenhum responsável cadastrado.' + (cbPode() ? ' Use “Editar informações do setor” na aba Regras dos setores.' : '') + '</div>';
+  return '<div class="cb-people">' + pessoas.map(p => `<div class="cb-person"><div style="display:flex;gap:12px;align-items:center"><span class="cb-ini">${cbEsc(p.n.split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase())}</span><div><div style="font-weight:700;font-size:13.5px">${cbEsc(p.n)}</div><div style="font-size:12px;color:#929090">${p.papel} · ${cbEsc(p.setor)}</div></div></div>${p.e ? `<div style="font-size:12.5px;color:#545252">${cbEsc(p.e)}</div>` : ''}<div style="display:flex;gap:6px;flex-wrap:wrap">${p.c.map(c => `<span class="cb-tag">${cbEsc(c)}</span>`).join('')}</div></div>`).join('') + '</div>';
+}
+
+// Documentos
+function cbHtmlDocs(vis) {
+  const pode = cbPode();
+  return '<div class="cb-banner cb-banner-red">Documentos ativos e marcados para a IA são utilizados como fonte de conhecimento pelo Assistente SAC.</div>' +
+    `<div class="cb-tblw"><table class="cb-tbl" style="min-width:900px"><thead><tr>${['Nome do arquivo', 'Tipo', 'Data de upload', 'Responsável', 'Versão', 'Status', 'Uso pela IA', 'Ações'].map(c => `<th>${c}</th>`).join('')}</tr></thead><tbody>` +
+    vis.map(({ x, i }) => {
+      const st = cbStatus(x.STATUS), ia = cbNorm(x.FONTE_CONHECIMENTO) === 'sim';
+      const url = /^https?:\/\//i.test(x.URL_ARQUIVO || '') ? x.URL_ARQUIVO : '';
+      return `<tr><td style="font-weight:600">${cbVal(x.NOME)}<div style="font-size:11.5px;font-weight:400;color:#929090">${cbEsc(x._setor || '')}</div></td>
+        <td><span class="cb-doc-t">${cbEsc(x.TIPO || '—')}</span></td><td style="white-space:nowrap">${cbData(x.DATA_UPLOAD)}</td><td style="white-space:nowrap">${cbVal(x.USUARIO)}</td><td>v${cbEsc(x.VERSAO || '1.0')}</td>
+        <td>${cbPill(st.k === 'ativa' ? { t: 'Ativo', c: 'green' } : st)}</td>
+        <td>${pode ? `<button class="cb-tg-b" onclick="cbToggleIA(${i})"><span class="cb-tg${ia ? ' cb-on' : ''}" style="width:30px;height:17px"><i style="width:13px;height:13px"></i></span>${ia ? 'Utilizado' : 'Não utilizado'}</button>` : (ia ? 'Utilizado' : 'Não utilizado')}</td>
+        <td style="white-space:nowrap"><div style="display:flex;gap:10px;font-size:12.5px;align-items:center">${url ? `<a class="cb-link" href="${cbEsc(url)}" target="_blank" rel="noopener">Visualizar</a>` : '<span class="cb-muted">Sem arquivo</span>'}${pode ? `<button class="cb-link" style="color:#1F1F1F;font-weight:400" onclick="cbToggle(${i})">${st.k === 'ativa' ? 'Desativar' : 'Ativar'}</button>` : ''}</div></td></tr>`;
+    }).join('') + '</tbody></table></div>';
+}
+async function cbAnexar(input) {
+  const file = input.files && input.files[0];
+  if (!file || CB.setor === '*') return;
+  input.disabled = true;
+  try {
+    const data = await fileToBase64(file);
+    const ext = (file.name.split('.').pop() || '').toUpperCase();
+    await _apiFetch('/api/setores/' + encodeURIComponent(CB.setor) + '/documentos', 60000, { method: 'POST', headers: CB_JSON, body: JSON.stringify({ NOME: file.name, TIPO: ext, CATEGORIA: 'Documento de apoio', VERSAO: '1.0', STATUS: 'A VALIDAR', FONTE_CONHECIMENTO: 'NÃO', arquivo: { nome: file.name, mimeType: file.type, tamanho: file.size, dataBase64: data, categoria: 'DOCUMENTO' } }) });
+    cbInvalidar();
+    cbRenderAba();
+  } catch (e) { alert('Erro ao anexar documento: ' + e.message); }
+  input.value = ''; input.disabled = false;
+}
+async function cbToggleIA(i) {
+  const x = CB.lista[i]; if (!x) return;
+  try {
+    await _apiFetch('/api/setores/' + encodeURIComponent(x._setor) + '/documentos/' + encodeURIComponent(x.ID_DOC), 20000, { method: 'PATCH', headers: CB_JSON, body: JSON.stringify({ FONTE_CONHECIMENTO: cbNorm(x.FONTE_CONHECIMENTO) === 'sim' ? 'NÃO' : 'SIM' }) });
+    cbInvalidar(); cbRenderAba();
+  } catch (e) { alert('Erro: ' + e.message); }
+}
+
+// Ativar / desativar / aprovar
+async function cbSetStatus(tipo, item, novo) {
+  const t = CB_TIPOS[tipo], base = '/api/setores/' + encodeURIComponent(item._setor) + '/' + t.api;
+  if (tipo === 'faq') {
+    await _apiFetch(base, 20000, { method: 'POST', headers: CB_JSON, body: JSON.stringify({ ID_FAQ: item.ID_FAQ, EMPRESA: item.EMPRESA, CODIGO: item.CODIGO, PERGUNTA: item.PERGUNTA, RESPOSTA: item.RESPOSTA, PALAVRAS_CHAVE_FAQ: item.PALAVRAS_CHAVE_FAQ, FONTE: item.FONTE, ATIVO: item.ATIVO || 'SIM', STATUS: novo }) });
+  } else {
+    await _apiFetch(base + '/' + encodeURIComponent(item[t.id]), 20000, { method: 'PATCH', headers: CB_JSON, body: JSON.stringify({ STATUS: novo }) });
+  }
+}
+async function cbToggle(i) {
+  const x = CB.lista[i]; if (!x) return;
+  const tipo = CB.aba;
+  try {
+    await cbSetStatus(tipo, x, cbStatus(x.STATUS).k === 'ativa' ? 'OBSOLETA' : 'VALIDADA');
+    cbInvalidar(); cbRenderSetor();
+  } catch (e) { alert('Erro ao atualizar status: ' + e.message); }
+}
+
+// ── Formulário lateral (drawer) ──
+const CB_PRIO = ['Alta', 'Média', 'Baixa'];
+const CB_SN = ['NÃO', 'SIM'];
+const CB_FORMS = {
+  regras: { titulo: 'Regra', campos: [['NOME', 'Título da regra', 'text', null, 1], ['CONDICAO', 'Regra / condição', 'area'], ['ACAO', 'Ação', 'area'], ['PALAVRAS_GATILHO', 'Palavras-gatilho', 'text'], ['PRIORIDADE', 'Prioridade', 'sel', CB_PRIO], ['SLA', 'SLA relacionado', 'text'], ['NECESSITA_APROVACAO', 'Necessita aprovação', 'sel', CB_SN], ['QUEM_APROVA', 'Quem aprova', 'text'], ['AUTOMATICA', 'Aplicação automática', 'sel', CB_SN], ['EXCECOES', 'Exceções', 'area'], ['FONTE', 'Fonte', 'text']] },
+  procedimentos: { titulo: 'Procedimento', campos: [['NOME', 'Nome do procedimento', 'text', null, 1], ['OBJETIVO', 'Objetivo', 'area'], ['QUANDO_USAR', 'Quando usar', 'area'], ['PASSOS', 'Passo a passo (um por linha)', 'area'], ['RESPONSAVEL', 'Responsável', 'text'], ['SETORES_ENVOLVIDOS', 'Setores envolvidos', 'text'], ['RESULTADO_ESPERADO', 'Resultado esperado', 'area'], ['PRAZO', 'Prazo', 'text'], ['FONTE', 'Fonte', 'text']] },
+  politicas: { titulo: 'Política', campos: [['NOME', 'Nome da política', 'text', null, 1], ['OBJETIVO', 'Descrição / objetivo', 'area'], ['CONDICOES', 'Condição (SE)', 'area'], ['REGRA_OFICIAL', 'Regra oficial', 'area'], ['LIMITES', 'Limites', 'area'], ['EXCECOES', 'Exceções', 'area'], ['QUEM_APROVA', 'Quem aprova', 'text'], ['PRAZO', 'Prazo', 'text'], ['VIGENCIA', 'Vigência', 'text'], ['FONTE', 'Fonte', 'text']] },
+  faq: { titulo: 'Pergunta frequente', campos: [['PERGUNTA', 'Pergunta', 'text', null, 1], ['RESPOSTA', 'Resposta', 'area'], ['PALAVRAS_CHAVE_FAQ', 'Palavras relacionadas', 'text'], ['FONTE', 'Fonte', 'text']] },
+  matriz: { titulo: 'Linha da matriz de tratamento', campos: [['TIPO_MANIFESTACAO', 'Problema (tipo de manifestação)', 'text', null, 1], ['CAUSA', 'Causa', 'text'], ['SUBCAUSA', 'Subcausa', 'text'], ['EMPRESA', 'Empresa', 'text'], ['SETOR_RESPONSAVEL', 'Setor responsável', 'sel', () => [''].concat(CB.setores.map(s => s.SETOR))], ['SLA_HORAS', 'SLA (horas)', 'text'], ['PRIORIDADE', 'Prioridade', 'sel', ['NORMAL', 'BAIXA', 'ALTA', 'URGENTE']], ['TRATATIVA_PADRAO', 'Tratativa', 'area'], ['REQUER_APROVACAO', 'Requer aprovação', 'sel', ['NAO', 'SIM']], ['DEVOLUTIVA_PADRAO', 'Devolutiva', 'area']], semSetor: true },
+  causa: { titulo: 'Causa', campos: [['categoria', 'Categoria', 'text', null, 1], ['causa', 'Causa', 'text', null, 1], ['subcausa', 'Subcausa', 'text'], ['tipo', 'Tipo de manifestação', 'text'], ['setorResponsavel', 'Setor responsável', 'sel', () => [''].concat(CB.setores.map(s => s.SETOR))]], semSetor: true }
+};
+function cbCampoHtml(c, v) {
+  const [k, l, t, o, req] = c, val = cbEsc(v == null ? '' : v), lab = l + (req ? ' *' : '');
+  if (t === 'area') return `<label class="cb-lbl">${lab}<textarea rows="3" data-k="${k}">${val}</textarea></label>`;
+  if (t === 'sel') {
+    let ops = typeof o === 'function' ? o() : o.slice();
+    if (v && ops.indexOf(v) < 0) ops = ops.concat([v]);
+    return `<label class="cb-lbl">${lab}<select data-k="${k}">${ops.map(x => `<option value="${cbEsc(x)}"${String(v == null || v === '' ? ops[0] : v) === x ? ' selected' : ''}>${cbEsc(x || '—')}</option>`).join('')}</select></label>`;
+  }
+  return `<label class="cb-lbl">${lab}<input data-k="${k}" value="${val}"></label>`;
+}
+async function cbAbrirForm(tipo, idx, pre) {
+  await cbCarregarSetores();
+  const spec = CB_FORMS[tipo];
+  const item = (idx == null || idx === '') ? null : (tipo === 'matriz' ? CB.mat[idx] : CB.lista[idx]);
+  const setorIni = item && item._setor ? item._setor : (CB.setor && CB.setor !== '*' ? CB.setor : '');
+  CB.form = { tipo, item, idx };
+  const v = Object.assign({}, pre || {}, item || {});
+  let h = '';
+  if (!spec.semSetor) {
+    h += `<label class="cb-lbl">Setor responsável *<select id="cb-form-setor"${item ? ' disabled' : ''}>${!setorIni ? '<option value="">Selecione…</option>' : ''}${CB.setores.map(s => `<option value="${cbEsc(s.SETOR)}"${cbNorm(s.SETOR) === cbNorm(setorIni) ? ' selected' : ''}>${cbEsc(s.SETOR)}</option>`).join('')}</select></label>`;
+  }
+  h += spec.campos.map(c => cbCampoHtml(c, v[c[0]])).join('');
+  if (!spec.semSetor) h += '<div class="cb-banner cb-banner-amber" style="margin:0">' + (item ? 'Alterações valem imediatamente para o status atual do conteúdo.' : 'Novo conteúdo entra como <strong>&nbsp;Em revisão&nbsp;</strong> e só passa a valer como oficial depois de aprovado e ativado.') + '</div>';
+  document.getElementById('cb-form-body').innerHTML = h;
+  document.getElementById('cb-form-meta').textContent = item ? 'Editar' : 'Novo';
+  document.getElementById('cb-form-title').textContent = spec.titulo;
+  document.getElementById('cb-form-err').style.display = 'none';
+  const b = document.getElementById('cb-form-save'); b.disabled = false; b.textContent = 'Salvar';
+  document.getElementById('cb-drawer').classList.add('cb-open');
+}
+function cbFecharForm() { document.getElementById('cb-drawer').classList.remove('cb-open'); CB.form = null; }
+function cbNovaRegra() { cbAbrirForm('regras'); }
+function cbFormMatriz(idx) { cbAbrirForm('matriz', idx); }
+function cbFormCausa(i) {
+  const ref = (i == null) ? null : CB.causaRefs[i];
+  cbAbrirForm('causa', null, ref ? { categoria: ref[0], causa: ref[1] || '' } : null);
+}
+async function cbSalvarForm() {
+  const f = CB.form; if (!f) return;
+  const spec = CB_FORMS[f.tipo], err = document.getElementById('cb-form-err'), btn = document.getElementById('cb-form-save');
+  err.style.display = 'none';
+  const vals = {};
+  document.querySelectorAll('#cb-form-body [data-k]').forEach(el => { vals[el.getAttribute('data-k')] = el.value.trim(); });
+  try {
+    for (const c of spec.campos) { if (c[4] && !vals[c[0]]) throw new Error('Preencha o campo “' + c[1] + '”.'); }
+    btn.disabled = true; btn.textContent = 'Salvando...';
+    if (f.tipo === 'matriz') {
+      if (f.item) await _apiFetch('/api/matriz-tratamento/' + encodeURIComponent(f.item.ID_REGRA || f.item.ID_TRATAMENTO || f.item.ID), 20000, { method: 'PATCH', headers: CB_JSON, body: JSON.stringify(vals) });
+      else await _apiFetch('/api/matriz-tratamento', 20000, { method: 'POST', headers: CB_JSON, body: JSON.stringify(vals) });
+    } else if (f.tipo === 'causa') {
+      await _apiFetch('/api/causas', 20000, { method: 'POST', headers: CB_JSON, body: JSON.stringify(vals) });
+    } else {
+      const sel = document.getElementById('cb-form-setor');
+      const setor = f.item ? f.item._setor : (sel ? sel.value : '');
+      if (!setor) throw new Error('Selecione o setor responsável.');
+      const t = CB_TIPOS[f.tipo], base = '/api/setores/' + encodeURIComponent(setor) + '/' + t.api;
+      if (f.item) {
+        if (f.tipo === 'faq') await _apiFetch(base, 20000, { method: 'POST', headers: CB_JSON, body: JSON.stringify(Object.assign({ ID_FAQ: f.item.ID_FAQ, EMPRESA: f.item.EMPRESA, CODIGO: f.item.CODIGO, STATUS: f.item.STATUS, ATIVO: f.item.ATIVO || 'SIM' }, vals)) });
+        else await _apiFetch(base + '/' + encodeURIComponent(f.item[t.id]), 20000, { method: 'PATCH', headers: CB_JSON, body: JSON.stringify(vals) });
+      } else {
+        await _apiFetch(base, 20000, { method: 'POST', headers: CB_JSON, body: JSON.stringify(Object.assign({}, vals, { STATUS: 'A VALIDAR' })) });
+      }
+    }
+    cbFecharForm(); cbInvalidar(); cbRefresh();
+  } catch (e) {
+    err.textContent = e.message; err.style.display = 'block';
+    btn.disabled = false; btn.textContent = 'Salvar';
+  }
+}
+function cbIrCalculadora() {
+  if (!document.getElementById('page-calculadora-atraso')) { alert('A Calculadora de Atraso ainda não foi carregada. Recarregue a página e tente novamente.'); return; }
+  navigate('calculadora-atraso');
+  if (typeof window.carregarCalcParametros === 'function') window.carregarCalcParametros();
+}
 
 function abrirModalSetorCerebro(id) {
   document.getElementById('modal-setor-cerebro-title').textContent = id ? 'Editar Informações do Setor' : 'Novo Setor';
@@ -14026,10 +14621,37 @@ async function cdLoadCaus() {
     renderCdCaus();
   } catch(e) { document.getElementById('cd-caus-loading').textContent='Erro: '+e.message; }
 }
-function renderCdCaus(q='') {
-  const rows=_cdData.caus.filter(x=>!q||(x.CATEGORIA+x.TIPO+x.CAUSA+(x.SUBCAUSA||'')).toLowerCase().includes(q));
-  document.getElementById('cd-caus-count').textContent=`${rows.length} registro(s)`;
-  cdRender('cd-caus-tbody','cd-caus-loading',rows.map(x=>`<tr><td style="font-size:11px">${esc5(x.ID_CAUSA||x.ID||'')}</td><td>${esc5(x.CATEGORIA||'')}</td><td>${esc5(x.TIPO||'')}</td><td><strong>${esc5(x.CAUSA||'')}</strong></td><td>${esc5(x.SUBCAUSA||'')}</td><td>${esc5(x.SETOR_RESPONSAVEL||x.SETOR||'')}</td><td><span class="badge ${(x.ATIVO||'SIM')==='SIM'?'badge-green':'badge-gray'}">${esc5(x.ATIVO||'SIM')}</span></td></tr>`),7,'Nenhuma causa cadastrada. Clique em "Extrair do Histórico" para popular automaticamente.');
+function renderCdCaus() {
+  const q = cbNorm(document.getElementById('cd-caus-busca')?.value || '');
+  const rows = (_cdData.caus||[]).filter(x=>!q || cbNorm([x.CATEGORIA,x.TIPO,x.CAUSA,x.SUBCAUSA].join(' ')).includes(q));
+  const cnt = document.getElementById('cd-caus-count');
+  if (cnt) cnt.textContent = `${rows.length} registro(s)`;
+  const load = document.getElementById('cd-caus-loading');
+  if (load) load.style.display = 'none';
+  const tree = document.getElementById('cd-caus-tree');
+  if (!tree) return;
+  if (!rows.length) { tree.innerHTML = '<div class="cb-empty" style="grid-column:1/-1">Nenhuma causa cadastrada. Use “Extrair do Histórico” para popular automaticamente ou “+ Nova causa”.</div>'; return; }
+  const cats = new Map();
+  rows.forEach(x=>{
+    const cat = x.CATEGORIA || 'Sem categoria', c = x.CAUSA || '—';
+    if (!cats.has(cat)) cats.set(cat, new Map());
+    const m = cats.get(cat);
+    if (!m.has(c)) m.set(c, []);
+    if (x.SUBCAUSA) m.get(c).push({ n: x.SUBCAUSA, off: cbNorm(x.ATIVO||'SIM').startsWith('n') });
+  });
+  const pode = cbPode();
+  CB.causaRefs = [];
+  tree.innerHTML = [...cats.entries()].map(([cat, m])=>{
+    CB.causaRefs.push([cat, '']);
+    const iCat = CB.causaRefs.length - 1;
+    return `<div class="cb-tree-c"><div style="display:flex;justify-content:space-between;align-items:center"><span style="font-weight:700;font-size:15px">${cbEsc(cat)}</span><span class="cb-muted">${m.size} causas</span></div>` +
+      [...m.entries()].map(([c, subs])=>{
+        CB.causaRefs.push([cat, c]);
+        const iC = CB.causaRefs.length - 1;
+        return `<div class="cb-tree-k"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span style="font-weight:600;font-size:13.5px">${cbEsc(c)}</span>${pode ? `<button class="cb-link" style="font-weight:400;font-size:12px" onclick="cbFormCausa(${iC})">+ subcausa</button>` : ''}</div><div style="display:flex;flex-wrap:wrap;gap:6px">${subs.map(s=>`<span class="cb-tree-s${s.off?' cb-off':''}">${cbEsc(s.n)}</span>`).join('')}</div></div>`;
+      }).join('') +
+      (pode ? `<button class="cb-btn-dash" onclick="cbFormCausa(${iCat})">+ Nova causa</button>` : '') + '</div>';
+  }).join('');
 }
 async function cdPopularCausas(btn) {
   btn.disabled=true; btn.textContent='Extraindo...';
@@ -14041,7 +14663,7 @@ async function cdPopularCausas(btn) {
       cdLoadCaus();
     } else { alert('Erro: '+(r.erro||'falha desconhecida')); }
   } catch(e){ alert('Erro: '+e.message); }
-  finally { btn.disabled=false; btn.textContent='⚡ Extrair do Histórico'; }
+  finally { btn.disabled=false; btn.textContent='Extrair do Histórico'; }
 }
 
 // ── AUDITORIA ──
