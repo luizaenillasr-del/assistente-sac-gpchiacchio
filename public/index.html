@@ -5322,6 +5322,7 @@
 .rca-tbl-input:disabled{background:#FAFAFA;color:#666464}
 .rca-section-title{font-size:12px;font-weight:700;letter-spacing:.06em;color:#C70602}
 .rca-card{background:#fff;border:1px solid #E4E4E4;border-radius:10px;overflow:hidden}
+@media print{body.rca-printing *{visibility:hidden!important}body.rca-printing #rca-pdf-sheet,body.rca-printing #rca-pdf-sheet *{visibility:visible!important}body.rca-printing #rca-pdf-sheet{position:absolute;left:0;top:0;border:0!important}body.rca-printing #page-rca{overflow:visible!important;height:auto!important}}
 </style>
 
 <div style="padding:20px 24px 0;display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap">
@@ -5349,9 +5350,7 @@
 </div>
 
 <!-- Modais -->
-<div id="rca-modal-send" style="display:none;position:fixed;inset:0;background:rgba(20,20,20,.45);z-index:8000;place-items:center;padding:24px"></div>
 <div id="rca-modal-ret" style="display:none;position:fixed;inset:0;background:rgba(20,20,20,.45);z-index:8000;place-items:center;padding:24px"></div>
-<div id="rca-modal-sug" style="display:none;position:fixed;inset:0;background:rgba(20,20,20,.45);z-index:8000;place-items:center;padding:24px"></div>
 <div id="rca-toast" style="display:none;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1F1F1F;color:#fff;padding:11px 16px;border-radius:8px;font-size:13px;z-index:9000;max-width:90vw;font-family:Montserrat,system-ui,sans-serif"></div>
 </div>
 
@@ -12770,181 +12769,200 @@ async function runSimilares() {
 }
 
 // ── Central de RCA ─────────────────────────────────────────
-const _rcaStatusColors = {
-  'Aberta': 'background:#E6EEF8;color:#24508F',
-  'Em análise (RCA)': 'background:#EDE8F8;color:#4B2D9E',
-  'Aguardando aprovação': 'background:#FBF0D9;color:#7A4C00',
-  'Em tratamento': 'background:#FBF0D9;color:#7A4C00',
-  'Verificação de eficácia': 'background:#E6EEF8;color:#24508F',
-  'Encerrada': 'background:#E6F2EA;color:#1E6B3A',
-  'Reprovada': 'background:#FDECEC;color:#A80502',
-};
-function _rcaStatusStyle(st) {
-  return _rcaStatusColors[st] || 'background:#EEEEEE;color:#545252';
-}
-
-// ── Central RCA — estado e renderização completa ─────────────
-const _rcaS = { rncs: [], sel: null, view: 'ficha', pend: {}, errs: [], savedAt: '', retText: '', sugText: '', perfil: 'Setor', usuario: '', empresa: '' };
+// ── Central de RCA ─────────────────────────────────────────
+// Dados: GET /api/rnc (escopo por empresa aplicado no servidor), PATCH /api/rnc/:id/execucao,
+// POST /api/rnc/:id/decisao, GET /api/rnc/:id/eventos, GET/POST /api/anexos, POST /api/analise/similares.
+// Campos da ficha RT-0001 sem coluna/endpoint (porquês, origem, tipo, versões, vínculo de evidências)
+// ficam apenas em memória na sessão e NÃO são gravados (ver aviso exibido na tela).
+const _rcaS = { rncs: [], sel: null, view: 'ficha', pend: {}, errs: [], savedAt: '', retText: '', perfil: '', usuario: '', empresa: '', setor: '', loadErr: '' };
 
 function _rcaNow() { const d = new Date(), p = n => String(n).padStart(2, '0'); return p(d.getDate()) + '/' + p(d.getMonth() + 1) + '/' + d.getFullYear() + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()); }
-function _rcaFlash(t) { const el = document.getElementById('rca-toast'); if (!el) return; el.textContent = t; el.style.display = 'block'; clearTimeout(el._t); el._t = setTimeout(() => { el.style.display = 'none'; }, 2800); }
-function _rcaReviewer() { return ['Aprovador', 'Gestor', 'Administrador'].includes(_rcaS.perfil); }
-function _rcaInScope(r) { return _rcaS.perfil === 'Administrador' || r.emp === _rcaS.empresa; }
+function _rcaFlash(t, ms) { const el = document.getElementById('rca-toast'); if (!el) return; el.textContent = t; el.style.display = 'block'; clearTimeout(el._t); el._t = setTimeout(() => { el.style.display = 'none'; }, ms || 2800); }
+function _rcaN(s) { return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/_/g, ' ').trim(); }
+function _rcaEsc(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function _rcaBlank() { return { razao: '', emitidaPor: '', recebidoPor: '', dataVerif: '', setor: '', lote: '', operador: '', produto: '', quantidade: '', origem: [], tipo: '', plano: '', proc: '', devol: '', desc: '', imed: [], why: ['', '', '', '', ''], whyEv: [[], [], [], [], []], causa: '', causaEv: [], corr: [], verif: '', efic: '', eficData: '', novaNc: '', novaData: '' }; }
 function _rcaKind(e) { const x = (e.ext || '').toLowerCase(); return e.type && e.type.startsWith('image/') ? 'Imagem' : x === 'pdf' ? 'PDF' : ['xls', 'xlsx', 'csv'].includes(x) ? 'Planilha' : ['doc', 'docx'].includes(x) ? 'Documento' : 'Arquivo'; }
-function _rcaKb(n) { return n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB'; }
+function _rcaKb(n) { n = Number(n) || 0; return n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB'; }
 function _rcaFmtD(s) { return s ? s.split('-').reverse().join('/') : '—'; }
+function _rcaDateIn(s) { s = String(s || '').trim(); if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10); const m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})/); return m ? m[3] + '-' + m[2] + '-' + m[1] : ''; }
+function _rcaFmtDT(s) { if (!s) return '—'; const d = new Date(s); if (isNaN(d)) return String(s); const p = n => String(n).padStart(2, '0'); return p(d.getDate()) + '/' + p(d.getMonth() + 1) + '/' + d.getFullYear() + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()); }
 
-const _rcaSTK = { 'ATRIBUÍDA': ['#EEEEEE', '#545252'], 'RASCUNHO': ['#EEEEEE', '#545252'], 'RCA ENVIADA': ['#E6EEF8', '#24508F'], 'DEVOLVIDA PARA AJUSTE': ['#FBF0D9', '#7A4C00'], 'APROVADA': ['#E6F2EA', '#1E6B3A'], 'ENCERRADA': ['#E6F2EA', '#1E6B3A'] };
-function _rcaStBadge(st) { const [bg, fg] = _rcaSTK[st] || ['#EEEEEE', '#545252']; return `<span style="padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600;white-space:nowrap;background:${bg};color:${fg}">${st}</span>`; }
-function _rcaStBadgeLg(st) { const [bg, fg] = _rcaSTK[st] || ['#EEEEEE', '#545252']; return `<span style="padding:3px 10px;border-radius:99px;font-size:12px;font-weight:700;letter-spacing:.03em;white-space:nowrap;background:${bg};color:${fg}">${st}</span>`; }
+// Status real do servidor -> chave de exibição
+function _rcaStKey(raw) {
+  const s = _rcaN(raw);
+  if (s.includes('AGUARDANDO')) return 'AGUARDANDO';
+  if (s.startsWith('DEVOLV')) return 'DEVOLVIDA';
+  if (s.startsWith('APROV')) return 'APROVADA';
+  if (s.startsWith('REJEIT')) return 'REJEITADA';
+  if (s.startsWith('ENCERR')) return 'ENCERRADA';
+  if (s.startsWith('CANCEL')) return 'CANCELADA';
+  return 'ABERTA';
+}
+const _rcaSTK = { ABERTA: ['#EEEEEE', '#545252', 'ATRIBUÍDA'], AGUARDANDO: ['#E6EEF8', '#24508F', 'AGUARDANDO APROVAÇÃO'], DEVOLVIDA: ['#FBF0D9', '#7A4C00', 'DEVOLVIDA PARA AJUSTE'], APROVADA: ['#E6F2EA', '#1E6B3A', 'APROVADA'], ENCERRADA: ['#E6F2EA', '#1E6B3A', 'ENCERRADA'], REJEITADA: ['#FDECEC', '#A80502', 'REJEITADA'], CANCELADA: ['#EEEEEE', '#545252', 'CANCELADA'] };
+function _rcaStInfo(st) { const k = _rcaStKey(st); const t = _rcaSTK[k]; return { bg: t[0], fg: t[1], label: (k === 'ABERTA' && _rcaN(st) && _rcaN(st) !== 'ABERTA') ? _rcaN(st) : t[2] }; }
+function _rcaStBadge(st) { const i = _rcaStInfo(st); return `<span style="padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600;white-space:nowrap;background:${i.bg};color:${i.fg}">${_rcaEsc(i.label)}</span>`; }
+function _rcaStBadgeLg(st) { const i = _rcaStInfo(st); return `<span style="padding:3px 10px;border-radius:99px;font-size:12px;font-weight:700;letter-spacing:.03em;white-space:nowrap;background:${i.bg};color:${i.fg}">${_rcaEsc(i.label)}</span>`; }
 
-function _rcaMut(fn, logEntry) {
+// Permissões espelham as rotas do servidor (a verificação real é sempre do servidor).
+function _rcaPerm(r) {
+  const p = _rcaN(_rcaS.perfil), k = _rcaStKey(r.status);
+  const roleEdit = ['SETOR RESPONSAVEL', 'MASTER', 'ANALISTA SAC'].includes(p);
+  return {
+    roleEdit,
+    edit: roleEdit && (k === 'ABERTA' || k === 'DEVOLVIDA'),
+    review: ['APROVADOR', 'MASTER'].includes(p) && k === 'AGUARDANDO',
+    verify: roleEdit && k === 'APROVADA',
+    attach: ['MASTER', 'ANALISTA SAC'].includes(p)
+  };
+}
+
+function _rcaMut(fn) {
   const r = _rcaS.rncs.find(x => x.id === _rcaS.sel);
   if (!r) return;
   fn(r);
-  if (logEntry) {
-    if (!_rcaS.audit) _rcaS.audit = [];
-    _rcaS.audit.unshift(Object.assign({ at: _rcaNow(), u: _rcaS.usuario, emp: r.emp, rnc: r.id, v: r.v }, logEntry));
+  r.touched = true;
+}
+
+function _rcaFromApi(ar) {
+  const b = _rcaBlank();
+  b.setor = ar.SETOR || ''; b.desc = ar.NAO_CONFORMIDADE || ''; b.causa = ar.CAUSA || ''; b.emitidaPor = ar.USUARIO_CRIACAO || '';
+  if (ar.ACAO_CONTENCAO) b.imed = [{ acao: ar.ACAO_CONTENCAO, resp: '', prazo: '' }];
+  if (ar.ACAO_CORRETIVA || ar.RESPONSAVEL_ACAO || ar.PRAZO_ACAO) {
+    const sa = _rcaN(ar.STATUS_ACAO);
+    b.corr = [{ acao: ar.ACAO_CORRETIVA || '', resp: ar.RESPONSAVEL_ACAO || '', prazo: _rcaDateIn(ar.PRAZO_ACAO), st: sa.startsWith('CONCLU') ? 'Concluída' : sa.startsWith('EM ANDAMENTO') ? 'Em andamento' : 'Não iniciada' }];
   }
-  _rcaPersist();
-}
-
-function _rcaPersist() {
-  try { localStorage.setItem('gc-central-rca-v3', JSON.stringify({ rncs: _rcaS.rncs, audit: _rcaS.audit || [] })); } catch (e) {}
-}
-
-function _rcaValidate(r) {
-  const d = r.data, e = [];
-  if (!d.razao) e.push('Razão de abertura'); if (!d.recebidoPor) e.push('Recebido por'); if (!d.dataVerif) e.push('Data verificação'); if (!d.operador) e.push('Operador');
-  if (!d.origem.length) e.push('Origem da NC'); if (!d.tipo) e.push('Tipo'); if (!d.plano) e.push('Plano de ação?'); if (!d.proc) e.push('Procedente?'); if (!d.devol) e.push('Devolução?');
-  if (!d.desc.trim()) e.push('Descrição'); if (!d.imed.some(a => a.acao && a.resp && a.prazo)) e.push('Ação imediata (ação, responsável e prazo)');
-  if (!d.why[0].trim()) e.push('Análise de causa · Problema 1'); if (!d.causa.trim()) e.push('Causa raiz');
-  if (!d.corr.some(a => a.acao && a.resp && a.prazo)) e.push('Ação de correção (ação, responsável e prazo)');
-  if (!(r.ev || []).some(x => x.area === 'nc')) e.push('Anexo de evidência da NC');
-  return e;
+  b.verif = ar.RESULTADO_EFICACIA || ''; b.eficData = _rcaDateIn(ar.DATA_EFICACIA);
+  return {
+    id: ar.ID_RNC || ar.NUMERO || ar.id || '', man: ar.ID_MANIFESTACAO || ar.MANIFESTACAO || '', emp: ar.EMPRESA || '', cliente: ar.CLIENTE || '', contato: ar.CONTATO || '',
+    prob: ar.NAO_CONFORMIDADE || ar.PROBLEMA || '', status: ar.STATUS || '', v: 0, ev: [], evLoaded: false, eventos: null, eventosErr: '', sims: null, simsErr: '',
+    dec: { by: ar.APROVADOR_DECISAO || '', at: ar.DATA_DECISAO || '', obs: ar.OBSERVACOES_APROVACAO || '' }, data: b
+  };
 }
 
 async function loadRCA() {
   const listEl = document.getElementById('rca-rnc-list');
   if (!listEl) return;
-  // get user info
-  try { const ui = JSON.parse(sessionStorage.getItem('sac-user-info') || '{}'); _rcaS.usuario = ui.nome || ui.usuario || ''; _rcaS.empresa = ui.empresa || ''; _rcaS.perfil = ui.perfil || 'Setor'; } catch(e) {}
-
-  // try to restore from localStorage
-  let stored = null;
-  try { stored = JSON.parse(localStorage.getItem('gc-central-rca-v3') || 'null'); } catch(e) {}
+  try {
+    const tok = sessionStorage.getItem('sac-token') || '';
+    const p = JSON.parse(decodeURIComponent(escape(atob(tok.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))));
+    _rcaS.usuario = p.nome || p.usuario || ''; _rcaS.empresa = p.empresa || ''; _rcaS.perfil = p.perfil || ''; _rcaS.setor = p.setor || '';
+  } catch (e) { }
 
   listEl.innerHTML = '<div style="text-align:center;padding:24px;color:#8A8888;font-size:13px;font-family:Montserrat,system-ui,sans-serif">Carregando…</div>';
+  _rcaS.loadErr = '';
   try {
-    const d = await _apiFetch('/api/rnc', 30000).catch(() => null);
-    const apiRncs = d ? (d.itens || d.rncs || []) : [];
-    if (stored && stored.rncs) {
-      // merge api data into stored (api is authoritative for metadata; stored preserves local ficha edits)
-      _rcaS.rncs = stored.rncs;
-      _rcaS.audit = stored.audit || [];
-      apiRncs.forEach(ar => {
-        const id = ar.NUMERO || ar.id || ar.n;
-        const ex = _rcaS.rncs.find(x => x.id === id);
-        if (!ex) {
-          _rcaS.rncs.push({ id, man: ar.MANIFESTACAO || ar.man || '', emp: ar.EMPRESA || ar.emp || '', cliente: ar.CLIENTE || ar.cliente || '', contato: ar.CONTATO || '', prob: ar.PROBLEMA || ar.prob || '', status: ar.STATUS || ar.st || 'ATRIBUÍDA', v: parseInt(ar.VERSAO || ar.v || '0'), ev: [], versions: [], dev: null, data: Object.assign(_rcaBlank(), { emitidaPor: ar.EMITIDA_POR || '', setor: ar.SETOR || '', lote: ar.LOTE || '', produto: ar.PRODUTO || '' }) });
-        }
-      });
-    } else if (apiRncs.length) {
-      _rcaS.rncs = apiRncs.map(ar => { const id = ar.NUMERO || ar.id || ar.n || '—'; return { id, man: ar.MANIFESTACAO || ar.man || '', emp: ar.EMPRESA || ar.emp || '', cliente: ar.CLIENTE || ar.cliente || '', contato: ar.CONTATO || '', prob: ar.PROBLEMA || ar.prob || '', status: ar.STATUS || ar.st || 'ATRIBUÍDA', v: parseInt(ar.VERSAO || ar.v || '0'), ev: [], versions: [], dev: null, data: Object.assign(_rcaBlank(), { emitidaPor: ar.EMITIDA_POR || '', setor: ar.SETOR || '', lote: ar.LOTE || '', produto: ar.PRODUTO || '' }) }; });
-      _rcaS.audit = [];
-    } else {
-      listEl.innerHTML = '<div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:16px 14px;font-size:13px;color:#8A8888;font-family:Montserrat,system-ui,sans-serif">Nenhuma RNC atribuída.</div>';
-      return;
-    }
-  } catch(e) {
-    listEl.innerHTML = '<div style="text-align:center;padding:24px;color:#8A8888;font-size:13px;font-family:Montserrat,system-ui,sans-serif">Erro ao carregar RNCs.</div>';
-    console.error('loadRCA', e); return;
+    const d = await _apiFetch('/api/rnc', 30000);
+    let itens = d.itens || d.rncs || [];
+    if (_rcaN(_rcaS.perfil) === 'SETOR RESPONSAVEL' && _rcaS.setor) itens = itens.filter(x => _rcaN(x.SETOR) === _rcaN(_rcaS.setor));
+    const old = {}; _rcaS.rncs.forEach(x => { old[x.id] = x; });
+    _rcaS.rncs = itens.map(_rcaFromApi).filter(x => x.id).map(n => { const o = old[n.id]; if (o && o.touched && _rcaStKey(o.status) === _rcaStKey(n.status)) { n.data = o.data; n.touched = true; } if (o) { n.ev = o.ev; n.evLoaded = o.evLoaded; } return n; });
+  } catch (e) {
+    _rcaS.rncs = []; _rcaS.loadErr = String(e && e.message || e);
+    console.error('loadRCA', e);
   }
 
+  const mst = _rcaN(_rcaS.perfil) === 'MASTER';
+  const rev = ['APROVADOR', 'MASTER'].includes(_rcaN(_rcaS.perfil));
   const scopeBadges = document.getElementById('rca-scope-badges');
   if (scopeBadges) {
-    const modeLabel = _rcaReviewer() ? 'Modo revisão · ' + _rcaS.usuario : 'RCA · ' + _rcaS.usuario;
-    const scopeLabel = _rcaS.perfil === 'Administrador' ? 'Todas as empresas (MASTER)' : _rcaS.empresa;
+    const modeLabel = (rev ? 'Modo revisão · ' : 'RCA · ') + _rcaS.usuario;
+    const scopeLabel = mst ? 'Todas as empresas (MASTER)' : (_rcaS.empresa || '—');
     scopeBadges.innerHTML = `<span style="background:#fff;border:1px solid #E4E4E4;border-radius:99px;padding:5px 11px;white-space:nowrap;font-family:Montserrat,system-ui,sans-serif">${_rcaEsc(modeLabel)}</span><span style="background:#fff;border:1px solid #E4E4E4;border-radius:99px;padding:5px 11px;white-space:nowrap;font-family:Montserrat,system-ui,sans-serif">Escopo: ${_rcaEsc(scopeLabel)}</span>`;
   }
   const noteEl = document.getElementById('rca-scope-note');
-  if (noteEl) noteEl.textContent = _rcaS.perfil === 'Administrador' ? 'Perfil MASTER: acesso global a todas as empresas.' : 'Você vê apenas RNCs de ' + _rcaS.empresa + ' atribuídas a você. RNCs de outras empresas não aparecem.';
+  if (noteEl) noteEl.textContent = mst ? 'Perfil MASTER: acesso global a todas as empresas.' : 'Você vê apenas RNCs de ' + (_rcaS.empresa || 'sua empresa') + (_rcaN(_rcaS.perfil) === 'SETOR RESPONSAVEL' ? ' atribuídas ao seu setor' : '') + '. RNCs de outras empresas não aparecem; o acesso é verificado no servidor (403).';
 
-  if (!_rcaS.sel || !_rcaS.rncs.find(x => x.id === _rcaS.sel)) _rcaS.sel = (_rcaS.rncs.filter(_rcaInScope)[0] || _rcaS.rncs[0] || {}).id || null;
+  if (!_rcaS.sel || !_rcaS.rncs.find(x => x.id === _rcaS.sel)) _rcaS.sel = (_rcaS.rncs[0] || {}).id || null;
   _rcaRenderLista();
   if (_rcaS.sel) _rcaRenderDetalhe();
+  else { const det = document.getElementById('rca-detalhe'); if (det) det.innerHTML = '<div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:24px;text-align:center;color:#8A8888;font-size:13px;font-family:Montserrat,system-ui,sans-serif">Selecione uma RNC na lista ao lado para abrir a análise de causa raiz.</div>'; }
 }
-
-function _rcaEsc(s) { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 function _rcaRenderLista() {
   const listEl = document.getElementById('rca-rnc-list');
   if (!listEl) return;
-  const visible = _rcaS.rncs.filter(_rcaInScope);
-  if (!visible.length) { listEl.innerHTML = '<div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:16px 14px;font-size:13px;color:#8A8888;font-family:Montserrat,system-ui,sans-serif">Nenhuma RNC atribuída.</div>'; return; }
-  listEl.innerHTML = visible.map(r => `<button onclick="_rcaSel(${JSON.stringify(r.id)})" style="white-space:normal;text-align:left;background:#fff;border:1.5px solid ${r.id===_rcaS.sel?'#C70602':'#E4E4E4'};border-radius:10px;padding:12px 14px;cursor:pointer;display:flex;flex-direction:column;gap:5px;font-family:Montserrat,system-ui,sans-serif;width:100%"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span style="font-weight:700;font-size:13.5px;white-space:nowrap">${_rcaEsc(r.id)}</span>${_rcaStBadge(r.status)}</div><span style="font-size:12.5px;line-height:1.4">${_rcaEsc(r.prob)}</span><span style="font-size:11.5px;color:#929090">${_rcaEsc(r.man)} · ${_rcaEsc(r.emp)} · v${r.v}</span></button>`).join('');
+  if (_rcaS.loadErr) { listEl.innerHTML = '<div style="background:#FDECEC;color:#7F0401;border-radius:10px;padding:14px;font-size:13px;line-height:1.5;font-family:Montserrat,system-ui,sans-serif">Erro ao carregar RNCs: ' + _rcaEsc(_rcaS.loadErr) + '</div>'; return; }
+  if (!_rcaS.rncs.length) { listEl.innerHTML = '<div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:16px 14px;font-size:13px;color:#8A8888;font-family:Montserrat,system-ui,sans-serif">Nenhuma RNC atribuída.</div>'; return; }
+  listEl.innerHTML = _rcaS.rncs.map(r => `<button onclick="_rcaSel(${_rcaEsc(JSON.stringify(r.id))})" style="white-space:normal;text-align:left;background:#fff;border:1.5px solid ${r.id===_rcaS.sel?'#C70602':'#E4E4E4'};border-radius:10px;padding:12px 14px;cursor:pointer;display:flex;flex-direction:column;gap:5px;font-family:Montserrat,system-ui,sans-serif;width:100%"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span style="font-weight:700;font-size:13.5px;white-space:nowrap">${_rcaEsc(r.id)}</span>${_rcaStBadge(r.status)}</div><span style="font-size:12.5px;line-height:1.4">${_rcaEsc(r.prob.length>110?r.prob.slice(0,110)+'…':r.prob)}</span><span style="font-size:11.5px;color:#929090">${_rcaEsc([r.man, r.emp].filter(Boolean).join(' · ') || '—')}</span></button>`).join('');
 }
 
-function _rcaSel(id) { _rcaS.sel = id; _rcaS.view = 'ficha'; _rcaS.errs = []; _rcaS.pend = {}; _rcaRenderLista(); _rcaRenderDetalhe(); }
+function _rcaSel(id) {
+  _rcaS.sel = id; _rcaS.view = 'ficha'; _rcaS.errs = []; _rcaS.pend = {};
+  _rcaRenderLista(); _rcaRenderDetalhe();
+  const r = _rcaS.rncs.find(x => x.id === id);
+  if (r && !r.evLoaded) _rcaLoadEv(r);
+}
+
+async function _rcaLoadEv(r) {
+  try {
+    const d = await _apiFetch('/api/anexos?idEntidade=' + encodeURIComponent(r.id), 20000);
+    r.ev = (d.itens || []).filter(x => String(x.CATEGORIA || '').startsWith('RCA_')).map(x => ({ id: x.ID_ANEXO, n: x.NOME_ARQUIVO || '', desc: x.DESCRICAO || '', area: ({ RCA_NC: 'nc', RCA_ACOES: 'acoes', RCA_EFICACIA: 'eficacia' })[x.CATEGORIA] || 'nc', by: x.USUARIO_UPLOAD || '', at: _rcaFmtDT(x.DATA_UPLOAD), size: x.TAMANHO, type: x.MIME_TYPE || '', ext: ((x.NOME_ARQUIVO || '').split('.').pop() || '').toLowerCase(), url: x.URL_ARQUIVO || '' }));
+    r.evLoaded = true;
+  } catch (e) { r.evLoaded = true; r.evErr = String(e && e.message || e); }
+  if (_rcaS.sel === r.id) _rcaRenderDetalhe();
+}
 
 function _rcaRenderDetalhe() {
   const det = document.getElementById('rca-detalhe');
   if (!det) return;
   const r = _rcaS.rncs.find(x => x.id === _rcaS.sel);
   if (!r) return;
-  const d = r.data;
-  const rev = _rcaReviewer();
-  const editable = !rev && ['ATRIBUÍDA', 'RASCUNHO', 'DEVOLVIDA PARA AJUSTE'].includes(r.status);
+  const d = r.data, perm = _rcaPerm(r), k = _rcaStKey(r.status);
+  const editable = perm.edit;
   const errSet = new Set(_rcaS.errs || []);
-  const bc = k => errSet.has(k) ? '#C70602' : '#D6D6D6';
+  const bc = x => errSet.has(x) ? '#C70602' : '#D6D6D6';
+  const F = 'font-family:Montserrat,system-ui,sans-serif';
 
-  // Tab bar header
   const tabs = [['ficha','Ficha RT-0001'],['apoio','IA e Cérebro'],['historico','Histórico'],['pdf','Ficha PDF']];
   let html = `<div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 18px;display:flex;gap:16px;flex-wrap:wrap;align-items:center">
     <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-        <span style="font-weight:700;font-size:17px;white-space:nowrap">${_rcaEsc(r.id)}</span>${_rcaStBadgeLg(r.status)}<span style="font-size:12px;color:#666464">versão ${r.v}</span>
+        <span style="font-weight:700;font-size:17px;white-space:nowrap">${_rcaEsc(r.id)}</span>${_rcaStBadgeLg(r.status)}
       </div>
-      <span style="font-size:12.5px;color:#545252">${_rcaEsc(r.man)} · ${_rcaEsc(r.emp)} · ${_rcaEsc(r.cliente)}</span>
+      <span style="font-size:12.5px;color:#545252">${_rcaEsc([r.man, r.emp, r.cliente].filter(Boolean).join(' · ') || '—')}</span>
     </div>
     <div style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">
-      ${tabs.map(([k,l]) => `<button class="rca-tab-btn${_rcaS.view===k?' ativo':''}" onclick="_rcaSetView('${k}')">${l}</button>`).join('')}
+      ${tabs.map(([t,l]) => `<button class="rca-tab-btn${_rcaS.view===t?' ativo':''}" onclick="_rcaSetView('${t}')">${l}</button>`).join('')}
     </div>
   </div>`;
 
-  // Devolvida banner
-  if (r.status === 'DEVOLVIDA PARA AJUSTE' && r.dev) {
-    html += `<div style="background:#FBF0D9;color:#5E3B00;border-radius:10px;padding:12px 16px;font-size:13px;line-height:1.5;font-family:Montserrat,system-ui,sans-serif"><strong>Devolvida para ajuste</strong> por ${_rcaEsc(r.dev.by)} em ${_rcaEsc(r.dev.at)}. Motivo: "${_rcaEsc(r.dev.motivo)}". Corrija e reenvie.</div>`;
+  if (k === 'DEVOLVIDA') {
+    html += `<div style="background:#FBF0D9;color:#5E3B00;border-radius:10px;padding:12px 16px;font-size:13px;line-height:1.5;${F}"><strong>Devolvida para ajuste</strong>${r.dec.by ? ' por ' + _rcaEsc(r.dec.by) : ''}${r.dec.at ? ' em ' + _rcaEsc(_rcaFmtDT(r.dec.at)) : ''}.${r.dec.obs ? ' Motivo: “' + _rcaEsc(r.dec.obs) + '”.' : ''}${perm.edit ? ' Corrija a ficha.' : ''}</div>`;
+  } else if (!editable) {
+    let msg;
+    if (perm.review) msg = 'Modo revisão: você pode aprovar ou devolver. Campos do RCA ficam somente leitura.';
+    else if (k === 'AGUARDANDO') msg = 'Análise aguardando aprovação ou devolução. Edição bloqueada.';
+    else if (perm.verify) msg = 'Análise aprovada. Registre a verificação da eficácia.';
+    else if (!perm.roleEdit) msg = 'Seu perfil acessa esta ficha somente para leitura.';
+    else msg = 'RNC ' + _rcaStInfo(r.status).label.toLowerCase() + '. Somente leitura.';
+    html += `<div style="background:#E6EEF8;color:#24508F;border-radius:10px;padding:12px 16px;font-size:13px;line-height:1.5;${F}">${_rcaEsc(msg)}</div>`;
   }
-  // Locked banner
-  if (!editable && r.status !== 'DEVOLVIDA PARA AJUSTE') {
-    const msg = rev ? (r.status === 'RCA ENVIADA' ? 'Modo revisão: você pode aprovar ou devolver. Campos do RCA ficam somente leitura.' : r.status === 'APROVADA' ? 'Análise aprovada. Registre a verificação da eficácia para encerrar a RNC.' : 'Aguardando ação do RCA.') : (r.status === 'RCA ENVIADA' ? 'Análise enviada. Aguardando aprovação ou devolução. Edição bloqueada.' : 'RNC ' + r.status.toLowerCase() + '. Somente leitura.');
-    html += `<div style="background:#E6EEF8;color:#24508F;border-radius:10px;padding:12px 16px;font-size:13px;line-height:1.5;font-family:Montserrat,system-ui,sans-serif">${_rcaEsc(msg)}</div>`;
+  if (_rcaS.view === 'ficha' && (perm.edit || perm.verify)) {
+    html += `<div style="background:#FAFAFA;border:1px dashed #CFCFCF;border-radius:10px;padding:10px 14px;font-size:12px;color:#666464;line-height:1.5;${F}">Armazenamento parcial: ao salvar, são gravados no servidor a causa raiz, a 1ª ação imediata, a 1ª ação de correção (responsável, prazo e status) e a verificação da eficácia. Os demais campos da ficha RT-0001 (porquês, origem, tipo, dados de entrada, versões) ainda não têm armazenamento no servidor e ficam só nesta sessão do navegador.</div>`;
   }
 
-  if (_rcaS.view === 'ficha') html += _rcaBuildFicha(r, d, editable, rev, errSet, bc);
+  if (_rcaS.view === 'ficha') html += _rcaBuildFicha(r, d, editable, perm, errSet, bc);
   else if (_rcaS.view === 'apoio') html += _rcaBuildApoio(r);
   else if (_rcaS.view === 'historico') html += _rcaBuildHistorico(r);
   else if (_rcaS.view === 'pdf') html += _rcaBuildPdf(r, d);
 
-  // Erros
-  if (errSet.size) html += `<div style="background:#FDECEC;color:#7F0401;border-radius:10px;padding:12px 16px;font-size:13px;line-height:1.55;font-family:Montserrat,system-ui,sans-serif"><strong>Campos obrigatórios pendentes:</strong> ${_rcaEsc(_rcaS.errs.join(' · '))}</div>`;
-
-  // Bottom bar
-  html += `<div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;align-items:center">`;
-  if (_rcaS.savedAt) html += `<span style="font-size:12px;color:#929090;font-family:Montserrat,system-ui,sans-serif">Salvo às ${_rcaS.savedAt.slice(11)}</span>`;
-  if (editable) html += `<button onclick="_rcaSaveDraft()" style="border:1px solid #1F1F1F;background:#fff;border-radius:8px;padding:10px 16px;cursor:pointer;font-weight:600;font-size:13px;font-family:Montserrat,system-ui,sans-serif">SALVAR RASCUNHO</button><button onclick="_rcaAskSend()" style="border:0;background:#C70602;color:#fff;border-radius:8px;padding:10px 18px;cursor:pointer;font-weight:700;font-size:13px;font-family:Montserrat,system-ui,sans-serif">ENVIAR ANÁLISE DE RCA</button>`;
-  if (rev && r.status === 'RCA ENVIADA') html += `<button onclick="_rcaAskReturn()" style="border:1px solid #1F1F1F;background:#fff;border-radius:8px;padding:10px 16px;cursor:pointer;font-weight:600;font-size:13px;font-family:Montserrat,system-ui,sans-serif">Devolver para ajuste</button><button onclick="_rcaApprove()" style="border:0;background:#1F1F1F;color:#fff;border-radius:8px;padding:10px 18px;cursor:pointer;font-weight:700;font-size:13px;font-family:Montserrat,system-ui,sans-serif">Aprovar análise</button>`;
-  if (rev && r.status === 'APROVADA') html += `<button onclick="_rcaCloseRnc()" style="border:0;background:#1F1F1F;color:#fff;border-radius:8px;padding:10px 18px;cursor:pointer;font-weight:700;font-size:13px;font-family:Montserrat,system-ui,sans-serif">Registrar eficácia e encerrar RNC</button>`;
-  html += '</div>';
+  if (_rcaS.view === 'ficha') {
+    html += `<div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;align-items:center">`;
+    if (_rcaS.savedAt) html += `<span style="font-size:12px;color:#929090;${F}">Salvo às ${_rcaEsc(_rcaS.savedAt.slice(11))}</span>`;
+    if (perm.edit) html += `<button onclick="_rcaSave()" style="border:1px solid #1F1F1F;background:#fff;border-radius:8px;padding:10px 16px;cursor:pointer;font-weight:600;font-size:13px;${F}">SALVAR RASCUNHO</button><button disabled title="Indisponível: o servidor ainda não possui o envio/versionamento da análise de RCA." style="border:0;background:#C70602;color:#fff;border-radius:8px;padding:10px 18px;font-weight:700;font-size:13px;opacity:.45;cursor:not-allowed;${F}">ENVIAR ANÁLISE DE RCA</button>`;
+    if (perm.verify) html += `<button onclick="_rcaSave()" style="border:0;background:#1F1F1F;color:#fff;border-radius:8px;padding:10px 18px;cursor:pointer;font-weight:700;font-size:13px;${F}">Registrar verificação da eficácia</button>`;
+    if (perm.review) html += `<button onclick="_rcaAskReturn()" style="border:1px solid #1F1F1F;background:#fff;border-radius:8px;padding:10px 16px;cursor:pointer;font-weight:600;font-size:13px;${F}">Devolver para ajuste</button><button onclick="_rcaApprove()" style="border:0;background:#1F1F1F;color:#fff;border-radius:8px;padding:10px 18px;cursor:pointer;font-weight:700;font-size:13px;${F}">Aprovar análise</button>`;
+    html += '</div>';
+    if (perm.edit) html += `<div style="font-size:11.5px;color:#929090;text-align:right;${F}">O envio da análise (com versão) está indisponível até existir o endpoint correspondente no servidor.</div>`;
+  }
 
   det.innerHTML = html;
 }
 
+
 function _rcaSetView(v) { _rcaS.view = v; _rcaRenderDetalhe(); }
 
-function _rcaBuildFicha(r, d, editable, rev, errSet, bc) {
+function _rcaBuildFicha(r, d, editable, perm, errSet, bc) {
   const dis = !editable;
   let h = `<div class="rca-card">`;
 
@@ -13010,7 +13028,7 @@ function _rcaBuildFicha(r, d, editable, rev, errSet, bc) {
   </div>`;
 
   // Verificação eficácia
-  const verOpen = rev && r.status === 'APROVADA';
+  const verOpen = perm.verify;
   const verDis = !verOpen;
   h += `<div style="padding:16px 18px;display:flex;flex-direction:column;gap:10px;background:${verOpen?'#fff':'#FAFAFA'}">
     <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><div class="rca-section-title" style="font-family:Montserrat,system-ui,sans-serif">VERIFICAÇÃO</div><span style="font-size:11.5px;color:#666464;font-family:Montserrat,system-ui,sans-serif">${verOpen?'Preenchido pelo aprovador/Qualidade após a execução das ações':'Preenchido após aprovação e execução das ações · fora da competência do RCA'}</span></div>
@@ -13028,32 +13046,33 @@ function _rcaBuildFicha(r, d, editable, rev, errSet, bc) {
 }
 
 function _rcaBuildEvidencias(r, editable, verOpen, errSet) {
+  const perm = _rcaPerm(r);
+  const F = 'font-family:Montserrat,system-ui,sans-serif';
   const AREAS = [['nc','ANEXO DE EVIDÊNCIA DA NC','Anexo de evidência da NC'],['acoes','EVIDÊNCIA DAS AÇÕES','Evidência das ações'],['eficacia','EVIDÊNCIA DA EFICÁCIA','Evidência da eficácia']];
   let num = 0;
-  let h = `<div class="rca-card"><div style="padding:14px 18px;border-bottom:1px solid #EFEFEF;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><div><div style="font-weight:700;font-size:14.5px;font-family:Montserrat,system-ui,sans-serif">EVIDÊNCIAS DA ANÁLISE</div><div style="font-size:12.5px;color:#929090;font-family:Montserrat,system-ui,sans-serif">Organizadas como nas páginas 3, 4 e 5 da ficha.</div></div><span style="font-size:12px;color:#666464;font-family:Montserrat,system-ui,sans-serif">${(r.ev||[]).length} evidência(s)</span></div>`;
+  let h = `<div class="rca-card"><div style="padding:14px 18px;border-bottom:1px solid #EFEFEF;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><div><div style="font-weight:700;font-size:14.5px;${F}">EVIDÊNCIAS DA ANÁLISE</div><div style="font-size:12.5px;color:#929090;${F}">Organizadas como nas páginas 3, 4 e 5 da ficha. Toda evidência exige descrição da finalidade.</div>${(editable || verOpen) && !perm.attach ? `<div style="font-size:12px;color:#7A4C00;margin-top:4px;${F}">Anexar evidências exige perfil MASTER ou Analista SAC (permissão do servidor).</div>` : ''}${r.evErr ? `<div style="font-size:12px;color:#A80502;margin-top:4px;${F}">Não foi possível carregar os anexos: ${_rcaEsc(r.evErr)}</div>` : ''}</div><span style="font-size:12px;color:#666464;${F}">${(r.ev||[]).length} evidência(s)</span></div>`;
   AREAS.forEach(([k,l,relDefault]) => {
-    const canArea = k === 'eficacia' ? verOpen : editable;
+    const canArea = perm.attach && (k === 'eficacia' ? verOpen : editable);
     const pd = _rcaS.pend[k];
     const items = (r.ev||[]).filter(e => e.area === k);
     h += `<div style="padding:14px 18px;border-bottom:1px solid #EFEFEF;display:flex;flex-direction:column;gap:10px">
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span style="font-size:12px;font-weight:700;letter-spacing:.05em;font-family:Montserrat,system-ui,sans-serif">${_rcaEsc(l)}</span>
-      ${canArea&&!pd?`<label style="border:0;background:#C70602;color:#fff;border-radius:7px;padding:7px 12px;cursor:pointer;font-size:12px;font-weight:700;white-space:nowrap;font-family:Montserrat,system-ui,sans-serif">+ ANEXAR EVIDÊNCIA<input type="file" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt" onchange="_rcaPickFile('${k}',this)" style="display:none"></label>`:''}</div>`;
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span style="font-size:12px;font-weight:700;letter-spacing:.05em;${F}">${_rcaEsc(l)}</span>
+      ${canArea&&!pd?`<label style="border:0;background:#C70602;color:#fff;border-radius:7px;padding:7px 12px;cursor:pointer;font-size:12px;font-weight:700;white-space:nowrap;${F}">+ ANEXAR EVIDÊNCIA<input type="file" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt" onchange="_rcaPickFile('${k}',this)" style="display:none"></label>`:''}</div>`;
     if (pd) {
       h += `<div style="border:1.5px solid #C70602;border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:8px;background:#FFF8F8">
-        <div style="font-size:12.5px;font-family:Montserrat,system-ui,sans-serif"><strong>${_rcaEsc(pd.n)}</strong> · ${_rcaKind(pd)} · ${_rcaKb(pd.size)}</div>
-        <input value="${_rcaEsc(pd.desc||'')}" oninput="_rcaSetPend('${k}','desc',this.value)" placeholder="Descrição da evidência (obrigatória)" style="height:36px;border:1px solid #D6D6D6;border-radius:6px;padding:0 10px;font-size:13px;background:#fff;font-family:Montserrat,system-ui,sans-serif;width:100%">
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span style="font-size:12px;color:#545252;font-family:Montserrat,system-ui,sans-serif">Relacionada a</span><select onchange="_rcaSetPend('${k}','rel',this.value)" style="height:32px;border:1px solid #D6D6D6;border-radius:6px;padding:0 6px;font-size:12.5px;background:#fff;font-family:Montserrat,system-ui,sans-serif">${['Anexo de evidência da NC','Problema 1','Problema 2','Problema 3','Problema 4','Problema 5','Causa raiz','Ação de correção imediata','Ação de correção','Evidência das ações','Evidência da eficácia'].map(o=>`<option${(pd.rel||relDefault)===o?' selected':''}>${_rcaEsc(o)}</option>`).join('')}</select><span style="flex:1"></span><button onclick="_rcaCancelPend('${k}')" style="border:1px solid #D6D6D6;background:#fff;border-radius:6px;padding:6px 11px;cursor:pointer;font-size:12px;font-family:Montserrat,system-ui,sans-serif">Cancelar</button><button onclick="_rcaConfirmPend('${k}')" style="border:0;background:${(pd.desc||'').trim().length>=5?'#C70602':'#C4C4C4'};color:#fff;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:12px;font-weight:600;font-family:Montserrat,system-ui,sans-serif">Confirmar anexo</button></div>
+        <div style="font-size:12.5px;${F}"><strong>${_rcaEsc(pd.n)}</strong> · ${_rcaKind(pd)} · ${_rcaKb(pd.size)}</div>
+        <input value="${_rcaEsc(pd.desc||'')}" oninput="_rcaSetPend('${k}','desc',this.value,true)" placeholder="Descrição da evidência (obrigatória) · ex.: Registro de conferência do lote antes da expedição" style="height:36px;border:1px solid #D6D6D6;border-radius:6px;padding:0 10px;font-size:13px;background:#fff;${F};width:100%">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span style="font-size:12px;color:#545252;${F}">Relacionada a</span><select onchange="_rcaSetPend('${k}','rel',this.value)" style="height:32px;border:1px solid #D6D6D6;border-radius:6px;padding:0 6px;font-size:12.5px;background:#fff;${F}">${['Anexo de evidência da NC','Problema 1','Problema 2','Problema 3','Problema 4','Problema 5','Causa raiz','Ação de correção imediata','Ação de correção','Evidência das ações','Evidência da eficácia'].map(o=>`<option${(pd.rel||relDefault)===o?' selected':''}>${_rcaEsc(o)}</option>`).join('')}</select><span style="flex:1"></span><button onclick="_rcaCancelPend('${k}')" style="border:1px solid #D6D6D6;background:#fff;border-radius:6px;padding:6px 11px;cursor:pointer;font-size:12px;${F}">Cancelar</button><button id="rca-conf-${k}" onclick="_rcaConfirmPend('${k}')" style="border:0;background:${(pd.desc||'').trim().length>=5?'#C70602':'#C4C4C4'};color:#fff;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:12px;font-weight:600;${F}">Confirmar anexo</button></div>
       </div>`;
     }
     items.forEach(e => {
       num++;
-      const own = editable && e.by === _rcaS.usuario && !e.sentV;
-      h += `<div class="rca-ev-card"><div style="width:56px;height:46px;border-radius:6px;background:#F4F4F4;display:grid;place-items:center;overflow:hidden;font-size:10.5px;font-weight:700;color:#666464;font-family:Montserrat,system-ui,sans-serif">${e.url&&e.type&&e.type.startsWith('image/')?`<img src="${e.url}" style="width:100%;height:100%;object-fit:cover">`:_rcaKind(e).toUpperCase().slice(0,4)}</div>
-        <div style="min-width:0;display:flex;flex-direction:column;gap:2px"><div style="font-size:11px;color:#929090;font-weight:700;font-family:Montserrat,system-ui,sans-serif">EVIDÊNCIA ${String(num).padStart(2,'0')}</div><div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:Montserrat,system-ui,sans-serif">${_rcaEsc(e.n)}</div><div style="font-size:12.5px;color:#3A3939;font-family:Montserrat,system-ui,sans-serif">${_rcaEsc(e.desc)}</div><div style="font-size:11.5px;color:#929090;font-family:Montserrat,system-ui,sans-serif">${_rcaKind(e)} · ${_rcaKb(e.size)} · ${_rcaEsc(e.at)} · ${_rcaEsc(e.by)}</div></div>
-        <div style="display:flex;gap:8px;font-size:12px;flex-wrap:wrap;justify-content:flex-end;align-items:flex-start">${own?`<label style="cursor:pointer;font-family:Montserrat,system-ui,sans-serif">Substituir<input type="file" onchange="_rcaReplaceFile('${e.id}',this)" style="display:none"></label><button onclick="_rcaDelEv('${e.id}')" style="border:0;background:none;padding:0;cursor:pointer;color:#A80502;font-family:Montserrat,system-ui,sans-serif">Excluir</button>`:''}</div>
+      h += `<div class="rca-ev-card"><div style="width:56px;height:46px;border-radius:6px;background:#F4F4F4;display:grid;place-items:center;overflow:hidden;font-size:10.5px;font-weight:700;color:#666464;${F}">${_rcaKind(e).toUpperCase().slice(0,4)}</div>
+        <div style="min-width:0;display:flex;flex-direction:column;gap:2px"><div style="font-size:11px;color:#929090;font-weight:700;${F}">EVIDÊNCIA ${String(num).padStart(2,'0')}</div><div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;${F}">${_rcaEsc(e.n)}</div><div style="font-size:12.5px;color:#3A3939;${F}">${_rcaEsc(e.desc)}</div><div style="font-size:11.5px;color:#929090;${F}">${_rcaKind(e)}${e.size?' · '+_rcaKb(e.size):''} · ${_rcaEsc(e.at)} · ${_rcaEsc(e.by)}</div></div>
+        <div style="display:flex;gap:10px;font-size:12px;flex-wrap:wrap;justify-content:flex-end;align-items:flex-start;${F}">${/^https?:\/\//i.test(e.url)?`<a href="${_rcaEsc(e.url)}" target="_blank" rel="noopener" style="color:#A80502;font-weight:600;text-decoration:none">Visualizar</a>`:''}</div>
       </div>`;
     });
-    if (!items.length && !pd) h += `<div style="font-size:12.5px;color:#929090;font-family:Montserrat,system-ui,sans-serif">Nenhuma evidência nesta seção.</div>`;
+    if (!items.length && !pd) h += `<div style="font-size:12.5px;color:#929090;${F}">Nenhuma evidência nesta seção.</div>`;
     h += '</div>';
   });
   h += '</div>';
@@ -13061,33 +13080,68 @@ function _rcaBuildEvidencias(r, editable, verOpen, errSet) {
 }
 
 function _rcaBuildApoio(r) {
-  let h = `<div style="background:#FDF2F2;border:1px solid #F3CFCF;border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:12px"><div style="display:flex;gap:8px;align-items:center"><span style="background:#C70602;color:#fff;border-radius:5px;padding:3px 8px;font-size:11px;font-weight:700;letter-spacing:.05em;font-family:Montserrat,system-ui,sans-serif">SUGESTÃO DA IA</span><span style="font-size:12.5px;color:#545252;font-family:Montserrat,system-ui,sans-serif">Apoio à investigação. Nada aqui preenche a ficha automaticamente; o RCA valida e decide.</span></div>`;
-  const blocks = [['Possíveis causas',['Falha de conferência na etapa anterior','Procedimento desatualizado','Operador sem treinamento para esta condição']],['Perguntas de investigação',['Qual etapa deveria ter detectado o problema?','O procedimento vigente cobre essa situação?','Houve mudança recente de equipe ou de turno?']],['Ações usadas anteriormente',['Dupla conferência na expedição (RNC similar · eficaz)','Treinamento de operadores (RNC anterior · eficaz)']]];
-  blocks.forEach(([t,items]) => {
-    h += `<div style="display:flex;flex-direction:column;gap:6px"><div style="font-size:12.5px;font-weight:700;font-family:Montserrat,system-ui,sans-serif">${_rcaEsc(t)}</div>${items.map(l => `<div style="display:flex;gap:10px;align-items:flex-start;background:#fff;border-radius:7px;padding:8px 10px;font-size:13px;line-height:1.45;font-family:Montserrat,system-ui,sans-serif"><span style="flex:1">${_rcaEsc(l)}</span><button onclick="_rcaCopyText(${JSON.stringify(l)})" style="border:0;background:none;color:#A80502;cursor:pointer;font-size:12px;padding:0;font-family:Montserrat,system-ui,sans-serif">Copiar</button></div>`).join('')}</div>`;
-  });
-  h += `</div><div class="rca-card"><div style="padding:14px 18px;border-bottom:1px solid #EFEFEF;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><div><div style="font-weight:700;font-size:14.5px;font-family:Montserrat,system-ui,sans-serif">Cérebro · RNCs similares</div><div style="font-size:12.5px;color:#929090;font-family:Montserrat,system-ui,sans-serif">Somente leitura. Conhecimento oficial validado.</div></div><button onclick="_rcaOpenSug()" style="border:1px solid #1F1F1F;background:#fff;border-radius:7px;padding:7px 12px;cursor:pointer;font-size:12.5px;font-weight:600;font-family:Montserrat,system-ui,sans-serif">SUGERIR CONHECIMENTO</button></div>`;
-  [['RNC similar','Falha de conferência','Dupla conferência','Eficaz','green'],['RNC anterior','Operador sem treinamento','Treinamento e checklist','Eficaz','green']].forEach(([n,c,a,e,clr]) => {
-    const [bg,fg] = {'green':['#E6F2EA','#1E6B3A'],'red':['#FDECEC','#A80502'],'gray':['#EEEEEE','#545252']}[clr]||['#EEEEEE','#545252'];
-    h += `<div style="display:grid;grid-template-columns:100px minmax(0,1fr) minmax(0,1fr) 100px;gap:12px;padding:10px 18px;border-bottom:1px solid #EFEFEF;font-size:12.5px;align-items:center;font-family:Montserrat,system-ui,sans-serif"><span style="font-weight:700">${_rcaEsc(n)}</span><span><span style="color:#929090">Causa: </span>${_rcaEsc(c)}</span><span><span style="color:#929090">Ação: </span>${_rcaEsc(a)}</span><span style="padding:2px 8px;border-radius:99px;font-size:11.5px;font-weight:600;white-space:nowrap;background:${bg};color:${fg}">${_rcaEsc(e)}</span></div>`;
-  });
+  const F = 'font-family:Montserrat,system-ui,sans-serif';
+  let h = `<div style="background:#FDF2F2;border:1px solid #F3CFCF;border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:8px"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span style="background:#C70602;color:#fff;border-radius:5px;padding:3px 8px;font-size:11px;font-weight:700;letter-spacing:.05em;${F}">SUGESTÃO DA IA</span><span style="font-size:12.5px;color:#545252;${F}">Apoio à investigação. Nada aqui preenche a ficha automaticamente; o RCA valida e decide.</span></div><div style="font-size:12.5px;color:#666464;${F}">Sugestões de causas, perguntas de investigação e ações anteriores por IA ainda não estão disponíveis nesta tela: não há endpoint no servidor para isso. Os casos similares abaixo vêm do Cérebro.</div></div>`;
+  h += `<div class="rca-card"><div style="padding:14px 18px;border-bottom:1px solid #EFEFEF;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><div><div style="font-weight:700;font-size:14.5px;${F}">Cérebro · RNCs similares</div><div style="font-size:12.5px;color:#929090;${F}">Somente leitura. Conhecimento oficial validado.</div></div><button disabled title="Indisponível: ainda não há endpoint para sugerir conhecimento ao Cérebro a partir desta tela." style="border:1px solid #1F1F1F;background:#fff;border-radius:7px;padding:7px 12px;font-size:12.5px;font-weight:600;opacity:.45;cursor:not-allowed;${F}">SUGERIR CONHECIMENTO</button></div>`;
+  if (r.sims === null) {
+    h += `<div style="padding:14px 18px;font-size:12.5px;color:#929090;${F}">Buscando casos similares…</div>`;
+    _rcaLoadSims(r);
+  } else if (r.simsErr) {
+    h += `<div style="padding:14px 18px;font-size:12.5px;color:#A80502;${F}">Erro ao buscar casos similares: ${_rcaEsc(r.simsErr)}</div>`;
+  } else if (!r.sims.length) {
+    h += `<div style="padding:14px 18px;font-size:12.5px;color:#929090;${F}">Nenhum caso similar encontrado.</div>`;
+  } else {
+    r.sims.forEach(s => {
+      const pct = s.similaridade != null ? Math.round(Number(s.similaridade) * (Number(s.similaridade) <= 1 ? 100 : 1)) + '% similar' : '—';
+      h += `<div style="display:grid;grid-template-columns:130px minmax(0,1fr) minmax(0,1fr) 110px;gap:12px;padding:10px 18px;border-bottom:1px solid #EFEFEF;font-size:12.5px;align-items:center;${F}"><span style="font-weight:700">${_rcaEsc([s.empresa||s.EMPRESA, s.tipo||s.TIPO].filter(Boolean).join(' · ') || '—')}</span><span><span style="color:#929090">Caso: </span>${_rcaEsc((s.descricao||s.DESCRICAO||'').slice(0,160))}</span><span><span style="color:#929090">Tratativa: </span>${_rcaEsc((s.tratativa||s.TRATATIVA||'—').slice(0,160))}</span><span style="justify-self:start;padding:2px 8px;border-radius:99px;font-size:11.5px;font-weight:600;white-space:nowrap;background:#EEEEEE;color:#545252">${_rcaEsc(pct)}</span></div>`;
+    });
+  }
   h += '</div>';
   return h;
 }
 
+async function _rcaLoadSims(r) {
+  if (r._simsBusy) return; r._simsBusy = true;
+  try {
+    const d = await _apiFetch('/api/analise/similares', 20000, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ descricao: r.prob || r.data.desc || '', empresa: r.emp || '' }) });
+    r.sims = (d.itens || d.similares || []).slice(0, 6); r.simsErr = '';
+  } catch (e) { r.sims = []; r.simsErr = String(e && e.message || e); }
+  r._simsBusy = false;
+  if (_rcaS.sel === r.id && _rcaS.view === 'apoio') _rcaRenderDetalhe();
+}
+
 function _rcaBuildHistorico(r) {
-  const audit = (_rcaS.audit || []).filter(a => a.rnc === r.id);
-  const versions = (r.versions || []);
-  let h = `<div class="rca-card"><div style="padding:14px 18px;border-bottom:1px solid #EFEFEF;font-weight:700;font-size:14.5px;font-family:Montserrat,system-ui,sans-serif">Versões da análise</div>`;
-  if (versions.length) {
-    versions.forEach(x => { h += `<div style="display:grid;grid-template-columns:60px 180px minmax(0,1fr);gap:12px;padding:10px 18px;border-bottom:1px solid #EFEFEF;font-size:12.5px;align-items:center;font-family:Montserrat,system-ui,sans-serif"><span style="font-weight:700">v${x.v}</span><span style="color:#666464">${_rcaEsc(x.at)}</span><span>${_rcaEsc(x.l)}</span></div>`; });
-  } else { h += `<div style="padding:14px 18px;font-size:12.5px;color:#929090;font-family:Montserrat,system-ui,sans-serif">Nenhuma versão enviada ainda.</div>`; }
-  h += `</div><div class="rca-card" style="overflow-x:auto"><table style="border-collapse:collapse;width:100%;min-width:720px;font-size:12.5px;font-family:Montserrat,system-ui,sans-serif"><thead><tr style="background:#FAFAFA">${['Data/hora','Usuário','Empresa','RNC','Ação','Versão','Detalhe'].map(c=>`<th style="text-align:left;font-weight:600;font-size:11.5px;color:#666464;padding:9px 12px;border-bottom:1px solid #E4E4E4;white-space:nowrap">${c}</th>`).join('')}</tr></thead><tbody>`;
-  audit.forEach(a => { h += `<tr style="border-bottom:1px solid #EFEFEF"><td style="padding:8px 12px;white-space:nowrap">${_rcaEsc(a.at)}</td><td style="padding:8px 12px;white-space:nowrap">${_rcaEsc(a.u)}</td><td style="padding:8px 12px">${_rcaEsc(a.emp)}</td><td style="padding:8px 12px;white-space:nowrap">${_rcaEsc(a.rnc)}</td><td style="padding:8px 12px"><span style="padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600;background:#EEEEEE;color:#545252;white-space:nowrap">${_rcaEsc(a.a)}</span></td><td style="padding:8px 12px">v${a.v}</td><td style="padding:8px 12px">${_rcaEsc(a.d)}</td></tr>`; });
-  if (!audit.length) h += `<tr><td colspan="7" style="padding:14px 18px;text-align:center;color:#929090">Nenhum registro de auditoria.</td></tr>`;
+  const F = 'font-family:Montserrat,system-ui,sans-serif';
+  let h = `<div class="rca-card"><div style="padding:14px 18px;border-bottom:1px solid #EFEFEF;font-weight:700;font-size:14.5px;${F}">Versões da análise</div>`;
+  if (r.dec.by || r.dec.at) {
+    h += `<div style="display:grid;grid-template-columns:150px minmax(0,1fr);gap:12px;padding:10px 18px;border-bottom:1px solid #EFEFEF;font-size:12.5px;align-items:center;${F}"><span style="color:#666464">${_rcaEsc(_rcaFmtDT(r.dec.at))}</span><span>Decisão registrada: ${_rcaEsc(_rcaStInfo(r.status).label)}${r.dec.by ? ' por ' + _rcaEsc(r.dec.by) : ''}${r.dec.obs ? ' · ' + _rcaEsc(r.dec.obs) : ''}</span></div>`;
+  }
+  h += `<div style="padding:14px 18px;font-size:12.5px;color:#929090;${F}">O versionamento da análise (v1, v2…) ainda não existe no servidor; apenas a última decisão e os eventos abaixo são registrados.</div></div>`;
+  h += `<div class="rca-card" style="overflow-x:auto"><table style="border-collapse:collapse;width:100%;min-width:620px;font-size:12.5px;${F}"><thead><tr style="background:#FAFAFA">${['Data/hora','Usuário','Evento','Detalhe'].map(c=>`<th style="text-align:left;font-weight:600;font-size:11.5px;color:#666464;padding:9px 12px;border-bottom:1px solid #E4E4E4;white-space:nowrap">${c}</th>`).join('')}</tr></thead><tbody>`;
+  if (r.eventos === null) {
+    h += `<tr><td colspan="4" style="padding:14px 18px;text-align:center;color:#929090">Carregando eventos…</td></tr>`;
+    _rcaLoadEventos(r);
+  } else if (r.eventosErr) {
+    h += `<tr><td colspan="4" style="padding:14px 18px;text-align:center;color:#A80502">${_rcaEsc(r.eventosErr)}</td></tr>`;
+  } else if (!r.eventos.length) {
+    h += `<tr><td colspan="4" style="padding:14px 18px;text-align:center;color:#929090">Nenhum registro de auditoria.</td></tr>`;
+  } else {
+    r.eventos.forEach(a => { h += `<tr style="border-bottom:1px solid #EFEFEF"><td style="padding:8px 12px;white-space:nowrap">${_rcaEsc(_rcaFmtDT(a.DATA_EVENTO))}</td><td style="padding:8px 12px;white-space:nowrap">${_rcaEsc(a.USUARIO)}</td><td style="padding:8px 12px"><span style="padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600;background:#EEEEEE;color:#545252;white-space:nowrap">${_rcaEsc(a.TIPO_EVENTO)}</span></td><td style="padding:8px 12px">${_rcaEsc(a.DETALHES)}</td></tr>`; });
+  }
   h += `</tbody></table></div>`;
   return h;
 }
+
+async function _rcaLoadEventos(r) {
+  if (r._evBusy) return; r._evBusy = true;
+  try {
+    const d = await _apiFetch('/api/rnc/' + encodeURIComponent(r.id) + '/eventos', 20000);
+    r.eventos = (d.itens || []).slice().reverse(); r.eventosErr = '';
+  } catch (e) { r.eventos = []; r.eventosErr = 'Erro ao carregar eventos: ' + String(e && e.message || e); }
+  r._evBusy = false;
+  if (_rcaS.sel === r.id && _rcaS.view === 'historico') _rcaRenderDetalhe();
+}
+
 
 function _rcaBuildPdf(r, d) {
   const evName = id => { const e = (r.ev||[]).find(x => x.id === id); return e ? e.n : '(removida)'; };
@@ -13101,8 +13155,8 @@ function _rcaBuildPdf(r, d) {
     { t: 'AÇÃO DE CORREÇÃO', items: d.corr.length?d.corr.map(a=>[a.resp+' · '+_rcaFmtD(a.prazo)+' · '+(a.st||'Não iniciada'),a.acao,'1/-1']):[['','—','1/-1']] },
     { t: 'VERIFICAÇÃO', items: [['Verificação',d.verif,'1/-1'],['Eficácia',(d.efic||'—')+' · '+_rcaFmtD(d.eficData)],['Nova NC',(d.novaNc||'—')+' · '+_rcaFmtD(d.novaData)]] }
   ];
-  let h = `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span style="font-size:13px;color:#666464;font-family:Montserrat,system-ui,sans-serif">Ficha RT-0001 preenchida · ${_rcaEsc(r.id)} v${r.v}</span><button onclick="_rcaSetView('ficha')" style="border:1px solid #D6D6D6;background:#fff;border-radius:7px;padding:8px 14px;cursor:pointer;font-size:13px;font-family:Montserrat,system-ui,sans-serif">Voltar à ficha</button></div>`;
-  h += `<div style="background:#fff;border:1px solid #E4E4E4;max-width:860px;width:100%;padding:36px 40px;display:flex;flex-direction:column;gap:16px;font-size:11.5px;font-family:Montserrat,system-ui,sans-serif">
+  let h = `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span style="font-size:13px;color:#666464;font-family:Montserrat,system-ui,sans-serif">Ficha RT-0001 preenchida · ${_rcaEsc(r.id)}</span><div style="display:flex;gap:8px"><button onclick="_rcaSetView('ficha')" style="border:1px solid #D6D6D6;background:#fff;border-radius:7px;padding:8px 14px;cursor:pointer;font-size:13px;font-family:Montserrat,system-ui,sans-serif">Voltar à ficha</button><button onclick="_rcaPrint()" style="border:0;background:#C70602;color:#fff;border-radius:7px;padding:8px 14px;cursor:pointer;font-size:13px;font-weight:700;font-family:Montserrat,system-ui,sans-serif">Baixar ficha em PDF</button></div></div>`;
+  h += `<div id="rca-pdf-sheet" style="background:#fff;border:1px solid #E4E4E4;max-width:860px;width:100%;padding:36px 40px;display:flex;flex-direction:column;gap:16px;font-size:11.5px;font-family:Montserrat,system-ui,sans-serif">
     <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border:1px solid #1F1F1F;font-size:11.5px">
       <div style="padding:6px 8px;border-right:1px solid #1F1F1F;grid-row:span 2;display:flex;align-items:center;font-weight:700">Chiacchio Embalagens</div>
       <div style="padding:6px 8px;border-right:1px solid #1F1F1F;border-bottom:1px solid #1F1F1F"><strong>Empresa:</strong> ${_rcaEsc(r.emp)}</div>
@@ -13111,7 +13165,7 @@ function _rcaBuildPdf(r, d) {
       <div style="padding:6px 8px;font-size:10px">Criado: Gildásio Jr · Aprovado: Deibson Veloso</div>
     </div>
     ${secs.map(s => `<div style="display:flex;flex-direction:column;gap:6px"><div style="background:#C70602;color:#fff;font-weight:700;padding:4px 8px;font-size:11px;letter-spacing:.04em">${_rcaEsc(s.t)}</div><div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px 14px">${s.items.map(([l,v,span])=>`<div style="${span?`grid-column:${span}`:''}"><div style="font-size:9.5px;color:#666464">${_rcaEsc(l)}</div><div style="line-height:1.45;white-space:pre-wrap">${_rcaEsc(v||'—')}</div></div>`).join('')}</div></div>`).join('')}
-    <div style="display:flex;justify-content:space-between;border-top:1px solid #E4E4E4;padding-top:8px;font-size:9.5px;color:#929090"><span>Gerado pelo Assistente SAC · ${_rcaEsc(r.id)} · versão ${r.v}</span><span>${_rcaNow()}</span></div>
+    <div style="display:flex;justify-content:space-between;border-top:1px solid #E4E4E4;padding-top:8px;font-size:9.5px;color:#929090"><span>Gerado pelo Assistente SAC · ${_rcaEsc(r.id)}</span><span>${_rcaNow()}</span></div>
   </div>`;
   return h;
 }
@@ -13130,47 +13184,57 @@ function _rcaUnlinkCausaEv(id) { _rcaMut(r => { r.data.causaEv = r.data.causaEv.
 
 function _rcaPickFile(k, input) {
   const f = input.files && input.files[0]; if (!f) return;
-  const meta = { n: f.name, size: f.size, type: f.type||'', ext: (f.name.split('.').pop()||'').toLowerCase() };
   input.value = '';
-  if (f.size > 700*1024) { _rcaS.pend = Object.assign({}, _rcaS.pend, {[k]: Object.assign(meta, {url: null, desc:'', rel:k==='nc'?'Anexo de evidência da NC':k==='acoes'?'Evidência das ações':'Evidência da eficácia'})}); _rcaRenderDetalhe(); return; }
-  const fr = new FileReader(); fr.onload = () => { _rcaS.pend = Object.assign({}, _rcaS.pend, {[k]: Object.assign(meta, {url:fr.result, desc:'', rel:k==='nc'?'Anexo de evidência da NC':k==='acoes'?'Evidência das ações':'Evidência da eficácia'})}); _rcaRenderDetalhe(); }; fr.readAsDataURL(f);
+  if (f.size > 3 * 1024 * 1024) { _rcaFlash('Arquivo acima de 3 MB. Anexe um arquivo menor.'); return; }
+  const rel = k === 'nc' ? 'Anexo de evidência da NC' : k === 'acoes' ? 'Evidência das ações' : 'Evidência da eficácia';
+  _rcaS.pend = Object.assign({}, _rcaS.pend, { [k]: { n: f.name, size: f.size, type: f.type || '', ext: (f.name.split('.').pop() || '').toLowerCase(), file: f, desc: '', rel } });
+  _rcaRenderDetalhe();
 }
-function _rcaSetPend(k, f, v) { if (_rcaS.pend[k]) { _rcaS.pend[k][f] = v; _rcaRenderDetalhe(); } }
+function _rcaSetPend(k, f, v, noRender) {
+  if (!_rcaS.pend[k]) return;
+  _rcaS.pend[k][f] = v;
+  if (noRender) { const b = document.getElementById('rca-conf-' + k); if (b) b.style.background = (_rcaS.pend[k].desc || '').trim().length >= 5 ? '#C70602' : '#C4C4C4'; return; }
+  _rcaRenderDetalhe();
+}
 function _rcaCancelPend(k) { delete _rcaS.pend[k]; _rcaRenderDetalhe(); }
-function _rcaConfirmPend(k) {
-  const pd = _rcaS.pend[k]; if (!pd || (pd.desc||'').trim().length < 5) { _rcaFlash('Descreva a finalidade da evidência antes de anexar.'); return; }
-  const id = 'ev' + Date.now();
-  _rcaMut(r => { r.ev.push(Object.assign({}, pd, {id, area:k, by:_rcaS.usuario, at:_rcaNow()})); if (r.status==='ATRIBUÍDA') r.status='RASCUNHO'; }, {a:'Anexo', d:pd.n+' · '+pd.desc});
-  delete _rcaS.pend[k]; _rcaS.savedAt = _rcaNow(); _rcaRenderLista(); _rcaRenderDetalhe();
+async function _rcaConfirmPend(k) {
+  const pd = _rcaS.pend[k], r = _rcaS.rncs.find(x => x.id === _rcaS.sel);
+  if (!pd || !r) return;
+  if ((pd.desc || '').trim().length < 5) { _rcaFlash('Descreva a finalidade da evidência antes de anexar.'); return; }
+  if (pd.busy) return; pd.busy = true;
+  try {
+    const dataBase64 = await fileToBase64(pd.file);
+    await _apiFetch('/api/anexos', 60000, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tipoEntidade: 'RNC', idEntidade: r.id, usuario: _rcaS.usuario, arquivo: { nome: pd.n, mimeType: pd.type, tamanho: pd.size, dataBase64, categoria: { nc: 'RCA_NC', acoes: 'RCA_ACOES', eficacia: 'RCA_EFICACIA' }[k], descricao: pd.desc.trim() + ' · Relacionada a: ' + (pd.rel || '') } }) });
+    delete _rcaS.pend[k];
+    _rcaFlash('Evidência anexada.');
+    await _rcaLoadEv(r);
+  } catch (e) {
+    pd.busy = false;
+    _rcaFlash('Erro ao anexar: ' + String(e && e.message || e), 5000);
+  }
 }
-function _rcaDelEv(id) { _rcaMut(r => { r.ev = r.ev.filter(x=>x.id!==id); r.data.whyEv = r.data.whyEv.map(arr=>arr.filter(y=>y!==id)); r.data.causaEv = r.data.causaEv.filter(y=>y!==id); }, {a:'Exclusão de anexo',d:'Evidência removida'}); _rcaRenderDetalhe(); }
-function _rcaReplaceFile(id, input) {
-  const f = input.files && input.files[0]; if (!f) return;
-  const meta = {n:f.name, size:f.size, type:f.type||'', ext:(f.name.split('.').pop()||'').toLowerCase()}; input.value='';
-  if (f.size > 700*1024) { _rcaMut(r => { const e = r.ev.find(x=>x.id===id); if(e) Object.assign(e, meta, {at:_rcaNow()}); }, {a:'Substituição de anexo',d:f.name}); _rcaRenderDetalhe(); return; }
-  const fr = new FileReader(); fr.onload = () => { _rcaMut(r => { const e = r.ev.find(x=>x.id===id); if(e) Object.assign(e, meta, {url:fr.result,at:_rcaNow()}); }, {a:'Substituição de anexo',d:f.name}); _rcaRenderDetalhe(); }; fr.readAsDataURL(f);
-}
+function _rcaPrint() { document.body.classList.add('rca-printing'); try { window.print(); } finally { setTimeout(() => document.body.classList.remove('rca-printing'), 500); } }
 function _rcaCopyText(t) { try { navigator.clipboard.writeText(t); } catch(e){} _rcaFlash('Copiado.'); }
 
-// Actions
-function _rcaSaveDraft() {
-  _rcaMut(r => { if (r.status==='ATRIBUÍDA') r.status='RASCUNHO'; }, {a:'Rascunho',d:'Ficha salva'});
-  _rcaS.savedAt = _rcaNow(); _rcaFlash('Rascunho salvo.'); _rcaRenderLista(); _rcaRenderDetalhe();
-}
-function _rcaAskSend() {
-  const r = _rcaS.rncs.find(x=>x.id===_rcaS.sel); if (!r) return;
-  const e = _rcaValidate(r); if (e.length) { _rcaS.errs = e; _rcaFlash(e.length+' campo(s) obrigatório(s) pendente(s).'); _rcaRenderDetalhe(); return; }
-  _rcaS.errs = [];
-  const el = document.getElementById('rca-modal-send');
-  el.style.display = 'grid';
-  el.innerHTML = `<div style="width:min(520px,100%);background:#fff;border-radius:12px;padding:22px 24px;display:flex;flex-direction:column;gap:14px;font-family:Montserrat,system-ui,sans-serif"><div style="font-weight:700;font-size:17px">Enviar análise de RCA</div><div style="font-size:13.5px;line-height:1.6;color:#3A3939">Após o envio, a análise será encaminhada para continuidade do processo.</div><div style="font-size:12.5px;color:#666464">Será registrada a versão ${r.v+1} · ${_rcaEsc(r.id)} · ${_rcaEsc(r.emp)}</div><div style="display:flex;justify-content:flex-end;gap:8px"><button onclick="document.getElementById('rca-modal-send').style.display='none'" style="border:1px solid #D6D6D6;background:#fff;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:13px;font-family:Montserrat,system-ui,sans-serif">Cancelar</button><button onclick="_rcaDoSend()" style="border:0;background:#C70602;color:#fff;border-radius:8px;padding:9px 18px;cursor:pointer;font-size:13px;font-weight:700;font-family:Montserrat,system-ui,sans-serif">Confirmar envio</button></div></div>`;
-}
-function _rcaDoSend() {
-  document.getElementById('rca-modal-send').style.display='none';
-  const now = _rcaNow();
-  _rcaMut(r => { const resend = r.status==='DEVOLVIDA PARA AJUSTE'; r.v++; r.status='RCA ENVIADA'; r.ev.forEach(e=>{if(!e.sentV)e.sentV=r.v;}); r.versions.unshift({v:r.v, at:now, l:(resend?'Reenviada':'Enviada')+' por '+_rcaS.usuario}); }, {a:'Envio',d:'Análise de RCA enviada'});
-  _rcaS.savedAt = now; _rcaFlash('Análise enviada · status RCA ENVIADA'); _rcaRenderLista(); _rcaRenderDetalhe();
-  _apiFetch('/api/rnc/'+_rcaS.sel+'/enviar', 30000, {method:'POST', body: JSON.stringify({v: (_rcaS.rncs.find(x=>x.id===_rcaS.sel)||{}).v})}).catch(()=>{});
+// Ações (gravam no servidor)
+async function _rcaSave() {
+  const r = _rcaS.rncs.find(x => x.id === _rcaS.sel); if (!r) return;
+  const perm = _rcaPerm(r), d = r.data, body = {};
+  if (perm.edit) {
+    body.CAUSA = d.causa || '';
+    body.ACAO_CONTENCAO = (d.imed[0] || {}).acao || '';
+    const c = d.corr[0] || {};
+    body.ACAO_CORRETIVA = c.acao || ''; body.RESPONSAVEL_ACAO = c.resp || ''; body.PRAZO_ACAO = c.prazo || ''; body.STATUS_ACAO = c.st || '';
+  }
+  if (perm.verify) { body.RESULTADO_EFICACIA = d.verif || ''; body.DATA_EFICACIA = d.eficData || ''; }
+  if (!Object.keys(body).length) return;
+  try {
+    await _apiFetch('/api/rnc/' + encodeURIComponent(r.id) + '/execucao', 30000, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    _rcaS.savedAt = _rcaNow();
+    const extra = (d.imed.length > 1 || d.corr.length > 1) ? ' Apenas a 1ª linha de cada tabela de ações é gravada.' : '';
+    _rcaFlash('Salvo no servidor: causa raiz, ação imediata, ação de correção e verificação. Demais campos da ficha ficam só nesta sessão.' + extra, 6000);
+    _rcaRenderDetalhe();
+  } catch (e) { _rcaFlash('Erro ao salvar: ' + String(e && e.message || e), 5000); }
 }
 function _rcaAskReturn() {
   _rcaS.retText = '';
@@ -13178,39 +13242,24 @@ function _rcaAskReturn() {
   el.style.display = 'grid';
   el.innerHTML = `<div style="width:min(520px,100%);background:#fff;border-radius:12px;padding:22px 24px;display:flex;flex-direction:column;gap:12px;font-family:Montserrat,system-ui,sans-serif"><div style="font-weight:700;font-size:17px">Devolver para ajuste</div><textarea rows="4" oninput="_rcaS.retText=this.value" placeholder="Motivo da devolução (obrigatório)" style="border:1px solid #D6D6D6;border-radius:8px;padding:10px 12px;font-size:13.5px;resize:vertical;background:#fff;font-family:Montserrat,system-ui,sans-serif;width:100%"></textarea><div style="display:flex;justify-content:flex-end;gap:8px"><button onclick="document.getElementById('rca-modal-ret').style.display='none'" style="border:1px solid #D6D6D6;background:#fff;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:13px;font-family:Montserrat,system-ui,sans-serif">Cancelar</button><button onclick="_rcaDoReturn()" style="border:0;background:#1F1F1F;color:#fff;border-radius:8px;padding:9px 18px;cursor:pointer;font-size:13px;font-weight:700;font-family:Montserrat,system-ui,sans-serif">Devolver</button></div></div>`;
 }
-function _rcaDoReturn() {
-  if ((_rcaS.retText||'').trim().length < 5) { _rcaFlash('Informe o motivo da devolução.'); return; }
-  document.getElementById('rca-modal-ret').style.display='none';
-  const now = _rcaNow();
-  _rcaMut(r => { r.status='DEVOLVIDA PARA AJUSTE'; r.dev={by:_rcaS.usuario, at:now, motivo:_rcaS.retText.trim()}; r.versions.unshift({v:r.v, at:now, l:'Devolvida por '+_rcaS.usuario}); }, {a:'Devolução',d:_rcaS.retText.trim()});
-  _rcaFlash('Análise devolvida ao RCA.'); _rcaRenderLista(); _rcaRenderDetalhe();
+async function _rcaDecidir(decisao, observacoes, okMsg) {
+  const id = _rcaS.sel;
+  try {
+    await _apiFetch('/api/rnc/' + encodeURIComponent(id) + '/decisao', 30000, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ decisao, observacoes: observacoes || '' }) });
+    _rcaFlash(okMsg);
+    await loadRCA();
+    return true;
+  } catch (e) { _rcaFlash('Erro: ' + String(e && e.message || e), 5000); return false; }
 }
-function _rcaApprove() {
-  const now = _rcaNow();
-  _rcaMut(r => { r.status='APROVADA'; r.versions.unshift({v:r.v, at:now, l:'Aprovada por '+_rcaS.usuario}); }, {a:'Aprovação',d:'Análise de RCA aprovada'});
-  _rcaFlash('Análise aprovada. Registre a eficácia para encerrar.'); _rcaRenderLista(); _rcaRenderDetalhe();
+async function _rcaDoReturn() {
+  if ((_rcaS.retText || '').trim().length < 5) { _rcaFlash('Informe o motivo da devolução.'); return; }
+  if (await _rcaDecidir('DEVOLVER', _rcaS.retText.trim(), 'Análise devolvida ao RCA.')) document.getElementById('rca-modal-ret').style.display = 'none';
 }
-function _rcaCloseRnc() {
-  const r = _rcaS.rncs.find(x=>x.id===_rcaS.sel); if (!r||!r.data.efic||!r.data.eficData) { _rcaFlash('Informe a verificação da eficácia e a data.'); return; }
-  const now = _rcaNow();
-  _rcaMut(x => { x.status='ENCERRADA'; }, {a:'Encerramento',d:'Eficácia '+r.data.efic+' · nova NC '+(r.data.novaNc||'NÃO')});
-  _rcaFlash('RNC encerrada.'); _rcaRenderLista(); _rcaRenderDetalhe();
-}
-function _rcaOpenSug() {
-  _rcaS.sugText = '';
-  const el = document.getElementById('rca-modal-sug');
-  el.style.display = 'grid';
-  el.innerHTML = `<div style="width:min(520px,100%);background:#fff;border-radius:12px;padding:22px 24px;display:flex;flex-direction:column;gap:12px;font-family:Montserrat,system-ui,sans-serif"><div style="font-weight:700;font-size:17px">Sugerir conhecimento ao Cérebro</div><div style="font-size:12.5px;color:#666464">A sugestão vai para validação. O RCA não edita o conhecimento oficial.</div><textarea rows="4" oninput="_rcaS.sugText=this.value" placeholder="Ex.: incluir subcausa 'limite de empilhamento por rota'" style="border:1px solid #D6D6D6;border-radius:8px;padding:10px 12px;font-size:13.5px;resize:vertical;background:#fff;font-family:Montserrat,system-ui,sans-serif;width:100%"></textarea><div style="display:flex;justify-content:flex-end;gap:8px"><button onclick="document.getElementById('rca-modal-sug').style.display='none'" style="border:1px solid #D6D6D6;background:#fff;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:13px;font-family:Montserrat,system-ui,sans-serif">Cancelar</button><button onclick="_rcaDoSug()" style="border:0;background:#C70602;color:#fff;border-radius:8px;padding:9px 18px;cursor:pointer;font-size:13px;font-weight:700;font-family:Montserrat,system-ui,sans-serif">Enviar sugestão</button></div></div>`;
-}
-function _rcaDoSug() {
-  if (!(_rcaS.sugText||'').trim()) return;
-  document.getElementById('rca-modal-sug').style.display='none';
-  _rcaMut(()=>{}, {a:'Sugestão ao Cérebro', d:_rcaS.sugText.trim()+' · aguardando validação'});
-  _rcaFlash('Sugestão enviada para validação no Cérebro.');
-}
+function _rcaApprove() { _rcaDecidir('APROVAR', '', 'Análise aprovada. Registre a verificação da eficácia.'); }
+
 
 function rcaAbrirDetalhe(r) {
-  const id = r.NUMERO || r.n || r.id || '—';
+  const id = r.ID_RNC || r.NUMERO || r.n || r.id || '—';
   _rcaSel(id);
 }
 
