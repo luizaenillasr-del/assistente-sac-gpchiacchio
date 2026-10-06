@@ -759,7 +759,15 @@
         </div>
         <button onclick="doLogin()" class="login-btn">Entrar</button>
         <div style="font-size:12px;color:#8A8888">A sessão expira após 30 minutos sem atividade.</div>
-        <div style="border-top:1px solid #E4E4E4;padding-top:16px">
+        <div style="border-top:1px solid #E4E4E4;padding-top:16px;display:flex;flex-direction:column;gap:10px">
+          <div style="font-size:12px;color:#666464">Acesso de demonstração · entrar como</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">
+            <button onclick="loginDemo('master')" style="border:1px solid #D6D6D6;background:#fff;border-radius:99px;white-space:nowrap;padding:5px 11px;font-size:12.5px;cursor:pointer;font-family:inherit" onmouseover="this.style.borderColor='#C70602'" onmouseout="this.style.borderColor='#D6D6D6'">MASTER</button>
+            <button onclick="loginDemo('analista')" style="border:1px solid #D6D6D6;background:#fff;border-radius:99px;white-space:nowrap;padding:5px 11px;font-size:12.5px;cursor:pointer;font-family:inherit" onmouseover="this.style.borderColor='#C70602'" onmouseout="this.style.borderColor='#D6D6D6'">Analista SAC</button>
+            <button onclick="loginDemo('aprovador')" style="border:1px solid #D6D6D6;background:#fff;border-radius:99px;white-space:nowrap;padding:5px 11px;font-size:12.5px;cursor:pointer;font-family:inherit" onmouseover="this.style.borderColor='#C70602'" onmouseout="this.style.borderColor='#D6D6D6'">Aprovador</button>
+            <button onclick="loginDemo('setor')" style="border:1px solid #D6D6D6;background:#fff;border-radius:99px;white-space:nowrap;padding:5px 11px;font-size:12.5px;cursor:pointer;font-family:inherit" onmouseover="this.style.borderColor='#C70602'" onmouseout="this.style.borderColor='#D6D6D6'">Setor responsável</button>
+            <button onclick="loginDemo('rca')" style="border:1px solid #D6D6D6;background:#fff;border-radius:99px;white-space:nowrap;padding:5px 11px;font-size:12.5px;cursor:pointer;font-family:inherit" onmouseover="this.style.borderColor='#C70602'" onmouseout="this.style.borderColor='#D6D6D6'">RCA</button>
+          </div>
           <button onclick="abrirSolicitacaoAcesso()" style="background:none;border:0;color:#A80502;cursor:pointer;padding:0;font-family:inherit;font-size:13px;text-align:left">Não tem conta? Solicitar acesso</button>
         </div>
 
