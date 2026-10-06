@@ -14443,6 +14443,7 @@ function cpAbrirDetalhePorN(n) {
   if (idx >= 0) cpAbrirDetalhe(idx);
 }
 
+
 // ── OCP — Ocorrências de Pesquisa ─────────────────────────
 async function cpCarregarOcps() {
   const el = document.getElementById('cp-ocp-lista');
@@ -14522,7 +14523,6 @@ async function cpExecutarDecisaoOcp(id, decisao) {
 }
 
 function cpConfirmarNenhum(id) { cpExecutarDecisaoOcp(id, 'NENHUM'); }
-
 // ── Editor do Questionário ─────────────────────────────────
 let _qPerguntas = [];
 
