@@ -5226,7 +5226,7 @@
   const MN=['','janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
   const MS=['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   const EMPRESAS=[['Chiacchio Embalagens','Chiacchio Embalagens'],['Plaschio','Plaschio'],['Tubahia','Cesbap']];
-  const LOGOS={'Chiacchio Embalagens':['/assets/logo-chiacchio-embalagens.svg','#B9171A'],'Plaschio':['/assets/logo-plaschio.svg','#B9171A'],'Tubahia':['/assets/logo-tubahia.svg','#2B2070']};
+  const LOGOS={'Chiacchio Embalagens':['/assets/logo-chiacchio.png','#B9171A'],'Plaschio':['/assets/logo-plaschio.svg','#B9171A'],'Tubahia':['/assets/logo-tubahia.svg','#2B2070']};
   const GREEN='#1E6B3A', RED='#C70602', AMB='#B07A12';
   const SEC=[['desempenho','Desempenho geral'],['analise_critica','Análise crítica dos resultados'],['pontos_fortes','Pontos fortes'],['oportunidades','Oportunidades de melhoria'],['acoes','Ações recomendadas']];
   const CR=[['ATENDIMENTO','at','atendimento'],['PRAZO DE ENTREGA','pr','prazo de entrega'],['QUALIDADE','qu','qualidade'],['RECOMENDAÇÃO','re','recomendação']];
@@ -10567,6 +10567,23 @@ window.navigate = function(page, el) {
   pageLoaders.representantes=loadRcaHome;
   pageLoaders.usuarios=loadUsuariosV5;
   pageLoaders['setor-responsavel']=loadSetorV5;
+
+  // ===== DEMO LOGIN =====
+  window.loginDemo=function(tipo){
+    const mapa={
+      master:  {usuario:'demo.master',  nome:'Luiza (Demo)',    perfil:'MASTER',            empresa:'MASTER',     setor:'Administração'},
+      analista:{usuario:'demo.analista',nome:'Ana Lima (Demo)', perfil:'ANALISTA SAC',       empresa:'Chiacchio',  setor:'SAC'},
+      aprovador:{usuario:'demo.aprov',  nome:'João (Demo)',     perfil:'APROVADOR',          empresa:'Chiacchio',  setor:'Qualidade'},
+      setor:   {usuario:'demo.setor',   nome:'Maria (Demo)',    perfil:'SETOR RESPONSÁVEL',  empresa:'Chiacchio',  setor:'Qualidade'},
+      rca:     {usuario:'demo.rca',     nome:'Carlos (Demo)',   perfil:'RCA / REPRESENTANTE',empresa:'Chiacchio',  setor:'Comercial'}
+    };
+    const u=mapa[tipo]||mapa.analista;
+    sessionStorage.setItem('sac-demo-local','1');
+    sessionStorage.setItem('sac-token','demo-token');
+    sessionStorage.setItem('sac-user',JSON.stringify({...u,ini:u.nome.split(' ').slice(0,2).map(x=>x[0]).join('')}));
+    document.getElementById('login-screen').style.display='none';
+    window.iniciarSessaoV5 ? window.iniciarSessaoV5() : Promise.resolve();
+  };
 
   // ===== BOOT =====
   async function boot(){
@@ -19058,8 +19075,7 @@ document.addEventListener('DOMContentLoaded', function() {
       <div class="fic-a4">
         <div class="fic-a4-hdr">
           <div class="fic-a4-logo-area">
-            <img src="/simbolo-vermelho.png" alt="Grupo Chiacchio" style="height:36px">
-            <div style="font-size:11px;font-weight:700;line-height:1.3">GRUPO CHIACCHIO</div>
+            <img src="/logo-chiacchio.png" alt="Grupo Chiacchio" style="height:15mm;width:auto;display:block">
           </div>
           <div class="fic-a4-title-area">
             <div style="font-size:13px;font-weight:700">FICHA DE ENCAMINHAMENTO</div>
@@ -19123,8 +19139,7 @@ document.addEventListener('DOMContentLoaded', function() {
       <div class="fic-a4">
         <div class="fic-a4-hdr">
           <div class="fic-a4-logo-area">
-            <img src="/simbolo-vermelho.png" alt="Grupo Chiacchio" style="height:36px">
-            <div style="font-size:11px;font-weight:700;line-height:1.3">GRUPO CHIACCHIO</div>
+            <img src="/logo-chiacchio.png" alt="Grupo Chiacchio" style="height:15mm;width:auto;display:block">
           </div>
           <div class="fic-a4-title-area">
             <div style="font-size:13px;font-weight:700;color:#C70602">RT-0001 · RELATÓRIO DE NÃO CONFORMIDADE</div>
