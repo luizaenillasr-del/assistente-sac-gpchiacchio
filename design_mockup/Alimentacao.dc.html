@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<title>Alimentação da ferramenta · Assistente SAC</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F4F4F4;color:#1F1F1F;font-family:Montserrat,system-ui,sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}button{white-space:nowrap}
+a{color:#A80502;text-decoration:none}a:hover{color:#7F0401;text-decoration:underline}
+*{box-sizing:border-box}
+</style>
+</helmet>
+<div style="display:flex;min-height:100vh;width:100%;background:#F4F4F4;font-family:Montserrat,system-ui,sans-serif;color:#1F1F1F">
+
+  <aside style="flex:0 0 232px;background:#fff;border-right:1px solid #E4E4E4;padding:16px 12px;display:flex;flex-direction:column;gap:2px;position:sticky;top:0;height:100vh;overflow-y:auto">
+    <div style="display:flex;align-items:center;gap:10px;padding:4px 8px 18px"><img src="assets/simbolo-vermelho.png" alt="" style="width:30px;height:auto"><div><div style="font-weight:700;font-size:14px">Assistente SAC</div><div style="font-size:10.5px;color:#929090;letter-spacing:.08em">GRUPO CHIACCHIO</div></div></div>
+    <sc-for list="{{ nav }}" as="g" hint-placeholder-count="4">
+      <div style="font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:#929090;font-weight:600;padding:12px 10px 4px">{{ g.l }}</div>
+      <sc-for list="{{ g.items }}" as="it"><a href="{{ it.href }}" style="display:block;padding:8px 10px;border-radius:7px;font-size:13px;white-space:nowrap;color:{{ it.fg }};background:{{ it.bg }};font-weight:{{ it.fw }};text-decoration:none">{{ it.l }}</a></sc-for>
+    </sc-for>
+    <div style="margin-top:auto;border-top:1px solid #E4E4E4;padding:12px 10px 0;font-size:12px;color:#666464;display:flex;flex-direction:column;gap:2px"><span style="font-weight:600;color:#1F1F1F">Luiza Martins</span><span>MASTER · Grupo Chiacchio</span></div>
+  </aside>
+
+  <main data-screen-label="Alimentação da ferramenta" style="flex:1 1 0;min-width:0;padding:22px 28px 60px;display:flex;flex-direction:column;gap:16px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap">
+      <div style="min-width:0;max-width:760px"><div style="font-size:12px;color:#929090">Administração / Alimentação da ferramenta</div><div style="font-size:24px;font-weight:700;margin-top:2px">Alimentação da ferramenta</div><div style="font-size:13px;color:#666464;line-height:1.5;margin-top:4px;text-wrap:pretty">Local único para carregar o histórico, os cadastros e os documentos que abastecem o Assistente SAC. Cada carga passa por conferência antes de entrar na base.</div></div>
+      <button onClick="{{ openNew }}" style="border:0;background:#C70602;color:#fff;border-radius:8px;padding:10px 16px;cursor:pointer;font-size:13px;font-weight:700" style-hover="background:#A80502">+ Nova importação</button>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px">
+      <sc-for list="{{ stats }}" as="k" hint-placeholder-count="4"><div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:4px"><span style="font-size:11px;font-weight:700;letter-spacing:.05em;color:#545252">{{ k.l }}</span><span style="font-size:26px;font-weight:700;color:{{ k.c }};font-variant-numeric:tabular-nums">{{ k.v }}</span><span style="font-size:11.5px;color:#929090">{{ k.d }}</span></div></sc-for>
+    </div>
+
+    <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:12px 16px;display:flex;flex-wrap:wrap;gap:8px 22px;font-size:12.5px;color:#3A3939;line-height:1.5">
+      <span style="font-weight:700;color:#1F1F1F">Regras da alimentação</span>
+      <span>1. Nada entra na base sem conferência.</span>
+      <span>2. O arquivo original fica guardado sem alteração.</span>
+      <span>3. Duplicados são identificados antes da carga.</span>
+      <span>4. Documentos de conhecimento passam pela validação do Cérebro.</span>
+      <span>5. Toda carga fica no histórico e pode ser desfeita em até 24 h.</span>
+    </div>
+
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+      <sc-for list="{{ groups }}" as="c" hint-placeholder-count="4"><button onClick="{{ c.go }}" style="border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};border-radius:99px;padding:6px 14px;font-size:12.5px;font-weight:600;cursor:pointer">{{ c.l }}</button></sc-for>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:12px">
+      <sc-for list="{{ cards }}" as="s" hint-placeholder-count="9">
+        <div style="background:#fff;border:1px solid #E4E4E4;border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+            <div style="display:flex;flex-direction:column;gap:3px;min-width:0"><span style="font-size:10.5px;font-weight:700;letter-spacing:.07em;color:#929090">{{ s.grp }}</span><span style="font-weight:700;font-size:14.5px;line-height:1.3">{{ s.l }}</span></div>
+            <span style="padding:3px 9px;border-radius:99px;font-size:10.5px;font-weight:700;white-space:nowrap;background:{{ s.st.bg }};color:{{ s.st.fg }}">{{ s.st.t }}</span>
+          </div>
+          <span style="font-size:12.5px;color:#666464;line-height:1.5;text-wrap:pretty">{{ s.d }}</span>
+          <div style="display:flex;gap:5px;flex-wrap:wrap"><span style="font-size:11px;color:#929090;font-weight:600">Alimenta:</span><sc-for list="{{ s.feeds }}" as="f"><span style="font-size:11px;background:#F4F4F4;border-radius:5px;padding:2px 7px;color:#3A3939">{{ f }}</span></sc-for></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;border-top:1px solid #EFEFEF;padding-top:10px;margin-top:auto">
+            <div style="display:flex;flex-direction:column;gap:1px;min-width:0"><span style="font-size:18px;font-weight:700;font-variant-numeric:tabular-nums">{{ s.n }}</span><span style="font-size:11px;color:#929090">{{ s.last }}</span></div>
+            <button onClick="{{ s.go }}" style="border:1px solid #C70602;background:#fff;color:#A80502;border-radius:7px;padding:7px 12px;cursor:pointer;font-size:12.5px;font-weight:700" style-hover="background:#FFF5F5">Importar</button>
+          </div>
+          <span style="font-size:10.5px;color:#929090">{{ s.fmt }}</span>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start">
+      <div style="flex:999 1 600px;min-width:0;background:#fff;border:1px solid #E4E4E4;border-radius:12px;overflow:hidden">
+        <div style="padding:12px 16px;border-bottom:1px solid #EFEFEF;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><span style="font-weight:700;font-size:14px">Histórico de importações</span><span style="font-size:12px;color:#666464">{{ histCount }}</span></div>
+        <div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%;min-width:820px;font-size:12.5px">
+          <thead><tr style="background:#FAFAFA"><sc-for list="{{ hCols }}" as="c"><th style="text-align:left;font-weight:600;font-size:11.5px;color:#666464;padding:9px 12px;border-bottom:1px solid #E4E4E4;white-space:nowrap">{{ c }}</th></sc-for></tr></thead>
+          <tbody><sc-for list="{{ hist }}" as="h" hint-placeholder-count="6"><tr style="border-bottom:1px solid #EFEFEF">
+            <td style="padding:9px 12px;white-space:nowrap;color:#545252">{{ h.at }}</td>
+            <td style="padding:9px 12px"><div style="display:flex;flex-direction:column;gap:2px"><span style="font-weight:600">{{ h.src }}</span><span style="font-size:11px;color:#929090;overflow-wrap:anywhere">{{ h.file }}</span></div></td>
+            <td style="padding:9px 12px;white-space:nowrap">{{ h.emp }}</td>
+            <td style="padding:9px 12px;white-space:nowrap">{{ h.user }}</td>
+            <td style="padding:9px 12px;white-space:nowrap;font-variant-numeric:tabular-nums"><span style="color:#1E6B3A;font-weight:700">{{ h.ok }}</span> <span style="color:#929090">· {{ h.dup }} dup. · {{ h.err }} erros</span></td>
+            <td style="padding:9px 12px"><span style="padding:2px 8px;border-radius:99px;font-size:10.5px;font-weight:700;white-space:nowrap;background:{{ h.st.bg }};color:{{ h.st.fg }}">{{ h.st.t }}</span></td>
+            <td style="padding:9px 12px;white-space:nowrap"><div style="display:flex;gap:10px"><button onClick="{{ h.rep }}" style="border:0;background:none;padding:0;color:#A80502;cursor:pointer;font-size:12px;font-weight:600">Relatório</button><sc-if value="{{ h.canUndo }}"><button onClick="{{ h.undo }}" style="border:0;background:none;padding:0;color:#545252;cursor:pointer;font-size:12px;font-weight:600">Desfazer</button></sc-if></div></td>
+          </tr></sc-for></tbody>
+        </table></div>
+      </div>
+      <div style="flex:1 1 280px;max-width:100%;background:#fff;border:1px solid #E4E4E4;border-radius:12px;padding:12px 16px;display:flex;flex-direction:column;gap:4px">
+        <span style="font-weight:700;font-size:14px">Pendências de dados</span>
+        <span style="font-size:12px;color:#666464;line-height:1.5;margin-bottom:6px">Campos vazios ou inconsistentes encontrados nas cargas já feitas.</span>
+        <sc-for list="{{ pend }}" as="p" hint-placeholder-count="5"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 0;border-top:1px solid #EFEFEF"><div style="display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-size:13px">{{ p.l }}</span><span style="font-size:11px;color:#929090">{{ p.src }}</span></div><div style="display:flex;gap:10px;align-items:center"><span style="font-weight:700;color:#A80502;font-variant-numeric:tabular-nums">{{ p.n }}</span><button onClick="{{ p.go }}" style="border:1px solid #D6D6D6;background:#fff;border-radius:6px;padding:4px 9px;cursor:pointer;font-size:11.5px">Corrigir</button></div></div></sc-for>
+      </div>
+    </div>
+  </main>
+
+  <sc-if value="{{ w.show }}">
+  <div style="position:fixed;inset:0;background:rgba(20,20,20,.5);z-index:70;display:grid;place-items:center;padding:20px">
+    <div data-screen-label="Assistente de importação" style="width:min(820px,100%);max-height:100%;display:flex;flex-direction:column;background:#fff;border-radius:12px;overflow:hidden">
+      <div style="padding:14px 20px;border-bottom:1px solid #E4E4E4;display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+        <div><div style="font-size:11px;color:#929090;font-weight:700;letter-spacing:.06em">NOVA IMPORTAÇÃO</div><div style="font-weight:700;font-size:17px">{{ w.title }}</div></div>
+        <button onClick="{{ close }}" style="border:0;background:none;cursor:pointer;font-size:24px;color:#666464;padding:0 4px;line-height:1">×</button>
+      </div>
+      <div style="display:flex;gap:4px;padding:12px 20px;border-bottom:1px solid #EFEFEF;overflow-x:auto">
+        <sc-for list="{{ w.steps }}" as="t"><div style="flex:1;min-width:110px;display:flex;flex-direction:column;gap:6px"><span style="height:4px;border-radius:2px;background:{{ t.bar }}"></span><span style="font-size:11.5px;font-weight:{{ t.fw }};color:{{ t.fg }};white-space:nowrap">{{ t.n }}. {{ t.l }}</span></div></sc-for>
+      </div>
+
+      <div style="flex:1;overflow:auto;padding:18px 20px;display:flex;flex-direction:column;gap:14px">
+        <sc-if value="{{ w.s1 }}">
+          <span style="font-size:13px;font-weight:700">O que você vai carregar?</span>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px">
+            <sc-for list="{{ w.srcOpts }}" as="o"><button onClick="{{ o.go }}" style="text-align:left;border:1.5px solid {{ o.bd }};background:{{ o.bg }};border-radius:9px;padding:10px 12px;cursor:pointer;display:flex;flex-direction:column;gap:2px;white-space:normal"><span style="font-weight:700;font-size:13px">{{ o.l }}</span><span style="font-size:11px;color:#929090">{{ o.fmt }}</span></button></sc-for>
+          </div>
+          <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:#666464;font-weight:600;max-width:320px">Empresa<select value="{{ w.emp }}" onChange="{{ w.onEmp }}" style="height:38px;border:1px solid #D6D6D6;border-radius:7px;padding:0 10px;background:#fff;font-size:13px;color:#1F1F1F"><sc-for list="{{ empO }}" as="o"><option value="{{ o }}">{{ o }}</option></sc-for></select></label>
+          <span style="font-size:12px;color:#666464">{{ w.empHint }}</span>
+        </sc-if>
+
+        <sc-if value="{{ w.s2 }}">
+          <button onClick="{{ w.pick }}" style="border:2px dashed #CFCFCF;background:#FAFAFA;border-radius:10px;padding:28px 16px;cursor:pointer;display:flex;flex-direction:column;gap:6px;align-items:center;white-space:normal"><span style="font-size:22px">↑</span><span style="font-weight:600;font-size:13.5px">Arraste os arquivos ou clique para selecionar</span><span style="font-size:12px;color:#929090">{{ w.fmt }}</span></button>
+          <sc-if value="{{ w.isSheet }}"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center;background:#F7F7F7;border-radius:8px;padding:10px 12px;font-size:12.5px"><span>Use o modelo padrão para evitar erros de coluna.</span><button onClick="{{ w.model }}" style="border:1px solid #D6D6D6;background:#fff;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:12px;font-weight:600">Baixar modelo de planilha</button></div></sc-if>
+          <sc-for list="{{ w.files }}" as="f"><div style="display:flex;gap:12px;align-items:center;border:1px solid #E4E4E4;border-radius:8px;padding:10px 12px"><span style="width:38px;height:44px;border-radius:5px;background:{{ f.c }};color:#fff;display:grid;place-items:center;font-size:10px;font-weight:700;flex:none">{{ f.ext }}</span><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font-size:13px;font-weight:600;overflow-wrap:anywhere">{{ f.n }}</span><span style="font-size:11.5px;color:#929090">{{ f.m }}</span></div><button onClick="{{ f.del }}" style="border:0;background:none;color:#A80502;cursor:pointer;font-size:18px">×</button></div></sc-for>
+        </sc-if>
+
+        <sc-if value="{{ w.s3sheet }}">
+          <span style="font-size:13px;color:#3A3939;line-height:1.5">Relacione cada coluna da planilha a um campo da ferramenta. Campos marcados com * são obrigatórios.</span>
+          <div style="overflow-x:auto;border:1px solid #E4E4E4;border-radius:9px"><table style="border-collapse:collapse;width:100%;min-width:600px;font-size:12.5px">
+            <thead><tr style="background:#FAFAFA"><th style="text-align:left;padding:8px 12px;font-size:11.5px;color:#666464;font-weight:600">Coluna no arquivo</th><th style="text-align:left;padding:8px 12px;font-size:11.5px;color:#666464;font-weight:600">Exemplo</th><th style="text-align:left;padding:8px 12px;font-size:11.5px;color:#666464;font-weight:600">Campo na ferramenta</th></tr></thead>
+            <tbody><sc-for list="{{ w.map }}" as="m"><tr style="border-top:1px solid #EFEFEF;background:{{ m.rbg }}">
+              <td style="padding:8px 12px;font-weight:600">{{ m.col }}</td>
+              <td style="padding:8px 12px;color:#666464;max-width:200px;overflow-wrap:anywhere">{{ m.ex }}</td>
+              <td style="padding:6px 12px"><div style="display:flex;gap:8px;align-items:center"><select value="{{ m.v }}" onChange="{{ m.on }}" style="height:32px;border:1px solid {{ m.bd }};border-radius:6px;padding:0 6px;background:#fff;font-size:12.5px;color:#1F1F1F;min-width:180px"><sc-for list="{{ w.fieldO }}" as="o"><option value="{{ o.v }}">{{ o.l }}</option></sc-for></select><sc-if value="{{ m.check }}"><span style="font-size:10.5px;font-weight:700;color:#7A4C00;background:#FBF0D9;border-radius:99px;padding:2px 8px;white-space:nowrap">conferir</span></sc-if></div></td>
+            </tr></sc-for></tbody>
+          </table></div>
+          <sc-if value="{{ w.missTxt }}"><div style="background:#FDECEC;border:1px solid #F3CFCF;border-radius:8px;padding:10px 12px;font-size:12.5px;color:#7F0401">Obrigatório sem coluna: {{ w.missTxt }}</div></sc-if>
+        </sc-if>
+
+        <sc-if value="{{ w.s3doc }}">
+          <span style="font-size:13px;color:#3A3939;line-height:1.5">Dados lidos de cada documento. Confira e corrija antes de seguir; campos não encontrados ficam como "não informado na ficha original".</span>
+          <sc-for list="{{ w.docs }}" as="d"><div style="border:1px solid #E4E4E4;border-radius:9px;padding:12px;display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center"><span style="font-size:13px;font-weight:600;overflow-wrap:anywhere">{{ d.n }}</span><span style="font-size:10.5px;font-weight:700;border-radius:99px;padding:2px 8px;background:{{ d.cbg }};color:{{ d.cfg }}">{{ d.conf }}</span></div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px">
+              <sc-for list="{{ d.f }}" as="x"><label style="display:flex;flex-direction:column;gap:3px;font-size:11px;color:#666464;font-weight:600">{{ x.l }}<input value="{{ x.v }}" onChange="{{ x.on }}" placeholder="não informado" style="height:32px;border:1px solid {{ x.bd }};border-radius:6px;padding:0 8px;background:#fff;font-size:12.5px;font-weight:400;color:#1F1F1F"></label></sc-for>
+            </div>
+          </div></sc-for>
+        </sc-if>
+
+        <sc-if value="{{ w.s4 }}">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px">
+            <sc-for list="{{ w.vk }}" as="k"><div style="border-radius:9px;padding:10px 12px;background:{{ k.bg }};display:flex;flex-direction:column;gap:2px"><span style="font-size:11px;font-weight:700;color:{{ k.fg }}">{{ k.l }}</span><span style="font-size:24px;font-weight:700;color:{{ k.fg }};font-variant-numeric:tabular-nums">{{ k.v }}</span></div></sc-for>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12.5px;font-weight:700">Registros duplicados</span><span style="font-size:12px;color:#666464">{{ w.dupRule }}</span>
+            <div style="display:flex;gap:8px;flex-wrap:wrap"><sc-for list="{{ w.dupO }}" as="o"><button onClick="{{ o.go }}" style="border:1.5px solid {{ o.bd }};background:{{ o.bg }};border-radius:8px;padding:8px 12px;cursor:pointer;font-size:12.5px;font-weight:600;white-space:normal;text-align:left">{{ o.l }}</button></sc-for></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center"><span style="font-size:12.5px;font-weight:700">Registros com erro (não serão importados)</span><button onClick="{{ w.errRep }}" style="border:1px solid #D6D6D6;background:#fff;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:12px;font-weight:600">Baixar relatório de erros</button></div>
+            <div style="border:1px solid #E4E4E4;border-radius:8px;overflow:hidden"><sc-for list="{{ w.errs }}" as="e"><div style="display:grid;grid-template-columns:70px minmax(0,1fr);gap:10px;padding:8px 12px;border-top:1px solid #EFEFEF;font-size:12.5px"><span style="color:#929090">{{ e.ref }}</span><span><strong style="color:#A80502">{{ e.t }}</strong> · {{ e.d }}</span></div></sc-for></div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ w.s5 }}">
+          <div style="background:#F7F7F7;border-radius:10px;padding:14px 16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px 16px"><sc-for list="{{ w.sum }}" as="x"><div><div style="font-size:10.5px;color:#929090;font-weight:600">{{ x.l }}</div><div style="font-size:13px;font-weight:600;overflow-wrap:anywhere">{{ x.v }}</div></div></sc-for></div>
+          <div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12.5px;font-weight:700">Depois da confirmação</span><sc-for list="{{ w.after }}" as="a"><span style="font-size:12.5px;color:#3A3939;line-height:1.5">· {{ a }}</span></sc-for></div>
+        </sc-if>
+      </div>
+
+      <div style="padding:12px 20px;border-top:1px solid #E4E4E4;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center">
+        <button onClick="{{ w.back }}" style="border:1px solid #D6D6D6;background:#fff;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:13px">{{ w.backL }}</button>
+        <div style="display:flex;gap:10px;align-items:center"><sc-if value="{{ w.blockTxt }}"><span style="font-size:12px;color:#A80502">{{ w.blockTxt }}</span></sc-if><button onClick="{{ w.next }}" style="border:0;background:{{ w.nextBg }};color:#fff;border-radius:8px;padding:9px 18px;cursor:pointer;font-size:13px;font-weight:700">{{ w.nextL }}</button></div>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ toast }}"><div style="position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#1F1F1F;color:#fff;padding:11px 16px;border-radius:8px;font-size:13px;z-index:90;max-width:92vw">{{ toast }}</div></sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const SRC = [
+  ['fichas', 'HISTÓRICO', 'Fichas de reclamação antigas', 'Fichas em papel digitalizadas ou arquivos anteriores à ferramenta. O original fica guardado e os dados vão para o banco.', ['Arquivo de Fichas', 'Banco de casos', 'Reincidência'], 'PDF, DOCX, JPG · até 20 MB por arquivo', 'doc', 1012, '12/03/2026', 'parcial'],
+  ['manif', 'HISTÓRICO', 'Planilha de manifestações', 'Controle de manifestações mantido em planilha antes da ferramenta.', ['Banco de casos', 'Indicadores', 'Relatórios'], 'XLSX, CSV · até 50 MB', 'sheet', 2236, '12/03/2026', 'ok'],
+  ['rnc', 'HISTÓRICO', 'RNCs antigas (RT-0001)', 'Relatórios de Não Conformidade já concluídos, com causa raiz, ações e eficácia.', ['Central de RCA', 'Cérebro', 'Causas e Subcausas'], 'PDF, DOCX · até 20 MB por arquivo', 'doc', 86, '20/03/2026', 'parcial'],
+  ['pesq', 'HISTÓRICO', 'Pesquisas de satisfação antigas', 'Respostas de pesquisas feitas fora da ferramenta (formulários, planilhas).', ['Pesquisa de Satisfação', 'Relatório mensal'], 'XLSX, CSV', 'sheet', 0, '', 'pend'],
+  ['cli', 'CADASTROS', 'Clientes', 'Razão social, CNPJ, código, contato, cidade/UF, vendedor e representante.', ['Nova manifestação', 'Reincidência', 'Pesquisas'], 'XLSX, CSV', 'sheet', 3418, '02/10/2026', 'ok'],
+  ['prod', 'CADASTROS', 'Produtos e lotes', 'Catálogo de produtos por empresa, códigos e lotes de produção.', ['Nova manifestação', 'RNC'], 'XLSX, CSV', 'sheet', 612, '15/09/2026', 'ok'],
+  ['setor', 'CADASTROS', 'Setores e responsáveis', 'Setores de cada empresa, responsáveis, substitutos e prazos (SLA).', ['Encaminhamento', 'Matriz de Tratamento', 'Notificações'], 'XLSX, CSV', 'sheet', 41, '01/10/2026', 'ok'],
+  ['rep', 'CADASTROS', 'Representantes e vendedores', 'Carteira de cada representante e vendedor, com região e contato.', ['Representantes', 'Nova manifestação'], 'XLSX, CSV', 'sheet', 58, '20/08/2026', 'ok'],
+  ['causa', 'CADASTROS', 'Causas e subcausas', 'Lista oficial de categorias, motivos, causas e subcausas usada na classificação.', ['Causas e Subcausas', 'Análise da IA'], 'XLSX, CSV', 'sheet', 134, '10/04/2026', 'ok'],
+  ['conh', 'CONHECIMENTO', 'Documentos de conhecimento', 'Procedimentos, POPs, políticas comerciais, especificações técnicas e manuais.', ['Cérebro (após validação)', 'Análise da IA'], 'PDF, DOCX, XLSX · até 20 MB', 'doc', 27, '28/09/2026', 'parcial']
+];
+const FIELDS = {
+  manif: [['data', 'Data de abertura', 1], ['cliente', 'Cliente (razão social)', 1], ['cnpj', 'CNPJ', 1], ['empresa', 'Empresa', 1], ['tipo', 'Tipo de manifestação', 1], ['motivo', 'Motivo / categoria', 0], ['setor', 'Setor responsável', 0], ['descricao', 'Descrição', 1], ['nf', 'NF', 0], ['lote', 'Lote', 0], ['status', 'Status', 0]],
+  pesq: [['data', 'Data da resposta', 1], ['cliente', 'Cliente', 1], ['cnpj', 'CNPJ', 0], ['empresa', 'Empresa', 1], ['nota', 'Nota geral', 1], ['comentario', 'Comentário', 0]],
+  cli: [['razao', 'Razão social', 1], ['cnpj', 'CNPJ', 1], ['codigo', 'Código do cliente', 0], ['contato', 'Nome do contato', 0], ['telefone', 'Telefone', 0], ['email', 'E-mail', 0], ['cidade', 'Cidade/UF', 0], ['vendedor', 'Vendedor', 0]],
+  prod: [['codigo', 'Código do produto', 1], ['descricao', 'Descrição', 1], ['empresa', 'Empresa', 1], ['linha', 'Linha', 0], ['lote', 'Lote', 0]],
+  setor: [['setor', 'Setor', 1], ['empresa', 'Empresa', 1], ['responsavel', 'Responsável', 1], ['email', 'E-mail', 1], ['substituto', 'Substituto', 0], ['sla', 'Prazo (SLA) em horas', 0]],
+  rep: [['nome', 'Nome', 1], ['tipo', 'Vendedor ou representante', 1], ['regiao', 'Região', 0], ['email', 'E-mail', 0], ['telefone', 'Telefone', 0]],
+  causa: [['categoria', 'Categoria', 1], ['motivo', 'Motivo', 1], ['causa', 'Causa', 1], ['subcausa', 'Subcausa', 0], ['setor', 'Setor padrão', 0]]
+};
+const COLS = {
+  manif: [['Data', '14/02/2024', 'data'], ['Cliente', 'Mercado Exemplo ME', 'cliente'], ['CNPJ', '31.211.359/0001-19', 'cnpj'], ['Unidade', 'Chiacchio', 'empresa', 1], ['Tipo', 'Reclamação', 'tipo'], ['Motivo', 'Atraso na entrega', 'motivo'], ['Área', 'Logística', 'setor', 1], ['Relato do cliente', 'Pedido chegou 3 dias depois do combinado…', 'descricao'], ['Nº NF', '44812', 'nf'], ['Lote', 'L2402-11', 'lote'], ['Situação', 'Encerrada', 'status'], ['Obs interna', 'ligar de novo', '']],
+  pesq: [['Data', '10/05/2025', 'data'], ['Cliente', 'Padaria Bom Grão ME', 'cliente'], ['Empresa', 'Plaschio', 'empresa'], ['Nota', '8', 'nota'], ['Comentário', 'Entrega rápida', 'comentario'], ['Carimbo', '10/05/2025 10:22', '']],
+  cli: [['Razão Social', 'Comércio Modelo S.A.', 'razao'], ['CNPJ', '17.137.253/0001-13', 'cnpj'], ['Cód', 'C-00412', 'codigo'], ['Contato', 'Marina Lopes', 'contato'], ['Fone', '(71) 3333-0000', 'telefone'], ['Email', 'compras@exemplo.com', 'email'], ['Cidade', 'Salvador/BA', 'cidade'], ['Vend.', 'Rafael Souza', 'vendedor', 1]],
+  prod: [['Código', 'BD-450', 'codigo'], ['Produto', 'Bandeja 450 ml', 'descricao'], ['Empresa', 'Chiacchio', 'empresa'], ['Linha', 'Descartáveis', 'linha'], ['Lote', 'L2609-03', 'lote']],
+  setor: [['Setor', 'Logística', 'setor'], ['Empresa', 'Plaschio', 'empresa'], ['Responsável', 'Diego Alves', 'responsavel'], ['E-mail', 'diego@exemplo.com', 'email'], ['Substituto', 'Paula Ramos', 'substituto'], ['Prazo', '72', 'sla', 1]],
+  rep: [['Nome', 'Carlos Lima', 'nome'], ['Tipo', 'Representante', 'tipo'], ['Região', 'Recôncavo', 'regiao'], ['E-mail', 'carlos@exemplo.com', 'email'], ['Telefone', '(75) 99999-0000', 'telefone']],
+  causa: [['Categoria', 'Logística', 'categoria'], ['Motivo', 'Atraso na entrega', 'motivo'], ['Causa', 'Falha no agendamento', 'causa'], ['Subcausa', 'Janela não confirmada', 'subcausa'], ['Setor', 'Logística', 'setor', 1]]
+};
+const DOCF = { fichas: ['Empresa', 'Data da reclamação', 'Cliente', 'CNPJ', 'Tipo', 'Produto / Lote'], rnc: ['Empresa', 'Nº RNC', 'Data', 'Cliente', 'Causa raiz', 'Eficácia'], conh: ['Empresa', 'Título', 'Tipo de documento', 'Setor', 'Versão / data'] };
+const DOCS = {
+  fichas: [['Ficha reclamação Mercado Exemplo 14-02-2024.pdf', ['Chiacchio Embalagens', '14/02/2024', 'Mercado Exemplo ME', '31.211.359/0001-19', 'Reclamação', 'BD-450 / L2402-11'], 'alta'], ['FR_Plaschio_Distribuidora Alfa_set23.docx', ['Plaschio', '20/09/2023', 'Distribuidora Alfa Ltda.', '', 'Reclamação', ''], 'média'], ['ficha_digitalizada_007.jpg', ['', '', 'Granja Boa Vista', '', 'Reclamação', ''], 'baixa']],
+  rnc: [['RNC-0012_avaria_transporte.pdf', ['Chiacchio Embalagens', 'RNC-0012', '08/11/2025', 'Atacadão Bahia Ltda.', 'Amarração de carga inadequada', 'Conforme'], 'alta'], ['RNC-0019_gramatura.docx', ['Tubahia', 'RNC-0019', '17/01/2026', 'Indústria Teste Ltda.', '', ''], 'média']],
+  conh: [['POP-LOG-004 Conferência de carga.pdf', ['Chiacchio Embalagens', 'Conferência de carga', 'POP', 'Logística', 'rev. 3 · 2025'], 'alta'], ['Política comercial de devoluções 2026.docx', ['Grupo Chiacchio', 'Política de devoluções', 'Política', 'Comercial', '2026'], 'alta']]
+};
+class Component extends DCLogic {
+  state = { db: null, grp: 'Todos', w: null, toast: '' };
+  componentDidMount() { let db = null; try { db = JSON.parse(localStorage.getItem('gc-alimentacao-v1') || 'null'); } catch (e) { } this.setState({ db: db || this.seed() }); }
+  seed() {
+    const counts = {}, last = {}; SRC.forEach(s => { counts[s[0]] = s[7]; last[s[0]] = s[8]; });
+    const H = (at, src, file, emp, user, ok, dup, err, st, undo) => ({ id: Math.random().toString(36).slice(2), at, src, file, emp, user, ok, dup, err, st, undo: !!undo });
+    return { counts, last, hist: [
+      H('02/10/2026 16:12', 'cli', 'clientes_atualizado_out26.xlsx', 'Todas', 'Luiza Martins', 118, 3406, 4, 'ok', 1),
+      H('01/10/2026 09:40', 'setor', 'setores_responsaveis_2026.xlsx', 'Todas', 'Luiza Martins', 41, 0, 0, 'ok'),
+      H('28/09/2026 14:05', 'conh', '6 documentos', 'Chiacchio Embalagens', 'Camila Torres', 6, 0, 0, 'val'),
+      H('20/03/2026 11:30', 'rnc', '86 arquivos', 'Todas', 'Gildásio Jr', 86, 0, 3, 'ok'),
+      H('12/03/2026 10:15', 'fichas', '1.034 arquivos', 'Todas', 'Luiza Martins', 1012, 9, 13, 'parcial'),
+      H('12/03/2026 09:02', 'manif', 'controle_sac_2023_2025.xlsx', 'Todas', 'Luiza Martins', 2236, 41, 18, 'ok')
+    ] };
+  }
+  save(db) { try { localStorage.setItem('gc-alimentacao-v1', JSON.stringify(db)); } catch (e) { } }
+  flash(t) { this.setState({ toast: t }); clearTimeout(this._t); this._t = setTimeout(() => this.setState({ toast: '' }), 3000); }
+  open(src) { const w = { step: src ? 2 : 1, src: src || null, emp: 'Todas as empresas', files: [], map: {}, docs: {}, dup: 'ignorar' }; if (src) this.prep(w); this.setState({ w }); }
+  prep(w) { if (COLS[w.src]) { w.map = {}; COLS[w.src].forEach(c => { w.map[c[0]] = c[2]; }); } if (DOCS[w.src]) { w.docs = {}; DOCS[w.src].forEach(d => { w.docs[d[0]] = d[1].slice(); }); } }
+  upW(p) { this.setState(s => ({ w: Object.assign({}, s.w, p) })); }
+  renderVals() {
+    const S = this.state, RED = '#C70602';
+    const NAV = [['Operação', ['Dashboard', 'Manifestações', 'Nova manifestação', 'Minhas pendências']], ['Gestão', ['Indicadores', 'RNC', 'Aprovações', 'Arquivo de Fichas', 'Matriz de Tratamento', 'Causas e Subcausas']], ['Conhecimento', ['Cérebro', 'Banco de casos']], ['Administração', ['Usuários e acessos', 'Alimentação da ferramenta']]];
+    const HREF = { 'Arquivo de Fichas': 'ArquivoFichas.dc.html', 'Cérebro': 'Cerebro.dc.html', 'RNC': 'CentralRCA.dc.html' };
+    const nav = NAV.map(([l, it]) => ({ l, items: it.map(x => { const on = x === 'Alimentação da ferramenta'; return { l: x, href: on ? '#' : (HREF[x] || 'AssistenteSAC.dc.html'), bg: on ? '#FDECEC' : 'transparent', fg: on ? '#A80502' : '#545252', fw: on ? '700' : '500' }; }) }));
+    if (!S.db) return { nav, stats: [], groups: [], cards: [], hist: [], hCols: [], pend: [], w: {}, empO: [], histCount: '', toast: '' };
+    const db = S.db, fmtN = n => n.toLocaleString('pt-BR');
+    const STS = { ok: ['Carregado', '#E6F2EA', '#1E6B3A'], parcial: ['Parcial', '#FBF0D9', '#7A4C00'], pend: ['Não carregado', '#FDECEC', '#A80502'] };
+    const stOf = k => { const base = SRC.find(s => s[0] === k)[9]; return db.counts[k] > 0 ? (base === 'pend' ? 'ok' : base) : 'pend'; };
+    const total = SRC.reduce((a, s) => a + db.counts[s[0]], 0), done = SRC.filter(s => stOf(s[0]) === 'ok').length;
+    const stats = [{ l: 'FONTES CARREGADAS', v: done + ' de ' + SRC.length, d: SRC.filter(s => stOf(s[0]) === 'parcial').length + ' parciais · ' + SRC.filter(s => stOf(s[0]) === 'pend').length + ' sem carga', c: '#1F1F1F' }, { l: 'REGISTROS NA BASE', v: fmtN(total), d: 'somando todas as fontes', c: '#24508F' }, { l: 'AGUARDANDO VALIDAÇÃO', v: '6', d: 'documentos na fila do Cérebro', c: '#7A4C00' }, { l: 'PENDÊNCIAS DE DADOS', v: '83', d: 'campos vazios ou inconsistentes', c: RED }];
+    const groups = ['Todos', 'HISTÓRICO', 'CADASTROS', 'CONHECIMENTO'].map(g => { const on = S.grp === g; return { l: g === 'Todos' ? 'Todas as fontes' : g.charAt(0) + g.slice(1).toLowerCase(), go: () => this.setState({ grp: g }), bd: on ? '#1F1F1F' : '#D6D6D6', bg: on ? '#1F1F1F' : '#fff', fg: on ? '#fff' : '#3A3939' }; });
+    const cards = SRC.filter(s => S.grp === 'Todos' || s[1] === S.grp).map(s => { const st = STS[stOf(s[0])], n = db.counts[s[0]]; return { grp: s[1], l: s[2], d: s[3], feeds: s[4], fmt: s[5], n: n ? fmtN(n) + (s[6] === 'doc' ? ' documentos' : ' registros') : 'Nenhum registro', last: db.last[s[0]] ? 'Última carga em ' + db.last[s[0]] : 'Ainda não carregado', st: { t: st[0], bg: st[1], fg: st[2] }, go: () => this.open(s[0]) }; });
+    const HST = { ok: ['Concluída', '#E6F2EA', '#1E6B3A'], parcial: ['Concluída com erros', '#FBF0D9', '#7A4C00'], val: ['Em validação', '#E6EEF8', '#24508F'], undo: ['Desfeita', '#EEEEEE', '#545252'] };
+    const srcName = k => SRC.find(s => s[0] === k)[2];
+    const hist = db.hist.map(h => ({ at: h.at, src: srcName(h.src), file: h.file, emp: h.emp, user: h.user, ok: fmtN(h.ok), dup: fmtN(h.dup), err: fmtN(h.err), st: { t: HST[h.st][0], bg: HST[h.st][1], fg: HST[h.st][2] }, canUndo: h.undo && h.st !== 'undo', rep: () => this.flash('Relatório da importação de ' + h.at + ' baixado.'), undo: () => { const nd = JSON.parse(JSON.stringify(db)); const x = nd.hist.find(y => y.id === h.id); x.st = 'undo'; nd.counts[h.src] = Math.max(0, nd.counts[h.src] - h.ok); this.save(nd); this.setState({ db: nd }); this.flash('Importação desfeita. ' + fmtN(h.ok) + ' registros removidos da base; o arquivo original continua guardado.'); } }));
+    const pend = [['Fichas antigas sem lote', 'Fichas de reclamação antigas', 31], ['Causa não registrada', 'Fichas de reclamação antigas', 22], ['NF ausente', 'Planilha de manifestações', 12], ['Clientes sem CNPJ', 'Clientes', 9], ['Setor responsável em branco', 'Planilha de manifestações', 9]].map(p => ({ l: p[0], src: p[1], n: String(p[2]), go: () => this.flash('Abrindo lista de ' + p[2] + ' registros para correção.') }));
+    const empO = ['Todas as empresas', 'Chiacchio Embalagens', 'Plaschio', 'Tubahia'];
+    let w = { show: false };
+    if (S.w) {
+      const W = S.w, src = W.src ? SRC.find(s => s[0] === W.src) : null, isDoc = src && src[6] === 'doc';
+      const STEPS = ['Fonte e empresa', 'Arquivo', isDoc ? 'Conferir dados' : 'Mapear colunas', 'Validar', 'Confirmar'];
+      const steps = STEPS.map((l, i) => ({ n: String(i + 1), l, bar: i + 1 <= W.step ? RED : '#E4E4E4', fg: i + 1 === W.step ? '#1F1F1F' : '#929090', fw: i + 1 === W.step ? '700' : '500' }));
+      const fields = src && FIELDS[W.src] ? FIELDS[W.src] : [];
+      const used = Object.values(W.map || {});
+      const miss = fields.filter(f => f[2] && !used.includes(f[0])).map(f => f[1]);
+      const nF = W.files.length;
+      const base = src ? Math.max(4, Math.round((W.src === 'manif' ? 412 : W.src === 'cli' ? 260 : W.src === 'pesq' ? 340 : 48) * (nF || 1))) : 0;
+      const docsN = isDoc ? nF * (DOCS[W.src] ? DOCS[W.src].length : 1) : 0;
+      const tot = isDoc ? docsN : base, dupN = isDoc ? Math.min(1, docsN) : Math.round(base * 0.035), errN = isDoc ? 0 : Math.round(base * 0.03), okN = tot - errN - (W.dup === 'ignorar' ? dupN : 0);
+      const docList = isDoc && nF ? DOCS[W.src] : [];
+      let blockTxt = '';
+      if (W.step === 1 && !src) blockTxt = 'Escolha a fonte.';
+      if (W.step === 2 && !nF) blockTxt = 'Selecione ao menos um arquivo.';
+      if (W.step === 3 && !isDoc && miss.length) blockTxt = 'Relacione os campos obrigatórios.';
+      if (W.step === 3 && isDoc && W.src === 'fichas' && docList.some(d => !(W.docs[d[0]] || [])[0] || !(W.docs[d[0]] || [])[1])) blockTxt = 'Empresa e data são obrigatórias.';
+      const finish = () => {
+        const nd = JSON.parse(JSON.stringify(db)), now = '05/10/2026 ' + new Date().toTimeString().slice(0, 5), knowledge = W.src === 'conh';
+        nd.counts[W.src] = (nd.counts[W.src] || 0) + okN; nd.last[W.src] = '05/10/2026';
+        nd.hist.unshift({ id: Math.random().toString(36).slice(2), at: now, src: W.src, file: nF === 1 ? (W.files[0]) : nF + ' arquivos', emp: W.emp === 'Todas as empresas' ? 'Todas' : W.emp, user: 'Luiza Martins', ok: okN, dup: dupN, err: errN, st: knowledge ? 'val' : errN ? 'parcial' : 'ok', undo: true });
+        this.save(nd); this.setState({ db: nd, w: null }); this.flash(knowledge ? okN + ' documentos enviados para validação do Cérebro.' : fmtN(okN) + ' registros importados em ' + src[2] + '.');
+      };
+      const EXT = n => { const e = n.split('.').pop().toUpperCase(); return { e, c: e === 'PDF' ? RED : e === 'DOCX' ? '#24508F' : e === 'JPG' ? '#0E7C86' : '#1E6B3A' }; };
+      const fname = () => { if (DOCS[W.src]) return DOCS[W.src].map(d => d[0]); return [{ manif: 'controle_sac_2022.xlsx', pesq: 'pesquisa_satisfacao_2025.xlsx', cli: 'clientes_plaschio.xlsx', prod: 'produtos_tubahia.csv', setor: 'setores_2026.xlsx', rep: 'representantes.xlsx', causa: 'causas_subcausas_v2.xlsx' }[W.src]]; };
+      w = { show: true, title: src ? src[2] : 'Escolha a fonte', steps, s1: W.step === 1, s2: W.step === 2, s3sheet: W.step === 3 && !isDoc, s3doc: W.step === 3 && isDoc, s4: W.step === 4, s5: W.step === 5, isSheet: src && !isDoc, fmt: src ? src[5] : '',
+        srcOpts: SRC.map(s => { const on = W.src === s[0]; return { l: s[2], fmt: s[5], bd: on ? RED : '#E4E4E4', bg: on ? '#FFF8F8' : '#fff', go: () => { const nw = Object.assign({}, W, { src: s[0], files: [] }); this.prep(nw); this.setState({ w: nw }); } }; }),
+        emp: W.emp, onEmp: e => this.upW({ emp: e.target.value }), empHint: 'Use "Todas as empresas" quando o arquivo tiver uma coluna de empresa; cada registro fica vinculado à empresa indicada na linha.',
+        pick: () => { const names = fname(), left = names.filter(n => !W.files.includes(n)); if (!left.length) return this.flash('Todos os arquivos de exemplo já foram adicionados.'); this.upW({ files: W.files.concat(isDoc ? left : [left[0]]) }); },
+        model: () => this.flash('Modelo de planilha baixado.'),
+        files: W.files.map(n => { const x = EXT(n); return { n, ext: x.e, c: x.c, m: isDoc ? 'Pronto para leitura' : 'Planilha · ' + fmtN(base) + ' linhas detectadas', del: () => this.upW({ files: W.files.filter(y => y !== n) }) }; }),
+        fieldO: [{ v: '', l: 'Ignorar coluna' }].concat(fields.map(f => ({ v: f[0], l: f[1] + (f[2] ? ' *' : '') }))),
+        map: (COLS[W.src] || []).map(c => { const v = W.map[c[0]] || ''; return { col: c[0], ex: c[1], v, check: !!c[3] && v === c[2], bd: v ? '#D6D6D6' : '#E4E4E4', rbg: v ? '#fff' : '#FAFAFA', on: e => this.upW({ map: Object.assign({}, W.map, { [c[0]]: e.target.value }) }) }; }),
+        missTxt: miss.join(', '),
+        docs: docList.map(d => { const vals = W.docs[d[0]] || d[1]; const CF = { alta: ['Leitura confiável', '#E6F2EA', '#1E6B3A'], 'média': ['Conferir campos', '#FBF0D9', '#7A4C00'], baixa: ['Leitura difícil · revisar', '#FDECEC', '#A80502'] }[d[2]]; return { n: d[0], conf: CF[0], cbg: CF[1], cfg: CF[2], f: DOCF[W.src].map((l, i) => ({ l, v: vals[i] || '', bd: vals[i] ? '#D6D6D6' : (i < 2 ? RED : '#E4E4E4'), on: e => { const nv = vals.slice(); nv[i] = e.target.value; this.upW({ docs: Object.assign({}, W.docs, { [d[0]]: nv }) }); } })) }; }),
+        vk: [{ l: 'TOTAL LIDO', v: fmtN(tot), bg: '#F4F4F4', fg: '#1F1F1F' }, { l: 'VÁLIDOS', v: fmtN(tot - errN - dupN), bg: '#E6F2EA', fg: '#1E6B3A' }, { l: 'DUPLICADOS', v: fmtN(dupN), bg: '#FBF0D9', fg: '#7A4C00' }, { l: 'COM ERRO', v: fmtN(errN), bg: '#FDECEC', fg: '#A80502' }],
+        dupRule: isDoc ? 'Mesmo arquivo (hash) ou mesmo protocolo já existente na base.' : 'Mesmo CNPJ + data + descrição, ou mesmo código, já existente na base.',
+        dupO: [['ignorar', 'Ignorar duplicados (manter o que já está na base)'], ['atualizar', 'Atualizar existentes (gera nova versão e registra na auditoria)']].map(o => { const on = W.dup === o[0]; return { l: o[1], bd: on ? RED : '#D6D6D6', bg: on ? '#FFF8F8' : '#fff', go: () => this.upW({ dup: o[0] }) }; }),
+        errs: errN ? [['Linha 18', 'CNPJ inválido', '"31.211.359/0001" com dígitos faltando'], ['Linha 77', 'Data inválida', '"31/02/2024" não existe'], ['Linha 203', 'Campo obrigatório vazio', 'Descrição em branco']].map(e => ({ ref: e[0], t: e[1], d: e[2] })) : [{ ref: '—', t: 'Nenhum erro', d: 'todos os registros passaram na validação' }],
+        errRep: () => this.flash('Relatório de erros baixado (XLSX).'),
+        sum: [{ l: 'Fonte', v: src ? src[2] : '' }, { l: 'Empresa', v: W.emp }, { l: 'Arquivos', v: W.files.join(', ') }, { l: 'Registros a importar', v: fmtN(okN) }, { l: 'Duplicados', v: fmtN(dupN) + (W.dup === 'ignorar' ? ' ignorados' : ' atualizados') }, { l: 'Com erro (fora da carga)', v: fmtN(errN) }],
+        after: src ? (W.src === 'conh' ? ['Documentos vão para a fila de validação do Cérebro; só entram no conhecimento oficial após aprovação.', 'Arquivos originais ficam guardados com hash e autor.', 'Carga registrada no histórico; pode ser desfeita em até 24 h.'] : ['Dados passam a alimentar: ' + src[4].join(', ') + '.', isDoc ? 'Arquivos originais ficam guardados sem alteração no Arquivo de Fichas, pela data original.' : 'A planilha original fica guardada junto do relatório da carga.', 'Carga registrada no histórico; pode ser desfeita em até 24 h.']) : [],
+        back: () => W.step === 1 || (W.step === 2 && false) ? this.setState({ w: null }) : this.upW({ step: W.step - 1 }), backL: W.step === 1 ? 'Cancelar' : '← Voltar',
+        blockTxt, nextBg: blockTxt ? '#C4C4C4' : RED, nextL: W.step === 5 ? 'Confirmar importação' : W.step === 3 ? 'Validar registros' : 'Continuar →',
+        next: () => { if (blockTxt) return this.flash(blockTxt); if (W.step === 5) return finish(); this.upW({ step: W.step + 1 }); } };
+    }
+    return { nav, stats, groups, cards, hist, histCount: db.hist.length + ' importações', hCols: ['Data', 'Fonte / arquivo', 'Empresa', 'Usuário', 'Registros', 'Status', ''], pend, empO, w, openNew: () => this.open(null), close: () => this.setState({ w: null }), toast: S.toast };
+  }
+}
+</script>
+</body>
+</html>

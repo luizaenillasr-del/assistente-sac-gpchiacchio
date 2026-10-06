@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<title>Relatórios de Satisfação · Grupo Chiacchio</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F4F4F4;color:#1F1F1F;font-family:Montserrat,system-ui,sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}button{white-space:nowrap}
+a{color:#A80502;text-decoration:none}a:hover{color:#7F0401;text-decoration:underline}
+*{box-sizing:border-box}
+@media print{[data-noprint]{display:none!important}body{background:#fff}[data-card]{break-inside:avoid}}
+</style>
+</helmet>
+<div style="min-height:100vh;font-family:Montserrat,system-ui,sans-serif;color:#1F1F1F">
+
+  <div data-noprint style="background:#fff;border-bottom:1px solid #E4E4E4;padding:10px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;position:sticky;top:0;z-index:20">
+    <img src="assets/simbolo-vermelho.png" alt="" style="width:26px;height:auto">
+    <div style="display:flex;flex-direction:column;white-space:nowrap"><span style="font-weight:700;font-size:14px">Relatórios de satisfação</span><span style="font-size:11.5px;color:#929090">{{ topSub }}</span></div>
+    <sc-if value="{{ notDir }}"><a href="PesquisaSatisfacao.dc.html" style="font-size:12.5px;font-weight:600;white-space:nowrap">← Centro das Pesquisas</a></sc-if>
+    <div style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <button onClick="{{ togDir }}" style="display:flex;align-items:center;gap:8px;border:1px solid #D6D6D6;background:#fff;border-radius:8px;padding:7px 12px;cursor:pointer;font-size:12.5px"><span style="width:30px;height:17px;border-radius:99px;padding:2px;display:flex;justify-content:{{ dirJ }};background:{{ dirB }}"><span style="width:13px;height:13px;border-radius:50%;background:#fff"></span></span>Visão da Diretoria</button>
+      <button onClick="{{ printPdf }}" style="border:1px solid #1F1F1F;background:#fff;border-radius:8px;padding:8px 12px;cursor:pointer;font-size:12.5px;font-weight:600">Baixar PDF</button>
+      <sc-if value="{{ notDir }}"><button onClick="{{ openSend }}" style="border:0;background:#C70602;color:#fff;border-radius:8px;padding:9px 14px;cursor:pointer;font-size:12.5px;font-weight:700">Enviar para Diretoria e Presidência</button></sc-if>
+    </div>
+  </div>
+
+  <div data-noprint style="max-width:1120px;margin:0 auto;padding:16px 20px 0;display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+    <div style="display:flex;gap:6px;flex-wrap:wrap"><sc-for list="{{ empChips }}" as="c" hint-placeholder-count="3"><button onClick="{{ c.go }}" style="border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};border-radius:99px;padding:7px 13px;font-size:12.5px;cursor:pointer;font-weight:600">{{ c.l }}</button></sc-for></div>
+    <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:#666464;font-weight:600">Mês de referência<select value="{{ mes }}" onChange="{{ onMes }}" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:12.5px;color:#1F1F1F"><sc-for list="{{ mesOpts }}" as="o"><option value="{{ o.v }}">{{ o.l }}</option></sc-for></select></label>
+    <div style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:#666464;font-weight:600">Período<div style="display:flex;gap:4px"><sc-for list="{{ perChips }}" as="c"><button onClick="{{ c.go }}" style="height:34px;border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};border-radius:7px;padding:0 10px;font-size:12px;cursor:pointer">{{ c.l }}</button></sc-for></div></div>
+    <sc-if value="{{ notDir }}"><label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:#666464;font-weight:600">Meta<input type="number" step="0.1" value="{{ meta }}" onChange="{{ onMeta }}" style="height:34px;width:76px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:12.5px"></label></sc-if>
+    <span style="font-size:11.5px;color:#929090;flex-basis:100%">{{ nextNote }}</span>
+  </div>
+
+  <div style="max-width:1120px;margin:0 auto;padding:16px 20px 60px;display:flex;flex-direction:column;gap:16px">
+
+    <div data-card style="background:#fff;border:1px solid #E4E4E4;border-radius:12px;overflow:hidden">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;padding:18px 22px;border-bottom:3px solid {{ brandC }}">
+        <sc-if value="{{ hasLogo }}" hint-placeholder-val="{{ false }}"><img src="{{ logo }}" alt="{{ emp }}" style="height:46px;width:auto;max-width:60%;display:block"></sc-if>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span style="padding:4px 11px;border-radius:99px;font-size:11.5px;font-weight:700;letter-spacing:.03em;white-space:nowrap;background:{{ st.bg }};color:{{ st.fg }}">{{ st.t }}</span><sc-if value="{{ exemplo }}"><span style="padding:4px 11px;border-radius:99px;font-size:11.5px;font-weight:600;white-space:nowrap;background:#EEEEEE;color:#545252">Dados de exemplo</span></sc-if></div>
+      </div>
+      <div style="padding:20px 22px;display:flex;flex-wrap:wrap;gap:20px;align-items:flex-end;justify-content:space-between">
+        <div style="min-width:0"><div style="font-size:11.5px;font-weight:700;letter-spacing:.1em;color:#666464">RELATÓRIO DE PESQUISA DE SATISFAÇÃO DE CLIENTES</div><div style="font-size:26px;font-weight:700;line-height:1.2;margin-top:4px">{{ empUp }} · {{ mesLong }}</div><div style="font-size:12.5px;color:#666464;margin-top:4px">{{ pubLine }}</div></div>
+        <div style="border:1.5px solid #1F1F1F;border-radius:10px;padding:10px 18px;text-align:center"><div style="font-size:10.5px;font-weight:700;letter-spacing:.08em;color:#545252;white-space:nowrap">META DE SATISFAÇÃO GERAL</div><div style="font-size:26px;font-weight:700;color:#1E6B3A">≥ {{ metaTxt }}</div></div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:16px">
+      <div data-card style="background:{{ hero.bg }};color:#fff;border-radius:12px;padding:22px 24px;display:flex;flex-direction:column;gap:6px">
+        <span style="font-size:11.5px;font-weight:700;letter-spacing:.1em;opacity:.9">INDICADOR DO MÊS</span>
+        <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap"><span style="font-size:56px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums">{{ hero.v }}</span><span style="font-size:15px;font-weight:600">{{ hero.delta }}</span></div>
+        <span style="font-size:13.5px;font-weight:600">{{ hero.status }}</span>
+        <span style="font-size:12.5px;opacity:.92">{{ hero.sub }}</span>
+      </div>
+      <div data-card style="background:#fff;border:1px solid #E4E4E4;border-radius:12px;padding:18px 20px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 18px">
+        <sc-for list="{{ resumo }}" as="r" hint-placeholder-count="4"><div><div style="font-size:11px;font-weight:600;color:#666464">{{ r.l }}</div><div style="font-size:21px;font-weight:700;color:{{ r.c }};font-variant-numeric:tabular-nums">{{ r.v }}</div><div style="font-size:11.5px;color:#929090">{{ r.d }}</div></div></sc-for>
+      </div>
+    </div>
+
+    <div data-card style="background:#fff;border:1px solid #E4E4E4;border-radius:12px;padding:18px 20px;display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline"><span style="font-weight:700;font-size:15px">Evolução do indicador</span><span style="font-size:12px;color:#666464">Média de atendimento, prazo, qualidade e recomendação · linha tracejada = meta {{ metaTxt }}</span></div>
+      <div style="position:relative;height:220px;display:flex;align-items:flex-end;gap:8px;padding-top:18px">
+        <div style="position:absolute;left:0;right:0;bottom:{{ metaLine }};border-top:2px dashed #1F1F1F;opacity:.55"></div>
+        
+        <sc-for list="{{ bars }}" as="b" hint-placeholder-count="10"><button onClick="{{ b.go }}" style="flex:1;min-width:0;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:4px;border:0;background:none;padding:0;cursor:pointer"><span style="font-size:11px;font-weight:700;color:{{ b.c }};font-variant-numeric:tabular-nums">{{ b.v }}</span><div style="width:100%;max-width:46px;height:{{ b.h }};background:{{ b.c }};border-radius:4px 4px 0 0;opacity:{{ b.op }};outline:{{ b.ol }};outline-offset:2px"></div></button></sc-for>
+      </div>
+      <div style="display:flex;gap:8px"><sc-for list="{{ bars }}" as="b"><div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px"><span style="font-size:11px;font-weight:{{ b.fw }};color:#3A3939;white-space:nowrap">{{ b.l }}</span><div style="width:100%;max-width:46px;height:30px;display:flex;align-items:flex-end"><div style="width:100%;height:{{ b.nh }};background:#D6D6D6;border-radius:3px 3px 0 0"></div></div><span style="font-size:10.5px;color:#929090;white-space:nowrap">{{ b.n }}</span></div></sc-for></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr));gap:12px">
+      <sc-for list="{{ crit }}" as="k" hint-placeholder-count="4">
+        <div data-card style="background:#fff;border:1px solid #E4E4E4;border-top:3px solid {{ k.c }};border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:6px">
+          <span style="font-size:11.5px;font-weight:700;letter-spacing:.06em;color:#545252">{{ k.l }}</span>
+          <div style="display:flex;align-items:baseline;gap:8px"><span style="font-size:30px;font-weight:700;font-variant-numeric:tabular-nums">{{ k.v }}</span><span style="font-size:13px;font-weight:700;color:{{ k.dc }}">{{ k.d }}</span></div>
+          <span style="font-size:12px;color:{{ k.c }};font-weight:600">{{ k.s }}</span>
+          <div style="display:flex;align-items:flex-end;gap:3px;height:38px;margin-top:4px"><sc-for list="{{ k.spark }}" as="x"><div title="{{ x.t }}" style="flex:1;height:{{ x.h }};background:{{ x.c }};border-radius:2px 2px 0 0;opacity:{{ x.op }}"></div></sc-for></div>
+        </div>
+      </sc-for>
+    </div>
+
+    <div data-card style="background:#fff;border:1px solid #E4E4E4;border-radius:12px;overflow:hidden">
+      <div style="padding:14px 18px;border-bottom:1px solid #EFEFEF;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><span style="font-weight:700;font-size:15px">Resultado mensal</span><div style="display:flex;gap:10px;font-size:11.5px;color:#545252;align-items:center"><span style="display:flex;gap:4px;align-items:center;white-space:nowrap"><span style="width:12px;height:12px;border-radius:3px;background:#E6F2EA"></span>na meta</span><span style="display:flex;gap:4px;align-items:center;white-space:nowrap"><span style="width:12px;height:12px;border-radius:3px;background:#FBF0D9"></span>7 a meta</span><span style="display:flex;gap:4px;align-items:center;white-space:nowrap"><span style="width:12px;height:12px;border-radius:3px;background:#FDECEC"></span>abaixo de 7</span></div></div>
+      <div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%;min-width:720px;font-size:13px">
+        <thead><tr style="background:#FAFAFA"><sc-for list="{{ tCols }}" as="c"><th style="text-align:center;font-weight:600;font-size:11.5px;color:#666464;padding:9px 10px;border-bottom:1px solid #E4E4E4;white-space:nowrap">{{ c }}</th></sc-for></tr></thead>
+        <tbody><sc-for list="{{ tRows }}" as="r" hint-placeholder-count="10"><tr style="border-bottom:1px solid #EFEFEF;background:{{ r.rb }}"><td style="padding:8px 12px;font-weight:700;white-space:nowrap;text-align:center">{{ r.l }}</td><sc-for list="{{ r.c }}" as="x"><td style="padding:5px 6px;text-align:center"><span style="display:inline-block;min-width:54px;padding:5px 8px;border-radius:6px;background:{{ x.bg }};color:{{ x.fg }};font-weight:{{ x.fw }};font-variant-numeric:tabular-nums">{{ x.v }}</span></td></sc-for><td style="padding:8px 12px;text-align:center;color:#545252;font-variant-numeric:tabular-nums">{{ r.n }}</td></tr></sc-for></tbody>
+      </table></div>
+    </div>
+
+    <sc-for list="{{ secs }}" as="s" hint-placeholder-count="5">
+      <div data-card style="background:#fff;border:1px solid #E4E4E4;border-radius:12px;padding:18px 20px;display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><span style="font-weight:700;font-size:15px">{{ s.t }}</span><div data-noprint style="display:flex;gap:8px;align-items:center"><span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px;background:{{ s.src.bg }};color:{{ s.src.fg }}">{{ s.src.t }}</span><sc-if value="{{ s.canEdit }}"><button onClick="{{ s.edit }}" style="border:1px solid #D6D6D6;background:#fff;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:12px">Editar texto</button></sc-if></div></div>
+        <sc-if value="{{ s.editing }}">
+          <textarea rows="7" value="{{ editV }}" onChange="{{ onEditV }}" style="border:1px solid #D6D6D6;border-radius:8px;padding:10px 12px;font-size:13.5px;line-height:1.6;resize:vertical;background:#fff"></textarea>
+          <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap"><button onClick="{{ s.regen }}" style="border:0;background:none;color:#A80502;cursor:pointer;font-size:12.5px;font-weight:600;margin-right:auto">Restaurar texto gerado pelos dados</button><button onClick="{{ cancelEdit }}" style="border:1px solid #D6D6D6;background:#fff;border-radius:7px;padding:7px 12px;cursor:pointer;font-size:12.5px">Cancelar</button><button onClick="{{ saveEdit }}" style="border:0;background:#1F1F1F;color:#fff;border-radius:7px;padding:7px 14px;cursor:pointer;font-size:12.5px;font-weight:600">Salvar</button></div>
+        </sc-if>
+        <sc-if value="{{ s.view }}"><sc-for list="{{ s.ps }}" as="p"><p style="margin:0;font-size:14px;line-height:1.65;color:#2B2A2A;text-wrap:pretty">{{ p }}</p></sc-for></sc-if>
+      </div>
+    </sc-for>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:16px">
+      <div data-card style="background:#fff;border:1px solid #E4E4E4;border-radius:12px;padding:18px 20px;display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;justify-content:space-between;gap:4px 8px;flex-wrap:wrap;align-items:baseline"><span style="font-weight:700;font-size:15px">Motivo da compra</span><span style="font-size:11.5px;color:#929090;white-space:nowrap">{{ motivoSub }}</span></div>
+        <sc-if value="{{ hasMotivo }}"><sc-for list="{{ motivos }}" as="m"><div style="display:grid;grid-template-columns:150px minmax(0,1fr) 34px;gap:10px;align-items:center;font-size:13px"><span>{{ m.l }}</span><div style="height:10px;background:#F4F4F4;border-radius:5px;overflow:hidden"><div style="height:100%;width:{{ m.w }};background:{{ brandC }}"></div></div><span style="text-align:right;font-weight:700;font-variant-numeric:tabular-nums">{{ m.n }}</span></div></sc-for></sc-if>
+        <sc-if value="{{ noMotivo }}"><span style="font-size:13px;color:#666464">A pergunta sobre motivo da compra passou a ser feita em julho/2026.</span></sc-if>
+      </div>
+      <div data-card style="background:#fff;border:1px solid #E4E4E4;border-radius:12px;padding:18px 20px;display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;justify-content:space-between;gap:4px 8px;flex-wrap:wrap;align-items:baseline"><span style="font-weight:700;font-size:15px;white-space:nowrap">Notas baixas e tratativas</span><a data-noprint href="PesquisaSatisfacao.dc.html" style="font-size:12px;font-weight:600;white-space:nowrap">Abrir no Centro das Pesquisas</a></div>
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px"><sc-for list="{{ trat }}" as="t"><div style="background:#FAFAFA;border-radius:9px;padding:10px 12px"><div style="font-size:11px;font-weight:600;color:#666464">{{ t.l }}</div><div style="font-size:22px;font-weight:700;color:{{ t.c }}">{{ t.v }}</div></div></sc-for></div>
+        <span style="font-size:12px;color:#666464;line-height:1.5">Nota ≤ 6 é sinalizada para análise do SAC; ocorrência e manifestação formal são decisões do SAC.</span>
+      </div>
+    </div>
+
+    <div data-card style="background:#fff;border:1px solid #E4E4E4;border-radius:12px;overflow:hidden">
+      <div style="padding:14px 18px;border-bottom:1px solid #EFEFEF;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><span style="font-weight:700;font-size:15px">Análise mensal dos resultados</span><button data-noprint onClick="{{ togAll }}" style="border:0;background:none;color:#A80502;cursor:pointer;font-size:12.5px;font-weight:600">{{ allL }}</button></div>
+      <sc-for list="{{ hist }}" as="h" hint-placeholder-count="6">
+        <div style="border-bottom:1px solid #EFEFEF">
+          <button onClick="{{ h.go }}" style="width:100%;display:flex;gap:12px;align-items:center;border:0;background:{{ h.bg }};padding:12px 18px;cursor:pointer;text-align:left;white-space:normal"><span style="font-weight:700;font-size:13.5px;min-width:70px">{{ h.l }}</span><span style="font-weight:700;font-size:13.5px;color:{{ h.c }};white-space:nowrap">Indicador {{ h.v }}</span><span style="font-size:12px;color:#929090;white-space:nowrap">{{ h.n }} respostas</span><span style="margin-left:auto;color:#929090">{{ h.sign }}</span></button>
+          <sc-if value="{{ h.open }}"><div style="padding:0 18px 14px;display:flex;flex-direction:column;gap:8px"><sc-for list="{{ h.ps }}" as="p"><p style="margin:0;font-size:13.5px;line-height:1.65;color:#2B2A2A">{{ p }}</p></sc-for></div></sc-if>
+        </div>
+      </sc-for>
+    </div>
+
+    <sc-if value="{{ notDir }}">
+    <div data-noprint style="background:#fff;border:1px solid #E4E4E4;border-radius:12px;overflow:hidden">
+      <div style="padding:14px 18px;border-bottom:1px solid #EFEFEF;font-weight:700;font-size:15px">Envios deste relatório</div>
+      <sc-for list="{{ envios }}" as="e"><div style="display:grid;grid-template-columns:140px minmax(0,1fr) 150px;gap:12px;padding:10px 18px;border-bottom:1px solid #EFEFEF;font-size:12.5px;align-items:center"><span style="color:#666464">{{ e.at }}</span><span>{{ e.to }}</span><span style="color:#666464">{{ e.views }}</span></div></sc-for>
+      <sc-if value="{{ noEnvios }}"><div style="padding:16px 18px;font-size:12.5px;color:#929090">Ainda não enviado. Revise os textos e use “Enviar para Diretoria e Presidência”.</div></sc-if>
+    </div>
+    </sc-if>
+  </div>
+
+  <sc-if value="{{ sendOpen }}">
+  <div data-noprint style="position:fixed;inset:0;background:rgba(20,20,20,.5);z-index:60;display:grid;place-items:center;padding:20px">
+    <div style="width:min(560px,100%);background:#fff;border-radius:12px;overflow:hidden">
+      <div style="padding:16px 20px;border-bottom:1px solid #E4E4E4"><div style="font-weight:700;font-size:17px">Enviar relatório · {{ empUp }} · {{ mesLong }}</div><div style="font-size:12.5px;color:#666464">Os destinatários recebem um link de leitura que sempre mostra os dados atualizados.</div></div>
+      <div style="padding:16px 20px;display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;font-weight:600;color:#545252">Destinatários</span><div style="display:flex;gap:6px;flex-wrap:wrap"><sc-for list="{{ destChips }}" as="c"><button onClick="{{ c.go }}" style="border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};border-radius:99px;padding:6px 12px;font-size:12.5px;cursor:pointer">{{ c.l }}</button></sc-for></div></div>
+        <label style="display:flex;flex-direction:column;gap:6px;font-size:12px;font-weight:600;color:#545252">Mensagem<textarea rows="4" value="{{ sendMsg }}" onChange="{{ onSendMsg }}" style="border:1px solid #D6D6D6;border-radius:8px;padding:10px 12px;font-size:13.5px;font-weight:400;line-height:1.5;resize:vertical;background:#fff;color:#1F1F1F"></textarea></label>
+        <div style="display:flex;gap:8px;align-items:center;background:#F4F4F4;border-radius:8px;padding:9px 12px;font-size:12px"><span style="font-family:ui-monospace,monospace;flex:1;min-width:0;overflow-wrap:anywhere">{{ shareUrl }}</span><button onClick="{{ copyUrl }}" style="border:1px solid #D6D6D6;background:#fff;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px">Copiar</button></div>
+        <button onClick="{{ togPdf }}" style="display:flex;align-items:center;gap:10px;border:0;background:none;padding:0;cursor:pointer;font-size:13px;text-align:left"><span style="width:34px;height:19px;border-radius:99px;padding:2px;display:flex;justify-content:{{ pdfJ }};background:{{ pdfB }}"><span style="width:15px;height:15px;border-radius:50%;background:#fff"></span></span>Anexar também o PDF do mês</button>
+      </div>
+      <div style="padding:12px 20px 18px;display:flex;justify-content:flex-end;gap:8px"><button onClick="{{ closeSend }}" style="border:1px solid #D6D6D6;background:#fff;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:13px">Cancelar</button><button onClick="{{ doSend }}" style="border:0;background:#C70602;color:#fff;border-radius:8px;padding:9px 18px;cursor:pointer;font-size:13px;font-weight:700">Publicar e enviar</button></div>
+    </div>
+  </div>
+  </sc-if>
+  <sc-if value="{{ toast }}"><div data-noprint style="position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#1F1F1F;color:#fff;padding:11px 16px;border-radius:8px;font-size:13px;z-index:90;max-width:92vw">{{ toast }}</div></sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;visao&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;SAC&quot;,&quot;Diretoria&quot;],&quot;default&quot;:&quot;SAC&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  state = { db: null, emp: 'Chiacchio', mes: '2026-08', per: 'all', meta: 8.5, dir: false, editKey: null, editV: '', openM: null, allOpen: false, send: false, dest: ['Diretoria', 'Presidência'], sendMsg: '', pdf: true, toast: '' };
+
+  componentDidMount() {
+    let db = null; try { db = JSON.parse(localStorage.getItem('gc-relatorios-v1') || 'null'); } catch (e) { }
+    if (!db) db = { texts: {}, status: { 'Chiacchio|2026-07': { t: 'Publicado', at: '05/08/2026 10:12', by: 'Luiza Martins' } }, envios: { 'Chiacchio|2026-07': [{ at: '05/08/2026 10:12', to: 'Diretoria, Presidência · com PDF', views: 'visualizado por 3' }] } };
+    const dir = /dir=1/.test(location.search) || this.props.visao === 'Diretoria';
+    this.setState({ db, dir });
+  }
+  save(db) { try { localStorage.setItem('gc-relatorios-v1', JSON.stringify(db)); } catch (e) { } }
+  flash(t) { this.setState({ toast: t }); clearTimeout(this._t); this._t = setTimeout(() => this.setState({ toast: '' }), 2800); }
+  now() { const d = new Date(), p = n => String(n).padStart(2, '0'); return '02/10/2026 ' + p(d.getHours()) + ':' + p(d.getMinutes()); }
+
+  data() {
+    const MK = ['2025-11', '2025-12', '2026-01', '2026-02', '2026-03', '2026-04', '2026-05', '2026-06', '2026-07', '2026-08'];
+    const chi = [[8.55, 6.4, 9.6, 8.55, 20], [7.66, 6.66, 9.66, 7.5, 6], [9.2, 5.4, 8.6, 7.4, 5], [8.3, 5.6, 8.3, 8.3, 3], [7.0, 6.0, 10, 7.75, 4], [9.08, 7.88, 9.38, 8.69, 37], [9.19, 8.91, 9.19, 9.28, 46], [9.06, 8.75, 9.31, 9.06, 32], [9.22, 8.5, 8.31, 8.45, 21], [9.5, 9.15, 9.1, 9.1, 20]];
+    let sd = 5; const rnd = () => { sd = (sd * 16807) % 2147483647; return (sd - 1) / 2147483646; };
+    const gen = (b) => MK.map((k, i) => { const t = b + i * 0.09; const r = x => Math.round(Math.min(10, Math.max(5, x)) * 100) / 100; return [r(t + 0.3 + (rnd() - 0.5) * 0.9), r(t - 0.6 + (rnd() - 0.5) * 1.2), r(t + 0.4 + (rnd() - 0.5) * 0.8), r(t + (rnd() - 0.5) * 0.9), 6 + Math.floor(i * 2.6 + rnd() * 8)]; });
+    const D = { Chiacchio: chi, Plaschio: gen(7.6), Tubahia: gen(7.9) };
+    const out = {}; Object.keys(D).forEach(e => { out[e] = {}; D[e].forEach((r, i) => { const ind = Math.round((r[0] + r[1] + r[2] + r[3]) / 4 * 100) / 100; out[e][MK[i]] = { at: r[0], pr: r[1], qu: r[2], re: r[3], n: r[4], ind: e === 'Chiacchio' ? [8.27, 7.87, 7.65, 7.62, 7.69, 8.75, 9.14, 9.05, 8.62, 9.21][i] : ind }; }); });
+    return { MK, S: out };
+  }
+  seedTexts() {
+    return {
+      'Chiacchio|2026-08|desempenho': 'Após a redução observada em julho, a Chiacchio Embalagens apresentou em agosto uma recuperação no indicador, que passou de 8,62 para 9,21. O resultado ficou acima da meta estabelecida de 8,5 e representa o melhor resultado registrado no período.\nA recuperação foi observada em todos os critérios avaliados. O atendimento passou de 9,22 para 9,50, o prazo de entrega de 8,50 para 9,15, a qualidade de 8,31 para 9,10 e a recomendação de 8,45 para 9,10.\nO resultado demonstra uma retomada principalmente nos critérios que haviam apresentado maior redução em julho, especialmente qualidade e recomendação. Dessa forma, o desempenho de agosto reforça a evolução observada nos últimos meses e indica que a queda registrada em julho não se manteve no mês seguinte.',
+      'Chiacchio|2026-07|critica': 'O resultado de julho mostra uma redução em relação aos dois meses anteriores, principalmente pela queda observada nos critérios de qualidade e recomendação. Apesar disso, o indicador geral permaneceu acima da meta, o que demonstra que a evolução conquistada nos últimos meses ainda está presente.\nA queda na qualidade merece maior atenção, já que esse critério vinha apresentando resultados elevados e foi o que teve a maior variação no mês. A redução da recomendação também deve ser acompanhada, principalmente para entender se está relacionada à percepção sobre a qualidade ou a outros aspectos da experiência do cliente.\nPor outro lado, o atendimento apresentou melhora, passando de 9,06 para 9,22, e o prazo de entrega se manteve exatamente na meta, com 8,50. Isso indica que nem todos os aspectos da experiência apresentaram piora no mês.',
+      'Chiacchio|2026-07|fortes': 'A Chiacchio mantém uma percepção positiva dos clientes, mesmo com a redução do indicador geral em julho. O resultado de 8,62 permaneceu acima da meta de 8,5, mantendo a empresa pelo quarto mês consecutivo dentro do resultado esperado.\nO atendimento foi o principal destaque do mês, alcançando 9,22 e apresentando melhora em relação a junho. O resultado reforça a boa percepção dos clientes em relação ao atendimento realizado pela equipe e pelos representantes.\nO prazo de entrega também se manteve dentro da meta, com 8,50, e continua apresentando uma evolução importante quando comparado aos primeiros meses do período, quando era um dos principais pontos de atenção.\nAlém disso, a pesquisa continua proporcionando uma base maior para entender a percepção dos clientes. Mesmo com a redução para 21 respostas em julho, o volume permaneceu dentro da meta estabelecida, permitindo a continuidade do acompanhamento dos indicadores.',
+      'Chiacchio|2026-07|oport': 'A qualidade passa a ser o principal ponto de atenção em julho, apresentando uma redução mais significativa em relação ao mês anterior, de 9,31 para 8,31. É importante acompanhar as avaliações e os comentários relacionados a esse critério para identificar possíveis causas e verificar se a redução representa uma situação pontual ou uma tendência.\nA recomendação também apresentou queda, passando de 9,06 para 8,45. Como esse indicador está diretamente relacionado à percepção geral do cliente, vale acompanhar sua evolução nos próximos meses e entender quais fatores podem estar influenciando essa redução.\nO prazo de entrega, apesar de ter permanecido dentro da meta, continua sendo um ponto que merece acompanhamento. O indicador ficou em 8,50, exatamente no limite da meta, portanto é importante evitar uma nova redução e manter a evolução conquistada desde os primeiros meses do período.',
+      'Chiacchio|2026-07|acoes': 'Acompanhar mais de perto o indicador de qualidade, principalmente nos próximos meses, buscando identificar se a redução observada em julho está relacionada a alguma ocorrência específica ou se existe algum padrão recorrente nas avaliações dos clientes.\nManter o acompanhamento da recomendação, avaliando sua evolução junto aos demais critérios para entender os principais fatores que podem estar influenciando a percepção geral dos clientes.\nDar continuidade ao acompanhamento do prazo de entrega, buscando evitar nova redução, já que o indicador atingiu exatamente a meta de 8,5 em julho.\nManter o acompanhamento dos atendimentos realizados pelos RCA, em conjunto com a Gerência Comercial, principalmente nos casos que envolvam reclamações ou situações que possam impactar a experiência do cliente.',
+      'Chiacchio|2026-07|motivo': 'O novo questionamento também começa a trazer informações relevantes sobre a percepção dos clientes. Em julho, a qualidade aparece como o principal motivo identificado, além de respostas relacionadas ao preço, atendimento, proximidade do vendedor, desempenho da marca frente a outras opções e experiências anteriores com as embalagens.\nComo essa pergunta ainda está em fase de consolidação, a continuidade da coleta nos próximos meses será importante para identificar quais desses fatores aparecem de forma recorrente e, assim, entender melhor o que influencia a decisão de compra dos clientes.'
+    };
+  }
+  monthTexts() {
+    return {
+      '2025-11': 'O período começa com um resultado próximo da meta e com a melhor base de respostas entre os primeiros meses analisados, totalizando 20 participações. Atendimento, qualidade e recomendação apresentaram bons resultados, com notas de 8,55, 9,6 e 8,55, respectivamente. O prazo já aparecia como principal ponto de atenção, com nota 6,4, mas ainda sem comprometer tanto o resultado geral.',
+      '2025-12': 'Em dezembro, houve uma queda no indicador, principalmente nas notas de recomendação (7,5) e atendimento (7,66). A qualidade, por outro lado, continuou com um resultado muito positivo, chegando a 9,66. O mês contou com apenas 6 respostas, o que também precisa ser considerado na análise, já que, com uma base pequena, poucas avaliações mais críticas conseguem impactar bastante o resultado.',
+      '2026-01': 'Janeiro apresentou a pior nota de prazo de todo o período, com 5,4, além de uma recomendação também abaixo do esperado, com 7,4. Em contrapartida, o atendimento chegou a 9,2, o melhor resultado até aquele momento. Esse contraste mostra que, apesar da boa percepção em relação ao atendimento, o prazo de entrega impactava negativamente a experiência do cliente. A base continuou pequena, com apenas 5 respostas.',
+      '2026-02': 'Fevereiro registrou o menor indicador do período. O prazo continuou sendo o principal ponto de atenção, com nota 5,6, puxando o resultado geral para baixo. O mês teve apenas 3 respostas, a menor base de todo o período, o que torna esse resultado mais sensível ao impacto de cada avaliação individual.',
+      '2026-03': 'Março foi um mês de resultados bem diferentes entre os critérios avaliados. A qualidade atingiu nota máxima, com 10,0, enquanto o atendimento caiu para 7,0, o menor resultado do período. O prazo também continuou abaixo do esperado, com nota 6,0. O indicador permaneceu abaixo da meta e a base de respostas ainda era pequena, com apenas 4 participações.',
+      '2026-04': 'Abril marca uma mudança importante no cenário. Pela primeira vez no período, o indicador ultrapassou a meta de 8,5. A principal evolução aconteceu no prazo, que passou de 6,0 para 7,88. Atendimento (9,08), qualidade (9,38) e recomendação (8,69) também apresentaram bons resultados.\nOutro ponto importante foi o crescimento da base, que chegou a 37 respostas. Esse aumento está relacionado ao processo de estruturação do SAC, que vem sendo conduzido e acompanhado por mim, com uma organização maior dos processos e um acompanhamento mais próximo das pesquisas de satisfação. Com isso, o resultado do mês passa a ter uma base muito mais representativa da percepção dos clientes.',
+      '2026-05': 'Maio confirma a evolução iniciada no mês anterior e apresenta o melhor resultado de todo o período. O prazo, que vinha sendo o principal ponto de atenção, chegou a 8,91 e também ultrapassou a meta. A recomendação atingiu 9,28 e o atendimento, 9,19.\nA base de respostas também cresceu novamente, chegando a 46 participações, o maior número do período. Além de reforçar o avanço do trabalho de estruturação e acompanhamento do SAC, esse volume maior de respostas dá mais consistência ao resultado e mostra que a melhora observada em abril não foi isolada, mas se manteve no mês seguinte.',
+      '2026-06': 'Junho manteve o bom desempenho observado nos dois meses anteriores e encerrou o período com indicador de 9,05, permanecendo acima da meta estabelecida de 8,5. Embora tenha apresentado uma pequena redução em relação a maio, todos os critérios permaneceram em níveis elevados. A qualidade obteve a melhor avaliação do mês (9,31), seguida pelo atendimento e pela recomendação, ambos com 9,06. O prazo de entrega registrou 8,75, mantendo um desempenho positivo e superior aos resultados apresentados nos primeiros meses do período.',
+      '2026-07': 'Julho apresentou uma pequena redução em relação ao mês anterior, com indicador de 8,62, mas ainda permaneceu acima da meta estabelecida de 8,5. O atendimento apresentou melhora, passando para 9,22, enquanto o prazo de entrega se manteve em 8,50.\nA principal redução ocorreu na qualidade, que passou de 9,31 em junho para 8,31, e na recomendação, que passou de 9,06 para 8,45. Apesar da queda nesses critérios, o resultado geral ainda se mantém acima dos indicadores registrados no início do período.',
+      '2026-08': 'Agosto apresentou uma recuperação significativa em relação ao mês anterior, com indicador de 9,21, superando a meta de 8,5 e alcançando o melhor resultado registrado no período. Todos os critérios apresentaram evolução. O atendimento alcançou 9,50, o prazo de entrega chegou a 9,15, a qualidade apresentou nota 9,10 e a recomendação também ficou em 9,10.\nO resultado demonstra uma melhora principalmente nos critérios que haviam apresentado redução em julho, indicando uma recuperação na percepção dos clientes em relação à experiência com a empresa.'
+    };
+  }
+
+  renderVals() {
+    const S = this.state;
+    if (!S.db) return { empChips: [], bars: [], crit: [], secs: [], hist: [], tRows: [], st: {}, hero: {}, resumo: [], logo: 'assets/logo-chiacchio-embalagens.png', brandC: '#B9171A', empUp: 'CHIACCHIO EMBALAGENS', mesLong: 'Agosto/2026', metaTxt: '8,5', topSub: '', emp: 'Chiacchio', pubLine: '', motivoSub: '', nextNote: '', mesOpts: [], perChips: [], tCols: [], motivos: [], trat: [], envios: [], destChips: [] };
+    const { MK, S: DS } = this.data();
+    const MS = ['', 'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'], MN = ['', 'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+    const ml = k => MS[+k.slice(5)] + '/' + k.slice(2, 4), mlong = k => MN[+k.slice(5)].replace(/^./, c => c.toUpperCase()) + '/' + k.slice(0, 4), mword = k => MN[+k.slice(5)];
+    const f2 = v => v == null ? '—' : v.toFixed(2).replace('.', ','), meta = Number(S.meta) || 8.5, metaTxt = String(meta).replace('.', ',');
+    const emp = S.emp, ser = DS[emp], avail = MK.filter(k => ser[k]);
+    const ref = avail.includes(S.mes) ? S.mes : avail[avail.length - 1], ri = avail.indexOf(ref);
+    const per = S.per === '6' ? avail.slice(Math.max(0, ri - 5), ri + 1) : S.per === '12' ? avail.slice(Math.max(0, ri - 11), ri + 1) : avail.slice(0, ri + 1);
+    const cur = ser[ref], prev = ri > 0 ? ser[avail[ri - 1]] : null;
+    const GREEN = '#1E6B3A', RED = '#C70602', AMB = '#B07A12';
+    const col = v => v >= meta ? GREEN : v >= 7 ? AMB : RED;
+    const cell = v => v >= meta ? ['#E6F2EA', '#1E6B3A'] : v >= 7 ? ['#FBF0D9', '#7A4C00'] : ['#FDECEC', '#A80502'];
+    const sgn = d => (d > 0 ? '+' : d < 0 ? '−' : '±') + Math.abs(d).toFixed(2).replace('.', ',');
+    const key = (k, s) => emp + '|' + k + '|' + s;
+    const statusO = S.db.status[emp + '|' + ref];
+    const brand = { Chiacchio: ['assets/logo-chiacchio-embalagens.png', '#B9171A'], Plaschio: ['assets/logo-plaschio.png', '#B9171A'], Tubahia: ['assets/logo-tubahia.png', '#2B2070'] }[emp];
+
+    // resumo
+    const inds = per.map(k => ser[k].ind), avg = inds.reduce((a, b) => a + b, 0) / inds.length;
+    const bestK = per.reduce((a, k) => ser[k].ind > ser[a].ind ? k : a, per[0]), worstK = per.reduce((a, k) => ser[k].ind < ser[a].ind ? k : a, per[0]);
+    let streak = 0; for (let i = ri; i >= 0 && ser[avail[i]].ind >= meta; i--) streak++;
+    const total = per.reduce((a, k) => a + ser[k].n, 0);
+    const above = cur.ind >= meta;
+    const hero = { v: f2(cur.ind), bg: above ? GREEN : RED, delta: prev ? sgn(cur.ind - prev.ind) + ' vs ' + ml(avail[ri - 1]) : '', status: above ? 'Acima da meta de ' + metaTxt + (streak > 1 ? ' · ' + streak + 'º mês consecutivo' : '') : 'Abaixo da meta de ' + metaTxt + ' · faltam ' + (meta - cur.ind).toFixed(2).replace('.', ','), sub: cur.n + ' respostas em ' + mword(ref) + (cur.n < 10 ? ' · base pequena, resultado sensível a poucas avaliações' : '') };
+    const resumo = [{ l: 'Média do indicador no período', v: f2(avg), d: ml(per[0]) + ' a ' + ml(ref), c: '#1F1F1F' }, { l: 'Melhor resultado', v: f2(ser[bestK].ind), d: ml(bestK), c: GREEN }, { l: 'Pior resultado', v: f2(ser[worstK].ind), d: ml(worstK), c: RED }, { l: 'Total de respostas no período', v: String(total), d: per.length + ' meses', c: '#1F1F1F' }];
+
+    // chart: scale 5..10
+    const sc = v => Math.max(2, (v - 5) / 5 * 100);
+    const nMax = Math.max(...per.map(k => ser[k].n));
+    const bars = per.map(k => { const r = ser[k], on = k === ref; return { l: ml(k), v: f2(r.ind), h: sc(r.ind) + '%', c: col(r.ind), op: on ? '1' : '0.72', ol: on ? '2px solid ' + col(r.ind) : 'none', fw: on ? '700' : '500', n: String(r.n), nh: Math.max(6, r.n / nMax * 100) + '%', go: () => this.setState({ mes: k, openM: k }) }; });
+    const metaLine = 'calc(' + sc(meta) + '% * 202 / 220)';
+
+    // criteria
+    const CR = [['ATENDIMENTO', 'at'], ['PRAZO DE ENTREGA', 'pr'], ['QUALIDADE', 'qu'], ['RECOMENDAÇÃO', 're']];
+    const crit = CR.map(([l, k]) => { const v = cur[k], d = prev ? v - prev[k] : 0; return { l, v: f2(v), d: prev ? sgn(d) : '', dc: d > 0.005 ? GREEN : d < -0.005 ? RED : '#666464', c: col(v), s: v >= meta ? 'Dentro da meta' : 'Abaixo da meta', spark: per.map(m => ({ h: sc(ser[m][k]) + '%', c: col(ser[m][k]), op: m === ref ? '1' : '0.55', t: ml(m) + ': ' + f2(ser[m][k]) })) }; });
+
+    // table
+    const tCols = ['Mês', 'Atendimento', 'Prazo de entrega', 'Qualidade', 'Recomendação', 'Indicador', 'Respostas'];
+    const tRows = per.slice().reverse().map(k => { const r = ser[k]; return { l: ml(k), rb: k === ref ? '#FFF8F8' : '#fff', n: String(r.n), c: [r.at, r.pr, r.qu, r.re, r.ind].map((v, i) => { const cc = cell(v); return { v: f2(v), bg: cc[0], fg: cc[1], fw: i === 4 ? '700' : '500' }; }) }; });
+
+    // auto texts
+    const names = { at: 'atendimento', pr: 'prazo de entrega', qu: 'qualidade', re: 'recomendação' };
+    const ch = CR.map(([, k]) => ({ k, v: cur[k], d: prev ? cur[k] - prev[k] : 0 }));
+    const auto = {
+      desempenho: () => { const p = []; p.push(mlong(ref).replace('/', ' de ') + ' registrou indicador de ' + f2(cur.ind) + (prev ? ', ' + (cur.ind >= prev.ind ? 'acima' : 'abaixo') + ' do mês anterior (' + f2(prev.ind) + ')' : '') + ', ' + (above ? 'acima' : 'abaixo') + ' da meta de ' + metaTxt + '.' + (ref === bestK ? ' É o melhor resultado do período analisado.' : ref === worstK ? ' É o menor resultado do período analisado.' : '')); if (prev) { const up = ch.filter(x => x.d > 0.005), dn = ch.filter(x => x.d < -0.005); p.push((up.length ? 'Evoluíram: ' + up.map(x => names[x.k] + ' (' + f2(prev[x.k]) + ' → ' + f2(x.v) + ')').join(', ') + '. ' : '') + (dn.length ? 'Recuaram: ' + dn.map(x => names[x.k] + ' (' + f2(prev[x.k]) + ' → ' + f2(x.v) + ')').join(', ') + '.' : 'Nenhum critério recuou.')); } p.push('O mês teve ' + cur.n + ' respostas' + (cur.n < 10 ? ', uma base pequena: poucas avaliações podem mudar bastante o resultado.' : '.')); return p.join('\n'); },
+      critica: () => { const w = ch.slice().sort((a, b) => a.d - b.d)[0], b = ch.slice().sort((a, b) => b.d - a.d)[0]; return (prev ? (w.d >= 0 ? 'Todos os critérios evoluíram em relação ao mês anterior. O maior avanço foi em ' + names[b.k] + ' (' + sgn(b.d) + ') e o menor em ' + names[w.k] + ' (' + sgn(w.d) + '). ' : b.d <= 0 ? 'Todos os critérios recuaram ou ficaram estáveis. A maior queda foi em ' + names[w.k] + ' (' + sgn(w.d) + '). ' : 'A maior queda foi em ' + names[w.k] + ' (' + sgn(w.d) + ') e o maior avanço em ' + names[b.k] + ' (' + sgn(b.d) + '). ') : '') + (above ? 'Mesmo assim, o indicador geral segue dentro da meta.' : 'O indicador geral está abaixo da meta e precisa de acompanhamento mais próximo.') + (ch.filter(x => x.v < meta).length ? '\nCritérios abaixo da meta: ' + ch.filter(x => x.v < meta).map(x => names[x.k] + ' (' + f2(x.v) + ')').join(', ') + '.' : '\nTodos os critérios estão dentro da meta.'); },
+      fortes: () => ch.filter(x => x.v >= meta).sort((a, b) => b.v - a.v).map(x => names[x.k].replace(/^./, c => c.toUpperCase()) + ' com ' + f2(x.v) + (prev ? ' (' + sgn(x.d) + ' vs ' + ml(avail[ri - 1]) + ')' : '') + ', dentro da meta.').join('\n') || 'Nenhum critério atingiu a meta neste mês.',
+      oport: () => { const l = ch.filter(x => x.v < meta || x.d < -0.3).sort((a, b) => a.v - b.v); return l.length ? l.map(x => names[x.k].replace(/^./, c => c.toUpperCase()) + ' com ' + f2(x.v) + (x.v < meta ? ', abaixo da meta' : '') + (x.d < -0.3 ? ', queda de ' + Math.abs(x.d).toFixed(2).replace('.', ',') + ' em relação ao mês anterior' : '') + '.').join('\n') : 'Sem critérios abaixo da meta ou com queda relevante. Manter o acompanhamento para preservar o resultado.'; },
+      acoes: () => { const A = { pr: 'Acompanhar com a Logística as entregas do mês e as notas baixas de prazo registradas no Centro das Pesquisas.', qu: 'Acompanhar com a Qualidade as avaliações e comentários sobre produto para identificar se há ocorrência específica ou padrão recorrente.', at: 'Manter o acompanhamento dos atendimentos realizados pelos RCA, em conjunto com a Gerência Comercial.', re: 'Acompanhar a recomendação junto aos demais critérios para entender o que influencia a percepção geral dos clientes.' }; const l = ch.filter(x => x.v < meta || x.d < -0.3).map(x => A[x.k]); if (cur.n < 10) l.push('Ampliar a base de respostas, reforçando o envio da pesquisa por WhatsApp e e-mail.'); return (l.length ? l : ['Manter o acompanhamento mensal dos quatro critérios e das notas baixas registradas no Centro das Pesquisas.']).join('\n'); }
+    };
+    const seedT = this.seedTexts();
+    const SEC = [['desempenho', 'Desempenho geral'], ['critica', 'Análise crítica dos resultados'], ['fortes', 'Pontos fortes'], ['oport', 'Oportunidades de melhoria'], ['acoes', 'Ações recomendadas']];
+    const textOf = s => { const kk = key(ref, s), st = S.db.texts[kk]; if (st) return { t: st.t, src: { t: 'Texto do analista · ' + st.by + ' · ' + st.at, bg: '#E6EEF8', fg: '#24508F' } }; if (seedT[kk]) return { t: seedT[kk], src: { t: 'Texto do relatório enviado', bg: '#E6EEF8', fg: '#24508F' } }; return { t: auto[s](), src: { t: 'Gerado automaticamente pelos dados', bg: '#FBF0D9', fg: '#7A4C00' } }; };
+    const secs = SEC.map(([s, t]) => { const x = textOf(s), kk = key(ref, s), ed = S.editKey === kk; return { t, src: x.src, ps: x.t.split('\n').filter(Boolean), editing: ed, view: !ed, canEdit: !S.dir && !ed, edit: () => this.setState({ editKey: kk, editV: x.t }), regen: () => this.setState({ editV: auto[s]() }) }; });
+
+    // motivo
+    const hasMotivo = ref >= '2026-07';
+    const mot = { '2026-07': [['Qualidade', 9], ['Preço', 4], ['Atendimento', 3], ['Proximidade do vendedor', 2], ['Custo-benefício', 2], ['Outro', 1]], '2026-08': [['Qualidade', 8], ['Atendimento', 5], ['Preço', 3], ['Custo-benefício', 2], ['Reputação da empresa', 1], ['Outro', 1]] }[ref] || [];
+    const mMax = Math.max(1, ...mot.map(m => m[1]));
+    const motivos = mot.map(([l, n]) => ({ l, n: String(n), w: (n / mMax * 100) + '%' }));
+    const low = Math.round(cur.n * (cur.ind >= meta ? 0.12 : 0.3)), ocs = Math.max(0, Math.round(low * 0.5)), mans = Math.max(0, Math.round(low * 0.25));
+    const trat = [{ l: 'Pesquisas com nota ≤ 6', v: String(low), c: RED }, { l: 'Ocorrências geradas', v: String(ocs), c: '#7A4C00' }, { l: 'Manifestações formais', v: String(mans), c: '#A80502' }, { l: 'Tratativas encerradas', v: String(Math.max(0, ocs + mans - (ref === avail[avail.length - 1] ? 1 : 0))), c: GREEN }];
+
+    // monthly history
+    const MT = emp === 'Chiacchio' ? this.monthTexts() : {};
+    const hist = avail.slice(0, ri + 1).reverse().map(k => { const r = ser[k], op = S.allOpen || (S.openM || ref) === k; return { l: ml(k), v: f2(r.ind), c: col(r.ind), n: String(r.n), open: op, sign: op ? '−' : '+', bg: k === ref ? '#FFF8F8' : '#fff', ps: (MT[k] || ('Indicador de ' + f2(r.ind) + ' com ' + r.n + ' respostas. Atendimento ' + f2(r.at) + ', prazo de entrega ' + f2(r.pr) + ', qualidade ' + f2(r.qu) + ' e recomendação ' + f2(r.re) + '.')).split('\n'), go: () => this.setState({ openM: op && !S.allOpen ? 'none' : k }) }; });
+
+    const envios = (S.db.envios[emp + '|' + ref] || []);
+    const st = statusO ? { t: 'PUBLICADO · ' + statusO.at.slice(0, 10), bg: '#E6F2EA', fg: '#1E6B3A' } : { t: 'RASCUNHO · EM REVISÃO', bg: '#FBF0D9', fg: '#7A4C00' };
+    const chip = (on, l, go) => ({ l, go, bg: on ? '#1F1F1F' : '#fff', fg: on ? '#fff' : '#3A3939', bd: on ? '#1F1F1F' : '#D6D6D6' });
+    const DEST = ['Diretoria', 'Presidência', 'Gerência Comercial', 'Qualidade', 'Logística'];
+    const slug = emp.toLowerCase(), shareUrl = 'https://assistentesac.vercel.app/relatorios/' + slug + '/' + ref + '?dir=1';
+    return {
+      topSub: S.dir ? 'Visão da Diretoria · somente leitura' : 'Pesquisa de satisfação · relatório mensal',
+      notDir: !S.dir, togDir: () => this.setState({ dir: !S.dir, editKey: null }), dirJ: S.dir ? 'flex-end' : 'flex-start', dirB: S.dir ? '#C70602' : '#C4C4C4',
+      printPdf: () => { try { window.print(); } catch (e) { } },
+      empChips: [['Chiacchio', 'Chiacchio Embalagens'], ['Plaschio', 'Plaschio'], ['Tubahia', 'Tubahia']].map(([k, l]) => chip(emp === k, l, () => this.setState({ emp: k, editKey: null, openM: null }))),
+      mes: ref, mesOpts: avail.slice().reverse().map(k => ({ v: k, l: mlong(k) })), onMes: e => this.setState({ mes: e.target.value, openM: null, editKey: null }),
+      perChips: [['6', 'Últimos 6 meses'], ['12', '12 meses'], ['all', 'Desde nov/25']].map(([k, l]) => chip(S.per === k, l, () => this.setState({ per: k }))),
+      meta: String(meta), onMeta: e => this.setState({ meta: e.target.value }), metaTxt, nextNote: 'Setembro/2026 em fechamento · disponível a partir de 05/10',
+      hasLogo: true, logo: brand[0], brandC: brand[1], emp, empUp: emp === 'Chiacchio' ? 'CHIACCHIO EMBALAGENS' : emp.toUpperCase(), mesLong: mlong(ref), exemplo: emp !== 'Chiacchio',
+      pubLine: statusO ? 'Publicado em ' + statusO.at + ' por ' + statusO.by + ' · dados atualizados automaticamente pelo Centro das Pesquisas' : 'Rascunho · os números são atualizados automaticamente pelo Centro das Pesquisas',
+      st, hero, resumo, bars, metaLine, crit, tCols, tRows, secs,
+      editV: S.editV, onEditV: e => this.setState({ editV: e.target.value }), cancelEdit: () => this.setState({ editKey: null }),
+      saveEdit: () => { const db = JSON.parse(JSON.stringify(S.db)); db.texts[S.editKey] = { t: S.editV.trim(), at: this.now(), by: 'Luiza Martins' }; this.setState({ db, editKey: null }); this.save(db); this.flash('Texto salvo no relatório de ' + mword(ref) + '.'); },
+      hasMotivo, noMotivo: !hasMotivo, motivos, motivoSub: hasMotivo ? cur.n + ' respostas · ' + mword(ref) : '', trat,
+      hist, allL: S.allOpen ? 'Recolher todos' : 'Expandir todos', togAll: () => this.setState({ allOpen: !S.allOpen }),
+      envios: envios.map(e => ({ at: e.at, to: e.to, views: e.views })), noEnvios: !envios.length,
+      openSend: () => this.setState({ send: true, sendMsg: 'Segue o relatório de satisfação de clientes da ' + (emp === 'Chiacchio' ? 'Chiacchio Embalagens' : emp) + ' referente a ' + mword(ref) + '/' + ref.slice(0, 4) + '. Indicador do mês: ' + f2(cur.ind) + ' (meta ' + metaTxt + ').' }),
+      sendOpen: S.send, closeSend: () => this.setState({ send: false }), destChips: DEST.map(d => chip(S.dest.includes(d), d, () => this.setState({ dest: S.dest.includes(d) ? S.dest.filter(x => x !== d) : S.dest.concat([d]) }))),
+      sendMsg: S.sendMsg, onSendMsg: e => this.setState({ sendMsg: e.target.value }), shareUrl, copyUrl: () => { try { navigator.clipboard.writeText(shareUrl); } catch (e) { } this.flash('Link copiado.'); },
+      pdfJ: S.pdf ? 'flex-end' : 'flex-start', pdfB: S.pdf ? '#C70602' : '#C4C4C4', togPdf: () => this.setState({ pdf: !S.pdf }),
+      doSend: () => { if (!S.dest.length) return this.flash('Escolha ao menos um destinatário.'); const db = JSON.parse(JSON.stringify(S.db)), n = this.now(), k = emp + '|' + ref; db.status[k] = { t: 'Publicado', at: n, by: 'Luiza Martins' }; db.envios[k] = [{ at: n, to: S.dest.join(', ') + (S.pdf ? ' · com PDF' : ''), views: 'aguardando leitura' }].concat(db.envios[k] || []); this.setState({ db, send: false }); this.save(db); this.flash('Relatório publicado e enviado para ' + S.dest.join(', ') + '.'); },
+      toast: S.toast
+    };
+  }
+}
+</script>
+</body>
+</html>
