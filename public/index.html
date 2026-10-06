@@ -4551,13 +4551,73 @@
         </div>
       </div>
       <div id="cp-panel-ocorrencias" style="display:none">
-        <div class="ps-pend"><strong>Ocorrências de pesquisa — indisponível</strong><span>As respostas hoje vêm de uma planilha somente leitura. O registro de ocorrências (OCP), a decisão do analista e o vínculo com manifestações formais ainda não têm tabela nem endpoint no sistema, por isso esta aba não exibe dados.</span></div>
+        <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;overflow:hidden">
+          <div style="padding:12px 16px;border-bottom:1px solid #EFEFEF;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
+            <span style="font-weight:700;font-size:14px">Ocorrências de pesquisa (OCP)</span>
+            <span style="font-size:12px;color:#666464">Respostas com nota ≤ 6 aguardando decisão do SAC</span>
+          </div>
+          <div id="cp-ocp-lista" style="padding:12px 16px;min-height:80px">
+            <div class="spinner" style="margin:24px auto"></div>
+          </div>
+        </div>
       </div>
       <div id="cp-panel-editor" style="display:none">
-        <div class="ps-pend"><strong>Editor do questionário — indisponível</strong><span>Questionários com versões, pré-visualização e publicação, e a pesquisa pública por token único, ainda não existem no backend (a pesquisa pública atual é /pesquisa/chiacchio, /pesquisa/plaschio e /pesquisa/tubahia, com formulário fixo).</span></div>
+        <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:20px 22px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap;gap:10px">
+            <div>
+              <div style="font-weight:700;font-size:15px;margin-bottom:3px">Editor do questionário</div>
+              <div style="font-size:12px;color:#666464">Crie e publique versões do formulário público de pesquisa.</div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-secondary" onclick="qEditorPreview()">Pré-visualizar</button>
+              <button class="btn btn-secondary" onclick="qEditorSalvar('RASCUNHO')">Salvar rascunho</button>
+              <button class="btn btn-primary" onclick="qEditorSalvar('PUBLICADA')">Publicar versão</button>
+            </div>
+          </div>
+          <div id="cp-q-status" style="margin-bottom:14px;font-size:12.5px;color:#666464"></div>
+          <div id="cp-q-perguntas" style="display:flex;flex-direction:column;gap:10px"></div>
+          <button onclick="qAddPergunta()" style="margin-top:12px;border:1.5px dashed #D6D6D6;background:none;border-radius:8px;width:100%;padding:10px;cursor:pointer;color:#545252;font-size:13px;font-family:inherit">+ Adicionar pergunta</button>
+        </div>
       </div>
       <div id="cp-panel-notificacoes" style="display:none">
-        <div class="ps-pend"><strong>Notificações por setor — indisponível</strong><span>Dependem das ocorrências de pesquisa, que ainda não têm backend. Quando existirem, cada setor verá aqui apenas as ocorrências recebidas.</span></div>
+        <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:20px 22px">
+          <div style="font-weight:700;font-size:15px;margin-bottom:10px">Enviar pesquisa</div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px">
+            <div style="flex:1;min-width:260px;border:1.5px solid #E4E4E4;border-radius:10px;padding:16px">
+              <div style="font-size:12px;font-weight:700;color:#545252;margin-bottom:10px">GERAR LINK AVULSO</div>
+              <label style="display:block;font-size:12px;color:#666464;margin-bottom:4px">Empresa</label>
+              <select id="nt-empresa" style="width:100%;height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;font-size:13px;font-family:inherit;margin-bottom:8px">
+                <option value="CHIACCHIO">Chiacchio Embalagens</option>
+                <option value="PLASCHIO">Plaschio</option>
+                <option value="TUBAHIA">Tubahia</option>
+              </select>
+              <label style="display:block;font-size:12px;color:#666464;margin-bottom:4px">Nome do cliente (opcional)</label>
+              <input id="nt-nome" class="form-input" placeholder="Ex: João Silva / Empresa ABC" style="margin-bottom:8px">
+              <label style="display:block;font-size:12px;color:#666464;margin-bottom:4px">Validade (dias)</label>
+              <input id="nt-dias" type="number" class="form-input" value="30" min="1" max="365" style="margin-bottom:12px">
+              <button class="btn btn-primary" style="width:100%" onclick="ntGerarLink()">Gerar link</button>
+              <div id="nt-link-result" style="display:none;margin-top:12px;background:#F5F5F5;border-radius:8px;padding:10px;font-size:12px;word-break:break-all">
+                <div style="font-weight:700;margin-bottom:4px">Link gerado:</div>
+                <div id="nt-link-url" style="color:#24508F"></div>
+                <button onclick="ntCopiarLink()" style="margin-top:8px;border:1px solid #D6D6D6;background:#fff;border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer;font-family:inherit">Copiar link</button>
+              </div>
+            </div>
+            <div style="flex:1;min-width:260px;border:1.5px solid #E4E4E4;border-radius:10px;padding:16px">
+              <div style="font-size:12px;font-weight:700;color:#545252;margin-bottom:10px">LINKS FIXOS POR EMPRESA</div>
+              <p style="font-size:12.5px;color:#545252;margin-bottom:12px;line-height:1.5">Links públicos permanentes — qualquer cliente pode acessar, sem expiração. Ideal para WhatsApp e e-mail em massa.</p>
+              ${['chiacchio','plaschio','tubahia'].map(e=>`
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+                <span style="font-size:12.5px;font-weight:600;flex:1;text-transform:capitalize">${e}</span>
+                <button onclick="ntCopiarFixo('${e}')" style="border:1px solid #D6D6D6;background:#fff;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:inherit">Copiar</button>
+                <a href="/pesquisa/${e}" target="_blank" style="border:1px solid #24508F;color:#24508F;background:#fff;border-radius:6px;padding:5px 10px;font-size:12px;text-decoration:none">Abrir</a>
+              </div>`).join('')}
+            </div>
+          </div>
+          <div style="font-weight:700;font-size:14px;margin-bottom:10px">Histórico de links gerados</div>
+          <div id="cp-tokens-lista" style="font-size:12.5px;color:#666464">
+            <div class="spinner" style="margin:16px auto"></div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -13950,15 +14010,17 @@ function cpTab(name, btn) {
   if (panel) panel.style.display = 'block';
   const semFiltro = ['ocorrencias', 'editor', 'notificacoes'].includes(name);
   const fb = document.getElementById('cp-filtros'); if (fb) fb.style.display = (semFiltro || name === 'anomes') ? 'none' : 'flex';
-  cpRender();
+  if (name === 'ocorrencias') cpCarregarOcps();
+  else if (name === 'editor') qEditorCarregar();
+  else if (name === 'notificacoes') { cpCarregarTokens(); }
+  else cpRender();
 }
 function cpClearFilters() {
   ['cp-f-empresa', 'cp-f-ano', 'cp-f-mes'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
   cpAplica();
 }
 function cpOpenLinks() {
-  const o = location.origin;
-  alert('Links das pesquisas públicas:\n' + o + '/pesquisa/chiacchio\n' + o + '/pesquisa/plaschio\n' + o + '/pesquisa/tubahia');
+  cpTab('notificacoes', document.getElementById('cp-tab-btn-notificacoes'));
 }
 function cpAbrirMes(ano, mes) {
   document.getElementById('cp-f-ano').value = String(ano);
@@ -14073,6 +14135,203 @@ function cpRenderComentarios() {
   const l = _cp.filtered.filter(r => r.comentario && (!so || r.baixa)).slice(0, 200);
   document.getElementById('cp-com-lista').innerHTML = l.length ? l.map(r => '<div class="ps-com' + (r.baixa ? ' ps-com-low' : '') + '"><div class="ps-muted">' + cpEsc(r.dataTxt) + ' · ' + cpEsc(r.emp || '—') + ' · ' + cpEsc(r.cli || '—') + ' · média ' + cpFmt(r.media) + (r.baixa ? ' · <b style="color:#A80502">NOTA ≤ 6</b>' : '') + '</div><div style="margin-top:4px;line-height:1.5;white-space:pre-line">' + cpEsc(r.comentario) + '</div></div>').join('') : '<div class="ps-muted" style="padding:20px;text-align:center">Nenhum comentário neste recorte.</div>';
 }
+
+// ── OCP — Ocorrências de Pesquisa ─────────────────────────
+async function cpCarregarOcps() {
+  const el = document.getElementById('cp-ocp-lista');
+  if (!el) return;
+  el.innerHTML = '<div class="spinner" style="margin:16px auto"></div>';
+  try {
+    const d = await _apiFetch('/api/pesquisas/ocorrencias', 10000);
+    const itens = (d.itens || []).sort((a,b) => new Date(b.DATA||0) - new Date(a.DATA||0));
+    if (!itens.length) {
+      el.innerHTML = '<div style="color:#666464;text-align:center;padding:24px">Nenhuma ocorrência de pesquisa. Respostas com nota ≤ 6 aparecem aqui.</div>';
+      return;
+    }
+    const statusCor = { PENDENTE:'#FBF0D9;color:#7A4C00', TRATADA:'#E6F2EA;color:#1E6B3A' };
+    el.innerHTML = '<table style="border-collapse:collapse;width:100%;font-size:12.5px">'
+      + '<thead><tr style="background:#FAFAFA"><th class="ps-th">ID</th><th class="ps-th">DATA</th><th class="ps-th">EMPRESA</th><th class="ps-th">NPS</th><th class="ps-th">STATUS</th><th class="ps-th">DECISÃO</th><th class="ps-th">AÇÕES</th></tr></thead>'
+      + '<tbody>' + itens.map(o => {
+        const st = o.STATUS||'PENDENTE';
+        const [bg,fg] = (statusCor[st]||'#F4F4F4;color:#545252').split(';color:');
+        const resp = o.resposta || {};
+        return `<tr class="ps-tr">
+          <td class="ps-td" style="font-weight:600">${o.ID_OCP||'—'}</td>
+          <td class="ps-td">${o.DATA ? new Date(o.DATA).toLocaleDateString('pt-BR') : '—'}</td>
+          <td class="ps-td">${o.EMPRESA||'—'}</td>
+          <td class="ps-td" style="text-align:center"><span class="ps-nota ps-n-bad">${o.NPS||'—'}</span></td>
+          <td class="ps-td"><span style="background:${bg};color:${fg};padding:2px 7px;border-radius:5px;font-weight:700;font-size:10.5px">${st}</span></td>
+          <td class="ps-td">${o.DECISAO ? `<span style="font-weight:600">${o.DECISAO}</span>${o.JUSTIFICATIVA?'<br><span style="color:#666464;font-size:11.5px">'+o.JUSTIFICATIVA+'</span>':''}` : '—'}</td>
+          <td class="ps-td">${st === 'PENDENTE' ? `<button onclick="cpDecisaoOcp('${o.ID_OCP}')" style="border:1px solid #C70602;color:#C70602;background:#fff;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;font-family:inherit">Decidir</button>` : ''}</td>
+        </tr>`;
+      }).join('') + '</tbody></table>';
+  } catch(e) {
+    el.innerHTML = '<div style="color:#A80502;padding:16px">Erro ao carregar ocorrências.</div>';
+  }
+}
+
+async function cpDecisaoOcp(id) {
+  const decisao = prompt('Decisão para ' + id + ':\n1 = Gerar OCP (ocorrência interna)\n2 = Converter para Manifestação\n3 = Sem tratamento\n\nDigite 1, 2 ou 3:');
+  if (!decisao) return;
+  const mapa = { '1':'OCP', '2':'MANIFESTACAO', '3':'NENHUM' };
+  const d = mapa[decisao.trim()];
+  if (!d) { alert('Opção inválida.'); return; }
+  const justificativa = d === 'NENHUM' ? (prompt('Justificativa para não tratar (obrigatório):') || '') : '';
+  if (d === 'NENHUM' && !justificativa) { alert('Justificativa obrigatória para "Sem tratamento".'); return; }
+  try {
+    const r = await _apiFetch('/api/pesquisas/ocorrencias/' + id + '/decisao', 8000, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ decisao: d, justificativa })
+    });
+    if (r.sucesso) { alert('Decisão registrada!'); cpCarregarOcps(); }
+    else alert('Erro: ' + (r.erro || 'desconhecido'));
+  } catch(e) { alert('Erro ao registrar decisão.'); }
+}
+
+// ── Editor do Questionário ─────────────────────────────────
+let _qPerguntas = [];
+
+async function qEditorCarregar() {
+  const el = document.getElementById('cp-q-status');
+  const container = document.getElementById('cp-q-perguntas');
+  if (!el || !container) return;
+  try {
+    const d = await _apiFetch('/api/pesquisas/questionario', 8000);
+    const pub = d.publicada, ras = d.rascunho;
+    el.innerHTML = (pub ? `<span style="background:#E6F2EA;color:#1E6B3A;padding:2px 8px;border-radius:5px;font-weight:700;font-size:11px">PUBLICADA</span> versão <b>${pub.ID_VERSAO}</b> em ${pub.PUBLICADO_EM ? new Date(pub.PUBLICADO_EM).toLocaleDateString('pt-BR') : '—'}` : '<span style="color:#666464">Nenhuma versão publicada</span>')
+      + (ras ? ` &nbsp; <span style="background:#FBF0D9;color:#7A4C00;padding:2px 8px;border-radius:5px;font-weight:700;font-size:11px">RASCUNHO</span> ${ras.ID_VERSAO}` : '');
+    const base = ras || pub;
+    _qPerguntas = base ? base.perguntas.map(p => ({...p})) : _qPerguntasPadrao();
+    qRenderPerguntas();
+  } catch(e) {
+    el.textContent = 'Erro ao carregar questionário.';
+    _qPerguntas = _qPerguntasPadrao();
+    qRenderPerguntas();
+  }
+}
+
+function _qPerguntasPadrao() {
+  return [
+    { id:'nps', tipo:'NPS', label:'Em uma escala de 0 a 10, qual a probabilidade de você nos recomendar?', obrigatorio:true },
+    { id:'qualidade', tipo:'ESCALA', label:'Qualidade dos produtos (1 a 10)', obrigatorio:true },
+    { id:'prazo', tipo:'ESCALA', label:'Prazo de entrega (1 a 10)', obrigatorio:false },
+    { id:'atendimento', tipo:'ESCALA', label:'Atendimento (1 a 10)', obrigatorio:false },
+    { id:'motivo', tipo:'MULTIPLA', label:'Principal motivo da compra', opcoes:['Qualidade','Preço','Prazo de entrega','Parceria','Indicação','Outro'], obrigatorio:false },
+    { id:'comentario', tipo:'TEXTO', label:'Comentário livre', obrigatorio:false },
+  ];
+}
+
+function qRenderPerguntas() {
+  const container = document.getElementById('cp-q-perguntas');
+  if (!container) return;
+  container.innerHTML = _qPerguntas.map((p, i) => `
+    <div style="border:1.5px solid #E4E4E4;border-radius:8px;padding:12px 14px;background:#fff;display:flex;gap:10px;align-items:flex-start">
+      <div style="flex:1">
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap">
+          <span style="background:#F4F4F4;border-radius:5px;padding:2px 7px;font-size:10.5px;font-weight:700;color:#545252">${p.tipo||'TEXTO'}</span>
+          ${p.obrigatorio ? '<span style="background:#FDECEC;color:#A80502;border-radius:5px;padding:2px 7px;font-size:10.5px;font-weight:700">OBRIGATÓRIO</span>' : ''}
+        </div>
+        <input value="${p.label||''}" oninput="_qPerguntas[${i}].label=this.value" style="width:100%;border:1px solid #D6D6D6;border-radius:6px;padding:7px 9px;font-size:13px;font-family:inherit">
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        ${i > 0 ? `<button onclick="qMoverPergunta(${i},-1)" title="Subir" style="border:1px solid #D6D6D6;background:#fff;border-radius:5px;width:28px;height:28px;cursor:pointer;font-size:14px">↑</button>` : '<div style="width:28px;height:28px"></div>'}
+        ${i < _qPerguntas.length-1 ? `<button onclick="qMoverPergunta(${i},1)" title="Descer" style="border:1px solid #D6D6D6;background:#fff;border-radius:5px;width:28px;height:28px;cursor:pointer;font-size:14px">↓</button>` : '<div style="width:28px;height:28px"></div>'}
+        <button onclick="qRemoverPergunta(${i})" title="Remover" style="border:1px solid #D6D6D6;background:#fff;border-radius:5px;width:28px;height:28px;cursor:pointer;color:#A80502;font-size:14px">×</button>
+      </div>
+    </div>`).join('');
+}
+
+function qAddPergunta() {
+  _qPerguntas.push({ id: 'p' + Date.now(), tipo: 'TEXTO', label: 'Nova pergunta', obrigatorio: false });
+  qRenderPerguntas();
+}
+
+function qMoverPergunta(i, dir) {
+  const j = i + dir;
+  if (j < 0 || j >= _qPerguntas.length) return;
+  [_qPerguntas[i], _qPerguntas[j]] = [_qPerguntas[j], _qPerguntas[i]];
+  qRenderPerguntas();
+}
+
+function qRemoverPergunta(i) {
+  _qPerguntas.splice(i, 1);
+  qRenderPerguntas();
+}
+
+function qEditorPreview() {
+  window.open('/pesquisa/chiacchio', '_blank');
+}
+
+async function qEditorSalvar(acao) {
+  try {
+    const r = await _apiFetch('/api/pesquisas/questionario', 8000, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ perguntas: _qPerguntas, acao })
+    });
+    if (r.sucesso) { alert(acao === 'PUBLICADA' ? 'Questionário publicado!' : 'Rascunho salvo!'); qEditorCarregar(); }
+    else alert('Erro: ' + (r.erro || 'desconhecido'));
+  } catch(e) { alert('Erro ao salvar questionário.'); }
+}
+
+// ── Tokens / Envio ─────────────────────────────────────────
+let _ntLink = '';
+
+async function ntGerarLink() {
+  const empresa = document.getElementById('nt-empresa').value;
+  const nome = document.getElementById('nt-nome').value.trim();
+  const dias = document.getElementById('nt-dias').value || 30;
+  try {
+    const r = await _apiFetch('/api/pesquisas/tokens/gerar', 8000, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ empresa, nome_cliente: nome, dias_validade: Number(dias) })
+    });
+    if (r.sucesso) {
+      _ntLink = r.link;
+      document.getElementById('nt-link-url').textContent = r.link;
+      document.getElementById('nt-link-result').style.display = '';
+      cpCarregarTokens();
+    } else { alert('Erro: ' + (r.erro || 'desconhecido')); }
+  } catch(e) { alert('Erro ao gerar link.'); }
+}
+
+function ntCopiarLink() {
+  navigator.clipboard.writeText(_ntLink).then(() => alert('Link copiado!')).catch(() => { prompt('Copie o link:', _ntLink); });
+}
+
+function ntCopiarFixo(empresa) {
+  const link = location.origin + '/pesquisa/' + empresa;
+  navigator.clipboard.writeText(link).then(() => alert('Link copiado!')).catch(() => { prompt('Copie o link:', link); });
+}
+
+async function cpCarregarTokens() {
+  const el = document.getElementById('cp-tokens-lista');
+  if (!el) return;
+  try {
+    const d = await _apiFetch('/api/pesquisas/tokens', 10000);
+    const itens = (d.itens || []).slice(0, 50).sort((a,b) => new Date(b.CRIADO_EM||0) - new Date(a.CRIADO_EM||0));
+    if (!itens.length) { el.innerHTML = '<div style="color:#666464;text-align:center;padding:16px">Nenhum link gerado ainda.</div>'; return; }
+    const stCor = { ENVIADO:'#E6EEF8;color:#24508F', ABERTO:'#FBF0D9;color:#7A4C00', RESPONDIDO:'#E6F2EA;color:#1E6B3A', EXPIRADO:'#F4F4F4;color:#545252' };
+    el.innerHTML = '<table style="border-collapse:collapse;width:100%;font-size:12px">'
+      + '<thead><tr style="background:#FAFAFA"><th class="ps-th">EMPRESA</th><th class="ps-th">CLIENTE</th><th class="ps-th">STATUS</th><th class="ps-th">CRIADO</th><th class="ps-th">EXPIRA</th><th class="ps-th">LINK</th></tr></thead>'
+      + '<tbody>' + itens.map(t => {
+        const st = t.expirado && t.STATUS !== 'RESPONDIDO' ? 'EXPIRADO' : (t.STATUS||'ENVIADO');
+        const [bg,fg] = (stCor[st]||'#F4F4F4;color:#545252').split(';color:');
+        return `<tr class="ps-tr">
+          <td class="ps-td">${t.EMPRESA||'—'}</td>
+          <td class="ps-td">${t.NOME_CLIENTE||'—'}</td>
+          <td class="ps-td"><span style="background:${bg};color:${fg};padding:2px 6px;border-radius:4px;font-size:10.5px;font-weight:700">${st}</span></td>
+          <td class="ps-td">${t.CRIADO_EM ? new Date(t.CRIADO_EM).toLocaleDateString('pt-BR') : '—'}</td>
+          <td class="ps-td">${t.EXPIRA_EM ? new Date(t.EXPIRA_EM).toLocaleDateString('pt-BR') : '—'}</td>
+          <td class="ps-td">${st !== 'RESPONDIDO' && !t.expirado ? `<button onclick="navigator.clipboard.writeText('${t.link||''}').then(()=>alert('Copiado!')).catch(()=>prompt('Link:','${t.link||''}'))" style="border:1px solid #D6D6D6;background:#fff;border-radius:5px;padding:3px 8px;font-size:11px;cursor:pointer;font-family:inherit">Copiar</button>` : '—'}</td>
+        </tr>`;
+      }).join('') + '</tbody></table>';
+  } catch(e) {
+    el.innerHTML = '<div style="color:#A80502;padding:12px">Erro ao carregar tokens.</div>';
+  }
+}
+
+// Intercept cpTab to load data for new panels
+const _cpTabOrig = typeof cpTab === 'function' ? cpTab : null;
 
 // ── Sugestões de Melhoria ──────────────────────────────────
 async function loadSugestoesMelhoria() {

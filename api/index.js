@@ -1390,7 +1390,8 @@ app.post('/api/devolutivas/:idDev/decisao', requerPerfil('MASTER','ANALISTA SAC'
   try {
     const { decisao, textoAprovado, motivo } = req.body;
     if (!['APROVADA','EDITADA','REJEITADA'].includes(decisao)) return res.status(400).json({ sucesso:false, erro:'Decisão inválida.' });
-    const devExist = await devolutivaEngine.buscarDevolutivaPorId(req.params.idDev).catch(()=>null);
+    const _devRows = await lerAba('DEVOLUTIVAS', 2000).catch(()=>[]);
+    const devExist = _devRows.find(r => r.ID_DEVOLUTIVA === req.params.idDev);
     if (devExist && !pertenceEmpresa(req.user?.empresa, devExist.EMPRESA||devExist.EMPRESA_RECLAMADA||'')) {
       return res.status(403).json({ sucesso:false, erro:'Acesso não autorizado para esta devolutiva.' });
     }
@@ -2850,6 +2851,389 @@ app.post('/api/pesquisas/resposta-publica', async (req, res) => {
     res.status(500).json({ sucesso: false, erro: erroSeguro(e) });
   }
 });
+
+// ============================================================
+// MÓDULO: PESQUISA DE SATISFAÇÃO — TOKENS + OCP + QUESTIONÁRIO
+// ============================================================
+
+// Helper: gera token único alfanumérico
+function _gerarTokenPesquisa() {
+  return require('crypto').randomBytes(18).toString('base64url').slice(0,24);
+}
+
+// Helper: verifica se token expirou
+function _tokenExpirado(row) {
+  if (!row.EXPIRA_EM) return false;
+  return new Date(row.EXPIRA_EM) < new Date();
+}
+
+// Helper: empresa canônica para display
+function _empresaDisplay(cod) {
+  const m = { CHIACCHIO:'Chiacchio Embalagens', PLASCHIO:'Plaschio', TUBAHIA:'Tubahia', MASTER:'Grupo Chiacchio' };
+  return m[empresaCanonica(cod||'')] || cod || '';
+}
+
+// Gerar token de pesquisa (individual ou geral/empresa)
+app.post('/api/pesquisas/tokens/gerar', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req, res) => {
+  try {
+    const { empresa, nome_cliente, id_manifestacao, dias_validade = 30 } = req.body || {};
+    if (!empresa) return res.status(400).json({ sucesso: false, erro: 'empresa obrigatório.' });
+    const _pf = perfilCanonico(req.user?.perfil||'');
+    if (_pf !== 'MASTER' && !pertenceEmpresa(req.user?.empresa, empresa)) {
+      return res.status(403).json({ sucesso: false, erro: 'Acesso não autorizado.' });
+    }
+    // Verificar reenvio: se já respondeu nos últimos 90 dias não reenvia
+    if (nome_cliente && id_manifestacao) {
+      const tokens = await lerAba('PESQUISA_TOKENS', 2000).catch(()=>[]);
+      const noventa = new Date(); noventa.setDate(noventa.getDate()-90);
+      const recent = tokens.find(t => t.ID_MANIFESTACAO === id_manifestacao && t.STATUS === 'RESPONDIDO' && new Date(t.DATA_RESPOSTA||0) > noventa);
+      if (recent) return res.status(409).json({ sucesso: false, erro: 'Cliente já respondeu nos últimos 90 dias.', token: recent.TOKEN });
+    }
+    await garantirAbaComCabecalhos('PESQUISA_TOKENS', ['TOKEN','EMPRESA','NOME_CLIENTE','EMAIL_CLIENTE','ID_MANIFESTACAO','STATUS','CRIADO_EM','EXPIRA_EM','DATA_ABERTURA','DATA_RESPOSTA','CRIADO_POR']);
+    const token = _gerarTokenPesquisa();
+    const expira = new Date(); expira.setDate(expira.getDate() + Number(dias_validade));
+    await appendObjeto('PESQUISA_TOKENS', {
+      TOKEN: token, EMPRESA: empresa, NOME_CLIENTE: nome_cliente||'', EMAIL_CLIENTE: req.body.email_cliente||'',
+      ID_MANIFESTACAO: id_manifestacao||'', STATUS: 'ENVIADO',
+      CRIADO_EM: new Date().toISOString(), EXPIRA_EM: expira.toISOString(),
+      DATA_ABERTURA: '', DATA_RESPOSTA: '', CRIADO_POR: req.user?.usuario||'',
+    });
+    invalidarCacheAba('PESQUISA_TOKENS');
+    const link = `${req.protocol}://${req.get('host')}/pesquisa/${token}`;
+    res.json({ sucesso: true, token, link, expira: expira.toISOString() });
+  } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e,'gerar-token-pesquisa') }); }
+});
+
+// Listar tokens de pesquisa
+app.get('/api/pesquisas/tokens', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req, res) => {
+  try {
+    await garantirAbaComCabecalhos('PESQUISA_TOKENS', ['TOKEN','EMPRESA','NOME_CLIENTE','EMAIL_CLIENTE','ID_MANIFESTACAO','STATUS','CRIADO_EM','EXPIRA_EM','DATA_ABERTURA','DATA_RESPOSTA','CRIADO_POR']);
+    const rows = await lerAba('PESQUISA_TOKENS', 2000);
+    const _pf = perfilCanonico(req.user?.perfil||'');
+    const scope = _pf === 'MASTER' ? null : (req.user?.empresa||null);
+    const host = `${req.protocol}://${req.get('host')}`;
+    const itens = rows
+      .filter(r => !scope || pertenceEmpresa(scope, r.EMPRESA||''))
+      .map(r => ({ ...r, link: `${host}/pesquisa/${r.TOKEN}`, expirado: _tokenExpirado(r) }));
+    res.json({ sucesso: true, total: itens.length, itens });
+  } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e,'listar-tokens') }); }
+});
+
+// Marcar token como aberto (frontend público chama ao carregar)
+app.post('/api/pesquisas/tokens/:token/abrir', async (req, res) => {
+  try {
+    const rows = await lerAba('PESQUISA_TOKENS', 2000).catch(()=>[]);
+    const idx = rows.findIndex(r => r.TOKEN === req.params.token);
+    if (idx < 0) return res.status(404).json({ sucesso: false });
+    const row = rows[idx];
+    if (row.STATUS === 'ENVIADO') {
+      await atualizarPorID('PESQUISA_TOKENS', row.TOKEN, { STATUS: 'ABERTO', DATA_ABERTURA: new Date().toISOString() }, ['TOKEN']);
+      invalidarCacheAba('PESQUISA_TOKENS');
+    }
+    res.json({ sucesso: true });
+  } catch(e) { res.json({ sucesso: false }); }
+});
+
+// Rota pública por token
+app.get('/pesquisa/:token', async (req, res) => {
+  const token = String(req.params.token||'').replace(/[^A-Za-z0-9_\-]/g,'');
+  if (token.length < 6) return res.redirect('/');
+  // Tokens curtos como 'chiacchio','plaschio','tubahia' => legado
+  if (['chiacchio','plaschio','tubahia'].includes(token.toLowerCase())) {
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    return res.send(_pesquisaPublicaHTML(token.toLowerCase()));
+  }
+  // Token longo: busca no Sheets
+  try {
+    const rows = await lerAba('PESQUISA_TOKENS', 2000).catch(()=>[]);
+    const row = rows.find(r => r.TOKEN === token);
+    if (!row) return res.status(404).send('<html><body style="font-family:sans-serif;text-align:center;padding:40px"><h2>Link inválido</h2><p>Este link de pesquisa não existe.</p></body></html>');
+    if (_tokenExpirado(row)) return res.status(410).send('<html><body style="font-family:sans-serif;text-align:center;padding:40px"><h2>Link expirado</h2><p>Este link de pesquisa expirou.</p></body></html>');
+    if (row.STATUS === 'RESPONDIDO') return res.send('<html><body style="font-family:sans-serif;text-align:center;padding:40px"><h2>Pesquisa já respondida</h2><p>Sua resposta já foi registrada. Obrigado!</p></body></html>');
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(_pesquisaTokenHTML(token, row.EMPRESA||'', row.NOME_CLIENTE||''));
+  } catch(e) {
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(_pesquisaTokenHTML(token, '', ''));
+  }
+});
+
+// Salvar resposta via token
+app.post('/api/pesquisas/resposta-token', async (req, res) => {
+  try {
+    const { token, ...body } = req.body || {};
+    if (!token) return res.status(400).json({ sucesso: false, erro: 'Token obrigatório.' });
+    const rows = await lerAba('PESQUISA_TOKENS', 2000).catch(()=>[]);
+    const idx = rows.findIndex(r => r.TOKEN === token);
+    if (idx < 0) return res.status(404).json({ sucesso: false, erro: 'Token não encontrado.' });
+    const row = rows[idx];
+    if (_tokenExpirado(row)) return res.status(410).json({ sucesso: false, erro: 'Token expirado.' });
+    if (row.STATUS === 'RESPONDIDO') return res.status(409).json({ sucesso: false, erro: 'Pesquisa já respondida.' });
+    const aba = 'PESQUISA_RESPOSTAS';
+    await garantirAbaComCabecalhos(aba, ['DATA','EMPRESA','NOME','EMPRESA_CLIENTE','NPS','QUALIDADE_PRODUTO','PRAZO_ENTREGA','ATENDIMENTO','MOTIVO_COMPRA','COMENTARIO','TOKEN','ID_MANIFESTACAO','IP']);
+    const ip = req.ip || req.headers['x-forwarded-for'] || '';
+    await appendObjeto(aba, {
+      DATA: new Date().toISOString(), EMPRESA: row.EMPRESA||body.empresa||'',
+      NOME: body.nome || row.NOME_CLIENTE || '',
+      EMPRESA_CLIENTE: body.empresa_cliente || '',
+      NPS: body.nps || '', QUALIDADE_PRODUTO: body.qualidade_produto || '',
+      PRAZO_ENTREGA: body.prazo_entrega || '', ATENDIMENTO: body.atendimento || '',
+      MOTIVO_COMPRA: body.motivo_compra || '', COMENTARIO: body.comentario || '',
+      TOKEN: token, ID_MANIFESTACAO: row.ID_MANIFESTACAO || '', IP: ip,
+    });
+    invalidarCacheAba(aba);
+    await atualizarPorID('PESQUISA_TOKENS', token, { STATUS: 'RESPONDIDO', DATA_RESPOSTA: new Date().toISOString() }, ['TOKEN']);
+    invalidarCacheAba('PESQUISA_TOKENS');
+    // Auto-flagging: nota NPS ou qualquer critério ≤ 6
+    const NOTA_CRITICA = Number(process.env.PESQUISA_NOTA_CRITICA || 6);
+    const notas = [body.nps, body.qualidade_produto, body.prazo_entrega, body.atendimento].map(n=>Number(n||0)).filter(n=>n>0);
+    const baixa = notas.some(n => n <= NOTA_CRITICA);
+    if (baixa) {
+      await garantirAbaComCabecalhos('PESQUISA_OCORRENCIAS', ['ID_OCP','TOKEN','EMPRESA','DATA','NPS','STATUS','DECISAO','JUSTIFICATIVA','ID_MANIFESTACAO_GERADA','ANALISTA','DATA_DECISAO']);
+      const idOcp = 'OCP-' + Date.now();
+      await appendObjeto('PESQUISA_OCORRENCIAS', {
+        ID_OCP: idOcp, TOKEN: token, EMPRESA: row.EMPRESA||'',
+        DATA: new Date().toISOString(), NPS: body.nps||'',
+        STATUS: 'PENDENTE', DECISAO: '', JUSTIFICATIVA: '',
+        ID_MANIFESTACAO_GERADA: '', ANALISTA: '', DATA_DECISAO: '',
+      });
+      invalidarCacheAba('PESQUISA_OCORRENCIAS');
+    }
+    res.json({ sucesso: true, flagrada: baixa });
+  } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e,'resposta-token') }); }
+});
+
+// Listar OCPs (Ocorrências de Pesquisa)
+app.get('/api/pesquisas/ocorrencias', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','GESTOR SAC'), async (req, res) => {
+  try {
+    await garantirAbaComCabecalhos('PESQUISA_OCORRENCIAS', ['ID_OCP','TOKEN','EMPRESA','DATA','NPS','STATUS','DECISAO','JUSTIFICATIVA','ID_MANIFESTACAO_GERADA','ANALISTA','DATA_DECISAO']);
+    const rows = await lerAba('PESQUISA_OCORRENCIAS', 2000);
+    const _pf = perfilCanonico(req.user?.perfil||'');
+    const scope = _pf === 'MASTER' ? null : (req.user?.empresa||null);
+    const itens = rows.filter(r => !scope || pertenceEmpresa(scope, r.EMPRESA||''));
+    // Juntar dados da resposta
+    const respostas = await lerAba('PESQUISA_RESPOSTAS', 2000).catch(()=>[]);
+    const enriched = itens.map(ocp => {
+      const resp = respostas.find(r => r.TOKEN === ocp.TOKEN);
+      return { ...ocp, resposta: resp || null };
+    });
+    res.json({ sucesso: true, total: enriched.length, itens: enriched });
+  } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e,'listar-ocps') }); }
+});
+
+// Registrar decisão em OCP
+app.post('/api/pesquisas/ocorrencias/:id/decisao', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req, res) => {
+  try {
+    const { decisao, justificativa } = req.body || {};
+    if (!['OCP','MANIFESTACAO','NENHUM'].includes(decisao)) return res.status(400).json({ sucesso: false, erro: 'Decisão inválida. Use OCP, MANIFESTACAO ou NENHUM.' });
+    const rows = await lerAba('PESQUISA_OCORRENCIAS', 2000);
+    const ocp = rows.find(r => r.ID_OCP === req.params.id);
+    if (!ocp) return res.status(404).json({ sucesso: false, erro: 'OCP não encontrada.' });
+    const _pf = perfilCanonico(req.user?.perfil||'');
+    if (_pf !== 'MASTER' && !pertenceEmpresa(req.user?.empresa, ocp.EMPRESA||'')) {
+      return res.status(403).json({ sucesso: false, erro: 'Acesso não autorizado.' });
+    }
+    await atualizarPorID('PESQUISA_OCORRENCIAS', ocp.ID_OCP, {
+      STATUS: 'TRATADA', DECISAO: decisao, JUSTIFICATIVA: justificativa||'',
+      ANALISTA: req.user?.usuario||'', DATA_DECISAO: new Date().toISOString(),
+    }, ['ID_OCP']);
+    invalidarCacheAba('PESQUISA_OCORRENCIAS');
+    res.json({ sucesso: true });
+  } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e,'decisao-ocp') }); }
+});
+
+// Questionário: obter versão publicada e rascunhos
+app.get('/api/pesquisas/questionario', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','GESTOR SAC'), async (req, res) => {
+  try {
+    await garantirAbaComCabecalhos('PESQUISA_QUESTIONARIO', ['ID_VERSAO','STATUS','CRIADO_EM','PUBLICADO_EM','CRIADO_POR','PERGUNTAS_JSON']);
+    const rows = await lerAba('PESQUISA_QUESTIONARIO', 100);
+    const publicada = rows.filter(r => r.STATUS === 'PUBLICADA').sort((a,b)=>new Date(b.PUBLICADO_EM||0)-new Date(a.PUBLICADO_EM||0))[0] || null;
+    const rascunho = rows.filter(r => r.STATUS === 'RASCUNHO').sort((a,b)=>new Date(b.CRIADO_EM||0)-new Date(a.CRIADO_EM||0))[0] || null;
+    const parse = (r) => r ? { ...r, perguntas: (() => { try { return JSON.parse(r.PERGUNTAS_JSON||'[]'); } catch(e) { return []; } })() } : null;
+    res.json({ sucesso: true, publicada: parse(publicada), rascunho: parse(rascunho) });
+  } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e,'get-questionario') }); }
+});
+
+// Questionário: salvar rascunho ou publicar
+app.post('/api/pesquisas/questionario', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req, res) => {
+  try {
+    const { perguntas, acao = 'RASCUNHO' } = req.body || {};
+    if (!Array.isArray(perguntas) || perguntas.length === 0) return res.status(400).json({ sucesso: false, erro: 'perguntas obrigatório.' });
+    if (!['RASCUNHO','PUBLICADA'].includes(acao)) return res.status(400).json({ sucesso: false, erro: 'acao deve ser RASCUNHO ou PUBLICADA.' });
+    await garantirAbaComCabecalhos('PESQUISA_QUESTIONARIO', ['ID_VERSAO','STATUS','CRIADO_EM','PUBLICADO_EM','CRIADO_POR','PERGUNTAS_JSON']);
+    const idVersao = 'QV-' + Date.now();
+    await appendObjeto('PESQUISA_QUESTIONARIO', {
+      ID_VERSAO: idVersao, STATUS: acao,
+      CRIADO_EM: new Date().toISOString(),
+      PUBLICADO_EM: acao === 'PUBLICADA' ? new Date().toISOString() : '',
+      CRIADO_POR: req.user?.usuario||'',
+      PERGUNTAS_JSON: JSON.stringify(perguntas),
+    });
+    invalidarCacheAba('PESQUISA_QUESTIONARIO');
+    await registrarAuditoria(req.user?.usuario||'sistema', `QUESTIONARIO_${acao}`, null, 'PESQUISA_QUESTIONARIO', null, { id: idVersao });
+    res.json({ sucesso: true, id: idVersao, status: acao });
+  } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e,'save-questionario') }); }
+});
+
+// Pesquisa HTML pública por token (página nova com campos estendidos)
+function _pesquisaTokenHTML(token, empresa, nomeCliente) {
+  const empresaDisplay = _empresaDisplay(empresa);
+  const logoMap = { CHIACCHIO:'logo-chiacchio-embalagens.svg', PLASCHIO:'logo-plaschio.svg', TUBAHIA:'logo-tubahia.svg' };
+  const cod = empresaCanonica(empresa||'');
+  const logo = logoMap[cod] ? `/assets/${logoMap[cod]}` : '';
+  return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pesquisa de Satisfação${empresaDisplay ? ' — '+empresaDisplay : ''}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#F5F5F5;color:#1F1F1F;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:24px 16px 48px}
+.card{background:#fff;border-radius:16px;box-shadow:0 2px 16px rgba(0,0,0,.09);max-width:560px;width:100%;padding:32px 28px 36px}
+.logo-wrap{text-align:center;margin-bottom:20px}
+.logo-wrap img{max-height:48px;max-width:200px}
+.co-name{font-size:13px;font-weight:600;color:#545252;text-align:center;margin-top:6px}
+h2{font-size:18px;font-weight:700;margin-bottom:6px}
+.sub{font-size:13.5px;color:#545252;margin-bottom:24px;line-height:1.5}
+.q-label{font-size:13px;font-weight:700;margin-bottom:8px;line-height:1.4}
+.q-block{margin-bottom:24px}
+.nps-row{display:flex;gap:4px;flex-wrap:wrap}
+.nps-btn{flex:1;min-width:36px;height:44px;border:2px solid #E4E4E4;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;background:#fff;transition:all .15s;font-family:inherit}
+.nps-btn.sel-bad{background:#C70602;color:#fff;border-color:#C70602}
+.nps-btn.sel-mid{background:#D9A400;color:#fff;border-color:#D9A400}
+.nps-btn.sel-ok{background:#1E6B3A;color:#fff;border-color:#1E6B3A}
+.nps-labels{display:flex;justify-content:space-between;font-size:10.5px;color:#8A8888;margin-top:4px}
+.stars-row{display:flex;gap:6px}
+.star{width:40px;height:40px;border:2px solid #E4E4E4;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;background:#fff;transition:all .15s;font-family:inherit}
+.star.sel{background:#C70602;color:#fff;border-color:#C70602}
+textarea{width:100%;border:1.5px solid #D6D6D6;border-radius:8px;padding:10px 12px;font-size:13.5px;line-height:1.5;resize:vertical;min-height:80px;font-family:inherit;color:#1F1F1F}
+.inp{width:100%;border:1.5px solid #D6D6D6;border-radius:8px;padding:10px 12px;font-size:13.5px;font-family:inherit;color:#1F1F1F}
+.motivo-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.motivo-btn{border:2px solid #E4E4E4;border-radius:8px;padding:10px 12px;cursor:pointer;background:#fff;font-size:12.5px;font-weight:600;text-align:left;font-family:inherit;transition:all .15s}
+.motivo-btn.sel{border-color:#C70602;background:#FFF8F8;color:#A80502}
+.btn-enviar{width:100%;background:#C70602;color:#fff;border:0;border-radius:10px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:8px}
+.btn-enviar:hover{background:#A80502}
+.prog-bar{width:100%;height:4px;background:#EFEFEF;border-radius:2px;margin-bottom:24px}
+.prog-fill{height:100%;background:#C70602;border-radius:2px;transition:width .3s}
+.success-icon{font-size:48px;text-align:center;margin-bottom:12px}
+.success-msg{text-align:center}
+.err{color:#A80502;font-size:12px;margin-top:4px}
+@media(max-width:480px){.card{padding:24px 18px}.motivo-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="card" id="card">
+  ${logo ? `<div class="logo-wrap"><img src="${logo}" alt="${empresaDisplay}"><div class="co-name">${empresaDisplay}</div></div>` : `<div class="logo-wrap"><div class="co-name" style="font-size:16px;font-weight:700">${empresaDisplay||'Pesquisa de Satisfação'}</div></div>`}
+  <h2>Como foi a sua experiência?</h2>
+  <p class="sub">Sua opinião é muito importante para nós. Leva menos de 2 minutos.</p>
+  <div class="prog-bar"><div class="prog-fill" id="prog" style="width:10%"></div></div>
+  <form id="form-pesquisa" onsubmit="enviar(event)">
+    <input type="hidden" id="f-token" value="${token}">
+    <input type="hidden" id="f-empresa" value="${empresa}">
+
+    <div class="q-block" id="qb-nome">
+      <div class="q-label">Seu nome ou empresa <span style="color:#8A8888;font-weight:400">(opcional)</span></div>
+      <input class="inp" id="f-nome" placeholder="Ex: João Silva / Empresa ABC" value="${nomeCliente}" oninput="progAtualiza()">
+    </div>
+
+    <div class="q-block">
+      <div class="q-label">Em uma escala de 0 a 10, qual a probabilidade de você nos recomendar a um amigo ou colega?</div>
+      <div class="nps-row" id="nps-row"></div>
+      <div class="nps-labels"><span>Muito improvável</span><span>Muito provável</span></div>
+      <div class="err" id="err-nps" style="display:none">Selecione uma nota</div>
+    </div>
+
+    <div class="q-block">
+      <div class="q-label">Qualidade dos produtos (1 a 10)</div>
+      <div class="stars-row" id="stars-qual"></div>
+      <div class="err" id="err-qual" style="display:none">Selecione uma nota</div>
+    </div>
+
+    <div class="q-block">
+      <div class="q-label">Prazo de entrega (1 a 10)</div>
+      <div class="stars-row" id="stars-prazo"></div>
+    </div>
+
+    <div class="q-block">
+      <div class="q-label">Atendimento (1 a 10)</div>
+      <div class="stars-row" id="stars-atend"></div>
+    </div>
+
+    <div class="q-block">
+      <div class="q-label">Principal motivo da compra</div>
+      <div class="motivo-grid" id="motivo-grid">
+        ${['Qualidade','Preço','Prazo de entrega','Parceria','Indicação','Outro'].map(m=>`<button type="button" class="motivo-btn" onclick="selMotivo(this,'${m}')">${m}</button>`).join('')}
+      </div>
+    </div>
+
+    <div class="q-block">
+      <div class="q-label">Comentário <span style="color:#8A8888;font-weight:400">(opcional)</span></div>
+      <textarea id="f-comentario" placeholder="Sugestões, elogios ou críticas..." oninput="progAtualiza()"></textarea>
+    </div>
+
+    <button class="btn-enviar" type="submit">Enviar pesquisa →</button>
+  </form>
+</div>
+<script>
+let npsVal = null, qualVal = null, prazoVal = null, atendVal = null, motivoVal = null;
+
+// Render NPS 0-10
+const npsRow = document.getElementById('nps-row');
+for (let i=0;i<=10;i++) {
+  const b = document.createElement('button'); b.type='button'; b.className='nps-btn'; b.textContent=i;
+  b.onclick = () => { npsVal=i; document.querySelectorAll('.nps-btn').forEach(x=>x.className='nps-btn');
+    const cls = i<=6?'sel-bad':i<=8?'sel-mid':'sel-ok'; b.className='nps-btn '+cls; progAtualiza(); };
+  npsRow.appendChild(b);
+}
+
+// Render stars 1-10
+function renderStars(id, setter) {
+  const el = document.getElementById(id);
+  for (let i=1;i<=10;i++) {
+    const b = document.createElement('button'); b.type='button'; b.className='star'; b.textContent=i;
+    b.onclick = () => { setter(i); el.querySelectorAll('.star').forEach((x,j)=>x.className='star'+(j<i?' sel':'')); progAtualiza(); };
+    el.appendChild(b);
+  }
+}
+renderStars('stars-qual', v=>qualVal=v);
+renderStars('stars-prazo', v=>prazoVal=v);
+renderStars('stars-atend', v=>atendVal=v);
+
+function selMotivo(btn, val) { motivoVal=val; document.querySelectorAll('.motivo-btn').forEach(x=>x.classList.remove('sel')); btn.classList.add('sel'); progAtualiza(); }
+
+function progAtualiza() {
+  const pcts = [npsVal!==null, qualVal!==null, prazoVal!==null, atendVal!==null, motivoVal!==null,
+    document.getElementById('f-comentario').value.trim().length>0];
+  const done = pcts.filter(Boolean).length;
+  document.getElementById('prog').style.width = (10 + done*13) + '%';
+}
+
+// Mark as opened
+fetch('/api/pesquisas/tokens/${token}/abrir', {method:'POST'}).catch(()=>{});
+
+async function enviar(e) {
+  e.preventDefault();
+  if (npsVal===null) { document.getElementById('err-nps').style.display=''; return; }
+  if (qualVal===null) { document.getElementById('err-qual').style.display=''; return; }
+  const btn = document.querySelector('.btn-enviar'); btn.disabled=true; btn.textContent='Enviando...';
+  try {
+    const r = await fetch('/api/pesquisas/resposta-token', { method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ token: document.getElementById('f-token').value,
+        empresa: document.getElementById('f-empresa').value,
+        nome: document.getElementById('f-nome').value,
+        nps: npsVal, qualidade_produto: qualVal, prazo_entrega: prazoVal, atendimento: atendVal,
+        motivo_compra: motivoVal||'', comentario: document.getElementById('f-comentario').value }) });
+    const j = await r.json();
+    if (j.sucesso) {
+      document.getElementById('card').innerHTML = '<div class="success-icon">✓</div><div class="success-msg"><h2>Obrigado!</h2><p class="sub" style="margin-top:8px">Sua resposta foi registrada com sucesso. Valorizamos muito sua opinião.</p></div>';
+    } else { btn.disabled=false; btn.textContent='Enviar pesquisa →'; alert(j.erro||'Erro ao enviar.'); }
+  } catch(ex) { btn.disabled=false; btn.textContent='Enviar pesquisa →'; alert('Erro de conexão. Tente novamente.'); }
+}
+</script>
+</body>
+</html>`;
+}
 
 app.get('/api/tipos', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
   try { const data=await lerAba('TIPOS_RECLAMACAO',200).catch(()=>[]); res.json({sucesso:true,total:data.length,itens:data}); }
