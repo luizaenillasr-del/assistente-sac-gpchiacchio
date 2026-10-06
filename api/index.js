@@ -2984,98 +2984,233 @@ section p{font-size:13px;color:#3A3A3A;line-height:1.65;margin-top:6px}
 // ===== ROTA PÚBLICA: PESQUISA DE SATISFAÇÃO =====
 const _pesquisaPublicaHTML = (empresa) => {
   const titulo = empresa === 'chiacchio' ? 'Chiacchio Embalagens' : empresa === 'plaschio' ? 'Plaschio' : (empresa === 'tubahia' || empresa === 'cesbap') ? 'Cesbap' : 'Grupo Chiacchio';
+  const perguntas = [
+    { id:'recomendacao', label:'Em uma escala de 0 a 10, o quanto você nos recomendaria a um amigo ou colega?', tipo:'nps', obrig:true },
+    { id:'qualidade', label:'Como você avalia a qualidade dos nossos produtos?', tipo:'escala', obrig:true },
+    { id:'prazo', label:'Como você avalia o prazo de entrega?', tipo:'escala', obrig:false },
+    { id:'atendimento', label:'Como você avalia o atendimento recebido?', tipo:'escala', obrig:false },
+    { id:'motivo', label:'Qual o principal motivo da sua compra?', tipo:'multipla', opcoes:['Qualidade','Preço','Prazo de entrega','Parceria','Indicação','Outro'], obrig:false },
+    { id:'comentario', label:'Algum comentário ou sugestão? (opcional)', tipo:'texto', obrig:false },
+  ];
+  const totalEtapas = perguntas.length + 2; // +boas-vindas +confirmação
   return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Pesquisa de Satisfação · ${titulo}</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:Montserrat,system-ui,sans-serif;background:#F4F4F4;color:#1F1F1F;min-height:100vh}
-.container{max-width:560px;margin:0 auto;padding:24px 16px}
-.header{background:#fff;border-radius:12px;padding:24px;text-align:center;margin-bottom:16px;border:1px solid #E4E4E4}
-.header img{max-height:48px;margin-bottom:12px}
-.header h1{font-size:20px;font-weight:700;color:#1F1F1F}
-.header p{font-size:13px;color:#666464;margin-top:6px}
-.card{background:#fff;border-radius:12px;padding:20px;margin-bottom:12px;border:1px solid #E4E4E4}
-.card label{display:block;font-size:13px;font-weight:600;margin-bottom:12px;color:#1F1F1F}
-.notas{display:flex;gap:6px;flex-wrap:wrap}
-.nota-btn{width:40px;height:40px;border:1px solid #D6D6D6;border-radius:8px;background:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s}
-.nota-btn:hover{border-color:#C70602;color:#C70602}
-.nota-btn.ativa{background:#C70602;border-color:#C70602;color:#fff}
-textarea{width:100%;border:1px solid #D6D6D6;border-radius:8px;padding:10px;font-size:13px;font-family:Montserrat,system-ui,sans-serif;resize:vertical;min-height:80px}
-textarea:focus{border-color:#C70602;outline:none}
-.btn-enviar{width:100%;background:#C70602;color:#fff;border:none;border-radius:8px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;font-family:Montserrat,system-ui,sans-serif}
-.btn-enviar:hover{background:#A80502}
-.confirmacao{display:none;background:#E6F2EA;border:1px solid #A8D8B5;border-radius:12px;padding:24px;text-align:center}
-.confirmacao h2{color:#1E6B3A;font-size:18px;margin-bottom:8px}
-.confirmacao p{color:#1E6B3A;font-size:13px}
+html,body{min-height:100vh;font-family:Montserrat,system-ui,sans-serif}
+body{background:#C70602;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}
+.wrap{width:100%;max-width:480px;min-height:100vh;display:flex;flex-direction:column;padding:0 16px 32px}
+/* barra de progresso */
+.prog-bar{width:100%;height:4px;background:rgba(255,255,255,.3);border-radius:2px;margin:20px 0 0}
+.prog-fill{height:4px;background:#fff;border-radius:2px;transition:width .4s ease}
+/* etapas */
+.etapa{display:none;flex-direction:column;flex:1;animation:fadeUp .3s ease}
+.etapa.ativa{display:flex}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+/* boas-vindas */
+.bv-logo{margin:32px auto 0;display:block;text-align:center}
+.bv-nome{font-size:22px;font-weight:800;color:#fff;text-align:center;margin-top:12px;letter-spacing:-.3px}
+.bv-card{background:#fff;border-radius:20px;padding:28px 24px;margin-top:24px;text-align:center}
+.bv-card h1{font-size:20px;font-weight:700;color:#1F1F1F;margin-bottom:10px}
+.bv-card p{font-size:13.5px;color:#545252;line-height:1.6}
+.bv-inputs{margin-top:20px;text-align:left}
+.bv-inputs label{font-size:12px;font-weight:600;color:#545252;display:block;margin-bottom:5px;margin-top:12px}
+.bv-inputs input{width:100%;border:1.5px solid #E4E4E4;border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit;color:#1F1F1F;outline:none;transition:border .2s}
+.bv-inputs input:focus{border-color:#C70602}
+/* card de pergunta */
+.pq-card{background:#fff;border-radius:20px;padding:28px 24px;margin-top:24px;flex:1}
+.pq-num{font-size:11px;font-weight:700;color:#C70602;letter-spacing:1px;margin-bottom:8px}
+.pq-label{font-size:16px;font-weight:700;color:#1F1F1F;line-height:1.4;margin-bottom:20px}
+/* NPS 0-10 */
+.nps-grid{display:grid;grid-template-columns:repeat(11,1fr);gap:5px}
+@media(max-width:380px){.nps-grid{grid-template-columns:repeat(6,1fr)}}
+.nps-btn{aspect-ratio:1;border:2px solid #E4E4E4;border-radius:10px;background:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;color:#1F1F1F;transition:all .12s;display:flex;align-items:center;justify-content:center}
+.nps-btn:hover{border-color:#C70602;color:#C70602}
+.nps-btn.sel{background:#C70602;border-color:#C70602;color:#fff;transform:scale(1.08)}
+.nps-labels{display:flex;justify-content:space-between;margin-top:8px;font-size:11px;color:#929090;font-weight:500}
+/* escala 1-10 */
+.esc-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.esc-btn{aspect-ratio:1;border:2px solid #E4E4E4;border-radius:10px;background:#fff;font-size:18px;font-weight:700;cursor:pointer;font-family:inherit;color:#1F1F1F;transition:all .12s;display:flex;align-items:center;justify-content:center}
+.esc-btn:hover{border-color:#C70602;color:#C70602}
+.esc-btn.sel{background:#C70602;border-color:#C70602;color:#fff;transform:scale(1.08)}
+.esc-labels{display:flex;justify-content:space-between;margin-top:8px;font-size:11px;color:#929090;font-weight:500}
+/* múltipla escolha */
+.mult-opts{display:flex;flex-direction:column;gap:8px}
+.mult-opt{border:2px solid #E4E4E4;border-radius:10px;padding:12px 14px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;color:#1F1F1F;background:#fff;text-align:left;transition:all .12s}
+.mult-opt:hover{border-color:#C70602;color:#C70602}
+.mult-opt.sel{border-color:#C70602;background:#FFF0F0;color:#C70602}
+/* textarea */
+.pq-textarea{width:100%;border:1.5px solid #E4E4E4;border-radius:10px;padding:12px 14px;font-size:14px;font-family:inherit;resize:vertical;min-height:100px;color:#1F1F1F;outline:none;transition:border .2s;line-height:1.5}
+.pq-textarea:focus{border-color:#C70602}
+/* obrigatório aviso */
+.aviso-obrig{font-size:12px;color:#C70602;font-weight:600;display:none;margin-top:8px}
+/* botões de navegação */
+.nav{display:flex;gap:10px;margin-top:20px}
+.btn-prox{flex:1;background:#C70602;color:#fff;border:none;border-radius:12px;padding:15px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;letter-spacing:.2px;transition:background .15s}
+.btn-prox:hover{background:#A80502}
+.btn-prox:disabled{background:#E4A4A4;cursor:not-allowed}
+.btn-vol{background:rgba(255,255,255,.25);color:#fff;border:2px solid rgba(255,255,255,.5);border-radius:12px;padding:14px 18px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s}
+.btn-vol:hover{background:rgba(255,255,255,.35)}
+/* confirmação */
+.conf-card{background:#fff;border-radius:20px;padding:36px 24px;margin-top:32px;text-align:center}
+.conf-icon{font-size:48px;margin-bottom:16px}
+.conf-card h2{font-size:20px;font-weight:800;color:#1F1F1F;margin-bottom:10px}
+.conf-card p{font-size:14px;color:#545252;line-height:1.6}
+/* nota selecionada grande */
+.nota-selecionada{text-align:center;margin-top:16px;font-size:64px;font-weight:800;color:#C70602;min-height:80px;transition:opacity .2s}
 </style>
 </head>
 <body>
-<div class="container">
-  <div class="header">
-    <div style="font-size:24px;font-weight:700;color:#C70602;margin-bottom:8px">${titulo}</div>
-    <h1>Pesquisa de Satisfação</h1>
-    <p>Sua opinião é muito importante para nós. Leva menos de 2 minutos.</p>
-  </div>
-  <form id="form-pesquisa" onsubmit="enviarPesquisa(event)">
-    <div class="card">
-      <label>Seu nome (opcional)</label>
-      <input type="text" id="pq-nome" name="nome" placeholder="Nome completo" style="width:100%;border:1px solid #D6D6D6;border-radius:8px;padding:10px;font-size:13px;font-family:inherit;margin-bottom:12px">
-      <label>Empresa</label>
-      <input type="text" id="pq-empresa-cliente" name="empresa_cliente" placeholder="Nome da sua empresa" style="width:100%;border:1px solid #D6D6D6;border-radius:8px;padding:10px;font-size:13px;font-family:inherit">
+<div class="wrap">
+
+  <!-- Barra de progresso -->
+  <div class="prog-bar"><div class="prog-fill" id="prog" style="width:0%"></div></div>
+
+  <!-- ETAPA 0: Boas-vindas -->
+  <div class="etapa ativa" id="et-0">
+    <div class="bv-logo">
+      <svg width="56" height="56" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="56" height="56" rx="14" fill="white" fill-opacity="0.2"/>
+        <text x="28" y="38" text-anchor="middle" font-family="Montserrat,Arial" font-weight="800" font-size="22" fill="white">${titulo.slice(0,2).toUpperCase()}</text>
+      </svg>
     </div>
-    ${['Atendimento','Prazo de entrega','Qualidade do produto','Recomendaria a empresa'].map((q,i)=>`
-    <div class="card">
-      <label>${q}</label>
-      <div class="notas" data-campo="${q.toLowerCase().replace(/[^a-z]/g,'_')}">
-        ${[1,2,3,4,5,6,7,8,9,10].map(n=>`<button type="button" class="nota-btn" data-nota="${n}" onclick="selecionarNota(this)">${n}</button>`).join('')}
+    <div class="bv-nome">${titulo}</div>
+    <div class="bv-card">
+      <h1>Pesquisa de Satisfação</h1>
+      <p>Sua opinião é fundamental para continuarmos melhorando nossos produtos e atendimento. Leva menos de 2 minutos.</p>
+      <div class="bv-inputs">
+        <label>Seu nome <span style="color:#929090;font-weight:400">(opcional)</span></label>
+        <input type="text" id="pq-nome" placeholder="João Silva" autocomplete="name">
+        <label>Sua empresa <span style="color:#929090;font-weight:400">(opcional)</span></label>
+        <input type="text" id="pq-empresa-cliente" placeholder="Empresa ABC" autocomplete="organization">
       </div>
-    </div>`).join('')}
-    <div class="card">
-      <label>Comentário (opcional)</label>
-      <textarea id="pq-comentario" name="comentario" placeholder="O que podemos melhorar? O que foi especialmente bom?"></textarea>
     </div>
-    <button type="submit" class="btn-enviar">Enviar pesquisa</button>
-  </form>
-  <div class="confirmacao" id="confirmacao">
-    <h2>Obrigado pelo seu feedback!</h2>
-    <p>Sua resposta foi registrada com sucesso. Ela nos ajuda a melhorar continuamente.</p>
+    <div class="nav"><button class="btn-prox" onclick="irPara(1)">Começar →</button></div>
   </div>
+
+  <!-- ETAPAS DAS PERGUNTAS (geradas pelo JS) -->
+  ${perguntas.map((p,i)=>`<div class="etapa" id="et-${i+1}">
+    <div class="pq-card">
+      <div class="pq-num">PERGUNTA ${i+1} DE ${perguntas.length}</div>
+      <div class="pq-label">${p.label}</div>
+      ${p.tipo==='nps'?`
+        <div class="nps-grid" id="grid-${p.id}">
+          ${[0,1,2,3,4,5,6,7,8,9,10].map(n=>`<button type="button" class="nps-btn" data-v="${n}" onclick="sel('${p.id}',${n},this)">${n}</button>`).join('')}
+        </div>
+        <div class="nps-labels"><span>Nada provável</span><span>Muito provável</span></div>
+        <div class="nota-selecionada" id="big-${p.id}" style="opacity:0">—</div>
+      `:p.tipo==='escala'?`
+        <div class="esc-grid" id="grid-${p.id}">
+          ${[1,2,3,4,5,6,7,8,9,10].map(n=>`<button type="button" class="esc-btn" data-v="${n}" onclick="sel('${p.id}',${n},this)">${n}</button>`).join('')}
+        </div>
+        <div class="esc-labels"><span>Muito ruim</span><span>Excelente</span></div>
+        <div class="nota-selecionada" id="big-${p.id}" style="opacity:0">—</div>
+      `:p.tipo==='multipla'?`
+        <div class="mult-opts" id="grid-${p.id}">
+          ${p.opcoes.map(o=>`<button type="button" class="mult-opt" data-v="${o}" onclick="selMult('${p.id}',this)">${o}</button>`).join('')}
+        </div>
+      `:`
+        <textarea class="pq-textarea" id="txt-${p.id}" placeholder="Digite aqui…"></textarea>
+      `}
+      <div class="aviso-obrig" id="aviso-${p.id}">Por favor, responda esta pergunta para continuar.</div>
+    </div>
+    <div class="nav">
+      ${i>0?`<button class="btn-vol" onclick="irPara(${i})">←</button>`:''}
+      <button class="btn-prox" id="btn-${i+1}" onclick="avancar(${i+1},${perguntas.length},'${p.id}',${p.obrig},'${p.tipo}')">${i===perguntas.length-1?'Enviar pesquisa ✓':'Próxima →'}</button>
+    </div>
+  </div>`).join('')}
+
+  <!-- ETAPA FINAL: Confirmação -->
+  <div class="etapa" id="et-${perguntas.length+1}">
+    <div class="conf-card">
+      <div class="conf-icon">✅</div>
+      <h2>Obrigado pelo seu feedback!</h2>
+      <p>Sua resposta foi registrada com sucesso. Ela nos ajuda a melhorar continuamente os nossos produtos e atendimento.</p>
+      <div style="margin-top:20px;padding:14px;background:#F4F4F4;border-radius:10px;font-size:12.5px;color:#666464;line-height:1.5">
+        Este formulário é da <strong>${titulo}</strong>. Suas informações são tratadas com sigilo.
+      </div>
+    </div>
+  </div>
+
 </div>
 <script>
-function selecionarNota(btn){
-  const grupo=btn.closest('[data-campo]');
-  grupo.querySelectorAll('.nota-btn').forEach(b=>b.classList.remove('ativa'));
-  btn.classList.add('ativa');
+const _totalEtapas=${totalEtapas};
+const _respostas={};
+let _etapaAtual=0;
+
+function irPara(n){
+  document.querySelector('.etapa.ativa').classList.remove('ativa');
+  const nova=document.getElementById('et-'+n);
+  if(nova){nova.classList.add('ativa');_etapaAtual=n;}
+  const pct=Math.round(n/(_totalEtapas-1)*100);
+  document.getElementById('prog').style.width=pct+'%';
+  window.scrollTo({top:0,behavior:'smooth'});
 }
-async function enviarPesquisa(e){
-  e.preventDefault();
-  const btn=document.querySelector('.btn-enviar');
-  btn.disabled=true;btn.textContent='Enviando...';
+
+function sel(id,val,btn){
+  const grid=document.getElementById('grid-'+id);
+  grid.querySelectorAll('button').forEach(b=>b.classList.remove('sel'));
+  btn.classList.add('sel');
+  _respostas[id]=val;
+  const big=document.getElementById('big-'+id);
+  if(big){big.textContent=val;big.style.opacity='1';}
+  const av=document.getElementById('aviso-'+id);
+  if(av)av.style.display='none';
+}
+
+function selMult(id,btn){
+  const grid=document.getElementById('grid-'+id);
+  grid.querySelectorAll('button').forEach(b=>b.classList.remove('sel'));
+  btn.classList.add('sel');
+  _respostas[id]=btn.dataset.v;
+  const av=document.getElementById('aviso-'+id);
+  if(av)av.style.display='none';
+}
+
+function avancar(etapa,total,pid,obrig,tipo){
+  if(tipo==='texto'){
+    const t=document.getElementById('txt-'+pid);
+    _respostas[pid]=t?t.value.trim():'';
+  }
+  if(obrig&&(_respostas[pid]===undefined||_respostas[pid]==='')&&tipo!=='texto'){
+    const av=document.getElementById('aviso-'+pid);
+    if(av)av.style.display='block';
+    return;
+  }
+  if(etapa>=total){
+    enviar();
+  } else {
+    irPara(etapa+1);
+  }
+}
+
+async function enviar(){
+  const btn=document.getElementById('btn-'+${perguntas.length});
+  if(btn){btn.disabled=true;btn.textContent='Enviando...';}
   const dados={
     empresa:'${titulo}',
-    nome:document.getElementById('pq-nome').value,
-    empresa_cliente:document.getElementById('pq-empresa-cliente').value,
-    comentario:document.getElementById('pq-comentario').value,
+    nome:document.getElementById('pq-nome').value||'',
+    empresa_cliente:document.getElementById('pq-empresa-cliente').value||'',
+    recomendaria_a_empresa:_respostas.recomendacao??'',
+    qualidade_do_produto:_respostas.qualidade??'',
+    prazo_de_entrega:_respostas.prazo??'',
+    atendimento:_respostas.atendimento??'',
+    motivo:_respostas.motivo??'',
+    comentario:_respostas.comentario??'',
     data:new Date().toISOString()
   };
-  document.querySelectorAll('[data-campo]').forEach(g=>{
-    const ativa=g.querySelector('.nota-btn.ativa');
-    dados[g.dataset.campo]=ativa?ativa.dataset.nota:'';
-  });
   try{
     await fetch('/api/pesquisas/resposta-publica',{
       method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify(dados)
     });
   }catch(err){}
-  document.getElementById('form-pesquisa').style.display='none';
-  document.getElementById('confirmacao').style.display='block';
+  irPara(${perguntas.length+1});
 }
 </script>
 </body>
