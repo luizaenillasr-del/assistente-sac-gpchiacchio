@@ -6090,11 +6090,27 @@
 .rca-chip:disabled{opacity:.55;cursor:default}
 .rca-tab-btn{border:1px solid #D6D6D6;background:#fff;color:#1F1F1F;border-radius:7px;padding:7px 12px;cursor:pointer;font-size:12.5px;font-weight:600;font-family:Montserrat,system-ui,sans-serif;transition:all .12s}
 .rca-tab-btn.ativo{background:#C70602;border-color:#C70602;color:#fff}
+.rca-tab-btn:not(.ativo):hover{background:#F4F4F4}
 .rca-ev-card{display:grid;grid-template-columns:56px minmax(0,1fr) auto;gap:12px;align-items:center;border:1px solid #EFEFEF;border-radius:8px;padding:10px 12px}
 .rca-tbl-input{height:34px;border:1px solid #D6D6D6;border-radius:6px;padding:0 8px;font-size:13px;background:#fff;font-family:Montserrat,system-ui,sans-serif;width:100%}
 .rca-tbl-input:disabled{background:#FAFAFA;color:#666464}
 .rca-section-title{font-size:12px;font-weight:700;letter-spacing:.06em;color:#C70602;text-transform:uppercase}
+.rca-section-hd{background:#C70602;color:#fff;font-weight:700;font-size:12px;letter-spacing:.06em;padding:6px 12px;text-transform:uppercase}
 .rca-card{background:#fff;border:1px solid #E4E4E4;border-radius:10px;overflow:hidden}
+.rca-field-lbl{font-size:11px;color:#666464;font-weight:600;font-family:Montserrat,system-ui,sans-serif;margin-bottom:2px}
+.rca-causa-raiz{background:#FDF2F2;border-left:4px solid #C70602;border-radius:8px;padding:10px 14px;display:flex;flex-direction:column;gap:4px}
+.rca-causa-raiz .rca-section-title{color:#A80502}
+.rca-trail{display:flex;gap:2px;overflow-x:auto;padding-bottom:4px}
+.rca-trail-step{flex:1;min-width:80px;display:flex;flex-direction:column;gap:4px}
+.rca-trail-bar{height:4px;border-radius:2px;background:#E4E4E4}
+.rca-trail-bar.done{background:#1E6B3A}
+.rca-trail-bar.now{background:#C70602}
+.rca-trail-lbl{font-size:10.5px;color:#929090;white-space:nowrap;font-family:Montserrat,system-ui,sans-serif}
+.rca-trail-lbl.done{color:#3A3939}
+.rca-trail-lbl.now{color:#1F1F1F;font-weight:700}
+.rca-porq-row{display:grid;grid-template-columns:110px minmax(0,1fr);gap:12px;align-items:start;border-bottom:1px solid #EFEFEF;padding:10px 0}
+.rca-porq-row:last-child{border-bottom:none}
+.rca-porq-lbl{font-size:11.5px;font-weight:700;color:#666464;font-family:Montserrat,system-ui,sans-serif}
 @media print{body.rca-printing *{visibility:hidden!important}body.rca-printing #rca-pdf-sheet,body.rca-printing #rca-pdf-sheet *{visibility:visible!important}body.rca-printing #rca-pdf-sheet{position:absolute;left:0;top:0;border:0!important}body.rca-printing #page-rca{overflow:visible!important;height:auto!important}}
 </style>
 
