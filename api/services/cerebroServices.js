@@ -661,16 +661,30 @@ async function chamarIA(contexto) {
     return { disponivel: false, motivo: 'AI_PROVIDER não configurado — análise determinística apenas' };
   }
 
+  // C2: Sanitizar campos do usuário antes de incluir no prompt (evitar prompt injection)
+  function _sanitizarCampoPrompt(v) {
+    if (!v) return '';
+    return String(v)
+      .slice(0, 2000) // truncar campos longos
+      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '') // remover caracteres de controle
+      .replace(/Ignore (all )?previous instructions?/gi, '[CONTEÚDO FILTRADO]')
+      .replace(/You are now/gi, '[CONTEÚDO FILTRADO]')
+      .replace(/SYSTEM:/gi, '[CONTEÚDO FILTRADO]')
+      .trim();
+  }
+
+  const dadosManifestacao = {
+    descricao: _sanitizarCampoPrompt(contexto.manifestacao.descricao || contexto.manifestacao.DESCRICAO),
+    empresa: _sanitizarCampoPrompt(contexto.manifestacao.empresaReclamada || contexto.manifestacao.EMPRESA_RECLAMADA),
+    cliente: _sanitizarCampoPrompt(contexto.manifestacao.empresaReclamante || contexto.manifestacao.EMPRESA_RECLAMANTE),
+    produto: _sanitizarCampoPrompt(contexto.manifestacao.produto || contexto.manifestacao.PRODUTO),
+    tipo: _sanitizarCampoPrompt(contexto.manifestacao.tipo || contexto.manifestacao.TIPO),
+  };
+
   const prompt = `Você é o módulo de IA do Assistente SAC do Grupo Chiacchio (fabricante de embalagens e produtos plásticos). Analise a manifestação e responda SOMENTE em JSON válido, sem texto adicional.
 
 MANIFESTAÇÃO:
-${JSON.stringify({
-  descricao: contexto.manifestacao.descricao || contexto.manifestacao.DESCRICAO,
-  empresa: contexto.manifestacao.empresaReclamada || contexto.manifestacao.EMPRESA_RECLAMADA,
-  cliente: contexto.manifestacao.empresaReclamante || contexto.manifestacao.EMPRESA_RECLAMANTE,
-  produto: contexto.manifestacao.produto || contexto.manifestacao.PRODUTO,
-  tipo: contexto.manifestacao.tipo || contexto.manifestacao.TIPO,
-}, null, 2)}
+${JSON.stringify(dadosManifestacao, null, 2)}
 
 CONTEXTO DO SISTEMA:
 - Tipo identificado pelas regras: ${contexto.tipoDetectado || 'não identificado'}
