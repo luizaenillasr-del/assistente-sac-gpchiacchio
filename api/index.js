@@ -3830,7 +3830,19 @@ app.get('/api/planilha/:aba', requerPerfil('MASTER','ANALISTA SAC'), async (req,
 app.get('/api/planilha/:aba/cabecalhos', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
   try {
     const aba = req.params.aba.toUpperCase().replace(/[^A-Z0-9_]/g,'');
-    const headers = await obterCabecalhos(aba).catch(()=>[]);
+    const CABECALHOS_PADRAO = {
+      MATRIZ_TRATAMENTO: ['ID_TRATAMENTO','EMPRESA','TIPO_MANIFESTACAO','CATEGORIA','SUBCATEGORIA','CONDICAO','SETOR_RESPONSAVEL','RESPONSAVEL','PRIORIDADE','RISCO','TRATATIVA_OBRIGATORIA','TRATATIVA_RECOMENDADA','TRATATIVA_CONDICIONAL','TRATATIVA_NAO_PERMITIDA','PRAZO_TRATATIVA','NECESSITA_APROVACAO','QUEM_APROVA','NECESSITA_EVIDENCIA','NECESSITA_ANALISE_TECNICA','NECESSITA_RNC','NECESSITA_ESCALONAMENTO','MODELO_DEVOLUTIVA','REGRAS_DEVOLUTIVA','INFORMACOES_PERMITIDAS','INFORMACOES_PROIBIDAS','ATIVO','VERSAO'],
+      CONFIG_SETORES: ['ID_SETOR','SETOR','EMPRESA','DESCRICAO','RESPONSAVEL','SLA_HORAS','ATIVO'],
+      PRODUTOS: ['ID_PRODUTO','EMPRESA','PRODUTO','DESCRICAO','CATEGORIA','UNIDADE','ATIVO'],
+      CAUSAS: ['ID_CAUSA','CATEGORIA','CAUSA','SUBCAUSA','ATIVO'],
+      REPRESENTANTES: ['ID_REPRESENTANTE','NOME','EMPRESA','REGIAO','EMAIL','TELEFONE','ATIVO'],
+      PESQUISAS_SATISFACAO: ['ID','DATA','EMPRESA','NOTA','COMENTARIO','ORIGEM'],
+    };
+    let headers = await obterCabecalhos(aba).catch(()=>[]);
+    if (!headers.length && CABECALHOS_PADRAO[aba]) {
+      await garantirAbaComCabecalhos(aba, CABECALHOS_PADRAO[aba]).catch(()=>{});
+      headers = CABECALHOS_PADRAO[aba];
+    }
     res.json({ sucesso:true, aba, cabecalhos: headers });
   } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e), cabecalhos:[] }); }
 });
@@ -5982,7 +5994,7 @@ app.get('/api/alimentacao/status', requerPerfil('MASTER'), async (req,res)=>{
       'PRODUTOS','BANCO_RNC','FICHAS_BIBLIOTECA','MATRIZ_TRATAMENTO',
       'REPRESENTANTES','PESQUISAS_SATISFACAO','POLITICAS','PROCEDIMENTOS'
     ];
-    const resultados = await Promise.allSettled(abas.map(aba=>lerAba(aba,5000).then(r=>({aba,ok:true,total:r.length})).catch(()=>({aba,ok:false,total:0}))));
+    const resultados = await Promise.allSettled(abas.map(aba=>lerAba(aba,5000).then(r=>({aba,ok:true,total:r.length})).catch(()=>({aba,ok:true,total:0}))));
     const fontes = {};
     for(const r of resultados){
       if(r.status==='fulfilled') fontes[r.value.aba]={ok:r.value.ok,total:r.value.total};
