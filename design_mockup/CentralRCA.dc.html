@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F4F4F4;color:#1F1F1F;font-family:Montserrat,system-ui,sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}button{white-space:nowrap}
+a{color:#A80502}a:hover{color:#7F0401}
+*{box-sizing:border-box}
+@media print{[data-noprint]{display:none!important}body{background:#fff}[data-printonly]{display:block!important}}
+</style>
+</helmet>
+<div style="display:flex;flex-direction:column;gap:16px;font-family:Montserrat,system-ui,sans-serif;color:#1F1F1F;min-width:0">
+
+<div data-noprint style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap">
+  <div><sc-if value="{{ showHead }}"><div style="font-size:12px;color:#929090">Gestão / RNC</div></sc-if><div style="font-size:{{ hSize }};font-weight:700">Central de RCA</div><div style="font-size:13px;color:#666464;margin-top:2px">Análise digital da RNC conforme a ficha oficial RT-0001 · Relatório de Não Conformidade</div></div>
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:12.5px">
+    <span style="background:#fff;border:1px solid #E4E4E4;border-radius:99px;padding:5px 11px;white-space:nowrap">{{ modeLabel }}</span>
+    <span style="background:#fff;border:1px solid #E4E4E4;border-radius:99px;padding:5px 11px;white-space:nowrap">Escopo: {{ scope }}</span>
+  </div>
+</div>
+
+<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start">
+  <div data-noprint style="flex:1 1 250px;max-width:100%;display:flex;flex-direction:column;gap:10px">
+    <div style="font-size:12px;font-weight:600;color:#666464;letter-spacing:.04em">RNCs ATRIBUÍDAS</div>
+    <sc-for list="{{ list }}" as="r" hint-placeholder-count="3">
+      <button onClick="{{ r.go }}" style="white-space:normal;text-align:left;background:#fff;border:1px solid {{ r.bd }};border-radius:10px;padding:12px 14px;cursor:pointer;display:flex;flex-direction:column;gap:5px">
+        <div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span style="font-weight:700;font-size:13.5px;white-space:nowrap">{{ r.id }}</span><span style="padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600;white-space:nowrap;background:{{ r.st.bg }};color:{{ r.st.fg }}">{{ r.st.t }}</span></div>
+        <span style="font-size:12.5px;line-height:1.4">{{ r.prob }}</span>
+        <span style="font-size:11.5px;color:#929090">{{ r.man }} · {{ r.emp }} · v{{ r.v }}</span>
+      </button>
+    </sc-for>
+    <div style="background:#FAFAFA;border:1px dashed #CFCFCF;border-radius:10px;padding:10px 12px;font-size:12px;color:#666464;line-height:1.5">{{ scopeNote }}</div>
+    <button onClick="{{ tryOther }}" style="white-space:normal;border:0;background:none;color:#A80502;cursor:pointer;font-size:12px;text-align:left;padding:0">Testar acesso a RNC-0035 (Plaschio) pelo ID</button>
+    <sc-if value="{{ denied }}"><div style="background:#FDECEC;color:#7F0401;border-radius:8px;padding:10px 12px;font-size:12px;line-height:1.5"><strong>403 · Acesso negado.</strong> RNC-0035 pertence a Plaschio e está fora do seu escopo. Tentativa registrada na auditoria.</div></sc-if>
+  </div>
+
+  <div style="flex:999 1 560px;min-width:0;display:flex;flex-direction:column;gap:14px">
+    <div data-noprint style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 18px;display:flex;gap:16px;flex-wrap:wrap;align-items:center">
+      <div style="display:flex;flex-direction:column;gap:2px;min-width:0"><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span style="font-weight:700;font-size:17px;white-space:nowrap">{{ cur.id }}</span><span style="padding:3px 10px;border-radius:99px;font-size:12px;font-weight:700;letter-spacing:.03em;white-space:nowrap;background:{{ cur.st.bg }};color:{{ cur.st.fg }}">{{ cur.st.t }}</span><span style="font-size:12px;color:#666464">versão {{ cur.v }}</span></div><span style="font-size:12.5px;color:#545252">{{ cur.man }} · {{ cur.emp }} · {{ cur.cliente }}</span></div>
+      <div style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">
+        <sc-for list="{{ views }}" as="t"><button onClick="{{ t.go }}" style="border:1px solid {{ t.bd }};background:{{ t.bg }};color:{{ t.fg }};border-radius:7px;padding:7px 12px;cursor:pointer;font-size:12.5px;font-weight:600">{{ t.l }}</button></sc-for>
+      </div>
+    </div>
+
+    <sc-if value="{{ cur.devolvida }}"><div data-noprint style="background:#FBF0D9;color:#5E3B00;border-radius:10px;padding:12px 16px;font-size:13px;line-height:1.5"><strong>Devolvida para ajuste</strong> por {{ cur.devBy }} em {{ cur.devAt }}. Motivo: “{{ cur.devMotivo }}”. Corrija e reenvie: será criada a versão {{ cur.nextV }}, e a versão anterior fica preservada.</div></sc-if>
+    <sc-if value="{{ cur.locked }}"><div data-noprint style="background:#E6EEF8;color:#24508F;border-radius:10px;padding:12px 16px;font-size:13px;line-height:1.5">{{ cur.lockMsg }}</div></sc-if>
+    <sc-if value="{{ trail.show }}">
+      <div data-noprint style="display:flex;gap:4px;flex-wrap:wrap;font-size:11.5px;color:#666464;align-items:center"><sc-for list="{{ trail.items }}" as="x"><span style="display:flex;gap:4px;align-items:center"><span style="padding:3px 8px;border-radius:6px;background:{{ x.bg }};color:{{ x.fg }};font-weight:600;white-space:nowrap">{{ x.l }}</span>{{ x.a }}</span></sc-for></div>
+    </sc-if>
+
+<sc-if value="{{ v.ficha }}">
+    <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;overflow:hidden">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));border-bottom:2px solid #C70602">
+        <sc-for list="{{ docHead }}" as="f"><div style="padding:9px 14px;border-right:1px solid #EFEFEF;font-size:12px"><div style="font-size:10.5px;color:#929090">{{ f.l }}</div><div style="font-weight:600">{{ f.v }}</div></div></sc-for>
+      </div>
+
+      <div style="padding:14px 18px;display:flex;flex-direction:column;gap:8px;border-bottom:1px solid #EFEFEF;background:#FAFAFA;border-left:3px solid {{ razaoBc }}">
+        <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><span style="font-size:12px;font-weight:700;letter-spacing:.06em">RAZÃO DE ABERTURA DA RNC</span><span style="font-size:11.5px;color:#666464">Regra do Grupo · reclamação do SAC não gera RNC</span></div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap"><sc-for list="{{ razoes }}" as="c"><button onClick="{{ c.go }}" disabled="{{ dis }}" style="border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};border-radius:7px;padding:6px 12px;font-size:12.5px;cursor:pointer">{{ c.l }}</button></sc-for></div>
+      </div>
+      <div style="padding:16px 18px;display:flex;flex-direction:column;gap:12px;border-bottom:1px solid #EFEFEF">
+        <div style="font-size:12px;font-weight:700;letter-spacing:.06em;color:#C70602">DADOS DE ENTRADA</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px 14px">
+          <sc-for list="{{ entrada }}" as="f" hint-placeholder-count="11"><label style="display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:#545252;font-weight:600">{{ f.l }}<sc-if value="{{ f.ro }}"><div style="height:36px;border:1px solid #EFEFEF;border-radius:7px;padding:0 10px;display:flex;align-items:center;background:#FAFAFA;font-size:13px;font-weight:400;color:#1F1F1F;gap:6px;overflow:hidden;white-space:nowrap">{{ f.v }}<span style="margin-left:auto;font-size:10.5px;color:#929090">bloqueado</span></div></sc-if><sc-if value="{{ f.ed }}"><input value="{{ f.v }}" onChange="{{ f.on }}" disabled="{{ dis }}" type="{{ f.type }}" style="height:36px;border:1px solid {{ f.bc }};border-radius:7px;padding:0 10px;background:#fff;font-size:13px;font-weight:400"></sc-if></label></sc-for>
+        </div>
+      </div>
+
+      <div style="padding:16px 18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:16px;border-bottom:1px solid #EFEFEF">
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="font-size:12px;font-weight:700;letter-spacing:.06em;color:#C70602">ORIGEM DA NÃO CONFORMIDADE</div>
+          <sc-if value="{{ sacWarn }}"><div style="background:#FBF0D9;color:#5E3B00;border-radius:7px;padding:8px 10px;font-size:12px;line-height:1.45">“Avaliação SAC” consta na ficha oficial, mas pela regra vigente reclamação do SAC não gera RNC. Confirme a origem com a Qualidade.</div></sc-if>
+          <sc-for list="{{ origens }}" as="o"><button onClick="{{ o.go }}" disabled="{{ dis }}" style="white-space:normal;display:flex;gap:10px;align-items:center;border:0;background:none;padding:2px 0;cursor:pointer;text-align:left;font-size:13px"><span style="width:17px;height:17px;border-radius:4px;border:1.5px solid {{ o.bd }};background:{{ o.bg }};color:#fff;font-size:11px;display:grid;place-items:center;flex:none">{{ o.m }}</span>{{ o.l }}</button></sc-for>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
+          <sc-for list="{{ tipos }}" as="g"><div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;font-weight:700">{{ g.l }}</span><div style="display:flex;gap:6px"><sc-for list="{{ g.o }}" as="c"><button onClick="{{ c.go }}" disabled="{{ dis }}" style="border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};border-radius:7px;padding:6px 12px;font-size:12.5px;cursor:pointer">{{ c.l }}</button></sc-for></div></div></sc-for>
+        </div>
+      </div>
+
+      <div style="padding:16px 18px;display:flex;flex-direction:column;gap:8px;border-bottom:1px solid #EFEFEF">
+        <div style="font-size:12px;font-weight:700;letter-spacing:.06em;color:#C70602">DESCRIÇÃO DA NÃO CONFORMIDADE / OBSERVAÇÃO</div>
+        <textarea rows="4" value="{{ f.desc }}" onChange="{{ on.desc }}" disabled="{{ dis }}" placeholder="Descreva a não conformidade" style="border:1px solid {{ bc.desc }};border-radius:7px;padding:10px 12px;font-size:13.5px;line-height:1.55;background:#fff;resize:vertical"></textarea>
+      </div>
+
+      <div style="padding:16px 18px;display:flex;flex-direction:column;gap:10px;border-bottom:1px solid #EFEFEF">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><div style="font-size:12px;font-weight:700;letter-spacing:.06em;color:#C70602">AÇÕES DE CORREÇÃO IMEDIATA</div><sc-if value="{{ editable }}"><button onClick="{{ addImed }}" style="border:1px solid #D6D6D6;background:#fff;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:12px">+ Ação</button></sc-if></div>
+        <div style="display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) 150px 30px;gap:8px;font-size:11px;font-weight:700;color:#929090"><span>AÇÃO</span><span>RESPONSÁVEL</span><span>PRAZO</span><span></span></div>
+        <sc-for list="{{ imed }}" as="a"><div style="display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) 150px 30px;gap:8px"><input value="{{ a.acao }}" onChange="{{ a.onA }}" disabled="{{ dis }}" style="height:34px;border:1px solid #D6D6D6;border-radius:6px;padding:0 8px;font-size:13px;background:#fff"><input value="{{ a.resp }}" onChange="{{ a.onR }}" disabled="{{ dis }}" style="height:34px;border:1px solid #D6D6D6;border-radius:6px;padding:0 8px;font-size:13px;background:#fff"><input type="date" value="{{ a.prazo }}" onChange="{{ a.onP }}" disabled="{{ dis }}" style="height:34px;border:1px solid #D6D6D6;border-radius:6px;padding:0 6px;font-size:12.5px;background:#fff"><button onClick="{{ a.del }}" disabled="{{ dis }}" style="border:0;background:none;color:#A80502;cursor:pointer;font-size:16px;padding:0">×</button></div></sc-for>
+        <sc-if value="{{ noImed }}"><div style="font-size:12.5px;color:#929090">Nenhuma ação registrada.</div></sc-if>
+      </div>
+
+      <div style="padding:16px 18px;display:flex;flex-direction:column;gap:12px;border-bottom:1px solid #EFEFEF">
+        <div style="font-size:12px;font-weight:700;letter-spacing:.06em;color:#C70602">ANÁLISE DE CAUSA</div>
+        <sc-for list="{{ whys }}" as="w" hint-placeholder-count="5">
+          <div style="display:grid;grid-template-columns:110px minmax(0,1fr);gap:10px;align-items:start">
+            <div style="display:flex;flex-direction:column;gap:2px;padding-top:6px"><span style="font-size:11px;color:#929090;font-weight:600">POR QUE OCORREU</span><span style="font-size:12.5px;font-weight:700">PROBLEMA {{ w.n }}:</span></div>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <textarea rows="2" value="{{ w.v }}" onChange="{{ w.on }}" disabled="{{ dis }}" style="border:1px solid {{ w.bc }};border-radius:7px;padding:8px 10px;font-size:13px;line-height:1.5;background:#fff;resize:vertical"></textarea>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><sc-for list="{{ w.ev }}" as="e"><span style="display:flex;gap:6px;align-items:center;background:#F4F4F4;border-radius:6px;padding:3px 8px;font-size:11.5px">📎 {{ e.n }}<sc-if value="{{ e.can }}"><button onClick="{{ e.un }}" style="border:0;background:none;padding:0;color:#929090;cursor:pointer">×</button></sc-if></span></sc-for><sc-if value="{{ editable }}"><select value="" onChange="{{ w.link }}" style="height:28px;border:1px dashed #CFCFCF;border-radius:6px;padding:0 6px;background:#fff;font-size:11.5px;color:#666464"><option value="">+ Vincular evidência</option><sc-for list="{{ evOpts }}" as="o"><option value="{{ o.id }}">{{ o.n }}</option></sc-for></select></sc-if></div>
+            </div>
+          </div>
+        </sc-for>
+        <div style="display:grid;grid-template-columns:110px minmax(0,1fr);gap:10px;align-items:start;background:#FDF2F2;border-radius:8px;padding:10px">
+          <span style="font-size:12.5px;font-weight:700;color:#A80502;padding-top:6px">CAUSA RAIZ:</span>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <textarea rows="2" value="{{ f.causa }}" onChange="{{ on.causa }}" disabled="{{ dis }}" placeholder="Definida pelo RCA com base na análise. Sugestões da IA não preenchem este campo." style="border:1px solid {{ bc.causa }};border-radius:7px;padding:8px 10px;font-size:13px;line-height:1.5;background:#fff;resize:vertical"></textarea>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><sc-for list="{{ causaEv }}" as="e"><span style="display:flex;gap:6px;align-items:center;background:#fff;border-radius:6px;padding:3px 8px;font-size:11.5px">📎 {{ e.n }}<sc-if value="{{ e.can }}"><button onClick="{{ e.un }}" style="border:0;background:none;padding:0;color:#929090;cursor:pointer">×</button></sc-if></span></sc-for><sc-if value="{{ editable }}"><select value="" onChange="{{ linkCausa }}" style="height:28px;border:1px dashed #CFCFCF;border-radius:6px;padding:0 6px;background:#fff;font-size:11.5px;color:#666464"><option value="">+ Vincular evidência</option><sc-for list="{{ evOpts }}" as="o"><option value="{{ o.id }}">{{ o.n }}</option></sc-for></select></sc-if></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="padding:16px 18px;display:flex;flex-direction:column;gap:10px;border-bottom:1px solid #EFEFEF">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><div style="font-size:12px;font-weight:700;letter-spacing:.06em;color:#C70602">AÇÃO DE CORREÇÃO</div><sc-if value="{{ editable }}"><button onClick="{{ addCorr }}" style="border:1px solid #D6D6D6;background:#fff;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:12px">+ Ação</button></sc-if></div>
+        <div style="display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) 140px 140px 30px;gap:8px;font-size:11px;font-weight:700;color:#929090"><span>AÇÃO</span><span>RESPONSÁVEL</span><span>PRAZO</span><span>STATUS</span><span></span></div>
+        <sc-for list="{{ corr }}" as="a"><div style="display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) 140px 140px 30px;gap:8px"><input value="{{ a.acao }}" onChange="{{ a.onA }}" disabled="{{ dis }}" style="height:34px;border:1px solid #D6D6D6;border-radius:6px;padding:0 8px;font-size:13px;background:#fff"><input value="{{ a.resp }}" onChange="{{ a.onR }}" disabled="{{ dis }}" style="height:34px;border:1px solid #D6D6D6;border-radius:6px;padding:0 8px;font-size:13px;background:#fff"><input type="date" value="{{ a.prazo }}" onChange="{{ a.onP }}" disabled="{{ dis }}" style="height:34px;border:1px solid #D6D6D6;border-radius:6px;padding:0 6px;font-size:12.5px;background:#fff"><select value="{{ a.st }}" onChange="{{ a.onS }}" disabled="{{ dis }}" style="height:34px;border:1px solid #D6D6D6;border-radius:6px;padding:0 6px;font-size:12.5px;background:#fff"><option>Não iniciada</option><option>Em andamento</option><option>Concluída</option></select><button onClick="{{ a.del }}" disabled="{{ dis }}" style="border:0;background:none;color:#A80502;cursor:pointer;font-size:16px;padding:0">×</button></div></sc-for>
+        <sc-if value="{{ noCorr }}"><div style="font-size:12.5px;color:#929090">Nenhuma ação registrada.</div></sc-if>
+      </div>
+
+      <div style="padding:16px 18px;display:flex;flex-direction:column;gap:10px;background:{{ verBg }}">
+        <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><div style="font-size:12px;font-weight:700;letter-spacing:.06em;color:#C70602">VERIFICAÇÃO</div><span style="font-size:11.5px;color:#666464">{{ verNote }}</span></div>
+        <textarea rows="2" value="{{ f.verif }}" onChange="{{ on.verif }}" disabled="{{ verDis }}" style="border:1px solid #D6D6D6;border-radius:7px;padding:8px 10px;font-size:13px;background:#fff;resize:vertical"></textarea>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">
+          <div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;font-weight:700">VERIFICAÇÃO DA EFICÁCIA</span><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><sc-for list="{{ efic }}" as="c"><button onClick="{{ c.go }}" disabled="{{ verDis }}" style="border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};border-radius:7px;padding:6px 11px;font-size:12.5px;cursor:pointer">{{ c.l }}</button></sc-for><input type="date" value="{{ f.eficData }}" onChange="{{ on.eficData }}" disabled="{{ verDis }}" style="height:32px;border:1px solid #D6D6D6;border-radius:6px;padding:0 6px;font-size:12.5px;background:#fff"></div></div>
+          <div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;font-weight:700">NOVA NC</span><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><sc-for list="{{ novaNc }}" as="c"><button onClick="{{ c.go }}" disabled="{{ verDis }}" style="border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};border-radius:7px;padding:6px 11px;font-size:12.5px;cursor:pointer">{{ c.l }}</button></sc-for><input type="date" value="{{ f.novaData }}" onChange="{{ on.novaData }}" disabled="{{ verDis }}" style="height:32px;border:1px solid #D6D6D6;border-radius:6px;padding:0 6px;font-size:12.5px;background:#fff"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;overflow:hidden">
+      <div style="padding:14px 18px;border-bottom:1px solid #EFEFEF;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><div><div style="font-weight:700;font-size:14.5px">EVIDÊNCIAS DA ANÁLISE</div><div style="font-size:12.5px;color:#929090">Organizadas como nas páginas 3, 4 e 5 da ficha. Toda evidência exige descrição da finalidade.</div></div><span style="font-size:12px;color:#666464">{{ evCount }}</span></div>
+      <sc-for list="{{ areas }}" as="ar" hint-placeholder-count="3">
+        <div style="padding:14px 18px;border-bottom:1px solid #EFEFEF;display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span style="font-size:12px;font-weight:700;letter-spacing:.05em">{{ ar.l }}</span><sc-if value="{{ ar.can }}"><label style="border:0;background:#C70602;color:#fff;border-radius:7px;padding:7px 12px;cursor:pointer;font-size:12px;font-weight:700;white-space:nowrap">+ ANEXAR EVIDÊNCIA<input type="file" onChange="{{ ar.pick }}" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt" style="display:none"></label></sc-if></div>
+          <sc-if value="{{ ar.pending }}">
+            <div style="border:1.5px solid #C70602;border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:8px;background:#FFF8F8">
+              <div style="font-size:12.5px"><strong>{{ ar.pn }}</strong> · {{ ar.ps }}</div>
+              <input value="{{ ar.pd }}" onChange="{{ ar.onPd }}" placeholder="Descrição da evidência (obrigatória) · ex.: Registro de conferência do lote antes da expedição" style="height:36px;border:1px solid #D6D6D6;border-radius:6px;padding:0 10px;font-size:13px;background:#fff">
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span style="font-size:12px;color:#545252">Relacionada a</span><select value="{{ ar.pr }}" onChange="{{ ar.onPr }}" style="height:32px;border:1px solid #D6D6D6;border-radius:6px;padding:0 6px;font-size:12.5px;background:#fff"><sc-for list="{{ relOpts }}" as="o"><option value="{{ o }}">{{ o }}</option></sc-for></select><span style="flex:1"></span><button onClick="{{ ar.cancel }}" style="border:1px solid #D6D6D6;background:#fff;border-radius:6px;padding:6px 11px;cursor:pointer;font-size:12px">Cancelar</button><button onClick="{{ ar.confirm }}" style="border:0;background:{{ ar.cbg }};color:#fff;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:12px;font-weight:600">Confirmar anexo</button></div>
+            </div>
+          </sc-if>
+          <sc-for list="{{ ar.items }}" as="e">
+            <div style="display:grid;grid-template-columns:56px minmax(0,1fr) auto;gap:12px;align-items:center;border:1px solid #EFEFEF;border-radius:8px;padding:10px 12px">
+              <div style="width:56px;height:46px;border-radius:6px;background:#F4F4F4;display:grid;place-items:center;overflow:hidden;font-size:10.5px;font-weight:700;color:#666464">{{ e.thumb }}</div>
+              <div style="min-width:0;display:flex;flex-direction:column;gap:2px">
+                <div style="font-size:11px;color:#929090;font-weight:700">EVIDÊNCIA {{ e.num }}</div>
+                <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ e.n }}</div>
+                <div style="font-size:12.5px;color:#3A3939">{{ e.desc }}</div>
+                <div style="font-size:11.5px;color:#929090">{{ e.meta }}</div>
+              </div>
+              <div style="display:flex;gap:10px;font-size:12px;flex-wrap:wrap;justify-content:flex-end"><button onClick="{{ e.view }}" style="border:0;background:none;padding:0;color:#A80502;cursor:pointer;font-weight:600">Visualizar</button><button onClick="{{ e.dl }}" style="border:0;background:none;padding:0;cursor:pointer">Baixar</button><sc-if value="{{ e.own }}"><label style="cursor:pointer">Substituir<input type="file" onChange="{{ e.rep }}" style="display:none"></label><button onClick="{{ e.del }}" style="border:0;background:none;padding:0;cursor:pointer;color:#A80502">Excluir</button></sc-if><sc-if value="{{ e.req }}"><button onClick="{{ e.reqRm }}" style="border:0;background:none;padding:0;cursor:pointer;color:#666464">Solicitar remoção</button></sc-if></div>
+            </div>
+          </sc-for>
+          <sc-if value="{{ ar.empty }}"><div style="font-size:12.5px;color:#929090">Nenhuma evidência nesta seção.</div></sc-if>
+        </div>
+      </sc-for>
+    </div>
+
+    <sc-if value="{{ errors.show }}"><div style="background:#FDECEC;color:#7F0401;border-radius:10px;padding:12px 16px;font-size:13px;line-height:1.55"><strong>Campos obrigatórios pendentes:</strong> {{ errors.txt }}</div></sc-if>
+
+    <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;align-items:center">
+      <span style="font-size:12px;color:#929090">{{ savedTxt }}</span>
+      <sc-if value="{{ editable }}"><button onClick="{{ saveDraft }}" style="border:1px solid #1F1F1F;background:#fff;border-radius:8px;padding:10px 16px;cursor:pointer;font-weight:600;font-size:13px">SALVAR RASCUNHO</button><button onClick="{{ askSend }}" style="border:0;background:#C70602;color:#fff;border-radius:8px;padding:10px 18px;cursor:pointer;font-weight:700;font-size:13px">ENVIAR ANÁLISE DE RCA</button></sc-if>
+      <sc-if value="{{ canReview }}"><button onClick="{{ askReturn }}" style="border:1px solid #1F1F1F;background:#fff;border-radius:8px;padding:10px 16px;cursor:pointer;font-weight:600;font-size:13px">Devolver para ajuste</button><button onClick="{{ approve }}" style="border:0;background:#1F1F1F;color:#fff;border-radius:8px;padding:10px 18px;cursor:pointer;font-weight:700;font-size:13px">Aprovar análise</button></sc-if>
+      <sc-if value="{{ canClose }}"><button onClick="{{ closeRnc }}" style="border:0;background:#1F1F1F;color:#fff;border-radius:8px;padding:10px 18px;cursor:pointer;font-weight:700;font-size:13px">Registrar eficácia e encerrar RNC</button></sc-if>
+    </div>
+</sc-if>
+
+<sc-if value="{{ v.apoio }}">
+    <div style="background:#FDF2F2;border:1px solid #F3CFCF;border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;gap:8px;align-items:center"><span style="background:#C70602;color:#fff;border-radius:5px;padding:3px 8px;font-size:11px;font-weight:700;letter-spacing:.05em">SUGESTÃO DA IA</span><span style="font-size:12.5px;color:#545252">Apoio à investigação. Nada aqui preenche a ficha automaticamente; o RCA valida e decide.</span></div>
+      <sc-for list="{{ iaBlocks }}" as="b"><div style="display:flex;flex-direction:column;gap:6px"><div style="font-size:12.5px;font-weight:700">{{ b.t }}</div><sc-for list="{{ b.items }}" as="i"><div style="display:flex;gap:10px;align-items:flex-start;background:#fff;border-radius:7px;padding:8px 10px;font-size:13px;line-height:1.45"><span style="flex:1">{{ i.l }}</span><button onClick="{{ i.copy }}" style="border:0;background:none;color:#A80502;cursor:pointer;font-size:12px;padding:0">Copiar</button></div></sc-for></div></sc-for>
+    </div>
+    <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;overflow:hidden">
+      <div style="padding:14px 18px;border-bottom:1px solid #EFEFEF;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><div><div style="font-weight:700;font-size:14.5px">Cérebro · RNCs similares e eficácia</div><div style="font-size:12.5px;color:#929090">Somente leitura. Conhecimento oficial validado.</div></div><button onClick="{{ openSuggest }}" style="border:1px solid #1F1F1F;background:#fff;border-radius:7px;padding:7px 12px;cursor:pointer;font-size:12.5px;font-weight:600">SUGERIR CONHECIMENTO</button></div>
+      <sc-for list="{{ similar }}" as="s"><div style="display:grid;grid-template-columns:90px minmax(0,1fr) minmax(0,1fr) 120px;gap:12px;padding:10px 18px;border-bottom:1px solid #EFEFEF;font-size:12.5px;align-items:center"><span style="font-weight:700">{{ s.n }}</span><span><span style="color:#929090">Causa: </span>{{ s.c }}</span><span><span style="color:#929090">Ação: </span>{{ s.a }}</span><span style="justify-self:start;padding:2px 8px;border-radius:99px;font-size:11.5px;font-weight:600;white-space:nowrap;background:{{ s.e.bg }};color:{{ s.e.fg }}">{{ s.e.t }}</span></div></sc-for>
+    </div>
+</sc-if>
+
+<sc-if value="{{ v.historico }}">
+    <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;overflow:hidden">
+      <div style="padding:14px 18px;border-bottom:1px solid #EFEFEF;font-weight:700;font-size:14.5px">Versões da análise</div>
+      <sc-for list="{{ versions }}" as="x"><div style="display:grid;grid-template-columns:60px 150px minmax(0,1fr) 120px;gap:12px;padding:10px 18px;border-bottom:1px solid #EFEFEF;font-size:12.5px;align-items:center"><span style="font-weight:700">v{{ x.v }}</span><span style="color:#666464">{{ x.at }}</span><span>{{ x.l }}</span><button onClick="{{ x.view }}" style="border:0;background:none;color:#A80502;cursor:pointer;font-weight:600;font-size:12px;padding:0;text-align:right">Ver versão</button></div></sc-for>
+      <sc-if value="{{ noVersions }}"><div style="padding:14px 18px;font-size:12.5px;color:#929090">Nenhuma versão enviada ainda. A versão 1 é criada no primeiro envio.</div></sc-if>
+    </div>
+    <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;overflow-x:auto">
+      <table style="border-collapse:collapse;width:100%;min-width:820px;font-size:12.5px">
+        <thead><tr style="background:#FAFAFA"><sc-for list="{{ audCols }}" as="c"><th style="text-align:left;font-weight:600;font-size:11.5px;color:#666464;padding:9px 12px;border-bottom:1px solid #E4E4E4;white-space:nowrap">{{ c }}</th></sc-for></tr></thead>
+        <tbody><sc-for list="{{ audit }}" as="a" hint-placeholder-count="6"><tr style="border-bottom:1px solid #EFEFEF"><td style="padding:8px 12px;white-space:nowrap;font-variant-numeric:tabular-nums">{{ a.at }}</td><td style="padding:8px 12px;white-space:nowrap">{{ a.u }}</td><td style="padding:8px 12px">{{ a.emp }}</td><td style="padding:8px 12px;white-space:nowrap">{{ a.rnc }}</td><td style="padding:8px 12px"><span style="padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600;white-space:nowrap;background:#EEEEEE;color:#545252">{{ a.a }}</span></td><td style="padding:8px 12px">v{{ a.v }}</td><td style="padding:8px 12px">{{ a.d }}</td></tr></sc-for></tbody>
+      </table>
+    </div>
+</sc-if>
+<sc-if value="{{ v.pdf }}">
+  <div data-noprint style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span style="font-size:13px;color:#666464">Ficha RT-0001 preenchida · {{ cur.id }} v{{ cur.v }}</span><div style="display:flex;gap:8px"><button onClick="{{ backFicha }}" style="border:1px solid #D6D6D6;background:#fff;border-radius:7px;padding:8px 14px;cursor:pointer;font-size:13px">Voltar à ficha</button><button onClick="{{ printPdf }}" style="border:0;background:#C70602;color:#fff;border-radius:7px;padding:8px 14px;cursor:pointer;font-size:13px;font-weight:700">Baixar ficha em PDF</button></div></div>
+  <div style="background:#fff;border:1px solid #E4E4E4;max-width:860px;width:100%;margin:0 auto;padding:36px 40px;display:flex;flex-direction:column;gap:16px;font-size:11.5px">
+    <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border:1px solid #1F1F1F">
+      <div style="padding:6px 8px;border-right:1px solid #1F1F1F;grid-row:span 2;display:flex;align-items:center;gap:8px"><img src="assets/logo-chiacchio.png" alt="" style="height:38px;width:auto"></div>
+      <div style="padding:6px 8px;border-right:1px solid #1F1F1F;border-bottom:1px solid #1F1F1F"><strong>Empresa:</strong> {{ pdf.emp }}</div>
+      <div style="padding:6px 8px;border-bottom:1px solid #1F1F1F"><strong>RT-0001</strong> · Rev: 0000 · Data: 20/03/26</div>
+      <div style="padding:6px 8px;border-right:1px solid #1F1F1F"><strong>Tipo de Documento:</strong> Relatório de Não Conformidade</div>
+      <div style="padding:6px 8px;font-size:10px">Criado: Gildásio Jr – Coordenador de Qualidade/Process · Aprovado: Deibson Veloso – Diretor de Produção</div>
+    </div>
+    <sc-for list="{{ pdf.secs }}" as="sec"><div style="display:flex;flex-direction:column;gap:6px;break-inside:avoid"><div style="background:#C70602;color:#fff;font-weight:700;padding:4px 8px;font-size:11px;letter-spacing:.04em">{{ sec.t }}</div><div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px 14px"><sc-for list="{{ sec.items }}" as="f"><div style="grid-column:{{ f.span }}"><div style="font-size:9.5px;color:#666464">{{ f.l }}</div><div style="line-height:1.45;white-space:pre-wrap">{{ f.v }}</div></div></sc-for></div></div></sc-for>
+    <div style="display:flex;justify-content:space-between;border-top:1px solid #E4E4E4;padding-top:8px;font-size:9.5px;color:#929090"><span>Gerado pelo Assistente SAC em {{ pdf.at }} · {{ pdf.by }}</span><span>{{ cur.id }} · versão {{ cur.v }}</span></div>
+  </div>
+</sc-if>
+  </div>
+</div>
+
+
+
+<sc-if value="{{ modal.send }}"><div data-noprint style="position:fixed;inset:0;background:rgba(20,20,20,.45);z-index:80;display:grid;place-items:center;padding:24px"><div style="width:min(520px,100%);background:#fff;border-radius:12px;padding:22px 24px;display:flex;flex-direction:column;gap:14px"><div style="font-weight:700;font-size:17px">Enviar análise de RCA</div><div style="font-size:13.5px;line-height:1.6;color:#3A3939">Após o envio, a análise será encaminhada para continuidade do processo. Alterações posteriores poderão exigir devolução para ajuste.</div><div style="font-size:12.5px;color:#666464">Será registrada a versão {{ cur.nextV }} · {{ cur.id }} · {{ cur.emp }}</div><div style="display:flex;justify-content:flex-end;gap:8px"><button onClick="{{ closeModal }}" style="border:1px solid #D6D6D6;background:#fff;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:13px">Cancelar</button><button onClick="{{ doSend }}" style="border:0;background:#C70602;color:#fff;border-radius:8px;padding:9px 18px;cursor:pointer;font-size:13px;font-weight:700">Confirmar envio</button></div></div></div></sc-if>
+<sc-if value="{{ modal.ret }}"><div data-noprint style="position:fixed;inset:0;background:rgba(20,20,20,.45);z-index:80;display:grid;place-items:center;padding:24px"><div style="width:min(520px,100%);background:#fff;border-radius:12px;padding:22px 24px;display:flex;flex-direction:column;gap:12px"><div style="font-weight:700;font-size:17px">Devolver para ajuste</div><textarea rows="4" value="{{ retText }}" onChange="{{ onRet }}" placeholder="Motivo da devolução (obrigatório)" style="border:1px solid #D6D6D6;border-radius:8px;padding:10px 12px;font-size:13.5px;resize:vertical;background:#fff"></textarea><div style="display:flex;justify-content:flex-end;gap:8px"><button onClick="{{ closeModal }}" style="border:1px solid #D6D6D6;background:#fff;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:13px">Cancelar</button><button onClick="{{ doReturn }}" style="border:0;background:#1F1F1F;color:#fff;border-radius:8px;padding:9px 18px;cursor:pointer;font-size:13px;font-weight:700">Devolver</button></div></div></div></sc-if>
+<sc-if value="{{ modal.sug }}"><div data-noprint style="position:fixed;inset:0;background:rgba(20,20,20,.45);z-index:80;display:grid;place-items:center;padding:24px"><div style="width:min(520px,100%);background:#fff;border-radius:12px;padding:22px 24px;display:flex;flex-direction:column;gap:12px"><div style="font-weight:700;font-size:17px">Sugerir conhecimento ao Cérebro</div><div style="font-size:12.5px;color:#666464">A sugestão vai para validação. O RCA não edita o conhecimento oficial.</div><textarea rows="4" value="{{ sugText }}" onChange="{{ onSug }}" placeholder="Ex.: incluir subcausa “limite de empilhamento por rota” em Avaria" style="border:1px solid #D6D6D6;border-radius:8px;padding:10px 12px;font-size:13.5px;resize:vertical;background:#fff"></textarea><div style="display:flex;justify-content:flex-end;gap:8px"><button onClick="{{ closeModal }}" style="border:1px solid #D6D6D6;background:#fff;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:13px">Cancelar</button><button onClick="{{ doSug }}" style="border:0;background:#C70602;color:#fff;border-radius:8px;padding:9px 18px;cursor:pointer;font-size:13px;font-weight:700">Enviar sugestão</button></div></div></div></sc-if>
+<sc-if value="{{ modal.view }}"><div data-noprint style="position:fixed;inset:0;background:rgba(20,20,20,.6);z-index:80;display:grid;place-items:center;padding:24px"><div style="width:min(900px,100%);height:min(86vh,800px);background:#fff;border-radius:12px;display:flex;flex-direction:column;overflow:hidden"><div style="padding:12px 18px;border-bottom:1px solid #E4E4E4;display:flex;justify-content:space-between;align-items:center;gap:10px"><div style="min-width:0"><div style="font-weight:700;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ viewer.n }}</div><div style="font-size:12px;color:#666464">{{ viewer.desc }}</div></div><button onClick="{{ closeModal }}" style="border:0;background:none;cursor:pointer;font-size:22px;color:#666464">×</button></div><div style="flex:1;min-height:0;background:#F4F4F4;display:grid;place-items:center;overflow:auto">{{ viewer.body }}</div></div></div></sc-if>
+<sc-if value="{{ toast }}"><div data-noprint style="position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1F1F1F;color:#fff;padding:11px 16px;border-radius:8px;font-size:13px;z-index:90;max-width:90vw;white-space:normal">{{ toast }}</div></sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;perfil&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Setor&quot;,&quot;Aprovador&quot;,&quot;Administrador&quot;],&quot;default&quot;:&quot;Setor&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;usuario&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Diego Alves&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;empresa&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Chiacchio&quot;,&quot;Plaschio&quot;,&quot;Cesbap&quot;],&quot;default&quot;:&quot;Chiacchio&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;embedded&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;boolean&quot;}}">
+class Component extends DCLogic {
+  state = { db: null, sel: 'RNC-0031', view: 'ficha', modal: null, pend: {}, toast: '', retText: '', sugText: '', viewer: null, denied: false, errs: null, savedAt: '' };
+
+  componentDidMount() {
+    let db = null;
+    try { db = JSON.parse(localStorage.getItem('gc-central-rca-v2') || 'null'); } catch (e) { }
+    this.setState({ db: db || this.seed() });
+  }
+  persist(db) { try { localStorage.setItem('gc-central-rca-v2', JSON.stringify(db)); return true; } catch (e) { this.flash('Limite de armazenamento do navegador atingido; anexe arquivos menores.'); return false; } }
+  now() { const d = new Date(), p = n => String(n).padStart(2, '0'); return p(d.getDate()) + '/' + p(d.getMonth() + 1) + '/' + d.getFullYear() + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()); }
+  user() { return this.props.usuario || 'Diego Alves'; }
+  empresa() { return this.props.empresa || 'Chiacchio'; }
+  reviewer() { return ['Aprovador', 'Gestor', 'Administrador'].includes(this.props.perfil); }
+  flash(t) { this.setState({ toast: t }); clearTimeout(this._t); this._t = setTimeout(() => this.setState({ toast: '' }), 2800); }
+
+  seed() {
+    const blank = () => ({ razao: '', emitidaPor: '', recebidoPor: '', dataVerif: '', setor: '', lote: '', operador: '', produto: '', quantidade: '', origem: [], tipo: '', plano: '', proc: '', devol: '', desc: '', imed: [], why: ['', '', '', '', ''], whyEv: [[], [], [], [], []], causa: '', causaEv: [], corr: [], verif: '', efic: '', eficData: '', novaNc: '', novaData: '' });
+    const r31 = Object.assign(blank(), { razao: 'Reclamação de cliente via Comercial', emitidaPor: 'Camila Torres (Comercial)', setor: 'Logística', lote: 'L-2609', produto: 'Caixa de papelão ondulado 40x30x25', quantidade: '90 de 600 caixas', recebidoPor: 'Diego Alves', origem: ['RNC EXTERNA'], desc: 'Cliente reclamou ao Comercial que recebeu carga com caixas amassadas e embalagens danificadas. Registro criado na reclamação; procedência definida nesta avaliação.' });
+    const r30 = Object.assign(blank(), { razao: 'Auditoria externa', emitidaPor: 'Helena Prado (Qualidade)', setor: 'Expedição', lote: 'L-2588', produto: 'Bandeja PS 22x15', quantidade: '2 paletes', recebidoPor: 'Diego Alves', dataVerif: '2026-09-29', operador: 'Turno B · conferente 04', origem: ['AUDITORIA EXTERNA'], tipo: 'Real', plano: 'Sim', proc: 'Sim', devol: 'Não', desc: 'Auditoria do cliente Comércio Modelo S.A. constatou embarque com 2 paletes a menos que o indicado na NF.', imed: [{ acao: 'Reenviar os 2 paletes faltantes', resp: 'Marcos Lima', prazo: '2026-09-30' }], why: ['Os 2 paletes não foram carregados.', 'A conferência foi feita pela NF anterior.', 'A ordem de carga não foi atualizada.', '', ''], causa: 'Falha na conferência final.', corr: [{ acao: 'Incluir dupla conferência na expedição', resp: 'Marcos Lima', prazo: '2026-10-15', st: 'Não iniciada' }] });
+    const r29 = Object.assign(blank(), { razao: 'Desvio de especificação de matéria-prima', emitidaPor: 'Inspeção de recebimento (Qualidade)', setor: 'Qualidade', lote: 'L-2571', produto: 'Caixa de papelão ondulado 50x40x30', quantidade: '300 caixas', recebidoPor: 'Diego Alves', dataVerif: '2026-09-26', operador: 'Recebimento · inspetor 02', origem: ['INSPEÇÃO INTERNA'], tipo: 'Real', plano: 'Sim', proc: 'Sim', devol: 'Sim', desc: 'Inspeção de recebimento detectou papel do fornecedor Papéis Sul Ltda. com gramatura 8% abaixo da especificação.', imed: [{ acao: 'Segregar o lote L-2571 em estoque', resp: 'Diego Alves', prazo: '2026-09-26' }], why: ['As caixas cederam porque a gramatura estava 8% abaixo.', 'O lote de papel do fornecedor veio fora da especificação.', 'A inspeção de recebimento é por amostragem mensal.', 'O procedimento não prevê inspeção por lote.', 'Não havia histórico de falhas desse fornecedor.'], causa: 'Inspeção de recebimento sem verificação por lote.', corr: [{ acao: 'Inspecionar gramatura em todo lote recebido', resp: 'Diego Alves', prazo: '2026-10-05', st: 'Em andamento' }] });
+    const mk = (id, man, emp, cliente, contato, prob, status, data, extra) => Object.assign({ id, man, emp, cliente, contato, prob, status, v: 0, data, ev: [], versions: [], dev: null }, extra || {});
+    const db = { rncs: [
+      mk('RNC-0031', 'REC-COM-0012', 'Chiacchio', 'Empresa Exemplo Ltda.', 'Mariana Costa · (77) 90000-0000', 'Avaria no transporte por empilhamento', 'ATRIBUÍDA', r31),
+      mk('RNC-0030', 'AUD-EXT-0004', 'Chiacchio', 'Comércio Modelo S.A.', '[Contato] · (77) 90000-0001', 'Divergência de quantidade na carga', 'DEVOLVIDA PARA AJUSTE', r30, { v: 1, dev: { by: 'Helena Prado', at: '01/10/2026 16:20', motivo: 'Faltam as evidências do romaneio e da NF usadas na conferência. Detalhar os porquês 4 e 5.' }, versions: [{ v: 1, at: '30/09/2026 17:02', l: 'Enviada por Diego Alves', snap: r30 }, { v: 1, at: '01/10/2026 16:20', l: 'Devolvida por Helena Prado', snap: null }] }),
+      mk('RNC-0029', 'INSP-MP-0211', 'Chiacchio', 'Não se aplica · fornecedor Papéis Sul Ltda.', '[Contato do fornecedor]', 'Gramatura abaixo da especificação', 'RCA ENVIADA', r29, { v: 1, versions: [{ v: 1, at: '27/09/2026 11:40', l: 'Enviada por Diego Alves', snap: r29 }] }),
+      mk('RNC-0035', 'AUD-INT-0021', 'Plaschio', 'Não se aplica', '—', 'Selagem irregular em auditoria de BPF', 'ATRIBUÍDA', Object.assign(blank(), { razao: 'Auditoria interna' }))
+    ], audit: [
+      { at: '01/10/2026 16:20', u: 'Helena Prado', emp: 'Chiacchio', rnc: 'RNC-0030', a: 'Devolução', v: 1, d: 'Faltam evidências do romaneio e da NF' },
+      { at: '30/09/2026 17:02', u: 'Diego Alves', emp: 'Chiacchio', rnc: 'RNC-0030', a: 'Envio', v: 1, d: 'Análise de RCA enviada' },
+      { at: '27/09/2026 11:40', u: 'Diego Alves', emp: 'Chiacchio', rnc: 'RNC-0029', a: 'Envio', v: 1, d: 'Análise de RCA enviada' },
+      { at: '25/09/2026 09:00', u: 'Sistema', emp: 'Chiacchio', rnc: 'RNC-0031', a: 'Criação', v: 0, d: 'RNC aberta a partir da reclamação via Comercial REC-COM-0012 e atribuída a Diego Alves' }
+    ] };
+    return db;
+  }
+
+  mut(fn, logEntry) {
+    const db = JSON.parse(JSON.stringify(this.state.db));
+    const r = db.rncs.find(x => x.id === this.state.sel);
+    fn(r, db);
+    if (logEntry) db.audit.unshift(Object.assign({ at: this.now(), u: this.user(), emp: r.emp, rnc: r.id, v: r.v }, logEntry));
+    this.setState({ db }); return db;
+  }
+
+  validate(r) {
+    const d = r.data, e = [];
+    if (!d.razao) e.push('Razão de abertura'); if (!d.recebidoPor) e.push('Recebido por'); if (!d.dataVerif) e.push('Data verificação'); if (!d.operador) e.push('Operador');
+    if (!d.origem.length) e.push('Origem da não conformidade'); if (!d.tipo) e.push('Tipo'); if (!d.plano) e.push('Plano de ação?'); if (!d.proc) e.push('Procedente?'); if (!d.devol) e.push('Devolução?');
+    if (!d.desc.trim()) e.push('Descrição da não conformidade'); if (!d.imed.some(a => a.acao && a.resp && a.prazo)) e.push('Ação de correção imediata (ação, responsável e prazo)');
+    if (!d.why[0].trim()) e.push('Análise de causa · Problema 1'); if (!d.causa.trim()) e.push('Causa raiz');
+    if (!d.corr.some(a => a.acao && a.resp && a.prazo)) e.push('Ação de correção (ação, responsável e prazo)');
+    if (!r.ev.some(x => x.area === 'nc')) e.push('Anexo de evidência da NC');
+    return e;
+  }
+
+  readFile(file, cb) {
+    const meta = { n: file.name, size: file.size, type: file.type || '', ext: (file.name.split('.').pop() || '').toLowerCase() };
+    if (file.size > 700 * 1024) return cb(Object.assign(meta, { url: null }));
+    const fr = new FileReader(); fr.onload = () => cb(Object.assign(meta, { url: fr.result })); fr.readAsDataURL(file);
+  }
+
+  renderVals() {
+    const S = this.state;
+    if (!S.db) return { list: [], v: {}, cur: { st: {} }, modal: {}, errors: {}, trail: {}, pdf: { secs: [] }, viewer: {} };
+    const TN = { green: ['#E6F2EA', '#1E6B3A'], amber: ['#FBF0D9', '#7A4C00'], blue: ['#E6EEF8', '#24508F'], gray: ['#EEEEEE', '#545252'], red: ['#FDECEC', '#A80502'] };
+    const P = (t, k) => ({ t, bg: TN[k][0], fg: TN[k][1] });
+    const STK = { 'ATRIBUÍDA': 'gray', 'RASCUNHO': 'gray', 'RCA ENVIADA': 'blue', 'DEVOLVIDA PARA AJUSTE': 'amber', 'APROVADA': 'green', 'ENCERRADA': 'green' };
+    const emp = this.empresa(), master = this.props.perfil === 'Administrador';
+    const inScope = r => master || r.emp === emp;
+    const rncs = S.db.rncs.filter(inScope);
+    const r = rncs.find(x => x.id === S.sel) || rncs[0];
+    const d = r.data, rev = this.reviewer();
+    const editable = !rev && ['ATRIBUÍDA', 'RASCUNHO', 'DEVOLVIDA PARA AJUSTE'].includes(r.status);
+    const errSet = new Set(S.errs || []);
+    const red = k => errSet.has(k) ? '#C70602' : '#D6D6D6';
+    const set = (k, val) => this.mut(x => { x.data[k] = val; });
+    const chip = (on, l, go) => ({ l, go, bg: on ? '#1F1F1F' : '#fff', fg: on ? '#fff' : '#3A3939', bd: on ? '#1F1F1F' : '#D6D6D6' });
+
+    const RZ = ['Reclamação de cliente via Comercial', 'Auditoria externa', 'Auditoria interna', 'Desvio de especificação de matéria-prima'];
+    const razoes = RZ.map(x => chip(d.razao === x, x, () => editable && set('razao', x)));
+    const sacWarn = d.origem.includes('AVALIAÇÃO SAC');
+    const list = rncs.map(x => ({ id: x.id, man: x.man, emp: x.emp, prob: x.prob, v: String(x.v), st: P(x.status, STK[x.status]), bd: x.id === r.id ? '#C70602' : '#E4E4E4', go: () => this.setState({ sel: x.id, view: 'ficha', errs: null, denied: false }) }));
+    const nextV = r.v + 1;
+    const cur = { id: r.id, man: 'Origem ' + r.man + ' · ' + (d.razao || 'razão não definida'), emp: r.emp, cliente: r.cliente, v: String(r.v), nextV: String(nextV), st: P(r.status, STK[r.status]), devolvida: r.status === 'DEVOLVIDA PARA AJUSTE' && !!r.dev, devBy: r.dev && r.dev.by, devAt: r.dev && r.dev.at, devMotivo: r.dev && r.dev.motivo,
+      locked: !editable, lockMsg: rev ? (r.status === 'RCA ENVIADA' ? 'Modo revisão: você pode aprovar ou devolver esta análise. Campos do RCA ficam somente leitura.' : r.status === 'APROVADA' ? 'Análise aprovada. Registre a verificação da eficácia para encerrar a RNC.' : 'Aguardando ação do RCA.') : r.status === 'RCA ENVIADA' ? 'Análise enviada em versão ' + r.v + '. Aguardando aprovação ou devolução. Edição bloqueada; anexos só podem ter remoção solicitada.' : 'RNC ' + r.status.toLowerCase() + '. Somente leitura.' };
+    const FL = ['Origem ' + r.man, 'RNC', 'Análise do RCA', 'Evidências', 'Causa', 'Ações', 'Aprovação', 'Eficácia', 'Encerramento'];
+    const stage = { 'ATRIBUÍDA': 2, 'RASCUNHO': 2, 'DEVOLVIDA PARA AJUSTE': 2, 'RCA ENVIADA': 6, 'APROVADA': 7, 'ENCERRADA': 9 }[r.status];
+    const trail = { show: S.view === 'ficha', items: FL.map((l, i) => ({ l, a: i < FL.length - 1 ? '→' : '', bg: i < stage ? '#E6F2EA' : i === stage ? '#C70602' : '#EEEEEE', fg: i < stage ? '#1E6B3A' : i === stage ? '#fff' : '#666464' })) };
+    const VW = [['ficha', 'Ficha RT-0001'], ['apoio', 'IA e Cérebro'], ['historico', 'Histórico e versões'], ['pdf', 'Ficha PDF']];
+    const views = VW.map(([k, l]) => { const on = S.view === k; return { l, go: () => this.setState({ view: k }), bg: on ? '#C70602' : '#fff', fg: on ? '#fff' : '#1F1F1F', bd: on ? '#C70602' : '#D6D6D6' }; });
+    const v = {}; v[S.view] = true;
+
+    const docHead = [{ l: 'Empresa', v: r.emp === 'Chiacchio' ? 'Chiacchio Embalagens' : r.emp }, { l: 'Tipo de Documento', v: 'Relatório de Não Conformidade' }, { l: 'Código', v: 'RT-0001 · Rev 0000 · 20/03/26' }, { l: 'Criado', v: 'Gildásio Jr – Coord. Qualidade/Process' }, { l: 'Aprovado', v: 'Deibson Veloso – Diretor de Produção' }];
+    const E = (l, k, ro, val, type) => ({ l, ro: !!ro, ed: !ro, v: ro ? val : (d[k] || ''), type: type || 'text', bc: red(l), on: e => set(k, e.target.value) });
+    const entrada = [E('Emitida por', 'emitidaPor', 1, d.emitidaPor), E('Recebido por', 'recebidoPor'), E('Data verificação', 'dataVerif', 0, '', 'date'), E('Nº RNC', '', 1, r.id), E('Setor', 'setor'), E('Lote', 'lote'), E('Operador', 'operador'), E('Produto', 'produto'), E('Quantidade', 'quantidade'), E('Cliente', '', 1, r.cliente), E('Contato', '', 1, r.contato), E('Registro de origem', '', 1, r.man)];
+    const ORI = ['ANÁLISE CRÍTICA DA ALTA DIREÇÃO', 'AUDITORIA INTERNA', 'AUDITORIA EXTERNA', 'RNC EXTERNA', 'INSPEÇÃO INTERNA', 'AVALIAÇÃO SAC'];
+    const origens = ORI.map(o => { const on = d.origem.includes(o); return { l: o, m: on ? '✓' : '', bg: on ? '#C70602' : '#fff', bd: on ? '#C70602' : (errSet.has('Origem da não conformidade') ? '#C70602' : '#C4C4C4'), go: () => editable && set('origem', on ? d.origem.filter(x => x !== o) : d.origem.concat([o])) }; });
+    const TP = [['tipo', 'Tipo', ['Real', 'Potencial']], ['plano', 'Plano de ação?', ['Sim', 'Não']], ['proc', 'Procedente?', ['Sim', 'Não']], ['devol', 'Devolução?', ['Sim', 'Não']]];
+    const tipos = TP.map(([k, l, o]) => ({ l: l + (errSet.has(l) ? ' *' : ''), o: o.map(x => chip(d[k] === x, x, () => editable && set(k, x))) }));
+    const rows = (k, withSt) => d[k].map((a, i) => { const up = (f, val) => this.mut(x => { x.data[k][i][f] = val; }); return { acao: a.acao, resp: a.resp, prazo: a.prazo, st: a.st || 'Não iniciada', onA: e => up('acao', e.target.value), onR: e => up('resp', e.target.value), onP: e => up('prazo', e.target.value), onS: e => up('st', e.target.value), del: () => this.mut(x => { x.data[k].splice(i, 1); }) }; });
+    const evName = id => { const e = r.ev.find(x => x.id === id); return e ? e.n : '(removida)'; };
+    const evOpts = r.ev.map(e => ({ id: e.id, n: e.n }));
+    const whys = d.why.map((w, i) => ({ n: String(i + 1), v: w, bc: i === 0 ? red('Análise de causa · Problema 1') : '#D6D6D6', on: e => this.mut(x => { x.data.why[i] = e.target.value; }), ev: (d.whyEv[i] || []).map(id => ({ n: evName(id), can: editable, un: () => this.mut(x => { x.data.whyEv[i] = x.data.whyEv[i].filter(y => y !== id); }) })), link: e => { const id = e.target.value; if (!id) return; this.mut(x => { if (!x.data.whyEv[i].includes(id)) x.data.whyEv[i].push(id); }, { a: 'Vínculo de evidência', d: evName(id) + ' → Problema ' + (i + 1) }); } }));
+    const causaEv = d.causaEv.map(id => ({ n: evName(id), can: editable, un: () => this.mut(x => { x.data.causaEv = x.data.causaEv.filter(y => y !== id); }) }));
+    const verOpen = rev && r.status === 'APROVADA';
+    const efic = ['CONFORME', 'NÃO CONFORME'].map(x => chip(d.efic === x, x, () => verOpen && set('efic', x)));
+    const novaNc = ['SIM', 'NÃO'].map(x => chip(d.novaNc === x, x, () => verOpen && set('novaNc', x)));
+
+    // evidence
+    const AREAS = [['nc', 'ANEXO DE EVIDÊNCIA DA NC', 'Anexo de evidência da NC'], ['acoes', 'EVIDÊNCIA DAS AÇÕES', 'Evidência das ações'], ['eficacia', 'EVIDÊNCIA DA EFICÁCIA', 'Evidência da eficácia']];
+    const relOpts = ['Anexo de evidência da NC', 'Problema 1', 'Problema 2', 'Problema 3', 'Problema 4', 'Problema 5', 'Causa raiz', 'Ação de correção imediata', 'Ação de correção', 'Evidência das ações', 'Evidência da eficácia'];
+    const kb = n => n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
+    const kind = e => e.type.startsWith('image/') ? 'Imagem' : e.ext === 'pdf' ? 'PDF' : ['xls', 'xlsx', 'csv'].includes(e.ext) ? 'Planilha' : ['doc', 'docx'].includes(e.ext) ? 'Documento' : 'Arquivo';
+    let num = 0;
+    const areas = AREAS.map(([k, l, rel]) => {
+      const pd = S.pend[k];
+      const canArea = k === 'eficacia' ? verOpen : editable;
+      const setP = (f, val) => this.setState(s => ({ pend: Object.assign({}, s.pend, { [k]: Object.assign({}, s.pend[k], { [f]: val }) }) }));
+      const items = r.ev.filter(e => e.area === k).map(e => {
+        num++; const own = editable && e.by === this.user() && !e.sentV;
+        return { num: String(num).padStart(2, '0'), n: e.n, desc: e.desc, meta: kind(e) + ' · ' + kb(e.size) + ' · ' + e.at + ' · ' + e.by + ' · relacionada a: ' + e.rel + (e.sentV ? ' · enviada na v' + e.sentV : ''), thumb: e.url && e.type.startsWith('image/') ? React.createElement('img', { src: e.url, style: { width: '100%', height: '100%', objectFit: 'cover' } }) : kind(e).toUpperCase().slice(0, 4),
+          own, req: !own && !rev && r.status === 'RCA ENVIADA',
+          view: () => this.setState({ modal: 'view', viewer: e }),
+          dl: () => { if (!e.url) return this.flash('Arquivo acima de 700 KB: no protótipo só os metadados ficam salvos.'); const a = document.createElement('a'); a.href = e.url; a.download = e.n; a.click(); },
+          del: () => this.mut(x => { x.ev = x.ev.filter(y => y.id !== e.id); x.data.whyEv = x.data.whyEv.map(arr => arr.filter(y => y !== e.id)); x.data.causaEv = x.data.causaEv.filter(y => y !== e.id); }, { a: 'Exclusão de anexo', d: e.n + ' (antes do envio)' }),
+          rep: ev => { const f = ev.target.files && ev.target.files[0]; if (!f) return; this.readFile(f, m => { const db = this.mut(x => { const y = x.ev.find(z => z.id === e.id); Object.assign(y, m, { at: this.now() }); }, { a: 'Substituição de anexo', d: e.n + ' → ' + f.name }); this.persist(db); }); ev.target.value = ''; },
+          reqRm: () => this.mut(() => { }, { a: 'Solicitação de remoção', d: e.n + ' · aguardando decisão do aprovador' }) && this.flash('Remoção solicitada. O arquivo permanece até a decisão do aprovador.') };
+      });
+      return { l, can: canArea && !pd, pending: !!pd, pn: pd && pd.n, ps: pd && (kind(pd) + ' · ' + kb(pd.size) + (pd.url ? '' : ' · acima de 700 KB, só metadados no protótipo')), pd: pd ? pd.desc || '' : '', pr: pd ? pd.rel : rel, cbg: pd && (pd.desc || '').trim().length >= 5 ? '#C70602' : '#C4C4C4',
+        onPd: e => setP('desc', e.target.value), onPr: e => setP('rel', e.target.value), cancel: () => this.setState(s => { const p = Object.assign({}, s.pend); delete p[k]; return { pend: p }; }),
+        pick: ev => { const f = ev.target.files && ev.target.files[0]; if (!f) return; this.readFile(f, m => this.setState(s => ({ pend: Object.assign({}, s.pend, { [k]: Object.assign(m, { rel, desc: '' }) }) }))); ev.target.value = ''; },
+        confirm: () => { if (!pd || (pd.desc || '').trim().length < 5) return this.flash('Descreva a finalidade da evidência antes de anexar.'); const id = 'ev' + Date.now(); const db = this.mut(x => { x.ev.push(Object.assign({}, pd, { id, area: k, by: this.user(), at: this.now() })); const m = /^Problema (\d)$/.exec(pd.rel); if (m) x.data.whyEv[+m[1] - 1].push(id); if (pd.rel === 'Causa raiz') x.data.causaEv.push(id); if (x.status === 'ATRIBUÍDA') x.status = 'RASCUNHO'; }, { a: 'Anexo', d: pd.n + ' · ' + pd.desc }); const ok = this.persist(db); this.setState(s => { const p = Object.assign({}, s.pend); delete p[k]; return { pend: p, savedAt: ok ? this.now() : s.savedAt }; }); },
+        items, empty: !items.length && !pd };
+    });
+
+    const errs = S.errs || [];
+    const save = (label) => { const db = this.mut(x => { if (x.status === 'ATRIBUÍDA') x.status = 'RASCUNHO'; }, { a: label || 'Rascunho', d: 'Ficha salva' }); if (this.persist(db)) { this.setState({ savedAt: this.now() }); this.flash('Rascunho salvo. Pode sair e continuar depois.'); } };
+    const snap = x => JSON.parse(JSON.stringify(x.data));
+
+    // IA / Cérebro
+    const copy = t => () => { try { navigator.clipboard.writeText(t); } catch (e) { } this.flash('Copiado. Cole e ajuste na ficha, se fizer sentido.'); };
+    const IA = { 'RNC-0031': [['Possíveis causas', ['Empilhamento acima do limite de camadas no baú do veículo', 'Embalagem secundária com gramatura abaixo do especificado no lote L-2609']], ['Perguntas de investigação', ['Quantas camadas foram carregadas no veículo da rota Sul em 26/09?', 'O lote L-2609 passou pela inspeção de recebimento?', 'Houve troca de veículo ou de motorista na rota?']], ['Ações usadas anteriormente', ['Definir limite de camadas por rota no plano de carga (RNC-0024 · eficaz)', 'Treinar equipe de carregamento (RNC-0019 · eficaz)']]] };
+    const iaB = IA[r.id] || [['Possíveis causas', ['Falha de conferência na etapa anterior', 'Procedimento desatualizado']], ['Perguntas de investigação', ['Qual etapa deveria ter detectado o problema?', 'O procedimento vigente cobre essa situação?']], ['Ações usadas anteriormente', ['Dupla conferência (RNC-0024 · eficaz)']]];
+    const iaBlocks = iaB.map(([t, items]) => ({ t, items: items.map(l => ({ l, copy: copy(l) })) }));
+    const similar = [['RNC-0024', 'Fila de impressão sem agrupamento por pedido', 'Agrupar impressão por pedido', 'Eficaz', 'green'], ['RNC-0019', 'Equipe de carga sem treinamento em limite de camadas', 'Treinamento e checklist', 'Eficaz', 'green'], ['RNC-0012', 'Veículo com baú inadequado', 'Retirar veículo da rota', 'Não eficaz · nova NC', 'red']].map(s => ({ n: s[0], c: s[1], a: s[2], e: P(s[3], s[4]) }));
+
+    // versions & audit
+    const versions = (r.versions || []).map(x => ({ v: String(x.v), at: x.at, l: x.l, view: () => x.snap ? this.setState({ modal: 'view', viewer: { n: r.id + ' · versão ' + x.v, desc: x.l + ' · somente leitura', snapshot: x.snap } }) : this.flash('Registro de devolução: veja o motivo na ficha.') }));
+    const audit = S.db.audit.filter(a => a.rnc === r.id || a.rnc === 'RNC-0035');
+
+    // pdf
+    const fmtD = s => s ? s.split('-').reverse().join('/') : '—';
+    const F = (l, v, span) => ({ l, v: v || '—', span: span || 'auto' }), W = '1 / -1';
+    const pdfSecs = [
+      { t: 'DADOS DE ENTRADA', items: [F('Emitida por', d.emitidaPor), F('Recebido por', d.recebidoPor), F('Data verificação', fmtD(d.dataVerif)), F('Nº RNC', r.id), F('Setor', d.setor), F('Lote', d.lote), F('Operador', d.operador), F('Produto', d.produto), F('Quantidade', d.quantidade), F('Cliente', r.cliente), F('Contato', r.contato), F('Registro de origem', r.man)] },
+      { t: 'ORIGEM DA NÃO CONFORMIDADE · TIPO', items: [F('Razão de abertura (regra do Grupo)', d.razao, W), F('Origem', ORI.map(o => (d.origem.includes(o) ? '☒ ' : '☐ ') + o).join('\n'), '1 / 3'), F('Tipo / Plano de ação / Procedente / Devolução', [d.tipo, d.plano, d.proc, d.devol].map(x => x || '—').join(' · '))] },
+      { t: 'DESCRIÇÃO DA NÃO CONFORMIDADE / OBSERVAÇÃO', items: [F('', d.desc, W)] },
+      { t: 'AÇÕES DE CORREÇÃO IMEDIATA', items: d.imed.length ? d.imed.map(a => F(a.resp + ' · prazo ' + fmtD(a.prazo), a.acao, W)) : [F('', '—', W)] },
+      { t: 'ANÁLISE DE CAUSA', items: d.why.map((w, i) => F('Por que ocorreu · Problema ' + (i + 1) + ((d.whyEv[i] || []).length ? ' · evidências: ' + d.whyEv[i].map(evName).join(', ') : ''), w, W)).concat([F('CAUSA RAIZ' + (d.causaEv.length ? ' · evidências: ' + d.causaEv.map(evName).join(', ') : ''), d.causa, W)]) },
+      { t: 'AÇÃO DE CORREÇÃO', items: d.corr.length ? d.corr.map(a => F(a.resp + ' · prazo ' + fmtD(a.prazo) + ' · ' + (a.st || 'Não iniciada'), a.acao, W)) : [F('', '—', W)] },
+      { t: 'VERIFICAÇÃO', items: [F('Verificação', d.verif, W), F('Verificação da eficácia', (d.efic || '—') + ' · ' + fmtD(d.eficData)), F('Nova NC', (d.novaNc || '—') + ' · ' + fmtD(d.novaData))] },
+      { t: 'EVIDÊNCIAS (páginas 3 a 5 da ficha)', items: r.ev.length ? r.ev.map((e, i) => F('Evidência ' + String(i + 1).padStart(2, '0') + ' · ' + { nc: 'Anexo da NC', acoes: 'Evidência das ações', eficacia: 'Evidência da eficácia' }[e.area], e.n + ' — ' + e.desc + ' (' + e.by + ', ' + e.at + ')', W)) : [F('', 'Nenhuma evidência anexada', W)] },
+      { t: 'STATUS E VALIDAÇÃO', items: [F('Status', r.status), F('Versão', String(r.v)), F('Última devolução', r.dev ? r.dev.by + ' · ' + r.dev.at + ' · ' + r.dev.motivo : '—')] }
+    ];
+
+    // viewer body
+    const vw = S.viewer || {};
+    let body = null;
+    if (vw.snapshot) body = React.createElement('div', { style: { background: '#fff', padding: 20, width: '100%', height: '100%', overflow: 'auto', fontSize: 13, lineHeight: 1.6, whiteSpace: 'pre-wrap' } }, 'Descrição: ' + vw.snapshot.desc + '\n\nPorquês:\n' + vw.snapshot.why.map((w, i) => (i + 1) + '. ' + (w || '—')).join('\n') + '\n\nCausa raiz: ' + (vw.snapshot.causa || '—') + '\n\nAções de correção:\n' + vw.snapshot.corr.map(a => '• ' + a.acao + ' · ' + a.resp + ' · ' + a.prazo).join('\n'));
+    else if (vw.url && (vw.type || '').startsWith('image/')) body = React.createElement('img', { src: vw.url, style: { maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' } });
+    else if (vw.url && vw.ext === 'pdf') body = React.createElement('iframe', { src: vw.url, title: vw.n, style: { width: '100%', height: '100%', border: 0, background: '#fff' } });
+    else if (S.modal === 'view') body = React.createElement('div', { style: { fontSize: 13, color: '#545252', padding: 24, textAlign: 'center', lineHeight: 1.6 } }, vw.url ? 'Pré-visualização indisponível para este tipo. Use “Baixar”.' : 'Arquivo acima de 700 KB: no protótipo apenas os metadados ficam salvos no navegador. No sistema definitivo o arquivo fica no armazenamento do servidor.');
+
+    return {
+      razoes, sacWarn, razaoBc: errSet.has('Razão de abertura') ? '#C70602' : '#E4E4E4', showHead: !this.props.embedded, hSize: this.props.embedded ? '17px' : '22px',
+      modeLabel: rev ? 'Modo revisão · ' + this.user() : 'RCA · ' + this.user(), scope: master ? 'Todas as empresas (MASTER)' : emp,
+      scopeNote: master ? 'Perfil MASTER: acesso global a todas as empresas.' : 'Você vê apenas RNCs de ' + emp + ' atribuídas a você. RNCs de outras empresas não aparecem e o acesso direto pelo ID é negado.',
+      denied: S.denied, tryOther: () => { if (master) return this.setState({ sel: 'RNC-0035', denied: false }); const db = JSON.parse(JSON.stringify(S.db)); db.audit.unshift({ at: this.now(), u: this.user(), emp, rnc: 'RNC-0035', a: 'Acesso negado (403)', v: 0, d: 'Tentativa de abrir RNC de Plaschio pelo ID' }); this.setState({ db, denied: true }); this.persist(db); },
+      list, cur, trail, views, v, docHead, entrada, dis: !editable, editable, origens, tipos,
+      f: d, on: { desc: e => set('desc', e.target.value), causa: e => set('causa', e.target.value), verif: e => set('verif', e.target.value), eficData: e => set('eficData', e.target.value), novaData: e => set('novaData', e.target.value) }, bc: { desc: red('Descrição da não conformidade'), causa: red('Causa raiz') },
+      imed: rows('imed'), noImed: !d.imed.length, addImed: () => this.mut(x => { x.data.imed.push({ acao: '', resp: '', prazo: '' }); }),
+      corr: rows('corr'), noCorr: !d.corr.length, addCorr: () => this.mut(x => { x.data.corr.push({ acao: '', resp: '', prazo: '', st: 'Não iniciada' }); }),
+      whys, causaEv, evOpts, linkCausa: e => { const id = e.target.value; if (!id) return; this.mut(x => { if (!x.data.causaEv.includes(id)) x.data.causaEv.push(id); }, { a: 'Vínculo de evidência', d: evName(id) + ' → Causa raiz' }); },
+      verDis: !verOpen, verBg: verOpen ? '#fff' : '#FAFAFA', verNote: verOpen ? 'Preenchido pelo aprovador/Qualidade após a execução das ações' : 'Preenchido após aprovação e execução das ações · fora da competência do RCA', efic, novaNc,
+      areas, relOpts, evCount: r.ev.length + ' evidência(s)',
+      errors: { show: errs.length > 0, txt: errs.join(' · ') },
+      savedTxt: S.savedAt ? 'Salvo no navegador às ' + S.savedAt.slice(11) : '',
+      saveDraft: () => save('Rascunho'),
+      askSend: () => { const e = this.validate(r); if (e.length) { this.setState({ errs: e }); this.flash(e.length + ' campo(s) obrigatório(s) pendente(s).'); return; } this.setState({ errs: null, modal: 'send' }); },
+      doSend: () => { const resend = r.status === 'DEVOLVIDA PARA AJUSTE'; const db = this.mut(x => { x.v = x.v + 1; x.status = 'RCA ENVIADA'; x.ev.forEach(e => { if (!e.sentV) e.sentV = x.v; }); x.versions.unshift({ v: x.v, at: this.now(), l: (resend ? 'Reenviada' : 'Enviada') + ' por ' + this.user(), snap: snap(x) }); }, { a: resend ? 'Reenvio' : 'Envio', d: 'Análise de RCA ' + (resend ? 'reenviada após ajuste' : 'enviada') }); this.persist(db); this.setState({ modal: null, savedAt: this.now() }); this.flash('Análise enviada · status RCA ENVIADA · versão ' + nextV); },
+      canReview: rev && r.status === 'RCA ENVIADA', askReturn: () => this.setState({ modal: 'ret', retText: '' }), retText: S.retText, onRet: e => this.setState({ retText: e.target.value }),
+      doReturn: () => { if (S.retText.trim().length < 5) return this.flash('Informe o motivo da devolução.'); const db = this.mut(x => { x.status = 'DEVOLVIDA PARA AJUSTE'; x.dev = { by: this.user(), at: this.now(), motivo: S.retText.trim() }; x.versions.unshift({ v: x.v, at: this.now(), l: 'Devolvida por ' + this.user(), snap: null }); }, { a: 'Devolução', d: S.retText.trim() }); this.persist(db); this.setState({ modal: null }); this.flash('Análise devolvida ao RCA.'); },
+      approve: () => { const db = this.mut(x => { x.status = 'APROVADA'; x.versions.unshift({ v: x.v, at: this.now(), l: 'Aprovada por ' + this.user(), snap: null }); }, { a: 'Aprovação', d: 'Análise de RCA aprovada' }); this.persist(db); this.flash('Análise aprovada. Registre a eficácia para encerrar.'); },
+      canClose: rev && r.status === 'APROVADA', closeRnc: () => { if (!d.efic || !d.eficData) return this.flash('Informe a verificação da eficácia e a data.'); const db = this.mut(x => { x.status = 'ENCERRADA'; }, { a: 'Encerramento', d: 'Eficácia ' + d.efic + ' · nova NC ' + (d.novaNc || 'NÃO') }); this.persist(db); this.flash('RNC encerrada.'); },
+      iaBlocks, similar, openSuggest: () => this.setState({ modal: 'sug', sugText: '' }), sugText: S.sugText, onSug: e => this.setState({ sugText: e.target.value }), doSug: () => { if (!S.sugText.trim()) return; const db = this.mut(() => { }, { a: 'Sugestão ao Cérebro', d: S.sugText.trim() + ' · aguardando validação' }); this.persist(db); this.setState({ modal: null }); this.flash('Sugestão enviada para validação no Cérebro.'); },
+      versions, noVersions: !versions.length, audit, audCols: ['Data/hora', 'Usuário', 'Empresa', 'RNC', 'Ação', 'Versão', 'Detalhe'],
+      pdf: { emp: r.emp === 'Chiacchio' ? 'Chiacchio Embalagens' : r.emp, secs: pdfSecs, at: this.now(), by: this.user() }, backFicha: () => this.setState({ view: 'ficha' }), printPdf: () => { try { window.print(); } catch (e) { } },
+      modal: { send: S.modal === 'send', ret: S.modal === 'ret', sug: S.modal === 'sug', view: S.modal === 'view' }, closeModal: () => this.setState({ modal: null, viewer: null }),
+      viewer: { n: vw.n || '', desc: vw.desc || '', body }, toast: S.toast
+    };
+  }
+}
+</script>
+</body>
+</html>

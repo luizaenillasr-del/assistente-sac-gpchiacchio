@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F4F4F4;color:#1F1F1F;font-family:Montserrat,system-ui,sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}button{white-space:nowrap}
+a{color:#A80502;text-decoration:none}a:hover{color:#7F0401;text-decoration:underline}
+*{box-sizing:border-box}
+</style>
+</helmet>
+<div style="display:flex;flex-direction:column;gap:18px;font-family:Montserrat,system-ui,sans-serif;color:#1F1F1F;min-width:0">
+
+  <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap">
+    <div style="min-width:0"><sc-if value="{{ showHead }}"><div style="font-size:12px;color:#929090">{{ crumb }}</div></sc-if><div style="font-size:{{ hSize }};font-weight:700;letter-spacing:-.01em">{{ heading }}</div><div style="font-size:13px;color:#666464;margin-top:2px">{{ sub }}</div></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button onClick="{{ openNew }}" style="border:0;background:#C70602;color:#fff;border-radius:8px;padding:9px 14px;cursor:pointer;font-size:13px;font-weight:600" style-hover="background:#A80502">+ Nova regra</button>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:2px;border-bottom:1px solid #E4E4E4;overflow-x:auto">
+    <sc-for list="{{ nav }}" as="t" hint-placeholder-count="8"><button onClick="{{ t.go }}" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;color:{{ t.fg }};border-bottom:2px solid {{ t.bd }};margin-bottom:-1px;font-weight:{{ t.fw }}">{{ t.l }}</button></sc-for>
+  </div>
+
+<sc-if value="{{ v.home }}">
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:16px">
+    <div style="background:#C70602;color:#fff;border-radius:12px;padding:22px 24px;display:flex;flex-direction:column;gap:10px">
+      <div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;font-weight:600;opacity:.9">Conhecimento atualizado</div>
+      <div style="display:flex;align-items:baseline;gap:10px"><span style="font-size:44px;font-weight:700;letter-spacing:-.02em">92%</span><span style="font-size:14px">dos conteúdos revisados</span></div>
+      <div style="height:6px;background:rgba(255,255,255,.3);border-radius:3px;overflow:hidden"><div style="width:92%;height:100%;background:#fff"></div></div>
+      <div style="font-size:12.5px">Última atualização: 02/10/2026 · {{ pendingTxt }}</div>
+    </div>
+    <div style="background:#fff;border:1px solid #E4E4E4;border-radius:12px;padding:20px 22px;display:flex;flex-direction:column;gap:12px">
+      <div style="font-weight:700;font-size:14.5px">O que a IA considera ao analisar uma manifestação</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ iaSources }}" as="x"><span style="border:1px solid #E4E4E4;border-radius:99px;padding:4px 10px;font-size:12px;white-space:nowrap">{{ x }}</span></sc-for></div>
+      <div style="font-size:12.5px;color:#666464;line-height:1.5">Somente conteúdos <strong style="color:#1F1F1F">ativos e aprovados</strong> e marcados como disponíveis para a IA entram na análise. O Cérebro é a fonte estruturada e oficial de conhecimento da plataforma.</div>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px">
+    <sc-for list="{{ homeCards }}" as="c" hint-placeholder-count="10">
+      <button onClick="{{ c.go }}" style="white-space:normal;text-align:left;background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:16px 18px;cursor:pointer;display:flex;flex-direction:column;gap:6px;min-height:112px" style-hover="border-color:#C70602">
+        <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline"><span style="font-weight:700;font-size:14px">{{ c.l }}</span><span style="font-size:12px;color:#929090;font-variant-numeric:tabular-nums">{{ c.n }}</span></div>
+        <span style="font-size:12.5px;color:#666464;line-height:1.45">{{ c.d }}</span>
+      </button>
+    </sc-for>
+  </div>
+</sc-if>
+
+<sc-if value="{{ v.setores }}">
+  <div style="font-size:13px;color:#545252;max-width:820px;line-height:1.55">Cadastre as regras operacionais que devem ser consideradas pelo Assistente SAC durante a análise, encaminhamento e tratamento das manifestações.</div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px">
+    <sc-for list="{{ sectorCards }}" as="x" hint-placeholder-count="10">
+      <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="font-weight:700;font-size:15px">{{ x.l }}</span><span style="font-size:11.5px;color:#929090">v{{ x.v }}</span></div>
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;font-size:11.5px;color:#666464">
+          <div><div style="font-size:20px;font-weight:700;color:#1F1F1F">{{ x.nr }}</div>regras</div>
+          <div><div style="font-size:20px;font-weight:700;color:#1F1F1F">{{ x.np }}</div>procedimentos</div>
+          <div><div style="font-size:20px;font-weight:700;color:#1F1F1F">{{ x.sla }}</div>SLA</div>
+        </div>
+        <div style="font-size:12px;color:#666464;display:flex;flex-direction:column;gap:2px"><span>Gestão: {{ x.resp }}</span><span>Atualizado em {{ x.upd }}</span></div>
+        <button onClick="{{ x.go }}" style="border:1px solid #C70602;background:#fff;color:#C70602;border-radius:7px;padding:8px 10px;cursor:pointer;font-size:12px;font-weight:700;letter-spacing:.04em" style-hover="background:#C70602;color:#fff">ACESSAR REGRAS</button>
+      </div>
+    </sc-for>
+    <button onClick="{{ addSector }}" style="white-space:normal;border:1.5px dashed #CFCFCF;background:transparent;border-radius:10px;padding:16px;cursor:pointer;color:#666464;font-size:13px;min-height:180px" style-hover="border-color:#C70602;color:#C70602">+ Adicionar setor</button>
+  </div>
+</sc-if>
+
+<sc-if value="{{ v.setor }}">
+  <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:16px 20px;display:flex;gap:28px;flex-wrap:wrap;align-items:center">
+    <sc-for list="{{ sectorHead }}" as="f"><div style="font-size:13px;white-space:nowrap"><div style="font-size:11.5px;color:#929090">{{ f.l }}</div><div style="font-weight:600">{{ f.v }}</div></div></sc-for>
+  </div>
+  <sc-if value="{{ isLog }}"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:12px 16px"><span style="font-size:13px;color:#545252">Use a Calculadora de Atraso para padronizar o cálculo antes de definir a causa de manifestações de atraso.</span><button onClick="{{ goCalc }}" style="border:1px solid #1F1F1F;background:#fff;border-radius:8px;padding:8px 12px;cursor:pointer;font-size:12.5px;font-weight:600">Abrir Calculadora de Atraso</button></div></sc-if>
+  <sc-if value="{{ isAll }}"><div style="display:flex;gap:6px;flex-wrap:wrap"><sc-for list="{{ sectorChips }}" as="c"><button onClick="{{ c.go }}" style="border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};border-radius:99px;padding:5px 11px;font-size:12px;cursor:pointer">{{ c.l }}</button></sc-for></div></sc-if>
+  <div style="display:flex;gap:6px;flex-wrap:wrap">
+    <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="7"><button onClick="{{ t.go }}" style="border:1px solid {{ t.bd }};background:{{ t.bg }};color:{{ t.fg }};border-radius:8px;padding:7px 13px;font-size:13px;cursor:pointer;font-weight:600">{{ t.l }} <span style="font-weight:400;opacity:.75">{{ t.n }}</span></button></sc-for>
+  </div>
+
+  <sc-if value="{{ tab.regras }}">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <input value="{{ rq }}" onChange="{{ onRq }}" placeholder="Pesquisar regra, condição ou ação" style="flex:1;min-width:220px;height:36px;border:1px solid #D6D6D6;border-radius:7px;padding:0 12px;background:#fff;font-size:13px">
+      <sc-for list="{{ stFilter }}" as="c"><button onClick="{{ c.go }}" style="border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};border-radius:99px;padding:5px 11px;font-size:12px;cursor:pointer">{{ c.l }}</button></sc-for>
+    </div>
+    <sc-if value="{{ noRules }}"><div style="background:#fff;border:1px dashed #CFCFCF;border-radius:10px;padding:28px;text-align:center;color:#666464;font-size:13px">Nenhuma regra encontrada. Use “+ Nova regra” ou importe de uma planilha na aba Documentos.</div></sc-if>
+    <sc-for list="{{ rules }}" as="r" hint-placeholder-count="4">
+      <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:18px 20px;display:flex;flex-direction:column;gap:12px;opacity:{{ r.op }}">
+        <div style="display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap">
+          <div style="flex:1;min-width:220px;font-weight:700;font-size:14.5px;line-height:1.35">{{ r.t }}</div>
+          <span style="padding:3px 9px;border-radius:99px;font-size:11.5px;font-weight:600;white-space:nowrap;background:{{ r.stp.bg }};color:{{ r.stp.fg }}">{{ r.stp.t }}</span>
+          <span style="padding:3px 9px;border-radius:99px;font-size:11.5px;font-weight:600;white-space:nowrap;background:{{ r.iap.bg }};color:{{ r.iap.fg }}">{{ r.iap.t }}</span>
+        </div>
+        <div style="display:grid;grid-template-columns:70px minmax(0,1fr);gap:8px 12px;font-size:13.5px;line-height:1.5;background:#FAFAFA;border-radius:8px;padding:12px 14px">
+          <span style="font-size:11px;font-weight:700;color:#929090;letter-spacing:.06em;padding-top:2px">REGRA</span><span>{{ r.regra }}</span>
+          <span style="font-size:11px;font-weight:700;color:#C70602;letter-spacing:.06em;padding-top:2px">AÇÃO</span><span>{{ r.acao }}</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;font-size:12.5px">
+          <sc-for list="{{ r.meta }}" as="f"><div><div style="font-size:11px;color:#929090">{{ f.l }}</div><div style="font-weight:500">{{ f.v }}</div></div></sc-for>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap"><sc-for list="{{ r.flags }}" as="g"><span style="border:1px solid #E4E4E4;border-radius:6px;padding:3px 8px;font-size:11.5px;color:#545252;white-space:nowrap">{{ g }}</span></sc-for></div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;border-top:1px solid #EFEFEF;padding-top:12px">
+          <button onClick="{{ r.toggle }}" style="display:flex;align-items:center;gap:8px;border:0;background:none;cursor:pointer;font-size:12.5px;padding:0 8px 0 0"><span style="width:34px;height:19px;border-radius:99px;padding:2px;display:flex;justify-content:{{ r.jc }};background:{{ r.tb }}"><span style="width:15px;height:15px;border-radius:50%;background:#fff"></span></span>{{ r.toggleL }}</button>
+          <button onClick="{{ r.iaT }}" style="border:1px solid #D6D6D6;background:#fff;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:12px">{{ r.iaL }}</button>
+          <span style="flex:1"></span>
+          <button onClick="{{ r.edit }}" style="border:1px solid #D6D6D6;background:#fff;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:12px">Editar</button>
+          <button onClick="{{ r.newV }}" style="border:1px solid #D6D6D6;background:#fff;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:12px">Criar nova versão</button>
+          <button onClick="{{ r.hist }}" style="border:1px solid #D6D6D6;background:#fff;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:12px">{{ r.histL }}</button>
+          <button onClick="{{ r.del }}" style="border:1px solid #D6D6D6;background:#fff;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:12px;color:#A80502">Excluir</button>
+        </div>
+        <sc-if value="{{ r.histOpen }}">
+          <div style="border:1px solid #EFEFEF;border-radius:8px;overflow:hidden">
+            <sc-for list="{{ r.hl }}" as="h"><div style="display:grid;grid-template-columns:56px 96px minmax(0,1fr) minmax(0,1fr) 140px;gap:10px;padding:9px 12px;border-bottom:1px solid #EFEFEF;font-size:12.5px"><span style="font-weight:700">v{{ h.v }}</span><span style="color:#666464">{{ h.d }}</span><span>{{ h.alt }}</span><span style="color:#666464">{{ h.mot }}</span><span style="color:#666464">{{ h.by }}</span></div></sc-for>
+          </div>
+        </sc-if>
+      </div>
+    </sc-for>
+  </sc-if>
+
+  <sc-if value="{{ tab.procedimentos }}">
+    <sc-for list="{{ procs }}" as="p" hint-placeholder-count="3">
+      <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;overflow:hidden">
+        <button onClick="{{ p.go }}" style="white-space:normal;width:100%;display:flex;gap:10px;align-items:center;flex-wrap:wrap;border:0;background:none;padding:16px 20px;cursor:pointer;text-align:left"><span style="flex:1;min-width:220px;font-weight:700;font-size:14.5px">{{ p.n }}</span><span style="font-size:12px;color:#929090">{{ p.setor }} · v{{ p.v }}</span><span style="padding:3px 9px;border-radius:99px;font-size:11.5px;font-weight:600;white-space:nowrap;background:{{ p.stp.bg }};color:{{ p.stp.fg }}">{{ p.stp.t }}</span><span style="padding:3px 9px;border-radius:99px;font-size:11.5px;font-weight:600;white-space:nowrap;background:{{ p.iap.bg }};color:{{ p.iap.fg }}">{{ p.iap.t }}</span><span style="color:#929090;font-size:16px">{{ p.sign }}</span></button>
+        <sc-if value="{{ p.open }}">
+          <div style="padding:0 20px 18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:18px">
+            <div style="display:flex;flex-direction:column;gap:10px"><sc-for list="{{ p.meta }}" as="f"><div style="font-size:13px;line-height:1.5"><div style="font-size:11px;color:#929090">{{ f.l }}</div>{{ f.v }}</div></sc-for></div>
+            <div style="display:flex;flex-direction:column;gap:8px"><div style="font-size:11px;color:#929090">Passo a passo</div><sc-for list="{{ p.steps }}" as="s"><div style="display:grid;grid-template-columns:26px minmax(0,1fr);gap:10px;font-size:13.5px;align-items:start"><span style="width:22px;height:22px;border-radius:50%;background:#FDECEC;color:#A80502;font-size:11px;font-weight:700;display:grid;place-items:center">{{ s.i }}</span><span style="padding-top:2px">{{ s.l }}</span></div></sc-for></div>
+          </div>
+        </sc-if>
+      </div>
+    </sc-for>
+  </sc-if>
+
+  <sc-if value="{{ tab.politicas }}">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:14px">
+      <sc-for list="{{ pols }}" as="p" hint-placeholder-count="3">
+        <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:18px 20px;display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap"><span style="flex:1;min-width:200px;font-weight:700;font-size:14.5px;line-height:1.35">{{ p.t }}</span><span style="padding:3px 9px;border-radius:99px;font-size:11.5px;font-weight:600;white-space:nowrap;background:{{ p.stp.bg }};color:{{ p.stp.fg }}">{{ p.stp.t }}</span></div>
+          <div style="font-size:13px;color:#545252;line-height:1.5">{{ p.desc }}</div>
+          <div style="display:grid;grid-template-columns:62px minmax(0,1fr);gap:8px 12px;font-size:13px;background:#FAFAFA;border-radius:8px;padding:12px 14px;line-height:1.45"><span style="font-size:11px;font-weight:700;color:#929090">SE</span><span>{{ p.cond }}</span><span style="font-size:11px;font-weight:700;color:#929090">REGRA</span><span>{{ p.regra }}</span><span style="font-size:11px;font-weight:700;color:#C70602">AÇÃO</span><span>{{ p.acao }}</span></div>
+          <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 14px;font-size:12.5px"><sc-for list="{{ p.meta }}" as="f"><div><div style="font-size:11px;color:#929090">{{ f.l }}</div>{{ f.v }}</div></sc-for></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid #EFEFEF;padding-top:10px"><span style="padding:3px 9px;border-radius:99px;font-size:11.5px;font-weight:600;background:{{ p.iap.bg }};color:{{ p.iap.fg }}">{{ p.iap.t }}</span><button onClick="{{ p.edit }}" style="border:1px solid #D6D6D6;background:#fff;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:12px">Editar</button></div>
+        </div>
+      </sc-for>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ tab.faq }}">
+    <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;overflow:hidden">
+      <sc-for list="{{ faqs }}" as="f" hint-placeholder-count="4">
+        <div style="border-bottom:1px solid #EFEFEF">
+          <button onClick="{{ f.go }}" style="white-space:normal;width:100%;display:flex;gap:10px;align-items:center;border:0;background:none;padding:14px 20px;cursor:pointer;text-align:left"><span style="flex:1;font-size:14px;font-weight:600">{{ f.q }}</span><span style="padding:3px 9px;border-radius:99px;font-size:11.5px;font-weight:600;white-space:nowrap;background:{{ f.stp.bg }};color:{{ f.stp.fg }}">{{ f.stp.t }}</span><span style="color:#929090;font-size:16px">{{ f.sign }}</span></button>
+          <sc-if value="{{ f.open }}"><div style="padding:0 20px 16px;display:flex;flex-direction:column;gap:12px"><div style="font-size:13.5px;line-height:1.6;max-width:780px">{{ f.a }}</div><div style="display:flex;gap:18px;flex-wrap:wrap;font-size:12px;color:#666464"><span>Setor: {{ f.setor }}</span><span>Categoria: {{ f.cat }}</span><span>Palavras relacionadas: {{ f.kw }}</span><span>Responsável: {{ f.resp }}</span><span>Atualizado em {{ f.upd }}</span></div></div></sc-if>
+        </div>
+      </sc-for>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ tab.sla }}">
+    <sc-if value="{{ isAll }}">
+      <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;overflow-x:auto">
+        <table style="border-collapse:collapse;width:100%;min-width:760px;font-size:13px">
+          <thead><tr style="background:#FAFAFA"><sc-for list="{{ slaCols }}" as="c"><th style="text-align:left;font-weight:600;font-size:12px;color:#666464;padding:10px 14px;border-bottom:1px solid #E4E4E4">{{ c }}</th></sc-for></tr></thead>
+          <tbody><sc-for list="{{ slaAll }}" as="r"><tr style="border-bottom:1px solid #EFEFEF"><td style="padding:10px 14px;font-weight:600">{{ r.l }}</td><sc-for list="{{ r.v }}" as="x"><td style="padding:10px 14px;font-variant-numeric:tabular-nums">{{ x }}</td></sc-for></tr></sc-for></tbody>
+        </table>
+      </div>
+    </sc-if>
+    <sc-if value="{{ notAll }}">
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px">
+        <sc-for list="{{ slaFields }}" as="f"><label style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:8px;font-size:12.5px;color:#666464">{{ f.l }}<div style="display:flex;align-items:center;gap:6px"><input type="number" value="{{ f.v }}" onChange="{{ f.on }}" style="width:80px;height:38px;border:1px solid #D6D6D6;border-radius:7px;padding:0 10px;font-size:18px;font-weight:700;color:#1F1F1F;background:#fff"><span style="font-size:13px">horas</span></div></label></sc-for>
+      </div>
+      <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;overflow:hidden">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 20px;border-bottom:1px solid #EFEFEF;gap:10px;flex-wrap:wrap"><div><div style="font-weight:700;font-size:14.5px">Exceções de SLA</div><div style="font-size:12.5px;color:#929090">Por tipo de manifestação, prioridade, causa, empresa ou situação específica</div></div><button onClick="{{ addExc }}" style="border:1px solid #D6D6D6;background:#fff;border-radius:7px;padding:7px 12px;cursor:pointer;font-size:12.5px">+ Adicionar exceção</button></div>
+        <sc-for list="{{ excs }}" as="x"><div style="display:grid;grid-template-columns:150px minmax(0,1fr) 90px 150px 60px;gap:12px;align-items:center;padding:10px 20px;border-bottom:1px solid #EFEFEF;font-size:13px">
+          <select value="{{ x.tipo }}" onChange="{{ x.onTipo }}" style="height:32px;border:1px solid #D6D6D6;border-radius:6px;padding:0 6px;background:#fff;font-size:12.5px"><sc-for list="{{ excTipos }}" as="o"><option value="{{ o }}">{{ o }}</option></sc-for></select>
+          <input value="{{ x.val }}" onChange="{{ x.onVal }}" style="height:32px;border:1px solid #D6D6D6;border-radius:6px;padding:0 8px;background:#fff;font-size:12.5px">
+          <input value="{{ x.sla }}" onChange="{{ x.onSla }}" style="height:32px;border:1px solid #D6D6D6;border-radius:6px;padding:0 8px;background:#fff;font-size:12.5px">
+          <span style="color:#666464;font-size:12.5px">{{ x.ap }}</span>
+          <button onClick="{{ x.del }}" style="border:0;background:none;color:#A80502;cursor:pointer;font-size:12px;padding:0">Remover</button>
+        </div></sc-for>
+      </div>
+    </sc-if>
+  </sc-if>
+
+  <sc-if value="{{ tab.responsaveis }}">
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px">
+      <sc-for list="{{ people }}" as="p" hint-placeholder-count="3"><div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:8px"><div style="display:flex;gap:12px;align-items:center"><span style="width:38px;height:38px;border-radius:50%;background:#EEEEEE;display:grid;place-items:center;font-weight:700;font-size:12.5px;color:#545252">{{ p.ini }}</span><div><div style="font-weight:700;font-size:13.5px">{{ p.n }}</div><div style="font-size:12px;color:#929090">{{ p.papel }} · {{ p.setor }}</div></div></div><div style="font-size:12.5px;color:#545252">{{ p.e }}</div><div style="display:flex;gap:6px;flex-wrap:wrap"><sc-for list="{{ p.c }}" as="c"><span style="background:#F4F4F4;border-radius:6px;padding:3px 8px;font-size:11.5px">{{ c }}</span></sc-for></div></div></sc-for>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ tab.documentos }}">
+    <div style="background:#FDECEC;color:#7F0401;border-radius:10px;padding:12px 16px;font-size:13px;line-height:1.5;display:flex;gap:10px;align-items:center"><span style="width:8px;height:8px;border-radius:50%;background:#C70602;flex:none"></span>Documentos ativos e marcados para a IA são utilizados como fonte de conhecimento pelo Assistente SAC.</div>
+    <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;overflow:hidden">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:14px 20px;border-bottom:1px solid #EFEFEF">
+        <div><div style="font-weight:700;font-size:14.5px;letter-spacing:.02em">DOCUMENTOS DE REFERÊNCIA</div><div style="font-size:12.5px;color:#929090">Excel, PDF, Word, imagens e outros documentos autorizados</div></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button onClick="{{ openImport }}" style="border:1px solid #1F1F1F;background:#fff;border-radius:7px;padding:8px 12px;cursor:pointer;font-size:12.5px;font-weight:600">Importar regras da planilha</button>
+          <label style="border:0;background:#C70602;color:#fff;border-radius:7px;padding:8px 12px;cursor:pointer;font-size:12.5px;font-weight:700;white-space:nowrap">+ ANEXAR DOCUMENTO<input type="file" onChange="{{ onAttach }}" accept=".xlsx,.xls,.csv,.pdf,.doc,.docx,.png,.jpg,.jpeg,.txt" style="display:none"></label>
+        </div>
+      </div>
+      <div style="overflow-x:auto">
+        <table style="border-collapse:collapse;width:100%;min-width:980px;font-size:13px">
+          <thead><tr style="background:#FAFAFA"><sc-for list="{{ docCols }}" as="c"><th style="text-align:left;font-weight:600;font-size:12px;color:#666464;padding:10px 14px;border-bottom:1px solid #E4E4E4;white-space:nowrap">{{ c }}</th></sc-for></tr></thead>
+          <tbody><sc-for list="{{ docs }}" as="d" hint-placeholder-count="3"><tr style="border-bottom:1px solid #EFEFEF">
+            <td style="padding:10px 14px;font-weight:600">{{ d.n }}<div style="font-size:11.5px;font-weight:400;color:#929090">{{ d.setor }}</div></td>
+            <td style="padding:10px 14px"><span style="font-size:11px;font-weight:700;border-radius:4px;padding:3px 7px;background:{{ d.tc.bg }};color:{{ d.tc.fg }}">{{ d.tipo }}</span></td>
+            <td style="padding:10px 14px;white-space:nowrap">{{ d.d }}</td><td style="padding:10px 14px;white-space:nowrap">{{ d.resp }}</td><td style="padding:10px 14px">v{{ d.v }}</td>
+            <td style="padding:10px 14px"><span style="padding:3px 9px;border-radius:99px;font-size:11.5px;font-weight:600;white-space:nowrap;background:{{ d.stp.bg }};color:{{ d.stp.fg }}">{{ d.stp.t }}</span></td>
+            <td style="padding:10px 14px"><button onClick="{{ d.iaT }}" style="border:0;background:none;padding:0;cursor:pointer;display:flex;align-items:center;gap:6px;font-size:12px"><span style="width:30px;height:17px;border-radius:99px;padding:2px;display:flex;justify-content:{{ d.jc }};background:{{ d.tb }}"><span style="width:13px;height:13px;border-radius:50%;background:#fff"></span></span>{{ d.iaL }}</button></td>
+            <td style="padding:10px 14px;white-space:nowrap"><div style="display:flex;gap:10px;font-size:12.5px"><button onClick="{{ d.view }}" style="border:0;background:none;padding:0;color:#A80502;cursor:pointer;font-weight:600">Visualizar</button><button onClick="{{ d.rep }}" style="border:0;background:none;padding:0;cursor:pointer">Substituir versão</button><button onClick="{{ d.dl }}" style="border:0;background:none;padding:0;cursor:pointer">Baixar</button><button onClick="{{ d.del }}" style="border:0;background:none;padding:0;cursor:pointer;color:#A80502">Excluir</button></div></td>
+          </tr></sc-for></tbody>
+        </table>
+      </div>
+      <sc-if value="{{ noDocs }}"><div style="padding:24px;text-align:center;color:#666464;font-size:13px">Nenhum documento anexado a este setor.</div></sc-if>
+    </div>
+  </sc-if>
+</sc-if>
+
+<sc-if value="{{ v.matriz }}">
+  <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><span style="font-size:13px;color:#545252;max-width:760px">Relaciona cada problema ao caminho de tratamento. A IA usa a matriz para sugerir setor, regra e procedimento. Clique em “Editar” para alterar uma linha.</span><button onClick="{{ addMat }}" style="border:1px solid #D6D6D6;background:#fff;border-radius:7px;padding:8px 12px;cursor:pointer;font-size:12.5px">+ Nova linha</button></div>
+  <div style="display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:6px;font-size:10.5px;font-weight:700;letter-spacing:.06em;color:#929090;padding:0 16px;min-width:0"><sc-for list="{{ matHead }}" as="h"><span>{{ h }}</span></sc-for></div>
+  <sc-for list="{{ mat }}" as="m" hint-placeholder-count="4">
+    <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:10px;opacity:{{ m.op }}">
+      <div style="display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:6px;align-items:stretch">
+        <sc-for list="{{ m.steps }}" as="s">
+          <div style="position:relative;background:{{ s.bg }};color:{{ s.fg }};border-radius:7px;padding:9px 10px;font-size:12px;line-height:1.35;min-width:0;overflow-wrap:anywhere">
+            <sc-if value="{{ m.editing }}"><input value="{{ s.v }}" onChange="{{ s.on }}" style="width:100%;border:1px solid #D6D6D6;border-radius:5px;padding:4px 6px;font-size:12px;background:#fff;color:#1F1F1F"></sc-if>
+            <sc-if value="{{ m.view }}"><span>{{ s.v }}</span></sc-if>
+          </div>
+        </sc-for>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;font-size:12px;color:#666464"><span>v{{ m.ver }} · {{ m.by }}</span><div style="display:flex;gap:8px"><button onClick="{{ m.toggle }}" style="border:1px solid #D6D6D6;background:#fff;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:12px">{{ m.tl }}</button><button onClick="{{ m.edit }}" style="border:0;background:{{ m.eb }};color:#fff;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:12px;font-weight:600">{{ m.el }}</button></div></div>
+    </div>
+  </sc-for>
+</sc-if>
+
+<sc-if value="{{ v.causas }}">
+  <div style="font-size:13px;color:#545252">Cadastro hierárquico usado pela IA na classificação: Categoria → Causa → Subcausa.</div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr));gap:14px;align-items:start">
+    <sc-for list="{{ tree }}" as="c" hint-placeholder-count="4">
+      <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-weight:700;font-size:15px">{{ c.cat }}</span><span style="font-size:11.5px;color:#929090">{{ c.n }} causas</span></div>
+        <sc-for list="{{ c.causas }}" as="k">
+          <div style="border-left:2px solid #C70602;padding:2px 0 2px 12px;display:flex;flex-direction:column;gap:6px">
+            <div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span style="font-weight:600;font-size:13.5px">{{ k.c }}</span><button onClick="{{ k.add }}" style="border:0;background:none;color:#A80502;cursor:pointer;font-size:12px;padding:0">+ subcausa</button></div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ k.subs }}" as="x"><span style="background:#F4F4F4;border-radius:6px;padding:4px 9px;font-size:12px">{{ x }}</span></sc-for></div>
+          </div>
+        </sc-for>
+        <button onClick="{{ c.add }}" style="border:1px dashed #CFCFCF;background:none;border-radius:7px;padding:7px;cursor:pointer;font-size:12px;color:#666464">+ Nova causa</button>
+      </div>
+    </sc-for>
+  </div>
+</sc-if>
+
+<sc-if value="{{ v.aprovacao }}">
+  <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:12.5px;color:#666464"><sc-for list="{{ flowSteps }}" as="f"><span style="display:flex;gap:6px;align-items:center"><span style="background:#fff;border:1px solid #E4E4E4;border-radius:99px;padding:4px 10px;color:#1F1F1F;font-weight:600;white-space:nowrap">{{ f.l }}</span>{{ f.arrow }}</span></sc-for></div>
+  <div style="font-size:13px;color:#545252">Novo conhecimento só passa a ser considerado oficial, e usado pela IA, depois de aprovado e ativado.</div>
+  <div style="display:grid;grid-template-columns:repeat(5,minmax(220px,1fr));gap:12px;overflow-x:auto;padding-bottom:4px">
+    <sc-for list="{{ board }}" as="col" hint-placeholder-count="5">
+      <div style="background:#EEEEEE;border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:8px;min-height:200px">
+        <div style="display:flex;justify-content:space-between;padding:2px 4px;font-size:12.5px;font-weight:700;white-space:nowrap"><span>{{ col.l }}</span><span style="color:#929090">{{ col.n }}</span></div>
+        <sc-for list="{{ col.items }}" as="it"><div style="background:#fff;border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:6px;font-size:12.5px"><span style="font-size:11px;color:#929090">{{ it.kind }} · {{ it.setor }}</span><span style="font-weight:600;line-height:1.35">{{ it.t }}</span><span style="font-size:11.5px;color:#666464">{{ it.by }}</span><div style="display:flex;gap:6px;justify-content:flex-end"><sc-if value="{{ it.canBack }}"><button onClick="{{ it.back }}" style="border:1px solid #D6D6D6;background:#fff;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11.5px">Devolver</button></sc-if><sc-if value="{{ it.canNext }}"><button onClick="{{ it.next }}" style="border:0;background:#C70602;color:#fff;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11.5px;font-weight:600">{{ it.nl }}</button></sc-if></div></div></sc-for>
+      </div>
+    </sc-for>
+  </div>
+</sc-if>
+
+<sc-if value="{{ v.versoes }}">
+  <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;overflow-x:auto">
+    <table style="border-collapse:collapse;width:100%;min-width:980px;font-size:13px">
+      <thead><tr style="background:#FAFAFA"><sc-for list="{{ verCols }}" as="c"><th style="text-align:left;font-weight:600;font-size:12px;color:#666464;padding:10px 14px;border-bottom:1px solid #E4E4E4;white-space:nowrap">{{ c }}</th></sc-for></tr></thead>
+      <tbody><sc-for list="{{ versions }}" as="r" hint-placeholder-count="8"><tr style="border-bottom:1px solid #EFEFEF"><td style="padding:10px 14px;font-weight:600">{{ r.obj }}</td><td style="padding:10px 14px;font-weight:700">v{{ r.v }}</td><td style="padding:10px 14px;white-space:nowrap">{{ r.d }}</td><td style="padding:10px 14px;white-space:nowrap">{{ r.by }}</td><td style="padding:10px 14px">{{ r.alt }}</td><td style="padding:10px 14px;color:#666464">{{ r.mot }}</td><td style="padding:10px 14px"><span style="padding:3px 9px;border-radius:99px;font-size:11.5px;font-weight:600;white-space:nowrap;background:{{ r.stp.bg }};color:{{ r.stp.fg }}">{{ r.stp.t }}</span></td><td style="padding:10px 14px"><button onClick="{{ r.view }}" style="border:0;background:none;padding:0;color:#A80502;cursor:pointer;font-weight:600;font-size:12.5px">Ver versão</button></td></tr></sc-for></tbody>
+    </table>
+  </div>
+  <div style="font-size:12.5px;color:#929090">Versões anteriores permanecem no histórico e podem ser consultadas a qualquer momento.</div>
+</sc-if>
+
+<sc-if value="{{ v.auditoria }}">
+  <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;overflow-x:auto">
+    <table style="border-collapse:collapse;width:100%;min-width:1100px;font-size:13px">
+      <thead><tr style="background:#FAFAFA"><sc-for list="{{ audCols }}" as="c"><th style="text-align:left;font-weight:600;font-size:12px;color:#666464;padding:10px 12px;border-bottom:1px solid #E4E4E4;white-space:nowrap">{{ c }}</th></sc-for></tr></thead>
+      <tbody><sc-for list="{{ audit }}" as="r" hint-placeholder-count="8"><tr style="border-bottom:1px solid #EFEFEF"><td style="padding:9px 12px;white-space:nowrap;font-variant-numeric:tabular-nums">{{ r.d }}</td><td style="padding:9px 12px;font-variant-numeric:tabular-nums">{{ r.h }}</td><td style="padding:9px 12px;white-space:nowrap">{{ r.u }}</td><td style="padding:9px 12px"><span style="padding:2px 8px;border-radius:99px;font-size:11.5px;font-weight:600;white-space:nowrap;background:{{ r.ap.bg }};color:{{ r.ap.fg }}">{{ r.ap.t }}</span></td><td style="padding:9px 12px">{{ r.obj }}</td><td style="padding:9px 12px;color:#666464">{{ r.va }}</td><td style="padding:9px 12px">{{ r.vn }}</td><td style="padding:9px 12px;color:#666464">{{ r.doc }}</td><td style="padding:9px 12px">{{ r.alt }}</td></tr></sc-for></tbody>
+    </table>
+  </div>
+</sc-if>
+
+<sc-if value="{{ v.calc }}">
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr));gap:16px;align-items:start">
+    <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:20px;display:flex;flex-direction:column;gap:14px">
+      <div style="font-weight:700;font-size:15px">Dados da entrega</div>
+      <label style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:#545252">Manifestação<select value="{{ cMan }}" onChange="{{ onCMan }}" style="height:38px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:13px"><sc-for list="{{ manOpts }}" as="o"><option value="{{ o }}">{{ o }}</option></sc-for></select></label>
+      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
+        <sc-for list="{{ calcFields }}" as="f"><label style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:#545252">{{ f.l }}<input type="date" value="{{ f.v }}" onChange="{{ f.on }}" style="height:38px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:13px"></label></sc-for>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;color:#545252">Tipo de contagem</span><div style="display:flex;gap:6px"><sc-for list="{{ countChips }}" as="c"><button onClick="{{ c.go }}" style="border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};border-radius:7px;padding:7px 12px;font-size:13px;cursor:pointer">{{ c.l }}</button></sc-for></div></div>
+      <div style="font-size:12px;color:#929090;line-height:1.5">Se a data efetiva estiver vazia, o cálculo usa a data de referência (entrega ainda não realizada). Dias úteis excluem sábados, domingos e feriados nacionais.</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div style="background:{{ res.bg }};color:#fff;border-radius:12px;padding:26px 24px;display:flex;flex-direction:column;gap:8px">
+        <div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;font-weight:600;opacity:.9">Resultado · {{ res.mode }}</div>
+        <div style="font-size:38px;font-weight:700;letter-spacing:-.01em;line-height:1.1">{{ res.big }}</div>
+        <div style="font-size:13px">{{ res.detail }}</div>
+      </div>
+      <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:16px 18px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 16px;font-size:13px"><sc-for list="{{ res.rows }}" as="f"><div><div style="font-size:11px;color:#929090">{{ f.l }}</div><div style="font-weight:600">{{ f.v }}</div></div></sc-for></div>
+      <button onClick="{{ regAtraso }}" style="height:44px;border:0;background:#C70602;color:#fff;border-radius:8px;font-weight:700;cursor:pointer;letter-spacing:.04em" style-hover="background:#A80502">REGISTRAR NA MANIFESTAÇÃO</button>
+      <sc-for list="{{ calcLog }}" as="l"><div style="background:#E6F2EA;color:#1E6B3A;border-radius:8px;padding:10px 12px;font-size:12.5px">{{ l }}</div></sc-for>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ modal.form }}">
+  <div style="position:fixed;inset:0;background:rgba(20,20,20,.45);z-index:60;display:flex;justify-content:flex-end">
+    <div style="width:min(640px,100%);height:100%;background:#fff;display:flex;flex-direction:column">
+      <div style="padding:18px 24px;border-bottom:1px solid #E4E4E4;display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:12px;color:#929090">{{ formMeta }}</div><div style="font-weight:700;font-size:17px">{{ formTitle }}</div></div><button onClick="{{ closeModal }}" style="border:0;background:none;cursor:pointer;font-size:22px;color:#666464;padding:0 4px">×</button></div>
+      <div style="flex:1;overflow:auto;padding:20px 24px;display:flex;flex-direction:column;gap:14px">
+        <sc-for list="{{ formText }}" as="f"><label style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:#545252;font-weight:600">{{ f.l }}<sc-if value="{{ f.big }}"><textarea rows="3" value="{{ f.v }}" onChange="{{ f.on }}" placeholder="{{ f.ph }}" style="border:1px solid #D6D6D6;border-radius:7px;padding:9px 11px;font-size:13px;font-weight:400;line-height:1.5;resize:vertical;background:#fff;color:#1F1F1F"></textarea></sc-if><sc-if value="{{ f.small }}"><input value="{{ f.v }}" onChange="{{ f.on }}" placeholder="{{ f.ph }}" style="height:38px;border:1px solid #D6D6D6;border-radius:7px;padding:0 11px;font-size:13px;font-weight:400;background:#fff;color:#1F1F1F"></sc-if></label></sc-for>
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
+          <label style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:#545252;font-weight:600">Setor responsável<select value="{{ form.setor }}" onChange="{{ fmSetor }}" style="height:38px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:13px;font-weight:400"><sc-for list="{{ sectorNames }}" as="o"><option value="{{ o }}">{{ o }}</option></sc-for></select></label>
+          <label style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:#545252;font-weight:600">SLA relacionado<select value="{{ form.sla }}" onChange="{{ fmSla }}" style="height:38px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:13px;font-weight:400"><sc-for list="{{ slaOpts }}" as="o"><option value="{{ o }}">{{ o }}</option></sc-for></select></label>
+        </div>
+        <sc-for list="{{ formChips }}" as="g"><div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12px;color:#545252;font-weight:600">{{ g.l }}</span><div style="display:flex;gap:6px;flex-wrap:wrap"><sc-for list="{{ g.o }}" as="c"><button onClick="{{ c.go }}" style="border:1px solid {{ c.bd }};background:{{ c.bg }};color:{{ c.fg }};border-radius:7px;padding:6px 12px;font-size:12.5px;cursor:pointer">{{ c.l }}</button></sc-for></div></div></sc-for>
+        <button onClick="{{ fmIa }}" style="display:flex;align-items:center;gap:10px;border:1px solid #E4E4E4;border-radius:8px;background:#FAFAFA;padding:12px;cursor:pointer;text-align:left;font-size:13px;white-space:normal"><span style="width:34px;height:19px;border-radius:99px;padding:2px;display:flex;flex:none;justify-content:{{ fIa.jc }};background:{{ fIa.bg }}"><span style="width:15px;height:15px;border-radius:50%;background:#fff"></span></span><span><strong>Disponibilizar este conteúdo para análise da IA</strong><br><span style="font-size:12px;color:#666464">Só vale depois que a regra for aprovada e ativada.</span></span></button>
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;font-size:12px;background:#FAFAFA;border-radius:8px;padding:12px"><sc-for list="{{ formRO }}" as="f"><div><div style="color:#929090">{{ f.l }}</div><div style="font-weight:600">{{ f.v }}</div></div></sc-for></div>
+      </div>
+      <div style="padding:14px 24px;border-top:1px solid #E4E4E4;display:flex;justify-content:flex-end;gap:8px"><button onClick="{{ closeModal }}" style="border:1px solid #D6D6D6;background:#fff;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:13px">Cancelar</button><button onClick="{{ saveForm }}" style="border:0;background:#C70602;color:#fff;border-radius:8px;padding:9px 18px;cursor:pointer;font-size:13px;font-weight:700">Salvar regra</button></div>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ modal.imp }}">
+  <div style="position:fixed;inset:0;background:rgba(20,20,20,.45);z-index:60;display:grid;place-items:center;padding:24px">
+    <div style="width:min(1100px,100%);max-height:100%;background:#fff;border-radius:12px;display:flex;flex-direction:column;overflow:hidden">
+      <div style="padding:18px 24px;border-bottom:1px solid #E4E4E4;display:flex;justify-content:space-between;align-items:center;gap:10px"><div><div style="font-size:12px;color:#929090">Regras Logística.xlsx · aba “Regras” · {{ impTotal }} linhas encontradas</div><div style="font-weight:700;font-size:17px">IMPORTAR REGRAS DA PLANILHA</div></div><button onClick="{{ closeModal }}" style="border:0;background:none;cursor:pointer;font-size:22px;color:#666464;padding:0 4px">×</button></div>
+      <div style="background:#FBF0D9;color:#6A4200;padding:10px 24px;font-size:12.5px">As regras importadas entram como <strong>Em revisão</strong> e não são usadas pela IA até serem revisadas e aprovadas. Edite as células antes de importar, se necessário.</div>
+      <div style="flex:1;overflow:auto">
+        <table style="border-collapse:collapse;width:100%;min-width:960px;font-size:12.5px">
+          <thead><tr style="background:#FAFAFA"><th style="padding:10px 12px;border-bottom:1px solid #E4E4E4;width:40px"><button onClick="{{ impAll }}" style="border:0;background:none;cursor:pointer;padding:0;font-size:11px;color:#A80502;font-weight:700">{{ impAllL }}</button></th><sc-for list="{{ impCols }}" as="c"><th style="text-align:left;font-weight:600;font-size:12px;color:#666464;padding:10px 8px;border-bottom:1px solid #E4E4E4">{{ c }}</th></sc-for></tr></thead>
+          <tbody><sc-for list="{{ impRows }}" as="r"><tr style="border-bottom:1px solid #EFEFEF;background:{{ r.bg }}">
+            <td style="padding:8px 12px"><button onClick="{{ r.sel }}" style="width:18px;height:18px;border-radius:4px;border:1.5px solid {{ r.cb }};background:{{ r.cbg }};color:#fff;font-size:11px;cursor:pointer;padding:0;display:grid;place-items:center">{{ r.mark }}</button></td>
+            <td style="padding:6px 8px"><textarea rows="2" value="{{ r.regra }}" onChange="{{ r.onRegra }}" style="width:100%;border:1px solid #E4E4E4;border-radius:5px;padding:5px 7px;font-size:12px;resize:vertical;background:#fff"></textarea></td>
+            <td style="padding:6px 8px"><textarea rows="2" value="{{ r.cond }}" onChange="{{ r.onCond }}" style="width:100%;border:1px solid #E4E4E4;border-radius:5px;padding:5px 7px;font-size:12px;resize:vertical;background:#fff"></textarea></td>
+            <td style="padding:6px 8px"><textarea rows="2" value="{{ r.acao }}" onChange="{{ r.onAcao }}" style="width:100%;border:1px solid #E4E4E4;border-radius:5px;padding:5px 7px;font-size:12px;resize:vertical;background:#fff"></textarea></td>
+            <td style="padding:6px 8px"><input value="{{ r.resp }}" onChange="{{ r.onResp }}" style="width:100%;height:30px;border:1px solid #E4E4E4;border-radius:5px;padding:0 7px;font-size:12px;background:#fff"></td>
+            <td style="padding:6px 8px;width:80px"><input value="{{ r.sla }}" onChange="{{ r.onSla }}" style="width:100%;height:30px;border:1px solid #E4E4E4;border-radius:5px;padding:0 7px;font-size:12px;background:#fff"></td>
+          </tr></sc-for></tbody>
+        </table>
+      </div>
+      <div style="padding:14px 24px;border-top:1px solid #E4E4E4;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><span style="font-size:12.5px;color:#666464">{{ impSelTxt }}</span><div style="display:flex;gap:8px;flex-wrap:wrap"><button onClick="{{ closeModal }}" style="border:1px solid #D6D6D6;background:#fff;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:13px">Cancelar importação</button><button onClick="{{ impDoAll }}" style="border:1px solid #1F1F1F;background:#fff;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:13px;font-weight:600">Importar todas</button><button onClick="{{ impDoSel }}" style="border:0;background:#C70602;color:#fff;border-radius:8px;padding:9px 18px;cursor:pointer;font-size:13px;font-weight:700">Importar selecionadas</button></div></div>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ modal.view }}">
+  <div style="position:fixed;inset:0;background:rgba(20,20,20,.45);z-index:60;display:grid;place-items:center;padding:24px">
+    <div style="width:min(760px,100%);max-height:100%;overflow:auto;background:#fff;border-radius:12px;display:flex;flex-direction:column">
+      <div style="padding:18px 24px;border-bottom:1px solid #E4E4E4;display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:12px;color:#929090">{{ viewSub }}</div><div style="font-weight:700;font-size:17px">{{ viewTitle }}</div></div><button onClick="{{ closeModal }}" style="border:0;background:none;cursor:pointer;font-size:22px;color:#666464;padding:0 4px">×</button></div>
+      <div style="padding:20px 24px;display:flex;flex-direction:column;gap:12px">
+        <sc-for list="{{ viewRows }}" as="f"><div style="display:grid;grid-template-columns:160px minmax(0,1fr);gap:12px;font-size:13px;line-height:1.5;border-bottom:1px solid #EFEFEF;padding-bottom:10px"><span style="color:#929090">{{ f.l }}</span><span>{{ f.v }}</span></div></sc-for>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ toast }}"><div style="position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1F1F1F;color:#fff;padding:11px 16px;border-radius:8px;font-size:13px;z-index:70;box-shadow:0 8px 24px rgba(0,0,0,.18);max-width:90vw;white-space:normal">{{ toast }}</div></sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;usuario&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Equipe TI&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;onAtraso&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(r: object) =&gt; void&quot;}}">
+class Component extends DCLogic {
+  state = {
+    view: 'home', setor: 'Logística', tab: 'regras', modal: null, editId: null, form: null,
+    rq: '', stF: 'Todas', histOpen: null, procOpen: 'lg1', faqOpen: 'f1', toast: '',
+    rules: null, docs: null, imp: null, mat: null, matEdit: null, tree: null, audit: null, sla: null, excs: null, extraSectors: [],
+    cMan: 'MAN-0143 · Loja Exemplo ME', cPed: '2026-09-15', cPrev: '2026-09-24', cEf: '2026-10-01', cRef: '2026-10-02', cMode: 'corridos', calcLog: [], viewRows: null, viewTitle: '', viewSub: ''
+  };
+
+  componentDidMount() { this.seed(); }
+
+  seed() {
+    const H = (v, d, by, alt, mot) => ({ v, d, by, alt, mot });
+    const R = (id, setor, t, regra, cond, acao, pri, apl, st, resp, sla, rnc, evid, enc, v, upd, by, ia, docs, hist) => ({ id, setor, t, regra, cond, acao, pri, apl, st, resp, sla, rnc, evid, enc, v, upd, by, ia, docs: docs || '', quando: '', obs: '', created: hist && hist.length ? hist[hist.length - 1].d : upd, hist: hist || [H(v, upd, by, 'Regra criada', 'Cadastro inicial')] });
+    const rules = [
+      R('r1', 'Logística', 'Atraso de entrega: confirmar datas antes de definir a causa', 'Quando houver atraso de entrega, verificar a data prevista e a data efetiva antes de definir a causa da manifestação.', 'Motivo = atraso na entrega', 'Utilizar a Calculadora de Atraso e registrar o resultado na manifestação.', 'Alta', 'Automática', 'Ativa', 'Logística', 'SLA de análise · 24h', 'Não', 'Sim', 'Não', '1.2', '02/10/2026', 'Rafael Souza', true, 'Regras Logística.xlsx', [H('1.2', '02/10/2026', 'Rafael Souza', 'Incluída a Calculadora de Atraso na ação', 'Padronizar o cálculo'), H('1.1', '11/08/2026', 'Rafael Souza', 'Texto da condição revisado', 'Ambiguidade apontada pelo SAC'), H('1.0', '02/06/2026', 'Helena Prado', 'Regra criada', 'Cadastro inicial')]),
+      R('r2', 'Logística', 'Avaria no transporte exige evidência', 'Manifestações de avaria só podem ter causa definida com fotos da carga e canhoto da NF.', 'Motivo = avaria no transporte', 'Solicitar fotos e canhoto ao cliente antes da conclusão técnica.', 'Alta', 'Orientativa', 'Ativa', 'Rafael Souza', 'SLA de tratativa · 72h', 'Não', 'Sim', 'Sim', '2.0', '18/09/2026', 'Rafael Souza', true, 'Procedimento de carregamento.docx', [H('2.0', '18/09/2026', 'Rafael Souza', 'Qualidade incluída como apoio', 'Reincidência de lote'), H('1.0', '02/06/2026', 'Helena Prado', 'Regra criada', 'Cadastro inicial')]),
+      R('r3', 'Logística', 'Ressalva no canhoto aciona a transportadora', 'Quando o canhoto tiver ressalva de avaria, a cobrança é direcionada à transportadora.', 'Canhoto com ressalva registrada', 'Encaminhar ao Financeiro para cobrança e informar o SAC.', 'Média', 'Orientativa', 'Ativa', 'Logística', 'SLA de resposta interna · 48h', 'Não', 'Sim', 'Sim', '1.0', '24/09/2026', 'Rafael Souza', true),
+      R('r4', 'Logística', 'Reincidência na mesma rota', 'Duas ocorrências de avaria na mesma rota em 30 dias indicam falha de processo.', 'Rota igual E 2 ocorrências em 30 dias', 'Sinalizar à Qualidade e revisar o plano de carga.', 'Média', 'Necessita aprovação', 'Em revisão', 'Rafael Souza', 'SLA total · 120h', 'Não', 'Não', 'Não', '0.9', '01/10/2026', 'Rafael Souza', false),
+      R('r5', 'Logística', 'Endereço incorreto no pedido', 'Entrega não realizada por endereço divergente do cadastro.', 'Ocorrência da transportadora = endereço não localizado', 'Confirmar o endereço com o Comercial e reagendar a entrega.', 'Baixa', 'Orientativa', 'Inativa', 'Logística', 'SLA de tratativa · 72h', 'Não', 'Não', 'Sim', '1.0', '10/07/2026', 'Rafael Souza', false),
+      R('r0', 'Qualidade', 'Origens válidas de RNC', 'RNC é aberta apenas por: reclamação de cliente via Comercial (registrada sempre, procedência definida na avaliação), auditoria externa, auditoria interna ou desvio de especificação de matéria-prima. Reclamação do SAC não gera RNC.', 'Abertura de RNC', 'Bloquear RNC com origem SAC e orientar a Ficha de Encaminhamento de Manifestação.', 'Alta', 'Automática', 'Ativa', 'Helena Prado', 'SLA total · 120h', 'Sim', 'Sim', 'Não', '1.0', '02/10/2026', 'Helena Prado', true),
+      R('r6', 'SAC', 'Devolutiva sem culpa antecipada', 'A devolutiva não assume culpa automaticamente; o texto se baseia nos fatos da tratativa registrada.', 'Elaboração de devolutiva', 'Bloquear termos de admissão genérica e citar apenas fatos registrados.', 'Alta', 'Automática', 'Ativa', 'Luiza Martins', 'SLA de devolutiva · 24h', 'Não', 'Não', 'Não', '1.0', '11/09/2026', 'Luiza Martins', true),
+      R('r7', 'Qualidade', 'Defeitos são analisados pela Qualidade', 'Toda manifestação com indício de defeito de fabricação é tratada pela Qualidade.', 'Motivo = defeito de fabricação OU qualidade do produto', 'Encaminhar para Qualidade como setor principal.', 'Alta', 'Automática', 'Ativa', 'Diego Alves', 'SLA de tratativa · 72h', 'Não', 'Sim', 'Sim', '2.0', '24/09/2026', 'Diego Alves', true),
+      R('r8', 'Qualidade', 'Lote informado prioriza rastreabilidade', 'Quando houver lote, a investigação começa pela rastreabilidade.', 'Campo Lote preenchido', 'Solicitar identificação do lote e consultar histórico do lote.', 'Média', 'Orientativa', 'Ativa', 'Diego Alves', 'SLA de análise · 24h', 'Não', 'Sim', 'Não', '1.1', '18/09/2026', 'Diego Alves', true),
+      R('r9', 'Comercial', 'Compensação depende de aprovação comercial', 'Reposição, devolução ou compensação dependem de aprovação comercial.', 'Tratativa com valor financeiro ou reposição', 'Enviar para Aprovações antes da devolutiva.', 'Alta', 'Necessita aprovação', 'Ativa', 'Camila Torres', 'SLA de tratativa · 72h', 'Não', 'Sim', 'Sim', '1.3', '02/09/2026', 'Camila Torres', true),
+      R('r10', 'Financeiro', 'Segunda via de documento em 24h', 'Pedidos de segunda via de boleto ou NF são atendidos em até 24h.', 'Tipo = solicitação E assunto = documento fiscal', 'Emitir no ERP e enviar pelo canal de origem.', 'Baixa', 'Automática', 'Ativa', 'Paula Ramos', 'SLA de resposta interna · 24h', 'Não', 'Não', 'Não', '1.0', '02/09/2026', 'Paula Ramos', true),
+      R('r11', 'Expedição', 'Divergência de quantidade: conferir romaneio', 'Divergência de quantidade exige conferência do romaneio com a NF emitida.', 'Motivo = divergência de quantidade', 'Conferir romaneio, NF e registro de carregamento.', 'Alta', 'Orientativa', 'Ativa', 'Marcos Lima', 'SLA de tratativa · 48h', 'Não', 'Sim', 'Não', '1.0', '30/07/2026', 'Marcos Lima', true),
+      R('r12', 'Produção', 'Defeito de fabricação: consultar ordem de produção', 'Defeitos confirmados pela Qualidade são cruzados com a ordem de produção do lote.', 'Qualidade confirma defeito', 'Consultar OP, turno e parâmetros de máquina.', 'Média', 'Orientativa', 'Aguardando aprovação', '[Nome]', 'SLA de tratativa · 72h', 'Sim', 'Sim', 'Não', '0.1', '29/09/2026', '[Nome]', false),
+      R('r13', 'Compras', 'Matéria-prima fora da especificação', 'Lote de matéria-prima fora da especificação aciona o fornecedor.', 'Causa = matéria-prima', 'Abrir RNC (desvio de especificação de MP) e notificar o fornecedor.', 'Média', 'Orientativa', 'Rascunho', '[Nome]', 'SLA total · 120h', 'Sim', 'Sim', 'Não', '0.1', '30/09/2026', '[Nome]', false),
+      R('r14', 'Administrativo', 'Denúncia segue com sigilo', 'Manifestações do tipo denúncia são encaminhadas com acesso restrito.', 'Tipo = denúncia', 'Restringir visualização e encaminhar à diretoria.', 'Alta', 'Automática', 'Ativa', 'Ricardo Menezes', 'SLA total · 120h', 'Não', 'Não', 'Sim', '1.0', '02/06/2026', 'Ricardo Menezes', true),
+      R('r15', 'Outros', 'Sugestões são registradas e repassadas', 'Sugestões não geram tratativa obrigatória; são repassadas ao setor relacionado.', 'Tipo = sugestão', 'Registrar e repassar ao setor relacionado.', 'Baixa', 'Orientativa', 'Ativa', 'Luiza Martins', 'SLA total · 120h', 'Não', 'Não', 'Sim', '1.0', '02/06/2026', 'Luiza Martins', true)
+    ];
+    const D = (id, setor, n, tipo, d, resp, v, st, ia) => ({ id, setor, n, tipo, d, resp, v, st, ia });
+    const docs = [D('d1', 'Logística', 'Regras Logística.xlsx', 'Excel', '02/10/2026', 'Rafael Souza', '1.0', 'Ativo', true), D('d2', 'Logística', 'Prazos de entrega por rota.pdf', 'PDF', '18/09/2026', 'Rafael Souza', '1.2', 'Revisão vencida', false), D('d3', 'Logística', 'Procedimento de carregamento.docx', 'Word', '02/09/2026', 'Rafael Souza', '2.0', 'Ativo', true), D('d4', 'Qualidade', 'Política de Troca e Devolução.pdf', 'PDF', '02/06/2026', 'Diego Alves', '3.2', 'Ativo', true), D('d5', 'Comercial', 'Tabela de preços 2026.xlsx', 'Excel', '05/01/2026', 'Camila Torres', '2.0', 'Ativo', true), D('d6', 'Expedição', 'Foto padrão de palete conferido.jpg', 'Imagem', '30/07/2026', 'Marcos Lima', '1.0', 'Ativo', false)];
+    const M = (prob, causa, setor, regra, proc, trat, apr, dev, ver, by) => ({ s: [prob, causa, setor, regra, proc, trat, apr, dev], ver, by, on: true });
+    const mat = [M('Atraso de entrega', 'Possível causa logística', 'Logística', 'Verificar pedido e transportadora', 'Calcular atraso e registrar evidências', 'Definir tratativa', 'Aprovação quando aplicável', 'SAC realiza devolutiva', '1.4', 'Rafael Souza · 02/10/2026'), M('Avaria no transporte', 'Empilhamento ou amarração', 'Logística + Qualidade', 'Exigir fotos e canhoto', 'Procedimento de avaria', 'Reposição ou crédito', 'Comercial, se houver valor', 'SAC realiza devolutiva', '2.0', 'Rafael Souza · 18/09/2026'), M('Produto com defeito', 'Possível problema de fabricação', 'Qualidade', 'Defeitos analisados pela Qualidade', 'Tratamento de não conformidade', 'Analisar lote e substituir', 'Coordenação', 'SAC realiza devolutiva', '2.0', 'Diego Alves · 24/09/2026'), M('Divergência de quantidade', 'Erro de conferência', 'Expedição', 'Conferir romaneio', 'Conferência de carga', 'Reenvio do faltante', 'Não se aplica', 'SAC realiza devolutiva', '1.0', 'Marcos Lima · 30/07/2026'), M('Cobrança indevida', 'Erro de faturamento', 'Financeiro', 'Revisar faturamento', 'Estorno ou nova NF', 'Corrigir cobrança', 'Coordenação', 'SAC realiza devolutiva', '1.2', 'Paula Ramos · 11/08/2026')];
+    const tree = [
+      { cat: 'Entrega', causas: [{ c: 'Atraso', subs: ['Transportadora', 'Expedição', 'Roteirização', 'Endereço incorreto'] }, { c: 'Avaria', subs: ['Empilhamento', 'Amarração', 'Veículo inadequado', 'Descarga'] }, { c: 'Extravio', subs: ['Transportadora', 'Endereço incorreto'] }] },
+      { cat: 'Produto', causas: [{ c: 'Defeito de fabricação', subs: ['Selagem', 'Dimensão', 'Acabamento'] }, { c: 'Matéria-prima', subs: ['Gramatura', 'Resina fora da especificação'] }] },
+      { cat: 'Pedido e faturamento', causas: [{ c: 'Divergência de quantidade', subs: ['Romaneio desatualizado', 'Erro de separação'] }, { c: 'Cobrança', subs: ['Tabela desatualizada', 'Duplicidade', 'Impostos'] }] },
+      { cat: 'Atendimento', causas: [{ c: 'Prazo de retorno', subs: ['Sem resposta do setor', 'Informação incompleta'] }, { c: 'Comunicação', subs: ['Canal incorreto', 'Informação divergente'] }] }
+    ];
+    const A = (d, h, u, a, obj, va, vn, doc, alt) => ({ d, h, u, a, obj, va, vn, doc, alt });
+    const audit = [A('02/10/2026', '09:40', 'Rafael Souza', 'Edição', 'Regra · Atraso de entrega', 'v1.1', 'v1.2', 'Regras Logística.xlsx', 'Ação passou a usar a Calculadora de Atraso'), A('02/10/2026', '09:12', 'Rafael Souza', 'Criação', 'Documento · Regras Logística.xlsx', '—', 'v1.0', 'Regras Logística.xlsx', 'Upload de planilha'), A('01/10/2026', '17:05', 'Rafael Souza', 'Criação', 'Regra · Reincidência na mesma rota', '—', 'v0.9', '—', 'Enviada para revisão'), A('30/09/2026', '16:20', 'Helena Prado', 'Aprovação', 'Procedimento · Avaria no transporte', 'v1.3', 'v1.4', 'Procedimento de carregamento.docx', 'Aprovado e ativado'), A('24/09/2026', '11:02', 'Diego Alves', 'Edição', 'Regra · Defeitos pela Qualidade', 'v1.0', 'v2.0', 'Política de Troca e Devolução.pdf', 'Inclusão de evidência obrigatória'), A('18/09/2026', '10:30', 'Helena Prado', 'Edição', 'Matriz · Cotação e preço', '72h', '48h', '—', 'SLA reduzido')];
+    const sla = {}; const SL = { SAC: [8, 24, 24, 24, 72], Comercial: [24, 48, 24, 24, 96], Logística: [24, 72, 48, 24, 120], Qualidade: [24, 72, 48, 24, 120], Produção: [24, 72, 48, 24, 120], Expedição: [24, 48, 24, 24, 96], Financeiro: [24, 72, 24, 24, 120], Compras: [48, 96, 48, 24, 168], Administrativo: [24, 72, 48, 24, 120], Outros: [48, 120, 48, 24, 168] };
+    Object.keys(SL).forEach(k => sla[k] = SL[k].slice());
+    const excs = [{ id: 'e1', setor: 'Logística', tipo: 'Prioridade', val: 'Alta', sla: '48h' }, { id: 'e2', setor: 'Logística', tipo: 'Empresa', val: 'Cesbap · rotas interestaduais', sla: '96h' }, { id: 'e3', setor: 'Logística', tipo: 'Causa', val: 'Extravio', sla: '120h' }, { id: 'e4', setor: 'Qualidade', tipo: 'Tipo de manifestação', val: 'Dúvida técnica', sla: '48h' }];
+    const imp = [
+      ['Quando a coleta não ocorrer na janela agendada, registrar a ocorrência da transportadora.', 'Status da coleta = não realizada', 'Solicitar comprovante à transportadora e reagendar.', 'Logística', '24h'],
+      ['Entregas para zona rural têm prazo adicional de 2 dias úteis.', 'CEP em zona rural', 'Considerar o prazo adicional na Calculadora de Atraso.', 'Logística', '—'],
+      ['Carga com mais de 6 camadas no baú deve ser recusada na expedição.', 'Plano de carga > 6 camadas', 'Bloquear saída e acionar o supervisor.', 'Expedição', 'Imediato'],
+      ['Avaria registrada no canhoto é de responsabilidade da transportadora.', 'Canhoto com ressalva', 'Encaminhar cobrança ao Financeiro.', 'Logística', '48h'],
+      ['Atraso acima de 5 dias exige contato proativo com o cliente.', 'Atraso calculado > 5 dias', 'SAC informa nova data ao cliente.', 'SAC', '24h'],
+      ['Entregas agendadas fora do horário do cliente são reagendadas sem custo.', 'Entrega fora da janela do cliente', 'Reagendar e registrar motivo.', 'Logística', '48h']
+    ].map((a, i) => ({ id: 'i' + i, sel: i !== 1, regra: a[0], cond: a[1], acao: a[2], resp: a[3], sla: a[4] }));
+    this.setState({ rules, docs, mat, tree, audit, sla, excs, impSeed: imp });
+  }
+
+  flash(t) { this.setState({ toast: t }); clearTimeout(this._t); this._t = setTimeout(() => this.setState({ toast: '' }), 2800); }
+  now() { const d = new Date(); const p = n => String(n).padStart(2, '0'); return { d: '02/10/2026', h: p(d.getHours()) + ':' + p(d.getMinutes()) }; }
+  log(a, obj, va, vn, doc, alt) { const n = this.now(); this.setState(s => ({ audit: [{ d: n.d, h: n.h, u: this.props.usuario || 'Equipe TI', a, obj, va: va || '—', vn: vn || '—', doc: doc || '—', alt }].concat(s.audit || []) })); }
+  bump(v, major) { const [a, b] = String(v).split('.').map(Number); return major ? (a + 1) + '.0' : a + '.' + ((b || 0) + 1); }
+  upd(id, fn) { this.setState(s => ({ rules: s.rules.map(r => r.id === id ? fn(r) : r) })); }
+
+  renderVals() {
+    const S = this.state;
+    if (!S.rules) return { nav: [], v: {}, tab: {}, modal: {}, crumb: 'Cérebro', heading: 'Cérebro', sub: '' };
+    const TN = { green: ['#E6F2EA', '#1E6B3A'], amber: ['#FBF0D9', '#7A4C00'], blue: ['#E6EEF8', '#24508F'], gray: ['#EEEEEE', '#545252'], red: ['#FDECEC', '#A80502'] };
+    const P = (t, k) => ({ t, bg: TN[k][0], fg: TN[k][1] });
+    const STK = { 'Ativa': 'green', 'Ativo': 'green', 'Aprovado': 'green', 'Vigente': 'green', 'Inativa': 'gray', 'Inativo': 'gray', 'Rascunho': 'gray', 'Em revisão': 'amber', 'Revisão vencida': 'amber', 'Aguardando aprovação': 'blue' };
+    const stp = st => P(st, STK[st] || 'gray');
+    const iap = on => on ? P('Utilizado pela IA', 'red') : P('Não utilizado pela IA', 'gray');
+    const chip = (on, l, go) => ({ l, go, bg: on ? '#1F1F1F' : '#fff', fg: on ? '#fff' : '#3A3939', bd: on ? '#1F1F1F' : '#D6D6D6' });
+    const go = (view, extra) => () => { this.setState(Object.assign({ view }, extra || {})); try { window.scrollTo(0, 0); } catch (e) { } };
+    const BASE = ['SAC', 'Comercial', 'Logística', 'Qualidade', 'Produção', 'Expedição', 'Financeiro', 'Compras', 'Administrativo', 'Outros'].concat(S.extraSectors);
+    const META = { SAC: ['Luiza Martins', '11/09/2026', '1.3'], Comercial: ['Camila Torres', '02/09/2026', '1.4'], Logística: ['Rafael Souza', '02/10/2026', '2.1'], Qualidade: ['Diego Alves', '24/09/2026', '2.0'], Produção: ['[Nome]', '29/09/2026', '1.0'], Expedição: ['Marcos Lima', '30/07/2026', '1.1'], Financeiro: ['Paula Ramos', '02/09/2026', '1.2'], Compras: ['[Nome]', '30/09/2026', '0.1'], Administrativo: ['Ricardo Menezes', '02/06/2026', '1.0'], Outros: ['Luiza Martins', '02/06/2026', '1.0'] };
+    const meta = n => META[n] || ['[Nome]', '02/10/2026', '0.1'];
+    const PR = this.procData(), PO = this.polData(), FQ = this.faqData();
+    const slaOf = n => (S.sla[n] || [24, 72, 48, 24, 120]);
+    const isAll = S.setor === 'Todos os setores';
+    const inSet = x => isAll || x.setor === S.setor || (x.setor || '').includes(S.setor);
+
+    const NAV = [['home', 'Início'], ['setores', 'Regras dos setores'], ['matriz', 'Matriz de tratamento'], ['causas', 'Causas e subcausas'], ['aprovacao', 'Aprovação do conhecimento'], ['versoes', 'Histórico de versões'], ['auditoria', 'Auditoria'], ['calc', 'Calculadora de atraso']];
+    const curNav = S.view === 'setor' ? (isAll ? 'home' : 'setores') : S.view;
+    const nav = NAV.map(([k, l]) => { const on = curNav === k; return { l, go: go(k), fg: on ? '#1F1F1F' : '#666464', bd: on ? '#C70602' : 'transparent', fw: on ? '700' : '500' }; });
+    const v = {}; v[S.view] = true;
+    const TT = { home: ['Cérebro', 'Central de conhecimento, regras e procedimentos utilizados pelo Assistente SAC.'], setores: ['Regras dos setores', 'Regras, procedimentos e documentos que orientam cada setor e a IA.'], matriz: ['Matriz de tratamento', 'Problema → Causa → Setor → Regra → Procedimento → Tratativa → Aprovação → Devolutiva'], causas: ['Causas e subcausas', 'Classificação hierárquica usada pela IA.'], aprovacao: ['Aprovação do conhecimento', 'Rascunho → Em revisão → Aguardando aprovação → Aprovado → Ativo'], versoes: ['Histórico de versões', 'Todas as versões de regras, procedimentos, políticas, documentos e matriz.'], auditoria: ['Auditoria do Cérebro', 'Quem criou, editou e aprovou cada conteúdo. Registro para a ISO 9001.'], calc: ['Calculadora de Atraso', 'Logística · cálculo padronizado de dias de atraso na entrega.'] };
+    const TABN = { regras: 'Regras', procedimentos: 'Procedimentos', politicas: 'Políticas', faq: 'FAQ', sla: 'SLA', responsaveis: 'Responsáveis', documentos: 'Documentos' };
+    const heading = S.view === 'setor' ? (isAll ? TABN[S.tab] + ' · todos os setores' : 'REGRAS — ' + S.setor.toUpperCase()) : TT[S.view][0];
+    const sub = S.view === 'setor' ? (isAll ? 'Visão consolidada de todos os setores. Filtre por setor abaixo.' : 'Regras, procedimentos, políticas, FAQ, SLA, responsáveis e documentos do setor.') : TT[S.view][1];
+    const crumb = S.view === 'home' ? 'Conhecimento' : S.view === 'setor' ? (isAll ? 'Conhecimento / Cérebro' : 'Conhecimento / Cérebro / Regras dos setores') : 'Conhecimento / Cérebro';
+
+    const toSetor = (setor, tab) => go('setor', { setor, tab, rq: '', stF: 'Todas', histOpen: null });
+    const rulesActive = S.rules.filter(r => r.st === 'Ativa').length;
+    const pend = S.rules.filter(r => ['Rascunho', 'Em revisão', 'Aguardando aprovação'].includes(r.st)).length;
+    const HC = [['Setores', BASE.length, 'Página de cada setor com regras, SLA e responsáveis', go('setores')], ['Regras', S.rules.length, rulesActive + ' ativas · ' + pend + ' em fluxo de aprovação', toSetor('Todos os setores', 'regras')], ['Procedimentos', PR.length, 'Passo a passo operacional por setor', toSetor('Todos os setores', 'procedimentos')], ['Políticas', PO.length, 'Políticas internas e condições de aprovação', toSetor('Todos os setores', 'politicas')], ['Matriz de Tratamento', (S.mat || []).length + ' linhas', 'Caminho do problema até a devolutiva', go('matriz')], ['FAQ', FQ.length, 'Perguntas frequentes por setor', toSetor('Todos os setores', 'faq')], ['Base de Conhecimento', S.docs.length + ' documentos', 'Planilhas, PDFs e documentos usados como fonte', toSetor('Todos os setores', 'documentos')], ['SLAs', BASE.length * 5, 'Prazos por etapa, setor e exceção', toSetor('Todos os setores', 'sla')], ['Causas e Subcausas', S.tree.reduce((a, c) => a + c.causas.length, 0) + ' causas', 'Categoria → causa → subcausa', go('causas')], ['Histórico de versões', 'versionado', 'Versões anteriores preservadas', go('versoes')]];
+    const homeCards = HC.map(([l, n, d, g]) => ({ l, n: String(n), d, go: g }));
+    const iaSources = ['Histórico de manifestações similares', 'Regras do setor', 'Procedimentos', 'Políticas', 'Matriz de tratamento', 'FAQ', 'Documentos anexados', 'SLAs', 'Causas e subcausas'];
+
+    const sectorCards = BASE.map(n => { const m = meta(n); return { l: n, nr: String(S.rules.filter(r => r.setor === n).length), np: String(PR.filter(p => p.setor === n).length), sla: slaOf(n)[4] + 'h', resp: m[0], upd: m[1], v: m[2], go: toSetor(n, 'regras') }; });
+    const sm = meta(S.setor);
+    const sectorHead = isAll ? [{ l: 'Escopo', v: 'Todos os setores' }, { l: 'Regras', v: String(S.rules.length) }, { l: 'Documentos', v: String(S.docs.length) }, { l: 'Última atualização', v: '02/10/2026' }] : [{ l: 'Setor', v: S.setor }, { l: 'Responsável', v: sm[0] }, { l: 'SLA padrão', v: slaOf(S.setor)[4] + 'h (total)' }, { l: 'Última atualização', v: sm[1] }, { l: 'Versão', v: sm[2] }];
+    const sectorChips = ['Todos os setores'].concat(BASE).map(n => chip(S.setor === n, n === 'Todos os setores' ? 'Todos' : n, () => this.setState({ setor: n })));
+    const TCOUNT = { regras: S.rules.filter(inSet).length, procedimentos: PR.filter(inSet).length, politicas: PO.filter(inSet).length, faq: FQ.filter(inSet).length, documentos: S.docs.filter(inSet).length };
+    const tabs = Object.keys(TABN).map(k => { const on = S.tab === k; return { l: TABN[k], n: TCOUNT[k] != null ? String(TCOUNT[k]) : '', go: () => this.setState({ tab: k }), bg: on ? '#C70602' : '#fff', fg: on ? '#fff' : '#1F1F1F', bd: on ? '#C70602' : '#D6D6D6' }; });
+    const tab = {}; tab[S.tab] = true;
+
+    const q = S.rq.trim().toLowerCase();
+    const STF = ['Todas', 'Ativa', 'Em revisão', 'Aguardando aprovação', 'Rascunho', 'Inativa'];
+    const stFilter = STF.map(x => chip(S.stF === x, x, () => this.setState({ stF: x })));
+    const rules = S.rules.filter(inSet).filter(r => S.stF === 'Todas' || r.st === S.stF).filter(r => !q || (r.t + r.regra + r.cond + r.acao).toLowerCase().includes(q)).map(r => {
+      const active = r.st === 'Ativa', iaOn = r.ia && active;
+      return {
+        t: r.t, regra: r.regra, acao: r.acao, stp: stp(r.st), iap: iap(iaOn), op: r.st === 'Inativa' ? '0.7' : '1',
+        meta: [{ l: 'Setor', v: r.setor }, { l: 'Prioridade', v: r.pri }, { l: 'Aplicação', v: r.apl }, { l: 'Responsável', v: r.resp }, { l: 'SLA relacionado', v: r.sla }, { l: 'Versão', v: 'v' + r.v }, { l: 'Última alteração', v: r.upd + ' · ' + r.by }],
+        flags: ['Condição: ' + r.cond, 'Pode gerar RNC: ' + r.rnc, 'Exige evidência: ' + r.evid, 'Encaminha a outro setor: ' + r.enc].concat(r.docs ? ['Documento: ' + r.docs] : []),
+        jc: active ? 'flex-end' : 'flex-start', tb: active ? '#1E6B3A' : '#C4C4C4', toggleL: active ? 'Ativa' : (r.st === 'Inativa' ? 'Inativa' : r.st),
+        toggle: () => { if (!['Ativa', 'Inativa', 'Aprovado'].includes(r.st)) return this.flash('Regra em “' + r.st + '”: conclua a aprovação antes de ativar.'); const ns = active ? 'Inativa' : 'Ativa'; this.upd(r.id, x => Object.assign({}, x, { st: ns })); this.log('Edição', 'Regra · ' + r.t, r.st, ns, r.docs, ns === 'Ativa' ? 'Regra ativada' : 'Regra desativada'); },
+        iaL: r.ia ? 'Retirar da IA' : 'Disponibilizar para a IA', iaT: () => { this.upd(r.id, x => Object.assign({}, x, { ia: !x.ia })); this.log('Edição', 'Regra · ' + r.t, r.ia ? 'Disponível para IA' : 'Fora da IA', r.ia ? 'Fora da IA' : 'Disponível para IA', '', 'Configuração de uso pela IA'); if (!active && !r.ia) this.flash('Marcada para a IA. Passa a ser usada quando a regra estiver ativa.'); },
+        edit: () => this.openForm(r), newV: () => this.openForm(r, true),
+        histL: S.histOpen === r.id ? 'Ocultar histórico' : 'Ver histórico', hist: () => this.setState({ histOpen: S.histOpen === r.id ? null : r.id }), histOpen: S.histOpen === r.id, hl: r.hist,
+        del: () => { this.setState(s => ({ rules: s.rules.filter(x => x.id !== r.id) })); this.log('Exclusão', 'Regra · ' + r.t, 'v' + r.v, 'Excluída', '', 'Regra excluída · versões preservadas no histórico'); this.flash('Regra excluída. As versões anteriores continuam no histórico.'); }
+      };
+    });
+    const procs = PR.filter(inSet).map(p => { const o = S.procOpen === p.id; return { n: p.n, setor: p.setor, v: p.v, stp: stp(p.st), iap: iap(p.ia && p.st === 'Ativo'), open: o, sign: o ? '−' : '+', go: () => this.setState({ procOpen: o ? null : p.id }), steps: p.steps.map((l, i) => ({ i: String(i + 1), l })), meta: [{ l: 'Objetivo', v: p.obj }, { l: 'Quando utilizar', v: p.quando }, { l: 'Documentos necessários', v: p.docs }, { l: 'Evidências necessárias', v: p.evid }, { l: 'SLA', v: p.sla }, { l: 'Exceções', v: p.exc }, { l: 'Responsável', v: p.resp }] }; });
+    const pols = PO.filter(inSet).map(p => ({ t: p.t, desc: p.desc, cond: p.cond, regra: p.regra, acao: p.acao, stp: stp(p.st), iap: iap(p.ia && p.st === 'Ativa'), meta: [{ l: 'Setor responsável', v: p.setor }, { l: 'Aprovação necessária', v: p.apr }, { l: 'Documento de referência', v: p.doc }, { l: 'Versão', v: 'v' + p.v }], edit: () => this.flash('Edição da política gera nova versão e volta para revisão') }));
+    const faqs = FQ.filter(inSet).map(f => { const o = S.faqOpen === f.id; return Object.assign({}, f, { stp: stp(f.st), open: o, sign: o ? '−' : '+', go: () => this.setState({ faqOpen: o ? null : f.id }) }); });
+    const SLN = ['SLA de análise', 'SLA de tratativa', 'SLA de resposta interna', 'SLA de devolutiva', 'SLA total'];
+    const cur = slaOf(S.setor);
+    const slaFields = SLN.map((l, i) => ({ l, v: String(cur[i]), on: e => { const val = Number(e.target.value) || 0; this.setState(s => { const o = Object.assign({}, s.sla); o[s.setor] = (o[s.setor] || [24, 72, 48, 24, 120]).slice(); o[s.setor][i] = val; return { sla: o }; }); } }));
+    const slaAll = BASE.map(n => ({ l: n, v: slaOf(n).map(x => x + 'h') }));
+    const excs = S.excs.filter(x => x.setor === S.setor).map(x => { const setF = k => e => { const val = e.target.value; this.setState(s => ({ excs: s.excs.map(y => y.id === x.id ? Object.assign({}, y, { [k]: val }) : y) })); }; return { tipo: x.tipo, val: x.val, sla: x.sla, ap: 'Substitui o SLA total', onTipo: setF('tipo'), onVal: setF('val'), onSla: setF('sla'), del: () => this.setState(s => ({ excs: s.excs.filter(y => y.id !== x.id) })) }; });
+    const PP = { Logística: [['Rafael Souza', 'Gestor do setor', 'rafael.souza@grupochiacchio.com.br', ['Aprova regras', 'Registra tratativa', 'Abre RNC']], ['[Nome]', 'Substituto', '[e-mail]', ['Registra tratativa', 'Anexa evidências']], ['Helena Prado', 'Aprovadora do conhecimento', 'helena.prado@grupochiacchio.com.br', ['Aprova regras e documentos']]], Qualidade: [['Diego Alves', 'Gestor do setor', 'diego.alves@grupochiacchio.com.br', ['Emite laudos', 'Aprova regras']], ['[Nome]', 'Substituto', '[e-mail]', ['Registra tratativa']]] };
+    const people = (isAll ? [].concat(...BASE.map(n => (PP[n] || [[meta(n)[0], 'Gestor do setor', '[e-mail]', ['Gestão do conhecimento do setor']]]).map(p => p.concat(n)))) : (PP[S.setor] || [[sm[0], 'Gestor do setor', '[e-mail]', ['Gestão do conhecimento do setor']]]).map(p => p.concat(S.setor))).map(p => ({ n: p[0], papel: p[1], e: p[2], c: p[3], setor: p[4], ini: p[0].replace(/[\[\]]/g, '').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() }));
+    const TC = { Excel: ['#E6F2EA', '#1E6B3A'], PDF: ['#FDECEC', '#A80502'], Word: ['#E6EEF8', '#24508F'], Imagem: ['#FBF0D9', '#7A4C00'], Outro: ['#EEEEEE', '#545252'] };
+    const docs = S.docs.filter(inSet).map(d => {
+      const active = d.st === 'Ativo';
+      return {
+        n: d.n, setor: d.setor, tipo: d.tipo, tc: { bg: (TC[d.tipo] || TC.Outro)[0], fg: (TC[d.tipo] || TC.Outro)[1] }, d: d.d, resp: d.resp, v: d.v, stp: stp(d.st),
+        jc: d.ia ? 'flex-end' : 'flex-start', tb: d.ia ? '#C70602' : '#C4C4C4', iaL: d.ia && active ? 'Utilizado pela IA' : d.ia ? 'Marcado (inativo)' : 'Não utilizado',
+        iaT: () => { this.setState(s => ({ docs: s.docs.map(x => x.id === d.id ? Object.assign({}, x, { ia: !x.ia }) : x) })); this.log('Edição', 'Documento · ' + d.n, d.ia ? 'Fonte da IA' : 'Fora da IA', d.ia ? 'Fora da IA' : 'Fonte da IA', d.n, 'Configuração de uso pela IA'); },
+        view: () => this.setState({ modal: 'view', viewTitle: d.n, viewSub: d.setor + ' · ' + d.tipo + ' · v' + d.v, viewRows: d.n === 'Regras Logística.xlsx' ? (S.impSeed || []).map((r, i) => ({ l: 'Linha ' + (i + 2), v: r.regra + ' → ' + r.acao })) : [{ l: 'Nome do arquivo', v: d.n }, { l: 'Tipo', v: d.tipo }, { l: 'Data de upload', v: d.d }, { l: 'Responsável', v: d.resp }, { l: 'Versão', v: d.v }, { l: 'Status', v: d.st }, { l: 'Uso pela IA', v: d.ia && active ? 'Fonte de conhecimento do setor' : 'Não utilizado' }] }),
+        rep: () => { const nv = this.bump(d.v); this.setState(s => ({ docs: s.docs.map(x => x.id === d.id ? Object.assign({}, x, { v: nv, d: '02/10/2026', st: 'Em revisão' }) : x) })); this.log('Edição', 'Documento · ' + d.n, 'v' + d.v, 'v' + nv, d.n, 'Nova versão enviada · versão anterior preservada'); this.flash('Versão ' + nv + ' enviada para revisão. A versão ' + d.v + ' segue preservada.'); },
+        dl: () => this.flash('Download: ' + d.n + ' (v' + d.v + ')'),
+        del: () => { this.setState(s => ({ docs: s.docs.filter(x => x.id !== d.id) })); this.log('Exclusão', 'Documento · ' + d.n, 'v' + d.v, 'Excluído', d.n, 'Documento removido da base'); this.flash('Documento excluído e registrado na auditoria.'); }
+      };
+    });
+    const onAttach = e => {
+      const f = e.target.files && e.target.files[0]; if (!f) return; const ext = f.name.split('.').pop().toLowerCase();
+      const tipo = ['xlsx', 'xls', 'csv'].includes(ext) ? 'Excel' : ext === 'pdf' ? 'PDF' : ['doc', 'docx'].includes(ext) ? 'Word' : ['png', 'jpg', 'jpeg'].includes(ext) ? 'Imagem' : 'Outro';
+      const setor = isAll ? 'Logística' : S.setor;
+      this.setState(s => ({ docs: [{ id: 'd' + Date.now(), setor, n: f.name, tipo, d: '02/10/2026', resp: this.props.usuario || 'Equipe TI', v: '1.0', st: 'Em revisão', ia: true }].concat(s.docs) }));
+      this.log('Criação', 'Documento · ' + f.name, '—', 'v1.0', f.name, 'Upload em ' + setor); e.target.value = '';
+      this.flash(tipo === 'Excel' ? 'Planilha anexada. Use “Importar regras da planilha” para revisar as regras encontradas.' : 'Documento anexado e enviado para revisão.');
+    };
+
+    // import
+    const imp = S.imp || [];
+    const setImp = (id, k, val) => this.setState(s => ({ imp: s.imp.map(r => r.id === id ? Object.assign({}, r, { [k]: val }) : r) }));
+    const impRows = imp.map(r => ({ regra: r.regra, cond: r.cond, acao: r.acao, resp: r.resp, sla: r.sla, sel: () => setImp(r.id, 'sel', !r.sel), cb: r.sel ? '#C70602' : '#C4C4C4', cbg: r.sel ? '#C70602' : '#fff', mark: r.sel ? '✓' : '', bg: r.sel ? '#fff' : '#FAFAFA', onRegra: e => setImp(r.id, 'regra', e.target.value), onCond: e => setImp(r.id, 'cond', e.target.value), onAcao: e => setImp(r.id, 'acao', e.target.value), onResp: e => setImp(r.id, 'resp', e.target.value), onSla: e => setImp(r.id, 'sla', e.target.value) }));
+    const nSel = imp.filter(r => r.sel).length;
+    const doImport = all => {
+      const list = imp.filter(r => all || r.sel); if (!list.length) return this.flash('Selecione ao menos uma regra.');
+      const nr = list.map((r, i) => ({ id: 'imp' + Date.now() + i, setor: 'Logística', t: r.regra.length > 70 ? r.regra.slice(0, 68) + '…' : r.regra, regra: r.regra, cond: r.cond, acao: r.acao, pri: 'Média', apl: 'Orientativa', st: 'Em revisão', resp: r.resp, sla: r.sla === '—' ? 'SLA total · 120h' : 'SLA de tratativa · ' + r.sla, rnc: 'Não', evid: 'Não', enc: 'Não', v: '0.1', upd: '02/10/2026', by: this.props.usuario || 'Equipe TI', ia: true, docs: 'Regras Logística.xlsx', quando: '', obs: 'Importada da planilha', created: '02/10/2026', hist: [{ v: '0.1', d: '02/10/2026', by: this.props.usuario || 'Equipe TI', alt: 'Importada de Regras Logística.xlsx', mot: 'Importação de planilha' }] }));
+      this.setState(s => ({ rules: nr.concat(s.rules), modal: null, imp: null, view: 'setor', setor: 'Logística', tab: 'regras', stF: 'Em revisão' }));
+      this.log('Importação', list.length + ' regras · Logística', '—', 'Em revisão', 'Regras Logística.xlsx', 'Importação com revisão humana obrigatória');
+      this.flash(list.length + ' regras importadas como “Em revisão”. Aprove antes de ativar.');
+    };
+
+    // form
+    const F = S.form || {};
+    const setF = k => e => { const val = e && e.target ? e.target.value : e; this.setState(s => ({ form: Object.assign({}, s.form, { [k]: val }) })); };
+    const formText = [['t', 'Título da regra', 0, 'Ex.: Atraso de entrega: confirmar datas'], ['regra', 'Descrição', 1, 'Descreva a regra'], ['quando', 'Quando essa regra deve ser aplicada?', 1, 'Situação em que a regra vale'], ['cond', 'Condição', 0, 'Ex.: Motivo = atraso na entrega'], ['acao', 'Ação que o sistema deve recomendar/executar', 1, 'O que o sistema recomenda ou executa'], ['docs', 'Documentos relacionados', 0, 'Ex.: Regras Logística.xlsx'], ['obs', 'Observações', 1, ''], ['resp', 'Responsável pela regra', 0, '']].map(([k, l, big, ph]) => ({ l, v: F[k] || '', on: setF(k), big: !!big, small: !big, ph }));
+    const CG = [['pri', 'Prioridade', ['Alta', 'Média', 'Baixa']], ['apl', 'Tipo de aplicação', ['Automática', 'Orientativa', 'Necessita aprovação']], ['rnc', 'Pode gerar RNC? (só origens válidas; nunca para reclamação do SAC)', ['Sim', 'Não']], ['evid', 'Pode exigir evidência?', ['Sim', 'Não']], ['enc', 'Pode gerar encaminhamento para outro setor?', ['Sim', 'Não']], ['st', 'Status', ['Ativa', 'Inativa', 'Em revisão']]];
+    const formChips = CG.map(([k, l, o]) => ({ l, o: o.map(x => chip(F[k] === x, x, () => setF(k)(x))) }));
+    const formRO = [{ l: 'Data de criação', v: F.created || '02/10/2026' }, { l: 'Data de atualização', v: '02/10/2026' }, { l: 'Versão', v: 'v' + (F.v || '0.1') }];
+    const saveForm = () => {
+      if (!(F.t || '').trim() || !(F.acao || '').trim()) return this.flash('Preencha ao menos título e ação.');
+      const by = this.props.usuario || 'Equipe TI';
+      const st = F.st === 'Ativa' && !S.editId ? 'Em revisão' : F.st;
+      if (S.editId) {
+        const old = S.rules.find(r => r.id === S.editId); const nv = this.bump(old.v, S.newVersion);
+        const rec = Object.assign({}, old, F, { st: S.newVersion ? 'Em revisão' : st, v: nv, upd: '02/10/2026', by, hist: [{ v: nv, d: '02/10/2026', by, alt: S.newVersion ? 'Nova versão criada' : 'Regra editada', mot: F.obs || 'Atualização de conteúdo' }].concat(old.hist) });
+        this.setState(s => ({ rules: s.rules.map(r => r.id === S.editId ? rec : r), modal: null, form: null, editId: null }));
+        this.log('Edição', 'Regra · ' + rec.t, 'v' + old.v, 'v' + nv, rec.docs, S.newVersion ? 'Nova versão criada (em revisão)' : 'Regra editada');
+        this.flash('Regra salva como v' + nv + '.' + (rec.st !== 'Ativa' ? ' Segue para aprovação.' : ''));
+      } else {
+        const rec = Object.assign({ id: 'n' + Date.now(), v: '0.1', upd: '02/10/2026', by, created: '02/10/2026', hist: [{ v: '0.1', d: '02/10/2026', by, alt: 'Regra criada', mot: 'Cadastro' }] }, F, { st, v: '0.1' });
+        this.setState(s => ({ rules: [rec].concat(s.rules), modal: null, form: null, view: 'setor', setor: rec.setor, tab: 'regras', stF: 'Todas' }));
+        this.log('Criação', 'Regra · ' + rec.t, '—', 'v0.1', rec.docs, 'Regra criada · status ' + st);
+        this.flash('Regra criada como “' + st + '”. Ela só entra na IA depois de aprovada e ativada.');
+      }
+    };
+
+    // matriz
+    const MH = ['PROBLEMA', 'CAUSA', 'SETOR', 'REGRA', 'PROCEDIMENTO', 'TRATATIVA', 'APROVAÇÃO', 'DEVOLUTIVA'];
+    const mat = (S.mat || []).map((m, i) => {
+      const ed = S.matEdit === i;
+      return {
+        editing: ed, view: !ed, op: m.on ? '1' : '0.5', ver: m.ver, by: m.by, tl: m.on ? 'Desativar' : 'Ativar', el: ed ? 'Salvar' : 'Editar', eb: ed ? '#C70602' : '#1F1F1F',
+        steps: m.s.map((val, j) => ({ v: val, bg: j === 0 ? '#C70602' : j === 7 ? '#1F1F1F' : '#F4F4F4', fg: j === 0 || j === 7 ? '#fff' : '#1F1F1F', on: e => { const nv = e.target.value; this.setState(s => ({ mat: s.mat.map((x, k) => k === i ? Object.assign({}, x, { s: x.s.map((y, z) => z === j ? nv : y) }) : x) })); } })),
+        edit: () => { if (ed) { const nv = this.bump(m.ver); this.setState(s => ({ matEdit: null, mat: s.mat.map((x, k) => k === i ? Object.assign({}, x, { ver: nv, by: (this.props.usuario || 'Equipe TI') + ' · 02/10/2026' }) : x) })); this.log('Edição', 'Matriz · ' + m.s[0], 'v' + m.ver, 'v' + nv, '', 'Linha da matriz editada'); this.flash('Matriz salva · nova versão v' + nv); } else this.setState({ matEdit: i }); },
+        toggle: () => { this.setState(s => ({ mat: s.mat.map((x, k) => k === i ? Object.assign({}, x, { on: !x.on }) : x) })); this.log('Edição', 'Matriz · ' + m.s[0], m.on ? 'Ativa' : 'Inativa', m.on ? 'Inativa' : 'Ativa', '', 'Linha ' + (m.on ? 'desativada' : 'ativada')); }
+      };
+    });
+    const addMat = () => { this.setState(s => ({ mat: s.mat.concat([{ s: ['Novo problema', 'Causa', 'Setor', 'Regra', 'Procedimento', 'Tratativa', 'Aprovação', 'SAC realiza devolutiva'], ver: '0.1', by: 'rascunho', on: true }]), matEdit: s.mat.length })); };
+
+    const tree = S.tree.map((c, ci) => ({ cat: c.cat, n: String(c.causas.length), add: () => this.setState(s => ({ tree: s.tree.map((x, k) => k === ci ? Object.assign({}, x, { causas: x.causas.concat([{ c: 'Nova causa (rascunho)', subs: [] }]) }) : x) })), causas: c.causas.map((k, ki) => ({ c: k.c, subs: k.subs, add: () => this.setState(s => ({ tree: s.tree.map((x, a) => a === ci ? Object.assign({}, x, { causas: x.causas.map((y, b) => b === ki ? Object.assign({}, y, { subs: y.subs.concat(['Nova subcausa (rascunho)']) }) : y) }) : x) })) })) }));
+
+    // approval board
+    const FLOW = ['Rascunho', 'Em revisão', 'Aguardando aprovação', 'Aprovado', 'Ativa'];
+    const flowSteps = ['Rascunho', 'Em revisão', 'Aguardando aprovação', 'Aprovado', 'Ativo'].map((l, i) => ({ l, arrow: i < 4 ? '→' : '' }));
+    const extraItems = [{ kind: 'Procedimento', setor: 'Logística', t: 'Análise de atraso de entrega v1.1', st: 'Aguardando aprovação', by: 'Rafael Souza · 01/10' }, { kind: 'Política', setor: 'Comercial', t: 'Compensação acima de R$ 5.000', st: 'Em revisão', by: 'Camila Torres · 30/09' }, { kind: 'Documento', setor: 'Logística', t: 'Prazos de entrega por rota.pdf v1.3', st: 'Rascunho', by: 'Rafael Souza · 28/09' }];
+    const board = FLOW.map((col, ci) => {
+      const ruleItems = S.rules.filter(r => r.st === col).slice(0, col === 'Ativa' ? 4 : 50).map(r => ({ kind: 'Regra', setor: r.setor, t: r.t, by: r.by + ' · ' + r.upd.slice(0, 5), canNext: ci < 4, canBack: ci > 0 && ci < 4, nl: ci === 3 ? 'Ativar' : ci === 2 ? 'Aprovar' : 'Avançar →', next: () => { const ns = FLOW[ci + 1]; this.upd(r.id, x => Object.assign({}, x, { st: ns, hist: ns === 'Ativa' ? [{ v: x.v.startsWith('0.') ? '1.0' : x.v, d: '02/10/2026', by: this.props.usuario || 'Equipe TI', alt: 'Aprovada e ativada', mot: 'Fluxo de aprovação' }].concat(x.hist) : x.hist, v: ns === 'Ativa' && x.v.startsWith('0.') ? '1.0' : x.v })); this.log(ns === 'Aprovado' || ns === 'Ativa' ? 'Aprovação' : 'Edição', 'Regra · ' + r.t, col, ns, r.docs, ns === 'Ativa' ? 'Conhecimento oficial · disponível para a IA' : 'Avançou no fluxo'); }, back: () => { this.upd(r.id, x => Object.assign({}, x, { st: 'Rascunho' })); this.log('Edição', 'Regra · ' + r.t, col, 'Rascunho', '', 'Devolvida para ajuste'); } }));
+      const ex = extraItems.filter(x => x.st === col).map(x => Object.assign({}, x, { canNext: false, canBack: false }));
+      const items = ruleItems.concat(ex);
+      const total = S.rules.filter(r => r.st === col).length + ex.length;
+      return { l: col === 'Ativa' ? 'Ativo' : col, n: String(total), items };
+    });
+
+    const VR = [['Regra · Atraso de entrega', '1.2', '02/10/2026', 'Rafael Souza', 'Ação passou a usar a Calculadora de Atraso', 'Padronizar o cálculo', 'Ativa'], ['Documento · Regras Logística.xlsx', '1.0', '02/10/2026', 'Rafael Souza', 'Upload inicial', 'Fonte de regras da Logística', 'Ativo'], ['Procedimento · Análise de atraso de entrega', '1.1', '01/10/2026', 'Rafael Souza', 'Incluído passo da Calculadora de Atraso', 'Nova ferramenta', 'Aguardando aprovação'], ['Procedimento · Análise de atraso de entrega', '1.0', '02/06/2026', 'Helena Prado', 'Procedimento criado', 'Cadastro inicial', 'Ativo'], ['Regra · Avaria exige evidência', '2.0', '18/09/2026', 'Rafael Souza', 'Qualidade incluída como apoio', 'Reincidência de lote', 'Ativa'], ['Regra · Avaria exige evidência', '1.0', '02/06/2026', 'Helena Prado', 'Regra criada', 'Cadastro inicial', 'Inativa'], ['Matriz · Avaria no transporte', '2.0', '18/09/2026', 'Rafael Souza', 'Caminho revisado', 'Reincidência', 'Ativa'], ['Política · Troca e Devolução', '3.2', '02/06/2026', 'Diego Alves', 'Prazo de reclamação atualizado', 'Revisão anual', 'Ativa'], ['Política · Troca e Devolução', '3.1', '10/01/2026', 'Diego Alves', 'Inclusão de evidência fotográfica', 'Auditoria interna', 'Inativa']];
+    const versions = VR.map(r => ({ obj: r[0], v: r[1], d: r[2], by: r[3], alt: r[4], mot: r[5], stp: stp(r[6] === 'Inativa' ? 'Inativa' : r[6]), view: () => this.setState({ modal: 'view', viewTitle: r[0] + ' · v' + r[1], viewSub: 'Versão ' + (r[6] === 'Inativa' ? 'anterior (somente leitura)' : 'vigente'), viewRows: [{ l: 'Versão', v: r[1] }, { l: 'Data', v: r[2] }, { l: 'Responsável', v: r[3] }, { l: 'Alteração realizada', v: r[4] }, { l: 'Motivo da alteração', v: r[5] }, { l: 'Status', v: r[6] }] }) }));
+    const AK = { Criação: 'blue', Edição: 'amber', Aprovação: 'green', Exclusão: 'red', Importação: 'blue' };
+    const audit = (S.audit || []).map(a => Object.assign({}, a, { ap: P(a.a, AK[a.a] || 'gray') }));
+
+    // calculator
+    const pd = x => { if (!x) return null; const [y, m, d] = x.split('-').map(Number); return new Date(Date.UTC(y, m - 1, d)); };
+    const fmt = d => d ? String(d.getUTCDate()).padStart(2, '0') + '/' + String(d.getUTCMonth() + 1).padStart(2, '0') + '/' + d.getUTCFullYear() : '—';
+    const HOL = ['2026-10-12', '2026-11-02', '2026-11-15', '2026-11-20', '2026-12-25', '2026-09-07'];
+    const prev = pd(S.cPrev), ef = pd(S.cEf), ref = pd(S.cRef), end = ef || ref;
+    let corr = 0, uteis = 0, hol = 0;
+    if (prev && end) { corr = Math.round((end - prev) / 864e5); if (corr > 0) { for (let t = new Date(prev.getTime() + 864e5); t <= end; t = new Date(t.getTime() + 864e5)) { const wd = t.getUTCDay(); const iso = t.toISOString().slice(0, 10); if (wd === 0 || wd === 6) continue; if (HOL.includes(iso)) { hol++; continue; } uteis++; } } }
+    const n = S.cMode === 'corridos' ? corr : (corr > 0 ? uteis : corr);
+    const unit = S.cMode === 'corridos' ? '' : ' ÚTEIS';
+    const big = !prev || !end ? 'Informe as datas' : n > 0 ? n + (n === 1 ? ' DIA' : ' DIAS') + unit + ' DE ATRASO' : n === 0 ? 'ENTREGUE NO PRAZO' : 'ENTREGUE ' + Math.abs(n) + ' DIA(S) ANTES';
+    const res = { big, bg: n > 0 ? '#C70602' : '#1E6B3A', mode: S.cMode === 'corridos' ? 'dias corridos' : 'dias úteis', detail: ef ? 'Entrega realizada em ' + fmt(ef) + ' · prevista para ' + fmt(prev) : 'Entrega ainda não realizada · calculado até a data de referência ' + fmt(ref), rows: [{ l: 'Data do pedido', v: fmt(pd(S.cPed)) }, { l: 'Prazo do pedido', v: prev && pd(S.cPed) ? Math.round((prev - pd(S.cPed)) / 864e5) + ' dias corridos' : '—' }, { l: 'Dias corridos de atraso', v: String(Math.max(corr, 0)) }, { l: 'Dias úteis de atraso', v: String(corr > 0 ? uteis : 0) }, { l: 'Fins de semana e feriados', v: String(corr > 0 ? corr - uteis : 0) + (hol ? ' (' + hol + ' feriado)' : '') }, { l: 'Regra aplicada', v: 'Logística · Atraso de entrega v1.2' }] };
+    const setD = k => e => this.setState({ [k]: e.target.value });
+    const calcFields = [['Data do pedido', 'cPed'], ['Data prevista de entrega', 'cPrev'], ['Data efetiva de entrega', 'cEf'], ['Data de referência', 'cRef']].map(([l, k]) => ({ l, v: S[k], on: setD(k) }));
+    const countChips = [['corridos', 'Dias corridos'], ['uteis', 'Dias úteis']].map(([k, l]) => chip(S.cMode === k, l, () => this.setState({ cMode: k })));
+    const regAtraso = () => {
+      if (!prev || !end) return this.flash('Informe a data prevista e a data efetiva ou de referência.');
+      const man = S.cMan.split(' · ')[0]; const txt = big.charAt(0) + big.slice(1).toLowerCase();
+      const line = man + ': ' + txt + ' (' + res.mode + ') registrado em 02/10/2026 ' + this.now().h + ' · prevista ' + fmt(prev) + ', ' + (ef ? 'efetiva ' + fmt(ef) : 'referência ' + fmt(ref));
+      this.setState(s => ({ calcLog: [line].concat(s.calcLog) }));
+      this.log('Edição', 'Manifestação · ' + man, '—', txt, '', 'Resultado da Calculadora de Atraso salvo no histórico');
+      if (this.props.onAtraso) this.props.onAtraso({ man, texto: txt, modo: res.mode, prevista: fmt(prev), efetiva: ef ? fmt(ef) : null, referencia: fmt(ref) });
+      this.flash('Resultado registrado no histórico de ' + man);
+    };
+
+    const openForm = () => this.openForm(null);
+    return {
+      crumb, heading, sub, showHead: !this.props.embedded, hSize: this.props.embedded ? '17px' : '22px', nav, v, tab, isAll, notAll: !isAll, isLog: S.setor === 'Logística',
+      openNew: openForm, goCalc: go('calc'),
+      pendingTxt: pend + ' conteúdos aguardando aprovação', iaSources, homeCards,
+      sectorCards, addSector: () => { const nm = 'Novo setor ' + (S.extraSectors.length + 1); this.setState(s => ({ extraSectors: s.extraSectors.concat([nm]) })); this.log('Criação', 'Setor · ' + nm, '—', 'v0.1', '', 'Setor criado'); this.flash(nm + ' criado. Configure responsável, SLA e regras.'); },
+      sectorHead, sectorChips, tabs, rq: S.rq, onRq: e => this.setState({ rq: e.target.value }), stFilter, rules, noRules: rules.length === 0,
+      procs, pols, faqs, slaFields, slaAll, slaCols: ['Setor'].concat(SLN), excs, excTipos: ['Tipo de manifestação', 'Prioridade', 'Causa', 'Empresa', 'Situação específica'], addExc: () => this.setState(s => ({ excs: s.excs.concat([{ id: 'e' + Date.now(), setor: s.setor, tipo: 'Prioridade', val: 'Alta', sla: '48h' }]) })),
+      people, docs, noDocs: docs.length === 0, docCols: ['Nome do arquivo', 'Tipo', 'Data de upload', 'Responsável', 'Versão', 'Status', 'Uso pela IA', 'Ações'], onAttach,
+      openImport: () => this.setState({ modal: 'imp', imp: (S.impSeed || []).map(r => Object.assign({}, r)) }),
+      modal: { form: S.modal === 'form', imp: S.modal === 'imp', view: S.modal === 'view' }, closeModal: () => this.setState({ modal: null, editId: null }),
+      impRows, impTotal: String(imp.length), impCols: ['Regra', 'Condição', 'Ação', 'Responsável', 'SLA'], impSelTxt: nSel + ' de ' + imp.length + ' selecionadas · entram como “Em revisão”', impAllL: nSel === imp.length ? 'Nenhuma' : 'Todas', impAll: () => { const all = nSel !== imp.length; this.setState(s => ({ imp: s.imp.map(r => Object.assign({}, r, { sel: all })) })); }, impDoAll: () => doImport(true), impDoSel: () => doImport(false),
+      form: F, formText, formChips, formRO, fmSetor: setF('setor'), fmSla: setF('sla'), sectorNames: BASE, slaOpts: SLN.map(x => x + ' · ' + slaOf(F.setor || 'Logística')[SLN.indexOf(x)] + 'h'),
+      fIa: { jc: F.ia ? 'flex-end' : 'flex-start', bg: F.ia ? '#C70602' : '#C4C4C4' }, fmIa: () => this.setState(s => ({ form: Object.assign({}, s.form, { ia: !s.form.ia }) })), saveForm,
+      formTitle: S.editId ? (S.newVersion ? 'Criar nova versão' : 'Editar regra') : 'Nova regra', formMeta: S.editId ? 'v' + (F.v || '') + ' → v' + this.bump(F.v || '0.1', S.newVersion) : 'Conhecimento entra como rascunho/revisão até ser aprovado',
+      mat, matHead: MH, addMat, tree, flowSteps, board,
+      versions, verCols: ['Conteúdo', 'Versão', 'Data', 'Responsável', 'Alteração realizada', 'Motivo da alteração', 'Status', ''],
+      audit, audCols: ['Data', 'Hora', 'Usuário', 'Ação', 'Conteúdo', 'Versão anterior', 'Nova versão', 'Documento utilizado', 'Alterações realizadas'],
+      calcFields, countChips, res, regAtraso, calcLog: S.calcLog, cMan: S.cMan, onCMan: e => this.setState({ cMan: e.target.value }), manOpts: ['MAN-0143 · Loja Exemplo ME', 'MAN-0142 · Empresa Exemplo Ltda.', 'MAN-0144 · Empresa Exemplo Ltda.'],
+      viewRows: S.viewRows || [], viewTitle: S.viewTitle, viewSub: S.viewSub, toast: S.toast
+    };
+  }
+
+  openForm(r, newVersion) {
+    const base = r ? Object.assign({}, r) : { t: '', regra: '', quando: '', cond: '', acao: '', setor: this.state.setor === 'Todos os setores' ? 'Logística' : this.state.setor, pri: 'Média', apl: 'Orientativa', rnc: 'Não', evid: 'Não', enc: 'Não', docs: '', obs: '', st: 'Em revisão', resp: this.props.usuario || '', sla: 'SLA de tratativa · 72h', ia: true, v: '0.1' };
+    this.setState({ modal: 'form', form: base, editId: r ? r.id : null, newVersion: !!newVersion });
+  }
+
+  procData() {
+    const p = (id, setor, n, obj, quando, steps, docs, evid, sla, exc, resp, v, st, ia) => ({ id, setor, n, obj, quando, steps, docs, evid, sla, exc, resp, v, st, ia });
+    return [
+      p('lg1', 'Logística', 'Procedimento para análise de atraso de entrega', 'Apurar a causa e o tamanho do atraso antes de definir a tratativa.', 'Cliente informa que a entrega está atrasada ou não ocorreu.', ['Consultar pedido', 'Verificar data prevista', 'Verificar data de expedição', 'Verificar data de coleta', 'Consultar transportadora', 'Utilizar Calculadora de Atraso', 'Registrar evidências', 'Definir encaminhamento'], 'Pedido, NF, comprovante de coleta', 'Rastreamento da transportadora, resultado da Calculadora', '72h', 'Entregas em zona rural têm prazo adicional', 'Rafael Souza', '1.0', 'Ativo', true),
+      p('lg2', 'Logística', 'Procedimento para avaria no transporte', 'Apurar avarias entre expedição e entrega.', 'Cliente relata produto danificado no recebimento.', ['Solicitar fotos e canhoto', 'Consultar registro de carregamento', 'Verificar veículo e rota', 'Avaliar reincidência na rota', 'Definir reposição ou crédito', 'Registrar causa e ação preventiva'], 'Fotos, canhoto, registro de carregamento', 'Fotos da carga e do baú', '72h', 'Avaria com ressalva no canhoto segue cobrança à transportadora', 'Rafael Souza', '1.4', 'Ativo', true),
+      p('qa1', 'Qualidade', 'Tratamento de não conformidade', 'Padronizar a análise e o registro de RNC.', 'Manifestação procedente com causa produtiva ou reincidência.', ['Registrar a RNC vinculada', 'Coletar amostras do lote', 'Conduzir RCA com 5 porquês', 'Definir ação corretiva e preventiva', 'Submeter à aprovação', 'Verificar eficácia em 30 dias'], 'RCA, laudo, evidências', 'Amostras e laudo do laboratório', '10 dias úteis', 'Causas externas seguem fluxo de fornecedor', 'Diego Alves', '2.1', 'Ativo', true),
+      p('fi1', 'Financeiro', 'Segunda via de boleto e NF', 'Atender solicitações de documentos fiscais.', 'Cliente solicita reenvio de documento.', ['Validar CNPJ solicitante', 'Emitir documento no ERP', 'Enviar pelo canal de origem'], 'CNPJ, nº da NF', '—', '24h', '—', 'Paula Ramos', '1.1', 'Ativo', true),
+      p('ex1', 'Expedição', 'Conferência de carga', 'Evitar divergência de quantidade.', 'Antes de toda saída de veículo.', ['Conferir romaneio com NF atual', 'Registrar quantidade por palete', 'Fotografar palete conferido', 'Coletar assinatura do motorista'], 'Romaneio, NF', 'Foto do palete', '—', '—', 'Marcos Lima', '1.0', 'Ativo', true),
+      p('sc1', 'SAC', 'Elaboração de devolutiva', 'Responder ao cliente com base na tratativa registrada.', 'Após todos os setores responderem.', ['Consolidar respostas dos setores', 'Revisar minuta da IA', 'Verificar regra de não assumir culpa', 'Enviar pelo canal de origem', 'Registrar envio'], 'Tratativas registradas', 'Comprovante de envio', '24h', '—', 'Luiza Martins', '1.2', 'Ativo', true)
+    ];
+  }
+  polData() {
+    const p = (setor, t, desc, cond, regra, acao, apr, doc, st, v, ia) => ({ setor, t, desc, cond, regra, acao, apr, doc, st, v, ia });
+    return [
+      p('Comercial', 'Reposição, devolução ou compensação dependem de aprovação comercial.', 'Nenhuma reposição, devolução ou crédito é prometido ao cliente sem aprovação do Comercial.', 'Tratativa envolve reposição, devolução ou valor financeiro', 'Aprovação comercial obrigatória antes da devolutiva', 'Enviar para Aprovações e aguardar parecer', 'Sim · Comercial', 'Política comercial 2026.pdf', 'Ativa', '1.3', true),
+      p('Logística', 'Prazo de reclamação de avaria', 'Avarias devem ser comunicadas em até 5 dias do recebimento, com fotos e NF.', 'Data da manifestação − data de entrega > 5 dias', 'Avaliar como parcialmente procedente', 'Solicitar justificativa ao cliente', 'Não', 'Regras Logística.xlsx', 'Ativa', '1.0', true),
+      p('Qualidade', 'Política de Troca e Devolução', 'Define critérios técnicos para troca de produtos com defeito.', 'Defeito confirmado em laudo', 'Troca integral do lote afetado', 'Programar reposição e abrir RNC', 'Sim · Coordenação', 'Política de Troca e Devolução.pdf', 'Ativa', '3.2', true),
+      p('SAC', 'Comunicação com o cliente', 'Toda comunicação oficial ao cliente sai do SAC.', 'Qualquer resposta ao cliente', 'Setores não respondem diretamente', 'Encaminhar conteúdo ao SAC', 'Não', '—', 'Em revisão', '0.9', false)
+    ];
+  }
+  faqData() {
+    const f = (id, setor, q, a, cat, kw, resp, upd, st) => ({ id, setor, q, a, cat, kw, resp, upd, st });
+    return [
+      f('f1', 'Logística', 'O que fazer quando o cliente informa que a entrega está atrasada?', 'Consultar o pedido, verificar o prazo previsto, calcular o atraso e investigar o status logístico antes de definir a tratativa.', 'Atraso', 'atraso, entrega, prazo, transportadora', 'Rafael Souza', '02/10/2026', 'Ativa'),
+      f('f2', 'Logística', 'Avaria sem ressalva no canhoto é procedente?', 'Pode ser. A ausência de ressalva não exclui a análise; verificar registros de carregamento e fotos antes da conclusão.', 'Avaria', 'canhoto, ressalva, avaria', 'Rafael Souza', '24/09/2026', 'Ativa'),
+      f('f3', 'Qualidade', 'O que fazer quando o cliente não informa o lote?', 'Solicitar evidência/documentação necessária antes da conclusão técnica.', 'Rastreabilidade', 'lote, rastreio', 'Diego Alves', '30/09/2026', 'Ativa'),
+      f('f4', 'Comercial', 'O cliente pode receber compensação antes da tratativa?', 'Não. Compensações dependem da tratativa registrada e de aprovação comercial.', 'Compensação', 'crédito, desconto, bonificação', 'Camila Torres', '02/09/2026', 'Ativa'),
+      f('f5', 'SAC', 'Quem responde ao cliente?', 'Sempre o SAC, após a tratativa. Setores não enviam devolutiva diretamente.', 'Devolutiva', 'resposta, retorno', 'Luiza Martins', '11/09/2026', 'Em revisão')
+    ];
+  }
+}
+</script>
+</body>
+</html>

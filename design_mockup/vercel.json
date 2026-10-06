@@ -1,0 +1,4 @@
+{
+  "cleanUrls": false,
+  "rewrites": [{ "source": "/", "destination": "/AssistenteSAC.dc.html" }]
+}
