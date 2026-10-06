@@ -634,7 +634,7 @@
         <button class="tab-btn" onclick="switchModalTab('aprovacao',this)" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Aprovação</button>
         <button class="tab-btn" onclick="switchModalTab('analise',this)" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Análise IA</button>
         <button class="tab-btn" onclick="switchModalTab('historico',this)" id="modal-tab-btn-historico" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Histórico</button>
-        <button class="tab-btn" onclick="switchModalTab('rnc',this)" id="modal-tab-btn-rnc" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">RNC vinculada</button>
+        <button class="tab-btn" onclick="switchModalTab('rnc',this)" id="modal-tab-btn-rnc" style="display:none;border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">RNC vinculada</button>
         <button class="tab-btn" onclick="switchModalTab('hist-cliente',this)" id="modal-tab-btn-hist-cliente" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Histórico do cliente</button>
       </div>
 
@@ -1394,10 +1394,12 @@
     <button class="sidebar-item" onclick="navigate('banco-rnc', this)"><span class="sidebar-dot"></span>RNC</button>
     <button class="sidebar-item" onclick="navigate('rca', this)"><span class="sidebar-dot"></span>Central de RCA</button>
     <button class="sidebar-item" onclick="navigate('aprovadores', this)"><span class="sidebar-dot"></span>Aprovações</button>
+    <button class="sidebar-item" onclick="navigate('sugestoes-melhoria', this)"><span class="sidebar-dot"></span>Pesquisa de Satisfação</button>
+    <button class="sidebar-item" onclick="navigate('biblioteca-fichas', this)"><span class="sidebar-dot"></span>Arquivo de Fichas</button>
+    <button class="sidebar-item" onclick="navigate('fichas', this)"><span class="sidebar-dot"></span>Fichas</button>
     <!-- itens extras para perfis que precisam -->
     <button class="sidebar-item" data-v5-page="representantes" style="display:none" onclick="navigate('representantes', this)"><span class="sidebar-dot"></span>Representantes</button>
     <button class="sidebar-item" style="display:none" onclick="navigate('setores', this)"><span class="sidebar-dot"></span>Setores</button>
-    <button class="sidebar-item" style="display:none" onclick="navigate('biblioteca-fichas', this)"><span class="sidebar-dot"></span>Arquivo de Fichas</button>
     <button class="sidebar-item" style="display:none" onclick="navigate('matriz', this)"><span class="sidebar-dot"></span>Matriz de Tratamento</button>
     <button class="sidebar-item" style="display:none" onclick="navigate('causas', this)"><span class="sidebar-dot"></span>Causas e Subcausas</button>
     <button class="sidebar-item" style="display:none" onclick="navigate('matriz-conhecimento', this)"><span class="sidebar-dot"></span>Matriz de Conhecimento</button>
@@ -1412,10 +1414,10 @@
   <div class="sidebar-section">Administração</div>
   <div style="display:flex;flex-direction:column;gap:2px">
     <button class="sidebar-item" id="sidebar-alimentacao" style="display:none" onclick="navigate('alimentacao', this)"><span class="sidebar-dot"></span>Alimentação da ferramenta</button>
+    <button class="sidebar-item" style="display:none" onclick="navigate('sugestoes-melhoria', this)" id="sidebar-pesquisa-adm"><span class="sidebar-dot"></span>Pesquisa de Satisfação</button>
     <button class="sidebar-item" data-v5-page="usuarios" onclick="navigate('usuarios', this)" style="position:relative"><span class="sidebar-dot"></span>Usuários<span id="badge-solicitacoes" onclick="event.stopPropagation();abrirPainelNotificacoes()" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);background:#C8102E;color:white;font-size:10px;font-weight:700;border-radius:10px;padding:1px 6px;min-width:18px;text-align:center;cursor:pointer" title="Ver solicitações pendentes"></span></button>
     <button class="sidebar-item" onclick="navigate('auditoria', this)"><span class="sidebar-dot"></span>Auditoria</button>
     <button class="sidebar-item" onclick="navigate('prazos-regionais', this)"><span class="sidebar-dot"></span>Configurações</button>
-    <button class="sidebar-item" onclick="navigate('sugestoes-melhoria', this)"><span class="sidebar-dot"></span>Pesquisa de Satisfação</button>
     <button class="sidebar-item" onclick="navigate('relatorio-satisfacao', this)"><span class="sidebar-dot"></span>Relatório de Satisfação</button>
   </div>
 
@@ -18800,6 +18802,377 @@ document.addEventListener('DOMContentLoaded', function() {
   if (typeof verificarTokenReset === 'function') verificarTokenReset();
 });
 </script>
+
+<!-- ===== FICHAS A4 ===== -->
+<div class="page" id="page-fichas" style="background:#F4F4F4;overflow-y:auto">
+<style>
+.fic-wrap{padding:22px 28px 60px;font-family:Montserrat,system-ui,sans-serif;color:#1F1F1F;font-size:14px}
+.fic-wrap *{box-sizing:border-box}
+.fic-head{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap;margin-bottom:20px}
+.fic-crumb{font-size:12px;color:#929090}
+.fic-title{font-size:24px;font-weight:700;margin-top:2px}
+.fic-tabs{display:flex;gap:2px;border-bottom:1px solid #E4E4E4;margin-bottom:20px}
+.fic-tab-btn{border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit}
+.fic-tab-btn.on{color:#1F1F1F;border-bottom-color:#C70602;font-weight:700}
+.fic-models{display:flex;flex-direction:column;gap:16px}
+.fic-model-card{background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.fic-model-info{flex:1;min-width:200px}
+.fic-model-code{font-size:10.5px;font-weight:700;letter-spacing:.07em;color:#929090;margin-bottom:4px}
+.fic-model-name{font-size:15px;font-weight:700;margin-bottom:4px}
+.fic-model-desc{font-size:12.5px;color:#666464;line-height:1.5}
+.fic-model-meta{font-size:11px;color:#929090;margin-top:6px}
+.fic-model-actions{display:flex;gap:8px;flex-wrap:wrap;align-self:center}
+.fic-btn{border:1px solid #D6D6D6;background:#fff;border-radius:7px;padding:8px 14px;cursor:pointer;font-size:12.5px;font-weight:600;font-family:inherit;color:#1F1F1F}
+.fic-btn:hover{background:#F4F4F4}
+.fic-btn-red{border:0;background:#C70602;color:#fff}
+.fic-btn-red:hover{background:#A80502}
+/* Print styles */
+@media print {
+  .fic-wrap .fic-head, .fic-wrap .fic-tabs, .fic-wrap .fic-models { display:none!important }
+  .fic-sheet { display:block!important }
+}
+.fic-sheet { display:none; }
+/* A4 sheet styles */
+.fic-a4 { width:210mm; min-height:297mm; background:#fff; padding:15mm 18mm; margin:0 auto; border:1px solid #E4E4E4; }
+.fic-a4-hdr { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; border-bottom:2px solid #C70602; padding-bottom:8px; }
+.fic-a4-logo-area { display:flex; align-items:center; gap:10px; }
+.fic-a4-title-area { text-align:right; }
+.fic-a4-doc { font-size:10px; font-weight:700; color:#929090; }
+.fic-a4-rev { font-size:9px; color:#929090; }
+.fic-section { margin-bottom:10px; }
+.fic-section-title { font-size:9px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:#C70602; background:#FAFAFA; border:1px solid #E4E4E4; padding:4px 8px; margin-bottom:0; }
+.fic-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:0; border:1px solid #E4E4E4; border-top:0; }
+.fic-field { padding:6px 8px; border-right:1px solid #E4E4E4; display:flex; flex-direction:column; gap:2px; }
+.fic-field:last-child { border-right:0; }
+.fic-label { font-size:7px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:#929090; }
+.fic-value { font-size:10px; min-height:16px; border-bottom:1px dotted #D6D6D6; }
+.fic-textarea-field { padding:6px 8px; border:1px solid #E4E4E4; border-top:0; }
+.fic-textarea-value { min-height:40px; border-bottom:1px dotted #D6D6D6; font-size:10px; }
+</style>
+
+<div class="fic-wrap">
+  <div class="fic-head">
+    <div>
+      <div class="fic-crumb">Gestão / <span>Fichas</span></div>
+      <div class="fic-title">Modelos de Ficha</div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="fic-btn" onclick="window.print()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        Imprimir
+      </button>
+    </div>
+  </div>
+
+  <div class="fic-tabs">
+    <button class="fic-tab-btn on" id="fic-tab-btn-sac01" onclick="ficTab('sac01',this)">FR-SAC-01 — Ficha de Manifestação</button>
+    <button class="fic-tab-btn" id="fic-tab-btn-enc" onclick="ficTab('enc',this)">Ficha de Encaminhamento</button>
+    <button class="fic-tab-btn" id="fic-tab-btn-rt0001" onclick="ficTab('rt0001',this)">RT-0001 em branco</button>
+  </div>
+
+  <!-- Models list -->
+  <div id="fic-panel-sac01" class="fic-models">
+    <div class="fic-model-card">
+      <div class="fic-model-info">
+        <div class="fic-model-code">FR-SAC-01 · REVISÃO 01</div>
+        <div class="fic-model-name">Ficha de Manifestação do Cliente</div>
+        <div class="fic-model-desc">Registro formal de manifestações do cliente: reclamações, sugestões, elogios e informações. Duas páginas A4. Utilizada pelo SAC para documentação.</div>
+        <div class="fic-model-meta">2 páginas · A4 · Versão impressa</div>
+      </div>
+      <div class="fic-model-actions">
+        <button class="fic-btn fic-btn-red" onclick="ficImprimir('sac01')">Imprimir modelo em branco</button>
+        <button class="fic-btn" onclick="ficNovaManifestacao()">Registrar no sistema</button>
+      </div>
+    </div>
+    <!-- A4 Sheet SAC-01 -->
+    <div id="fic-sheet-sac01" class="fic-sheet">
+      <div class="fic-a4">
+        <div class="fic-a4-hdr">
+          <div class="fic-a4-logo-area">
+            <img src="/simbolo-vermelho.png" alt="Grupo Chiacchio" style="height:36px">
+            <div style="font-size:11px;font-weight:700;line-height:1.3">GRUPO CHIACCHIO<br><span style="font-size:9px;font-weight:400;color:#666">Chiacchio Embalagens · Plaschio · Cesbap</span></div>
+          </div>
+          <div class="fic-a4-title-area">
+            <div style="font-size:13px;font-weight:700;color:#1F1F1F">FICHA DE MANIFESTAÇÃO</div>
+            <div class="fic-a4-doc">FR-SAC-01 · REV. 01</div>
+            <div class="fic-a4-rev">Emitido em: ___/___/______</div>
+          </div>
+        </div>
+
+        <div class="fic-section">
+          <div class="fic-section-title">1 · IDENTIFICAÇÃO</div>
+          <div class="fic-row" style="grid-template-columns:2fr 1fr 1fr 1fr">
+            <div class="fic-field"><div class="fic-label">Protocolo</div><div class="fic-value"></div></div>
+            <div class="fic-field"><div class="fic-label">Data</div><div class="fic-value"></div></div>
+            <div class="fic-field"><div class="fic-label">Hora</div><div class="fic-value"></div></div>
+            <div class="fic-field"><div class="fic-label">Empresa</div><div class="fic-value"></div></div>
+          </div>
+          <div class="fic-row" style="grid-template-columns:3fr 1fr">
+            <div class="fic-field"><div class="fic-label">Nome do cliente</div><div class="fic-value"></div></div>
+            <div class="fic-field"><div class="fic-label">CNPJ/CPF</div><div class="fic-value"></div></div>
+          </div>
+          <div class="fic-row" style="grid-template-columns:2fr 2fr 1fr">
+            <div class="fic-field"><div class="fic-label">Telefone</div><div class="fic-value"></div></div>
+            <div class="fic-field"><div class="fic-label">E-mail</div><div class="fic-value"></div></div>
+            <div class="fic-field"><div class="fic-label">Canal</div><div class="fic-value"></div></div>
+          </div>
+        </div>
+
+        <div class="fic-section">
+          <div class="fic-section-title">2 · TIPO DE MANIFESTAÇÃO</div>
+          <div style="border:1px solid #E4E4E4;border-top:0;padding:8px 10px;display:flex;gap:18px;flex-wrap:wrap">
+            <label style="display:flex;gap:6px;align-items:center;font-size:11px"><input type="checkbox"> Reclamação</label>
+            <label style="display:flex;gap:6px;align-items:center;font-size:11px"><input type="checkbox"> Sugestão</label>
+            <label style="display:flex;gap:6px;align-items:center;font-size:11px"><input type="checkbox"> Elogio</label>
+            <label style="display:flex;gap:6px;align-items:center;font-size:11px"><input type="checkbox"> Informação</label>
+            <label style="display:flex;gap:6px;align-items:center;font-size:11px"><input type="checkbox"> Devolução de produto</label>
+          </div>
+        </div>
+
+        <div class="fic-section">
+          <div class="fic-section-title">3 · PRODUTO / SERVIÇO</div>
+          <div class="fic-row" style="grid-template-columns:3fr 1fr 1fr 1fr 1fr">
+            <div class="fic-field"><div class="fic-label">Produto / serviço</div><div class="fic-value"></div></div>
+            <div class="fic-field"><div class="fic-label">Lote</div><div class="fic-value"></div></div>
+            <div class="fic-field"><div class="fic-label">Qtd. afetada</div><div class="fic-value"></div></div>
+            <div class="fic-field"><div class="fic-label">Nº pedido</div><div class="fic-value"></div></div>
+            <div class="fic-field"><div class="fic-label">Nota fiscal</div><div class="fic-value"></div></div>
+          </div>
+        </div>
+
+        <div class="fic-section">
+          <div class="fic-section-title">4 · DESCRIÇÃO DA MANIFESTAÇÃO</div>
+          <div class="fic-textarea-field"><div class="fic-textarea-value" style="min-height:60px"></div></div>
+        </div>
+
+        <div class="fic-section">
+          <div class="fic-section-title">5 · REGISTRO</div>
+          <div class="fic-row" style="grid-template-columns:2fr 1fr 1fr">
+            <div class="fic-field"><div class="fic-label">Registrado por</div><div class="fic-value"></div></div>
+            <div class="fic-field"><div class="fic-label">Setor</div><div class="fic-value"></div></div>
+            <div class="fic-field"><div class="fic-label">Assinatura</div><div class="fic-value"></div></div>
+          </div>
+        </div>
+
+        <div style="margin-top:16px;font-size:8px;color:#929090;text-align:center">
+          Preencha todos os campos com clareza · Arquivar via sistema · GRUPO CHIACCHIO · Assistente SAC · FR-SAC-01 Pág. 1/2
+        </div>
+      </div>
+
+      <div class="fic-a4" style="margin-top:10px">
+        <div class="fic-a4-hdr">
+          <div style="font-size:10px;font-weight:700">GRUPO CHIACCHIO · FICHA DE MANIFESTAÇÃO · FR-SAC-01 · Pág. 2/2</div>
+          <div class="fic-a4-doc">Protocolo: ___________________</div>
+        </div>
+
+        <div class="fic-section">
+          <div class="fic-section-title">6 · ENCAMINHAMENTO AO SETOR</div>
+          <div class="fic-row" style="grid-template-columns:2fr 1fr 1fr">
+            <div class="fic-field"><div class="fic-label">Setor responsável</div><div class="fic-value"></div></div>
+            <div class="fic-field"><div class="fic-label">Prazo de resposta</div><div class="fic-value"></div></div>
+            <div class="fic-field"><div class="fic-label">Analista SAC</div><div class="fic-value"></div></div>
+          </div>
+        </div>
+
+        <div class="fic-section">
+          <div class="fic-section-title">7 · TRATATIVA DO SETOR</div>
+          <div class="fic-textarea-field"><div class="fic-textarea-value" style="min-height:70px"></div></div>
+          <div class="fic-row" style="grid-template-columns:2fr 1fr 1fr">
+            <div class="fic-field"><div class="fic-label">Responsável no setor</div><div class="fic-value"></div></div>
+            <div class="fic-field"><div class="fic-label">Data resposta</div><div class="fic-value"></div></div>
+            <div class="fic-field"><div class="fic-label">Assinatura</div><div class="fic-value"></div></div>
+          </div>
+        </div>
+
+        <div class="fic-section">
+          <div class="fic-section-title">8 · APROVAÇÃO</div>
+          <div class="fic-row" style="grid-template-columns:2fr 1fr 1fr 1fr">
+            <div class="fic-field"><div class="fic-label">Aprovado por</div><div class="fic-value"></div></div>
+            <div class="fic-field"><div class="fic-label">Data</div><div class="fic-value"></div></div>
+            <div class="fic-field"><div class="fic-label">Status</div><div class="fic-value"></div></div>
+            <div class="fic-field"><div class="fic-label">Assinatura</div><div class="fic-value"></div></div>
+          </div>
+        </div>
+
+        <div class="fic-section">
+          <div class="fic-section-title">9 · DEVOLUTIVA AO CLIENTE</div>
+          <div class="fic-textarea-field"><div class="fic-textarea-value" style="min-height:50px"></div></div>
+          <div class="fic-row" style="grid-template-columns:2fr 1fr 1fr">
+            <div class="fic-field"><div class="fic-label">Canal de retorno</div><div class="fic-value"></div></div>
+            <div class="fic-field"><div class="fic-label">Data devolutiva</div><div class="fic-value"></div></div>
+            <div class="fic-field"><div class="fic-label">Analista</div><div class="fic-value"></div></div>
+          </div>
+        </div>
+
+        <div class="fic-section">
+          <div class="fic-section-title">10 · ENCERRAMENTO</div>
+          <div class="fic-row" style="grid-template-columns:2fr 1fr 1fr">
+            <div class="fic-field"><div class="fic-label">Encerrado por</div><div class="fic-value"></div></div>
+            <div class="fic-field"><div class="fic-label">Data</div><div class="fic-value"></div></div>
+            <div class="fic-field"><div class="fic-label">Assinatura</div><div class="fic-value"></div></div>
+          </div>
+        </div>
+
+        <div style="margin-top:16px;font-size:8px;color:#929090;text-align:center">
+          FR-SAC-01 · GRUPO CHIACCHIO · Assistente SAC · Pág. 2/2
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="fic-panel-enc" class="fic-models" style="display:none">
+    <div class="fic-model-card">
+      <div class="fic-model-info">
+        <div class="fic-model-code">FICHA DE ENCAMINHAMENTO · EM USO</div>
+        <div class="fic-model-name">Ficha de Encaminhamento ao Setor</div>
+        <div class="fic-model-desc">Ficha oficial utilizada para encaminhar uma manifestação ao setor responsável, com prazo e dados do encaminhamento. Uma página A4.</div>
+        <div class="fic-model-meta">1 página · A4 · Versão impressa</div>
+      </div>
+      <div class="fic-model-actions">
+        <button class="fic-btn fic-btn-red" onclick="ficImprimir('enc')">Imprimir modelo em branco</button>
+      </div>
+    </div>
+    <div id="fic-sheet-enc" class="fic-sheet">
+      <div class="fic-a4">
+        <div class="fic-a4-hdr">
+          <div class="fic-a4-logo-area">
+            <img src="/simbolo-vermelho.png" alt="Grupo Chiacchio" style="height:36px">
+            <div style="font-size:11px;font-weight:700;line-height:1.3">GRUPO CHIACCHIO</div>
+          </div>
+          <div class="fic-a4-title-area">
+            <div style="font-size:13px;font-weight:700">FICHA DE ENCAMINHAMENTO</div>
+            <div class="fic-a4-doc">SAC · Encaminhamento ao Setor</div>
+          </div>
+        </div>
+        <div class="fic-section">
+          <div class="fic-section-title">IDENTIFICAÇÃO DA MANIFESTAÇÃO</div>
+          <div class="fic-row" style="grid-template-columns:2fr 1fr 1fr 1fr">
+            <div class="fic-field"><div class="fic-label">Protocolo</div><div class="fic-value"></div></div>
+            <div class="fic-field"><div class="fic-label">Data de abertura</div><div class="fic-value"></div></div>
+            <div class="fic-field"><div class="fic-label">Tipo</div><div class="fic-value"></div></div>
+            <div class="fic-field"><div class="fic-label">Empresa</div><div class="fic-value"></div></div>
+          </div>
+          <div class="fic-row" style="grid-template-columns:3fr 2fr">
+            <div class="fic-field"><div class="fic-label">Cliente</div><div class="fic-value"></div></div>
+            <div class="fic-field"><div class="fic-label">Motivo principal</div><div class="fic-value"></div></div>
+          </div>
+        </div>
+        <div class="fic-section">
+          <div class="fic-section-title">ENCAMINHAMENTO</div>
+          <div class="fic-row" style="grid-template-columns:2fr 1fr 1fr">
+            <div class="fic-field"><div class="fic-label">Setor destinatário</div><div class="fic-value"></div></div>
+            <div class="fic-field"><div class="fic-label">Data encaminhamento</div><div class="fic-value"></div></div>
+            <div class="fic-field"><div class="fic-label">Prazo para resposta</div><div class="fic-value"></div></div>
+          </div>
+          <div class="fic-row" style="grid-template-columns:2fr 1fr 2fr">
+            <div class="fic-field"><div class="fic-label">Analista SAC responsável</div><div class="fic-value"></div></div>
+            <div class="fic-field"><div class="fic-label">Assinatura</div><div class="fic-value"></div></div>
+            <div class="fic-field"><div class="fic-label">Observações para o setor</div><div class="fic-value"></div></div>
+          </div>
+        </div>
+        <div class="fic-section">
+          <div class="fic-section-title">RESPOSTA DO SETOR</div>
+          <div class="fic-textarea-field"><div class="fic-textarea-value" style="min-height:60px"></div></div>
+          <div class="fic-row" style="grid-template-columns:2fr 1fr 1fr">
+            <div class="fic-field"><div class="fic-label">Responsável no setor</div><div class="fic-value"></div></div>
+            <div class="fic-field"><div class="fic-label">Data de retorno</div><div class="fic-value"></div></div>
+            <div class="fic-field"><div class="fic-label">Assinatura</div><div class="fic-value"></div></div>
+          </div>
+        </div>
+        <div style="margin-top:24px;font-size:8px;color:#929090;text-align:center">GRUPO CHIACCHIO · Ficha de Encaminhamento ao Setor · SAC</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="fic-panel-rt0001" class="fic-models" style="display:none">
+    <div class="fic-model-card">
+      <div class="fic-model-info">
+        <div class="fic-model-code">RT-0001 · RELATÓRIO DE NÃO CONFORMIDADE</div>
+        <div class="fic-model-name">Ficha RNC RT-0001 (5 páginas)</div>
+        <div class="fic-model-desc">Ficha completa de Análise de Causa Raiz (5 porquês), ações corretivas, verificação de eficácia e encerramento. Utilizada na Central de RCA.</div>
+        <div class="fic-model-meta">5 páginas · A4 · Versão impressa</div>
+      </div>
+      <div class="fic-model-actions">
+        <button class="fic-btn fic-btn-red" onclick="ficImprimir('rt0001')">Imprimir em branco</button>
+        <button class="fic-btn" onclick="navigate('rca',document.querySelector('[onclick*=rca]'))">Abrir Central de RCA</button>
+      </div>
+    </div>
+    <div id="fic-sheet-rt0001" class="fic-sheet">
+      <div class="fic-a4">
+        <div class="fic-a4-hdr">
+          <div class="fic-a4-logo-area">
+            <img src="/simbolo-vermelho.png" alt="Grupo Chiacchio" style="height:36px">
+            <div style="font-size:11px;font-weight:700;line-height:1.3">GRUPO CHIACCHIO</div>
+          </div>
+          <div class="fic-a4-title-area">
+            <div style="font-size:13px;font-weight:700;color:#C70602">RT-0001 · RELATÓRIO DE NÃO CONFORMIDADE</div>
+            <div class="fic-a4-doc">Revisão: 01 · Análise de Causa Raiz</div>
+          </div>
+        </div>
+        <div style="border:1.5px solid #C70602;border-radius:6px;padding:8px 12px;margin-bottom:10px;font-size:9px;color:#929090">
+          Pág. 1/5 — Dados gerais · Abertura · Origem e tipo da NC
+        </div>
+        <div class="fic-section">
+          <div class="fic-section-title">DADOS GERAIS</div>
+          <div class="fic-row" style="grid-template-columns:2fr 1fr 1fr 1fr">
+            <div class="fic-field"><div class="fic-label">Nº da RNC (RT-0001)</div><div class="fic-value"></div></div>
+            <div class="fic-field"><div class="fic-label">Data de abertura</div><div class="fic-value"></div></div>
+            <div class="fic-field"><div class="fic-label">Empresa</div><div class="fic-value"></div></div>
+            <div class="fic-field"><div class="fic-label">Prioridade</div><div class="fic-value"></div></div>
+          </div>
+          <div class="fic-row" style="grid-template-columns:2fr 1fr 1fr">
+            <div class="fic-field"><div class="fic-label">Responsável pela análise</div><div class="fic-value"></div></div>
+            <div class="fic-field"><div class="fic-label">Prazo para análise</div><div class="fic-value"></div></div>
+            <div class="fic-field"><div class="fic-label">Setor</div><div class="fic-value"></div></div>
+          </div>
+        </div>
+        <div class="fic-section">
+          <div class="fic-section-title">RAZÃO DE ABERTURA</div>
+          <div style="border:1px solid #E4E4E4;border-top:0;padding:8px 10px;display:flex;gap:18px;flex-wrap:wrap">
+            <label style="display:flex;gap:6px;align-items:center;font-size:11px"><input type="checkbox"> Manifestação de cliente</label>
+            <label style="display:flex;gap:6px;align-items:center;font-size:11px"><input type="checkbox"> Auditoria interna</label>
+            <label style="display:flex;gap:6px;align-items:center;font-size:11px"><input type="checkbox"> Controle de processo</label>
+            <label style="display:flex;gap:6px;align-items:center;font-size:11px"><input type="checkbox"> Não conformidade de produto</label>
+          </div>
+        </div>
+        <div class="fic-section">
+          <div class="fic-section-title">DESCRIÇÃO DA NÃO CONFORMIDADE</div>
+          <div class="fic-textarea-field"><div class="fic-textarea-value" style="min-height:80px"></div></div>
+        </div>
+        <div style="margin-top:16px;font-size:8px;color:#929090;text-align:center">RT-0001 · GRUPO CHIACCHIO · Pág. 1/5</div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+function ficTab(id, btn) {
+  document.querySelectorAll('#page-fichas .fic-tab-btn').forEach(b=>{b.classList.remove('on')});
+  btn.classList.add('on');
+  ['sac01','enc','rt0001'].forEach(t=>{
+    const p = document.getElementById('fic-panel-'+t);
+    if(p) p.style.display = t===id ? '' : 'none';
+  });
+}
+function ficImprimir(id) {
+  // show sheet, print, hide
+  const sheet = document.getElementById('fic-sheet-'+id);
+  if(!sheet) return;
+  sheet.style.display='block';
+  setTimeout(()=>{
+    window.print();
+    setTimeout(()=>{ sheet.style.display='none'; }, 500);
+  }, 100);
+}
+function ficNovaManifestacao() {
+  navigate('nova-manifestacao', document.querySelector('[onclick*=nova-manifestacao]'));
+}
+window.ficTab = ficTab;
+window.ficImprimir = ficImprimir;
+window.ficNovaManifestacao = ficNovaManifestacao;
+})();
+</script>
+</div>
 
 <script>
 // ===== TOPBAR HEADER RESTRUCTURE =====
