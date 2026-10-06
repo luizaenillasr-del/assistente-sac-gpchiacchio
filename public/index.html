@@ -519,8 +519,7 @@
 <style>
   /* LOGIN — split-screen */
   .login-screen { position: fixed; inset: 0; z-index: 9999; overflow-y: auto; background: #F4F4F4; }
-  .login-split { min-height: 100vh; display: grid; grid-template-columns: 1fr 1fr; }
-  @media (max-width: 680px) { .login-split { grid-template-columns: 1fr; } }
+  .login-split { min-height: 100vh; display: grid; grid-template-columns: repeat(auto-fit,minmax(340px,1fr)); }
   .login-left { background: #C70602; color: #fff; padding: 48px 56px; display: flex; flex-direction: column; justify-content: space-between; gap: 40px; }
   .login-left-brand { display: flex; align-items: center; gap: 14px; }
   .login-left-brand-text { }
@@ -760,15 +759,7 @@
         </div>
         <button onclick="doLogin()" class="login-btn">Entrar</button>
         <div style="font-size:12px;color:#8A8888">A sessão expira após 30 minutos sem atividade.</div>
-        <div style="border-top:1px solid #E4E4E4;padding-top:16px;display:flex;flex-direction:column;gap:10px">
-          <div style="font-size:12px;color:#666464">Acesso de demonstração · entrar como</div>
-          <div style="display:flex;flex-wrap:wrap;gap:6px">
-            <button onclick="loginDemo('master')" style="border:1px solid #D6D6D6;background:#fff;border-radius:99px;white-space:nowrap;padding:5px 11px;font-size:12.5px;cursor:pointer;font-family:inherit" onmouseover="this.style.borderColor='#C70602'" onmouseout="this.style.borderColor='#D6D6D6'">MASTER</button>
-            <button onclick="loginDemo('analista')" style="border:1px solid #D6D6D6;background:#fff;border-radius:99px;white-space:nowrap;padding:5px 11px;font-size:12.5px;cursor:pointer;font-family:inherit" onmouseover="this.style.borderColor='#C70602'" onmouseout="this.style.borderColor='#D6D6D6'">Analista SAC</button>
-            <button onclick="loginDemo('aprovador')" style="border:1px solid #D6D6D6;background:#fff;border-radius:99px;white-space:nowrap;padding:5px 11px;font-size:12.5px;cursor:pointer;font-family:inherit" onmouseover="this.style.borderColor='#C70602'" onmouseout="this.style.borderColor='#D6D6D6'">Aprovador</button>
-            <button onclick="loginDemo('setor')" style="border:1px solid #D6D6D6;background:#fff;border-radius:99px;white-space:nowrap;padding:5px 11px;font-size:12.5px;cursor:pointer;font-family:inherit" onmouseover="this.style.borderColor='#C70602'" onmouseout="this.style.borderColor='#D6D6D6'">Setor responsável</button>
-            <button onclick="loginDemo('rca')" style="border:1px solid #D6D6D6;background:#fff;border-radius:99px;white-space:nowrap;padding:5px 11px;font-size:12.5px;cursor:pointer;font-family:inherit" onmouseover="this.style.borderColor='#C70602'" onmouseout="this.style.borderColor='#D6D6D6'">RCA</button>
-          </div>
+        <div style="border-top:1px solid #E4E4E4;padding-top:16px">
           <button onclick="abrirSolicitacaoAcesso()" style="background:none;border:0;color:#A80502;cursor:pointer;padding:0;font-family:inherit;font-size:13px;text-align:left">Não tem conta? Solicitar acesso</button>
         </div>
 
@@ -3205,8 +3196,8 @@
   #page-central-sac .mc-st-enc{background:var(--mc-green-bg);color:var(--mc-green)}
   #page-central-sac .mc-empty{background:#fff;border:1px dashed #D6D6D6;border-radius:10px;padding:26px 14px;text-align:center;font-size:13px;color:#666464}
   #page-central-sac .mc-nosel{background:#fff;border:1px solid var(--mc-line);border-radius:12px;padding:60px 20px;text-align:center;color:var(--mc-mute);font-size:14px}
-  #page-central-sac .mc-card{background:#fff;border:1px solid var(--mc-line);border-radius:12px;padding:14px 18px;display:flex;flex-direction:column;gap:8px}
-  #page-central-sac .mc-card-main{padding:16px 18px;gap:12px}
+  #page-central-sac .mc-card{background:#fff;border:1.5px solid var(--mc-line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+  #page-central-sac .mc-card-main{padding:12px 14px;gap:10px}
   #page-central-sac .mc-card-h{font-weight:700;font-size:14px}
   #page-central-sac .mc-dh{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-start}
   #page-central-sac .mc-dh-l{display:flex;flex-direction:column;gap:4px;min-width:0}
@@ -3794,7 +3785,7 @@
     #page-cerebro .cb-fld > div{font-size:11px;color:#929090}
     #page-cerebro .cb-steps{display:flex;flex-direction:column;gap:8px}
     #page-cerebro .cb-step{display:grid;grid-template-columns:26px minmax(0,1fr);gap:10px;font-size:13.5px;align-items:start}
-    #page-cerebro .cb-step b{width:22px;height:22px;border-radius:50%;background:#FDECEC;color:#A80502;font-size:11px;font-weight:700;display:grid;place-items:center}
+    #page-cerebro .cb-step b{width:26px;height:26px;border-radius:50%;background:#FDECEC;color:#A80502;font-size:11px;font-weight:700;display:grid;place-items:center;flex:none}
     #page-cerebro .cb-pgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:14px}
     #page-cerebro .cb-people{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
     #page-cerebro .cb-person{background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:8px}
@@ -6029,7 +6020,7 @@
 .rca-ev-card{display:grid;grid-template-columns:56px minmax(0,1fr) auto;gap:12px;align-items:center;border:1px solid #EFEFEF;border-radius:8px;padding:10px 12px}
 .rca-tbl-input{height:34px;border:1px solid #D6D6D6;border-radius:6px;padding:0 8px;font-size:13px;background:#fff;font-family:Montserrat,system-ui,sans-serif;width:100%}
 .rca-tbl-input:disabled{background:#FAFAFA;color:#666464}
-.rca-section-title{font-size:12px;font-weight:700;letter-spacing:.06em;color:#C70602}
+.rca-section-title{font-size:12px;font-weight:700;letter-spacing:.06em;color:#C70602;text-transform:uppercase}
 .rca-card{background:#fff;border:1px solid #E4E4E4;border-radius:10px;overflow:hidden}
 @media print{body.rca-printing *{visibility:hidden!important}body.rca-printing #rca-pdf-sheet,body.rca-printing #rca-pdf-sheet *{visibility:visible!important}body.rca-printing #rca-pdf-sheet{position:absolute;left:0;top:0;border:0!important}body.rca-printing #page-rca{overflow:visible!important;height:auto!important}}
 </style>
@@ -10568,22 +10559,6 @@ window.navigate = function(page, el) {
   pageLoaders.usuarios=loadUsuariosV5;
   pageLoaders['setor-responsavel']=loadSetorV5;
 
-  // ===== DEMO LOGIN =====
-  window.loginDemo=function(tipo){
-    const mapa={
-      master:  {usuario:'demo.master',  nome:'Luiza (Demo)',    perfil:'MASTER',            empresa:'MASTER',     setor:'Administração'},
-      analista:{usuario:'demo.analista',nome:'Ana Lima (Demo)', perfil:'ANALISTA SAC',       empresa:'Chiacchio',  setor:'SAC'},
-      aprovador:{usuario:'demo.aprov',  nome:'João (Demo)',     perfil:'APROVADOR',          empresa:'Chiacchio',  setor:'Qualidade'},
-      setor:   {usuario:'demo.setor',   nome:'Maria (Demo)',    perfil:'SETOR RESPONSÁVEL',  empresa:'Chiacchio',  setor:'Qualidade'},
-      rca:     {usuario:'demo.rca',     nome:'Carlos (Demo)',   perfil:'RCA / REPRESENTANTE',empresa:'Chiacchio',  setor:'Comercial'}
-    };
-    const u=mapa[tipo]||mapa.analista;
-    sessionStorage.setItem('sac-demo-local','1');
-    sessionStorage.setItem('sac-token','demo-token');
-    sessionStorage.setItem('sac-user',JSON.stringify({...u,ini:u.nome.split(' ').slice(0,2).map(x=>x[0]).join('')}));
-    document.getElementById('login-screen').style.display='none';
-    window.iniciarSessaoV5 ? window.iniciarSessaoV5() : Promise.resolve();
-  };
 
   // ===== BOOT =====
   async function boot(){
@@ -17943,7 +17918,7 @@ async function mudarStatusMC(id, novoStatus) {
 .al-btn-ghost:hover{background:#F0F0F0}
 .al-btn-sm{border:1px solid #D6D6D6;background:#fff;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:12px;font-weight:600}
 .al-btn-sm:hover{background:#F4F4F4}
-.al-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
+.al-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
 .al-stat{background:#fff;border:1px solid #E4E4E4;border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:4px}
 .al-stat-l{font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#545252}
 .al-stat-v{font-size:30px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.15;margin-top:2px}
@@ -18881,6 +18856,7 @@ document.addEventListener('DOMContentLoaded', function() {
 .fic-a4-rev { font-size:9px; color:#929090; }
 .fic-section { margin-bottom:10px; }
 .fic-section-title { font-size:8pt; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:#fff; background:#C70602; padding:1.4mm 2.5mm; margin-bottom:0; }
+.fic-section-title--official { background:none; color:#1F1F1F; border-bottom:1px solid #1F1F1F; padding:0 0 1mm; }
 .fic-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:0; border:1px solid #E4E4E4; border-top:0; }
 .fic-field { padding:6px 8px; border-right:1px solid #E4E4E4; display:flex; flex-direction:column; gap:2px; }
 .fic-field:last-child { border-right:0; }
@@ -19083,7 +19059,7 @@ document.addEventListener('DOMContentLoaded', function() {
           </div>
         </div>
         <div class="fic-section">
-          <div class="fic-section-title">IDENTIFICAÇÃO DA MANIFESTAÇÃO</div>
+          <div class="fic-section-title fic-section-title--official">IDENTIFICAÇÃO DA MANIFESTAÇÃO</div>
           <div class="fic-row" style="grid-template-columns:2fr 1fr 1fr 1fr">
             <div class="fic-field"><div class="fic-label">Protocolo</div><div class="fic-value"></div></div>
             <div class="fic-field"><div class="fic-label">Data de abertura</div><div class="fic-value"></div></div>
@@ -19096,7 +19072,7 @@ document.addEventListener('DOMContentLoaded', function() {
           </div>
         </div>
         <div class="fic-section">
-          <div class="fic-section-title">ENCAMINHAMENTO</div>
+          <div class="fic-section-title fic-section-title--official">ENCAMINHAMENTO</div>
           <div class="fic-row" style="grid-template-columns:2fr 1fr 1fr">
             <div class="fic-field"><div class="fic-label">Setor destinatário</div><div class="fic-value"></div></div>
             <div class="fic-field"><div class="fic-label">Data encaminhamento</div><div class="fic-value"></div></div>
@@ -19109,7 +19085,7 @@ document.addEventListener('DOMContentLoaded', function() {
           </div>
         </div>
         <div class="fic-section">
-          <div class="fic-section-title">RESPOSTA DO SETOR</div>
+          <div class="fic-section-title fic-section-title--official">RESPOSTA DO SETOR</div>
           <div class="fic-textarea-field"><div class="fic-textarea-value" style="min-height:60px"></div></div>
           <div class="fic-row" style="grid-template-columns:2fr 1fr 1fr">
             <div class="fic-field"><div class="fic-label">Responsável no setor</div><div class="fic-value"></div></div>
