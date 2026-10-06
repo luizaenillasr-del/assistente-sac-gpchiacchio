@@ -15423,8 +15423,9 @@ function handleUploadProdutos(input) {
       // preview
       const prevHead = document.getElementById('produtos-preview-head');
       const prevBody = document.getElementById('produtos-preview-body');
-      prevHead.innerHTML = headers.map(h=>`<th>${h}</th>`).join('');
-      prevBody.innerHTML = rows.slice(0,10).map(r=>`<tr>${headers.map(h=>`<td>${r[h]||''}</td>`).join('')}</tr>`).join('');
+      const _escCSV = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+      prevHead.innerHTML = headers.map(h=>`<th>${_escCSV(h)}</th>`).join('');
+      prevBody.innerHTML = rows.slice(0,10).map(r=>`<tr>${headers.map(h=>`<td>${_escCSV(r[h]||'')}</td>`).join('')}</tr>`).join('');
       document.getElementById('produtos-preview-count').textContent = `${rows.length} produto(s) encontrado(s) • mostrando primeiros 10`;
       document.getElementById('produtos-preview').style.display = 'block';
       status.textContent = '';

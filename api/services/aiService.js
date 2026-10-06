@@ -9,7 +9,7 @@
 const LOG_IA = [];
 
 function getProvider() {
-  return (process.env.AI_PROVIDER || 'anthropic').toLowerCase();
+  return (process.env.AI_PROVIDER || 'openai').toLowerCase();
 }
 
 // ── Anthropic ────────────────────────────────────────────────
