@@ -739,7 +739,7 @@
         </div>
       </div>
       <div class="login-left-footer">
-        <span>Ambiente: Homologação</span><span>Versão 1.0</span><span>Chiacchio · Plaschio · Tubahia</span>
+        <span>Ambiente: Homologação</span><span>Versão 1.0</span><span>Chiacchio · Plaschio · Cesbap</span>
       </div>
     </div>
 
@@ -847,7 +847,7 @@
             <option value="">Selecione a empresa</option>
             <option value="CHIACCHIO EMBALAGENS">Chiacchio Embalagens</option>
             <option value="PLASCHIO">Plaschio</option>
-            <option value="TUBAHIA">Tubahia</option>
+            <option value="TUBAHIA">Cesbap</option>
           </select>
         </div>
         <div><label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px">Setor *</label><input id="sol-setor" class="login-input" placeholder="Ex: Qualidade, SAC, Comercial..." style="margin:0"></div>
@@ -2032,7 +2032,7 @@
             <option value="">Todas</option>
             <option value="CHIACCHIO">Chiacchio</option>
             <option value="PLASCHIO">Plaschio</option>
-            <option value="TUBAHIA">Tubahia</option>
+            <option value="TUBAHIA">Cesbap</option>
           </select>
         </label>
         <label style="display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:#666464">Tipo
@@ -2327,7 +2327,7 @@
           <option value="">Empresa: todas</option>
           <option value="CHIACCHIO EMBALAGENS">Chiacchio</option>
           <option value="PLASCHIO">Plaschio</option>
-          <option value="TUBAHIA">Tubahia</option>
+          <option value="TUBAHIA">Cesbap</option>
         </select>
         <select id="bflt-setor-sel" onchange="filtrarBanco()" style="height:36px;min-width:120px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:13px;font-family:inherit">
           <option value="">Setor: todos</option>
@@ -2518,7 +2518,7 @@
           <button class="tab-btn active" data-filtro-empresa-btn onclick="filtrarSetoresPorEmpresa('TODOS',this)">Todos</button>
           <button class="tab-btn" data-filtro-empresa-btn onclick="filtrarSetoresPorEmpresa('CHIACCHIO',this)">Chiacchio</button>
           <button class="tab-btn" data-filtro-empresa-btn onclick="filtrarSetoresPorEmpresa('PLASCHIO',this)">Plaschio</button>
-          <button class="tab-btn" data-filtro-empresa-btn onclick="filtrarSetoresPorEmpresa('TUBAHIA/CESBAP',this)">Tubahia/Cesbap</button>
+          <button class="tab-btn" data-filtro-empresa-btn onclick="filtrarSetoresPorEmpresa('TUBAHIA/CESBAP',this)">Cesbap</button>
         </div>
         <!-- Grid de cards dos setores -->
         <div id="setores-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px">
@@ -2721,7 +2721,7 @@
               <button class="tab-btn active" data-faq-emp-btn onclick="filtrarFAQEmpresa('TODAS',this)">Todas</button>
               <button class="tab-btn" data-faq-emp-btn onclick="filtrarFAQEmpresa('CHIACCHIO',this)">Chiacchio</button>
               <button class="tab-btn" data-faq-emp-btn onclick="filtrarFAQEmpresa('PLASCHIO',this)">Plaschio</button>
-              <button class="tab-btn" data-faq-emp-btn onclick="filtrarFAQEmpresa('TUBAHIA/CESBAP',this)">Tubahia/Cesbap</button>
+              <button class="tab-btn" data-faq-emp-btn onclick="filtrarFAQEmpresa('TUBAHIA/CESBAP',this)">Cesbap</button>
             </div>
             <div id="ficha-faq-body" style="padding:16px"><div class="loading"><div class="spinner"></div></div></div>
           </div>
@@ -3040,7 +3040,7 @@
                 <option value="">Selecione</option>
                 <option value="CHIACCHIO EMBALAGENS">Chiacchio Embalagens</option>
                 <option value="PLASCHIO">Plaschio</option>
-                <option value="TUBAHIA">Tubahia</option>
+                <option value="TUBAHIA">Cesbap</option>
               </select>
             </div>
             <div class="field"><label>Setor</label><input id="cfg-setor" placeholder="Setor do usuário"></div>
@@ -3102,7 +3102,7 @@
         <div class="form-section"><div class="form-section-title">Perfil e Empresa</div>
           <div class="field-grid">
             <div class="field"><label>Perfil</label><select id="edit-perm-perfil"><option value="">Manter atual</option><option value="MASTER">MASTER</option><option value="GESTOR_SAC">GESTOR_SAC</option><option value="ANALISTA_SAC">ANALISTA_SAC</option><option value="REPRESENTANTE">REPRESENTANTE</option><option value="APROVADOR">APROVADOR</option><option value="CONSULTA">CONSULTA</option><option value="AUDITOR">AUDITOR</option></select></div>
-            <div class="field"><label>Empresa</label><select id="edit-perm-empresa"><option value="">Manter atual</option><option value="TODAS">Todas as empresas</option><option value="CHIACCHIO EMBALAGENS">Chiacchio Embalagens</option><option value="PLASCHIO">Plaschio</option><option value="TUBAHIA">Tubahia</option></select></div>
+            <div class="field"><label>Empresa</label><select id="edit-perm-empresa"><option value="">Manter atual</option><option value="TODAS">Todas as empresas</option><option value="CHIACCHIO EMBALAGENS">Chiacchio Embalagens</option><option value="PLASCHIO">Plaschio</option><option value="TUBAHIA">Cesbap</option></select></div>
             <div class="field"><label>Setor</label><input id="edit-perm-setor" placeholder="Setor"></div>
             <div class="field"><label>E-mail</label><input id="edit-perm-email" type="email" placeholder="usuario@empresa.com.br"></div>
           </div>
@@ -3605,7 +3605,7 @@
   <div id="modal-usuario-v5" class="modal-overlay" style="display:none" onclick="if(event.target===this)fecharModalUsuario()">
     <div class="modal-box" style="max-width:760px"><div class="modal-header"><div><div style="font-size:18px;font-weight:800">Novo usuário</div><div style="font-size:12px;color:var(--gray-400)">A conta é individual. Não utilizar login genérico.</div></div><button class="modal-close" onclick="fecharModalUsuario()">×</button></div><div class="modal-body">
       <div class="form-section"><div class="form-section-title">Identificação</div><div class="field-grid"><div class="field"><label>Nome completo *</label><input id="usr-nome"></div><div class="field"><label>Usuário *</label><input id="usr-login"></div><div class="field"><label>E-mail</label><input id="usr-email" type="email"></div><div class="field"><label>Senha inicial</label><input id="usr-senha" type="password"></div></div></div>
-      <div class="form-section"><div class="form-section-title">Perfil e vínculo</div><div class="field-grid"><div class="field"><label>Perfil *</label><select id="usr-perfil"><option>ANALISTA SAC</option><option>SETOR RESPONSÁVEL</option><option>APROVADOR</option><option>RCA / REPRESENTANTE</option><option>MASTER</option></select></div><div class="field"><label>Empresa</label><select id="usr-empresa"><option value="">Selecione...</option><option value="MASTER">TODAS (acesso às 3 empresas)</option><option value="CHIACCHIO">Chiacchio</option><option value="PLASCHIO">Plaschio</option><option value="TUBAHIA">Tubahia/Cesbap</option></select></div><div class="field"><label>Setor</label><input id="usr-setor"></div><div class="field"><label>Código RCA</label><input id="usr-rca"></div><div class="field"><label>Status</label><select id="usr-status"><option>ATIVO</option><option>INATIVO</option></select></div></div></div>
+      <div class="form-section"><div class="form-section-title">Perfil e vínculo</div><div class="field-grid"><div class="field"><label>Perfil *</label><select id="usr-perfil"><option>ANALISTA SAC</option><option>SETOR RESPONSÁVEL</option><option>APROVADOR</option><option>RCA / REPRESENTANTE</option><option>MASTER</option></select></div><div class="field"><label>Empresa</label><select id="usr-empresa"><option value="">Selecione...</option><option value="MASTER">TODAS (acesso às 3 empresas)</option><option value="CHIACCHIO">Chiacchio</option><option value="PLASCHIO">Plaschio</option><option value="TUBAHIA">Cesbap</option></select></div><div class="field"><label>Setor</label><input id="usr-setor"></div><div class="field"><label>Código RCA</label><input id="usr-rca"></div><div class="field"><label>Status</label><select id="usr-status"><option>ATIVO</option><option>INATIVO</option></select></div></div></div>
       <div style="display:flex;justify-content:flex-end;gap:8px"><button class="btn btn-secondary" onclick="fecharModalUsuario()">Cancelar</button><button class="btn btn-primary" onclick="salvarUsuarioV5()">Criar usuário</button></div>
     </div></div>
   </div>
@@ -4264,7 +4264,7 @@
             <option value="">Todas as empresas</option>
             <option value="CHIACCHIO">Chiacchio Embalagens</option>
             <option value="PLASCHIO">Plaschio</option>
-            <option value="TUBAHIA">Tubahia</option>
+            <option value="TUBAHIA">Cesbap</option>
           </select>
           <select id="pm-filtro-setor" onchange="loadPainelMaquina()" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:13px;font-family:inherit">
             <option value="">Todos os setores</option>
@@ -4446,7 +4446,7 @@
       </div>
     </div>
     <div class="content" style="padding:0 28px 28px">
-      <div style="font-size:13px;color:#666464;margin-bottom:14px">Respostas das pesquisas públicas da Chiacchio, Plaschio e Tubahia, com análise das notas e rastreabilidade.</div>
+      <div style="font-size:13px;color:#666464;margin-bottom:14px">Respostas das pesquisas públicas da Chiacchio, Plaschio e Cesbap, com análise das notas e rastreabilidade.</div>
 
       <!-- Tab bar -->
       <div id="cp-tabbar" style="display:flex;gap:2px;border-bottom:1px solid #E4E4E4;overflow-x:auto;scrollbar-width:none;margin-bottom:14px">
@@ -4467,7 +4467,7 @@
             <option value="">Todas</option>
             <option value="Chiacchio">Chiacchio</option>
             <option value="Plaschio">Plaschio</option>
-            <option value="Tubahia">Tubahia</option>
+            <option value="Tubahia">Cesbap</option>
           </select>
         </label>
         <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:#666464;font-weight:600">ANO
@@ -4539,13 +4539,22 @@
         <div id="cp-dash-kpis" class="ps-kpis"></div>
         <div class="ps-grid-2">
           <div class="ps-card"><div class="ps-card-h"><span>Média por critério</span><span class="ps-muted">escala 0 a 10</span></div><div id="cp-dash-crit" class="ps-body"></div></div>
-          <div class="ps-card"><div class="ps-card-h"><span>Respostas por mês</span><span class="ps-muted">últimos 12 meses do recorte</span></div><div id="cp-dash-meses" class="ps-body"></div></div>
+          <div class="ps-card"><div class="ps-card-h"><span>Respostas por mês</span><span class="ps-muted">cor = média do mês</span></div><div id="cp-dash-meses" class="ps-body"></div></div>
+        </div>
+        <div class="ps-grid-2">
+          <div class="ps-card"><div class="ps-card-h"><span>Distribuição de notas</span><span class="ps-muted">todas as notas do recorte</span></div><div id="cp-dash-hist" class="ps-body"></div></div>
+          <div class="ps-card"><div class="ps-card-h"><span>Evolução por critério</span><span class="ps-muted">últimos 6 meses</span></div><div id="cp-dash-crit-hist" class="ps-body"></div></div>
         </div>
       </div>
       <div id="cp-panel-comentarios" style="display:none">
         <div class="ps-card">
           <div class="ps-card-h"><span>Comentários abertos</span>
-            <label class="ps-muted" style="display:flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" id="cp-com-baixa" onchange="cpRenderComentarios()"> Somente com nota ≤ 6</label>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+              <label class="ps-muted" style="display:flex;gap:5px;align-items:center;cursor:pointer"><input type="checkbox" id="cp-com-baixa" onchange="cpRenderComentarios()"> Nota ≤ 6</label>
+              <label class="ps-muted" style="display:flex;gap:5px;align-items:center;cursor:pointer"><input type="checkbox" id="cp-com-pend" onchange="cpRenderComentarios()"> Pendentes</label>
+              <label class="ps-muted" style="display:flex;gap:5px;align-items:center;cursor:pointer"><input type="checkbox" id="cp-com-ocp" onchange="cpRenderComentarios()"> Com OCP</label>
+              <label class="ps-muted" style="display:flex;gap:5px;align-items:center;cursor:pointer"><input type="checkbox" id="cp-com-man" onchange="cpRenderComentarios()"> Com Manifestação</label>
+            </div>
           </div>
           <div id="cp-com-lista" class="ps-body"></div>
         </div>
@@ -4589,7 +4598,7 @@
               <select id="nt-empresa" style="width:100%;height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;font-size:13px;font-family:inherit;margin-bottom:8px">
                 <option value="CHIACCHIO">Chiacchio Embalagens</option>
                 <option value="PLASCHIO">Plaschio</option>
-                <option value="TUBAHIA">Tubahia</option>
+                <option value="TUBAHIA">Cesbap</option>
               </select>
               <label style="display:block;font-size:12px;color:#666464;margin-bottom:4px">Nome do cliente (opcional)</label>
               <input id="nt-nome" class="form-input" placeholder="Ex: João Silva / Empresa ABC" style="margin-bottom:8px">
@@ -4605,9 +4614,9 @@
             <div style="flex:1;min-width:260px;border:1.5px solid #E4E4E4;border-radius:10px;padding:16px">
               <div style="font-size:12px;font-weight:700;color:#545252;margin-bottom:10px">LINKS FIXOS POR EMPRESA</div>
               <p style="font-size:12.5px;color:#545252;margin-bottom:12px;line-height:1.5">Links públicos permanentes — qualquer cliente pode acessar, sem expiração. Ideal para WhatsApp e e-mail em massa.</p>
-              ${['chiacchio','plaschio','tubahia'].map(e=>`
+              ${[['chiacchio','Chiacchio Embalagens'],['plaschio','Plaschio'],['tubahia','Cesbap']].map(([e,nome])=>`
               <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-                <span style="font-size:12.5px;font-weight:600;flex:1;text-transform:capitalize">${e}</span>
+                <span style="font-size:12.5px;font-weight:600;flex:1">${nome}</span>
                 <button onclick="ntCopiarFixo('${e}')" style="border:1px solid #D6D6D6;background:#fff;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:inherit">Copiar</button>
                 <a href="/pesquisa/${e}" target="_blank" style="border:1px solid #24508F;color:#24508F;background:#fff;border-radius:6px;padding:5px 10px;font-size:12px;text-decoration:none">Abrir</a>
               </div>`).join('')}
@@ -4936,7 +4945,7 @@
             <span>Plaschio</span><span style="color:#1E6B3A;background:#E6F2EA;border-radius:99px;padding:2px 10px;font-size:11.5px;font-weight:600">Ativa</span>
           </div>
           <div style="display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:8px 0;border-top:1px solid #EFEFEF;color:#1F1F1F">
-            <span>Tubahia</span><span style="color:#1E6B3A;background:#E6F2EA;border-radius:99px;padding:2px 10px;font-size:11.5px;font-weight:600">Ativa</span>
+            <span>Cesbap</span><span style="color:#1E6B3A;background:#E6F2EA;border-radius:99px;padding:2px 10px;font-size:11.5px;font-weight:600">Ativa</span>
           </div>
         </div>
       </div>
@@ -5033,7 +5042,7 @@
               <option value="">Todas</option>
               <option value="CHIACCHIO">Chiacchio</option>
               <option value="PLASCHIO">Plaschio</option>
-              <option value="TUBAHIA/CESBAP">Tubahia/Cesbap</option>
+              <option value="TUBAHIA/CESBAP">Cesbap</option>
             </select>
           </div>
           <div class="field"><label>SLA (horas)</label><input id="set-sla" type="number" placeholder="72" value="72"></div>
@@ -5188,7 +5197,7 @@
   <select id="rel-f-empresa" onchange="relCarregar()" style="display:none">
     <option value="Chiacchio Embalagens">Chiacchio Embalagens</option>
     <option value="Plaschio">Plaschio</option>
-    <option value="Tubahia">Tubahia</option>
+    <option value="Tubahia">Cesbap</option>
   </select>
   <label class="rs-lbl">Ano<select id="rel-f-ano" class="rs-sel" onchange="relCarregar()"></select></label>
   <label class="rs-lbl">Mês de referência<select id="rel-f-mes" class="rs-sel" onchange="relCarregar()"></select></label>
@@ -5206,7 +5215,7 @@
 (function(){
   const MN=['','janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
   const MS=['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-  const EMPRESAS=[['Chiacchio Embalagens','Chiacchio Embalagens'],['Plaschio','Plaschio'],['Tubahia','Tubahia']];
+  const EMPRESAS=[['Chiacchio Embalagens','Chiacchio Embalagens'],['Plaschio','Plaschio'],['Tubahia','Cesbap']];
   const LOGOS={'Chiacchio Embalagens':['/assets/logo-chiacchio-embalagens.svg','#B9171A'],'Plaschio':['/assets/logo-plaschio.svg','#B9171A'],'Tubahia':['/assets/logo-tubahia.svg','#2B2070']};
   const GREEN='#1E6B3A', RED='#C70602', AMB='#B07A12';
   const SEC=[['desempenho','Desempenho geral'],['analise_critica','Análise crítica dos resultados'],['pontos_fortes','Pontos fortes'],['oportunidades','Oportunidades de melhoria'],['acoes','Ações recomendadas']];
@@ -6557,7 +6566,7 @@ function closeBibPainel() {
 function closeBibFichaModal() { closeBibPainel(); }
 
 // ===== IMPORTAR FICHAS (PDF/DOCX) =====
-const AF_EMP_IMP = [['CHIACCHIO', 'Chiacchio Embalagens'], ['PLASCHIO', 'Plaschio'], ['TUBAHIA', 'Tubahia']];
+const AF_EMP_IMP = [['CHIACCHIO', 'Chiacchio Embalagens'], ['PLASCHIO', 'Plaschio'], ['TUBAHIA', 'Cesbap']];
 const AF_TIPOS = ['Reclamação', 'Sugestão', 'Solicitação', 'Elogio'];
 const AF_MAX_MB = 20;
 let _importarFiles = []; // [{ file, emp, data, tipo, sug }]
@@ -7665,7 +7674,7 @@ async function registrarManifestacao() {
 
   if (!empresa) return alert('Informe a empresa reclamante.');
   if (!desc || desc.length < 10) return alert('A descrição precisa ter ao menos 10 caracteres.');
-  if (!empReclamada) return alert('Selecione a empresa reclamada (Chiacchio Embalagens, Plaschio ou Tubahia).');
+  if (!empReclamada) return alert('Selecione a empresa reclamada (Chiacchio Embalagens, Plaschio ou Cesbap).');
 
   const tipoBtn = document.querySelector('.tipo-btns .canal-btn.active');
   const tipo = tipoBtn ? tipoBtn.textContent.trim() : 'Reclamação';
@@ -11180,7 +11189,7 @@ function patchAcompPage(){
           <option value="">Todas as empresas</option>
           <option value="CHIACCHIO EMBALAGENS">Chiacchio</option>
           <option value="PLASCHIO">Plaschio</option>
-          <option value="TUBAHIA">Tubahia</option>
+          <option value="TUBAHIA">Cesbap</option>
           <option value="CESBAP">Cesbap</option>
         </select>
         <select id="af-setor" class="filtro-extra" onchange="aplicarFiltrosAcomp()">
@@ -14141,7 +14150,7 @@ function cpPrepara(itens) {
       notas: c.notas.map(h => cpNum(r[h])), media, baixa: ns.some(n => n <= CP_LIMITE), comentario };
   }).sort((a, b) => (b.d || 0) - (a.d || 0));
 }
-function cpEmpKey(s) { s = String(s || '').toLowerCase(); return s.includes('plaschio') ? 'Plaschio' : s.includes('tubahia') ? 'Tubahia' : s.includes('chiacchio') ? 'Chiacchio' : ''; }
+function cpEmpKey(s) { s = String(s || '').toLowerCase(); return s.includes('plaschio') ? 'Plaschio' : (s.includes('tubahia') || s.includes('cesbap')) ? 'Cesbap' : s.includes('chiacchio') ? 'Chiacchio' : ''; }
 function cpAvg(arr) { const v = arr.filter(x => x !== null && x !== undefined); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; }
 function cpFmt(n) { return n === null || n === undefined ? '—' : n.toFixed(1).replace('.', ','); }
 function cpTab(name, btn) {
@@ -14230,10 +14239,94 @@ function cpRenderGeral() {
   const tb = el('cp-tbody');
   if (!l.length) { tb.innerHTML = '<tr><td colspan="' + (5 + c.notas.length) + '" style="text-align:center;padding:30px;color:#666464">Nenhuma pesquisa neste recorte. Ajuste ou limpe os filtros.</td></tr>'; el('cp-more').style.display = 'none'; return; }
   const vis = l.slice(0, _cp.page * 50);
-  tb.innerHTML = vis.map(r => '<tr class="ps-tr' + (r.baixa ? ' ps-low' : '') + '"><td class="ps-td" style="font-weight:600">#' + r.n + '</td><td class="ps-td">' + cpEsc(r.dataTxt) + '</td><td class="ps-td">' + cpEsc(r.emp || '—') + '</td><td class="ps-td" style="max-width:220px">' + cpEsc(r.cli || '—') + '</td>'
+  tb.innerHTML = vis.map((r, idx) => '<tr class="ps-tr' + (r.baixa ? ' ps-low' : '') + '" style="cursor:pointer" onclick="cpAbrirDetalhe(' + (_cp.page > 1 ? ((_cp.page-1)*50+idx) : idx) + ')" title="Ver detalhes"><td class="ps-td" style="font-weight:600">#' + r.n + '</td><td class="ps-td">' + cpEsc(r.dataTxt) + '</td><td class="ps-td">' + cpEsc(r.emp || '—') + '</td><td class="ps-td" style="max-width:220px">' + cpEsc(r.cli || '—') + '</td>'
     + r.notas.map(n => '<td class="ps-td" style="text-align:center">' + cpNotaChip(n) + '</td>').join('')
     + '<td class="ps-td">' + (r.baixa ? '<span class="ps-pill ps-pill-red">NOTA ≤ 6</span>' : '<span class="ps-pill ps-pill-gray">SEM ALERTA</span>') + '</td></tr>').join('');
   el('cp-more').style.display = vis.length < l.length ? 'block' : 'none';
+}
+
+function cpAbrirDetalhe(idx) {
+  const r = _cp.filtered[idx];
+  if (!r) return;
+  const c = _cp.cols;
+  const setores = ['Comercial','Produção','Logística','Qualidade','Financeiro','Atendimento'];
+  const ocpId = r._ocpId || '';
+  const manId = r._manId || '';
+  const baixa = r.baixa;
+  let html = '<div id="cp-modal-overlay" onclick="if(event.target===this)cpFecharDetalhe()" style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9998;display:flex;align-items:flex-start;justify-content:center;padding:24px 12px;overflow-y:auto">'
+    + '<div style="background:#fff;border-radius:12px;width:100%;max-width:640px;padding:24px;position:relative;box-shadow:0 8px 40px rgba(0,0,0,.18)">'
+    + '<button onclick="cpFecharDetalhe()" style="position:absolute;top:14px;right:16px;background:none;border:none;font-size:22px;cursor:pointer;color:#666">×</button>'
+    + '<div style="font-size:15px;font-weight:700;margin-bottom:4px">Resposta #' + r.n + '</div>'
+    + '<div style="font-size:12.5px;color:#666464;margin-bottom:14px">' + cpEsc(r.dataTxt) + ' · ' + cpEsc(r.emp||'—') + ' · ' + cpEsc(r.cli||'—') + '</div>';
+  if (baixa) {
+    html += '<div style="background:#FDECEC;border:1.5px solid #F5C6C6;border-radius:8px;padding:10px 14px;margin-bottom:14px;display:flex;gap:10px;align-items:center">'
+      + '<span style="font-size:22px">⚠️</span><div><b style="color:#A80502">Nota ≤ 6 detectada</b><br><span style="font-size:12.5px;color:#666">Esta resposta requer uma decisão de tratamento.</span></div></div>';
+  }
+  html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-bottom:14px">'
+    + c.notas.map((h, i) => '<div style="border:1.5px solid ' + (r.notas[i] !== null && r.notas[i] <= CP_LIMITE ? '#F5C6C6' : '#E4E4E4') + ';border-radius:8px;padding:8px 10px;text-align:center"><div style="font-size:11px;color:#666;margin-bottom:3px">' + cpEsc(h) + '</div><div style="font-size:20px;font-weight:700;color:' + (r.notas[i] !== null && r.notas[i] <= CP_LIMITE ? '#A80502' : '#1F1F1F') + '">' + cpFmt(r.notas[i]) + '</div></div>').join('')
+    + '<div style="border:1.5px solid #E4E4E4;border-radius:8px;padding:8px 10px;text-align:center"><div style="font-size:11px;color:#666;margin-bottom:3px">MÉDIA GERAL</div><div style="font-size:20px;font-weight:700">' + cpFmt(r.media) + '</div></div></div>';
+  if (r.comentario) {
+    html += '<div style="border:1.5px solid #E4E4E4;border-radius:8px;padding:10px 14px;margin-bottom:14px"><div style="font-size:11px;color:#666;margin-bottom:4px;font-weight:600">COMENTÁRIO</div><div style="font-size:13.5px;line-height:1.6;white-space:pre-line">' + cpEsc(r.comentario) + '</div></div>';
+  }
+  if (baixa) {
+    html += '<div style="border-top:1.5px solid #E4E4E4;padding-top:16px;margin-top:4px">'
+      + '<div style="font-size:13px;font-weight:700;margin-bottom:10px">Decisão de tratamento</div>'
+      + '<div style="margin-bottom:10px"><label style="font-size:12.5px;font-weight:600;display:block;margin-bottom:5px">Setor responsável (sugestão IA, confirme)</label>'
+      + '<select id="cp-det-setor" style="width:100%;border:1.5px solid #D6D6D6;border-radius:7px;padding:7px 10px;font-size:13px;font-family:inherit">'
+      + setores.map(s2 => '<option>' + s2 + '</option>').join('') + '</select></div>'
+      + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">'
+      + '<button onclick="cpDecisaoDetalhe(\'OCP\',\''+r.n+'\')" style="flex:1;min-width:130px;border:1.5px solid #24508F;background:#fff;color:#24508F;border-radius:8px;padding:9px 10px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit">🔴 Gerar OCP</button>'
+      + '<button onclick="cpDecisaoDetalhe(\'MANIFESTACAO\',\''+r.n+'\')" style="flex:1;min-width:130px;border:1.5px solid #1E6B3A;background:#fff;color:#1E6B3A;border-radius:8px;padding:9px 10px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit">🟢 Transformar em Manifestação</button>'
+      + '<button onclick="cpDecisaoDetalhe(\'NENHUM\',\''+r.n+'\')" style="flex:1;min-width:130px;border:1.5px solid #D6D6D6;background:#fff;color:#545252;border-radius:8px;padding:9px 10px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit">⚪ Não requer tratamento</button>'
+      + '</div>'
+      + '<div id="cp-det-just-wrap" style="display:none;margin-bottom:10px"><label style="font-size:12.5px;font-weight:600;display:block;margin-bottom:5px">Justificativa (obrigatória)</label>'
+      + '<textarea id="cp-det-just" rows="3" style="width:100%;border:1.5px solid #D6D6D6;border-radius:7px;padding:7px 10px;font-size:13px;font-family:inherit;resize:vertical;box-sizing:border-box"></textarea></div>'
+      + '<div id="cp-det-msg" style="font-size:13px;min-height:18px"></div>'
+      + '</div>';
+  }
+  html += '</div></div>';
+  const existing = document.getElementById('cp-modal-overlay');
+  if (existing) existing.remove();
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function cpFecharDetalhe() {
+  const m = document.getElementById('cp-modal-overlay');
+  if (m) m.remove();
+}
+
+async function cpDecisaoDetalhe(decisao, linhaId) {
+  const justEl = document.getElementById('cp-det-just');
+  const justWrap = document.getElementById('cp-det-just-wrap');
+  const msg = document.getElementById('cp-det-msg');
+  if (decisao === 'NENHUM') {
+    if (justWrap && justWrap.style.display === 'none') { justWrap.style.display = 'block'; msg.textContent = 'Preencha a justificativa e clique novamente.'; return; }
+    const just = justEl ? justEl.value.trim() : '';
+    if (!just) { if (msg) msg.innerHTML = '<span style="color:#A80502">Justificativa obrigatória.</span>'; return; }
+  }
+  const justificativa = (decisao === 'NENHUM' && justEl) ? justEl.value.trim() : '';
+  const setor = (document.getElementById('cp-det-setor') || {}).value || '';
+  if (msg) msg.innerHTML = '<span style="color:#666">Registrando...</span>';
+  const ocp = _cp.all.find(r2 => String(r2.n) === String(linhaId));
+  const ocpId = ocp ? (ocp._ocpId || '') : '';
+  if (!ocpId) {
+    if (msg) msg.innerHTML = '<span style="color:#A80502">OCP não encontrada para esta resposta.</span>';
+    return;
+  }
+  try {
+    const res = await _apiFetch('/api/pesquisas/ocorrencias/' + ocpId + '/decisao', 8000, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ decisao, justificativa, setor })
+    });
+    if (res.sucesso) {
+      if (msg) msg.innerHTML = '<span style="color:#1E6B3A">✓ Decisão registrada com sucesso!</span>';
+      setTimeout(() => { cpFecharDetalhe(); cpCarregarOcps(); }, 1200);
+    } else {
+      if (msg) msg.innerHTML = '<span style="color:#A80502">Erro: ' + cpEsc(res.erro || 'desconhecido') + '</span>';
+    }
+  } catch(e) {
+    if (msg) msg.innerHTML = '<span style="color:#A80502">Erro ao registrar decisão.</span>';
+  }
 }
 function cpMais() { _cp.page++; cpRenderGeral(); }
 function cpRenderArvore() {
@@ -14253,10 +14346,10 @@ function cpRenderArvore() {
 function cpRenderEmpresas() {
   const ano = document.getElementById('cp-f-ano').value, mes = document.getElementById('cp-f-mes').value;
   const base = _cp.all.filter(r => (!ano || r.ano === +ano) && (!mes || r.mes === +mes));
-  document.getElementById('cp-empresas').innerHTML = ['Chiacchio', 'Plaschio', 'Tubahia'].map(e => {
+  document.getElementById('cp-empresas').innerHTML = [['Chiacchio','Chiacchio Embalagens'],['Plaschio','Plaschio'],['Cesbap','Cesbap']].map(([e, nome]) => {
     const l = base.filter(r => cpEmpKey(r.emp) === e), s = cpStats(l);
     const crit = _cp.cols.notas.map((h, i) => ({ h, m: cpAvg(l.map(r => r.notas[i])) }));
-    return '<div class="ps-card"><div class="ps-card-h"><span>' + e.toUpperCase() + '</span><span class="ps-muted">' + s.total + ' respostas</span></div><div class="ps-body">'
+    return '<div class="ps-card"><div class="ps-card-h"><span>' + nome.toUpperCase() + '</span><span class="ps-muted">' + s.total + ' respostas</span></div><div class="ps-body">'
       + '<div style="display:flex;gap:18px;margin-bottom:10px"><div><div class="ps-big">' + cpFmt(s.media) + '</div><div class="ps-muted">média geral</div></div><div><div class="ps-big" style="color:#A80502">' + s.baixa + '</div><div class="ps-muted">nota ≤ 6</div></div><div><div class="ps-big">' + s.comentarios + '</div><div class="ps-muted">comentários</div></div></div>'
       + crit.map(c => cpBarra(c.h, c.m)).join('') + '</div></div>';
   }).join('');
@@ -14268,17 +14361,88 @@ function cpBarra(rot, v) {
 function cpRenderDash() {
   const l = _cp.filtered, s = cpStats(l);
   const k = (t, v, c) => '<div class="ps-kpi" style="border-top-color:' + c + '"><span class="ps-kl">' + t + '</span><span class="ps-kv">' + v + '</span></div>';
-  document.getElementById('cp-dash-kpis').innerHTML = k('RESPOSTAS', s.total, '#C70602') + k('MÉDIA GERAL', cpFmt(s.media), '#1E6B3A') + k('NOTA ≤ 6', s.baixa, '#D9A400') + k('% COM NOTA ≤ 6', s.total ? Math.round(s.baixa * 100 / s.total) + '%' : '—', '#24508F');
+  // NPS do recorte
+  const colNps = _cp.cols.notas.findIndex(h => /recom/i.test(h));
+  let npsScore = null, pct = { p:0, n:0, d:0 };
+  if (colNps >= 0) {
+    const ns = l.map(r => r.notas[colNps]).filter(n => n !== null && !isNaN(n));
+    if (ns.length) {
+      const p = ns.filter(n=>n>=9).length, d = ns.filter(n=>n<=6).length;
+      npsScore = Math.round((p-d)/ns.length*100);
+      pct = { p:Math.round(p/ns.length*100), n:Math.round((ns.length-p-d)/ns.length*100), d:Math.round(d/ns.length*100) };
+    }
+  }
+  const npsVal = npsScore !== null ? (npsScore > 0 ? '+' : '') + npsScore : '—';
+  document.getElementById('cp-dash-kpis').innerHTML = k('RESPOSTAS', s.total, '#C70602') + k('MÉDIA GERAL', cpFmt(s.media), '#1E6B3A') + k('NPS DO RECORTE', npsVal, '#24508F') + k('% NOTA ≤ 6', s.total ? Math.round(s.baixa * 100 / s.total) + '%' : '—', '#D9A400');
   document.getElementById('cp-dash-crit').innerHTML = _cp.cols.notas.length ? _cp.cols.notas.map((h, i) => cpBarra(h, cpAvg(l.map(r => r.notas[i])))).join('') : '<div class="ps-muted">Nenhuma coluna de nota identificada.</div>';
-  const meses = {}; l.forEach(r => { if (r.ano) { const k2 = r.ano + '-' + String(r.mes).padStart(2, '0'); meses[k2] = (meses[k2] || 0) + 1; } });
-  const ks = Object.keys(meses).sort().slice(-12), mx = Math.max(1, ...ks.map(x => meses[x]));
-  document.getElementById('cp-dash-meses').innerHTML = ks.length ? '<div class="ps-cols">' + ks.map(x => '<div class="ps-col"><span class="ps-col-v">' + meses[x] + '</span><span class="ps-col-b" style="height:' + Math.round(meses[x] * 100 / mx) + '%"></span><span class="ps-col-l">' + x.slice(5) + '/' + x.slice(2, 4) + '</span></div>').join('') + '</div>' : '<div class="ps-muted">Sem dados no recorte.</div>';
+
+  // Evolução mensal: respostas + média
+  const meses = {}; l.forEach(r => { if (r.ano) { const k2 = r.ano + '-' + String(r.mes).padStart(2, '0'); if (!meses[k2]) meses[k2] = []; meses[k2].push(r); } });
+  const ks = Object.keys(meses).sort().slice(-12);
+  const mx = Math.max(1, ...ks.map(x => meses[x].length));
+  document.getElementById('cp-dash-meses').innerHTML = ks.length ? '<div class="ps-cols">' + ks.map(x => {
+    const itens = meses[x], med = cpAvg(itens.map(r=>r.media));
+    const cor = med === null ? '#D6D6D6' : med <= CP_LIMITE ? '#C70602' : med <= 8 ? '#D9A400' : '#1E6B3A';
+    return '<div class="ps-col"><span class="ps-col-v">' + itens.length + '</span><span class="ps-col-b" style="height:' + Math.round(itens.length * 100 / mx) + '%;background:' + cor + '"></span><span class="ps-col-l" title="Média: ' + cpFmt(med) + '">' + x.slice(5) + '/' + x.slice(2, 4) + '</span></div>';
+  }).join('') + '</div>' : '<div class="ps-muted">Sem dados no recorte.</div>';
+
+  // Evolução por critério (últimos 6 meses)
+  const ks6 = ks.slice(-6);
+  const critH = document.getElementById('cp-dash-crit-hist');
+  if (critH) {
+    if (!ks6.length || !_cp.cols.notas.length) { critH.innerHTML = '<div class="ps-muted">Sem dados.</div>'; }
+    else {
+      const cores = ['#24508F','#1E6B3A','#D9A400','#C70602','#7B2D8B','#00897B'];
+      critH.innerHTML = '<div style="overflow-x:auto"><table style="border-collapse:collapse;font-size:12px;width:100%"><thead><tr><th style="text-align:left;padding:4px 8px;color:#666;font-weight:600">CRITÉRIO</th>'
+        + ks6.map(x=>'<th style="text-align:center;padding:4px 8px;color:#666;font-weight:600">'+x.slice(5)+'/'+x.slice(2,4)+'</th>').join('')
+        + '</tr></thead><tbody>'
+        + _cp.cols.notas.map((h, ci) => '<tr><td style="padding:4px 8px;font-weight:600;color:'+cores[ci%cores.length]+'">'+cpEsc(h)+'</td>'
+          + ks6.map(x => { const med2 = cpAvg(meses[x]?meses[x].map(r=>r.notas[ci]):[]);
+            return '<td style="text-align:center;padding:4px 8px;color:'+(med2===null?'#ccc':med2<=CP_LIMITE?'#A80502':med2<=8?'#7A4C00':'#1E6B3A')+';font-weight:600">'+(med2===null?'—':cpFmt(med2))+'</td>'; }).join('')
+          + '</tr>').join('')
+        + '</tbody></table></div>';
+    }
+  }
+
+  // Distribuição de notas (histograma 0-10)
+  const histEl = document.getElementById('cp-dash-hist');
+  if (histEl && _cp.cols.notas.length) {
+    const allNotes = l.flatMap(r => r.notas).filter(n => n !== null && !isNaN(n));
+    const dist = Array(11).fill(0);
+    allNotes.forEach(n => { const idx2 = Math.round(n); if (idx2 >= 0 && idx2 <= 10) dist[idx2]++; });
+    const maxD = Math.max(1, ...dist);
+    histEl.innerHTML = '<div class="ps-cols">' + dist.map((v, i) => '<div class="ps-col"><span class="ps-col-v">' + v + '</span><span class="ps-col-b" style="height:' + Math.round(v*100/maxD) + '%;background:' + (i<=6?'#C70602':i<=8?'#D9A400':'#1E6B3A') + '"></span><span class="ps-col-l">' + i + '</span></div>').join('') + '</div>';
+  }
 }
 function cpRenderComentarios() {
-  const so = document.getElementById('cp-com-baixa').checked;
-  const l = _cp.filtered.filter(r => r.comentario && (!so || r.baixa)).slice(0, 200);
-  document.getElementById('cp-com-lista').innerHTML = l.length ? l.map(r => '<div class="ps-com' + (r.baixa ? ' ps-com-low' : '') + '"><div class="ps-muted">' + cpEsc(r.dataTxt) + ' · ' + cpEsc(r.emp || '—') + ' · ' + cpEsc(r.cli || '—') + ' · média ' + cpFmt(r.media) + (r.baixa ? ' · <b style="color:#A80502">NOTA ≤ 6</b>' : '') + '</div><div style="margin-top:4px;line-height:1.5;white-space:pre-line">' + cpEsc(r.comentario) + '</div></div>').join('') : '<div class="ps-muted" style="padding:20px;text-align:center">Nenhum comentário neste recorte.</div>';
+  const sBaixa = document.getElementById('cp-com-baixa') && document.getElementById('cp-com-baixa').checked;
+  const sPend = document.getElementById('cp-com-pend') && document.getElementById('cp-com-pend').checked;
+  const sOcp = document.getElementById('cp-com-ocp') && document.getElementById('cp-com-ocp').checked;
+  const sMan = document.getElementById('cp-com-man') && document.getElementById('cp-com-man').checked;
+  let l = _cp.filtered.filter(r => r.comentario);
+  if (sBaixa) l = l.filter(r => r.baixa);
+  if (sPend) l = l.filter(r => r.baixa && !r._ocpId && !r._manId && !r._nrtId);
+  if (sOcp) l = l.filter(r => r._ocpId);
+  if (sMan) l = l.filter(r => r._manId);
+  l = l.slice(0, 200);
+  document.getElementById('cp-com-lista').innerHTML = l.length ? l.map(r => {
+    const tags = [];
+    if (r.baixa) tags.push('<span class="ps-pill ps-pill-red">NOTA ≤ 6</span>');
+    if (r._ocpId) tags.push('<span class="ps-pill" style="background:#EAF0FB;color:#24508F;border:none">OCP: ' + cpEsc(r._ocpId) + '</span>');
+    if (r._manId) tags.push('<span class="ps-pill" style="background:#E6F2EA;color:#1E6B3A;border:none">MAN: ' + cpEsc(r._manId) + '</span>');
+    return '<div class="ps-com' + (r.baixa ? ' ps-com-low' : '') + '">'
+      + '<div class="ps-muted">' + cpEsc(r.dataTxt) + ' · ' + cpEsc(r.emp||'—') + ' · ' + cpEsc(r.cli||'—') + ' · média ' + cpFmt(r.media) + (tags.length ? ' &nbsp;' + tags.join(' ') : '') + '</div>'
+      + '<div style="margin-top:4px;line-height:1.5;white-space:pre-line">' + cpEsc(r.comentario) + '</div>'
+      + (r.baixa && !r._ocpId && !r._manId && !r._nrtId ? '<button onclick="cpAbrirDetalhePorN('+r.n+')" style="margin-top:6px;border:1px solid #C70602;color:#C70602;background:#fff;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;font-family:inherit">Decidir tratamento</button>' : '')
+      + '</div>';
+  }).join('') : '<div class="ps-muted" style="padding:20px;text-align:center">Nenhum comentário neste recorte.</div>';
 }
+
+function cpAbrirDetalhePorN(n) {
+  const idx = _cp.filtered.findIndex(r => r.n === n);
+  if (idx >= 0) cpAbrirDetalhe(idx);
+}
+
 
 // ── OCP — Ocorrências de Pesquisa ─────────────────────────
 async function cpCarregarOcps() {
@@ -14314,24 +14478,51 @@ async function cpCarregarOcps() {
   }
 }
 
-async function cpDecisaoOcp(id) {
-  const decisao = prompt('Decisão para ' + id + ':\n1 = Gerar OCP (ocorrência interna)\n2 = Converter para Manifestação\n3 = Sem tratamento\n\nDigite 1, 2 ou 3:');
-  if (!decisao) return;
-  const mapa = { '1':'OCP', '2':'MANIFESTACAO', '3':'NENHUM' };
-  const d = mapa[decisao.trim()];
-  if (!d) { alert('Opção inválida.'); return; }
-  const justificativa = d === 'NENHUM' ? (prompt('Justificativa para não tratar (obrigatório):') || '') : '';
-  if (d === 'NENHUM' && !justificativa) { alert('Justificativa obrigatória para "Sem tratamento".'); return; }
+function cpDecisaoOcp(id) {
+  const existing = document.getElementById('cp-ocp-modal-overlay');
+  if (existing) existing.remove();
+  const html = '<div id="cp-ocp-modal-overlay" onclick="if(event.target===this)this.remove()" style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px">'
+    + '<div style="background:#fff;border-radius:12px;width:100%;max-width:480px;padding:24px;box-shadow:0 8px 40px rgba(0,0,0,.2)">'
+    + '<div style="font-size:15px;font-weight:700;margin-bottom:6px">Decidir tratamento</div>'
+    + '<div style="font-size:12.5px;color:#666464;margin-bottom:16px">OCP: <b>' + cpEsc(id) + '</b></div>'
+    + '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">'
+    + '<button onclick="cpExecutarDecisaoOcp(\''+id+'\',\'OCP\')" style="border:1.5px solid #24508F;background:#fff;color:#24508F;border-radius:8px;padding:10px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;text-align:left">🔴 Gerar OCP — Ocorrência interna no setor</button>'
+    + '<button onclick="cpExecutarDecisaoOcp(\''+id+'\',\'MANIFESTACAO\')" style="border:1.5px solid #1E6B3A;background:#fff;color:#1E6B3A;border-radius:8px;padding:10px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;text-align:left">🟢 Transformar em Manifestação — Abre fluxo SAC</button>'
+    + '<button onclick="cpExecutarDecisaoOcp(\''+id+'\',\'NENHUM\')" style="border:1.5px solid #D6D6D6;background:#fff;color:#545252;border-radius:8px;padding:10px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;text-align:left">⚪ Não requer tratamento</button>'
+    + '</div>'
+    + '<div id="cp-ocp-just-wrap" style="display:none;margin-bottom:12px"><label style="font-size:12.5px;font-weight:600;display:block;margin-bottom:5px">Justificativa (obrigatória)</label>'
+    + '<textarea id="cp-ocp-just" rows="3" style="width:100%;border:1.5px solid #D6D6D6;border-radius:7px;padding:7px 10px;font-size:13px;font-family:inherit;resize:vertical;box-sizing:border-box"></textarea>'
+    + '<button id="cp-ocp-just-btn" onclick="cpConfirmarNenhum(\''+id+'\')" style="margin-top:8px;background:#545252;color:#fff;border:none;border-radius:7px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Confirmar</button></div>'
+    + '<div id="cp-ocp-modal-msg" style="font-size:13px;min-height:16px"></div>'
+    + '<button onclick="document.getElementById(\'cp-ocp-modal-overlay\').remove()" style="margin-top:10px;border:1px solid #D6D6D6;background:#fff;border-radius:7px;padding:7px 14px;font-size:12.5px;cursor:pointer;font-family:inherit;color:#666">Cancelar</button>'
+    + '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+async function cpExecutarDecisaoOcp(id, decisao) {
+  const msg = document.getElementById('cp-ocp-modal-msg');
+  if (decisao === 'NENHUM') {
+    const w = document.getElementById('cp-ocp-just-wrap');
+    if (w && w.style.display === 'none') { w.style.display = 'block'; if (msg) msg.textContent = ''; return; }
+  }
+  const just = (document.getElementById('cp-ocp-just') || {}).value || '';
+  if (decisao === 'NENHUM' && !just.trim()) { if (msg) msg.innerHTML = '<span style="color:#A80502">Justificativa obrigatória.</span>'; return; }
+  if (msg) msg.innerHTML = '<span style="color:#666">Registrando...</span>';
   try {
     const r = await _apiFetch('/api/pesquisas/ocorrencias/' + id + '/decisao', 8000, {
       method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ decisao: d, justificativa })
+      body: JSON.stringify({ decisao, justificativa: just.trim() })
     });
-    if (r.sucesso) { alert('Decisão registrada!'); cpCarregarOcps(); }
-    else alert('Erro: ' + (r.erro || 'desconhecido'));
-  } catch(e) { alert('Erro ao registrar decisão.'); }
+    if (r.sucesso) {
+      if (msg) msg.innerHTML = '<span style="color:#1E6B3A">✓ Decisão registrada!</span>';
+      setTimeout(() => { const ov = document.getElementById('cp-ocp-modal-overlay'); if (ov) ov.remove(); cpCarregarOcps(); }, 1000);
+    } else {
+      if (msg) msg.innerHTML = '<span style="color:#A80502">Erro: ' + cpEsc(r.erro || 'desconhecido') + '</span>';
+    }
+  } catch(e) { if (msg) msg.innerHTML = '<span style="color:#A80502">Erro ao registrar decisão.</span>'; }
 }
 
+function cpConfirmarNenhum(id) { cpExecutarDecisaoOcp(id, 'NENHUM'); }
 // ── Editor do Questionário ─────────────────────────────────
 let _qPerguntas = [];
 
@@ -17903,7 +18094,7 @@ const authH = () => ({'Authorization':'Bearer '+tok()});
 const norm = s => String(s==null?'':s).normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[\s_\-\.]+/g,'');
 const $ = id => document.getElementById(id);
 
-const EMPRESAS = ['Todas as empresas','Chiacchio Embalagens','Plaschio','Tubahia'];
+const EMPRESAS = ['Todas as empresas','Chiacchio Embalagens','Plaschio','Cesbap'];
 const MAX_BYTES = 4*1024*1024; // limite do corpo de requisição da Vercel (~4,5 MB)
 const LOTE = 150;
 
