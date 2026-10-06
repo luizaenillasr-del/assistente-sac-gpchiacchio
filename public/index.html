@@ -732,7 +732,7 @@
         <div style="display:flex;flex-direction:column;gap:10px;margin-top:32px;max-width:420px">
           <button onclick="abrirPortalPublico()" style="height:54px;border:0;background:#fff;color:#C70602;border-radius:10px;font-weight:700;font-size:15px;letter-spacing:.04em;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.18);font-family:inherit">+ REGISTRAR MANIFESTAÇÃO</button>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">
-            <button onclick="document.getElementById('login-screen').scrollTop=0" style="height:44px;border:1.5px solid #fff;background:transparent;color:#fff;border-radius:10px;font-weight:700;font-size:12.5px;letter-spacing:.04em;cursor:pointer;font-family:inherit">ENTRAR NO SISTEMA</button>
+            <button onclick="abrirPainelLogin()" style="height:44px;border:1.5px solid #fff;background:transparent;color:#fff;border-radius:10px;font-weight:700;font-size:12.5px;letter-spacing:.04em;cursor:pointer;font-family:inherit">ENTRAR NO SISTEMA</button>
             <button onclick="abrirSolicitacaoAcesso()" style="height:44px;border:1.5px solid rgba(255,255,255,.7);background:transparent;color:#fff;border-radius:10px;font-weight:700;font-size:12.5px;letter-spacing:.04em;cursor:pointer;font-family:inherit">SOLICITAR ACESSO</button>
           </div>
         </div>
@@ -742,15 +742,23 @@
       </div>
     </div>
 
-    <!-- PAINEL DIREITO -->
+    <!-- PAINEL DIREITO — formulário só aparece após clicar "ENTRAR NO SISTEMA" -->
     <div class="login-right">
-      <div style="width:100%;max-width:380px;display:flex;flex-direction:column;gap:18px">
+      <!-- Estado inicial: vazio -->
+      <div id="login-panel-empty" style="display:flex;flex-direction:column;align-items:center;gap:16px;opacity:.45">
+        <img src="/simbolo-vermelho.png" alt="" style="width:36px;height:auto;display:block">
+        <div style="font-size:13px;color:#929090;text-align:center">Clique em <strong>ENTRAR NO SISTEMA</strong><br>no painel ao lado para acessar.</div>
+      </div>
+
+      <!-- Formulário de login -->
+      <div id="login-panel-login" style="display:none;width:100%;max-width:380px;flex-direction:column;gap:18px">
         <img src="/logo-chiacchio.png" alt="Grupo Chiacchio" style="width:150px;height:auto;display:block;margin-bottom:6px">
         <div>
           <div style="font-size:22px;font-weight:700">Entrar</div>
           <div style="color:#666464;font-size:13px;margin-top:4px">Use seu e-mail corporativo. O perfil de acesso é identificado automaticamente.</div>
         </div>
         <div id="login-error" style="display:none;background:#F9E3E3;color:#8E1A24;border-radius:8px;padding:10px 12px;font-size:13px">E-mail ou senha inválidos.</div>
+        <div id="login-forgot-sent" style="display:none;background:#E4ECF7;color:#244F8F;border-radius:8px;padding:10px 12px;font-size:13px">Se o e-mail estiver cadastrado, você receberá um link para redefinir a senha.</div>
         <label style="display:flex;flex-direction:column;gap:6px;font-size:12.5px;color:#545252">E-mail ou usuário<input id="login-user" type="text" placeholder="nome@grupochiacchio.com.br" autocomplete="username" style="height:42px;border:1px solid #D6D6D6;border-radius:8px;padding:0 12px;background:#fff;font-size:14px;font-family:inherit" onkeydown="if(event.key==='Enter')document.getElementById('login-senha').focus()"></label>
         <label style="display:flex;flex-direction:column;gap:6px;font-size:12.5px;color:#545252">Senha<input id="login-senha" type="password" placeholder="••••••••" autocomplete="current-password" style="height:42px;border:1px solid #D6D6D6;border-radius:8px;padding:0 12px;background:#fff;font-size:14px;font-family:inherit" onkeydown="if(event.key==='Enter')doLogin()"></label>
         <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px">
@@ -759,15 +767,7 @@
         </div>
         <button onclick="doLogin()" class="login-btn">Entrar</button>
         <div style="font-size:12px;color:#8A8888">A sessão expira após 30 minutos sem atividade.</div>
-        <div style="border-top:1px solid #E4E4E4;padding-top:16px;display:flex;flex-direction:column;gap:10px">
-          <div style="font-size:12px;color:#666464">Acesso de demonstração · entrar como</div>
-          <div style="display:flex;flex-wrap:wrap;gap:6px">
-            <button onclick="loginDemo('master')" style="border:1px solid #D6D6D6;background:#fff;border-radius:99px;white-space:nowrap;padding:5px 11px;font-size:12.5px;cursor:pointer;font-family:inherit" onmouseover="this.style.borderColor='#C70602'" onmouseout="this.style.borderColor='#D6D6D6'">MASTER</button>
-            <button onclick="loginDemo('analista')" style="border:1px solid #D6D6D6;background:#fff;border-radius:99px;white-space:nowrap;padding:5px 11px;font-size:12.5px;cursor:pointer;font-family:inherit" onmouseover="this.style.borderColor='#C70602'" onmouseout="this.style.borderColor='#D6D6D6'">Analista SAC</button>
-            <button onclick="loginDemo('aprovador')" style="border:1px solid #D6D6D6;background:#fff;border-radius:99px;white-space:nowrap;padding:5px 11px;font-size:12.5px;cursor:pointer;font-family:inherit" onmouseover="this.style.borderColor='#C70602'" onmouseout="this.style.borderColor='#D6D6D6'">Aprovador</button>
-            <button onclick="loginDemo('setor')" style="border:1px solid #D6D6D6;background:#fff;border-radius:99px;white-space:nowrap;padding:5px 11px;font-size:12.5px;cursor:pointer;font-family:inherit" onmouseover="this.style.borderColor='#C70602'" onmouseout="this.style.borderColor='#D6D6D6'">Setor responsável</button>
-            <button onclick="loginDemo('rca')" style="border:1px solid #D6D6D6;background:#fff;border-radius:99px;white-space:nowrap;padding:5px 11px;font-size:12.5px;cursor:pointer;font-family:inherit" onmouseover="this.style.borderColor='#C70602'" onmouseout="this.style.borderColor='#D6D6D6'">RCA</button>
-          </div>
+        <div style="border-top:1px solid #E4E4E4;padding-top:16px">
           <button onclick="abrirSolicitacaoAcesso()" style="background:none;border:0;color:#A80502;cursor:pointer;padding:0;font-family:inherit;font-size:13px;text-align:left">Não tem conta? Solicitar acesso</button>
         </div>
 
@@ -1160,6 +1160,13 @@
       setTimeout(()=>{ document.getElementById('bootstrap-box').style.display='none'; }, 3000);
     } catch(e) { fb.style.background='#FEE2E2';fb.style.color='#DC2626';fb.textContent='Erro: '+e.message; }
   }
+
+  window.abrirPainelLogin = function() {
+    const empty = document.getElementById('login-panel-empty');
+    const panel = document.getElementById('login-panel-login');
+    if (empty) empty.style.display = 'none';
+    if (panel) { panel.style.display = 'flex'; document.getElementById('login-user')?.focus(); }
+  };
 
   async function doLogin() {
     const user=document.getElementById('login-user').value.trim();
@@ -10579,7 +10586,8 @@ window.navigate = function(page, el) {
       await window.iniciarSessaoV5();
     }catch(e){
       sessionStorage.clear();
-      document.getElementById('login-screen').style.display='flex'
+      document.getElementById('login-screen').style.display='flex';
+      window.abrirPainelLogin && window.abrirPainelLogin();
     }
   }
   boot();
