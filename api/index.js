@@ -6176,6 +6176,327 @@ app.patch('/api/matriz-tratamento/:id', requerPerfil('MASTER','ANALISTA SAC'), a
   } catch(e){ res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// QUESTIONÁRIOS POR EMPRESA (/api/questionarios/:empresa)
+// ─────────────────────────────────────────────────────────────────────────────
+app.get('/api/questionarios/:empresa', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','GESTOR SAC'), async (req, res) => {
+  try {
+    const emp = (req.params.empresa || '').toUpperCase();
+    await garantirAbaComCabecalhos('PESQUISA_QUESTIONARIO', ['ID_VERSAO','STATUS','EMPRESA','CRIADO_EM','PUBLICADO_EM','CRIADO_POR','PERGUNTAS_JSON']);
+    const rows = await lerAba('PESQUISA_QUESTIONARIO', 200);
+    const filtered = rows.filter(r => !r.EMPRESA || r.EMPRESA.toUpperCase() === emp || emp === 'TODAS');
+    const publicada = filtered.filter(r => r.STATUS === 'PUBLICADA').sort((a,b)=>new Date(b.PUBLICADO_EM||0)-new Date(a.PUBLICADO_EM||0))[0] || null;
+    const rascunho = filtered.filter(r => r.STATUS === 'RASCUNHO').sort((a,b)=>new Date(b.CRIADO_EM||0)-new Date(a.CRIADO_EM||0))[0] || null;
+    const parse = r => r ? { ...r, perguntas: (() => { try { return JSON.parse(r.PERGUNTAS_JSON||'[]'); } catch(e) { return []; } })() } : null;
+    res.json({ sucesso: true, empresa: emp, publicada: parse(publicada), rascunho: parse(rascunho) });
+  } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e,'get-questionario-empresa') }); }
+});
+
+app.post('/api/questionarios/:empresa', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req, res) => {
+  try {
+    const emp = (req.params.empresa || '').toUpperCase();
+    const { perguntas, textos, acao = 'RASCUNHO' } = req.body || {};
+    if (!Array.isArray(perguntas) || perguntas.length === 0) return res.status(400).json({ sucesso: false, erro: 'perguntas obrigatório.' });
+    if (!['RASCUNHO','PUBLICADA'].includes(acao)) return res.status(400).json({ sucesso: false, erro: 'acao deve ser RASCUNHO ou PUBLICADA.' });
+    await garantirAbaComCabecalhos('PESQUISA_QUESTIONARIO', ['ID_VERSAO','STATUS','EMPRESA','CRIADO_EM','PUBLICADO_EM','CRIADO_POR','PERGUNTAS_JSON','TEXTOS_JSON']);
+    const idVersao = 'QV-' + emp.slice(0,3) + '-' + Date.now();
+    await appendObjeto('PESQUISA_QUESTIONARIO', {
+      ID_VERSAO: idVersao, STATUS: acao, EMPRESA: emp,
+      CRIADO_EM: new Date().toISOString(),
+      PUBLICADO_EM: acao === 'PUBLICADA' ? new Date().toISOString() : '',
+      CRIADO_POR: req.user?.usuario || '',
+      PERGUNTAS_JSON: JSON.stringify(perguntas),
+      TEXTOS_JSON: JSON.stringify(textos || {}),
+    });
+    invalidarCacheAba('PESQUISA_QUESTIONARIO');
+    await registrarAuditoria(req.user?.usuario||'sistema', `QUESTIONARIO_${acao}_${emp}`, null, 'PESQUISA_QUESTIONARIO', null, { id: idVersao, empresa: emp });
+    res.json({ sucesso: true, id: idVersao, status: acao, empresa: emp });
+  } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e,'save-questionario-empresa') }); }
+});
+
+app.post('/api/questionarios/:empresa/publicar', requerPerfil('MASTER','APROVADOR'), async (req, res) => {
+  try {
+    const emp = (req.params.empresa || '').toUpperCase();
+    const { id } = req.body || {};
+    const rows = await lerAba('PESQUISA_QUESTIONARIO', 200).catch(()=>[]);
+    const item = id ? rows.find(r => r.ID_VERSAO === id) : rows.filter(r => (!r.EMPRESA || r.EMPRESA.toUpperCase() === emp) && r.STATUS === 'RASCUNHO').sort((a,b)=>new Date(b.CRIADO_EM||0)-new Date(a.CRIADO_EM||0))[0];
+    if (!item) return res.status(404).json({ sucesso: false, erro: 'Rascunho não encontrado.' });
+    await atualizarPorID('PESQUISA_QUESTIONARIO', item.ID_VERSAO, { STATUS: 'PUBLICADA', PUBLICADO_EM: new Date().toISOString(), CRIADO_POR: req.user?.usuario||'' }, ['ID_VERSAO']);
+    invalidarCacheAba('PESQUISA_QUESTIONARIO');
+    await registrarAuditoria(req.user?.usuario||'sistema', `QUESTIONARIO_PUBLICADO_${emp}`, null, 'PESQUISA_QUESTIONARIO', 'RASCUNHO', { id: item.ID_VERSAO });
+    res.json({ sucesso: true, id: item.ID_VERSAO, empresa: emp });
+  } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e,'publicar-questionario') }); }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// OCORRÊNCIAS DE PESQUISA — create / update
+// ─────────────────────────────────────────────────────────────────────────────
+app.post('/api/pesquisas/ocorrencias', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req, res) => {
+  try {
+    const { token, empresa, nps, setor, descricao } = req.body || {};
+    if (!token) return res.status(400).json({ sucesso: false, erro: 'token obrigatório.' });
+    await garantirAbaComCabecalhos('PESQUISA_OCORRENCIAS', ['ID_OCP','TOKEN','EMPRESA','DATA','NPS','SETOR','STATUS','DECISAO','JUSTIFICATIVA','ID_MANIFESTACAO_GERADA','ANALISTA','DATA_DECISAO','DESCRICAO']);
+    const idOcp = 'OCP-' + Date.now();
+    await appendObjeto('PESQUISA_OCORRENCIAS', {
+      ID_OCP: idOcp, TOKEN: token, EMPRESA: empresa || '', DATA: new Date().toISOString(),
+      NPS: nps != null ? String(nps) : '', SETOR: setor || '', STATUS: 'PENDENTE',
+      DECISAO: '', JUSTIFICATIVA: '', ID_MANIFESTACAO_GERADA: '', DESCRICAO: descricao || '',
+      ANALISTA: req.user?.usuario || '', DATA_DECISAO: '',
+    });
+    invalidarCacheAba('PESQUISA_OCORRENCIAS');
+    res.json({ sucesso: true, id: idOcp });
+  } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e,'create-ocp') }); }
+});
+
+app.patch('/api/pesquisas/ocorrencias/:id', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req, res) => {
+  try {
+    const { status, decisao, justificativa, idManifestacao } = req.body || {};
+    const rows = await lerAba('PESQUISA_OCORRENCIAS', 2000);
+    const ocp = rows.find(r => r.ID_OCP === req.params.id);
+    if (!ocp) return res.status(404).json({ sucesso: false, erro: 'OCP não encontrada.' });
+    const upd = {};
+    if (status) upd.STATUS = status;
+    if (decisao) upd.DECISAO = decisao;
+    if (justificativa) upd.JUSTIFICATIVA = justificativa;
+    if (idManifestacao) upd.ID_MANIFESTACAO_GERADA = idManifestacao;
+    upd.ANALISTA = req.user?.usuario || ocp.ANALISTA || '';
+    upd.DATA_DECISAO = new Date().toISOString();
+    await atualizarPorID('PESQUISA_OCORRENCIAS', req.params.id, upd, ['ID_OCP']);
+    invalidarCacheAba('PESQUISA_OCORRENCIAS');
+    res.json({ sucesso: true });
+  } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e,'patch-ocp') }); }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PESQUISA PÚBLICA POR TOKEN (sem auth)
+// ─────────────────────────────────────────────────────────────────────────────
+app.get('/api/pesquisa/:token', publicRateLimit, async (req, res) => {
+  try {
+    const token = req.params.token;
+    const tokens = await lerAba('PESQUISA_TOKENS', 5000).catch(()=>[]);
+    const tk = tokens.find(t => t.TOKEN === token);
+    if (!tk) return res.status(404).json({ sucesso: false, erro: 'Pesquisa não encontrada ou expirada.' });
+    if (tk.RESPONDIDO_EM) return res.status(410).json({ sucesso: false, erro: 'Esta pesquisa já foi respondida.', jaRespondida: true });
+    const validade = tk.VALIDADE_EM ? new Date(tk.VALIDADE_EM) : null;
+    if (validade && validade < new Date()) return res.status(410).json({ sucesso: false, erro: 'Esta pesquisa expirou.', expirada: true });
+    // Buscar questionário publicado da empresa
+    const qRows = await lerAba('PESQUISA_QUESTIONARIO', 200).catch(()=>[]);
+    const emp = (tk.EMPRESA || '').toUpperCase();
+    const publicada = qRows.filter(r => r.STATUS === 'PUBLICADA' && (!r.EMPRESA || r.EMPRESA.toUpperCase() === emp)).sort((a,b)=>new Date(b.PUBLICADO_EM||0)-new Date(a.PUBLICADO_EM||0))[0];
+    let perguntas = [];
+    if (publicada) { try { perguntas = JSON.parse(publicada.PERGUNTAS_JSON||'[]'); } catch(e) {} }
+    res.json({ sucesso: true, token, empresa: tk.EMPRESA, nomeCliente: tk.NOME_CLIENTE || '', perguntas, versaoId: publicada?.ID_VERSAO || '' });
+  } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e,'get-pesquisa-token') }); }
+});
+
+app.post('/api/pesquisas/resposta/:token', publicRateLimit, async (req, res) => {
+  try {
+    const token = req.params.token;
+    const tokens = await lerAba('PESQUISA_TOKENS', 5000).catch(()=>[]);
+    const tk = tokens.find(t => t.TOKEN === token);
+    if (!tk) return res.status(404).json({ sucesso: false, erro: 'Pesquisa não encontrada.' });
+    if (tk.RESPONDIDO_EM) return res.status(410).json({ sucesso: false, erro: 'Já respondida.', jaRespondida: true });
+    const { respostas, comentario, versaoId } = req.body || {};
+    await garantirAbaComCabecalhos('PESQUISA_RESPOSTAS', ['ID_RESPOSTA','TOKEN','EMPRESA','NOME_CLIENTE','DATA_RESPOSTA','VERSAO_ID','RESPOSTAS_JSON','COMENTARIO','NOTA_GERAL','NOTA_BAIXA']);
+    const idResp = 'RSP-' + Date.now();
+    const notaGeral = Array.isArray(respostas) ? (() => {
+      const notas = respostas.filter(r => typeof r.nota === 'number').map(r => r.nota);
+      return notas.length ? (notas.reduce((a,b)=>a+b,0)/notas.length).toFixed(1) : '';
+    })() : '';
+    const notaBaixa = notaGeral !== '' && parseFloat(notaGeral) <= 6 ? 'SIM' : 'NAO';
+    await appendObjeto('PESQUISA_RESPOSTAS', {
+      ID_RESPOSTA: idResp, TOKEN: token, EMPRESA: tk.EMPRESA || '',
+      NOME_CLIENTE: tk.NOME_CLIENTE || '', DATA_RESPOSTA: new Date().toISOString(),
+      VERSAO_ID: versaoId || '', RESPOSTAS_JSON: JSON.stringify(respostas || []),
+      COMENTARIO: comentario || '', NOTA_GERAL: notaGeral, NOTA_BAIXA: notaBaixa,
+    });
+    // Marcar token como respondido
+    await atualizarPorID('PESQUISA_TOKENS', token, { RESPONDIDO_EM: new Date().toISOString() }, ['TOKEN']).catch(()=>{});
+    invalidarCacheAba('PESQUISA_RESPOSTAS');
+    invalidarCacheAba('PESQUISA_TOKENS');
+    // Se nota baixa, criar OCP automática
+    if (notaBaixa === 'SIM') {
+      await appendObjeto('PESQUISA_OCORRENCIAS', {
+        ID_OCP: 'OCP-' + Date.now(), TOKEN: token, EMPRESA: tk.EMPRESA||'',
+        DATA: new Date().toISOString(), NPS: notaGeral, STATUS: 'PENDENTE',
+        DECISAO: '', JUSTIFICATIVA: '', ID_MANIFESTACAO_GERADA: '', ANALISTA: '', DATA_DECISAO: '',
+      }).catch(()=>{});
+      invalidarCacheAba('PESQUISA_OCORRENCIAS');
+    }
+    res.json({ sucesso: true, id: idResp, notaGeral, notaBaixa: notaBaixa === 'SIM' });
+  } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e,'save-resposta') }); }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// IMPORTAÇÃO DE DADOS (/api/importacao/*)
+// ─────────────────────────────────────────────────────────────────────────────
+app.post('/api/importacao/iniciar', requerPerfil('MASTER'), async (req, res) => {
+  try {
+    const { fonte, descricao, registros } = req.body || {};
+    if (!fonte) return res.status(400).json({ sucesso: false, erro: 'fonte obrigatória.' });
+    await garantirAbaComCabecalhos('IMPORTACAO_HISTORICO', ['ID_IMP','FONTE','DESCRICAO','STATUS','REGISTROS_TOTAL','REGISTROS_OK','REGISTROS_ERR','USUARIO','DATA_INICIO','DATA_FIM','PODE_DESFAZER','DESFAZENDO_EM','ERROS_JSON']);
+    const idImp = 'IMP-' + Date.now();
+    await appendObjeto('IMPORTACAO_HISTORICO', {
+      ID_IMP: idImp, FONTE: fonte, DESCRICAO: descricao || '', STATUS: 'PROCESSANDO',
+      REGISTROS_TOTAL: Array.isArray(registros) ? registros.length : 0,
+      REGISTROS_OK: 0, REGISTROS_ERR: 0,
+      USUARIO: req.user?.usuario || '', DATA_INICIO: new Date().toISOString(), DATA_FIM: '',
+      PODE_DESFAZER: 'SIM', DESFAZENDO_EM: '', ERROS_JSON: '[]',
+    });
+    invalidarCacheAba('IMPORTACAO_HISTORICO');
+    res.json({ sucesso: true, id: idImp, status: 'PROCESSANDO' });
+  } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e,'importacao-iniciar') }); }
+});
+
+app.get('/api/importacao/historico', requerPerfil('MASTER'), async (req, res) => {
+  try {
+    await garantirAbaComCabecalhos('IMPORTACAO_HISTORICO', ['ID_IMP','FONTE','DESCRICAO','STATUS','REGISTROS_TOTAL','REGISTROS_OK','REGISTROS_ERR','USUARIO','DATA_INICIO','DATA_FIM','PODE_DESFAZER','DESFAZENDO_EM','ERROS_JSON']);
+    const rows = await lerAba('IMPORTACAO_HISTORICO', 500);
+    res.json({ sucesso: true, total: rows.length, itens: rows.sort((a,b)=>new Date(b.DATA_INICIO||0)-new Date(a.DATA_INICIO||0)) });
+  } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e,'importacao-historico') }); }
+});
+
+app.post('/api/importacao/:id/desfazer', requerPerfil('MASTER'), async (req, res) => {
+  try {
+    const rows = await lerAba('IMPORTACAO_HISTORICO', 500).catch(()=>[]);
+    const imp = rows.find(r => r.ID_IMP === req.params.id);
+    if (!imp) return res.status(404).json({ sucesso: false, erro: 'Importação não encontrada.' });
+    if (imp.STATUS !== 'CONCLUIDA' && imp.STATUS !== 'PROCESSANDO') return res.status(400).json({ sucesso: false, erro: 'Esta importação não pode ser desfeita.' });
+    // Verificar janela de 24h
+    const inicio = new Date(imp.DATA_INICIO || 0);
+    const agora = new Date();
+    if ((agora - inicio) > 24*60*60*1000) return res.status(400).json({ sucesso: false, erro: 'Prazo de 24 horas para desfazer expirou.' });
+    await atualizarPorID('IMPORTACAO_HISTORICO', req.params.id, {
+      STATUS: 'DESFEITA', DESFAZENDO_EM: agora.toISOString(),
+    }, ['ID_IMP']);
+    invalidarCacheAba('IMPORTACAO_HISTORICO');
+    await registrarAuditoria(req.user?.usuario||'sistema', 'DESFEZ_IMPORTACAO', req.params.id, 'IMPORTACAO_HISTORICO', imp.STATUS, {});
+    res.json({ sucesso: true });
+  } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e,'importacao-desfazer') }); }
+});
+
+app.get('/api/importacao/pendencias', requerPerfil('MASTER'), async (req, res) => {
+  try {
+    // Verificar pendências de dados: tokens sem resposta, manifestações sem causa, etc.
+    const [tokens, respostas, manifestacoes] = await Promise.all([
+      lerAba('PESQUISA_TOKENS', 5000).catch(()=>[]),
+      lerAba('PESQUISA_RESPOSTAS', 5000).catch(()=>[]),
+      lerAba('MANIFESTACOES', 5000).catch(()=>[]),
+    ]);
+    const tksRespondidos = new Set(respostas.map(r => r.TOKEN));
+    const pendTokens = tokens.filter(t => !t.RESPONDIDO_EM && !tksRespondidos.has(t.TOKEN)).length;
+    const semCausa = manifestacoes.filter(m => !m.CAUSA && ['EM_TRATAMENTO','ENCERRADA'].includes(String(m.STATUS||'').toUpperCase())).length;
+    res.json({
+      sucesso: true,
+      pendencias: [
+        { tipo: 'pesquisa_tokens_sem_resposta', label: 'Pesquisas enviadas sem resposta', total: pendTokens },
+        { tipo: 'manifestacoes_sem_causa', label: 'Manifestações encerradas sem causa registrada', total: semCausa },
+      ],
+      totalPendencias: pendTokens + semCausa,
+    });
+  } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e,'importacao-pendencias') }); }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FICHAS (/api/fichas) — aliases para rotas de biblioteca existentes
+// ─────────────────────────────────────────────────────────────────────────────
+app.get('/api/fichas', (req, res, next) => { req.url = '/api/biblioteca/fichas'; next('route'); });
+
+app.post('/api/fichas/importar', (req, res, next) => { req.url = '/api/biblioteca/importar-ficha'; next('route'); });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RNC — ações adicionais (enviar, aprovar, devolver, encerrar)
+// ─────────────────────────────────────────────────────────────────────────────
+app.post('/api/rnc/:id/enviar', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL'), async (req,res)=>{
+  try {
+    const rnc = (await lerAba('BANCO_RNC',5000).catch(()=>[])).find(x=>x.ID_RNC===req.params.id);
+    if (!rnc) return res.status(404).json({sucesso:false,erro:'RNC não encontrada.'});
+    if (!pertenceEmpresa(req.user?.empresa, rnc.EMPRESA)) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado.'});
+    const { analise, causas, acoes } = req.body || {};
+    const agora = new Date().toISOString();
+    await atualizarPorID('BANCO_RNC', req.params.id, {
+      STATUS: 'RCA_ENVIADA', DATA_ENVIO_RCA: agora, ANALISE_RCA: analise||'',
+      CAUSA: causas||rnc.CAUSA||'', ACAO_CORRETIVA: acoes||'',
+      ANALISTA_RCA: req.user?.usuario||'', ULTIMA_ALTERACAO_DATA: agora,
+    }, ['ID_RNC','ID']);
+    const idEvt = await gerarProximoID('RNC_EVENTOS','EVT','ID_EVENTO');
+    await appendObjeto('RNC_EVENTOS',{ID_EVENTO:idEvt,ID_RNC:req.params.id,TIPO_EVENTO:'RCA_ENVIADA',USUARIO:req.user?.usuario||'',DATA_EVENTO:agora,DETALHES:'Análise de causa raiz enviada para aprovação'});
+    await registrarAuditoria(req.user?.usuario||'sistema','ENVIOU_RCA',req.params.id,'BANCO_RNC',rnc.STATUS,{});
+    res.json({sucesso:true,id:req.params.id,status:'RCA_ENVIADA'});
+  }catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e,'rnc-enviar')});}
+});
+
+app.post('/api/rnc/:id/aprovar', requerPerfil('APROVADOR','MASTER'), async (req,res)=>{
+  try {
+    const rnc = (await lerAba('BANCO_RNC',5000).catch(()=>[])).find(x=>x.ID_RNC===req.params.id);
+    if (!rnc) return res.status(404).json({sucesso:false,erro:'RNC não encontrada.'});
+    if (!pertenceEmpresa(req.user?.empresa, rnc.EMPRESA)) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado.'});
+    const { observacoes } = req.body || {};
+    const agora = new Date().toISOString();
+    await atualizarPorID('BANCO_RNC', req.params.id, {
+      STATUS: 'APROVADA', APROVADOR_DECISAO: req.user?.usuario||'', DATA_DECISAO: agora, OBSERVACOES_APROVACAO: observacoes||'',
+    }, ['ID_RNC','ID']);
+    const idEvt = await gerarProximoID('RNC_EVENTOS','EVT','ID_EVENTO');
+    await appendObjeto('RNC_EVENTOS',{ID_EVENTO:idEvt,ID_RNC:req.params.id,TIPO_EVENTO:'APROVADA',USUARIO:req.user?.usuario||'',DATA_EVENTO:agora,DETALHES:observacoes||'Análise aprovada'});
+    await registrarAuditoria(req.user?.usuario||'sistema','APROVOU_RCA',req.params.id,'BANCO_RNC',rnc.STATUS,{});
+    res.json({sucesso:true,id:req.params.id,status:'APROVADA'});
+  }catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e,'rnc-aprovar')});}
+});
+
+app.post('/api/rnc/:id/devolver', requerPerfil('APROVADOR','MASTER'), async (req,res)=>{
+  try {
+    const rnc = (await lerAba('BANCO_RNC',5000).catch(()=>[])).find(x=>x.ID_RNC===req.params.id);
+    if (!rnc) return res.status(404).json({sucesso:false,erro:'RNC não encontrada.'});
+    if (!pertenceEmpresa(req.user?.empresa, rnc.EMPRESA)) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado.'});
+    const { motivo } = req.body || {};
+    if (!motivo||!String(motivo).trim()) return res.status(400).json({sucesso:false,erro:'Motivo da devolução é obrigatório.'});
+    const agora = new Date().toISOString();
+    await atualizarPorID('BANCO_RNC', req.params.id, {
+      STATUS: 'DEVOLVIDA', APROVADOR_DECISAO: req.user?.usuario||'', DATA_DECISAO: agora, OBSERVACOES_APROVACAO: motivo,
+    }, ['ID_RNC','ID']);
+    const idEvt = await gerarProximoID('RNC_EVENTOS','EVT','ID_EVENTO');
+    await appendObjeto('RNC_EVENTOS',{ID_EVENTO:idEvt,ID_RNC:req.params.id,TIPO_EVENTO:'DEVOLVIDA',USUARIO:req.user?.usuario||'',DATA_EVENTO:agora,DETALHES:motivo});
+    await registrarAuditoria(req.user?.usuario||'sistema','DEVOLVEU_RCA',req.params.id,'BANCO_RNC',rnc.STATUS,{motivo});
+    res.json({sucesso:true,id:req.params.id,status:'DEVOLVIDA'});
+  }catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e,'rnc-devolver')});}
+});
+
+app.post('/api/rnc/:id/encerrar', requerPerfil('APROVADOR','MASTER','ANALISTA SAC'), async (req,res)=>{
+  try {
+    const rnc = (await lerAba('BANCO_RNC',5000).catch(()=>[])).find(x=>x.ID_RNC===req.params.id);
+    if (!rnc) return res.status(404).json({sucesso:false,erro:'RNC não encontrada.'});
+    if (!pertenceEmpresa(req.user?.empresa, rnc.EMPRESA)) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado.'});
+    const { verificacaoEficacia, resultado, observacoes } = req.body || {};
+    const agora = new Date().toISOString();
+    await atualizarPorID('BANCO_RNC', req.params.id, {
+      STATUS: 'ENCERRADA', DATA_ENCERRAMENTO: agora, RESPONSAVEL_EFICACIA: req.user?.usuario||'',
+      DATA_EFICACIA: agora, RESULTADO_EFICACIA: resultado||verificacaoEficacia||'', OBSERVACOES_APROVACAO: observacoes||'',
+    }, ['ID_RNC','ID']);
+    const idEvt = await gerarProximoID('RNC_EVENTOS','EVT','ID_EVENTO');
+    await appendObjeto('RNC_EVENTOS',{ID_EVENTO:idEvt,ID_RNC:req.params.id,TIPO_EVENTO:'ENCERRADA',USUARIO:req.user?.usuario||'',DATA_EVENTO:agora,DETALHES:observacoes||'RNC encerrada com verificação de eficácia'});
+    await registrarAuditoria(req.user?.usuario||'sistema','ENCERROU_RNC',req.params.id,'BANCO_RNC',rnc.STATUS,{});
+    res.json({sucesso:true,id:req.params.id,status:'ENCERRADA'});
+  }catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e,'rnc-encerrar')});}
+});
+
+app.patch('/api/rnc/:id', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL'), async (req,res)=>{
+  try {
+    const rnc = (await lerAba('BANCO_RNC',5000).catch(()=>[])).find(x=>x.ID_RNC===req.params.id);
+    if (!rnc) return res.status(404).json({sucesso:false,erro:'RNC não encontrada.'});
+    if (!pertenceEmpresa(req.user?.empresa, rnc.EMPRESA)) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado.'});
+    const b = req.body || {};
+    const campos = ['STATUS','CAUSA','NAO_CONFORMIDADE','SETOR','RESPONSAVEL','PRIORIDADE','PRAZO',
+      'ACAO_CONTENCAO','ACAO_CORRETIVA','RESPONSAVEL_ACAO','PRAZO_ACAO','ANALISE_CAUSA_RAIZ',
+      'PORQUE1','PORQUE2','PORQUE3','PORQUE4','PORQUE5','CAUSA_RAIZ','ANALISE_RCA'];
+    const dados = {};
+    for(const c of campos){if(b[c]!==undefined)dados[c]=b[c];}
+    dados.ULTIMA_ALTERACAO_POR = req.user?.usuario||'';
+    dados.ULTIMA_ALTERACAO_DATA = new Date().toISOString();
+    await atualizarPorID('BANCO_RNC',req.params.id,dados,['ID_RNC','ID']);
+    res.json({sucesso:true});
+  }catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e,'rnc-patch')});}
+});
+
 // ═════════════════════════════════════════════════════════════════════════════
 // CATCH ALL
 // ═════════════════════════════════════════════════════════════════════════════

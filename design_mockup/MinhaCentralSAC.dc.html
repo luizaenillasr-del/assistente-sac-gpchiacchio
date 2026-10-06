@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<title>Minha Central SAC · Assistente SAC</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F4F4F4;color:#1F1F1F;font-family:Montserrat,system-ui,sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}button{white-space:nowrap}
+a{color:#A80502;text-decoration:none}a:hover{color:#7F0401;text-decoration:underline}
+*{box-sizing:border-box}
+</style>
+</helmet>
+<div style="display:flex;min-height:100vh;width:100%;background:#F4F4F4;font-family:Montserrat,system-ui,sans-serif;color:#1F1F1F">
+
+  <aside style="flex:0 0 232px;background:#fff;border-right:1px solid #E4E4E4;padding:16px 12px;display:flex;flex-direction:column;gap:2px;position:sticky;top:0;height:100vh;overflow-y:auto">
+    <div style="display:flex;align-items:center;gap:10px;padding:4px 8px 18px"><img src="assets/simbolo-vermelho.png" alt="" style="width:30px;height:auto"><div><div style="font-weight:700;font-size:14px">Assistente SAC</div><div style="font-size:10.5px;color:#929090;letter-spacing:.08em;white-space:nowrap">GRUPO CHIACCHIO</div></div></div>
+    <sc-for list="{{ nav }}" as="g" hint-placeholder-count="4">
+      <div style="font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:#929090;font-weight:600;padding:12px 10px 4px">{{ g.l }}</div>
+      <sc-for list="{{ g.items }}" as="it"><a href="{{ it.href }}" style="display:block;padding:8px 10px;border-radius:7px;font-size:13px;white-space:nowrap;color:{{ it.fg }};background:{{ it.bg }};font-weight:{{ it.fw }};text-decoration:none">{{ it.l }}</a></sc-for>
+    </sc-for>
+    <div style="margin-top:auto;border-top:1px solid #E4E4E4;padding:12px 10px 0;font-size:12px;color:#666464;display:flex;flex-direction:column;gap:2px"><span style="font-weight:600;color:#1F1F1F">Luiza Martins</span><span>SAC · Chiacchio Embalagens</span></div>
+  </aside>
+
+  <main data-screen-label="Minha Central SAC" style="flex:1 1 0;min-width:0;padding:20px 24px 40px;display:flex;flex-direction:column;gap:14px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap">
+      <div><div style="font-size:24px;font-weight:700">Minha Central SAC</div><div style="font-size:13px;color:#666464;margin-top:2px">Olá, Luiza · {{ greet }}</div></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button onClick="{{ refresh }}" style="border:0;background:#C70602;color:#fff;border-radius:8px;padding:9px 14px;cursor:pointer;font-size:13px;font-weight:600" style-hover="background:#A80502">{{ refreshL }}</button>
+        <a href="AssistenteSAC.dc.html" style="border:1px solid #D6D6D6;background:#fff;border-radius:8px;padding:9px 14px;font-size:13px;font-weight:600;color:#1F1F1F;text-decoration:none;white-space:nowrap;display:inline-flex;align-items:center">+ Nova Manifestação</a>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:8px">
+      <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="7"><button onClick="{{ k.go }}" style="text-align:left;background:{{ k.bg }};border:1.5px solid {{ k.bd }};border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:2px;cursor:pointer;white-space:normal"><span style="font-size:24px;font-weight:700;color:{{ k.c }};font-variant-numeric:tabular-nums;line-height:1.1">{{ k.v }}</span><span style="font-size:11.5px;color:#545252;font-weight:600">{{ k.l }}</span></button></sc-for>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start">
+
+      <div style="flex:1 1 320px;max-width:100%;min-width:0;display:flex;flex-direction:column;gap:10px">
+        <input value="{{ q }}" onChange="{{ onQ }}" placeholder="Protocolo, cliente, motivo…" style="height:38px;border:1px solid #D6D6D6;border-radius:8px;padding:0 12px;background:#fff;font-size:13px;width:100%">
+        <div style="display:flex;gap:6px"><sc-for list="{{ scopes }}" as="s"><button onClick="{{ s.go }}" style="border:1px solid {{ s.bd }};background:{{ s.bg }};color:{{ s.fg }};border-radius:7px;padding:6px 12px;font-size:12.5px;font-weight:600;cursor:pointer">{{ s.l }}</button></sc-for></div>
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px">
+          <sc-for list="{{ selects }}" as="s" hint-placeholder-count="4"><select value="{{ s.v }}" onChange="{{ s.on }}" style="height:34px;border:1px solid {{ s.bd }};border-radius:7px;padding:0 8px;background:#fff;font-size:12.5px;color:#1F1F1F;min-width:0"><sc-for list="{{ s.o }}" as="o"><option value="{{ o.v }}">{{ o.l }}</option></sc-for></select></sc-for>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#666464;padding:0 2px"><span>{{ listInfo }}</span><sc-if value="{{ hasFilter }}"><button onClick="{{ clear }}" style="border:0;background:none;padding:0;color:#A80502;font-size:12px;font-weight:600;cursor:pointer">Limpar filtros</button></sc-if></div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <sc-for list="{{ items }}" as="m" hint-placeholder-count="6">
+            <button onClick="{{ m.go }}" style="text-align:left;background:{{ m.bg }};border:1.5px solid {{ m.bd }};border-radius:10px;padding:10px 12px;cursor:pointer;display:flex;flex-direction:column;gap:5px;white-space:normal">
+              <div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span style="display:flex;gap:6px;align-items:center"><span style="width:8px;height:8px;border-radius:50%;background:{{ m.pc }};flex:none"></span><span style="font-weight:700;font-size:13px;font-variant-numeric:tabular-nums">{{ m.id }}</span><sc-if value="{{ m.ext }}"><span style="font-size:10px;font-weight:700;color:#24508F;background:#E6EEF8;border-radius:4px;padding:1px 5px">EXTERNO</span></sc-if></span><span style="font-size:10.5px;font-weight:700;color:{{ m.slaC }};background:{{ m.slaBg }};border-radius:99px;padding:2px 8px;white-space:nowrap">{{ m.sla }}</span></div>
+              <span style="font-size:13px;font-weight:600;line-height:1.3">{{ m.cli }}</span>
+              <span style="font-size:12px;color:#666464;line-height:1.35">{{ m.motivo }} · {{ m.emp }}</span>
+              <div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span style="font-size:10.5px;font-weight:700;border-radius:99px;padding:2px 8px;background:{{ m.st.bg }};color:{{ m.st.fg }}">{{ m.st.t }}</span><span style="font-size:11px;color:#929090">{{ m.next }}</span></div>
+            </button>
+          </sc-for>
+          <sc-if value="{{ empty }}"><div style="background:#fff;border:1px dashed #D6D6D6;border-radius:10px;padding:26px 14px;text-align:center;font-size:13px;color:#666464">Nenhuma manifestação neste filtro.</div></sc-if>
+        </div>
+      </div>
+
+      <div style="flex:999 1 460px;min-width:0;display:flex;flex-direction:column;gap:12px">
+        <sc-if value="{{ noSel }}"><div style="background:#fff;border:1px solid #E4E4E4;border-radius:12px;padding:60px 20px;text-align:center;color:#929090;font-size:14px">Selecione uma manifestação para ver os detalhes</div></sc-if>
+        <sc-if value="{{ d.show }}">
+          <div data-screen-label="Detalhe da manifestação" style="background:#fff;border:1px solid #E4E4E4;border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:12px">
+            <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-start">
+              <div style="display:flex;flex-direction:column;gap:4px;min-width:0"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span style="font-weight:700;font-size:19px">{{ d.id }}</span><span style="font-size:11px;font-weight:700;border-radius:99px;padding:3px 9px;background:{{ d.st.bg }};color:{{ d.st.fg }}">{{ d.st.t }}</span><span style="font-size:11px;font-weight:700;border-radius:99px;padding:3px 9px;background:{{ d.slaBg }};color:{{ d.slaC }}">{{ d.sla }}</span></div><span style="font-size:12.5px;color:#545252">{{ d.sub }}</span></div>
+              <a href="AssistenteSAC.dc.html" style="font-size:12.5px;font-weight:600;white-space:nowrap">Abrir ficha completa ↗</a>
+            </div>
+            <div style="display:flex;gap:3px;overflow-x:auto;padding-bottom:2px"><sc-for list="{{ d.steps }}" as="s"><div style="flex:1;min-width:76px;display:flex;flex-direction:column;gap:5px"><span style="height:4px;border-radius:2px;background:{{ s.c }}"></span><span style="font-size:10.5px;color:{{ s.fg }};font-weight:{{ s.fw }};white-space:nowrap">{{ s.l }}</span></div></sc-for></div>
+            <div style="background:{{ d.nx.bg }};border:1.5px solid {{ d.nx.bd }};border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:10px">
+              <div style="display:flex;flex-direction:column;gap:3px"><span style="font-size:10.5px;font-weight:700;letter-spacing:.07em;color:{{ d.nx.lc }}">PRÓXIMA AÇÃO</span><span style="font-size:14px;font-weight:700">{{ d.nx.t }}</span><span style="font-size:12.5px;color:#545252;line-height:1.45">{{ d.nx.d }}</span></div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap"><sc-for list="{{ d.acts }}" as="a"><button onClick="{{ a.go }}" style="border:{{ a.bd }};background:{{ a.bg }};color:{{ a.fg }};border-radius:7px;padding:8px 13px;cursor:pointer;font-size:12.5px;font-weight:700">{{ a.l }}</button></sc-for></div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px 16px"><sc-for list="{{ d.f }}" as="f"><div><div style="font-size:10.5px;color:#929090;font-weight:600">{{ f.l }}</div><div style="font-size:13px;overflow-wrap:anywhere">{{ f.v }}</div></div></sc-for></div>
+            <div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:10.5px;color:#929090;font-weight:600">RELATO DO CLIENTE</span><span style="font-size:13.5px;line-height:1.55;text-wrap:pretty">{{ d.desc }}</span></div>
+          </div>
+          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:12px;padding:14px 18px;display:flex;flex-direction:column;gap:8px">
+            <span style="font-weight:700;font-size:14px">Setores acionados</span>
+            <sc-for list="{{ d.setores }}" as="s"><div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;align-items:center;border-top:1px solid #EFEFEF;padding-top:8px"><span style="font-size:13px;font-weight:600">{{ s.n }} <span style="font-weight:400;color:#929090">· {{ s.r }}</span></span><span style="font-size:10.5px;font-weight:700;border-radius:99px;padding:2px 8px;background:{{ s.bg }};color:{{ s.fg }};white-space:nowrap">{{ s.st }}</span><span style="font-size:12px;color:#666464;grid-column:1 / -1">{{ s.d }}</span></div></sc-for>
+            <sc-if value="{{ d.noSet }}"><span style="font-size:12.5px;color:#929090">Ainda não encaminhada.</span></sc-if>
+          </div>
+          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:12px;padding:14px 18px">
+            <div style="font-weight:700;font-size:14px;margin-bottom:10px">Histórico</div>
+            <sc-for list="{{ d.hist }}" as="h"><div style="display:grid;grid-template-columns:14px minmax(0,1fr);gap:12px"><div style="display:flex;flex-direction:column;align-items:center"><span style="width:10px;height:10px;border-radius:50%;background:{{ h.c }};margin-top:4px;flex:none"></span><span style="flex:1;width:2px;background:#EFEFEF"></span></div><div style="padding-bottom:12px"><div style="font-size:11.5px;color:#929090">{{ h.at }}</div><div style="font-size:13px">{{ h.t }}</div></div></div></sc-for>
+          </div>
+        </sc-if>
+      </div>
+
+      <div style="flex:1 1 280px;max-width:100%;min-width:0;background:#fff;border:1px solid #E4E4E4;border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;gap:8px;align-items:center"><span style="width:10px;height:10px;border-radius:50%;background:#C70602"></span><span style="font-weight:700;font-size:15px">Cérebro</span></div>
+        <sc-if value="{{ noSel }}"><span style="font-size:13px;color:#929090">Selecione uma manifestação</span></sc-if>
+        <sc-if value="{{ c.show }}">
+          <span style="font-size:10.5px;font-weight:700;letter-spacing:.06em;color:#7A4C00;background:#FBF0D9;border-radius:5px;padding:3px 8px;align-self:flex-start">SUGESTÃO DA IA · VALIDAR ANTES DE USAR</span>
+          <sc-if value="{{ c.re }}"><div style="background:#FDECEC;border:1px solid #F3CFCF;border-radius:8px;padding:9px 11px;font-size:12.5px;color:#7F0401;line-height:1.45"><strong>Cliente reincidente:</strong> {{ c.reTxt }}</div></sc-if>
+          <div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:11px;font-weight:700;color:#545252;letter-spacing:.05em">CAUSA MAIS PROVÁVEL</span><span style="font-size:13px;font-weight:600">{{ c.causa }}</span><span style="font-size:11.5px;color:#929090">{{ c.causaBase }}</span></div>
+          <div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:11px;font-weight:700;color:#545252;letter-spacing:.05em">CASOS SIMILARES</span><sc-for list="{{ c.sim }}" as="s"><div style="border:1px solid #EFEFEF;border-radius:8px;padding:8px 10px;display:flex;flex-direction:column;gap:2px"><div style="display:flex;justify-content:space-between;gap:6px"><span style="font-size:12px;font-weight:700">{{ s.id }}</span><span style="font-size:11px;color:#1E6B3A;font-weight:700">{{ s.pct }}</span></div><span style="font-size:12px;color:#3A3939;line-height:1.4">{{ s.t }}</span></div></sc-for></div>
+          <div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:11px;font-weight:700;color:#545252;letter-spacing:.05em">O QUE FUNCIONOU ANTES</span><sc-for list="{{ c.acoes }}" as="a"><span style="font-size:12.5px;color:#3A3939;line-height:1.45">· {{ a }}</span></sc-for></div>
+          <div style="display:flex;flex-direction:column;gap:6px;border-top:1px solid #EFEFEF;padding-top:10px"><span style="font-size:11px;font-weight:700;color:#545252;letter-spacing:.05em">DEVOLUTIVA SUGERIDA</span><span style="font-size:12.5px;color:#3A3939;line-height:1.5;background:#FAFAFA;border-radius:8px;padding:9px 10px">{{ c.dev }}</span><button onClick="{{ c.use }}" style="border:1px solid #D6D6D6;background:#fff;border-radius:7px;padding:7px 12px;cursor:pointer;font-size:12.5px;font-weight:600;align-self:flex-start">Usar como rascunho</button></div>
+          <a href="Cerebro.dc.html" style="font-size:12.5px;font-weight:600">Abrir no Cérebro ↗</a>
+        </sc-if>
+      </div>
+    </div>
+  </main>
+
+  <sc-if value="{{ toast }}"><div style="position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#1F1F1F;color:#fff;padding:11px 16px;border-radius:8px;font-size:13px;z-index:90;max-width:92vw">{{ toast }}</div></sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const MAN = [
+  ['MAN-0158', 'Atacadão Bahia Ltda.', '94.544.836/0001-46', 'Chiacchio Embalagens', 'Reclamação', 'Avaria no transporte', 'alta', 'trat', -26, 1, 0, 'WhatsApp', 'Caixas de bandeja 450 ml chegaram amassadas, 12 de 40 volumes inutilizados. Cliente enviou fotos e pede reposição antes do fim de semana.', [['Logística', 'Diego Alves', 'atrasado', 'Prazo venceu ontem 17:00 · sem resposta'], ['Qualidade', 'Gildásio Jr', 'respondido', 'Respondeu: embalagem dentro da especificação']]],
+  ['MAN-0157', 'Mercado Exemplo ME', '31.211.359/0001-19', 'Chiacchio Embalagens', 'Reclamação', 'Quantidade divergente da nota', 'media', 'aprov', 20, 1, 0, 'E-mail', 'NF 44890 com 30 fardos, foram entregues 28. Cliente solicita complemento ou abatimento.', [['Logística', 'Diego Alves', 'respondido', 'Confirmou falta de 2 fardos na expedição']]],
+  ['MAN-0156', 'Padaria Bom Grão ME', '45.285.465/0001-25', 'Plaschio', 'Reclamação', 'Impressão borrada', 'media', 'trat', 6, 1, 0, 'Telefone', 'Logo do cliente saiu borrado em parte do lote de sacos personalizados.', [['Produção', 'Paula Ramos', 'pendente', 'Prazo hoje 17:00']]],
+  ['MAN-0155', 'Distribuidora Alfa Ltda.', '38.248.412/0001-22', 'Plaschio', 'Solicitação', 'Segunda via de laudo', 'baixa', 'dev', 30, 1, 0, 'E-mail', 'Cliente pede segunda via do laudo técnico do lote L2609-03 para auditoria interna.', [['Qualidade', 'Gildásio Jr', 'respondido', 'Laudo enviado em anexo']]],
+  ['MAN-0154', 'Frigorífico Serra Ltda.', '52.322.518/0001-28', 'Tubahia', 'Reclamação', 'Gramatura fora do especificado', 'alta', 'anal', 3, 1, 0, 'Representante', 'Tubos com espessura abaixo do pedido, segundo medição do cliente em 5 amostras.', []],
+  ['MAN-0153', 'Comércio Modelo S.A.', '17.137.253/0001-13', 'Chiacchio Embalagens', 'Reclamação', 'Atraso na entrega', 'media', 'trat', -4, 1, 0, 'WhatsApp', 'Pedido programado para 01/10 ainda não chegou. Cliente sem estoque.', [['Logística', 'Diego Alves', 'atrasado', 'Prazo venceu hoje 08:00']]],
+  ['MAN-0152', 'Hortifruti Sol ME', '73.433.677/0001-37', 'Chiacchio Embalagens', 'Sugestão', 'Novo tamanho de bandeja', 'baixa', 'enc', 0, 1, 0, 'Site', 'Sugere bandeja de 300 ml para porções menores.', [['Comercial', 'Rafael Souza', 'respondido', 'Sugestão registrada para avaliação de linha']]],
+  ['MAN-0151', 'Laticínios Vale Verde Ltda.', '66.396.624/0001-34', 'Tubahia', 'Reclamação', 'Embalagem com defeito de cola', 'alta', 'aprov', 12, 1, 0, 'E-mail', 'Fundo dos potes descolando após envase a quente.', [['Qualidade', 'Gildásio Jr', 'respondido', 'Lote reprovado; propõe reposição integral'], ['Produção', 'Paula Ramos', 'respondido', 'Ajuste de temperatura da coladeira']]],
+  ['MAN-0150', 'Cooperativa Agro Norte', '80.470.730/0001-40', 'Plaschio', 'Reclamação', 'Cobrança indevida', 'media', 'trat', 40, 0, 0, 'Telefone', 'Boleto com valor de frete que não estava no pedido.', [['Financeiro', 'Ana Prado', 'pendente', 'Prazo em 2 dias']]],
+  ['MAN-0149', 'Confeitaria Doce Lar ME', '87.507.783/0001-43', 'Chiacchio Embalagens', 'Elogio', 'Atendimento do representante', 'baixa', 'enc', 0, 1, 0, 'WhatsApp', 'Elogio ao atendimento do representante Carlos Lima.', []],
+  ['EXT-0031', 'Granja Boa Vista Ltda.', '11.581.889/0001-49', 'Chiacchio Embalagens', 'Reclamação', 'Avaria no transporte', 'media', 'nova', 22, 0, 1, 'Portal público', 'Registrado pelo portal: caixas de ovos chegaram úmidas e rasgadas.', []],
+  ['EXT-0030', 'Supermercado Central Ltda.', '59.359.571/0001-31', 'Plaschio', 'Reclamação', 'Atraso na entrega', 'media', 'nova', 10, 0, 1, 'Representante', 'Representante registrou atraso de 2 dias no pedido 7781.', []],
+  ['MAN-0146', 'Atacadão Bahia Ltda.', '94.544.836/0001-46', 'Chiacchio Embalagens', 'Reclamação', 'Avaria no transporte', 'media', 'enc', 0, 1, 0, 'WhatsApp', 'Volumes amassados na entrega de setembro.', [['Logística', 'Diego Alves', 'respondido', 'Revisão do plano de carga']]]
+];
+const ST = { nova: ['Nova · triagem', '#E6EEF8', '#24508F'], anal: ['Em análise', '#EEE8F7', '#5B3FA0'], trat: ['Em tratamento', '#FBF0D9', '#7A4C00'], aprov: ['Ag. aprovação', '#FCE9DC', '#9A4A10'], dev: ['Devolutiva', '#E3F3F4', '#0E6B73'], enc: ['Encerrada', '#E6F2EA', '#1E6B3A'] };
+const SETST = { atrasado: ['Atrasado', '#FDECEC', '#A80502'], pendente: ['Aguardando', '#FBF0D9', '#7A4C00'], respondido: ['Respondido', '#E6F2EA', '#1E6B3A'] };
+class Component extends DCLogic {
+  state = { q: '', scope: 'minhas', k: '', f: { st: '', sla: '', tipo: '', pri: '' }, sel: 'MAN-0158', done: {}, toast: '', busy: false };
+  flash(t) { this.setState({ toast: t }); clearTimeout(this._t); this._t = setTimeout(() => this.setState({ toast: '' }), 2800); }
+  renderVals() {
+    const S = this.state, RED = '#C70602';
+    const NAV = [['Operação', ['Dashboard', 'Manifestações', 'Nova manifestação', 'Minhas pendências', 'Busca de similares', 'Minha Central SAC']], ['Gestão', ['Indicadores', 'RNC', 'Central de RCA', 'Aprovações', 'Representantes', 'Setores', 'Arquivo de Fichas', 'Matriz de Tratamento', 'Causas e Subcausas', 'Matriz de Conhecimento']], ['Conhecimento', ['Cérebro', 'Banco de casos']], ['Administração', ['Usuários e acessos', 'Alimentação da ferramenta']]];
+    const HREF = { 'Arquivo de Fichas': 'ArquivoFichas.dc.html', 'Cérebro': 'Cerebro.dc.html', 'Central de RCA': 'CentralRCA.dc.html', 'Alimentação da ferramenta': 'Alimentacao.dc.html' };
+    const nav = NAV.map(([l, it]) => ({ l, items: it.map(x => { const on = x === 'Minha Central SAC'; return { l: x, href: on ? '#' : (HREF[x] || 'AssistenteSAC.dc.html'), bg: on ? '#FDECEC' : 'transparent', fg: on ? '#A80502' : '#545252', fw: on ? '700' : '500' }; }) }));
+    const all = MAN.map(m => { const st = S.done[m[0]] || m[7]; return { id: m[0], cli: m[1], cnpj: m[2], emp: m[3], tipo: m[4], motivo: m[5], pri: m[6], st, h: st === 'enc' ? null : m[8], mine: !!m[9], ext: !!m[10], canal: m[11], desc: m[12], set: m[13] }; });
+    const late = m => m.h != null && m.h < 0, soon = m => m.h != null && m.h >= 0 && m.h <= 8;
+    const base = all.filter(m => S.scope === 'todas' || m.mine || m.ext);
+    const KP = [['minhas', 'Minhas', m => m.mine && m.st !== 'enc', '#1F1F1F'], ['pend', 'Pendentes', m => m.mine && ['nova', 'anal', 'dev'].includes(m.st), '#1F1F1F'], ['atraso', 'Em Atraso', late, RED], ['aprov', 'Ag. Aprovação', m => m.st === 'aprov', '#9A4A10'], ['trat', 'Em Tratamento', m => m.st === 'trat', '#7A4C00'], ['enc', 'Encerradas', m => m.st === 'enc', '#1E6B3A'], ['ext', 'Externos', m => m.ext && m.st === 'nova', '#24508F']];
+    const kf = KP.find(k => k[0] === S.k);
+    const kpis = KP.map(k => { const on = S.k === k[0], n = base.filter(k[2]).length, red = k[0] === 'atraso' && n > 0; return { l: k[1], v: String(n), c: k[3], bg: on ? (red ? '#FFF5F5' : '#F7F7F7') : red ? '#FFF8F8' : '#fff', bd: on ? (red ? RED : '#1F1F1F') : red ? '#F3CFCF' : '#E4E4E4', go: () => this.setState({ k: on ? '' : k[0] }) }; });
+    const F = S.f, q = S.q.trim().toLowerCase();
+    const slaOf = m => m.h == null ? 'ok' : late(m) ? 'late' : soon(m) ? 'soon' : 'ok';
+    const list = base.filter(m => (!kf || kf[2](m)) && (!F.st || m.st === F.st) && (!F.sla || slaOf(m) === F.sla) && (!F.tipo || m.tipo === F.tipo) && (!F.pri || m.pri === F.pri) && (!q || [m.id, m.cli, m.cnpj, m.motivo, m.emp].join(' ').toLowerCase().includes(q)))
+      .sort((a, b) => (a.h == null ? 1e9 : a.h) - (b.h == null ? 1e9 : b.h));
+    const slaTxt = m => m.h == null ? ['Encerrada', '#1E6B3A', '#E6F2EA'] : late(m) ? ['Atrasada ' + (m.h <= -24 ? Math.round(-m.h / 24) + 'd' : -m.h + 'h'), '#fff', RED] : soon(m) ? ['Vence em ' + m.h + 'h', '#7A4C00', '#FBF0D9'] : ['Vence em ' + (m.h >= 24 ? Math.round(m.h / 24) + 'd' : m.h + 'h'), '#545252', '#F0F0F0'];
+    const PC = { alta: RED, media: '#D9A400', baixa: '#B5B5B5' };
+    const NEXT = { nova: 'Fazer triagem', anal: 'Validar análise da IA', trat: 'Acompanhar setores', aprov: 'Aguardando aprovador', dev: 'Enviar devolutiva', enc: 'Concluída' };
+    const items = list.map(m => { const on = S.sel === m.id, s = slaTxt(m); return { id: m.id, cli: m.cli, motivo: m.motivo, emp: m.emp, ext: m.ext, pc: PC[m.pri], sla: s[0], slaC: s[1], slaBg: s[2], st: { t: ST[m.st][0], bg: ST[m.st][1], fg: ST[m.st][2] }, next: NEXT[m.st], bg: on ? '#FFF8F8' : '#fff', bd: on ? RED : '#E4E4E4', go: () => this.setState({ sel: m.id }) }; });
+    const opt = a => a.map(x => ({ v: x[0], l: x[1] }));
+    const SEL = [['st', opt([['', 'Todos status']].concat(Object.keys(ST).map(k => [k, ST[k][0]])))], ['sla', opt([['', 'Todo SLA'], ['late', 'Atrasadas'], ['soon', 'Vencem em até 8h'], ['ok', 'No prazo']])], ['tipo', opt([['', 'Tipo'], ['Reclamação', 'Reclamação'], ['Solicitação', 'Solicitação'], ['Sugestão', 'Sugestão'], ['Elogio', 'Elogio']])], ['pri', opt([['', 'Prioridade'], ['alta', 'Alta'], ['media', 'Média'], ['baixa', 'Baixa']])]];
+    const selects = SEL.map(([k, o]) => ({ o, v: F[k], bd: F[k] ? RED : '#D6D6D6', on: e => this.setState({ f: Object.assign({}, S.f, { [k]: e.target.value }) }) }));
+    const hasFilter = !!(S.q || S.k || F.st || F.sla || F.tipo || F.pri);
+    const sm = list.find(m => m.id === S.sel);
+    let d = { show: false }, c = { show: false };
+    if (sm) {
+      const s = slaTxt(sm), ORD = ['nova', 'anal', 'trat', 'aprov', 'dev', 'enc'], cur = ORD.indexOf(sm.st);
+      const steps = ['Aberta', 'Analisada', 'Encaminhada', 'Em tratativa', 'Aprovação', 'Devolutiva', 'Finalizada'].map((l, i) => { const idx = [0, 1, 2, 2, 3, 4, 5][i]; const doneS = idx < cur || sm.st === 'enc', now = idx === cur && sm.st !== 'enc'; return { l, c: doneS ? '#1E6B3A' : now ? RED : '#E4E4E4', fg: now ? '#1F1F1F' : doneS ? '#3A3939' : '#929090', fw: now ? '700' : '500' }; });
+      const set = (k, msg) => () => { this.setState({ done: Object.assign({}, S.done, { [sm.id]: k }) }); this.flash(msg); };
+      const P = (l, go) => ({ l, go, bg: RED, fg: '#fff', bd: '0' }), Sx = (l, go) => ({ l, go, bg: '#fff', fg: '#1F1F1F', bd: '1px solid #D6D6D6' });
+      const lateSet = sm.set.filter(x => x[2] === 'atrasado');
+      const NX = {
+        nova: ['Fazer a triagem desta manifestação externa', 'Registrada pelo ' + sm.canal.toLowerCase() + '. Confirme os dados do cliente e envie para análise.', [P('Assumir e analisar', set('anal', sm.id + ' assumida por você.')), Sx('Pedir mais informações', () => this.flash('Solicitação de informações enviada ao cliente.'))]],
+        anal: ['Validar a análise sugerida pela IA', 'Confira categoria, causa, setor e prioridade. A decisão é sua.', [P('Validar e encaminhar', set('trat', 'Análise validada e encaminhada aos setores.')), Sx('Abrir análise', () => this.flash('Abrindo análise da IA.'))]],
+        trat: lateSet.length ? ['Cobrar resposta de ' + lateSet.map(x => x[0]).join(', '), lateSet[0][3] + '. Responsável: ' + lateSet[0][1] + '.', [P('Cobrar setor', () => this.flash('Cobrança enviada a ' + lateSet[0][1] + ' (' + lateSet[0][0] + ').')), Sx('Escalar ao gestor', () => this.flash('Escalado ao gestor de ' + lateSet[0][0] + '.'))]] : ['Acompanhar a tratativa dos setores', 'Setores com prazo em andamento. Você será avisada quando responderem.', [Sx('Enviar lembrete', () => this.flash('Lembrete enviado aos setores.')), P('Seguir para devolutiva', set('dev', 'Tratativa concluída. Pronta para devolutiva.'))]],
+        aprov: ['Aguardando aprovação', 'Item enviado ao aprovador. Prazo de aprovação: ' + (sm.h >= 24 ? Math.round(sm.h / 24) + ' dia(s)' : sm.h + 'h') + '.', [Sx('Lembrar aprovador', () => this.flash('Lembrete enviado ao aprovador.'))]],
+        dev: ['Enviar devolutiva ao cliente', 'Tratativa concluída. Escreva a devolutiva com base nos fatos e envie pelo canal do cliente (' + sm.canal + ').', [P('Registrar devolutiva', set('enc', 'Devolutiva enviada e manifestação encerrada.')), Sx('Usar sugestão do Cérebro', () => this.flash('Texto sugerido carregado como rascunho.'))]],
+        enc: ['Manifestação encerrada', 'Ficha arquivada no Arquivo de Fichas. Follow-up previsto em 15 dias.', [Sx('Ver ficha arquivada', () => this.flash('Abrindo ficha no Arquivo de Fichas.'))]]
+      }[sm.st];
+      const isLate = late(sm);
+      d = { show: true, id: sm.id, st: { t: ST[sm.st][0], bg: ST[sm.st][1], fg: ST[sm.st][2] }, sla: s[0], slaC: s[1], slaBg: s[2], sub: sm.cli + ' · ' + sm.emp + ' · ' + sm.canal, steps,
+        nx: { t: NX[0], d: NX[1], bg: isLate ? '#FFF5F5' : '#F7F7F7', bd: isLate ? '#F3CFCF' : '#E4E4E4', lc: isLate ? '#A80502' : '#545252' }, acts: NX[2],
+        f: [['Cliente', sm.cli], ['CNPJ', sm.cnpj], ['Empresa', sm.emp], ['Tipo', sm.tipo], ['Motivo', sm.motivo], ['Prioridade', { alta: 'Alta', media: 'Média', baixa: 'Baixa' }[sm.pri]], ['Canal', sm.canal], ['Responsável SAC', sm.mine ? 'Luiza Martins' : 'Camila Torres']].map(x => ({ l: x[0], v: x[1] })),
+        desc: sm.desc, setores: sm.set.map(x => ({ n: x[0], r: x[1], st: SETST[x[2]][0], bg: SETST[x[2]][1], fg: SETST[x[2]][2], d: x[3] })), noSet: !sm.set.length,
+        hist: [{ at: 'Hoje 09:12', t: 'Você abriu a manifestação', c: '#929090' }].concat(sm.set.length ? [{ at: '03/10 14:20', t: 'Encaminhada a ' + sm.set.map(x => x[0]).join(', '), c: '#24508F' }] : []).concat([{ at: '03/10 10:05', t: 'Registrada via ' + sm.canal + (sm.ext ? ' (externo)' : ' por Luiza Martins'), c: RED }]) };
+      const sameCli = all.filter(m => m.cnpj === sm.cnpj && m.tipo === 'Reclamação');
+      const CZ = { 'Avaria no transporte': ['Amarração de carga inadequada', 'Base: 42 casos validados · 71% na rota Sul', ['Revisar plano de carga e uso de cantoneiras', 'Reposição antecipada dos volumes avariados'], 'Recebemos as fotos dos volumes. Já acionamos nossa Logística e a reposição dos itens danificados está sendo programada. Retornamos até amanhã com a data de entrega.'], 'Atraso na entrega': ['Falha no agendamento com a transportadora', 'Base: 31 casos validados', ['Confirmar janela com a transportadora no dia anterior', 'Informar nova data ao cliente em até 2h'], 'Verificamos seu pedido com a transportadora e confirmamos nova previsão de entrega. Vamos acompanhar até a chegada e avisamos qualquer mudança.'] };
+      const cz = CZ[sm.motivo] || ['Desvio no processo de ' + (sm.set[0] ? sm.set[0][0] : 'produção'), 'Base: casos validados do mesmo motivo', ['Confirmar lote e registrar evidências', 'Envolver Qualidade quando houver desvio de especificação'], 'Recebemos sua manifestação e já encaminhamos ao setor responsável. Retornaremos com a análise e a solução proposta no prazo informado.'];
+      c = { show: true, re: sameCli.length >= 2, reTxt: sameCli.length + ' reclamações nos últimos 12 meses (' + sameCli.map(x => x.id).join(', ') + ').', causa: cz[0], causaBase: cz[1],
+        sim: [['MAN-0146', '92%', 'Mesmo cliente e motivo · resolvido com reposição em 2 dias'], ['MAN-0098', '84%', 'Mesma rota · causa: amarração de carga'], ['MAN-0071', '77%', 'Mesmo produto · eficácia confirmada']].slice(0, sm.motivo === 'Avaria no transporte' ? 3 : 2).map(x => ({ id: x[0], pct: x[1], t: x[2] })),
+        acoes: cz[2], dev: cz[3], use: () => this.flash('Devolutiva sugerida copiada como rascunho. Revise antes de enviar.') };
+    }
+    return { nav, greet: 'SAC · Chiacchio Embalagens · ' + base.filter(late).length + ' em atraso hoje', kpis, q: S.q, onQ: e => this.setState({ q: e.target.value }),
+      scopes: [['minhas', 'Minhas'], ['todas', 'Todas permitidas']].map(([k, l]) => { const on = S.scope === k; return { l, bd: on ? RED : '#D6D6D6', bg: on ? RED : '#fff', fg: on ? '#fff' : '#1F1F1F', go: () => this.setState({ scope: k }) }; }),
+      selects, items, empty: !items.length, listInfo: items.length + (items.length === 1 ? ' manifestação' : ' manifestações') + ' · ordenadas por prazo', hasFilter, clear: () => this.setState({ q: '', k: '', f: { st: '', sla: '', tipo: '', pri: '' } }),
+      noSel: !sm, d, c, refreshL: S.busy ? 'Atualizando…' : '↻ Atualizar', refresh: () => { this.setState({ busy: true }); setTimeout(() => { this.setState({ busy: false }); this.flash('Central atualizada.'); }, 600); }, toast: S.toast };
+  }
+}
+</script>
+</body>
+</html>
