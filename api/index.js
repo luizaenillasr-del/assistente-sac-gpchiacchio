@@ -2881,8 +2881,7 @@ app.post('/api/relatorios/:id/link', requerPerfil('MASTER','ANALISTA SAC','APROV
       await atualizarPorID('RELATORIOS_SAC', id, { DADOS_JSON: typeof dados==='string' ? dados : JSON.stringify(dados) }, ['ID_RELATORIO']);
       invalidarCacheAba('RELATORIOS_SAC');
     }
-    const base = process.env.APP_URL || 'https://assistente-sac-gpchiacchio.vercel.app';
-    const link = `${base}/relatorio-publico/${token}`;
+    const link = `${APP_URL}/relatorio-publico/${token}`;
     await registrarAuditoria('RELATORIO_LINK_GERADO', `Link gerado para ${id} (${row.CHAVE})`, req.usuario?.nome||'', row.EMPRESA);
     res.json({ sucesso:true, token, link });
   } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
