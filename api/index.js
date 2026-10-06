@@ -2758,7 +2758,7 @@ app.post('/api/pesquisas/relatorio-texto', requerPerfil('MASTER','ANALISTA SAC',
 });
 
 // ===== GESTÃO DE RELATÓRIOS (ciclo rascunho → publicado) =====
-const REL_HEADERS = ['ID_RELATORIO','CHAVE','EMPRESA','ANO','MES','VERSAO','STATUS','CRIADO_EM','PUBLICADO_EM','CRIADO_POR','INDICADOR','NPS_SCORE','TEXTOS_JSON'];
+const REL_HEADERS = ['ID_RELATORIO','CHAVE','EMPRESA','ANO','MES','VERSAO','STATUS','CRIADO_EM','PUBLICADO_EM','CRIADO_POR','INDICADOR','NPS_SCORE','TEXTOS_JSON','LINK_TOKEN','DADOS_JSON'];
 
 app.get('/api/relatorios/lista', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req, res) => {
   try {
@@ -2856,21 +2856,130 @@ app.post('/api/relatorios/:id/nova-versao', requerPerfil('MASTER','ANALISTA SAC'
   } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
 
-app.post('/api/relatorios/:id/enviar', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req, res) => {
+// Gerar (ou reutilizar) link compartilhável público para o relatório publicado
+app.post('/api/relatorios/:id/link', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req, res) => {
   try {
     const { id } = req.params;
+    const { dados } = req.body||{}; // snapshot JSON dos dados do relatório
+    await garantirAbaComCabecalhos('RELATORIOS_SAC', REL_HEADERS);
     const rows = await lerAba('RELATORIOS_SAC', 500).catch(()=>[]);
     const row = rows.find(r=>r.ID_RELATORIO===id);
     if (!row) return res.status(404).json({ sucesso:false, erro:'Relatório não encontrado.' });
-    if (row.STATUS!=='PUBLICADO') return res.status(400).json({ sucesso:false, erro:'Somente relatórios publicados podem ser enviados.' });
-    // E-mails configurados via variável de ambiente (lista separada por vírgula)
-    const emailsEnv = process.env.DIRETORIA_EMAILS||'';
-    if (!emailsEnv) return res.status(501).json({ sucesso:false, erro:'Lista de e-mails da Diretoria/Presidência não configurada. Defina DIRETORIA_EMAILS nas variáveis de ambiente.' });
-    const emails = emailsEnv.split(',').map(e=>e.trim()).filter(Boolean);
-    // Registra envio na auditoria (envio de e-mail real depende de integração SMTP configurada)
-    await registrarAuditoria('RELATORIO_ENVIADO', `Relatório ${id} (${row.CHAVE}) enviado para: ${emails.join(', ')}`, req.usuario?.nome||'', row.EMPRESA);
-    res.json({ sucesso:true, emails_destinatarios: emails, aviso:'Envio por e-mail registrado. Configure SMTP (SMTP_HOST, SMTP_USER, SMTP_PASS) para envio automático.' });
+    if (row.STATUS!=='PUBLICADO') return res.status(400).json({ sucesso:false, erro:'Somente relatórios publicados podem ser compartilhados.' });
+    const empresaScope = _mcEmpresaScope(req.user);
+    if (empresaScope && !pertenceEmpresa(empresaScope, row.EMPRESA||'')) return res.status(403).json({ sucesso:false, erro:'Sem acesso.' });
+    // Reutiliza token existente ou gera novo
+    let token = row.LINK_TOKEN||'';
+    if (!token) {
+      token = require('crypto').randomBytes(18).toString('base64url');
+      const atualizado = { LINK_TOKEN: token };
+      if (dados) atualizado.DADOS_JSON = typeof dados==='string' ? dados : JSON.stringify(dados);
+      await atualizarPorID('RELATORIOS_SAC', id, atualizado, ['ID_RELATORIO']);
+      invalidarCacheAba('RELATORIOS_SAC');
+    } else if (dados) {
+      // Atualiza snapshot sem alterar token
+      await atualizarPorID('RELATORIOS_SAC', id, { DADOS_JSON: typeof dados==='string' ? dados : JSON.stringify(dados) }, ['ID_RELATORIO']);
+      invalidarCacheAba('RELATORIOS_SAC');
+    }
+    const base = process.env.APP_URL || 'https://assistente-sac-gpchiacchio.vercel.app';
+    const link = `${base}/relatorio-publico/${token}`;
+    await registrarAuditoria('RELATORIO_LINK_GERADO', `Link gerado para ${id} (${row.CHAVE})`, req.usuario?.nome||'', row.EMPRESA);
+    res.json({ sucesso:true, token, link });
   } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
+});
+
+// Rota pública: visualizar relatório pelo token (somente leitura, sem login)
+app.get('/relatorio-publico/:token', async (req, res) => {
+  try {
+    const { token } = req.params;
+    if (!token || token.length < 10) return res.status(400).send('Token inválido.');
+    const rows = await lerAba('RELATORIOS_SAC', 500).catch(()=>[]);
+    const row = rows.find(r=>r.LINK_TOKEN===token);
+    if (!row || row.STATUS!=='PUBLICADO') return res.status(404).send('Relatório não encontrado ou não publicado.');
+    let dados = {};
+    try { dados = JSON.parse(row.DADOS_JSON||'{}'); } catch(e) {}
+    let textos = {};
+    try { textos = JSON.parse(row.TEXTOS_JSON||'{}'); } catch(e) {}
+    const empresa = row.EMPRESA||'';
+    const ano = row.ANO||'', mes = row.MES||'', versao = row.VERSAO||'1';
+    const ind = row.INDICADOR ? parseFloat(row.INDICADOR) : null;
+    const npsScore = row.NPS_SCORE !== '' && row.NPS_SCORE != null ? parseInt(row.NPS_SCORE) : null;
+    const LOGOS = {'CHIACCHIO':'/assets/logo-chiacchio-embalagens.svg','PLASCHIO':'/assets/logo-plaschio.svg','TUBAHIA':'/assets/logo-tubahia.svg'};
+    const empKey = Object.keys(LOGOS).find(k=>empresa.toUpperCase().includes(k))||'CHIACCHIO';
+    const logo = LOGOS[empKey];
+    const MN=['','janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+    const mesNome = MN[parseInt(mes)]||mes;
+    const GREEN='#1E6B3A',RED='#C70602',AMB='#B07A12';
+    const indColor = ind!=null?(ind>=8.5?GREEN:ind>=7?AMB:RED):'#545252';
+    const npsColor = npsScore!=null?(npsScore>=50?GREEN:npsScore>=0?AMB:RED):RED;
+    const SEC=[['desempenho','Desempenho geral'],['analise_critica','Análise crítica'],['pontos_fortes','Pontos fortes'],['oportunidades','Oportunidades de melhoria'],['acoes','Ações recomendadas']];
+    const f2=(v)=>v!=null?v.toFixed(2).replace('.',','):'—';
+    const esc=(v)=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+    let secoes='';
+    SEC.forEach(([id,titulo])=>{
+      const txt=String(textos[id]||'').trim();
+      if(txt) secoes+=`<section><h3>${esc(titulo)}</h3>${txt.split('\n').filter(Boolean).map(p=>`<p>${esc(p)}</p>`).join('')}</section>`;
+    });
+    const html=`<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Relatório de Satisfação · ${esc(empresa)} · ${mesNome.charAt(0).toUpperCase()+mesNome.slice(1)}/${esc(ano)}</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Montserrat,system-ui,sans-serif;background:#F4F4F4;color:#1F1F1F;padding:0 0 40px}
+.container{max-width:820px;margin:0 auto;padding:24px 16px;display:flex;flex-direction:column;gap:16px}
+.card{background:#fff;border-radius:12px;border:1px solid #E4E4E4;padding:20px 22px}
+.header{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.header img{max-height:44px}
+.kicker{font-size:10px;font-weight:700;letter-spacing:.12em;color:#929090;text-transform:uppercase;margin-bottom:4px}
+.h1{font-size:22px;font-weight:800;letter-spacing:-.01em}
+.hero{border-radius:12px;padding:22px 24px;display:flex;flex-direction:column;gap:8px}
+.hero-v{font-size:52px;font-weight:800;letter-spacing:-.03em;line-height:1;color:#fff}
+.badge{display:inline-block;background:#E6EEF8;color:#24508F;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px}
+section h3{font-size:14px;font-weight:700;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid #EFEFEF}
+section p{font-size:13px;color:#3A3A3A;line-height:1.65;margin-top:6px}
+.nps-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+.nps-pill{display:flex;flex-direction:column;align-items:center;border-radius:8px;padding:8px 16px;gap:2px;min-width:80px}
+.footer{text-align:center;font-size:11px;color:#929090;margin-top:8px}
+.print-btn{position:fixed;bottom:24px;right:24px;background:#1F1F1F;color:#fff;border:0;border-radius:10px;padding:12px 22px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.2)}
+@media print{.print-btn{display:none}body{background:#fff;padding:0}.card{border:0;border-radius:0;padding:16px 0}}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="card header">
+    <img src="${esc(logo)}" alt="${esc(empresa)}">
+    <div>
+      <div class="kicker">Relatório de pesquisa de satisfação de clientes</div>
+      <div class="h1">${esc(empresa.toUpperCase())} · ${esc(mesNome.charAt(0).toUpperCase()+mesNome.slice(1))}/${esc(ano)}</div>
+      <div style="font-size:12px;color:#929090;margin-top:4px">Versão ${esc(versao)} · Publicado em ${row.PUBLICADO_EM?new Date(row.PUBLICADO_EM).toLocaleDateString('pt-BR'):''} · Somente leitura</div>
+    </div>
+  </div>
+  ${ind!=null?`<div class="hero" style="background:${indColor}">
+    <span style="font-size:11px;font-weight:700;letter-spacing:.1em;opacity:.9;color:#fff">INDICADOR DE SATISFAÇÃO DO MÊS</span>
+    <span class="hero-v">${f2(ind)}</span>
+    <span style="color:#fff;font-size:13px;font-weight:600">${ind>=8.5?'Acima da meta de 8,50':'Abaixo da meta de 8,50'}</span>
+  </div>`:''}
+  ${npsScore!=null?`<div class="card">
+    <div class="kicker">NPS — Indicador complementar</div>
+    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:8px">
+      <div><span class="badge">Net Promoter Score</span><div style="font-size:42px;font-weight:800;color:${npsColor};margin-top:4px">${npsScore>0?'+':''}${npsScore}</div></div>
+      <div class="nps-row">
+        ${dados.nps?`<div class="nps-pill" style="background:#E6F2EA"><span style="font-size:11px;color:#1E6B3A;font-weight:600">Promotores</span><b style="font-size:18px;color:#1E6B3A">${dados.nps.promotores_pct||0}%</b><span style="font-size:11px;color:#666464">${dados.nps.promotores||0} resp.</span></div><div class="nps-pill" style="background:#EEEEEE"><span style="font-size:11px;color:#545252;font-weight:600">Neutros</span><b style="font-size:18px;color:#545252">${dados.nps.neutros_pct||0}%</b><span style="font-size:11px;color:#666464">${dados.nps.neutros||0} resp.</span></div><div class="nps-pill" style="background:#FDECEC"><span style="font-size:11px;color:#A80502;font-weight:600">Detratores</span><b style="font-size:18px;color:#A80502">${dados.nps.detratores_pct||0}%</b><span style="font-size:11px;color:#666464">${dados.nps.detratores||0} resp.</span></div>`:''}
+      </div>
+    </div>
+  </div>`:''}
+  ${secoes?`<div class="card">${secoes}</div>`:''}
+  <div class="footer">Documento gerado automaticamente pelo Assistente SAC · Grupo Chiacchio</div>
+</div>
+<button class="print-btn" onclick="window.print()">⬇ Baixar PDF</button>
+</body>
+</html>`;
+    res.setHeader('Content-Type','text/html; charset=utf-8');
+    res.send(html);
+  } catch(e) { res.status(500).send('Erro ao carregar relatório.'); }
 });
 
 // ===== ROTA PÚBLICA: PESQUISA DE SATISFAÇÃO =====

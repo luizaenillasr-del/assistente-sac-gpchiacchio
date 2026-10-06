@@ -5171,7 +5171,8 @@
   <div class="rs-top-actions">
     <button type="button" class="rs-switch" id="rel-btn-diretoria" onclick="relToggleDiretoria()"><i><b></b></i>Visão da Diretoria</button>
     <button type="button" class="rs-btn-out" onclick="relBaixarPdf()">Baixar PDF</button>
-    <button type="button" class="rs-btn-send" id="rel-btn-enviar" onclick="relEnviarDiretoria()">Enviar para Diretoria e Presidência</button>
+    <button type="button" class="rs-btn-out" onclick="relBaixarPdf()">⬇ PDF</button>
+    <button type="button" class="rs-btn-send" id="rel-btn-enviar" onclick="relCompartilharLink()" disabled>🔗 Compartilhar link</button>
   </div>
 </div>
 <div class="rs-filtros rs-noprint" id="rel-barra-relatorio" style="background:#F0F4FA;border-bottom:1px solid #D0D8EE;padding:8px 18px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
@@ -5594,18 +5595,30 @@
     }catch(e){_toast('Erro ao criar nova versão.');}
   };
 
-  window.relEnviarDiretoria=async function(){
+  window.relCompartilharLink=async function(){
     const meta=_d?.relMeta;
-    if(!meta||meta.status!=='PUBLICADO'){_toast('Publique o relatório antes de enviar.');return;}
-    if(!confirm('Enviar relatório publicado para a Diretoria e Presidência?')) return;
+    if(!meta||meta.status!=='PUBLICADO'){_toast('Publique o relatório antes de compartilhar.');return;}
     const tok=sessionStorage.getItem('sac-token');
     try{
-      const r=await fetch(`/api/relatorios/${meta.id}/enviar`,{method:'POST',headers:{Authorization:'Bearer '+tok}});
+      // Envia snapshot dos dados atuais junto com o token
+      const dadosSnap={nps:_d.nps||null,criterios:_d.criterios||[]};
+      const r=await fetch(`/api/relatorios/${meta.id}/link`,{method:'POST',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({dados:dadosSnap})});
       const j=await r.json().catch(()=>({}));
-      if(!r.ok||j.sucesso===false){_toast('Erro: '+(j.erro||'não foi possível enviar.'));return;}
-      if(j.aviso) _toast(j.aviso);
-      else _toast('Relatório enviado para: '+(j.emails_destinatarios||[]).join(', '));
-    }catch(e){_toast('Erro ao enviar.');}
+      if(!r.ok||j.sucesso===false){_toast('Erro: '+(j.erro||'não foi possível gerar o link.'));return;}
+      // Copia para área de transferência
+      const link=j.link||'';
+      try{
+        await navigator.clipboard.writeText(link);
+        _toast('Link copiado! '+link);
+      }catch(e){
+        // fallback: seleciona texto
+        const ta=document.createElement('textarea');ta.value=link;ta.style.position='fixed';ta.style.opacity='0';
+        document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);
+        _toast('Link copiado para a área de transferência.');
+      }
+      // Abre em nova aba também
+      window.open(link,'_blank');
+    }catch(e){_toast('Erro ao gerar link.');}
   };
 
   function _editV(id,txt){return _editTxt[id]!=null?_editTxt[id]:txt;}
