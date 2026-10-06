@@ -760,7 +760,15 @@
         </div>
         <button onclick="doLogin()" class="login-btn">Entrar</button>
         <div style="font-size:12px;color:#8A8888">A sessão expira após 30 minutos sem atividade.</div>
-        <div style="border-top:1px solid #E4E4E4;padding-top:16px">
+        <div style="border-top:1px solid #E4E4E4;padding-top:16px;display:flex;flex-direction:column;gap:10px">
+          <div style="font-size:12px;color:#666464">Acesso de demonstração · entrar como</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">
+            <button onclick="loginDemo('master')" style="border:1px solid #D6D6D6;background:#fff;border-radius:99px;white-space:nowrap;padding:5px 11px;font-size:12.5px;cursor:pointer;font-family:inherit" onmouseover="this.style.borderColor='#C70602'" onmouseout="this.style.borderColor='#D6D6D6'">MASTER</button>
+            <button onclick="loginDemo('analista')" style="border:1px solid #D6D6D6;background:#fff;border-radius:99px;white-space:nowrap;padding:5px 11px;font-size:12.5px;cursor:pointer;font-family:inherit" onmouseover="this.style.borderColor='#C70602'" onmouseout="this.style.borderColor='#D6D6D6'">Analista SAC</button>
+            <button onclick="loginDemo('aprovador')" style="border:1px solid #D6D6D6;background:#fff;border-radius:99px;white-space:nowrap;padding:5px 11px;font-size:12.5px;cursor:pointer;font-family:inherit" onmouseover="this.style.borderColor='#C70602'" onmouseout="this.style.borderColor='#D6D6D6'">Aprovador</button>
+            <button onclick="loginDemo('setor')" style="border:1px solid #D6D6D6;background:#fff;border-radius:99px;white-space:nowrap;padding:5px 11px;font-size:12.5px;cursor:pointer;font-family:inherit" onmouseover="this.style.borderColor='#C70602'" onmouseout="this.style.borderColor='#D6D6D6'">Setor responsável</button>
+            <button onclick="loginDemo('rca')" style="border:1px solid #D6D6D6;background:#fff;border-radius:99px;white-space:nowrap;padding:5px 11px;font-size:12.5px;cursor:pointer;font-family:inherit" onmouseover="this.style.borderColor='#C70602'" onmouseout="this.style.borderColor='#D6D6D6'">RCA</button>
+          </div>
           <button onclick="abrirSolicitacaoAcesso()" style="background:none;border:0;color:#A80502;cursor:pointer;padding:0;font-family:inherit;font-size:13px;text-align:left">Não tem conta? Solicitar acesso</button>
         </div>
 
@@ -18855,7 +18863,7 @@ document.addEventListener('DOMContentLoaded', function() {
 .fic-a4-doc { font-size:10px; font-weight:700; color:#929090; }
 .fic-a4-rev { font-size:9px; color:#929090; }
 .fic-section { margin-bottom:10px; }
-.fic-section-title { font-size:9px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:#C70602; background:#FAFAFA; border:1px solid #E4E4E4; padding:4px 8px; margin-bottom:0; }
+.fic-section-title { font-size:8pt; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:#fff; background:#C70602; padding:1.4mm 2.5mm; margin-bottom:0; }
 .fic-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:0; border:1px solid #E4E4E4; border-top:0; }
 .fic-field { padding:6px 8px; border-right:1px solid #E4E4E4; display:flex; flex-direction:column; gap:2px; }
 .fic-field:last-child { border-right:0; }
@@ -18904,8 +18912,7 @@ document.addEventListener('DOMContentLoaded', function() {
       <div class="fic-a4">
         <div class="fic-a4-hdr">
           <div class="fic-a4-logo-area">
-            <img src="/simbolo-vermelho.png" alt="Grupo Chiacchio" style="height:36px">
-            <div style="font-size:11px;font-weight:700;line-height:1.3">GRUPO CHIACCHIO<br><span style="font-size:9px;font-weight:400;color:#666">Chiacchio Embalagens · Plaschio · Cesbap</span></div>
+            <img src="/logo-chiacchio.png" alt="Grupo Chiacchio" style="height:15mm;width:auto;display:block">
           </div>
           <div class="fic-a4-title-area">
             <div style="font-size:13px;font-weight:700;color:#1F1F1F">FICHA DE MANIFESTAÇÃO</div>
