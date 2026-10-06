@@ -57,6 +57,11 @@
   .sidebar-user-name { font-size: 13px; font-weight: 500; color: #1F1F1F; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .sidebar-user-role { font-size: 11.5px; color: #929090; letter-spacing: 0.03em; }
 
+  /* Recuo do menu igual ao mockup */
+  .sidebar { padding: 0 12px 12px; }
+  .sidebar-logo { padding: 18px 6px; }
+  .sidebar-bottom { padding: 14px 0 0; }
+
   /* MAIN */
   .main { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
   .page { display: none; flex-direction: column; flex: 1; }
@@ -525,7 +530,7 @@
 <style>
   /* LOGIN — split-screen */
   .login-screen { position: fixed; inset: 0; z-index: 9999; overflow-y: auto; background: #F4F4F4; }
-  .login-split { min-height: 100vh; display: grid; grid-template-columns: repeat(auto-fit,minmax(340px,1fr)); }
+  .login-split { width: 100%; flex: 1 1 auto; min-height: 100vh; display: grid; grid-template-columns: repeat(auto-fit,minmax(340px,1fr)); }
   .login-left { background: #C70602; color: #fff; padding: 48px 56px; display: flex; flex-direction: column; justify-content: space-between; gap: 40px; }
   .login-left-brand { display: flex; align-items: center; gap: 14px; }
   .login-left-brand-text { }
@@ -738,7 +743,6 @@
         <div style="display:flex;flex-direction:column;gap:10px;margin-top:32px;max-width:420px">
           <button onclick="abrirPortalPublico()" style="height:54px;border:0;background:#fff;color:#C70602;border-radius:10px;font-weight:700;font-size:15px;letter-spacing:.04em;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.18);font-family:inherit">+ REGISTRAR MANIFESTAÇÃO</button>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">
-            <button onclick="abrirPainelLogin()" style="height:44px;border:1.5px solid #fff;background:transparent;color:#fff;border-radius:10px;font-weight:700;font-size:12.5px;letter-spacing:.04em;cursor:pointer;font-family:inherit">ENTRAR NO SISTEMA</button>
             <button onclick="abrirSolicitacaoAcesso()" style="height:44px;border:1.5px solid rgba(255,255,255,.7);background:transparent;color:#fff;border-radius:10px;font-weight:700;font-size:12.5px;letter-spacing:.04em;cursor:pointer;font-family:inherit">SOLICITAR ACESSO</button>
           </div>
         </div>
@@ -748,16 +752,10 @@
       </div>
     </div>
 
-    <!-- PAINEL DIREITO — formulário só aparece após clicar "ENTRAR NO SISTEMA" -->
+    <!-- PAINEL DIREITO — formulário de login sempre visível -->
     <div class="login-right">
-      <!-- Estado inicial: vazio -->
-      <div id="login-panel-empty" style="display:flex;flex-direction:column;align-items:center;gap:16px;opacity:.45">
-        <img src="/simbolo-vermelho.png" alt="" style="width:36px;height:auto;display:block">
-        <div style="font-size:13px;color:#929090;text-align:center">Clique em <strong>ENTRAR NO SISTEMA</strong><br>no painel ao lado para acessar.</div>
-      </div>
-
       <!-- Formulário de login -->
-      <div id="login-panel-login" style="display:none;width:100%;max-width:380px;flex-direction:column;gap:18px">
+      <div id="login-panel-login" style="display:flex;width:100%;max-width:380px;flex-direction:column;gap:18px">
         <img src="/logo-chiacchio.png" alt="Grupo Chiacchio" style="width:150px;height:auto;display:block;margin-bottom:6px">
         <div>
           <div style="font-size:22px;font-weight:700">Entrar</div>
@@ -1460,9 +1458,9 @@
   <div class="page active" id="page-visao-geral">
     <div class="topbar">
       <div class="topbar-left">
-        <div class="breadcrumb">Atendimento / <span>Painel</span></div>
+        <div class="breadcrumb">Operação</div>
         <div class="page-header">
-          <h1 class="page-title">Visão Geral</h1>
+          <h1 class="page-title">Dashboard</h1>
           <div class="page-actions">
             <button class="btn btn-primary" onclick="navigate('nova-manifestacao', document.querySelector('[onclick*=nova-manifestacao]'))">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -1527,27 +1525,27 @@
 
       <!-- KPIs Principais -->
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin-bottom:16px">
-        <button onclick="navigate('banco-manifestacoes', document.querySelector('[onclick*=banco-manifestacoes]'))" style="white-space:normal;text-align:left;background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;cursor:pointer;border-top:3px solid #C70602">
+        <button onclick="navigate('banco-manifestacoes', document.querySelector('[onclick*=banco-manifestacoes]'))" style="white-space:normal;text-align:left;background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;cursor:pointer">
           <span style="font-size:12.5px;color:#666464">Manifestações em andamento</span>
           <span style="font-size:26px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:#1F1F1F" id="kpi-reclamacoes">--</span>
           <span style="font-size:11.5px;color:#8A8888" id="kpi-rec-pct">no período selecionado</span>
         </button>
-        <button style="white-space:normal;text-align:left;background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;cursor:default;border-top:3px solid #1E6B3A">
+        <button style="white-space:normal;text-align:left;background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;cursor:default">
           <span style="font-size:12.5px;color:#666464">Dentro do prazo de 72h</span>
           <span style="font-size:26px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:#1E6B3A" id="kpi-aberto">--%</span>
           <span style="font-size:11.5px;color:#8A8888" id="kpi-andamento-delta">dos casos no prazo</span>
         </button>
-        <button id="kpi-fora-sla-card" style="white-space:normal;text-align:left;background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;cursor:default;border-top:3px solid #A80502">
+        <button id="kpi-fora-sla-card" style="white-space:normal;text-align:left;background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;cursor:default">
           <span style="font-size:12.5px;color:#666464">Atrasadas</span>
           <span style="font-size:26px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:#A80502" id="kpi-atrasadas">--</span>
           <span style="font-size:11.5px;color:#8A8888" id="kpi-fora-delta">fora do prazo</span>
         </button>
-        <button onclick="navigate('banco-rnc', document.querySelector('[onclick*=banco-rnc]'))" style="white-space:normal;text-align:left;background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;cursor:pointer;border-top:3px solid #5B3FA0">
+        <button onclick="navigate('banco-rnc', document.querySelector('[onclick*=banco-rnc]'))" style="white-space:normal;text-align:left;background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;cursor:pointer">
           <span style="font-size:12.5px;color:#666464">RNCs abertas</span>
           <span style="font-size:26px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:#5B3FA0" id="kpi-rncs">--</span>
           <span style="font-size:11.5px;color:#8A8888">não conformidades</span>
         </button>
-        <button style="white-space:normal;text-align:left;background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;cursor:default;border-top:3px solid #7A4C00">
+        <button style="white-space:normal;text-align:left;background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;cursor:default">
           <span style="font-size:12.5px;color:#666464">Sugestões da IA aceitas</span>
           <span style="font-size:26px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:#7A4C00" id="kpi-ia-aceitas">--%</span>
           <span style="font-size:11.5px;color:#8A8888" id="kpi-ia-aceitas-delta">das sugestões aceitas</span>
@@ -1734,9 +1732,9 @@
   <!-- ===== NOVA MANIFESTAÇÃO ===== -->
   <div class="page" id="page-nova-manifestacao">
     <div class="topbar">
-      <div class="breadcrumb">Atendimento / <span>Nova manifestação</span></div>
+      <div class="breadcrumb">Operação / Manifestações</div>
       <div class="page-header">
-        <h1 class="page-title">Nova Manifestação</h1>
+        <h1 class="page-title">Nova manifestação</h1>
         <span class="badge-mockup">Dados em tempo real</span>
       </div>
     </div>
@@ -2025,9 +2023,9 @@
   <div class="page" id="page-acompanhamento">
     <div class="topbar">
       <div class="topbar-left">
-        <div class="breadcrumb">Atendimento / <span>Pendências</span></div>
+        <div class="breadcrumb">Operação</div>
         <div class="page-header">
-          <h1 class="page-title">Pendências</h1>
+          <h1 class="page-title">Minhas pendências</h1>
         </div>
       </div>
       <div class="topbar-right">
@@ -2141,9 +2139,9 @@
   <div class="page" id="page-aprovadores">
     <div class="topbar">
       <div class="topbar-left">
-        <div class="breadcrumb">Gestão / <span>Central de Aprovação</span></div>
+        <div class="breadcrumb">Gestão</div>
         <div class="page-header">
-          <h1 class="page-title">Central de Aprovação</h1>
+          <h1 class="page-title">Aprovações</h1>
         </div>
       </div>
       <div class="topbar-right"><span id="aprovador-nome-top" style="font-size:13px;color:#8A8888"></span></div>
@@ -2363,9 +2361,9 @@
   <!-- ===== BANCO DE MANIFESTAÇÕES ===== -->
   <div class="page" id="page-banco-manifestacoes">
     <div class="topbar">
-      <div class="breadcrumb">Atendimento / <span>Banco de Manifestações</span></div>
+      <div class="breadcrumb">Operação</div>
       <div class="page-header">
-        <h1 class="page-title">Banco de Manifestações</h1>
+        <h1 class="page-title">Manifestações</h1>
         <div class="page-actions">
           <button class="btn btn-secondary" onclick="exportarManifestacoes()">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -2465,9 +2463,9 @@
   <div class="page" id="page-banco-rnc">
     <div class="topbar">
       <div class="topbar-left">
-        <div class="breadcrumb">Gestão / <span>RNC</span></div>
+        <div class="breadcrumb">Gestão</div>
         <div class="page-header">
-          <h1 class="page-title">RNC</h1>
+          <h1 class="page-title">RNC · Não conformidades</h1>
           <div class="page-actions">
             <button class="btn btn-secondary" onclick="exportarRNC()">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -2558,7 +2556,7 @@
   <!-- ===== SETORES ===== -->
   <div class="page" id="page-setores">
     <div class="topbar">
-      <div class="breadcrumb">Gestão / <span>Setores</span></div>
+      <div class="breadcrumb">Gestão</div>
       <div class="page-header">
         <h1 class="page-title">Setores</h1>
         <div class="page-actions">
@@ -2855,7 +2853,7 @@
   <!-- ===== MATRIZ DE TRATAMENTO ===== -->
   <div class="page" id="page-matriz">
     <div class="topbar">
-      <div class="breadcrumb">Regras / <span>Matriz de Tratamento</span></div>
+      <div class="breadcrumb">Gestão</div>
       <div class="page-header">
         <h1 class="page-title">Matriz de Tratamento</h1>
         <div class="page-actions">
@@ -2941,7 +2939,7 @@
   <div class="page" id="page-base-conhecimento">
     <div class="topbar">
       <div class="topbar-left">
-        <div class="breadcrumb">Conhecimento / <span>Banco de casos</span></div>
+        <div class="breadcrumb">Conhecimento</div>
         <div class="page-header"><h1 class="page-title">Banco de casos</h1></div>
       </div>
     </div>
@@ -3027,7 +3025,7 @@
   <div class="page" id="page-usuarios">
     <div class="topbar">
       <div class="topbar-left">
-        <div class="breadcrumb">Administração / <span>Usuários e permissões</span></div>
+        <div class="breadcrumb">Administração</div>
         <div class="page-header"><h1 class="page-title">Usuários e permissões</h1></div>
       </div>
     </div>
@@ -3928,7 +3926,7 @@
       <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap">
         <div style="min-width:0">
           <div style="font-size:12px;color:#929090">Conhecimento / Cérebro</div>
-          <div style="font-size:22px;font-weight:700;letter-spacing:-.01em">CÉREBRO</div>
+          <div style="font-size:22px;font-weight:700;letter-spacing:-.01em">Cérebro</div>
           <div style="font-size:13px;color:#666464;margin-top:2px">Base de conhecimento estruturada para análise, encaminhamento e tratamento das manifestações pela IA.</div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -4310,7 +4308,7 @@
   <div class="page" id="page-painel-maquina">
     <div class="topbar">
       <div class="topbar-left">
-        <div class="breadcrumb">Indicadores / <span>Indicadores</span></div>
+        <div class="breadcrumb">Gestão</div>
         <div class="page-header">
           <h1 class="page-title">Indicadores</h1>
         </div>
@@ -4433,7 +4431,7 @@
   <!-- ===== CAUSAS E SUBCAUSAS ===== -->
   <div class="page" id="page-causas">
     <div class="topbar">
-      <div class="breadcrumb">Regras / <span>Causas e Subcausas</span></div>
+      <div class="breadcrumb">Gestão</div>
       <div class="page-header">
         <h1 class="page-title">Causas e Subcausas</h1>
         <div class="page-actions">
@@ -4718,7 +4716,7 @@
 <!-- ===== MATRIZ DE CONHECIMENTO ===== -->
   <div class="page" id="page-matriz-conhecimento">
     <div class="topbar">
-      <div class="breadcrumb">Inteligência / <span>Matriz de Conhecimento</span></div>
+      <div class="breadcrumb">Conhecimento</div>
       <div class="page-header">
         <h1 class="page-title">Matriz de Conhecimento</h1>
         <div class="page-actions">
@@ -5011,7 +5009,7 @@
 <div class="page" id="page-prazos-regionais">
   <div class="topbar">
     <div class="topbar-left">
-      <div class="breadcrumb">Administração / <span>Configurações</span></div>
+      <div class="breadcrumb">Administração</div>
       <div class="page-header"><h1 class="page-title">Configurações</h1></div>
     </div>
   </div>
@@ -6073,8 +6071,8 @@
 <div class="page" id="page-similares">
   <div class="topbar">
     <div class="topbar-left">
-      <div class="breadcrumb">Operação / <span>Busca de similares</span></div>
-      <div class="page-header"><h1 class="page-title">Busca de similares</h1></div>
+      <div class="breadcrumb">Operação</div>
+      <div class="page-header"><h1 class="page-title">Busca de manifestações similares</h1></div>
     </div>
   </div>
   <div class="content" style="display:flex;flex-direction:column;gap:16px">
@@ -6172,7 +6170,7 @@
 <div class="page" id="page-auditoria">
   <div class="topbar">
     <div class="topbar-left">
-      <div class="breadcrumb">Administração / <span>Auditoria</span></div>
+      <div class="breadcrumb">Administração</div>
       <div class="page-header">
         <h1 class="page-title">Log de auditoria</h1>
         <div class="page-actions">
@@ -19365,5 +19363,20 @@ function updateTopbarUser(user) {
 }
 </script>
 
+<script>
+/* Correção de layout: telas que ficaram fora do <main> (Alimentação, Arquivo de Fichas,
+   Relatório de Satisfação, Central de RCA, Auditoria, Fichas, Similares, Prazos regionais,
+   Calculadora) são movidas para dentro dele, para ocuparem a largura toda. */
+(function(){
+  function encaixarPaginas(){
+    var main=document.querySelector('main.main'); if(!main) return;
+    document.querySelectorAll('body > .page').forEach(function(p){ main.appendChild(p); });
+  }
+  encaixarPaginas();
+  document.addEventListener('DOMContentLoaded', encaixarPaginas);
+  window.addEventListener('load', encaixarPaginas);
+  new MutationObserver(encaixarPaginas).observe(document.body,{childList:true});
+})();
+</script>
 </body>
 </html>
