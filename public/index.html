@@ -147,13 +147,13 @@
   .cen-sla-ok { color: #16a34a; font-weight: 700; font-size: 11px; }
   .cen-sla-alert { color: #d97706; font-weight: 700; font-size: 11px; }
   .cen-sla-late { color: var(--red); font-weight: 700; font-size: 11px; }
-  .cen-badge { display: inline-block; padding: 2px 7px; border-radius: 10px; font-size: 10px; font-weight: 700; letter-spacing: 0.03em; }
-  .cen-badge-novo { background: #dbeafe; color: #1d4ed8; }
-  .cen-badge-em-analise { background: #fef9c3; color: #854d0e; }
-  .cen-badge-em-tratamento { background: #ede9fe; color: #5b21b6; }
-  .cen-badge-ag-aprovacao { background: #ffedd5; color: #c2410c; }
-  .cen-badge-devolutiva { background: #dcfce7; color: #15803d; }
-  .cen-badge-encerrada { background: var(--gray-100); color: var(--gray-500); }
+  .cen-badge { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 700; letter-spacing: 0.02em; white-space: nowrap; }
+  .cen-badge-novo { background: #E6EEF8; color: #24508F; }
+  .cen-badge-em-analise { background: #EEE8F7; color: #5B3FA0; }
+  .cen-badge-em-tratamento { background: #FBF0D9; color: #7A4C00; }
+  .cen-badge-ag-aprovacao { background: #FCE9DC; color: #9A4A10; }
+  .cen-badge-devolutiva { background: #E3F3F4; color: #0E6B73; }
+  .cen-badge-encerrada { background: #E6F2EA; color: #1E6B3A; }
   .cen-action-bar { padding: 10px 12px; border-top: 1px solid var(--gray-200); background: var(--gray-50); display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 
   /* FILTERS */
@@ -232,14 +232,20 @@
   .link-abrir:hover { text-decoration: underline; }
 
   /* STATUS BADGE */
-  .status-badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 99px; font-size: 12px; font-weight: 500; white-space: nowrap; }
-  .status-badge.em-andamento { background: #E6EEF8; color: #24508F; }
-  .status-badge.encerrada { background: #E6F2EA; color: #1E6B3A; }
-  .status-badge.atrasada { background: #FDECEC; color: #A80502; }
-  .status-badge.registro { background: #EEEEEE; color: #545252; }
-  .status-badge.setores { background: #E6EEF8; color: #24508F; }
+  .status-badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+  .status-badge.em-andamento,
+  .status-badge.aberta,
+  .status-badge.nova { background: #E6EEF8; color: #24508F; }
+  .status-badge.em-analise { background: #EEE8F7; color: #5B3FA0; }
+  .status-badge.em-tratamento,
+  .status-badge.setores,
   .status-badge.decisao { background: #FBF0D9; color: #7A4C00; }
-  .status-badge.devolutiva { background: #E6F2EA; color: #1E6B3A; }
+  .status-badge.ag-aprovacao { background: #FCE9DC; color: #9A4A10; }
+  .status-badge.devolutiva { background: #E3F3F4; color: #0E6B73; }
+  .status-badge.encerrada,
+  .status-badge.concluida { background: #E6F2EA; color: #1E6B3A; }
+  .status-badge.atrasada { background: #FDECEC; color: #A80502; }
+  .status-badge.registro { background: #F4F4F4; color: #545252; }
 
   /* PROCEDENCIA BADGE */
   .proc-badge { display: inline-flex; padding: 2px 8px; border-radius: 99px; font-size: 12px; font-weight: 500; white-space: nowrap; }
@@ -1520,32 +1526,32 @@
       <div id="dash-alert-solicitacoes" style="display:none;align-items:center;gap:10px;background:#FEF3C7;border:1px solid #F59E0B;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:#92400E"></div>
 
       <!-- KPIs Principais -->
-      <div class="kpi-grid" style="grid-template-columns:repeat(auto-fill,minmax(170px,1fr));margin-bottom:16px">
-        <div class="kpi-card" style="cursor:pointer" onclick="navigate('banco-manifestacoes', document.querySelector('[onclick*=banco-manifestacoes]'))">
-          <div class="kpi-label">Manifestações em andamento</div>
-          <div class="kpi-value" id="kpi-reclamacoes">--</div>
-          <div class="kpi-delta" id="kpi-rec-pct">no período selecionado</div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-label">Dentro do prazo de 72h</div>
-          <div class="kpi-value" id="kpi-aberto" style="color:var(--green,#16a34a)">--%</div>
-          <div class="kpi-delta up" id="kpi-andamento-delta">dos casos no prazo</div>
-        </div>
-        <div class="kpi-card" id="kpi-fora-sla-card">
-          <div class="kpi-label">Atrasadas</div>
-          <div class="kpi-value" id="kpi-atrasadas">--</div>
-          <div class="kpi-delta down" id="kpi-fora-delta">fora do prazo</div>
-        </div>
-        <div class="kpi-card" style="cursor:pointer" onclick="navigate('banco-rnc', document.querySelector('[onclick*=banco-rnc]'))">
-          <div class="kpi-label">RNCs abertas</div>
-          <div class="kpi-value" id="kpi-rncs">--</div>
-          <div class="kpi-delta">não conformidades</div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-label">Sugestões da IA aceitas</div>
-          <div class="kpi-value" id="kpi-ia-aceitas">--%</div>
-          <div class="kpi-delta" id="kpi-ia-aceitas-delta">das sugestões aceitas</div>
-        </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin-bottom:16px">
+        <button onclick="navigate('banco-manifestacoes', document.querySelector('[onclick*=banco-manifestacoes]'))" style="white-space:normal;text-align:left;background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;cursor:pointer;border-top:3px solid #C70602">
+          <span style="font-size:12.5px;color:#666464">Manifestações em andamento</span>
+          <span style="font-size:26px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:#1F1F1F" id="kpi-reclamacoes">--</span>
+          <span style="font-size:11.5px;color:#8A8888" id="kpi-rec-pct">no período selecionado</span>
+        </button>
+        <button style="white-space:normal;text-align:left;background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;cursor:default;border-top:3px solid #1E6B3A">
+          <span style="font-size:12.5px;color:#666464">Dentro do prazo de 72h</span>
+          <span style="font-size:26px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:#1E6B3A" id="kpi-aberto">--%</span>
+          <span style="font-size:11.5px;color:#8A8888" id="kpi-andamento-delta">dos casos no prazo</span>
+        </button>
+        <button id="kpi-fora-sla-card" style="white-space:normal;text-align:left;background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;cursor:default;border-top:3px solid #A80502">
+          <span style="font-size:12.5px;color:#666464">Atrasadas</span>
+          <span style="font-size:26px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:#A80502" id="kpi-atrasadas">--</span>
+          <span style="font-size:11.5px;color:#8A8888" id="kpi-fora-delta">fora do prazo</span>
+        </button>
+        <button onclick="navigate('banco-rnc', document.querySelector('[onclick*=banco-rnc]'))" style="white-space:normal;text-align:left;background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;cursor:pointer;border-top:3px solid #5B3FA0">
+          <span style="font-size:12.5px;color:#666464">RNCs abertas</span>
+          <span style="font-size:26px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:#5B3FA0" id="kpi-rncs">--</span>
+          <span style="font-size:11.5px;color:#8A8888">não conformidades</span>
+        </button>
+        <button style="white-space:normal;text-align:left;background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;cursor:default;border-top:3px solid #7A4C00">
+          <span style="font-size:12.5px;color:#666464">Sugestões da IA aceitas</span>
+          <span style="font-size:26px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:#7A4C00" id="kpi-ia-aceitas">--%</span>
+          <span style="font-size:11.5px;color:#8A8888" id="kpi-ia-aceitas-delta">das sugestões aceitas</span>
+        </button>
       </div>
 
       <!-- Métricas secundárias (ocultas por padrão — mantidas para compatibilidade JS) -->
@@ -1564,7 +1570,7 @@
       <span id="kpi-total" style="display:none"></span>
 
       <!-- Row 2 -->
-      <div class="grid-3" style="margin-bottom:16px">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:16px;margin-bottom:16px">
         <!-- Etapas -->
         <div class="section-card">
           <div class="section-title">Manifestações por etapa</div>
@@ -1594,7 +1600,7 @@
       </div>
 
       <!-- Row 3 -->
-      <div class="grid-2" style="margin-bottom:16px">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:16px;margin-bottom:16px">
         <!-- Gráfico barras -->
         <div class="section-card">
           <div class="section-title">Novas manifestações por semana</div>
@@ -3202,14 +3208,20 @@
   #page-central-sac .mc-head-btns .mc-btn{font-size:13px;padding:9px 14px;font-weight:600;display:inline-flex;align-items:center;border-radius:8px}
   #page-central-sac .mc-kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:8px}
   #page-central-sac .mc-kpi{font-family:inherit;text-align:left;background:#fff;border:1.5px solid var(--mc-line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:2px;cursor:pointer;white-space:normal}
-  #page-central-sac .mc-kpi.on{background:#F7F7F7;border-color:#1F1F1F}
-  #page-central-sac .mc-kpi.warn{background:#FFF8F8;border-color:var(--mc-red-line)}
-  #page-central-sac .mc-kpi.warn.on{background:#FFF5F5;border-color:#C70602}
+  #page-central-sac .mc-kpi.on{opacity:1;outline:2px solid #1F1F1F;outline-offset:-2px}
+  #page-central-sac .mc-kpi.warn{background:var(--mc-red-bg);border-color:var(--mc-red-line)}
+  #page-central-sac .mc-kpi.warn.on{background:#FFF0F0;border-color:#C70602;outline-color:#C70602}
   #page-central-sac .mc-kpi-v{font-size:24px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.1;color:#1F1F1F}
   #page-central-sac .mc-kpi-l{font-size:11.5px;color:var(--mc-grey);font-weight:600}
+  #page-central-sac .mc-k-pendentes{background:var(--mc-blue-bg);border-color:#C4D6EE}
+  #page-central-sac .mc-k-pendentes .mc-kpi-v{color:var(--mc-blue)}
+  #page-central-sac .mc-k-atrasados{background:var(--mc-red-bg);border-color:var(--mc-red-line)}
   #page-central-sac .mc-k-atrasados .mc-kpi-v{color:#C70602}
+  #page-central-sac .mc-k-aprovacao{background:#FDF0E8;border-color:#F1CDB0}
   #page-central-sac .mc-k-aprovacao .mc-kpi-v{color:#9A4A10}
+  #page-central-sac .mc-k-tratamento{background:var(--mc-amber-bg);border-color:#E8D5A0}
   #page-central-sac .mc-k-tratamento .mc-kpi-v{color:var(--mc-amber)}
+  #page-central-sac .mc-k-encerradas{background:var(--mc-green-bg);border-color:#B8DEC4}
   #page-central-sac .mc-k-encerradas .mc-kpi-v{color:var(--mc-green)}
   #page-central-sac .mc-k-terceiros .mc-kpi-v{color:var(--mc-blue)}
   #page-central-sac .mc-cols{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start}
@@ -3274,7 +3286,9 @@
   #page-central-sac .mc-step-l.done{color:#3A3939}
   #page-central-sac .mc-step-l.now{color:#1F1F1F;font-weight:700}
   #page-central-sac .mc-nx{background:#F7F7F7;border:1.5px solid var(--mc-line);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:10px}
-  #page-central-sac .mc-nx.late{background:#FFF5F5;border-color:var(--mc-red-line)}
+  #page-central-sac .mc-nx.late{background:#FFF5F5;border-color:var(--mc-red-line);border-left:4px solid #C70602}
+  #page-central-sac .mc-nx.soon{background:var(--mc-amber-bg);border-color:#E8D5A0;border-left:4px solid #D9A400}
+  #page-central-sac .mc-nx.ok{background:#F8FBF9;border-color:#B8DEC4;border-left:4px solid #1E6B3A}
   #page-central-sac .mc-nx-l{font-size:10.5px;font-weight:700;letter-spacing:.07em;color:var(--mc-grey)}
   #page-central-sac .mc-nx.late .mc-nx-l{color:#A80502}
   #page-central-sac .mc-nx-t{font-size:14px;font-weight:700}
@@ -3763,7 +3777,7 @@
   <!-- ===== CÉREBRO: ESTILOS cb-* (início) ===== -->
   <style>
     #page-cerebro{--cb-green-bg:#E6F2EA;--cb-green:#1E6B3A;--cb-amber-bg:#FBF0D9;--cb-amber:#7A4C00;--cb-blue-bg:#E6EEF8;--cb-blue:#24508F;--cb-gray-bg:#EEEEEE;--cb-gray:#545252;--cb-red-bg:#FDECEC;--cb-red:#A80502}
-    #page-cerebro .cb-nav{display:flex;gap:2px;border-bottom:1px solid #E4E4E4;overflow-x:auto;scrollbar-width:none;margin-bottom:18px}
+    #page-cerebro .cb-nav{display:flex;gap:2px;border-bottom:1px solid #E4E4E4;overflow-x:auto;scrollbar-width:none}
     #page-cerebro .cb-nav-btn{border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit}
     #page-cerebro .cb-nav-btn:hover{color:#1F1F1F}
     #page-cerebro .cb-nav-btn.cb-on{color:#1F1F1F;border-bottom-color:#C70602;font-weight:700}
@@ -3861,6 +3875,7 @@
     #page-cerebro .cb-banner-red{background:#FDECEC;color:#7F0401}
     #page-cerebro .cb-banner-red:before{content:"";width:8px;height:8px;border-radius:50%;background:#C70602;flex:none}
     #page-cerebro .cb-banner-amber{background:#FBF0D9;color:#6A4200}
+    #page-cerebro .cb-banner-amber:before{content:"";width:8px;height:8px;border-radius:50%;background:#D9A400;flex:none}
     #page-cerebro .cb-doc-t{font-size:11px;font-weight:700;border-radius:4px;padding:3px 7px;background:#EEEEEE;color:#545252}
     #page-cerebro .cb-mh{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;font-size:10.5px;font-weight:700;letter-spacing:.06em;color:#929090;padding:0 16px;min-width:0;margin-bottom:8px}
     #page-cerebro .cb-mrow{background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:10px;margin-bottom:10px}
@@ -3907,25 +3922,22 @@
   <!-- ===== CÉREBRO: ESTILOS cb-* (fim) ===== -->
   <!-- ===== CÉREBRO IA ===== -->
   <!-- ===== CENTRAL DE DADOS ===== -->
-  <div class="page" id="page-cerebro">
-    <div class="topbar">
-      <div class="topbar-left">
-        <div class="breadcrumb">Conhecimento / <span>Cérebro</span></div>
-        <div class="page-header">
-          <h1 class="page-title">Cérebro</h1>
-          <div class="page-actions">
-            <button class="btn btn-primary" id="cb-btn-nova-regra" onclick="cbNovaRegra()">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              Nova regra
-            </button>
-          </div>
+  <div class="page" id="page-cerebro" style="background:#F4F4F4;overflow-y:auto">
+    <div style="padding:20px 24px 56px;display:flex;flex-direction:column;gap:18px">
+
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap">
+        <div style="min-width:0">
+          <div style="font-size:12px;color:#929090">Conhecimento / Cérebro</div>
+          <div style="font-size:22px;font-weight:700;letter-spacing:-.01em">CÉREBRO</div>
+          <div style="font-size:13px;color:#666464;margin-top:2px">Base de conhecimento estruturada para análise, encaminhamento e tratamento das manifestações pela IA.</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button id="cb-btn-nova-regra" onclick="cbNovaRegra()" style="border:0;background:#C70602;color:#fff;border-radius:8px;padding:9px 14px;cursor:pointer;font-size:13px;font-weight:600">+ Nova regra</button>
         </div>
       </div>
-    </div>
-    <div class="content" style="padding:0 28px 28px">
 
       <!-- Tab bar -->
-      <div id="cerebro-tabbar" class="cb-nav">
+      <div id="cerebro-tabbar" class="cb-nav" style="display:flex;gap:2px;border-bottom:1px solid #E4E4E4;overflow-x:auto">
         <button class="cb-nav-btn cb-on" data-tab="inicio" id="cd-tab-btn-inicio" onclick="cdTab('inicio')">Início</button>
         <button class="cb-nav-btn" data-tab="setores" id="cd-tab-btn-setores" onclick="cdTab('setores')">Regras dos setores</button>
         <button class="cb-nav-btn" data-tab="matriz-cb" id="cd-tab-btn-matriz" onclick="cdTab('matriz-cb')">Matriz de tratamento</button>
@@ -4488,25 +4500,37 @@
 .ps-com{border:1px solid #E4E4E4;border-radius:8px;padding:10px 12px;margin-bottom:8px;font-size:13px}
 .ps-com-low{border-color:#D9A400;background:#FFFBEF}
 .ps-pend{background:#FBF0D9;border:1px solid #D9A400;color:#5E3B00;border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:6px;font-size:13px;line-height:1.5}
+.ps-tab-btn{border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit}
+.ps-tab-btn.ps-on{color:#1F1F1F;border-bottom-color:#C70602;font-weight:700}
+.ps-tab-btn:hover{color:#1F1F1F}
+.ps-kpi-wrap{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin-bottom:14px}
+.ps-kpi-card{background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:2px}
+.ps-kpi-card.ps-red{border-top:3px solid #C70602}
+.ps-kpi-card.ps-green{border-top:3px solid #1E6B3A}
+.ps-kpi-card.ps-amber{border-top:3px solid #D9A400}
+.ps-kpi-card.ps-blue{border-top:3px solid #24508F}
+.ps-ocp{border:1.5px solid #D9A400;background:#FFFBEF;border-radius:9px;padding:10px 12px;display:flex;flex-direction:column;gap:4px}
+.ps-ocp-l{font-size:10.5px;font-weight:700;letter-spacing:.06em;color:#7A4C00}
+.ps-man{border:1.5px solid #C70602;background:#FFF8F8;border-radius:9px;padding:10px 12px;display:flex;flex-direction:column;gap:4px}
+.ps-man-l{font-size:10.5px;font-weight:700;letter-spacing:.06em;color:#A80502}
 </style>
 <!-- ps-* FIM -->
 
   <!-- ===== SUGESTÕES DE MELHORIA ===== -->
-  <div class="page" id="page-sugestoes-melhoria">
-    <div class="topbar">
-      <div class="topbar-left">
-        <div class="breadcrumb">Relacionamento / <span>Pesquisa de satisfação</span></div>
-        <div class="page-header">
-          <h1 class="page-title">CENTRO DAS PESQUISAS</h1>
-          <div class="page-actions">
-            <button class="btn btn-secondary" onclick="cpTab('notificacoes',document.getElementById('cp-tab-btn-notificacoes'))">Notificações</button>
-            <button class="btn btn-primary" onclick="cpOpenLinks()">Links das pesquisas</button>
-          </div>
+  <div class="page" id="page-sugestoes-melhoria" style="background:#F4F4F4;overflow-y:auto">
+    <div style="padding:20px 24px 56px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:16px">
+        <div>
+          <div style="font-size:12px;color:#929090">Relacionamento / Pesquisa de satisfação</div>
+          <div style="font-size:22px;font-weight:700;letter-spacing:.01em">CENTRO DAS PESQUISAS</div>
+          <div style="font-size:13px;color:#666464;margin-top:2px">Respostas das pesquisas públicas da Chiacchio, Plaschio e Cesbap, com análise das notas e rastreabilidade.</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button onclick="cpTab('notificacoes',document.getElementById('cp-tab-btn-notificacoes'))" style="border:1px solid #D6D6D6;background:#fff;border-radius:8px;padding:8px 12px;cursor:pointer;font-size:13px;white-space:nowrap">Notificações</button>
+          <button onclick="navigate('relatorio-satisfacao', document.querySelector('[onclick*=relatorio-satisfacao]'))" style="border:1px solid #1F1F1F;background:#fff;color:#1F1F1F;border-radius:8px;padding:8px 12px;font-size:13px;font-weight:600;white-space:nowrap;cursor:pointer">Relatórios mensais</button>
+          <button onclick="cpOpenLinks()" style="border:0;background:#C70602;color:#fff;border-radius:8px;padding:9px 14px;cursor:pointer;font-size:13px;font-weight:600;white-space:nowrap">Links das pesquisas</button>
         </div>
       </div>
-    </div>
-    <div class="content" style="padding:0 28px 28px">
-      <div style="font-size:13px;color:#666464;margin-bottom:14px">Respostas das pesquisas públicas da Chiacchio, Plaschio e Cesbap, com análise das notas e rastreabilidade.</div>
 
       <!-- Tab bar -->
       <div id="cp-tabbar" style="display:flex;gap:2px;border-bottom:1px solid #E4E4E4;overflow-x:auto;scrollbar-width:none;margin-bottom:14px">
@@ -5218,6 +5242,15 @@
 .rs-aviso{background:#FFFBEF;border:1px solid #F1E2B5;border-radius:10px;padding:10px 14px;font-size:13px;color:#5E3B00}
 .rs-vazio{text-align:center;padding:40px;color:#929090;font-size:13px}
 .rs-toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#1F1F1F;color:#fff;padding:11px 16px;border-radius:8px;font-size:13px;z-index:90;max-width:92vw}
+/* rs-nota color tokens: bad ≤6 red, mid 7-8 amber, ok 9-10 green */
+.rs-nota-bad{background:#FDECEC;color:#A80502;font-weight:700}
+.rs-nota-mid{background:#FBF0D9;color:#7A4C00;font-weight:700}
+.rs-nota-ok{background:#E6F2EA;color:#1E6B3A;font-weight:700}
+/* rs-hero color variants */
+.rs-hero-green{background:#1E6B3A}
+.rs-hero-amber{background:#7A4C00}
+.rs-hero-red{background:#C70602}
+.rs-hero-blue{background:#24508F}
 @media(max-width:640px){.rs-motivo{grid-template-columns:100px minmax(0,1fr) 30px}.rs-top{padding:12px 16px}}
 /* Baixar PDF: o botão aplica a classe rs-printing no body antes de window.print() */
 @media print{
@@ -5836,8 +5869,12 @@
 .af-or-sistema{background:#FDECEC;color:#A80502}
 .af-or-hist{background:#EEEEEE;color:#3A3939}
 .af-st-aberta{background:#E6EEF8;color:#24508F}
+.af-st-analise{background:#EEE8F7;color:#5B3FA0}
 .af-st-trat{background:#FBF0D9;color:#7A4C00}
+.af-st-aprovacao{background:#FCE9DC;color:#9A4A10}
+.af-st-devolutiva{background:#E3F3F4;color:#0E6B73}
 .af-st-conc{background:#E6F2EA;color:#1E6B3A}
+.af-st-hist{background:#EEEEEE;color:#545252}
 .af-vazio{padding:34px 16px;text-align:center;display:flex;flex-direction:column;gap:8px;align-items:center}
 .af-mais{padding:10px;text-align:center}
 .af-mais button,.af-vazio button{border:1px solid #D6D6D6;background:#fff;border-radius:7px;padding:7px 14px;cursor:pointer;font-size:12.5px}
@@ -6076,11 +6113,27 @@
 .rca-chip:disabled{opacity:.55;cursor:default}
 .rca-tab-btn{border:1px solid #D6D6D6;background:#fff;color:#1F1F1F;border-radius:7px;padding:7px 12px;cursor:pointer;font-size:12.5px;font-weight:600;font-family:Montserrat,system-ui,sans-serif;transition:all .12s}
 .rca-tab-btn.ativo{background:#C70602;border-color:#C70602;color:#fff}
+.rca-tab-btn:not(.ativo):hover{background:#F4F4F4}
 .rca-ev-card{display:grid;grid-template-columns:56px minmax(0,1fr) auto;gap:12px;align-items:center;border:1px solid #EFEFEF;border-radius:8px;padding:10px 12px}
 .rca-tbl-input{height:34px;border:1px solid #D6D6D6;border-radius:6px;padding:0 8px;font-size:13px;background:#fff;font-family:Montserrat,system-ui,sans-serif;width:100%}
 .rca-tbl-input:disabled{background:#FAFAFA;color:#666464}
 .rca-section-title{font-size:12px;font-weight:700;letter-spacing:.06em;color:#C70602;text-transform:uppercase}
+.rca-section-hd{background:#C70602;color:#fff;font-weight:700;font-size:12px;letter-spacing:.06em;padding:6px 12px;text-transform:uppercase}
 .rca-card{background:#fff;border:1px solid #E4E4E4;border-radius:10px;overflow:hidden}
+.rca-field-lbl{font-size:11px;color:#666464;font-weight:600;font-family:Montserrat,system-ui,sans-serif;margin-bottom:2px}
+.rca-causa-raiz{background:#FDF2F2;border-left:4px solid #C70602;border-radius:8px;padding:10px 14px;display:flex;flex-direction:column;gap:4px}
+.rca-causa-raiz .rca-section-title{color:#A80502}
+.rca-trail{display:flex;gap:2px;overflow-x:auto;padding-bottom:4px}
+.rca-trail-step{flex:1;min-width:80px;display:flex;flex-direction:column;gap:4px}
+.rca-trail-bar{height:4px;border-radius:2px;background:#E4E4E4}
+.rca-trail-bar.done{background:#1E6B3A}
+.rca-trail-bar.now{background:#C70602}
+.rca-trail-lbl{font-size:10.5px;color:#929090;white-space:nowrap;font-family:Montserrat,system-ui,sans-serif}
+.rca-trail-lbl.done{color:#3A3939}
+.rca-trail-lbl.now{color:#1F1F1F;font-weight:700}
+.rca-porq-row{display:grid;grid-template-columns:110px minmax(0,1fr);gap:12px;align-items:start;border-bottom:1px solid #EFEFEF;padding:10px 0}
+.rca-porq-row:last-child{border-bottom:none}
+.rca-porq-lbl{font-size:11.5px;font-weight:700;color:#666464;font-family:Montserrat,system-ui,sans-serif}
 @media print{body.rca-printing *{visibility:hidden!important}body.rca-printing #rca-pdf-sheet,body.rca-printing #rca-pdf-sheet *{visibility:visible!important}body.rca-printing #rca-pdf-sheet{position:absolute;left:0;top:0;border:0!important}body.rca-printing #page-rca{overflow:visible!important;height:auto!important}}
 </style>
 
@@ -17992,6 +18045,14 @@ async function mudarStatusMC(id, novoStatus) {
 .al-btn-sm:hover{background:#F4F4F4}
 .al-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
 .al-stat{background:#fff;border:1px solid #E4E4E4;border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:4px}
+.al-stat.ok{border-top:3px solid #1E6B3A}
+.al-stat.ok .al-stat-v{color:#1E6B3A}
+.al-stat.warn{border-top:3px solid #D9A400}
+.al-stat.warn .al-stat-v{color:#7A4C00}
+.al-stat.err{border-top:3px solid #C70602}
+.al-stat.err .al-stat-v{color:#A80502}
+.al-stat.info{border-top:3px solid #24508F}
+.al-stat.info .al-stat-v{color:#24508F}
 .al-stat-l{font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#545252}
 .al-stat-v{font-size:30px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.15;margin-top:2px}
 .al-stat-d{font-size:11.5px;color:#929090;margin-top:2px}
@@ -18919,8 +18980,10 @@ document.addEventListener('DOMContentLoaded', function() {
   .fic-sheet { display:block!important }
 }
 .fic-sheet { display:none; }
+/* A4 preview wrapper */
+.fic-preview-wrap { background:#E8E8E8; padding:24px; border-radius:10px; overflow-x:auto; }
 /* A4 sheet styles */
-.fic-a4 { width:210mm; min-height:297mm; background:#fff; padding:15mm 18mm; margin:0 auto; border:1px solid #E4E4E4; }
+.fic-a4 { width:210mm; min-height:297mm; background:#fff; padding:15mm 18mm; margin:0 auto; border:1px solid #D0D0D0; box-shadow:0 2px 12px rgba(0,0,0,.12); font-family:Montserrat,system-ui,sans-serif; }
 .fic-a4-hdr { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; border-bottom:2px solid #C70602; padding-bottom:8px; }
 .fic-a4-logo-area { display:flex; align-items:center; gap:10px; }
 .fic-a4-title-area { text-align:right; }
