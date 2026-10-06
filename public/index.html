@@ -15006,7 +15006,7 @@ async function cdLoadMatrizCb() {
   el.innerHTML = cbSpin();
   try {
     await cbCarregarSetores().catch(()=>[]);
-    const r = await _apiFetch('/api/matriz-tratamento').catch(()=>({itens:[]}));
+    const r = await _apiFetch('/api/matriz-tratamento', 30000).catch(()=>({itens:[]}));
     const itens = r.itens || r.data || [];
     CB.mat = itens;
     if (!itens.length) {

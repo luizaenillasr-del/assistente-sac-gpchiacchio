@@ -27,7 +27,7 @@ async function carregarMatriz() {
   if (_cache && Date.now() - _cacheTs < CACHE_TTL) return _cache;
   await sheets.garantirAbaComCabecalhos('MATRIZ_TRATAMENTO', CABECALHOS_MATRIZ).catch(() => {});
   const rows = await sheets.lerAba('MATRIZ_TRATAMENTO', 1000).catch(() => []);
-  _cache = rows.filter(r => (r.ATIVO || 'SIM').toUpperCase() !== 'NAO' && r.ID_TRATAMENTO);
+  _cache = rows.filter(r => (r.ATIVO || 'SIM').toUpperCase() !== 'NAO' && (r.ID_TRATAMENTO || r.TIPO_MANIFESTACAO || r.SETOR_RESPONSAVEL));
   _cacheTs = Date.now();
   return _cache;
 }
