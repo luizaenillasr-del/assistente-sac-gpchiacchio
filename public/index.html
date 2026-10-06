@@ -739,7 +739,7 @@
         </div>
       </div>
       <div class="login-left-footer">
-        <span>Ambiente: Homologação</span><span>Versão 1.0</span><span>Chiacchio · Plaschio · Tubahia</span>
+        <span>Ambiente: Homologação</span><span>Versão 1.0</span><span>Chiacchio · Plaschio · Cesbap</span>
       </div>
     </div>
 
@@ -847,7 +847,7 @@
             <option value="">Selecione a empresa</option>
             <option value="CHIACCHIO EMBALAGENS">Chiacchio Embalagens</option>
             <option value="PLASCHIO">Plaschio</option>
-            <option value="TUBAHIA">Tubahia</option>
+            <option value="TUBAHIA">Cesbap</option>
           </select>
         </div>
         <div><label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px">Setor *</label><input id="sol-setor" class="login-input" placeholder="Ex: Qualidade, SAC, Comercial..." style="margin:0"></div>
@@ -2032,7 +2032,7 @@
             <option value="">Todas</option>
             <option value="CHIACCHIO">Chiacchio</option>
             <option value="PLASCHIO">Plaschio</option>
-            <option value="TUBAHIA">Tubahia</option>
+            <option value="TUBAHIA">Cesbap</option>
           </select>
         </label>
         <label style="display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:#666464">Tipo
@@ -2327,7 +2327,7 @@
           <option value="">Empresa: todas</option>
           <option value="CHIACCHIO EMBALAGENS">Chiacchio</option>
           <option value="PLASCHIO">Plaschio</option>
-          <option value="TUBAHIA">Tubahia</option>
+          <option value="TUBAHIA">Cesbap</option>
         </select>
         <select id="bflt-setor-sel" onchange="filtrarBanco()" style="height:36px;min-width:120px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:13px;font-family:inherit">
           <option value="">Setor: todos</option>
@@ -2518,7 +2518,7 @@
           <button class="tab-btn active" data-filtro-empresa-btn onclick="filtrarSetoresPorEmpresa('TODOS',this)">Todos</button>
           <button class="tab-btn" data-filtro-empresa-btn onclick="filtrarSetoresPorEmpresa('CHIACCHIO',this)">Chiacchio</button>
           <button class="tab-btn" data-filtro-empresa-btn onclick="filtrarSetoresPorEmpresa('PLASCHIO',this)">Plaschio</button>
-          <button class="tab-btn" data-filtro-empresa-btn onclick="filtrarSetoresPorEmpresa('TUBAHIA/CESBAP',this)">Tubahia/Cesbap</button>
+          <button class="tab-btn" data-filtro-empresa-btn onclick="filtrarSetoresPorEmpresa('TUBAHIA/CESBAP',this)">Cesbap</button>
         </div>
         <!-- Grid de cards dos setores -->
         <div id="setores-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px">
@@ -2721,7 +2721,7 @@
               <button class="tab-btn active" data-faq-emp-btn onclick="filtrarFAQEmpresa('TODAS',this)">Todas</button>
               <button class="tab-btn" data-faq-emp-btn onclick="filtrarFAQEmpresa('CHIACCHIO',this)">Chiacchio</button>
               <button class="tab-btn" data-faq-emp-btn onclick="filtrarFAQEmpresa('PLASCHIO',this)">Plaschio</button>
-              <button class="tab-btn" data-faq-emp-btn onclick="filtrarFAQEmpresa('TUBAHIA/CESBAP',this)">Tubahia/Cesbap</button>
+              <button class="tab-btn" data-faq-emp-btn onclick="filtrarFAQEmpresa('TUBAHIA/CESBAP',this)">Cesbap</button>
             </div>
             <div id="ficha-faq-body" style="padding:16px"><div class="loading"><div class="spinner"></div></div></div>
           </div>
@@ -3040,7 +3040,7 @@
                 <option value="">Selecione</option>
                 <option value="CHIACCHIO EMBALAGENS">Chiacchio Embalagens</option>
                 <option value="PLASCHIO">Plaschio</option>
-                <option value="TUBAHIA">Tubahia</option>
+                <option value="TUBAHIA">Cesbap</option>
               </select>
             </div>
             <div class="field"><label>Setor</label><input id="cfg-setor" placeholder="Setor do usuário"></div>
@@ -3102,7 +3102,7 @@
         <div class="form-section"><div class="form-section-title">Perfil e Empresa</div>
           <div class="field-grid">
             <div class="field"><label>Perfil</label><select id="edit-perm-perfil"><option value="">Manter atual</option><option value="MASTER">MASTER</option><option value="GESTOR_SAC">GESTOR_SAC</option><option value="ANALISTA_SAC">ANALISTA_SAC</option><option value="REPRESENTANTE">REPRESENTANTE</option><option value="APROVADOR">APROVADOR</option><option value="CONSULTA">CONSULTA</option><option value="AUDITOR">AUDITOR</option></select></div>
-            <div class="field"><label>Empresa</label><select id="edit-perm-empresa"><option value="">Manter atual</option><option value="TODAS">Todas as empresas</option><option value="CHIACCHIO EMBALAGENS">Chiacchio Embalagens</option><option value="PLASCHIO">Plaschio</option><option value="TUBAHIA">Tubahia</option></select></div>
+            <div class="field"><label>Empresa</label><select id="edit-perm-empresa"><option value="">Manter atual</option><option value="TODAS">Todas as empresas</option><option value="CHIACCHIO EMBALAGENS">Chiacchio Embalagens</option><option value="PLASCHIO">Plaschio</option><option value="TUBAHIA">Cesbap</option></select></div>
             <div class="field"><label>Setor</label><input id="edit-perm-setor" placeholder="Setor"></div>
             <div class="field"><label>E-mail</label><input id="edit-perm-email" type="email" placeholder="usuario@empresa.com.br"></div>
           </div>
@@ -3605,7 +3605,7 @@
   <div id="modal-usuario-v5" class="modal-overlay" style="display:none" onclick="if(event.target===this)fecharModalUsuario()">
     <div class="modal-box" style="max-width:760px"><div class="modal-header"><div><div style="font-size:18px;font-weight:800">Novo usuário</div><div style="font-size:12px;color:var(--gray-400)">A conta é individual. Não utilizar login genérico.</div></div><button class="modal-close" onclick="fecharModalUsuario()">×</button></div><div class="modal-body">
       <div class="form-section"><div class="form-section-title">Identificação</div><div class="field-grid"><div class="field"><label>Nome completo *</label><input id="usr-nome"></div><div class="field"><label>Usuário *</label><input id="usr-login"></div><div class="field"><label>E-mail</label><input id="usr-email" type="email"></div><div class="field"><label>Senha inicial</label><input id="usr-senha" type="password"></div></div></div>
-      <div class="form-section"><div class="form-section-title">Perfil e vínculo</div><div class="field-grid"><div class="field"><label>Perfil *</label><select id="usr-perfil"><option>ANALISTA SAC</option><option>SETOR RESPONSÁVEL</option><option>APROVADOR</option><option>RCA / REPRESENTANTE</option><option>MASTER</option></select></div><div class="field"><label>Empresa</label><select id="usr-empresa"><option value="">Selecione...</option><option value="MASTER">TODAS (acesso às 3 empresas)</option><option value="CHIACCHIO">Chiacchio</option><option value="PLASCHIO">Plaschio</option><option value="TUBAHIA">Tubahia/Cesbap</option></select></div><div class="field"><label>Setor</label><input id="usr-setor"></div><div class="field"><label>Código RCA</label><input id="usr-rca"></div><div class="field"><label>Status</label><select id="usr-status"><option>ATIVO</option><option>INATIVO</option></select></div></div></div>
+      <div class="form-section"><div class="form-section-title">Perfil e vínculo</div><div class="field-grid"><div class="field"><label>Perfil *</label><select id="usr-perfil"><option>ANALISTA SAC</option><option>SETOR RESPONSÁVEL</option><option>APROVADOR</option><option>RCA / REPRESENTANTE</option><option>MASTER</option></select></div><div class="field"><label>Empresa</label><select id="usr-empresa"><option value="">Selecione...</option><option value="MASTER">TODAS (acesso às 3 empresas)</option><option value="CHIACCHIO">Chiacchio</option><option value="PLASCHIO">Plaschio</option><option value="TUBAHIA">Cesbap</option></select></div><div class="field"><label>Setor</label><input id="usr-setor"></div><div class="field"><label>Código RCA</label><input id="usr-rca"></div><div class="field"><label>Status</label><select id="usr-status"><option>ATIVO</option><option>INATIVO</option></select></div></div></div>
       <div style="display:flex;justify-content:flex-end;gap:8px"><button class="btn btn-secondary" onclick="fecharModalUsuario()">Cancelar</button><button class="btn btn-primary" onclick="salvarUsuarioV5()">Criar usuário</button></div>
     </div></div>
   </div>
@@ -4264,7 +4264,7 @@
             <option value="">Todas as empresas</option>
             <option value="CHIACCHIO">Chiacchio Embalagens</option>
             <option value="PLASCHIO">Plaschio</option>
-            <option value="TUBAHIA">Tubahia</option>
+            <option value="TUBAHIA">Cesbap</option>
           </select>
           <select id="pm-filtro-setor" onchange="loadPainelMaquina()" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:13px;font-family:inherit">
             <option value="">Todos os setores</option>
@@ -4446,7 +4446,7 @@
       </div>
     </div>
     <div class="content" style="padding:0 28px 28px">
-      <div style="font-size:13px;color:#666464;margin-bottom:14px">Respostas das pesquisas públicas da Chiacchio, Plaschio e Tubahia, com análise das notas e rastreabilidade.</div>
+      <div style="font-size:13px;color:#666464;margin-bottom:14px">Respostas das pesquisas públicas da Chiacchio, Plaschio e Cesbap, com análise das notas e rastreabilidade.</div>
 
       <!-- Tab bar -->
       <div id="cp-tabbar" style="display:flex;gap:2px;border-bottom:1px solid #E4E4E4;overflow-x:auto;scrollbar-width:none;margin-bottom:14px">
@@ -4467,7 +4467,7 @@
             <option value="">Todas</option>
             <option value="Chiacchio">Chiacchio</option>
             <option value="Plaschio">Plaschio</option>
-            <option value="Tubahia">Tubahia</option>
+            <option value="Tubahia">Cesbap</option>
           </select>
         </label>
         <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:#666464;font-weight:600">ANO
@@ -4589,7 +4589,7 @@
               <select id="nt-empresa" style="width:100%;height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;font-size:13px;font-family:inherit;margin-bottom:8px">
                 <option value="CHIACCHIO">Chiacchio Embalagens</option>
                 <option value="PLASCHIO">Plaschio</option>
-                <option value="TUBAHIA">Tubahia</option>
+                <option value="TUBAHIA">Cesbap</option>
               </select>
               <label style="display:block;font-size:12px;color:#666464;margin-bottom:4px">Nome do cliente (opcional)</label>
               <input id="nt-nome" class="form-input" placeholder="Ex: João Silva / Empresa ABC" style="margin-bottom:8px">
@@ -4936,7 +4936,7 @@
             <span>Plaschio</span><span style="color:#1E6B3A;background:#E6F2EA;border-radius:99px;padding:2px 10px;font-size:11.5px;font-weight:600">Ativa</span>
           </div>
           <div style="display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:8px 0;border-top:1px solid #EFEFEF;color:#1F1F1F">
-            <span>Tubahia</span><span style="color:#1E6B3A;background:#E6F2EA;border-radius:99px;padding:2px 10px;font-size:11.5px;font-weight:600">Ativa</span>
+            <span>Cesbap</span><span style="color:#1E6B3A;background:#E6F2EA;border-radius:99px;padding:2px 10px;font-size:11.5px;font-weight:600">Ativa</span>
           </div>
         </div>
       </div>
@@ -5033,7 +5033,7 @@
               <option value="">Todas</option>
               <option value="CHIACCHIO">Chiacchio</option>
               <option value="PLASCHIO">Plaschio</option>
-              <option value="TUBAHIA/CESBAP">Tubahia/Cesbap</option>
+              <option value="TUBAHIA/CESBAP">Cesbap</option>
             </select>
           </div>
           <div class="field"><label>SLA (horas)</label><input id="set-sla" type="number" placeholder="72" value="72"></div>
@@ -5188,7 +5188,7 @@
   <select id="rel-f-empresa" onchange="relCarregar()" style="display:none">
     <option value="Chiacchio Embalagens">Chiacchio Embalagens</option>
     <option value="Plaschio">Plaschio</option>
-    <option value="Tubahia">Tubahia</option>
+    <option value="Tubahia">Cesbap</option>
   </select>
   <label class="rs-lbl">Ano<select id="rel-f-ano" class="rs-sel" onchange="relCarregar()"></select></label>
   <label class="rs-lbl">Mês de referência<select id="rel-f-mes" class="rs-sel" onchange="relCarregar()"></select></label>
@@ -5206,7 +5206,7 @@
 (function(){
   const MN=['','janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
   const MS=['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-  const EMPRESAS=[['Chiacchio Embalagens','Chiacchio Embalagens'],['Plaschio','Plaschio'],['Tubahia','Tubahia']];
+  const EMPRESAS=[['Chiacchio Embalagens','Chiacchio Embalagens'],['Plaschio','Plaschio'],['Tubahia','Cesbap']];
   const LOGOS={'Chiacchio Embalagens':['/assets/logo-chiacchio-embalagens.svg','#B9171A'],'Plaschio':['/assets/logo-plaschio.svg','#B9171A'],'Tubahia':['/assets/logo-tubahia.svg','#2B2070']};
   const GREEN='#1E6B3A', RED='#C70602', AMB='#B07A12';
   const SEC=[['desempenho','Desempenho geral'],['analise_critica','Análise crítica dos resultados'],['pontos_fortes','Pontos fortes'],['oportunidades','Oportunidades de melhoria'],['acoes','Ações recomendadas']];
@@ -6557,7 +6557,7 @@ function closeBibPainel() {
 function closeBibFichaModal() { closeBibPainel(); }
 
 // ===== IMPORTAR FICHAS (PDF/DOCX) =====
-const AF_EMP_IMP = [['CHIACCHIO', 'Chiacchio Embalagens'], ['PLASCHIO', 'Plaschio'], ['TUBAHIA', 'Tubahia']];
+const AF_EMP_IMP = [['CHIACCHIO', 'Chiacchio Embalagens'], ['PLASCHIO', 'Plaschio'], ['TUBAHIA', 'Cesbap']];
 const AF_TIPOS = ['Reclamação', 'Sugestão', 'Solicitação', 'Elogio'];
 const AF_MAX_MB = 20;
 let _importarFiles = []; // [{ file, emp, data, tipo, sug }]
@@ -7665,7 +7665,7 @@ async function registrarManifestacao() {
 
   if (!empresa) return alert('Informe a empresa reclamante.');
   if (!desc || desc.length < 10) return alert('A descrição precisa ter ao menos 10 caracteres.');
-  if (!empReclamada) return alert('Selecione a empresa reclamada (Chiacchio Embalagens, Plaschio ou Tubahia).');
+  if (!empReclamada) return alert('Selecione a empresa reclamada (Chiacchio Embalagens, Plaschio ou Cesbap).');
 
   const tipoBtn = document.querySelector('.tipo-btns .canal-btn.active');
   const tipo = tipoBtn ? tipoBtn.textContent.trim() : 'Reclamação';
@@ -11180,7 +11180,7 @@ function patchAcompPage(){
           <option value="">Todas as empresas</option>
           <option value="CHIACCHIO EMBALAGENS">Chiacchio</option>
           <option value="PLASCHIO">Plaschio</option>
-          <option value="TUBAHIA">Tubahia</option>
+          <option value="TUBAHIA">Cesbap</option>
           <option value="CESBAP">Cesbap</option>
         </select>
         <select id="af-setor" class="filtro-extra" onchange="aplicarFiltrosAcomp()">
@@ -14253,7 +14253,7 @@ function cpRenderArvore() {
 function cpRenderEmpresas() {
   const ano = document.getElementById('cp-f-ano').value, mes = document.getElementById('cp-f-mes').value;
   const base = _cp.all.filter(r => (!ano || r.ano === +ano) && (!mes || r.mes === +mes));
-  document.getElementById('cp-empresas').innerHTML = ['Chiacchio', 'Plaschio', 'Tubahia'].map(e => {
+  document.getElementById('cp-empresas').innerHTML = ['Chiacchio', 'Plaschio', 'Cesbap'].map(e => {
     const l = base.filter(r => cpEmpKey(r.emp) === e), s = cpStats(l);
     const crit = _cp.cols.notas.map((h, i) => ({ h, m: cpAvg(l.map(r => r.notas[i])) }));
     return '<div class="ps-card"><div class="ps-card-h"><span>' + e.toUpperCase() + '</span><span class="ps-muted">' + s.total + ' respostas</span></div><div class="ps-body">'
@@ -17903,7 +17903,7 @@ const authH = () => ({'Authorization':'Bearer '+tok()});
 const norm = s => String(s==null?'':s).normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[\s_\-\.]+/g,'');
 const $ = id => document.getElementById(id);
 
-const EMPRESAS = ['Todas as empresas','Chiacchio Embalagens','Plaschio','Tubahia'];
+const EMPRESAS = ['Todas as empresas','Chiacchio Embalagens','Plaschio','Cesbap'];
 const MAX_BYTES = 4*1024*1024; // limite do corpo de requisição da Vercel (~4,5 MB)
 const LOTE = 150;
 

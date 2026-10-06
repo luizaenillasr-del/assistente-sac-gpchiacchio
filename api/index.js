@@ -2983,7 +2983,7 @@ section p{font-size:13px;color:#3A3A3A;line-height:1.65;margin-top:6px}
 
 // ===== ROTA PÚBLICA: PESQUISA DE SATISFAÇÃO =====
 const _pesquisaPublicaHTML = (empresa) => {
-  const titulo = empresa === 'chiacchio' ? 'Chiacchio Embalagens' : empresa === 'plaschio' ? 'Plaschio' : empresa === 'tubahia' ? 'Tubahia' : 'Grupo Chiacchio';
+  const titulo = empresa === 'chiacchio' ? 'Chiacchio Embalagens' : empresa === 'plaschio' ? 'Plaschio' : (empresa === 'tubahia' || empresa === 'cesbap') ? 'Cesbap' : 'Grupo Chiacchio';
   return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -3130,7 +3130,7 @@ function _tokenExpirado(row) {
 
 // Helper: empresa canônica para display
 function _empresaDisplay(cod) {
-  const m = { CHIACCHIO:'Chiacchio Embalagens', PLASCHIO:'Plaschio', TUBAHIA:'Tubahia', MASTER:'Grupo Chiacchio' };
+  const m = { CHIACCHIO:'Chiacchio Embalagens', PLASCHIO:'Plaschio', TUBAHIA:'Cesbap', MASTER:'Grupo Chiacchio' };
   return m[empresaCanonica(cod||'')] || cod || '';
 }
 
@@ -3200,7 +3200,7 @@ app.get('/pesquisa/:token', async (req, res) => {
   const token = String(req.params.token||'').replace(/[^A-Za-z0-9_\-]/g,'');
   if (token.length < 6) return res.redirect('/');
   // Tokens curtos como 'chiacchio','plaschio','tubahia' => legado
-  if (['chiacchio','plaschio','tubahia'].includes(token.toLowerCase())) {
+  if (['chiacchio','plaschio','tubahia','cesbap'].includes(token.toLowerCase())) {
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     return res.send(_pesquisaPublicaHTML(token.toLowerCase()));
   }
@@ -5518,7 +5518,7 @@ app.post('/api/public/solicitar-acesso', async (req, res) => {
     // Valida empresa canônica (não aceita "Grupo Chiacchio" como empresa operacional)
     const empCod = empresaCanonica(empresa);
     if (!empCod || empCod === 'MASTER') {
-      return res.status(400).json({sucesso:false,erro:'Empresa inválida. Use: CHIACCHIO EMBALAGENS, PLASCHIO ou TUBAHIA.'});
+      return res.status(400).json({sucesso:false,erro:'Empresa inválida. Use: CHIACCHIO EMBALAGENS, PLASCHIO ou CESBAP.'});
     }
 
     // Verifica duplicidade de e-mail em usuários ativos
