@@ -1436,10 +1436,13 @@
   </div>
 
   <div class="sidebar-bottom">
-    <!-- hidden compat elements used by JS -->
-    <span id="sidebar-avatar" style="display:none"></span>
-    <span id="sidebar-user-name" style="display:none"></span>
-    <span id="sidebar-user-role" style="display:none"></span>
+    <div class="sidebar-user">
+      <div class="sidebar-user-avatar" id="sidebar-avatar">US</div>
+      <div class="sidebar-user-info">
+        <div class="sidebar-user-name" id="sidebar-user-name">Usuário</div>
+        <div class="sidebar-user-role" id="sidebar-user-role">SAC</div>
+      </div>
+    </div>
     <button onclick="doLogout()" style="width:100%;background:none;border:0;color:#666464;padding:4px 0;font-size:12.5px;cursor:pointer;display:flex;align-items:center;gap:6px;font-family:inherit;text-align:left;transition:color 0.15s" onmouseover="this.style.color='#C70602'" onmouseout="this.style.color='#666464'">Sair</button>
   </div>
 </nav>
@@ -1450,16 +1453,25 @@
   <!-- ===== VISÃO GERAL ===== -->
   <div class="page active" id="page-visao-geral">
     <div class="topbar">
-      <div class="breadcrumb">Atendimento / <span>Painel</span></div>
-      <div class="page-header">
-        <h1 class="page-title">Visão Geral</h1>
-        <div class="page-actions">
-          <span class="badge-mockup">Dados em tempo real</span>
-          <button class="btn btn-primary" onclick="navigate('nova-manifestacao', document.querySelector('[onclick*=nova-manifestacao]'))">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Nova manifestação
-          </button>
+      <div class="topbar-left">
+        <div class="breadcrumb">Atendimento / <span>Painel</span></div>
+        <div class="page-header">
+          <h1 class="page-title">Visão Geral</h1>
+          <div class="page-actions">
+            <button class="btn btn-primary" onclick="navigate('nova-manifestacao', document.querySelector('[onclick*=nova-manifestacao]'))">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Nova manifestação
+            </button>
+          </div>
         </div>
+      </div>
+      <div class="topbar-right">
+        <input class="topbar-search topbar-global-search" placeholder="Buscar por nº, cliente, CNPJ, NF…" onkeydown="if(event.key==='Enter'&&this.value.trim()){navigate('banco-manifestacoes',document.querySelector('[onclick*=banco-manifestacoes]'))}">
+        <button class="topbar-notif" onclick="navigate('aprovadores',document.querySelector('[onclick*=aprovadores]'))">Notificações<span class="topbar-notif-badge topbar-notif-count">0</span></button>
+        <button class="topbar-user" onclick="navigate('usuarios',document.querySelector('[onclick*=usuarios]'))">
+          <span class="topbar-user-avatar topbar-user-ini">US</span>
+          <span style="display:flex;flex-direction:column"><span class="topbar-user-name">Usuário</span><span class="topbar-user-role">SAC</span></span>
+        </button>
       </div>
     </div>
     <div class="content">
