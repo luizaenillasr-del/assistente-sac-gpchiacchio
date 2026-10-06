@@ -695,7 +695,7 @@ app.get('/api/health', async (req, res) => {
       if (count === null) saude.postgresql = 'offline';
       else if (count.length === 0) saude.postgresql = 'online_vazio';
       else saude.postgresql = 'online_com_dados';
-    } catch (e) { saude.postgresql = 'offline'; saude.pgErro = e.message; }
+    } catch (e) { saude.postgresql = 'offline'; }
   } else { saude.postgresql = 'repositório_não_carregado'; }
   // Verificar Sheets (rápido)
   try {
@@ -977,7 +977,7 @@ app.post('/api/analise/similares', requerPerfil('MASTER','ANALISTA SAC','APROVAD
     const similares = await cerebroService.buscarCasosSimilares(req.body || {}, Number(req.body?.limite || 8), empresaFiltro);
     res.json({ sucesso:true, total:similares.length, itens:similares });
   } catch(e) {
-    res.status(500).json({ sucesso:false, erro:e.message, itens:[] });
+    res.status(500).json({ sucesso:false, erro:erroSeguro(e), itens:[] });
   }
 });
 
@@ -988,7 +988,7 @@ app.get('/api/representantes/meus-clientes', requerPerfil('RCA / REPRESENTANTE')
     const key=normalizarTexto(req.user.codigoRCA||req.user.usuario);
     const itens=rows.filter(x=>normalizarTexto(x.ID_REPRESENTANTE||x.CODIGO_RCA||x.RCA)===key);
     res.json({sucesso:true,total:itens.length,itens});
-  }catch(e){res.status(500).json({sucesso:false,erro:e.message,itens:[]});}
+  }catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e),itens:[]});}
 });
 
 app.get('/api/representantes/minhas-manifestacoes', requerPerfil('RCA / REPRESENTANTE'), async (req,res)=>{
@@ -997,7 +997,7 @@ app.get('/api/representantes/minhas-manifestacoes', requerPerfil('RCA / REPRESEN
     const key=normalizarTexto(req.user.codigoRCA||req.user.usuario);
     const itens=rows.filter(x=>normalizarTexto(x.USUARIO_CRIACAO||'')===normalizarTexto(req.user.usuario)||normalizarTexto(x.CODIGO_RCA||'')===key);
     res.json({sucesso:true,total:itens.length,itens});
-  }catch(e){res.status(500).json({sucesso:false,erro:e.message,itens:[]});}
+  }catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e),itens:[]});}
 });
 
 app.post('/api/representantes/manifestacoes', requerPerfil('RCA / REPRESENTANTE'), async (req,res)=>{
@@ -1009,7 +1009,7 @@ app.post('/api/representantes/manifestacoes', requerPerfil('RCA / REPRESENTANTE'
     const objeto={ID_MANIFESTACAO:id,DATA_ABERTURA:agora,DATA_REGISTRO:agora,EMPRESA_RECLAMANTE:b.empresa||req.user.empresa||'',CONTATO:b.contato||'',PRODUTO:b.produto||'',LOTE:b.lote||'',NFE:b.nfe||'',DESCRICAO:b.descricao,DESCRICAO_MANIFESTACAO:b.descricao,STATUS:'RECEBIDA',TIPO:'Reclamação',CANAL:'RCA',CNPJ:b.cnpj||'',TELEFONE:b.telefone||'',EMAIL:b.email||'',QUANTIDADE:b.quantidade||'',EMPRESA_RECLAMADA:b.empresaReclamada||'',AREA_RECLAMACAO:b.areaReclamacao||'',EVIDENCIA_NC:b.evidenciaNC||'NÃO SEI',CODIGO_RCA:req.user.codigoRCA||'',USUARIO_CRIACAO:req.user.usuario,ORIGEM:'REPRESENTANTE',STATUS_TRATATIVA:'NÃO INICIADA'};
     await appendObjeto('MANIFESTACOES',objeto);
     res.json({sucesso:true,id});
-  }catch(e){console.error(e);res.status(500).json({sucesso:false,erro:e.message});}
+  }catch(e){console.error(e);res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
 
 // ===== MANIFESTAÇÕES =====
@@ -1149,7 +1149,7 @@ app.post('/api/manifestacoes', requerPerfil('MASTER','ANALISTA SAC'), async (req
       }).catch(e => {
         console.error('[PG] dual-write manifestação FALHOU:', id, e.message);
         // Registrar falha de dual-write no audit trail (não bloqueia resposta)
-        registrarAuditoria('sistema', 'DUALWRITE_PG_FALHOU', id, 'MANIFESTACOES', null, { erro: e.message }).catch(() => {});
+        registrarAuditoria('sistema', 'DUALWRITE_PG_FALHOU', id, 'MANIFESTACOES', null, { erro:erroSeguro(e) }).catch(() => {});
       });
     }
     registrarAuditoria(usuario||'sistema','CRIOU_MANIFESTAÇÃO',id,'MANIFESTACOES',null,{empresaReclamante,tipo:tipoFinal}).catch(()=>{});
@@ -1189,7 +1189,7 @@ app.post('/api/manifestacoes', requerPerfil('MASTER','ANALISTA SAC'), async (req
       }
     } catch (e) { console.error('Falha na análise automática:', e.message); }
     res.json({ sucesso:true, id, analise, mensagem:'Manifestação registrada e analisada com sucesso.' });
-  } catch (e) { console.error(e); res.status(500).json({ sucesso:false, erro:e.message }); }
+  } catch (e) { console.error(e); res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
 
 app.patch('/api/manifestacoes/:id', requerPerfil('MASTER','ANALISTA SAC'), async (req, res) => {
@@ -1218,7 +1218,7 @@ app.patch('/api/manifestacoes/:id', requerPerfil('MASTER','ANALISTA SAC'), async
     await atualizarPorID('MANIFESTACOES', id, dados);
     await registrarAuditoria(req.user?.usuario||'sistema','ATUALIZOU_MANIFESTAÇÃO',id,'MANIFESTACOES',null,dados);
     res.json({ sucesso:true, id, atualizado: dados });
-  } catch(e){ res.status(500).json({ sucesso:false, erro:e.message }); }
+  } catch(e){ res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
 
 app.post('/api/manifestacoes/:id/decisao', requerPerfil('MASTER','ANALISTA SAC'), async (req, res) => {
@@ -1262,7 +1262,7 @@ app.post('/api/manifestacoes/:id/decisao', requerPerfil('MASTER','ANALISTA SAC')
       }).catch(()=>{});
     }
     res.json({ sucesso:true, id, status:novoStatus, statusTratativa:status });
-  } catch(e) { console.error(e); res.status(500).json({ sucesso:false, erro:e.message }); }
+  } catch(e) { console.error(e); res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
 
 
@@ -1275,7 +1275,7 @@ app.get('/api/manifestacoes/:id/tratativa', requerPerfil('MASTER','ANALISTA SAC'
     const t = await tratativaEngine.buscarTratativaPorManifestacao(req.params.id);
     if (!t) return res.status(404).json({ sucesso:false, erro:'Nenhuma tratativa encontrada.' });
     res.json({ sucesso:true, tratativa:t });
-  } catch(e){ res.status(500).json({ sucesso:false, erro:e.message }); }
+  } catch(e){ res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
 
 app.post('/api/manifestacoes/:id/tratativa/gerar', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
@@ -1288,7 +1288,7 @@ app.post('/api/manifestacoes/:id/tratativa/gerar', requerPerfil('MASTER','ANALIS
     const tratativa = analise.tratativaEstruturada;
     if (tratativa) await tratativaEngine.salvarTratativa(id, tratativa, req.user?.usuario||'sistema').catch(()=>{});
     res.json({ sucesso:true, tratativa, analise });
-  } catch(e){ res.status(500).json({ sucesso:false, erro:e.message }); }
+  } catch(e){ res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
 
 app.post('/api/manifestacoes/:id/tratativa/decisao', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
@@ -1317,7 +1317,7 @@ app.post('/api/manifestacoes/:id/tratativa/decisao', requerPerfil('MASTER','ANAL
       TRATATIVA_REALIZADA: textoEditado||m.TRATATIVA_SUGERIDA||'',
     });
     res.json({ sucesso:true, decisao });
-  } catch(e){ res.status(500).json({ sucesso:false, erro:e.message }); }
+  } catch(e){ res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
 
 // ============================================================
@@ -1332,7 +1332,7 @@ app.post('/api/manifestacoes/:id/visualizacao', requerPerfil('MASTER','ANALISTA 
     await garantirAbaComCabecalhos('LOG_VISUALIZACOES',['ID_MANIFESTACAO','USUARIO','NOME','PERFIL','DATA_HORA']).catch(()=>{});
     await appendObjeto('LOG_VISUALIZACOES',{ID_MANIFESTACAO:id,USUARIO:req.user.usuario,NOME:req.user.nome||req.user.usuario,PERFIL:req.user.perfil,DATA_HORA:agora});
     res.json({sucesso:true});
-  } catch(e){ res.json({sucesso:false,erro:e.message}); }
+  } catch(e){ res.json({sucesso:false,erro:erroSeguro(e)}); }
 });
 
 app.get('/api/manifestacoes/:id/visualizacoes', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req,res)=>{
@@ -1348,7 +1348,7 @@ app.get('/api/manifestacoes/:id/devolutivas', requerPerfil('MASTER','ANALISTA SA
   try {
     const devs = await devolutivaEngine.buscarDevolutivasPorManifestacao(req.params.id);
     res.json({ sucesso:true, total:devs.length, itens:devs });
-  } catch(e){ res.status(500).json({ sucesso:false, erro:e.message }); }
+  } catch(e){ res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
 
 app.post('/api/manifestacoes/:id/devolutiva/gerar', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
@@ -1357,6 +1357,9 @@ app.post('/api/manifestacoes/:id/devolutiva/gerar', requerPerfil('MASTER','ANALI
     const data = await lerAba('MANIFESTACOES',2000);
     const m = data.find(r=>r.ID_MANIFESTACAO===id);
     if (!m) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
+    if (!pertenceEmpresa(req.user?.empresa, m.EMPRESA_RECLAMADA)) {
+      return res.status(403).json({ sucesso:false, erro:'Acesso não autorizado para esta manifestação.' });
+    }
     const tipo = req.body.tipo || 'RECEBIMENTO';
     const extra = req.body || {};
     const dev = await devolutivaEngine.gerarDevolutiva({
@@ -1380,13 +1383,18 @@ app.post('/api/manifestacoes/:id/devolutiva/gerar', requerPerfil('MASTER','ANALI
     });
     const salva = await devolutivaEngine.salvarDevolutiva(id, dev, '', m.EMPRESA_RECLAMADA||'', req.user?.usuario||'sistema').catch(()=>null);
     res.json({ sucesso:true, devolutiva:dev, id: salva?.ID_DEVOLUTIVA });
-  } catch(e){ res.status(500).json({ sucesso:false, erro:e.message }); }
+  } catch(e){ res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
 
 app.post('/api/devolutivas/:idDev/decisao', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
   try {
     const { decisao, textoAprovado, motivo } = req.body;
     if (!['APROVADA','EDITADA','REJEITADA'].includes(decisao)) return res.status(400).json({ sucesso:false, erro:'Decisão inválida.' });
+    const _devRows = await lerAba('DEVOLUTIVAS', 2000).catch(()=>[]);
+    const devExist = _devRows.find(r => r.ID_DEVOLUTIVA === req.params.idDev);
+    if (devExist && !pertenceEmpresa(req.user?.empresa, devExist.EMPRESA||devExist.EMPRESA_RECLAMADA||'')) {
+      return res.status(403).json({ sucesso:false, erro:'Acesso não autorizado para esta devolutiva.' });
+    }
     const result = await devolutivaEngine.registrarDecisaoDevolutiva(req.params.idDev, decisao, textoAprovado, motivo, req.user?.usuario||'sistema');
     // Registrar assertividade
     await assertividadeService.registrarDecisao({
@@ -1408,7 +1416,7 @@ app.post('/api/devolutivas/:idDev/decisao', requerPerfil('MASTER','ANALISTA SAC'
       }).catch(() => {});
     }
     res.json({ sucesso:true, devolutiva:result });
-  } catch(e){ res.status(500).json({ sucesso:false, erro:e.message }); }
+  } catch(e){ res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
 
 // ============================================================
@@ -1427,21 +1435,21 @@ app.get('/api/assertividade/metricas', requerPerfil('MASTER','ANALISTA SAC'), as
     };
     const metricas = await assertividadeService.calcularMetricas(filtros);
     res.json({ sucesso:true, ...metricas });
-  } catch(e){ res.status(500).json({ sucesso:false, erro:e.message }); }
+  } catch(e){ res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
 
 app.get('/api/assertividade/sugestoes', requerPerfil('MASTER'), async (req,res)=>{
   try {
     const result = await assertividadeService.gerarSugestoes();
     res.json({ sucesso:true, ...result });
-  } catch(e){ res.status(500).json({ sucesso:false, erro:e.message }); }
+  } catch(e){ res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
 
 app.post('/api/assertividade/resultado', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
   try {
     const r = await assertividadeService.registrarResultado({ ...req.body, usuario: req.user?.usuario });
     res.json({ sucesso:true, id:r.id });
-  } catch(e){ res.status(500).json({ sucesso:false, erro:e.message }); }
+  } catch(e){ res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
 
 // ============================================================
@@ -1453,7 +1461,7 @@ app.get('/api/matriz-tratamento', requerPerfil('MASTER','ANALISTA SAC'), async (
     const { matrizTratamento } = cerebroService;
     const regras = await matrizTratamento.carregarMatriz();
     res.json({ sucesso:true, total:regras.length, itens:regras });
-  } catch(e){ res.status(500).json({ sucesso:false, erro:e.message }); }
+  } catch(e){ res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
 
 app.post('/api/matriz-tratamento/consultar', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL'), async (req,res)=>{
@@ -1461,7 +1469,7 @@ app.post('/api/matriz-tratamento/consultar', requerPerfil('MASTER','ANALISTA SAC
     const { matrizTratamento } = cerebroService;
     const resultado = await matrizTratamento.obterRegras(req.body||{});
     res.json({ sucesso:true, regra:resultado });
-  } catch(e){ res.status(500).json({ sucesso:false, erro:e.message }); }
+  } catch(e){ res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
 
 // ============================================================
@@ -1589,7 +1597,7 @@ app.post('/api/setores/importar', requerPerfil('MASTER','ANALISTA SAC'), async(r
       criados++;
     }
     res.json({sucesso:true, criados});
-  } catch(e) { res.status(500).json({sucesso:false, erro:e.message}); }
+  } catch(e) { res.status(500).json({sucesso:false, erro:erroSeguro(e)}); }
 });
 
 // ===== PRODUTOS =====
@@ -1597,7 +1605,8 @@ app.get('/api/produtos', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','SETOR
   try {
     await garantirAbaComCabecalhos('PRODUTOS',['ID_PRODUTO','EMPRESA','PRODUTO','DESCRICAO','CATEGORIA','UNIDADE','ATIVO']);
     const rows = await lerAba('PRODUTOS', 2000);
-    const empresa = req.query.empresa;
+    const _pfProd = perfilCanonico(req.user?.perfil||'');
+    const empresa = _pfProd === 'MASTER' ? (req.query.empresa||null) : (req.user?.empresa||null);
     const itens = empresa ? rows.filter(r => normalizarTexto(r.EMPRESA||'') === normalizarTexto(empresa)) : rows;
     res.json({ sucesso: true, total: itens.length, itens });
   } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e), itens: [] }); }
@@ -1651,7 +1660,7 @@ app.get('/api/setores/:setor/operacional', requerPerfil('MASTER','ANALISTA SAC',
     const rows=await lerAba('CONFIG_SETORES',500); const setor=rows.find(r=>normalizarTexto(r.SETOR)===normalizarTexto(nome))||{SETOR:nome,ATIVO:'SIM'};
     const faq=(await lerAba('FAQ_SETORES',1000)).filter(r=>normalizarTexto(r.SETOR)===normalizarTexto(nome)&&normalizarTexto(r.ATIVO||'SIM')!=='nao');
     res.json({sucesso:true,setor,faq});
-  }catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+  }catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
 app.patch('/api/setores/:setor/operacional', requerPerfil('MASTER','ANALISTA SAC'), async(req,res)=>{
   try{
@@ -1668,7 +1677,7 @@ app.patch('/api/setores/:setor/operacional', requerPerfil('MASTER','ANALISTA SAC
     await registrarAuditoria(req.user.usuario,'ATUALIZOU_FICHA_SETOR',nome,'CONFIG_SETORES',null,dados);
     res.json({sucesso:true,setor:out});
   }
-  catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+  catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
 app.post('/api/setores/:setor/faq', requerPerfil('MASTER','ANALISTA SAC'), async(req,res)=>{
   try{
@@ -1681,7 +1690,7 @@ app.post('/api/setores/:setor/faq', requerPerfil('MASTER','ANALISTA SAC'), async
     const dados={SETOR:nome,EMPRESA:b.EMPRESA||'TODAS',CODIGO:b.CODIGO||'',PERGUNTA:b.PERGUNTA,RESPOSTA:b.RESPOSTA||'',PALAVRAS_CHAVE_FAQ:b.PALAVRAS_CHAVE_FAQ||'',FONTE:b.FONTE||'',STATUS:b.STATUS||'A VALIDAR',ATIVO:b.ATIVO||'SIM',DATA_ATUALIZACAO:new Date().toISOString(),USUARIO_ATUALIZACAO:req.user.usuario};
     if(ex?.ID_FAQ){await atualizarPorID('FAQ_SETORES',ex.ID_FAQ,dados,['ID_FAQ']);res.json({sucesso:true,id:ex.ID_FAQ});}
     else{dados.ID_FAQ=await gerarProximoID('FAQ_SETORES','FAQ','ID_FAQ');await appendObjeto('FAQ_SETORES',dados);res.json({sucesso:true,id:dados.ID_FAQ});}
-  } catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+  } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
 
 // FAQ GET list
@@ -1690,69 +1699,69 @@ app.get('/api/setores/:setor/faq', requerPerfil('MASTER','ANALISTA SAC','SETOR R
     const nome=decodeURIComponent(req.params.setor);
     const itens=await crudSetorGet('FAQ_SETORES',FAQ_HEADERS,nome);
     res.json({sucesso:true,itens});
-  }catch(e){res.status(500).json({sucesso:false,erro:e.message,itens:[]});}
+  }catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e),itens:[]});}
 });
 
 // REGRAS
 app.get('/api/setores/:setor/regras', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async(req,res)=>{
   try{const nome=decodeURIComponent(req.params.setor);const itens=await crudSetorGet('REGRAS_SETORES',REGRAS_HEADERS,nome);res.json({sucesso:true,itens});}
-  catch(e){res.status(500).json({sucesso:false,erro:e.message,itens:[]});}
+  catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e),itens:[]});}
 });
 app.post('/api/setores/:setor/regras', requerPerfil('MASTER','ANALISTA SAC'), async(req,res)=>{
   try{const nome=decodeURIComponent(req.params.setor);if(!req.body?.NOME)return res.status(400).json({sucesso:false,erro:'NOME obrigatório.'});const obj=await crudSetorPost('REGRAS_SETORES',REGRAS_HEADERS,nome,{EMPRESA:req.body.EMPRESA||'TODAS',NOME:req.body.NOME,CONDICAO:req.body.CONDICAO||'',PALAVRAS_GATILHO:req.body.PALAVRAS_GATILHO||'',ACAO:req.body.ACAO||'',PRIORIDADE:req.body.PRIORIDADE||'Média',NECESSITA_APROVACAO:req.body.NECESSITA_APROVACAO||'NÃO',QUEM_APROVA:req.body.QUEM_APROVA||'',AUTOMATICA:req.body.AUTOMATICA||'NÃO',EXCECOES:req.body.EXCECOES||'',SLA:req.body.SLA||'',STATUS:req.body.STATUS||'A VALIDAR',FONTE:req.body.FONTE||''},'RGR','ID_REGRA',req.user.usuario);res.json({sucesso:true,id:obj.ID_REGRA});}
-  catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+  catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
 app.patch('/api/setores/:setor/regras/:id', requerPerfil('MASTER','ANALISTA SAC'), async(req,res)=>{
   try{const reg=await crudSetorPatch('REGRAS_SETORES',req.params.id,req.body,'ID_REGRA',req.user.usuario);if(!reg)return res.status(404).json({sucesso:false,erro:'Regra não encontrada.'});res.json({sucesso:true});}
-  catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+  catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
 
 // PROCEDIMENTOS
 app.get('/api/setores/:setor/procedimentos', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async(req,res)=>{
   try{const nome=decodeURIComponent(req.params.setor);const itens=await crudSetorGet('PROCEDIMENTOS_SETORES',PROCEDIMENTOS_HEADERS,nome);res.json({sucesso:true,itens});}
-  catch(e){res.status(500).json({sucesso:false,erro:e.message,itens:[]});}
+  catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e),itens:[]});}
 });
 app.post('/api/setores/:setor/procedimentos', requerPerfil('MASTER','ANALISTA SAC'), async(req,res)=>{
   try{const nome=decodeURIComponent(req.params.setor);if(!req.body?.NOME)return res.status(400).json({sucesso:false,erro:'NOME obrigatório.'});const obj=await crudSetorPost('PROCEDIMENTOS_SETORES',PROCEDIMENTOS_HEADERS,nome,{EMPRESA:req.body.EMPRESA||'TODAS',NOME:req.body.NOME,OBJETIVO:req.body.OBJETIVO||'',QUANDO_USAR:req.body.QUANDO_USAR||'',PASSOS:req.body.PASSOS||'',RESPONSAVEL:req.body.RESPONSAVEL||'',SETORES_ENVOLVIDOS:req.body.SETORES_ENVOLVIDOS||'',RESULTADO_ESPERADO:req.body.RESULTADO_ESPERADO||'',PRAZO:req.body.PRAZO||'',STATUS:req.body.STATUS||'A VALIDAR',FONTE:req.body.FONTE||''},'PRC','ID_PROC',req.user.usuario);res.json({sucesso:true,id:obj.ID_PROC});}
-  catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+  catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
 app.patch('/api/setores/:setor/procedimentos/:id', requerPerfil('MASTER','ANALISTA SAC'), async(req,res)=>{
   try{const reg=await crudSetorPatch('PROCEDIMENTOS_SETORES',req.params.id,req.body,'ID_PROC',req.user.usuario);if(!reg)return res.status(404).json({sucesso:false,erro:'Procedimento não encontrado.'});res.json({sucesso:true});}
-  catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+  catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
 
 // POLÍTICAS
 app.get('/api/setores/:setor/politicas', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async(req,res)=>{
   try{const nome=decodeURIComponent(req.params.setor);const itens=await crudSetorGet('POLITICAS_SETORES',POLITICAS_HEADERS,nome);res.json({sucesso:true,itens});}
-  catch(e){res.status(500).json({sucesso:false,erro:e.message,itens:[]});}
+  catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e),itens:[]});}
 });
 app.post('/api/setores/:setor/politicas', requerPerfil('MASTER','ANALISTA SAC'), async(req,res)=>{
   try{const nome=decodeURIComponent(req.params.setor);if(!req.body?.NOME)return res.status(400).json({sucesso:false,erro:'NOME obrigatório.'});const obj=await crudSetorPost('POLITICAS_SETORES',POLITICAS_HEADERS,nome,{EMPRESA:req.body.EMPRESA||'TODAS',NOME:req.body.NOME,OBJETIVO:req.body.OBJETIVO||'',REGRA_OFICIAL:req.body.REGRA_OFICIAL||'',LIMITES:req.body.LIMITES||'',CONDICOES:req.body.CONDICOES||'',EXCECOES:req.body.EXCECOES||'',QUEM_APROVA:req.body.QUEM_APROVA||'',PRAZO:req.body.PRAZO||'',VIGENCIA:req.body.VIGENCIA||'',STATUS:req.body.STATUS||'A VALIDAR',FONTE:req.body.FONTE||''},'POL','ID_POL',req.user.usuario);res.json({sucesso:true,id:obj.ID_POL});}
-  catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+  catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
 app.patch('/api/setores/:setor/politicas/:id', requerPerfil('MASTER','ANALISTA SAC'), async(req,res)=>{
   try{const reg=await crudSetorPatch('POLITICAS_SETORES',req.params.id,req.body,'ID_POL',req.user.usuario);if(!reg)return res.status(404).json({sucesso:false,erro:'Política não encontrada.'});res.json({sucesso:true});}
-  catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+  catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
 
 // PERGUNTAS DA IA
 app.get('/api/setores/:setor/perguntas-ia', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async(req,res)=>{
   try{const nome=decodeURIComponent(req.params.setor);const itens=await crudSetorGet('PERGUNTAS_IA_SETORES',PERGUNTAS_IA_HEADERS,nome);res.json({sucesso:true,itens:itens.sort((a,b)=>parseInt(a.ORDEM||99)-parseInt(b.ORDEM||99))});}
-  catch(e){res.status(500).json({sucesso:false,erro:e.message,itens:[]});}
+  catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e),itens:[]});}
 });
 app.post('/api/setores/:setor/perguntas-ia', requerPerfil('MASTER','ANALISTA SAC'), async(req,res)=>{
   try{const nome=decodeURIComponent(req.params.setor);if(!req.body?.PERGUNTA)return res.status(400).json({sucesso:false,erro:'PERGUNTA obrigatória.'});const obj=await crudSetorPost('PERGUNTAS_IA_SETORES',PERGUNTAS_IA_HEADERS,nome,{EMPRESA:req.body.EMPRESA||'TODAS',PERGUNTA:req.body.PERGUNTA,OBRIGATORIA:req.body.OBRIGATORIA||'SIM',MOTIVO:req.body.MOTIVO||'',CAMPO_DESTINO:req.body.CAMPO_DESTINO||'',TIPO_RESPOSTA:req.body.TIPO_RESPOSTA||'texto',ORDEM:req.body.ORDEM||99,ATIVO:req.body.ATIVO||'SIM'},'PRG','ID_PERG',req.user.usuario);res.json({sucesso:true,id:obj.ID_PERG});}
-  catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+  catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
 app.patch('/api/setores/:setor/perguntas-ia/:id', requerPerfil('MASTER','ANALISTA SAC'), async(req,res)=>{
   try{const reg=await crudSetorPatch('PERGUNTAS_IA_SETORES',req.params.id,req.body,'ID_PERG',req.user.usuario);if(!reg)return res.status(404).json({sucesso:false,erro:'Pergunta não encontrada.'});res.json({sucesso:true});}
-  catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+  catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
 
 // DOCUMENTOS DO SETOR (metadados — upload usa /api/anexos)
 app.get('/api/setores/:setor/documentos', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async(req,res)=>{
   try{const nome=decodeURIComponent(req.params.setor);const itens=await crudSetorGet('DOCUMENTOS_SETORES',DOCS_SETOR_HEADERS,nome);res.json({sucesso:true,itens});}
-  catch(e){res.status(500).json({sucesso:false,erro:e.message,itens:[]});}
+  catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e),itens:[]});}
 });
 app.post('/api/setores/:setor/documentos', requerPerfil('MASTER','ANALISTA SAC'), async(req,res)=>{
   try{
@@ -1767,11 +1776,11 @@ app.post('/api/setores/:setor/documentos', requerPerfil('MASTER','ANALISTA SAC')
     }
     const obj=await crudSetorPost('DOCUMENTOS_SETORES',DOCS_SETOR_HEADERS,nome,{EMPRESA:b.EMPRESA||'TODAS',NOME:b.NOME,TIPO:b.TIPO||'',CATEGORIA:b.CATEGORIA||'Documento de apoio',DESCRICAO:b.DESCRICAO||'',VERSAO:b.VERSAO||'1.0',STATUS:b.STATUS||'A VALIDAR',FONTE_CONHECIMENTO:b.FONTE_CONHECIMENTO||'NÃO',URL_ARQUIVO:urlArquivo,DRIVE_FILE_ID:driveId,DATA_UPLOAD:new Date().toISOString()},'DOC','ID_DOC',req.user.usuario);
     res.json({sucesso:true,id:obj.ID_DOC,url:urlArquivo});
-  }catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+  }catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
 app.patch('/api/setores/:setor/documentos/:id', requerPerfil('MASTER','ANALISTA SAC'), async(req,res)=>{
   try{const reg=await crudSetorPatch('DOCUMENTOS_SETORES',req.params.id,req.body,'ID_DOC',req.user.usuario);if(!reg)return res.status(404).json({sucesso:false,erro:'Documento não encontrado.'});res.json({sucesso:true});}
-  catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+  catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
 
 // CONHECIMENTO COMPLETO — rota para o cérebro da IA
@@ -1790,7 +1799,7 @@ app.get('/api/setores/:setor/conhecimento-completo', requerPerfil('MASTER','ANAL
       crudSetorGet('DOCUMENTOS_SETORES',DOCS_SETOR_HEADERS,nome).then(rows=>rows.filter(filtroEmpresa).filter(r=>r.FONTE_CONHECIMENTO==='SIM'&&r.STATUS==='VALIDADA')),
     ]);
     res.json({sucesso:true,setor:nome,empresa:empresa||'TODAS',config,faqs,regras,procedimentos:procs,politicas:pols,perguntas_ia:pergs,documentos_fonte:docs});
-  }catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+  }catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
 
 function ativoAgora(r){const hoje=new Date();const ini=r.VIGENCIA_INICIO?new Date(r.VIGENCIA_INICIO):null;const fim=r.VIGENCIA_FIM?new Date(r.VIGENCIA_FIM):null;return normalizarTexto(r.ATIVO||'sim')!=='nao'&&(!ini||hoje>=ini)&&(!fim||hoje<=fim);}
@@ -1798,7 +1807,7 @@ function adicionarDiasCalendario(data,qtd,tipo){if(!data||qtd===null||qtd===unde
 function diffDias(a,b){if(!a||!b)return null;return Math.round((new Date(b+'T00:00:00')-new Date(a+'T00:00:00'))/86400000);}
 function acharLogistica(rows,b){const cidade=normalizarTexto(b.cidade),uf=normalizarTexto(b.uf),reg=normalizarTexto(b.regiao);const ativos=rows.filter(ativoAgora);const score=r=>(normalizarTexto(r.CIDADE)===cidade&&normalizarTexto(r.UF)===uf?100:0)+(normalizarTexto(r.UF)===uf?20:0)+(reg&&normalizarTexto(r.REGIAO)===reg?10:0);return ativos.sort((a,c)=>score(c)-score(a))[0]||null;}
 function acharProducao(rows,b){const t=normalizarTexto(b.tipoProduto),f=normalizarTexto(b.familiaProduto),p=normalizarTexto(b.processo);const ativos=rows.filter(ativoAgora);const score=r=>(t&&normalizarTexto(r.TIPO_PRODUTO)===t?50:0)+(f&&normalizarTexto(r.FAMILIA_PRODUTO)===f?30:0)+(p&&normalizarTexto(r.PROCESSO)===p?20:0);return ativos.sort((a,c)=>score(c)-score(a))[0]||null;}
-app.get('/api/calculadora/parametros', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async(req,res)=>{try{const [l,p]=await Promise.all([lerAba('PARAMETROS_LOGISTICA',2000).catch(()=>[]),lerAba('PARAMETROS_PRODUCAO',2000).catch(()=>[])]);res.json({sucesso:true,logistica:l,producao:p});}catch(e){res.status(500).json({sucesso:false,erro:e.message});}});
+app.get('/api/calculadora/parametros', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async(req,res)=>{try{const [l,p]=await Promise.all([lerAba('PARAMETROS_LOGISTICA',2000).catch(()=>[]),lerAba('PARAMETROS_PRODUCAO',2000).catch(()=>[])]);res.json({sucesso:true,logistica:l,producao:p});}catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}});
 app.post('/api/calculadora/calcular', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async(req,res)=>{
   try{
     const b=req.body||{};const tipo=normalizarTexto(b.tipoProduto||b.tipo)==='personalizado'?'PERSONALIZADO':'ESTOQUE';
@@ -1815,12 +1824,12 @@ app.post('/api/calculadora/calcular', requerPerfil('MASTER','ANALISTA SAC','SETO
     if(!log&&b.dataEntrega)etapa='SEM PARÂMETRO DE LOGÍSTICA';if(tipo==='PERSONALIZADO'&&!prod)etapa='SEM PARÂMETRO DE PRODUÇÃO';
     const status=desvioDias>0?'ATRASADO':(dataEntEst&&!b.dataEntrega?'AGUARDANDO ENTREGA':'NO PRAZO');
     res.json({sucesso:true,resultado:{tipo,tempoProducao:prazoProd||null,prazoTransporte:prazoTrans||null,dataProducaoEstimada:dataProdEst,dataEntregaEstimada:dataEntEst,desvioProducao:desvioProd,desvioTransporte:desvioTrans,desvioDias,etapaDesvio:etapa,statusPrazo:status,parametroLogistica:log,parametroProducao:prod}});
-  }catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+  }catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
-app.post('/api/calculadora/parametros/logistica', requerPerfil('MASTER','ANALISTA SAC'), async(req,res)=>{try{await garantirAbaComCabecalhos('PARAMETROS_LOGISTICA',LOG_HEADERS);const b=req.body||{};const obj={...b,ID:b.ID||await gerarProximoID('PARAMETROS_LOGISTICA','LOG','ID'),ATIVO:b.ATIVO||'SIM',DATA_ATUALIZACAO:new Date().toISOString(),USUARIO_ATUALIZACAO:req.user.usuario};await appendObjeto('PARAMETROS_LOGISTICA',obj);res.json({sucesso:true,item:obj});}catch(e){res.status(500).json({sucesso:false,erro:e.message});}});
-app.patch('/api/calculadora/parametros/logistica/:id', requerPerfil('MASTER','ANALISTA SAC'), async(req,res)=>{try{const dados={...req.body,DATA_ATUALIZACAO:new Date().toISOString(),USUARIO_ATUALIZACAO:req.user.usuario};await atualizarPorID('PARAMETROS_LOGISTICA',req.params.id,dados,['ID']);res.json({sucesso:true});}catch(e){res.status(500).json({sucesso:false,erro:e.message});}});
-app.delete('/api/calculadora/parametros/logistica/:id', requerPerfil('MASTER','ANALISTA SAC'), async(req,res)=>{try{await atualizarPorID('PARAMETROS_LOGISTICA',req.params.id,{ATIVO:'NAO',DATA_ATUALIZACAO:new Date().toISOString(),USUARIO_ATUALIZACAO:req.user.usuario},['ID']);res.json({sucesso:true});}catch(e){res.status(500).json({sucesso:false,erro:e.message});}});
-app.post('/api/calculadora/parametros/producao', requerPerfil('MASTER'), async(req,res)=>{try{garantirAbaComCabecalhos('PARAMETROS_PRODUCAO',PROD_HEADERS).catch(()=>{});const b=req.body||{};const obj={...b,ID:b.ID||await gerarProximoID('PARAMETROS_PRODUCAO','PROD','ID'),ATIVO:b.ATIVO||'SIM',DATA_ATUALIZACAO:new Date().toISOString(),USUARIO_ATUALIZACAO:req.user.usuario};await appendObjeto('PARAMETROS_PRODUCAO',obj);res.json({sucesso:true,item:obj});}catch(e){res.status(500).json({sucesso:false,erro:e.message});}});
+app.post('/api/calculadora/parametros/logistica', requerPerfil('MASTER','ANALISTA SAC'), async(req,res)=>{try{await garantirAbaComCabecalhos('PARAMETROS_LOGISTICA',LOG_HEADERS);const b=req.body||{};const obj={...b,ID:b.ID||await gerarProximoID('PARAMETROS_LOGISTICA','LOG','ID'),ATIVO:b.ATIVO||'SIM',DATA_ATUALIZACAO:new Date().toISOString(),USUARIO_ATUALIZACAO:req.user.usuario};await appendObjeto('PARAMETROS_LOGISTICA',obj);res.json({sucesso:true,item:obj});}catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}});
+app.patch('/api/calculadora/parametros/logistica/:id', requerPerfil('MASTER','ANALISTA SAC'), async(req,res)=>{try{const dados={...req.body,DATA_ATUALIZACAO:new Date().toISOString(),USUARIO_ATUALIZACAO:req.user.usuario};await atualizarPorID('PARAMETROS_LOGISTICA',req.params.id,dados,['ID']);res.json({sucesso:true});}catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}});
+app.delete('/api/calculadora/parametros/logistica/:id', requerPerfil('MASTER','ANALISTA SAC'), async(req,res)=>{try{await atualizarPorID('PARAMETROS_LOGISTICA',req.params.id,{ATIVO:'NAO',DATA_ATUALIZACAO:new Date().toISOString(),USUARIO_ATUALIZACAO:req.user.usuario},['ID']);res.json({sucesso:true});}catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}});
+app.post('/api/calculadora/parametros/producao', requerPerfil('MASTER'), async(req,res)=>{try{garantirAbaComCabecalhos('PARAMETROS_PRODUCAO',PROD_HEADERS).catch(()=>{});const b=req.body||{};const obj={...b,ID:b.ID||await gerarProximoID('PARAMETROS_PRODUCAO','PROD','ID'),ATIVO:b.ATIVO||'SIM',DATA_ATUALIZACAO:new Date().toISOString(),USUARIO_ATUALIZACAO:req.user.usuario};await appendObjeto('PARAMETROS_PRODUCAO',obj);res.json({sucesso:true,item:obj});}catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}});
 
 // ════════════════════════════════════════════════════════════════
 // CALCULADORA DE ATRASO — ANÁLISE COMPLETA (prazo prometido + regional)
@@ -2068,7 +2077,7 @@ app.get('/api/dashboard', middlewareEscopoEmpresa(), requerPerfil('MASTER','ANAL
       if(idx>=0&&idx<12)semanas[idx].count++;
     });
     res.json({sucesso:true,fontesDados:{manifestacoes:'Google Sheets (MANIFESTACOES)',reclamacoes:'Google Sheets (Reclamações)'},dados:{kpis:{emAndamento,totalManifestacoes:mans.length,totalReclamacoes:recs.length,rncsAbertas,slaPercent:slaPercent!==null?slaPercent:'Sem dados',foraPrazo:recComSLA.length-dentroPrazo},statusCount,porEmpresa,motivos:Object.entries(motivos).sort((a,b)=>b[1]-a[1]).slice(0,10).map(([m,c])=>({motivo:m,count:c})),semanas}});
-  } catch (e) { console.error(e); res.status(500).json({ sucesso:false, erro:e.message, dados:{} }); }
+  } catch (e) { console.error(e); res.status(500).json({ sucesso:false, erro:erroSeguro(e), dados:{} }); }
 });
 
 // ===== RNC =====
@@ -2105,7 +2114,7 @@ app.get('/api/rnc', middlewareEscopoEmpresa(), requerPerfil('MASTER','ANALISTA S
     let data=await lerAba('BANCO_RNC',5000).catch(()=>[]);
     data = filtrarPorEmpresaHistorico(data, req, COLUNA_EMPRESA_ABA.BANCO_RNC);
     res.json({sucesso:true,total:data.length,itens:data});
-  } catch (e) { res.status(500).json({sucesso:false,erro:e.message,dados:[]}); }
+  } catch (e) { res.status(500).json({sucesso:false,erro:erroSeguro(e),dados:[]}); }
 });
 
 app.post('/api/rnc', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
@@ -2135,7 +2144,7 @@ app.post('/api/rnc', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
     }
     await registrarAuditoria(usuarioCriador,'CRIOU_RNC',id,'BANCO_RNC',null,{competencia});
     res.json({sucesso:true,id,competencia,status:'AGUARDANDO_APROVACAO'});
-  } catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+  } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
 
 app.get('/api/rnc/:id', requerPerfil('APROVADOR','MASTER','ANALISTA SAC','SETOR RESPONSÁVEL'), async (req,res)=>{
@@ -2162,7 +2171,7 @@ app.post('/api/rnc/:id/decisao', requerPerfil('APROVADOR','MASTER'), async (req,
     await atualizarPorID('BANCO_RNC',req.params.id,{STATUS:status,APROVADOR_DECISAO:req.user.usuario,DATA_DECISAO:agora,OBSERVACOES_APROVACAO:observacoes||''},['ID_RNC','ID']);
     await registrarAuditoria(req.user.usuario,'DECISAO_RNC',req.params.id,'BANCO_RNC',rnc.STATUS,{status});
     res.json({sucesso:true,id:req.params.id,status});
-  }catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+  }catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
 
 app.post('/api/rnc/:id/visualizacao', requerPerfil('APROVADOR','MASTER'), async (req,res)=>{
@@ -2170,7 +2179,7 @@ app.post('/api/rnc/:id/visualizacao', requerPerfil('APROVADOR','MASTER'), async 
     const agora=new Date().toISOString(); const idEvento=await gerarProximoID('RNC_EVENTOS','EVT','ID_EVENTO');
     await appendObjeto('RNC_EVENTOS',{ID_EVENTO:idEvento,ID_RNC:req.params.id,TIPO_EVENTO:'VISUALIZOU',USUARIO:req.user.usuario,DATA_EVENTO:agora,DETALHES:'RNC visualizada'});
     res.json({sucesso:true,idEvento});
-  }catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+  }catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
 
 app.get('/api/rnc/:id/eventos', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','SETOR RESPONSÁVEL'), async(req,res)=>{
@@ -2178,7 +2187,7 @@ app.get('/api/rnc/:id/eventos', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'
     const rnc=(await lerAba('BANCO_RNC',5000)).find(x=>x.ID_RNC===req.params.id);
     if(rnc && !pertenceEmpresa(req.user?.empresa, rnc.EMPRESA)) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado.'});
     const data=await lerAba('RNC_EVENTOS',5000);res.json({sucesso:true,itens:data.filter(x=>x.ID_RNC===req.params.id)});}
-  catch(e){res.status(500).json({sucesso:false,erro:e.message,itens:[]});}
+  catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e),itens:[]});}
 });
 
 app.patch('/api/rnc/:id/execucao', requerPerfil('SETOR RESPONSÁVEL','MASTER','ANALISTA SAC'), async(req,res)=>{
@@ -2192,7 +2201,7 @@ app.patch('/api/rnc/:id/execucao', requerPerfil('SETOR RESPONSÁVEL','MASTER','A
     dados.ULTIMA_ALTERACAO_POR=req.user.usuario; dados.ULTIMA_ALTERACAO_DATA=new Date().toISOString();
     await atualizarPorID('BANCO_RNC',req.params.id,dados,['ID_RNC','ID']);
     res.json({sucesso:true});
-  }catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+  }catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
 
 app.get('/api/rnc-metricas', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
@@ -2206,7 +2215,7 @@ app.get('/api/rnc-metricas', requerPerfil('MASTER','ANALISTA SAC'), async (req,r
     const aprov=data.filter(x=>String(x.STATUS||'').toUpperCase()==='APROVADA');
     const overdue=pend.filter(x=>x.PRAZO&&!isNaN(Date.parse(x.PRAZO))&&Date.parse(x.PRAZO)<now);
     res.json({sucesso:true,total:data.length,pendentes:pend.length,aprovadas:aprov.length,atrasadas:overdue.length,percentualDentroPrazo:data.length?Math.round((data.length-overdue.length)/data.length*100):0});
-  }catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+  }catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
 
 // ===== EMPRESAS =====
@@ -2273,7 +2282,7 @@ app.get('/api/clientes/:cnpj', requerPerfil('MASTER','ANALISTA SAC','RCA / REPRE
     if(casos.length===0) return res.json({sucesso:true,encontrado:false,cliente:null,historico:[]});
     const ultimo=casos[casos.length-1];
     res.json({sucesso:true,encontrado:true,cliente:{contato:ultimo.ORIG_CONTATO,empresa:normalizarEmpresa(ultimo.ORIG_EMPRESA)||ultimo.ORIG_EMPRESA,reincidente:casos.length>1},historico:casos.slice(-5).map(c=>({id:c.ID_HISTORICO,data:normalizarData(c.ORIG_DATA_ABERTURA),descricao:(c.ORIG_DESCRICAO_RECLAMACAO||'').slice(0,100),status:c.ORIG_STATUS,tipo:c.COMP_TIPO_PROBLEMA_VALIDADO})),totalCasos:casos.length});
-  } catch (e) { res.status(500).json({sucesso:false,erro:e.message}); }
+  } catch (e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
 });
 
 // ===== RECLAMAÇÕES =====
@@ -2288,7 +2297,7 @@ app.get('/api/reclamacoes', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','SE
     // B2: legado sem empresa = global; com empresa = apenas daquela empresa
     normalizado = filtrarPorEmpresaHistorico(normalizado, req, COLUNA_EMPRESA_ABA['Reclamações']);
     res.json({sucesso:true,total:normalizado.length,itens:normalizado});
-  } catch (e) { res.status(500).json({sucesso:false,erro:e.message,dados:[]}); }
+  } catch (e) { res.status(500).json({sucesso:false,erro:erroSeguro(e),dados:[]}); }
 });
 
 // ===== HISTORICO =====
@@ -2299,7 +2308,7 @@ app.get('/api/historico', middlewareEscopoEmpresa(), requerPerfil('MASTER','ANAL
     data = filtrarPorEmpresaHistorico(data, req, COLUNA_EMPRESA_ABA.BANCO_HISTORICO);
     res.json({sucesso:true,total:data.length,itens:data});
   }
-  catch (e) { res.status(500).json({sucesso:false,erro:e.message,dados:[]}); }
+  catch (e) { res.status(500).json({sucesso:false,erro:erroSeguro(e),dados:[]}); }
 });
 
 // ===== SETORES / CONHECIMENTO / PROCEDIMENTOS / POLÍTICAS / TIPOS / SLA =====
@@ -2351,7 +2360,7 @@ app.get('/api/setores', middlewareEscopoEmpresa(), requerPerfil('MASTER','ANALIS
     const filtrado = filtrarPorEmpresaConfig(data, req, 'EMPRESA');
     const itens = filtrado.map(s => ({ ...s, _counts: {} }));
     res.json({ sucesso:true, total:itens.length, itens });
-  } catch (e) { res.status(500).json({ sucesso:false, erro:e.message, itens:[] }); }
+  } catch (e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e), itens:[] }); }
 });
 
 app.get('/api/setores/counts', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
@@ -2375,14 +2384,14 @@ app.get('/api/setores/counts', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPO
       };
     });
     res.json({ sucesso:true, counts });
-  } catch (e) { res.status(500).json({ sucesso:false, erro:e.message, counts:{} }); }
+  } catch (e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e), counts:{} }); }
 });
 app.get('/api/conhecimento', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
   try {
     await garantirAbaComCabecalhos('CONHECIMENTO_SETORES',['SETOR','DESCRICAO','RESPONSABILIDADES','REGRAS_OPERACIONAIS','PROCEDIMENTOS_ORIENTACOES','ALERTAS']).catch(()=>{});
     const data=await lerAba('CONHECIMENTO_SETORES',200).catch(()=>[]);
     res.json({sucesso:true,total:data.length,itens:data});
-  } catch (e) { res.status(500).json({sucesso:false,erro:e.message,itens:[]}); }
+  } catch (e) { res.status(500).json({sucesso:false,erro:erroSeguro(e),itens:[]}); }
 });
 app.get('/api/procedimentos', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
   try {
@@ -2405,7 +2414,7 @@ app.get('/api/procedimentos', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPON
     await garantirAbaComCabecalhos('PROCEDIMENTOS',['ID_PROCEDIMENTO','NOME','SETOR_RESPONSAVEL','DESCRICAO','PASSOS','ATIVO']).catch(()=>{});
     const data=await lerAba('PROCEDIMENTOS',200).catch(()=>[]);
     res.json({sucesso:true,total:data.length,itens:data});
-  } catch (e) { res.status(500).json({sucesso:false,erro:e.message,itens:[]}); }
+  } catch (e) { res.status(500).json({sucesso:false,erro:erroSeguro(e),itens:[]}); }
 });
 app.get('/api/politicas', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
   try {
@@ -2428,7 +2437,7 @@ app.get('/api/politicas', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁV
     await garantirAbaComCabecalhos('POLITICAS',['ID_POLITICA','POLITICA','SETOR_RESPONSAVEL','DESCRICAO','RESPONSAVEL','ATIVO']).catch(()=>{});
     const data=await lerAba('POLITICAS',200).catch(()=>[]);
     res.json({sucesso:true,total:data.length,itens:data});
-  } catch (e) { res.status(500).json({sucesso:false,erro:e.message,itens:[]}); }
+  } catch (e) { res.status(500).json({sucesso:false,erro:erroSeguro(e),itens:[]}); }
 });
 app.post('/api/politicas', requerPerfil('MASTER','ANALISTA SAC'), async (req, res) => {
   try {
@@ -2628,6 +2637,9 @@ app.get('/api/pesquisas/relatorio', requerPerfil('MASTER','ANALISTA SAC','APROVA
       return { criterio: crit, media: ns.length ? ns.reduce((a,b)=>a+b,0)/ns.length : null, total: ns.length };
     }).filter(Boolean);
 
+    // Coluna de recomendação (usada no NPS)
+    const colRecom = colNota.find(h => /recom/i.test(h));
+
     // Histórico mensal (últimos 12 meses)
     const agora = new Date();
     const historico = [];
@@ -2656,7 +2668,32 @@ app.get('/api/pesquisas/relatorio', requerPerfil('MASTER','ANALISTA SAC','APROVA
         const ns=grupo.map(r=>parseFloat(String(r[col]||'').replace(',','.'))).filter(n=>!isNaN(n)&&n>0);
         crit[c]=ns.length?ns.reduce((a,b)=>a+b,0)/ns.length:null;
       });
-      historico.push({ mes: `${anoH}-${String(mesH).padStart(2,'0')}`, mes_label: mesLabel, media: ms.length?ms.reduce((a,b)=>a+b,0)/ms.length:null, total: ms.length, ...crit });
+      // NPS do mês histórico
+      let npsH = null;
+      if (colRecom) {
+        const recH = grupo.map(r=>parseFloat(String(r[colRecom]||'').replace(',','.'))).filter(n=>!isNaN(n)&&n>=0&&n<=10);
+        if (recH.length) {
+          const pH=recH.filter(n=>n>=9).length, dH=recH.filter(n=>n<=6).length;
+          npsH = Math.round((pH-dH)/recH.length*100);
+        }
+      }
+      historico.push({ mes: `${anoH}-${String(mesH).padStart(2,'0')}`, mes_label: mesLabel, media: ms.length?ms.reduce((a,b)=>a+b,0)/ms.length:null, total: ms.length, nps_score: npsH, ...crit });
+    }
+
+    // NPS do mês filtrado (indicador complementar)
+    let nps = null;
+    if (colRecom) {
+      const recScores = filtrados.map(r=>parseFloat(String(r[colRecom]||'').replace(',','.'))).filter(n=>!isNaN(n)&&n>=0&&n<=10);
+      if (recScores.length) {
+        const prom=recScores.filter(n=>n>=9).length, det=recScores.filter(n=>n<=6).length, neut=recScores.length-prom-det;
+        nps = {
+          score: Math.round((prom-det)/recScores.length*100),
+          promotores:prom, detratores:det, neutros:neut, total:recScores.length,
+          promotores_pct:Math.round(prom/recScores.length*100),
+          detratores_pct:Math.round(det/recScores.length*100),
+          neutros_pct:Math.round(neut/recScores.length*100),
+        };
+      }
     }
 
     // Textos salvos
@@ -2668,7 +2705,16 @@ app.get('/api/pesquisas/relatorio', requerPerfil('MASTER','ANALISTA SAC','APROVA
       if (row) textos = JSON.parse(row.TEXTOS || '{}');
     } catch(e) {}
 
-    res.json({ sucesso: true, itens: filtrados, media_geral: mediaGeral, criterios, historico, textos });
+    // Metadados do relatório (status, versão)
+    let relMeta = null;
+    try {
+      const relRows = await lerAba('RELATORIOS_SAC', 500).catch(()=>[]);
+      const chaveRel = `${empresa}|${ano}|${String(mes).padStart(2,'0')}`;
+      const relRow = relRows.filter(r=>r.CHAVE===chaveRel).sort((a,b)=>Number(b.VERSAO||1)-Number(a.VERSAO||1))[0];
+      if (relRow) relMeta = { id: relRow.ID_RELATORIO, status: relRow.STATUS, versao: Number(relRow.VERSAO||1), publicado_em: relRow.PUBLICADO_EM||'' };
+    } catch(e) {}
+
+    res.json({ sucesso: true, itens: filtrados, media_geral: mediaGeral, criterios, historico, textos, nps, relMeta });
   } catch (e) {
     res.status(500).json({ sucesso: false, erro: erroSeguro(e), itens: [], media_geral: null, criterios: [], historico: [], textos: {} });
   }
@@ -2709,6 +2755,230 @@ app.post('/api/pesquisas/relatorio-texto', requerPerfil('MASTER','ANALISTA SAC',
   } catch (e) {
     res.status(500).json({ sucesso: false, erro: erroSeguro(e) });
   }
+});
+
+// ===== GESTÃO DE RELATÓRIOS (ciclo rascunho → publicado) =====
+const REL_HEADERS = ['ID_RELATORIO','CHAVE','EMPRESA','ANO','MES','VERSAO','STATUS','CRIADO_EM','PUBLICADO_EM','CRIADO_POR','INDICADOR','NPS_SCORE','TEXTOS_JSON','LINK_TOKEN','DADOS_JSON'];
+
+app.get('/api/relatorios/lista', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req, res) => {
+  try {
+    const empresaScope = _mcEmpresaScope(req.user);
+    const rows = await lerAba('RELATORIOS_SAC', 500).catch(()=>[]);
+    let lista = rows;
+    if (empresaScope) lista = lista.filter(r => pertenceEmpresa(empresaScope, r.EMPRESA||''));
+    lista = lista.map(r => ({
+      id: r.ID_RELATORIO, chave: r.CHAVE, empresa: r.EMPRESA,
+      ano: r.ANO, mes: r.MES, versao: Number(r.VERSAO||1),
+      status: r.STATUS, criado_em: r.CRIADO_EM, publicado_em: r.PUBLICADO_EM,
+      indicador: r.INDICADOR ? Number(r.INDICADOR) : null,
+      nps_score: r.NPS_SCORE !== '' && r.NPS_SCORE != null ? Number(r.NPS_SCORE) : null,
+    }));
+    lista.sort((a,b)=>b.chave<a.chave?-1:1);
+    res.json({ sucesso:true, lista });
+  } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
+});
+
+app.post('/api/relatorios/gerar', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req, res) => {
+  try {
+    const { empresa, ano, mes, indicador, nps_score } = req.body||{};
+    if (!empresa||!ano||!mes) return res.status(400).json({ sucesso:false, erro:'empresa, ano e mes são obrigatórios.' });
+    const empresaScope = _mcEmpresaScope(req.user);
+    if (empresaScope && !pertenceEmpresa(empresaScope, empresa)) return res.status(403).json({ sucesso:false, erro:'Sem acesso a esta empresa.' });
+    const chave = `${empresa}|${ano}|${String(mes).padStart(2,'0')}`;
+    await garantirAbaComCabecalhos('RELATORIOS_SAC', REL_HEADERS);
+    // Verifica se já existe rascunho para esta chave/versão
+    const rows = await lerAba('RELATORIOS_SAC', 500).catch(()=>[]);
+    const existentes = rows.filter(r=>r.CHAVE===chave);
+    const maxVersao = existentes.reduce((m,r)=>Math.max(m,Number(r.VERSAO||1)),0);
+    const id = `REL-${Date.now().toString(36).toUpperCase()}`;
+    const obj = {
+      ID_RELATORIO:id, CHAVE:chave, EMPRESA:empresa, ANO:String(ano), MES:String(mes).padStart(2,'0'),
+      VERSAO:String(maxVersao+1), STATUS:'RASCUNHO',
+      CRIADO_EM:new Date().toISOString(), PUBLICADO_EM:'',
+      CRIADO_POR:req.usuario?.nome||req.usuario?.usuario||'',
+      INDICADOR:indicador!=null?String(indicador):'', NPS_SCORE:nps_score!=null?String(nps_score):'',
+      TEXTOS_JSON:'',
+    };
+    await appendObjeto('RELATORIOS_SAC', obj);
+    invalidarCacheAba('RELATORIOS_SAC');
+    res.json({ sucesso:true, id, versao:maxVersao+1 });
+  } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
+});
+
+app.post('/api/relatorios/:id/publicar', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { textos, indicador, nps_score } = req.body||{};
+    await garantirAbaComCabecalhos('RELATORIOS_SAC', REL_HEADERS);
+    const rows = await lerAba('RELATORIOS_SAC', 500).catch(()=>[]);
+    const idx = rows.findIndex(r=>r.ID_RELATORIO===id);
+    if (idx<0) return res.status(404).json({ sucesso:false, erro:'Relatório não encontrado.' });
+    const row = rows[idx];
+    const empresaScope = _mcEmpresaScope(req.user);
+    if (empresaScope && !pertenceEmpresa(empresaScope, row.EMPRESA||'')) return res.status(403).json({ sucesso:false, erro:'Sem acesso a este relatório.' });
+    const atualizado = {
+      STATUS:'PUBLICADO',
+      PUBLICADO_EM:new Date().toISOString(),
+      INDICADOR:indicador!=null?String(indicador):(row.INDICADOR||''),
+      NPS_SCORE:nps_score!=null?String(nps_score):(row.NPS_SCORE||''),
+      TEXTOS_JSON:textos?JSON.stringify(textos):(row.TEXTOS_JSON||''),
+    };
+    await atualizarPorID('RELATORIOS_SAC', id, atualizado, ['ID_RELATORIO']);
+    invalidarCacheAba('RELATORIOS_SAC');
+    res.json({ sucesso:true });
+  } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
+});
+
+app.post('/api/relatorios/:id/nova-versao', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    await garantirAbaComCabecalhos('RELATORIOS_SAC', REL_HEADERS);
+    const rows = await lerAba('RELATORIOS_SAC', 500).catch(()=>[]);
+    const orig = rows.find(r=>r.ID_RELATORIO===id);
+    if (!orig) return res.status(404).json({ sucesso:false, erro:'Relatório não encontrado.' });
+    if (orig.STATUS!=='PUBLICADO') return res.status(400).json({ sucesso:false, erro:'Somente relatórios publicados podem ter nova versão.' });
+    const empresaScope = _mcEmpresaScope(req.user);
+    if (empresaScope && !pertenceEmpresa(empresaScope, orig.EMPRESA||'')) return res.status(403).json({ sucesso:false, erro:'Sem acesso.' });
+    const mesmaChave = rows.filter(r=>r.CHAVE===orig.CHAVE);
+    const maxVersao = mesmaChave.reduce((m,r)=>Math.max(m,Number(r.VERSAO||1)),0);
+    const novoId = `REL-${Date.now().toString(36).toUpperCase()}`;
+    const novoObj = {
+      ID_RELATORIO:novoId, CHAVE:orig.CHAVE, EMPRESA:orig.EMPRESA,
+      ANO:orig.ANO, MES:orig.MES, VERSAO:String(maxVersao+1), STATUS:'RASCUNHO',
+      CRIADO_EM:new Date().toISOString(), PUBLICADO_EM:'',
+      CRIADO_POR:req.usuario?.nome||req.usuario?.usuario||'',
+      INDICADOR:orig.INDICADOR||'', NPS_SCORE:orig.NPS_SCORE||'',
+      TEXTOS_JSON:orig.TEXTOS_JSON||'',
+    };
+    await appendObjeto('RELATORIOS_SAC', novoObj);
+    invalidarCacheAba('RELATORIOS_SAC');
+    res.json({ sucesso:true, id:novoId, versao:maxVersao+1 });
+  } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
+});
+
+// Gerar (ou reutilizar) link compartilhável público para o relatório publicado
+app.post('/api/relatorios/:id/link', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { dados } = req.body||{}; // snapshot JSON dos dados do relatório
+    await garantirAbaComCabecalhos('RELATORIOS_SAC', REL_HEADERS);
+    const rows = await lerAba('RELATORIOS_SAC', 500).catch(()=>[]);
+    const row = rows.find(r=>r.ID_RELATORIO===id);
+    if (!row) return res.status(404).json({ sucesso:false, erro:'Relatório não encontrado.' });
+    if (row.STATUS!=='PUBLICADO') return res.status(400).json({ sucesso:false, erro:'Somente relatórios publicados podem ser compartilhados.' });
+    const empresaScope = _mcEmpresaScope(req.user);
+    if (empresaScope && !pertenceEmpresa(empresaScope, row.EMPRESA||'')) return res.status(403).json({ sucesso:false, erro:'Sem acesso.' });
+    // Reutiliza token existente ou gera novo
+    let token = row.LINK_TOKEN||'';
+    if (!token) {
+      token = require('crypto').randomBytes(18).toString('base64url');
+      const atualizado = { LINK_TOKEN: token };
+      if (dados) atualizado.DADOS_JSON = typeof dados==='string' ? dados : JSON.stringify(dados);
+      await atualizarPorID('RELATORIOS_SAC', id, atualizado, ['ID_RELATORIO']);
+      invalidarCacheAba('RELATORIOS_SAC');
+    } else if (dados) {
+      // Atualiza snapshot sem alterar token
+      await atualizarPorID('RELATORIOS_SAC', id, { DADOS_JSON: typeof dados==='string' ? dados : JSON.stringify(dados) }, ['ID_RELATORIO']);
+      invalidarCacheAba('RELATORIOS_SAC');
+    }
+    const link = `${APP_URL}/relatorio-publico/${token}`;
+    await registrarAuditoria('RELATORIO_LINK_GERADO', `Link gerado para ${id} (${row.CHAVE})`, req.usuario?.nome||'', row.EMPRESA);
+    res.json({ sucesso:true, token, link });
+  } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
+});
+
+// Rota pública: visualizar relatório pelo token (somente leitura, sem login)
+app.get('/relatorio-publico/:token', async (req, res) => {
+  try {
+    const { token } = req.params;
+    if (!token || token.length < 10) return res.status(400).send('Token inválido.');
+    const rows = await lerAba('RELATORIOS_SAC', 500).catch(()=>[]);
+    const row = rows.find(r=>r.LINK_TOKEN===token);
+    if (!row || row.STATUS!=='PUBLICADO') return res.status(404).send('Relatório não encontrado ou não publicado.');
+    let dados = {};
+    try { dados = JSON.parse(row.DADOS_JSON||'{}'); } catch(e) {}
+    let textos = {};
+    try { textos = JSON.parse(row.TEXTOS_JSON||'{}'); } catch(e) {}
+    const empresa = row.EMPRESA||'';
+    const ano = row.ANO||'', mes = row.MES||'', versao = row.VERSAO||'1';
+    const ind = row.INDICADOR ? parseFloat(row.INDICADOR) : null;
+    const npsScore = row.NPS_SCORE !== '' && row.NPS_SCORE != null ? parseInt(row.NPS_SCORE) : null;
+    const LOGOS = {'CHIACCHIO':'/assets/logo-chiacchio-embalagens.svg','PLASCHIO':'/assets/logo-plaschio.svg','TUBAHIA':'/assets/logo-tubahia.svg'};
+    const empKey = Object.keys(LOGOS).find(k=>empresa.toUpperCase().includes(k))||'CHIACCHIO';
+    const logo = LOGOS[empKey];
+    const MN=['','janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+    const mesNome = MN[parseInt(mes)]||mes;
+    const GREEN='#1E6B3A',RED='#C70602',AMB='#B07A12';
+    const indColor = ind!=null?(ind>=8.5?GREEN:ind>=7?AMB:RED):'#545252';
+    const npsColor = npsScore!=null?(npsScore>=50?GREEN:npsScore>=0?AMB:RED):RED;
+    const SEC=[['desempenho','Desempenho geral'],['analise_critica','Análise crítica'],['pontos_fortes','Pontos fortes'],['oportunidades','Oportunidades de melhoria'],['acoes','Ações recomendadas']];
+    const f2=(v)=>v!=null?v.toFixed(2).replace('.',','):'—';
+    const esc=(v)=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+    let secoes='';
+    SEC.forEach(([id,titulo])=>{
+      const txt=String(textos[id]||'').trim();
+      if(txt) secoes+=`<section><h3>${esc(titulo)}</h3>${txt.split('\n').filter(Boolean).map(p=>`<p>${esc(p)}</p>`).join('')}</section>`;
+    });
+    const html=`<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Relatório de Satisfação · ${esc(empresa)} · ${mesNome.charAt(0).toUpperCase()+mesNome.slice(1)}/${esc(ano)}</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Montserrat,system-ui,sans-serif;background:#F4F4F4;color:#1F1F1F;padding:0 0 40px}
+.container{max-width:820px;margin:0 auto;padding:24px 16px;display:flex;flex-direction:column;gap:16px}
+.card{background:#fff;border-radius:12px;border:1px solid #E4E4E4;padding:20px 22px}
+.header{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.header img{max-height:44px}
+.kicker{font-size:10px;font-weight:700;letter-spacing:.12em;color:#929090;text-transform:uppercase;margin-bottom:4px}
+.h1{font-size:22px;font-weight:800;letter-spacing:-.01em}
+.hero{border-radius:12px;padding:22px 24px;display:flex;flex-direction:column;gap:8px}
+.hero-v{font-size:52px;font-weight:800;letter-spacing:-.03em;line-height:1;color:#fff}
+.badge{display:inline-block;background:#E6EEF8;color:#24508F;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px}
+section h3{font-size:14px;font-weight:700;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid #EFEFEF}
+section p{font-size:13px;color:#3A3A3A;line-height:1.65;margin-top:6px}
+.nps-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+.nps-pill{display:flex;flex-direction:column;align-items:center;border-radius:8px;padding:8px 16px;gap:2px;min-width:80px}
+.footer{text-align:center;font-size:11px;color:#929090;margin-top:8px}
+.print-btn{position:fixed;bottom:24px;right:24px;background:#1F1F1F;color:#fff;border:0;border-radius:10px;padding:12px 22px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.2)}
+@media print{.print-btn{display:none}body{background:#fff;padding:0}.card{border:0;border-radius:0;padding:16px 0}}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="card header">
+    <img src="${esc(logo)}" alt="${esc(empresa)}">
+    <div>
+      <div class="kicker">Relatório de pesquisa de satisfação de clientes</div>
+      <div class="h1">${esc(empresa.toUpperCase())} · ${esc(mesNome.charAt(0).toUpperCase()+mesNome.slice(1))}/${esc(ano)}</div>
+      <div style="font-size:12px;color:#929090;margin-top:4px">Versão ${esc(versao)} · Publicado em ${row.PUBLICADO_EM?new Date(row.PUBLICADO_EM).toLocaleDateString('pt-BR'):''} · Somente leitura</div>
+    </div>
+  </div>
+  ${ind!=null?`<div class="hero" style="background:${indColor}">
+    <span style="font-size:11px;font-weight:700;letter-spacing:.1em;opacity:.9;color:#fff">INDICADOR DE SATISFAÇÃO DO MÊS</span>
+    <span class="hero-v">${f2(ind)}</span>
+    <span style="color:#fff;font-size:13px;font-weight:600">${ind>=8.5?'Acima da meta de 8,50':'Abaixo da meta de 8,50'}</span>
+  </div>`:''}
+  ${npsScore!=null?`<div class="card">
+    <div class="kicker">NPS — Indicador complementar</div>
+    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:8px">
+      <div><span class="badge">Net Promoter Score</span><div style="font-size:42px;font-weight:800;color:${npsColor};margin-top:4px">${npsScore>0?'+':''}${npsScore}</div></div>
+      <div class="nps-row">
+        ${dados.nps?`<div class="nps-pill" style="background:#E6F2EA"><span style="font-size:11px;color:#1E6B3A;font-weight:600">Promotores</span><b style="font-size:18px;color:#1E6B3A">${dados.nps.promotores_pct||0}%</b><span style="font-size:11px;color:#666464">${dados.nps.promotores||0} resp.</span></div><div class="nps-pill" style="background:#EEEEEE"><span style="font-size:11px;color:#545252;font-weight:600">Neutros</span><b style="font-size:18px;color:#545252">${dados.nps.neutros_pct||0}%</b><span style="font-size:11px;color:#666464">${dados.nps.neutros||0} resp.</span></div><div class="nps-pill" style="background:#FDECEC"><span style="font-size:11px;color:#A80502;font-weight:600">Detratores</span><b style="font-size:18px;color:#A80502">${dados.nps.detratores_pct||0}%</b><span style="font-size:11px;color:#666464">${dados.nps.detratores||0} resp.</span></div>`:''}
+      </div>
+    </div>
+  </div>`:''}
+  ${secoes?`<div class="card">${secoes}</div>`:''}
+  <div class="footer">Documento gerado automaticamente pelo Assistente SAC · Grupo Chiacchio</div>
+</div>
+<button class="print-btn" onclick="window.print()">⬇ Baixar PDF</button>
+</body>
+</html>`;
+    res.setHeader('Content-Type','text/html; charset=utf-8');
+    res.send(html);
+  } catch(e) { res.status(500).send('Erro ao carregar relatório.'); }
 });
 
 // ===== ROTA PÚBLICA: PESQUISA DE SATISFAÇÃO =====
@@ -2843,9 +3113,392 @@ app.post('/api/pesquisas/resposta-publica', async (req, res) => {
   }
 });
 
+// ============================================================
+// MÓDULO: PESQUISA DE SATISFAÇÃO — TOKENS + OCP + QUESTIONÁRIO
+// ============================================================
+
+// Helper: gera token único alfanumérico
+function _gerarTokenPesquisa() {
+  return require('crypto').randomBytes(18).toString('base64url').slice(0,24);
+}
+
+// Helper: verifica se token expirou
+function _tokenExpirado(row) {
+  if (!row.EXPIRA_EM) return false;
+  return new Date(row.EXPIRA_EM) < new Date();
+}
+
+// Helper: empresa canônica para display
+function _empresaDisplay(cod) {
+  const m = { CHIACCHIO:'Chiacchio Embalagens', PLASCHIO:'Plaschio', TUBAHIA:'Tubahia', MASTER:'Grupo Chiacchio' };
+  return m[empresaCanonica(cod||'')] || cod || '';
+}
+
+// Gerar token de pesquisa (individual ou geral/empresa)
+app.post('/api/pesquisas/tokens/gerar', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req, res) => {
+  try {
+    const { empresa, nome_cliente, id_manifestacao, dias_validade = 30 } = req.body || {};
+    if (!empresa) return res.status(400).json({ sucesso: false, erro: 'empresa obrigatório.' });
+    const _pf = perfilCanonico(req.user?.perfil||'');
+    if (_pf !== 'MASTER' && !pertenceEmpresa(req.user?.empresa, empresa)) {
+      return res.status(403).json({ sucesso: false, erro: 'Acesso não autorizado.' });
+    }
+    // Verificar reenvio: se já respondeu nos últimos 90 dias não reenvia
+    if (nome_cliente && id_manifestacao) {
+      const tokens = await lerAba('PESQUISA_TOKENS', 2000).catch(()=>[]);
+      const noventa = new Date(); noventa.setDate(noventa.getDate()-90);
+      const recent = tokens.find(t => t.ID_MANIFESTACAO === id_manifestacao && t.STATUS === 'RESPONDIDO' && new Date(t.DATA_RESPOSTA||0) > noventa);
+      if (recent) return res.status(409).json({ sucesso: false, erro: 'Cliente já respondeu nos últimos 90 dias.', token: recent.TOKEN });
+    }
+    await garantirAbaComCabecalhos('PESQUISA_TOKENS', ['TOKEN','EMPRESA','NOME_CLIENTE','EMAIL_CLIENTE','ID_MANIFESTACAO','STATUS','CRIADO_EM','EXPIRA_EM','DATA_ABERTURA','DATA_RESPOSTA','CRIADO_POR']);
+    const token = _gerarTokenPesquisa();
+    const expira = new Date(); expira.setDate(expira.getDate() + Number(dias_validade));
+    await appendObjeto('PESQUISA_TOKENS', {
+      TOKEN: token, EMPRESA: empresa, NOME_CLIENTE: nome_cliente||'', EMAIL_CLIENTE: req.body.email_cliente||'',
+      ID_MANIFESTACAO: id_manifestacao||'', STATUS: 'ENVIADO',
+      CRIADO_EM: new Date().toISOString(), EXPIRA_EM: expira.toISOString(),
+      DATA_ABERTURA: '', DATA_RESPOSTA: '', CRIADO_POR: req.user?.usuario||'',
+    });
+    invalidarCacheAba('PESQUISA_TOKENS');
+    const link = `${req.protocol}://${req.get('host')}/pesquisa/${token}`;
+    res.json({ sucesso: true, token, link, expira: expira.toISOString() });
+  } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e,'gerar-token-pesquisa') }); }
+});
+
+// Listar tokens de pesquisa
+app.get('/api/pesquisas/tokens', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req, res) => {
+  try {
+    await garantirAbaComCabecalhos('PESQUISA_TOKENS', ['TOKEN','EMPRESA','NOME_CLIENTE','EMAIL_CLIENTE','ID_MANIFESTACAO','STATUS','CRIADO_EM','EXPIRA_EM','DATA_ABERTURA','DATA_RESPOSTA','CRIADO_POR']);
+    const rows = await lerAba('PESQUISA_TOKENS', 2000);
+    const _pf = perfilCanonico(req.user?.perfil||'');
+    const scope = _pf === 'MASTER' ? null : (req.user?.empresa||null);
+    const host = `${req.protocol}://${req.get('host')}`;
+    const itens = rows
+      .filter(r => !scope || pertenceEmpresa(scope, r.EMPRESA||''))
+      .map(r => ({ ...r, link: `${host}/pesquisa/${r.TOKEN}`, expirado: _tokenExpirado(r) }));
+    res.json({ sucesso: true, total: itens.length, itens });
+  } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e,'listar-tokens') }); }
+});
+
+// Marcar token como aberto (frontend público chama ao carregar)
+app.post('/api/pesquisas/tokens/:token/abrir', async (req, res) => {
+  try {
+    const rows = await lerAba('PESQUISA_TOKENS', 2000).catch(()=>[]);
+    const idx = rows.findIndex(r => r.TOKEN === req.params.token);
+    if (idx < 0) return res.status(404).json({ sucesso: false });
+    const row = rows[idx];
+    if (row.STATUS === 'ENVIADO') {
+      await atualizarPorID('PESQUISA_TOKENS', row.TOKEN, { STATUS: 'ABERTO', DATA_ABERTURA: new Date().toISOString() }, ['TOKEN']);
+      invalidarCacheAba('PESQUISA_TOKENS');
+    }
+    res.json({ sucesso: true });
+  } catch(e) { res.json({ sucesso: false }); }
+});
+
+// Rota pública por token
+app.get('/pesquisa/:token', async (req, res) => {
+  const token = String(req.params.token||'').replace(/[^A-Za-z0-9_\-]/g,'');
+  if (token.length < 6) return res.redirect('/');
+  // Tokens curtos como 'chiacchio','plaschio','tubahia' => legado
+  if (['chiacchio','plaschio','tubahia'].includes(token.toLowerCase())) {
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    return res.send(_pesquisaPublicaHTML(token.toLowerCase()));
+  }
+  // Token longo: busca no Sheets
+  try {
+    const rows = await lerAba('PESQUISA_TOKENS', 2000).catch(()=>[]);
+    const row = rows.find(r => r.TOKEN === token);
+    if (!row) return res.status(404).send('<html><body style="font-family:sans-serif;text-align:center;padding:40px"><h2>Link inválido</h2><p>Este link de pesquisa não existe.</p></body></html>');
+    if (_tokenExpirado(row)) return res.status(410).send('<html><body style="font-family:sans-serif;text-align:center;padding:40px"><h2>Link expirado</h2><p>Este link de pesquisa expirou.</p></body></html>');
+    if (row.STATUS === 'RESPONDIDO') return res.send('<html><body style="font-family:sans-serif;text-align:center;padding:40px"><h2>Pesquisa já respondida</h2><p>Sua resposta já foi registrada. Obrigado!</p></body></html>');
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(_pesquisaTokenHTML(token, row.EMPRESA||'', row.NOME_CLIENTE||''));
+  } catch(e) {
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(_pesquisaTokenHTML(token, '', ''));
+  }
+});
+
+// Salvar resposta via token
+app.post('/api/pesquisas/resposta-token', async (req, res) => {
+  try {
+    const { token, ...body } = req.body || {};
+    if (!token) return res.status(400).json({ sucesso: false, erro: 'Token obrigatório.' });
+    const rows = await lerAba('PESQUISA_TOKENS', 2000).catch(()=>[]);
+    const idx = rows.findIndex(r => r.TOKEN === token);
+    if (idx < 0) return res.status(404).json({ sucesso: false, erro: 'Token não encontrado.' });
+    const row = rows[idx];
+    if (_tokenExpirado(row)) return res.status(410).json({ sucesso: false, erro: 'Token expirado.' });
+    if (row.STATUS === 'RESPONDIDO') return res.status(409).json({ sucesso: false, erro: 'Pesquisa já respondida.' });
+    const aba = 'PESQUISA_RESPOSTAS';
+    await garantirAbaComCabecalhos(aba, ['DATA','EMPRESA','NOME','EMPRESA_CLIENTE','NPS','QUALIDADE_PRODUTO','PRAZO_ENTREGA','ATENDIMENTO','MOTIVO_COMPRA','COMENTARIO','TOKEN','ID_MANIFESTACAO','IP']);
+    const ip = req.ip || req.headers['x-forwarded-for'] || '';
+    await appendObjeto(aba, {
+      DATA: new Date().toISOString(), EMPRESA: row.EMPRESA||body.empresa||'',
+      NOME: body.nome || row.NOME_CLIENTE || '',
+      EMPRESA_CLIENTE: body.empresa_cliente || '',
+      NPS: body.nps || '', QUALIDADE_PRODUTO: body.qualidade_produto || '',
+      PRAZO_ENTREGA: body.prazo_entrega || '', ATENDIMENTO: body.atendimento || '',
+      MOTIVO_COMPRA: body.motivo_compra || '', COMENTARIO: body.comentario || '',
+      TOKEN: token, ID_MANIFESTACAO: row.ID_MANIFESTACAO || '', IP: ip,
+    });
+    invalidarCacheAba(aba);
+    await atualizarPorID('PESQUISA_TOKENS', token, { STATUS: 'RESPONDIDO', DATA_RESPOSTA: new Date().toISOString() }, ['TOKEN']);
+    invalidarCacheAba('PESQUISA_TOKENS');
+    // Auto-flagging: nota NPS ou qualquer critério ≤ 6
+    const NOTA_CRITICA = Number(process.env.PESQUISA_NOTA_CRITICA || 6);
+    const notas = [body.nps, body.qualidade_produto, body.prazo_entrega, body.atendimento].map(n=>Number(n||0)).filter(n=>n>0);
+    const baixa = notas.some(n => n <= NOTA_CRITICA);
+    if (baixa) {
+      await garantirAbaComCabecalhos('PESQUISA_OCORRENCIAS', ['ID_OCP','TOKEN','EMPRESA','DATA','NPS','STATUS','DECISAO','JUSTIFICATIVA','ID_MANIFESTACAO_GERADA','ANALISTA','DATA_DECISAO']);
+      const idOcp = 'OCP-' + Date.now();
+      await appendObjeto('PESQUISA_OCORRENCIAS', {
+        ID_OCP: idOcp, TOKEN: token, EMPRESA: row.EMPRESA||'',
+        DATA: new Date().toISOString(), NPS: body.nps||'',
+        STATUS: 'PENDENTE', DECISAO: '', JUSTIFICATIVA: '',
+        ID_MANIFESTACAO_GERADA: '', ANALISTA: '', DATA_DECISAO: '',
+      });
+      invalidarCacheAba('PESQUISA_OCORRENCIAS');
+    }
+    res.json({ sucesso: true, flagrada: baixa });
+  } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e,'resposta-token') }); }
+});
+
+// Listar OCPs (Ocorrências de Pesquisa)
+app.get('/api/pesquisas/ocorrencias', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','GESTOR SAC'), async (req, res) => {
+  try {
+    await garantirAbaComCabecalhos('PESQUISA_OCORRENCIAS', ['ID_OCP','TOKEN','EMPRESA','DATA','NPS','STATUS','DECISAO','JUSTIFICATIVA','ID_MANIFESTACAO_GERADA','ANALISTA','DATA_DECISAO']);
+    const rows = await lerAba('PESQUISA_OCORRENCIAS', 2000);
+    const _pf = perfilCanonico(req.user?.perfil||'');
+    const scope = _pf === 'MASTER' ? null : (req.user?.empresa||null);
+    const itens = rows.filter(r => !scope || pertenceEmpresa(scope, r.EMPRESA||''));
+    // Juntar dados da resposta
+    const respostas = await lerAba('PESQUISA_RESPOSTAS', 2000).catch(()=>[]);
+    const enriched = itens.map(ocp => {
+      const resp = respostas.find(r => r.TOKEN === ocp.TOKEN);
+      return { ...ocp, resposta: resp || null };
+    });
+    res.json({ sucesso: true, total: enriched.length, itens: enriched });
+  } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e,'listar-ocps') }); }
+});
+
+// Registrar decisão em OCP
+app.post('/api/pesquisas/ocorrencias/:id/decisao', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req, res) => {
+  try {
+    const { decisao, justificativa } = req.body || {};
+    if (!['OCP','MANIFESTACAO','NENHUM'].includes(decisao)) return res.status(400).json({ sucesso: false, erro: 'Decisão inválida. Use OCP, MANIFESTACAO ou NENHUM.' });
+    const rows = await lerAba('PESQUISA_OCORRENCIAS', 2000);
+    const ocp = rows.find(r => r.ID_OCP === req.params.id);
+    if (!ocp) return res.status(404).json({ sucesso: false, erro: 'OCP não encontrada.' });
+    const _pf = perfilCanonico(req.user?.perfil||'');
+    if (_pf !== 'MASTER' && !pertenceEmpresa(req.user?.empresa, ocp.EMPRESA||'')) {
+      return res.status(403).json({ sucesso: false, erro: 'Acesso não autorizado.' });
+    }
+    await atualizarPorID('PESQUISA_OCORRENCIAS', ocp.ID_OCP, {
+      STATUS: 'TRATADA', DECISAO: decisao, JUSTIFICATIVA: justificativa||'',
+      ANALISTA: req.user?.usuario||'', DATA_DECISAO: new Date().toISOString(),
+    }, ['ID_OCP']);
+    invalidarCacheAba('PESQUISA_OCORRENCIAS');
+    res.json({ sucesso: true });
+  } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e,'decisao-ocp') }); }
+});
+
+// Questionário: obter versão publicada e rascunhos
+app.get('/api/pesquisas/questionario', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','GESTOR SAC'), async (req, res) => {
+  try {
+    await garantirAbaComCabecalhos('PESQUISA_QUESTIONARIO', ['ID_VERSAO','STATUS','CRIADO_EM','PUBLICADO_EM','CRIADO_POR','PERGUNTAS_JSON']);
+    const rows = await lerAba('PESQUISA_QUESTIONARIO', 100);
+    const publicada = rows.filter(r => r.STATUS === 'PUBLICADA').sort((a,b)=>new Date(b.PUBLICADO_EM||0)-new Date(a.PUBLICADO_EM||0))[0] || null;
+    const rascunho = rows.filter(r => r.STATUS === 'RASCUNHO').sort((a,b)=>new Date(b.CRIADO_EM||0)-new Date(a.CRIADO_EM||0))[0] || null;
+    const parse = (r) => r ? { ...r, perguntas: (() => { try { return JSON.parse(r.PERGUNTAS_JSON||'[]'); } catch(e) { return []; } })() } : null;
+    res.json({ sucesso: true, publicada: parse(publicada), rascunho: parse(rascunho) });
+  } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e,'get-questionario') }); }
+});
+
+// Questionário: salvar rascunho ou publicar
+app.post('/api/pesquisas/questionario', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req, res) => {
+  try {
+    const { perguntas, acao = 'RASCUNHO' } = req.body || {};
+    if (!Array.isArray(perguntas) || perguntas.length === 0) return res.status(400).json({ sucesso: false, erro: 'perguntas obrigatório.' });
+    if (!['RASCUNHO','PUBLICADA'].includes(acao)) return res.status(400).json({ sucesso: false, erro: 'acao deve ser RASCUNHO ou PUBLICADA.' });
+    await garantirAbaComCabecalhos('PESQUISA_QUESTIONARIO', ['ID_VERSAO','STATUS','CRIADO_EM','PUBLICADO_EM','CRIADO_POR','PERGUNTAS_JSON']);
+    const idVersao = 'QV-' + Date.now();
+    await appendObjeto('PESQUISA_QUESTIONARIO', {
+      ID_VERSAO: idVersao, STATUS: acao,
+      CRIADO_EM: new Date().toISOString(),
+      PUBLICADO_EM: acao === 'PUBLICADA' ? new Date().toISOString() : '',
+      CRIADO_POR: req.user?.usuario||'',
+      PERGUNTAS_JSON: JSON.stringify(perguntas),
+    });
+    invalidarCacheAba('PESQUISA_QUESTIONARIO');
+    await registrarAuditoria(req.user?.usuario||'sistema', `QUESTIONARIO_${acao}`, null, 'PESQUISA_QUESTIONARIO', null, { id: idVersao });
+    res.json({ sucesso: true, id: idVersao, status: acao });
+  } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e,'save-questionario') }); }
+});
+
+// Pesquisa HTML pública por token (página nova com campos estendidos)
+function _pesquisaTokenHTML(token, empresa, nomeCliente) {
+  const empresaDisplay = _empresaDisplay(empresa);
+  const logoMap = { CHIACCHIO:'logo-chiacchio-embalagens.svg', PLASCHIO:'logo-plaschio.svg', TUBAHIA:'logo-tubahia.svg' };
+  const cod = empresaCanonica(empresa||'');
+  const logo = logoMap[cod] ? `/assets/${logoMap[cod]}` : '';
+  return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pesquisa de Satisfação${empresaDisplay ? ' — '+empresaDisplay : ''}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#F5F5F5;color:#1F1F1F;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:24px 16px 48px}
+.card{background:#fff;border-radius:16px;box-shadow:0 2px 16px rgba(0,0,0,.09);max-width:560px;width:100%;padding:32px 28px 36px}
+.logo-wrap{text-align:center;margin-bottom:20px}
+.logo-wrap img{max-height:48px;max-width:200px}
+.co-name{font-size:13px;font-weight:600;color:#545252;text-align:center;margin-top:6px}
+h2{font-size:18px;font-weight:700;margin-bottom:6px}
+.sub{font-size:13.5px;color:#545252;margin-bottom:24px;line-height:1.5}
+.q-label{font-size:13px;font-weight:700;margin-bottom:8px;line-height:1.4}
+.q-block{margin-bottom:24px}
+.nps-row{display:flex;gap:4px;flex-wrap:wrap}
+.nps-btn{flex:1;min-width:36px;height:44px;border:2px solid #E4E4E4;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;background:#fff;transition:all .15s;font-family:inherit}
+.nps-btn.sel-bad{background:#C70602;color:#fff;border-color:#C70602}
+.nps-btn.sel-mid{background:#D9A400;color:#fff;border-color:#D9A400}
+.nps-btn.sel-ok{background:#1E6B3A;color:#fff;border-color:#1E6B3A}
+.nps-labels{display:flex;justify-content:space-between;font-size:10.5px;color:#8A8888;margin-top:4px}
+.stars-row{display:flex;gap:6px}
+.star{width:40px;height:40px;border:2px solid #E4E4E4;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;background:#fff;transition:all .15s;font-family:inherit}
+.star.sel{background:#C70602;color:#fff;border-color:#C70602}
+textarea{width:100%;border:1.5px solid #D6D6D6;border-radius:8px;padding:10px 12px;font-size:13.5px;line-height:1.5;resize:vertical;min-height:80px;font-family:inherit;color:#1F1F1F}
+.inp{width:100%;border:1.5px solid #D6D6D6;border-radius:8px;padding:10px 12px;font-size:13.5px;font-family:inherit;color:#1F1F1F}
+.motivo-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.motivo-btn{border:2px solid #E4E4E4;border-radius:8px;padding:10px 12px;cursor:pointer;background:#fff;font-size:12.5px;font-weight:600;text-align:left;font-family:inherit;transition:all .15s}
+.motivo-btn.sel{border-color:#C70602;background:#FFF8F8;color:#A80502}
+.btn-enviar{width:100%;background:#C70602;color:#fff;border:0;border-radius:10px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:8px}
+.btn-enviar:hover{background:#A80502}
+.prog-bar{width:100%;height:4px;background:#EFEFEF;border-radius:2px;margin-bottom:24px}
+.prog-fill{height:100%;background:#C70602;border-radius:2px;transition:width .3s}
+.success-icon{font-size:48px;text-align:center;margin-bottom:12px}
+.success-msg{text-align:center}
+.err{color:#A80502;font-size:12px;margin-top:4px}
+@media(max-width:480px){.card{padding:24px 18px}.motivo-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="card" id="card">
+  ${logo ? `<div class="logo-wrap"><img src="${logo}" alt="${empresaDisplay}"><div class="co-name">${empresaDisplay}</div></div>` : `<div class="logo-wrap"><div class="co-name" style="font-size:16px;font-weight:700">${empresaDisplay||'Pesquisa de Satisfação'}</div></div>`}
+  <h2>Como foi a sua experiência?</h2>
+  <p class="sub">Sua opinião é muito importante para nós. Leva menos de 2 minutos.</p>
+  <div class="prog-bar"><div class="prog-fill" id="prog" style="width:10%"></div></div>
+  <form id="form-pesquisa" onsubmit="enviar(event)">
+    <input type="hidden" id="f-token" value="${token}">
+    <input type="hidden" id="f-empresa" value="${empresa}">
+
+    <div class="q-block" id="qb-nome">
+      <div class="q-label">Seu nome ou empresa <span style="color:#8A8888;font-weight:400">(opcional)</span></div>
+      <input class="inp" id="f-nome" placeholder="Ex: João Silva / Empresa ABC" value="${nomeCliente}" oninput="progAtualiza()">
+    </div>
+
+    <div class="q-block">
+      <div class="q-label">Em uma escala de 0 a 10, qual a probabilidade de você nos recomendar a um amigo ou colega?</div>
+      <div class="nps-row" id="nps-row"></div>
+      <div class="nps-labels"><span>Muito improvável</span><span>Muito provável</span></div>
+      <div class="err" id="err-nps" style="display:none">Selecione uma nota</div>
+    </div>
+
+    <div class="q-block">
+      <div class="q-label">Qualidade dos produtos (1 a 10)</div>
+      <div class="stars-row" id="stars-qual"></div>
+      <div class="err" id="err-qual" style="display:none">Selecione uma nota</div>
+    </div>
+
+    <div class="q-block">
+      <div class="q-label">Prazo de entrega (1 a 10)</div>
+      <div class="stars-row" id="stars-prazo"></div>
+    </div>
+
+    <div class="q-block">
+      <div class="q-label">Atendimento (1 a 10)</div>
+      <div class="stars-row" id="stars-atend"></div>
+    </div>
+
+    <div class="q-block">
+      <div class="q-label">Principal motivo da compra</div>
+      <div class="motivo-grid" id="motivo-grid">
+        ${['Qualidade','Preço','Prazo de entrega','Parceria','Indicação','Outro'].map(m=>`<button type="button" class="motivo-btn" onclick="selMotivo(this,'${m}')">${m}</button>`).join('')}
+      </div>
+    </div>
+
+    <div class="q-block">
+      <div class="q-label">Comentário <span style="color:#8A8888;font-weight:400">(opcional)</span></div>
+      <textarea id="f-comentario" placeholder="Sugestões, elogios ou críticas..." oninput="progAtualiza()"></textarea>
+    </div>
+
+    <button class="btn-enviar" type="submit">Enviar pesquisa →</button>
+  </form>
+</div>
+<script>
+let npsVal = null, qualVal = null, prazoVal = null, atendVal = null, motivoVal = null;
+
+// Render NPS 0-10
+const npsRow = document.getElementById('nps-row');
+for (let i=0;i<=10;i++) {
+  const b = document.createElement('button'); b.type='button'; b.className='nps-btn'; b.textContent=i;
+  b.onclick = () => { npsVal=i; document.querySelectorAll('.nps-btn').forEach(x=>x.className='nps-btn');
+    const cls = i<=6?'sel-bad':i<=8?'sel-mid':'sel-ok'; b.className='nps-btn '+cls; progAtualiza(); };
+  npsRow.appendChild(b);
+}
+
+// Render stars 1-10
+function renderStars(id, setter) {
+  const el = document.getElementById(id);
+  for (let i=1;i<=10;i++) {
+    const b = document.createElement('button'); b.type='button'; b.className='star'; b.textContent=i;
+    b.onclick = () => { setter(i); el.querySelectorAll('.star').forEach((x,j)=>x.className='star'+(j<i?' sel':'')); progAtualiza(); };
+    el.appendChild(b);
+  }
+}
+renderStars('stars-qual', v=>qualVal=v);
+renderStars('stars-prazo', v=>prazoVal=v);
+renderStars('stars-atend', v=>atendVal=v);
+
+function selMotivo(btn, val) { motivoVal=val; document.querySelectorAll('.motivo-btn').forEach(x=>x.classList.remove('sel')); btn.classList.add('sel'); progAtualiza(); }
+
+function progAtualiza() {
+  const pcts = [npsVal!==null, qualVal!==null, prazoVal!==null, atendVal!==null, motivoVal!==null,
+    document.getElementById('f-comentario').value.trim().length>0];
+  const done = pcts.filter(Boolean).length;
+  document.getElementById('prog').style.width = (10 + done*13) + '%';
+}
+
+// Mark as opened
+fetch('/api/pesquisas/tokens/${token}/abrir', {method:'POST'}).catch(()=>{});
+
+async function enviar(e) {
+  e.preventDefault();
+  if (npsVal===null) { document.getElementById('err-nps').style.display=''; return; }
+  if (qualVal===null) { document.getElementById('err-qual').style.display=''; return; }
+  const btn = document.querySelector('.btn-enviar'); btn.disabled=true; btn.textContent='Enviando...';
+  try {
+    const r = await fetch('/api/pesquisas/resposta-token', { method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ token: document.getElementById('f-token').value,
+        empresa: document.getElementById('f-empresa').value,
+        nome: document.getElementById('f-nome').value,
+        nps: npsVal, qualidade_produto: qualVal, prazo_entrega: prazoVal, atendimento: atendVal,
+        motivo_compra: motivoVal||'', comentario: document.getElementById('f-comentario').value }) });
+    const j = await r.json();
+    if (j.sucesso) {
+      document.getElementById('card').innerHTML = '<div class="success-icon">✓</div><div class="success-msg"><h2>Obrigado!</h2><p class="sub" style="margin-top:8px">Sua resposta foi registrada com sucesso. Valorizamos muito sua opinião.</p></div>';
+    } else { btn.disabled=false; btn.textContent='Enviar pesquisa →'; alert(j.erro||'Erro ao enviar.'); }
+  } catch(ex) { btn.disabled=false; btn.textContent='Enviar pesquisa →'; alert('Erro de conexão. Tente novamente.'); }
+}
+</script>
+</body>
+</html>`;
+}
+
 app.get('/api/tipos', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
   try { const data=await lerAba('TIPOS_RECLAMACAO',200).catch(()=>[]); res.json({sucesso:true,total:data.length,itens:data}); }
-  catch (e) { res.status(500).json({sucesso:false,erro:e.message,dados:[]}); }
+  catch (e) { res.status(500).json({sucesso:false,erro:erroSeguro(e),dados:[]}); }
 });
 app.get('/api/sla', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
   try {
@@ -2861,11 +3514,11 @@ app.get('/api/sla', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','A
     }
     const data=await lerAba('SLA_ESCALONAMENTO',50).catch(()=>[]);
     res.json({sucesso:true,total:data.length,itens:data});
-  } catch (e) { res.status(500).json({sucesso:false,erro:e.message,dados:[]}); }
+  } catch (e) { res.status(500).json({sucesso:false,erro:erroSeguro(e),dados:[]}); }
 });
 app.get('/api/validacoes', requerPerfil('MASTER','ANALISTA SAC'), async (req, res) => {
   try { const data=await lerAba('HISTORICO_VALIDACOES',1000).catch(()=>[]); res.json({sucesso:true,total:data.length,itens:data}); }
-  catch (e) { res.status(500).json({sucesso:false,erro:e.message,dados:[]}); }
+  catch (e) { res.status(500).json({sucesso:false,erro:erroSeguro(e),dados:[]}); }
 });
 
 
@@ -2991,7 +3644,7 @@ app.post('/api/caso-similar/usar-referencia', requerPerfil('MASTER','ANALISTA SA
 
 app.get('/api/auditoria', requerPerfil('MASTER'), async (req, res) => {
   try { const data=await lerAba('LOG_SISTEMA',1000); res.json({sucesso:true,total:data.length,itens:data}); }
-  catch (e) { res.status(500).json({sucesso:false,erro:e.message,dados:[]}); }
+  catch (e) { res.status(500).json({sucesso:false,erro:erroSeguro(e),dados:[]}); }
 });
 
 // ===== LEITOR GENÉRICO DE ABAS (Central de Dados) =====
@@ -3015,7 +3668,7 @@ app.get('/api/planilha/abas', requerPerfil('MASTER','ANALISTA SAC'), async (req,
     const meta = await sheets.spreadsheets.get({ spreadsheetId: process.env.SPREADSHEET_ID });
     const todas = (meta.data.sheets||[]).map(s=>({ nome: s.properties.title, linhas: s.properties.gridProperties?.rowCount||0, colunas: s.properties.gridProperties?.columnCount||0 }));
     res.json({ sucesso:true, abas: todas });
-  } catch(e) { res.status(500).json({ sucesso:false, erro:e.message, abas:[] }); }
+  } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e), abas:[] }); }
 });
 
 // Leitura de aba com query param (suporta nomes com acentos/espaços)
@@ -3027,7 +3680,7 @@ app.get('/api/planilha/ler', requerPerfil('MASTER','ANALISTA SAC'), async (req,r
     const max = Math.min(parseInt(req.query.max||'2000',10), 5000);
     const data = await lerAba(nome, max);
     res.json({ sucesso:true, aba:nome, total:data.length, itens:data });
-  } catch(e) { res.status(500).json({ sucesso:false, erro:e.message, itens:[] }); }
+  } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e), itens:[] }); }
 });
 
 app.get('/api/planilha/:aba', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
@@ -3036,7 +3689,7 @@ app.get('/api/planilha/:aba', requerPerfil('MASTER','ANALISTA SAC'), async (req,
     const max = Math.min(parseInt(req.query.max||'2000',10), 5000);
     const data = await lerAba(aba, max);
     res.json({ sucesso:true, aba, total:data.length, itens:data });
-  } catch(e) { res.status(500).json({ sucesso:false, erro:e.message, itens:[] }); }
+  } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e), itens:[] }); }
 });
 
 app.get('/api/planilha/:aba/cabecalhos', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
@@ -3044,7 +3697,7 @@ app.get('/api/planilha/:aba/cabecalhos', requerPerfil('MASTER','ANALISTA SAC'), 
     const aba = req.params.aba.toUpperCase().replace(/[^A-Z0-9_]/g,'');
     const headers = await obterCabecalhos(aba).catch(()=>[]);
     res.json({ sucesso:true, aba, cabecalhos: headers });
-  } catch(e) { res.status(500).json({ sucesso:false, erro:e.message, cabecalhos:[] }); }
+  } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e), cabecalhos:[] }); }
 });
 
 app.post('/api/planilha/:aba/importar', requerPerfil('MASTER'), async (req,res)=>{
@@ -3070,7 +3723,7 @@ app.post('/api/planilha/:aba/importar', requerPerfil('MASTER'), async (req,res)=
     }
     await registrarAuditoria(req.user.usuario,'IMPORTOU_DADOS_PLANILHA',`${criados} linhas`,aba,null,{aba,total:criados});
     res.json({ sucesso:true, criados, aba });
-  } catch(e) { res.status(500).json({ sucesso:false, erro:e.message }); }
+  } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
 
 app.get('/api/log-sistema', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req,res)=>{
@@ -3088,7 +3741,7 @@ app.get('/api/log-sistema', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), a
 // ===== USUÁRIOS =====
 app.get('/api/usuarios', requerPerfil('MASTER'), async (req,res)=>{
   try{ const itens=await carregarUsuarios(); res.json({sucesso:true,total:itens.length,itens:itens.map(usuarioPublico)}); }
-  catch(e){res.status(500).json({sucesso:false,erro:e.message,itens:[]});}
+  catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e),itens:[]});}
 });
 app.post('/api/usuarios', requerPerfil('MASTER'), async (req,res)=>{
   try{
@@ -3100,7 +3753,7 @@ app.post('/api/usuarios', requerPerfil('MASTER'), async (req,res)=>{
     await appendObjeto('USUARIOS',obj);
     await registrarAuditoria(req.user.usuario,'CRIOU_USUARIO',id,'USUARIOS',null,{perfil:obj.PERFIL});
     res.json({sucesso:true,usuario:usuarioPublico(obj)});
-  }catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+  }catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
 app.patch('/api/usuarios/:id', requerPerfil('MASTER'), async (req,res)=>{
   try{
@@ -3119,7 +3772,7 @@ app.patch('/api/usuarios/:id', requerPerfil('MASTER'), async (req,res)=>{
     await atualizarPorID('USUARIOS',req.params.id,dados,['ID_USUARIO','USUARIO','EMAIL']);
     await registrarAuditoria(req.user.usuario,'ATUALIZOU_USUARIO',req.params.id,'USUARIOS',null,{campos:Object.keys(b)});
     res.json({sucesso:true});
-  }catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+  }catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
 
 // ===== APROVADORES =====
@@ -3127,7 +3780,7 @@ app.get('/api/aprovadores', requerPerfil('MASTER','APROVADOR'), async (req,res)=
   try {
     const [a,c,ac]=await Promise.all([lerAba('APROVADORES',500).catch(()=>[]),lerAba('COMPETENCIAS',500).catch(()=>[]),lerAba('APROVADOR_COMPETENCIAS',2000).catch(()=>[])]);
     res.json({sucesso:true,aprovadores:a,competencias:c,relacionamentos:ac});
-  } catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+  } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
 app.get('/api/aprovadores/:usuario/pendencias', requerPerfil('APROVADOR','MASTER'), async (req,res)=>{
   try {
@@ -3148,7 +3801,7 @@ app.get('/api/aprovadores/:usuario/pendencias', requerPerfil('APROVADOR','MASTER
     const sac=mans.filter(m=>!['ENCERRADA','CONCLUÍDA','CONCLUIDA','CANCELADA','REJEITADA'].includes(String(m.STATUS||'').toUpperCase())&&(m.STATUS==='AGUARDANDO_APROVAÇÃO'||m.STATUS==='AGUARDANDO_DECISÃO'||m.APROVACAO_NECESSARIA==='SIM'));
     const sugestoes=(await lerAba('SUGESTOES_APROVADOR',5000).catch(()=>[])).filter(x=>n(x.ID_APROVADOR)===n(apId));
     res.json({sucesso:true,usuario,aprovador:ap,competencias:compNames,empresas,rnc,sac,sugestoes,totais:{rnc:rnc.length,sac:sac.length,total:rnc.length+sac.length}});
-  } catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+  } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
 
 app.get('/api/setor/minhas-pendencias', requerPerfil('SETOR RESPONSÁVEL','MASTER'), async (req,res)=>{
@@ -3156,7 +3809,7 @@ app.get('/api/setor/minhas-pendencias', requerPerfil('SETOR RESPONSÁVEL','MASTE
     const rows=await lerAba('BANCO_RNC',5000); const setor=normalizarTexto(req.user.setor);
     const itens=rows.filter(r=>!['APROVADA','ENCERRADA','CANCELADA','REJEITADA'].includes(String(r.STATUS||'').toUpperCase())&&(!setor||normalizarTexto(r.SETOR||r.SETOR_ACAO)===setor));
     res.json({sucesso:true,total:itens.length,itens});
-  }catch(e){res.status(500).json({sucesso:false,erro:e.message,itens:[]});}
+  }catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e),itens:[]});}
 });
 
 // ===== ANEXOS =====
@@ -3216,13 +3869,13 @@ app.get('/api/manifestacoes/:id/analise', requerPerfil('MASTER','ANALISTA SAC','
       descricao: m.DESCRICAO || m.DESCRICAO_MANIFESTACAO,
     });
     res.json({ sucesso:true, analise });
-  } catch(e){ res.status(500).json({ sucesso:false, erro:e.message }); }
+  } catch(e){ res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
 
 // ===== SUGESTÕES APROVADOR =====
 app.get('/api/manifestacoes/:id/sugestoes', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req,res) => {
   try { const data=await lerAba('SUGESTOES_APROVADOR',5000); res.json({sucesso:true,itens:data.filter(x=>String(x.ID_MANIFESTACAO||'')===String(req.params.id))}); }
-  catch(e){ res.status(500).json({sucesso:false,erro:e.message,itens:[]}); }
+  catch(e){ res.status(500).json({sucesso:false,erro:erroSeguro(e),itens:[]}); }
 });
 app.post('/api/manifestacoes/:id/sugestoes', requerPerfil('MASTER','APROVADOR'), async (req,res) => {
   try {
@@ -3578,7 +4231,7 @@ app.get('/api/aprovadores-admin', requerPerfil('MASTER'), async (req,res)=>{
       lerAba('APROVADOR_COMPETENCIAS',2000).catch(()=>[]),
     ]);
     res.json({sucesso:true,aprovadores:ap,competencias:comp,relacionamentos:rel});
-  } catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+  } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
 
 // Criar aprovador (MASTER)
@@ -3592,7 +4245,7 @@ app.post('/api/aprovadores-admin', requerPerfil('MASTER'), async (req,res)=>{
     await appendObjeto('APROVADORES',obj);
     await registrarAuditoria(req.user.usuario,'APROVADOR_CRIADO',id,'APROVADORES','',JSON.stringify({nome,empresa,setor}));
     res.json({sucesso:true,aprovador:obj});
-  } catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+  } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
 
 // Atualizar aprovador (MASTER)
@@ -3605,7 +4258,7 @@ app.put('/api/aprovadores-admin/:id', requerPerfil('MASTER'), async (req,res)=>{
     if(!r) return res.status(404).json({sucesso:false,erro:'Aprovador não encontrado.'});
     await registrarAuditoria(req.user.usuario,'APROVADOR_ATUALIZADO',req.params.id,'APROVADORES','',JSON.stringify(dados));
     res.json({sucesso:true});
-  } catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+  } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
 
 // Listar competências
@@ -3614,7 +4267,7 @@ app.get('/api/competencias-lista', requerPerfil('MASTER','APROVADOR','ANALISTA S
     garantirAbaComCabecalhos('COMPETENCIAS', COMPETENCIAS_HEADERS).catch(()=>{});
     const comp = await lerAba('COMPETENCIAS',500).catch(()=>[]);
     res.json({sucesso:true,competencias:comp.filter(c=>c.STATUS!=='INATIVO')});
-  } catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+  } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
 
 // Criar competência (MASTER)
@@ -3627,7 +4280,7 @@ app.post('/api/competencias-lista', requerPerfil('MASTER'), async (req,res)=>{
     const obj = {ID_COMPETENCIA:id,NOME:nome,DESCRICAO:descricao||'',TIPO:tipo||'AMBOS',STATUS:'ATIVO',DATA_CRIACAO:new Date().toISOString()};
     await appendObjeto('COMPETENCIAS',obj);
     res.json({sucesso:true,competencia:obj});
-  } catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+  } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
 
 // Atribuir competência a aprovador (MASTER)
@@ -3640,7 +4293,7 @@ app.post('/api/aprovador-competencias', requerPerfil('MASTER'), async (req,res)=
     const obj = {ID:id,ID_APROVADOR:idAprovador,NOME_APROVADOR:nomeAprovador||'',ID_COMPETENCIA:idCompetencia,NOME_COMPETENCIA:nomeCompetencia||'',EMPRESA:empresa||'',STATUS:'ATIVO',DATA_ATRIBUICAO:new Date().toISOString()};
     await appendObjeto('APROVADOR_COMPETENCIAS',obj);
     res.json({sucesso:true,relacionamento:obj});
-  } catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+  } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
 
 // Remover atribuição de competência (MASTER)
@@ -3649,7 +4302,7 @@ app.delete('/api/aprovador-competencias/:id', requerPerfil('MASTER'), async (req
     const r = await atualizarPorID('APROVADOR_COMPETENCIAS',req.params.id,{STATUS:'INATIVO'},['ID']);
     if(!r) return res.status(404).json({sucesso:false,erro:'Relacionamento não encontrado.'});
     res.json({sucesso:true});
-  } catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+  } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
 
 // Listar regras de aprovação
@@ -3658,7 +4311,7 @@ app.get('/api/regras-aprovacao', requerPerfil('MASTER','ANALISTA SAC','APROVADOR
     garantirAbaComCabecalhos('REGRAS_APROVACAO', REGRAS_APROV_HEADERS).catch(()=>{});
     const regras = await lerAba('REGRAS_APROVACAO',500).catch(()=>[]);
     res.json({sucesso:true,regras});
-  } catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+  } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
 
 // Criar regra de aprovação (MASTER)
@@ -3671,7 +4324,7 @@ app.post('/api/regras-aprovacao', requerPerfil('MASTER'), async (req,res)=>{
     const obj = {ID_REGRA:id,NOME:nome,TIPO_ENTIDADE:tipoEntidade,DESCRICAO_CONDICAO:descricaoCondicao||'',COMPETENCIA_NECESSARIA:competenciaNecessaria,PRIORIDADE:prioridade||'NORMAL',STATUS:'ATIVO',DATA_CRIACAO:new Date().toISOString(),USUARIO_CRIACAO:req.user.usuario};
     await appendObjeto('REGRAS_APROVACAO',obj);
     res.json({sucesso:true,regra:obj});
-  } catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+  } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
 
 // Atualizar regra (MASTER)
@@ -3683,7 +4336,7 @@ app.put('/api/regras-aprovacao/:id', requerPerfil('MASTER'), async (req,res)=>{
     const r = await atualizarPorID('REGRAS_APROVACAO',req.params.id,dados,['ID_REGRA']);
     if(!r) return res.status(404).json({sucesso:false,erro:'Regra não encontrada.'});
     res.json({sucesso:true});
-  } catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+  } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
 
 // Listar fila de aprovação (filtrada por perfil e empresa)
@@ -3703,7 +4356,7 @@ app.get('/api/fila-aprovacao', middlewareEscopoEmpresa(), requerPerfil('MASTER',
     }
     const pendentes = itens.filter(x=>x.STATUS==='PENDENTE').length;
     res.json({sucesso:true,total:itens.length,pendentes,itens});
-  } catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+  } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
 
 // Enviar item para aprovação (ANALISTA SAC, MASTER)
@@ -3725,7 +4378,7 @@ app.post('/api/fila-aprovacao', requerPerfil('MASTER','ANALISTA SAC'), async (re
     }
     await registrarAuditoria(req.user.usuario,'ENVIADO_PARA_APROVACAO',idEntidade,'FILA_APROVACAO','',JSON.stringify({tipoEntidade,competencia,nomeAprovador}));
     res.json({sucesso:true,fila:obj});
-  } catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+  } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
 
 // Decidir sobre item na fila (APROVADOR, MASTER)
@@ -3761,7 +4414,7 @@ app.post('/api/fila-aprovacao/:id/decidir', requerPerfil('APROVADOR','MASTER'), 
     }
     await registrarAuditoria(req.user.usuario,`APROVACAO_${decisao}`,item.ID_ENTIDADE,'FILA_APROVACAO',item.STATUS,JSON.stringify({decisao,observacoes}));
     res.json({sucesso:true,decisao,entidade:item.ID_ENTIDADE,novoStatus});
-  } catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+  } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
 
 // Histórico de aprovações
@@ -3773,7 +4426,7 @@ app.get('/api/historico-aprovacao', requerPerfil('MASTER','APROVADOR'), async (r
       itens = hist.filter(x => normalizarTexto(x.APROVADOR||'') === normalizarTexto(req.user.nome||req.user.usuario));
     }
     res.json({sucesso:true,total:itens.length,itens});
-  } catch(e){res.status(500).json({sucesso:false,erro:e.message});}
+  } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
 
 // ===== PORTAL FUNCIONÁRIO — ROTA PÚBLICA (SEM AUTENTICAÇÃO) =====
@@ -4589,10 +5242,23 @@ app.post('/api/matriz-conhecimento/:id/status', async (req, res) => {
   } catch (e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e,'mc-status') }); }
 });
 
+async function _mcVerificarEmpresa(req, res, matrizId) {
+  const empresaScope = _mcEmpresaScope(req.user);
+  if (!empresaScope) return true;
+  const matriz = await mcService.obterMatriz(matrizId);
+  if (!matriz) { res.status(404).json({ sucesso: false, erro: 'Matriz não encontrada.' }); return false; }
+  if (!pertenceEmpresa(empresaScope, matriz.EMPRESA || '')) {
+    res.status(403).json({ sucesso: false, erro: 'Acesso não autorizado para esta matriz.' });
+    return false;
+  }
+  return true;
+}
+
 // ITENS — adicionar
 app.post('/api/matriz-conhecimento/:id/itens', async (req, res) => {
   try {
     if (!podeMC(req.user?.perfil, 'editar')) return res.status(403).json({ sucesso: false, erro: 'Sem permissão.' });
+    if (!await _mcVerificarEmpresa(req, res, req.params.id)) return;
     const item = await mcService.adicionarItem(req.params.id, req.body, req.user.usuario);
     res.json({ sucesso: true, id: item.ID });
   } catch (e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e,'mc-item-add') }); }
@@ -4602,6 +5268,7 @@ app.post('/api/matriz-conhecimento/:id/itens', async (req, res) => {
 app.delete('/api/matriz-conhecimento/:id/itens/:itemId', async (req, res) => {
   try {
     if (!podeMC(req.user?.perfil, 'editar')) return res.status(403).json({ sucesso: false, erro: 'Sem permissão.' });
+    if (!await _mcVerificarEmpresa(req, res, req.params.id)) return;
     await mcService.removerItem(req.params.itemId, req.user.usuario);
     res.json({ sucesso: true });
   } catch (e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e,'mc-item-del') }); }
@@ -4611,6 +5278,7 @@ app.delete('/api/matriz-conhecimento/:id/itens/:itemId', async (req, res) => {
 app.post('/api/matriz-conhecimento/:id/evidencias', async (req, res) => {
   try {
     if (!podeMC(req.user?.perfil, 'editar')) return res.status(403).json({ sucesso: false, erro: 'Sem permissão.' });
+    if (!await _mcVerificarEmpresa(req, res, req.params.id)) return;
     const ev = await mcService.adicionarEvidencia(req.params.id, req.body);
     res.json({ sucesso: true, id: ev.ID });
   } catch (e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e,'mc-ev-add') }); }
@@ -4620,6 +5288,7 @@ app.post('/api/matriz-conhecimento/:id/evidencias', async (req, res) => {
 app.delete('/api/matriz-conhecimento/:id/evidencias/:evId', async (req, res) => {
   try {
     if (!podeMC(req.user?.perfil, 'editar')) return res.status(403).json({ sucesso: false, erro: 'Sem permissão.' });
+    if (!await _mcVerificarEmpresa(req, res, req.params.id)) return;
     await mcService.removerEvidencia(req.params.evId);
     res.json({ sucesso: true });
   } catch (e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e,'mc-ev-del') }); }
@@ -4629,6 +5298,7 @@ app.delete('/api/matriz-conhecimento/:id/evidencias/:evId', async (req, res) => 
 app.post('/api/matriz-conhecimento/:id/excecoes', async (req, res) => {
   try {
     if (!podeMC(req.user?.perfil, 'editar')) return res.status(403).json({ sucesso: false, erro: 'Sem permissão.' });
+    if (!await _mcVerificarEmpresa(req, res, req.params.id)) return;
     const ex = await mcService.adicionarExcecao(req.params.id, req.body);
     res.json({ sucesso: true, id: ex.ID });
   } catch (e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e,'mc-ex-add') }); }
@@ -4638,6 +5308,7 @@ app.post('/api/matriz-conhecimento/:id/excecoes', async (req, res) => {
 app.delete('/api/matriz-conhecimento/:id/excecoes/:exId', async (req, res) => {
   try {
     if (!podeMC(req.user?.perfil, 'editar')) return res.status(403).json({ sucesso: false, erro: 'Sem permissão.' });
+    if (!await _mcVerificarEmpresa(req, res, req.params.id)) return;
     await atualizarPorID('MC_EXCECOES', req.params.exId, { ATIVO: 'NÃO' }, ['ID']);
     res.json({ sucesso: true });
   } catch (e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e,'mc-ex-del') }); }
@@ -4792,7 +5463,7 @@ function requerModulo(modulo, nivelMinimo = NIVEIS.CONSULTA) {
       req._nivelModulo = nivel;
       req._permissoes = perms;
       next();
-    } catch(e) { res.status(500).json({sucesso:false,erro:e.message}); }
+    } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
   };
 }
 
@@ -4809,7 +5480,7 @@ function requerCompetencia(competencia) {
         return res.status(403).json({sucesso:false,erro:`Sem competência para ${competencia}.`});
       }
       next();
-    } catch(e) { res.status(500).json({sucesso:false,erro:e.message}); }
+    } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
   };
 }
 
@@ -4881,7 +5552,7 @@ app.post('/api/public/solicitar-acesso', async (req, res) => {
     await appendObjeto('SOLICITACOES_ACESSO', obj);
     await registrarAuditoriaAcesso(emailNorm, 'SOLICITACAO_CRIADA', '', empCod, '', 'PENDENTE', 'sistema');
     res.json({sucesso:true, id, mensagem:'Solicitação enviada. Aguarde aprovação do MASTER.'});
-  } catch(e) { res.status(500).json({sucesso:false,erro:e.message}); }
+  } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
 });
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -4894,7 +5565,7 @@ app.get('/api/admin/solicitacoes', requerPerfil('MASTER'), async (req, res) => {
     if (req.query.status) rows = rows.filter(r => r.STATUS===req.query.status.toUpperCase());
     if (req.query.empresa) rows = rows.filter(r => empresaCanonica(r.EMPRESA)===empresaCanonica(req.query.empresa));
     res.json({sucesso:true, total:rows.length, itens:rows});
-  } catch(e) { res.status(500).json({sucesso:false,erro:e.message}); }
+  } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
 });
 
 app.get('/api/admin/solicitacoes/:id', requerPerfil('MASTER'), async (req, res) => {
@@ -4903,7 +5574,7 @@ app.get('/api/admin/solicitacoes/:id', requerPerfil('MASTER'), async (req, res) 
     const item = rows.find(r => r.ID_SOLICITACAO===req.params.id);
     if (!item) return res.status(404).json({sucesso:false,erro:'Solicitação não encontrada.'});
     res.json({sucesso:true, item});
-  } catch(e) { res.status(500).json({sucesso:false,erro:e.message}); }
+  } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
 });
 
 app.post('/api/admin/solicitacoes/:id/rejeitar', requerPerfil('MASTER'), async (req, res) => {
@@ -4922,7 +5593,7 @@ app.post('/api/admin/solicitacoes/:id/rejeitar', requerPerfil('MASTER'), async (
     }, ['ID_SOLICITACAO']);
     await registrarAuditoriaAcesso(item.EMAIL, 'SOLICITACAO_REJEITADA', '', item.EMPRESA, 'PENDENTE', 'REJEITADA', req.user.usuario||'MASTER');
     res.json({sucesso:true, mensagem:'Solicitação rejeitada.'});
-  } catch(e) { res.status(500).json({sucesso:false,erro:e.message}); }
+  } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
 });
 
 // Aprovação: cria o usuário com STATUS=ATIVO e define permissões
@@ -5001,7 +5672,7 @@ app.post('/api/admin/solicitacoes/:id/aprovar', requerPerfil('MASTER'), async (r
     res.json({sucesso:true, idUsuario, login, mensagem:'Usuário criado e ativo.', senhaGerada: !senha?.trim() ? senhaFinal : undefined});
     // Envia e-mail com credenciais (fire-and-forget)
     enviarEmailAcesso({ para: item.EMAIL, nome: item.NOME, login, senha: senhaFinal, perfil: perfilNorm, empresa: empCod }).catch(()=>{});
-  } catch(e) { res.status(500).json({sucesso:false,erro:e.message}); }
+  } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
 });
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -5032,7 +5703,7 @@ app.get('/api/admin/usuarios', requerPerfil('MASTER'), async (req, res) => {
     if (req.query.status) lista=lista.filter(u=>(u.status||'').toUpperCase()===req.query.status.toUpperCase());
     if (req.query.setor) lista=lista.filter(u=>normalizarTexto(u.setor||'')===normalizarTexto(req.query.setor));
     res.json({sucesso:true, total:lista.length, itens:lista});
-  } catch(e) { res.status(500).json({sucesso:false,erro:e.message}); }
+  } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
 });
 
 app.get('/api/admin/usuarios/:id', requerPerfil('MASTER'), async (req, res) => {
@@ -5048,7 +5719,7 @@ app.get('/api/admin/usuarios/:id', requerPerfil('MASTER'), async (req, res) => {
       dataCriacao:u.DATA_CRIACAO||'', aprovadoPor:u.APROVADO_POR||'',
       ultimoAcesso:u.ULTIMO_ACESSO||'',
     }, permissoes:perms});
-  } catch(e) { res.status(500).json({sucesso:false,erro:e.message}); }
+  } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
 });
 
 app.patch('/api/admin/usuarios/:id/permissoes', requerPerfil('MASTER'), async (req, res) => {
@@ -5100,7 +5771,7 @@ app.patch('/api/admin/usuarios/:id/permissoes', requerPerfil('MASTER'), async (r
     invalidarCachePermissoes(u.EMAIL||u.USUARIO||u.ID_USUARIO);
     await registrarAuditoriaAcesso(u.EMAIL||u.USUARIO, 'PERMISSOES_ALTERADAS', JSON.stringify(modulosNiveis||{}), empresa||u.EMPRESA, JSON.stringify(anterior), JSON.stringify(updates), req.user.usuario||'MASTER');
     res.json({sucesso:true, mensagem:'Permissões atualizadas.'});
-  } catch(e) { res.status(500).json({sucesso:false,erro:e.message}); }
+  } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
 });
 
 app.post('/api/admin/usuarios/:id/ativar', requerPerfil('MASTER'), async (req, res) => {
@@ -5113,7 +5784,7 @@ app.post('/api/admin/usuarios/:id/ativar', requerPerfil('MASTER'), async (req, r
     _statusCache.delete(normalizarTexto(u.USUARIO||u.EMAIL||u.ID_USUARIO));
     await registrarAuditoriaAcesso(u.EMAIL||u.USUARIO, 'USUARIO_ATIVADO', '', u.EMPRESA, u.STATUS||'INATIVO', 'ATIVO', req.user.usuario||'MASTER');
     res.json({sucesso:true, mensagem:'Usuário ativado.'});
-  } catch(e) { res.status(500).json({sucesso:false,erro:e.message}); }
+  } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
 });
 
 app.post('/api/admin/usuarios/:id/desativar', requerPerfil('MASTER'), async (req, res) => {
@@ -5127,7 +5798,7 @@ app.post('/api/admin/usuarios/:id/desativar', requerPerfil('MASTER'), async (req
     _statusCache.delete(normalizarTexto(u.USUARIO||u.EMAIL||u.ID_USUARIO));
     await registrarAuditoriaAcesso(u.EMAIL||u.USUARIO, 'USUARIO_DESATIVADO', '', u.EMPRESA, u.STATUS||'ATIVO', 'INATIVO', req.user.usuario||'MASTER');
     res.json({sucesso:true, mensagem:'Usuário desativado. Acesso revogado imediatamente.'});
-  } catch(e) { res.status(500).json({sucesso:false,erro:e.message}); }
+  } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
 });
 
 app.get('/api/admin/auditoria-acesso', requerPerfil('MASTER','AUDITOR'), async (req, res) => {
@@ -5136,7 +5807,7 @@ app.get('/api/admin/auditoria-acesso', requerPerfil('MASTER','AUDITOR'), async (
     if (req.query.usuario) rows=rows.filter(r=>String(r.USUARIO_AFETADO||'').toLowerCase().includes(req.query.usuario.toLowerCase()));
     if (req.query.acao) rows=rows.filter(r=>r.ACAO===req.query.acao.toUpperCase());
     res.json({sucesso:true, total:rows.length, itens:rows.reverse()});
-  } catch(e) { res.status(500).json({sucesso:false,erro:e.message}); }
+  } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
 });
 
 // ── Permissões do usuário logado (para frontend) ──────────────────────────────
@@ -5154,7 +5825,7 @@ app.get('/api/auth/permissoes', async (req, res) => {
     }
     const cerebroPerms = permissoesService.CEREBRO_PERMISSOES_PADRAO[perfil] || permissoesService.CEREBRO_PERMISSOES_PADRAO['CONSULTA'];
     res.json({sucesso:true, perfil, empresa:req.user.empresa, modulos:niveis, competencias:perms.competencias, cerebro:cerebroPerms});
-  } catch(e) { res.status(500).json({sucesso:false,erro:e.message}); }
+  } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
 });
 
 // ── Configurações globais para o frontend (perfis, módulos, níveis) ───────────
@@ -5319,7 +5990,7 @@ app.post('/api/alimentacao/upload-docx', requerPerfil('MASTER','ANALISTA SAC'), 
       Object.keys(objeto).forEach(k=>{ if(!objeto[k]) delete objeto[k]; });
 
       res.json({sucesso:true,objeto,arquivo:filename,tabelas:tables.length});
-    } catch(e){ res.status(500).json({sucesso:false,erro:'Erro ao processar arquivo: '+e.message}); }
+    } catch(e){ res.status(500).json({sucesso:false,erro:erroSeguro(e,'processar-arquivo')}); }
   });
   req.pipe(bb);
 });
