@@ -2637,6 +2637,9 @@ app.get('/api/pesquisas/relatorio', requerPerfil('MASTER','ANALISTA SAC','APROVA
       return { criterio: crit, media: ns.length ? ns.reduce((a,b)=>a+b,0)/ns.length : null, total: ns.length };
     }).filter(Boolean);
 
+    // Coluna de recomendação (usada no NPS)
+    const colRecom = colNota.find(h => /recom/i.test(h));
+
     // Histórico mensal (últimos 12 meses)
     const agora = new Date();
     const historico = [];
@@ -2665,7 +2668,32 @@ app.get('/api/pesquisas/relatorio', requerPerfil('MASTER','ANALISTA SAC','APROVA
         const ns=grupo.map(r=>parseFloat(String(r[col]||'').replace(',','.'))).filter(n=>!isNaN(n)&&n>0);
         crit[c]=ns.length?ns.reduce((a,b)=>a+b,0)/ns.length:null;
       });
-      historico.push({ mes: `${anoH}-${String(mesH).padStart(2,'0')}`, mes_label: mesLabel, media: ms.length?ms.reduce((a,b)=>a+b,0)/ms.length:null, total: ms.length, ...crit });
+      // NPS do mês histórico
+      let npsH = null;
+      if (colRecom) {
+        const recH = grupo.map(r=>parseFloat(String(r[colRecom]||'').replace(',','.'))).filter(n=>!isNaN(n)&&n>=0&&n<=10);
+        if (recH.length) {
+          const pH=recH.filter(n=>n>=9).length, dH=recH.filter(n=>n<=6).length;
+          npsH = Math.round((pH-dH)/recH.length*100);
+        }
+      }
+      historico.push({ mes: `${anoH}-${String(mesH).padStart(2,'0')}`, mes_label: mesLabel, media: ms.length?ms.reduce((a,b)=>a+b,0)/ms.length:null, total: ms.length, nps_score: npsH, ...crit });
+    }
+
+    // NPS do mês filtrado (indicador complementar)
+    let nps = null;
+    if (colRecom) {
+      const recScores = filtrados.map(r=>parseFloat(String(r[colRecom]||'').replace(',','.'))).filter(n=>!isNaN(n)&&n>=0&&n<=10);
+      if (recScores.length) {
+        const prom=recScores.filter(n=>n>=9).length, det=recScores.filter(n=>n<=6).length, neut=recScores.length-prom-det;
+        nps = {
+          score: Math.round((prom-det)/recScores.length*100),
+          promotores:prom, detratores:det, neutros:neut, total:recScores.length,
+          promotores_pct:Math.round(prom/recScores.length*100),
+          detratores_pct:Math.round(det/recScores.length*100),
+          neutros_pct:Math.round(neut/recScores.length*100),
+        };
+      }
     }
 
     // Textos salvos
@@ -2677,7 +2705,16 @@ app.get('/api/pesquisas/relatorio', requerPerfil('MASTER','ANALISTA SAC','APROVA
       if (row) textos = JSON.parse(row.TEXTOS || '{}');
     } catch(e) {}
 
-    res.json({ sucesso: true, itens: filtrados, media_geral: mediaGeral, criterios, historico, textos });
+    // Metadados do relatório (status, versão)
+    let relMeta = null;
+    try {
+      const relRows = await lerAba('RELATORIOS_SAC', 500).catch(()=>[]);
+      const chaveRel = `${empresa}|${ano}|${String(mes).padStart(2,'0')}`;
+      const relRow = relRows.filter(r=>r.CHAVE===chaveRel).sort((a,b)=>Number(b.VERSAO||1)-Number(a.VERSAO||1))[0];
+      if (relRow) relMeta = { id: relRow.ID_RELATORIO, status: relRow.STATUS, versao: Number(relRow.VERSAO||1), publicado_em: relRow.PUBLICADO_EM||'' };
+    } catch(e) {}
+
+    res.json({ sucesso: true, itens: filtrados, media_geral: mediaGeral, criterios, historico, textos, nps, relMeta });
   } catch (e) {
     res.status(500).json({ sucesso: false, erro: erroSeguro(e), itens: [], media_geral: null, criterios: [], historico: [], textos: {} });
   }
@@ -2718,6 +2755,122 @@ app.post('/api/pesquisas/relatorio-texto', requerPerfil('MASTER','ANALISTA SAC',
   } catch (e) {
     res.status(500).json({ sucesso: false, erro: erroSeguro(e) });
   }
+});
+
+// ===== GESTÃO DE RELATÓRIOS (ciclo rascunho → publicado) =====
+const REL_HEADERS = ['ID_RELATORIO','CHAVE','EMPRESA','ANO','MES','VERSAO','STATUS','CRIADO_EM','PUBLICADO_EM','CRIADO_POR','INDICADOR','NPS_SCORE','TEXTOS_JSON'];
+
+app.get('/api/relatorios/lista', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req, res) => {
+  try {
+    const empresaScope = _mcEmpresaScope(req.user);
+    const rows = await lerAba('RELATORIOS_SAC', 500).catch(()=>[]);
+    let lista = rows;
+    if (empresaScope) lista = lista.filter(r => pertenceEmpresa(empresaScope, r.EMPRESA||''));
+    lista = lista.map(r => ({
+      id: r.ID_RELATORIO, chave: r.CHAVE, empresa: r.EMPRESA,
+      ano: r.ANO, mes: r.MES, versao: Number(r.VERSAO||1),
+      status: r.STATUS, criado_em: r.CRIADO_EM, publicado_em: r.PUBLICADO_EM,
+      indicador: r.INDICADOR ? Number(r.INDICADOR) : null,
+      nps_score: r.NPS_SCORE !== '' && r.NPS_SCORE != null ? Number(r.NPS_SCORE) : null,
+    }));
+    lista.sort((a,b)=>b.chave<a.chave?-1:1);
+    res.json({ sucesso:true, lista });
+  } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
+});
+
+app.post('/api/relatorios/gerar', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req, res) => {
+  try {
+    const { empresa, ano, mes, indicador, nps_score } = req.body||{};
+    if (!empresa||!ano||!mes) return res.status(400).json({ sucesso:false, erro:'empresa, ano e mes são obrigatórios.' });
+    const empresaScope = _mcEmpresaScope(req.user);
+    if (empresaScope && !pertenceEmpresa(empresaScope, empresa)) return res.status(403).json({ sucesso:false, erro:'Sem acesso a esta empresa.' });
+    const chave = `${empresa}|${ano}|${String(mes).padStart(2,'0')}`;
+    await garantirAbaComCabecalhos('RELATORIOS_SAC', REL_HEADERS);
+    // Verifica se já existe rascunho para esta chave/versão
+    const rows = await lerAba('RELATORIOS_SAC', 500).catch(()=>[]);
+    const existentes = rows.filter(r=>r.CHAVE===chave);
+    const maxVersao = existentes.reduce((m,r)=>Math.max(m,Number(r.VERSAO||1)),0);
+    const id = `REL-${Date.now().toString(36).toUpperCase()}`;
+    const obj = {
+      ID_RELATORIO:id, CHAVE:chave, EMPRESA:empresa, ANO:String(ano), MES:String(mes).padStart(2,'0'),
+      VERSAO:String(maxVersao+1), STATUS:'RASCUNHO',
+      CRIADO_EM:new Date().toISOString(), PUBLICADO_EM:'',
+      CRIADO_POR:req.usuario?.nome||req.usuario?.usuario||'',
+      INDICADOR:indicador!=null?String(indicador):'', NPS_SCORE:nps_score!=null?String(nps_score):'',
+      TEXTOS_JSON:'',
+    };
+    await appendObjeto('RELATORIOS_SAC', obj);
+    invalidarCacheAba('RELATORIOS_SAC');
+    res.json({ sucesso:true, id, versao:maxVersao+1 });
+  } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
+});
+
+app.post('/api/relatorios/:id/publicar', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { textos, indicador, nps_score } = req.body||{};
+    await garantirAbaComCabecalhos('RELATORIOS_SAC', REL_HEADERS);
+    const rows = await lerAba('RELATORIOS_SAC', 500).catch(()=>[]);
+    const idx = rows.findIndex(r=>r.ID_RELATORIO===id);
+    if (idx<0) return res.status(404).json({ sucesso:false, erro:'Relatório não encontrado.' });
+    const row = rows[idx];
+    const empresaScope = _mcEmpresaScope(req.user);
+    if (empresaScope && !pertenceEmpresa(empresaScope, row.EMPRESA||'')) return res.status(403).json({ sucesso:false, erro:'Sem acesso a este relatório.' });
+    const atualizado = {
+      STATUS:'PUBLICADO',
+      PUBLICADO_EM:new Date().toISOString(),
+      INDICADOR:indicador!=null?String(indicador):(row.INDICADOR||''),
+      NPS_SCORE:nps_score!=null?String(nps_score):(row.NPS_SCORE||''),
+      TEXTOS_JSON:textos?JSON.stringify(textos):(row.TEXTOS_JSON||''),
+    };
+    await atualizarPorID('RELATORIOS_SAC', id, atualizado, ['ID_RELATORIO']);
+    invalidarCacheAba('RELATORIOS_SAC');
+    res.json({ sucesso:true });
+  } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
+});
+
+app.post('/api/relatorios/:id/nova-versao', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    await garantirAbaComCabecalhos('RELATORIOS_SAC', REL_HEADERS);
+    const rows = await lerAba('RELATORIOS_SAC', 500).catch(()=>[]);
+    const orig = rows.find(r=>r.ID_RELATORIO===id);
+    if (!orig) return res.status(404).json({ sucesso:false, erro:'Relatório não encontrado.' });
+    if (orig.STATUS!=='PUBLICADO') return res.status(400).json({ sucesso:false, erro:'Somente relatórios publicados podem ter nova versão.' });
+    const empresaScope = _mcEmpresaScope(req.user);
+    if (empresaScope && !pertenceEmpresa(empresaScope, orig.EMPRESA||'')) return res.status(403).json({ sucesso:false, erro:'Sem acesso.' });
+    const mesmaChave = rows.filter(r=>r.CHAVE===orig.CHAVE);
+    const maxVersao = mesmaChave.reduce((m,r)=>Math.max(m,Number(r.VERSAO||1)),0);
+    const novoId = `REL-${Date.now().toString(36).toUpperCase()}`;
+    const novoObj = {
+      ID_RELATORIO:novoId, CHAVE:orig.CHAVE, EMPRESA:orig.EMPRESA,
+      ANO:orig.ANO, MES:orig.MES, VERSAO:String(maxVersao+1), STATUS:'RASCUNHO',
+      CRIADO_EM:new Date().toISOString(), PUBLICADO_EM:'',
+      CRIADO_POR:req.usuario?.nome||req.usuario?.usuario||'',
+      INDICADOR:orig.INDICADOR||'', NPS_SCORE:orig.NPS_SCORE||'',
+      TEXTOS_JSON:orig.TEXTOS_JSON||'',
+    };
+    await appendObjeto('RELATORIOS_SAC', novoObj);
+    invalidarCacheAba('RELATORIOS_SAC');
+    res.json({ sucesso:true, id:novoId, versao:maxVersao+1 });
+  } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
+});
+
+app.post('/api/relatorios/:id/enviar', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const rows = await lerAba('RELATORIOS_SAC', 500).catch(()=>[]);
+    const row = rows.find(r=>r.ID_RELATORIO===id);
+    if (!row) return res.status(404).json({ sucesso:false, erro:'Relatório não encontrado.' });
+    if (row.STATUS!=='PUBLICADO') return res.status(400).json({ sucesso:false, erro:'Somente relatórios publicados podem ser enviados.' });
+    // E-mails configurados via variável de ambiente (lista separada por vírgula)
+    const emailsEnv = process.env.DIRETORIA_EMAILS||'';
+    if (!emailsEnv) return res.status(501).json({ sucesso:false, erro:'Lista de e-mails da Diretoria/Presidência não configurada. Defina DIRETORIA_EMAILS nas variáveis de ambiente.' });
+    const emails = emailsEnv.split(',').map(e=>e.trim()).filter(Boolean);
+    // Registra envio na auditoria (envio de e-mail real depende de integração SMTP configurada)
+    await registrarAuditoria('RELATORIO_ENVIADO', `Relatório ${id} (${row.CHAVE}) enviado para: ${emails.join(', ')}`, req.usuario?.nome||'', row.EMPRESA);
+    res.json({ sucesso:true, emails_destinatarios: emails, aviso:'Envio por e-mail registrado. Configure SMTP (SMTP_HOST, SMTP_USER, SMTP_PASS) para envio automático.' });
+  } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
 
 // ===== ROTA PÚBLICA: PESQUISA DE SATISFAÇÃO =====
