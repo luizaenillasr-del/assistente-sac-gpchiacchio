@@ -144,12 +144,12 @@ async function testarAiService() {
     if (origOpenAI) process.env.OPENAI_API_KEY = origOpenAI;
   });
 
-  await test('getProvider retorna anthropic por padrão', () => {
+  await test('getProvider retorna openai por padrão', () => {
     const { getProvider } = require('../api/services/aiService');
     delete process.env.AI_PROVIDER;
-    assert.strictEqual(getProvider(), 'anthropic');
-    process.env.AI_PROVIDER = 'openai';
     assert.strictEqual(getProvider(), 'openai');
+    process.env.AI_PROVIDER = 'anthropic';
+    assert.strictEqual(getProvider(), 'anthropic');
     delete process.env.AI_PROVIDER;
   });
 
