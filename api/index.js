@@ -2606,7 +2606,6 @@ ${texto.slice(0, 6000)}`;
 // ===== PESQUISAS DE SATISFAÇÃO (aba interna PESQUISA_RESPOSTAS) =====
 app.get('/api/pesquisas/resumo', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
   try {
-    await garantirAbaComCabecalhos('PESQUISA_RESPOSTAS', ['ID_RESPOSTA','TOKEN','EMPRESA','NOME_CLIENTE','DATA','ATENDIMENTO','PRAZO_ENTREGA','QUALIDADE','RECOMENDACAO','COMENTARIO','NOTA_MEDIA','NOTA_BAIXA','STATUS_OCP']);
     const dados = await lerAba('PESQUISA_RESPOSTAS', 5000).catch(()=>[]);
     const agora = new Date();
     const mesAtual = agora.getMonth();
@@ -3333,8 +3332,7 @@ app.post('/api/pesquisas/tokens/gerar', requerPerfil('MASTER','ANALISTA SAC','AP
 // Listar tokens de pesquisa
 app.get('/api/pesquisas/tokens', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req, res) => {
   try {
-    await garantirAbaComCabecalhos('PESQUISA_TOKENS', ['TOKEN','EMPRESA','NOME_CLIENTE','EMAIL_CLIENTE','ID_MANIFESTACAO','STATUS','CRIADO_EM','EXPIRA_EM','DATA_ABERTURA','DATA_RESPOSTA','CRIADO_POR']);
-    const rows = await lerAba('PESQUISA_TOKENS', 2000);
+    const rows = await lerAba('PESQUISA_TOKENS', 2000).catch(()=>[]);
     const _pf = perfilCanonico(req.user?.perfil||'');
     const scope = _pf === 'MASTER' ? null : (req.user?.empresa||null);
     const host = `${req.protocol}://${req.get('host')}`;
