@@ -2956,7 +2956,7 @@
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px">
           <input id="banco-historico-search" oninput="filtrarBancoHistorico()" placeholder="Pesquisar no banco de casos" style="flex:1;min-width:220px;height:36px;border:1px solid #D6D6D6;border-radius:7px;padding:0 12px;background:#fff;font-size:13px;font-family:inherit">
           <select id="banco-fil-qualidade" onchange="filtrarBancoHistorico()" style="height:36px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:13px;font-family:inherit"><option value="">Qualidade: todas</option><option>Completo</option><option>Parcial</option><option>Incompleto</option></select>
-          <select id="banco-fil-setor" onchange="filtrarBancoHistorico()" style="height:36px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:13px;font-family:inherit"><option value="">Setor: todos</option><option>Logística</option><option>Qualidade</option><option>Comercial</option><option>Financeiro</option><option>Expedição</option></select>
+          <select id="banco-fil-setor" onchange="filtrarBancoHistorico()" style="height:36px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:13px;font-family:inherit"><option value="">Setor: todos</option></select>
           <button onclick="abrirImportarHistorico()" style="border:0;background:#C70602;color:#fff;border-radius:7px;padding:9px 14px;cursor:pointer;font-size:13px;font-weight:500;font-family:inherit">Importar histórico</button>
         </div>
         <!-- KPIs -->
@@ -3733,14 +3733,7 @@
             <div class="field">
               <label>Setor responsável</label>
               <select id="ndoc-setor">
-                <option value="">Selecione...</option>
-                <option>Logística</option>
-                <option>Qualidade</option>
-                <option>Comercial</option>
-                <option>Financeiro</option>
-                <option>Operações</option>
-                <option>SAC</option>
-                <option>Outros</option>
+                <option value="">Carregando setores...</option>
               </select>
             </div>
             <div class="field">
@@ -6218,7 +6211,7 @@
           <option value="">Empresa: todas</option><option>Chiacchio</option><option>Plaschio</option><option>Cesbap</option>
         </select>
         <select id="sim-setor" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:13px;font-family:inherit">
-          <option value="">Setor: todos</option><option>Logística</option><option>Qualidade</option><option>Expedição</option><option>Produção</option><option>Comercial</option>
+          <option value="">Setor: todos</option>
         </select>
         <select id="sim-periodo" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:13px;font-family:inherit">
           <option value="24">Período: 24 meses</option><option value="12">12 meses</option><option value="0">Todo o histórico</option>
@@ -7099,7 +7092,7 @@ function calcDashboard(mans, recs, filtroEmpresa, filtroSetor) {
   m.forEach(x => { if(x.EMPRESA_RECLAMADA) empresasSet.add(x.EMPRESA_RECLAMADA); });
 
   // Setores únicos (da planilha de setores)
-  const setoresNomes = ['SAC','Qualidade','Produção','Logística','Comercial','Financeiro','Faturamento / Expedição'];
+  const setoresNomes = Object.keys(pendSetor).length ? Object.keys(pendSetor) : ['SAC','Qualidade','Logística','Comercial','Financeiro'];
 
   // Tipos — motivo da reclamação
   const tipos = { 'Reclamação': 0, 'Dúvida': 0, 'Sugestão': 0, 'Elogio': 0 };
@@ -7307,21 +7300,22 @@ function renderDashboard(data) {
         </div>`).join('')}
     </div>`;
 
-  // Pendências por setor — usar CONFIG_SETORES + pendências reais
-  const setoresReal = [
-    { nome: 'Logística', ag: pendSetor['Logística']||pendSetor['ST04']||Math.floor(total*0.08)||0 },
-    { nome: 'Qualidade', ag: pendSetor['Qualidade']||pendSetor['ST02']||Math.floor(total*0.06)||0 },
-    { nome: 'Comercial', ag: pendSetor['Comercial']||pendSetor['ST05']||Math.floor(total*0.05)||0 },
-    { nome: 'Financeiro', ag: pendSetor['Financeiro']||pendSetor['ST06']||Math.floor(total*0.03)||0 },
-    { nome: 'SAC', ag: pendSetor['SAC']||pendSetor['ST01']||Math.floor(total*0.02)||0 },
-  ];
-  document.getElementById('ptable-body').innerHTML = setoresReal.map(s => `
-    <tr>
-      <td>${s.nome}</td>
-      <td>${s.ag}</td>
-      <td>—</td>
-      <td>${tempoMedio > 0 ? tempoMedio + 'h' : '--'}</td>
-    </tr>`).join('');
+  // Pendências por setor — fonte dinâmica via CONFIG_SETORES
+  const ptBody = document.getElementById('ptable-body');
+  if (ptBody) {
+    window._setoresCentral.carregar().then(listaSetores => {
+      const ativos = listaSetores.filter(s => (s.ATIVO||'SIM').toUpperCase()==='SIM').slice(0,8);
+      const rows = ativos.length ? ativos.map(s => `
+        <tr>
+          <td>${s.SETOR||''}</td>
+          <td>${pendSetor[s.SETOR]||0}</td>
+          <td>—</td>
+          <td>${tempoMedio > 0 ? tempoMedio + 'h' : '--'}</td>
+        </tr>`).join('') :
+        '<tr><td colspan="4" style="color:#929090;text-align:center;padding:12px">Nenhum setor cadastrado.</td></tr>';
+      ptBody.innerHTML = rows;
+    }).catch(() => { ptBody.innerHTML = '<tr><td colspan="4" style="color:#929090">Erro ao carregar setores.</td></tr>'; });
+  }
 
   // Fila de atenção — mostrar reclamações EM ABERTO
   const filaRecs = recs.filter(x => {
@@ -7495,11 +7489,18 @@ async function loadVisaoGeral() {
       empSelect.innerHTML = [...empSet].map(e => `<option value="${esc(e)}">${esc(e)}</option>`).join('');
     }
 
-    // Popular filtros de setor
-    const setoresList2 = ['Todos','SAC','Qualidade','Produção','Logística','Comercial','Financeiro'];
+    // Popular filtros de setor — fonte dinâmica
     const setSelect = document.getElementById('filtro-setor-select');
     if (setSelect) {
-      setSelect.innerHTML = setoresList2.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
+      window._setoresCentral.carregar().then(lista => {
+        const cur = setSelect.value;
+        setSelect.innerHTML = `<option value="Todos">Todos</option>` +
+          lista.filter(s=>(s.ATIVO||'SIM').toUpperCase()==='SIM')
+               .map(s=>`<option value="${esc(s.SETOR)}">${esc(s.SETOR)}</option>`).join('');
+        if (cur) setSelect.value = cur;
+      }).catch(() => {
+        setSelect.innerHTML = '<option value="Todos">Todos</option>';
+      });
     }
 
     const data = calcDashboard(_dashData.mans, _dashData.recs, _dashFiltroEmpresa, _dashFiltroSetor);
@@ -8744,6 +8745,16 @@ document.addEventListener('click', function(e) {
 
 async function loadBancoManifestacoes() {
   try {
+    // Popular filtros de setor dinamicamente
+    window._setoresCentral.carregar().then(lista => {
+      const opts = '<option value="">Setor: todos</option>' +
+        lista.filter(s=>(s.ATIVO||'SIM').toUpperCase()==='SIM')
+             .map(s=>`<option value="${String(s.SETOR||'').replace(/"/g,'&quot;')}">${String(s.SETOR||'').replace(/</g,'&lt;')}</option>`).join('');
+      ['banco-fil-setor','bflt-setor-sel'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el && el.options.length <= 1) { const cur = el.value; el.innerHTML = opts; if (cur) el.value = cur; }
+      });
+    }).catch(()=>{});
     const res = await _apiFetch('/api/manifestacoes', 30000);
     bancoData = res.itens || [];
     _bancoDataFull = [...bancoData];
@@ -8914,6 +8925,16 @@ function salvarRascunho() {
 // ===== BANCO DE RNC =====
 async function loadBancoRNC() {
   try {
+    // Popular select de setor no formulário de nova RNC
+    const ndocSetor = document.getElementById('ndoc-setor');
+    if (ndocSetor && ndocSetor.options.length <= 1) {
+      window._setoresCentral.carregar().then(lista => {
+        ndocSetor.innerHTML = '<option value="">Selecione...</option>' +
+          lista.filter(s=>(s.ATIVO||'SIM').toUpperCase()==='SIM')
+               .map(s=>`<option value="${String(s.SETOR||'').replace(/"/g,'&quot;')}">${String(s.SETOR||'').replace(/</g,'&lt;')}</option>`).join('') +
+          '<option value="Outros">Outros</option>';
+      }).catch(()=>{});
+    }
     if(sessionStorage.getItem('sac-demo-local')==='1'){
       const rncs=[{ID_RNC:'RNC-139/26',ID_MANIFESTACAO:'SAC-2026-00125',SETOR_DESTINADO:'Qualidade',CAUSA_PROVAVEL:'Avaria na embalagem durante transporte',RESPONSAVEL:'Carlos Oliveira',DATA_FINALIZACAO:'30/09/2026'},{ID_RNC:'RNC-140/26',ID_MANIFESTACAO:'SAC-2026-00131',SETOR_DESTINADO:'Qualidade',CAUSA_PROVAVEL:'Em análise',RESPONSAVEL:'Maria Santos',DATA_FINALIZACAO:'02/10/2026'}];
       document.getElementById('rnc-abertas').textContent=rncs.length;document.getElementById('rnc-abertas-sub').textContent=rncs.length+' RNCs abertas';document.getElementById('rnc-vencendo').textContent='1';document.getElementById('rnc-body').innerHTML=rncs.map(m=>`<tr><td style="font-weight:700">${m.ID_RNC}</td><td><a style="color:var(--red);font-weight:600">${m.ID_MANIFESTACAO}</a></td><td>${m.SETOR_DESTINADO}</td><td><div>${m.CAUSA_PROVAVEL}</div><div class="rnc-acao">Ação: em tratamento</div></td><td>${m.RESPONSAVEL}</td><td>${m.DATA_FINALIZACAO}</td><td><span class="status-badge em-andamento">Em tratamento</span></td></tr>`).join('');document.getElementById('causas-list').innerHTML='<div style="font-size:12px;margin-bottom:8px">Avaria na embalagem <b>1</b></div><div style="font-size:12px">Em análise <b>1</b></div>';document.getElementById('rnc-setor-list').innerHTML='<div style="font-size:12px">Qualidade <b>2</b></div>';return;
@@ -9024,18 +9045,14 @@ async function loadSetores() {
     _setoresMans = manRes.itens || [];
     const conhecimento = conhecRes.itens || [];
 
-    // Fallback: setores padrão quando a planilha ainda não tem dados
+    // Sem fallback hardcoded — se não há setores, mostra mensagem real
     if (!_setoresConfig.length) {
-      _setoresConfig = [
-        {SETOR:'Qualidade', DESCRICAO:'Controle e garantia de qualidade dos produtos', RESPONSAVEL:'', ATIVO:'SIM'},
-        {SETOR:'Produção', DESCRICAO:'Fabricação e processos produtivos', RESPONSAVEL:'', ATIVO:'SIM'},
-        {SETOR:'Logística', DESCRICAO:'Distribuição, transporte e entregas', RESPONSAVEL:'', ATIVO:'SIM'},
-        {SETOR:'Comercial', DESCRICAO:'Vendas e relacionamento comercial', RESPONSAVEL:'', ATIVO:'SIM'},
-        {SETOR:'Financeiro', DESCRICAO:'Faturamento, cobrança e pagamentos', RESPONSAVEL:'', ATIVO:'SIM'},
-        {SETOR:'Faturamento / Expedição', DESCRICAO:'Emissão de notas fiscais e expedição de pedidos', RESPONSAVEL:'', ATIVO:'SIM'},
-        {SETOR:'SAC', DESCRICAO:'Serviço de Atendimento ao Cliente — triagem e registro', RESPONSAVEL:'', ATIVO:'SIM'},
-      ];
+      const grid = document.getElementById('setores-grid');
+      if (grid) grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:32px;color:#929090;font-size:14px">Nenhum setor cadastrado ainda. Use "+ Novo setor" para adicionar.</div>';
     }
+    // Sincronizar com serviço central para invalidar cache
+    window._setoresCentral._cache = _setoresConfig;
+    window._setoresCentral._ts = Date.now();
 
     // Merge config + conhecimento
     _setoresConfig = _setoresConfig.map(s => {
@@ -9240,6 +9257,8 @@ window.salvarSetor = async function() {
       await _apiFetch('/api/setores', 15000, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
     }
     fecharModalSetor();
+    window._setoresCentral.invalidar(); // invalidar cache após criação/edição
+    if (window.CB) { window.CB.setores = []; window.CB.counts = null; } // invalidar Cérebro
     loadSetores();
   } catch(e) {
     alert('Erro ao salvar setor: ' + e.message);
@@ -9375,30 +9394,29 @@ async function loadMatriz() {
     const res = await _apiFetch('/api/procedimentos', 15000);
     const procs = res.itens || [];
 
-    const regras = [
-      { tema: 'Avaria no transporte', principal: 'Logística', apoio: 'Qualidade', prazo: '72h', prioridade: 'Média', rnc: 'Sim', aprovacao: 'Analista', followup: '3 dias' },
-      { tema: 'Atraso na entrega', principal: 'Logística', apoio: '—', prazo: '72h', prioridade: 'Média', rnc: 'Não', aprovacao: 'Analista', followup: '3 dias' },
-      { tema: 'Divergência de NF', principal: 'Financeiro', apoio: 'Comercial', prazo: '72h', prioridade: 'Alta', rnc: 'Não', aprovacao: 'Coordenação', followup: '3 dias' },
-      { tema: 'Qualidade do produto', principal: 'Qualidade', apoio: 'Comercial', prazo: '72h', prioridade: 'Alta', rnc: 'Sim', aprovacao: 'Coordenação', followup: '7 dias' },
-      { tema: 'Cotação e preço', principal: 'Comercial', apoio: '—', prazo: '48h', prioridade: 'Baixa', rnc: 'Não', aprovacao: 'Analista', followup: '2 dias' },
-      { tema: 'Dúvida técnica', principal: 'Qualidade', apoio: '—', prazo: '48h', prioridade: 'Baixa', rnc: 'Não', aprovacao: 'Analista', followup: '—' },
-      { tema: 'Sugestão', principal: 'Outros', apoio: '—', prazo: '120h', prioridade: 'Baixa', rnc: 'Não', aprovacao: 'Analista', followup: '—' },
-      { tema: 'Elogio', principal: 'Só registra', apoio: '—', prazo: '—', prioridade: 'Baixa', rnc: 'Não', aprovacao: 'Analista', followup: '—' },
-    ];
-
-    document.getElementById('matriz-body').innerHTML = regras.map(r => `
-      <tr>
-        <td style="font-weight:600">${r.tema}</td>
-        <td>${r.principal}</td>
-        <td style="color:var(--gray-500)">${r.apoio}</td>
-        <td style="font-weight:600">${r.prazo}</td>
-        <td><span class="prioridade-badge ${r.prioridade.toLowerCase()}">${r.prioridade}</span></td>
-        <td><span class="rnc-badge ${r.rnc.toLowerCase()}">${r.rnc}</span></td>
-        <td>${r.aprovacao}</td>
-        <td>${r.followup}</td>
-        <td><svg class="edit-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></td>
-      </tr>
-    `).join('');
+    // Carregar matriz real da API
+    const matrizRes = await _apiFetch('/api/matriz-tratamento', 15000).catch(()=>({itens:[]}));
+    const regrasApi = matrizRes.itens || [];
+    const matrizBody = document.getElementById('matriz-body');
+    if (matrizBody) {
+      if (!regrasApi.length) {
+        matrizBody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:20px;color:#929090">Nenhuma regra cadastrada. Alimente a Matriz de Tratamento na Central de Alimentação.</td></tr>';
+      } else {
+        const esc2 = v => String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        matrizBody.innerHTML = regrasApi.map(r => `
+          <tr>
+            <td style="font-weight:600">${esc2(r.CAUSA||r.TIPO_MANIFESTACAO||'—')}</td>
+            <td>${esc2(r.SETOR_RESPONSAVEL||'—')}</td>
+            <td style="color:var(--gray-500)">${esc2(r.SUBCAUSA||'—')}</td>
+            <td style="font-weight:600">${r.SLA_HORAS?r.SLA_HORAS+'h':'—'}</td>
+            <td><span class="prioridade-badge ${(r.PRIORIDADE||'media').toLowerCase()}">${esc2(r.PRIORIDADE||'Normal')}</span></td>
+            <td><span class="rnc-badge ${(r.REQUER_APROVACAO||'nao').toLowerCase()}">${esc2(r.REQUER_APROVACAO||'Não')}</span></td>
+            <td>${esc2(r.EMPRESA||'Todas')}</td>
+            <td>${esc2(r.TRATATIVA_PADRAO||'—').slice(0,60)}${(r.TRATATIVA_PADRAO||'').length>60?'…':''}</td>
+            <td><svg class="edit-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></td>
+          </tr>`).join('');
+      }
+    }
   } catch (e) { console.error(e); }
 }
 
@@ -9697,7 +9715,16 @@ const pageLoaders = window.pageLoaders = {
   'banco-manifestacoes': loadBancoManifestacoes,
   'banco-rnc': loadBancoRNC,
   'rca': loadRCA,
-  'similares': ()=>{},
+  'similares': ()=>{
+    const simSetor = document.getElementById('sim-setor');
+    if (simSetor && simSetor.options.length <= 1) {
+      window._setoresCentral.carregar().then(lista => {
+        simSetor.innerHTML = '<option value="">Setor: todos</option>' +
+          lista.filter(s=>(s.ATIVO||'SIM').toUpperCase()==='SIM')
+               .map(s=>`<option value="${String(s.SETOR||'').replace(/"/g,'&quot;')}">${String(s.SETOR||'').replace(/</g,'&lt;')}</option>`).join('');
+      }).catch(()=>{});
+    }
+  },
   'auditoria': auditLoad,
   'setores': loadSetores,
   'matriz': loadMatriz,
@@ -9921,8 +9948,8 @@ window.navigate = function(page, el) {
       _dashData.mans.forEach(x=>{const e=(x.EMPRESA_RECLAMADA||'').trim();if(e&&!_NAO_EMP.has(e.toUpperCase()))empSet.add(x.EMPRESA_RECLAMADA);});
       const emp=document.getElementById('filtro-empresa-select');
       if(emp)emp.innerHTML=[...empSet].map(e=>`<option value="${esc(e)}">${esc(e)}</option>`).join('');
-      const setores=['Todos','SAC','Qualidade','Produção','Logística','Comercial','Financeiro','Faturamento / Expedição'];
-      const sel=document.getElementById('filtro-setor-select'); if(sel)sel.innerHTML=setores.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('');
+      const sel=document.getElementById('filtro-setor-select');
+      if(sel){ window._setoresCentral.carregar().then(lista=>{ const cur=sel.value; sel.innerHTML=`<option value="Todos">Todos</option>`+lista.filter(s=>(s.ATIVO||'SIM').toUpperCase()==='SIM').map(s=>`<option value="${esc(s.SETOR)}">${esc(s.SETOR)}</option>`).join(''); if(cur)sel.value=cur; }).catch(()=>{}); }
 
       try{
         if(typeof aplicarFiltros==='function') aplicarFiltros();
@@ -10027,7 +10054,7 @@ window.navigate = function(page, el) {
       const id=s.ID_SETOR||s.ID||encodeURIComponent(_setorAtual);
       const res=await jsonFetch('/api/setores/'+encodeURIComponent(id)+'/operacional',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(values)});
       if(res.sucesso===false)throw new Error(res.erro||'Falha ao salvar setor');
-      const _nomeSetor = _setorAtual; fecharEditorGenerico(); await loadSetores(); await abrirFichaSetor(_nomeSetor); alert('Setor salvo com sucesso.');
+      const _nomeSetor = _setorAtual; fecharEditorGenerico(); window._setoresCentral.invalidar(); await loadSetores(); await abrirFichaSetor(_nomeSetor); alert('Setor salvo com sucesso.');
     });
     // Injeta botão de upload de documento no editor
     const body = document.getElementById('editor-generico-body');
@@ -10197,6 +10224,7 @@ window.navigate = function(page, el) {
       if (save.sucesso === false) throw new Error(save.erro || 'Erro ao salvar');
       document.getElementById('modal-ia-setor').style.display = 'none';
       const _n = _setorAtual;
+      window._setoresCentral.invalidar();
       await loadSetores();
       await abrirFichaSetor(_n);
       const camposExtraidos = Object.keys(payload).join(', ');
@@ -12258,7 +12286,7 @@ window.selecionarDecisao = function(tipo){
         <div style="margin-bottom:10px">
           <label class="form-label">Setor(es) responsável(is) * <span style="font-weight:400;color:var(--gray-400);font-size:11px">Pode selecionar mais de um</span></label>
           <div id="dec-setor-revisao-list" style="display:flex;flex-wrap:wrap;gap:8px;padding:10px;border:1px solid var(--gray-200);border-radius:8px;background:var(--gray-50)">
-            ${['SAC','Qualidade','Logística','Comercial','Financeiro','Produção','Faturamento / Expedição'].map(s=>`<label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;padding:4px 8px;background:white;border:1px solid var(--gray-200);border-radius:6px"><input type="checkbox" class="dec-setor-check" value="${s}"> ${s}</label>`).join('')}
+            <span id="dec-setor-revisao-loading" style="font-size:12px;color:#929090">Carregando setores...</span>
           </div>
           <div id="erro-setor-revisao" class="validacao-erro">⚠ Selecione ao menos um setor</div>
         </div>
@@ -12274,6 +12302,26 @@ window.selecionarDecisao = function(tipo){
           → Enviar para revisão do setor
         </button>
       </div>`;
+    // Carregar setores dinamicamente após render
+    if (tipo === 'revisao_setor') {
+      const empresaAtual = (document.getElementById('nm-empresa-reclamada')||{}).value || '';
+      window._setoresCentral.ativos(empresaAtual).then(lista => {
+        const listEl = document.getElementById('dec-setor-revisao-list');
+        if (!listEl) return;
+        if (!lista.length) {
+          listEl.innerHTML = '<span style="font-size:12px;color:#929090">Nenhum setor cadastrado.</span>';
+          return;
+        }
+        listEl.innerHTML = lista.map(s =>
+          `<label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;padding:4px 8px;background:white;border:1px solid var(--gray-200);border-radius:6px">
+            <input type="checkbox" class="dec-setor-check" value="${String(s.SETOR||'').replace(/"/g,'&quot;')}"> ${String(s.SETOR||'').replace(/</g,'&lt;')}
+          </label>`
+        ).join('');
+      }).catch(() => {
+        const listEl = document.getElementById('dec-setor-revisao-list');
+        if (listEl) listEl.innerHTML = '<span style="font-size:12px;color:#A80502">Erro ao carregar setores.</span>';
+      });
+    }
   }
 };
 
@@ -13637,6 +13685,17 @@ function switchIndTab(tab, btn) {
 
 async function loadPainelMaquina() {
   try {
+    // Popular filtro de setor dinamicamente
+    const pmSetor = document.getElementById('pm-filtro-setor');
+    if (pmSetor && pmSetor.options.length <= 1) {
+      window._setoresCentral.carregar().then(lista => {
+        const cur = pmSetor.value;
+        pmSetor.innerHTML = '<option value="">Todos os setores</option>' +
+          lista.filter(s=>(s.ATIVO||'SIM').toUpperCase()==='SIM')
+               .map(s=>`<option value="${String(s.SETOR||'').replace(/"/g,'&quot;')}">${String(s.SETOR||'').replace(/</g,'&lt;')}</option>`).join('');
+        if (cur) pmSetor.value = cur;
+      }).catch(()=>{});
+    }
     const empresa = document.getElementById('pm-filtro-empresa')?.value || '';
     const setor = document.getElementById('pm-filtro-setor')?.value || '';
     let url = (window.SAC_API||'') + '/api/painel-maquina';
@@ -14483,9 +14542,13 @@ const CP_LIMITE = 6;
 function cpEsc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function cpNum(v) { const n = parseFloat(String(v == null ? '' : v).replace(',', '.')); return isNaN(n) ? null : n; }
 function cpData(raw) {
-  const m = String(raw || '').match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
-  const d = m ? new Date(+m[3], +m[2] - 1, +m[1]) : new Date(raw);
-  return isNaN(d) ? null : d;
+  if (!raw) return null;
+  const s = String(raw);
+  const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) { const d = new Date(+iso[1], +iso[2]-1, +iso[3]); return isNaN(d)?null:d; }
+  const br = s.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+  if (br) { const d = new Date(+br[3], +br[2]-1, +br[1]); return isNaN(d)?null:d; }
+  const d = new Date(raw); return isNaN(d)?null:d;
 }
 function cpDetectaCols(itens) {
   const heads = []; itens.forEach(r => Object.keys(r).forEach(h => { if (!heads.includes(h)) heads.push(h); }));
@@ -14607,7 +14670,7 @@ function cpAbrirDetalhe(idx) {
   const r = _cp.filtered[idx];
   if (!r) return;
   const c = _cp.cols;
-  const setores = ['Comercial','Produção','Logística','Qualidade','Financeiro','Atendimento'];
+  // setores carregados dinamicamente abaixo após render do modal
   const ocpId = r._ocpId || '';
   const manId = r._manId || '';
   const baixa = r.baixa;
@@ -14630,8 +14693,7 @@ function cpAbrirDetalhe(idx) {
     html += '<div style="border-top:1.5px solid #E4E4E4;padding-top:16px;margin-top:4px">'
       + '<div style="font-size:13px;font-weight:700;margin-bottom:10px">Decisão de tratamento</div>'
       + '<div style="margin-bottom:10px"><label style="font-size:12.5px;font-weight:600;display:block;margin-bottom:5px">Setor responsável (sugestão IA, confirme)</label>'
-      + '<select id="cp-det-setor" style="width:100%;border:1.5px solid #D6D6D6;border-radius:7px;padding:7px 10px;font-size:13px;font-family:inherit">'
-      + setores.map(s2 => '<option>' + s2 + '</option>').join('') + '</select></div>'
+      + '<select id="cp-det-setor" style="width:100%;border:1.5px solid #D6D6D6;border-radius:7px;padding:7px 10px;font-size:13px;font-family:inherit"><option>Carregando...</option></select></div>'
       + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">'
       + '<button onclick="cpDecisaoDetalhe(\'OCP\',\''+r.n+'\')" style="flex:1;min-width:130px;border:1.5px solid #24508F;background:#fff;color:#24508F;border-radius:8px;padding:9px 10px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit">🔴 Gerar OCP</button>'
       + '<button onclick="cpDecisaoDetalhe(\'MANIFESTACAO\',\''+r.n+'\')" style="flex:1;min-width:130px;border:1.5px solid #1E6B3A;background:#fff;color:#1E6B3A;border-radius:8px;padding:9px 10px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit">🟢 Transformar em Manifestação</button>'
@@ -14646,6 +14708,14 @@ function cpAbrirDetalhe(idx) {
   const existing = document.getElementById('cp-modal-overlay');
   if (existing) existing.remove();
   document.body.insertAdjacentHTML('beforeend', html);
+  // Popular select de setor dinamicamente
+  const detSetor = document.getElementById('cp-det-setor');
+  if (detSetor) {
+    window._setoresCentral.carregar().then(lista => {
+      detSetor.innerHTML = lista.filter(s=>(s.ATIVO||'SIM').toUpperCase()==='SIM')
+        .map(s=>`<option value="${String(s.SETOR||'').replace(/"/g,'&quot;')}">${String(s.SETOR||'').replace(/</g,'&lt;')}</option>`).join('');
+    }).catch(()=>{ detSetor.innerHTML = '<option>Comercial</option><option>Produção</option><option>Logística</option><option>Qualidade</option>'; });
+  }
 }
 
 function cpFecharDetalhe() {
@@ -15550,8 +15620,9 @@ function cbErro(e) { return '<div class="cb-empty" style="color:#A80502">Erro ao
 
 async function cbCarregarSetores(force) {
   if (CB.setores.length && !force) return CB.setores;
-  const r = await _apiFetch('/api/setores', 20000).catch(() => ({ itens: [] }));
-  CB.setores = (r.itens || []).filter(s => s && s.SETOR);
+  // Usar serviço central para aproveitar cache compartilhado
+  const lista = await window._setoresCentral.carregar(force).catch(() => []);
+  CB.setores = lista.filter(s => s && s.SETOR);
   _cerebroSetoresData = CB.setores;
   return CB.setores;
 }
@@ -18500,6 +18571,64 @@ textarea.al-form-in{height:auto;padding:8px 10px;resize:vertical}
 
 </div><!-- /page-alimentacao -->
 <script>
+// ===== SERVIÇO CENTRAL DE SETORES (fonte única) =====
+window._setoresCentral = {
+  _cache: null,
+  _ts: 0,
+  _TTL: 30000, // 30s
+  _loading: null,
+
+  async carregar(forcar) {
+    const agora = Date.now();
+    if (!forcar && this._cache && (agora - this._ts) < this._TTL) return this._cache;
+    if (this._loading) return this._loading;
+    this._loading = fetch('/api/setores', {
+      headers: { 'Authorization': 'Bearer ' + (sessionStorage.getItem('sac-token')||'') }
+    })
+    .then(r => r.json())
+    .then(d => {
+      this._cache = d.sucesso ? (d.itens || []) : [];
+      this._ts = Date.now();
+      this._loading = null;
+      return this._cache;
+    })
+    .catch(() => { this._loading = null; return this._cache || []; });
+    return this._loading;
+  },
+
+  invalidar() {
+    this._cache = null;
+    this._ts = 0;
+    this._loading = null;
+  },
+
+  async ativos(empresaFiltro) {
+    const todos = await this.carregar();
+    return todos.filter(s => {
+      if ((s.ATIVO||'SIM').toUpperCase() !== 'SIM') return false;
+      if (!empresaFiltro || empresaFiltro === 'TODOS' || empresaFiltro === 'Todas as empresas') return true;
+      const emp = (s.EMPRESA||'TODAS').toUpperCase().trim();
+      if (emp === 'TODAS' || emp === '') return true;
+      const normalizar = v => String(v||'').toUpperCase().trim()
+        .replace('CHIACCHIO EMBALAGENS','CHIACCHIO')
+        .replace('CHIACHIO EMBALAGENS','CHIACCHIO')
+        .replace('CESBAP','TUBAHIA')
+        .replace('TUBAHIA/CESBAP','TUBAHIA');
+      return normalizar(emp) === normalizar(empresaFiltro);
+    });
+  },
+
+  async popularSelect(elId, empresaFiltro, opcaoTodas) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    const lista = await this.ativos(empresaFiltro);
+    const optTodas = opcaoTodas ? `<option value="">${opcaoTodas}</option>` : '';
+    el.innerHTML = optTodas + lista.map(s =>
+      `<option value="${String(s.SETOR||'').replace(/"/g,'&quot;')}">${String(s.SETOR||'').replace(/</g,'&lt;')}</option>`
+    ).join('');
+  }
+};
+
 // ===== ALIMENTAÇÃO DA FERRAMENTA =====
 (function(){
 
