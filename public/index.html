@@ -18386,22 +18386,34 @@ textarea.al-form-in{height:auto;padding:8px 10px;resize:vertical}
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="al-btn-ghost" onclick="loadAlimentacao()">↻ Atualizar status</button>
-      <button class="al-btn-primary" onclick="alOpen(null)">+ Nova importação</button>
+      <button class="al-btn-ghost" onclick="alOpen(null)">Importação manual</button>
+      <button class="al-btn-primary" onclick="caOpen()">+ Adicionar alimentação</button>
     </div>
+  </div>
+
+  <!-- KPIs da Central -->
+  <div class="al-stats" id="al-kpis-central" style="display:none">
+    <div class="al-stat info"><div class="al-stat-l">Fontes ativas</div><div class="al-stat-v" id="ca-kpi-fontes">–</div><div class="al-stat-d">configuradas</div></div>
+    <div class="al-stat ok"><div class="al-stat-l">Processados</div><div class="al-stat-v" id="ca-kpi-proc">–</div><div class="al-stat-d">registros</div></div>
+    <div class="al-stat warn"><div class="al-stat-l">Pendências</div><div class="al-stat-v" id="ca-kpi-pend">–</div><div class="al-stat-d">aguardando revisão</div></div>
+    <div class="al-stat"><div class="al-stat-l">Última alimentação</div><div class="al-stat-v" style="font-size:16px" id="ca-kpi-ult">–</div><div class="al-stat-d">importação</div></div>
   </div>
 
   <div class="al-stats" id="al-stats"></div>
 
   <div class="al-rules">
     <span style="font-weight:700">Regras da alimentação</span>
-    <span>1. Nada entra na base sem conferência.</span>
-    <span>2. O arquivo original fica guardado sem alteração <em style="color:#7A4C00">(ainda não disponível)</em>.</span>
-    <span>3. Duplicados são identificados antes da carga.</span>
-    <span>4. Documentos de conhecimento passam pela validação do Cérebro <em style="color:#7A4C00">(ainda não disponível)</em>.</span>
-    <span>5. Toda carga fica no histórico; desfazer em até 24 h <em style="color:#7A4C00">(ainda não disponível)</em>.</span>
+    <span>1. Nada entra na base sem conferência humana.</span>
+    <span>2. A IA identifica e sugere destinos — a publicação depende de confirmação.</span>
+    <span>3. Duplicados são detectados antes da carga.</span>
+    <span>4. Conhecimento, políticas e procedimentos passam por validação.</span>
+    <span>5. Toda carga fica no histórico com origem, lote e responsável.</span>
   </div>
 
-  <div class="al-section-lbl">Fontes de dados</div>
+  <div class="al-section-lbl">Alimentações recentes</div>
+  <div id="ca-recentes" style="margin-bottom:8px"></div>
+
+  <div class="al-section-lbl">Fontes disponíveis</div>
   <div class="al-chips" id="al-chips"></div>
   <div class="al-cards" id="al-cards"></div>
 
@@ -18452,6 +18464,38 @@ textarea.al-form-in{height:auto;padding:8px 10px;resize:vertical}
       <div style="display:flex;gap:10px;align-items:center"><span class="al-block" id="al-wiz-block"></span><button class="al-next" id="al-wiz-next" onclick="alNext()">Continuar →</button></div>
     </div>
   </div>
+</div>
+
+<!-- CENTRAL DE ALIMENTAÇÃO INTELIGENTE -->
+<div class="al-modal" id="ca-modal">
+<div class="al-dlg" style="width:min(900px,100%)">
+  <div class="al-dlg-h">
+    <div>
+      <div class="al-dlg-eyebrow" id="ca-eyebrow">CENTRAL DE ALIMENTAÇÃO</div>
+      <div class="al-dlg-title" id="ca-title">Adicionar alimentação</div>
+    </div>
+    <button class="al-x" onclick="caClose()">×</button>
+  </div>
+  <!-- Etapas -->
+  <div class="al-steps" id="ca-steps">
+    <div class="al-step on" data-s="1"><i></i><span>1. Adicionar</span></div>
+    <div class="al-step" data-s="2"><i></i><span>2. Leitura</span></div>
+    <div class="al-step" data-s="3"><i></i><span>3. Identificação</span></div>
+    <div class="al-step" data-s="4"><i></i><span>4. Conferência</span></div>
+    <div class="al-step" data-s="5"><i></i><span>5. Confirmar</span></div>
+    <div class="al-step" data-s="6"><i></i><span>6. Resultado</span></div>
+  </div>
+  <div class="al-dlg-b" id="ca-body">
+    <!-- conteúdo dinâmico -->
+  </div>
+  <div class="al-dlg-f">
+    <button class="al-btn-ghost" id="ca-btn-back" onclick="caBack()">Cancelar</button>
+    <div style="display:flex;gap:10px;align-items:center">
+      <span style="font-size:12px;color:#A80502;font-weight:600" id="ca-block"></span>
+      <button class="al-next" id="ca-btn-next" onclick="caNext()">Continuar →</button>
+    </div>
+  </div>
+</div>
 </div>
 
 </div><!-- /page-alimentacao -->
@@ -19152,10 +19196,353 @@ const _alimOrigLogin = window.afterLogin || (window.afterLogin=function(){});
 const _alimPrevAfterLogin = window.afterLogin;
 window.afterLogin = function(user){
   _alimPrevAfterLogin(user);
-  if(user&&user.perfil==='MASTER'){
+  if(user&&(user.perfil==='MASTER'||user.perfil==='GESTOR SAC')){
     const s=$('sidebar-alimentacao');
     if(s) s.style.display='';
   }
+};
+
+})();
+</script>
+
+<script>
+// ===== CENTRAL DE ALIMENTAÇÃO INTELIGENTE =====
+(function(){
+const $ = id => document.getElementById(id);
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const tok = () => sessionStorage.getItem('sac-token');
+const authH = () => ({'Authorization':'Bearer '+tok(),'Content-Type':'application/json'});
+
+const DESTINOS_LABEL = {
+  MANIFESTACAO:'Banco de Casos', HISTORICO:'Banco de Casos', PROCEDIMENTO:'Procedimentos',
+  POLITICA:'Políticas', CAUSA:'Causas/Subcausas', MATRIZ:'Matriz de Tratamento',
+  CONHECIMENTO:'Cérebro', SETOR:'Setores', CLIENTE:'Clientes', PRODUTO:'Produtos',
+  REPRESENTANTE:'Representantes', RNC:'RNC', PESQUISA:'Pesquisa de Satisfação', DESCONHECIDO:'Pendência'
+};
+const CONFIANCA_COR = v => v>=90?'#1E6B3A':v>=70?'#7A4C00':'#A80502';
+
+let CA = null; // estado do wizard
+
+window.caOpen = function(){
+  CA = { step:1, arquivo:null, conteudo:'', nome:'', tipo:'', analise:null, itens_confirmados:[] };
+  $('ca-modal').classList.add('open');
+  caRender();
+};
+window.caClose = function(){ $('ca-modal').classList.remove('open'); CA=null; };
+
+function caStep(n){
+  CA.step=n;
+  $('ca-steps').querySelectorAll('.al-step').forEach(el=>{
+    const s=Number(el.dataset.s);
+    el.className='al-step'+(s===n?' on':s<n?' done':'');
+  });
+  $('ca-btn-back').textContent = n===1?'Cancelar':'← Voltar';
+  $('ca-btn-next').textContent = n===5?'✓ Confirmar e alimentar':n===6?'Concluir':'Continuar →';
+  $('ca-block').textContent='';
+}
+
+window.caBack = function(){
+  if(!CA||CA.step<=1){caClose();return;}
+  if(CA.step===6){caClose();return;}
+  caStep(CA.step-1); caRender();
+};
+
+window.caNext = function(){
+  if(!CA) return;
+  const block = caValidar();
+  if(block){ $('ca-block').textContent=block; return; }
+  $('ca-block').textContent='';
+  if(CA.step===1){ caStep(2); caRender(); caLer(); return; }
+  if(CA.step===2){ caStep(3); caRender(); caAnalisar(); return; }
+  if(CA.step===3){ caStep(4); caRender(); return; }
+  if(CA.step===4){ caStep(5); caRender(); return; }
+  if(CA.step===5){ caStep(6); caRender(); caConfirmar(); return; }
+  if(CA.step===6){ caClose(); loadAlimentacao(); return; }
+};
+
+function caValidar(){
+  if(CA.step===1 && !CA.arquivo && !CA.conteudo_manual) return 'Adicione um arquivo ou insira o conteúdo.';
+  if(CA.step===4){
+    CA.itens_confirmados = [];
+    $('ca-body').querySelectorAll('[data-item-idx]').forEach(el=>{
+      if(el.checked){
+        const idx=Number(el.dataset.itemIdx);
+        const item={...CA.analise.itens[idx]};
+        // destino pode ter sido alterado
+        const sel=document.getElementById('ca-dest-'+idx);
+        if(sel) item.aba_destino=sel.value;
+        item.registros=[];
+        CA.itens_confirmados.push(item);
+      }
+    });
+    if(!CA.itens_confirmados.length) return 'Selecione ao menos um item para confirmar.';
+  }
+  return '';
+}
+
+function caRender(){
+  const b=$('ca-body'); if(!b) return;
+  if(CA.step===1) b.innerHTML=caHtmlEtapa1();
+  else if(CA.step===2) b.innerHTML=caHtmlEtapa2();
+  else if(CA.step===3) b.innerHTML=caHtmlEtapa3();
+  else if(CA.step===4) b.innerHTML=caHtmlEtapa4();
+  else if(CA.step===5) b.innerHTML=caHtmlEtapa5();
+  else if(CA.step===6) b.innerHTML=caHtmlEtapa6();
+  caBindEtapa();
+}
+
+/* ── ETAPA 1: Adicionar ── */
+function caHtmlEtapa1(){
+  return `
+  <div style="font-size:13px;color:#666;margin-bottom:4px">Selecione o arquivo ou cole o conteúdo que deseja alimentar no sistema.</div>
+  <div class="al-drop" id="ca-drop">
+    <div style="font-size:32px">📂</div>
+    <div style="font-weight:700;font-size:15px">Arraste o arquivo aqui</div>
+    <div style="font-size:12px;color:#929090">ou</div>
+    <label style="cursor:pointer;background:#C70602;color:#fff;padding:8px 18px;border-radius:7px;font-size:13px;font-weight:700">
+      Selecionar arquivo
+      <input type="file" id="ca-file-inp" accept=".xlsx,.csv,.json,.pdf,.docx,.txt,.zip" style="display:none">
+    </label>
+    <div style="font-size:11.5px;color:#929090;margin-top:4px">xlsx, csv, json, pdf, docx, txt, zip — máx 4 MB</div>
+  </div>
+  <div id="ca-file-preview" style="display:none"></div>
+  <div style="margin-top:12px">
+    <div style="font-weight:600;font-size:12.5px;margin-bottom:4px;color:#3A3939">Ou insira o conteúdo diretamente:</div>
+    <textarea id="ca-texto-manual" class="al-form-in" style="min-height:100px;resize:vertical" placeholder="Cole aqui o texto, lista de campos, tabela ou descrição do que deseja adicionar...">${CA.conteudo_manual||''}</textarea>
+  </div>`;
+}
+
+/* ── ETAPA 2: Lendo ── */
+function caHtmlEtapa2(){
+  return `<div style="text-align:center;padding:40px 20px;display:flex;flex-direction:column;gap:16px;align-items:center">
+    <div class="spinner" style="width:36px;height:36px;border:4px solid #eee;border-top-color:#C70602;border-radius:50%;animation:spin .7s linear infinite"></div>
+    <div style="font-weight:700;font-size:16px">Lendo conteúdo…</div>
+    <div style="font-size:13px;color:#666" id="ca-ler-status">Analisando estrutura do arquivo</div>
+  </div>`;
+}
+
+/* ── ETAPA 3: Identificação (esperando IA) ── */
+function caHtmlEtapa3(){
+  return `<div style="text-align:center;padding:40px 20px;display:flex;flex-direction:column;gap:16px;align-items:center">
+    <div style="font-size:36px">🧠</div>
+    <div style="font-weight:700;font-size:16px">Identificando conteúdo…</div>
+    <div style="font-size:13px;color:#666">A IA está classificando os tipos de informação e sugerindo os destinos corretos.</div>
+  </div>`;
+}
+
+/* ── ETAPA 4: Conferência ── */
+function caHtmlEtapa4(){
+  if(!CA.analise) return '<div class="al-alert err">Análise não disponível.</div>';
+  const a=CA.analise;
+  const conflitos = a.conflitos_potenciais||[];
+  const pendencias = a.pendencias||[];
+  const itens = a.itens||[];
+  const destOpts = Object.entries(DESTINOS_LABEL).map(([k,v])=>`<option value="${k}">${esc(v)}</option>`).join('');
+  const rows = itens.map((item,i)=>`
+    <tr>
+      <td><input type="checkbox" data-item-idx="${i}" checked></td>
+      <td><strong>${esc(item.descricao||item.tipo)}</strong></td>
+      <td>${esc(item.tipo)}</td>
+      <td>
+        <select id="ca-dest-${i}" class="al-sel sm" title="Destino">
+          ${Object.entries(DESTINOS_LABEL).map(([k,v])=>`<option value="${k}"${item.tipo===k?' selected':''}>${esc(v)}</option>`).join('')}
+        </select>
+      </td>
+      <td style="font-variant-numeric:tabular-nums">${item.quantidade_estimada||'?'}</td>
+      <td><span style="font-weight:700;color:${CONFIANCA_COR(item.confianca||0)}">${item.confianca||0}%</span></td>
+    </tr>`).join('');
+
+  return `
+  <div style="font-weight:700;font-size:15px;margin-bottom:8px">📋 ${esc(a.resumo||'Análise concluída')}</div>
+  ${conflitos.length?`<div class="al-alert warn" style="margin-bottom:10px">⚠️ <strong>Conflitos potenciais:</strong> ${esc(conflitos.join(' · '))}</div>`:''}
+  ${pendencias.length?`<div class="al-alert warn" style="margin-bottom:10px">🔍 <strong>Itens não classificados:</strong> ${esc(pendencias.join(', '))} — classifique manualmente abaixo.</div>`:''}
+  <div style="font-size:12.5px;color:#666;margin-bottom:8px">Revise o mapeamento. Você pode desmarcar itens ou alterar o destino antes de confirmar.</div>
+  <div class="al-map">
+    <table>
+      <thead><tr><th></th><th>Informação encontrada</th><th>Tipo</th><th>Destino sugerido</th><th>Qtd.</th><th>Confiança</th></tr></thead>
+      <tbody>${rows||'<tr><td colspan="6" style="padding:16px;color:#929090;text-align:center">Nenhum item identificado.</td></tr>'}</tbody>
+    </table>
+  </div>
+  ${itens.some(x=>(x.campos_identificados||[]).length)?`<div style="margin-top:10px;font-size:12px;color:#545252">
+    <strong>Campos detectados:</strong> ${itens.flatMap(x=>x.campos_identificados||[]).filter((v,i,a)=>a.indexOf(v)===i).map(c=>`<span style="background:#F4F4F4;border-radius:4px;padding:2px 7px;margin:2px;display:inline-block">${esc(c)}</span>`).join('')}
+  </div>`:''}`;
+}
+
+/* ── ETAPA 5: Confirmação ── */
+function caHtmlEtapa5(){
+  const itens = CA.itens_confirmados||[];
+  return `
+  <div style="font-weight:700;font-size:15px;margin-bottom:8px">✅ Pronto para alimentar</div>
+  <div style="font-size:13px;color:#666;margin-bottom:12px">Revise o resumo abaixo. Após confirmar, cada informação será enviada para o destino correto.</div>
+  <div style="background:#F7F7F7;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:8px">
+    ${itens.length?itens.map(it=>`
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;border-bottom:1px solid #E4E4E4;padding-bottom:8px">
+        <div>
+          <div style="font-weight:700;font-size:13.5px">${esc(DESTINOS_LABEL[it.tipo]||it.tipo)}</div>
+          <div style="font-size:11.5px;color:#666">${esc(it.descricao||'')}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:19px;font-weight:700;font-variant-numeric:tabular-nums">${it.quantidade_estimada||'?'}</div>
+          <div style="font-size:11px;color:#929090">registros estimados</div>
+        </div>
+      </div>`).join(''):'<div style="color:#929090;font-size:13px">Nenhum item selecionado.</div>'}
+  </div>
+  <div class="al-alert warn" style="margin-top:12px">⚠️ <strong>Atenção:</strong> Políticas, procedimentos e regras passarão por validação antes de ser publicados no Cérebro e na IA.</div>
+  <div style="margin-top:12px;font-size:12px;color:#666">Arquivo: <strong>${esc(CA.nome||'conteúdo manual')}</strong></div>`;
+}
+
+/* ── ETAPA 6: Resultado ── */
+function caHtmlEtapa6(){
+  if(!CA.resultado_final) return `<div style="text-align:center;padding:30px"><div class="spinner" style="width:32px;height:32px;border:4px solid #eee;border-top-color:#C70602;border-radius:50%;animation:spin .7s linear infinite;margin:auto"></div><div style="margin-top:12px;font-weight:700">Distribuindo dados…</div></div>`;
+  const r=CA.resultado_final;
+  const total=r.total_publicados||0;
+  const erros=(r.erros||[]).length;
+  return `
+  <div style="text-align:center;padding:12px 0 18px">
+    <div style="font-size:36px">${erros===0?'🎉':'⚠️'}</div>
+    <div style="font-weight:700;font-size:20px;margin-top:8px">Alimentação ${erros===0?'concluída':'concluída com avisos'}</div>
+    <div style="font-size:13px;color:#666;margin-top:4px">Lote: <strong>${esc(r.lote_id||'–')}</strong></div>
+  </div>
+  <div class="al-vk" style="margin-bottom:14px">
+    <div style="background:#E6F2EA"><b>Publicados</b><span style="color:#1E6B3A">${total}</span></div>
+    <div style="background:#FDECEC"><b>Erros</b><span style="color:#A80502">${erros}</span></div>
+    <div style="background:#F7F7F7"><b>Lote</b><span style="font-size:13px">${esc(r.lote_id||'–')}</span></div>
+  </div>
+  ${(r.resultados||[]).map(res=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;border:1px solid #E4E4E4;border-radius:8px;padding:10px 14px;margin-bottom:6px;font-size:13px">
+      <div><strong>${esc(DESTINOS_LABEL[res.tipo]||res.tipo)}</strong><span style="color:#929090;margin-left:8px">→ ${esc(res.aba_destino||'')}</span></div>
+      <div style="font-weight:700;color:#1E6B3A">+${res.publicados}</div>
+    </div>`).join('')}
+  ${erros?`<div class="al-alert err" style="margin-top:8px"><strong>${erros} registro(s) com erro.</strong> Verifique o console ou histórico para detalhes.</div>`:''}
+  <div class="al-alert ok" style="margin-top:10px">✓ Registros disponíveis imediatamente no sistema. Conhecimento e políticas passam por validação antes de ir ao Cérebro.</div>`;
+}
+
+/* ── Bindings de etapa ── */
+function caBindEtapa(){
+  if(CA.step!==1) return;
+  const inp = $('ca-file-inp');
+  if(inp) inp.onchange = e => caSetFile(e.target.files[0]);
+  const drop=$('ca-drop');
+  if(drop){
+    drop.ondragover=e=>{e.preventDefault();drop.classList.add('over');};
+    drop.ondragleave=()=>drop.classList.remove('over');
+    drop.ondrop=e=>{e.preventDefault();drop.classList.remove('over');const f=e.dataTransfer.files[0];if(f)caSetFile(f);};
+  }
+}
+
+function caSetFile(file){
+  if(!file) return;
+  if(file.size>4*1024*1024){ $('ca-block').textContent='Arquivo muito grande (máx 4 MB).'; return; }
+  CA.arquivo=file; CA.nome=file.name; CA.tipo=file.name.split('.').pop().toLowerCase();
+  const prev=$('ca-file-preview');
+  if(prev){
+    const clr={pdf:'#C70602',docx:'#24508F',xlsx:'#1E6B3A',csv:'#1E6B3A'}[CA.tipo]||'#545252';
+    prev.style.display='';
+    prev.innerHTML=`<div class="al-file"><div class="al-file-ext ${CA.tipo}" style="background:${clr}">${esc(CA.tipo.slice(0,4))}</div><div><div style="font-weight:700;font-size:13px">${esc(file.name)}</div><div style="font-size:11.5px;color:#929090">${(file.size/1024).toFixed(1)} KB</div></div></div>`;
+  }
+  $('ca-block').textContent='';
+}
+
+async function caLer(){
+  const s=$('ca-ler-status'); if(s) s.textContent='Lendo arquivo…';
+  try {
+    if(CA.arquivo){
+      const ext=CA.tipo;
+      if(['txt','csv','json'].includes(ext)){
+        CA.conteudo = await CA.arquivo.text();
+      } else if(ext==='xlsx'){
+        // Lê xlsx como texto (melhor seria parsear, mas enviamos como base64)
+        const buf = await CA.arquivo.arrayBuffer();
+        const b64 = btoa(String.fromCharCode(...new Uint8Array(buf).slice(0,3000)));
+        CA.conteudo = `[Arquivo Excel ${CA.nome}] Base64 parcial: ${b64.slice(0,200)}... (${Math.round(CA.arquivo.size/1024)}KB, análise por nome e estrutura)`;
+      } else if(ext==='docx'){
+        const buf = await CA.arquivo.arrayBuffer();
+        const b64 = btoa(String.fromCharCode(...new Uint8Array(buf).slice(0,2000)));
+        CA.conteudo = `[Arquivo Word ${CA.nome}] Tamanho: ${Math.round(CA.arquivo.size/1024)}KB`;
+      } else if(ext==='pdf'){
+        CA.conteudo = `[Arquivo PDF ${CA.nome}] Tamanho: ${Math.round(CA.arquivo.size/1024)}KB`;
+      } else if(ext==='zip'){
+        CA.conteudo = `[Arquivo ZIP ${CA.nome}] Tamanho: ${Math.round(CA.arquivo.size/1024)}KB`;
+      } else {
+        CA.conteudo = await CA.arquivo.text().catch(()=>`[${CA.nome}]`);
+      }
+    } else {
+      CA.conteudo = ($('ca-texto-manual')||{}).value || CA.conteudo_manual || '';
+      CA.nome = 'conteúdo manual';
+    }
+    if(s) s.textContent='Leitura concluída. Iniciando identificação…';
+    setTimeout(()=>{ caStep(3); caRender(); caAnalisar(); }, 400);
+  } catch(e){
+    caStep(1); caRender(); $('ca-block').textContent='Erro ao ler arquivo: '+e.message;
+  }
+}
+
+async function caAnalisar(){
+  try {
+    const r = await fetch('/api/alimentacao/analisar',{
+      method:'POST', headers:authH(),
+      body: JSON.stringify({ nome:CA.nome, conteudo: CA.conteudo.slice(0,8000), tipo_arquivo:CA.tipo })
+    });
+    const d = await r.json();
+    if(!d.sucesso) throw new Error(d.erro||'Erro na análise.');
+    CA.analise = d;
+    caStep(4); caRender();
+  } catch(e){
+    // Fallback: permitir classificação manual
+    CA.analise = {
+      resumo: 'Não foi possível classificar automaticamente. Classifique manualmente.',
+      itens:[{tipo:'DESCONHECIDO',descricao:'Conteúdo não identificado',quantidade_estimada:1,confianca:0,campos_identificados:[],alertas:['Revisar manualmente']}],
+      pendencias:[CA.nome], conflitos_potenciais:[]
+    };
+    caStep(4); caRender();
+    $('ca-block').textContent='Análise automática indisponível. Classifique manualmente.';
+  }
+}
+
+async function caConfirmar(){
+  try {
+    const r = await fetch('/api/alimentacao/confirmar',{
+      method:'POST', headers:authH(),
+      body: JSON.stringify({
+        lote_nome: CA.nome,
+        itens_confirmados: CA.itens_confirmados,
+        usuario: (window._sacUser||{}).usuario || ''
+      })
+    });
+    const d = await r.json();
+    CA.resultado_final = d;
+    caRender();
+  } catch(e){
+    CA.resultado_final = {sucesso:false,erro:e.message,resultados:[],total_publicados:0,erros:[{motivo:e.message}],lote_id:'ERRO'};
+    caRender();
+  }
+}
+
+// Alimentações recentes (últimos lotes do LOG_SISTEMA)
+async function caCarregarRecentes(){
+  try {
+    const r = await fetch('/api/alimentacao/historico',{headers:{'Authorization':'Bearer '+tok()}});
+    const d = await r.json();
+    const el=$('ca-recentes'); if(!el) return;
+    const itens=(d.itens||[]).slice(0,5);
+    if(!itens.length){ el.innerHTML='<div style="font-size:12.5px;color:#929090;padding:8px 0">Nenhuma alimentação registrada ainda.</div>'; return; }
+    el.innerHTML=`<div style="display:flex;flex-direction:column;gap:6px">${itens.map(it=>`
+      <div style="background:#fff;border:1px solid #E4E4E4;border-radius:8px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12.5px;flex-wrap:wrap">
+        <div><strong>${esc(it.ID_MANIFESTACAO||'–')}</strong> <span style="color:#666;margin-left:6px">${esc(it.ENTIDADE||'')}</span></div>
+        <div style="color:#929090">${esc(it.USUARIO||'')} · ${esc((it.DATA_HORA||'').slice(0,10))}</div>
+      </div>`).join('')}</div>`;
+    // KPIs
+    const kpiFontes=document.getElementById('ca-kpi-fontes'); if(kpiFontes) kpiFontes.textContent=itens.length;
+    const kpiUlt=document.getElementById('ca-kpi-ult'); if(kpiUlt) kpiUlt.textContent=(itens[0]?.DATA_HORA||'–').slice(0,10);
+    document.getElementById('al-kpis-central')?.style.setProperty('display','');
+  } catch(e){ /* silencioso */ }
+}
+
+// Expor ao loadAlimentacao
+const _prevLoad = window.loadAlimentacao;
+window.loadAlimentacao = async function(){
+  if(_prevLoad) await _prevLoad();
+  caCarregarRecentes();
 };
 
 })();

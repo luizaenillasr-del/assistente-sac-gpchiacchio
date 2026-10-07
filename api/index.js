@@ -6659,6 +6659,144 @@ app.patch('/api/rnc/:id', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁV
 });
 
 // ═════════════════════════════════════════════════════════════════════════════
+// CENTRAL DE ALIMENTAÇÃO INTELIGENTE
+// ═════════════════════════════════════════════════════════════════════════════
+
+// Mapa de destinos possíveis por tipo identificado
+const DESTINOS_ALIMENTACAO = {
+  'MANIFESTACAO':    { label:'Banco de Casos', aba:'MANIFESTACOES',      modulos:['banco-manifestacoes','similares'] },
+  'HISTORICO':       { label:'Banco de Casos', aba:'BANCO_HISTORICO',    modulos:['banco-manifestacoes','similares'] },
+  'PROCEDIMENTO':    { label:'Procedimentos',  aba:'PROCEDIMENTOS',      modulos:['cerebro','setor-responsavel'] },
+  'POLITICA':        { label:'Políticas',      aba:'POLITICAS',          modulos:['cerebro'] },
+  'CAUSA':           { label:'Causas/Subcausas',aba:'CAUSAS',            modulos:['nova-manifestacao','matriz','relatorios'] },
+  'MATRIZ':          { label:'Matriz de Tratamento', aba:'MATRIZ_TRATAMENTO', modulos:['cerebro','analise-ia'] },
+  'CONHECIMENTO':    { label:'Cérebro',        aba:'BASE_CONHECIMENTO',  modulos:['cerebro','analise-ia'] },
+  'SETOR':           { label:'Setores',        aba:'CONFIG_SETORES',     modulos:['nova-manifestacao','sla','encaminhamento'] },
+  'CLIENTE':         { label:'Clientes',       aba:'CLIENTES',           modulos:['nova-manifestacao','pesquisa','reincidencia'] },
+  'PRODUTO':         { label:'Produtos',       aba:'PRODUTOS',           modulos:['nova-manifestacao'] },
+  'REPRESENTANTE':   { label:'Representantes', aba:'REPRESENTANTES',     modulos:['representantes','nova-manifestacao'] },
+  'RNC':             { label:'RNC',            aba:'BANCO_RNC',          modulos:['banco-rnc'] },
+  'PESQUISA':        { label:'Pesquisa de Satisfação', aba:'PESQUISA_RESPOSTAS', modulos:['relatorio-satisfacao'] },
+  'DESCONHECIDO':    { label:'Pendência',      aba:null,                 modulos:[] },
+};
+
+// Etapa 1 → Etapa 3: analisar conteúdo com IA e sugerir destinos
+app.post('/api/alimentacao/analisar', requerPerfil('MASTER','GESTOR SAC'), async (req,res)=>{
+  try {
+    const { nome, conteudo, tipo_arquivo } = req.body || {};
+    if (!conteudo) return res.status(400).json({sucesso:false,erro:'Conteúdo não fornecido.'});
+
+    const aiSvc = (() => { try { return require('./services/aiService'); } catch { return null; } })();
+    if (!aiSvc) return res.status(500).json({sucesso:false,erro:'Serviço de IA não disponível.'});
+
+    const prompt = `Você é um classificador de dados para um sistema SAC empresarial.
+Analise o conteúdo abaixo (arquivo: "${nome||'sem nome'}", tipo: "${tipo_arquivo||'texto'}") e identifique:
+1. Quais TIPOS de informação estão presentes (pode haver mais de um).
+2. Para cada tipo, qual o DESTINO correto no sistema.
+3. Quantos registros aproximados de cada tipo.
+4. Confiança de 0-100%.
+5. Se há duplicatas, inconsistências ou conflitos potenciais.
+
+TIPOS POSSÍVEIS: MANIFESTACAO, HISTORICO, PROCEDIMENTO, POLITICA, CAUSA, MATRIZ, CONHECIMENTO, SETOR, CLIENTE, PRODUTO, REPRESENTANTE, RNC, PESQUISA, DESCONHECIDO.
+
+Responda SOMENTE em JSON válido, no formato:
+{
+  "resumo": "frase curta do que foi encontrado",
+  "itens": [
+    {
+      "tipo": "TIPO",
+      "descricao": "o que foi identificado",
+      "quantidade_estimada": N,
+      "confianca": 0-100,
+      "destino_label": "nome amigável do destino",
+      "campos_identificados": ["campo1","campo2"],
+      "alertas": ["alerta opcional"]
+    }
+  ],
+  "pendencias": ["item não classificado com certeza"],
+  "conflitos_potenciais": ["conflito detectado"]
+}
+
+CONTEÚDO:
+${String(conteudo).slice(0,8000)}`;
+
+    let resultado;
+    try {
+      const resposta = await aiSvc.chamarIA(prompt, {max_tokens:1500,temperature:0.2});
+      const texto = resposta?.content?.[0]?.text || resposta?.choices?.[0]?.message?.content || String(resposta||'{}');
+      const jsonMatch = texto.match(/\{[\s\S]*\}/);
+      resultado = jsonMatch ? JSON.parse(jsonMatch[0]) : {resumo:'Não foi possível classificar.',itens:[],pendencias:[],conflitos_potenciais:[]};
+    } catch(parseErr) {
+      resultado = {resumo:'Análise parcial.',itens:[{tipo:'DESCONHECIDO',descricao:'Conteúdo não classificado automaticamente',quantidade_estimada:1,confianca:0,destino_label:'Pendência',campos_identificados:[],alertas:['Revisar manualmente']}],pendencias:[nome||'arquivo'],conflitos_potenciais:[]};
+    }
+
+    // Enriquecer cada item com info de destino
+    const itensEnriquecidos = (resultado.itens||[]).map(item=>{
+      const dest = DESTINOS_ALIMENTACAO[item.tipo] || DESTINOS_ALIMENTACAO['DESCONHECIDO'];
+      return { ...item, aba_destino: dest.aba, modulos_afetados: dest.modulos, destino_label: item.destino_label || dest.label };
+    });
+
+    res.json({sucesso:true, nome, resumo:resultado.resumo, itens:itensEnriquecidos, pendencias:resultado.pendencias||[], conflitos_potenciais:resultado.conflitos_potenciais||[]});
+  } catch(e){ res.status(500).json({sucesso:false,erro:erroSeguro(e,'alimentacao-analisar')}); }
+});
+
+// Etapa 7: confirmar e distribuir
+app.post('/api/alimentacao/confirmar', requerPerfil('MASTER','GESTOR SAC'), async (req,res)=>{
+  try {
+    const { lote_nome, itens_confirmados, usuario } = req.body || {};
+    if (!Array.isArray(itens_confirmados) || !itens_confirmados.length)
+      return res.status(400).json({sucesso:false,erro:'Nenhum item confirmado.'});
+
+    const agora = new Date().toISOString();
+    const loteId = `IMP-${Date.now().toString(36).toUpperCase()}`;
+    const resultados = [];
+    const erros = [];
+
+    for (const item of itens_confirmados) {
+      const { tipo, registros, aba_destino } = item;
+      if (!aba_destino || !Array.isArray(registros) || !registros.length) {
+        erros.push({tipo, motivo:'Sem registros ou destino inválido.'});
+        continue;
+      }
+      let publicados = 0;
+      for (const reg of registros) {
+        try {
+          const obj = { ...reg, LOTE_IMPORTACAO: loteId, DATA_IMPORTACAO: agora, IMPORTADO_POR: usuario||req.user?.usuario||'sistema', ORIGEM_ARQUIVO: lote_nome||'' };
+          await appendObjeto(aba_destino, obj);
+          publicados++;
+        } catch(regErr) {
+          erros.push({tipo, motivo:regErr.message, registro: JSON.stringify(reg).slice(0,100)});
+        }
+      }
+      resultados.push({tipo, aba_destino, publicados, total:registros.length});
+    }
+
+    // Log de auditoria
+    await registrarAuditoria(req.user?.usuario||'sistema','ALIMENTACAO_CONFIRMADA',loteId,'CENTRAL_ALIMENTACAO','',{resultados,erros_count:erros.length}).catch(()=>{});
+
+    // Registrar no histórico de alimentação
+    await appendObjeto('LOG_SISTEMA', {
+      DATA_HORA: agora, USUARIO: req.user?.usuario||'sistema',
+      ACAO: 'IMPORTOU_DADOS', ID_MANIFESTACAO: loteId,
+      ENTIDADE: `ALIMENTACAO:${itens_confirmados.map(i=>i.tipo).join(',')}`,
+      VALOR_ANTERIOR: '', VALOR_NOVO: JSON.stringify({loteId,resultados,arquivo:lote_nome})
+    }).catch(()=>{});
+
+    const totalPublicados = resultados.reduce((s,r)=>s+r.publicados,0);
+    res.json({sucesso:true, lote_id:loteId, resultados, erros: erros.slice(0,20), total_publicados:totalPublicados, total_erros:erros.length });
+  } catch(e){ res.status(500).json({sucesso:false,erro:erroSeguro(e,'alimentacao-confirmar')}); }
+});
+
+// GET pendências de alimentação
+app.get('/api/alimentacao/pendencias', requerPerfil('MASTER','GESTOR SAC'), async (req,res)=>{
+  try {
+    const logs = await lerAba('LOG_SISTEMA',5000).catch(()=>[]);
+    const pendencias = logs.filter(l=>(l.ACAO||'').startsWith('ALIMENTACAO_PENDENTE')).slice(-50).reverse();
+    res.json({sucesso:true,total:pendencias.length,itens:pendencias});
+  } catch(e){ res.status(500).json({sucesso:false,erro:erroSeguro(e),itens:[]}); }
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
 // CATCH ALL
 // ═════════════════════════════════════════════════════════════════════════════
 app.use((req, res) => {
