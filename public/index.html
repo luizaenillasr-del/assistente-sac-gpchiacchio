@@ -5914,6 +5914,7 @@
       </div>
       <div class="af-actions">
         <button class="af-btn" onclick="abrirModalImportarFicha()">↑ Importar fichas (PDF/DOCX)</button>
+        <button class="af-btn" id="bib-btn-sincronizar" onclick="sincronizarBaseConhecimento()" title="Lê todas as fichas e popula automaticamente Setores, Matriz de Tratamento e Cérebro com os dados encontrados">⚡ Sincronizar base</button>
         <button class="af-btn af-btn-red" id="bib-btn-refresh" onclick="loadBiblioteca(true,true)">↻ Atualizar</button>
       </div>
     </div>
@@ -6558,9 +6559,39 @@ function afRenderTabela(fichas) {
       <td>${_bibOrigemBadge(f.ORIGEM)}</td>
       <td style="white-space:nowrap;color:#545252">${ev ? ev + (ev > 1 ? ' arquivos' : ' arquivo') : '—'}</td>
       <td>${_bibStatusBadge(f.STATUS)}</td>
+      <td onclick="event.stopPropagation()"><button class="btn btn-secondary" style="padding:3px 8px;font-size:11px" onclick="afEditarFicha(${i})">✎ Editar</button></td>
     </tr>`;
   }).join('');
 }
+
+// --- editar ficha ---
+window.afEditarFicha = function(i) {
+  const f = _bibFichasAcum[i]; if (!f) return;
+  const id = f.ID_FICHA || f.ID_MANIFESTACAO;
+  if (!id) { alert('Esta ficha não possui ID e não pode ser editada.'); return; }
+  abrirEditorGenerico('Editar ficha · ' + (f.PROTOCOLO || id), [
+    ['EMPRESA','Empresa',f.EMPRESA||'','text'],
+    ['NOME_CLIENTE','Nome do cliente',f.NOME_CLIENTE||'','text'],
+    ['CNPJ','CNPJ',f.CNPJ||'','text'],
+    ['DATA_REGISTRO','Data da reclamação (AAAA-MM-DD)',f.DATA_REGISTRO||'','text'],
+    ['TIPO_MANIFESTACAO','Tipo',f.TIPO_MANIFESTACAO||'Reclamação','select',false,['Reclamação','Sugestão','Solicitação','Elogio']],
+    ['MOTIVO','Motivo / Causa',f.MOTIVO||'','text'],
+    ['SETOR_RECEBIMENTO','Setor de recebimento',f.SETOR_RECEBIMENTO||'','text'],
+    ['COLABORADOR_RECEBIMENTO','Colaborador',f.COLABORADOR_RECEBIMENTO||'','text'],
+    ['STATUS','Status',f.STATUS||'CONCLUIDA','select',false,['CONCLUIDA','EM_TRATATIVA','ABERTA']],
+  ], async values => {
+    const r = await fetch(window.SAC_API + '/api/biblioteca/fichas/' + encodeURIComponent(id), {
+      method: 'PATCH', headers: Object.assign({ 'Content-Type': 'application/json' }, authH()),
+      body: JSON.stringify(values)
+    });
+    const d = await r.json();
+    if (!d.sucesso) throw new Error(d.erro || 'Falha ao salvar');
+    fecharEditorGenerico();
+    _bibFichasAcum[i] = Object.assign({}, f, values);
+    afRenderTable(_bibFichasAcum);
+    alert('Ficha atualizada com sucesso.');
+  });
+};
 
 // --- detalhe da ficha ---
 function afAbrirFicha(i) {
@@ -6699,6 +6730,26 @@ function afInferirDoNome(nome) {
     if (dt.getFullYear() === y && dt.getMonth() === m - 1 && dt.getDate() === d && iso <= _afHojeISO()) out.data = iso;
   }
   return out;
+}
+
+async function sincronizarBaseConhecimento() {
+  const btn = document.getElementById('bib-btn-sincronizar');
+  if (!btn) return;
+  const orig = btn.textContent;
+  btn.disabled = true; btn.textContent = '⏳ Sincronizando…';
+  try {
+    const r = await fetch(window.SAC_API + '/api/biblioteca/sincronizar-base', {
+      method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, authH())
+    });
+    const d = await r.json();
+    if (!d.sucesso) throw new Error(d.erro || 'Erro desconhecido');
+    const msg = `✅ Sincronização concluída!\n\n📁 Fichas lidas: ${d.fichas}\n🏢 Setores adicionados: ${d.setores}\n📋 Regras na Matriz de Tratamento: ${d.matriz}\n🧠 Entradas no Cérebro: ${d.cerebro}`;
+    alert(msg);
+  } catch(e) {
+    alert('Erro na sincronização: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = orig;
+  }
 }
 
 function abrirModalImportarFicha() {
@@ -9892,19 +9943,21 @@ window.navigate = function(page, el) {
   window.editarRegraMatriz=function(i){
     const r=(_matrizData||[])[i]; if(!r)return;
     abrirEditorGenerico('Editar regra da Matriz',[
-      ['TEMA','Tema',r.TEMA||r.tema||r.NOME||'','text'],
-      ['SETOR_PRINCIPAL','Setor principal',r.SETOR_PRINCIPAL||r.principal||r.SETOR||'','text'],
-      ['SETORES_APOIO','Setores de apoio',r.SETORES_APOIO||r.apoio||'','text'],
-      ['SLA_HORAS','SLA (horas)',r.SLA_HORAS||r.PRAZO||'','number'],
-      ['PRIORIDADE','Prioridade',r.PRIORIDADE||r.prioridade||'Média','select',false,['Baixa','Média','Alta','Crítica']],
-      ['GERA_RNC','Gera RNC',r.GERA_RNC||r.rnc||'Não','select',false,['Sim','Não']],
-      ['APROVACAO','Aprovação',r.APROVACAO||r.aprovacao||'Analista','text'],
-      ['FOLLOW_UP','Follow-up',r.FOLLOW_UP||r.followup||'','text'],
-      ['REGRAS','Regra/critério',r.REGRAS||r.REGRA||'','textarea']
+      ['TIPO_MANIFESTACAO','Tipo',r.TIPO_MANIFESTACAO||r.TEMA||r.tema||'','select',false,['Reclamação','Sugestão','Solicitação','Elogio']],
+      ['CAUSA','Causa / Motivo',r.CAUSA||r.NOME||r.tema||'','text'],
+      ['SUBCAUSA','Subcausa',r.SUBCAUSA||'','text'],
+      ['SETOR_RESPONSAVEL','Setor responsável',r.SETOR_RESPONSAVEL||r.SETOR_PRINCIPAL||r.SETOR||'','text'],
+      ['SLA_HORAS','SLA (horas)',r.SLA_HORAS||r.PRAZO||'72','number'],
+      ['PRIORIDADE','Prioridade',r.PRIORIDADE||'NORMAL','select',false,['BAIXA','NORMAL','ALTA','CRITICA']],
+      ['TRATATIVA_PADRAO','Tratativa padrão',r.TRATATIVA_PADRAO||r.REGRAS||'','textarea'],
+      ['DEVOLUTIVA_PADRAO','Devolutiva padrão',r.DEVOLUTIVA_PADRAO||'','textarea'],
+      ['REQUER_APROVACAO','Requer aprovação',r.REQUER_APROVACAO||'NAO','select',false,['NAO','SIM']],
+      ['ATIVO','Ativo',r.ATIVO||'SIM','select',false,['SIM','NAO']]
     ],async values=>{
-      const id=r.ID_MATRIZ||r.ID||r.id;
-      if(!id)throw new Error('A API /api/matriz precisa retornar ID_MATRIZ/ID para permitir edição.');
-      const res=await jsonFetch('/api/matriz/'+encodeURIComponent(id),{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(values)});
+      const id=r.ID_REGRA||r.ID_TRATAMENTO||r.ID_MATRIZ||r.ID||r.id;
+      if(!id)throw new Error('Registro sem ID — não é possível editar.');
+      const endpoint = r.ID_REGRA||r.ID_TRATAMENTO ? '/api/matriz-tratamento/'+encodeURIComponent(id) : '/api/matriz/'+encodeURIComponent(id);
+      const res=await jsonFetch(endpoint,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(values)});
       if(res.sucesso===false)throw new Error(res.erro||'Falha ao salvar regra');
       fecharEditorGenerico(); await loadMatriz(); alert('Regra salva com sucesso.');
     });
@@ -18851,7 +18904,7 @@ function step4(){
   ${R.baseErr?`<div class="al-alert warn">Não foi possível comparar com a base existente (${esc(R.baseErr)}). Só foram detectados duplicados dentro do próprio arquivo.</div>`:''}
   <div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12.5px;font-weight:700">Registros duplicados</span>
     <span style="font-size:12px;color:#666464">Mesmos valores em todos os campos mapeados de um registro já existente na aba (lida até 5.000 linhas) ou repetido no arquivo.</span>
-    <div class="al-dupo"><button class="on">Ignorar duplicados (manter o que já está na base)</button><button disabled title="Atualização de registros existentes (nova versão e auditoria) ainda não tem backend">Atualizar existentes (indisponível: sem suporte no backend)</button></div></div>
+    <div class="al-dupo"><button class="${W.upsert?'':'on'}" onclick="W.upsert=false;wizRender()">Ignorar duplicados (manter o que já está na base)</button><button class="${W.upsert?'on':''}" onclick="W.upsert=true;wizRender()">Atualizar existentes (sobrescreve pelo ID)</button></div></div>
   <div style="display:flex;flex-direction:column;gap:6px"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center"><span style="font-size:12.5px;font-weight:700">Registros com erro (não serão importados)</span><button class="al-btn-sm" onclick="alErrRep()">Baixar relatório de erros</button></div>
     <div class="al-errs">${lista.length?lista.map(e=>`<div><span style="color:#929090">${esc(e.ref)}</span><span><strong style="color:#A80502">${esc(e.t)}</strong> · ${esc(e.d)}</span></div>`).join('')+(R.erros.length>200?`<div><span></span><span style="color:#929090">… e mais ${fmtN(R.erros.length-200)} (veja o relatório)</span></div>`:''):'<div><span style="color:#929090">—</span><span><strong>Nenhum erro</strong> · todos os registros passaram na validação</span></div>'}</div></div>`;
 }
@@ -18862,7 +18915,7 @@ window.alErrRep = function(){
 
 function step5(){
   const s=srcOf(W.src), R=W.res, {empH}=mapRows();
-  const sum=[['Fonte',s.nome],['Empresa',W.emp],['Arquivos',okFiles().map(f=>f.name).join(', ')],['Registros a importar',fmtN(R.okRows.length)],['Duplicados',fmtN(R.dups)+' ignorados'],['Com erro (fora da carga)',fmtN(R.linhasComErro)]];
+  const sum=[['Fonte',s.nome],['Empresa',W.emp],['Arquivos',okFiles().map(f=>f.name).join(', ')],['Registros a importar',fmtN(R.okRows.length)],['Duplicados',fmtN(R.dups)+(W.upsert?' serão atualizados':' ignorados')],['Com erro (fora da carga)',fmtN(R.linhasComErro)]];
   const after=['Dados passam a alimentar: '+s.feeds.join(', ')+'.','As linhas são adicionadas ao final da aba '+s.aba+' da planilha do SAC, sem alterar as existentes.','A carga é registrada no log de auditoria do sistema (aparece no histórico acima).','O arquivo original NÃO é guardado pelo sistema e a carga NÃO pode ser desfeita automaticamente: funcionalidades ainda não disponíveis.'];
   if(W.emp!==EMPRESAS[0] && !empH) after.push('Atenção: a aba '+s.aba+' não tem coluna de empresa; a empresa escolhida não será gravada.');
   return `<div class="al-sum">${sum.map(x=>`<div><small>${esc(x[0])}</small><b>${esc(x[1])}</b></div>`).join('')}</div>
@@ -18903,7 +18956,7 @@ async function importar(){
   try{
     for(let i=0;i<itens.length;i+=LOTE){
       const lote=itens.slice(i,i+LOTE);
-      const r=await fetch(API+'/api/planilha/'+encodeURIComponent(s.aba)+'/importar',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},authH()),body:JSON.stringify({itens:lote})});
+      const r=await fetch(API+'/api/planilha/'+encodeURIComponent(s.aba)+'/importar',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},authH()),body:JSON.stringify({itens:lote,upsert:!!W.upsert})});
       const d=await r.json();
       if(!d.sucesso) throw new Error(d.erro||'Falha na importação');
       criados+=d.criados||lote.length;

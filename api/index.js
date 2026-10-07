@@ -2374,9 +2374,8 @@ app.get('/api/setores', middlewareEscopoEmpresa(), requerPerfil('MASTER','ANALIS
   try {
     // GET puro — sem criar/escrever abas. Se não existe, retorna vazio e frontend usa fallback.
     const data = await lerAba('CONFIG_SETORES', 500).catch(()=>[]);
-    // Config: sem empresa = global (todos veem). Com empresa = apenas essa empresa + MASTER.
-    const filtrado = filtrarPorEmpresaConfig(data, req, 'EMPRESA');
-    const itens = filtrado.map(s => ({ ...s, _counts: {} }));
+    // Setores são configuração global — todos os perfis veem todos os setores
+    const itens = data.map(s => ({ ...s, _counts: {} }));
     res.json({ sucesso:true, total:itens.length, itens });
   } catch (e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e), itens:[] }); }
 });
@@ -3827,13 +3826,18 @@ app.get('/api/planilha/:aba/cabecalhos', requerPerfil('MASTER','ANALISTA SAC'), 
 app.post('/api/planilha/:aba/importar', requerPerfil('MASTER'), async (req,res)=>{
   try {
     const aba = req.params.aba.toUpperCase().replace(/[^A-Z0-9_]/g,'');
-    const { itens, cabecalhos } = req.body;
+    const { itens, cabecalhos, upsert } = req.body;
     if(!Array.isArray(itens)||!itens.length) return res.status(400).json({ sucesso:false, erro:'Nenhum item.' });
     if(cabecalhos && Array.isArray(cabecalhos)) await garantirAbaComCabecalhos(aba, cabecalhos);
-    let criados=0;
+    let criados=0, atualizados=0;
     const agora = new Date().toISOString();
+
+    // Para upsert: carrega existentes uma vez só
+    const existentes = upsert ? await lerAba(aba, 5000).catch(()=>[]) : [];
+    // Detecta campo-chave da aba (primeiro campo que parece ID)
+    const campoID = existentes.length ? Object.keys(existentes[0]).find(k => /^ID_/.test(k)) : null;
+
     for(const item of itens){
-      // For MANIFESTACOES, auto-fill required fields if missing
       if(aba==='MANIFESTACOES'){
         if(!item.ID_MANIFESTACAO) item.ID_MANIFESTACAO = await gerarProximoID('MANIFESTACOES','MAN','ID_MANIFESTACAO');
         if(!item.DATA_ABERTURA) item.DATA_ABERTURA = agora;
@@ -3842,11 +3846,20 @@ app.post('/api/planilha/:aba/importar', requerPerfil('MASTER'), async (req,res)=
         if(!item.USUARIO_CRIACAO) item.USUARIO_CRIACAO = req.user.usuario;
         if(!item.ORIGEM) item.ORIGEM = 'IMPORTACAO';
       }
+
+      if(upsert && campoID && item[campoID]) {
+        const existe = existentes.find(r => String(r[campoID]||'').trim() === String(item[campoID]).trim());
+        if(existe) {
+          await atualizarPorID(aba, existe[campoID], item, [campoID]);
+          atualizados++;
+          continue;
+        }
+      }
       await appendObjeto(aba, item);
       criados++;
     }
-    await registrarAuditoria(req.user.usuario,'IMPORTOU_DADOS_PLANILHA',`${criados} linhas`,aba,null,{aba,total:criados});
-    res.json({ sucesso:true, criados, aba });
+    await registrarAuditoria(req.user.usuario,'IMPORTOU_DADOS_PLANILHA',`${criados}c/${atualizados}a`,aba,null,{aba,total:criados+atualizados,upsert:!!upsert});
+    res.json({ sucesso:true, criados, atualizados, aba });
   } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
 
@@ -5224,8 +5237,7 @@ app.post('/api/biblioteca/importar-ficha', middlewareEscopoEmpresa(), requerPerf
       const up = await uploadArquivoDrive(nomeArquivo, mimeType || (/\.pdf$/i.test(nomeArquivo) ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'), buffer);
       driveId = up.id || ''; driveUrl = up.webViewLink || up.webContentLink || '';
     } catch (upErr) {
-      console.error('[BIBLIOTECA] upload do original falhou:', upErr.message);
-      return res.status(502).json({ sucesso: false, erro: 'Não foi possível armazenar o arquivo original (Drive). Nada foi importado.' });
+      console.warn('[BIBLIOTECA] upload do original falhou (Drive indisponível), importando sem link:', upErr.message);
     }
 
     // Protocolo HIST-AAAA-NNN
@@ -5254,6 +5266,106 @@ app.post('/api/biblioteca/importar-ficha', middlewareEscopoEmpresa(), requerPerf
     await appendObjeto('FICHAS_BIBLIOTECA', obj);
     registrarAuditoria(usuario, 'IMPORTOU_FICHA_HISTORICA', idFicha, 'FICHAS_BIBLIOTECA', null, { arquivo: nomeArquivo, protocolo, empresa, dataReclamacao: dt.iso }).catch(() => {});
     res.json({ sucesso: true, idFicha, protocolo, dados: dadosExtraidos });
+  } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e) }); }
+});
+
+// ===== EDITAR FICHA HISTÓRICA =====
+app.patch('/api/biblioteca/fichas/:id', requerPerfil('MASTER','ANALISTA SAC'), async (req, res) => {
+  try {
+    const id = req.params.id;
+    const b = req.body || {};
+    const campos = ['EMPRESA','SETOR_RECEBIMENTO','COLABORADOR_RECEBIMENTO','NOME_CLIENTE','CNPJ',
+                    'TIPO_MANIFESTACAO','MOTIVO','STATUS','DATA_REGISTRO','ANO','MES','ARQUIVO_NOME'];
+    const dados = {};
+    campos.forEach(c => { if (b[c] !== undefined) dados[c] = b[c]; });
+    if (!Object.keys(dados).length) return res.status(400).json({ sucesso: false, erro: 'Nenhum campo para atualizar.' });
+    await garantirAbaComCabecalhos('FICHAS_BIBLIOTECA', FICHAS_BIB_IMPORT_HEADERS);
+    const r = await atualizarPorID('FICHAS_BIBLIOTECA', id, dados, ['ID_FICHA']);
+    if (!r) return res.status(404).json({ sucesso: false, erro: 'Ficha não encontrada.' });
+    await registrarAuditoria(req.user.usuario, 'EDITOU_FICHA_HISTORICA', id, 'FICHAS_BIBLIOTECA', null, dados);
+    res.json({ sucesso: true });
+  } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e) }); }
+});
+
+// ===== SINCRONIZAR BASE DE CONHECIMENTO A PARTIR DAS FICHAS =====
+app.post('/api/biblioteca/sincronizar-base', requerPerfil('MASTER','ANALISTA SAC'), async (req, res) => {
+  try {
+    const fichas = await lerAba('FICHAS_BIBLIOTECA', 5000).catch(() => []);
+    if (!fichas.length) return res.json({ sucesso: true, setores: 0, matriz: 0, cerebro: 0, msg: 'Nenhuma ficha encontrada.' });
+
+    // --- 1. SETORES: extrai setores únicos das fichas ---
+    await garantirAbaComCabecalhos('CONFIG_SETORES', ['ID_SETOR','SETOR','EMPRESA','DESCRICAO','RESPONSAVEL','SLA_HORAS','ATIVO']);
+    const setoresExistentes = await lerAba('CONFIG_SETORES', 2000).catch(() => []);
+    const setoresNormSet = new Set(setoresExistentes.map(s => normalizarTexto(s.SETOR || '')));
+    let setoresCriados = 0;
+    const setoresNovos = new Set();
+    for (const f of fichas) {
+      const s = (f.SETOR_RECEBIMENTO || '').trim();
+      if (!s || s.length < 2) continue;
+      const n = normalizarTexto(s);
+      if (!setoresNormSet.has(n) && !setoresNovos.has(n)) {
+        setoresNovos.add(n);
+        const id = await gerarProximoID('CONFIG_SETORES', 'SET', 'ID_SETOR');
+        await appendObjeto('CONFIG_SETORES', { ID_SETOR: id, SETOR: s, EMPRESA: '', DESCRICAO: '', RESPONSAVEL: '', SLA_HORAS: '72', ATIVO: 'SIM' });
+        setoresCriados++;
+      }
+    }
+
+    // --- 2. MATRIZ DE TRATAMENTO: tipo+motivo únicos ---
+    await garantirAbaComCabecalhos('MATRIZ_TRATAMENTO', ['ID_REGRA','TIPO_MANIFESTACAO','EMPRESA','CAUSA','SUBCAUSA','SETOR_RESPONSAVEL','SLA_HORAS','PRIORIDADE','TRATATIVA_PADRAO','DEVOLUTIVA_PADRAO','REQUER_APROVACAO','ATIVO','DATA_CRIACAO','CRIADO_POR']);
+    const matrizExistente = await lerAba('MATRIZ_TRATAMENTO', 5000).catch(() => []);
+    const matrizNormSet = new Set(matrizExistente.map(m => normalizarTexto((m.TIPO_MANIFESTACAO||'')+'|'+(m.CAUSA||''))));
+    let matrizCriados = 0;
+    const matrizNovos = new Set();
+    for (const f of fichas) {
+      const tipo = (f.TIPO_MANIFESTACAO || 'Reclamação').trim();
+      const causa = (f.MOTIVO || '').trim();
+      if (!causa || causa.length < 3) continue;
+      const chave = normalizarTexto(tipo + '|' + causa);
+      if (!matrizNormSet.has(chave) && !matrizNovos.has(chave)) {
+        matrizNovos.add(chave);
+        const id = await gerarProximoID('MATRIZ_TRATAMENTO', 'MTR', 'ID_REGRA');
+        await appendObjeto('MATRIZ_TRATAMENTO', {
+          ID_REGRA: id, TIPO_MANIFESTACAO: tipo, EMPRESA: f.EMPRESA || '',
+          CAUSA: causa, SUBCAUSA: '', SETOR_RESPONSAVEL: f.SETOR_RECEBIMENTO || '',
+          SLA_HORAS: '72', PRIORIDADE: 'NORMAL', TRATATIVA_PADRAO: '',
+          DEVOLUTIVA_PADRAO: '', REQUER_APROVACAO: 'NAO', ATIVO: 'SIM',
+          DATA_CRIACAO: new Date().toISOString(), CRIADO_POR: req.user.usuario
+        });
+        matrizCriados++;
+      }
+    }
+
+    // --- 3. CÉREBRO (MATRIZ_CONHECIMENTO): uma entrada por motivo único relevante ---
+    await garantirAbaComCabecalhos('MATRIZ_CONHECIMENTO', ['ID','NOME','DESCRICAO','TIPO','CATEGORIA','CONTEUDO','STATUS','VERSAO','CRIADO_POR','CRIADO_EM','ATUALIZADO_EM']);
+    const cerebroExistente = await lerAba('MATRIZ_CONHECIMENTO', 5000).catch(() => []);
+    const cerebroNormSet = new Set(cerebroExistente.map(c => normalizarTexto(c.NOME || '')));
+    let cerebroCriados = 0;
+    const cerebroNovos = new Set();
+    for (const f of fichas) {
+      const motivo = (f.MOTIVO || '').trim();
+      if (!motivo || motivo.length < 5) continue;
+      const nome = `Tratativa: ${motivo}`;
+      const n = normalizarTexto(nome);
+      if (!cerebroNormSet.has(n) && !cerebroNovos.has(n)) {
+        cerebroNovos.add(n);
+        const id = 'MC-' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).slice(2,4).toUpperCase();
+        const agora = new Date().toISOString();
+        await appendObjeto('MATRIZ_CONHECIMENTO', {
+          ID: id, NOME: nome,
+          DESCRICAO: `Extraído automaticamente das fichas históricas. Motivo: ${motivo}. Tipo: ${f.TIPO_MANIFESTACAO || 'Reclamação'}. Empresa: ${f.EMPRESA || ''}.`,
+          TIPO: 'PROCEDIMENTO', CATEGORIA: f.TIPO_MANIFESTACAO || 'Reclamação',
+          CONTEUDO: `Motivo registrado nas fichas: ${motivo}. Preencha com a tratativa padrão para este tipo de ocorrência.`,
+          STATUS: 'rascunho', VERSAO: '1', CRIADO_POR: req.user.usuario, CRIADO_EM: agora, ATUALIZADO_EM: agora
+        });
+        cerebroCriados++;
+      }
+    }
+
+    await registrarAuditoria(req.user.usuario, 'SINCRONIZOU_BASE_CONHECIMENTO', null, 'FICHAS_BIBLIOTECA', null,
+      { fichas: fichas.length, setores: setoresCriados, matriz: matrizCriados, cerebro: cerebroCriados });
+
+    res.json({ sucesso: true, fichas: fichas.length, setores: setoresCriados, matriz: matrizCriados, cerebro: cerebroCriados });
   } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e) }); }
 });
 
