@@ -6,7 +6,7 @@ const { google } = require('googleapis');
 const { Resend } = require('resend');
 const _resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 const EMAIL_FROM = process.env.EMAIL_FROM || 'SAC Grupo Chiacchio <noreply@grupochiacchio.com.br>';
-const APP_URL = (process.env.APP_URL || 'https://assistente-sac.vercel.app').replace(/\/$/, '');
+const APP_URL = (process.env.APP_URL || 'https://assistente-sac-gpchiacchio.vercel.app').replace(/\/$/, '');
 const cerebroService = require('./services/cerebroServices');
 const mcService = require('./services/matrizConhecimentoService');
 const documentService = require('./services/documentService');
@@ -291,7 +291,9 @@ function middlewareEscopoEmpresa() {
     if (!req.user) return next();
     const perfil = perfilCanonico(req.user.perfil);
     if (perfil === 'MASTER') return next(); // MASTER tem acesso global
-    req._empresaScope = req.user.empresa || null;
+    const empresa = req.user.empresa || '';
+    if (!empresa.trim()) return res.status(403).json({ sucesso: false, erro: 'Usuário sem empresa configurada. Contate o administrador.' });
+    req._empresaScope = empresa;
     next();
   };
 }
@@ -1076,7 +1078,7 @@ app.get('/api/manifestacoes', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','
   } catch (e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e), dados: [] }); }
 });
 
-app.get('/api/manifestacoes/:id', middlewareEscopoEmpresa(), async (req, res) => {
+app.get('/api/manifestacoes/:id', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR','RCA / REPRESENTANTE'), middlewareEscopoEmpresa(), async (req, res) => {
   try {
     // F6: tenta PostgreSQL primeiro
     if (manifestacaoRepo) {
@@ -3789,9 +3791,13 @@ app.get('/api/planilha/ler', requerPerfil('MASTER','ANALISTA SAC'), async (req,r
   } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e), itens:[] }); }
 });
 
+const _ABAS_SENSIVEIS = new Set(['USUARIOS']);
 app.get('/api/planilha/:aba', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
   try {
     const aba = req.params.aba.toUpperCase().replace(/[^A-Z0-9_]/g,'');
+    if (_ABAS_SENSIVEIS.has(aba) && perfilCanonico(req.user.perfil) !== 'MASTER') {
+      return res.status(403).json({ sucesso:false, erro:'Acesso não autorizado a esta aba.' });
+    }
     const max = Math.min(parseInt(req.query.max||'2000',10), 5000);
     const data = await lerAba(aba, max);
     res.json({ sucesso:true, aba, total:data.length, itens:data });
