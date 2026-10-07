@@ -1210,13 +1210,14 @@
     const dataFmt = agora.toLocaleDateString('pt-BR') + ' ' + agora.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
     document.getElementById('p-data-reg').value = dataFmt;
     // Carrega lista de empresas
+    const _empPadrao = ['Chiacchio Embalagens','Plaschio','Cesbap'];
+    const _selEmp = document.getElementById('p-empresa');
+    const _preencherEmpresas = (lista) => {
+      _selEmp.innerHTML='<option value="">Selecione...</option>'+(lista.length?lista:_empPadrao).map(e=>`<option value="${e.replace(/"/g,'&quot;')}">${e}</option>`).join('');
+    };
     fetch(window.SAC_API+'/api/public/empresas')
-      .then(r=>r.json()).then(d=>{
-        const sel=document.getElementById('p-empresa');
-        if(d.empresas&&d.empresas.length){
-          sel.innerHTML='<option value="">Selecione...</option>'+d.empresas.map(e=>`<option value="${e.replace(/"/g,'&quot;')}">${e}</option>`).join('');
-        }
-      }).catch(()=>{});
+      .then(r=>r.json()).then(d=>{ _preencherEmpresas(d.empresas||[]); })
+      .catch(()=>{ _preencherEmpresas([]); });
   }
 
   function fecharPortalPublico() {
