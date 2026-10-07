@@ -5435,6 +5435,7 @@
   <div class="rs-top-title"><b>Relatório de Satisfação</b><span id="rel-topsub">Pesquisa de satisfação · relatório mensal para Diretoria e Presidência</span></div>
   <div class="rs-top-actions">
     <button type="button" class="rs-switch" id="rel-btn-diretoria" onclick="relToggleDiretoria()"><i><b></b></i>Visão da Diretoria</button>
+    <button type="button" class="rs-btn-out" onclick="relAbrirFormManual()">+ Preencher pesquisa</button>
     <button type="button" class="rs-btn-out" onclick="relBaixarPdf()">Baixar PDF</button>
     <button type="button" class="rs-btn-out" onclick="relBaixarPdf()">⬇ PDF</button>
     <button type="button" class="rs-btn-send" id="rel-btn-enviar" onclick="relCompartilharLink()" disabled>🔗 Compartilhar link</button>
@@ -5946,6 +5947,76 @@
     _populaFiltros();
     if(typeof pageLoaders!=='undefined') pageLoaders['relatorio-satisfacao']=function(){_populaFiltros();relCarregar();};
   });
+
+  window.relAbrirFormManual=function(){
+    let m=document.getElementById('rel-modal-manual');
+    if(!m){
+      m=document.createElement('div');m.id='rel-modal-manual';
+      m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9000;display:flex;align-items:center;justify-content:center;padding:16px';
+      const emp=_empresa()||'Chiacchio Embalagens';
+      const hoje=new Date().toISOString().slice(0,10);
+      m.innerHTML=`<div style="background:#fff;border-radius:14px;padding:28px;width:100%;max-width:460px;display:flex;flex-direction:column;gap:16px;box-shadow:0 8px 32px rgba(0,0,0,.18)">
+        <div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:17px">Preencher pesquisa manualmente</b><button onclick="relFecharFormManual()" style="border:0;background:none;font-size:22px;cursor:pointer;color:#929090;line-height:1">&times;</button></div>
+        <p style="margin:0;font-size:13px;color:#666464">Registre uma resposta de pesquisa obtida pessoalmente ou por telefone.</p>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:#545252">Empresa
+            <select id="rm-empresa" style="height:36px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;font-size:13px;font-family:inherit">
+              <option value="Chiacchio Embalagens"${emp==='Chiacchio Embalagens'?' selected':''}>Chiacchio Embalagens</option>
+              <option value="Plaschio"${emp==='Plaschio'?' selected':''}>Plaschio</option>
+              <option value="Tubahia"${emp==='Tubahia'?' selected':''}>Cesbap</option>
+            </select>
+          </label>
+          <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:#545252">Nome do cliente
+            <input id="rm-nome" type="text" placeholder="Ex: João Silva" style="height:36px;border:1px solid #D6D6D6;border-radius:7px;padding:0 10px;font-size:13px;font-family:inherit">
+          </label>
+          <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:#545252">Data da pesquisa
+            <input id="rm-data" type="date" value="${hoje}" style="height:36px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;font-size:13px;font-family:inherit">
+          </label>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            ${[['rm-at','Atendimento'],['rm-pr','Prazo de Entrega'],['rm-qu','Qualidade'],['rm-re','Recomendação']].map(([id,lbl])=>`
+            <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:#545252">${lbl} (0–10)
+              <input id="${id}" type="number" min="0" max="10" step="0.5" placeholder="—" style="height:36px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;font-size:13px;font-family:inherit">
+            </label>`).join('')}
+          </div>
+          <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:#545252">Comentário (opcional)
+            <textarea id="rm-comentario" rows="2" style="border:1px solid #D6D6D6;border-radius:7px;padding:8px 10px;font-size:13px;font-family:inherit;resize:vertical" placeholder="Observações do cliente..."></textarea>
+          </label>
+        </div>
+        <div id="rm-erro" style="color:#A80502;font-size:13px;display:none"></div>
+        <div style="display:flex;gap:8px;justify-content:flex-end">
+          <button onclick="relFecharFormManual()" style="border:1px solid #D6D6D6;background:#fff;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:13px;font-weight:600;font-family:inherit">Cancelar</button>
+          <button onclick="relSalvarManual()" id="rm-btn-salvar" style="border:0;background:#C70602;color:#fff;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:13px;font-weight:700;font-family:inherit">Salvar pesquisa</button>
+        </div>
+      </div>`;
+      document.getElementById('page-relatorio-satisfacao').appendChild(m);
+    } else { m.style.display='flex'; }
+  };
+  window.relFecharFormManual=function(){
+    const m=document.getElementById('rel-modal-manual');if(m)m.style.display='none';
+  };
+  window.relSalvarManual=async function(){
+    const btn=document.getElementById('rm-btn-salvar');
+    const erroEl=document.getElementById('rm-erro');
+    if(erroEl)erroEl.style.display='none';
+    const v=id=>document.getElementById(id)?.value||'';
+    const empresa=v('rm-empresa'),nome=v('rm-nome'),data=v('rm-data');
+    const at=v('rm-at'),pr=v('rm-pr'),qu=v('rm-qu'),re=v('rm-re'),comentario=v('rm-comentario');
+    if(!empresa){if(erroEl){erroEl.textContent='Selecione a empresa.';erroEl.style.display='';}return;}
+    if(![at,pr,qu,re].some(x=>x!=='')){if(erroEl){erroEl.textContent='Preencha ao menos uma nota.';erroEl.style.display='';}return;}
+    if(btn){btn.disabled=true;btn.textContent='Salvando...';}
+    try{
+      const tok=sessionStorage.getItem('sac-token');
+      const r=await fetch('/api/pesquisas/resposta-manual',{method:'POST',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({empresa,nome_cliente:nome,data_referencia:data,atendimento:at||null,prazo_entrega:pr||null,qualidade:qu||null,recomendacao:re||null,comentario})});
+      const j=await r.json().catch(()=>({}));
+      if(!r.ok||j.sucesso===false){throw new Error(j.erro||'Erro ao salvar.');}
+      _toast('Pesquisa registrada! Nota média: '+j.nota_media);
+      relFecharFormManual();
+      await relCarregar();
+    }catch(e){
+      if(erroEl){erroEl.textContent=e.message;erroEl.style.display='';}
+      if(btn){btn.disabled=false;btn.textContent='Salvar pesquisa';}
+    }
+  };
 })();
 </script>
 </div>
@@ -15416,13 +15487,18 @@ async function cdLoadAprovacaoCb() {
     ]);
     const pode = cbPode();
     CB.acoes = [];
-    const rev = [], ativo = [];
+    const rasc = [], rev = [], ativo = [];
     const por = (x) => (x.USUARIO || x.USUARIO_ATUALIZACAO || x.CRIADO_POR || '—') + ' · ' + cbData(x.DATA_ATUALIZACAO || x.DATA_UPLOAD || x.DATA_CRIACAO);
     scan.forEach(x=>{
       const t = CB_TIPOS[x._tipo], st = cbStatus(x.STATUS);
       const it = { kind: t.kind, setor: x._setor, t: x[t.nome] || '—', by: por(x) };
-      if (st.k === 'revisao') {
-        if (pode) { CB.acoes.push(async()=>{ await cbSetStatus(x._tipo, x, 'VALIDADA'); }); it.a = CB.acoes.length-1; }
+      if (st.k === 'rascunho') {
+        rasc.push(it);
+      } else if (st.k === 'revisao') {
+        if (pode) {
+          CB.acoes.push(async()=>{ await cbSetStatus(x._tipo, x, 'VALIDADA'); }); it.a = CB.acoes.length-1;
+          CB.acoes.push(async()=>{ await cbSetStatus(x._tipo, x, 'RASCUNHO'); }); it.r = CB.acoes.length-1;
+        }
         rev.push(it);
       } else if (st.k === 'ativa') ativo.push(it);
     });
@@ -15432,8 +15508,8 @@ async function cdLoadAprovacaoCb() {
       if (on) ativo.push(it);
       else { if (pode) { CB.acoes.push(async()=>{ await cdAprovarCausa(c.ID_CAUSA||c.ID||c.id, true); }); it.a = CB.acoes.length-1; } rev.push(it); }
     });
-    const cols = [['Rascunho', []], ['Em revisão', rev], ['Aguardando aprovação', []], ['Aprovado', []], ['Ativo', ativo]];
-    const card = it => `<div class="cb-it"><small>${cbEsc(it.kind)} · ${cbEsc(it.setor)}</small><strong>${cbEsc(it.t)}</strong><em>${cbEsc(it.by)}</em>${it.a != null ? `<div class="cb-it-a"><button onclick="cbAprovarAcao(${it.a})">Aprovar e ativar</button></div>` : ''}</div>`;
+    const cols = [['Rascunho', rasc], ['Em revisão', rev], ['Aguardando aprovação', []], ['Aprovado', []], ['Ativo', ativo]];
+    const card = it => `<div class="cb-it"><small>${cbEsc(it.kind)} · ${cbEsc(it.setor)}</small><strong>${cbEsc(it.t)}</strong><em>${cbEsc(it.by)}</em>${(it.a != null || it.r != null) ? `<div class="cb-it-a">${it.a != null ? `<button onclick="cbAprovarAcao(${it.a})" style="background:#C70602;color:#fff;border:none;border-radius:5px;padding:5px 10px;cursor:pointer;font-size:12px;font-weight:600">Aprovar e ativar</button>` : ''}${it.r != null ? `<button onclick="cbReprovarAcao(${it.r})" style="background:#fff;color:#A80502;border:1px solid #A80502;border-radius:5px;padding:5px 10px;cursor:pointer;font-size:12px;font-weight:600;margin-left:4px">Reprovar e ajustar</button>` : ''}</div>` : ''}</div>`;
     el.innerHTML = '<div class="cb-board">' + cols.map(([l, items])=>{
       const vis = items.slice(0, 12), resto = items.length - vis.length;
       return `<div class="cb-col"><div class="cb-col-h"><span>${l}</span><span>${items.length}</span></div>${vis.map(card).join('')}${resto > 0 ? `<div class="cb-muted" style="text-align:center">+ ${resto} itens</div>` : ''}</div>`;
@@ -15446,6 +15522,12 @@ async function cbAprovarAcao(i) {
   const fn = CB.acoes[i]; if (!fn) return;
   try { await fn(); cdLoadAprovacaoCb(); }
   catch(e) { alert('Erro ao aprovar: ' + e.message); }
+}
+async function cbReprovarAcao(i) {
+  const fn = CB.acoes[i]; if (!fn) return;
+  if (!confirm('Reprovar este item e devolver para rascunho?')) return;
+  try { await fn(); cdLoadAprovacaoCb(); }
+  catch(e) { alert('Erro ao reprovar: ' + e.message); }
 }
 
 async function cdAprovarCausa(id, semRecarregar) {
@@ -15688,7 +15770,7 @@ function cbNorm(v) { return String(v == null ? '' : v).normalize('NFD').replace(
 function cbData(v) { if (!v) return '—'; const d = new Date(v); return isNaN(d) ? cbEsc(v) : d.toLocaleDateString('pt-BR'); }
 function cbVal(v) { return (v == null || String(v).trim() === '') ? '—' : cbEsc(v); }
 function cbPode() {
-  try { const u = JSON.parse(sessionStorage.getItem('sac-user') || '{}'); const p = String(u.PERFIL || u.perfil || '').toUpperCase(); return p.includes('MASTER') || p.includes('ANALISTA'); } catch (e) { return false; }
+  try { const u = JSON.parse(sessionStorage.getItem('sac-user') || '{}'); const p = String(u.PERFIL || u.perfil || '').toUpperCase(); return p.includes('MASTER') || p.includes('ANALISTA') || p.includes('APROVADOR'); } catch (e) { return false; }
 }
 function cbEhMaster() {
   try { const u = JSON.parse(sessionStorage.getItem('sac-user') || '{}'); return String(u.PERFIL || u.perfil || '').toUpperCase().includes('MASTER'); } catch (e) { return false; }
@@ -15697,6 +15779,7 @@ function cbStatus(s) {
   const u = cbNorm(s);
   if (u === 'validada' || u === 'ativa' || u === 'ativo' || u === 'vigente' || u === 'aprovada' || u === 'aprovado') return { t: 'Ativa', c: 'green', k: 'ativa' };
   if (u === 'obsoleta' || u === 'expirada' || u === 'inativa' || u === 'inativo') return { t: 'Inativa', c: 'gray', k: 'inativa' };
+  if (u === 'rascunho' || u === 'reprovado' || u === '' || u == null) return { t: 'Rascunho', c: 'gray', k: 'rascunho' };
   return { t: 'Em revisão', c: 'amber', k: 'revisao' };
 }
 function cbPill(st) { return `<span class="cb-st cb-st-${st.c}">${st.t}</span>`; }
