@@ -2642,13 +2642,12 @@ app.get('/api/pesquisas/resumo', requerPerfil('MASTER','ANALISTA SAC','SETOR RES
 });
 
 // ===== ROTAS: RELATÓRIO DE SATISFAÇÃO =====
-app.get('/api/pesquisas/relatorio', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','GESTOR SAC','ADMINISTRADOR'), async (req, res) => {
+app.get('/api/pesquisas/relatorio', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','GESTOR SAC','ADMINISTRADOR','DIRETOR'), async (req, res) => {
   try {
     const { empresa = '', ano, mes } = req.query;
     const todasRespostas = await lerAba('PESQUISA_RESPOSTAS', 5000).catch(()=>[]);
-    // Mapeia para formato compatível com o frontend existente
+    // Normaliza para campos canônicos (sem duplicar campos uppercase e camelCase)
     const dados = todasRespostas.map(r => ({
-      ...r,
       Empresa: r.EMPRESA || '',
       Cliente: r.NOME_CLIENTE || '',
       Data: r.DATA || '',
@@ -2657,6 +2656,10 @@ app.get('/api/pesquisas/relatorio', requerPerfil('MASTER','ANALISTA SAC','APROVA
       Qualidade: r.QUALIDADE || '',
       Recomendação: r.RECOMENDACAO || '',
       Observação: r.COMENTARIO || '',
+      _id: r.ID_RESPOSTA || '',
+      _token: r.TOKEN || '',
+      _notaBaixa: r.NOTA_BAIXA || '',
+      _statusOcp: r.STATUS_OCP || '',
     }));
     if (!dados.length) return res.json({ sucesso: true, itens: [], media_geral: null, criterios: [], historico: [], textos: {} });
 
