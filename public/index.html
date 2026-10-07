@@ -4696,12 +4696,21 @@
             <div style="flex:1;min-width:260px;border:1.5px solid #E4E4E4;border-radius:10px;padding:16px">
               <div style="font-size:12px;font-weight:700;color:#545252;margin-bottom:10px">LINKS FIXOS POR EMPRESA</div>
               <p style="font-size:12.5px;color:#545252;margin-bottom:12px;line-height:1.5">Links públicos permanentes — qualquer cliente pode acessar, sem expiração. Ideal para WhatsApp e e-mail em massa.</p>
-              ${[['chiacchio','Chiacchio Embalagens'],['plaschio','Plaschio'],['tubahia','Cesbap']].map(([e,nome])=>`
               <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-                <span style="font-size:12.5px;font-weight:600;flex:1">${nome}</span>
-                <button onclick="ntCopiarFixo('${e}')" style="border:1px solid #D6D6D6;background:#fff;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:inherit">Copiar</button>
-                <a href="/pesquisa/${e}" target="_blank" style="border:1px solid #24508F;color:#24508F;background:#fff;border-radius:6px;padding:5px 10px;font-size:12px;text-decoration:none">Abrir</a>
-              </div>`).join('')}
+                <span style="font-size:12.5px;font-weight:600;flex:1">Chiacchio Embalagens</span>
+                <button onclick="ntCopiarFixo('chiacchio')" style="border:1px solid #D6D6D6;background:#fff;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:inherit">Copiar</button>
+                <a href="/pesquisa/chiacchio" target="_blank" style="border:1px solid #24508F;color:#24508F;background:#fff;border-radius:6px;padding:5px 10px;font-size:12px;text-decoration:none">Abrir</a>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+                <span style="font-size:12.5px;font-weight:600;flex:1">Plaschio</span>
+                <button onclick="ntCopiarFixo('plaschio')" style="border:1px solid #D6D6D6;background:#fff;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:inherit">Copiar</button>
+                <a href="/pesquisa/plaschio" target="_blank" style="border:1px solid #24508F;color:#24508F;background:#fff;border-radius:6px;padding:5px 10px;font-size:12px;text-decoration:none">Abrir</a>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+                <span style="font-size:12.5px;font-weight:600;flex:1">Cesbap</span>
+                <button onclick="ntCopiarFixo('tubahia')" style="border:1px solid #D6D6D6;background:#fff;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:inherit">Copiar</button>
+                <a href="/pesquisa/tubahia" target="_blank" style="border:1px solid #24508F;color:#24508F;background:#fff;border-radius:6px;padding:5px 10px;font-size:12px;text-decoration:none">Abrir</a>
+              </div>
             </div>
           </div>
           <div style="font-weight:700;font-size:14px;margin-bottom:10px">Histórico de links gerados</div>
@@ -5018,8 +5027,11 @@
 
       <!-- Empresas do grupo -->
       <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:18px 20px">
-        <div style="font-weight:700;font-size:14.5px;color:#1F1F1F;margin-bottom:12px">Empresas do grupo</div>
-        <div style="display:flex;flex-direction:column;gap:0">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div style="font-weight:700;font-size:14.5px;color:#1F1F1F">Empresas do grupo</div>
+          <button onclick="cfgEditarEmpresas()" style="border:1px solid #D6D6D6;background:#fff;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;font-family:inherit;color:#545252">Editar</button>
+        </div>
+        <div id="cfg-empresas-lista" style="display:flex;flex-direction:column;gap:0">
           <div style="display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:8px 0;border-top:1px solid #EFEFEF;color:#1F1F1F">
             <span>Chiacchio Embalagens</span><span style="color:#1E6B3A;background:#E6F2EA;border-radius:99px;padding:2px 10px;font-size:11.5px;font-weight:600">Ativa</span>
           </div>
@@ -5034,45 +5046,51 @@
 
       <!-- Canais de entrada -->
       <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:18px 20px">
-        <div style="font-weight:700;font-size:14.5px;color:#1F1F1F;margin-bottom:12px">Canais de entrada</div>
-        <div style="display:flex;flex-direction:column;gap:0">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div style="font-weight:700;font-size:14.5px;color:#1F1F1F">Canais de entrada</div>
+          <button onclick="cfgEditarCanais()" style="border:1px solid #D6D6D6;background:#fff;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;font-family:inherit;color:#545252">Editar</button>
+        </div>
+        <div id="cfg-canais-lista" style="display:flex;flex-direction:column;gap:0">
           <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:13px;padding:8px 0;border-top:1px solid #EFEFEF;color:#1F1F1F">
-            <span>Telefone</span><span style="color:#1E6B3A;background:#E6F2EA;border-radius:99px;padding:2px 10px;font-size:11.5px;font-weight:600">Ativo</span>
+            <span>Telefone</span><span id="cfg-canal-telefone" style="color:#1E6B3A;background:#E6F2EA;border-radius:99px;padding:2px 10px;font-size:11.5px;font-weight:600">Ativo</span>
           </div>
           <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:13px;padding:8px 0;border-top:1px solid #EFEFEF;color:#1F1F1F">
             <span>WhatsApp</span>
             <div style="display:flex;align-items:center;gap:6px">
-              <span style="color:#1E6B3A;background:#E6F2EA;border-radius:99px;padding:2px 10px;font-size:11.5px;font-weight:600">Ativo</span>
+              <span id="cfg-canal-whatsapp" style="color:#1E6B3A;background:#E6F2EA;border-radius:99px;padding:2px 10px;font-size:11.5px;font-weight:600">Ativo</span>
               <span style="color:#545252;font-size:11.5px">integração</span>
             </div>
           </div>
           <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:13px;padding:8px 0;border-top:1px solid #EFEFEF;color:#1F1F1F">
-            <span>E-mail</span><span style="color:#545252;font-size:12px">sac@grupochiacchio.com.br</span>
+            <span>E-mail</span><span id="cfg-canal-email" style="color:#545252;font-size:12px">sac@grupochiacchio.com.br</span>
           </div>
           <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:13px;padding:8px 0;border-top:1px solid #EFEFEF;color:#1F1F1F">
-            <span>Site</span><span style="color:#545252;font-size:12px">Formulário</span>
+            <span>Site</span><span id="cfg-canal-site" style="color:#545252;font-size:12px">Formulário</span>
           </div>
           <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:13px;padding:8px 0;border-top:1px solid #EFEFEF;color:#1F1F1F">
-            <span>Pesquisa de satisfação</span><span style="color:#1E6B3A;background:#E6F2EA;border-radius:99px;padding:2px 10px;font-size:11.5px;font-weight:600">Ativo</span>
+            <span>Pesquisa de satisfação</span><span id="cfg-canal-pesquisa" style="color:#1E6B3A;background:#E6F2EA;border-radius:99px;padding:2px 10px;font-size:11.5px;font-weight:600">Ativo</span>
           </div>
         </div>
       </div>
 
       <!-- Numeração e prazos -->
       <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:18px 20px">
-        <div style="font-weight:700;font-size:14.5px;color:#1F1F1F;margin-bottom:12px">Numeração e prazos</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div style="font-weight:700;font-size:14.5px;color:#1F1F1F">Numeração e prazos</div>
+          <button onclick="cfgEditarPrazos()" style="border:1px solid #D6D6D6;background:#fff;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;font-family:inherit;color:#545252">Editar</button>
+        </div>
         <div style="display:flex;flex-direction:column;gap:0">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;font-size:13px;padding:8px 0;border-top:1px solid #EFEFEF;color:#1F1F1F">
-            <span style="color:#545252">Formato do número</span><span style="text-align:right">MAN-0001</span>
+            <span style="color:#545252">Formato do número</span><span id="cfg-prazo-formato" style="text-align:right">MAN-0001</span>
           </div>
           <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;font-size:13px;padding:8px 0;border-top:1px solid #EFEFEF;color:#1F1F1F">
-            <span style="color:#545252">Contagem do prazo</span><span style="text-align:right">Horas corridas</span>
+            <span style="color:#545252">Contagem do prazo</span><span id="cfg-prazo-contagem" style="text-align:right">Horas corridas</span>
           </div>
           <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;font-size:13px;padding:8px 0;border-top:1px solid #EFEFEF;color:#1F1F1F">
-            <span style="color:#545252">Cobrança automática</span><span style="text-align:right">Após 24h sem abrir a ficha</span>
+            <span style="color:#545252">Cobrança automática</span><span id="cfg-prazo-cobranca" style="text-align:right">Após 24h sem abrir a ficha</span>
           </div>
           <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;font-size:13px;padding:8px 0;border-top:1px solid #EFEFEF;color:#1F1F1F">
-            <span style="color:#545252">Follow-up pós-atendimento</span><span style="text-align:right">2 a 7 dias</span>
+            <span style="color:#545252">Follow-up pós-atendimento</span><span id="cfg-prazo-followup" style="text-align:right">2 a 7 dias</span>
           </div>
         </div>
       </div>
@@ -5096,7 +5114,7 @@
           <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;font-size:13px;padding:8px 0;border-top:1px solid #EFEFEF;color:#1F1F1F">
             <span style="color:#545252">Ambiente</span>
             <div style="display:flex;align-items:center;gap:6px;text-align:right">
-              <span>Homologação</span><span style="color:#545252;font-size:11.5px">v1.0</span>
+              <span id="cfg-seg-ambiente">Produção</span><span style="color:#545252;font-size:11.5px">v1.0</span>
             </div>
           </div>
         </div>
@@ -5105,6 +5123,118 @@
     </div>
   </div>
 </div>
+
+<!-- MODAL CONFIGURAÇÕES -->
+<div id="modal-cfg" class="modal-overlay" style="display:none" onclick="if(event.target===this)document.getElementById('modal-cfg').style.display='none'">
+  <div class="modal-box" style="max-width:520px">
+    <div class="modal-header">
+      <div><div id="modal-cfg-titulo" style="font-size:18px;font-weight:800">Configurações</div></div>
+      <button class="modal-close" onclick="document.getElementById('modal-cfg').style.display='none'">×</button>
+    </div>
+    <div class="modal-body">
+      <div id="modal-cfg-body"></div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:18px">
+        <button class="btn btn-secondary" onclick="document.getElementById('modal-cfg').style.display='none'">Cancelar</button>
+        <button class="btn btn-primary" id="modal-cfg-save">Salvar</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  function cfgGet(key,def){ try{return JSON.parse(localStorage.getItem('cfg_'+key)||'null')||def;}catch(e){return def;} }
+  function cfgSet(key,val){ try{localStorage.setItem('cfg_'+key,JSON.stringify(val));}catch(e){} }
+
+  function cfgAbrirModal(titulo, bodyHtml, onSave){
+    document.getElementById('modal-cfg-titulo').textContent=titulo;
+    document.getElementById('modal-cfg-body').innerHTML=bodyHtml;
+    document.getElementById('modal-cfg-save').onclick=function(){onSave();document.getElementById('modal-cfg').style.display='none';};
+    document.getElementById('modal-cfg').style.display='flex';
+  }
+
+  window.cfgEditarCanais=function(){
+    const cur=cfgGet('canais',{telefone:'Ativo',whatsapp:'Ativo',email:'sac@grupochiacchio.com.br',site:'Formulário',pesquisa:'Ativo'});
+    cfgAbrirModal('Canais de entrada',`
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <label class="form-label">Telefone <select id="cfg-f-telefone" class="form-input"><option>Ativo</option><option>Inativo</option></select></label>
+        <label class="form-label">WhatsApp <select id="cfg-f-whatsapp" class="form-input"><option>Ativo</option><option>Inativo</option></select></label>
+        <label class="form-label">E-mail SAC <input id="cfg-f-email" class="form-input" value="${cur.email||''}"></label>
+        <label class="form-label">Site <input id="cfg-f-site" class="form-input" value="${cur.site||''}"></label>
+        <label class="form-label">Pesquisa de satisfação <select id="cfg-f-pesquisa" class="form-input"><option>Ativo</option><option>Inativo</option></select></label>
+      </div>`,
+    function(){
+      const v={
+        telefone:document.getElementById('cfg-f-telefone').value,
+        whatsapp:document.getElementById('cfg-f-whatsapp').value,
+        email:document.getElementById('cfg-f-email').value,
+        site:document.getElementById('cfg-f-site').value,
+        pesquisa:document.getElementById('cfg-f-pesquisa').value
+      };
+      cfgSet('canais',v);
+      const badge=s=>s==='Ativo'?`<span style="color:#1E6B3A;background:#E6F2EA;border-radius:99px;padding:2px 10px;font-size:11.5px;font-weight:600">Ativo</span>`:`<span style="color:#888;background:#F0F0F0;border-radius:99px;padding:2px 10px;font-size:11.5px">Inativo</span>`;
+      document.getElementById('cfg-canal-telefone').outerHTML=badge(v.telefone);
+      document.getElementById('cfg-canal-whatsapp').outerHTML=badge(v.whatsapp);
+      document.getElementById('cfg-canal-email').textContent=v.email;
+      document.getElementById('cfg-canal-site').textContent=v.site;
+      document.getElementById('cfg-canal-pesquisa').outerHTML=badge(v.pesquisa);
+    });
+    setTimeout(()=>{
+      const el=id=>document.getElementById(id);
+      const c=cfgGet('canais',{telefone:'Ativo',whatsapp:'Ativo',pesquisa:'Ativo'});
+      ['telefone','whatsapp','pesquisa'].forEach(k=>{const s=el('cfg-f-'+k);if(s)s.value=c[k]||'Ativo';});
+    },50);
+  };
+
+  window.cfgEditarPrazos=function(){
+    const cur=cfgGet('prazos',{formato:'MAN-0001',contagem:'Horas corridas',cobranca:'Após 24h sem abrir a ficha',followup:'2 a 7 dias'});
+    cfgAbrirModal('Numeração e prazos',`
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <label class="form-label" style="grid-column:1/-1">Formato do número<input id="cfg-f-formato" class="form-input" value="${cur.formato||'MAN-0001'}" placeholder="MAN-0001"></label>
+        <label class="form-label">Contagem do prazo<select id="cfg-f-contagem" class="form-input"><option>Horas corridas</option><option>Horas úteis</option><option>Dias corridos</option><option>Dias úteis</option></select></label>
+        <label class="form-label">Cobrança automática<input id="cfg-f-cobranca" class="form-input" value="${cur.cobranca||''}"></label>
+        <label class="form-label" style="grid-column:1/-1">Follow-up pós-atendimento<input id="cfg-f-followup" class="form-input" value="${cur.followup||''}"></label>
+      </div>`,
+    function(){
+      const v={
+        formato:document.getElementById('cfg-f-formato').value,
+        contagem:document.getElementById('cfg-f-contagem').value,
+        cobranca:document.getElementById('cfg-f-cobranca').value,
+        followup:document.getElementById('cfg-f-followup').value
+      };
+      cfgSet('prazos',v);
+      document.getElementById('cfg-prazo-formato').textContent=v.formato;
+      document.getElementById('cfg-prazo-contagem').textContent=v.contagem;
+      document.getElementById('cfg-prazo-cobranca').textContent=v.cobranca;
+      document.getElementById('cfg-prazo-followup').textContent=v.followup;
+    });
+    setTimeout(()=>{
+      const c=cfgGet('prazos',{contagem:'Horas corridas'});
+      const s=document.getElementById('cfg-f-contagem');
+      if(s)s.value=c.contagem||'Horas corridas';
+    },50);
+  };
+
+  window.cfgEditarEmpresas=function(){
+    cfgAbrirModal('Empresas do grupo',`
+      <p style="font-size:13px;color:#545252;margin-bottom:12px">As empresas são gerenciadas na aba EMPRESAS da planilha Google Sheets. Para adicionar ou remover uma empresa, edite diretamente a planilha e recarregue a página.</p>
+      <div style="background:#F5F5F5;border-radius:8px;padding:12px;font-size:12.5px">
+        <div style="font-weight:600;margin-bottom:4px">Empresas ativas:</div>
+        <div>• Chiacchio Embalagens</div><div>• Plaschio</div><div>• Cesbap (Tubahia)</div>
+      </div>`,function(){});
+  };
+
+  // Restaurar valores salvos ao carregar
+  (function restaurarCfg(){
+    const p=cfgGet('prazos',null);
+    if(p){
+      ['formato','contagem','cobranca','followup'].forEach(k=>{
+        const el=document.getElementById('cfg-prazo-'+k);
+        if(el&&p[k])el.textContent=p[k];
+      });
+    }
+  })();
+})();
+</script>
 
 <!-- MODAL NOVO/EDITAR SETOR -->
 <div id="modal-setor" class="modal-overlay" style="display:none" onclick="if(event.target===this)fecharModalSetor()">
@@ -6581,7 +6711,7 @@ window.afEditarFicha = function(i) {
     ['STATUS','Status',f.STATUS||'CONCLUIDA','select',false,['CONCLUIDA','EM_TRATATIVA','ABERTA']],
   ], async values => {
     const r = await fetch(window.SAC_API + '/api/biblioteca/fichas/' + encodeURIComponent(id), {
-      method: 'PATCH', headers: Object.assign({ 'Content-Type': 'application/json' }, authH()),
+      method: 'PATCH', headers: {'Content-Type':'application/json','Authorization':'Bearer '+(sessionStorage.getItem('sac-token')||'')},
       body: JSON.stringify(values)
     });
     const d = await r.json();
@@ -6739,7 +6869,7 @@ async function sincronizarBaseConhecimento() {
   btn.disabled = true; btn.textContent = '⏳ Sincronizando…';
   try {
     const r = await fetch(window.SAC_API + '/api/biblioteca/sincronizar-base', {
-      method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, authH())
+      method: 'POST', headers: {'Content-Type':'application/json','Authorization':'Bearer '+(sessionStorage.getItem('sac-token')||'')}
     });
     const d = await r.json();
     if (!d.sucesso) throw new Error(d.erro || 'Erro desconhecido');
@@ -9923,7 +10053,11 @@ window.navigate = function(page, el) {
   window.loadMatriz=async function(){
     const body=document.getElementById('matriz-body'); if(body)body.innerHTML='<tr><td colspan="9"><div class="loading"><div class="spinner"></div> Carregando matriz...</div></td></tr>';
     try{
-      const res=await jsonFetch('/api/matriz-tratamento'); const regras=res.itens||[];
+      const ctrl=new AbortController(); const tid=setTimeout(()=>ctrl.abort(),20000);
+      const token=sessionStorage.getItem('sac-token')||'';
+      const r=await fetch((window.SAC_API||'')+'/api/matriz-tratamento',{headers:{'Authorization':'Bearer '+token},signal:ctrl.signal});
+      clearTimeout(tid);
+      const res=await r.json(); const regras=res.itens||[];
       window._matrizData=regras;
       if(!body)return;
       body.innerHTML=regras.map((r,i)=>{
