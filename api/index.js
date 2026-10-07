@@ -780,7 +780,7 @@ app.use('/api', async (req,res,next)=>{
     _statusCache.delete(payload.usuario); // forçar re-verificação na próxima vez
     return res.status(401).json({sucesso:false,erro:'Usuário inativo. Sessão encerrada.'});
   }
-  if (!await verificarRateLimitAuth(payload.usuario)) {
+  if (!verificarRateLimitAuth(payload.usuario)) {
     return res.status(429).json({ sucesso: false, erro: 'Muitas requisições. Tente novamente em instantes.' });
   }
   req.user=payload;
@@ -795,86 +795,41 @@ function erroSeguro(e, contexto) {
   return msg;
 }
 
-// ===== RATE LIMITING — compartilhado via Upstash Redis (se configurado) =====
-// Se UPSTASH_REDIS_REST_URL e UPSTASH_REDIS_REST_TOKEN estiverem configurados,
-// o rate limit é compartilhado entre todas as instâncias serverless.
-// Caso contrário, cai para in-memory (proteção por instância — menos rigorosa).
+// ===== RATE LIMITING =====
+// Login: 10 tentativas por IP em 15 minutos (por instância).
+// O bcrypt com cost 12 já impõe ~300ms por tentativa, tornando força bruta
+// muito lenta mesmo que o contador seja por instância em serverless.
 
-let _redisRateLimit = null;
-(async () => {
-  try {
-    const url = process.env.UPSTASH_REDIS_REST_URL;
-    const token = process.env.UPSTASH_REDIS_REST_TOKEN;
-    if (url && token) {
-      // Usa fetch nativo para comunicar com Upstash REST API — sem dependência extra
-      _redisRateLimit = { url, token };
-      console.info('[RATE LIMIT] Upstash Redis configurado — rate limiting compartilhado ativo.');
-    } else {
-      console.warn('[RATE LIMIT] UPSTASH_REDIS_REST_URL/TOKEN não configurados — usando rate limiting em memória por instância (menos seguro em serverless). Configure Upstash Redis para proteção completa.');
-    }
-  } catch (e) { console.warn('[RATE LIMIT] falha ao inicializar Redis:', e.message); }
-})();
-
-async function _redisIncr(key, janelaSeg) {
-  if (!_redisRateLimit) return null;
-  try {
-    const { url, token } = _redisRateLimit;
-    // INCR + EXPIRE atomicamente via pipeline
-    const pipeline = [['INCR', key], ['EXPIRE', key, janelaSeg]];
-    const r = await fetch(`${url}/pipeline`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(pipeline),
-    });
-    const data = await r.json();
-    return data?.[0]?.result ?? null; // contagem atual
-  } catch (e) {
-    console.warn('[RATE LIMIT] Redis falhou, usando fallback em memória:', e.message);
-    return null;
-  }
-}
-
-// Rate limiting para login — 10 tentativas por IP em 15 min
 const _loginAttempts = new Map();
-async function verificarRateLimit(ip) {
-  const key = `rl:login:${ip}`;
-  const janela = 15 * 60; // segundos
-  const max = 10;
-  const count = await _redisIncr(key, janela);
-  if (count !== null) return count <= max;
-  // Fallback in-memory
+function verificarRateLimit(ip) {
   const agora = Date.now();
-  const janelaMs = janela * 1000;
-  const tentativas = (_loginAttempts.get(ip) || []).filter(t => agora - t < janelaMs);
+  const janela = 15 * 60 * 1000;
+  const max = 10;
+  const tentativas = (_loginAttempts.get(ip) || []).filter(t => agora - t < janela);
   if (tentativas.length >= max) return false;
   tentativas.push(agora);
   _loginAttempts.set(ip, tentativas);
   if (_loginAttempts.size > 2000) {
     for (const [k, v] of _loginAttempts) {
-      if (v.every(t => agora - t >= janelaMs)) _loginAttempts.delete(k);
+      if (v.every(t => agora - t >= janela)) _loginAttempts.delete(k);
     }
   }
   return true;
 }
 
-// Rate limiting para rotas autenticadas — 120 req/min por usuário
+// Rotas autenticadas: 120 req/min por usuário
 const _authAttempts = new Map();
-async function verificarRateLimitAuth(user) {
-  const key = `rl:auth:${user}`;
-  const janela = 60; // segundos
-  const max = 120;
-  const count = await _redisIncr(key, janela);
-  if (count !== null) return count <= max;
-  // Fallback in-memory
+function verificarRateLimitAuth(user) {
   const agora = Date.now();
-  const janelaMs = janela * 1000;
-  const tentativas = (_authAttempts.get(user) || []).filter(t => agora - t < janelaMs);
+  const janela = 60 * 1000;
+  const max = 120;
+  const tentativas = (_authAttempts.get(user) || []).filter(t => agora - t < janela);
   if (tentativas.length >= max) return false;
   tentativas.push(agora);
   _authAttempts.set(user, tentativas);
   if (_authAttempts.size > 5000) {
     for (const [k, v] of _authAttempts) {
-      if (v.every(t => agora - t >= janelaMs)) _authAttempts.delete(k);
+      if (v.every(t => agora - t >= janela)) _authAttempts.delete(k);
     }
   }
   return true;
@@ -884,7 +839,7 @@ async function verificarRateLimitAuth(user) {
 app.post('/api/auth/login', async (req, res) => {
   try {
     const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
-    if (!await verificarRateLimit(ip)) return res.status(429).json({ sucesso: false, erro: 'Muitas tentativas de login. Aguarde 15 minutos.' });
+    if (!verificarRateLimit(ip)) return res.status(429).json({ sucesso: false, erro: 'Muitas tentativas de login. Aguarde 15 minutos.' });
     const { usuario, senha } = req.body || {};
     if(!usuario) return res.status(400).json({sucesso:false,erro:'Usuário é obrigatório.'});
     if(!senha) return res.status(400).json({sucesso:false,erro:'Senha é obrigatória.'});
