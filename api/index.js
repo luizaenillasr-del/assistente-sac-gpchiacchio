@@ -3853,8 +3853,24 @@ app.post('/api/caso-similar/usar-referencia', requerPerfil('MASTER','ANALISTA SA
   }
 });
 
-app.get('/api/auditoria', requerPerfil('MASTER'), async (req, res) => {
-  try { const data=await lerAba('LOG_SISTEMA',1000); res.json({sucesso:true,total:data.length,itens:data}); }
+app.get('/api/auditoria', requerPerfil('MASTER','GESTOR SAC','AUDITOR'), async (req, res) => {
+  try {
+    const data = await lerAba('LOG_SISTEMA', 2000);
+    // LOG_SISTEMA é escrito como array posicional (sem cabeçalhos garantidos)
+    // Normaliza para campos nomeados: [DATA_HORA, USUARIO, ACAO, ID_REGISTRO, ABA, VAL_ANTERIOR, VAL_NOVO]
+    const itens = data.map(r => {
+      const vals = Object.values(r);
+      return {
+        DATA_HORA:   r.DATA_HORA   || r['DATA/HORA'] || vals[0] || '',
+        USUARIO:     r.USUARIO     || vals[1] || '',
+        ACAO:        r.ACAO        || vals[2] || '',
+        ID_REGISTRO: r.ID_REGISTRO || r.ID_MANIFESTACAO || vals[3] || '',
+        ABA:         r.ABA         || r.ENTIDADE || r.TABELA || vals[4] || '',
+        DETALHES:    r.DETALHES    || r.VALOR_NOVO || vals[6] || vals[5] || '',
+      };
+    }).filter(r => r.DATA_HORA || r.USUARIO || r.ACAO);
+    res.json({sucesso:true, total:itens.length, itens});
+  }
   catch (e) { res.status(500).json({sucesso:false,erro:erroSeguro(e),dados:[]}); }
 });
 
@@ -4269,7 +4285,7 @@ app.post('/api/assertividade-ia', requerPerfil('MASTER','ANALISTA SAC','APROVADO
 });
 
 // ===== PAINEL DA MÁQUINA =====
-app.get('/api/painel-maquina', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req,res)=>{
+app.get('/api/painel-maquina', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC','APROVADOR','DIRETOR','AUDITOR','VISUALIZADOR'), async (req,res)=>{
   try {
     const {setor, de, ate} = req.query;
     // Empresa sempre do JWT — MASTER pode filtrar por query, demais fixo no JWT
@@ -4315,12 +4331,34 @@ app.get('/api/painel-maquina', requerPerfil('MASTER','ANALISTA SAC','APROVADOR')
       else slaStatus.ok++;
     });
 
+    // Campos operacionais adicionais
+    const devolutivasCount = filtradas.filter(m => m.DEVOLUTIVA_ENVIADA && m.DEVOLUTIVA_ENVIADA !== '').length;
+    const reincidenciasCount = filtradas.filter(m => (m.REINCIDENCIA||'').toUpperCase() === 'SIM').length;
+    const reincidenciasPercent = total ? Math.round(reincidenciasCount / total * 100) : 0;
+    const rncsCount = filtradas.filter(m => (m.GEROU_RNC||'').toUpperCase() === 'SIM').length;
+    // Tempo médio (horas) — só para encerradas com ambas as datas
+    const comTempo = encerradas.filter(m => m.DATA_CONCLUSAO_MANIFESTACAO && (m.DATA_CRIACAO||m.DATA_ABERTURA));
+    const tempoMedioH = comTempo.length ? Math.round(comTempo.reduce((s,m) => {
+      return s + (new Date(m.DATA_CONCLUSAO_MANIFESTACAO) - new Date(m.DATA_CRIACAO||m.DATA_ABERTURA)) / 3600000;
+    }, 0) / comTempo.length) : null;
+    // Dentro do SLA — % de encerradas que foram concluídas dentro do prazo
+    const encerradasNoPrazo = encerradas.filter(m => {
+      if (!m.DATA_ABERTURA && !m.DATA_CRIACAO) return false;
+      if (!m.DATA_CONCLUSAO_MANIFESTACAO) return false;
+      const slaH = Number(m.SLA_HORAS || 72);
+      const elapsed = (new Date(m.DATA_CONCLUSAO_MANIFESTACAO) - new Date(m.DATA_CRIACAO||m.DATA_ABERTURA)) / 3600000;
+      return elapsed <= slaH;
+    }).length;
+    const dentroSlaPercent = encerradas.length ? Math.round(encerradasNoPrazo / encerradas.length * 100) : 0;
+
     res.json({
       sucesso:true,
       metricas:{
         totalManifestacoes:total, comAnalise, taxaResolucao, assertPercent, pontuacaoMedia,
         totalAvaliados:comAssert.length, totalAceitos:aceitasTotal,
         encerradas:encerradas.length, emAberto:total-encerradas.length,
+        devolutivas:devolutivasCount, reincidencias:reincidenciasCount, reincidenciasPercent,
+        rncs:rncsCount, tempoMedioH, dentroSlaPercent,
       },
       sla:slaStatus, topSetores, topCausas,
       totalCausasCadastradas:causas.filter(c=>c.ATIVO!=='NAO').length,

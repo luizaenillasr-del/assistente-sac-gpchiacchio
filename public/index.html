@@ -4342,15 +4342,16 @@
     </div>
     <div class="content">
 
-      <!-- Tabs: Indicadores / Validação da IA / Comparativo -->
+      <!-- Tabs: Operacionais / Indicadores da IA / Validação da IA e da ferramenta / Comparativo IA x processo humano -->
       <div id="ind-tabs-bar" style="display:flex;gap:2px;border-bottom:1px solid #E4E4E4;overflow-x:auto;margin-bottom:20px">
-        <button onclick="switchIndTab('indicadores',this)" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#1F1F1F;border-bottom:2px solid #C70602;margin-bottom:-1px;font-weight:700;font-family:inherit">Indicadores</button>
-        <button onclick="switchIndTab('ia',this)" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Validação da IA</button>
-        <button onclick="switchIndTab('comparativo',this)" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Comparativo</button>
+        <button onclick="switchIndTab('operacionais',this)" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#1F1F1F;border-bottom:2px solid #C70602;margin-bottom:-1px;font-weight:700;font-family:inherit">Operacionais</button>
+        <button onclick="switchIndTab('india',this)" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Indicadores da IA</button>
+        <button onclick="switchIndTab('validacao',this)" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Validação da IA e da ferramenta</button>
+        <button onclick="switchIndTab('comparativo',this)" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Comparativo IA x processo humano</button>
       </div>
 
-      <!-- TAB: INDICADORES -->
-      <div id="ind-tab-indicadores">
+      <!-- TAB: OPERACIONAIS -->
+      <div id="ind-tab-operacionais">
         <!-- Filtros -->
         <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px">
           <select id="pm-filtro-empresa" onchange="loadPainelMaquina()" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:13px;font-family:inherit">
@@ -4370,15 +4371,15 @@
           </select>
         </div>
 
-        <!-- KPI cards -->
+        <!-- KPI cards operacionais -->
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:16px" id="pm-kpis">
-          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px"><span style="font-size:12.5px;color:#666464">Total de manifestações</span><span style="font-size:24px;font-weight:600;margin-top:2px" id="pm-total">--</span><span style="font-size:11.5px;color:#8A8888">período selecionado</span></div>
-          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px"><span style="font-size:12.5px;color:#666464">Assertividade da IA</span><span style="font-size:24px;font-weight:600;margin-top:2px;color:#1E6B3A" id="pm-assert">--%</span><span style="font-size:11.5px;color:#8A8888">sugestões aceitas</span></div>
-          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px"><span style="font-size:12.5px;color:#666464">Taxa de resolução</span><span style="font-size:24px;font-weight:600;margin-top:2px" id="pm-resolucao">--%</span><span style="font-size:11.5px;color:#8A8888">encerradas no prazo</span></div>
-          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px"><span style="font-size:12.5px;color:#666464">Análises avaliadas</span><span style="font-size:24px;font-weight:600;margin-top:2px" id="pm-avaliadas">--</span><span style="font-size:11.5px;color:#8A8888">com feedback</span></div>
-          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px"><span style="font-size:12.5px;color:#666464">Pontuação média IA</span><span style="font-size:24px;font-weight:600;margin-top:2px" id="pm-pontuacao">--</span><span style="font-size:11.5px;color:#8A8888">de 5</span></div>
-          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px"><span style="font-size:12.5px;color:#666464">Causas cadastradas</span><span style="font-size:24px;font-weight:600;margin-top:2px" id="pm-causas">--</span><span style="font-size:11.5px;color:#8A8888">no Cérebro</span></div>
-          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px"><span style="font-size:12.5px;color:#666464">Fora do SLA</span><span style="font-size:24px;font-weight:600;margin-top:2px;color:#A80502" id="pm-sla-vencido">--</span><span style="font-size:11.5px;color:#8A8888">prazo ultrapassado</span></div>
+          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px"><span style="font-size:12.5px;color:#666464">Volume</span><span style="font-size:24px;font-weight:600;margin-top:2px" id="pm-vol">--</span><span style="font-size:11.5px;color:#8A8888">total de manifestações</span></div>
+          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px"><span style="font-size:12.5px;color:#666464">Dentro do SLA</span><span style="font-size:24px;font-weight:600;margin-top:2px;color:#1E6B3A" id="pm-sla-pct">--%</span><span style="font-size:11.5px;color:#8A8888">encerradas no prazo</span></div>
+          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px"><span style="font-size:12.5px;color:#666464">Tempo médio</span><span style="font-size:24px;font-weight:600;margin-top:2px" id="pm-tempo">--</span><span style="font-size:11.5px;color:#8A8888">horas até encerramento</span></div>
+          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px"><span style="font-size:12.5px;color:#666464">Reincidência</span><span style="font-size:24px;font-weight:600;margin-top:2px;color:#A80502" id="pm-reincid-pct">--%</span><span style="font-size:11.5px;color:#8A8888">casos reincidentes</span></div>
+          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px"><span style="font-size:12.5px;color:#666464">RNCs</span><span style="font-size:24px;font-weight:600;margin-top:2px" id="pm-rncs">--</span><span style="font-size:11.5px;color:#8A8888">registros de não conformidade</span></div>
+          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px"><span style="font-size:12.5px;color:#666464">Taxa de resolução</span><span style="font-size:24px;font-weight:600;margin-top:2px" id="pm-resolucao">--%</span><span style="font-size:11.5px;color:#8A8888">manifestações encerradas</span></div>
+          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px"><span style="font-size:12.5px;color:#666464">Devolutivas</span><span style="font-size:24px;font-weight:600;margin-top:2px" id="pm-devolutivas">--</span><span style="font-size:11.5px;color:#8A8888">retorno ao cliente enviado</span></div>
         </div>
 
         <!-- Column charts -->
@@ -4404,18 +4405,37 @@
             <div id="pm-topCausas" style="display:flex;flex-direction:column;gap:10px"></div>
           </div>
           <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:18px 20px;display:flex;flex-direction:column;gap:14px">
-            <div><div style="font-weight:600;font-size:14.5px">Assertividade por critério</div><div style="font-size:12.5px;color:#8A8888">Desempenho da IA por campo</div></div>
-            <div id="pm-criterios" style="display:flex;flex-direction:column;gap:10px"></div>
-          </div>
-          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:18px 20px;display:flex;flex-direction:column;gap:14px">
             <div><div style="font-weight:600;font-size:14.5px">SLA — casos em aberto</div><div style="font-size:12.5px;color:#8A8888">No prazo / alerta / vencido</div></div>
             <div id="pm-sla" style="display:flex;flex-direction:column;gap:10px"></div>
           </div>
         </div>
       </div>
 
-      <!-- TAB: VALIDAÇÃO DA IA -->
-      <div id="ind-tab-ia" style="display:none">
+      <!-- TAB: INDICADORES DA IA -->
+      <div id="ind-tab-india" style="display:none">
+        <!-- Filtros espelhados para sincronizar -->
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px">
+          <select id="pm-filtro-empresa2" onchange="loadPainelMaquina()" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:13px;font-family:inherit">
+            <option value="">Todas as empresas</option>
+            <option value="CHIACCHIO">Chiacchio Embalagens</option>
+            <option value="PLASCHIO">Plaschio</option>
+            <option value="TUBAHIA">Cesbap</option>
+          </select>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:16px">
+          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px"><span style="font-size:12.5px;color:#666464">Assertividade da IA</span><span style="font-size:24px;font-weight:600;margin-top:2px;color:#1E6B3A" id="pm-assert">--%</span><span style="font-size:11.5px;color:#8A8888">sugestões aceitas</span></div>
+          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px"><span style="font-size:12.5px;color:#666464">Pontuação média IA</span><span style="font-size:24px;font-weight:600;margin-top:2px" id="pm-pontuacao">--</span><span style="font-size:11.5px;color:#8A8888">de 100</span></div>
+          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px"><span style="font-size:12.5px;color:#666464">Análises avaliadas</span><span style="font-size:24px;font-weight:600;margin-top:2px" id="pm-avaliadas">--</span><span style="font-size:11.5px;color:#8A8888">com feedback</span></div>
+          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px"><span style="font-size:12.5px;color:#666464">Causas cadastradas</span><span style="font-size:24px;font-weight:600;margin-top:2px" id="pm-causas">--</span><span style="font-size:11.5px;color:#8A8888">no Cérebro</span></div>
+        </div>
+        <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:18px 20px">
+          <div style="font-weight:600;font-size:14.5px;margin-bottom:14px">Assertividade por critério</div>
+          <div id="pm-criterios" style="display:flex;flex-direction:column;gap:10px"></div>
+        </div>
+      </div>
+
+      <!-- TAB: VALIDAÇÃO DA IA E DA FERRAMENTA -->
+      <div id="ind-tab-validacao" style="display:none">
         <div style="background:#F1EFF8;color:#7F0401;border-radius:10px;padding:14px 18px;font-size:13.5px;line-height:1.55;margin-bottom:16px">Estes indicadores são <strong>métricas operacionais</strong>, calculadas automaticamente a partir das decisões registradas pelos analistas (aceitar, editar ou rejeitar cada sugestão). Não representam uma avaliação subjetiva da IA.</div>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:16px">
           <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px"><span style="font-size:12.5px;color:#666464">Total de análises</span><span style="font-size:24px;font-weight:600;margin-top:2px" id="ia-total">--</span></div>
@@ -10356,11 +10376,11 @@ window.navigate = function(page, el) {
   const _PG_CONSULTA=['visao-geral','acompanhamento','banco-manifestacoes','banco-rnc','relatorio-satisfacao'];
   const allowed={
     // ADMINISTRADOR — acesso total
-    'MASTER':['visao-geral','acompanhamento','nova-manifestacao','banco-manifestacoes','aprovadores','banco-rnc','usuarios','cerebro','base-conhecimento','painel-maquina','auditoria','prazos-regionais','similares','rca'],
+    'MASTER':['visao-geral','acompanhamento','nova-manifestacao','banco-manifestacoes','aprovadores','banco-rnc','usuarios','cerebro','base-conhecimento','painel-maquina','auditoria','prazos-regionais','similares','rca','biblioteca-fichas','relatorio-satisfacao','sugestoes-melhoria','setores'],
     // GESTOR SAC — visão operacional completa, sem config crítica
     'GESTOR SAC':['visao-geral','acompanhamento','nova-manifestacao','banco-manifestacoes','aprovadores','banco-rnc','setores','biblioteca-fichas','matriz','base-conhecimento','cerebro','painel-maquina','sugestoes-melhoria','relatorio-satisfacao','causas','matriz-conhecimento','prazos-regionais','similares','rca','central-sac'],
     // ANALISTA SAC — operação do dia a dia
-    'ANALISTA SAC':['visao-geral','acompanhamento','nova-manifestacao','banco-manifestacoes','banco-rnc','cerebro','base-conhecimento','painel-maquina','similares'],
+    'ANALISTA SAC':['visao-geral','acompanhamento','nova-manifestacao','banco-manifestacoes','banco-rnc','cerebro','base-conhecimento','painel-maquina','similares','biblioteca-fichas','relatorio-satisfacao','sugestoes-melhoria','setores'],
     // ATENDENTE SAC — registro e encaminhamento
     'ATENDENTE SAC':['nova-manifestacao','banco-manifestacoes','base-conhecimento','cerebro','similares','central-sac'],
     // SETOR RESPONSÁVEL — sua fila + RNC
@@ -10372,10 +10392,10 @@ window.navigate = function(page, el) {
     // RCA — central de causa raiz
     'RCA / REPRESENTANTE':['representantes','rca','banco-rnc'],
     // DIRETOR — visão executiva (leitura)
-    'DIRETOR':['visao-geral','acompanhamento','banco-manifestacoes','banco-rnc','relatorio-satisfacao','rca'],
+    'DIRETOR':['visao-geral','acompanhamento','banco-manifestacoes','banco-rnc','relatorio-satisfacao','rca','painel-maquina','sugestoes-melhoria'],
     // VISUALIZADOR / CONSULTA — apenas leitura
-    'VISUALIZADOR':['visao-geral','banco-manifestacoes','relatorio-satisfacao'],
-    'AUDITOR':['visao-geral','acompanhamento','banco-manifestacoes','banco-rnc','relatorio-satisfacao','auditoria'],
+    'VISUALIZADOR':['visao-geral','banco-manifestacoes','relatorio-satisfacao','painel-maquina'],
+    'AUDITOR':['visao-geral','acompanhamento','banco-manifestacoes','banco-rnc','relatorio-satisfacao','auditoria','painel-maquina'],
   };
   function applyRoleUI(){
     const r=role();const list=allowed[r]||[];
@@ -13722,7 +13742,7 @@ console.log('[base-conhecimento-setores] carregado');
 let _pmUltimaSync = null;
 
 function switchIndTab(tab, btn) {
-  ['indicadores','ia','comparativo'].forEach(t => {
+  ['operacionais','india','validacao','comparativo'].forEach(t => {
     const el = document.getElementById('ind-tab-'+t);
     if (el) el.style.display = t === tab ? '' : 'none';
   });
@@ -13746,13 +13766,30 @@ async function loadPainelMaquina() {
     if (!res.sucesso) throw new Error(res.erro);
 
     const m = res.metricas;
-    document.getElementById('pm-total').textContent = m.totalManifestacoes ?? '--';
-    document.getElementById('pm-assert').textContent = (m.assertPercent ?? '--') + '%';
-    document.getElementById('pm-assert').style.color = m.assertPercent >= 70 ? 'var(--green)' : m.assertPercent >= 40 ? 'var(--yellow)' : 'var(--red)';
-    document.getElementById('pm-resolucao').textContent = (m.taxaResolucao ?? '--') + '%';
-    document.getElementById('pm-avaliadas').textContent = m.totalAvaliados ?? '--';
-    document.getElementById('pm-pontuacao').textContent = m.pontuacaoMedia ? m.pontuacaoMedia + '/100' : '--';
-    document.getElementById('pm-causas').textContent = res.totalCausasCadastradas ?? '--';
+    // Operacionais tab
+    const volEl = document.getElementById('pm-vol');
+    if (volEl) volEl.textContent = m.totalManifestacoes ?? '--';
+    const slaPctEl = document.getElementById('pm-sla-pct');
+    if (slaPctEl) slaPctEl.textContent = (m.dentroSlaPercent != null ? m.dentroSlaPercent : '--') + '%';
+    const tempoEl = document.getElementById('pm-tempo');
+    if (tempoEl) tempoEl.textContent = m.tempoMedioH != null ? m.tempoMedioH + 'h' : '--';
+    const reincidEl = document.getElementById('pm-reincid-pct');
+    if (reincidEl) reincidEl.textContent = (m.reincidenciasPercent != null ? m.reincidenciasPercent : '--') + '%';
+    const rncsEl = document.getElementById('pm-rncs');
+    if (rncsEl) rncsEl.textContent = m.rncs ?? '--';
+    const resolEl = document.getElementById('pm-resolucao');
+    if (resolEl) resolEl.textContent = (m.taxaResolucao ?? '--') + '%';
+    const devEl = document.getElementById('pm-devolutivas');
+    if (devEl) devEl.textContent = m.devolutivas ?? '--';
+    // IA tab
+    const assertEl = document.getElementById('pm-assert');
+    if (assertEl) { assertEl.textContent = (m.assertPercent ?? '--') + '%'; assertEl.style.color = m.assertPercent >= 70 ? 'var(--green)' : m.assertPercent >= 40 ? 'var(--yellow)' : 'var(--red)'; }
+    const avalEl = document.getElementById('pm-avaliadas');
+    if (avalEl) avalEl.textContent = m.totalAvaliados ?? '--';
+    const pontEl = document.getElementById('pm-pontuacao');
+    if (pontEl) pontEl.textContent = m.pontuacaoMedia ? m.pontuacaoMedia + '/100' : '--';
+    const causasEl = document.getElementById('pm-causas');
+    if (causasEl) causasEl.textContent = res.totalCausasCadastradas ?? '--';
 
     // SLA bars
     const slaDiv = document.getElementById('pm-sla');
