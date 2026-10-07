@@ -10328,12 +10328,31 @@ window.navigate = function(page, el) {
     document.querySelectorAll('[id=topbar-user-role]').forEach(el=>el.textContent=u.perfil||u.setor||'SAC');
   }
 
+  // Páginas por perfil — camada 1 de permissão (menu/interface)
+  const _PG_OPERACIONAL=['nova-manifestacao','banco-manifestacoes','banco-rnc','setores','base-conhecimento','cerebro','sugestoes-melhoria','relatorio-satisfacao','similares','central-sac'];
+  const _PG_CONSULTA=['visao-geral','acompanhamento','banco-manifestacoes','banco-rnc','relatorio-satisfacao'];
   const allowed={
+    // ADMINISTRADOR — acesso total
     'MASTER':['visao-geral','acompanhamento','nova-manifestacao','banco-manifestacoes','aprovadores','banco-rnc','setores','biblioteca-fichas','matriz','base-conhecimento','representantes','usuarios','cerebro','painel-maquina','sugestoes-melhoria','relatorio-satisfacao','causas','matriz-conhecimento','alimentacao','auditoria','prazos-regionais','similares','rca','central-sac'],
-    'ANALISTA SAC':['visao-geral','acompanhamento','nova-manifestacao','banco-manifestacoes','aprovadores','banco-rnc','setores','biblioteca-fichas','matriz','base-conhecimento','cerebro','painel-maquina','sugestoes-melhoria','relatorio-satisfacao','causas','matriz-conhecimento'],
-    'SETOR RESPONSÁVEL':['setor-responsavel','banco-rnc'],
+    // GESTOR SAC — visão operacional completa, sem config crítica
+    'GESTOR SAC':['visao-geral','acompanhamento','nova-manifestacao','banco-manifestacoes','aprovadores','banco-rnc','setores','biblioteca-fichas','matriz','base-conhecimento','cerebro','painel-maquina','sugestoes-melhoria','relatorio-satisfacao','causas','matriz-conhecimento','prazos-regionais','similares','rca','central-sac'],
+    // ANALISTA SAC — operação completa
+    'ANALISTA SAC':['visao-geral','acompanhamento','nova-manifestacao','banco-manifestacoes','aprovadores','banco-rnc','setores','biblioteca-fichas','matriz','base-conhecimento','cerebro','painel-maquina','sugestoes-melhoria','relatorio-satisfacao','causas','matriz-conhecimento','similares'],
+    // ATENDENTE SAC — registro e encaminhamento
+    'ATENDENTE SAC':['nova-manifestacao','banco-manifestacoes','base-conhecimento','cerebro','similares','central-sac'],
+    // SETOR RESPONSÁVEL — sua fila + RNC
+    'SETOR RESPONSÁVEL':['setor-responsavel','banco-rnc','base-conhecimento','cerebro'],
+    // ESPECIALISTA — fila técnica + RNC + RCA
+    'ESPECIALISTA':['setor-responsavel','banco-rnc','rca','base-conhecimento','cerebro'],
+    // APROVADOR — central do aprovador + RNC consulta
     'APROVADOR':['aprovadores','banco-rnc'],
-    'RCA / REPRESENTANTE':['representantes']
+    // RCA — central de causa raiz
+    'RCA / REPRESENTANTE':['representantes','rca','banco-rnc'],
+    // DIRETOR — visão executiva (leitura)
+    'DIRETOR':['visao-geral','acompanhamento','banco-manifestacoes','banco-rnc','relatorio-satisfacao','rca'],
+    // VISUALIZADOR / CONSULTA — apenas leitura
+    'VISUALIZADOR':['visao-geral','banco-manifestacoes','relatorio-satisfacao'],
+    'AUDITOR':['visao-geral','acompanhamento','banco-manifestacoes','banco-rnc','relatorio-satisfacao','auditoria'],
   };
   function applyRoleUI(){
     const r=role();const list=allowed[r]||[];
@@ -10341,11 +10360,19 @@ window.navigate = function(page, el) {
       const m=(el.getAttribute('onclick')||'').match(/navigate\(['"]([^'"]+)/); const page=el.dataset.v5Page||m?.[1]||'';
       el.style.display=list.includes(page)?'flex':'none';
     });
+    // Botões de ação — ocultar conforme perfil (camada 2)
+    const podeEditar=['MASTER','GESTOR SAC','ANALISTA SAC','ATENDENTE SAC'].includes(r);
+    const podeCriar=['MASTER','GESTOR SAC','ANALISTA SAC','ATENDENTE SAC'].includes(r);
+    const podeConfig=['MASTER'].includes(r);
+    const podeAprovar=['MASTER','APROVADOR'].includes(r);
+    document.querySelectorAll('[data-perm="criar"]').forEach(el=>el.style.display=podeCriar?'':'none');
+    document.querySelectorAll('[data-perm="editar"]').forEach(el=>el.style.display=podeEditar?'':'none');
+    document.querySelectorAll('[data-perm="config"]').forEach(el=>el.style.display=podeConfig?'':'none');
+    document.querySelectorAll('[data-perm="aprovar"]').forEach(el=>el.style.display=podeAprovar?'':'none');
     // hide sections that have no visible items beneath them
     document.querySelectorAll('.sidebar-section').forEach(sec=>{
       let next=sec.nextElementSibling; let hasVisible=false;
       while(next && !next.classList.contains('sidebar-section')){
-        // check both direct items and items nested in wrapper divs
         if(next.classList && next.classList.contains('sidebar-item') && next.style.display!=='none') hasVisible=true;
         if(next.querySelectorAll) { next.querySelectorAll('.sidebar-item').forEach(it=>{ if(it.style.display!=='none') hasVisible=true; }); }
         next=next.nextElementSibling;
@@ -10355,8 +10382,11 @@ window.navigate = function(page, el) {
     document.querySelectorAll('.page').forEach(p=>{const id=p.id.replace('page-','');if(id==='representantes'&&r==='RCA / REPRESENTANTE')p.classList.remove('active')});
     if(r==='RCA / REPRESENTANTE') navigate('representantes',document.querySelector('[data-v5-page="representantes"]'));
     if(r==='APROVADOR') navigate('aprovadores',document.querySelector('[onclick*=aprovadores]'));
-    if(r==='SETOR RESPONSÁVEL') navigate('banco-rnc',document.querySelector('[onclick*=banco-rnc]'));
-    if(r==='MASTER') { /* mantém a página inicial */ }
+    if(r==='SETOR RESPONSÁVEL'||r==='ESPECIALISTA') navigate('setor-responsavel',document.querySelector('[onclick*=setor-responsavel]')||document.querySelector('[onclick*=banco-rnc]'));
+    if(r==='DIRETOR'||r==='VISUALIZADOR') navigate('visao-geral',document.querySelector('[onclick*=visao-geral]'));
+    if(r==='ATENDENTE SAC') navigate('nova-manifestacao',document.querySelector('[onclick*=nova-manifestacao]'));
+    if(r==='GESTOR SAC') navigate('visao-geral',document.querySelector('[onclick*=visao-geral]'));
+    if(r==='AUDITOR') navigate('auditoria',document.querySelector('[onclick*=auditoria]'));
     if(r!=='RCA / REPRESENTANTE') document.getElementById('rca-role-pill')?.classList.add('hidden');
   }
 
@@ -10365,14 +10395,15 @@ window.navigate = function(page, el) {
 
     // O carregamento inicial da Visão Geral acontecia antes do login.
     // Depois do login, os dados precisam ser carregados novamente.
-    if(['MASTER','ANALISTA SAC'].includes(role()) && typeof window.loadVisaoGeral==='function'){
+    const r=role();
+    if(['MASTER','GESTOR SAC','ANALISTA SAC','ATENDENTE SAC','DIRETOR','VISUALIZADOR','AUDITOR'].includes(r) && typeof window.loadVisaoGeral==='function'){
       await window.loadVisaoGeral();
     }
 
-    if(role()==='RCA / REPRESENTANTE') await loadRcaHome();
-    if(role()==='MASTER') { await loadUsuariosV5(); checarSolicitacoesPendentes && checarSolicitacoesPendentes(); }
-    if(role()==='APROVADOR'||role()==='MASTER') await loadAprovadorV5();
-    if(role()==='ANALISTA SAC') setupAprovacaoUI();
+    if(r==='RCA / REPRESENTANTE') await loadRcaHome();
+    if(r==='MASTER') { await loadUsuariosV5(); checarSolicitacoesPendentes && checarSolicitacoesPendentes(); }
+    if(r==='APROVADOR'||r==='MASTER') await loadAprovadorV5();
+    if(r==='ANALISTA SAC'||r==='GESTOR SAC') setupAprovacaoUI();
   };
 
   window.logoutV5=function(){sessionStorage.clear();location.reload()};
