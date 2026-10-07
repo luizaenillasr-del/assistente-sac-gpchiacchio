@@ -5269,6 +5269,24 @@ app.post('/api/biblioteca/importar-ficha', middlewareEscopoEmpresa(), requerPerf
   } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e) }); }
 });
 
+// ===== EDITAR FICHA HISTÓRICA =====
+app.patch('/api/biblioteca/fichas/:id', requerPerfil('MASTER','ANALISTA SAC'), async (req, res) => {
+  try {
+    const id = req.params.id;
+    const b = req.body || {};
+    const campos = ['EMPRESA','SETOR_RECEBIMENTO','COLABORADOR_RECEBIMENTO','NOME_CLIENTE','CNPJ',
+                    'TIPO_MANIFESTACAO','MOTIVO','STATUS','DATA_REGISTRO','ANO','MES','ARQUIVO_NOME'];
+    const dados = {};
+    campos.forEach(c => { if (b[c] !== undefined) dados[c] = b[c]; });
+    if (!Object.keys(dados).length) return res.status(400).json({ sucesso: false, erro: 'Nenhum campo para atualizar.' });
+    await garantirAbaComCabecalhos('FICHAS_BIBLIOTECA', FICHAS_BIB_IMPORT_HEADERS);
+    const r = await atualizarPorID('FICHAS_BIBLIOTECA', id, dados, ['ID_FICHA']);
+    if (!r) return res.status(404).json({ sucesso: false, erro: 'Ficha não encontrada.' });
+    await registrarAuditoria(req.user.usuario, 'EDITOU_FICHA_HISTORICA', id, 'FICHAS_BIBLIOTECA', null, dados);
+    res.json({ sucesso: true });
+  } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e) }); }
+});
+
 // ===== SINCRONIZAR BASE DE CONHECIMENTO A PARTIR DAS FICHAS =====
 app.post('/api/biblioteca/sincronizar-base', requerPerfil('MASTER','ANALISTA SAC'), async (req, res) => {
   try {

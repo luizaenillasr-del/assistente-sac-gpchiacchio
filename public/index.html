@@ -6559,9 +6559,39 @@ function afRenderTabela(fichas) {
       <td>${_bibOrigemBadge(f.ORIGEM)}</td>
       <td style="white-space:nowrap;color:#545252">${ev ? ev + (ev > 1 ? ' arquivos' : ' arquivo') : '—'}</td>
       <td>${_bibStatusBadge(f.STATUS)}</td>
+      <td onclick="event.stopPropagation()"><button class="btn btn-secondary" style="padding:3px 8px;font-size:11px" onclick="afEditarFicha(${i})">✎ Editar</button></td>
     </tr>`;
   }).join('');
 }
+
+// --- editar ficha ---
+window.afEditarFicha = function(i) {
+  const f = _bibFichasAcum[i]; if (!f) return;
+  const id = f.ID_FICHA || f.ID_MANIFESTACAO;
+  if (!id) { alert('Esta ficha não possui ID e não pode ser editada.'); return; }
+  abrirEditorGenerico('Editar ficha · ' + (f.PROTOCOLO || id), [
+    ['EMPRESA','Empresa',f.EMPRESA||'','text'],
+    ['NOME_CLIENTE','Nome do cliente',f.NOME_CLIENTE||'','text'],
+    ['CNPJ','CNPJ',f.CNPJ||'','text'],
+    ['DATA_REGISTRO','Data da reclamação (AAAA-MM-DD)',f.DATA_REGISTRO||'','text'],
+    ['TIPO_MANIFESTACAO','Tipo',f.TIPO_MANIFESTACAO||'Reclamação','select',false,['Reclamação','Sugestão','Solicitação','Elogio']],
+    ['MOTIVO','Motivo / Causa',f.MOTIVO||'','text'],
+    ['SETOR_RECEBIMENTO','Setor de recebimento',f.SETOR_RECEBIMENTO||'','text'],
+    ['COLABORADOR_RECEBIMENTO','Colaborador',f.COLABORADOR_RECEBIMENTO||'','text'],
+    ['STATUS','Status',f.STATUS||'CONCLUIDA','select',false,['CONCLUIDA','EM_TRATATIVA','ABERTA']],
+  ], async values => {
+    const r = await fetch(window.SAC_API + '/api/biblioteca/fichas/' + encodeURIComponent(id), {
+      method: 'PATCH', headers: Object.assign({ 'Content-Type': 'application/json' }, authH()),
+      body: JSON.stringify(values)
+    });
+    const d = await r.json();
+    if (!d.sucesso) throw new Error(d.erro || 'Falha ao salvar');
+    fecharEditorGenerico();
+    _bibFichasAcum[i] = Object.assign({}, f, values);
+    afRenderTable(_bibFichasAcum);
+    alert('Ficha atualizada com sucesso.');
+  });
+};
 
 // --- detalhe da ficha ---
 function afAbrirFicha(i) {
@@ -9913,19 +9943,21 @@ window.navigate = function(page, el) {
   window.editarRegraMatriz=function(i){
     const r=(_matrizData||[])[i]; if(!r)return;
     abrirEditorGenerico('Editar regra da Matriz',[
-      ['TEMA','Tema',r.TEMA||r.tema||r.NOME||'','text'],
-      ['SETOR_PRINCIPAL','Setor principal',r.SETOR_PRINCIPAL||r.principal||r.SETOR||'','text'],
-      ['SETORES_APOIO','Setores de apoio',r.SETORES_APOIO||r.apoio||'','text'],
-      ['SLA_HORAS','SLA (horas)',r.SLA_HORAS||r.PRAZO||'','number'],
-      ['PRIORIDADE','Prioridade',r.PRIORIDADE||r.prioridade||'Média','select',false,['Baixa','Média','Alta','Crítica']],
-      ['GERA_RNC','Gera RNC',r.GERA_RNC||r.rnc||'Não','select',false,['Sim','Não']],
-      ['APROVACAO','Aprovação',r.APROVACAO||r.aprovacao||'Analista','text'],
-      ['FOLLOW_UP','Follow-up',r.FOLLOW_UP||r.followup||'','text'],
-      ['REGRAS','Regra/critério',r.REGRAS||r.REGRA||'','textarea']
+      ['TIPO_MANIFESTACAO','Tipo',r.TIPO_MANIFESTACAO||r.TEMA||r.tema||'','select',false,['Reclamação','Sugestão','Solicitação','Elogio']],
+      ['CAUSA','Causa / Motivo',r.CAUSA||r.NOME||r.tema||'','text'],
+      ['SUBCAUSA','Subcausa',r.SUBCAUSA||'','text'],
+      ['SETOR_RESPONSAVEL','Setor responsável',r.SETOR_RESPONSAVEL||r.SETOR_PRINCIPAL||r.SETOR||'','text'],
+      ['SLA_HORAS','SLA (horas)',r.SLA_HORAS||r.PRAZO||'72','number'],
+      ['PRIORIDADE','Prioridade',r.PRIORIDADE||'NORMAL','select',false,['BAIXA','NORMAL','ALTA','CRITICA']],
+      ['TRATATIVA_PADRAO','Tratativa padrão',r.TRATATIVA_PADRAO||r.REGRAS||'','textarea'],
+      ['DEVOLUTIVA_PADRAO','Devolutiva padrão',r.DEVOLUTIVA_PADRAO||'','textarea'],
+      ['REQUER_APROVACAO','Requer aprovação',r.REQUER_APROVACAO||'NAO','select',false,['NAO','SIM']],
+      ['ATIVO','Ativo',r.ATIVO||'SIM','select',false,['SIM','NAO']]
     ],async values=>{
-      const id=r.ID_MATRIZ||r.ID||r.id;
-      if(!id)throw new Error('A API /api/matriz precisa retornar ID_MATRIZ/ID para permitir edição.');
-      const res=await jsonFetch('/api/matriz/'+encodeURIComponent(id),{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(values)});
+      const id=r.ID_REGRA||r.ID_TRATAMENTO||r.ID_MATRIZ||r.ID||r.id;
+      if(!id)throw new Error('Registro sem ID — não é possível editar.');
+      const endpoint = r.ID_REGRA||r.ID_TRATAMENTO ? '/api/matriz-tratamento/'+encodeURIComponent(id) : '/api/matriz/'+encodeURIComponent(id);
+      const res=await jsonFetch(endpoint,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(values)});
       if(res.sucesso===false)throw new Error(res.erro||'Falha ao salvar regra');
       fecharEditorGenerico(); await loadMatriz(); alert('Regra salva com sucesso.');
     });
