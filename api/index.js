@@ -1639,6 +1639,16 @@ app.patch('/api/setores/:id', requerPerfil('MASTER'), async(req,res)=>{
   } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e) }); }
 });
 
+app.delete('/api/setores/:id', requerPerfil('MASTER'), async(req,res)=>{
+  try {
+    const id = req.params.id;
+    await atualizarPorID('CONFIG_SETORES', id, { ATIVO: 'EXCLUIDO' }, ['ID_SETOR']);
+    invalidarCacheAba('CONFIG_SETORES');
+    await registrarAuditoria(req.user.usuario, 'EXCLUIU_SETOR', id, 'CONFIG_SETORES', null, {});
+    res.json({ sucesso: true });
+  } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e) }); }
+});
+
 app.post('/api/setores/importar', requerPerfil('MASTER','ANALISTA SAC'), async(req,res)=>{
   try {
     const { itens } = req.body;
@@ -2419,8 +2429,7 @@ app.get('/api/setores', middlewareEscopoEmpresa(), requerPerfil('MASTER','ANALIS
   try {
     // GET puro — sem criar/escrever abas. Se não existe, retorna vazio e frontend usa fallback.
     const data = await lerAba('CONFIG_SETORES', 500).catch(()=>[]);
-    // Setores são configuração global — todos os perfis veem todos os setores
-    const itens = data.map(s => ({ ...s, _counts: {} }));
+    const itens = data.filter(s => (s.ATIVO||'').toUpperCase() !== 'EXCLUIDO').map(s => ({ ...s, _counts: {} }));
     res.json({ sucesso:true, total:itens.length, itens });
   } catch (e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e), itens:[] }); }
 });

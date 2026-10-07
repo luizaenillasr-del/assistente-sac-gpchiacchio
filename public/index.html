@@ -15535,6 +15535,9 @@ function cbVal(v) { return (v == null || String(v).trim() === '') ? '—' : cbEs
 function cbPode() {
   try { const u = JSON.parse(sessionStorage.getItem('sac-user') || '{}'); const p = String(u.PERFIL || u.perfil || '').toUpperCase(); return p.includes('MASTER') || p.includes('ANALISTA'); } catch (e) { return false; }
 }
+function cbEhMaster() {
+  try { const u = JSON.parse(sessionStorage.getItem('sac-user') || '{}'); return String(u.PERFIL || u.perfil || '').toUpperCase().includes('MASTER'); } catch (e) { return false; }
+}
 function cbStatus(s) {
   const u = cbNorm(s);
   if (u === 'validada' || u === 'ativa' || u === 'ativo' || u === 'vigente' || u === 'aprovada' || u === 'aprovado') return { t: 'Ativa', c: 'green', k: 'ativa' };
@@ -15625,7 +15628,7 @@ function renderCdSet() {
       <div class="cb-scard-k"><div><b>${cbCount(s.SETOR, 'regras')}</b>regras</div><div><b>${cbCount(s.SETOR, 'procedimentos')}</b>procedimentos</div><div><b>${s.SLA_HORAS ? (isNaN(parseFloat(String(s.SLA_HORAS).replace(',','.'))) ? cbEsc(String(s.SLA_HORAS).slice(0,12)) : parseFloat(String(s.SLA_HORAS).replace(',','.'))+'h') : '—'}</b>SLA</div></div>
       <div class="cb-scard-m"><span>Gestão: ${cbVal(s.RESPONSAVEL)}</span><span>Atualizado em ${cbData(s.DATA_ATUALIZACAO || s.DATA_CRIACAO)}</span></div>
       <button class="cb-btn-outline" onclick="cbAbrirSetorIdx(${i})">ACESSAR REGRAS</button>
-      ${pode ? `<button class="cb-link" style="text-align:left" onclick="editarSetorCerebro('${cbEsc(s.ID_SETOR || '')}')">Editar informações do setor</button>` : ''}
+      ${pode ? `<div style="display:flex;justify-content:space-between;align-items:center"><button class="cb-link" style="text-align:left" onclick="editarSetorCerebro('${cbEsc(s.ID_SETOR || '')}')">Editar informações do setor</button>${cbEhMaster() ? `<button class="cb-link" style="color:#C70602;text-align:right" onclick="excluirSetorCerebro('${cbEsc(s.ID_SETOR || '')}','${cbEsc(s.SETOR || '')}')">Excluir</button>` : ''}</div>` : ''}
     </div>`;
   }).join('') + (pode ? '<button class="cb-btn-add" onclick="abrirModalSetorCerebro()">+ Adicionar setor</button>' : '');
   if (!lista.length && !pode) grid.innerHTML = '<div class="cb-empty" style="grid-column:1/-1">Nenhum setor encontrado.</div>';
@@ -15728,7 +15731,8 @@ function cbAcoes(tipo, x, i) {
   if (!cbPode()) return '';
   const st = cbStatus(x.STATUS);
   const lbl = st.k === 'ativa' ? 'Ativa' : st.k === 'inativa' ? 'Inativa' : 'Aprovar e ativar';
-  return `<div class="cb-actions"><button class="cb-tg-b" onclick="cbToggle(${i})"><span class="cb-tg${st.k === 'ativa' ? ' cb-on' : ''}"><i></i></span>${lbl}</button><span style="flex:1"></span><button class="cb-btn" onclick="cbAbrirForm('${tipo}',${i})">Editar</button></div>`;
+  const toggle = cbEhMaster() ? `<button class="cb-tg-b" onclick="cbToggle(${i})"><span class="cb-tg${st.k === 'ativa' ? ' cb-on' : ''}"><i></i></span>${lbl}</button>` : `<span style="font-size:12px;color:#666464">${lbl}</span>`;
+  return `<div class="cb-actions">${toggle}<span style="flex:1"></span><button class="cb-btn" onclick="cbAbrirForm('${tipo}',${i})">Editar</button></div>`;
 }
 function cbCardRegra(x, i) {
   const st = cbStatus(x.STATUS);
@@ -15979,6 +15983,14 @@ function abrirModalSetorCerebro(id) {
   document.getElementById('modal-setor-cerebro').style.display = 'flex';
 }
 function editarSetorCerebro(id) { abrirModalSetorCerebro(id); }
+async function excluirSetorCerebro(id, nome) {
+  if (!cbEhMaster()) return;
+  if (!confirm(`Excluir o setor "${nome}"?\n\nEsta ação é irreversível e remove o setor do Cérebro.`)) return;
+  try {
+    await _apiFetch(`/api/setores/${encodeURIComponent(id)}`, 10000, { method: 'DELETE' });
+    cdLoadSetores();
+  } catch(e) { alert('Erro ao excluir: ' + e.message); }
+}
 function fecharModalSetorCerebro() { document.getElementById('modal-setor-cerebro').style.display = 'none'; }
 async function salvarSetorCerebro() {
   const id = document.getElementById('setor-cerebro-id').value;
