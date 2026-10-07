@@ -18540,13 +18540,6 @@ const SRC = [
   {id:'pesq',grp:'hist',nome:'Pesquisas de satisfação antigas',aba:'PESQUISAS_SATISFACAO',imp:true,
     desc:'Respostas de pesquisas feitas fora da ferramenta (formulários, planilhas).',
     feeds:['Pesquisa de Satisfação','Relatório mensal'],fmt:'CSV ou JSON. XLSX: exporte como CSV.'},
-  {id:'cli',grp:'cad',nome:'Clientes',aba:null,imp:false,
-    desc:'Razão social, CNPJ, código, contato, cidade/UF, vendedor e representante.',
-    feeds:['Nova manifestação','Reincidência','Pesquisas'],fmt:'XLSX, CSV',
-    why:'Não existe cadastro de clientes com importação no backend (a consulta por CNPJ usa o Banco de casos).'},
-  {id:'prod',grp:'cad',nome:'Produtos e lotes',aba:'PRODUTOS',imp:true,form:'PRODUTOS',
-    desc:'Catálogo de produtos por empresa, códigos e lotes de produção.',
-    feeds:['Nova manifestação','RNC'],fmt:'CSV ou JSON. XLSX: exporte como CSV.'},
   {id:'setor',grp:'cad',nome:'Setores e responsáveis',aba:'CONFIG_SETORES',imp:true,form:'CONFIG_SETORES',
     desc:'Setores de cada empresa, responsáveis, substitutos e prazos (SLA).',
     feeds:['Encaminhamento','Matriz de Tratamento','Notificações'],fmt:'CSV ou JSON. XLSX: exporte como CSV.'},
@@ -18556,10 +18549,9 @@ const SRC = [
   {id:'causa',grp:'cad',nome:'Causas e subcausas',aba:'CAUSAS',imp:true,form:'CAUSAS',
     desc:'Lista oficial de categorias, motivos, causas e subcausas usada na classificação.',
     feeds:['Causas e Subcausas','Análise da IA'],fmt:'CSV ou JSON. XLSX: exporte como CSV.'},
-  {id:'conh',grp:'conh',nome:'Documentos de conhecimento',doc:true,aba:null,imp:false,
+  {id:'conh',grp:'conh',nome:'Documentos de conhecimento',doc:true,aba:'DOCUMENTOS_CONHECIMENTO',imp:true,form:'DOCUMENTOS_CONHECIMENTO',
     desc:'Procedimentos, POPs, políticas comerciais, especificações técnicas e manuais.',
-    feeds:['Cérebro (após validação)','Análise da IA'],fmt:'PDF, DOCX, XLSX',
-    why:'Sem backend de upload de documentos nem fila de validação do Cérebro.'},
+    feeds:['Cérebro','Análise da IA'],fmt:'Formulário de texto — cole ou digite o conteúdo do documento.'},
   // Fontes que já existiam nesta tela e continuam disponíveis
   {id:'matriz',grp:'conh',nome:'Matriz de Tratamento',aba:'MATRIZ_TRATAMENTO',imp:true,form:'MATRIZ_TRATAMENTO',
     desc:'Regras de tratamento por tipo, causa e subcausa (setor, SLA, prioridade, tratativa e devolutiva padrão).',
@@ -18681,6 +18673,17 @@ const ALIM_FORM_CONFIG = {
       {id:'REGRA_OFICIAL',label:'Regra oficial',type:'textarea'},
       {id:'LIMITES',label:'Limites / exceções',type:'textarea'},
       {id:'CONDICOES',label:'Condições de aplicação',type:'textarea'},
+    ]
+  },
+  DOCUMENTOS_CONHECIMENTO: {
+    titulo: 'Novo Documento de Conhecimento', sub: 'Cole ou digite o conteúdo do documento', endpoint: null,
+    campos: [
+      {id:'TITULO',label:'Título do documento',type:'text',req:true,ph:'Ex: POP de Tratativa de Atraso'},
+      {id:'TIPO',label:'Tipo',type:'select',req:true,opts:['Procedimento','Política','Manual','Especificação Técnica','POP','Instrução de Trabalho','Outro']},
+      {id:'SETOR',label:'Setor responsável',type:'text',ph:'Ex: Logística'},
+      {id:'EMPRESA',label:'Empresa',type:'select',opts:['Todas','CHIACCHIO EMBALAGENS','PLASCHIO','TuBahia/Cesbap']},
+      {id:'CONTEUDO',label:'Conteúdo do documento *',type:'textarea',req:true,ph:'Cole aqui o texto completo do documento…'},
+      {id:'PALAVRAS_CHAVE',label:'Palavras-chave',type:'text',ph:'Ex: atraso, transportadora, prazo — separadas por vírgula'},
     ]
   },
 };
