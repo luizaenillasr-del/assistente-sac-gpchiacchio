@@ -2543,53 +2543,23 @@ ${texto.slice(0, 6000)}`;
   } catch (e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e) }); }
 });
 
-// ===== PESQUISAS DE SATISFAÇÃO (planilha externa, somente leitura) =====
+// ===== PESQUISAS DE SATISFAÇÃO (aba interna PESQUISA_RESPOSTAS) =====
 app.get('/api/pesquisas/resumo', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
   try {
-    const pesquisaId = process.env.PESQUISA_SPREADSHEET_ID || '1h0NroiziE1z52mKIFQFYTltKqcG20mScPfIgGuk1gV4';
-    const pesquisaAba = process.env.PESQUISA_ABA || 'Respostas ao formulário 1';
-    const sheets = await getSheets();
-    const result = await sheets.spreadsheets.values.get({
-      spreadsheetId: pesquisaId,
-      range: pesquisaAba,
-      valueRenderOption: 'FORMATTED_VALUE',
-    });
-    const rows = result.data.values || [];
-    if (rows.length < 2) return res.json({ sucesso: true, totalMes: 0, viramReclamacao: 0 });
-    const headers = rows[0];
-    const dados = rows.slice(1).map(row => {
-      const obj = {};
-      headers.forEach((h, i) => { if (h) obj[h] = row[i] || ''; });
-      return obj;
-    });
-
-    // Detecta coluna de data (primeira coluna com "data" ou "timestamp" no nome)
-    const colunaData = headers.find(h => /data|timestamp|carimbo|hora/i.test(h)) || headers[0];
+    await garantirAbaComCabecalhos('PESQUISA_RESPOSTAS', ['ID','TOKEN','EMPRESA','NOME_CLIENTE','DATA','ATENDIMENTO','PRAZO_ENTREGA','QUALIDADE','RECOMENDACAO','COMENTARIO','NOTA_MEDIA','STATUS_OCP']);
+    const dados = await lerAba('PESQUISA_RESPOSTAS', 5000).catch(()=>[]);
     const agora = new Date();
     const mesAtual = agora.getMonth();
     const anoAtual = agora.getFullYear();
-
+    const NOTA_CRITICA = Number(process.env.PESQUISA_NOTA_CRITICA || 6);
     const doMes = dados.filter(r => {
-      const raw = r[colunaData];
-      if (!raw) return false;
-      // Suporta DD/MM/YYYY HH:MM:SS ou ISO
-      const partes = raw.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
-      let d;
-      if (partes) { d = new Date(+partes[3], +partes[2] - 1, +partes[1]); }
-      else { d = new Date(raw); }
+      const d = new Date(r.DATA || '');
       return !isNaN(d) && d.getMonth() === mesAtual && d.getFullYear() === anoAtual;
     });
-
-    // Conta viram reclamação: qualquer coluna numérica com nota <= 3
-    const colunasNota = headers.filter(h => !/data|timestamp|carimbo|hora|nome|email|cpf|cnpj|observ|coment/i.test(h) && h !== colunaData);
-    const NOTA_CRITICA = Number(process.env.PESQUISA_NOTA_CRITICA || 6);
-    const viramReclamacao = doMes.filter(r =>
-      colunasNota.some(col => {
-        const v = Number(String(r[col]).replace(',', '.'));
-        return !isNaN(v) && v > 0 && v <= NOTA_CRITICA;
-      })
-    ).length;
-
+    const viramReclamacao = doMes.filter(r => {
+      const notas = [r.ATENDIMENTO, r.PRAZO_ENTREGA, r.QUALIDADE, r.RECOMENDACAO].map(v => parseFloat(String(v||'').replace(',','.'))).filter(n => !isNaN(n));
+      return notas.some(n => n <= NOTA_CRITICA);
+    }).length;
     res.json({ sucesso: true, totalMes: doMes.length, viramReclamacao, mes: agora.toLocaleString('pt-BR', { month: 'long', year: 'numeric' }) });
   } catch (e) {
     res.status(500).json({ sucesso: false, erro: erroSeguro(e), totalMes: 0, viramReclamacao: 0 });
@@ -2600,29 +2570,26 @@ app.get('/api/pesquisas/resumo', requerPerfil('MASTER','ANALISTA SAC','SETOR RES
 app.get('/api/pesquisas/relatorio', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req, res) => {
   try {
     const { empresa = '', ano, mes } = req.query;
-    const pesquisaId = process.env.PESQUISA_SPREADSHEET_ID || '1h0NroiziE1z52mKIFQFYTltKqcG20mScPfIgGuk1gV4';
-    const pesquisaAba = process.env.PESQUISA_ABA || 'Respostas ao formulário 1';
-    const sheets = await getSheets();
-    const result = await sheets.spreadsheets.values.get({
-      spreadsheetId: pesquisaId,
-      range: pesquisaAba,
-      valueRenderOption: 'FORMATTED_VALUE',
-    });
-    const rows = result.data.values || [];
-    if (rows.length < 2) return res.json({ sucesso: true, itens: [], media_geral: null, criterios: [], historico: [], textos: {} });
-    const headers = rows[0];
-    const dados = rows.slice(1).map(row => {
-      const obj = {};
-      headers.forEach((h, i) => { if (h) obj[h] = row[i] || ''; });
-      return obj;
-    });
+    await garantirAbaComCabecalhos('PESQUISA_RESPOSTAS', ['ID','TOKEN','EMPRESA','NOME_CLIENTE','DATA','ATENDIMENTO','PRAZO_ENTREGA','QUALIDADE','RECOMENDACAO','COMENTARIO','NOTA_MEDIA','STATUS_OCP']);
+    const todasRespostas = await lerAba('PESQUISA_RESPOSTAS', 5000).catch(()=>[]);
+    // Mapeia para formato compatível com o frontend existente
+    const dados = todasRespostas.map(r => ({
+      ...r,
+      Empresa: r.EMPRESA || '',
+      Cliente: r.NOME_CLIENTE || '',
+      Data: r.DATA || '',
+      Atendimento: r.ATENDIMENTO || '',
+      'Prazo de Entrega': r.PRAZO_ENTREGA || '',
+      Qualidade: r.QUALIDADE || '',
+      Recomendação: r.RECOMENDACAO || '',
+      Observação: r.COMENTARIO || '',
+    }));
+    if (!dados.length) return res.json({ sucesso: true, itens: [], media_geral: null, criterios: [], historico: [], textos: {} });
 
-    const colData = headers.find(h => /data|timestamp|carimbo|hora/i.test(h)) || headers[0];
-    const colEmpresa = headers.find(h => /empresa/i.test(h));
-    const colNota = headers.filter(h => !/data|timestamp|carimbo|hora|nome|email|cpf|cnpj|observ|coment|empresa/i.test(h) && h !== colData && h !== colEmpresa);
+    const COLS_NOTA = ['Atendimento', 'Prazo de Entrega', 'Qualidade', 'Recomendação'];
 
     function _parseFiltro(row) {
-      const raw = row[colData] || '';
+      const raw = row.Data || row.DATA || '';
       const partes = raw.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
       const d = partes ? new Date(+partes[3], +partes[2]-1, +partes[1]) : new Date(raw);
       if (isNaN(d)) return null;
@@ -2630,12 +2597,15 @@ app.get('/api/pesquisas/relatorio', requerPerfil('MASTER','ANALISTA SAC','APROVA
       const mesR = d.getMonth() + 1;
       if (ano && Number(ano) !== anoR) return null;
       if (mes && Number(mes) !== mesR) return null;
-      if (empresa && colEmpresa && !String(row[colEmpresa]||'').toLowerCase().includes(empresa.toLowerCase())) return null;
+      if (empresa) {
+        const empRow = String(row.Empresa || row.EMPRESA || '').toLowerCase();
+        if (!empRow.includes(empresa.toLowerCase())) return null;
+      }
       return { d, anoR, mesR };
     }
 
     function _media(row) {
-      const notas = colNota.map(c => parseFloat(String(row[c]||'').replace(',','.'))).filter(n => !isNaN(n) && n > 0);
+      const notas = COLS_NOTA.map(c => parseFloat(String(row[c]||'').replace(',','.'))).filter(n => !isNaN(n) && n >= 0);
       if (!notas.length) return null;
       return notas.reduce((a,b)=>a+b,0)/notas.length;
     }
@@ -2644,17 +2614,11 @@ app.get('/api/pesquisas/relatorio', requerPerfil('MASTER','ANALISTA SAC','APROVA
     const medias = filtrados.map(_media).filter(n => n !== null);
     const mediaGeral = medias.length ? medias.reduce((a,b)=>a+b,0)/medias.length : null;
 
-    // Critérios (detecta por palavra-chave no header)
-    const mapCrit = { atendimento:/atend/i, prazo:/prazo|entrega/i, qualidade:/qualid/i, recomendacao:/recom/i };
-    const criterios = Object.entries(mapCrit).map(([crit,re]) => {
-      const col = colNota.find(h => re.test(h));
-      if (!col) return null;
-      const ns = filtrados.map(r => parseFloat(String(r[col]||'').replace(',','.'))).filter(n => !isNaN(n) && n > 0);
+    const mapCrit = { atendimento: 'Atendimento', prazo: 'Prazo de Entrega', qualidade: 'Qualidade', recomendacao: 'Recomendação' };
+    const criterios = Object.entries(mapCrit).map(([crit, col]) => {
+      const ns = filtrados.map(r => parseFloat(String(r[col]||'').replace(',','.'))).filter(n => !isNaN(n) && n >= 0);
       return { criterio: crit, media: ns.length ? ns.reduce((a,b)=>a+b,0)/ns.length : null, total: ns.length };
-    }).filter(Boolean);
-
-    // Coluna de recomendação (usada no NPS)
-    const colRecom = colNota.find(h => /recom/i.test(h));
+    });
 
     // Histórico mensal (últimos 12 meses)
     const agora = new Date();
@@ -2665,51 +2629,40 @@ app.get('/api/pesquisas/relatorio', requerPerfil('MASTER','ANALISTA SAC','APROVA
       const mesH = d.getMonth() + 1;
       const mesLabel = d.toLocaleString('pt-BR',{month:'short',year:'2-digit'});
       const grupo = dados.filter(r => {
-        const info = _parseFiltro({ ...r, [colData]: r[colData] });
-        if (!info) {
-          const raw = r[colData]||'';
-          const partes = raw.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
-          const dd = partes ? new Date(+partes[3],+partes[2]-1,+partes[1]) : new Date(raw);
-          if (isNaN(dd)) return false;
-          if (empresa && colEmpresa && !String(r[colEmpresa]||'').toLowerCase().includes(empresa.toLowerCase())) return false;
-          return dd.getFullYear()===anoH && dd.getMonth()+1===mesH;
-        }
-        return info.anoR===anoH && info.mesR===mesH;
+        const raw = r.Data || r.DATA || '';
+        const partes = raw.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+        const dd = partes ? new Date(+partes[3],+partes[2]-1,+partes[1]) : new Date(raw);
+        if (isNaN(dd)) return false;
+        if (empresa && !String(r.Empresa||r.EMPRESA||'').toLowerCase().includes(empresa.toLowerCase())) return false;
+        return dd.getFullYear()===anoH && dd.getMonth()+1===mesH;
       });
       const ms = grupo.map(_media).filter(n=>n!==null);
       const crit = {};
-      Object.entries(mapCrit).forEach(([c,re])=>{
-        const col=colNota.find(h=>re.test(h));
-        if(!col){crit[c]=null;return;}
-        const ns=grupo.map(r=>parseFloat(String(r[col]||'').replace(',','.'))).filter(n=>!isNaN(n)&&n>0);
-        crit[c]=ns.length?ns.reduce((a,b)=>a+b,0)/ns.length:null;
+      Object.entries(mapCrit).forEach(([c, col]) => {
+        const ns = grupo.map(r=>parseFloat(String(r[col]||'').replace(',','.'))).filter(n=>!isNaN(n)&&n>=0);
+        crit[c] = ns.length ? ns.reduce((a,b)=>a+b,0)/ns.length : null;
       });
-      // NPS do mês histórico
+      const recH = grupo.map(r=>parseFloat(String(r['Recomendação']||'').replace(',','.'))).filter(n=>!isNaN(n)&&n>=0&&n<=10);
       let npsH = null;
-      if (colRecom) {
-        const recH = grupo.map(r=>parseFloat(String(r[colRecom]||'').replace(',','.'))).filter(n=>!isNaN(n)&&n>=0&&n<=10);
-        if (recH.length) {
-          const pH=recH.filter(n=>n>=9).length, dH=recH.filter(n=>n<=6).length;
-          npsH = Math.round((pH-dH)/recH.length*100);
-        }
+      if (recH.length) {
+        const pH=recH.filter(n=>n>=9).length, dH=recH.filter(n=>n<=6).length;
+        npsH = Math.round((pH-dH)/recH.length*100);
       }
       historico.push({ mes: `${anoH}-${String(mesH).padStart(2,'0')}`, mes_label: mesLabel, media: ms.length?ms.reduce((a,b)=>a+b,0)/ms.length:null, total: ms.length, nps_score: npsH, ...crit });
     }
 
-    // NPS do mês filtrado (indicador complementar)
+    // NPS do período filtrado
     let nps = null;
-    if (colRecom) {
-      const recScores = filtrados.map(r=>parseFloat(String(r[colRecom]||'').replace(',','.'))).filter(n=>!isNaN(n)&&n>=0&&n<=10);
-      if (recScores.length) {
-        const prom=recScores.filter(n=>n>=9).length, det=recScores.filter(n=>n<=6).length, neut=recScores.length-prom-det;
-        nps = {
-          score: Math.round((prom-det)/recScores.length*100),
-          promotores:prom, detratores:det, neutros:neut, total:recScores.length,
-          promotores_pct:Math.round(prom/recScores.length*100),
-          detratores_pct:Math.round(det/recScores.length*100),
-          neutros_pct:Math.round(neut/recScores.length*100),
-        };
-      }
+    const recScores = filtrados.map(r=>parseFloat(String(r['Recomendação']||'').replace(',','.'))).filter(n=>!isNaN(n)&&n>=0&&n<=10);
+    if (recScores.length) {
+      const prom=recScores.filter(n=>n>=9).length, det=recScores.filter(n=>n<=6).length, neut=recScores.length-prom-det;
+      nps = {
+        score: Math.round((prom-det)/recScores.length*100),
+        promotores:prom, detratores:det, neutros:neut, total:recScores.length,
+        promotores_pct:Math.round(prom/recScores.length*100),
+        detratores_pct:Math.round(det/recScores.length*100),
+        neutros_pct:Math.round(neut/recScores.length*100),
+      };
     }
 
     // Textos salvos
