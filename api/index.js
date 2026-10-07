@@ -472,6 +472,71 @@ function invalidarCacheAba(nomeAba) {
   }
 }
 
+// ── Cache de CONFIG_SETORES — fonte oficial de setores, SLA e responsáveis ──────
+let _configSetoresCache = null;
+let _configSetoresCacheTs = 0;
+const CONFIG_SETORES_TTL_MS = 60_000;
+
+async function carregarConfigSetores() {
+  const agora = Date.now();
+  if (_configSetoresCache && (agora - _configSetoresCacheTs) < CONFIG_SETORES_TTL_MS) {
+    return _configSetoresCache;
+  }
+  try {
+    const rows = await lerAba('CONFIG_SETORES', 500);
+    _configSetoresCache = rows.filter(s => (s.ATIVO || 'SIM').toUpperCase() === 'SIM');
+    _configSetoresCacheTs = agora;
+    return _configSetoresCache;
+  } catch(e) {
+    console.warn('[CONFIG_SETORES] Falha ao carregar:', e.message);
+    return _configSetoresCache || [];
+  }
+}
+
+function invalidarCacheSetores() {
+  _configSetoresCache = null;
+  _configSetoresCacheTs = 0;
+  // Também invalida o cache do lerAba para garantir consistência
+  invalidarCacheAba('CONFIG_SETORES');
+}
+
+// Busca SLA do setor — CONFIG_SETORES tem prioridade sobre SLA_ESCALONAMENTO
+function buscarSLASetor(setores, configSetores, slaEscalonamento) {
+  for (const nomeSetor of setores) {
+    const cfg = configSetores.find(s =>
+      normalizarTexto(s.SETOR || '') === normalizarTexto(nomeSetor)
+    );
+    if (cfg && cfg.SLA_HORAS) {
+      const n = parseInt(String(cfg.SLA_HORAS).match(/\d+/)?.[0] || '0');
+      if (n > 0) return { slaHoras: n, fonte: 'CONFIG_SETORES', setor: nomeSetor };
+    }
+  }
+  // Fallback: SLA_ESCALONAMENTO (regras de escalonamento/exceção)
+  const slaRow = slaEscalonamento.find(s =>
+    s.SETOR && setores.some(nome =>
+      normalizarTexto(s.SETOR).includes(normalizarTexto(nome))
+    )
+  );
+  if (slaRow) {
+    const match = (slaRow.SLA_PADRAO_HORAS || '72').match(/\d+/);
+    if (match) return { slaHoras: parseInt(match[0]), fonte: 'SLA_ESCALONAMENTO', setor: slaRow.SETOR };
+  }
+  return { slaHoras: 72, fonte: 'DEFAULT', setor: setores[0] || 'SAC' };
+}
+
+// Busca responsável e substituto do setor em CONFIG_SETORES
+function buscarResponsavelSetor(setores, configSetores) {
+  for (const nomeSetor of setores) {
+    const cfg = configSetores.find(s =>
+      normalizarTexto(s.SETOR || '') === normalizarTexto(nomeSetor)
+    );
+    if (cfg?.RESPONSAVEL) {
+      return { responsavel: cfg.RESPONSAVEL, substituto: cfg.SUBSTITUTO || '' };
+    }
+  }
+  return { responsavel: null, substituto: null };
+}
+
 // Tenta 'Reclamações + devolutiva' primeiro; cai para 'Reclamações' se vazio
 async function lerAbaReclamacoes(max = 2000) {
   if (_sheetsMock?.lerAbaReclamacoes) return _sheetsMock.lerAbaReclamacoes(max);
@@ -574,9 +639,13 @@ function isTeste(item) {
 // ===== MOTOR DE REGRAS — MÚLTIPLOS SETORES =====
 async function motorRegras(descricao, tipo, empresa) {
   try {
-    const [regras, tipos, procedimentos, slaData, perguntas] = await Promise.all([
-      lerAba('REGRAS_ROTEAMENTO', 500).catch(()=>[]), lerAba('TIPOS_RECLAMACAO', 500).catch(()=>[]),
-      lerAba('PROCEDIMENTOS', 200).catch(()=>[]), lerAba('SLA_ESCALONAMENTO', 50).catch(()=>[]), lerAba('PERGUNTAS_ANALISE', 200).catch(()=>[]),
+    const [regras, tipos, procedimentos, slaEscalonamento, perguntas, configSetores] = await Promise.all([
+      lerAba('REGRAS_ROTEAMENTO', 500).catch(()=>[]),
+      lerAba('TIPOS_RECLAMACAO', 500).catch(()=>[]),
+      lerAba('PROCEDIMENTOS', 200).catch(()=>[]),
+      lerAba('SLA_ESCALONAMENTO', 50).catch(()=>[]),
+      lerAba('PERGUNTAS_ANALISE', 200).catch(()=>[]),
+      carregarConfigSetores(), // ← CONFIG_SETORES como fonte oficial de SLA e responsável
     ]);
     const texto = (descricao || '').toLowerCase();
 
@@ -613,9 +682,14 @@ async function motorRegras(descricao, tipo, empresa) {
 
     const setores = [...setoresSet];
 
-    let slaHoras = 72;
-    const slaSetor = slaData.find(s => s.SETOR && s.SETOR.includes('SAC'));
-    if (slaSetor) { const match = (slaSetor.SLA_PADRAO_HORAS || '72').match(/\d+/); if (match) slaHoras = parseInt(match[0]); }
+    // ── SLA: CONFIG_SETORES tem prioridade sobre SLA_ESCALONAMENTO ──────────────
+    // Se o setor foi cadastrado com SLA específico, esse valor é usado.
+    // SLA_ESCALONAMENTO serve como fallback para regras de exceção/escalonamento.
+    const slaResult = buscarSLASetor(setores, configSetores, slaEscalonamento);
+    const slaHoras = slaResult.slaHoras;
+
+    // ── Responsável: vem de CONFIG_SETORES ──────────────────────────────────────
+    const respResult = buscarResponsavelSetor(setores, configSetores);
 
     let prioridade = 'Média';
     if (texto.includes('urgente') || texto.includes('urgência') || texto.includes('perda') || setores.length >= 3) prioridade = 'Alta';
@@ -634,15 +708,23 @@ async function motorRegras(descricao, tipo, empresa) {
       .slice(0, 6).map(p => ({ id: p.ID_PERGUNTA, pergunta: p.PERGUNTA, obrigatoria: p.OBRIGATORIA === 'SIM' }));
 
     // B6: geraRNC NUNCA é definido automaticamente por palavras-chave.
-    // RNC é sempre decisão humana. Motor de regras sinaliza para revisão, não cria RNC.
-    // rncSinalizado indica que o caso tem características que MERECEM revisão de RNC.
     const rncSinalizado = texto.includes('reincidência') || texto.includes('terceira') || texto.includes('repetiu') || prioridade === 'Alta';
-    const geraRNC = false; // Imutável. RNC só é criado por decisão humana explícita.
+    const geraRNC = false;
 
-    return { tipoDetectado, tipoID, tipoConfianca, setores, regraAplicada, slaHoras, prioridade, procedimentoSugerido, perguntasNecessarias, geraRNC, rncSinalizado };
+    return {
+      tipoDetectado, tipoID, tipoConfianca,
+      setores, regraAplicada,
+      slaHoras,
+      slaFonte: slaResult.fonte,       // rastreabilidade: 'CONFIG_SETORES' | 'SLA_ESCALONAMENTO' | 'DEFAULT'
+      responsavel: respResult.responsavel,  // responsável do setor cadastrado
+      substituto: respResult.substituto,    // substituto do setor cadastrado
+      prioridade,
+      procedimentoSugerido, perguntasNecessarias,
+      geraRNC, rncSinalizado,
+    };
   } catch (e) {
     console.error('Erro motor regras:', e.message);
-    return { tipoDetectado: 'Não identificado', tipoConfianca: 0, setores: ['SAC'], slaHoras: 72, prioridade: 'Média', geraRNC: false };
+    return { tipoDetectado: 'Não identificado', tipoConfianca: 0, setores: ['SAC'], slaHoras: 72, slaFonte: 'DEFAULT', prioridade: 'Média', geraRNC: false };
   }
 }
 
@@ -1621,6 +1703,7 @@ app.post('/api/setores', requerPerfil('MASTER'), async(req,res)=>{
     const id = await gerarProximoID('CONFIG_SETORES', 'SET', 'ID_SETOR');
     const obj = { ID_SETOR: id, SETOR, DESCRICAO: DESCRICAO||'', RESPONSAVEL: RESPONSAVEL||'', EMPRESA: EMPRESA||'', SLA_HORAS: SLA_HORAS||'72', ATIVO: ATIVO||'SIM' };
     await appendObjeto('CONFIG_SETORES', obj);
+    invalidarCacheSetores(); // garante que próxima análise usa o novo setor
     await registrarAuditoria(req.user.usuario, 'CRIOU_SETOR', id, 'CONFIG_SETORES', null, obj);
     res.status(201).json({ sucesso: true, setor: obj });
   } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e) }); }
@@ -1633,6 +1716,7 @@ app.patch('/api/setores/:id', requerPerfil('MASTER'), async(req,res)=>{
     const dados = {};
     campos.forEach(c => { if (req.body[c] !== undefined) dados[c] = req.body[c]; });
     await atualizarPorID('CONFIG_SETORES', id, dados, ['ID_SETOR']);
+    invalidarCacheSetores(); // garante que próxima análise usa SLA/responsável atualizado
     const atualizado = await buscarPorID('CONFIG_SETORES', id, ['ID_SETOR']);
     await registrarAuditoria(req.user.usuario, 'ATUALIZOU_SETOR', id, 'CONFIG_SETORES', null, dados);
     res.json({ sucesso: true, setor: atualizado });
@@ -1659,6 +1743,7 @@ app.post('/api/setores/importar', requerPerfil('MASTER','ANALISTA SAC'), async(r
       });
       criados++;
     }
+    invalidarCacheSetores(); // garante que setores importados ficam disponíveis imediatamente
     res.json({sucesso:true, criados});
   } catch(e) { res.status(500).json({sucesso:false, erro:erroSeguro(e)}); }
 });
@@ -1737,6 +1822,7 @@ app.patch('/api/setores/:setor/operacional', requerPerfil('MASTER'), async(req,r
     for(const c of TODOS_CAMPOS){if(req.body?.[c]!==undefined)dados[c]=req.body[c];}
     dados.ATIVO=req.body?.ATIVO||'SIM';
     const out=await atualizarOuCriarSetor(nome,dados,req.user.usuario);
+    invalidarCacheSetores(); // SLA/responsável da ficha do setor atualizado
     await registrarAuditoria(req.user.usuario,'ATUALIZOU_FICHA_SETOR',nome,'CONFIG_SETORES',null,dados);
     res.json({sucesso:true,setor:out});
   }
