@@ -5227,6 +5227,50 @@ app.get('/api/biblioteca/fichas/:id', middlewareEscopoEmpresa(), requerPerfil('M
   } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e) }); }
 });
 
+// Anexar arquivo a uma ficha existente
+app.post('/api/biblioteca/fichas/:id/evidencias', middlewareEscopoEmpresa(), requerPerfil('MASTER','ADMINISTRADOR','ANALISTA SAC','SAC','GESTOR SAC','APROVADOR'), async (req, res) => {
+  try {
+    const id = String(req.params.id || '').trim();
+    const todas = await carregarFichasBiblioteca(req);
+    const ficha = todas.find(f => f.PROTOCOLO === id || f.ID_MANIFESTACAO === id || f.ID_FICHA === id);
+    if (!ficha) return res.status(404).json({ sucesso: false, erro: 'Ficha não encontrada.' });
+
+    const contentType = req.headers['content-type'] || '';
+    if (!contentType.includes('multipart/form-data')) return res.status(400).json({ sucesso: false, erro: 'Envie o arquivo via multipart/form-data.' });
+    const Busboy = (() => { try { return require('busboy'); } catch { return null; } })();
+    if (!Busboy) return res.status(503).json({ sucesso: false, erro: 'Módulo de upload não disponível.' });
+
+    const MAX_MB = 20;
+    const bb = Busboy({ headers: req.headers, limits: { fileSize: MAX_MB * 1024 * 1024, files: 1 } });
+    let nomeArquivo = ''; let mimeType = ''; const chunks = []; let truncado = false;
+
+    await new Promise((resolve, reject) => {
+      bb.on('file', (name, stream, info) => {
+        nomeArquivo = info.filename || 'arquivo'; mimeType = info.mimeType || 'application/octet-stream';
+        stream.on('data', c => chunks.push(c));
+        stream.on('limit', () => { truncado = true; });
+        stream.on('error', reject);
+      });
+      bb.on('finish', resolve);
+      bb.on('error', reject);
+      req.pipe(bb);
+    });
+
+    if (truncado) return res.status(400).json({ sucesso: false, erro: `Arquivo acima de ${MAX_MB} MB.` });
+    if (chunks.length === 0) return res.status(400).json({ sucesso: false, erro: 'Arquivo não recebido.' });
+    const buffer = Buffer.concat(chunks);
+
+    const up = await uploadArquivoDrive(nomeArquivo, mimeType, buffer);
+    const driveUrl = up.webViewLink || up.webContentLink || '';
+    const idEntidade = ficha.ID_MANIFESTACAO || ficha.PROTOCOLO || ficha.ID_FICHA;
+    const agora = new Date().toISOString();
+    await garantirAbaComCabecalhos('ANEXOS', ['NOME_ARQUIVO','MIME_TYPE','TAMANHO','URL_ARQUIVO','DATA_UPLOAD','USUARIO_UPLOAD','ID_ENTIDADE','TIPO_ENTIDADE','CATEGORIA']).catch(() => {});
+    await appendLinha('ANEXOS', [nomeArquivo, mimeType, String(buffer.length), driveUrl, agora, req.user.usuario, idEntidade, 'ficha', 'evidencia']).catch(() => {});
+    registrarAuditoria(req.user.usuario, 'ANEXOU_ARQUIVO_FICHA', idEntidade, 'FICHAS_BIBLIOTECA', null, { nome: nomeArquivo }).catch(() => {});
+    res.json({ sucesso: true, evidencia: { NOME: nomeArquivo, TIPO_MIME: mimeType, TAMANHO: String(buffer.length), DRIVE_URL: driveUrl, DATA_UPLOAD: agora, USUARIO: req.user.usuario } });
+  } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e) }); }
+});
+
 // Download direto do PDF de uma manifestação
 app.get('/api/manifestacoes/:id/pdf', middlewareEscopoEmpresa(), requerPerfil('MASTER','ANALISTA SAC','GESTOR SAC','APROVADOR','SETOR RESPONSÁVEL','CONSULTA','AUDITOR','RCA / REPRESENTANTE'), async (req, res) => {
   try {
