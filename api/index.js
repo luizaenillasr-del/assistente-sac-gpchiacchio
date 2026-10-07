@@ -14,10 +14,12 @@ const documentService = require('./services/documentService');
 const aiService = require('./services/aiService');
 const { tratativaEngine, devolutivaEngine, assertividade: assertividadeService } = cerebroService;
 const permissoesService = require('./services/permissoesService');
+
 // Injeção de mock Sheets para testes — nunca ativo em produção (env var não existe em prod)
 const _sheetsMock = process.env.SHEETS_MOCK_PATH ? (() => { try { return require(process.env.SHEETS_MOCK_PATH); } catch(e) { console.warn('[MOCK] falhou ao carregar:', e.message); return null; } })() : null;
 // Flag de leitura PG: padrão false = leituras sempre do Sheets (seguro ao configurar DATABASE_URL)
 const PG_LEITURA_ATIVA = String(process.env.PG_LEITURA_ATIVA || 'false').toLowerCase() === 'true';
+
 // Repositórios PostgreSQL (F4/F7) — falha silenciosa, fallback para Sheets
 let usuarioRepo, manifestacaoRepo, rncRepo, empresaRepo, conhecimentoRepo;
 try {
@@ -29,6 +31,7 @@ try {
 } catch (e) {
   console.warn('[F4] Repositórios PG não disponíveis:', e.message);
 }
+
 const app = express();
 const ALLOWED_ORIGINS = [
   'https://assistente-sac-gpchiacchio.vercel.app',
@@ -42,6 +45,7 @@ const corsOptions = { origin: (origin, cb) => {
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 app.use(express.json({ limit: '25mb' }));
+
 // ===== SECURITY HEADERS =====
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -57,6 +61,7 @@ app.use((req, res, next) => {
   }
   next();
 });
+
 function getAuth() {
   const raw = process.env.GOOGLE_CREDENTIALS;
   if (!raw) throw new Error('GOOGLE_CREDENTIALS não configurada.');
@@ -69,10 +74,13 @@ function getAuth() {
     ],
   });
 }
+
 const SPREADSHEET_ID = process.env.SPREADSHEET_ID;
+
 // PDF service
 let gerarFichaPDF;
 try { ({ gerarFichaPDF } = require('./services/pdfFicha')); } catch(e) { console.warn('[PDF] pdfFicha não disponível:', e.message); }
+
 // Google Drive upload (usa mesma service account com scope drive.file)
 async function uploadArquivoDrive(nome, mimeType, bufferOuBase64) {
   const buf = Buffer.isBuffer(bufferOuBase64) ? bufferOuBase64 : Buffer.from(bufferOuBase64, 'base64');
