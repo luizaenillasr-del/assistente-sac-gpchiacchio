@@ -2374,9 +2374,8 @@ app.get('/api/setores', middlewareEscopoEmpresa(), requerPerfil('MASTER','ANALIS
   try {
     // GET puro — sem criar/escrever abas. Se não existe, retorna vazio e frontend usa fallback.
     const data = await lerAba('CONFIG_SETORES', 500).catch(()=>[]);
-    // Config: sem empresa = global (todos veem). Com empresa = apenas essa empresa + MASTER.
-    const filtrado = filtrarPorEmpresaConfig(data, req, 'EMPRESA');
-    const itens = filtrado.map(s => ({ ...s, _counts: {} }));
+    // Setores são configuração global — todos os perfis veem todos os setores
+    const itens = data.map(s => ({ ...s, _counts: {} }));
     res.json({ sucesso:true, total:itens.length, itens });
   } catch (e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e), itens:[] }); }
 });
