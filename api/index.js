@@ -5269,6 +5269,88 @@ app.post('/api/biblioteca/importar-ficha', middlewareEscopoEmpresa(), requerPerf
   } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e) }); }
 });
 
+// ===== SINCRONIZAR BASE DE CONHECIMENTO A PARTIR DAS FICHAS =====
+app.post('/api/biblioteca/sincronizar-base', requerPerfil('MASTER','ANALISTA SAC'), async (req, res) => {
+  try {
+    const fichas = await lerAba('FICHAS_BIBLIOTECA', 5000).catch(() => []);
+    if (!fichas.length) return res.json({ sucesso: true, setores: 0, matriz: 0, cerebro: 0, msg: 'Nenhuma ficha encontrada.' });
+
+    // --- 1. SETORES: extrai setores únicos das fichas ---
+    await garantirAbaComCabecalhos('CONFIG_SETORES', ['ID_SETOR','SETOR','EMPRESA','DESCRICAO','RESPONSAVEL','SLA_HORAS','ATIVO']);
+    const setoresExistentes = await lerAba('CONFIG_SETORES', 2000).catch(() => []);
+    const setoresNormSet = new Set(setoresExistentes.map(s => normalizarTexto(s.SETOR || '')));
+    let setoresCriados = 0;
+    const setoresNovos = new Set();
+    for (const f of fichas) {
+      const s = (f.SETOR_RECEBIMENTO || '').trim();
+      if (!s || s.length < 2) continue;
+      const n = normalizarTexto(s);
+      if (!setoresNormSet.has(n) && !setoresNovos.has(n)) {
+        setoresNovos.add(n);
+        const id = await gerarProximoID('CONFIG_SETORES', 'SET', 'ID_SETOR');
+        await appendObjeto('CONFIG_SETORES', { ID_SETOR: id, SETOR: s, EMPRESA: '', DESCRICAO: '', RESPONSAVEL: '', SLA_HORAS: '72', ATIVO: 'SIM' });
+        setoresCriados++;
+      }
+    }
+
+    // --- 2. MATRIZ DE TRATAMENTO: tipo+motivo únicos ---
+    await garantirAbaComCabecalhos('MATRIZ_TRATAMENTO', ['ID_REGRA','TIPO_MANIFESTACAO','EMPRESA','CAUSA','SUBCAUSA','SETOR_RESPONSAVEL','SLA_HORAS','PRIORIDADE','TRATATIVA_PADRAO','DEVOLUTIVA_PADRAO','REQUER_APROVACAO','ATIVO','DATA_CRIACAO','CRIADO_POR']);
+    const matrizExistente = await lerAba('MATRIZ_TRATAMENTO', 5000).catch(() => []);
+    const matrizNormSet = new Set(matrizExistente.map(m => normalizarTexto((m.TIPO_MANIFESTACAO||'')+'|'+(m.CAUSA||''))));
+    let matrizCriados = 0;
+    const matrizNovos = new Set();
+    for (const f of fichas) {
+      const tipo = (f.TIPO_MANIFESTACAO || 'Reclamação').trim();
+      const causa = (f.MOTIVO || '').trim();
+      if (!causa || causa.length < 3) continue;
+      const chave = normalizarTexto(tipo + '|' + causa);
+      if (!matrizNormSet.has(chave) && !matrizNovos.has(chave)) {
+        matrizNovos.add(chave);
+        const id = await gerarProximoID('MATRIZ_TRATAMENTO', 'MTR', 'ID_REGRA');
+        await appendObjeto('MATRIZ_TRATAMENTO', {
+          ID_REGRA: id, TIPO_MANIFESTACAO: tipo, EMPRESA: f.EMPRESA || '',
+          CAUSA: causa, SUBCAUSA: '', SETOR_RESPONSAVEL: f.SETOR_RECEBIMENTO || '',
+          SLA_HORAS: '72', PRIORIDADE: 'NORMAL', TRATATIVA_PADRAO: '',
+          DEVOLUTIVA_PADRAO: '', REQUER_APROVACAO: 'NAO', ATIVO: 'SIM',
+          DATA_CRIACAO: new Date().toISOString(), CRIADO_POR: req.user.usuario
+        });
+        matrizCriados++;
+      }
+    }
+
+    // --- 3. CÉREBRO (MATRIZ_CONHECIMENTO): uma entrada por motivo único relevante ---
+    await garantirAbaComCabecalhos('MATRIZ_CONHECIMENTO', ['ID','NOME','DESCRICAO','TIPO','CATEGORIA','CONTEUDO','STATUS','VERSAO','CRIADO_POR','CRIADO_EM','ATUALIZADO_EM']);
+    const cerebroExistente = await lerAba('MATRIZ_CONHECIMENTO', 5000).catch(() => []);
+    const cerebroNormSet = new Set(cerebroExistente.map(c => normalizarTexto(c.NOME || '')));
+    let cerebroCriados = 0;
+    const cerebroNovos = new Set();
+    for (const f of fichas) {
+      const motivo = (f.MOTIVO || '').trim();
+      if (!motivo || motivo.length < 5) continue;
+      const nome = `Tratativa: ${motivo}`;
+      const n = normalizarTexto(nome);
+      if (!cerebroNormSet.has(n) && !cerebroNovos.has(n)) {
+        cerebroNovos.add(n);
+        const id = 'MC-' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).slice(2,4).toUpperCase();
+        const agora = new Date().toISOString();
+        await appendObjeto('MATRIZ_CONHECIMENTO', {
+          ID: id, NOME: nome,
+          DESCRICAO: `Extraído automaticamente das fichas históricas. Motivo: ${motivo}. Tipo: ${f.TIPO_MANIFESTACAO || 'Reclamação'}. Empresa: ${f.EMPRESA || ''}.`,
+          TIPO: 'PROCEDIMENTO', CATEGORIA: f.TIPO_MANIFESTACAO || 'Reclamação',
+          CONTEUDO: `Motivo registrado nas fichas: ${motivo}. Preencha com a tratativa padrão para este tipo de ocorrência.`,
+          STATUS: 'rascunho', VERSAO: '1', CRIADO_POR: req.user.usuario, CRIADO_EM: agora, ATUALIZADO_EM: agora
+        });
+        cerebroCriados++;
+      }
+    }
+
+    await registrarAuditoria(req.user.usuario, 'SINCRONIZOU_BASE_CONHECIMENTO', null, 'FICHAS_BIBLIOTECA', null,
+      { fichas: fichas.length, setores: setoresCriados, matriz: matrizCriados, cerebro: cerebroCriados });
+
+    res.json({ sucesso: true, fichas: fichas.length, setores: setoresCriados, matriz: matrizCriados, cerebro: cerebroCriados });
+  } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e) }); }
+});
+
 // ===== MATRIZ DE CONHECIMENTO =====
 
 const MC_PERFIS_EDITOR = new Set(['MASTER','ADMINISTRADOR','ANALISTA SAC','GESTOR SAC']);

@@ -5914,6 +5914,7 @@
       </div>
       <div class="af-actions">
         <button class="af-btn" onclick="abrirModalImportarFicha()">↑ Importar fichas (PDF/DOCX)</button>
+        <button class="af-btn" id="bib-btn-sincronizar" onclick="sincronizarBaseConhecimento()" title="Lê todas as fichas e popula automaticamente Setores, Matriz de Tratamento e Cérebro com os dados encontrados">⚡ Sincronizar base</button>
         <button class="af-btn af-btn-red" id="bib-btn-refresh" onclick="loadBiblioteca(true,true)">↻ Atualizar</button>
       </div>
     </div>
@@ -6699,6 +6700,26 @@ function afInferirDoNome(nome) {
     if (dt.getFullYear() === y && dt.getMonth() === m - 1 && dt.getDate() === d && iso <= _afHojeISO()) out.data = iso;
   }
   return out;
+}
+
+async function sincronizarBaseConhecimento() {
+  const btn = document.getElementById('bib-btn-sincronizar');
+  if (!btn) return;
+  const orig = btn.textContent;
+  btn.disabled = true; btn.textContent = '⏳ Sincronizando…';
+  try {
+    const r = await fetch(window.SAC_API + '/api/biblioteca/sincronizar-base', {
+      method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, authH())
+    });
+    const d = await r.json();
+    if (!d.sucesso) throw new Error(d.erro || 'Erro desconhecido');
+    const msg = `✅ Sincronização concluída!\n\n📁 Fichas lidas: ${d.fichas}\n🏢 Setores adicionados: ${d.setores}\n📋 Regras na Matriz de Tratamento: ${d.matriz}\n🧠 Entradas no Cérebro: ${d.cerebro}`;
+    alert(msg);
+  } catch(e) {
+    alert('Erro na sincronização: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = orig;
+  }
 }
 
 function abrirModalImportarFicha() {
