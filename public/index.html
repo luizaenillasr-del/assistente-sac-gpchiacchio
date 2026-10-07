@@ -6841,7 +6841,33 @@ function afRenderFicha(f, evs, hist) {
   _afEl('bib-painel-foot').innerHTML =
     (f.ID_MANIFESTACAO ? `<button class="af-btn" onclick="if(window.abrirDossie)window.abrirDossie(${escHtml(JSON.stringify(f.ID_MANIFESTACAO))});closeBibPainel()">Ver dossiê completo</button>` : '') +
     `<a class="af-btn" href="/fichas.html" target="_blank" rel="noopener">Ver modelo da ficha</a>` +
+    `<button class="af-btn" onclick="afAnexarArquivo()">Anexar arquivo</button>` +
+    `<input type="file" id="af-input-anexo" style="display:none" accept=".pdf,.docx,.doc,.jpg,.jpeg,.png,.xlsx,.xls" onchange="afEnviarAnexo(this)">` +
     `<button class="af-btn af-btn-dark" onclick="afBaixarPdf()">${imp ? 'Abrir ficha original' : 'Baixar PDF da ficha'}</button>`;
+}
+
+function afAnexarArquivo() {
+  const inp = document.getElementById('af-input-anexo');
+  if (inp) inp.click();
+}
+
+async function afEnviarAnexo(input) {
+  const file = input?.files?.[0]; if (!file) return;
+  const f = _afFichaAtual?.ficha; if (!f) return;
+  const tok = _afTok(); if (!tok) return;
+  const fichaId = f.PROTOCOLO || f.ID_MANIFESTACAO || f.ID_FICHA;
+  afToast('Enviando arquivo...');
+  try {
+    const fd = new FormData(); fd.append('arquivo', file);
+    const r = await fetch(API + '/api/biblioteca/fichas/' + encodeURIComponent(fichaId) + '/evidencias', { method: 'POST', headers: { 'Authorization': 'Bearer ' + tok }, body: fd });
+    const d = await r.json();
+    if (!d.sucesso) throw new Error(d.erro || 'Erro ao anexar.');
+    _afFichaAtual.evidencias = [...(_afFichaAtual.evidencias || []), d.evidencia];
+    afToast('Arquivo anexado com sucesso!');
+    // recarrega a ficha para mostrar o novo documento
+    afAbrirFicha(fichaId);
+  } catch(e) { afToast('Erro: ' + e.message); }
+  input.value = '';
 }
 
 async function afBaixarPdf() {
