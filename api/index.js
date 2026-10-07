@@ -3827,13 +3827,18 @@ app.get('/api/planilha/:aba/cabecalhos', requerPerfil('MASTER','ANALISTA SAC'), 
 app.post('/api/planilha/:aba/importar', requerPerfil('MASTER'), async (req,res)=>{
   try {
     const aba = req.params.aba.toUpperCase().replace(/[^A-Z0-9_]/g,'');
-    const { itens, cabecalhos } = req.body;
+    const { itens, cabecalhos, upsert } = req.body;
     if(!Array.isArray(itens)||!itens.length) return res.status(400).json({ sucesso:false, erro:'Nenhum item.' });
     if(cabecalhos && Array.isArray(cabecalhos)) await garantirAbaComCabecalhos(aba, cabecalhos);
-    let criados=0;
+    let criados=0, atualizados=0;
     const agora = new Date().toISOString();
+
+    // Para upsert: carrega existentes uma vez só
+    const existentes = upsert ? await lerAba(aba, 5000).catch(()=>[]) : [];
+    // Detecta campo-chave da aba (primeiro campo que parece ID)
+    const campoID = existentes.length ? Object.keys(existentes[0]).find(k => /^ID_/.test(k)) : null;
+
     for(const item of itens){
-      // For MANIFESTACOES, auto-fill required fields if missing
       if(aba==='MANIFESTACOES'){
         if(!item.ID_MANIFESTACAO) item.ID_MANIFESTACAO = await gerarProximoID('MANIFESTACOES','MAN','ID_MANIFESTACAO');
         if(!item.DATA_ABERTURA) item.DATA_ABERTURA = agora;
@@ -3842,11 +3847,20 @@ app.post('/api/planilha/:aba/importar', requerPerfil('MASTER'), async (req,res)=
         if(!item.USUARIO_CRIACAO) item.USUARIO_CRIACAO = req.user.usuario;
         if(!item.ORIGEM) item.ORIGEM = 'IMPORTACAO';
       }
+
+      if(upsert && campoID && item[campoID]) {
+        const existe = existentes.find(r => String(r[campoID]||'').trim() === String(item[campoID]).trim());
+        if(existe) {
+          await atualizarPorID(aba, existe[campoID], item, [campoID]);
+          atualizados++;
+          continue;
+        }
+      }
       await appendObjeto(aba, item);
       criados++;
     }
-    await registrarAuditoria(req.user.usuario,'IMPORTOU_DADOS_PLANILHA',`${criados} linhas`,aba,null,{aba,total:criados});
-    res.json({ sucesso:true, criados, aba });
+    await registrarAuditoria(req.user.usuario,'IMPORTOU_DADOS_PLANILHA',`${criados}c/${atualizados}a`,aba,null,{aba,total:criados+atualizados,upsert:!!upsert});
+    res.json({ sucesso:true, criados, atualizados, aba });
   } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
 

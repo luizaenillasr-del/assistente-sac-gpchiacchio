@@ -18851,7 +18851,7 @@ function step4(){
   ${R.baseErr?`<div class="al-alert warn">Não foi possível comparar com a base existente (${esc(R.baseErr)}). Só foram detectados duplicados dentro do próprio arquivo.</div>`:''}
   <div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:12.5px;font-weight:700">Registros duplicados</span>
     <span style="font-size:12px;color:#666464">Mesmos valores em todos os campos mapeados de um registro já existente na aba (lida até 5.000 linhas) ou repetido no arquivo.</span>
-    <div class="al-dupo"><button class="on">Ignorar duplicados (manter o que já está na base)</button><button disabled title="Atualização de registros existentes (nova versão e auditoria) ainda não tem backend">Atualizar existentes (indisponível: sem suporte no backend)</button></div></div>
+    <div class="al-dupo"><button class="${W.upsert?'':'on'}" onclick="W.upsert=false;wizRender()">Ignorar duplicados (manter o que já está na base)</button><button class="${W.upsert?'on':''}" onclick="W.upsert=true;wizRender()">Atualizar existentes (sobrescreve pelo ID)</button></div></div>
   <div style="display:flex;flex-direction:column;gap:6px"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center"><span style="font-size:12.5px;font-weight:700">Registros com erro (não serão importados)</span><button class="al-btn-sm" onclick="alErrRep()">Baixar relatório de erros</button></div>
     <div class="al-errs">${lista.length?lista.map(e=>`<div><span style="color:#929090">${esc(e.ref)}</span><span><strong style="color:#A80502">${esc(e.t)}</strong> · ${esc(e.d)}</span></div>`).join('')+(R.erros.length>200?`<div><span></span><span style="color:#929090">… e mais ${fmtN(R.erros.length-200)} (veja o relatório)</span></div>`:''):'<div><span style="color:#929090">—</span><span><strong>Nenhum erro</strong> · todos os registros passaram na validação</span></div>'}</div></div>`;
 }
@@ -18862,7 +18862,7 @@ window.alErrRep = function(){
 
 function step5(){
   const s=srcOf(W.src), R=W.res, {empH}=mapRows();
-  const sum=[['Fonte',s.nome],['Empresa',W.emp],['Arquivos',okFiles().map(f=>f.name).join(', ')],['Registros a importar',fmtN(R.okRows.length)],['Duplicados',fmtN(R.dups)+' ignorados'],['Com erro (fora da carga)',fmtN(R.linhasComErro)]];
+  const sum=[['Fonte',s.nome],['Empresa',W.emp],['Arquivos',okFiles().map(f=>f.name).join(', ')],['Registros a importar',fmtN(R.okRows.length)],['Duplicados',fmtN(R.dups)+(W.upsert?' serão atualizados':' ignorados')],['Com erro (fora da carga)',fmtN(R.linhasComErro)]];
   const after=['Dados passam a alimentar: '+s.feeds.join(', ')+'.','As linhas são adicionadas ao final da aba '+s.aba+' da planilha do SAC, sem alterar as existentes.','A carga é registrada no log de auditoria do sistema (aparece no histórico acima).','O arquivo original NÃO é guardado pelo sistema e a carga NÃO pode ser desfeita automaticamente: funcionalidades ainda não disponíveis.'];
   if(W.emp!==EMPRESAS[0] && !empH) after.push('Atenção: a aba '+s.aba+' não tem coluna de empresa; a empresa escolhida não será gravada.');
   return `<div class="al-sum">${sum.map(x=>`<div><small>${esc(x[0])}</small><b>${esc(x[1])}</b></div>`).join('')}</div>
@@ -18903,7 +18903,7 @@ async function importar(){
   try{
     for(let i=0;i<itens.length;i+=LOTE){
       const lote=itens.slice(i,i+LOTE);
-      const r=await fetch(API+'/api/planilha/'+encodeURIComponent(s.aba)+'/importar',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},authH()),body:JSON.stringify({itens:lote})});
+      const r=await fetch(API+'/api/planilha/'+encodeURIComponent(s.aba)+'/importar',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},authH()),body:JSON.stringify({itens:lote,upsert:!!W.upsert})});
       const d=await r.json();
       if(!d.sucesso) throw new Error(d.erro||'Falha na importação');
       criados+=d.criados||lote.length;
