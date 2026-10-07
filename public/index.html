@@ -1525,27 +1525,27 @@
 
       <!-- KPIs Principais -->
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin-bottom:16px">
-        <button onclick="navigate('banco-manifestacoes', document.querySelector('[onclick*=banco-manifestacoes]'))" style="white-space:normal;text-align:left;background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;cursor:pointer">
+        <button onclick="navigate('banco-manifestacoes', document.querySelector('[onclick*=banco-manifestacoes]'))" style="white-space:normal;text-align:left;background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;cursor:pointer;border-top:3px solid #C70602">
           <span style="font-size:12.5px;color:#666464">Manifestações em andamento</span>
           <span style="font-size:26px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:#1F1F1F" id="kpi-reclamacoes">--</span>
           <span style="font-size:11.5px;color:#8A8888" id="kpi-rec-pct">no período selecionado</span>
         </button>
-        <button style="white-space:normal;text-align:left;background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;cursor:default">
+        <button style="white-space:normal;text-align:left;background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;cursor:default;border-top:3px solid #1E6B3A">
           <span style="font-size:12.5px;color:#666464">Dentro do prazo de 72h</span>
           <span style="font-size:26px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:#1E6B3A" id="kpi-aberto">--%</span>
           <span style="font-size:11.5px;color:#8A8888" id="kpi-andamento-delta">dos casos no prazo</span>
         </button>
-        <button id="kpi-fora-sla-card" style="white-space:normal;text-align:left;background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;cursor:default">
+        <button id="kpi-fora-sla-card" style="white-space:normal;text-align:left;background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;cursor:default;border-top:3px solid #A80502">
           <span style="font-size:12.5px;color:#666464">Atrasadas</span>
           <span style="font-size:26px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:#A80502" id="kpi-atrasadas">--</span>
           <span style="font-size:11.5px;color:#8A8888" id="kpi-fora-delta">fora do prazo</span>
         </button>
-        <button onclick="navigate('banco-rnc', document.querySelector('[onclick*=banco-rnc]'))" style="white-space:normal;text-align:left;background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;cursor:pointer">
+        <button onclick="navigate('banco-rnc', document.querySelector('[onclick*=banco-rnc]'))" style="white-space:normal;text-align:left;background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;cursor:pointer;border-top:3px solid #5B3FA0">
           <span style="font-size:12.5px;color:#666464">RNCs abertas</span>
           <span style="font-size:26px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:#5B3FA0" id="kpi-rncs">--</span>
           <span style="font-size:11.5px;color:#8A8888">não conformidades</span>
         </button>
-        <button style="white-space:normal;text-align:left;background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;cursor:default">
+        <button style="white-space:normal;text-align:left;background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;cursor:default;border-top:3px solid #7A4C00">
           <span style="font-size:12.5px;color:#666464">Sugestões da IA aceitas</span>
           <span style="font-size:26px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:#7A4C00" id="kpi-ia-aceitas">--%</span>
           <span style="font-size:11.5px;color:#8A8888" id="kpi-ia-aceitas-delta">das sugestões aceitas</span>
@@ -3926,7 +3926,7 @@
       <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap">
         <div style="min-width:0">
           <div style="font-size:12px;color:#929090">Conhecimento / Cérebro</div>
-          <div style="font-size:22px;font-weight:700;letter-spacing:-.01em">Cérebro</div>
+          <div style="font-size:22px;font-weight:700;letter-spacing:-.01em">CÉREBRO</div>
           <div style="font-size:13px;color:#666464;margin-top:2px">Base de conhecimento estruturada para análise, encaminhamento e tratamento das manifestações pela IA.</div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -7526,7 +7526,7 @@ function renderizarAnalise(a) {
   const alertasWrap = document.getElementById('ia-alertas-wrap');
   if (alertas.length > 0) {
     alertasWrap.style.display = 'block';
-    alertasEl.innerHTML = alertas.map(al => `<div class="alert-box ${al.tipo}" style="margin-bottom:6px;font-size:12px">${al.msg}</div>`).join('');
+    alertasEl.innerHTML = alertas.map(al => `<div class="alert-box ${esc(al.tipo)}" style="margin-bottom:6px;font-size:12px">${esc(al.msg)}</div>`).join('');
   } else {
     alertasWrap.style.display = 'none';
   }
@@ -7576,12 +7576,12 @@ function renderizarAnalise(a) {
     document.getElementById('ia-similares').innerHTML = sims.slice(0,3).map(s => `
       <div style="border:1px solid var(--gray-200);border-radius:8px;padding:10px;margin-bottom:6px;font-size:12px">
         <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-          <span style="font-weight:700;color:var(--gray-900)">${s.id}</span>
-          <span style="background:var(--red-light);color:var(--red);padding:2px 6px;border-radius:10px;font-weight:600">${s.similaridade}% similar</span>
+          <span style="font-weight:700;color:var(--gray-900)">${esc(s.id)}</span>
+          <span style="background:var(--red-light);color:var(--red);padding:2px 6px;border-radius:10px;font-weight:600">${esc(String(s.similaridade))}% similar</span>
         </div>
-        <div style="color:var(--gray-500);margin-bottom:3px">${s.empresa || '—'} · ${s.motivo || '—'}</div>
-        <div style="color:var(--gray-600)">${(s.descricao||'').slice(0,100)}...</div>
-        ${s.tratativa ? `<div style="color:var(--green);margin-top:3px;font-size:11px">✓ Tratativa: ${s.tratativa.slice(0,80)}...</div>` : ''}
+        <div style="color:var(--gray-500);margin-bottom:3px">${esc(s.empresa || '—')} · ${esc(s.motivo || '—')}</div>
+        <div style="color:var(--gray-600)">${esc((s.descricao||'').slice(0,100))}...</div>
+        ${s.tratativa ? `<div style="color:var(--green);margin-top:3px;font-size:11px">✓ Tratativa: ${esc(s.tratativa.slice(0,80))}...</div>` : ''}
       </div>`).join('');
   } else {
     simsWrap.style.display = 'none';
