@@ -3856,8 +3856,6 @@ app.post('/api/caso-similar/usar-referencia', requerPerfil('MASTER','ANALISTA SA
 app.get('/api/auditoria', requerPerfil('MASTER','GESTOR SAC','AUDITOR'), async (req, res) => {
   try {
     const data = await lerAba('LOG_SISTEMA', 2000);
-    // LOG_SISTEMA é escrito como array posicional (sem cabeçalhos garantidos)
-    // Normaliza para campos nomeados: [DATA_HORA, USUARIO, ACAO, ID_REGISTRO, ABA, VAL_ANTERIOR, VAL_NOVO]
     const itens = data.map(r => {
       const vals = Object.values(r);
       return {
@@ -4336,12 +4334,10 @@ app.get('/api/painel-maquina', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC'
     const reincidenciasCount = filtradas.filter(m => (m.REINCIDENCIA||'').toUpperCase() === 'SIM').length;
     const reincidenciasPercent = total ? Math.round(reincidenciasCount / total * 100) : 0;
     const rncsCount = filtradas.filter(m => (m.GEROU_RNC||'').toUpperCase() === 'SIM').length;
-    // Tempo médio (horas) — só para encerradas com ambas as datas
     const comTempo = encerradas.filter(m => m.DATA_CONCLUSAO_MANIFESTACAO && (m.DATA_CRIACAO||m.DATA_ABERTURA));
     const tempoMedioH = comTempo.length ? Math.round(comTempo.reduce((s,m) => {
       return s + (new Date(m.DATA_CONCLUSAO_MANIFESTACAO) - new Date(m.DATA_CRIACAO||m.DATA_ABERTURA)) / 3600000;
     }, 0) / comTempo.length) : null;
-    // Dentro do SLA — % de encerradas que foram concluídas dentro do prazo
     const encerradasNoPrazo = encerradas.filter(m => {
       if (!m.DATA_ABERTURA && !m.DATA_CRIACAO) return false;
       if (!m.DATA_CONCLUSAO_MANIFESTACAO) return false;
