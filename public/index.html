@@ -3930,6 +3930,7 @@
           <div style="font-size:13px;color:#666464;margin-top:2px">Base de conhecimento estruturada para análise, encaminhamento e tratamento das manifestações pela IA.</div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button onclick="history.back()" style="border:1px solid #D6D6D6;background:#fff;color:#1F1F1F;border-radius:8px;padding:9px 14px;cursor:pointer;font-size:13px;font-weight:600">← Voltar</button>
           <button id="cb-btn-nova-regra" onclick="cbNovaRegra()" style="border:0;background:#C70602;color:#fff;border-radius:8px;padding:9px 14px;cursor:pointer;font-size:13px;font-weight:600">+ Nova regra</button>
         </div>
       </div>
@@ -10384,7 +10385,7 @@ window.navigate = function(page, el) {
     if(r==='APROVADOR') navigate('aprovadores',document.querySelector('[onclick*=aprovadores]'));
     if(r==='SETOR RESPONSÁVEL'||r==='ESPECIALISTA') navigate('setor-responsavel',document.querySelector('[onclick*=setor-responsavel]')||document.querySelector('[onclick*=banco-rnc]'));
     if(r==='DIRETOR'||r==='VISUALIZADOR') navigate('visao-geral',document.querySelector('[onclick*=visao-geral]'));
-    if(r==='ATENDENTE SAC') navigate('nova-manifestacao',document.querySelector('[onclick*=nova-manifestacao]'));
+    if(r==='ATENDENTE SAC') navigate('central-sac',document.querySelector('[onclick*=central-sac]'));
     if(r==='GESTOR SAC') navigate('visao-geral',document.querySelector('[onclick*=visao-geral]'));
     if(r==='AUDITOR') navigate('auditoria',document.querySelector('[onclick*=auditoria]'));
     if(r!=='RCA / REPRESENTANTE') document.getElementById('rca-role-pill')?.classList.add('hidden');
@@ -13269,7 +13270,7 @@ window.editarItemConhecimento=function(tipo,idx){
   if(!cfg)return;
   const cacheKey={'faq':'faq','regras':'regras','procedimentos':'procedimentos','politicas':'politicas','perguntas-ia':'perguntasIA'}[tipo];
   const item=(window._bcCache[cacheKey]||[])[idx]||{};
-  const idCampo={'faq':'ID_FAQ','regras':'ID_REGRA','procedimentos':'ID_PROCEDIMENTO','politicas':'ID_POLITICA','perguntas-ia':'ID_PERGUNTA'}[tipo];
+  const idCampo={'faq':'ID_FAQ','regras':'ID_REGRA','procedimentos':'ID_PROC','politicas':'ID_POL','perguntas-ia':'ID_PERG'}[tipo];
   const id=item[idCampo]||item.ID||'';
   if(!id){alert('ID não encontrado para edição.');return;}
   abrirEditorGenerico('Editar '+cfg.titulo+' — '+setor, cfg.fields(item), async function(values){

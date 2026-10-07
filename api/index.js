@@ -2516,8 +2516,22 @@ app.post('/api/procedimentos', requerPerfil('MASTER','ANALISTA SAC'), async (req
     await garantirAbaComCabecalhos('PROCEDIMENTOS',['ID_PROCEDIMENTO','NOME','SETOR_RESPONSAVEL','DESCRICAO','PASSOS','ATIVO','DATA_CRIACAO']).catch(()=>{});
     const id = await gerarProximoID('PROCEDIMENTOS','PROC','ID_PROCEDIMENTO');
     const b = req.body||{};
-    const obj = { ID_PROCEDIMENTO: id, NOME: b.NOME||b.nome||'', SETOR_RESPONSAVEL: b.SETOR_RESPONSAVEL||b.setor||'', DESCRICAO: b.DESCRICAO||b.descricao||'', PASSOS: b.PASSOS||b.passos||'', DATA_CRIACAO: new Date().toLocaleDateString('pt-BR'), ATIVO: 'SIM' };
+    const setor = b.SETOR_RESPONSAVEL||b.setor||'';
+    const obj = { ID_PROCEDIMENTO: id, NOME: b.NOME||b.nome||'', SETOR_RESPONSAVEL: setor, DESCRICAO: b.DESCRICAO||b.descricao||'', PASSOS: b.PASSOS||b.passos||'', DATA_CRIACAO: new Date().toLocaleDateString('pt-BR'), ATIVO: 'SIM' };
     await appendObjeto('PROCEDIMENTOS', obj);
+    // Espelha em PROCEDIMENTOS_SETORES para aparecer na aba Setores
+    if (setor) {
+      await garantirAbaComCabecalhos('PROCEDIMENTOS_SETORES', PROCEDIMENTOS_HEADERS).catch(()=>{});
+      const idProc = await gerarProximoID('PROCEDIMENTOS_SETORES','PRC','ID_PROC').catch(()=>id);
+      await appendObjeto('PROCEDIMENTOS_SETORES', {
+        ID_PROC: idProc, SETOR: setor, EMPRESA: b.EMPRESA||'TODAS',
+        NOME: b.NOME||b.nome||'', OBJETIVO: b.DESCRICAO||b.descricao||'',
+        QUANDO_USAR: '', PASSOS: b.PASSOS||b.passos||'', RESPONSAVEL: b.RESPONSAVEL||b.responsavel||'',
+        SETORES_ENVOLVIDOS: '', RESULTADO_ESPERADO: '', PRAZO: '',
+        STATUS: 'A VALIDAR', FONTE: 'Cérebro',
+        DATA_ATUALIZACAO: new Date().toLocaleDateString('pt-BR'), USUARIO: req.user?.usuario||'',
+      }).catch(()=>{});
+    }
     res.json({ sucesso: true, id });
   } catch (e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e) }); }
 });
@@ -2616,7 +2630,6 @@ app.get('/api/pesquisas/resumo', requerPerfil('MASTER','ANALISTA SAC','SETOR RES
 app.get('/api/pesquisas/relatorio', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req, res) => {
   try {
     const { empresa = '', ano, mes } = req.query;
-    await garantirAbaComCabecalhos('PESQUISA_RESPOSTAS', ['ID_RESPOSTA','TOKEN','EMPRESA','NOME_CLIENTE','DATA','ATENDIMENTO','PRAZO_ENTREGA','QUALIDADE','RECOMENDACAO','COMENTARIO','NOTA_MEDIA','NOTA_BAIXA','STATUS_OCP']);
     const todasRespostas = await lerAba('PESQUISA_RESPOSTAS', 5000).catch(()=>[]);
     // Mapeia para formato compatível com o frontend existente
     const dados = todasRespostas.map(r => ({
