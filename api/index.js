@@ -52,6 +52,9 @@ app.use((req, res, next) => {
   res.setHeader('X-XSS-Protection', '1; mode=block');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  res.setHeader('Content-Security-Policy',
+    "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self'; frame-ancestors 'none';"
+  );
   if (process.env.NODE_ENV === 'production') {
     res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
   }
@@ -102,6 +105,7 @@ if (!process.env.AI_PROVIDER) {
 }
 if (!process.env.SPREADSHEET_ID) {
   console.error('[FATAL C5] SPREADSHEET_ID não configurada. Defina SPREADSHEET_ID nas variáveis de ambiente antes de ir para produção.');
+  if (process.env.NODE_ENV === 'production') process.exit(1);
 }
 if (!process.env.PESQUISA_SPREADSHEET_ID) {
   console.warn('[AVISO C5] PESQUISA_SPREADSHEET_ID não configurada — módulo de pesquisas usará planilha de fallback hardcoded. Configure em produção.');
@@ -441,12 +445,17 @@ async function lerAbaReclamacoes(max = 2000) {
   return lerAba('Reclamações', max).catch(() => []);
 }
 
+function _sanitizarFormula(v) {
+  if (typeof v !== 'string') return v;
+  return /^[\s]*[=+\-@|]/.test(v) ? "'" + v : v;
+}
+
 async function appendLinha(nomeAba, linha) {
   if (_sheetsMock?.appendLinha) return _sheetsMock.appendLinha(nomeAba, linha);
   const sheets = await getSheets();
   await sheets.spreadsheets.values.append({
     spreadsheetId: SPREADSHEET_ID, range: nomeAba,
-    valueInputOption: 'RAW', resource: { values: [linha] },
+    valueInputOption: 'RAW', resource: { values: [linha.map(_sanitizarFormula)] },
   });
 }
 
@@ -724,6 +733,11 @@ async function verificarStatusUsuario(login) {
     const u = rows.find(r => normalizarTexto(r.USUARIO||'') === normalizarTexto(login));
     const status = u ? (u.STATUS || 'ATIVO').toUpperCase() : 'INATIVO';
     _statusCache.set(login, { status, ts: agora });
+    if (_statusCache.size > 2000) {
+      for (const [k, v] of _statusCache) {
+        if (agora - v.ts >= _STATUS_CACHE_TTL) _statusCache.delete(k);
+      }
+    }
     return status;
   } catch(e) {
     // Falha ao verificar: preservar sessão (fail-open) para evitar bloqueio por erro de Sheets
@@ -1792,13 +1806,13 @@ app.get('/api/setores/:setor/conhecimento-completo', requerPerfil('MASTER','ANAL
     const empresa=req.query.empresa||null;
     const filtroEmpresa=r=>!empresa||r.EMPRESA==='TODAS'||r.EMPRESA===empresa;
     const [config,faqs,regras,procs,pols,pergs,docs]=await Promise.all([
-      lerAba('CONFIG_SETORES',500).then(rows=>rows.find(r=>normalizarTexto(r.SETOR||'')===normalizarTexto(nome))||{}),
-      crudSetorGet('FAQ_SETORES',FAQ_HEADERS,nome).then(rows=>rows.filter(filtroEmpresa).filter(r=>(r.ATIVO||'SIM')!=='NÃO')),
-      crudSetorGet('REGRAS_SETORES',REGRAS_HEADERS,nome).then(rows=>rows.filter(filtroEmpresa).filter(r=>r.STATUS!=='OBSOLETA')),
-      crudSetorGet('PROCEDIMENTOS_SETORES',PROCEDIMENTOS_HEADERS,nome).then(rows=>rows.filter(filtroEmpresa).filter(r=>r.STATUS!=='OBSOLETA')),
-      crudSetorGet('POLITICAS_SETORES',POLITICAS_HEADERS,nome).then(rows=>rows.filter(filtroEmpresa).filter(r=>r.STATUS==='VALIDADA')),
-      crudSetorGet('PERGUNTAS_IA_SETORES',PERGUNTAS_IA_HEADERS,nome).then(rows=>rows.filter(filtroEmpresa).filter(r=>(r.ATIVO||'SIM')!=='NÃO').sort((a,b)=>parseInt(a.ORDEM||99)-parseInt(b.ORDEM||99))),
-      crudSetorGet('DOCUMENTOS_SETORES',DOCS_SETOR_HEADERS,nome).then(rows=>rows.filter(filtroEmpresa).filter(r=>r.FONTE_CONHECIMENTO==='SIM'&&r.STATUS==='VALIDADA')),
+      lerAba('CONFIG_SETORES',500).catch(()=>[]).then(rows=>rows.find(r=>normalizarTexto(r.SETOR||'')===normalizarTexto(nome))||{}),
+      crudSetorGet('FAQ_SETORES',FAQ_HEADERS,nome).catch(()=>[]).then(rows=>rows.filter(filtroEmpresa).filter(r=>(r.ATIVO||'SIM')!=='NÃO')),
+      crudSetorGet('REGRAS_SETORES',REGRAS_HEADERS,nome).catch(()=>[]).then(rows=>rows.filter(filtroEmpresa).filter(r=>r.STATUS!=='OBSOLETA')),
+      crudSetorGet('PROCEDIMENTOS_SETORES',PROCEDIMENTOS_HEADERS,nome).catch(()=>[]).then(rows=>rows.filter(filtroEmpresa).filter(r=>r.STATUS!=='OBSOLETA')),
+      crudSetorGet('POLITICAS_SETORES',POLITICAS_HEADERS,nome).catch(()=>[]).then(rows=>rows.filter(filtroEmpresa).filter(r=>r.STATUS==='VALIDADA')),
+      crudSetorGet('PERGUNTAS_IA_SETORES',PERGUNTAS_IA_HEADERS,nome).catch(()=>[]).then(rows=>rows.filter(filtroEmpresa).filter(r=>(r.ATIVO||'SIM')!=='NÃO').sort((a,b)=>parseInt(a.ORDEM||99)-parseInt(b.ORDEM||99))),
+      crudSetorGet('DOCUMENTOS_SETORES',DOCS_SETOR_HEADERS,nome).catch(()=>[]).then(rows=>rows.filter(filtroEmpresa).filter(r=>r.FONTE_CONHECIMENTO==='SIM'&&r.STATUS==='VALIDADA')),
     ]);
     res.json({sucesso:true,setor:nome,empresa:empresa||'TODAS',config,faqs,regras,procedimentos:procs,politicas:pols,perguntas_ia:pergs,documentos_fonte:docs});
   }catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}

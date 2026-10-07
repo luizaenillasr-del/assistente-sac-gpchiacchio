@@ -7528,7 +7528,7 @@ function renderizarAnalise(a) {
   const alertasWrap = document.getElementById('ia-alertas-wrap');
   if (alertas.length > 0) {
     alertasWrap.style.display = 'block';
-    alertasEl.innerHTML = alertas.map(al => `<div class="alert-box ${al.tipo}" style="margin-bottom:6px;font-size:12px">${al.msg}</div>`).join('');
+    alertasEl.innerHTML = alertas.map(al => `<div class="alert-box ${esc(al.tipo)}" style="margin-bottom:6px;font-size:12px">${esc(al.msg)}</div>`).join('');
   } else {
     alertasWrap.style.display = 'none';
   }
@@ -7578,12 +7578,12 @@ function renderizarAnalise(a) {
     document.getElementById('ia-similares').innerHTML = sims.slice(0,3).map(s => `
       <div style="border:1px solid var(--gray-200);border-radius:8px;padding:10px;margin-bottom:6px;font-size:12px">
         <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-          <span style="font-weight:700;color:var(--gray-900)">${s.id}</span>
-          <span style="background:var(--red-light);color:var(--red);padding:2px 6px;border-radius:10px;font-weight:600">${s.similaridade}% similar</span>
+          <span style="font-weight:700;color:var(--gray-900)">${esc(s.id)}</span>
+          <span style="background:var(--red-light);color:var(--red);padding:2px 6px;border-radius:10px;font-weight:600">${esc(String(s.similaridade))}% similar</span>
         </div>
-        <div style="color:var(--gray-500);margin-bottom:3px">${s.empresa || '—'} · ${s.motivo || '—'}</div>
-        <div style="color:var(--gray-600)">${(s.descricao||'').slice(0,100)}...</div>
-        ${s.tratativa ? `<div style="color:var(--green);margin-top:3px;font-size:11px">✓ Tratativa: ${s.tratativa.slice(0,80)}...</div>` : ''}
+        <div style="color:var(--gray-500);margin-bottom:3px">${esc(s.empresa || '—')} · ${esc(s.motivo || '—')}</div>
+        <div style="color:var(--gray-600)">${esc((s.descricao||'').slice(0,100))}...</div>
+        ${s.tratativa ? `<div style="color:var(--green);margin-top:3px;font-size:11px">✓ Tratativa: ${esc(s.tratativa.slice(0,80))}...</div>` : ''}
       </div>`).join('');
   } else {
     simsWrap.style.display = 'none';
