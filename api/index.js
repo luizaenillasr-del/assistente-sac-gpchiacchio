@@ -5224,8 +5224,7 @@ app.post('/api/biblioteca/importar-ficha', middlewareEscopoEmpresa(), requerPerf
       const up = await uploadArquivoDrive(nomeArquivo, mimeType || (/\.pdf$/i.test(nomeArquivo) ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'), buffer);
       driveId = up.id || ''; driveUrl = up.webViewLink || up.webContentLink || '';
     } catch (upErr) {
-      console.error('[BIBLIOTECA] upload do original falhou:', upErr.message);
-      return res.status(502).json({ sucesso: false, erro: 'Não foi possível armazenar o arquivo original (Drive). Nada foi importado.' });
+      console.warn('[BIBLIOTECA] upload do original falhou (Drive indisponível), importando sem link:', upErr.message);
     }
 
     // Protocolo HIST-AAAA-NNN
