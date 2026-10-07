@@ -6,7 +6,7 @@ const { google } = require('googleapis');
 const { Resend } = require('resend');
 const _resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 const EMAIL_FROM = process.env.EMAIL_FROM || 'SAC Grupo Chiacchio <noreply@grupochiacchio.com.br>';
-const APP_URL = (process.env.APP_URL || 'https://assistente-sac.vercel.app').replace(/\/$/, '');
+const APP_URL = (process.env.APP_URL || 'https://assistente-sac-gpchiacchio.vercel.app').replace(/\/$/, '');
 const cerebroService = require('./services/cerebroServices');
 const mcService = require('./services/matrizConhecimentoService');
 const documentService = require('./services/documentService');
@@ -291,7 +291,9 @@ function middlewareEscopoEmpresa() {
     if (!req.user) return next();
     const perfil = perfilCanonico(req.user.perfil);
     if (perfil === 'MASTER') return next(); // MASTER tem acesso global
-    req._empresaScope = req.user.empresa || null;
+    const empresa = req.user.empresa || '';
+    if (!empresa.trim()) return res.status(403).json({ sucesso: false, erro: 'Usuário sem empresa configurada. Contate o administrador.' });
+    req._empresaScope = empresa;
     next();
   };
 }
@@ -1076,7 +1078,7 @@ app.get('/api/manifestacoes', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','
   } catch (e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e), dados: [] }); }
 });
 
-app.get('/api/manifestacoes/:id', middlewareEscopoEmpresa(), async (req, res) => {
+app.get('/api/manifestacoes/:id', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR','RCA / REPRESENTANTE'), middlewareEscopoEmpresa(), async (req, res) => {
   try {
     // F6: tenta PostgreSQL primeiro
     if (manifestacaoRepo) {
@@ -2546,7 +2548,7 @@ ${texto.slice(0, 6000)}`;
 // ===== PESQUISAS DE SATISFAÇÃO (aba interna PESQUISA_RESPOSTAS) =====
 app.get('/api/pesquisas/resumo', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
   try {
-    await garantirAbaComCabecalhos('PESQUISA_RESPOSTAS', ['ID','TOKEN','EMPRESA','NOME_CLIENTE','DATA','ATENDIMENTO','PRAZO_ENTREGA','QUALIDADE','RECOMENDACAO','COMENTARIO','NOTA_MEDIA','STATUS_OCP']);
+    await garantirAbaComCabecalhos('PESQUISA_RESPOSTAS', ['ID_RESPOSTA','TOKEN','EMPRESA','NOME_CLIENTE','DATA','ATENDIMENTO','PRAZO_ENTREGA','QUALIDADE','RECOMENDACAO','COMENTARIO','NOTA_MEDIA','NOTA_BAIXA','STATUS_OCP']);
     const dados = await lerAba('PESQUISA_RESPOSTAS', 5000).catch(()=>[]);
     const agora = new Date();
     const mesAtual = agora.getMonth();
@@ -2570,7 +2572,7 @@ app.get('/api/pesquisas/resumo', requerPerfil('MASTER','ANALISTA SAC','SETOR RES
 app.get('/api/pesquisas/relatorio', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req, res) => {
   try {
     const { empresa = '', ano, mes } = req.query;
-    await garantirAbaComCabecalhos('PESQUISA_RESPOSTAS', ['ID','TOKEN','EMPRESA','NOME_CLIENTE','DATA','ATENDIMENTO','PRAZO_ENTREGA','QUALIDADE','RECOMENDACAO','COMENTARIO','NOTA_MEDIA','STATUS_OCP']);
+    await garantirAbaComCabecalhos('PESQUISA_RESPOSTAS', ['ID_RESPOSTA','TOKEN','EMPRESA','NOME_CLIENTE','DATA','ATENDIMENTO','PRAZO_ENTREGA','QUALIDADE','RECOMENDACAO','COMENTARIO','NOTA_MEDIA','NOTA_BAIXA','STATUS_OCP']);
     const todasRespostas = await lerAba('PESQUISA_RESPOSTAS', 5000).catch(()=>[]);
     // Mapeia para formato compatível com o frontend existente
     const dados = todasRespostas.map(r => ({
@@ -3196,19 +3198,21 @@ app.post('/api/pesquisas/resposta-publica', async (req, res) => {
   try {
     const body = req.body || {};
     const aba = 'PESQUISA_RESPOSTAS';
-    await garantirAbaComCabecalhos(aba, ['DATA','EMPRESA','NOME','EMPRESA_CLIENTE','ATENDIMENTO','PRAZO_DE_ENTREGA','QUALIDADE_DO_PRODUTO','RECOMENDARIA_A_EMPRESA','COMENTARIO','IP']);
-    const ip = req.ip || req.headers['x-forwarded-for'] || '';
+    const _HEADERS_RESP = ['ID_RESPOSTA','TOKEN','EMPRESA','NOME_CLIENTE','DATA','ATENDIMENTO','PRAZO_ENTREGA','QUALIDADE','RECOMENDACAO','COMENTARIO','NOTA_MEDIA','NOTA_BAIXA','STATUS_OCP'];
+    await garantirAbaComCabecalhos(aba, _HEADERS_RESP);
+    const atendimento = String(body.atendimento || '');
+    const prazo = String(body.prazo_de_entrega || '');
+    const qualidade = String(body.qualidade_do_produto || '');
+    const recomendacao = String(body.recomendaria_a_empresa || '');
+    const notas = [atendimento, prazo, qualidade, recomendacao].map(n => parseFloat(n)).filter(n => !isNaN(n) && n > 0);
+    const notaMedia = notas.length ? (notas.reduce((a,b)=>a+b,0)/notas.length).toFixed(1) : '';
+    const notaBaixa = notas.length && notas.some(n => n <= Number(process.env.PESQUISA_NOTA_CRITICA||6)) ? 'SIM' : 'NAO';
     await appendObjeto(aba, {
+      ID_RESPOSTA: 'RSP-' + Date.now(), TOKEN: '',
+      EMPRESA: body.empresa || '', NOME_CLIENTE: body.nome || '',
       DATA: new Date().toISOString(),
-      EMPRESA: body.empresa || '',
-      NOME: body.nome || '',
-      EMPRESA_CLIENTE: body.empresa_cliente || '',
-      ATENDIMENTO: body.atendimento || body['atendimento'] || '',
-      PRAZO_DE_ENTREGA: body.prazo_de_entrega || body['prazo_de_entrega'] || '',
-      QUALIDADE_DO_PRODUTO: body.qualidade_do_produto || body['qualidade_do_produto'] || '',
-      RECOMENDARIA_A_EMPRESA: body.recomendaria_a_empresa || body['recomendaria_a_empresa'] || '',
-      COMENTARIO: body.comentario || '',
-      IP: ip,
+      ATENDIMENTO: atendimento, PRAZO_ENTREGA: prazo, QUALIDADE: qualidade, RECOMENDACAO: recomendacao,
+      COMENTARIO: body.comentario || '', NOTA_MEDIA: notaMedia, NOTA_BAIXA: notaBaixa, STATUS_OCP: '',
     });
     invalidarCacheAba(aba);
     res.json({ sucesso: true });
@@ -3335,36 +3339,36 @@ app.post('/api/pesquisas/resposta-token', async (req, res) => {
     if (_tokenExpirado(row)) return res.status(410).json({ sucesso: false, erro: 'Token expirado.' });
     if (row.STATUS === 'RESPONDIDO') return res.status(409).json({ sucesso: false, erro: 'Pesquisa já respondida.' });
     const aba = 'PESQUISA_RESPOSTAS';
-    await garantirAbaComCabecalhos(aba, ['DATA','EMPRESA','NOME','EMPRESA_CLIENTE','NPS','QUALIDADE_PRODUTO','PRAZO_ENTREGA','ATENDIMENTO','MOTIVO_COMPRA','COMENTARIO','TOKEN','ID_MANIFESTACAO','IP']);
-    const ip = req.ip || req.headers['x-forwarded-for'] || '';
+    const _HEADERS_RESP = ['ID_RESPOSTA','TOKEN','EMPRESA','NOME_CLIENTE','DATA','ATENDIMENTO','PRAZO_ENTREGA','QUALIDADE','RECOMENDACAO','COMENTARIO','NOTA_MEDIA','NOTA_BAIXA','STATUS_OCP'];
+    await garantirAbaComCabecalhos(aba, _HEADERS_RESP);
+    const atendimento = String(body.atendimento || '');
+    const prazo = String(body.prazo_entrega || '');
+    const qualidade = String(body.qualidade_produto || '');
+    const recomendacao = String(body.nps || '');
+    const notas = [atendimento, prazo, qualidade, recomendacao].map(n => parseFloat(n)).filter(n => !isNaN(n) && n > 0);
+    const notaMedia = notas.length ? (notas.reduce((a,b)=>a+b,0)/notas.length).toFixed(1) : '';
+    const notaBaixa = notas.length && notas.some(n => n <= Number(process.env.PESQUISA_NOTA_CRITICA||6)) ? 'SIM' : 'NAO';
     await appendObjeto(aba, {
-      DATA: new Date().toISOString(), EMPRESA: row.EMPRESA||body.empresa||'',
-      NOME: body.nome || row.NOME_CLIENTE || '',
-      EMPRESA_CLIENTE: body.empresa_cliente || '',
-      NPS: body.nps || '', QUALIDADE_PRODUTO: body.qualidade_produto || '',
-      PRAZO_ENTREGA: body.prazo_entrega || '', ATENDIMENTO: body.atendimento || '',
-      MOTIVO_COMPRA: body.motivo_compra || '', COMENTARIO: body.comentario || '',
-      TOKEN: token, ID_MANIFESTACAO: row.ID_MANIFESTACAO || '', IP: ip,
+      ID_RESPOSTA: 'RSP-' + Date.now(), TOKEN: token,
+      EMPRESA: row.EMPRESA||body.empresa||'', NOME_CLIENTE: body.nome || row.NOME_CLIENTE || '',
+      DATA: new Date().toISOString(),
+      ATENDIMENTO: atendimento, PRAZO_ENTREGA: prazo, QUALIDADE: qualidade, RECOMENDACAO: recomendacao,
+      COMENTARIO: body.comentario || '', NOTA_MEDIA: notaMedia, NOTA_BAIXA: notaBaixa, STATUS_OCP: '',
     });
     invalidarCacheAba(aba);
     await atualizarPorID('PESQUISA_TOKENS', token, { STATUS: 'RESPONDIDO', DATA_RESPOSTA: new Date().toISOString() }, ['TOKEN']);
     invalidarCacheAba('PESQUISA_TOKENS');
-    // Auto-flagging: nota NPS ou qualquer critério ≤ 6
-    const NOTA_CRITICA = Number(process.env.PESQUISA_NOTA_CRITICA || 6);
-    const notas = [body.nps, body.qualidade_produto, body.prazo_entrega, body.atendimento].map(n=>Number(n||0)).filter(n=>n>0);
-    const baixa = notas.some(n => n <= NOTA_CRITICA);
-    if (baixa) {
+    if (notaBaixa === 'SIM') {
       await garantirAbaComCabecalhos('PESQUISA_OCORRENCIAS', ['ID_OCP','TOKEN','EMPRESA','DATA','NPS','STATUS','DECISAO','JUSTIFICATIVA','ID_MANIFESTACAO_GERADA','ANALISTA','DATA_DECISAO']);
-      const idOcp = 'OCP-' + Date.now();
       await appendObjeto('PESQUISA_OCORRENCIAS', {
-        ID_OCP: idOcp, TOKEN: token, EMPRESA: row.EMPRESA||'',
-        DATA: new Date().toISOString(), NPS: body.nps||'',
+        ID_OCP: 'OCP-' + Date.now(), TOKEN: token, EMPRESA: row.EMPRESA||'',
+        DATA: new Date().toISOString(), NPS: notaMedia,
         STATUS: 'PENDENTE', DECISAO: '', JUSTIFICATIVA: '',
         ID_MANIFESTACAO_GERADA: '', ANALISTA: '', DATA_DECISAO: '',
       });
       invalidarCacheAba('PESQUISA_OCORRENCIAS');
     }
-    res.json({ sucesso: true, flagrada: baixa });
+    res.json({ sucesso: true, flagrada: notaBaixa === 'SIM' });
   } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e,'resposta-token') }); }
 });
 
@@ -3787,9 +3791,13 @@ app.get('/api/planilha/ler', requerPerfil('MASTER','ANALISTA SAC'), async (req,r
   } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e), itens:[] }); }
 });
 
+const _ABAS_SENSIVEIS = new Set(['USUARIOS']);
 app.get('/api/planilha/:aba', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
   try {
     const aba = req.params.aba.toUpperCase().replace(/[^A-Z0-9_]/g,'');
+    if (_ABAS_SENSIVEIS.has(aba) && perfilCanonico(req.user.perfil) !== 'MASTER') {
+      return res.status(403).json({ sucesso:false, erro:'Acesso não autorizado a esta aba.' });
+    }
     const max = Math.min(parseInt(req.query.max||'2000',10), 5000);
     const data = await lerAba(aba, max);
     res.json({ sucesso:true, aba, total:data.length, itens:data });
@@ -6278,18 +6286,32 @@ app.post('/api/pesquisas/resposta/:token', publicRateLimit, async (req, res) => 
     if (!tk) return res.status(404).json({ sucesso: false, erro: 'Pesquisa não encontrada.' });
     if (tk.RESPONDIDO_EM) return res.status(410).json({ sucesso: false, erro: 'Já respondida.', jaRespondida: true });
     const { respostas, comentario, versaoId } = req.body || {};
-    await garantirAbaComCabecalhos('PESQUISA_RESPOSTAS', ['ID_RESPOSTA','TOKEN','EMPRESA','NOME_CLIENTE','DATA_RESPOSTA','VERSAO_ID','RESPOSTAS_JSON','COMENTARIO','NOTA_GERAL','NOTA_BAIXA']);
+    const _HEADERS_RESP = ['ID_RESPOSTA','TOKEN','EMPRESA','NOME_CLIENTE','DATA','ATENDIMENTO','PRAZO_ENTREGA','QUALIDADE','RECOMENDACAO','COMENTARIO','NOTA_MEDIA','NOTA_BAIXA','STATUS_OCP'];
+    await garantirAbaComCabecalhos('PESQUISA_RESPOSTAS', _HEADERS_RESP);
     const idResp = 'RSP-' + Date.now();
-    const notaGeral = Array.isArray(respostas) ? (() => {
-      const notas = respostas.filter(r => typeof r.nota === 'number').map(r => r.nota);
-      return notas.length ? (notas.reduce((a,b)=>a+b,0)/notas.length).toFixed(1) : '';
-    })() : '';
-    const notaBaixa = notaGeral !== '' && parseFloat(notaGeral) <= 6 ? 'SIM' : 'NAO';
+    // Mapear array de respostas para colunas canônicas por palavra-chave
+    const _notaMap = {};
+    (Array.isArray(respostas) ? respostas : []).forEach(r => {
+      const p = String(r.pergunta || r.label || r.titulo || '').toLowerCase();
+      const n = typeof r.nota === 'number' ? r.nota : parseFloat(r.nota);
+      if (isNaN(n)) return;
+      if (/atend/.test(p)) _notaMap.ATENDIMENTO = n;
+      else if (/prazo|entrega/.test(p)) _notaMap.PRAZO_ENTREGA = n;
+      else if (/qualidade|produto/.test(p)) _notaMap.QUALIDADE = n;
+      else if (/recomend|nps|indica/.test(p)) _notaMap.RECOMENDACAO = n;
+    });
+    const _notaVals = Object.values(_notaMap).filter(n => n > 0);
+    const notaGeral = _notaVals.length ? (_notaVals.reduce((a,b)=>a+b,0)/_notaVals.length).toFixed(1) : '';
+    const NOTA_CRITICA = Number(process.env.PESQUISA_NOTA_CRITICA||6);
+    const notaBaixa = _notaVals.length && _notaVals.some(n => n <= NOTA_CRITICA) ? 'SIM' : 'NAO';
     await appendObjeto('PESQUISA_RESPOSTAS', {
       ID_RESPOSTA: idResp, TOKEN: token, EMPRESA: tk.EMPRESA || '',
-      NOME_CLIENTE: tk.NOME_CLIENTE || '', DATA_RESPOSTA: new Date().toISOString(),
-      VERSAO_ID: versaoId || '', RESPOSTAS_JSON: JSON.stringify(respostas || []),
-      COMENTARIO: comentario || '', NOTA_GERAL: notaGeral, NOTA_BAIXA: notaBaixa,
+      NOME_CLIENTE: tk.NOME_CLIENTE || '', DATA: new Date().toISOString(),
+      ATENDIMENTO: _notaMap.ATENDIMENTO != null ? String(_notaMap.ATENDIMENTO) : '',
+      PRAZO_ENTREGA: _notaMap.PRAZO_ENTREGA != null ? String(_notaMap.PRAZO_ENTREGA) : '',
+      QUALIDADE: _notaMap.QUALIDADE != null ? String(_notaMap.QUALIDADE) : '',
+      RECOMENDACAO: _notaMap.RECOMENDACAO != null ? String(_notaMap.RECOMENDACAO) : '',
+      COMENTARIO: comentario || '', NOTA_MEDIA: notaGeral, NOTA_BAIXA: notaBaixa, STATUS_OCP: '',
     });
     // Marcar token como respondido
     await atualizarPorID('PESQUISA_TOKENS', token, { RESPONDIDO_EM: new Date().toISOString() }, ['TOKEN']).catch(()=>{});
