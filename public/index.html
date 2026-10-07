@@ -35,7 +35,6 @@
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Montserrat', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #F4F4F4; color: #1F1F1F; display: flex; height: 100vh; overflow: hidden; font-size: 14px; -webkit-font-smoothing: antialiased; }
-
   /* SIDEBAR */
   .sidebar { width: 232px; background: #fff; color: #545252; display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto; border-right: 1px solid #E4E4E4; }
   .sidebar-logo { padding: 18px 12px 18px; border-bottom: 0; }
@@ -56,17 +55,14 @@
   .sidebar-user-info { min-width: 0; }
   .sidebar-user-name { font-size: 13px; font-weight: 500; color: #1F1F1F; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .sidebar-user-role { font-size: 11.5px; color: #929090; letter-spacing: 0.03em; }
-
   /* Recuo do menu igual ao mockup */
   .sidebar { padding: 0 12px 12px; }
   .sidebar-logo { padding: 18px 6px; }
   .sidebar-bottom { padding: 14px 0 0; }
-
   /* MAIN */
   .main { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
   .page { display: none; flex-direction: column; flex: 1; }
   .page.active { display: flex; }
-
   /* TOPBAR / HEADER */
   .topbar { position: sticky; top: 0; z-index: 5; background: rgba(255,255,255,.95); backdrop-filter: blur(8px); border-bottom: 1px solid #E4E4E4; padding: 12px 28px; display: flex; align-items: center; gap: 14px; }
   .topbar-left { flex: 1 1 auto; min-width: 180px; overflow: hidden; }
@@ -89,7 +85,6 @@
   .badge-mockup { font-size: 11px; color: var(--gray-400); }
   /* content padding below topbar */
   .content { padding: 24px 28px 56px; flex: 1; }
-
   /* BUTTONS */
   .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 7px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; transition: all 0.15s; white-space: nowrap; }
   .btn-primary { background: #C70602; color: white; border: 0; }
