@@ -3241,23 +3241,27 @@ async function enviar(){
     data:new Date().toISOString()
   };
   try{
-    await fetch('/api/pesquisas/resposta-publica',{
+    const resp=await fetch('/api/pesquisas/resposta-publica',{
       method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify(dados)
     });
-  }catch(err){}
-  irPara(${perguntas.length+1});
+    if(!resp.ok){
+      const j=await resp.json().catch(()=>({}));
+      throw new Error(j.erro||'Erro ao registrar resposta ('+resp.status+').');
+    }
+    irPara(${perguntas.length+1});
+  }catch(err){
+    if(btn){btn.disabled=false;btn.textContent='Enviar pesquisa ✓';}
+    const av=document.createElement('div');
+    av.style.cssText='background:#FEE2E2;color:#991B1B;border-radius:10px;padding:12px 14px;font-size:13px;margin-top:12px;font-weight:600';
+    av.textContent='Não foi possível registrar sua resposta. Verifique sua conexão e tente novamente.';
+    const nav=btn?.closest('.nav');if(nav)nav.after(av);
+  }
 }
 </script>
 </body>
 </html>`;
 };
-
-app.get('/pesquisa/:empresa', (req, res) => {
-  const empresa = String(req.params.empresa || '').toLowerCase().replace(/[^a-z]/g, '');
-  res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  res.send(_pesquisaPublicaHTML(empresa));
-});
 
 app.post('/api/pesquisas/resposta-publica', async (req, res) => {
   try {
