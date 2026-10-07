@@ -6479,6 +6479,7 @@ function navigate(page, el) {
   if (page === 'biblioteca-fichas') loadBiblioteca(true);
   if (page === 'matriz-conhecimento') loadMatrizConhecimento();
   if (page === 'alimentacao' && typeof window.loadAlimentacao === 'function') window.loadAlimentacao();
+  if (page === 'sugestoes-melhoria') { setTimeout(() => { if (typeof cpLoad === 'function') cpLoad(); }, 50); }
 }
 
 // ===== ARQUIVO DE FICHAS (page-biblioteca-fichas) — início =====
