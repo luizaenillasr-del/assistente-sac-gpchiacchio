@@ -3436,6 +3436,45 @@ app.post('/api/pesquisas/resposta-token', async (req, res) => {
   } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e,'resposta-token') }); }
 });
 
+// Notificações para ANALISTA SAC — pesquisas nota baixa + manifestações do portal
+app.get('/api/notificacoes/analista', requerPerfil('MASTER','ANALISTA SAC','GESTOR SAC'), async (req, res) => {
+  try {
+    const _pf = perfilCanonico(req.user?.perfil||'');
+    const scope = _pf === 'MASTER' ? null : (req.user?.empresa||null);
+    const [ocps, mans, respostas] = await Promise.all([
+      lerAba('PESQUISA_OCORRENCIAS', 500).catch(()=>[]),
+      lerAba('MANIFESTACOES', 2000).catch(()=>[]),
+      lerAba('PESQUISA_RESPOSTAS', 500).catch(()=>[]),
+    ]);
+    const ocpsPendentes = ocps.filter(o =>
+      String(o.STATUS||'').toUpperCase() === 'PENDENTE' &&
+      (!scope || pertenceEmpresa(scope, o.EMPRESA||''))
+    );
+    const mansPortal = mans.filter(m =>
+      m.ORIGEM === 'PORTAL_FUNCIONARIO' &&
+      (String(m.STATUS||'').toUpperCase() === 'AGUARDANDO_APROVAÇÃO' || String(m.STATUS||'').toUpperCase() === 'ABERTA' || !m.STATUS) &&
+      (!scope || pertenceEmpresa(scope, m.EMPRESA_RECLAMADA||''))
+    );
+    // Enriquecer OCPs com dados da resposta
+    const ocpsEnrich = ocpsPendentes.map(o => {
+      const resp = respostas.find(r => r.TOKEN === o.TOKEN) || {};
+      return { ...o, NOME_CLIENTE: resp.NOME_CLIENTE||o.NOME_CLIENTE||'', NOTA_MEDIA: resp.NOTA_MEDIA||o.NPS||'' };
+    });
+    res.json({
+      sucesso: true,
+      total: ocpsPendentes.length + mansPortal.length,
+      ocpsPendentes: ocpsPendentes.length,
+      mansPortal: mansPortal.length,
+      ocps: ocpsEnrich.slice(0, 20),
+      manifestacoes: mansPortal.slice(0, 20).map(m => ({
+        id: m.ID_MANIFESTACAO, cliente: m.CLIENTE_NOME||m.NOME_CLIENTE||'', empresa: m.EMPRESA_RECLAMADA||'',
+        tipo: m.TIPO_MANIFESTACAO||m.TIPO||'', data: m.DATA_ABERTURA||m.DATA_REGISTRO||'',
+        registradoPor: m.REGISTRADO_POR||m.COLABORADOR_RECEBIMENTO||'',
+      })),
+    });
+  } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e) }); }
+});
+
 // Listar OCPs (Ocorrências de Pesquisa)
 app.get('/api/pesquisas/ocorrencias', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','GESTOR SAC'), async (req, res) => {
   try {

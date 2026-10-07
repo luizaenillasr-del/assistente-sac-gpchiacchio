@@ -1399,7 +1399,7 @@
     <button class="sidebar-item active" onclick="navigate('visao-geral', this)"><span class="sidebar-dot"></span>Dashboard</button>
     <button class="sidebar-item" onclick="navigate('banco-manifestacoes', this)"><span class="sidebar-dot"></span>Manifestações</button>
     <button class="sidebar-item" onclick="navigate('nova-manifestacao', this)"><span class="sidebar-dot"></span>Nova manifestação</button>
-    <button class="sidebar-item" onclick="navigate('acompanhamento', this)"><span class="sidebar-dot"></span>Minhas pendências</button>
+    <button class="sidebar-item" onclick="navigate('acompanhamento', this)" style="position:relative"><span class="sidebar-dot"></span>Minhas pendências<span id="badge-analista-notif" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);background:#C8102E;color:white;font-size:10px;font-weight:700;border-radius:10px;padding:1px 6px;min-width:18px;text-align:center"></span></button>
     <button class="sidebar-item" onclick="navigate('similares', this)"><span class="sidebar-dot"></span>Busca de similares</button>
     <button class="sidebar-item" id="sidebar-central-sac" onclick="navigate('central-sac', this)"><span class="sidebar-dot"></span>Minha Central SAC</button>
     <button class="sidebar-item" data-v5-page="setor-responsavel" onclick="navigate('setor-responsavel', this)"><span class="sidebar-dot"></span>Minha fila</button>
@@ -2030,6 +2030,32 @@
       </div>
     </div>
     <div class="content">
+
+      <!-- Alertas ANALISTA SAC: pesquisas baixas + portal -->
+      <div id="analista-alertas-wrap" style="display:none;margin-bottom:16px;display:flex;flex-direction:column;gap:10px">
+        <!-- OCPs pesquisas -->
+        <div id="analista-alerta-ocps" style="display:none;background:#FFF8F0;border:1px solid #F5A623;border-radius:10px;padding:14px 18px">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+            <div>
+              <div style="font-size:13px;font-weight:700;color:#7A4C00">⚠ Pesquisas com nota baixa aguardando avaliação</div>
+              <div style="font-size:12px;color:#7A4C00;margin-top:3px" id="analista-alerta-ocps-desc">—</div>
+            </div>
+            <button onclick="navigate('banco-manifestacoes',document.querySelector('[onclick*=banco-manifestacoes]'))" style="flex-shrink:0;background:#F5A623;border:0;color:#fff;border-radius:7px;padding:7px 14px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit">Ver no banco</button>
+          </div>
+          <div id="analista-ocps-lista" style="margin-top:10px;display:flex;flex-direction:column;gap:6px"></div>
+        </div>
+        <!-- Manifestações portal -->
+        <div id="analista-alerta-portal" style="display:none;background:#F0F6FF;border:1px solid #4A80D9;border-radius:10px;padding:14px 18px">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+            <div>
+              <div style="font-size:13px;font-weight:700;color:#24508F">🔔 Manifestações do portal aguardando análise</div>
+              <div style="font-size:12px;color:#24508F;margin-top:3px" id="analista-alerta-portal-desc">—</div>
+            </div>
+            <button onclick="navigate('banco-manifestacoes',document.querySelector('[onclick*=banco-manifestacoes]'))" style="flex-shrink:0;background:#4A80D9;border:0;color:#fff;border-radius:7px;padding:7px 14px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit">Ver no banco</button>
+          </div>
+          <div id="analista-portal-lista" style="margin-top:10px;display:flex;flex-direction:column;gap:6px"></div>
+        </div>
+      </div>
 
       <!-- KPIs coloridos -->
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:16px">
@@ -10401,6 +10427,7 @@ window.navigate = function(page, el) {
     if(r==='MASTER') { await loadUsuariosV5(); checarSolicitacoesPendentes && checarSolicitacoesPendentes(); }
     if(r==='APROVADOR'||r==='MASTER') await loadAprovadorV5();
     if(r==='ANALISTA SAC'||r==='GESTOR SAC') setupAprovacaoUI();
+    if(r==='ANALISTA SAC'||r==='GESTOR SAC'||r==='MASTER') setTimeout(()=>{ if(typeof carregarNotifAnalista==='function') carregarNotifAnalista(); },1500);
   };
 
   window.logoutV5=function(){sessionStorage.clear();location.reload()};
@@ -11902,6 +11929,79 @@ window.loadAcompanhamento = async function(){
 
 // Sobrescrever filtrarAcompanhamento para usar a nova versão
 window.filtrarAcompanhamento = window.aplicarFiltrosAcomp;
+
+// ── NOTIFICAÇÕES ANALISTA SAC: pesquisas nota baixa + portal ──────────────
+async function carregarNotifAnalista() {
+  try {
+    const d = await _apiFetch('/api/notificacoes/analista', 10000);
+    if (!d || !d.sucesso) return;
+    const badge = document.getElementById('badge-analista-notif');
+    if (badge) {
+      if (d.total > 0) { badge.textContent = d.total; badge.style.display = 'inline-block'; }
+      else { badge.style.display = 'none'; }
+    }
+    // Alertas na página acompanhamento
+    const wrapEl = document.getElementById('analista-alertas-wrap');
+    if (!wrapEl) return;
+    if (d.total > 0) wrapEl.style.display = 'flex'; else { wrapEl.style.display = 'none'; return; }
+
+    // OCPs pesquisa
+    const ocpWrap = document.getElementById('analista-alerta-ocps');
+    if (d.ocpsPendentes > 0 && ocpWrap) {
+      ocpWrap.style.display = 'block';
+      const desc = document.getElementById('analista-alerta-ocps-desc');
+      if (desc) desc.textContent = `${d.ocpsPendentes} resposta(s) com nota ≤ 6 aguardando avaliação — verificar se deve virar reclamação.`;
+      const lista = document.getElementById('analista-ocps-lista');
+      if (lista && d.ocps?.length) {
+        lista.innerHTML = d.ocps.slice(0,5).map(o => {
+          const dt = o.DATA ? new Date(o.DATA).toLocaleDateString('pt-BR') : '—';
+          return `<div style="background:#fff;border:1px solid #F5C97A;border-radius:7px;padding:8px 12px;font-size:12px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+            <span style="font-weight:600;color:#7A4C00">${esc(o.EMPRESA||'—')}</span>
+            <span style="color:#545252">${esc(o.NOME_CLIENTE||'—')}</span>
+            <span style="color:#A80502;font-weight:700">Nota: ${esc(String(o.NOTA_MEDIA||o.NPS||'?'))}</span>
+            <span style="color:#8A8888">${dt}</span>
+          </div>`;
+        }).join('');
+      }
+    } else if (ocpWrap) ocpWrap.style.display = 'none';
+
+    // Manifestações do portal
+    const portalWrap = document.getElementById('analista-alerta-portal');
+    if (d.mansPortal > 0 && portalWrap) {
+      portalWrap.style.display = 'block';
+      const desc = document.getElementById('analista-alerta-portal-desc');
+      if (desc) desc.textContent = `${d.mansPortal} manifestação(ões) registrada(s) pelo portal aguardando análise.`;
+      const lista = document.getElementById('analista-portal-lista');
+      if (lista && d.manifestacoes?.length) {
+        lista.innerHTML = d.manifestacoes.slice(0,5).map(m => {
+          const dt = m.data ? new Date(m.data).toLocaleDateString('pt-BR') : '—';
+          return `<div style="background:#fff;border:1px solid #90B4E8;border-radius:7px;padding:8px 12px;font-size:12px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+            <span style="font-weight:600;color:#24508F">${esc(m.id||'—')}</span>
+            <span style="color:#545252">${esc(m.cliente||'—')}</span>
+            <span style="color:#545252">${esc(m.empresa||'—')}</span>
+            <span style="color:#8A8888">${dt}</span>
+            <span style="color:#666464;font-size:11px">por: ${esc(m.registradoPor||'—')}</span>
+          </div>`;
+        }).join('');
+      }
+    } else if (portalWrap) portalWrap.style.display = 'none';
+  } catch(e) { /* silencioso */ }
+}
+
+// Carregar notificações ao entrar em acompanhamento e a cada 5 min
+(function() {
+  const _orig = window.loadAcompanhamento;
+  window.loadAcompanhamento = async function() {
+    carregarNotifAnalista();
+    if (typeof _orig === 'function') return _orig.apply(this, arguments);
+  };
+})();
+
+// Badge no sidebar — carregar ao fazer login e periodicamente
+document.addEventListener('sac-auth-ok', () => carregarNotifAnalista());
+setInterval(() => {
+  if (sessionStorage.getItem('sac-token')) carregarNotifAnalista();
+}, 5 * 60 * 1000);
 
 // Patch ao navegar para acompanhamento
 const _origNavigate = window.navigate;
