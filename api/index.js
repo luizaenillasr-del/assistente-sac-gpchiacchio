@@ -252,17 +252,42 @@ async function carregarUsuarios(){
 function perfilCanonico(v){
   const x=normalizarTexto(v).replace(/\s+/g,' ');
   const map={
+    // ADMINISTRADOR
     'master':'MASTER','administrador':'MASTER','admin':'MASTER',
+    // GESTOR SAC — perfil próprio (não mais alias de ANALISTA SAC)
+    'gestor sac':'GESTOR SAC','gestor de sac':'GESTOR SAC','gestor':'GESTOR SAC',
+    // ANALISTA SAC
     'analista sac':'ANALISTA SAC','analista':'ANALISTA SAC','sac':'ANALISTA SAC',
-    'gestor sac':'ANALISTA SAC','gestor de sac':'ANALISTA SAC',
+    // ATENDENTE SAC
+    'atendente sac':'ATENDENTE SAC','atendente':'ATENDENTE SAC',
+    // SETOR RESPONSÁVEL
     'setor responsavel':'SETOR RESPONSÁVEL','setor responsável':'SETOR RESPONSÁVEL',
     'gestor de setor':'SETOR RESPONSÁVEL','gestor setor':'SETOR RESPONSÁVEL',
     'usuario de setor':'SETOR RESPONSÁVEL','usuário de setor':'SETOR RESPONSÁVEL',
+    // ESPECIALISTA
+    'especialista':'ESPECIALISTA','responsavel especialista':'ESPECIALISTA','responsável especialista':'ESPECIALISTA',
+    // APROVADOR
     'aprovador':'APROVADOR',
-    'rca':'RCA / REPRESENTANTE','representante':'RCA / REPRESENTANTE','representante comercial':'RCA / REPRESENTANTE'
+    // RCA
+    'rca':'RCA / REPRESENTANTE','representante':'RCA / REPRESENTANTE','representante comercial':'RCA / REPRESENTANTE',
+    'responsavel rca':'RCA / REPRESENTANTE','responsável rca':'RCA / REPRESENTANTE',
+    // DIRETOR
+    'diretor':'DIRETOR','diretora':'DIRETOR','director':'DIRETOR',
+    // VISUALIZADOR
+    'visualizador':'VISUALIZADOR','consulta':'VISUALIZADOR','auditor':'AUDITOR',
   };
   return map[x]||String(v||'').toUpperCase();
 }
+
+// Helpers de perfil — evita repetição de listas longas nos requerPerfil
+const P_ADMIN=['MASTER'];
+const P_GESTORES=['MASTER','GESTOR SAC'];
+const P_SAC=['MASTER','GESTOR SAC','ANALISTA SAC','ATENDENTE SAC'];
+const P_OPERACIONAL=['MASTER','GESTOR SAC','ANALISTA SAC','ATENDENTE SAC','SETOR RESPONSÁVEL','ESPECIALISTA'];
+const P_LEITURA=['MASTER','GESTOR SAC','ANALISTA SAC','ATENDENTE SAC','SETOR RESPONSÁVEL','ESPECIALISTA','APROVADOR','RCA / REPRESENTANTE','DIRETOR','VISUALIZADOR','AUDITOR'];
+const P_RNC=['MASTER','GESTOR SAC','ANALISTA SAC','SETOR RESPONSÁVEL','ESPECIALISTA','RCA / REPRESENTANTE'];
+const P_APROVACAO=['MASTER','APROVADOR'];
+const P_RELATORIO=['MASTER','GESTOR SAC','ANALISTA SAC','ATENDENTE SAC','SETOR RESPONSÁVEL','ESPECIALISTA','APROVADOR','RCA / REPRESENTANTE','DIRETOR','VISUALIZADOR','AUDITOR'];
 
 function usuarioPublico(u){
   return {
@@ -996,7 +1021,7 @@ app.post('/api/auth/reset-password', async (req,res)=>{
 });
 
 // ===== ANÁLISE IA =====
-app.post('/api/analise', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','SETOR RESPONSÁVEL'), async (req, res) => {
+app.post('/api/analise', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC','ATENDENTE SAC','SETOR RESPONSÁVEL','ESPECIALISTA','APROVADOR'), async (req, res) => {
   try {
     const { descricao, tipo, empresaReclamada, empresaReclamante, produto, lote } = req.body;
     if (!descricao) return res.status(400).json({ sucesso: false, erro: 'Descrição é obrigatória.' });
@@ -1051,7 +1076,7 @@ app.post('/api/representantes/manifestacoes', requerPerfil('RCA / REPRESENTANTE'
 });
 
 // ===== MANIFESTAÇÕES =====
-app.get('/api/manifestacoes', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','SETOR RESPONSÁVEL','GESTOR SAC','CONSULTA','AUDITOR','RCA / REPRESENTANTE'), middlewareEscopoEmpresa(), async (req, res) => {
+app.get('/api/manifestacoes', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC','ATENDENTE SAC','SETOR RESPONSÁVEL','ESPECIALISTA','APROVADOR','RCA / REPRESENTANTE','DIRETOR','VISUALIZADOR','AUDITOR'), middlewareEscopoEmpresa(), async (req, res) => {
   try {
     // F6: tenta PostgreSQL primeiro
     if (manifestacaoRepo) {
@@ -1098,7 +1123,7 @@ app.get('/api/manifestacoes', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','
   } catch (e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e), dados: [] }); }
 });
 
-app.get('/api/manifestacoes/:id', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR','RCA / REPRESENTANTE'), middlewareEscopoEmpresa(), async (req, res) => {
+app.get('/api/manifestacoes/:id', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC','ATENDENTE SAC','SETOR RESPONSÁVEL','ESPECIALISTA','APROVADOR','RCA / REPRESENTANTE','DIRETOR'), middlewareEscopoEmpresa(), async (req, res) => {
   try {
     // F6: tenta PostgreSQL primeiro
     if (manifestacaoRepo) {
@@ -1147,7 +1172,7 @@ app.get('/api/manifestacoes/:id', requerPerfil('MASTER','ANALISTA SAC','SETOR RE
   } catch (e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e) }); }
 });
 
-app.post('/api/manifestacoes', requerPerfil('MASTER','ANALISTA SAC'), async (req, res) => {
+app.post('/api/manifestacoes', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC','ATENDENTE SAC'), async (req, res) => {
   try {
     const { empresaReclamada, empresaReclamante, contato, produto, lote, nfe, descricao, tipo, canal, cnpj, telefone, email, quantidade, valor, usuario, anexos = [], origemDocumento = '', arquivoOrigem = '' } = req.body;
     if (!empresaReclamante || !descricao) return res.status(400).json({ sucesso:false, erro:'Empresa reclamante e descrição são obrigatórios.' });
@@ -1230,7 +1255,7 @@ app.post('/api/manifestacoes', requerPerfil('MASTER','ANALISTA SAC'), async (req
   } catch (e) { console.error(e); res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
 
-app.patch('/api/manifestacoes/:id', requerPerfil('MASTER','ANALISTA SAC'), async (req, res) => {
+app.patch('/api/manifestacoes/:id', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC','ATENDENTE SAC'), async (req, res) => {
   try {
     const { id } = req.params;
     // B2/Item18: verificar pertencimento de empresa antes de gravar
@@ -1259,7 +1284,7 @@ app.patch('/api/manifestacoes/:id', requerPerfil('MASTER','ANALISTA SAC'), async
   } catch(e){ res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
 
-app.post('/api/manifestacoes/:id/decisao', requerPerfil('MASTER','ANALISTA SAC'), async (req, res) => {
+app.post('/api/manifestacoes/:id/decisao', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC'), async (req, res) => {
   try {
     const { id } = req.params;
     const { tipoConfirmado, setoresConfirmados, procedimentoUsado, prioridade, slaHoras, geraRNC, observacoes, usuario, decisaoStatus, tratativaAplicavel, tratativaRealizada, dataInicioTratativa, dependeOutroSetor, setoresDependentes, dataAcionamentoSetor, prazoSetorSolicitado, dataRetornoSetor, statusTratativa, dataConclusaoTratativa, devolutivaFinal, devolutivaEnviada } = req.body;
@@ -1308,7 +1333,7 @@ app.post('/api/manifestacoes/:id/decisao', requerPerfil('MASTER','ANALISTA SAC')
 // TRATATIVAS ESTRUTURADAS
 // ============================================================
 
-app.get('/api/manifestacoes/:id/tratativa', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req,res)=>{
+app.get('/api/manifestacoes/:id/tratativa', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC','ATENDENTE SAC','SETOR RESPONSÁVEL','ESPECIALISTA','APROVADOR'), async (req,res)=>{
   try {
     const t = await tratativaEngine.buscarTratativaPorManifestacao(req.params.id);
     if (!t) return res.status(404).json({ sucesso:false, erro:'Nenhuma tratativa encontrada.' });
@@ -1316,7 +1341,7 @@ app.get('/api/manifestacoes/:id/tratativa', requerPerfil('MASTER','ANALISTA SAC'
   } catch(e){ res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
 
-app.post('/api/manifestacoes/:id/tratativa/gerar', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
+app.post('/api/manifestacoes/:id/tratativa/gerar', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC','SETOR RESPONSÁVEL','ESPECIALISTA'), async (req,res)=>{
   try {
     const id = req.params.id;
     const data = await lerAba('MANIFESTACOES',2000);
@@ -1329,7 +1354,7 @@ app.post('/api/manifestacoes/:id/tratativa/gerar', requerPerfil('MASTER','ANALIS
   } catch(e){ res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
 
-app.post('/api/manifestacoes/:id/tratativa/decisao', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
+app.post('/api/manifestacoes/:id/tratativa/decisao', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC','SETOR RESPONSÁVEL','ESPECIALISTA'), async (req,res)=>{
   try {
     const { decisao, observacoes, textoEditado } = req.body;
     if (!['ACEITA','EDITADA','REJEITADA'].includes(decisao)) return res.status(400).json({ sucesso:false, erro:'Decisão inválida.' });
@@ -1373,7 +1398,7 @@ app.post('/api/manifestacoes/:id/visualizacao', requerPerfil('MASTER','ANALISTA 
   } catch(e){ res.json({sucesso:false,erro:erroSeguro(e)}); }
 });
 
-app.get('/api/manifestacoes/:id/visualizacoes', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req,res)=>{
+app.get('/api/manifestacoes/:id/visualizacoes', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC','APROVADOR'), async (req,res)=>{
   try {
     const id=req.params.id;
     const rows=await lerAba('LOG_VISUALIZACOES',5000).catch(()=>[]);
@@ -1389,7 +1414,7 @@ app.get('/api/manifestacoes/:id/devolutivas', requerPerfil('MASTER','ANALISTA SA
   } catch(e){ res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
 
-app.post('/api/manifestacoes/:id/devolutiva/gerar', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
+app.post('/api/manifestacoes/:id/devolutiva/gerar', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC'), async (req,res)=>{
   try {
     const id = req.params.id;
     const data = await lerAba('MANIFESTACOES',2000);
@@ -1424,7 +1449,7 @@ app.post('/api/manifestacoes/:id/devolutiva/gerar', requerPerfil('MASTER','ANALI
   } catch(e){ res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
 
-app.post('/api/devolutivas/:idDev/decisao', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
+app.post('/api/devolutivas/:idDev/decisao', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC'), async (req,res)=>{
   try {
     const { decisao, textoAprovado, motivo } = req.body;
     if (!['APROVADA','EDITADA','REJEITADA'].includes(decisao)) return res.status(400).json({ sucesso:false, erro:'Decisão inválida.' });
@@ -1461,7 +1486,7 @@ app.post('/api/devolutivas/:idDev/decisao', requerPerfil('MASTER','ANALISTA SAC'
 // ASSERTIVIDADE E MÉTRICAS
 // ============================================================
 
-app.get('/api/assertividade/metricas', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
+app.get('/api/assertividade/metricas', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC'), async (req,res)=>{
   try {
     const _perfAss = perfilCanonico(req.user?.perfil||'');
     const filtros = {
@@ -1483,7 +1508,7 @@ app.get('/api/assertividade/sugestoes', requerPerfil('MASTER'), async (req,res)=
   } catch(e){ res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
 
-app.post('/api/assertividade/resultado', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
+app.post('/api/assertividade/resultado', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC'), async (req,res)=>{
   try {
     const r = await assertividadeService.registrarResultado({ ...req.body, usuario: req.user?.usuario });
     res.json({ sucesso:true, id:r.id });
@@ -1494,7 +1519,7 @@ app.post('/api/assertividade/resultado', requerPerfil('MASTER','ANALISTA SAC'), 
 // MATRIZ DE TRATAMENTO
 // ============================================================
 
-app.get('/api/matriz-tratamento', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
+app.get('/api/matriz-tratamento', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC','ATENDENTE SAC','SETOR RESPONSÁVEL','ESPECIALISTA','APROVADOR'), async (req,res)=>{
   try {
     const { matrizTratamento } = cerebroService;
     const regras = await matrizTratamento.carregarMatriz();
@@ -1502,7 +1527,7 @@ app.get('/api/matriz-tratamento', requerPerfil('MASTER','ANALISTA SAC'), async (
   } catch(e){ res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
 
-app.post('/api/matriz-tratamento/consultar', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL'), async (req,res)=>{
+app.post('/api/matriz-tratamento/consultar', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC','ATENDENTE SAC','SETOR RESPONSÁVEL','ESPECIALISTA','APROVADOR'), async (req,res)=>{
   try {
     const { matrizTratamento } = cerebroService;
     const resultado = await matrizTratamento.obterRegras(req.body||{});
@@ -1584,7 +1609,7 @@ async function atualizarOuCriarSetor(nomeSetor,dados,usuario){
   return payload;
 }
 
-app.post('/api/setores', requerPerfil('MASTER','ANALISTA SAC'), async(req,res)=>{
+app.post('/api/setores', requerPerfil('MASTER'), async(req,res)=>{
   try {
     const HEADERS=['ID_SETOR','SETOR','DESCRICAO','RESPONSAVEL','EMPRESA','SLA_HORAS','ATIVO'];
     await garantirAbaComCabecalhos('CONFIG_SETORES', HEADERS);
@@ -1601,7 +1626,7 @@ app.post('/api/setores', requerPerfil('MASTER','ANALISTA SAC'), async(req,res)=>
   } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e) }); }
 });
 
-app.patch('/api/setores/:id', requerPerfil('MASTER','ANALISTA SAC'), async(req,res)=>{
+app.patch('/api/setores/:id', requerPerfil('MASTER'), async(req,res)=>{
   try {
     const id = req.params.id;
     const campos = ['SETOR','DESCRICAO','RESPONSAVEL','EMPRESA','SLA_HORAS','ATIVO'];
@@ -1690,7 +1715,7 @@ app.post('/api/produtos/importar', requerPerfil('MASTER','ANALISTA SAC'), async(
   } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e) }); }
 });
 
-app.get('/api/setores/:setor/operacional', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async(req,res)=>{
+app.get('/api/setores/:setor/operacional', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC','ATENDENTE SAC','SETOR RESPONSÁVEL','ESPECIALISTA','APROVADOR','DIRETOR'), async(req,res)=>{
   try{
     const nome=decodeURIComponent(req.params.setor);
     await garantirAbaComCabecalhos('CONFIG_SETORES',['ID_SETOR','SETOR','DESCRICAO','RESPONSAVEL','SUBSTITUTO','EMAIL_RESPONSAVEL','SLA_HORAS','RESPONSABILIDADES','REGRAS_OPERACIONAIS','PROCEDIMENTOS_ORIENTACOES','ALERTAS','ATIVO',...SETOR_OPERACIONAL_FIELDS]);
@@ -1700,7 +1725,7 @@ app.get('/api/setores/:setor/operacional', requerPerfil('MASTER','ANALISTA SAC',
     res.json({sucesso:true,setor,faq});
   }catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
-app.patch('/api/setores/:setor/operacional', requerPerfil('MASTER','ANALISTA SAC'), async(req,res)=>{
+app.patch('/api/setores/:setor/operacional', requerPerfil('MASTER'), async(req,res)=>{
   try{
     const nome=decodeURIComponent(req.params.setor);
     const TODOS_CAMPOS=[
@@ -1717,7 +1742,7 @@ app.patch('/api/setores/:setor/operacional', requerPerfil('MASTER','ANALISTA SAC
   }
   catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
-app.post('/api/setores/:setor/faq', requerPerfil('MASTER','ANALISTA SAC'), async(req,res)=>{
+app.post('/api/setores/:setor/faq', requerPerfil('MASTER'), async(req,res)=>{
   try{
     const nome=decodeURIComponent(req.params.setor);
     await garantirAbaComCabecalhos('FAQ_SETORES',FAQ_HEADERS);
@@ -1745,11 +1770,11 @@ app.get('/api/setores/:setor/regras', requerPerfil('MASTER','ANALISTA SAC','SETO
   try{const nome=decodeURIComponent(req.params.setor);const itens=await crudSetorGet('REGRAS_SETORES',REGRAS_HEADERS,nome);res.json({sucesso:true,itens});}
   catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e),itens:[]});}
 });
-app.post('/api/setores/:setor/regras', requerPerfil('MASTER','ANALISTA SAC'), async(req,res)=>{
+app.post('/api/setores/:setor/regras', requerPerfil('MASTER'), async(req,res)=>{
   try{const nome=decodeURIComponent(req.params.setor);if(!req.body?.NOME)return res.status(400).json({sucesso:false,erro:'NOME obrigatório.'});const obj=await crudSetorPost('REGRAS_SETORES',REGRAS_HEADERS,nome,{EMPRESA:req.body.EMPRESA||'TODAS',NOME:req.body.NOME,CONDICAO:req.body.CONDICAO||'',PALAVRAS_GATILHO:req.body.PALAVRAS_GATILHO||'',ACAO:req.body.ACAO||'',PRIORIDADE:req.body.PRIORIDADE||'Média',NECESSITA_APROVACAO:req.body.NECESSITA_APROVACAO||'NÃO',QUEM_APROVA:req.body.QUEM_APROVA||'',AUTOMATICA:req.body.AUTOMATICA||'NÃO',EXCECOES:req.body.EXCECOES||'',SLA:req.body.SLA||'',STATUS:req.body.STATUS||'A VALIDAR',FONTE:req.body.FONTE||''},'RGR','ID_REGRA',req.user.usuario);res.json({sucesso:true,id:obj.ID_REGRA});}
   catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
-app.patch('/api/setores/:setor/regras/:id', requerPerfil('MASTER','ANALISTA SAC'), async(req,res)=>{
+app.patch('/api/setores/:setor/regras/:id', requerPerfil('MASTER'), async(req,res)=>{
   try{const reg=await crudSetorPatch('REGRAS_SETORES',req.params.id,req.body,'ID_REGRA',req.user.usuario);if(!reg)return res.status(404).json({sucesso:false,erro:'Regra não encontrada.'});res.json({sucesso:true});}
   catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
@@ -2257,7 +2282,7 @@ app.get('/api/rnc-metricas', requerPerfil('MASTER','ANALISTA SAC'), async (req,r
 });
 
 // ===== EMPRESAS =====
-app.get('/api/empresas', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','SETOR RESPONSÁVEL','GESTOR SAC'), async (req, res) => {
+app.get('/api/empresas', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC','ATENDENTE SAC','SETOR RESPONSÁVEL','ESPECIALISTA','APROVADOR'), async (req, res) => {
   try {
     const sheets = await getSheets();
     const res1 = await sheets.spreadsheets.values.get({
@@ -2324,7 +2349,7 @@ app.get('/api/clientes/:cnpj', requerPerfil('MASTER','ANALISTA SAC','RCA / REPRE
 });
 
 // ===== RECLAMAÇÕES =====
-app.get('/api/reclamacoes', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','SETOR RESPONSÁVEL','GESTOR SAC'), middlewareEscopoEmpresa(), async (req, res) => {
+app.get('/api/reclamacoes', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC','SETOR RESPONSÁVEL','ESPECIALISTA','APROVADOR','DIRETOR'), middlewareEscopoEmpresa(), async (req, res) => {
   try {
     const data=await lerAbaReclamacoes(2000);
     let normalizado=data.map(r=>({
@@ -4699,7 +4724,8 @@ app.post('/api/public/reclamacoes', publicRateLimit, async (req, res) => {
       CANAL: canalFinal,
       MOTIVO: motivoManifestacao,
       OBSERVACOES: observacoes,
-      STATUS: 'NOVA',
+      STATUS: 'AGUARDANDO_APROVAÇÃO',
+      APROVACAO_NECESSARIA: 'SIM',
       TIPO: tipoManifestacao,
       TIPO_MANIFESTACAO: tipoManifestacao,
       ORIGEM: 'PORTAL_FUNCIONARIO',
@@ -6630,6 +6656,144 @@ app.patch('/api/rnc/:id', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁV
     await atualizarPorID('BANCO_RNC',req.params.id,dados,['ID_RNC','ID']);
     res.json({sucesso:true});
   }catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e,'rnc-patch')});}
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// CENTRAL DE ALIMENTAÇÃO INTELIGENTE
+// ═════════════════════════════════════════════════════════════════════════════
+
+// Mapa de destinos possíveis por tipo identificado
+const DESTINOS_ALIMENTACAO = {
+  'MANIFESTACAO':    { label:'Banco de Casos', aba:'MANIFESTACOES',      modulos:['banco-manifestacoes','similares'] },
+  'HISTORICO':       { label:'Banco de Casos', aba:'BANCO_HISTORICO',    modulos:['banco-manifestacoes','similares'] },
+  'PROCEDIMENTO':    { label:'Procedimentos',  aba:'PROCEDIMENTOS',      modulos:['cerebro','setor-responsavel'] },
+  'POLITICA':        { label:'Políticas',      aba:'POLITICAS',          modulos:['cerebro'] },
+  'CAUSA':           { label:'Causas/Subcausas',aba:'CAUSAS',            modulos:['nova-manifestacao','matriz','relatorios'] },
+  'MATRIZ':          { label:'Matriz de Tratamento', aba:'MATRIZ_TRATAMENTO', modulos:['cerebro','analise-ia'] },
+  'CONHECIMENTO':    { label:'Cérebro',        aba:'BASE_CONHECIMENTO',  modulos:['cerebro','analise-ia'] },
+  'SETOR':           { label:'Setores',        aba:'CONFIG_SETORES',     modulos:['nova-manifestacao','sla','encaminhamento'] },
+  'CLIENTE':         { label:'Clientes',       aba:'CLIENTES',           modulos:['nova-manifestacao','pesquisa','reincidencia'] },
+  'PRODUTO':         { label:'Produtos',       aba:'PRODUTOS',           modulos:['nova-manifestacao'] },
+  'REPRESENTANTE':   { label:'Representantes', aba:'REPRESENTANTES',     modulos:['representantes','nova-manifestacao'] },
+  'RNC':             { label:'RNC',            aba:'BANCO_RNC',          modulos:['banco-rnc'] },
+  'PESQUISA':        { label:'Pesquisa de Satisfação', aba:'PESQUISA_RESPOSTAS', modulos:['relatorio-satisfacao'] },
+  'DESCONHECIDO':    { label:'Pendência',      aba:null,                 modulos:[] },
+};
+
+// Etapa 1 → Etapa 3: analisar conteúdo com IA e sugerir destinos
+app.post('/api/alimentacao/analisar', requerPerfil('MASTER','GESTOR SAC'), async (req,res)=>{
+  try {
+    const { nome, conteudo, tipo_arquivo } = req.body || {};
+    if (!conteudo) return res.status(400).json({sucesso:false,erro:'Conteúdo não fornecido.'});
+
+    const aiSvc = (() => { try { return require('./services/aiService'); } catch { return null; } })();
+    if (!aiSvc) return res.status(500).json({sucesso:false,erro:'Serviço de IA não disponível.'});
+
+    const prompt = `Você é um classificador de dados para um sistema SAC empresarial.
+Analise o conteúdo abaixo (arquivo: "${nome||'sem nome'}", tipo: "${tipo_arquivo||'texto'}") e identifique:
+1. Quais TIPOS de informação estão presentes (pode haver mais de um).
+2. Para cada tipo, qual o DESTINO correto no sistema.
+3. Quantos registros aproximados de cada tipo.
+4. Confiança de 0-100%.
+5. Se há duplicatas, inconsistências ou conflitos potenciais.
+
+TIPOS POSSÍVEIS: MANIFESTACAO, HISTORICO, PROCEDIMENTO, POLITICA, CAUSA, MATRIZ, CONHECIMENTO, SETOR, CLIENTE, PRODUTO, REPRESENTANTE, RNC, PESQUISA, DESCONHECIDO.
+
+Responda SOMENTE em JSON válido, no formato:
+{
+  "resumo": "frase curta do que foi encontrado",
+  "itens": [
+    {
+      "tipo": "TIPO",
+      "descricao": "o que foi identificado",
+      "quantidade_estimada": N,
+      "confianca": 0-100,
+      "destino_label": "nome amigável do destino",
+      "campos_identificados": ["campo1","campo2"],
+      "alertas": ["alerta opcional"]
+    }
+  ],
+  "pendencias": ["item não classificado com certeza"],
+  "conflitos_potenciais": ["conflito detectado"]
+}
+
+CONTEÚDO:
+${String(conteudo).slice(0,8000)}`;
+
+    let resultado;
+    try {
+      const resposta = await aiSvc.chamarIA(prompt, {max_tokens:1500,temperature:0.2});
+      const texto = resposta?.content?.[0]?.text || resposta?.choices?.[0]?.message?.content || String(resposta||'{}');
+      const jsonMatch = texto.match(/\{[\s\S]*\}/);
+      resultado = jsonMatch ? JSON.parse(jsonMatch[0]) : {resumo:'Não foi possível classificar.',itens:[],pendencias:[],conflitos_potenciais:[]};
+    } catch(parseErr) {
+      resultado = {resumo:'Análise parcial.',itens:[{tipo:'DESCONHECIDO',descricao:'Conteúdo não classificado automaticamente',quantidade_estimada:1,confianca:0,destino_label:'Pendência',campos_identificados:[],alertas:['Revisar manualmente']}],pendencias:[nome||'arquivo'],conflitos_potenciais:[]};
+    }
+
+    // Enriquecer cada item com info de destino
+    const itensEnriquecidos = (resultado.itens||[]).map(item=>{
+      const dest = DESTINOS_ALIMENTACAO[item.tipo] || DESTINOS_ALIMENTACAO['DESCONHECIDO'];
+      return { ...item, aba_destino: dest.aba, modulos_afetados: dest.modulos, destino_label: item.destino_label || dest.label };
+    });
+
+    res.json({sucesso:true, nome, resumo:resultado.resumo, itens:itensEnriquecidos, pendencias:resultado.pendencias||[], conflitos_potenciais:resultado.conflitos_potenciais||[]});
+  } catch(e){ res.status(500).json({sucesso:false,erro:erroSeguro(e,'alimentacao-analisar')}); }
+});
+
+// Etapa 7: confirmar e distribuir
+app.post('/api/alimentacao/confirmar', requerPerfil('MASTER','GESTOR SAC'), async (req,res)=>{
+  try {
+    const { lote_nome, itens_confirmados, usuario } = req.body || {};
+    if (!Array.isArray(itens_confirmados) || !itens_confirmados.length)
+      return res.status(400).json({sucesso:false,erro:'Nenhum item confirmado.'});
+
+    const agora = new Date().toISOString();
+    const loteId = `IMP-${Date.now().toString(36).toUpperCase()}`;
+    const resultados = [];
+    const erros = [];
+
+    for (const item of itens_confirmados) {
+      const { tipo, registros, aba_destino } = item;
+      if (!aba_destino || !Array.isArray(registros) || !registros.length) {
+        erros.push({tipo, motivo:'Sem registros ou destino inválido.'});
+        continue;
+      }
+      let publicados = 0;
+      for (const reg of registros) {
+        try {
+          const obj = { ...reg, LOTE_IMPORTACAO: loteId, DATA_IMPORTACAO: agora, IMPORTADO_POR: usuario||req.user?.usuario||'sistema', ORIGEM_ARQUIVO: lote_nome||'' };
+          await appendObjeto(aba_destino, obj);
+          publicados++;
+        } catch(regErr) {
+          erros.push({tipo, motivo:regErr.message, registro: JSON.stringify(reg).slice(0,100)});
+        }
+      }
+      resultados.push({tipo, aba_destino, publicados, total:registros.length});
+    }
+
+    // Log de auditoria
+    await registrarAuditoria(req.user?.usuario||'sistema','ALIMENTACAO_CONFIRMADA',loteId,'CENTRAL_ALIMENTACAO','',{resultados,erros_count:erros.length}).catch(()=>{});
+
+    // Registrar no histórico de alimentação
+    await appendObjeto('LOG_SISTEMA', {
+      DATA_HORA: agora, USUARIO: req.user?.usuario||'sistema',
+      ACAO: 'IMPORTOU_DADOS', ID_MANIFESTACAO: loteId,
+      ENTIDADE: `ALIMENTACAO:${itens_confirmados.map(i=>i.tipo).join(',')}`,
+      VALOR_ANTERIOR: '', VALOR_NOVO: JSON.stringify({loteId,resultados,arquivo:lote_nome})
+    }).catch(()=>{});
+
+    const totalPublicados = resultados.reduce((s,r)=>s+r.publicados,0);
+    res.json({sucesso:true, lote_id:loteId, resultados, erros: erros.slice(0,20), total_publicados:totalPublicados, total_erros:erros.length });
+  } catch(e){ res.status(500).json({sucesso:false,erro:erroSeguro(e,'alimentacao-confirmar')}); }
+});
+
+// GET pendências de alimentação
+app.get('/api/alimentacao/pendencias', requerPerfil('MASTER','GESTOR SAC'), async (req,res)=>{
+  try {
+    const logs = await lerAba('LOG_SISTEMA',5000).catch(()=>[]);
+    const pendencias = logs.filter(l=>(l.ACAO||'').startsWith('ALIMENTACAO_PENDENTE')).slice(-50).reverse();
+    res.json({sucesso:true,total:pendencias.length,itens:pendencias});
+  } catch(e){ res.status(500).json({sucesso:false,erro:erroSeguro(e),itens:[]}); }
 });
 
 // ═════════════════════════════════════════════════════════════════════════════
