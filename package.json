@@ -16,6 +16,7 @@
   "dependencies": {
     "@prisma/client": "^6.19.3",
     "adm-zip": "^0.6.1",
+    "bcryptjs": "^3.0.3",
     "busboy": "^1.6.0",
     "cors": "^2.8.5",
     "express": "^4.21.2",

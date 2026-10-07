@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
 const { Readable } = require('stream');
 const { google } = require('googleapis');
 const { Resend } = require('resend');
@@ -183,14 +184,21 @@ function verificarToken(token){
     return payload;
   }catch(e){ return null; }
 }
-function senhaValida(informada, armazenada){
+async function senhaValida(informada, armazenada){
   if(armazenada === undefined || armazenada === null) return false;
   const s=String(armazenada);
-  // Segurança B1: NUNCA aceitar senha em texto puro. Apenas hashes são válidos.
+  // bcrypt (preferencial — com salt) — formato: $2a$ ou $2b$
+  if(s.startsWith('$2a$') || s.startsWith('$2b$')) return bcrypt.compare(String(informada||''), s);
+  // sha256 legado sem salt — aceita no login e migra automaticamente para bcrypt
   if(s.startsWith('sha256:')) return 'sha256:'+crypto.createHash('sha256').update(String(informada||'')).digest('hex')===s;
-  // Senha sem hash no storage = configuração inválida. Rejeitar para forçar migração.
-  console.warn('[SEGURANÇA] Tentativa de login com senha sem hash no storage. Configure sha256: no campo SENHA.');
+  // Senha sem hash no storage = configuração inválida.
+  console.warn('[SEGURANÇA] Tentativa de login com senha sem hash no storage. Configure bcrypt no campo SENHA.');
   return false;
+}
+
+// Gera hash bcrypt (cost 12) para uma senha em texto puro
+async function hashSenha(senha) {
+  return bcrypt.hash(String(senha), 12);
 }
 
 const DEMO_USUARIOS = [
@@ -772,7 +780,7 @@ app.use('/api', async (req,res,next)=>{
     _statusCache.delete(payload.usuario); // forçar re-verificação na próxima vez
     return res.status(401).json({sucesso:false,erro:'Usuário inativo. Sessão encerrada.'});
   }
-  if (!verificarRateLimitAuth(payload.usuario)) {
+  if (!await verificarRateLimitAuth(payload.usuario)) {
     return res.status(429).json({ sucesso: false, erro: 'Muitas requisições. Tente novamente em instantes.' });
   }
   req.user=payload;
@@ -787,37 +795,86 @@ function erroSeguro(e, contexto) {
   return msg;
 }
 
-// ===== RATE LIMITING para rotas autenticadas (E1) =====
-const _authAttempts = new Map();
-function verificarRateLimitAuth(user) {
-  const agora = Date.now();
-  const janela = 60 * 1000; // 1 minuto
-  const max = 120; // 120 requisições/min por usuário
-  const tentativas = (_authAttempts.get(user) || []).filter(t => agora - t < janela);
-  if (tentativas.length >= max) return false;
-  tentativas.push(agora);
-  _authAttempts.set(user, tentativas);
-  if (_authAttempts.size > 5000) {
-    for (const [k, v] of _authAttempts) {
-      if (v.every(t => agora - t >= janela)) _authAttempts.delete(k);
+// ===== RATE LIMITING — compartilhado via Upstash Redis (se configurado) =====
+// Se UPSTASH_REDIS_REST_URL e UPSTASH_REDIS_REST_TOKEN estiverem configurados,
+// o rate limit é compartilhado entre todas as instâncias serverless.
+// Caso contrário, cai para in-memory (proteção por instância — menos rigorosa).
+
+let _redisRateLimit = null;
+(async () => {
+  try {
+    const url = process.env.UPSTASH_REDIS_REST_URL;
+    const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+    if (url && token) {
+      // Usa fetch nativo para comunicar com Upstash REST API — sem dependência extra
+      _redisRateLimit = { url, token };
+      console.info('[RATE LIMIT] Upstash Redis configurado — rate limiting compartilhado ativo.');
+    } else {
+      console.warn('[RATE LIMIT] UPSTASH_REDIS_REST_URL/TOKEN não configurados — usando rate limiting em memória por instância (menos seguro em serverless). Configure Upstash Redis para proteção completa.');
     }
+  } catch (e) { console.warn('[RATE LIMIT] falha ao inicializar Redis:', e.message); }
+})();
+
+async function _redisIncr(key, janelaSeg) {
+  if (!_redisRateLimit) return null;
+  try {
+    const { url, token } = _redisRateLimit;
+    // INCR + EXPIRE atomicamente via pipeline
+    const pipeline = [['INCR', key], ['EXPIRE', key, janelaSeg]];
+    const r = await fetch(`${url}/pipeline`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(pipeline),
+    });
+    const data = await r.json();
+    return data?.[0]?.result ?? null; // contagem atual
+  } catch (e) {
+    console.warn('[RATE LIMIT] Redis falhou, usando fallback em memória:', e.message);
+    return null;
   }
-  return true;
 }
 
-// ===== RATE LIMITING para login =====
+// Rate limiting para login — 10 tentativas por IP em 15 min
 const _loginAttempts = new Map();
-function verificarRateLimit(ip) {
-  const agora = Date.now();
-  const janela = 15 * 60 * 1000;
+async function verificarRateLimit(ip) {
+  const key = `rl:login:${ip}`;
+  const janela = 15 * 60; // segundos
   const max = 10;
-  const tentativas = (_loginAttempts.get(ip) || []).filter(t => agora - t < janela);
+  const count = await _redisIncr(key, janela);
+  if (count !== null) return count <= max;
+  // Fallback in-memory
+  const agora = Date.now();
+  const janelaMs = janela * 1000;
+  const tentativas = (_loginAttempts.get(ip) || []).filter(t => agora - t < janelaMs);
   if (tentativas.length >= max) return false;
   tentativas.push(agora);
   _loginAttempts.set(ip, tentativas);
   if (_loginAttempts.size > 2000) {
     for (const [k, v] of _loginAttempts) {
-      if (v.every(t => agora - t >= janela)) _loginAttempts.delete(k);
+      if (v.every(t => agora - t >= janelaMs)) _loginAttempts.delete(k);
+    }
+  }
+  return true;
+}
+
+// Rate limiting para rotas autenticadas — 120 req/min por usuário
+const _authAttempts = new Map();
+async function verificarRateLimitAuth(user) {
+  const key = `rl:auth:${user}`;
+  const janela = 60; // segundos
+  const max = 120;
+  const count = await _redisIncr(key, janela);
+  if (count !== null) return count <= max;
+  // Fallback in-memory
+  const agora = Date.now();
+  const janelaMs = janela * 1000;
+  const tentativas = (_authAttempts.get(user) || []).filter(t => agora - t < janelaMs);
+  if (tentativas.length >= max) return false;
+  tentativas.push(agora);
+  _authAttempts.set(user, tentativas);
+  if (_authAttempts.size > 5000) {
+    for (const [k, v] of _authAttempts) {
+      if (v.every(t => agora - t >= janelaMs)) _authAttempts.delete(k);
     }
   }
   return true;
@@ -827,7 +884,7 @@ function verificarRateLimit(ip) {
 app.post('/api/auth/login', async (req, res) => {
   try {
     const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
-    if (!verificarRateLimit(ip)) return res.status(429).json({ sucesso: false, erro: 'Muitas tentativas de login. Aguarde 15 minutos.' });
+    if (!await verificarRateLimit(ip)) return res.status(429).json({ sucesso: false, erro: 'Muitas tentativas de login. Aguarde 15 minutos.' });
     const { usuario, senha } = req.body || {};
     if(!usuario) return res.status(400).json({sucesso:false,erro:'Usuário é obrigatório.'});
     if(!senha) return res.status(400).json({sucesso:false,erro:'Senha é obrigatória.'});
@@ -835,7 +892,7 @@ app.post('/api/auth/login', async (req, res) => {
     if(!registro) return res.status(401).json({ sucesso:false, erro:'Usuário ou senha inválidos.' });
     const pub=usuarioPublico(registro);
     if(normalizarTexto(pub.status)==='inativo') return res.status(403).json({sucesso:false,erro:'Usuário inativo.'});
-    const senhaOk = senhaValida(senha, registro.SENHA_HASH || registro.SENHA);
+    const senhaOk = await senhaValida(senha, registro.SENHA_HASH || registro.SENHA);
     if(!senhaOk) return res.status(401).json({sucesso:false,erro:'Usuário ou senha inválidos.'});
     const agora=Date.now();
     const payload={
@@ -844,6 +901,14 @@ app.post('/api/auth/login', async (req, res) => {
     };
     const isDemo = String(registro.ID_USUARIO||'').startsWith('USR-DEMO-');
     if (!isDemo) {
+      // Migração automática sha256→bcrypt: se hash for legado, atualiza no Sheets
+      const hashAtual = String(registro.SENHA_HASH || registro.SENHA || '');
+      if (hashAtual.startsWith('sha256:')) {
+        const novoHash = await hashSenha(senha);
+        atualizarPorID('USUARIOS', registro.ID_USUARIO || registro.USUARIO,
+          { SENHA_HASH: novoHash }, ['ID_USUARIO', 'USUARIO']
+        ).catch(e => console.warn('[MIGRAÇÃO SENHA] falhou:', e.message));
+      }
       await registrarAcessoUsuario(registro);
       await registrarAuditoria(pub.usuario,'LOGIN',null,'AUTH',null,{perfil:pub.perfil});
     }
@@ -955,8 +1020,8 @@ app.post('/api/auth/reset-password', async (req,res)=>{
   if (!registro) return res.status(400).json({sucesso:false, erro:'Token inválido ou já utilizado.'});
   if (Date.now() > new Date(registro.EXP).getTime()) return res.status(400).json({sucesso:false, erro:'Token expirado. Solicite um novo link.'});
 
-  // Hash da nova senha
-  const hash = 'sha256:' + crypto.createHash('sha256').update(novaSenha).digest('hex');
+  // Hash da nova senha com bcrypt
+  const hash = await hashSenha(novaSenha);
 
   // Atualizar senha do usuário
   try {
@@ -3885,7 +3950,7 @@ app.post('/api/usuarios', requerPerfil('MASTER'), async (req,res)=>{
     const b=req.body||{};
     if(!b.usuario||!b.nome||!b.perfil) return res.status(400).json({sucesso:false,erro:'Usuário, nome e perfil são obrigatórios.'});
     const id=await gerarProximoID('USUARIOS','USR','ID_USUARIO');
-    const hash=b.senha?'sha256:'+crypto.createHash('sha256').update(String(b.senha)).digest('hex'):'';
+    const hash=b.senha ? await hashSenha(b.senha) : '';
     const obj={ID_USUARIO:id,USUARIO:b.usuario,EMAIL:b.email||'',NOME:b.nome,PERFIL:perfilCanonico(b.perfil),EMPRESA:b.empresa||'',SETOR:b.setor||'',CODIGO_RCA:b.codigoRCA||'',STATUS:b.status||'ATIVO',SENHA_HASH:hash,DATA_CRIACAO:new Date().toISOString(),ULTIMO_ACESSO:''};
     await appendObjeto('USUARIOS',obj);
     await registrarAuditoria(req.user.usuario,'CRIOU_USUARIO',id,'USUARIOS',null,{perfil:obj.PERFIL});
@@ -3904,7 +3969,7 @@ app.patch('/api/usuarios/:id', requerPerfil('MASTER'), async (req,res)=>{
     if(b.codigoRCA!==undefined) dados.CODIGO_RCA=b.codigoRCA;
     if(b.perfil||b.PERFIL) dados.PERFIL=perfilCanonico(b.perfil||b.PERFIL);
     if(b.empresa||b.EMPRESA) { const ec=empresaCanonica(b.empresa||b.EMPRESA); if(ec) dados.EMPRESA=ec; }
-    if(b.senha){dados.SENHA_HASH='sha256:'+crypto.createHash('sha256').update(String(b.senha)).digest('hex');}
+    if(b.senha){ dados.SENHA_HASH = await hashSenha(b.senha); }
     dados.DATA_ULTIMA_ALTERACAO=new Date().toISOString(); dados.ALTERADO_POR=req.user.usuario;
     await atualizarPorID('USUARIOS',req.params.id,dados,['ID_USUARIO','USUARIO','EMAIL']);
     await registrarAuditoria(req.user.usuario,'ATUALIZOU_USUARIO',req.params.id,'USUARIOS',null,{campos:Object.keys(b)});
@@ -4327,7 +4392,7 @@ async function bootstrapHandler(req, res) {
     if (!headers.length) {
       await sheets.spreadsheets.values.update({ spreadsheetId: SPREADSHEET_ID, range: `USUARIOS!A1:L1`, valueInputOption: 'RAW', resource: { values: [cols] } });
     }
-    const hash = 'sha256:' + crypto.createHash('sha256').update(String(senha)).digest('hex');
+    const hash = await hashSenha(senha);
     // Se keyOk e usuário já existe, apenas atualiza a senha
     if (keyOk) {
       const todos = await lerAba('USUARIOS', 100).catch(() => []);
