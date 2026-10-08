@@ -777,69 +777,69 @@
           </div>
 
           <!-- ── CARD DE APROVAÇÃO SAC ── -->
-          <div id="modal-ficha-card-aprovacao" style="border:2px solid #F59E0B;border-radius:12px;padding:18px;margin-bottom:14px;background:#FFFBEB">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2.2"><path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
-              <span style="font-size:13px;font-weight:700;color:#92400E">Aprovação do Setor — Aguardando decisão</span>
+          <div id="modal-ficha-card-aprovacao" style="border:1.5px solid #F3CFCF;border-radius:12px;overflow:hidden;margin-bottom:14px;background:#fff">
+            <!-- Faixa aprovador -->
+            <div style="background:#FFF1F1;border-bottom:1.5px solid #F3CFCF;padding:12px 16px">
+              <div style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#A80502;margin-bottom:3px">SUA VEZ · APROVAÇÃO</div>
+              <div style="font-size:14px;font-weight:700;color:#1F1F1F">Aprovar a proposta do SAC ou devolver para ajuste</div>
             </div>
-            <div style="font-size:12px;color:#78350F;margin-bottom:14px">O SAC propôs uma tratativa para esta manifestação. Como aprovador do setor, escolha uma das opções abaixo.</div>
-
-            <!-- Resumo da tratativa proposta -->
-            <div id="card-aprov-resumo" style="background:#fff;border:1px solid #FDE68A;border-radius:8px;padding:12px;margin-bottom:14px">
-              <div style="font-size:11px;font-weight:700;color:#D97706;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Tratativa proposta pelo SAC</div>
-              <div id="card-aprov-tratativa-texto" style="font-size:13px;color:#1F1F1F;line-height:1.5">—</div>
+            <!-- Contexto compacto -->
+            <div id="card-aprov-campos" style="padding:12px 16px;border-bottom:1px solid #EFEFEF;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px 16px"></div>
+            <!-- Relato do cliente -->
+            <div id="card-aprov-relato-wrap" style="padding:12px 16px;border-bottom:1px solid #EFEFEF;background:#FAFAFA;display:none">
+              <div style="font-size:10px;font-weight:700;letter-spacing:.06em;color:#929090;margin-bottom:5px">RELATO DO CLIENTE</div>
+              <div id="card-aprov-relato" style="font-size:13px;line-height:1.55;color:#1F1F1F"></div>
             </div>
-
-            <!-- Três caminhos -->
-            <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
-              <button onclick="cardAprovacaoSelecionar('APROVAR',this)" id="card-aprov-btn-aprovar"
-                style="display:flex;align-items:flex-start;gap:10px;text-align:left;border:2px solid #D6D6D6;background:#fff;border-radius:10px;padding:12px 16px;cursor:pointer;font-family:inherit;transition:all .15s">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1E6B3A" stroke-width="2.5" style="margin-top:1px;flex-shrink:0"><polyline points="20 6 9 17 4 12"/></svg>
-                <div>
-                  <div style="font-size:13px;font-weight:700;color:#1E6B3A">Aprovar tratativa</div>
-                  <div style="font-size:11.5px;color:#555;margin-top:2px">A tratativa está correta. Avançar para devolutiva ao cliente.</div>
-                </div>
-              </button>
-              <button onclick="cardAprovacaoSelecionar('SEGUIR_TRATATIVA',this)" id="card-aprov-btn-seguir"
-                style="display:flex;align-items:flex-start;gap:10px;text-align:left;border:2px solid #D6D6D6;background:#fff;border-radius:10px;padding:12px 16px;cursor:pointer;font-family:inherit;transition:all .15s">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1D4ED8" stroke-width="2" style="margin-top:1px;flex-shrink:0"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                <div>
-                  <div style="font-size:13px;font-weight:700;color:#1D4ED8">Seguir com a tratativa do SAC</div>
-                  <div style="font-size:11.5px;color:#555;margin-top:2px">Prosseguir exatamente como o SAC propôs, sem alterações.</div>
-                </div>
-              </button>
-              <button onclick="cardAprovacaoSelecionar('DEVOLVER',this)" id="card-aprov-btn-devolver"
-                style="display:flex;align-items:flex-start;gap:10px;text-align:left;border:2px solid #D6D6D6;background:#fff;border-radius:10px;padding:12px 16px;cursor:pointer;font-family:inherit;transition:all .15s">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C70602" stroke-width="2" style="margin-top:1px;flex-shrink:0"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-4.5L1 10"/></svg>
-                <div>
-                  <div style="font-size:13px;font-weight:700;color:#C70602">Devolver para ajuste</div>
-                  <div style="font-size:11.5px;color:#555;margin-top:2px">A tratativa precisa ser revisada pelo SAC. Informe o motivo.</div>
-                </div>
-              </button>
+            <!-- Proposta do SAC -->
+            <div style="padding:12px 16px;border-bottom:1px solid #EFEFEF">
+              <div style="font-size:10px;font-weight:700;letter-spacing:.06em;color:#929090;margin-bottom:8px">PROPOSTA DO SAC</div>
+              <div style="border:1.5px solid #F0D9A8;background:#FFFCF3;border-radius:10px;padding:12px 14px">
+                <div id="card-aprov-tratativa-texto" style="font-size:13px;color:#1F1F1F;line-height:1.5">—</div>
+              </div>
             </div>
-
-            <input type="hidden" id="card-aprov-decisao" value="">
-
-            <!-- Campos de devolver (condicional) -->
-            <div id="card-aprov-box-devolver" style="display:none;border-top:1px solid #FDE68A;padding-top:12px;margin-top:4px">
-              <div class="form-group" style="margin-bottom:10px">
-                <label style="font-size:12px;font-weight:600;color:#1F1F1F;display:block;margin-bottom:4px">Motivo da devolução <span style="color:#C70602">*</span></label>
-                <textarea id="card-aprov-motivo" class="form-textarea" style="min-height:70px;border-color:#FCD34D" placeholder="Descreva o que precisa ser ajustado na tratativa..."></textarea>
+            <!-- Parecer do setor -->
+            <div id="card-aprov-parecer-wrap" style="padding:12px 16px;border-bottom:1px solid #EFEFEF;display:none">
+              <div style="font-size:10px;font-weight:700;letter-spacing:.06em;color:#929090;margin-bottom:6px">PARECER DO SETOR RESPONSÁVEL</div>
+              <div id="card-aprov-parecer" style="font-size:13px;line-height:1.5;color:#3A3939"></div>
+              <div id="card-aprov-parecer-by" style="font-size:11.5px;color:#929090;margin-top:4px"></div>
+            </div>
+            <!-- Decisão -->
+            <div style="padding:12px 16px;border-bottom:1px solid #EFEFEF">
+              <div style="font-size:10px;font-weight:700;letter-spacing:.06em;color:#929090;margin-bottom:8px">SUA DECISÃO</div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <button onclick="cardAprovacaoSelecionar('APROVAR',this)" id="card-aprov-btn-aprovar"
+                  style="display:flex;gap:7px;align-items:center;border:1.5px solid #D6D6D6;background:#fff;color:#545252;border-radius:8px;padding:9px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">
+                  <span id="card-aprov-chk-aprovar" style="width:15px;height:15px;border-radius:3px;border:2px solid #D6D6D6;background:transparent;display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0"></span>
+                  Aprovar
+                </button>
+                <button onclick="cardAprovacaoSelecionar('SEGUIR_TRATATIVA',this)" id="card-aprov-btn-seguir"
+                  style="display:flex;gap:7px;align-items:center;border:1.5px solid #D6D6D6;background:#fff;color:#545252;border-radius:8px;padding:9px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">
+                  <span id="card-aprov-chk-seguir" style="width:15px;height:15px;border-radius:3px;border:2px solid #D6D6D6;background:transparent;display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0"></span>
+                  Seguir com a tratativa do SAC
+                </button>
+                <button onclick="cardAprovacaoSelecionar('DEVOLVER',this)" id="card-aprov-btn-devolver"
+                  style="display:flex;gap:7px;align-items:center;border:1.5px solid #D6D6D6;background:#fff;color:#545252;border-radius:8px;padding:9px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">
+                  <span id="card-aprov-chk-devolver" style="width:15px;height:15px;border-radius:3px;border:2px solid #D6D6D6;background:transparent;display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0"></span>
+                  Devolver para ajuste
+                </button>
+              </div>
+              <input type="hidden" id="card-aprov-decisao" value="">
+              <!-- Observação / Motivo (mostra para qualquer decisão) -->
+              <div id="card-aprov-box-devolver" style="display:none;margin-top:12px">
+                <label id="card-aprov-obs-label" style="display:block;font-size:11.5px;font-weight:700;color:#3A3939;margin-bottom:4px">Motivo da devolução e orientação (obrigatório)</label>
+                <textarea id="card-aprov-motivo" class="form-textarea" style="min-height:70px" placeholder="Descreva o que precisa ser ajustado..."></textarea>
                 <div id="card-aprov-motivo-erro" style="display:none;font-size:11px;color:#C70602;margin-top:3px">Motivo é obrigatório ao devolver.</div>
               </div>
-              <div class="form-group">
-                <label style="font-size:12px;font-weight:600;color:#1F1F1F;display:block;margin-bottom:4px">Orientação para o SAC <span style="font-weight:400;color:#666">(opcional)</span></label>
-                <textarea id="card-aprov-orientacao" class="form-textarea" style="min-height:55px" placeholder="Como a tratativa deve ser conduzida..."></textarea>
-              </div>
             </div>
-
-            <div id="card-aprov-actions" style="display:flex;gap:8px;margin-top:14px">
+            <!-- Ações -->
+            <div style="padding:12px 16px;display:flex;gap:8px;justify-content:flex-end">
+              <button onclick="document.getElementById('modal-ficha-card-aprovacao').style.display='none'" style="border:1px solid #D6D6D6;background:#fff;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Cancelar</button>
               <button onclick="cardAprovacaoEnviar()" id="card-aprov-btn-enviar"
-                style="background:#C70602;color:#fff;border:0;border-radius:7px;padding:9px 22px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;opacity:.5;pointer-events:none">
+                style="background:#C70602;color:#fff;border:0;border-radius:8px;padding:8px 22px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;opacity:.5;pointer-events:none">
                 Confirmar decisão
               </button>
             </div>
-            <div id="card-aprov-msg" style="display:none;margin-top:8px;font-size:12px"></div>
+            <div id="card-aprov-msg" style="display:none;margin:0 16px 12px;font-size:12px;border-radius:6px;padding:8px 12px"></div>
           </div>
 
           <!-- Aprovação do responsável do setor (legado) -->
@@ -3381,6 +3381,7 @@
             <div class="field"><label>Empresa *</label>
               <select id="cfg-empresa">
                 <option value="">Selecione</option>
+                <option value="TODAS AS EMPRESAS">Todas as empresas (acesso às 3)</option>
                 <option value="CHIACCHIO EMBALAGENS">Chiacchio Embalagens</option>
                 <option value="PLASCHIO">Plaschio</option>
                 <option value="TUBAHIA">Cesbap</option>
@@ -8711,16 +8712,51 @@ function fichaCarregarDados(item) {
     const aguardando = item.STATUS_FICHA === 'AGUARDANDO_APROVACAO';
     cardAprov.style.display = aguardando ? 'block' : 'none';
     if (aguardando) {
+      // Proposta do SAC
       const tratativa = item.TRATATIVA_SAC_INTERNA || item.TRATATIVA_SUGERIDA || item.TRATATIVA_REALIZADA || '(sem tratativa registrada)';
       const tEl = document.getElementById('card-aprov-tratativa-texto');
       if (tEl) tEl.textContent = tratativa;
-      // reset estado do card
+      // Relato do cliente
+      const relato = item.DESCRICAO || item.DESCRICAO_MANIFESTACAO || '';
+      const relatoWrap = document.getElementById('card-aprov-relato-wrap');
+      const relatoEl = document.getElementById('card-aprov-relato');
+      if (relatoWrap && relatoEl) { relatoEl.textContent = relato; relatoWrap.style.display = relato ? 'block' : 'none'; }
+      // Parecer do setor
+      const parecer = [item.RESP_SETOR_O_QUE, item.RESP_SETOR_RESOLUCAO].filter(Boolean).join(' · ');
+      const parecerWrap = document.getElementById('card-aprov-parecer-wrap');
+      const parecerEl = document.getElementById('card-aprov-parecer');
+      const parecerByEl = document.getElementById('card-aprov-parecer-by');
+      if (parecerWrap) {
+        if (parecerEl) parecerEl.textContent = parecer || '(sem parecer registrado)';
+        if (parecerByEl) parecerByEl.textContent = item.RESP_SETOR_RESPONSAVEL || '';
+        parecerWrap.style.display = 'block';
+      }
+      // Contexto compacto
+      const camposEl = document.getElementById('card-aprov-campos');
+      if (camposEl) {
+        const fmtData = v => v ? new Date(v).toLocaleDateString('pt-BR') : '';
+        const campos = [
+          ['CLIENTE', item.EMPRESA_RECLAMANTE || item.CONTATO || ''],
+          ['EMPRESA', item.EMPRESA_RECLAMADA || ''],
+          ['TIPO', item.TIPO || ''],
+          ['DATA', fmtData(item.DATA_REGISTRO || item.DATA_ABERTURA)],
+        ].filter(([,v]) => v);
+        camposEl.innerHTML = campos.map(([l,v]) =>
+          `<div><div style="font-size:10px;font-weight:700;letter-spacing:.06em;color:#929090">${l}</div><div style="font-size:13px">${v}</div></div>`
+        ).join('');
+      }
+      // Reset estado do card
       document.getElementById('card-aprov-decisao').value = '';
       document.getElementById('card-aprov-box-devolver').style.display = 'none';
       const btnEnviar = document.getElementById('card-aprov-btn-enviar');
       if (btnEnviar) { btnEnviar.style.opacity = '.5'; btnEnviar.style.pointerEvents = 'none'; }
       ['card-aprov-btn-aprovar','card-aprov-btn-seguir','card-aprov-btn-devolver'].forEach(id => {
-        const b = document.getElementById(id); if (b) { b.style.borderColor = '#D6D6D6'; b.style.background = '#fff'; }
+        const b = document.getElementById(id);
+        if (b) { b.style.borderColor = '#D6D6D6'; b.style.background = '#fff'; b.style.color = '#545252'; }
+      });
+      ['card-aprov-chk-aprovar','card-aprov-chk-seguir','card-aprov-chk-devolver'].forEach(id => {
+        const c = document.getElementById(id);
+        if (c) { c.style.borderColor = '#D6D6D6'; c.style.background = 'transparent'; c.textContent = ''; }
       });
       document.getElementById('card-aprov-msg').style.display = 'none';
     }
@@ -8729,16 +8765,26 @@ function fichaCarregarDados(item) {
 
 function cardAprovacaoSelecionar(decisao, btn) {
   document.getElementById('card-aprov-decisao').value = decisao;
-  ['card-aprov-btn-aprovar','card-aprov-btn-seguir','card-aprov-btn-devolver'].forEach(id => {
-    const b = document.getElementById(id);
-    if (b) { b.style.borderColor = '#D6D6D6'; b.style.background = '#fff'; }
+  const OPTS = {
+    APROVAR:         { btn:'card-aprov-btn-aprovar',  chk:'card-aprov-chk-aprovar',  gc:'#1E6B3A', bg:'#E6F2EA' },
+    SEGUIR_TRATATIVA:{ btn:'card-aprov-btn-seguir',   chk:'card-aprov-chk-seguir',   gc:'#24508F', bg:'#E6EEF8' },
+    DEVOLVER:        { btn:'card-aprov-btn-devolver',  chk:'card-aprov-chk-devolver', gc:'#C70602', bg:'#FDECEC' },
+  };
+  Object.entries(OPTS).forEach(([k, o]) => {
+    const b = document.getElementById(o.btn), c = document.getElementById(o.chk), on = k === decisao;
+    if (b) { b.style.borderColor = on?o.gc:'#D6D6D6'; b.style.background = on?o.bg:'#fff'; b.style.color = on?o.gc:'#545252'; }
+    if (c) { c.style.borderColor = on?o.gc:'#D6D6D6'; c.style.background = on?o.gc:'transparent'; c.textContent = on?'✓':''; }
   });
-  const cores = { APROVAR: ['#E6F2EA','#1E6B3A'], SEGUIR_TRATATIVA: ['#EFF6FF','#1D4ED8'], DEVOLVER: ['#FEF2F2','#C70602'] };
-  const [bg, border] = cores[decisao] || ['#F3F4F6','#6B7280'];
-  btn.style.background = bg; btn.style.borderColor = border;
-  document.getElementById('card-aprov-box-devolver').style.display = decisao === 'DEVOLVER' ? 'block' : 'none';
+  const obsBox = document.getElementById('card-aprov-box-devolver');
+  const obsLabel = document.getElementById('card-aprov-obs-label');
+  if (obsBox) obsBox.style.display = 'block';
+  if (obsLabel) {
+    if (decisao==='DEVOLVER') obsLabel.textContent = 'Motivo da devolução e orientação (obrigatório)';
+    else if (decisao==='SEGUIR_TRATATIVA') obsLabel.textContent = 'Observação sobre a continuidade (opcional)';
+    else obsLabel.textContent = 'Comentário adicional (opcional)';
+  }
   const btnEnviar = document.getElementById('card-aprov-btn-enviar');
-  if (btnEnviar) { btnEnviar.style.opacity = '1'; btnEnviar.style.pointerEvents = 'auto'; }
+  if (btnEnviar) { btnEnviar.style.opacity='1'; btnEnviar.style.pointerEvents='auto'; }
 }
 
 async function cardAprovacaoEnviar() {
@@ -8747,7 +8793,7 @@ async function cardAprovacaoEnviar() {
   const decisao = document.getElementById('card-aprov-decisao').value;
   if (!decisao) return;
   const motivo = document.getElementById('card-aprov-motivo')?.value.trim() || '';
-  const orientacao = document.getElementById('card-aprov-orientacao')?.value.trim() || '';
+  const orientacao = motivo;
   const erroEl = document.getElementById('card-aprov-motivo-erro');
   if (decisao === 'DEVOLVER' && !motivo) {
     if (erroEl) erroEl.style.display = 'block';
@@ -11187,8 +11233,8 @@ window.navigate = function(page, el) {
     'SETOR RESPONSÁVEL':['setor-responsavel','banco-rnc','base-conhecimento','cerebro'],
     // ESPECIALISTA — fila técnica + RNC + RCA
     'ESPECIALISTA':['setor-responsavel','banco-rnc','rca','base-conhecimento','cerebro'],
-    // APROVADOR — central do aprovador + RNC consulta
-    'APROVADOR':['aprovadores','banco-rnc'],
+    // APROVADOR — central do aprovador + RNC consulta + pesquisa de satisfação
+    'APROVADOR':['aprovadores','banco-rnc','sugestoes-melhoria'],
     // RCA — central de causa raiz
     'RCA / REPRESENTANTE':['representantes','rca','banco-rnc'],
     // DIRETOR — visão executiva (leitura)
