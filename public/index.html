@@ -5624,6 +5624,10 @@
     return (l.length?l:['Manter o acompanhamento mensal dos quatro critérios e das notas baixas registradas nas pesquisas.']).join('\n');
   }
   function _textoMes(r,p){
+    const textos=(_d&&_d.textos)||{};
+    const campo='mes_'+r.k.replace('-','_');
+    const salvo=String(textos[campo]||'').trim();
+    if(salvo) return salvo;
     let t='Indicador de '+f2(r.ind)+' com '+r.n+' respostas. Atendimento '+f2(r.at)+', prazo de entrega '+f2(r.pr)+', qualidade '+f2(r.qu)+' e recomendação '+f2(r.re)+'.';
     if(p){const d=r.ind-p.ind;t+=' Em relação a '+mword(p.k)+', o indicador '+(d>0.005?'subiu':d<-0.005?'recuou':'ficou estável')+' ('+f2(p.ind)+' → '+f2(r.ind)+').';}
     t+=r.ind>=_meta?' Resultado dentro da meta de '+metaTxt()+'.':' Resultado abaixo da meta de '+metaTxt()+'.';
@@ -5935,34 +5939,53 @@
     _toast('Texto salvo no relatório de '+mword(_refKey())+'.');
   };
 
+  function _rrmMeses(){
+    const s=_serie?_serie():[];
+    return s.slice().sort((a,b)=>b.k<a.k?-1:1).map(r=>{
+      const [ano,mes]=r.k.split('-');
+      const nomes=['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+      return {k:r.k,label:nomes[+mes]+'/'+(ano.slice(2)),n:r.n};
+    });
+  }
   window.relAbrirFormRelatorio=function(){
     const textos=(_d&&_d.textos)||{};
-    let m=document.getElementById('rel-modal-relatorio');
-    if(m){
-      // atualizar valores
-      SEC.forEach(([id])=>{
-        const ta=document.getElementById('rrm-'+id);
-        if(ta) ta.value=textos[id]||'';
-      });
-      m.style.display='flex';return;
+    const meses=_rrmMeses();
+    if(document.getElementById('rel-modal-relatorio')){
+      document.getElementById('rel-modal-relatorio').remove();
     }
-    m=document.createElement('div');m.id='rel-modal-relatorio';
+    const m=document.createElement('div');m.id='rel-modal-relatorio';
     m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9000;display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto';
-    const campos=SEC.map(([id,titulo])=>`
+    const camposGeral=SEC.map(([id,titulo])=>`
       <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:#545252">${esc(titulo)}
         <textarea id="rrm-${id}" rows="4" style="border:1px solid #D6D6D6;border-radius:7px;padding:8px 10px;font-size:13px;font-family:inherit;resize:vertical">${esc(textos[id]||'')}</textarea>
       </label>`).join('');
-    m.innerHTML=`<div style="background:#fff;border-radius:14px;padding:28px;width:100%;max-width:560px;display:flex;flex-direction:column;gap:16px;box-shadow:0 8px 32px rgba(0,0,0,.18);max-height:90vh;overflow-y:auto">
-      <div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:17px">Preencher relatório</b><button onclick="document.getElementById('rel-modal-relatorio').style.display='none'" style="border:0;background:none;font-size:22px;cursor:pointer;color:#929090;line-height:1">&times;</button></div>
-      <p style="margin:0;font-size:13px;color:#666464">Edite os textos analíticos do relatório. Deixe em branco para usar o texto gerado automaticamente pelos dados.</p>
-      <div style="display:flex;flex-direction:column;gap:12px">${campos}</div>
+    const camposMes=meses.map(({k,label,n})=>`
+      <div style="border:1px solid #E4E4E4;border-radius:9px;overflow:hidden">
+        <div style="background:#F8F8FA;padding:10px 14px;font-size:13px;font-weight:700;color:#1F1F1F;border-bottom:1px solid #E4E4E4">${esc(label)} <span style="font-weight:400;color:#929090;font-size:12px">${n} resposta${n!==1?'s':''}</span></div>
+        <textarea id="rrm-mes-${k}" rows="3" placeholder="Comentário para ${esc(label)} (opcional)" style="display:block;width:100%;border:0;padding:10px 14px;font-size:13px;font-family:inherit;resize:vertical;box-sizing:border-box">${esc(textos['mes_'+k.replace('-','_')]||'')}</textarea>
+      </div>`).join('');
+    m.innerHTML=`<div style="background:#fff;border-radius:14px;padding:28px;width:100%;max-width:600px;display:flex;flex-direction:column;gap:16px;box-shadow:0 8px 32px rgba(0,0,0,.18);max-height:92vh;overflow-y:auto">
+      <div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:17px">Preencher relatório</b><button onclick="document.getElementById('rel-modal-relatorio').remove()" style="border:0;background:none;font-size:22px;cursor:pointer;color:#929090;line-height:1">&times;</button></div>
+      <p style="margin:0;font-size:13px;color:#666464">Edite os textos analíticos. Deixe em branco para usar o texto gerado automaticamente pelos dados.</p>
+      <div style="display:flex;gap:0;border-bottom:2px solid #E4E4E4">
+        <button id="rrm-tab-geral" onclick="rrmTab('geral')" style="border:0;background:none;padding:9px 16px;font-size:13px;cursor:pointer;font-weight:700;color:#C70602;border-bottom:2px solid #C70602;margin-bottom:-2px;font-family:inherit">Geral</button>
+        <button id="rrm-tab-mensal" onclick="rrmTab('mensal')" style="border:0;background:none;padding:9px 16px;font-size:13px;cursor:pointer;font-weight:500;color:#666464;border-bottom:2px solid transparent;margin-bottom:-2px;font-family:inherit">Mês a mês</button>
+      </div>
+      <div id="rrm-panel-geral" style="display:flex;flex-direction:column;gap:12px">${camposGeral}</div>
+      <div id="rrm-panel-mensal" style="display:none;flex-direction:column;gap:10px">${camposMes||'<p style="color:#929090;font-size:13px">Nenhum mês com dados disponível.</p>'}</div>
       <div id="rrm-erro" style="color:#A80502;font-size:13px;display:none"></div>
       <div style="display:flex;gap:8px;justify-content:flex-end">
-        <button onclick="document.getElementById('rel-modal-relatorio').style.display='none'" style="border:1px solid #D6D6D6;background:#fff;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:13px;font-weight:600;font-family:inherit">Cancelar</button>
+        <button onclick="document.getElementById('rel-modal-relatorio').remove()" style="border:1px solid #D6D6D6;background:#fff;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:13px;font-weight:600;font-family:inherit">Cancelar</button>
         <button onclick="relSalvarFormRelatorio()" id="rrm-btn-salvar" style="border:0;background:#C70602;color:#fff;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:13px;font-weight:700;font-family:inherit">Salvar relatório</button>
       </div>
     </div>`;
     document.getElementById('page-relatorio-satisfacao').appendChild(m);
+  };
+  window.rrmTab=function(tab){
+    document.getElementById('rrm-panel-geral').style.display=tab==='geral'?'flex':'none';
+    document.getElementById('rrm-panel-mensal').style.display=tab==='mensal'?'flex':'none';
+    document.getElementById('rrm-tab-geral').style.cssText+=(tab==='geral'?';color:#C70602;font-weight:700;border-bottom:2px solid #C70602':';color:#666464;font-weight:500;border-bottom:2px solid transparent');
+    document.getElementById('rrm-tab-mensal').style.cssText+=(tab==='mensal'?';color:#C70602;font-weight:700;border-bottom:2px solid #C70602':';color:#666464;font-weight:500;border-bottom:2px solid transparent');
   };
 
   window.relSalvarFormRelatorio=async function(){
@@ -5974,6 +5997,7 @@
     const tok=sessionStorage.getItem('sac-token');
     if(btn){btn.disabled=true;btn.textContent='Salvando...';}
     try{
+      // Campos gerais
       for(const [id] of SEC){
         const ta=document.getElementById('rrm-'+id);
         const valor=(ta?ta.value:'').trim();
@@ -5986,7 +6010,23 @@
         if(!_d.textos)_d.textos={};
         _d.textos[id]=valor;
       }
-      document.getElementById('rel-modal-relatorio').style.display='none';
+      // Campos mês a mês
+      const meses=_rrmMeses();
+      for(const {k} of meses){
+        const ta=document.getElementById('rrm-mes-'+k);
+        if(!ta)continue;
+        const campo='mes_'+k.replace('-','_');
+        const valor=ta.value.trim();
+        const r=await fetch('/api/pesquisas/relatorio-texto',{
+          method:'POST',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/json'},
+          body:JSON.stringify({empresa,ano,mes,campo,valor})
+        });
+        const j=await r.json().catch(()=>({}));
+        if(!r.ok||j.sucesso===false){throw new Error(j.erro||'Erro ao salvar mês '+k+'.');}
+        if(!_d.textos)_d.textos={};
+        _d.textos[campo]=valor;
+      }
+      document.getElementById('rel-modal-relatorio').remove();
       _edit=null;_editTxt={};
       _renderizar();
       _toast('Relatório de '+mword(_refKey())+' atualizado.');
