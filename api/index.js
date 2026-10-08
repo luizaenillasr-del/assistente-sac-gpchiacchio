@@ -142,7 +142,7 @@ const EMPRESA_MAP = {
   CHIACCHIO: ['chiacchio embalagens', 'chiachio embalagens', 'chiacchio'],
   PLASCHIO:  ['plaschio'],
   TUBAHIA:   ['tubahia', 'cesbap'],
-  MASTER:    ['grupo chiacchio', 'todas', 'master'], // empresa do usu\u00e1rio MASTER = acesso global
+  MASTER:    ['grupo chiacchio', 'todas', 'master', 'todas as empresas'], // empresa do usu\u00e1rio MASTER = acesso global
 };
 
 // Coluna de empresa correta por aba
