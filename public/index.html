@@ -15787,7 +15787,7 @@ function auditExport() {
 // ── Centro das Pesquisas ───────────────────────────────────
 // Fonte: GET /api/pesquisas/relatorio (linhas da planilha de respostas, somente leitura).
 // Agregações (ano/mês, empresa, dashboard, comentários) calculadas no cliente.
-const _cp = { all: null, cols: null, filtered: [], page: 1 };
+const _cp = { all: null, cols: null, filtered: [], page: 1, loading: false, erro: null };
 const CP_MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 const CP_LIMITE = 6;
 function cpEsc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
@@ -15886,6 +15886,7 @@ function _cpAtualizarBanner(empKey) {
 }
 
 async function cpLoad() {
+  _cp.loading = true; _cp.erro = null;
   const tbody = document.getElementById('cp-tbody');
   if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:#8A8888">Carregando...</td></tr>';
 
@@ -15903,6 +15904,7 @@ async function cpLoad() {
   try {
     const d = await _apiFetch('/api/pesquisas/relatorio', 30000);
     if (d && d.sucesso === false) throw new Error(d.erro || 'erro');
+    _cp.loading = false; _cp.erro = null;
     _cp.all = cpPrepara(d.itens || []);
     const anos = [...new Set(_cp.all.map(r => r.ano).filter(Boolean))].sort((a, b) => b - a);
     const sa = document.getElementById('cp-f-ano'), sm = document.getElementById('cp-f-mes');
@@ -15912,13 +15914,15 @@ async function cpLoad() {
     sa.value = va; sm.value = vm;
     cpAplica();
   } catch (e) {
-    _cp.all = null;
-    const msg = e && e.message ? e.message : 'Erro desconhecido';
+    _cp.loading = false; _cp.all = null;
+    _cp.erro = e && e.message ? e.message : 'Erro desconhecido';
+    const msg = _cp.erro;
     if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:#A80502">'
       + 'Erro ao carregar pesquisas: ' + msg
       + '<br><button onclick="cpLoad()" style="margin-top:10px;border:1px solid #C70602;background:#fff;color:#C70602;border-radius:6px;padding:6px 14px;cursor:pointer;font-size:12px;font-family:inherit">Tentar novamente</button>'
       + '</td></tr>';
     console.error('cpLoad error', e);
+    cpRender(); // propaga erro para o painel ativo (ex: Dashboard)
   }
 }
 function cpAplica() {
@@ -15932,8 +15936,16 @@ function cpAplica() {
   cpRender();
 }
 function cpRender() {
-  if (!_cp.all) return;
   const vis = [...document.querySelectorAll('[id^="cp-panel-"]')].find(p => p.style.display !== 'none');
+  if (!_cp.all) {
+    if (_cp.loading) return; // silencioso enquanto carrega (tbody já mostra "Carregando...")
+    if (_cp.erro) {
+      // Propaga erro para Dashboard e outros painéis além do tbody
+      const errHtml = '<div style="color:#A80502;padding:20px 0">Erro ao carregar dados. <button onclick="cpLoad()" style="border:1px solid #C70602;background:#fff;color:#C70602;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px;font-family:inherit;margin-left:6px">Tentar novamente</button></div>';
+      ['cp-dash-kpis','cp-dash-crit','cp-dash-meses','cp-dash-hist'].forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = errHtml; });
+    }
+    return;
+  }
   const id = vis ? vis.id.replace('cp-panel-', '') : 'geral';
   if (id === 'geral') cpRenderGeral();
   else if (id === 'anomes') cpRenderArvore();
