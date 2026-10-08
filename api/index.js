@@ -2644,7 +2644,12 @@ app.get('/api/pesquisas/resumo', requerPerfil('MASTER','ANALISTA SAC','SETOR RES
 // ===== ROTAS: RELATÓRIO DE SATISFAÇÃO =====
 app.get('/api/pesquisas/relatorio', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','GESTOR SAC','ADMINISTRADOR','DIRETOR'), async (req, res) => {
   try {
-    const { empresa = '', ano, mes } = req.query;
+    let { empresa = '', ano, mes } = req.query;
+    // Não-MASTER só pode ver a empresa do próprio cadastro
+    const perfil = perfilCanonico(req.user?.perfil || '');
+    if (perfil !== 'MASTER' && req.user?.empresa) {
+      empresa = req.user.empresa;
+    }
     const todasRespostas = await lerAba('PESQUISA_RESPOSTAS', 5000).catch(()=>[]);
     // Normaliza para campos canônicos (sem duplicar campos uppercase e camelCase)
     const dados = todasRespostas.map(r => ({

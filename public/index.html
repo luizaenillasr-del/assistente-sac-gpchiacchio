@@ -4547,6 +4547,14 @@
 
   <!-- ===== SUGESTÕES DE MELHORIA ===== -->
   <div class="page" id="page-sugestoes-melhoria" style="background:#F4F4F4;overflow-y:auto">
+    <!-- Banner de identidade visual por empresa -->
+    <div id="cp-empresa-banner" style="display:none;padding:14px 24px 12px;border-bottom:3px solid #B9171A;background:#fff;display:flex;align-items:center;gap:14px">
+      <img id="cp-empresa-logo" src="" alt="" style="height:38px;width:auto;max-width:160px;display:block">
+      <div>
+        <div id="cp-empresa-label" style="font-size:11px;font-weight:700;letter-spacing:.08em;color:#666464">PESQUISA DE SATISFAÇÃO</div>
+        <div id="cp-empresa-nome" style="font-size:17px;font-weight:700;margin-top:1px"></div>
+      </div>
+    </div>
     <div style="padding:20px 24px 56px">
       <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:16px">
         <div>
@@ -5469,7 +5477,7 @@
   const MN=['','janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
   const MS=['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   const EMPRESAS=[['Chiacchio Embalagens','Chiacchio Embalagens'],['Plaschio','Plaschio'],['Tubahia','Cesbap']];
-  const LOGOS={'Chiacchio Embalagens':['/assets/logo-chiacchio.png','#B9171A'],'Plaschio':['/assets/logo-plaschio.svg','#B9171A'],'Tubahia':['/assets/logo-tubahia.svg','#2B2070']};
+  const LOGOS={'Chiacchio Embalagens':['/assets/logo-chiacchio-new.png','#B9171A'],'Plaschio':['/assets/logo-plaschio-new.png','#B9171A'],'Tubahia':['/assets/logo-tubahia-new.png','#2B2070']};
   const GREEN='#1E6B3A', RED='#C70602', AMB='#B07A12';
   const SEC=[['desempenho','Desempenho geral'],['analise_critica','Análise crítica dos resultados'],['pontos_fortes','Pontos fortes'],['oportunidades','Oportunidades de melhoria'],['acoes','Ações recomendadas']];
   const CR=[['ATENDIMENTO','at','atendimento'],['PRAZO DE ENTREGA','pr','prazo de entrega'],['QUALIDADE','qu','qualidade'],['RECOMENDAÇÃO','re','recomendação']];
@@ -5939,9 +5947,51 @@
     try{window.print();}catch(e){fim();}
   };
 
+  // Mapeia empresa do usuário para o valor usado nos chips
+  function _empFromUser(){
+    try{
+      const u=JSON.parse(sessionStorage.getItem('sac-user')||'{}');
+      const perfil=(u.perfil||'').toUpperCase();
+      if(perfil==='MASTER') return null; // MASTER vê todas
+      const emp=String(u.empresa||'').toUpperCase();
+      if(emp.includes('PLASCHIO')) return 'Plaschio';
+      if(emp.includes('CESBAP')||emp.includes('TUBAHIA')) return 'Tubahia';
+      if(emp.includes('CHIACCHIO')) return 'Chiacchio Embalagens';
+      return null;
+    }catch{return null;}
+  }
+
+  // Restringe chips de empresa com base no perfil: não-MASTER só vê a própria empresa
+  function _aplicarEscopoEmpresa(){
+    try{
+      const u=JSON.parse(sessionStorage.getItem('sac-user')||'{}');
+      const isMaster=(u.perfil||'').toUpperCase()==='MASTER';
+      const wrap=_val('rel-chips-empresa');
+      // Para não-MASTER: esconde o seletor de empresas e força a empresa do usuário
+      const areaFiltros=document.querySelector('#page-relatorio-satisfacao .rs-filtros');
+      if(!isMaster&&wrap){
+        const empUser=_empFromUser();
+        if(empUser){
+          const s=_val('rel-f-empresa');
+          if(s) s.value=empUser;
+          wrap.style.display='none'; // esconde chips de empresa
+        }
+      }else if(isMaster&&wrap){
+        wrap.style.display=''; // mostra chips para MASTER
+      }
+    }catch{}
+  }
+
   document.addEventListener('DOMContentLoaded',function(){
     _populaFiltros();
-    if(typeof pageLoaders!=='undefined') pageLoaders['relatorio-satisfacao']=function(){_populaFiltros();relCarregar();};
+    _aplicarEscopoEmpresa();
+    if(typeof pageLoaders!=='undefined') pageLoaders['relatorio-satisfacao']=function(){
+      const empUser=_empFromUser();
+      if(empUser){const s=_val('rel-f-empresa');if(s&&!s.value)s.value=empUser;}
+      _populaFiltros();
+      _aplicarEscopoEmpresa();
+      relCarregar();
+    };
   });
 
   window.relAbrirFormManual=function(){
@@ -14932,9 +14982,57 @@ function cpAbrirMes(ano, mes) {
   cpTab('geral', document.getElementById('cp-tab-btn-geral'));
   cpAplica();
 }
+// Config de identidade visual por empresa para o Centro de Pesquisas
+const _CP_BRANDS = {
+  'chiacchio': { logo: '/assets/logo-chiacchio-new.png', cor: '#B9171A', nome: 'Chiacchio Embalagens', filtro: 'Chiacchio' },
+  'plaschio':  { logo: '/assets/logo-plaschio-new.png',  cor: '#B9171A', nome: 'Plaschio', filtro: 'Plaschio' },
+  'cesbap':    { logo: '/assets/logo-tubahia-new.png',   cor: '#2B2070', nome: 'Cesbap / Tubahia', filtro: 'Cesbap' },
+};
+
+function _cpEmpresaUser() {
+  try {
+    const u = JSON.parse(sessionStorage.getItem('sac-user') || '{}');
+    if ((u.perfil || '').toUpperCase() === 'MASTER') return null;
+    const emp = String(u.empresa || '').toLowerCase();
+    if (emp.includes('plaschio')) return 'plaschio';
+    if (emp.includes('cesbap') || emp.includes('tubahia')) return 'cesbap';
+    if (emp.includes('chiacchio')) return 'chiacchio';
+    return null;
+  } catch { return null; }
+}
+
+function _cpAtualizarBanner(empKey) {
+  const banner = document.getElementById('cp-empresa-banner');
+  const logo = document.getElementById('cp-empresa-logo');
+  const nome = document.getElementById('cp-empresa-nome');
+  const borda = banner;
+  if (!banner) return;
+  if (empKey && _CP_BRANDS[empKey]) {
+    const b = _CP_BRANDS[empKey];
+    if (logo) { logo.src = b.logo; logo.alt = b.nome; }
+    if (nome) nome.textContent = b.nome;
+    banner.style.borderBottomColor = b.cor;
+    banner.style.display = 'flex';
+  } else {
+    banner.style.display = 'none';
+  }
+}
+
 async function cpLoad() {
   const tbody = document.getElementById('cp-tbody');
   if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:#8A8888">Carregando...</td></tr>';
+
+  // Aplicar escopo de empresa do usuário
+  const empKey = _cpEmpresaUser();
+  if (empKey && _CP_BRANDS[empKey]) {
+    const sel = document.getElementById('cp-f-empresa');
+    if (sel) sel.value = _CP_BRANDS[empKey].filtro;
+    // Esconder o filtro de empresa para não-MASTER
+    const label = sel && sel.closest('label');
+    if (label) label.style.display = 'none';
+  }
+  _cpAtualizarBanner(empKey);
+
   try {
     const d = await _apiFetch('/api/pesquisas/relatorio', 30000);
     if (d && d.sucesso === false) throw new Error(d.erro || 'erro');
@@ -14957,6 +15055,9 @@ function cpAplica() {
   const emp = document.getElementById('cp-f-empresa').value, ano = document.getElementById('cp-f-ano').value, mes = document.getElementById('cp-f-mes').value;
   _cp.filtered = _cp.all.filter(r => (!emp || cpEmpKey(r.emp) === emp) && (!ano || r.ano === +ano) && (!mes || r.mes === +mes));
   _cp.page = 1;
+  // Atualiza banner de identidade visual com a empresa filtrada (MASTER pode trocar)
+  const empKey = _cpEmpresaUser() || (emp ? emp.toLowerCase().replace(' embalagens','') : null);
+  if (typeof _cpAtualizarBanner === 'function') _cpAtualizarBanner(empKey && _CP_BRANDS && _CP_BRANDS[empKey] ? empKey : null);
   cpRender();
 }
 function cpRender() {
