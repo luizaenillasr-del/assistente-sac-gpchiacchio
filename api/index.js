@@ -1349,12 +1349,127 @@ app.patch('/api/manifestacoes/:id/ficha', requerPermissao('manifestacoes.editar'
         STATUS: 'ENCERRADA',
         DATA_CONCLUSAO_MANIFESTACAO: agora,
       };
+    } else if (acao === 'encaminhar_aprovacao') {
+      dados = {
+        STATUS_FICHA: 'AGUARDANDO_APROVACAO',
+        TRATATIVA_SAC_INTERNA: req.body.tratativaSACInterna || item.TRATATIVA_SAC_INTERNA || '',
+        DATA_ENCAMINHAMENTO: agora,
+      };
     } else {
       return res.status(400).json({ sucesso:false, erro:'Ação não reconhecida.' });
     }
     await atualizarPorID('MANIFESTACOES', id, dados, ['ID_MANIFESTACAO']);
     invalidarCacheAba('MANIFESTACOES');
     res.json({ sucesso:true });
+  } catch (e) { console.error(e); res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
+});
+
+
+// ============================================================
+// CARD DE APROVAÇÃO SAC
+// GET  /api/manifestacoes/:id/aprovacao — retorna dados filtrados por perfil
+// POST /api/manifestacoes/:id/aprovacao — grava decisão e muda status
+// ============================================================
+
+const STATUS_FICHA_LEGIVEL = {
+  ABERTA: 'Aberta', EM_ANDAMENTO: 'Em andamento', AGUARDANDO_APROVACAO: 'Aguardando aprovação',
+  AGUARDANDO_DEVOLUTIVA: 'Aguardando devolutiva', TRATATIVA_SAC: 'Em tratativa SAC', FECHADA: 'Fechada',
+};
+const DECISAO_APROVACAO_VALIDAS = ['APROVAR', 'SEGUIR_TRATATIVA', 'DEVOLVER'];
+
+function formatarDataBrasilia(isoStr) {
+  if (!isoStr) return '';
+  try {
+    return new Date(isoStr).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+  } catch { return isoStr; }
+}
+
+app.get('/api/manifestacoes/:id/aprovacao', middlewareEscopoEmpresa(), requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC','APROVADOR'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const todas = await lerAba('MANIFESTACOES', 2000);
+    const item = todas.find(r => r.ID_MANIFESTACAO === id);
+    if (!item) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
+    if (!pertenceEmpresa(req.user?.empresa, item.EMPRESA_RECLAMADA)) {
+      return res.status(403).json({ sucesso:false, erro:'Acesso negado: manifestação pertence a outra empresa.' });
+    }
+    const perfil = perfilCanonico(req.user?.perfil);
+    // Aprovador de setor só vê se a manifestação está aguardando aprovação
+    if (perfil === 'APROVADOR' && item.STATUS_FICHA !== 'AGUARDANDO_APROVACAO') {
+      return res.status(403).json({ sucesso:false, erro:'Esta manifestação não está aguardando aprovação do setor.' });
+    }
+    const card = {
+      idManifestacao: item.ID_MANIFESTACAO,
+      protocolo: item.ID_MANIFESTACAO,
+      statusFicha: item.STATUS_FICHA || 'ABERTA',
+      statusFichaLegivel: STATUS_FICHA_LEGIVEL[item.STATUS_FICHA] || item.STATUS_FICHA || 'Aberta',
+      status: item.STATUS || '',
+      dataRegistro: formatarDataBrasilia(item.DATA_REGISTRO || item.DATA_ABERTURA),
+      nomeCliente: item.EMPRESA_RECLAMANTE || item.CONTATO || '',
+      empresa: item.EMPRESA_RECLAMADA || '',
+      tipoManifestacao: item.TIPO || '',
+      motivoManifestacao: item.DESCRICAO || item.DESCRICAO_MANIFESTACAO || '',
+      caminhoTratativa: item.CAMINHO_TRATATIVA || '',
+      tratativaSACInterna: item.TRATATIVA_SAC_INTERNA || '',
+      tratativaSugerida: item.TRATATIVA_SUGERIDA || '',
+      procedente: item.PROCEDENTE || '',
+      procedenteJustificativa: item.PROCEDENTE_JUSTIFICATIVA || '',
+      setor: item.SETOR_SUGERIDO || item.SETORES_CONFIRMADOS || '',
+      respSetorOQue: item.RESP_SETOR_O_QUE || '',
+      respSetorCausa: item.RESP_SETOR_CAUSA || '',
+      respSetorResolucao: item.RESP_SETOR_RESOLUCAO || '',
+      respSetorResponsavel: item.RESP_SETOR_RESPONSAVEL || '',
+      dataRespostaSetor: formatarDataBrasilia(item.DATA_RESPOSTA_SETOR),
+      aprovSetorDecisao: item.APROV_SETOR_DECISAO || '',
+      aprovSetorMotivo: item.APROV_SETOR_MOTIVO || '',
+      aprovSetorOrientacao: item.APROV_SETOR_ORIENTACAO || '',
+    };
+    res.json({ sucesso:true, card });
+  } catch (e) { console.error(e); res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
+});
+
+app.post('/api/manifestacoes/:id/aprovacao', middlewareEscopoEmpresa(), requerPerfil('MASTER','GESTOR SAC','APROVADOR'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { decisao, motivo, orientacao } = req.body || {};
+    if (!DECISAO_APROVACAO_VALIDAS.includes(decisao)) {
+      return res.status(400).json({ sucesso:false, erro:'Decisão inválida. Use: APROVAR, SEGUIR_TRATATIVA ou DEVOLVER.' });
+    }
+    if (decisao === 'DEVOLVER' && !motivo?.trim()) {
+      return res.status(422).json({ sucesso:false, erro:'Motivo obrigatório ao devolver para ajuste.' });
+    }
+    const todas = await lerAba('MANIFESTACOES', 2000);
+    const item = todas.find(r => r.ID_MANIFESTACAO === id);
+    if (!item) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
+    if (!pertenceEmpresa(req.user?.empresa, item.EMPRESA_RECLAMADA)) {
+      return res.status(403).json({ sucesso:false, erro:'Acesso negado: manifestação pertence a outra empresa.' });
+    }
+    const perfil = perfilCanonico(req.user?.perfil);
+    if (perfil === 'APROVADOR' && item.STATUS_FICHA !== 'AGUARDANDO_APROVACAO') {
+      return res.status(403).json({ sucesso:false, erro:'Esta manifestação não está aguardando aprovação do setor.' });
+    }
+    const agora = new Date().toISOString();
+    let novoStatusFicha, novoStatus;
+    if (decisao === 'APROVAR' || decisao === 'SEGUIR_TRATATIVA') {
+      novoStatusFicha = 'AGUARDANDO_DEVOLUTIVA';
+      novoStatus = 'AGUARDANDO_DEVOLUTIVA';
+    } else { // DEVOLVER
+      novoStatusFicha = 'TRATATIVA_SAC';
+      novoStatus = item.STATUS || 'EM ANÁLISE';
+    }
+    await garantirAbaComCabecalhos('MANIFESTACOES', ['ID_MANIFESTACAO','STATUS_FICHA','APROV_SETOR_DECISAO','APROV_SETOR_MOTIVO','APROV_SETOR_ORIENTACAO','DATA_APROVACAO_SETOR','APROVADOR_USUARIO','STATUS']).catch(()=>{});
+    await atualizarPorID('MANIFESTACOES', id, {
+      STATUS_FICHA: novoStatusFicha,
+      STATUS: novoStatus,
+      APROV_SETOR_DECISAO: decisao,
+      APROV_SETOR_MOTIVO: motivo || '',
+      APROV_SETOR_ORIENTACAO: orientacao || '',
+      DATA_APROVACAO_SETOR: agora,
+      APROVADOR_USUARIO: req.user?.usuario || '',
+    }, ['ID_MANIFESTACAO']);
+    invalidarCacheAba('MANIFESTACOES');
+    await registrarAuditoria(req.user?.usuario || 'sistema', 'APROVACAO_SAC_' + decisao, id, 'MANIFESTACOES', item.STATUS_FICHA, { novoStatusFicha, decisao, motivo: motivo || '', orientacao: orientacao || '' });
+    res.json({ sucesso:true, id, decisao, statusFicha: novoStatusFicha, statusFichaLegivel: STATUS_FICHA_LEGIVEL[novoStatusFicha] || novoStatusFicha });
   } catch (e) { console.error(e); res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
 
@@ -1733,6 +1848,7 @@ app.post('/api/setores', requerPerfil('MASTER'), async(req,res)=>{
 app.patch('/api/setores/:id', requerPerfil('MASTER'), async(req,res)=>{
   try {
     const id = req.params.id;
+    await garantirAbaComCabecalhos('CONFIG_SETORES',['ID_SETOR','SETOR','EMPRESA','DESCRICAO','RESPONSAVEL','SLA_HORAS','ATIVO']).catch(()=>{});
     const campos = ['SETOR','DESCRICAO','RESPONSAVEL','EMPRESA','SLA_HORAS','ATIVO'];
     const dados = {};
     campos.forEach(c => { if (req.body[c] !== undefined) dados[c] = req.body[c]; });

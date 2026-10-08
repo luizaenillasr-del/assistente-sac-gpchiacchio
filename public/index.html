@@ -762,7 +762,87 @@
             <div id="modal-ficha-s6-msg" style="display:none;margin-top:8px;font-size:12px"></div>
           </div>
 
-          <!-- Aprovação do responsável do setor -->
+          <!-- ── ENCAMINHAR PARA APROVAÇÃO (SAC) ── -->
+          <div id="modal-ficha-encaminhar-aprov" style="display:none;border:1.5px solid #E4E4E4;border-radius:10px;padding:16px;margin-bottom:14px;background:#F9FAFB">
+            <div style="font-size:13px;font-weight:700;color:#1F1F1F;margin-bottom:8px">Encaminhar para Aprovação do Setor</div>
+            <div style="font-size:12px;color:#545252;margin-bottom:12px">Envie a tratativa proposta ao aprovador do setor para validação antes da devolutiva ao cliente.</div>
+            <div class="form-group" style="margin-bottom:10px">
+              <label style="font-size:12px;font-weight:600;color:#1F1F1F;display:block;margin-bottom:4px">Tratativa proposta pelo SAC <span style="color:#C70602">*</span></label>
+              <textarea id="modal-encaminhar-tratativa" class="form-textarea" style="min-height:80px" placeholder="Descreva a tratativa que o SAC propõe para esta manifestação..."></textarea>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <button onclick="fichaEncaminharParaAprovacao()" style="background:#C70602;color:#fff;border:0;border-radius:7px;padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Encaminhar para aprovação</button>
+            </div>
+            <div id="modal-encaminhar-aprov-msg" style="display:none;margin-top:8px;font-size:12px;border-radius:6px;padding:8px 12px"></div>
+          </div>
+
+          <!-- ── CARD DE APROVAÇÃO SAC ── -->
+          <div id="modal-ficha-card-aprovacao" style="border:2px solid #F59E0B;border-radius:12px;padding:18px;margin-bottom:14px;background:#FFFBEB">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2.2"><path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+              <span style="font-size:13px;font-weight:700;color:#92400E">Aprovação do Setor — Aguardando decisão</span>
+            </div>
+            <div style="font-size:12px;color:#78350F;margin-bottom:14px">O SAC propôs uma tratativa para esta manifestação. Como aprovador do setor, escolha uma das opções abaixo.</div>
+
+            <!-- Resumo da tratativa proposta -->
+            <div id="card-aprov-resumo" style="background:#fff;border:1px solid #FDE68A;border-radius:8px;padding:12px;margin-bottom:14px">
+              <div style="font-size:11px;font-weight:700;color:#D97706;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Tratativa proposta pelo SAC</div>
+              <div id="card-aprov-tratativa-texto" style="font-size:13px;color:#1F1F1F;line-height:1.5">—</div>
+            </div>
+
+            <!-- Três caminhos -->
+            <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
+              <button onclick="cardAprovacaoSelecionar('APROVAR',this)" id="card-aprov-btn-aprovar"
+                style="display:flex;align-items:flex-start;gap:10px;text-align:left;border:2px solid #D6D6D6;background:#fff;border-radius:10px;padding:12px 16px;cursor:pointer;font-family:inherit;transition:all .15s">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1E6B3A" stroke-width="2.5" style="margin-top:1px;flex-shrink:0"><polyline points="20 6 9 17 4 12"/></svg>
+                <div>
+                  <div style="font-size:13px;font-weight:700;color:#1E6B3A">Aprovar tratativa</div>
+                  <div style="font-size:11.5px;color:#555;margin-top:2px">A tratativa está correta. Avançar para devolutiva ao cliente.</div>
+                </div>
+              </button>
+              <button onclick="cardAprovacaoSelecionar('SEGUIR_TRATATIVA',this)" id="card-aprov-btn-seguir"
+                style="display:flex;align-items:flex-start;gap:10px;text-align:left;border:2px solid #D6D6D6;background:#fff;border-radius:10px;padding:12px 16px;cursor:pointer;font-family:inherit;transition:all .15s">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1D4ED8" stroke-width="2" style="margin-top:1px;flex-shrink:0"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                <div>
+                  <div style="font-size:13px;font-weight:700;color:#1D4ED8">Seguir com a tratativa do SAC</div>
+                  <div style="font-size:11.5px;color:#555;margin-top:2px">Prosseguir exatamente como o SAC propôs, sem alterações.</div>
+                </div>
+              </button>
+              <button onclick="cardAprovacaoSelecionar('DEVOLVER',this)" id="card-aprov-btn-devolver"
+                style="display:flex;align-items:flex-start;gap:10px;text-align:left;border:2px solid #D6D6D6;background:#fff;border-radius:10px;padding:12px 16px;cursor:pointer;font-family:inherit;transition:all .15s">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C70602" stroke-width="2" style="margin-top:1px;flex-shrink:0"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-4.5L1 10"/></svg>
+                <div>
+                  <div style="font-size:13px;font-weight:700;color:#C70602">Devolver para ajuste</div>
+                  <div style="font-size:11.5px;color:#555;margin-top:2px">A tratativa precisa ser revisada pelo SAC. Informe o motivo.</div>
+                </div>
+              </button>
+            </div>
+
+            <input type="hidden" id="card-aprov-decisao" value="">
+
+            <!-- Campos de devolver (condicional) -->
+            <div id="card-aprov-box-devolver" style="display:none;border-top:1px solid #FDE68A;padding-top:12px;margin-top:4px">
+              <div class="form-group" style="margin-bottom:10px">
+                <label style="font-size:12px;font-weight:600;color:#1F1F1F;display:block;margin-bottom:4px">Motivo da devolução <span style="color:#C70602">*</span></label>
+                <textarea id="card-aprov-motivo" class="form-textarea" style="min-height:70px;border-color:#FCD34D" placeholder="Descreva o que precisa ser ajustado na tratativa..."></textarea>
+                <div id="card-aprov-motivo-erro" style="display:none;font-size:11px;color:#C70602;margin-top:3px">Motivo é obrigatório ao devolver.</div>
+              </div>
+              <div class="form-group">
+                <label style="font-size:12px;font-weight:600;color:#1F1F1F;display:block;margin-bottom:4px">Orientação para o SAC <span style="font-weight:400;color:#666">(opcional)</span></label>
+                <textarea id="card-aprov-orientacao" class="form-textarea" style="min-height:55px" placeholder="Como a tratativa deve ser conduzida..."></textarea>
+              </div>
+            </div>
+
+            <div id="card-aprov-actions" style="display:flex;gap:8px;margin-top:14px">
+              <button onclick="cardAprovacaoEnviar()" id="card-aprov-btn-enviar"
+                style="background:#C70602;color:#fff;border:0;border-radius:7px;padding:9px 22px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;opacity:.5;pointer-events:none">
+                Confirmar decisão
+              </button>
+            </div>
+            <div id="card-aprov-msg" style="display:none;margin-top:8px;font-size:12px"></div>
+          </div>
+
+          <!-- Aprovação do responsável do setor (legado) -->
           <div id="modal-ficha-aprov" style="border:1.5px solid #E4E4E4;border-radius:10px;padding:16px;margin-bottom:14px">
             <div style="font-size:13px;font-weight:700;color:#C70602;margin-bottom:12px">Validação do Responsável do Setor</div>
             <div style="font-size:12px;color:#545252;margin-bottom:12px">O aprovador / responsável do setor valida se a tratativa é adequada antes do fechamento.</div>
@@ -8591,7 +8671,6 @@ function nmSetCaminhoTratativa(caminho, btn) {
 function fichaCarregarDados(item) {
   if (!item) return;
   const s = (id, v) => { const e = document.getElementById(id); if (e) e.value = v || ''; };
-  const t = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v || '--'; };
   s('ficha-s6-o-que', item.RESP_SETOR_O_QUE);
   s('ficha-s6-causa', item.RESP_SETOR_CAUSA);
   s('ficha-s6-resolucao', item.RESP_SETOR_RESOLUCAO);
@@ -8614,6 +8693,95 @@ function fichaCarregarDados(item) {
   }
   s('ficha-aprov-motivo', item.APROV_SETOR_MOTIVO);
   s('ficha-aprov-orientacao', item.APROV_SETOR_ORIENTACAO);
+
+  // Painel encaminhar para aprovação — visível para SAC quando ainda não encaminhou
+  const panelEncaminhar = document.getElementById('modal-ficha-encaminhar-aprov');
+  if (panelEncaminhar) {
+    const podeEncaminhar = !['AGUARDANDO_APROVACAO','AGUARDANDO_DEVOLUTIVA','FECHADA'].includes(item.STATUS_FICHA);
+    panelEncaminhar.style.display = podeEncaminhar ? 'block' : 'none';
+    if (podeEncaminhar) {
+      const t = document.getElementById('modal-encaminhar-tratativa');
+      if (t) t.value = item.TRATATIVA_SAC_INTERNA || item.TRATATIVA_REALIZADA || '';
+    }
+  }
+
+  // Card de Aprovação SAC — mostrar apenas quando STATUS_FICHA = AGUARDANDO_APROVACAO e sem decisão prévia
+  const cardAprov = document.getElementById('modal-ficha-card-aprovacao');
+  if (cardAprov) {
+    const aguardando = item.STATUS_FICHA === 'AGUARDANDO_APROVACAO';
+    cardAprov.style.display = aguardando ? 'block' : 'none';
+    if (aguardando) {
+      const tratativa = item.TRATATIVA_SAC_INTERNA || item.TRATATIVA_SUGERIDA || item.TRATATIVA_REALIZADA || '(sem tratativa registrada)';
+      const tEl = document.getElementById('card-aprov-tratativa-texto');
+      if (tEl) tEl.textContent = tratativa;
+      // reset estado do card
+      document.getElementById('card-aprov-decisao').value = '';
+      document.getElementById('card-aprov-box-devolver').style.display = 'none';
+      const btnEnviar = document.getElementById('card-aprov-btn-enviar');
+      if (btnEnviar) { btnEnviar.style.opacity = '.5'; btnEnviar.style.pointerEvents = 'none'; }
+      ['card-aprov-btn-aprovar','card-aprov-btn-seguir','card-aprov-btn-devolver'].forEach(id => {
+        const b = document.getElementById(id); if (b) { b.style.borderColor = '#D6D6D6'; b.style.background = '#fff'; }
+      });
+      document.getElementById('card-aprov-msg').style.display = 'none';
+    }
+  }
+}
+
+function cardAprovacaoSelecionar(decisao, btn) {
+  document.getElementById('card-aprov-decisao').value = decisao;
+  ['card-aprov-btn-aprovar','card-aprov-btn-seguir','card-aprov-btn-devolver'].forEach(id => {
+    const b = document.getElementById(id);
+    if (b) { b.style.borderColor = '#D6D6D6'; b.style.background = '#fff'; }
+  });
+  const cores = { APROVAR: ['#E6F2EA','#1E6B3A'], SEGUIR_TRATATIVA: ['#EFF6FF','#1D4ED8'], DEVOLVER: ['#FEF2F2','#C70602'] };
+  const [bg, border] = cores[decisao] || ['#F3F4F6','#6B7280'];
+  btn.style.background = bg; btn.style.borderColor = border;
+  document.getElementById('card-aprov-box-devolver').style.display = decisao === 'DEVOLVER' ? 'block' : 'none';
+  const btnEnviar = document.getElementById('card-aprov-btn-enviar');
+  if (btnEnviar) { btnEnviar.style.opacity = '1'; btnEnviar.style.pointerEvents = 'auto'; }
+}
+
+async function cardAprovacaoEnviar() {
+  const m = _dossieItem;
+  if (!m?.ID_MANIFESTACAO) return;
+  const decisao = document.getElementById('card-aprov-decisao').value;
+  if (!decisao) return;
+  const motivo = document.getElementById('card-aprov-motivo')?.value.trim() || '';
+  const orientacao = document.getElementById('card-aprov-orientacao')?.value.trim() || '';
+  const erroEl = document.getElementById('card-aprov-motivo-erro');
+  if (decisao === 'DEVOLVER' && !motivo) {
+    if (erroEl) erroEl.style.display = 'block';
+    document.getElementById('card-aprov-motivo').focus();
+    return;
+  }
+  if (erroEl) erroEl.style.display = 'none';
+  const msg = document.getElementById('card-aprov-msg');
+  const btnEnviar = document.getElementById('card-aprov-btn-enviar');
+  btnEnviar.textContent = 'Enviando...'; btnEnviar.style.opacity = '.7'; btnEnviar.style.pointerEvents = 'none';
+  msg.style.display = 'none';
+  try {
+    const r = await _apiFetch(`/api/manifestacoes/${encodeURIComponent(m.ID_MANIFESTACAO)}/aprovacao`, 30000, {
+      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ decisao, motivo, orientacao })
+    });
+    msg.style.display = 'block';
+    msg.style.background = r.sucesso ? '#E6F2EA' : '#FEF2F2';
+    msg.style.color = r.sucesso ? '#1E6B3A' : '#C70602';
+    msg.style.borderRadius = '6px'; msg.style.padding = '8px 12px';
+    if (r.sucesso) {
+      const textos = { APROVAR: '✓ Tratativa aprovada. Manifestação avança para devolutiva.', SEGUIR_TRATATIVA: '✓ Confirmado: seguir com a tratativa do SAC.', DEVOLVER: '↩ Devolvida ao SAC com o motivo informado.' };
+      msg.textContent = textos[decisao] || '✓ Decisão registrada.';
+      if (_dossieItem) _dossieItem.STATUS_FICHA = r.statusFicha || decisao;
+      document.getElementById('modal-ficha-card-aprovacao').style.display = 'none';
+      btnEnviar.textContent = 'Confirmar decisão';
+    } else {
+      msg.textContent = 'Erro: ' + (r.erro || 'Falha ao registrar decisão.');
+      btnEnviar.textContent = 'Confirmar decisão'; btnEnviar.style.opacity = '1'; btnEnviar.style.pointerEvents = 'auto';
+    }
+  } catch(e) {
+    msg.style.display = 'block'; msg.style.background = '#FEF2F2'; msg.style.color = '#C70602';
+    msg.textContent = 'Erro: ' + e.message;
+    btnEnviar.textContent = 'Confirmar decisão'; btnEnviar.style.opacity = '1'; btnEnviar.style.pointerEvents = 'auto';
+  }
 }
 
 function fichaSetAprovador(decisao, btn) {
@@ -8694,6 +8862,34 @@ async function fichaGravarValidacaoSAC() {
     msg.style.display = 'block'; msg.style.background = r.sucesso ? '#E6F2EA' : '#FEF2F2';
     msg.style.color = r.sucesso ? '#1E6B3A' : '#C70602';
     msg.textContent = r.sucesso ? '✓ Manifestação fechada com sucesso.' : ('Erro: ' + r.erro);
+  } catch(e) { msg.style.display='block'; msg.style.background='#FEF2F2'; msg.style.color='#C70602'; msg.textContent='Erro: '+e.message; }
+}
+
+async function fichaEncaminharParaAprovacao() {
+  const m = _dossieItem;
+  if (!m?.ID_MANIFESTACAO) return;
+  const tratativa = document.getElementById('modal-encaminhar-tratativa')?.value.trim() || '';
+  const msg = document.getElementById('modal-encaminhar-aprov-msg');
+  if (!tratativa) { msg.style.display='block'; msg.style.background='#FEF2F2'; msg.style.color='#C70602'; msg.textContent='Preencha a tratativa antes de encaminhar.'; return; }
+  msg.style.display = 'none';
+  try {
+    const r = await _apiFetch(`/api/manifestacoes/${encodeURIComponent(m.ID_MANIFESTACAO)}/ficha`, 30000, {
+      method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ acao:'encaminhar_aprovacao', tratativaSACInterna:tratativa })
+    });
+    msg.style.display = 'block';
+    msg.style.background = r.sucesso ? '#E6F2EA' : '#FEF2F2';
+    msg.style.color = r.sucesso ? '#1E6B3A' : '#C70602';
+    if (r.sucesso) {
+      msg.textContent = '✓ Encaminhado para aprovação do setor.';
+      if (_dossieItem) { _dossieItem.STATUS_FICHA = 'AGUARDANDO_APROVACAO'; _dossieItem.TRATATIVA_SAC_INTERNA = tratativa; }
+      document.getElementById('modal-ficha-encaminhar-aprov').style.display = 'none';
+      const cardAprov = document.getElementById('modal-ficha-card-aprovacao');
+      if (cardAprov) cardAprov.style.display = 'block';
+      const tEl = document.getElementById('card-aprov-tratativa-texto');
+      if (tEl) tEl.textContent = tratativa;
+    } else {
+      msg.textContent = 'Erro: ' + (r.erro || 'Falha ao encaminhar.');
+    }
   } catch(e) { msg.style.display='block'; msg.style.background='#FEF2F2'; msg.style.color='#C70602'; msg.textContent='Erro: '+e.message; }
 }
 
