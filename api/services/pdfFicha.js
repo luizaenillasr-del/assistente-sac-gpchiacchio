@@ -103,10 +103,11 @@ async function gerarFichaPDF(dados) {
     doc.save().rect(0, 0, 595.28, 60).fillColor(DARK).fill().restore();
 
     // Logo
-    try {
-      doc.image(LOGO_BUF, ML, 10, { height: 38, fit: [160, 38] });
-    } catch (e) {
-      doc.save().fillColor(RED).fontSize(14).font('Helvetica-Bold')
+    if (LOGO_BUF) {
+      try { doc.image(LOGO_BUF, ML, 10, { height: 38, fit: [160, 38] }); } catch (e) { /* fallback abaixo */ }
+    }
+    if (!LOGO_BUF) {
+      doc.save().fillColor('white').fontSize(14).font('Helvetica-Bold')
         .text('GRUPO CHIACCHIO', ML, 22).restore();
     }
 

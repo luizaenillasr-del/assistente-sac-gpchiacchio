@@ -1733,6 +1733,7 @@ app.post('/api/setores', requerPerfil('MASTER'), async(req,res)=>{
 app.patch('/api/setores/:id', requerPerfil('MASTER'), async(req,res)=>{
   try {
     const id = req.params.id;
+    await garantirAbaComCabecalhos('CONFIG_SETORES',['ID_SETOR','SETOR','EMPRESA','DESCRICAO','RESPONSAVEL','SLA_HORAS','ATIVO']).catch(()=>{});
     const campos = ['SETOR','DESCRICAO','RESPONSAVEL','EMPRESA','SLA_HORAS','ATIVO'];
     const dados = {};
     campos.forEach(c => { if (req.body[c] !== undefined) dados[c] = req.body[c]; });
