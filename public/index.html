@@ -5940,11 +5940,20 @@
   };
 
   function _rrmMeses(){
+    const nomes=['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
     const s=_serie?_serie():[];
-    return s.slice().sort((a,b)=>b.k<a.k?-1:1).map(r=>{
-      const [ano,mes]=r.k.split('-');
-      const nomes=['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-      return {k:r.k,label:nomes[+mes]+'/'+(ano.slice(2)),n:r.n};
+    if(s.length){
+      return s.slice().sort((a,b)=>b.k<a.k?-1:1).map(r=>{
+        const [ano,mes]=r.k.split('-');
+        return {k:r.k,label:nomes[+mes]+'/'+(ano.slice(2)),n:r.n};
+      });
+    }
+    // Fallback: gera os últimos 12 meses para preenchimento manual
+    const agora=new Date();
+    return Array.from({length:12},(_,i)=>{
+      const d=new Date(agora.getFullYear(),agora.getMonth()-i,1);
+      const k=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+      return {k,label:nomes[d.getMonth()+1]+'/'+(String(d.getFullYear()).slice(2)),n:0};
     });
   }
   window.relAbrirFormRelatorio=function(){
