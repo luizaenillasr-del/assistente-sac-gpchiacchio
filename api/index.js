@@ -1226,7 +1226,7 @@ app.post('/api/manifestacoes', requerPermissao('manifestacoes.abrir'), async (re
     const empNorm = normalizarEmpresa(empresaReclamada);
     // Não bloqueia na criação de colunas — a aba já existe em produção
     // RNC_SINALIZADO: campo novo para indicar que o caso merece revisão de RNC (B6)
-    garantirAbaComCabecalhos('MANIFESTACOES',['ID_MANIFESTACAO','DATA_ABERTURA','DATA_REGISTRO','EMPRESA_RECLAMANTE','CONTATO','PRODUTO','LOTE','NFE','DESCRICAO','DESCRICAO_MANIFESTACAO','STATUS','TIPO','TIPO_SUGERIDO','SETOR_SUGERIDO','SETORES_SUGERIDOS','PROCEDIMENTO_SUGERIDO','SLA_HORAS','PRIORIDADE','RNC_SUGERIDO','RNC_SINALIZADO','EMPRESA_RECLAMADA','CANAL','CNPJ','TELEFONE','EMAIL','QUANTIDADE','VALOR','TRATATIVA_SUGERIDA','TRATATIVA_APLICAVEL','TRATATIVA_REALIZADA','STATUS_TRATATIVA','DEVOLUTIVA_SUGERIDA','DEVOLUTIVA_FINAL','DEVOLUTIVA_ENVIADA','ORIGEM_DOCUMENTO','ARQUIVO_ORIGEM','USUARIO_CRIACAO','ORIGEM','TIPO_CONFIRMADO','SETORES_CONFIRMADOS','ID_PROCEDIMENTO_APLICADO','GERA_RNC','DATA_INICIO_TRATATIVA','DATA_CONCLUSAO_TRATATIVA','DATA_DEVOLUTIVA','DATA_CONCLUSAO_MANIFESTACAO']).catch(()=>{});
+    garantirAbaComCabecalhos('MANIFESTACOES',['ID_MANIFESTACAO','DATA_ABERTURA','DATA_REGISTRO','EMPRESA_RECLAMANTE','CONTATO','PRODUTO','LOTE','NFE','DESCRICAO','DESCRICAO_MANIFESTACAO','STATUS','TIPO','TIPO_SUGERIDO','SETOR_SUGERIDO','SETORES_SUGERIDOS','PROCEDIMENTO_SUGERIDO','SLA_HORAS','PRIORIDADE','RNC_SUGERIDO','RNC_SINALIZADO','EMPRESA_RECLAMADA','CANAL','CNPJ','TELEFONE','EMAIL','QUANTIDADE','VALOR','TRATATIVA_SUGERIDA','TRATATIVA_APLICAVEL','TRATATIVA_REALIZADA','STATUS_TRATATIVA','DEVOLUTIVA_SUGERIDA','DEVOLUTIVA_FINAL','DEVOLUTIVA_ENVIADA','ORIGEM_DOCUMENTO','ARQUIVO_ORIGEM','USUARIO_CRIACAO','ORIGEM','TIPO_CONFIRMADO','SETORES_CONFIRMADOS','ID_PROCEDIMENTO_APLICADO','GERA_RNC','DATA_INICIO_TRATATIVA','DATA_CONCLUSAO_TRATATIVA','DATA_DEVOLUTIVA','DATA_CONCLUSAO_MANIFESTACAO','STATUS_FICHA','PROCEDENTE','PROCEDENTE_JUSTIFICATIVA','CAMINHO_TRATATIVA','DATA_ENCAMINHAMENTO','PRAZO_RETORNO_SAC','TRATATIVA_SAC_INTERNA','RESP_SETOR_O_QUE','RESP_SETOR_CAUSA','RESP_SETOR_RESOLUCAO','RESP_SETOR_ACAO_PREV','RESP_SETOR_RESPONSAVEL','RESP_SETOR_PRAZO','DATA_RESPOSTA_SETOR','APROV_SETOR_DECISAO','APROV_SETOR_MOTIVO','APROV_SETOR_ORIENTACAO','VALID_SAC_DATA_RETORNO','VALID_SAC_CLIENTE_INFORMADO','VALID_SAC_RESOLVIDA','OBSERVACOES_FINAIS','DATA_VALIDACAO_SAC']).catch(()=>{});
     const id = await gerarProximoID('MANIFESTACOES','MAN','ID_MANIFESTACAO');
     const agora = new Date().toISOString();
     const tipoFinal = tipo || 'Reclamação';
@@ -1241,6 +1241,13 @@ app.post('/api/manifestacoes', requerPermissao('manifestacoes.abrir'), async (re
       DEVOLUTIVA_SUGERIDA:'', DEVOLUTIVA_FINAL:'', DEVOLUTIVA_ENVIADA:'',
       ORIGEM_DOCUMENTO:origemDocumento||'', ARQUIVO_ORIGEM:arquivoOrigem||'',
       USUARIO_CRIACAO:usuario||req.user?.usuario||'sistema', ORIGEM:req.body.origem||'SAC',
+      STATUS_FICHA:req.body.statusFicha||'ABERTA',
+      PROCEDENTE:req.body.procedente||'',
+      PROCEDENTE_JUSTIFICATIVA:req.body.procedenteJustificativa||'',
+      CAMINHO_TRATATIVA:req.body.caminhoTratativa||'',
+      DATA_ENCAMINHAMENTO:req.body.dataEncaminhamento||'',
+      PRAZO_RETORNO_SAC:req.body.prazoRetornoSAC||'72 horas',
+      TRATATIVA_SAC_INTERNA:req.body.tratativaSACInterna||'',
     };
     await appendObjeto('MANIFESTACOES', objeto);
     // B3: dual-write para PostgreSQL — rastreia sucesso/falha (não-bloqueante)
@@ -1301,6 +1308,56 @@ app.post('/api/manifestacoes', requerPermissao('manifestacoes.abrir'), async (re
     res.json({ sucesso:true, id, analise, mensagem:'Manifestação registrada e analisada com sucesso.' });
   } catch (e) { console.error(e); res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
+
+// Ficha de encaminhamento — atualização por seção
+app.patch('/api/manifestacoes/:id/ficha', requerPermissao('manifestacoes.editar'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { acao } = req.body;
+    const todas = await lerAba('MANIFESTACOES', 2000);
+    const item = todas.find(r => r.ID_MANIFESTACAO === id);
+    if (!item) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
+    const agora = new Date().toISOString();
+    let dados = {};
+    if (acao === 'resposta_setor') {
+      dados = {
+        RESP_SETOR_O_QUE: req.body.respSetorOQue || '',
+        RESP_SETOR_CAUSA: req.body.respSetorCausa || '',
+        RESP_SETOR_RESOLUCAO: req.body.respSetorResolucao || '',
+        RESP_SETOR_ACAO_PREV: req.body.respSetorAcaoPrev || '',
+        RESP_SETOR_RESPONSAVEL: req.body.respSetorResponsavel || '',
+        RESP_SETOR_PRAZO: req.body.respSetorPrazo || '',
+        DATA_RESPOSTA_SETOR: agora,
+        STATUS_FICHA: 'EM_ANDAMENTO',
+      };
+    } else if (acao === 'aprovacao_setor') {
+      const decisao = req.body.aprovDecisao;
+      if (!['OK','NAO_ACEITO'].includes(decisao)) return res.status(400).json({ sucesso:false, erro:'Decisão inválida.' });
+      dados = {
+        APROV_SETOR_DECISAO: decisao,
+        APROV_SETOR_MOTIVO: req.body.aprovMotivo || '',
+        APROV_SETOR_ORIENTACAO: req.body.aprovOrientacao || '',
+      };
+    } else if (acao === 'validacao_sac') {
+      dados = {
+        VALID_SAC_DATA_RETORNO: req.body.validDataRetorno || '',
+        VALID_SAC_CLIENTE_INFORMADO: req.body.validClienteInformado || '',
+        VALID_SAC_RESOLVIDA: req.body.validResolvida || '',
+        OBSERVACOES_FINAIS: req.body.observacoesFinais || '',
+        DATA_VALIDACAO_SAC: agora,
+        STATUS_FICHA: 'FECHADA',
+        STATUS: 'ENCERRADA',
+        DATA_CONCLUSAO_MANIFESTACAO: agora,
+      };
+    } else {
+      return res.status(400).json({ sucesso:false, erro:'Ação não reconhecida.' });
+    }
+    await atualizarPorID('MANIFESTACOES', id, dados, ['ID_MANIFESTACAO']);
+    invalidarCacheAba('MANIFESTACOES');
+    res.json({ sucesso:true });
+  } catch (e) { console.error(e); res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
+});
+
 
 app.patch('/api/manifestacoes/:id', requerPermissao('manifestacoes.editar'), async (req, res) => {
   try {
@@ -5475,6 +5532,17 @@ app.get('/api/manifestacoes/:id/pdf', middlewareEscopoEmpresa(), requerPerfil('M
       motivoManifestacao: man.MOTIVO || '', descricaoOriginal: man.DESCRICAO_ORIGINAL || man.DESCRICAO || man.DESCRICAO_RECLAMACAO || '',
       produto: man.PRODUTO || '', lote: man.LOTE || '', quantidadeAfetada: man.QUANTIDADE || '',
       observacoes: man.OBSERVACOES || '', totalEvidencias: evidencias.length,
+      procedente: man.PROCEDENTE || '', procedenteJustificativa: man.PROCEDENTE_JUSTIFICATIVA || '',
+      statusFicha: man.STATUS_FICHA || '', caminhoTratativa: man.CAMINHO_TRATATIVA || '',
+      dataEncaminhamento: man.DATA_ENCAMINHAMENTO || '', prazoRetornoSAC: man.PRAZO_RETORNO_SAC || '',
+      tratativaSACInterna: man.TRATATIVA_SAC_INTERNA || '',
+      respSetorOQue: man.RESP_SETOR_O_QUE || '', respSetorCausa: man.RESP_SETOR_CAUSA || '',
+      respSetorResolucao: man.RESP_SETOR_RESOLUCAO || '', respSetorAcaoPrev: man.RESP_SETOR_ACAO_PREV || '',
+      respSetorResponsavel: man.RESP_SETOR_RESPONSAVEL || '', respSetorPrazo: man.RESP_SETOR_PRAZO || '',
+      aprovDecisao: man.APROV_SETOR_DECISAO || '', aprovMotivo: man.APROV_SETOR_MOTIVO || '',
+      aprovOrientacao: man.APROV_SETOR_ORIENTACAO || '',
+      validDataRetorno: man.VALID_SAC_DATA_RETORNO || '', validClienteInformado: man.VALID_SAC_CLIENTE_INFORMADO || '',
+      validResolvida: man.VALID_SAC_RESOLVIDA || '', observacoesFinais: man.OBSERVACOES_FINAIS || '',
     };
     const pdfBuffer = await gerarFichaPDF(dadosPDF);
     const pdfNome = `Ficha_${man.ID_MANIFESTACAO}.pdf`;
