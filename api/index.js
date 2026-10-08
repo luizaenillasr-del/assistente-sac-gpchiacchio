@@ -1398,12 +1398,30 @@ app.get('/api/manifestacoes/:id/aprovacao', middlewareEscopoEmpresa(), requerPer
     if (perfil === 'APROVADOR' && item.STATUS_FICHA !== 'AGUARDANDO_APROVACAO') {
       return res.status(403).json({ sucesso:false, erro:'Esta manifestação não está aguardando aprovação do setor.' });
     }
+    // Calcular SLA restante
+    const abertura = new Date(item.DATA_ABERTURA || item.DATA_REGISTRO || Date.now());
+    const slaHoras = Number(item.SLA_HORAS || 72);
+    const prazoMs = abertura.getTime() + slaHoras * 3600000;
+    const restMs = prazoMs - Date.now();
+    const restH = Math.round(restMs / 3600000);
+    const vence = formatarDataBrasilia(new Date(prazoMs).toISOString());
+    const slaLabel = restH > 0
+      ? `${restH}h restantes (${slaHoras}h SLA)`
+      : `SLA vencido há ${Math.abs(restH)}h`;
+    const slaPrazo = restH > 0
+      ? `${restH}h · vence em ${vence}`
+      : `Venceu em ${vence}`;
+
     const card = {
       idManifestacao: item.ID_MANIFESTACAO,
       protocolo: item.ID_MANIFESTACAO,
       statusFicha: item.STATUS_FICHA || 'ABERTA',
       statusFichaLegivel: STATUS_FICHA_LEGIVEL[item.STATUS_FICHA] || item.STATUS_FICHA || 'Aberta',
       status: item.STATUS || '',
+      // Dados enriquecidos para o card visual
+      sla: slaLabel,
+      slaPrazo,
+      sub: [item.EMPRESA_RECLAMANTE || item.CONTATO, item.EMPRESA_RECLAMADA, item.TIPO, item.PRIORIDADE ? `Prioridade ${(item.PRIORIDADE||'').toLowerCase()}` : null].filter(Boolean).join(' · '),
       dataRegistro: formatarDataBrasilia(item.DATA_REGISTRO || item.DATA_ABERTURA),
       nomeCliente: item.EMPRESA_RECLAMANTE || item.CONTATO || '',
       empresa: item.EMPRESA_RECLAMADA || '',
@@ -1423,6 +1441,15 @@ app.get('/api/manifestacoes/:id/aprovacao', middlewareEscopoEmpresa(), requerPer
       aprovSetorDecisao: item.APROV_SETOR_DECISAO || '',
       aprovSetorMotivo: item.APROV_SETOR_MOTIVO || '',
       aprovSetorOrientacao: item.APROV_SETOR_ORIENTACAO || '',
+      // Campos extras para o card
+      campos: [
+        { l: 'CLIENTE',        v: item.EMPRESA_RECLAMANTE || item.CONTATO || '—', fw: '600' },
+        { l: 'EMPRESA',        v: item.EMPRESA_RECLAMADA || '—', fw: '400' },
+        { l: 'PRODUTO / LOTE', v: [item.PRODUTO, item.LOTE].filter(Boolean).join(' · ') || '—', fw: '400' },
+        { l: 'NOTA FISCAL',    v: item.NFE || '—', fw: '400' },
+        { l: 'ABERTURA',       v: formatarDataBrasilia(item.DATA_ABERTURA || item.DATA_REGISTRO), fw: '400' },
+        { l: 'RESPONSÁVEL SAC',v: item.USUARIO_CRIACAO || '—', fw: '400' },
+      ].filter(c => c.v !== '—'),
     };
     res.json({ sucesso:true, card });
   } catch (e) { console.error(e); res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
@@ -1469,7 +1496,23 @@ app.post('/api/manifestacoes/:id/aprovacao', middlewareEscopoEmpresa(), requerPe
     }, ['ID_MANIFESTACAO']);
     invalidarCacheAba('MANIFESTACOES');
     await registrarAuditoria(req.user?.usuario || 'sistema', 'APROVACAO_SAC_' + decisao, id, 'MANIFESTACOES', item.STATUS_FICHA, { novoStatusFicha, decisao, motivo: motivo || '', orientacao: orientacao || '' });
-    res.json({ sucesso:true, id, decisao, statusFicha: novoStatusFicha, statusFichaLegivel: STATUS_FICHA_LEGIVEL[novoStatusFicha] || novoStatusFicha });
+    const agoraBr = formatarDataBrasilia(agora);
+    const aprovador = req.user?.nome || req.user?.usuario || 'Aprovador';
+    const MSG = {
+      APROVAR:          'Aprovação registrada. O SAC foi notificado para enviar a devolutiva.',
+      SEGUIR_TRATATIVA: 'Confirmado. A tratativa segue como proposta pelo SAC.',
+      DEVOLVER:         'Manifestação devolvida para ajuste. O SAC receberá sua orientação.',
+    };
+    res.json({
+      sucesso: true,
+      id,
+      decisao,
+      statusFicha: novoStatusFicha,
+      statusFichaLegivel: STATUS_FICHA_LEGIVEL[novoStatusFicha] || novoStatusFicha,
+      mensagem: MSG[decisao] || 'Decisão registrada.',
+      data: agoraBr,
+      aprovador,
+    });
   } catch (e) { console.error(e); res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
 
