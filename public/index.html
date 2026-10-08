@@ -782,6 +782,9 @@
             <div style="background:#FFF1F1;border-bottom:1.5px solid #F3CFCF;padding:12px 16px">
               <div style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#A80502;margin-bottom:3px">SUA VEZ · APROVAÇÃO</div>
               <div style="font-size:14px;font-weight:700;color:#1F1F1F">Aprovar a proposta do SAC ou devolver para ajuste</div>
+              <div id="card-aprov-sub" style="font-size:12px;color:#545252;margin-top:2px"></div>
+              <div id="card-aprov-prazo" style="font-size:12px;color:#545252;margin-top:1px"></div>
+              <div id="card-aprov-sla" style="display:none"></div>
             </div>
             <!-- Contexto compacto -->
             <div id="card-aprov-campos" style="padding:12px 16px;border-bottom:1px solid #EFEFEF;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px 16px"></div>
@@ -6904,7 +6907,11 @@ function navigate(page, el) {
   if (page === 'biblioteca-fichas') loadBiblioteca(true);
   if (page === 'matriz-conhecimento') loadMatrizConhecimento();
   if (page === 'alimentacao' && typeof window.loadAlimentacao === 'function') window.loadAlimentacao();
-  if (page === 'sugestoes-melhoria') { setTimeout(() => { if (typeof cpLoad === 'function') cpLoad(); }, 50); }
+  if (page === 'sugestoes-melhoria') {
+    const _geralBtn = document.getElementById('cp-tab-btn-geral');
+    if (_geralBtn && typeof cpTab === 'function') cpTab('geral', _geralBtn);
+    if (!_cp.all && !_cp.loading) { _cp.loading = true; if (typeof cpLoad === 'function') cpLoad(); }
+  }
 }
 
 // ===== ARQUIVO DE FICHAS (page-biblioteca-fichas) — início =====
@@ -8712,6 +8719,49 @@ function fichaCarregarDados(item) {
     const aguardando = item.STATUS_FICHA === 'AGUARDANDO_APROVACAO';
     cardAprov.style.display = aguardando ? 'block' : 'none';
     if (aguardando) {
+      // Carregar dados enriquecidos da API
+      (async () => {
+        try {
+          const apData = await _apiFetch(`/api/manifestacoes/${encodeURIComponent(item.ID_MANIFESTACAO)}/aprovacao`, 10000);
+          const c = apData.sucesso ? apData.card : null;
+
+          // SLA e sub (se disponíveis da API)
+          const slaEl = document.getElementById('card-aprov-sla');
+          if (slaEl && c?.sla) slaEl.textContent = c.sla;
+          const prazoEl = document.getElementById('card-aprov-prazo');
+          if (prazoEl && c?.slaPrazo) prazoEl.textContent = `Prazo desta etapa: ${c.slaPrazo}`;
+          const subEl = document.getElementById('card-aprov-sub');
+          if (subEl && c?.sub) subEl.textContent = c.sub;
+
+          // Contexto compacto — preferir campos enriquecidos da API
+          const camposEl = document.getElementById('card-aprov-campos');
+          if (camposEl) {
+            const campos = c?.campos || [
+              ['CLIENTE', item.EMPRESA_RECLAMANTE || item.CONTATO || ''],
+              ['EMPRESA', item.EMPRESA_RECLAMADA || ''],
+              ['TIPO', item.TIPO || ''],
+              ['DATA', item.DATA_REGISTRO ? new Date(item.DATA_REGISTRO).toLocaleDateString('pt-BR') : ''],
+            ].filter(([,v]) => v).map(([l,v]) => ({l,v,fw:'400'}));
+            camposEl.innerHTML = (campos || []).map(c2 =>
+              `<div><div style="font-size:10px;font-weight:700;letter-spacing:.06em;color:#929090">${c2.l}</div><div style="font-size:13px;font-weight:${c2.fw||'400'}">${c2.v}</div></div>`
+            ).join('');
+          }
+        } catch (_) {
+          // Fallback local se API falhar
+          const camposEl = document.getElementById('card-aprov-campos');
+          if (camposEl) {
+            const campos = [
+              ['CLIENTE', item.EMPRESA_RECLAMANTE || item.CONTATO || ''],
+              ['EMPRESA', item.EMPRESA_RECLAMADA || ''],
+              ['TIPO', item.TIPO || ''],
+            ].filter(([,v]) => v);
+            camposEl.innerHTML = campos.map(([l,v]) =>
+              `<div><div style="font-size:10px;font-weight:700;letter-spacing:.06em;color:#929090">${l}</div><div style="font-size:13px">${v}</div></div>`
+            ).join('');
+          }
+        }
+      })();
+
       // Proposta do SAC
       const tratativa = item.TRATATIVA_SAC_INTERNA || item.TRATATIVA_SUGERIDA || item.TRATATIVA_REALIZADA || '(sem tratativa registrada)';
       const tEl = document.getElementById('card-aprov-tratativa-texto');
@@ -8730,20 +8780,6 @@ function fichaCarregarDados(item) {
         if (parecerEl) parecerEl.textContent = parecer || '(sem parecer registrado)';
         if (parecerByEl) parecerByEl.textContent = item.RESP_SETOR_RESPONSAVEL || '';
         parecerWrap.style.display = 'block';
-      }
-      // Contexto compacto
-      const camposEl = document.getElementById('card-aprov-campos');
-      if (camposEl) {
-        const fmtData = v => v ? new Date(v).toLocaleDateString('pt-BR') : '';
-        const campos = [
-          ['CLIENTE', item.EMPRESA_RECLAMANTE || item.CONTATO || ''],
-          ['EMPRESA', item.EMPRESA_RECLAMADA || ''],
-          ['TIPO', item.TIPO || ''],
-          ['DATA', fmtData(item.DATA_REGISTRO || item.DATA_ABERTURA)],
-        ].filter(([,v]) => v);
-        camposEl.innerHTML = campos.map(([l,v]) =>
-          `<div><div style="font-size:10px;font-weight:700;letter-spacing:.06em;color:#929090">${l}</div><div style="font-size:13px">${v}</div></div>`
-        ).join('');
       }
       // Reset estado do card
       document.getElementById('card-aprov-decisao').value = '';
@@ -8815,8 +8851,15 @@ async function cardAprovacaoEnviar() {
     msg.style.borderRadius = '6px'; msg.style.padding = '8px 12px';
     if (r.sucesso) {
       const textos = { APROVAR: '✓ Tratativa aprovada. Manifestação avança para devolutiva.', SEGUIR_TRATATIVA: '✓ Confirmado: seguir com a tratativa do SAC.', DEVOLVER: '↩ Devolvida ao SAC com o motivo informado.' };
-      msg.textContent = textos[decisao] || '✓ Decisão registrada.';
+      msg.textContent = r.mensagem || textos[decisao] || '✓ Decisão registrada.';
+      if (r.data || r.aprovador) {
+        const infoEl = document.createElement('div');
+        infoEl.style.cssText = 'font-size:11px;color:#1E6B3A;margin-top:3px';
+        infoEl.textContent = [r.data, r.aprovador].filter(Boolean).join(' · ');
+        msg.appendChild(infoEl);
+      }
       if (_dossieItem) _dossieItem.STATUS_FICHA = r.statusFicha || decisao;
+      if (_dossieItem) _dossieItem.STATUS_FICHA_LEGIVEL = r.statusFichaLegivel || r.statusFicha;
       document.getElementById('modal-ficha-card-aprovacao').style.display = 'none';
       btnEnviar.textContent = 'Confirmar decisão';
     } else {
@@ -15912,6 +15955,7 @@ async function cpLoad() {
     sa.innerHTML = '<option value="">Todos</option>' + anos.map(a => '<option value="' + a + '">' + a + '</option>').join('');
     sm.innerHTML = '<option value="">Todos</option>' + CP_MESES.map((m, i) => '<option value="' + (i + 1) + '">' + m + '</option>').join('');
     sa.value = va; sm.value = vm;
+    _cp.loading = false;
     cpAplica();
   } catch (e) {
     _cp.loading = false; _cp.all = null;
@@ -15936,6 +15980,7 @@ function cpAplica() {
   cpRender();
 }
 function cpRender() {
+  if (!_cp.all) { if (!_cp.loading) { _cp.loading = true; cpLoad(); } return; }
   const vis = [...document.querySelectorAll('[id^="cp-panel-"]')].find(p => p.style.display !== 'none');
   if (!_cp.all) {
     if (_cp.loading) return; // silencioso enquanto carrega (tbody já mostra "Carregando...")
