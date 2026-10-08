@@ -3414,7 +3414,7 @@ const _pesquisaPublicaHTML = (empresa) => {
   const brandColor = slug === 'tubahia' ? '#2B2070' : '#B9171A';
   const brandSoft = slug === 'tubahia' ? '#D9D6F0' : '#FFE1E0';
   const brandHover = slug === 'tubahia' ? '#1F1760' : '#A80502';
-  const logoPath = slug === 'chiacchio' ? '/assets/logo-chiacchio-embalagens.svg' : slug === 'plaschio' ? '/assets/logo-plaschio.svg' : '/assets/logo-tubahia.svg';
+  const logoPath = slug === 'chiacchio' ? '/assets/logo-chiacchio-new.png' : slug === 'plaschio' ? '/assets/logo-plaschio-new.png' : '/assets/logo-tubahia-new.png';
   const perguntas = [
     { id:'recomendacao', label:'Em uma escala de 0 a 10, o quanto você nos recomendaria a um amigo ou colega?', tipo:'nps', obrig:true },
     { id:'qualidade', label:'Como você avalia a qualidade dos nossos produtos?', tipo:'escala', obrig:true },
@@ -3505,7 +3505,7 @@ body{background:${brandColor};display:flex;flex-direction:column;align-items:cen
   <!-- ETAPA 0: Boas-vindas -->
   <div class="etapa ativa" id="et-0">
     <div class="bv-logo">
-      <img src="${logoPath}" alt="${titulo}" style="height:56px;max-width:200px;width:auto;display:block;margin:32px auto 0;filter:brightness(0) invert(1);object-fit:contain">
+      <img src="${logoPath}" alt="${titulo}" style="height:56px;max-width:200px;width:auto;display:block;margin:32px auto 0;object-fit:contain">
     </div>
     <div class="bv-nome">${titulo}</div>
     <div class="bv-card">
@@ -3946,7 +3946,7 @@ app.post('/api/pesquisas/questionario', requerPerfil('MASTER','ANALISTA SAC','AP
 // Pesquisa HTML pública por token (página nova com campos estendidos)
 function _pesquisaTokenHTML(token, empresa, nomeCliente) {
   const empresaDisplay = _empresaDisplay(empresa);
-  const logoMap = { CHIACCHIO:'logo-chiacchio-embalagens.svg', PLASCHIO:'logo-plaschio.svg', TUBAHIA:'logo-tubahia.svg' };
+  const logoMap = { CHIACCHIO:'logo-chiacchio-new.png', PLASCHIO:'logo-plaschio-new.png', TUBAHIA:'logo-tubahia-new.png' };
   const cod = empresaCanonica(empresa||'');
   const logo = logoMap[cod] ? `/assets/${logoMap[cod]}` : '';
   const tkBrandColor = cod === 'TUBAHIA' ? '#2B2070' : '#B9171A';
