@@ -3086,15 +3086,11 @@
       </div>
 
       <!-- Perfis de acesso -->
-      <div style="font-weight:600;font-size:15px;margin-top:4px">Perfis de acesso</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px">
-        <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:8px"><div style="display:flex;justify-content:space-between"><span style="font-weight:600">SAC / Analista</span><span style="font-size:12px;color:#8A8888" id="usr-cnt-sac">--</span></div><div style="display:flex;gap:8px;font-size:13px"><span style="color:#22603A">✓</span>Registra manifestações</div><div style="display:flex;gap:8px;font-size:13px"><span style="color:#22603A">✓</span>Analisa com a IA</div><div style="display:flex;gap:8px;font-size:13px"><span style="color:#22603A">✓</span>Encaminha aos setores</div><div style="display:flex;gap:8px;font-size:13px"><span style="color:#22603A">✓</span>Registra devolutiva</div></div>
-        <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:8px"><div style="display:flex;justify-content:space-between"><span style="font-weight:600">Setor responsável</span><span style="font-size:12px;color:#8A8888" id="usr-cnt-setor">--</span></div><div style="display:flex;gap:8px;font-size:13px"><span style="color:#22603A">✓</span>Visualiza manifestações atribuídas</div><div style="display:flex;gap:8px;font-size:13px"><span style="color:#22603A">✓</span>Registra tratativa</div><div style="display:flex;gap:8px;font-size:13px"><span style="color:#22603A">✓</span>Anexa evidências</div></div>
-        <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:8px"><div style="display:flex;justify-content:space-between"><span style="font-weight:600">Aprovador</span><span style="font-size:12px;color:#8A8888" id="usr-cnt-aprov">--</span></div><div style="display:flex;gap:8px;font-size:13px"><span style="color:#22603A">✓</span>Aprova ou reprova etapas</div><div style="display:flex;gap:8px;font-size:13px"><span style="color:#22603A">✓</span>Solicita ajustes</div></div>
-        <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:8px"><div style="display:flex;justify-content:space-between"><span style="font-weight:600">Gestor</span><span style="font-size:12px;color:#8A8888" id="usr-cnt-gestor">--</span></div><div style="display:flex;gap:8px;font-size:13px"><span style="color:#22603A">✓</span>Acesso aos indicadores</div><div style="display:flex;gap:8px;font-size:13px"><span style="color:#22603A">✓</span>Acesso à auditoria</div></div>
-        <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:8px"><div style="display:flex;justify-content:space-between"><span style="font-weight:600">Representante</span><span style="font-size:12px;color:#8A8888" id="usr-cnt-rep">--</span></div><div style="display:flex;gap:8px;font-size:13px"><span style="color:#22603A">✓</span>Visualiza manifestações permitidas</div><div style="display:flex;gap:8px;font-size:13px"><span style="color:#22603A">✓</span>Registra RCA quando autorizado</div></div>
-        <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:8px"><div style="display:flex;justify-content:space-between"><span style="font-weight:600">Administrador</span><span style="font-size:12px;color:#8A8888" id="usr-cnt-admin">--</span></div><div style="display:flex;gap:8px;font-size:13px"><span style="color:#22603A">✓</span>Acesso completo</div><div style="display:flex;gap:8px;font-size:13px"><span style="color:#22603A">✓</span>Usuários, perfis e configurações</div></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
+        <div style="font-weight:600;font-size:15px">Perfis de acesso</div>
+        <div style="font-size:12px;color:#8A8888">Clique em "Editar" para ajustar as páginas de cada perfil</div>
       </div>
+      <div id="perfis-acesso-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px"></div>
     </div>
   </div>
 
@@ -13613,6 +13609,173 @@ console.log('[base-conhecimento-setores] carregado');
     } catch(e) {
       if (status) status.textContent = '✗ Erro: ' + e.message;
     }
+  };
+})();
+</script>
+
+<!-- ===== GESTÃO DE ACESSOS POR PERFIL ===== -->
+<div id="modal-perfil-acesso" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9900;align-items:center;justify-content:center" onclick="if(event.target===this)fecharModalPerfil()">
+  <div style="background:#fff;border-radius:14px;width:96vw;max-width:640px;max-height:90vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.18)">
+    <div style="padding:18px 22px;border-bottom:1px solid #EFEFEF;display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-size:17px;font-weight:800" id="modal-perfil-titulo">Permissões do perfil</div>
+        <div style="font-size:12px;color:#8A8888;margin-top:2px">Marque as páginas que este perfil pode acessar</div>
+      </div>
+      <button onclick="fecharModalPerfil()" style="border:0;background:none;font-size:22px;cursor:pointer;color:#666;line-height:1">×</button>
+    </div>
+    <div style="padding:18px 22px">
+      <div id="modal-perfil-grupos"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;padding-top:14px;border-top:1px solid #EFEFEF">
+        <button onclick="fecharModalPerfil()" style="border:1px solid #D6D6D6;background:#fff;border-radius:8px;padding:9px 18px;cursor:pointer;font-size:13px;font-family:inherit">Cancelar</button>
+        <button onclick="salvarPermissoesPerfil()" style="border:0;background:#C70602;color:#fff;border-radius:8px;padding:9px 18px;cursor:pointer;font-size:13px;font-weight:600;font-family:inherit">Salvar permissões</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  // Mapa de rótulos amigáveis para cada page-id
+  const PAGE_LABELS = {
+    'visao-geral': 'Visão Geral',
+    'acompanhamento': 'Acompanhamento',
+    'nova-manifestacao': 'Nova Manifestação',
+    'banco-manifestacoes': 'Banco de Manifestações',
+    'banco-rnc': 'Banco de RNC',
+    'aprovadores': 'Fila de Aprovação',
+    'usuarios': 'Usuários e Permissões',
+    'cerebro': 'Cérebro IA',
+    'base-conhecimento': 'Base de Conhecimento',
+    'painel-maquina': 'Painel Máquina',
+    'auditoria': 'Auditoria',
+    'prazos-regionais': 'Prazos Regionais',
+    'similares': 'Similares',
+    'rca': 'RCA',
+    'biblioteca-fichas': 'Biblioteca de Fichas',
+    'relatorio-satisfacao': 'Relatório de Satisfação',
+    'sugestoes-melhoria': 'Pesquisa de Satisfação',
+    'setores': 'Setores',
+    'causas': 'Causas e Subcausas',
+    'matriz': 'Matriz de Tratamento',
+    'matriz-conhecimento': 'Matriz de Conhecimento',
+    'central-sac': 'Central SAC',
+    'rca-home': 'Home RCA',
+  };
+
+  const PAGE_GRUPOS = [
+    { grupo: 'Dashboards', pages: ['visao-geral','acompanhamento','painel-maquina'] },
+    { grupo: 'Manifestações', pages: ['nova-manifestacao','banco-manifestacoes','banco-rnc','aprovadores','similares'] },
+    { grupo: 'RCA', pages: ['rca','rca-home'] },
+    { grupo: 'Pesquisa', pages: ['sugestoes-melhoria','relatorio-satisfacao'] },
+    { grupo: 'Configuração', pages: ['setores','causas','matriz','matriz-conhecimento','prazos-regionais','base-conhecimento','cerebro','biblioteca-fichas','central-sac'] },
+    { grupo: 'Administração', pages: ['usuarios','aprovadores','auditoria'] },
+  ];
+
+  // Perfis editáveis (MASTER não é editável pois tem acesso total)
+  const PERFIL_INFO = {
+    'GESTOR SAC':         { label: 'Gestor SAC',          cor: '#1D4ED8', cntId: 'usr-cnt-gestor' },
+    'ANALISTA SAC':       { label: 'SAC / Analista',       cor: '#059669', cntId: 'usr-cnt-sac' },
+    'APROVADOR':          { label: 'Aprovador',            cor: '#D97706', cntId: 'usr-cnt-aprov' },
+    'SETOR RESPONSÁVEL':  { label: 'Setor Responsável',    cor: '#7C3AED', cntId: 'usr-cnt-setor' },
+    'RCA / REPRESENTANTE':{ label: 'Representante / RCA',  cor: '#0891B2', cntId: 'usr-cnt-rep' },
+    'DIRETOR':            { label: 'Diretor',              cor: '#BE185D', cntId: '' },
+    'ATENDENTE SAC':      { label: 'Atendente SAC',        cor: '#64748B', cntId: '' },
+    'AUDITOR':            { label: 'Auditor',              cor: '#78716C', cntId: '' },
+    'VISUALIZADOR':       { label: 'Visualizador',         cor: '#94A3B8', cntId: '' },
+    'MASTER':             { label: 'Administrador (Master)', cor: '#C70602', cntId: 'usr-cnt-admin' },
+  };
+
+  let _perfilEditando = null;
+
+  function renderPerfisGrid() {
+    const grid = document.getElementById('perfis-acesso-grid');
+    if (!grid) return;
+    if (typeof allowed === 'undefined') { setTimeout(renderPerfisGrid, 300); return; }
+
+    const ordem = ['MASTER','GESTOR SAC','ANALISTA SAC','APROVADOR','SETOR RESPONSÁVEL','RCA / REPRESENTANTE','DIRETOR','ATENDENTE SAC','AUDITOR','VISUALIZADOR'];
+    grid.innerHTML = ordem.map(perfil => {
+      const info = PERFIL_INFO[perfil] || { label: perfil, cor: '#6B7280', cntId: '' };
+      const pages = allowed[perfil] || [];
+      const isMaster = perfil === 'MASTER';
+      const pageNames = pages.slice(0,4).map(p => PAGE_LABELS[p] || p);
+      const extra = pages.length > 4 ? `<div style="font-size:11px;color:#8A8888;margin-top:2px">+${pages.length - 4} mais...</div>` : '';
+      return `<div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <span style="font-weight:700;font-size:13.5px">${info.label}</span>
+            <span style="background:${info.cor}18;color:${info.cor};font-size:10.5px;font-weight:600;padding:2px 7px;border-radius:99px">${pages.length} páginas</span>
+          </div>
+          ${info.cntId ? `<span style="font-size:11.5px;color:#8A8888" id="${info.cntId}">--</span>` : ''}
+        </div>
+        <div style="font-size:12px;color:#4B5563;line-height:1.7">
+          ${pageNames.map(n => `<div style="display:flex;gap:6px;align-items:center"><span style="color:#22603A;font-size:10px">●</span>${n}</div>`).join('')}
+          ${extra}
+        </div>
+        ${isMaster ? '<div style="font-size:11px;color:#8A8888;margin-top:4px;font-style:italic">Acesso total — não editável</div>' : `<button onclick="abrirModalPerfil('${perfil}')" style="margin-top:6px;border:1px solid #D6D6D6;background:#FAFAFA;border-radius:7px;padding:7px 12px;cursor:pointer;font-size:12px;font-weight:600;font-family:inherit;display:flex;align-items:center;gap:6px;width:100%;justify-content:center"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Editar permissões</button>`}
+      </div>`;
+    }).join('');
+  }
+
+  window.abrirModalPerfil = function(perfil) {
+    if (typeof allowed === 'undefined') return;
+    _perfilEditando = perfil;
+    const info = PERFIL_INFO[perfil] || { label: perfil };
+    document.getElementById('modal-perfil-titulo').textContent = 'Permissões — ' + info.label;
+    const atuais = new Set(allowed[perfil] || []);
+    const gruposEl = document.getElementById('modal-perfil-grupos');
+    gruposEl.innerHTML = PAGE_GRUPOS.map(g => `
+      <div style="margin-bottom:16px">
+        <div style="font-size:11px;font-weight:700;color:#8A8888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">${g.grupo}</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px">
+          ${g.pages.map(p => `<label style="display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid ${atuais.has(p)?'#C70602':'#E4E4E4'};border-radius:7px;cursor:pointer;font-size:13px;background:${atuais.has(p)?'#FFF5F5':'#fff'}">
+            <input type="checkbox" data-page="${p}" ${atuais.has(p)?'checked':''} onchange="this.closest('label').style.borderColor=this.checked?'#C70602':'#E4E4E4';this.closest('label').style.background=this.checked?'#FFF5F5':'#fff'" style="accent-color:#C70602;width:14px;height:14px">
+            ${PAGE_LABELS[p]||p}
+          </label>`).join('')}
+        </div>
+      </div>`).join('');
+    const modal = document.getElementById('modal-perfil-acesso');
+    modal.style.display = 'flex';
+    modal.style.alignItems = 'center';
+    modal.style.justifyContent = 'center';
+  };
+
+  window.fecharModalPerfil = function() {
+    document.getElementById('modal-perfil-acesso').style.display = 'none';
+    _perfilEditando = null;
+  };
+
+  window.salvarPermissoesPerfil = function() {
+    if (!_perfilEditando || typeof allowed === 'undefined') return;
+    const checks = document.querySelectorAll('#modal-perfil-grupos input[type=checkbox]');
+    const novas = [];
+    checks.forEach(c => { if (c.checked) novas.push(c.dataset.page); });
+    allowed[_perfilEditando] = novas;
+    // Re-aplicar o menu se for o perfil do usuário atual
+    if (typeof applyRoleUI === 'function') applyRoleUI();
+    fecharModalPerfil();
+    renderPerfisGrid();
+    // Feedback
+    const toast = document.createElement('div');
+    toast.textContent = 'Permissões do perfil atualizadas ✓';
+    toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1A1A1A;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;z-index:99999;font-family:inherit';
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 2800);
+  };
+
+  // Inicializar grid quando o DOM estiver pronto
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => setTimeout(renderPerfisGrid, 500));
+  } else {
+    setTimeout(renderPerfisGrid, 500);
+  }
+
+  // Re-renderizar quando navegar para usuarios
+  const _origNavPerfil = window.navigate;
+  window.navigate = function(page, el) {
+    if (_origNavPerfil) _origNavPerfil(page, el);
+    if (page === 'usuarios') setTimeout(renderPerfisGrid, 100);
   };
 })();
 </script>

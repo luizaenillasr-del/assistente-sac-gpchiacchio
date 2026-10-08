@@ -5347,7 +5347,7 @@ app.get('/api/manifestacoes/:id/pdf', middlewareEscopoEmpresa(), requerPerfil('M
     res.setHeader('Content-Disposition', `attachment; filename="${pdfNome}"`);
     res.setHeader('Content-Length', pdfBuffer.length);
     res.send(pdfBuffer);
-  } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e) }); }
+  } catch(e) { console.error('[PDF-DOWNLOAD] erro:', e.message, e.stack); res.status(500).json({ sucesso: false, erro: erroSeguro(e) }); }
 });
 
 // Regenerar PDF de uma ficha (MASTER/ADMINISTRADOR/SAC)
