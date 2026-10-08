@@ -777,68 +777,86 @@
           </div>
 
           <!-- ── CARD DE APROVAÇÃO SAC ── -->
-          <div id="modal-ficha-card-aprovacao" style="border:1.5px solid #F3CFCF;border-radius:12px;overflow:hidden;margin-bottom:14px;background:#fff">
+          <div id="modal-ficha-card-aprovacao" style="border:1.5px solid #F3CFCF;border-radius:14px;overflow:hidden;margin-bottom:14px;background:#fff">
+            <!-- Cabeçalho -->
+            <div style="padding:16px 20px 12px;border-bottom:1px solid #EFEFEF;display:flex;flex-direction:column;gap:6px">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
+                <div>
+                  <div id="card-aprov-header-id" style="font-size:18px;font-weight:700">Manifestação</div>
+                  <div id="card-aprov-sub" style="font-size:12px;color:#666464;margin-top:2px"></div>
+                </div>
+                <div style="display:flex;gap:6px;align-items:center">
+                  <span id="card-aprov-badge-status" style="font-size:11px;font-weight:700;border-radius:99px;padding:3px 10px;background:#FCE9DC;color:#9A4A10"></span>
+                  <span id="card-aprov-badge-sla" style="font-size:11px;font-weight:700;border-radius:99px;padding:3px 10px;background:#FBF0D9;color:#7A4C00"></span>
+                  <button onclick="document.getElementById('modal-ficha-card-aprovacao').style.display='none'" style="border:1px solid #D6D6D6;background:#fff;border-radius:7px;width:30px;height:30px;cursor:pointer;font-size:14px;font-family:inherit;display:flex;align-items:center;justify-content:center">✕</button>
+                </div>
+              </div>
+            </div>
             <!-- Faixa aprovador -->
-            <div style="background:#FFF1F1;border-bottom:1.5px solid #F3CFCF;padding:12px 16px">
-              <div style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#A80502;margin-bottom:3px">SUA VEZ · APROVAÇÃO</div>
-              <div style="font-size:14px;font-weight:700;color:#1F1F1F">Aprovar a proposta do SAC ou devolver para ajuste</div>
-              <div id="card-aprov-sub" style="font-size:12px;color:#545252;margin-top:2px"></div>
-              <div id="card-aprov-prazo" style="font-size:12px;color:#545252;margin-top:1px"></div>
-              <div id="card-aprov-sla" style="display:none"></div>
+            <div style="background:#FFF1F1;border-bottom:1.5px solid #F3CFCF;padding:12px 20px">
+              <div style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#A80502">SUA VEZ · APROVAÇÃO</div>
+              <div style="font-size:14px;font-weight:700;margin-top:2px">Aprovar a proposta do SAC ou devolver para ajuste</div>
+              <div id="card-aprov-prazo" style="font-size:12px;color:#545252;margin-top:2px"></div>
             </div>
             <!-- Contexto compacto -->
-            <div id="card-aprov-campos" style="padding:12px 16px;border-bottom:1px solid #EFEFEF;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px 16px"></div>
+            <div id="card-aprov-campos" style="padding:14px 20px;border-bottom:1px solid #EFEFEF;display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px 20px"></div>
             <!-- Relato do cliente -->
-            <div id="card-aprov-relato-wrap" style="padding:12px 16px;border-bottom:1px solid #EFEFEF;background:#FAFAFA;display:none">
+            <div style="padding:12px 20px;border-bottom:1px solid #EFEFEF;background:#FAFAFA">
               <div style="font-size:10px;font-weight:700;letter-spacing:.06em;color:#929090;margin-bottom:5px">RELATO DO CLIENTE</div>
               <div id="card-aprov-relato" style="font-size:13px;line-height:1.55;color:#1F1F1F"></div>
             </div>
             <!-- Proposta do SAC -->
-            <div style="padding:12px 16px;border-bottom:1px solid #EFEFEF">
+            <div style="padding:14px 20px;border-bottom:1px solid #EFEFEF">
               <div style="font-size:10px;font-weight:700;letter-spacing:.06em;color:#929090;margin-bottom:8px">PROPOSTA DO SAC</div>
-              <div style="border:1.5px solid #F0D9A8;background:#FFFCF3;border-radius:10px;padding:12px 14px">
-                <div id="card-aprov-tratativa-texto" style="font-size:13px;color:#1F1F1F;line-height:1.5">—</div>
+              <div style="border:1.5px solid #F0D9A8;background:#FFFCF3;border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:6px">
+                <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap">
+                  <span id="card-aprov-prop-tipo" style="font-size:14px;font-weight:700"></span>
+                  <span id="card-aprov-prop-valor" style="font-size:13px;font-weight:700;color:#1F1F1F"></span>
+                </div>
+                <div id="card-aprov-tratativa-texto" style="font-size:12.5px;color:#545252;line-height:1.45">—</div>
+                <div id="card-aprov-prop-req" style="font-size:11.5px;color:#929090"></div>
               </div>
             </div>
             <!-- Parecer do setor -->
-            <div id="card-aprov-parecer-wrap" style="padding:12px 16px;border-bottom:1px solid #EFEFEF;display:none">
-              <div style="font-size:10px;font-weight:700;letter-spacing:.06em;color:#929090;margin-bottom:6px">PARECER DO SETOR RESPONSÁVEL</div>
+            <div id="card-aprov-parecer-wrap" style="padding:14px 20px;border-bottom:1px solid #EFEFEF;display:none">
+              <div style="font-size:10px;font-weight:700;letter-spacing:.06em;color:#929090;margin-bottom:8px">PARECER DO SETOR RESPONSÁVEL</div>
               <div id="card-aprov-parecer" style="font-size:13px;line-height:1.5;color:#3A3939"></div>
               <div id="card-aprov-parecer-by" style="font-size:11.5px;color:#929090;margin-top:4px"></div>
             </div>
             <!-- Decisão -->
-            <div style="padding:12px 16px;border-bottom:1px solid #EFEFEF">
-              <div style="font-size:10px;font-weight:700;letter-spacing:.06em;color:#929090;margin-bottom:8px">SUA DECISÃO</div>
+            <div style="padding:14px 20px;border-bottom:1px solid #EFEFEF;display:flex;flex-direction:column;gap:10px">
+              <div style="font-size:10px;font-weight:700;letter-spacing:.06em;color:#929090">SUA DECISÃO</div>
               <div style="display:flex;gap:8px;flex-wrap:wrap">
                 <button onclick="cardAprovacaoSelecionar('APROVAR',this)" id="card-aprov-btn-aprovar"
-                  style="display:flex;gap:7px;align-items:center;border:1.5px solid #D6D6D6;background:#fff;color:#545252;border-radius:8px;padding:9px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">
-                  <span id="card-aprov-chk-aprovar" style="width:15px;height:15px;border-radius:3px;border:2px solid #D6D6D6;background:transparent;display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0"></span>
+                  style="display:flex;gap:8px;align-items:center;border:1.5px solid #D6D6D6;background:#fff;color:#545252;border-radius:8px;padding:10px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">
+                  <span id="card-aprov-chk-aprovar" style="width:16px;height:16px;border-radius:4px;border:2px solid #D6D6D6;background:transparent;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0"></span>
                   Aprovar
                 </button>
                 <button onclick="cardAprovacaoSelecionar('SEGUIR_TRATATIVA',this)" id="card-aprov-btn-seguir"
-                  style="display:flex;gap:7px;align-items:center;border:1.5px solid #D6D6D6;background:#fff;color:#545252;border-radius:8px;padding:9px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">
-                  <span id="card-aprov-chk-seguir" style="width:15px;height:15px;border-radius:3px;border:2px solid #D6D6D6;background:transparent;display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0"></span>
+                  style="display:flex;gap:8px;align-items:center;border:1.5px solid #D6D6D6;background:#fff;color:#545252;border-radius:8px;padding:10px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">
+                  <span id="card-aprov-chk-seguir" style="width:16px;height:16px;border-radius:4px;border:2px solid #D6D6D6;background:transparent;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0"></span>
                   Seguir com a tratativa do SAC
                 </button>
                 <button onclick="cardAprovacaoSelecionar('DEVOLVER',this)" id="card-aprov-btn-devolver"
-                  style="display:flex;gap:7px;align-items:center;border:1.5px solid #D6D6D6;background:#fff;color:#545252;border-radius:8px;padding:9px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">
-                  <span id="card-aprov-chk-devolver" style="width:15px;height:15px;border-radius:3px;border:2px solid #D6D6D6;background:transparent;display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0"></span>
+                  style="display:flex;gap:8px;align-items:center;border:1.5px solid #D6D6D6;background:#fff;color:#545252;border-radius:8px;padding:10px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">
+                  <span id="card-aprov-chk-devolver" style="width:16px;height:16px;border-radius:4px;border:2px solid #D6D6D6;background:transparent;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0"></span>
                   Devolver para ajuste
                 </button>
               </div>
               <input type="hidden" id="card-aprov-decisao" value="">
-              <!-- Observação / Motivo (mostra para qualquer decisão) -->
-              <div id="card-aprov-box-devolver" style="display:none;margin-top:12px">
-                <label id="card-aprov-obs-label" style="display:block;font-size:11.5px;font-weight:700;color:#3A3939;margin-bottom:4px">Motivo da devolução e orientação (obrigatório)</label>
-                <textarea id="card-aprov-motivo" class="form-textarea" style="min-height:70px" placeholder="Descreva o que precisa ser ajustado..."></textarea>
+              <div id="card-aprov-box-devolver" style="display:none">
+                <label style="display:flex;flex-direction:column;gap:4px">
+                  <span id="card-aprov-obs-label" style="font-size:11.5px;font-weight:700;color:#3A3939">Motivo da devolução e orientação (obrigatório)</span>
+                  <textarea id="card-aprov-motivo" class="form-textarea" style="min-height:70px" placeholder="Descreva o que precisa ser ajustado..."></textarea>
+                </label>
                 <div id="card-aprov-motivo-erro" style="display:none;font-size:11px;color:#C70602;margin-top:3px">Motivo é obrigatório ao devolver.</div>
               </div>
             </div>
             <!-- Ações -->
-            <div style="padding:12px 16px;display:flex;gap:8px;justify-content:flex-end">
-              <button onclick="document.getElementById('modal-ficha-card-aprovacao').style.display='none'" style="border:1px solid #D6D6D6;background:#fff;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Cancelar</button>
+            <div style="padding:14px 20px;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">
+              <button onclick="document.getElementById('modal-ficha-card-aprovacao').style.display='none'" style="border:1px solid #D6D6D6;background:#fff;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Cancelar</button>
               <button onclick="cardAprovacaoEnviar()" id="card-aprov-btn-enviar"
-                style="background:#C70602;color:#fff;border:0;border-radius:8px;padding:8px 22px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;opacity:.5;pointer-events:none">
+                style="background:#1E6B3A;color:#fff;border:0;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;opacity:.5;pointer-events:none">
                 Confirmar decisão
               </button>
             </div>
@@ -4813,7 +4831,7 @@
   <!-- ===== SUGESTÕES DE MELHORIA ===== -->
   <div class="page" id="page-sugestoes-melhoria" style="background:#F4F4F4;overflow-y:auto">
     <!-- Banner de identidade visual por empresa -->
-    <div id="cp-empresa-banner" style="display:none;padding:14px 24px 12px;border-bottom:3px solid #B9171A;background:#fff;display:flex;align-items:center;gap:14px">
+    <div id="cp-empresa-banner" style="display:none;padding:14px 24px 12px;border-bottom:3px solid #B9171A;background:#fff;align-items:center;gap:14px">
       <img id="cp-empresa-logo" src="" alt="" style="height:38px;width:auto;max-width:160px;display:block">
       <div>
         <div id="cp-empresa-label" style="font-size:11px;font-weight:700;letter-spacing:.08em;color:#666464">PESQUISA DE SATISFAÇÃO</div>
@@ -4912,6 +4930,7 @@
           </div>
           <div id="cp-more" style="display:none;padding:10px;text-align:center"><button onclick="cpMais()" style="border:1px solid #D6D6D6;background:#fff;border-radius:7px;padding:7px 14px;cursor:pointer;font-size:12.5px">Carregar mais</button></div>
         </div>
+      </div>
       </div>
 
       <div id="cp-panel-anomes" style="display:none">
@@ -8719,73 +8738,35 @@ function fichaCarregarDados(item) {
     const aguardando = item.STATUS_FICHA === 'AGUARDANDO_APROVACAO';
     cardAprov.style.display = aguardando ? 'block' : 'none';
     if (aguardando) {
-      // Carregar dados enriquecidos da API
-      (async () => {
-        try {
-          const apData = await _apiFetch(`/api/manifestacoes/${encodeURIComponent(item.ID_MANIFESTACAO)}/aprovacao`, 10000);
-          const c = apData.sucesso ? apData.card : null;
-
-          // SLA e sub (se disponíveis da API)
-          const slaEl = document.getElementById('card-aprov-sla');
-          if (slaEl && c?.sla) slaEl.textContent = c.sla;
-          const prazoEl = document.getElementById('card-aprov-prazo');
-          if (prazoEl && c?.slaPrazo) prazoEl.textContent = `Prazo desta etapa: ${c.slaPrazo}`;
-          const subEl = document.getElementById('card-aprov-sub');
-          if (subEl && c?.sub) subEl.textContent = c.sub;
-
-          // Contexto compacto — preferir campos enriquecidos da API
-          const camposEl = document.getElementById('card-aprov-campos');
-          if (camposEl) {
-            const campos = c?.campos || [
-              ['CLIENTE', item.EMPRESA_RECLAMANTE || item.CONTATO || ''],
-              ['EMPRESA', item.EMPRESA_RECLAMADA || ''],
-              ['TIPO', item.TIPO || ''],
-              ['DATA', item.DATA_REGISTRO ? new Date(item.DATA_REGISTRO).toLocaleDateString('pt-BR') : ''],
-            ].filter(([,v]) => v).map(([l,v]) => ({l,v,fw:'400'}));
-            camposEl.innerHTML = (campos || []).map(c2 =>
-              `<div><div style="font-size:10px;font-weight:700;letter-spacing:.06em;color:#929090">${c2.l}</div><div style="font-size:13px;font-weight:${c2.fw||'400'}">${c2.v}</div></div>`
-            ).join('');
-          }
-        } catch (_) {
-          // Fallback local se API falhar
-          const camposEl = document.getElementById('card-aprov-campos');
-          if (camposEl) {
-            const campos = [
-              ['CLIENTE', item.EMPRESA_RECLAMANTE || item.CONTATO || ''],
-              ['EMPRESA', item.EMPRESA_RECLAMADA || ''],
-              ['TIPO', item.TIPO || ''],
-            ].filter(([,v]) => v);
-            camposEl.innerHTML = campos.map(([l,v]) =>
-              `<div><div style="font-size:10px;font-weight:700;letter-spacing:.06em;color:#929090">${l}</div><div style="font-size:13px">${v}</div></div>`
-            ).join('');
-          }
-        }
-      })();
-
+      // Cabeçalho
+      const hIdEl = document.getElementById('card-aprov-header-id');
+      if (hIdEl) hIdEl.textContent = 'Manifestação ' + (item.ID_MANIFESTACAO || '');
       // Proposta do SAC
       const tratativa = item.TRATATIVA_SAC_INTERNA || item.TRATATIVA_SUGERIDA || item.TRATATIVA_REALIZADA || '(sem tratativa registrada)';
       const tEl = document.getElementById('card-aprov-tratativa-texto');
       if (tEl) tEl.textContent = tratativa;
+      const tipoEl = document.getElementById('card-aprov-prop-tipo');
+      if (tipoEl) { const t = item.TIPO_CONFIRMADO || item.TIPO_SUGERIDO || item.TIPO || ''; tipoEl.textContent = t ? t + ' · proposta pelo SAC' : ''; }
+      const valorEl = document.getElementById('card-aprov-prop-valor');
+      if (valorEl) valorEl.textContent = item.VALOR_PROPOSTO ? 'R$ ' + item.VALOR_PROPOSTO : '';
+      const reqEl = document.getElementById('card-aprov-prop-req');
+      if (reqEl) { const resp = item.RESPONSAVEL_SAC || item.RESPONSAVEL || ''; reqEl.textContent = resp ? 'Solicitado por ' + resp : ''; }
       // Relato do cliente
-      const relato = item.DESCRICAO || item.DESCRICAO_MANIFESTACAO || '';
-      const relatoWrap = document.getElementById('card-aprov-relato-wrap');
       const relatoEl = document.getElementById('card-aprov-relato');
-      if (relatoWrap && relatoEl) { relatoEl.textContent = relato; relatoWrap.style.display = relato ? 'block' : 'none'; }
+      if (relatoEl) relatoEl.textContent = item.DESCRICAO || item.DESCRICAO_MANIFESTACAO || '(sem relato registrado)';
       // Parecer do setor
       const parecer = [item.RESP_SETOR_O_QUE, item.RESP_SETOR_RESOLUCAO].filter(Boolean).join(' · ');
       const parecerWrap = document.getElementById('card-aprov-parecer-wrap');
       const parecerEl = document.getElementById('card-aprov-parecer');
       const parecerByEl = document.getElementById('card-aprov-parecer-by');
-      if (parecerWrap) {
-        if (parecerEl) parecerEl.textContent = parecer || '(sem parecer registrado)';
-        if (parecerByEl) parecerByEl.textContent = item.RESP_SETOR_RESPONSAVEL || '';
-        parecerWrap.style.display = 'block';
-      }
-      // Reset estado do card
+      if (parecerEl) parecerEl.textContent = parecer || '(sem parecer registrado)';
+      if (parecerByEl) parecerByEl.textContent = item.RESP_SETOR_RESPONSAVEL || '';
+      if (parecerWrap) parecerWrap.style.display = parecer ? 'block' : 'none';
+      // Reset estado
       document.getElementById('card-aprov-decisao').value = '';
       document.getElementById('card-aprov-box-devolver').style.display = 'none';
       const btnEnviar = document.getElementById('card-aprov-btn-enviar');
-      if (btnEnviar) { btnEnviar.style.opacity = '.5'; btnEnviar.style.pointerEvents = 'none'; }
+      if (btnEnviar) { btnEnviar.style.opacity = '.5'; btnEnviar.style.pointerEvents = 'none'; btnEnviar.textContent = 'Confirmar decisão'; btnEnviar.style.background = '#1E6B3A'; }
       ['card-aprov-btn-aprovar','card-aprov-btn-seguir','card-aprov-btn-devolver'].forEach(id => {
         const b = document.getElementById(id);
         if (b) { b.style.borderColor = '#D6D6D6'; b.style.background = '#fff'; b.style.color = '#545252'; }
@@ -8795,6 +8776,42 @@ function fichaCarregarDados(item) {
         if (c) { c.style.borderColor = '#D6D6D6'; c.style.background = 'transparent'; c.textContent = ''; }
       });
       document.getElementById('card-aprov-msg').style.display = 'none';
+      // Enriquecer com dados da API
+      (async () => {
+        try {
+          const apData = await _apiFetch(`/api/manifestacoes/${encodeURIComponent(item.ID_MANIFESTACAO)}/aprovacao`, 10000);
+          const c = apData.sucesso ? apData.card : null;
+          const badgeSla = document.getElementById('card-aprov-badge-sla');
+          if (badgeSla) badgeSla.textContent = c?.sla || '';
+          const badgeStatus = document.getElementById('card-aprov-badge-status');
+          if (badgeStatus) badgeStatus.textContent = item.STATUS_FICHA_LEGIVEL || 'Aguardando aprovação';
+          const prazoEl2 = document.getElementById('card-aprov-prazo');
+          if (prazoEl2 && c?.slaPrazo) prazoEl2.textContent = 'Prazo desta etapa: ' + c.slaPrazo;
+          const subEl = document.getElementById('card-aprov-sub');
+          if (subEl && c?.sub) subEl.textContent = c.sub;
+          const camposEl = document.getElementById('card-aprov-campos');
+          if (camposEl) {
+            const campos = c?.campos || [
+              {l:'CLIENTE', v:item.EMPRESA_RECLAMANTE||item.CONTATO||'', fw:'600'},
+              {l:'EMPRESA', v:item.EMPRESA_RECLAMADA||'', fw:'400'},
+              {l:'TIPO', v:item.TIPO||'', fw:'400'},
+            ].filter(f => f.v);
+            camposEl.innerHTML = campos.map(c2 =>
+              `<div><div style="font-size:10px;font-weight:700;letter-spacing:.06em;color:#929090">${c2.l}</div><div style="font-size:13px;font-weight:${c2.fw||'400'}">${c2.v}</div></div>`
+            ).join('');
+          }
+        } catch (_) {
+          const badgeStatus = document.getElementById('card-aprov-badge-status');
+          if (badgeStatus) badgeStatus.textContent = item.STATUS_FICHA_LEGIVEL || 'Aguardando aprovação';
+          const subEl = document.getElementById('card-aprov-sub');
+          if (subEl && !subEl.textContent) subEl.textContent = [item.EMPRESA_RECLAMANTE||item.CONTATO, item.EMPRESA_RECLAMADA, item.TIPO].filter(Boolean).join(' · ');
+          const camposEl = document.getElementById('card-aprov-campos');
+          if (camposEl && !camposEl.innerHTML) {
+            const campos = [{l:'CLIENTE',v:item.EMPRESA_RECLAMANTE||item.CONTATO||''},{l:'EMPRESA',v:item.EMPRESA_RECLAMADA||''},{l:'TIPO',v:item.TIPO||''}].filter(f=>f.v);
+            camposEl.innerHTML = campos.map(f=>`<div><div style="font-size:10px;font-weight:700;letter-spacing:.06em;color:#929090">${f.l}</div><div style="font-size:13px">${f.v}</div></div>`).join('');
+          }
+        }
+      })();
     }
   }
 }
@@ -8813,14 +8830,25 @@ function cardAprovacaoSelecionar(decisao, btn) {
   });
   const obsBox = document.getElementById('card-aprov-box-devolver');
   const obsLabel = document.getElementById('card-aprov-obs-label');
+  const obsArea = document.getElementById('card-aprov-motivo');
   if (obsBox) obsBox.style.display = 'block';
   if (obsLabel) {
     if (decisao==='DEVOLVER') obsLabel.textContent = 'Motivo da devolução e orientação (obrigatório)';
     else if (decisao==='SEGUIR_TRATATIVA') obsLabel.textContent = 'Observação sobre a continuidade (opcional)';
-    else obsLabel.textContent = 'Comentário adicional (opcional)';
+    else obsLabel.textContent = 'Observação (opcional)';
   }
+  if (obsArea) {
+    if (decisao==='DEVOLVER') obsArea.placeholder = 'Explique o que deve ser ajustado e como conduzir…';
+    else if (decisao==='SEGUIR_TRATATIVA') obsArea.placeholder = 'Ex.: seguir com reposição; confirmar data com o cliente antes do envio.';
+    else obsArea.placeholder = 'Ex.: aprovado com condição de prazo até sexta.';
+  }
+  const BTNCFG = { APROVAR:{bg:'#1E6B3A',l:'Confirmar aprovação'}, SEGUIR_TRATATIVA:{bg:'#24508F',l:'Confirmar · seguir com a tratativa'}, DEVOLVER:{bg:'#C70602',l:'Devolver para ajuste'} };
   const btnEnviar = document.getElementById('card-aprov-btn-enviar');
-  if (btnEnviar) { btnEnviar.style.opacity='1'; btnEnviar.style.pointerEvents='auto'; }
+  if (btnEnviar) {
+    const cfg = BTNCFG[decisao] || {bg:'#1E6B3A',l:'Confirmar decisão'};
+    btnEnviar.style.background = cfg.bg; btnEnviar.textContent = cfg.l;
+    btnEnviar.style.opacity='1'; btnEnviar.style.pointerEvents='auto';
+  }
 }
 
 async function cardAprovacaoEnviar() {
@@ -9141,8 +9169,9 @@ function abrirDossie(item) {
     { icon:'🏁', label:'Encerramento', done:encerrada, meta: encerrada ? (_fmtDataCurta(item.DATA_CONCLUSAO_MANIFESTACAO)||'Encerrada') : 'Pendente', obs: '' },
   ];
   const tlEl = document.getElementById('modal-timeline');
+  const firstUndoneIdx = etapas.findIndex(e => !e.done);
   tlEl.innerHTML = etapas.map((e, i) => {
-    const isCurrent = !e.done && (i === 0 || etapas[i-1].done);
+    const isCurrent = i === firstUndoneIdx;
     return `
     <div style="display:flex;gap:10px;padding:6px 0;${i < etapas.length-1 ? 'border-left:2px solid '+(e.done?'var(--red)':'var(--gray-200)')+';margin-left:9px;padding-left:16px;':''}">
       <div style="width:20px;height:20px;border-radius:50%;background:${e.done?'var(--red)':isCurrent?'#FEF3C7':'var(--gray-100)'};border:2px solid ${e.done?'var(--red)':isCurrent?'#F59E0B':'var(--gray-200)'};display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0;margin-left:${i < etapas.length-1 ?'-26':'0'}px">${e.done?'✓':''}</div>
