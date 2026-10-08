@@ -5966,7 +5966,8 @@
             <input id="rm-nome" type="text" placeholder="Ex: João Silva" style="height:36px;border:1px solid #D6D6D6;border-radius:7px;padding:0 10px;font-size:13px;font-family:inherit">
           </label>
           <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:#545252">Data da pesquisa
-            <input id="rm-data" type="date" value="${hoje}" style="height:36px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;font-size:13px;font-family:inherit">
+            <input id="rm-data" type="date" value="${hoje}" max="${hoje}" onchange="rmBadgeHistorico(this.value,'${hoje}')" style="height:36px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;font-size:13px;font-family:inherit">
+            <span id="rm-badge-historico" style="display:none;background:#fef3c7;color:#92400e;border:1px solid #fbbf24;border-radius:999px;font-size:11px;padding:2px 10px;width:fit-content">📂 Registro histórico</span>
           </label>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
             ${[['rm-at','Atendimento'],['rm-pr','Prazo de Entrega'],['rm-qu','Qualidade'],['rm-re','Recomendação']].map(([id,lbl])=>`
@@ -5987,6 +5988,10 @@
       document.getElementById('page-relatorio-satisfacao').appendChild(m);
     } else { m.style.display='flex'; }
   };
+  window.rmBadgeHistorico=function(val,hoje){
+    const b=document.getElementById('rm-badge-historico');
+    if(b)b.style.display=(val&&val<hoje)?'inline-block':'none';
+  };
   window.relFecharFormManual=function(){
     const m=document.getElementById('rel-modal-manual');if(m)m.style.display='none';
   };
@@ -6002,7 +6007,8 @@
     if(btn){btn.disabled=true;btn.textContent='Salvando...';}
     try{
       const tok=sessionStorage.getItem('sac-token');
-      const r=await fetch('/api/pesquisas/resposta-manual',{method:'POST',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({empresa,nome_cliente:nome,data_referencia:data,atendimento:at||null,prazo_entrega:pr||null,qualidade:qu||null,recomendacao:re||null,comentario})});
+      const hoje2=new Date().toISOString().split('T')[0];
+      const r=await fetch('/api/pesquisas/resposta-manual',{method:'POST',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({empresa,nome_cliente:nome,data_referencia:data,atendimento:at||null,prazo_entrega:pr||null,qualidade:qu||null,recomendacao:re||null,comentario,historico:data<hoje2})});
       const j=await r.json().catch(()=>({}));
       if(!r.ok||j.sucesso===false){throw new Error(j.erro||'Erro ao salvar.');}
       _toast('Pesquisa registrada! Nota média: '+j.nota_media);
@@ -14979,15 +14985,31 @@ function cpRenderGeral() {
   el('cp-kpi-com').textContent = s.comentarios;
   el('cp-count-txt').textContent = s.total + ' resposta' + (s.total !== 1 ? 's' : '');
   const th = el('cp-thead'), c = _cp.cols;
+  const isMaster = (role && role() === 'MASTER');
   th.innerHTML = ['LINHA', 'DATA', 'EMPRESA', 'CLIENTE'].concat(c.notas.map(h => cpEsc(h.length > 22 ? h.slice(0, 21) + '…' : h).toUpperCase()), ['SINAL'])
-    .map(x => '<th class="ps-th">' + x + '</th>').join('');
+    .map(x => '<th class="ps-th">' + x + '</th>').join('')
+    + (isMaster ? '<th class="ps-th"></th>' : '');
   const tb = el('cp-tbody');
-  if (!l.length) { tb.innerHTML = '<tr><td colspan="' + (5 + c.notas.length) + '" style="text-align:center;padding:30px;color:#666464">Nenhuma pesquisa neste recorte. Ajuste ou limpe os filtros.</td></tr>'; el('cp-more').style.display = 'none'; return; }
+  if (!l.length) { tb.innerHTML = '<tr><td colspan="' + (5 + c.notas.length + (isMaster?1:0)) + '" style="text-align:center;padding:30px;color:#666464">Nenhuma pesquisa neste recorte. Ajuste ou limpe os filtros.</td></tr>'; el('cp-more').style.display = 'none'; return; }
   const vis = l.slice(0, _cp.page * 50);
   tb.innerHTML = vis.map((r, idx) => '<tr class="ps-tr' + (r.baixa ? ' ps-low' : '') + '" style="cursor:pointer" onclick="cpAbrirDetalhe(' + (_cp.page > 1 ? ((_cp.page-1)*50+idx) : idx) + ')" title="Ver detalhes"><td class="ps-td" style="font-weight:600">#' + r.n + '</td><td class="ps-td">' + cpEsc(r.dataTxt) + '</td><td class="ps-td">' + cpEsc(r.emp || '—') + '</td><td class="ps-td" style="max-width:220px">' + cpEsc(r.cli || '—') + '</td>'
     + r.notas.map(n => '<td class="ps-td" style="text-align:center">' + cpNotaChip(n) + '</td>').join('')
-    + '<td class="ps-td">' + (r.baixa ? '<span class="ps-pill ps-pill-red">NOTA ≤ 6</span>' : '<span class="ps-pill ps-pill-gray">SEM ALERTA</span>') + '</td></tr>').join('');
+    + '<td class="ps-td">' + (r.baixa ? '<span class="ps-pill ps-pill-red">NOTA ≤ 6</span>' : '<span class="ps-pill ps-pill-gray">SEM ALERTA</span>') + '</td>'
+    + (isMaster ? '<td class="ps-td" onclick="event.stopPropagation()"><button onclick="cpExcluirResposta(\'' + cpEsc(r.raw&&r.raw.ID_RESPOSTA||'') + '\',' + (_cp.page > 1 ? ((_cp.page-1)*50+idx) : idx) + ')" style="background:none;border:1px solid #dc2626;color:#dc2626;border-radius:4px;padding:2px 7px;cursor:pointer;font-size:13px" title="Excluir pesquisa">🗑️</button></td>' : '')
+    + '</tr>').join('');
   el('cp-more').style.display = vis.length < l.length ? 'block' : 'none';
+}
+
+async function cpExcluirResposta(id, idx) {
+  if (!id) return alert('ID da resposta não encontrado.');
+  if (!confirm('Excluir pesquisa #' + (idx + 1) + '? Esta ação não pode ser desfeita.')) return;
+  try {
+    const r = await fetch('/api/pesquisas/respostas/' + encodeURIComponent(id), { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('sac_token') || '') } });
+    const d = await r.json();
+    if (!d.sucesso) throw new Error(d.erro || 'Erro ao excluir.');
+    _cp.all = (_cp.all || []).filter(x => (x.raw && x.raw.ID_RESPOSTA) !== id);
+    cpAplica();
+  } catch (e) { alert('Erro: ' + e.message); }
 }
 
 function cpAbrirDetalhe(idx) {

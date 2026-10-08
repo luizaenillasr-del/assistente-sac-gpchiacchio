@@ -2832,6 +2832,34 @@ app.post('/api/pesquisas/relatorio-texto', requerPerfil('MASTER','ANALISTA SAC',
   }
 });
 
+// ===== EXCLUIR RESPOSTA DE PESQUISA (MASTER only) =====
+app.delete('/api/pesquisas/respostas/:id', requerPerfil('MASTER'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const aba = 'PESQUISA_RESPOSTAS';
+    const rows = await lerAba(aba, 5000);
+    const idx = rows.findIndex(r => r.ID_RESPOSTA === id);
+    if (idx < 0) return res.status(404).json({ sucesso: false, erro: 'Resposta não encontrada.' });
+
+    const sheets = await getSheets();
+    // Obtém o sheetId da aba
+    const meta = await sheets.spreadsheets.get({ spreadsheetId: process.env.SPREADSHEET_ID });
+    const sheet = meta.data.sheets?.find(s => s.properties?.title === aba);
+    if (!sheet) return res.status(404).json({ sucesso: false, erro: 'Aba não encontrada.' });
+    const sheetId = sheet.properties.sheetId;
+
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: process.env.SPREADSHEET_ID,
+      requestBody: { requests: [{ deleteDimension: { range: { sheetId, dimension: 'ROWS', startIndex: idx + 1, endIndex: idx + 2 } } }] }
+    });
+    invalidarCacheAba(aba);
+    registrarAuditoria(req.user.usuario, 'EXCLUIU_PESQUISA', id, aba, null, {}).catch(() => {});
+    res.json({ sucesso: true });
+  } catch (e) {
+    res.status(500).json({ sucesso: false, erro: erroSeguro(e) });
+  }
+});
+
 // ===== PESQUISA DECISÃO (Transformar em Manifestação / Não requer tratamento) =====
 app.post('/api/pesquisas/decisao', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','GESTOR SAC','ADMINISTRADOR','DIRETOR'), async (req, res) => {
   try {
