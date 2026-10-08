@@ -9154,7 +9154,7 @@ function abrirDossie(item) {
   const temDecisao  = !!(item.TIPO_CONFIRMADO || item.DECISAO_ANALISTA || item.SETOR_CONFIRMADO);
   const temEnc      = !!(item.SETOR_CONFIRMADO || item.SETOR_SUGERIDO);
   const temTratativa= !!(item.TRATATIVA_REALIZADA);
-  const temAprov    = status.toUpperCase().includes('APROV');
+  const temAprov    = !!(item.APROV_SETOR_DECISAO) || status.toUpperCase().includes('APROV') && !status.toUpperCase().includes('AGUARDANDO');
   const temDev      = !!(item.DEVOLUTIVA_FINAL || item.DEVOLUTIVA_ENVIADA);
   const encerrada   = status.toUpperCase().includes('ENCERR') || status.toUpperCase().includes('FINALIZ');
 
