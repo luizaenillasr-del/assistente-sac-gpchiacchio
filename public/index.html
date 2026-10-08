@@ -10003,7 +10003,10 @@ const pageLoaders = window.pageLoaders = {
   'painel-maquina': (...a) => loadPainelMaquina(...a),
   'causas': (...a) => loadCausas(...a),
   'sugestoes-melhoria': () => cpLoad(),
-  'relatorio-satisfacao': () => { if (typeof relCarregar === 'function') relCarregar(); },
+  'relatorio-satisfacao': () => {
+    if (typeof relCarregar === 'function') relCarregar();
+    if (typeof cpLoad === 'function') setTimeout(cpLoad, 50);
+  },
 };
 
 const originalNavigate = navigate;
