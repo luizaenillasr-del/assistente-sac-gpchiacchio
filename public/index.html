@@ -10796,93 +10796,206 @@ window.navigate = function(page, el) {
     }catch(e){console.error('Solicitações:',e);}
   }
   window.loadUsuariosV5=loadUsuariosV5;
-  const _USR_PERM={
-    'MASTER':['Acesso total ao sistema','Gerenciar usuários e permissões','Ver e editar todas as manifestações','Configurações e auditoria','Centro de Pesquisas e Relatório de Satisfação','Cérebro e Base de Conhecimento','RCA e representantes'],
-    'GESTOR SAC':['Ver e gerenciar manifestações de todas as empresas','Aprovar/rejeitar manifestações','Dashboard e indicadores','Centro de Pesquisas e Relatório de Satisfação','Cérebro e Base de Conhecimento','Configurar setores e aprovadores'],
-    'ANALISTA SAC':['Abrir e editar manifestações','Banco de manifestações e RNCs','Centro de Pesquisas e Relatório de Satisfação','Cérebro e Base de Conhecimento','Similares e biblioteca de fichas'],
-    'APROVADOR':['Visualizar manifestações encaminhadas para aprovação','Aprovar ou rejeitar manifestações','Ver Relatório de Satisfação'],
-    'ATENDENTE SAC':['Abrir novas manifestações','Acompanhar manifestações abertas por si','Acesso ao Cérebro e similares'],
-    'SETOR RESPONSÁVEL':['Receber manifestações do próprio setor','Registrar tratativas e devolutivas','Acesso limitado ao banco de manifestações'],
-    'ESPECIALISTA':['Consulta à Base de Conhecimento','Busca de similares','Visualização de indicadores'],
-    'RCA / REPRESENTANTE':['Abrir manifestações em nome de clientes','Acompanhar casos dos próprios clientes','Portal de RCA'],
-    'DIRETOR':['Dashboard e indicadores executivos','Banco de manifestações (somente leitura)','Relatório de Satisfação e RCA'],
-    'VISUALIZADOR':['Visualizar manifestações sem editar','Dashboard e indicadores','Relatório de Satisfação'],
-    'AUDITOR':['Auditoria de manifestações e logs','Banco de manifestações e RNCs','Dashboard e indicadores'],
-  };
-  // Todas as atividades disponíveis no sistema
-  const _USR_TODAS_ATIVIDADES=[
-    'Acesso total ao sistema','Gerenciar usuários e permissões','Ver e editar todas as manifestações',
-    'Configurações e auditoria','Centro de Pesquisas e Relatório de Satisfação','Cérebro e Base de Conhecimento',
-    'RCA e representantes','Ver e gerenciar manifestações de todas as empresas','Aprovar/rejeitar manifestações',
-    'Dashboard e indicadores','Configurar setores e aprovadores','Abrir e editar manifestações',
-    'Banco de manifestações e RNCs','Similares e biblioteca de fichas','Visualizar manifestações encaminhadas para aprovação',
-    'Aprovar ou rejeitar manifestações','Ver Relatório de Satisfação','Abrir novas manifestações',
-    'Acompanhar manifestações abertas por si','Acesso ao Cérebro e similares','Receber manifestações do próprio setor',
-    'Registrar tratativas e devolutivas','Acesso limitado ao banco de manifestações','Consulta à Base de Conhecimento',
-    'Busca de similares','Visualização de indicadores','Abrir manifestações em nome de clientes',
-    'Acompanhar casos dos próprios clientes','Portal de RCA','Dashboard e indicadores executivos',
-    'Banco de manifestações (somente leitura)','Relatório de Satisfação e RCA','Visualizar manifestações sem editar',
-    'Auditoria de manifestações e logs',
+  // ── Módulos e permissões por chave curta (ex: "manifestacoes.visualizar") ──
+  const _PERM_MODULOS = [
+    { id: 'manifestacoes', label: 'Manifestações', perms: [
+      { id: 'visualizar',  label: 'Visualizar' },
+      { id: 'abrir',       label: 'Abrir' },
+      { id: 'editar',      label: 'Editar' },
+      { id: 'gerenciar',   label: 'Gerenciar' },
+      { id: 'aprovar',     label: 'Aprovar' },
+    ]},
+    { id: 'cerebro', label: 'Cérebro / Base de Conhecimento', perms: [
+      { id: 'visualizar',          label: 'Visualizar' },
+      { id: 'adicionar_conteudo',  label: 'Adicionar conteúdo' },
+      { id: 'editar_conteudo',     label: 'Editar conteúdo' },
+      { id: 'adicionar_regras',    label: 'Adicionar regras' },
+      { id: 'adicionar_politicas', label: 'Adicionar políticas' },
+      { id: 'editar_faq',          label: 'Editar FAQ' },
+      { id: 'gerenciar',           label: 'Gerenciar' },
+    ]},
+    { id: 'rca', label: 'RCA / Representantes', perms: [
+      { id: 'visualizar', label: 'Visualizar' },
+      { id: 'criar',      label: 'Criar' },
+      { id: 'editar',     label: 'Editar' },
+      { id: 'gerenciar',  label: 'Gerenciar' },
+    ]},
+    { id: 'pesquisas', label: 'Pesquisas / Satisfação', perms: [
+      { id: 'visualizar', label: 'Visualizar' },
+      { id: 'criar',      label: 'Criar' },
+      { id: 'editar',     label: 'Editar' },
+      { id: 'gerenciar',  label: 'Gerenciar' },
+    ]},
+    { id: 'dashboard', label: 'Dashboard', perms: [
+      { id: 'visualizar', label: 'Visualizar' },
+      { id: 'gerenciar',  label: 'Gerenciar' },
+    ]},
+    { id: 'configuracoes', label: 'Configurações', perms: [
+      { id: 'visualizar', label: 'Visualizar' },
+      { id: 'editar',     label: 'Editar' },
+      { id: 'gerenciar',  label: 'Gerenciar' },
+    ]},
+    { id: 'usuarios', label: 'Usuários', perms: [
+      { id: 'visualizar', label: 'Visualizar' },
+      { id: 'criar',      label: 'Criar' },
+      { id: 'editar',     label: 'Editar' },
+      { id: 'gerenciar',  label: 'Gerenciar' },
+    ]},
+    { id: 'aprovacoes', label: 'Aprovações', perms: [
+      { id: 'visualizar', label: 'Visualizar' },
+      { id: 'aprovar',    label: 'Aprovar' },
+      { id: 'rejeitar',   label: 'Rejeitar' },
+    ]},
   ];
-  window.usrGetAtividadesSelecionadas=function(){
-    return _USR_TODAS_ATIVIDADES.filter((_,i)=>{const cb=document.getElementById('usr-perm-cb-'+i);return cb&&cb.checked;});
+
+  // Permissões padrão por perfil
+  const _PERM_PADRAO = {
+    'MASTER':             ['manifestacoes.visualizar','manifestacoes.abrir','manifestacoes.editar','manifestacoes.gerenciar','manifestacoes.aprovar','cerebro.visualizar','cerebro.adicionar_conteudo','cerebro.editar_conteudo','cerebro.adicionar_regras','cerebro.adicionar_politicas','cerebro.editar_faq','cerebro.gerenciar','rca.visualizar','rca.criar','rca.editar','rca.gerenciar','pesquisas.visualizar','pesquisas.criar','pesquisas.editar','pesquisas.gerenciar','dashboard.visualizar','dashboard.gerenciar','configuracoes.visualizar','configuracoes.editar','configuracoes.gerenciar','usuarios.visualizar','usuarios.criar','usuarios.editar','usuarios.gerenciar','aprovacoes.visualizar','aprovacoes.aprovar','aprovacoes.rejeitar'],
+    'ADMINISTRADOR':      ['manifestacoes.visualizar','manifestacoes.abrir','manifestacoes.editar','manifestacoes.gerenciar','cerebro.visualizar','cerebro.gerenciar','rca.visualizar','rca.gerenciar','pesquisas.visualizar','pesquisas.gerenciar','dashboard.visualizar','dashboard.gerenciar','configuracoes.visualizar','configuracoes.editar','configuracoes.gerenciar','usuarios.visualizar','usuarios.criar','usuarios.editar','usuarios.gerenciar','aprovacoes.visualizar','aprovacoes.aprovar','aprovacoes.rejeitar'],
+    'GESTOR SAC':         ['manifestacoes.visualizar','manifestacoes.editar','manifestacoes.gerenciar','manifestacoes.aprovar','cerebro.visualizar','cerebro.gerenciar','rca.visualizar','pesquisas.visualizar','pesquisas.gerenciar','dashboard.visualizar','dashboard.gerenciar','configuracoes.visualizar','configuracoes.editar','aprovacoes.visualizar','aprovacoes.aprovar','aprovacoes.rejeitar'],
+    'ANALISTA SAC':       ['manifestacoes.visualizar','manifestacoes.abrir','manifestacoes.editar','cerebro.visualizar','cerebro.adicionar_conteudo','cerebro.editar_conteudo','cerebro.adicionar_regras','cerebro.adicionar_politicas','cerebro.editar_faq','pesquisas.visualizar','pesquisas.criar','dashboard.visualizar','aprovacoes.visualizar'],
+    'APROVADOR':          ['manifestacoes.visualizar','aprovacoes.visualizar','aprovacoes.aprovar','aprovacoes.rejeitar','pesquisas.visualizar'],
+    'ATENDENTE SAC':      ['manifestacoes.visualizar','manifestacoes.abrir','cerebro.visualizar','dashboard.visualizar'],
+    'SETOR RESPONSÁVEL':  ['manifestacoes.visualizar','manifestacoes.editar'],
+    'ESPECIALISTA':       ['cerebro.visualizar','dashboard.visualizar'],
+    'RCA / REPRESENTANTE':['manifestacoes.visualizar','manifestacoes.abrir','rca.visualizar','rca.criar'],
+    'DIRETOR':            ['manifestacoes.visualizar','pesquisas.visualizar','dashboard.visualizar','dashboard.gerenciar','rca.visualizar'],
+    'VISUALIZADOR':       ['manifestacoes.visualizar','dashboard.visualizar','pesquisas.visualizar'],
+    'AUDITOR':            ['manifestacoes.visualizar','manifestacoes.gerenciar','dashboard.visualizar'],
   };
-  window.usrAtualizarPermissoes=function(perfil,customAtividades){
-    const el=document.getElementById('usr-permissoes-painel');
-    if(!el)return;
-    const padrao=_USR_PERM[perfil]||[];
-    const marcadas=customAtividades||padrao;
-    el.innerHTML='<div style="font-size:11px;font-weight:700;letter-spacing:.06em;color:#929090;text-transform:uppercase;margin-bottom:10px">Atividades deste usuário <span style="font-weight:400;font-size:10px;color:#b0aeae">(personalizável)</span></div>'
-      +_USR_TODAS_ATIVIDADES.map((item,i)=>{
-        const checked=marcadas.includes(item)?'checked':'';
-        const isPadrao=padrao.includes(item);
-        return '<label style="display:flex;gap:8px;align-items:flex-start;margin-bottom:6px;cursor:pointer">'
-          +'<input type="checkbox" id="usr-perm-cb-'+i+'" '+checked+' style="margin-top:2px;accent-color:#C70602;width:14px;height:14px;flex-shrink:0">'
-          +'<span style="font-size:12.5px;line-height:1.4;color:#3D3D3D">'
-          +item+(isPadrao?'<span style="font-size:10px;color:#929090;margin-left:5px">(padrão do perfil)</span>':'')
-          +'</span></label>';
-      }).join('');
+
+  // Retorna array de chaves marcadas (ex: ["manifestacoes.visualizar", ...])
+  window.usrGetAtividadesSelecionadas = function() {
+    const result = [];
+    _PERM_MODULOS.forEach(mod => {
+      mod.perms.forEach(p => {
+        const cb = document.getElementById('usr-perm-' + mod.id + '.' + p.id);
+        if (cb && cb.checked) result.push(mod.id + '.' + p.id);
+      });
+    });
+    return result;
   };
-  window.abrirModalUsuario=function(){
-    document.getElementById('modal-usuario-v5').style.display='flex';
+
+  // Verifica se o usuário logado tem uma permissão (consulta permissoes_custom da sessão)
+  window.temPermissao = function(chave) {
+    const u = sess();
+    if (!u) return false;
+    const p = (u.perfil || '').toUpperCase();
+    if (p === 'MASTER') return true;
+    if (Array.isArray(u.permissoes_custom) && u.permissoes_custom.length) {
+      return u.permissoes_custom.includes(chave);
+    }
+    // fallback: padrão do perfil
+    return (_PERM_PADRAO[p] || []).includes(chave);
+  };
+  window._PERM_PADRAO = _PERM_PADRAO;
+
+  // Renderiza painel de checkboxes por módulo
+  window.usrAtualizarPermissoes = function(perfil, customAtividades) {
+    const el = document.getElementById('usr-permissoes-painel');
+    if (!el) return;
+    const padrao = _PERM_PADRAO[perfil] || [];
+    const marcadas = Array.isArray(customAtividades) && customAtividades.length ? customAtividades : padrao;
+    let html = '<div style="font-size:11px;font-weight:700;letter-spacing:.06em;color:#929090;text-transform:uppercase;margin-bottom:12px">Permissões</div>'
+      + '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px 20px">';
+    _PERM_MODULOS.forEach(mod => {
+      html += '<div>'
+        + '<div style="font-size:11px;font-weight:700;color:#545252;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid #E8E8E8">' + mod.label + '</div>';
+      mod.perms.forEach(p => {
+        const key = mod.id + '.' + p.id;
+        const cbId = 'usr-perm-' + key;
+        const checked = marcadas.includes(key) ? 'checked' : '';
+        html += '<label style="display:flex;gap:7px;align-items:center;margin-bottom:5px;cursor:pointer;user-select:none">'
+          + '<input type="checkbox" id="' + cbId + '" ' + checked + ' style="accent-color:#C70602;width:14px;height:14px;flex-shrink:0;cursor:pointer">'
+          + '<span style="font-size:12.5px;color:#3D3D3D">' + p.label + '</span>'
+          + '</label>';
+      });
+      html += '</div>';
+    });
+    html += '</div>';
+    // Botão selecionar tudo / padrão do perfil
+    html += '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">'
+      + '<button type="button" onclick="usrAtualizarPermissoes(document.getElementById(\'usr-perfil\').value)" style="font-size:11px;border:1px solid #D6D6D6;background:#fff;border-radius:5px;padding:3px 10px;cursor:pointer;font-family:inherit;color:#545252">↺ Restaurar padrão do perfil</button>'
+      + '<button type="button" onclick="_usrMarcarTodos(true)" style="font-size:11px;border:1px solid #D6D6D6;background:#fff;border-radius:5px;padding:3px 10px;cursor:pointer;font-family:inherit;color:#545252">Marcar tudo</button>'
+      + '<button type="button" onclick="_usrMarcarTodos(false)" style="font-size:11px;border:1px solid #D6D6D6;background:#fff;border-radius:5px;padding:3px 10px;cursor:pointer;font-family:inherit;color:#545252">Desmarcar tudo</button>'
+      + '</div>';
+    el.innerHTML = html;
+  };
+  window._usrMarcarTodos = function(val) {
+    _PERM_MODULOS.forEach(mod => mod.perms.forEach(p => {
+      const cb = document.getElementById('usr-perm-' + mod.id + '.' + p.id);
+      if (cb) cb.checked = val;
+    }));
+  };
+
+  window.abrirModalUsuario = function() {
+    document.getElementById('modal-usuario-v5').style.display = 'flex';
     usrAtualizarPermissoes(document.getElementById('usr-perfil').value);
-  };window.fecharModalUsuario=function(){document.getElementById('modal-usuario-v5').style.display='none'};
-  window.salvarUsuarioV5=async function(){const b={nome:document.getElementById('usr-nome').value.trim(),usuario:document.getElementById('usr-login').value.trim(),email:document.getElementById('usr-email').value.trim(),senha:document.getElementById('usr-senha').value,perfil:document.getElementById('usr-perfil').value,empresa:document.getElementById('usr-empresa').value,setor:document.getElementById('usr-setor').value,codigoRCA:document.getElementById('usr-rca').value,status:document.getElementById('usr-status').value,permissoes_custom:usrGetAtividadesSelecionadas()};try{await json5('/api/usuarios',{method:'POST',body:JSON.stringify(b)});alert('Usuário criado.');fecharModalUsuario();loadUsuariosV5()}catch(e){alert(e.message)}};
-  window.editarUsuarioV5=async function(id){
-    try{
-      const d=await json5('/api/usuarios');
-      const u=(d.itens||[]).find(x=>String(x.id)===String(id)||String(x.usuario)===String(id));
-      if(!u)return alert('Usuário não encontrado.');
-      document.getElementById('usr-nome').value=u.nome||'';
-      document.getElementById('usr-login').value=u.usuario||'';
-      document.getElementById('usr-email').value=u.email||'';
-      document.getElementById('usr-senha').value='';
-      document.getElementById('usr-perfil').value=u.perfil||'ANALISTA SAC';
-      document.getElementById('usr-empresa').value=u.empresa||'';
-      document.getElementById('usr-setor').value=u.setor||'';
-      document.getElementById('usr-rca').value=u.codigoRCA||u.codigo_rca||'';
-      document.getElementById('usr-status').value=u.status||'ATIVO';
-      // Trocar título e botão para modo edição
-      const box=document.querySelector('#modal-usuario-v5 .modal-box');
-      box.querySelector('.modal-header div div:first-child').textContent='Editar usuário';
-      const btn=box.querySelector('.btn.btn-primary');
-      btn.textContent='Salvar alterações';
-      btn.onclick=async function(){
-        const b={nome:document.getElementById('usr-nome').value.trim(),email:document.getElementById('usr-email').value.trim(),perfil:document.getElementById('usr-perfil').value,empresa:document.getElementById('usr-empresa').value,setor:document.getElementById('usr-setor').value,codigoRCA:document.getElementById('usr-rca').value,status:document.getElementById('usr-status').value,permissoes_custom:usrGetAtividadesSelecionadas()};
-        const s=document.getElementById('usr-senha').value;if(s)b.senha=s;
-        try{await json5('/api/usuarios/'+encodeURIComponent(id),{method:'PATCH',body:JSON.stringify(b)});alert('Usuário atualizado.');fecharModalUsuario();loadUsuariosV5();}catch(e){alert(e.message)}
-      };
-      document.getElementById('modal-usuario-v5').style.display='flex';
-      const custom=Array.isArray(u.permissoes_custom)&&u.permissoes_custom.length?u.permissoes_custom:null;
-      usrAtualizarPermissoes(u.perfil||'ANALISTA SAC',custom);
-    }catch(e){alert(e.message)}
   };
-  // Restaurar modal para modo criação ao fechar
-  const _fecharModalUsuarioOrig=window.fecharModalUsuario;
-  window.fecharModalUsuario=function(){
-    _fecharModalUsuarioOrig();
-    const box=document.querySelector('#modal-usuario-v5 .modal-box');
-    if(box){box.querySelector('.modal-header div div:first-child').textContent='Novo usuário';const btn=box.querySelector('.btn.btn-primary');btn.textContent='Criar usuário';btn.onclick=window.salvarUsuarioV5;}
+  window.fecharModalUsuario = function() {
+    document.getElementById('modal-usuario-v5').style.display = 'none';
+    // Restaurar para modo criação
+    const box = document.querySelector('#modal-usuario-v5 .modal-box');
+    if (box) {
+      box.querySelector('.modal-header div div:first-child').textContent = 'Novo usuário';
+      const btn = box.querySelector('.btn.btn-primary');
+      btn.textContent = 'Criar usuário';
+      btn.onclick = window.salvarUsuarioV5;
+    }
+  };
+  window.salvarUsuarioV5 = async function() {
+    const b = {
+      nome: document.getElementById('usr-nome').value.trim(),
+      usuario: document.getElementById('usr-login').value.trim(),
+      email: document.getElementById('usr-email').value.trim(),
+      senha: document.getElementById('usr-senha').value,
+      perfil: document.getElementById('usr-perfil').value,
+      empresa: document.getElementById('usr-empresa').value,
+      setor: document.getElementById('usr-setor').value,
+      codigoRCA: document.getElementById('usr-rca').value,
+      status: document.getElementById('usr-status').value,
+      permissoes_custom: usrGetAtividadesSelecionadas(),
+    };
+    try { await json5('/api/usuarios', {method:'POST', body:JSON.stringify(b)}); alert('Usuário criado.'); fecharModalUsuario(); loadUsuariosV5(); }
+    catch(e) { alert(e.message); }
+  };
+  window.editarUsuarioV5 = async function(id) {
+    try {
+      const d = await json5('/api/usuarios');
+      const u = (d.itens || []).find(x => String(x.id) === String(id) || String(x.usuario) === String(id));
+      if (!u) return alert('Usuário não encontrado.');
+      document.getElementById('usr-nome').value = u.nome || '';
+      document.getElementById('usr-login').value = u.usuario || '';
+      document.getElementById('usr-email').value = u.email || '';
+      document.getElementById('usr-senha').value = '';
+      document.getElementById('usr-perfil').value = u.perfil || 'ANALISTA SAC';
+      document.getElementById('usr-empresa').value = u.empresa || '';
+      document.getElementById('usr-setor').value = u.setor || '';
+      document.getElementById('usr-rca').value = u.codigoRCA || u.codigo_rca || '';
+      document.getElementById('usr-status').value = u.status || 'ATIVO';
+      const box = document.querySelector('#modal-usuario-v5 .modal-box');
+      box.querySelector('.modal-header div div:first-child').textContent = 'Editar usuário';
+      const btn = box.querySelector('.btn.btn-primary');
+      btn.textContent = 'Salvar alterações';
+      btn.onclick = async function() {
+        const b = {
+          nome: document.getElementById('usr-nome').value.trim(),
+          email: document.getElementById('usr-email').value.trim(),
+          perfil: document.getElementById('usr-perfil').value,
+          empresa: document.getElementById('usr-empresa').value,
+          setor: document.getElementById('usr-setor').value,
+          codigoRCA: document.getElementById('usr-rca').value,
+          status: document.getElementById('usr-status').value,
+          permissoes_custom: usrGetAtividadesSelecionadas(),
+        };
+        const s = document.getElementById('usr-senha').value; if (s) b.senha = s;
+        try { await json5('/api/usuarios/' + encodeURIComponent(id), {method:'PATCH', body:JSON.stringify(b)}); alert('Usuário atualizado.'); fecharModalUsuario(); loadUsuariosV5(); }
+        catch(e) { alert(e.message); }
+      };
+      document.getElementById('modal-usuario-v5').style.display = 'flex';
+      const custom = Array.isArray(u.permissoes_custom) && u.permissoes_custom.length ? u.permissoes_custom : null;
+      usrAtualizarPermissoes(u.perfil || 'ANALISTA SAC', custom);
+    } catch(e) { alert(e.message); }
   };
 
   // ===== MÓDULO DE APROVAÇÃO COMPLETO =====
@@ -15264,7 +15377,7 @@ function cpRenderGeral() {
   tb.innerHTML = vis.map((r, idx) => '<tr class="ps-tr' + (r.baixa ? ' ps-low' : '') + '" style="cursor:pointer" onclick="cpAbrirDetalhe(' + (_cp.page > 1 ? ((_cp.page-1)*50+idx) : idx) + ')" title="Ver detalhes"><td class="ps-td" style="font-weight:600">#' + r.n + '</td><td class="ps-td">' + cpEsc(r.dataTxt) + '</td><td class="ps-td">' + cpEsc(r.emp || '—') + '</td><td class="ps-td" style="max-width:220px">' + cpEsc(r.cli || '—') + '</td>'
     + r.notas.map(n => '<td class="ps-td" style="text-align:center">' + cpNotaChip(n) + '</td>').join('')
     + '<td class="ps-td">' + (r.baixa ? '<span class="ps-pill ps-pill-red">NOTA ≤ 6</span>' : '<span class="ps-pill ps-pill-gray">SEM ALERTA</span>') + '</td>'
-    + (isMaster ? '<td class="ps-td" onclick="event.stopPropagation()"><button onclick="cpExcluirResposta(\'' + cpEsc(r.raw&&r.raw.ID_RESPOSTA||'') + '\',' + (_cp.page > 1 ? ((_cp.page-1)*50+idx) : idx) + ')" style="background:none;border:1px solid #dc2626;color:#dc2626;border-radius:4px;padding:2px 7px;cursor:pointer;font-size:13px" title="Excluir pesquisa">🗑️</button></td>' : '')
+    + (isMaster ? '<td class="ps-td" onclick="event.stopPropagation()"><button onclick="cpExcluirResposta(\'' + cpEsc(r.raw&&(r.raw._id||r.raw.ID_RESPOSTA)||'') + '\',' + (_cp.page > 1 ? ((_cp.page-1)*50+idx) : idx) + ')" style="background:none;border:1px solid #dc2626;color:#dc2626;border-radius:4px;padding:2px 7px;cursor:pointer;font-size:13px" title="Excluir pesquisa">🗑️</button></td>' : '')
     + '</tr>').join('');
   el('cp-more').style.display = vis.length < l.length ? 'block' : 'none';
 }
@@ -15273,10 +15386,9 @@ async function cpExcluirResposta(id, idx) {
   if (!id) return alert('ID da resposta não encontrado.');
   if (!confirm('Excluir pesquisa #' + (idx + 1) + '? Esta ação não pode ser desfeita.')) return;
   try {
-    const r = await fetch('/api/pesquisas/respostas/' + encodeURIComponent(id), { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('sac_token') || '') } });
-    const d = await r.json();
-    if (!d.sucesso) throw new Error(d.erro || 'Erro ao excluir.');
-    _cp.all = (_cp.all || []).filter(x => (x.raw && x.raw.ID_RESPOSTA) !== id);
+    const r = await _apiFetch('/api/pesquisas/respostas/' + encodeURIComponent(id), 10000, { method: 'DELETE' });
+    if (!r.sucesso) throw new Error(r.erro || 'Erro ao excluir.');
+    _cp.all = (_cp.all || []).filter(x => (x.raw && (x.raw._id || x.raw.ID_RESPOSTA)) !== id);
     cpAplica();
   } catch (e) { alert('Erro: ' + e.message); }
 }
@@ -15304,6 +15416,30 @@ function cpAbrirDetalhe(idx) {
   if (r.comentario) {
     html += '<div style="border:1.5px solid #E4E4E4;border-radius:8px;padding:10px 14px;margin-bottom:14px"><div style="font-size:11px;color:#666;margin-bottom:4px;font-weight:600">COMENTÁRIO</div><div style="font-size:13.5px;line-height:1.6;white-space:pre-line">' + cpEsc(r.comentario) + '</div></div>';
   }
+  // Detalhes extras
+  const raw = r.raw || {};
+  const statusOcp = raw._statusOcp || '';
+  const respId = raw._id || raw.ID_RESPOSTA || '';
+  const infoItems = [
+    ['ID Resposta', respId],
+    ['Status', statusOcp || '—'],
+    ['Empresa', r.emp || '—'],
+    ['Cliente', r.cli || '—'],
+    ['Data', r.dataTxt || '—'],
+  ].filter(([,v]) => v && v !== '—');
+  // Campos extras da planilha não mapeados canonicamente
+  const _cpSkip = new Set(['_id','_token','_notaBaixa','_statusOcp','Empresa','Cliente','Data','Atendimento','Prazo de Entrega','Qualidade','Recomendação','Observação','ID_RESPOSTA','TOKEN','NOTA_BAIXA','STATUS_OCP','EMPRESA','NOME_CLIENTE','COMENTARIO','ATENDIMENTO','PRAZO_ENTREGA','QUALIDADE','RECOMENDACAO']);
+  const camposExtras = Object.entries(raw).filter(([k,v]) => !_cpSkip.has(k) && v !== '' && v !== undefined && v !== null);
+  html += '<details style="margin-bottom:14px"><summary style="cursor:pointer;font-size:12px;font-weight:600;color:#545252;padding:8px 12px;border:1.5px solid #E4E4E4;border-radius:8px;list-style:none;display:flex;justify-content:space-between">Detalhes completos <span>▾</span></summary>'
+    + '<div style="border:1.5px solid #E4E4E4;border-top:0;border-radius:0 0 8px 8px;padding:10px 14px">'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 16px">'
+    + infoItems.map(([k,v]) => '<div><span style="font-size:10.5px;color:#888;font-weight:600;text-transform:uppercase">' + cpEsc(k) + '</span><br><span style="font-size:12.5px">' + cpEsc(String(v)) + '</span></div>').join('')
+    + camposExtras.map(([k,v]) => '<div><span style="font-size:10.5px;color:#888;font-weight:600;text-transform:uppercase">' + cpEsc(k) + '</span><br><span style="font-size:12.5px">' + cpEsc(String(v)) + '</span></div>').join('')
+    + '</div>'
+    + (raw._token ? '<div style="margin-top:10px;padding-top:10px;border-top:1px solid #E4E4E4"><span style="font-size:10.5px;color:#888;font-weight:600;text-transform:uppercase">Link da pesquisa</span><br>'
+      + '<code style="font-size:11px;color:#545252;word-break:break-all">' + cpEsc(window.location.origin + '/pesquisa?t=' + (raw._token||'')) + '</code>&nbsp;'
+      + '<button onclick="navigator.clipboard.writeText(\'' + cpEsc(raw._token||'').replace(/'/g,"\\'") + '\').then(()=>alert(\'Token copiado!\')).catch(()=>prompt(\'Token:\',\'' + cpEsc(raw._token||'').replace(/'/g,"\\'") + '\'))" style="border:1px solid #D6D6D6;background:#fff;border-radius:5px;padding:3px 10px;font-size:12px;cursor:pointer;font-family:inherit">Copiar token</button></div>' : '')
+    + '</div></details>';
   if (baixa) {
     html += '<div style="border-top:1.5px solid #E4E4E4;padding-top:16px;margin-top:4px">'
       + '<div style="font-size:13px;font-weight:700;margin-bottom:10px">Decisão de tratamento</div>'
@@ -15336,6 +15472,7 @@ async function cpDecisaoDetalhe(decisao, linhaId) {
   const msg = document.getElementById('cp-det-msg');
   const setor = (document.getElementById('cp-det-setor') || {}).value || '';
   // Não requer tratamento — exige justificativa
+  const decisaoApi = decisao === 'NENHUM' ? 'NAO_REQUER' : decisao;
   if (decisao === 'NENHUM') {
     if (justWrap && justWrap.style.display === 'none') {
       justWrap.style.display = 'block';
@@ -15353,6 +15490,11 @@ async function cpDecisaoDetalhe(decisao, linhaId) {
     if (msg) msg.innerHTML = '<span style="color:#A80502">Resposta não encontrada.</span>';
     return;
   }
+  const respostaId = (resposta.raw && (resposta.raw._id || resposta.raw.ID_RESPOSTA)) || '';
+  if (!respostaId) {
+    if (msg) msg.innerHTML = '<span style="color:#A80502">ID da resposta não encontrado.</span>';
+    return;
+  }
   // Bloquear duplicidade de manifestação
   if (decisao === 'MANIFESTACAO' && resposta._manId) {
     if (msg) msg.innerHTML = '<span style="color:#A80502">Esta resposta já possui uma manifestação vinculada (' + cpEsc(resposta._manId) + ').</span>';
@@ -15361,14 +15503,14 @@ async function cpDecisaoDetalhe(decisao, linhaId) {
   try {
     const res = await _apiFetch('/api/pesquisas/decisao', 8000, {
       method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ linhaId, decisao, justificativa, setor })
+      body: JSON.stringify({ respostaId, decisao: decisaoApi, justificativa, setor })
     });
     if (res.sucesso) {
       if (msg) msg.innerHTML = '<span style="color:#1E6B3A">✓ Decisão registrada com sucesso!</span>';
       if (decisao === 'MANIFESTACAO' && res.manifestacaoId) {
         if (msg) msg.innerHTML += ' <span style="color:#1E6B3A">Manifestação ' + cpEsc(res.manifestacaoId) + ' criada.</span>';
       }
-      setTimeout(() => { cpFecharDetalhe(); cpCarregar(); }, 1400);
+      setTimeout(() => { cpFecharDetalhe(); cpLoad(); }, 1400);
     } else {
       if (msg) msg.innerHTML = '<span style="color:#A80502">Erro: ' + cpEsc(res.erro || 'desconhecido') + '</span>';
     }
