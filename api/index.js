@@ -319,6 +319,41 @@ function requerPerfil(...perfis){
   };
 }
 
+// Permissões padrão por perfil (espelha frontend _PERM_PADRAO)
+const _PERM_PADRAO_API = {
+  'MASTER':             ['manifestacoes.visualizar','manifestacoes.abrir','manifestacoes.editar','manifestacoes.gerenciar','manifestacoes.aprovar','cerebro.visualizar','cerebro.adicionar_conteudo','cerebro.editar_conteudo','cerebro.adicionar_regras','cerebro.adicionar_politicas','cerebro.editar_faq','cerebro.gerenciar','rca.visualizar','rca.criar','rca.editar','rca.gerenciar','pesquisas.visualizar','pesquisas.criar','pesquisas.editar','pesquisas.gerenciar','dashboard.visualizar','dashboard.gerenciar','configuracoes.visualizar','configuracoes.editar','configuracoes.gerenciar','usuarios.visualizar','usuarios.criar','usuarios.editar','usuarios.gerenciar','aprovacoes.visualizar','aprovacoes.aprovar','aprovacoes.rejeitar'],
+  'ADMINISTRADOR':      ['manifestacoes.visualizar','manifestacoes.abrir','manifestacoes.editar','manifestacoes.gerenciar','cerebro.visualizar','cerebro.gerenciar','rca.visualizar','rca.gerenciar','pesquisas.visualizar','pesquisas.gerenciar','dashboard.visualizar','dashboard.gerenciar','configuracoes.visualizar','configuracoes.editar','configuracoes.gerenciar','usuarios.visualizar','usuarios.criar','usuarios.editar','usuarios.gerenciar','aprovacoes.visualizar','aprovacoes.aprovar','aprovacoes.rejeitar'],
+  'GESTOR SAC':         ['manifestacoes.visualizar','manifestacoes.editar','manifestacoes.gerenciar','manifestacoes.aprovar','cerebro.visualizar','cerebro.gerenciar','rca.visualizar','pesquisas.visualizar','pesquisas.gerenciar','dashboard.visualizar','dashboard.gerenciar','configuracoes.visualizar','configuracoes.editar','aprovacoes.visualizar','aprovacoes.aprovar','aprovacoes.rejeitar'],
+  'ANALISTA SAC':       ['manifestacoes.visualizar','manifestacoes.abrir','manifestacoes.editar','cerebro.visualizar','cerebro.adicionar_conteudo','cerebro.editar_conteudo','cerebro.adicionar_regras','cerebro.adicionar_politicas','cerebro.editar_faq','pesquisas.visualizar','pesquisas.criar','dashboard.visualizar','aprovacoes.visualizar'],
+  'APROVADOR':          ['manifestacoes.visualizar','aprovacoes.visualizar','aprovacoes.aprovar','aprovacoes.rejeitar','pesquisas.visualizar'],
+  'ATENDENTE SAC':      ['manifestacoes.visualizar','manifestacoes.abrir','cerebro.visualizar','dashboard.visualizar'],
+  'SETOR RESPONSÁVEL':  ['manifestacoes.visualizar','manifestacoes.editar'],
+  'ESPECIALISTA':       ['cerebro.visualizar','dashboard.visualizar'],
+  'RCA / REPRESENTANTE':['manifestacoes.visualizar','manifestacoes.abrir','rca.visualizar','rca.criar'],
+  'DIRETOR':            ['manifestacoes.visualizar','pesquisas.visualizar','dashboard.visualizar','dashboard.gerenciar','rca.visualizar'],
+  'VISUALIZADOR':       ['manifestacoes.visualizar','dashboard.visualizar','pesquisas.visualizar'],
+  'AUDITOR':            ['manifestacoes.visualizar','manifestacoes.gerenciar','dashboard.visualizar'],
+};
+
+// Verifica se o usuário tem uma permissão (custom ou padrão do perfil)
+function usuarioTemPermissao(user, chave) {
+  const p = perfilCanonico(user?.perfil || '');
+  if (p === 'MASTER') return true;
+  if (Array.isArray(user?.permissoes_custom) && user.permissoes_custom.length) {
+    return user.permissoes_custom.includes(chave);
+  }
+  return (_PERM_PADRAO_API[p] || []).includes(chave);
+}
+
+// Middleware: exige que o usuário tenha TODAS as permissões listadas
+function requerPermissao(...chaves) {
+  return (req, res, next) => {
+    const faltando = chaves.find(c => !usuarioTemPermissao(req.user, c));
+    if (faltando) return res.status(403).json({ sucesso: false, erro: 'Sem permissão: ' + faltando });
+    next();
+  };
+}
+
 // B2: Isolamento de empresa — comparação por código canônico
 function pertenceEmpresa(userEmpresa, registroEmpresa) {
   if (!userEmpresa || String(userEmpresa).trim() === '') return false; // empresa vazia = sem acesso (não é MASTER)
@@ -887,7 +922,9 @@ app.post('/api/auth/login', async (req, res) => {
     const agora=Date.now();
     const payload={
       sub:pub.id, usuario:pub.usuario, nome:pub.nome, email:pub.email, perfil:pub.perfil,
-      empresa:pub.empresa, setor:pub.setor, codigoRCA:pub.codigoRCA, iat:agora, exp:agora+SESSION_TTL_MS
+      empresa:pub.empresa, setor:pub.setor, codigoRCA:pub.codigoRCA,
+      permissoes_custom: Array.isArray(pub.permissoes_custom)&&pub.permissoes_custom.length ? pub.permissoes_custom : null,
+      iat:agora, exp:agora+SESSION_TTL_MS
     };
     const isDemo = String(registro.ID_USUARIO||'').startsWith('USR-DEMO-');
     if (!isDemo) {
@@ -1086,7 +1123,7 @@ app.post('/api/representantes/manifestacoes', requerPerfil('RCA / REPRESENTANTE'
 });
 
 // ===== MANIFESTAÇÕES =====
-app.get('/api/manifestacoes', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC','ATENDENTE SAC','SETOR RESPONSÁVEL','ESPECIALISTA','APROVADOR','RCA / REPRESENTANTE','DIRETOR','VISUALIZADOR','AUDITOR'), middlewareEscopoEmpresa(), async (req, res) => {
+app.get('/api/manifestacoes', requerPermissao('manifestacoes.visualizar'), middlewareEscopoEmpresa(), async (req, res) => {
   try {
     // F6: tenta PostgreSQL primeiro
     if (manifestacaoRepo) {
@@ -1133,7 +1170,7 @@ app.get('/api/manifestacoes', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC',
   } catch (e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e), dados: [] }); }
 });
 
-app.get('/api/manifestacoes/:id', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC','ATENDENTE SAC','SETOR RESPONSÁVEL','ESPECIALISTA','APROVADOR','RCA / REPRESENTANTE','DIRETOR'), middlewareEscopoEmpresa(), async (req, res) => {
+app.get('/api/manifestacoes/:id', requerPermissao('manifestacoes.visualizar'), middlewareEscopoEmpresa(), async (req, res) => {
   try {
     // F6: tenta PostgreSQL primeiro
     if (manifestacaoRepo) {
@@ -1182,7 +1219,7 @@ app.get('/api/manifestacoes/:id', requerPerfil('MASTER','GESTOR SAC','ANALISTA S
   } catch (e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e) }); }
 });
 
-app.post('/api/manifestacoes', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC','ATENDENTE SAC'), async (req, res) => {
+app.post('/api/manifestacoes', requerPermissao('manifestacoes.abrir'), async (req, res) => {
   try {
     const { empresaReclamada, empresaReclamante, contato, produto, lote, nfe, descricao, tipo, canal, cnpj, telefone, email, quantidade, valor, usuario, anexos = [], origemDocumento = '', arquivoOrigem = '' } = req.body;
     if (!empresaReclamante || !descricao) return res.status(400).json({ sucesso:false, erro:'Empresa reclamante e descrição são obrigatórios.' });
@@ -1265,7 +1302,7 @@ app.post('/api/manifestacoes', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC'
   } catch (e) { console.error(e); res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
 
-app.patch('/api/manifestacoes/:id', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC','ATENDENTE SAC'), async (req, res) => {
+app.patch('/api/manifestacoes/:id', requerPermissao('manifestacoes.editar'), async (req, res) => {
   try {
     const { id } = req.params;
     // B2/Item18: verificar pertencimento de empresa antes de gravar
@@ -1294,7 +1331,7 @@ app.patch('/api/manifestacoes/:id', requerPerfil('MASTER','GESTOR SAC','ANALISTA
   } catch(e){ res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
 
-app.post('/api/manifestacoes/:id/decisao', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC'), async (req, res) => {
+app.post('/api/manifestacoes/:id/decisao', requerPermissao('manifestacoes.aprovar'), async (req, res) => {
   try {
     const { id } = req.params;
     const { tipoConfirmado, setoresConfirmados, procedimentoUsado, prioridade, slaHoras, geraRNC, observacoes, usuario, decisaoStatus, tratativaAplicavel, tratativaRealizada, dataInicioTratativa, dependeOutroSetor, setoresDependentes, dataAcionamentoSetor, prazoSetorSolicitado, dataRetornoSetor, statusTratativa, dataConclusaoTratativa, devolutivaFinal, devolutivaEnviada } = req.body;
@@ -2123,7 +2160,7 @@ app.get('/api/calculadora/prazos-regionais', requerPerfil('MASTER','ANALISTA SAC
 });
 
 // ===== DASHBOARD =====
-app.get('/api/dashboard', middlewareEscopoEmpresa(), requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req, res) => {
+app.get('/api/dashboard', middlewareEscopoEmpresa(), requerPermissao('dashboard.visualizar'), async (req, res) => {
   try {
     let [mans, recs] = await Promise.all([lerAba('MANIFESTACOES', 2000).catch(()=>[]), lerAbaReclamacoes(2000)]);
     mans = filtrarPorEmpresaHistorico(mans, req, COLUNA_EMPRESA_ABA.MANIFESTACOES).filter(m => !isTeste(m));
@@ -2467,7 +2504,7 @@ app.get('/api/setores/counts', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPO
     res.json({ sucesso:true, counts });
   } catch (e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e), counts:{} }); }
 });
-app.get('/api/conhecimento', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
+app.get('/api/conhecimento', requerPermissao('cerebro.visualizar'), async (req, res) => {
   try {
     await garantirAbaComCabecalhos('CONHECIMENTO_SETORES',['SETOR','DESCRICAO','RESPONSABILIDADES','REGRAS_OPERACIONAIS','PROCEDIMENTOS_ORIENTACOES','ALERTAS']).catch(()=>{});
     const data=await lerAba('CONHECIMENTO_SETORES',200).catch(()=>[]);
@@ -2645,7 +2682,7 @@ app.get('/api/pesquisas/resumo', requerPerfil('MASTER','ANALISTA SAC','SETOR RES
 });
 
 // ===== ROTAS: RELATÓRIO DE SATISFAÇÃO =====
-app.get('/api/pesquisas/relatorio', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','GESTOR SAC','ADMINISTRADOR','DIRETOR'), async (req, res) => {
+app.get('/api/pesquisas/relatorio', requerPermissao('pesquisas.visualizar'), async (req, res) => {
   try {
     let { empresa = '', ano, mes } = req.query;
     // Não-MASTER só pode ver a empresa do próprio cadastro
@@ -2775,7 +2812,7 @@ app.get('/api/pesquisas/relatorio', requerPerfil('MASTER','ANALISTA SAC','APROVA
 });
 
 // Registro manual de resposta de pesquisa (sem token — preenchido pelo atendente)
-app.post('/api/pesquisas/resposta-manual', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','GESTOR SAC','ADMINISTRADOR'), async (req, res) => {
+app.post('/api/pesquisas/resposta-manual', requerPermissao('pesquisas.criar'), async (req, res) => {
   try {
     const { empresa, nome_cliente, atendimento, prazo_entrega, qualidade, recomendacao, comentario, data_referencia } = req.body || {};
     if (!empresa) return res.status(400).json({ sucesso: false, erro: 'Empresa é obrigatória.' });
@@ -2803,7 +2840,7 @@ app.post('/api/pesquisas/resposta-manual', requerPerfil('MASTER','ANALISTA SAC',
   } catch (e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e) }); }
 });
 
-app.post('/api/pesquisas/relatorio-texto', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req, res) => {
+app.post('/api/pesquisas/relatorio-texto', requerPermissao('pesquisas.editar'), async (req, res) => {
   try {
     const { empresa = '', ano, mes, campo, valor } = req.body || {};
     if (!empresa || !ano || !mes || !campo) return res.status(400).json({ sucesso: false, erro: 'empresa, ano, mes e campo são obrigatórios.' });
@@ -2841,7 +2878,7 @@ app.post('/api/pesquisas/relatorio-texto', requerPerfil('MASTER','ANALISTA SAC',
 });
 
 // ===== EXCLUIR RESPOSTA DE PESQUISA (MASTER only) =====
-app.delete('/api/pesquisas/respostas/:id', requerPerfil('MASTER'), async (req, res) => {
+app.delete('/api/pesquisas/respostas/:id', requerPermissao('pesquisas.gerenciar'), async (req, res) => {
   try {
     const { id } = req.params;
     const aba = 'PESQUISA_RESPOSTAS';
@@ -2869,7 +2906,7 @@ app.delete('/api/pesquisas/respostas/:id', requerPerfil('MASTER'), async (req, r
 });
 
 // ===== PESQUISA DECISÃO (Transformar em Manifestação / Não requer tratamento) =====
-app.post('/api/pesquisas/decisao', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','GESTOR SAC','ADMINISTRADOR','DIRETOR'), async (req, res) => {
+app.post('/api/pesquisas/decisao', requerPermissao('pesquisas.gerenciar'), async (req, res) => {
   try {
     const { respostaId, decisao, justificativa } = req.body || {};
     if (!respostaId || !decisao) return res.status(400).json({ sucesso: false, erro: 'respostaId e decisao são obrigatórios.' });
@@ -3449,7 +3486,7 @@ function _empresaDisplay(cod) {
 }
 
 // Gerar token de pesquisa (individual ou geral/empresa)
-app.post('/api/pesquisas/tokens/gerar', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req, res) => {
+app.post('/api/pesquisas/tokens/gerar', requerPermissao('pesquisas.criar'), async (req, res) => {
   try {
     const { empresa, nome_cliente, id_manifestacao, dias_validade = 30 } = req.body || {};
     if (!empresa) return res.status(400).json({ sucesso: false, erro: 'empresa obrigatório.' });
@@ -3480,7 +3517,7 @@ app.post('/api/pesquisas/tokens/gerar', requerPerfil('MASTER','ANALISTA SAC','AP
 });
 
 // Listar tokens de pesquisa
-app.get('/api/pesquisas/tokens', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','GESTOR SAC','ADMINISTRADOR'), async (req, res) => {
+app.get('/api/pesquisas/tokens', requerPermissao('pesquisas.visualizar'), async (req, res) => {
   try {
     const rows = await lerAba('PESQUISA_TOKENS', 2000).catch(()=>[]);
     const _pf = perfilCanonico(req.user?.perfil||'');
@@ -4135,11 +4172,11 @@ app.get('/api/log-sistema', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), a
 });
 
 // ===== USUÁRIOS =====
-app.get('/api/usuarios', requerPerfil('MASTER'), async (req,res)=>{
+app.get('/api/usuarios', requerPermissao('usuarios.visualizar'), async (req,res)=>{
   try{ const itens=await carregarUsuarios(); res.json({sucesso:true,total:itens.length,itens:itens.map(usuarioPublico)}); }
   catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e),itens:[]});}
 });
-app.post('/api/usuarios', requerPerfil('MASTER'), async (req,res)=>{
+app.post('/api/usuarios', requerPermissao('usuarios.criar'), async (req,res)=>{
   try{
     const b=req.body||{};
     if(!b.usuario||!b.nome||!b.perfil) return res.status(400).json({sucesso:false,erro:'Usuário, nome e perfil são obrigatórios.'});
@@ -4151,7 +4188,7 @@ app.post('/api/usuarios', requerPerfil('MASTER'), async (req,res)=>{
     res.json({sucesso:true,usuario:usuarioPublico(obj)});
   }catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
-app.patch('/api/usuarios/:id', requerPerfil('MASTER'), async (req,res)=>{
+app.patch('/api/usuarios/:id', requerPermissao('usuarios.editar'), async (req,res)=>{
   try{
     const b=req.body||{};
     // Whitelist de campos permitidos — impede mass assignment
@@ -4757,7 +4794,7 @@ app.put('/api/regras-aprovacao/:id', requerPerfil('MASTER'), async (req,res)=>{
 });
 
 // Listar fila de aprovação (filtrada por perfil e empresa)
-app.get('/api/fila-aprovacao', middlewareEscopoEmpresa(), requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req,res)=>{
+app.get('/api/fila-aprovacao', middlewareEscopoEmpresa(), requerPermissao('aprovacoes.visualizar'), async (req,res)=>{
   try {
     garantirAbaComCabecalhos('FILA_APROVACAO', FILA_APROV_HEADERS).catch(()=>{});
     const u = req.user;
@@ -4777,7 +4814,7 @@ app.get('/api/fila-aprovacao', middlewareEscopoEmpresa(), requerPerfil('MASTER',
 });
 
 // Enviar item para aprovação (ANALISTA SAC, MASTER)
-app.post('/api/fila-aprovacao', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
+app.post('/api/fila-aprovacao', requerPermissao('aprovacoes.aprovar'), async (req,res)=>{
   try {
     garantirAbaComCabecalhos('FILA_APROVACAO', FILA_APROV_HEADERS).catch(()=>{});
     const {idEntidade,tipoEntidade,descricao,empresa,setor,competencia,idAprovador,nomeAprovador,idRegra} = req.body||{};
