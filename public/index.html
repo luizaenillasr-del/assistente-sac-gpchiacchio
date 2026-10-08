@@ -3086,15 +3086,11 @@
       </div>
 
       <!-- Perfis de acesso -->
-      <div style="font-weight:600;font-size:15px;margin-top:4px">Perfis de acesso</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px">
-        <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:8px"><div style="display:flex;justify-content:space-between"><span style="font-weight:600">SAC / Analista</span><span style="font-size:12px;color:#8A8888" id="usr-cnt-sac">--</span></div><div style="display:flex;gap:8px;font-size:13px"><span style="color:#22603A">✓</span>Registra manifestações</div><div style="display:flex;gap:8px;font-size:13px"><span style="color:#22603A">✓</span>Analisa com a IA</div><div style="display:flex;gap:8px;font-size:13px"><span style="color:#22603A">✓</span>Encaminha aos setores</div><div style="display:flex;gap:8px;font-size:13px"><span style="color:#22603A">✓</span>Registra devolutiva</div></div>
-        <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:8px"><div style="display:flex;justify-content:space-between"><span style="font-weight:600">Setor responsável</span><span style="font-size:12px;color:#8A8888" id="usr-cnt-setor">--</span></div><div style="display:flex;gap:8px;font-size:13px"><span style="color:#22603A">✓</span>Visualiza manifestações atribuídas</div><div style="display:flex;gap:8px;font-size:13px"><span style="color:#22603A">✓</span>Registra tratativa</div><div style="display:flex;gap:8px;font-size:13px"><span style="color:#22603A">✓</span>Anexa evidências</div></div>
-        <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:8px"><div style="display:flex;justify-content:space-between"><span style="font-weight:600">Aprovador</span><span style="font-size:12px;color:#8A8888" id="usr-cnt-aprov">--</span></div><div style="display:flex;gap:8px;font-size:13px"><span style="color:#22603A">✓</span>Aprova ou reprova etapas</div><div style="display:flex;gap:8px;font-size:13px"><span style="color:#22603A">✓</span>Solicita ajustes</div></div>
-        <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:8px"><div style="display:flex;justify-content:space-between"><span style="font-weight:600">Gestor</span><span style="font-size:12px;color:#8A8888" id="usr-cnt-gestor">--</span></div><div style="display:flex;gap:8px;font-size:13px"><span style="color:#22603A">✓</span>Acesso aos indicadores</div><div style="display:flex;gap:8px;font-size:13px"><span style="color:#22603A">✓</span>Acesso à auditoria</div></div>
-        <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:8px"><div style="display:flex;justify-content:space-between"><span style="font-weight:600">Representante</span><span style="font-size:12px;color:#8A8888" id="usr-cnt-rep">--</span></div><div style="display:flex;gap:8px;font-size:13px"><span style="color:#22603A">✓</span>Visualiza manifestações permitidas</div><div style="display:flex;gap:8px;font-size:13px"><span style="color:#22603A">✓</span>Registra RCA quando autorizado</div></div>
-        <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:8px"><div style="display:flex;justify-content:space-between"><span style="font-weight:600">Administrador</span><span style="font-size:12px;color:#8A8888" id="usr-cnt-admin">--</span></div><div style="display:flex;gap:8px;font-size:13px"><span style="color:#22603A">✓</span>Acesso completo</div><div style="display:flex;gap:8px;font-size:13px"><span style="color:#22603A">✓</span>Usuários, perfis e configurações</div></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
+        <div style="font-weight:600;font-size:15px">Perfis de acesso</div>
+        <div style="font-size:12px;color:#8A8888">Clique em "Editar" para ajustar as páginas de cada perfil</div>
       </div>
+      <div id="perfis-acesso-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px"></div>
     </div>
   </div>
 
@@ -4584,7 +4580,7 @@
             <option value="">Todas</option>
             <option value="Chiacchio">Chiacchio</option>
             <option value="Plaschio">Plaschio</option>
-            <option value="Tubahia">Cesbap</option>
+            <option value="Cesbap">Cesbap</option>
           </select>
         </label>
         <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:#666464;font-weight:600">ANO
@@ -5435,6 +5431,7 @@
   <div class="rs-top-title"><b>Relatório de Satisfação</b><span id="rel-topsub">Pesquisa de satisfação · relatório mensal para Diretoria e Presidência</span></div>
   <div class="rs-top-actions">
     <button type="button" class="rs-switch" id="rel-btn-diretoria" onclick="relToggleDiretoria()"><i><b></b></i>Visão da Diretoria</button>
+    <button type="button" class="rs-btn-out" onclick="relAbrirFormManual()">+ Preencher pesquisa</button>
     <button type="button" class="rs-btn-out" onclick="relBaixarPdf()">Baixar PDF</button>
     <button type="button" class="rs-btn-out" onclick="relBaixarPdf()">⬇ PDF</button>
     <button type="button" class="rs-btn-send" id="rel-btn-enviar" onclick="relCompartilharLink()" disabled>🔗 Compartilhar link</button>
@@ -5946,6 +5943,76 @@
     _populaFiltros();
     if(typeof pageLoaders!=='undefined') pageLoaders['relatorio-satisfacao']=function(){_populaFiltros();relCarregar();};
   });
+
+  window.relAbrirFormManual=function(){
+    let m=document.getElementById('rel-modal-manual');
+    if(!m){
+      m=document.createElement('div');m.id='rel-modal-manual';
+      m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9000;display:flex;align-items:center;justify-content:center;padding:16px';
+      const emp=_empresa()||'Chiacchio Embalagens';
+      const hoje=new Date().toISOString().slice(0,10);
+      m.innerHTML=`<div style="background:#fff;border-radius:14px;padding:28px;width:100%;max-width:460px;display:flex;flex-direction:column;gap:16px;box-shadow:0 8px 32px rgba(0,0,0,.18)">
+        <div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:17px">Preencher pesquisa manualmente</b><button onclick="relFecharFormManual()" style="border:0;background:none;font-size:22px;cursor:pointer;color:#929090;line-height:1">&times;</button></div>
+        <p style="margin:0;font-size:13px;color:#666464">Registre uma resposta de pesquisa obtida pessoalmente ou por telefone.</p>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:#545252">Empresa
+            <select id="rm-empresa" style="height:36px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;font-size:13px;font-family:inherit">
+              <option value="Chiacchio Embalagens"${emp==='Chiacchio Embalagens'?' selected':''}>Chiacchio Embalagens</option>
+              <option value="Plaschio"${emp==='Plaschio'?' selected':''}>Plaschio</option>
+              <option value="Tubahia"${emp==='Tubahia'?' selected':''}>Cesbap</option>
+            </select>
+          </label>
+          <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:#545252">Nome do cliente
+            <input id="rm-nome" type="text" placeholder="Ex: João Silva" style="height:36px;border:1px solid #D6D6D6;border-radius:7px;padding:0 10px;font-size:13px;font-family:inherit">
+          </label>
+          <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:#545252">Data da pesquisa
+            <input id="rm-data" type="date" value="${hoje}" style="height:36px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;font-size:13px;font-family:inherit">
+          </label>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            ${[['rm-at','Atendimento'],['rm-pr','Prazo de Entrega'],['rm-qu','Qualidade'],['rm-re','Recomendação']].map(([id,lbl])=>`
+            <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:#545252">${lbl} (0–10)
+              <input id="${id}" type="number" min="0" max="10" step="0.5" placeholder="—" style="height:36px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;font-size:13px;font-family:inherit">
+            </label>`).join('')}
+          </div>
+          <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:#545252">Comentário (opcional)
+            <textarea id="rm-comentario" rows="2" style="border:1px solid #D6D6D6;border-radius:7px;padding:8px 10px;font-size:13px;font-family:inherit;resize:vertical" placeholder="Observações do cliente..."></textarea>
+          </label>
+        </div>
+        <div id="rm-erro" style="color:#A80502;font-size:13px;display:none"></div>
+        <div style="display:flex;gap:8px;justify-content:flex-end">
+          <button onclick="relFecharFormManual()" style="border:1px solid #D6D6D6;background:#fff;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:13px;font-weight:600;font-family:inherit">Cancelar</button>
+          <button onclick="relSalvarManual()" id="rm-btn-salvar" style="border:0;background:#C70602;color:#fff;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:13px;font-weight:700;font-family:inherit">Salvar pesquisa</button>
+        </div>
+      </div>`;
+      document.getElementById('page-relatorio-satisfacao').appendChild(m);
+    } else { m.style.display='flex'; }
+  };
+  window.relFecharFormManual=function(){
+    const m=document.getElementById('rel-modal-manual');if(m)m.style.display='none';
+  };
+  window.relSalvarManual=async function(){
+    const btn=document.getElementById('rm-btn-salvar');
+    const erroEl=document.getElementById('rm-erro');
+    if(erroEl)erroEl.style.display='none';
+    const v=id=>document.getElementById(id)?.value||'';
+    const empresa=v('rm-empresa'),nome=v('rm-nome'),data=v('rm-data');
+    const at=v('rm-at'),pr=v('rm-pr'),qu=v('rm-qu'),re=v('rm-re'),comentario=v('rm-comentario');
+    if(!empresa){if(erroEl){erroEl.textContent='Selecione a empresa.';erroEl.style.display='';}return;}
+    if(![at,pr,qu,re].some(x=>x!=='')){if(erroEl){erroEl.textContent='Preencha ao menos uma nota.';erroEl.style.display='';}return;}
+    if(btn){btn.disabled=true;btn.textContent='Salvando...';}
+    try{
+      const tok=sessionStorage.getItem('sac-token');
+      const r=await fetch('/api/pesquisas/resposta-manual',{method:'POST',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({empresa,nome_cliente:nome,data_referencia:data,atendimento:at||null,prazo_entrega:pr||null,qualidade:qu||null,recomendacao:re||null,comentario})});
+      const j=await r.json().catch(()=>({}));
+      if(!r.ok||j.sucesso===false){throw new Error(j.erro||'Erro ao salvar.');}
+      _toast('Pesquisa registrada! Nota média: '+j.nota_media);
+      relFecharFormManual();
+      await relCarregar();
+    }catch(e){
+      if(erroEl){erroEl.textContent=e.message;erroEl.style.display='';}
+      if(btn){btn.disabled=false;btn.textContent='Salvar pesquisa';}
+    }
+  };
 })();
 </script>
 </div>
@@ -6408,6 +6475,7 @@ function navigate(page, el) {
   if (page === 'biblioteca-fichas') loadBiblioteca(true);
   if (page === 'matriz-conhecimento') loadMatrizConhecimento();
   if (page === 'alimentacao' && typeof window.loadAlimentacao === 'function') window.loadAlimentacao();
+  if (page === 'sugestoes-melhoria') { setTimeout(() => { if (typeof cpLoad === 'function') cpLoad(); }, 50); }
 }
 
 // ===== ARQUIVO DE FICHAS (page-biblioteca-fichas) — início =====
@@ -13545,6 +13613,173 @@ console.log('[base-conhecimento-setores] carregado');
 })();
 </script>
 
+<!-- ===== GESTÃO DE ACESSOS POR PERFIL ===== -->
+<div id="modal-perfil-acesso" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9900;align-items:center;justify-content:center" onclick="if(event.target===this)fecharModalPerfil()">
+  <div style="background:#fff;border-radius:14px;width:96vw;max-width:640px;max-height:90vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.18)">
+    <div style="padding:18px 22px;border-bottom:1px solid #EFEFEF;display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-size:17px;font-weight:800" id="modal-perfil-titulo">Permissões do perfil</div>
+        <div style="font-size:12px;color:#8A8888;margin-top:2px">Marque as páginas que este perfil pode acessar</div>
+      </div>
+      <button onclick="fecharModalPerfil()" style="border:0;background:none;font-size:22px;cursor:pointer;color:#666;line-height:1">×</button>
+    </div>
+    <div style="padding:18px 22px">
+      <div id="modal-perfil-grupos"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;padding-top:14px;border-top:1px solid #EFEFEF">
+        <button onclick="fecharModalPerfil()" style="border:1px solid #D6D6D6;background:#fff;border-radius:8px;padding:9px 18px;cursor:pointer;font-size:13px;font-family:inherit">Cancelar</button>
+        <button onclick="salvarPermissoesPerfil()" style="border:0;background:#C70602;color:#fff;border-radius:8px;padding:9px 18px;cursor:pointer;font-size:13px;font-weight:600;font-family:inherit">Salvar permissões</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  // Mapa de rótulos amigáveis para cada page-id
+  const PAGE_LABELS = {
+    'visao-geral': 'Visão Geral',
+    'acompanhamento': 'Acompanhamento',
+    'nova-manifestacao': 'Nova Manifestação',
+    'banco-manifestacoes': 'Banco de Manifestações',
+    'banco-rnc': 'Banco de RNC',
+    'aprovadores': 'Fila de Aprovação',
+    'usuarios': 'Usuários e Permissões',
+    'cerebro': 'Cérebro IA',
+    'base-conhecimento': 'Base de Conhecimento',
+    'painel-maquina': 'Painel Máquina',
+    'auditoria': 'Auditoria',
+    'prazos-regionais': 'Prazos Regionais',
+    'similares': 'Similares',
+    'rca': 'RCA',
+    'biblioteca-fichas': 'Biblioteca de Fichas',
+    'relatorio-satisfacao': 'Relatório de Satisfação',
+    'sugestoes-melhoria': 'Pesquisa de Satisfação',
+    'setores': 'Setores',
+    'causas': 'Causas e Subcausas',
+    'matriz': 'Matriz de Tratamento',
+    'matriz-conhecimento': 'Matriz de Conhecimento',
+    'central-sac': 'Central SAC',
+    'rca-home': 'Home RCA',
+  };
+
+  const PAGE_GRUPOS = [
+    { grupo: 'Dashboards', pages: ['visao-geral','acompanhamento','painel-maquina'] },
+    { grupo: 'Manifestações', pages: ['nova-manifestacao','banco-manifestacoes','banco-rnc','aprovadores','similares'] },
+    { grupo: 'RCA', pages: ['rca','rca-home'] },
+    { grupo: 'Pesquisa', pages: ['sugestoes-melhoria','relatorio-satisfacao'] },
+    { grupo: 'Configuração', pages: ['setores','causas','matriz','matriz-conhecimento','prazos-regionais','base-conhecimento','cerebro','biblioteca-fichas','central-sac'] },
+    { grupo: 'Administração', pages: ['usuarios','aprovadores','auditoria'] },
+  ];
+
+  // Perfis editáveis (MASTER não é editável pois tem acesso total)
+  const PERFIL_INFO = {
+    'GESTOR SAC':         { label: 'Gestor SAC',          cor: '#1D4ED8', cntId: 'usr-cnt-gestor' },
+    'ANALISTA SAC':       { label: 'SAC / Analista',       cor: '#059669', cntId: 'usr-cnt-sac' },
+    'APROVADOR':          { label: 'Aprovador',            cor: '#D97706', cntId: 'usr-cnt-aprov' },
+    'SETOR RESPONSÁVEL':  { label: 'Setor Responsável',    cor: '#7C3AED', cntId: 'usr-cnt-setor' },
+    'RCA / REPRESENTANTE':{ label: 'Representante / RCA',  cor: '#0891B2', cntId: 'usr-cnt-rep' },
+    'DIRETOR':            { label: 'Diretor',              cor: '#BE185D', cntId: '' },
+    'ATENDENTE SAC':      { label: 'Atendente SAC',        cor: '#64748B', cntId: '' },
+    'AUDITOR':            { label: 'Auditor',              cor: '#78716C', cntId: '' },
+    'VISUALIZADOR':       { label: 'Visualizador',         cor: '#94A3B8', cntId: '' },
+    'MASTER':             { label: 'Administrador (Master)', cor: '#C70602', cntId: 'usr-cnt-admin' },
+  };
+
+  let _perfilEditando = null;
+
+  function renderPerfisGrid() {
+    const grid = document.getElementById('perfis-acesso-grid');
+    if (!grid) return;
+    if (typeof allowed === 'undefined') { setTimeout(renderPerfisGrid, 300); return; }
+
+    const ordem = ['MASTER','GESTOR SAC','ANALISTA SAC','APROVADOR','SETOR RESPONSÁVEL','RCA / REPRESENTANTE','DIRETOR','ATENDENTE SAC','AUDITOR','VISUALIZADOR'];
+    grid.innerHTML = ordem.map(perfil => {
+      const info = PERFIL_INFO[perfil] || { label: perfil, cor: '#6B7280', cntId: '' };
+      const pages = allowed[perfil] || [];
+      const isMaster = perfil === 'MASTER';
+      const pageNames = pages.slice(0,4).map(p => PAGE_LABELS[p] || p);
+      const extra = pages.length > 4 ? `<div style="font-size:11px;color:#8A8888;margin-top:2px">+${pages.length - 4} mais...</div>` : '';
+      return `<div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <span style="font-weight:700;font-size:13.5px">${info.label}</span>
+            <span style="background:${info.cor}18;color:${info.cor};font-size:10.5px;font-weight:600;padding:2px 7px;border-radius:99px">${pages.length} páginas</span>
+          </div>
+          ${info.cntId ? `<span style="font-size:11.5px;color:#8A8888" id="${info.cntId}">--</span>` : ''}
+        </div>
+        <div style="font-size:12px;color:#4B5563;line-height:1.7">
+          ${pageNames.map(n => `<div style="display:flex;gap:6px;align-items:center"><span style="color:#22603A;font-size:10px">●</span>${n}</div>`).join('')}
+          ${extra}
+        </div>
+        ${isMaster ? '<div style="font-size:11px;color:#8A8888;margin-top:4px;font-style:italic">Acesso total — não editável</div>' : `<button onclick="abrirModalPerfil('${perfil}')" style="margin-top:6px;border:1px solid #D6D6D6;background:#FAFAFA;border-radius:7px;padding:7px 12px;cursor:pointer;font-size:12px;font-weight:600;font-family:inherit;display:flex;align-items:center;gap:6px;width:100%;justify-content:center"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Editar permissões</button>`}
+      </div>`;
+    }).join('');
+  }
+
+  window.abrirModalPerfil = function(perfil) {
+    if (typeof allowed === 'undefined') return;
+    _perfilEditando = perfil;
+    const info = PERFIL_INFO[perfil] || { label: perfil };
+    document.getElementById('modal-perfil-titulo').textContent = 'Permissões — ' + info.label;
+    const atuais = new Set(allowed[perfil] || []);
+    const gruposEl = document.getElementById('modal-perfil-grupos');
+    gruposEl.innerHTML = PAGE_GRUPOS.map(g => `
+      <div style="margin-bottom:16px">
+        <div style="font-size:11px;font-weight:700;color:#8A8888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">${g.grupo}</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px">
+          ${g.pages.map(p => `<label style="display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid ${atuais.has(p)?'#C70602':'#E4E4E4'};border-radius:7px;cursor:pointer;font-size:13px;background:${atuais.has(p)?'#FFF5F5':'#fff'}">
+            <input type="checkbox" data-page="${p}" ${atuais.has(p)?'checked':''} onchange="this.closest('label').style.borderColor=this.checked?'#C70602':'#E4E4E4';this.closest('label').style.background=this.checked?'#FFF5F5':'#fff'" style="accent-color:#C70602;width:14px;height:14px">
+            ${PAGE_LABELS[p]||p}
+          </label>`).join('')}
+        </div>
+      </div>`).join('');
+    const modal = document.getElementById('modal-perfil-acesso');
+    modal.style.display = 'flex';
+    modal.style.alignItems = 'center';
+    modal.style.justifyContent = 'center';
+  };
+
+  window.fecharModalPerfil = function() {
+    document.getElementById('modal-perfil-acesso').style.display = 'none';
+    _perfilEditando = null;
+  };
+
+  window.salvarPermissoesPerfil = function() {
+    if (!_perfilEditando || typeof allowed === 'undefined') return;
+    const checks = document.querySelectorAll('#modal-perfil-grupos input[type=checkbox]');
+    const novas = [];
+    checks.forEach(c => { if (c.checked) novas.push(c.dataset.page); });
+    allowed[_perfilEditando] = novas;
+    // Re-aplicar o menu se for o perfil do usuário atual
+    if (typeof applyRoleUI === 'function') applyRoleUI();
+    fecharModalPerfil();
+    renderPerfisGrid();
+    // Feedback
+    const toast = document.createElement('div');
+    toast.textContent = 'Permissões do perfil atualizadas ✓';
+    toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1A1A1A;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;z-index:99999;font-family:inherit';
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 2800);
+  };
+
+  // Inicializar grid quando o DOM estiver pronto
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => setTimeout(renderPerfisGrid, 500));
+  } else {
+    setTimeout(renderPerfisGrid, 500);
+  }
+
+  // Re-renderizar quando navegar para usuarios
+  const _origNavPerfil = window.navigate;
+  window.navigate = function(page, el) {
+    if (_origNavPerfil) _origNavPerfil(page, el);
+    if (page === 'usuarios') setTimeout(renderPerfisGrid, 100);
+  };
+})();
+</script>
+
 <!-- ===== GERAÇÃO DE FICHA PDF ===== -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
@@ -15416,13 +15651,18 @@ async function cdLoadAprovacaoCb() {
     ]);
     const pode = cbPode();
     CB.acoes = [];
-    const rev = [], ativo = [];
+    const rasc = [], rev = [], ativo = [];
     const por = (x) => (x.USUARIO || x.USUARIO_ATUALIZACAO || x.CRIADO_POR || '—') + ' · ' + cbData(x.DATA_ATUALIZACAO || x.DATA_UPLOAD || x.DATA_CRIACAO);
     scan.forEach(x=>{
       const t = CB_TIPOS[x._tipo], st = cbStatus(x.STATUS);
       const it = { kind: t.kind, setor: x._setor, t: x[t.nome] || '—', by: por(x) };
-      if (st.k === 'revisao') {
-        if (pode) { CB.acoes.push(async()=>{ await cbSetStatus(x._tipo, x, 'VALIDADA'); }); it.a = CB.acoes.length-1; }
+      if (st.k === 'rascunho') {
+        rasc.push(it);
+      } else if (st.k === 'revisao') {
+        if (pode) {
+          CB.acoes.push(async()=>{ await cbSetStatus(x._tipo, x, 'VALIDADA'); }); it.a = CB.acoes.length-1;
+          CB.acoes.push(async()=>{ await cbSetStatus(x._tipo, x, 'RASCUNHO'); }); it.r = CB.acoes.length-1;
+        }
         rev.push(it);
       } else if (st.k === 'ativa') ativo.push(it);
     });
@@ -15432,8 +15672,8 @@ async function cdLoadAprovacaoCb() {
       if (on) ativo.push(it);
       else { if (pode) { CB.acoes.push(async()=>{ await cdAprovarCausa(c.ID_CAUSA||c.ID||c.id, true); }); it.a = CB.acoes.length-1; } rev.push(it); }
     });
-    const cols = [['Rascunho', []], ['Em revisão', rev], ['Aguardando aprovação', []], ['Aprovado', []], ['Ativo', ativo]];
-    const card = it => `<div class="cb-it"><small>${cbEsc(it.kind)} · ${cbEsc(it.setor)}</small><strong>${cbEsc(it.t)}</strong><em>${cbEsc(it.by)}</em>${it.a != null ? `<div class="cb-it-a"><button onclick="cbAprovarAcao(${it.a})">Aprovar e ativar</button></div>` : ''}</div>`;
+    const cols = [['Rascunho', rasc], ['Em revisão', rev], ['Aguardando aprovação', []], ['Aprovado', []], ['Ativo', ativo]];
+    const card = it => `<div class="cb-it"><small>${cbEsc(it.kind)} · ${cbEsc(it.setor)}</small><strong>${cbEsc(it.t)}</strong><em>${cbEsc(it.by)}</em>${(it.a != null || it.r != null) ? `<div class="cb-it-a">${it.a != null ? `<button onclick="cbAprovarAcao(${it.a})" style="background:#C70602;color:#fff;border:none;border-radius:5px;padding:5px 10px;cursor:pointer;font-size:12px;font-weight:600">Aprovar e ativar</button>` : ''}${it.r != null ? `<button onclick="cbReprovarAcao(${it.r})" style="background:#fff;color:#A80502;border:1px solid #A80502;border-radius:5px;padding:5px 10px;cursor:pointer;font-size:12px;font-weight:600;margin-left:4px">Reprovar e ajustar</button>` : ''}</div>` : ''}</div>`;
     el.innerHTML = '<div class="cb-board">' + cols.map(([l, items])=>{
       const vis = items.slice(0, 12), resto = items.length - vis.length;
       return `<div class="cb-col"><div class="cb-col-h"><span>${l}</span><span>${items.length}</span></div>${vis.map(card).join('')}${resto > 0 ? `<div class="cb-muted" style="text-align:center">+ ${resto} itens</div>` : ''}</div>`;
@@ -15446,6 +15686,12 @@ async function cbAprovarAcao(i) {
   const fn = CB.acoes[i]; if (!fn) return;
   try { await fn(); cdLoadAprovacaoCb(); }
   catch(e) { alert('Erro ao aprovar: ' + e.message); }
+}
+async function cbReprovarAcao(i) {
+  const fn = CB.acoes[i]; if (!fn) return;
+  if (!confirm('Reprovar este item e devolver para rascunho?')) return;
+  try { await fn(); cdLoadAprovacaoCb(); }
+  catch(e) { alert('Erro ao reprovar: ' + e.message); }
 }
 
 async function cdAprovarCausa(id, semRecarregar) {
@@ -15688,7 +15934,7 @@ function cbNorm(v) { return String(v == null ? '' : v).normalize('NFD').replace(
 function cbData(v) { if (!v) return '—'; const d = new Date(v); return isNaN(d) ? cbEsc(v) : d.toLocaleDateString('pt-BR'); }
 function cbVal(v) { return (v == null || String(v).trim() === '') ? '—' : cbEsc(v); }
 function cbPode() {
-  try { const u = JSON.parse(sessionStorage.getItem('sac-user') || '{}'); const p = String(u.PERFIL || u.perfil || '').toUpperCase(); return p.includes('MASTER') || p.includes('ANALISTA'); } catch (e) { return false; }
+  try { const u = JSON.parse(sessionStorage.getItem('sac-user') || '{}'); const p = String(u.PERFIL || u.perfil || '').toUpperCase(); return p.includes('MASTER') || p.includes('ANALISTA') || p.includes('APROVADOR'); } catch (e) { return false; }
 }
 function cbEhMaster() {
   try { const u = JSON.parse(sessionStorage.getItem('sac-user') || '{}'); return String(u.PERFIL || u.perfil || '').toUpperCase().includes('MASTER'); } catch (e) { return false; }
@@ -15697,6 +15943,7 @@ function cbStatus(s) {
   const u = cbNorm(s);
   if (u === 'validada' || u === 'ativa' || u === 'ativo' || u === 'vigente' || u === 'aprovada' || u === 'aprovado') return { t: 'Ativa', c: 'green', k: 'ativa' };
   if (u === 'obsoleta' || u === 'expirada' || u === 'inativa' || u === 'inativo') return { t: 'Inativa', c: 'gray', k: 'inativa' };
+  if (u === 'rascunho' || u === 'reprovado' || u === '' || u == null) return { t: 'Rascunho', c: 'gray', k: 'rascunho' };
   return { t: 'Em revisão', c: 'amber', k: 'revisao' };
 }
 function cbPill(st) { return `<span class="cb-st cb-st-${st.c}">${st.t}</span>`; }

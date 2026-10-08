@@ -95,6 +95,13 @@ async function uploadArquivoDrive(nome, mimeType, bufferOuBase64) {
     media: { mimeType, body: stream },
     fields: 'id,name,webViewLink,webContentLink',
   });
+  const fileId = res.data.id;
+  // Torna o arquivo acessível para qualquer pessoa com o link
+  try {
+    await drive.permissions.create({ fileId, requestBody: { role: 'reader', type: 'anyone' } });
+  } catch (permErr) {
+    console.warn('[DRIVE] Não foi possível tornar o arquivo público:', permErr.message);
+  }
   return res.data; // { id, name, webViewLink, webContentLink }
 }
 // C5: alertas de variáveis obrigatórias em produção
@@ -1784,7 +1791,7 @@ app.post('/api/setores/:setor/regras', requerPerfil('MASTER'), async(req,res)=>{
   try{const nome=decodeURIComponent(req.params.setor);if(!req.body?.NOME)return res.status(400).json({sucesso:false,erro:'NOME obrigatório.'});const obj=await crudSetorPost('REGRAS_SETORES',REGRAS_HEADERS,nome,{EMPRESA:req.body.EMPRESA||'TODAS',NOME:req.body.NOME,CONDICAO:req.body.CONDICAO||'',PALAVRAS_GATILHO:req.body.PALAVRAS_GATILHO||'',ACAO:req.body.ACAO||'',PRIORIDADE:req.body.PRIORIDADE||'Média',NECESSITA_APROVACAO:req.body.NECESSITA_APROVACAO||'NÃO',QUEM_APROVA:req.body.QUEM_APROVA||'',AUTOMATICA:req.body.AUTOMATICA||'NÃO',EXCECOES:req.body.EXCECOES||'',SLA:req.body.SLA||'',STATUS:req.body.STATUS||'A VALIDAR',FONTE:req.body.FONTE||''},'RGR','ID_REGRA',req.user.usuario);res.json({sucesso:true,id:obj.ID_REGRA});}
   catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
-app.patch('/api/setores/:setor/regras/:id', requerPerfil('MASTER'), async(req,res)=>{
+app.patch('/api/setores/:setor/regras/:id', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async(req,res)=>{
   try{const reg=await crudSetorPatch('REGRAS_SETORES',req.params.id,req.body,'ID_REGRA',req.user.usuario);if(!reg)return res.status(404).json({sucesso:false,erro:'Regra não encontrada.'});res.json({sucesso:true});}
   catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
@@ -1798,7 +1805,7 @@ app.post('/api/setores/:setor/procedimentos', requerPerfil('MASTER','ANALISTA SA
   try{const nome=decodeURIComponent(req.params.setor);if(!req.body?.NOME)return res.status(400).json({sucesso:false,erro:'NOME obrigatório.'});const obj=await crudSetorPost('PROCEDIMENTOS_SETORES',PROCEDIMENTOS_HEADERS,nome,{EMPRESA:req.body.EMPRESA||'TODAS',NOME:req.body.NOME,OBJETIVO:req.body.OBJETIVO||'',QUANDO_USAR:req.body.QUANDO_USAR||'',PASSOS:req.body.PASSOS||'',RESPONSAVEL:req.body.RESPONSAVEL||'',SETORES_ENVOLVIDOS:req.body.SETORES_ENVOLVIDOS||'',RESULTADO_ESPERADO:req.body.RESULTADO_ESPERADO||'',PRAZO:req.body.PRAZO||'',STATUS:req.body.STATUS||'A VALIDAR',FONTE:req.body.FONTE||''},'PRC','ID_PROC',req.user.usuario);res.json({sucesso:true,id:obj.ID_PROC});}
   catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
-app.patch('/api/setores/:setor/procedimentos/:id', requerPerfil('MASTER','ANALISTA SAC'), async(req,res)=>{
+app.patch('/api/setores/:setor/procedimentos/:id', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async(req,res)=>{
   try{const reg=await crudSetorPatch('PROCEDIMENTOS_SETORES',req.params.id,req.body,'ID_PROC',req.user.usuario);if(!reg)return res.status(404).json({sucesso:false,erro:'Procedimento não encontrado.'});res.json({sucesso:true});}
   catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
@@ -1812,7 +1819,7 @@ app.post('/api/setores/:setor/politicas', requerPerfil('MASTER','ANALISTA SAC'),
   try{const nome=decodeURIComponent(req.params.setor);if(!req.body?.NOME)return res.status(400).json({sucesso:false,erro:'NOME obrigatório.'});const obj=await crudSetorPost('POLITICAS_SETORES',POLITICAS_HEADERS,nome,{EMPRESA:req.body.EMPRESA||'TODAS',NOME:req.body.NOME,OBJETIVO:req.body.OBJETIVO||'',REGRA_OFICIAL:req.body.REGRA_OFICIAL||'',LIMITES:req.body.LIMITES||'',CONDICOES:req.body.CONDICOES||'',EXCECOES:req.body.EXCECOES||'',QUEM_APROVA:req.body.QUEM_APROVA||'',PRAZO:req.body.PRAZO||'',VIGENCIA:req.body.VIGENCIA||'',STATUS:req.body.STATUS||'A VALIDAR',FONTE:req.body.FONTE||''},'POL','ID_POL',req.user.usuario);res.json({sucesso:true,id:obj.ID_POL});}
   catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
-app.patch('/api/setores/:setor/politicas/:id', requerPerfil('MASTER','ANALISTA SAC'), async(req,res)=>{
+app.patch('/api/setores/:setor/politicas/:id', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async(req,res)=>{
   try{const reg=await crudSetorPatch('POLITICAS_SETORES',req.params.id,req.body,'ID_POL',req.user.usuario);if(!reg)return res.status(404).json({sucesso:false,erro:'Política não encontrada.'});res.json({sucesso:true});}
   catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
@@ -1851,7 +1858,7 @@ app.post('/api/setores/:setor/documentos', requerPerfil('MASTER','ANALISTA SAC')
     res.json({sucesso:true,id:obj.ID_DOC,url:urlArquivo});
   }catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
-app.patch('/api/setores/:setor/documentos/:id', requerPerfil('MASTER','ANALISTA SAC'), async(req,res)=>{
+app.patch('/api/setores/:setor/documentos/:id', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async(req,res)=>{
   try{const reg=await crudSetorPatch('DOCUMENTOS_SETORES',req.params.id,req.body,'ID_DOC',req.user.usuario);if(!reg)return res.status(404).json({sucesso:false,erro:'Documento não encontrado.'});res.json({sucesso:true});}
   catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
@@ -2635,13 +2642,12 @@ app.get('/api/pesquisas/resumo', requerPerfil('MASTER','ANALISTA SAC','SETOR RES
 });
 
 // ===== ROTAS: RELATÓRIO DE SATISFAÇÃO =====
-app.get('/api/pesquisas/relatorio', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req, res) => {
+app.get('/api/pesquisas/relatorio', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','GESTOR SAC','ADMINISTRADOR','DIRETOR'), async (req, res) => {
   try {
     const { empresa = '', ano, mes } = req.query;
     const todasRespostas = await lerAba('PESQUISA_RESPOSTAS', 5000).catch(()=>[]);
-    // Mapeia para formato compatível com o frontend existente
+    // Normaliza para campos canônicos (sem duplicar campos uppercase e camelCase)
     const dados = todasRespostas.map(r => ({
-      ...r,
       Empresa: r.EMPRESA || '',
       Cliente: r.NOME_CLIENTE || '',
       Data: r.DATA || '',
@@ -2650,6 +2656,10 @@ app.get('/api/pesquisas/relatorio', requerPerfil('MASTER','ANALISTA SAC','APROVA
       Qualidade: r.QUALIDADE || '',
       Recomendação: r.RECOMENDACAO || '',
       Observação: r.COMENTARIO || '',
+      _id: r.ID_RESPOSTA || '',
+      _token: r.TOKEN || '',
+      _notaBaixa: r.NOTA_BAIXA || '',
+      _statusOcp: r.STATUS_OCP || '',
     }));
     if (!dados.length) return res.json({ sucesso: true, itens: [], media_geral: null, criterios: [], historico: [], textos: {} });
 
@@ -2754,6 +2764,35 @@ app.get('/api/pesquisas/relatorio', requerPerfil('MASTER','ANALISTA SAC','APROVA
   } catch (e) {
     res.status(500).json({ sucesso: false, erro: erroSeguro(e), itens: [], media_geral: null, criterios: [], historico: [], textos: {} });
   }
+});
+
+// Registro manual de resposta de pesquisa (sem token — preenchido pelo atendente)
+app.post('/api/pesquisas/resposta-manual', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','GESTOR SAC','ADMINISTRADOR'), async (req, res) => {
+  try {
+    const { empresa, nome_cliente, atendimento, prazo_entrega, qualidade, recomendacao, comentario, data_referencia } = req.body || {};
+    if (!empresa) return res.status(400).json({ sucesso: false, erro: 'Empresa é obrigatória.' });
+    const notas = [atendimento, prazo_entrega, qualidade, recomendacao].map(v => v != null && v !== '' ? parseFloat(v) : null).filter(n => n != null && !isNaN(n));
+    if (!notas.length) return res.status(400).json({ sucesso: false, erro: 'Informe ao menos uma nota.' });
+    const NOTA_CRITICA = Number(process.env.PESQUISA_NOTA_CRITICA || 6);
+    const notaGeral = (notas.reduce((a, b) => a + b, 0) / notas.length).toFixed(1);
+    const notaBaixa = notas.some(n => n <= NOTA_CRITICA) ? 'SIM' : 'NAO';
+    const dataResp = data_referencia ? new Date(data_referencia).toISOString() : new Date().toISOString();
+    const idResp = 'RSP-M-' + Date.now();
+    const _HEADERS_RESP = ['ID_RESPOSTA','TOKEN','EMPRESA','NOME_CLIENTE','DATA','ATENDIMENTO','PRAZO_ENTREGA','QUALIDADE','RECOMENDACAO','COMENTARIO','NOTA_MEDIA','NOTA_BAIXA','STATUS_OCP'];
+    await garantirAbaComCabecalhos('PESQUISA_RESPOSTAS', _HEADERS_RESP);
+    await appendObjeto('PESQUISA_RESPOSTAS', {
+      ID_RESPOSTA: idResp, TOKEN: 'MANUAL', EMPRESA: empresa,
+      NOME_CLIENTE: nome_cliente || '', DATA: dataResp,
+      ATENDIMENTO: atendimento != null && atendimento !== '' ? String(atendimento) : '',
+      PRAZO_ENTREGA: prazo_entrega != null && prazo_entrega !== '' ? String(prazo_entrega) : '',
+      QUALIDADE: qualidade != null && qualidade !== '' ? String(qualidade) : '',
+      RECOMENDACAO: recomendacao != null && recomendacao !== '' ? String(recomendacao) : '',
+      COMENTARIO: comentario || '', NOTA_MEDIA: notaGeral, NOTA_BAIXA: notaBaixa, STATUS_OCP: '',
+    });
+    invalidarCacheAba('PESQUISA_RESPOSTAS');
+    registrarAuditoria(req.user?.usuario, 'REGISTROU_PESQUISA_MANUAL', idResp, 'PESQUISA_RESPOSTAS', null, { empresa, notaGeral }).catch(() => {});
+    res.json({ sucesso: true, id: idResp, nota_media: notaGeral });
+  } catch (e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e) }); }
 });
 
 app.post('/api/pesquisas/relatorio-texto', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req, res) => {
@@ -3343,7 +3382,7 @@ app.post('/api/pesquisas/tokens/gerar', requerPerfil('MASTER','ANALISTA SAC','AP
 });
 
 // Listar tokens de pesquisa
-app.get('/api/pesquisas/tokens', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req, res) => {
+app.get('/api/pesquisas/tokens', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','GESTOR SAC','ADMINISTRADOR'), async (req, res) => {
   try {
     const rows = await lerAba('PESQUISA_TOKENS', 2000).catch(()=>[]);
     const _pf = perfilCanonico(req.user?.perfil||'');
@@ -5308,7 +5347,7 @@ app.get('/api/manifestacoes/:id/pdf', middlewareEscopoEmpresa(), requerPerfil('M
     res.setHeader('Content-Disposition', `attachment; filename="${pdfNome}"`);
     res.setHeader('Content-Length', pdfBuffer.length);
     res.send(pdfBuffer);
-  } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e) }); }
+  } catch(e) { console.error('[PDF-DOWNLOAD] erro:', e.message, e.stack); res.status(500).json({ sucesso: false, erro: erroSeguro(e) }); }
 });
 
 // Regenerar PDF de uma ficha (MASTER/ADMINISTRADOR/SAC)
