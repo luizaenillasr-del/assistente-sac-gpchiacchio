@@ -15049,10 +15049,10 @@ function cpTab(name, btn) {
   const panel = document.getElementById('cp-panel-' + name);
   if (panel) panel.style.display = 'block';
   const semFiltro = ['ocorrencias', 'editor', 'notificacoes'].includes(name);
-  const fb = document.getElementById('cp-filtros'); if (fb) fb.style.display = (semFiltro || name === 'anomes') ? 'none' : 'flex';
-    // aba ocorrencias OCP removida
-  else if (name === 'editor') qEditorCarregar();
-  else if (name === 'notificacoes') { cpCarregarTokens(); }
+  const fb = document.getElementById('cp-filtros');
+  if (fb) fb.style.display = (semFiltro || name === 'anomes') ? 'none' : 'flex';
+  if (name === 'editor') qEditorCarregar();
+  else if (name === 'notificacoes') cpCarregarTokens();
   else cpRender();
 }
 function cpClearFilters() {
@@ -15132,7 +15132,11 @@ async function cpLoad() {
     cpAplica();
   } catch (e) {
     _cp.all = null;
-    if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:#8A8888">Erro ao carregar pesquisas.</td></tr>';
+    const msg = e && e.message ? e.message : 'Erro desconhecido';
+    if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:#A80502">'
+      + 'Erro ao carregar pesquisas: ' + msg
+      + '<br><button onclick="cpLoad()" style="margin-top:10px;border:1px solid #C70602;background:#fff;color:#C70602;border-radius:6px;padding:6px 14px;cursor:pointer;font-size:12px;font-family:inherit">Tentar novamente</button>'
+      + '</td></tr>';
     console.error('cpLoad error', e);
   }
 }
