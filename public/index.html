@@ -5439,6 +5439,7 @@
   <div class="rs-top-title"><b>Relatório de Satisfação</b><span id="rel-topsub">Pesquisa de satisfação · relatório mensal para Diretoria e Presidência</span></div>
   <div class="rs-top-actions">
     <button type="button" class="rs-switch" id="rel-btn-diretoria" onclick="relToggleDiretoria()"><i><b></b></i>Visão da Diretoria</button>
+    <button type="button" class="rs-btn-out" onclick="relAbrirFormRelatorio()">✏ Preencher relatório</button>
     <button type="button" class="rs-btn-out" onclick="relAbrirFormManual()">+ Preencher pesquisa</button>
     <button type="button" class="rs-btn-out" onclick="relBaixarPdf()">Baixar PDF</button>
     <button type="button" class="rs-btn-out" onclick="relBaixarPdf()">⬇ PDF</button>
@@ -5931,6 +5932,68 @@
     _edit=null;_editTxt={};
     _renderizar();
     _toast('Texto salvo no relatório de '+mword(_refKey())+'.');
+  };
+
+  window.relAbrirFormRelatorio=function(){
+    if(!_d){_toast('Carregue o relatório primeiro.');return;}
+    const textos=_d.textos||{};
+    let m=document.getElementById('rel-modal-relatorio');
+    if(m){
+      // atualizar valores
+      SEC.forEach(([id])=>{
+        const ta=document.getElementById('rrm-'+id);
+        if(ta) ta.value=textos[id]||'';
+      });
+      m.style.display='flex';return;
+    }
+    m=document.createElement('div');m.id='rel-modal-relatorio';
+    m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9000;display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto';
+    const campos=SEC.map(([id,titulo])=>`
+      <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:#545252">${esc(titulo)}
+        <textarea id="rrm-${id}" rows="4" style="border:1px solid #D6D6D6;border-radius:7px;padding:8px 10px;font-size:13px;font-family:inherit;resize:vertical">${esc(textos[id]||'')}</textarea>
+      </label>`).join('');
+    m.innerHTML=`<div style="background:#fff;border-radius:14px;padding:28px;width:100%;max-width:560px;display:flex;flex-direction:column;gap:16px;box-shadow:0 8px 32px rgba(0,0,0,.18);max-height:90vh;overflow-y:auto">
+      <div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:17px">Preencher relatório</b><button onclick="document.getElementById('rel-modal-relatorio').style.display='none'" style="border:0;background:none;font-size:22px;cursor:pointer;color:#929090;line-height:1">&times;</button></div>
+      <p style="margin:0;font-size:13px;color:#666464">Edite os textos analíticos do relatório. Deixe em branco para usar o texto gerado automaticamente pelos dados.</p>
+      <div style="display:flex;flex-direction:column;gap:12px">${campos}</div>
+      <div id="rrm-erro" style="color:#A80502;font-size:13px;display:none"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button onclick="document.getElementById('rel-modal-relatorio').style.display='none'" style="border:1px solid #D6D6D6;background:#fff;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:13px;font-weight:600;font-family:inherit">Cancelar</button>
+        <button onclick="relSalvarFormRelatorio()" id="rrm-btn-salvar" style="border:0;background:#C70602;color:#fff;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:13px;font-weight:700;font-family:inherit">Salvar relatório</button>
+      </div>
+    </div>`;
+    document.getElementById('page-relatorio-satisfacao').appendChild(m);
+  };
+
+  window.relSalvarFormRelatorio=async function(){
+    const btn=document.getElementById('rrm-btn-salvar');
+    const erroEl=document.getElementById('rrm-erro');
+    if(erroEl) erroEl.style.display='none';
+    const empresa=_empresa();
+    const ano=_val('rel-f-ano')?.value,mes=_val('rel-f-mes')?.value;
+    const tok=sessionStorage.getItem('sac-token');
+    if(btn){btn.disabled=true;btn.textContent='Salvando...';}
+    try{
+      for(const [id] of SEC){
+        const ta=document.getElementById('rrm-'+id);
+        const valor=(ta?ta.value:'').trim();
+        const r=await fetch('/api/pesquisas/relatorio-texto',{
+          method:'POST',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/json'},
+          body:JSON.stringify({empresa,ano,mes,campo:id,valor})
+        });
+        const j=await r.json().catch(()=>({}));
+        if(!r.ok||j.sucesso===false){throw new Error(j.erro||'Erro ao salvar campo '+id+'.');}
+        if(!_d.textos)_d.textos={};
+        _d.textos[id]=valor;
+      }
+      document.getElementById('rel-modal-relatorio').style.display='none';
+      _edit=null;_editTxt={};
+      _renderizar();
+      _toast('Relatório de '+mword(_refKey())+' atualizado.');
+    }catch(e){
+      if(erroEl){erroEl.textContent=e.message;erroEl.style.display='';}
+      if(btn){btn.disabled=false;btn.textContent='Salvar relatório';}
+    }
   };
 
   window.relToggleDiretoria=function(){
@@ -12109,9 +12172,7 @@ async function carregarNotifAnalista() {
 
     // Pesquisas com nota baixa aguardando decisão
     const ocpWrap = document.getElementById('analista-alerta-ocps');
-    const ocpWrap = document.getElementById('analista-alerta-ocps');
     if ((d.ocpsPendentes || d.pesquisasBaixas || 0) > 0 && ocpWrap) {
-      const desc = document.getElementById('analista-alerta-ocps-desc');
       const desc = document.getElementById('analista-alerta-ocps-desc');
       if (desc) desc.textContent = `${d.ocpsPendentes || d.pesquisasBaixas || 0} resposta(s) com nota ≤ 6 aguardando decisão de tratamento.`;
       if (lista && d.ocps?.length) {
@@ -15142,11 +15203,10 @@ function cpAbrirDetalhe(idx) {
       + '<div style="margin-bottom:10px"><label style="font-size:12.5px;font-weight:600;display:block;margin-bottom:5px">Setor responsável (sugestão IA, confirme)</label>'
       + '<select id="cp-det-setor" style="width:100%;border:1.5px solid #D6D6D6;border-radius:7px;padding:7px 10px;font-size:13px;font-family:inherit">'
       + setores.map(s2 => '<option>' + s2 + '</option>').join('') + '</select></div>'
-      + (manId ? '<div style="background:#E6F2EA;border:1.5px solid #1E6B3A;border-radius:9px;padding:10px 14px;margin-bottom:12px"><span style="font-size:11px;font-weight:700;letter-spacing:.06em;color:#1E6B3A">MANIFESTAÇÃO VINCULADA</span><br><span style="font-size:13px;font-weight:600">Esta resposta já possui uma manifestação vinculada (' + cpEsc(manId) + ')</span></div>' : '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">'
+      + (manId ? '<div style="background:#E6F2EA;border:1.5px solid #1E6B3A;border-radius:9px;padding:10px 14px;margin-bottom:12px"><span style="font-size:11px;font-weight:700;letter-spacing:.06em;color:#1E6B3A">MANIFESTAÇÃO VINCULADA</span><br><span style="font-size:13px;font-weight:600">Esta resposta já possui uma manifestação vinculada (' + cpEsc(manId) + ')</span></div>' : '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">')
       + '<button onclick="cpDecisaoDetalhe(\'MANIFESTACAO\',\''+r.n+'\')" style="flex:1;min-width:160px;border:0;background:#C70602;color:#fff;border-radius:8px;padding:10px 12px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit">Transformar em Manifestação</button>'
       + '<button onclick="cpDecisaoDetalhe(\'NENHUM\',\''+r.n+'\')" style="flex:1;min-width:160px;border:1.5px solid #D6D6D6;background:#fff;color:#545252;border-radius:8px;padding:10px 12px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit">Não requer tratamento</button>'
       + (manId ? '' : '</div>')
-
       + '<div id="cp-det-just-wrap" style="display:none;margin-bottom:10px"><label style="font-size:12.5px;font-weight:600;display:block;margin-bottom:5px">Justificativa (obrigatória)</label>'
       + '<textarea id="cp-det-just" rows="3" style="width:100%;border:1.5px solid #D6D6D6;border-radius:7px;padding:7px 10px;font-size:13px;font-family:inherit;resize:vertical;box-sizing:border-box"></textarea></div>'
       + '<div id="cp-det-msg" style="font-size:13px;min-height:18px"></div>'
