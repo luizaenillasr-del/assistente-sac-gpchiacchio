@@ -2038,7 +2038,7 @@
         <div id="analista-alerta-ocps" style="display:none;background:#FFF8F0;border:1px solid #F5A623;border-radius:10px;padding:14px 18px">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
             <div>
-              <div style="font-size:13px;font-weight:700;color:#7A4C00">⚠ Pesquisas com nota baixa aguardando avaliação</div>
+              <div style="font-size:13px;font-weight:700;color:#7A4C00">⚠ Pesquisas com nota ≤ 6 aguardando decisão de tratamento</div>
               <div style="font-size:12px;color:#7A4C00;margin-top:3px" id="analista-alerta-ocps-desc">—</div>
             </div>
             <button onclick="navigate('banco-manifestacoes',document.querySelector('[onclick*=banco-manifestacoes]'))" style="flex-shrink:0;background:#F5A623;border:0;color:#fff;border-radius:7px;padding:7px 14px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit">Ver no banco</button>
@@ -4568,7 +4568,7 @@
         <button id="cp-tab-btn-empresa" onclick="cpTab('empresa',this)" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Por empresa</button>
         <button id="cp-tab-btn-dashboard" onclick="cpTab('dashboard',this)" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Dashboard</button>
         <button id="cp-tab-btn-comentarios" onclick="cpTab('comentarios',this)" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Comentários</button>
-        <button id="cp-tab-btn-ocorrencias" onclick="cpTab('ocorrencias',this)" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Ocorrências</button>
+        <!-- Aba Ocorrências removida: OCP não faz parte do fluxo de pesquisa -->
         <button id="cp-tab-btn-editor" onclick="cpTab('editor',this)" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Editor do questionário</button>
         <button id="cp-tab-btn-notificacoes" onclick="cpTab('notificacoes',this)" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Notificações</button>
       </div>
@@ -4608,12 +4608,12 @@
             <span style="display:flex;gap:6px;align-items:center"><span style="background:#F4F4F4;border-radius:6px;padding:5px 9px">Resposta recebida</span><span style="color:#929090">→</span></span>
             <span style="display:flex;gap:6px;align-items:center"><span style="background:#F4F4F4;border-radius:6px;padding:5px 9px">IA verifica notas</span><span style="color:#929090">→</span></span>
             <span style="display:flex;gap:6px;align-items:center"><span style="background:#F4F4F4;border-radius:6px;padding:5px 9px">Nota ≤ 6: SAC decide</span><span style="color:#929090">→</span></span>
-            <span style="display:flex;gap:6px;align-items:center"><span style="background:#F4F4F4;border-radius:6px;padding:5px 9px">OCP ou MAN ou encerra</span></span>
-          </div>
+            <span style="display:flex;gap:6px;align-items:center"><span style="background:#F4F4F4;border-radius:6px;padding:5px 9px">Nota ≤ 6: SAC decide</span><span style="color:#929090">→</span></span>
+            <span style="display:flex;gap:6px;align-items:center"><span style="background:#F4F4F4;border-radius:6px;padding:5px 9px">Manifestação ou encerrar</span></span>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px">
-            <div style="border:1.5px solid #D9A400;background:#FFFBEF;border-radius:9px;padding:10px 12px;display:flex;flex-direction:column;gap:4px"><span style="font-size:10.5px;font-weight:700;letter-spacing:.06em;color:#7A4C00">OCORRÊNCIA DE PESQUISA · OCP</span><span style="font-size:12.5px;line-height:1.45">Sinalização para um setor avaliar. Não é reclamação formal.</span></div>
-            <div style="border:1.5px solid #C70602;background:#FFF8F8;border-radius:9px;padding:10px 12px;display:flex;flex-direction:column;gap:4px"><span style="font-size:10.5px;font-weight:700;letter-spacing:.06em;color:#A80502">MANIFESTAÇÃO FORMAL · MAN</span><span style="font-size:12.5px;line-height:1.45">Entra no fluxo de manifestações do SAC.</span></div>
-            <div style="border:1.5px solid #D6D6D6;background:#FAFAFA;border-radius:9px;padding:10px 12px;display:flex;flex-direction:column;gap:4px"><span style="font-size:10.5px;font-weight:700;letter-spacing:.06em;color:#545252">NÃO REQUER TRATAMENTO</span><span style="font-size:12.5px;line-height:1.45">Decisão do SAC, sempre com justificativa registrada.</span></div>
+            <div style="border:1.5px solid #C70602;background:#FFF8F8;border-radius:9px;padding:10px 12px;display:flex;flex-direction:column;gap:4px"><span style="font-size:10.5px;font-weight:700;letter-spacing:.06em;color:#A80502">TRANSFORMAR EM MANIFESTAÇÃO</span><span style="font-size:12.5px;line-height:1.45">Abre manifestação formal no fluxo SAC. A pesquisa e a manifestação ficam vinculadas.</span></div>
+            <div style="border:1.5px solid #D6D6D6;background:#FAFAFA;border-radius:9px;padding:10px 12px;display:flex;flex-direction:column;gap:4px"><span style="font-size:10.5px;font-weight:700;letter-spacing:.06em;color:#545252">NÃO REQUER TRATAMENTO</span><span style="font-size:12.5px;line-height:1.45">Decisão do SAC, sempre com justificativa obrigatória registrada.</span></div>
+            <!-- card OCP removido -->
           </div>
         </div>
         <!-- KPI grid -->
@@ -4665,7 +4665,7 @@
             <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
               <label class="ps-muted" style="display:flex;gap:5px;align-items:center;cursor:pointer"><input type="checkbox" id="cp-com-baixa" onchange="cpRenderComentarios()"> Nota ≤ 6</label>
               <label class="ps-muted" style="display:flex;gap:5px;align-items:center;cursor:pointer"><input type="checkbox" id="cp-com-pend" onchange="cpRenderComentarios()"> Pendentes</label>
-              <label class="ps-muted" style="display:flex;gap:5px;align-items:center;cursor:pointer"><input type="checkbox" id="cp-com-ocp" onchange="cpRenderComentarios()"> Com OCP</label>
+              <!-- Checkbox OCP removido -->
               <label class="ps-muted" style="display:flex;gap:5px;align-items:center;cursor:pointer"><input type="checkbox" id="cp-com-man" onchange="cpRenderComentarios()"> Com Manifestação</label>
             </div>
           </div>
@@ -12051,13 +12051,13 @@ async function carregarNotifAnalista() {
     if (!wrapEl) return;
     if (d.total > 0) wrapEl.style.display = 'flex'; else { wrapEl.style.display = 'none'; return; }
 
-    // OCPs pesquisa
+    // Pesquisas com nota baixa aguardando decisão
     const ocpWrap = document.getElementById('analista-alerta-ocps');
-    if (d.ocpsPendentes > 0 && ocpWrap) {
-      ocpWrap.style.display = 'block';
+    const ocpWrap = document.getElementById('analista-alerta-ocps');
+    if ((d.ocpsPendentes || d.pesquisasBaixas || 0) > 0 && ocpWrap) {
       const desc = document.getElementById('analista-alerta-ocps-desc');
-      if (desc) desc.textContent = `${d.ocpsPendentes} resposta(s) com nota ≤ 6 aguardando avaliação — verificar se deve virar reclamação.`;
-      const lista = document.getElementById('analista-ocps-lista');
+      const desc = document.getElementById('analista-alerta-ocps-desc');
+      if (desc) desc.textContent = `${d.ocpsPendentes || d.pesquisasBaixas || 0} resposta(s) com nota ≤ 6 aguardando decisão de tratamento.`;
       if (lista && d.ocps?.length) {
         lista.innerHTML = d.ocps.slice(0,5).map(o => {
           const dt = o.DATA ? new Date(o.DATA).toLocaleDateString('pt-BR') : '—';
@@ -14908,7 +14908,7 @@ function cpTab(name, btn) {
   if (panel) panel.style.display = 'block';
   const semFiltro = ['ocorrencias', 'editor', 'notificacoes'].includes(name);
   const fb = document.getElementById('cp-filtros'); if (fb) fb.style.display = (semFiltro || name === 'anomes') ? 'none' : 'flex';
-  if (name === 'ocorrencias') cpCarregarOcps();
+    // aba ocorrencias OCP removida
   else if (name === 'editor') qEditorCarregar();
   else if (name === 'notificacoes') { cpCarregarTokens(); }
   else cpRender();
@@ -14995,7 +14995,7 @@ function cpAbrirDetalhe(idx) {
   if (!r) return;
   const c = _cp.cols;
   const setores = ['Comercial','Produção','Logística','Qualidade','Financeiro','Atendimento'];
-  const ocpId = r._ocpId || '';
+  const ocpId = ''; // OCP removido do fluxo
   const manId = r._manId || '';
   const baixa = r.baixa;
   let html = '<div id="cp-modal-overlay" onclick="if(event.target===this)cpFecharDetalhe()" style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9998;display:flex;align-items:flex-start;justify-content:center;padding:24px 12px;overflow-y:auto">'
@@ -15019,11 +15019,11 @@ function cpAbrirDetalhe(idx) {
       + '<div style="margin-bottom:10px"><label style="font-size:12.5px;font-weight:600;display:block;margin-bottom:5px">Setor responsável (sugestão IA, confirme)</label>'
       + '<select id="cp-det-setor" style="width:100%;border:1.5px solid #D6D6D6;border-radius:7px;padding:7px 10px;font-size:13px;font-family:inherit">'
       + setores.map(s2 => '<option>' + s2 + '</option>').join('') + '</select></div>'
-      + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">'
-      + '<button onclick="cpDecisaoDetalhe(\'OCP\',\''+r.n+'\')" style="flex:1;min-width:130px;border:1.5px solid #24508F;background:#fff;color:#24508F;border-radius:8px;padding:9px 10px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit">🔴 Gerar OCP</button>'
-      + '<button onclick="cpDecisaoDetalhe(\'MANIFESTACAO\',\''+r.n+'\')" style="flex:1;min-width:130px;border:1.5px solid #1E6B3A;background:#fff;color:#1E6B3A;border-radius:8px;padding:9px 10px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit">🟢 Transformar em Manifestação</button>'
-      + '<button onclick="cpDecisaoDetalhe(\'NENHUM\',\''+r.n+'\')" style="flex:1;min-width:130px;border:1.5px solid #D6D6D6;background:#fff;color:#545252;border-radius:8px;padding:9px 10px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit">⚪ Não requer tratamento</button>'
-      + '</div>'
+      + (manId ? '<div style="background:#E6F2EA;border:1.5px solid #1E6B3A;border-radius:9px;padding:10px 14px;margin-bottom:12px"><span style="font-size:11px;font-weight:700;letter-spacing:.06em;color:#1E6B3A">MANIFESTAÇÃO VINCULADA</span><br><span style="font-size:13px;font-weight:600">Esta resposta já possui uma manifestação vinculada (' + cpEsc(manId) + ')</span></div>' : '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">'
+      + '<button onclick="cpDecisaoDetalhe(\'MANIFESTACAO\',\''+r.n+'\')" style="flex:1;min-width:160px;border:0;background:#C70602;color:#fff;border-radius:8px;padding:10px 12px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit">Transformar em Manifestação</button>'
+      + '<button onclick="cpDecisaoDetalhe(\'NENHUM\',\''+r.n+'\')" style="flex:1;min-width:160px;border:1.5px solid #D6D6D6;background:#fff;color:#545252;border-radius:8px;padding:10px 12px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit">Não requer tratamento</button>'
+      + (manId ? '' : '</div>')
+
       + '<div id="cp-det-just-wrap" style="display:none;margin-bottom:10px"><label style="font-size:12.5px;font-weight:600;display:block;margin-bottom:5px">Justificativa (obrigatória)</label>'
       + '<textarea id="cp-det-just" rows="3" style="width:100%;border:1.5px solid #D6D6D6;border-radius:7px;padding:7px 10px;font-size:13px;font-family:inherit;resize:vertical;box-sizing:border-box"></textarea></div>'
       + '<div id="cp-det-msg" style="font-size:13px;min-height:18px"></div>'
@@ -15044,28 +15044,41 @@ async function cpDecisaoDetalhe(decisao, linhaId) {
   const justEl = document.getElementById('cp-det-just');
   const justWrap = document.getElementById('cp-det-just-wrap');
   const msg = document.getElementById('cp-det-msg');
+  const setor = (document.getElementById('cp-det-setor') || {}).value || '';
+  // Não requer tratamento — exige justificativa
   if (decisao === 'NENHUM') {
-    if (justWrap && justWrap.style.display === 'none') { justWrap.style.display = 'block'; msg.textContent = 'Preencha a justificativa e clique novamente.'; return; }
+    if (justWrap && justWrap.style.display === 'none') {
+      justWrap.style.display = 'block';
+      if (msg) msg.textContent = 'Selecione o motivo e preencha a justificativa antes de confirmar.';
+      return;
+    }
     const just = justEl ? justEl.value.trim() : '';
     if (!just) { if (msg) msg.innerHTML = '<span style="color:#A80502">Justificativa obrigatória.</span>'; return; }
   }
   const justificativa = (decisao === 'NENHUM' && justEl) ? justEl.value.trim() : '';
-  const setor = (document.getElementById('cp-det-setor') || {}).value || '';
   if (msg) msg.innerHTML = '<span style="color:#666">Registrando...</span>';
-  const ocp = _cp.all.find(r2 => String(r2.n) === String(linhaId));
-  const ocpId = ocp ? (ocp._ocpId || '') : '';
-  if (!ocpId) {
-    if (msg) msg.innerHTML = '<span style="color:#A80502">OCP não encontrada para esta resposta.</span>';
+  // Busca a resposta pelo número de linha
+  const resposta = _cp.all.find(r2 => String(r2.n) === String(linhaId));
+  if (!resposta) {
+    if (msg) msg.innerHTML = '<span style="color:#A80502">Resposta não encontrada.</span>';
+    return;
+  }
+  // Bloquear duplicidade de manifestação
+  if (decisao === 'MANIFESTACAO' && resposta._manId) {
+    if (msg) msg.innerHTML = '<span style="color:#A80502">Esta resposta já possui uma manifestação vinculada (' + cpEsc(resposta._manId) + ').</span>';
     return;
   }
   try {
-    const res = await _apiFetch('/api/pesquisas/ocorrencias/' + ocpId + '/decisao', 8000, {
+    const res = await _apiFetch('/api/pesquisas/decisao', 8000, {
       method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ decisao, justificativa, setor })
+      body: JSON.stringify({ linhaId, decisao, justificativa, setor })
     });
     if (res.sucesso) {
       if (msg) msg.innerHTML = '<span style="color:#1E6B3A">✓ Decisão registrada com sucesso!</span>';
-      setTimeout(() => { cpFecharDetalhe(); cpCarregarOcps(); }, 1200);
+      if (decisao === 'MANIFESTACAO' && res.manifestacaoId) {
+        if (msg) msg.innerHTML += ' <span style="color:#1E6B3A">Manifestação ' + cpEsc(res.manifestacaoId) + ' criada.</span>';
+      }
+      setTimeout(() => { cpFecharDetalhe(); cpCarregar(); }, 1400);
     } else {
       if (msg) msg.innerHTML = '<span style="color:#A80502">Erro: ' + cpEsc(res.erro || 'desconhecido') + '</span>';
     }
@@ -15162,18 +15175,18 @@ function cpRenderDash() {
 function cpRenderComentarios() {
   const sBaixa = document.getElementById('cp-com-baixa') && document.getElementById('cp-com-baixa').checked;
   const sPend = document.getElementById('cp-com-pend') && document.getElementById('cp-com-pend').checked;
-  const sOcp = document.getElementById('cp-com-ocp') && document.getElementById('cp-com-ocp').checked;
+  // const sOcp removido (OCP não faz parte do fluxo)
   const sMan = document.getElementById('cp-com-man') && document.getElementById('cp-com-man').checked;
   let l = _cp.filtered.filter(r => r.comentario);
   if (sBaixa) l = l.filter(r => r.baixa);
-  if (sPend) l = l.filter(r => r.baixa && !r._ocpId && !r._manId && !r._nrtId);
-  if (sOcp) l = l.filter(r => r._ocpId);
-  if (sMan) l = l.filter(r => r._manId);
+  if (sPend) l = l.filter(r => r.baixa && !r._manId && !r._nrtId);
+  if (sPend) l = l.filter(r => r.baixa && !r._manId && !r._nrtId);
+  // filtro sOcp removido
   l = l.slice(0, 200);
   document.getElementById('cp-com-lista').innerHTML = l.length ? l.map(r => {
     const tags = [];
     if (r.baixa) tags.push('<span class="ps-pill ps-pill-red">NOTA ≤ 6</span>');
-    if (r._ocpId) tags.push('<span class="ps-pill" style="background:#EAF0FB;color:#24508F;border:none">OCP: ' + cpEsc(r._ocpId) + '</span>');
+    // tag OCP removida
     if (r._manId) tags.push('<span class="ps-pill" style="background:#E6F2EA;color:#1E6B3A;border:none">MAN: ' + cpEsc(r._manId) + '</span>');
     return '<div class="ps-com' + (r.baixa ? ' ps-com-low' : '') + '">'
       + '<div class="ps-muted">' + cpEsc(r.dataTxt) + ' · ' + cpEsc(r.emp||'—') + ' · ' + cpEsc(r.cli||'—') + ' · média ' + cpFmt(r.media) + (tags.length ? ' &nbsp;' + tags.join(' ') : '') + '</div>'
@@ -15189,85 +15202,9 @@ function cpAbrirDetalhePorN(n) {
 }
 
 
-// ── OCP — Ocorrências de Pesquisa ─────────────────────────
-async function cpCarregarOcps() {
-  const el = document.getElementById('cp-ocp-lista');
-  if (!el) return;
-  el.innerHTML = '<div class="spinner" style="margin:16px auto"></div>';
-  try {
-    const d = await _apiFetch('/api/pesquisas/ocorrencias', 10000);
-    const itens = (d.itens || []).sort((a,b) => new Date(b.DATA||0) - new Date(a.DATA||0));
-    if (!itens.length) {
-      el.innerHTML = '<div style="color:#666464;text-align:center;padding:24px">Nenhuma ocorrência de pesquisa. Respostas com nota ≤ 6 aparecem aqui.</div>';
-      return;
-    }
-    const statusCor = { PENDENTE:'#FBF0D9;color:#7A4C00', TRATADA:'#E6F2EA;color:#1E6B3A' };
-    el.innerHTML = '<table style="border-collapse:collapse;width:100%;font-size:12.5px">'
-      + '<thead><tr style="background:#FAFAFA"><th class="ps-th">ID</th><th class="ps-th">DATA</th><th class="ps-th">EMPRESA</th><th class="ps-th">NPS</th><th class="ps-th">STATUS</th><th class="ps-th">DECISÃO</th><th class="ps-th">AÇÕES</th></tr></thead>'
-      + '<tbody>' + itens.map(o => {
-        const st = o.STATUS||'PENDENTE';
-        const [bg,fg] = (statusCor[st]||'#F4F4F4;color:#545252').split(';color:');
-        const resp = o.resposta || {};
-        return `<tr class="ps-tr">
-          <td class="ps-td" style="font-weight:600">${o.ID_OCP||'—'}</td>
-          <td class="ps-td">${o.DATA ? new Date(o.DATA).toLocaleDateString('pt-BR') : '—'}</td>
-          <td class="ps-td">${o.EMPRESA||'—'}</td>
-          <td class="ps-td" style="text-align:center"><span class="ps-nota ps-n-bad">${o.NPS||'—'}</span></td>
-          <td class="ps-td"><span style="background:${bg};color:${fg};padding:2px 7px;border-radius:5px;font-weight:700;font-size:10.5px">${st}</span></td>
-          <td class="ps-td">${o.DECISAO ? `<span style="font-weight:600">${o.DECISAO}</span>${o.JUSTIFICATIVA?'<br><span style="color:#666464;font-size:11.5px">'+o.JUSTIFICATIVA+'</span>':''}` : '—'}</td>
-          <td class="ps-td">${st === 'PENDENTE' ? `<button onclick="cpDecisaoOcp('${o.ID_OCP}')" style="border:1px solid #C70602;color:#C70602;background:#fff;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;font-family:inherit">Decidir</button>` : ''}</td>
-        </tr>`;
-      }).join('') + '</tbody></table>';
-  } catch(e) {
-    el.innerHTML = '<div style="color:#A80502;padding:16px">Erro ao carregar ocorrências.</div>';
-  }
-}
+// OCP removido do fluxo de pesquisa de satisfação conforme especificação.
+// A decisão de tratamento agora usa apenas: MANIFESTACAO ou NENHUM.
 
-function cpDecisaoOcp(id) {
-  const existing = document.getElementById('cp-ocp-modal-overlay');
-  if (existing) existing.remove();
-  const html = '<div id="cp-ocp-modal-overlay" onclick="if(event.target===this)this.remove()" style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px">'
-    + '<div style="background:#fff;border-radius:12px;width:100%;max-width:480px;padding:24px;box-shadow:0 8px 40px rgba(0,0,0,.2)">'
-    + '<div style="font-size:15px;font-weight:700;margin-bottom:6px">Decidir tratamento</div>'
-    + '<div style="font-size:12.5px;color:#666464;margin-bottom:16px">OCP: <b>' + cpEsc(id) + '</b></div>'
-    + '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">'
-    + '<button onclick="cpExecutarDecisaoOcp(\''+id+'\',\'OCP\')" style="border:1.5px solid #24508F;background:#fff;color:#24508F;border-radius:8px;padding:10px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;text-align:left">🔴 Gerar OCP — Ocorrência interna no setor</button>'
-    + '<button onclick="cpExecutarDecisaoOcp(\''+id+'\',\'MANIFESTACAO\')" style="border:1.5px solid #1E6B3A;background:#fff;color:#1E6B3A;border-radius:8px;padding:10px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;text-align:left">🟢 Transformar em Manifestação — Abre fluxo SAC</button>'
-    + '<button onclick="cpExecutarDecisaoOcp(\''+id+'\',\'NENHUM\')" style="border:1.5px solid #D6D6D6;background:#fff;color:#545252;border-radius:8px;padding:10px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;text-align:left">⚪ Não requer tratamento</button>'
-    + '</div>'
-    + '<div id="cp-ocp-just-wrap" style="display:none;margin-bottom:12px"><label style="font-size:12.5px;font-weight:600;display:block;margin-bottom:5px">Justificativa (obrigatória)</label>'
-    + '<textarea id="cp-ocp-just" rows="3" style="width:100%;border:1.5px solid #D6D6D6;border-radius:7px;padding:7px 10px;font-size:13px;font-family:inherit;resize:vertical;box-sizing:border-box"></textarea>'
-    + '<button id="cp-ocp-just-btn" onclick="cpConfirmarNenhum(\''+id+'\')" style="margin-top:8px;background:#545252;color:#fff;border:none;border-radius:7px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Confirmar</button></div>'
-    + '<div id="cp-ocp-modal-msg" style="font-size:13px;min-height:16px"></div>'
-    + '<button onclick="document.getElementById(\'cp-ocp-modal-overlay\').remove()" style="margin-top:10px;border:1px solid #D6D6D6;background:#fff;border-radius:7px;padding:7px 14px;font-size:12.5px;cursor:pointer;font-family:inherit;color:#666">Cancelar</button>'
-    + '</div></div>';
-  document.body.insertAdjacentHTML('beforeend', html);
-}
-
-async function cpExecutarDecisaoOcp(id, decisao) {
-  const msg = document.getElementById('cp-ocp-modal-msg');
-  if (decisao === 'NENHUM') {
-    const w = document.getElementById('cp-ocp-just-wrap');
-    if (w && w.style.display === 'none') { w.style.display = 'block'; if (msg) msg.textContent = ''; return; }
-  }
-  const just = (document.getElementById('cp-ocp-just') || {}).value || '';
-  if (decisao === 'NENHUM' && !just.trim()) { if (msg) msg.innerHTML = '<span style="color:#A80502">Justificativa obrigatória.</span>'; return; }
-  if (msg) msg.innerHTML = '<span style="color:#666">Registrando...</span>';
-  try {
-    const r = await _apiFetch('/api/pesquisas/ocorrencias/' + id + '/decisao', 8000, {
-      method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ decisao, justificativa: just.trim() })
-    });
-    if (r.sucesso) {
-      if (msg) msg.innerHTML = '<span style="color:#1E6B3A">✓ Decisão registrada!</span>';
-      setTimeout(() => { const ov = document.getElementById('cp-ocp-modal-overlay'); if (ov) ov.remove(); cpCarregarOcps(); }, 1000);
-    } else {
-      if (msg) msg.innerHTML = '<span style="color:#A80502">Erro: ' + cpEsc(r.erro || 'desconhecido') + '</span>';
-    }
-  } catch(e) { if (msg) msg.innerHTML = '<span style="color:#A80502">Erro ao registrar decisão.</span>'; }
-}
-
-function cpConfirmarNenhum(id) { cpExecutarDecisaoOcp(id, 'NENHUM'); }
 // ── Editor do Questionário ─────────────────────────────────
 let _qPerguntas = [];
 

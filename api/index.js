@@ -2832,6 +2832,68 @@ app.post('/api/pesquisas/relatorio-texto', requerPerfil('MASTER','ANALISTA SAC',
   }
 });
 
+// ===== PESQUISA DECISÃO (Transformar em Manifestação / Não requer tratamento) =====
+app.post('/api/pesquisas/decisao', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','GESTOR SAC','ADMINISTRADOR','DIRETOR'), async (req, res) => {
+  try {
+    const { respostaId, decisao, justificativa } = req.body || {};
+    if (!respostaId || !decisao) return res.status(400).json({ sucesso: false, erro: 'respostaId e decisao são obrigatórios.' });
+    if (!['MANIFESTACAO','NAO_REQUER'].includes(decisao)) return res.status(400).json({ sucesso: false, erro: 'decisao deve ser MANIFESTACAO ou NAO_REQUER.' });
+
+    const aba = 'PESQUISA_RESPOSTAS';
+    const rows = await lerAba(aba, 5000);
+    const idx = rows.findIndex(r => r.ID_RESPOSTA === respostaId);
+    if (idx < 0) return res.status(404).json({ sucesso: false, erro: 'Resposta não encontrada.' });
+    const resposta = rows[idx];
+
+    const sheets = await getSheets();
+    const headers = await obterCabecalhos(aba);
+
+    let manifestacaoId = null;
+
+    if (decisao === 'MANIFESTACAO') {
+      // Criar manifestação a partir da pesquisa
+      manifestacaoId = await gerarProximoID('MANIFESTACOES', 'MAN', 'ID_MANIFESTACAO');
+      const agora = new Date().toISOString();
+      const obj = {
+        ID_MANIFESTACAO: manifestacaoId,
+        DATA_ABERTURA: agora,
+        DATA_REGISTRO: agora,
+        EMPRESA_RECLAMANTE: resposta.EMPRESA || '',
+        CONTATO: resposta.NOME_CLIENTE || '',
+        DESCRICAO: `[Originado de pesquisa ${respostaId}] ${resposta.COMENTARIO || 'Nota baixa na pesquisa de satisfação'}`,
+        DESCRICAO_MANIFESTACAO: `[Originado de pesquisa ${respostaId}] ${resposta.COMENTARIO || ''}`,
+        STATUS: 'RECEBIDA',
+        TIPO: 'Reclamação',
+        CANAL: 'PESQUISA',
+        NOTA_PESQUISA: resposta.NOTA_MEDIA || '',
+        USUARIO_CRIACAO: req.user.usuario,
+        ORIGEM: 'PESQUISA_SATISFACAO',
+        STATUS_TRATATIVA: 'NÃO INICIADA',
+      };
+      await appendObjeto('MANIFESTACOES', obj);
+      invalidarCacheAba('MANIFESTACOES');
+    }
+
+    // Atualizar STATUS_OCP / decisão na pesquisa
+    const novoStatus = decisao === 'MANIFESTACAO' ? 'TRANSFORMADA_MANIFESTACAO' : 'NAO_REQUER_TRATAMENTO';
+    const colIdx = headers.indexOf('STATUS_OCP');
+    if (colIdx >= 0) {
+      const colLetter = String.fromCharCode(65 + colIdx);
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: process.env.SPREADSHEET_ID,
+        range: `${aba}!${colLetter}${idx + 2}`,
+        valueInputOption: 'RAW',
+        requestBody: { values: [[novoStatus]] },
+      });
+    }
+    invalidarCacheAba(aba);
+    registrarAuditoria(req.user.usuario, `PESQUISA_DECISAO_${decisao}`, respostaId, aba, null, { justificativa, manifestacaoId }).catch(() => {});
+    res.json({ sucesso: true, decisao: novoStatus, manifestacaoId });
+  } catch (e) {
+    res.status(500).json({ sucesso: false, erro: erroSeguro(e) });
+  }
+});
+
 // ===== GESTÃO DE RELATÓRIOS (ciclo rascunho → publicado) =====
 const REL_HEADERS = ['ID_RELATORIO','CHAVE','EMPRESA','ANO','MES','VERSAO','STATUS','CRIADO_EM','PUBLICADO_EM','CRIADO_POR','INDICADOR','NPS_SCORE','TEXTOS_JSON','LINK_TOKEN','DADOS_JSON'];
 
