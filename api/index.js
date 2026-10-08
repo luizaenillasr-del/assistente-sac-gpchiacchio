@@ -1358,6 +1358,7 @@ app.patch('/api/manifestacoes/:id/ficha', requerPermissao('manifestacoes.editar'
   } catch (e) { console.error(e); res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
 
+
 app.patch('/api/manifestacoes/:id', requerPermissao('manifestacoes.editar'), async (req, res) => {
   try {
     const { id } = req.params;
