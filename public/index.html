@@ -646,6 +646,7 @@
         <button class="tab-btn" onclick="switchModalTab('historico',this)" id="modal-tab-btn-historico" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Histórico</button>
         <button class="tab-btn" onclick="switchModalTab('rnc',this)" id="modal-tab-btn-rnc" style="display:none;border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">RNC vinculada</button>
         <button class="tab-btn" onclick="switchModalTab('hist-cliente',this)" id="modal-tab-btn-hist-cliente" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Histórico do cliente</button>
+        <button class="tab-btn" onclick="switchModalTab('ficha',this)" id="modal-tab-btn-ficha" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">📋 Ficha de encaminhamento</button>
       </div>
 
       <div style="padding:20px;overflow-y:auto;max-height:62vh">
@@ -712,6 +713,118 @@
         <div id="modal-tab-hist-cliente" style="display:none">
           <div id="modal-hist-cliente-content">
             <div style="text-align:center;color:var(--gray-400);padding:24px;font-size:13px">Carregando histórico do cliente...</div>
+          </div>
+        </div>
+
+        <!-- Tab Ficha de Encaminhamento -->
+        <div id="modal-tab-ficha" style="display:none">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+            <div style="font-size:14px;font-weight:700;color:#1F1F1F">Ficha de Encaminhamento de Manifestação</div>
+            <button onclick="fichaDownloadPDF()" style="display:flex;align-items:center;gap:6px;border:1px solid #24508F;background:#fff;color:#24508F;border-radius:7px;padding:7px 14px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Baixar PDF preenchido
+            </button>
+          </div>
+
+          <!-- Seção 6 — Resposta do Setor -->
+          <div id="modal-ficha-s6" style="border:1.5px solid #E4E4E4;border-radius:10px;padding:16px;margin-bottom:14px">
+            <div style="font-size:13px;font-weight:700;color:#C70602;margin-bottom:12px">6. Resposta do Setor</div>
+            <div style="font-size:11px;color:#666464;margin-bottom:12px" id="modal-ficha-s6-info">Preenchida pelo setor responsável após análise do caso.</div>
+            <div class="form-group" style="margin-bottom:10px">
+              <label style="font-size:12px;font-weight:600;color:#1F1F1F;display:block;margin-bottom:4px">O que aconteceu? <span style="font-weight:400;color:#666464">(Descreva objetivamente)</span></label>
+              <textarea id="ficha-s6-o-que" class="form-textarea" style="min-height:70px" placeholder="Descrição objetiva do que ocorreu..."></textarea>
+            </div>
+            <div class="form-group" style="margin-bottom:10px">
+              <label style="font-size:12px;font-weight:600;color:#1F1F1F;display:block;margin-bottom:4px">Qual foi a causa da ocorrência? <span style="font-weight:400;color:#666464">(Por que isso aconteceu?)</span></label>
+              <textarea id="ficha-s6-causa" class="form-textarea" style="min-height:70px" placeholder="Causa raiz identificada..."></textarea>
+            </div>
+            <div class="form-group" style="margin-bottom:10px">
+              <label style="font-size:12px;font-weight:600;color:#1F1F1F;display:block;margin-bottom:4px">Como o caso foi resolvido para este cliente?</label>
+              <textarea id="ficha-s6-resolucao" class="form-textarea" style="min-height:70px" placeholder="Solução específica aplicada a este cliente..."></textarea>
+            </div>
+            <div class="form-group" style="margin-bottom:10px">
+              <label style="font-size:12px;font-weight:600;color:#1F1F1F;display:block;margin-bottom:4px">Qual ação será adotada para evitar novas ocorrências?</label>
+              <textarea id="ficha-s6-acao-prev" class="form-textarea" style="min-height:70px" placeholder="Ação corretiva ou preventiva..."></textarea>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+              <div class="form-group">
+                <label style="font-size:12px;font-weight:600;color:#1F1F1F;display:block;margin-bottom:4px">Responsável pela ação de melhoria</label>
+                <input id="ficha-s6-responsavel" class="form-input" placeholder="Nome / cargo...">
+              </div>
+              <div class="form-group">
+                <label style="font-size:12px;font-weight:600;color:#1F1F1F;display:block;margin-bottom:4px">Prazo para implementação</label>
+                <input id="ficha-s6-prazo" class="form-input" type="date">
+              </div>
+            </div>
+            <div id="modal-ficha-s6-actions" style="display:flex;gap:8px;margin-top:8px">
+              <button onclick="fichaGravarSetor()" style="background:#C70602;color:#fff;border:0;border-radius:7px;padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Salvar resposta do setor</button>
+            </div>
+            <div id="modal-ficha-s6-msg" style="display:none;margin-top:8px;font-size:12px"></div>
+          </div>
+
+          <!-- Aprovação do responsável do setor -->
+          <div id="modal-ficha-aprov" style="border:1.5px solid #E4E4E4;border-radius:10px;padding:16px;margin-bottom:14px">
+            <div style="font-size:13px;font-weight:700;color:#C70602;margin-bottom:12px">Validação do Responsável do Setor</div>
+            <div style="font-size:12px;color:#545252;margin-bottom:12px">O aprovador / responsável do setor valida se a tratativa é adequada antes do fechamento.</div>
+            <div style="display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+              <button onclick="fichaSetAprovador('OK',this)" id="ficha-aprov-ok" style="display:flex;align-items:center;gap:6px;border:2px solid #D6D6D6;background:#fff;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;color:#666464">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>OK — Tratativa aprovada
+              </button>
+              <button onclick="fichaSetAprovador('NAO_ACEITO',this)" id="ficha-aprov-nao" style="display:flex;align-items:center;gap:6px;border:2px solid #D6D6D6;background:#fff;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;color:#666464">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Não aceito
+              </button>
+            </div>
+            <input type="hidden" id="ficha-aprov-decisao" value="">
+            <div id="ficha-aprov-box-nao" style="display:none">
+              <div class="form-group" style="margin-bottom:8px">
+                <label style="font-size:12px;font-weight:600;color:#1F1F1F;display:block;margin-bottom:4px">Motivo da não aceitação</label>
+                <textarea id="ficha-aprov-motivo" class="form-textarea" style="min-height:60px" placeholder="Por que a tratativa não é adequada..."></textarea>
+              </div>
+              <div class="form-group" style="margin-bottom:8px">
+                <label style="font-size:12px;font-weight:600;color:#1F1F1F;display:block;margin-bottom:4px">Como deve ser conduzida</label>
+                <textarea id="ficha-aprov-orientacao" class="form-textarea" style="min-height:60px" placeholder="Orientação para nova tratativa..."></textarea>
+              </div>
+            </div>
+            <div id="modal-ficha-aprov-actions" style="display:flex;gap:8px;margin-top:8px">
+              <button onclick="fichaGravarAprovador()" style="background:#1F1F1F;color:#fff;border:0;border-radius:7px;padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Registrar validação</button>
+            </div>
+            <div id="modal-ficha-aprov-msg" style="display:none;margin-top:8px;font-size:12px"></div>
+          </div>
+
+          <!-- Seção 7 — Validação SAC -->
+          <div id="modal-ficha-s7" style="border:1.5px solid #E4E4E4;border-radius:10px;padding:16px;margin-bottom:14px">
+            <div style="font-size:13px;font-weight:700;color:#C70602;margin-bottom:12px">7. Validação do SAC — Fechamento</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+              <div class="form-group">
+                <label style="font-size:12px;font-weight:600;color:#1F1F1F;display:block;margin-bottom:4px">Data de retorno ao cliente</label>
+                <input id="ficha-s7-data-retorno" class="form-input" type="date">
+              </div>
+              <div></div>
+            </div>
+            <div style="display:flex;gap:24px;margin-bottom:10px;flex-wrap:wrap">
+              <div>
+                <div style="font-size:12px;font-weight:600;color:#1F1F1F;margin-bottom:6px">Cliente informado?</div>
+                <div style="display:flex;gap:8px">
+                  <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer"><input type="radio" name="ficha-s7-cliente-inf" value="SIM" id="ficha-s7-ci-sim"> Sim</label>
+                  <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer"><input type="radio" name="ficha-s7-cliente-inf" value="NAO" id="ficha-s7-ci-nao"> Não</label>
+                </div>
+              </div>
+              <div>
+                <div style="font-size:12px;font-weight:600;color:#1F1F1F;margin-bottom:6px">Manifestação resolvida?</div>
+                <div style="display:flex;gap:8px">
+                  <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer"><input type="radio" name="ficha-s7-resolvida" value="SIM" id="ficha-s7-res-sim"> Sim</label>
+                  <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer"><input type="radio" name="ficha-s7-resolvida" value="NAO" id="ficha-s7-res-nao"> Não</label>
+                </div>
+              </div>
+            </div>
+            <div class="form-group" style="margin-bottom:10px">
+              <label style="font-size:12px;font-weight:600;color:#1F1F1F;display:block;margin-bottom:4px">Observações finais</label>
+              <textarea id="ficha-s7-observacoes" class="form-textarea" style="min-height:70px" placeholder="Observações gerais sobre o encerramento..."></textarea>
+            </div>
+            <div id="modal-ficha-s7-actions" style="display:flex;gap:8px">
+              <button onclick="fichaGravarValidacaoSAC()" style="background:#C70602;color:#fff;border:0;border-radius:7px;padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Fechar manifestação</button>
+            </div>
+            <div id="modal-ficha-s7-msg" style="display:none;margin-top:8px;font-size:12px"></div>
           </div>
         </div>
 
@@ -1736,6 +1849,16 @@
       </div>
     </div>
     <div class="content">
+      <!-- Status da ficha -->
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+        <span style="font-size:12px;font-weight:600;color:#545252">Status da ficha:</span>
+        <div id="nm-status-ficha-btns" style="display:flex;gap:6px">
+          <button onclick="nmSetStatusFicha('ABERTA',this)" class="nm-status-ficha-btn" style="background:#E6F2EA;color:#1E6B3A;border:1.5px solid #1E6B3A;border-radius:20px;padding:3px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">● Aberta</button>
+          <button onclick="nmSetStatusFicha('EM_ANDAMENTO',this)" class="nm-status-ficha-btn" style="background:#fff;color:#666464;border:1.5px solid #D6D6D6;border-radius:20px;padding:3px 12px;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit">Em andamento</button>
+          <button onclick="nmSetStatusFicha('FECHADA',this)" class="nm-status-ficha-btn" style="background:#fff;color:#666464;border:1.5px solid #D6D6D6;border-radius:20px;padding:3px 12px;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit">Fechada</button>
+        </div>
+        <input type="hidden" id="nm-status-ficha" value="ABERTA">
+      </div>
       <!-- Stepper -->
       <div class="stepper">
         <div class="step"><div class="step-num active">1</div><div class="step-label active">Registro</div></div>
@@ -1831,6 +1954,17 @@
               <label class="form-label">Descrição detalhada da manifestação</label>
               <textarea class="form-textarea" style="min-height:120px" placeholder="Descreva detalhadamente a manifestação do cliente..." id="nm-descricao" oninput="onDescricaoChange()"></textarea>
               <div style="font-size:11px;color:var(--gray-400);margin-top:4px" id="nm-chars">0 caracteres — digite ao menos 30 para análise automática</div>
+            </div>
+            <div class="form-group" style="margin-top:10px">
+              <label class="form-label" style="margin-bottom:6px">A reclamação é procedente?</label>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+                <button onclick="nmSetProcedente('SIM',this)" class="nm-proc-btn" style="background:#fff;color:#666464;border:1.5px solid #D6D6D6;border-radius:7px;padding:6px 16px;font-size:13px;cursor:pointer;font-family:inherit">Sim</button>
+                <button onclick="nmSetProcedente('NAO',this)" class="nm-proc-btn" style="background:#fff;color:#666464;border:1.5px solid #D6D6D6;border-radius:7px;padding:6px 16px;font-size:13px;cursor:pointer;font-family:inherit">Não</button>
+                <button onclick="nmSetProcedente('PARCIALMENTE',this)" class="nm-proc-btn" style="background:#fff;color:#666464;border:1.5px solid #D6D6D6;border-radius:7px;padding:6px 16px;font-size:13px;cursor:pointer;font-family:inherit">Parcialmente</button>
+                <button onclick="nmSetProcedente('',this)" class="nm-proc-btn nm-proc-nenhum" style="background:#fff;color:#929090;border:1.5px solid #E4E4E4;border-radius:7px;padding:6px 12px;font-size:12px;cursor:pointer;font-family:inherit">Avaliar depois</button>
+              </div>
+              <input type="hidden" id="nm-procedente" value="">
+              <textarea id="nm-procedente-justif" class="form-textarea" placeholder="Justificativa da procedência..." style="min-height:60px;display:none;margin-top:4px"></textarea>
             </div>
           </div>
 
@@ -1989,6 +2123,52 @@
             <div class="form-row cols-2">
               <div class="form-group"><label class="form-label">Quantidade afetada</label><input class="form-input" placeholder="ex: 500 unidades" id="nm-qtd"></div>
               <div class="form-group"><label class="form-label">Valor envolvido (R$)</label><input class="form-input" placeholder="0,00" id="nm-valor"></div>
+            </div>
+          </div>
+
+          <!-- Seção 5 — Encaminhamento -->
+          <div class="form-section">
+            <div class="form-section-title">
+              <div class="form-section-icon" style="background:#EFF6FF"><svg viewBox="0 0 24 24" fill="none" stroke="#24508F" stroke-width="2"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg></div>
+              <div><div class="form-section-name">5. Encaminhamento e Tratativa</div><div class="form-section-desc">Como será conduzida esta manifestação</div></div>
+            </div>
+            <div class="form-row cols-2" style="margin-bottom:12px">
+              <div class="form-group"><label class="form-label">Data de encaminhamento</label><input class="form-input" type="date" id="nm-data-encaminhamento"></div>
+              <div class="form-group"><label class="form-label">Prazo para retorno ao SAC</label><input class="form-input" id="nm-prazo-retorno" value="72 horas" placeholder="72 horas"></div>
+            </div>
+            <div class="form-group" style="margin-bottom:12px">
+              <label class="form-label" style="margin-bottom:8px">Caminho da tratativa</label>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                <button onclick="nmSetCaminhoTratativa('SAC',this)" id="nm-caminho-sac" style="border:2px solid #D6D6D6;background:#fff;border-radius:10px;padding:14px 16px;cursor:pointer;font-family:inherit;text-align:left">
+                  <div style="font-size:13px;font-weight:700;color:#1F1F1F;margin-bottom:3px">Tratar internamente no SAC</div>
+                  <div style="font-size:11.5px;color:#666464">O SAC resolve e envia devolutiva ao cliente</div>
+                </button>
+                <button onclick="nmSetCaminhoTratativa('SETOR',this)" id="nm-caminho-setor" style="border:2px solid #D6D6D6;background:#fff;border-radius:10px;padding:14px 16px;cursor:pointer;font-family:inherit;text-align:left">
+                  <div style="font-size:13px;font-weight:700;color:#1F1F1F;margin-bottom:3px">Encaminhar ao Setor Responsável</div>
+                  <div style="font-size:11.5px;color:#666464">O setor preenche a resposta e valida a tratativa</div>
+                </button>
+              </div>
+              <input type="hidden" id="nm-caminho-tratativa" value="">
+            </div>
+
+            <!-- Tratativa interna SAC -->
+            <div id="nm-box-tratativa-sac" style="display:none;margin-top:4px">
+              <div style="background:#E6F2EA;border:1px solid #A5D6B0;border-radius:8px;padding:12px 14px;margin-bottom:10px">
+                <div style="font-size:12px;font-weight:700;color:#1E6B3A;margin-bottom:2px">Tratativa interna SAC</div>
+                <div style="font-size:11.5px;color:#1E6B3A">O SAC irá resolver esta manifestação internamente e registrar a devolutiva ao cliente.</div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Tratativa / Devolutiva do SAC</label>
+                <textarea id="nm-tratativa-sac" class="form-textarea" style="min-height:100px" placeholder="Descreva como o SAC está conduzindo a resolução e o que será informado ao cliente..."></textarea>
+              </div>
+            </div>
+
+            <!-- Encaminhar ao Setor -->
+            <div id="nm-box-encaminhamento-setor" style="display:none;margin-top:4px">
+              <div style="background:#EFF6FF;border:1px solid #93C5FD;border-radius:8px;padding:12px 14px;margin-bottom:10px">
+                <div style="font-size:12px;font-weight:700;color:#1D4ED8;margin-bottom:2px">Encaminhamento ao Setor Responsável</div>
+                <div style="font-size:11.5px;color:#1D4ED8">Após registrar, o setor receberá a ficha para preencher a Seção 6 (Resposta do Setor). O responsável do setor valida a tratativa antes do fechamento.</div>
+              </div>
             </div>
           </div>
         </div>
@@ -8310,6 +8490,13 @@ async function registrarManifestacao() {
         devolutivaSugerida: document.getElementById('ia-devolutiva')?.value || '',
         origemDocumento: _nmTipoImportacao || '',
         arquivoOrigem: window._documentoExtraido ? JSON.stringify(window._documentoExtraido) : '',
+        statusFicha: document.getElementById('nm-status-ficha')?.value || 'ABERTA',
+        procedente: document.getElementById('nm-procedente')?.value || '',
+        procedenteJustificativa: document.getElementById('nm-procedente-justif')?.value || '',
+        caminhoTratativa: document.getElementById('nm-caminho-tratativa')?.value || '',
+        tratativaSACInterna: document.getElementById('nm-tratativa-sac')?.value || '',
+        dataEncaminhamento: document.getElementById('nm-data-encaminhamento')?.value || '',
+        prazoRetornoSAC: document.getElementById('nm-prazo-retorno')?.value || '72 horas',
         anexos: await Promise.all(_nmEvidencias.map(async f => ({ nome:f.name, mimeType:f.type, tamanho:f.size, dataBase64:await fileToBase64(f), categoria:'EVIDENCIA' })))
       })
     });
@@ -8350,7 +8537,7 @@ function fecharModal() {
 }
 
 function switchModalTab(tab, btn) {
-  ['ciclo','dados','tratativa','aprovacao','analise','historico','rnc','hist-cliente'].forEach(t => {
+  ['ciclo','dados','tratativa','aprovacao','analise','historico','rnc','hist-cliente','ficha'].forEach(t => {
     const el = document.getElementById(`modal-tab-${t}`);
     if (el) el.style.display = t === tab ? 'block' : 'none';
   });
@@ -8365,6 +8552,164 @@ function switchModalTab(tab, btn) {
   if (tab === 'historico') _loadDossieHistorico();
   if (tab === 'rnc') _loadDossieRNC();
   if (tab === 'hist-cliente') _loadHistoricoCliente();
+  if (tab === 'ficha' && _dossieItem) fichaCarregarDados(_dossieItem);
+}
+
+// ===== NOVA MANIFESTAÇÃO — HELPERS DE FORMULÁRIO =====
+function nmSetStatusFicha(status, btn) {
+  document.getElementById('nm-status-ficha').value = status;
+  document.querySelectorAll('.nm-status-ficha-btn').forEach(b => {
+    b.style.background = '#fff'; b.style.color = '#666464'; b.style.borderColor = '#D6D6D6'; b.style.fontWeight = '500';
+  });
+  const colors = { ABERTA: { bg:'#E6F2EA', color:'#1E6B3A', border:'#1E6B3A' }, EM_ANDAMENTO: { bg:'#FFF7E6', color:'#8A5700', border:'#F59E0B' }, FECHADA: { bg:'#F3F4F6', color:'#374151', border:'#6B7280' } };
+  const c = colors[status] || colors.ABERTA;
+  btn.style.background = c.bg; btn.style.color = c.color; btn.style.borderColor = c.border; btn.style.fontWeight = '700';
+}
+
+function nmSetProcedente(valor, btn) {
+  document.getElementById('nm-procedente').value = valor;
+  document.querySelectorAll('.nm-proc-btn').forEach(b => {
+    b.style.background = '#fff'; b.style.color = '#666464'; b.style.borderColor = '#D6D6D6'; b.style.fontWeight = '500';
+  });
+  if (valor) { btn.style.background = '#F0F7FF'; btn.style.color = '#1D4ED8'; btn.style.borderColor = '#3B82F6'; btn.style.fontWeight = '700'; }
+  const justif = document.getElementById('nm-procedente-justif');
+  justif.style.display = (valor && valor !== '') ? 'block' : 'none';
+}
+
+function nmSetCaminhoTratativa(caminho, btn) {
+  document.getElementById('nm-caminho-tratativa').value = caminho;
+  ['nm-caminho-sac','nm-caminho-setor'].forEach(id => {
+    const b = document.getElementById(id);
+    if (b) { b.style.background = '#fff'; b.style.color = '#666464'; b.style.borderColor = '#D6D6D6'; b.style.fontWeight = '500'; }
+  });
+  btn.style.background = '#EFF6FF'; btn.style.color = '#1D4ED8'; btn.style.borderColor = '#3B82F6'; btn.style.fontWeight = '700';
+  document.getElementById('nm-box-tratativa-sac').style.display = caminho === 'SAC' ? 'block' : 'none';
+  document.getElementById('nm-box-encaminhamento-setor').style.display = caminho === 'SETOR' ? 'block' : 'none';
+}
+
+// ===== FICHA DE ENCAMINHAMENTO — MODAL =====
+function fichaCarregarDados(item) {
+  if (!item) return;
+  const s = (id, v) => { const e = document.getElementById(id); if (e) e.value = v || ''; };
+  const t = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v || '--'; };
+  s('ficha-s6-o-que', item.RESP_SETOR_O_QUE);
+  s('ficha-s6-causa', item.RESP_SETOR_CAUSA);
+  s('ficha-s6-resolucao', item.RESP_SETOR_RESOLUCAO);
+  s('ficha-s6-acao-prev', item.RESP_SETOR_ACAO_PREV);
+  s('ficha-s6-responsavel', item.RESP_SETOR_RESPONSAVEL);
+  s('ficha-s6-prazo', item.RESP_SETOR_PRAZO);
+  s('ficha-s7-data-retorno', item.VALID_SAC_DATA_RETORNO);
+  s('ficha-s7-observacoes', item.OBSERVACOES_FINAIS);
+  if (item.VALID_SAC_CLIENTE_INFORMADO) {
+    const r = document.querySelector(`input[name="ficha-s7-cli-inf"][value="${item.VALID_SAC_CLIENTE_INFORMADO}"]`);
+    if (r) r.checked = true;
+  }
+  if (item.VALID_SAC_RESOLVIDA) {
+    const r = document.querySelector(`input[name="ficha-s7-resolvida"][value="${item.VALID_SAC_RESOLVIDA}"]`);
+    if (r) r.checked = true;
+  }
+  if (item.APROV_SETOR_DECISAO) {
+    const aprvBtn = document.getElementById(item.APROV_SETOR_DECISAO === 'OK' ? 'ficha-aprov-ok' : 'ficha-aprov-nao');
+    if (aprvBtn) fichaSetAprovador(item.APROV_SETOR_DECISAO, aprvBtn);
+  }
+  s('ficha-aprov-motivo', item.APROV_SETOR_MOTIVO);
+  s('ficha-aprov-orientacao', item.APROV_SETOR_ORIENTACAO);
+}
+
+function fichaSetAprovador(decisao, btn) {
+  document.getElementById('ficha-aprov-decisao').value = decisao;
+  ['ficha-aprov-ok','ficha-aprov-nao'].forEach(id => {
+    const b = document.getElementById(id);
+    if (b) { b.style.background = '#fff'; b.style.color = '#666464'; b.style.borderColor = '#D6D6D6'; b.style.fontWeight = '500'; }
+  });
+  if (decisao === 'OK') { btn.style.background = '#E6F2EA'; btn.style.color = '#1E6B3A'; btn.style.borderColor = '#1E6B3A'; btn.style.fontWeight = '700'; }
+  else { btn.style.background = '#FEF2F2'; btn.style.color = '#C70602'; btn.style.borderColor = '#C70602'; btn.style.fontWeight = '700'; }
+  document.getElementById('ficha-aprov-box-nao').style.display = decisao === 'NAO_ACEITO' ? 'block' : 'none';
+}
+
+async function fichaGravarSetor() {
+  const m = _dossieItem;
+  if (!m?.ID_MANIFESTACAO) return;
+  const msg = document.getElementById('modal-ficha-s6-msg');
+  const body = {
+    acao: 'resposta_setor',
+    respSetorOQue: document.getElementById('ficha-s6-o-que').value.trim(),
+    respSetorCausa: document.getElementById('ficha-s6-causa').value.trim(),
+    respSetorResolucao: document.getElementById('ficha-s6-resolucao').value.trim(),
+    respSetorAcaoPrev: document.getElementById('ficha-s6-acao-prev').value.trim(),
+    respSetorResponsavel: document.getElementById('ficha-s6-responsavel').value.trim(),
+    respSetorPrazo: document.getElementById('ficha-s6-prazo').value.trim()
+  };
+  if (!body.respSetorOQue) { alert('Preencha ao menos "O que aconteceu".'); return; }
+  msg.style.display = 'none';
+  try {
+    const r = await _apiFetch(`/api/manifestacoes/${encodeURIComponent(m.ID_MANIFESTACAO)}/ficha`, 30000, { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+    msg.style.display = 'block'; msg.style.background = r.sucesso ? '#E6F2EA' : '#FEF2F2';
+    msg.style.color = r.sucesso ? '#1E6B3A' : '#C70602';
+    msg.textContent = r.sucesso ? '✓ Resposta do setor salva com sucesso.' : ('Erro: ' + r.erro);
+    if (r.sucesso) Object.assign(_dossieItem, { RESP_SETOR_O_QUE:body.respSetorOQue, RESP_SETOR_CAUSA:body.respSetorCausa, RESP_SETOR_RESOLUCAO:body.respSetorResolucao, RESP_SETOR_ACAO_PREV:body.respSetorAcaoPrev, RESP_SETOR_RESPONSAVEL:body.respSetorResponsavel, RESP_SETOR_PRAZO:body.respSetorPrazo });
+  } catch(e) { msg.style.display='block'; msg.style.background='#FEF2F2'; msg.style.color='#C70602'; msg.textContent='Erro: '+e.message; }
+}
+
+async function fichaGravarAprovador() {
+  const m = _dossieItem;
+  if (!m?.ID_MANIFESTACAO) return;
+  const decisao = document.getElementById('ficha-aprov-decisao').value;
+  if (!decisao) { alert('Selecione OK ou Não aceito.'); return; }
+  const msg = document.getElementById('modal-ficha-aprov-msg');
+  const body = {
+    acao: 'aprovacao_setor',
+    aprovDecisao: decisao,
+    aprovMotivo: document.getElementById('ficha-aprov-motivo')?.value.trim() || '',
+    aprovOrientacao: document.getElementById('ficha-aprov-orientacao')?.value.trim() || ''
+  };
+  if (decisao === 'NAO_ACEITO' && !body.aprovMotivo) { alert('Informe o motivo de não aceitar.'); return; }
+  msg.style.display = 'none';
+  try {
+    const r = await _apiFetch(`/api/manifestacoes/${encodeURIComponent(m.ID_MANIFESTACAO)}/ficha`, 30000, { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+    msg.style.display = 'block'; msg.style.background = r.sucesso ? '#E6F2EA' : '#FEF2F2';
+    msg.style.color = r.sucesso ? '#1E6B3A' : '#C70602';
+    msg.textContent = r.sucesso ? '✓ Validação registrada.' : ('Erro: ' + r.erro);
+    if (r.sucesso) Object.assign(_dossieItem, { APROV_SETOR_DECISAO:decisao, APROV_SETOR_MOTIVO:body.aprovMotivo, APROV_SETOR_ORIENTACAO:body.aprovOrientacao });
+  } catch(e) { msg.style.display='block'; msg.style.background='#FEF2F2'; msg.style.color='#C70602'; msg.textContent='Erro: '+e.message; }
+}
+
+async function fichaGravarValidacaoSAC() {
+  const m = _dossieItem;
+  if (!m?.ID_MANIFESTACAO) return;
+  const msg = document.getElementById('modal-ficha-s7-msg');
+  const cliInf = document.querySelector('input[name="ficha-s7-cli-inf"]:checked');
+  const resolvida = document.querySelector('input[name="ficha-s7-resolvida"]:checked');
+  const body = {
+    acao: 'validacao_sac',
+    validDataRetorno: document.getElementById('ficha-s7-data-retorno').value,
+    validClienteInformado: cliInf?.value || '',
+    validResolvida: resolvida?.value || '',
+    observacoesFinais: document.getElementById('ficha-s7-observacoes').value.trim()
+  };
+  if (!body.validClienteInformado || !body.validResolvida) { alert('Informe se o cliente foi comunicado e se foi resolvida.'); return; }
+  msg.style.display = 'none';
+  try {
+    const r = await _apiFetch(`/api/manifestacoes/${encodeURIComponent(m.ID_MANIFESTACAO)}/ficha`, 30000, { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+    msg.style.display = 'block'; msg.style.background = r.sucesso ? '#E6F2EA' : '#FEF2F2';
+    msg.style.color = r.sucesso ? '#1E6B3A' : '#C70602';
+    msg.textContent = r.sucesso ? '✓ Manifestação fechada com sucesso.' : ('Erro: ' + r.erro);
+  } catch(e) { msg.style.display='block'; msg.style.background='#FEF2F2'; msg.style.color='#C70602'; msg.textContent='Erro: '+e.message; }
+}
+
+async function fichaDownloadPDF() {
+  const m = _dossieItem;
+  if (!m?.ID_MANIFESTACAO) return alert('Nenhuma manifestação aberta.');
+  const token = sessionStorage.getItem('sac-token');
+  try {
+    const resp = await fetch(`/api/manifestacoes/${encodeURIComponent(m.ID_MANIFESTACAO)}/pdf`, { headers: { Authorization: 'Bearer ' + (token||'') } });
+    if (!resp.ok) { const j = await resp.json().catch(()=>{}); return alert('Erro: ' + (j?.erro || resp.statusText)); }
+    const blob = await resp.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = blobUrl; a.download = `Ficha_${m.ID_MANIFESTACAO}.pdf`; a.click();
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+  } catch(e) { alert('Erro ao gerar PDF: ' + e.message); }
 }
 
 let _dossieItem = null;
