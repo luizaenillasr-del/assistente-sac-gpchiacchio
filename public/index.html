@@ -15264,7 +15264,7 @@ function cpRenderGeral() {
   tb.innerHTML = vis.map((r, idx) => '<tr class="ps-tr' + (r.baixa ? ' ps-low' : '') + '" style="cursor:pointer" onclick="cpAbrirDetalhe(' + (_cp.page > 1 ? ((_cp.page-1)*50+idx) : idx) + ')" title="Ver detalhes"><td class="ps-td" style="font-weight:600">#' + r.n + '</td><td class="ps-td">' + cpEsc(r.dataTxt) + '</td><td class="ps-td">' + cpEsc(r.emp || '—') + '</td><td class="ps-td" style="max-width:220px">' + cpEsc(r.cli || '—') + '</td>'
     + r.notas.map(n => '<td class="ps-td" style="text-align:center">' + cpNotaChip(n) + '</td>').join('')
     + '<td class="ps-td">' + (r.baixa ? '<span class="ps-pill ps-pill-red">NOTA ≤ 6</span>' : '<span class="ps-pill ps-pill-gray">SEM ALERTA</span>') + '</td>'
-    + (isMaster ? '<td class="ps-td" onclick="event.stopPropagation()"><button onclick="cpExcluirResposta(\'' + cpEsc(r.raw&&r.raw.ID_RESPOSTA||'') + '\',' + (_cp.page > 1 ? ((_cp.page-1)*50+idx) : idx) + ')" style="background:none;border:1px solid #dc2626;color:#dc2626;border-radius:4px;padding:2px 7px;cursor:pointer;font-size:13px" title="Excluir pesquisa">🗑️</button></td>' : '')
+    + (isMaster ? '<td class="ps-td" onclick="event.stopPropagation()"><button onclick="cpExcluirResposta(\'' + cpEsc(r.raw&&(r.raw._id||r.raw.ID_RESPOSTA)||'') + '\',' + (_cp.page > 1 ? ((_cp.page-1)*50+idx) : idx) + ')" style="background:none;border:1px solid #dc2626;color:#dc2626;border-radius:4px;padding:2px 7px;cursor:pointer;font-size:13px" title="Excluir pesquisa">🗑️</button></td>' : '')
     + '</tr>').join('');
   el('cp-more').style.display = vis.length < l.length ? 'block' : 'none';
 }
@@ -15273,10 +15273,9 @@ async function cpExcluirResposta(id, idx) {
   if (!id) return alert('ID da resposta não encontrado.');
   if (!confirm('Excluir pesquisa #' + (idx + 1) + '? Esta ação não pode ser desfeita.')) return;
   try {
-    const r = await fetch('/api/pesquisas/respostas/' + encodeURIComponent(id), { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('sac_token') || '') } });
-    const d = await r.json();
-    if (!d.sucesso) throw new Error(d.erro || 'Erro ao excluir.');
-    _cp.all = (_cp.all || []).filter(x => (x.raw && x.raw.ID_RESPOSTA) !== id);
+    const r = await _apiFetch('/api/pesquisas/respostas/' + encodeURIComponent(id), 10000, { method: 'DELETE' });
+    if (!r.sucesso) throw new Error(r.erro || 'Erro ao excluir.');
+    _cp.all = (_cp.all || []).filter(x => (x.raw && (x.raw._id || x.raw.ID_RESPOSTA)) !== id);
     cpAplica();
   } catch (e) { alert('Erro: ' + e.message); }
 }
@@ -15304,6 +15303,30 @@ function cpAbrirDetalhe(idx) {
   if (r.comentario) {
     html += '<div style="border:1.5px solid #E4E4E4;border-radius:8px;padding:10px 14px;margin-bottom:14px"><div style="font-size:11px;color:#666;margin-bottom:4px;font-weight:600">COMENTÁRIO</div><div style="font-size:13.5px;line-height:1.6;white-space:pre-line">' + cpEsc(r.comentario) + '</div></div>';
   }
+  // Detalhes extras
+  const raw = r.raw || {};
+  const statusOcp = raw._statusOcp || '';
+  const respId = raw._id || raw.ID_RESPOSTA || '';
+  const infoItems = [
+    ['ID Resposta', respId],
+    ['Status', statusOcp || '—'],
+    ['Empresa', r.emp || '—'],
+    ['Cliente', r.cli || '—'],
+    ['Data', r.dataTxt || '—'],
+  ].filter(([,v]) => v && v !== '—');
+  // Campos extras da planilha não mapeados canonicamente
+  const _cpSkip = new Set(['_id','_token','_notaBaixa','_statusOcp','Empresa','Cliente','Data','Atendimento','Prazo de Entrega','Qualidade','Recomendação','Observação','ID_RESPOSTA','TOKEN','NOTA_BAIXA','STATUS_OCP','EMPRESA','NOME_CLIENTE','COMENTARIO','ATENDIMENTO','PRAZO_ENTREGA','QUALIDADE','RECOMENDACAO']);
+  const camposExtras = Object.entries(raw).filter(([k,v]) => !_cpSkip.has(k) && v !== '' && v !== undefined && v !== null);
+  html += '<details style="margin-bottom:14px"><summary style="cursor:pointer;font-size:12px;font-weight:600;color:#545252;padding:8px 12px;border:1.5px solid #E4E4E4;border-radius:8px;list-style:none;display:flex;justify-content:space-between">Detalhes completos <span>▾</span></summary>'
+    + '<div style="border:1.5px solid #E4E4E4;border-top:0;border-radius:0 0 8px 8px;padding:10px 14px">'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 16px">'
+    + infoItems.map(([k,v]) => '<div><span style="font-size:10.5px;color:#888;font-weight:600;text-transform:uppercase">' + cpEsc(k) + '</span><br><span style="font-size:12.5px">' + cpEsc(String(v)) + '</span></div>').join('')
+    + camposExtras.map(([k,v]) => '<div><span style="font-size:10.5px;color:#888;font-weight:600;text-transform:uppercase">' + cpEsc(k) + '</span><br><span style="font-size:12.5px">' + cpEsc(String(v)) + '</span></div>').join('')
+    + '</div>'
+    + (raw._token ? '<div style="margin-top:10px;padding-top:10px;border-top:1px solid #E4E4E4"><span style="font-size:10.5px;color:#888;font-weight:600;text-transform:uppercase">Link da pesquisa</span><br>'
+      + '<code style="font-size:11px;color:#545252;word-break:break-all">' + cpEsc(window.location.origin + '/pesquisa?t=' + (raw._token||'')) + '</code>&nbsp;'
+      + '<button onclick="navigator.clipboard.writeText(\'' + cpEsc(raw._token||'').replace(/'/g,"\\'") + '\').then(()=>alert(\'Token copiado!\')).catch(()=>prompt(\'Token:\',\'' + cpEsc(raw._token||'').replace(/'/g,"\\'") + '\'))" style="border:1px solid #D6D6D6;background:#fff;border-radius:5px;padding:3px 10px;font-size:12px;cursor:pointer;font-family:inherit">Copiar token</button></div>' : '')
+    + '</div></details>';
   if (baixa) {
     html += '<div style="border-top:1.5px solid #E4E4E4;padding-top:16px;margin-top:4px">'
       + '<div style="font-size:13px;font-weight:700;margin-bottom:10px">Decisão de tratamento</div>'
@@ -15336,6 +15359,7 @@ async function cpDecisaoDetalhe(decisao, linhaId) {
   const msg = document.getElementById('cp-det-msg');
   const setor = (document.getElementById('cp-det-setor') || {}).value || '';
   // Não requer tratamento — exige justificativa
+  const decisaoApi = decisao === 'NENHUM' ? 'NAO_REQUER' : decisao;
   if (decisao === 'NENHUM') {
     if (justWrap && justWrap.style.display === 'none') {
       justWrap.style.display = 'block';
@@ -15353,6 +15377,11 @@ async function cpDecisaoDetalhe(decisao, linhaId) {
     if (msg) msg.innerHTML = '<span style="color:#A80502">Resposta não encontrada.</span>';
     return;
   }
+  const respostaId = (resposta.raw && (resposta.raw._id || resposta.raw.ID_RESPOSTA)) || '';
+  if (!respostaId) {
+    if (msg) msg.innerHTML = '<span style="color:#A80502">ID da resposta não encontrado.</span>';
+    return;
+  }
   // Bloquear duplicidade de manifestação
   if (decisao === 'MANIFESTACAO' && resposta._manId) {
     if (msg) msg.innerHTML = '<span style="color:#A80502">Esta resposta já possui uma manifestação vinculada (' + cpEsc(resposta._manId) + ').</span>';
@@ -15361,14 +15390,14 @@ async function cpDecisaoDetalhe(decisao, linhaId) {
   try {
     const res = await _apiFetch('/api/pesquisas/decisao', 8000, {
       method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ linhaId, decisao, justificativa, setor })
+      body: JSON.stringify({ respostaId, decisao: decisaoApi, justificativa, setor })
     });
     if (res.sucesso) {
       if (msg) msg.innerHTML = '<span style="color:#1E6B3A">✓ Decisão registrada com sucesso!</span>';
       if (decisao === 'MANIFESTACAO' && res.manifestacaoId) {
         if (msg) msg.innerHTML += ' <span style="color:#1E6B3A">Manifestação ' + cpEsc(res.manifestacaoId) + ' criada.</span>';
       }
-      setTimeout(() => { cpFecharDetalhe(); cpCarregar(); }, 1400);
+      setTimeout(() => { cpFecharDetalhe(); cpLoad(); }, 1400);
     } else {
       if (msg) msg.innerHTML = '<span style="color:#A80502">Erro: ' + cpEsc(res.erro || 'desconhecido') + '</span>';
     }
