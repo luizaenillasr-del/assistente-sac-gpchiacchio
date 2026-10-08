@@ -297,6 +297,8 @@ const P_APROVACAO=['MASTER','APROVADOR'];
 const P_RELATORIO=['MASTER','GESTOR SAC','ANALISTA SAC','ATENDENTE SAC','SETOR RESPONSÁVEL','ESPECIALISTA','APROVADOR','RCA / REPRESENTANTE','DIRETOR','VISUALIZADOR','AUDITOR'];
 
 function usuarioPublico(u){
+  let permissoes_custom=null;
+  if(u.PERMISSOES_CUSTOM){try{permissoes_custom=typeof u.PERMISSOES_CUSTOM==='string'?JSON.parse(u.PERMISSOES_CUSTOM):u.PERMISSOES_CUSTOM;}catch(e){}}
   return {
     id:u.ID_USUARIO||u.ID||u.USUARIO||u.EMAIL,
     usuario:u.USUARIO||u.EMAIL||u.ID_USUARIO,
@@ -304,7 +306,8 @@ function usuarioPublico(u){
     email:u.EMAIL||'',
     perfil:perfilCanonico(u.PERFIL||u.PERFIL_USUARIO),
     empresa:u.EMPRESA||'', setor:u.SETOR||'', codigoRCA:u.CODIGO_RCA||u.RCA||'', status:u.STATUS||'ATIVO',
-    ultimoAcesso:u.ULTIMO_ACESSO||'', dataCriacao:u.DATA_CRIACAO||''
+    ultimoAcesso:u.ULTIMO_ACESSO||'', dataCriacao:u.DATA_CRIACAO||'',
+    permissoes_custom: Array.isArray(permissoes_custom)&&permissoes_custom.length?permissoes_custom:null
   };
 }
 
@@ -4142,7 +4145,7 @@ app.post('/api/usuarios', requerPerfil('MASTER'), async (req,res)=>{
     if(!b.usuario||!b.nome||!b.perfil) return res.status(400).json({sucesso:false,erro:'Usuário, nome e perfil são obrigatórios.'});
     const id=await gerarProximoID('USUARIOS','USR','ID_USUARIO');
     const hash=b.senha ? await hashSenha(b.senha) : '';
-    const obj={ID_USUARIO:id,USUARIO:b.usuario,EMAIL:b.email||'',NOME:b.nome,PERFIL:perfilCanonico(b.perfil),EMPRESA:b.empresa||'',SETOR:b.setor||'',CODIGO_RCA:b.codigoRCA||'',STATUS:b.status||'ATIVO',SENHA_HASH:hash,DATA_CRIACAO:new Date().toISOString(),ULTIMO_ACESSO:''};
+    const obj={ID_USUARIO:id,USUARIO:b.usuario,EMAIL:b.email||'',NOME:b.nome,PERFIL:perfilCanonico(b.perfil),EMPRESA:b.empresa||'',SETOR:b.setor||'',CODIGO_RCA:b.codigoRCA||'',STATUS:b.status||'ATIVO',SENHA_HASH:hash,DATA_CRIACAO:new Date().toISOString(),ULTIMO_ACESSO:'',PERMISSOES_CUSTOM:Array.isArray(b.permissoes_custom)?JSON.stringify(b.permissoes_custom):''};
     await appendObjeto('USUARIOS',obj);
     await registrarAuditoria(req.user.usuario,'CRIOU_USUARIO',id,'USUARIOS',null,{perfil:obj.PERFIL});
     res.json({sucesso:true,usuario:usuarioPublico(obj)});
@@ -4161,6 +4164,7 @@ app.patch('/api/usuarios/:id', requerPerfil('MASTER'), async (req,res)=>{
     if(b.perfil||b.PERFIL) dados.PERFIL=perfilCanonico(b.perfil||b.PERFIL);
     if(b.empresa||b.EMPRESA) { const ec=empresaCanonica(b.empresa||b.EMPRESA); if(ec) dados.EMPRESA=ec; }
     if(b.senha){ dados.SENHA_HASH = await hashSenha(b.senha); }
+    if(Array.isArray(b.permissoes_custom)) dados.PERMISSOES_CUSTOM=JSON.stringify(b.permissoes_custom);
     dados.DATA_ULTIMA_ALTERACAO=new Date().toISOString(); dados.ALTERADO_POR=req.user.usuario;
     await atualizarPorID('USUARIOS',req.params.id,dados,['ID_USUARIO','USUARIO','EMAIL']);
     await registrarAuditoria(req.user.usuario,'ATUALIZOU_USUARIO',req.params.id,'USUARIOS',null,{campos:Object.keys(b)});

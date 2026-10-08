@@ -10552,6 +10552,7 @@ window.navigate = function(page, el) {
   function fmt5(v){if(!v)return '—';const d=new Date(v);return isNaN(d)?String(v):d.toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})}
   window.fmt5=fmt5;
   function role(){return sess()?.perfil||''}
+  window.role=role;
   function isInternal(){return role()!=='RCA / REPRESENTANTE'}
 
   // Intercepta as chamadas antigas do frontend e adiciona o token.
@@ -10759,18 +10760,45 @@ window.navigate = function(page, el) {
     'VISUALIZADOR':['Visualizar manifestações sem editar','Dashboard e indicadores','Relatório de Satisfação'],
     'AUDITOR':['Auditoria de manifestações e logs','Banco de manifestações e RNCs','Dashboard e indicadores'],
   };
-  window.usrAtualizarPermissoes=function(perfil){
+  // Todas as atividades disponíveis no sistema
+  const _USR_TODAS_ATIVIDADES=[
+    'Acesso total ao sistema','Gerenciar usuários e permissões','Ver e editar todas as manifestações',
+    'Configurações e auditoria','Centro de Pesquisas e Relatório de Satisfação','Cérebro e Base de Conhecimento',
+    'RCA e representantes','Ver e gerenciar manifestações de todas as empresas','Aprovar/rejeitar manifestações',
+    'Dashboard e indicadores','Configurar setores e aprovadores','Abrir e editar manifestações',
+    'Banco de manifestações e RNCs','Similares e biblioteca de fichas','Visualizar manifestações encaminhadas para aprovação',
+    'Aprovar ou rejeitar manifestações','Ver Relatório de Satisfação','Abrir novas manifestações',
+    'Acompanhar manifestações abertas por si','Acesso ao Cérebro e similares','Receber manifestações do próprio setor',
+    'Registrar tratativas e devolutivas','Acesso limitado ao banco de manifestações','Consulta à Base de Conhecimento',
+    'Busca de similares','Visualização de indicadores','Abrir manifestações em nome de clientes',
+    'Acompanhar casos dos próprios clientes','Portal de RCA','Dashboard e indicadores executivos',
+    'Banco de manifestações (somente leitura)','Relatório de Satisfação e RCA','Visualizar manifestações sem editar',
+    'Auditoria de manifestações e logs',
+  ];
+  window.usrGetAtividadesSelecionadas=function(){
+    return _USR_TODAS_ATIVIDADES.filter((_,i)=>{const cb=document.getElementById('usr-perm-cb-'+i);return cb&&cb.checked;});
+  };
+  window.usrAtualizarPermissoes=function(perfil,customAtividades){
     const el=document.getElementById('usr-permissoes-painel');
     if(!el)return;
-    const itens=_USR_PERM[perfil]||['Perfil sem atividades cadastradas.'];
-    el.innerHTML='<div style="font-size:11px;font-weight:700;letter-spacing:.06em;color:#929090;text-transform:uppercase;margin-bottom:8px">O que este perfil pode fazer</div>'
-      +itens.map(i=>'<div style="display:flex;gap:7px;align-items:flex-start;margin-bottom:5px"><span style="color:#1E6B3A;font-size:14px;line-height:1.3">✓</span><span style="color:#3D3D3D;line-height:1.4">'+i+'</span></div>').join('');
+    const padrao=_USR_PERM[perfil]||[];
+    const marcadas=customAtividades||padrao;
+    el.innerHTML='<div style="font-size:11px;font-weight:700;letter-spacing:.06em;color:#929090;text-transform:uppercase;margin-bottom:10px">Atividades deste usuário <span style="font-weight:400;font-size:10px;color:#b0aeae">(personalizável)</span></div>'
+      +_USR_TODAS_ATIVIDADES.map((item,i)=>{
+        const checked=marcadas.includes(item)?'checked':'';
+        const isPadrao=padrao.includes(item);
+        return '<label style="display:flex;gap:8px;align-items:flex-start;margin-bottom:6px;cursor:pointer">'
+          +'<input type="checkbox" id="usr-perm-cb-'+i+'" '+checked+' style="margin-top:2px;accent-color:#C70602;width:14px;height:14px;flex-shrink:0">'
+          +'<span style="font-size:12.5px;line-height:1.4;color:#3D3D3D">'
+          +item+(isPadrao?'<span style="font-size:10px;color:#929090;margin-left:5px">(padrão do perfil)</span>':'')
+          +'</span></label>';
+      }).join('');
   };
   window.abrirModalUsuario=function(){
     document.getElementById('modal-usuario-v5').style.display='flex';
     usrAtualizarPermissoes(document.getElementById('usr-perfil').value);
   };window.fecharModalUsuario=function(){document.getElementById('modal-usuario-v5').style.display='none'};
-  window.salvarUsuarioV5=async function(){const b={nome:document.getElementById('usr-nome').value.trim(),usuario:document.getElementById('usr-login').value.trim(),email:document.getElementById('usr-email').value.trim(),senha:document.getElementById('usr-senha').value,perfil:document.getElementById('usr-perfil').value,empresa:document.getElementById('usr-empresa').value,setor:document.getElementById('usr-setor').value,codigoRCA:document.getElementById('usr-rca').value,status:document.getElementById('usr-status').value};try{await json5('/api/usuarios',{method:'POST',body:JSON.stringify(b)});alert('Usuário criado.');fecharModalUsuario();loadUsuariosV5()}catch(e){alert(e.message)}};
+  window.salvarUsuarioV5=async function(){const b={nome:document.getElementById('usr-nome').value.trim(),usuario:document.getElementById('usr-login').value.trim(),email:document.getElementById('usr-email').value.trim(),senha:document.getElementById('usr-senha').value,perfil:document.getElementById('usr-perfil').value,empresa:document.getElementById('usr-empresa').value,setor:document.getElementById('usr-setor').value,codigoRCA:document.getElementById('usr-rca').value,status:document.getElementById('usr-status').value,permissoes_custom:usrGetAtividadesSelecionadas()};try{await json5('/api/usuarios',{method:'POST',body:JSON.stringify(b)});alert('Usuário criado.');fecharModalUsuario();loadUsuariosV5()}catch(e){alert(e.message)}};
   window.editarUsuarioV5=async function(id){
     try{
       const d=await json5('/api/usuarios');
@@ -10791,12 +10819,13 @@ window.navigate = function(page, el) {
       const btn=box.querySelector('.btn.btn-primary');
       btn.textContent='Salvar alterações';
       btn.onclick=async function(){
-        const b={nome:document.getElementById('usr-nome').value.trim(),email:document.getElementById('usr-email').value.trim(),perfil:document.getElementById('usr-perfil').value,empresa:document.getElementById('usr-empresa').value,setor:document.getElementById('usr-setor').value,codigoRCA:document.getElementById('usr-rca').value,status:document.getElementById('usr-status').value};
+        const b={nome:document.getElementById('usr-nome').value.trim(),email:document.getElementById('usr-email').value.trim(),perfil:document.getElementById('usr-perfil').value,empresa:document.getElementById('usr-empresa').value,setor:document.getElementById('usr-setor').value,codigoRCA:document.getElementById('usr-rca').value,status:document.getElementById('usr-status').value,permissoes_custom:usrGetAtividadesSelecionadas()};
         const s=document.getElementById('usr-senha').value;if(s)b.senha=s;
         try{await json5('/api/usuarios/'+encodeURIComponent(id),{method:'PATCH',body:JSON.stringify(b)});alert('Usuário atualizado.');fecharModalUsuario();loadUsuariosV5();}catch(e){alert(e.message)}
       };
       document.getElementById('modal-usuario-v5').style.display='flex';
-      usrAtualizarPermissoes(u.perfil||'ANALISTA SAC');
+      const custom=Array.isArray(u.permissoes_custom)&&u.permissoes_custom.length?u.permissoes_custom:null;
+      usrAtualizarPermissoes(u.perfil||'ANALISTA SAC',custom);
     }catch(e){alert(e.message)}
   };
   // Restaurar modal para modo criação ao fechar
