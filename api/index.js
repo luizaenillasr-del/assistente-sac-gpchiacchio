@@ -1327,7 +1327,7 @@ app.post('/api/manifestacoes', requerPermissao('manifestacoes.abrir'), async (re
           SETOR_SUGERIDO:Array.isArray(analise.setores)?analise.setores[0]||'':analise.setoresSugeridos?.[0]||'',
           SETORES_SUGERIDOS:Array.isArray(analise.setores)?analise.setores.join(', '):(analise.setoresSugeridos||[]).join(', '),
           PROCEDIMENTO_SUGERIDO:analise.procedimentoSugerido?.nome||'',
-          SLA_HORAS:analise.slaHoras||'', PRIORIDADE:analise.prioridade||'',
+          SLA_HORAS:Number(analise.slaHoras)||72, PRIORIDADE:analise.prioridade||'',
           // B6: RNC_SUGERIDO sempre NÃO — RNC só por decisão humana explícita
           RNC_SUGERIDO:'NÃO', RNC_SINALIZADO:analise.rncSinalizado?'REVISAR':'', TRATATIVA_SUGERIDA:analise.tratativaSugerida?.sugestao||'',
           DEVOLUTIVA_SUGERIDA:analise.devolutivaSugerida||'', STATUS:'AGUARDANDO_DECISÃO'
@@ -1446,18 +1446,25 @@ app.get('/api/manifestacoes/:id/aprovacao', middlewareEscopoEmpresa(), requerPer
       return res.status(403).json({ sucesso:false, erro:'Esta manifestação não está aguardando aprovação do setor.' });
     }
     // Calcular SLA restante
-    const abertura = new Date(item.DATA_ABERTURA || item.DATA_REGISTRO || Date.now());
+    // Failsafe: sem data de abertura nem registro, marcar como VENCIDO em vez de usar Date.now() (falso positivo)
+    const _dataAberturaRaw = item.DATA_ABERTURA || item.DATA_REGISTRO;
+    const abertura = _dataAberturaRaw ? new Date(_dataAberturaRaw) : null;
     const slaHoras = Number(item.SLA_HORAS || 72);
-    const prazoMs = abertura.getTime() + slaHoras * 3600000;
-    const restMs = prazoMs - Date.now();
-    const restH = Math.round(restMs / 3600000);
-    const vence = formatarDataBrasilia(new Date(prazoMs).toISOString());
-    const slaLabel = restH > 0
-      ? `${restH}h restantes (${slaHoras}h SLA)`
-      : `SLA vencido há ${Math.abs(restH)}h`;
-    const slaPrazo = restH > 0
-      ? `${restH}h · vence em ${vence}`
-      : `Venceu em ${vence}`;
+    // Se abertura é null (data desconhecida), adotar postura conservadora: SLA vencido
+    const prazoMs = abertura ? abertura.getTime() + slaHoras * 3600000 : null;
+    const restMs = prazoMs !== null ? prazoMs - Date.now() : -1;
+    const restH = prazoMs !== null ? Math.round(restMs / 3600000) : null;
+    const vence = prazoMs !== null ? formatarDataBrasilia(new Date(prazoMs).toISOString()) : 'data desconhecida';
+    const slaLabel = restH === null
+      ? 'SLA vencido (data desconhecida)'
+      : restH > 0
+        ? `${restH}h restantes (${slaHoras}h SLA)`
+        : `SLA vencido há ${Math.abs(restH)}h`;
+    const slaPrazo = restH === null
+      ? 'Vencido · data desconhecida'
+      : restH > 0
+        ? `${restH}h · vence em ${vence}`
+        : `Venceu em ${vence}`;
 
     const card = {
       idManifestacao: item.ID_MANIFESTACAO,
@@ -1538,10 +1545,12 @@ app.post('/api/manifestacoes/:id/aprovacao', middlewareEscopoEmpresa(), requerPe
       novoStatus = item.STATUS || 'EM ANÁLISE';
     }
     await garantirAbaComCabecalhos('MANIFESTACOES', ['ID_MANIFESTACAO','STATUS_FICHA','APROV_SETOR_DECISAO','APROV_SETOR_MOTIVO','APROV_SETOR_ORIENTACAO','DATA_APROVACAO_SETOR','APROVADOR_USUARIO','STATUS','ENCAMINHADO_POR']).catch(()=>{});
+    const _DECISAO_PASSADO = { APROVAR: 'APROVADO', DEVOLVER: 'DEVOLVIDO', SEGUIR_TRATATIVA: 'APROVADO', RESSALVA: 'APROVADO' };
+    const decisaoGravada = _DECISAO_PASSADO[decisao] || decisao;
     await atualizarPorID('MANIFESTACOES', id, {
       STATUS_FICHA: novoStatusFicha,
       STATUS: novoStatus,
-      APROV_SETOR_DECISAO: decisao,
+      APROV_SETOR_DECISAO: decisaoGravada,
       APROV_SETOR_MOTIVO: motivo || '',
       APROV_SETOR_ORIENTACAO: orientacao || '',
       DATA_APROVACAO_SETOR: agora,
@@ -1589,7 +1598,28 @@ app.patch('/api/manifestacoes/:id', requerPermissao('manifestacoes.editar'), asy
       if (status === 'ENCERRADA') { dados.DATA_ENCERRAMENTO = new Date().toISOString(); dados.ENCERRADA_POR = req.user?.usuario||'sistema'; }
     }
     if (tratativa !== undefined) dados.TRATATIVA_REALIZADA = tratativa;
-    if (devolutiva !== undefined) { dados.DEVOLUTIVA_FINAL = devolutiva; dados.DEVOLUTIVA_ENVIADA = devolutiva; }
+    if (devolutiva !== undefined) {
+      // REQUER_APROVACAO: se a regra da MATRIZ_TRATAMENTO exige aprovação para este
+      // tipo/causa, bloquear envio direto e exigir fluxo de aprovação.
+      const tipo  = itemExistente.TIPO  || itemExistente.TIPO_CONFIRMADO || '';
+      const causa = itemExistente.CAUSA || itemExistente.CAUSA_CONFIRMADA || '';
+      const empresa = itemExistente.EMPRESA_RECLAMADA || '';
+      const matrizRows = await lerAba('MATRIZ_TRATAMENTO', 5000).catch(() => []);
+      const regra = matrizRows.find(r =>
+        r.ATIVO !== 'NAO' &&
+        (!r.TIPO_MANIFESTACAO || r.TIPO_MANIFESTACAO.trim().toLowerCase() === tipo.trim().toLowerCase()) &&
+        (!r.CAUSA            || r.CAUSA.trim().toLowerCase()            === causa.trim().toLowerCase()) &&
+        (!r.EMPRESA          || r.EMPRESA === 'TODAS' || r.EMPRESA.trim().toLowerCase() === empresa.trim().toLowerCase())
+      );
+      if (regra && String(regra.REQUER_APROVACAO).trim().toUpperCase() === 'SIM' && status === 'ENCERRADA') {
+        return res.status(409).json({
+          sucesso: false,
+          requerAprovacao: true,
+          erro: 'Esta manifestação requer aprovação antes do envio da devolutiva ao cliente. Use o fluxo "Para aprovação".',
+        });
+      }
+      dados.DEVOLUTIVA_FINAL = devolutiva; dados.DEVOLUTIVA_ENVIADA = devolutiva;
+    }
     if (setor !== undefined) dados.SETOR_CONFIRMADO = setor;
     if (responsavel !== undefined) dados.RESPONSAVEL = responsavel;
     if (!Object.keys(dados).length) return res.status(400).json({ sucesso:false, erro:'Nenhum campo para atualizar.' });
@@ -1747,7 +1777,7 @@ app.post('/api/manifestacoes/:id/devolutiva/gerar', requerPerfil('MASTER','GESTO
       tipoManifestacao: m.TIPO||'',
       setor: m.SETOR_SUGERIDO||'SAC',
       protocolo: id,
-      prazo: (m.SLA_HORAS||72)+' horas úteis',
+      prazo: (m.SLA_HORAS||72)+' horas corridas',
       setorResponsavel: m.SETOR_SUGERIDO||'SAC',
       diagnostico: extra.diagnostico||'',
       acoesTomadas: extra.acoesTomadas||'',
@@ -2930,9 +2960,10 @@ ${texto.slice(0, 6000)}`;
 });
 
 // ===== PESQUISAS DE SATISFAÇÃO (aba interna PESQUISA_RESPOSTAS) =====
-app.get('/api/pesquisas/resumo', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
+app.get('/api/pesquisas/resumo', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), middlewareEscopoEmpresa(), async (req, res) => {
   try {
-    const dados = await lerAba('PESQUISA_RESPOSTAS', 5000).catch(()=>[]);
+    const todosDados = await lerAba('PESQUISA_RESPOSTAS', 5000).catch(()=>[]);
+    const dados = filtrarPorEmpresaHistorico(todosDados, req, 'EMPRESA');
     const agora = new Date();
     const mesAtual = agora.getMonth();
     const anoAtual = agora.getFullYear();
@@ -3128,7 +3159,7 @@ app.post('/api/pesquisas/relatorio-texto', requerPermissao('pesquisas.editar'), 
       try { textos = JSON.parse(rows[idx].TEXTOS || '{}'); } catch(e) {}
     }
     textos[campo] = valor;
-    const novaLinha = [chave, JSON.stringify(textos), new Date().toISOString(), req.usuario?.nome || req.usuario?.usuario || ''];
+    const novaLinha = [chave, JSON.stringify(textos), new Date().toISOString(), req.user?.nome || req.user?.usuario || ''];
     if (idx >= 0) {
       // Atualiza linha existente (linha = idx + 2 por causa do cabeçalho)
       await sheets.spreadsheets.values.update({
@@ -3138,7 +3169,7 @@ app.post('/api/pesquisas/relatorio-texto', requerPermissao('pesquisas.editar'), 
         requestBody: { values: [novaLinha] }
       });
     } else {
-      await appendObjeto(aba, { CHAVE: chave, TEXTOS: JSON.stringify(textos), ATUALIZADO_EM: new Date().toISOString(), ATUALIZADO_POR: req.usuario?.nome || '' });
+      await appendObjeto(aba, { CHAVE: chave, TEXTOS: JSON.stringify(textos), ATUALIZADO_EM: new Date().toISOString(), ATUALIZADO_POR: req.user?.nome || '' });
     }
     invalidarCacheAba(aba);
     res.json({ sucesso: true });
@@ -3220,7 +3251,7 @@ app.post('/api/pesquisas/decisao', requerPermissao('pesquisas.gerenciar'), async
         manifestacaoRepo.upsertFromSheets({
           ID_MANIFESTACAO: manifestacaoId,
           EMPRESA_RECLAMANTE: obj.EMPRESA_RECLAMANTE,
-          EMPRESA_RECLAMADA: obj.EMPRESA_RECLAMANTE,
+          EMPRESA_RECLAMADA: resposta.EMPRESA_RECLAMADA || '',
           DESCRICAO: obj.DESCRICAO,
           STATUS: obj.STATUS,
           TIPO: obj.TIPO,
@@ -3292,7 +3323,7 @@ app.post('/api/relatorios/gerar', requerPerfil('MASTER','ANALISTA SAC','APROVADO
       ID_RELATORIO:id, CHAVE:chave, EMPRESA:empresa, ANO:String(ano), MES:String(mes).padStart(2,'0'),
       VERSAO:String(maxVersao+1), STATUS:'RASCUNHO',
       CRIADO_EM:new Date().toISOString(), PUBLICADO_EM:'',
-      CRIADO_POR:req.usuario?.nome||req.usuario?.usuario||'',
+      CRIADO_POR:req.user?.nome||req.user?.usuario||'',
       INDICADOR:indicador!=null?String(indicador):'', NPS_SCORE:nps_score!=null?String(nps_score):'',
       TEXTOS_JSON:'',
     };
@@ -3343,7 +3374,7 @@ app.post('/api/relatorios/:id/nova-versao', requerPerfil('MASTER','ANALISTA SAC'
       ID_RELATORIO:novoId, CHAVE:orig.CHAVE, EMPRESA:orig.EMPRESA,
       ANO:orig.ANO, MES:orig.MES, VERSAO:String(maxVersao+1), STATUS:'RASCUNHO',
       CRIADO_EM:new Date().toISOString(), PUBLICADO_EM:'',
-      CRIADO_POR:req.usuario?.nome||req.usuario?.usuario||'',
+      CRIADO_POR:req.user?.nome||req.user?.usuario||'',
       INDICADOR:orig.INDICADOR||'', NPS_SCORE:orig.NPS_SCORE||'',
       TEXTOS_JSON:orig.TEXTOS_JSON||'',
     };
@@ -3379,7 +3410,7 @@ app.post('/api/relatorios/:id/link', requerPerfil('MASTER','ANALISTA SAC','APROV
       invalidarCacheAba('RELATORIOS_SAC');
     }
     const link = `${APP_URL}/relatorio-publico/${token}`;
-    await registrarAuditoria('RELATORIO_LINK_GERADO', `Link gerado para ${id} (${row.CHAVE})`, req.usuario?.nome||'', row.EMPRESA);
+    await registrarAuditoria('RELATORIO_LINK_GERADO', `Link gerado para ${id} (${row.CHAVE})`, req.user?.nome||'', row.EMPRESA);
     res.json({ sucesso:true, token, link });
   } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
@@ -4579,6 +4610,10 @@ app.post('/api/usuarios/:id/permissoes', requerPermissao('usuarios.gerenciar'), 
     const alvo = usuarios.find(u => String(u.ID_USUARIO||u.USUARIO||u.EMAIL) === String(id) || String(u.USUARIO) === String(id));
     if (!alvo) return res.status(404).json({ sucesso: false, erro: 'Usuário não encontrado.' });
 
+    if (normalizarTexto(req.user.usuario) === normalizarTexto(alvo.USUARIO||alvo.EMAIL||'') && (req.user.perfil||'').toUpperCase() !== 'MASTER') {
+      return res.status(403).json({ sucesso: false, erro: 'Você não pode editar suas próprias permissões.' });
+    }
+
     if ((alvo.PERFIL||alvo.perfil||'').toUpperCase() === 'MASTER' && normalizarTexto(req.user.usuario) === normalizarTexto(alvo.USUARIO||alvo.EMAIL))
       return res.status(403).json({ sucesso: false, erro: 'Não é possível alterar as próprias permissões de MASTER.' });
 
@@ -5269,12 +5304,30 @@ app.post('/api/fila-aprovacao/:id/decidir', requerPerfil('APROVADOR','APROVADOR 
 });
 
 // Histórico de aprovações
-app.get('/api/historico-aprovacao', requerPerfil('MASTER','APROVADOR'), async (req,res)=>{
+app.get('/api/historico-aprovacao', requerPerfil('MASTER','APROVADOR'), middlewareEscopoEmpresa(), async (req,res)=>{
   try {
     const hist = await lerAba('HISTORICO_APROVACAO',2000).catch(()=>[]);
     let itens = hist;
-    if(perfilCanonico(req.user.perfil) === 'APROVADOR') {
-      itens = hist.filter(x => normalizarTexto(x.APROVADOR||'') === normalizarTexto(req.user.nome||req.user.usuario));
+    const perfil = perfilCanonico(req.user.perfil);
+    if(perfil !== 'MASTER') {
+      // Filtra pelo aprovador E pela empresa (extraída de DETALHES ou campo EMPRESA_SCOPE)
+      const userEmpCod = empresaCanonica(req.user.empresa || '');
+      itens = hist.filter(x => {
+        // Filtro por empresa: DETALHES contém {empresa:...}; sem empresa → registro legado, visível
+        let detEmpresa = x.EMPRESA_SCOPE || '';
+        if (!detEmpresa && x.DETALHES) {
+          try { detEmpresa = (JSON.parse(x.DETALHES) || {}).empresa || ''; } catch(_) {}
+        }
+        if (detEmpresa) {
+          const recCod = empresaCanonica(detEmpresa);
+          if (recCod && recCod !== userEmpCod) return false;
+        }
+        // Filtro adicional por aprovador para perfil APROVADOR (não APROVADOR MASTER)
+        if(perfil === 'APROVADOR') {
+          return normalizarTexto(x.APROVADOR||'') === normalizarTexto(req.user.nome||req.user.usuario);
+        }
+        return true;
+      });
     }
     res.json({sucesso:true,total:itens.length,itens});
   } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}

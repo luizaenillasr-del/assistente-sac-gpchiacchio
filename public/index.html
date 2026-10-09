@@ -1240,6 +1240,7 @@
             <option value="TUBAHIA">Cesbap</option>
           </select>
         </div>
+        <!-- empresas carregadas dinamicamente via abrirSolicitacaoAcesso() -->
         <div><label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px">Setor *</label><input id="sol-setor" class="login-input" placeholder="Ex: Qualidade, SAC, Comercial..." style="margin:0"></div>
         <div><label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px">Cargo *</label><input id="sol-cargo" class="login-input" placeholder="Seu cargo" style="margin:0"></div>
         <div><label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px">Telefone</label><input id="sol-telefone" class="login-input" placeholder="(00) 00000-0000" style="margin:0"></div>
@@ -3057,6 +3058,11 @@
           <button class="tab-btn" data-filtro-empresa-btn onclick="filtrarSetoresPorEmpresa('CHIACCHIO',this)">Chiacchio</button>
           <button class="tab-btn" data-filtro-empresa-btn onclick="filtrarSetoresPorEmpresa('PLASCHIO',this)">Plaschio</button>
           <button class="tab-btn" data-filtro-empresa-btn onclick="filtrarSetoresPorEmpresa('TUBAHIA/CESBAP',this)">Cesbap</button>
+        </div>
+        <!-- Banner de fallback de setores -->
+        <div id="setores-fallback-banner" style="display:none;align-items:center;gap:10px;background:#FEF3C7;border:1px solid #F59E0B;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:#92400E">
+          <span style="font-size:16px">⚠️</span>
+          <span><strong>Dados de setores não disponíveis</strong> — exibindo configuração padrão. Verifique a conexão com a planilha de setores.</span>
         </div>
         <!-- Grid de cards dos setores -->
         <div id="setores-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px">
@@ -10484,7 +10490,8 @@ async function loadSetores() {
     const conhecimento = conhecRes.itens || [];
 
     // Fallback: setores padrão quando a planilha ainda não tem dados
-    if (!_setoresConfig.length) {
+    const _setoresFallbackAtivado = !_setoresConfig.length;
+    if (_setoresFallbackAtivado) {
       _setoresConfig = [
         {SETOR:'Qualidade', DESCRICAO:'Controle e garantia de qualidade dos produtos', RESPONSAVEL:'', ATIVO:'SIM'},
         {SETOR:'Produção', DESCRICAO:'Fabricação e processos produtivos', RESPONSAVEL:'', ATIVO:'SIM'},
@@ -10495,6 +10502,8 @@ async function loadSetores() {
         {SETOR:'SAC', DESCRICAO:'Serviço de Atendimento ao Cliente — triagem e registro', RESPONSAVEL:'', ATIVO:'SIM'},
       ];
     }
+    const bannerEl = document.getElementById('setores-fallback-banner');
+    if (bannerEl) bannerEl.style.display = _setoresFallbackAtivado ? 'flex' : 'none';
 
     // Merge config + conhecimento
     _setoresConfig = _setoresConfig.map(s => {
@@ -19056,7 +19065,19 @@ async function mudarStatusMC(id, novoStatus) {
     ['sol-nome','sol-email','sol-setor','sol-cargo','sol-telefone','sol-justificativa'].forEach(id=>{
       const el=document.getElementById(id); if(el) el.value='';
     });
-    const empSel=document.getElementById('sol-empresa'); if(empSel) empSel.value='';
+    const empSel=document.getElementById('sol-empresa');
+    if(empSel) empSel.value='';
+    // Carregar empresas dinamicamente
+    fetch('/api/public/empresas').then(r=>r.ok?r.json():null).then(data=>{
+      const lista = data?.itens || data?.empresas || (Array.isArray(data)?data:null);
+      if(!lista||!lista.length||!empSel) return;
+      empSel.innerHTML='<option value="">Selecione a empresa</option>';
+      lista.forEach(emp=>{
+        const nome = typeof emp==='string'?emp:(emp.NOME||emp.nome||emp.EMPRESA||'');
+        const val  = typeof emp==='string'?emp:(emp.VALOR||emp.valor||nome);
+        if(nome) empSel.innerHTML+=`<option value="${val}">${nome}</option>`;
+      });
+    }).catch(()=>{}); // em caso de erro mantém as opções estáticas do HTML
   };
 
   window.fecharSolicitacaoAcesso = function(){
@@ -20024,12 +20045,38 @@ async function mudarStatusMC(id, novoStatus) {
     if(!_cenAtual) return semSel();
     const texto=($('dev-texto')?.value||'').trim();
     if(!texto){toast('Digite a devolutiva.');return;}
+    // Verificar REQUER_APROVACAO na MATRIZ_TRATAMENTO antes de permitir envio direto
+    if(!paraAprovacao && _cenRawAtual){
+      const tipo  = (_cenRawAtual.TIPO||_cenRawAtual.TIPO_CONFIRMADO||'').trim().toLowerCase();
+      const causa = (_cenRawAtual.CAUSA||_cenRawAtual.CAUSA_CONFIRMADA||'').trim().toLowerCase();
+      const empresa = (_cenRawAtual.EMPRESA_RECLAMADA||'').trim().toLowerCase();
+      try {
+        const mtz = await api('/api/matriz-tratamento',{method:'GET'});
+        if(mtz.sucesso && Array.isArray(mtz.itens)){
+          const regra = mtz.itens.find(r =>
+            r.ATIVO !== 'NAO' &&
+            (!r.TIPO_MANIFESTACAO || r.TIPO_MANIFESTACAO.trim().toLowerCase() === tipo) &&
+            (!r.CAUSA             || r.CAUSA.trim().toLowerCase()             === causa) &&
+            (!r.EMPRESA           || r.EMPRESA === 'TODAS' || r.EMPRESA.trim().toLowerCase() === empresa)
+          );
+          if(regra && String(regra.REQUER_APROVACAO).trim().toUpperCase() === 'SIM'){
+            if(!confirm('A Matriz de Tratamento exige aprovação para esta devolutiva. Enviar para aprovação agora?')) return;
+            return enviarParaAprovacao('Devolutiva: '+texto);
+          }
+        }
+      } catch(e){ /* falha silenciosa: o backend também bloqueia se REQUER_APROVACAO=SIM */ }
+    }
     if(paraAprovacao){
       if(!confirm('Enviar esta manifestação para aprovação?')) return;
       return enviarParaAprovacao('Devolutiva: '+texto);
     }
     if(!confirm('Registrar a devolutiva e encerrar a manifestação?')) return;
     const d=await patchMan({devolutiva:texto,status:'ENCERRADA'});
+    // Defesa de segunda linha: backend retorna 409 com requerAprovacao=true
+    if(d && d.requerAprovacao){
+      toast('Aprovação necessária. Encaminhando para fluxo de aprovação.');
+      return enviarParaAprovacao('Devolutiva: '+texto);
+    }
     if(d.sucesso) depois('Devolutiva registrada e manifestação encerrada.'); else erro(d);
   };
 
