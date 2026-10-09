@@ -278,6 +278,8 @@ function perfilCanonico(v){
     'especialista':'ESPECIALISTA','responsavel especialista':'ESPECIALISTA','responsável especialista':'ESPECIALISTA',
     // APROVADOR
     'aprovador':'APROVADOR',
+    // APROVADOR MASTER
+    'aprovador master':'APROVADOR MASTER','aprovadormaster':'APROVADOR MASTER',
     // RCA
     'rca':'RCA / REPRESENTANTE','representante':'RCA / REPRESENTANTE','representante comercial':'RCA / REPRESENTANTE',
     'responsavel rca':'RCA / REPRESENTANTE','responsável rca':'RCA / REPRESENTANTE',
@@ -296,7 +298,7 @@ const P_SAC=['MASTER','GESTOR SAC','ANALISTA SAC','ATENDENTE SAC'];
 const P_OPERACIONAL=['MASTER','GESTOR SAC','ANALISTA SAC','ATENDENTE SAC','SETOR RESPONSÁVEL','ESPECIALISTA'];
 const P_LEITURA=['MASTER','GESTOR SAC','ANALISTA SAC','ATENDENTE SAC','SETOR RESPONSÁVEL','ESPECIALISTA','APROVADOR','RCA / REPRESENTANTE','DIRETOR','VISUALIZADOR','AUDITOR'];
 const P_RNC=['MASTER','GESTOR SAC','ANALISTA SAC','SETOR RESPONSÁVEL','ESPECIALISTA','RCA / REPRESENTANTE'];
-const P_APROVACAO=['MASTER','APROVADOR'];
+const P_APROVACAO=['MASTER','APROVADOR MASTER','APROVADOR'];
 const P_RELATORIO=['MASTER','GESTOR SAC','ANALISTA SAC','ATENDENTE SAC','SETOR RESPONSÁVEL','ESPECIALISTA','APROVADOR','RCA / REPRESENTANTE','DIRETOR','VISUALIZADOR','AUDITOR'];
 
 function usuarioPublico(u){
@@ -329,6 +331,7 @@ const _PERM_PADRAO_API = {
   'GESTOR SAC':         ['manifestacoes.visualizar','manifestacoes.editar','manifestacoes.gerenciar','manifestacoes.aprovar','cerebro.visualizar','cerebro.gerenciar','rca.visualizar','pesquisas.visualizar','pesquisas.gerenciar','dashboard.visualizar','dashboard.gerenciar','configuracoes.visualizar','configuracoes.editar','aprovacoes.visualizar','aprovacoes.aprovar','aprovacoes.rejeitar'],
   'ANALISTA SAC':       ['manifestacoes.visualizar','manifestacoes.abrir','manifestacoes.editar','cerebro.visualizar','cerebro.adicionar_conteudo','cerebro.editar_conteudo','cerebro.adicionar_regras','cerebro.adicionar_politicas','cerebro.editar_faq','pesquisas.visualizar','pesquisas.criar','dashboard.visualizar','aprovacoes.visualizar'],
   'APROVADOR':          ['manifestacoes.visualizar','aprovacoes.visualizar','aprovacoes.aprovar','aprovacoes.rejeitar','pesquisas.visualizar'],
+  'APROVADOR MASTER':   ['manifestacoes.visualizar','aprovacoes.visualizar','aprovacoes.aprovar','aprovacoes.rejeitar','pesquisas.visualizar','dashboard.visualizar'],
   'ATENDENTE SAC':      ['manifestacoes.visualizar','manifestacoes.abrir','cerebro.visualizar','dashboard.visualizar'],
   'SETOR RESPONSÁVEL':  ['manifestacoes.visualizar','manifestacoes.editar'],
   'ESPECIALISTA':       ['cerebro.visualizar','dashboard.visualizar'],
@@ -1388,7 +1391,7 @@ function formatarDataBrasilia(isoStr) {
   } catch { return isoStr; }
 }
 
-app.get('/api/manifestacoes/:id/aprovacao', middlewareEscopoEmpresa(), requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC','APROVADOR'), async (req, res) => {
+app.get('/api/manifestacoes/:id/aprovacao', middlewareEscopoEmpresa(), requerPerfil('MASTER','APROVADOR MASTER','GESTOR SAC','ANALISTA SAC','APROVADOR'), async (req, res) => {
   try {
     const { id } = req.params;
     const todas = await lerAba('MANIFESTACOES', 2000);
@@ -1398,7 +1401,8 @@ app.get('/api/manifestacoes/:id/aprovacao', middlewareEscopoEmpresa(), requerPer
       return res.status(403).json({ sucesso:false, erro:'Acesso negado: manifestação pertence a outra empresa.' });
     }
     const perfil = perfilCanonico(req.user?.perfil);
-    // Aprovador de setor só vê se a manifestação está aguardando aprovação
+    // Apenas APROVADOR setorial é bloqueado pelo STATUS_FICHA
+    // APROVADOR MASTER, MASTER, GESTOR SAC e ANALISTA SAC têm acesso irrestrito
     if (perfil === 'APROVADOR' && item.STATUS_FICHA !== 'AGUARDANDO_APROVACAO') {
       return res.status(403).json({ sucesso:false, erro:'Esta manifestação não está aguardando aprovação do setor.' });
     }
@@ -1459,7 +1463,7 @@ app.get('/api/manifestacoes/:id/aprovacao', middlewareEscopoEmpresa(), requerPer
   } catch (e) { console.error(e); res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
 
-app.post('/api/manifestacoes/:id/aprovacao', middlewareEscopoEmpresa(), requerPerfil('MASTER','GESTOR SAC','APROVADOR'), async (req, res) => {
+app.post('/api/manifestacoes/:id/aprovacao', middlewareEscopoEmpresa(), requerPerfil('MASTER','APROVADOR MASTER','GESTOR SAC','ANALISTA SAC','APROVADOR'), async (req, res) => {
   try {
     const { id } = req.params;
     const { decisao, motivo, orientacao } = req.body || {};
@@ -1476,6 +1480,8 @@ app.post('/api/manifestacoes/:id/aprovacao', middlewareEscopoEmpresa(), requerPe
       return res.status(403).json({ sucesso:false, erro:'Acesso negado: manifestação pertence a outra empresa.' });
     }
     const perfil = perfilCanonico(req.user?.perfil);
+    // Apenas APROVADOR setorial é bloqueado pelo STATUS_FICHA
+    // APROVADOR MASTER, MASTER, GESTOR SAC e ANALISTA SAC aprovam sem restrição de status
     if (perfil === 'APROVADOR' && item.STATUS_FICHA !== 'AGUARDANDO_APROVACAO') {
       return res.status(403).json({ sucesso:false, erro:'Esta manifestação não está aguardando aprovação do setor.' });
     }
@@ -4441,10 +4447,10 @@ app.get('/api/aprovadores', requerPerfil('MASTER','APROVADOR'), async (req,res)=
     res.json({sucesso:true,aprovadores:a,competencias:c,relacionamentos:ac});
   } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
-app.get('/api/aprovadores/:usuario/pendencias', requerPerfil('APROVADOR','MASTER'), async (req,res)=>{
+app.get('/api/aprovadores/:usuario/pendencias', requerPerfil('APROVADOR','APROVADOR MASTER','MASTER'), async (req,res)=>{
   try {
     const perfil = perfilCanonico(req.user?.perfil || '');
-    if (perfil !== 'MASTER' && normalizarTexto(req.params.usuario) !== normalizarTexto(req.user?.usuario || '')) {
+    if (perfil !== 'MASTER' && perfil !== 'APROVADOR MASTER' && normalizarTexto(req.params.usuario) !== normalizarTexto(req.user?.usuario || '')) {
       return res.status(403).json({ sucesso: false, erro: 'Acesso não autorizado.' });
     }
     const usuario=req.params.usuario;
@@ -4456,8 +4462,11 @@ app.get('/api/aprovadores/:usuario/pendencias', requerPerfil('APROVADOR','MASTER
     const compNames=comp.filter(x=>compIds.includes(x.ID_COMPETENCIA)).map(x=>String(x.NOME||'').trim()).filter(Boolean);
     const empresas=relAtivos.map(x=>String(x.EMPRESA||'').trim()).filter(Boolean);
     const n=v=>normalizarTexto(v);
-    const rnc=rncs.filter(r=>!['APROVADA','ENCERRADA','CANCELADA','REJEITADA'].includes(String(r.STATUS||'').toUpperCase())&&(compNames.some(c=>n(c)===n(r.COMPETENCIA||r.SETOR))||relAtivos.some(x=>n(x.NOME_COMPETENCIA)===n(r.COMPETENCIA||r.SETOR)))&&(!empresas.length||empresas.some(e=>n(e)===n(r.EMPRESA))));
-    const sac=mans.filter(m=>!['ENCERRADA','CONCLUÍDA','CONCLUIDA','CANCELADA','REJEITADA'].includes(String(m.STATUS||'').toUpperCase())&&(m.STATUS==='AGUARDANDO_APROVAÇÃO'||m.STATUS==='AGUARDANDO_DECISÃO'||m.APROVACAO_NECESSARIA==='SIM'));
+    const isMasterAprov = perfil === 'MASTER' || perfil === 'APROVADOR MASTER';
+    const rnc = isMasterAprov
+      ? rncs.filter(r=>!['APROVADA','ENCERRADA','CANCELADA','REJEITADA'].includes(String(r.STATUS||'').toUpperCase()))
+      : rncs.filter(r=>!['APROVADA','ENCERRADA','CANCELADA','REJEITADA'].includes(String(r.STATUS||'').toUpperCase())&&(compNames.some(c=>n(c)===n(r.COMPETENCIA||r.SETOR))||relAtivos.some(x=>n(x.NOME_COMPETENCIA)===n(r.COMPETENCIA||r.SETOR)))&&(!empresas.length||empresas.some(e=>n(e)===n(r.EMPRESA))));
+    const sac=mans.filter(m=>!['ENCERRADA','CONCLUÍDA','CONCLUIDA','CANCELADA','REJEITADA'].includes(String(m.STATUS||'').toUpperCase())&&(m.STATUS==='AGUARDANDO_APROVAÇÃO'||m.STATUS==='AGUARDANDO_DECISÃO'||m.STATUS_FICHA==='AGUARDANDO_APROVACAO'||m.APROVACAO_NECESSARIA==='SIM'));
     const sugestoes=(await lerAba('SUGESTOES_APROVADOR',5000).catch(()=>[])).filter(x=>n(x.ID_APROVADOR)===n(apId));
     res.json({sucesso:true,usuario,aprovador:ap,competencias:compNames,empresas,rnc,sac,sugestoes,totais:{rnc:rnc.length,sac:sac.length,total:rnc.length+sac.length}});
   } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
@@ -5061,7 +5070,7 @@ app.post('/api/fila-aprovacao', requerPermissao('aprovacoes.aprovar'), async (re
 });
 
 // Decidir sobre item na fila (APROVADOR, MASTER)
-app.post('/api/fila-aprovacao/:id/decidir', requerPerfil('APROVADOR','MASTER'), async (req,res)=>{
+app.post('/api/fila-aprovacao/:id/decidir', requerPerfil('APROVADOR','APROVADOR MASTER','MASTER'), async (req,res)=>{
   try {
     garantirAbaComCabecalhos('HISTORICO_APROVACAO', HIST_APROV_HEADERS).catch(()=>{});
     const {decisao, observacoes} = req.body||{};
@@ -5077,8 +5086,9 @@ app.post('/api/fila-aprovacao/:id/decidir', requerPerfil('APROVADOR','MASTER'), 
     if(n(item.CRIADO_POR||'') === n(req.user.usuario)) {
       return res.status(403).json({sucesso:false,erro:'Autoaprovação não permitida. Você não pode aprovar um item que você mesmo enviou para aprovação.'});
     }
-    // Verificar isolamento de empresa para APROVADOR (MASTER tem acesso global)
-    if(perfilCanonico(req.user.perfil) !== 'MASTER' && item.EMPRESA && !pertenceEmpresa(req.user?.empresa, item.EMPRESA)) {
+    // Verificar isolamento de empresa para APROVADOR (MASTER e APROVADOR MASTER têm acesso global)
+    const _pfDecide = perfilCanonico(req.user.perfil);
+    if(_pfDecide !== 'MASTER' && _pfDecide !== 'APROVADOR MASTER' && item.EMPRESA && !pertenceEmpresa(req.user?.empresa, item.EMPRESA)) {
       return res.status(403).json({sucesso:false,erro:'Acesso não autorizado para este item de aprovação.'});
     }
     const now = new Date().toISOString();
@@ -5357,9 +5367,17 @@ function _bibData(raw) {
 
 function _bibStatus(raw) {
   const s = normalizarTexto(raw);
-  if (/conclu|finaliz|encerr|resolv|importad|arquiv/.test(s)) return 'CONCLUIDA';
-  if (/tratativa|analise|andamento|setor|aprova|devolutiva|aguard|decisao|encaminh/.test(s)) return 'EM_TRATATIVA';
+  if (/conclu|finaliz|encerr|resolv|importad/.test(s)) return 'CONCLUIDA';
+  if (/tratativa|analise|andamento|setor|aprova|devolutiva|aguard|decisao|encaminh|andamento/.test(s)) return 'EM_ANDAMENTO';
   return 'ABERTA';
+}
+// Mapeia STATUS_FICHA para categoria do arquivo de fichas
+function _bibCategoria(statusFicha, statusRaw) {
+  const sf = normalizarTexto(statusFicha || '');
+  if (/conclu|finaliz|encerr|resolv|fechad|aguardando devolutiva/.test(sf)) return 'CONCLUIDA';
+  if (/aberta/.test(sf) && !statusRaw) return 'ABERTA';
+  if (sf) return 'EM_ANDAMENTO'; // qualquer status_ficha intermediário
+  return _bibStatus(statusRaw);
 }
 
 function _bibEmpresa(raw) {
@@ -5413,11 +5431,22 @@ async function carregarFichasBiblioteca(req) {
       TIPO_MANIFESTACAO: m.TIPO_MANIFESTACAO || m.TIPO || idx.TIPO_MANIFESTACAO || 'Reclamação',
       MOTIVO: m.MOTIVO || idx.MOTIVO || '',
       COLABORADOR_RECEBIMENTO: m.COLABORADOR_RECEBIMENTO || m.REGISTRADO_POR || m.USUARIO_CRIACAO || '',
-      ORIGEM: doc ? 'IMPORTADA' : 'SISTEMA', STATUS: doc ? 'CONCLUIDA' : status, COM_TRATATIVA: doc ? true : comTrat,
+      ORIGEM: doc ? 'IMPORTADA' : 'SISTEMA', STATUS: doc ? 'CONCLUIDA' : _bibCategoria(m.STATUS_FICHA, m.STATUS), COM_TRATATIVA: doc ? true : comTrat,
+      STATUS_FICHA: m.STATUS_FICHA || '',
+      STATUS_RAW: m.STATUS || '',
+      SETOR: m.SETOR_CONFIRMADO || m.SETOR_SUGERIDO || '',
+      RESPONSAVEL: m.RESPONSAVEL || m.USUARIO_CRIACAO || m.COLABORADOR_RECEBIMENTO || '',
+      DATA_CONCLUSAO: m.DATA_CONCLUSAO_MANIFESTACAO || m.DATA_CONCLUSAO_TRATATIVA || '',
+      SLA_HORAS: m.SLA_HORAS || 72,
+      DATA_ABERTURA_ISO: m.DATA_ABERTURA || m.DATA_REGISTRO || '',
+      ARQUIVADO: String(m.ARQUIVADO || '').toUpperCase() === 'SIM' ? 'SIM' : '',
+      ARQUIVADO_POR: m.ARQUIVADO_POR || '',
+      ARQUIVADO_EM: m.ARQUIVADO_EM || '',
+      MOTIVO_ARQUIVAMENTO: m.MOTIVO_ARQUIVAMENTO || '',
       TOTAL_EVIDENCIAS: nEv(id, idx.TOTAL_EVIDENCIAS),
       ARQUIVO_NOME: m.ARQUIVO_ORIGEM || '',
       PDF_DRIVE_URL: m.PDF_DRIVE_URL || idx.PDF_DRIVE_URL || '', PDF_NOME: m.PDF_NOME || idx.PDF_NOME || '',
-      _DESC: m.DESCRICAO_ORIGINAL || m.DESCRICAO || m.DESCRICAO_RECLAMACAO || '',
+      _DESC: m.DESCRICAO_ORIGINAL || m.DESCRICAO || m.DESCRICAO_RECLAMACAO || m.DESCRICAO_MANIFESTACAO || '',
       _TRAT: m.TRATATIVA_REALIZADA || '',
       _CONCLUSAO: m.DATA_CONCLUSAO_TRATATIVA || '',
     });
@@ -5438,6 +5467,11 @@ async function carregarFichasBiblioteca(req) {
       TIPO_MANIFESTACAO: f.TIPO_MANIFESTACAO || 'Reclamação', MOTIVO: f.MOTIVO || '',
       COLABORADOR_RECEBIMENTO: f.COLABORADOR_RECEBIMENTO || '',
       ORIGEM: 'IMPORTADA', STATUS: 'CONCLUIDA', COM_TRATATIVA: true,
+      STATUS_FICHA: 'CONCLUIDA', STATUS_RAW: 'CONCLUIDA',
+      SETOR: f.SETOR_RECEBIMENTO || '', RESPONSAVEL: f.COLABORADOR_RECEBIMENTO || '',
+      DATA_CONCLUSAO: f.DATA_REGISTRO || '', SLA_HORAS: 0, DATA_ABERTURA_ISO: f.DATA_REGISTRO || '',
+      ARQUIVADO: String(f.ARQUIVADO || '').toUpperCase() === 'SIM' ? 'SIM' : '',
+      ARQUIVADO_POR: f.ARQUIVADO_POR || '', ARQUIVADO_EM: f.ARQUIVADO_EM || '', MOTIVO_ARQUIVAMENTO: f.MOTIVO_ARQUIVAMENTO || '',
       TOTAL_EVIDENCIAS: nEv(String(f.ID_FICHA || '').trim(), f.TOTAL_EVIDENCIAS),
       ARQUIVO_NOME: f.ARQUIVO_NOME || '', PDF_DRIVE_URL: f.PDF_DRIVE_URL || '', PDF_NOME: f.PDF_NOME || f.ARQUIVO_NOME || '',
       IMPORTADO_POR: f.IMPORTADO_POR || f.CRIADO_POR || '', IMPORTADO_EM: f.DATA_IMPORTACAO || f.DATA_CRIACAO || f.CREATED_AT || '',
@@ -5488,29 +5522,74 @@ async function carregarFichasBiblioteca(req) {
 }
 
 function _bibFiltrar(fichas, qs, { ignorar = [] } = {}) {
-  const { ano, mes, empresa, tipo, origem, status, q, extra } = qs;
+  const { ano, mes, empresa, tipo, origem, status, q, extra,
+          setor, responsavel, sla_status, arquivado,
+          data_abertura_ini, data_abertura_fim, data_conclusao_ini, data_conclusao_fim } = qs;
   let r = fichas;
   const ig = k => ignorar.includes(k);
+  const n = v => normalizarTexto(v || '');
+
   if (ano && !ig('ano')) r = r.filter(f => f.ANO === String(ano));
   if (mes && !ig('mes')) r = r.filter(f => f.MES === String(mes).padStart(2, '0'));
-  if (empresa && !ig('empresa')) r = r.filter(f => normalizarTexto(f.EMPRESA).includes(normalizarTexto(empresa)));
-  if (tipo && !ig('tipo')) r = r.filter(f => normalizarTexto(f.TIPO_MANIFESTACAO).includes(normalizarTexto(tipo)));
+  if (empresa && !ig('empresa')) r = r.filter(f => n(f.EMPRESA).includes(n(empresa)));
+  if (tipo && !ig('tipo')) r = r.filter(f => n(f.TIPO_MANIFESTACAO).includes(n(tipo)));
   if (origem && !ig('origem')) r = r.filter(f => f.ORIGEM === String(origem).toUpperCase());
-  if (status && !ig('status')) r = r.filter(f => f.STATUS === String(status).toUpperCase());
+
+  // status com suporte a EM_ANDAMENTO (alias de EM_TRATATIVA legado)
+  if (status && !ig('status')) {
+    const sv = String(status).toUpperCase();
+    r = r.filter(f => f.STATUS === sv || (sv === 'EM_ANDAMENTO' && f.STATUS === 'EM_TRATATIVA') || (sv === 'EM_TRATATIVA' && f.STATUS === 'EM_ANDAMENTO'));
+  }
+
+  // arquivado: 'SIM' = só arquivadas, 'NAO' ou '' = só ativas (padrão)
+  if (!ig('arquivado')) {
+    const arq = String(arquivado || '').toUpperCase();
+    if (arq === 'SIM') r = r.filter(f => f.ARQUIVADO === 'SIM');
+    else r = r.filter(f => f.ARQUIVADO !== 'SIM');
+  }
+
+  if (setor && !ig('setor')) r = r.filter(f => n(f.SETOR).includes(n(setor)));
+  if (responsavel && !ig('responsavel')) r = r.filter(f => n(f.RESPONSAVEL).includes(n(responsavel)));
+
+  // SLA: 'VENCIDO' ou 'OK'
+  if (sla_status && !ig('sla_status')) {
+    const agora = Date.now();
+    r = r.filter(f => {
+      if (!f.DATA_ABERTURA_ISO || !f.SLA_HORAS || f.STATUS === 'CONCLUIDA') return sla_status !== 'VENCIDO';
+      const prazo = new Date(f.DATA_ABERTURA_ISO).getTime() + Number(f.SLA_HORAS) * 3600000;
+      return sla_status === 'VENCIDO' ? prazo < agora : prazo >= agora;
+    });
+  }
+
+  // Filtros de período de abertura
+  if (data_abertura_ini && !ig('data_abertura_ini')) r = r.filter(f => (f.DATA_ABERTURA_ISO || '') >= data_abertura_ini);
+  if (data_abertura_fim && !ig('data_abertura_fim')) r = r.filter(f => (f.DATA_ABERTURA_ISO || '') <= data_abertura_fim + 'T23:59:59');
+
+  // Filtros de período de conclusão
+  if (data_conclusao_ini && !ig('data_conclusao_ini')) r = r.filter(f => (f.DATA_CONCLUSAO || '') >= data_conclusao_ini);
+  if (data_conclusao_fim && !ig('data_conclusao_fim')) r = r.filter(f => (f.DATA_CONCLUSAO || '') <= data_conclusao_fim + 'T23:59:59');
+
   if (q && !ig('q')) {
-    const nq = normalizarTexto(q), dq = _bibDigitos(q);
+    const nq = n(q), dq = _bibDigitos(q);
     r = r.filter(f =>
-      normalizarTexto([f.PROTOCOLO, f.NOME_CLIENTE, f.CNPJ_CPF, f.MOTIVO, f.COLABORADOR_RECEBIMENTO, f.EMPRESA].join(' ')).includes(nq) ||
+      n([f.PROTOCOLO, f.NOME_CLIENTE, f.CNPJ_CPF, f.MOTIVO, f.COLABORADOR_RECEBIMENTO, f.EMPRESA, f.SETOR, f.RESPONSAVEL].join(' ')).includes(nq) ||
       (dq.length >= 4 && _bibDigitos(f.CNPJ_CPF).includes(dq)));
   }
   if (extra === 'evidencia' && !ig('extra')) r = r.filter(f => f.TOTAL_EVIDENCIAS > 0);
   if (extra === 'tratativa' && !ig('extra')) r = r.filter(f => f.COM_TRATATIVA);
   if (extra === 'reincidente' && !ig('extra')) r = r.filter(f => f.REINCIDENTE);
+  if (extra === 'sla_vencido' && !ig('extra')) {
+    const agora = Date.now();
+    r = r.filter(f => {
+      if (!f.DATA_ABERTURA_ISO || !f.SLA_HORAS || f.STATUS === 'CONCLUIDA') return false;
+      return new Date(f.DATA_ABERTURA_ISO).getTime() + Number(f.SLA_HORAS) * 3600000 < agora;
+    });
+  }
   return r;
 }
 
 // Listar fichas com filtros e paginação
-app.get('/api/biblioteca/fichas', middlewareEscopoEmpresa(), requerPerfil('MASTER','ADMINISTRADOR','ANALISTA SAC','SAC','APROVADOR','SETOR RESPONSÁVEL','GESTOR DE SETOR','USUÁRIO DE SETOR'), async (req, res) => {
+app.get('/api/biblioteca/fichas', middlewareEscopoEmpresa(), requerPerfil('MASTER','APROVADOR MASTER','GESTOR SAC','ANALISTA SAC','ATENDENTE SAC','APROVADOR','SETOR RESPONSÁVEL','ESPECIALISTA','RCA / REPRESENTANTE','DIRETOR','VISUALIZADOR','AUDITOR'), async (req, res) => {
   try {
     const { page = '1', limit = '50' } = req.query;
     const qs = { ...req.query };
@@ -5529,7 +5608,7 @@ app.get('/api/biblioteca/fichas', middlewareEscopoEmpresa(), requerPerfil('MASTE
 });
 
 // Indicadores, por empresa, evolução por mês e árvore (respeitam os filtros ativos)
-app.get('/api/biblioteca/stats', middlewareEscopoEmpresa(), requerPerfil('MASTER','ADMINISTRADOR','ANALISTA SAC','SAC','APROVADOR','SETOR RESPONSÁVEL','GESTOR DE SETOR','USUÁRIO DE SETOR'), async (req, res) => {
+app.get('/api/biblioteca/stats', middlewareEscopoEmpresa(), requerPerfil('MASTER','APROVADOR MASTER','GESTOR SAC','ANALISTA SAC','ATENDENTE SAC','APROVADOR','SETOR RESPONSÁVEL','ESPECIALISTA','RCA / REPRESENTANTE','DIRETOR','VISUALIZADOR','AUDITOR'), async (req, res) => {
   try {
     const qs = { ...req.query };
     const todas = await carregarFichasBiblioteca(req);
@@ -5581,10 +5660,25 @@ app.get('/api/biblioteca/stats', middlewareEscopoEmpresa(), requerPerfil('MASTER
     });
     const porEmpresa = {}; Object.keys(arvore).forEach(e => { porEmpresa[e] = arvore[e].total; });
     const anos = [...new Set(todas.map(f => f.ANO).filter(a => a !== 'S/A'))].sort().reverse();
+    const setores = [...new Set(todas.map(f => f.SETOR).filter(Boolean))].sort();
+
+    // KPIs de status operacional (sobre fichas ativas = não arquivadas)
+    const ativas = base.filter(f => f.ARQUIVADO !== 'SIM');
+    const abertas = ativas.filter(f => f.STATUS === 'ABERTA').length;
+    const emAndamento = ativas.filter(f => f.STATUS === 'EM_ANDAMENTO' || f.STATUS === 'EM_TRATATIVA').length;
+    const concluidas = ativas.filter(f => f.STATUS === 'CONCLUIDA').length;
+    const arquivadas = base.filter(f => f.ARQUIVADO === 'SIM').length;
+    const agora = Date.now();
+    const slaVencido = ativas.filter(f => {
+      if (!f.DATA_ABERTURA_ISO || !f.SLA_HORAS || f.STATUS === 'CONCLUIDA') return false;
+      return new Date(f.DATA_ABERTURA_ISO).getTime() + Number(f.SLA_HORAS) * 3600000 < agora;
+    }).length;
 
     res.json({
       sucesso: true,
       totalFichas: base.length,
+      totalAtivas: ativas.length,
+      abertas, emAndamento, concluidas, arquivadas, slaVencido,
       fichasDoMes: base.filter(f => f.ANO === anoAtual && f.MES === mesAtual).length,
       fichasDoAno: base.filter(f => f.ANO === anoAtual).length,
       comEvidencias: base.filter(f => f.TOTAL_EVIDENCIAS > 0).length,
@@ -5593,13 +5687,13 @@ app.get('/api/biblioteca/stats', middlewareEscopoEmpresa(), requerPerfil('MASTER
       reincidentesFichas: reincL.length,
       historicas: base.filter(f => f.ORIGEM === 'IMPORTADA').length,
       sistema: base.filter(f => f.ORIGEM === 'SISTEMA').length,
-      porEmpresa, porEmpresaDetalhe, porMes, arvore, anos,
+      porEmpresa, porEmpresaDetalhe, porMes, arvore, anos, setores,
     });
   } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e) }); }
 });
 
 // Detalhe de uma ficha (valida escopo de empresa por ID: fora do escopo => 403)
-app.get('/api/biblioteca/fichas/:id', middlewareEscopoEmpresa(), requerPerfil('MASTER','ADMINISTRADOR','ANALISTA SAC','SAC','APROVADOR','SETOR RESPONSÁVEL','GESTOR DE SETOR','USUÁRIO DE SETOR'), async (req, res) => {
+app.get('/api/biblioteca/fichas/:id', middlewareEscopoEmpresa(), requerPerfil('MASTER','APROVADOR MASTER','GESTOR SAC','ANALISTA SAC','ATENDENTE SAC','APROVADOR','SETOR RESPONSÁVEL','ESPECIALISTA','RCA / REPRESENTANTE','DIRETOR','VISUALIZADOR','AUDITOR'), async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();
     const todas = await carregarFichasBiblioteca(req);
@@ -5868,6 +5962,60 @@ app.post('/api/biblioteca/importar-ficha', middlewareEscopoEmpresa(), requerPerf
 });
 
 // ===== EDITAR FICHA HISTÓRICA =====
+// Arquivar uma ficha
+app.post('/api/biblioteca/fichas/:id/arquivar', middlewareEscopoEmpresa(), requerPerfil('MASTER','APROVADOR MASTER','GESTOR SAC','ANALISTA SAC'), async (req, res) => {
+  try {
+    const id = String(req.params.id || '').trim();
+    const { motivo } = req.body || {};
+    if (!motivo?.trim()) return res.status(400).json({ sucesso: false, erro: 'Motivo do arquivamento é obrigatório.' });
+    const todas = await carregarFichasBiblioteca(req);
+    const ficha = todas.find(f => f.PROTOCOLO === id || f.ID_MANIFESTACAO === id || f.ID_FICHA === id);
+    if (!ficha) return res.status(404).json({ sucesso: false, erro: 'Ficha não encontrada.' });
+    if (ficha.ARQUIVADO === 'SIM') return res.status(409).json({ sucesso: false, erro: 'Ficha já está arquivada.' });
+    // Bloquear arquivamento de fichas abertas ou em andamento sem permissão de MASTER/APROVADOR MASTER
+    const perfil = perfilCanonico(req.user?.perfil || '');
+    if (['ABERTA','EM_ANDAMENTO','EM_TRATATIVA'].includes(ficha.STATUS) && !['MASTER','APROVADOR MASTER'].includes(perfil)) {
+      return res.status(403).json({ sucesso: false, erro: 'Fichas abertas ou em andamento só podem ser arquivadas por MASTER ou APROVADOR MASTER.' });
+    }
+    const agora = new Date().toISOString();
+    const dados = { ARQUIVADO: 'SIM', ARQUIVADO_POR: req.user?.usuario || '', ARQUIVADO_EM: agora, MOTIVO_ARQUIVAMENTO: motivo.trim() };
+    if (ficha.ID_MANIFESTACAO) {
+      await garantirAbaComCabecalhos('MANIFESTACOES', ['ID_MANIFESTACAO','ARQUIVADO','ARQUIVADO_POR','ARQUIVADO_EM','MOTIVO_ARQUIVAMENTO']).catch(() => {});
+      await atualizarPorID('MANIFESTACOES', ficha.ID_MANIFESTACAO, dados, ['ID_MANIFESTACAO']);
+      invalidarCacheAba('MANIFESTACOES');
+    } else if (ficha.ID_FICHA) {
+      await garantirAbaComCabecalhos('FICHAS_BIBLIOTECA', ['ID_FICHA','ARQUIVADO','ARQUIVADO_POR','ARQUIVADO_EM','MOTIVO_ARQUIVAMENTO']).catch(() => {});
+      await atualizarPorID('FICHAS_BIBLIOTECA', ficha.ID_FICHA, dados, ['ID_FICHA']);
+      invalidarCacheAba('FICHAS_BIBLIOTECA');
+    }
+    await registrarAuditoria(req.user?.usuario || 'sistema', 'ARQUIVOU_FICHA', id, 'FICHAS_BIBLIOTECA', ficha.STATUS, { motivo: motivo.trim() });
+    res.json({ sucesso: true, mensagem: 'Ficha arquivada com sucesso.', id, arquivadoEm: agora });
+  } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e) }); }
+});
+
+// Desarquivar uma ficha
+app.post('/api/biblioteca/fichas/:id/desarquivar', middlewareEscopoEmpresa(), requerPerfil('MASTER','APROVADOR MASTER','GESTOR SAC','ANALISTA SAC'), async (req, res) => {
+  try {
+    const id = String(req.params.id || '').trim();
+    const { motivo } = req.body || {};
+    const todas = await carregarFichasBiblioteca(req);
+    const ficha = todas.find(f => f.PROTOCOLO === id || f.ID_MANIFESTACAO === id || f.ID_FICHA === id);
+    if (!ficha) return res.status(404).json({ sucesso: false, erro: 'Ficha não encontrada.' });
+    if (ficha.ARQUIVADO !== 'SIM') return res.status(409).json({ sucesso: false, erro: 'Ficha não está arquivada.' });
+    const agora = new Date().toISOString();
+    const dados = { ARQUIVADO: '', ARQUIVADO_POR: '', ARQUIVADO_EM: '', MOTIVO_ARQUIVAMENTO: '' };
+    if (ficha.ID_MANIFESTACAO) {
+      await atualizarPorID('MANIFESTACOES', ficha.ID_MANIFESTACAO, dados, ['ID_MANIFESTACAO']);
+      invalidarCacheAba('MANIFESTACOES');
+    } else if (ficha.ID_FICHA) {
+      await atualizarPorID('FICHAS_BIBLIOTECA', ficha.ID_FICHA, dados, ['ID_FICHA']);
+      invalidarCacheAba('FICHAS_BIBLIOTECA');
+    }
+    await registrarAuditoria(req.user?.usuario || 'sistema', 'DESARQUIVOU_FICHA', id, 'FICHAS_BIBLIOTECA', 'ARQUIVADA', { motivo: motivo || '' });
+    res.json({ sucesso: true, mensagem: 'Ficha desarquivada com sucesso.', id });
+  } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e) }); }
+});
+
 app.patch('/api/biblioteca/fichas/:id', requerPerfil('MASTER','ANALISTA SAC'), async (req, res) => {
   try {
     const id = req.params.id;
