@@ -276,13 +276,16 @@ function perfilCanonico(v){
     'usuario de setor':'SETOR RESPONSÁVEL','usuário de setor':'SETOR RESPONSÁVEL',
     // ESPECIALISTA
     'especialista':'ESPECIALISTA','responsavel especialista':'ESPECIALISTA','responsável especialista':'ESPECIALISTA',
-    // APROVADOR
+    // APROVADOR MASTER (acesso global de aprovação)
+    'aprovador master':'APROVADOR MASTER','aprovadormaster':'APROVADOR MASTER',
+    // APROVADOR setorial
     'aprovador':'APROVADOR',
     // RCA
     'rca':'RCA / REPRESENTANTE','representante':'RCA / REPRESENTANTE','representante comercial':'RCA / REPRESENTANTE',
     'responsavel rca':'RCA / REPRESENTANTE','responsável rca':'RCA / REPRESENTANTE',
-    // DIRETOR
+    // DIRETOR / GESTOR
     'diretor':'DIRETOR','diretora':'DIRETOR','director':'DIRETOR',
+    'gestor diretoria':'GESTOR/DIRETORIA','gestor/diretoria':'GESTOR/DIRETORIA','diretoria':'GESTOR/DIRETORIA',
     // VISUALIZADOR
     'visualizador':'VISUALIZADOR','consulta':'VISUALIZADOR','auditor':'AUDITOR',
   };
@@ -294,14 +297,19 @@ const P_ADMIN=['MASTER'];
 const P_GESTORES=['MASTER','GESTOR SAC'];
 const P_SAC=['MASTER','GESTOR SAC','ANALISTA SAC','ATENDENTE SAC'];
 const P_OPERACIONAL=['MASTER','GESTOR SAC','ANALISTA SAC','ATENDENTE SAC','SETOR RESPONSÁVEL','ESPECIALISTA'];
-const P_LEITURA=['MASTER','GESTOR SAC','ANALISTA SAC','ATENDENTE SAC','SETOR RESPONSÁVEL','ESPECIALISTA','APROVADOR','RCA / REPRESENTANTE','DIRETOR','VISUALIZADOR','AUDITOR'];
+const P_LEITURA=['MASTER','GESTOR SAC','ANALISTA SAC','ATENDENTE SAC','SETOR RESPONSÁVEL','ESPECIALISTA','APROVADOR','APROVADOR MASTER','RCA / REPRESENTANTE','DIRETOR','GESTOR/DIRETORIA','VISUALIZADOR','AUDITOR'];
 const P_RNC=['MASTER','GESTOR SAC','ANALISTA SAC','SETOR RESPONSÁVEL','ESPECIALISTA','RCA / REPRESENTANTE'];
-const P_APROVACAO=['MASTER','APROVADOR'];
-const P_RELATORIO=['MASTER','GESTOR SAC','ANALISTA SAC','ATENDENTE SAC','SETOR RESPONSÁVEL','ESPECIALISTA','APROVADOR','RCA / REPRESENTANTE','DIRETOR','VISUALIZADOR','AUDITOR'];
+const P_APROVACAO=['MASTER','APROVADOR MASTER','GESTOR SAC','ANALISTA SAC','APROVADOR'];
+const P_RELATORIO=['MASTER','GESTOR SAC','ANALISTA SAC','ATENDENTE SAC','SETOR RESPONSÁVEL','ESPECIALISTA','APROVADOR','APROVADOR MASTER','RCA / REPRESENTANTE','DIRETOR','GESTOR/DIRETORIA','VISUALIZADOR','AUDITOR'];
 
 function usuarioPublico(u){
   let permissoes_custom=null;
   if(u.PERMISSOES_CUSTOM){try{permissoes_custom=typeof u.PERMISSOES_CUSTOM==='string'?JSON.parse(u.PERMISSOES_CUSTOM):u.PERMISSOES_CUSTOM;}catch(e){}}
+  // Empresas e setores autorizados para APROVADOR setorial
+  let empresas_autorizadas=[];
+  if(u.EMPRESAS_AUTORIZADAS){try{const v=typeof u.EMPRESAS_AUTORIZADAS==='string'?JSON.parse(u.EMPRESAS_AUTORIZADAS):u.EMPRESAS_AUTORIZADAS;empresas_autorizadas=Array.isArray(v)?v:String(v).split(',').map(s=>s.trim()).filter(Boolean);}catch(e){}}
+  let setores_autorizados=[];
+  if(u.SETORES_AUTORIZADOS){try{const v=typeof u.SETORES_AUTORIZADOS==='string'?JSON.parse(u.SETORES_AUTORIZADOS):u.SETORES_AUTORIZADOS;setores_autorizados=Array.isArray(v)?v:String(v).split(',').map(s=>s.trim()).filter(Boolean);}catch(e){}}
   return {
     id:u.ID_USUARIO||u.ID||u.USUARIO||u.EMAIL,
     usuario:u.USUARIO||u.EMAIL||u.ID_USUARIO,
@@ -310,7 +318,9 @@ function usuarioPublico(u){
     perfil:perfilCanonico(u.PERFIL||u.PERFIL_USUARIO),
     empresa:u.EMPRESA||'', setor:u.SETOR||'', codigoRCA:u.CODIGO_RCA||u.RCA||'', status:u.STATUS||'ATIVO',
     ultimoAcesso:u.ULTIMO_ACESSO||'', dataCriacao:u.DATA_CRIACAO||'',
-    permissoes_custom: Array.isArray(permissoes_custom)&&permissoes_custom.length?permissoes_custom:null
+    permissoes_custom: Array.isArray(permissoes_custom)&&permissoes_custom.length?permissoes_custom:null,
+    empresas_autorizadas: empresas_autorizadas.length ? empresas_autorizadas : null,
+    setores_autorizados: setores_autorizados.length ? setores_autorizados : null,
   };
 }
 
@@ -328,7 +338,9 @@ const _PERM_PADRAO_API = {
   'ADMINISTRADOR':      ['manifestacoes.visualizar','manifestacoes.abrir','manifestacoes.editar','manifestacoes.gerenciar','cerebro.visualizar','cerebro.gerenciar','rca.visualizar','rca.gerenciar','pesquisas.visualizar','pesquisas.gerenciar','dashboard.visualizar','dashboard.gerenciar','configuracoes.visualizar','configuracoes.editar','configuracoes.gerenciar','usuarios.visualizar','usuarios.criar','usuarios.editar','usuarios.gerenciar','aprovacoes.visualizar','aprovacoes.aprovar','aprovacoes.rejeitar'],
   'GESTOR SAC':         ['manifestacoes.visualizar','manifestacoes.editar','manifestacoes.gerenciar','manifestacoes.aprovar','cerebro.visualizar','cerebro.gerenciar','rca.visualizar','pesquisas.visualizar','pesquisas.gerenciar','dashboard.visualizar','dashboard.gerenciar','configuracoes.visualizar','configuracoes.editar','aprovacoes.visualizar','aprovacoes.aprovar','aprovacoes.rejeitar'],
   'ANALISTA SAC':       ['manifestacoes.visualizar','manifestacoes.abrir','manifestacoes.editar','cerebro.visualizar','cerebro.adicionar_conteudo','cerebro.editar_conteudo','cerebro.adicionar_regras','cerebro.adicionar_politicas','cerebro.editar_faq','pesquisas.visualizar','pesquisas.criar','dashboard.visualizar','aprovacoes.visualizar'],
+  'APROVADOR MASTER':   ['manifestacoes.visualizar','manifestacoes.abrir','aprovacoes.visualizar','aprovacoes.aprovar','aprovacoes.rejeitar','pesquisas.visualizar','dashboard.visualizar','rca.visualizar'],
   'APROVADOR':          ['manifestacoes.visualizar','aprovacoes.visualizar','aprovacoes.aprovar','aprovacoes.rejeitar','pesquisas.visualizar'],
+  'GESTOR/DIRETORIA':   ['manifestacoes.visualizar','dashboard.visualizar','dashboard.gerenciar','pesquisas.visualizar','rca.visualizar'],
   'ATENDENTE SAC':      ['manifestacoes.visualizar','manifestacoes.abrir','cerebro.visualizar','dashboard.visualizar'],
   'SETOR RESPONSÁVEL':  ['manifestacoes.visualizar','manifestacoes.editar'],
   'ESPECIALISTA':       ['cerebro.visualizar','dashboard.visualizar'],
@@ -342,10 +354,42 @@ const _PERM_PADRAO_API = {
 function usuarioTemPermissao(user, chave) {
   const p = perfilCanonico(user?.perfil || '');
   if (p === 'MASTER') return true;
+  // APROVADOR MASTER tem permissões globais de aprovação
+  if (p === 'APROVADOR MASTER') {
+    const globalAprovMaster = _PERM_PADRAO_API['APROVADOR MASTER'] || [];
+    if (globalAprovMaster.includes(chave)) return true;
+  }
   if (Array.isArray(user?.permissoes_custom) && user.permissoes_custom.length) {
     return user.permissoes_custom.includes(chave);
   }
   return (_PERM_PADRAO_API[p] || []).includes(chave);
+}
+
+// Verifica se APROVADOR tem acesso à empresa/setor da manifestação
+function aprovadorTemEscopoManifestacao(user, manifestacao) {
+  const p = perfilCanonico(user?.perfil || '');
+  // Perfis globais: sempre têm acesso
+  if (['MASTER','APROVADOR MASTER','GESTOR SAC','ANALISTA SAC'].includes(p)) return true;
+  if (p !== 'APROVADOR' && p !== 'GESTOR/DIRETORIA') return false;
+  // Verificar empresas autorizadas
+  const empAuth = user.empresas_autorizadas;
+  const setAuth = user.setores_autorizados;
+  if (!empAuth || empAuth.length === 0) {
+    // Fallback: empresa principal do usuário
+    const userCod = empresaCanonica(user.empresa || '');
+    const recCod = empresaCanonica(manifestacao.EMPRESA_RECLAMANTE || manifestacao.EMPRESA_RECLAMADA || '');
+    if (userCod && recCod && userCod !== recCod) return false;
+  } else {
+    const recCod = empresaCanonica(manifestacao.EMPRESA_RECLAMANTE || manifestacao.EMPRESA_RECLAMADA || '');
+    const empMatch = empAuth.some(e => empresaCanonica(e) === recCod);
+    if (!empMatch) return false;
+  }
+  if (setAuth && setAuth.length > 0) {
+    const setor = (manifestacao.SETOR_CONFIRMADO || manifestacao.SETOR_SUGERIDO || manifestacao.SETOR || '').toLowerCase().trim();
+    const setMatch = setAuth.some(s => normalizarTexto(s) === normalizarTexto(setor));
+    if (!setMatch) return false;
+  }
+  return true;
 }
 
 // Middleware: exige que o usuário tenha TODAS as permissões listadas
@@ -371,7 +415,8 @@ function middlewareEscopoEmpresa() {
   return (req, res, next) => {
     if (!req.user) return next();
     const perfil = perfilCanonico(req.user.perfil);
-    if (perfil === 'MASTER') return next(); // MASTER tem acesso global
+    // Perfis globais: acesso irrestrito
+    if (['MASTER','APROVADOR MASTER','GESTOR SAC'].includes(perfil)) return next();
     const empresa = req.user.empresa || '';
     if (!empresa.trim()) return res.status(403).json({ sucesso: false, erro: 'Usuário sem empresa configurada. Contate o administrador.' });
     req._empresaScope = empresa;
@@ -1388,7 +1433,7 @@ function formatarDataBrasilia(isoStr) {
   } catch { return isoStr; }
 }
 
-app.get('/api/manifestacoes/:id/aprovacao', middlewareEscopoEmpresa(), requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC','APROVADOR'), async (req, res) => {
+app.get('/api/manifestacoes/:id/aprovacao', middlewareEscopoEmpresa(), requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC','APROVADOR MASTER','APROVADOR'), async (req, res) => {
   try {
     const { id } = req.params;
     const todas = await lerAba('MANIFESTACOES', 2000);
@@ -1459,7 +1504,7 @@ app.get('/api/manifestacoes/:id/aprovacao', middlewareEscopoEmpresa(), requerPer
   } catch (e) { console.error(e); res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
 
-app.post('/api/manifestacoes/:id/aprovacao', middlewareEscopoEmpresa(), requerPerfil('MASTER','GESTOR SAC','APROVADOR'), async (req, res) => {
+app.post('/api/manifestacoes/:id/aprovacao', middlewareEscopoEmpresa(), requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC','APROVADOR MASTER','APROVADOR'), async (req, res) => {
   try {
     const { id } = req.params;
     const { decisao, motivo, orientacao } = req.body || {};
@@ -1472,10 +1517,15 @@ app.post('/api/manifestacoes/:id/aprovacao', middlewareEscopoEmpresa(), requerPe
     const todas = await lerAba('MANIFESTACOES', 2000);
     const item = todas.find(r => r.ID_MANIFESTACAO === id);
     if (!item) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
-    if (!pertenceEmpresa(req.user?.empresa, item.EMPRESA_RECLAMADA)) {
-      return res.status(403).json({ sucesso:false, erro:'Acesso negado: manifestação pertence a outra empresa.' });
-    }
     const perfil = perfilCanonico(req.user?.perfil);
+    // Perfis globais: MASTER, APROVADOR MASTER, GESTOR SAC, ANALISTA SAC — sem restrição de empresa/setor
+    const isGlobal = ['MASTER','APROVADOR MASTER','GESTOR SAC','ANALISTA SAC'].includes(perfil);
+    if (!isGlobal) {
+      // APROVADOR setorial: validar empresa e setor
+      if (!aprovadorTemEscopoManifestacao(req.user, item)) {
+        return res.status(403).json({ sucesso:false, erro:'Acesso negado: esta manifestação não está dentro do seu escopo de aprovação.' });
+      }
+    }
     if (perfil === 'APROVADOR' && item.STATUS_FICHA !== 'AGUARDANDO_APROVACAO') {
       return res.status(403).json({ sucesso:false, erro:'Esta manifestação não está aguardando aprovação do setor.' });
     }
@@ -4406,7 +4456,7 @@ app.post('/api/usuarios', requerPermissao('usuarios.criar'), async (req,res)=>{
     if(!b.usuario||!b.nome||!b.perfil) return res.status(400).json({sucesso:false,erro:'Usuário, nome e perfil são obrigatórios.'});
     const id=await gerarProximoID('USUARIOS','USR','ID_USUARIO');
     const hash=b.senha ? await hashSenha(b.senha) : '';
-    const obj={ID_USUARIO:id,USUARIO:b.usuario,EMAIL:b.email||'',NOME:b.nome,PERFIL:perfilCanonico(b.perfil),EMPRESA:b.empresa||'',SETOR:b.setor||'',CODIGO_RCA:b.codigoRCA||'',STATUS:b.status||'ATIVO',SENHA_HASH:hash,DATA_CRIACAO:new Date().toISOString(),ULTIMO_ACESSO:'',PERMISSOES_CUSTOM:Array.isArray(b.permissoes_custom)?JSON.stringify(b.permissoes_custom):''};
+    const obj={ID_USUARIO:id,USUARIO:b.usuario,EMAIL:b.email||'',NOME:b.nome,PERFIL:perfilCanonico(b.perfil),EMPRESA:b.empresa||'',SETOR:b.setor||'',CODIGO_RCA:b.codigoRCA||'',STATUS:b.status||'ATIVO',SENHA_HASH:hash,DATA_CRIACAO:new Date().toISOString(),ULTIMO_ACESSO:'',PERMISSOES_CUSTOM:Array.isArray(b.permissoes_custom)?JSON.stringify(b.permissoes_custom):'',EMPRESAS_AUTORIZADAS:Array.isArray(b.empresas_autorizadas)?JSON.stringify(b.empresas_autorizadas):'',SETORES_AUTORIZADOS:Array.isArray(b.setores_autorizados)?JSON.stringify(b.setores_autorizados):''};
     await appendObjeto('USUARIOS',obj);
     await registrarAuditoria(req.user.usuario,'CRIOU_USUARIO',id,'USUARIOS',null,{perfil:obj.PERFIL});
     res.json({sucesso:true,usuario:usuarioPublico(obj)});
@@ -4426,6 +4476,8 @@ app.patch('/api/usuarios/:id', requerPermissao('usuarios.editar'), async (req,re
     if(b.empresa||b.EMPRESA) { const ec=empresaCanonica(b.empresa||b.EMPRESA); if(ec) dados.EMPRESA=ec; }
     if(b.senha){ dados.SENHA_HASH = await hashSenha(b.senha); }
     if(Array.isArray(b.permissoes_custom)) dados.PERMISSOES_CUSTOM=JSON.stringify(b.permissoes_custom);
+    if(Array.isArray(b.empresas_autorizadas)) dados.EMPRESAS_AUTORIZADAS=JSON.stringify(b.empresas_autorizadas);
+    if(Array.isArray(b.setores_autorizados)) dados.SETORES_AUTORIZADOS=JSON.stringify(b.setores_autorizados);
     dados.DATA_ULTIMA_ALTERACAO=new Date().toISOString(); dados.ALTERADO_POR=req.user.usuario;
     const resultado=await atualizarPorID('USUARIOS',req.params.id,dados,['ID_USUARIO','USUARIO','EMAIL']);
     if(!resultado) return res.status(404).json({sucesso:false,erro:'Usuário não encontrado. Recarregue a lista e tente novamente.'});
@@ -5028,11 +5080,22 @@ app.get('/api/fila-aprovacao', middlewareEscopoEmpresa(), requerPermissao('aprov
     const filaEmpresa = filtrarPorEmpresa(fila, req, COLUNA_EMPRESA_ABA.FILA_APROVACAO);
     let itens = filaEmpresa;
     const n = v => normalizarTexto(v);
-    if(perfilCanonico(u.perfil) === 'ANALISTA SAC') {
+    const perfFila = perfilCanonico(u.perfil);
+    if(perfFila === 'ANALISTA SAC') {
       itens = filaEmpresa.filter(x => n(x.CRIADO_POR||'') === n(u.usuario));
-    } else if(perfilCanonico(u.perfil) === 'APROVADOR') {
-      itens = filaEmpresa.filter(x => n(x.ID_APROVADOR||'') === n(u.usuario) || n(x.NOME_APROVADOR||'') === n(u.nome||u.usuario) || n(x.ID_APROVADOR||'') === n(u.id||''));
+    } else if(perfFila === 'APROVADOR') {
+      // APROVADOR setorial: filtrar por empresa/setor autorizados também
+      itens = filaEmpresa.filter(x => {
+        const byAssign = n(x.ID_APROVADOR||'') === n(u.usuario) || n(x.NOME_APROVADOR||'') === n(u.nome||u.usuario);
+        if (byAssign) return true;
+        // Se não está atribuído explicitamente, verifica se tem escopo
+        if (!u.empresas_autorizadas && !u.setores_autorizados) return false;
+        const empMatch = !u.empresas_autorizadas || u.empresas_autorizadas.some(e=>empresaCanonica(e)===empresaCanonica(x.EMPRESA||''));
+        const setMatch = !u.setores_autorizados || u.setores_autorizados.some(s=>normalizarTexto(s)===normalizarTexto(x.SETOR||''));
+        return empMatch && setMatch;
+      });
     }
+    // APROVADOR MASTER e MASTER: veem toda a fila (sem filtro adicional)
     const pendentes = itens.filter(x=>x.STATUS==='PENDENTE').length;
     res.json({sucesso:true,total:itens.length,pendentes,itens});
   } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
@@ -5061,7 +5124,7 @@ app.post('/api/fila-aprovacao', requerPermissao('aprovacoes.aprovar'), async (re
 });
 
 // Decidir sobre item na fila (APROVADOR, MASTER)
-app.post('/api/fila-aprovacao/:id/decidir', requerPerfil('APROVADOR','MASTER'), async (req,res)=>{
+app.post('/api/fila-aprovacao/:id/decidir', requerPerfil('APROVADOR','APROVADOR MASTER','GESTOR SAC','ANALISTA SAC','MASTER'), async (req,res)=>{
   try {
     garantirAbaComCabecalhos('HISTORICO_APROVACAO', HIST_APROV_HEADERS).catch(()=>{});
     const {decisao, observacoes} = req.body||{};
@@ -6558,7 +6621,7 @@ app.get('/api/admin/usuarios/:id', requerPerfil('MASTER'), async (req, res) => {
 
 app.patch('/api/admin/usuarios/:id/permissoes', requerPerfil('MASTER'), async (req, res) => {
   try {
-    const { perfil, empresa, setor, email, modulosNiveis, competencias } = req.body||{};
+    const { perfil, empresa, setor, email, modulosNiveis, competencias, permissoes_custom, empresas_autorizadas, setores_autorizados } = req.body||{};
     const usuarios = await carregarUsuarios();
     const u = usuarios.find(u2=>u2.ID_USUARIO===req.params.id||u2.USUARIO===req.params.id);
     if (!u) return res.status(404).json({sucesso:false,erro:'Usuário não encontrado.'});
@@ -6566,17 +6629,25 @@ app.patch('/api/admin/usuarios/:id/permissoes', requerPerfil('MASTER'), async (r
     const anterior = { perfil:u.PERFIL, empresa:u.EMPRESA };
     const updates = { DATA_ULTIMA_ALTERACAO:new Date().toISOString(), ALTERADO_POR:req.user.usuario||'MASTER' };
     if (perfil) {
-      const pNorm = normalizarPerfil(perfil);
-      if (!PERFIS_VALIDOS.includes(pNorm)) return res.status(400).json({sucesso:false,erro:`Perfil inválido.`});
-      updates.PERFIL = pNorm;
+      updates.PERFIL = perfilCanonico(perfil);
     }
     if (empresa) {
-      const eCod = empresaCanonica(empresa);
-      if (!eCod) return res.status(400).json({sucesso:false,erro:'Empresa inválida.'});
-      updates.EMPRESA = eCod;
+      updates.EMPRESA = empresa; // Aceita nome completo ou código
     }
     if (setor) updates.SETOR = setor;
     if (email) updates.EMAIL = email;
+    // Permissões customizadas individuais
+    if (Array.isArray(permissoes_custom)) {
+      updates.PERMISSOES_CUSTOM = JSON.stringify(permissoes_custom);
+    }
+    // Escopo de aprovação para APROVADOR setorial
+    if (Array.isArray(empresas_autorizadas)) {
+      updates.EMPRESAS_AUTORIZADAS = JSON.stringify(empresas_autorizadas);
+    }
+    if (Array.isArray(setores_autorizados)) {
+      updates.SETORES_AUTORIZADOS = JSON.stringify(setores_autorizados);
+    }
+    await garantirAbaComCabecalhos('USUARIOS', ['ID_USUARIO','USUARIO','NOME','EMAIL','PERFIL','EMPRESA','SETOR','STATUS','PERMISSOES_CUSTOM','EMPRESAS_AUTORIZADAS','SETORES_AUTORIZADOS','DATA_ULTIMA_ALTERACAO','ALTERADO_POR']).catch(()=>{});
     await atualizarPorID('USUARIOS', u.ID_USUARIO||u.USUARIO, updates, ['ID_USUARIO','USUARIO','EMAIL']);
 
     // Atualiza linha de permissões
