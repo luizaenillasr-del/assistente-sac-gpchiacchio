@@ -3188,6 +3188,23 @@ app.post('/api/pesquisas/decisao', requerPermissao('pesquisas.gerenciar'), async
       };
       await appendObjeto('MANIFESTACOES', obj);
       invalidarCacheAba('MANIFESTACOES');
+      // dual-write para PostgreSQL (não-bloqueante), igual ao POST /api/manifestacoes
+      if (manifestacaoRepo) {
+        manifestacaoRepo.upsertFromSheets({
+          ID_MANIFESTACAO: manifestacaoId,
+          EMPRESA_RECLAMANTE: obj.EMPRESA_RECLAMANTE,
+          EMPRESA_RECLAMADA: obj.EMPRESA_RECLAMANTE,
+          DESCRICAO: obj.DESCRICAO,
+          STATUS: obj.STATUS,
+          TIPO: obj.TIPO,
+          PRODUTO: '',
+          DATA_ABERTURA: agora,
+        }).then(() => {
+          console.info('[PG] dual-write pesquisa→manifestação OK:', manifestacaoId);
+        }).catch(e => {
+          console.error('[PG] dual-write pesquisa→manifestação FALHOU:', manifestacaoId, e.message);
+        });
+      }
     }
 
     // Atualizar STATUS_OCP / decisão na pesquisa
