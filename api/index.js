@@ -239,6 +239,22 @@ async function carregarUsuarios(){
           ULTIMO_ACESSO: u.ultimoAcesso?.toISOString?.() || '',
           _pgId: u.id,
         }));
+        // Mescla permissões customizadas salvas no Sheets (não existem no PG)
+        try {
+          const sheetsRows = await lerAba('USUARIOS', 1000);
+          const sheetsMap = new Map();
+          sheetsRows.forEach(r => {
+            if (r.USUARIO) sheetsMap.set(normalizarTexto(r.USUARIO), r);
+            if (r.EMAIL) sheetsMap.set(normalizarTexto(r.EMAIL), r);
+          });
+          mapped.forEach(u => {
+            const sr = sheetsMap.get(normalizarTexto(u.USUARIO)) || sheetsMap.get(normalizarTexto(u.EMAIL));
+            if (sr) {
+              if (sr.PERMISSOES_GRANTED) u.PERMISSOES_GRANTED = sr.PERMISSOES_GRANTED;
+              if (sr.PERMISSOES_BLOCKED) u.PERMISSOES_BLOCKED = sr.PERMISSOES_BLOCKED;
+            }
+          });
+        } catch(e) { console.warn('[F4] merge permissões Sheets falhou:', e.message); }
         const demoEnabled = String(process.env.DEMO_LOGIN_ENABLED || 'false').toLowerCase() === 'true';
         return [...mapped, ...(demoEnabled ? DEMO_USUARIOS : [])];
       }
