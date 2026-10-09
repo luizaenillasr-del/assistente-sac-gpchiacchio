@@ -11680,7 +11680,7 @@ window.navigate = function(page, el) {
           permissoes_custom: usrGetAtividadesSelecionadas(),
         };
         const s = document.getElementById('usr-senha').value; if (s) b.senha = s;
-        try { await json5('/api/usuarios/' + encodeURIComponent(id), {method:'PATCH', body:JSON.stringify(b)}); alert('Usuário atualizado.'); fecharModalUsuario(); loadUsuariosV5(); }
+        try { await json5('/api/usuarios/' + encodeURIComponent(id), {method:'PATCH', body:JSON.stringify(b)}); alert('Usuário atualizado com sucesso!\n\nO usuário precisa fazer logout e login novamente para que as novas permissões e telas apareçam.'); fecharModalUsuario(); loadUsuariosV5(); }
         catch(e) { alert(e.message); }
       };
       document.getElementById('modal-usuario-v5').style.display = 'flex';

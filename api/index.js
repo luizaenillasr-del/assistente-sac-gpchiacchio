@@ -3509,7 +3509,7 @@ body{background:${brandColor};display:flex;flex-direction:column;align-items:cen
   <!-- ETAPA 0: Boas-vindas -->
   <div class="etapa ativa" id="et-0">
     <div class="bv-logo">
-      <img src="${logoPath}" alt="${titulo}" style="height:56px;max-width:200px;width:auto;display:block;margin:32px auto 0;object-fit:contain">
+      <img src="${logoPath}" alt="${titulo}" style="height:64px;max-width:220px;width:auto;display:block;margin:32px auto 0;object-fit:contain;background:#fff;border-radius:10px;padding:8px 14px;box-sizing:border-box">
     </div>
     <div class="bv-nome">${titulo}</div>
     <div class="bv-card">
@@ -3966,7 +3966,7 @@ function _pesquisaTokenHTML(token, empresa, nomeCliente) {
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#F5F5F5;color:#1F1F1F;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:24px 16px 48px}
 .card{background:#fff;border-radius:16px;box-shadow:0 2px 16px rgba(0,0,0,.09);max-width:560px;width:100%;padding:32px 28px 36px}
 .logo-wrap{text-align:center;margin-bottom:20px}
-.logo-wrap img{max-height:48px;max-width:200px}
+.logo-wrap img{max-height:64px;max-width:220px;padding:8px 14px;background:#fff;border-radius:10px;box-shadow:0 1px 6px rgba(0,0,0,.08)}
 .co-name{font-size:13px;font-weight:600;color:#545252;text-align:center;margin-top:6px}
 h2{font-size:18px;font-weight:700;margin-bottom:6px}
 .sub{font-size:13.5px;color:#545252;margin-bottom:24px;line-height:1.5}
