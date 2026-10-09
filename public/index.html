@@ -22402,12 +22402,13 @@ function updateTopbarUser(user) {
     if (!lista.length) { if(tb) tb.innerHTML=''; if(vazio) vazio.style.display='block'; return; }
     if(vazio) vazio.style.display='none';
     const STATUS_COLORS = { ATIVO: {bg:'#E6F2EA',color:'#1E6B3A'}, INATIVO: {bg:'#EEEEEE',color:'#545252'}, BLOQUEADO: {bg:'#FDECEC',color:'#C70602'}, EXCLUIDO: {bg:'#FDECEC',color:'#A80502'} };
+    window._usuMap = {};
     if(tb) tb.innerHTML = lista.filter(u=>(u.STATUS||u.status||'ATIVO').toUpperCase()!=='EXCLUIDO').map(u => {
       const st = (u.STATUS||u.status||'ATIVO').toUpperCase();
       const sc = STATUS_COLORS[st] || STATUS_COLORS.ATIVO;
-      const uJson = JSON.stringify(JSON.stringify(u));
       const uid = esc5(u.ID_USUARIO||u.id||u.USUARIO||u.usuario||'');
       const unome = esc5(u.NOME||u.nome||u.USUARIO||u.usuario||'');
+      window._usuMap[uid] = u;
       return `<tr style="border-bottom:1px solid #F4F4F4;transition:background .15s" onmouseenter="this.style.background='#FAFAFA'" onmouseleave="this.style.background=''">
         <td style="padding:12px 16px">
           <div style="font-weight:700;font-size:13px">${esc5(u.NOME||u.nome||u.USUARIO||u.usuario)}</div>
@@ -22419,7 +22420,7 @@ function updateTopbarUser(user) {
         <td style="padding:12px 16px;font-size:12px;color:#929090">${(u.ULTIMO_ACESSO||u.ultimoAcesso) ? _fmtDataCurta(u.ULTIMO_ACESSO||u.ultimoAcesso) : '—'}</td>
         <td style="padding:12px 16px;text-align:right">
           <div style="display:flex;gap:5px;justify-content:flex-end;flex-wrap:wrap">
-            <button onclick="usuAbrir(${uJson})" style="border:1px solid #D6D6D6;background:#fff;border-radius:7px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:inherit">Editar</button>
+            <button onclick="usuAbrir('${uid}')" style="border:1px solid #D6D6D6;background:#fff;border-radius:7px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:inherit">Editar</button>
             ${st==='BLOQUEADO'
               ? `<button onclick="usuStatus('${uid}','desbloquear')" style="border:1px solid #1E6B3A;color:#1E6B3A;background:#fff;border-radius:7px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:inherit">Desbloquear</button>`
               : `<button onclick="usuStatus('${uid}','bloquear')" style="border:1px solid #C70602;color:#C70602;background:#fff;border-radius:7px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:inherit">Bloquear</button>`}
@@ -22446,9 +22447,10 @@ function updateTopbarUser(user) {
     usuRenderLista(filtrado);
   };
 
+  window._usuMap = {};
   window.usuNovo = function() { usuAbrir(null); };
-  window.usuAbrir = function(jsonStr) {
-    const u = jsonStr ? (typeof jsonStr === 'string' ? JSON.parse(jsonStr) : jsonStr) : null;
+  window.usuAbrir = function(idOuObj) {
+    const u = idOuObj == null ? null : (typeof idOuObj === 'string' ? window._usuMap[idOuObj] : idOuObj);
     _usuEditando = u;
     let grantedArr = [];
     let blockedArr = [];
