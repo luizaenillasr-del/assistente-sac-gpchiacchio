@@ -6312,22 +6312,24 @@
         if(!_d)_d={};if(!_d.textos)_d.textos={};
         _d.textos[id]=valor;
       }
-      // Notas mensais (Atendimento/Prazo/Qualidade/Recomendação por mês)
+      // Notas mensais (Atendimento/Prazo/Qualidade/Recomendação por mês) — envia 1 registro por mês com todos os critérios
       const meses=_rrmMeses();
+      const hoje=new Date().toISOString().split('T')[0];
       for(const {k} of meses){
         const tok2=sessionStorage.getItem('sac-token');
+        const payload={};
         for(const [sfx,nome] of [['at','atendimento'],['pr','prazo_entrega'],['qu','qualidade'],['re','recomendacao']]){
           const inp=document.getElementById('rrm-mes-'+sfx+'-'+k);
           if(!inp||inp.value==='')continue;
           const v=parseFloat(inp.value);
-          if(isNaN(v))continue;
-          const hoje=new Date().toISOString().split('T')[0];
-          const [ky,km]=k.split('-');
-          const data_ref=ky+'-'+km+'-01';
-          const rr=await fetch('/api/pesquisas/resposta-manual',{method:'POST',headers:{Authorization:'Bearer '+tok2,'Content-Type':'application/json'},body:JSON.stringify({empresa,nome_cliente:'(manual)',data_referencia:data_ref,[nome]:String(v),historico:data_ref<hoje})});
-          const jj=await rr.json().catch(()=>({}));
-          if(!rr.ok&&jj.sucesso===false){throw new Error(jj.erro||'Erro ao salvar nota '+sfx+' em '+k+'.');}
+          if(!isNaN(v))payload[nome]=String(v);
         }
+        if(!Object.keys(payload).length)continue;
+        const [ky,km]=k.split('-');
+        const data_ref=ky+'-'+km+'-01';
+        const rr=await fetch('/api/pesquisas/resposta-manual',{method:'POST',headers:{Authorization:'Bearer '+tok2,'Content-Type':'application/json'},body:JSON.stringify({empresa,nome_cliente:'(manual)',data_referencia:data_ref,...payload})});
+        const jj=await rr.json().catch(()=>({}));
+        if(!rr.ok&&jj.sucesso===false){throw new Error(jj.erro||'Erro ao salvar notas de '+k+'.');}
       }
       // Textos mês a mês
       for(const {k} of meses){
@@ -11748,8 +11750,34 @@ window.navigate = function(page, el) {
       document.getElementById('ap-rnca').textContent=pend.totais?.rnc??0;
       document.getElementById('ap-total').textContent=pend.totais?.total??0;
       document.getElementById('ap-sugestoes').textContent=(pend.sugestoes||[]).filter(x=>x.STATUS==='PENDENTE').length;
-      const sac=(pend.sac||[]).map(x=>`<div class="portal-row"><div class="portal-row-main"><div class="portal-row-title">${esc5(x.ID_MANIFESTACAO)} · ${esc5(x.EMPRESA_RECLAMANTE||x.CLIENTE||'Cliente')}</div><div class="portal-row-sub">${esc5(x.PRODUTO||'')} · ${esc5(x.STATUS||'Aguardando aprovação')} · ${esc5(x.SETOR_CONFIRMADO||x.SETOR_SUGERIDO||'SAC')}</div></div><div class="portal-actions"><span class="status-badge decisao">SAC</span><button class="btn btn-secondary" onclick="abrirDossieAprovador('${esc5(x.ID_MANIFESTACAO)}')">Visualizar</button></div></div>`).join('');
-      const rncs=(pend.rnc||[]).map(x=>`<div class="portal-row"><div class="portal-row-main"><div class="portal-row-title">${esc5(x.ID_RNC)} · ${esc5(x.CLIENTE||x.CLIENTE_NOME||'Cliente')}</div><div class="portal-row-sub">SAC ${esc5(x.PROTOCOLO_SAC||x.ID_MANIFESTACAO||'—')} · ${esc5(x.EMPRESA||'')} · ${esc5(x.COMPETENCIA||x.SETOR||'')} · ${esc5(x.STATUS||'Pendente')}</div></div><div class="portal-actions"><span class="status-badge decisao">RNC</span><button class="btn btn-primary" onclick="abrirRncAprovador('${esc5(x.ID_RNC)}')">Analisar RNC</button></div></div>`).join('');
+      const sac=(pend.sac||[]).map(x=>`<div style="border:1.5px solid #F3CFCF;border-radius:12px;overflow:hidden;margin-bottom:10px;background:#fff">
+        <div style="background:#FFF1F1;border-bottom:1px solid #F3CFCF;padding:8px 14px;display:flex;align-items:center;gap:8px">
+          <span style="font-size:10px;font-weight:700;letter-spacing:.07em;color:#A80502">SUA VEZ · APROVAÇÃO SAC</span>
+          <span style="font-size:11px;font-weight:700;background:#FDE8E8;color:#A80502;border-radius:99px;padding:2px 9px;margin-left:auto">${esc5(x.STATUS||'Aguardando aprovação')}</span>
+        </div>
+        <div style="padding:12px 14px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <div style="display:flex;flex-direction:column;gap:3px;min-width:0">
+            <div style="font-size:15px;font-weight:700;color:#1F1F1F">${esc5(x.ID_MANIFESTACAO)}</div>
+            <div style="font-size:12px;color:#545252">${esc5(x.EMPRESA_RECLAMANTE||x.CLIENTE||'Cliente')}${x.PRODUTO?' · '+esc5(x.PRODUTO):''}</div>
+            <div style="font-size:11.5px;color:#929090">${esc5(x.SETOR_CONFIRMADO||x.SETOR_SUGERIDO||'SAC')}${x.DATA_ABERTURA?' · '+esc5(x.DATA_ABERTURA):''}</div>
+          </div>
+          <button class="btn btn-primary" style="white-space:nowrap;flex-shrink:0" onclick="abrirDossieAprovador('${esc5(x.ID_MANIFESTACAO)}')">Analisar →</button>
+        </div>
+      </div>`).join('');
+      const rncs=(pend.rnc||[]).map(x=>`<div style="border:1.5px solid #C7DDF8;border-radius:12px;overflow:hidden;margin-bottom:10px;background:#fff">
+        <div style="background:#EFF6FF;border-bottom:1px solid #C7DDF8;padding:8px 14px;display:flex;align-items:center;gap:8px">
+          <span style="font-size:10px;font-weight:700;letter-spacing:.07em;color:#1E40AF">SUA VEZ · RNC PENDENTE</span>
+          <span style="font-size:11px;font-weight:700;background:#DBEAFE;color:#1E40AF;border-radius:99px;padding:2px 9px;margin-left:auto">${esc5(x.STATUS||'Pendente')}</span>
+        </div>
+        <div style="padding:12px 14px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <div style="display:flex;flex-direction:column;gap:3px;min-width:0">
+            <div style="font-size:15px;font-weight:700;color:#1F1F1F">${esc5(x.ID_RNC)}</div>
+            <div style="font-size:12px;color:#545252">SAC ${esc5(x.PROTOCOLO_SAC||x.ID_MANIFESTACAO||'—')} · ${esc5(x.EMPRESA||'')}</div>
+            <div style="font-size:11.5px;color:#929090">${esc5(x.COMPETENCIA||x.SETOR||'')}</div>
+          </div>
+          <button class="btn btn-primary" style="white-space:nowrap;flex-shrink:0" onclick="abrirRncAprovador('${esc5(x.ID_RNC)}')">Analisar RNC →</button>
+        </div>
+      </div>`).join('');
       document.getElementById('ap-sac-queue').innerHTML=sac||'<div style="padding:14px;background:var(--gray-50);border-radius:8px;color:var(--gray-400);font-size:12px">Nenhuma manifestação SAC aguardando sua análise.</div>';
       document.getElementById('ap-rnc-queue').innerHTML=rncs||'<div style="padding:14px;background:var(--gray-50);border-radius:8px;color:var(--gray-400);font-size:12px">Nenhuma RNC dentro das suas competências.</div>';
       // Fila estruturada
@@ -11766,15 +11794,26 @@ window.navigate = function(page, el) {
     if(!el)return;
     if(!pend.length){el.innerHTML='<div style="padding:14px;color:var(--gray-400);font-size:12px">Nenhum item na fila de aprovação.</div>';return;}
     el.innerHTML=pend.map(x=>{
-      const cor=x.TIPO_ENTIDADE==='SAC'?'#1E40AF':'#065F46';
-      return `<div class="portal-row"><div class="portal-row-main">
-        <div class="portal-row-title">[${esc5(x.TIPO_ENTIDADE)}] ${esc5(x.ID_ENTIDADE)} <span style="font-size:11px;font-weight:400;color:${cor}">${esc5(x.COMPETENCIA||'')}</span></div>
-        <div class="portal-row-sub">${esc5(x.EMPRESA||'')} ${x.SETOR?'· '+esc5(x.SETOR):''} · enviado por ${esc5(x.CRIADO_POR||'—')} · ${fmt5(x.DATA_ENVIO)}</div>
-        ${x.DESCRICAO?`<div style="font-size:12px;color:var(--gray-500);margin-top:4px">${esc5(x.DESCRICAO)}</div>`:''}
-      </div><div class="portal-actions">
-        <span class="status-badge decisao">PENDENTE</span>
-        <button class="btn btn-primary" onclick="abrirDecisaoAprovacao('${esc5(x.ID_FILA)}','${esc5(x.ID_ENTIDADE)}','${esc5(x.TIPO_ENTIDADE)}')">Decidir</button>
-      </div></div>`;
+      const isSac=x.TIPO_ENTIDADE==='SAC';
+      const bord=isSac?'#F3CFCF':'#A7D3B7';
+      const bg=isSac?'#FFF1F1':'#F0FDF4';
+      const labelClr=isSac?'#A80502':'#065F46';
+      const badgeBg=isSac?'#FDE8E8':'#DCFCE7';
+      return `<div style="border:1.5px solid ${bord};border-radius:12px;overflow:hidden;margin-bottom:10px;background:#fff">
+        <div style="background:${bg};border-bottom:1px solid ${bord};padding:8px 14px;display:flex;align-items:center;gap:8px">
+          <span style="font-size:10px;font-weight:700;letter-spacing:.07em;color:${labelClr}">SUA VEZ · FILA DE APROVAÇÃO</span>
+          <span style="font-size:11px;font-weight:700;background:${badgeBg};color:${labelClr};border-radius:99px;padding:2px 9px;margin-left:auto">${esc5(x.TIPO_ENTIDADE||'PENDENTE')}</span>
+        </div>
+        <div style="padding:12px 14px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <div style="display:flex;flex-direction:column;gap:3px;min-width:0">
+            <div style="font-size:15px;font-weight:700;color:#1F1F1F">${esc5(x.ID_ENTIDADE)}<span style="font-size:12px;font-weight:400;color:#545252;margin-left:8px">${esc5(x.COMPETENCIA||'')}</span></div>
+            <div style="font-size:12px;color:#545252">${esc5(x.EMPRESA||'')}${x.SETOR?' · '+esc5(x.SETOR):''}</div>
+            <div style="font-size:11.5px;color:#929090">Enviado por ${esc5(x.CRIADO_POR||'—')} · ${fmt5(x.DATA_ENVIO)}</div>
+            ${x.DESCRICAO?`<div style="font-size:12px;color:#545252;margin-top:4px;font-style:italic">${esc5(x.DESCRICAO)}</div>`:''}
+          </div>
+          <button class="btn btn-primary" style="white-space:nowrap;flex-shrink:0" onclick="abrirDecisaoAprovacao('${esc5(x.ID_FILA)}','${esc5(x.ID_ENTIDADE)}','${esc5(x.TIPO_ENTIDADE)}')">Decidir →</button>
+        </div>
+      </div>`;
     }).join('');
   }
 
