@@ -674,37 +674,29 @@
             <div id="modal-proximos-passos-content" style="font-size:13px;color:#1E40AF;line-height:1.65"></div>
           </div>
 
-          <div id="modal-decisao-aprovador" style="display:none;margin-top:14px;border-top:2px solid #EFEFEF;padding-top:14px">
-            <div style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#929090;margin-bottom:10px">SUA DECISÃO</div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
-              <button onclick="modalDecisaoSelecionar('APROVAR')" id="mdec-btn-aprovar"
-                style="display:flex;gap:7px;align-items:center;flex:1;min-width:140px;border:1.5px solid #D6D6D6;background:#fff;color:#545252;border-radius:8px;padding:9px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">
-                <span id="mdec-box-aprovar" style="width:15px;height:15px;border-radius:4px;border:2px solid #D6D6D6;background:transparent;font-size:10px;display:flex;align-items:center;justify-content:center;flex:none;color:#fff"></span>
-                Aprovar
-              </button>
-              <button onclick="modalDecisaoSelecionar('RESSALVA')" id="mdec-btn-ressalva"
-                style="display:flex;gap:7px;align-items:center;flex:1;min-width:140px;border:1.5px solid #D6D6D6;background:#fff;color:#545252;border-radius:8px;padding:9px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">
-                <span id="mdec-box-ressalva" style="width:15px;height:15px;border-radius:4px;border:2px solid #D6D6D6;background:transparent;font-size:10px;display:flex;align-items:center;justify-content:center;flex:none;color:#fff"></span>
-                Aprovar com ressalva
-              </button>
-              <button onclick="modalDecisaoSelecionar('DEVOLVER')" id="mdec-btn-devolver"
-                style="display:flex;gap:7px;align-items:center;flex:1;min-width:140px;border:1.5px solid #D6D6D6;background:#fff;color:#545252;border-radius:8px;padding:9px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">
-                <span id="mdec-box-devolver" style="width:15px;height:15px;border-radius:4px;border:2px solid #D6D6D6;background:transparent;font-size:10px;display:flex;align-items:center;justify-content:center;flex:none;color:#fff"></span>
-                Solicitar ajuste
-              </button>
-            </div>
-            <input type="hidden" id="mdec-decisao" value="">
-            <div id="mdec-box-motivo" style="display:none;margin-bottom:12px">
+          <div id="modal-decisao-aprovador" style="display:none;margin-top:16px;border-top:2px solid #EFEFEF;padding-top:16px">
+            <div style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#929090;margin-bottom:12px">SUA DECISÃO</div>
+            <!-- Estado: rejeitar com motivo -->
+            <div id="mdec-rejeitar-form" style="display:none;margin-bottom:12px">
               <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:#545252;letter-spacing:.05em">
-                <span id="mdec-obs-label">Observação</span>
-                <textarea id="mdec-motivo" style="min-height:64px;border:1px solid #D6D6D6;border-radius:8px;padding:9px 10px;font-size:13px;font-family:inherit;resize:vertical" placeholder=""></textarea>
+                Motivo da rejeição (obrigatório)
+                <textarea id="mdec-motivo" style="min-height:72px;border:1px solid #D6D6D6;border-radius:8px;padding:9px 10px;font-size:13px;font-family:inherit;resize:vertical" placeholder="Explique o que deve ser ajustado…"></textarea>
               </label>
-              <div id="mdec-motivo-erro" style="display:none;font-size:11px;color:#C70602;margin-top:3px">Preencha o campo acima.</div>
+              <div id="mdec-motivo-erro" style="display:none;font-size:11px;color:#C70602;margin-top:3px">Preencha o motivo acima.</div>
+              <div style="display:flex;gap:8px;margin-top:10px;justify-content:flex-end">
+                <button onclick="document.getElementById('mdec-rejeitar-form').style.display='none'" style="border:1px solid #D6D6D6;background:#fff;color:#545252;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Cancelar</button>
+                <button onclick="modalDecisaoEnviarSimples('DEVOLVER')" id="mdec-btn-confirmar-rej" style="background:#C70602;color:#fff;border:0;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Confirmar rejeição</button>
+              </div>
             </div>
-            <div style="display:flex;justify-content:flex-end">
-              <button onclick="modalDecisaoEnviar()" id="mdec-btn-confirmar"
-                style="background:#1E6B3A;color:#fff;border:0;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;opacity:.45;pointer-events:none">
-                Confirmar decisão
+            <!-- Botões principais -->
+            <div id="mdec-botoes-principais" style="display:flex;gap:8px;flex-wrap:wrap">
+              <button onclick="modalDecisaoEnviarSimples('APROVAR')" id="mdec-btn-aprovar"
+                style="flex:1;min-width:120px;border:0;background:#1E6B3A;color:#fff;border-radius:8px;padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">
+                ✓ Aprovar
+              </button>
+              <button onclick="document.getElementById('mdec-rejeitar-form').style.display='block';document.getElementById('mdec-botoes-principais').style.display='none'" id="mdec-btn-devolver"
+                style="flex:1;min-width:120px;border:1.5px solid #C70602;background:#fff;color:#C70602;border-radius:8px;padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">
+                ✕ Rejeitar
               </button>
             </div>
             <div id="mdec-msg" style="display:none;margin-top:8px;font-size:12px;border-radius:6px;padding:8px 12px"></div>
@@ -9564,22 +9556,32 @@ function abrirDossie(item) {
     // Reset do card
     const _d = document.getElementById('mdec-decisao'); if(_d) _d.value='';
     const _bx = document.getElementById('mdec-box-motivo'); if(_bx) _bx.style.display='none';
-    const _cf = document.getElementById('mdec-btn-confirmar'); if(_cf){_cf.style.opacity='.45';_cf.style.pointerEvents='none';_cf.textContent='Confirmar decisão';}
     const _mg = document.getElementById('mdec-msg'); if(_mg) _mg.style.display='none';
     const _mt = document.getElementById('mdec-motivo'); if(_mt) _mt.value='';
     const _er = document.getElementById('mdec-motivo-erro'); if(_er) _er.style.display='none';
-    ['mdec-btn-aprovar','mdec-btn-ressalva','mdec-btn-devolver'].forEach(bid=>{
-      const b=document.getElementById(bid);
-      if(b){b.style.background='#fff';b.style.color='#545252';b.style.borderColor='#D6D6D6';}
-    });
-    ['mdec-box-aprovar','mdec-box-ressalva','mdec-box-devolver'].forEach(bid=>{
-      const b=document.getElementById(bid);
-      if(b){b.style.background='transparent';b.style.borderColor='#D6D6D6';b.textContent='';}
-    });
+    const _rf = document.getElementById('mdec-rejeitar-form'); if(_rf) _rf.style.display='none';
+    const _bp = document.getElementById('mdec-botoes-principais'); if(_bp) _bp.style.display='flex';
+    const _ba = document.getElementById('mdec-btn-aprovar'); if(_ba){_ba.textContent='✓ Aprovar';_ba.style.opacity='1';_ba.style.pointerEvents='auto';}
+    const _bd = document.getElementById('mdec-btn-devolver'); if(_bd){_bd.textContent='✕ Rejeitar';}
   }
 
   document.getElementById('modal-dossie').style.display = 'flex';
   switchModalTab('ciclo', document.querySelector('#modal-tabs .tab-btn'));
+  // Para APROVADOR: oculta abas desnecessárias, mostra só Dados gerais + Dados completos
+  const _r = role();
+  const _isAprovadorSimples = _r === 'APROVADOR' || _r === 'APROVADOR MASTER';
+  const _tabsOcultas = ['tratativa','aprovacao','analise','historico','hist-cliente'];
+  document.querySelectorAll('#modal-tabs .tab-btn').forEach(b => {
+    const onclick = b.getAttribute('onclick') || '';
+    const match = onclick.match(/switchModalTab\(['"]([^'"]+)/);
+    if (!match) return;
+    const tabId = match[1];
+    if (_isAprovadorSimples) {
+      b.style.display = _tabsOcultas.includes(tabId) ? 'none' : '';
+    } else {
+      b.style.display = '';
+    }
+  });
   // Registra visualização em background (não bloqueia abertura)
   if (item.ID_MANIFESTACAO) {
     _apiFetch(`/api/manifestacoes/${encodeURIComponent(item.ID_MANIFESTACAO)}/visualizacao`, 5000, {method:'POST'}).catch(()=>{});
@@ -12423,23 +12425,22 @@ window.navigate = function(page, el) {
     if (erroEl) erroEl.style.display='none';
   };
 
-  window.modalDecisaoEnviar = async function() {
+  window.modalDecisaoEnviarSimples = async function(decisao) {
     const m = window._dossieItem;
     if (!m?.ID_MANIFESTACAO) return;
-    const decisao = document.getElementById('mdec-decisao').value;
-    if (!decisao) return;
-    const opt = _MDEC_OPTS[decisao];
     const motivo = document.getElementById('mdec-motivo')?.value.trim() || '';
     const erroEl = document.getElementById('mdec-motivo-erro');
-    if (opt?.obrigatorio && !motivo) {
+    if (decisao === 'DEVOLVER' && !motivo) {
       if (erroEl) erroEl.style.display='block';
       document.getElementById('mdec-motivo')?.focus();
       return;
     }
     if (erroEl) erroEl.style.display='none';
-    const cf = document.getElementById('mdec-btn-confirmar');
     const msg = document.getElementById('mdec-msg');
-    if (cf) { cf.textContent='Enviando...'; cf.style.opacity='.7'; cf.style.pointerEvents='none'; }
+    const btnAp = document.getElementById('mdec-btn-aprovar');
+    const btnRej = document.getElementById('mdec-btn-confirmar-rej');
+    if (decisao === 'APROVAR' && btnAp) { btnAp.textContent='Aprovando...'; btnAp.style.opacity='.7'; btnAp.style.pointerEvents='none'; }
+    if (decisao === 'DEVOLVER' && btnRej) { btnRej.textContent='Enviando...'; btnRej.style.opacity='.7'; btnRej.style.pointerEvents='none'; }
     if (msg) msg.style.display='none';
     try {
       const tok = sessionStorage.getItem('sac-token');
@@ -12449,23 +12450,23 @@ window.navigate = function(page, el) {
         body:JSON.stringify({ decisao, motivo, orientacao: motivo })
       });
       const data = await r.json().catch(()=>({}));
-      if (msg) {
-        msg.style.display='block';
-        msg.style.background = data.sucesso ? '#E6F2EA' : '#FEF2F2';
-        msg.style.color = data.sucesso ? '#1E6B3A' : '#C70602';
-        if (data.sucesso) {
-          const labels = { APROVAR: '✓ Aprovado.', RESSALVA: '✓ Aprovado com ressalva. SAC notificado.', DEVOLVER: '↩ Devolvido para ajuste.' };
-          msg.textContent = data.mensagem || labels[decisao] || '✓ Concluído.';
-          document.getElementById('modal-decisao-aprovador').style.display='none';
-          if (typeof loadAprovadorV5 === 'function') loadAprovadorV5();
-        } else {
-          msg.textContent = 'Erro: ' + (data.erro || 'Falha ao registrar.');
-          if (cf) { cf.textContent=opt?.label||'Confirmar decisão'; cf.style.opacity='1'; cf.style.pointerEvents='auto'; }
+      if (data.sucesso) {
+        document.getElementById('modal-decisao-aprovador').style.display='none';
+        if (decisao === 'APROVAR') {
+          // Abre direto na aba Ficha
+          const fichaBtn = document.getElementById('modal-tab-btn-ficha');
+          if (fichaBtn) { fichaBtn.style.display=''; switchModalTab('ficha', fichaBtn); }
         }
+        if (typeof loadAprovadorV5 === 'function') loadAprovadorV5();
+      } else {
+        if (msg) { msg.style.display='block'; msg.style.background='#FEF2F2'; msg.style.color='#C70602'; msg.textContent='Erro: '+(data.erro||'Falha ao registrar.'); }
+        if (decisao === 'APROVAR' && btnAp) { btnAp.textContent='✓ Aprovar'; btnAp.style.opacity='1'; btnAp.style.pointerEvents='auto'; }
+        if (decisao === 'DEVOLVER' && btnRej) { btnRej.textContent='Confirmar rejeição'; btnRej.style.opacity='1'; btnRej.style.pointerEvents='auto'; }
       }
     } catch(e) {
       if (msg) { msg.style.display='block'; msg.style.background='#FEF2F2'; msg.style.color='#C70602'; msg.textContent='Erro: '+e.message; }
-      if (cf) { cf.textContent=opt?.label||'Confirmar decisão'; cf.style.opacity='1'; cf.style.pointerEvents='auto'; }
+      if (decisao === 'APROVAR' && btnAp) { btnAp.textContent='✓ Aprovar'; btnAp.style.opacity='1'; btnAp.style.pointerEvents='auto'; }
+      if (decisao === 'DEVOLVER' && btnRej) { btnRej.textContent='Confirmar rejeição'; btnRej.style.opacity='1'; btnRej.style.pointerEvents='auto'; }
     }
   };
   window.abrirRncAprovador=async function(id){try{const d=await json5('/api/rnc/'+encodeURIComponent(id));document.getElementById('modal-rnc-aprovador-v5').style.display='flex';document.getElementById('rnc-modal-title').textContent=d.rnc.ID_RNC||id;document.getElementById('rnc-modal-sub').textContent=`SAC ${d.rnc.PROTOCOLO_SAC||'—'} · ${d.rnc.EMPRESA||'—'} · competência ${d.rnc.COMPETENCIA||d.rnc.SETOR||'—'}`;const r=d.rnc;document.getElementById('rnc-modal-body').innerHTML=`<div class="rnc-block"><div class="rnc-block-title">1. Dados de entrada</div><div class="rnc-grid"><div><b>Empresa</b><div class="rnc-value">${esc5(r.EMPRESA)}</div></div><div><b>Cliente</b><div class="rnc-value">${esc5(r.CLIENTE)}</div></div><div><b>Produto</b><div class="rnc-value">${esc5(r.PRODUTO)}</div></div><div><b>Lote</b><div class="rnc-value">${esc5(r.LOTE)}</div></div><div><b>Quantidade</b><div class="rnc-value">${esc5(r.QUANTIDADE)}</div></div><div><b>Contato</b><div class="rnc-value">${esc5(r.CONTATO)}</div></div></div></div><div class="rnc-block"><div class="rnc-block-title">2. Reclamação original</div><div class="rnc-value">${esc5(r.DESCRICAO_NAO_CONFORMIDADE||r.NAO_CONFORMIDADE)}</div></div><div class="rnc-block"><div class="rnc-block-title">3. Classificação da NC</div><div class="rnc-grid"><div><b>Origem</b><div>${esc5(r.ORIGEM_NC)}</div></div><div><b>Tipo</b><div>${esc5(r.TIPO_NC)}</div></div><div><b>Procedente</b><div>${esc5(r.PROCEDENTE)}</div></div><div><b>Plano de ação</b><div>${esc5(r.PLANO_ACAO)}</div></div></div></div><div class="rnc-block"><div class="rnc-block-title">4. Análise de causa</div><div class="rnc-value">${esc5(r.CAUSA||'Ainda não registrada.')}</div></div><div class="rnc-block"><div class="rnc-block-title">5. Ação de contenção</div><div class="rnc-value">${esc5(r.ACAO_CONTENCAO||'Não registrada.')}</div></div><div class="rnc-block"><div class="rnc-block-title">6. Ação corretiva</div><div class="rnc-grid"><div><b>Ação</b><div class="rnc-value">${esc5(r.ACAO_CORRETIVA)}</div></div><div><b>Responsável</b><div class="rnc-value">${esc5(r.RESPONSAVEL_ACAO)}</div></div><div><b>Setor</b><div class="rnc-value">${esc5(r.SETOR_ACAO)}</div></div><div><b>Prazo</b><div class="rnc-value">${esc5(r.PRAZO_ACAO)}</div></div></div></div><div class="rnc-block"><div class="rnc-block-title">7. Verificação da eficácia</div><div class="rnc-grid"><div><b>Responsável</b><div>${esc5(r.RESPONSAVEL_EFICACIA)}</div></div><div><b>Data</b><div>${esc5(r.DATA_EFICACIA)}</div></div><div><b>Resultado</b><div>${esc5(r.RESULTADO_EFICACIA)}</div></div><div><b>Observação</b><div>${esc5(r.OBSERVACAO_EFICACIA)}</div></div></div></div><div class="rnc-block"><div class="rnc-block-title">8. Histórico</div><div class="timeline">${(d.eventos||[]).map(e=>`<div class="tl-item"><div class="tl-dot"></div><div class="tl-content"><div class="tl-label">${esc5(e.TIPO_EVENTO)}</div><div class="tl-meta">${fmt5(e.DATA_EVENTO)} · ${esc5(e.USUARIO)}</div><div class="tl-meta">${esc5(e.DETALHES)}</div></div></div>`).join('')||'<div class="rnc-value">Sem eventos registrados.</div>'}</div></div><div class="rnc-block"><div class="rnc-block-title">9. Decisão</div><div class="field"><label>Justificativa (obrigatória para devolver ou rejeitar)</label><textarea id="rnc-decisao-obs" placeholder="Informe o motivo da decisão, quando aplicável."></textarea></div></div><div class="decision-bar"><button class="btn btn-primary" onclick="decidirRncV5('${esc5(id)}','APROVAR')">Aprovar</button><button class="btn btn-secondary" onclick="decidirRncV5('${esc5(id)}','DEVOLVER')">Devolver para ajuste</button><button class="btn btn-ghost" onclick="decidirRncV5('${esc5(id)}','REJEITAR')">Rejeitar</button></div>`;await json5('/api/rnc/'+encodeURIComponent(id)+'/visualizacao',{method:'POST',body:JSON.stringify({})});}catch(e){alert(e.message)}};
