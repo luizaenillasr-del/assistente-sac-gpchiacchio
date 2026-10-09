@@ -22365,7 +22365,7 @@ function updateTopbarUser(user) {
   }
 
   async function _apiFetch(url, _unused, opts) {
-    const token = localStorage.getItem('sac_token') || sessionStorage.getItem('sac_token') || '';
+    const token = sessionStorage.getItem('sac-token') || localStorage.getItem('sac-token') || '';
     const res = await fetch(url, { ...opts, headers: { ...(opts&&opts.headers), 'Authorization': 'Bearer ' + token } });
     const data = await res.json();
     if (!res.ok && !data.sucesso) throw new Error(data.erro || 'Erro ' + res.status);
@@ -22374,7 +22374,7 @@ function updateTopbarUser(user) {
 
   function role() {
     try {
-      const u = JSON.parse(localStorage.getItem('sac_usuario') || sessionStorage.getItem('sac_usuario') || '{}');
+      const u = JSON.parse(sessionStorage.getItem('sac-user') || localStorage.getItem('sac-user') || '{}');
       return (u.perfil || u.PERFIL || '').toUpperCase();
     } catch(_) { return ''; }
   }
@@ -22569,7 +22569,7 @@ function updateTopbarUser(user) {
     const setoresEl = document.getElementById('usu-setores-checks');
     if(setoresEl) {
       _apiFetch('/api/setores').then(function(d) {
-        const SETORES = (d.setores||d.itens||[]).map(function(s){return s.NOME||s.nome||s;});
+        const SETORES = (d.setores||d.itens||[]).map(function(s){return s.SETOR||s.NOME||s.nome||'';}).filter(Boolean);
         const atual = (u&&(u.SETOR||u.setor)||'').split(',').map(function(s){return s.trim();});
         setoresEl.innerHTML = SETORES.map(function(s) {
           return '<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" value="' + esc5(s) + '" ' + (atual.includes(s)?'checked':'') + '> ' + esc5(s) + '</label>';
