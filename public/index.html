@@ -11613,6 +11613,7 @@ window.navigate = function(page, el) {
     'ESPECIALISTA':['setor-responsavel','banco-rnc','rca','base-conhecimento','cerebro'],
     // APROVADOR — central do aprovador + RNC consulta + pesquisa de satisfação
     'APROVADOR':['aprovadores','banco-rnc','sugestoes-melhoria'],
+    'APROVADOR MASTER':['aprovadores','banco-rnc','sugestoes-melhoria','visao-geral','acompanhamento','banco-manifestacoes','relatorio-satisfacao'],
     // RCA — central de causa raiz
     'RCA / REPRESENTANTE':['representantes','rca','banco-rnc'],
     // DIRETOR — visão executiva (leitura)
@@ -11622,7 +11623,39 @@ window.navigate = function(page, el) {
     'AUDITOR':['visao-geral','acompanhamento','banco-manifestacoes','banco-rnc','relatorio-satisfacao','auditoria','painel-maquina'],
   };
   function applyRoleUI(){
-    const r=role();const list=allowed[r]||[];
+    const r=role();
+    const u=sess();
+    // Se o usuário tem permissoes_custom, usa elas para calcular as páginas visíveis
+    // combinando com o conjunto base do perfil (union)
+    let list=allowed[r]||[];
+    if(Array.isArray(u?.permissoes_custom)&&u.permissoes_custom.length){
+      // permissoes_custom são chaves de atividades (ex: 'manifestacoes.criar'), não páginas
+      // mas também podem incluir nomes de página para acesso direto
+      // Mantém o conjunto base do perfil e adiciona páginas extras conforme custom
+      const paginasPorPermissao={
+        'manifestacoes.criar':['nova-manifestacao'],
+        'manifestacoes.editar':['banco-manifestacoes','acompanhamento'],
+        'manifestacoes.aprovar':['aprovadores'],
+        'rnc.visualizar':['banco-rnc'],
+        'rnc.editar':['banco-rnc'],
+        'relatorios.visualizar':['visao-geral','relatorio-satisfacao','painel-maquina'],
+        'usuarios.visualizar':['usuarios'],
+        'usuarios.editar':['usuarios'],
+        'base-conhecimento.visualizar':['base-conhecimento','cerebro'],
+        'auditoria.visualizar':['auditoria'],
+        'sugestoes.visualizar':['sugestoes-melhoria'],
+        'biblioteca.visualizar':['biblioteca-fichas'],
+        'setores.visualizar':['setores'],
+        'rca.visualizar':['rca'],
+        'similares.visualizar':['similares'],
+        'prazos.visualizar':['prazos-regionais'],
+      };
+      const extra=new Set(list);
+      u.permissoes_custom.forEach(p=>{
+        (paginasPorPermissao[p]||[]).forEach(pg=>extra.add(pg));
+      });
+      list=Array.from(extra);
+    }
     document.querySelectorAll('.sidebar-item').forEach(el=>{
       const m=(el.getAttribute('onclick')||'').match(/navigate\(['"]([^'"]+)/); const page=el.dataset.v5Page||m?.[1]||'';
       el.style.display=list.includes(page)?'flex':'none';
@@ -11631,7 +11664,7 @@ window.navigate = function(page, el) {
     const podeEditar=['MASTER','GESTOR SAC','ANALISTA SAC','ATENDENTE SAC'].includes(r);
     const podeCriar=['MASTER','GESTOR SAC','ANALISTA SAC','ATENDENTE SAC'].includes(r);
     const podeConfig=['MASTER'].includes(r);
-    const podeAprovar=['MASTER','APROVADOR'].includes(r);
+    const podeAprovar=['MASTER','APROVADOR','APROVADOR MASTER'].includes(r);
     document.querySelectorAll('[data-perm="criar"]').forEach(el=>el.style.display=podeCriar?'':'none');
     document.querySelectorAll('[data-perm="editar"]').forEach(el=>el.style.display=podeEditar?'':'none');
     document.querySelectorAll('[data-perm="config"]').forEach(el=>el.style.display=podeConfig?'':'none');
@@ -11648,7 +11681,7 @@ window.navigate = function(page, el) {
     });
     document.querySelectorAll('.page').forEach(p=>{const id=p.id.replace('page-','');if(id==='representantes'&&r==='RCA / REPRESENTANTE')p.classList.remove('active')});
     if(r==='RCA / REPRESENTANTE') navigate('representantes',document.querySelector('[data-v5-page="representantes"]'));
-    if(r==='APROVADOR') navigate('aprovadores',document.querySelector('[onclick*=aprovadores]'));
+    if(r==='APROVADOR'||r==='APROVADOR MASTER') navigate('aprovadores',document.querySelector('[onclick*=aprovadores]'));
     if(r==='SETOR RESPONSÁVEL'||r==='ESPECIALISTA') navigate('setor-responsavel',document.querySelector('[onclick*=setor-responsavel]')||document.querySelector('[onclick*=banco-rnc]'));
     if(r==='DIRETOR'||r==='VISUALIZADOR') navigate('visao-geral',document.querySelector('[onclick*=visao-geral]'));
     if(r==='ATENDENTE SAC') navigate('central-sac',document.querySelector('[onclick*=central-sac]'));
