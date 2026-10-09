@@ -6333,6 +6333,22 @@
       }
       // Textos mês a mês
       for(const {k} of meses){
+        const tok2=sessionStorage.getItem('sac-token');
+        for(const [sfx,nome] of [['at','atendimento'],['pr','prazo_entrega'],['qu','qualidade'],['re','recomendacao']]){
+          const inp=document.getElementById('rrm-mes-'+sfx+'-'+k);
+          if(!inp||inp.value==='')continue;
+          const v=parseFloat(inp.value);
+          if(isNaN(v))continue;
+          const hoje=new Date().toISOString().split('T')[0];
+          const [ky,km]=k.split('-');
+          const data_ref=ky+'-'+km+'-01';
+          const rr=await fetch('/api/pesquisas/resposta-manual',{method:'POST',headers:{Authorization:'Bearer '+tok2,'Content-Type':'application/json'},body:JSON.stringify({empresa,nome_cliente:'(manual)',data_referencia:data_ref,[nome]:String(v),historico:data_ref<hoje})});
+          const jj=await rr.json().catch(()=>({}));
+          if(!rr.ok&&jj.sucesso===false){throw new Error(jj.erro||'Erro ao salvar nota '+sfx+' em '+k+'.');}
+        }
+      }
+      // Textos mês a mês
+      for(const {k} of meses){
         const ta=document.getElementById('rrm-mes-'+k);
         if(!ta)continue;
         const campo='mes_'+k.replace('-','_');
