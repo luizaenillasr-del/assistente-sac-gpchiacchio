@@ -827,21 +827,27 @@ const _STATUS_CACHE_TTL = 2 * 60 * 1000;
 async function verificarStatusUsuario(login) {
   const agora = Date.now();
   const cached = _statusCache.get(login);
-  if (cached && (agora - cached.ts) < _STATUS_CACHE_TTL) return cached.status;
+  if (cached && (agora - cached.ts) < _STATUS_CACHE_TTL) return cached;
   try {
     const rows = await lerAba('USUARIOS', 1000);
     const u = rows.find(r => normalizarTexto(r.USUARIO||'') === normalizarTexto(login));
     const status = u ? (u.STATUS || 'ATIVO').toUpperCase() : 'INATIVO';
-    _statusCache.set(login, { status, ts: agora });
+    let permissoes_granted = null, permissoes_blocked = null;
+    if (u) {
+      try { if (u.PERMISSOES_GRANTED) permissoes_granted = JSON.parse(u.PERMISSOES_GRANTED); } catch(_) {}
+      try { if (u.PERMISSOES_BLOCKED) permissoes_blocked = JSON.parse(u.PERMISSOES_BLOCKED); } catch(_) {}
+    }
+    const entry = { status, ts: agora, permissoes_granted, permissoes_blocked };
+    _statusCache.set(login, entry);
     if (_statusCache.size > 2000) {
       for (const [k, v] of _statusCache) {
         if (agora - v.ts >= _STATUS_CACHE_TTL) _statusCache.delete(k);
       }
     }
-    return status;
+    return entry;
   } catch(e) {
     // Falha ao verificar: preservar sessão (fail-open) para evitar bloqueio por erro de Sheets
-    return 'ATIVO';
+    return { status: 'ATIVO', ts: agora, permissoes_granted: null, permissoes_blocked: null };
   }
 }
 
@@ -865,15 +871,21 @@ app.use('/api', async (req,res,next)=>{
   const payload=verificarToken(token);
   if(!payload) return res.status(401).json({sucesso:false,erro:'Sessão inválida ou expirada.'});
   // Item10: verificar se usuário ainda está ativo (detecta desativação pós-login)
-  const status = await verificarStatusUsuario(payload.usuario);
-  if (status === 'INATIVO') {
+  const infoAtual = await verificarStatusUsuario(payload.usuario);
+  if (infoAtual.status === 'INATIVO') {
     _statusCache.delete(payload.usuario); // forçar re-verificação na próxima vez
     return res.status(401).json({sucesso:false,erro:'Usuário inativo. Sessão encerrada.'});
   }
   if (!verificarRateLimitAuth(payload.usuario)) {
     return res.status(429).json({ sucesso: false, erro: 'Muitas requisições. Tente novamente em instantes.' });
   }
-  req.user=payload;
+  // Sobrescreve permissões do JWT com as versões frescas do Sheets (cache 2 min)
+  // Isso permite que mudanças de permissão pelo MASTER sejam refletidas sem re-login
+  req.user = {
+    ...payload,
+    permissoes_granted: infoAtual.permissoes_granted ?? payload.permissoes_granted,
+    permissoes_blocked: infoAtual.permissoes_blocked ?? payload.permissoes_blocked,
+  };
   next();
 });
 
@@ -4561,6 +4573,10 @@ app.post('/api/usuarios/:id/permissoes', requerPermissao('usuarios.gerenciar'), 
       DATA_ULTIMA_ALTERACAO: new Date().toISOString(),
       ALTERADO_POR: req.user.usuario,
     }, ['ID_USUARIO','USUARIO','EMAIL']);
+
+    // Invalida cache de status para o usuário afetado → próxima requisição lerá permissões frescas
+    _statusCache.delete(normalizarTexto(alvo.USUARIO||alvo.EMAIL||''));
+    _statusCache.delete(alvo.USUARIO||alvo.EMAIL||'');
 
     try {
       await registrarAuditoria(req.user.usuario, 'PERMISSOES_ALTERADAS', id, 'USUARIOS', null,
