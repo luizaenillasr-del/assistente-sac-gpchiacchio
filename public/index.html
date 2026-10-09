@@ -674,7 +674,6 @@
             <div id="modal-proximos-passos-content" style="font-size:13px;color:#1E40AF;line-height:1.65"></div>
           </div>
 
-          <!-- Seção de decisão do Aprovador — exibida quando status=AGUARDANDO_APROVACAO -->
           <div id="modal-decisao-aprovador" style="display:none;margin-top:14px;border-top:2px solid #F3CFCF;padding-top:14px">
             <div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:#A80502;margin-bottom:10px">SUA DECISÃO · APROVAÇÃO</div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
@@ -691,7 +690,7 @@
             <div id="mdec-box-motivo" style="display:none;margin-bottom:12px">
               <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:#3A3939">
                 Motivo da devolução <span style="font-weight:400;color:#929090">(obrigatório)</span>
-                <textarea id="mdec-motivo" class="form-textarea" style="min-height:64px" placeholder="Descreva o que precisa ser ajustado..."></textarea>
+                <textarea id="mdec-motivo" style="min-height:64px;border:1px solid #D6D6D6;border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit;resize:vertical" placeholder="Descreva o que precisa ser ajustado..."></textarea>
               </label>
               <div id="mdec-motivo-erro" style="display:none;font-size:11px;color:#C70602;margin-top:3px">Informe o motivo da devolução.</div>
             </div>
@@ -3421,16 +3420,11 @@
             <div class="field"><label>Perfil *</label>
               <select id="cfg-perfil">
                 <option value="">Selecione o perfil</option>
-                <option value="MASTER">MASTER — Administrador global</option>
-                <option value="APROVADOR MASTER">APROVADOR MASTER — Aprovação global</option>
-                <option value="GESTOR SAC">GESTOR SAC — Gestão operacional</option>
-                <option value="ANALISTA SAC">ANALISTA SAC — Operação de manifestações</option>
-                <option value="ATENDENTE SAC">ATENDENTE SAC — Atendimento</option>
-                <option value="APROVADOR">APROVADOR — Aprovação setorial/empresa</option>
-                <option value="SETOR RESPONSÁVEL">SETOR RESPONSÁVEL — Execução setorial</option>
-                <option value="RCA / REPRESENTANTE">REPRESENTANTE — Acesso representante</option>
-                <option value="GESTOR/DIRETORIA">GESTOR/DIRETORIA — Acompanhamento gerencial</option>
-                <option value="VISUALIZADOR">VISUALIZADOR — Somente leitura</option>
+                <option value="GESTOR_SAC">GESTOR_SAC — Gestão operacional SAC</option>
+                <option value="ANALISTA_SAC">ANALISTA_SAC — Operação de manifestações</option>
+                <option value="REPRESENTANTE">REPRESENTANTE — Acesso ao setor atribuído</option>
+                <option value="APROVADOR">APROVADOR — Fila de aprovação</option>
+                <option value="CONSULTA">CONSULTA — Somente visualização</option>
                 <option value="AUDITOR">AUDITOR — Auditoria e relatórios</option>
               </select>
             </div>
@@ -3501,52 +3495,18 @@
         <div id="edit-perm-error" style="display:none;background:#FEE2E2;border-radius:8px;padding:10px;margin-bottom:14px;font-size:13px;color:#991B1B"></div>
         <div class="form-section"><div class="form-section-title">Perfil e Empresa</div>
           <div class="field-grid">
-            <div class="field"><label>Perfil</label>
-              <select id="edit-perm-perfil" onchange="editPermPerfilChange()">
-                <option value="">Manter atual</option>
-                <option value="MASTER">MASTER — Administrador global</option>
-                <option value="APROVADOR MASTER">APROVADOR MASTER — Aprovação global</option>
-                <option value="GESTOR SAC">GESTOR SAC — Gestão operacional</option>
-                <option value="ANALISTA SAC">ANALISTA SAC — Operação de manifestações</option>
-                <option value="ATENDENTE SAC">ATENDENTE SAC — Atendimento</option>
-                <option value="APROVADOR">APROVADOR — Aprovação setorial/empresa</option>
-                <option value="SETOR RESPONSÁVEL">SETOR RESPONSÁVEL — Execução setorial</option>
-                <option value="RCA / REPRESENTANTE">REPRESENTANTE — Acesso representante</option>
-                <option value="GESTOR/DIRETORIA">GESTOR/DIRETORIA — Acompanhamento gerencial</option>
-                <option value="VISUALIZADOR">VISUALIZADOR — Somente leitura</option>
-                <option value="AUDITOR">AUDITOR — Auditoria e relatórios</option>
-              </select>
-            </div>
-            <div class="field"><label>Empresa principal</label>
-              <select id="edit-perm-empresa">
-                <option value="">Manter atual</option>
-                <option value="Grupo Chiacchio">Grupo Chiacchio (acesso global)</option>
-                <option value="CHIACCHIO EMBALAGENS">Chiacchio Embalagens</option>
-                <option value="PLASCHIO">Plaschio</option>
-                <option value="TUBAHIA">Tubahia / Cesbap</option>
-              </select>
-            </div>
-            <div class="field"><label>Setor principal</label><input id="edit-perm-setor" placeholder="Ex: Qualidade, Comercial, SAC"></div>
+            <div class="field"><label>Perfil</label><select id="edit-perm-perfil"><option value="">Manter atual</option><option value="MASTER">MASTER</option><option value="GESTOR_SAC">GESTOR_SAC</option><option value="ANALISTA_SAC">ANALISTA_SAC</option><option value="REPRESENTANTE">REPRESENTANTE</option><option value="APROVADOR">APROVADOR</option><option value="CONSULTA">CONSULTA</option><option value="AUDITOR">AUDITOR</option></select></div>
+            <div class="field"><label>Empresa</label><select id="edit-perm-empresa"><option value="">Manter atual</option><option value="TODAS">Todas as empresas</option><option value="CHIACCHIO EMBALAGENS">Chiacchio Embalagens</option><option value="PLASCHIO">Plaschio</option><option value="TUBAHIA">Cesbap</option></select></div>
+            <div class="field"><label>Setor</label><input id="edit-perm-setor" placeholder="Setor"></div>
             <div class="field"><label>E-mail</label><input id="edit-perm-email" type="email" placeholder="usuario@empresa.com.br"></div>
           </div>
         </div>
-        <!-- Escopo de aprovação (visível apenas para APROVADOR) -->
-        <div id="edit-perm-escopo-aprovador" style="display:none" class="form-section">
-          <div class="form-section-title">Escopo de aprovação</div>
-          <div style="font-size:12px;color:var(--gray-500);margin-bottom:10px">Defina quais empresas e setores este aprovador pode aprovar. Deixe em branco para usar apenas a empresa/setor principal.</div>
-          <div class="field-grid">
-            <div class="field" style="grid-column:1/-1"><label>Empresas autorizadas <span style="font-weight:400;color:var(--gray-400)">(separadas por vírgula)</span></label>
-              <input id="edit-perm-empresas-auth" placeholder="Ex: CHIACCHIO EMBALAGENS, PLASCHIO">
-            </div>
-            <div class="field" style="grid-column:1/-1"><label>Setores autorizados <span style="font-weight:400;color:var(--gray-400)">(separados por vírgula)</span></label>
-              <input id="edit-perm-setores-auth" placeholder="Ex: Qualidade, Produção, Comercial">
-            </div>
-          </div>
+        <div class="form-section"><div class="form-section-title">Permissões por Módulo</div>
+          <div style="font-size:11px;color:var(--gray-500);margin-bottom:12px">0=Sem acesso · 1=Consulta · 2=Operação · 3=Aprovação · 4=Gestão</div>
+          <div id="edit-modulos-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"></div>
         </div>
-        <div class="form-section">
-          <div class="form-section-title">Permissões adicionais</div>
-          <div style="font-size:11px;color:var(--gray-500);margin-bottom:12px">Marque permissões extras além do padrão do perfil. O Master pode conceder ou revogar individualmente.</div>
-          <div id="edit-perm-checkboxes" style="display:grid;grid-template-columns:1fr 1fr;gap:4px 16px"></div>
+        <div class="form-section"><div class="form-section-title">Competências de Aprovação</div>
+          <div id="edit-competencias-grid" style="display:flex;flex-wrap:wrap;gap:8px"></div>
         </div>
         <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:18px">
           <button class="btn btn-secondary" onclick="document.getElementById('modal-edit-permissoes').style.display='none'">Cancelar</button>
@@ -6699,6 +6659,20 @@
 .af-toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#1F1F1F;color:#fff;padding:11px 16px;border-radius:8px;font-size:13px;z-index:400;max-width:92vw;display:none}
 .af-toast.on{display:block}
 @media (max-width:640px){.af-main{padding:16px 14px 48px}.af-dr-b{padding:14px}.af-title{font-size:21px}}
+/* Abas de status */
+.af-abas{display:flex;gap:6px;flex-wrap:wrap;border-bottom:2px solid #E4E4E4;padding-bottom:0;margin-bottom:2px}
+.af-aba{border:0;background:none;padding:10px 16px 11px;cursor:pointer;font-size:13px;font-weight:600;color:#666464;border-bottom:3px solid transparent;margin-bottom:-2px;border-radius:6px 6px 0 0;transition:color .15s}
+.af-aba:hover{color:#1F1F1F;background:#F4F4F4}
+.af-aba.ativa{color:#C70602;border-bottom-color:#C70602}
+.af-aba-n{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:18px;padding:0 5px;border-radius:99px;font-size:10.5px;font-weight:700;margin-left:5px;background:#E4E4E4;color:#545252}
+.af-aba.ativa .af-aba-n{background:#FDECEC;color:#A80502}
+.af-st-andamento{background:#FBF0D9;color:#7A4C00}
+.af-st-arquivada{background:#EEEEEE;color:#545252}
+.af-pill-arq{display:inline-flex;align-items:center;gap:4px;background:#E4E4E4;color:#545252;padding:2px 8px;border-radius:99px;font-size:10.5px;font-weight:700}
+/* SLA badge na tabela */
+.af-sla-ok{color:#1E6B3A;font-size:11px;font-weight:600}
+.af-sla-alerta{color:#92400E;font-size:11px;font-weight:600}
+.af-sla-vencido{color:#A80502;font-size:11px;font-weight:600}
 </style>
 <!-- ===== ARQUIVO DE FICHAS: estilos — fim ===== -->
 
@@ -6721,10 +6695,20 @@
     <!-- AVISO -->
     <div class="af-aviso">Os números abaixo incluem as fichas <strong>criadas no sistema</strong> e as <strong>fichas históricas importadas</strong> (PDF ou DOCX de antes da ferramenta). Cada ficha importada fica arquivada pela empresa, mês e ano da reclamação original, não pela data da importação.</div>
 
+    <!-- ABAS DE STATUS -->
+    <div class="af-abas" id="bib-abas">
+      <button class="af-aba ativa" onclick="afAbaClick('',this)">Todas <span class="af-aba-n" id="bib-aba-n-todas">—</span></button>
+      <button class="af-aba" onclick="afAbaClick('ABERTA',this)">Abertas <span class="af-aba-n" id="bib-aba-n-aberta">—</span></button>
+      <button class="af-aba" onclick="afAbaClick('EM_ANDAMENTO',this)">Em andamento <span class="af-aba-n" id="bib-aba-n-andamento">—</span></button>
+      <button class="af-aba" onclick="afAbaClick('CONCLUIDA',this)">Concluídas <span class="af-aba-n" id="bib-aba-n-concluida">—</span></button>
+      <button class="af-aba" onclick="afAbaClick('REINCIDENTE',this)">Reincidentes <span class="af-aba-n" id="bib-aba-n-reincidente">—</span></button>
+      <button class="af-aba" onclick="afAbaClick('ARQUIVADA',this)" style="margin-left:auto">📦 Arquivadas <span class="af-aba-n" id="bib-aba-n-arquivada">—</span></button>
+    </div>
+
     <!-- FILTROS -->
     <div class="af-filtros">
       <label class="af-lbl" style="flex:1 1 260px">Buscar
-        <input id="bib-f-q" class="af-input" type="text" placeholder="Protocolo, cliente, CNPJ, motivo, colaborador…" oninput="afBuscaDigitou()" onkeydown="if(event.key==='Enter')afBuscaAgora()">
+        <input id="bib-f-q" class="af-input" type="text" placeholder="Protocolo, cliente, CNPJ, motivo, setor…" oninput="afBuscaDigitou()" onkeydown="if(event.key==='Enter')afBuscaAgora()">
       </label>
       <label class="af-lbl">Ano
         <select id="bib-f-ano" class="af-select" onchange="afFiltroMudou()"><option value="">Todos</option></select>
@@ -6741,6 +6725,9 @@
       <label class="af-lbl">Empresa
         <select id="bib-f-empresa" class="af-select" onchange="afFiltroMudou()"><option value="">Todas</option></select>
       </label>
+      <label class="af-lbl">Setor
+        <select id="bib-f-setor" class="af-select" onchange="afFiltroMudou()"><option value="">Todos</option></select>
+      </label>
       <label class="af-lbl">Tipo
         <select id="bib-f-tipo" class="af-select" onchange="afFiltroMudou()">
           <option value="">Todos</option>
@@ -6753,11 +6740,17 @@
           <option value="">Todas</option><option value="SISTEMA">Criada no sistema</option><option value="IMPORTADA">Histórica importada</option>
         </select>
       </label>
-      <label class="af-lbl">Status
-        <select id="bib-f-status" class="af-select" onchange="afFiltroMudou()">
+      <label class="af-lbl">SLA
+        <select id="bib-f-sla" class="af-select" onchange="afFiltroMudou()">
           <option value="">Todos</option>
-          <option value="ABERTA">Aberta</option><option value="EM_TRATATIVA">Em tratativa</option><option value="CONCLUIDA">Concluída</option>
+          <option value="VENCIDO">SLA vencido</option><option value="OK">Dentro do prazo</option>
         </select>
+      </label>
+      <label class="af-lbl">Abertura de
+        <input id="bib-f-abertura-ini" class="af-input" type="date" style="min-width:130px" onchange="afFiltroMudou()">
+      </label>
+      <label class="af-lbl">até
+        <input id="bib-f-abertura-fim" class="af-input" type="date" style="min-width:130px" onchange="afFiltroMudou()">
       </label>
       <button class="af-limpar" onclick="limparFiltrosBib()">× Limpar</button>
     </div>
@@ -6793,7 +6786,7 @@
         </div>
         <div style="overflow-x:auto">
           <table class="af-tbl" id="bib-table">
-            <thead><tr><th>Protocolo</th><th>Data</th><th>Empresa</th><th>Cliente</th><th>Tipo</th><th>Motivo</th><th>Origem</th><th>Evidências</th><th>Status</th></tr></thead>
+            <thead><tr><th>Protocolo</th><th>Data</th><th>Empresa</th><th>Cliente</th><th>Tipo</th><th>Motivo</th><th>Setor</th><th>SLA</th><th>Origem</th><th>Status</th><th></th></tr></thead>
             <tbody id="bib-tbody"></tbody>
           </table>
         </div>
@@ -7054,8 +7047,21 @@ function navigate(page, el) {
 const AF_MN = ['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 const AF_MS = ['', 'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 const AF_ORIGEM = { SISTEMA: ['Criada no sistema', 'af-or-sistema'], IMPORTADA: ['Histórica importada', 'af-or-hist'] };
-const AF_STATUS = { ABERTA: ['Aberta', 'af-st-aberta'], EM_TRATATIVA: ['Em tratativa', 'af-st-trat'], CONCLUIDA: ['Concluída', 'af-st-conc'] };
-const AF_FILTROS = [['q', 'bib-f-q'], ['ano', 'bib-f-ano'], ['mes', 'bib-f-mes'], ['empresa', 'bib-f-empresa'], ['tipo', 'bib-f-tipo'], ['origem', 'bib-f-origem'], ['status', 'bib-f-status']];
+const AF_STATUS = {
+  ABERTA:       ['Aberta',         'af-st-aberta'],
+  EM_TRATATIVA: ['Em andamento',   'af-st-andamento'],
+  EM_ANDAMENTO: ['Em andamento',   'af-st-andamento'],
+  CONCLUIDA:    ['Concluída',      'af-st-conc'],
+  ARQUIVADA:    ['Arquivada',      'af-st-arquivada'],
+};
+const AF_FILTROS = [
+  ['q','bib-f-q'],['ano','bib-f-ano'],['mes','bib-f-mes'],
+  ['empresa','bib-f-empresa'],['setor','bib-f-setor'],
+  ['tipo','bib-f-tipo'],['origem','bib-f-origem'],
+  ['sla_status','bib-f-sla'],
+  ['data_abertura_ini','bib-f-abertura-ini'],['data_abertura_fim','bib-f-abertura-fim'],
+];
+let _bibAbaAtiva = ''; // ''|'ABERTA'|'EM_ANDAMENTO'|'CONCLUIDA'|'REINCIDENTE'|'ARQUIVADA'
 
 let _bibPage = 1;
 let _bibTotalPages = 1;
@@ -7085,6 +7091,21 @@ function afToast(msg) {
 function afFiltros() {
   const o = {};
   AF_FILTROS.forEach(([k, id]) => { o[k] = (_afEl(id)?.value || '').trim(); });
+  // Aba ativa define status e arquivado
+  if (_bibAbaAtiva === 'ARQUIVADA') {
+    o.arquivado = 'SIM';
+    o.status = '';
+    o.extra = '';
+  } else if (_bibAbaAtiva === 'REINCIDENTE') {
+    o.arquivado = 'NAO';
+    o.extra = 'reincidente';
+    o.status = '';
+  } else if (_bibAbaAtiva) {
+    o.status = _bibAbaAtiva;
+    o.arquivado = 'NAO';
+  } else {
+    o.arquivado = 'NAO';
+  }
   return o;
 }
 
@@ -7107,6 +7128,15 @@ function afSetSelect(id, v) {
 
 function bibToggleFiltroExtra(tipo) {
   _bibFiltroExtra = _bibFiltroExtra === tipo ? '' : tipo;
+  loadBiblioteca(true);
+}
+
+function afAbaClick(aba, btn) {
+  _bibAbaAtiva = aba;
+  _bibFiltroExtra = '';
+  document.querySelectorAll('.af-aba').forEach(b => b.classList.remove('ativa'));
+  if (btn) btn.classList.add('ativa');
+  closeBibPainel();
   loadBiblioteca(true);
 }
 
@@ -7211,7 +7241,7 @@ function afRenderOpcoes(s) {
 function afRenderKpis(s) {
   const wrap = _afEl('bib-kpis'); if (!wrap) return;
   const agora = new Date();
-  const total = s ? s.totalFichas : 0;
+  const total = s ? s.totalAtivas ?? s.totalFichas : 0;
   const K = (l, v, d, cor, extra, red, estatico) => {
     const on = extra && _bibFiltroExtra === extra;
     const cls = 'af-kpi' + (red ? ' red' : '') + (on ? ' ativo' : '') + (estatico ? ' static' : '');
@@ -7219,13 +7249,32 @@ function afRenderKpis(s) {
     return `<button class="${cls}"${clk}><span class="af-kpi-l">${l}</span><span class="af-kpi-v" style="color:${cor}">${s ? _afNum(v) : '—'}</span><span class="af-kpi-d">${escHtml(s ? d : '')}</span></button>`;
   };
   wrap.innerHTML = [
-    K('TOTAL GERAL', s?.totalFichas, s ? `${_afNum(s.historicas)} históricas · ${_afNum(s.sistema)} no sistema` : '', '#1F1F1F', '', false, true),
-    K('ESTE MÊS', s?.fichasDoMes, `${AF_MN[agora.getMonth() + 1].toLowerCase()}/${agora.getFullYear()}`, '#24508F', '', false, true),
-    K('ESTE ANO', s?.fichasDoAno, String(agora.getFullYear()), '#5B3FA0', '', false, true),
-    K('COM EVIDÊNCIAS', s?.comEvidencias, `${_afPct(s?.comEvidencias, total)} documentadas`, '#0E7C86', 'evidencia'),
-    K('COM TRATATIVA', s?.comTratativa, `${_afPct(s?.comTratativa, total)} concluídas`, '#1E6B3A', 'tratativa'),
+    K('TOTAL ATIVAS', s?.totalAtivas ?? s?.totalFichas, s ? `${_afNum(s.historicas)} históricas · ${_afNum(s.sistema)} no sistema` : '', '#1F1F1F', '', false, true),
+    K('ABERTAS', s?.abertas, 'aguardando início do tratamento', '#24508F', '', false, true),
+    K('EM ANDAMENTO', s?.emAndamento, 'em análise, tratativa ou aprovação', '#7A4C00', '', false, true),
+    K('CONCLUÍDAS', s?.concluidas, `${_afPct(s?.concluidas, total)} do total ativo`, '#1E6B3A', '', false, true),
+    K('SLA VENCIDO', s?.slaVencido, 'fichas ativas com prazo excedido', '#C70602', 'sla_vencido', true),
     K('REINCIDENTES', s?.reincidentes, `${_afNum(s?.reincidentesFichas)} fichas · clientes com 2+ reclamações em 12 meses`, '#C70602', 'reincidente', true),
   ].join('');
+
+  // Atualizar contadores das abas
+  const setN = (id, v) => { const el = _afEl(id); if (el) el.textContent = s ? _afNum(v) : '—'; };
+  setN('bib-aba-n-todas',      (s?.totalAtivas ?? s?.totalFichas) ?? 0);
+  setN('bib-aba-n-aberta',     s?.abertas ?? 0);
+  setN('bib-aba-n-andamento',  s?.emAndamento ?? 0);
+  setN('bib-aba-n-concluida',  s?.concluidas ?? 0);
+  setN('bib-aba-n-reincidente',s?.reincidentes ?? 0);
+  setN('bib-aba-n-arquivada',  s?.arquivadas ?? 0);
+
+  // Popular select de setores com dados reais
+  if (s?.setores?.length) {
+    const sel = _afEl('bib-f-setor');
+    if (sel) {
+      const va = sel.value;
+      sel.innerHTML = '<option value="">Todos</option>' + s.setores.map(st => `<option value="${escHtml(st)}">${escHtml(st)}</option>`).join('');
+      if (va) sel.value = va;
+    }
+  }
 }
 
 function afRenderPorEmpresa(det) {
@@ -7323,6 +7372,8 @@ function afTreeClick(i) {
 function limparFiltrosBib() {
   AF_FILTROS.forEach(([, id]) => { const el = _afEl(id); if (el) { el.value = ''; el.classList.remove('ativo'); } });
   _bibFiltroExtra = '';
+  _bibAbaAtiva = '';
+  document.querySelectorAll('.af-aba').forEach((b,i) => b.classList.toggle('ativa', i === 0));
   closeBibPainel();
   loadBiblioteca(true);
 }
@@ -7348,22 +7399,40 @@ function afPill(mapa, chave, lg) {
 function _bibStatusBadge(st) { return afPill(AF_STATUS, st); }
 function _bibOrigemBadge(o) { return afPill(AF_ORIGEM, o); }
 
+function _afSlaHtml(f) {
+  if (f.STATUS === 'CONCLUIDA' || f.ARQUIVADO === 'SIM' || !f.DATA_ABERTURA_ISO || !f.SLA_HORAS) return '<span style="color:#929090;font-size:11px">—</span>';
+  const prazoMs = new Date(f.DATA_ABERTURA_ISO).getTime() + Number(f.SLA_HORAS) * 3600000;
+  const restH = Math.round((prazoMs - Date.now()) / 3600000);
+  if (restH < 0) return `<span class="af-sla-vencido">⏰ ${Math.abs(restH)}h atraso</span>`;
+  if (restH <= 24) return `<span class="af-sla-alerta">⚠ ${restH}h restam</span>`;
+  return `<span class="af-sla-ok">✓ ${restH}h</span>`;
+}
+
 function afRenderTabela(fichas) {
   const ativa = _afFichaAtual?.ficha?.PROTOCOLO;
   _afEl('bib-tbody').innerHTML = fichas.map((f, i) => {
-    const ev = parseInt(f.TOTAL_EVIDENCIAS || 0);
-    const re = f.REINCIDENTE ? `<span style="font-size:10.5px;font-weight:700;color:#A80502">⚠ reincidente · ${f.REINCIDENTE_N} fichas em 12 meses</span>` : '';
+    const re = f.REINCIDENTE ? `<span style="font-size:10.5px;font-weight:700;color:#A80502;display:block">⚠ reincidente</span>` : '';
+    const arqPill = f.ARQUIVADO === 'SIM' ? `<span class="af-pill-arq">📦 Arquivada</span>` : '';
+    const statusHtml = f.ARQUIVADO === 'SIM'
+      ? `<span class="af-pill af-st-arquivada">Arquivada</span>`
+      : `${_bibStatusBadge(f.STATUS)}${arqPill}`;
     return `<tr class="af-row${ativa && ativa === f.PROTOCOLO ? ' ativa' : ''}" onclick="afAbrirFicha(${i})">
       <td style="font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums">${escHtml(f.PROTOCOLO || f.ID_MANIFESTACAO || '—')}</td>
       <td style="white-space:nowrap;color:#545252">${escHtml(afFmtData(f))}</td>
       <td>${escHtml(f.EMPRESA || '—')}</td>
-      <td style="max-width:220px"><div style="display:flex;flex-direction:column;gap:2px"><span>${escHtml(f.NOME_CLIENTE || '—')}</span>${re}</div></td>
+      <td style="max-width:200px"><div style="display:flex;flex-direction:column;gap:2px"><span>${escHtml(f.NOME_CLIENTE || '—')}</span>${re}</div></td>
       <td>${escHtml(f.TIPO_MANIFESTACAO || '—')}</td>
-      <td style="max-width:200px">${escHtml(f.MOTIVO || '—')}</td>
+      <td style="max-width:160px">${escHtml((f.MOTIVO || '—').slice(0,60))}</td>
+      <td style="white-space:nowrap;color:#545252;font-size:12px">${escHtml(f.SETOR || '—')}</td>
+      <td>${_afSlaHtml(f)}</td>
       <td>${_bibOrigemBadge(f.ORIGEM)}</td>
-      <td style="white-space:nowrap;color:#545252">${ev ? ev + (ev > 1 ? ' arquivos' : ' arquivo') : '—'}</td>
-      <td>${_bibStatusBadge(f.STATUS)}</td>
-      <td onclick="event.stopPropagation()"><button class="btn btn-secondary" style="padding:3px 8px;font-size:11px" onclick="afEditarFicha(${i})">✎ Editar</button></td>
+      <td>${statusHtml}</td>
+      <td onclick="event.stopPropagation()" style="white-space:nowrap">
+        <button class="btn btn-secondary" style="padding:3px 8px;font-size:11px;margin-right:3px" onclick="afEditarFicha(${i})">✎</button>
+        ${f.ARQUIVADO === 'SIM'
+          ? `<button class="af-btn-sm" title="Desarquivar" onclick="afDesarquivarFicha(${i})">↩ Restaurar</button>`
+          : `<button class="af-btn-sm" title="Arquivar" onclick="afArquivarFicha(${i})">📦</button>`}
+      </td>
     </tr>`;
   }).join('');
 }
@@ -7478,11 +7547,14 @@ function afRenderFicha(f, evs, hist) {
     <div class="af-box" style="display:flex;flex-direction:column;gap:10px"><span style="font-weight:700;font-size:14px">Documentos e evidências</span>${docs.join('')}${evs.length ? '' : '<span style="font-size:12.5px;color:#929090">Nenhuma evidência anexada.</span>'}</div>
     <div class="af-box"><div style="font-weight:700;font-size:14px;margin-bottom:10px">Histórico</div>${hh || '<span style="font-size:12.5px;color:#929090">Sem eventos registrados.</span>'}</div>`;
 
+  const btnArquivar = f.ARQUIVADO === 'SIM'
+    ? `<button class="af-btn" onclick="afDesarquivarFichaAtual()" style="border-color:#1E6B3A;color:#1E6B3A">↩ Desarquivar</button>`
+    : `<button class="af-btn" onclick="afArquivarFichaAtual()" style="border-color:#929090;color:#545252">📦 Arquivar</button>`;
   _afEl('bib-painel-foot').innerHTML =
     (f.ID_MANIFESTACAO ? `<button class="af-btn" onclick="if(window.abrirDossie)window.abrirDossie(${escHtml(JSON.stringify(f.ID_MANIFESTACAO))});closeBibPainel()">Ver dossiê completo</button>` : '') +
-    `<a class="af-btn" href="/fichas.html" target="_blank" rel="noopener">Ver modelo da ficha</a>` +
     `<button class="af-btn" onclick="afAnexarArquivo()">Anexar arquivo</button>` +
     `<input type="file" id="af-input-anexo" style="display:none" accept=".pdf,.docx,.doc,.jpg,.jpeg,.png,.xlsx,.xls" onchange="afEnviarAnexo(this)">` +
+    btnArquivar +
     `<button class="af-btn af-btn-dark" onclick="afBaixarPdf()">${imp ? 'Abrir ficha original' : 'Baixar PDF da ficha'}</button>`;
 }
 
@@ -7536,6 +7608,92 @@ function closeBibPainel() {
 }
 // compat alias para código que chama closeBibFichaModal
 function closeBibFichaModal() { closeBibPainel(); }
+
+// Arquivar ficha pela linha da tabela
+window.afArquivarFicha = async function(i) {
+  const f = _bibFichasAcum[i]; if (!f) return;
+  const id = f.PROTOCOLO || f.ID_MANIFESTACAO;
+  if (!id) return;
+  if (['ABERTA','EM_ANDAMENTO','EM_TRATATIVA'].includes(f.STATUS)) {
+    if (!confirm(`⚠ Esta ficha está "${AF_STATUS[f.STATUS]?.[0] || f.STATUS}". Arquivar fichas abertas ou em andamento requer permissão especial.\n\nDeseja continuar?`)) return;
+  }
+  const motivo = prompt('Informe o motivo do arquivamento (obrigatório):');
+  if (!motivo?.trim()) return;
+  try {
+    const tok = _afTok();
+    const r = await fetch(`${window.SAC_API || ''}/api/biblioteca/fichas/${encodeURIComponent(id)}/arquivar`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok },
+      body: JSON.stringify({ motivo: motivo.trim() })
+    });
+    const d = await r.json();
+    if (!d.sucesso) { afToast('Erro: ' + (d.erro || 'Falha ao arquivar.')); return; }
+    afToast('Ficha arquivada com sucesso.');
+    loadBiblioteca(true);
+  } catch(e) { afToast('Erro: ' + e.message); }
+};
+
+// Arquivar ficha aberta no painel lateral
+window.afArquivarFichaAtual = async function() {
+  const f = _afFichaAtual?.ficha; if (!f) return;
+  const id = f.PROTOCOLO || f.ID_MANIFESTACAO;
+  if (!id) return;
+  if (['ABERTA','EM_ANDAMENTO','EM_TRATATIVA'].includes(f.STATUS)) {
+    if (!confirm(`⚠ Esta ficha está "${AF_STATUS[f.STATUS]?.[0] || f.STATUS}". Arquivar fichas abertas ou em andamento requer permissão especial.\n\nDeseja continuar?`)) return;
+  }
+  const motivo = prompt('Informe o motivo do arquivamento (obrigatório):');
+  if (!motivo?.trim()) return;
+  try {
+    const tok = _afTok();
+    const r = await fetch(`${window.SAC_API || ''}/api/biblioteca/fichas/${encodeURIComponent(id)}/arquivar`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok },
+      body: JSON.stringify({ motivo: motivo.trim() })
+    });
+    const d = await r.json();
+    if (!d.sucesso) { afToast('Erro: ' + (d.erro || 'Falha ao arquivar.')); return; }
+    afToast('Ficha arquivada. Ela ficará disponível na aba "Arquivadas".');
+    closeBibPainel();
+    loadBiblioteca(true);
+  } catch(e) { afToast('Erro: ' + e.message); }
+};
+
+// Desarquivar ficha pela linha da tabela
+window.afDesarquivarFicha = async function(i) {
+  const f = _bibFichasAcum[i]; if (!f) return;
+  const id = f.PROTOCOLO || f.ID_MANIFESTACAO;
+  if (!id) return;
+  if (!confirm(`Deseja restaurar a ficha "${id}"?\n\nEla voltará ao status original e ficará nas fichas ativas.`)) return;
+  try {
+    const tok = _afTok();
+    const r = await fetch(`${window.SAC_API || ''}/api/biblioteca/fichas/${encodeURIComponent(id)}/desarquivar`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok },
+      body: JSON.stringify({ motivo: 'Desarquivado pelo usuário.' })
+    });
+    const d = await r.json();
+    if (!d.sucesso) { afToast('Erro: ' + (d.erro || 'Falha ao desarquivar.')); return; }
+    afToast('Ficha restaurada com sucesso.');
+    loadBiblioteca(true);
+  } catch(e) { afToast('Erro: ' + e.message); }
+};
+
+// Desarquivar ficha aberta no painel lateral
+window.afDesarquivarFichaAtual = async function() {
+  const f = _afFichaAtual?.ficha; if (!f) return;
+  const id = f.PROTOCOLO || f.ID_MANIFESTACAO;
+  if (!id) return;
+  if (!confirm(`Deseja restaurar a ficha "${id}"?\n\nEla voltará ao status original e ficará nas fichas ativas.`)) return;
+  try {
+    const tok = _afTok();
+    const r = await fetch(`${window.SAC_API || ''}/api/biblioteca/fichas/${encodeURIComponent(id)}/desarquivar`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok },
+      body: JSON.stringify({ motivo: 'Desarquivado pelo usuário.' })
+    });
+    const d = await r.json();
+    if (!d.sucesso) { afToast('Erro: ' + (d.erro || 'Falha ao desarquivar.')); return; }
+    afToast('Ficha restaurada com sucesso.');
+    closeBibPainel();
+    loadBiblioteca(true);
+  } catch(e) { afToast('Erro: ' + e.message); }
+};
 
 // ===== IMPORTAR FICHAS (PDF/DOCX) =====
 const AF_EMP_IMP = [['CHIACCHIO', 'Chiacchio Embalagens'], ['PLASCHIO', 'Plaschio'], ['TUBAHIA', 'Cesbap']];
@@ -9017,65 +9175,6 @@ async function cardAprovacaoEnviar() {
   }
 }
 
-// Funções para o card de decisão dentro do modal principal (aba Dados gerais)
-window.modalDecisaoSelecionar = function(decisao, btn) {
-  document.getElementById('mdec-decisao').value = decisao;
-  ['mdec-btn-aceitar','mdec-btn-devolver'].forEach(id => {
-    const b = document.getElementById(id);
-    if (b) { b.style.background='#fff'; b.style.color='#545252'; b.style.borderColor='#D6D6D6'; }
-  });
-  if (decisao === 'APROVAR') {
-    btn.style.background='#E6F2EA'; btn.style.color='#1E6B3A'; btn.style.borderColor='#1E6B3A';
-    document.getElementById('mdec-box-motivo').style.display='none';
-  } else {
-    btn.style.background='#FEF2F2'; btn.style.color='#C70602'; btn.style.borderColor='#C70602';
-    document.getElementById('mdec-box-motivo').style.display='block';
-  }
-  const conf = document.getElementById('mdec-btn-confirmar');
-  if (conf) { conf.style.opacity='1'; conf.style.pointerEvents='auto'; }
-};
-
-window.modalDecisaoEnviar = async function() {
-  const m = _dossieItem;
-  if (!m?.ID_MANIFESTACAO) return;
-  const decisao = document.getElementById('mdec-decisao').value;
-  if (!decisao) return;
-  const motivo = document.getElementById('mdec-motivo')?.value.trim() || '';
-  const erroEl = document.getElementById('mdec-motivo-erro');
-  if (decisao === 'DEVOLVER' && !motivo) {
-    if (erroEl) erroEl.style.display='block';
-    document.getElementById('mdec-motivo')?.focus();
-    return;
-  }
-  if (erroEl) erroEl.style.display='none';
-  const conf = document.getElementById('mdec-btn-confirmar');
-  const msg = document.getElementById('mdec-msg');
-  if (conf) { conf.textContent='Enviando...'; conf.style.opacity='.7'; conf.style.pointerEvents='none'; }
-  if (msg) msg.style.display='none';
-  try {
-    const r = await _apiFetch(`/api/manifestacoes/${encodeURIComponent(m.ID_MANIFESTACAO)}/aprovacao`, 30000, {
-      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ decisao, motivo, orientacao: motivo })
-    });
-    if (msg) {
-      msg.style.display='block';
-      msg.style.background = r.sucesso ? '#E6F2EA' : '#FEF2F2';
-      msg.style.color = r.sucesso ? '#1E6B3A' : '#C70602';
-      if (r.sucesso) {
-        const textos = { APROVAR: '✓ Manifestação aprovada.', DEVOLVER: '↩ Devolvida para ajuste.' };
-        msg.textContent = r.mensagem || textos[decisao] || '✓ Decisão registrada.';
-        const decEl = document.getElementById('modal-decisao-aprovador');
-        if (decEl) setTimeout(()=>{ decEl.style.display='none'; }, 2000);
-      } else {
-        msg.textContent = 'Erro: ' + (r.erro || 'Falha ao registrar decisão.');
-        if (conf) { conf.textContent='Confirmar decisão'; conf.style.opacity='1'; conf.style.pointerEvents='auto'; }
-      }
-    }
-  } catch(e) {
-    if (msg) { msg.style.display='block'; msg.style.background='#FEF2F2'; msg.style.color='#C70602'; msg.textContent='Erro: '+e.message; }
-    if (conf) { conf.textContent='Confirmar decisão'; conf.style.opacity='1'; conf.style.pointerEvents='auto'; }
-  }
-};
-
 function fichaSetAprovador(decisao, btn) {
   document.getElementById('ficha-aprov-decisao').value = decisao;
   ['ficha-aprov-ok','ficha-aprov-nao'].forEach(id => {
@@ -9447,22 +9546,23 @@ function abrirDossie(item) {
   // ── Histórico tab: placeholder, carrega ao clicar
   document.getElementById('modal-historico-timeline').innerHTML = `<div style="text-align:center;color:var(--gray-400);padding:24px;font-size:13px">Clique na aba Histórico para carregar.</div>`;
 
-  // ── Card de decisão do aprovador (aba Dados gerais)
+  // ── Card de decisão do aprovador
   const _decEl = document.getElementById('modal-decisao-aprovador');
   if (_decEl) {
-    const _isAprov = ['APROVADOR','APROVADOR MASTER','MASTER','GESTOR SAC','ANALISTA SAC'].includes(role());
-    const _aguardando = status.toUpperCase().includes('AGUARDANDO_APROVACAO') || status.toUpperCase() === 'AGUARDANDO_APROVACAO';
+    const _perfisAprov = ['APROVADOR','APROVADOR MASTER','MASTER','GESTOR SAC','ANALISTA SAC'];
+    const _isAprov = _perfisAprov.includes(role());
+    const _st = (item.STATUS_FICHA || item.STATUS || '').toUpperCase();
+    const _aguardando = _st.includes('AGUARDANDO_APROVAC') || _st.includes('AGUARDANDO APROV');
     _decEl.style.display = (_isAprov && _aguardando) ? '' : 'none';
-    // Reset state
-    const _mdecDec = document.getElementById('mdec-decisao'); if(_mdecDec) _mdecDec.value='';
-    const _mdecBox = document.getElementById('mdec-box-motivo'); if(_mdecBox) _mdecBox.style.display='none';
-    const _mdecConf = document.getElementById('mdec-btn-confirmar');
-    if(_mdecConf){_mdecConf.style.opacity='.45';_mdecConf.style.pointerEvents='none';}
-    const _mdecMsg = document.getElementById('mdec-msg'); if(_mdecMsg) _mdecMsg.style.display='none';
-    const _mdecMot = document.getElementById('mdec-motivo'); if(_mdecMot) _mdecMot.value='';
-    const _mdecErr = document.getElementById('mdec-motivo-erro'); if(_mdecErr) _mdecErr.style.display='none';
-    ['mdec-btn-aceitar','mdec-btn-devolver'].forEach(id=>{
-      const b=document.getElementById(id);
+    // Reset do card
+    const _d = document.getElementById('mdec-decisao'); if(_d) _d.value='';
+    const _bx = document.getElementById('mdec-box-motivo'); if(_bx) _bx.style.display='none';
+    const _cf = document.getElementById('mdec-btn-confirmar'); if(_cf){_cf.style.opacity='.45';_cf.style.pointerEvents='none';_cf.textContent='Confirmar decisão';}
+    const _mg = document.getElementById('mdec-msg'); if(_mg) _mg.style.display='none';
+    const _mt = document.getElementById('mdec-motivo'); if(_mt) _mt.value='';
+    const _er = document.getElementById('mdec-motivo-erro'); if(_er) _er.style.display='none';
+    ['mdec-btn-aceitar','mdec-btn-devolver'].forEach(bid=>{
+      const b=document.getElementById(bid);
       if(b){b.style.background='#fff';b.style.color='#545252';b.style.borderColor='#D6D6D6';}
     });
   }
@@ -11490,8 +11590,6 @@ window.navigate = function(page, el) {
   const allowed={
     // ADMINISTRADOR — acesso total
     'MASTER':['visao-geral','acompanhamento','nova-manifestacao','banco-manifestacoes','aprovadores','banco-rnc','usuarios','cerebro','base-conhecimento','painel-maquina','auditoria','prazos-regionais','similares','rca','biblioteca-fichas','relatorio-satisfacao','sugestoes-melhoria','setores'],
-    // APROVADOR MASTER — aprovação global + leitura
-    'APROVADOR MASTER':['visao-geral','aprovadores','banco-manifestacoes','banco-rnc','relatorio-satisfacao','sugestoes-melhoria','rca'],
     // GESTOR SAC — visão operacional completa, sem config crítica
     'GESTOR SAC':['visao-geral','acompanhamento','nova-manifestacao','banco-manifestacoes','aprovadores','banco-rnc','setores','biblioteca-fichas','matriz','base-conhecimento','cerebro','painel-maquina','sugestoes-melhoria','relatorio-satisfacao','causas','matriz-conhecimento','prazos-regionais','similares','rca','central-sac'],
     // ANALISTA SAC — operação do dia a dia
@@ -11502,12 +11600,10 @@ window.navigate = function(page, el) {
     'SETOR RESPONSÁVEL':['setor-responsavel','banco-rnc','base-conhecimento','cerebro'],
     // ESPECIALISTA — fila técnica + RNC + RCA
     'ESPECIALISTA':['setor-responsavel','banco-rnc','rca','base-conhecimento','cerebro'],
-    // APROVADOR setorial — central do aprovador + RNC consulta
+    // APROVADOR — central do aprovador + RNC consulta + pesquisa de satisfação
     'APROVADOR':['aprovadores','banco-rnc','sugestoes-melhoria'],
     // RCA — central de causa raiz
     'RCA / REPRESENTANTE':['representantes','rca','banco-rnc'],
-    // GESTOR/DIRETORIA — visão executiva gerencial
-    'GESTOR/DIRETORIA':['visao-geral','acompanhamento','banco-manifestacoes','relatorio-satisfacao','painel-maquina','sugestoes-melhoria'],
     // DIRETOR — visão executiva (leitura)
     'DIRETOR':['visao-geral','acompanhamento','banco-manifestacoes','banco-rnc','relatorio-satisfacao','rca','painel-maquina','sugestoes-melhoria'],
     // VISUALIZADOR / CONSULTA — apenas leitura
@@ -11515,18 +11611,7 @@ window.navigate = function(page, el) {
     'AUDITOR':['visao-geral','acompanhamento','banco-manifestacoes','banco-rnc','relatorio-satisfacao','auditoria','painel-maquina'],
   };
   function applyRoleUI(){
-    const r=role();let list=[...(allowed[r]||[])];
-    // Expandir lista com permissões customizadas que desbloqueiam páginas extras
-    try{
-      const u=JSON.parse(sessionStorage.getItem('sac-user')||'{}');
-      const cp=Array.isArray(u.permissoes_custom)?u.permissoes_custom:(u.permissoes_custom||[]);
-      const hasP=(k)=>Array.isArray(cp)?cp.includes(k):(cp[k]);
-      if(hasP('dashboard.visualizar')||hasP('dashboard.gerenciar')) list.push('visao-geral');
-      if(hasP('relatorio.visualizar')||hasP('pesquisas.visualizar')) list.push('relatorio-satisfacao');
-      if(hasP('manifestacoes.visualizar')) list.push('banco-manifestacoes');
-      if(hasP('aprovacoes.visualizar')||hasP('aprovacoes.aprovar')||hasP('aprovacoes.rejeitar')) list.push('aprovadores');
-    }catch(e){}
-    list=[...new Set(list)];
+    const r=role();const list=allowed[r]||[];
     document.querySelectorAll('.sidebar-item').forEach(el=>{
       const m=(el.getAttribute('onclick')||'').match(/navigate\(['"]([^'"]+)/); const page=el.dataset.v5Page||m?.[1]||'';
       el.style.display=list.includes(page)?'flex':'none';
@@ -11535,7 +11620,7 @@ window.navigate = function(page, el) {
     const podeEditar=['MASTER','GESTOR SAC','ANALISTA SAC','ATENDENTE SAC'].includes(r);
     const podeCriar=['MASTER','GESTOR SAC','ANALISTA SAC','ATENDENTE SAC'].includes(r);
     const podeConfig=['MASTER'].includes(r);
-    const podeAprovar=['MASTER','APROVADOR MASTER','GESTOR SAC','ANALISTA SAC','APROVADOR'].includes(r);
+    const podeAprovar=['MASTER','APROVADOR'].includes(r);
     document.querySelectorAll('[data-perm="criar"]').forEach(el=>el.style.display=podeCriar?'':'none');
     document.querySelectorAll('[data-perm="editar"]').forEach(el=>el.style.display=podeEditar?'':'none');
     document.querySelectorAll('[data-perm="config"]').forEach(el=>el.style.display=podeConfig?'':'none');
@@ -11552,9 +11637,7 @@ window.navigate = function(page, el) {
     });
     document.querySelectorAll('.page').forEach(p=>{const id=p.id.replace('page-','');if(id==='representantes'&&r==='RCA / REPRESENTANTE')p.classList.remove('active')});
     if(r==='RCA / REPRESENTANTE') navigate('representantes',document.querySelector('[data-v5-page="representantes"]'));
-    if(r==='APROVADOR MASTER') navigate('aprovadores',document.querySelector('[onclick*=aprovadores]'));
     if(r==='APROVADOR') navigate('aprovadores',document.querySelector('[onclick*=aprovadores]'));
-    if(r==='GESTOR/DIRETORIA') navigate('visao-geral',document.querySelector('[onclick*=visao-geral]'));
     if(r==='SETOR RESPONSÁVEL'||r==='ESPECIALISTA') navigate('setor-responsavel',document.querySelector('[onclick*=setor-responsavel]')||document.querySelector('[onclick*=banco-rnc]'));
     if(r==='DIRETOR'||r==='VISUALIZADOR') navigate('visao-geral',document.querySelector('[onclick*=visao-geral]'));
     if(r==='ATENDENTE SAC') navigate('central-sac',document.querySelector('[onclick*=central-sac]'));
@@ -11725,7 +11808,6 @@ window.navigate = function(page, el) {
   // Permissões padrão por perfil
   const _PERM_PADRAO = {
     'MASTER':             ['manifestacoes.visualizar','manifestacoes.abrir','manifestacoes.editar','manifestacoes.gerenciar','manifestacoes.aprovar','cerebro.visualizar','cerebro.adicionar_conteudo','cerebro.editar_conteudo','cerebro.adicionar_regras','cerebro.adicionar_politicas','cerebro.editar_faq','cerebro.gerenciar','rca.visualizar','rca.criar','rca.editar','rca.gerenciar','pesquisas.visualizar','pesquisas.criar','pesquisas.editar','pesquisas.gerenciar','dashboard.visualizar','dashboard.gerenciar','configuracoes.visualizar','configuracoes.editar','configuracoes.gerenciar','usuarios.visualizar','usuarios.criar','usuarios.editar','usuarios.gerenciar','aprovacoes.visualizar','aprovacoes.aprovar','aprovacoes.rejeitar'],
-    'APROVADOR MASTER':   ['manifestacoes.visualizar','manifestacoes.abrir','aprovacoes.visualizar','aprovacoes.aprovar','aprovacoes.rejeitar','pesquisas.visualizar','dashboard.visualizar','rca.visualizar'],
     'ADMINISTRADOR':      ['manifestacoes.visualizar','manifestacoes.abrir','manifestacoes.editar','manifestacoes.gerenciar','cerebro.visualizar','cerebro.gerenciar','rca.visualizar','rca.gerenciar','pesquisas.visualizar','pesquisas.gerenciar','dashboard.visualizar','dashboard.gerenciar','configuracoes.visualizar','configuracoes.editar','configuracoes.gerenciar','usuarios.visualizar','usuarios.criar','usuarios.editar','usuarios.gerenciar','aprovacoes.visualizar','aprovacoes.aprovar','aprovacoes.rejeitar'],
     'GESTOR SAC':         ['manifestacoes.visualizar','manifestacoes.editar','manifestacoes.gerenciar','manifestacoes.aprovar','cerebro.visualizar','cerebro.gerenciar','rca.visualizar','pesquisas.visualizar','pesquisas.gerenciar','dashboard.visualizar','dashboard.gerenciar','configuracoes.visualizar','configuracoes.editar','aprovacoes.visualizar','aprovacoes.aprovar','aprovacoes.rejeitar'],
     'ANALISTA SAC':       ['manifestacoes.visualizar','manifestacoes.abrir','manifestacoes.editar','cerebro.visualizar','cerebro.adicionar_conteudo','cerebro.editar_conteudo','cerebro.adicionar_regras','cerebro.adicionar_politicas','cerebro.editar_faq','pesquisas.visualizar','pesquisas.criar','dashboard.visualizar','aprovacoes.visualizar'],
@@ -11734,7 +11816,6 @@ window.navigate = function(page, el) {
     'SETOR RESPONSÁVEL':  ['manifestacoes.visualizar','manifestacoes.editar'],
     'ESPECIALISTA':       ['cerebro.visualizar','dashboard.visualizar'],
     'RCA / REPRESENTANTE':['manifestacoes.visualizar','manifestacoes.abrir','rca.visualizar','rca.criar'],
-    'GESTOR/DIRETORIA':   ['manifestacoes.visualizar','dashboard.visualizar','dashboard.gerenciar','pesquisas.visualizar','rca.visualizar'],
     'DIRETOR':            ['manifestacoes.visualizar','pesquisas.visualizar','dashboard.visualizar','dashboard.gerenciar','rca.visualizar'],
     'VISUALIZADOR':       ['manifestacoes.visualizar','dashboard.visualizar','pesquisas.visualizar'],
     'AUDITOR':            ['manifestacoes.visualizar','manifestacoes.gerenciar','dashboard.visualizar'],
@@ -11923,7 +12004,7 @@ window.navigate = function(page, el) {
 
   // ── TAB PENDÊNCIAS (APROVADOR / MASTER) ──
   async function loadAprovadorV5(){
-    const u=sess(); if(!u||!['APROVADOR','MASTER'].includes(u.perfil)) return;
+    const u=sess(); if(!u||!['APROVADOR','APROVADOR MASTER','MASTER'].includes(u.perfil)) return;
     try {
       const [pend,fila]=await Promise.all([
         json5('/api/aprovadores/'+encodeURIComponent(u.usuario)+'/pendencias'),
@@ -12258,6 +12339,67 @@ window.navigate = function(page, el) {
 
   // Legados mantidos para compatibilidade
   window.abrirDossieAprovador=async function(id){try{const d=await json5('/api/manifestacoes/'+encodeURIComponent(id));abrirDossie(d.manifestacao)}catch(e){alert(e.message)}};
+
+  window.modalDecisaoSelecionar = function(decisao, btn) {
+    document.getElementById('mdec-decisao').value = decisao;
+    ['mdec-btn-aceitar','mdec-btn-devolver'].forEach(id => {
+      const b = document.getElementById(id);
+      if (b) { b.style.background='#fff'; b.style.color='#545252'; b.style.borderColor='#D6D6D6'; }
+    });
+    if (decisao === 'APROVAR') {
+      btn.style.background='#E6F2EA'; btn.style.color='#1E6B3A'; btn.style.borderColor='#1E6B3A';
+      document.getElementById('mdec-box-motivo').style.display='none';
+    } else {
+      btn.style.background='#FEF2F2'; btn.style.color='#C70602'; btn.style.borderColor='#C70602';
+      document.getElementById('mdec-box-motivo').style.display='block';
+    }
+    const cf = document.getElementById('mdec-btn-confirmar');
+    if (cf) { cf.style.opacity='1'; cf.style.pointerEvents='auto'; }
+  };
+
+  window.modalDecisaoEnviar = async function() {
+    const m = window._dossieItem;
+    if (!m?.ID_MANIFESTACAO) return;
+    const decisao = document.getElementById('mdec-decisao').value;
+    if (!decisao) return;
+    const motivo = document.getElementById('mdec-motivo')?.value.trim() || '';
+    const erroEl = document.getElementById('mdec-motivo-erro');
+    if (decisao === 'DEVOLVER' && !motivo) {
+      if (erroEl) erroEl.style.display='block';
+      document.getElementById('mdec-motivo')?.focus();
+      return;
+    }
+    if (erroEl) erroEl.style.display='none';
+    const cf = document.getElementById('mdec-btn-confirmar');
+    const msg = document.getElementById('mdec-msg');
+    if (cf) { cf.textContent='Enviando...'; cf.style.opacity='.7'; cf.style.pointerEvents='none'; }
+    if (msg) msg.style.display='none';
+    try {
+      const tok = sessionStorage.getItem('sac-token');
+      const r = await fetch(`/api/manifestacoes/${encodeURIComponent(m.ID_MANIFESTACAO)}/aprovacao`, {
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},
+        body:JSON.stringify({ decisao, motivo, orientacao: motivo })
+      });
+      const data = await r.json().catch(()=>({}));
+      if (msg) {
+        msg.style.display='block';
+        msg.style.background = data.sucesso ? '#E6F2EA' : '#FEF2F2';
+        msg.style.color = data.sucesso ? '#1E6B3A' : '#C70602';
+        if (data.sucesso) {
+          msg.textContent = data.mensagem || (decisao==='APROVAR'?'✓ Aprovado.':'↩ Devolvido para ajuste.');
+          document.getElementById('modal-decisao-aprovador').style.display='none';
+          if (typeof loadAprovadorV5 === 'function') loadAprovadorV5();
+        } else {
+          msg.textContent = 'Erro: ' + (data.erro || 'Falha ao registrar.');
+          if (cf) { cf.textContent='Confirmar decisão'; cf.style.opacity='1'; cf.style.pointerEvents='auto'; }
+        }
+      }
+    } catch(e) {
+      if (msg) { msg.style.display='block'; msg.style.background='#FEF2F2'; msg.style.color='#C70602'; msg.textContent='Erro: '+e.message; }
+      if (cf) { cf.textContent='Confirmar decisão'; cf.style.opacity='1'; cf.style.pointerEvents='auto'; }
+    }
+  };
   window.abrirRncAprovador=async function(id){try{const d=await json5('/api/rnc/'+encodeURIComponent(id));document.getElementById('modal-rnc-aprovador-v5').style.display='flex';document.getElementById('rnc-modal-title').textContent=d.rnc.ID_RNC||id;document.getElementById('rnc-modal-sub').textContent=`SAC ${d.rnc.PROTOCOLO_SAC||'—'} · ${d.rnc.EMPRESA||'—'} · competência ${d.rnc.COMPETENCIA||d.rnc.SETOR||'—'}`;const r=d.rnc;document.getElementById('rnc-modal-body').innerHTML=`<div class="rnc-block"><div class="rnc-block-title">1. Dados de entrada</div><div class="rnc-grid"><div><b>Empresa</b><div class="rnc-value">${esc5(r.EMPRESA)}</div></div><div><b>Cliente</b><div class="rnc-value">${esc5(r.CLIENTE)}</div></div><div><b>Produto</b><div class="rnc-value">${esc5(r.PRODUTO)}</div></div><div><b>Lote</b><div class="rnc-value">${esc5(r.LOTE)}</div></div><div><b>Quantidade</b><div class="rnc-value">${esc5(r.QUANTIDADE)}</div></div><div><b>Contato</b><div class="rnc-value">${esc5(r.CONTATO)}</div></div></div></div><div class="rnc-block"><div class="rnc-block-title">2. Reclamação original</div><div class="rnc-value">${esc5(r.DESCRICAO_NAO_CONFORMIDADE||r.NAO_CONFORMIDADE)}</div></div><div class="rnc-block"><div class="rnc-block-title">3. Classificação da NC</div><div class="rnc-grid"><div><b>Origem</b><div>${esc5(r.ORIGEM_NC)}</div></div><div><b>Tipo</b><div>${esc5(r.TIPO_NC)}</div></div><div><b>Procedente</b><div>${esc5(r.PROCEDENTE)}</div></div><div><b>Plano de ação</b><div>${esc5(r.PLANO_ACAO)}</div></div></div></div><div class="rnc-block"><div class="rnc-block-title">4. Análise de causa</div><div class="rnc-value">${esc5(r.CAUSA||'Ainda não registrada.')}</div></div><div class="rnc-block"><div class="rnc-block-title">5. Ação de contenção</div><div class="rnc-value">${esc5(r.ACAO_CONTENCAO||'Não registrada.')}</div></div><div class="rnc-block"><div class="rnc-block-title">6. Ação corretiva</div><div class="rnc-grid"><div><b>Ação</b><div class="rnc-value">${esc5(r.ACAO_CORRETIVA)}</div></div><div><b>Responsável</b><div class="rnc-value">${esc5(r.RESPONSAVEL_ACAO)}</div></div><div><b>Setor</b><div class="rnc-value">${esc5(r.SETOR_ACAO)}</div></div><div><b>Prazo</b><div class="rnc-value">${esc5(r.PRAZO_ACAO)}</div></div></div></div><div class="rnc-block"><div class="rnc-block-title">7. Verificação da eficácia</div><div class="rnc-grid"><div><b>Responsável</b><div>${esc5(r.RESPONSAVEL_EFICACIA)}</div></div><div><b>Data</b><div>${esc5(r.DATA_EFICACIA)}</div></div><div><b>Resultado</b><div>${esc5(r.RESULTADO_EFICACIA)}</div></div><div><b>Observação</b><div>${esc5(r.OBSERVACAO_EFICACIA)}</div></div></div></div><div class="rnc-block"><div class="rnc-block-title">8. Histórico</div><div class="timeline">${(d.eventos||[]).map(e=>`<div class="tl-item"><div class="tl-dot"></div><div class="tl-content"><div class="tl-label">${esc5(e.TIPO_EVENTO)}</div><div class="tl-meta">${fmt5(e.DATA_EVENTO)} · ${esc5(e.USUARIO)}</div><div class="tl-meta">${esc5(e.DETALHES)}</div></div></div>`).join('')||'<div class="rnc-value">Sem eventos registrados.</div>'}</div></div><div class="rnc-block"><div class="rnc-block-title">9. Decisão</div><div class="field"><label>Justificativa (obrigatória para devolver ou rejeitar)</label><textarea id="rnc-decisao-obs" placeholder="Informe o motivo da decisão, quando aplicável."></textarea></div></div><div class="decision-bar"><button class="btn btn-primary" onclick="decidirRncV5('${esc5(id)}','APROVAR')">Aprovar</button><button class="btn btn-secondary" onclick="decidirRncV5('${esc5(id)}','DEVOLVER')">Devolver para ajuste</button><button class="btn btn-ghost" onclick="decidirRncV5('${esc5(id)}','REJEITAR')">Rejeitar</button></div>`;await json5('/api/rnc/'+encodeURIComponent(id)+'/visualizacao',{method:'POST',body:JSON.stringify({})});}catch(e){alert(e.message)}};
   window.decidirRncV5=async function(id,decisao){const obs=document.getElementById('rnc-decisao-obs')?.value||'';if(decisao!=='APROVAR'&&!obs.trim())return alert('Informe a justificativa.');try{await json5('/api/rnc/'+encodeURIComponent(id)+'/decisao',{method:'POST',body:JSON.stringify({decisao,observacoes:obs})});alert(decisao==='APROVAR'?'RNC aprovada.':decisao==='REJEITAR'?'RNC rejeitada.':'RNC devolvida para ajuste.');fecharRncAprovador();loadAprovadorV5()}catch(e){alert(e.message)}};
   window.fecharRncAprovador=function(){document.getElementById('modal-rnc-aprovador-v5').style.display='none'};
@@ -18849,66 +18991,33 @@ async function mudarStatusMC(id, novoStatus) {
       const u=d.usuario||d;
       const perms=d.permissoes||{};
       const setEP=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v||'';};
-      const perfilVal = u.PERFIL||u.perfil||'ANALISTA SAC';
-      setEP('edit-perm-perfil',perfilVal);
+      setEP('edit-perm-perfil',u.PERFIL||u.perfil||'ANALISTA_SAC');
       setEP('edit-perm-empresa',u.EMPRESA||u.empresa);
       setEP('edit-perm-setor',u.SETOR||u.setor);
       setEP('edit-perm-email',u.EMAIL||u.email||'');
-      // Empresas/setores autorizados para APROVADOR
-      const empAuth = u.empresas_autorizadas||u.EMPRESAS_AUTORIZADAS;
-      const setAuth = u.setores_autorizados||u.SETORES_AUTORIZADOS;
-      setEP('edit-perm-empresas-auth', Array.isArray(empAuth)?empAuth.join(', '):(empAuth||''));
-      setEP('edit-perm-setores-auth', Array.isArray(setAuth)?setAuth.join(', '):(setAuth||''));
-      const escopoEl=document.getElementById('edit-perm-escopo-aprovador');
-      if(escopoEl) escopoEl.style.display=perfilVal.toUpperCase()==='APROVADOR'?'':'none';
       document.getElementById('edit-perm-uid').value=uid;
       document.getElementById('edit-perm-sub').textContent=(u.NOME||u.nome||'')+(u.EMAIL||u.email?' · '+(u.EMAIL||u.email):'');
       document.getElementById('edit-perm-error').style.display='none';
-      // Renderizar checkboxes de permissões
-      const permCustom = Array.isArray(u.permissoes_custom)?u.permissoes_custom:(Array.isArray(perms.permissoes_custom)?perms.permissoes_custom:[]);
-      _renderEditPermCheckboxes(perfilVal.toUpperCase(), permCustom);
+      // Renderizar grids
+      renderModulosGrid('edit-modulos-grid','edit-perm-perfil');
+      renderCompetenciasGrid('edit-competencias-grid');
+      // Preencher valores atuais das permissões individuais
+      const permsIndiv=perms.modulos||perms.individuais||{};
+      if(typeof permsIndiv==='object'){
+        Object.entries(permsIndiv).forEach(([mod,nivel])=>{
+          const sel=document.getElementById('edit-mod-'+mod);
+          if(sel) sel.value=nivel;
+        });
+      }
+      const comps=perms.competencias||u.competencias||u.COMPETENCIAS||[];
+      const compArr=Array.isArray(comps)?comps:String(comps).split(',').map(c=>c.trim()).filter(Boolean);
+      COMPETENCIAS.forEach(c=>{
+        const cb=document.getElementById('edit-comp-'+c);
+        if(cb) cb.checked=compArr.includes(c);
+      });
       m.style.display='flex';
     }catch(e){ alert('Erro ao carregar usuário: '+e.message); }
   };
-
-  window.editPermPerfilChange = function() {
-    const perfil = (document.getElementById('edit-perm-perfil')?.value||'').toUpperCase();
-    const escopoEl = document.getElementById('edit-perm-escopo-aprovador');
-    if (escopoEl) escopoEl.style.display = perfil === 'APROVADOR' ? '' : 'none';
-    // Atualizar checkboxes de permissões com padrão do perfil
-    _renderEditPermCheckboxes(perfil, []);
-  };
-
-  function _renderEditPermCheckboxes(perfil, permCustom) {
-    const el = document.getElementById('edit-perm-checkboxes');
-    if (!el) return;
-    const padrao = _PERM_PADRAO[perfil] || [];
-    const marcadas = Array.isArray(permCustom) && permCustom.length ? permCustom : padrao;
-    // Todas as permissões possíveis agrupadas por categoria
-    const cats = [
-      { id: 'manifestacoes', label: 'Manifestações', perms: ['visualizar','abrir','editar','gerenciar','aprovar'] },
-      { id: 'aprovacoes', label: 'Aprovações', perms: ['visualizar','aprovar','rejeitar'] },
-      { id: 'dashboard', label: 'Dashboard', perms: ['visualizar','gerenciar'] },
-      { id: 'pesquisas', label: 'Pesquisas / Relatório', perms: ['visualizar','criar','editar','gerenciar'] },
-      { id: 'cerebro', label: 'Base de Conhecimento', perms: ['visualizar','adicionar_conteudo','editar_conteudo','adicionar_regras','adicionar_politicas','editar_faq','gerenciar'] },
-      { id: 'rca', label: 'Representantes', perms: ['visualizar','criar','editar','gerenciar'] },
-      { id: 'configuracoes', label: 'Configurações', perms: ['visualizar','editar','gerenciar'] },
-      { id: 'usuarios', label: 'Usuários', perms: ['visualizar','criar','editar','gerenciar'] },
-    ];
-    let html = '';
-    cats.forEach(cat => {
-      cat.perms.forEach(p => {
-        const key = cat.id + '.' + p;
-        const isDefault = padrao.includes(key);
-        const isChecked = marcadas.includes(key);
-        html += `<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;padding:2px 0">
-          <input type="checkbox" id="eperm-${key}" data-perm="${key}" ${isChecked?'checked':''} style="accent-color:#C70602;width:13px;height:13px;flex-shrink:0">
-          <span style="color:${isDefault?'#3D3D3D':'#929090'}">${cat.label}: ${p.replace(/_/g,' ')}${isDefault?' <span style="font-size:10px;color:#aaa">(padrão)</span>':''}</span>
-        </label>`;
-      });
-    });
-    el.innerHTML = html || '<div style="font-size:12px;color:var(--gray-400)">Nenhuma permissão disponível.</div>';
-  }
 
   window.salvarEdicaoPermissoes = async function(){
     const uid=document.getElementById('edit-perm-uid')?.value||_editPermUid;
@@ -18916,15 +19025,8 @@ async function mudarStatusMC(id, novoStatus) {
     _editPermUid=uid;
     const perfil=document.getElementById('edit-perm-perfil')?.value||'';
     const empresa=document.getElementById('edit-perm-empresa')?.value||'';
-    const setor=document.getElementById('edit-perm-setor')?.value.trim()||'';
     const email=document.getElementById('edit-perm-email')?.value.trim()||'';
-    const empresasAuth=document.getElementById('edit-perm-empresas-auth')?.value.trim()||'';
-    const setoresAuth=document.getElementById('edit-perm-setores-auth')?.value.trim()||'';
-    // Coletar permissões customizadas dos checkboxes
-    const permissoes_custom = [];
-    document.querySelectorAll('#edit-perm-checkboxes [data-perm]').forEach(cb => {
-      if (cb.checked) permissoes_custom.push(cb.dataset.perm);
-    });
+    // Se ambos vazios = "Manter atual", ok — o backend usa o valor já salvo
     const modulosNiveis={};
     MODULOS.forEach(mod=>{
       const sel=document.getElementById('edit-mod-'+mod);
@@ -18938,16 +19040,13 @@ async function mudarStatusMC(id, novoStatus) {
     try{
       await api2('/api/admin/usuarios/'+encodeURIComponent(uid)+'/permissoes',{
         method:'PATCH',
-        body:JSON.stringify({perfil,empresa,setor,email,modulosNiveis,competencias,permissoes_custom,
-          empresas_autorizadas:empresasAuth?empresasAuth.split(',').map(s=>s.trim()).filter(Boolean):undefined,
-          setores_autorizados:setoresAuth?setoresAuth.split(',').map(s=>s.trim()).filter(Boolean):undefined})
+        body:JSON.stringify({perfil,empresa,email,modulosNiveis,competencias})
       });
       alert('Permissões atualizadas com sucesso.');
       document.getElementById('modal-edit-permissoes').style.display='none';
-      if(typeof loadUsuariosAdmin==='function') loadUsuariosAdmin();
-      if(typeof loadUsuariosV5==='function') loadUsuariosV5();
+      loadUsuariosAdmin();
     }catch(e){ alert(e.message); }
-    finally{ if(btn){ btn.disabled=false; btn.textContent='Salvar permissões'; } }
+    finally{ if(btn){ btn.disabled=false; btn.textContent='Salvar Permissões'; } }
   };
 
   // ── RENDERIZAÇÃO DE GRIDS ──────────────────────────────────
