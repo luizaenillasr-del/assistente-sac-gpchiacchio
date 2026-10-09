@@ -304,6 +304,12 @@ const P_RELATORIO=['MASTER','GESTOR SAC','ANALISTA SAC','ATENDENTE SAC','SETOR R
 function usuarioPublico(u){
   let permissoes_custom=null;
   if(u.PERMISSOES_CUSTOM){try{permissoes_custom=typeof u.PERMISSOES_CUSTOM==='string'?JSON.parse(u.PERMISSOES_CUSTOM):u.PERMISSOES_CUSTOM;}catch(e){}}
+  let permissoes_granted=null;
+  if(u.PERMISSOES_GRANTED){try{permissoes_granted=typeof u.PERMISSOES_GRANTED==='string'?JSON.parse(u.PERMISSOES_GRANTED):u.PERMISSOES_GRANTED;}catch(e){}}
+  let permissoes_blocked=null;
+  if(u.PERMISSOES_BLOCKED){try{permissoes_blocked=typeof u.PERMISSOES_BLOCKED==='string'?JSON.parse(u.PERMISSOES_BLOCKED):u.PERMISSOES_BLOCKED;}catch(e){}}
+  // migrate: if granted not set, fall back to custom
+  if(!Array.isArray(permissoes_granted)&&Array.isArray(permissoes_custom)&&permissoes_custom.length) permissoes_granted=permissoes_custom;
   return {
     id:u.ID_USUARIO||u.ID||u.USUARIO||u.EMAIL,
     usuario:u.USUARIO||u.EMAIL||u.ID_USUARIO,
@@ -312,7 +318,9 @@ function usuarioPublico(u){
     perfil:perfilCanonico(u.PERFIL||u.PERFIL_USUARIO),
     empresa:u.EMPRESA||'', setor:u.SETOR||'', codigoRCA:u.CODIGO_RCA||u.RCA||'', status:u.STATUS||'ATIVO',
     ultimoAcesso:u.ULTIMO_ACESSO||'', dataCriacao:u.DATA_CRIACAO||'',
-    permissoes_custom: Array.isArray(permissoes_custom)&&permissoes_custom.length?permissoes_custom:null
+    permissoes_custom: Array.isArray(permissoes_custom)&&permissoes_custom.length?permissoes_custom:null,
+    permissoes_granted: Array.isArray(permissoes_granted)&&permissoes_granted.length?permissoes_granted:null,
+    permissoes_blocked: Array.isArray(permissoes_blocked)&&permissoes_blocked.length?permissoes_blocked:null,
   };
 }
 
@@ -341,11 +349,16 @@ const _PERM_PADRAO_API = {
   'AUDITOR':            ['manifestacoes.visualizar','manifestacoes.gerenciar','dashboard.visualizar'],
 };
 
-// Verifica se o usuário tem uma permissão (custom ou padrão do perfil)
+// Verifica se o usuário tem uma permissão: bloqueadas > concedidas > padrão do perfil
 function usuarioTemPermissao(user, chave) {
   const p = perfilCanonico(user?.perfil || '');
   if (p === 'MASTER') return true;
-  if (Array.isArray(user?.permissoes_custom) && user.permissoes_custom.length) {
+  // blocked by Master → denied
+  if (Array.isArray(user?.permissoes_blocked) && user.permissoes_blocked.includes(chave)) return false;
+  // explicitly granted by Master → allowed
+  if (Array.isArray(user?.permissoes_granted) && user.permissoes_granted.includes(chave)) return true;
+  // legacy custom (migration path)
+  if (Array.isArray(user?.permissoes_custom) && user.permissoes_custom.length && !Array.isArray(user?.permissoes_granted)) {
     return user.permissoes_custom.includes(chave);
   }
   return (_PERM_PADRAO_API[p] || []).includes(chave);
@@ -923,7 +936,9 @@ app.post('/api/auth/login', async (req, res) => {
     const registro=await carregarUsuarioPorLogin(usuario);
     if(!registro) return res.status(401).json({ sucesso:false, erro:'Usuário ou senha inválidos.' });
     const pub=usuarioPublico(registro);
-    if(normalizarTexto(pub.status)==='inativo') return res.status(403).json({sucesso:false,erro:'Usuário inativo.'});
+    const statusNorm=normalizarTexto(pub.status||'');
+    if(statusNorm==='inativo') return res.status(403).json({sucesso:false,erro:'Usuário inativo. Contate o administrador.'});
+    if(statusNorm==='bloqueado') return res.status(403).json({sucesso:false,erro:'Usuário bloqueado. Contate o administrador.'});
     const senhaOk = await senhaValida(senha, registro.SENHA_HASH || registro.SENHA);
     if(!senhaOk) return res.status(401).json({sucesso:false,erro:'Usuário ou senha inválidos.'});
     const agora=Date.now();
@@ -931,6 +946,8 @@ app.post('/api/auth/login', async (req, res) => {
       sub:pub.id, usuario:pub.usuario, nome:pub.nome, email:pub.email, perfil:pub.perfil,
       empresa:pub.empresa, setor:pub.setor, codigoRCA:pub.codigoRCA,
       permissoes_custom: Array.isArray(pub.permissoes_custom)&&pub.permissoes_custom.length ? pub.permissoes_custom : null,
+      permissoes_granted: Array.isArray(pub.permissoes_granted)&&pub.permissoes_granted.length ? pub.permissoes_granted : null,
+      permissoes_blocked: Array.isArray(pub.permissoes_blocked)&&pub.permissoes_blocked.length ? pub.permissoes_blocked : null,
       iat:agora, exp:agora+SESSION_TTL_MS
     };
     const isDemo = String(registro.ID_USUARIO||'').startsWith('USR-DEMO-');
@@ -4432,10 +4449,71 @@ app.patch('/api/usuarios/:id', requerPermissao('usuarios.editar'), async (req,re
     if(b.empresa||b.EMPRESA) { const ec=empresaCanonica(b.empresa||b.EMPRESA); if(ec) dados.EMPRESA=ec; }
     if(b.senha){ dados.SENHA_HASH = await hashSenha(b.senha); }
     if(Array.isArray(b.permissoes_custom)) dados.PERMISSOES_CUSTOM=JSON.stringify(b.permissoes_custom);
+    if(Array.isArray(b.permissoes_granted)) dados.PERMISSOES_GRANTED=JSON.stringify(b.permissoes_granted);
+    if(Array.isArray(b.permissoes_blocked)) dados.PERMISSOES_BLOCKED=JSON.stringify(b.permissoes_blocked);
     dados.DATA_ULTIMA_ALTERACAO=new Date().toISOString(); dados.ALTERADO_POR=req.user.usuario;
     const resultado=await atualizarPorID('USUARIOS',req.params.id,dados,['ID_USUARIO','USUARIO','EMAIL']);
     if(!resultado) return res.status(404).json({sucesso:false,erro:'Usuário não encontrado. Recarregue a lista e tente novamente.'});
     await registrarAuditoria(req.user.usuario,'ATUALIZOU_USUARIO',req.params.id,'USUARIOS',null,{campos:Object.keys(b)});
+    res.json({sucesso:true});
+  }catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
+});
+
+// Soft-delete (MASTER only)
+app.delete('/api/usuarios/:id', requerPermissao('usuarios.gerenciar'), async (req,res)=>{
+  try{
+    const perfil=perfilCanonico(req.user?.perfil||'');
+    if(perfil!=='MASTER') return res.status(403).json({sucesso:false,erro:'Apenas MASTER pode excluir usuários.'});
+    const todos=await carregarUsuarios();
+    const alvo=todos.find(u=>String(u.ID_USUARIO||u.USUARIO||u.EMAIL)===String(req.params.id)||String(u.USUARIO)===String(req.params.id)||String(u.EMAIL)===String(req.params.id));
+    if(!alvo) return res.status(404).json({sucesso:false,erro:'Usuário não encontrado.'});
+    // Impede auto-exclusão
+    if(normalizarTexto(alvo.USUARIO||alvo.EMAIL)===normalizarTexto(req.user.usuario)) return res.status(400).json({sucesso:false,erro:'Você não pode excluir sua própria conta.'});
+    const dados={STATUS:'EXCLUIDO',DATA_ULTIMA_ALTERACAO:new Date().toISOString(),ALTERADO_POR:req.user.usuario};
+    await atualizarPorID('USUARIOS',req.params.id,dados,['ID_USUARIO','USUARIO','EMAIL']);
+    await registrarAuditoria(req.user.usuario,'EXCLUIU_USUARIO',req.params.id,'USUARIOS',null,{nome:alvo.NOME});
+    res.json({sucesso:true});
+  }catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
+});
+
+// Ações de status (MASTER only)
+app.post('/api/usuarios/:id/bloquear', requerPermissao('usuarios.gerenciar'), async (req,res)=>{
+  try{
+    if(perfilCanonico(req.user?.perfil||'')!=='MASTER') return res.status(403).json({sucesso:false,erro:'Apenas MASTER.'});
+    const todos=await carregarUsuarios();
+    const alvo=todos.find(u=>String(u.ID_USUARIO||u.USUARIO)===String(req.params.id)||String(u.USUARIO)===String(req.params.id));
+    if(!alvo) return res.status(404).json({sucesso:false,erro:'Usuário não encontrado.'});
+    if(normalizarTexto(alvo.USUARIO||alvo.EMAIL)===normalizarTexto(req.user.usuario)) return res.status(400).json({sucesso:false,erro:'Você não pode bloquear sua própria conta.'});
+    await atualizarPorID('USUARIOS',req.params.id,{STATUS:'BLOQUEADO',DATA_ULTIMA_ALTERACAO:new Date().toISOString(),ALTERADO_POR:req.user.usuario},['ID_USUARIO','USUARIO','EMAIL']);
+    await registrarAuditoria(req.user.usuario,'BLOQUEOU_USUARIO',req.params.id,'USUARIOS',null,{motivo:req.body?.motivo||''});
+    res.json({sucesso:true});
+  }catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
+});
+app.post('/api/usuarios/:id/desbloquear', requerPermissao('usuarios.gerenciar'), async (req,res)=>{
+  try{
+    if(perfilCanonico(req.user?.perfil||'')!=='MASTER') return res.status(403).json({sucesso:false,erro:'Apenas MASTER.'});
+    await atualizarPorID('USUARIOS',req.params.id,{STATUS:'ATIVO',DATA_ULTIMA_ALTERACAO:new Date().toISOString(),ALTERADO_POR:req.user.usuario},['ID_USUARIO','USUARIO','EMAIL']);
+    await registrarAuditoria(req.user.usuario,'DESBLOQUEOU_USUARIO',req.params.id,'USUARIOS',null,{});
+    res.json({sucesso:true});
+  }catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
+});
+app.post('/api/usuarios/:id/desativar', requerPermissao('usuarios.gerenciar'), async (req,res)=>{
+  try{
+    if(perfilCanonico(req.user?.perfil||'')!=='MASTER') return res.status(403).json({sucesso:false,erro:'Apenas MASTER.'});
+    const todos=await carregarUsuarios();
+    const alvo=todos.find(u=>String(u.ID_USUARIO||u.USUARIO)===String(req.params.id)||String(u.USUARIO)===String(req.params.id));
+    if(!alvo) return res.status(404).json({sucesso:false,erro:'Usuário não encontrado.'});
+    if(normalizarTexto(alvo.USUARIO||alvo.EMAIL)===normalizarTexto(req.user.usuario)) return res.status(400).json({sucesso:false,erro:'Você não pode desativar sua própria conta.'});
+    await atualizarPorID('USUARIOS',req.params.id,{STATUS:'INATIVO',DATA_ULTIMA_ALTERACAO:new Date().toISOString(),ALTERADO_POR:req.user.usuario},['ID_USUARIO','USUARIO','EMAIL']);
+    await registrarAuditoria(req.user.usuario,'DESATIVOU_USUARIO',req.params.id,'USUARIOS',null,{});
+    res.json({sucesso:true});
+  }catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
+});
+app.post('/api/usuarios/:id/ativar', requerPermissao('usuarios.gerenciar'), async (req,res)=>{
+  try{
+    if(perfilCanonico(req.user?.perfil||'')!=='MASTER') return res.status(403).json({sucesso:false,erro:'Apenas MASTER.'});
+    await atualizarPorID('USUARIOS',req.params.id,{STATUS:'ATIVO',DATA_ULTIMA_ALTERACAO:new Date().toISOString(),ALTERADO_POR:req.user.usuario},['ID_USUARIO','USUARIO','EMAIL']);
+    await registrarAuditoria(req.user.usuario,'ATIVOU_USUARIO',req.params.id,'USUARIOS',null,{});
     res.json({sucesso:true});
   }catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
