@@ -17,19 +17,27 @@ const permissoesService = require('./services/permissoesService');
 
 // Injeção de mock Sheets para testes — nunca ativo em produção (env var não existe em prod)
 const _sheetsMock = process.env.SHEETS_MOCK_PATH ? (() => { try { return require(process.env.SHEETS_MOCK_PATH); } catch(e) { console.warn('[MOCK] falhou ao carregar:', e.message); return null; } })() : null;
-// Flag de leitura PG: padrão false = leituras sempre do Sheets (seguro ao configurar DATABASE_URL)
+// Flag de leitura PG: padrão false = leituras sempre do Sheets
+// Para reativar PG: adicionar PG_LEITURA_ATIVA=true nas variáveis de ambiente do Vercel
 const PG_LEITURA_ATIVA = String(process.env.PG_LEITURA_ATIVA || 'false').toLowerCase() === 'true';
 
-// Repositórios PostgreSQL (F4/F7) — falha silenciosa, fallback para Sheets
-let usuarioRepo, manifestacaoRepo, rncRepo, empresaRepo, conhecimentoRepo;
-try {
-  usuarioRepo = require('../database/repositories/usuarioRepository');
-  manifestacaoRepo = require('../database/repositories/manifestacaoRepository');
-  rncRepo = require('../database/repositories/rncRepository');
-  empresaRepo = require('../database/repositories/empresaRepository');
-  conhecimentoRepo = require('../database/repositories/conhecimentoRepository');
-} catch (e) {
-  console.warn('[F4] Repositórios PG não disponíveis:', e.message);
+// Repositórios PostgreSQL — carregados mas desativados enquanto PG_LEITURA_ATIVA=false
+// Isso garante que todos os dados sejam lidos/gravados exclusivamente no Sheets,
+// eliminando bugs de dessincronização entre os dois storages.
+let usuarioRepo = null, manifestacaoRepo = null, rncRepo = null, empresaRepo = null, conhecimentoRepo = null;
+if (PG_LEITURA_ATIVA) {
+  try {
+    usuarioRepo = require('../database/repositories/usuarioRepository');
+    manifestacaoRepo = require('../database/repositories/manifestacaoRepository');
+    rncRepo = require('../database/repositories/rncRepository');
+    empresaRepo = require('../database/repositories/empresaRepository');
+    conhecimentoRepo = require('../database/repositories/conhecimentoRepository');
+    console.info('[PG] Repositórios carregados — leituras via PostgreSQL ativas.');
+  } catch (e) {
+    console.warn('[PG] Repositórios não disponíveis, usando Sheets:', e.message);
+  }
+} else {
+  console.info('[PG] PG_LEITURA_ATIVA=false — todas as operações via Google Sheets.');
 }
 
 const app = express();
@@ -239,22 +247,6 @@ async function carregarUsuarios(){
           ULTIMO_ACESSO: u.ultimoAcesso?.toISOString?.() || '',
           _pgId: u.id,
         }));
-        // Mescla permissões customizadas salvas no Sheets (não existem no PG)
-        try {
-          const sheetsRows = await lerAba('USUARIOS', 1000);
-          const sheetsMap = new Map();
-          sheetsRows.forEach(r => {
-            if (r.USUARIO) sheetsMap.set(normalizarTexto(r.USUARIO), r);
-            if (r.EMAIL) sheetsMap.set(normalizarTexto(r.EMAIL), r);
-          });
-          mapped.forEach(u => {
-            const sr = sheetsMap.get(normalizarTexto(u.USUARIO)) || sheetsMap.get(normalizarTexto(u.EMAIL));
-            if (sr) {
-              if (sr.PERMISSOES_GRANTED) u.PERMISSOES_GRANTED = sr.PERMISSOES_GRANTED;
-              if (sr.PERMISSOES_BLOCKED) u.PERMISSOES_BLOCKED = sr.PERMISSOES_BLOCKED;
-            }
-          });
-        } catch(e) { console.warn('[F4] merge permissões Sheets falhou:', e.message); }
         const demoEnabled = String(process.env.DEMO_LOGIN_ENABLED || 'false').toLowerCase() === 'true';
         return [...mapped, ...(demoEnabled ? DEMO_USUARIOS : [])];
       }
