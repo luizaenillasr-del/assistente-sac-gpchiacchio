@@ -142,6 +142,9 @@ const EMPRESA_MAP = {
   CHIACCHIO: ['chiacchio embalagens', 'chiachio embalagens', 'chiacchio'],
   PLASCHIO:  ['plaschio'],
   TUBAHIA:   ['tubahia', 'cesbap'],
+  LOGCHIO:   ['logchio'],
+  SOLARCHIO: ['solarchio'],
+  PREMOCHIO: ['premochio'],
   MASTER:    ['grupo chiacchio', 'todas', 'master', 'todas as empresas'], // empresa do usu\u00e1rio MASTER = acesso global
 };
 
@@ -3330,7 +3333,7 @@ app.get('/relatorio-publico/:token', async (req, res) => {
     const ano = row.ANO||'', mes = row.MES||'', versao = row.VERSAO||'1';
     const ind = row.INDICADOR ? parseFloat(row.INDICADOR) : null;
     const npsScore = row.NPS_SCORE !== '' && row.NPS_SCORE != null ? parseInt(row.NPS_SCORE) : null;
-    const LOGOS = {'CHIACCHIO':'/assets/logo-chiacchio-embalagens.svg','PLASCHIO':'/assets/logo-plaschio.svg','TUBAHIA':'/assets/logo-tubahia.svg'};
+    const LOGOS = {'CHIACCHIO':'/assets/logo-chiacchio-embalagens.svg','PLASCHIO':'/assets/logo-plaschio.svg','TUBAHIA':'/assets/logo-tubahia.svg','LOGCHIO':'/assets/logo-chiacchio-embalagens.svg','SOLARCHIO':'/assets/logo-chiacchio-embalagens.svg','PREMOCHIO':'/assets/logo-chiacchio-embalagens.svg'};
     const empKey = Object.keys(LOGOS).find(k=>empresa.toUpperCase().includes(k))||'CHIACCHIO';
     const logo = LOGOS[empKey];
     const MN=['','janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
@@ -3410,12 +3413,12 @@ section p{font-size:13px;color:#3A3A3A;line-height:1.65;margin-top:6px}
 
 // ===== ROTA PÚBLICA: PESQUISA DE SATISFAÇÃO =====
 const _pesquisaPublicaHTML = (empresa) => {
-  const slug = empresa === 'chiacchio' ? 'chiacchio' : empresa === 'plaschio' ? 'plaschio' : (empresa === 'tubahia' || empresa === 'cesbap') ? 'tubahia' : 'chiacchio';
-  const titulo = slug === 'chiacchio' ? 'Chiacchio Embalagens' : slug === 'plaschio' ? 'Plaschio' : 'Cesbap';
+  const slug = empresa === 'chiacchio' ? 'chiacchio' : empresa === 'plaschio' ? 'plaschio' : (empresa === 'tubahia' || empresa === 'cesbap') ? 'tubahia' : empresa === 'logchio' ? 'logchio' : empresa === 'solarchio' ? 'solarchio' : empresa === 'premochio' ? 'premochio' : 'chiacchio';
+  const titulo = slug === 'chiacchio' ? 'Chiacchio Embalagens' : slug === 'plaschio' ? 'Plaschio' : slug === 'tubahia' ? 'Cesbap' : slug === 'logchio' ? 'Logchio' : slug === 'solarchio' ? 'Solarchio' : slug === 'premochio' ? 'Premochio' : 'Chiacchio Embalagens';
   const brandColor = slug === 'tubahia' ? '#2B2070' : '#B9171A';
   const brandSoft = slug === 'tubahia' ? '#D9D6F0' : '#FFE1E0';
   const brandHover = slug === 'tubahia' ? '#1F1760' : '#A80502';
-  const logoPath = slug === 'chiacchio' ? '/assets/logo-chiacchio-new.png' : slug === 'plaschio' ? '/assets/logo-plaschio-new.png' : '/assets/logo-tubahia-new.png';
+  const logoPath = slug === 'chiacchio' ? '/assets/logo-chiacchio-new.png' : slug === 'plaschio' ? '/assets/logo-plaschio-new.png' : slug === 'tubahia' ? '/assets/logo-tubahia-new.png' : slug === 'logchio' ? '/assets/logo-chiacchio-new.png' : slug === 'solarchio' ? '/assets/logo-chiacchio-new.png' : slug === 'premochio' ? '/assets/logo-chiacchio-new.png' : '/assets/logo-chiacchio-new.png';
   const perguntas = [
     { id:'recomendacao', label:'Em uma escala de 0 a 10, o quanto você nos recomendaria a um amigo ou colega?', tipo:'nps', obrig:true },
     { id:'qualidade', label:'Como você avalia a qualidade dos nossos produtos?', tipo:'escala', obrig:true },
@@ -3947,9 +3950,9 @@ app.post('/api/pesquisas/questionario', requerPerfil('MASTER','ANALISTA SAC','AP
 // Pesquisa HTML pública por token (página nova com campos estendidos)
 function _pesquisaTokenHTML(token, empresa, nomeCliente) {
   const empresaDisplay = _empresaDisplay(empresa);
-  const logoMap = { CHIACCHIO:'logo-chiacchio-new.png', PLASCHIO:'logo-plaschio-new.png', TUBAHIA:'logo-tubahia-new.png' };
+  const logoMap = { CHIACCHIO:'logo-chiacchio-new.png', PLASCHIO:'logo-plaschio-new.png', TUBAHIA:'logo-tubahia-new.png', LOGCHIO:'logo-chiacchio-new.png', SOLARCHIO:'logo-chiacchio-new.png', PREMOCHIO:'logo-chiacchio-new.png' };
   const cod = empresaCanonica(empresa||'');
-  const logo = logoMap[cod] ? `/assets/${logoMap[cod]}` : '';
+  const logo = logoMap[cod] ? `/assets/${logoMap[cod]}` : '/assets/logo-chiacchio-new.png';
   const tkBrandColor = cod === 'TUBAHIA' ? '#2B2070' : '#B9171A';
   const tkBrandHover = cod === 'TUBAHIA' ? '#1F1760' : '#A80502';
   return `<!DOCTYPE html>
