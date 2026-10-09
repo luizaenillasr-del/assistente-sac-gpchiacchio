@@ -673,6 +673,35 @@
             <div style="font-size:11px;font-weight:700;color:#1D4ED8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">⚡ Próximos passos</div>
             <div id="modal-proximos-passos-content" style="font-size:13px;color:#1E40AF;line-height:1.65"></div>
           </div>
+
+          <div id="modal-decisao-aprovador" style="display:none;margin-top:14px;border-top:2px solid #F3CFCF;padding-top:14px">
+            <div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:#A80502;margin-bottom:10px">SUA DECISÃO · APROVAÇÃO</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+              <button onclick="modalDecisaoSelecionar('APROVAR',this)" id="mdec-btn-aceitar"
+                style="flex:1;min-width:140px;border:1.5px solid #D6D6D6;background:#fff;color:#545252;border-radius:8px;padding:11px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;text-align:center">
+                Aceitar a manifestação
+              </button>
+              <button onclick="modalDecisaoSelecionar('DEVOLVER',this)" id="mdec-btn-devolver"
+                style="flex:1;min-width:140px;border:1.5px solid #D6D6D6;background:#fff;color:#545252;border-radius:8px;padding:11px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;text-align:center">
+                Devolver para ajuste
+              </button>
+            </div>
+            <input type="hidden" id="mdec-decisao" value="">
+            <div id="mdec-box-motivo" style="display:none;margin-bottom:12px">
+              <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:#3A3939">
+                Motivo da devolução <span style="font-weight:400;color:#929090">(obrigatório)</span>
+                <textarea id="mdec-motivo" style="min-height:64px;border:1px solid #D6D6D6;border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit;resize:vertical" placeholder="Descreva o que precisa ser ajustado..."></textarea>
+              </label>
+              <div id="mdec-motivo-erro" style="display:none;font-size:11px;color:#C70602;margin-top:3px">Informe o motivo da devolução.</div>
+            </div>
+            <div style="display:flex;justify-content:flex-end">
+              <button onclick="modalDecisaoEnviar()" id="mdec-btn-confirmar"
+                style="background:#C70602;color:#fff;border:0;border-radius:8px;padding:10px 22px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;opacity:.45;pointer-events:none">
+                Confirmar decisão
+              </button>
+            </div>
+            <div id="mdec-msg" style="display:none;margin-top:8px;font-size:12px;border-radius:6px;padding:8px 12px"></div>
+          </div>
         </div>
 
         <!-- Tab Dados completos -->
@@ -6630,6 +6659,20 @@
 .af-toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#1F1F1F;color:#fff;padding:11px 16px;border-radius:8px;font-size:13px;z-index:400;max-width:92vw;display:none}
 .af-toast.on{display:block}
 @media (max-width:640px){.af-main{padding:16px 14px 48px}.af-dr-b{padding:14px}.af-title{font-size:21px}}
+/* Abas de status */
+.af-abas{display:flex;gap:6px;flex-wrap:wrap;border-bottom:2px solid #E4E4E4;padding-bottom:0;margin-bottom:2px}
+.af-aba{border:0;background:none;padding:10px 16px 11px;cursor:pointer;font-size:13px;font-weight:600;color:#666464;border-bottom:3px solid transparent;margin-bottom:-2px;border-radius:6px 6px 0 0;transition:color .15s}
+.af-aba:hover{color:#1F1F1F;background:#F4F4F4}
+.af-aba.ativa{color:#C70602;border-bottom-color:#C70602}
+.af-aba-n{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:18px;padding:0 5px;border-radius:99px;font-size:10.5px;font-weight:700;margin-left:5px;background:#E4E4E4;color:#545252}
+.af-aba.ativa .af-aba-n{background:#FDECEC;color:#A80502}
+.af-st-andamento{background:#FBF0D9;color:#7A4C00}
+.af-st-arquivada{background:#EEEEEE;color:#545252}
+.af-pill-arq{display:inline-flex;align-items:center;gap:4px;background:#E4E4E4;color:#545252;padding:2px 8px;border-radius:99px;font-size:10.5px;font-weight:700}
+/* SLA badge na tabela */
+.af-sla-ok{color:#1E6B3A;font-size:11px;font-weight:600}
+.af-sla-alerta{color:#92400E;font-size:11px;font-weight:600}
+.af-sla-vencido{color:#A80502;font-size:11px;font-weight:600}
 </style>
 <!-- ===== ARQUIVO DE FICHAS: estilos — fim ===== -->
 
@@ -6652,10 +6695,20 @@
     <!-- AVISO -->
     <div class="af-aviso">Os números abaixo incluem as fichas <strong>criadas no sistema</strong> e as <strong>fichas históricas importadas</strong> (PDF ou DOCX de antes da ferramenta). Cada ficha importada fica arquivada pela empresa, mês e ano da reclamação original, não pela data da importação.</div>
 
+    <!-- ABAS DE STATUS -->
+    <div class="af-abas" id="bib-abas">
+      <button class="af-aba ativa" onclick="afAbaClick('',this)">Todas <span class="af-aba-n" id="bib-aba-n-todas">—</span></button>
+      <button class="af-aba" onclick="afAbaClick('ABERTA',this)">Abertas <span class="af-aba-n" id="bib-aba-n-aberta">—</span></button>
+      <button class="af-aba" onclick="afAbaClick('EM_ANDAMENTO',this)">Em andamento <span class="af-aba-n" id="bib-aba-n-andamento">—</span></button>
+      <button class="af-aba" onclick="afAbaClick('CONCLUIDA',this)">Concluídas <span class="af-aba-n" id="bib-aba-n-concluida">—</span></button>
+      <button class="af-aba" onclick="afAbaClick('REINCIDENTE',this)">Reincidentes <span class="af-aba-n" id="bib-aba-n-reincidente">—</span></button>
+      <button class="af-aba" onclick="afAbaClick('ARQUIVADA',this)" style="margin-left:auto">📦 Arquivadas <span class="af-aba-n" id="bib-aba-n-arquivada">—</span></button>
+    </div>
+
     <!-- FILTROS -->
     <div class="af-filtros">
       <label class="af-lbl" style="flex:1 1 260px">Buscar
-        <input id="bib-f-q" class="af-input" type="text" placeholder="Protocolo, cliente, CNPJ, motivo, colaborador…" oninput="afBuscaDigitou()" onkeydown="if(event.key==='Enter')afBuscaAgora()">
+        <input id="bib-f-q" class="af-input" type="text" placeholder="Protocolo, cliente, CNPJ, motivo, setor…" oninput="afBuscaDigitou()" onkeydown="if(event.key==='Enter')afBuscaAgora()">
       </label>
       <label class="af-lbl">Ano
         <select id="bib-f-ano" class="af-select" onchange="afFiltroMudou()"><option value="">Todos</option></select>
@@ -6672,6 +6725,9 @@
       <label class="af-lbl">Empresa
         <select id="bib-f-empresa" class="af-select" onchange="afFiltroMudou()"><option value="">Todas</option></select>
       </label>
+      <label class="af-lbl">Setor
+        <select id="bib-f-setor" class="af-select" onchange="afFiltroMudou()"><option value="">Todos</option></select>
+      </label>
       <label class="af-lbl">Tipo
         <select id="bib-f-tipo" class="af-select" onchange="afFiltroMudou()">
           <option value="">Todos</option>
@@ -6684,11 +6740,17 @@
           <option value="">Todas</option><option value="SISTEMA">Criada no sistema</option><option value="IMPORTADA">Histórica importada</option>
         </select>
       </label>
-      <label class="af-lbl">Status
-        <select id="bib-f-status" class="af-select" onchange="afFiltroMudou()">
+      <label class="af-lbl">SLA
+        <select id="bib-f-sla" class="af-select" onchange="afFiltroMudou()">
           <option value="">Todos</option>
-          <option value="ABERTA">Aberta</option><option value="EM_TRATATIVA">Em tratativa</option><option value="CONCLUIDA">Concluída</option>
+          <option value="VENCIDO">SLA vencido</option><option value="OK">Dentro do prazo</option>
         </select>
+      </label>
+      <label class="af-lbl">Abertura de
+        <input id="bib-f-abertura-ini" class="af-input" type="date" style="min-width:130px" onchange="afFiltroMudou()">
+      </label>
+      <label class="af-lbl">até
+        <input id="bib-f-abertura-fim" class="af-input" type="date" style="min-width:130px" onchange="afFiltroMudou()">
       </label>
       <button class="af-limpar" onclick="limparFiltrosBib()">× Limpar</button>
     </div>
@@ -6724,7 +6786,7 @@
         </div>
         <div style="overflow-x:auto">
           <table class="af-tbl" id="bib-table">
-            <thead><tr><th>Protocolo</th><th>Data</th><th>Empresa</th><th>Cliente</th><th>Tipo</th><th>Motivo</th><th>Origem</th><th>Evidências</th><th>Status</th></tr></thead>
+            <thead><tr><th>Protocolo</th><th>Data</th><th>Empresa</th><th>Cliente</th><th>Tipo</th><th>Motivo</th><th>Setor</th><th>SLA</th><th>Origem</th><th>Status</th><th></th></tr></thead>
             <tbody id="bib-tbody"></tbody>
           </table>
         </div>
@@ -6985,8 +7047,21 @@ function navigate(page, el) {
 const AF_MN = ['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 const AF_MS = ['', 'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 const AF_ORIGEM = { SISTEMA: ['Criada no sistema', 'af-or-sistema'], IMPORTADA: ['Histórica importada', 'af-or-hist'] };
-const AF_STATUS = { ABERTA: ['Aberta', 'af-st-aberta'], EM_TRATATIVA: ['Em tratativa', 'af-st-trat'], CONCLUIDA: ['Concluída', 'af-st-conc'] };
-const AF_FILTROS = [['q', 'bib-f-q'], ['ano', 'bib-f-ano'], ['mes', 'bib-f-mes'], ['empresa', 'bib-f-empresa'], ['tipo', 'bib-f-tipo'], ['origem', 'bib-f-origem'], ['status', 'bib-f-status']];
+const AF_STATUS = {
+  ABERTA:       ['Aberta',         'af-st-aberta'],
+  EM_TRATATIVA: ['Em andamento',   'af-st-andamento'],
+  EM_ANDAMENTO: ['Em andamento',   'af-st-andamento'],
+  CONCLUIDA:    ['Concluída',      'af-st-conc'],
+  ARQUIVADA:    ['Arquivada',      'af-st-arquivada'],
+};
+const AF_FILTROS = [
+  ['q','bib-f-q'],['ano','bib-f-ano'],['mes','bib-f-mes'],
+  ['empresa','bib-f-empresa'],['setor','bib-f-setor'],
+  ['tipo','bib-f-tipo'],['origem','bib-f-origem'],
+  ['sla_status','bib-f-sla'],
+  ['data_abertura_ini','bib-f-abertura-ini'],['data_abertura_fim','bib-f-abertura-fim'],
+];
+let _bibAbaAtiva = ''; // ''|'ABERTA'|'EM_ANDAMENTO'|'CONCLUIDA'|'REINCIDENTE'|'ARQUIVADA'
 
 let _bibPage = 1;
 let _bibTotalPages = 1;
@@ -7016,6 +7091,21 @@ function afToast(msg) {
 function afFiltros() {
   const o = {};
   AF_FILTROS.forEach(([k, id]) => { o[k] = (_afEl(id)?.value || '').trim(); });
+  // Aba ativa define status e arquivado
+  if (_bibAbaAtiva === 'ARQUIVADA') {
+    o.arquivado = 'SIM';
+    o.status = '';
+    o.extra = '';
+  } else if (_bibAbaAtiva === 'REINCIDENTE') {
+    o.arquivado = 'NAO';
+    o.extra = 'reincidente';
+    o.status = '';
+  } else if (_bibAbaAtiva) {
+    o.status = _bibAbaAtiva;
+    o.arquivado = 'NAO';
+  } else {
+    o.arquivado = 'NAO';
+  }
   return o;
 }
 
@@ -7038,6 +7128,15 @@ function afSetSelect(id, v) {
 
 function bibToggleFiltroExtra(tipo) {
   _bibFiltroExtra = _bibFiltroExtra === tipo ? '' : tipo;
+  loadBiblioteca(true);
+}
+
+function afAbaClick(aba, btn) {
+  _bibAbaAtiva = aba;
+  _bibFiltroExtra = '';
+  document.querySelectorAll('.af-aba').forEach(b => b.classList.remove('ativa'));
+  if (btn) btn.classList.add('ativa');
+  closeBibPainel();
   loadBiblioteca(true);
 }
 
@@ -7142,7 +7241,7 @@ function afRenderOpcoes(s) {
 function afRenderKpis(s) {
   const wrap = _afEl('bib-kpis'); if (!wrap) return;
   const agora = new Date();
-  const total = s ? s.totalFichas : 0;
+  const total = s ? s.totalAtivas ?? s.totalFichas : 0;
   const K = (l, v, d, cor, extra, red, estatico) => {
     const on = extra && _bibFiltroExtra === extra;
     const cls = 'af-kpi' + (red ? ' red' : '') + (on ? ' ativo' : '') + (estatico ? ' static' : '');
@@ -7150,13 +7249,32 @@ function afRenderKpis(s) {
     return `<button class="${cls}"${clk}><span class="af-kpi-l">${l}</span><span class="af-kpi-v" style="color:${cor}">${s ? _afNum(v) : '—'}</span><span class="af-kpi-d">${escHtml(s ? d : '')}</span></button>`;
   };
   wrap.innerHTML = [
-    K('TOTAL GERAL', s?.totalFichas, s ? `${_afNum(s.historicas)} históricas · ${_afNum(s.sistema)} no sistema` : '', '#1F1F1F', '', false, true),
-    K('ESTE MÊS', s?.fichasDoMes, `${AF_MN[agora.getMonth() + 1].toLowerCase()}/${agora.getFullYear()}`, '#24508F', '', false, true),
-    K('ESTE ANO', s?.fichasDoAno, String(agora.getFullYear()), '#5B3FA0', '', false, true),
-    K('COM EVIDÊNCIAS', s?.comEvidencias, `${_afPct(s?.comEvidencias, total)} documentadas`, '#0E7C86', 'evidencia'),
-    K('COM TRATATIVA', s?.comTratativa, `${_afPct(s?.comTratativa, total)} concluídas`, '#1E6B3A', 'tratativa'),
+    K('TOTAL ATIVAS', s?.totalAtivas ?? s?.totalFichas, s ? `${_afNum(s.historicas)} históricas · ${_afNum(s.sistema)} no sistema` : '', '#1F1F1F', '', false, true),
+    K('ABERTAS', s?.abertas, 'aguardando início do tratamento', '#24508F', '', false, true),
+    K('EM ANDAMENTO', s?.emAndamento, 'em análise, tratativa ou aprovação', '#7A4C00', '', false, true),
+    K('CONCLUÍDAS', s?.concluidas, `${_afPct(s?.concluidas, total)} do total ativo`, '#1E6B3A', '', false, true),
+    K('SLA VENCIDO', s?.slaVencido, 'fichas ativas com prazo excedido', '#C70602', 'sla_vencido', true),
     K('REINCIDENTES', s?.reincidentes, `${_afNum(s?.reincidentesFichas)} fichas · clientes com 2+ reclamações em 12 meses`, '#C70602', 'reincidente', true),
   ].join('');
+
+  // Atualizar contadores das abas
+  const setN = (id, v) => { const el = _afEl(id); if (el) el.textContent = s ? _afNum(v) : '—'; };
+  setN('bib-aba-n-todas',      (s?.totalAtivas ?? s?.totalFichas) ?? 0);
+  setN('bib-aba-n-aberta',     s?.abertas ?? 0);
+  setN('bib-aba-n-andamento',  s?.emAndamento ?? 0);
+  setN('bib-aba-n-concluida',  s?.concluidas ?? 0);
+  setN('bib-aba-n-reincidente',s?.reincidentes ?? 0);
+  setN('bib-aba-n-arquivada',  s?.arquivadas ?? 0);
+
+  // Popular select de setores com dados reais
+  if (s?.setores?.length) {
+    const sel = _afEl('bib-f-setor');
+    if (sel) {
+      const va = sel.value;
+      sel.innerHTML = '<option value="">Todos</option>' + s.setores.map(st => `<option value="${escHtml(st)}">${escHtml(st)}</option>`).join('');
+      if (va) sel.value = va;
+    }
+  }
 }
 
 function afRenderPorEmpresa(det) {
@@ -7254,6 +7372,8 @@ function afTreeClick(i) {
 function limparFiltrosBib() {
   AF_FILTROS.forEach(([, id]) => { const el = _afEl(id); if (el) { el.value = ''; el.classList.remove('ativo'); } });
   _bibFiltroExtra = '';
+  _bibAbaAtiva = '';
+  document.querySelectorAll('.af-aba').forEach((b,i) => b.classList.toggle('ativa', i === 0));
   closeBibPainel();
   loadBiblioteca(true);
 }
@@ -7279,22 +7399,40 @@ function afPill(mapa, chave, lg) {
 function _bibStatusBadge(st) { return afPill(AF_STATUS, st); }
 function _bibOrigemBadge(o) { return afPill(AF_ORIGEM, o); }
 
+function _afSlaHtml(f) {
+  if (f.STATUS === 'CONCLUIDA' || f.ARQUIVADO === 'SIM' || !f.DATA_ABERTURA_ISO || !f.SLA_HORAS) return '<span style="color:#929090;font-size:11px">—</span>';
+  const prazoMs = new Date(f.DATA_ABERTURA_ISO).getTime() + Number(f.SLA_HORAS) * 3600000;
+  const restH = Math.round((prazoMs - Date.now()) / 3600000);
+  if (restH < 0) return `<span class="af-sla-vencido">⏰ ${Math.abs(restH)}h atraso</span>`;
+  if (restH <= 24) return `<span class="af-sla-alerta">⚠ ${restH}h restam</span>`;
+  return `<span class="af-sla-ok">✓ ${restH}h</span>`;
+}
+
 function afRenderTabela(fichas) {
   const ativa = _afFichaAtual?.ficha?.PROTOCOLO;
   _afEl('bib-tbody').innerHTML = fichas.map((f, i) => {
-    const ev = parseInt(f.TOTAL_EVIDENCIAS || 0);
-    const re = f.REINCIDENTE ? `<span style="font-size:10.5px;font-weight:700;color:#A80502">⚠ reincidente · ${f.REINCIDENTE_N} fichas em 12 meses</span>` : '';
+    const re = f.REINCIDENTE ? `<span style="font-size:10.5px;font-weight:700;color:#A80502;display:block">⚠ reincidente</span>` : '';
+    const arqPill = f.ARQUIVADO === 'SIM' ? `<span class="af-pill-arq">📦 Arquivada</span>` : '';
+    const statusHtml = f.ARQUIVADO === 'SIM'
+      ? `<span class="af-pill af-st-arquivada">Arquivada</span>`
+      : `${_bibStatusBadge(f.STATUS)}${arqPill}`;
     return `<tr class="af-row${ativa && ativa === f.PROTOCOLO ? ' ativa' : ''}" onclick="afAbrirFicha(${i})">
       <td style="font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums">${escHtml(f.PROTOCOLO || f.ID_MANIFESTACAO || '—')}</td>
       <td style="white-space:nowrap;color:#545252">${escHtml(afFmtData(f))}</td>
       <td>${escHtml(f.EMPRESA || '—')}</td>
-      <td style="max-width:220px"><div style="display:flex;flex-direction:column;gap:2px"><span>${escHtml(f.NOME_CLIENTE || '—')}</span>${re}</div></td>
+      <td style="max-width:200px"><div style="display:flex;flex-direction:column;gap:2px"><span>${escHtml(f.NOME_CLIENTE || '—')}</span>${re}</div></td>
       <td>${escHtml(f.TIPO_MANIFESTACAO || '—')}</td>
-      <td style="max-width:200px">${escHtml(f.MOTIVO || '—')}</td>
+      <td style="max-width:160px">${escHtml((f.MOTIVO || '—').slice(0,60))}</td>
+      <td style="white-space:nowrap;color:#545252;font-size:12px">${escHtml(f.SETOR || '—')}</td>
+      <td>${_afSlaHtml(f)}</td>
       <td>${_bibOrigemBadge(f.ORIGEM)}</td>
-      <td style="white-space:nowrap;color:#545252">${ev ? ev + (ev > 1 ? ' arquivos' : ' arquivo') : '—'}</td>
-      <td>${_bibStatusBadge(f.STATUS)}</td>
-      <td onclick="event.stopPropagation()"><button class="btn btn-secondary" style="padding:3px 8px;font-size:11px" onclick="afEditarFicha(${i})">✎ Editar</button></td>
+      <td>${statusHtml}</td>
+      <td onclick="event.stopPropagation()" style="white-space:nowrap">
+        <button class="btn btn-secondary" style="padding:3px 8px;font-size:11px;margin-right:3px" onclick="afEditarFicha(${i})">✎</button>
+        ${f.ARQUIVADO === 'SIM'
+          ? `<button class="af-btn-sm" title="Desarquivar" onclick="afDesarquivarFicha(${i})">↩ Restaurar</button>`
+          : `<button class="af-btn-sm" title="Arquivar" onclick="afArquivarFicha(${i})">📦</button>`}
+      </td>
     </tr>`;
   }).join('');
 }
@@ -7409,11 +7547,14 @@ function afRenderFicha(f, evs, hist) {
     <div class="af-box" style="display:flex;flex-direction:column;gap:10px"><span style="font-weight:700;font-size:14px">Documentos e evidências</span>${docs.join('')}${evs.length ? '' : '<span style="font-size:12.5px;color:#929090">Nenhuma evidência anexada.</span>'}</div>
     <div class="af-box"><div style="font-weight:700;font-size:14px;margin-bottom:10px">Histórico</div>${hh || '<span style="font-size:12.5px;color:#929090">Sem eventos registrados.</span>'}</div>`;
 
+  const btnArquivar = f.ARQUIVADO === 'SIM'
+    ? `<button class="af-btn" onclick="afDesarquivarFichaAtual()" style="border-color:#1E6B3A;color:#1E6B3A">↩ Desarquivar</button>`
+    : `<button class="af-btn" onclick="afArquivarFichaAtual()" style="border-color:#929090;color:#545252">📦 Arquivar</button>`;
   _afEl('bib-painel-foot').innerHTML =
     (f.ID_MANIFESTACAO ? `<button class="af-btn" onclick="if(window.abrirDossie)window.abrirDossie(${escHtml(JSON.stringify(f.ID_MANIFESTACAO))});closeBibPainel()">Ver dossiê completo</button>` : '') +
-    `<a class="af-btn" href="/fichas.html" target="_blank" rel="noopener">Ver modelo da ficha</a>` +
     `<button class="af-btn" onclick="afAnexarArquivo()">Anexar arquivo</button>` +
     `<input type="file" id="af-input-anexo" style="display:none" accept=".pdf,.docx,.doc,.jpg,.jpeg,.png,.xlsx,.xls" onchange="afEnviarAnexo(this)">` +
+    btnArquivar +
     `<button class="af-btn af-btn-dark" onclick="afBaixarPdf()">${imp ? 'Abrir ficha original' : 'Baixar PDF da ficha'}</button>`;
 }
 
@@ -7467,6 +7608,92 @@ function closeBibPainel() {
 }
 // compat alias para código que chama closeBibFichaModal
 function closeBibFichaModal() { closeBibPainel(); }
+
+// Arquivar ficha pela linha da tabela
+window.afArquivarFicha = async function(i) {
+  const f = _bibFichasAcum[i]; if (!f) return;
+  const id = f.PROTOCOLO || f.ID_MANIFESTACAO;
+  if (!id) return;
+  if (['ABERTA','EM_ANDAMENTO','EM_TRATATIVA'].includes(f.STATUS)) {
+    if (!confirm(`⚠ Esta ficha está "${AF_STATUS[f.STATUS]?.[0] || f.STATUS}". Arquivar fichas abertas ou em andamento requer permissão especial.\n\nDeseja continuar?`)) return;
+  }
+  const motivo = prompt('Informe o motivo do arquivamento (obrigatório):');
+  if (!motivo?.trim()) return;
+  try {
+    const tok = _afTok();
+    const r = await fetch(`${window.SAC_API || ''}/api/biblioteca/fichas/${encodeURIComponent(id)}/arquivar`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok },
+      body: JSON.stringify({ motivo: motivo.trim() })
+    });
+    const d = await r.json();
+    if (!d.sucesso) { afToast('Erro: ' + (d.erro || 'Falha ao arquivar.')); return; }
+    afToast('Ficha arquivada com sucesso.');
+    loadBiblioteca(true);
+  } catch(e) { afToast('Erro: ' + e.message); }
+};
+
+// Arquivar ficha aberta no painel lateral
+window.afArquivarFichaAtual = async function() {
+  const f = _afFichaAtual?.ficha; if (!f) return;
+  const id = f.PROTOCOLO || f.ID_MANIFESTACAO;
+  if (!id) return;
+  if (['ABERTA','EM_ANDAMENTO','EM_TRATATIVA'].includes(f.STATUS)) {
+    if (!confirm(`⚠ Esta ficha está "${AF_STATUS[f.STATUS]?.[0] || f.STATUS}". Arquivar fichas abertas ou em andamento requer permissão especial.\n\nDeseja continuar?`)) return;
+  }
+  const motivo = prompt('Informe o motivo do arquivamento (obrigatório):');
+  if (!motivo?.trim()) return;
+  try {
+    const tok = _afTok();
+    const r = await fetch(`${window.SAC_API || ''}/api/biblioteca/fichas/${encodeURIComponent(id)}/arquivar`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok },
+      body: JSON.stringify({ motivo: motivo.trim() })
+    });
+    const d = await r.json();
+    if (!d.sucesso) { afToast('Erro: ' + (d.erro || 'Falha ao arquivar.')); return; }
+    afToast('Ficha arquivada. Ela ficará disponível na aba "Arquivadas".');
+    closeBibPainel();
+    loadBiblioteca(true);
+  } catch(e) { afToast('Erro: ' + e.message); }
+};
+
+// Desarquivar ficha pela linha da tabela
+window.afDesarquivarFicha = async function(i) {
+  const f = _bibFichasAcum[i]; if (!f) return;
+  const id = f.PROTOCOLO || f.ID_MANIFESTACAO;
+  if (!id) return;
+  if (!confirm(`Deseja restaurar a ficha "${id}"?\n\nEla voltará ao status original e ficará nas fichas ativas.`)) return;
+  try {
+    const tok = _afTok();
+    const r = await fetch(`${window.SAC_API || ''}/api/biblioteca/fichas/${encodeURIComponent(id)}/desarquivar`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok },
+      body: JSON.stringify({ motivo: 'Desarquivado pelo usuário.' })
+    });
+    const d = await r.json();
+    if (!d.sucesso) { afToast('Erro: ' + (d.erro || 'Falha ao desarquivar.')); return; }
+    afToast('Ficha restaurada com sucesso.');
+    loadBiblioteca(true);
+  } catch(e) { afToast('Erro: ' + e.message); }
+};
+
+// Desarquivar ficha aberta no painel lateral
+window.afDesarquivarFichaAtual = async function() {
+  const f = _afFichaAtual?.ficha; if (!f) return;
+  const id = f.PROTOCOLO || f.ID_MANIFESTACAO;
+  if (!id) return;
+  if (!confirm(`Deseja restaurar a ficha "${id}"?\n\nEla voltará ao status original e ficará nas fichas ativas.`)) return;
+  try {
+    const tok = _afTok();
+    const r = await fetch(`${window.SAC_API || ''}/api/biblioteca/fichas/${encodeURIComponent(id)}/desarquivar`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok },
+      body: JSON.stringify({ motivo: 'Desarquivado pelo usuário.' })
+    });
+    const d = await r.json();
+    if (!d.sucesso) { afToast('Erro: ' + (d.erro || 'Falha ao desarquivar.')); return; }
+    afToast('Ficha restaurada com sucesso.');
+    closeBibPainel();
+    loadBiblioteca(true);
+  } catch(e) { afToast('Erro: ' + e.message); }
+};
 
 // ===== IMPORTAR FICHAS (PDF/DOCX) =====
 const AF_EMP_IMP = [['CHIACCHIO', 'Chiacchio Embalagens'], ['PLASCHIO', 'Plaschio'], ['TUBAHIA', 'Cesbap']];
@@ -9318,6 +9545,27 @@ function abrirDossie(item) {
 
   // ── Histórico tab: placeholder, carrega ao clicar
   document.getElementById('modal-historico-timeline').innerHTML = `<div style="text-align:center;color:var(--gray-400);padding:24px;font-size:13px">Clique na aba Histórico para carregar.</div>`;
+
+  // ── Card de decisão do aprovador
+  const _decEl = document.getElementById('modal-decisao-aprovador');
+  if (_decEl) {
+    const _perfisAprov = ['APROVADOR','APROVADOR MASTER','MASTER','GESTOR SAC','ANALISTA SAC'];
+    const _isAprov = _perfisAprov.includes(role());
+    const _st = (item.STATUS_FICHA || item.STATUS || '').toUpperCase();
+    const _aguardando = _st.includes('AGUARDANDO_APROVAC') || _st.includes('AGUARDANDO APROV');
+    _decEl.style.display = (_isAprov && _aguardando) ? '' : 'none';
+    // Reset do card
+    const _d = document.getElementById('mdec-decisao'); if(_d) _d.value='';
+    const _bx = document.getElementById('mdec-box-motivo'); if(_bx) _bx.style.display='none';
+    const _cf = document.getElementById('mdec-btn-confirmar'); if(_cf){_cf.style.opacity='.45';_cf.style.pointerEvents='none';_cf.textContent='Confirmar decisão';}
+    const _mg = document.getElementById('mdec-msg'); if(_mg) _mg.style.display='none';
+    const _mt = document.getElementById('mdec-motivo'); if(_mt) _mt.value='';
+    const _er = document.getElementById('mdec-motivo-erro'); if(_er) _er.style.display='none';
+    ['mdec-btn-aceitar','mdec-btn-devolver'].forEach(bid=>{
+      const b=document.getElementById(bid);
+      if(b){b.style.background='#fff';b.style.color='#545252';b.style.borderColor='#D6D6D6';}
+    });
+  }
 
   document.getElementById('modal-dossie').style.display = 'flex';
   switchModalTab('ciclo', document.querySelector('#modal-tabs .tab-btn'));
@@ -11410,7 +11658,7 @@ window.navigate = function(page, el) {
 
     if(r==='RCA / REPRESENTANTE') await loadRcaHome();
     if(r==='MASTER') { await loadUsuariosV5(); checarSolicitacoesPendentes && checarSolicitacoesPendentes(); }
-    if(r==='APROVADOR'||r==='MASTER') await loadAprovadorV5();
+    if(r==='APROVADOR'||r==='APROVADOR MASTER'||r==='MASTER') await loadAprovadorV5();
     if(r==='ANALISTA SAC'||r==='GESTOR SAC') setupAprovacaoUI();
     if(r==='ANALISTA SAC'||r==='GESTOR SAC'||r==='MASTER') setTimeout(()=>{ if(typeof carregarNotifAnalista==='function') carregarNotifAnalista(); },1500);
   };
@@ -11756,7 +12004,7 @@ window.navigate = function(page, el) {
 
   // ── TAB PENDÊNCIAS (APROVADOR / MASTER) ──
   async function loadAprovadorV5(){
-    const u=sess(); if(!u||!['APROVADOR','MASTER'].includes(u.perfil)) return;
+    const u=sess(); if(!u||!['APROVADOR','APROVADOR MASTER','MASTER'].includes(u.perfil)) return;
     try {
       const [pend,fila]=await Promise.all([
         json5('/api/aprovadores/'+encodeURIComponent(u.usuario)+'/pendencias'),
@@ -12091,6 +12339,67 @@ window.navigate = function(page, el) {
 
   // Legados mantidos para compatibilidade
   window.abrirDossieAprovador=async function(id){try{const d=await json5('/api/manifestacoes/'+encodeURIComponent(id));abrirDossie(d.manifestacao)}catch(e){alert(e.message)}};
+
+  window.modalDecisaoSelecionar = function(decisao, btn) {
+    document.getElementById('mdec-decisao').value = decisao;
+    ['mdec-btn-aceitar','mdec-btn-devolver'].forEach(id => {
+      const b = document.getElementById(id);
+      if (b) { b.style.background='#fff'; b.style.color='#545252'; b.style.borderColor='#D6D6D6'; }
+    });
+    if (decisao === 'APROVAR') {
+      btn.style.background='#E6F2EA'; btn.style.color='#1E6B3A'; btn.style.borderColor='#1E6B3A';
+      document.getElementById('mdec-box-motivo').style.display='none';
+    } else {
+      btn.style.background='#FEF2F2'; btn.style.color='#C70602'; btn.style.borderColor='#C70602';
+      document.getElementById('mdec-box-motivo').style.display='block';
+    }
+    const cf = document.getElementById('mdec-btn-confirmar');
+    if (cf) { cf.style.opacity='1'; cf.style.pointerEvents='auto'; }
+  };
+
+  window.modalDecisaoEnviar = async function() {
+    const m = window._dossieItem;
+    if (!m?.ID_MANIFESTACAO) return;
+    const decisao = document.getElementById('mdec-decisao').value;
+    if (!decisao) return;
+    const motivo = document.getElementById('mdec-motivo')?.value.trim() || '';
+    const erroEl = document.getElementById('mdec-motivo-erro');
+    if (decisao === 'DEVOLVER' && !motivo) {
+      if (erroEl) erroEl.style.display='block';
+      document.getElementById('mdec-motivo')?.focus();
+      return;
+    }
+    if (erroEl) erroEl.style.display='none';
+    const cf = document.getElementById('mdec-btn-confirmar');
+    const msg = document.getElementById('mdec-msg');
+    if (cf) { cf.textContent='Enviando...'; cf.style.opacity='.7'; cf.style.pointerEvents='none'; }
+    if (msg) msg.style.display='none';
+    try {
+      const tok = sessionStorage.getItem('sac-token');
+      const r = await fetch(`/api/manifestacoes/${encodeURIComponent(m.ID_MANIFESTACAO)}/aprovacao`, {
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},
+        body:JSON.stringify({ decisao, motivo, orientacao: motivo })
+      });
+      const data = await r.json().catch(()=>({}));
+      if (msg) {
+        msg.style.display='block';
+        msg.style.background = data.sucesso ? '#E6F2EA' : '#FEF2F2';
+        msg.style.color = data.sucesso ? '#1E6B3A' : '#C70602';
+        if (data.sucesso) {
+          msg.textContent = data.mensagem || (decisao==='APROVAR'?'✓ Aprovado.':'↩ Devolvido para ajuste.');
+          document.getElementById('modal-decisao-aprovador').style.display='none';
+          if (typeof loadAprovadorV5 === 'function') loadAprovadorV5();
+        } else {
+          msg.textContent = 'Erro: ' + (data.erro || 'Falha ao registrar.');
+          if (cf) { cf.textContent='Confirmar decisão'; cf.style.opacity='1'; cf.style.pointerEvents='auto'; }
+        }
+      }
+    } catch(e) {
+      if (msg) { msg.style.display='block'; msg.style.background='#FEF2F2'; msg.style.color='#C70602'; msg.textContent='Erro: '+e.message; }
+      if (cf) { cf.textContent='Confirmar decisão'; cf.style.opacity='1'; cf.style.pointerEvents='auto'; }
+    }
+  };
   window.abrirRncAprovador=async function(id){try{const d=await json5('/api/rnc/'+encodeURIComponent(id));document.getElementById('modal-rnc-aprovador-v5').style.display='flex';document.getElementById('rnc-modal-title').textContent=d.rnc.ID_RNC||id;document.getElementById('rnc-modal-sub').textContent=`SAC ${d.rnc.PROTOCOLO_SAC||'—'} · ${d.rnc.EMPRESA||'—'} · competência ${d.rnc.COMPETENCIA||d.rnc.SETOR||'—'}`;const r=d.rnc;document.getElementById('rnc-modal-body').innerHTML=`<div class="rnc-block"><div class="rnc-block-title">1. Dados de entrada</div><div class="rnc-grid"><div><b>Empresa</b><div class="rnc-value">${esc5(r.EMPRESA)}</div></div><div><b>Cliente</b><div class="rnc-value">${esc5(r.CLIENTE)}</div></div><div><b>Produto</b><div class="rnc-value">${esc5(r.PRODUTO)}</div></div><div><b>Lote</b><div class="rnc-value">${esc5(r.LOTE)}</div></div><div><b>Quantidade</b><div class="rnc-value">${esc5(r.QUANTIDADE)}</div></div><div><b>Contato</b><div class="rnc-value">${esc5(r.CONTATO)}</div></div></div></div><div class="rnc-block"><div class="rnc-block-title">2. Reclamação original</div><div class="rnc-value">${esc5(r.DESCRICAO_NAO_CONFORMIDADE||r.NAO_CONFORMIDADE)}</div></div><div class="rnc-block"><div class="rnc-block-title">3. Classificação da NC</div><div class="rnc-grid"><div><b>Origem</b><div>${esc5(r.ORIGEM_NC)}</div></div><div><b>Tipo</b><div>${esc5(r.TIPO_NC)}</div></div><div><b>Procedente</b><div>${esc5(r.PROCEDENTE)}</div></div><div><b>Plano de ação</b><div>${esc5(r.PLANO_ACAO)}</div></div></div></div><div class="rnc-block"><div class="rnc-block-title">4. Análise de causa</div><div class="rnc-value">${esc5(r.CAUSA||'Ainda não registrada.')}</div></div><div class="rnc-block"><div class="rnc-block-title">5. Ação de contenção</div><div class="rnc-value">${esc5(r.ACAO_CONTENCAO||'Não registrada.')}</div></div><div class="rnc-block"><div class="rnc-block-title">6. Ação corretiva</div><div class="rnc-grid"><div><b>Ação</b><div class="rnc-value">${esc5(r.ACAO_CORRETIVA)}</div></div><div><b>Responsável</b><div class="rnc-value">${esc5(r.RESPONSAVEL_ACAO)}</div></div><div><b>Setor</b><div class="rnc-value">${esc5(r.SETOR_ACAO)}</div></div><div><b>Prazo</b><div class="rnc-value">${esc5(r.PRAZO_ACAO)}</div></div></div></div><div class="rnc-block"><div class="rnc-block-title">7. Verificação da eficácia</div><div class="rnc-grid"><div><b>Responsável</b><div>${esc5(r.RESPONSAVEL_EFICACIA)}</div></div><div><b>Data</b><div>${esc5(r.DATA_EFICACIA)}</div></div><div><b>Resultado</b><div>${esc5(r.RESULTADO_EFICACIA)}</div></div><div><b>Observação</b><div>${esc5(r.OBSERVACAO_EFICACIA)}</div></div></div></div><div class="rnc-block"><div class="rnc-block-title">8. Histórico</div><div class="timeline">${(d.eventos||[]).map(e=>`<div class="tl-item"><div class="tl-dot"></div><div class="tl-content"><div class="tl-label">${esc5(e.TIPO_EVENTO)}</div><div class="tl-meta">${fmt5(e.DATA_EVENTO)} · ${esc5(e.USUARIO)}</div><div class="tl-meta">${esc5(e.DETALHES)}</div></div></div>`).join('')||'<div class="rnc-value">Sem eventos registrados.</div>'}</div></div><div class="rnc-block"><div class="rnc-block-title">9. Decisão</div><div class="field"><label>Justificativa (obrigatória para devolver ou rejeitar)</label><textarea id="rnc-decisao-obs" placeholder="Informe o motivo da decisão, quando aplicável."></textarea></div></div><div class="decision-bar"><button class="btn btn-primary" onclick="decidirRncV5('${esc5(id)}','APROVAR')">Aprovar</button><button class="btn btn-secondary" onclick="decidirRncV5('${esc5(id)}','DEVOLVER')">Devolver para ajuste</button><button class="btn btn-ghost" onclick="decidirRncV5('${esc5(id)}','REJEITAR')">Rejeitar</button></div>`;await json5('/api/rnc/'+encodeURIComponent(id)+'/visualizacao',{method:'POST',body:JSON.stringify({})});}catch(e){alert(e.message)}};
   window.decidirRncV5=async function(id,decisao){const obs=document.getElementById('rnc-decisao-obs')?.value||'';if(decisao!=='APROVAR'&&!obs.trim())return alert('Informe a justificativa.');try{await json5('/api/rnc/'+encodeURIComponent(id)+'/decisao',{method:'POST',body:JSON.stringify({decisao,observacoes:obs})});alert(decisao==='APROVAR'?'RNC aprovada.':decisao==='REJEITAR'?'RNC rejeitada.':'RNC devolvida para ajuste.');fecharRncAprovador();loadAprovadorV5()}catch(e){alert(e.message)}};
   window.fecharRncAprovador=function(){document.getElementById('modal-rnc-aprovador-v5').style.display='none'};
