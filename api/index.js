@@ -854,8 +854,9 @@ async function verificarStatusUsuario(login) {
     }
     return entry;
   } catch(e) {
-    // Falha ao verificar: preservar sessão (fail-open) para evitar bloqueio por erro de Sheets
-    return { status: 'ATIVO', ts: agora, permissoes_granted: null, permissoes_blocked: null };
+    // Falha ao verificar: negar acesso (fail-closed) para evitar que usuários bloqueados/inativos mantenham sessão durante indisponibilidade do Sheets
+    console.error('[verificarStatusUsuario] Erro ao ler planilha, negando acesso por segurança:', e.message || e);
+    return { status: 'INATIVO', ts: agora, permissoes_granted: null, permissoes_blocked: null };
   }
 }
 
@@ -1398,6 +1399,7 @@ app.patch('/api/manifestacoes/:id/ficha', requerPermissao('manifestacoes.editar'
         STATUS_FICHA: 'AGUARDANDO_APROVACAO',
         TRATATIVA_SAC_INTERNA: req.body.tratativaSACInterna || item.TRATATIVA_SAC_INTERNA || '',
         DATA_ENCAMINHAMENTO: agora,
+        ENCAMINHADO_POR: req.user?.usuario || '',
       };
     } else {
       return res.status(400).json({ sucesso:false, erro:'Ação não reconhecida.' });
@@ -1517,6 +1519,10 @@ app.post('/api/manifestacoes/:id/aprovacao', middlewareEscopoEmpresa(), requerPe
       return res.status(403).json({ sucesso:false, erro:'Acesso negado: manifestação pertence a outra empresa.' });
     }
     const perfil = perfilCanonico(req.user?.perfil);
+    // Bloquear autoaprovação: quem encaminhou para aprovação não pode aprovar
+    if (item.ENCAMINHADO_POR && normalizarTexto(item.ENCAMINHADO_POR) === normalizarTexto(req.user?.usuario || '')) {
+      return res.status(403).json({ sucesso:false, erro:'Autoaprovação não permitida. Você não pode aprovar uma manifestação que você mesmo encaminhou para aprovação.' });
+    }
     // Apenas APROVADOR setorial é bloqueado pelo STATUS_FICHA
     // APROVADOR MASTER, MASTER, GESTOR SAC e ANALISTA SAC aprovam sem restrição de status
     if (perfil === 'APROVADOR' && item.STATUS_FICHA !== 'AGUARDANDO_APROVACAO') {
@@ -1531,7 +1537,7 @@ app.post('/api/manifestacoes/:id/aprovacao', middlewareEscopoEmpresa(), requerPe
       novoStatusFicha = 'TRATATIVA_SAC';
       novoStatus = item.STATUS || 'EM ANÁLISE';
     }
-    await garantirAbaComCabecalhos('MANIFESTACOES', ['ID_MANIFESTACAO','STATUS_FICHA','APROV_SETOR_DECISAO','APROV_SETOR_MOTIVO','APROV_SETOR_ORIENTACAO','DATA_APROVACAO_SETOR','APROVADOR_USUARIO','STATUS']).catch(()=>{});
+    await garantirAbaComCabecalhos('MANIFESTACOES', ['ID_MANIFESTACAO','STATUS_FICHA','APROV_SETOR_DECISAO','APROV_SETOR_MOTIVO','APROV_SETOR_ORIENTACAO','DATA_APROVACAO_SETOR','APROVADOR_USUARIO','STATUS','ENCAMINHADO_POR']).catch(()=>{});
     await atualizarPorID('MANIFESTACOES', id, {
       STATUS_FICHA: novoStatusFicha,
       STATUS: novoStatus,
@@ -2511,7 +2517,8 @@ app.post('/api/rnc', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
     // F6: dual-write RNC para PostgreSQL (não-bloqueante)
     if (rncRepo && empresaRepo) {
       empresaRepo.findAll().then(emps => {
-        const emp = emps[0];
+        const nomeEmpresa = body.EMPRESA || body.empresa || '';
+        const emp = emps.find(e => e.nome === nomeEmpresa || e.id === nomeEmpresa) || emps[0];
         if (!emp) return;
         return rncRepo.create({
           protocolo: id,

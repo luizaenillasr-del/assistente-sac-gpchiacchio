@@ -1494,6 +1494,8 @@
     }
   }
 
+  document.addEventListener('DOMContentLoaded', verificarTokenReset);
+
   // Abre modal de reset se URL contém token (#reset-password?token=xxx)
   function verificarTokenReset() {
     const hash = window.location.hash || '';
@@ -7159,10 +7161,7 @@ const API = window.SAC_API || 'https://assistente-sac-gpchiacchio.vercel.app';
 // ===== NAVEGAÇÃO =====
 function doLogout() {
   if (!confirm('Deseja sair do sistema?')) return;
-  sessionStorage.removeItem('sac-token');
-  sessionStorage.removeItem('sac-auth');
-  sessionStorage.removeItem('sac-user');
-  sessionStorage.removeItem('sac-demo-local');
+  sessionStorage.clear();
   location.reload();
 }
 
@@ -11937,7 +11936,7 @@ window.navigate = function(page, el) {
   async function loadUsuariosV5(){
     try{
       const d=await json5('/api/usuarios');
-      _usrAllData=d.itens||[];
+      _usrAllData=d.usuarios||d.itens||[];
       const a=_usrAllData;
       const setEl=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
       setEl('usr-cnt-sac', a.filter(x=>['ANALISTA SAC','MASTER','GESTOR SAC'].includes(x.perfil)).length+' usuários');
@@ -14371,10 +14370,12 @@ window.registrarManifestacao = async function(){
   if(typeof _origRegistrar === 'function') await _origRegistrar();
 };
 
-// Sobrescrever para incluir payload de decisão
+// Sobrescrever para incluir payload de decisão e capturar ID gerado
 const _origFetch = window.fetch.bind(window);
 window.fetch = function(input, options={}){
-  if(typeof input==='string' && input.includes('/api/manifestacoes') && options.method==='POST'){
+  const _url = typeof input === 'string' ? input : (input?.url || '');
+  const _method = (options.method || 'GET').toUpperCase();
+  if(_url.includes('/api/manifestacoes') && _method === 'POST'){
     if(options.body && window._nmDecisaoPayload){
       try{
         const body = JSON.parse(options.body);
@@ -14384,6 +14385,14 @@ window.fetch = function(input, options={}){
         window._nmDecisaoPayload = null;
       }catch(e){ /* ignora */ }
     }
+    return _origFetch(input, options).then(async response => {
+      const clone = response.clone();
+      try {
+        const data = await clone.json();
+        if(data.sucesso && data.id) window._nmIdManifestacaoAtual = data.id;
+      } catch(e){}
+      return response;
+    });
   }
   return _origFetch(input, options);
 };
@@ -14852,33 +14861,6 @@ window.renderizarAnalise = function(a){
     const old = document.getElementById('trat-origem-badge');
     if(old) old.innerHTML = `<span class="orig-badge ferramenta">📐 Motor de Tratativas v3</span> Baseada na Matriz de Tratamento + histórico de casos.`;
   }
-};
-
-// ── INTERCEPTAR registrarManifestacao PARA CAPTURAR O ID ──────
-const _origRegistrar = window.registrarManifestacao;
-window.registrarManifestacao = async function(){
-  if(typeof _origRegistrar === 'function') await _origRegistrar();
-  // O ID é retornado na resposta — tentar capturar
-  // (o id fica em window._ultimoIdRegistrado se o código de registro o salvar)
-};
-
-// Interceptar POST para capturar o ID gerado
-const _origFetch = window.fetch.bind(window);
-window.fetch = function(input, options={}){
-  const url = typeof input === 'string' ? input : (input?.url || '');
-  const method = (options.method || 'GET').toUpperCase();
-  
-  if(url.includes('/api/manifestacoes') && method === 'POST'){
-    return _origFetch(input, options).then(async response => {
-      const clone = response.clone();
-      try {
-        const data = await clone.json();
-        if(data.sucesso && data.id) window._nmIdManifestacaoAtual = data.id;
-      } catch(e){}
-      return response;
-    });
-  }
-  return _origFetch(input, options);
 };
 
 // Limpar ao iniciar nova manifestação
@@ -22367,14 +22349,6 @@ function updateTopbarUser(user) {
     return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
-  async function _apiFetch(url, _unused, opts) {
-    const token = sessionStorage.getItem('sac-token') || localStorage.getItem('sac-token') || '';
-    const res = await fetch(url, { ...opts, headers: { ...(opts&&opts.headers), 'Authorization': 'Bearer ' + token } });
-    const data = await res.json();
-    if (!res.ok && !data.sucesso) throw new Error(data.erro || 'Erro ' + res.status);
-    return data;
-  }
-
   function role() {
     try {
       const u = JSON.parse(sessionStorage.getItem('sac-user') || localStorage.getItem('sac-user') || '{}');
@@ -22382,7 +22356,7 @@ function updateTopbarUser(user) {
     } catch(_) { return ''; }
   }
 
-  async function loadUsuariosV5() {
+  async function loadUsuariosMasterPainel() {
     if (role() !== 'MASTER') {
       const pg = document.getElementById('page-usuarios');
       if (pg) pg.innerHTML = '<div style="padding:40px;text-align:center;color:#929090">Acesso restrito ao MASTER.</div>';
@@ -22397,7 +22371,7 @@ function updateTopbarUser(user) {
       if(tb) tb.innerHTML = `<tr><td colspan="6" style="padding:20px;text-align:center;color:#C70602">${esc5(e.message)}</td></tr>`;
     }
   }
-  window.loadUsuariosV5 = loadUsuariosV5;
+  window.loadUsuariosMasterPainel = loadUsuariosMasterPainel;
 
   function usuRenderLista(lista) {
     const tb = document.getElementById('usu-lista');
