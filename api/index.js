@@ -4469,6 +4469,11 @@ app.delete('/api/usuarios/:id', requerPermissao('usuarios.gerenciar'), async (re
     if(!alvo) return res.status(404).json({sucesso:false,erro:'Usuário não encontrado.'});
     // Impede auto-exclusão
     if(normalizarTexto(alvo.USUARIO||alvo.EMAIL)===normalizarTexto(req.user.usuario)) return res.status(400).json({sucesso:false,erro:'Você não pode excluir sua própria conta.'});
+    // Se o usuário a excluir é MASTER, verificar se há outro MASTER ativo
+    if((alvo.PERFIL||alvo.perfil||'').toUpperCase()==='MASTER'){
+      const masters=todos.filter(u=>(u.PERFIL||u.perfil||'').toUpperCase()==='MASTER'&&(u.STATUS||u.status||'ATIVO').toUpperCase()==='ATIVO'&&String(u.ID_USUARIO||u.USUARIO)!==String(alvo.ID_USUARIO||alvo.USUARIO));
+      if(masters.length===0) return res.status(403).json({sucesso:false,erro:'Não é possível excluir o único MASTER ativo do sistema.'});
+    }
     const dados={STATUS:'EXCLUIDO',DATA_ULTIMA_ALTERACAO:new Date().toISOString(),ALTERADO_POR:req.user.usuario};
     await atualizarPorID('USUARIOS',req.params.id,dados,['ID_USUARIO','USUARIO','EMAIL']);
     await registrarAuditoria(req.user.usuario,'EXCLUIU_USUARIO',req.params.id,'USUARIOS',null,{nome:alvo.NOME});
@@ -4516,6 +4521,37 @@ app.post('/api/usuarios/:id/ativar', requerPermissao('usuarios.gerenciar'), asyn
     await registrarAuditoria(req.user.usuario,'ATIVOU_USUARIO',req.params.id,'USUARIOS',null,{});
     res.json({sucesso:true});
   }catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
+});
+
+// ===== PERMISSÕES DO USUÁRIO (MASTER only) =====
+app.post('/api/usuarios/:id/permissoes', middlewareAuth, requerPermissao('usuarios.gerenciar'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { permissoes_granted = [], permissoes_blocked = [], justificativa = '' } = req.body;
+    if (!Array.isArray(permissoes_granted) || !Array.isArray(permissoes_blocked))
+      return res.status(400).json({ sucesso: false, erro: 'Permissões devem ser arrays.' });
+
+    const usuarios = await carregarUsuarios();
+    const alvo = usuarios.find(u => String(u.ID_USUARIO||u.USUARIO||u.EMAIL) === String(id) || String(u.USUARIO) === String(id));
+    if (!alvo) return res.status(404).json({ sucesso: false, erro: 'Usuário não encontrado.' });
+
+    if ((alvo.PERFIL||alvo.perfil||'').toUpperCase() === 'MASTER' && normalizarTexto(req.user.usuario) === normalizarTexto(alvo.USUARIO||alvo.EMAIL))
+      return res.status(403).json({ sucesso: false, erro: 'Não é possível alterar as próprias permissões de MASTER.' });
+
+    await atualizarPorID('USUARIOS', id, {
+      PERMISSOES_GRANTED: JSON.stringify(permissoes_granted),
+      PERMISSOES_BLOCKED: JSON.stringify(permissoes_blocked),
+      DATA_ULTIMA_ALTERACAO: new Date().toISOString(),
+      ALTERADO_POR: req.user.usuario,
+    }, ['ID_USUARIO','USUARIO','EMAIL']);
+
+    try {
+      await registrarAuditoria(req.user.usuario, 'PERMISSOES_ALTERADAS', id, 'USUARIOS', null,
+        { granted: permissoes_granted, blocked: permissoes_blocked, justificativa });
+    } catch(_) {}
+
+    res.json({ sucesso: true, mensagem: 'Permissões atualizadas.' });
+  } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e) }); }
 });
 
 // ===== APROVADORES =====

@@ -994,6 +994,111 @@
   </div><!-- /modal-box -->
 </div><!-- /modal-dossie -->
 
+<!-- MODAL USUÁRIO -->
+<div id="modal-usuario" style="display:none" class="modal-overlay" onclick="if(event.target===this)fecharModalUsuario()">
+  <div style="background:#fff;border-radius:14px;width:100%;max-width:840px;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.22);overflow:hidden">
+    <!-- header -->
+    <div style="padding:16px 20px;border-bottom:1px solid #EFEFEF;display:flex;justify-content:space-between;align-items:center">
+      <div style="font-size:17px;font-weight:700" id="modal-usu-titulo">Usuário</div>
+      <button onclick="fecharModalUsuario()" style="border:1px solid #D6D6D6;background:#fff;border-radius:7px;width:30px;height:30px;cursor:pointer;font-size:14px;font-family:inherit;display:flex;align-items:center;justify-content:center">✕</button>
+    </div>
+    <!-- abas -->
+    <div id="modal-usu-tabs" style="display:flex;gap:0;border-bottom:2px solid #EFEFEF;padding:0 4px">
+      <button class="usu-tab-btn active" onclick="usuModalTab('dados',this)" style="border:0;background:none;padding:8px 14px;font-size:12.5px;cursor:pointer;white-space:nowrap;color:#1F1F1F;border-bottom:2px solid #C70602;margin-bottom:-2px;font-weight:700;font-family:inherit">Dados</button>
+      <button class="usu-tab-btn" onclick="usuModalTab('permissoes',this)" style="border:0;background:none;padding:8px 14px;font-size:12.5px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-2px;font-weight:500;font-family:inherit">Permissões</button>
+      <button class="usu-tab-btn" onclick="usuModalTab('escopo',this)" style="border:0;background:none;padding:8px 14px;font-size:12.5px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-2px;font-weight:500;font-family:inherit">Escopo</button>
+      <button class="usu-tab-btn" onclick="usuModalTab('historico',this)" style="border:0;background:none;padding:8px 14px;font-size:12.5px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-2px;font-weight:500;font-family:inherit">Histórico</button>
+    </div>
+    <!-- body -->
+    <div style="flex:1;overflow-y:auto;padding:20px">
+      <!-- Aba Dados -->
+      <div id="modal-usu-tab-dados">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div class="form-group">
+            <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">Nome completo <span style="color:#C70602">*</span></label>
+            <input id="usu-nome" class="form-input" placeholder="Nome do usuário">
+          </div>
+          <div class="form-group">
+            <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">E-mail / login <span style="color:#C70602">*</span></label>
+            <input id="usu-email" class="form-input" placeholder="email@empresa.com.br">
+          </div>
+          <div class="form-group">
+            <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">Login (usuário) <span style="color:#C70602">*</span></label>
+            <input id="usu-usuario" class="form-input" placeholder="usuario.sobrenome">
+          </div>
+          <div class="form-group">
+            <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">Perfil principal <span style="color:#C70602">*</span></label>
+            <select id="usu-perfil" class="form-input" onchange="usuPerfilChanged()">
+              <option value="">Selecione...</option>
+              <option>MASTER</option><option>APROVADOR MASTER</option><option>GESTOR SAC</option>
+              <option>ANALISTA SAC</option><option>ATENDENTE SAC</option><option>APROVADOR</option><option>SAC</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">Status</label>
+            <select id="usu-status" class="form-input">
+              <option value="ATIVO">Ativo</option>
+              <option value="INATIVO">Inativo</option>
+              <option value="BLOQUEADO">Bloqueado</option>
+            </select>
+          </div>
+          <div class="form-group" id="usu-senha-wrap">
+            <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">Senha inicial <span style="color:#C70602" id="usu-senha-req">*</span></label>
+            <input id="usu-senha" class="form-input" type="password" placeholder="Mínimo 6 caracteres">
+          </div>
+        </div>
+        <div class="form-group" style="margin-top:10px">
+          <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">Observações administrativas</label>
+          <textarea id="usu-obs" class="form-textarea" style="min-height:60px" placeholder="Visível apenas para o MASTER..."></textarea>
+        </div>
+      </div>
+
+      <!-- Aba Permissões -->
+      <div id="modal-usu-tab-permissoes" style="display:none">
+        <div style="background:#FFFBF0;border:1px solid #F0D9A8;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12.5px;color:#7A4C00">
+          <strong>Perfil base:</strong> <span id="usu-perm-perfil-base">—</span> — marque abaixo para conceder extras ou bloquear funcionalidades do perfil.
+        </div>
+        <input type="text" id="usu-perm-busca" placeholder="Buscar funcionalidade..." oninput="usuPermFiltrar()"
+          style="width:100%;border:1px solid #D6D6D6;border-radius:8px;padding:8px 12px;font-size:13px;font-family:inherit;margin-bottom:14px">
+        <div id="usu-permissoes-lista"></div>
+      </div>
+
+      <!-- Aba Escopo -->
+      <div id="modal-usu-tab-escopo" style="display:none">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div class="form-group">
+            <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">Empresas autorizadas</label>
+            <div id="usu-empresas-checks" style="display:flex;flex-direction:column;gap:6px;border:1px solid #E4E4E4;border-radius:8px;padding:10px;max-height:160px;overflow-y:auto"></div>
+          </div>
+          <div class="form-group">
+            <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">Setores autorizados</label>
+            <div id="usu-setores-checks" style="display:flex;flex-direction:column;gap:6px;border:1px solid #E4E4E4;border-radius:8px;padding:10px;max-height:160px;overflow-y:auto"></div>
+          </div>
+          <div class="form-group">
+            <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">Competências de aprovação</label>
+            <textarea id="usu-competencias" class="form-textarea" style="min-height:80px" placeholder="Ex.: LOGÍSTICA, QUALIDADE (uma por linha ou separadas por vírgula)"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Aba Histórico -->
+      <div id="modal-usu-tab-historico" style="display:none">
+        <div id="usu-historico-lista">
+          <div style="text-align:center;color:#929090;padding:24px">Carregando histórico...</div>
+        </div>
+      </div>
+    </div>
+    <!-- footer -->
+    <div style="padding:12px 20px;border-top:1px solid #EFEFEF;display:flex;justify-content:space-between;align-items:center">
+      <div id="modal-usu-msg" style="font-size:12px"></div>
+      <div style="display:flex;gap:8px">
+        <button onclick="fecharModalUsuario()" style="border:1px solid #D6D6D6;background:#fff;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Cancelar</button>
+        <button onclick="usuSalvar()" id="usu-btn-salvar" style="background:#C70602;color:#fff;border:0;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Salvar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="login-screen" id="login-screen" style="display:flex">
   <div class="login-split">
     <!-- PAINEL ESQUERDO — vermelho -->
@@ -3387,53 +3492,55 @@
 
   <!-- ===== USUÁRIOS E ACESSOS ===== -->
   <div class="page" id="page-usuarios">
-    <div class="topbar">
-      <div class="topbar-left">
-        <div class="breadcrumb">Administração</div>
-        <div class="page-header"><h1 class="page-title">Usuários e permissões</h1></div>
-      </div>
+  <!-- HEADER DA PÁGINA -->
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+    <div>
+      <div style="font-size:22px;font-weight:700">Gerenciamento de Usuários</div>
+      <div style="font-size:13px;color:#666464;margin-top:2px">Controle total de acessos e permissões</div>
     </div>
-    <div class="content" style="display:flex;flex-direction:column;gap:16px">
-      <!-- Solicitações de acesso -->
-      <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;overflow:hidden">
-        <div style="padding:14px 20px;border-bottom:1px solid #EFEFEF;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
-          <div><div style="font-weight:700;font-size:14.5px">Solicitações de acesso</div><div style="font-size:12.5px;color:#8A8888">Enviadas pela página inicial. Nenhum acesso é liberado sem aprovação do MASTER.</div></div>
-          <span style="font-size:12.5px;color:#666464" id="usr-req-pend-txt">--</span>
-        </div>
-        <div id="usr-solicitacoes-lista"><div style="padding:24px;text-align:center;color:#8A8888;font-size:13px">Carregando solicitações...</div></div>
-      </div>
-
-      <!-- Busca + botão -->
-      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-        <input id="usr-search" oninput="filtrarUsuariosV5()" placeholder="Pesquisar usuário" style="flex:1;min-width:220px;height:36px;border:1px solid #D6D6D6;border-radius:7px;padding:0 12px;background:#fff;font-size:13px;font-family:inherit">
-        <button onclick="abrirModalUsuario()" style="border:0;background:#C70602;color:#fff;border-radius:7px;padding:9px 14px;cursor:pointer;font-size:13px;font-weight:500;font-family:inherit">Cadastrar usuário</button>
-      </div>
-
-      <!-- Tabela usuários -->
-      <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;overflow-x:auto">
-        <table style="border-collapse:collapse;width:100%;min-width:960px;font-size:13px">
-          <thead><tr style="background:#FAFAFA">
-            <th style="text-align:left;font-weight:500;font-size:12px;color:#666464;padding:10px 14px;border-bottom:1px solid #E4E4E4">Nome</th>
-            <th style="text-align:left;font-weight:500;font-size:12px;color:#666464;padding:10px 14px;border-bottom:1px solid #E4E4E4">E-mail</th>
-            <th style="text-align:left;font-weight:500;font-size:12px;color:#666464;padding:10px 14px;border-bottom:1px solid #E4E4E4">Setor</th>
-            <th style="text-align:left;font-weight:500;font-size:12px;color:#666464;padding:10px 14px;border-bottom:1px solid #E4E4E4">Empresa</th>
-            <th style="text-align:left;font-weight:500;font-size:12px;color:#666464;padding:10px 14px;border-bottom:1px solid #E4E4E4">Criado em</th>
-            <th style="text-align:left;font-weight:500;font-size:12px;color:#666464;padding:10px 14px;border-bottom:1px solid #E4E4E4">Perfil</th>
-            <th style="text-align:left;font-weight:500;font-size:12px;color:#666464;padding:10px 14px;border-bottom:1px solid #E4E4E4">Status</th>
-            <th style="text-align:left;font-weight:500;font-size:12px;color:#666464;padding:10px 14px;border-bottom:1px solid #E4E4E4"></th>
-          </tr></thead>
-          <tbody id="usuarios-body"><tr><td colspan="8" style="text-align:center;padding:40px;color:#8A8888;font-size:13px">Carregando usuários...</td></tr></tbody>
-        </table>
-      </div>
-
-      <!-- Perfis de acesso -->
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
-        <div style="font-weight:600;font-size:15px">Perfis de acesso</div>
-        <div style="font-size:12px;color:#8A8888">Clique em "Editar" para ajustar as páginas de cada perfil</div>
-      </div>
-      <div id="perfis-acesso-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px"></div>
-    </div>
+    <button onclick="usuNovo()" data-perm="usuarios.criar"
+      style="background:#C70602;color:#fff;border:0;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">
+      + Novo Usuário
+    </button>
   </div>
+
+  <!-- FILTROS -->
+  <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+    <input id="usu-busca" type="text" placeholder="Buscar por nome ou e-mail..."
+      oninput="usuFiltrar()"
+      style="flex:1;min-width:180px;border:1px solid #D6D6D6;border-radius:8px;padding:8px 12px;font-size:13px;font-family:inherit">
+    <select id="usu-fil-perfil" onchange="usuFiltrar()"
+      style="border:1px solid #D6D6D6;border-radius:8px;padding:8px 12px;font-size:13px;font-family:inherit">
+      <option value="">Todos os perfis</option>
+      <option>MASTER</option><option>APROVADOR MASTER</option><option>GESTOR SAC</option>
+      <option>ANALISTA SAC</option><option>ATENDENTE SAC</option><option>APROVADOR</option><option>SAC</option>
+    </select>
+    <select id="usu-fil-status" onchange="usuFiltrar()"
+      style="border:1px solid #D6D6D6;border-radius:8px;padding:8px 12px;font-size:13px;font-family:inherit">
+      <option value="">Todos os status</option>
+      <option value="ATIVO">Ativo</option><option value="INATIVO">Inativo</option>
+      <option value="BLOQUEADO">Bloqueado</option>
+    </select>
+  </div>
+
+  <!-- TABELA DE USUÁRIOS -->
+  <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;overflow:hidden">
+    <table style="width:100%;border-collapse:collapse;font-size:13px">
+      <thead>
+        <tr style="background:#F9F9F9;border-bottom:1px solid #E4E4E4">
+          <th style="padding:11px 16px;text-align:left;font-weight:700;color:#545252">Usuário</th>
+          <th style="padding:11px 16px;text-align:left;font-weight:700;color:#545252">Perfil</th>
+          <th style="padding:11px 16px;text-align:left;font-weight:700;color:#545252">Empresa</th>
+          <th style="padding:11px 16px;text-align:left;font-weight:700;color:#545252">Status</th>
+          <th style="padding:11px 16px;text-align:left;font-weight:700;color:#545252">Último acesso</th>
+          <th style="padding:11px 16px;text-align:right;font-weight:700;color:#545252">Ações</th>
+        </tr>
+      </thead>
+      <tbody id="usu-lista"></tbody>
+    </table>
+    <div id="usu-vazio" style="display:none;text-align:center;padding:40px;color:#929090">Nenhum usuário encontrado.</div>
+  </div>
+</div>
 
   <!-- ===== MODAL CONFIGURAR ACESSO (Aprovação de Solicitação) ===== -->
   <div id="modal-config-acesso" class="modal-overlay" style="display:none" onclick="if(event.target===this)fecharConfigAcesso()">
@@ -22102,6 +22209,484 @@ function updateTopbarUser(user) {
   document.addEventListener('DOMContentLoaded', encaixarPaginas);
   window.addEventListener('load', encaixarPaginas);
   new MutationObserver(encaixarPaginas).observe(document.body,{childList:true});
+})();
+
+// ===== GERENCIAMENTO DE USUÁRIOS =====
+(function() {
+  'use strict';
+
+  // Definição das permissões por categoria
+  const USU_PERMS = [
+    { cat: 'A. Manifestações', chave: 'manifestacoes', itens: [
+      { k: 'manifestacoes.visualizar', l: 'Visualizar manifestações' },
+      { k: 'manifestacoes.criar', l: 'Criar manifestação' },
+      { k: 'manifestacoes.editar', l: 'Editar manifestação' },
+      { k: 'manifestacoes.excluir', l: 'Excluir manifestação' },
+      { k: 'manifestacoes.encaminhar', l: 'Encaminhar manifestação' },
+      { k: 'manifestacoes.classificar', l: 'Alterar classificação' },
+      { k: 'manifestacoes.historico', l: 'Consultar histórico' },
+      { k: 'manifestacoes.anexar', l: 'Anexar arquivos' },
+      { k: 'manifestacoes.evidencias', l: 'Baixar evidências' },
+      { k: 'manifestacoes.reabrir', l: 'Reabrir manifestação' },
+      { k: 'manifestacoes.encerrar', l: 'Encerrar manifestação' },
+      { k: 'manifestacoes.arquivar', l: 'Arquivar ficha' },
+      { k: 'manifestacoes.desarquivar', l: 'Desarquivar ficha' },
+    ]},
+    { cat: 'B. Análise Inteligente', chave: 'ia', itens: [
+      { k: 'ia.acessar', l: 'Acessar análise inteligente' },
+      { k: 'ia.executar', l: 'Executar análise por IA' },
+      { k: 'ia.similares', l: 'Consultar manifestações similares' },
+      { k: 'ia.causas', l: 'Consultar causas e subcausas' },
+      { k: 'ia.recomendacoes', l: 'Visualizar recomendações' },
+      { k: 'ia.editar', l: 'Editar informações sugeridas' },
+      { k: 'ia.aceitar', l: 'Aceitar ou rejeitar recomendações' },
+      { k: 'ia.assertividade', l: 'Registrar assertividade da IA' },
+    ]},
+    { cat: 'C. Aprovações', chave: 'aprovacoes', itens: [
+      { k: 'aprovacoes.visualizar', l: 'Visualizar fila de aprovação' },
+      { k: 'aprovacoes.aprovar', l: 'Aprovar manifestações' },
+      { k: 'aprovacoes.reprovar', l: 'Reprovar manifestações' },
+      { k: 'aprovacoes.devolver', l: 'Devolver para ajuste' },
+      { k: 'aprovacoes.parecer', l: 'Registrar parecer' },
+      { k: 'aprovacoes.historico', l: 'Consultar histórico de decisões' },
+      { k: 'aprovacoes.pendentes', l: 'Acessar aprovações pendentes' },
+    ]},
+    { cat: 'D. RNC e Causa Raiz', chave: 'rnc', itens: [
+      { k: 'rnc.abrir', l: 'Abrir RNC' },
+      { k: 'rnc.editar', l: 'Editar RNC' },
+      { k: 'rnc.causa', l: 'Registrar causa raiz' },
+      { k: 'rnc.subcausas', l: 'Registrar subcausas' },
+      { k: 'rnc.plano', l: 'Elaborar plano de ação' },
+      { k: 'rnc.responsaveis', l: 'Definir responsáveis e prazos' },
+      { k: 'rnc.evidencias', l: 'Anexar evidências' },
+      { k: 'rnc.eficacia', l: 'Avaliar eficácia' },
+      { k: 'rnc.aprovar', l: 'Aprovar ou encerrar RNC' },
+      { k: 'rnc.visualizar', l: 'Visualizar RNC' },
+    ]},
+    { cat: 'E. Arquivo de Fichas', chave: 'fichas', itens: [
+      { k: 'fichas.acessar', l: 'Acessar o arquivo' },
+      { k: 'fichas.ativas', l: 'Consultar fichas ativas' },
+      { k: 'fichas.arquivadas', l: 'Consultar fichas arquivadas' },
+      { k: 'fichas.pesquisar', l: 'Pesquisar manifestações' },
+      { k: 'fichas.filtros', l: 'Aplicar filtros' },
+      { k: 'fichas.exportar', l: 'Exportar dados' },
+      { k: 'fichas.arquivar', l: 'Arquivar fichas' },
+      { k: 'fichas.desarquivar', l: 'Desarquivar fichas' },
+    ]},
+    { cat: 'F. Cérebro e Base de Conhecimento', chave: 'cerebro', itens: [
+      { k: 'cerebro.consultar', l: 'Consultar base de conhecimento' },
+      { k: 'cerebro.criar', l: 'Criar conteúdos' },
+      { k: 'cerebro.editar', l: 'Editar conteúdos' },
+      { k: 'cerebro.setores', l: 'Cadastrar setores' },
+      { k: 'cerebro.responsabilidades', l: 'Editar responsabilidades' },
+      { k: 'cerebro.faqs', l: 'Cadastrar FAQs' },
+      { k: 'cerebro.procedimentos', l: 'Editar procedimentos' },
+      { k: 'cerebro.politicas', l: 'Cadastrar políticas' },
+      { k: 'cerebro.regras', l: 'Editar regras operacionais' },
+      { k: 'cerebro.matriz', l: 'Editar a matriz de tratamento' },
+      { k: 'cerebro.submeter', l: 'Submeter alterações para aprovação' },
+      { k: 'cerebro.aprovar', l: 'Aprovar alterações estruturais' },
+      { k: 'cerebro.publicar', l: 'Publicar novas versões' },
+    ]},
+    { cat: 'G. Indicadores e Relatórios', chave: 'indicadores', itens: [
+      { k: 'indicadores.visualizar', l: 'Visualizar dashboard' },
+      { k: 'indicadores.empresa', l: 'Consultar indicadores por empresa' },
+      { k: 'indicadores.setor', l: 'Consultar indicadores por setor' },
+      { k: 'indicadores.sla', l: 'Visualizar indicadores de SLA' },
+      { k: 'indicadores.reincidencias', l: 'Consultar reincidências' },
+      { k: 'indicadores.ia', l: 'Visualizar desempenho da IA' },
+      { k: 'indicadores.exportar', l: 'Exportar relatórios' },
+      { k: 'indicadores.historico', l: 'Consultar dados históricos' },
+    ]},
+    { cat: 'H. Pesquisas de Satisfação', chave: 'pesquisas', itens: [
+      { k: 'pesquisas.visualizar', l: 'Consultar pesquisas' },
+      { k: 'pesquisas.respostas', l: 'Visualizar respostas' },
+      { k: 'pesquisas.filtros', l: 'Aplicar filtros' },
+      { k: 'pesquisas.empresa', l: 'Consultar resultados por empresa' },
+      { k: 'pesquisas.periodo', l: 'Consultar resultados por período' },
+      { k: 'pesquisas.criticas', l: 'Avaliar notas críticas' },
+      { k: 'pesquisas.encaminhar', l: 'Encaminhar ocorrências ao SAC' },
+      { k: 'pesquisas.exportar', l: 'Exportar resultados' },
+    ]},
+    { cat: 'I. Gerenciamento de Usuários', chave: 'usuarios', itens: [
+      { k: 'usuarios.visualizar', l: 'Visualizar usuários' },
+      { k: 'usuarios.criar', l: 'Criar usuários' },
+      { k: 'usuarios.editar', l: 'Editar usuários' },
+      { k: 'usuarios.bloquear', l: 'Bloquear e desbloquear contas' },
+      { k: 'usuarios.ativar', l: 'Ativar e desativar usuários' },
+      { k: 'usuarios.excluir', l: 'Excluir usuários' },
+      { k: 'usuarios.perfil', l: 'Alterar perfil' },
+      { k: 'usuarios.gerenciar', l: 'Conceder e retirar permissões' },
+      { k: 'usuarios.escopo', l: 'Alterar empresas e setores' },
+      { k: 'usuarios.historico', l: 'Consultar histórico de acessos' },
+    ]},
+    { cat: 'J. Configurações e Auditoria', chave: 'config', itens: [
+      { k: 'config.consultar', l: 'Consultar configurações' },
+      { k: 'config.editar', l: 'Editar configurações operacionais' },
+      { k: 'config.sla', l: 'Alterar parâmetros de SLA' },
+      { k: 'auditoria.logs', l: 'Consultar logs' },
+      { k: 'auditoria.exportar', l: 'Exportar logs' },
+      { k: 'auditoria.historico', l: 'Consultar histórico de alterações' },
+    ]},
+  ];
+
+  // Defaults por perfil (espelho do backend)
+  const _PERM_DEF = {
+    'MASTER': { '*': true },
+    'APROVADOR MASTER': ['manifestacoes.visualizar','manifestacoes.encaminhar','manifestacoes.historico','aprovacoes.visualizar','aprovacoes.aprovar','aprovacoes.reprovar','aprovacoes.devolver','aprovacoes.parecer','aprovacoes.historico','aprovacoes.pendentes','rnc.visualizar','rnc.aprovar','indicadores.visualizar','indicadores.empresa','indicadores.setor','indicadores.sla','indicadores.exportar','pesquisas.visualizar','pesquisas.respostas','pesquisas.filtros','pesquisas.exportar','usuarios.visualizar'],
+    'GESTOR SAC': ['manifestacoes.visualizar','manifestacoes.criar','manifestacoes.editar','manifestacoes.encaminhar','manifestacoes.classificar','manifestacoes.historico','manifestacoes.anexar','manifestacoes.evidencias','manifestacoes.reabrir','manifestacoes.encerrar','manifestacoes.arquivar','manifestacoes.desarquivar','ia.acessar','ia.executar','ia.similares','ia.causas','ia.recomendacoes','ia.editar','ia.aceitar','ia.assertividade','aprovacoes.visualizar','aprovacoes.aprovar','aprovacoes.reprovar','aprovacoes.devolver','aprovacoes.parecer','aprovacoes.pendentes','aprovacoes.historico','rnc.abrir','rnc.editar','rnc.causa','rnc.subcausas','rnc.plano','rnc.responsaveis','rnc.evidencias','rnc.eficacia','rnc.aprovar','fichas.acessar','fichas.ativas','fichas.arquivadas','fichas.pesquisar','fichas.filtros','fichas.exportar','fichas.arquivar','fichas.desarquivar','cerebro.consultar','cerebro.criar','cerebro.editar','cerebro.setores','cerebro.responsabilidades','cerebro.faqs','cerebro.procedimentos','cerebro.politicas','cerebro.regras','cerebro.matriz','cerebro.submeter','indicadores.visualizar','indicadores.empresa','indicadores.setor','indicadores.sla','indicadores.reincidencias','indicadores.ia','indicadores.exportar','indicadores.historico','pesquisas.visualizar','pesquisas.respostas','pesquisas.filtros','pesquisas.empresa','pesquisas.periodo','pesquisas.criticas','pesquisas.encaminhar','pesquisas.exportar','usuarios.visualizar','config.consultar','auditoria.logs'],
+    'ANALISTA SAC': ['manifestacoes.visualizar','manifestacoes.criar','manifestacoes.editar','manifestacoes.encaminhar','manifestacoes.classificar','manifestacoes.historico','manifestacoes.anexar','manifestacoes.evidencias','manifestacoes.reabrir','manifestacoes.arquivar','ia.acessar','ia.executar','ia.similares','ia.causas','ia.recomendacoes','ia.editar','ia.aceitar','aprovacoes.visualizar','aprovacoes.aprovar','aprovacoes.reprovar','aprovacoes.devolver','aprovacoes.parecer','aprovacoes.pendentes','rnc.abrir','rnc.editar','rnc.causa','rnc.plano','rnc.evidencias','fichas.acessar','fichas.ativas','fichas.pesquisar','fichas.filtros','fichas.arquivar','cerebro.consultar','cerebro.faqs','indicadores.visualizar','indicadores.setor','indicadores.sla','pesquisas.visualizar'],
+    'ATENDENTE SAC': ['manifestacoes.visualizar','manifestacoes.criar','manifestacoes.editar','manifestacoes.historico','manifestacoes.anexar','ia.acessar','ia.similares','ia.recomendacoes','fichas.acessar','fichas.ativas','fichas.pesquisar','cerebro.consultar','indicadores.visualizar'],
+    'APROVADOR': ['aprovacoes.visualizar','aprovacoes.aprovar','aprovacoes.reprovar','aprovacoes.devolver','aprovacoes.parecer','aprovacoes.pendentes','aprovacoes.historico','rnc.visualizar','rnc.aprovar','indicadores.visualizar'],
+    'SAC': ['manifestacoes.visualizar','manifestacoes.criar','manifestacoes.editar','manifestacoes.encaminhar','manifestacoes.historico','manifestacoes.anexar','ia.acessar','ia.similares','fichas.acessar','fichas.ativas','cerebro.consultar','indicadores.visualizar'],
+  };
+
+  let _usuDados = [];
+  let _usuEditando = null;
+  let _usuGranted = new Set();
+  let _usuBlocked = new Set();
+
+  function _permDefault(perfil, chave) {
+    const p = (perfil||'').toUpperCase();
+    if (p === 'MASTER') return true;
+    const def = _PERM_DEF[p];
+    if (!def) return false;
+    if (Array.isArray(def)) return def.includes(chave);
+    return !!(def['*'] || def[chave]);
+  }
+
+  function _fmtDataCurta(s) {
+    if (!s) return '—';
+    try { const d = new Date(s); return d.toLocaleDateString('pt-BR'); } catch(_) { return s; }
+  }
+
+  function esc5(s) {
+    return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  async function _apiFetch(url, _unused, opts) {
+    const token = localStorage.getItem('sac_token') || sessionStorage.getItem('sac_token') || '';
+    const res = await fetch(url, { ...opts, headers: { ...(opts&&opts.headers), 'Authorization': 'Bearer ' + token } });
+    const data = await res.json();
+    if (!res.ok && !data.sucesso) throw new Error(data.erro || 'Erro ' + res.status);
+    return data;
+  }
+
+  function role() {
+    try {
+      const u = JSON.parse(localStorage.getItem('sac_usuario') || sessionStorage.getItem('sac_usuario') || '{}');
+      return (u.perfil || u.PERFIL || '').toUpperCase();
+    } catch(_) { return ''; }
+  }
+
+  async function loadUsuariosV5() {
+    if (role() !== 'MASTER') {
+      const pg = document.getElementById('page-usuarios');
+      if (pg) pg.innerHTML = '<div style="padding:40px;text-align:center;color:#929090">Acesso restrito ao MASTER.</div>';
+      return;
+    }
+    try {
+      const d = await _apiFetch('/api/usuarios');
+      _usuDados = (d.usuarios || d.itens || []);
+      usuRenderLista(_usuDados);
+    } catch(e) {
+      const tb = document.getElementById('usu-lista');
+      if(tb) tb.innerHTML = `<tr><td colspan="6" style="padding:20px;text-align:center;color:#C70602">${esc5(e.message)}</td></tr>`;
+    }
+  }
+  window.loadUsuariosV5 = loadUsuariosV5;
+
+  function usuRenderLista(lista) {
+    const tb = document.getElementById('usu-lista');
+    const vazio = document.getElementById('usu-vazio');
+    if (!lista.length) { if(tb) tb.innerHTML=''; if(vazio) vazio.style.display='block'; return; }
+    if(vazio) vazio.style.display='none';
+    const STATUS_COLORS = { ATIVO: {bg:'#E6F2EA',color:'#1E6B3A'}, INATIVO: {bg:'#EEEEEE',color:'#545252'}, BLOQUEADO: {bg:'#FDECEC',color:'#C70602'}, EXCLUIDO: {bg:'#FDECEC',color:'#A80502'} };
+    if(tb) tb.innerHTML = lista.filter(u=>(u.STATUS||u.status||'ATIVO').toUpperCase()!=='EXCLUIDO').map(u => {
+      const st = (u.STATUS||u.status||'ATIVO').toUpperCase();
+      const sc = STATUS_COLORS[st] || STATUS_COLORS.ATIVO;
+      const uJson = JSON.stringify(JSON.stringify(u));
+      const uid = esc5(u.ID_USUARIO||u.id||u.USUARIO||u.usuario||'');
+      const unome = esc5(u.NOME||u.nome||u.USUARIO||u.usuario||'');
+      return `<tr style="border-bottom:1px solid #F4F4F4;transition:background .15s" onmouseenter="this.style.background='#FAFAFA'" onmouseleave="this.style.background=''">
+        <td style="padding:12px 16px">
+          <div style="font-weight:700;font-size:13px">${esc5(u.NOME||u.nome||u.USUARIO||u.usuario)}</div>
+          <div style="font-size:11.5px;color:#929090">${esc5(u.EMAIL||u.email||u.USUARIO||u.usuario)}</div>
+        </td>
+        <td style="padding:12px 16px"><span style="font-size:11px;font-weight:700;background:#F4F4F4;border-radius:5px;padding:3px 7px;color:#545252">${esc5(u.PERFIL||u.perfil||'—')}</span></td>
+        <td style="padding:12px 16px;font-size:12.5px;color:#545252">${esc5(u.EMPRESA||u.empresa||'—')}</td>
+        <td style="padding:12px 16px"><span style="font-size:11px;font-weight:700;border-radius:5px;padding:3px 8px;background:${sc.bg};color:${sc.color}">${st}</span></td>
+        <td style="padding:12px 16px;font-size:12px;color:#929090">${(u.ULTIMO_ACESSO||u.ultimoAcesso) ? _fmtDataCurta(u.ULTIMO_ACESSO||u.ultimoAcesso) : '—'}</td>
+        <td style="padding:12px 16px;text-align:right">
+          <div style="display:flex;gap:5px;justify-content:flex-end;flex-wrap:wrap">
+            <button onclick="usuAbrir(${uJson})" style="border:1px solid #D6D6D6;background:#fff;border-radius:7px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:inherit">Editar</button>
+            ${st==='BLOQUEADO'
+              ? `<button onclick="usuStatus('${uid}','desbloquear')" style="border:1px solid #1E6B3A;color:#1E6B3A;background:#fff;border-radius:7px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:inherit">Desbloquear</button>`
+              : `<button onclick="usuStatus('${uid}','bloquear')" style="border:1px solid #C70602;color:#C70602;background:#fff;border-radius:7px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:inherit">Bloquear</button>`}
+            ${st==='INATIVO'
+              ? `<button onclick="usuStatus('${uid}','ativar')" style="border:1px solid #24508F;color:#24508F;background:#fff;border-radius:7px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:inherit">Ativar</button>`
+              : `<button onclick="usuStatus('${uid}','desativar')" style="border:1px solid #929090;color:#929090;background:#fff;border-radius:7px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:inherit">Desativar</button>`}
+            <button onclick="usuExcluir('${uid}','${unome}')" style="border:1px solid #E4E4E4;background:#fff;color:#929090;border-radius:7px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:inherit">Excluir</button>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  window.usuFiltrar = function() {
+    const q = (document.getElementById('usu-busca')&&document.getElementById('usu-busca').value||'').toLowerCase();
+    const fp = (document.getElementById('usu-fil-perfil')&&document.getElementById('usu-fil-perfil').value||'').toUpperCase();
+    const fs = (document.getElementById('usu-fil-status')&&document.getElementById('usu-fil-status').value||'').toUpperCase();
+    const filtrado = _usuDados.filter(u => {
+      if (q && !((u.NOME||u.nome||'')+(u.EMAIL||u.email||'')+(u.USUARIO||u.usuario||'')).toLowerCase().includes(q)) return false;
+      if (fp && (u.PERFIL||u.perfil||'').toUpperCase() !== fp) return false;
+      if (fs && (u.STATUS||u.status||'ATIVO').toUpperCase() !== fs) return false;
+      return true;
+    });
+    usuRenderLista(filtrado);
+  };
+
+  window.usuNovo = function() { usuAbrir(null); };
+  window.usuAbrir = function(jsonStr) {
+    const u = jsonStr ? (typeof jsonStr === 'string' ? JSON.parse(jsonStr) : jsonStr) : null;
+    _usuEditando = u;
+    let grantedArr = [];
+    let blockedArr = [];
+    if (u) {
+      try { grantedArr = u.PERMISSOES_GRANTED ? JSON.parse(u.PERMISSOES_GRANTED) : (u.permissoes_granted||[]); } catch(_) {}
+      try { blockedArr = u.PERMISSOES_BLOCKED ? JSON.parse(u.PERMISSOES_BLOCKED) : (u.permissoes_blocked||[]); } catch(_) {}
+    }
+    _usuGranted = new Set(Array.isArray(grantedArr) ? grantedArr : []);
+    _usuBlocked = new Set(Array.isArray(blockedArr) ? blockedArr : []);
+
+    document.getElementById('modal-usu-titulo').textContent = u ? ('Editar — ' + (u.NOME||u.nome||u.USUARIO||u.usuario)) : 'Novo Usuário';
+    document.getElementById('usu-nome').value = u&&(u.NOME||u.nome)||'';
+    document.getElementById('usu-email').value = u&&(u.EMAIL||u.email)||'';
+    document.getElementById('usu-usuario').value = u&&(u.USUARIO||u.usuario)||'';
+    document.getElementById('usu-perfil').value = u&&(u.PERFIL||u.perfil)||'';
+    document.getElementById('usu-status').value = u&&(u.STATUS||u.status)||'ATIVO';
+    document.getElementById('usu-obs').value = u&&(u.OBSERVACOES||u.observacoes)||'';
+    document.getElementById('usu-senha').value = '';
+    document.getElementById('usu-senha-req').style.display = u ? 'none' : '';
+    document.getElementById('usu-perm-perfil-base').textContent = u&&(u.PERFIL||u.perfil)||'(selecione o perfil)';
+    document.getElementById('usu-usuario').readOnly = !!u;
+
+    usuModalTab('dados', document.querySelector('#modal-usu-tabs .usu-tab-btn'));
+    usuRenderPermissoes(u&&(u.PERFIL||u.perfil)||'');
+    usuCarregarEscopo(u);
+
+    document.getElementById('modal-usu-msg').textContent = '';
+    const m = document.getElementById('modal-usuario');
+    m.style.display = 'flex';
+    m.style.alignItems = 'center';
+    m.style.justifyContent = 'center';
+  };
+  window.fecharModalUsuario = function() { document.getElementById('modal-usuario').style.display='none'; };
+
+  window.usuModalTab = function(tab, btn) {
+    ['dados','permissoes','escopo','historico'].forEach(function(t) {
+      const el = document.getElementById('modal-usu-tab-'+t);
+      if(el) el.style.display = t===tab?'block':'none';
+    });
+    document.querySelectorAll('#modal-usu-tabs .usu-tab-btn').forEach(function(b) {
+      b.classList.remove('active'); b.style.color='#666464'; b.style.fontWeight='500'; b.style.borderBottom='2px solid transparent';
+    });
+    if(btn) { btn.classList.add('active'); btn.style.color='#1F1F1F'; btn.style.fontWeight='700'; btn.style.borderBottom='2px solid #C70602'; }
+    if(tab==='historico' && _usuEditando) usuCarregarHistorico(_usuEditando.ID_USUARIO||_usuEditando.id||_usuEditando.USUARIO);
+  };
+
+  window.usuPerfilChanged = function() {
+    const p = document.getElementById('usu-perfil').value;
+    document.getElementById('usu-perm-perfil-base').textContent = p || '(selecione o perfil)';
+    usuRenderPermissoes(p);
+  };
+
+  function usuRenderPermissoes(perfil) {
+    const lista = document.getElementById('usu-permissoes-lista');
+    if(!lista) return;
+    lista.innerHTML = USU_PERMS.map(function(cat) {
+      return '<div class="usu-cat-bloco" style="margin-bottom:14px;border:1px solid #E4E4E4;border-radius:10px;overflow:hidden">' +
+        '<div onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display===\'none\'?\'block\':\'none\'"' +
+        ' style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#F9F9F9;cursor:pointer;font-size:13px;font-weight:700">' +
+        esc5(cat.cat) + '<span style="font-size:11px;color:#929090">▾</span></div>' +
+        '<div style="padding:8px 14px;display:grid;grid-template-columns:1fr 1fr;gap:6px">' +
+        cat.itens.map(function(it) {
+          const isGranted = _usuGranted.has(it.k);
+          const isBlocked = _usuBlocked.has(it.k);
+          const isDef = _permDefault(perfil, it.k);
+          const borderColor = isGranted ? '#24508F' : isBlocked ? '#C70602' : '#D6D6D6';
+          const bgColor = isGranted ? '#E6EEF8' : isBlocked ? '#FDECEC' : '#fff';
+          const txtColor = isGranted ? '#24508F' : isBlocked ? '#C70602' : '#545252';
+          const spanColor = isBlocked ? '#929090' : '#1F1F1F';
+          const spanDeco = isBlocked ? 'line-through' : '';
+          return '<div class="usu-perm-row" data-chave="' + it.k + '" style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #F4F4F4">' +
+            '<select class="usu-perm-sel" onchange="usuPermChange(\'' + it.k + '\',this.value)"' +
+            ' style="border:1px solid ' + borderColor + ';border-radius:5px;padding:3px 6px;font-size:11px;font-family:inherit;background:' + bgColor + ';color:' + txtColor + '">' +
+            '<option value="default"' + (!isGranted&&!isBlocked?' selected':'') + '>Padrão ' + (isDef?'(✓)':'(✗)') + '</option>' +
+            '<option value="granted"' + (isGranted?' selected':'') + '>✓ Concedido</option>' +
+            '<option value="blocked"' + (isBlocked?' selected':'') + '>✗ Bloqueado</option>' +
+            '</select>' +
+            '<span style="font-size:12.5px;color:' + spanColor + ';text-decoration:' + spanDeco + '">' + esc5(it.l) + '</span>' +
+            '</div>';
+        }).join('') +
+        '</div></div>';
+    }).join('');
+  }
+
+  window.usuPermChange = function(chave, val) {
+    _usuGranted.delete(chave); _usuBlocked.delete(chave);
+    if(val==='granted') _usuGranted.add(chave);
+    if(val==='blocked') _usuBlocked.add(chave);
+    const row = document.querySelector('.usu-perm-row[data-chave="' + chave + '"]');
+    if(row) {
+      const s = row.querySelector('select');
+      if(s) {
+        s.style.borderColor = val==='granted'?'#24508F':val==='blocked'?'#C70602':'#D6D6D6';
+        s.style.background = val==='granted'?'#E6EEF8':val==='blocked'?'#FDECEC':'#fff';
+        s.style.color = val==='granted'?'#24508F':val==='blocked'?'#C70602':'#545252';
+      }
+      const span = row.querySelector('span');
+      if(span) { span.style.color=val==='blocked'?'#929090':'#1F1F1F'; span.style.textDecoration=val==='blocked'?'line-through':''; }
+    }
+  };
+
+  window.usuPermFiltrar = function() {
+    const q = (document.getElementById('usu-perm-busca')&&document.getElementById('usu-perm-busca').value||'').toLowerCase();
+    document.querySelectorAll('.usu-perm-row').forEach(function(r) {
+      r.style.display = (!q || r.textContent.toLowerCase().includes(q)) ? '' : 'none';
+    });
+  };
+
+  function usuCarregarEscopo(u) {
+    const empresasEl = document.getElementById('usu-empresas-checks');
+    if(empresasEl) {
+      const EMPRESAS = ['Chiacchio Embalagens','Plaschio','Tubahia'];
+      const atual = (u&&(u.EMPRESA||u.empresa)||'').split(',').map(function(s){return s.trim();});
+      empresasEl.innerHTML = EMPRESAS.map(function(e) {
+        return '<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" value="' + esc5(e) + '" ' + (atual.includes(e)?'checked':'') + '> ' + esc5(e) + '</label>';
+      }).join('');
+    }
+    const setoresEl = document.getElementById('usu-setores-checks');
+    if(setoresEl) {
+      _apiFetch('/api/setores').then(function(d) {
+        const SETORES = (d.setores||d.itens||[]).map(function(s){return s.NOME||s.nome||s;});
+        const atual = (u&&(u.SETOR||u.setor)||'').split(',').map(function(s){return s.trim();});
+        setoresEl.innerHTML = SETORES.map(function(s) {
+          return '<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" value="' + esc5(s) + '" ' + (atual.includes(s)?'checked':'') + '> ' + esc5(s) + '</label>';
+        }).join('');
+      }).catch(function(){ setoresEl.innerHTML='<div style="color:#929090;font-size:12px">Setores indisponíveis.</div>'; });
+    }
+    const compEl = document.getElementById('usu-competencias');
+    if(compEl) compEl.value = u&&(u.CODIGO_RCA||u.codigoRCA||u.COMPETENCIAS||u.competencias)||'';
+  }
+
+  function usuCarregarHistorico(idUsuario) {
+    const el = document.getElementById('usu-historico-lista');
+    if(!el||!idUsuario) return;
+    el.innerHTML = '<div style="text-align:center;padding:20px">Carregando...</div>';
+    _apiFetch('/api/auditoria?usuario_afetado=' + encodeURIComponent(idUsuario) + '&limit=50').then(function(d) {
+      const logs = d.logs||d.itens||[];
+      el.innerHTML = logs.length ? logs.map(function(l){
+        return '<div style="display:grid;grid-template-columns:14px 1fr;gap:10px;margin-bottom:8px">' +
+          '<div style="width:10px;height:10px;border-radius:50%;background:#C70602;margin-top:3px;flex:none"></div>' +
+          '<div>' +
+          '<div style="font-size:11px;color:#929090">' + _fmtDataCurta(l.DATA||l.DATA_EVENTO) + '</div>' +
+          '<div style="font-size:13px;font-weight:600">' + esc5(l.TIPO||l.TIPO_EVENTO) + '</div>' +
+          '<div style="font-size:12px;color:#545252">Por: ' + esc5(l.MASTER||l.USUARIO||'—') + '</div>' +
+          '</div></div>';
+      }).join('')
+        : '<div style="text-align:center;color:#929090;padding:24px;font-size:13px">Nenhum registro de alteração.</div>';
+    }).catch(function(e){ el.innerHTML='<div style="color:#C70602;font-size:13px">' + esc5(e.message) + '</div>'; });
+  }
+
+  window.usuSalvar = async function() {
+    const nome = document.getElementById('usu-nome').value.trim();
+    const email = document.getElementById('usu-email').value.trim();
+    const usuario = document.getElementById('usu-usuario').value.trim();
+    const perfil = document.getElementById('usu-perfil').value;
+    const status = document.getElementById('usu-status').value;
+    const senha = document.getElementById('usu-senha').value.trim();
+    const obs = document.getElementById('usu-obs').value.trim();
+    const msg = document.getElementById('modal-usu-msg');
+
+    if(!nome||!email||!usuario||!perfil) {
+      if(msg){msg.style.color='#C70602';msg.textContent='Preencha todos os campos obrigatórios.';}
+      return;
+    }
+    if(!_usuEditando && !senha) {
+      if(msg){msg.style.color='#C70602';msg.textContent='Informe a senha inicial.';}
+      return;
+    }
+
+    const empresas = Array.from(document.querySelectorAll('#usu-empresas-checks input:checked')).map(function(i){return i.value;}).join(',');
+    const setores = Array.from(document.querySelectorAll('#usu-setores-checks input:checked')).map(function(i){return i.value;}).join(',');
+    const comp = document.getElementById('usu-competencias').value.trim();
+
+    const btn = document.getElementById('usu-btn-salvar');
+    if(btn){btn.style.opacity='.7';btn.style.pointerEvents='none';btn.textContent='Salvando...';}
+    if(msg){msg.textContent='';}
+
+    try {
+      let data;
+      const editId = _usuEditando && (_usuEditando.ID_USUARIO||_usuEditando.id||_usuEditando.USUARIO||_usuEditando.usuario);
+      if(_usuEditando) {
+        const body = { nome, email, perfil, status, empresa: empresas, setor: setores, observacoes: obs };
+        if(senha) body.senha = senha;
+        data = await _apiFetch('/api/usuarios/' + encodeURIComponent(editId), 0, {
+          method:'PATCH',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify(body),
+        });
+        await _apiFetch('/api/usuarios/' + encodeURIComponent(editId) + '/permissoes', 0, {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ permissoes_granted: Array.from(_usuGranted), permissoes_blocked: Array.from(_usuBlocked) }),
+        });
+      } else {
+        data = await _apiFetch('/api/usuarios', 0, {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ nome, email, usuario, perfil, status, empresa: empresas, setor: setores, senha, codigoRCA: comp,
+            permissoes_granted: Array.from(_usuGranted), permissoes_blocked: Array.from(_usuBlocked), observacoes: obs }),
+        });
+      }
+      if(data.sucesso) {
+        fecharModalUsuario();
+        await loadUsuariosV5();
+      } else {
+        if(msg){msg.style.color='#C70602';msg.textContent=data.erro||'Erro ao salvar.';}
+      }
+    } catch(e) {
+      if(msg){msg.style.color='#C70602';msg.textContent=e.message;}
+    } finally {
+      if(btn){btn.style.opacity='1';btn.style.pointerEvents='auto';btn.textContent='Salvar';}
+    }
+  };
+
+  window.usuStatus = async function(id, acao) {
+    if(!confirm('Confirmar: ' + acao + ' este usuário?')) return;
+    try {
+      const d = await _apiFetch('/api/usuarios/' + encodeURIComponent(id) + '/' + acao, 0, { method:'POST', headers:{'Content-Type':'application/json'}, body:'{}' });
+      if(d.sucesso) await loadUsuariosV5();
+      else alert(d.erro||'Erro.');
+    } catch(e) { alert(e.message); }
+  };
+
+  window.usuExcluir = async function(id, nome) {
+    if(!confirm('Excluir o usuário "' + nome + '"?\n\nRegistros históricos serão preservados. Esta ação é irreversível.')) return;
+    try {
+      const d = await _apiFetch('/api/usuarios/' + encodeURIComponent(id), 0, { method:'DELETE' });
+      if(d.sucesso) await loadUsuariosV5();
+      else alert(d.erro||'Erro ao excluir.');
+    } catch(e) { alert(e.message); }
+  };
+
+  if (typeof pageLoaders !== 'undefined') {
+    pageLoaders.usuarios = loadUsuariosV5;
+  } else {
+    window.loadUsuariosV5 = loadUsuariosV5;
+  }
+
 })();
 </script>
 </body>
