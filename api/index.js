@@ -4524,7 +4524,7 @@ app.post('/api/usuarios/:id/ativar', requerPermissao('usuarios.gerenciar'), asyn
 });
 
 // ===== PERMISSÕES DO USUÁRIO (MASTER only) =====
-app.post('/api/usuarios/:id/permissoes', middlewareAuth, requerPermissao('usuarios.gerenciar'), async (req, res) => {
+app.post('/api/usuarios/:id/permissoes', requerPermissao('usuarios.gerenciar'), async (req, res) => {
   try {
     const { id } = req.params;
     const { permissoes_granted = [], permissoes_blocked = [], justificativa = '' } = req.body;
