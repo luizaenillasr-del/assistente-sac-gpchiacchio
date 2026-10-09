@@ -5668,10 +5668,10 @@ app.get('/api/biblioteca/stats', middlewareEscopoEmpresa(), requerPerfil('MASTER
     const emAndamento = ativas.filter(f => f.STATUS === 'EM_ANDAMENTO' || f.STATUS === 'EM_TRATATIVA').length;
     const concluidas = ativas.filter(f => f.STATUS === 'CONCLUIDA').length;
     const arquivadas = base.filter(f => f.ARQUIVADO === 'SIM').length;
-    const agora = Date.now();
+    const agoraMs = agora.getTime();
     const slaVencido = ativas.filter(f => {
       if (!f.DATA_ABERTURA_ISO || !f.SLA_HORAS || f.STATUS === 'CONCLUIDA') return false;
-      return new Date(f.DATA_ABERTURA_ISO).getTime() + Number(f.SLA_HORAS) * 3600000 < agora;
+      return new Date(f.DATA_ABERTURA_ISO).getTime() + Number(f.SLA_HORAS) * 3600000 < agoraMs;
     }).length;
 
     res.json({
