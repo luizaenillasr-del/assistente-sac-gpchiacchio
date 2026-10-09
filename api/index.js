@@ -572,12 +572,13 @@ async function atualizarPorID(nomeAba, id, dados, camposID = ['ID_MANIFESTACAO',
   const rows = res.data.values || [];
   if (rows.length < 2) return null;
   const headers = rows[0];
-  let idCol = camposID.find(c => headers.includes(c));
-  if (!idCol) return null;
-  const idIdx = headers.indexOf(idCol);
+  // Coleta índices de todos os campos candidatos que existem no cabeçalho
+  const idxCandidatos = camposID.map(c => headers.indexOf(c)).filter(i => i !== -1);
+  if (!idxCandidatos.length) return null;
   let rowIndex = -1;
+  const idNorm = String(id).trim();
   for (let i=1;i<rows.length;i++) {
-    if (String(rows[i][idIdx] || '').trim() === String(id).trim()) { rowIndex=i+1; break; }
+    if (idxCandidatos.some(idx => String(rows[i][idx] || '').trim() === idNorm)) { rowIndex=i+1; break; }
   }
   if (rowIndex < 0) return null;
   const valores = [...rows[rowIndex-1]];
@@ -4423,7 +4424,8 @@ app.patch('/api/usuarios/:id', requerPermissao('usuarios.editar'), async (req,re
     if(b.senha){ dados.SENHA_HASH = await hashSenha(b.senha); }
     if(Array.isArray(b.permissoes_custom)) dados.PERMISSOES_CUSTOM=JSON.stringify(b.permissoes_custom);
     dados.DATA_ULTIMA_ALTERACAO=new Date().toISOString(); dados.ALTERADO_POR=req.user.usuario;
-    await atualizarPorID('USUARIOS',req.params.id,dados,['ID_USUARIO','USUARIO','EMAIL']);
+    const resultado=await atualizarPorID('USUARIOS',req.params.id,dados,['ID_USUARIO','USUARIO','EMAIL']);
+    if(!resultado) return res.status(404).json({sucesso:false,erro:'Usuário não encontrado. Recarregue a lista e tente novamente.'});
     await registrarAuditoria(req.user.usuario,'ATUALIZOU_USUARIO',req.params.id,'USUARIOS',null,{campos:Object.keys(b)});
     res.json({sucesso:true});
   }catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
