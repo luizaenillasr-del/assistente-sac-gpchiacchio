@@ -1166,7 +1166,7 @@ app.get('/api/manifestacoes', requerPermissao('manifestacoes.visualizar'), middl
       } catch (e) { console.warn('[F6] GET /manifestacoes PG falhou:', e.message); }
     }
     // Fallback Sheets
-    let data = await lerAba('MANIFESTACOES', 2000).catch(()=>[]);
+    let data = await lerAba('MANIFESTACOES', 5000).catch(()=>[]);
     if (req.user && perfilCanonico(req.user.perfil)==='RCA / REPRESENTANTE') {
       const rca=normalizarTexto(req.user.codigoRCA||req.user.usuario);
       data=data.filter(r=>normalizarTexto(r.USUARIO_CRIACAO||'')===normalizarTexto(req.user.usuario)||normalizarTexto(r.CODIGO_RCA||'')===rca||normalizarTexto(r.RCA||'')===rca);
@@ -1215,7 +1215,7 @@ app.get('/api/manifestacoes/:id', requerPermissao('manifestacoes.visualizar'), m
       } catch (e) { console.warn('[F6] GET /manifestacoes/:id PG falhou:', e.message); }
     }
     // Fallback Sheets
-    const data = await lerAba('MANIFESTACOES', 2000).catch(()=>[]);
+    const data = await lerAba('MANIFESTACOES', 5000).catch(()=>[]);
     const item = data.find(r => r.ID_MANIFESTACAO === req.params.id);
     if (!item) return res.status(404).json({ sucesso: false, erro: 'Manifestação não encontrada.' });
     // B2: verificar escopo de empresa
@@ -1321,7 +1321,7 @@ app.patch('/api/manifestacoes/:id/ficha', requerPermissao('manifestacoes.editar'
   try {
     const { id } = req.params;
     const { acao } = req.body;
-    const todas = await lerAba('MANIFESTACOES', 2000);
+    const todas = await lerAba('MANIFESTACOES', 5000);
     const item = todas.find(r => r.ID_MANIFESTACAO === id);
     if (!item) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
     const agora = new Date().toISOString();
@@ -1394,7 +1394,7 @@ function formatarDataBrasilia(isoStr) {
 app.get('/api/manifestacoes/:id/aprovacao', middlewareEscopoEmpresa(), requerPerfil('MASTER','APROVADOR MASTER','GESTOR SAC','ANALISTA SAC','APROVADOR'), async (req, res) => {
   try {
     const { id } = req.params;
-    const todas = await lerAba('MANIFESTACOES', 2000);
+    const todas = await lerAba('MANIFESTACOES', 5000);
     const item = todas.find(r => r.ID_MANIFESTACAO === id);
     if (!item) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
     if (!pertenceEmpresa(req.user?.empresa, item.EMPRESA_RECLAMADA)) {
@@ -1473,7 +1473,7 @@ app.post('/api/manifestacoes/:id/aprovacao', middlewareEscopoEmpresa(), requerPe
     if (decisao === 'DEVOLVER' && !motivo?.trim()) {
       return res.status(422).json({ sucesso:false, erro:'Motivo obrigatório ao devolver para ajuste.' });
     }
-    const todas = await lerAba('MANIFESTACOES', 2000);
+    const todas = await lerAba('MANIFESTACOES', 5000);
     const item = todas.find(r => r.ID_MANIFESTACAO === id);
     if (!item) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
     if (!pertenceEmpresa(req.user?.empresa, item.EMPRESA_RECLAMADA)) {
@@ -1531,7 +1531,7 @@ app.patch('/api/manifestacoes/:id', requerPermissao('manifestacoes.editar'), asy
   try {
     const { id } = req.params;
     // B2/Item18: verificar pertencimento de empresa antes de gravar
-    const todas = await lerAba('MANIFESTACOES', 2000);
+    const todas = await lerAba('MANIFESTACOES', 5000);
     const itemExistente = todas.find(r => r.ID_MANIFESTACAO === id);
     if (!itemExistente) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
     if (!pertenceEmpresa(req.user?.empresa, itemExistente.EMPRESA_RECLAMADA)) {
@@ -1561,7 +1561,7 @@ app.post('/api/manifestacoes/:id/decisao', requerPermissao('manifestacoes.aprova
     const { id } = req.params;
     const { tipoConfirmado, setoresConfirmados, procedimentoUsado, prioridade, slaHoras, geraRNC, observacoes, usuario, decisaoStatus, tratativaAplicavel, tratativaRealizada, dataInicioTratativa, dependeOutroSetor, setoresDependentes, dataAcionamentoSetor, prazoSetorSolicitado, dataRetornoSetor, statusTratativa, dataConclusaoTratativa, devolutivaFinal, devolutivaEnviada } = req.body;
     if (!usuario) return res.status(400).json({ sucesso:false, erro:'Usuário é obrigatório.' });
-    const data = await lerAba('MANIFESTACOES',2000);
+    const data = await lerAba('MANIFESTACOES',5000);
     const item = data.find(r => r.ID_MANIFESTACAO === id);
     if (!item) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
     // B2/Item18: verificar pertencimento de empresa antes de gravar decisão
@@ -1616,7 +1616,7 @@ app.get('/api/manifestacoes/:id/tratativa', requerPerfil('MASTER','GESTOR SAC','
 app.post('/api/manifestacoes/:id/tratativa/gerar', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC','SETOR RESPONSÁVEL','ESPECIALISTA'), async (req,res)=>{
   try {
     const id = req.params.id;
-    const data = await lerAba('MANIFESTACOES',2000);
+    const data = await lerAba('MANIFESTACOES',5000);
     const m = data.find(r=>r.ID_MANIFESTACAO===id);
     if (!m) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
     const analise = await executarAnalise({ ...m, empresaReclamante: m.EMPRESA_RECLAMANTE, empresaReclamada: m.EMPRESA_RECLAMADA, descricao: m.DESCRICAO });
@@ -1630,7 +1630,7 @@ app.post('/api/manifestacoes/:id/tratativa/decisao', requerPerfil('MASTER','GEST
   try {
     const { decisao, observacoes, textoEditado } = req.body;
     if (!['ACEITA','EDITADA','REJEITADA'].includes(decisao)) return res.status(400).json({ sucesso:false, erro:'Decisão inválida.' });
-    const data = await lerAba('MANIFESTACOES',2000);
+    const data = await lerAba('MANIFESTACOES',5000);
     const m = data.find(r=>r.ID_MANIFESTACAO===req.params.id);
     if (!m) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
     if(!pertenceEmpresa(req.user?.empresa, m.EMPRESA_RECLAMADA)) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado para esta manifestação.'});
@@ -1689,7 +1689,7 @@ app.get('/api/manifestacoes/:id/devolutivas', requerPerfil('MASTER','ANALISTA SA
 app.post('/api/manifestacoes/:id/devolutiva/gerar', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC'), async (req,res)=>{
   try {
     const id = req.params.id;
-    const data = await lerAba('MANIFESTACOES',2000);
+    const data = await lerAba('MANIFESTACOES',5000);
     const m = data.find(r=>r.ID_MANIFESTACAO===id);
     if (!m) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
     if (!pertenceEmpresa(req.user?.empresa, m.EMPRESA_RECLAMADA)) {
@@ -2388,7 +2388,7 @@ app.get('/api/calculadora/prazos-regionais', requerPerfil('MASTER','ANALISTA SAC
 // ===== DASHBOARD =====
 app.get('/api/dashboard', middlewareEscopoEmpresa(), requerPermissao('dashboard.visualizar'), async (req, res) => {
   try {
-    let [mans, recs] = await Promise.all([lerAba('MANIFESTACOES', 2000).catch(()=>[]), lerAbaReclamacoes(2000)]);
+    let [mans, recs] = await Promise.all([lerAba('MANIFESTACOES', 5000).catch(()=>[]), lerAbaReclamacoes(2000)]);
     mans = filtrarPorEmpresaHistorico(mans, req, COLUNA_EMPRESA_ABA.MANIFESTACOES).filter(m => !isTeste(m));
     recs = filtrarPorEmpresaHistorico(recs, req, COLUNA_EMPRESA_ABA['Reclamações']).filter(r => !isTeste(r));
     const emAndamento = mans.filter(m => !['FINALIZADA','ENCERRADA','CONCLUÍDA'].some(s => (m.STATUS||'').toUpperCase().includes(s))).length;
@@ -3849,7 +3849,7 @@ app.get('/api/notificacoes/analista', requerPerfil('MASTER','ANALISTA SAC','GEST
     const scope = _pf === 'MASTER' ? null : (req.user?.empresa||null);
     const [ocps, mans, respostas] = await Promise.all([
       lerAba('PESQUISA_OCORRENCIAS', 500).catch(()=>[]),
-      lerAba('MANIFESTACOES', 2000).catch(()=>[]),
+      lerAba('MANIFESTACOES', 5000).catch(()=>[]),
       lerAba('PESQUISA_RESPOSTAS', 500).catch(()=>[]),
     ]);
     const ocpsPendentes = ocps.filter(o =>
@@ -4527,7 +4527,7 @@ app.post('/api/documentos/extrair', requerPerfil('MASTER','ANALISTA SAC','APROVA
 // ===== ANÁLISE IA POR MANIFESTAÇÃO =====
 app.get('/api/manifestacoes/:id/analise', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','SETOR RESPONSÁVEL'), async (req,res) => {
   try {
-    const data = await lerAba('MANIFESTACOES', 2000).catch(()=>[]);
+    const data = await lerAba('MANIFESTACOES', 5000).catch(()=>[]);
     const m = data.find(r => r.ID_MANIFESTACAO === req.params.id);
     if (!m) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
     const analise = await executarAnalise({
