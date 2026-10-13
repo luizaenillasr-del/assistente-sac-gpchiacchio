@@ -59,9 +59,9 @@ const BANCO_HISTORICO = [
 
 // ─── CONFIG_SETORES — sem empresa = global ────────────────────────────────────
 const CONFIG_SETORES = [
-  { ID_SETOR:'SET-001', NOME_SETOR:'Qualidade', EMPRESA:'' },
-  { ID_SETOR:'SET-002', NOME_SETOR:'Comercial', EMPRESA:'' },
-  { ID_SETOR:'SET-003', NOME_SETOR:'Produção', EMPRESA:'CHIACCHIO EMBALAGENS' },
+  { ID_SETOR:'SET-001', NOME_SETOR:'Qualidade', SETOR:'Qualidade', EMPRESA:'' },
+  { ID_SETOR:'SET-002', NOME_SETOR:'Comercial', SETOR:'Comercial', EMPRESA:'' },
+  { ID_SETOR:'SET-003', NOME_SETOR:'Produção', SETOR:'Produção', EMPRESA:'CHIACCHIO EMBALAGENS' },
 ];
 
 // ─── FILA_APROVACAO — coluna de empresa: EMPRESA ────────────────────────────

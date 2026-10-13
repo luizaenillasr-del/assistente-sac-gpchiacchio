@@ -444,6 +444,28 @@ function filtrarPorEmpresaConfig(itens, req, campoEmpresa = 'EMPRESA') {
   });
 }
 
+function middlewareEscopoSetor() {
+  return async (req, res, next) => {
+    if (!req.user) return res.status(401).json({ sucesso: false, erro: 'Sessão inválida.' });
+    if (perfilCanonico(req.user.perfil) === 'MASTER') return next();
+    if (!req._empresaScope) return res.status(403).json({ sucesso: false, erro: 'Token sem empresa definida.' });
+    const userCod = empresaCanonica(req._empresaScope);
+    if (!userCod || userCod === 'MASTER') return next();
+    const nome = decodeURIComponent(req.params.setor || '');
+    try {
+      const rows = await lerAba('CONFIG_SETORES', 500).catch(() => []);
+      const setorRow = rows.find(r => normalizarTexto(r.SETOR || r.NOME_SETOR || '') === normalizarTexto(nome));
+      if (!setorRow || !(setorRow.EMPRESA || '').trim()) return next(); // setor global ou não encontrado
+      if (empresaCanonica(setorRow.EMPRESA) !== userCod) {
+        return res.status(403).json({ sucesso: false, erro: 'Acesso restrito à empresa do setor.' });
+      }
+      next();
+    } catch (e) {
+      return res.status(500).json({ sucesso: false, erro: erroSeguro(e) });
+    }
+  };
+}
+
 async function carregarUsuarioPorLogin(login){
   const alvo=normalizarTexto(login);
   const demoEnabled=String(process.env.DEMO_LOGIN_ENABLED||'false').toLowerCase()==='true';
@@ -2118,7 +2140,7 @@ app.post('/api/produtos/importar', requerPerfil('MASTER','ANALISTA SAC'), async(
   } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e) }); }
 });
 
-app.get('/api/setores/:setor/operacional', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC','ATENDENTE SAC','SETOR RESPONSÁVEL','ESPECIALISTA','APROVADOR','DIRETOR'), async(req,res)=>{
+app.get('/api/setores/:setor/operacional', middlewareEscopoEmpresa(), middlewareEscopoSetor(), requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC','ATENDENTE SAC','SETOR RESPONSÁVEL','ESPECIALISTA','APROVADOR','DIRETOR'), async(req,res)=>{
   try{
     const nome=decodeURIComponent(req.params.setor);
     await garantirAbaComCabecalhos('CONFIG_SETORES',['ID_SETOR','SETOR','DESCRICAO','RESPONSAVEL','SUBSTITUTO','EMAIL_RESPONSAVEL','SLA_HORAS','RESPONSABILIDADES','REGRAS_OPERACIONAIS','PROCEDIMENTOS_ORIENTACOES','ALERTAS','ATIVO',...SETOR_OPERACIONAL_FIELDS]);
@@ -2160,7 +2182,7 @@ app.post('/api/setores/:setor/faq', requerPerfil('MASTER'), async(req,res)=>{
 });
 
 // FAQ GET list
-app.get('/api/setores/:setor/faq', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async(req,res)=>{
+app.get('/api/setores/:setor/faq', middlewareEscopoEmpresa(), middlewareEscopoSetor(), requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async(req,res)=>{
   try{
     const nome=decodeURIComponent(req.params.setor);
     const itens=await crudSetorGet('FAQ_SETORES',FAQ_HEADERS,nome);
@@ -2169,7 +2191,7 @@ app.get('/api/setores/:setor/faq', requerPerfil('MASTER','ANALISTA SAC','SETOR R
 });
 
 // REGRAS
-app.get('/api/setores/:setor/regras', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async(req,res)=>{
+app.get('/api/setores/:setor/regras', middlewareEscopoEmpresa(), middlewareEscopoSetor(), requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async(req,res)=>{
   try{const nome=decodeURIComponent(req.params.setor);const itens=await crudSetorGet('REGRAS_SETORES',REGRAS_HEADERS,nome);res.json({sucesso:true,itens});}
   catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e),itens:[]});}
 });
@@ -2183,7 +2205,7 @@ app.patch('/api/setores/:setor/regras/:id', requerPerfil('MASTER','ANALISTA SAC'
 });
 
 // PROCEDIMENTOS
-app.get('/api/setores/:setor/procedimentos', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async(req,res)=>{
+app.get('/api/setores/:setor/procedimentos', middlewareEscopoEmpresa(), middlewareEscopoSetor(), requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async(req,res)=>{
   try{const nome=decodeURIComponent(req.params.setor);const itens=await crudSetorGet('PROCEDIMENTOS_SETORES',PROCEDIMENTOS_HEADERS,nome);res.json({sucesso:true,itens});}
   catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e),itens:[]});}
 });
@@ -2197,7 +2219,7 @@ app.patch('/api/setores/:setor/procedimentos/:id', requerPerfil('MASTER','ANALIS
 });
 
 // POLÍTICAS
-app.get('/api/setores/:setor/politicas', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async(req,res)=>{
+app.get('/api/setores/:setor/politicas', middlewareEscopoEmpresa(), middlewareEscopoSetor(), requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async(req,res)=>{
   try{const nome=decodeURIComponent(req.params.setor);const itens=await crudSetorGet('POLITICAS_SETORES',POLITICAS_HEADERS,nome);res.json({sucesso:true,itens});}
   catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e),itens:[]});}
 });
@@ -2211,7 +2233,7 @@ app.patch('/api/setores/:setor/politicas/:id', requerPerfil('MASTER','ANALISTA S
 });
 
 // PERGUNTAS DA IA
-app.get('/api/setores/:setor/perguntas-ia', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async(req,res)=>{
+app.get('/api/setores/:setor/perguntas-ia', middlewareEscopoEmpresa(), middlewareEscopoSetor(), requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async(req,res)=>{
   try{const nome=decodeURIComponent(req.params.setor);const itens=await crudSetorGet('PERGUNTAS_IA_SETORES',PERGUNTAS_IA_HEADERS,nome);res.json({sucesso:true,itens:itens.sort((a,b)=>parseInt(a.ORDEM||99)-parseInt(b.ORDEM||99))});}
   catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e),itens:[]});}
 });
@@ -2225,7 +2247,7 @@ app.patch('/api/setores/:setor/perguntas-ia/:id', requerPerfil('MASTER','ANALIST
 });
 
 // DOCUMENTOS DO SETOR (metadados — upload usa /api/anexos)
-app.get('/api/setores/:setor/documentos', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async(req,res)=>{
+app.get('/api/setores/:setor/documentos', middlewareEscopoEmpresa(), middlewareEscopoSetor(), requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async(req,res)=>{
   try{const nome=decodeURIComponent(req.params.setor);const itens=await crudSetorGet('DOCUMENTOS_SETORES',DOCS_SETOR_HEADERS,nome);res.json({sucesso:true,itens});}
   catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e),itens:[]});}
 });
@@ -2250,7 +2272,7 @@ app.patch('/api/setores/:setor/documentos/:id', requerPerfil('MASTER','ANALISTA 
 });
 
 // CONHECIMENTO COMPLETO — rota para o cérebro da IA
-app.get('/api/setores/:setor/conhecimento-completo', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async(req,res)=>{
+app.get('/api/setores/:setor/conhecimento-completo', middlewareEscopoEmpresa(), middlewareEscopoSetor(), requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async(req,res)=>{
   try{
     const nome=decodeURIComponent(req.params.setor);
     const empresa=req.query.empresa||null;

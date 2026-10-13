@@ -645,6 +645,54 @@ async function runTests() {
       assert.ok(!plaVe, 'APROVADOR de Plaschio não deve ver registro de Chiacchio');
     }
   });
+
+  await testarEscopoSetor();
+}
+
+// ─── B2-SETOR: escopo de empresa nas rotas de conteúdo por setor ─────────────
+
+async function testarEscopoSetor() {
+  const setorChi = encodeURIComponent('Produção');   // EMPRESA: CHIACCHIO EMBALAGENS
+  const setorGlb = encodeURIComponent('Qualidade');  // EMPRESA: '' (global)
+
+  // Rotas a testar: operacional, faq, regras, procedimentos, politicas, perguntas-ia, documentos, conhecimento-completo
+  const rotasLeitura = [
+    `/api/setores/${setorChi}/operacional`,
+    `/api/setores/${setorChi}/faq`,
+    `/api/setores/${setorChi}/regras`,
+    `/api/setores/${setorChi}/procedimentos`,
+    `/api/setores/${setorChi}/politicas`,
+    `/api/setores/${setorChi}/perguntas-ia`,
+    `/api/setores/${setorChi}/documentos`,
+    `/api/setores/${setorChi}/conhecimento-completo`,
+  ];
+
+  await test('B2-SETOR: PLASCHIO pedindo setor de Chiacchio → 403 (operacional)', async () => {
+    const r = await req('GET', `/api/setores/${setorChi}/operacional`, tokPlaschio());
+    assert.strictEqual(r.status, 403, `esperava 403, got ${r.status}: ${JSON.stringify(r.body)}`);
+  });
+
+  await test('B2-SETOR: Chiacchio pedindo setor próprio → 200 (faq)', async () => {
+    const r = await req('GET', `/api/setores/${setorChi}/faq`, tokChiacchio());
+    assert.ok([200].includes(r.status), `esperava 200, got ${r.status}: ${JSON.stringify(r.body)}`);
+  });
+
+  await test('B2-SETOR: MASTER pedindo setor de Chiacchio → 200 (faq)', async () => {
+    const r = await req('GET', `/api/setores/${setorChi}/faq`, tokMaster());
+    assert.ok([200].includes(r.status), `esperava 200, got ${r.status}: ${JSON.stringify(r.body)}`);
+  });
+
+  await test('B2-SETOR: PLASCHIO pedindo setor global (Qualidade) → 200 (faq)', async () => {
+    const r = await req('GET', `/api/setores/${setorGlb}/faq`, tokPlaschio());
+    assert.ok([200].includes(r.status), `setor global deve ser acessível, got ${r.status}`);
+  });
+
+  await test('B2-SETOR: todas as rotas de leitura de setor de Chiacchio → 403 para PLASCHIO', async () => {
+    for (const rota of rotasLeitura) {
+      const r = await req('GET', rota, tokPlaschio());
+      assert.strictEqual(r.status, 403, `${rota}: esperava 403, got ${r.status}`);
+    }
+  });
 }
 
 // ─── main ─────────────────────────────────────────────────────────────────────
