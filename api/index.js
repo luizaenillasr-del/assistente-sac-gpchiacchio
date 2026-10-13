@@ -570,8 +570,9 @@ async function appendLinha(nomeAba, linha) {
       return;
     } catch (e) {
       const status = e?.response?.status || e?.code;
-      if ((status === 429 || status === 503) && i < 2) {
-        console.warn(`[appendLinha] retry ${i+1} após ${espera}ms (status ${status})`);
+      // Só retentar em 429 (rate limit). 503 pode ter gravado — retry causaria duplicata.
+      if (status === 429 && i < 2) {
+        console.warn(`[appendLinha] retry ${i+1} após ${espera}ms (429 rate limit)`);
         await new Promise(r => setTimeout(r, espera));
         espera *= 2;
         continue;
@@ -4410,9 +4411,13 @@ app.get('/api/manifestacoes/:id/historico', requerPermissao('manifestacoes.visua
     // Garante que a manifestação pertence à empresa do usuário
     const item = manifest.find(r => r.ID_MANIFESTACAO === id);
     if (!item) return res.status(404).json({ sucesso: false, erro: 'Manifestação não encontrada.' });
-    const empScope = req.user?.empresa_scope || req.user?.empresa || '';
-    if (empScope && !pertenceEmpresa(empScope, item.EMPRESA_RECLAMADA || '')) {
-      return res.status(403).json({ sucesso: false, erro: 'Acesso não autorizado.' });
+    const _pfHist = perfilCanonico(req.user.perfil);
+    if (_pfHist !== 'MASTER') {
+      const empScope = req.user?.empresa_scope || req.user?.empresa || '';
+      // Bloqueia se empresa do usuário não está definida ou não corresponde à da manifestação
+      if (!empScope || !pertenceEmpresa(empScope, item.EMPRESA_RECLAMADA || '')) {
+        return res.status(403).json({ sucesso: false, erro: 'Acesso não autorizado.' });
+      }
     }
     const itens = logs
       .filter(r => (r.ID_REGISTRO || r.ID_MANIFESTACAO || '') === id)
@@ -5379,6 +5384,9 @@ app.get('/api/historico-aprovacao', requerPerfil('MASTER','APROVADOR'), middlewa
         if (detEmpresa) {
           const recCod = empresaCanonica(detEmpresa);
           if (recCod && recCod !== userEmpCod) return false;
+        } else {
+          // Registro sem empresa definida (legado pré-EMPRESA_SCOPE): visível apenas ao MASTER
+          return false;
         }
         // Filtro adicional por aprovador para perfil APROVADOR (não APROVADOR MASTER)
         if(perfil === 'APROVADOR') {
