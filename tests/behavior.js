@@ -472,6 +472,76 @@ async function runTests() {
     assert.ok(!items.some(item => /plaschio/i.test(item['EMPRESA'] || '')),
       `PLASCHIO vazou em fila-aprovacao para Chiacchio`);
   });
+
+  // ── GET /api/manifestacoes/:id/historico — isolamento de empresa ────────────
+  await test('HIST-MAN: não-MASTER sem empresa_scope → 403', async () => {
+    // Usa usuário ATIVO existente mas com empresa vazia no token
+    const tokSemEmpresa = makeToken({ perfil: 'ANALISTA SAC', empresa: '', usuario: 'ana.chiacchio' });
+    const r = await req('GET', '/api/manifestacoes/MAN-CHI-001/historico', tokSemEmpresa);
+    assert.strictEqual(r.status, 403, `esperava 403, got ${r.status}: ${JSON.stringify(r.body)}`);
+  });
+
+  await test('HIST-MAN: não-MASTER de outra empresa → 403', async () => {
+    // tokPlaschio tentando ler histórico de manifestação Chiacchio
+    const r = await req('GET', '/api/manifestacoes/MAN-CHI-001/historico', tokPlaschio());
+    assert.ok([403, 404].includes(r.status),
+      `esperava 403 ou 404, got ${r.status}: ${JSON.stringify(r.body)}`);
+    assert.ok(r.body?.sucesso === false, 'sucesso deve ser false');
+  });
+
+  await test('HIST-MAN: não-MASTER da empresa correta → 200', async () => {
+    const r = await req('GET', '/api/manifestacoes/MAN-CHI-001/historico', tokChiacchio());
+    assert.strictEqual(r.status, 200, `esperava 200, got ${r.status}: ${JSON.stringify(r.body)}`);
+    assert.ok(r.body?.sucesso === true, 'sucesso deve ser true');
+    assert.ok(Array.isArray(r.body?.itens), 'itens deve ser array');
+  });
+
+  await test('HIST-MAN: MASTER → 200 em qualquer empresa', async () => {
+    const r = await req('GET', '/api/manifestacoes/MAN-PLA-001/historico', tokMaster());
+    assert.strictEqual(r.status, 200, `MASTER deve acessar qualquer empresa, got ${r.status}`);
+    assert.ok(r.body?.sucesso === true, 'sucesso deve ser true');
+  });
+
+  // ── GET /api/historico-aprovacao — registros legados e por empresa ──────────
+  const tokAprovadorChi = () => makeToken({ perfil: 'APROVADOR', empresa: 'CHIACCHIO EMBALAGENS', usuario: 'aprovador.chi' });
+  const tokAprovadorPla = () => makeToken({ perfil: 'APROVADOR', empresa: 'PLASCHIO', usuario: 'aprovador.pla' });
+
+  await test('HIST-APROV: registro legado (sem EMPRESA_SCOPE) → visível ao MASTER', async () => {
+    const r = await req('GET', '/api/historico-aprovacao', tokMaster());
+    assert.ok([200].includes(r.status), `status=${r.status}: ${JSON.stringify(r.body)}`);
+    const itens = r.body.itens || [];
+    const legado = itens.find(i => i.ID_HISTORICO === 'HAPROV-LEG-001');
+    assert.ok(legado, 'MASTER deve ver registro legado sem EMPRESA_SCOPE');
+  });
+
+  await test('HIST-APROV: registro legado (sem EMPRESA_SCOPE) → invisível ao APROVADOR', async () => {
+    const r = await req('GET', '/api/historico-aprovacao', tokAprovadorChi());
+    if (r.status === 403) return; // perfil sem acesso = ok
+    assert.strictEqual(r.status, 200, `status=${r.status}`);
+    const itens = r.body.itens || [];
+    assert.ok(!itens.some(i => i.ID_HISTORICO === 'HAPROV-LEG-001'),
+      'APROVADOR não deve ver registro legado sem EMPRESA_SCOPE');
+  });
+
+  await test('HIST-APROV: registro de Chiacchio → visível só para MASTER e APROVADOR de Chiacchio', async () => {
+    const [rMaster, rChi, rPla] = await Promise.all([
+      req('GET', '/api/historico-aprovacao', tokMaster()),
+      req('GET', '/api/historico-aprovacao', tokAprovadorChi()),
+      req('GET', '/api/historico-aprovacao', tokAprovadorPla()),
+    ]);
+    const masterVe  = (rMaster.body.itens || []).some(i => i.ID_HISTORICO === 'HAPROV-CHI-001');
+    assert.ok(masterVe, 'MASTER deve ver registro de Chiacchio');
+
+    if (rChi.status === 200) {
+      const chiVe = (rChi.body.itens || []).some(i => i.ID_HISTORICO === 'HAPROV-CHI-001');
+      assert.ok(chiVe, 'APROVADOR de Chiacchio deve ver registro de Chiacchio');
+    }
+
+    if (rPla.status === 200) {
+      const plaVe = (rPla.body.itens || []).some(i => i.ID_HISTORICO === 'HAPROV-CHI-001');
+      assert.ok(!plaVe, 'APROVADOR de Plaschio não deve ver registro de Chiacchio');
+    }
+  });
 }
 
 // ─── main ─────────────────────────────────────────────────────────────────────

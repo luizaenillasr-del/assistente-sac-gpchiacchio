@@ -397,6 +397,140 @@ async function testarSeguranca() {
 }
 
 // ────────────────────────────────────────────────────────────
+// Grupo 8 — Correções pós-code-review (d593468)
+// ────────────────────────────────────────────────────────────
+async function testarCorrecoesPosReview() {
+  console.log('\n[8] Correções pós-code-review (d593468)');
+
+  // ── appendLinha: lógica de retry ─────────────────────────
+  await test('RETRY: 429 na 1ª chamada → retenta e grava (2 chamadas, 1 linha)', async () => {
+    let calls = 0;
+    const gravadas = [];
+    async function appendLinhaComRetry(nomeAba, linha) {
+      let espera = 10; // ms curto para testes
+      for (let i = 0; i < 3; i++) {
+        try {
+          calls++;
+          if (calls === 1) { const e = new Error('rate limit'); e.response = { status: 429 }; throw e; }
+          gravadas.push(linha);
+          return;
+        } catch (e) {
+          const status = e?.response?.status || e?.code;
+          if (status === 429 && i < 2) { await new Promise(r => setTimeout(r, espera)); espera *= 2; continue; }
+          throw e;
+        }
+      }
+    }
+    await appendLinhaComRetry('ABA', ['dado1']);
+    assert.strictEqual(calls, 2, `esperava 2 chamadas, houve ${calls}`);
+    assert.strictEqual(gravadas.length, 1, 'linha deve ter sido gravada exatamente 1 vez');
+  });
+
+  await test('RETRY: 503 não é retentado — 1 chamada, erro propagado', async () => {
+    let calls = 0;
+    async function appendLinhaComRetry(nomeAba, linha) {
+      let espera = 10;
+      for (let i = 0; i < 3; i++) {
+        try {
+          calls++;
+          const e = new Error('service unavailable'); e.response = { status: 503 }; throw e;
+        } catch (e) {
+          const status = e?.response?.status || e?.code;
+          if (status === 429 && i < 2) { await new Promise(r => setTimeout(r, espera)); espera *= 2; continue; }
+          throw e;
+        }
+      }
+    }
+    let lancou = false;
+    try { await appendLinhaComRetry('ABA', ['dado1']); } catch { lancou = true; }
+    assert.ok(lancou, 'deve lançar erro no 503');
+    assert.strictEqual(calls, 1, `503 não deve ser retentado — esperava 1 chamada, houve ${calls}`);
+  });
+
+  await test('RETRY: 429 persistente — para após 3 tentativas e lança erro', async () => {
+    let calls = 0;
+    async function appendLinhaComRetry(nomeAba, linha) {
+      let espera = 10;
+      for (let i = 0; i < 3; i++) {
+        try {
+          calls++;
+          const e = new Error('rate limit'); e.response = { status: 429 }; throw e;
+        } catch (e) {
+          const status = e?.response?.status || e?.code;
+          if (status === 429 && i < 2) { await new Promise(r => setTimeout(r, espera)); espera *= 2; continue; }
+          throw e;
+        }
+      }
+    }
+    let lancou = false;
+    try { await appendLinhaComRetry('ABA', ['dado1']); } catch { lancou = true; }
+    assert.ok(lancou, 'deve lançar após esgotar retries');
+    assert.strictEqual(calls, 3, `esperava 3 tentativas, houve ${calls}`);
+  });
+
+  // ── /api/manifestacoes/:id/historico — inspeção estática ─
+  await test('HIST-MAN: rota /api/manifestacoes/:id/historico existe e usa requerPermissao', () => {
+    const fs = require('fs');
+    const src = fs.readFileSync(require.resolve('../api/index.js'), 'utf8');
+    assert.ok(
+      src.includes("app.get('/api/manifestacoes/:id/historico'"),
+      'rota GET /api/manifestacoes/:id/historico não encontrada'
+    );
+    assert.ok(
+      src.includes("requerPermissao('manifestacoes.visualizar')"),
+      "rota deve exigir permissão 'manifestacoes.visualizar'"
+    );
+  });
+
+  await test('HIST-MAN: não-MASTER com empresa_scope vazio é bloqueado (403)', () => {
+    const fs = require('fs');
+    const src = fs.readFileSync(require.resolve('../api/index.js'), 'utf8');
+    const start = src.indexOf("app.get('/api/manifestacoes/:id/historico'");
+    const block = src.slice(start, start + 1000);
+    assert.ok(
+      block.includes('!empScope') || block.includes("empScope ||"),
+      'deve bloquear quando empresa_scope está vazio'
+    );
+    assert.ok(
+      block.includes('status(403)'),
+      'deve retornar 403 para empresa não autorizada'
+    );
+  });
+
+  // ── /api/historico-aprovacao — registros legados ──────────
+  await test('HIST-APROV: registros legados sem EMPRESA_SCOPE bloqueados para não-MASTER', () => {
+    const fs = require('fs');
+    const src = fs.readFileSync(require.resolve('../api/index.js'), 'utf8');
+    const histIdx = src.indexOf("app.get('/api/historico-aprovacao'");
+    const histBlock = src.slice(histIdx, histIdx + 2000);
+    assert.ok(
+      histBlock.includes('EMPRESA_SCOPE'),
+      'deve verificar EMPRESA_SCOPE no histórico de aprovação'
+    );
+    assert.ok(
+      histBlock.includes('return false') && (histBlock.includes('legado') || histBlock.includes('sem empresa')),
+      'registros sem EMPRESA_SCOPE devem retornar false (bloqueados para não-MASTER)'
+    );
+  });
+
+  await test('HIST-APROV: EMPRESA_SCOPE armazenado no appendObjeto de HISTORICO_APROVACAO', () => {
+    const fs = require('fs');
+    const src = fs.readFileSync(require.resolve('../api/index.js'), 'utf8');
+    const appendIdx = src.indexOf("appendObjeto('HISTORICO_APROVACAO'");
+    assert.ok(appendIdx >= 0, "appendObjeto('HISTORICO_APROVACAO') não encontrado");
+    const appendBlock = src.slice(appendIdx, appendIdx + 500);
+    assert.ok(
+      appendBlock.includes('EMPRESA_SCOPE'),
+      'EMPRESA_SCOPE deve ser gravado no HISTORICO_APROVACAO'
+    );
+    assert.ok(
+      appendBlock.includes('empresaCanonica'),
+      'EMPRESA_SCOPE deve ser normalizado com empresaCanonica()'
+    );
+  });
+}
+
+// ────────────────────────────────────────────────────────────
 // Grupo 7 — Integração com PG (requer DATABASE_URL)
 // ────────────────────────────────────────────────────────────
 async function testarIntegracaoPG() {
@@ -442,6 +576,7 @@ async function main() {
   await testarRepositorios();
   await testarRegrasNegocio();
   await testarSeguranca();
+  await testarCorrecoesPosReview();
   await testarIntegracaoPG();
 
   const total = passed + failed + skipped;

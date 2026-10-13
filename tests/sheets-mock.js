@@ -14,6 +14,8 @@ const USUARIOS = [
   { ID_USUARIO:'USR-CES-001', USUARIO:'pedro.cesbap', SENHA:sha256('senhaCes'), PERFIL:'ANALISTA SAC', EMPRESA:'Cesbap', STATUS:'ATIVO' },
   { ID_USUARIO:'USR-MST-001', USUARIO:'master.test', SENHA:sha256('masterPass'), PERFIL:'MASTER', EMPRESA:'Grupo Chiacchio', STATUS:'ATIVO' },
   { ID_USUARIO:'USR-DIS-001', USUARIO:'usuario.inativo', SENHA:sha256('inativo123'), PERFIL:'ANALISTA SAC', EMPRESA:'CHIACCHIO EMBALAGENS', STATUS:'INATIVO' },
+  { ID_USUARIO:'USR-APROV-CHI', USUARIO:'aprovador.chi', SENHA:sha256('senhaAprovChi'), PERFIL:'APROVADOR', EMPRESA:'CHIACCHIO EMBALAGENS', STATUS:'ATIVO' },
+  { ID_USUARIO:'USR-APROV-PLA', USUARIO:'aprovador.pla', SENHA:sha256('senhaAprovPla'), PERFIL:'APROVADOR', EMPRESA:'PLASCHIO', STATUS:'ATIVO' },
 ];
 
 // ─── MANIFESTACOES — coluna de empresa: EMPRESA_RECLAMADA ────────────────────
@@ -68,16 +70,34 @@ const FILA_APROVACAO = [
   { ID_FILA:'FAP-PLA-001', ID_ENTIDADE:'MAN-PLA-001', TIPO_ENTIDADE:'SAC', EMPRESA:'PLASCHIO',             STATUS:'PENDENTE', CRIADO_POR:'joao.plaschio',  ID_APROVADOR:'aprovador.pla' },
 ];
 
+// ─── HISTORICO_APROVACAO — coluna de isolamento: EMPRESA_SCOPE ───────────────
+const HISTORICO_APROVACAO = [
+  // Registro com EMPRESA_SCOPE de Chiacchio
+  { ID_HISTORICO:'HAPROV-CHI-001', ID_FILA:'FAP-CHI-001', ID_ENTIDADE:'MAN-CHI-001', TIPO_ENTIDADE:'SAC', DECISAO:'APROVADO', OBSERVACOES:'ok', APROVADOR:'aprovador.chi', DATA_DECISAO:'2026-01-10', DETALHES:'{}', EMPRESA_SCOPE:'CHIACCHIO' },
+  // Registro com EMPRESA_SCOPE de Plaschio
+  { ID_HISTORICO:'HAPROV-PLA-001', ID_FILA:'FAP-PLA-001', ID_ENTIDADE:'MAN-PLA-001', TIPO_ENTIDADE:'SAC', DECISAO:'REJEITADO', OBSERVACOES:'', APROVADOR:'aprovador.pla', DATA_DECISAO:'2026-01-11', DETALHES:'{}', EMPRESA_SCOPE:'PLASCHIO' },
+  // Registro legado sem EMPRESA_SCOPE
+  { ID_HISTORICO:'HAPROV-LEG-001', ID_FILA:'FAP-OLD-001', ID_ENTIDADE:'MAN-OLD-001', TIPO_ENTIDADE:'SAC', DECISAO:'APROVADO', OBSERVACOES:'legado', APROVADOR:'master.test', DATA_DECISAO:'2025-06-01', DETALHES:'{}', EMPRESA_SCOPE:'' },
+];
+
+// ─── LOG_SISTEMA — entradas por manifestação ──────────────────────────────────
+const LOG_SISTEMA_SEED = [
+  { DATA_HORA:'2026-01-10T10:00:00', USUARIO:'ana.chiacchio', ACAO:'Manifestação criada', ID_REGISTRO:'MAN-CHI-001', DETALHES:'Criação inicial' },
+  { DATA_HORA:'2026-01-10T11:00:00', USUARIO:'ana.chiacchio', ACAO:'Enviado para revisão', ID_REGISTRO:'MAN-CHI-001', DETALHES:'' },
+  { DATA_HORA:'2026-01-11T09:00:00', USUARIO:'joao.plaschio', ACAO:'Manifestação criada', ID_REGISTRO:'MAN-PLA-001', DETALHES:'Criação inicial' },
+];
+
 const DB = {
   MANIFESTACOES,
   BANCO_RNC,
   BANCO_HISTORICO,
+  HISTORICO_APROVACAO,
   CONFIG_SETORES,
   FILA_APROVACAO,
   USUARIOS,
   'Reclamações': RECLAMACOES,
   'Reclamações + devolutiva': [],
-  LOG_SISTEMA: [],
+  LOG_SISTEMA: JSON.parse(JSON.stringify(LOG_SISTEMA_SEED)),
 };
 
 const appendedRows = [];
