@@ -235,15 +235,11 @@ async function testarRegrasNegocio() {
   });
 
 
-  await test('api/index.js importa repositórios com try/catch (sem quebrar se PG indisponível)', () => {
+  await test('api/index.js usa Sheets como fonte primária (sem repositórios Prisma)', () => {
     const fs = require('fs');
     const src = fs.readFileSync(require.resolve('../api/index.js'), 'utf8');
-    // Deve ter try/catch em torno dos requires dos repositórios
-    assert.ok(src.includes('usuarioRepo'), 'deve usar usuarioRepo');
-    assert.ok(src.includes('manifestacaoRepo'), 'deve usar manifestacaoRepo');
-    assert.ok(src.includes('conhecimentoRepo'), 'deve usar conhecimentoRepo');
-    // Garante que o fallback Sheets existe nos gets principais
-    assert.ok(src.includes('lerAba(\'MANIFESTACOES\''), 'deve ter fallback Sheets em manifestações');
+    assert.ok(src.includes("lerAba('MANIFESTACOES'"), 'deve usar Sheets para manifestações');
+    assert.ok(!src.includes('usuarioRepo'), 'não deve ter referências a repositórios Prisma');
   });
 }
 
@@ -302,7 +298,7 @@ async function testarSeguranca() {
     const src = fs.readFileSync(require.resolve('../api/index.js'), 'utf8');
     assert.ok(src.includes('DEMO_LOGIN_ENABLED'), 'deve verificar DEMO_LOGIN_ENABLED');
     // Não deve retornar demo users sem verificação de env
-    assert.ok(src.includes('demoEnabled ? DEMO_USUARIOS : []'), 'deve condicionar DEMO_USUARIOS ao env');
+    assert.ok(src.includes('demoEnabled?DEMO_USUARIOS:[]') || src.includes('demoEnabled ? DEMO_USUARIOS : []'), 'deve condicionar DEMO_USUARIOS ao env');
   });
 
   await test('B6: motorRegras() sempre retorna geraRNC: false', () => {
@@ -338,19 +334,6 @@ async function testarSeguranca() {
     assert.ok(histBlock.includes('filtrarPorEmpresa'), 'historico deve usar filtrarPorEmpresa');
   });
 
-  await test('B2: /api/manifestacoes PG path usa empresa do usuário autenticado', () => {
-    const fs = require('fs');
-    const src = fs.readFileSync(require.resolve('../api/index.js'), 'utf8');
-    // O PG path não deve confiar em req.query.empresaId para não-MASTER
-    assert.ok(src.includes('B2: empresa vem do usuário autenticado, não do frontend'), 'PG path de manifestacoes deve usar empresa do usuário');
-  });
-
-  await test('B2: /api/manifestacoes/:id PG path verifica empresa', () => {
-    const fs = require('fs');
-    const src = fs.readFileSync(require.resolve('../api/index.js'), 'utf8');
-    assert.ok(src.includes('B2: verificar escopo de empresa no PG path'), 'GET /manifestacoes/:id PG path deve checar empresa');
-  });
-
   await test('B4: calcularSLA tem timezone configurável', () => {
     const fs = require('fs');
     const src = fs.readFileSync(require.resolve('../api/services/cerebroServices.js'), 'utf8');
@@ -359,12 +342,6 @@ async function testarSeguranca() {
     assert.ok(src.includes('prazoFinalLocal'), 'deve formatar prazo no timezone correto');
   });
 
-  await test('B3: dual-write PG registra falha no audit trail', () => {
-    const fs = require('fs');
-    const src = fs.readFileSync(require.resolve('../api/index.js'), 'utf8');
-    assert.ok(src.includes('DUALWRITE_PG_FALHOU'), 'deve registrar falha de dual-write');
-    assert.ok(src.includes("console.info('[PG] dual-write manifestação OK"), 'deve confirmar sucesso');
-  });
 }
 
 // ────────────────────────────────────────────────────────────
