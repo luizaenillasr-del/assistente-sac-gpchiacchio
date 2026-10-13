@@ -492,6 +492,7 @@ async function registrarAcessoUsuario(usuario){
 }
 
 async function getSheets() {
+  if (_sheetsMock?.getSheets) return _sheetsMock.getSheets();
   const client = await getAuth().getClient();
   return google.sheets({ version: 'v4', auth: client });
 }
@@ -7799,3 +7800,6 @@ if (require.main === module) {
 }
 
 module.exports = app;
+// Expõe appendLinha apenas em ambiente de teste (SHEETS_MOCK_PATH definido),
+// para que testes de unidade do retry possam exercitar a função real sem subir o servidor.
+if (process.env.SHEETS_MOCK_PATH) app._appendLinhaForTest = appendLinha;

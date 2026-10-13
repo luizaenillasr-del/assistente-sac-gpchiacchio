@@ -77,7 +77,8 @@ const HISTORICO_APROVACAO = [
   // Registro com EMPRESA_SCOPE de Plaschio
   { ID_HISTORICO:'HAPROV-PLA-001', ID_FILA:'FAP-PLA-001', ID_ENTIDADE:'MAN-PLA-001', TIPO_ENTIDADE:'SAC', DECISAO:'REJEITADO', OBSERVACOES:'', APROVADOR:'aprovador.pla', DATA_DECISAO:'2026-01-11', DETALHES:'{}', EMPRESA_SCOPE:'PLASCHIO' },
   // Registro legado sem EMPRESA_SCOPE
-  { ID_HISTORICO:'HAPROV-LEG-001', ID_FILA:'FAP-OLD-001', ID_ENTIDADE:'MAN-OLD-001', TIPO_ENTIDADE:'SAC', DECISAO:'APROVADO', OBSERVACOES:'legado', APROVADOR:'master.test', DATA_DECISAO:'2025-06-01', DETALHES:'{}', EMPRESA_SCOPE:'' },
+  // APROVADOR igual ao usuário do teste (aprovador.chi) para que só o filtro de legados possa excluí-lo
+  { ID_HISTORICO:'HAPROV-LEG-001', ID_FILA:'FAP-OLD-001', ID_ENTIDADE:'MAN-OLD-001', TIPO_ENTIDADE:'SAC', DECISAO:'APROVADO', OBSERVACOES:'legado', APROVADOR:'aprovador.chi', DATA_DECISAO:'2025-06-01', DETALHES:'{}', EMPRESA_SCOPE:'' },
 ];
 
 // ─── LOG_SISTEMA — entradas por manifestação ──────────────────────────────────

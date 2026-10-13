@@ -474,8 +474,9 @@ async function runTests() {
   });
 
   // ── GET /api/manifestacoes/:id/historico — isolamento de empresa ────────────
-  await test('HIST-MAN: não-MASTER sem empresa_scope → 403', async () => {
-    // Usa usuário ATIVO existente mas com empresa vazia no token
+  await test('HIST-MAN (HTTP): empresa vazia no token → sistema retorna 403 antes de chegar na rota', async () => {
+    // Testa que a camada HTTP (middleware + rota) rejeita empresa vazia com 403.
+    // O 403 pode vir de middlewareEscopoEmpresa() ou do check !empScope na rota — ambos corretos.
     const tokSemEmpresa = makeToken({ perfil: 'ANALISTA SAC', empresa: '', usuario: 'ana.chiacchio' });
     const r = await req('GET', '/api/manifestacoes/MAN-CHI-001/historico', tokSemEmpresa);
     assert.strictEqual(r.status, 403, `esperava 403, got ${r.status}: ${JSON.stringify(r.body)}`);

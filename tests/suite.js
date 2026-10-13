@@ -402,75 +402,106 @@ async function testarSeguranca() {
 async function testarCorrecoesPosReview() {
   console.log('\n[8] Correções pós-code-review (d593468)');
 
-  // ── appendLinha: lógica de retry ─────────────────────────
-  await test('RETRY: 429 na 1ª chamada → retenta e grava (2 chamadas, 1 linha)', async () => {
-    let calls = 0;
-    const gravadas = [];
-    async function appendLinhaComRetry(nomeAba, linha) {
-      let espera = 10; // ms curto para testes
-      for (let i = 0; i < 3; i++) {
-        try {
-          calls++;
-          if (calls === 1) { const e = new Error('rate limit'); e.response = { status: 429 }; throw e; }
-          gravadas.push(linha);
-          return;
-        } catch (e) {
-          const status = e?.response?.status || e?.code;
-          if (status === 429 && i < 2) { await new Promise(r => setTimeout(r, espera)); espera *= 2; continue; }
-          throw e;
-        }
-      }
-    }
-    await appendLinhaComRetry('ABA', ['dado1']);
-    assert.strictEqual(calls, 2, `esperava 2 chamadas, houve ${calls}`);
-    assert.strictEqual(gravadas.length, 1, 'linha deve ter sido gravada exatamente 1 vez');
+  // ── appendLinha: retry real via api/index.js com getSheets injetado ──────────
+  // api/index.js exporta _appendLinhaForTest quando SHEETS_MOCK_PATH está definido.
+  // O mock de retry NÃO exporta appendLinha (para não curto-circuitar o retry real),
+  // mas exporta getSheets() que retorna um cliente fake que conta chamadas.
+
+  const path = require('path');
+  const os   = require('os');
+  const fs   = require('fs');
+  const origMock = process.env.SHEETS_MOCK_PATH;
+
+  function buildRetryMock(behavior) {
+    // behavior: array de outcomes por chamada (429 | 503 | 200)
+    // NÃO exporta appendLinha → o retry real de api/index.js é exercitado.
+    const tmpPath = path.join(os.tmpdir(), `mock_retry_${Date.now()}_${Math.random().toString(36).slice(2)}.js`);
+    fs.writeFileSync(tmpPath, `'use strict';
+let _calls = 0;
+const _behavior = ${JSON.stringify(behavior)};
+module.exports = {
+  lerAba()          { return Promise.resolve([]); },
+  appendObjeto()    { return Promise.resolve({ headers:[], linha:[] }); },
+  obterCabecalhos() { return Promise.resolve([]); },
+  atualizarPorID()  { return Promise.resolve(null); },
+  getSheets() {
+    return {
+      spreadsheets: { values: {
+        append() {
+          const outcome = _behavior[_calls++] ?? 200;
+          if (outcome === 200) return Promise.resolve({});
+          const e = new Error('injected ' + outcome);
+          e.response = { status: outcome };
+          return Promise.reject(e);
+        },
+        get() { return Promise.resolve({ data: { values: [[]] } }); },
+      }}
+    };
+  },
+  getCalls() { return _calls; },
+};`);
+    return tmpPath;
+  }
+
+  function loadFreshApp(mockPath) {
+    Object.keys(require.cache)
+      .filter(k => k.includes(`${path.sep}api${path.sep}index`))
+      .forEach(k => delete require.cache[k]);
+    process.env.SHEETS_MOCK_PATH = mockPath;
+    return require('../api/index.js');
+  }
+
+  function cleanupMock(tmpPath) {
+    try { fs.unlinkSync(tmpPath); } catch (_) {}
+    Object.keys(require.cache)
+      .filter(k => k.includes(`${path.sep}api${path.sep}index`) || (tmpPath && k === tmpPath))
+      .forEach(k => delete require.cache[k]);
+    process.env.SHEETS_MOCK_PATH = origMock || '';
+    if (!origMock) delete process.env.SHEETS_MOCK_PATH;
+  }
+
+  await test('RETRY: 429 na 1ª chamada → retenta e grava (2 chamadas ao append, 1 sucesso)', async () => {
+    const tmp = buildRetryMock([429, 200]);
+    const app = loadFreshApp(tmp);
+    const appendLinha = app._appendLinhaForTest;
+    assert.ok(typeof appendLinha === 'function', '_appendLinhaForTest não exportado');
+    const mockMod = require(tmp);
+    await appendLinha('ABA', ['dado1']);
+    const calls = mockMod.getCalls();
+    cleanupMock(tmp);
+    assert.strictEqual(calls, 2, `esperava 2 chamadas ao append, houve ${calls}`);
   });
 
-  await test('RETRY: 503 não é retentado — 1 chamada, erro propagado', async () => {
-    let calls = 0;
-    async function appendLinhaComRetry(nomeAba, linha) {
-      let espera = 10;
-      for (let i = 0; i < 3; i++) {
-        try {
-          calls++;
-          const e = new Error('service unavailable'); e.response = { status: 503 }; throw e;
-        } catch (e) {
-          const status = e?.response?.status || e?.code;
-          if (status === 429 && i < 2) { await new Promise(r => setTimeout(r, espera)); espera *= 2; continue; }
-          throw e;
-        }
-      }
-    }
+  await test('RETRY: 503 não é retentado — 1 chamada, erro propagado sem retry', async () => {
+    const tmp = buildRetryMock([503]);
+    const app = loadFreshApp(tmp);
+    const appendLinha = app._appendLinhaForTest;
+    assert.ok(typeof appendLinha === 'function', '_appendLinhaForTest não exportado');
+    const mockMod = require(tmp);
     let lancou = false;
-    try { await appendLinhaComRetry('ABA', ['dado1']); } catch { lancou = true; }
+    try { await appendLinha('ABA', ['dado1']); } catch { lancou = true; }
+    const calls = mockMod.getCalls();
+    cleanupMock(tmp);
     assert.ok(lancou, 'deve lançar erro no 503');
     assert.strictEqual(calls, 1, `503 não deve ser retentado — esperava 1 chamada, houve ${calls}`);
   });
 
-  await test('RETRY: 429 persistente — para após 3 tentativas e lança erro', async () => {
-    let calls = 0;
-    async function appendLinhaComRetry(nomeAba, linha) {
-      let espera = 10;
-      for (let i = 0; i < 3; i++) {
-        try {
-          calls++;
-          const e = new Error('rate limit'); e.response = { status: 429 }; throw e;
-        } catch (e) {
-          const status = e?.response?.status || e?.code;
-          if (status === 429 && i < 2) { await new Promise(r => setTimeout(r, espera)); espera *= 2; continue; }
-          throw e;
-        }
-      }
-    }
+  await test('RETRY: 429 persistente — 3 tentativas ao append, lança erro', async () => {
+    const tmp = buildRetryMock([429, 429, 429]);
+    const app = loadFreshApp(tmp);
+    const appendLinha = app._appendLinhaForTest;
+    assert.ok(typeof appendLinha === 'function', '_appendLinhaForTest não exportado');
+    const mockMod = require(tmp);
     let lancou = false;
-    try { await appendLinhaComRetry('ABA', ['dado1']); } catch { lancou = true; }
+    try { await appendLinha('ABA', ['dado1']); } catch { lancou = true; }
+    const calls = mockMod.getCalls();
+    cleanupMock(tmp);
     assert.ok(lancou, 'deve lançar após esgotar retries');
     assert.strictEqual(calls, 3, `esperava 3 tentativas, houve ${calls}`);
   });
 
-  // ── /api/manifestacoes/:id/historico — inspeção estática ─
+  // ── /api/manifestacoes/:id/historico — inspeção estática ─────────────────────
   await test('HIST-MAN: rota /api/manifestacoes/:id/historico existe e usa requerPermissao', () => {
-    const fs = require('fs');
     const src = fs.readFileSync(require.resolve('../api/index.js'), 'utf8');
     assert.ok(
       src.includes("app.get('/api/manifestacoes/:id/historico'"),
@@ -482,39 +513,42 @@ async function testarCorrecoesPosReview() {
     );
   });
 
-  await test('HIST-MAN: não-MASTER com empresa_scope vazio é bloqueado (403)', () => {
-    const fs = require('fs');
+  await test('HIST-MAN: check de empresa_scope vazio presente na rota (:id/historico)', () => {
     const src = fs.readFileSync(require.resolve('../api/index.js'), 'utf8');
     const start = src.indexOf("app.get('/api/manifestacoes/:id/historico'");
-    const block = src.slice(start, start + 1000);
+    const block = src.slice(start, start + 1200);
+    // Verifica o trecho exato que bloqueia empresa_scope vazio: "!empScope ||"
     assert.ok(
-      block.includes('!empScope') || block.includes("empScope ||"),
-      'deve bloquear quando empresa_scope está vazio'
+      block.includes('!empScope ||'),
+      'rota deve conter "!empScope ||" para bloquear usuários sem empresa definida'
     );
     assert.ok(
       block.includes('status(403)'),
-      'deve retornar 403 para empresa não autorizada'
+      'rota deve retornar 403 para empresa não autorizada'
     );
   });
 
-  // ── /api/historico-aprovacao — registros legados ──────────
-  await test('HIST-APROV: registros legados sem EMPRESA_SCOPE bloqueados para não-MASTER', () => {
-    const fs = require('fs');
+  // ── /api/historico-aprovacao — registros legados ──────────────────────────────
+  await test('HIST-APROV: bloco else { return false } para legados está na rota historico-aprovacao', () => {
     const src = fs.readFileSync(require.resolve('../api/index.js'), 'utf8');
     const histIdx = src.indexOf("app.get('/api/historico-aprovacao'");
-    const histBlock = src.slice(histIdx, histIdx + 2000);
+    const histBlock = src.slice(histIdx, histIdx + 2500);
+    // O trecho específico do fix: o else que bloqueia registros sem EMPRESA_SCOPE
+    // Procura pela combinação única: "} else {" seguido de "return false" dentro do contexto de legados
+    const elseIdx = histBlock.indexOf('} else {');
+    assert.ok(elseIdx >= 0, 'bloco else não encontrado em historico-aprovacao');
+    const elseBlock = histBlock.slice(elseIdx, elseIdx + 200);
     assert.ok(
-      histBlock.includes('EMPRESA_SCOPE'),
-      'deve verificar EMPRESA_SCOPE no histórico de aprovação'
+      elseBlock.includes('return false'),
+      'bloco else deve conter "return false" para bloquear registros legados'
     );
     assert.ok(
-      histBlock.includes('return false') && (histBlock.includes('legado') || histBlock.includes('sem empresa')),
-      'registros sem EMPRESA_SCOPE devem retornar false (bloqueados para não-MASTER)'
+      elseBlock.includes('legado') || elseBlock.includes('EMPRESA_SCOPE'),
+      'bloco else deve comentar o motivo (legado ou EMPRESA_SCOPE)'
     );
   });
 
   await test('HIST-APROV: EMPRESA_SCOPE armazenado no appendObjeto de HISTORICO_APROVACAO', () => {
-    const fs = require('fs');
     const src = fs.readFileSync(require.resolve('../api/index.js'), 'utf8');
     const appendIdx = src.indexOf("appendObjeto('HISTORICO_APROVACAO'");
     assert.ok(appendIdx >= 0, "appendObjeto('HISTORICO_APROVACAO') não encontrado");
