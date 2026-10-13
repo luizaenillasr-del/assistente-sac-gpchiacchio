@@ -17,8 +17,6 @@ const permissoesService = require('./services/permissoesService');
 
 // Injeção de mock Sheets para testes — nunca ativo em produção (env var não existe em prod)
 const _sheetsMock = process.env.SHEETS_MOCK_PATH ? (() => { try { return require(process.env.SHEETS_MOCK_PATH); } catch(e) { console.warn('[MOCK] falhou ao carregar:', e.message); return null; } })() : null;
-// Repositórios Prisma removidos — blocos if(repo) abaixo são código morto, remover em seguida
-const usuarioRepo = null, manifestacaoRepo = null, rncRepo = null, empresaRepo = null, conhecimentoRepo = null;
 
 const app = express();
 const ALLOWED_ORIGINS = [
@@ -208,31 +206,6 @@ const DEMO_USUARIOS = [
 ];
 
 async function carregarUsuarios(){
-  // F4: tenta PostgreSQL primeiro
-  if (usuarioRepo) {
-    try {
-      const pgUsers = await usuarioRepo.findAll({ ativo: true });
-      if (pgUsers && pgUsers.length > 0) {
-        const mapped = pgUsers.map(u => ({
-          ID_USUARIO: u.idOriginal || `USR-PG-${u.id}`,
-          USUARIO: u.login || u.email,
-          EMAIL: u.email || '',
-          NOME: u.nome || u.login,
-          PERFIL: u.perfil?.codigo || u.perfil?.nome || 'ANALISTA SAC',
-          EMPRESA: u.empresa?.nome || '',
-          SETOR: u.setor?.nome || '',
-          STATUS: u.status || 'ATIVO',
-          SENHA_HASH: u.senhaHash || '',
-          CODIGO_RCA: u.codigoRca || '',
-          ULTIMO_ACESSO: u.ultimoAcesso?.toISOString?.() || '',
-          _pgId: u.id,
-        }));
-        const demoEnabled = String(process.env.DEMO_LOGIN_ENABLED || 'false').toLowerCase() === 'true';
-        return [...mapped, ...(demoEnabled ? DEMO_USUARIOS : [])];
-      }
-    } catch (e) { console.warn('[F4] carregarUsuarios PG falhou, usando Sheets:', e.message); }
-  }
-  // Fallback Sheets
   let rows=[];
   try{ rows=await lerAba('USUARIOS',1000); }catch(e){ console.warn('USUARIOS não disponível:',e.message); }
   const raw=process.env.USUARIOS_JSON||'{}';
@@ -454,40 +427,11 @@ async function carregarUsuarioPorLogin(login){
     const demo=DEMO_USUARIOS.find(u=>normalizarTexto(u.USUARIO)===alvo);
     if(demo) return demo;
   }
-  // F4: tenta PostgreSQL primeiro por login ou email
-  if (usuarioRepo) {
-    try {
-      let pgU = await usuarioRepo.findByLogin(login).catch(() => null);
-      if (!pgU) pgU = await usuarioRepo.findByEmail(login).catch(() => null);
-      if (pgU && normalizarTexto(pgU.status || 'ATIVO') !== 'inativo') {
-        return {
-          ID_USUARIO: pgU.idOriginal || `USR-PG-${pgU.id}`,
-          USUARIO: pgU.login || pgU.email,
-          EMAIL: pgU.email || '',
-          NOME: pgU.nome || pgU.login,
-          PERFIL: pgU.perfil?.codigo || pgU.perfil?.nome || 'ANALISTA SAC',
-          EMPRESA: pgU.empresa?.nome || '',
-          SETOR: pgU.setor?.nome || '',
-          STATUS: pgU.status || 'ATIVO',
-          SENHA: pgU.senhaHash || '',
-          CODIGO_RCA: pgU.codigoRca || '',
-          _pgId: pgU.id,
-        };
-      }
-    } catch (e) { console.warn('[F4] carregarUsuarioPorLogin PG falhou:', e.message); }
-  }
-  // Fallback Sheets
   const usuarios=await carregarUsuarios();
   return usuarios.find(u=>normalizarTexto(u.USUARIO||u.EMAIL||u.ID_USUARIO)===alvo && normalizarTexto(u.STATUS||'ATIVO')!=='inativo') || null;
 }
 
 async function registrarAcessoUsuario(usuario){
-  // F4: atualiza PostgreSQL se disponível
-  try {
-    if (usuarioRepo && usuario._pgId && typeof usuarioRepo.registrarAcesso === 'function') {
-      usuarioRepo.registrarAcesso(usuario._pgId).catch(() => {});
-    }
-  } catch(e) { console.warn('[F4] registrarAcesso PG:', e.message); }
   try{
     await atualizarPorID('USUARIOS',usuario.ID_USUARIO||usuario.USUARIO||usuario.EMAIL,{ULTIMO_ACESSO:new Date().toISOString()},['ID_USUARIO','USUARIO','EMAIL']);
   }catch(e){}
@@ -820,19 +764,10 @@ app.get('/api/health', async (req, res) => {
   const saude = {
     sucesso: true, status: 'ok', versao: '5.6.0',
     sistema: 'Assistente SAC Chiacchio', ts: new Date().toISOString(),
-    postgresql: 'não verificado',
+    postgresql: 'não utilizado',
     sheets: 'não verificado',
     demoAtivo: String(process.env.DEMO_LOGIN_ENABLED || 'false').toLowerCase() === 'true',
   };
-  // Verificar PG (diferencia online/offline/vazio)
-  if (manifestacaoRepo) {
-    try {
-      const count = await manifestacaoRepo.findAll({ limit: 1 }).catch(() => null);
-      if (count === null) saude.postgresql = 'offline';
-      else if (count.length === 0) saude.postgresql = 'online_vazio';
-      else saude.postgresql = 'online_com_dados';
-    } catch (e) { saude.postgresql = 'offline'; }
-  } else { saude.postgresql = 'repositório_não_carregado'; }
   // Verificar Sheets (rápido)
   try {
     const rows = await lerAba('MANIFESTACOES', 2).catch(() => null);
@@ -1189,40 +1124,6 @@ app.post('/api/representantes/manifestacoes', requerPerfil('RCA / REPRESENTANTE'
 // ===== MANIFESTAÇÕES =====
 app.get('/api/manifestacoes', requerPermissao('manifestacoes.visualizar'), middlewareEscopoEmpresa(), async (req, res) => {
   try {
-    // F6: tenta PostgreSQL primeiro
-    if (manifestacaoRepo) {
-      try {
-        const filtros = {};
-        // B2: empresa vem do usuário autenticado, não do frontend
-        const _isMasterMf = req.user && perfilCanonico(req.user.perfil) === 'MASTER';
-        if (_isMasterMf && req.query.empresaId) filtros.empresaId = req.query.empresaId;
-        else if (!_isMasterMf && req.user?.empresa) filtros.empresaId = req.user.empresa;
-        if (req.query.status) filtros.status = req.query.status;
-        const pgData = await manifestacaoRepo.findAll(filtros);
-        if (pgData && pgData.length > 0) {
-          let itens = pgData.map(m => ({
-            ID_MANIFESTACAO: m.protocolo || m.idOriginal || String(m.id),
-            DATA_ABERTURA: m.criadaEm?.toISOString?.() || '',
-            EMPRESA_RECLAMANTE: m.contato || m.empresaNome || '',
-            EMPRESA_RECLAMADA: m.empresa?.nome || m.empresaNome || '',
-            DESCRICAO: m.descricao || '',
-            STATUS: m.status || '',
-            TIPO: m.tipo || '',
-            PRODUTO: m.produto || '',
-            PRIORIDADE: m.prioridade || '',
-            SETOR_SUGERIDO: m.setor?.nome || '',
-            USUARIO_CRIACAO: m.criador?.login || m.criador?.email || '',
-            _pgId: m.id,
-          }));
-          if (req.user && perfilCanonico(req.user.perfil) === 'RCA / REPRESENTANTE') {
-            const uNorm = normalizarTexto(req.user.usuario);
-            itens = itens.filter(r => normalizarTexto(r.USUARIO_CRIACAO) === uNorm);
-          }
-          return res.json({ sucesso: true, total: itens.length, itens, fonte: 'postgresql' });
-        }
-      } catch (e) { console.warn('[F6] GET /manifestacoes PG falhou:', e.message); }
-    }
-    // Fallback Sheets
     let data = await lerAba('MANIFESTACOES', 5000).catch(()=>[]);
     if (req.user && perfilCanonico(req.user.perfil)==='RCA / REPRESENTANTE') {
       const rca=normalizarTexto(req.user.codigoRCA||req.user.usuario);
@@ -1236,42 +1137,6 @@ app.get('/api/manifestacoes', requerPermissao('manifestacoes.visualizar'), middl
 
 app.get('/api/manifestacoes/:id', requerPermissao('manifestacoes.visualizar'), middlewareEscopoEmpresa(), async (req, res) => {
   try {
-    // F6: tenta PostgreSQL primeiro
-    if (manifestacaoRepo) {
-      try {
-        let pg = await manifestacaoRepo.findByProtocolo(req.params.id).catch(() => null);
-        if (!pg) pg = await manifestacaoRepo.findByIdOriginal(req.params.id).catch(() => null);
-        if (!pg && !isNaN(req.params.id)) pg = await manifestacaoRepo.findById(req.params.id).catch(() => null);
-        if (pg) {
-          // B2: verificar escopo de empresa no PG path
-          if (req._empresaScope) {
-            const empPg = pg.empresa?.nome || pg.empresaNome || '';
-            if (!pertenceEmpresa(req._empresaScope, empPg || '')) {
-              return res.status(403).json({ sucesso: false, erro: 'Acesso não autorizado para esta manifestação.' });
-            }
-          }
-          const item = {
-            ID_MANIFESTACAO: pg.protocolo || pg.idOriginal || String(pg.id),
-            DATA_ABERTURA: pg.criadaEm?.toISOString?.() || '',
-            EMPRESA_RECLAMANTE: pg.contato || pg.empresaNome || '',
-            EMPRESA_RECLAMADA: pg.empresa?.nome || pg.empresaNome || '',
-            DESCRICAO: pg.descricao || '',
-            STATUS: pg.status || '',
-            TIPO: pg.tipo || '',
-            PRODUTO: pg.produto || '',
-            PRIORIDADE: pg.prioridade || '',
-            SETOR_SUGERIDO: pg.setor?.nome || '',
-            USUARIO_CRIACAO: pg.criador?.login || pg.criador?.email || '',
-            historico: pg.historico || [],
-            tratativas: pg.tratativas || [],
-            devolutivas: pg.devolutivas || [],
-            _pgId: pg.id,
-          };
-          return res.json({ sucesso: true, manifestacao: item, fonte: 'postgresql' });
-        }
-      } catch (e) { console.warn('[F6] GET /manifestacoes/:id PG falhou:', e.message); }
-    }
-    // Fallback Sheets
     const data = await lerAba('MANIFESTACOES', 5000).catch(()=>[]);
     const item = data.find(r => r.ID_MANIFESTACAO === req.params.id);
     if (!item) return res.status(404).json({ sucesso: false, erro: 'Manifestação não encontrada.' });
@@ -1317,25 +1182,6 @@ app.post('/api/manifestacoes', requerPermissao('manifestacoes.abrir'), async (re
       console.error('[MANIFESTACOES][appendObjeto] FALHOU:', e.message, e?.stack);
       throw e;
     });
-    // B3: dual-write para PostgreSQL — rastreia sucesso/falha (não-bloqueante)
-    if (manifestacaoRepo) {
-      manifestacaoRepo.upsertFromSheets({
-        ID_MANIFESTACAO: id,
-        EMPRESA_RECLAMANTE: empresaReclamante,
-        EMPRESA_RECLAMADA: empresaReclamada || '',
-        DESCRICAO: descricao,
-        STATUS: 'EM ANÁLISE',
-        TIPO: tipoFinal,
-        PRODUTO: objeto.PRODUTO,
-        DATA_ABERTURA: agora,
-      }).then(() => {
-        console.info('[PG] dual-write manifestação OK:', id);
-      }).catch(e => {
-        console.error('[PG] dual-write manifestação FALHOU:', id, e.message);
-        // Registrar falha de dual-write no audit trail (não bloqueia resposta)
-        registrarAuditoria('sistema', 'DUALWRITE_PG_FALHOU', id, 'MANIFESTACOES', null, { erro:erroSeguro(e) }).catch(() => {});
-      });
-    }
     registrarAuditoria(usuario||'sistema','CRIOU_MANIFESTAÇÃO',id,'MANIFESTACOES',null,{empresaReclamante,tipo:tipoFinal}).catch(()=>{});
     // Executar análise de IA de forma síncrona antes de responder
     // (setImmediate não funciona em Vercel serverless)
@@ -2551,34 +2397,6 @@ app.get('/api/dashboard', middlewareEscopoEmpresa(), requerPermissao('dashboard.
 // ===== RNC =====
 app.get('/api/rnc', middlewareEscopoEmpresa(), requerPerfil('MASTER','ANALISTA SAC','APROVADOR','SETOR RESPONSÁVEL','RCA / REPRESENTANTE'), async (req, res) => {
   try {
-    // F6: tenta PostgreSQL primeiro
-    if (rncRepo) {
-      try {
-        const filtros = {};
-        // B2: empresa vem do usuário autenticado, não do frontend
-        const _isMasterRnc = req.user && perfilCanonico(req.user.perfil) === 'MASTER';
-        if (_isMasterRnc && req.query.empresaId) filtros.empresaId = req.query.empresaId;
-        else if (!_isMasterRnc && req.user?.empresa) filtros.empresaId = req.user.empresa;
-        if (req.query.status) filtros.status = req.query.status;
-        const pgData = await rncRepo.findAll(filtros);
-        if (pgData && pgData.length > 0) {
-          const itens = pgData.map(r => ({
-            ID_RNC: r.numero || r.idOriginal || String(r.id),
-            DATA_ABERTURA: r.dataAbertura?.toISOString?.() || '',
-            EMPRESA: r.empresa?.nome || '',
-            SETOR: r.setor || '',
-            STATUS: r.status || '',
-            NAO_CONFORMIDADE: r.descricao || '',
-            CAUSA: r.causa || '',
-            RESPONSAVEL: r.responsavel || '',
-            PRIORIDADE: r.prioridade || '',
-            _pgId: r.id,
-          }));
-          return res.json({ sucesso: true, total: itens.length, itens, fonte: 'postgresql' });
-        }
-      } catch (e) { console.warn('[F6] GET /rnc PG falhou:', e.message); }
-    }
-    // Fallback Sheets — B2: legado sem empresa = global
     let data=await lerAba('BANCO_RNC',5000).catch(()=>[]);
     data = filtrarPorEmpresaHistorico(data, req, COLUNA_EMPRESA_ABA.BANCO_RNC);
     res.json({sucesso:true,total:data.length,itens:data});
@@ -2593,24 +2411,6 @@ app.post('/api/rnc', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
     const competencia=body.COMPETENCIA||body.competencia;
     const usuarioCriador=req.user?.usuario||body.usuario||'sistema';
     await appendObjeto('BANCO_RNC',{ID_RNC:id,DATA_ABERTURA:agora,EMPRESA:body.EMPRESA||body.empresa||'',SETOR:body.SETOR||body.setor||'',COMPETENCIA:competencia,NAO_CONFORMIDADE:body.NAO_CONFORMIDADE||body.naoConformidade||'',CAUSA:body.CAUSA||body.causa||'',RESPONSAVEL:body.RESPONSAVEL||body.responsavel||'',PRIORIDADE:body.PRIORIDADE||body.prioridade||'Média',PRAZO:body.PRAZO||body.prazo||'',STATUS:body.STATUS||'AGUARDANDO_APROVACAO',USUARIO_CRIACAO:usuarioCriador});
-    // F6: dual-write RNC para PostgreSQL (não-bloqueante)
-    if (rncRepo && empresaRepo) {
-      empresaRepo.findAll().then(emps => {
-        const nomeEmpresa = body.EMPRESA || body.empresa || '';
-        const emp = emps.find(e => e.nome === nomeEmpresa || e.id === nomeEmpresa) || emps[0];
-        if (!emp) return;
-        return rncRepo.create({
-          protocolo: id,
-          idOriginal: id,
-          empresaId: emp.id,
-          origemTipo: 'AUDITORIA_INTERNA',
-          descricao: body.NAO_CONFORMIDADE || body.naoConformidade || competencia || '',
-          responsavel: body.RESPONSAVEL || body.responsavel || '',
-          prioridade: body.PRIORIDADE || body.prioridade || 'MEDIA',
-          status: 'AGUARDANDO_APROVACAO',
-        });
-      }).catch(e => console.warn('[F6] dual-write RNC PG falhou:', e.message));
-    }
     await registrarAuditoria(usuarioCriador,'CRIOU_RNC',id,'BANCO_RNC',null,{competencia});
     res.json({sucesso:true,id,competencia,status:'AGUARDANDO_APROVACAO'});
   } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
@@ -2864,22 +2664,6 @@ app.get('/api/conhecimento', requerPermissao('cerebro.visualizar'), async (req, 
 });
 app.get('/api/procedimentos', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
   try {
-    // F7: tenta PostgreSQL primeiro
-    if (conhecimentoRepo) {
-      try {
-        const filtros = {};
-        if (req.query.empresaId) filtros.empresaId = req.query.empresaId;
-        if (req.query.setorId) filtros.setorId = req.query.setorId;
-        const pgData = await conhecimentoRepo.findProcedimentos(filtros);
-        if (pgData && pgData.length > 0) {
-          const itens = pgData.map(p => ({
-            ID_PROCEDIMENTO: String(p.id), NOME: p.titulo || '',
-            DESCRICAO: p.texto || '', PASSOS: '', ATIVO: p.status === 'ATIVO' ? 'SIM' : 'NÃO',
-          }));
-          return res.json({ sucesso: true, total: itens.length, itens, fonte: 'postgresql' });
-        }
-      } catch (e) { console.warn('[F7] GET /procedimentos PG falhou:', e.message); }
-    }
     await garantirAbaComCabecalhos('PROCEDIMENTOS',['ID_PROCEDIMENTO','NOME','SETOR_RESPONSAVEL','DESCRICAO','PASSOS','ATIVO']).catch(()=>{});
     const data=await lerAba('PROCEDIMENTOS',200).catch(()=>[]);
     res.json({sucesso:true,total:data.length,itens:data});
@@ -2887,22 +2671,6 @@ app.get('/api/procedimentos', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPON
 });
 app.get('/api/politicas', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
   try {
-    // F7: tenta PostgreSQL primeiro
-    if (conhecimentoRepo) {
-      try {
-        const filtros = {};
-        if (req.query.empresaId) filtros.empresaId = req.query.empresaId;
-        if (req.query.setorId) filtros.setorId = req.query.setorId;
-        const pgData = await conhecimentoRepo.findPoliticas(filtros);
-        if (pgData && pgData.length > 0) {
-          const itens = pgData.map(p => ({
-            ID_POLITICA: String(p.id), POLITICA: p.titulo || '',
-            DESCRICAO: p.texto || '', ATIVO: p.status === 'ATIVA' ? 'SIM' : 'NÃO',
-          }));
-          return res.json({ sucesso: true, total: itens.length, itens, fonte: 'postgresql' });
-        }
-      } catch (e) { console.warn('[F7] GET /politicas PG falhou:', e.message); }
-    }
     await garantirAbaComCabecalhos('POLITICAS',['ID_POLITICA','POLITICA','SETOR_RESPONSAVEL','DESCRICAO','RESPONSAVEL','ATIVO']).catch(()=>{});
     const data=await lerAba('POLITICAS',200).catch(()=>[]);
     res.json({sucesso:true,total:data.length,itens:data});
@@ -2944,18 +2712,6 @@ app.post('/api/procedimentos', requerPerfil('MASTER','ANALISTA SAC'), async (req
 });
 app.get('/api/matriz', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
   try {
-    // F12: tenta PostgreSQL primeiro
-    if (conhecimentoRepo) {
-      try {
-        const filtros = {};
-        if (req.query.empresaId) filtros.empresaId = req.query.empresaId;
-        if (req.query.tipo) filtros.tipo = req.query.tipo;
-        const pgData = await conhecimentoRepo.findMatriz(filtros);
-        if (pgData && pgData.length > 0) {
-          return res.json({ sucesso: true, itens: pgData, fonte: 'postgresql' });
-        }
-      } catch (e) { console.warn('[F12] GET /matriz PG falhou:', e.message); }
-    }
     garantirAbaComCabecalhos('MATRIZ_DECISAO', ['ID_MATRIZ','TEMA','SETOR_PRINCIPAL','SETORES_APOIO','SLA_HORAS','PRIORIDADE','GERA_RNC','APROVACAO','FOLLOW_UP','REGRAS']).catch(()=>{});
     const data = await lerAba('MATRIZ_DECISAO', 500);
     res.json({ sucesso: true, itens: data });
@@ -3297,23 +3053,6 @@ app.post('/api/pesquisas/decisao', requerPermissao('pesquisas.gerenciar'), async
       };
       await appendObjeto('MANIFESTACOES', obj);
       invalidarCacheAba('MANIFESTACOES');
-      // dual-write para PostgreSQL (não-bloqueante), igual ao POST /api/manifestacoes
-      if (manifestacaoRepo) {
-        manifestacaoRepo.upsertFromSheets({
-          ID_MANIFESTACAO: manifestacaoId,
-          EMPRESA_RECLAMANTE: obj.EMPRESA_RECLAMANTE,
-          EMPRESA_RECLAMADA: resposta.EMPRESA_RECLAMADA || '',
-          DESCRICAO: obj.DESCRICAO,
-          STATUS: obj.STATUS,
-          TIPO: obj.TIPO,
-          PRODUTO: '',
-          DATA_ABERTURA: agora,
-        }).then(() => {
-          console.info('[PG] dual-write pesquisa→manifestação OK:', manifestacaoId);
-        }).catch(e => {
-          console.error('[PG] dual-write pesquisa→manifestação FALHOU:', manifestacaoId, e.message);
-        });
-      }
     }
 
     // Atualizar STATUS_OCP / decisão na pesquisa
@@ -4264,16 +4003,6 @@ app.get('/api/tipos', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL',
 });
 app.get('/api/sla', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
   try {
-    // F12: tenta PostgreSQL primeiro
-    if (conhecimentoRepo) {
-      try {
-        const filtros = {};
-        if (req.query.empresaId) filtros.empresaId = req.query.empresaId;
-        if (req.query.tipo) filtros.tipo = req.query.tipo;
-        const sla = await conhecimentoRepo.findSla(filtros);
-        if (sla) return res.json({ sucesso: true, total: 1, itens: [sla], fonte: 'postgresql' });
-      } catch (e) { console.warn('[F12] GET /sla PG falhou:', e.message); }
-    }
     const data=await lerAba('SLA_ESCALONAMENTO',50).catch(()=>[]);
     res.json({sucesso:true,total:data.length,itens:data});
   } catch (e) { res.status(500).json({sucesso:false,erro:erroSeguro(e),dados:[]}); }
