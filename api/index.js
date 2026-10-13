@@ -559,11 +559,26 @@ function _sanitizarFormula(v) {
 
 async function appendLinha(nomeAba, linha) {
   if (_sheetsMock?.appendLinha) return _sheetsMock.appendLinha(nomeAba, linha);
-  const sheets = await getSheets();
-  await sheets.spreadsheets.values.append({
-    spreadsheetId: SPREADSHEET_ID, range: nomeAba,
-    valueInputOption: 'RAW', resource: { values: [linha.map(_sanitizarFormula)] },
-  });
+  let espera = 1000;
+  for (let i = 0; i < 3; i++) {
+    try {
+      const sheets = await getSheets();
+      await sheets.spreadsheets.values.append({
+        spreadsheetId: SPREADSHEET_ID, range: nomeAba,
+        valueInputOption: 'RAW', resource: { values: [linha.map(_sanitizarFormula)] },
+      });
+      return;
+    } catch (e) {
+      const status = e?.response?.status || e?.code;
+      if ((status === 429 || status === 503) && i < 2) {
+        console.warn(`[appendLinha] retry ${i+1} após ${espera}ms (status ${status})`);
+        await new Promise(r => setTimeout(r, espera));
+        espera *= 2;
+        continue;
+      }
+      throw e;
+    }
+  }
 }
 
 async function updateLinha(nomeAba, rowIndex, linha) {
@@ -577,7 +592,7 @@ async function updateLinha(nomeAba, rowIndex, linha) {
 async function obterCabecalhos(nomeAba) {
   if (_sheetsMock?.obterCabecalhos) return _sheetsMock.obterCabecalhos(nomeAba);
   const sheets = await getSheets();
-  const res = await sheets.spreadsheets.values.get({
+  const res = await _sheetsGetComRetry(sheets, {
     spreadsheetId: SPREADSHEET_ID, range: `${nomeAba}!1:1`, valueRenderOption: 'FORMATTED_VALUE',
   });
   return res.data.values?.[0] || [];
@@ -1354,7 +1369,16 @@ app.post('/api/manifestacoes', requerPermissao('manifestacoes.abrir'), async (re
       }
     } catch (e) { console.error('Falha na análise automática:', e.message); }
     res.json({ sucesso:true, id, analise, mensagem:'Manifestação registrada e analisada com sucesso.' });
-  } catch (e) { console.error(e); res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
+  } catch (e) {
+    console.error('[POST /api/manifestacoes] ERRO:', e?.message, e?.response?.status, e?.stack?.split('\n')[1]);
+    const status = e?.response?.status || e?.code;
+    const msgClara = status === 429
+      ? 'Limite de requisições ao Google Sheets atingido. Aguarde alguns segundos e tente novamente.'
+      : status === 403
+      ? 'Sem permissão para gravar na planilha. Verifique as credenciais da conta de serviço.'
+      : erroSeguro(e);
+    res.status(500).json({ sucesso:false, erro: msgClara });
+  }
 });
 
 // Ficha de encaminhamento — atualização por seção
