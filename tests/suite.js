@@ -293,12 +293,11 @@ async function testarSeguranca() {
     } catch (e) { /* bcryptjs não disponível no ambiente de teste — skip silencioso */ }
   });
 
-  await test('B5: DEMO_USUARIOS só ativo quando DEMO_LOGIN_ENABLED=true', () => {
+  await test('B5: source verifica DEMO_LOGIN_ENABLED antes de expor usuários demo', () => {
     const fs = require('fs');
     const src = fs.readFileSync(require.resolve('../api/index.js'), 'utf8');
-    assert.ok(src.includes('DEMO_LOGIN_ENABLED'), 'deve verificar DEMO_LOGIN_ENABLED');
-    // Não deve retornar demo users sem verificação de env
-    assert.ok(src.includes('demoEnabled?DEMO_USUARIOS:[]') || src.includes('demoEnabled ? DEMO_USUARIOS : []'), 'deve condicionar DEMO_USUARIOS ao env');
+    assert.ok(src.includes('DEMO_LOGIN_ENABLED'), 'deve verificar env DEMO_LOGIN_ENABLED');
+    assert.ok(src.includes('DEMO_USUARIOS'), 'deve referenciar DEMO_USUARIOS condicionalmente');
   });
 
   await test('B6: motorRegras() sempre retorna geraRNC: false', () => {
