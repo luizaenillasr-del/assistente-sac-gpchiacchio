@@ -12726,7 +12726,7 @@ window.navigate = function(page, el) {
       if (obsTa) obsTa.placeholder = opt.obsPh;
       // Botão confirmar
       const cf = document.getElementById('mdec-btn-confirmar');
-      if (cf) { cf.style.background=opt.gc; cf.style.opacity='1'; cf.style.pointerEvents='auto'; cf.textContent=opt.label; }
+      if (cf) { cf.style.display=''; cf.style.background=opt.gc; cf.style.opacity='1'; cf.style.pointerEvents='auto'; cf.textContent=opt.label; }
     }
     const erroEl = document.getElementById('mdec-motivo-erro');
     if (erroEl) erroEl.style.display='none';
@@ -22708,7 +22708,7 @@ function updateTopbarUser(user) {
   };
 
   if (typeof pageLoaders !== 'undefined') {
-    pageLoaders.usuarios = loadUsuariosV5;
+    pageLoaders.usuarios = loadUsuariosMasterPainel;
   } else {
     window.loadUsuariosV5 = loadUsuariosV5;
   }

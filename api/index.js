@@ -1294,7 +1294,10 @@ app.post('/api/manifestacoes', requerPermissao('manifestacoes.abrir'), async (re
       PRAZO_RETORNO_SAC:req.body.prazoRetornoSAC||'72 horas',
       TRATATIVA_SAC_INTERNA:req.body.tratativaSACInterna||'',
     };
-    await appendObjeto('MANIFESTACOES', objeto);
+    await appendObjeto('MANIFESTACOES', objeto).catch(e => {
+      console.error('[MANIFESTACOES][appendObjeto] FALHOU:', e.message, e?.stack);
+      throw e;
+    });
     // B3: dual-write para PostgreSQL — rastreia sucesso/falha (não-bloqueante)
     if (manifestacaoRepo) {
       manifestacaoRepo.upsertFromSheets({
