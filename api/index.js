@@ -7832,4 +7832,7 @@ if (require.main === module) {
 module.exports = app;
 // Expõe appendLinha apenas em ambiente de teste (SHEETS_MOCK_PATH definido),
 // para que testes de unidade do retry possam exercitar a função real sem subir o servidor.
-if (process.env.SHEETS_MOCK_PATH) app._appendLinhaForTest = appendLinha;
+if (process.env.SHEETS_MOCK_PATH) {
+  app._appendLinhaForTest = appendLinha;
+  app._senhaValidaForTest = senhaValida;
+}
