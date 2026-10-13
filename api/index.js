@@ -1707,8 +1707,14 @@ app.post('/api/manifestacoes/:id/decisao', requerPermissao('manifestacoes.aprova
 // TRATATIVAS ESTRUTURADAS
 // ============================================================
 
-app.get('/api/manifestacoes/:id/tratativa', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC','ATENDENTE SAC','SETOR RESPONSÁVEL','ESPECIALISTA','APROVADOR'), async (req,res)=>{
+app.get('/api/manifestacoes/:id/tratativa', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC','ATENDENTE SAC','SETOR RESPONSÁVEL','ESPECIALISTA','APROVADOR'), middlewareEscopoEmpresa(), async (req,res)=>{
   try {
+    if (req._empresaScope) {
+      const mData = await lerAba('MANIFESTACOES', 5000).catch(()=>[]);
+      const mCheck = mData.find(r => r.ID_MANIFESTACAO === req.params.id);
+      if (!mCheck || !pertenceEmpresa(req._empresaScope, mCheck.EMPRESA_RECLAMADA || ''))
+        return res.status(403).json({ sucesso: false, erro: 'Acesso não autorizado.' });
+    }
     const t = await tratativaEngine.buscarTratativaPorManifestacao(req.params.id);
     if (!t) return res.status(404).json({ sucesso:false, erro:'Nenhuma tratativa encontrada.' });
     res.json({ sucesso:true, tratativa:t });
@@ -1772,17 +1778,29 @@ app.post('/api/manifestacoes/:id/visualizacao', requerPerfil('MASTER','ANALISTA 
   } catch(e){ res.json({sucesso:false,erro:erroSeguro(e)}); }
 });
 
-app.get('/api/manifestacoes/:id/visualizacoes', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC','APROVADOR'), async (req,res)=>{
+app.get('/api/manifestacoes/:id/visualizacoes', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC','APROVADOR'), middlewareEscopoEmpresa(), async (req,res)=>{
   try {
     const id=req.params.id;
+    if (req._empresaScope) {
+      const mData = await lerAba('MANIFESTACOES', 5000).catch(()=>[]);
+      const mCheck = mData.find(r => r.ID_MANIFESTACAO === id);
+      if (!mCheck || !pertenceEmpresa(req._empresaScope, mCheck.EMPRESA_RECLAMADA || ''))
+        return res.status(403).json({ sucesso: false, erro: 'Acesso não autorizado.' });
+    }
     const rows=await lerAba('LOG_VISUALIZACOES',5000).catch(()=>[]);
     const itens=rows.filter(r=>r.ID_MANIFESTACAO===id);
     res.json({sucesso:true,total:itens.length,itens});
   } catch(e){ res.status(500).json({sucesso:false,erro:erroSeguro(e),itens:[]}); }
 });
 
-app.get('/api/manifestacoes/:id/devolutivas', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req,res)=>{
+app.get('/api/manifestacoes/:id/devolutivas', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), middlewareEscopoEmpresa(), async (req,res)=>{
   try {
+    if (req._empresaScope) {
+      const mData = await lerAba('MANIFESTACOES', 5000).catch(()=>[]);
+      const mCheck = mData.find(r => r.ID_MANIFESTACAO === req.params.id);
+      if (!mCheck || !pertenceEmpresa(req._empresaScope, mCheck.EMPRESA_RECLAMADA || ''))
+        return res.status(403).json({ sucesso: false, erro: 'Acesso não autorizado.' });
+    }
     const devs = await devolutivaEngine.buscarDevolutivasPorManifestacao(req.params.id);
     res.json({ sucesso:true, total:devs.length, itens:devs });
   } catch(e){ res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
@@ -4786,11 +4804,13 @@ app.post('/api/documentos/extrair', requerPerfil('MASTER','ANALISTA SAC','APROVA
 });
 
 // ===== ANÁLISE IA POR MANIFESTAÇÃO =====
-app.get('/api/manifestacoes/:id/analise', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','SETOR RESPONSÁVEL'), async (req,res) => {
+app.get('/api/manifestacoes/:id/analise', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','SETOR RESPONSÁVEL'), middlewareEscopoEmpresa(), async (req,res) => {
   try {
     const data = await lerAba('MANIFESTACOES', 5000).catch(()=>[]);
     const m = data.find(r => r.ID_MANIFESTACAO === req.params.id);
     if (!m) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
+    if (req._empresaScope && !pertenceEmpresa(req._empresaScope, m.EMPRESA_RECLAMADA || ''))
+      return res.status(403).json({ sucesso: false, erro: 'Acesso não autorizado.' });
     const analise = await executarAnalise({
       ...m,
       empresaReclamante: m.EMPRESA_RECLAMANTE,
@@ -4802,9 +4822,17 @@ app.get('/api/manifestacoes/:id/analise', requerPerfil('MASTER','ANALISTA SAC','
 });
 
 // ===== SUGESTÕES APROVADOR =====
-app.get('/api/manifestacoes/:id/sugestoes', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req,res) => {
-  try { const data=await lerAba('SUGESTOES_APROVADOR',5000); res.json({sucesso:true,itens:data.filter(x=>String(x.ID_MANIFESTACAO||'')===String(req.params.id))}); }
-  catch(e){ res.status(500).json({sucesso:false,erro:erroSeguro(e),itens:[]}); }
+app.get('/api/manifestacoes/:id/sugestoes', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), middlewareEscopoEmpresa(), async (req,res) => {
+  try {
+    if (req._empresaScope) {
+      const mData = await lerAba('MANIFESTACOES', 5000).catch(()=>[]);
+      const mCheck = mData.find(r => r.ID_MANIFESTACAO === req.params.id);
+      if (!mCheck || !pertenceEmpresa(req._empresaScope, mCheck.EMPRESA_RECLAMADA || ''))
+        return res.status(403).json({ sucesso: false, erro: 'Acesso não autorizado.' });
+    }
+    const data=await lerAba('SUGESTOES_APROVADOR',5000);
+    res.json({sucesso:true,itens:data.filter(x=>String(x.ID_MANIFESTACAO||'')===String(req.params.id))});
+  } catch(e){ res.status(500).json({sucesso:false,erro:erroSeguro(e),itens:[]}); }
 });
 app.post('/api/manifestacoes/:id/sugestoes', requerPerfil('MASTER','APROVADOR'), async (req,res) => {
   try {

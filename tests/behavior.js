@@ -503,6 +503,107 @@ async function runTests() {
     assert.ok(r.body?.sucesso === true, 'sucesso deve ser true');
   });
 
+  // ── B2: rotas filho de manifestação — 3 casos cada ────────────────────────
+  // Caso 1: empresa vazia → 403 (middlewareEscopoEmpresa)
+  // Caso 2: empresa A pedindo manifestação de empresa B → 403 (pertenceEmpresa inline)
+  // Caso 3: empresa correta → não-403; MASTER → não-403
+  // Nota: algumas rotas retornam 404 quando autorizado mas sem dados (ex: tratativa não existe no mock)
+
+  // tratativa
+  await test('B2-TRAT(1): empresa vazia → 403 em /tratativa', async () => {
+    const tokSemEmpresa = makeToken({ perfil: 'ANALISTA SAC', empresa: '', usuario: 'ana.chiacchio' });
+    const r = await req('GET', '/api/manifestacoes/MAN-CHI-001/tratativa', tokSemEmpresa);
+    assert.strictEqual(r.status, 403, `esperava 403, got ${r.status}`);
+  });
+  await test('B2-TRAT(2): empresa errada (PLASCHIO pedindo MAN-CHI-001) → 403', async () => {
+    const r = await req('GET', '/api/manifestacoes/MAN-CHI-001/tratativa', tokPlaschio());
+    assert.strictEqual(r.status, 403, `esperava 403, got ${r.status}: ${JSON.stringify(r.body)}`);
+  });
+  await test('B2-TRAT(3): empresa correta → acesso concedido; MASTER → acesso concedido', async () => {
+    const [rChi, rMst] = await Promise.all([
+      req('GET', '/api/manifestacoes/MAN-CHI-001/tratativa', tokChiacchio()),
+      req('GET', '/api/manifestacoes/MAN-CHI-001/tratativa', tokMaster()),
+    ]);
+    assert.ok(rChi.status !== 403, `Chiacchio recebeu 403 inesperado em /tratativa`);
+    assert.ok(rMst.status !== 403, `MASTER recebeu 403 inesperado em /tratativa`);
+  });
+
+  // visualizacoes
+  await test('B2-VIZ(1): empresa vazia → 403 em /visualizacoes', async () => {
+    const tokSemEmpresa = makeToken({ perfil: 'ANALISTA SAC', empresa: '', usuario: 'ana.chiacchio' });
+    const r = await req('GET', '/api/manifestacoes/MAN-CHI-001/visualizacoes', tokSemEmpresa);
+    assert.strictEqual(r.status, 403, `esperava 403, got ${r.status}`);
+  });
+  await test('B2-VIZ(2): empresa errada (PLASCHIO pedindo MAN-CHI-001) → 403', async () => {
+    const r = await req('GET', '/api/manifestacoes/MAN-CHI-001/visualizacoes', tokPlaschio());
+    assert.strictEqual(r.status, 403, `esperava 403, got ${r.status}: ${JSON.stringify(r.body)}`);
+  });
+  await test('B2-VIZ(3): empresa correta → 200; MASTER → 200', async () => {
+    const [rChi, rMst] = await Promise.all([
+      req('GET', '/api/manifestacoes/MAN-CHI-001/visualizacoes', tokChiacchio()),
+      req('GET', '/api/manifestacoes/MAN-CHI-001/visualizacoes', tokMaster()),
+    ]);
+    assert.strictEqual(rChi.status, 200, `Chiacchio esperava 200, got ${rChi.status}`);
+    assert.strictEqual(rMst.status, 200, `MASTER esperava 200, got ${rMst.status}`);
+  });
+
+  // devolutivas
+  await test('B2-DEV(1): empresa vazia → 403 em /devolutivas', async () => {
+    const tokSemEmpresa = makeToken({ perfil: 'ANALISTA SAC', empresa: '', usuario: 'ana.chiacchio' });
+    const r = await req('GET', '/api/manifestacoes/MAN-CHI-001/devolutivas', tokSemEmpresa);
+    assert.strictEqual(r.status, 403, `esperava 403, got ${r.status}`);
+  });
+  await test('B2-DEV(2): empresa errada (PLASCHIO pedindo MAN-CHI-001) → 403', async () => {
+    const r = await req('GET', '/api/manifestacoes/MAN-CHI-001/devolutivas', tokPlaschio());
+    assert.strictEqual(r.status, 403, `esperava 403, got ${r.status}: ${JSON.stringify(r.body)}`);
+  });
+  await test('B2-DEV(3): empresa correta → acesso concedido; MASTER → acesso concedido', async () => {
+    const [rChi, rMst] = await Promise.all([
+      req('GET', '/api/manifestacoes/MAN-CHI-001/devolutivas', tokChiacchio()),
+      req('GET', '/api/manifestacoes/MAN-CHI-001/devolutivas', tokMaster()),
+    ]);
+    assert.ok(rChi.status !== 403, `Chiacchio recebeu 403 inesperado em /devolutivas`);
+    assert.ok(rMst.status !== 403, `MASTER recebeu 403 inesperado em /devolutivas`);
+  });
+
+  // analise
+  await test('B2-ANAL(1): empresa vazia → 403 em /analise', async () => {
+    const tokSemEmpresa = makeToken({ perfil: 'ANALISTA SAC', empresa: '', usuario: 'ana.chiacchio' });
+    const r = await req('GET', '/api/manifestacoes/MAN-CHI-001/analise', tokSemEmpresa);
+    assert.strictEqual(r.status, 403, `esperava 403, got ${r.status}`);
+  });
+  await test('B2-ANAL(2): empresa errada (PLASCHIO pedindo MAN-CHI-001) → 403', async () => {
+    const r = await req('GET', '/api/manifestacoes/MAN-CHI-001/analise', tokPlaschio());
+    assert.strictEqual(r.status, 403, `esperava 403, got ${r.status}: ${JSON.stringify(r.body)}`);
+  });
+  await test('B2-ANAL(3): empresa correta → acesso concedido; MASTER → acesso concedido', async () => {
+    const [rChi, rMst] = await Promise.all([
+      req('GET', '/api/manifestacoes/MAN-CHI-001/analise', tokChiacchio()),
+      req('GET', '/api/manifestacoes/MAN-CHI-001/analise', tokMaster()),
+    ]);
+    assert.ok(rChi.status !== 403, `Chiacchio recebeu 403 inesperado em /analise`);
+    assert.ok(rMst.status !== 403, `MASTER recebeu 403 inesperado em /analise`);
+  });
+
+  // sugestoes
+  await test('B2-SUG(1): empresa vazia → 403 em /sugestoes', async () => {
+    const tokSemEmpresa = makeToken({ perfil: 'ANALISTA SAC', empresa: '', usuario: 'ana.chiacchio' });
+    const r = await req('GET', '/api/manifestacoes/MAN-CHI-001/sugestoes', tokSemEmpresa);
+    assert.strictEqual(r.status, 403, `esperava 403, got ${r.status}`);
+  });
+  await test('B2-SUG(2): empresa errada (PLASCHIO pedindo MAN-CHI-001) → 403', async () => {
+    const r = await req('GET', '/api/manifestacoes/MAN-CHI-001/sugestoes', tokPlaschio());
+    assert.strictEqual(r.status, 403, `esperava 403, got ${r.status}: ${JSON.stringify(r.body)}`);
+  });
+  await test('B2-SUG(3): empresa correta → 200; MASTER → 200', async () => {
+    const [rChi, rMst] = await Promise.all([
+      req('GET', '/api/manifestacoes/MAN-CHI-001/sugestoes', tokChiacchio()),
+      req('GET', '/api/manifestacoes/MAN-CHI-001/sugestoes', tokMaster()),
+    ]);
+    assert.strictEqual(rChi.status, 200, `Chiacchio esperava 200, got ${rChi.status}`);
+    assert.strictEqual(rMst.status, 200, `MASTER esperava 200, got ${rMst.status}`);
+  });
+
   // ── GET /api/historico-aprovacao — registros legados e por empresa ──────────
   const tokAprovadorChi = () => makeToken({ perfil: 'APROVADOR', empresa: 'CHIACCHIO EMBALAGENS', usuario: 'aprovador.chi' });
   const tokAprovadorPla = () => makeToken({ perfil: 'APROVADOR', empresa: 'PLASCHIO', usuario: 'aprovador.pla' });
