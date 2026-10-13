@@ -5447,7 +5447,7 @@ function publicRateLimit(req, res, next) {
 }
 
 // Limpeza periódica do rate limit map
-setInterval(() => { const cutoff = Date.now() - 2 * 60 * 1000; _publicRateMap.forEach((v, k) => { if (v.start < cutoff) _publicRateMap.delete(k); }); }, 5 * 60 * 1000);
+setInterval(() => { const cutoff = Date.now() - 2 * 60 * 1000; _publicRateMap.forEach((v, k) => { if (v.start < cutoff) _publicRateMap.delete(k); }); }, 5 * 60 * 1000).unref();
 
 const ALLOWED_FILE_TYPES = [
   'image/jpeg','image/png','image/gif','image/webp',
