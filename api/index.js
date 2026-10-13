@@ -4375,6 +4375,37 @@ app.get('/api/auditoria', requerPerfil('MASTER','GESTOR SAC','AUDITOR'), async (
   catch (e) { res.status(500).json({sucesso:false,erro:erroSeguro(e),dados:[]}); }
 });
 
+// Histórico de uma manifestação específica — acessível a analistas (não expõe LOG completo)
+app.get('/api/manifestacoes/:id/historico', requerPermissao('manifestacoes.visualizar'), middlewareEscopoEmpresa(), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [logs, manifest] = await Promise.all([
+      lerAba('LOG_SISTEMA', 2000).catch(() => []),
+      lerAba('MANIFESTACOES', 5000).catch(() => []),
+    ]);
+    // Garante que a manifestação pertence à empresa do usuário
+    const item = manifest.find(r => r.ID_MANIFESTACAO === id);
+    if (!item) return res.status(404).json({ sucesso: false, erro: 'Manifestação não encontrada.' });
+    const empScope = req.user?.empresa_scope || req.user?.empresa || '';
+    if (empScope && !pertenceEmpresa(empScope, item.EMPRESA_RECLAMADA || '')) {
+      return res.status(403).json({ sucesso: false, erro: 'Acesso não autorizado.' });
+    }
+    const itens = logs
+      .filter(r => (r.ID_REGISTRO || r.ID_MANIFESTACAO || '') === id)
+      .map(r => {
+        const vals = Object.values(r);
+        return {
+          DATA_HORA:   r.DATA_HORA   || r['DATA/HORA'] || vals[0] || '',
+          USUARIO:     r.USUARIO     || vals[1] || '',
+          ACAO:        r.ACAO        || vals[2] || '',
+          DETALHES:    r.DETALHES    || r.VALOR_NOVO  || vals[6] || vals[5] || '',
+        };
+      })
+      .filter(r => r.DATA_HORA || r.ACAO);
+    res.json({ sucesso: true, id, total: itens.length, itens });
+  } catch (e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e) }); }
+});
+
 // ===== LEITOR GENÉRICO DE ABAS (Central de Dados) =====
 const ABAS_PERMITIDAS = [
   'MANIFESTACOES','BANCO_HISTORICO','RNC','BANCO_RNC','RNC_EVENTOS',
@@ -5105,7 +5136,7 @@ const COMPETENCIAS_HEADERS = ['ID_COMPETENCIA','NOME','DESCRICAO','TIPO','STATUS
 const APROV_COMP_HEADERS = ['ID','ID_APROVADOR','NOME_APROVADOR','ID_COMPETENCIA','NOME_COMPETENCIA','EMPRESA','STATUS','DATA_ATRIBUICAO'];
 const REGRAS_APROV_HEADERS = ['ID_REGRA','NOME','TIPO_ENTIDADE','DESCRICAO_CONDICAO','COMPETENCIA_NECESSARIA','PRIORIDADE','STATUS','DATA_CRIACAO','USUARIO_CRIACAO'];
 const FILA_APROV_HEADERS = ['ID_FILA','ID_ENTIDADE','TIPO_ENTIDADE','DESCRICAO','EMPRESA','SETOR','COMPETENCIA','STATUS','ID_APROVADOR','NOME_APROVADOR','DATA_ENVIO','DATA_DECISAO','OBSERVACOES','CRIADO_POR','ID_REGRA'];
-const HIST_APROV_HEADERS = ['ID_HISTORICO','ID_FILA','ID_ENTIDADE','TIPO_ENTIDADE','DECISAO','OBSERVACOES','APROVADOR','DATA_DECISAO','DETALHES'];
+const HIST_APROV_HEADERS = ['ID_HISTORICO','ID_FILA','ID_ENTIDADE','TIPO_ENTIDADE','DECISAO','OBSERVACOES','APROVADOR','DATA_DECISAO','DETALHES','EMPRESA_SCOPE'];
 
 // Listar aprovadores + competências + relacionamentos (MASTER)
 app.get('/api/aprovadores-admin', requerPerfil('MASTER'), async (req,res)=>{
@@ -5294,7 +5325,7 @@ app.post('/api/fila-aprovacao/:id/decidir', requerPerfil('APROVADOR','APROVADOR 
     const now = new Date().toISOString();
     await atualizarPorID('FILA_APROVACAO',req.params.id,{STATUS:decisao,NOME_APROVADOR:req.user.nome||req.user.usuario,DATA_DECISAO:now,OBSERVACOES:observacoes||''},['ID_FILA']);
     const histId = await gerarProximoID('HISTORICO_APROVACAO','HAP','ID_HISTORICO');
-    await appendObjeto('HISTORICO_APROVACAO',{ID_HISTORICO:histId,ID_FILA:req.params.id,ID_ENTIDADE:item.ID_ENTIDADE,TIPO_ENTIDADE:item.TIPO_ENTIDADE,DECISAO:decisao,OBSERVACOES:observacoes||'',APROVADOR:req.user.nome||req.user.usuario,DATA_DECISAO:now,DETALHES:JSON.stringify({empresa:item.EMPRESA,setor:item.SETOR,competencia:item.COMPETENCIA})}).catch(()=>{});
+    await appendObjeto('HISTORICO_APROVACAO',{ID_HISTORICO:histId,ID_FILA:req.params.id,ID_ENTIDADE:item.ID_ENTIDADE,TIPO_ENTIDADE:item.TIPO_ENTIDADE,DECISAO:decisao,OBSERVACOES:observacoes||'',APROVADOR:req.user.nome||req.user.usuario,DATA_DECISAO:now,DETALHES:JSON.stringify({empresa:item.EMPRESA,setor:item.SETOR,competencia:item.COMPETENCIA}),EMPRESA_SCOPE:empresaCanonica(item.EMPRESA||'')}).catch(()=>{});
     const novoStatus = decisao==='APROVADO'?'APROVADA':decisao==='REJEITADO'?'REJEITADA':decisao==='DEVOLVIDO'?'EM_ANÁLISE':'AGUARDANDO_APROVAÇÃO';
     if(item.TIPO_ENTIDADE==='SAC') {
       await atualizarPorID('MANIFESTACOES',item.ID_ENTIDADE,{STATUS:novoStatus,APROVADO_POR:req.user.nome||req.user.usuario,DATA_APROVACAO:now,OBSERVACOES_APROVADOR:observacoes||''},['ID_MANIFESTACAO']).catch(()=>{});

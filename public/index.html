@@ -9806,11 +9806,10 @@ async function _loadDossieHistorico() {
   if (m.STATUS?.toUpperCase().includes('APROV')) push(m.DATA_APROVACAO||null, 'Manifestação aprovada', m.APROVADO_POR||m.APROVADOR||'Aprovador', '');
   if (m.DEVOLUTIVA_FINAL||m.DEVOLUTIVA_ENVIADA) push(m.DATA_DEVOLUTIVA||null, 'Devolutiva enviada ao cliente', 'Analista SAC', (m.DEVOLUTIVA_FINAL||m.DEVOLUTIVA_ENVIADA||'').slice(0,80));
   if (m.STATUS?.toUpperCase().includes('ENCERR')||m.STATUS?.toUpperCase().includes('FINALIZ')) push(m.DATA_CONCLUSAO_MANIFESTACAO||null, 'Manifestação encerrada', 'Sistema', '');
-  // Tenta carregar do /api/auditoria
+  // Tenta carregar do histórico específico da manifestação (acessível a todos os perfis)
   try {
-    const aud = await _apiFetch('/api/auditoria', 8000).catch(()=>({itens:[]}));
-    const logs = (aud.itens||[]).filter(l => l.ID_REGISTRO === m.ID_MANIFESTACAO || l.ID_MANIFESTACAO === m.ID_MANIFESTACAO);
-    logs.forEach(l => {
+    const aud = await _apiFetch(`/api/manifestacoes/${encodeURIComponent(m.ID_MANIFESTACAO)}/historico`, 8000).catch(()=>({itens:[]}));
+    (aud.itens||[]).forEach(l => {
       if (!eventos.some(e => e.acao === l.ACAO)) push(l.DATA_HORA||l.DATA, l.ACAO||'Ação', l.USUARIO||'Sistema', l.DETALHES||'');
     });
   } catch {}
