@@ -197,57 +197,6 @@ async function testarCerebro() {
 }
 
 // ────────────────────────────────────────────────────────────
-// Grupo 4 — Repositórios (instanciação sem DB)
-// ────────────────────────────────────────────────────────────
-async function testarRepositorios() {
-  console.log('\n[4] Repositórios (estrutura)');
-
-  let prismaDisponivel = true;
-  try { require('@prisma/client'); } catch (e) { prismaDisponivel = false; }
-
-  if (!prismaDisponivel) {
-    const motivo = 'repositórios Prisma não estão em uso — PG_LEITURA_ATIVA=false';
-    skip(`manifestacaoRepository exporta métodos esperados (${motivo})`);
-    skip(`rncRepository exporta métodos esperados (${motivo})`);
-    skip(`usuarioRepository exporta métodos esperados (${motivo})`);
-    skip(`conhecimentoRepository exporta métodos esperados (${motivo})`);
-    skip(`empresaRepository exporta métodos esperados (${motivo})`);
-    return;
-  }
-
-  await test('manifestacaoRepository exporta métodos esperados', () => {
-    const repo = require('../database/repositories/manifestacaoRepository');
-    const esperados = ['findById', 'findByProtocolo', 'findByIdOriginal', 'findAll', 'create', 'update',
-      'registrarHistorico', 'buscarParaSimilaridade', 'buscarPorCliente', 'upsertFromSheets'];
-    esperados.forEach(m => assert.strictEqual(typeof repo[m], 'function', `${m} deve ser função`));
-  });
-
-  await test('rncRepository exporta métodos esperados', () => {
-    const repo = require('../database/repositories/rncRepository');
-    const esperados = ['findById', 'findByNumero', 'findAll', 'create', 'update', 'adicionarAcao', 'registrarEficacia', 'metricas'];
-    esperados.forEach(m => assert.strictEqual(typeof repo[m], 'function', `${m} deve ser função`));
-  });
-
-  await test('usuarioRepository exporta métodos esperados', () => {
-    const repo = require('../database/repositories/usuarioRepository');
-    const esperados = ['findByEmail', 'findByLogin', 'findById', 'findAll', 'create', 'update', 'registrarAcesso'];
-    esperados.forEach(m => assert.strictEqual(typeof repo[m], 'function', `${m} deve ser função`));
-  });
-
-  await test('conhecimentoRepository exporta métodos esperados', () => {
-    const repo = require('../database/repositories/conhecimentoRepository');
-    const esperados = ['findPoliticas', 'findProcedimentos', 'findRegras', 'findBaseConhecimento', 'findSla', 'findMatriz'];
-    esperados.forEach(m => assert.strictEqual(typeof repo[m], 'function', `${m} deve ser função`));
-  });
-
-  await test('empresaRepository exporta métodos esperados', () => {
-    const repo = require('../database/repositories/empresaRepository');
-    const esperados = ['findAll', 'findById', 'findByCodigo', 'create', 'update', 'upsert'];
-    esperados.forEach(m => assert.strictEqual(typeof repo[m], 'function', `${m} deve ser função`));
-  });
-}
-
-// ────────────────────────────────────────────────────────────
 // Grupo 5 — Regras de negócio críticas
 // ────────────────────────────────────────────────────────────
 async function testarRegrasNegocio() {
@@ -285,15 +234,6 @@ async function testarRegrasNegocio() {
     assert.ok(src.includes('AI_PROVIDER'), 'deve ler AI_PROVIDER do env');
   });
 
-  await test('importSheets.js não altera dados do Sheets (só leitura)', () => {
-    const fs = require('fs');
-    const src = fs.readFileSync(require.resolve('../database/seed/importSheets.js'), 'utf8');
-    // Deve usar readonly scope
-    assert.ok(src.includes('readonly'), 'deve usar scope readonly para Sheets');
-    // Não deve fazer append ou update no Sheets
-    assert.ok(!src.includes('spreadsheets.values.append'), 'não deve fazer append no Sheets');
-    assert.ok(!src.includes('spreadsheets.values.update'), 'não deve fazer update no Sheets');
-  });
 
   await test('api/index.js importa repositórios com try/catch (sem quebrar se PG indisponível)', () => {
     const fs = require('fs');
@@ -595,37 +535,6 @@ module.exports = {
   });
 }
 
-// ────────────────────────────────────────────────────────────
-// Grupo 7 — Integração com PG (requer DATABASE_URL)
-// ────────────────────────────────────────────────────────────
-async function testarIntegracaoPG() {
-  console.log('\n[7] Integração PostgreSQL (requer DATABASE_URL)');
-
-  if (!process.env.DATABASE_URL) {
-    skip('connection.js conecta ao Neon — DATABASE_URL não configurada');
-    skip('empresaRepository.findAll retorna lista — DATABASE_URL não configurada');
-    skip('manifestacaoRepository.findAll retorna lista — DATABASE_URL não configurada');
-    return;
-  }
-
-  await test('connection.js singleton não cria múltiplos clientes', async () => {
-    const prisma1 = require('../database/connection');
-    const prisma2 = require('../database/connection');
-    assert.strictEqual(prisma1, prisma2, 'deve ser singleton');
-  });
-
-  await test('empresaRepository.findAll retorna array', async () => {
-    const repo = require('../database/repositories/empresaRepository');
-    const result = await repo.findAll();
-    assert.ok(Array.isArray(result), 'deve retornar array');
-  });
-
-  await test('manifestacaoRepository.findAll retorna array', async () => {
-    const repo = require('../database/repositories/manifestacaoRepository');
-    const result = await repo.findAll({});
-    assert.ok(Array.isArray(result), 'deve retornar array');
-  });
-}
 
 // ────────────────────────────────────────────────────────────
 // Main
@@ -638,11 +547,9 @@ async function main() {
   await testarUtilitarios();
   await testarAiService();
   await testarCerebro();
-  await testarRepositorios();
   await testarRegrasNegocio();
   await testarSeguranca();
   await testarCorrecoesPosReview();
-  await testarIntegracaoPG();
 
   const total = passed + failed + skipped;
   console.log('\n──────────────────────────────────────────────');

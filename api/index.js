@@ -17,28 +17,8 @@ const permissoesService = require('./services/permissoesService');
 
 // Injeção de mock Sheets para testes — nunca ativo em produção (env var não existe em prod)
 const _sheetsMock = process.env.SHEETS_MOCK_PATH ? (() => { try { return require(process.env.SHEETS_MOCK_PATH); } catch(e) { console.warn('[MOCK] falhou ao carregar:', e.message); return null; } })() : null;
-// Flag de leitura PG: padrão false = leituras sempre do Sheets
-// Para reativar PG: adicionar PG_LEITURA_ATIVA=true nas variáveis de ambiente do Vercel
-const PG_LEITURA_ATIVA = String(process.env.PG_LEITURA_ATIVA || 'false').toLowerCase() === 'true';
-
-// Repositórios PostgreSQL — carregados mas desativados enquanto PG_LEITURA_ATIVA=false
-// Isso garante que todos os dados sejam lidos/gravados exclusivamente no Sheets,
-// eliminando bugs de dessincronização entre os dois storages.
-let usuarioRepo = null, manifestacaoRepo = null, rncRepo = null, empresaRepo = null, conhecimentoRepo = null;
-if (PG_LEITURA_ATIVA) {
-  try {
-    usuarioRepo = require('../database/repositories/usuarioRepository');
-    manifestacaoRepo = require('../database/repositories/manifestacaoRepository');
-    rncRepo = require('../database/repositories/rncRepository');
-    empresaRepo = require('../database/repositories/empresaRepository');
-    conhecimentoRepo = require('../database/repositories/conhecimentoRepository');
-    console.info('[PG] Repositórios carregados — leituras via PostgreSQL ativas.');
-  } catch (e) {
-    console.warn('[PG] Repositórios não disponíveis, usando Sheets:', e.message);
-  }
-} else {
-  console.info('[PG] PG_LEITURA_ATIVA=false — todas as operações via Google Sheets.');
-}
+// Repositórios Prisma removidos — blocos if(repo) abaixo são código morto, remover em seguida
+const usuarioRepo = null, manifestacaoRepo = null, rncRepo = null, empresaRepo = null, conhecimentoRepo = null;
 
 const app = express();
 const ALLOWED_ORIGINS = [
