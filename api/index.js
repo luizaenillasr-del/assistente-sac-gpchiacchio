@@ -353,7 +353,8 @@ function usuarioPublico(u){
     nome:u.NOME||u.NOME_COMPLETO||u.USUARIO||u.EMAIL,
     email:u.EMAIL||'',
     perfil:perfilCanonico(u.PERFIL||u.PERFIL_USUARIO),
-    empresa:u.EMPRESA||'', setor:u.SETOR||'', codigoRCA:u.CODIGO_RCA||u.RCA||'', status:u.STATUS||'ATIVO',
+    empresa:u.EMPRESA||'', setor:u.SETOR||'', cargo:u.CARGO||'', telefone:u.TELEFONE||'',
+    codigoRCA:u.CODIGO_RCA||u.RCA||'', status:u.STATUS||'ATIVO',
     ultimoAcesso:u.ULTIMO_ACESSO||'', dataCriacao:u.DATA_CRIACAO||'',
     permissoes_custom: Array.isArray(permissoes_custom)&&permissoes_custom.length?permissoes_custom:null,
     permissoes_granted: Array.isArray(permissoes_granted)&&permissoes_granted.length?permissoes_granted:null,
@@ -1073,12 +1074,15 @@ app.post('/api/auth/login', async (req, res) => {
     const senhaOk = await senhaValida(senha, registro.SENHA_HASH || registro.SENHA);
     if(!senhaOk) return res.status(401).json({sucesso:false,erro:'Usuário ou senha inválidos.'});
     const agora=Date.now();
+    const primeroAcesso = statusNorm === 'primeiro_acesso' || statusNorm === 'primeiroacesso';
     const payload={
       sub:pub.id, usuario:pub.usuario, nome:pub.nome, email:pub.email, perfil:pub.perfil,
-      empresa:pub.empresa, setor:pub.setor, codigoRCA:pub.codigoRCA,
+      empresa:pub.empresa, setor:pub.setor, cargo:pub.cargo||'', telefone:pub.telefone||'',
+      codigoRCA:pub.codigoRCA,
       permissoes_custom: Array.isArray(pub.permissoes_custom)&&pub.permissoes_custom.length ? pub.permissoes_custom : null,
       permissoes_granted: Array.isArray(pub.permissoes_granted)&&pub.permissoes_granted.length ? pub.permissoes_granted : null,
       permissoes_blocked: Array.isArray(pub.permissoes_blocked)&&pub.permissoes_blocked.length ? pub.permissoes_blocked : null,
+      primeiro_acesso: primeroAcesso || undefined,
       iat:agora, exp:agora+SESSION_TTL_MS
     };
     const isDemo = String(registro.ID_USUARIO||'').startsWith('USR-DEMO-');
@@ -1119,6 +1123,56 @@ app.post('/api/auth/refresh', async (req,res)=>{
   delete novoPayload.iat; delete novoPayload.exp; // reassign above
   Object.assign(novoPayload, {iat:agora, exp:agora+SESSION_TTL_MS});
   res.json({sucesso:true, token:assinarToken(novoPayload)});
+});
+
+// ===== COMPLETAR PRIMEIRO ACESSO =====
+app.post('/api/auth/completar-primeiro-acesso', async (req, res) => {
+  const header = req.headers.authorization || '';
+  const token = header.startsWith('Bearer ') ? header.slice(7) : '';
+  const payload = verificarToken(token);
+  if (!payload) return res.status(401).json({ sucesso: false, erro: 'Sessão inválida.' });
+
+  try {
+    const { nome, cargo, setor, telefone, senha, confirmacao } = req.body || {};
+    if (!senha || senha.length < 6) return res.status(400).json({ sucesso: false, erro: 'A senha deve ter no mínimo 6 caracteres.' });
+    if (senha !== confirmacao) return res.status(400).json({ sucesso: false, erro: 'As senhas não coincidem.' });
+    if (!nome?.trim()) return res.status(400).json({ sucesso: false, erro: 'Nome obrigatório.' });
+
+    const usuarios = await carregarUsuarios();
+    const usuario = usuarios.find(u => u.ID_USUARIO === payload.sub || (u.USUARIO||'').toLowerCase() === (payload.usuario||'').toLowerCase());
+    if (!usuario) return res.status(404).json({ sucesso: false, erro: 'Usuário não encontrado.' });
+
+    const senhaHash = await hashSenha(senha);
+    const agora = new Date().toISOString();
+    await atualizarPorID('USUARIOS', usuario.ID_USUARIO || usuario.USUARIO, {
+      NOME: nome.trim(),
+      CARGO: cargo?.trim() || usuario.CARGO || '',
+      SETOR: setor?.trim() || usuario.SETOR || '',
+      TELEFONE: telefone?.trim() || '',
+      SENHA_HASH: senhaHash,
+      STATUS: 'ATIVO',
+      DATA_PRIMEIRO_ACESSO: agora,
+      DATA_ULTIMA_ALTERACAO: agora,
+    }, ['ID_USUARIO', 'USUARIO']);
+
+    // Emite novo JWT sem primeiro_acesso
+    const agoraN = Date.now();
+    const pub = usuarioPublico({ ...usuario, NOME: nome.trim(), CARGO: cargo?.trim() || usuario.CARGO || '', SETOR: setor?.trim() || usuario.SETOR || '', TELEFONE: telefone?.trim() || '', STATUS: 'ATIVO' });
+    const novoPayload = {
+      sub: pub.id, usuario: pub.usuario, nome: pub.nome, email: pub.email, perfil: pub.perfil,
+      empresa: pub.empresa, setor: pub.setor, cargo: pub.cargo || '', telefone: pub.telefone || '',
+      codigoRCA: pub.codigoRCA,
+      permissoes_custom: payload.permissoes_custom || null,
+      permissoes_granted: payload.permissoes_granted || null,
+      permissoes_blocked: payload.permissoes_blocked || null,
+      iat: agoraN, exp: agoraN + SESSION_TTL_MS,
+    };
+    await registrarAuditoria(pub.usuario, 'PRIMEIRO_ACESSO_CONCLUIDO', null, 'AUTH', null, {});
+    invalidarCachePermissoes(pub.email || pub.usuario);
+    res.json({ sucesso: true, token: assinarToken(novoPayload), usuarioInfo: pub });
+  } catch (e) {
+    res.status(500).json({ sucesso: false, erro: erroSeguro(e) });
+  }
 });
 
 app.post('/api/auth/forgot-password', async (req,res)=>{
@@ -7029,10 +7083,10 @@ app.post('/api/public/solicitar-acesso', async (req, res) => {
     if (!cargo?.trim()) return res.status(400).json({sucesso:false,erro:'Cargo obrigatório.'});
     if (!justificativa?.trim()) return res.status(400).json({sucesso:false,erro:'Justificativa obrigatória.'});
 
-    // Valida empresa canônica (não aceita "Grupo Chiacchio" como empresa operacional)
+    // Valida empresa canônica (aceita MASTER para "todas as empresas")
     const empCod = empresaCanonica(empresa);
-    if (!empCod || empCod === 'MASTER') {
-      return res.status(400).json({sucesso:false,erro:'Empresa inválida. Use: CHIACCHIO EMBALAGENS, PLASCHIO ou CESBAP.'});
+    if (!empCod) {
+      return res.status(400).json({sucesso:false,erro:'Empresa inválida. Use: CHIACCHIO EMBALAGENS, PLASCHIO, CESBAP ou TODAS AS EMPRESAS.'});
     }
 
     // Verifica duplicidade de e-mail em usuários ativos
@@ -7142,7 +7196,8 @@ app.post('/api/admin/solicitacoes/:id/aprovar', requerPerfil('MASTER'), async (r
       EMPRESA: empCod,
       SETOR: setor||item.SETOR||'',
       CARGO: item.CARGO||'',
-      STATUS: 'ATIVO',
+      TELEFONE: item.TELEFONE||'',
+      STATUS: 'PRIMEIRO_ACESSO',
       SENHA: senhaHash,
       DATA_CRIACAO: new Date().toISOString(),
       DATA_APROVACAO: new Date().toISOString(),

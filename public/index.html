@@ -1261,6 +1261,7 @@
             <option value="CHIACCHIO EMBALAGENS">Chiacchio Embalagens</option>
             <option value="PLASCHIO">Plaschio</option>
             <option value="TUBAHIA">Cesbap</option>
+            <option value="TODAS AS EMPRESAS">Todas as empresas (acesso às 3)</option>
           </select>
         </div>
         <!-- empresas carregadas dinamicamente via abrirSolicitacaoAcesso() -->
@@ -1275,6 +1276,69 @@
 </div>
 
 <!-- ============================================================ -->
+<!-- TELA PRIMEIRO ACESSO (pós-aprovação MASTER)                  -->
+<!-- ============================================================ -->
+<div id="tela-primeiro-acesso" style="display:none;position:fixed;inset:0;background:#F4F4F4;z-index:99998;overflow-y:auto;display:none">
+  <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px">
+    <div style="background:#fff;border-radius:16px;max-width:520px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.12);overflow:hidden">
+      <!-- Cabeçalho -->
+      <div style="background:#C70602;padding:28px 32px 24px">
+        <div style="display:flex;align-items:center;gap:14px">
+          <img src="/logo-chiacchio.png" alt="" style="height:38px;filter:brightness(0) invert(1);opacity:.9">
+          <div>
+            <div style="font-size:18px;font-weight:800;color:#fff;letter-spacing:.02em">BEM-VINDO AO ASSISTENTE SAC</div>
+            <div style="font-size:12px;color:rgba(255,255,255,.8);margin-top:2px">Complete seu cadastro para começar</div>
+          </div>
+        </div>
+      </div>
+      <!-- Corpo -->
+      <div style="padding:28px 32px 32px">
+        <div style="background:#FEF9E7;border:1px solid #F5C842;border-radius:10px;padding:14px 16px;margin-bottom:22px;display:flex;gap:10px;align-items:flex-start">
+          <span style="font-size:18px;line-height:1">⚠️</span>
+          <div style="font-size:13px;color:#7D5A00;line-height:1.5">Seu acesso foi aprovado. Defina uma senha definitiva e confirme seus dados para ativar a conta.</div>
+        </div>
+        <div id="pa-error" style="display:none;background:#FEE2E2;border:1px solid #FCA5A5;border-radius:8px;padding:12px;margin-bottom:14px;font-size:13px;color:#991B1B"></div>
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <div>
+            <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:5px">Nome completo *</label>
+            <input id="pa-nome" class="login-input" placeholder="Seu nome completo" style="margin:0">
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div>
+              <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:5px">Cargo *</label>
+              <input id="pa-cargo" class="login-input" placeholder="Seu cargo" style="margin:0">
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:5px">Setor *</label>
+              <input id="pa-setor" class="login-input" placeholder="Ex: SAC, Qualidade..." style="margin:0">
+            </div>
+          </div>
+          <div>
+            <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:5px">Telefone / WhatsApp</label>
+            <input id="pa-telefone" class="login-input" placeholder="(00) 00000-0000" style="margin:0">
+          </div>
+          <div style="border-top:1px solid #F0F0F0;padding-top:14px;margin-top:2px">
+            <div style="font-size:12px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Definir senha definitiva</div>
+            <div style="display:flex;flex-direction:column;gap:12px">
+              <div>
+                <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:5px">Nova senha * <span style="font-weight:400;color:#6B7280">(mínimo 6 caracteres)</span></label>
+                <input id="pa-senha" class="login-input" type="password" placeholder="••••••••" style="margin:0">
+              </div>
+              <div>
+                <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:5px">Confirmar nova senha *</label>
+                <input id="pa-confirmar" class="login-input" type="password" placeholder="••••••••" style="margin:0">
+              </div>
+            </div>
+          </div>
+        </div>
+        <button id="pa-btn" class="login-btn" style="margin-top:22px;background:#C70602" onclick="completarPrimeiroAcesso()">
+          ATIVAR MINHA CONTA
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- PORTAL PÚBLICO — REGISTRAR RECLAMAÇÃO (SEM LOGIN)           -->
 <!-- ============================================================ -->
 <div class="portal-screen" id="portal-screen">
@@ -1598,9 +1662,66 @@
       sessionStorage.setItem('sac-user',JSON.stringify(data.usuarioInfo||{}));
       sessionStorage.removeItem('sac-demo-local');
       document.getElementById('login-screen').style.display='none';
+      // Detecta usuário em primeiro acesso
+      if (data.usuarioInfo?.primeiro_acesso) {
+        abrirTelaPrimeiroAcesso(data.usuarioInfo);
+        return;
+      }
       await (window.iniciarSessaoV5 ? window.iniciarSessaoV5() : Promise.resolve());
     }catch(e){err.textContent=e.message||'Não foi possível entrar.';err.style.display='block';}
   }
+
+  // ── PRIMEIRO ACESSO ───────────────────────────────────────────
+  function abrirTelaPrimeiroAcesso(userInfo) {
+    const tela = document.getElementById('tela-primeiro-acesso');
+    if (!tela) return;
+    tela.style.display = 'block';
+    document.getElementById('pa-nome').value = userInfo?.nome || '';
+    document.getElementById('pa-cargo').value = userInfo?.cargo || '';
+    document.getElementById('pa-setor').value = userInfo?.setor || '';
+    document.getElementById('pa-telefone').value = userInfo?.telefone || '';
+    document.getElementById('pa-senha').value = '';
+    document.getElementById('pa-confirmar').value = '';
+    document.getElementById('pa-error').style.display = 'none';
+  }
+
+  window.completarPrimeiroAcesso = async function() {
+    const nome = (document.getElementById('pa-nome')?.value || '').trim();
+    const cargo = (document.getElementById('pa-cargo')?.value || '').trim();
+    const setor = (document.getElementById('pa-setor')?.value || '').trim();
+    const telefone = (document.getElementById('pa-telefone')?.value || '').trim();
+    const senha = document.getElementById('pa-senha')?.value || '';
+    const confirmacao = document.getElementById('pa-confirmar')?.value || '';
+    const errEl = document.getElementById('pa-error');
+    errEl.style.display = 'none';
+    if (!nome) { errEl.textContent = 'Informe seu nome completo.'; errEl.style.display='block'; return; }
+    if (!cargo) { errEl.textContent = 'Informe seu cargo.'; errEl.style.display='block'; return; }
+    if (!setor) { errEl.textContent = 'Informe seu setor.'; errEl.style.display='block'; return; }
+    if (!senha || senha.length < 6) { errEl.textContent = 'A senha deve ter no mínimo 6 caracteres.'; errEl.style.display='block'; return; }
+    if (senha !== confirmacao) { errEl.textContent = 'As senhas não coincidem.'; errEl.style.display='block'; return; }
+    const btn = document.getElementById('pa-btn');
+    btn.disabled = true; btn.textContent = 'Ativando conta...';
+    try {
+      const tok = sessionStorage.getItem('sac-token');
+      const r = await fetch(window.SAC_API + '/api/auth/completar-primeiro-acesso', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok },
+        body: JSON.stringify({ nome, cargo, setor, telefone, senha, confirmacao }),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok || !data.sucesso) throw new Error(data.erro || 'Falha ao ativar conta.');
+      // Atualiza token e usuário na sessão
+      sessionStorage.setItem('sac-token', data.token || tok);
+      sessionStorage.setItem('sac-user', JSON.stringify(data.usuarioInfo || {}));
+      document.getElementById('tela-primeiro-acesso').style.display = 'none';
+      await (window.iniciarSessaoV5 ? window.iniciarSessaoV5() : Promise.resolve());
+    } catch(e) {
+      errEl.textContent = e.message || 'Erro ao ativar conta.';
+      errEl.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'ATIVAR MINHA CONTA';
+    }
+  };
 
   // ===== PORTAL PÚBLICO =====
   let _portalFiles = [];
@@ -11981,6 +12102,14 @@ window.navigate = function(page, el) {
   }
 
   window.iniciarSessaoV5=async function(){
+    // Guard: se usuário ainda não completou primeiro acesso, bloqueia entrada
+    try {
+      const _u = JSON.parse(sessionStorage.getItem('sac-user') || '{}');
+      if (_u.primeiro_acesso) {
+        abrirTelaPrimeiroAcesso(_u);
+        return;
+      }
+    } catch {}
     setUserChrome();applyRoleUI();
 
     // O carregamento inicial da Visão Geral acontecia antes do login.
