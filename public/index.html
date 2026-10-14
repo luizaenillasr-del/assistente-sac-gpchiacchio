@@ -22850,13 +22850,18 @@ function updateTopbarUser(user) {
       if (pg) pg.innerHTML = '<div style="padding:40px;text-align:center;color:#707070">Acesso restrito ao MASTER.</div>';
       return;
     }
+    // Reset estado antes de carregar
+    const vazio = document.getElementById('usu-vazio');
+    const tb = document.getElementById('usu-lista');
+    if (vazio) vazio.style.display = 'none';
+    if (tb) tb.innerHTML = '<tr><td colspan="6" style="padding:20px;text-align:center;color:#707070">Carregando...</td></tr>';
     try {
       const d = await _apiFetch('/api/usuarios');
       _usuDados = (d.usuarios || d.itens || []);
       usuRenderLista(_usuDados);
     } catch(e) {
-      const tb = document.getElementById('usu-lista');
-      if(tb) tb.innerHTML = `<tr><td colspan="6" style="padding:20px;text-align:center;color:#C70602">${esc5(e.message)}</td></tr>`;
+      if (tb) tb.innerHTML = `<tr><td colspan="6" style="padding:20px;text-align:center;color:#C70602">Erro ao carregar usuários: ${esc5(e.message)}</td></tr>`;
+      if (vazio) vazio.style.display = 'none';
     }
   }
   window.loadUsuariosMasterPainel = loadUsuariosMasterPainel;
