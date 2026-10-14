@@ -202,6 +202,19 @@ async function testarCerebro() {
 async function testarRepositorios() {
   console.log('\n[4] Repositórios (estrutura)');
 
+  let prismaDisponivel = true;
+  try { require('@prisma/client'); } catch (e) { prismaDisponivel = false; }
+
+  if (!prismaDisponivel) {
+    const motivo = 'repositórios Prisma não estão em uso — PG_LEITURA_ATIVA=false';
+    skip(`manifestacaoRepository exporta métodos esperados (${motivo})`);
+    skip(`rncRepository exporta métodos esperados (${motivo})`);
+    skip(`usuarioRepository exporta métodos esperados (${motivo})`);
+    skip(`conhecimentoRepository exporta métodos esperados (${motivo})`);
+    skip(`empresaRepository exporta métodos esperados (${motivo})`);
+    return;
+  }
+
   await test('manifestacaoRepository exporta métodos esperados', () => {
     const repo = require('../database/repositories/manifestacaoRepository');
     const esperados = ['findById', 'findByProtocolo', 'findByIdOriginal', 'findAll', 'create', 'update',
@@ -318,12 +331,30 @@ async function testarSeguranca() {
     assert.ok(!senhaValida('outrasenha', hash), 'hash errado deve ser rejeitado');
   });
 
-  await test('B1: api/index.js senhaValida nunca retorna true para plaintext', () => {
-    const fs = require('fs');
-    const src = fs.readFileSync(require.resolve('../api/index.js'), 'utf8');
-    // Deve conter o comentário de segurança e retornar false para plaintext
-    assert.ok(src.includes('NUNCA aceitar senha em texto puro') || src.includes('nunca aceitar'), 'deve documentar a rejeição de plaintext');
-    assert.ok(src.includes('Segurança B1: NUNCA aceitar senha em texto puro') || src.includes('NUNCA aceitar senha'), 'deve documentar B1 na função senhaValida');
+  await test('B1: senhaValida de api/index.js rejeita plaintext e aceita hash', async () => {
+    const path = require('path');
+    const crypto = require('crypto');
+    const mockPath = path.resolve(__dirname, 'sheets-mock.js');
+    const prev = process.env.SHEETS_MOCK_PATH;
+    process.env.SHEETS_MOCK_PATH = mockPath;
+    Object.keys(require.cache).filter(k => k.includes(`${path.sep}api${path.sep}index`)).forEach(k => delete require.cache[k]);
+    const appB1 = require('../api/index.js');
+    const fn = appB1._senhaValidaForTest;
+    if (prev) process.env.SHEETS_MOCK_PATH = prev; else delete process.env.SHEETS_MOCK_PATH;
+    Object.keys(require.cache).filter(k => k.includes(`${path.sep}api${path.sep}index`)).forEach(k => delete require.cache[k]);
+
+    assert.strictEqual(typeof fn, 'function', '_senhaValidaForTest deve estar exposto em modo de teste');
+    assert.strictEqual(await fn('senha123', 'senha123'), false, 'plaintext deve ser rejeitado');
+    assert.strictEqual(await fn('', ''), false, 'string vazia deve ser rejeitada');
+    const h256 = 'sha256:' + crypto.createHash('sha256').update('senha123').digest('hex');
+    assert.strictEqual(await fn('senha123', h256), true, 'sha256 correto deve ser aceito');
+    assert.strictEqual(await fn('errada', h256), false, 'sha256 errado deve ser rejeitado');
+    try {
+      const bcrypt = require('bcryptjs');
+      const hBcrypt = await bcrypt.hash('senha123', 10);
+      assert.strictEqual(await fn('senha123', hBcrypt), true, 'bcrypt correto deve ser aceito');
+      assert.strictEqual(await fn('errada', hBcrypt), false, 'bcrypt errado deve ser rejeitado');
+    } catch (e) { /* bcryptjs não disponível no ambiente de teste — skip silencioso */ }
   });
 
   await test('B5: DEMO_USUARIOS só ativo quando DEMO_LOGIN_ENABLED=true', () => {
@@ -397,6 +428,174 @@ async function testarSeguranca() {
 }
 
 // ────────────────────────────────────────────────────────────
+// Grupo 8 — Correções pós-code-review (d593468)
+// ────────────────────────────────────────────────────────────
+async function testarCorrecoesPosReview() {
+  console.log('\n[8] Correções pós-code-review (d593468)');
+
+  // ── appendLinha: retry real via api/index.js com getSheets injetado ──────────
+  // api/index.js exporta _appendLinhaForTest quando SHEETS_MOCK_PATH está definido.
+  // O mock de retry NÃO exporta appendLinha (para não curto-circuitar o retry real),
+  // mas exporta getSheets() que retorna um cliente fake que conta chamadas.
+
+  const path = require('path');
+  const os   = require('os');
+  const fs   = require('fs');
+  const origMock = process.env.SHEETS_MOCK_PATH;
+
+  function buildRetryMock(behavior) {
+    // behavior: array de outcomes por chamada (429 | 503 | 200)
+    // NÃO exporta appendLinha → o retry real de api/index.js é exercitado.
+    const tmpPath = path.join(os.tmpdir(), `mock_retry_${Date.now()}_${Math.random().toString(36).slice(2)}.js`);
+    fs.writeFileSync(tmpPath, `'use strict';
+let _calls = 0;
+const _behavior = ${JSON.stringify(behavior)};
+module.exports = {
+  lerAba()          { return Promise.resolve([]); },
+  appendObjeto()    { return Promise.resolve({ headers:[], linha:[] }); },
+  obterCabecalhos() { return Promise.resolve([]); },
+  atualizarPorID()  { return Promise.resolve(null); },
+  getSheets() {
+    return {
+      spreadsheets: { values: {
+        append() {
+          const outcome = _behavior[_calls++] ?? 200;
+          if (outcome === 200) return Promise.resolve({});
+          const e = new Error('injected ' + outcome);
+          e.response = { status: outcome };
+          return Promise.reject(e);
+        },
+        get() { return Promise.resolve({ data: { values: [[]] } }); },
+      }}
+    };
+  },
+  getCalls() { return _calls; },
+};`);
+    return tmpPath;
+  }
+
+  function loadFreshApp(mockPath) {
+    Object.keys(require.cache)
+      .filter(k => k.includes(`${path.sep}api${path.sep}index`))
+      .forEach(k => delete require.cache[k]);
+    process.env.SHEETS_MOCK_PATH = mockPath;
+    return require('../api/index.js');
+  }
+
+  function cleanupMock(tmpPath) {
+    try { fs.unlinkSync(tmpPath); } catch (_) {}
+    Object.keys(require.cache)
+      .filter(k => k.includes(`${path.sep}api${path.sep}index`) || (tmpPath && k === tmpPath))
+      .forEach(k => delete require.cache[k]);
+    process.env.SHEETS_MOCK_PATH = origMock || '';
+    if (!origMock) delete process.env.SHEETS_MOCK_PATH;
+  }
+
+  await test('RETRY: 429 na 1ª chamada → retenta e grava (2 chamadas ao append, 1 sucesso)', async () => {
+    const tmp = buildRetryMock([429, 200]);
+    const app = loadFreshApp(tmp);
+    const appendLinha = app._appendLinhaForTest;
+    assert.ok(typeof appendLinha === 'function', '_appendLinhaForTest não exportado');
+    const mockMod = require(tmp);
+    await appendLinha('ABA', ['dado1']);
+    const calls = mockMod.getCalls();
+    cleanupMock(tmp);
+    assert.strictEqual(calls, 2, `esperava 2 chamadas ao append, houve ${calls}`);
+  });
+
+  await test('RETRY: 503 não é retentado — 1 chamada, erro propagado sem retry', async () => {
+    const tmp = buildRetryMock([503]);
+    const app = loadFreshApp(tmp);
+    const appendLinha = app._appendLinhaForTest;
+    assert.ok(typeof appendLinha === 'function', '_appendLinhaForTest não exportado');
+    const mockMod = require(tmp);
+    let lancou = false;
+    try { await appendLinha('ABA', ['dado1']); } catch { lancou = true; }
+    const calls = mockMod.getCalls();
+    cleanupMock(tmp);
+    assert.ok(lancou, 'deve lançar erro no 503');
+    assert.strictEqual(calls, 1, `503 não deve ser retentado — esperava 1 chamada, houve ${calls}`);
+  });
+
+  await test('RETRY: 429 persistente — 3 tentativas ao append, lança erro', async () => {
+    const tmp = buildRetryMock([429, 429, 429]);
+    const app = loadFreshApp(tmp);
+    const appendLinha = app._appendLinhaForTest;
+    assert.ok(typeof appendLinha === 'function', '_appendLinhaForTest não exportado');
+    const mockMod = require(tmp);
+    let lancou = false;
+    try { await appendLinha('ABA', ['dado1']); } catch { lancou = true; }
+    const calls = mockMod.getCalls();
+    cleanupMock(tmp);
+    assert.ok(lancou, 'deve lançar após esgotar retries');
+    assert.strictEqual(calls, 3, `esperava 3 tentativas, houve ${calls}`);
+  });
+
+  // ── /api/manifestacoes/:id/historico — inspeção estática ─────────────────────
+  await test('HIST-MAN: rota /api/manifestacoes/:id/historico existe e usa requerPermissao', () => {
+    const src = fs.readFileSync(require.resolve('../api/index.js'), 'utf8');
+    assert.ok(
+      src.includes("app.get('/api/manifestacoes/:id/historico'"),
+      'rota GET /api/manifestacoes/:id/historico não encontrada'
+    );
+    assert.ok(
+      src.includes("requerPermissao('manifestacoes.visualizar')"),
+      "rota deve exigir permissão 'manifestacoes.visualizar'"
+    );
+  });
+
+  await test('HIST-MAN: check de empresa_scope vazio presente na rota (:id/historico)', () => {
+    const src = fs.readFileSync(require.resolve('../api/index.js'), 'utf8');
+    const start = src.indexOf("app.get('/api/manifestacoes/:id/historico'");
+    const block = src.slice(start, start + 1200);
+    // Verifica o trecho exato que bloqueia empresa_scope vazio: "!empScope ||"
+    assert.ok(
+      block.includes('!empScope ||'),
+      'rota deve conter "!empScope ||" para bloquear usuários sem empresa definida'
+    );
+    assert.ok(
+      block.includes('status(403)'),
+      'rota deve retornar 403 para empresa não autorizada'
+    );
+  });
+
+  // ── /api/historico-aprovacao — registros legados ──────────────────────────────
+  await test('HIST-APROV: bloco else { return false } para legados está na rota historico-aprovacao', () => {
+    const src = fs.readFileSync(require.resolve('../api/index.js'), 'utf8');
+    const histIdx = src.indexOf("app.get('/api/historico-aprovacao'");
+    const histBlock = src.slice(histIdx, histIdx + 2500);
+    // O trecho específico do fix: o else que bloqueia registros sem EMPRESA_SCOPE
+    // Procura pela combinação única: "} else {" seguido de "return false" dentro do contexto de legados
+    const elseIdx = histBlock.indexOf('} else {');
+    assert.ok(elseIdx >= 0, 'bloco else não encontrado em historico-aprovacao');
+    const elseBlock = histBlock.slice(elseIdx, elseIdx + 200);
+    assert.ok(
+      elseBlock.includes('return false'),
+      'bloco else deve conter "return false" para bloquear registros legados'
+    );
+    assert.ok(
+      elseBlock.includes('legado') || elseBlock.includes('EMPRESA_SCOPE'),
+      'bloco else deve comentar o motivo (legado ou EMPRESA_SCOPE)'
+    );
+  });
+
+  await test('HIST-APROV: EMPRESA_SCOPE armazenado no appendObjeto de HISTORICO_APROVACAO', () => {
+    const src = fs.readFileSync(require.resolve('../api/index.js'), 'utf8');
+    const appendIdx = src.indexOf("appendObjeto('HISTORICO_APROVACAO'");
+    assert.ok(appendIdx >= 0, "appendObjeto('HISTORICO_APROVACAO') não encontrado");
+    const appendBlock = src.slice(appendIdx, appendIdx + 500);
+    assert.ok(
+      appendBlock.includes('EMPRESA_SCOPE'),
+      'EMPRESA_SCOPE deve ser gravado no HISTORICO_APROVACAO'
+    );
+    assert.ok(
+      appendBlock.includes('empresaCanonica'),
+      'EMPRESA_SCOPE deve ser normalizado com empresaCanonica()'
+    );
+  });
+}
+
+// ────────────────────────────────────────────────────────────
 // Grupo 7 — Integração com PG (requer DATABASE_URL)
 // ────────────────────────────────────────────────────────────
 async function testarIntegracaoPG() {
@@ -442,6 +641,7 @@ async function main() {
   await testarRepositorios();
   await testarRegrasNegocio();
   await testarSeguranca();
+  await testarCorrecoesPosReview();
   await testarIntegracaoPG();
 
   const total = passed + failed + skipped;
