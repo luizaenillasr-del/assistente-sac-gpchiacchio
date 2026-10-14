@@ -28,7 +28,7 @@ const usuarioRepository = {
     });
   },
 
-  async findAll({ empresaId, perfilId, ativo = true } = {}) {
+  async findAll({ empresaId, perfilId, ativo } = {}) {
     const where = {};
     if (empresaId) where.empresaId = Number(empresaId);
     if (perfilId) where.perfilId = Number(perfilId);
