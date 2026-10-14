@@ -6161,7 +6161,11 @@
   const SEC=[['desempenho','Desempenho geral'],['analise_critica','Análise crítica dos resultados'],['pontos_fortes','Pontos fortes'],['oportunidades','Oportunidades de melhoria'],['acoes','Ações recomendadas']];
   const CR=[['ATENDIMENTO','at','atendimento'],['PRAZO DE ENTREGA','pr','prazo de entrega'],['QUALIDADE','qu','qualidade'],['RECOMENDAÇÃO','re','recomendação']];
   const NOTA_CRITICA=6;
-  let _dir=false,_d=null,_per=6,_meta=8.5,_edit=null,_openM=null,_allOpen=false,_autos={},_toastT=null;
+  let _dir=false,_d=null,_per=6,_metas={},_edit=null,_openM=null,_allOpen=false,_autos={},_toastT=null;
+  // Carrega metas salvas por empresa
+  try{const s=localStorage.getItem('sac_rel_metas');if(s)_metas=JSON.parse(s);}catch(e){}
+  function getMeta(){return _metas[_empresa()]??8.5;}
+  function setMeta(v){_metas[_empresa()]=v;try{localStorage.setItem('sac_rel_metas',JSON.stringify(_metas));}catch(e){}}
 
   function esc(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));}
   function num(v){if(v==null||v==='')return null;const n=parseFloat(String(v).replace(',','.'));return isFinite(n)?n:null;}
@@ -6170,10 +6174,10 @@
   function ml(k){return MS[+k.slice(5)]+'/'+k.slice(2,4);}
   function mword(k){return MN[+k.slice(5)];}
   function mlong(k){const w=mword(k);return w.charAt(0).toUpperCase()+w.slice(1)+'/'+k.slice(0,4);}
-  function col(v){return v>=_meta?GREEN:v>=7?AMB:RED;}
-  function cell(v){return v>=_meta?['#E6F2EA','#1E6B3A']:v>=7?['#FBF0D9','#7A4C00']:['#FDECEC','#A80502'];}
+  function col(v){const m=getMeta();return v>=m?GREEN:v>=7?AMB:RED;}
+  function cell(v){const m=getMeta();return v>=m?['#E6F2EA','#1E6B3A']:v>=7?['#FBF0D9','#7A4C00']:['#FDECEC','#A80502'];}
   function sc(v){return Math.max(2,(v-5)/5*100);}
-  function metaTxt(){return String(_meta).replace('.',',');}
+  function metaTxt(){return String(getMeta()).replace('.',',');}
   function cap(s){return s.charAt(0).toUpperCase()+s.slice(1);}
 
   function _val(id){return document.getElementById(id);}
@@ -6209,12 +6213,14 @@
     const cp=_val('rel-chips-periodo');
     if(cp) cp.innerHTML=[[6,'Últimos 6 meses'],[12,'12 meses']].map(([v,l])=>`<button type="button" class="rs-chip sq${_per===v?' on':''}" onclick="relSelPeriodo(${v})">${l}</button>`).join('');
   }
-  window.relSelEmpresa=function(v){const s=_val('rel-f-empresa');if(s)s.value=v;_edit=null;_openM=null;_renderChips();relCarregar();};
+  window.relSelEmpresa=function(v){const s=_val('rel-f-empresa');if(s)s.value=v;_edit=null;_openM=null;_renderChips();_syncMetaInput();relCarregar();};
+  function _syncMetaInput(){const el=_val('rel-f-meta');if(el)el.value=getMeta();}
   window.relSelPeriodo=function(v){_per=v;_renderChips();_renderizar();};
-  window.relMudarMeta=function(v){const n=num(v);if(n!=null&&n>0&&n<=10){_meta=n;_renderizar();}};
+  window.relMudarMeta=function(v){const n=num(v);if(n!=null&&n>0&&n<=10){setMeta(n);_renderizar();}};
 
   window.relCarregar=async function(){
     _populaFiltros();
+    _syncMetaInput();
     const empresa=_empresa();
     const ano=_val('rel-f-ano')?.value,mes=_val('rel-f-mes')?.value;
     const cont=_val('rel-conteudo');
