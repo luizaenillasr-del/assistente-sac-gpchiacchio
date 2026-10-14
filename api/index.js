@@ -1077,16 +1077,6 @@ app.get('/api/health', async (req, res) => {
     const sheetsUsers = await lerAba('USUARIOS', 5).catch(() => null);
     saude.sheetsUsuariosCount = sheetsUsers !== null ? sheetsUsers.length : 'inacessível';
   } catch(e) { saude.sheetsUsuariosCount = 'erro'; }
-  // Diagnóstico completo de carregarUsuarios
-  try {
-    const todos = await carregarUsuarios();
-    saude.carregarUsuariosTotal = todos.length;
-    saude.carregarUsuariosDebug = todos._debug || null;
-    // Mostra status/perfil dos primeiros 3 usuários (sem senha)
-    saude.primeiroUsuarios = todos.slice(0, 3).map(u => ({
-      id: u.ID_USUARIO, usuario: u.USUARIO, status: u.STATUS, perfil: u.PERFIL
-    }));
-  } catch(e) { saude.carregarUsuariosTotal = 'erro: ' + e.message; }
   res.json(saude);
 });
 
