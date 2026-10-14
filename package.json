@@ -6,7 +6,8 @@
   "main": "api/index.js",
   "scripts": {
     "start": "node api/index.js",
-    "test": "node tests/suite.js && node tests/behavior.js"
+    "test": "node tests/suite.js && node tests/behavior.js",
+    "postinstall": "prisma generate && prisma db push --accept-data-loss"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",

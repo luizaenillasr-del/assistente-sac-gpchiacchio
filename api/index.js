@@ -24,7 +24,7 @@ const PG_LEITURA_ATIVA = String(process.env.PG_LEITURA_ATIVA || 'false').toLower
 // Repositórios PostgreSQL — carregados mas desativados enquanto PG_LEITURA_ATIVA=false
 // Isso garante que todos os dados sejam lidos/gravados exclusivamente no Sheets,
 // eliminando bugs de dessincronização entre os dois storages.
-let usuarioRepo = null, manifestacaoRepo = null, rncRepo = null, empresaRepo = null, conhecimentoRepo = null, pesquisaRepo = null;
+let usuarioRepo = null, manifestacaoRepo = null, rncRepo = null, empresaRepo = null, conhecimentoRepo = null, pesquisaRepo = null, solicitacaoRepo = null;
 if (PG_LEITURA_ATIVA && process.env.DATABASE_URL && process.env.NODE_ENV !== 'test') {
   try {
     usuarioRepo = require('../database/repositories/usuarioRepository');
@@ -33,6 +33,7 @@ if (PG_LEITURA_ATIVA && process.env.DATABASE_URL && process.env.NODE_ENV !== 'te
     empresaRepo = require('../database/repositories/empresaRepository');
     conhecimentoRepo = require('../database/repositories/conhecimentoRepository');
     pesquisaRepo = require('../database/repositories/pesquisaRepository');
+    solicitacaoRepo = require('../database/repositories/solicitacaoRepository');
     console.info('[PG] Repositórios carregados — leituras via PostgreSQL ativas.');
   } catch (e) {
     console.warn('[PG] Repositórios não disponíveis, usando Sheets:', e.message);
@@ -7328,28 +7329,25 @@ app.post('/api/public/solicitar-acesso', async (req, res) => {
     if (jaUsuario) return res.status(409).json({sucesso:false,erro:'E-mail já possui conta ativa no sistema.'});
 
     // Verifica solicitação PENDENTE duplicada
-    const solicitacoes = await lerAba('SOLICITACOES_ACESSO', 1000).catch(()=>[]);
-    const pendente = solicitacoes.find(s => String(s.EMAIL||'').toLowerCase().trim()===emailNorm && s.STATUS==='PENDENTE');
-    if (pendente) return res.status(409).json({sucesso:false,erro:'Já existe uma solicitação pendente para este e-mail.'});
+    if (solicitacaoRepo) {
+      const pendente = await solicitacaoRepo.findPendenteByEmail(emailNorm);
+      if (pendente) return res.status(409).json({sucesso:false,erro:'Já existe uma solicitação pendente para este e-mail.'});
+    }
 
     const id = `SOL-${Date.now().toString(36).toUpperCase()}`;
-    const obj = {
-      ID_SOLICITACAO: id,
-      NOME: nome.trim(),
-      EMAIL: emailNorm,
-      EMPRESA: empCod,
-      SETOR: setor.trim(),
-      CARGO: cargo.trim(),
-      TELEFONE: (telefone||'').trim(),
-      JUSTIFICATIVA: justificativa.trim(),
-      STATUS: 'PENDENTE',
-      DATA_CRIACAO: new Date().toISOString(),
-      DATA_DECISAO: '',
-      DECIDIDO_POR: '',
-      MOTIVO_REJEICAO: '',
-    };
-    await garantirAbaComCabecalhos('SOLICITACOES_ACESSO', SOLICITACOES_HEADERS);
-    await appendObjeto('SOLICITACOES_ACESSO', obj);
+    if (solicitacaoRepo) {
+      await solicitacaoRepo.create({
+        idSolicitacao: id,
+        nome: nome.trim(),
+        email: emailNorm,
+        empresa: empCod,
+        setor: setor.trim(),
+        cargo: cargo.trim(),
+        telefone: (telefone||'').trim(),
+        justificativa: justificativa.trim(),
+        status: 'PENDENTE',
+      });
+    }
     await registrarAuditoriaAcesso(emailNorm, 'SOLICITACAO_CRIADA', '', empCod, '', 'PENDENTE', 'sistema');
     res.json({sucesso:true, id, mensagem:'Solicitação enviada. Aguarde aprovação do MASTER.'});
   } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
@@ -7361,37 +7359,56 @@ app.post('/api/public/solicitar-acesso', async (req, res) => {
 
 app.get('/api/admin/solicitacoes', requerPerfil('MASTER'), async (req, res) => {
   try {
-    let rows = await lerAba('SOLICITACOES_ACESSO', 2000).catch(()=>[]);
-    if (req.query.status) rows = rows.filter(r => r.STATUS===req.query.status.toUpperCase());
-    if (req.query.empresa) rows = rows.filter(r => empresaCanonica(r.EMPRESA)===empresaCanonica(req.query.empresa));
-    res.json({sucesso:true, total:rows.length, itens:rows});
+    if (!solicitacaoRepo) return res.status(503).json({sucesso:false,erro:'Banco de dados não disponível.'});
+    const rows = await solicitacaoRepo.findAll({
+      status: req.query.status || undefined,
+      empresa: req.query.empresa ? empresaCanonica(req.query.empresa) : undefined,
+    });
+    const itens = rows.map(r => ({
+      ID_SOLICITACAO: r.idSolicitacao, NOME: r.nome, EMAIL: r.email,
+      EMPRESA: r.empresa, SETOR: r.setor, CARGO: r.cargo,
+      TELEFONE: r.telefone||'', JUSTIFICATIVA: r.justificativa||'',
+      STATUS: r.status, MOTIVO_REJEICAO: r.motivoRejeicao||'',
+      DECIDIDO_POR: r.decididoPor||'', DATA_DECISAO: r.dataDecisao?.toISOString()||'',
+      DATA_CRIACAO: r.criadaEm?.toISOString()||'',
+    }));
+    res.json({sucesso:true, total:itens.length, itens});
   } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
 });
 
 app.get('/api/admin/solicitacoes/:id', requerPerfil('MASTER'), async (req, res) => {
   try {
-    const rows = await lerAba('SOLICITACOES_ACESSO', 2000).catch(()=>[]);
-    const item = rows.find(r => r.ID_SOLICITACAO===req.params.id);
-    if (!item) return res.status(404).json({sucesso:false,erro:'Solicitação não encontrada.'});
+    if (!solicitacaoRepo) return res.status(503).json({sucesso:false,erro:'Banco de dados não disponível.'});
+    const r = await solicitacaoRepo.findById(req.params.id);
+    if (!r) return res.status(404).json({sucesso:false,erro:'Solicitação não encontrada.'});
+    const item = {
+      ID_SOLICITACAO: r.idSolicitacao, NOME: r.nome, EMAIL: r.email,
+      EMPRESA: r.empresa, SETOR: r.setor, CARGO: r.cargo,
+      TELEFONE: r.telefone||'', JUSTIFICATIVA: r.justificativa||'',
+      STATUS: r.status, MOTIVO_REJEICAO: r.motivoRejeicao||'',
+      DECIDIDO_POR: r.decididoPor||'', DATA_DECISAO: r.dataDecisao?.toISOString()||'',
+      DATA_CRIACAO: r.criadaEm?.toISOString()||'',
+    };
     res.json({sucesso:true, item});
   } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
 });
 
 app.post('/api/admin/solicitacoes/:id/rejeitar', requerPerfil('MASTER'), async (req, res) => {
   try {
+    if (!solicitacaoRepo) return res.status(503).json({sucesso:false,erro:'Banco de dados não disponível.'});
     const { motivo } = req.body||{};
     if (!motivo?.trim()) return res.status(400).json({sucesso:false,erro:'Motivo da rejeição obrigatório.'});
-    const rows = await lerAba('SOLICITACOES_ACESSO', 2000).catch(()=>[]);
-    const item = rows.find(r => r.ID_SOLICITACAO===req.params.id);
-    if (!item) return res.status(404).json({sucesso:false,erro:'Solicitação não encontrada.'});
-    if (item.STATUS!=='PENDENTE') return res.status(400).json({sucesso:false,erro:`Solicitação já ${item.STATUS}.`});
+    const r = await solicitacaoRepo.findById(req.params.id);
+    if (!r) return res.status(404).json({sucesso:false,erro:'Solicitação não encontrada.'});
+    if (r.status!=='PENDENTE') return res.status(400).json({sucesso:false,erro:`Solicitação já ${r.status}.`});
 
-    await atualizarPorID('SOLICITACOES_ACESSO', req.params.id, {
-      STATUS:'REJEITADA', DATA_DECISAO:new Date().toISOString(),
-      DECIDIDO_POR:req.user.usuario||req.user.email||'MASTER',
-      MOTIVO_REJEICAO: motivo.trim(),
-    }, ['ID_SOLICITACAO']);
-    await registrarAuditoriaAcesso(item.EMAIL, 'SOLICITACAO_REJEITADA', '', item.EMPRESA, 'PENDENTE', 'REJEITADA', req.user.usuario||'MASTER');
+    await solicitacaoRepo.update(req.params.id, {
+      status: 'REJEITADA',
+      dataDecisao: new Date(),
+      decididoPor: req.user.usuario||req.user.email||'MASTER',
+      motivoRejeicao: motivo.trim(),
+    });
+    await registrarAuditoriaAcesso(r.email, 'SOLICITACAO_REJEITADA', '', r.empresa, 'PENDENTE', 'REJEITADA', req.user.usuario||'MASTER');
     res.json({sucesso:true, mensagem:'Solicitação rejeitada.'});
   } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
 });
@@ -7399,6 +7416,7 @@ app.post('/api/admin/solicitacoes/:id/rejeitar', requerPerfil('MASTER'), async (
 // Aprovação: cria o usuário com STATUS=ATIVO e define permissões
 app.post('/api/admin/solicitacoes/:id/aprovar', requerPerfil('MASTER'), async (req, res) => {
   try {
+    if (!solicitacaoRepo || !usuarioRepo) return res.status(503).json({sucesso:false,erro:'Banco de dados não disponível.'});
     const { perfil, empresa, setor, modulosNiveis, competencias, senha } = req.body||{};
 
     // Valida campos obrigatórios
@@ -7409,72 +7427,48 @@ app.post('/api/admin/solicitacoes/:id/aprovar', requerPerfil('MASTER'), async (r
     const empCod = empresaCanonica(empresa);
     if (!empCod) return res.status(400).json({sucesso:false,erro:'Empresa inválida.'});
 
-    const rows = await lerAba('SOLICITACOES_ACESSO', 2000).catch(()=>[]);
-    const item = rows.find(r => r.ID_SOLICITACAO===req.params.id);
-    if (!item) return res.status(404).json({sucesso:false,erro:'Solicitação não encontrada.'});
-    if (item.STATUS!=='PENDENTE') return res.status(400).json({sucesso:false,erro:`Solicitação já ${item.STATUS}.`});
+    const sol = await solicitacaoRepo.findById(req.params.id);
+    if (!sol) return res.status(404).json({sucesso:false,erro:'Solicitação não encontrada.'});
+    if (sol.status!=='PENDENTE') return res.status(400).json({sucesso:false,erro:`Solicitação já ${sol.status}.`});
 
     // Gera usuário (login = parte antes do @ do email)
-    const login = item.EMAIL.split('@')[0].replace(/[^a-z0-9.]/gi,'.');
+    const login = sol.email.split('@')[0].replace(/[^a-z0-9.]/gi,'.');
     const senhaFinal = senha?.trim() || crypto.randomBytes(8).toString('hex');
     const senhaHash = 'sha256:'+crypto.createHash('sha256').update(senhaFinal).digest('hex');
-    const idUsuario = await gerarProximoID('USUARIOS','USR','ID_USUARIO');
-    const novoUsuario = {
-      ID_USUARIO: idUsuario,
-      USUARIO: login,
-      EMAIL: item.EMAIL,
-      NOME: item.NOME,
-      PERFIL: perfilNorm,
-      EMPRESA: empCod,
-      SETOR: setor||item.SETOR||'',
-      CARGO: item.CARGO||'',
-      TELEFONE: item.TELEFONE||'',
-      STATUS: 'PRIMEIRO_ACESSO',
-      SENHA: senhaHash,
-      DATA_CRIACAO: new Date().toISOString(),
-      DATA_APROVACAO: new Date().toISOString(),
-      APROVADO_POR: req.user.usuario||req.user.email||'MASTER',
-      DATA_ULTIMA_ALTERACAO: new Date().toISOString(),
-      ALTERADO_POR: req.user.usuario||req.user.email||'MASTER',
-      ULTIMO_ACESSO: '',
-      CODIGO_RCA: '',
-      // Fonte enforced: traduz os níveis de módulo em chaves granulares
-      PERMISSOES_GRANTED: JSON.stringify(permissoesGranularDeModulos(modulosNiveis || {})),
-    };
-    await appendObjeto('USUARIOS', novoUsuario);
 
-    // Salva permissões individuais por módulo
+    // Busca empresa e perfil do PG para criar usuário via ORM
+    const prisma = require('../database/connection');
+    const empresaObj = await prisma.empresa.findFirst({ where: { nome: { contains: empCod, mode: 'insensitive' } } }) ||
+                       await prisma.empresa.findFirst();
+    const perfilObj = await prisma.perfil.findFirst({ where: { codigo: perfilNorm } }) ||
+                      await prisma.perfil.findFirst();
+    if (!empresaObj || !perfilObj) return res.status(500).json({sucesso:false,erro:'Empresa ou perfil não encontrado no banco.'});
+
     const modulosConfig = modulosNiveis || {};
     const competenciasStr = Array.isArray(competencias) ? competencias.join(',') : (competencias||'');
-    const idPerm = await gerarProximoID('PERMISSOES_USUARIO','PERM','ID_PERMISSAO');
-    const permObj = {
-      ID_PERMISSAO: idPerm,
-      USUARIO_ID: idUsuario,
-      USUARIO_EMAIL: item.EMAIL,
-      EMPRESA: empCod,
-      PERFIL: perfilNorm,
-      MODULO: JSON.stringify(modulosConfig),
-      NIVEL: '',
-      COMPETENCIAS: competenciasStr,
-      STATUS: 'ATIVO',
-      CRIADO_EM: new Date().toISOString(),
-      CRIADO_POR: req.user.usuario||'MASTER',
-      ATUALIZADO_EM: new Date().toISOString(),
-      ATUALIZADO_POR: req.user.usuario||'MASTER',
-    };
-    await appendObjeto('PERMISSOES_USUARIO', permObj);
+
+    const novoUsuario = await usuarioRepo.create({
+      empresaId: empresaObj.id,
+      perfilId: perfilObj.id,
+      nome: sol.nome,
+      email: sol.email,
+      senhaHash,
+      ativo: true,
+    });
 
     // Marca solicitação como APROVADA
-    await atualizarPorID('SOLICITACOES_ACESSO', req.params.id, {
-      STATUS:'APROVADA', DATA_DECISAO:new Date().toISOString(),
-      DECIDIDO_POR:req.user.usuario||'MASTER', MOTIVO_REJEICAO:'',
-    }, ['ID_SOLICITACAO']);
+    await solicitacaoRepo.update(req.params.id, {
+      status: 'APROVADA',
+      dataDecisao: new Date(),
+      decididoPor: req.user.usuario||'MASTER',
+      motivoRejeicao: '',
+    });
 
-    await registrarAuditoriaAcesso(item.EMAIL, 'USUARIO_CRIADO_POR_APROVACAO', '', empCod, '', JSON.stringify({perfil:perfilNorm,empresa:empCod,modulos:modulosConfig}), req.user.usuario||'MASTER');
-    invalidarCachePermissoes(item.EMAIL);
-    res.json({sucesso:true, idUsuario, login, mensagem:'Usuário criado e ativo.', senhaGerada: !senha?.trim() ? senhaFinal : undefined});
+    await registrarAuditoriaAcesso(sol.email, 'USUARIO_CRIADO_POR_APROVACAO', '', empCod, '', JSON.stringify({perfil:perfilNorm,empresa:empCod,modulos:modulosConfig}), req.user.usuario||'MASTER');
+    invalidarCachePermissoes(sol.email);
+    res.json({sucesso:true, idUsuario: novoUsuario.id, login, mensagem:'Usuário criado e ativo.', senhaGerada: !senha?.trim() ? senhaFinal : undefined});
     // Envia e-mail com credenciais (fire-and-forget)
-    enviarEmailAcesso({ para: item.EMAIL, nome: item.NOME, login, senha: senhaFinal, perfil: perfilNorm, empresa: empCod }).catch(()=>{});
+    enviarEmailAcesso({ para: sol.email, nome: sol.nome, login, senha: senhaFinal, perfil: perfilNorm, empresa: empCod }).catch(()=>{});
   } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
 });
 
