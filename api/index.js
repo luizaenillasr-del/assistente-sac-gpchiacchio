@@ -1082,6 +1082,10 @@ app.get('/api/health', async (req, res) => {
     const todos = await carregarUsuarios();
     saude.carregarUsuariosTotal = todos.length;
     saude.carregarUsuariosDebug = todos._debug || null;
+    // Mostra status/perfil dos primeiros 3 usuários (sem senha)
+    saude.primeiroUsuarios = todos.slice(0, 3).map(u => ({
+      id: u.ID_USUARIO, usuario: u.USUARIO, status: u.STATUS, perfil: u.PERFIL
+    }));
   } catch(e) { saude.carregarUsuariosTotal = 'erro: ' + e.message; }
   res.json(saude);
 });
