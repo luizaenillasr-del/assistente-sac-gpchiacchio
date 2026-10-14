@@ -1077,6 +1077,12 @@ app.get('/api/health', async (req, res) => {
     const sheetsUsers = await lerAba('USUARIOS', 5).catch(() => null);
     saude.sheetsUsuariosCount = sheetsUsers !== null ? sheetsUsers.length : 'inacessível';
   } catch(e) { saude.sheetsUsuariosCount = 'erro'; }
+  // Diagnóstico completo de carregarUsuarios
+  try {
+    const todos = await carregarUsuarios();
+    saude.carregarUsuariosTotal = todos.length;
+    saude.carregarUsuariosDebug = todos._debug || null;
+  } catch(e) { saude.carregarUsuariosTotal = 'erro: ' + e.message; }
   res.json(saude);
 });
 
