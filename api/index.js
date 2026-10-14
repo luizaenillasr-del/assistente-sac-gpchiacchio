@@ -24,20 +24,49 @@ const PG_LEITURA_ATIVA = String(process.env.PG_LEITURA_ATIVA || 'false').toLower
 // Repositórios PostgreSQL — carregados mas desativados enquanto PG_LEITURA_ATIVA=false
 // Isso garante que todos os dados sejam lidos/gravados exclusivamente no Sheets,
 // eliminando bugs de dessincronização entre os dois storages.
-let usuarioRepo = null, manifestacaoRepo = null, rncRepo = null, empresaRepo = null, conhecimentoRepo = null;
-if (PG_LEITURA_ATIVA) {
+let usuarioRepo = null, manifestacaoRepo = null, rncRepo = null, empresaRepo = null, conhecimentoRepo = null, pesquisaRepo = null;
+if (PG_LEITURA_ATIVA && process.env.DATABASE_URL && process.env.NODE_ENV !== 'test') {
   try {
     usuarioRepo = require('../database/repositories/usuarioRepository');
     manifestacaoRepo = require('../database/repositories/manifestacaoRepository');
     rncRepo = require('../database/repositories/rncRepository');
     empresaRepo = require('../database/repositories/empresaRepository');
     conhecimentoRepo = require('../database/repositories/conhecimentoRepository');
+    pesquisaRepo = require('../database/repositories/pesquisaRepository');
     console.info('[PG] Repositórios carregados — leituras via PostgreSQL ativas.');
   } catch (e) {
     console.warn('[PG] Repositórios não disponíveis, usando Sheets:', e.message);
   }
 } else {
   console.info('[PG] PG_LEITURA_ATIVA=false — todas as operações via Google Sheets.');
+}
+
+// F8: leituras de pesquisa/relatório — Postgres primeiro, Sheets como fallback
+async function lerRespostasPesquisa() {
+  if (pesquisaRepo) {
+    try { const r = await pesquisaRepo.listarRespostas({}); if (r && r.length) return r; } catch (e) { console.warn('[F8] respostas PG falhou:', e.message); }
+  }
+  return lerAba('PESQUISA_RESPOSTAS', 5000).catch(() => []);
+}
+async function lerRelatoriosSac() {
+  if (pesquisaRepo) {
+    try { const r = await pesquisaRepo.listarRelatorios({}); if (r && r.length) return r; } catch (e) { console.warn('[F8] relatorios PG falhou:', e.message); }
+  }
+  return lerAba('RELATORIOS_SAC', 500).catch(() => []);
+}
+
+// Escopo B2: resolve o nome/código de empresa do usuário → id numérico do Postgres.
+// Retorna -1 se não encontrar (findAll filtra por -1 → 0 linhas → cai no fallback Sheets, que aplica o próprio filtro de empresa).
+async function resolverEmpresaIdScope(valor) {
+  if (!empresaRepo || !valor) return undefined;
+  try {
+    const byCod = await empresaRepo.findByCodigo(String(valor)).catch(() => null);
+    if (byCod) return byCod.id;
+    const todas = await empresaRepo.findAll().catch(() => []);
+    const vl = String(valor).toLowerCase().trim();
+    const e = todas.find(x => x.codigo.toLowerCase() === vl || x.nome.toLowerCase().includes(vl) || vl.includes(x.codigo.toLowerCase()));
+    return e ? e.id : -1;
+  } catch { return -1; }
 }
 
 const app = express();
@@ -370,6 +399,36 @@ function usuarioTemPermissao(user, chave) {
     return user.permissoes_custom.includes(chave);
   }
   return (_PERM_PADRAO_API[p] || []).includes(chave);
+}
+
+// Traduz níveis de módulo (tela legada de permissões por nível → PERMISSOES_USUARIO)
+// para as CHAVES granulares que as rotas realmente exigem (permissoes_granted).
+// Mantém uma única fonte de verdade enforced: conceder acesso pela tela de níveis
+// passa a surtir efeito nas 28 rotas de `requerPermissao` e na UI.
+const _MODULO_PARA_CHAVES = {
+  DASHBOARD:      { ns:'dashboard',     niveis:{1:['visualizar'], 4:['visualizar','gerenciar']} },
+  MANIFESTACOES:  { ns:'manifestacoes', niveis:{1:['visualizar'], 2:['visualizar','abrir','editar'], 3:['visualizar','abrir','editar','aprovar'], 4:['visualizar','abrir','editar','gerenciar','aprovar']} },
+  FILA_APROVACAO: { ns:'aprovacoes',    niveis:{1:['visualizar'], 3:['visualizar','aprovar','rejeitar']} },
+  CEREBRO:        { ns:'cerebro',       niveis:{1:['visualizar'], 2:['visualizar','adicionar_conteudo','editar_conteudo','adicionar_regras','adicionar_politicas','editar_faq'], 4:['visualizar','adicionar_conteudo','editar_conteudo','adicionar_regras','adicionar_politicas','editar_faq','gerenciar']} },
+  CONHECIMENTO:   { ns:'cerebro',       niveis:{1:['visualizar'], 2:['visualizar','adicionar_conteudo','editar_conteudo','editar_faq'], 4:['visualizar','adicionar_conteudo','editar_conteudo','editar_faq','gerenciar']} },
+  RELATORIOS:     { ns:'pesquisas',     niveis:{1:['visualizar'], 2:['visualizar','criar'], 3:['visualizar','criar','editar'], 4:['visualizar','criar','editar','gerenciar']} },
+  USUARIOS:       { ns:'usuarios',      niveis:{1:['visualizar'], 2:['visualizar','criar','editar'], 4:['visualizar','criar','editar','gerenciar']} },
+  CONFIGURACOES:  { ns:'configuracoes', niveis:{1:['visualizar'], 2:['visualizar','editar'], 4:['visualizar','editar','gerenciar']} },
+};
+function permissoesGranularDeModulos(modulosNiveis) {
+  const out = new Set();
+  if (!modulosNiveis || typeof modulosNiveis !== 'object') return [];
+  for (const [mod, nivelRaw] of Object.entries(modulosNiveis)) {
+    const cfg = _MODULO_PARA_CHAVES[mod];
+    const nivel = Number(nivelRaw) || 0;
+    if (!cfg || nivel <= 0) continue;
+    // escolhe o maior patamar definido que seja <= nível concedido
+    const patamares = Object.keys(cfg.niveis).map(Number).sort((a,b)=>a-b);
+    let escolhido = patamares[0];
+    for (const p of patamares) { if (nivel >= p) escolhido = p; }
+    (cfg.niveis[escolhido]||[]).forEach(k => out.add(`${cfg.ns}.${k}`));
+  }
+  return [...out];
 }
 
 // Middleware: exige que o usuário tenha TODAS as permissões listadas
@@ -875,6 +934,17 @@ async function verificarStatusUsuario(login) {
   const agora = Date.now();
   const cached = _statusCache.get(login);
   if (cached && (agora - cached.ts) < _STATUS_CACHE_TTL) return cached;
+  // F4: PostgreSQL primeiro — evita tratar usuário que só existe no PG como inativo.
+  if (usuarioRepo) {
+    try {
+      const pgU = await usuarioRepo.findByLogin(login).catch(() => null);
+      if (pgU) {
+        const entry = { status: pgU.ativo === false ? 'INATIVO' : 'ATIVO', ts: agora, permissoes_granted: null, permissoes_blocked: null };
+        _statusCache.set(login, entry);
+        return entry;
+      }
+    } catch (e) { /* cai no Sheets */ }
+  }
   try {
     const rows = await lerAba('USUARIOS', 1000);
     const u = rows.find(r => normalizarTexto(r.USUARIO||'') === normalizarTexto(login));
@@ -912,6 +982,7 @@ app.use('/api', async (req,res,next)=>{
     '/public/empresas',
     '/pesquisas/resposta-publica',
     '/pesquisas/resposta-token',
+    '/pesquisa',
   ]);
   if(publicPaths.has(req.path) || req.path.startsWith('/pesquisa/')) return next();
   const header=req.headers.authorization||'';
@@ -1157,6 +1228,13 @@ app.post('/api/analise', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC','ATEN
     const { descricao, tipo, empresaReclamada, empresaReclamante, produto, lote } = req.body;
     if (!descricao) return res.status(400).json({ sucesso: false, erro: 'Descrição é obrigatória.' });
     const analise = await executarAnalise({ descricao, tipo, empresaReclamada, empresaReclamante, produto, lote });
+    // A ferramenta "se alimenta" das avaliações: anexa aprendizado do histórico de assertividade
+    try {
+      const rowsAssert = await lerAba('ASSERTIVIDADE_IA', 2000).catch(() => []);
+      const setorSug = analise.setorSugerido || (Array.isArray(analise.setores) ? analise.setores[0] : '') || analise.setor || '';
+      const causaSug = analise.causaProvavel || analise.causaRaiz || analise.causa || '';
+      analise.aprendizado = assertividadeService.aprendizadoPorContexto(rowsAssert, { setor: setorSug, causa: causaSug, tipo });
+    } catch (_) {}
     res.json({ sucesso: true, analise });
   } catch (e) {
     console.error(e);
@@ -1207,6 +1285,19 @@ app.post('/api/representantes/manifestacoes', requerPerfil('RCA / REPRESENTANTE'
 });
 
 // ===== MANIFESTAÇÕES =====
+// Agregação do dashboard feita no Postgres (COUNT/GROUP BY) — instantâneo mesmo com milhares.
+app.get('/api/dashboard-resumo', requerPermissao('dashboard.visualizar'), middlewareEscopoEmpresa(), async (req, res) => {
+  try {
+    if (manifestacaoRepo && typeof manifestacaoRepo.aggregateDashboard === 'function') {
+      const _isMaster = perfilCanonico(req.user?.perfil) === 'MASTER';
+      const empresaId = _isMaster ? null : await resolverEmpresaIdScope(req.user?.empresa);
+      const agg = await manifestacaoRepo.aggregateDashboard({ empresaId });
+      return res.json({ sucesso: true, fonte: 'postgresql', ...agg });
+    }
+    return res.status(503).json({ sucesso: false, erro: 'Agregação Postgres indisponível (rode em modo PG).' });
+  } catch (e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e) }); }
+});
+
 app.get('/api/manifestacoes', requerPermissao('manifestacoes.visualizar'), middlewareEscopoEmpresa(), async (req, res) => {
   try {
     // F6: tenta PostgreSQL primeiro
@@ -1216,8 +1307,9 @@ app.get('/api/manifestacoes', requerPermissao('manifestacoes.visualizar'), middl
         // B2: empresa vem do usuário autenticado, não do frontend
         const _isMasterMf = req.user && perfilCanonico(req.user.perfil) === 'MASTER';
         if (_isMasterMf && req.query.empresaId) filtros.empresaId = req.query.empresaId;
-        else if (!_isMasterMf && req.user?.empresa) filtros.empresaId = req.user.empresa;
+        else if (!_isMasterMf && req.user?.empresa) filtros.empresaId = await resolverEmpresaIdScope(req.user.empresa);
         if (req.query.status) filtros.status = req.query.status;
+        filtros.take = Math.min(Number(req.query.limite) || 2000, 5000); // antes limitava a 100 (dashboard subestimava)
         const pgData = await manifestacaoRepo.findAll(filtros);
         if (pgData && pgData.length > 0) {
           let itens = pgData.map(m => ({
@@ -1281,6 +1373,11 @@ app.get('/api/manifestacoes/:id', requerPermissao('manifestacoes.visualizar'), m
             PRODUTO: pg.produto || '',
             PRIORIDADE: pg.prioridade || '',
             SETOR_SUGERIDO: pg.setor?.nome || '',
+            SETOR_CONFIRMADO: pg.setor?.nome || '',
+            RESPONSAVEL: pg.responsavel?.nome || '',
+            TRATATIVA_REALIZADA: (pg.tratativas || []).slice(-1)[0]?.textoFinal || '',
+            DEVOLUTIVA_FINAL: (pg.devolutivas || []).slice(-1)[0]?.textoFinal || '',
+            DEVOLUTIVA_ENVIADA: (pg.devolutivas || []).slice(-1)[0]?.textoFinal || '',
             USUARIO_CRIACAO: pg.criador?.login || pg.criador?.email || '',
             historico: pg.historico || [],
             tratativas: pg.tratativas || [],
@@ -1413,6 +1510,9 @@ app.patch('/api/manifestacoes/:id/ficha', requerPermissao('manifestacoes.editar'
     const todas = await lerAba('MANIFESTACOES', 5000);
     const item = todas.find(r => r.ID_MANIFESTACAO === id);
     if (!item) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
+    if (!pertenceEmpresa(req.user?.empresa, item.EMPRESA_RECLAMADA)) {
+      return res.status(403).json({ sucesso:false, erro:'Acesso não autorizado para esta manifestação.' });
+    }
     const agora = new Date().toISOString();
     let dados = {};
     if (acao === 'resposta_setor') {
@@ -1675,6 +1775,35 @@ app.patch('/api/manifestacoes/:id', requerPermissao('manifestacoes.editar'), asy
     if (responsavel !== undefined) dados.RESPONSAVEL = responsavel;
     if (!Object.keys(dados).length) return res.status(400).json({ sucesso:false, erro:'Nenhum campo para atualizar.' });
     await atualizarPorID('MANIFESTACOES', id, dados);
+    // Dual-write Postgres: reflete a edição no banco estruturado (status/tratativa/devolutiva/responsável)
+    if (manifestacaoRepo) {
+      try {
+        const pg = (await manifestacaoRepo.findByProtocolo(id).catch(() => null))
+                || (await manifestacaoRepo.findByIdOriginal(id).catch(() => null));
+        if (pg) {
+          const pgData = {};
+          if (dados.STATUS !== undefined) pgData.status = dados.STATUS;
+          if (dados.DATA_ENCERRAMENTO !== undefined) pgData.dataEncerramento = dados.DATA_ENCERRAMENTO ? new Date(dados.DATA_ENCERRAMENTO) : null;
+          let setorId = pg.setorId || null;
+          if (dados.SETOR_CONFIRMADO && typeof manifestacaoRepo.resolverSetorId === 'function') {
+            const sid = await manifestacaoRepo.resolverSetorId(pg.empresaId, dados.SETOR_CONFIRMADO);
+            if (sid) { pgData.setorId = sid; setorId = sid; }
+          }
+          if (dados.RESPONSAVEL && setorId && typeof manifestacaoRepo.resolverResponsavelId === 'function') {
+            const rid = await manifestacaoRepo.resolverResponsavelId(setorId, dados.RESPONSAVEL);
+            if (rid) pgData.responsavelId = rid;
+          }
+          if (Object.keys(pgData).length) await manifestacaoRepo.update(pg.id, pgData);
+          // Tratativa e devolutiva viram linhas nas tabelas próprias
+          if (dados.TRATATIVA_REALIZADA && typeof manifestacaoRepo.criarTratativa === 'function') {
+            await manifestacaoRepo.criarTratativa(pg.id, dados.TRATATIVA_REALIZADA, { setorId });
+          }
+          if ((dados.DEVOLUTIVA_FINAL || dados.DEVOLUTIVA_ENVIADA) && typeof manifestacaoRepo.criarDevolutiva === 'function') {
+            await manifestacaoRepo.criarDevolutiva(pg.id, dados.DEVOLUTIVA_FINAL || dados.DEVOLUTIVA_ENVIADA);
+          }
+        }
+      } catch (e) { console.warn('[PG] dual-write update manifestacao falhou:', e.message); }
+    }
     await registrarAuditoria(req.user?.usuario||'sistema','ATUALIZOU_MANIFESTAÇÃO',id,'MANIFESTACOES',null,dados);
     res.json({ sucesso:true, id, atualizado: dados });
   } catch(e){ res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
@@ -1749,6 +1878,7 @@ app.post('/api/manifestacoes/:id/tratativa/gerar', requerPerfil('MASTER','GESTOR
     const data = await lerAba('MANIFESTACOES',5000);
     const m = data.find(r=>r.ID_MANIFESTACAO===id);
     if (!m) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
+    if(!pertenceEmpresa(req.user?.empresa, m.EMPRESA_RECLAMADA)) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado para esta manifestação.'});
     const analise = await executarAnalise({ ...m, empresaReclamante: m.EMPRESA_RECLAMANTE, empresaReclamada: m.EMPRESA_RECLAMADA, descricao: m.DESCRICAO });
     const tratativa = analise.tratativaEstruturada;
     if (tratativa) await tratativaEngine.salvarTratativa(id, tratativa, req.user?.usuario||'sistema').catch(()=>{});
@@ -1793,6 +1923,9 @@ app.post('/api/manifestacoes/:id/tratativa/decisao', requerPerfil('MASTER','GEST
 app.post('/api/manifestacoes/:id/visualizacao', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','SETOR RESPONSÁVEL'), async (req,res)=>{
   try {
     const id=req.params.id;
+    const _manV = (await lerAba('MANIFESTACOES',5000)).find(r=>r.ID_MANIFESTACAO===id);
+    if(!_manV) return res.status(404).json({sucesso:false,erro:'Manifestação não encontrada.'});
+    if(!pertenceEmpresa(req.user?.empresa, _manV.EMPRESA_RECLAMADA)) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado para esta manifestação.'});
     const agora=new Date().toISOString();
     await garantirAbaComCabecalhos('LOG_VISUALIZACOES',['ID_MANIFESTACAO','USUARIO','NOME','PERFIL','DATA_HORA']).catch(()=>{});
     await appendObjeto('LOG_VISUALIZACOES',{ID_MANIFESTACAO:id,USUARIO:req.user.usuario,NOME:req.user.nome||req.user.usuario,PERFIL:req.user.perfil,DATA_HORA:agora});
@@ -1993,6 +2126,7 @@ const PROD_HEADERS = ['ID','TIPO_PRODUTO','PROCESSO','FAMILIA_PRODUTO','TEMPO_ME
 function colLetter(n){let s='';while(n>0){let r=(n-1)%26;s=String.fromCharCode(65+r)+s;n=Math.floor((n-1)/26);}return s;}
 const _abaCache = new Map(); // P015: cache de abas já verificadas (TTL 5min)
 async function garantirAbaComCabecalhos(nomeAba, headers){
+  if (_sheetsMock?.garantirAbaComCabecalhos) return _sheetsMock.garantirAbaComCabecalhos(nomeAba, headers);
   const cacheKey = `${nomeAba}:${headers.join(',')}`;
   const cached = _abaCache.get(cacheKey);
   if (cached && Date.now() - cached.ts < 300000) return cached.headers;
@@ -2035,6 +2169,7 @@ app.post('/api/setores', requerPerfil('MASTER'), async(req,res)=>{
     const id = await gerarProximoID('CONFIG_SETORES', 'SET', 'ID_SETOR');
     const obj = { ID_SETOR: id, SETOR, DESCRICAO: DESCRICAO||'', RESPONSAVEL: RESPONSAVEL||'', EMPRESA: EMPRESA||'', SLA_HORAS: SLA_HORAS||'72', ATIVO: ATIVO||'SIM' };
     await appendObjeto('CONFIG_SETORES', obj);
+    if (empresaRepo && typeof empresaRepo.criarSetor === 'function') await empresaRepo.criarSetor({ nome: SETOR, empresa: EMPRESA, descricao: DESCRICAO }).catch(e => console.warn('[F7] criarSetor PG:', e.message));
     await registrarAuditoria(req.user.usuario, 'CRIOU_SETOR', id, 'CONFIG_SETORES', null, obj);
     res.status(201).json({ sucesso: true, setor: obj });
   } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e) }); }
@@ -2048,6 +2183,10 @@ app.patch('/api/setores/:id', requerPerfil('MASTER'), async(req,res)=>{
     const dados = {};
     campos.forEach(c => { if (req.body[c] !== undefined) dados[c] = req.body[c]; });
     await atualizarPorID('CONFIG_SETORES', id, dados, ['ID_SETOR']);
+    if (empresaRepo && typeof empresaRepo.atualizarSetorPorCodigo === 'function') {
+      const _ativo = dados.ATIVO !== undefined ? (String(dados.ATIVO).toUpperCase() !== 'EXCLUIDO' && String(dados.ATIVO).toUpperCase() !== 'NÃO') : undefined;
+      await empresaRepo.atualizarSetorPorCodigo(id, { nome: dados.SETOR, descricao: dados.DESCRICAO, ativo: _ativo }).catch(e => console.warn('[F7] atualizarSetor PG:', e.message));
+    }
     const atualizado = await buscarPorID('CONFIG_SETORES', id, ['ID_SETOR']);
     await registrarAuditoria(req.user.usuario, 'ATUALIZOU_SETOR', id, 'CONFIG_SETORES', null, dados);
     res.json({ sucesso: true, setor: atualizado });
@@ -2058,6 +2197,7 @@ app.delete('/api/setores/:id', requerPerfil('MASTER'), async(req,res)=>{
   try {
     const id = req.params.id;
     await atualizarPorID('CONFIG_SETORES', id, { ATIVO: 'EXCLUIDO' }, ['ID_SETOR']);
+    if (empresaRepo && typeof empresaRepo.excluirSetorPorCodigo === 'function') await empresaRepo.excluirSetorPorCodigo(id).catch(e => console.warn('[F7] excluirSetor PG:', e.message));
     invalidarCacheAba('CONFIG_SETORES');
     await registrarAuditoria(req.user.usuario, 'EXCLUIU_SETOR', id, 'CONFIG_SETORES', null, {});
     res.json({ sucesso: true });
@@ -2483,6 +2623,12 @@ app.post('/api/calculadora/analisar-atraso', requerPerfil('MASTER','ANALISTA SAC
 app.patch('/api/manifestacoes/:id/diagnostico-atraso', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
   try {
     const b = req.body || {};
+    const todasMan = await lerAba('MANIFESTACOES', 5000);
+    const itemMan = todasMan.find(r => r.ID_MANIFESTACAO === req.params.id);
+    if (!itemMan) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
+    if (!pertenceEmpresa(req.user?.empresa, itemMan.EMPRESA_RECLAMADA)) {
+      return res.status(403).json({ sucesso:false, erro:'Acesso não autorizado para esta manifestação.' });
+    }
     const dados = {
       HOUVE_ATRASO: b.houveAtraso || '',
       PRAZO_PROMETIDO_DIAS: b.prazoPrometido != null ? String(b.prazoPrometido) : '',
@@ -2539,10 +2685,13 @@ app.get('/api/dashboard', middlewareEscopoEmpresa(), requerPermissao('dashboard.
     const _getSLA = r => (r['Dentro do Prazo? Cliente'] || r['Dentro do Prazo? Setor'] || r['Dentro do prazo? '] || r['Dentro do prazo?'] || '').toUpperCase().trim();
     const dentroPrazo = recComSLA.filter(r => { const v=_getSLA(r); return v==='SIM'||v==='S'; }).length;
     const slaPercent = recComSLA.length > 0 ? Math.round(dentroPrazo/recComSLA.length*100) : null;
+    const EMP_DISPLAY = { CHIACCHIO:'Chiacchio Embalagens', PLASCHIO:'Plaschio', TUBAHIA:'Tubahia', LOGCHIO:'Logchio', SOLARCHIO:'Solarchio', PREMOCHIO:'Premochio' };
     const porEmpresa = {};
     recs.forEach(r => {
-      const emp = (r['Empresa']||'').trim();
-      if(!emp) return;
+      const empRaw = (r['Empresa']||'').trim();
+      if(!empRaw) return;
+      const _cod = empresaCanonica(empRaw);
+      const emp = (_cod && EMP_DISPLAY[_cod]) ? EMP_DISPLAY[_cod] : empRaw;
       if(!porEmpresa[emp]) porEmpresa[emp]={total:0,finaliz:0,sla:0,foraSLA:0};
       porEmpresa[emp].total++;
       const st=(r['Status']||r['Situação Final']||'').toUpperCase();
@@ -2578,7 +2727,7 @@ app.get('/api/rnc', middlewareEscopoEmpresa(), requerPerfil('MASTER','ANALISTA S
         // B2: empresa vem do usuário autenticado, não do frontend
         const _isMasterRnc = req.user && perfilCanonico(req.user.perfil) === 'MASTER';
         if (_isMasterRnc && req.query.empresaId) filtros.empresaId = req.query.empresaId;
-        else if (!_isMasterRnc && req.user?.empresa) filtros.empresaId = req.user.empresa;
+        else if (!_isMasterRnc && req.user?.empresa) filtros.empresaId = await resolverEmpresaIdScope(req.user.empresa);
         if (req.query.status) filtros.status = req.query.status;
         const pgData = await rncRepo.findAll(filtros);
         if (pgData && pgData.length > 0) {
@@ -2843,7 +2992,17 @@ app.get('/api/setores-unicos', requerPerfil('MASTER','ANALISTA SAC','APROVADOR',
 
 app.get('/api/setores', middlewareEscopoEmpresa(), requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
   try {
-    // GET puro — sem criar/escrever abas. Se não existe, retorna vazio e frontend usa fallback.
+    // F7: tenta PostgreSQL primeiro (tabela setores)
+    if (empresaRepo && typeof empresaRepo.listarSetores === 'function') {
+      try {
+        const pgSetores = await empresaRepo.listarSetores();
+        if (pgSetores && pgSetores.length) {
+          const itens = filtrarPorEmpresaConfig(pgSetores.map(s => ({ ...s, _counts: {} })), req, 'EMPRESA');
+          return res.json({ sucesso:true, total:itens.length, itens, fonte:'postgresql' });
+        }
+      } catch (e) { console.warn('[F7] GET /setores PG falhou:', e.message); }
+    }
+    // Fallback Sheets — GET puro, sem criar/escrever abas.
     const data = await lerAba('CONFIG_SETORES', 500).catch(()=>[]);
     const base = data.filter(s => (s.ATIVO||'').toUpperCase() !== 'EXCLUIDO').map(s => ({ ...s, _counts: {} }));
     // EMPRESA vazia = global (visível a todos); EMPRESA preenchida = só para aquela empresa e MASTER
@@ -2935,6 +3094,7 @@ app.post('/api/politicas', requerPerfil('MASTER','ANALISTA SAC'), async (req, re
     const b = req.body||{};
     const obj = { ID_POLITICA: id, POLITICA: b.POLITICA||b.politica||'', SETOR_RESPONSAVEL: b.SETOR_RESPONSAVEL||b.setor||'', DESCRICAO: b.DESCRICAO||b.descricao||'', RESPONSAVEL: b.RESPONSAVEL||b.responsavel||'', DATA_CRIACAO: new Date().toLocaleDateString('pt-BR'), ATIVO: 'SIM' };
     await appendObjeto('POLITICAS', obj);
+    if (conhecimentoRepo) await conhecimentoRepo.criarPolitica({ empresa: b.EMPRESA || b.empresa, setor: obj.SETOR_RESPONSAVEL, titulo: obj.POLITICA, texto: obj.DESCRICAO, responsavel: obj.RESPONSAVEL }).catch(e => console.warn('[F9] criarPolitica PG:', e.message));
     res.json({ sucesso: true, id });
   } catch (e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e) }); }
 });
@@ -2946,6 +3106,7 @@ app.post('/api/procedimentos', requerPerfil('MASTER','ANALISTA SAC'), async (req
     const setor = b.SETOR_RESPONSAVEL||b.setor||'';
     const obj = { ID_PROCEDIMENTO: id, NOME: b.NOME||b.nome||'', SETOR_RESPONSAVEL: setor, DESCRICAO: b.DESCRICAO||b.descricao||'', PASSOS: b.PASSOS||b.passos||'', DATA_CRIACAO: new Date().toLocaleDateString('pt-BR'), ATIVO: 'SIM' };
     await appendObjeto('PROCEDIMENTOS', obj);
+    if (conhecimentoRepo) await conhecimentoRepo.criarProcedimento({ empresa: b.EMPRESA || b.empresa, setor, titulo: obj.NOME, texto: (obj.DESCRICAO + ' ' + obj.PASSOS).trim(), tipo: 'GERAL' }).catch(e => console.warn('[F9] criarProcedimento PG:', e.message));
     // Espelha em PROCEDIMENTOS_SETORES para aparecer na aba Setores
     if (setor) {
       await garantirAbaComCabecalhos('PROCEDIMENTOS_SETORES', PROCEDIMENTOS_HEADERS).catch(()=>{});
@@ -3033,7 +3194,7 @@ ${texto.slice(0, 6000)}`;
 // ===== PESQUISAS DE SATISFAÇÃO (aba interna PESQUISA_RESPOSTAS) =====
 app.get('/api/pesquisas/resumo', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), middlewareEscopoEmpresa(), async (req, res) => {
   try {
-    const todosDados = await lerAba('PESQUISA_RESPOSTAS', 5000).catch(()=>[]);
+    const todosDados = await lerRespostasPesquisa();
     const dados = filtrarPorEmpresaHistorico(todosDados, req, 'EMPRESA');
     const agora = new Date();
     const mesAtual = agora.getMonth();
@@ -3062,7 +3223,7 @@ app.get('/api/pesquisas/relatorio', requerPermissao('pesquisas.visualizar'), asy
     if (perfil !== 'MASTER' && req.user?.empresa) {
       empresa = req.user.empresa;
     }
-    const todasRespostas = await lerAba('PESQUISA_RESPOSTAS', 5000).catch(()=>[]);
+    const todasRespostas = await lerRespostasPesquisa();
     // Normaliza para campos canônicos (sem duplicar campos uppercase e camelCase)
     const dados = todasRespostas.map(r => ({
       Empresa: r.EMPRESA || '',
@@ -3171,7 +3332,7 @@ app.get('/api/pesquisas/relatorio', requerPermissao('pesquisas.visualizar'), asy
     // Metadados do relatório (status, versão)
     let relMeta = null;
     try {
-      const relRows = await lerAba('RELATORIOS_SAC', 500).catch(()=>[]);
+      const relRows = await lerRelatoriosSac();
       const chaveRel = `${empresa}|${ano}|${String(mes).padStart(2,'0')}`;
       const relRow = relRows.filter(r=>r.CHAVE===chaveRel).sort((a,b)=>Number(b.VERSAO||1)-Number(a.VERSAO||1))[0];
       if (relRow) relMeta = { id: relRow.ID_RELATORIO, status: relRow.STATUS, versao: Number(relRow.VERSAO||1), publicado_em: relRow.PUBLICADO_EM||'' };
@@ -3197,7 +3358,7 @@ app.post('/api/pesquisas/resposta-manual', requerPermissao('pesquisas.criar'), a
     const idResp = 'RSP-M-' + Date.now();
     const _HEADERS_RESP = ['ID_RESPOSTA','TOKEN','EMPRESA','NOME_CLIENTE','DATA','ATENDIMENTO','PRAZO_ENTREGA','QUALIDADE','RECOMENDACAO','COMENTARIO','NOTA_MEDIA','NOTA_BAIXA','STATUS_OCP'];
     await garantirAbaComCabecalhos('PESQUISA_RESPOSTAS', _HEADERS_RESP);
-    await appendObjeto('PESQUISA_RESPOSTAS', {
+    const _respManual = {
       ID_RESPOSTA: idResp, TOKEN: 'MANUAL', EMPRESA: empresa,
       NOME_CLIENTE: nome_cliente || '', DATA: dataResp,
       ATENDIMENTO: atendimento != null && atendimento !== '' ? String(atendimento) : '',
@@ -3205,7 +3366,9 @@ app.post('/api/pesquisas/resposta-manual', requerPermissao('pesquisas.criar'), a
       QUALIDADE: qualidade != null && qualidade !== '' ? String(qualidade) : '',
       RECOMENDACAO: recomendacao != null && recomendacao !== '' ? String(recomendacao) : '',
       COMENTARIO: comentario || '', NOTA_MEDIA: notaGeral, NOTA_BAIXA: notaBaixa, STATUS_OCP: '',
-    });
+    };
+    await appendObjeto('PESQUISA_RESPOSTAS', _respManual);
+    if (pesquisaRepo) await pesquisaRepo.criarResposta(_respManual).catch(e => console.warn('[F8] criarResposta PG:', e.message));
     invalidarCacheAba('PESQUISA_RESPOSTAS');
     registrarAuditoria(req.user?.usuario, 'REGISTROU_PESQUISA_MANUAL', idResp, 'PESQUISA_RESPOSTAS', null, { empresa, notaGeral }).catch(() => {});
     res.json({ sucesso: true, id: idResp, nota_media: notaGeral });
@@ -3362,7 +3525,7 @@ const REL_HEADERS = ['ID_RELATORIO','CHAVE','EMPRESA','ANO','MES','VERSAO','STAT
 app.get('/api/relatorios/lista', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req, res) => {
   try {
     const empresaScope = _mcEmpresaScope(req.user);
-    const rows = await lerAba('RELATORIOS_SAC', 500).catch(()=>[]);
+    const rows = await lerRelatoriosSac();
     let lista = rows;
     if (empresaScope) lista = lista.filter(r => pertenceEmpresa(empresaScope, r.EMPRESA||''));
     lista = lista.map(r => ({
@@ -3386,7 +3549,7 @@ app.post('/api/relatorios/gerar', requerPerfil('MASTER','ANALISTA SAC','APROVADO
     const chave = `${empresa}|${ano}|${String(mes).padStart(2,'0')}`;
     await garantirAbaComCabecalhos('RELATORIOS_SAC', REL_HEADERS);
     // Verifica se já existe rascunho para esta chave/versão
-    const rows = await lerAba('RELATORIOS_SAC', 500).catch(()=>[]);
+    const rows = await lerRelatoriosSac();
     const existentes = rows.filter(r=>r.CHAVE===chave);
     const maxVersao = existentes.reduce((m,r)=>Math.max(m,Number(r.VERSAO||1)),0);
     const id = `REL-${Date.now().toString(36).toUpperCase()}`;
@@ -3399,6 +3562,7 @@ app.post('/api/relatorios/gerar', requerPerfil('MASTER','ANALISTA SAC','APROVADO
       TEXTOS_JSON:'',
     };
     await appendObjeto('RELATORIOS_SAC', obj);
+    if (pesquisaRepo) await pesquisaRepo.criarRelatorio(obj).catch(e => console.warn('[F8] criarRelatorio PG:', e.message));
     invalidarCacheAba('RELATORIOS_SAC');
     res.json({ sucesso:true, id, versao:maxVersao+1 });
   } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
@@ -3409,7 +3573,7 @@ app.post('/api/relatorios/:id/publicar', requerPerfil('MASTER','ANALISTA SAC','A
     const { id } = req.params;
     const { textos, indicador, nps_score } = req.body||{};
     await garantirAbaComCabecalhos('RELATORIOS_SAC', REL_HEADERS);
-    const rows = await lerAba('RELATORIOS_SAC', 500).catch(()=>[]);
+    const rows = await lerRelatoriosSac();
     const idx = rows.findIndex(r=>r.ID_RELATORIO===id);
     if (idx<0) return res.status(404).json({ sucesso:false, erro:'Relatório não encontrado.' });
     const row = rows[idx];
@@ -3432,7 +3596,7 @@ app.post('/api/relatorios/:id/nova-versao', requerPerfil('MASTER','ANALISTA SAC'
   try {
     const { id } = req.params;
     await garantirAbaComCabecalhos('RELATORIOS_SAC', REL_HEADERS);
-    const rows = await lerAba('RELATORIOS_SAC', 500).catch(()=>[]);
+    const rows = await lerRelatoriosSac();
     const orig = rows.find(r=>r.ID_RELATORIO===id);
     if (!orig) return res.status(404).json({ sucesso:false, erro:'Relatório não encontrado.' });
     if (orig.STATUS!=='PUBLICADO') return res.status(400).json({ sucesso:false, erro:'Somente relatórios publicados podem ter nova versão.' });
@@ -3461,7 +3625,7 @@ app.post('/api/relatorios/:id/link', requerPerfil('MASTER','ANALISTA SAC','APROV
     const { id } = req.params;
     const { dados } = req.body||{}; // snapshot JSON dos dados do relatório
     await garantirAbaComCabecalhos('RELATORIOS_SAC', REL_HEADERS);
-    const rows = await lerAba('RELATORIOS_SAC', 500).catch(()=>[]);
+    const rows = await lerRelatoriosSac();
     const row = rows.find(r=>r.ID_RELATORIO===id);
     if (!row) return res.status(404).json({ sucesso:false, erro:'Relatório não encontrado.' });
     if (row.STATUS!=='PUBLICADO') return res.status(400).json({ sucesso:false, erro:'Somente relatórios publicados podem ser compartilhados.' });
@@ -3491,7 +3655,7 @@ app.get('/relatorio-publico/:token', async (req, res) => {
   try {
     const { token } = req.params;
     if (!token || token.length < 10) return res.status(400).send('Token inválido.');
-    const rows = await lerAba('RELATORIOS_SAC', 500).catch(()=>[]);
+    const rows = await lerRelatoriosSac();
     const row = rows.find(r=>r.LINK_TOKEN===token);
     if (!row || row.STATUS!=='PUBLICADO') return res.status(404).send('Relatório não encontrado ou não publicado.');
     let dados = {};
@@ -3937,9 +4101,35 @@ app.post('/api/pesquisas/tokens/:token/abrir', async (req, res) => {
 });
 
 // Rota pública por token
+// Página pública dedicada (fora da ferramenta): servida quando o cliente acessa
+// /pesquisa sem token, ou apaga parte da URL. Antes isso redirecionava para "/"
+// (tela de login do sistema interno) — agora mostra uma página neutra e segura.
+const _pesquisaLandingHTML = () => `<!doctype html><html lang="pt-BR"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow"><title>Pesquisa de Satisfação — Grupo Chiacchio</title>
+<style>body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#F4F5F7;color:#2A2A2A;display:flex;min-height:100vh;align-items:center;justify-content:center;padding:24px}
+.card{background:#fff;border:1px solid #E4E4E4;border-radius:14px;max-width:460px;width:100%;padding:32px;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,.05)}
+h1{font-size:19px;margin:14px 0 6px;color:#B9171A}p{font-size:14px;line-height:1.6;color:#555}
+.badge{display:inline-flex;align-items:center;justify-content:center;width:56px;height:56px;border-radius:50%;background:#FDECEC;color:#B9171A;font-size:26px}
+.hint{margin-top:18px;font-size:12.5px;color:#8A8A8A;border-top:1px solid #EFEFEF;padding-top:14px}</style></head>
+<body><div class="card"><div class="badge">★</div>
+<h1>Pesquisa de Satisfação</h1>
+<p>Esta é a página de pesquisa de satisfação do <strong>Grupo Chiacchio</strong>.</p>
+<p>Para responder, use o <strong>link completo</strong> que você recebeu por e-mail ou WhatsApp. Se o link não estiver funcionando, entre em contato com o nosso SAC.</p>
+<div class="hint">Sua opinião é muito importante para nós. Obrigado!</div></div></body></html>`;
+
+app.get(['/pesquisa','/pesquisa/'], (req, res) => {
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(_pesquisaLandingHTML());
+});
+
 app.get('/pesquisa/:token', async (req, res) => {
   const token = String(req.params.token||'').replace(/[^A-Za-z0-9_\-]/g,'');
-  if (token.length < 6) return res.redirect('/');
+  // URL incompleta / token aparado → página pública neutra (nunca a tela de login)
+  if (token.length < 6) {
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    return res.send(_pesquisaLandingHTML());
+  }
   // Tokens curtos como 'chiacchio','plaschio','tubahia' => legado
   if (['chiacchio','plaschio','tubahia','cesbap'].includes(token.toLowerCase())) {
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
@@ -4013,7 +4203,7 @@ app.get('/api/notificacoes/analista', requerPerfil('MASTER','ANALISTA SAC','GEST
     const [ocps, mans, respostas] = await Promise.all([
       lerAba('PESQUISA_OCORRENCIAS', 500).catch(()=>[]),
       lerAba('MANIFESTACOES', 5000).catch(()=>[]),
-      lerAba('PESQUISA_RESPOSTAS', 500).catch(()=>[]),
+      lerRespostasPesquisa(),
     ]);
     const ocpsPendentes = ocps.filter(o =>
       String(o.STATUS||'').toUpperCase() === 'PENDENTE' &&
@@ -4053,7 +4243,7 @@ app.get('/api/pesquisas/ocorrencias', requerPerfil('MASTER','ANALISTA SAC','APRO
     const scope = _pf === 'MASTER' ? null : (req.user?.empresa||null);
     const itens = rows.filter(r => !scope || pertenceEmpresa(scope, r.EMPRESA||''));
     // Juntar dados da resposta
-    const respostas = await lerAba('PESQUISA_RESPOSTAS', 2000).catch(()=>[]);
+    const respostas = await lerRespostasPesquisa();
     const enriched = itens.map(ocp => {
       const resp = respostas.find(r => r.TOKEN === ocp.TOKEN);
       return { ...ocp, resposta: resp || null };
@@ -4862,6 +5052,9 @@ app.post('/api/manifestacoes/:id/sugestoes', requerPerfil('MASTER','APROVADOR'),
   try {
     const {usuario,tipoSugestao,sugestao,justificativa}=req.body||{};
     if(!usuario||!tipoSugestao||!sugestao) return res.status(400).json({sucesso:false,erro:'Campos obrigatórios faltando.'});
+    const _manS = (await lerAba('MANIFESTACOES',5000)).find(r=>r.ID_MANIFESTACAO===req.params.id);
+    if(!_manS) return res.status(404).json({sucesso:false,erro:'Manifestação não encontrada.'});
+    if(!pertenceEmpresa(req.user?.empresa, _manS.EMPRESA_RECLAMADA)) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado para esta manifestação.'});
     const id=await gerarProximoID('SUGESTOES_APROVADOR','SUG','ID_SUGESTAO');
     await appendObjeto('SUGESTOES_APROVADOR',{ID_SUGESTAO:id,ID_MANIFESTACAO:req.params.id,ID_APROVADOR:usuario,TIPO_SUGESTAO:tipoSugestao,SUGESTAO:sugestao,JUSTIFICATIVA:justificativa||'',DATA_SUGESTAO:new Date().toISOString(),STATUS:'PENDENTE'});
     res.json({sucesso:true,id,status:'PENDENTE'});
@@ -6751,7 +6944,16 @@ async function carregarPermissoesUsuario(emailOuId) {
   const modulos = {};
   const competencias = [];
   for (const r of userRows) {
-    if (r.MODULO && r.NIVEL!==undefined) modulos[r.MODULO] = Number(r.NIVEL)||0;
+    if (r.MODULO) {
+      const raw = String(r.MODULO).trim();
+      if (raw.startsWith('{')) {
+        // Formato novo: MODULO guarda um JSON { DASHBOARD: 2, MANIFESTACOES: 1, ... }
+        try { for (const [m, n] of Object.entries(JSON.parse(raw))) modulos[m] = Number(n) || 0; } catch(e) {}
+      } else if (r.NIVEL !== undefined) {
+        // Formato legado: uma linha por módulo, nível em NIVEL
+        modulos[raw] = Number(r.NIVEL) || 0;
+      }
+    }
     if (r.COMPETENCIAS) r.COMPETENCIAS.split(',').map(c=>c.trim()).filter(Boolean).forEach(c=>competencias.push(c));
   }
   const data = { modulos, competencias: [...new Set(competencias)] };
@@ -6953,6 +7155,8 @@ app.post('/api/admin/solicitacoes/:id/aprovar', requerPerfil('MASTER'), async (r
       ALTERADO_POR: req.user.usuario||req.user.email||'MASTER',
       ULTIMO_ACESSO: '',
       CODIGO_RCA: '',
+      // Fonte enforced: traduz os níveis de módulo em chaves granulares
+      PERMISSOES_GRANTED: JSON.stringify(permissoesGranularDeModulos(modulosNiveis || {})),
     };
     await appendObjeto('USUARIOS', novoUsuario);
 
@@ -7059,6 +7263,11 @@ app.patch('/api/admin/usuarios/:id/permissoes', requerPerfil('MASTER'), async (r
     }
     if (setor) updates.SETOR = setor;
     if (email) updates.EMAIL = email;
+    // Fonte enforced: ao salvar níveis de módulo, grava também as chaves granulares
+    // em PERMISSOES_GRANTED para que o acesso valha nas rotas e na UI.
+    if (modulosNiveis !== undefined) {
+      updates.PERMISSOES_GRANTED = JSON.stringify(permissoesGranularDeModulos(modulosNiveis || {}));
+    }
     await atualizarPorID('USUARIOS', u.ID_USUARIO||u.USUARIO, updates, ['ID_USUARIO','USUARIO','EMAIL']);
 
     // Atualiza linha de permissões
@@ -7085,6 +7294,8 @@ app.patch('/api/admin/usuarios/:id/permissoes', requerPerfil('MASTER'), async (r
       }
     }
     invalidarCachePermissoes(u.EMAIL||u.USUARIO||u.ID_USUARIO);
+    _statusCache.delete(normalizarTexto(u.USUARIO||u.EMAIL||u.ID_USUARIO));
+    _statusCache.delete(u.USUARIO||u.EMAIL||u.ID_USUARIO);
     await registrarAuditoriaAcesso(u.EMAIL||u.USUARIO, 'PERMISSOES_ALTERADAS', JSON.stringify(modulosNiveis||{}), empresa||u.EMPRESA, JSON.stringify(anterior), JSON.stringify(updates), req.user.usuario||'MASTER');
     res.json({sucesso:true, mensagem:'Permissões atualizadas.'});
   } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
@@ -7332,7 +7543,18 @@ app.post('/api/matriz-tratamento', requerPerfil('MASTER','ANALISTA SAC'), async 
       DATA_CRIACAO:new Date().toISOString(),
       CRIADO_POR:req.user.usuario
     };
-    await appendObjeto('MATRIZ_TRATAMENTO',obj);
+    await appendObjeto('MATRIZ_TRATAMENTO',obj).catch(e => console.warn('[matriz] Sheets falhou (seguindo p/ PG):', e.message));
+    if (conhecimentoRepo && typeof conhecimentoRepo.upsertMatriz === 'function') await conhecimentoRepo.upsertMatriz({
+      empresa: obj.EMPRESA, tipo: obj.TIPO_MANIFESTACAO, categoria: obj.CAUSA, subcategoria: obj.SUBCAUSA, setor: obj.SETOR_RESPONSAVEL,
+      dados: {
+        idOriginal: id, prioridade: obj.PRIORIDADE || null,
+        prazoTratativa: obj.SLA_HORAS ? (parseInt(obj.SLA_HORAS, 10) || null) : null,
+        tratativaObrigatoria: obj.TRATATIVA_PADRAO || null,
+        modeloDevolutiva: obj.DEVOLUTIVA_PADRAO || null,
+        necessitaAprovacao: String(obj.REQUER_APROVACAO).toUpperCase() === 'SIM',
+        ativo: obj.ATIVO !== 'NAO',
+      },
+    }).catch(e => console.warn('[F10] upsertMatriz PG:', e.message));
     await registrarAuditoria(req.user.usuario,'CRIOU_REGRA_MATRIZ',id,'MATRIZ_TRATAMENTO',null,{causa:obj.CAUSA});
     res.json({sucesso:true,regra:obj});
   } catch(e){ res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
@@ -7496,7 +7718,7 @@ app.post('/api/pesquisas/resposta/:token', publicRateLimit, async (req, res) => 
     const notaGeral = _notaVals.length ? (_notaVals.reduce((a,b)=>a+b,0)/_notaVals.length).toFixed(1) : '';
     const NOTA_CRITICA = Number(process.env.PESQUISA_NOTA_CRITICA||6);
     const notaBaixa = _notaVals.length && _notaVals.some(n => n <= NOTA_CRITICA) ? 'SIM' : 'NAO';
-    await appendObjeto('PESQUISA_RESPOSTAS', {
+    const _respObj = {
       ID_RESPOSTA: idResp, TOKEN: token, EMPRESA: tk.EMPRESA || '',
       NOME_CLIENTE: tk.NOME_CLIENTE || '', DATA: new Date().toISOString(),
       ATENDIMENTO: _notaMap.ATENDIMENTO != null ? String(_notaMap.ATENDIMENTO) : '',
@@ -7504,7 +7726,9 @@ app.post('/api/pesquisas/resposta/:token', publicRateLimit, async (req, res) => 
       QUALIDADE: _notaMap.QUALIDADE != null ? String(_notaMap.QUALIDADE) : '',
       RECOMENDACAO: _notaMap.RECOMENDACAO != null ? String(_notaMap.RECOMENDACAO) : '',
       COMENTARIO: comentario || '', NOTA_MEDIA: notaGeral, NOTA_BAIXA: notaBaixa, STATUS_OCP: '',
-    });
+    };
+    await appendObjeto('PESQUISA_RESPOSTAS', _respObj);
+    if (pesquisaRepo) await pesquisaRepo.criarResposta(_respObj).catch(e => console.warn('[F8] criarResposta PG:', e.message));
     // Marcar token como respondido
     await atualizarPorID('PESQUISA_TOKENS', token, { RESPONDIDO_EM: new Date().toISOString() }, ['TOKEN']).catch(()=>{});
     invalidarCacheAba('PESQUISA_RESPOSTAS');
@@ -7575,7 +7799,7 @@ app.get('/api/importacao/pendencias', requerPerfil('MASTER'), async (req, res) =
     // Verificar pendências de dados: tokens sem resposta, manifestações sem causa, etc.
     const [tokens, respostas, manifestacoes] = await Promise.all([
       lerAba('PESQUISA_TOKENS', 5000).catch(()=>[]),
-      lerAba('PESQUISA_RESPOSTAS', 5000).catch(()=>[]),
+      lerRespostasPesquisa(),
       lerAba('MANIFESTACOES', 5000).catch(()=>[]),
     ]);
     const tksRespondidos = new Set(respostas.map(r => r.TOKEN));
@@ -7733,6 +7957,8 @@ Analise o conteúdo abaixo (arquivo: "${nome||'sem nome'}", tipo: "${tipo_arquiv
 
 TIPOS POSSÍVEIS: MANIFESTACAO, HISTORICO, PROCEDIMENTO, POLITICA, CAUSA, MATRIZ, CONHECIMENTO, SETOR, CLIENTE, PRODUTO, REPRESENTANTE, RNC, PESQUISA, DESCONHECIDO.
 
+6. EXTRAIA os registros reais de cada tipo (uma linha/objeto por registro), com os campos que você conseguir identificar.
+
 Responda SOMENTE em JSON válido, no formato:
 {
   "resumo": "frase curta do que foi encontrado",
@@ -7744,12 +7970,14 @@ Responda SOMENTE em JSON válido, no formato:
       "confianca": 0-100,
       "destino_label": "nome amigável do destino",
       "campos_identificados": ["campo1","campo2"],
+      "registros": [ { "CAMPO": "valor", "...": "..." } ],
       "alertas": ["alerta opcional"]
     }
   ],
   "pendencias": ["item não classificado com certeza"],
   "conflitos_potenciais": ["conflito detectado"]
 }
+Em "registros", devolva os dados efetivos extraídos do conteúdo (não invente). Para MANIFESTACAO use campos como EMPRESA_RECLAMANTE, EMPRESA_RECLAMADA, CONTATO, PRODUTO, DESCRICAO, TIPO, DATA_ABERTURA quando houver.
 
 CONTEÚDO:
 ${String(conteudo).slice(0,8000)}`;
@@ -7767,7 +7995,7 @@ ${String(conteudo).slice(0,8000)}`;
     // Enriquecer cada item com info de destino
     const itensEnriquecidos = (resultado.itens||[]).map(item=>{
       const dest = DESTINOS_ALIMENTACAO[item.tipo] || DESTINOS_ALIMENTACAO['DESCONHECIDO'];
-      return { ...item, aba_destino: dest.aba, modulos_afetados: dest.modulos, destino_label: item.destino_label || dest.label };
+      return { ...item, registros: Array.isArray(item.registros) ? item.registros : [], aba_destino: dest.aba, modulos_afetados: dest.modulos, destino_label: item.destino_label || dest.label };
     });
 
     res.json({sucesso:true, nome, resumo:resultado.resumo, itens:itensEnriquecidos, pendencias:resultado.pendencias||[], conflitos_potenciais:resultado.conflitos_potenciais||[]});
@@ -7796,6 +8024,16 @@ app.post('/api/alimentacao/confirmar', requerPerfil('MASTER','GESTOR SAC'), asyn
       for (const reg of registros) {
         try {
           const obj = { ...reg, LOTE_IMPORTACAO: loteId, DATA_IMPORTACAO: agora, IMPORTADO_POR: usuario||req.user?.usuario||'sistema', ORIGEM_ARQUIVO: lote_nome||'' };
+          // Defaults para a manifestação importada aparecer nas listagens e respeitar o isolamento por empresa
+          if (aba_destino === 'MANIFESTACOES') {
+            if (!obj.ID_MANIFESTACAO) obj.ID_MANIFESTACAO = await gerarProximoID('MANIFESTACOES','MAN','ID_MANIFESTACAO');
+            if (!obj.DATA_ABERTURA) obj.DATA_ABERTURA = agora;
+            if (!obj.DATA_REGISTRO) obj.DATA_REGISTRO = agora;
+            if (!obj.STATUS) obj.STATUS = 'ABERTA';
+            if (!obj.ORIGEM) obj.ORIGEM = 'ALIMENTACAO';
+            if (!obj.USUARIO_CRIACAO) obj.USUARIO_CRIACAO = usuario||req.user?.usuario||'sistema';
+            if (!obj.EMPRESA_RECLAMADA && (item.empresa||reg.EMPRESA_RECLAMADA||reg.EMPRESA)) obj.EMPRESA_RECLAMADA = item.empresa||reg.EMPRESA_RECLAMADA||reg.EMPRESA;
+          }
           await appendObjeto(aba_destino, obj);
           publicados++;
         } catch(regErr) {

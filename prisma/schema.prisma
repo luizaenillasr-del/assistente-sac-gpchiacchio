@@ -99,6 +99,7 @@ model Usuario {
   senhaHash    String   @map("senha_hash")
   ativo        Boolean  @default(true)
   idOriginal   String?  @map("id_original") // ID legado da planilha
+  ultimoAcesso DateTime? @map("ultimo_acesso")
   criadoEm    DateTime @default(now()) @map("criado_em")
   atualizadoEm DateTime @updatedAt @map("atualizado_em")
 
@@ -275,6 +276,10 @@ model Manifestacao {
   feedbacksIa      FeedbackIa[]
   resultados       ResultadoTratamento[]
 
+  @@index([empresaId, status])
+  @@index([status])
+  @@index([dataAbertura])
+  @@index([criadaEm])
   @@map("manifestacoes")
 }
 
@@ -293,6 +298,7 @@ model ManifestacaoHistorico {
 
   manifestacao   Manifestacao @relation(fields: [manifestacaoId], references: [id])
 
+  @@index([manifestacaoId])
   @@map("manifestacao_historico")
 }
 
@@ -357,6 +363,7 @@ model Tratativa {
   acoes             TratativaAcao[]
   devolutivas       Devolutiva[]
 
+  @@index([manifestacaoId])
   @@map("tratativas")
 }
 
@@ -406,6 +413,7 @@ model Devolutiva {
   tratativa      Tratativa?   @relation(fields: [tratativaId], references: [id])
   usuario        Usuario?     @relation(fields: [usuarioId], references: [id])
 
+  @@index([manifestacaoId])
   @@map("devolutivas")
 }
 
@@ -443,6 +451,8 @@ model Rnc {
   acoes            RncAcao[]
   eficacia         RncEficacia[]
 
+  @@index([empresaId, status])
+  @@index([dataAbertura])
   @@map("rncs")
 }
 
@@ -737,4 +747,50 @@ model VersaoCerebro {
   lancadaEm DateTime @default(now()) @map("lancada_em")
 
   @@map("versoes_cerebro")
+}
+
+// ──────────────────────────────────────────────────────────────────
+// PESQUISA DE SATISFAÇÃO
+// ──────────────────────────────────────────────────────────────────
+model PesquisaResposta {
+  id            Int       @id @default(autoincrement())
+  idOriginal    String?   @unique @map("id_original") // ID_RESPOSTA da planilha
+  token         String?
+  empresa       String
+  nomeCliente   String?   @map("nome_cliente")
+  data          DateTime  @default(now())
+  atendimento   Int?
+  prazoEntrega  Int?      @map("prazo_entrega")
+  qualidade     Int?
+  recomendacao  Int?
+  comentario    String?
+  notaMedia     Float?    @map("nota_media")
+  notaBaixa     Boolean   @default(false) @map("nota_baixa")
+  statusOcp     String?   @map("status_ocp")
+  criadaEm      DateTime  @default(now()) @map("criada_em")
+
+  @@index([empresa])
+  @@map("pesquisa_respostas")
+}
+
+model RelatorioSac {
+  id          Int       @id @default(autoincrement())
+  idOriginal  String?   @unique @map("id_original") // ID_RELATORIO da planilha
+  chave       String    // empresa|ano|mes
+  empresa     String
+  ano         String
+  mes         String
+  versao      Int       @default(1)
+  status      String    @default("RASCUNHO") // RASCUNHO | PUBLICADO
+  indicador   String?
+  npsScore    String?   @map("nps_score")
+  textosJson  String?   @map("textos_json")
+  dadosJson   String?   @map("dados_json")
+  linkToken   String?   @map("link_token")
+  criadoPor   String?   @map("criado_por")
+  publicadoEm DateTime? @map("publicado_em")
+  criadoEm    DateTime  @default(now()) @map("criado_em")
+
+  @@index([chave])
+  @@map("relatorios_sac")
 }

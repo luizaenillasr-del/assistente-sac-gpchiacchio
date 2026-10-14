@@ -11,7 +11,7 @@ const rncRepository = {
         manifestacao: true,
         investigacoes: true,
         acoes: true,
-        eficacias: true,
+        eficacia: true,
       },
     });
   },

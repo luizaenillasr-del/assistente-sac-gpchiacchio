@@ -210,9 +210,52 @@ async function gerarSugestoes() {
   return { metricas, sugestoes };
 }
 
+/**
+ * Aprendizado: resume o histórico de avaliações de assertividade (ASSERTIVIDADE_IA)
+ * para um contexto (setor/causa/tipo), permitindo que a ferramenta "se alimente"
+ * das avaliações ao gerar novas sugestões. Puramente baseado em dados (sem IA).
+ */
+function aprendizadoPorContexto(rows, contexto = {}) {
+  const norm = s => String(s || '').trim().toUpperCase();
+  const setor = norm(contexto.setor);
+  const causa = norm(contexto.causa);
+  const lista = Array.isArray(rows) ? rows : [];
+  // casos relevantes: mesmo setor OU mesma causa; se nada casar, usa os mais recentes
+  let relevantes = lista.filter(r =>
+    (setor && norm(r.SETOR_CONFIRMADO) === setor) || (causa && norm(r.CAUSA_CONFIRMADA) === causa)
+  );
+  let escopo = 'contexto';
+  if (!relevantes.length) { relevantes = lista.slice(-30); escopo = 'geral'; }
+  if (!relevantes.length) return null;
+
+  const total = relevantes.length;
+  const aceitas = relevantes.filter(r => norm(r.DECISAO_ACEITA) === 'SIM').length;
+  const taxaAssertividade = Math.round((aceitas / total) * 100);
+  const moda = (campo) => {
+    const cont = {};
+    relevantes.forEach(r => { const v = String(r[campo] || '').trim(); if (v) cont[v] = (cont[v] || 0) + 1; });
+    const top = Object.entries(cont).sort((a, b) => b[1] - a[1])[0];
+    return top ? { valor: top[0], vezes: top[1] } : null;
+  };
+  const comentariosAtencao = relevantes
+    .filter(r => norm(r.DECISAO_ACEITA) !== 'SIM' && String(r.OBSERVACAO || '').trim())
+    .slice(-3)
+    .map(r => String(r.OBSERVACAO).trim());
+
+  return {
+    escopo,
+    totalAvaliacoes: total,
+    taxaAssertividade,
+    setorMaisConfirmado: moda('SETOR_CONFIRMADO'),
+    causaMaisConfirmada: moda('CAUSA_CONFIRMADA'),
+    comentariosAtencao,
+  };
+}
+
 module.exports = {
   registrarDecisao,
   calcularMetricas,
   registrarResultado,
   gerarSugestoes,
+  aprendizadoPorContexto,
 };
