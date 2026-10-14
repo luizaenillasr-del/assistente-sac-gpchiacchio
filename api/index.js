@@ -322,8 +322,18 @@ function perfilCanonico(v){
     'responsavel rca':'RCA / REPRESENTANTE','responsável rca':'RCA / REPRESENTANTE',
     // DIRETOR
     'diretor':'DIRETOR','diretora':'DIRETOR','director':'DIRETOR',
-    // VISUALIZADOR
+    // VISUALIZADOR / AUDITOR
     'visualizador':'VISUALIZADOR','consulta':'VISUALIZADOR','auditor':'AUDITOR',
+    // PERFIS SETORIAIS
+    'setor sac':'SETOR SAC',
+    'setor comercial':'SETOR COMERCIAL','comercial':'SETOR COMERCIAL',
+    'setor logistica':'SETOR LOGISTICA','setor logística':'SETOR LOGISTICA','logistica':'SETOR LOGISTICA','logística':'SETOR LOGISTICA',
+    'setor producao':'SETOR PRODUCAO','setor produção':'SETOR PRODUCAO','producao':'SETOR PRODUCAO','produção':'SETOR PRODUCAO',
+    'setor qualidade':'SETOR QUALIDADE','qualidade':'SETOR QUALIDADE',
+    'setor financeiro':'SETOR FINANCEIRO','financeiro':'SETOR FINANCEIRO',
+    'setor ti':'SETOR TI','ti':'SETOR TI','tecnologia':'SETOR TI',
+    'setor marketing':'SETOR MARKETING','marketing':'SETOR MARKETING',
+    'setor diretoria':'SETOR DIRETORIA','diretoria':'SETOR DIRETORIA',
   };
   return map[x]||String(v||'').toUpperCase();
 }
@@ -385,16 +395,108 @@ const _PERM_PADRAO_API = {
   'DIRETOR':            ['manifestacoes.visualizar','pesquisas.visualizar','dashboard.visualizar','dashboard.gerenciar','rca.visualizar'],
   'VISUALIZADOR':       ['manifestacoes.visualizar','dashboard.visualizar','pesquisas.visualizar'],
   'AUDITOR':            ['manifestacoes.visualizar','manifestacoes.gerenciar','dashboard.visualizar'],
+  // Perfis setoriais — representam colaboradores de setores internos com acesso restrito ao SAC
+  'SETOR SAC':          ['manifestacoes.visualizar','manifestacoes.abrir','manifestacoes.editar','manifestacoes.gerenciar','cerebro.visualizar','cerebro.adicionar_conteudo','cerebro.editar_conteudo','pesquisas.visualizar','pesquisas.criar','dashboard.visualizar','aprovacoes.visualizar'],
+  'SETOR COMERCIAL':    ['manifestacoes.visualizar','manifestacoes.editar','rca.visualizar','rca.criar','dashboard.visualizar'],
+  'SETOR LOGISTICA':    ['manifestacoes.visualizar','manifestacoes.editar','cerebro.visualizar','dashboard.visualizar'],
+  'SETOR PRODUCAO':     ['manifestacoes.visualizar','manifestacoes.editar','cerebro.visualizar','dashboard.visualizar'],
+  'SETOR QUALIDADE':    ['manifestacoes.visualizar','manifestacoes.editar','manifestacoes.aprovar','cerebro.visualizar','cerebro.adicionar_conteudo','cerebro.editar_conteudo','cerebro.adicionar_regras','cerebro.adicionar_politicas','dashboard.visualizar','aprovacoes.visualizar','aprovacoes.aprovar','aprovacoes.rejeitar'],
+  'SETOR FINANCEIRO':   ['manifestacoes.visualizar','manifestacoes.editar','dashboard.visualizar','pesquisas.visualizar'],
+  'SETOR TI':           ['manifestacoes.visualizar','cerebro.visualizar','cerebro.gerenciar','dashboard.visualizar','configuracoes.visualizar','configuracoes.editar'],
+  'SETOR MARKETING':    ['manifestacoes.visualizar','pesquisas.visualizar','dashboard.visualizar'],
+  'SETOR DIRETORIA':    ['manifestacoes.visualizar','pesquisas.visualizar','dashboard.visualizar','dashboard.gerenciar','aprovacoes.visualizar','aprovacoes.aprovar','aprovacoes.rejeitar','rca.visualizar'],
+};
+
+// Mapeamento chaves granulares da UI → chaves de enforcement das rotas API
+// Permite que permissões concedidas via UI (chaves novas) sejam reconhecidas pelas rotas (chaves antigas)
+const _CHAVE_UI_PARA_API = {
+  'manifestacoes.criar':       'manifestacoes.abrir',
+  'manifestacoes.excluir':     'manifestacoes.gerenciar',
+  'manifestacoes.encaminhar':  'manifestacoes.editar',
+  'manifestacoes.classificar': 'manifestacoes.editar',
+  'manifestacoes.historico':   'manifestacoes.visualizar',
+  'manifestacoes.anexar':      'manifestacoes.editar',
+  'manifestacoes.evidencias':  'manifestacoes.visualizar',
+  'manifestacoes.reabrir':     'manifestacoes.editar',
+  'manifestacoes.encerrar':    'manifestacoes.gerenciar',
+  'manifestacoes.arquivar':    'manifestacoes.gerenciar',
+  'manifestacoes.desarquivar': 'manifestacoes.gerenciar',
+  'aprovacoes.reprovar':       'aprovacoes.rejeitar',
+  'aprovacoes.devolver':       'aprovacoes.rejeitar',
+  'aprovacoes.parecer':        'aprovacoes.visualizar',
+  'aprovacoes.pendentes':      'aprovacoes.visualizar',
+  'rnc.abrir':                 'manifestacoes.editar',
+  'rnc.editar':                'manifestacoes.editar',
+  'rnc.visualizar':            'manifestacoes.visualizar',
+  'rnc.aprovar':               'manifestacoes.aprovar',
+  'fichas.acessar':            'manifestacoes.visualizar',
+  'fichas.exportar':           'manifestacoes.gerenciar',
+  'fichas.arquivar':           'manifestacoes.gerenciar',
+  'fichas.desarquivar':        'manifestacoes.gerenciar',
+  'cerebro.consultar':         'cerebro.visualizar',
+  'cerebro.criar':             'cerebro.adicionar_conteudo',
+  'cerebro.editar':            'cerebro.editar_conteudo',
+  'cerebro.faqs':              'cerebro.editar_faq',
+  'cerebro.procedimentos':     'cerebro.adicionar_politicas',
+  'cerebro.politicas':         'cerebro.adicionar_politicas',
+  'cerebro.regras':            'cerebro.adicionar_regras',
+  'cerebro.setores':           'cerebro.gerenciar',
+  'cerebro.responsabilidades': 'cerebro.gerenciar',
+  'cerebro.matriz':            'cerebro.gerenciar',
+  'cerebro.submeter':          'cerebro.editar_conteudo',
+  'cerebro.aprovar':           'cerebro.gerenciar',
+  'cerebro.publicar':          'cerebro.gerenciar',
+  'ia.acessar':                'cerebro.visualizar',
+  'indicadores.visualizar':    'dashboard.visualizar',
+  'indicadores.empresa':       'dashboard.visualizar',
+  'indicadores.setor':         'dashboard.visualizar',
+  'indicadores.sla':           'dashboard.visualizar',
+  'indicadores.reincidencias': 'dashboard.visualizar',
+  'indicadores.ia':            'dashboard.visualizar',
+  'indicadores.exportar':      'dashboard.gerenciar',
+  'pesquisas.respostas':       'pesquisas.visualizar',
+  'pesquisas.filtros':         'pesquisas.visualizar',
+  'pesquisas.empresa':         'pesquisas.visualizar',
+  'pesquisas.periodo':         'pesquisas.visualizar',
+  'pesquisas.criticas':        'pesquisas.visualizar',
+  'pesquisas.encaminhar':      'pesquisas.criar',
+  'pesquisas.exportar':        'pesquisas.gerenciar',
+  'usuarios.bloquear':         'usuarios.gerenciar',
+  'usuarios.ativar':           'usuarios.gerenciar',
+  'usuarios.excluir':          'usuarios.gerenciar',
+  'usuarios.perfil':           'usuarios.editar',
+  'usuarios.escopo':           'usuarios.editar',
+  'usuarios.historico':        'usuarios.visualizar',
+  'config.consultar':          'configuracoes.visualizar',
+  'config.editar':             'configuracoes.editar',
+  'config.sla':                'configuracoes.editar',
+  'auditoria.logs':            'configuracoes.visualizar',
+  'auditoria.exportar':        'configuracoes.gerenciar',
+  'auditoria.historico':       'configuracoes.visualizar',
 };
 
 // Verifica se o usuário tem uma permissão: bloqueadas > concedidas > padrão do perfil
 function usuarioTemPermissao(user, chave) {
   const p = perfilCanonico(user?.perfil || '');
   if (p === 'MASTER') return true;
-  // blocked by Master → denied
-  if (Array.isArray(user?.permissoes_blocked) && user.permissoes_blocked.includes(chave)) return false;
-  // explicitly granted by Master → allowed
-  if (Array.isArray(user?.permissoes_granted) && user.permissoes_granted.includes(chave)) return true;
+  // blocked by Master → denied (verifica chave direta e alias)
+  const blocked = user?.permissoes_blocked;
+  if (Array.isArray(blocked)) {
+    if (blocked.includes(chave)) return false;
+    // se a chave da UI mapeia para esta chave de API e a chave UI está bloqueada, também bloqueia
+    for (const [uiKey, apiKey] of Object.entries(_CHAVE_UI_PARA_API)) {
+      if (apiKey === chave && blocked.includes(uiKey)) return false;
+    }
+  }
+  // explicitly granted by Master → allowed (verifica chave direta e alias)
+  const granted = user?.permissoes_granted;
+  if (Array.isArray(granted)) {
+    if (granted.includes(chave)) return true;
+    // se uma chave UI que mapeia para esta chave API foi concedida, também concede
+    for (const [uiKey, apiKey] of Object.entries(_CHAVE_UI_PARA_API)) {
+      if (apiKey === chave && granted.includes(uiKey)) return true;
+    }
+  }
   // legacy custom (migration path)
   if (Array.isArray(user?.permissoes_custom) && user.permissoes_custom.length && !Array.isArray(user?.permissoes_granted)) {
     return user.permissoes_custom.includes(chave);
@@ -3044,7 +3146,7 @@ app.get('/api/setores-unicos', requerPerfil('MASTER','ANALISTA SAC','APROVADOR',
   }
 });
 
-app.get('/api/setores', middlewareEscopoEmpresa(), requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
+app.get('/api/setores', middlewareEscopoEmpresa(), requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC','ATENDENTE SAC','SETOR RESPONSÁVEL','APROVADOR','APROVADOR MASTER','DIRETOR','VISUALIZADOR','AUDITOR','SETOR SAC','SETOR COMERCIAL','SETOR LOGISTICA','SETOR PRODUCAO','SETOR QUALIDADE','SETOR FINANCEIRO','SETOR TI','SETOR MARKETING','SETOR DIRETORIA'), async (req, res) => {
   try {
     // F7: tenta PostgreSQL primeiro (tabela setores)
     if (empresaRepo && typeof empresaRepo.listarSetores === 'function') {

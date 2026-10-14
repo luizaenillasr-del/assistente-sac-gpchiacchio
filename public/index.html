@@ -1053,8 +1053,30 @@
             <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">Perfil principal <span style="color:#C70602">*</span></label>
             <select id="usu-perfil" class="form-input" onchange="usuPerfilChanged()">
               <option value="">Selecione...</option>
-              <option>MASTER</option><option>APROVADOR MASTER</option><option>GESTOR SAC</option>
-              <option>ANALISTA SAC</option><option>ATENDENTE SAC</option><option>APROVADOR</option><option>SAC</option>
+              <optgroup label="── Administração ──">
+                <option>MASTER</option><option>APROVADOR MASTER</option>
+              </optgroup>
+              <optgroup label="── SAC ──">
+                <option>GESTOR SAC</option><option>ANALISTA SAC</option><option>ATENDENTE SAC</option>
+              </optgroup>
+              <optgroup label="── Aprovação / Especialistas ──">
+                <option>APROVADOR</option><option>ESPECIALISTA</option><option>RCA / REPRESENTANTE</option>
+              </optgroup>
+              <optgroup label="── Diretoria / Gestão ──">
+                <option>DIRETOR</option><option>VISUALIZADOR</option><option>AUDITOR</option>
+              </optgroup>
+              <optgroup label="── Perfis Setoriais ──">
+                <option>SETOR SAC</option>
+                <option>SETOR COMERCIAL</option>
+                <option>SETOR LOGISTICA</option>
+                <option>SETOR PRODUCAO</option>
+                <option>SETOR QUALIDADE</option>
+                <option>SETOR FINANCEIRO</option>
+                <option>SETOR TI</option>
+                <option>SETOR MARKETING</option>
+                <option>SETOR DIRETORIA</option>
+                <option>SETOR RESPONSÁVEL</option>
+              </optgroup>
             </select>
           </div>
           <div class="form-group">
@@ -1081,8 +1103,14 @@
         <div style="background:#FFFBF0;border:1px solid #F0D9A8;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12.5px;color:#7A4C00">
           <strong>Perfil base:</strong> <span id="usu-perm-perfil-base">—</span> — marque abaixo para conceder extras ou bloquear funcionalidades do perfil.
         </div>
-        <input type="text" id="usu-perm-busca" placeholder="Buscar funcionalidade..." oninput="usuPermFiltrar()"
-          style="width:100%;border:1px solid #D6D6D6;border-radius:8px;padding:8px 12px;font-size:13px;font-family:inherit;margin-bottom:14px">
+        <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center">
+          <input type="text" id="usu-perm-busca" placeholder="Buscar funcionalidade..." oninput="usuPermFiltrar()"
+            style="flex:1;border:1px solid #D6D6D6;border-radius:8px;padding:8px 12px;font-size:13px;font-family:inherit">
+          <button onclick="usuPermRedefinir()" title="Limpar todas as customizações e voltar ao padrão do perfil"
+            style="border:1px solid #D6D6D6;background:#fff;border-radius:8px;padding:8px 12px;font-size:12px;cursor:pointer;font-family:inherit;color:#545252;white-space:nowrap">
+            ↺ Redefinir
+          </button>
+        </div>
         <div id="usu-permissoes-lista"></div>
       </div>
 
@@ -3696,8 +3724,14 @@
     <select id="usu-fil-perfil" onchange="usuFiltrar()"
       style="border:1px solid #D6D6D6;border-radius:8px;padding:8px 12px;font-size:13px;font-family:inherit">
       <option value="">Todos os perfis</option>
-      <option>MASTER</option><option>APROVADOR MASTER</option><option>GESTOR SAC</option>
-      <option>ANALISTA SAC</option><option>ATENDENTE SAC</option><option>APROVADOR</option><option>SAC</option>
+      <option>MASTER</option><option>APROVADOR MASTER</option>
+      <option>GESTOR SAC</option><option>ANALISTA SAC</option><option>ATENDENTE SAC</option>
+      <option>APROVADOR</option><option>ESPECIALISTA</option><option>RCA / REPRESENTANTE</option>
+      <option>DIRETOR</option><option>VISUALIZADOR</option><option>AUDITOR</option>
+      <option>SETOR SAC</option><option>SETOR COMERCIAL</option><option>SETOR LOGISTICA</option>
+      <option>SETOR PRODUCAO</option><option>SETOR QUALIDADE</option><option>SETOR FINANCEIRO</option>
+      <option>SETOR TI</option><option>SETOR MARKETING</option><option>SETOR DIRETORIA</option>
+      <option>SETOR RESPONSÁVEL</option>
     </select>
     <select id="usu-fil-status" onchange="usuFiltrar()"
       style="border:1px solid #D6D6D6;border-radius:8px;padding:8px 12px;font-size:13px;font-family:inherit">
@@ -12058,6 +12092,16 @@ window.navigate = function(page, el) {
     // VISUALIZADOR / CONSULTA — apenas leitura
     'VISUALIZADOR':['visao-geral','banco-manifestacoes','relatorio-satisfacao','painel-maquina'],
     'AUDITOR':['visao-geral','acompanhamento','banco-manifestacoes','banco-rnc','relatorio-satisfacao','auditoria','painel-maquina'],
+    // Perfis setoriais — acesso restrito ao escopo do setor
+    'SETOR SAC':['nova-manifestacao','banco-manifestacoes','banco-rnc','cerebro','base-conhecimento','similares','relatorio-satisfacao','central-sac'],
+    'SETOR COMERCIAL':['banco-manifestacoes','banco-rnc','rca'],
+    'SETOR LOGISTICA':['setor-responsavel','banco-manifestacoes','banco-rnc','cerebro','base-conhecimento'],
+    'SETOR PRODUCAO':['setor-responsavel','banco-manifestacoes','banco-rnc','cerebro','base-conhecimento'],
+    'SETOR QUALIDADE':['setor-responsavel','banco-manifestacoes','banco-rnc','aprovadores','cerebro','base-conhecimento','sugestoes-melhoria'],
+    'SETOR FINANCEIRO':['setor-responsavel','banco-manifestacoes','banco-rnc','relatorio-satisfacao'],
+    'SETOR TI':['banco-manifestacoes','banco-rnc','cerebro','base-conhecimento','auditoria'],
+    'SETOR MARKETING':['banco-manifestacoes','relatorio-satisfacao','painel-maquina'],
+    'SETOR DIRETORIA':['visao-geral','acompanhamento','banco-manifestacoes','banco-rnc','aprovadores','relatorio-satisfacao','rca','painel-maquina','sugestoes-melhoria'],
   };
   function applyRoleUI(){
     const r=role();
@@ -22603,7 +22647,7 @@ function updateTopbarUser(user) {
     ]},
   ];
 
-  // Defaults por perfil (espelho do backend)
+  // Defaults por perfil (espelho do backend) — chaves granulares da UI
   const _PERM_DEF = {
     'MASTER': { '*': true },
     'APROVADOR MASTER': ['manifestacoes.visualizar','manifestacoes.encaminhar','manifestacoes.historico','aprovacoes.visualizar','aprovacoes.aprovar','aprovacoes.reprovar','aprovacoes.devolver','aprovacoes.parecer','aprovacoes.historico','aprovacoes.pendentes','rnc.visualizar','rnc.aprovar','indicadores.visualizar','indicadores.empresa','indicadores.setor','indicadores.sla','indicadores.exportar','pesquisas.visualizar','pesquisas.respostas','pesquisas.filtros','pesquisas.exportar','usuarios.visualizar'],
@@ -22612,6 +22656,23 @@ function updateTopbarUser(user) {
     'ATENDENTE SAC': ['manifestacoes.visualizar','manifestacoes.criar','manifestacoes.editar','manifestacoes.historico','manifestacoes.anexar','ia.acessar','ia.similares','ia.recomendacoes','fichas.acessar','fichas.ativas','fichas.pesquisar','cerebro.consultar','indicadores.visualizar'],
     'APROVADOR': ['aprovacoes.visualizar','aprovacoes.aprovar','aprovacoes.reprovar','aprovacoes.devolver','aprovacoes.parecer','aprovacoes.pendentes','aprovacoes.historico','rnc.visualizar','rnc.aprovar','indicadores.visualizar'],
     'SAC': ['manifestacoes.visualizar','manifestacoes.criar','manifestacoes.editar','manifestacoes.encaminhar','manifestacoes.historico','manifestacoes.anexar','ia.acessar','ia.similares','fichas.acessar','fichas.ativas','cerebro.consultar','indicadores.visualizar'],
+    // Perfis que antes não tinham defaults no frontend:
+    'SETOR RESPONSÁVEL': ['manifestacoes.visualizar','manifestacoes.editar','manifestacoes.historico','manifestacoes.anexar','fichas.acessar','fichas.ativas','cerebro.consultar'],
+    'ESPECIALISTA': ['cerebro.consultar','cerebro.criar','cerebro.editar','cerebro.faqs','indicadores.visualizar'],
+    'RCA / REPRESENTANTE': ['manifestacoes.visualizar','manifestacoes.criar','manifestacoes.historico','fichas.acessar','fichas.ativas','indicadores.visualizar'],
+    'DIRETOR': ['manifestacoes.visualizar','manifestacoes.historico','aprovacoes.visualizar','aprovacoes.aprovar','aprovacoes.reprovar','rnc.visualizar','fichas.acessar','fichas.ativas','fichas.arquivadas','fichas.pesquisar','fichas.filtros','fichas.exportar','indicadores.visualizar','indicadores.empresa','indicadores.setor','indicadores.sla','indicadores.reincidencias','indicadores.exportar','indicadores.historico','pesquisas.visualizar','pesquisas.respostas','pesquisas.filtros','pesquisas.empresa','pesquisas.periodo','pesquisas.exportar'],
+    'VISUALIZADOR': ['manifestacoes.visualizar','manifestacoes.historico','fichas.acessar','fichas.ativas','indicadores.visualizar','pesquisas.visualizar'],
+    'AUDITOR': ['manifestacoes.visualizar','manifestacoes.historico','manifestacoes.evidencias','fichas.acessar','fichas.ativas','fichas.arquivadas','fichas.pesquisar','fichas.filtros','fichas.exportar','indicadores.visualizar','indicadores.empresa','indicadores.setor','indicadores.sla','indicadores.exportar','indicadores.historico','auditoria.logs','auditoria.exportar','auditoria.historico'],
+    // Perfis setoriais
+    'SETOR SAC': ['manifestacoes.visualizar','manifestacoes.criar','manifestacoes.editar','manifestacoes.encaminhar','manifestacoes.historico','manifestacoes.anexar','ia.acessar','ia.similares','ia.recomendacoes','fichas.acessar','fichas.ativas','cerebro.consultar','cerebro.criar','indicadores.visualizar','indicadores.setor','pesquisas.visualizar','aprovacoes.visualizar'],
+    'SETOR COMERCIAL': ['manifestacoes.visualizar','manifestacoes.editar','manifestacoes.historico','fichas.acessar','fichas.ativas','indicadores.visualizar'],
+    'SETOR LOGISTICA': ['manifestacoes.visualizar','manifestacoes.editar','manifestacoes.historico','manifestacoes.anexar','fichas.acessar','fichas.ativas','cerebro.consultar','indicadores.visualizar'],
+    'SETOR PRODUCAO': ['manifestacoes.visualizar','manifestacoes.editar','manifestacoes.historico','manifestacoes.anexar','fichas.acessar','fichas.ativas','cerebro.consultar','indicadores.visualizar'],
+    'SETOR QUALIDADE': ['manifestacoes.visualizar','manifestacoes.editar','manifestacoes.historico','manifestacoes.encaminhar','manifestacoes.anexar','manifestacoes.evidencias','aprovacoes.visualizar','aprovacoes.aprovar','aprovacoes.reprovar','aprovacoes.devolver','rnc.abrir','rnc.editar','rnc.causa','rnc.subcausas','rnc.plano','rnc.responsaveis','rnc.evidencias','rnc.eficacia','rnc.aprovar','fichas.acessar','fichas.ativas','cerebro.consultar','cerebro.criar','cerebro.editar','cerebro.politicas','cerebro.regras','indicadores.visualizar','indicadores.setor','indicadores.sla'],
+    'SETOR FINANCEIRO': ['manifestacoes.visualizar','manifestacoes.editar','manifestacoes.historico','fichas.acessar','fichas.ativas','indicadores.visualizar','pesquisas.visualizar','pesquisas.respostas'],
+    'SETOR TI': ['manifestacoes.visualizar','cerebro.consultar','cerebro.criar','cerebro.editar','indicadores.visualizar','config.consultar','config.editar','auditoria.logs'],
+    'SETOR MARKETING': ['manifestacoes.visualizar','fichas.acessar','fichas.ativas','indicadores.visualizar','pesquisas.visualizar','pesquisas.respostas','pesquisas.filtros','pesquisas.empresa','pesquisas.periodo'],
+    'SETOR DIRETORIA': ['manifestacoes.visualizar','manifestacoes.historico','aprovacoes.visualizar','aprovacoes.aprovar','aprovacoes.reprovar','rnc.visualizar','fichas.acessar','fichas.ativas','fichas.arquivadas','fichas.pesquisar','fichas.filtros','fichas.exportar','indicadores.visualizar','indicadores.empresa','indicadores.setor','indicadores.sla','indicadores.reincidencias','indicadores.exportar','pesquisas.visualizar','pesquisas.respostas','pesquisas.exportar'],
   };
 
   let _usuDados = [];
@@ -22823,6 +22884,14 @@ function updateTopbarUser(user) {
     document.querySelectorAll('.usu-perm-row').forEach(function(r) {
       r.style.display = (!q || r.textContent.toLowerCase().includes(q)) ? '' : 'none';
     });
+  };
+
+  window.usuPermRedefinir = function() {
+    if (!confirm('Limpar todas as customizações de permissão e voltar ao padrão do perfil?')) return;
+    _usuGranted.clear();
+    _usuBlocked.clear();
+    const perfil = (document.getElementById('usu-perfil')&&document.getElementById('usu-perfil').value)||'';
+    usuRenderPermissoes(perfil);
   };
 
   function usuCarregarEscopo(u) {
