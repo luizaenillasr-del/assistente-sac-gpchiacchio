@@ -6615,10 +6615,22 @@
     const m=document.createElement('div');m.id='rel-modal-relatorio';
     m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9000;display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto';
     const tagManual='<span style="font-size:10px;font-weight:700;background:#E6EEF8;color:#24508F;padding:1px 6px;border-radius:99px;margin-left:4px">✏ Manual</span>';
+    const _fAno=_val('rel-f-ano'),_fMes=_val('rel-f-mes');
+    const _anoAtual=_fAno?_fAno.value:(new Date().getFullYear()+'');
+    const _mesAtual=_fMes?_fMes.value:String(new Date().getMonth()+1).padStart(2,'0');
+    const _mesesNomes=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+    const _anosOpts=[...(new Set([String(new Date().getFullYear()-1),String(new Date().getFullYear()),String(new Date().getFullYear()+1),_anoAtual]))].sort().map(a=>`<option value="${a}"${a===_anoAtual?'selected':''}>${a}</option>`).join('');
+    const _mesesOpts=_mesesNomes.map((n,i)=>{const v=String(i+1).padStart(2,'0');return `<option value="${v}"${v===_mesAtual?'selected':''}>${n}</option>`;}).join('');
     const camposDados=`
       <div style="background:#F0F4FA;border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px">
         <span style="font-size:12px;font-weight:700;color:#24508F">Dados do relatório ${tagManual}</span>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <label style="display:flex;flex-direction:column;gap:3px;font-size:11px;font-weight:600;color:#545252;grid-column:1/-1">Mês de referência ${tagManual}
+            <div style="display:flex;gap:6px">
+              <select id="rrm-mes" style="flex:1;height:34px;border:1px solid #D6D6D6;border-radius:6px;padding:0 8px;font-size:13px;font-family:inherit;background:#fff">${_mesesOpts}</select>
+              <select id="rrm-ano" style="width:88px;height:34px;border:1px solid #D6D6D6;border-radius:6px;padding:0 8px;font-size:13px;font-family:inherit;background:#fff">${_anosOpts}</select>
+            </div>
+          </label>
           <label style="display:flex;flex-direction:column;gap:3px;font-size:11px;font-weight:600;color:#545252">Responsável pela análise ${tagManual}
             <input id="rrm-responsavel" type="text" placeholder="Nome completo" style="height:34px;border:1px solid #D6D6D6;border-radius:6px;padding:0 10px;font-size:13px;font-family:inherit" value="${esc(textos.responsavel||'')}">
           </label>
@@ -6677,7 +6689,13 @@
     const erroEl=document.getElementById('rrm-erro');
     if(erroEl) erroEl.style.display='none';
     const empresa=_empresa();
-    const ano=_val('rel-f-ano')?.value,mes=_val('rel-f-mes')?.value;
+    const rrmMes=document.getElementById('rrm-mes'),rrmAno=document.getElementById('rrm-ano');
+    const ano=rrmAno?rrmAno.value:(_val('rel-f-ano')?.value);
+    const mes=rrmMes?rrmMes.value:(_val('rel-f-mes')?.value);
+    // Sincroniza filtros da página com o mês escolhido no formulário
+    const fAno=_val('rel-f-ano'),fMes=_val('rel-f-mes');
+    if(fAno&&fAno.value!==ano)fAno.value=ano;
+    if(fMes&&fMes.value!==mes)fMes.value=mes;
     const tok=sessionStorage.getItem('sac-token');
     if(btn){btn.disabled=true;btn.textContent='Salvando...';}
     try{
