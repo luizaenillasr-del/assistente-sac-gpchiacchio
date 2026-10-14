@@ -3711,10 +3711,16 @@
       <div style="font-size:22px;font-weight:700">Gerenciamento de Usuários</div>
       <div style="font-size:13px;color:#666464;margin-top:2px">Controle total de acessos e permissões</div>
     </div>
-    <button onclick="usuNovo()" data-perm="usuarios.criar"
-      style="background:#C70602;color:#fff;border:0;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">
-      + Novo Usuário
-    </button>
+    <div style="display:flex;gap:8px">
+      <button onclick="window.loadUsuariosMasterPainel&&window.loadUsuariosMasterPainel()"
+        style="background:#fff;color:#545252;border:1px solid #D6D6D6;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">
+        ↻ Atualizar
+      </button>
+      <button onclick="usuNovo()" data-perm="usuarios.criar"
+        style="background:#C70602;color:#fff;border:0;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">
+        + Novo Usuário
+      </button>
+    </div>
   </div>
 
   <!-- FILTROS -->
@@ -23120,11 +23126,13 @@ function updateTopbarUser(user) {
           headers:{'Content-Type':'application/json'},
           body: JSON.stringify(body),
         });
-        await _apiFetch('/api/usuarios/' + encodeURIComponent(editId) + '/permissoes', 0, {
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ permissoes_granted: Array.from(_usuGranted), permissoes_blocked: Array.from(_usuBlocked) }),
-        });
+        try {
+          await _apiFetch('/api/usuarios/' + encodeURIComponent(editId) + '/permissoes', 0, {
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ permissoes_granted: Array.from(_usuGranted), permissoes_blocked: Array.from(_usuBlocked) }),
+          });
+        } catch(permErr) { /* 403 on own MASTER perms is expected — ignore */ }
       } else {
         data = await _apiFetch('/api/usuarios', 0, {
           method:'POST',
@@ -23135,7 +23143,7 @@ function updateTopbarUser(user) {
       }
       if(data.sucesso) {
         fecharModalUsuario();
-        await loadUsuariosV5();
+        if(window.loadUsuariosMasterPainel) await window.loadUsuariosMasterPainel();
       } else {
         if(msg){msg.style.color='#C70602';msg.textContent=data.erro||'Erro ao salvar.';}
       }
@@ -23150,7 +23158,7 @@ function updateTopbarUser(user) {
     if(!confirm('Confirmar: ' + acao + ' este usuário?')) return;
     try {
       const d = await _apiFetch('/api/usuarios/' + encodeURIComponent(id) + '/' + acao, 0, { method:'POST', headers:{'Content-Type':'application/json'}, body:'{}' });
-      if(d.sucesso) await loadUsuariosV5();
+      if(d.sucesso) { if(window.loadUsuariosMasterPainel) await window.loadUsuariosMasterPainel(); }
       else alert(d.erro||'Erro.');
     } catch(e) { alert(e.message); }
   };
@@ -23159,7 +23167,7 @@ function updateTopbarUser(user) {
     if(!confirm('Excluir o usuário "' + nome + '"?\n\nRegistros históricos serão preservados. Esta ação é irreversível.')) return;
     try {
       const d = await _apiFetch('/api/usuarios/' + encodeURIComponent(id), 0, { method:'DELETE' });
-      if(d.sucesso) await loadUsuariosV5();
+      if(d.sucesso) { if(window.loadUsuariosMasterPainel) await window.loadUsuariosMasterPainel(); }
       else alert(d.erro||'Erro ao excluir.');
     } catch(e) { alert(e.message); }
   };
