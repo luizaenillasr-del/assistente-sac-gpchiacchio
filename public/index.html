@@ -12308,6 +12308,20 @@ window.navigate = function(page, el) {
         return;
       }
     } catch {}
+    // Atualiza permissões frescas do servidor (permissões podem ter mudado desde o login)
+    try {
+      const _tok = sessionStorage.getItem('sac-token');
+      if (_tok) {
+        const _r = await fetch((window.SAC_API||'')+'/api/auth/refresh', {
+          method:'POST', headers:{'Authorization':'Bearer '+_tok}
+        });
+        if (_r.ok) {
+          const _d = await _r.json().catch(()=>({}));
+          if (_d.sucesso && _d.token) sessionStorage.setItem('sac-token', _d.token);
+          if (_d.sucesso && _d.usuarioInfo) sessionStorage.setItem('sac-user', JSON.stringify(_d.usuarioInfo));
+        }
+      }
+    } catch(_) {}
     setUserChrome();applyRoleUI();
 
     // O carregamento inicial da Visão Geral acontecia antes do login.

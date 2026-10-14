@@ -22,7 +22,6 @@ const usuarioRepository = {
     return prisma.usuario.findFirst({
       where: {
         OR: [{ email: norm }, { nome: { contains: norm, mode: 'insensitive' } }],
-        ativo: true,
       },
       include: { perfil: true, empresa: true },
     });
