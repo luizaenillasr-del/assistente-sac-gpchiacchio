@@ -43,10 +43,18 @@ if (PG_LEITURA_ATIVA && process.env.DATABASE_URL && process.env.NODE_ENV !== 'te
 
 // F8: leituras de pesquisa/relatório — Postgres primeiro, Sheets como fallback
 async function lerRespostasPesquisa() {
+  let pgData = [];
   if (pesquisaRepo) {
-    try { const r = await pesquisaRepo.listarRespostas({}); if (r && r.length) return r; } catch (e) { console.warn('[F8] respostas PG falhou:', e.message); }
+    try { pgData = await pesquisaRepo.listarRespostas({}); } catch (e) { console.warn('[F8] respostas PG falhou:', e.message); }
   }
-  return lerAba('PESQUISA_RESPOSTAS', 5000).catch(() => []);
+  const sheetsData = await lerAba('PESQUISA_RESPOSTAS', 5000).catch(() => []);
+  if (!pgData.length) return sheetsData;
+  const pgIds = new Set(pgData.map(r => r.ID_RESPOSTA).filter(Boolean));
+  const sheetsOnly = sheetsData.filter(r => r.ID_RESPOSTA && !pgIds.has(r.ID_RESPOSTA));
+  return [...pgData, ...sheetsOnly];
+}
+async function lerHistoricoPesquisa() {
+  return lerAba('PESQUISA_HISTORICO', 500).catch(() => []);
 }
 async function lerRelatoriosSac() {
   if (pesquisaRepo) {
@@ -3433,6 +3441,7 @@ app.get('/api/pesquisas/relatorio', requerPermissao('pesquisas.visualizar'), asy
 
     // Histórico mensal (últimos 12 meses)
     const agora = new Date();
+    const historicoRows = await lerHistoricoPesquisa();
     const historico = [];
     for (let i = 11; i >= 0; i--) {
       const d = new Date(agora.getFullYear(), agora.getMonth() - i, 1);
@@ -3459,7 +3468,25 @@ app.get('/api/pesquisas/relatorio', requerPermissao('pesquisas.visualizar'), asy
         const pH=recH.filter(n=>n>=9).length, dH=recH.filter(n=>n<=6).length;
         npsH = Math.round((pH-dH)/recH.length*100);
       }
-      historico.push({ mes: `${anoH}-${String(mesH).padStart(2,'0')}`, mes_label: mesLabel, media: ms.length?ms.reduce((a,b)=>a+b,0)/ms.length:null, total: ms.length, nps_score: npsH, ...crit });
+      let entryMedia = ms.length ? ms.reduce((a,b)=>a+b,0)/ms.length : null;
+      let entryTotal = ms.length;
+      let entryNps = npsH;
+      let entryCrit = crit;
+      let fromHistorico = false;
+      // Se não há respostas individuais, usa média histórica importada
+      if (!ms.length) {
+        const chaveH = `${anoH}-${String(mesH).padStart(2,'0')}`;
+        const hRow = historicoRows.find(r => r.ANO == anoH && Number(r.MES) === mesH && (!empresa || String(r.EMPRESA||'').toLowerCase().includes(empresa.toLowerCase())));
+        if (hRow) {
+          const _f = v => { const n = parseFloat(String(v||'').replace(',','.')); return isNaN(n) ? null : n; };
+          entryMedia = _f(hRow.NOTA_MEDIA);
+          entryTotal = Number(hRow.TOTAL_RESPOSTAS) || 0;
+          entryNps = _f(hRow.NPS_SCORE);
+          entryCrit = { atendimento: _f(hRow.ATENDIMENTO), prazo: _f(hRow.PRAZO_ENTREGA), qualidade: _f(hRow.QUALIDADE), recomendacao: _f(hRow.RECOMENDACAO) };
+          fromHistorico = true;
+        }
+      }
+      historico.push({ mes: `${anoH}-${String(mesH).padStart(2,'0')}`, mes_label: mesLabel, media: entryMedia, total: entryTotal, nps_score: entryNps, from_historico: fromHistorico, ...entryCrit });
     }
 
     // NPS do período filtrado
@@ -3528,6 +3555,35 @@ app.post('/api/pesquisas/resposta-manual', requerPermissao('pesquisas.criar'), a
     invalidarCacheAba('PESQUISA_RESPOSTAS');
     registrarAuditoria(req.user?.usuario, 'REGISTROU_PESQUISA_MANUAL', idResp, 'PESQUISA_RESPOSTAS', null, { empresa, notaGeral }).catch(() => {});
     res.json({ sucesso: true, id: idResp, nota_media: notaGeral });
+  } catch (e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e) }); }
+});
+
+// Inserir/atualizar média histórica de um mês (dados agregados, sem respostas individuais)
+app.post('/api/pesquisas/media-historica', requerPermissao('pesquisas.criar'), async (req, res) => {
+  try {
+    const { empresa, ano, mes, atendimento, prazo_entrega, qualidade, recomendacao, total_respostas, nps_score } = req.body || {};
+    if (!empresa || !ano || !mes) return res.status(400).json({ sucesso: false, erro: 'empresa, ano e mes são obrigatórios.' });
+    const _f = v => { if (v == null || v === '') return ''; const n = parseFloat(String(v).replace(',','.')); return isNaN(n) ? '' : String(n); };
+    const notas = [atendimento, prazo_entrega, qualidade, recomendacao].map(v => v != null && v !== '' ? parseFloat(v) : null).filter(n => n != null && !isNaN(n));
+    const notaMedia = notas.length ? (notas.reduce((a,b)=>a+b,0)/notas.length).toFixed(2) : '';
+    const _HEADERS_H = ['ID_HISTORICO','EMPRESA','ANO','MES','ATENDIMENTO','PRAZO_ENTREGA','QUALIDADE','RECOMENDACAO','NOTA_MEDIA','NPS_SCORE','TOTAL_RESPOSTAS','CRIADO_EM'];
+    await garantirAbaComCabecalhos('PESQUISA_HISTORICO', _HEADERS_H);
+    invalidarCacheAba('PESQUISA_HISTORICO');
+    const rows = await lerAba('PESQUISA_HISTORICO', 500).catch(() => []);
+    const idx = rows.findIndex(r => r.EMPRESA === empresa && String(r.ANO) === String(ano) && String(Number(r.MES)) === String(Number(mes)));
+    const idH = idx >= 0 ? rows[idx].ID_HISTORICO : 'HIS-' + Date.now();
+    const obj = { ID_HISTORICO: idH, EMPRESA: empresa, ANO: String(ano), MES: String(Number(mes)), ATENDIMENTO: _f(atendimento), PRAZO_ENTREGA: _f(prazo_entrega), QUALIDADE: _f(qualidade), RECOMENDACAO: _f(recomendacao), NOTA_MEDIA: notaMedia, NPS_SCORE: _f(nps_score), TOTAL_RESPOSTAS: total_respostas != null ? String(total_respostas) : '', CRIADO_EM: new Date().toISOString() };
+    if (idx >= 0) {
+      const sheets = await getSheets();
+      const spreadsheetId = process.env.SPREADSHEET_ID;
+      const vals = _HEADERS_H.map(h => obj[h] ?? '');
+      await sheets.spreadsheets.values.update({ spreadsheetId, range: `PESQUISA_HISTORICO!A${idx+2}`, valueInputOption: 'RAW', requestBody: { values: [vals] } });
+    } else {
+      await appendObjeto('PESQUISA_HISTORICO', obj);
+    }
+    invalidarCacheAba('PESQUISA_HISTORICO');
+    registrarAuditoria(req.user?.usuario, 'REGISTROU_MEDIA_HISTORICA', idH, 'PESQUISA_HISTORICO', null, { empresa, ano, mes, notaMedia }).catch(() => {});
+    res.json({ sucesso: true, id: idH, nota_media: notaMedia });
   } catch (e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e) }); }
 });
 
