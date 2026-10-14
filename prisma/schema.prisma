@@ -794,3 +794,27 @@ model RelatorioSac {
   @@index([chave])
   @@map("relatorios_sac")
 }
+
+// ──────────────────────────────────────────────────────────────────
+// SOLICITAÇÕES DE ACESSO
+// ──────────────────────────────────────────────────────────────────
+model SolicitacaoAcesso {
+  id              Int       @id @default(autoincrement())
+  idSolicitacao   String    @unique @map("id_solicitacao")
+  nome            String
+  email           String
+  empresa         String
+  setor           String
+  cargo           String
+  telefone        String?
+  justificativa   String?
+  status          String    @default("PENDENTE") // PENDENTE | APROVADA | REJEITADA
+  motivoRejeicao  String?   @map("motivo_rejeicao")
+  decididoPor     String?   @map("decidido_por")
+  dataDecisao     DateTime? @map("data_decisao")
+  criadaEm        DateTime  @default(now()) @map("criada_em")
+
+  @@index([status])
+  @@index([email])
+  @@map("solicitacoes_acesso")
+}
