@@ -265,12 +265,12 @@ const DEMO_USUARIOS = [
 ];
 
 async function carregarUsuarios(){
-  // F4: tenta PostgreSQL primeiro
+  let pgMapped = [];
   if (usuarioRepo) {
     try {
       const pgUsers = await usuarioRepo.findAll({ ativo: undefined });
       if (pgUsers && pgUsers.length > 0) {
-        const mapped = pgUsers.map(u => ({
+        pgMapped = pgUsers.map(u => ({
           ID_USUARIO: u.idOriginal || `USR-PG-${u.id}`,
           USUARIO: u.login || u.email,
           EMAIL: u.email || '',
@@ -278,18 +278,16 @@ async function carregarUsuarios(){
           PERFIL: u.perfil?.codigo || u.perfil?.nome || 'ANALISTA SAC',
           EMPRESA: u.empresa?.nome || '',
           SETOR: u.setor?.nome || '',
-          STATUS: u.status || 'ATIVO',
+          STATUS: u.ativo === false ? 'INATIVO' : 'ATIVO',
           SENHA_HASH: u.senhaHash || '',
           CODIGO_RCA: u.codigoRca || '',
           ULTIMO_ACESSO: u.ultimoAcesso?.toISOString?.() || '',
           _pgId: u.id,
         }));
-        const demoEnabled = String(process.env.DEMO_LOGIN_ENABLED || 'false').toLowerCase() === 'true';
-        return [...mapped, ...(demoEnabled ? DEMO_USUARIOS : [])];
       }
     } catch (e) { console.warn('[F4] carregarUsuarios PG falhou, usando Sheets:', e.message); }
   }
-  // Fallback Sheets
+  // Sempre lê Sheets para pegar usuários criados via UI que não estão no PG
   let rows=[];
   try{ rows=await lerAba('USUARIOS',1000); }catch(e){ console.warn('USUARIOS não disponível:',e.message); }
   const raw=process.env.USUARIOS_JSON||'{}';
@@ -300,8 +298,16 @@ async function carregarUsuarios(){
       ? {ID_USUARIO:usuario,USUARIO:usuario,SENHA:val,NOME:usuario,PERFIL:'ANALISTA SAC',STATUS:'ATIVO'}
       : {ID_USUARIO:usuario,USUARIO:usuario,...val});
   }catch(e){}
+  // Dedup: PG ganha precedência sobre Sheets por ID_USUARIO/EMAIL
+  const pgEmails = new Set(pgMapped.map(u => (u.EMAIL||'').toLowerCase()).filter(Boolean));
+  const pgIds = new Set(pgMapped.map(u => u.ID_USUARIO).filter(Boolean));
+  const sheetsOnly = rows.filter(r => {
+    const email = (r.EMAIL||r.USUARIO||'').toLowerCase();
+    const id = r.ID_USUARIO;
+    return !pgIds.has(id) && !pgEmails.has(email);
+  });
   const demoEnabled=String(process.env.DEMO_LOGIN_ENABLED||'false').toLowerCase()==='true';
-  return [...rows,...envUsers,...(demoEnabled?DEMO_USUARIOS:[])];
+  return [...pgMapped, ...sheetsOnly, ...envUsers, ...(demoEnabled?DEMO_USUARIOS:[])];
 }
 
 function perfilCanonico(v){
@@ -3447,7 +3453,7 @@ app.get('/api/pesquisas/relatorio', requerPermissao('pesquisas.visualizar'), asy
       _notaBaixa: r.NOTA_BAIXA || '',
       _statusOcp: r.STATUS_OCP || '',
     }));
-    if (!dados.length) return res.json({ sucesso: true, itens: [], media_geral: null, criterios: [], historico: [], textos: {} });
+    // Não retorna early aqui — continua para construir historico com dados manuais mesmo sem respostas
 
     const COLS_NOTA = ['Atendimento', 'Prazo de Entrega', 'Qualidade', 'Recomendação'];
 
@@ -3531,6 +3537,22 @@ app.get('/api/pesquisas/relatorio', requerPermissao('pesquisas.visualizar'), asy
         }
       }
       historico.push({ mes: `${anoH}-${String(mesH).padStart(2,'0')}`, mes_label: mesLabel, media: entryMedia, total: entryTotal, nps_score: entryNps, from_historico: fromHistorico, ...entryCrit });
+    }
+
+    // Se não há respostas individuais para o mês/ano selecionado, usa histórico importado para media_geral e criterios
+    if (!filtrados.length && ano && mes) {
+      const _fh = v => { const n = parseFloat(String(v||'').replace(',','.')); return isNaN(n) ? null : n; };
+      const hRowAtual = historicoRows.find(r => r.ANO == ano && Number(r.MES) === Number(mes) && (!empresa || String(r.EMPRESA||'').toLowerCase().includes(empresa.toLowerCase())));
+      if (hRowAtual) {
+        if (mediaGeral === null) mediaGeral = _fh(hRowAtual.NOTA_MEDIA);
+        criterios.forEach(c => {
+          if (c.media === null) {
+            const colMap = { atendimento: 'ATENDIMENTO', prazo: 'PRAZO_ENTREGA', qualidade: 'QUALIDADE', recomendacao: 'RECOMENDACAO' };
+            c.media = _fh(hRowAtual[colMap[c.criterio]]);
+            if (c.media !== null) c.from_historico = true;
+          }
+        });
+      }
     }
 
     // NPS do período filtrado

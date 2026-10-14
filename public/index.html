@@ -8016,12 +8016,14 @@ function afRenderFicha(f, evs, hist) {
   const btnArquivar = f.ARQUIVADO === 'SIM'
     ? `<button class="af-btn" onclick="afDesarquivarFichaAtual()" style="border-color:#1E6B3A;color:#1E6B3A">↩ Desarquivar</button>`
     : `<button class="af-btn" onclick="afArquivarFichaAtual()" style="border-color:#707070;color:#545252">📦 Arquivar</button>`;
+  const podeExcluirBib = (typeof role === 'function' && role() === 'MASTER' && f.ID_MANIFESTACAO);
   _afEl('bib-painel-foot').innerHTML =
     (f.ID_MANIFESTACAO ? `<button class="af-btn" onclick="if(window.abrirDossie)window.abrirDossie(${escHtml(JSON.stringify(f.ID_MANIFESTACAO))});closeBibPainel()">Ver dossiê completo</button>` : '') +
     `<button class="af-btn" onclick="afAnexarArquivo()">Anexar arquivo</button>` +
     `<input type="file" id="af-input-anexo" style="display:none" accept=".pdf,.docx,.doc,.jpg,.jpeg,.png,.xlsx,.xls" onchange="afEnviarAnexo(this)">` +
     btnArquivar +
-    `<button class="af-btn af-btn-dark" onclick="afBaixarPdf()">${imp ? 'Abrir ficha original' : 'Baixar PDF da ficha'}</button>`;
+    `<button class="af-btn af-btn-dark" onclick="afBaixarPdf()">${imp ? 'Abrir ficha original' : 'Baixar PDF da ficha'}</button>` +
+    (podeExcluirBib ? `<button class="af-btn" style="border-color:#C70602;color:#C70602" onclick="afExcluirFichaAtual()">🗑 Excluir ficha</button>` : '');
 }
 
 function afAnexarArquivo() {
@@ -8050,21 +8052,39 @@ async function afEnviarAnexo(input) {
 
 async function afBaixarPdf() {
   const f = _afFichaAtual?.ficha; if (!f) return;
-  if (f.ORIGEM === 'IMPORTADA') {
-    if (f.PDF_DRIVE_URL) window.open(f.PDF_DRIVE_URL, '_blank', 'noopener');
-    else afToast('O arquivo original desta ficha não está disponível.');
+  if (f.ORIGEM === 'IMPORTADA' && f.PDF_DRIVE_URL) {
+    window.open(f.PDF_DRIVE_URL, '_blank', 'noopener');
     return;
   }
   const tok = _afTok(); if (!tok || !f.ID_MANIFESTACAO) return;
+  afToast('Gerando PDF...');
   try {
     const r = await fetch(API + '/api/manifestacoes/' + encodeURIComponent(f.ID_MANIFESTACAO) + '/pdf', { headers: { 'Authorization': 'Bearer ' + tok } });
     if (!r.ok) { let m = 'Não foi possível gerar o PDF.'; try { m = (await r.json()).erro || m; } catch (_) {} throw new Error(m); }
-    const url = URL.createObjectURL(await r.blob());
-    const a = document.createElement('a'); a.href = url; a.download = 'Ficha_' + f.PROTOCOLO + '.pdf';
+    const blob = await r.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = 'Ficha_' + (f.PROTOCOLO || f.ID_MANIFESTACAO) + '.pdf';
     document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 5000);
-    afToast('PDF da ficha ' + f.PROTOCOLO + ' gerado.');
-  } catch (e) { afToast(e.message); }
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+    afToast('PDF gerado: ' + (f.PROTOCOLO || f.ID_MANIFESTACAO));
+  } catch (e) { afToast('Erro ao gerar PDF: ' + e.message); }
+}
+
+async function afExcluirFichaAtual() {
+  const f = _afFichaAtual?.ficha; if (!f) return;
+  const id = f.ID_MANIFESTACAO; if (!id) return;
+  const proto = f.PROTOCOLO || id;
+  if (!confirm(`Excluir permanentemente a ficha ${proto}?\n\nEsta ação não pode ser desfeita.`)) return;
+  const tok = _afTok(); if (!tok) return;
+  try {
+    const r = await fetch(API + '/api/manifestacoes/' + encodeURIComponent(id), { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + tok } });
+    const d = await r.json();
+    if (!d.sucesso) throw new Error(d.erro || 'Erro ao excluir.');
+    afToast('Ficha ' + proto + ' excluída.');
+    closeBibPainel();
+    if (typeof bibCarregar === 'function') bibCarregar();
+    else if (typeof carregarBiblioteca === 'function') carregarBiblioteca();
+  } catch(e) { afToast('Erro: ' + e.message); }
 }
 
 function closeBibPainel() {
