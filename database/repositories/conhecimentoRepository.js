@@ -112,6 +112,52 @@ const conhecimentoRepository = {
       },
     }).catch(() => null);
   },
+
+  // Resolve nomes de empresa/setor para IDs (usado pelas escritas que vêm das telas)
+  async _resolver(empresaNome, setorNome) {
+    let empresaId = null, setorId = null;
+    if (empresaNome && String(empresaNome).toUpperCase() !== 'TODAS') {
+      const v = String(empresaNome).toUpperCase().trim();
+      const e = await prisma.empresa.findFirst({ where: { OR: [{ codigo: v }, { nome: { contains: empresaNome, mode: 'insensitive' } }] } });
+      empresaId = e ? e.id : null;
+    }
+    if (!empresaId) { const e = await prisma.empresa.findFirst(); empresaId = e ? e.id : null; }
+    if (setorNome && empresaId) {
+      const s = await prisma.setor.findFirst({ where: { empresaId, nome: { equals: setorNome, mode: 'insensitive' } } });
+      setorId = s ? s.id : null;
+    }
+    return { empresaId, setorId };
+  },
+
+  async criarPolitica({ empresa, setor, titulo, texto, responsavel }) {
+    if (!titulo) return null;
+    const { empresaId, setorId } = await this._resolver(empresa, setor);
+    if (!empresaId) return null;
+    return this.upsertPolitica({ empresaId, setorId, titulo, texto, responsavel });
+  },
+
+  async criarProcedimento({ empresa, setor, titulo, texto, tipo }) {
+    if (!titulo) return null;
+    const { empresaId, setorId } = await this._resolver(empresa, setor);
+    if (!empresaId) return null;
+    return this.upsertProcedimento({ empresaId, setorId, titulo, texto, tipo });
+  },
+
+  // Matriz de tratamento — upsert por chave de negócio
+  async upsertMatriz({ empresa, tipo, categoria, subcategoria, setor, dados = {} }) {
+    const { empresaId } = await this._resolver(empresa, null);
+    if (!empresaId) return null;
+    const where = {
+      empresaId,
+      tipoManifestacao: tipo || null,
+      categoria: categoria || null,
+      subcategoria: subcategoria || null,
+      setorResponsavel: setor || null,
+    };
+    const existente = await prisma.matrizTratamento.findFirst({ where });
+    if (existente) return prisma.matrizTratamento.update({ where: { id: existente.id }, data: dados });
+    return prisma.matrizTratamento.create({ data: { empresaId, tipoManifestacao: tipo || null, categoria: categoria || null, subcategoria: subcategoria || null, setorResponsavel: setor || null, ...dados } });
+  },
 };
 
 module.exports = conhecimentoRepository;
