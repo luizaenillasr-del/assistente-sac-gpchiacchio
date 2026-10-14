@@ -3453,7 +3453,7 @@ app.get('/api/pesquisas/relatorio', requerPermissao('pesquisas.visualizar'), asy
       _notaBaixa: r.NOTA_BAIXA || '',
       _statusOcp: r.STATUS_OCP || '',
     }));
-    if (!dados.length) return res.json({ sucesso: true, itens: [], media_geral: null, criterios: [], historico: [], textos: {} });
+    // Não retorna early aqui — continua para construir historico com dados manuais mesmo sem respostas
 
     const COLS_NOTA = ['Atendimento', 'Prazo de Entrega', 'Qualidade', 'Recomendação'];
 
@@ -3537,6 +3537,22 @@ app.get('/api/pesquisas/relatorio', requerPermissao('pesquisas.visualizar'), asy
         }
       }
       historico.push({ mes: `${anoH}-${String(mesH).padStart(2,'0')}`, mes_label: mesLabel, media: entryMedia, total: entryTotal, nps_score: entryNps, from_historico: fromHistorico, ...entryCrit });
+    }
+
+    // Se não há respostas individuais para o mês/ano selecionado, usa histórico importado para media_geral e criterios
+    if (!filtrados.length && ano && mes) {
+      const _fh = v => { const n = parseFloat(String(v||'').replace(',','.')); return isNaN(n) ? null : n; };
+      const hRowAtual = historicoRows.find(r => r.ANO == ano && Number(r.MES) === Number(mes) && (!empresa || String(r.EMPRESA||'').toLowerCase().includes(empresa.toLowerCase())));
+      if (hRowAtual) {
+        if (mediaGeral === null) mediaGeral = _fh(hRowAtual.NOTA_MEDIA);
+        criterios.forEach(c => {
+          if (c.media === null) {
+            const colMap = { atendimento: 'ATENDIMENTO', prazo: 'PRAZO_ENTREGA', qualidade: 'QUALIDADE', recomendacao: 'RECOMENDACAO' };
+            c.media = _fh(hRowAtual[colMap[c.criterio]]);
+            if (c.media !== null) c.from_historico = true;
+          }
+        });
+      }
     }
 
     // NPS do período filtrado
