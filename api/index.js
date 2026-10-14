@@ -266,9 +266,11 @@ const DEMO_USUARIOS = [
 
 async function carregarUsuarios(){
   let pgMapped = [];
+  let _pgErro = null, _pgCount = 0, _sheetsCount = 0, _sheetsErro = null;
   if (usuarioRepo) {
     try {
       const pgUsers = await usuarioRepo.findAll({ ativo: undefined });
+      _pgCount = pgUsers ? pgUsers.length : 0;
       if (pgUsers && pgUsers.length > 0) {
         pgMapped = pgUsers.map(u => ({
           ID_USUARIO: u.idOriginal || `USR-PG-${u.id}`,
@@ -285,11 +287,11 @@ async function carregarUsuarios(){
           _pgId: u.id,
         }));
       }
-    } catch (e) { console.warn('[F4] carregarUsuarios PG falhou, usando Sheets:', e.message); }
+    } catch (e) { _pgErro = e.message; console.warn('[F4] carregarUsuarios PG falhou:', e.message); }
   }
   // Sempre lê Sheets para pegar usuários criados via UI que não estão no PG
   let rows=[];
-  try{ rows=await lerAba('USUARIOS',1000); }catch(e){ console.warn('USUARIOS não disponível:',e.message); }
+  try{ rows=await lerAba('USUARIOS',1000); _sheetsCount = rows.length; }catch(e){ _sheetsErro = e.message; console.warn('USUARIOS não disponível:',e.message); }
   const raw=process.env.USUARIOS_JSON||'{}';
   let envUsers=[];
   try{
@@ -307,7 +309,9 @@ async function carregarUsuarios(){
     return !pgIds.has(id) && !pgEmails.has(email);
   });
   const demoEnabled=String(process.env.DEMO_LOGIN_ENABLED||'false').toLowerCase()==='true';
-  return [...pgMapped, ...sheetsOnly, ...envUsers, ...(demoEnabled?DEMO_USUARIOS:[])];
+  const result = [...pgMapped, ...sheetsOnly, ...envUsers, ...(demoEnabled?DEMO_USUARIOS:[])];
+  result._debug = { temPGRepo: !!usuarioRepo, pgCount: _pgCount, pgErro: _pgErro, sheetsCount: _sheetsCount, sheetsErro: _sheetsErro, envCount: envUsers.length, total: result.length };
+  return result;
 }
 
 function perfilCanonico(v){
@@ -5071,8 +5075,7 @@ app.get('/api/log-sistema', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), a
 app.get('/api/usuarios', requerPermissao('usuarios.visualizar'), async (req,res)=>{
   try{
     const itens=await carregarUsuarios();
-    // debug temporário — remove após diagnóstico
-    const _dbg = { total: itens.length, temPG: !!usuarioRepo, itens_raw_sample: itens.slice(0,3).map(u=>({ID:u.ID_USUARIO,N:u.NOME,S:u.STATUS,E:u.EMAIL})) };
+    const _dbg = itens._debug || {};
     res.json({sucesso:true,total:itens.length,itens:itens.map(usuarioPublico),_dbg});
   }
   catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e),itens:[]});}
