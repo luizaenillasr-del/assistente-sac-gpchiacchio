@@ -7349,6 +7349,7 @@ app.post('/api/public/solicitar-acesso', async (req, res) => {
     }
 
     const id = `SOL-${Date.now().toString(36).toUpperCase()}`;
+    const now = new Date().toISOString();
     if (solicitacaoRepo) {
       await solicitacaoRepo.create({
         idSolicitacao: id,
@@ -7361,6 +7362,12 @@ app.post('/api/public/solicitar-acesso', async (req, res) => {
         justificativa: justificativa.trim(),
         status: 'PENDENTE',
       });
+    } else {
+      // Fallback Sheets quando banco não está disponível
+      await appendLinha('SOLICITACOES_ACESSO', [
+        id, nome.trim(), emailNorm, empCod, setor.trim(), cargo.trim(),
+        (telefone||'').trim(), justificativa.trim(), 'PENDENTE', now, '', '', '',
+      ]);
     }
     await registrarAuditoriaAcesso(emailNorm, 'SOLICITACAO_CRIADA', '', empCod, '', 'PENDENTE', 'sistema');
     res.json({sucesso:true, id, mensagem:'Solicitação enviada. Aguarde aprovação do MASTER.'});
@@ -7373,56 +7380,81 @@ app.post('/api/public/solicitar-acesso', async (req, res) => {
 
 app.get('/api/admin/solicitacoes', requerPerfil('MASTER'), async (req, res) => {
   try {
-    if (!solicitacaoRepo) return res.status(503).json({sucesso:false,erro:'Banco de dados não disponível.'});
-    const rows = await solicitacaoRepo.findAll({
-      status: req.query.status || undefined,
-      empresa: req.query.empresa ? empresaCanonica(req.query.empresa) : undefined,
-    });
-    const itens = rows.map(r => ({
-      ID_SOLICITACAO: r.idSolicitacao, NOME: r.nome, EMAIL: r.email,
-      EMPRESA: r.empresa, SETOR: r.setor, CARGO: r.cargo,
-      TELEFONE: r.telefone||'', JUSTIFICATIVA: r.justificativa||'',
-      STATUS: r.status, MOTIVO_REJEICAO: r.motivoRejeicao||'',
-      DECIDIDO_POR: r.decididoPor||'', DATA_DECISAO: r.dataDecisao?.toISOString()||'',
-      DATA_CRIACAO: r.criadaEm?.toISOString()||'',
-    }));
+    let itens;
+    if (solicitacaoRepo) {
+      const rows = await solicitacaoRepo.findAll({
+        status: req.query.status || undefined,
+        empresa: req.query.empresa ? empresaCanonica(req.query.empresa) : undefined,
+      });
+      itens = rows.map(r => ({
+        ID_SOLICITACAO: r.idSolicitacao, NOME: r.nome, EMAIL: r.email,
+        EMPRESA: r.empresa, SETOR: r.setor, CARGO: r.cargo,
+        TELEFONE: r.telefone||'', JUSTIFICATIVA: r.justificativa||'',
+        STATUS: r.status, MOTIVO_REJEICAO: r.motivoRejeicao||'',
+        DECIDIDO_POR: r.decididoPor||'', DATA_DECISAO: r.dataDecisao?.toISOString()||'',
+        DATA_CRIACAO: r.criadaEm?.toISOString()||'',
+      }));
+    } else {
+      // Fallback Sheets
+      const rows = await lerAba('SOLICITACOES_ACESSO', 2000).catch(() => []);
+      const stFil = (req.query.status || '').toUpperCase();
+      const empFil = req.query.empresa ? empresaCanonica(req.query.empresa) : '';
+      itens = rows
+        .filter(r => (!stFil || String(r.STATUS||'').toUpperCase() === stFil))
+        .filter(r => (!empFil || String(r.EMPRESA||'') === empFil))
+        .sort((a,b) => String(b.DATA_CRIACAO||'').localeCompare(String(a.DATA_CRIACAO||'')));
+    }
     res.json({sucesso:true, total:itens.length, itens});
   } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
 });
 
 app.get('/api/admin/solicitacoes/:id', requerPerfil('MASTER'), async (req, res) => {
   try {
-    if (!solicitacaoRepo) return res.status(503).json({sucesso:false,erro:'Banco de dados não disponível.'});
-    const r = await solicitacaoRepo.findById(req.params.id);
-    if (!r) return res.status(404).json({sucesso:false,erro:'Solicitação não encontrada.'});
-    const item = {
-      ID_SOLICITACAO: r.idSolicitacao, NOME: r.nome, EMAIL: r.email,
-      EMPRESA: r.empresa, SETOR: r.setor, CARGO: r.cargo,
-      TELEFONE: r.telefone||'', JUSTIFICATIVA: r.justificativa||'',
-      STATUS: r.status, MOTIVO_REJEICAO: r.motivoRejeicao||'',
-      DECIDIDO_POR: r.decididoPor||'', DATA_DECISAO: r.dataDecisao?.toISOString()||'',
-      DATA_CRIACAO: r.criadaEm?.toISOString()||'',
-    };
+    let item;
+    if (solicitacaoRepo) {
+      const r = await solicitacaoRepo.findById(req.params.id);
+      if (!r) return res.status(404).json({sucesso:false,erro:'Solicitação não encontrada.'});
+      item = {
+        ID_SOLICITACAO: r.idSolicitacao, NOME: r.nome, EMAIL: r.email,
+        EMPRESA: r.empresa, SETOR: r.setor, CARGO: r.cargo,
+        TELEFONE: r.telefone||'', JUSTIFICATIVA: r.justificativa||'',
+        STATUS: r.status, MOTIVO_REJEICAO: r.motivoRejeicao||'',
+        DECIDIDO_POR: r.decididoPor||'', DATA_DECISAO: r.dataDecisao?.toISOString()||'',
+        DATA_CRIACAO: r.criadaEm?.toISOString()||'',
+      };
+    } else {
+      const rows = await lerAba('SOLICITACOES_ACESSO', 2000).catch(() => []);
+      item = rows.find(r => String(r.ID_SOLICITACAO||'') === req.params.id);
+      if (!item) return res.status(404).json({sucesso:false,erro:'Solicitação não encontrada.'});
+    }
     res.json({sucesso:true, item});
   } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
 });
 
 app.post('/api/admin/solicitacoes/:id/rejeitar', requerPerfil('MASTER'), async (req, res) => {
   try {
-    if (!solicitacaoRepo) return res.status(503).json({sucesso:false,erro:'Banco de dados não disponível.'});
     const { motivo } = req.body||{};
     if (!motivo?.trim()) return res.status(400).json({sucesso:false,erro:'Motivo da rejeição obrigatório.'});
-    const r = await solicitacaoRepo.findById(req.params.id);
-    if (!r) return res.status(404).json({sucesso:false,erro:'Solicitação não encontrada.'});
-    if (r.status!=='PENDENTE') return res.status(400).json({sucesso:false,erro:`Solicitação já ${r.status}.`});
-
-    await solicitacaoRepo.update(req.params.id, {
-      status: 'REJEITADA',
-      dataDecisao: new Date(),
-      decididoPor: req.user.usuario||req.user.email||'MASTER',
-      motivoRejeicao: motivo.trim(),
-    });
-    await registrarAuditoriaAcesso(r.email, 'SOLICITACAO_REJEITADA', '', r.empresa, 'PENDENTE', 'REJEITADA', req.user.usuario||'MASTER');
+    const decididoPor = req.user.usuario||req.user.email||'MASTER';
+    const now = new Date();
+    if (solicitacaoRepo) {
+      const r = await solicitacaoRepo.findById(req.params.id);
+      if (!r) return res.status(404).json({sucesso:false,erro:'Solicitação não encontrada.'});
+      if (r.status!=='PENDENTE') return res.status(400).json({sucesso:false,erro:`Solicitação já ${r.status}.`});
+      await solicitacaoRepo.update(req.params.id, {
+        status: 'REJEITADA', dataDecisao: now, decididoPor, motivoRejeicao: motivo.trim(),
+      });
+      await registrarAuditoriaAcesso(r.email, 'SOLICITACAO_REJEITADA', '', r.empresa, 'PENDENTE', 'REJEITADA', decididoPor);
+    } else {
+      const rows = await lerAba('SOLICITACOES_ACESSO', 2000).catch(() => []);
+      const sol = rows.find(r => String(r.ID_SOLICITACAO||'') === req.params.id);
+      if (!sol) return res.status(404).json({sucesso:false,erro:'Solicitação não encontrada.'});
+      if (sol.STATUS !== 'PENDENTE') return res.status(400).json({sucesso:false,erro:`Solicitação já ${sol.STATUS}.`});
+      await atualizarPorID('SOLICITACOES_ACESSO', req.params.id, {
+        STATUS: 'REJEITADA', DATA_DECISAO: now.toISOString(), DECIDIDO_POR: decididoPor, MOTIVO_REJEICAO: motivo.trim(),
+      }, ['ID_SOLICITACAO']);
+      await registrarAuditoriaAcesso(sol.EMAIL||'', 'SOLICITACAO_REJEITADA', '', sol.EMPRESA||'', 'PENDENTE', 'REJEITADA', decididoPor);
+    }
     res.json({sucesso:true, mensagem:'Solicitação rejeitada.'});
   } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
 });
