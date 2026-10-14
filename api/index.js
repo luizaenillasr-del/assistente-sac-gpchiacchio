@@ -1285,10 +1285,27 @@ app.post('/api/auth/refresh', async (req,res)=>{
   const payload=verificarToken(token);
   if(!payload) return res.status(401).json({sucesso:false,erro:'Sessão inválida ou expirada.'});
   const agora=Date.now();
+  // Re-lê dados frescos do usuário (permissões podem ter mudado desde o login)
+  let usuarioInfo = null;
+  try {
+    const registro = await carregarUsuarioPorLogin(payload.usuario);
+    if (registro) {
+      const pub = usuarioPublico(registro);
+      usuarioInfo = pub;
+      const novoPayload = {
+        sub: pub.id, usuario: pub.usuario, nome: pub.nome, email: pub.email, perfil: pub.perfil,
+        empresa: pub.empresa, setor: pub.setor, cargo: pub.cargo||'', telefone: pub.telefone||'',
+        codigoRCA: pub.codigoRCA,
+        permissoes_granted: pub.permissoes_granted,
+        permissoes_blocked: pub.permissoes_blocked,
+        iat: agora, exp: agora+SESSION_TTL_MS,
+      };
+      return res.json({sucesso:true, token:assinarToken(novoPayload), usuarioInfo});
+    }
+  } catch(e) { /* cai no fallback abaixo */ }
+  // Fallback: renova apenas o prazo sem alterar dados
   const novoPayload={...payload, iat:agora, exp:agora+SESSION_TTL_MS};
-  delete novoPayload.iat; delete novoPayload.exp; // reassign above
-  Object.assign(novoPayload, {iat:agora, exp:agora+SESSION_TTL_MS});
-  res.json({sucesso:true, token:assinarToken(novoPayload)});
+  res.json({sucesso:true, token:assinarToken(novoPayload), usuarioInfo: null});
 });
 
 // ===== COMPLETAR PRIMEIRO ACESSO =====
