@@ -8815,6 +8815,15 @@ async function checarSolicitacoesPendentes() {
   } catch(e) { /* silencioso */ }
 }
 
+// Polling automático para MASTER: verifica solicitações pendentes a cada 3 minutos
+let _solicitacoesPollingTimer = null;
+function iniciarPollingsolicitacoes() {
+  if (_solicitacoesPollingTimer) return;
+  _solicitacoesPollingTimer = setInterval(() => {
+    if (typeof checarSolicitacoesPendentes === 'function') checarSolicitacoesPendentes();
+  }, 3 * 60 * 1000);
+}
+
 async function loadVisaoGeral() {
   try {
     const now = new Date();
@@ -12301,7 +12310,7 @@ window.navigate = function(page, el) {
     }
 
     if(r==='RCA / REPRESENTANTE') await loadRcaHome();
-    if(r==='MASTER') { await loadUsuariosV5(); checarSolicitacoesPendentes && checarSolicitacoesPendentes(); }
+    if(r==='MASTER') { await loadUsuariosV5(); checarSolicitacoesPendentes && checarSolicitacoesPendentes(); iniciarPollingsolicitacoes && iniciarPollingsolicitacoes(); }
     if(r==='APROVADOR'||r==='APROVADOR MASTER'||r==='MASTER') await loadAprovadorV5();
     if(r==='ANALISTA SAC'||r==='GESTOR SAC') setupAprovacaoUI();
     if(r==='ANALISTA SAC'||r==='GESTOR SAC'||r==='MASTER') setTimeout(()=>{ if(typeof carregarNotifAnalista==='function') carregarNotifAnalista(); },1500);
