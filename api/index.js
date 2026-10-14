@@ -5069,7 +5069,12 @@ app.get('/api/log-sistema', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), a
 
 // ===== USUÁRIOS =====
 app.get('/api/usuarios', requerPermissao('usuarios.visualizar'), async (req,res)=>{
-  try{ const itens=await carregarUsuarios(); res.json({sucesso:true,total:itens.length,itens:itens.map(usuarioPublico)}); }
+  try{
+    const itens=await carregarUsuarios();
+    // debug temporário — remove após diagnóstico
+    const _dbg = { total: itens.length, temPG: !!usuarioRepo, itens_raw_sample: itens.slice(0,3).map(u=>({ID:u.ID_USUARIO,N:u.NOME,S:u.STATUS,E:u.EMAIL})) };
+    res.json({sucesso:true,total:itens.length,itens:itens.map(usuarioPublico),_dbg});
+  }
   catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e),itens:[]});}
 });
 app.post('/api/usuarios', requerPermissao('usuarios.criar'), async (req,res)=>{
