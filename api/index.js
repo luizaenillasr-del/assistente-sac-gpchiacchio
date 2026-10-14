@@ -5150,6 +5150,10 @@ app.patch('/api/usuarios/:id', requerPermissao('usuarios.editar'), async (req,re
     dados.DATA_ULTIMA_ALTERACAO=new Date().toISOString(); dados.ALTERADO_POR=req.user.usuario;
     const resultado=await atualizarPorID('USUARIOS',req.params.id,dados,['ID_USUARIO','USUARIO','EMAIL']);
     if(!resultado) return res.status(404).json({sucesso:false,erro:'Usuário não encontrado. Recarregue a lista e tente novamente.'});
+    // Invalida cache de status para mudanças de perfil/status/permissões valerem imediatamente
+    _statusCache.delete(req.params.id);
+    _statusCache.delete(normalizarTexto(req.params.id));
+    invalidarCacheAba('USUARIOS');
     await registrarAuditoria(req.user.usuario,'ATUALIZOU_USUARIO',req.params.id,'USUARIOS',null,{campos:Object.keys(b)});
     res.json({sucesso:true});
   }catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
@@ -5244,6 +5248,12 @@ app.post('/api/usuarios/:id/permissoes', requerPermissao('usuarios.gerenciar'), 
       DATA_ULTIMA_ALTERACAO: new Date().toISOString(),
       ALTERADO_POR: req.user.usuario,
     }, ['ID_USUARIO','USUARIO','EMAIL']);
+
+    // Invalida o cache de status do usuário alvo para as novas permissões valerem imediatamente
+    const loginAlvo = alvo.USUARIO || alvo.EMAIL || '';
+    _statusCache.delete(loginAlvo);
+    _statusCache.delete(normalizarTexto(loginAlvo));
+    invalidarCacheAba('USUARIOS');
 
     try {
       await registrarAuditoria(req.user.usuario, 'PERMISSOES_ALTERADAS', id, 'USUARIOS', null,
