@@ -390,7 +390,7 @@ function requerPerfil(...perfis){
 
 // Permissões padrão por perfil (espelha frontend _PERM_PADRAO)
 const _PERM_PADRAO_API = {
-  'MASTER':             ['manifestacoes.visualizar','manifestacoes.abrir','manifestacoes.editar','manifestacoes.gerenciar','manifestacoes.aprovar','cerebro.visualizar','cerebro.adicionar_conteudo','cerebro.editar_conteudo','cerebro.adicionar_regras','cerebro.adicionar_politicas','cerebro.editar_faq','cerebro.gerenciar','rca.visualizar','rca.criar','rca.editar','rca.gerenciar','pesquisas.visualizar','pesquisas.criar','pesquisas.editar','pesquisas.gerenciar','dashboard.visualizar','dashboard.gerenciar','configuracoes.visualizar','configuracoes.editar','configuracoes.gerenciar','usuarios.visualizar','usuarios.criar','usuarios.editar','usuarios.gerenciar','aprovacoes.visualizar','aprovacoes.aprovar','aprovacoes.rejeitar'],
+  'MASTER':             ['manifestacoes.visualizar','manifestacoes.abrir','manifestacoes.editar','manifestacoes.gerenciar','manifestacoes.aprovar','manifestacoes.excluir','cerebro.visualizar','cerebro.adicionar_conteudo','cerebro.editar_conteudo','cerebro.adicionar_regras','cerebro.adicionar_politicas','cerebro.editar_faq','cerebro.gerenciar','rca.visualizar','rca.criar','rca.editar','rca.gerenciar','pesquisas.visualizar','pesquisas.criar','pesquisas.editar','pesquisas.gerenciar','dashboard.visualizar','dashboard.gerenciar','configuracoes.visualizar','configuracoes.editar','configuracoes.gerenciar','usuarios.visualizar','usuarios.criar','usuarios.editar','usuarios.gerenciar','aprovacoes.visualizar','aprovacoes.aprovar','aprovacoes.rejeitar'],
   'ADMINISTRADOR':      ['manifestacoes.visualizar','manifestacoes.abrir','manifestacoes.editar','manifestacoes.gerenciar','cerebro.visualizar','cerebro.gerenciar','rca.visualizar','rca.gerenciar','pesquisas.visualizar','pesquisas.gerenciar','dashboard.visualizar','dashboard.gerenciar','configuracoes.visualizar','configuracoes.editar','configuracoes.gerenciar','usuarios.visualizar','usuarios.criar','usuarios.editar','usuarios.gerenciar','aprovacoes.visualizar','aprovacoes.aprovar','aprovacoes.rejeitar'],
   'GESTOR SAC':         ['manifestacoes.visualizar','manifestacoes.editar','manifestacoes.gerenciar','manifestacoes.aprovar','cerebro.visualizar','cerebro.gerenciar','rca.visualizar','pesquisas.visualizar','pesquisas.gerenciar','dashboard.visualizar','dashboard.gerenciar','configuracoes.visualizar','configuracoes.editar','aprovacoes.visualizar','aprovacoes.aprovar','aprovacoes.rejeitar'],
   'ANALISTA SAC':       ['manifestacoes.visualizar','manifestacoes.abrir','manifestacoes.editar','cerebro.visualizar','cerebro.adicionar_conteudo','cerebro.editar_conteudo','cerebro.adicionar_regras','cerebro.adicionar_politicas','cerebro.editar_faq','pesquisas.visualizar','pesquisas.criar','dashboard.visualizar','aprovacoes.visualizar'],
@@ -822,6 +822,30 @@ async function atualizarPorID(nomeAba, id, dados, camposID = ['ID_MANIFESTACAO',
   await updateLinha(nomeAba,rowIndex,valores);
   invalidarCacheAba(nomeAba);
   return { rowIndex, headers, valores };
+}
+
+async function deletarLinhaPorID(nomeAba, id, camposID = ['ID_MANIFESTACAO']) {
+  const sheets = await getSheets();
+  const res = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: nomeAba, valueRenderOption: 'FORMATTED_VALUE' });
+  const rows = res.data.values || [];
+  if (rows.length < 2) return null;
+  const headers = rows[0];
+  const idxCandidatos = camposID.map(c => headers.indexOf(c)).filter(i => i !== -1);
+  if (!idxCandidatos.length) return null;
+  const idNorm = String(id).trim();
+  let rowIndex = -1;
+  for (let i = 1; i < rows.length; i++) {
+    if (idxCandidatos.some(idx => String(rows[i][idx] || '').trim() === idNorm)) { rowIndex = i; break; }
+  }
+  if (rowIndex < 0) return null;
+  // Obter sheetId da aba
+  const meta = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID, fields: 'sheets.properties' });
+  const sheet = (meta.data.sheets || []).find(s => s.properties.title === nomeAba);
+  if (!sheet) return null;
+  const sheetId = sheet.properties.sheetId;
+  await sheets.spreadsheets.batchUpdate({ spreadsheetId: SPREADSHEET_ID, requestBody: { requests: [{ deleteDimension: { range: { sheetId, dimension: 'ROWS', startIndex: rowIndex, endIndex: rowIndex + 1 } } }] } });
+  invalidarCacheAba(nomeAba);
+  return { rowIndex };
 }
 
 async function gerarProximoID(nomeAba, prefixo, campoID) {
@@ -1971,6 +1995,26 @@ app.patch('/api/manifestacoes/:id', requerPermissao('manifestacoes.editar'), asy
     await registrarAuditoria(req.user?.usuario||'sistema','ATUALIZOU_MANIFESTAÇÃO',id,'MANIFESTACOES',null,dados);
     res.json({ sucesso:true, id, atualizado: dados });
   } catch(e){ res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
+});
+
+app.delete('/api/manifestacoes/:id', requerPermissao('manifestacoes.excluir'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const todas = await lerAba('MANIFESTACOES', 5000);
+    const item = todas.find(r => r.ID_MANIFESTACAO === id);
+    if (!item) return res.status(404).json({ sucesso: false, erro: 'Manifestação não encontrada.' });
+    await deletarLinhaPorID('MANIFESTACOES', id);
+    // Remove do PG também, se existir
+    if (manifestacaoRepo) {
+      try {
+        const pg = (await manifestacaoRepo.findByProtocolo(id).catch(() => null))
+                || (await manifestacaoRepo.findByIdOriginal(id).catch(() => null));
+        if (pg && typeof manifestacaoRepo.deletar === 'function') await manifestacaoRepo.deletar(pg.id);
+      } catch (e) { console.warn('[PG] deletar manifestacao falhou:', e.message); }
+    }
+    await registrarAuditoria(req.user?.usuario || 'sistema', 'EXCLUIU_MANIFESTAÇÃO', id, 'MANIFESTACOES', item, null);
+    res.json({ sucesso: true, id });
+  } catch (e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e) }); }
 });
 
 app.post('/api/manifestacoes/:id/decisao', requerPermissao('manifestacoes.aprovar'), async (req, res) => {

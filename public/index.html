@@ -1009,6 +1009,7 @@
     <div style="padding:12px 20px;border-top:1px solid #EFEFEF;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
       <button onclick="switchModalTab('historico',document.getElementById('modal-tab-btn-historico'))" style="border:0;background:none;padding:0;font-size:12.5px;color:#707070;cursor:pointer;font-weight:600;font-family:inherit">Ver histórico completo</button>
       <div style="display:flex;gap:8px">
+        <button id="modal-btn-excluir" onclick="excluirManifestacaoAtual()" style="display:none;border:1px solid #C70602;background:#fff;color:#C70602;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">🗑 Excluir</button>
         <button onclick="fecharModal()" style="border:1px solid #D6D6D6;background:#fff;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Fechar</button>
         <button onclick="modalDecisaoConfirmar()" id="mdec-btn-confirmar" style="display:none;border:0;background:#1E6B3A;color:#fff;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Confirmar decisão</button>
       </div>
@@ -10106,6 +10107,10 @@ function abrirDossie(item) {
     const _cf = document.getElementById('mdec-btn-confirmar'); if(_cf) _cf.style.display='none';
   }
 
+  // Botão excluir: visível apenas para MASTER
+  const _btnExcluir = document.getElementById('modal-btn-excluir');
+  if (_btnExcluir) _btnExcluir.style.display = (typeof role === 'function' && role() === 'MASTER' && isMan) ? '' : 'none';
+
   document.getElementById('modal-dossie').style.display = 'flex';
   switchModalTab('ciclo', document.querySelector('#modal-tabs .tab-btn'));
   // Tabs de compat e acessadas por atalho ficam sempre ocultas no header
@@ -12680,6 +12685,27 @@ window.navigate = function(page, el) {
 
   // Helper: fechar qualquer modal
   window.fecharModal = function(id){ if(!id){ document.getElementById('modal-dossie').style.display='none'; return; } const el=document.getElementById(id); if(el) el.style.display='none'; };
+  window.excluirManifestacaoAtual = async function(){
+    const item = window._dossieItem;
+    if (!item || !item.ID_MANIFESTACAO) return;
+    const id = item.ID_MANIFESTACAO;
+    if (!confirm(`Tem certeza que deseja EXCLUIR permanentemente a manifestação ${id}?\n\nEsta ação não pode ser desfeita.`)) return;
+    const btn = document.getElementById('modal-btn-excluir');
+    if (btn) { btn.disabled = true; btn.textContent = 'Excluindo...'; }
+    try {
+      const tok = sessionStorage.getItem('sac-token');
+      const r = await fetch(`/api/manifestacoes/${encodeURIComponent(id)}`, { method: 'DELETE', headers: { Authorization: 'Bearer ' + tok } });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || j.sucesso === false) throw new Error(j.erro || 'Erro ao excluir.');
+      fecharModal();
+      if (typeof _toast === 'function') _toast(`Manifestação ${id} excluída.`);
+      // Recarrega a lista
+      if (typeof loadPage === 'function') loadPage(typeof _paginaAtual !== 'undefined' ? _paginaAtual : 'manifestacoes');
+    } catch(e) {
+      alert('Erro ao excluir: ' + e.message);
+      if (btn) { btn.disabled = false; btn.textContent = '🗑 Excluir'; }
+    }
+  };
 
   // Configurar tabs e UI por perfil ao entrar na página
   function setupAprovacaoUI(){
