@@ -3,7 +3,7 @@
   "functions": {
     "api/index.js": {
       "maxDuration": 60,
-      "includeFiles": "node_modules/pdfkit/js/data/**,public/logo-chiacchio.png"
+      "includeFiles": ["node_modules/pdfkit/js/data/**", "public/logo-chiacchio.png"]
     }
   },
   "routes": [
