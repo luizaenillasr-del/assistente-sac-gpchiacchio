@@ -1063,6 +1063,20 @@ app.get('/api/health', async (req, res) => {
     const rows = await lerAba('MANIFESTACOES', 2).catch(() => null);
     saude.sheets = rows !== null ? 'acessível' : 'inacessível';
   } catch (e) { saude.sheets = 'erro'; }
+  // Diagnóstico de usuários
+  saude.pgLeituraAtiva = !!usuarioRepo;
+  try {
+    if (usuarioRepo) {
+      const pgUsers = await usuarioRepo.findAll({ ativo: undefined });
+      saude.pgUsuariosCount = pgUsers ? pgUsers.length : 0;
+    } else {
+      saude.pgUsuariosCount = 'repo_nulo';
+    }
+  } catch(e) { saude.pgUsuariosCount = 'erro: ' + e.message; }
+  try {
+    const sheetsUsers = await lerAba('USUARIOS', 5).catch(() => null);
+    saude.sheetsUsuariosCount = sheetsUsers !== null ? sheetsUsers.length : 'inacessível';
+  } catch(e) { saude.sheetsUsuariosCount = 'erro'; }
   res.json(saude);
 });
 
