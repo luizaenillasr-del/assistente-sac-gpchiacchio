@@ -1108,11 +1108,16 @@ async function verificarStatusUsuario(login) {
   try {
     const rows = await lerAba('USUARIOS', 1000);
     const u = rows.find(r => normalizarTexto(r.USUARIO||'') === normalizarTexto(login));
-    const status = u ? (u.STATUS || 'ATIVO').toUpperCase() : 'INATIVO';
+    // Se não encontrado no Sheets mas encontrado antes (cache expirado), mantém como ATIVO —
+    // usuário criado via PG pode não existir no Sheets.
+    const status = u ? (u.STATUS || 'ATIVO').toUpperCase() : (cached ? cached.status : 'INATIVO');
     let permissoes_granted = null, permissoes_blocked = null;
     if (u) {
       try { if (u.PERMISSOES_GRANTED) permissoes_granted = JSON.parse(u.PERMISSOES_GRANTED); } catch(_) {}
       try { if (u.PERMISSOES_BLOCKED) permissoes_blocked = JSON.parse(u.PERMISSOES_BLOCKED); } catch(_) {}
+    } else if (cached) {
+      permissoes_granted = cached.permissoes_granted;
+      permissoes_blocked = cached.permissoes_blocked;
     }
     const entry = { status, ts: agora, permissoes_granted, permissoes_blocked };
     _statusCache.set(login, entry);
@@ -1123,8 +1128,10 @@ async function verificarStatusUsuario(login) {
     }
     return entry;
   } catch(e) {
-    // Falha ao verificar: negar acesso (fail-closed) para evitar que usuários bloqueados/inativos mantenham sessão durante indisponibilidade do Sheets
-    console.error('[verificarStatusUsuario] Erro ao ler planilha, negando acesso por segurança:', e.message || e);
+    // Falha ao ler Sheets: se houver cache anterior, usa-o para não derrubar sessões ativas.
+    // Se não há cache, nega acesso por segurança.
+    console.error('[verificarStatusUsuario] Erro ao ler planilha:', e.message || e);
+    if (cached) return { ...cached, ts: agora };
     return { status: 'INATIVO', ts: agora, permissoes_granted: null, permissoes_blocked: null };
   }
 }
