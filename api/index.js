@@ -260,7 +260,7 @@ async function carregarUsuarios(){
   // F4: tenta PostgreSQL primeiro
   if (usuarioRepo) {
     try {
-      const pgUsers = await usuarioRepo.findAll({ ativo: true });
+      const pgUsers = await usuarioRepo.findAll({});
       if (pgUsers && pgUsers.length > 0) {
         const mapped = pgUsers.map(u => ({
           ID_USUARIO: u.idOriginal || `USR-PG-${u.id}`,
