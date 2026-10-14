@@ -3742,6 +3742,9 @@
     </select>
   </div>
 
+  <!-- DEBUG TEMPORÁRIO -->
+  <div id="usu-debug-info" style="margin-bottom:8px;padding:8px 12px;background:#FFF4E0;border:1px solid #E8C870;border-radius:8px;font-size:12px;color:#7A4C00;font-family:monospace">Aguardando carregamento...</div>
+
   <!-- TABELA DE USUÁRIOS -->
   <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;overflow:hidden">
     <table style="width:100%;border-collapse:collapse;font-size:13px">
@@ -22858,10 +22861,15 @@ function updateTopbarUser(user) {
     try {
       const d = await _apiFetch('/api/usuarios');
       _usuDados = (d.usuarios || d.itens || []);
+      // DEBUG TEMPORÁRIO — remover após diagnóstico
+      const _dbgEl = document.getElementById('usu-debug-info');
+      if (_dbgEl) _dbgEl.textContent = 'API OK | total=' + (d.total||0) + ' | itens=' + _usuDados.length + ' | keys=' + Object.keys(d).join(',');
       usuRenderLista(_usuDados);
     } catch(e) {
       if (tb) tb.innerHTML = `<tr><td colspan="6" style="padding:20px;text-align:center;color:#C70602">Erro ao carregar usuários: ${esc5(e.message)}</td></tr>`;
       if (vazio) vazio.style.display = 'none';
+      const _dbgEl = document.getElementById('usu-debug-info');
+      if (_dbgEl) _dbgEl.textContent = 'ERRO: ' + e.message;
     }
   }
   window.loadUsuariosMasterPainel = loadUsuariosMasterPainel;
