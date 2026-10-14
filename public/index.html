@@ -23395,5 +23395,28 @@ function updateTopbarUser(user) {
   });
 })();
 </script>
+<script>
+/* ===== GARANTIA FINAL: loader de usuários ===== */
+(function(){
+  // Substitui entrada no pageLoaders por uma função exclusiva que evita double-load
+  var _carregando = false;
+  var _loaderUsr = function(){
+    if(_carregando) return;
+    _carregando = true;
+    var fn = window.loadUsuariosMasterPainel;
+    if(typeof fn === 'function'){
+      var p = fn();
+      if(p && typeof p.finally === 'function') p.finally(function(){ _carregando = false; });
+      else _carregando = false;
+    } else { _carregando = false; }
+  };
+  if(window.pageLoaders) window.pageLoaders.usuarios = _loaderUsr;
+  var _pNavFinal = window.navigate;
+  window.navigate = function(page, el){
+    if(typeof _pNavFinal === 'function') _pNavFinal(page, el);
+    if(page === 'usuarios') _loaderUsr();
+  };
+})();
+</script>
 </body>
 </html>
