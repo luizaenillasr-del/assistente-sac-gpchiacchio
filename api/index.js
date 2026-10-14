@@ -4920,10 +4920,6 @@ app.post('/api/usuarios/:id/permissoes', requerPermissao('usuarios.gerenciar'), 
       ALTERADO_POR: req.user.usuario,
     }, ['ID_USUARIO','USUARIO','EMAIL']);
 
-    // Invalida cache de status para o usuário afetado → próxima requisição lerá permissões frescas
-    _statusCache.delete(normalizarTexto(alvo.USUARIO||alvo.EMAIL||''));
-    _statusCache.delete(alvo.USUARIO||alvo.EMAIL||'');
-
     try {
       await registrarAuditoria(req.user.usuario, 'PERMISSOES_ALTERADAS', id, 'USUARIOS', null,
         { granted: permissoes_granted, blocked: permissoes_blocked, justificativa });
