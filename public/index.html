@@ -22664,11 +22664,12 @@ function updateTopbarUser(user) {
   function usuRenderLista(lista) {
     const tb = document.getElementById('usu-lista');
     const vazio = document.getElementById('usu-vazio');
-    if (!lista.length) { if(tb) tb.innerHTML=''; if(vazio) vazio.style.display='block'; return; }
+    const filtrada = lista.filter(u=>(u.STATUS||u.status||'ATIVO').toUpperCase()!=='EXCLUIDO');
+    if (!filtrada.length) { if(tb) tb.innerHTML=''; if(vazio) vazio.style.display='block'; return; }
     if(vazio) vazio.style.display='none';
-    const STATUS_COLORS = { ATIVO: {bg:'#E6F2EA',color:'#1E6B3A'}, INATIVO: {bg:'#EEEEEE',color:'#545252'}, BLOQUEADO: {bg:'#FDECEC',color:'#C70602'}, EXCLUIDO: {bg:'#FDECEC',color:'#A80502'} };
+    const STATUS_COLORS = { ATIVO: {bg:'#E6F2EA',color:'#1E6B3A'}, INATIVO: {bg:'#EEEEEE',color:'#545252'}, BLOQUEADO: {bg:'#FDECEC',color:'#C70602'}, EXCLUIDO: {bg:'#FDECEC',color:'#A80502'}, PRIMEIRO_ACESSO: {bg:'#EAF0FB',color:'#24508F'}, PENDENTE_APROVACAO: {bg:'#FFF4E0',color:'#7A4C00'} };
     window._usuMap = {};
-    if(tb) tb.innerHTML = lista.filter(u=>(u.STATUS||u.status||'ATIVO').toUpperCase()!=='EXCLUIDO').map(u => {
+    if(tb) tb.innerHTML = filtrada.map(u => {
       const st = (u.STATUS||u.status||'ATIVO').toUpperCase();
       const sc = STATUS_COLORS[st] || STATUS_COLORS.ATIVO;
       const uid = esc5(u.ID_USUARIO||u.id||u.USUARIO||u.usuario||'');
