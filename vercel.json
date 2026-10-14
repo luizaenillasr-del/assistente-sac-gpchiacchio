@@ -1,16 +1,16 @@
 {
   "version": 2,
+  "outputDirectory": "public",
   "functions": {
     "api/index.js": {
       "maxDuration": 60,
       "includeFiles": "node_modules/pdfkit/js/data/**"
     }
   },
-  "routes": [
-    { "src": "/api/(.*)", "dest": "/api/index.js" },
-    { "src": "/relatorio-publico/(.*)", "dest": "/api/index.js" },
-    { "src": "/pesquisa/(.*)", "dest": "/api/index.js" },
-    { "handle": "filesystem" },
-    { "src": "/(.*)", "dest": "/public/index.html", "status": 200 }
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "/api/index.js" },
+    { "source": "/relatorio-publico/:path*", "destination": "/api/index.js" },
+    { "source": "/pesquisa/:path*", "destination": "/api/index.js" },
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
