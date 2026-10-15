@@ -649,9 +649,11 @@ function middlewareEscopoEmpresa() {
   return (req, res, next) => {
     if (!req.user) return next();
     const perfil = perfilCanonico(req.user.perfil);
-    if (perfil === 'MASTER') return next(); // MASTER tem acesso global
+    // Perfis com acesso global (sem filtro de empresa)
+    if (perfil === 'MASTER' || perfil === 'APROVADOR MASTER') return next();
     const empresa = req.user.empresa || '';
-    if (!empresa.trim()) return res.status(403).json({ sucesso: false, erro: 'Usuário sem empresa configurada. Contate o administrador.' });
+    // Empresa vazia: permite acesso mas sem escopo (dados de todas as empresas ficam visíveis)
+    if (!empresa.trim()) return next();
     req._empresaScope = empresa;
     next();
   };
