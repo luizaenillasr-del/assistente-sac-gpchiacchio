@@ -7473,10 +7473,14 @@ app.post('/api/public/solicitar-acesso', async (req, res) => {
     });
     if (jaUsuario) return res.status(409).json({sucesso:false,erro:'E-mail já possui conta ativa no sistema.'});
 
-    // Verifica solicitação PENDENTE duplicada no Sheets
+    // Verifica solicitação PENDENTE duplicada (Sheets + PG)
     const solRows = await lerAba('SOLICITACOES_ACESSO', 1000).catch(() => []);
-    const jaExiste = solRows.find(r => String(r.EMAIL||'').toLowerCase().trim() === emailNorm && String(r.STATUS||'').toUpperCase() === 'PENDENTE');
-    if (jaExiste) return res.status(409).json({sucesso:false,erro:'Já existe uma solicitação pendente para este e-mail.'});
+    const jaExisteSheets = solRows.find(r => String(r.EMAIL||'').toLowerCase().trim() === emailNorm && String(r.STATUS||'').toUpperCase() === 'PENDENTE');
+    if (jaExisteSheets) return res.status(409).json({sucesso:false,erro:'Já existe uma solicitação pendente para este e-mail.'});
+    if (solicitacaoRepo) {
+      const jaExistePg = await solicitacaoRepo.findPendenteByEmail(emailNorm).catch(() => null);
+      if (jaExistePg) return res.status(409).json({sucesso:false,erro:'Já existe uma solicitação pendente para este e-mail.'});
+    }
 
     const id = `SOL-${Date.now().toString(36).toUpperCase()}`;
     await appendObjeto('SOLICITACOES_ACESSO', {
@@ -7507,10 +7511,34 @@ app.get('/api/admin/solicitacoes', requerPerfil('MASTER'), async (req, res) => {
   try {
     const stFil = (req.query.status || '').toUpperCase() || undefined;
     const empFil = req.query.empresa ? empresaCanonica(req.query.empresa) : undefined;
-    const rows = await lerAba('SOLICITACOES_ACESSO', 1000).catch(() => []);
-    let itens = rows.filter(r => r.ID_SOLICITACAO);
+
+    // Lê do Sheets
+    const sheetRows = await lerAba('SOLICITACOES_ACESSO', 1000).catch(() => []);
+    const sheetItens = sheetRows.filter(r => r.ID_SOLICITACAO);
+    const idsSheets = new Set(sheetItens.map(r => r.ID_SOLICITACAO));
+
+    // Lê do PG se disponível (garante que solicitações antigas apareçam)
+    let pgItens = [];
+    if (solicitacaoRepo) {
+      const pgRows = await solicitacaoRepo.findAll({}).catch(() => []);
+      pgItens = pgRows
+        .filter(r => !idsSheets.has(r.idSolicitacao))
+        .map(r => ({
+          ID_SOLICITACAO: r.idSolicitacao,
+          NOME: r.nome, EMAIL: r.email, EMPRESA: r.empresa,
+          SETOR: r.setor, CARGO: r.cargo, TELEFONE: r.telefone||'',
+          JUSTIFICATIVA: r.justificativa||'', STATUS: r.status,
+          DATA_CRIACAO: r.criadaEm?.toISOString?.() || '',
+          DATA_DECISAO: r.dataDecisao?.toISOString?.() || '',
+          DECIDIDO_POR: r.decididoPor||'', MOTIVO_REJEICAO: r.motivoRejeicao||'',
+          _fromPg: true,
+        }));
+    }
+
+    let itens = [...sheetItens, ...pgItens];
     if (stFil) itens = itens.filter(r => String(r.STATUS||'').toUpperCase() === stFil);
     if (empFil) itens = itens.filter(r => empresaCanonica(r.EMPRESA||'') === empFil);
+    itens.sort((a, b) => (b.DATA_CRIACAO||'').localeCompare(a.DATA_CRIACAO||''));
     res.json({sucesso:true, total:itens.length, itens});
   } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
 });
@@ -7518,7 +7546,17 @@ app.get('/api/admin/solicitacoes', requerPerfil('MASTER'), async (req, res) => {
 app.get('/api/admin/solicitacoes/:id', requerPerfil('MASTER'), async (req, res) => {
   try {
     const rows = await lerAba('SOLICITACOES_ACESSO', 1000).catch(() => []);
-    const item = rows.find(r => r.ID_SOLICITACAO === req.params.id);
+    let item = rows.find(r => r.ID_SOLICITACAO === req.params.id);
+    if (!item && solicitacaoRepo) {
+      const r = await solicitacaoRepo.findById(req.params.id).catch(() => null);
+      if (r) item = {
+        ID_SOLICITACAO: r.idSolicitacao, NOME: r.nome, EMAIL: r.email, EMPRESA: r.empresa,
+        SETOR: r.setor, CARGO: r.cargo, TELEFONE: r.telefone||'', JUSTIFICATIVA: r.justificativa||'',
+        STATUS: r.status, DATA_CRIACAO: r.criadaEm?.toISOString?.() || '',
+        DATA_DECISAO: r.dataDecisao?.toISOString?.() || '', DECIDIDO_POR: r.decididoPor||'',
+        MOTIVO_REJEICAO: r.motivoRejeicao||'', _fromPg: true,
+      };
+    }
     if (!item) return res.status(404).json({sucesso:false,erro:'Solicitação não encontrada.'});
     res.json({sucesso:true, item});
   } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
@@ -7530,12 +7568,21 @@ app.post('/api/admin/solicitacoes/:id/rejeitar', requerPerfil('MASTER'), async (
     if (!motivo?.trim()) return res.status(400).json({sucesso:false,erro:'Motivo da rejeição obrigatório.'});
     const decididoPor = req.user.usuario||req.user.email||'MASTER';
     const rows = await lerAba('SOLICITACOES_ACESSO', 1000).catch(() => []);
-    const sol = rows.find(r => r.ID_SOLICITACAO === req.params.id);
+    let sol = rows.find(r => r.ID_SOLICITACAO === req.params.id);
+    let solFromPg = false;
+    if (!sol && solicitacaoRepo) {
+      const r = await solicitacaoRepo.findById(req.params.id).catch(() => null);
+      if (r) { sol = { ID_SOLICITACAO: r.idSolicitacao, EMAIL: r.email, EMPRESA: r.empresa, STATUS: r.status }; solFromPg = true; }
+    }
     if (!sol) return res.status(404).json({sucesso:false,erro:'Solicitação não encontrada.'});
     if (String(sol.STATUS||'').toUpperCase() !== 'PENDENTE') return res.status(400).json({sucesso:false,erro:`Solicitação já ${sol.STATUS}.`});
-    await atualizarPorID('SOLICITACOES_ACESSO', req.params.id, {
-      STATUS: 'REJEITADA', DATA_DECISAO: new Date().toISOString(), DECIDIDO_POR: decididoPor, MOTIVO_REJEICAO: motivo.trim(),
-    }, ['ID_SOLICITACAO']);
+    if (solFromPg && solicitacaoRepo) {
+      await solicitacaoRepo.update(req.params.id, { status: 'REJEITADA', dataDecisao: new Date(), decididoPor, motivoRejeicao: motivo.trim() }).catch(()=>{});
+    } else {
+      await atualizarPorID('SOLICITACOES_ACESSO', req.params.id, {
+        STATUS: 'REJEITADA', DATA_DECISAO: new Date().toISOString(), DECIDIDO_POR: decididoPor, MOTIVO_REJEICAO: motivo.trim(),
+      }, ['ID_SOLICITACAO']);
+    }
     await registrarAuditoriaAcesso(sol.EMAIL||'', 'SOLICITACAO_REJEITADA', '', sol.EMPRESA||'', 'PENDENTE', 'REJEITADA', decididoPor);
     res.json({sucesso:true, mensagem:'Solicitação rejeitada.'});
   } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
@@ -7553,9 +7600,14 @@ app.post('/api/admin/solicitacoes/:id/aprovar', requerPerfil('MASTER'), async (r
     const empCod = empresaCanonica(empresa);
     if (!empCod) return res.status(400).json({sucesso:false,erro:'Empresa inválida.'});
 
-    // Lê a solicitação do Sheets
+    // Lê a solicitação do Sheets (com fallback para PG)
     const rows = await lerAba('SOLICITACOES_ACESSO', 1000).catch(() => []);
-    const solRow = rows.find(r => r.ID_SOLICITACAO === req.params.id);
+    let solRow = rows.find(r => r.ID_SOLICITACAO === req.params.id);
+    let solRowFromPg = false;
+    if (!solRow && solicitacaoRepo) {
+      const r = await solicitacaoRepo.findById(req.params.id).catch(() => null);
+      if (r) { solRow = { ID_SOLICITACAO: r.idSolicitacao, NOME: r.nome, EMAIL: r.email, EMPRESA: r.empresa, SETOR: r.setor, STATUS: r.status }; solRowFromPg = true; }
+    }
     if (!solRow) return res.status(404).json({sucesso:false,erro:'Solicitação não encontrada.'});
     if (String(solRow.STATUS||'').toUpperCase() !== 'PENDENTE') return res.status(400).json({sucesso:false,erro:`Solicitação já ${solRow.STATUS}.`});
 
@@ -7589,11 +7641,15 @@ app.post('/api/admin/solicitacoes/:id/aprovar', requerPerfil('MASTER'), async (r
       COMPETENCIAS: competenciasStr,
     });
 
-    // Marca solicitação como APROVADA no Sheets
-    await atualizarPorID('SOLICITACOES_ACESSO', req.params.id, {
-      STATUS: 'APROVADA', DATA_DECISAO: new Date().toISOString(),
-      DECIDIDO_POR: req.user.usuario||'MASTER', MOTIVO_REJEICAO: '',
-    }, ['ID_SOLICITACAO']);
+    // Marca solicitação como APROVADA
+    if (solRowFromPg && solicitacaoRepo) {
+      await solicitacaoRepo.update(req.params.id, { status: 'APROVADA', dataDecisao: new Date(), decididoPor: req.user.usuario||'MASTER' }).catch(()=>{});
+    } else {
+      await atualizarPorID('SOLICITACOES_ACESSO', req.params.id, {
+        STATUS: 'APROVADA', DATA_DECISAO: new Date().toISOString(),
+        DECIDIDO_POR: req.user.usuario||'MASTER', MOTIVO_REJEICAO: '',
+      }, ['ID_SOLICITACAO']);
+    }
 
     await registrarAuditoriaAcesso(emailNorm, 'USUARIO_CRIADO_POR_APROVACAO', '', empCod, '', JSON.stringify({perfil:perfilNorm,empresa:empCod,modulos:modulosConfig}), req.user.usuario||'MASTER');
     invalidarCachePermissoes(emailNorm);
