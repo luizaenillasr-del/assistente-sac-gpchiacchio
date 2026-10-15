@@ -18,8 +18,8 @@ const permissoesService = require('./services/permissoesService');
 // Injeção de mock Sheets para testes — nunca ativo em produção (env var não existe em prod)
 const _sheetsMock = process.env.SHEETS_MOCK_PATH ? (() => { try { return require(process.env.SHEETS_MOCK_PATH); } catch(e) { console.warn('[MOCK] falhou ao carregar:', e.message); return null; } })() : null;
 // Flag de leitura PG: padrão false = leituras sempre do Sheets
-// Para reativar PG: adicionar PG_LEITURA_ATIVA=true nas variáveis de ambiente do Vercel
-const PG_LEITURA_ATIVA = String(process.env.PG_LEITURA_ATIVA || 'false').toLowerCase() === 'true';
+// PG ativo por padrão. Desativar com PG_LEITURA_ATIVA=false nas variáveis do Vercel se necessário.
+const PG_LEITURA_ATIVA = String(process.env.PG_LEITURA_ATIVA || 'true').toLowerCase() === 'true';
 
 // Repositórios PostgreSQL — carregados mas desativados enquanto PG_LEITURA_ATIVA=false
 // Isso garante que todos os dados sejam lidos/gravados exclusivamente no Sheets,
@@ -306,10 +306,15 @@ async function carregarUsuarios(){
   const pgEmails = new Set(pgMapped.map(u => (u.EMAIL||'').toLowerCase()).filter(Boolean));
   const pgIds = new Set(pgMapped.map(u => u.ID_USUARIO).filter(Boolean));
   // Quando PG disponível, Sheets é ignorado (não misturar dados obsoletos)
+  const _seenEmails = new Set();
   const sheetsOnly = pgMapped.length > 0 ? [] : rows.filter(r => {
     const emailOrUser = (r.EMAIL||r.USUARIO||'').toLowerCase();
     const id = r.ID_USUARIO;
-    return !pgIds.has(id) && !pgEmails.has(emailOrUser);
+    if (pgIds.has(id) || pgEmails.has(emailOrUser)) return false;
+    // dedup interno do Sheets: primeiro registro com esse email/usuario ganha
+    if (_seenEmails.has(emailOrUser)) return false;
+    _seenEmails.add(emailOrUser);
+    return true;
   });
   const pgMerged = pgMapped; // PG é a fonte única — perfil/empresa vêm do PG
   const demoEnabled=String(process.env.DEMO_LOGIN_ENABLED||'false').toLowerCase()==='true';
