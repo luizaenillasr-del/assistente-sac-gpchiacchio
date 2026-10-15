@@ -7679,9 +7679,9 @@ app.patch('/api/admin/usuarios/:id/permissoes', requerPerfil('MASTER'), async (r
       updates.COMPETENCIAS = Array.isArray(competencias) ? competencias.join(',') : (competencias||'');
     }
 
-    // Persiste no Sheets (única fonte de dados)
+    // Persiste alterações na planilha USUARIOS
     const chaveId = u.ID_USUARIO || u.USUARIO || u.EMAIL;
-    await atualizarPorID('USUARIOS', chaveId, updates, ['ID_USUARIO','USUARIO','EMAIL']);
+    await atualizarPorID('USUARIOS', chaveId, updates, ['ID_USUARIO','USUARIO','EMAIL']).catch(e => console.warn('[PERM] Sheets update falhou:', e.message));
     invalidarCacheAba('USUARIOS');
     invalidarCachePermissoes(u.EMAIL||u.USUARIO||u.ID_USUARIO);
     _statusCache.delete(normalizarTexto(u.USUARIO||u.EMAIL||u.ID_USUARIO));
@@ -7696,7 +7696,8 @@ app.post('/api/admin/usuarios/:id/ativar', requerPerfil('MASTER'), async (req, r
     const usuarios = await carregarUsuarios();
     const u = usuarios.find(u2=>u2.ID_USUARIO===req.params.id||u2.USUARIO===req.params.id);
     if (!u) return res.status(404).json({sucesso:false,erro:'Usuário não encontrado.'});
-    await atualizarPorID('USUARIOS', u.ID_USUARIO||u.USUARIO, {STATUS:'ATIVO',DATA_ULTIMA_ALTERACAO:new Date().toISOString(),ALTERADO_POR:req.user.usuario||'MASTER'}, ['ID_USUARIO','USUARIO','EMAIL']);
+    if (u._pgId && usuarioRepo) await usuarioRepo.update(u._pgId, { ativo: true }).catch(()=>{});
+    await atualizarPorID('USUARIOS', u.ID_USUARIO||u.USUARIO||u.EMAIL, { STATUS:'ATIVO', DATA_ULTIMA_ALTERACAO:new Date().toISOString(), ALTERADO_POR:req.user.usuario||'MASTER' }, ['ID_USUARIO','USUARIO','EMAIL']).catch(e => console.warn('[ATIVAR] Sheets update falhou:', e.message));
     invalidarCacheAba('USUARIOS');
     invalidarCachePermissoes(u.EMAIL||u.USUARIO||u.ID_USUARIO);
     _statusCache.delete(normalizarTexto(u.USUARIO||u.EMAIL||u.ID_USUARIO));
@@ -7711,7 +7712,8 @@ app.post('/api/admin/usuarios/:id/desativar', requerPerfil('MASTER'), async (req
     const u = usuarios.find(u2=>u2.ID_USUARIO===req.params.id||u2.USUARIO===req.params.id);
     if (!u) return res.status(404).json({sucesso:false,erro:'Usuário não encontrado.'});
     if (normalizarPerfil(u.PERFIL)==='MASTER' && u.ID_USUARIO===req.user.id) return res.status(400).json({sucesso:false,erro:'Não pode desativar a si mesmo.'});
-    await atualizarPorID('USUARIOS', u.ID_USUARIO||u.USUARIO, {STATUS:'INATIVO',DATA_ULTIMA_ALTERACAO:new Date().toISOString(),ALTERADO_POR:req.user.usuario||'MASTER'}, ['ID_USUARIO','USUARIO','EMAIL']);
+    if (u._pgId && usuarioRepo) await usuarioRepo.update(u._pgId, { ativo: false }).catch(()=>{});
+    await atualizarPorID('USUARIOS', u.ID_USUARIO||u.USUARIO||u.EMAIL, { STATUS:'INATIVO', DATA_ULTIMA_ALTERACAO:new Date().toISOString(), ALTERADO_POR:req.user.usuario||'MASTER' }, ['ID_USUARIO','USUARIO','EMAIL']).catch(e => console.warn('[DESATIVAR] Sheets update falhou:', e.message));
     invalidarCacheAba('USUARIOS');
     invalidarCachePermissoes(u.EMAIL||u.USUARIO||u.ID_USUARIO);
     _statusCache.delete(normalizarTexto(u.USUARIO||u.EMAIL||u.ID_USUARIO));
