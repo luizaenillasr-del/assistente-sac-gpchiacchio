@@ -1,0 +1,820 @@
+// ================================================================
+// SCHEMA DEFINITIVO — Assistente SAC Grupo Chiacchio
+// Banco: PostgreSQL (Neon serverless)
+// ORM:   Prisma
+// ================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL_UNPOOLED")
+}
+
+// ──────────────────────────────────────────────────────────────────
+// EMPRESAS
+// ──────────────────────────────────────────────────────────────────
+model Empresa {
+  id           Int      @id @default(autoincrement())
+  codigo       String   @unique // CHIACCHIO | PLASCHIO | TUBAHIA
+  nome         String
+  cnpj         String?
+  ativa        Boolean  @default(true)
+  criadaEm     DateTime @default(now()) @map("criada_em")
+  atualizadaEm DateTime @updatedAt @map("atualizada_em")
+
+  setores          Setor[]
+  clientes         Cliente[]
+  usuarios         Usuario[]
+  manifestacoes    Manifestacao[]
+  rncs             Rnc[]
+  politicas        Politica[]
+  procedimentos    Procedimento[]
+  regras           Regra[]
+  slaConfigs       SlaConfig[]
+  matrizRegras     MatrizTratamento[]
+  documentos       Documento[]
+  produtos         Produto[]
+
+  @@map("empresas")
+}
+
+// ──────────────────────────────────────────────────────────────────
+// SETORES
+// ──────────────────────────────────────────────────────────────────
+model Setor {
+  id                      Int      @id @default(autoincrement())
+  empresaId               Int      @map("empresa_id")
+  codigo                  String   // SAC | QUALIDADE | LOGISTICA | COMERCIAL
+  nome                    String
+  descricao               String?
+  responsabilidades       String?
+  criterioEscalonamento   String?  @map("criterio_escalonamento")
+  ativo                   Boolean  @default(true)
+  criadoEm                DateTime @default(now()) @map("criado_em")
+
+  empresa          Empresa           @relation(fields: [empresaId], references: [id])
+  responsaveis     Responsavel[]
+  manifestacoes    Manifestacao[]
+  slaConfigs       SlaConfig[]
+  matrizRegras     MatrizTratamento[]
+  politicas        Politica[]
+  procedimentos    Procedimento[]
+  regras           Regra[]
+  documentos       Documento[]
+  baseConhecimento BaseConhecimento[]
+
+  @@unique([empresaId, codigo])
+  @@map("setores")
+}
+
+// ──────────────────────────────────────────────────────────────────
+// PERFIS
+// ──────────────────────────────────────────────────────────────────
+model Perfil {
+  id         Int      @id @default(autoincrement())
+  codigo     String   @unique // MASTER | ADMINISTRADOR | SAC | GESTOR_DE_SETOR | USUARIO_DE_SETOR | REPRESENTANTE
+  nome       String
+  permissoes String[]
+  ativo      Boolean  @default(true)
+  criadoEm  DateTime @default(now()) @map("criado_em")
+
+  usuarios   Usuario[]
+
+  @@map("perfis")
+}
+
+// ──────────────────────────────────────────────────────────────────
+// USUÁRIOS
+// ──────────────────────────────────────────────────────────────────
+model Usuario {
+  id           Int      @id @default(autoincrement())
+  empresaId    Int      @map("empresa_id")
+  perfilId     Int      @map("perfil_id")
+  nome         String
+  email        String   @unique
+  senhaHash    String   @map("senha_hash")
+  ativo        Boolean  @default(true)
+  idOriginal   String?  @map("id_original") // ID legado da planilha
+  ultimoAcesso DateTime? @map("ultimo_acesso")
+  criadoEm    DateTime @default(now()) @map("criado_em")
+  atualizadoEm DateTime @updatedAt @map("atualizado_em")
+
+  empresa                  Empresa        @relation(fields: [empresaId], references: [id])
+  perfil                   Perfil         @relation(fields: [perfilId], references: [id])
+  manifestacoesCriadas     Manifestacao[] @relation("ManifestacaoCriador")
+  manifestacoesResponsavel Manifestacao[] @relation("ManifestacaoResponsavel")
+  tratativas               Tratativa[]
+  devolutivas              Devolutiva[]
+  logAnalises              LogAnalise[]
+
+  @@map("usuarios")
+}
+
+// ──────────────────────────────────────────────────────────────────
+// RESPONSÁVEIS (por setor — podem não ser usuários do sistema)
+// ──────────────────────────────────────────────────────────────────
+model Responsavel {
+  id        Int      @id @default(autoincrement())
+  setorId   Int      @map("setor_id")
+  usuarioId Int?     @map("usuario_id")
+  nome      String
+  email     String?
+  ativo     Boolean  @default(true)
+  criadoEm DateTime @default(now()) @map("criado_em")
+
+  setor         Setor          @relation(fields: [setorId], references: [id])
+  manifestacoes Manifestacao[]
+
+  @@map("responsaveis")
+}
+
+// ──────────────────────────────────────────────────────────────────
+// CLIENTES (hoje apenas CONTATO textual em manifestações)
+// ──────────────────────────────────────────────────────────────────
+model Cliente {
+  id              Int      @id @default(autoincrement())
+  empresaId       Int      @map("empresa_id")
+  nome            String
+  email           String?
+  telefone        String?
+  cargo           String?
+  contatoOriginal String?  @map("contato_original") // valor preservado da migração
+  ativo           Boolean  @default(true)
+  criadoEm       DateTime @default(now()) @map("criado_em")
+
+  empresa       Empresa        @relation(fields: [empresaId], references: [id])
+  manifestacoes Manifestacao[]
+
+  @@map("clientes")
+}
+
+// ──────────────────────────────────────────────────────────────────
+// PRODUTOS
+// ──────────────────────────────────────────────────────────────────
+model Produto {
+  id        Int      @id @default(autoincrement())
+  empresaId Int      @map("empresa_id")
+  codigo    String?
+  nome      String
+  categoria String?
+  ativo     Boolean  @default(true)
+  criadoEm DateTime @default(now()) @map("criado_em")
+
+  empresa       Empresa        @relation(fields: [empresaId], references: [id])
+  manifestacoes Manifestacao[]
+
+  @@map("produtos")
+}
+
+// ──────────────────────────────────────────────────────────────────
+// CLASSIFICAÇÕES (tipo / categoria / subcategoria)
+// ──────────────────────────────────────────────────────────────────
+model Classificacao {
+  id           Int      @id @default(autoincrement())
+  tipo         String   // RECLAMACAO | SUGESTAO | ELOGIO | INFORMACAO | SAC | AUDITORIA
+  categoria    String?
+  subcategoria String?
+  ativa        Boolean  @default(true)
+  criadaEm    DateTime @default(now()) @map("criada_em")
+
+  manifestacoes Manifestacao[]
+
+  @@map("classificacoes")
+}
+
+// ──────────────────────────────────────────────────────────────────
+// SLA CONFIG
+// ──────────────────────────────────────────────────────────────────
+model SlaConfig {
+  id               Int      @id @default(autoincrement())
+  empresaId        Int      @map("empresa_id")
+  setorId          Int?     @map("setor_id")
+  tipoManifestacao String?  @map("tipo_manifestacao") // null = aplica a todos
+  categoria        String?
+  prazoHoras       Int      @map("prazo_horas")
+  unidade          String   @default("HORAS")
+  condicoes        String?
+  excecoes         String?
+  ativo            Boolean  @default(true)
+  versao           Int      @default(1)
+  vigenteDesde     DateTime @default(now()) @map("vigente_desde")
+  vigenteAte       DateTime? @map("vigente_ate")
+  criadaEm         DateTime @default(now()) @map("criada_em")
+
+  empresa       Empresa        @relation(fields: [empresaId], references: [id])
+  setor         Setor?         @relation(fields: [setorId], references: [id])
+  manifestacoes Manifestacao[]
+
+  @@map("sla_configs")
+}
+
+// ──────────────────────────────────────────────────────────────────
+// MANIFESTAÇÕES
+// ──────────────────────────────────────────────────────────────────
+model Manifestacao {
+  id               Int      @id @default(autoincrement())
+  protocolo        String   @unique
+  idOriginal       String?  @map("id_original") // ID_MANIFESTACAO da planilha
+
+  empresaId        Int      @map("empresa_id")
+  clienteId        Int?     @map("cliente_id")
+  setorId          Int?     @map("setor_id")
+  responsavelId    Int?     @map("responsavel_id")
+  usuarioCriacaoId      Int?     @map("usuario_criacao_id")
+  usuarioResponsavelId  Int?     @map("usuario_responsavel_id")
+  classificacaoId       Int?     @map("classificacao_id")
+  produtoId        Int?     @map("produto_id")
+  slaConfigId      Int?     @map("sla_config_id")
+
+  // Dados textuais da manifestação
+  descricao        String
+  empresaNome      String   @map("empresa_nome") // nome textual para display e legado
+  contato          String?  // nome textual original preservado (legado)
+  produtoNome      String?  @map("produto_nome")
+  tipo             String   // RECLAMACAO | SAC | SUGESTAO | ELOGIO | INFORMACAO
+  categoria        String?
+  subcategoria     String?
+  prioridade       String   @default("Media")
+  risco            String?
+  origem           String?
+  canal            String?
+  observacoes      String?
+
+  // Status
+  // ABERTA | EM_ANALISE | EM_TRATAMENTO | AGUARDANDO_APROVACAO | ENCERRADA | CANCELADA
+  status           String   @default("ABERTA")
+
+  // SLA (snapshot do momento da abertura)
+  slaHoras         Int?     @map("sla_horas")
+  dataAbertura     DateTime @default(now()) @map("data_abertura")
+  prazoFinal       DateTime? @map("prazo_final")
+  dataEncerramento DateTime? @map("data_encerramento")
+
+  criadaEm         DateTime @default(now()) @map("criada_em")
+  atualizadaEm     DateTime @updatedAt @map("atualizada_em")
+
+  empresaRel       Empresa        @relation(fields: [empresaId], references: [id])
+  clienteRel       Cliente?       @relation(fields: [clienteId], references: [id])
+  setorRel         Setor?         @relation(fields: [setorId], references: [id])
+  responsavelRel   Responsavel?   @relation(fields: [responsavelId], references: [id])
+  criadorRel       Usuario?       @relation("ManifestacaoCriador", fields: [usuarioCriacaoId], references: [id])
+  responsavelUserRel Usuario?     @relation("ManifestacaoResponsavel", fields: [usuarioResponsavelId], references: [id])
+  classificacaoRel Classificacao? @relation(fields: [classificacaoId], references: [id])
+  produtoRel       Produto?       @relation(fields: [produtoId], references: [id])
+  slaConfigRel     SlaConfig?     @relation(fields: [slaConfigId], references: [id])
+
+  historico        ManifestacaoHistorico[]
+  tratativas       Tratativa[]
+  devolutivas      Devolutiva[]
+  rncs             Rnc[]
+  reincidencias    Reincidencia[]
+  logAnalises      LogAnalise[]
+  feedbacksIa      FeedbackIa[]
+  resultados       ResultadoTratamento[]
+
+  @@index([empresaId, status])
+  @@index([status])
+  @@index([dataAbertura])
+  @@index([criadaEm])
+  @@map("manifestacoes")
+}
+
+// ──────────────────────────────────────────────────────────────────
+// HISTÓRICO DA MANIFESTAÇÃO (audit trail de campos)
+// ──────────────────────────────────────────────────────────────────
+model ManifestacaoHistorico {
+  id             Int      @id @default(autoincrement())
+  manifestacaoId Int      @map("manifestacao_id")
+  campo          String
+  valorAnterior  String?  @map("valor_anterior")
+  valorNovo      String?  @map("valor_novo")
+  usuarioId      Int?     @map("usuario_id")
+  motivo         String?
+  criadoEm       DateTime @default(now()) @map("criado_em")
+
+  manifestacao   Manifestacao @relation(fields: [manifestacaoId], references: [id])
+
+  @@index([manifestacaoId])
+  @@map("manifestacao_historico")
+}
+
+// ──────────────────────────────────────────────────────────────────
+// REINCIDÊNCIAS
+// ──────────────────────────────────────────────────────────────────
+model Reincidencia {
+  id                   Int      @id @default(autoincrement())
+  manifestacaoId       Int      @map("manifestacao_id")
+  manifestacaoOrigemId Int?     @map("manifestacao_origem_id")
+  clienteId            Int?     @map("cliente_id")
+  empresaId            Int?     @map("empresa_id")
+  tipo                 String?
+  categoria            String?
+  produto              String?
+  periodo              Int?     // dias de análise
+  // SEM_REINCIDENCIA | POSSIVEL | CONFIRMADA
+  nivel                String
+  quantidade           Int      @default(0)
+  fundamentacao        String?  // IDs dos casos que fundamentam
+  criadaEm             DateTime @default(now()) @map("criada_em")
+
+  manifestacao         Manifestacao @relation(fields: [manifestacaoId], references: [id])
+
+  @@map("reincidencias")
+}
+
+// ──────────────────────────────────────────────────────────────────
+// TRATATIVAS
+// ──────────────────────────────────────────────────────────────────
+model Tratativa {
+  id                Int      @id @default(autoincrement())
+  manifestacaoId    Int      @map("manifestacao_id")
+  usuarioId         Int?     @map("usuario_id")
+  setorId           Int?     @map("setor_id")
+
+  diagnostico       String?
+  sugestaoIa        String?  @map("sugestao_ia")
+  textoProposto     String?  @map("texto_proposto")
+  textoFinal        String?  @map("texto_final")
+
+  prioridade        String?
+  risco             String?
+  prazo             DateTime?
+  necessitaAprovacao Boolean @default(false) @map("necessita_aprovacao")
+  aprovadoPor       Int?     @map("aprovado_por")
+  aprovadoEm        DateTime? @map("aprovado_em")
+
+  // PENDENTE | APROVADA | REJEITADA | EM_EXECUCAO | CONCLUIDA
+  status            String   @default("PENDENTE")
+
+  resultado         String?
+  eficaz            Boolean?
+  evidencia         String?
+  observacoes       String?
+
+  criadaEm          DateTime @default(now()) @map("criada_em")
+  atualizadaEm      DateTime @updatedAt @map("atualizada_em")
+
+  manifestacao      Manifestacao    @relation(fields: [manifestacaoId], references: [id])
+  usuario           Usuario?        @relation(fields: [usuarioId], references: [id])
+  acoes             TratativaAcao[]
+  devolutivas       Devolutiva[]
+
+  @@index([manifestacaoId])
+  @@map("tratativas")
+}
+
+model TratativaAcao {
+  id          Int      @id @default(autoincrement())
+  tratativaId Int      @map("tratativa_id")
+  descricao   String
+  responsavel String?
+  prazo       DateTime?
+  status      String   @default("PENDENTE")
+  resultado   String?
+  criadaEm   DateTime @default(now()) @map("criada_em")
+
+  tratativa   Tratativa @relation(fields: [tratativaId], references: [id])
+
+  @@map("tratativa_acoes")
+}
+
+// ──────────────────────────────────────────────────────────────────
+// DEVOLUTIVAS
+// ──────────────────────────────────────────────────────────────────
+model Devolutiva {
+  id             Int      @id @default(autoincrement())
+  manifestacaoId Int      @map("manifestacao_id")
+  tratativaId    Int?     @map("tratativa_id")
+  usuarioId      Int?     @map("usuario_id")
+
+  // RECEBIMENTO | ANDAMENTO | ENCERRAMENTO | REJEICAO
+  tipo           String   @default("RECEBIMENTO")
+
+  textoIa        String?  @map("texto_ia")
+  textoFinal     String?  @map("texto_final")
+  editada        Boolean  @default(false)
+  motivoEdicao   String?  @map("motivo_edicao")
+
+  // PENDENTE | APROVADA | REJEITADA | ENVIADA
+  status         String   @default("PENDENTE")
+
+  aprovadoPor    Int?     @map("aprovado_por")
+  aprovadoEm     DateTime? @map("aprovado_em")
+  motivoRejeicao String?  @map("motivo_rejeicao")
+
+  criadaEm       DateTime @default(now()) @map("criada_em")
+  atualizadaEm   DateTime @updatedAt @map("atualizada_em")
+
+  manifestacao   Manifestacao @relation(fields: [manifestacaoId], references: [id])
+  tratativa      Tratativa?   @relation(fields: [tratativaId], references: [id])
+  usuario        Usuario?     @relation(fields: [usuarioId], references: [id])
+
+  @@index([manifestacaoId])
+  @@map("devolutivas")
+}
+
+// ──────────────────────────────────────────────────────────────────
+// RNC
+// ──────────────────────────────────────────────────────────────────
+model Rnc {
+  id               Int      @id @default(autoincrement())
+  idOriginal       String?  @map("id_original") // ID_RNC da planilha
+  protocolo        String   @unique
+  manifestacaoId   Int?     @map("manifestacao_id")
+  empresaId        Int      @map("empresa_id")
+
+  // COMERCIAL_RECLAMACAO | AUDITORIA_EXTERNA | AUDITORIA_INTERNA | DESVIO_MATERIA_PRIMA
+  // SAC NÃO gera RNC automaticamente
+  origemTipo       String   @map("origem_tipo")
+
+  descricao        String
+  produto          String?
+  setor            String?
+  responsavel      String?
+  prioridade       String?
+
+  // ABERTA | EM_AVALIACAO | CONTENCAO | INVESTIGACAO | CORRECAO | ACAO_CORRETIVA | VERIFICACAO_EFICACIA | ENCERRADA
+  status           String   @default("ABERTA")
+
+  dataAbertura     DateTime @default(now()) @map("data_abertura")
+  dataEncerramento DateTime? @map("data_encerramento")
+  criadaEm         DateTime @default(now()) @map("criada_em")
+  atualizadaEm     DateTime @updatedAt @map("atualizada_em")
+
+  empresa          Empresa       @relation(fields: [empresaId], references: [id])
+  manifestacao     Manifestacao? @relation(fields: [manifestacaoId], references: [id])
+  investigacoes    RncInvestigacao[]
+  acoes            RncAcao[]
+  eficacia         RncEficacia[]
+
+  @@index([empresaId, status])
+  @@index([dataAbertura])
+  @@map("rncs")
+}
+
+model RncInvestigacao {
+  id          Int      @id @default(autoincrement())
+  rncId       Int      @map("rnc_id")
+  metodologia String?
+  causaRaiz   String?  @map("causa_raiz")
+  evidencias  String?
+  responsavel String?
+  criadaEm   DateTime @default(now()) @map("criada_em")
+
+  rnc         Rnc @relation(fields: [rncId], references: [id])
+
+  @@map("rnc_investigacoes")
+}
+
+model RncAcao {
+  id          Int      @id @default(autoincrement())
+  rncId       Int      @map("rnc_id")
+  // CONTENCAO | CORRETIVA | PREVENTIVA
+  tipo        String
+  descricao   String
+  responsavel String?
+  prazo       DateTime?
+  status      String   @default("PENDENTE")
+  resultado   String?
+  criadaEm   DateTime @default(now()) @map("criada_em")
+
+  rnc         Rnc @relation(fields: [rncId], references: [id])
+
+  @@map("rnc_acoes")
+}
+
+model RncEficacia {
+  id             Int      @id @default(autoincrement())
+  rncId          Int      @map("rnc_id")
+  criterio       String?
+  resultado      String?
+  eficaz         Boolean?
+  verificadoPor  String?  @map("verificado_por")
+  verificadoEm   DateTime? @map("verificado_em")
+  criadaEm       DateTime @default(now()) @map("criada_em")
+
+  rnc            Rnc @relation(fields: [rncId], references: [id])
+
+  @@map("rnc_eficacia")
+}
+
+// ──────────────────────────────────────────────────────────────────
+// CONHECIMENTO — Políticas
+// ──────────────────────────────────────────────────────────────────
+model Politica {
+  id           Int      @id @default(autoincrement())
+  empresaId    Int      @map("empresa_id")
+  setorId      Int?     @map("setor_id")
+  titulo       String
+  texto        String
+  versao       Int      @default(1)
+  // ATIVA | REVOGADA | RASCUNHO
+  status       String   @default("ATIVA")
+  vigenteDesde DateTime @default(now()) @map("vigente_desde")
+  vigenteAte   DateTime? @map("vigente_ate")
+  responsavel  String?
+  fonte        String?
+  criadaEm    DateTime @default(now()) @map("criada_em")
+
+  empresa      Empresa    @relation(fields: [empresaId], references: [id])
+  setor        Setor?     @relation(fields: [setorId], references: [id])
+  documentos   Documento[]
+
+  @@map("politicas")
+}
+
+// ──────────────────────────────────────────────────────────────────
+// CONHECIMENTO — Procedimentos
+// ──────────────────────────────────────────────────────────────────
+model Procedimento {
+  id           Int      @id @default(autoincrement())
+  empresaId    Int      @map("empresa_id")
+  setorId      Int?     @map("setor_id")
+  titulo       String
+  texto        String
+  // OPERACIONAL | QUALIDADE | ATENDIMENTO
+  tipo         String?
+  versao       Int      @default(1)
+  status       String   @default("ATIVO")
+  vigenteDesde DateTime @default(now()) @map("vigente_desde")
+  vigenteAte   DateTime? @map("vigente_ate")
+  criadaEm    DateTime @default(now()) @map("criada_em")
+
+  empresa      Empresa @relation(fields: [empresaId], references: [id])
+  setor        Setor?  @relation(fields: [setorId], references: [id])
+
+  @@map("procedimentos")
+}
+
+// ──────────────────────────────────────────────────────────────────
+// CONHECIMENTO — Regras
+// ──────────────────────────────────────────────────────────────────
+model Regra {
+  id        Int      @id @default(autoincrement())
+  empresaId Int      @map("empresa_id")
+  setorId   Int?     @map("setor_id")
+  titulo    String
+  descricao String
+  condicao  String?
+  acao      String?
+  ativo     Boolean  @default(true)
+  criadaEm DateTime @default(now()) @map("criada_em")
+
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+  setor     Setor?  @relation(fields: [setorId], references: [id])
+
+  @@map("regras")
+}
+
+// ──────────────────────────────────────────────────────────────────
+// CONHECIMENTO — Base / FAQ
+// ──────────────────────────────────────────────────────────────────
+model BaseConhecimento {
+  id        Int      @id @default(autoincrement())
+  setorId   Int?     @map("setor_id")
+  empresaId Int?     @map("empresa_id")
+  // FAQ | PROCEDIMENTO | POLITICA | TECNICO | MANUAL | CRITERIO | EXCECAO
+  tipo      String
+  pergunta  String?
+  resposta  String
+  tags      String[]
+  ativo     Boolean  @default(true)
+  criadoEm DateTime @default(now()) @map("criado_em")
+
+  setor     Setor? @relation(fields: [setorId], references: [id])
+
+  @@map("base_conhecimento")
+}
+
+// ──────────────────────────────────────────────────────────────────
+// DOCUMENTOS
+// ──────────────────────────────────────────────────────────────────
+model Documento {
+  id        Int      @id @default(autoincrement())
+  empresaId Int?     @map("empresa_id")
+  setorId   Int?     @map("setor_id")
+  politicaId Int?    @map("politica_id")
+  titulo    String
+  // MANUAL | CERTIFICADO | LAUDO | FORMULARIO | OUTRO
+  tipo      String
+  url       String?
+  versao    Int      @default(1)
+  status    String   @default("ATIVO")
+  criadoEm DateTime @default(now()) @map("criado_em")
+
+  empresa   Empresa?  @relation(fields: [empresaId], references: [id])
+  setor     Setor?    @relation(fields: [setorId], references: [id])
+  politica  Politica? @relation(fields: [politicaId], references: [id])
+
+  @@map("documentos")
+}
+
+// ──────────────────────────────────────────────────────────────────
+// MATRIZ DE TRATAMENTO
+// ──────────────────────────────────────────────────────────────────
+model MatrizTratamento {
+  id                      Int      @id @default(autoincrement())
+  idOriginal              String?  @map("id_original") // ID_TRATAMENTO da planilha
+  empresaId               Int?     @map("empresa_id")
+  setorId                 Int?     @map("setor_id")
+
+  tipoManifestacao        String?  @map("tipo_manifestacao")
+  categoria               String?
+  subcategoria            String?
+  // reincidente | atraso | alta_prioridade | *
+  condicao                String?
+
+  setorResponsavel        String?  @map("setor_responsavel")
+  responsavel             String?
+  prioridade              String?
+  risco                   String?
+
+  tratativaObrigatoria    String?  @map("tratativa_obrigatoria")
+  tratativaRecomendada    String?  @map("tratativa_recomendada")
+  tratativaCondicional    String?  @map("tratativa_condicional")
+  tratativaNaoPermitida   String?  @map("tratativa_nao_permitida")
+
+  prazoTratativa          Int?     @map("prazo_tratativa")
+  necessitaAprovacao      Boolean  @default(false) @map("necessita_aprovacao")
+  quemAprova              String?  @map("quem_aprova")
+  necessitaEvidencia      Boolean  @default(false) @map("necessita_evidencia")
+  necessitaAnaliseTecnica Boolean  @default(false) @map("necessita_analise_tecnica")
+  necessitaRnc            Boolean  @default(false) @map("necessita_rnc")
+  necessitaEscalonamento  Boolean  @default(false) @map("necessita_escalonamento")
+
+  modeloDevolutiva        String?  @map("modelo_devolutiva")
+  regrasDevolutiva        String?  @map("regras_devolutiva")
+  informacoesPermitidas   String?  @map("informacoes_permitidas")
+  informacoesProibidas    String?  @map("informacoes_proibidas")
+
+  ativo                   Boolean  @default(true)
+  versao                  Int      @default(1)
+  criadaEm                DateTime @default(now()) @map("criada_em")
+  atualizadaEm            DateTime @updatedAt @map("atualizada_em")
+
+  empresa                 Empresa? @relation(fields: [empresaId], references: [id])
+  setor                   Setor?   @relation(fields: [setorId], references: [id])
+
+  @@map("matriz_tratamento")
+}
+
+// ──────────────────────────────────────────────────────────────────
+// RESULTADOS DO TRATAMENTO
+// ──────────────────────────────────────────────────────────────────
+model ResultadoTratamento {
+  id             Int      @id @default(autoincrement())
+  manifestacaoId Int      @map("manifestacao_id")
+  // RESOLVIDO | PARCIALMENTE_RESOLVIDO | NAO_RESOLVIDO | REABERTO | REINCIDENTE | EFICAZ | INEFICAZ
+  resultado      String
+  observacao     String?
+  registradoPor  Int?     @map("registrado_por")
+  criadoEm       DateTime @default(now()) @map("criado_em")
+
+  manifestacao   Manifestacao @relation(fields: [manifestacaoId], references: [id])
+
+  @@map("resultados_tratamento")
+}
+
+// ──────────────────────────────────────────────────────────────────
+// FEEDBACK IA / ASSERTIVIDADE
+// ──────────────────────────────────────────────────────────────────
+model FeedbackIa {
+  id             Int      @id @default(autoincrement())
+  manifestacaoId Int      @map("manifestacao_id")
+  recomendacaoIa String?  @map("recomendacao_ia")
+  // ACEITA | EDITADA | REJEITADA
+  decisaoHumana  String?  @map("decisao_humana")
+  execucao       String?
+  resultado      String?
+  eficaz         Boolean?
+  reincidente    Boolean?
+  reaberta       Boolean?
+  modeloUsado    String?  @map("modelo_usado")
+  tokensEntrada  Int?     @map("tokens_entrada")
+  tokensSaida    Int?     @map("tokens_saida")
+  custoEstimado  Float?   @map("custo_estimado")
+  criadoEm       DateTime @default(now()) @map("criado_em")
+
+  manifestacao   Manifestacao @relation(fields: [manifestacaoId], references: [id])
+
+  @@map("feedback_ia")
+}
+
+// ──────────────────────────────────────────────────────────────────
+// LOG DE ANÁLISES DO CÉREBRO
+// ──────────────────────────────────────────────────────────────────
+model LogAnalise {
+  id                 Int      @id @default(autoincrement())
+  manifestacaoId     Int?     @map("manifestacao_id")
+  protocolo          String?
+  usuarioId          Int?     @map("usuario_id")
+  versaoCerebro      String?  @map("versao_cerebro")
+  tipoDetectado      String?  @map("tipo_detectado")
+  setores            String[]
+  similaresEncontrados Int    @default(0) @map("similares_encontrados")
+  reincidencia       String?
+  slaStatus          String?  @map("sla_status")
+  confiancaNivel     String?  @map("confianca_nivel")
+  confiancaScore     Int?     @map("confianca_score")
+  iaDisponivel       Boolean  @default(false) @map("ia_disponivel")
+  iaModelo           String?  @map("ia_modelo")
+  iaTokensEntrada    Int?     @map("ia_tokens_entrada")
+  iaTokensSaida      Int?     @map("ia_tokens_saida")
+  conflitos          Int      @default(0)
+  necessitaValidacao Boolean  @default(false) @map("necessita_validacao")
+  tempoMs            Int?     @map("tempo_ms")
+  erros              String[]
+  criadoEm           DateTime @default(now()) @map("criado_em")
+
+  manifestacao       Manifestacao? @relation(fields: [manifestacaoId], references: [id])
+  usuario            Usuario?      @relation(fields: [usuarioId], references: [id])
+
+  @@map("log_analises")
+}
+
+// ──────────────────────────────────────────────────────────────────
+// VERSÕES DO CÉREBRO (rastreabilidade)
+// ──────────────────────────────────────────────────────────────────
+model VersaoCerebro {
+  id        Int      @id @default(autoincrement())
+  versao    String   @unique
+  descricao String?
+  ativa     Boolean  @default(true)
+  lancadaEm DateTime @default(now()) @map("lancada_em")
+
+  @@map("versoes_cerebro")
+}
+
+// ──────────────────────────────────────────────────────────────────
+// PESQUISA DE SATISFAÇÃO
+// ──────────────────────────────────────────────────────────────────
+model PesquisaResposta {
+  id            Int       @id @default(autoincrement())
+  idOriginal    String?   @unique @map("id_original") // ID_RESPOSTA da planilha
+  token         String?
+  empresa       String
+  nomeCliente   String?   @map("nome_cliente")
+  data          DateTime  @default(now())
+  atendimento   Int?
+  prazoEntrega  Int?      @map("prazo_entrega")
+  qualidade     Int?
+  recomendacao  Int?
+  comentario    String?
+  notaMedia     Float?    @map("nota_media")
+  notaBaixa     Boolean   @default(false) @map("nota_baixa")
+  statusOcp     String?   @map("status_ocp")
+  criadaEm      DateTime  @default(now()) @map("criada_em")
+
+  @@index([empresa])
+  @@map("pesquisa_respostas")
+}
+
+model RelatorioSac {
+  id          Int       @id @default(autoincrement())
+  idOriginal  String?   @unique @map("id_original") // ID_RELATORIO da planilha
+  chave       String    // empresa|ano|mes
+  empresa     String
+  ano         String
+  mes         String
+  versao      Int       @default(1)
+  status      String    @default("RASCUNHO") // RASCUNHO | PUBLICADO
+  indicador   String?
+  npsScore    String?   @map("nps_score")
+  textosJson  String?   @map("textos_json")
+  dadosJson   String?   @map("dados_json")
+  linkToken   String?   @map("link_token")
+  criadoPor   String?   @map("criado_por")
+  publicadoEm DateTime? @map("publicado_em")
+  criadoEm    DateTime  @default(now()) @map("criado_em")
+
+  @@index([chave])
+  @@map("relatorios_sac")
+}
+
+// ──────────────────────────────────────────────────────────────────
+// SOLICITAÇÕES DE ACESSO
+// ──────────────────────────────────────────────────────────────────
+model SolicitacaoAcesso {
+  id              Int       @id @default(autoincrement())
+  idSolicitacao   String    @unique @map("id_solicitacao")
+  nome            String
+  email           String
+  empresa         String
+  setor           String
+  cargo           String
+  telefone        String?
+  justificativa   String?
+  status          String    @default("PENDENTE") // PENDENTE | APROVADA | REJEITADA
+  motivoRejeicao  String?   @map("motivo_rejeicao")
+  decididoPor     String?   @map("decidido_por")
+  dataDecisao     DateTime? @map("data_decisao")
+  criadaEm        DateTime  @default(now()) @map("criada_em")
+
+  @@index([status])
+  @@index([email])
+  @@map("solicitacoes_acesso")
+}

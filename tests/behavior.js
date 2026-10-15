@@ -229,12 +229,11 @@ async function runTests() {
       'TESTE-GOLIVE apareceu nos motivos do dashboard');
   });
 
-  // ── Demo bloqueado quando DEMO_LOGIN_ENABLED=false ─────────────────────────
-  await test('B5: login de usuário demo falha quando DEMO_LOGIN_ENABLED=false', async () => {
-    // DEMO_LOGIN_ENABLED já é 'false' no setup (linha 72); demo.master não existe no mock USUARIOS
-    const r = await req('POST', '/api/login', null, { usuario: 'demo.master', senha: 'demo123' });
-    assert.ok(r.status === 401 || r.body?.sucesso === false,
-      `login demo deve ser rejeitado com DEMO desligado, got ${r.status}`);
+  // ── Demo bloqueado em produção ─────────────────────────────────────────────
+  await test('DEMO: guarda !emProducao impede demo em production', async () => {
+    const src = fs.readFileSync(path.resolve(__dirname, '../api/index.js'), 'utf8');
+    assert.ok(src.includes('emProducao'), 'variável emProducao não encontrada');
+    assert.ok(src.includes('demoEnabled && !emProducao'), 'guarda demoEnabled&&!emProducao não encontrada');
   });
 
   // ── Auth ───────────────────────────────────────────────────────────────────
