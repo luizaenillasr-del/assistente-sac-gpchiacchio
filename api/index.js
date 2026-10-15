@@ -17,6 +17,88 @@ const permissoesService = require('./services/permissoesService');
 
 // Injeção de mock Sheets para testes — nunca ativo em produção (env var não existe em prod)
 const _sheetsMock = process.env.SHEETS_MOCK_PATH ? (() => { try { return require(process.env.SHEETS_MOCK_PATH); } catch(e) { console.warn('[MOCK] falhou ao carregar:', e.message); return null; } })() : null;
+// Flag de leitura PG: padrão false = leituras sempre do Sheets
+// PG ativo por padrão. Desativar com PG_LEITURA_ATIVA=false nas variáveis do Vercel se necessário.
+const PG_LEITURA_ATIVA = String(process.env.PG_LEITURA_ATIVA || 'true').toLowerCase() === 'true';
+
+// Repositórios PostgreSQL — carregados mas desativados enquanto PG_LEITURA_ATIVA=false
+// Isso garante que todos os dados sejam lidos/gravados exclusivamente no Sheets,
+// eliminando bugs de dessincronização entre os dois storages.
+async function _seedPerfisSeNecessario() {
+  try {
+    const prisma = require('../database/connection');
+    const PERFIS_SEED = [
+      { codigo: 'MASTER',              nome: 'Master' },
+      { codigo: 'GESTOR SAC',          nome: 'Gestor SAC' },
+      { codigo: 'ANALISTA SAC',        nome: 'Analista SAC' },
+      { codigo: 'ATENDENTE SAC',       nome: 'Atendente SAC' },
+      { codigo: 'APROVADOR',           nome: 'Aprovador' },
+      { codigo: 'APROVADOR MASTER',    nome: 'Aprovador Master' },
+      { codigo: 'SETOR RESPONSÁVEL',   nome: 'Setor Responsável' },
+      { codigo: 'ESPECIALISTA',        nome: 'Especialista' },
+      { codigo: 'RCA / REPRESENTANTE', nome: 'RCA / Representante' },
+      { codigo: 'DIRETOR',             nome: 'Diretor' },
+      { codigo: 'VISUALIZADOR',        nome: 'Visualizador' },
+      { codigo: 'AUDITOR',             nome: 'Auditor' },
+    ];
+    for (const p of PERFIS_SEED) {
+      await prisma.perfil.upsert({
+        where: { codigo: p.codigo },
+        update: {},
+        create: { codigo: p.codigo, nome: p.nome },
+      });
+    }
+    console.info('[PG] Perfis verificados/criados.');
+
+    // Sincroniza perfis dos usuários PG a partir do Sheets (migração única e idempotente)
+    // Se o usuário PG tem perfil genérico (ex: USUARIO_DE_SETOR), mas o Sheets diz MASTER,
+    // atualiza o perfilId no PG para refletir o perfil real.
+    try {
+      const sheetRows = await lerAba('USUARIOS', 500).catch(() => []);
+      if (!sheetRows.length) return;
+      const pgUsers = await prisma.usuario.findMany({ include: { perfil: true } });
+      for (const pgU of pgUsers) {
+        const sheetU = sheetRows.find(r => {
+          const e = (r.EMAIL||'').toLowerCase().trim();
+          return e && e === (pgU.email||'').toLowerCase().trim();
+        });
+        if (!sheetU?.PERFIL) continue;
+        const sheetPerfil = perfilCanonico(sheetU.PERFIL);
+        const pgPerfil = perfilCanonico(pgU.perfil?.codigo || '');
+        if (sheetPerfil === pgPerfil) continue;
+        // Perfil diverge: atualiza PG com o perfil do Sheets
+        const novoPerfil = await prisma.perfil.findFirst({ where: { codigo: sheetPerfil } });
+        if (!novoPerfil) continue;
+        await prisma.usuario.update({ where: { id: pgU.id }, data: { perfilId: novoPerfil.id } });
+        console.info(`[PG] Sincronizado perfil de ${pgU.email}: ${pgPerfil} → ${sheetPerfil}`);
+      }
+    } catch(e2) {
+      console.warn('[PG] sync perfis Sheets→PG:', e2.message);
+    }
+  } catch(e) {
+    console.warn('[PG] _seedPerfisSeNecessario:', e.message);
+  }
+}
+
+let usuarioRepo = null, manifestacaoRepo = null, rncRepo = null, empresaRepo = null, conhecimentoRepo = null, pesquisaRepo = null, solicitacaoRepo = null;
+if (PG_LEITURA_ATIVA && process.env.DATABASE_URL && process.env.NODE_ENV !== 'test') {
+  try {
+    usuarioRepo = require('../database/repositories/usuarioRepository');
+    manifestacaoRepo = require('../database/repositories/manifestacaoRepository');
+    rncRepo = require('../database/repositories/rncRepository');
+    empresaRepo = require('../database/repositories/empresaRepository');
+    conhecimentoRepo = require('../database/repositories/conhecimentoRepository');
+    pesquisaRepo = require('../database/repositories/pesquisaRepository');
+    solicitacaoRepo = require('../database/repositories/solicitacaoRepository');
+    console.info('[PG] Repositórios carregados — leituras via PostgreSQL ativas.');
+    // Garante que os registros básicos de Perfil existam no banco
+    _seedPerfisSeNecessario().catch(e => console.warn('[PG] seed perfis falhou:', e.message));
+  } catch (e) {
+    console.warn('[PG] Repositórios não disponíveis, usando Sheets:', e.message);
+  }
+} else {
+  console.info('[PG] PG_LEITURA_ATIVA=false — todas as operações via Google Sheets.');
+}
 
 // F8: leituras de pesquisa/relatório — Postgres primeiro, Sheets como fallback
 async function lerRespostasPesquisa() {
@@ -242,8 +324,35 @@ const DEMO_USUARIOS = [
 ];
 
 async function carregarUsuarios(){
+  let pgMapped = [];
+  let _pgErro = null, _pgCount = 0, _sheetsCount = 0, _sheetsErro = null;
+  if (usuarioRepo) {
+    try {
+      const pgUsers = await usuarioRepo.findAll({ ativo: undefined });
+      _pgCount = pgUsers ? pgUsers.length : 0;
+      if (pgUsers && pgUsers.length > 0) {
+        pgMapped = pgUsers.map(u => ({
+          ID_USUARIO: u.idOriginal || `USR-PG-${u.id}`,
+          USUARIO: u.login || u.email,
+          EMAIL: u.email || '',
+          NOME: u.nome || u.login,
+          PERFIL: u.perfil?.codigo || u.perfil?.nome || 'ANALISTA SAC',
+          EMPRESA: u.empresa?.nome || '',
+          SETOR: u.setor?.nome || '',
+          STATUS: u.ativo === false ? 'INATIVO' : 'ATIVO',
+          SENHA_HASH: u.senhaHash || '',
+          CODIGO_RCA: u.codigoRca || '',
+          ULTIMO_ACESSO: u.ultimoAcesso?.toISOString?.() || '',
+          _pgId: u.id,
+        }));
+      }
+    } catch (e) { _pgErro = e.message; console.warn('[F4] carregarUsuarios PG falhou:', e.message); }
+  }
+  // Lê Sheets apenas como fallback quando PG não está disponível
   let rows=[];
-  try{ rows=await lerAba('USUARIOS',1000); }catch(e){ console.warn('USUARIOS não disponível:',e.message); }
+  if (!usuarioRepo || pgMapped.length === 0) {
+    try{ rows=await lerAba('USUARIOS',1000); _sheetsCount = rows.length; }catch(e){ _sheetsErro = e.message; console.warn('USUARIOS não disponível:',e.message); }
+  }
   const raw=process.env.USUARIOS_JSON||'{}';
   let envUsers=[];
   try{
@@ -252,8 +361,31 @@ async function carregarUsuarios(){
       ? {ID_USUARIO:usuario,USUARIO:usuario,SENHA:val,NOME:usuario,PERFIL:'ANALISTA SAC',STATUS:'ATIVO'}
       : {ID_USUARIO:usuario,USUARIO:usuario,...val});
   }catch(e){}
+  const pgEmails = new Set(pgMapped.map(u => (u.EMAIL||'').toLowerCase()).filter(Boolean));
+  const pgIds = new Set(pgMapped.map(u => u.ID_USUARIO).filter(Boolean));
+  // Quando PG disponível, Sheets é ignorado (não misturar dados obsoletos)
+  const _seenEmails = new Set();
+  const sheetsOnly = pgMapped.length > 0 ? [] : rows.filter(r => {
+    const emailOrUser = (r.EMAIL||r.USUARIO||'').toLowerCase();
+    const id = r.ID_USUARIO;
+    if (pgIds.has(id) || pgEmails.has(emailOrUser)) return false;
+    // dedup interno do Sheets: primeiro registro com esse email/usuario ganha
+    if (_seenEmails.has(emailOrUser)) return false;
+    _seenEmails.add(emailOrUser);
+    return true;
+  });
+  const pgMerged = pgMapped; // PG é a fonte única — perfil/empresa vêm do PG
   const demoEnabled=String(process.env.DEMO_LOGIN_ENABLED||'false').toLowerCase()==='true';
-  return [...rows,...envUsers,...(demoEnabled?DEMO_USUARIOS:[])];
+  // Dedup envUsers contra PG
+  const allKnownEmails = new Set(pgMerged.map(u => (u.EMAIL||'').toLowerCase()).filter(Boolean));
+  const allKnownIds = new Set(pgMerged.map(u => u.ID_USUARIO).filter(Boolean));
+  const envUsersFiltered = envUsers.filter(u => {
+    const eml = (u.EMAIL||u.USUARIO||'').toLowerCase();
+    return !allKnownIds.has(u.ID_USUARIO) && !allKnownEmails.has(eml);
+  });
+  const result = [...pgMerged, ...sheetsOnly, ...envUsersFiltered, ...(demoEnabled?DEMO_USUARIOS:[])];
+  result._debug = { temPGRepo: !!usuarioRepo, pgCount: _pgCount, pgErro: _pgErro, sheetsCount: _sheetsCount, sheetsErro: _sheetsErro, envCount: envUsersFiltered.length, envCountRaw: envUsers.length, total: result.length };
+  return result;
 }
 
 function perfilCanonico(v){
@@ -596,11 +728,40 @@ async function carregarUsuarioPorLogin(login){
     const demo=DEMO_USUARIOS.find(u=>normalizarTexto(u.USUARIO)===alvo);
     if(demo) return demo;
   }
+  // F4: tenta PostgreSQL primeiro por login ou email
+  if (usuarioRepo) {
+    try {
+      let pgU = await usuarioRepo.findByLogin(login).catch(() => null);
+      if (!pgU) pgU = await usuarioRepo.findByEmail(login).catch(() => null);
+      if (pgU && normalizarTexto(pgU.status || 'ATIVO') !== 'inativo') {
+        return {
+          ID_USUARIO: pgU.idOriginal || `USR-PG-${pgU.id}`,
+          USUARIO: pgU.login || pgU.email,
+          EMAIL: pgU.email || '',
+          NOME: pgU.nome || pgU.login,
+          PERFIL: pgU.perfil?.codigo || pgU.perfil?.nome || 'ANALISTA SAC',
+          EMPRESA: pgU.empresa?.nome || '',
+          SETOR: pgU.setor?.nome || '',
+          STATUS: pgU.status || 'ATIVO',
+          SENHA: pgU.senhaHash || '',
+          CODIGO_RCA: pgU.codigoRca || '',
+          _pgId: pgU.id,
+        };
+      }
+    } catch (e) { console.warn('[F4] carregarUsuarioPorLogin PG falhou:', e.message); }
+  }
+  // Fallback Sheets
   const usuarios=await carregarUsuarios();
   return usuarios.find(u=>normalizarTexto(u.USUARIO||u.EMAIL||u.ID_USUARIO)===alvo && normalizarTexto(u.STATUS||'ATIVO')!=='inativo') || null;
 }
 
 async function registrarAcessoUsuario(usuario){
+  // F4: atualiza PostgreSQL se disponível
+  try {
+    if (usuarioRepo && usuario._pgId && typeof usuarioRepo.registrarAcesso === 'function') {
+      usuarioRepo.registrarAcesso(usuario._pgId).catch(() => {});
+    }
+  } catch(e) { console.warn('[F4] registrarAcesso PG:', e.message); }
   try{
     await atualizarPorID('USUARIOS',usuario.ID_USUARIO||usuario.USUARIO||usuario.EMAIL,{ULTIMO_ACESSO:new Date().toISOString()},['ID_USUARIO','USUARIO','EMAIL']);
   }catch(e){}
@@ -957,10 +1118,19 @@ app.get('/api/health', async (req, res) => {
   const saude = {
     sucesso: true, status: 'ok', versao: '5.6.0',
     sistema: 'Assistente SAC Chiacchio', ts: new Date().toISOString(),
-    postgresql: 'não utilizado',
+    postgresql: 'não verificado',
     sheets: 'não verificado',
     demoAtivo: String(process.env.DEMO_LOGIN_ENABLED || 'false').toLowerCase() === 'true',
   };
+  // Verificar PG (diferencia online/offline/vazio)
+  if (manifestacaoRepo) {
+    try {
+      const count = await manifestacaoRepo.findAll({ limit: 1 }).catch(() => null);
+      if (count === null) saude.postgresql = 'offline';
+      else if (count.length === 0) saude.postgresql = 'online_vazio';
+      else saude.postgresql = 'online_com_dados';
+    } catch (e) { saude.postgresql = 'offline'; }
+  } else { saude.postgresql = 'repositório_não_carregado'; }
   // Verificar Sheets (rápido)
   try {
     const rows = await lerAba('MANIFESTACOES', 2).catch(() => null);
@@ -1440,6 +1610,41 @@ app.get('/api/dashboard-resumo', requerPermissao('dashboard.visualizar'), middle
 
 app.get('/api/manifestacoes', requerPermissao('manifestacoes.visualizar'), middlewareEscopoEmpresa(), async (req, res) => {
   try {
+    // F6: tenta PostgreSQL primeiro
+    if (manifestacaoRepo) {
+      try {
+        const filtros = {};
+        // B2: empresa vem do usuário autenticado, não do frontend
+        const _isMasterMf = req.user && perfilCanonico(req.user.perfil) === 'MASTER';
+        if (_isMasterMf && req.query.empresaId) filtros.empresaId = req.query.empresaId;
+        else if (!_isMasterMf && req.user?.empresa) filtros.empresaId = await resolverEmpresaIdScope(req.user.empresa);
+        if (req.query.status) filtros.status = req.query.status;
+        filtros.take = Math.min(Number(req.query.limite) || 2000, 5000); // antes limitava a 100 (dashboard subestimava)
+        const pgData = await manifestacaoRepo.findAll(filtros);
+        if (pgData && pgData.length > 0) {
+          let itens = pgData.map(m => ({
+            ID_MANIFESTACAO: m.protocolo || m.idOriginal || String(m.id),
+            DATA_ABERTURA: m.criadaEm?.toISOString?.() || '',
+            EMPRESA_RECLAMANTE: m.contato || m.empresaNome || '',
+            EMPRESA_RECLAMADA: m.empresa?.nome || m.empresaNome || '',
+            DESCRICAO: m.descricao || '',
+            STATUS: m.status || '',
+            TIPO: m.tipo || '',
+            PRODUTO: m.produto || '',
+            PRIORIDADE: m.prioridade || '',
+            SETOR_SUGERIDO: m.setor?.nome || '',
+            USUARIO_CRIACAO: m.criador?.login || m.criador?.email || '',
+            _pgId: m.id,
+          }));
+          if (req.user && perfilCanonico(req.user.perfil) === 'RCA / REPRESENTANTE') {
+            const uNorm = normalizarTexto(req.user.usuario);
+            itens = itens.filter(r => normalizarTexto(r.USUARIO_CRIACAO) === uNorm);
+          }
+          return res.json({ sucesso: true, total: itens.length, itens, fonte: 'postgresql' });
+        }
+      } catch (e) { console.warn('[F6] GET /manifestacoes PG falhou:', e.message); }
+    }
+    // Fallback Sheets
     let data = await lerAba('MANIFESTACOES', 5000).catch(()=>[]);
     if (req.user && perfilCanonico(req.user.perfil)==='RCA / REPRESENTANTE') {
       const rca=normalizarTexto(req.user.codigoRCA||req.user.usuario);
@@ -1453,6 +1658,47 @@ app.get('/api/manifestacoes', requerPermissao('manifestacoes.visualizar'), middl
 
 app.get('/api/manifestacoes/:id', requerPermissao('manifestacoes.visualizar'), middlewareEscopoEmpresa(), async (req, res) => {
   try {
+    // F6: tenta PostgreSQL primeiro
+    if (manifestacaoRepo) {
+      try {
+        let pg = await manifestacaoRepo.findByProtocolo(req.params.id).catch(() => null);
+        if (!pg) pg = await manifestacaoRepo.findByIdOriginal(req.params.id).catch(() => null);
+        if (!pg && !isNaN(req.params.id)) pg = await manifestacaoRepo.findById(req.params.id).catch(() => null);
+        if (pg) {
+          // B2: verificar escopo de empresa no PG path
+          if (req._empresaScope) {
+            const empPg = pg.empresa?.nome || pg.empresaNome || '';
+            if (!pertenceEmpresa(req._empresaScope, empPg || '')) {
+              return res.status(403).json({ sucesso: false, erro: 'Acesso não autorizado para esta manifestação.' });
+            }
+          }
+          const item = {
+            ID_MANIFESTACAO: pg.protocolo || pg.idOriginal || String(pg.id),
+            DATA_ABERTURA: pg.criadaEm?.toISOString?.() || '',
+            EMPRESA_RECLAMANTE: pg.contato || pg.empresaNome || '',
+            EMPRESA_RECLAMADA: pg.empresa?.nome || pg.empresaNome || '',
+            DESCRICAO: pg.descricao || '',
+            STATUS: pg.status || '',
+            TIPO: pg.tipo || '',
+            PRODUTO: pg.produto || '',
+            PRIORIDADE: pg.prioridade || '',
+            SETOR_SUGERIDO: pg.setor?.nome || '',
+            SETOR_CONFIRMADO: pg.setor?.nome || '',
+            RESPONSAVEL: pg.responsavel?.nome || '',
+            TRATATIVA_REALIZADA: (pg.tratativas || []).slice(-1)[0]?.textoFinal || '',
+            DEVOLUTIVA_FINAL: (pg.devolutivas || []).slice(-1)[0]?.textoFinal || '',
+            DEVOLUTIVA_ENVIADA: (pg.devolutivas || []).slice(-1)[0]?.textoFinal || '',
+            USUARIO_CRIACAO: pg.criador?.login || pg.criador?.email || '',
+            historico: pg.historico || [],
+            tratativas: pg.tratativas || [],
+            devolutivas: pg.devolutivas || [],
+            _pgId: pg.id,
+          };
+          return res.json({ sucesso: true, manifestacao: item, fonte: 'postgresql' });
+        }
+      } catch (e) { console.warn('[F6] GET /manifestacoes/:id PG falhou:', e.message); }
+    }
+    // Fallback Sheets
     const data = await lerAba('MANIFESTACOES', 5000).catch(()=>[]);
     const item = data.find(r => r.ID_MANIFESTACAO === req.params.id);
     if (!item) return res.status(404).json({ sucesso: false, erro: 'Manifestação não encontrada.' });
@@ -1498,6 +1744,25 @@ app.post('/api/manifestacoes', requerPermissao('manifestacoes.abrir'), async (re
       console.error('[MANIFESTACOES][appendObjeto] FALHOU:', e.message, e?.stack);
       throw e;
     });
+    // B3: dual-write para PostgreSQL — rastreia sucesso/falha (não-bloqueante)
+    if (manifestacaoRepo) {
+      manifestacaoRepo.upsertFromSheets({
+        ID_MANIFESTACAO: id,
+        EMPRESA_RECLAMANTE: empresaReclamante,
+        EMPRESA_RECLAMADA: empresaReclamada || '',
+        DESCRICAO: descricao,
+        STATUS: 'EM ANÁLISE',
+        TIPO: tipoFinal,
+        PRODUTO: objeto.PRODUTO,
+        DATA_ABERTURA: agora,
+      }).then(() => {
+        console.info('[PG] dual-write manifestação OK:', id);
+      }).catch(e => {
+        console.error('[PG] dual-write manifestação FALHOU:', id, e.message);
+        // Registrar falha de dual-write no audit trail (não bloqueia resposta)
+        registrarAuditoria('sistema', 'DUALWRITE_PG_FALHOU', id, 'MANIFESTACOES', null, { erro:erroSeguro(e) }).catch(() => {});
+      });
+    }
     registrarAuditoria(usuario||'sistema','CRIOU_MANIFESTAÇÃO',id,'MANIFESTACOES',null,{empresaReclamante,tipo:tipoFinal}).catch(()=>{});
     // Executar análise de IA de forma síncrona antes de responder
     // (setImmediate não funciona em Vercel serverless)
@@ -2785,6 +3050,34 @@ app.get('/api/dashboard', middlewareEscopoEmpresa(), requerPermissao('dashboard.
 // ===== RNC =====
 app.get('/api/rnc', middlewareEscopoEmpresa(), requerPerfil('MASTER','ANALISTA SAC','APROVADOR','SETOR RESPONSÁVEL','RCA / REPRESENTANTE'), async (req, res) => {
   try {
+    // F6: tenta PostgreSQL primeiro
+    if (rncRepo) {
+      try {
+        const filtros = {};
+        // B2: empresa vem do usuário autenticado, não do frontend
+        const _isMasterRnc = req.user && perfilCanonico(req.user.perfil) === 'MASTER';
+        if (_isMasterRnc && req.query.empresaId) filtros.empresaId = req.query.empresaId;
+        else if (!_isMasterRnc && req.user?.empresa) filtros.empresaId = await resolverEmpresaIdScope(req.user.empresa);
+        if (req.query.status) filtros.status = req.query.status;
+        const pgData = await rncRepo.findAll(filtros);
+        if (pgData && pgData.length > 0) {
+          const itens = pgData.map(r => ({
+            ID_RNC: r.numero || r.idOriginal || String(r.id),
+            DATA_ABERTURA: r.dataAbertura?.toISOString?.() || '',
+            EMPRESA: r.empresa?.nome || '',
+            SETOR: r.setor || '',
+            STATUS: r.status || '',
+            NAO_CONFORMIDADE: r.descricao || '',
+            CAUSA: r.causa || '',
+            RESPONSAVEL: r.responsavel || '',
+            PRIORIDADE: r.prioridade || '',
+            _pgId: r.id,
+          }));
+          return res.json({ sucesso: true, total: itens.length, itens, fonte: 'postgresql' });
+        }
+      } catch (e) { console.warn('[F6] GET /rnc PG falhou:', e.message); }
+    }
+    // Fallback Sheets — B2: legado sem empresa = global
     let data=await lerAba('BANCO_RNC',5000).catch(()=>[]);
     data = filtrarPorEmpresaHistorico(data, req, COLUNA_EMPRESA_ABA.BANCO_RNC);
     res.json({sucesso:true,total:data.length,itens:data});
@@ -2799,6 +3092,24 @@ app.post('/api/rnc', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
     const competencia=body.COMPETENCIA||body.competencia;
     const usuarioCriador=req.user?.usuario||body.usuario||'sistema';
     await appendObjeto('BANCO_RNC',{ID_RNC:id,DATA_ABERTURA:agora,EMPRESA:body.EMPRESA||body.empresa||'',SETOR:body.SETOR||body.setor||'',COMPETENCIA:competencia,NAO_CONFORMIDADE:body.NAO_CONFORMIDADE||body.naoConformidade||'',CAUSA:body.CAUSA||body.causa||'',RESPONSAVEL:body.RESPONSAVEL||body.responsavel||'',PRIORIDADE:body.PRIORIDADE||body.prioridade||'Média',PRAZO:body.PRAZO||body.prazo||'',STATUS:body.STATUS||'AGUARDANDO_APROVACAO',USUARIO_CRIACAO:usuarioCriador});
+    // F6: dual-write RNC para PostgreSQL (não-bloqueante)
+    if (rncRepo && empresaRepo) {
+      empresaRepo.findAll().then(emps => {
+        const nomeEmpresa = body.EMPRESA || body.empresa || '';
+        const emp = emps.find(e => e.nome === nomeEmpresa || e.id === nomeEmpresa) || emps[0];
+        if (!emp) return;
+        return rncRepo.create({
+          protocolo: id,
+          idOriginal: id,
+          empresaId: emp.id,
+          origemTipo: 'AUDITORIA_INTERNA',
+          descricao: body.NAO_CONFORMIDADE || body.naoConformidade || competencia || '',
+          responsavel: body.RESPONSAVEL || body.responsavel || '',
+          prioridade: body.PRIORIDADE || body.prioridade || 'MEDIA',
+          status: 'AGUARDANDO_APROVACAO',
+        });
+      }).catch(e => console.warn('[F6] dual-write RNC PG falhou:', e.message));
+    }
     await registrarAuditoria(usuarioCriador,'CRIOU_RNC',id,'BANCO_RNC',null,{competencia});
     res.json({sucesso:true,id,competencia,status:'AGUARDANDO_APROVACAO'});
   } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
@@ -3062,6 +3373,22 @@ app.get('/api/conhecimento', requerPermissao('cerebro.visualizar'), async (req, 
 });
 app.get('/api/procedimentos', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
   try {
+    // F7: tenta PostgreSQL primeiro
+    if (conhecimentoRepo) {
+      try {
+        const filtros = {};
+        if (req.query.empresaId) filtros.empresaId = req.query.empresaId;
+        if (req.query.setorId) filtros.setorId = req.query.setorId;
+        const pgData = await conhecimentoRepo.findProcedimentos(filtros);
+        if (pgData && pgData.length > 0) {
+          const itens = pgData.map(p => ({
+            ID_PROCEDIMENTO: String(p.id), NOME: p.titulo || '',
+            DESCRICAO: p.texto || '', PASSOS: '', ATIVO: p.status === 'ATIVO' ? 'SIM' : 'NÃO',
+          }));
+          return res.json({ sucesso: true, total: itens.length, itens, fonte: 'postgresql' });
+        }
+      } catch (e) { console.warn('[F7] GET /procedimentos PG falhou:', e.message); }
+    }
     await garantirAbaComCabecalhos('PROCEDIMENTOS',['ID_PROCEDIMENTO','NOME','SETOR_RESPONSAVEL','DESCRICAO','PASSOS','ATIVO']).catch(()=>{});
     const data=await lerAba('PROCEDIMENTOS',200).catch(()=>[]);
     res.json({sucesso:true,total:data.length,itens:data});
@@ -3069,6 +3396,22 @@ app.get('/api/procedimentos', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPON
 });
 app.get('/api/politicas', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
   try {
+    // F7: tenta PostgreSQL primeiro
+    if (conhecimentoRepo) {
+      try {
+        const filtros = {};
+        if (req.query.empresaId) filtros.empresaId = req.query.empresaId;
+        if (req.query.setorId) filtros.setorId = req.query.setorId;
+        const pgData = await conhecimentoRepo.findPoliticas(filtros);
+        if (pgData && pgData.length > 0) {
+          const itens = pgData.map(p => ({
+            ID_POLITICA: String(p.id), POLITICA: p.titulo || '',
+            DESCRICAO: p.texto || '', ATIVO: p.status === 'ATIVA' ? 'SIM' : 'NÃO',
+          }));
+          return res.json({ sucesso: true, total: itens.length, itens, fonte: 'postgresql' });
+        }
+      } catch (e) { console.warn('[F7] GET /politicas PG falhou:', e.message); }
+    }
     await garantirAbaComCabecalhos('POLITICAS',['ID_POLITICA','POLITICA','SETOR_RESPONSAVEL','DESCRICAO','RESPONSAVEL','ATIVO']).catch(()=>{});
     const data=await lerAba('POLITICAS',200).catch(()=>[]);
     res.json({sucesso:true,total:data.length,itens:data});
@@ -3112,6 +3455,18 @@ app.post('/api/procedimentos', requerPerfil('MASTER','ANALISTA SAC'), async (req
 });
 app.get('/api/matriz', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
   try {
+    // F12: tenta PostgreSQL primeiro
+    if (conhecimentoRepo) {
+      try {
+        const filtros = {};
+        if (req.query.empresaId) filtros.empresaId = req.query.empresaId;
+        if (req.query.tipo) filtros.tipo = req.query.tipo;
+        const pgData = await conhecimentoRepo.findMatriz(filtros);
+        if (pgData && pgData.length > 0) {
+          return res.json({ sucesso: true, itens: pgData, fonte: 'postgresql' });
+        }
+      } catch (e) { console.warn('[F12] GET /matriz PG falhou:', e.message); }
+    }
     garantirAbaComCabecalhos('MATRIZ_DECISAO', ['ID_MATRIZ','TEMA','SETOR_PRINCIPAL','SETORES_APOIO','SLA_HORAS','PRIORIDADE','GERA_RNC','APROVACAO','FOLLOW_UP','REGRAS']).catch(()=>{});
     const data = await lerAba('MATRIZ_DECISAO', 500);
     res.json({ sucesso: true, itens: data });
@@ -3519,6 +3874,23 @@ app.post('/api/pesquisas/decisao', requerPermissao('pesquisas.gerenciar'), async
       };
       await appendObjeto('MANIFESTACOES', obj);
       invalidarCacheAba('MANIFESTACOES');
+      // dual-write para PostgreSQL (não-bloqueante), igual ao POST /api/manifestacoes
+      if (manifestacaoRepo) {
+        manifestacaoRepo.upsertFromSheets({
+          ID_MANIFESTACAO: manifestacaoId,
+          EMPRESA_RECLAMANTE: obj.EMPRESA_RECLAMANTE,
+          EMPRESA_RECLAMADA: resposta.EMPRESA_RECLAMADA || '',
+          DESCRICAO: obj.DESCRICAO,
+          STATUS: obj.STATUS,
+          TIPO: obj.TIPO,
+          PRODUTO: '',
+          DATA_ABERTURA: agora,
+        }).then(() => {
+          console.info('[PG] dual-write pesquisa→manifestação OK:', manifestacaoId);
+        }).catch(e => {
+          console.error('[PG] dual-write pesquisa→manifestação FALHOU:', manifestacaoId, e.message);
+        });
+      }
     }
 
     // Atualizar STATUS_OCP / decisão na pesquisa
@@ -4496,6 +4868,16 @@ app.get('/api/tipos', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL',
 });
 app.get('/api/sla', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR'), async (req, res) => {
   try {
+    // F12: tenta PostgreSQL primeiro
+    if (conhecimentoRepo) {
+      try {
+        const filtros = {};
+        if (req.query.empresaId) filtros.empresaId = req.query.empresaId;
+        if (req.query.tipo) filtros.tipo = req.query.tipo;
+        const sla = await conhecimentoRepo.findSla(filtros);
+        if (sla) return res.json({ sucesso: true, total: 1, itens: [sla], fonte: 'postgresql' });
+      } catch (e) { console.warn('[F12] GET /sla PG falhou:', e.message); }
+    }
     const data=await lerAba('SLA_ESCALONAMENTO',50).catch(()=>[]);
     res.json({sucesso:true,total:data.length,itens:data});
   } catch (e) { res.status(500).json({sucesso:false,erro:erroSeguro(e),dados:[]}); }
@@ -4865,8 +5247,10 @@ app.delete('/api/usuarios/:id', requerPermissao('usuarios.gerenciar'), async (re
       const masters=todos.filter(u=>(u.PERFIL||u.perfil||'').toUpperCase()==='MASTER'&&(u.STATUS||u.status||'ATIVO').toUpperCase()==='ATIVO'&&String(u.ID_USUARIO||u.USUARIO)!==String(alvo.ID_USUARIO||alvo.USUARIO));
       if(masters.length===0) return res.status(403).json({sucesso:false,erro:'Não é possível excluir o único MASTER ativo do sistema.'});
     }
-    await atualizarPorID('USUARIOS', alvo.ID_USUARIO||alvo.USUARIO, {STATUS:'INATIVO',DATA_ULTIMA_ALTERACAO:new Date().toISOString(),ALTERADO_POR:req.user.usuario||'MASTER'}, ['ID_USUARIO','USUARIO','EMAIL']);
-    invalidarCacheAba('USUARIOS');
+    // Atualiza PG (inativa o usuário)
+    if (alvo._pgId && usuarioRepo) {
+      await usuarioRepo.update(alvo._pgId, { ativo: false }).catch(e => console.warn('[DEL] PG update:', e.message));
+    }
     invalidarCachePermissoes(alvo.EMAIL||alvo.USUARIO||alvo.ID_USUARIO);
     _statusCache.delete(normalizarTexto(alvo.USUARIO||alvo.EMAIL||alvo.ID_USUARIO));
     await registrarAuditoria(req.user.usuario,'EXCLUIU_USUARIO',req.params.id,'USUARIOS',null,{nome:alvo.NOME});
@@ -6989,8 +7373,10 @@ async function carregarPermissoesUsuario(emailOuId) {
     if (r.MODULO) {
       const raw = String(r.MODULO).trim();
       if (raw.startsWith('{')) {
+        // Formato novo: MODULO guarda um JSON { DASHBOARD: 2, MANIFESTACOES: 1, ... }
         try { for (const [m, n] of Object.entries(JSON.parse(raw))) modulos[m] = Number(n) || 0; } catch(e) {}
       } else if (r.NIVEL !== undefined) {
+        // Formato legado: uma linha por módulo, nível em NIVEL
         modulos[raw] = Number(r.NIVEL) || 0;
       }
     }
@@ -7065,6 +7451,7 @@ app.post('/api/public/solicitar-acesso', async (req, res) => {
   if (!rateLimitSolicitacao(ip)) return res.status(429).json({sucesso:false,erro:'Muitas solicitações. Aguarde um minuto.'});
   try {
     const { nome, email, empresa, setor, cargo, telefone, justificativa } = req.body||{};
+    // Validações
     if (!nome?.trim()) return res.status(400).json({sucesso:false,erro:'Nome obrigatório.'});
     if (!email?.trim() || !emailValido(email)) return res.status(400).json({sucesso:false,erro:'E-mail inválido.'});
     if (!empresa?.trim()) return res.status(400).json({sucesso:false,erro:'Empresa obrigatória.'});
@@ -7072,15 +7459,15 @@ app.post('/api/public/solicitar-acesso', async (req, res) => {
     if (!cargo?.trim()) return res.status(400).json({sucesso:false,erro:'Cargo obrigatório.'});
     if (!justificativa?.trim()) return res.status(400).json({sucesso:false,erro:'Justificativa obrigatória.'});
 
+    // Valida empresa canônica (aceita MASTER para "todas as empresas")
     const empCod = empresaCanonica(empresa);
     if (!empCod) {
       return res.status(400).json({sucesso:false,erro:'Empresa inválida. Use: CHIACCHIO EMBALAGENS, PLASCHIO, CESBAP ou TODAS AS EMPRESAS.'});
     }
 
-    const emailNorm = String(email).toLowerCase().trim();
-
     // Verifica duplicidade de e-mail em usuários ativos
     const usuarios = await carregarUsuarios();
+    const emailNorm = String(email).toLowerCase().trim();
     const statusBloqueantes = ['ativo', 'bloqueado'];
     const jaUsuario = usuarios.find(u => {
       if (String(u.EMAIL||'').toLowerCase().trim() !== emailNorm) return false;
@@ -7089,26 +7476,26 @@ app.post('/api/public/solicitar-acesso', async (req, res) => {
     });
     if (jaUsuario) return res.status(409).json({sucesso:false,erro:'E-mail já possui conta ativa no sistema.'});
 
-    // Verifica solicitação PENDENTE duplicada no Sheets
-    const solRows = await lerAba('SOLICITACOES_ACESSO', 1000).catch(() => []);
-    const jaExiste = solRows.find(r => String(r.EMAIL||'').toLowerCase().trim() === emailNorm && String(r.STATUS||'').toUpperCase() === 'PENDENTE');
-    if (jaExiste) return res.status(409).json({sucesso:false,erro:'Já existe uma solicitação pendente para este e-mail.'});
+    // Verifica solicitação PENDENTE duplicada (PG é a fonte primária)
+    if (solicitacaoRepo) {
+      const jaExiste = await solicitacaoRepo.findPendenteByEmail(emailNorm).catch(() => null);
+      if (jaExiste) return res.status(409).json({sucesso:false,erro:'Já existe uma solicitação pendente para este e-mail.'});
+    }
 
     const id = `SOL-${Date.now().toString(36).toUpperCase()}`;
-    await appendObjeto('SOLICITACOES_ACESSO', {
-      ID_SOLICITACAO: id,
-      NOME: nome.trim(),
-      EMAIL: emailNorm,
-      EMPRESA: empCod,
-      SETOR: setor.trim(),
-      CARGO: cargo.trim(),
-      TELEFONE: (telefone||'').trim(),
-      JUSTIFICATIVA: justificativa.trim(),
-      STATUS: 'PENDENTE',
-      DATA_CRIACAO: new Date().toISOString(),
-      DATA_DECISAO: '',
-      DECIDIDO_POR: '',
-      MOTIVO_REJEICAO: '',
+
+    // Grava no PG (fonte primária)
+    if (!solicitacaoRepo) return res.status(503).json({sucesso:false,erro:'Banco de dados não disponível.'});
+    await solicitacaoRepo.create({
+      idSolicitacao: id,
+      nome: nome.trim(),
+      email: emailNorm,
+      empresa: empCod,
+      setor: setor.trim(),
+      cargo: cargo.trim(),
+      telefone: (telefone||'').trim(),
+      justificativa: justificativa.trim(),
+      status: 'PENDENTE',
     });
     await registrarAuditoriaAcesso(emailNorm, 'SOLICITACAO_CRIADA', '', empCod, '', 'PENDENTE', 'sistema');
     res.json({sucesso:true, id, mensagem:'Solicitação enviada. Aguarde aprovação do MASTER.'});
@@ -7121,38 +7508,53 @@ app.post('/api/public/solicitar-acesso', async (req, res) => {
 
 app.get('/api/admin/solicitacoes', requerPerfil('MASTER'), async (req, res) => {
   try {
+    if (!solicitacaoRepo) return res.status(503).json({sucesso:false,erro:'Banco de dados não disponível.'});
     const stFil = (req.query.status || '').toUpperCase() || undefined;
     const empFil = req.query.empresa ? empresaCanonica(req.query.empresa) : undefined;
-    const rows = await lerAba('SOLICITACOES_ACESSO', 1000).catch(() => []);
-    let itens = rows.filter(r => r.ID_SOLICITACAO);
-    if (stFil) itens = itens.filter(r => String(r.STATUS||'').toUpperCase() === stFil);
-    if (empFil) itens = itens.filter(r => empresaCanonica(r.EMPRESA||'') === empFil);
+    const rows = await solicitacaoRepo.findAll({ status: stFil, empresa: empFil });
+    const itens = rows.map(r => ({
+      ID_SOLICITACAO: r.idSolicitacao,
+      NOME: r.nome, EMAIL: r.email, EMPRESA: r.empresa,
+      SETOR: r.setor, CARGO: r.cargo, TELEFONE: r.telefone||'',
+      JUSTIFICATIVA: r.justificativa||'', STATUS: r.status,
+      DATA_CRIACAO: r.criadaEm?.toISOString?.() || '',
+      DATA_DECISAO: r.dataDecisao?.toISOString?.() || '',
+      DECIDIDO_POR: r.decididoPor||'', MOTIVO_REJEICAO: r.motivoRejeicao||'',
+    }));
     res.json({sucesso:true, total:itens.length, itens});
   } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
 });
 
 app.get('/api/admin/solicitacoes/:id', requerPerfil('MASTER'), async (req, res) => {
   try {
-    const rows = await lerAba('SOLICITACOES_ACESSO', 1000).catch(() => []);
-    const item = rows.find(r => r.ID_SOLICITACAO === req.params.id);
-    if (!item) return res.status(404).json({sucesso:false,erro:'Solicitação não encontrada.'});
+    if (!solicitacaoRepo) return res.status(503).json({sucesso:false,erro:'Banco de dados não disponível.'});
+    const r = await solicitacaoRepo.findById(req.params.id);
+    if (!r) return res.status(404).json({sucesso:false,erro:'Solicitação não encontrada.'});
+    const item = {
+      ID_SOLICITACAO: r.idSolicitacao, NOME: r.nome, EMAIL: r.email, EMPRESA: r.empresa,
+      SETOR: r.setor, CARGO: r.cargo, TELEFONE: r.telefone||'',
+      JUSTIFICATIVA: r.justificativa||'', STATUS: r.status,
+      DATA_CRIACAO: r.criadaEm?.toISOString?.() || '',
+      DATA_DECISAO: r.dataDecisao?.toISOString?.() || '',
+      DECIDIDO_POR: r.decididoPor||'', MOTIVO_REJEICAO: r.motivoRejeicao||'',
+    };
     res.json({sucesso:true, item});
   } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
 });
 
 app.post('/api/admin/solicitacoes/:id/rejeitar', requerPerfil('MASTER'), async (req, res) => {
   try {
+    if (!solicitacaoRepo) return res.status(503).json({sucesso:false,erro:'Banco de dados não disponível.'});
     const { motivo } = req.body||{};
     if (!motivo?.trim()) return res.status(400).json({sucesso:false,erro:'Motivo da rejeição obrigatório.'});
     const decididoPor = req.user.usuario||req.user.email||'MASTER';
-    const rows = await lerAba('SOLICITACOES_ACESSO', 1000).catch(() => []);
-    const sol = rows.find(r => r.ID_SOLICITACAO === req.params.id);
+    const sol = await solicitacaoRepo.findById(req.params.id);
     if (!sol) return res.status(404).json({sucesso:false,erro:'Solicitação não encontrada.'});
-    if (String(sol.STATUS||'').toUpperCase() !== 'PENDENTE') return res.status(400).json({sucesso:false,erro:`Solicitação já ${sol.STATUS}.`});
-    await atualizarPorID('SOLICITACOES_ACESSO', req.params.id, {
-      STATUS: 'REJEITADA', DATA_DECISAO: new Date().toISOString(), DECIDIDO_POR: decididoPor, MOTIVO_REJEICAO: motivo.trim(),
-    }, ['ID_SOLICITACAO']);
-    await registrarAuditoriaAcesso(sol.EMAIL||'', 'SOLICITACAO_REJEITADA', '', sol.EMPRESA||'', 'PENDENTE', 'REJEITADA', decididoPor);
+    if (String(sol.status||'').toUpperCase() !== 'PENDENTE') return res.status(400).json({sucesso:false,erro:`Solicitação já ${sol.status}.`});
+    await solicitacaoRepo.update(req.params.id, {
+      status: 'REJEITADA', dataDecisao: new Date(), decididoPor, motivoRejeicao: motivo.trim(),
+    });
+    await registrarAuditoriaAcesso(sol.email||'', 'SOLICITACAO_REJEITADA', '', sol.empresa||'', 'PENDENTE', 'REJEITADA', decididoPor);
     res.json({sucesso:true, mensagem:'Solicitação rejeitada.'});
   } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
 });
@@ -7160,8 +7562,10 @@ app.post('/api/admin/solicitacoes/:id/rejeitar', requerPerfil('MASTER'), async (
 // Aprovação: cria o usuário com STATUS=ATIVO e define permissões
 app.post('/api/admin/solicitacoes/:id/aprovar', requerPerfil('MASTER'), async (req, res) => {
   try {
+    if (!solicitacaoRepo || !usuarioRepo) return res.status(503).json({sucesso:false,erro:'Banco de dados não disponível.'});
     const { perfil, empresa, setor, modulosNiveis, competencias, senha } = req.body||{};
 
+    // Valida campos obrigatórios
     if (!perfil) return res.status(400).json({sucesso:false,erro:'Perfil obrigatório.'});
     const perfilNorm = normalizarPerfil(perfil);
     if (!PERFIS_VALIDOS.includes(perfilNorm)) return res.status(400).json({sucesso:false,erro:`Perfil inválido. Use: ${PERFIS_VALIDOS.join(', ')}.`});
@@ -7169,54 +7573,48 @@ app.post('/api/admin/solicitacoes/:id/aprovar', requerPerfil('MASTER'), async (r
     const empCod = empresaCanonica(empresa);
     if (!empCod) return res.status(400).json({sucesso:false,erro:'Empresa inválida.'});
 
-    // Lê a solicitação do Sheets
-    const rows = await lerAba('SOLICITACOES_ACESSO', 1000).catch(() => []);
-    const solRow = rows.find(r => r.ID_SOLICITACAO === req.params.id);
+    // Lê do PG (fonte primária)
+    const solRow = await solicitacaoRepo.findById(req.params.id);
     if (!solRow) return res.status(404).json({sucesso:false,erro:'Solicitação não encontrada.'});
-    if (String(solRow.STATUS||'').toUpperCase() !== 'PENDENTE') return res.status(400).json({sucesso:false,erro:`Solicitação já ${solRow.STATUS}.`});
-
-    const emailNorm = String(solRow.EMAIL||'').toLowerCase().trim();
-    const nomeSol = solRow.NOME||'';
+    if (String(solRow.status||'').toUpperCase() !== 'PENDENTE') return res.status(400).json({sucesso:false,erro:`Solicitação já ${solRow.status}.`});
+    const sol = { email: solRow.email||'', nome: solRow.nome||'', empresa: solRow.empresa||'' };
 
     // Gera usuário (login = parte antes do @ do email)
-    const login = emailNorm.split('@')[0].replace(/[^a-z0-9.]/gi,'.');
+    const login = sol.email.split('@')[0].replace(/[^a-z0-9.]/gi,'.');
     const senhaFinal = senha?.trim() || crypto.randomBytes(8).toString('hex');
-    const senhaHash = await hashSenha(senhaFinal);
+    const senhaHash = 'sha256:'+crypto.createHash('sha256').update(senhaFinal).digest('hex');
+
+    // Busca empresa e perfil do PG para criar usuário via ORM
+    const prisma = require('../database/connection');
+    const empresaObj = await prisma.empresa.findFirst({ where: { nome: { contains: empCod, mode: 'insensitive' } } }) ||
+                       await prisma.empresa.findFirst();
+    const perfilObj = await prisma.perfil.findFirst({ where: { codigo: perfilNorm } }) ||
+                      await prisma.perfil.findFirst();
+    if (!empresaObj || !perfilObj) return res.status(500).json({sucesso:false,erro:'Empresa ou perfil não encontrado no banco.'});
 
     const modulosConfig = modulosNiveis || {};
     const competenciasStr = Array.isArray(competencias) ? competencias.join(',') : (competencias||'');
-    const idUsuario = await gerarProximoID('USUARIOS','USR','ID_USUARIO');
 
-    // Cria usuário no Sheets
-    await appendObjeto('USUARIOS', {
-      ID_USUARIO: idUsuario,
-      USUARIO: login,
-      EMAIL: emailNorm,
-      NOME: nomeSol,
-      PERFIL: perfilNorm,
-      EMPRESA: empCod,
-      SETOR: setor||solRow.SETOR||'',
-      CODIGO_RCA: '',
-      STATUS: 'ATIVO',
-      SENHA_HASH: senhaHash,
-      DATA_CRIACAO: new Date().toISOString(),
-      ULTIMO_ACESSO: '',
-      PERMISSOES_CUSTOM: Object.keys(modulosConfig).length ? JSON.stringify(modulosConfig) : '',
-      COMPETENCIAS: competenciasStr,
+    const novoUsuario = await usuarioRepo.create({
+      empresaId: empresaObj.id,
+      perfilId: perfilObj.id,
+      nome: sol.nome,
+      email: sol.email,
+      senhaHash,
+      ativo: true,
     });
 
-    // Marca solicitação como APROVADA no Sheets
-    await atualizarPorID('SOLICITACOES_ACESSO', req.params.id, {
-      STATUS: 'APROVADA', DATA_DECISAO: new Date().toISOString(),
-      DECIDIDO_POR: req.user.usuario||'MASTER', MOTIVO_REJEICAO: '',
-    }, ['ID_SOLICITACAO']);
+    // Marca solicitação como APROVADA no PG
+    await solicitacaoRepo.update(req.params.id, {
+      status: 'APROVADA', dataDecisao: new Date(),
+      decididoPor: req.user.usuario||'MASTER', motivoRejeicao: '',
+    });
 
-    await registrarAuditoriaAcesso(emailNorm, 'USUARIO_CRIADO_POR_APROVACAO', '', empCod, '', JSON.stringify({perfil:perfilNorm,empresa:empCod,modulos:modulosConfig}), req.user.usuario||'MASTER');
-    invalidarCachePermissoes(emailNorm);
-    invalidarCacheAba('USUARIOS');
-    res.json({sucesso:true, idUsuario, login, mensagem:'Usuário criado e ativo.', senhaGerada: !senha?.trim() ? senhaFinal : undefined});
+    await registrarAuditoriaAcesso(sol.email, 'USUARIO_CRIADO_POR_APROVACAO', '', empCod, '', JSON.stringify({perfil:perfilNorm,empresa:empCod,modulos:modulosConfig}), req.user.usuario||'MASTER');
+    invalidarCachePermissoes(sol.email);
+    res.json({sucesso:true, idUsuario: novoUsuario.id, login, mensagem:'Usuário criado e ativo.', senhaGerada: !senha?.trim() ? senhaFinal : undefined});
     // Envia e-mail com credenciais (fire-and-forget)
-    enviarEmailAcesso({ para: emailNorm, nome: nomeSol, login, senha: senhaFinal, perfil: perfilNorm, empresa: empCod }).catch(()=>{});
+    enviarEmailAcesso({ para: sol.email, nome: sol.nome, login, senha: senhaFinal, perfil: perfilNorm, empresa: empCod }).catch(()=>{});
   } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
 });
 
@@ -7288,17 +7686,30 @@ app.patch('/api/admin/usuarios/:id/permissoes', requerPerfil('MASTER'), async (r
     }
     if (setor) updates.SETOR = setor;
     if (email) updates.EMAIL = email;
+    // Fonte enforced: ao salvar níveis de módulo, grava também as chaves granulares
+    // em PERMISSOES_GRANTED para que o acesso valha nas rotas e na UI.
     if (modulosNiveis !== undefined) {
       updates.PERMISSOES_GRANTED = JSON.stringify(permissoesGranularDeModulos(modulosNiveis || {}));
     }
-    if (competencias !== undefined) {
-      updates.COMPETENCIAS = Array.isArray(competencias) ? competencias.join(',') : (competencias||'');
+
+    // Atualiza PG diretamente se o usuário tem _pgId
+    if (u._pgId && usuarioRepo) {
+      const prisma = require('../database/connection');
+      const pgUpdate = {};
+      if (updates.PERFIL) {
+        const perfilObj = await prisma.perfil.findFirst({ where: { codigo: updates.PERFIL } });
+        if (perfilObj) pgUpdate.perfilId = perfilObj.id;
+      }
+      if (updates.EMPRESA) {
+        const empObj = await prisma.empresa.findFirst({ where: { nome: { contains: updates.EMPRESA, mode: 'insensitive' } } });
+        if (empObj) pgUpdate.empresaId = empObj.id;
+      }
+      if (updates.SETOR) pgUpdate.setor = updates.SETOR;
+      if (Object.keys(pgUpdate).length > 0) {
+        await usuarioRepo.update(u._pgId, pgUpdate).catch(e => console.warn('[PERM] PG update falhou:', e.message));
+      }
     }
 
-    // Persiste no Sheets (única fonte de dados)
-    const chaveId = u.ID_USUARIO || u.USUARIO || u.EMAIL;
-    await atualizarPorID('USUARIOS', chaveId, updates, ['ID_USUARIO','USUARIO','EMAIL']);
-    invalidarCacheAba('USUARIOS');
     invalidarCachePermissoes(u.EMAIL||u.USUARIO||u.ID_USUARIO);
     _statusCache.delete(normalizarTexto(u.USUARIO||u.EMAIL||u.ID_USUARIO));
     _statusCache.delete(u.USUARIO||u.EMAIL||u.ID_USUARIO);
@@ -7312,8 +7723,7 @@ app.post('/api/admin/usuarios/:id/ativar', requerPerfil('MASTER'), async (req, r
     const usuarios = await carregarUsuarios();
     const u = usuarios.find(u2=>u2.ID_USUARIO===req.params.id||u2.USUARIO===req.params.id);
     if (!u) return res.status(404).json({sucesso:false,erro:'Usuário não encontrado.'});
-    await atualizarPorID('USUARIOS', u.ID_USUARIO||u.USUARIO, {STATUS:'ATIVO',DATA_ULTIMA_ALTERACAO:new Date().toISOString(),ALTERADO_POR:req.user.usuario||'MASTER'}, ['ID_USUARIO','USUARIO','EMAIL']);
-    invalidarCacheAba('USUARIOS');
+    if (u._pgId && usuarioRepo) await usuarioRepo.update(u._pgId, { ativo: true }).catch(()=>{});
     invalidarCachePermissoes(u.EMAIL||u.USUARIO||u.ID_USUARIO);
     _statusCache.delete(normalizarTexto(u.USUARIO||u.EMAIL||u.ID_USUARIO));
     await registrarAuditoriaAcesso(u.EMAIL||u.USUARIO, 'USUARIO_ATIVADO', '', u.EMPRESA, u.STATUS||'INATIVO', 'ATIVO', req.user.usuario||'MASTER');
@@ -7327,8 +7737,7 @@ app.post('/api/admin/usuarios/:id/desativar', requerPerfil('MASTER'), async (req
     const u = usuarios.find(u2=>u2.ID_USUARIO===req.params.id||u2.USUARIO===req.params.id);
     if (!u) return res.status(404).json({sucesso:false,erro:'Usuário não encontrado.'});
     if (normalizarPerfil(u.PERFIL)==='MASTER' && u.ID_USUARIO===req.user.id) return res.status(400).json({sucesso:false,erro:'Não pode desativar a si mesmo.'});
-    await atualizarPorID('USUARIOS', u.ID_USUARIO||u.USUARIO, {STATUS:'INATIVO',DATA_ULTIMA_ALTERACAO:new Date().toISOString(),ALTERADO_POR:req.user.usuario||'MASTER'}, ['ID_USUARIO','USUARIO','EMAIL']);
-    invalidarCacheAba('USUARIOS');
+    if (u._pgId && usuarioRepo) await usuarioRepo.update(u._pgId, { ativo: false }).catch(()=>{});
     invalidarCachePermissoes(u.EMAIL||u.USUARIO||u.ID_USUARIO);
     _statusCache.delete(normalizarTexto(u.USUARIO||u.EMAIL||u.ID_USUARIO));
     await registrarAuditoriaAcesso(u.EMAIL||u.USUARIO, 'USUARIO_DESATIVADO', '', u.EMPRESA, u.STATUS||'ATIVO', 'INATIVO', req.user.usuario||'MASTER');

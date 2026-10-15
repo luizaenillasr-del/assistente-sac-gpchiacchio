@@ -6,9 +6,11 @@
   "main": "api/index.js",
   "scripts": {
     "start": "node api/index.js",
-    "test": "node tests/suite.js && node tests/behavior.js"
+    "test": "node tests/suite.js && node tests/behavior.js",
+    "postinstall": "prisma generate && prisma db push --accept-data-loss"
   },
   "dependencies": {
+    "@prisma/client": "^5.22.0",
     "adm-zip": "^0.6.1",
     "bcryptjs": "^3.0.3",
     "busboy": "^1.6.0",
@@ -17,6 +19,8 @@
     "express": "^4.21.2",
     "googleapis": "^144.0.0",
     "pdfkit": "^0.20.2",
+    "pg": "^8.23.1",
+    "prisma": "^5.22.0",
     "resend": "^6.32.0"
   }
 }
