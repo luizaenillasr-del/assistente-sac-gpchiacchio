@@ -7442,11 +7442,23 @@ app.post('/api/public/solicitar-acesso', async (req, res) => {
     const now = new Date().toISOString();
 
     // Sempre grava na Sheets (fonte primária confiável em serverless)
+    // Usa appendObjeto (mapeia por nome de coluna) para ser robusto a qualquer ordem de colunas na aba
     await garantirAbaComCabecalhos('SOLICITACOES_ACESSO', SOLICITACOES_HEADERS);
-    await appendLinha('SOLICITACOES_ACESSO', [
-      id, nome.trim(), emailNorm, empCod, setor.trim(), cargo.trim(),
-      (telefone||'').trim(), justificativa.trim(), 'PENDENTE', now, '', '', '',
-    ]);
+    await appendObjeto('SOLICITACOES_ACESSO', {
+      ID_SOLICITACAO: id,
+      NOME: nome.trim(),
+      EMAIL: emailNorm,
+      EMPRESA: empCod,
+      SETOR: setor.trim(),
+      CARGO: cargo.trim(),
+      TELEFONE: (telefone||'').trim(),
+      JUSTIFICATIVA: justificativa.trim(),
+      STATUS: 'PENDENTE',
+      DATA_CRIACAO: now,
+      DATA_DECISAO: '',
+      DECIDIDO_POR: '',
+      MOTIVO_REJEICAO: '',
+    });
     invalidarCacheAba('SOLICITACOES_ACESSO');
 
     // Tenta gravar no PG também (opcional — não falha se indisponível)
