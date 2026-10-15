@@ -290,9 +290,11 @@ async function carregarUsuarios(){
       }
     } catch (e) { _pgErro = e.message; console.warn('[F4] carregarUsuarios PG falhou:', e.message); }
   }
-  // Sempre lê Sheets para pegar usuários criados via UI que não estão no PG
+  // Lê Sheets apenas como fallback quando PG não está disponível
   let rows=[];
-  try{ rows=await lerAba('USUARIOS',1000); _sheetsCount = rows.length; }catch(e){ _sheetsErro = e.message; console.warn('USUARIOS não disponível:',e.message); }
+  if (!usuarioRepo || pgMapped.length === 0) {
+    try{ rows=await lerAba('USUARIOS',1000); _sheetsCount = rows.length; }catch(e){ _sheetsErro = e.message; console.warn('USUARIOS não disponível:',e.message); }
+  }
   const raw=process.env.USUARIOS_JSON||'{}';
   let envUsers=[];
   try{
@@ -301,56 +303,25 @@ async function carregarUsuarios(){
       ? {ID_USUARIO:usuario,USUARIO:usuario,SENHA:val,NOME:usuario,PERFIL:'ANALISTA SAC',STATUS:'ATIVO'}
       : {ID_USUARIO:usuario,USUARIO:usuario,...val});
   }catch(e){}
-  // Dedup: PG ganha precedência sobre Sheets por ID_USUARIO/EMAIL
-  // Mas campos de permissão (PERMISSOES_GRANTED/BLOCKED/CUSTOM) sempre vêm do Sheets pois são gerenciados pela UI
   const pgEmails = new Set(pgMapped.map(u => (u.EMAIL||'').toLowerCase()).filter(Boolean));
-  const pgUsuarios = new Set(pgMapped.map(u => (u.USUARIO||'').toLowerCase()).filter(Boolean));
   const pgIds = new Set(pgMapped.map(u => u.ID_USUARIO).filter(Boolean));
-  const sheetsOnly = rows.filter(r => {
+  // Quando PG disponível, Sheets é ignorado (não misturar dados obsoletos)
+  const sheetsOnly = pgMapped.length > 0 ? [] : rows.filter(r => {
     const emailOrUser = (r.EMAIL||r.USUARIO||'').toLowerCase();
-    const usuario = (r.USUARIO||'').toLowerCase();
     const id = r.ID_USUARIO;
-    return !pgIds.has(id) && !pgEmails.has(emailOrUser) && !pgUsuarios.has(usuario);
+    return !pgIds.has(id) && !pgEmails.has(emailOrUser);
   });
-  // Mescla dados do Sheets nos registros do PG.
-  // PG fornece autenticação/identidade; Sheets é a fonte de verdade para perfil/empresa/permissões
-  // (admin UI escreve só no Sheets, nunca no PG).
-  const pgMerged = pgMapped.map(pgRow => {
-    const eml = (pgRow.EMAIL||'').toLowerCase();
-    const sheetsRow = rows.find(r => {
-      const re = (r.EMAIL||r.USUARIO||'').toLowerCase();
-      return (pgRow.ID_USUARIO && r.ID_USUARIO === pgRow.ID_USUARIO) || (eml && re === eml);
-    });
-    if (!sheetsRow) return pgRow;
-    return {
-      ...pgRow,
-      // Campos gerenciados pelo admin UI via Sheets — sempre preferir Sheets se preenchido
-      PERFIL:             sheetsRow.PERFIL             || pgRow.PERFIL             || '',
-      EMPRESA:            sheetsRow.EMPRESA            || pgRow.EMPRESA            || '',
-      SETOR:              sheetsRow.SETOR              || pgRow.SETOR              || '',
-      STATUS:             sheetsRow.STATUS             || pgRow.STATUS             || 'ATIVO',
-      CARGO:              sheetsRow.CARGO              || pgRow.CARGO              || '',
-      PERMISSOES_GRANTED: sheetsRow.PERMISSOES_GRANTED || pgRow.PERMISSOES_GRANTED || '',
-      PERMISSOES_BLOCKED: sheetsRow.PERMISSOES_BLOCKED || pgRow.PERMISSOES_BLOCKED || '',
-      PERMISSOES_CUSTOM:  sheetsRow.PERMISSOES_CUSTOM  || pgRow.PERMISSOES_CUSTOM  || '',
-    };
-  });
+  const pgMerged = pgMapped; // PG é a fonte única — perfil/empresa vêm do PG
   const demoEnabled=String(process.env.DEMO_LOGIN_ENABLED||'false').toLowerCase()==='true';
-  // Dedup envUsers: não mostrar usuário do env se já existe no PG ou Sheets com mesmo email/usuario
-  const allKnownEmails = new Set([
-    ...pgMerged.map(u => (u.EMAIL||'').toLowerCase()).filter(Boolean),
-    ...sheetsOnly.map(u => (u.EMAIL||u.USUARIO||'').toLowerCase()).filter(Boolean),
-  ]);
-  const allKnownIds = new Set([
-    ...pgMerged.map(u => u.ID_USUARIO).filter(Boolean),
-    ...sheetsOnly.map(u => u.ID_USUARIO).filter(Boolean),
-  ]);
+  // Dedup envUsers contra PG
+  const allKnownEmails = new Set(pgMerged.map(u => (u.EMAIL||'').toLowerCase()).filter(Boolean));
+  const allKnownIds = new Set(pgMerged.map(u => u.ID_USUARIO).filter(Boolean));
   const envUsersFiltered = envUsers.filter(u => {
     const eml = (u.EMAIL||u.USUARIO||'').toLowerCase();
     return !allKnownIds.has(u.ID_USUARIO) && !allKnownEmails.has(eml);
   });
   const result = [...pgMerged, ...sheetsOnly, ...envUsersFiltered, ...(demoEnabled?DEMO_USUARIOS:[])];
-  result._debug = { temPGRepo: !!usuarioRepo, pgCount: _pgCount, pgErro: _pgErro, sheetsCount: _sheetsCount, sheetsErro: _sheetsErro, envCount: envUsersFiltered.length, envCountRaw: envUsers.length, total: result.length, mergedPerms: pgMerged.filter(u=>u.PERMISSOES_GRANTED).length };
+  result._debug = { temPGRepo: !!usuarioRepo, pgCount: _pgCount, pgErro: _pgErro, sheetsCount: _sheetsCount, sheetsErro: _sheetsErro, envCount: envUsersFiltered.length, envCountRaw: envUsers.length, total: result.length };
   return result;
 }
 
@@ -5213,8 +5184,12 @@ app.delete('/api/usuarios/:id', requerPermissao('usuarios.gerenciar'), async (re
       const masters=todos.filter(u=>(u.PERFIL||u.perfil||'').toUpperCase()==='MASTER'&&(u.STATUS||u.status||'ATIVO').toUpperCase()==='ATIVO'&&String(u.ID_USUARIO||u.USUARIO)!==String(alvo.ID_USUARIO||alvo.USUARIO));
       if(masters.length===0) return res.status(403).json({sucesso:false,erro:'Não é possível excluir o único MASTER ativo do sistema.'});
     }
-    const dados={STATUS:'EXCLUIDO',DATA_ULTIMA_ALTERACAO:new Date().toISOString(),ALTERADO_POR:req.user.usuario};
-    await atualizarPorID('USUARIOS',req.params.id,dados,['ID_USUARIO','USUARIO','EMAIL']);
+    // Atualiza PG (inativa o usuário)
+    if (alvo._pgId && usuarioRepo) {
+      await usuarioRepo.update(alvo._pgId, { ativo: false }).catch(e => console.warn('[DEL] PG update:', e.message));
+    }
+    invalidarCachePermissoes(alvo.EMAIL||alvo.USUARIO||alvo.ID_USUARIO);
+    _statusCache.delete(normalizarTexto(alvo.USUARIO||alvo.EMAIL||alvo.ID_USUARIO));
     await registrarAuditoria(req.user.usuario,'EXCLUIU_USUARIO',req.params.id,'USUARIOS',null,{nome:alvo.NOME});
     res.json({sucesso:true});
   }catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
@@ -7430,7 +7405,12 @@ app.post('/api/public/solicitar-acesso', async (req, res) => {
     // Verifica duplicidade de e-mail em usuários ativos
     const usuarios = await carregarUsuarios();
     const emailNorm = String(email).toLowerCase().trim();
-    const jaUsuario = usuarios.find(u => String(u.EMAIL||'').toLowerCase().trim()===emailNorm && normalizarTexto(u.STATUS||'ATIVO')!=='inativo' && normalizarTexto(u.STATUS||'ATIVO')!=='rejeitado');
+    const statusBloqueantes = ['ativo', 'bloqueado'];
+    const jaUsuario = usuarios.find(u => {
+      if (String(u.EMAIL||'').toLowerCase().trim() !== emailNorm) return false;
+      const st = normalizarTexto(u.STATUS||'ATIVO');
+      return statusBloqueantes.includes(st);
+    });
     if (jaUsuario) return res.status(409).json({sucesso:false,erro:'E-mail já possui conta ativa no sistema.'});
 
     // Verifica solicitação PENDENTE duplicada (PG é a fonte primária)
