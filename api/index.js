@@ -310,7 +310,9 @@ async function carregarUsuarios(){
     const id = r.ID_USUARIO;
     return !pgIds.has(id) && !pgEmails.has(email);
   });
-  // Mescla permissões do Sheets nos registros do PG (PG não armazena PERMISSOES_GRANTED/BLOCKED)
+  // Mescla dados do Sheets nos registros do PG.
+  // PG fornece autenticação/identidade; Sheets é a fonte de verdade para perfil/empresa/permissões
+  // (admin UI escreve só no Sheets, nunca no PG).
   const pgMerged = pgMapped.map(pgRow => {
     const eml = (pgRow.EMAIL||'').toLowerCase();
     const sheetsRow = rows.find(r => {
@@ -320,6 +322,12 @@ async function carregarUsuarios(){
     if (!sheetsRow) return pgRow;
     return {
       ...pgRow,
+      // Campos gerenciados pelo admin UI via Sheets — sempre preferir Sheets se preenchido
+      PERFIL:             sheetsRow.PERFIL             || pgRow.PERFIL             || '',
+      EMPRESA:            sheetsRow.EMPRESA            || pgRow.EMPRESA            || '',
+      SETOR:              sheetsRow.SETOR              || pgRow.SETOR              || '',
+      STATUS:             sheetsRow.STATUS             || pgRow.STATUS             || 'ATIVO',
+      CARGO:              sheetsRow.CARGO              || pgRow.CARGO              || '',
       PERMISSOES_GRANTED: sheetsRow.PERMISSOES_GRANTED || pgRow.PERMISSOES_GRANTED || '',
       PERMISSOES_BLOCKED: sheetsRow.PERMISSOES_BLOCKED || pgRow.PERMISSOES_BLOCKED || '',
       PERMISSOES_CUSTOM:  sheetsRow.PERMISSOES_CUSTOM  || pgRow.PERMISSOES_CUSTOM  || '',
@@ -6189,8 +6197,10 @@ app.post('/api/public/reclamacoes', publicRateLimit, async (req, res) => {
     registrarAuditoria(`portal:${colaboradorRecebimento}`, 'CRIOU_MANIFESTAÇÃO_PORTAL', id, 'MANIFESTACOES', null, { empresa, nomeCliente, canal: canalFinal, tipo: tipoManifestacao }).catch(() => {});
 
     // 7. Inserir na FILA_APROVACAO para que MASTER/APROVADOR vejam imediatamente
-    gerarProximoID('FILA_APROVACAO','FAP','ID_FILA').then(async filaId => {
+    // IMPORTANTE: deve ser awaited antes de res.json() — em serverless o processo termina após enviar a resposta
+    try {
       await garantirAbaComCabecalhos('FILA_APROVACAO', FILA_APROV_HEADERS).catch(()=>{});
+      const filaId = await gerarProximoID('FILA_APROVACAO','FAP','ID_FILA');
       await appendObjeto('FILA_APROVACAO', {
         ID_FILA: filaId, ID_ENTIDADE: id, TIPO_ENTIDADE: 'SAC',
         DESCRICAO: `[Portal] ${tipoManifestacao} - ${nomeCliente} (${empresa})`,
@@ -6199,8 +6209,10 @@ app.post('/api/public/reclamacoes', publicRateLimit, async (req, res) => {
         ID_APROVADOR: '', NOME_APROVADOR: '',
         DATA_ENVIO: agora, DATA_DECISAO: '', OBSERVACOES: '',
         CRIADO_POR: `portal:${colaboradorRecebimento}`, ID_REGRA: '',
-      }).catch(e => console.warn('[PUBLIC] FILA_APROVACAO insert falhou:', e.message));
-    }).catch(() => {});
+      });
+    } catch (filaErr) {
+      console.warn('[PUBLIC] FILA_APROVACAO insert falhou:', filaErr.message);
+    }
 
     const resposta = { sucesso: true, protocolo: id, dataHora: agora };
     if (pdfBase64) resposta.pdfBase64 = pdfBase64;
@@ -7654,6 +7666,7 @@ app.patch('/api/admin/usuarios/:id/permissoes', requerPerfil('MASTER'), async (r
     _statusCache.delete(normalizarTexto(u.USUARIO||u.EMAIL||u.ID_USUARIO));
     _statusCache.delete(u.USUARIO||u.EMAIL||u.ID_USUARIO);
     invalidarCacheAba('USUARIOS');
+    invalidarCacheAba('PERMISSOES_USUARIO');
     await registrarAuditoriaAcesso(u.EMAIL||u.USUARIO, 'PERMISSOES_ALTERADAS', JSON.stringify(modulosNiveis||{}), empresa||u.EMPRESA, JSON.stringify(anterior), JSON.stringify(updates), req.user.usuario||'MASTER');
     res.json({sucesso:true, mensagem:'Permissões atualizadas.'});
   } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
