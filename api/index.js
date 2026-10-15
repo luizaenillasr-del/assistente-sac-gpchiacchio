@@ -334,8 +334,21 @@ async function carregarUsuarios(){
     };
   });
   const demoEnabled=String(process.env.DEMO_LOGIN_ENABLED||'false').toLowerCase()==='true';
-  const result = [...pgMerged, ...sheetsOnly, ...envUsers, ...(demoEnabled?DEMO_USUARIOS:[])];
-  result._debug = { temPGRepo: !!usuarioRepo, pgCount: _pgCount, pgErro: _pgErro, sheetsCount: _sheetsCount, sheetsErro: _sheetsErro, envCount: envUsers.length, total: result.length, mergedPerms: pgMerged.filter(u=>u.PERMISSOES_GRANTED).length };
+  // Dedup envUsers: não mostrar usuário do env se já existe no PG ou Sheets com mesmo email/usuario
+  const allKnownEmails = new Set([
+    ...pgMerged.map(u => (u.EMAIL||'').toLowerCase()).filter(Boolean),
+    ...sheetsOnly.map(u => (u.EMAIL||u.USUARIO||'').toLowerCase()).filter(Boolean),
+  ]);
+  const allKnownIds = new Set([
+    ...pgMerged.map(u => u.ID_USUARIO).filter(Boolean),
+    ...sheetsOnly.map(u => u.ID_USUARIO).filter(Boolean),
+  ]);
+  const envUsersFiltered = envUsers.filter(u => {
+    const eml = (u.EMAIL||u.USUARIO||'').toLowerCase();
+    return !allKnownIds.has(u.ID_USUARIO) && !allKnownEmails.has(eml);
+  });
+  const result = [...pgMerged, ...sheetsOnly, ...envUsersFiltered, ...(demoEnabled?DEMO_USUARIOS:[])];
+  result._debug = { temPGRepo: !!usuarioRepo, pgCount: _pgCount, pgErro: _pgErro, sheetsCount: _sheetsCount, sheetsErro: _sheetsErro, envCount: envUsersFiltered.length, envCountRaw: envUsers.length, total: result.length, mergedPerms: pgMerged.filter(u=>u.PERMISSOES_GRANTED).length };
   return result;
 }
 
