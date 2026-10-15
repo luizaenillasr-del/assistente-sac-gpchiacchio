@@ -24,6 +24,62 @@ const PG_LEITURA_ATIVA = String(process.env.PG_LEITURA_ATIVA || 'true').toLowerC
 // Repositórios PostgreSQL — carregados mas desativados enquanto PG_LEITURA_ATIVA=false
 // Isso garante que todos os dados sejam lidos/gravados exclusivamente no Sheets,
 // eliminando bugs de dessincronização entre os dois storages.
+async function _seedPerfisSeNecessario() {
+  try {
+    const prisma = require('../database/connection');
+    const PERFIS_SEED = [
+      { codigo: 'MASTER',              nome: 'Master' },
+      { codigo: 'GESTOR SAC',          nome: 'Gestor SAC' },
+      { codigo: 'ANALISTA SAC',        nome: 'Analista SAC' },
+      { codigo: 'ATENDENTE SAC',       nome: 'Atendente SAC' },
+      { codigo: 'APROVADOR',           nome: 'Aprovador' },
+      { codigo: 'APROVADOR MASTER',    nome: 'Aprovador Master' },
+      { codigo: 'SETOR RESPONSÁVEL',   nome: 'Setor Responsável' },
+      { codigo: 'ESPECIALISTA',        nome: 'Especialista' },
+      { codigo: 'RCA / REPRESENTANTE', nome: 'RCA / Representante' },
+      { codigo: 'DIRETOR',             nome: 'Diretor' },
+      { codigo: 'VISUALIZADOR',        nome: 'Visualizador' },
+      { codigo: 'AUDITOR',             nome: 'Auditor' },
+    ];
+    for (const p of PERFIS_SEED) {
+      await prisma.perfil.upsert({
+        where: { codigo: p.codigo },
+        update: {},
+        create: { codigo: p.codigo, nome: p.nome },
+      });
+    }
+    console.info('[PG] Perfis verificados/criados.');
+
+    // Sincroniza perfis dos usuários PG a partir do Sheets (migração única e idempotente)
+    // Se o usuário PG tem perfil genérico (ex: USUARIO_DE_SETOR), mas o Sheets diz MASTER,
+    // atualiza o perfilId no PG para refletir o perfil real.
+    try {
+      const sheetRows = await lerAba('USUARIOS', 500).catch(() => []);
+      if (!sheetRows.length) return;
+      const pgUsers = await prisma.usuario.findMany({ include: { perfil: true } });
+      for (const pgU of pgUsers) {
+        const sheetU = sheetRows.find(r => {
+          const e = (r.EMAIL||'').toLowerCase().trim();
+          return e && e === (pgU.email||'').toLowerCase().trim();
+        });
+        if (!sheetU?.PERFIL) continue;
+        const sheetPerfil = perfilCanonico(sheetU.PERFIL);
+        const pgPerfil = perfilCanonico(pgU.perfil?.codigo || '');
+        if (sheetPerfil === pgPerfil) continue;
+        // Perfil diverge: atualiza PG com o perfil do Sheets
+        const novoPerfil = await prisma.perfil.findFirst({ where: { codigo: sheetPerfil } });
+        if (!novoPerfil) continue;
+        await prisma.usuario.update({ where: { id: pgU.id }, data: { perfilId: novoPerfil.id } });
+        console.info(`[PG] Sincronizado perfil de ${pgU.email}: ${pgPerfil} → ${sheetPerfil}`);
+      }
+    } catch(e2) {
+      console.warn('[PG] sync perfis Sheets→PG:', e2.message);
+    }
+  } catch(e) {
+    console.warn('[PG] _seedPerfisSeNecessario:', e.message);
+  }
+}
+
 let usuarioRepo = null, manifestacaoRepo = null, rncRepo = null, empresaRepo = null, conhecimentoRepo = null, pesquisaRepo = null, solicitacaoRepo = null;
 if (PG_LEITURA_ATIVA && process.env.DATABASE_URL && process.env.NODE_ENV !== 'test') {
   try {
@@ -35,6 +91,8 @@ if (PG_LEITURA_ATIVA && process.env.DATABASE_URL && process.env.NODE_ENV !== 'te
     pesquisaRepo = require('../database/repositories/pesquisaRepository');
     solicitacaoRepo = require('../database/repositories/solicitacaoRepository');
     console.info('[PG] Repositórios carregados — leituras via PostgreSQL ativas.');
+    // Garante que os registros básicos de Perfil existam no banco
+    _seedPerfisSeNecessario().catch(e => console.warn('[PG] seed perfis falhou:', e.message));
   } catch (e) {
     console.warn('[PG] Repositórios não disponíveis, usando Sheets:', e.message);
   }
