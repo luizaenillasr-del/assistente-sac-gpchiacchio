@@ -8834,9 +8834,16 @@ async function checarSolicitacoesPendentes() {
         dashAlert.style.display = 'none';
       }
     }
-    // Badge no botão "Aprovações" para manifestações aguardando aprovação
-    const filaData = await _apiFetch('/api/fila-aprovacao', 8000).catch(() => null);
-    const pendAprov = filaData ? (filaData.itens||[]).filter(x => x.STATUS === 'PENDENTE').length : 0;
+    // Badge no botão "Aprovações": combina fila (novas) + pendências diretas (antigas sem fila)
+    const [filaData, pendData] = await Promise.all([
+      _apiFetch('/api/fila-aprovacao', 8000).catch(() => null),
+      _apiFetch('/api/aprovadores/' + encodeURIComponent(_u.usuario||_u.USUARIO||''), 8000).catch(() => null),
+    ]);
+    const pendFila = filaData ? (filaData.itens||[]).filter(x => x.STATUS === 'PENDENTE').length : 0;
+    // Manifestações pendentes que não estão na fila (antigas — backfill via pendências diretas)
+    const filaIds = new Set((filaData ? filaData.itens||[] : []).map(x => x.ID_ENTIDADE));
+    const sacPendentes = pendData ? (pendData.sac||[]).filter(m => !filaIds.has(m.ID_MANIFESTACAO)) : [];
+    const pendAprov = pendFila + sacPendentes.length;
     const badgeAprov = document.getElementById('badge-aprovacoes');
     if (badgeAprov) {
       if (pendAprov > 0) { badgeAprov.textContent = pendAprov; badgeAprov.style.display = 'inline-block'; }
