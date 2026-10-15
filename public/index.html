@@ -1030,8 +1030,8 @@
             <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">Perfil principal <span style="color:#C70602">*</span></label>
             <select id="usu-perfil" class="form-input" onchange="usuPerfilChanged()">
               <option value="">Selecione...</option>
-              <option>MASTER</option><option>APROVADOR MASTER</option><option>GESTOR SAC</option>
-              <option>ANALISTA SAC</option><option>ATENDENTE SAC</option><option>APROVADOR</option><option>SAC</option>
+              <option>MASTER</option><option>GESTOR_SAC</option><option>ANALISTA_SAC</option>
+              <option>REPRESENTANTE</option><option>APROVADOR</option><option>CONSULTA</option><option>AUDITOR</option>
             </select>
           </div>
           <div class="form-group">
@@ -19113,7 +19113,7 @@ async function mudarStatusMC(id, novoStatus) {
   // ── TABS USUÁRIOS ───────────────────────────────────────────
   window.switchUsrTab = function(tab){
     // Layout redesenhado: sem abas separadas, tudo em scroll
-    if(tab==='solicitacoes') loadSolicitacoesEmbutido?.();
+    if(tab==='solicitacoes') abrirPainelNotificacoes?.();
     else loadUsuariosV5?.();
   };
 
@@ -22488,7 +22488,7 @@ function updateTopbarUser(user) {
     document.getElementById('usu-nome').value = u&&(u.NOME||u.nome)||'';
     document.getElementById('usu-email').value = u&&(u.EMAIL||u.email)||'';
     document.getElementById('usu-usuario').value = u&&(u.USUARIO||u.usuario)||'';
-    document.getElementById('usu-perfil').value = u&&(u.PERFIL||u.perfil)||'';
+    document.getElementById('usu-perfil').value = (u&&(u.PERFIL||u.perfil)||'').toUpperCase().replace(/\s+/g,'_');
     document.getElementById('usu-status').value = u&&(u.STATUS||u.status)||'ATIVO';
     document.getElementById('usu-obs').value = u&&(u.OBSERVACOES||u.observacoes)||'';
     document.getElementById('usu-senha').value = '';
@@ -22677,7 +22677,7 @@ function updateTopbarUser(user) {
       }
       if(data.sucesso) {
         fecharModalUsuario();
-        await loadUsuariosV5();
+        await loadUsuariosMasterPainel();
       } else {
         if(msg){msg.style.color='#C70602';msg.textContent=data.erro||'Erro ao salvar.';}
       }

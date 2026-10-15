@@ -6460,7 +6460,9 @@ async function carregarPermissoesUsuario(emailOuId) {
   const modulos = {};
   const competencias = [];
   for (const r of userRows) {
-    if (r.MODULO && r.NIVEL!==undefined) modulos[r.MODULO] = Number(r.NIVEL)||0;
+    if (r.MODULO) {
+      try { Object.assign(modulos, JSON.parse(r.MODULO)); } catch {}
+    }
     if (r.COMPETENCIAS) r.COMPETENCIAS.split(',').map(c=>c.trim()).filter(Boolean).forEach(c=>competencias.push(c));
   }
   const data = { modulos, competencias: [...new Set(competencias)] };
