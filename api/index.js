@@ -1339,7 +1339,7 @@ app.post('/api/auth/login', async (req, res) => {
       await registrarAcessoUsuario(registro);
       await registrarAuditoria(pub.usuario,'LOGIN',null,'AUTH',null,{perfil:pub.perfil});
     }
-    res.json({ sucesso:true, token:assinarToken(payload), usuario:pub.usuario, usuarioInfo:pub, modo:isDemo?'DEMO':'PRODUCAO' });
+    res.json({ sucesso:true, token:assinarToken(payload), usuario:pub.usuario, usuarioInfo:{...pub, primeiro_acesso: primeroAcesso || undefined}, modo:isDemo?'DEMO':'PRODUCAO' });
   } catch (e) {
     console.error(e);
     res.status(500).json({ sucesso: false, erro: erroSeguro(e) });
@@ -7635,7 +7635,7 @@ app.post('/api/admin/solicitacoes/:id/aprovar', requerPerfil('MASTER'), async (r
       EMPRESA: empCod,
       SETOR: setor||solRow.SETOR||'',
       CODIGO_RCA: '',
-      STATUS: 'ATIVO',
+      STATUS: 'PRIMEIRO_ACESSO',
       SENHA_HASH: senhaHash,
       DATA_CRIACAO: new Date().toISOString(),
       ULTIMO_ACESSO: '',
