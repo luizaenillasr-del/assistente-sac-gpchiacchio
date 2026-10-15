@@ -12488,6 +12488,7 @@ window.navigate = function(page, el) {
     }catch(e){console.error('Solicitações:',e);}
   }
   window.loadUsuariosV5=loadUsuariosV5;
+  window.loadSolicitacoesEmbutido=loadSolicitacoesEmbutido;
   // ── Módulos e permissões por chave curta (ex: "manifestacoes.visualizar") ──
   const _PERM_MODULOS = [
     { id: 'manifestacoes', label: 'Manifestações', perms: [
@@ -22906,7 +22907,8 @@ function updateTopbarUser(user) {
   }
 
   async function loadUsuariosMasterPainel() {
-    if (role() !== 'MASTER') {
+    const r = role();
+    if (r !== 'MASTER' && r !== 'APROVADOR MASTER') {
       const pg = document.getElementById('page-usuarios');
       if (pg) pg.innerHTML = '<div style="padding:40px;text-align:center;color:#707070">Acesso restrito ao MASTER.</div>';
       return;
@@ -22923,6 +22925,12 @@ function updateTopbarUser(user) {
     } catch(e) {
       if (tb) tb.innerHTML = `<tr><td colspan="6" style="padding:20px;text-align:center;color:#C70602">Erro ao carregar usuários: ${esc5(e.message)}</td></tr>`;
       if (vazio) vazio.style.display = 'none';
+    }
+    // Carregar solicitações pendentes
+    if (typeof loadSolicitacoesEmbutido === 'function') {
+      loadSolicitacoesEmbutido().catch(()=>{});
+    } else if (typeof window.loadSolicitacoesEmbutido === 'function') {
+      window.loadSolicitacoesEmbutido().catch(()=>{});
     }
   }
   window.loadUsuariosMasterPainel = loadUsuariosMasterPainel;
