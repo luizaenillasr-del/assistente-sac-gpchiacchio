@@ -302,6 +302,7 @@ async function carregarUsuarios(){
       : {ID_USUARIO:usuario,USUARIO:usuario,...val});
   }catch(e){}
   // Dedup: PG ganha precedência sobre Sheets por ID_USUARIO/EMAIL
+  // Mas campos de permissão (PERMISSOES_GRANTED/BLOCKED/CUSTOM) sempre vêm do Sheets pois são gerenciados pela UI
   const pgEmails = new Set(pgMapped.map(u => (u.EMAIL||'').toLowerCase()).filter(Boolean));
   const pgIds = new Set(pgMapped.map(u => u.ID_USUARIO).filter(Boolean));
   const sheetsOnly = rows.filter(r => {
@@ -309,9 +310,24 @@ async function carregarUsuarios(){
     const id = r.ID_USUARIO;
     return !pgIds.has(id) && !pgEmails.has(email);
   });
+  // Mescla permissões do Sheets nos registros do PG (PG não armazena PERMISSOES_GRANTED/BLOCKED)
+  const pgMerged = pgMapped.map(pgRow => {
+    const eml = (pgRow.EMAIL||'').toLowerCase();
+    const sheetsRow = rows.find(r => {
+      const re = (r.EMAIL||r.USUARIO||'').toLowerCase();
+      return (pgRow.ID_USUARIO && r.ID_USUARIO === pgRow.ID_USUARIO) || (eml && re === eml);
+    });
+    if (!sheetsRow) return pgRow;
+    return {
+      ...pgRow,
+      PERMISSOES_GRANTED: sheetsRow.PERMISSOES_GRANTED || pgRow.PERMISSOES_GRANTED || '',
+      PERMISSOES_BLOCKED: sheetsRow.PERMISSOES_BLOCKED || pgRow.PERMISSOES_BLOCKED || '',
+      PERMISSOES_CUSTOM:  sheetsRow.PERMISSOES_CUSTOM  || pgRow.PERMISSOES_CUSTOM  || '',
+    };
+  });
   const demoEnabled=String(process.env.DEMO_LOGIN_ENABLED||'false').toLowerCase()==='true';
-  const result = [...pgMapped, ...sheetsOnly, ...envUsers, ...(demoEnabled?DEMO_USUARIOS:[])];
-  result._debug = { temPGRepo: !!usuarioRepo, pgCount: _pgCount, pgErro: _pgErro, sheetsCount: _sheetsCount, sheetsErro: _sheetsErro, envCount: envUsers.length, total: result.length };
+  const result = [...pgMerged, ...sheetsOnly, ...envUsers, ...(demoEnabled?DEMO_USUARIOS:[])];
+  result._debug = { temPGRepo: !!usuarioRepo, pgCount: _pgCount, pgErro: _pgErro, sheetsCount: _sheetsCount, sheetsErro: _sheetsErro, envCount: envUsers.length, total: result.length, mergedPerms: pgMerged.filter(u=>u.PERMISSOES_GRANTED).length };
   return result;
 }
 
@@ -6172,6 +6188,20 @@ app.post('/api/public/reclamacoes', publicRateLimit, async (req, res) => {
 
     registrarAuditoria(`portal:${colaboradorRecebimento}`, 'CRIOU_MANIFESTAÇÃO_PORTAL', id, 'MANIFESTACOES', null, { empresa, nomeCliente, canal: canalFinal, tipo: tipoManifestacao }).catch(() => {});
 
+    // 7. Inserir na FILA_APROVACAO para que MASTER/APROVADOR vejam imediatamente
+    gerarProximoID('FILA_APROVACAO','FAP','ID_FILA').then(async filaId => {
+      await garantirAbaComCabecalhos('FILA_APROVACAO', FILA_APROV_HEADERS).catch(()=>{});
+      await appendObjeto('FILA_APROVACAO', {
+        ID_FILA: filaId, ID_ENTIDADE: id, TIPO_ENTIDADE: 'SAC',
+        DESCRICAO: `[Portal] ${tipoManifestacao} - ${nomeCliente} (${empresa})`,
+        EMPRESA: empresaCanonica(empresa)||empresa, SETOR: setorRecebimento,
+        COMPETENCIA: '', STATUS: 'PENDENTE',
+        ID_APROVADOR: '', NOME_APROVADOR: '',
+        DATA_ENVIO: agora, DATA_DECISAO: '', OBSERVACOES: '',
+        CRIADO_POR: `portal:${colaboradorRecebimento}`, ID_REGRA: '',
+      }).catch(e => console.warn('[PUBLIC] FILA_APROVACAO insert falhou:', e.message));
+    }).catch(() => {});
+
     const resposta = { sucesso: true, protocolo: id, dataHora: agora };
     if (pdfBase64) resposta.pdfBase64 = pdfBase64;
     res.json(resposta);
@@ -7623,6 +7653,7 @@ app.patch('/api/admin/usuarios/:id/permissoes', requerPerfil('MASTER'), async (r
     invalidarCachePermissoes(u.EMAIL||u.USUARIO||u.ID_USUARIO);
     _statusCache.delete(normalizarTexto(u.USUARIO||u.EMAIL||u.ID_USUARIO));
     _statusCache.delete(u.USUARIO||u.EMAIL||u.ID_USUARIO);
+    invalidarCacheAba('USUARIOS');
     await registrarAuditoriaAcesso(u.EMAIL||u.USUARIO, 'PERMISSOES_ALTERADAS', JSON.stringify(modulosNiveis||{}), empresa||u.EMPRESA, JSON.stringify(anterior), JSON.stringify(updates), req.user.usuario||'MASTER');
     res.json({sucesso:true, mensagem:'Permissões atualizadas.'});
   } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }

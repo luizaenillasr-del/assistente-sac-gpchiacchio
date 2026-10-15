@@ -1965,7 +1965,7 @@
   <div style="display:flex;flex-direction:column;gap:2px">
     <button class="sidebar-item" onclick="navigate('painel-maquina', this)"><span class="sidebar-dot"></span>Indicadores</button>
     <button class="sidebar-item" onclick="navigate('banco-rnc', this)"><span class="sidebar-dot"></span>RNC</button>
-    <button class="sidebar-item" onclick="navigate('aprovadores', this)"><span class="sidebar-dot"></span>Aprovações</button>
+    <button class="sidebar-item" onclick="navigate('aprovadores', this)" style="position:relative"><span class="sidebar-dot"></span>Aprovações<span id="badge-aprovacoes" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);background:#C8102E;color:white;font-size:10px;font-weight:700;border-radius:10px;padding:1px 6px;min-width:18px;text-align:center" title="Aprovações pendentes"></span></button>
     <button class="sidebar-item" onclick="navigate('rca', this)"><span class="sidebar-dot"></span>Central de RCA</button>
     <button class="sidebar-item" data-v5-page="representantes" onclick="navigate('representantes', this)"><span class="sidebar-dot"></span>Representantes</button>
     <button class="sidebar-item" onclick="navigate('setores', this)"><span class="sidebar-dot"></span>Setores</button>
@@ -8780,6 +8780,15 @@ function renderDashboard(data) {
     // Manifestações internas em análise há muito tempo
     const emAnalise = mans.filter(m => (m.STATUS||'').toUpperCase().includes('ANÁLISE')).length;
     if (emAnalise > 0) alertas.push({ tipo: 'blue', msg: `ℹ ${emAnalise} manifestação(ões) aguardando análise`, acao: 'Ver acompanhamento', fn: "navigate('acompanhamento', document.querySelector('[onclick*=acompanhamento]'))" });
+    // Manifestações do portal aguardando aprovação (MASTER)
+    const _uDash = (() => { try { return JSON.parse(sessionStorage.getItem('sac-user')||'{}'); } catch { return {}; } })();
+    if ((_uDash.PERFIL||_uDash.perfil||'').toUpperCase().includes('MASTER')) {
+      const aguardAprov = mans.filter(m => {
+        const st = (m.STATUS||'').toUpperCase();
+        return st === 'AGUARDANDO_APROVAÇÃO' || st === 'AGUARDANDO_APROVACAO' || m.APROVACAO_NECESSARIA === 'SIM';
+      }).length;
+      if (aguardAprov > 0) alertas.push({ tipo: 'yellow', msg: `⚠ ${aguardAprov} manifestação(ões) aguardando aprovação`, acao: 'Ver aprovações', fn: "navigate('aprovadores', document.querySelector('[onclick*=aprovadores]'))" });
+    }
 
     alertasEl.innerHTML = alertas.length > 0
       ? alertas.map(a => `
@@ -8808,8 +8817,7 @@ async function checarSolicitacoesPendentes() {
     const perfil = (_u.PERFIL||_u.perfil||'').toUpperCase();
     if (!perfil.includes('MASTER')) return;
     const data = await _apiFetch('/api/admin/solicitacoes?status=PENDENTE', 8000).catch(() => null);
-    if (!data) return;
-    const pending = (data.itens||data.solicitacoes||[]).filter(s => s.STATUS === 'PENDENTE').length;
+    const pending = data ? (data.itens||data.solicitacoes||[]).filter(s => s.STATUS === 'PENDENTE').length : 0;
     const badge = document.getElementById('badge-solicitacoes');
     if (badge) {
       if (pending > 0) { badge.textContent = pending; badge.style.display = 'inline-block'; }
@@ -8825,6 +8833,14 @@ async function checarSolicitacoesPendentes() {
       } else {
         dashAlert.style.display = 'none';
       }
+    }
+    // Badge no botão "Aprovações" para manifestações aguardando aprovação
+    const filaData = await _apiFetch('/api/fila-aprovacao', 8000).catch(() => null);
+    const pendAprov = filaData ? (filaData.itens||[]).filter(x => x.STATUS === 'PENDENTE').length : 0;
+    const badgeAprov = document.getElementById('badge-aprovacoes');
+    if (badgeAprov) {
+      if (pendAprov > 0) { badgeAprov.textContent = pendAprov; badgeAprov.style.display = 'inline-block'; }
+      else { badgeAprov.style.display = 'none'; }
     }
   } catch(e) { /* silencioso */ }
 }
