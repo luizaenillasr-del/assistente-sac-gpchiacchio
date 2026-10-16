@@ -12427,7 +12427,8 @@ window.navigate = function(page, el) {
     renderUsuariosV5(filtered);
   }
   function renderUsuariosV5(a){
-    const filtered = a.filter(x => String(x.status||'').toUpperCase() !== 'EXCLUIDO');
+    const _hide = ['EXCLUIDO','REJEITADO'];
+    const filtered = a.filter(x => !_hide.includes(String(x.status||'').toUpperCase()));
     const stStyle = s => {
       const v = String(s||'').toUpperCase();
       if (v==='ATIVO') return 'background:#E6F2EA;color:#1E6B3A';
@@ -22938,7 +22939,8 @@ function updateTopbarUser(user) {
   function usuRenderLista(lista) {
     const tb = document.getElementById('usu-lista');
     const vazio = document.getElementById('usu-vazio');
-    const filtrada = lista.filter(u=>(u.STATUS||u.status||'ATIVO').toUpperCase()!=='EXCLUIDO');
+    const _hideStatus = ['EXCLUIDO','REJEITADO'];
+    const filtrada = lista.filter(u=>!_hideStatus.includes((u.STATUS||u.status||'ATIVO').toUpperCase()));
     if (!filtrada.length) { if(tb) tb.innerHTML=''; if(vazio) vazio.style.display='block'; return; }
     if(vazio) vazio.style.display='none';
     const STATUS_COLORS = { ATIVO: {bg:'#E6F2EA',color:'#1E6B3A'}, INATIVO: {bg:'#EEEEEE',color:'#545252'}, BLOQUEADO: {bg:'#FDECEC',color:'#C70602'}, EXCLUIDO: {bg:'#FDECEC',color:'#A80502'}, PRIMEIRO_ACESSO: {bg:'#EAF0FB',color:'#24508F'}, PENDENTE_APROVACAO: {bg:'#FFF4E0',color:'#7A4C00'} };
