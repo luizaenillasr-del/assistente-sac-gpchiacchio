@@ -2775,363 +2775,517 @@
   </div>
 
   <!-- ===== NOVA MANIFESTAÇÃO ===== -->
-  <div class="page" id="page-nova-manifestacao">
-    <div class="topbar">
-      <div class="breadcrumb">Operação / Manifestações</div>
-      <div class="page-header">
-        <h1 class="page-title">Nova manifestação</h1>
-        <span class="badge-mockup">Dados em tempo real</span>
+  <div class="page" id="page-nova-manifestacao" style="display:flex;flex-direction:column;height:100%;overflow:hidden">
+    <style>
+      #nm-wizard{display:flex;flex-direction:column;height:100%;overflow:hidden}
+      .nm-step-panel{display:none}
+      .nm-step-panel.nm-active{display:flex;flex-direction:column;gap:14px}
+      .nm-card{background:#fff;border:1px solid #E4E4E4;border-radius:12px;padding:16px 20px;display:flex;flex-direction:column;gap:12px}
+      .nm-card-title{font-size:10.5px;font-weight:700;letter-spacing:.07em;color:#929090;text-transform:uppercase}
+      .nm-label{display:flex;flex-direction:column;gap:5px}
+      .nm-label span{font-size:11.5px;font-weight:700;color:#545252}
+      .nm-input{height:40px;border:1.5px solid #E4E4E4;border-radius:9px;padding:0 12px;font-size:13px;font-family:inherit;width:100%;box-sizing:border-box;background:#fff}
+      .nm-input:focus{border-color:#C70602;box-shadow:0 0 0 3px rgba(199,6,2,.08);outline:none}
+      .nm-select{height:40px;border:1.5px solid #E4E4E4;border-radius:9px;padding:0 10px;font-size:13px;font-family:inherit;width:100%;box-sizing:border-box;background:#fff;cursor:pointer}
+      .nm-textarea{width:100%;border:1.5px solid #E4E4E4;border-radius:9px;padding:10px 12px;font-size:13px;line-height:1.65;resize:vertical;font-family:inherit;box-sizing:border-box}
+      .nm-textarea:focus{border-color:#C70602;box-shadow:0 0 0 3px rgba(199,6,2,.08);outline:none}
+      .nm-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+      .nm-grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+      .nm-empresa-btn{flex:1;min-width:100px;height:44px;border:2px solid #E4E4E4;background:#fff;border-radius:10px;font-size:13px;font-weight:700;color:#545252;cursor:pointer;font-family:inherit;transition:border-color .15s,background .15s}
+      .nm-empresa-btn.active{border-color:#C70602;background:#FFF5F5;color:#C70602}
+      .nm-canal-pill{height:34px;border:1.5px solid #E4E4E4;background:#fff;border-radius:20px;padding:0 14px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;color:#545252;white-space:nowrap;transition:all .15s}
+      .nm-canal-pill.active{border-color:#C70602;background:#FFF5F5;color:#C70602;font-weight:700}
+      .nm-proc-btn{flex:1;min-width:90px;height:40px;border:1.5px solid #E4E4E4;background:#fff;border-radius:9px;font-size:13px;cursor:pointer;font-family:inherit;font-weight:600;color:#545252;transition:all .15s}
+      .nm-proc-btn.active{border-color:#C70602;background:#FFF5F5;color:#C70602;font-weight:700}
+      .nm-stepper-circle{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;font-weight:800;border:2px solid #D6D6D6;background:#fff;color:#929090;cursor:pointer;transition:all .2s}
+      .nm-stepper-circle.done{background:#1E6B3A;border-color:#1E6B3A;color:#fff}
+      .nm-stepper-circle.active{background:#C70602;border-color:#C70602;color:#fff}
+      .nm-stepper-line{flex:1;height:2px;background:#E4E4E4;min-width:10px;border-radius:1px;margin:0 4px}
+      .nm-stepper-line.done{background:#1E6B3A}
+      @keyframes nmFadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+      .nm-active{animation:nmFadeUp .22s ease}
+    </style>
+
+    <!-- TOPBAR -->
+    <div style="background:#fff;border-bottom:1px solid #E4E4E4;padding:0 24px;height:56px;display:flex;align-items:center;gap:12px;flex-shrink:0">
+      <div>
+        <span style="font-size:11px;color:#929090">Operação / </span>
+        <span style="font-size:13px;font-weight:700">Nova Manifestação</span>
       </div>
+      <div style="flex:1"></div>
+      <div id="nm-status-ficha-btns" style="display:flex;gap:6px">
+        <button onclick="nmSetStatusFicha('ABERTA',this)" class="nm-status-ficha-btn" style="background:#E6F2EA;color:#1E6B3A;border:1.5px solid #1E6B3A;border-radius:20px;padding:3px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">● Aberta</button>
+        <button onclick="nmSetStatusFicha('EM_ANDAMENTO',this)" class="nm-status-ficha-btn" style="background:#fff;color:#666464;border:1.5px solid #D6D6D6;border-radius:20px;padding:3px 12px;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit">Em andamento</button>
+        <button onclick="nmSetStatusFicha('FECHADA',this)" class="nm-status-ficha-btn" style="background:#fff;color:#666464;border:1.5px solid #D6D6D6;border-radius:20px;padding:3px 12px;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit">Fechada</button>
+      </div>
+      <input type="hidden" id="nm-status-ficha" value="ABERTA">
+      <button onclick="salvarRascunho()" style="height:34px;border:1.5px solid #E4E4E4;background:#fff;border-radius:8px;padding:0 14px;font-size:12.5px;font-weight:600;cursor:pointer;color:#545252;font-family:inherit">Salvar rascunho</button>
+      <button onclick="navigate('acompanhamento',null)" style="height:34px;border:1.5px solid #E4E4E4;background:#fff;border-radius:8px;padding:0 12px;font-size:12.5px;font-weight:600;cursor:pointer;color:#545252;font-family:inherit">Cancelar</button>
     </div>
-    <div class="content">
-      <!-- Status da ficha -->
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
-        <span style="font-size:12px;font-weight:600;color:#545252">Status da ficha:</span>
-        <div id="nm-status-ficha-btns" style="display:flex;gap:6px">
-          <button onclick="nmSetStatusFicha('ABERTA',this)" class="nm-status-ficha-btn" style="background:#E6F2EA;color:#1E6B3A;border:1.5px solid #1E6B3A;border-radius:20px;padding:3px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">● Aberta</button>
-          <button onclick="nmSetStatusFicha('EM_ANDAMENTO',this)" class="nm-status-ficha-btn" style="background:#fff;color:#666464;border:1.5px solid #D6D6D6;border-radius:20px;padding:3px 12px;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit">Em andamento</button>
-          <button onclick="nmSetStatusFicha('FECHADA',this)" class="nm-status-ficha-btn" style="background:#fff;color:#666464;border:1.5px solid #D6D6D6;border-radius:20px;padding:3px 12px;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit">Fechada</button>
+
+    <!-- STEPPER BAR -->
+    <div style="background:#fff;border-bottom:1px solid #E4E4E4;padding:14px 24px;flex-shrink:0">
+      <div id="nm-stepper-row" style="display:flex;align-items:center">
+        <!-- built by JS -->
+      </div>
+      <div style="margin-top:10px;font-size:13.5px;font-weight:700;color:#1F1F1F" id="nm-step-label-main"></div>
+      <div style="font-size:12px;color:#929090;margin-top:2px" id="nm-step-desc-main"></div>
+    </div>
+
+    <!-- STEPS BODY -->
+    <div id="nm-steps-body" style="flex:1;overflow-y:auto;padding:20px 24px">
+
+      <!-- ETAPA 1: CLIENTE E PEDIDO -->
+      <div class="nm-step-panel nm-active" data-nm-step="1">
+        <!-- empresa reclamada -->
+        <div class="nm-card">
+          <div class="nm-card-title">Empresa Reclamada</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button class="nm-empresa-btn active" onclick="nmSelEmpresa(this,'CHIACCHIO EMBALAGENS')">CHIACCHIO EMBALAGENS</button>
+            <button class="nm-empresa-btn" onclick="nmSelEmpresa(this,'PLASCHIO')">PLASCHIO</button>
+            <button class="nm-empresa-btn" onclick="nmSelEmpresa(this,'TUBAHIA')">TUBAHIA / CESBAP</button>
+          </div>
+          <select id="nm-empresa-reclamada" style="display:none">
+            <option value="">Selecione...</option>
+            <option value="CHIACCHIO EMBALAGENS" selected>CHIACCHIO EMBALAGENS</option>
+            <option value="PLASCHIO">PLASCHIO</option>
+            <option value="TUBAHIA">TUBAHIA / CESBAP</option>
+          </select>
         </div>
-        <input type="hidden" id="nm-status-ficha" value="ABERTA">
+        <!-- dados do cliente -->
+        <div class="nm-card">
+          <div class="nm-card-title">Dados do Cliente</div>
+          <label class="nm-label" style="grid-column:1/-1">
+            <span>CNPJ ou Razão Social *</span>
+            <div style="position:relative">
+              <input class="nm-input" placeholder="00.000.000/0001-00 ou nome da empresa" id="nm-cnpj" oninput="onCnpjChange()" style="padding-right:90px">
+              <div style="position:absolute;right:4px;top:50%;transform:translateY(-50%);display:flex;gap:4px">
+                <button onclick="buscarCliente()" style="height:32px;border:0;background:#C70602;color:#fff;border-radius:7px;padding:0 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Buscar</button>
+                <button id="btn-limpar-cnpj" onclick="limparBuscaCnpj()" style="display:none;height:32px;border:0;background:#E4E4E4;color:#545252;border-radius:7px;padding:0 10px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">✕</button>
+              </div>
+            </div>
+          </label>
+          <div id="nm-historico-cliente" style="display:none;background:#F0F6FF;border:1px solid #93C5FD;border-radius:8px;padding:10px 12px;font-size:12px;color:#1D4ED8"></div>
+          <div class="nm-grid-2">
+            <label class="nm-label"><span>Nome do cliente / contato</span><input class="nm-input" placeholder="Nome do contato" id="nm-nome"></label>
+            <label class="nm-label"><span>Empresa / Razão Social</span><input class="nm-input" placeholder="Empresa reclamante" id="nm-empresa"></label>
+            <label class="nm-label"><span>Telefone / WhatsApp</span><input class="nm-input" placeholder="(77) 90000-0000" id="nm-tel"></label>
+            <label class="nm-label"><span>E-mail</span><input class="nm-input" type="email" placeholder="contato@exemplo.com.br" id="nm-email"></label>
+          </div>
+        </div>
+        <!-- pedido e NF -->
+        <div class="nm-card">
+          <div class="nm-card-title">Pedido e Nota Fiscal</div>
+          <div class="nm-grid-3">
+            <label class="nm-label"><span>Nº da NF</span><input class="nm-input" placeholder="000000" id="nm-nfe"></label>
+            <label class="nm-label"><span>Data da NF</span><input class="nm-input" type="date" id="nm-data-nf"></label>
+            <label class="nm-label"><span>Data do ocorrido</span><input class="nm-input" type="date" id="nm-data-ocorrido"></label>
+          </div>
+        </div>
       </div>
-      <!-- Stepper -->
-      <div class="stepper">
-        <div class="step"><div class="step-num active">1</div><div class="step-label active">Registro</div></div>
-        <div class="step-line"></div>
-        <div class="step"><div class="step-num todo">2</div><div class="step-label todo">Análise Inteligente</div></div>
-        <div class="step-line"></div>
-        <div class="step"><div class="step-num todo">3</div><div class="step-label todo">Decisão</div></div>
-        <div class="step-line"></div>
-        <div class="step"><div class="step-num todo">4</div><div class="step-label todo">Setores</div></div>
-        <div class="step-line"></div>
-        <div class="step"><div class="step-num todo">5</div><div class="step-label todo">Devolutiva</div></div>
+
+      <!-- ETAPA 2: MANIFESTAÇÃO -->
+      <div class="nm-step-panel" data-nm-step="2">
+        <!-- tipo e canal -->
+        <div class="nm-card">
+          <div class="nm-card-title">Tipo e Canal</div>
+          <div>
+            <div style="font-size:11.5px;font-weight:700;color:#545252;margin-bottom:6px">Tipo de manifestação</div>
+            <div class="tipo-btns" style="display:flex;flex-wrap:wrap;gap:6px">
+              <button class="nm-canal-pill active" onclick="selectTipo(this)">Reclamação</button>
+              <button class="nm-canal-pill" onclick="selectTipo(this)">Dúvida</button>
+              <button class="nm-canal-pill" onclick="selectTipo(this)">Sugestão</button>
+              <button class="nm-canal-pill" onclick="selectTipo(this)">Elogio</button>
+            </div>
+          </div>
+          <div>
+            <div style="font-size:11.5px;font-weight:700;color:#545252;margin-bottom:6px">Canal de atendimento</div>
+            <div class="canal-btns" style="display:flex;flex-wrap:wrap;gap:6px">
+              <button class="nm-canal-pill" onclick="selectCanal(this)">Telefone</button>
+              <button class="nm-canal-pill active" onclick="selectCanal(this)">WhatsApp</button>
+              <button class="nm-canal-pill" onclick="selectCanal(this)">E-mail</button>
+              <button class="nm-canal-pill" onclick="selectCanal(this)">Presencial</button>
+              <button class="nm-canal-pill" onclick="selectCanal(this)">Pesquisa de Satisfação</button>
+              <button class="nm-canal-pill" onclick="selectCanal(this)">Outro</button>
+            </div>
+          </div>
+          <div class="nm-grid-2">
+            <label class="nm-label"><span>Data do registro</span><input class="nm-input" id="nm-data" type="date"></label>
+            <label class="nm-label"><span>Atendente</span><input class="nm-input" readonly id="nm-atendente" style="background:#F7F7F7"></label>
+          </div>
+          <input class="nm-input" readonly id="nm-num" value="..." style="display:none">
+        </div>
+        <!-- descrição -->
+        <div class="nm-card">
+          <div class="nm-card-title">Descrição da Manifestação</div>
+          <label class="nm-label">
+            <span>Relato do cliente *</span>
+            <textarea class="nm-textarea" rows="5" placeholder="Descreva detalhadamente a manifestação do cliente..." id="nm-descricao" oninput="onDescricaoChange()"></textarea>
+            <span id="nm-chars" style="font-size:11px;color:#929090;font-weight:400">0 caracteres — digite ao menos 30 para análise automática</span>
+          </label>
+          <div class="nm-grid-2">
+            <label class="nm-label"><span>Produto / Referência</span><input class="nm-input" placeholder="ex: Caixa kraft 30×20" id="nm-produto" oninput="agendarAnalise()"></label>
+            <label class="nm-label"><span>Lote</span><input class="nm-input" placeholder="L-0000" id="nm-lote" oninput="agendarAnalise()"></label>
+          </div>
+        </div>
+        <!-- evidências -->
+        <div class="nm-card">
+          <div class="nm-card-title">Evidências e Anexos</div>
+          <div class="doc-import-card" style="border-radius:8px">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+              <div><strong style="font-size:13px">Importar ficha / RNC</strong><div style="font-size:11px;color:var(--gray-500);margin-top:3px">A IA extrai os dados para conferência.</div></div>
+              <div style="display:flex;gap:6px">
+                <button class="btn btn-secondary" onclick="abrirImportacaoDocumento('FICHA_RECLAMACAO')">Importar ficha</button>
+                <button class="btn btn-secondary" onclick="abrirImportacaoDocumento('RNC')">Importar RNC</button>
+              </div>
+            </div>
+            <input id="nm-import-file" type="file" accept=".pdf,image/*" style="display:none" onchange="processarDocumentoImportado(this.files[0])">
+            <div id="nm-extracao-status" style="display:none;margin-top:8px"></div>
+            <div id="nm-extracao-preview" style="display:none"></div>
+          </div>
+          <input id="nm-evidencias" type="file" multiple accept=".pdf,image/*,.doc,.docx,.xls,.xlsx" style="display:none" onchange="adicionarEvidencias(this.files)">
+          <div id="nm-upload-box" class="upload-box" onclick="document.getElementById('nm-evidencias').click()" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="event.preventDefault();this.classList.remove('drag');adicionarEvidencias(event.dataTransfer.files)">
+            <div id="nm-evidencias-chips" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+            <span style="font-size:12.5px;color:#666464">Arraste arquivos aqui ou <span style="color:#A80502;font-weight:500">selecione</span> · até 50 MB</span>
+          </div>
+          <div id="nm-evidencias-list" class="upload-list"></div>
+        </div>
       </div>
 
-      <div class="page-layout">
-        <div>
-          <!-- Seção 2 — Cliente -->
-          <div class="form-section">
-            <div class="form-section-title">
-              <div class="form-section-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
-              <div class="form-section-name">1. Dados do cliente</div>
-            </div>
-            <div class="form-section-desc">Digite o CNPJ para buscar no cadastro e no histórico</div>
-            <div class="form-row" style="display:flex;gap:10px;margin-bottom:12px">
-              <div class="form-group" style="flex:1"><label class="form-label">CNPJ</label><input class="form-input" placeholder="00.000.000/0001-00" id="nm-cnpj" oninput="onCnpjChange()"></div>
-              <div style="padding-top:18px;display:flex;gap:6px">
-                <button class="btn btn-secondary" onclick="buscarCliente()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>Buscar cliente</button>
-                <button class="btn btn-secondary" id="btn-limpar-cnpj" onclick="limparBuscaCnpj()" style="display:none" title="Limpar busca e campos de cliente">✕ Limpar</button>
-              </div>
-            </div>
-            <div id="nm-historico-cliente" style="display:none" class="alert-box blue" style="margin-bottom:12px;font-size:12px"></div>
-            <div class="form-row cols-2">
-              <div class="form-group"><label class="form-label">Nome do cliente / contato</label><input class="form-input" placeholder="[Nome do contato]" id="nm-nome"></div>
-              <div class="form-group"><label class="form-label">Empresa / Razão social</label><input class="form-input" placeholder="Empresa reclamante" id="nm-empresa"></div>
-            </div>
-            <div class="form-row cols-2">
-              <div class="form-group"><label class="form-label">Telefone / WhatsApp</label><input class="form-input" placeholder="(77) 90000-0000" id="nm-tel"></div>
-              <div class="form-group"><label class="form-label">E-mail</label><input class="form-input" placeholder="contato@exemplo.com.br" id="nm-email"></div>
-            </div>
-            <div class="form-group" style="margin-top:4px">
-              <label class="form-label">Empresa do Grupo <span style="font-weight:400;color:var(--gray-400)">(empresa reclamada)</span></label>
-              <select class="form-input" id="nm-empresa-reclamada" style="cursor:pointer">
-                <option value="">Selecione qual empresa do Grupo recebeu a reclamação...</option>
-                <option value="CHIACCHIO EMBALAGENS">CHIACCHIO EMBALAGENS</option>
-                <option value="PLASCHIO">PLASCHIO</option>
-                <option value="TUBAHIA">TUBAHIA / CESBAP</option>
-              </select>
-            </div>
+      <!-- ETAPA 3: IMPACTO FINANCEIRO -->
+      <div class="nm-step-panel" data-nm-step="3">
+        <div class="nm-card">
+          <div class="nm-card-title">Volumes e Quantidades <span style="font-weight:400;font-size:10px;color:#929090;letter-spacing:0">(opcional)</span></div>
+          <div class="nm-grid-3">
+            <label class="nm-label"><span>Qtd. afetada</span><input class="nm-input" placeholder="0" id="nm-qtd" type="number"></label>
+            <label class="nm-label"><span>Qtd. total do pedido</span><input class="nm-input" placeholder="0" id="nm-qtd-total" type="number"></label>
+            <label class="nm-label"><span>Qtd. devolvida</span><input class="nm-input" placeholder="0" id="nm-qtd-devolvida" type="number"></label>
           </div>
-
-          <!-- Seção 1 — Registro -->
-          <div class="form-section">
-            <div class="form-section-title">
-              <div class="form-section-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
-              <div class="form-section-name">2. Dados da manifestação</div>
-            </div>
-            <div class="form-section-desc">Preenchidos automaticamente, exceto o canal</div>
-            <div class="form-row cols-4">
-              <div class="form-group"><label class="form-label">Data do registro</label><input class="form-input" id="nm-data" type="date" title="Preenchida automaticamente com a data de hoje"></div>
-              <div class="form-group"><label class="form-label">Nº da reclamação</label><input class="form-input" readonly id="nm-num" value="..." title="Gerado automaticamente ao registrar"></div>
-              <div class="form-group"><label class="form-label">Setor de entrada</label><input class="form-input" readonly value="SAC"></div>
-              <div class="form-group"><label class="form-label">Atendente</label><input class="form-input" readonly id="nm-atendente"></div>
-            </div>
-            <div class="form-group">
-              <label class="form-label" style="margin-bottom:6px">Canal de atendimento</label>
-              <div class="canal-btns">
-                <button class="canal-btn" onclick="selectCanal(this)">Telefone</button>
-                <button class="canal-btn active" onclick="selectCanal(this)">WhatsApp</button>
-                <button class="canal-btn" onclick="selectCanal(this)">E-mail</button>
-                <button class="canal-btn" onclick="selectCanal(this)">Presencial</button>
-                <button class="canal-btn" onclick="selectCanal(this)">Pesquisa de Satisfação</button>
-                <button class="canal-btn" onclick="selectCanal(this)">Outro</button>
-              </div>
-            </div>
+        </div>
+        <div class="nm-card">
+          <div class="nm-card-title">Valores Financeiros <span style="font-weight:400;font-size:10px;color:#929090;letter-spacing:0">(opcional)</span></div>
+          <div class="nm-grid-3">
+            <label class="nm-label"><span>Valor envolvido (R$)</span><input class="nm-input" placeholder="0,00" id="nm-valor"></label>
+            <label class="nm-label"><span>Valor total do pedido (R$)</span><input class="nm-input" placeholder="0,00" id="nm-vlr-pedido"></label>
+            <label class="nm-label"><span>Prejuízo estimado (R$)</span><input class="nm-input" placeholder="0,00" id="nm-vlr-estimado"></label>
           </div>
+        </div>
+      </div>
 
-          <!-- Seção 3 — Manifestação + Análise IA -->
-          <div class="form-section">
-            <div class="form-section-title">
-              <div class="form-section-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
-              <div class="form-section-name">Tipo e descrição da manifestação</div>
-            </div>
-            <div class="form-section-desc">Procedência e encaminhamento são definidos após a análise</div>
-            <div class="form-group" style="margin-bottom:12px">
-              <label class="form-label" style="margin-bottom:6px">Tipo de manifestação</label>
-              <div class="tipo-btns">
-                <button class="canal-btn active" onclick="selectTipo(this)">Reclamação</button>
-                <button class="canal-btn" onclick="selectTipo(this)">Dúvida</button>
-                <button class="canal-btn" onclick="selectTipo(this)">Sugestão</button>
-                <button class="canal-btn" onclick="selectTipo(this)">Elogio</button>
-              </div>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Descrição detalhada da manifestação</label>
-              <textarea class="form-textarea" style="min-height:120px" placeholder="Descreva detalhadamente a manifestação do cliente..." id="nm-descricao" oninput="onDescricaoChange()"></textarea>
-              <div style="font-size:11px;color:var(--gray-400);margin-top:4px" id="nm-chars">0 caracteres — digite ao menos 30 para análise automática</div>
-            </div>
-            <div class="form-group" style="margin-top:10px">
-              <label class="form-label" style="margin-bottom:6px">A reclamação é procedente?</label>
-              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
-                <button onclick="nmSetProcedente('SIM',this)" class="nm-proc-btn" style="background:#fff;color:#666464;border:1.5px solid #D6D6D6;border-radius:7px;padding:6px 16px;font-size:13px;cursor:pointer;font-family:inherit">Sim</button>
-                <button onclick="nmSetProcedente('NAO',this)" class="nm-proc-btn" style="background:#fff;color:#666464;border:1.5px solid #D6D6D6;border-radius:7px;padding:6px 16px;font-size:13px;cursor:pointer;font-family:inherit">Não</button>
-                <button onclick="nmSetProcedente('PARCIALMENTE',this)" class="nm-proc-btn" style="background:#fff;color:#666464;border:1.5px solid #D6D6D6;border-radius:7px;padding:6px 16px;font-size:13px;cursor:pointer;font-family:inherit">Parcialmente</button>
-                <button onclick="nmSetProcedente('',this)" class="nm-proc-btn nm-proc-nenhum" style="background:#fff;color:#707070;border:1.5px solid #E4E4E4;border-radius:7px;padding:6px 12px;font-size:12px;cursor:pointer;font-family:inherit">Avaliar depois</button>
-              </div>
-              <input type="hidden" id="nm-procedente" value="">
-              <textarea id="nm-procedente-justif" class="form-textarea" placeholder="Justificativa da procedência..." style="min-height:60px;display:none;margin-top:4px"></textarea>
-            </div>
+      <!-- ETAPA 4: ANÁLISE COM IA -->
+      <div class="nm-step-panel" data-nm-step="4">
+        <!-- Card disparar análise -->
+        <div style="background:#C70602;color:#fff;border-radius:12px;padding:18px 20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
+          <div>
+            <div style="font-weight:700;font-size:14px;margin-bottom:4px">Análise com IA</div>
+            <div style="font-size:12.5px;color:#FFE1E0;line-height:1.55;max-width:500px">A IA consulta histórico, Cérebro, Matriz de tratamento e Políticas e sugere tipo, causa provável, setor, prioridade e tratativa. Você aceita, edita ou rejeita.</div>
           </div>
+          <button onclick="registrarManifestacao()" style="height:42px;border:0;background:#fff;color:#C70602;border-radius:9px;font-weight:700;cursor:pointer;font-size:13px;font-family:inherit;padding:0 20px;flex-shrink:0">Analisar com IA</button>
+        </div>
 
-          <!-- PAINEL ANÁLISE AUTOMÁTICA DA IA -->
-          <div id="painel-analise" style="display:none">
-            <div class="form-section" style="border:2px solid var(--red);background:linear-gradient(135deg,#fff 0%,#FFF5F5 100%)">
-              <div class="form-section-title">
-                <div class="form-section-icon" style="background:var(--red)">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        <!-- PAINEL ANÁLISE AUTOMÁTICA DA IA (mantido) -->
+        <div id="painel-analise" style="display:none">
+          <div class="nm-card" style="border:2px solid var(--red);background:linear-gradient(135deg,#fff 0%,#FFF5F5 100%);gap:14px">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="width:32px;height:32px;background:var(--red);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              </div>
+              <div>
+                <div style="font-weight:800;font-size:13.5px;color:var(--red)">Análise Automática da IA</div>
+                <div style="font-size:11px;color:var(--gray-400)" id="ia-timestamp">Analisando...</div>
+              </div>
+              <div id="ia-loading" style="margin-left:auto"><div class="spinner"></div></div>
+            </div>
+            <div id="ia-analisando" style="padding:12px;text-align:center;color:var(--gray-400);font-size:13px">
+              <div class="spinner" style="margin:0 auto 8px"></div>
+              Consultando base de conhecimento e histórico...
+            </div>
+            <div id="ia-resultado" style="display:none;display:flex;flex-direction:column;gap:14px">
+              <div class="nm-grid-2">
+                <div>
+                  <div style="font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Classificação sugerida</div>
+                  <div style="font-size:15px;font-weight:800;color:var(--gray-900)" id="ia-tipo">—</div>
+                  <div style="margin-top:4px">
+                    <div class="progress-bar" style="height:4px"><div class="progress-fill" id="ia-confianca-bar" style="width:0%"></div></div>
+                    <div style="font-size:11px;color:var(--gray-400);margin-top:2px">Confiança: <strong id="ia-confianca-pct">—</strong></div>
+                  </div>
                 </div>
                 <div>
-                  <div class="form-section-name" style="color:var(--red)">Análise Automática da IA</div>
-                  <div style="font-size:11px;color:var(--gray-400)" id="ia-timestamp">Analisando...</div>
+                  <div style="font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Prioridade / Risco</div>
+                  <div id="ia-prioridade-badge" style="display:inline-flex;padding:4px 10px;border-radius:20px;font-size:13px;font-weight:700;background:var(--yellow-light);color:#92400E">—</div>
+                  <div style="font-size:11px;color:var(--gray-400);margin-top:4px">SLA sugerido: <strong id="ia-sla">—</strong></div>
                 </div>
-                <div id="ia-loading" style="margin-left:auto"><div class="spinner"></div></div>
               </div>
-
-              <!-- Status analisando -->
-              <div id="ia-analisando" style="padding:16px;text-align:center;color:var(--gray-400);font-size:13px">
-                <div class="spinner" style="margin:0 auto 8px"></div>
-                Consultando base de conhecimento e histórico...
+              <div id="ia-alertas-wrap" style="display:none"><div id="ia-alertas"></div></div>
+              <div>
+                <div style="font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">Setores sugeridos</div>
+                <div id="ia-setores" style="display:flex;flex-wrap:wrap;gap:6px"></div>
               </div>
-
-              <!-- Resultado -->
-              <div id="ia-resultado" style="display:none">
-                <!-- Classificação -->
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
-                  <div>
-                    <div style="font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Classificação sugerida</div>
-                    <div style="font-size:15px;font-weight:800;color:var(--gray-900)" id="ia-tipo">—</div>
-                    <div style="margin-top:4px">
-                      <div class="progress-bar" style="height:4px"><div class="progress-fill" id="ia-confianca-bar" style="width:0%"></div></div>
-                      <div style="font-size:11px;color:var(--gray-400);margin-top:2px">Confiança: <strong id="ia-confianca-pct">—</strong></div>
-                    </div>
-                  </div>
-                  <div>
-                    <div style="font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Prioridade / Risco</div>
-                    <div id="ia-prioridade-badge" style="display:inline-flex;padding:4px 10px;border-radius:20px;font-size:13px;font-weight:700;background:var(--yellow-light);color:#92400E">—</div>
-                    <div style="font-size:11px;color:var(--gray-400);margin-top:4px">SLA sugerido: <strong id="ia-sla">—</strong></div>
-                  </div>
-                </div>
-
-                <!-- Alertas -->
-                <div id="ia-alertas-wrap" style="display:none;margin-bottom:12px">
-                  <div id="ia-alertas"></div>
-                </div>
-
-                <!-- Setores -->
-                <div style="margin-bottom:14px">
-                  <div style="font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">Setores sugeridos</div>
-                  <div id="ia-setores" style="display:flex;flex-wrap:wrap;gap:6px"></div>
-                  <div style="font-size:11px;color:var(--gray-400);margin-top:4px">Você poderá adicionar ou remover setores na etapa de decisão</div>
-                </div>
-
-                <!-- Causa provável -->
-                <div style="margin-bottom:14px">
-                  <div style="font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Causa provável</div>
-                  <div style="font-size:13px;color:var(--gray-700)" id="ia-causa">Não identificada com os dados disponíveis</div>
-                </div>
-
-                <!-- Procedimento -->
-                <div id="ia-proc-wrap" style="display:none;margin-bottom:14px">
-                  <div style="font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Procedimento sugerido</div>
-                  <div style="font-size:13px;color:var(--gray-700)" id="ia-proc-nome">—</div>
-                </div>
-
-                <!-- Perguntas necessárias -->
-                <div id="ia-perguntas-wrap" style="display:none;margin-bottom:14px">
-                  <div style="font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">Informações necessárias para análise completa</div>
-                  <div id="ia-perguntas" style="font-size:12px;color:var(--gray-600)"></div>
-                </div>
-
-                <!-- Casos semelhantes -->
-                <div id="ia-similares-wrap" style="display:none;margin-bottom:14px">
-                  <div style="font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px">Casos semelhantes no histórico</div>
-                  <div id="ia-similares"></div>
-                </div>
-
-                <!-- Tratativa sugerida -->
-                <div style="margin-bottom:16px">
-                  <div style="font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">Tratativa sugerida</div>
-                  <div id="ia-tratativa" class="ia-tratativa-box">Aguardando análise da tratativa para este caso.</div>
-                  <div style="font-size:11px;color:var(--gray-400);margin-top:4px">Sugestão da ferramenta. A analista decide se é aplicável e registra a tratativa efetivamente realizada.</div>
-                </div>
-
-                <!-- Devolutiva sugerida -->
-                <div style="margin-bottom:16px">
-                  <div style="font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">Resposta ao cliente — sugestão automática</div>
-                  <div class="devolutiva-policy"><strong>Regra de comunicação:</strong> a resposta deve demonstrar ação e resolução, sem assumir culpa, atribuir responsabilidade antes da apuração ou expor dependências internas entre setores.</div>
-                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-                    <span id="ia-devolutiva-tipo" style="display:none;background:#EFF6FF;color:#1D4ED8;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700"></span>
-                  </div>
-                  <div id="ia-devolutiva-bloqueadas" style="display:none;background:#FEF2F2;border-radius:6px;padding:6px 10px;margin-bottom:6px"></div>
-                  <textarea id="ia-devolutiva" class="form-textarea" style="min-height:280px;height:280px;font-size:13px;line-height:1.6;background:#FAFAFA;resize:vertical"></textarea>
-                  <div style="font-size:11px;color:var(--gray-400);margin-top:4px">Editável pela analista. A resposta inicial deve ser utilizável pelo cliente mesmo enquanto a apuração interna continua. A resposta final será registrada separadamente.</div>
-                </div>
-
-                <!-- Ações -->
-                <div style="display:flex;gap:8px;border-top:1px solid var(--gray-100);padding-top:14px">
-                  <button class="btn btn-primary" style="flex:1;justify-content:center" onclick="aceitarAnalise()">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                    Usar sugestões
-                  </button>
-                  <button class="btn btn-secondary" style="flex:1;justify-content:center" onclick="editarAnalise()">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                    Editar
-                  </button>
-                  <button class="btn btn-ghost" style="justify-content:center" onclick="rejeitarAnalise()">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                    Rejeitar
-                  </button>
-                </div>
-
-                <!-- Status da decisão -->
-                <div id="ia-decisao-status" style="display:none;margin-top:10px"></div>
+              <div>
+                <div style="font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Causa provável</div>
+                <div style="font-size:13px;color:var(--gray-700)" id="ia-causa">Não identificada com os dados disponíveis</div>
               </div>
-            </div>
-          </div>
-
-
-          <!-- Evidências + importação documental -->
-          <div class="form-section">
-            <div class="form-section-title">
-              <div class="form-section-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05 12.25 20.24a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></div>
-              <div><div class="form-section-name">3. Evidências</div><div class="form-section-desc">Fotos, PDFs, vídeos, prints, documentos e áudios</div></div>
-            </div>
-            <div class="doc-import-card">
-              <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
-                <div><strong style="font-size:13px">Importar ficha de reclamação / RNC</strong><div style="font-size:11px;color:var(--gray-500);margin-top:3px">A IA extrai os dados para conferência. Nada é registrado sem sua confirmação.</div></div>
-                <div style="display:flex;gap:6px"><button class="btn btn-secondary" onclick="abrirImportacaoDocumento('FICHA_RECLAMACAO')">Importar ficha</button><button class="btn btn-secondary" onclick="abrirImportacaoDocumento('RNC')">Importar RNC</button></div>
+              <div id="ia-proc-wrap" style="display:none">
+                <div style="font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Procedimento sugerido</div>
+                <div style="font-size:13px;color:var(--gray-700)" id="ia-proc-nome">—</div>
               </div>
-              <input id="nm-import-file" type="file" accept=".pdf,image/*" style="display:none" onchange="processarDocumentoImportado(this.files[0])">
-              <div id="nm-extracao-status" style="display:none;margin-top:8px"></div>
-              <div id="nm-extracao-preview" style="display:none"></div>
-            </div>
-            <input id="nm-evidencias" type="file" multiple accept=".pdf,image/*,.doc,.docx,.xls,.xlsx" style="display:none" onchange="adicionarEvidencias(this.files)">
-            <div id="nm-upload-box" class="upload-box" onclick="document.getElementById('nm-evidencias').click()" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="event.preventDefault();this.classList.remove('drag');adicionarEvidencias(event.dataTransfer.files)">
-              <div id="nm-evidencias-chips" style="display:flex;flex-wrap:wrap;gap:8px"></div>
-              <span style="font-size:12.5px;color:#666464">Arraste arquivos aqui ou <span style="color:#A80502;font-weight:500">selecione</span> · até 50 MB</span>
-            </div>
-            <div id="nm-evidencias-list" class="upload-list"></div>
-          </div>
-
-          <!-- Seção 4 — Produto -->
-          <div class="form-section">
-            <div class="form-section-title">
-              <div class="form-section-icon" style="background:#FEF3C7"><svg viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div>
-              <div class="form-section-name">4. Identificação inicial</div>
-            </div>
-            <div class="form-section-desc">Quando aplicável. Lote e NF permitem rastreabilidade.</div>
-            <div class="form-row cols-3">
-              <div class="form-group"><label class="form-label">Produto</label><input class="form-input" placeholder="[Produto]" id="nm-produto" oninput="agendarAnalise()"></div>
-              <div class="form-group"><label class="form-label">Lote</label><input class="form-input" placeholder="L-0000" id="nm-lote" oninput="agendarAnalise()"></div>
-              <div class="form-group"><label class="form-label">NFe</label><input class="form-input" placeholder="000000" id="nm-nfe"></div>
-            </div>
-            <div class="form-row cols-2">
-              <div class="form-group"><label class="form-label">Quantidade afetada</label><input class="form-input" placeholder="ex: 500 unidades" id="nm-qtd"></div>
-              <div class="form-group"><label class="form-label">Valor envolvido (R$)</label><input class="form-input" placeholder="0,00" id="nm-valor"></div>
-            </div>
-          </div>
-
-          <!-- Seção 5 — Encaminhamento -->
-          <div class="form-section">
-            <div class="form-section-title">
-              <div class="form-section-icon" style="background:#EFF6FF"><svg viewBox="0 0 24 24" fill="none" stroke="#24508F" stroke-width="2"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg></div>
-              <div><div class="form-section-name">5. Encaminhamento e Tratativa</div><div class="form-section-desc">Como será conduzida esta manifestação</div></div>
-            </div>
-            <div class="form-row cols-2" style="margin-bottom:12px">
-              <div class="form-group"><label class="form-label">Data de encaminhamento</label><input class="form-input" type="date" id="nm-data-encaminhamento"></div>
-              <div class="form-group"><label class="form-label">Prazo para retorno ao SAC</label><input class="form-input" id="nm-prazo-retorno" value="72 horas" placeholder="72 horas"></div>
-            </div>
-            <div class="form-group" style="margin-bottom:12px">
-              <label class="form-label" style="margin-bottom:8px">Caminho da tratativa</label>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-                <button onclick="nmSetCaminhoTratativa('SAC',this)" id="nm-caminho-sac" style="border:2px solid #D6D6D6;background:#fff;border-radius:10px;padding:14px 16px;cursor:pointer;font-family:inherit;text-align:left">
-                  <div style="font-size:13px;font-weight:700;color:#1F1F1F;margin-bottom:3px">Tratar internamente no SAC</div>
-                  <div style="font-size:11.5px;color:#666464">O SAC resolve e envia devolutiva ao cliente</div>
+              <div id="ia-perguntas-wrap" style="display:none">
+                <div style="font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">Informações necessárias para análise completa</div>
+                <div id="ia-perguntas" style="font-size:12px;color:var(--gray-600)"></div>
+              </div>
+              <div id="ia-similares-wrap" style="display:none">
+                <div style="font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px">Casos semelhantes no histórico</div>
+                <div id="ia-similares"></div>
+              </div>
+              <div>
+                <div style="font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">Tratativa sugerida</div>
+                <div id="ia-tratativa" class="ia-tratativa-box">Aguardando análise da tratativa para este caso.</div>
+              </div>
+              <div>
+                <div style="font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">Resposta ao cliente — sugestão automática</div>
+                <div class="devolutiva-policy"><strong>Regra de comunicação:</strong> a resposta deve demonstrar ação e resolução, sem assumir culpa, atribuir responsabilidade antes da apuração ou expor dependências internas entre setores.</div>
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+                  <span id="ia-devolutiva-tipo" style="display:none;background:#EFF6FF;color:#1D4ED8;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700"></span>
+                </div>
+                <div id="ia-devolutiva-bloqueadas" style="display:none;background:#FEF2F2;border-radius:6px;padding:6px 10px;margin-bottom:6px"></div>
+                <textarea id="ia-devolutiva" class="nm-textarea" style="min-height:200px;font-size:13px;line-height:1.6;background:#FAFAFA;resize:vertical"></textarea>
+              </div>
+              <div style="display:flex;gap:8px;border-top:1px solid var(--gray-100);padding-top:14px">
+                <button class="btn btn-primary" style="flex:1;justify-content:center" onclick="aceitarAnalise()">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Usar sugestões
                 </button>
-                <button onclick="nmSetCaminhoTratativa('SETOR',this)" id="nm-caminho-setor" style="border:2px solid #D6D6D6;background:#fff;border-radius:10px;padding:14px 16px;cursor:pointer;font-family:inherit;text-align:left">
-                  <div style="font-size:13px;font-weight:700;color:#1F1F1F;margin-bottom:3px">Encaminhar ao Setor Responsável</div>
-                  <div style="font-size:11.5px;color:#666464">O setor preenche a resposta e valida a tratativa</div>
+                <button class="btn btn-secondary" style="flex:1;justify-content:center" onclick="editarAnalise()">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Editar
+                </button>
+                <button class="btn btn-ghost" style="justify-content:center" onclick="rejeitarAnalise()">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Rejeitar
                 </button>
               </div>
-              <input type="hidden" id="nm-caminho-tratativa" value="">
-            </div>
-
-            <!-- Tratativa interna SAC -->
-            <div id="nm-box-tratativa-sac" style="display:none;margin-top:4px">
-              <div style="background:#E6F2EA;border:1px solid #A5D6B0;border-radius:8px;padding:12px 14px;margin-bottom:10px">
-                <div style="font-size:12px;font-weight:700;color:#1E6B3A;margin-bottom:2px">Tratativa interna SAC</div>
-                <div style="font-size:11.5px;color:#1E6B3A">O SAC irá resolver esta manifestação internamente e registrar a devolutiva ao cliente.</div>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Tratativa / Devolutiva do SAC</label>
-                <textarea id="nm-tratativa-sac" class="form-textarea" style="min-height:100px" placeholder="Descreva como o SAC está conduzindo a resolução e o que será informado ao cliente..."></textarea>
-              </div>
-            </div>
-
-            <!-- Encaminhar ao Setor -->
-            <div id="nm-box-encaminhamento-setor" style="display:none;margin-top:4px">
-              <div style="background:#EFF6FF;border:1px solid #93C5FD;border-radius:8px;padding:12px 14px;margin-bottom:10px">
-                <div style="font-size:12px;font-weight:700;color:#1D4ED8;margin-bottom:2px">Encaminhamento ao Setor Responsável</div>
-                <div style="font-size:11.5px;color:#1D4ED8">Após registrar, o setor receberá a ficha para preencher a Seção 6 (Resposta do Setor). O responsável do setor valida a tratativa antes do fechamento.</div>
-              </div>
-              <button onclick="registrarManifestacao()" style="width:100%;background:#1D4ED8;color:#fff;border:0;border-radius:8px;padding:12px 0;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">
-                Registrar e Encaminhar ao Setor →
-              </button>
+              <div id="ia-decisao-status" style="display:none;margin-top:10px"></div>
             </div>
           </div>
         </div>
 
-        <!-- ASIDE -->
-        <div class="aside">
-          <!-- Card vermelho: Análise com IA -->
-          <div style="background:#C70602;color:#fff;border-radius:10px;padding:18px;display:flex;flex-direction:column;gap:12px">
-            <div style="font-weight:700;font-size:14px">Análise com IA</div>
-            <div style="font-size:12.5px;color:#FFE1E0;line-height:1.55">A IA consulta histórico, Cérebro, Matriz de tratamento e Políticas e sugere tipo, categoria, motivo, causa provável, setor, prioridade, casos similares, reincidência e checklist. Você aceita, edita ou rejeita cada sugestão.</div>
-            <button onclick="registrarManifestacao()" style="height:42px;border:0;background:#fff;color:#C70602;border-radius:8px;font-weight:700;cursor:pointer;font-size:13px;font-family:inherit">Analisar manifestação com IA</button>
-            <button onclick="salvarRascunho()" style="height:36px;border:1px solid rgba(255,255,255,.5);background:transparent;color:#fff;border-radius:8px;cursor:pointer;font-size:13px;font-family:inherit">Salvar rascunho</button>
-          </div>
-
-          <!-- Verificação automática -->
-          <div class="section-card" id="nm-verificacao-card" style="font-size:13px;gap:10px;display:flex;flex-direction:column">
-            <div style="font-weight:600;font-size:13.5px">Verificação automática</div>
-            <div style="color:#707070;font-size:13px" id="nm-verificacao-status">Aguardando NFe/lote para verificar duplicidades...</div>
-          </div>
-
-          <!-- Resumo da ficha (hidden compat) -->
-          <div id="nm-resumo-ficha" style="display:none"></div>
+        <!-- Verificação automática -->
+        <div class="nm-card" id="nm-verificacao-card">
+          <div style="font-weight:600;font-size:13.5px">Verificação automática</div>
+          <div style="color:#707070;font-size:13px" id="nm-verificacao-status">Aguardando NFe/lote para verificar duplicidades...</div>
         </div>
       </div>
+
+      <!-- ETAPA 5: PROCEDÊNCIA -->
+      <div class="nm-step-panel" data-nm-step="5">
+        <div class="nm-card">
+          <div class="nm-card-title">A reclamação é procedente?</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button onclick="nmSetProcedente('SIM',this)" class="nm-proc-btn">Sim — Procedente</button>
+            <button onclick="nmSetProcedente('NAO',this)" class="nm-proc-btn">Não — Improcedente</button>
+            <button onclick="nmSetProcedente('PARCIALMENTE',this)" class="nm-proc-btn">Parcialmente</button>
+            <button onclick="nmSetProcedente('',this)" class="nm-proc-btn nm-proc-nenhum" style="border-style:dashed">Avaliar depois</button>
+          </div>
+          <input type="hidden" id="nm-procedente" value="">
+          <textarea id="nm-procedente-justif" class="nm-textarea" placeholder="Justificativa da procedência..." rows="4" style="display:none"></textarea>
+        </div>
+      </div>
+
+      <!-- ETAPA 6: ENCAMINHAMENTO -->
+      <div class="nm-step-panel" data-nm-step="6">
+        <div class="nm-card">
+          <div class="nm-card-title">Caminho da Tratativa</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <button onclick="nmSetCaminhoTratativa('SAC',this)" id="nm-caminho-sac" style="border:2px solid #D6D6D6;background:#fff;border-radius:10px;padding:14px 16px;cursor:pointer;font-family:inherit;text-align:left">
+              <div style="font-size:13px;font-weight:700;color:#1F1F1F;margin-bottom:3px">Tratar internamente no SAC</div>
+              <div style="font-size:11.5px;color:#666464">O SAC resolve e envia devolutiva ao cliente</div>
+            </button>
+            <button onclick="nmSetCaminhoTratativa('SETOR',this)" id="nm-caminho-setor" style="border:2px solid #D6D6D6;background:#fff;border-radius:10px;padding:14px 16px;cursor:pointer;font-family:inherit;text-align:left">
+              <div style="font-size:13px;font-weight:700;color:#1F1F1F;margin-bottom:3px">Encaminhar ao Setor Responsável</div>
+              <div style="font-size:11.5px;color:#666464">O setor preenche a resposta e valida a tratativa</div>
+            </button>
+          </div>
+          <input type="hidden" id="nm-caminho-tratativa" value="">
+        </div>
+        <div class="nm-card">
+          <div class="nm-card-title">Datas e Prazo</div>
+          <div class="nm-grid-2">
+            <label class="nm-label"><span>Data de encaminhamento</span><input class="nm-input" type="date" id="nm-data-encaminhamento"></label>
+            <label class="nm-label"><span>Prazo para retorno ao SAC</span><input class="nm-input" id="nm-prazo-retorno" value="72 horas" placeholder="72 horas"></label>
+          </div>
+        </div>
+        <!-- Tratativa interna SAC -->
+        <div id="nm-box-tratativa-sac" style="display:none">
+          <div class="nm-card" style="border-color:#A5D6B0">
+            <div style="background:#E6F2EA;border-radius:6px;padding:10px 12px;margin-bottom:4px">
+              <div style="font-size:12px;font-weight:700;color:#1E6B3A">Tratativa interna SAC</div>
+              <div style="font-size:11.5px;color:#1E6B3A">O SAC irá resolver esta manifestação internamente e registrar a devolutiva ao cliente.</div>
+            </div>
+            <label class="nm-label"><span>Tratativa / Devolutiva do SAC</span><textarea id="nm-tratativa-sac" class="nm-textarea" rows="4" placeholder="Descreva como o SAC está conduzindo a resolução..."></textarea></label>
+          </div>
+        </div>
+        <!-- Encaminhar ao Setor -->
+        <div id="nm-box-encaminhamento-setor" style="display:none">
+          <div class="nm-card" style="border-color:#93C5FD">
+            <div style="background:#EFF6FF;border-radius:6px;padding:10px 12px">
+              <div style="font-size:12px;font-weight:700;color:#1D4ED8">Encaminhamento ao Setor Responsável</div>
+              <div style="font-size:11.5px;color:#1D4ED8">Após registrar, o setor receberá a ficha para preencher a Resposta do Setor.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ETAPA 7: REVISÃO E CONFIRMAÇÃO -->
+      <div class="nm-step-panel" data-nm-step="7">
+        <div class="nm-card">
+          <div class="nm-card-title">Resumo da Manifestação</div>
+          <div id="nm-resumo-ficha" style="display:flex;flex-direction:column;gap:10px">
+            <div class="nm-grid-2" id="nm-resumo-grid" style="gap:10px 24px">
+              <!-- preenchido por JS ao entrar na etapa 7 -->
+            </div>
+          </div>
+        </div>
+        <div class="nm-card" style="background:#FFF5F5;border-color:#FDECEC">
+          <div style="font-size:12px;color:#7A4C00;font-style:italic">Revise as informações acima antes de confirmar. Após o registro, o protocolo será gerado e a manifestação encaminhada.</div>
+        </div>
+      </div>
+
+    </div><!-- /nm-steps-body -->
+
+    <!-- RODAPÉ DE NAVEGAÇÃO -->
+    <div style="background:#fff;border-top:1px solid #E4E4E4;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+      <button onclick="nmEtapaAnterior()" id="nm-btn-voltar" style="height:40px;border:1.5px solid #E4E4E4;background:#fff;border-radius:9px;padding:0 20px;font-size:13px;font-weight:600;cursor:pointer;color:#545252;font-family:inherit">← Voltar</button>
+      <div style="font-size:12px;color:#929090" id="nm-etapa-label">Etapa 1 de 7</div>
+      <button onclick="nmProximaEtapa()" id="nm-btn-continuar" style="height:40px;border:0;background:#C70602;color:#fff;border-radius:9px;padding:0 28px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Continuar →</button>
+      <button onclick="registrarManifestacao()" id="nm-btn-confirmar" style="display:none;height:40px;border:0;background:#C70602;color:#fff;border-radius:9px;padding:0 24px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Confirmar e abrir manifestação</button>
     </div>
+
+    <script>
+    (function(){
+      var NM_TOTAL = 7;
+      var NM_STEPS_META = [
+        {l:'Cliente e Pedido',d:'Empresa reclamada, dados do cliente e nota fiscal'},
+        {l:'Manifestação',d:'Tipo, canal, descrição detalhada e evidências'},
+        {l:'Impacto Financeiro',d:'Quantidades e valores envolvidos (opcional)'},
+        {l:'Análise com IA',d:'Análise inteligente da manifestação'},
+        {l:'Procedência',d:'A reclamação é procedente?'},
+        {l:'Encaminhamento',d:'Como será conduzida a tratativa'},
+        {l:'Revisão',d:'Revise e confirme antes de registrar'}
+      ];
+      window.nmEtapa = window.nmEtapa || 1;
+
+      function renderStepper(){
+        var row = document.getElementById('nm-stepper-row');
+        if(!row) return;
+        var html = '';
+        for(var i=1;i<=NM_TOTAL;i++){
+          var done = i < window.nmEtapa;
+          var active = i === window.nmEtapa;
+          var cirCls = done ? 'nm-stepper-circle done' : active ? 'nm-stepper-circle active' : 'nm-stepper-circle';
+          var lbl = done ? '✓' : i;
+          html += '<div style="display:flex;align-items:center;flex:1;min-width:0">';
+          html += '<button onclick="nmIrParaEtapa('+i+')" class="'+cirCls+'" title="'+NM_STEPS_META[i-1].l+'">'+lbl+'</button>';
+          if(i < NM_TOTAL){
+            var lineCls = done ? 'nm-stepper-line done' : 'nm-stepper-line';
+            html += '<div class="'+lineCls+'"></div>';
+          }
+          html += '</div>';
+        }
+        row.innerHTML = html;
+        var meta = NM_STEPS_META[window.nmEtapa - 1];
+        var lMain = document.getElementById('nm-step-label-main');
+        var dMain = document.getElementById('nm-step-desc-main');
+        if(lMain) lMain.textContent = meta.l;
+        if(dMain) dMain.textContent = meta.d;
+        var el = document.getElementById('nm-etapa-label');
+        if(el) el.textContent = 'Etapa ' + window.nmEtapa + ' de ' + NM_TOTAL;
+        document.querySelectorAll('.nm-step-panel').forEach(function(p){
+          var s = parseInt(p.getAttribute('data-nm-step'));
+          p.classList.toggle('nm-active', s === window.nmEtapa);
+        });
+        var btnV = document.getElementById('nm-btn-voltar');
+        var btnC = document.getElementById('nm-btn-continuar');
+        var btnF = document.getElementById('nm-btn-confirmar');
+        if(btnV) btnV.style.visibility = window.nmEtapa > 1 ? 'visible' : 'hidden';
+        if(btnC) btnC.style.display = window.nmEtapa < NM_TOTAL ? 'block' : 'none';
+        if(btnF) btnF.style.display = window.nmEtapa === NM_TOTAL ? 'block' : 'none';
+        var body = document.getElementById('nm-steps-body');
+        if(body) body.scrollTop = 0;
+        if(window.nmEtapa === 7) nmMontarResumo();
+      }
+
+      function nmMontarResumo(){
+        var grid = document.getElementById('nm-resumo-grid');
+        if(!grid) return;
+        function v(id){var el=document.getElementById(id);return el?(el.value||el.textContent||'—').trim()||'—':'—';}
+        function actBtn(cls){var b=document.querySelector('.'+cls+'.active');return b?b.textContent.trim():'—';}
+        var campos = [
+          {l:'Empresa reclamada', v: v('nm-empresa-reclamada')},
+          {l:'Cliente', v: v('nm-nome') || v('nm-empresa')},
+          {l:'CNPJ', v: v('nm-cnpj')},
+          {l:'Telefone', v: v('nm-tel')},
+          {l:'NFe', v: v('nm-nfe')},
+          {l:'Tipo', v: actBtn('tipo-btns')},
+          {l:'Canal', v: actBtn('canal-btns')},
+          {l:'Produto', v: v('nm-produto')},
+          {l:'Lote', v: v('nm-lote')},
+          {l:'Procedência', v: v('nm-procedente') || 'A avaliar'},
+          {l:'Caminho', v: v('nm-caminho-tratativa') || 'Não definido'},
+          {l:'Atendente', v: v('nm-atendente')},
+        ];
+        grid.innerHTML = campos.map(function(c){
+          return '<div><div style="font-size:10.5px;font-weight:700;color:#929090;margin-bottom:3px">'+c.l+'</div><div style="font-size:13px;font-weight:600;color:#1F1F1F">'+c.v+'</div></div>';
+        }).join('');
+      }
+
+      window.nmIrParaEtapa = function(n){
+        if(n < 1 || n > NM_TOTAL) return;
+        window.nmEtapa = n;
+        renderStepper();
+      };
+      window.nmProximaEtapa = function(){
+        if(window.nmEtapa < NM_TOTAL) nmIrParaEtapa(window.nmEtapa + 1);
+      };
+      window.nmEtapaAnterior = function(){
+        if(window.nmEtapa > 1) nmIrParaEtapa(window.nmEtapa - 1);
+      };
+      window.nmSelEmpresa = function(btn, val){
+        document.querySelectorAll('.nm-empresa-btn').forEach(function(b){b.classList.remove('active');});
+        btn.classList.add('active');
+        var sel = document.getElementById('nm-empresa-reclamada');
+        if(sel) sel.value = val;
+      };
+
+      // init on page show
+      function initWizard(){
+        window.nmEtapa = 1;
+        renderStepper();
+      }
+      // hook into existing navigate() if available
+      var _origNav = window.navigate;
+      window.navigate = function(page, el){
+        if(page === 'nova-manifestacao') initWizard();
+        if(_origNav) _origNav.apply(this, arguments);
+      };
+      // if page already visible
+      if(document.getElementById('page-nova-manifestacao') &&
+         !document.getElementById('page-nova-manifestacao').classList.contains('hidden')){
+        setTimeout(initWizard, 50);
+      }
+      document.addEventListener('DOMContentLoaded', function(){
+        var page = document.getElementById('page-nova-manifestacao');
+        if(page){
+          var obs = new MutationObserver(function(mutations){
+            mutations.forEach(function(m){
+              if(m.attributeName==='class' || m.attributeName==='style'){
+                var hidden = page.classList.contains('hidden') || page.style.display==='none';
+                if(!hidden) initWizard();
+              }
+            });
+          });
+          obs.observe(page, {attributes:true});
+        }
+        initWizard();
+      });
+    })();
+    </script>
   </div>
 
   <!-- ===== ACOMPANHAMENTO ===== -->
