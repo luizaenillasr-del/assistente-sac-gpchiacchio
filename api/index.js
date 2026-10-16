@@ -769,9 +769,30 @@ async function carregarUsuarioPorLogin(login){
       }
     } catch (e) { console.warn('[F4] carregarUsuarioPorLogin PG falhou:', e.message); }
   }
-  // Fallback Sheets
+  // Fallback Sheets + PG mesclado
   const usuarios=await carregarUsuarios();
-  return usuarios.find(u=>normalizarTexto(u.USUARIO||u.EMAIL||u.ID_USUARIO)===alvo && normalizarTexto(u.STATUS||'ATIVO')!=='inativo') || null;
+  const ativo = u => normalizarTexto(u.STATUS||'ATIVO')!=='inativo';
+  // 1) Busca por USUARIO exato
+  let u = usuarios.find(u=>normalizarTexto(u.USUARIO||u.EMAIL||u.ID_USUARIO)===alvo && ativo(u));
+  // 2) Se não encontrado, tenta pelo prefixo do email (login sem @dominio)
+  if (!u) u = usuarios.find(u => normalizarTexto((u.EMAIL||'').split('@')[0])===alvo && ativo(u));
+  // 3) Busca direta no PG por prefixo de email (quando Sheets não mesclou USUARIO)
+  if (!u && usuarioRepo) {
+    try {
+      const prisma = require('../database/connection');
+      const pgU = await prisma.usuario.findFirst({
+        where: { email: { startsWith: alvo + '@', mode: 'insensitive' } },
+        include: { perfil: true, empresa: true },
+      });
+      if (pgU && pgU.ativo !== false) {
+        u = { ID_USUARIO: pgU.idOriginal||`USR-PG-${pgU.id}`, USUARIO: alvo, EMAIL: pgU.email,
+              NOME: pgU.nome, PERFIL: pgU.perfil?.codigo||'ANALISTA SAC', EMPRESA: pgU.empresa?.nome||'',
+              SETOR: pgU.setor?.nome||'', STATUS: pgU.ativo===false?'INATIVO':'ATIVO',
+              SENHA_HASH: pgU.senhaHash||'', CODIGO_RCA: pgU.codigoRca||'', _pgId: pgU.id };
+      }
+    } catch(e) { console.warn('[login] PG email-prefix lookup:', e.message); }
+  }
+  return u || null;
 }
 
 async function registrarAcessoUsuario(usuario){
