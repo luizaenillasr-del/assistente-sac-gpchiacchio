@@ -7690,8 +7690,8 @@ app.post('/api/admin/solicitacoes/:id/aprovar', requerPerfil('MASTER'), async (r
       try {
         const prisma = require('../database/connection');
         const [pgPerfil, pgEmpresa] = await Promise.all([
-          prisma.perfil.findFirst({ where: { codigo: perfilNorm } }),
-          prisma.empresa.findFirst({ where: { nome: { contains: empCod, mode: 'insensitive' } } }),
+          prisma.perfil.findFirst({ where: { nome: { contains: perfilNorm, mode: 'insensitive' } } }),
+          prisma.empresa.findFirst({ where: { codigo: empCod } }),
         ]);
         if (pgPerfil && pgEmpresa) {
           await usuarioRepo.create({
