@@ -41,26 +41,105 @@ async function salvarArquivoGoogleDrive(arquivo) {
   return {fileId:upload.data.id,nome:upload.data.name,url:upload.data.webViewLink||upload.data.webContentLink||''};
 }
 
+const PROMPT_EXTRACAO = (tipoDocumento) =>
+  `Você é o extrator documental do Assistente SAC Grupo Chiacchio.\nTipo do documento: ${tipoDocumento}.\nExtraia somente informações explicitamente presentes no documento. Nunca invente valores. Se um campo não estiver presente, retorne string vazia.\n\nRetorne SOMENTE JSON válido com este formato:\n` +
+  (tipoDocumento === 'RNC'
+    ? JSON.stringify({numeroRnc:'',manifestacaoOrigem:'',dataAbertura:'',empresa:'',setor:'',competencia:'',naoConformidade:'',causaRaiz:'',subcausa:'',acaoCorretiva:'',acaoPreventiva:'',responsavel:'',prazo:'',prioridade:'',status:'',observacoes:''},null,2)
+    : JSON.stringify({dataRegistro:'',numeroReclamacao:'',empresaReclamante:'',empresaReclamada:'',cnpj:'',contato:'',telefone:'',email:'',canal:'',tipoManifestacao:'',descricao:'',produto:'',lote:'',nfe:'',quantidade:'',valor:'',procedencia:'',justificativa:'',setor:'',observacoes:''},null,2));
+
+async function _uploadOpenAI(base64, mimeType, nome, apiKey) {
+  // Upload para Files API (purpose: user_data) e retorna file_id
+  const buffer = Buffer.from(base64, 'base64');
+  const boundary = `----FormBoundary${Date.now().toString(16)}`;
+  const filename = nome || 'documento.pdf';
+  const bodyParts = [
+    `--${boundary}\r\nContent-Disposition: form-data; name="purpose"\r\n\r\nuser_data`,
+    `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${filename}"\r\nContent-Type: ${mimeType}\r\n\r\n`,
+  ];
+  const parts = [
+    Buffer.from(bodyParts[0] + '\r\n'),
+    Buffer.from(bodyParts[1]),
+    buffer,
+    Buffer.from(`\r\n--${boundary}--\r\n`),
+  ];
+  const body = Buffer.concat(parts);
+  const resp = await fetch('https://api.openai.com/v1/files', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': `multipart/form-data; boundary=${boundary}`,
+    },
+    body,
+  });
+  const raw = await resp.text();
+  if (!resp.ok) throw new Error(`Files API ${resp.status}: ${raw.slice(0, 400)}`);
+  return JSON.parse(raw).id;
+}
+
+async function _deleteOpenAIFile(fileId, apiKey) {
+  fetch(`https://api.openai.com/v1/files/${fileId}`, {
+    method: 'DELETE',
+    headers: { 'Authorization': `Bearer ${apiKey}` },
+  }).catch(() => {});
+}
+
 async function extrairDadosDocumento(arquivo, tipoDocumento) {
-  if(!process.env.OPENAI_API_KEY){
-    throw new Error('OPENAI_API_KEY não configurada.');
+  if (!process.env.OPENAI_API_KEY) throw new Error('OPENAI_API_KEY não configurada.');
+  const apiKey = process.env.OPENAI_API_KEY;
+  const { mimeType, base64 } = stripDataUrl(arquivo.dataBase64);
+  const modelo = process.env.OPENAI_EXTRACTION_MODEL || 'gpt-4o';
+  const isImage = /^image\//i.test(mimeType);
+  const prompt = PROMPT_EXTRACAO(tipoDocumento);
+
+  if (isImage) {
+    // Chat Completions API com vision — formato estável e amplamente suportado
+    const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: modelo,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'text', text: prompt },
+            { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64}`, detail: 'high' } },
+          ],
+        }],
+        max_tokens: 3000,
+      }),
+    });
+    const raw = await resp.text();
+    if (!resp.ok) throw new Error(`OpenAI ${resp.status}: ${raw.slice(0, 400)}`);
+    const data = JSON.parse(raw);
+    return normalizarJson(data.choices?.[0]?.message?.content || '{}');
   }
-  const {mimeType,base64}=stripDataUrl(arquivo.dataBase64);
-  const modelo=process.env.OPENAI_EXTRACTION_MODEL || 'gpt-4o';
-  const isImage=/^image\//i.test(mimeType);
-  const content=[];
-  content.push({type:'input_text',text:`Você é o extrator documental do Assistente SAC Grupo Chiacchio.\nTipo do documento: ${tipoDocumento}.\nExtraia somente informações explicitamente presentes no documento. Nunca invente valores. Se um campo não estiver presente, retorne string vazia.\n\nRetorne SOMENTE JSON válido com este formato:\n${tipoDocumento==='RNC' ? JSON.stringify({numeroRnc:'',manifestacaoOrigem:'',dataAbertura:'',empresa:'',setor:'',competencia:'',naoConformidade:'',causaRaiz:'',subcausa:'',acaoCorretiva:'',acaoPreventiva:'',responsavel:'',prazo:'',prioridade:'',status:'',observacoes:''},null,2) : JSON.stringify({dataRegistro:'',numeroReclamacao:'',empresaReclamante:'',empresaReclamada:'',cnpj:'',contato:'',telefone:'',email:'',canal:'',tipoManifestacao:'',descricao:'',produto:'',lote:'',nfe:'',quantidade:'',valor:'',procedencia:'',justificativa:'',setor:'',observacoes:''},null,2)}`});
-  if(isImage){
-    content.push({type:'input_image',image_url:`data:${mimeType};base64,${base64}`});
-  } else {
-    content.push({type:'input_file',filename:arquivo.nome||arquivo.name||'documento.pdf',file_data:`data:${mimeType};base64,${base64}`});
+
+  // Arquivos não-imagem (PDF, DOCX…): upload via Files API, depois Responses API com file_id
+  const fileId = await _uploadOpenAI(base64, mimeType, arquivo.nome || arquivo.name, apiKey);
+  try {
+    const resp = await fetch('https://api.openai.com/v1/responses', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: modelo,
+        input: [{
+          role: 'user',
+          content: [
+            { type: 'input_text', text: prompt },
+            { type: 'input_file', file_id: fileId },
+          ],
+        }],
+        max_output_tokens: 3000,
+      }),
+    });
+    const raw = await resp.text();
+    if (!resp.ok) throw new Error(`OpenAI ${resp.status}: ${raw.slice(0, 400)}`);
+    const data = JSON.parse(raw);
+    const texto = data.output_text || (data.output || []).flatMap(x => x.content || []).map(x => x.text || '').join('');
+    return normalizarJson(texto);
+  } finally {
+    _deleteOpenAIFile(fileId, apiKey);
   }
-  const response=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${process.env.OPENAI_API_KEY}`},body:JSON.stringify({model:modelo,input:[{role:'user',content}],max_output_tokens:3000})});
-  const raw=await response.text();
-  if(!response.ok) throw new Error(`OpenAI ${response.status}: ${raw.slice(0,600)}`);
-  const data=JSON.parse(raw);
-  const texto=data.output_text || (data.output||[]).flatMap(x=>x.content||[]).map(x=>x.text||'').join('');
-  return normalizarJson(texto);
 }
 
 module.exports={salvarArquivoGoogleDrive,extrairDadosDocumento};
