@@ -3927,42 +3927,43 @@
   </div>
 
   <!-- ===== USUÁRIOS E ACESSOS ===== -->
-  <div class="page" id="page-usuarios">
-  <!-- HEADER DA PÁGINA -->
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
-    <div>
-      <div style="font-size:22px;font-weight:700">Gerenciamento de Usuários</div>
-      <div style="font-size:13px;color:#666464;margin-top:2px">Controle total de acessos e permissões</div>
+  <div class="page" id="page-usuarios" style="overflow:hidden">
+
+  <!-- TOPBAR -->
+  <div style="height:56px;background:#fff;border-bottom:1px solid #E4E4E4;display:flex;align-items:center;padding:0 24px;gap:16px;flex-shrink:0;margin:-24px -28px 0">
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font-size:11px;color:#929090">Administração</span>
+      <span style="font-size:11px;color:#D6D6D6">/</span>
+      <span style="font-size:13px;font-weight:700;color:#1F1F1F">Gestão de Usuários</span>
     </div>
-    <div style="display:flex;gap:8px">
-      <button onclick="window.loadUsuariosMasterPainel&&window.loadUsuariosMasterPainel()"
-        style="background:#fff;color:#545252;border:1px solid #D6D6D6;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">
-        ↻ Atualizar
-      </button>
-      <button onclick="usuNovo()" data-perm="usuarios.criar"
-        style="background:#C70602;color:#fff;border:0;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">
-        + Novo Usuário
-      </button>
-    </div>
+    <div style="flex:1"></div>
+    <button onclick="window.loadUsuariosMasterPainel&&window.loadUsuariosMasterPainel()"
+      style="height:34px;border:1px solid #E4E4E4;background:#fff;color:#545252;border-radius:8px;padding:0 14px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit">
+      ↻ Atualizar
+    </button>
+    <button onclick="usuNovo()" data-perm="usuarios.criar"
+      style="height:34px;border:0;background:#C70602;color:#fff;border-radius:8px;padding:0 14px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit">
+      + Novo usuário
+    </button>
   </div>
 
-  <!-- SOLICITAÇÕES PENDENTES -->
-  <div id="usr-solicitacoes-section" style="margin-bottom:18px">
-    <div style="font-size:14px;font-weight:700;margin-bottom:8px;color:#1F1F1F">
-      Solicitações de Acesso — <span id="usr-req-pend-txt" style="color:#C70602">Nenhuma pendente</span>
+  <!-- SOLICITAÇÕES PENDENTES (amber collapsible banner) -->
+  <div id="usr-solicitacoes-section" style="background:#FBF0D9;border-bottom:1px solid #F0D9A0;margin:0 -28px;flex-shrink:0">
+    <div onclick="(function(){var l=document.getElementById('usr-solicitacoes-lista'),a=document.getElementById('usr-solic-arrow');if(l.style.display==='none'){l.style.display='flex';a.textContent='▾'}else{l.style.display='none';a.textContent='▸'}})()" style="display:flex;align-items:center;gap:10px;height:44px;cursor:pointer;padding:0 24px">
+      <div style="width:8px;height:8px;border-radius:50%;background:#D97706;flex-shrink:0"></div>
+      <span style="font-size:12.5px;font-weight:700;color:#7A4C00">Solicitações de Acesso — <span id="usr-req-pend-txt">Nenhuma pendente</span></span>
+      <div style="flex:1"></div>
+      <span id="usr-solic-arrow" style="font-size:13px;color:#7A4C00">▸</span>
     </div>
-    <div id="usr-solicitacoes-lista" style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;overflow:hidden">
-      <div style="padding:20px;text-align:center;color:#707070;font-size:13px">Carregando...</div>
-    </div>
+    <div id="usr-solicitacoes-lista" style="display:none;flex-wrap:wrap;gap:10px;padding:0 24px 14px"></div>
   </div>
 
   <!-- FILTROS -->
-  <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
-    <input id="usu-busca" type="text" placeholder="Buscar por nome ou e-mail..."
-      oninput="usuFiltrar()"
-      style="flex:1;min-width:180px;border:1px solid #D6D6D6;border-radius:8px;padding:8px 12px;font-size:13px;font-family:inherit">
+  <div style="padding:12px 24px;background:#fff;border-bottom:1px solid #E4E4E4;display:flex;flex-wrap:wrap;gap:10px;align-items:center;flex-shrink:0;margin:0 -28px">
+    <input id="usu-busca" type="text" placeholder="Buscar por nome ou e-mail…" oninput="usuFiltrar()"
+      style="flex:1;min-width:180px;max-width:280px;height:36px;border:1.5px solid #E4E4E4;border-radius:8px;padding:0 12px;font-size:12.5px;font-family:inherit">
     <select id="usu-fil-perfil" onchange="usuFiltrar()"
-      style="border:1px solid #D6D6D6;border-radius:8px;padding:8px 12px;font-size:13px;font-family:inherit">
+      style="height:36px;border:1.5px solid #E4E4E4;border-radius:8px;padding:0 10px;font-size:12.5px;font-family:inherit">
       <option value="">Todos os perfis</option>
       <option>MASTER</option><option>APROVADOR MASTER</option>
       <option>GESTOR SAC</option><option>ANALISTA SAC</option><option>ATENDENTE SAC</option>
@@ -3974,32 +3975,36 @@
       <option>SETOR RESPONSÁVEL</option>
     </select>
     <select id="usu-fil-status" onchange="usuFiltrar()"
-      style="border:1px solid #D6D6D6;border-radius:8px;padding:8px 12px;font-size:13px;font-family:inherit">
+      style="height:36px;border:1.5px solid #E4E4E4;border-radius:8px;padding:0 10px;font-size:12.5px;font-family:inherit">
       <option value="">Todos os status</option>
       <option value="ATIVO">Ativo</option><option value="INATIVO">Inativo</option>
       <option value="BLOQUEADO">Bloqueado</option>
     </select>
   </div>
 
-  <!-- DEBUG TEMPORÁRIO -->
-
   <!-- TABELA DE USUÁRIOS -->
-  <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;overflow:hidden">
-    <table style="width:100%;border-collapse:collapse;font-size:13px">
-      <thead>
-        <tr style="background:#F9F9F9;border-bottom:1px solid #E4E4E4">
-          <th style="padding:11px 16px;text-align:left;font-weight:700;color:#545252">Usuário</th>
-          <th style="padding:11px 16px;text-align:left;font-weight:700;color:#545252">Perfil</th>
-          <th style="padding:11px 16px;text-align:left;font-weight:700;color:#545252">Empresa</th>
-          <th style="padding:11px 16px;text-align:left;font-weight:700;color:#545252">Status</th>
-          <th style="padding:11px 16px;text-align:left;font-weight:700;color:#545252">Último acesso</th>
-          <th style="padding:11px 16px;text-align:right;font-weight:700;color:#545252">Ações</th>
-        </tr>
-      </thead>
-      <tbody id="usu-lista"></tbody>
-    </table>
-    <div id="usu-vazio" style="display:none;text-align:center;padding:40px;color:#707070">Nenhum usuário encontrado.</div>
+  <div style="flex:1;overflow-y:auto;padding:16px 0;margin:0 -28px">
+    <div style="padding:0 24px">
+      <div style="background:#fff;border:1px solid #E4E4E4;border-radius:12px;overflow:hidden">
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+          <thead>
+            <tr style="background:#F7F7F7;border-bottom:1px solid #E4E4E4">
+              <th style="padding:10px 16px;text-align:left;font-size:11px;font-weight:700;letter-spacing:.05em;color:#929090;text-transform:uppercase">Usuário</th>
+              <th style="padding:10px 16px;text-align:left;font-size:11px;font-weight:700;letter-spacing:.05em;color:#929090;text-transform:uppercase">Empresa</th>
+              <th style="padding:10px 16px;text-align:left;font-size:11px;font-weight:700;letter-spacing:.05em;color:#929090;text-transform:uppercase">Setor</th>
+              <th style="padding:10px 16px;text-align:left;font-size:11px;font-weight:700;letter-spacing:.05em;color:#929090;text-transform:uppercase">Perfil</th>
+              <th style="padding:10px 16px;text-align:left;font-size:11px;font-weight:700;letter-spacing:.05em;color:#929090;text-transform:uppercase">Status</th>
+              <th style="padding:10px 16px;text-align:left;font-size:11px;font-weight:700;letter-spacing:.05em;color:#929090;text-transform:uppercase">Último acesso</th>
+              <th style="padding:10px 16px;text-align:right;font-size:11px;font-weight:700;letter-spacing:.05em;color:#929090;text-transform:uppercase">Ações</th>
+            </tr>
+          </thead>
+          <tbody id="usu-lista"></tbody>
+        </table>
+        <div id="usu-vazio" style="display:none;text-align:center;padding:48px;color:#929090;font-size:13px">Nenhum usuário encontrado.</div>
+      </div>
+    </div>
   </div>
+
 </div>
 
   <!-- ===== MODAL CONFIGURAR ACESSO (Aprovação de Solicitação) ===== -->
