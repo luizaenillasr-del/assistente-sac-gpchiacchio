@@ -7874,6 +7874,50 @@ app.patch('/api/admin/usuarios/:id/permissoes', requerPerfil('MASTER'), async (r
     // Persiste alterações na planilha USUARIOS
     const chaveId = u.ID_USUARIO || u.USUARIO || u.EMAIL;
     await atualizarPorID('USUARIOS', chaveId, updates, ['ID_USUARIO','USUARIO','EMAIL']).catch(e => console.warn('[PERM] Sheets update falhou:', e.message));
+
+    // Atualiza também a aba PERMISSOES_USUARIO (fonte lida por carregarPermissoesUsuario)
+    if (modulosNiveis !== undefined || competencias !== undefined) {
+      const emailAlvo = u.EMAIL || u.USUARIO || u.ID_USUARIO;
+      const idAlvo = u.ID_USUARIO || u.USUARIO || u.EMAIL;
+      const competenciasStr = Array.isArray(competencias) ? competencias.join(',') : (competencias !== undefined ? (competencias||'') : (u.COMPETENCIAS||''));
+      const modulosObj = modulosNiveis !== undefined ? (modulosNiveis || {}) : {};
+      // Remove registros anteriores deste usuário e insere novo
+      const rowsExist = await lerAba('PERMISSOES_USUARIO', 2000).catch(()=>[]);
+      const existente = rowsExist.find(r =>
+        String(r.USUARIO_ID||'').toLowerCase() === String(idAlvo||'').toLowerCase() ||
+        String(r.USUARIO_EMAIL||'').toLowerCase() === String(emailAlvo||'').toLowerCase()
+      );
+      if (existente && (existente.ID_PERMISSAO || existente.USUARIO_ID)) {
+        // Atualiza linha existente
+        const chPerm = existente.ID_PERMISSAO || existente.USUARIO_ID;
+        await atualizarPorID('PERMISSOES_USUARIO', chPerm, {
+          MODULO: Object.keys(modulosObj).length ? JSON.stringify(modulosObj) : '',
+          COMPETENCIAS: competenciasStr,
+          ATUALIZADO_EM: new Date().toISOString(),
+          ATUALIZADO_POR: req.user.usuario||'MASTER',
+        }, ['ID_PERMISSAO','USUARIO_ID']).catch(e => console.warn('[PERM] PERMISSOES_USUARIO update falhou:', e.message));
+      } else {
+        // Cria nova linha
+        const idPerm = await gerarProximoID('PERMISSOES_USUARIO','PRM','ID_PERMISSAO').catch(()=>null);
+        await appendObjeto('PERMISSOES_USUARIO', {
+          ID_PERMISSAO: idPerm || `PRM-${Date.now()}`,
+          USUARIO_ID: idAlvo,
+          USUARIO_EMAIL: emailAlvo,
+          EMPRESA: empresa || u.EMPRESA || '',
+          PERFIL: perfil ? normalizarPerfil(perfil) : (u.PERFIL||''),
+          MODULO: Object.keys(modulosObj).length ? JSON.stringify(modulosObj) : '',
+          NIVEL: '',
+          COMPETENCIAS: competenciasStr,
+          STATUS: 'ATIVO',
+          CRIADO_EM: new Date().toISOString(),
+          CRIADO_POR: req.user.usuario||'MASTER',
+          ATUALIZADO_EM: new Date().toISOString(),
+          ATUALIZADO_POR: req.user.usuario||'MASTER',
+        }).catch(e => console.warn('[PERM] PERMISSOES_USUARIO append falhou:', e.message));
+      }
+      invalidarCacheAba('PERMISSOES_USUARIO');
+    }
+
     invalidarCacheAba('USUARIOS');
     invalidarCachePermissoes(u.EMAIL||u.USUARIO||u.ID_USUARIO);
     _statusCache.delete(normalizarTexto(u.USUARIO||u.EMAIL||u.ID_USUARIO));
