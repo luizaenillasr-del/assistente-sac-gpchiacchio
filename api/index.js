@@ -350,11 +350,9 @@ async function carregarUsuarios(){
       }
     } catch (e) { _pgErro = e.message; console.warn('[F4] carregarUsuarios PG falhou:', e.message); }
   }
-  // Lê Sheets apenas como fallback quando PG não está disponível
+  // Lê Sheets sempre para capturar usuários criados via aprovação que ainda não foram gravados no PG
   let rows=[];
-  if (!usuarioRepo || pgMapped.length === 0) {
-    try{ rows=await lerAba('USUARIOS',1000); _sheetsCount = rows.length; }catch(e){ _sheetsErro = e.message; console.warn('USUARIOS não disponível:',e.message); }
-  }
+  try{ rows=await lerAba('USUARIOS',1000); _sheetsCount = rows.length; }catch(e){ _sheetsErro = e.message; console.warn('USUARIOS não disponível:',e.message); }
   const raw=process.env.USUARIOS_JSON||'{}';
   let envUsers=[];
   try{
@@ -365,9 +363,9 @@ async function carregarUsuarios(){
   }catch(e){}
   const pgEmails = new Set(pgMapped.map(u => (u.EMAIL||'').toLowerCase()).filter(Boolean));
   const pgIds = new Set(pgMapped.map(u => u.ID_USUARIO).filter(Boolean));
-  // Quando PG disponível, Sheets é ignorado (não misturar dados obsoletos)
+  // Sheets complementa o PG: usuários que existem só no Sheets (ex: aprovados recentemente) aparecem normalmente
   const _seenEmails = new Set();
-  const sheetsOnly = pgMapped.length > 0 ? [] : rows.filter(r => {
+  const sheetsOnly = rows.filter(r => {
     const emailOrUser = (r.EMAIL||r.USUARIO||'').toLowerCase();
     const id = r.ID_USUARIO;
     if (pgIds.has(id) || pgEmails.has(emailOrUser)) return false;
@@ -7689,8 +7687,11 @@ app.post('/api/admin/solicitacoes/:id/aprovar', requerPerfil('MASTER'), async (r
     if (usuarioRepo) {
       try {
         const prisma = require('../database/connection');
+        // Mapeia perfilNorm (ex: ANALISTA_SAC) para o codigo no PG (ex: SAC)
+        const PERFIL_TO_PG = { 'MASTER':'MASTER','GESTOR_SAC':'SAC','ANALISTA_SAC':'SAC','APROVADOR':'SAC','REPRESENTANTE':'REPRESENTANTE','CONSULTA':'USUARIO_DE_SETOR','AUDITOR':'USUARIO_DE_SETOR' };
+        const pgCodigo = PERFIL_TO_PG[perfilNorm] || 'SAC';
         const [pgPerfil, pgEmpresa] = await Promise.all([
-          prisma.perfil.findFirst({ where: { nome: { contains: perfilNorm, mode: 'insensitive' } } }),
+          prisma.perfil.findFirst({ where: { codigo: pgCodigo } }),
           prisma.empresa.findFirst({ where: { codigo: empCod } }),
         ]);
         if (pgPerfil && pgEmpresa) {
