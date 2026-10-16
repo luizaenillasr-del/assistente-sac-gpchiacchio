@@ -7272,7 +7272,6 @@
 .af-root *{box-sizing:border-box}
 .af-root button,.af-root input,.af-root select{font:inherit;color:inherit}
 .af-root button{white-space:nowrap}
-.af-main{padding:22px 28px 60px;display:flex;flex-direction:column;gap:16px}
 .af-head{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap}
 .af-crumb{font-size:12px;color:#707070}
 .af-title{font-size:24px;font-weight:700;margin-top:2px}
@@ -7397,27 +7396,24 @@
 </style>
 <!-- ===== ARQUIVO DE FICHAS: estilos — fim ===== -->
 
-<div class="af-root">
-  <div class="af-main">
-    <!-- CABEÇALHO -->
-    <div class="af-head">
-      <div style="min-width:0">
-        <div class="af-crumb">Gestão / Arquivo de Fichas</div>
-        <div class="af-title">Arquivo de Fichas</div>
-        <div class="af-sub">Histórico completo das fichas de reclamação: as anteriores à ferramenta, as criadas no sistema e as concluídas. Organizado por empresa, ano e mês.</div>
-      </div>
-      <div class="af-actions">
-        <button class="af-btn" onclick="abrirModalImportarFicha()">↑ Importar fichas (PDF/DOCX)</button>
-        <button class="af-btn" id="bib-btn-sincronizar" onclick="sincronizarBaseConhecimento()" title="Lê todas as fichas e popula automaticamente Setores, Matriz de Tratamento e Cérebro com os dados encontrados">⚡ Sincronizar base</button>
-        <button class="af-btn af-btn-red" id="bib-btn-refresh" onclick="loadBiblioteca(true,true)">↻ Atualizar</button>
-      </div>
+<div class="af-root" style="display:flex;flex-direction:column;flex:1;min-height:0">
+
+  <!-- TOPBAR -->
+  <div style="height:56px;background:#fff;border-bottom:1px solid #E4E4E4;display:flex;align-items:center;padding:0 24px;gap:10px;flex-shrink:0">
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font-size:11px;color:#929090">Gestão</span>
+      <span style="font-size:11px;color:#D6D6D6">/</span>
+      <span style="font-size:13px;font-weight:700;color:#1F1F1F">Arquivo de Fichas</span>
     </div>
+    <div style="flex:1"></div>
+    <button class="af-btn" onclick="abrirModalImportarFicha()">↑ Importar fichas</button>
+    <button class="af-btn" id="bib-btn-sincronizar" onclick="sincronizarBaseConhecimento()" title="Lê todas as fichas e popula automaticamente Setores, Matriz de Tratamento e Cérebro com os dados encontrados">⚡ Sincronizar base</button>
+    <button class="af-btn af-btn-red" id="bib-btn-refresh" onclick="loadBiblioteca(true,true)">↻ Atualizar</button>
+  </div>
 
-    <!-- AVISO -->
-    <div class="af-aviso">Os números abaixo incluem as fichas <strong>criadas no sistema</strong> e as <strong>fichas históricas importadas</strong> (PDF ou DOCX de antes da ferramenta). Cada ficha importada fica arquivada pela empresa, mês e ano da reclamação original, não pela data da importação.</div>
-
-    <!-- ABAS DE STATUS -->
-    <div class="af-abas" id="bib-abas">
+  <!-- ABAS DE STATUS -->
+  <div style="background:#fff;border-bottom:1px solid #E4E4E4;padding:0 24px;flex-shrink:0">
+    <div class="af-abas" id="bib-abas" style="border-bottom:none;margin-bottom:0">
       <button class="af-aba ativa" onclick="afAbaClick('',this)">Todas <span class="af-aba-n" id="bib-aba-n-todas">—</span></button>
       <button class="af-aba" onclick="afAbaClick('ABERTA',this)">Abertas <span class="af-aba-n" id="bib-aba-n-aberta">—</span></button>
       <button class="af-aba" onclick="afAbaClick('EM_ANDAMENTO',this)">Em andamento <span class="af-aba-n" id="bib-aba-n-andamento">—</span></button>
@@ -7425,82 +7421,77 @@
       <button class="af-aba" onclick="afAbaClick('REINCIDENTE',this)">Reincidentes <span class="af-aba-n" id="bib-aba-n-reincidente">—</span></button>
       <button class="af-aba" onclick="afAbaClick('ARQUIVADA',this)" style="margin-left:auto">📦 Arquivadas <span class="af-aba-n" id="bib-aba-n-arquivada">—</span></button>
     </div>
+  </div>
 
-    <!-- FILTROS -->
-    <div class="af-filtros">
-      <label class="af-lbl" style="flex:1 1 260px">Buscar
-        <input id="bib-f-q" class="af-input" type="text" placeholder="Protocolo, cliente, CNPJ, motivo, setor…" oninput="afBuscaDigitou()" onkeydown="if(event.key==='Enter')afBuscaAgora()">
-      </label>
-      <label class="af-lbl">Ano
-        <select id="bib-f-ano" class="af-select" onchange="afFiltroMudou()"><option value="">Todos</option></select>
-      </label>
-      <label class="af-lbl">Mês
-        <select id="bib-f-mes" class="af-select" onchange="afFiltroMudou()">
-          <option value="">Todos os meses</option>
-          <option value="01">Janeiro</option><option value="02">Fevereiro</option><option value="03">Março</option>
-          <option value="04">Abril</option><option value="05">Maio</option><option value="06">Junho</option>
-          <option value="07">Julho</option><option value="08">Agosto</option><option value="09">Setembro</option>
-          <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
-        </select>
-      </label>
-      <label class="af-lbl">Empresa
-        <select id="bib-f-empresa" class="af-select" onchange="afFiltroMudou()"><option value="">Todas</option></select>
-      </label>
-      <label class="af-lbl">Setor
-        <select id="bib-f-setor" class="af-select" onchange="afFiltroMudou()"><option value="">Todos</option></select>
-      </label>
-      <label class="af-lbl">Tipo
-        <select id="bib-f-tipo" class="af-select" onchange="afFiltroMudou()">
-          <option value="">Todos</option>
-          <option value="Reclamação">Reclamação</option><option value="Sugestão">Sugestão</option>
-          <option value="Solicitação">Solicitação</option><option value="Elogio">Elogio</option>
-        </select>
-      </label>
-      <label class="af-lbl">Origem
-        <select id="bib-f-origem" class="af-select" onchange="afFiltroMudou()">
-          <option value="">Todas</option><option value="SISTEMA">Criada no sistema</option><option value="IMPORTADA">Histórica importada</option>
-        </select>
-      </label>
-      <label class="af-lbl">SLA
-        <select id="bib-f-sla" class="af-select" onchange="afFiltroMudou()">
-          <option value="">Todos</option>
-          <option value="VENCIDO">SLA vencido</option><option value="OK">Dentro do prazo</option>
-        </select>
-      </label>
-      <label class="af-lbl">Abertura de
-        <input id="bib-f-abertura-ini" class="af-input" type="date" style="min-width:130px" onchange="afFiltroMudou()">
-      </label>
-      <label class="af-lbl">até
-        <input id="bib-f-abertura-fim" class="af-input" type="date" style="min-width:130px" onchange="afFiltroMudou()">
-      </label>
-      <button class="af-limpar" onclick="limparFiltrosBib()">× Limpar</button>
-    </div>
+  <!-- FILTROS -->
+  <div style="background:#fff;border-bottom:1px solid #E4E4E4;padding:10px 24px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;flex-shrink:0">
+    <input id="bib-f-q" class="af-input" type="text" placeholder="Protocolo, cliente, CNPJ, motivo, setor…" oninput="afBuscaDigitou()" onkeydown="if(event.key==='Enter')afBuscaAgora()" style="flex:1;min-width:200px;max-width:280px;border-radius:8px;border-width:1.5px">
+    <select id="bib-f-ano" class="af-select" onchange="afFiltroMudou()" style="border-width:1.5px"><option value="">Todos os anos</option></select>
+    <select id="bib-f-mes" class="af-select" onchange="afFiltroMudou()" style="border-width:1.5px">
+      <option value="">Todos os meses</option>
+      <option value="01">Janeiro</option><option value="02">Fevereiro</option><option value="03">Março</option>
+      <option value="04">Abril</option><option value="05">Maio</option><option value="06">Junho</option>
+      <option value="07">Julho</option><option value="08">Agosto</option><option value="09">Setembro</option>
+      <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
+    </select>
+    <select id="bib-f-empresa" class="af-select" onchange="afFiltroMudou()" style="border-width:1.5px"><option value="">Todas as empresas</option></select>
+    <select id="bib-f-setor" class="af-select" onchange="afFiltroMudou()" style="border-width:1.5px"><option value="">Todos os setores</option></select>
+    <select id="bib-f-tipo" class="af-select" onchange="afFiltroMudou()" style="border-width:1.5px">
+      <option value="">Todos os tipos</option>
+      <option value="Reclamação">Reclamação</option><option value="Sugestão">Sugestão</option>
+      <option value="Solicitação">Solicitação</option><option value="Elogio">Elogio</option>
+    </select>
+    <select id="bib-f-origem" class="af-select" onchange="afFiltroMudou()" style="border-width:1.5px">
+      <option value="">Todas as origens</option><option value="SISTEMA">Criada no sistema</option><option value="IMPORTADA">Histórica importada</option>
+    </select>
+    <select id="bib-f-sla" class="af-select" onchange="afFiltroMudou()" style="border-width:1.5px">
+      <option value="">Todos os SLA</option>
+      <option value="VENCIDO">SLA vencido</option><option value="OK">Dentro do prazo</option>
+    </select>
+    <input id="bib-f-abertura-ini" class="af-input" type="date" style="min-width:130px;border-width:1.5px" onchange="afFiltroMudou()">
+    <input id="bib-f-abertura-fim" class="af-input" type="date" style="min-width:130px;border-width:1.5px" onchange="afFiltroMudou()">
+    <button class="af-limpar" onclick="limparFiltrosBib()">× Limpar</button>
+  </div>
 
-    <!-- 6 INDICADORES -->
+  <!-- CONTEÚDO PRINCIPAL (scrollável) -->
+  <div style="flex:1;overflow-y:auto;padding:16px 24px 40px;display:flex;flex-direction:column;gap:14px">
+
+    <!-- AVISO -->
+    <div class="af-aviso" style="font-size:12.5px">Os números abaixo incluem as fichas <strong>criadas no sistema</strong> e as <strong>fichas históricas importadas</strong> (PDF ou DOCX de antes da ferramenta). Cada ficha importada fica arquivada pela empresa, mês e ano da reclamação original.</div>
+
+    <!-- INDICADORES -->
     <div class="af-kpis" id="bib-kpis"></div>
 
-    <!-- POR EMPRESA + EVOLUÇÃO POR MÊS -->
-    <div class="af-duo">
-      <div class="af-card">
-        <span class="af-card-t">POR EMPRESA</span>
-        <div id="bib-por-empresa" style="display:flex;flex-direction:column;gap:10px"><div style="color:#707070;font-size:13px">Carregando…</div></div>
-      </div>
-      <div class="af-card">
-        <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:baseline">
-          <span class="af-card-t">EVOLUÇÃO POR MÊS</span>
-          <span class="af-leg"><span><i style="background:#C70602"></i>Sistema</span><span><i style="background:#707070"></i>Histórica</span></span>
-        </div>
-        <div id="bib-por-mes"><div style="color:#707070;font-size:13px">Carregando…</div></div>
-      </div>
-    </div>
+    <!-- COLUNA ESQUERDA + TABELA -->
+    <div style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap">
 
-    <!-- ÁRVORE + TABELA -->
-    <div class="af-corpo">
-      <div class="af-arvore">
-        <span class="af-card-t" style="padding:4px 8px 8px">ARQUIVO</span>
-        <div id="bib-arvore"><div style="color:#707070;font-size:12px;padding:8px">Carregando…</div></div>
+      <!-- COLUNA ESQUERDA (árvore + empresa + meses) -->
+      <div style="width:280px;flex-shrink:0;display:flex;flex-direction:column;gap:14px;min-width:220px">
+
+        <!-- Árvore -->
+        <div class="af-arvore" style="max-height:360px;overflow-y:auto">
+          <span class="af-card-t" style="padding:4px 8px 8px">ARQUIVO</span>
+          <div id="bib-arvore"><div style="color:#707070;font-size:12px;padding:8px">Carregando…</div></div>
+        </div>
+
+        <!-- Por Empresa -->
+        <div class="af-card">
+          <span class="af-card-t">POR EMPRESA</span>
+          <div id="bib-por-empresa" style="display:flex;flex-direction:column;gap:10px"><div style="color:#707070;font-size:13px">Carregando…</div></div>
+        </div>
+
+        <!-- Evolução por mês -->
+        <div class="af-card">
+          <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:baseline">
+            <span class="af-card-t">EVOLUÇÃO POR MÊS</span>
+            <span class="af-leg"><span><i style="background:#C70602"></i>Sistema</span><span><i style="background:#707070"></i>Histórica</span></span>
+          </div>
+          <div id="bib-por-mes"><div style="color:#707070;font-size:13px">Carregando…</div></div>
+        </div>
       </div>
-      <div class="af-lista">
+
+      <!-- TABELA -->
+      <div class="af-lista" style="flex:999 1 500px;min-width:0">
         <div class="af-lista-h">
           <span id="bib-titulo" style="font-weight:700;font-size:14px">Fichas</span>
           <span id="bib-count" style="font-size:12px;color:#666464"></span>
