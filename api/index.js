@@ -5248,7 +5248,17 @@ app.patch('/api/usuarios/:id', requerPermissao('usuarios.editar'), async (req,re
     if(b.status!==undefined) dados.STATUS=b.status;
     if(b.codigoRCA!==undefined) dados.CODIGO_RCA=b.codigoRCA;
     if(b.perfil||b.PERFIL) dados.PERFIL=perfilCanonico(b.perfil||b.PERFIL);
-    if(b.empresa||b.EMPRESA) { const ec=empresaCanonica(b.empresa||b.EMPRESA); if(ec) dados.EMPRESA=ec; }
+    if(b.empresa!==undefined||b.EMPRESA!==undefined) {
+      // Aceita lista separada por vírgula (escopo multi-empresa) ou nome único
+      const raw = String(b.empresa||b.EMPRESA||'').trim();
+      if(raw) {
+        const parts = raw.split(',').map(s=>s.trim()).filter(Boolean);
+        const canonicos = parts.map(p=>empresaCanonica(p)).filter(Boolean);
+        dados.EMPRESA = canonicos.length ? canonicos.join(',') : raw;
+      } else {
+        dados.EMPRESA = '';
+      }
+    }
     if(b.senha){ dados.SENHA_HASH = await hashSenha(b.senha); }
     if(Array.isArray(b.permissoes_custom)) dados.PERMISSOES_CUSTOM=JSON.stringify(b.permissoes_custom);
     if(Array.isArray(b.permissoes_granted)) dados.PERMISSOES_GRANTED=JSON.stringify(b.permissoes_granted);
