@@ -1020,7 +1020,7 @@
 
 <!-- MODAL USUÁRIO -->
 <div id="modal-usuario" style="display:none" class="modal-overlay" onclick="if(event.target===this)fecharModalUsuario()">
-  <div style="background:#fff;border-radius:14px;width:100%;max-width:840px;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.22);overflow:hidden">
+  <div style="background:#fff;border-radius:14px;width:100%;max-width:680px;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.22);overflow:hidden">
     <!-- header -->
     <div style="padding:16px 20px;border-bottom:1px solid #EFEFEF;display:flex;justify-content:space-between;align-items:center">
       <div style="font-size:17px;font-weight:700" id="modal-usu-titulo">Usuário</div>
@@ -12655,6 +12655,9 @@ window.navigate = function(page, el) {
         'auditoria.visualizar':['auditoria'],
         'sugestoes.visualizar':['sugestoes-melhoria'],
         'biblioteca.visualizar':['biblioteca-fichas'],
+        'fichas.acessar':['biblioteca-fichas'],
+        'fichas.ativas':['biblioteca-fichas'],
+        'fichas.arquivadas':['biblioteca-fichas'],
         'setores.visualizar':['setores'],
         'rca.visualizar':['rca'],
         'similares.visualizar':['similares'],
@@ -13168,18 +13171,21 @@ window.navigate = function(page, el) {
     const p=u.perfil||'';
     document.getElementById('aprovador-nome-top').textContent=u.nome||u.usuario||'';
     // Mostrar tabs conforme perfil
-    document.getElementById('aprtab-pendencias').style.display=(p==='APROVADOR'||p==='MASTER')?'':'none';
+    document.getElementById('aprtab-pendencias').style.display=(p==='APROVADOR'||p==='APROVADOR MASTER'||p==='MASTER')?'':'none';
     document.getElementById('aprtab-fila-sac').style.display=(p==='ANALISTA SAC'||p==='MASTER')?'':'none';
     document.getElementById('aprtab-aprovadores').style.display=p==='MASTER'?'':'none';
     document.getElementById('aprtab-competencias').style.display=p==='MASTER'?'':'none';
     document.getElementById('aprtab-regras').style.display=p==='MASTER'?'':'none';
-    document.getElementById('aprtab-historico').style.display=(p==='MASTER'||p==='APROVADOR')?'':'none';
+    document.getElementById('aprtab-historico').style.display=(p==='MASTER'||p==='APROVADOR'||p==='APROVADOR MASTER')?'':'none';
     // Definir tab ativa inicial
     const tabs=document.querySelectorAll('#aprov-tabs .tab-btn');
     tabs.forEach(t=>t.classList.remove('active'));
     if(p==='ANALISTA SAC'){
       document.getElementById('aprtab-fila-sac').classList.add('active');
       aprvTab('fila-sac');
+    } else if(p==='APROVADOR MASTER'){
+      document.getElementById('aprtab-pendencias').classList.add('active');
+      aprvTab('pendencias');
     } else {
       document.getElementById('aprtab-pendencias').classList.add('active');
       aprvTab('pendencias');
