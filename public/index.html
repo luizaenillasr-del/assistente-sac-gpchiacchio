@@ -3316,21 +3316,60 @@
   </div>
 
   <!-- Modal Decisão Aprovação -->
-  <div id="modal-decisao-aprov" class="modal-overlay" style="display:none" onclick="if(event.target===this)fecharModal('modal-decisao-aprov')">
-    <div class="modal-box" style="max-width:520px">
-      <div class="modal-header"><div><div style="font-size:17px;font-weight:800" id="decisao-aprov-title">Decisão de Aprovação</div><div style="font-size:12px;color:var(--gray-400)" id="decisao-aprov-sub"></div></div><button class="modal-close" onclick="fecharModal('modal-decisao-aprov')">×</button></div>
-      <div class="modal-body">
-        <input type="hidden" id="decisao-aprov-id">
-        <div class="field"><label>Observações <span id="decisao-obs-req" style="color:#DC2626;display:none">(obrigatório)</span></label><textarea id="decisao-obs" class="form-input" rows="3" placeholder="Justifique a decisão quando necessário"></textarea></div>
-        <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">
-          <button class="btn btn-primary" onclick="submitDecisao('APROVADO')">✅ Aprovar</button>
-          <button class="btn btn-secondary" onclick="submitDecisao('DEVOLVIDO')">↩ Devolver para ajuste</button>
-          <button class="btn btn-secondary" onclick="submitDecisao('SOLICITANDO_INFORMACOES')">❓ Solicitar informações</button>
-          <button class="btn btn-ghost" onclick="submitDecisao('REJEITADO')" style="color:#DC2626">✖ Rejeitar</button>
+  <!-- PAINEL LATERAL DE DECISÃO (slide-in) -->
+  <div id="modal-decisao-aprov" style="display:none;position:fixed;inset:0;z-index:400;background:rgba(20,20,20,.45)" onclick="if(event.target===this)fecharDecisaoPanel()">
+    <div id="decisao-panel" style="position:absolute;right:0;top:0;bottom:0;width:min(440px,100%);background:#fff;display:flex;flex-direction:column;overflow:hidden;animation:slideInRight .22s ease;box-shadow:-4px 0 24px rgba(0,0,0,.12)">
+      <input type="hidden" id="decisao-aprov-id">
+      <!-- CABEÇALHO -->
+      <div style="padding:16px 20px;border-bottom:1px solid #E4E4E4;flex-shrink:0">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px">
+          <div>
+            <div style="font-size:10.5px;font-weight:700;letter-spacing:.08em;color:#929090" id="decisao-aprov-label">MANIFESTAÇÃO</div>
+            <div style="font-size:16px;font-weight:800;color:#1F1F1F;margin-top:3px" id="decisao-aprov-title"></div>
+            <div style="font-size:11.5px;color:#929090;margin-top:2px" id="decisao-aprov-sub"></div>
+          </div>
+          <button onclick="fecharDecisaoPanel()" style="border:0;background:none;font-size:22px;color:#929090;cursor:pointer;padding:0;line-height:1;flex-shrink:0">×</button>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px" id="decisao-badges"></div>
+        <!-- Abas -->
+        <div style="display:flex;border-bottom:1px solid #E4E4E4;margin:0 -20px;padding:0 20px">
+          <button id="decisao-tab-previa" onclick="decisaoAba('previa')" style="height:36px;border:0;background:none;padding:0 14px;font-size:12.5px;font-weight:700;color:#C70602;cursor:pointer;border-bottom:2px solid #C70602;margin-bottom:-1px">Prévia</button>
+          <button id="decisao-tab-decidir" onclick="decisaoAba('decidir')" style="height:36px;border:0;background:none;padding:0 14px;font-size:12.5px;font-weight:600;color:#929090;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px">Decidir</button>
+        </div>
+      </div>
+      <!-- ABA PRÉVIA -->
+      <div id="decisao-aba-previa" style="flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:14px">
+        <div id="decisao-previa-campos" style="display:grid;grid-template-columns:1fr 1fr;gap:10px 16px"></div>
+        <div id="decisao-previa-descricao" style="background:#F7F7F7;border-radius:10px;padding:14px;border-left:3px solid #C70602;display:none">
+          <div style="font-size:10.5px;font-weight:700;letter-spacing:.07em;color:#929090;margin-bottom:8px">DESCRIÇÃO</div>
+          <div style="font-size:13px;color:#1F1F1F;line-height:1.75" id="decisao-previa-desc-txt"></div>
+        </div>
+        <button onclick="decisaoAba('decidir')" style="height:38px;border:0;background:#C70602;color:#fff;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer">Ir para decisão →</button>
+      </div>
+      <!-- ABA DECIDIR -->
+      <div id="decisao-aba-decidir" style="flex:1;overflow-y:auto;padding:16px 20px;flex-direction:column;gap:14px;display:none">
+        <div id="decisao-preview-resumo" style="background:#F7F7F7;border-radius:9px;padding:10px 12px;border-left:3px solid #C70602;font-size:12.5px;color:#545252;line-height:1.65"></div>
+        <div style="font-size:11.5px;color:#929090;background:#F7F7F7;border-radius:7px;padding:7px 10px">Fila: <strong id="decisao-fila-ref"></strong></div>
+        <div>
+          <label style="font-size:12px;font-weight:700;color:#1F1F1F;display:block;margin-bottom:6px">Observações <span id="decisao-obs-req" style="color:#DC2626;display:none">(obrigatório)</span></label>
+          <textarea id="decisao-obs" rows="4" placeholder="Justifique a decisão quando necessário" style="width:100%;border:1.5px solid #E4E4E4;border-radius:10px;padding:10px 12px;font-size:13px;line-height:1.65;resize:vertical;font-family:inherit"></textarea>
+        </div>
+      </div>
+      <!-- RODAPÉ COM AÇÕES -->
+      <div style="padding:14px 20px;border-top:1px solid #E4E4E4;display:flex;flex-direction:column;gap:8px;flex-shrink:0">
+        <div style="display:flex;gap:8px">
+          <button onclick="submitDecisao('APROVADO')" style="flex:1;height:40px;border:0;background:#1E6B3A;color:#fff;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer">✓ Aprovar</button>
+          <button onclick="submitDecisao('APROVADO_COM_RESSALVA')" style="flex:1;height:40px;border:1.5px solid #1E6B3A;background:#E6F2EA;color:#1E6B3A;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer">✓ c/ ressalva</button>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button onclick="submitDecisao('DEVOLVIDO')" style="flex:1;min-width:70px;height:34px;border:1.5px solid #E4E4E4;background:#fff;border-radius:8px;font-size:11.5px;font-weight:600;cursor:pointer;color:#545252">↩ Devolver</button>
+          <button onclick="submitDecisao('SOLICITANDO_INFORMACOES')" style="flex:1;min-width:70px;height:34px;border:1.5px solid #E4E4E4;background:#fff;border-radius:8px;font-size:11.5px;font-weight:600;cursor:pointer;color:#545252">? Solicitar info</button>
+          <button onclick="submitDecisao('REJEITADO')" style="flex:1;min-width:70px;height:34px;border:1.5px solid #FECACA;background:#FEF2F2;border-radius:8px;font-size:11.5px;font-weight:600;cursor:pointer;color:#DC2626">✖ Rejeitar</button>
         </div>
       </div>
     </div>
   </div>
+  <style>@keyframes slideInRight{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:none}}</style>
 
   <!-- ===== BANCO DE MANIFESTAÇÕES ===== -->
   <div class="page" id="page-banco-manifestacoes">
@@ -13305,22 +13344,89 @@ window.navigate = function(page, el) {
   };
 
   // ── MODAL DECISÃO ──
-  window.abrirDecisaoAprovacao = function(idFila, idEntidade, tipo){
+  window.decisaoAba = function(aba){
+    const isPrevia = aba==='previa';
+    document.getElementById('decisao-aba-previa').style.display = isPrevia?'flex':'none';
+    document.getElementById('decisao-aba-decidir').style.display = isPrevia?'none':'flex';
+    const tP=document.getElementById('decisao-tab-previa');
+    const tD=document.getElementById('decisao-tab-decidir');
+    tP.style.fontWeight=isPrevia?'700':'600'; tP.style.color=isPrevia?'#C70602':'#929090'; tP.style.borderBottomColor=isPrevia?'#C70602':'transparent';
+    tD.style.fontWeight=isPrevia?'600':'700'; tD.style.color=isPrevia?'#929090':'#C70602'; tD.style.borderBottomColor=isPrevia?'transparent':'#C70602';
+  };
+
+  window.fecharDecisaoPanel = function(){
+    document.getElementById('modal-decisao-aprov').style.display='none';
+  };
+
+  window.abrirDecisaoAprovacao = async function(idFila, idEntidade, tipo){
     document.getElementById('decisao-aprov-id').value=idFila;
-    document.getElementById('decisao-aprov-title').textContent=`Decisão — ${tipo}: ${idEntidade}`;
-    document.getElementById('decisao-aprov-sub').textContent=`Fila: ${idFila}`;
+    const isSac=tipo==='SAC';
+    const accent=isSac?'#C70602':'#6B24A8';
+    const bannerBg=isSac?'#FFF5F5':'#FAF5FF';
+    document.getElementById('decisao-aprov-label').textContent=tipo;
+    document.getElementById('decisao-aprov-title').textContent=idEntidade;
+    document.getElementById('decisao-aprov-sub').textContent='';
+    document.getElementById('decisao-badges').innerHTML=`<span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:800;background:${bannerBg};color:${accent}">${tipo}</span>`;
+    document.getElementById('decisao-fila-ref').textContent=idFila;
+    document.getElementById('decisao-preview-resumo').style.borderLeftColor=accent;
+    document.getElementById('decisao-previa-descricao').style.borderLeftColor=accent;
     document.getElementById('decisao-obs').value='';
+    // Reset preview content
+    document.getElementById('decisao-previa-campos').innerHTML='<div style="color:#929090;font-size:13px">Carregando…</div>';
+    document.getElementById('decisao-previa-descricao').style.display='none';
+    document.getElementById('decisao-preview-resumo').textContent='';
     document.getElementById('modal-decisao-aprov').style.display='flex';
+    decisaoAba('previa');
+    // Fetch entity data
+    try{
+      const endpoint = isSac ? '/api/manifestacoes/'+encodeURIComponent(idEntidade) : '/api/rnc/'+encodeURIComponent(idEntidade);
+      const d = await json5(endpoint).catch(()=>null);
+      const m = d?.manifestacao||d?.rnc||d||null;
+      if(m){
+        const campos=[];
+        if(isSac){
+          if(m.EMPRESA_RECLAMANTE||m.EMPRESA) campos.push({l:'Empresa',v:m.EMPRESA_RECLAMANTE||m.EMPRESA});
+          if(m.CLIENTE) campos.push({l:'Cliente',v:m.CLIENTE});
+          if(m.TIPO_MANIFESTACAO||m.TIPO) campos.push({l:'Tipo',v:m.TIPO_MANIFESTACAO||m.TIPO});
+          if(m.SETOR_CONFIRMADO||m.SETOR_SUGERIDO) campos.push({l:'Setor',v:m.SETOR_CONFIRMADO||m.SETOR_SUGERIDO});
+          if(m.DATA_ABERTURA) campos.push({l:'Abertura',v:m.DATA_ABERTURA});
+          if(m.STATUS) campos.push({l:'Status',v:m.STATUS});
+          if(m.RESPONSAVEL||m.USUARIO_CRIACAO) campos.push({l:'Responsável',v:m.RESPONSAVEL||m.USUARIO_CRIACAO});
+          const desc=m.DESCRICAO||m.RELATO||m.DESCRICAO_OCORRENCIA||'';
+          document.getElementById('decisao-aprov-sub').textContent=(m.EMPRESA_RECLAMANTE||m.EMPRESA||'')+' · '+(m.SETOR_CONFIRMADO||m.SETOR_SUGERIDO||'');
+          document.getElementById('decisao-preview-resumo').textContent=desc.slice(0,200)+(desc.length>200?'…':'');
+          if(desc){document.getElementById('decisao-previa-descricao').style.display='block';document.getElementById('decisao-previa-desc-txt').textContent=desc;}
+        } else {
+          if(m.EMPRESA) campos.push({l:'Empresa',v:m.EMPRESA});
+          if(m.SETOR||m.COMPETENCIA) campos.push({l:'Setor',v:m.SETOR||m.COMPETENCIA});
+          if(m.STATUS) campos.push({l:'Status',v:m.STATUS});
+          if(m.DATA_ABERTURA) campos.push({l:'Abertura',v:m.DATA_ABERTURA});
+          document.getElementById('decisao-aprov-sub').textContent=(m.EMPRESA||'')+' · '+(m.SETOR||m.COMPETENCIA||'');
+          const desc=m.DESCRICAO||m.RELATO||'';
+          document.getElementById('decisao-preview-resumo').textContent=desc.slice(0,200)+(desc.length>200?'…':'');
+          if(desc){document.getElementById('decisao-previa-descricao').style.display='block';document.getElementById('decisao-previa-desc-txt').textContent=desc;}
+        }
+        if(campos.length){
+          document.getElementById('decisao-previa-campos').innerHTML=campos.map(c=>`<div><div style="font-size:10.5px;font-weight:700;color:#929090;margin-bottom:3px">${esc5(c.l)}</div><div style="font-size:13px;font-weight:600;color:#1F1F1F">${esc5(c.v)}</div></div>`).join('');
+        } else {
+          document.getElementById('decisao-previa-campos').innerHTML='';
+        }
+      } else {
+        document.getElementById('decisao-previa-campos').innerHTML='<div style="color:#929090;font-size:13px">Dados não disponíveis.</div>';
+      }
+    }catch(e){
+      document.getElementById('decisao-previa-campos').innerHTML='<div style="color:#929090;font-size:13px">Erro ao carregar dados.</div>';
+    }
   };
 
   window.submitDecisao = async function(decisao){
     const id=document.getElementById('decisao-aprov-id').value;
     const obs=document.getElementById('decisao-obs').value.trim();
-    if(decisao!=='APROVADO'&&!obs) return alert('Informe as observações/justificativa.');
+    if(decisao!=='APROVADO'&&decisao!=='APROVADO_COM_RESSALVA'&&!obs) return alert('Informe as observações/justificativa.');
     try{
       await json5('/api/fila-aprovacao/'+encodeURIComponent(id)+'/decidir',{method:'POST',body:JSON.stringify({decisao,observacoes:obs})});
-      alert(`Decisão registrada: ${decisao}`);
-      fecharModal('modal-decisao-aprov');
+      alert('Decisão registrada: '+decisao.replace(/_/g,' '));
+      fecharDecisaoPanel();
       loadAprovadorV5();
     }catch(e){alert(e.message);}
   };
