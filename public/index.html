@@ -23263,55 +23263,81 @@ function updateTopbarUser(user) {
     usuRenderPermissoes(p);
   };
 
+  /* ── Toggle de 3 estados para permissões ── */
+  function _usuToggleState(chave) {
+    // cicla: default → granted → blocked → default
+    const isGranted = _usuGranted.has(chave);
+    const isBlocked = _usuBlocked.has(chave);
+    _usuGranted.delete(chave); _usuBlocked.delete(chave);
+    if (!isGranted && !isBlocked) _usuGranted.add(chave);
+    else if (isGranted) _usuBlocked.add(chave);
+    // else blocked → default (nada)
+  }
+
+  function _usuToggleBuild(chave, perfil, labelHtml) {
+    const isGranted = _usuGranted.has(chave);
+    const isBlocked = _usuBlocked.has(chave);
+    const isDef = _permDefault(perfil, chave);
+    let bg, knobLeft, knobColor, title, badge;
+    if (isGranted) {
+      bg = '#16A34A'; knobLeft = '22px'; knobColor = '#fff';
+      title = 'Concedido \u2014 clique para Bloqueado';
+      badge = '<span style="font-size:10px;font-weight:700;color:#16A34A;white-space:nowrap">Concedido</span> ';
+    } else if (isBlocked) {
+      bg = '#C70602'; knobLeft = '22px'; knobColor = '#fff';
+      title = 'Bloqueado \u2014 clique para Padr\u00e3o';
+      badge = '<span style="font-size:10px;font-weight:700;color:#C70602;white-space:nowrap">Bloqueado</span> ';
+    } else {
+      bg = isDef ? '#D1FAE5' : '#E4E4E4'; knobLeft = '3px'; knobColor = isDef ? '#16A34A' : '#9CA3AF';
+      title = 'Padr\u00e3o ' + (isDef ? '(\u2713)' : '(\u2717)') + ' \u2014 clique para Concedido';
+      badge = '';
+    }
+    const labelColor = isBlocked ? '#B0B0B0' : '#1F1F1F';
+    const labelDeco = isBlocked ? 'line-through' : 'none';
+    return '<button type="button" title="' + title + '" onclick="usuPermToggle(\'' + chave + '\')"' +
+      ' style="flex-shrink:0;width:44px;height:24px;border-radius:12px;border:none;background:' + bg +
+      ';position:relative;cursor:pointer;transition:background .2s;padding:0">' +
+      '<span style="position:absolute;top:3px;left:' + knobLeft +
+      ';width:18px;height:18px;border-radius:50%;background:' + knobColor +
+      ';box-shadow:0 1px 3px rgba(0,0,0,.25);transition:left .2s;display:block"></span>' +
+      '</button>' +
+      '<span class="usu-perm-label" style="flex:1;font-size:12.5px;color:' + labelColor +
+      ';text-decoration:' + labelDeco + ';min-width:0">' + badge + labelHtml + '</span>';
+  }
+
   function usuRenderPermissoes(perfil) {
     const lista = document.getElementById('usu-permissoes-lista');
     if(!lista) return;
     lista.innerHTML = USU_PERMS.map(function(cat) {
       return '<div class="usu-cat-bloco" style="margin-bottom:14px;border:1px solid #E4E4E4;border-radius:10px;overflow:hidden">' +
-        '<div onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display===\'none\'?\'block\':\'none\'"' +
+        '<div onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display===\'none\'?\'grid\':\'none\'"' +
         ' style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#F9F9F9;cursor:pointer;font-size:13px;font-weight:700">' +
-        esc5(cat.cat) + '<span style="font-size:11px;color:#707070">▾</span></div>' +
-        '<div style="padding:8px 14px;display:grid;grid-template-columns:1fr 1fr;gap:6px">' +
+        esc5(cat.cat) + '<span style="font-size:11px;color:#707070">\u25be</span></div>' +
+        '<div style="padding:8px 14px;display:grid;grid-template-columns:1fr 1fr;gap:6px 12px">' +
         cat.itens.map(function(it) {
-          const isGranted = _usuGranted.has(it.k);
-          const isBlocked = _usuBlocked.has(it.k);
-          const isDef = _permDefault(perfil, it.k);
-          const borderColor = isGranted ? '#24508F' : isBlocked ? '#C70602' : '#D6D6D6';
-          const bgColor = isGranted ? '#E6EEF8' : isBlocked ? '#FDECEC' : '#fff';
-          const txtColor = isGranted ? '#24508F' : isBlocked ? '#C70602' : '#545252';
-          const spanColor = isBlocked ? '#707070' : '#1F1F1F';
-          const spanDeco = isBlocked ? 'line-through' : '';
-          return '<div class="usu-perm-row" data-chave="' + it.k + '" style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #F4F4F4">' +
-            '<select class="usu-perm-sel" onchange="usuPermChange(\'' + it.k + '\',this.value)"' +
-            ' style="border:1px solid ' + borderColor + ';border-radius:5px;padding:3px 6px;font-size:11px;font-family:inherit;background:' + bgColor + ';color:' + txtColor + '">' +
-            '<option value="default"' + (!isGranted&&!isBlocked?' selected':'') + '>Padrão ' + (isDef?'(✓)':'(✗)') + '</option>' +
-            '<option value="granted"' + (isGranted?' selected':'') + '>✓ Concedido</option>' +
-            '<option value="blocked"' + (isBlocked?' selected':'') + '>✗ Bloqueado</option>' +
-            '</select>' +
-            '<span style="font-size:12.5px;color:' + spanColor + ';text-decoration:' + spanDeco + '">' + esc5(it.l) + '</span>' +
+          return '<div class="usu-perm-row" data-chave="' + it.k + '" data-label="' + it.l.replace(/"/g,\'&quot;\') + '" data-perfil="' + (perfil||'') + '"' +
+            ' style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #F4F4F4">' +
+            _usuToggleBuild(it.k, perfil, esc5(it.l)) +
             '</div>';
         }).join('') +
         '</div></div>';
     }).join('');
   }
 
+  window.usuPermToggle = function(chave) {
+    _usuToggleState(chave);
+    const row = document.querySelector('.usu-perm-row[data-chave="' + chave + '"]');
+    if (!row) return;
+    const perfil = row.getAttribute('data-perfil') || '';
+    const label = row.getAttribute('data-label') || chave;
+    row.innerHTML = _usuToggleBuild(chave, perfil, esc5(label));
+  };
+
   window.usuPermChange = function(chave, val) {
     _usuGranted.delete(chave); _usuBlocked.delete(chave);
     if(val==='granted') _usuGranted.add(chave);
     if(val==='blocked') _usuBlocked.add(chave);
-    const row = document.querySelector('.usu-perm-row[data-chave="' + chave + '"]');
-    if(row) {
-      const s = row.querySelector('select');
-      if(s) {
-        s.style.borderColor = val==='granted'?'#24508F':val==='blocked'?'#C70602':'#D6D6D6';
-        s.style.background = val==='granted'?'#E6EEF8':val==='blocked'?'#FDECEC':'#fff';
-        s.style.color = val==='granted'?'#24508F':val==='blocked'?'#C70602':'#545252';
-      }
-      const span = row.querySelector('span');
-      if(span) { span.style.color=val==='blocked'?'#707070':'#1F1F1F'; span.style.textDecoration=val==='blocked'?'line-through':''; }
-    }
   };
-
   window.usuPermFiltrar = function() {
     const q = (document.getElementById('usu-perm-busca')&&document.getElementById('usu-perm-busca').value||'').toLowerCase();
     document.querySelectorAll('.usu-perm-row').forEach(function(r) {
