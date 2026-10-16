@@ -6869,7 +6869,7 @@
       if(btnGerar) btnGerar.style.display='none';
       if(btnPub) btnPub.style.display='';
       if(btnNova) btnNova.style.display='none';
-      if(btnEnviar) btnEnviar.disabled=true;
+      if(btnEnviar) btnEnviar.disabled=false;
     } else {
       badge.textContent='Publicado';badge.style.background='#E6F2EA';badge.style.color='#1E6B3A';
       if(vtxt) vtxt.textContent=`v${meta.versao} · ${meta.publicado_em?new Date(meta.publicado_em).toLocaleDateString('pt-BR'):''}`;
@@ -6921,7 +6921,7 @@
 
   window.relCompartilharLink=async function(){
     const meta=_d?.relMeta;
-    if(!meta||meta.status!=='PUBLICADO'){_toast('Publique o relatório antes de compartilhar.');return;}
+    if(!meta){_toast('Gere um rascunho antes de compartilhar.');return;}
     const tok=sessionStorage.getItem('sac-token');
     try{
       // Envia snapshot dos dados atuais junto com o token
