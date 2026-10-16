@@ -903,7 +903,19 @@ async function atualizarPorID(nomeAba, id, dados, camposID = ['ID_MANIFESTACAO',
     if (idxCandidatos.some(idx => String(rows[i][idx] || '').trim() === idNorm)) { rowIndex=i+1; break; }
   }
   if (rowIndex < 0) return null;
+  // Adiciona colunas novas ao cabeçalho se necessário (ex: PERMISSOES_GRANTED ao migrar)
+  const novasColunas = Object.keys(dados).filter(k => !headers.includes(k));
+  if (novasColunas.length) {
+    novasColunas.forEach(k => headers.push(k));
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `${nomeAba}!1:1`,
+      valueInputOption: 'RAW',
+      requestBody: { values: [headers] },
+    });
+  }
   const valores = [...rows[rowIndex-1]];
+  while (valores.length < headers.length) valores.push('');
   headers.forEach((h,i)=>{ if(Object.prototype.hasOwnProperty.call(dados,h)) valores[i]=dados[h]; });
   await updateLinha(nomeAba,rowIndex,valores);
   invalidarCacheAba(nomeAba);
