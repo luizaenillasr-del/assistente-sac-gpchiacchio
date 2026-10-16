@@ -7497,33 +7497,65 @@
   </div>
 
   <!-- FILTROS -->
-  <div style="background:#fff;border-bottom:1px solid #E4E4E4;padding:10px 24px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;flex-shrink:0">
-    <input id="bib-f-q" class="af-input" type="text" placeholder="Protocolo, cliente, CNPJ, motivo, setor…" oninput="afBuscaDigitou()" onkeydown="if(event.key==='Enter')afBuscaAgora()" style="flex:1;min-width:200px;max-width:280px;border-radius:8px;border-width:1.5px">
-    <select id="bib-f-ano" class="af-select" onchange="afFiltroMudou()" style="border-width:1.5px"><option value="">Todos os anos</option></select>
-    <select id="bib-f-mes" class="af-select" onchange="afFiltroMudou()" style="border-width:1.5px">
-      <option value="">Todos os meses</option>
-      <option value="01">Janeiro</option><option value="02">Fevereiro</option><option value="03">Março</option>
-      <option value="04">Abril</option><option value="05">Maio</option><option value="06">Junho</option>
-      <option value="07">Julho</option><option value="08">Agosto</option><option value="09">Setembro</option>
-      <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
-    </select>
-    <select id="bib-f-empresa" class="af-select" onchange="afFiltroMudou()" style="border-width:1.5px"><option value="">Todas as empresas</option></select>
-    <select id="bib-f-setor" class="af-select" onchange="afFiltroMudou()" style="border-width:1.5px"><option value="">Todos os setores</option></select>
-    <select id="bib-f-tipo" class="af-select" onchange="afFiltroMudou()" style="border-width:1.5px">
-      <option value="">Todos os tipos</option>
-      <option value="Reclamação">Reclamação</option><option value="Sugestão">Sugestão</option>
-      <option value="Solicitação">Solicitação</option><option value="Elogio">Elogio</option>
-    </select>
-    <select id="bib-f-origem" class="af-select" onchange="afFiltroMudou()" style="border-width:1.5px">
-      <option value="">Todas as origens</option><option value="SISTEMA">Criada no sistema</option><option value="IMPORTADA">Histórica importada</option>
-    </select>
-    <select id="bib-f-sla" class="af-select" onchange="afFiltroMudou()" style="border-width:1.5px">
-      <option value="">Todos os SLA</option>
-      <option value="VENCIDO">SLA vencido</option><option value="OK">Dentro do prazo</option>
-    </select>
-    <input id="bib-f-abertura-ini" class="af-input" type="date" style="min-width:130px;border-width:1.5px" onchange="afFiltroMudou()">
-    <input id="bib-f-abertura-fim" class="af-input" type="date" style="min-width:130px;border-width:1.5px" onchange="afFiltroMudou()">
-    <button class="af-limpar" onclick="limparFiltrosBib()">× Limpar</button>
+  <div style="background:#fff;border-bottom:1px solid #E4E4E4;padding:10px 24px;flex-shrink:0">
+    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end">
+      <label class="af-lbl" style="flex:1;min-width:200px;max-width:300px">
+        <span>Busca</span>
+        <input id="bib-f-q" class="af-input" type="text" placeholder="Protocolo, cliente, CNPJ, motivo…" oninput="afBuscaDigitou()" onkeydown="if(event.key==='Enter')afBuscaAgora()">
+      </label>
+      <label class="af-lbl">
+        <span>Empresa</span>
+        <select id="bib-f-empresa" class="af-select" onchange="afFiltroMudou()"><option value="">Todas</option></select>
+      </label>
+      <label class="af-lbl">
+        <span>Setor</span>
+        <select id="bib-f-setor" class="af-select" onchange="afFiltroMudou()"><option value="">Todos</option></select>
+      </label>
+      <label class="af-lbl">
+        <span>Tipo</span>
+        <select id="bib-f-tipo" class="af-select" onchange="afFiltroMudou()">
+          <option value="">Todos</option>
+          <option value="Reclamação">Reclamação</option><option value="Sugestão">Sugestão</option>
+          <option value="Solicitação">Solicitação</option><option value="Elogio">Elogio</option>
+        </select>
+      </label>
+      <label class="af-lbl">
+        <span>Ano</span>
+        <select id="bib-f-ano" class="af-select" onchange="afFiltroMudou()"><option value="">Todos</option></select>
+      </label>
+      <label class="af-lbl">
+        <span>Mês</span>
+        <select id="bib-f-mes" class="af-select" onchange="afFiltroMudou()" style="min-width:110px">
+          <option value="">Todos</option>
+          <option value="01">Janeiro</option><option value="02">Fevereiro</option><option value="03">Março</option>
+          <option value="04">Abril</option><option value="05">Maio</option><option value="06">Junho</option>
+          <option value="07">Julho</option><option value="08">Agosto</option><option value="09">Setembro</option>
+          <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
+        </select>
+      </label>
+      <label class="af-lbl">
+        <span>Origem</span>
+        <select id="bib-f-origem" class="af-select" onchange="afFiltroMudou()">
+          <option value="">Todas</option><option value="SISTEMA">Sistema</option><option value="IMPORTADA">Histórica</option>
+        </select>
+      </label>
+      <label class="af-lbl">
+        <span>SLA</span>
+        <select id="bib-f-sla" class="af-select" onchange="afFiltroMudou()">
+          <option value="">Todos</option>
+          <option value="VENCIDO">Vencido</option><option value="OK">No prazo</option>
+        </select>
+      </label>
+      <label class="af-lbl">
+        <span>Abertura de</span>
+        <input id="bib-f-abertura-ini" class="af-input" type="date" style="min-width:130px" onchange="afFiltroMudou()">
+      </label>
+      <label class="af-lbl">
+        <span>até</span>
+        <input id="bib-f-abertura-fim" class="af-input" type="date" style="min-width:130px" onchange="afFiltroMudou()">
+      </label>
+      <button class="af-limpar" onclick="limparFiltrosBib()" style="margin-bottom:0">× Limpar</button>
+    </div>
   </div>
 
   <!-- CONTEÚDO PRINCIPAL (scrollável) -->
@@ -13144,32 +13176,34 @@ window.navigate = function(page, el) {
       document.getElementById('ap-rnca').textContent=pend.totais?.rnc??0;
       document.getElementById('ap-total').textContent=pend.totais?.total??0;
       document.getElementById('ap-sugestoes').textContent=(pend.sugestoes||[]).filter(x=>x.STATUS==='PENDENTE').length;
-      const sac=(pend.sac||[]).map(x=>`<div style="border:1.5px solid #F3CFCF;border-radius:12px;overflow:hidden;margin-bottom:10px;background:#fff">
-        <div style="background:#FFF1F1;border-bottom:1px solid #F3CFCF;padding:8px 14px;display:flex;align-items:center;gap:8px">
-          <span style="font-size:10px;font-weight:700;letter-spacing:.07em;color:#A80502">SUA VEZ · APROVAÇÃO SAC</span>
-          <span style="font-size:11px;font-weight:700;background:#FDE8E8;color:#A80502;border-radius:99px;padding:2px 9px;margin-left:auto">${esc5(x.STATUS||'Aguardando aprovação')}</span>
+      const sac=(pend.sac||[]).map(x=>`<div style="border:1px solid #F3CFCF;border-radius:10px;overflow:hidden;margin-bottom:10px;background:#fff">
+        <div style="display:flex;align-items:center;justify-content:space-between;background:#FFF5F5;border-bottom:1px solid #F3CFCF;padding:8px 16px">
+          <span style="font-size:11px;font-weight:800;letter-spacing:.08em;color:#C70602">SUA VEZ · APROVAÇÃO SAC</span>
+          <span style="font-size:11px;font-weight:700;color:#C70602">${esc5(x.STATUS||'Aguardando')}</span>
         </div>
-        <div style="padding:12px 14px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">
-          <div style="display:flex;flex-direction:column;gap:3px;min-width:0">
-            <div style="font-size:15px;font-weight:700;color:#1F1F1F">${esc5(x.ID_MANIFESTACAO)}</div>
-            <div style="font-size:12px;color:#545252">${esc5(x.EMPRESA_RECLAMANTE||x.CLIENTE||'Cliente')}${x.PRODUTO?' · '+esc5(x.PRODUTO):''}</div>
-            <div style="font-size:11.5px;color:#707070">${esc5(x.SETOR_CONFIRMADO||x.SETOR_SUGERIDO||'SAC')}${x.DATA_ABERTURA?' · '+esc5(x.DATA_ABERTURA):''}</div>
+        <div style="padding:14px 16px;display:flex;align-items:flex-start;gap:12px">
+          <div style="width:3px;flex-shrink:0;background:#C70602;border-radius:3px;align-self:stretch;min-height:60px"></div>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+            <div style="font-size:15px;font-weight:800;color:#1F1F1F">${esc5(x.ID_MANIFESTACAO)}</div>
+            <div style="font-size:12.5px;font-weight:600;color:#545252">${esc5(x.EMPRESA_RECLAMANTE||x.CLIENTE||'Cliente')}${x.PRODUTO?' · '+esc5(x.PRODUTO):''}</div>
+            <div style="font-size:12px;color:#929090">${esc5(x.SETOR_CONFIRMADO||x.SETOR_SUGERIDO||'SAC')}${x.DATA_ABERTURA?' · '+esc5(x.DATA_ABERTURA):''}</div>
           </div>
-          <button class="btn btn-primary" style="white-space:nowrap;flex-shrink:0" onclick="abrirDossieAprovador('${esc5(x.ID_MANIFESTACAO)}')">Analisar →</button>
+          <button class="btn btn-primary" style="white-space:nowrap;flex-shrink:0;align-self:center" onclick="abrirDossieAprovador('${esc5(x.ID_MANIFESTACAO)}')">Analisar →</button>
         </div>
       </div>`).join('');
-      const rncs=(pend.rnc||[]).map(x=>`<div style="border:1.5px solid #C7DDF8;border-radius:12px;overflow:hidden;margin-bottom:10px;background:#fff">
-        <div style="background:#EFF6FF;border-bottom:1px solid #C7DDF8;padding:8px 14px;display:flex;align-items:center;gap:8px">
-          <span style="font-size:10px;font-weight:700;letter-spacing:.07em;color:#1E40AF">SUA VEZ · RNC PENDENTE</span>
-          <span style="font-size:11px;font-weight:700;background:#DBEAFE;color:#1E40AF;border-radius:99px;padding:2px 9px;margin-left:auto">${esc5(x.STATUS||'Pendente')}</span>
+      const rncs=(pend.rnc||[]).map(x=>`<div style="border:1px solid #E9D5FF;border-radius:10px;overflow:hidden;margin-bottom:10px;background:#fff">
+        <div style="display:flex;align-items:center;justify-content:space-between;background:#FAF5FF;border-bottom:1px solid #E9D5FF;padding:8px 16px">
+          <span style="font-size:11px;font-weight:800;letter-spacing:.08em;color:#6B24A8">SUA VEZ · RNC PENDENTE</span>
+          <span style="font-size:11px;font-weight:700;color:#6B24A8">${esc5(x.STATUS||'Pendente')}</span>
         </div>
-        <div style="padding:12px 14px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">
-          <div style="display:flex;flex-direction:column;gap:3px;min-width:0">
-            <div style="font-size:15px;font-weight:700;color:#1F1F1F">${esc5(x.ID_RNC)}</div>
-            <div style="font-size:12px;color:#545252">SAC ${esc5(x.PROTOCOLO_SAC||x.ID_MANIFESTACAO||'—')} · ${esc5(x.EMPRESA||'')}</div>
-            <div style="font-size:11.5px;color:#707070">${esc5(x.COMPETENCIA||x.SETOR||'')}</div>
+        <div style="padding:14px 16px;display:flex;align-items:flex-start;gap:12px">
+          <div style="width:3px;flex-shrink:0;background:#6B24A8;border-radius:3px;align-self:stretch;min-height:60px"></div>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+            <div style="font-size:15px;font-weight:800;color:#1F1F1F">${esc5(x.ID_RNC)}</div>
+            <div style="font-size:12.5px;font-weight:600;color:#545252">SAC ${esc5(x.PROTOCOLO_SAC||x.ID_MANIFESTACAO||'—')} · ${esc5(x.EMPRESA||'')}</div>
+            <div style="font-size:12px;color:#929090">${esc5(x.COMPETENCIA||x.SETOR||'')}</div>
           </div>
-          <button class="btn btn-primary" style="white-space:nowrap;flex-shrink:0" onclick="abrirRncAprovador('${esc5(x.ID_RNC)}')">Analisar RNC →</button>
+          <button class="btn btn-primary" style="white-space:nowrap;flex-shrink:0;align-self:center" onclick="abrirRncAprovador('${esc5(x.ID_RNC)}')">Analisar RNC →</button>
         </div>
       </div>`).join('');
       document.getElementById('ap-sac-queue').innerHTML=sac||'<div style="padding:14px;background:var(--gray-50);border-radius:8px;color:var(--gray-400);font-size:12px">Nenhuma manifestação SAC aguardando sua análise.</div>';
@@ -13189,23 +13223,24 @@ window.navigate = function(page, el) {
     if(!pend.length){el.innerHTML='<div style="padding:14px;color:var(--gray-400);font-size:12px">Nenhum item na fila de aprovação.</div>';return;}
     el.innerHTML=pend.map(x=>{
       const isSac=x.TIPO_ENTIDADE==='SAC';
-      const bord=isSac?'#F3CFCF':'#A7D3B7';
-      const bg=isSac?'#FFF1F1':'#F0FDF4';
-      const labelClr=isSac?'#A80502':'#065F46';
-      const badgeBg=isSac?'#FDE8E8':'#DCFCE7';
-      return `<div style="border:1.5px solid ${bord};border-radius:12px;overflow:hidden;margin-bottom:10px;background:#fff">
-        <div style="background:${bg};border-bottom:1px solid ${bord};padding:8px 14px;display:flex;align-items:center;gap:8px">
-          <span style="font-size:10px;font-weight:700;letter-spacing:.07em;color:${labelClr}">SUA VEZ · FILA DE APROVAÇÃO</span>
-          <span style="font-size:11px;font-weight:700;background:${badgeBg};color:${labelClr};border-radius:99px;padding:2px 9px;margin-left:auto">${esc5(x.TIPO_ENTIDADE||'PENDENTE')}</span>
+      const accent=isSac?'#C70602':'#6B24A8';
+      const bord=isSac?'#F3CFCF':'#E9D5FF';
+      const bg=isSac?'#FFF5F5':'#FAF5FF';
+      const lbl=isSac?'APROVAÇÃO SAC':'RNC';
+      return `<div style="border:1px solid ${bord};border-radius:10px;overflow:hidden;margin-bottom:10px;background:#fff">
+        <div style="display:flex;align-items:center;justify-content:space-between;background:${bg};border-bottom:1px solid ${bord};padding:8px 16px">
+          <span style="font-size:11px;font-weight:800;letter-spacing:.08em;color:${accent}">SUA VEZ · FILA DE APROVAÇÃO</span>
+          <span style="font-size:11px;font-weight:700;color:${accent}">${lbl}</span>
         </div>
-        <div style="padding:12px 14px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">
-          <div style="display:flex;flex-direction:column;gap:3px;min-width:0">
-            <div style="font-size:15px;font-weight:700;color:#1F1F1F">${esc5(x.ID_ENTIDADE)}<span style="font-size:12px;font-weight:400;color:#545252;margin-left:8px">${esc5(x.COMPETENCIA||'')}</span></div>
-            <div style="font-size:12px;color:#545252">${esc5(x.EMPRESA||'')}${x.SETOR?' · '+esc5(x.SETOR):''}</div>
-            <div style="font-size:11.5px;color:#707070">Enviado por ${esc5(x.CRIADO_POR||'—')} · ${fmt5(x.DATA_ENVIO)}</div>
-            ${x.DESCRICAO?`<div style="font-size:12px;color:#545252;margin-top:4px;font-style:italic">${esc5(x.DESCRICAO)}</div>`:''}
+        <div style="padding:14px 16px;display:flex;align-items:flex-start;gap:12px">
+          <div style="width:3px;flex-shrink:0;background:${accent};border-radius:3px;align-self:stretch;min-height:60px"></div>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+            <div style="font-size:15px;font-weight:800;color:#1F1F1F">${esc5(x.ID_ENTIDADE)}<span style="font-size:12px;font-weight:400;color:#545252;margin-left:8px">${esc5(x.COMPETENCIA||'')}</span></div>
+            <div style="font-size:12.5px;font-weight:600;color:#545252">${esc5(x.EMPRESA||'')}${x.SETOR?' · '+esc5(x.SETOR):''}</div>
+            <div style="font-size:12px;color:#929090">Enviado por ${esc5(x.CRIADO_POR||'—')} · ${fmt5(x.DATA_ENVIO)}</div>
+            ${x.DESCRICAO?`<div style="font-size:12.5px;color:#545252;margin-top:2px;font-style:italic">${esc5(x.DESCRICAO)}</div>`:''}
           </div>
-          <button class="btn btn-primary" style="white-space:nowrap;flex-shrink:0" onclick="abrirDecisaoAprovacao('${esc5(x.ID_FILA)}','${esc5(x.ID_ENTIDADE)}','${esc5(x.TIPO_ENTIDADE)}')">Decidir →</button>
+          <button class="btn btn-primary" style="white-space:nowrap;flex-shrink:0;align-self:center" onclick="abrirDecisaoAprovacao('${esc5(x.ID_FILA)}','${esc5(x.ID_ENTIDADE)}','${esc5(x.TIPO_ENTIDADE)}')">Decidir →</button>
         </div>
       </div>`;
     }).join('');
