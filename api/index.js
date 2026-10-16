@@ -1391,7 +1391,11 @@ app.post('/api/auth/completar-primeiro-acesso', async (req, res) => {
   if (!payload) return res.status(401).json({ sucesso: false, erro: 'Sessão inválida.' });
 
   try {
-    const { nome, cargo, setor, telefone, senha, confirmacao } = req.body || {};
+    const { nome, cargo, setor, telefone, senha, confirmacao,
+      apelido, ramal, bio, sla_horas, substituto,
+      representantes, notif_canais, notif_freq, notif_prio,
+      hor_inicio, hor_fim, prazo_resp, cobertura,
+      tipos_manifestacao, escopo_obs } = req.body || {};
     if (!senha || senha.length < 6) return res.status(400).json({ sucesso: false, erro: 'A senha deve ter no mínimo 6 caracteres.' });
     if (senha !== confirmacao) return res.status(400).json({ sucesso: false, erro: 'As senhas não coincidem.' });
     if (!nome?.trim()) return res.status(400).json({ sucesso: false, erro: 'Nome obrigatório.' });
@@ -1404,9 +1408,24 @@ app.post('/api/auth/completar-primeiro-acesso', async (req, res) => {
     const agora = new Date().toISOString();
     await atualizarPorID('USUARIOS', usuario.ID_USUARIO || usuario.USUARIO, {
       NOME: nome.trim(),
+      APELIDO: apelido?.trim() || '',
       CARGO: cargo?.trim() || usuario.CARGO || '',
       SETOR: setor?.trim() || usuario.SETOR || '',
       TELEFONE: telefone?.trim() || '',
+      RAMAL: ramal?.trim() || '',
+      BIO: bio?.trim() || '',
+      SLA_HORAS: sla_horas || 48,
+      SUBSTITUTO: substituto?.trim() || '',
+      REPRESENTANTES: representantes ? JSON.stringify(representantes) : '',
+      NOTIF_CANAIS: notif_canais ? JSON.stringify(notif_canais) : '',
+      NOTIF_FREQ: notif_freq || 'imediato',
+      NOTIF_PRIO: notif_prio || 'todas',
+      HOR_INICIO: hor_inicio || '08:00',
+      HOR_FIM: hor_fim || '18:00',
+      PRAZO_RESP: prazo_resp || 24,
+      COBERTURA: cobertura?.trim() || '',
+      TIPOS_MANIFESTACAO: tipos_manifestacao ? JSON.stringify(tipos_manifestacao) : '',
+      ESCOPO_OBS: escopo_obs?.trim() || '',
       SENHA_HASH: senhaHash,
       STATUS: 'ATIVO',
       DATA_PRIMEIRO_ACESSO: agora,
