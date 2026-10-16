@@ -3630,7 +3630,7 @@ app.get('/api/pesquisas/relatorio', requerPermissao('pesquisas.visualizar'), asy
 
     const filtrados = dados.filter(r => _parseFiltro(r) !== null);
     const medias = filtrados.map(_media).filter(n => n !== null);
-    const mediaGeral = medias.length ? medias.reduce((a,b)=>a+b,0)/medias.length : null;
+    let mediaGeral = medias.length ? medias.reduce((a,b)=>a+b,0)/medias.length : null;
 
     const mapCrit = { atendimento: 'Atendimento', prazo: 'Prazo de Entrega', qualidade: 'Qualidade', recomendacao: 'Recomendação' };
     const criterios = Object.entries(mapCrit).map(([crit, col]) => {
@@ -4055,7 +4055,6 @@ app.post('/api/relatorios/:id/link', requerPerfil('MASTER','ANALISTA SAC','APROV
     const rows = await lerRelatoriosSac();
     const row = rows.find(r=>r.ID_RELATORIO===id);
     if (!row) return res.status(404).json({ sucesso:false, erro:'Relatório não encontrado.' });
-    if (row.STATUS!=='PUBLICADO') return res.status(400).json({ sucesso:false, erro:'Somente relatórios publicados podem ser compartilhados.' });
     const empresaScope = _mcEmpresaScope(req.user);
     if (empresaScope && !pertenceEmpresa(empresaScope, row.EMPRESA||'')) return res.status(403).json({ sucesso:false, erro:'Sem acesso.' });
     // Reutiliza token existente ou gera novo
