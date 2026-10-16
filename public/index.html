@@ -3247,6 +3247,50 @@
       window.nmEtapaAnterior = function(){
         if(window.nmEtapa > 1) nmIrParaEtapa(window.nmEtapa - 1);
       };
+      var _nmUsuariosCache = null;
+      async function nmCarregarUsuarios(){
+        if(_nmUsuariosCache) return _nmUsuariosCache;
+        try {
+          const r = await fetch((window.SAC_API||'')+'/api/admin/usuarios', {headers:{'Authorization':'Bearer '+localStorage.getItem('sac_token')}});
+          const d = await r.json();
+          _nmUsuariosCache = d.sucesso ? (d.itens||d.usuarios||[]) : [];
+        } catch(e){ _nmUsuariosCache = []; }
+        return _nmUsuariosCache;
+      }
+      window.nmAtualizarPessoasSetor = async function(){
+        const checks = document.querySelectorAll('.dec-setor-check:checked');
+        const setoresSel = Array.from(checks).map(c=>c.value.toLowerCase());
+        const wrap = document.getElementById('dec-setor-pessoas');
+        const lista = document.getElementById('dec-setor-pessoas-lista');
+        if(!wrap||!lista) return;
+        if(!setoresSel.length){ wrap.style.display='none'; return; }
+        lista.innerHTML = '<span style="font-size:12px;color:#9CA3AF">Buscando...</span>';
+        wrap.style.display = 'block';
+        const todos = await nmCarregarUsuarios();
+        // Empresa da manifestação atual
+        const empAtual = (document.getElementById('nm-empresa-reclamada')?.value||'').toUpperCase();
+        const pessoas = todos.filter(u=>{
+          if(u.status==='INATIVO'||u.status==='BLOQUEADO'||u.status==='EXCLUIDO') return false;
+          const setor = (u.setor||'').toLowerCase();
+          const emp = (u.empresa||'').toUpperCase();
+          const empOk = !empAtual || emp===empAtual || emp==='MASTER';
+          return empOk && setoresSel.some(s=> setor.includes(s) || s.includes(setor.split('/')[0].trim()));
+        });
+        if(!pessoas.length){
+          lista.innerHTML = '<span style="font-size:12px;color:#9CA3AF;font-style:italic">Nenhum usuário cadastrado neste(s) setor(es).</span>';
+          return;
+        }
+        lista.innerHTML = pessoas.map(u=>`
+          <div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:white;border-radius:6px;border:1px solid #EDE9FE">
+            <div style="width:28px;height:28px;border-radius:50%;background:#7C3AED;color:white;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">${(u.nome||u.usuario||'?')[0].toUpperCase()}</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:600;color:#1F1F1F;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.nome||u.usuario}</div>
+              <div style="font-size:11px;color:#7C3AED">${u.setor||''} · ${u.empresa||''}</div>
+            </div>
+            <div style="font-size:10px;color:#6B7280;background:#F3F4F6;padding:2px 6px;border-radius:10px">${u.perfil||''}</div>
+          </div>`).join('');
+      };
+
       window.nmCalcPrejuizo = function(){
         var qtd = parseFloat(document.getElementById('nm-qtd')?.value) || 0;
         var qtdTotal = parseFloat(document.getElementById('nm-qtd-total')?.value) || 0;
@@ -15734,7 +15778,11 @@ window.selecionarDecisao = function(tipo){
         <div style="margin-bottom:10px">
           <label class="form-label">Setor(es) responsável(is) * <span style="font-weight:400;color:var(--gray-400);font-size:11px">Pode selecionar mais de um</span></label>
           <div id="dec-setor-revisao-list" style="display:flex;flex-wrap:wrap;gap:8px;padding:10px;border:1px solid var(--gray-200);border-radius:8px;background:var(--gray-50)">
-            ${['SAC','Qualidade','Logística','Comercial','Financeiro','Produção','Faturamento / Expedição'].map(s=>`<label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;padding:4px 8px;background:white;border:1px solid var(--gray-200);border-radius:6px"><input type="checkbox" class="dec-setor-check" value="${s}"> ${s}</label>`).join('')}
+            ${['SAC','Qualidade','Logística','Comercial','Financeiro','Produção','Faturamento / Expedição'].map(s=>`<label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;padding:4px 8px;background:white;border:1px solid var(--gray-200);border-radius:6px"><input type="checkbox" class="dec-setor-check" value="${s}" onchange="nmAtualizarPessoasSetor()"> ${s}</label>`).join('')}
+          </div>
+          <div id="dec-setor-pessoas" style="display:none;margin-top:10px;padding:10px;border:1px solid #DDD6FE;border-radius:8px;background:#F5F3FF">
+            <div style="font-size:11px;font-weight:700;color:#7C3AED;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Responsáveis nos setores selecionados</div>
+            <div id="dec-setor-pessoas-lista" style="display:flex;flex-direction:column;gap:6px"></div>
           </div>
           <div id="erro-setor-revisao" class="validacao-erro">⚠ Selecione ao menos um setor</div>
         </div>
