@@ -369,7 +369,7 @@ async function carregarUsuarios(){
     const e = (r.EMAIL||'').toLowerCase();
     if (e) sheetsByEmail[e] = r;
   });
-  // Sobrepõe status PRIMEIRO_ACESSO e USUARIO (login sem @) do Sheets nos usuários PG
+  // Sobrepõe dados do Sheets nos usuários PG (login, status, permissões customizadas)
   pgMapped = pgMapped.map(u => {
     const e = (u.EMAIL||'').toLowerCase();
     const sh = sheetsByEmail[e];
@@ -378,6 +378,12 @@ async function carregarUsuarios(){
     // Preserva login (username) do Sheets caso PG só tenha o email como USUARIO
     if (sh.USUARIO && sh.USUARIO !== e) overrides.USUARIO = sh.USUARIO;
     if ((sh.STATUS||'').toUpperCase() === 'PRIMEIRO_ACESSO') overrides.STATUS = 'PRIMEIRO_ACESSO';
+    // Permissões customizadas e competências vêm do Sheets (definidas na aprovação)
+    if (sh.PERMISSOES_CUSTOM && !u.PERMISSOES_CUSTOM) overrides.PERMISSOES_CUSTOM = sh.PERMISSOES_CUSTOM;
+    if (sh.PERMISSOES_GRANTED && !u.PERMISSOES_GRANTED) overrides.PERMISSOES_GRANTED = sh.PERMISSOES_GRANTED;
+    if (sh.COMPETENCIAS && !u.COMPETENCIAS) overrides.COMPETENCIAS = sh.COMPETENCIAS;
+    // Senha do Sheets como fallback se PG não tiver
+    if (sh.SENHA_HASH && !u.SENHA_HASH) overrides.SENHA_HASH = sh.SENHA_HASH;
     return Object.keys(overrides).length ? { ...u, ...overrides } : u;
   });
   // Sheets complementa o PG: usuários que existem só no Sheets (ex: aprovados recentemente) aparecem normalmente
@@ -7747,6 +7753,28 @@ app.post('/api/admin/solicitacoes/:id/aprovar', requerPerfil('MASTER'), async (r
           }).catch(e => console.warn('[aprovacao] PG create usuario falhou:', e.message));
         }
       } catch(e) { console.warn('[aprovacao] PG lookup falhou:', e.message); }
+    }
+
+    // Grava permissões de módulo na aba PERMISSOES_USUARIO (fonte lida por carregarPermissoesUsuario)
+    if (Object.keys(modulosConfig).length || competenciasStr) {
+      const idPerm = await gerarProximoID('PERMISSOES_USUARIO','PRM','ID_PERMISSAO').catch(()=>null);
+      await appendObjeto('PERMISSOES_USUARIO', {
+        ID_PERMISSAO: idPerm || `PRM-${Date.now()}`,
+        USUARIO_ID: idUsuario,
+        USUARIO_EMAIL: emailNorm,
+        EMPRESA: empCod,
+        PERFIL: perfilNorm,
+        MODULO: Object.keys(modulosConfig).length ? JSON.stringify(modulosConfig) : '',
+        NIVEL: '',
+        COMPETENCIAS: competenciasStr,
+        STATUS: 'ATIVO',
+        CRIADO_EM: new Date().toISOString(),
+        CRIADO_POR: req.user.usuario||'MASTER',
+        ATUALIZADO_EM: new Date().toISOString(),
+        ATUALIZADO_POR: req.user.usuario||'MASTER',
+      }).catch(e => console.warn('[aprovacao] gravar PERMISSOES_USUARIO falhou:', e.message));
+      invalidarCachePermissoes(emailNorm);
+      invalidarCachePermissoes(idUsuario);
     }
 
     // Marca solicitação como APROVADA
