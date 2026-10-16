@@ -7685,6 +7685,28 @@ app.post('/api/admin/solicitacoes/:id/aprovar', requerPerfil('MASTER'), async (r
       COMPETENCIAS: competenciasStr,
     });
 
+    // Cria usuário no PostgreSQL (fonte primária de leitura)
+    if (usuarioRepo) {
+      try {
+        const prisma = require('../database/connection');
+        const [pgPerfil, pgEmpresa] = await Promise.all([
+          prisma.perfil.findFirst({ where: { codigo: perfilNorm } }),
+          prisma.empresa.findFirst({ where: { nome: { contains: empCod, mode: 'insensitive' } } }),
+        ]);
+        if (pgPerfil && pgEmpresa) {
+          await usuarioRepo.create({
+            idOriginal: idUsuario,
+            nome: nomeSol,
+            email: emailNorm,
+            senhaHash,
+            ativo: true,
+            perfilId: pgPerfil.id,
+            empresaId: pgEmpresa.id,
+          }).catch(e => console.warn('[aprovacao] PG create usuario falhou:', e.message));
+        }
+      } catch(e) { console.warn('[aprovacao] PG lookup falhou:', e.message); }
+    }
+
     // Marca solicitação como APROVADA
     if (solRowFromPg && solicitacaoRepo) {
       await solicitacaoRepo.update(req.params.id, { status: 'APROVADA', dataDecisao: new Date(), decididoPor: req.user.usuario||'MASTER' }).catch(()=>{});
