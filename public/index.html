@@ -515,6 +515,61 @@
   .timeline-label { font-size:13px;font-weight:700;color:var(--gray-900); }
   .timeline-meta { font-size:11px;color:var(--gray-400);margin-top:2px; }
 
+  /* ── Modal Encaminhamento Analista SAC ── */
+  .enc-opt-card { border:1.5px solid #E2E2E6;border-radius:8px;cursor:pointer;transition:border-color .15s,background .15s;overflow:hidden;margin-bottom:8px; }
+  .enc-opt-card:last-child { margin-bottom:0; }
+  .enc-opt-card:hover { border-color:#D0D0D4;background:#FAFAFA; }
+  .enc-opt-card.selected { border-color:#C70602;background:#FFF0F0; }
+  .enc-opt-card.selected .enc-opt-radio { border-color:#C70602; }
+  .enc-opt-card.selected .enc-opt-radio::after { opacity:1; }
+  .enc-opt-top { display:flex;align-items:center;gap:10px;padding:12px 14px; }
+  .enc-opt-radio { width:17px;height:17px;border-radius:50%;border:2px solid #D0D0D4;flex-shrink:0;position:relative;transition:border-color .15s; }
+  .enc-opt-radio::after { content:'';position:absolute;inset:3px;background:#C70602;border-radius:50%;opacity:0;transition:opacity .15s; }
+  .enc-opt-icon { width:32px;height:32px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0; }
+  .enc-opt-icon.ai-theme  { background:#EFF5FF;color:#24508F; }
+  .enc-opt-icon.set-theme { background:#FFF8ED;color:#7A4C00; }
+  .enc-opt-icon.sac-theme { background:#EDF7F2;color:#1B7A3E; }
+  .enc-opt-icon.dev-theme { background:#F5F5F7;color:#545252; }
+  .enc-opt-icon.rej-theme { background:#FDECED;color:#C70602; }
+  .enc-opt-info { flex:1;min-width:0; }
+  .enc-opt-name { font-weight:600;font-size:13px;color:#1A1A1A; }
+  .enc-opt-desc { font-size:11.5px;color:#707070;margin-top:1px; }
+  .enc-ctx-panel { border-top:1px dashed #D0D0D4;padding:14px;display:none;flex-direction:column;gap:10px; }
+  .enc-opt-card.selected .enc-ctx-panel { display:flex; }
+  .enc-field { display:flex;flex-direction:column;gap:4px; }
+  .enc-field label { font-size:11.5px;font-weight:600;color:#545252; }
+  .enc-field label .req { color:#C70602; }
+  .enc-field input, .enc-field select, .enc-field textarea { padding:8px 10px;border:1.5px solid #E2E2E6;border-radius:7px;font-size:13px;background:#fff;color:#1A1A1A;width:100%;font-family:inherit;transition:border-color .15s; }
+  .enc-field input:focus, .enc-field select:focus, .enc-field textarea:focus { outline:none;border-color:#24508F;box-shadow:0 0 0 3px rgba(36,80,143,.1); }
+  .enc-field textarea { resize:vertical;min-height:68px;line-height:1.5; }
+  .enc-field-row { display:grid;gap:10px; }
+  .enc-field-row.cols2 { grid-template-columns:1fr 1fr; }
+  .enc-prefilled { display:flex;align-items:center;gap:10px;padding:10px 12px;background:#EFF5FF;border:1.5px solid #D6E6FF;border-radius:7px; }
+  .enc-avatar { width:30px;height:30px;border-radius:50%;background:#24508F;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0; }
+  .enc-prefilled-name { font-weight:600;font-size:13px;color:#1A1A1A; }
+  .enc-prefilled-role { font-size:11px;color:#8A8A8E; }
+  .enc-sla-row { display:flex;align-items:center;gap:8px; }
+  .enc-sla-row input { flex:0 0 80px; }
+  .enc-sla-row select { flex:1; }
+  .enc-warn-box { display:flex;gap:9px;align-items:flex-start;padding:10px 12px;background:#FDECED;border-radius:7px;border-left:3px solid #C70602; }
+  .enc-warn-box p { font-size:12px;color:#1A1A1A;line-height:1.5; }
+  .enc-ai-banner { background:#EFF5FF;border:1px solid #D6E6FF;border-radius:8px;padding:13px 15px;display:flex;gap:11px;align-items:flex-start;margin-bottom:14px; }
+  .enc-ai-icon { width:30px;height:30px;border-radius:7px;background:#24508F;color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0; }
+  .enc-ai-label { font-size:10.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#24508F;margin-bottom:3px; }
+  .enc-ai-text { font-size:13px;color:#1A1A1A;line-height:1.5; }
+  .enc-ai-conf { display:flex;align-items:center;gap:6px;margin-top:8px; }
+  .enc-ai-conf-bar { flex:1;height:5px;border-radius:3px;background:#D6E6FF;overflow:hidden; }
+  .enc-ai-conf-fill { height:100%;border-radius:3px;background:#24508F; }
+  .enc-ai-conf-pct { font-size:11px;font-weight:700;color:#24508F; }
+  .enc-ai-link { display:inline-flex;align-items:center;gap:4px;margin-top:7px;font-size:12px;font-weight:600;color:#24508F;cursor:pointer;background:none;border:none;padding:0;font-family:inherit; }
+  .enc-ai-link:hover { text-decoration:underline; }
+  .enc-footer { border-top:2px solid #EFEFEF;padding-top:14px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:4px; }
+  .enc-footer-msg { font-size:12px;color:#8A8A8E;flex:1;min-width:0; }
+  .enc-btn-enc { padding:9px 18px;border-radius:7px;font-size:13px;font-weight:700;background:#C70602;color:#fff;border:none;cursor:pointer;font-family:inherit;transition:background .15s,opacity .15s; }
+  .enc-btn-enc:hover:not(:disabled) { background:#A50501; }
+  .enc-btn-enc:disabled { opacity:.38;cursor:not-allowed; }
+  @media (max-width:560px) { .enc-field-row.cols2 { grid-template-columns:1fr; } }
+
 
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: var(--gray-200); border-radius: 3px; }
@@ -740,6 +795,190 @@
               <div id="mdec-motivo-erro" style="display:none;font-size:11px;color:#C70602;margin-top:3px">Campo obrigatório.</div>
             </div>
             <div id="mdec-msg" style="display:none;margin-top:8px;font-size:12px;border-radius:6px;padding:8px 12px"></div>
+          </div>
+
+          <!-- Seção Encaminhamento — ANALISTA SAC -->
+          <div id="modal-enc-analista" style="display:none">
+            <!-- Banner IA -->
+            <div class="enc-ai-banner" id="enc-ai-banner">
+              <div class="enc-ai-icon">✦</div>
+              <div style="flex:1;min-width:0">
+                <div class="enc-ai-label">Recomendação da IA</div>
+                <div class="enc-ai-text" id="enc-ai-texto">Analisando manifestação...</div>
+                <div class="enc-ai-conf">
+                  <span style="font-size:11px;color:#8A8A8E">Confiança</span>
+                  <div class="enc-ai-conf-bar"><div class="enc-ai-conf-fill" id="enc-ai-conf-fill" style="width:0%"></div></div>
+                  <span class="enc-ai-conf-pct" id="enc-ai-conf-pct">—</span>
+                </div>
+                <button class="enc-ai-link" onclick="switchModalTab('analise',document.querySelector('#modal-tabs .tab-btn:nth-child(2)'))">Ver análise completa ↗</button>
+              </div>
+            </div>
+
+            <!-- Opções de encaminhamento -->
+            <div style="font-size:10px;font-weight:700;letter-spacing:.06em;color:#707070;margin-bottom:8px">SELECIONE O ENCAMINHAMENTO</div>
+
+            <!-- 1. Aceitar sugestão IA -->
+            <div class="enc-opt-card opt-ai" data-enc-opt="ai" onclick="_encSelecionarOpt(this)">
+              <div class="enc-opt-top">
+                <div class="enc-opt-radio"></div>
+                <div class="enc-opt-icon ai-theme">✦</div>
+                <div class="enc-opt-info">
+                  <div class="enc-opt-name">Aceitar sugestão da IA → Aprovador</div>
+                  <div class="enc-opt-desc">Encaminhar ao aprovador designado pelo assistente</div>
+                </div>
+                <span style="font-size:11px;font-weight:600;padding:2px 7px;border-radius:10px;background:#EFF5FF;color:#24508F;flex-shrink:0">Recomendado</span>
+              </div>
+              <div class="enc-ctx-panel">
+                <div class="enc-field">
+                  <label>Aprovador designado</label>
+                  <div class="enc-prefilled" id="enc-prefilled-aprov">
+                    <div class="enc-avatar" id="enc-aprov-avatar">?</div>
+                    <div>
+                      <div class="enc-prefilled-name" id="enc-aprov-nome">—</div>
+                      <div class="enc-prefilled-role" id="enc-aprov-cargo">Aprovador</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="enc-field">
+                  <label>Observação ao aprovador</label>
+                  <textarea id="enc-obs-ai" placeholder="Opcional — contexto adicional para o aprovador..."></textarea>
+                </div>
+              </div>
+            </div>
+
+            <!-- 2. Encaminhar para setor -->
+            <div class="enc-opt-card opt-set" data-enc-opt="setor" onclick="_encSelecionarOpt(this)">
+              <div class="enc-opt-top">
+                <div class="enc-opt-radio"></div>
+                <div class="enc-opt-icon set-theme">📤</div>
+                <div class="enc-opt-info">
+                  <div class="enc-opt-name">Encaminhar para setor</div>
+                  <div class="enc-opt-desc">Direcionar a um setor interno com responsável e prazo</div>
+                </div>
+              </div>
+              <div class="enc-ctx-panel">
+                <div class="enc-field-row cols2">
+                  <div class="enc-field">
+                    <label>Setor<span class="req">*</span></label>
+                    <select id="enc-setor-select" onchange="_encValidar()">
+                      <option value="">Selecionar setor…</option>
+                      <option>Logística</option>
+                      <option>Comercial</option>
+                      <option>Qualidade</option>
+                      <option>Financeiro</option>
+                      <option>Produção</option>
+                      <option>TI</option>
+                      <option>RH</option>
+                    </select>
+                  </div>
+                  <div class="enc-field">
+                    <label>Responsável</label>
+                    <input type="text" id="enc-resp-setor" placeholder="Nome do responsável" oninput="_encValidar()">
+                  </div>
+                </div>
+                <div class="enc-field">
+                  <label>Prazo de resolução (SLA)<span class="req">*</span></label>
+                  <div class="enc-sla-row">
+                    <input type="number" id="enc-sla-val" min="1" max="999" placeholder="48" oninput="_encValidar()">
+                    <select id="enc-sla-unit">
+                      <option value="horas">horas úteis</option>
+                      <option value="dias" selected>dias úteis</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="enc-field">
+                  <label>Instrução ao setor</label>
+                  <textarea id="enc-obs-setor" placeholder="Descreva o que espera do setor…"></textarea>
+                </div>
+              </div>
+            </div>
+
+            <!-- 3. Tratar no SAC -->
+            <div class="enc-opt-card opt-sac" data-enc-opt="sac" onclick="_encSelecionarOpt(this)">
+              <div class="enc-opt-top">
+                <div class="enc-opt-radio"></div>
+                <div class="enc-opt-icon sac-theme">🎧</div>
+                <div class="enc-opt-info">
+                  <div class="enc-opt-name">Tratar no SAC</div>
+                  <div class="enc-opt-desc">Assumir o atendimento internamente, sem encaminhar</div>
+                </div>
+              </div>
+              <div class="enc-ctx-panel">
+                <div class="enc-field">
+                  <label>Observação interna</label>
+                  <textarea id="enc-obs-sac" placeholder="Notas de atendimento (não visível ao cliente)…"></textarea>
+                </div>
+              </div>
+            </div>
+
+            <!-- 4. Devolver ao cliente -->
+            <div class="enc-opt-card opt-dev" data-enc-opt="dev" onclick="_encSelecionarOpt(this)">
+              <div class="enc-opt-top">
+                <div class="enc-opt-radio"></div>
+                <div class="enc-opt-icon dev-theme">↩</div>
+                <div class="enc-opt-info">
+                  <div class="enc-opt-name">Devolver ao cliente</div>
+                  <div class="enc-opt-desc">Solicitar informações ou documentação adicional</div>
+                </div>
+              </div>
+              <div class="enc-ctx-panel">
+                <div class="enc-field">
+                  <label>Motivo da devolução<span class="req">*</span></label>
+                  <textarea id="enc-motivo-dev" oninput="_encValidar()" rows="3" placeholder="Explique o que o cliente precisa fornecer…"></textarea>
+                </div>
+                <div class="enc-field-row cols2">
+                  <div class="enc-field">
+                    <label>Canal de retorno</label>
+                    <select id="enc-canal-dev">
+                      <option>E-mail</option>
+                      <option>Telefone</option>
+                      <option>WhatsApp</option>
+                    </select>
+                  </div>
+                  <div class="enc-field">
+                    <label>Prazo para resposta</label>
+                    <select id="enc-prazo-dev">
+                      <option>3 dias úteis</option>
+                      <option selected>5 dias úteis</option>
+                      <option>10 dias úteis</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 5. Rejeitar -->
+            <div class="enc-opt-card opt-rej" data-enc-opt="rej" onclick="_encSelecionarOpt(this)">
+              <div class="enc-opt-top">
+                <div class="enc-opt-radio"></div>
+                <div class="enc-opt-icon rej-theme">✕</div>
+                <div class="enc-opt-info">
+                  <div class="enc-opt-name">Rejeitar manifestação</div>
+                  <div class="enc-opt-desc">Encerrar sem encaminhamento, com justificativa registrada</div>
+                </div>
+                <span style="font-size:11px;font-weight:600;padding:2px 7px;border-radius:10px;background:#FDECED;color:#C70602;flex-shrink:0">Irreversível</span>
+              </div>
+              <div class="enc-ctx-panel">
+                <div class="enc-warn-box">
+                  <span style="font-size:15px;flex-shrink:0">⚠</span>
+                  <p>A rejeição encerra a manifestação definitivamente. O cliente será notificado e a ação ficará registrada em auditoria. Esta ação não pode ser desfeita.</p>
+                </div>
+                <div class="enc-field">
+                  <label>Justificativa obrigatória<span class="req">*</span></label>
+                  <textarea id="enc-motivo-rej" oninput="_encValidar()" rows="3" placeholder="Descreva detalhadamente o motivo da rejeição…"></textarea>
+                </div>
+              </div>
+            </div>
+
+            <!-- Footer de ação -->
+            <div class="enc-footer">
+              <span class="enc-footer-msg" id="enc-footer-msg">Selecione uma opção de encaminhamento para continuar.</span>
+              <button class="enc-btn-enc" id="enc-btn-enc" disabled onclick="_encSubmeter()">
+                <span id="enc-btn-label">Encaminhar</span>
+              </button>
+            </div>
+
+            <div id="enc-msg" style="display:none;margin-top:8px;font-size:12px;border-radius:6px;padding:8px 12px"></div>
           </div>
 
           <!-- Compat: elementos ocultos para JS existente -->
@@ -9840,6 +10079,124 @@ function fecharModal() {
   document.getElementById('modal-dossie').style.display = 'none';
 }
 
+// ===== ENCAMINHAMENTO ANALISTA SAC =====
+let _encOptAtiva = null;
+
+function _iniciarEncAnalista(item) {
+  const encDiv = document.getElementById('modal-enc-analista');
+  if (!encDiv) return;
+  const isAnalista = ['ANALISTA SAC','MASTER'].includes(role());
+  const st = (item.STATUS_FICHA || item.STATUS || '').toUpperCase();
+  const bloqueado = st.includes('AGUARDANDO_APROVAC') || st.includes('FECHADA') || st.includes('AGUARDANDO APROV');
+  if (!isAnalista || bloqueado) { encDiv.style.display = 'none'; return; }
+  encDiv.style.display = '';
+  // reset
+  _encOptAtiva = null;
+  document.querySelectorAll('.enc-opt-card').forEach(c => c.classList.remove('selected'));
+  ['enc-obs-ai','enc-obs-sac','enc-obs-setor','enc-motivo-dev','enc-motivo-rej'].forEach(id => { const el = document.getElementById(id); if(el) el.value=''; });
+  const encSel = document.getElementById('enc-setor-select'); if(encSel) encSel.value='';
+  const encSla = document.getElementById('enc-sla-val'); if(encSla) encSla.value='';
+  const encMsg = document.getElementById('enc-msg'); if(encMsg) encMsg.style.display='none';
+  // IA banner
+  const tipoS = item.TIPO_SUGERIDO || ''; const setorS = item.SETOR_SUGERIDO || ''; const devS = item.DEVOLUTIVA_SUGERIDA || '';
+  const aiTxt = document.getElementById('enc-ai-texto');
+  if (aiTxt) {
+    if (tipoS || setorS) {
+      aiTxt.textContent = (tipoS ? 'Tipo: '+tipoS+'. ' : '') + (setorS ? 'Setor sugerido: '+setorS+'.' : '') + (devS ? ' '+devS : '');
+    } else {
+      aiTxt.textContent = 'Análise IA não disponível para esta manifestação.';
+    }
+  }
+  const confFill = document.getElementById('enc-ai-conf-fill'); const confPct = document.getElementById('enc-ai-conf-pct');
+  if (item.CONFIANCA_IA) { const pct = Math.round(parseFloat(item.CONFIANCA_IA)); if(confFill) confFill.style.width=pct+'%'; if(confPct) confPct.textContent=pct+'%'; }
+  else { if(confFill) confFill.style.width='0%'; if(confPct) confPct.textContent='—'; }
+  // aprovador pré-definido
+  const aprovNome = item.APROVADOR_SUGERIDO || item.APROVADOR || '';
+  const apNome = document.getElementById('enc-aprov-nome'); if(apNome) apNome.textContent = aprovNome || 'Aprovador não definido';
+  const apAv = document.getElementById('enc-aprov-avatar'); if(apAv) apAv.textContent = aprovNome ? aprovNome.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase() : '?';
+  _encValidar();
+  // renomear primeira tab
+  const firstTab = document.querySelector('#modal-tabs .tab-btn:first-child');
+  if (firstTab) firstTab.textContent = 'Encaminhamento';
+}
+
+function _encSelecionarOpt(card) {
+  document.querySelectorAll('.enc-opt-card').forEach(c => c.classList.remove('selected'));
+  card.classList.add('selected');
+  _encOptAtiva = card.dataset.encOpt;
+  _encValidar();
+}
+
+const _ENC_LABELS = { ai:'Aceitar e encaminhar ao aprovador', setor:'Encaminhar para setor', sac:'Assumir no SAC', dev:'Devolver ao cliente', rej:'Rejeitar manifestação' };
+const _ENC_MSGS = { ai:'Aprovador pré-definido pela IA. Adicione observação se necessário.', setor:'Preencha o setor e o prazo (SLA) para continuar.', sac:'Atribuição pronta. Clique para confirmar.', dev:'Descreva o motivo da devolução para continuar.', rej:'Preencha a justificativa obrigatória para rejeitar.' };
+
+function _encValidar() {
+  const btn = document.getElementById('enc-btn-enc'); const lbl = document.getElementById('enc-btn-label'); const msg = document.getElementById('enc-footer-msg');
+  if (!btn || !lbl || !msg) return;
+  if (!_encOptAtiva) { lbl.textContent='Encaminhar'; msg.textContent='Selecione uma opção de encaminhamento para continuar.'; btn.disabled=true; return; }
+  lbl.textContent = _ENC_LABELS[_encOptAtiva] || 'Encaminhar';
+  let ok = false;
+  if (_encOptAtiva==='ai')    { ok = true; }
+  else if (_encOptAtiva==='setor') { const s=document.getElementById('enc-setor-select')?.value; const d=document.getElementById('enc-sla-val')?.value; ok=!!s&&!!d&&Number(d)>0; }
+  else if (_encOptAtiva==='sac')   { ok = true; }
+  else if (_encOptAtiva==='dev')   { ok = (document.getElementById('enc-motivo-dev')?.value||'').trim().length >= 10; }
+  else if (_encOptAtiva==='rej')   { ok = (document.getElementById('enc-motivo-rej')?.value||'').trim().length >= 15; }
+  btn.disabled = !ok;
+  msg.textContent = ok ? '✓ Pronto para encaminhar.' : (_ENC_MSGS[_encOptAtiva] || '');
+}
+
+async function _encSubmeter() {
+  const btn = document.getElementById('enc-btn-enc'); if (!btn || btn.disabled) return;
+  const item = _dossieItem; if (!item || !item.ID_MANIFESTACAO) return;
+  const msgEl = document.getElementById('enc-msg');
+  btn.disabled = true;
+  const origLabel = document.getElementById('enc-btn-label').textContent;
+  document.getElementById('enc-btn-label').textContent = 'Encaminhando…';
+  try {
+    let payload = { acao: 'encaminhar_aprovacao' };
+    if (_encOptAtiva === 'ai') {
+      payload.obs = document.getElementById('enc-obs-ai')?.value || '';
+      payload.SETOR_CONFIRMADO = item.SETOR_SUGERIDO || '';
+      payload.TIPO_CONFIRMADO = item.TIPO_SUGERIDO || '';
+    } else if (_encOptAtiva === 'setor') {
+      payload.acao = 'encaminhar_setor';
+      payload.SETOR_CONFIRMADO = document.getElementById('enc-setor-select')?.value || '';
+      payload.RESPONSAVEL_SETOR = document.getElementById('enc-resp-setor')?.value || '';
+      payload.SLA_HORAS = document.getElementById('enc-sla-val')?.value || '';
+      payload.SLA_UNIDADE = document.getElementById('enc-sla-unit')?.value || 'dias';
+      payload.obs = document.getElementById('enc-obs-setor')?.value || '';
+    } else if (_encOptAtiva === 'sac') {
+      payload.acao = 'assumir_sac';
+      payload.obs = document.getElementById('enc-obs-sac')?.value || '';
+    } else if (_encOptAtiva === 'dev') {
+      payload.acao = 'devolver_cliente';
+      payload.MOTIVO_DEVOLUCAO = document.getElementById('enc-motivo-dev')?.value || '';
+      payload.CANAL_RETORNO = document.getElementById('enc-canal-dev')?.value || '';
+      payload.PRAZO_RESPOSTA = document.getElementById('enc-prazo-dev')?.value || '';
+    } else if (_encOptAtiva === 'rej') {
+      payload.acao = 'rejeitar';
+      payload.MOTIVO_REJEICAO = document.getElementById('enc-motivo-rej')?.value || '';
+    }
+    const r = await _apiFetch(`/api/manifestacoes/${encodeURIComponent(item.ID_MANIFESTACAO)}/ficha`, 15000, { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+    const data = await r.json().catch(()=>({}));
+    if (r.ok && (data.sucesso !== false)) {
+      document.getElementById('modal-enc-analista').style.display = 'none';
+      if (msgEl) { msgEl.style.display='block'; msgEl.style.background='#E6F2EA'; msgEl.style.color='#1B7A3E'; msgEl.textContent='✓ Manifestação encaminhada com sucesso.'; }
+      // recarrega lista em background
+      if (typeof loadManifestacoes === 'function') setTimeout(loadManifestacoes, 800);
+    } else {
+      if (msgEl) { msgEl.style.display='block'; msgEl.style.background='#FEF2F2'; msgEl.style.color='#C70602'; msgEl.textContent='Erro: '+(data.erro||'Falha ao encaminhar.'); }
+      btn.disabled = false;
+      document.getElementById('enc-btn-label').textContent = origLabel;
+    }
+  } catch(e) {
+    if (msgEl) { msgEl.style.display='block'; msgEl.style.background='#FEF2F2'; msgEl.style.color='#C70602'; msgEl.textContent='Erro de conexão. Tente novamente.'; }
+    btn.disabled = false;
+    document.getElementById('enc-btn-label').textContent = origLabel;
+  }
+}
+// ===== FIM ENCAMINHAMENTO =====
+
 function switchModalTab(tab, btn) {
   ['ciclo','dados','tratativa','aprovacao','analise','historico','rnc','hist-cliente','ficha'].forEach(t => {
     const el = document.getElementById(`modal-tab-${t}`);
@@ -10545,6 +10902,12 @@ function abrirDossie(item) {
     const _bxd = document.getElementById('mdec-box-devolver'); if(_bxd){_bxd.style.background='transparent';_bxd.style.borderColor='#D6D6D6';_bxd.textContent='';}
     const _cf = document.getElementById('mdec-btn-confirmar'); if(_cf) _cf.style.display='none';
   }
+
+  // ── Seção de encaminhamento do analista SAC
+  _iniciarEncAnalista(item);
+  // Restaurar label da primeira tab (caso anterior fosse analista)
+  const _firstTab = document.querySelector('#modal-tabs .tab-btn:first-child');
+  if (_firstTab && !['ANALISTA SAC','MASTER'].includes(role())) _firstTab.textContent = 'Aprovação';
 
   // Botão excluir: visível apenas para MASTER
   const _btnExcluir = document.getElementById('modal-btn-excluir');
