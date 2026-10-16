@@ -1792,7 +1792,7 @@ app.get('/api/manifestacoes/:id', requerPermissao('manifestacoes.visualizar'), m
 
 app.post('/api/manifestacoes', requerPermissao('manifestacoes.abrir'), async (req, res) => {
   try {
-    const { empresaReclamada, empresaReclamante, contato, produto, lote, nfe, descricao, tipo, canal, cnpj, telefone, email, quantidade, valor, usuario, anexos = [], origemDocumento = '', arquivoOrigem = '' } = req.body;
+    const { empresaReclamada, empresaReclamante, contato, produto, lote, nfe, descricao, tipo, canal, cnpj, telefone, email, quantidade, quantidadeDevolvida, quantidadeTotal, houveDevolucao, valor, valorTotalPedido, prejuizoEstimado, usuario, anexos = [], origemDocumento = '', arquivoOrigem = '' } = req.body;
     if (!empresaReclamante || !descricao) return res.status(400).json({ sucesso:false, erro:'Empresa reclamante e descrição são obrigatórios.' });
     const empNorm = normalizarEmpresa(empresaReclamada);
     // Não bloqueia na criação de colunas — a aba já existe em produção
@@ -1807,7 +1807,10 @@ app.post('/api/manifestacoes', requerPermissao('manifestacoes.abrir'), async (re
       DESCRICAO_MANIFESTACAO:descricao, STATUS:'EM ANÁLISE', TIPO:tipoFinal, TIPO_SUGERIDO:'',
       SETOR_SUGERIDO:'', SETORES_SUGERIDOS:'', PROCEDIMENTO_SUGERIDO:'', SLA_HORAS:'', PRIORIDADE:'',
       RNC_SUGERIDO:'NÃO', EMPRESA_RECLAMADA:empNorm||empresaReclamada||'', CANAL:canal||'',
-      CNPJ:cnpj||'', TELEFONE:telefone||'', EMAIL:email||'', QUANTIDADE:quantidade||'', VALOR:valor||'',
+      CNPJ:cnpj||'', TELEFONE:telefone||'', EMAIL:email||'', QUANTIDADE:quantidade||'',
+      QUANTIDADE_DEVOLVIDA:quantidadeDevolvida||'', QUANTIDADE_TOTAL:quantidadeTotal||'',
+      HOUVE_DEVOLUCAO:houveDevolucao||'NÃO', VALOR:valor||'',
+      VALOR_TOTAL_PEDIDO:valorTotalPedido||'', PREJUIZO_ESTIMADO:prejuizoEstimado||'',
       TRATATIVA_SUGERIDA:'', TRATATIVA_APLICAVEL:'', TRATATIVA_REALIZADA:'', STATUS_TRATATIVA:'NÃO INICIADA',
       DEVOLUTIVA_SUGERIDA:'', DEVOLUTIVA_FINAL:'', DEVOLUTIVA_ENVIADA:'',
       ORIGEM_DOCUMENTO:origemDocumento||'', ARQUIVO_ORIGEM:arquivoOrigem||'',

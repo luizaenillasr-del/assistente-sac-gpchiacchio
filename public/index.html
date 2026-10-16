@@ -2960,7 +2960,13 @@
           <div class="nm-grid-3">
             <label class="nm-label"><span>Qtd. afetada</span><input class="nm-input" placeholder="0" id="nm-qtd" type="number" oninput="nmCalcPrejuizo()"></label>
             <label class="nm-label"><span>Qtd. total do pedido</span><input class="nm-input" placeholder="0" id="nm-qtd-total" type="number" oninput="nmCalcPrejuizo()"></label>
-            <label class="nm-label"><span>Qtd. devolvida</span><input class="nm-input" placeholder="0" id="nm-qtd-devolvida" type="number"></label>
+            <label class="nm-label"><span>Qtd. devolvida</span><input class="nm-input" placeholder="0" id="nm-qtd-devolvida" type="number" oninput="nmCalcPrejuizo()"></label>
+          </div>
+          <div style="margin-top:12px;padding-top:12px;border-top:1px solid #F0F0F0">
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none">
+              <input type="checkbox" id="nm-houve-devolucao" onchange="nmCalcPrejuizo()" style="width:16px;height:16px;accent-color:#C70602;cursor:pointer">
+              <span style="font-size:13px;font-weight:500;color:#1F1F1F">Houve devolução do pedido</span>
+            </label>
           </div>
         </div>
         <div class="nm-card">
@@ -2968,7 +2974,7 @@
           <div class="nm-grid-3">
             <label class="nm-label"><span>Valor envolvido (R$)</span><input class="nm-input" placeholder="0,00" id="nm-valor" oninput="nmCalcPrejuizo()"></label>
             <label class="nm-label"><span>Valor total do pedido (R$)</span><input class="nm-input" placeholder="0,00" id="nm-vlr-pedido" oninput="nmCalcPrejuizo()"></label>
-            <label class="nm-label"><span>Prejuízo estimado (R$) <span style="font-size:10px;font-weight:400;color:#1E6B3A">● auto</span></span><input class="nm-input" placeholder="0,00" id="nm-vlr-estimado" style="background:#F0FDF4;color:#15803D;font-weight:600" readonly title="Calculado automaticamente: (qtd. afetada ÷ qtd. total) × valor total do pedido"></label>
+            <label class="nm-label"><span>Prejuízo estimado (R$) <span style="font-size:10px;font-weight:400;color:#1E6B3A">● auto</span></span><input class="nm-input" placeholder="0,00" id="nm-vlr-estimado" style="background:#F0FDF4;color:#15803D;font-weight:600" readonly title="Calculado automaticamente: (qtd. devolvida ÷ qtd. total) × valor total do pedido"></label>
           </div>
         </div>
       </div>
@@ -3292,17 +3298,23 @@
       };
 
       window.nmCalcPrejuizo = function(){
-        var qtd = parseFloat(document.getElementById('nm-qtd')?.value) || 0;
+        var qtdDev = parseFloat(document.getElementById('nm-qtd-devolvida')?.value) || 0;
         var qtdTotal = parseFloat(document.getElementById('nm-qtd-total')?.value) || 0;
+        var qtdAfet = parseFloat(document.getElementById('nm-qtd')?.value) || 0;
         var vlrTotal = parseFloat(String(document.getElementById('nm-vlr-pedido')?.value||'').replace(',','.')) || 0;
         var vlrEnv = parseFloat(String(document.getElementById('nm-valor')?.value||'').replace(',','.')) || 0;
         var el = document.getElementById('nm-vlr-estimado');
         if (!el) return;
         var result = 0;
-        if (qtd > 0 && qtdTotal > 0 && vlrTotal > 0) {
-          result = (qtd / qtdTotal) * vlrTotal;
-        } else if (qtd > 0 && qtdTotal > 0 && vlrEnv > 0) {
-          result = (qtd / qtdTotal) * vlrEnv;
+        // Prioridade: qtd devolvida / total × valor total; fallback para afetada; fallback para valor envolvido
+        if (qtdDev > 0 && qtdTotal > 0 && vlrTotal > 0) {
+          result = (qtdDev / qtdTotal) * vlrTotal;
+        } else if (qtdDev > 0 && qtdTotal > 0 && vlrEnv > 0) {
+          result = (qtdDev / qtdTotal) * vlrEnv;
+        } else if (qtdAfet > 0 && qtdTotal > 0 && vlrTotal > 0) {
+          result = (qtdAfet / qtdTotal) * vlrTotal;
+        } else if (qtdAfet > 0 && qtdTotal > 0 && vlrEnv > 0) {
+          result = (qtdAfet / qtdTotal) * vlrEnv;
         } else if (vlrEnv > 0) {
           result = vlrEnv;
         }
@@ -10245,7 +10257,12 @@ async function registrarManifestacao() {
         telefone: document.getElementById('nm-tel').value,
         email: document.getElementById('nm-email').value,
         quantidade: document.getElementById('nm-qtd').value,
+        quantidadeDevolvida: document.getElementById('nm-qtd-devolvida').value,
+        quantidadeTotal: document.getElementById('nm-qtd-total').value,
+        houveDevolucao: document.getElementById('nm-houve-devolucao')?.checked ? 'SIM' : 'NÃO',
         valor: document.getElementById('nm-valor').value,
+        valorTotalPedido: document.getElementById('nm-vlr-pedido').value,
+        prejuizoEstimado: document.getElementById('nm-vlr-estimado').value,
         usuario,
         analiseIA: _nmAnaliseAtual ? JSON.stringify(_nmAnaliseAtual) : null,
         decisaoAnalista: _nmDecisao || 'pendente',
