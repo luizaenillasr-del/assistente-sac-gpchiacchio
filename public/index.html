@@ -3903,7 +3903,8 @@
         <table class="banco-table" id="banco-table">
           <thead>
             <tr>
-              <th>Nº / data</th>
+              <th>Nº</th>
+              <th>Abertura</th>
               <th>Cliente</th>
               <th>Tipo</th>
               <th>Setores acionados</th>
@@ -3914,7 +3915,7 @@
             </tr>
           </thead>
           <tbody id="banco-body">
-            <tr><td colspan="8"><div class="loading"><div class="spinner"></div> Carregando manifestações...</div></td></tr>
+            <tr><td colspan="9"><div class="loading"><div class="spinner"></div> Carregando manifestações...</div></td></tr>
           </tbody>
         </table>
         <div class="pagination" style="padding:12px 16px;border-top:1px solid var(--gray-100)">
@@ -11695,10 +11696,16 @@ function renderBanco() {
         const prazoClass2 = isAtrasada ? 'atrasado' : isEncerrada ? 'ok' : 'ok';
         const proc = m.DECISAO_ANALISTA || m.RESULTADO_FINAL || '';
 
+        const dataAberturaStr = fmtDate(m.DATA_ABERTURA||m.DATA_REGISTRO||m.DATA_CRIACAO);
+        const dataAberturaObj = m.DATA_ABERTURA||m.DATA_REGISTRO||m.DATA_CRIACAO ? new Date(m.DATA_ABERTURA||m.DATA_REGISTRO||m.DATA_CRIACAO) : null;
+        const horaAbertura = dataAberturaObj && !isNaN(dataAberturaObj) ? dataAberturaObj.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '';
         return `<tr>
           <td>
             <div class="num-bold">${escHtml(m.ID_MANIFESTACAO || '--')}</div>
-            <div class="num-date">${fmtDate(m.DATA_ABERTURA||m.DATA_REGISTRO||m.DATA_CRIACAO)}</div>
+          </td>
+          <td style="white-space:nowrap">
+            <div style="font-size:13px;font-weight:600;color:var(--gray-800)">${dataAberturaStr||'—'}</div>
+            ${horaAbertura ? `<div style="font-size:11px;color:var(--gray-400)">${horaAbertura}</div>` : ''}
           </td>
           <td>
             <div class="cliente-primary">${escHtml(m.EMPRESA_NORMALIZADA || m.EMPRESA_RECLAMANTE || '--')}</div>
@@ -11712,7 +11719,7 @@ function renderBanco() {
           <td><a class="link-abrir" onclick="abrirDossieIdx(${_storeRow(m)})">Abrir</a></td>
         </tr>`;
       }).join('')
-    : '<tr><td colspan="8" style="text-align:center;color:var(--gray-400);padding:20px">Nenhuma manifestação encontrada</td></tr>';
+    : '<tr><td colspan="9" style="text-align:center;color:var(--gray-400);padding:20px">Nenhuma manifestação encontrada</td></tr>';
 }
 
 function navBancoPage(p) {
