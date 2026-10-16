@@ -4394,7 +4394,13 @@
                 <option value="TUBAHIA">Cesbap</option>
               </select>
             </div>
-            <div class="field"><label>Setor</label><input id="cfg-setor" placeholder="Setor do usuário"></div>
+            <div class="field"><label>Setor</label><input id="cfg-setor" placeholder="Ex.: Logística, Qualidade, SAC…"></div>
+            <div class="field"><label>Cargo</label><input id="cfg-cargo" placeholder="Ex.: Analista, Supervisor, Diretor…"></div>
+          </div>
+          <div style="background:#FFF8E6;border:1px solid #F0D9A0;border-radius:8px;padding:10px 14px;font-size:12px;color:#7A4C00;margin-top:4px;margin-bottom:6px">
+            <strong>Tela pelo perfil:</strong> GESTOR_SAC → Central do Gerente · ANALISTA_SAC → Minha Central SAC · REPRESENTANTE → Portal do Setor · APROVADOR → Fila de Aprovação · DIRETOR / SETOR DIRETORIA → Gestão da Diretoria
+          </div>
+          <div class="field-grid">
             <div class="field"><label>Senha inicial (vazio = gerada automaticamente)</label><input id="cfg-senha" type="password" placeholder="Deixe em branco para gerar"></div>
           </div>
         </div>
@@ -4634,308 +4640,273 @@
   #page-central-sac .mc-rule{background:var(--mc-amber-bg);border-radius:8px;padding:8px 10px;font-size:11.5px;margin:8px 0;color:var(--mc-amber)}
   #page-central-sac .mc-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
   #page-central-sac .mc-toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#1F1F1F;color:#fff;padding:11px 16px;border-radius:8px;font-size:13px;z-index:90;max-width:92vw}
+  /* ── 3-tab layout ── */
+  #page-central-sac .mc-topbar{background:#fff;border-bottom:1px solid #E4E4E4;padding:12px 24px 0;flex-shrink:0}
+  #page-central-sac .mc-toprow{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px;flex-wrap:wrap}
+  #page-central-sac .mc-tabs{display:flex;gap:0}
+  #page-central-sac .mc-tab{height:40px;border:0;background:none;padding:0 18px;font-size:13px;font-weight:500;color:#929090;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;font-family:inherit;display:flex;align-items:center;gap:6px}
+  #page-central-sac .mc-tab.on{font-weight:700;color:#C70602;border-bottom-color:#C70602}
+  #page-central-sac .mc-tab-badge{min-width:18px;height:18px;border-radius:9px;background:#C70602;color:#fff;font-size:10px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;padding:0 5px}
+  #page-central-sac .mc-body{flex:1;min-height:0;overflow-y:auto;padding:16px 24px;display:flex;flex-direction:column;gap:14px}
+  #page-central-sac .mc-tabpanel{display:none;flex-direction:column;gap:14px}
+  #page-central-sac .mc-tabpanel.on{display:flex}
+  /* grupos fila */
+  #page-central-sac .mc-grp{background:#fff;border:1px solid #E4E4E4;border-radius:10px;overflow:hidden}
+  #page-central-sac .mc-grp-h{padding:9px 14px;display:flex;justify-content:space-between;align-items:center}
+  #page-central-sac .mc-grp-t{font-size:11px;font-weight:800;letter-spacing:.07em}
+  #page-central-sac .mc-grp-c{font-size:11px;font-weight:700}
+  /* prazos grid */
+  #page-central-sac .mc-prazos{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  #page-central-sac .mc-prazo{background:#F7F7F7;border-radius:8px;padding:10px 12px}
+  #page-central-sac .mc-prazo-l{font-size:10px;font-weight:700;color:#929090;margin-bottom:3px}
+  #page-central-sac .mc-prazo-v{font-size:14px;font-weight:800}
+  #page-central-sac .mc-prazo-r{font-size:11px;color:#929090;margin-top:2px}
+  /* devolutiva box */
+  #page-central-sac .mc-dev-box{background:#E6F2EA;border:1.5px solid #B8DFC0;border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:8px}
+  #page-central-sac .mc-dev-h{font-size:10px;font-weight:700;letter-spacing:.07em;color:#1E6B3A}
+  #page-central-sac .mc-dev-st{font-size:12px;color:#1E6B3A;line-height:1.5}
+  /* rnc box */
+  #page-central-sac .mc-rnc-box{background:#F0E6F8;border:1.5px solid #D9B8F0;border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:6px}
+  #page-central-sac .mc-rnc-h{font-size:10px;font-weight:700;letter-spacing:.07em;color:#6B24A8}
+  /* RCAs tab */
+  #page-central-sac .mc-rca-tbl{width:100%;border-collapse:collapse;min-width:900px;font-size:12.5px}
+  #page-central-sac .mc-rca-tbl th{text-align:left;font-weight:700;font-size:11px;color:#929090;padding:10px 14px;border-bottom:1px solid #E4E4E4;white-space:nowrap;background:#F7F7F7;letter-spacing:.04em}
+  #page-central-sac .mc-rca-tbl td{padding:12px 14px;border-bottom:1px solid #F4F4F4}
+  #page-central-sac .mc-rca-tbl tr:hover td{background:#FDF5F5;cursor:pointer}
+  #page-central-sac .mc-rca-exp{background:#F9F9F9;animation:mcFadeUp .2s ease}
+  @keyframes mcFadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  /* ind KPIs */
+  #page-central-sac .mc-ind-kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
+  #page-central-sac .mc-ind-kpi{border-radius:11px;padding:13px 15px}
+  #page-central-sac .mc-ind-l{font-size:9.5px;font-weight:700;letter-spacing:.07em}
+  #page-central-sac .mc-ind-v{font-size:26px;font-weight:800;line-height:1.1;margin-top:4px}
+  #page-central-sac .mc-ind-d{font-size:11px;color:#929090;margin-top:3px}
+  #page-central-sac .mc-ind-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  #page-central-sac .mc-sla-bar{flex:1;height:10px;background:#E8E8E8;border-radius:6px;overflow:hidden}
+  #page-central-sac .mc-sla-row,#page-central-sac .mc-etapa-row{display:flex;align-items:center;gap:10px;padding:5px 0}
+  #page-central-sac .mc-sla-lbl,#page-central-sac .mc-etapa-lbl{width:120px;font-size:12px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #page-central-sac .mc-sla-pct,#page-central-sac .mc-etapa-v{width:40px;text-align:right;font-size:12px;font-weight:700;flex-shrink:0}
+  #page-central-sac .mc-etapas{display:flex;flex-direction:column;gap:8px}
+  #page-central-sac .mc-rca-row{cursor:pointer;background:#F8F9FF}
+  #page-central-sac .mc-rca-row:hover{background:#EEF2FF}
   </style>
   <!-- MC09-STYLE-END -->
-  <div class="page" id="page-central-sac" style="background:#F4F4F4;overflow-y:auto">
-    <div class="mc-main">
+  <div class="page" id="page-central-sac" style="background:#F4F4F4;overflow:hidden;display:none;flex-direction:column">
 
-      <!-- TOPO -->
-      <div class="mc-head">
+    <!-- TOPBAR + ABAS -->
+    <div class="mc-topbar">
+      <div class="mc-toprow">
         <div>
-          <div class="mc-title">Minha Central SAC</div>
-          <div class="mc-sub">Olá, <span id="cen-nome-analista">—</span> · <span id="cen-empresa-analista">SAC</span> · <span id="cen-atrasos-hoje"></span></div>
+          <div style="font-size:20px;font-weight:800">Minha Central SAC</div>
+          <div class="mc-sub" id="cen-greet">Olá — SAC</div>
         </div>
         <div class="mc-head-btns">
-          <button type="button" id="cen-btn-refresh" class="mc-btn mc-btn-p" onclick="loadCentralSAC()">↻ Atualizar</button>
           <button type="button" class="mc-btn" onclick="abrirNovaCentralMan()">+ Nova Manifestação</button>
+          <button type="button" id="cen-btn-refresh" class="mc-btn mc-btn-p" onclick="loadCentralSAC()">↻ Atualizar</button>
         </div>
       </div>
-
-      <!-- 7 contadores -->
-      <div class="mc-kpis">
-        <button type="button" class="mc-kpi mc-k-total" id="ckpi-total" onclick="cenFiltrarKpi('total')"><span class="mc-kpi-v" id="ckpi-v-total">—</span><span class="mc-kpi-l">Minhas</span></button>
-        <button type="button" class="mc-kpi mc-k-pendentes" id="ckpi-pendentes" onclick="cenFiltrarKpi('pendentes')"><span class="mc-kpi-v" id="ckpi-v-pendentes">—</span><span class="mc-kpi-l">Pendentes</span></button>
-        <button type="button" class="mc-kpi mc-k-atrasados" id="ckpi-atrasados" onclick="cenFiltrarKpi('atrasados')"><span class="mc-kpi-v" id="ckpi-v-atrasados">—</span><span class="mc-kpi-l">Em Atraso</span></button>
-        <button type="button" class="mc-kpi mc-k-aprovacao" id="ckpi-aprovacao" onclick="cenFiltrarKpi('aprovacao')"><span class="mc-kpi-v" id="ckpi-v-aprovacao">—</span><span class="mc-kpi-l">Ag. Aprovação</span></button>
-        <button type="button" class="mc-kpi mc-k-tratamento" id="ckpi-tratamento" onclick="cenFiltrarKpi('tratamento')"><span class="mc-kpi-v" id="ckpi-v-tratamento">—</span><span class="mc-kpi-l">Em Tratamento</span></button>
-        <button type="button" class="mc-kpi mc-k-encerradas" id="ckpi-encerradas" onclick="cenFiltrarKpi('encerradas')"><span class="mc-kpi-v" id="ckpi-v-encerradas">—</span><span class="mc-kpi-l">Encerradas</span></button>
-        <button type="button" class="mc-kpi mc-k-terceiros" id="ckpi-terceiros" onclick="cenFiltrarKpi('terceiros')"><span class="mc-kpi-v" id="ckpi-v-terceiros">—</span><span class="mc-kpi-l">Externos</span></button>
-      </div>
-
-      <div class="mc-cols">
-
-        <!-- COLUNA ESQUERDA: lista por prazo -->
-        <div class="mc-col-l">
-          <input id="cen-busca" class="mc-input" placeholder="Protocolo, cliente, motivo…" oninput="filtrarFilaCentral()">
-          <div class="mc-scopes">
-            <button type="button" id="cen-btn-minhas" class="mc-scope on" onclick="setCenFiltroScope('minhas')">Minhas</button>
-            <button type="button" id="cen-btn-todas" class="mc-scope" onclick="setCenFiltroScope('todas')">Todas permitidas</button>
-          </div>
-          <div class="mc-selects">
-            <select id="cen-fil-status" class="mc-sel" onchange="filtrarFilaCentral()">
-              <option value="">Todos status</option>
-              <option value="nova">Nova · triagem</option><option value="anal">Em análise</option><option value="trat">Em tratamento</option>
-              <option value="aprov">Ag. aprovação</option><option value="dev">Devolutiva</option><option value="enc">Encerrada</option>
-            </select>
-            <select id="cen-fil-sla" class="mc-sel" onchange="filtrarFilaCentral()">
-              <option value="">Todo SLA</option>
-              <option value="late">Atrasadas</option>
-              <option value="soon">Vencem em até 8h</option>
-              <option value="ok">No prazo</option>
-            </select>
-            <select id="cen-fil-tipo" class="mc-sel" onchange="filtrarFilaCentral()">
-              <option value="">Tipo</option>
-              <option value="Reclamação">Reclamação</option><option value="Solicitação">Solicitação</option><option value="Sugestão">Sugestão</option><option value="Elogio">Elogio</option><option value="Dúvida">Dúvida</option>
-            </select>
-            <select id="cen-fil-prioridade" class="mc-sel" onchange="filtrarFilaCentral()">
-              <option value="">Prioridade</option>
-              <option value="alta">Alta</option><option value="media">Média</option><option value="baixa">Baixa</option>
-            </select>
-          </div>
-          <div class="mc-listbar"><span id="cen-list-info"></span><button type="button" id="cen-limpar" class="mc-clear" style="display:none" onclick="cenLimparFiltros()">Limpar filtros</button></div>
-          <div id="cen-fila" class="mc-fila"></div>
-        </div>
-
-        <!-- COLUNA CENTRAL: detalhe -->
-        <div class="mc-col-c">
-          <div id="cen-placeholder" class="mc-nosel">Selecione uma manifestação para ver os detalhes</div>
-          <div id="cen-detalhe" style="display:none;flex-direction:column;gap:12px">
-
-            <div class="mc-card mc-card-main">
-              <div class="mc-dh">
-                <div class="mc-dh-l">
-                  <div class="mc-dh-row">
-                    <span class="mc-prot" id="cen-man-protocolo">—</span>
-                    <span id="cen-man-status-badge" class="mc-st mc-st-lg">—</span>
-                    <span id="cen-sla-badge" class="mc-sla mc-sla-lg mc-sla-ok">—</span>
-                  </div>
-                  <span class="mc-dh-sub" id="cen-man-sub">—</span>
-                </div>
-                <button type="button" class="mc-lnk" onclick="cenAbrirFichaCompleta()">Abrir ficha completa ↗</button>
-              </div>
-              <div class="mc-steps" id="cen-progress-wrap"></div>
-              <div id="cen-proxima-acao" class="mc-nx">
-                <div style="display:flex;flex-direction:column;gap:3px">
-                  <span class="mc-nx-l">PRÓXIMA AÇÃO</span>
-                  <span class="mc-nx-t" id="cen-pa-titulo">—</span>
-                  <span class="mc-nx-d" id="cen-pa-detalhe">—</span>
-                </div>
-                <div class="mc-acts" id="cen-pa-botoes"></div>
-              </div>
-              <div class="mc-campos" id="cen-campos"></div>
-              <div class="mc-relato">
-                <span class="mc-f-l">RELATO DO CLIENTE</span>
-                <span class="mc-relato-t" id="cd-descricao"></span>
-              </div>
-            </div>
-
-            <!-- Mais ações (tratativa, devolutiva, RNC) — usa endpoints reais -->
-            <div class="mc-card" id="cen-acoes-expand" style="display:none">
-              <div class="mc-more-sec">
-                <div class="mc-more-h">Tratativa</div>
-                <div class="mc-fgrid">
-                  <div class="mc-span2"><div class="mc-lbl">Setor</div><input id="trat-setor" class="mc-input" style="height:34px;font-size:12.5px" placeholder="Setor responsável"></div>
-                  <div class="mc-span2"><div class="mc-lbl">Responsável</div><input id="trat-responsavel" class="mc-input" style="height:34px;font-size:12.5px" placeholder="Nome"></div>
-                  <div class="mc-span2"><div class="mc-lbl">Ação</div><textarea id="trat-acao" class="mc-ta" rows="3" placeholder="Descreva a ação..."></textarea></div>
-                  <div class="mc-span2"><div class="mc-lbl">Observação</div><textarea id="trat-obs" class="mc-ta" rows="2"></textarea></div>
-                </div>
-                <div class="mc-row" style="margin-top:0">
-                  <button type="button" class="mc-btn" onclick="cenSalvarTratativa()">Salvar</button>
-                  <button type="button" class="mc-btn mc-btn-p" onclick="cenConcluirTratativa()">Concluir</button>
-                  <button type="button" class="mc-btn" onclick="cenSolicitarAprovacao()">Solicitar aprovação</button>
-                </div>
-              </div>
-              <div class="mc-more-sec">
-                <div class="mc-more-h">Devolutiva</div>
-                <div class="mc-note">⚠ Não assuma culpa sem base factual.</div>
-                <textarea id="dev-texto" class="mc-ta" rows="5" placeholder="Devolutiva ao cliente..."></textarea>
-                <div class="mc-row">
-                  <button type="button" id="cen-btn-gerar-dev" class="mc-btn" onclick="cenGerarDevolutiva()">Sugestão IA</button>
-                  <button type="button" class="mc-btn mc-btn-p" onclick="cenEnviarDevolutiva(false)">Registrar e encerrar</button>
-                  <button type="button" class="mc-btn" onclick="cenEnviarDevolutiva(true)">Para aprovação</button>
-                </div>
-              </div>
-              <div class="mc-more-sec">
-                <div class="mc-more-h">RNC</div>
-                <div id="cen-rnc-corpo" class="mc-muted"></div>
-                <div class="mc-rule"><strong>Regra:</strong> a IA sugere, mas a decisão é da analista.</div>
-                <button type="button" class="mc-btn" style="border-color:#C70602;color:#C70602" onclick="cenCriarRNC()">Criar RNC</button>
-              </div>
-              <div class="mc-more-sec">
-                <div class="mc-more-h">Status da manifestação</div>
-                <div class="mc-row" style="margin-top:0">
-                  <button type="button" class="mc-btn" onclick="cenIniciarTratativa()">Iniciar tratativa</button>
-                  <button type="button" class="mc-btn" style="border-color:#C70602;color:#C70602" onclick="cenEncerrarManifestacao()">Encerrar</button>
-                </div>
-              </div>
-            </div>
-
-            <div class="mc-card">
-              <span class="mc-card-h">Setores acionados</span>
-              <div id="cen-setores-lista" style="display:flex;flex-direction:column;gap:8px"></div>
-            </div>
-
-            <div class="mc-card" style="gap:0">
-              <div class="mc-card-h" style="margin-bottom:10px">Histórico</div>
-              <div id="cen-historico-corpo"></div>
-            </div>
-
-          <!-- TAB: CALCULADORA DE ATRASO -->
-          <div id="centab-atraso" class="cen-tabpanel" style="display:none;padding:16px">
-            <div class="cen-card" style="margin-bottom:12px">
-              <div class="cen-card-title" style="display:flex;align-items:center;justify-content:space-between">
-                <span>⏱ Calculadora de Atraso</span>
-                <button class="btn btn-secondary" style="font-size:11px;padding:3px 8px" onclick="cenExecutarCalculadoraAtraso()">Recalcular</button>
-              </div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
-                <div>
-                  <label style="font-size:11px;font-weight:600;color:var(--gray-500);display:block;margin-bottom:3px">Cidade de destino</label>
-                  <input id="cenc-cidade" class="input" style="font-size:12px" placeholder="Salvador">
-                </div>
-                <div>
-                  <label style="font-size:11px;font-weight:600;color:var(--gray-500);display:block;margin-bottom:3px">UF</label>
-                  <input id="cenc-uf" class="input" style="font-size:12px" maxlength="2" placeholder="BA" oninput="this.value=this.value.toUpperCase()">
-                </div>
-                <div>
-                  <label style="font-size:11px;font-weight:600;color:var(--gray-500);display:block;margin-bottom:3px">Prazo prometido ao cliente (dias)</label>
-                  <input id="cenc-prazo-prom" class="input" type="number" min="0" style="font-size:12px" placeholder="5">
-                </div>
-                <div>
-                  <label style="font-size:11px;font-weight:600;color:var(--gray-500);display:block;margin-bottom:3px">Prazo realizado (dias)</label>
-                  <input id="cenc-prazo-real" class="input" type="number" min="0" style="font-size:12px" placeholder="8">
-                </div>
-                <div>
-                  <label style="font-size:11px;font-weight:600;color:var(--gray-500);display:block;margin-bottom:3px">Data expedição</label>
-                  <input id="cenc-expedicao" class="input" type="date" style="font-size:12px">
-                </div>
-                <div>
-                  <label style="font-size:11px;font-weight:600;color:var(--gray-500);display:block;margin-bottom:3px">Data entrega real</label>
-                  <input id="cenc-entrega" class="input" type="date" style="font-size:12px">
-                </div>
-                <div>
-                  <label style="font-size:11px;font-weight:600;color:var(--gray-500);display:block;margin-bottom:3px">Início produção</label>
-                  <input id="cenc-inicio-prod" class="input" type="date" style="font-size:12px">
-                </div>
-                <div>
-                  <label style="font-size:11px;font-weight:600;color:var(--gray-500);display:block;margin-bottom:3px">Fim produção</label>
-                  <input id="cenc-fim-prod" class="input" type="date" style="font-size:12px">
-                </div>
-              </div>
-              <button class="btn btn-primary" style="font-size:12px;width:100%" onclick="cenExecutarCalculadoraAtraso()">Analisar Atraso</button>
-            </div>
-
-            <!-- RESULTADO DA CALCULADORA -->
-            <div id="cen-calc-resultado" style="display:none">
-
-              <!-- Nível do diagnóstico -->
-              <div id="cen-calc-nivel" class="cen-card" style="margin-bottom:10px;border-left:4px solid var(--gray-300)">
-                <div style="font-size:14px;font-weight:800" id="cen-calc-nivel-texto">—</div>
-                <div style="font-size:11px;color:var(--gray-500);margin-top:2px" id="cen-calc-nivel-desc">—</div>
-              </div>
-
-              <!-- Comparativo em 3 colunas -->
-              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
-                <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:10px;text-align:center">
-                  <div style="font-size:10px;color:#0369a1;font-weight:700;text-transform:uppercase;margin-bottom:4px">Prazo Prometido</div>
-                  <div style="font-size:22px;font-weight:800;color:#0369a1" id="cen-calc-prom">—</div>
-                  <div style="font-size:10px;color:#0369a1">dias</div>
-                </div>
-                <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:10px;text-align:center">
-                  <div style="font-size:10px;color:#c2410c;font-weight:700;text-transform:uppercase;margin-bottom:4px">Prazo Realizado</div>
-                  <div style="font-size:22px;font-weight:800;color:#c2410c" id="cen-calc-real">—</div>
-                  <div style="font-size:10px;color:#c2410c">dias</div>
-                </div>
-                <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px;text-align:center">
-                  <div style="font-size:10px;color:#15803d;font-weight:700;text-transform:uppercase;margin-bottom:4px">Média Regional</div>
-                  <div style="font-size:22px;font-weight:800;color:#15803d" id="cen-calc-reg">—</div>
-                  <div style="font-size:10px;color:#15803d">dias</div>
-                </div>
-              </div>
-
-              <!-- Desvios -->
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
-                <div style="background:white;border:1px solid var(--gray-200);border-radius:8px;padding:10px">
-                  <div style="font-size:10px;font-weight:700;color:var(--gray-500);text-transform:uppercase;margin-bottom:4px">Atraso vs. Prazo Prometido</div>
-                  <div style="font-size:18px;font-weight:800" id="cen-calc-desvio-prom">—</div>
-                </div>
-                <div style="background:white;border:1px solid var(--gray-200);border-radius:8px;padding:10px">
-                  <div style="font-size:10px;font-weight:700;color:var(--gray-500);text-transform:uppercase;margin-bottom:4px">Desvio vs. Média Regional</div>
-                  <div style="font-size:18px;font-weight:800" id="cen-calc-desvio-reg">—</div>
-                </div>
-              </div>
-
-              <!-- Diagnóstico por etapa -->
-              <div class="cen-card" style="margin-bottom:10px">
-                <div class="cen-card-title">Diagnóstico por Etapa</div>
-                <div id="cen-calc-etapas" style="display:flex;flex-direction:column;gap:6px;margin-top:8px"></div>
-              </div>
-
-              <!-- Origem + Confiança -->
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
-                <div style="background:white;border:1px solid var(--gray-200);border-radius:8px;padding:10px">
-                  <div style="font-size:10px;font-weight:700;color:var(--gray-500);text-transform:uppercase;margin-bottom:4px">Origem Provável</div>
-                  <div style="font-size:13px;font-weight:700;color:var(--gray-900)" id="cen-calc-origem">—</div>
-                </div>
-                <div style="background:white;border:1px solid var(--gray-200);border-radius:8px;padding:10px">
-                  <div style="font-size:10px;font-weight:700;color:var(--gray-500);text-transform:uppercase;margin-bottom:4px">Nível de Confiança</div>
-                  <div style="font-size:13px;font-weight:700" id="cen-calc-confianca">—</div>
-                </div>
-              </div>
-
-              <!-- Referência regional usada -->
-              <div id="cen-calc-ref-regional" style="display:none;background:#f8fafc;border:1px solid var(--gray-200);border-radius:8px;padding:10px;margin-bottom:10px;font-size:11px;color:var(--gray-600)"></div>
-
-              <!-- Setor relacionado + Classificação do analista -->
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
-                <div>
-                  <label style="font-size:11px;font-weight:600;color:var(--gray-500);display:block;margin-bottom:3px">Setor relacionado</label>
-                  <select id="cenc-setor-rel" class="select" style="font-size:12px;width:100%">
-                    <option value="">Não identificado</option>
-                    <option value="PRODUCAO">Produção</option>
-                    <option value="EXPEDICAO">Expedição</option>
-                    <option value="LOGISTICA">Logística / Transporte</option>
-                    <option value="IMPLANTACAO">Implantação</option>
-                    <option value="COMERCIAL">Comercial</option>
-                    <option value="CLIENTE">Cliente</option>
-                    <option value="MISTO">Misto</option>
-                  </select>
-                </div>
-                <div>
-                  <label style="font-size:11px;font-weight:600;color:var(--gray-500);display:block;margin-bottom:3px">Classificação do analista</label>
-                  <select id="cenc-class-analista" class="select" style="font-size:12px;width:100%">
-                    <option value="">Confirmar diagnóstico da IA</option>
-                    <option value="DENTRO_DO_PADRAO_REGIONAL">Dentro do padrão regional</option>
-                    <option value="ACIMA_DA_MEDIA_REGIONAL">Acima da média regional</option>
-                    <option value="ATRASO_EM_RELACAO_AO_PRAZO_PROMETIDO">Atraso vs. prazo prometido</option>
-                    <option value="ATRASO_E_ACIMA_DA_MEDIA_REGIONAL">Atraso + acima da média</option>
-                    <option value="DADOS_INSUFICIENTES">Dados insuficientes</option>
-                  </select>
-                </div>
-              </div>
-              <div style="margin-bottom:10px">
-                <label style="font-size:11px;font-weight:600;color:var(--gray-500);display:block;margin-bottom:3px">Justificativa / Observações</label>
-                <textarea id="cenc-justificativa" class="input" rows="2" style="width:100%;box-sizing:border-box;font-size:12px;resize:vertical" placeholder="Informe a causa identificada, evidências utilizadas ou contexto relevante..."></textarea>
-              </div>
-              <button class="btn btn-primary" style="width:100%;font-size:12px" onclick="cenSalvarDiagnosticoAtraso()">
-                ✓ Confirmar e Salvar Diagnóstico
-              </button>
-            </div>
-
-            <div id="cen-calc-multiplos" style="display:none;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px;margin-top:8px;font-size:12px"></div>
-            <div id="cen-calc-sem-ref" style="display:none;background:#f1f5f9;border:1px solid var(--gray-200);border-radius:8px;padding:12px;margin-top:8px;font-size:12px;color:var(--gray-500)"></div>
-          </div>
-          </div>
-        </div>
-
-        <!-- COLUNA DIREITA: Cérebro -->
-        <div class="mc-col-r" id="cen-cerebro-wrap">
-          <div class="mc-cerebro-h"><i></i><b>Cérebro</b></div>
-          <div class="mc-cerebro" id="cen-cerebro-painel"><span class="mc-muted">Selecione uma manifestação</span></div>
-        </div>
+      <div class="mc-tabs">
+        <button type="button" class="mc-tab on" id="mc-tab-fila" onclick="cenAba('fila',this)">
+          Fila de Trabalho <span class="mc-tab-badge" id="mc-badge-fila">0</span>
+        </button>
+        <button type="button" class="mc-tab" id="mc-tab-rcas" onclick="cenAba('rcas',this)">RCAs</button>
+        <button type="button" class="mc-tab" id="mc-tab-ind" onclick="cenAba('ind',this)">Indicadores</button>
       </div>
     </div>
+
+    <!-- CORPO -->
+    <div class="mc-body">
+
+      <!-- ══════════ ABA: FILA ══════════ -->
+      <div class="mc-tabpanel on" id="mc-panel-fila">
+
+        <!-- KPIs fila -->
+        <div class="mc-kpis" id="cen-kpis-fila"></div>
+
+        <!-- Filtros -->
+        <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:12px 16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+          <div style="position:relative;flex:1;min-width:200px;max-width:280px">
+            <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:13px;color:#929090">🔍</span>
+            <input id="cen-busca" class="mc-input" style="padding-left:30px" placeholder="Protocolo, cliente, motivo…" oninput="filtrarFilaCentral()">
+          </div>
+          <select id="cen-fil-status" class="mc-sel" onchange="filtrarFilaCentral()">
+            <option value="">Todos status</option>
+            <option value="nova">Nova · triagem</option><option value="anal">Em análise</option><option value="trat">Em tratamento</option>
+            <option value="aprov">Ag. aprovação</option><option value="dev">Devolutiva</option><option value="enc">Encerrada</option>
+          </select>
+          <select id="cen-fil-sla" class="mc-sel" onchange="filtrarFilaCentral()">
+            <option value="">Todo SLA</option><option value="late">Atrasadas</option><option value="soon">Vencem ≤8h</option><option value="ok">No prazo</option>
+          </select>
+          <select id="cen-fil-tipo" class="mc-sel" onchange="filtrarFilaCentral()">
+            <option value="">Tipo</option>
+            <option value="Reclamação">Reclamação</option><option value="Solicitação">Solicitação</option><option value="Sugestão">Sugestão</option><option value="Elogio">Elogio</option>
+          </select>
+          <select id="cen-fil-prioridade" class="mc-sel" onchange="filtrarFilaCentral()">
+            <option value="">Prioridade</option><option value="alta">Alta</option><option value="media">Média</option><option value="baixa">Baixa</option>
+          </select>
+          <button type="button" id="cen-limpar" class="mc-clear" style="display:none" onclick="cenLimparFiltros()">× Limpar</button>
+          <span id="cen-list-info" style="font-size:12px;color:#929090;margin-left:auto"></span>
+        </div>
+
+        <!-- Grupos + Detalhe -->
+        <div style="display:flex;gap:14px;min-height:500px;overflow:hidden">
+
+          <!-- Coluna grupos (340px) -->
+          <div style="width:340px;flex-shrink:0;display:flex;flex-direction:column;gap:10px;overflow-y:auto" id="cen-fila-grupos"></div>
+
+          <!-- Painel detalhe -->
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:12px;overflow-y:auto">
+            <div id="cen-placeholder" class="mc-nosel">📋 Selecione uma manifestação para ver os detalhes e tomar a próxima ação.</div>
+            <div id="cen-detalhe" style="display:none;flex-direction:column;gap:12px">
+
+              <!-- Cabeçalho -->
+              <div class="mc-card mc-card-main">
+                <div class="mc-dh">
+                  <div class="mc-dh-l">
+                    <div class="mc-dh-row">
+                      <span class="mc-prot" id="cen-man-protocolo">—</span>
+                      <span id="cen-man-status-badge" class="mc-st mc-st-lg">—</span>
+                      <span id="cen-sla-badge" class="mc-sla mc-sla-lg mc-sla-ok">—</span>
+                    </div>
+                    <span class="mc-dh-sub" id="cen-man-sub">—</span>
+                  </div>
+                  <button type="button" class="mc-lnk" onclick="cenAbrirFichaCompleta()">Abrir ficha completa ↗</button>
+                </div>
+                <div class="mc-steps" id="cen-progress-wrap"></div>
+                <div id="cen-proxima-acao" class="mc-nx">
+                  <div style="display:flex;flex-direction:column;gap:3px">
+                    <span class="mc-nx-l" id="cen-pa-label">PRÓXIMA AÇÃO</span>
+                    <span class="mc-nx-t" id="cen-pa-titulo">—</span>
+                    <span class="mc-nx-d" id="cen-pa-detalhe">—</span>
+                  </div>
+                  <div class="mc-acts" id="cen-pa-botoes"></div>
+                </div>
+                <div class="mc-campos" id="cen-campos"></div>
+                <div class="mc-relato">
+                  <span class="mc-f-l">RELATO DO CLIENTE</span>
+                  <span class="mc-relato-t" id="cd-descricao"></span>
+                </div>
+              </div>
+
+              <!-- Prazos -->
+              <div class="mc-card" id="cen-prazos-card">
+                <div style="font-size:10px;font-weight:700;letter-spacing:.07em;color:#929090">PRAZOS</div>
+                <div class="mc-prazos" id="cen-prazos-grid">
+                  <div class="mc-prazo" style="border-left:3px solid #7A4C00">
+                    <div class="mc-prazo-l">RESPOSTA DO SETOR</div>
+                    <div class="mc-prazo-v" id="cen-prazo-setor" style="color:#7A4C00">—</div>
+                    <div class="mc-prazo-r">Setores acionados</div>
+                  </div>
+                  <div class="mc-prazo" style="border-left:3px solid #0E6B73">
+                    <div class="mc-prazo-l">DEVOLUTIVA AO CLIENTE</div>
+                    <div class="mc-prazo-v" id="cen-prazo-dev" style="color:#0E6B73">—</div>
+                    <div class="mc-prazo-r">SLA total: 96h</div>
+                  </div>
+                  <div class="mc-prazo" id="cen-prazo-int-box" style="border-left:3px solid #1E6B3A">
+                    <div class="mc-prazo-l">SLA INTERNO</div>
+                    <div class="mc-prazo-v" id="cen-prazo-interno" style="color:#1E6B3A">—</div>
+                    <div class="mc-prazo-r">Referência: 72h</div>
+                  </div>
+                  <div class="mc-prazo" style="border-left:3px solid #9A4A10">
+                    <div class="mc-prazo-l">APROVAÇÃO</div>
+                    <div class="mc-prazo-v" id="cen-prazo-aprov" style="color:#9A4A10">—</div>
+                    <div class="mc-prazo-r">Prazo aprovação</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Setores acionados + Tratativa interna -->
+              <div class="mc-card">
+                <div style="font-size:10px;font-weight:700;letter-spacing:.07em;color:#929090">TRATATIVA INTERNA</div>
+                <div id="cen-setores-lista" style="display:flex;flex-direction:column;gap:8px"></div>
+                <textarea id="trat-acao" class="mc-ta" rows="2" placeholder="Registrar orientação ou complementação à tratativa…"></textarea>
+                <div class="mc-row" style="margin-top:0">
+                  <button type="button" class="mc-btn mc-btn-sm" onclick="cenSalvarTratativa()">Salvar</button>
+                  <button type="button" class="mc-btn mc-btn-sm mc-btn-p" onclick="cenConcluirTratativa()">Concluir</button>
+                  <button type="button" class="mc-btn mc-btn-sm" onclick="cenSolicitarAprovacao()">Solicitar aprovação</button>
+                  <button type="button" class="mc-btn mc-btn-sm" onclick="cenIniciarTratativa()">Iniciar tratativa</button>
+                </div>
+              </div>
+
+              <!-- Devolutiva ao cliente (box verde, separada) -->
+              <div class="mc-dev-box" id="cen-dev-box">
+                <div class="mc-dev-h">DEVOLUTIVA AO CLIENTE · Canal: <span id="cen-dev-canal">—</span></div>
+                <div class="mc-dev-st" id="cen-dev-status">Devolutiva não enviada ainda.</div>
+                <textarea id="dev-texto" class="mc-ta" rows="3" style="border-color:#B8DFC0;background:#fff" placeholder="Rascunho da devolutiva (não enviado automaticamente)…"></textarea>
+                <div class="mc-row" style="margin-top:0">
+                  <button type="button" id="cen-btn-gerar-dev" class="mc-btn mc-btn-sm" style="border-color:#B8DFC0;color:#1E6B3A" onclick="cenGerarDevolutiva()">🧠 Sugestão IA</button>
+                  <button type="button" class="mc-btn mc-btn-sm" style="background:#1E6B3A;border-color:#1E6B3A;color:#fff" onclick="cenEnviarDevolutiva(false)">Registrar e encerrar</button>
+                  <button type="button" class="mc-btn mc-btn-sm" onclick="cenEnviarDevolutiva(true)">Para aprovação</button>
+                </div>
+              </div>
+
+              <!-- RNC vinculada (condicional) -->
+              <div class="mc-rnc-box" id="cen-rnc-card" style="display:none">
+                <div class="mc-rnc-h">RNC VINCULADA</div>
+                <div id="cen-rnc-id" style="font-size:13px;font-weight:700;color:#6B24A8">—</div>
+                <div id="cen-rnc-desc" style="font-size:12.5px;color:#545252;line-height:1.55"></div>
+                <div id="cen-rnc-corpo" class="mc-muted"></div>
+                <div class="mc-rule" style="color:#6B24A8;background:#F0E6F8"><strong>Regra:</strong> a IA sugere, mas a decisão é da analista.</div>
+                <div class="mc-row" style="margin-top:0">
+                  <button type="button" class="mc-btn mc-btn-sm" style="border-color:#D9B8F0;color:#6B24A8" onclick="cenCriarRNC()">Criar RNC</button>
+                  <button type="button" class="mc-btn mc-btn-sm" style="border-color:#D9B8F0;color:#6B24A8" onclick="cenEncerrarManifestacao()">Encerrar manifestação</button>
+                </div>
+              </div>
+
+              <!-- Histórico -->
+              <div class="mc-card" style="gap:0">
+                <div class="mc-card-h" style="margin-bottom:10px">Histórico</div>
+                <div id="cen-historico-corpo"></div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Cérebro -->
+          <div class="mc-col-r" id="cen-cerebro-wrap" style="width:270px;flex-shrink:0">
+            <div class="mc-cerebro-h"><i></i><b>Cérebro</b></div>
+            <div class="mc-cerebro" id="cen-cerebro-painel"><span class="mc-muted">Selecione uma manifestação</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════ ABA: RCAs ══════════ -->
+      <div class="mc-tabpanel" id="mc-panel-rcas">
+        <div style="background:#fff;border:1px solid #E4E4E4;border-radius:12px;overflow:hidden">
+          <div style="padding:14px 18px;border-bottom:1px solid #E4E4E4">
+            <div style="font-size:13.5px;font-weight:800">ACOMPANHAMENTO DE RCAs</div>
+            <div style="font-size:12px;color:#929090;margin-top:2px">Manifestações atribuídas aos RCAs nas empresas autorizadas ao seu perfil.</div>
+          </div>
+          <div style="overflow-x:auto">
+            <table class="mc-rca-tbl" id="cen-rca-tbl">
+              <thead><tr>
+                <th>RCA</th><th>Atribuídas</th><th>Abertas</th><th>Em tratativa</th><th>Concluídas</th><th>Atrasadas</th><th>Pend. retorno</th><th>SLA %</th><th>Tempo médio</th><th>Última movim.</th><th>Ações</th>
+              </tr></thead>
+              <tbody id="cen-rca-tbody"><tr><td colspan="11" style="text-align:center;padding:40px;color:#929090">Carregando…</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════ ABA: INDICADORES ══════════ -->
+      <div class="mc-tabpanel" id="mc-panel-ind">
+        <div class="mc-ind-kpis" id="cen-ind-kpis"></div>
+        <div class="mc-ind-2">
+          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:12px;padding:16px">
+            <div style="font-size:11px;font-weight:700;letter-spacing:.07em;color:#929090;margin-bottom:12px">SLA POR SETOR</div>
+            <div class="mc-sla-bar" id="cen-ind-sla"></div>
+          </div>
+          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:12px;padding:16px">
+            <div style="font-size:11px;font-weight:700;letter-spacing:.07em;color:#929090;margin-bottom:12px">PENDÊNCIAS POR ETAPA</div>
+            <div class="mc-etapas" id="cen-ind-etapas"></div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /mc-body -->
+
     <div id="mc-toast" class="mc-toast" style="display:none"></div>
-  </div>
+  </div><!-- /page-central-sac -->
 
   <!-- ===== PORTAL SETOR RESPONSÁVEL ===== -->
   <div class="page" id="page-setor-responsavel">
@@ -20573,6 +20544,7 @@ async function mudarStatusMC(id, novoStatus) {
       const setCA=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v||'';};
       setCA('cfg-empresa',s.EMPRESA||s.empresa);
       setCA('cfg-setor',s.SETOR||s.setor);
+      setCA('cfg-cargo',s.CARGO||s.cargo);
       setCA('cfg-perfil','ANALISTA_SAC');
       setCA('cfg-senha','');
       document.getElementById('cfg-acesso-sol-id').value=solId;
@@ -20666,6 +20638,7 @@ async function mudarStatusMC(id, novoStatus) {
     const perfil=document.getElementById('cfg-perfil')?.value||'';
     const empresa=document.getElementById('cfg-empresa')?.value||'';
     const setor=document.getElementById('cfg-setor')?.value||'';
+    const cargo=document.getElementById('cfg-cargo')?.value||'';
     const senha=document.getElementById('cfg-senha')?.value||'';
     if(!perfil||!empresa){ alert('Perfil e empresa são obrigatórios.'); return; }
     const modulosNiveis={};
@@ -20681,7 +20654,7 @@ async function mudarStatusMC(id, novoStatus) {
     try{
       const r=await api2('/api/admin/solicitacoes/'+encodeURIComponent(solId)+'/aprovar',{
         method:'POST',
-        body:JSON.stringify({perfil,empresa,setor,senha,modulosNiveis,competencias:competenciasSelecionadas})
+        body:JSON.stringify({perfil,empresa,setor,cargo,senha,modulosNiveis,competencias:competenciasSelecionadas})
       });
       alert('Solicitação aprovada! '+(r.senhaGerada?'Senha temporária: '+r.senhaGerada:''));
       fecharConfigAcesso();
@@ -21003,6 +20976,17 @@ async function mudarStatusMC(id, novoStatus) {
     ).sort((a,b)=>(a.h==null?1e9:a.h)-(b.h==null?1e9:b.h));
   }
 
+  // ── abas ─────────────────────────────────────────────────────────────────
+  window.cenAba = function(id, btn){
+    ['fila','rcas','ind'].forEach(t=>{
+      const tab=$('mc-tab-'+t), panel=$('mc-panel-'+t);
+      if(tab) tab.classList.toggle('on',t===id);
+      if(panel){panel.classList.toggle('on',t===id);panel.style.display=t===id?'flex':'none';}
+    });
+    if(id==='rcas') renderRCAs();
+    if(id==='ind') renderIndicadores();
+  };
+
   // ── carga principal ───────────────────────────────────────────────────────
   window.loadCentralSAC = async function(){
     setupSidebarCentral();
@@ -21010,70 +20994,85 @@ async function mudarStatusMC(id, novoStatus) {
     if(!u) return;
     const btn=$('cen-btn-refresh'); if(btn){btn.disabled=true;btn.textContent='Atualizando…';}
     const nome=String(u.nome||u.usuario||'').trim().split(/\s+/)[0]||'—';
-    _setText('cen-nome-analista',nome);
-    _setText('cen-empresa-analista','SAC'+(u.empresa?' · '+u.empresa:''));
-    KP.forEach(k=>{const el=$('ckpi-v-'+k[0]);if(el)el.textContent='…'});
+    const greet=$('cen-greet');
+    if(greet) greet.textContent='Olá, '+nome+' · SAC'+(u.empresa?' · '+u.empresa:'');
 
     const d=await api('/api/manifestacoes');
     if(btn){btn.disabled=false;btn.textContent='↻ Atualizar';}
     if(!d.sucesso){_cenAll=[];_cenErroLista=true;}
     else{_cenErroLista=false;_cenAll=(d.itens||[]).map(normMan).filter(m=>m.id);}
-    renderKpis();
-    renderFila();
+    renderKpisGrupo();
+    renderFilaGrupos();
   };
 
-  function renderKpis(){
-    const base=baseList();
-    KP.forEach(([k,fn])=>{
-      const n=base.filter(fn).length;
-      const v=$('ckpi-v-'+k); if(v) v.textContent=_cenErroLista?'—':n;
-      const b=$('ckpi-'+k);
-      if(b){b.classList.toggle('on',_cenKpi===k);b.classList.toggle('warn',k==='atrasados'&&n>0);}
-    });
-    _setText('cen-atrasos-hoje',base.filter(isLate).length+' em atraso hoje');
+  function renderKpisGrupo(){
+    const all=_cenAll, late=all.filter(isLate).length;
+    const kpis=[
+      {l:'Em atraso',v:late,d:'ação urgente',c:'#A80502',bg:'#FFF5F5',bd:'#F5CCCC'},
+      {l:'Triagem',v:all.filter(m=>m.st==='nova').length,d:'novos',c:'#24508F',bg:'#F0F5FF',bd:'#B8CCF0'},
+      {l:'Em tratativa',v:all.filter(m=>m.st==='trat').length,d:'setores acionados',c:'#7A4C00',bg:'#FFFBEE',bd:'#F0D9A0'},
+      {l:'Ag. aprovação',v:all.filter(m=>m.st==='aprov').length,d:'aprovador decide',c:'#9A4A10',bg:'#FCF0E8',bd:'#F0CCA8'},
+      {l:'Devolutiva',v:all.filter(m=>m.st==='dev').length,d:'a enviar',c:'#0E6B73',bg:'#E3F3F4',bd:'#A8D8DB'},
+      {l:'Encerradas',v:all.filter(m=>m.st==='enc').length,d:'no período',c:'#1E6B3A',bg:'#F0FAF3',bd:'#A8DFC0'},
+    ];
+    const cont=$('cen-kpis-fila');
+    if(cont) cont.innerHTML=kpis.map(k=>`<div style="background:${k.bg};border:1.5px solid ${k.bd};border-radius:10px;padding:11px 13px;display:flex;flex-direction:column;gap:3px"><span style="font-size:24px;font-weight:800;color:${k.c};line-height:1">${k.v}</span><span style="font-size:11.5px;font-weight:600;color:#545252">${esc(k.l)}</span><span style="font-size:10.5px;color:#929090">${esc(k.d)}</span></div>`).join('');
+    const badge=$('mc-badge-fila');
+    if(badge) badge.textContent=all.filter(m=>m.st!=='enc').length;
   }
 
-  function renderFila(){
-    const fila=$('cen-fila'); if(!fila) return;
+  const FILA_GRUPOS=[
+    {id:'nova',titulo:'TRIAGEM NECESSÁRIA',accent:'#24508F',headerBg:'#F0F5FF',headerBd:'#B8CCF0',filtro:m=>m.st==='nova'},
+    {id:'anal',titulo:'VALIDAR ANÁLISE DA IA',accent:'#5B3FA0',headerBg:'#EEE8F7',headerBd:'#C8B8E8',filtro:m=>m.st==='anal'},
+    {id:'atraso',titulo:'COBRAR SETORES (ATRASO)',accent:'#A80502',headerBg:'#FFF5F5',headerBd:'#F5CCCC',filtro:m=>m.st==='trat'&&isLate(m)},
+    {id:'trat',titulo:'ACOMPANHAR TRATATIVAS',accent:'#7A4C00',headerBg:'#FFFBEE',headerBd:'#F0D9A0',filtro:m=>m.st==='trat'&&!isLate(m)},
+    {id:'aprov',titulo:'AGUARDANDO APROVAÇÃO',accent:'#9A4A10',headerBg:'#FCF0E8',headerBd:'#F0CCA8',filtro:m=>m.st==='aprov'},
+    {id:'dev',titulo:'ENVIAR DEVOLUTIVA',accent:'#0E6B73',headerBg:'#E3F3F4',headerBd:'#A8D8DB',filtro:m=>m.st==='dev'},
+  ];
+
+  function renderFilaGrupos(){
+    const cont=$('cen-fila-grupos'); if(!cont) return;
     const list=visibleList();
     const hasFilter=!!(($('cen-busca')?.value||'').trim()||_cenKpi||$('cen-fil-status')?.value||$('cen-fil-sla')?.value||$('cen-fil-tipo')?.value||$('cen-fil-prioridade')?.value);
-    _setText('cen-list-info',list.length+(list.length===1?' manifestação':' manifestações')+' · ordenadas por prazo');
+    _setText('cen-list-info',list.filter(m=>m.st!=='enc').length+' manifestações ativas');
     const cl=$('cen-limpar'); if(cl) cl.style.display=hasFilter?'':'none';
     ['cen-fil-status','cen-fil-sla','cen-fil-tipo','cen-fil-prioridade'].forEach(id=>{const e=$(id);if(e)e.classList.toggle('on',!!e.value);});
-    if(!list.length){
-      fila.innerHTML='<div class="mc-empty">'+(_cenErroLista?'Não foi possível carregar as manifestações.':'Nenhuma manifestação neste filtro.')+'</div>';
+    const visGrupos=FILA_GRUPOS.map(g=>({...g,itens:list.filter(g.filtro)})).filter(g=>g.itens.length);
+    if(!visGrupos.length){
+      cont.innerHTML='<div class="mc-empty">'+(_cenErroLista?'Não foi possível carregar as manifestações.':'Nenhuma manifestação neste filtro.')+'</div>';
       return;
     }
-    fila.innerHTML=list.map(m=>{
-      const sl=slaTxt(m);
-      return `<button type="button" class="mc-item${_cenAtual===m.id?' sel':''}" data-id="${esc(m.id)}" onclick="cenSelecionarMan(this.dataset.id)">
-        <div class="mc-item-top"><span class="mc-item-id"><span class="mc-dot mc-p-${m.pri||'none'}"></span><span class="mc-item-prot">${esc(m.id)}</span>${m.ext?'<span class="mc-tag-ext">EXTERNO</span>':''}</span><span class="mc-sla mc-sla-${sl[1]}">${esc(sl[0])}</span></div>
-        <span class="mc-item-cli">${esc(m.cli||'—')}</span>
-        <span class="mc-item-mot">${esc(m.motivo||m.tipo||'—')} · ${esc(m.emp||'—')}</span>
-        <div class="mc-item-bot"><span class="mc-st mc-st-${m.st}">${esc(m.st==='enc'&&m.statusRaw&&/REJEIT|CANCEL/.test(norm(m.statusRaw))?m.statusRaw.replace(/_/g,' ').toLowerCase().replace(/^./,c=>c.toUpperCase()):ST_LBL[m.st])}</span><span class="mc-item-next">${esc(NEXT[m.st])}</span></div>
-      </button>`;
-    }).join('');
+    cont.innerHTML=visGrupos.map(g=>`
+      <div class="mc-grp">
+        <div class="mc-grp-h" style="background:${g.headerBg};border-bottom:1px solid ${g.headerBd}">
+          <span class="mc-grp-t" style="color:${g.accent}">${esc(g.titulo)}</span>
+          <span class="mc-grp-c" style="color:${g.accent}">${g.itens.length}</span>
+        </div>
+        ${g.itens.map(m=>{const sl=slaTxt(m);return `<button type="button" class="mc-item${_cenAtual===m.id?' sel':''}" data-id="${esc(m.id)}" onclick="cenSelecionarMan(this.dataset.id)" style="border-left:3px solid ${g.accent};border-radius:0;border-top:0;border-right:0;border-bottom:1px solid #F4F4F4">
+          <div class="mc-item-top"><span class="mc-item-id"><span class="mc-dot mc-p-${m.pri||'none'}"></span><span class="mc-item-prot">${esc(m.id)}</span>${m.ext?'<span class="mc-tag-ext">EXTERNO</span>':''}</span><span class="mc-sla mc-sla-${sl[1]}">${esc(sl[0])}</span></div>
+          <span class="mc-item-cli">${esc(m.cli||'—')}</span>
+          <span class="mc-item-mot">${esc(m.motivo||m.tipo||'—')}</span>
+        </button>`;}).join('')}
+      </div>`).join('');
   }
 
   // ── filtros ───────────────────────────────────────────────────────────────
-  window.filtrarFilaCentral = function(){renderFila();};
+  window.filtrarFilaCentral = function(){renderFilaGrupos();};
 
   window.setCenFiltroScope = function(scope){
     _cenScope=scope==='todas'?'todas':'minhas';
-    $('cen-btn-minhas')?.classList.toggle('on',_cenScope==='minhas');
-    $('cen-btn-todas')?.classList.toggle('on',_cenScope==='todas');
-    renderKpis(); renderFila();
+    renderKpisGrupo(); renderFilaGrupos();
   };
 
   window.cenFiltrarKpi = function(tipo){
     _cenKpi=_cenKpi===tipo?'':tipo;
-    renderKpis(); renderFila();
+    renderKpisGrupo(); renderFilaGrupos();
   };
 
   window.cenLimparFiltros = function(){
     ['cen-busca','cen-fil-status','cen-fil-sla','cen-fil-tipo','cen-fil-prioridade'].forEach(id=>{const e=$(id);if(e)e.value='';});
     _cenKpi='';
-    renderKpis(); renderFila();
+    renderKpisGrupo(); renderFilaGrupos();
   };
 
   // ── detalhe ───────────────────────────────────────────────────────────────
@@ -21095,6 +21094,98 @@ async function mudarStatusMC(id, novoStatus) {
   }
   window.cenAbrirTimeline = function(){ if(_cenRawAtual) renderHistorico(normMan(_cenRawAtual)); };
   window.cenAbrirHistorico = window.cenAbrirTimeline;
+
+  // ── RCAs ──────────────────────────────────────────────────────────────────
+  function renderRCAs(){
+    const tbody=$('cen-rca-tbody'); if(!tbody) return;
+    const rcaMap={};
+    _cenAll.forEach(m=>{
+      const raw=m.raw||{};
+      const rcaId=pick(raw,['ID_RCA','RCA_ID','NUMERO_RCA','RCA']);
+      if(!rcaId) return;
+      if(!rcaMap[rcaId]) rcaMap[rcaId]={id:rcaId,titulo:pick(raw,['TITULO_RCA','DESCRICAO_RCA'])||rcaId,itens:[],late:0};
+      rcaMap[rcaId].itens.push(m);
+      if(isLate(m)) rcaMap[rcaId].late++;
+    });
+    const rcas=Object.values(rcaMap);
+    if(!rcas.length){tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:#999;padding:24px">Nenhum RCA vinculado às manifestações atuais.</td></tr>';return;}
+    tbody.innerHTML=rcas.map(r=>{
+      const tot=r.itens.length, enc=r.itens.filter(m=>m.st==='enc').length, pend=tot-enc;
+      const sla=r.late>0?'<span style="color:#A80502;font-weight:700">'+r.late+' em atraso</span>':'<span style="color:#1E6B3A">No prazo</span>';
+      const rows=r.itens.map(m=>`<tr class="mc-rca-sub" style="display:none;background:#FAFAFA"><td></td><td>${esc(m.id)}</td><td>${esc(m.cli||'—')}</td><td>${esc(ST_LBL[m.st]||m.st)}</td><td>${slaTxt(m)[0]}</td></tr>`).join('');
+      return `<tr class="mc-rca-row" onclick="this.classList.toggle('open');const sub=this.parentElement.querySelectorAll('.mc-rca-sub[data-rca=\\'${esc(r.id)}\\']');sub.forEach(s=>s.style.display=this.classList.contains('open')?'':'none')">
+        <td style="width:28px;text-align:center">▶</td>
+        <td style="font-weight:700">${esc(r.id)}</td>
+        <td>${esc(r.titulo)}</td>
+        <td>${tot} total · ${enc} enc. · ${pend} pend.</td>
+        <td>${sla}</td>
+      </tr>${r.itens.map(m=>`<tr class="mc-rca-sub" data-rca="${esc(r.id)}" style="display:none;background:#FAFAFA"><td></td><td>${esc(m.id)}</td><td>${esc(m.cli||'—')}</td><td>${esc(ST_LBL[m.st]||m.st)}</td><td>${slaTxt(m)[0]}</td></tr>`).join('')}`;
+    }).join('');
+  }
+
+  // ── Indicadores ───────────────────────────────────────────────────────────
+  function renderIndicadores(){
+    const all=_cenAll;
+    const enc=all.filter(m=>m.st==='enc');
+    const pend=all.filter(m=>m.st!=='enc');
+    const late=all.filter(isLate);
+    const devEnv=all.filter(m=>m.st==='enc'&&pick(m.raw||{},['DEVOLUTIVA_ENVIADA','DEVOLUTIVA_FINAL']));
+    const slaOk=pend.filter(m=>slaOf(m)==='ok').length;
+    const slaPct=pend.length?Math.round(slaOk/pend.length*100):100;
+    const tmFmt=ms=>ms==null?'—':ms<3600000?(Math.round(ms/60000)+'min'):(ms<86400000?(Math.round(ms/3600000*10)/10+'h'):(Math.round(ms/86400000*10)/10+'d'));
+    const tms=enc.map(m=>{const ab=toDate(pick(m.raw||{},['DATA_ABERTURA','DATA_REGISTRO'])),en=toDate(pick(m.raw||{},['DATA_ENCERRAMENTO']));return (ab&&en)?en-ab:null;}).filter(v=>v!=null);
+    const tmMed=tms.length?tmFmt(tms.reduce((a,b)=>a+b,0)/tms.length):null;
+
+    const kpis=[
+      {l:'Total ativas',v:pend.length,d:'manifestações em aberto',c:'#24508F',bg:'#F0F5FF',bd:'#B8CCF0'},
+      {l:'Encerradas',v:enc.length,d:'neste ciclo',c:'#1E6B3A',bg:'#F0FAF0',bd:'#A8D8A8'},
+      {l:'Em atraso',v:late.length,d:'prazo vencido',c:'#A80502',bg:'#FFF5F5',bd:'#F5CCCC'},
+      {l:'SLA cumprido',v:slaPct+'%',d:'das ativas no prazo',c:'#0E6B73',bg:'#E3F3F4',bd:'#A8D8DB'},
+      {l:'Triagem',v:all.filter(m=>m.st==='nova').length,d:'aguardando',c:'#5B3FA0',bg:'#EEE8F7',bd:'#C8B8E8'},
+      {l:'Em tratativa',v:all.filter(m=>m.st==='trat').length,d:'com setor',c:'#7A4C00',bg:'#FFFBEE',bd:'#F0D9A0'},
+      {l:'Ag. aprovação',v:all.filter(m=>m.st==='aprov').length,d:'esperando aprovador',c:'#9A4A10',bg:'#FCF0E8',bd:'#F0CCA8'},
+      {l:'Tempo médio',v:tmMed||'—',d:'resolução (enc.)',c:'#24508F',bg:'#F0F5FF',bd:'#B8CCF0'},
+    ];
+    const kEl=$('cen-ind-kpis');
+    if(kEl) kEl.innerHTML=kpis.map(k=>`<div class="mc-ind-kpi" style="background:${k.bg};border:1.5px solid ${k.bd}"><div class="mc-ind-l">${esc(k.l)}</div><div class="mc-ind-v" style="color:${k.c}">${esc(String(k.v))}</div><div class="mc-ind-d">${esc(k.d)}</div></div>`).join('');
+
+    // SLA por setor
+    const setorMap={};
+    all.forEach(m=>{
+      (m.setores&&m.setores.length?m.setores:['(sem setor)']).forEach(s=>{
+        if(!setorMap[s]) setorMap[s]={tot:0,late:0};
+        setorMap[s].tot++;
+        if(isLate(m)) setorMap[s].late++;
+      });
+    });
+    const slaEl=$('cen-ind-sla');
+    if(slaEl){
+      const rows=Object.entries(setorMap).sort((a,b)=>b[1].late-a[1].late).slice(0,10);
+      if(!rows.length){slaEl.innerHTML='<div style="color:#999;padding:12px">Sem dados.</div>';}
+      else slaEl.innerHTML=rows.map(([s,v])=>{
+        const pct=v.tot?Math.round((v.tot-v.late)/v.tot*100):100;
+        return `<div class="mc-sla-row"><div class="mc-sla-lbl">${esc(s)}</div><div class="mc-sla-bar"><div style="width:${pct}%;background:${pct>=80?'#1E6B3A':pct>=60?'#F0A030':'#A80502'};height:100%;border-radius:4px;transition:width .4s"></div></div><div class="mc-sla-pct" style="color:${pct>=80?'#1E6B3A':pct>=60?'#F0A030':'#A80502'}">${pct}%</div></div>`;
+      }).join('');
+    }
+
+    // Pendências por etapa
+    const etapas=[
+      {id:'nova',l:'Triagem'},
+      {id:'anal',l:'Validação IA'},
+      {id:'trat',l:'Tratativa'},
+      {id:'aprov',l:'Aprovação'},
+      {id:'dev',l:'Devolutiva'},
+    ];
+    const etEl=$('cen-ind-etapas');
+    if(etEl){
+      const max=Math.max(1,...etapas.map(e=>all.filter(m=>m.st===e.id).length));
+      etEl.innerHTML=etapas.map(e=>{
+        const v=all.filter(m=>m.st===e.id).length;
+        const pct=Math.round(v/max*100);
+        return `<div class="mc-etapa-row"><div class="mc-etapa-lbl">${esc(e.l)}</div><div class="mc-sla-bar"><div style="width:${pct}%;background:#24508F;height:100%;border-radius:4px;transition:width .4s"></div></div><div class="mc-etapa-v">${v}</div></div>`;
+      }).join('');
+    }
+  }
 
   function renderSteps(n){
     const ORD=['nova','anal','trat','aprov','dev','enc'], cur=ORD.indexOf(n.st);
@@ -21200,6 +21291,7 @@ async function mudarStatusMC(id, novoStatus) {
     _setText('cd-descricao',n.desc||'—');
     renderSetores(n);
     renderHistorico(n);
+    renderPrazos(n, raw);
     // formulários do painel "Mais ações"
     const setField=(id,v)=>{const e=$(id);if(e)e.value=v||'';};
     setField('trat-acao',pick(raw,['TRATATIVA_REALIZADA']));
@@ -21207,16 +21299,39 @@ async function mudarStatusMC(id, novoStatus) {
     setField('trat-setor',pick(raw,['SETOR_CONFIRMADO','SETORES_CONFIRMADOS','SETOR_SUGERIDO']));
     setField('trat-responsavel',pick(raw,['RESPONSAVEL_SETOR','RESPONSAVEL']));
     setField('dev-texto',pick(raw,['DEVOLUTIVA_FINAL','DEVOLUTIVA_ENVIADA']));
+    // devolutiva box
+    const devCanal=$('cen-dev-canal'); if(devCanal) devCanal.textContent=n.canal||'—';
+    const devSt=$('cen-dev-status');
+    if(devSt){
+      const devEnv=pick(raw,['DEVOLUTIVA_ENVIADA','DEVOLUTIVA_FINAL']);
+      const devDt=pick(raw,['DATA_DEVOLUTIVA']);
+      devSt.textContent=devEnv?(devDt?'Enviada em '+fmtdt(devDt):'Devolutiva registrada.'):'Devolutiva não enviada ainda.';
+    }
+    // RNC condicional
+    const rncCard=$('cen-rnc-card');
+    const rncAtivo=norm(raw.RNC_SINALIZADO)==='REVISAR'||norm(raw.GERA_RNC)==='SIM'||pick(raw,['ID_RNC','RNC_ID','NUMERO_RNC']);
+    if(rncCard) rncCard.style.display=rncAtivo?'':'none';
+    const rncId=$('cen-rnc-id'); if(rncId) rncId.textContent=pick(raw,['ID_RNC','RNC_ID','NUMERO_RNC'])||'Pendente';
+    const rncDesc=$('cen-rnc-desc'); if(rncDesc) rncDesc.textContent=pick(raw,['DESCRICAO_RNC','TITULO_RNC'])||'—';
     const rnc=$('cen-rnc-corpo');
     if(rnc) rnc.textContent=norm(raw.RNC_SINALIZADO)==='REVISAR'?'O Cérebro sinalizou este caso para revisão de RNC.':(norm(raw.GERA_RNC)==='SIM'?'Marcada para gerar RNC.':'Nenhuma RNC sinalizada para esta manifestação.');
     return n;
+  }
+
+  function renderPrazos(n, raw){
+    const fmt=v=>{if(!v)return'—';const d=toDate(v);return d?fmtdt(d):'—';};
+    const resp=pick(raw,['RESPONSAVEL_SETOR','RESPONSAVEL'])||'';
+    const ps=$('cen-prazo-setor'); if(ps) ps.textContent=fmt(pick(raw,['PRAZO_SETOR','DATA_LIMITE_TRATATIVA','DATA_PRAZO']))+(resp?' · '+resp:'');
+    const pd=$('cen-prazo-dev'); if(pd) pd.textContent=fmt(pick(raw,['PRAZO_DEVOLUTIVA','DATA_PRAZO_DEVOLUTIVA']));
+    const pi=$('cen-prazo-interno'); if(pi) pi.textContent=fmt(pick(raw,['PRAZO_INTERNO','DATA_PRAZO_INTERNO','DATA_LIMITE']));
+    const pa=$('cen-prazo-aprov'); if(pa) pa.textContent=fmt(pick(raw,['PRAZO_APROVACAO','DATA_PRAZO_APROVACAO']));
   }
 
   window.cenSelecionarMan = async function(id){
     if(!id) return;
     _cenAtual=id;
     const tk=++_selTok;
-    renderFila();
+    renderFilaGrupos();
     const base=_cenAll.find(m=>m.id===id);
     if(base) renderDetalhe(base.raw);
     else { $('cen-placeholder').style.display='none'; $('cen-detalhe').style.display='flex'; }
