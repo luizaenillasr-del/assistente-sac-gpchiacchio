@@ -13051,14 +13051,14 @@ window.navigate = function(page, el) {
       sec.style.display=hasVisible?'block':'none';
     });
     document.querySelectorAll('.page').forEach(p=>{const id=p.id.replace('page-','');if(id==='representantes'&&r==='RCA / REPRESENTANTE')p.classList.remove('active')});
-    if(r==='RCA / REPRESENTANTE') navigate('representantes',document.querySelector('[data-v5-page="representantes"]'));
+    if(r==='RCA / REPRESENTANTE'||r==='REPRESENTANTE') navigate('representantes',document.querySelector('[data-v5-page="representantes"]'));
     if(r==='APROVADOR'||r==='APROVADOR MASTER') navigate('aprovadores',document.querySelector('[onclick*=aprovadores]'));
     if(r==='SETOR RESPONSÁVEL'||r==='ESPECIALISTA') navigate('setor-responsavel',document.querySelector('[onclick*=setor-responsavel]')||document.querySelector('[onclick*=banco-rnc]'));
-    if(r==='DIRETOR'||r==='VISUALIZADOR') navigate('visao-geral',document.querySelector('[onclick*=visao-geral]'));
-    if(r==='ATENDENTE SAC') navigate('central-sac',document.querySelector('[onclick*=central-sac]'));
-    if(r==='GESTOR SAC') navigate('visao-geral',document.querySelector('[onclick*=visao-geral]'));
+    if(r==='DIRETOR'||r==='VISUALIZADOR'||r==='CONSULTA') navigate('visao-geral',document.querySelector('[onclick*=visao-geral]'));
+    if(r==='ATENDENTE SAC'||r==='ANALISTA_SAC'||r==='ANALISTA SAC') navigate('visao-geral',document.querySelector('[onclick*=visao-geral]'));
+    if(r==='GESTOR SAC'||r==='GESTOR_SAC') navigate('visao-geral',document.querySelector('[onclick*=visao-geral]'));
     if(r==='AUDITOR') navigate('auditoria',document.querySelector('[onclick*=auditoria]'));
-    if(r==='MASTER'){const msb=document.getElementById('sidebar-painel-master');if(msb)msb.style.display='';navigate('painel-master',msb||document.querySelector('[onclick*=painel-master]'));}
+    if(r==='MASTER') navigate('visao-geral',document.querySelector('[onclick*=visao-geral]'));
     if(r!=='RCA / REPRESENTANTE') document.getElementById('rca-role-pill')?.classList.add('hidden');
   }
 
@@ -13095,7 +13095,7 @@ window.navigate = function(page, el) {
     }
 
     if(r==='RCA / REPRESENTANTE') await loadRcaHome();
-    if(r==='MASTER') { loadPainelMaster && loadPainelMaster(); await loadUsuariosV5(); checarSolicitacoesPendentes && checarSolicitacoesPendentes(); iniciarPollingsolicitacoes && iniciarPollingsolicitacoes(); }
+    if(r==='MASTER') { await loadUsuariosV5(); checarSolicitacoesPendentes && checarSolicitacoesPendentes(); iniciarPollingsolicitacoes && iniciarPollingsolicitacoes(); }
     if(r==='APROVADOR'||r==='APROVADOR MASTER'||r==='MASTER') await loadAprovadorV5();
     if(r==='ANALISTA SAC'||r==='GESTOR SAC') setupAprovacaoUI();
     if(r==='ANALISTA SAC'||r==='GESTOR SAC'||r==='MASTER') setTimeout(()=>{ if(typeof carregarNotifAnalista==='function') carregarNotifAnalista(); },1500);
