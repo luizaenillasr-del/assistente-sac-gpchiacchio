@@ -25271,6 +25271,25 @@ window.gdDecidir=async function(id,decisao){
 #page-painel-master .pm-kpi.warn .pm-kpi-val{color:var(--pm-gold)}
 #page-painel-master .pm-kpi.ok .pm-kpi-val{color:var(--pm-green)}
 #page-painel-master .pm-kpi.navy .pm-kpi-val{color:var(--pm-navy)}
+#page-painel-master .pm-kpi.purple{border-color:#D9B8F0;background:#FAF5FF}
+#page-painel-master .pm-kpi.purple .pm-kpi-val{color:#6B24A8}
+#page-painel-master .pm-kpi.blue{border-color:#B8CCF0;background:#F0F5FF}
+#page-painel-master .pm-kpi.blue .pm-kpi-val{color:#1A5FC8}
+/* Tabela geral */
+#page-painel-master .pm-tbl-wrap{overflow-x:auto}
+#page-painel-master .pm-tbl-row{cursor:pointer;transition:background .1s}
+#page-painel-master .pm-tbl-row:hover{background:#F7F8FB}
+#page-painel-master .pm-sla-ok{color:var(--pm-green);font-weight:700;font-size:11px}
+#page-painel-master .pm-sla-late{color:var(--pm-red);font-weight:700;font-size:11px}
+#page-painel-master .pm-sla-warn{color:var(--pm-gold);font-weight:700;font-size:11px}
+/* Bar chart */
+#page-painel-master .pm-bar-row{display:flex;align-items:center;gap:10px;padding:6px 0}
+#page-painel-master .pm-bar-lbl{width:120px;font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0}
+#page-painel-master .pm-bar-track{flex:1;background:#E8E8E8;border-radius:4px;height:10px;overflow:hidden}
+#page-painel-master .pm-bar-fill{height:100%;border-radius:4px;background:var(--pm-navy)}
+#page-painel-master .pm-bar-fill.late{background:var(--pm-red)}
+#page-painel-master .pm-bar-val{width:36px;text-align:right;font-size:12px;font-weight:800;flex-shrink:0}
+#page-painel-master .pm-bar-late{font-size:10px;color:var(--pm-red);flex-shrink:0}
 /* Cards */
 #page-painel-master .pm-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 #page-painel-master .pm-card{background:#fff;border:1px solid #E4E4E4;border-radius:12px;overflow:hidden}
@@ -25309,12 +25328,16 @@ window.gdDecidir=async function(id,decisao){
 #page-painel-master .pm-btn{height:33px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;padding:0 14px;font-family:inherit;transition:opacity .15s;border:0}
 #page-painel-master .pm-btn:hover{opacity:.85}
 #page-painel-master .pm-empty{padding:32px;text-align:center;color:#929090;font-size:13px}
+@media(max-width:1100px){
+  #page-painel-master .pm-kpis{grid-template-columns:repeat(3,1fr)!important}
+}
 @media(max-width:900px){
   #page-painel-master .pm-row{grid-template-columns:1fr}
-  #page-painel-master .pm-kpis{grid-template-columns:repeat(2,1fr)}
+  #page-painel-master .pm-kpis{grid-template-columns:repeat(2,1fr)!important}
   #page-painel-master .pm-shortcuts{grid-template-columns:repeat(2,1fr)}
   #page-painel-master .pm-topbar{padding:12px 16px 0}
   #page-painel-master .pm-body{padding:14px 16px}
+  #page-painel-master .pm-bar-lbl{width:80px}
 }
 </style>
 <div class="pm-wrap">
@@ -25349,40 +25372,65 @@ window.gdDecidir=async function(id,decisao){
   <div class="pm-body" id="pm-body">
     <!-- ── PANEL: VISÃO GLOBAL ── -->
     <div class="pm-panel on" id="pm-panel-visao">
-      <div class="pm-kpis" id="pm-kpis-visao">
-        <div class="pm-kpi navy"><div class="pm-kpi-lbl">Manifestações</div><div class="pm-kpi-val" id="pmk-total">—</div><div class="pm-kpi-desc">total no sistema</div></div>
-        <div class="pm-kpi"><div class="pm-kpi-lbl">Em aberto</div><div class="pm-kpi-val navy" id="pmk-abertas">—</div><div class="pm-kpi-desc">ativas</div></div>
+      <!-- 6 KPIs coloridos -->
+      <div class="pm-kpis" id="pm-kpis-visao" style="grid-template-columns:repeat(6,1fr)">
         <div class="pm-kpi alert"><div class="pm-kpi-lbl">SLA vencido</div><div class="pm-kpi-val" id="pmk-sla">—</div><div class="pm-kpi-desc">ação urgente</div></div>
-        <div class="pm-kpi warn"><div class="pm-kpi-lbl">Aprovações pend.</div><div class="pm-kpi-val" id="pmk-aprov">—</div><div class="pm-kpi-desc">aguardando</div></div>
-        <div class="pm-kpi"><div class="pm-kpi-lbl">RNCs</div><div class="pm-kpi-val navy" id="pmk-rnc">—</div><div class="pm-kpi-desc">total cadastradas</div></div>
+        <div class="pm-kpi navy"><div class="pm-kpi-lbl">Manifestações</div><div class="pm-kpi-val" id="pmk-total">—</div><div class="pm-kpi-desc">total no sistema</div></div>
+        <div class="pm-kpi purple"><div class="pm-kpi-lbl">Aprovações pend.</div><div class="pm-kpi-val" id="pmk-aprov">—</div><div class="pm-kpi-desc">aguardando</div></div>
+        <div class="pm-kpi blue"><div class="pm-kpi-lbl">Em aberto</div><div class="pm-kpi-val" id="pmk-abertas">—</div><div class="pm-kpi-desc">ativas</div></div>
+        <div class="pm-kpi warn"><div class="pm-kpi-lbl">RNCs</div><div class="pm-kpi-val" id="pmk-rnc">—</div><div class="pm-kpi-desc">cadastradas</div></div>
         <div class="pm-kpi ok"><div class="pm-kpi-lbl">Encerradas</div><div class="pm-kpi-val" id="pmk-enc">—</div><div class="pm-kpi-desc">finalizadas</div></div>
-        <div class="pm-kpi navy"><div class="pm-kpi-lbl">Usuários ativos</div><div class="pm-kpi-val" id="pmk-usu">—</div><div class="pm-kpi-desc">cadastrados</div></div>
-        <div class="pm-kpi"><div class="pm-kpi-lbl">Empresas</div><div class="pm-kpi-val navy" id="pmk-emp">—</div><div class="pm-kpi-desc">cadastradas</div></div>
       </div>
+      <!-- Tabela geral de manifestações -->
+      <div class="pm-card">
+        <div class="pm-card-head" style="gap:8px">
+          <span class="pm-card-title">Manifestações — visão global</span>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <select id="pm-tbl-emp" class="pm-sel" style="font-size:11px;height:28px" onchange="pmRenderTabelaGeral()"><option value="">Todas as empresas</option></select>
+            <select id="pm-tbl-st" class="pm-sel" style="font-size:11px;height:28px" onchange="pmRenderTabelaGeral()">
+              <option value="">Todos os status</option>
+              <option value="aberta">Em aberto</option>
+              <option value="atrasada">SLA vencido</option>
+              <option value="encerrada">Encerradas</option>
+            </select>
+            <span id="pm-tbl-cnt" style="font-size:11px;color:#929090"></span>
+          </div>
+        </div>
+        <div class="pm-tbl-wrap">
+          <table class="pm-table">
+            <thead><tr>
+              <th>ID</th><th>Data</th><th>Empresa</th><th>Cliente</th><th>Tipo</th><th>Status</th><th>SLA</th><th></th>
+            </tr></thead>
+            <tbody id="pm-tbl-tbody"><tr><td colspan="8" class="pm-empty">Carregando…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      <!-- Dois cards -->
       <div class="pm-row">
         <div class="pm-card">
           <div class="pm-card-head">
-            <span class="pm-card-title">Manifestações críticas</span>
-            <span id="pm-crit-cnt" style="font-size:11px;color:#929090"></span>
+            <span class="pm-card-title">Manifestações por empresa</span>
+            <span id="pm-dist-total" style="font-size:11px;color:#929090"></span>
           </div>
-          <div class="pm-card-body" id="pm-crit-list"><div class="pm-empty">Carregando…</div></div>
+          <div class="pm-card-body" id="pm-dist-emp"><div class="pm-empty">Carregando…</div></div>
         </div>
         <div class="pm-card">
           <div class="pm-card-head">
-            <span class="pm-card-title">Pendências de aprovação</span>
+            <span class="pm-card-title">Pendências &amp; alertas</span>
             <span id="pm-aprov-cnt" style="font-size:11px;color:#929090"></span>
           </div>
           <div class="pm-card-body" id="pm-aprov-list"><div class="pm-empty">Carregando…</div></div>
         </div>
       </div>
+      <!-- RNCs + usuários -->
       <div class="pm-row">
-        <div class="pm-card">
-          <div class="pm-card-head"><span class="pm-card-title">Distribuição por empresa</span></div>
-          <div class="pm-card-body" id="pm-dist-emp"><div class="pm-empty">Carregando…</div></div>
-        </div>
         <div class="pm-card">
           <div class="pm-card-head"><span class="pm-card-title">RNCs pendentes</span></div>
           <div class="pm-card-body" id="pm-rnc-pend"><div class="pm-empty">Carregando…</div></div>
+        </div>
+        <div class="pm-card">
+          <div class="pm-card-head"><span class="pm-card-title">Usuários &amp; acessos</span></div>
+          <div class="pm-card-body" id="pm-usu-resumo"><div class="pm-empty">Carregando…</div></div>
         </div>
       </div>
     </div>
@@ -25527,102 +25575,193 @@ function pmRenderKpis(){
   const mans=_pmData.mans, aprovs=_pmData.aprovs, rncs=_pmData.rncs, usus=_pmData.usus;
   const setKpi=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v==null?'—':String(v);};
   const norm=s=>String(s||'').toUpperCase();
-  const abertas=mans.filter(m=>!['FECHADA','ENCERRADA','ENC','ARQUIVADA'].includes(norm(m.STATUS||m.status)));
+  const encStatuses=['FECHADA','ENCERRADA','ENC','ARQUIVADA'];
+  const abertas=mans.filter(m=>!encStatuses.includes(norm(m.STATUS||m.status)));
   const slaVenc=abertas.filter(m=>{
     const prazo=m.PRAZO_RESPOSTA||m.prazo_resposta||m.PRAZO||'';
     if(!prazo)return false;
     const d=new Date(String(prazo).includes('/')?String(prazo).split('/').reverse().join('-'):prazo);
     return !isNaN(d)&&d<Date.now();
   });
-  const enc=mans.filter(m=>['FECHADA','ENCERRADA','ENC','ARQUIVADA'].includes(norm(m.STATUS||m.status)));
+  const enc=mans.filter(m=>encStatuses.includes(norm(m.STATUS||m.status)));
   const emps=[...new Set(mans.map(m=>m.EMPRESA||m.empresa||'').filter(Boolean))];
-  const usuAtivos=usus.filter(u=>norm(u.status||u.STATUS)==='ATIVO');
   setKpi('pmk-total',mans.length);
   setKpi('pmk-abertas',abertas.length);
   setKpi('pmk-sla',slaVenc.length);
   setKpi('pmk-aprov',Array.isArray(aprovs)?aprovs.length:0);
   setKpi('pmk-rnc',Array.isArray(rncs)?rncs.length:0);
   setKpi('pmk-enc',enc.length);
-  setKpi('pmk-usu',usuAtivos.length||usus.length);
-  setKpi('pmk-emp',emps.length||'—');
-  // badge
+  // badge monitoramento
   const alertCount=slaVenc.length+(Array.isArray(aprovs)?aprovs.length:0);
   const badge=document.getElementById('pm-badge-alertas');
   if(badge){badge.textContent=alertCount;badge.style.display=alertCount>0?'':'none';}
-  // fill empresa select
+  // preenche selects da tabela
   const sel=document.getElementById('pm-filt-emp');
-  if(sel&&emps.length){
-    const cur=sel.value;
-    sel.innerHTML='<option value="">Todas as empresas</option>'+emps.map(e=>`<option value="${pmEsc(e)}">${pmEsc(e)}</option>`).join('');
-    if(cur)sel.value=cur;
-  }
+  const selT=document.getElementById('pm-tbl-emp');
+  [sel,selT].forEach(s=>{
+    if(!s||!emps.length)return;
+    const cur=s.value;
+    s.innerHTML='<option value="">Todas as empresas</option>'+emps.map(e=>`<option value="${pmEsc(e)}">${pmEsc(e)}</option>`).join('');
+    if(cur)s.value=cur;
+  });
 }
 
-// ── MANIFESTAÇÕES CRÍTICAS ─────────────────────────────────────────────────
-function pmRenderCrit(){
+// ── TABELA GERAL ─────────────────────────────────────────────────────────
+window.pmRenderTabelaGeral=function(){
   const mans=_pmData.mans;
-  const fEmp=(document.getElementById('pm-filt-emp')||{}).value||'';
+  const fEmp=(document.getElementById('pm-tbl-emp')||{}).value||'';
+  const fSt=(document.getElementById('pm-tbl-st')||{}).value||'';
   const norm=s=>String(s||'').toUpperCase();
-  const late=mans.filter(m=>{
-    if(fEmp&&(m.EMPRESA||m.empresa||'')!==fEmp)return false;
-    if(['FECHADA','ENCERRADA','ENC'].includes(norm(m.STATUS||m.status)))return false;
+  const encStatuses=['FECHADA','ENCERRADA','ENC','ARQUIVADA'];
+  function slaClass(m){
+    const prazo=m.PRAZO_RESPOSTA||m.prazo_resposta||m.PRAZO||'';
+    if(!prazo)return '';
+    const d=new Date(String(prazo).includes('/')?String(prazo).split('/').reverse().join('-'):prazo);
+    if(isNaN(d))return '';
+    const diff=(d-Date.now())/(1000*3600*24);
+    if(diff<0)return 'late';
+    if(diff<2)return 'warn';
+    return 'ok';
+  }
+  let lista=[...mans];
+  if(fEmp) lista=lista.filter(m=>(m.EMPRESA||m.empresa||'')===fEmp);
+  if(fSt==='aberta') lista=lista.filter(m=>!encStatuses.includes(norm(m.STATUS||m.status)));
+  else if(fSt==='atrasada') lista=lista.filter(m=>{
+    if(encStatuses.includes(norm(m.STATUS||m.status)))return false;
     const prazo=m.PRAZO_RESPOSTA||m.prazo_resposta||m.PRAZO||'';
     if(!prazo)return false;
     const d=new Date(String(prazo).includes('/')?String(prazo).split('/').reverse().join('-'):prazo);
     return !isNaN(d)&&d<Date.now();
-  }).slice(0,8);
-  const el=document.getElementById('pm-crit-list');
-  const cnt=document.getElementById('pm-crit-cnt');
-  if(cnt)cnt.textContent=late.length?late.length+' item(ns)':'';
-  if(!el)return;
-  if(!late.length){el.innerHTML='<div class="pm-empty">Nenhuma manifestação com SLA vencido.</div>';return;}
-  el.innerHTML=`<div class="pm-feed">`+late.map(m=>{
+  });
+  else if(fSt==='encerrada') lista=lista.filter(m=>encStatuses.includes(norm(m.STATUS||m.status)));
+  // sort: SLA vencidos primeiro, depois por data desc
+  lista.sort((a,b)=>{
+    const sa=slaClass(a)==='late'?-1:0, sb=slaClass(b)==='late'?-1:0;
+    if(sa!==sb)return sa-sb;
+    const da=new Date(a.DATA_ABERTURA||a.data_abertura||a.CREATED_AT||0);
+    const db=new Date(b.DATA_ABERTURA||b.data_abertura||b.CREATED_AT||0);
+    return db-da;
+  });
+  const cnt=document.getElementById('pm-tbl-cnt');
+  if(cnt)cnt.textContent=lista.length+' registro(s)';
+  const tbody=document.getElementById('pm-tbl-tbody');
+  if(!tbody)return;
+  const slice=lista.slice(0,25);
+  if(!slice.length){tbody.innerHTML='<tr><td colspan="8" class="pm-empty">Nenhuma manifestação encontrada.</td></tr>';return;}
+  const stColors={'ABERTA':['#E8F4FF','#1A5FC8'],'EM TRATATIVA':['#FBF0D9','#7A4C00'],'ENCERRADA':['#E6F2EA','#1E6B3A'],'FECHADA':['#E6F2EA','#1E6B3A'],'AGUARDANDO APROVAÇÃO':['#F0E6F8','#6B24A8'],'DEVOLVIDA':['#FFF5F5','#A80502'],'ENC':['#E6F2EA','#1E6B3A']};
+  tbody.innerHTML=slice.map(m=>{
     const id=m.ID_MANIFESTACAO||m.id||'—';
+    const dt=m.DATA_ABERTURA||m.data_abertura||m.CREATED_AT||'';
+    const emp=m.EMPRESA||m.empresa||'—';
     const cli=m.CLIENTE||m.cliente||'—';
-    const emp=m.EMPRESA||m.empresa||'';
+    const tipo=m.TIPO_MANIFESTACAO||m.tipo_manifestacao||m.TIPO||'—';
     const st=norm(m.STATUS||m.status);
     const prazo=m.PRAZO_RESPOSTA||m.prazo_resposta||m.PRAZO||'';
-    return `<div class="pm-feed-item"><div class="pm-feed-dot" style="background:#A80502"></div><div class="pm-feed-body"><div class="pm-feed-line"><strong>${pmEsc(id)}</strong> · ${pmEsc(cli)}${emp?' · <span style="color:#929090">'+pmEsc(emp)+'</span>':''}</div><div class="pm-feed-meta">Status: ${pmEsc(st)} · Prazo: ${pmFmt(prazo)}</div></div><button style="background:none;border:0;color:#1A2B4A;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0" onclick="if(typeof navigate==='function')navigate('banco-manifestacoes')">Ver →</button></div>`;
-  }).join('')+'</div>';
-}
+    const sc=slaClass(m);
+    const stC=stColors[st]||['#F0F0F0','#545252'];
+    const slaLabel=sc==='late'?'Vencido':sc==='warn'?'Atenção':prazo?'No prazo':'—';
+    const slaCls=sc==='late'?'pm-sla-late':sc==='warn'?'pm-sla-warn':sc==='ok'?'pm-sla-ok':'';
+    return `<tr class="pm-tbl-row" onclick="if(typeof navigate==='function')navigate('banco-manifestacoes')">
+      <td style="font-weight:700;color:var(--pm-navy)">${pmEsc(id)}</td>
+      <td style="color:#545252;white-space:nowrap">${pmFmt(dt)}</td>
+      <td style="font-size:12px">${pmEsc(emp)}</td>
+      <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${pmEsc(cli)}</td>
+      <td style="font-size:11px;color:#545252">${pmEsc(tipo)}</td>
+      <td><span class="pm-pill" style="background:${stC[0]};color:${stC[1]}">${pmEsc(st)}</span></td>
+      <td class="${slaCls}">${slaLabel}</td>
+      <td style="text-align:right"><span style="color:var(--pm-navy);font-size:11px;font-weight:700">→</span></td>
+    </tr>`;
+  }).join('');
+  if(lista.length>25){
+    tbody.innerHTML+=`<tr><td colspan="8" style="text-align:center;padding:10px 12px;font-size:12px;color:#929090">… mais ${lista.length-25} registros. Use os filtros acima para refinar.</td></tr>`;
+  }
+};
 
-// ── APROVAÇÕES ─────────────────────────────────────────────────────────────
+// ── APROVAÇÕES + ALERTAS ───────────────────────────────────────────────────
 function pmRenderAprovs(){
   const aprovs=Array.isArray(_pmData.aprovs)?_pmData.aprovs:[];
+  const mans=_pmData.mans;
+  const norm=s=>String(s||'').toUpperCase();
+  const late=mans.filter(m=>{
+    if(['FECHADA','ENCERRADA','ENC','ARQUIVADA'].includes(norm(m.STATUS||m.status)))return false;
+    const prazo=m.PRAZO_RESPOSTA||m.prazo_resposta||m.PRAZO||'';
+    if(!prazo)return false;
+    const d=new Date(String(prazo).includes('/')?String(prazo).split('/').reverse().join('-'):prazo);
+    return !isNaN(d)&&d<Date.now();
+  });
   const el=document.getElementById('pm-aprov-list');
   const cnt=document.getElementById('pm-aprov-cnt');
-  if(cnt)cnt.textContent=aprovs.length?aprovs.length+' pendente(s)':'';
+  if(cnt)cnt.textContent=(aprovs.length+late.length)?`${aprovs.length+late.length} item(ns)`:'';
   if(!el)return;
-  if(!aprovs.length){el.innerHTML='<div class="pm-empty">Nenhuma aprovação pendente.</div>';return;}
-  el.innerHTML=`<div class="pm-feed">`+aprovs.slice(0,6).map(a=>{
-    const id=a.ID_MANIFESTACAO||a.id||a.PROTOCOLO||'—';
-    const cli=a.CLIENTE||a.cliente||'—';
-    const emp=a.EMPRESA||a.empresa||'';
-    return `<div class="pm-feed-item"><div class="pm-feed-dot" style="background:#7A4C00"></div><div class="pm-feed-body"><div class="pm-feed-line"><strong>${pmEsc(id)}</strong> · ${pmEsc(cli)}</div><div class="pm-feed-meta">${pmEsc(emp)}</div></div><button style="background:none;border:0;color:#1A2B4A;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0" onclick="if(typeof navigate==='function')navigate('aprovadores')">Ver →</button></div>`;
-  }).join('')+'</div>';
+  let html='';
+  // alertas SLA vencido
+  if(late.length){
+    html+=`<div class="pm-alert" style="margin-bottom:8px"><div class="pm-alert-dot"></div><div><strong style="color:#A80502">${late.length} manifestação(ões) com SLA vencido</strong><br><span style="font-size:11px;color:#545252">Ação imediata necessária.</span></div><button style="margin-left:auto;background:none;border:0;color:#A80502;font-size:11px;font-weight:700;cursor:pointer" onclick="document.getElementById('pm-tbl-st').value='atrasada';pmRenderTabelaGeral()">Ver →</button></div>`;
+  }
+  if(!aprovs.length&&!late.length){el.innerHTML='<div style="background:#E6F2EA;border:1.5px solid #A8D8A8;border-radius:10px;padding:14px 16px;font-size:13px;color:var(--pm-green);font-weight:600">✔ Sem pendências no momento.</div>';return;}
+  if(aprovs.length){
+    html+=`<div class="pm-feed">`+aprovs.slice(0,5).map(a=>{
+      const id=a.ID_MANIFESTACAO||a.id||a.PROTOCOLO||'—';
+      const cli=a.CLIENTE||a.cliente||'—';
+      const emp=a.EMPRESA||a.empresa||'';
+      return `<div class="pm-feed-item"><div class="pm-feed-dot" style="background:#7A4C00"></div><div class="pm-feed-body"><div class="pm-feed-line"><strong>${pmEsc(id)}</strong> · ${pmEsc(cli)}</div><div class="pm-feed-meta">${pmEsc(emp)}</div></div><button style="background:none;border:0;color:#1A2B4A;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0" onclick="if(typeof navigate==='function')navigate('aprovadores')">Aprovar →</button></div>`;
+    }).join('')+'</div>';
+  }
+  el.innerHTML=html;
 }
 
 // ── DISTRIBUIÇÃO POR EMPRESA ────────────────────────────────────────────────
 function pmRenderDistEmp(){
   const mans=_pmData.mans;
-  const fEmp=(document.getElementById('pm-filt-emp')||{}).value||'';
+  const norm=s=>String(s||'').toUpperCase();
+  const encStatuses=['FECHADA','ENCERRADA','ENC','ARQUIVADA'];
   const map={};
   mans.forEach(m=>{
     const emp=m.EMPRESA||m.empresa||'(sem empresa)';
-    if(!map[emp])map[emp]={total:0,late:0};
+    if(!map[emp])map[emp]={total:0,late:0,abertas:0};
     map[emp].total++;
-    const norm=s=>String(s||'').toUpperCase();
-    if(!['FECHADA','ENCERRADA','ENC'].includes(norm(m.STATUS||m.status))){
+    const isEnc=encStatuses.includes(norm(m.STATUS||m.status));
+    if(!isEnc){
+      map[emp].abertas++;
       const prazo=m.PRAZO_RESPOSTA||m.prazo_resposta||m.PRAZO||'';
       if(prazo){const d=new Date(String(prazo).includes('/')?String(prazo).split('/').reverse().join('-'):prazo);if(!isNaN(d)&&d<Date.now())map[emp].late++;}
     }
   });
   const rows=Object.entries(map).sort((a,b)=>b[1].total-a[1].total);
   const el=document.getElementById('pm-dist-emp');
+  const tot=document.getElementById('pm-dist-total');
+  if(tot)tot.textContent=mans.length+' total';
   if(!el)return;
   if(!rows.length){el.innerHTML='<div class="pm-empty">Sem dados.</div>';return;}
   const max=Math.max(1,...rows.map(r=>r[1].total));
-  el.innerHTML=rows.map(([emp,v])=>`<div style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px"><span style="font-size:12px;font-weight:600">${pmEsc(emp)}</span><span style="font-size:11px;color:#929090">${v.total} manifest.${v.late?' · <span style="color:#A80502">'+v.late+' atrasada(s)</span>':''}</span></div><div style="background:#E8E8E8;border-radius:4px;height:8px;overflow:hidden"><div style="width:${Math.round(v.total/max*100)}%;height:100%;background:#1A2B4A;border-radius:4px"></div></div></div>`).join('');
+  el.innerHTML=rows.map(([emp,v])=>`
+    <div class="pm-bar-row">
+      <div class="pm-bar-lbl" title="${pmEsc(emp)}">${pmEsc(emp)}</div>
+      <div class="pm-bar-track"><div class="pm-bar-fill${v.late?'':''}" style="width:${Math.round(v.total/max*100)}%;background:${v.late?'#1A2B4A':'#1A2B4A'}"></div></div>
+      <div class="pm-bar-val">${v.total}</div>
+      ${v.late?`<div class="pm-bar-late">▲${v.late}</div>`:'<div class="pm-bar-late" style="color:transparent">▲0</div>'}
+    </div>
+    ${v.abertas?`<div style="margin:-4px 0 4px 0;padding-left:130px"><div style="height:4px;border-radius:2px;background:${v.late?'#C70602':'#93B5E0'};width:${Math.round(v.abertas/max*100)}%;max-width:calc(100% - 130px - 80px)"></div></div>`:''}
+  `).join('');
+}
+
+// ── USUÁRIOS RESUMO ─────────────────────────────────────────────────────────
+function pmRenderUsuResumo(){
+  const usus=_pmData.usus, sols=_pmData.sols;
+  const norm=s=>String(s||'').toUpperCase();
+  const ativos=usus.filter(u=>norm(u.status||u.STATUS)==='ATIVO');
+  const bloqueados=usus.filter(u=>norm(u.status||u.STATUS)==='BLOQUEADO');
+  const emps=[...new Set(usus.map(u=>u.empresa||u.EMPRESA||'').filter(Boolean))];
+  const el=document.getElementById('pm-usu-resumo');
+  if(!el)return;
+  const items=[
+    {lbl:'Usuários ativos',val:ativos.length,cor:'var(--pm-navy)'},
+    {lbl:'Bloqueados',val:bloqueados.length,cor:bloqueados.length?'var(--pm-red)':'#929090'},
+    {lbl:'Empresas cadastradas',val:emps.length,cor:'var(--pm-navy)'},
+    {lbl:'Solicitações pendentes',val:sols.length,cor:sols.length?'var(--pm-gold)':'#929090'},
+  ];
+  el.innerHTML=items.map(i=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #F4F4F4"><span style="font-size:13px">${pmEsc(i.lbl)}</span><strong style="font-size:18px;color:${i.cor}">${i.val}</strong></div>`).join('')+
+  `<button style="width:100%;margin-top:10px;background:var(--pm-navy);color:#fff;border:0;border-radius:8px;height:34px;font-size:12px;font-weight:700;cursor:pointer" onclick="if(typeof navigate==='function')navigate('usuarios')">Gerenciar usuários →</button>`;
 }
 
 // ── RNCs PENDENTES ─────────────────────────────────────────────────────────
@@ -25723,10 +25862,11 @@ function pmRenderMonitor(){
 
 function pmRenderTodos(){
   pmRenderKpis();
-  pmRenderCrit();
+  pmRenderTabelaGeral();
   pmRenderAprovs();
   pmRenderDistEmp();
   pmRenderRncPend();
+  pmRenderUsuResumo();
   if(_pmAba==='acessos') pmRenderUsuarios((document.getElementById('pm-usu-busca')||{}).value||'');
   if(_pmAba==='monitor') pmRenderMonitor();
 }
