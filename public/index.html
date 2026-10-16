@@ -3251,7 +3251,7 @@
       async function nmCarregarUsuarios(){
         if(_nmUsuariosCache) return _nmUsuariosCache;
         try {
-          const r = await fetch((window.SAC_API||'')+'/api/admin/usuarios', {headers:{'Authorization':'Bearer '+localStorage.getItem('sac_token')}});
+          const r = await fetch((window.SAC_API||'')+'/api/admin/usuarios', {headers:{'Authorization':'Bearer '+sessionStorage.getItem('sac-token')}});
           const d = await r.json();
           _nmUsuariosCache = d.sucesso ? (d.itens||d.usuarios||[]) : [];
         } catch(e){ _nmUsuariosCache = []; }
@@ -11572,6 +11572,7 @@ document.addEventListener('click', function(e) {
 async function loadBancoManifestacoes() {
   try {
     const res = await _apiFetch('/api/manifestacoes', 30000);
+    if (res.aviso) console.warn('[banco] API aviso:', res.aviso);
     let itens = res.itens || [];
     // Fallback: if API returns empty but dashboard already loaded data, reuse it
     if (!itens.length && window._dashData && (window._dashData.mans || []).length) {

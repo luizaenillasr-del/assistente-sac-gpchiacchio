@@ -1723,14 +1723,16 @@ app.get('/api/manifestacoes', requerPermissao('manifestacoes.visualizar'), middl
       } catch (e) { console.warn('[F6] GET /manifestacoes PG falhou:', e.message); }
     }
     // Fallback Sheets
-    let data = await lerAba('MANIFESTACOES', 5000).catch(()=>[]);
+    let sheetsErro = null;
+    let data = await lerAba('MANIFESTACOES', 5000).catch(e => { sheetsErro = e?.message; return []; });
+    if (sheetsErro) console.warn('[GET /manifestacoes] Sheets falhou:', sheetsErro);
     if (req.user && perfilCanonico(req.user.perfil)==='RCA / REPRESENTANTE') {
       const rca=normalizarTexto(req.user.codigoRCA||req.user.usuario);
       data=data.filter(r=>normalizarTexto(r.USUARIO_CRIACAO||'')===normalizarTexto(req.user.usuario)||normalizarTexto(r.CODIGO_RCA||'')===rca||normalizarTexto(r.RCA||'')===rca);
     }
     // B2: legado sem empresa = global; com empresa = apenas daquela empresa
     data = filtrarPorEmpresaHistorico(data, req, COLUNA_EMPRESA_ABA.MANIFESTACOES);
-    res.json({ sucesso: true, total: data.length, itens: data });
+    res.json({ sucesso: true, total: data.length, itens: data, fonte: 'sheets', ...(sheetsErro && {aviso: 'Sheets: ' + sheetsErro}) });
   } catch (e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e), dados: [] }); }
 });
 
@@ -5449,12 +5451,41 @@ app.post('/api/usuarios/:id/permissoes', requerPermissao('usuarios.gerenciar'), 
     if ((alvo.PERFIL||alvo.perfil||'').toUpperCase() === 'MASTER' && normalizarTexto(req.user.usuario) === normalizarTexto(alvo.USUARIO||alvo.EMAIL))
       return res.status(403).json({ sucesso: false, erro: 'Não é possível alterar as próprias permissões de MASTER.' });
 
+    const agora = new Date().toISOString();
     await atualizarPorID('USUARIOS', id, {
       PERMISSOES_GRANTED: JSON.stringify(permissoes_granted),
       PERMISSOES_BLOCKED: JSON.stringify(permissoes_blocked),
-      DATA_ULTIMA_ALTERACAO: new Date().toISOString(),
+      DATA_ULTIMA_ALTERACAO: agora,
       ALTERADO_POR: req.user.usuario,
     }, ['ID_USUARIO','USUARIO','EMAIL']);
+
+    // Sincroniza PERMISSOES_USUARIO (enforcement real das permissões)
+    try {
+      const idAlvo = alvo.ID_USUARIO || alvo.USUARIO || alvo.EMAIL || id;
+      const emailAlvo = alvo.EMAIL || '';
+      const perfilAlvo = perfilCanonico(alvo.PERFIL || alvo.perfil || '');
+      const empresaAlvo = alvo.EMPRESA || '';
+      const MODULO = 'GERAL';
+      const NIVEL = 4;
+      const COMPETENCIAS = JSON.stringify(permissoes_granted);
+      const STATUS = 'ATIVO';
+      const rowsExist = await lerAba('PERMISSOES_USUARIO', 2000).catch(() => []);
+      const existente = rowsExist.find(r =>
+        String(r.USUARIO_ID||'').toLowerCase() === String(idAlvo||'').toLowerCase() ||
+        String(r.USUARIO_EMAIL||'').toLowerCase() === String(emailAlvo||'').toLowerCase()
+      );
+      const chPerm = existente?.ID_PERMISSAO || existente?.USUARIO_ID || idAlvo;
+      if (existente && (existente.ID_PERMISSAO || existente.USUARIO_ID)) {
+        await atualizarPorID('PERMISSOES_USUARIO', chPerm, { MODULO, COMPETENCIAS, ATUALIZADO_EM: agora, ATUALIZADO_POR: req.user.usuario }, ['ID_PERMISSAO','USUARIO_ID']);
+      } else {
+        await appendObjeto('PERMISSOES_USUARIO', {
+          ID_PERMISSAO: `PERM-${Date.now()}`, USUARIO_ID: idAlvo, USUARIO_EMAIL: emailAlvo,
+          EMPRESA: empresaAlvo, PERFIL: perfilAlvo, MODULO, NIVEL, COMPETENCIAS, STATUS,
+          CRIADO_EM: agora, CRIADO_POR: req.user.usuario, ATUALIZADO_EM: agora, ATUALIZADO_POR: req.user.usuario,
+        });
+      }
+      invalidarCacheAba('PERMISSOES_USUARIO');
+    } catch(permErr) { console.warn('[permissoes-post] PERMISSOES_USUARIO sync falhou:', permErr.message); }
 
     // Invalida o cache de status do usuário alvo para as novas permissões valerem imediatamente
     const loginAlvo = alvo.USUARIO || alvo.EMAIL || '';
@@ -5957,12 +5988,31 @@ app.get('/api/aprovadores-admin', requerPerfil('MASTER'), async (req,res)=>{
     garantirAbaComCabecalhos('APROVADORES', APROVADORES_HEADERS).catch(()=>{});
     garantirAbaComCabecalhos('COMPETENCIAS', COMPETENCIAS_HEADERS).catch(()=>{});
     garantirAbaComCabecalhos('APROVADOR_COMPETENCIAS', APROV_COMP_HEADERS).catch(()=>{});
-    const [ap,comp,rel] = await Promise.all([
+    const [ap,comp,rel,usuarios] = await Promise.all([
       lerAba('APROVADORES',500).catch(()=>[]),
       lerAba('COMPETENCIAS',500).catch(()=>[]),
       lerAba('APROVADOR_COMPETENCIAS',2000).catch(()=>[]),
+      lerAba('USUARIOS',500).catch(()=>[]),
     ]);
-    res.json({sucesso:true,aprovadores:ap,competencias:comp,relacionamentos:rel});
+    // Inclui usuários com perfil APROVADOR / APROVADOR MASTER que não estejam na tabela APROVADORES
+    const emailsJaCadastrados = new Set(ap.map(a => normalizarTexto(a.EMAIL||a.USUARIO||'')));
+    const apFromUsuarios = usuarios.filter(u => {
+      const p = perfilCanonico(u.PERFIL||u.perfil||'');
+      return (p === 'APROVADOR' || p === 'APROVADOR MASTER') &&
+        normalizarTexto(u.STATUS||'ATIVO') !== 'inativo' &&
+        !emailsJaCadastrados.has(normalizarTexto(u.EMAIL||u.USUARIO||''));
+    }).map(u => ({
+      ID_APROVADOR: u.ID_USUARIO||u.USUARIO||u.EMAIL,
+      NOME: u.NOME||u.USUARIO||u.EMAIL,
+      EMAIL: u.EMAIL||'',
+      USUARIO: u.USUARIO||'',
+      CARGO: perfilCanonico(u.PERFIL||u.perfil||''),
+      EMPRESA: u.EMPRESA||'',
+      SETOR: u.SETOR||'',
+      STATUS: 'ATIVO',
+      _fromUsuarios: true,
+    }));
+    res.json({sucesso:true,aprovadores:[...ap,...apFromUsuarios],competencias:comp,relacionamentos:rel});
   } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
 
