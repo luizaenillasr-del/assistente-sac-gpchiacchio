@@ -4362,6 +4362,29 @@
 </div>
 
   <!-- ===== MODAL CONFIGURAR ACESSO (Aprovação de Solicitação) ===== -->
+  <!-- MODAL CREDENCIAIS NOVO USUÁRIO -->
+  <div id="modal-credenciais-usuario" class="modal-overlay" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+    <div class="modal-box" style="max-width:460px">
+      <div class="modal-header">
+        <div><div style="font-size:18px;font-weight:800">✅ Acesso criado com sucesso</div><div style="font-size:12px;color:var(--gray-400)">Compartilhe estas credenciais com o usuário</div></div>
+        <button class="modal-close" onclick="document.getElementById('modal-credenciais-usuario').style.display='none'">×</button>
+      </div>
+      <div style="padding:20px 24px 24px;display:flex;flex-direction:column;gap:16px">
+        <div style="background:var(--gray-50,#F8F8F8);border:1px solid var(--gray-200,#E8E8E8);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:12px">
+          <div><div style="font-size:11px;font-weight:600;color:var(--gray-400,#888);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Login</div><div style="font-size:15px;font-weight:700;font-family:monospace" id="cred-login"></div></div>
+          <div id="cred-senha-row"><div style="font-size:11px;font-weight:600;color:var(--gray-400,#888);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Senha temporária</div><div style="font-size:15px;font-weight:700;font-family:monospace" id="cred-senha"></div></div>
+          <div><div style="font-size:11px;font-weight:600;color:var(--gray-400,#888);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Perfil</div><div style="font-size:13px;font-weight:600" id="cred-perfil"></div></div>
+          <div><div style="font-size:11px;font-weight:600;color:var(--gray-400,#888);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Empresa</div><div style="font-size:13px" id="cred-empresa"></div></div>
+        </div>
+        <div style="background:#FFF8E1;border:1px solid #FFE082;border-radius:8px;padding:10px 14px;font-size:12px;color:#7A4C00">
+          ⚠️ O usuário precisará trocar a senha no primeiro acesso. Anote estas informações antes de fechar.
+        </div>
+        <button onclick="copiarCredenciais()" style="border:1px solid var(--gray-200,#E8E8E8);background:var(--white,#fff);border-radius:8px;padding:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">📋 Copiar credenciais</button>
+        <button onclick="document.getElementById('modal-credenciais-usuario').style.display='none'" style="background:var(--red,#C8102E);color:#fff;border:none;border-radius:8px;padding:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">Fechar</button>
+      </div>
+    </div>
+  </div>
+
   <div id="modal-config-acesso" class="modal-overlay" style="display:none" onclick="if(event.target===this)fecharConfigAcesso()">
     <div class="modal-box" style="max-width:700px;max-height:90vh;overflow-y:auto">
       <div class="modal-header">
@@ -20563,6 +20586,23 @@ async function mudarStatusMC(id, novoStatus) {
     _solAtual=null;
   };
 
+  let _ultimasCredenciais = {};
+  window.mostrarCredenciaisUsuario = function({ login, senha, perfil, empresa }){
+    _ultimasCredenciais = { login, senha, perfil, empresa };
+    document.getElementById('cred-login').textContent = login || '—';
+    document.getElementById('cred-senha').textContent = senha || '—';
+    const senhaRow = document.getElementById('cred-senha-row');
+    if(senhaRow) senhaRow.style.display = senha ? '' : 'none';
+    document.getElementById('cred-perfil').textContent = perfil || '—';
+    document.getElementById('cred-empresa').textContent = empresa || '—';
+    document.getElementById('modal-credenciais-usuario').style.display='flex';
+  };
+  window.copiarCredenciais = function(){
+    const { login, senha, perfil, empresa } = _ultimasCredenciais;
+    const txt = `Login: ${login}\nSenha temporária: ${senha}\nPerfil: ${perfil}\nEmpresa: ${empresa}`;
+    navigator.clipboard?.writeText(txt).catch(()=>{});
+  };
+
   // ── PAINEL DE NOTIFICAÇÕES RÁPIDAS ─────────────────────────
   window.abrirPainelNotificacoes = async function(){
     const m=document.getElementById('modal-notificacoes');
@@ -20657,11 +20697,16 @@ async function mudarStatusMC(id, novoStatus) {
         method:'POST',
         body:JSON.stringify({perfil,empresa,setor,cargo,senha,modulosNiveis,competencias:competenciasSelecionadas})
       });
-      alert('Solicitação aprovada! '+(r.senhaGerada?'Senha temporária: '+r.senhaGerada:''));
       fecharConfigAcesso();
       loadSolicitacoes();
       loadUsuariosAdmin();
-    }catch(e){ alert(e.message); }
+      // Exibe modal com credenciais do novo usuário
+      mostrarCredenciaisUsuario({ login: r.login, senha: r.senhaGerada || senha || '(definida pelo solicitante)', perfil, empresa });
+    }catch(e){
+      const msgEl=document.querySelector('#modal-config-acesso .erro-msg');
+      if(msgEl){ msgEl.textContent=e.message; msgEl.style.display='block'; }
+      else { const d=document.createElement('p'); d.style.cssText='color:#c00;margin:8px 0 0;font-size:13px'; d.textContent=e.message; document.querySelector('#modal-config-acesso .btn-primary')?.parentNode?.insertBefore(d,document.querySelector('#modal-config-acesso .btn-primary')); }
+    }
     finally{ if(btn){ btn.disabled=false; btn.textContent='Aprovar e Criar Acesso'; } }
   };
 

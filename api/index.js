@@ -363,6 +363,19 @@ async function carregarUsuarios(){
   }catch(e){}
   const pgEmails = new Set(pgMapped.map(u => (u.EMAIL||'').toLowerCase()).filter(Boolean));
   const pgIds = new Set(pgMapped.map(u => u.ID_USUARIO).filter(Boolean));
+  // Mapa email → status do Sheets para preservar PRIMEIRO_ACESSO no PG
+  const sheetsStatusByEmail = {};
+  rows.forEach(r => {
+    const e = (r.EMAIL||r.USUARIO||'').toLowerCase();
+    if (e && r.STATUS) sheetsStatusByEmail[e] = r.STATUS;
+  });
+  // Sobrepõe status PRIMEIRO_ACESSO do Sheets nos usuários PG
+  pgMapped = pgMapped.map(u => {
+    const e = (u.EMAIL||'').toLowerCase();
+    const shStatus = sheetsStatusByEmail[e];
+    if (shStatus && shStatus.toUpperCase() === 'PRIMEIRO_ACESSO') return { ...u, STATUS: 'PRIMEIRO_ACESSO' };
+    return u;
+  });
   // Sheets complementa o PG: usuários que existem só no Sheets (ex: aprovados recentemente) aparecem normalmente
   const _seenEmails = new Set();
   const sheetsOnly = rows.filter(r => {
