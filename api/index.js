@@ -761,7 +761,8 @@ async function carregarUsuarioPorLogin(login){
           PERFIL: pgU.perfil?.codigo || pgU.perfil?.nome || 'ANALISTA SAC',
           EMPRESA: pgU.empresa?.nome || '',
           SETOR: pgU.setor?.nome || '',
-          STATUS: pgU.status || 'ATIVO',
+          STATUS: pgU.ativo === false ? 'INATIVO' : 'ATIVO',
+          SENHA_HASH: pgU.senhaHash || '',
           SENHA: pgU.senhaHash || '',
           CODIGO_RCA: pgU.codigoRca || '',
           _pgId: pgU.id,
@@ -7728,10 +7729,12 @@ app.post('/api/admin/solicitacoes/:id/aprovar', requerPerfil('MASTER'), async (r
         // Mapeia perfilNorm (ex: ANALISTA_SAC) para o codigo no PG (ex: SAC)
         const PERFIL_TO_PG = { 'MASTER':'MASTER','GESTOR_SAC':'SAC','ANALISTA_SAC':'SAC','APROVADOR':'SAC','REPRESENTANTE':'REPRESENTANTE','CONSULTA':'USUARIO_DE_SETOR','AUDITOR':'USUARIO_DE_SETOR' };
         const pgCodigo = PERFIL_TO_PG[perfilNorm] || 'SAC';
-        const [pgPerfil, pgEmpresa] = await Promise.all([
+        const [pgPerfil, pgEmpresaDirect] = await Promise.all([
           prisma.perfil.findFirst({ where: { codigo: pgCodigo } }),
           prisma.empresa.findFirst({ where: { codigo: empCod } }),
         ]);
+        // MASTER/Todas as empresas não tem registro próprio — usa a primeira empresa disponível
+        const pgEmpresa = pgEmpresaDirect || (empCod === 'MASTER' ? await prisma.empresa.findFirst() : null);
         if (pgPerfil && pgEmpresa) {
           await usuarioRepo.create({
             idOriginal: idUsuario,
