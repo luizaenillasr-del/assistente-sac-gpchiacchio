@@ -1847,12 +1847,18 @@ app.post('/api/manifestacoes', requerPermissao('manifestacoes.abrir'), async (re
       });
     }
     registrarAuditoria(usuario||'sistema','CRIOU_MANIFESTAÇÃO',id,'MANIFESTACOES',null,{empresaReclamante,tipo:tipoFinal}).catch(()=>{});
-    // Executar análise de IA de forma síncrona antes de responder
-    // (setImmediate não funciona em Vercel serverless)
+    // Executar análise de IA — reutiliza análise do frontend se já disponível
+    // (evita dupla chamada ao Sheets e erro 429)
     const decisaoCompleta = req.body.decisaoCompleta;
     let analise = null;
     try {
-      analise = await executarAnalise({ ...objeto, empresaReclamante, empresaReclamada, descricao, tipo:tipoFinal });
+      // Se o frontend já fez a análise (wizard etapa 4), usa ela diretamente
+      const analisePrevia = req.body.analiseIA ? (() => { try { return JSON.parse(req.body.analiseIA); } catch { return null; } })() : null;
+      if (analisePrevia && analisePrevia.tipoDetectado) {
+        analise = analisePrevia;
+      } else {
+        analise = await executarAnalise({ ...objeto, empresaReclamante, empresaReclamada, descricao, tipo:tipoFinal });
+      }
       if (analise) {
         await atualizarPorID('MANIFESTACOES', id, {
           TIPO_SUGERIDO:analise.tipoDetectado||analise.tipoSugerido||'',
@@ -2765,7 +2771,7 @@ app.patch('/api/setores/:setor/operacional', requerPerfil('MASTER'), async(req,r
   }
   catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
-app.post('/api/setores/:setor/faq', requerPerfil('MASTER'), async(req,res)=>{
+app.post('/api/setores/:setor/faq', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','APROVADOR MASTER'), async(req,res)=>{
   try{
     const nome=decodeURIComponent(req.params.setor);
     await garantirAbaComCabecalhos('FAQ_SETORES',FAQ_HEADERS);
@@ -2793,7 +2799,7 @@ app.get('/api/setores/:setor/regras', middlewareEscopoEmpresa(), middlewareEscop
   try{const nome=decodeURIComponent(req.params.setor);const itens=await crudSetorGet('REGRAS_SETORES',REGRAS_HEADERS,nome);res.json({sucesso:true,itens});}
   catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e),itens:[]});}
 });
-app.post('/api/setores/:setor/regras', requerPerfil('MASTER'), async(req,res)=>{
+app.post('/api/setores/:setor/regras', requerPerfil('MASTER','ANALISTA SAC'), async(req,res)=>{
   try{const nome=decodeURIComponent(req.params.setor);if(!req.body?.NOME)return res.status(400).json({sucesso:false,erro:'NOME obrigatório.'});const obj=await crudSetorPost('REGRAS_SETORES',REGRAS_HEADERS,nome,{EMPRESA:req.body.EMPRESA||'TODAS',NOME:req.body.NOME,CONDICAO:req.body.CONDICAO||'',PALAVRAS_GATILHO:req.body.PALAVRAS_GATILHO||'',ACAO:req.body.ACAO||'',PRIORIDADE:req.body.PRIORIDADE||'Média',NECESSITA_APROVACAO:req.body.NECESSITA_APROVACAO||'NÃO',QUEM_APROVA:req.body.QUEM_APROVA||'',AUTOMATICA:req.body.AUTOMATICA||'NÃO',EXCECOES:req.body.EXCECOES||'',SLA:req.body.SLA||'',STATUS:req.body.STATUS||'A VALIDAR',FONTE:req.body.FONTE||''},'RGR','ID_REGRA',req.user.usuario);res.json({sucesso:true,id:obj.ID_REGRA});}
   catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
