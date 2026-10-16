@@ -23389,7 +23389,7 @@ function updateTopbarUser(user) {
         esc5(cat.cat) + '<span style="font-size:11px;color:#707070">\u25be</span></div>' +
         '<div style="padding:8px 14px;display:grid;grid-template-columns:1fr 1fr;gap:6px 12px">' +
         cat.itens.map(function(it) {
-          return '<div class="usu-perm-row" data-chave="' + it.k + '" data-label="' + it.l.replace(/"/g,\'&quot;\') + '" data-perfil="' + (perfil||'') + '"' +
+          return '<div class="usu-perm-row" data-chave="' + it.k + '" data-label="' + esc5(it.l) + '" data-perfil="' + (perfil||'') + '"' +
             ' style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #F4F4F4">' +
             _usuToggleBuild(it.k, perfil, esc5(it.l)) +
             '</div>';
