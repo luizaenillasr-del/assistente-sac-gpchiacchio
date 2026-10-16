@@ -1940,6 +1940,51 @@ app.patch('/api/manifestacoes/:id/ficha', requerPermissao('manifestacoes.editar'
         DATA_ENCAMINHAMENTO: agora,
         ENCAMINHADO_POR: req.user?.usuario || '',
       };
+    } else if (acao === 'encaminhar_setor') {
+      const setorDest = req.body.SETOR_CONFIRMADO || req.body.setor || '';
+      if (!setorDest) return res.status(400).json({ sucesso:false, erro:'Setor de destino obrigatório.' });
+      dados = {
+        STATUS: 'EM_ANDAMENTO',
+        STATUS_FICHA: 'AGUARDANDO_SETOR',
+        SETOR_CONFIRMADO: setorDest,
+        SETOR_DESTINADO: setorDest,
+        RESPONSAVEL_SETOR: req.body.RESPONSAVEL_SETOR || '',
+        SLA_HORAS: req.body.SLA_HORAS || '',
+        SLA_UNIDADE: req.body.SLA_UNIDADE || 'dias',
+        OBS_ENCAMINHAMENTO: req.body.obs || '',
+        DATA_ENCAMINHAMENTO: agora,
+        ENCAMINHADO_POR: req.user?.usuario || '',
+      };
+    } else if (acao === 'assumir_sac') {
+      dados = {
+        STATUS: 'EM_ANDAMENTO',
+        STATUS_FICHA: 'TRATATIVA_SAC',
+        RESPONSAVEL_SAC: req.user?.nome || req.user?.usuario || '',
+        OBS_SAC: req.body.obs || '',
+        DATA_ASSUMIDO_SAC: agora,
+        ASSUMIDO_POR: req.user?.usuario || '',
+      };
+    } else if (acao === 'devolver_cliente') {
+      dados = {
+        STATUS: 'EM_ANDAMENTO',
+        STATUS_FICHA: 'AGUARDANDO_DEVOLUTIVA',
+        MOTIVO_DEVOLUCAO: req.body.MOTIVO_DEVOLUCAO || '',
+        CANAL_RETORNO: req.body.CANAL_RETORNO || '',
+        PRAZO_RESPOSTA: req.body.PRAZO_RESPOSTA || '',
+        DATA_DEVOLUCAO: agora,
+        DEVOLVIDO_POR: req.user?.usuario || '',
+      };
+    } else if (acao === 'rejeitar') {
+      const motivo = req.body.MOTIVO_REJEICAO || '';
+      if (!motivo) return res.status(400).json({ sucesso:false, erro:'Motivo de rejeição obrigatório.' });
+      dados = {
+        STATUS: 'ENCERRADA',
+        STATUS_FICHA: 'FECHADA',
+        RESULTADO_FINAL: 'Rejeitada',
+        MOTIVO_REJEICAO: motivo,
+        DATA_CONCLUSAO_MANIFESTACAO: agora,
+        ENCERRADO_POR: req.user?.usuario || '',
+      };
     } else {
       return res.status(400).json({ sucesso:false, erro:'Ação não reconhecida.' });
     }
