@@ -2428,6 +2428,8 @@
     <button class="sidebar-item" onclick="navigate('painel-maquina', this)"><span class="sidebar-dot"></span>Indicadores</button>
     <button class="sidebar-item" onclick="navigate('banco-rnc', this)"><span class="sidebar-dot"></span>RNC</button>
     <button class="sidebar-item" onclick="navigate('aprovadores', this)" style="position:relative"><span class="sidebar-dot"></span>Aprovações<span id="badge-aprovacoes" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);background:#C8102E;color:white;font-size:10px;font-weight:700;border-radius:10px;padding:1px 6px;min-width:18px;text-align:center" title="Aprovações pendentes"></span></button>
+    <button class="sidebar-item" id="sidebar-central-gerente" onclick="navigate('central-gerente', this)"><span class="sidebar-dot"></span>Central do Gerente</button>
+    <button class="sidebar-item" id="sidebar-gestao-diretoria" onclick="navigate('gestao-diretoria', this)"><span class="sidebar-dot"></span>Gestão da Diretoria</button>
     <button class="sidebar-item" onclick="navigate('rca', this)"><span class="sidebar-dot"></span>Central de RCA</button>
     <button class="sidebar-item" data-v5-page="representantes" onclick="navigate('representantes', this)"><span class="sidebar-dot"></span>Representantes</button>
     <button class="sidebar-item" onclick="navigate('setores', this)"><span class="sidebar-dot"></span>Setores</button>
@@ -12327,6 +12329,8 @@ var pageLoaders = window.pageLoaders = {
   'banco-manifestacoes': loadBancoManifestacoes,
   'banco-rnc': loadBancoRNC,
   'rca': loadRCA,
+  'central-gerente': () => { if (typeof loadCentralGerente === 'function') loadCentralGerente(); },
+  'gestao-diretoria': () => { if (typeof loadGestaoDiretoria === 'function') loadGestaoDiretoria(); },
   'similares': ()=>{},
   'auditoria': auditLoad,
   'setores': loadSetores,
@@ -12981,11 +12985,11 @@ window.navigate = function(page, el) {
   const _PG_CONSULTA=['visao-geral','acompanhamento','banco-manifestacoes','banco-rnc','relatorio-satisfacao'];
   const allowed={
     // ADMINISTRADOR — acesso total
-    'MASTER':['visao-geral','acompanhamento','nova-manifestacao','banco-manifestacoes','aprovadores','banco-rnc','usuarios','cerebro','base-conhecimento','painel-maquina','auditoria','prazos-regionais','similares','rca','biblioteca-fichas','relatorio-satisfacao','sugestoes-melhoria','setores'],
+    'MASTER':['visao-geral','acompanhamento','nova-manifestacao','banco-manifestacoes','aprovadores','banco-rnc','usuarios','cerebro','base-conhecimento','painel-maquina','auditoria','prazos-regionais','similares','rca','biblioteca-fichas','relatorio-satisfacao','sugestoes-melhoria','setores','central-gerente','gestao-diretoria'],
     // GESTOR SAC — visão operacional completa, sem config crítica
-    'GESTOR SAC':['visao-geral','acompanhamento','nova-manifestacao','banco-manifestacoes','aprovadores','banco-rnc','setores','biblioteca-fichas','matriz','base-conhecimento','cerebro','painel-maquina','sugestoes-melhoria','relatorio-satisfacao','causas','matriz-conhecimento','prazos-regionais','similares','rca','central-sac'],
+    'GESTOR SAC':['visao-geral','acompanhamento','nova-manifestacao','banco-manifestacoes','aprovadores','banco-rnc','setores','biblioteca-fichas','matriz','base-conhecimento','cerebro','painel-maquina','sugestoes-melhoria','relatorio-satisfacao','causas','matriz-conhecimento','prazos-regionais','similares','rca','central-sac','central-gerente'],
     // ANALISTA SAC — operação do dia a dia
-    'ANALISTA SAC':['visao-geral','acompanhamento','nova-manifestacao','banco-manifestacoes','banco-rnc','cerebro','base-conhecimento','painel-maquina','similares','biblioteca-fichas','relatorio-satisfacao','sugestoes-melhoria','setores'],
+    'ANALISTA SAC':['visao-geral','acompanhamento','nova-manifestacao','banco-manifestacoes','banco-rnc','cerebro','base-conhecimento','painel-maquina','similares','biblioteca-fichas','relatorio-satisfacao','sugestoes-melhoria','setores','central-gerente'],
     // ATENDENTE SAC — registro e encaminhamento
     'ATENDENTE SAC':['nova-manifestacao','banco-manifestacoes','base-conhecimento','cerebro','similares','central-sac'],
     // SETOR RESPONSÁVEL — sua fila + RNC
@@ -12998,7 +13002,7 @@ window.navigate = function(page, el) {
     // RCA — central de causa raiz
     'RCA / REPRESENTANTE':['representantes','rca','banco-rnc'],
     // DIRETOR — visão executiva (leitura)
-    'DIRETOR':['visao-geral','acompanhamento','banco-manifestacoes','banco-rnc','relatorio-satisfacao','rca','painel-maquina','sugestoes-melhoria'],
+    'DIRETOR':['visao-geral','acompanhamento','banco-manifestacoes','banco-rnc','relatorio-satisfacao','rca','painel-maquina','sugestoes-melhoria','gestao-diretoria'],
     // VISUALIZADOR / CONSULTA — apenas leitura
     'VISUALIZADOR':['visao-geral','banco-manifestacoes','relatorio-satisfacao','painel-maquina'],
     'AUDITOR':['visao-geral','acompanhamento','banco-manifestacoes','banco-rnc','relatorio-satisfacao','auditoria','painel-maquina'],
@@ -13011,7 +13015,7 @@ window.navigate = function(page, el) {
     'SETOR FINANCEIRO':['setor-responsavel','banco-manifestacoes','banco-rnc','relatorio-satisfacao'],
     'SETOR TI':['banco-manifestacoes','banco-rnc','cerebro','base-conhecimento','auditoria'],
     'SETOR MARKETING':['banco-manifestacoes','relatorio-satisfacao','painel-maquina'],
-    'SETOR DIRETORIA':['visao-geral','acompanhamento','banco-manifestacoes','banco-rnc','aprovadores','relatorio-satisfacao','rca','painel-maquina','sugestoes-melhoria'],
+    'SETOR DIRETORIA':['visao-geral','acompanhamento','banco-manifestacoes','banco-rnc','aprovadores','relatorio-satisfacao','rca','painel-maquina','sugestoes-melhoria','gestao-diretoria'],
   };
   function applyRoleUI(){
     const r=role();
@@ -24353,6 +24357,770 @@ function updateTopbarUser(user) {
     if(typeof _pNavFinal === 'function') _pNavFinal(page, el);
     if(page === 'usuarios') _loaderUsr();
   };
+})();
+</script>
+
+<!-- ===== CENTRAL DO GERENTE ===== -->
+<div class="page" id="page-central-gerente" style="background:#F4F4F4;overflow-y:auto">
+<style>
+#page-central-gerente .cg-wrap{padding:0;display:flex;flex-direction:column;height:100%;overflow:hidden}
+#page-central-gerente .cg-topbar{background:#fff;border-bottom:1px solid var(--gray-100,#E4E4E4);padding:14px 24px 0;flex-shrink:0}
+#page-central-gerente .cg-title{font-size:20px;font-weight:800;color:#1F1F1F}
+#page-central-gerente .cg-sub{font-size:12px;color:#929090;margin-top:2px}
+#page-central-gerente .cg-tabs{display:flex;gap:0;border-bottom:none;margin-top:10px}
+#page-central-gerente .cg-tab{height:42px;border:0;background:none;padding:0 20px;font-size:13px;font-weight:500;color:#929090;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;display:flex;align-items:center;gap:8px;font-family:inherit}
+#page-central-gerente .cg-tab.on{color:#C70602;font-weight:700;border-bottom-color:#C70602}
+#page-central-gerente .cg-tab-badge{min-width:20px;height:20px;border-radius:10px;background:#C70602;color:#fff;font-size:10.5px;font-weight:800;display:flex;align-items:center;justify-content:center;padding:0 6px}
+#page-central-gerente .cg-body{flex:1;overflow-y:auto;padding:18px 24px;display:flex;flex-direction:column;gap:14px}
+#page-central-gerente .cg-kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
+#page-central-gerente .cg-kpi{border-radius:11px;padding:12px 14px;border:1.5px solid #E4E4E4;background:#fff}
+#page-central-gerente .cg-kpi-lbl{font-size:9.5px;font-weight:700;letter-spacing:.07em;color:#929090;text-transform:uppercase}
+#page-central-gerente .cg-kpi-val{font-size:24px;font-weight:800;line-height:1.1;margin-top:4px;color:#1F1F1F}
+#page-central-gerente .cg-kpi-desc{font-size:11px;color:#929090;margin-top:2px}
+#page-central-gerente .cg-split{display:flex;gap:14px;min-height:340px}
+#page-central-gerente .cg-list-card{flex:1;min-width:0;background:#fff;border:1px solid #E4E4E4;border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
+#page-central-gerente .cg-list-head{padding:12px 18px;border-bottom:1px solid #E4E4E4;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-shrink:0}
+#page-central-gerente .cg-list-body{overflow-y:auto;flex:1}
+#page-central-gerente .cg-row{border-bottom:1px solid #F4F4F4;padding:13px 18px;cursor:pointer;border-left:4px solid transparent}
+#page-central-gerente .cg-row:hover{background:#FAFAFA}
+#page-central-gerente .cg-row.sel{background:#FDF5F5}
+#page-central-gerente .cg-detail{width:380px;flex-shrink:0;background:#fff;border:1px solid #E4E4E4;border-radius:12px;display:flex;flex-direction:column;overflow:hidden}
+#page-central-gerente .cg-detail-head{background:#F7F7F7;padding:14px 18px;border-bottom:1px solid #E4E4E4;flex-shrink:0}
+#page-central-gerente .cg-detail-body{overflow-y:auto;padding:16px 18px;flex:1;display:flex;flex-direction:column;gap:14px}
+#page-central-gerente .cg-sla-badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:7px;font-size:11.5px;font-weight:700}
+#page-central-gerente .cg-field-lbl{font-size:10.5px;font-weight:700;color:#929090;text-transform:uppercase;letter-spacing:.05em}
+#page-central-gerente .cg-field-val{font-size:13px;margin-top:2px;color:#1F1F1F}
+#page-central-gerente .cg-trat-area{width:100%;border:1.5px solid #E4E4E4;border-radius:8px;padding:10px;font-size:13px;font-family:inherit;resize:vertical;min-height:80px}
+#page-central-gerente .cg-btn{height:34px;border-radius:8px;font-size:12.5px;font-weight:700;cursor:pointer;padding:0 16px;border:0;font-family:inherit;transition:opacity .15s}
+#page-central-gerente .cg-btn:hover{opacity:.85}
+#page-central-gerente .cg-team-table{width:100%;border-collapse:collapse}
+#page-central-gerente .cg-team-table th{font-size:10.5px;font-weight:700;color:#929090;text-transform:uppercase;letter-spacing:.05em;padding:10px 14px;text-align:left;background:#F7F7F7;border-bottom:1.5px solid #E4E4E4}
+#page-central-gerente .cg-team-table td{padding:12px 14px;border-bottom:1px solid #F4F4F4;font-size:13px;vertical-align:middle}
+#page-central-gerente .cg-aprov-item{background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 18px;display:flex;gap:14px;align-items:flex-start}
+#page-central-gerente .cg-empty{padding:40px;text-align:center;color:#929090;font-size:13px}
+#page-central-gerente .cg-search{height:32px;border:1.5px solid #E4E4E4;border-radius:7px;padding:0 10px;font-size:12px;width:180px;font-family:inherit}
+#page-central-gerente .cg-sel{height:34px;border:1.5px solid #E4E4E4;border-radius:8px;padding:0 10px;font-size:12px;font-family:inherit}
+#page-central-gerente .cg-ind-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px}
+@media(max-width:900px){#page-central-gerente .cg-split{flex-direction:column}#page-central-gerente .cg-detail{width:auto}}
+</style>
+<div class="cg-wrap">
+  <div class="cg-topbar">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:12px">
+      <div>
+        <div style="font-size:11px;color:#929090">Gestão</div>
+        <div class="cg-title">Central do Gerente</div>
+        <div class="cg-sub">Tratamento, supervisão de equipe e aprovações dentro da sua alçada.</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <select id="cg-filt-periodo" class="cg-sel" onchange="cgAplicarFiltros()">
+          <option value="30">Últimos 30 dias</option>
+          <option value="60">Últimos 60 dias</option>
+          <option value="90">Últimos 90 dias</option>
+        </select>
+        <select id="cg-filt-emp" class="cg-sel" onchange="cgAplicarFiltros()">
+          <option value="">Todas as empresas</option>
+        </select>
+        <button class="cg-btn" style="background:#F4F4F4;color:#545252;border:1.5px solid #E4E4E4" onclick="loadCentralGerente()">↻ Atualizar</button>
+      </div>
+    </div>
+    <div class="cg-tabs">
+      <button class="cg-tab on" id="cg-tab-minhas" onclick="cgTab('minhas')">A. Minhas reclamações <span class="cg-tab-badge" id="cg-badge-minhas">0</span></button>
+      <button class="cg-tab" id="cg-tab-equipe" onclick="cgTab('equipe')">B. Reclamações da equipe</button>
+      <button class="cg-tab" id="cg-tab-aprov" onclick="cgTab('aprov')">C. Central de aprovações <span class="cg-tab-badge" id="cg-badge-aprov" style="background:#6B24A8">0</span></button>
+      <button class="cg-tab" id="cg-tab-ind" onclick="cgTab('ind')">Indicadores</button>
+    </div>
+  </div>
+  <div class="cg-body" id="cg-body">
+    <div class="cg-empty">Carregando...</div>
+  </div>
+</div>
+<div id="cg-toast" style="display:none;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1F1F1F;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;z-index:9999;pointer-events:none"></div>
+</div>
+
+<!-- ===== GESTÃO DA DIRETORIA ===== -->
+<div class="page" id="page-gestao-diretoria" style="background:#F4F4F4;overflow-y:auto">
+<style>
+#page-gestao-diretoria .gd-wrap{padding:0;display:flex;flex-direction:column;height:100%;overflow:hidden}
+#page-gestao-diretoria .gd-topbar{background:#fff;border-bottom:1px solid #E4E4E4;padding:14px 24px 0;flex-shrink:0}
+#page-gestao-diretoria .gd-title{font-size:20px;font-weight:800;color:#1F1F1F}
+#page-gestao-diretoria .gd-sub{font-size:12px;color:#929090;margin-top:2px}
+#page-gestao-diretoria .gd-tabs{display:flex;gap:0;margin-top:10px;border-bottom:none;overflow-x:auto}
+#page-gestao-diretoria .gd-tab{height:42px;border:0;background:none;padding:0 18px;font-size:13px;font-weight:500;color:#929090;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;font-family:inherit}
+#page-gestao-diretoria .gd-tab.on{color:#C70602;font-weight:700;border-bottom-color:#C70602}
+#page-gestao-diretoria .gd-body{flex:1;overflow-y:auto;padding:18px 24px;display:flex;flex-direction:column;gap:14px}
+#page-gestao-diretoria .gd-kpi-strip{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+#page-gestao-diretoria .gd-kpi{background:#fff;border:1.5px solid #E4E4E4;border-radius:11px;padding:12px 16px}
+#page-gestao-diretoria .gd-kpi-lbl{font-size:9.5px;font-weight:700;letter-spacing:.07em;color:#929090;text-transform:uppercase}
+#page-gestao-diretoria .gd-kpi-val{font-size:26px;font-weight:800;line-height:1.1;margin-top:4px;color:#1F1F1F}
+#page-gestao-diretoria .gd-kpi-desc{font-size:11px;color:#929090;margin-top:2px}
+#page-gestao-diretoria .gd-alert{background:#FFF5F5;border:1.5px solid #F5CCCC;border-radius:10px;padding:12px 16px;display:flex;gap:10px;align-items:flex-start}
+#page-gestao-diretoria .gd-card{background:#fff;border:1px solid #E4E4E4;border-radius:12px;overflow:hidden}
+#page-gestao-diretoria .gd-card-head{padding:12px 18px;border-bottom:1px solid #E4E4E4;font-size:13px;font-weight:800;background:#F7F7F7}
+#page-gestao-diretoria .gd-card-body{padding:14px 18px}
+#page-gestao-diretoria .gd-table{width:100%;border-collapse:collapse}
+#page-gestao-diretoria .gd-table th{font-size:10.5px;font-weight:700;color:#929090;text-transform:uppercase;letter-spacing:.05em;padding:9px 12px;text-align:left;background:#F7F7F7;border-bottom:1.5px solid #E4E4E4}
+#page-gestao-diretoria .gd-table td{padding:11px 12px;border-bottom:1px solid #F4F4F4;font-size:13px}
+#page-gestao-diretoria .gd-badge{display:inline-flex;align-items:center;padding:2px 9px;border-radius:20px;font-size:10.5px;font-weight:800}
+#page-gestao-diretoria .gd-aprov-item{background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 18px;display:flex;gap:12px;align-items:flex-start}
+#page-gestao-diretoria .gd-btn{height:34px;border-radius:8px;font-size:12.5px;font-weight:700;cursor:pointer;padding:0 16px;border:0;font-family:inherit;transition:opacity .15s}
+#page-gestao-diretoria .gd-btn:hover{opacity:.85}
+#page-gestao-diretoria .gd-sel{height:34px;border:1.5px solid #E4E4E4;border-radius:8px;padding:0 10px;font-size:12px;font-family:inherit}
+#page-gestao-diretoria .gd-empty{padding:40px;text-align:center;color:#929090;font-size:13px}
+@media(max-width:900px){#page-gestao-diretoria .gd-kpi-strip{grid-template-columns:repeat(2,1fr)}}
+</style>
+<div class="gd-wrap">
+  <div class="gd-topbar">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:12px">
+      <div>
+        <div style="font-size:11px;color:#929090">Gestão</div>
+        <div class="gd-title">Gestão da Diretoria</div>
+        <div class="gd-sub">Visão executiva consolidada · KPIs, alertas, aprovações e desempenho da equipe.</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <select id="gd-filt-periodo" class="gd-sel" onchange="gdAplicarFiltros()">
+          <option value="30">Últimos 30 dias</option>
+          <option value="60">Últimos 60 dias</option>
+          <option value="90">Últimos 90 dias</option>
+        </select>
+        <select id="gd-filt-emp" class="gd-sel" onchange="gdAplicarFiltros()">
+          <option value="">Todas as empresas</option>
+        </select>
+        <button class="gd-btn" style="background:#F4F4F4;color:#545252;border:1.5px solid #E4E4E4" onclick="loadGestaoDiretoria()">↻ Atualizar</button>
+      </div>
+    </div>
+    <div class="gd-tabs">
+      <button class="gd-tab on" id="gd-tab-visao" onclick="gdTab('visao')">Visão Geral</button>
+      <button class="gd-tab" id="gd-tab-equipe" onclick="gdTab('equipe')">Equipe</button>
+      <button class="gd-tab" id="gd-tab-mans" onclick="gdTab('mans')">Manifestações &amp; RCAs</button>
+      <button class="gd-tab" id="gd-tab-planos" onclick="gdTab('planos')">Planos de Ação</button>
+      <button class="gd-tab" id="gd-tab-ind" onclick="gdTab('ind')">Indicadores</button>
+    </div>
+  </div>
+  <div class="gd-body" id="gd-body">
+    <div class="gd-empty">Carregando...</div>
+  </div>
+</div>
+<div id="gd-toast" style="display:none;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1F1F1F;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;z-index:9999;pointer-events:none"></div>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+// ─── UTILITÁRIOS COMPARTILHADOS ───
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function slaInfo(h){
+  const ah=Math.abs(h);
+  if(h<0) return {l:'Vencido '+ah+'h',fg:'#A80502',bg:'#FDECEC'};
+  if(h<4) return {l:h+'h restantes',fg:'#A80502',bg:'#FDECEC'};
+  if(h<24) return {l:h+'h restantes',fg:'#7A4C00',bg:'#FBF0D9'};
+  return {l:h+'h restantes',fg:'#1E6B3A',bg:'#E6F2EA'};
+}
+function stBadge(status){
+  const m={
+    'ABERTA':['#E6EEF8','#24508F','Aberta'],
+    'EM TRATAMENTO':['#FBF0D9','#7A4C00','Em tratamento'],
+    'AGUARDANDO_APROVACAO':['#F0E6F8','#6B24A8','Ag. aprovação'],
+    'AGUARDANDO_DECISÃO':['#FFF3E0','#E65100','Ag. decisão'],
+    'FECHADA':['#E6F2EA','#1E6B3A','Fechada'],
+    'APROVADA':['#E6F2EA','#1E6B3A','Aprovada'],
+  };
+  const d=m[status]||['#F0F0F0','#545252',status||'—'];
+  return `<span style="padding:2px 9px;border-radius:20px;font-size:10.5px;font-weight:800;background:${d[0]};color:${d[1]}">${esc(d[2])}</span>`;
+}
+function showToast(id,msg){
+  const el=document.getElementById(id);
+  if(!el)return;
+  el.textContent=msg;el.style.display='block';
+  clearTimeout(el._t);el._t=setTimeout(()=>{el.style.display='none';},3000);
+}
+function cgFlash(m){showToast('cg-toast',m);}
+function gdFlash(m){showToast('gd-toast',m);}
+
+// Calcula horas SLA a partir de campos de data/prazo
+function calcSlaH(item){
+  const prazo=item.prazo_resposta||item.PRAZO_RESPOSTA||item.prazo||'';
+  if(!prazo)return 48;
+  const d=new Date(prazo.includes('/')?prazo.split('/').reverse().join('-'):prazo);
+  if(isNaN(d))return 48;
+  return Math.round((d-Date.now())/36e5);
+}
+function fmtData(s){
+  if(!s)return '—';
+  const d=new Date(s.includes('/')?s.split('/').reverse().join('-'):s);
+  if(isNaN(d))return s;
+  return d.toLocaleDateString('pt-BR');
+}
+
+// ─── CENTRAL DO GERENTE ───
+var _cgData={mans:[],aprovs:[]};
+var _cgAba='minhas';
+var _cgSearch='';
+var _cgSelId=null;
+
+window.cgTab=function(aba){
+  _cgAba=aba;
+  _cgSelId=null;
+  document.querySelectorAll('[id^="cg-tab-"]').forEach(b=>b.classList.remove('on'));
+  const btn=document.getElementById('cg-tab-'+aba);
+  if(btn)btn.classList.add('on');
+  cgRender();
+};
+
+window.cgAplicarFiltros=function(){cgRender();};
+
+window.loadCentralGerente=async function(){
+  const body=document.getElementById('cg-body');
+  if(body)body.innerHTML='<div class="cg-empty">Carregando...</div>';
+  try{
+    const tok=sessionStorage.getItem('sac-token');
+    const h=tok?{Authorization:'Bearer '+tok}:{};
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),20000);
+    const [rMans,rAprov]=await Promise.allSettled([
+      fetch('/api/manifestacoes',{headers:h,signal:ctrl.signal}).then(r=>r.json()),
+      fetch('/api/fila-aprovacao',{headers:h,signal:ctrl.signal}).then(r=>r.json()),
+    ]);
+    clearTimeout(tid);
+    _cgData.mans=(rMans.status==='fulfilled'?rMans.value?.itens||[]:window._dashData?.mans||[]);
+    _cgData.aprovs=(rAprov.status==='fulfilled'?rAprov.value?.itens||rAprov.value||[]:[] );
+    // Preenche select de empresas
+    const emps=[...new Set(_cgData.mans.map(m=>m.empresa||m.EMPRESA||'').filter(Boolean))].sort();
+    const sel=document.getElementById('cg-filt-emp');
+    if(sel){sel.innerHTML='<option value="">Todas as empresas</option>'+emps.map(e=>`<option value="${esc(e)}">${esc(e)}</option>`).join('');}
+  }catch(e){
+    if(body)body.innerHTML=`<div class="cg-empty">Erro ao carregar: ${esc(e.message)}</div>`;
+    return;
+  }
+  cgRender();
+};
+
+function cgGetFiltros(){
+  const dias=parseInt(document.getElementById('cg-filt-periodo')?.value||'30');
+  const emp=(document.getElementById('cg-filt-emp')?.value||'').toLowerCase();
+  return{dias,emp};
+}
+
+function cgFiltrarMans(){
+  const{dias,emp}=cgGetFiltros();
+  const corte=Date.now()-dias*864e5;
+  return _cgData.mans.filter(m=>{
+    if(emp){const me=String(m.empresa||m.EMPRESA||'').toLowerCase();if(!me.includes(emp))return false;}
+    const dt=m.data_abertura||m.DATA_ABERTURA||m.data||m.DATA||'';
+    if(dt){const d=new Date(dt.includes('/')?dt.split('/').reverse().join('-'):dt);if(!isNaN(d)&&d<corte)return false;}
+    return true;
+  });
+}
+
+function cgRenderMinhas(mans){
+  const sess=JSON.parse(sessionStorage.getItem('sac-user')||'{}');
+  const nome=(sess.nome||sess.usuario||'').toLowerCase();
+  // "Minhas" = manifestações em que o usuário é atribuído ou analista responsável
+  const minhas=mans.filter(m=>{
+    const resp=String(m.responsavel||m.RESPONSAVEL||m.analista||m.ANALISTA||'').toLowerCase();
+    const atrib=String(m.atribuido_a||m.ATRIBUIDO_A||'').toLowerCase();
+    return resp===nome||atrib===nome||(nome&&(resp.includes(nome)||atrib.includes(nome)));
+  });
+  document.getElementById('cg-badge-minhas').textContent=String(minhas.filter(m=>!['FECHADA','APROVADA'].includes(m.status||m.STATUS||'')).length);
+  const q=_cgSearch.toLowerCase();
+  const lista=q?minhas.filter(m=>JSON.stringify(m).toLowerCase().includes(q)):minhas;
+  const atrasados=lista.filter(m=>{const h=calcSlaH(m);return h<0&&!['FECHADA','APROVADA'].includes(m.status||m.STATUS||'');}).length;
+
+  let h=`<div class="cg-kpi-grid">`;
+  const stats=[
+    {l:'ATRIBUÍDAS',v:minhas.length,d:'no período',c:'#1F1F1F',bg:'#fff',bd:'#E4E4E4'},
+    {l:'EM TRATAMENTO',v:minhas.filter(m=>(m.status||'').toUpperCase()==='EM TRATAMENTO').length,d:'em andamento',c:'#7A4C00',bg:'#FFFBEE',bd:'#F0D9A0'},
+    {l:'CONCLUÍDAS',v:minhas.filter(m=>['FECHADA','APROVADA'].includes((m.status||'').toUpperCase())).length,d:'no período',c:'#1E6B3A',bg:'#F0FAF3',bd:'#A8DFC0'},
+    {l:'ATRASADAS',v:atrasados,d:'fora do prazo',c:atrasados>0?'#A80502':'#929090',bg:atrasados>0?'#FFF5F5':'#fff',bd:atrasados>0?'#F5CCCC':'#E4E4E4'},
+  ];
+  stats.forEach(k=>{h+=`<div class="cg-kpi" style="background:${k.bg};border-color:${k.bd}"><div class="cg-kpi-lbl">${esc(k.l)}</div><div class="cg-kpi-val" style="color:${k.c}">${k.v}</div><div class="cg-kpi-desc">${esc(k.d)}</div></div>`;});
+  h+='</div>';
+
+  h+=`<div class="cg-split"><div class="cg-list-card">
+    <div class="cg-list-head"><span style="font-size:13px;font-weight:800">MINHAS RECLAMAÇÕES</span>
+      <input class="cg-search" placeholder="Buscar…" value="${esc(_cgSearch)}" oninput="_cgSearch=this.value;cgRender()">
+    </div><div class="cg-list-body">`;
+  if(!lista.length){h+='<div class="cg-empty">Nenhuma reclamação atribuída a você no período.</div>';}
+  lista.forEach(m=>{
+    const id=m.id||m.ID||'—';
+    const sla=slaInfo(calcSlaH(m));
+    const sel=_cgSelId===id;
+    const accentMap={'ABERTA':'#24508F','EM TRATAMENTO':'#7A4C00','AGUARDANDO_APROVACAO':'#6B24A8','FECHADA':'#1E6B3A','APROVADA':'#1E6B3A'};
+    const accent=accentMap[(m.status||'').toUpperCase()]||'#929090';
+    h+=`<div class="cg-row${sel?' sel':''}" style="border-left-color:${accent}" onclick="cgSelMin('${esc(id)}')">
+      <div style="display:flex;align-items:flex-start;gap:12px">
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
+            <span style="font-size:13px;font-weight:800;color:#C70602">${esc(id)}</span>
+            ${stBadge(m.status||'')}
+            <span class="cg-sla-badge" style="background:${sla.bg};color:${sla.fg}">⏱ ${sla.l}</span>
+          </div>
+          <div style="font-size:12.5px;font-weight:600;color:#545252">${esc(m.empresa||m.EMPRESA||'—')} · ${esc(m.cliente||m.CLIENTE||'—')}</div>
+          <div style="font-size:12px;color:#929090;margin-top:2px">${esc(m.motivo||m.MOTIVO||m.tipo||'—')}</div>
+        </div>
+        <span style="font-size:11.5px;color:#929090;white-space:nowrap">${fmtData(m.data_abertura||m.DATA_ABERTURA||m.data||'')}</span>
+      </div></div>`;
+  });
+  h+='</div></div>';
+
+  // Painel detalhe
+  const selM=lista.find(m=>(m.id||m.ID)===_cgSelId);
+  if(selM){
+    const sla=slaInfo(calcSlaH(selM));
+    h+=`<div class="cg-detail">
+      <div class="cg-detail-head">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <span style="font-size:14px;font-weight:800;color:#C70602">${esc(selM.id||selM.ID)}</span>
+          <span class="cg-sla-badge" style="background:${sla.bg};color:${sla.fg}">⏱ ${sla.l}</span>
+        </div>
+        <div style="margin-top:8px">${stBadge(selM.status||'')}</div>
+      </div>
+      <div class="cg-detail-body">
+        <div><div class="cg-field-lbl">Cliente</div><div class="cg-field-val">${esc(selM.cliente||selM.CLIENTE||'—')}</div></div>
+        <div><div class="cg-field-lbl">Empresa</div><div class="cg-field-val">${esc(selM.empresa||selM.EMPRESA||'—')}</div></div>
+        <div><div class="cg-field-lbl">Setor responsável</div><div class="cg-field-val">${esc(selM.setor||selM.SETOR||'—')}</div></div>
+        <div><div class="cg-field-lbl">Motivo</div><div class="cg-field-val">${esc(selM.motivo||selM.MOTIVO||selM.tipo||'—')}</div></div>
+        <div>
+          <div class="cg-field-lbl" style="margin-bottom:6px">Registro de tratativa</div>
+          <textarea class="cg-trat-area" id="cg-trat-txt" placeholder="Descreva as ações tomadas...">${esc(selM.tratativa||selM.TRATATIVA||'')}</textarea>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <button class="cg-btn" style="background:#1F1F1F;color:#fff" onclick="cgSalvarTratativa('${esc(selM.id||selM.ID)}')">Salvar tratativa</button>
+          <button class="cg-btn" style="background:#C70602;color:#fff" onclick="cgEncaminhar('${esc(selM.id||selM.ID)}')">Encaminhar para aprovação</button>
+          <button class="cg-btn" style="background:#F4F4F4;color:#545252;border:1.5px solid #E4E4E4" onclick="cgSolicitarInfo('${esc(selM.id||selM.ID)}')">Solicitar informações</button>
+        </div>
+      </div></div>`;
+  }
+  h+='</div>';
+  return h;
+}
+
+function cgRenderEquipe(mans){
+  // Agrega por analista/responsável
+  const equipe={};
+  mans.forEach(m=>{
+    const resp=m.responsavel||m.RESPONSAVEL||m.analista||m.ANALISTA||'Não atribuído';
+    if(!equipe[resp])equipe[resp]={nome:resp,total:0,em_tratamento:0,atrasadas:0,fechadas:0};
+    const e=equipe[resp];
+    e.total++;
+    const st=(m.status||'').toUpperCase();
+    if(st==='EM TRATAMENTO')e.em_tratamento++;
+    if(['FECHADA','APROVADA'].includes(st))e.fechadas++;
+    if(calcSlaH(m)<0&&!['FECHADA','APROVADA'].includes(st))e.atrasadas++;
+  });
+  const lista=Object.values(equipe).sort((a,b)=>b.total-a.total);
+  let h=`<div class="cg-card"><div class="cg-card-head">RECLAMAÇÕES DA EQUIPE</div>
+    <div style="overflow-x:auto"><table class="cg-team-table">
+      <thead><tr><th>Responsável</th><th>Total</th><th>Em tratamento</th><th>Concluídas</th><th>Atrasadas</th><th>SLA %</th></tr></thead><tbody>`;
+  if(!lista.length){h+=`<tr><td colspan="6" style="text-align:center;color:#929090;padding:30px">Nenhum dado no período.</td></tr>`;}
+  lista.forEach(e=>{
+    const slaP=e.total?Math.round((e.total-e.atrasadas)/e.total*100):100;
+    const slaC=slaP>=80?'#1E6B3A':slaP>=60?'#7A4C00':'#A80502';
+    h+=`<tr>
+      <td style="font-weight:600">${esc(e.nome)}</td>
+      <td>${e.total}</td>
+      <td>${e.em_tratamento}</td>
+      <td style="color:#1E6B3A;font-weight:700">${e.fechadas}</td>
+      <td style="color:${e.atrasadas>0?'#A80502':'#929090'};font-weight:700">${e.atrasadas}</td>
+      <td><span style="font-weight:800;color:${slaC}">${slaP}%</span></td>
+    </tr>`;
+  });
+  h+='</tbody></table></div></div>';
+  return h;
+}
+
+function cgRenderAprov(aprovs){
+  document.getElementById('cg-badge-aprov').textContent=String(aprovs.length);
+  if(!aprovs.length)return '<div class="cg-empty">Nenhum item aguardando aprovação.</div>';
+  let h='';
+  aprovs.forEach(a=>{
+    const id=a.id||a.ID||a.manifestacao_id||'—';
+    const sla=slaInfo(calcSlaH(a));
+    h+=`<div class="cg-aprov-item">
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">
+          <span style="font-size:13px;font-weight:800;color:#C70602">${esc(id)}</span>
+          <span style="padding:2px 9px;border-radius:20px;font-size:10.5px;font-weight:800;background:#F0E6F8;color:#6B24A8">${esc(a.tipo||a.TIPO||'SAC')}</span>
+          <span class="cg-sla-badge" style="background:${sla.bg};color:${sla.fg}">⏱ ${sla.l}</span>
+        </div>
+        <div style="font-size:12.5px;font-weight:600;color:#545252">${esc(a.empresa||a.EMPRESA||'—')} · ${esc(a.setor||a.SETOR||'—')}</div>
+        <div style="font-size:12px;color:#929090;margin-top:4px">${esc(a.motivo||a.MOTIVO||a.descricao||a.observacoes||'—')}</div>
+        <div style="margin-top:4px;font-size:12px;color:#545252">Responsável: <b>${esc(a.responsavel||a.RESPONSAVEL||a.analista||'—')}</b></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">
+        <button class="cg-btn" style="background:#1E6B3A;color:#fff" onclick="cgDecidir('${esc(id)}','APROVADO')">✓ Aprovar</button>
+        <button class="cg-btn" style="background:#C70602;color:#fff" onclick="cgDecidir('${esc(id)}','DEVOLVIDO')">↩ Devolver</button>
+        <button class="cg-btn" style="background:#F4F4F4;color:#545252;border:1.5px solid #E4E4E4" onclick="cgDecidir('${esc(id)}','SOLICITAR_INFORMACAO')">? Info</button>
+      </div></div>`;
+  });
+  return h;
+}
+
+function cgRenderInd(mans){
+  const total=mans.length;
+  const fechadas=mans.filter(m=>['FECHADA','APROVADA'].includes((m.status||'').toUpperCase())).length;
+  const atrasadas=mans.filter(m=>calcSlaH(m)<0&&!['FECHADA','APROVADA'].includes((m.status||'').toUpperCase())).length;
+  const slaP=total?Math.round((total-atrasadas)/total*100):100;
+  const kpis=[
+    {l:'TOTAL NO PERÍODO',v:total,d:'manifestações',c:'#1F1F1F',bg:'#fff',bd:'#E4E4E4'},
+    {l:'CONCLUÍDAS',v:fechadas,d:total?Math.round(fechadas/total*100)+'% do total':'—',c:'#1E6B3A',bg:'#F0FAF3',bd:'#A8DFC0'},
+    {l:'SLA %',v:slaP+'%',d:'dentro do prazo',c:slaP>=80?'#1E6B3A':slaP>=60?'#7A4C00':'#A80502',bg:slaP>=80?'#F0FAF3':slaP>=60?'#FFFBEE':'#FFF5F5',bd:slaP>=80?'#A8DFC0':slaP>=60?'#F0D9A0':'#F5CCCC'},
+    {l:'ATRASADAS',v:atrasadas,d:'fora do prazo',c:atrasadas>0?'#A80502':'#929090',bg:atrasadas>0?'#FFF5F5':'#fff',bd:atrasadas>0?'#F5CCCC':'#E4E4E4'},
+  ];
+  let h='<div class="cg-kpi-grid">';
+  kpis.forEach(k=>{h+=`<div class="cg-kpi" style="background:${k.bg};border-color:${k.bd}"><div class="cg-kpi-lbl">${esc(k.l)}</div><div class="cg-kpi-val" style="color:${k.c}">${k.v}</div><div class="cg-kpi-desc">${esc(k.d)}</div></div>`;});
+  h+='</div>';
+  // Por status
+  const byStatus={};
+  mans.forEach(m=>{const s=(m.status||'Não definido');byStatus[s]=(byStatus[s]||0)+1;});
+  h+=`<div class="cg-card"><div class="cg-card-head">DISTRIBUIÇÃO POR STATUS</div><div class="cg-card-body">`;
+  Object.entries(byStatus).sort((a,b)=>b[1]-a[1]).forEach(([s,n])=>{
+    const pct=total?Math.round(n/total*100):0;
+    h+=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+      <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;margin-bottom:4px">${stBadge(s)} <span style="color:#929090;font-size:12px">(${n})</span></div>
+        <div style="height:6px;border-radius:3px;background:#E4E4E4"><div style="height:6px;border-radius:3px;background:#C70602;width:${pct}%"></div></div>
+      </div><div style="font-size:13px;font-weight:700;color:#545252;min-width:36px;text-align:right">${pct}%</div></div>`;
+  });
+  h+='</div></div>';
+  return h;
+}
+
+function cgRender(){
+  const body=document.getElementById('cg-body');
+  if(!body)return;
+  const mans=cgFiltrarMans();
+  const aprovs=_cgData.aprovs;
+  let h='';
+  if(_cgAba==='minhas')h=cgRenderMinhas(mans);
+  else if(_cgAba==='equipe')h=cgRenderEquipe(mans);
+  else if(_cgAba==='aprov')h=cgRenderAprov(aprovs);
+  else if(_cgAba==='ind')h=cgRenderInd(mans);
+  body.innerHTML=h;
+}
+
+window.cgSelMin=function(id){
+  _cgSelId=_cgSelId===id?null:id;
+  cgRender();
+};
+
+window.cgSalvarTratativa=async function(id){
+  const txt=document.getElementById('cg-trat-txt')?.value||'';
+  if(!txt.trim()){cgFlash('Informe o registro de tratativa.');return;}
+  try{
+    const tok=sessionStorage.getItem('sac-token');
+    await fetch('/api/manifestacoes/'+encodeURIComponent(id)+'/tratativa',{
+      method:'POST',
+      headers:{...(tok?{Authorization:'Bearer '+tok}:{}),'Content-Type':'application/json'},
+      body:JSON.stringify({tratativa:txt})
+    });
+    cgFlash('Tratativa salva.');
+    await loadCentralGerente();
+  }catch(e){cgFlash('Erro: '+e.message);}
+};
+
+window.cgEncaminhar=async function(id){
+  try{
+    const tok=sessionStorage.getItem('sac-token');
+    await fetch('/api/manifestacoes/'+encodeURIComponent(id)+'/encaminhar',{
+      method:'POST',
+      headers:{...(tok?{Authorization:'Bearer '+tok}:{}),'Content-Type':'application/json'},
+      body:JSON.stringify({})
+    });
+    cgFlash(id+' encaminhado para aprovação.');
+    _cgSelId=null;
+    await loadCentralGerente();
+  }catch(e){cgFlash('Erro: '+e.message);}
+};
+
+window.cgSolicitarInfo=function(id){
+  cgFlash('Solicitação de informações enviada para '+id+'.');
+};
+
+window.cgDecidir=async function(id,decisao){
+  try{
+    const tok=sessionStorage.getItem('sac-token');
+    await fetch('/api/fila-aprovacao/'+encodeURIComponent(id)+'/decidir',{
+      method:'POST',
+      headers:{...(tok?{Authorization:'Bearer '+tok}:{}),'Content-Type':'application/json'},
+      body:JSON.stringify({decisao,observacoes:''})
+    });
+    cgFlash('Decisão registrada: '+decisao.replace(/_/g,' ')+'.');
+    await loadCentralGerente();
+  }catch(e){cgFlash('Erro: '+e.message);}
+};
+
+// ─── GESTÃO DA DIRETORIA ───
+var _gdData={mans:[],aprovs:[],rncs:[]};
+var _gdAba='visao';
+
+window.gdTab=function(aba){
+  _gdAba=aba;
+  document.querySelectorAll('[id^="gd-tab-"]').forEach(b=>b.classList.remove('on'));
+  const btn=document.getElementById('gd-tab-'+aba);
+  if(btn)btn.classList.add('on');
+  gdRender();
+};
+
+window.gdAplicarFiltros=function(){gdRender();};
+
+window.loadGestaoDiretoria=async function(){
+  const body=document.getElementById('gd-body');
+  if(body)body.innerHTML='<div class="gd-empty">Carregando...</div>';
+  try{
+    const tok=sessionStorage.getItem('sac-token');
+    const h=tok?{Authorization:'Bearer '+tok}:{};
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),20000);
+    const [rMans,rAprov,rRnc]=await Promise.allSettled([
+      fetch('/api/manifestacoes',{headers:h,signal:ctrl.signal}).then(r=>r.json()),
+      fetch('/api/fila-aprovacao',{headers:h,signal:ctrl.signal}).then(r=>r.json()),
+      fetch('/api/banco-rnc',{headers:h,signal:ctrl.signal}).then(r=>r.json()),
+    ]);
+    clearTimeout(tid);
+    _gdData.mans=(rMans.status==='fulfilled'?rMans.value?.itens||[]:window._dashData?.mans||[]);
+    _gdData.aprovs=(rAprov.status==='fulfilled'?rAprov.value?.itens||rAprov.value||[]:[] );
+    _gdData.rncs=(rRnc.status==='fulfilled'?rRnc.value?.itens||rRnc.value||[]:window._dashData?.recs||[]);
+    // Preenche select de empresas
+    const emps=[...new Set(_gdData.mans.map(m=>m.empresa||m.EMPRESA||'').filter(Boolean))].sort();
+    const sel=document.getElementById('gd-filt-emp');
+    if(sel){sel.innerHTML='<option value="">Todas as empresas</option>'+emps.map(e=>`<option value="${esc(e)}">${esc(e)}</option>`).join('');}
+  }catch(e){
+    if(body)body.innerHTML=`<div class="gd-empty">Erro ao carregar: ${esc(e.message)}</div>`;
+    return;
+  }
+  gdRender();
+};
+
+function gdGetFiltros(){
+  const dias=parseInt(document.getElementById('gd-filt-periodo')?.value||'30');
+  const emp=(document.getElementById('gd-filt-emp')?.value||'').toLowerCase();
+  return{dias,emp};
+}
+
+function gdFiltrar(lista){
+  const{dias,emp}=gdGetFiltros();
+  const corte=Date.now()-dias*864e5;
+  return lista.filter(m=>{
+    if(emp){const me=String(m.empresa||m.EMPRESA||'').toLowerCase();if(!me.includes(emp))return false;}
+    const dt=m.data_abertura||m.DATA_ABERTURA||m.data||m.DATA||'';
+    if(dt){const d=new Date(dt.includes('/')?dt.split('/').reverse().join('-'):dt);if(!isNaN(d)&&d<corte)return false;}
+    return true;
+  });
+}
+
+function gdRenderVisao(mans,aprovs,rncs){
+  const total=mans.length;
+  const atrasadas=mans.filter(m=>calcSlaH(m)<0&&!['FECHADA','APROVADA'].includes((m.status||'').toUpperCase())).length;
+  const pendAprov=aprovs.length;
+  const emTratamento=mans.filter(m=>(m.status||'').toUpperCase()==='EM TRATAMENTO').length;
+  const slaP=total?Math.round((total-atrasadas)/total*100):100;
+  const kpis=[
+    {l:'ABERTAS',v:mans.filter(m=>!['FECHADA','APROVADA'].includes((m.status||'').toUpperCase())).length,d:'em andamento',c:mans.length>0?'#A80502':'#1F1F1F',bg:'#FFF5F5',bd:'#F5CCCC'},
+    {l:'EM TRATAMENTO',v:emTratamento,d:'em andamento',c:'#7A4C00',bg:'#FFFBEE',bd:'#F0D9A0'},
+    {l:'APROVAÇÕES PEND.',v:pendAprov,d:'aguardando',c:pendAprov>0?'#6B24A8':'#929090',bg:pendAprov>0?'#F0E6F8':'#fff',bd:pendAprov>0?'#C9A0E0':'#E4E4E4'},
+    {l:'RNCs ABERTAS',v:rncs.filter(r=>!['FECHADA','FECHADO','CONCLUIDA'].includes((r.status||'').toUpperCase())).length,d:'pendentes',c:'#545252',bg:'#fff',bd:'#E4E4E4'},
+    {l:'SLA %',v:slaP+'%',d:'dentro do prazo',c:slaP>=80?'#1E6B3A':slaP>=60?'#7A4C00':'#A80502',bg:slaP>=80?'#F0FAF3':slaP>=60?'#FFFBEE':'#FFF5F5',bd:slaP>=80?'#A8DFC0':slaP>=60?'#F0D9A0':'#F5CCCC'},
+    {l:'FORA DO PRAZO',v:atrasadas,d:'atrasadas',c:atrasadas>0?'#A80502':'#929090',bg:atrasadas>0?'#FFF5F5':'#fff',bd:atrasadas>0?'#F5CCCC':'#E4E4E4'},
+  ];
+  let h='<div class="gd-kpi-strip">';
+  kpis.forEach(k=>{h+=`<div class="gd-kpi" style="background:${k.bg};border-color:${k.bd}"><div class="gd-kpi-lbl">${esc(k.l)}</div><div class="gd-kpi-val" style="color:${k.c}">${k.v}</div><div class="gd-kpi-desc">${esc(k.d)}</div></div>`;});
+  h+='</div>';
+  // Alertas
+  const alerts=[];
+  if(atrasadas>0)alerts.push({ico:'⚠️',msg:`${atrasadas} manifestaç${atrasadas>1?'ões':'ão'} com SLA vencido.`,c:'#A80502'});
+  if(pendAprov>0)alerts.push({ico:'🔔',msg:`${pendAprov} item${pendAprov>1?'s':''} aguardando aprovação gerencial.`,c:'#6B24A8'});
+  const rncAtras=rncs.filter(r=>calcSlaH(r)<0&&!['FECHADA','FECHADO','CONCLUIDA'].includes((r.status||'').toUpperCase())).length;
+  if(rncAtras>0)alerts.push({ico:'📋',msg:`${rncAtras} RNC${rncAtras>1?'s':''} com prazo vencido.`,c:'#7A4C00'});
+  if(alerts.length){
+    h+='<div style="display:flex;flex-direction:column;gap:8px">';
+    alerts.forEach(a=>{h+=`<div class="gd-alert"><span style="font-size:16px">${a.ico}</span><span style="font-size:13px;color:${a.c}">${esc(a.msg)}</span></div>`;});
+    h+='</div>';
+  }
+  // Central de decisões (aprovações pendentes)
+  if(aprovs.length){
+    h+=`<div class="gd-card"><div class="gd-card-head">CENTRAL DE DECISÕES (${aprovs.length})</div><div style="display:flex;flex-direction:column;gap:8px;padding:14px 18px">`;
+    aprovs.slice(0,5).forEach(a=>{
+      const id=a.id||a.ID||a.manifestacao_id||'—';
+      const sla=slaInfo(calcSlaH(a));
+      h+=`<div class="gd-aprov-item">
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
+            <span style="font-size:13px;font-weight:800;color:#C70602">${esc(id)}</span>
+            <span class="gd-badge" style="background:#F0E6F8;color:#6B24A8">${esc(a.tipo||'SAC')}</span>
+            <span class="gd-badge" style="background:${sla.bg};color:${sla.fg}">⏱ ${sla.l}</span>
+          </div>
+          <div style="font-size:12.5px;font-weight:600;color:#545252">${esc(a.empresa||'—')} · ${esc(a.setor||'—')}</div>
+          <div style="font-size:12px;color:#929090;margin-top:2px">${esc(a.motivo||a.descricao||a.observacoes||'—')}</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0">
+          <button class="gd-btn" style="background:#1E6B3A;color:#fff" onclick="gdDecidir('${esc(id)}','APROVADO')">✓</button>
+          <button class="gd-btn" style="background:#C70602;color:#fff" onclick="gdDecidir('${esc(id)}','DEVOLVIDO')">↩</button>
+        </div></div>`;
+    });
+    if(aprovs.length>5)h+=`<div style="text-align:center;padding:8px 0;font-size:12px;color:#929090">+ ${aprovs.length-5} mais — acesse a tela de Aprovações</div>`;
+    h+='</div></div>';
+  }
+  return h;
+}
+
+function gdRenderEquipe(mans){
+  const equipe={};
+  mans.forEach(m=>{
+    const resp=m.responsavel||m.RESPONSAVEL||m.analista||m.ANALISTA||'Não atribuído';
+    if(!equipe[resp])equipe[resp]={nome:resp,total:0,em_tratamento:0,atrasadas:0,fechadas:0};
+    const e=equipe[resp];
+    e.total++;
+    const st=(m.status||'').toUpperCase();
+    if(st==='EM TRATAMENTO')e.em_tratamento++;
+    if(['FECHADA','APROVADA'].includes(st))e.fechadas++;
+    if(calcSlaH(m)<0&&!['FECHADA','APROVADA'].includes(st))e.atrasadas++;
+  });
+  const lista=Object.values(equipe).sort((a,b)=>b.total-a.total);
+  let h=`<div class="gd-card"><div class="gd-card-head">DESEMPENHO DA EQUIPE</div>
+    <div style="overflow-x:auto"><table class="gd-table">
+      <thead><tr><th>Responsável</th><th>Total</th><th>Em tratamento</th><th>Concluídas</th><th>Atrasadas</th><th>SLA %</th></tr></thead><tbody>`;
+  if(!lista.length)h+=`<tr><td colspan="6" style="text-align:center;color:#929090;padding:30px">Nenhum dado no período.</td></tr>`;
+  lista.forEach(e=>{
+    const slaP=e.total?Math.round((e.total-e.atrasadas)/e.total*100):100;
+    const slaC=slaP>=80?'#1E6B3A':slaP>=60?'#7A4C00':'#A80502';
+    h+=`<tr>
+      <td style="font-weight:600">${esc(e.nome)}</td>
+      <td>${e.total}</td>
+      <td>${e.em_tratamento}</td>
+      <td style="color:#1E6B3A;font-weight:700">${e.fechadas}</td>
+      <td style="color:${e.atrasadas>0?'#A80502':'#929090'};font-weight:700">${e.atrasadas}</td>
+      <td><span style="font-weight:800;color:${slaC}">${slaP}%</span></td>
+    </tr>`;
+  });
+  h+='</tbody></table></div></div>';
+  return h;
+}
+
+function gdRenderMans(mans,rncs){
+  let h=`<div class="gd-card"><div class="gd-card-head">MANIFESTAÇÕES (${mans.length})</div>
+    <div style="overflow-x:auto"><table class="gd-table">
+      <thead><tr><th>ID</th><th>Empresa</th><th>Cliente</th><th>Motivo</th><th>Status</th><th>SLA</th></tr></thead><tbody>`;
+  if(!mans.length)h+=`<tr><td colspan="6" style="text-align:center;color:#929090;padding:30px">Nenhuma manifestação no período.</td></tr>`;
+  mans.slice(0,30).forEach(m=>{
+    const sla=slaInfo(calcSlaH(m));
+    h+=`<tr>
+      <td style="font-weight:700;color:#C70602">${esc(m.id||m.ID||'—')}</td>
+      <td>${esc(m.empresa||m.EMPRESA||'—')}</td>
+      <td>${esc(m.cliente||m.CLIENTE||'—')}</td>
+      <td>${esc((m.motivo||m.MOTIVO||m.tipo||'—').slice(0,40))}</td>
+      <td>${stBadge(m.status||'')}</td>
+      <td><span style="font-size:11.5px;font-weight:700;background:${sla.bg};color:${sla.fg};padding:2px 8px;border-radius:7px">${sla.l}</span></td>
+    </tr>`;
+  });
+  if(mans.length>30)h+=`<tr><td colspan="6" style="text-align:center;color:#929090;padding:8px">+ ${mans.length-30} mais</td></tr>`;
+  h+='</tbody></table></div></div>';
+  if(rncs.length){
+    h+=`<div class="gd-card"><div class="gd-card-head">RNCs / RCAs (${rncs.length})</div>
+      <div style="overflow-x:auto"><table class="gd-table">
+        <thead><tr><th>ID</th><th>Empresa</th><th>Tipo</th><th>Status</th><th>Responsável</th></tr></thead><tbody>`;
+    rncs.slice(0,20).forEach(r=>{
+      h+=`<tr>
+        <td style="font-weight:700;color:#24508F">${esc(r.id||r.ID||'—')}</td>
+        <td>${esc(r.empresa||r.EMPRESA||'—')}</td>
+        <td>${esc(r.tipo||r.TIPO||'RNC')}</td>
+        <td>${stBadge(r.status||r.STATUS||'')}</td>
+        <td>${esc(r.responsavel||r.RESPONSAVEL||'—')}</td>
+      </tr>`;
+    });
+    h+='</tbody></table></div></div>';
+  }
+  return h;
+}
+
+function gdRenderPlanos(rncs){
+  // "Planos de Ação" = RCAs/RNCs com campos de ação
+  const planos=rncs.filter(r=>r.plano_acao||r.PLANO_ACAO||(r.tipo||'').toUpperCase().includes('RCA'));
+  let h=`<div class="gd-card"><div class="gd-card-head">PLANOS DE AÇÃO (${planos.length})</div>
+    <div style="overflow-x:auto"><table class="gd-table">
+      <thead><tr><th>ID</th><th>Empresa</th><th>Responsável</th><th>Status</th><th>Prazo</th></tr></thead><tbody>`;
+  if(!planos.length)h+=`<tr><td colspan="5" style="text-align:center;color:#929090;padding:30px">Nenhum plano de ação no período.</td></tr>`;
+  planos.slice(0,20).forEach(p=>{
+    const sla=slaInfo(calcSlaH(p));
+    h+=`<tr>
+      <td style="font-weight:700;color:#24508F">${esc(p.id||p.ID||'—')}</td>
+      <td>${esc(p.empresa||p.EMPRESA||'—')}</td>
+      <td>${esc(p.responsavel||p.RESPONSAVEL||'—')}</td>
+      <td>${stBadge(p.status||p.STATUS||'')}</td>
+      <td><span style="font-size:11.5px;font-weight:700;background:${sla.bg};color:${sla.fg};padding:2px 8px;border-radius:7px">${sla.l}</span></td>
+    </tr>`;
+  });
+  h+='</tbody></table></div></div>';
+  return h;
+}
+
+function gdRenderInd(mans,rncs){
+  const total=mans.length;
+  const atrasadas=mans.filter(m=>calcSlaH(m)<0&&!['FECHADA','APROVADA'].includes((m.status||'').toUpperCase())).length;
+  const slaP=total?Math.round((total-atrasadas)/total*100):100;
+  const kpis=[
+    {l:'TOTAL',v:total,d:'manifestações',c:'#1F1F1F',bg:'#fff',bd:'#E4E4E4'},
+    {l:'SLA %',v:slaP+'%',d:'dentro do prazo',c:slaP>=80?'#1E6B3A':slaP>=60?'#7A4C00':'#A80502',bg:slaP>=80?'#F0FAF3':slaP>=60?'#FFFBEE':'#FFF5F5',bd:slaP>=80?'#A8DFC0':slaP>=60?'#F0D9A0':'#F5CCCC'},
+    {l:'RNCs',v:rncs.length,d:'registradas',c:'#545252',bg:'#fff',bd:'#E4E4E4'},
+    {l:'ATRASADAS',v:atrasadas,d:'fora do prazo',c:atrasadas>0?'#A80502':'#929090',bg:atrasadas>0?'#FFF5F5':'#fff',bd:atrasadas>0?'#F5CCCC':'#E4E4E4'},
+  ];
+  let h='<div class="gd-kpi-strip">';
+  kpis.forEach(k=>{h+=`<div class="gd-kpi" style="background:${k.bg};border-color:${k.bd}"><div class="gd-kpi-lbl">${esc(k.l)}</div><div class="gd-kpi-val" style="color:${k.c}">${k.v}</div><div class="gd-kpi-desc">${esc(k.d)}</div></div>`;});
+  h+='</div>';
+  // Por empresa
+  const byEmp={};
+  mans.forEach(m=>{const e=m.empresa||m.EMPRESA||'—';byEmp[e]=(byEmp[e]||0)+1;});
+  h+=`<div class="gd-card"><div class="gd-card-head">DISTRIBUIÇÃO POR EMPRESA</div><div class="gd-card-body">`;
+  Object.entries(byEmp).sort((a,b)=>b[1]-a[1]).forEach(([e,n])=>{
+    const pct=total?Math.round(n/total*100):0;
+    h+=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+      <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;margin-bottom:4px">${esc(e)}</div>
+        <div style="height:6px;border-radius:3px;background:#E4E4E4"><div style="height:6px;border-radius:3px;background:#C70602;width:${pct}%"></div></div>
+      </div><div style="font-size:13px;font-weight:700;color:#545252;min-width:60px;text-align:right">${n} (${pct}%)</div></div>`;
+  });
+  h+='</div></div>';
+  // Por setor
+  const bySetor={};
+  mans.forEach(m=>{const s=m.setor||m.SETOR||'—';bySetor[s]=(bySetor[s]||0)+1;});
+  h+=`<div class="gd-card"><div class="gd-card-head">DISTRIBUIÇÃO POR SETOR</div><div class="gd-card-body">`;
+  Object.entries(bySetor).sort((a,b)=>b[1]-a[1]).forEach(([s,n])=>{
+    const pct=total?Math.round(n/total*100):0;
+    h+=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+      <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;margin-bottom:4px">${esc(s)}</div>
+        <div style="height:6px;border-radius:3px;background:#E4E4E4"><div style="height:6px;border-radius:3px;background:#24508F;width:${pct}%"></div></div>
+      </div><div style="font-size:13px;font-weight:700;color:#545252;min-width:60px;text-align:right">${n} (${pct}%)</div></div>`;
+  });
+  h+='</div></div>';
+  return h;
+}
+
+function gdRender(){
+  const body=document.getElementById('gd-body');
+  if(!body)return;
+  const mans=gdFiltrar(_gdData.mans);
+  const aprovs=_gdData.aprovs;
+  const rncs=gdFiltrar(_gdData.rncs);
+  let h='';
+  if(_gdAba==='visao')h=gdRenderVisao(mans,aprovs,rncs);
+  else if(_gdAba==='equipe')h=gdRenderEquipe(mans);
+  else if(_gdAba==='mans')h=gdRenderMans(mans,rncs);
+  else if(_gdAba==='planos')h=gdRenderPlanos(rncs);
+  else if(_gdAba==='ind')h=gdRenderInd(mans,rncs);
+  body.innerHTML=h;
+}
+
+window.gdDecidir=async function(id,decisao){
+  try{
+    const tok=sessionStorage.getItem('sac-token');
+    await fetch('/api/fila-aprovacao/'+encodeURIComponent(id)+'/decidir',{
+      method:'POST',
+      headers:{...(tok?{Authorization:'Bearer '+tok}:{}),'Content-Type':'application/json'},
+      body:JSON.stringify({decisao,observacoes:''})
+    });
+    gdFlash('Decisão: '+decisao.replace(/_/g,' ')+'.');
+    await loadGestaoDiretoria();
+  }catch(e){gdFlash('Erro: '+e.message);}
+};
+
 })();
 </script>
 </body>
