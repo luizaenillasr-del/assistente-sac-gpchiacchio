@@ -1305,65 +1305,19 @@
 </div>
 
 <!-- ============================================================ -->
-<!-- TELA PRIMEIRO ACESSO (pós-aprovação MASTER)                  -->
+<!-- TELA PRIMEIRO ACESSO v2 (pós-aprovação MASTER)               -->
 <!-- ============================================================ -->
-<div id="tela-primeiro-acesso" style="display:none;position:fixed;inset:0;background:#F4F4F4;z-index:99998;overflow-y:auto;display:none">
-  <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px">
-    <div style="background:#fff;border-radius:16px;max-width:520px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.12);overflow:hidden">
-      <!-- Cabeçalho -->
-      <div style="background:#C70602;padding:28px 32px 24px">
-        <div style="display:flex;align-items:center;gap:14px">
-          <img src="/logo-chiacchio.png" alt="" style="height:38px;filter:brightness(0) invert(1);opacity:.9">
-          <div>
-            <div style="font-size:18px;font-weight:800;color:#fff;letter-spacing:.02em">BEM-VINDO AO ASSISTENTE SAC</div>
-            <div style="font-size:12px;color:rgba(255,255,255,.8);margin-top:2px">Complete seu cadastro para começar</div>
-          </div>
-        </div>
-      </div>
-      <!-- Corpo -->
-      <div style="padding:28px 32px 32px">
-        <div style="background:#FEF9E7;border:1px solid #F5C842;border-radius:10px;padding:14px 16px;margin-bottom:22px;display:flex;gap:10px;align-items:flex-start">
-          <span style="font-size:18px;line-height:1">⚠️</span>
-          <div style="font-size:13px;color:#7D5A00;line-height:1.5">Seu acesso foi aprovado. Defina uma senha definitiva e confirme seus dados para ativar a conta.</div>
-        </div>
-        <div id="pa-error" style="display:none;background:#FEE2E2;border:1px solid #FCA5A5;border-radius:8px;padding:12px;margin-bottom:14px;font-size:13px;color:#991B1B"></div>
-        <div style="display:flex;flex-direction:column;gap:14px">
-          <div>
-            <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:5px">Nome completo *</label>
-            <input id="pa-nome" class="login-input" placeholder="Seu nome completo" style="margin:0">
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-            <div>
-              <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:5px">Cargo *</label>
-              <input id="pa-cargo" class="login-input" placeholder="Seu cargo" style="margin:0">
-            </div>
-            <div>
-              <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:5px">Setor *</label>
-              <input id="pa-setor" class="login-input" placeholder="Ex: SAC, Qualidade..." style="margin:0">
-            </div>
-          </div>
-          <div>
-            <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:5px">Telefone / WhatsApp</label>
-            <input id="pa-telefone" class="login-input" placeholder="(00) 00000-0000" style="margin:0">
-          </div>
-          <div style="border-top:1px solid #F0F0F0;padding-top:14px;margin-top:2px">
-            <div style="font-size:12px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Definir senha definitiva</div>
-            <div style="display:flex;flex-direction:column;gap:12px">
-              <div>
-                <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:5px">Nova senha * <span style="font-weight:400;color:#6B7280">(mínimo 6 caracteres)</span></label>
-                <input id="pa-senha" class="login-input" type="password" placeholder="••••••••" style="margin:0">
-              </div>
-              <div>
-                <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:5px">Confirmar nova senha *</label>
-                <input id="pa-confirmar" class="login-input" type="password" placeholder="••••••••" style="margin:0">
-              </div>
-            </div>
-          </div>
-        </div>
-        <button id="pa-btn" class="login-btn" style="margin-top:22px;background:#C70602" onclick="completarPrimeiroAcesso()">
-          ATIVAR MINHA CONTA
-        </button>
-      </div>
+<div id="tela-primeiro-acesso" style="display:none;position:fixed;inset:0;z-index:99998;overflow:hidden;font-family:inherit">
+  <div style="display:flex;align-items:stretch;height:100%">
+    <div id="pa-left-panel" style="width:360px;min-height:100%;background:#C70602;display:flex;flex-direction:column;justify-content:space-between;padding:40px 32px;flex-shrink:0;position:relative;overflow:hidden">
+      <div style="position:absolute;inset:0;background:repeating-linear-gradient(135deg,rgba(0,0,0,.04) 0,rgba(0,0,0,.04) 1px,transparent 1px,transparent 8px);pointer-events:none"></div>
+      <div style="position:absolute;bottom:-80px;right:-80px;width:280px;height:280px;border-radius:50%;background:rgba(0,0,0,.12);pointer-events:none"></div>
+      <div id="pa-left-top" style="position:relative"></div>
+      <div id="pa-left-steps" style="position:relative"></div>
+    </div>
+    <div style="flex:1;display:flex;flex-direction:column;background:#fff;overflow-y:auto">
+      <div style="height:4px;background:#F4F4F4;flex-shrink:0"><div id="pa-progress-bar" style="height:4px;background:#C70602;transition:width .5s ease;width:25%"></div></div>
+      <div id="pa-right-content" style="flex:1;padding:40px 48px 32px;display:flex;flex-direction:column"></div>
     </div>
   </div>
 </div>
@@ -1700,55 +1654,324 @@
     }catch(e){err.textContent=e.message||'Não foi possível entrar.';err.style.display='block';}
   }
 
-  // ── PRIMEIRO ACESSO ───────────────────────────────────────────
+  // ── PRIMEIRO ACESSO v2 ────────────────────────────────────────
+  let _paState = {};
+
   function abrirTelaPrimeiroAcesso(userInfo) {
+    _paState = {
+      passo: 1, userInfo: userInfo || {},
+      nome: userInfo?.nome || '', apelido: '',
+      cargo: userInfo?.cargo || '',
+      tel: userInfo?.telefone || '', ramal: '', bio: '',
+      slaH: '48', sub: '',
+      senha: '', confirmar: '',
+      reps: [],
+      notifEmail: true, notifWhats: false, notifPush: true,
+      notifFreq: 'imediato', notifPrio: 'todas',
+      horIni: '08:00', horFim: '18:00',
+      prazoResp: '24', cobertura: '',
+      manifRec: true, manifSug: true, manifElo: false, manifSol: true, manifDen: false,
+      escopoObs: '', error: ''
+    };
     const tela = document.getElementById('tela-primeiro-acesso');
     if (!tela) return;
     tela.style.display = 'block';
-    document.getElementById('pa-nome').value = userInfo?.nome || '';
-    document.getElementById('pa-cargo').value = userInfo?.cargo || '';
-    document.getElementById('pa-setor').value = userInfo?.setor || '';
-    document.getElementById('pa-telefone').value = userInfo?.telefone || '';
-    document.getElementById('pa-senha').value = '';
-    document.getElementById('pa-confirmar').value = '';
-    document.getElementById('pa-error').style.display = 'none';
+    document.body.style.overflow = 'hidden';
+    _paRenderAll();
   }
 
+  function _paEsc(s) {
+    return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function _paRenderAll() { _paRenderLeft(); _paRenderRight(); }
+
+  function _paRenderLeft() {
+    const S = _paState, ui = S.userInfo;
+    const nm = S.nome || ui?.nome || '';
+    const pts = nm.trim().split(' ').filter(Boolean);
+    const ini = pts.length>=2 ? (pts[0][0]+pts[pts.length-1][0]).toUpperCase() : (pts[0]||'U')[0].toUpperCase();
+    const pn = S.apelido || pts[0] || 'você';
+    const empL = ui?.empresa||ui?.EMPRESA||'—', setL = ui?.setor||ui?.SETOR||'—', perf = ui?.perfil||ui?.PERFIL||'—';
+    document.getElementById('pa-left-top').innerHTML = `
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:34px">
+        <img src="/logo-chiacchio.png" alt="" style="height:20px;filter:brightness(0) invert(1);opacity:.9">
+        <span style="font-size:11px;font-weight:700;color:rgba(255,255,255,.85);letter-spacing:.04em">GRUPO CHIACCHIO</span>
+      </div>
+      <div style="margin-bottom:20px">
+        <div style="width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,.15);border:3px solid rgba(255,255,255,.35);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:#fff;margin-bottom:12px">${ini}</div>
+        <div style="font-size:21px;font-weight:800;color:#fff;line-height:1.2;margin-bottom:5px">Olá, ${_paEsc(pn)}!</div>
+        <div style="font-size:12px;color:rgba(255,255,255,.7);line-height:1.5">Seu acesso foi aprovado.<br>Vamos configurar seu perfil.</div>
+      </div>
+      <div style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:9px;padding:10px 13px;display:flex;flex-direction:column;gap:4px">
+        ${[['EMPRESA',empL],['SETOR',setL],['PERFIL',perf]].map(([k,v],i,a)=>`
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:9.5px;font-weight:700;letter-spacing:.06em;color:rgba(255,255,255,.55)">${k}</span>
+            <span style="font-size:11.5px;font-weight:700;color:#fff">${_paEsc(v)}</span>
+          </div>${i<a.length-1?'<div style="height:1px;background:rgba(255,255,255,.12)"></div>':''}
+        `).join('')}
+      </div>`;
+    const p = S.passo;
+    const steps=[{t:'Quem sou eu',d:'Dados pessoais e contato'},{t:'Representantes',d:'Quem representa a empresa'},{t:'Como trabalho',d:'Notificações e disponibilidade'},{t:'Confirmação',d:'Revisão e conclusão'}];
+    document.getElementById('pa-left-steps').innerHTML = steps.map((s,i)=>{
+      const n=i+1,done=n<p,cur=n===p;
+      const bg=done?'rgba(255,255,255,.9)':cur?'#fff':'rgba(255,255,255,.15)';
+      const fg=done||cur?'#C70602':'rgba(255,255,255,.45)';
+      const bd=done?'rgba(255,255,255,.9)':cur?'#fff':'rgba(255,255,255,.25)';
+      const tc=cur?'#fff':done?'rgba(255,255,255,.85)':'rgba(255,255,255,.45)';
+      const sub=cur?'rgba(255,255,255,.6)':'rgba(255,255,255,.3)';
+      const lc=done?'rgba(255,255,255,.4)':'rgba(255,255,255,.15)';
+      return `<div style="display:flex;align-items:flex-start;gap:11px;padding:7px 0">
+        <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0">
+          <div style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;background:${bg};color:${fg};border:2px solid ${bd}">${done?'✓':n}</div>
+          ${n<4?`<div style="width:2px;height:16px;background:${lc}"></div>`:''}
+        </div>
+        <div style="padding-top:3px">
+          <div style="font-size:11.5px;font-weight:700;color:${tc};line-height:1.2">${s.t}</div>
+          <div style="font-size:10px;color:${sub};margin-top:1px">${s.d}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function _paRenderRight() {
+    const S = _paState, ui = S.userInfo;
+    document.getElementById('pa-progress-bar').style.width = ['25%','50%','75%','100%'][S.passo-1];
+    const empL=ui?.empresa||ui?.EMPRESA||'—', setL=ui?.setor||ui?.SETOR||'—', perf=ui?.perfil||ui?.PERFIL||'—';
+    const nm=S.nome, pts=nm.trim().split(' ').filter(Boolean);
+    const pn=S.apelido||pts[0]||'você';
+    const ini=(pts.length>=2?(pts[0][0]+pts[pts.length-1][0]):(pts[0]||'U')[0]).toUpperCase();
+    const err = S.error ? `<div style="background:#FEE2E2;border:1px solid #FCA5A5;border-radius:8px;padding:11px 14px;font-size:13px;color:#991B1B;margin-bottom:14px">${_paEsc(S.error)}</div>` : '';
+    let body = '';
+    if (S.passo === 1) {
+      body = `<div style="animation:pa-fadeUp .3s ease">
+        <div style="font-size:10px;font-weight:700;letter-spacing:.09em;color:#C70602;margin-bottom:4px">PASSO 1 DE 4</div>
+        <div style="font-size:23px;font-weight:800;color:#1F1F1F;line-height:1.2">Quem sou eu</div>
+        <div style="font-size:12.5px;color:#666;margin-top:6px;line-height:1.5;margin-bottom:22px">Confirme e complete seus dados pessoais.</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:13px">
+          <label style="grid-column:1/-1;display:flex;flex-direction:column;gap:5px"><span style="font-size:11px;font-weight:700;color:#545252">Nome completo *</span>
+            <input id="pa-nome" value="${_paEsc(S.nome)}" placeholder="Como você é chamado?" style="height:42px;border:1.5px solid #E4E4E4;border-radius:9px;padding:0 13px;font-size:13.5px;font-weight:500;outline:none;font-family:inherit"></label>
+          <label style="display:flex;flex-direction:column;gap:5px"><span style="font-size:11px;font-weight:700;color:#545252">Como prefere ser chamado?</span>
+            <input id="pa-apelido" value="${_paEsc(S.apelido)}" placeholder="Ex.: Ana, A. Santos…" style="height:42px;border:1.5px solid #E4E4E4;border-radius:9px;padding:0 13px;font-size:13.5px;outline:none;font-family:inherit"></label>
+          <label style="display:flex;flex-direction:column;gap:5px"><span style="font-size:11px;font-weight:700;color:#545252">Cargo *</span>
+            <input id="pa-cargo" value="${_paEsc(S.cargo)}" placeholder="Ex.: Gerente de Qualidade" style="height:42px;border:1.5px solid #E4E4E4;border-radius:9px;padding:0 13px;font-size:13.5px;outline:none;font-family:inherit"></label>
+          <label style="display:flex;flex-direction:column;gap:5px"><span style="font-size:11px;font-weight:700;color:#545252">Telefone / WhatsApp</span>
+            <input id="pa-tel" value="${_paEsc(S.tel)}" placeholder="(00) 00000-0000" style="height:42px;border:1.5px solid #E4E4E4;border-radius:9px;padding:0 13px;font-size:13.5px;outline:none;font-family:inherit"></label>
+          <label style="display:flex;flex-direction:column;gap:5px"><span style="font-size:11px;font-weight:700;color:#545252">Ramal / escritório</span>
+            <input id="pa-ramal" value="${_paEsc(S.ramal)}" placeholder="Ex.: 3001 · Sala 204" style="height:42px;border:1.5px solid #E4E4E4;border-radius:9px;padding:0 13px;font-size:13.5px;outline:none;font-family:inherit"></label>
+          <label style="grid-column:1/-1;display:flex;flex-direction:column;gap:5px"><span style="font-size:11px;font-weight:700;color:#545252">Mini-bio (opcional)</span>
+            <textarea id="pa-bio" placeholder="Um parágrafo curto sobre sua área de atuação..." rows="2" style="border:1.5px solid #E4E4E4;border-radius:9px;padding:10px 13px;font-size:12.5px;resize:vertical;line-height:1.5;outline:none;font-family:inherit">${_paEsc(S.bio)}</textarea></label>
+          <div style="grid-column:1/-1;background:#F7F7F7;border:1px solid #E4E4E4;border-radius:9px;padding:11px 13px">
+            <div style="font-size:9.5px;font-weight:700;letter-spacing:.07em;color:#929090;margin-bottom:7px">DEFINIDO PELO MASTER — não editável aqui</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;font-size:12px;color:#545252">
+              <div>Empresa: <strong>${_paEsc(empL)}</strong></div><div>Setor: <strong>${_paEsc(setL)}</strong></div>
+              <div>Perfil: <strong>${_paEsc(perf)}</strong></div>
+            </div>
+          </div>
+          <div style="grid-column:1/-1;border-top:1px solid #F0F0F0;padding-top:14px">
+            <div style="font-size:10px;font-weight:700;letter-spacing:.07em;color:#929090;margin-bottom:10px">DEFINIR SENHA DEFINITIVA</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:13px">
+              <label style="display:flex;flex-direction:column;gap:5px"><span style="font-size:11px;font-weight:700;color:#545252">Nova senha * <span style="font-weight:400;color:#929090">(mín. 6 chars)</span></span>
+                <input id="pa-senha" type="password" value="${_paEsc(S.senha)}" placeholder="••••••••" style="height:42px;border:1.5px solid #E4E4E4;border-radius:9px;padding:0 13px;font-size:13.5px;outline:none;font-family:inherit"></label>
+              <label style="display:flex;flex-direction:column;gap:5px"><span style="font-size:11px;font-weight:700;color:#545252">Confirmar senha *</span>
+                <input id="pa-confirmar" type="password" value="${_paEsc(S.confirmar)}" placeholder="••••••••" style="height:42px;border:1.5px solid #E4E4E4;border-radius:9px;padding:0 13px;font-size:13.5px;outline:none;font-family:inherit"></label>
+            </div>
+          </div>
+        </div></div>`;
+    } else if (S.passo === 2) {
+      const rH = S.reps.map((r,i)=>`
+        <div style="border:1.5px solid #E4E4E4;border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:12px;font-weight:700;color:#1F1F1F">Representante ${i+1}</span>
+            <button onclick="_paRemoveRep(${i})" style="border:0;background:none;color:#A80502;font-size:11.5px;font-weight:600;cursor:pointer;padding:0">✕ Remover</button>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <label style="display:flex;flex-direction:column;gap:4px"><span style="font-size:10px;font-weight:700;color:#929090">Nome *</span><input value="${_paEsc(r.nome)}" oninput="_paRepField(${i},'nome',this.value)" placeholder="Nome completo" style="height:37px;border:1.5px solid #E4E4E4;border-radius:8px;padding:0 11px;font-size:12.5px;outline:none;font-family:inherit"></label>
+            <label style="display:flex;flex-direction:column;gap:4px"><span style="font-size:10px;font-weight:700;color:#929090">Tipo</span>
+              <select oninput="_paRepField(${i},'tipo',this.value)" style="height:37px;border:1.5px solid #E4E4E4;border-radius:8px;padding:0 9px;font-size:12.5px;background:#fff;outline:none;font-family:inherit">
+                <option value="">Escolher…</option>
+                <option value="rep" ${r.tipo==='rep'?'selected':''}>Rep. externo</option>
+                <option value="vend" ${r.tipo==='vend'?'selected':''}>Vendedor interno</option>
+                <option value="reg" ${r.tipo==='reg'?'selected':''}>Ger. regional</option>
+              </select></label>
+            <label style="display:flex;flex-direction:column;gap:4px"><span style="font-size:10px;font-weight:700;color:#929090">WhatsApp</span><input value="${_paEsc(r.tel)}" oninput="_paRepField(${i},'tel',this.value)" placeholder="(00) 00000-0000" style="height:37px;border:1.5px solid #E4E4E4;border-radius:8px;padding:0 11px;font-size:12.5px;outline:none;font-family:inherit"></label>
+            <label style="display:flex;flex-direction:column;gap:4px"><span style="font-size:10px;font-weight:700;color:#929090">E-mail</span><input value="${_paEsc(r.email)}" oninput="_paRepField(${i},'email',this.value)" placeholder="email@…" style="height:37px;border:1.5px solid #E4E4E4;border-radius:8px;padding:0 11px;font-size:12.5px;outline:none;font-family:inherit"></label>
+            <label style="grid-column:1/-1;display:flex;flex-direction:column;gap:4px"><span style="font-size:10px;font-weight:700;color:#929090">Região / área</span><input value="${_paEsc(r.reg)}" oninput="_paRepField(${i},'reg',this.value)" placeholder="Ex.: Sul da Bahia…" style="height:37px;border:1.5px solid #E4E4E4;border-radius:8px;padding:0 11px;font-size:12.5px;outline:none;font-family:inherit"></label>
+          </div>
+        </div>`).join('');
+      body = `<div style="animation:pa-fadeUp .3s ease;display:flex;flex-direction:column;gap:18px">
+        <div><div style="font-size:10px;font-weight:700;letter-spacing:.09em;color:#C70602;margin-bottom:4px">PASSO 2 DE 4</div>
+          <div style="font-size:23px;font-weight:800;color:#1F1F1F;line-height:1.2">Representantes</div>
+          <div style="font-size:12.5px;color:#666;margin-top:6px;line-height:1.5">Quem representa ${_paEsc(empL)} nas vendas e no campo? Pode preencher depois.</div></div>
+        <div style="display:flex;flex-direction:column;gap:11px">${rH}</div>
+        <button onclick="_paAddRep()" style="border:2px dashed #D6D6D6;background:#FAFAFA;border-radius:10px;padding:12px;font-size:12.5px;font-weight:700;color:#545252;cursor:pointer;text-align:center;font-family:inherit">+ Adicionar representante</button>
+        <div style="font-size:11.5px;color:#929090;text-align:center">Pode adicionar depois em <strong>Cadastros → Representantes</strong>.</div>
+      </div>`;
+    } else if (S.passo === 3) {
+      const mkC=(lbl,checked,f)=>`<label style="display:flex;align-items:center;gap:7px;cursor:pointer;padding:7px 12px;border:1.5px solid ${checked?'#C70602':'#E4E4E4'};border-radius:8px;background:${checked?'#FDECEC':'#fff'}"><input type="checkbox" ${checked?'checked':''} onchange="_paToggle('${f}',this.checked)" style="accent-color:#C70602;width:14px;height:14px"><span style="font-size:12px;font-weight:600;color:${checked?'#C70602':'#545252'}">${lbl}</span></label>`;
+      body = `<div style="animation:pa-fadeUp .3s ease;display:flex;flex-direction:column;gap:18px">
+        <div><div style="font-size:10px;font-weight:700;letter-spacing:.09em;color:#C70602;margin-bottom:4px">PASSO 3 DE 4</div>
+          <div style="font-size:23px;font-weight:800;color:#1F1F1F;line-height:1.2">Como prefiro trabalhar</div>
+          <div style="font-size:12.5px;color:#666;margin-top:6px;line-height:1.5">Notificações, disponibilidade e escopo. Pode ajustar depois.</div></div>
+        <div style="border:1.5px solid #E4E4E4;border-radius:10px;overflow:hidden">
+          <div style="padding:10px 15px;background:#F7F7F7;font-size:9.5px;font-weight:700;letter-spacing:.07em;color:#929090">NOTIFICAÇÕES</div>
+          <div style="padding:13px 15px;display:flex;flex-direction:column;gap:10px">
+            <div style="font-size:11.5px;color:#545252;font-weight:600">Quero ser avisado por:</div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px">${mkC('E-mail',S.notifEmail,'notifEmail')}${mkC('WhatsApp',S.notifWhats,'notifWhats')}${mkC('Push',S.notifPush,'notifPush')}</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <label style="display:flex;flex-direction:column;gap:4px"><span style="font-size:10px;font-weight:700;color:#929090">Frequência dos resumos</span>
+                <select onchange="_paSet('notifFreq',this.value)" style="height:37px;border:1.5px solid #E4E4E4;border-radius:8px;padding:0 9px;font-size:12.5px;background:#fff;outline:none;font-family:inherit">
+                  <option value="imediato" ${S.notifFreq==='imediato'?'selected':''}>Imediato (cada evento)</option>
+                  <option value="diario" ${S.notifFreq==='diario'?'selected':''}>Resumo diário</option>
+                  <option value="semanal" ${S.notifFreq==='semanal'?'selected':''}>Resumo semanal</option>
+                </select></label>
+              <label style="display:flex;flex-direction:column;gap:4px"><span style="font-size:10px;font-weight:700;color:#929090">Prioridade mínima</span>
+                <select onchange="_paSet('notifPrio',this.value)" style="height:37px;border:1.5px solid #E4E4E4;border-radius:8px;padding:0 9px;font-size:12.5px;background:#fff;outline:none;font-family:inherit">
+                  <option value="todas" ${S.notifPrio==='todas'?'selected':''}>Todas</option>
+                  <option value="media" ${S.notifPrio==='media'?'selected':''}>Média ou acima</option>
+                  <option value="alta" ${S.notifPrio==='alta'?'selected':''}>Somente alta/urgente</option>
+                </select></label>
+            </div>
+          </div>
+        </div>
+        <div style="border:1.5px solid #E4E4E4;border-radius:10px;overflow:hidden">
+          <div style="padding:10px 15px;background:#F7F7F7;font-size:9.5px;font-weight:700;letter-spacing:.07em;color:#929090">DISPONIBILIDADE</div>
+          <div style="padding:13px 15px;display:flex;flex-direction:column;gap:10px">
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+              <label style="display:flex;flex-direction:column;gap:4px"><span style="font-size:10px;font-weight:700;color:#929090">Início</span><input type="time" value="${S.horIni}" onchange="_paSet('horIni',this.value)" style="height:37px;border:1.5px solid #E4E4E4;border-radius:8px;padding:0 10px;font-size:12.5px;outline:none;font-family:inherit"></label>
+              <label style="display:flex;flex-direction:column;gap:4px"><span style="font-size:10px;font-weight:700;color:#929090">Fim</span><input type="time" value="${S.horFim}" onchange="_paSet('horFim',this.value)" style="height:37px;border:1.5px solid #E4E4E4;border-radius:8px;padding:0 10px;font-size:12.5px;outline:none;font-family:inherit"></label>
+              <label style="display:flex;flex-direction:column;gap:4px"><span style="font-size:10px;font-weight:700;color:#929090">Prazo máx. (h)</span><input type="number" value="${_paEsc(S.prazoResp)}" min="1" onchange="_paSet('prazoResp',this.value)" placeholder="24" style="height:37px;border:1.5px solid #E4E4E4;border-radius:8px;padding:0 10px;font-size:12.5px;outline:none;font-family:inherit"></label>
+            </div>
+            <label style="display:flex;flex-direction:column;gap:4px"><span style="font-size:10px;font-weight:700;color:#929090">Cobertura nas ausências</span><input value="${_paEsc(S.cobertura)}" onchange="_paSet('cobertura',this.value)" placeholder="Ex.: Ana Lima · ana@chiacchio.com.br" style="height:37px;border:1.5px solid #E4E4E4;border-radius:8px;padding:0 10px;font-size:12.5px;outline:none;font-family:inherit"></label>
+          </div>
+        </div>
+        <div style="border:1.5px solid #E4E4E4;border-radius:10px;overflow:hidden">
+          <div style="padding:10px 15px;background:#F7F7F7;font-size:9.5px;font-weight:700;letter-spacing:.07em;color:#929090">ESCOPO DE ATUAÇÃO</div>
+          <div style="padding:13px 15px;display:flex;flex-direction:column;gap:10px">
+            <div style="font-size:11.5px;color:#545252;font-weight:600">Tipos de manifestação que posso aprovar:</div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px">${mkC('Reclamação',S.manifRec,'manifRec')}${mkC('Sugestão',S.manifSug,'manifSug')}${mkC('Elogio',S.manifElo,'manifElo')}${mkC('Solicitação',S.manifSol,'manifSol')}${mkC('Denúncia',S.manifDen,'manifDen')}</div>
+            <label style="display:flex;flex-direction:column;gap:4px"><span style="font-size:10px;font-weight:700;color:#929090">Observação sobre escopo (opcional)</span><input value="${_paEsc(S.escopoObs)}" onchange="_paSet('escopoObs',this.value)" placeholder="Ex.: somente clientes da região Sul" style="height:37px;border:1.5px solid #E4E4E4;border-radius:8px;padding:0 10px;font-size:12.5px;outline:none;font-family:inherit"></label>
+          </div>
+        </div>
+      </div>`;
+    } else {
+      const canaisA=[S.notifEmail&&'E-mail',S.notifWhats&&'WhatsApp',S.notifPush&&'Push'].filter(Boolean).join(', ')||'Nenhum';
+      const freqL={imediato:'Imediato',diario:'Resumo diário',semanal:'Resumo semanal'}[S.notifFreq]||'';
+      const tiposA=[S.manifRec&&'Reclamação',S.manifSug&&'Sugestão',S.manifElo&&'Elogio',S.manifSol&&'Solicitação',S.manifDen&&'Denúncia'].filter(Boolean).join(', ')||'Nenhum';
+      const rc=S.reps.filter(r=>r.nome).length;
+      const blocos=[
+        {t:'IDENTIFICAÇÃO',itens:[{l:'Nome',v:S.nome||'—'},{l:'Apelido',v:S.apelido||'—'},{l:'Cargo',v:S.cargo||'—'},{l:'Telefone',v:S.tel||'—'},{l:'Ramal',v:S.ramal||'—'}]},
+        {t:`REPRESENTANTES (${rc})`,itens:rc?S.reps.filter(r=>r.nome).map(r=>({l:r.nome,v:{rep:'Rep. externo',vend:'Vendedor interno',reg:'Ger. regional'}[r.tipo]||'—'})):[{l:'Nenhum informado',v:''}]},
+        {t:'PREFERÊNCIAS',itens:[{l:'Notificações',v:canaisA},{l:'Frequência',v:freqL},{l:'Horário',v:S.horIni+' – '+S.horFim},{l:'Tipos que aprova',v:tiposA}]}
+      ];
+      body = `<div style="animation:pa-fadeUp .3s ease;display:flex;flex-direction:column;gap:18px">
+        <div><div style="font-size:10px;font-weight:700;letter-spacing:.09em;color:#C70602;margin-bottom:4px">PASSO 4 DE 4</div>
+          <div style="font-size:23px;font-weight:800;color:#1F1F1F;line-height:1.2">Tudo certo, ${_paEsc(pn)}!</div>
+          <div style="font-size:12.5px;color:#666;margin-top:6px;line-height:1.5">Confirme o resumo e conclua o cadastro.</div></div>
+        <div style="display:flex;align-items:center;gap:13px;border:1.5px solid #E4E4E4;border-radius:12px;padding:16px">
+          <div style="width:50px;height:50px;border-radius:50%;background:#FDECEC;border:2px solid #C70602;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:#C70602;flex-shrink:0">${ini}</div>
+          <div><div style="font-size:15px;font-weight:800;color:#1F1F1F">${_paEsc(S.nome)}</div>
+            <div style="font-size:12px;color:#666;margin-top:2px">${_paEsc(S.cargo)} · ${_paEsc(empL)} · ${_paEsc(setL)}</div>
+            <div style="display:inline-flex;align-items:center;gap:5px;margin-top:5px;background:#E6F2EA;padding:3px 8px;border-radius:20px">
+              <span style="width:6px;height:6px;border-radius:50%;background:#1E6B3A;display:inline-block"></span>
+              <span style="font-size:11px;font-weight:700;color:#1E6B3A">${_paEsc(perf)}</span>
+            </div></div>
+        </div>
+        ${blocos.map(b=>`<div style="border:1.5px solid #E4E4E4;border-radius:10px;overflow:hidden">
+          <div style="padding:9px 14px;background:#F7F7F7;font-size:9.5px;font-weight:700;letter-spacing:.07em;color:#929090">${b.t}</div>
+          <div style="padding:10px 14px;display:flex;flex-direction:column;gap:6px">
+            ${b.itens.map(it=>`<div style="display:flex;justify-content:space-between;gap:8px;font-size:12px;border-bottom:1px solid #F4F4F4;padding-bottom:5px"><span style="color:#666">${_paEsc(it.l)}</span><span style="font-weight:600">${_paEsc(it.v)}</span></div>`).join('')}
+          </div></div>`).join('')}
+        <div style="background:#E6F2EA;border:1.5px solid #B8DFC0;border-radius:10px;padding:12px 14px;font-size:12px;color:#1E6B3A;line-height:1.5">
+          Após confirmar, seus dados estarão disponíveis na ferramenta. Você pode editar depois em <strong>Configurações → Meu perfil</strong>.
+        </div>
+      </div>`;
+    }
+    const nav = `<div style="margin-top:26px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+      <div style="display:flex;gap:9px">
+        ${S.passo>1?`<button onclick="_paNave(-1)" style="height:41px;border:1.5px solid #E4E4E4;background:#fff;border-radius:9px;padding:0 15px;font-size:13px;font-weight:600;cursor:pointer;color:#545252;font-family:inherit">← Voltar</button>`:''}
+        ${S.passo===2?`<button onclick="_paNave(1)" style="height:41px;border:0;background:none;color:#929090;font-size:13px;font-weight:600;cursor:pointer;padding:0 4px;font-family:inherit">Pular</button>`:''}
+      </div>
+      <button id="pa-btn-next" onclick="${S.passo===4?'completarPrimeiroAcesso()':'_paNave(1)'}" style="height:41px;border:0;background:#C70602;color:#fff;border-radius:9px;padding:0 24px;font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit">${S.passo===4?'Concluir cadastro →':'Continuar →'}</button>
+    </div>`;
+    document.getElementById('pa-right-content').innerHTML = `<style>@keyframes pa-fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}</style>${err}<div style="flex:1">${body}</div>${nav}`;
+  }
+
+  function _paNave(dir) {
+    const S = _paState;
+    if (S.passo === 1) {
+      S.nome = document.getElementById('pa-nome')?.value || S.nome;
+      S.apelido = document.getElementById('pa-apelido')?.value || S.apelido;
+      S.cargo = document.getElementById('pa-cargo')?.value || S.cargo;
+      S.tel = document.getElementById('pa-tel')?.value || S.tel;
+      S.ramal = document.getElementById('pa-ramal')?.value || S.ramal;
+      S.bio = document.getElementById('pa-bio')?.value || S.bio;
+      S.senha = document.getElementById('pa-senha')?.value || S.senha;
+      S.confirmar = document.getElementById('pa-confirmar')?.value || S.confirmar;
+      if (dir > 0) {
+        if (!S.nome.trim()) { S.error='Informe seu nome completo.'; _paRenderRight(); return; }
+        if (!S.cargo.trim()) { S.error='Informe seu cargo.'; _paRenderRight(); return; }
+        if (!S.senha||S.senha.length<6) { S.error='A senha deve ter no mínimo 6 caracteres.'; _paRenderRight(); return; }
+        if (S.senha!==S.confirmar) { S.error='As senhas não coincidem.'; _paRenderRight(); return; }
+      }
+    }
+    S.error = '';
+    S.passo = Math.max(1, Math.min(4, S.passo + dir));
+    _paRenderAll();
+    document.getElementById('pa-right-content')?.scrollIntoView();
+  }
+
+  window._paAddRep = function() { _paState.reps.push({nome:'',tipo:'',tel:'',email:'',reg:''}); _paRenderRight(); };
+  window._paRemoveRep = function(i) { _paState.reps.splice(i,1); _paRenderRight(); };
+  window._paRepField = function(i,f,v) { _paState.reps[i][f]=v; };
+  window._paToggle = function(f,v) { _paState[f]=v; _paRenderRight(); };
+  window._paSet = function(f,v) { _paState[f]=v; };
+  window._paNave = _paNave;
+
   window.completarPrimeiroAcesso = async function() {
-    const nome = (document.getElementById('pa-nome')?.value || '').trim();
-    const cargo = (document.getElementById('pa-cargo')?.value || '').trim();
-    const setor = (document.getElementById('pa-setor')?.value || '').trim();
-    const telefone = (document.getElementById('pa-telefone')?.value || '').trim();
-    const senha = document.getElementById('pa-senha')?.value || '';
-    const confirmacao = document.getElementById('pa-confirmar')?.value || '';
-    const errEl = document.getElementById('pa-error');
-    errEl.style.display = 'none';
-    if (!nome) { errEl.textContent = 'Informe seu nome completo.'; errEl.style.display='block'; return; }
-    if (!cargo) { errEl.textContent = 'Informe seu cargo.'; errEl.style.display='block'; return; }
-    if (!setor) { errEl.textContent = 'Informe seu setor.'; errEl.style.display='block'; return; }
-    if (!senha || senha.length < 6) { errEl.textContent = 'A senha deve ter no mínimo 6 caracteres.'; errEl.style.display='block'; return; }
-    if (senha !== confirmacao) { errEl.textContent = 'As senhas não coincidem.'; errEl.style.display='block'; return; }
-    const btn = document.getElementById('pa-btn');
-    btn.disabled = true; btn.textContent = 'Ativando conta...';
+    const S = _paState;
+    S.error = '';
+    if (!S.nome?.trim()) { S.error='Informe seu nome completo.'; _paRenderRight(); return; }
+    if (!S.cargo?.trim()) { S.error='Informe seu cargo.'; _paRenderRight(); return; }
+    if (!S.senha||S.senha.length<6) { S.error='A senha deve ter no mínimo 6 caracteres.'; _paRenderRight(); return; }
+    if (S.senha!==S.confirmar) { S.error='As senhas não coincidem.'; _paRenderRight(); return; }
+    const btn = document.getElementById('pa-btn-next');
+    if (btn) { btn.disabled=true; btn.textContent='Salvando...'; }
     try {
       const tok = sessionStorage.getItem('sac-token');
+      const ui = S.userInfo;
       const r = await fetch(window.SAC_API + '/api/auth/completar-primeiro-acesso', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok },
-        body: JSON.stringify({ nome, cargo, setor, telefone, senha, confirmacao }),
+        body: JSON.stringify({
+          nome: S.nome.trim(), apelido: S.apelido?.trim()||'',
+          cargo: S.cargo.trim(), setor: ui?.setor||ui?.SETOR||'',
+          telefone: S.tel?.trim()||'', ramal: S.ramal?.trim()||'', bio: S.bio?.trim()||'',
+          sla_horas: S.slaH ? parseInt(S.slaH)||48 : 48,
+          substituto: S.sub?.trim()||'',
+          senha: S.senha, confirmacao: S.confirmar,
+          representantes: S.reps.filter(r=>r.nome?.trim()),
+          notif_canais: {email:S.notifEmail,whatsapp:S.notifWhats,push:S.notifPush},
+          notif_freq: S.notifFreq, notif_prio: S.notifPrio,
+          hor_inicio: S.horIni, hor_fim: S.horFim,
+          prazo_resp: S.prazoResp ? parseInt(S.prazoResp)||24 : 24,
+          cobertura: S.cobertura?.trim()||'',
+          tipos_manifestacao: {reclamacao:S.manifRec,sugestao:S.manifSug,elogio:S.manifElo,solicitacao:S.manifSol,denuncia:S.manifDen},
+          escopo_obs: S.escopoObs?.trim()||''
+        }),
       });
-      const data = await r.json().catch(() => ({}));
-      if (!r.ok || !data.sucesso) throw new Error(data.erro || 'Falha ao ativar conta.');
-      // Atualiza token e usuário na sessão
-      sessionStorage.setItem('sac-token', data.token || tok);
-      sessionStorage.setItem('sac-user', JSON.stringify(data.usuarioInfo || {}));
+      const data = await r.json().catch(()=>({}));
+      if (!r.ok||!data.sucesso) throw new Error(data.erro||'Falha ao ativar conta.');
+      sessionStorage.setItem('sac-token', data.token||tok);
+      sessionStorage.setItem('sac-user', JSON.stringify(data.usuarioInfo||{}));
       document.getElementById('tela-primeiro-acesso').style.display = 'none';
+      document.body.style.overflow = '';
       await (window.iniciarSessaoV5 ? window.iniciarSessaoV5() : Promise.resolve());
     } catch(e) {
-      errEl.textContent = e.message || 'Erro ao ativar conta.';
-      errEl.style.display = 'block';
-      btn.disabled = false;
-      btn.textContent = 'ATIVAR MINHA CONTA';
+      S.error = e.message||'Erro ao ativar conta.';
+      _paRenderRight();
+      const btn2 = document.getElementById('pa-btn-next');
+      if (btn2) { btn2.disabled=false; btn2.textContent='Concluir cadastro →'; }
     }
   };
 
