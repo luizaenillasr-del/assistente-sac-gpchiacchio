@@ -106,11 +106,13 @@ async function lerRespostasPesquisa() {
   if (pesquisaRepo) {
     try { pgData = await pesquisaRepo.listarRespostas({}); } catch (e) { console.warn('[F8] respostas PG falhou:', e.message); }
   }
-  const sheetsData = await lerAba('PESQUISA_RESPOSTAS', 5000).catch(() => []);
-  if (!pgData.length) return sheetsData;
-  const pgIds = new Set(pgData.map(r => r.ID_RESPOSTA).filter(Boolean));
-  const sheetsOnly = sheetsData.filter(r => r.ID_RESPOSTA && !pgIds.has(r.ID_RESPOSTA));
-  return [...pgData, ...sheetsOnly];
+  // Se PG tem dados, retorna imediatamente — evita chamada lenta ao Sheets (5000 linhas)
+  if (pgData.length) return pgData;
+  const sheetsData = await Promise.race([
+    lerAba('PESQUISA_RESPOSTAS', 5000),
+    new Promise((_, rej) => setTimeout(() => rej(new Error('sheets timeout')), 12000)),
+  ]).catch(() => []);
+  return sheetsData;
 }
 async function lerHistoricoPesquisa() {
   return lerAba('PESQUISA_HISTORICO', 500).catch(() => []);
@@ -496,7 +498,7 @@ const _PERM_PADRAO_API = {
   'SETOR FINANCEIRO':   ['manifestacoes.visualizar','manifestacoes.editar','dashboard.visualizar','pesquisas.visualizar'],
   'SETOR TI':           ['manifestacoes.visualizar','cerebro.visualizar','cerebro.gerenciar','dashboard.visualizar','configuracoes.visualizar','configuracoes.editar'],
   'SETOR MARKETING':    ['manifestacoes.visualizar','pesquisas.visualizar','dashboard.visualizar'],
-  'SETOR DIRETORIA':    ['manifestacoes.visualizar','pesquisas.visualizar','dashboard.visualizar','dashboard.gerenciar','aprovacoes.visualizar','aprovacoes.aprovar','aprovacoes.rejeitar','rca.visualizar'],
+  'SETOR DIRETORIA':    ['manifestacoes.visualizar','pesquisas.visualizar','dashboard.visualizar','dashboard.gerenciar','aprovacoes.visualizar','aprovacoes.aprovar','aprovacoes.rejeitar','rca.visualizar','gestao.diretoria.visualizar'],
 };
 
 // Mapeamento chaves granulares da UI → chaves de enforcement das rotas API
