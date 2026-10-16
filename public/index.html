@@ -3596,14 +3596,15 @@
       </div>
       <!-- RODAPÉ COM AÇÕES -->
       <div style="padding:14px 20px;border-top:1px solid #E4E4E4;display:flex;flex-direction:column;gap:8px;flex-shrink:0">
+        <div id="decisao-feedback" style="display:none;font-size:12.5px;border-radius:8px;padding:9px 12px;line-height:1.45"></div>
         <div style="display:flex;gap:8px">
-          <button onclick="submitDecisao('APROVADO')" style="flex:1;height:40px;border:0;background:#1E6B3A;color:#fff;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer">✓ Aprovar</button>
-          <button onclick="submitDecisao('APROVADO_COM_RESSALVA')" style="flex:1;height:40px;border:1.5px solid #1E6B3A;background:#E6F2EA;color:#1E6B3A;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer">✓ c/ ressalva</button>
+          <button id="dec-btn-aprovar" onclick="submitDecisao('APROVADO')" style="flex:1;height:40px;border:0;background:#1E6B3A;color:#fff;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer">✓ Aprovar</button>
+          <button id="dec-btn-ressalva" onclick="submitDecisao('APROVADO_COM_RESSALVA')" style="flex:1;height:40px;border:1.5px solid #1E6B3A;background:#E6F2EA;color:#1E6B3A;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer">✓ c/ ressalva</button>
         </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap">
-          <button onclick="submitDecisao('DEVOLVIDO')" style="flex:1;min-width:70px;height:34px;border:1.5px solid #E4E4E4;background:#fff;border-radius:8px;font-size:11.5px;font-weight:600;cursor:pointer;color:#545252">↩ Devolver</button>
-          <button onclick="submitDecisao('SOLICITANDO_INFORMACOES')" style="flex:1;min-width:70px;height:34px;border:1.5px solid #E4E4E4;background:#fff;border-radius:8px;font-size:11.5px;font-weight:600;cursor:pointer;color:#545252">? Solicitar info</button>
-          <button onclick="submitDecisao('REJEITADO')" style="flex:1;min-width:70px;height:34px;border:1.5px solid #FECACA;background:#FEF2F2;border-radius:8px;font-size:11.5px;font-weight:600;cursor:pointer;color:#DC2626">✖ Rejeitar</button>
+          <button id="dec-btn-devolver" onclick="submitDecisao('DEVOLVIDO')" style="flex:1;min-width:70px;height:34px;border:1.5px solid #E4E4E4;background:#fff;border-radius:8px;font-size:11.5px;font-weight:600;cursor:pointer;color:#545252">↩ Devolver</button>
+          <button id="dec-btn-solicitar" onclick="submitDecisao('SOLICITANDO_INFORMACOES')" style="flex:1;min-width:70px;height:34px;border:1.5px solid #E4E4E4;background:#fff;border-radius:8px;font-size:11.5px;font-weight:600;cursor:pointer;color:#545252">? Solicitar info</button>
+          <button id="dec-btn-rejeitar" onclick="submitDecisao('REJEITADO')" style="flex:1;min-width:70px;height:34px;border:1.5px solid #FECACA;background:#FEF2F2;border-radius:8px;font-size:11.5px;font-weight:600;cursor:pointer;color:#DC2626">✖ Rejeitar</button>
         </div>
       </div>
     </div>
@@ -6818,8 +6819,12 @@
     let dados=null,erro=false;
     try{
       const tok=sessionStorage.getItem('sac-token');
-      const r=await fetch(`/api/pesquisas/relatorio?empresa=${encodeURIComponent(empresa)}&ano=${ano}&mes=${mes}`,{headers:tok?{Authorization:'Bearer '+tok}:{}});
-      if(r.ok) dados=await r.json(); else erro=true;
+      const ctrl=new AbortController();
+      const tid=setTimeout(()=>ctrl.abort(),20000);
+      try{
+        const r=await fetch(`/api/pesquisas/relatorio?empresa=${encodeURIComponent(empresa)}&ano=${ano}&mes=${mes}`,{headers:tok?{Authorization:'Bearer '+tok}:{},signal:ctrl.signal});
+        if(r.ok) dados=await r.json(); else erro=true;
+      }finally{clearTimeout(tid);}
     }catch(e){erro=true;}
     _d=erro?null:dados;
     _renderizar(erro);
@@ -11353,13 +11358,27 @@ document.addEventListener('click', function(e) {
 async function loadBancoManifestacoes() {
   try {
     const res = await _apiFetch('/api/manifestacoes', 30000);
-    bancoData = res.itens || [];
+    let itens = res.itens || [];
+    // Fallback: if API returns empty but dashboard already loaded data, reuse it
+    if (!itens.length && window._dashData && (window._dashData.mans || []).length) {
+      itens = window._dashData.mans;
+    }
+    bancoData = itens;
     _bancoDataFull = [...bancoData];
     window.bancoData = bancoData;
     window._bancoDataFull = _bancoDataFull;
     renderBanco();
   } catch (e) {
     console.error('Erro banco:', e);
+    // Fallback to dashboard data on error
+    if (window._dashData && (window._dashData.mans || []).length) {
+      bancoData = window._dashData.mans;
+      _bancoDataFull = [...bancoData];
+      window.bancoData = bancoData;
+      window._bancoDataFull = _bancoDataFull;
+      renderBanco();
+      return;
+    }
     const el = document.getElementById('banco-body');
     if(el) el.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--gray-400);padding:20px">Erro ao carregar dados: ${esc(e.message)}</td></tr>`;
   }
@@ -13791,13 +13810,32 @@ window.navigate = function(page, el) {
   window.submitDecisao = async function(decisao){
     const id=document.getElementById('decisao-aprov-id').value;
     const obs=document.getElementById('decisao-obs').value.trim();
-    if(decisao!=='APROVADO'&&decisao!=='APROVADO_COM_RESSALVA'&&!obs) return alert('Informe as observações/justificativa.');
+    const fbEl=document.getElementById('decisao-feedback');
+    function showFb(msg,isErr){
+      if(!fbEl)return;
+      fbEl.style.display='block';
+      fbEl.style.background=isErr?'#FFF3F3':'#F0FAF0';
+      fbEl.style.color=isErr?'#8B0000':'#1B5E20';
+      fbEl.style.border=isErr?'1px solid #F5C6C6':'1px solid #A5D6A7';
+      fbEl.textContent=msg;
+    }
+    if(fbEl) fbEl.style.display='none';
+    if(decisao!=='APROVADO'&&decisao!=='APROVADO_COM_RESSALVA'&&!obs){showFb('Informe as observações/justificativa.',true);return;}
+    const btns=['dec-btn-aprovar','dec-btn-ressalva','dec-btn-devolver','dec-btn-solicitar','dec-btn-rejeitar'].map(b=>document.getElementById(b)).filter(Boolean);
+    btns.forEach(b=>{b.disabled=true;b.style.opacity='0.6';});
     try{
       await json5('/api/fila-aprovacao/'+encodeURIComponent(id)+'/decidir',{method:'POST',body:JSON.stringify({decisao,observacoes:obs})});
-      alert('Decisão registrada: '+decisao.replace(/_/g,' '));
+      showFb('Decisão registrada: '+decisao.replace(/_/g,' ')+'.',false);
       fecharDecisaoPanel();
-      loadAprovadorV5();
-    }catch(e){alert(e.message);}
+      if(decisao==='APROVADO'||decisao==='APROVADO_COM_RESSALVA'){
+        setTimeout(()=>navigate('banco-manifestacoes',document.querySelector('[onclick*=banco-manifestacoes]')),600);
+      } else {
+        loadAprovadorV5();
+      }
+    }catch(e){
+      showFb(e.message||'Erro ao registrar decisão.',true);
+      btns.forEach(b=>{b.disabled=false;b.style.opacity='';});
+    }
   };
 
   // ── TAB APROVADORES (MASTER) ──

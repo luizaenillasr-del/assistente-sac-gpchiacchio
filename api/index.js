@@ -6028,9 +6028,9 @@ app.post('/api/fila-aprovacao/:id/decidir', requerPerfil('APROVADOR','APROVADOR 
   try {
     garantirAbaComCabecalhos('HISTORICO_APROVACAO', HIST_APROV_HEADERS).catch(()=>{});
     const {decisao, observacoes} = req.body||{};
-    const decisoesValidas = ['APROVADO','REJEITADO','DEVOLVIDO','SOLICITANDO_INFORMACOES'];
-    if(!decisoesValidas.includes(decisao)) return res.status(400).json({sucesso:false,erro:'Decisão inválida. Use: APROVADO, REJEITADO, DEVOLVIDO ou SOLICITANDO_INFORMACOES'});
-    if(decisao!=='APROVADO' && !(observacoes||'').trim()) return res.status(400).json({sucesso:false,erro:'Observações obrigatórias para esta decisão.'});
+    const decisoesValidas = ['APROVADO','APROVADO_COM_RESSALVA','REJEITADO','DEVOLVIDO','SOLICITANDO_INFORMACOES'];
+    if(!decisoesValidas.includes(decisao)) return res.status(400).json({sucesso:false,erro:'Decisão inválida.'});
+    if(decisao!=='APROVADO'&&decisao!=='APROVADO_COM_RESSALVA' && !(observacoes||'').trim()) return res.status(400).json({sucesso:false,erro:'Observações obrigatórias para esta decisão.'});
     const fila = await lerAba('FILA_APROVACAO',2000).catch(()=>[]);
     const item = fila.find(x => String(x.ID_FILA||'') === String(req.params.id));
     if(!item) return res.status(404).json({sucesso:false,erro:'Item não encontrado na fila.'});
@@ -6049,7 +6049,7 @@ app.post('/api/fila-aprovacao/:id/decidir', requerPerfil('APROVADOR','APROVADOR 
     await atualizarPorID('FILA_APROVACAO',req.params.id,{STATUS:decisao,NOME_APROVADOR:req.user.nome||req.user.usuario,DATA_DECISAO:now,OBSERVACOES:observacoes||''},['ID_FILA']);
     const histId = await gerarProximoID('HISTORICO_APROVACAO','HAP','ID_HISTORICO');
     await appendObjeto('HISTORICO_APROVACAO',{ID_HISTORICO:histId,ID_FILA:req.params.id,ID_ENTIDADE:item.ID_ENTIDADE,TIPO_ENTIDADE:item.TIPO_ENTIDADE,DECISAO:decisao,OBSERVACOES:observacoes||'',APROVADOR:req.user.nome||req.user.usuario,DATA_DECISAO:now,DETALHES:JSON.stringify({empresa:item.EMPRESA,setor:item.SETOR,competencia:item.COMPETENCIA}),EMPRESA_SCOPE:empresaCanonica(item.EMPRESA||'')}).catch(()=>{});
-    const novoStatus = decisao==='APROVADO'?'APROVADA':decisao==='REJEITADO'?'REJEITADA':decisao==='DEVOLVIDO'?'EM_ANÁLISE':'AGUARDANDO_APROVAÇÃO';
+    const novoStatus = (decisao==='APROVADO'||decisao==='APROVADO_COM_RESSALVA')?'APROVADA':decisao==='REJEITADO'?'REJEITADA':decisao==='DEVOLVIDO'?'EM_ANÁLISE':'AGUARDANDO_APROVAÇÃO';
     if(item.TIPO_ENTIDADE==='SAC') {
       await atualizarPorID('MANIFESTACOES',item.ID_ENTIDADE,{STATUS:novoStatus,APROVADO_POR:req.user.nome||req.user.usuario,DATA_APROVACAO:now,OBSERVACOES_APROVADOR:observacoes||''},['ID_MANIFESTACAO']).catch(()=>{});
     } else if(item.TIPO_ENTIDADE==='RNC') {
