@@ -3830,7 +3830,10 @@
         <div style="padding:20px 22px;overflow-y:auto;max-height:70vh;display:flex;flex-direction:column;gap:20px;border-right:1px solid #EBEBEB">
           <!-- Resumo -->
           <section>
-            <div style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:10px">RESUMO DA MANIFESTAÇÃO</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+              <div style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#A0A0A0">RESUMO DA MANIFESTAÇÃO</div>
+              <button id="btn-abrir-dossie-aprovacao" onclick="if(window._decisaoItem&&window.abrirDossie){fecharDecisaoAprovacao();window.abrirDossie(window._decisaoItem);}" style="font-size:11px;font-weight:700;color:#1D72B8;background:none;border:1px solid #1D72B8;border-radius:6px;padding:3px 10px;cursor:pointer;display:none">Abrir dossiê ↗</button>
+            </div>
             <div style="background:#FAFAFA;border:1px solid #EBEBEB;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:12px">
               <div id="decisao-previa-campos" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px 16px"></div>
               <div id="decisao-previa-descricao" style="display:none">
@@ -12182,7 +12185,7 @@ function filtrarBanco() {
   bancoFiltros.tipo = tipo;
   bancoFiltros.empresa = empresa;
   bancoFiltros.setor = setor;
-  bancoFiltros.periodo = periodo ? parseInt(periodo) : null;
+  bancoFiltros.periodo = periodo === 'hoje' ? 1 : (periodo ? (parseInt(periodo) || null) : null);
   bancoFiltros.statusFiltro = status;
   renderBanco();
 }
@@ -14672,9 +14675,12 @@ window.navigate = function(page, el) {
           if(m.STATUS) campos.push({l:'Status',v:m.STATUS});
           if(m.RESPONSAVEL||m.USUARIO_CRIACAO) campos.push({l:'Responsável',v:m.RESPONSAVEL||m.USUARIO_CRIACAO});
           const desc=m.DESCRICAO||m.RELATO||m.DESCRICAO_OCORRENCIA||'';
+          window._decisaoItem=m;
+          const _btnDossie=document.getElementById('btn-abrir-dossie-aprovacao');if(_btnDossie)_btnDossie.style.display='';
           document.getElementById('decisao-aprov-sub').textContent=(m.EMPRESA_RECLAMANTE||m.EMPRESA||'')+' · '+(m.SETOR_CONFIRMADO||m.SETOR_SUGERIDO||'');
           const _prv=document.getElementById('decisao-preview-resumo');if(_prv)_prv.textContent=desc.slice(0,200)+(desc.length>200?'…':'');
-          if(desc){document.getElementById('decisao-previa-descricao').style.display='block';document.getElementById('decisao-previa-desc-txt').textContent=desc;}
+          document.getElementById('decisao-previa-descricao').style.display='block';
+          document.getElementById('decisao-previa-desc-txt').textContent=desc||'(sem descrição registrada)';
         } else {
           if(m.EMPRESA) campos.push({l:'Empresa',v:m.EMPRESA});
           if(m.SETOR||m.COMPETENCIA) campos.push({l:'Setor',v:m.SETOR||m.COMPETENCIA});
@@ -14683,7 +14689,8 @@ window.navigate = function(page, el) {
           document.getElementById('decisao-aprov-sub').textContent=(m.EMPRESA||'')+' · '+(m.SETOR||m.COMPETENCIA||'');
           const desc=m.DESCRICAO||m.RELATO||'';
           const _prv=document.getElementById('decisao-preview-resumo');if(_prv)_prv.textContent=desc.slice(0,200)+(desc.length>200?'…':'');
-          if(desc){document.getElementById('decisao-previa-descricao').style.display='block';document.getElementById('decisao-previa-desc-txt').textContent=desc;}
+          document.getElementById('decisao-previa-descricao').style.display='block';
+          document.getElementById('decisao-previa-desc-txt').textContent=desc||'(sem descrição registrada)';
         }
         if(campos.length){
           document.getElementById('decisao-previa-campos').innerHTML=campos.map(c=>`<div><div style="font-size:10.5px;font-weight:700;color:#929090;margin-bottom:3px">${esc5(c.l)}</div><div style="font-size:13px;font-weight:600;color:#1F1F1F">${esc5(c.v)}</div></div>`).join('');
