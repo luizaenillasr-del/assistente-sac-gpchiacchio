@@ -6978,10 +6978,18 @@
   const CR=[['ATENDIMENTO','at','atendimento'],['PRAZO DE ENTREGA','pr','prazo de entrega'],['QUALIDADE','qu','qualidade'],['RECOMENDAÇÃO','re','recomendação']];
   const NOTA_CRITICA=6;
   let _dir=false,_d=null,_per=6,_metas={},_edit=null,_openM=null,_allOpen=false,_autos={},_toastT=null;
-  // Carrega metas salvas por empresa
+  // Carrega metas salvas localmente como cache e depois sincroniza do backend
   try{const s=localStorage.getItem('sac_rel_metas');if(s)_metas=JSON.parse(s);}catch(e){}
   function getMeta(){return _metas[_empresa()]??8.5;}
-  function setMeta(v){_metas[_empresa()]=v;try{localStorage.setItem('sac_rel_metas',JSON.stringify(_metas));}catch(e){}}
+  function setMeta(v){
+    _metas[_empresa()]=v;
+    try{localStorage.setItem('sac_rel_metas',JSON.stringify(_metas));}catch(e){}
+    // Persiste no backend (fire-and-forget)
+    const tok=sessionStorage.getItem('sac-token');
+    if(tok) fetch('/api/relatorios/metas',{method:'POST',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({empresa:_empresa(),meta:v})}).catch(()=>{});
+  }
+  // Carrega metas do backend ao iniciar
+  (async()=>{try{const tok=sessionStorage.getItem('sac-token');if(!tok)return;const r=await fetch('/api/relatorios/metas',{headers:{Authorization:'Bearer '+tok}});const j=await r.json().catch(()=>({}));if(j.metas){Object.assign(_metas,j.metas);try{localStorage.setItem('sac_rel_metas',JSON.stringify(_metas));}catch(e){}; _syncMetaInput();}}catch(e){}})();
 
   function esc(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));}
   function num(v){if(v==null||v==='')return null;const n=parseFloat(String(v).replace(',','.'));return isFinite(n)?n:null;}

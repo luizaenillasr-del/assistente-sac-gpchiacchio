@@ -4182,6 +4182,39 @@ app.post('/api/relatorios/:id/link', requerPerfil('MASTER','ANALISTA SAC','APROV
   } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
 
+// ===== METAS POR EMPRESA =====
+const METAS_HEADERS = ['EMPRESA','META','ATUALIZADO_EM','ATUALIZADO_POR'];
+
+app.get('/api/relatorios/metas', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','APROVADOR MASTER'), async (req, res) => {
+  try {
+    await garantirAbaComCabecalhos('RELATORIOS_METAS', METAS_HEADERS);
+    const rows = await lerAba('RELATORIOS_METAS');
+    const metas = {};
+    for (const r of rows) { if (r.EMPRESA) metas[r.EMPRESA] = parseFloat(r.META)||8.5; }
+    res.json({ sucesso:true, metas });
+  } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
+});
+
+app.post('/api/relatorios/metas', requerPerfil('MASTER','ANALISTA SAC'), async (req, res) => {
+  try {
+    const { empresa, meta } = req.body||{};
+    if (!empresa) return res.status(400).json({ sucesso:false, erro:'empresa obrigatória.' });
+    const v = parseFloat(meta);
+    if (isNaN(v)||v<0||v>10) return res.status(400).json({ sucesso:false, erro:'meta deve ser entre 0 e 10.' });
+    await garantirAbaComCabecalhos('RELATORIOS_METAS', METAS_HEADERS);
+    const rows = await lerAba('RELATORIOS_METAS');
+    const existente = rows.find(r=>r.EMPRESA===empresa);
+    const dados = { EMPRESA:empresa, META:String(v), ATUALIZADO_EM:new Date().toISOString(), ATUALIZADO_POR:req.user.usuario };
+    if (existente) {
+      await atualizarPorID('RELATORIOS_METAS', empresa, dados, ['EMPRESA']);
+    } else {
+      await appendLinha('RELATORIOS_METAS', dados);
+    }
+    invalidarCacheAba('RELATORIOS_METAS');
+    res.json({ sucesso:true });
+  } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
+});
+
 // Rota pública: visualizar relatório pelo token (somente leitura, sem login)
 app.get('/relatorio-publico/:token', async (req, res) => {
   try {
