@@ -1264,7 +1264,8 @@ async function verificarStatusUsuario(login) {
     // Se não há cache, nega acesso por segurança.
     console.error('[verificarStatusUsuario] Erro ao ler planilha:', e.message || e);
     if (cached) return { ...cached, ts: agora };
-    return { status: 'INATIVO', ts: agora, permissoes_granted: null, permissoes_blocked: null };
+    // JWT já foi validado — se Sheets está indisponível e não há cache, não derruba a sessão
+    return { status: 'ATIVO', ts: agora, permissoes_granted: null, permissoes_blocked: null };
   }
 }
 
