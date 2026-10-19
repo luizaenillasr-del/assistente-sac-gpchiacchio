@@ -761,13 +761,14 @@ async function carregarUsuarioPorLogin(login){
     try {
       let pgU = await usuarioRepo.findByLogin(login).catch(() => null);
       if (!pgU) pgU = await usuarioRepo.findByEmail(login).catch(() => null);
-      if (pgU && normalizarTexto(pgU.status || 'ATIVO') !== 'inativo') {
+      const pgPerfil = pgU?.perfil?.codigo || pgU?.perfil?.nome || null;
+      if (pgU && normalizarTexto(pgU.status || 'ATIVO') !== 'inativo' && pgPerfil) {
         return {
           ID_USUARIO: pgU.idOriginal || `USR-PG-${pgU.id}`,
           USUARIO: pgU.login || pgU.email,
           EMAIL: pgU.email || '',
           NOME: pgU.nome || pgU.login,
-          PERFIL: pgU.perfil?.codigo || pgU.perfil?.nome || 'ANALISTA SAC',
+          PERFIL: pgPerfil,
           EMPRESA: pgU.empresa?.nome || '',
           SETOR: pgU.setor?.nome || '',
           STATUS: pgU.ativo === false ? 'INATIVO' : 'ATIVO',

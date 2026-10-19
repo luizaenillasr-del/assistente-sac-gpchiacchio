@@ -2878,9 +2878,25 @@
         <div class="nm-card">
           <div class="nm-card-title">Pedido e Nota Fiscal</div>
           <div class="nm-grid-3">
+            <label class="nm-label"><span>Número do pedido</span><input class="nm-input" placeholder="PED-00000" id="nm-nr-pedido"></label>
             <label class="nm-label"><span>Nº da NF</span><input class="nm-input" placeholder="000000" id="nm-nfe"></label>
             <label class="nm-label"><span>Data da NF</span><input class="nm-input" type="date" id="nm-data-nf"></label>
+            <label class="nm-label"><span>Data de entrega (prometida)</span><input class="nm-input" type="date" id="nm-dt-entrega-p" oninput="nmCalcAtraso()"></label>
+            <label class="nm-label"><span>Data de entrega (efetiva)</span><input class="nm-input" type="date" id="nm-dt-entrega-e" oninput="nmCalcAtraso()"></label>
             <label class="nm-label"><span>Data do ocorrido</span><input class="nm-input" type="date" id="nm-data-ocorrido"></label>
+            <label class="nm-label"><span>Representante / Vendedor</span>
+              <select class="nm-select" id="nm-repr"><option value="">Selecionar...</option></select>
+            </label>
+            <label class="nm-label"><span>RCA Responsável</span>
+              <select class="nm-select" id="nm-rca-resp"><option value="">Selecionar...</option></select>
+            </label>
+          </div>
+        </div>
+        <!-- código do cliente -->
+        <div class="nm-card">
+          <div class="nm-card-title">Código Interno</div>
+          <div class="nm-grid-2">
+            <label class="nm-label"><span>Código do cliente</span><input class="nm-input" placeholder="Ex.: CLI-00042" id="nm-cliente-cod"></label>
           </div>
         </div>
       </div>
@@ -13947,7 +13963,8 @@ window.navigate = function(page, el) {
   window.loadAprovadorV5=loadAprovadorV5;
 
   function renderFilaPendencias(itens){
-    const pend=itens.filter(x=>x.STATUS==='PENDENTE');
+    const u=sess(); const isMaster=u&&(u.perfil==='MASTER'||u.perfil==='APROVADOR MASTER');
+    const pend=isMaster?itens:itens.filter(x=>x.STATUS==='PENDENTE');
     const el=document.getElementById('ap-fila-pendencias');
     if(!el)return;
     if(!pend.length){el.innerHTML='<div style="padding:14px;color:var(--gray-400);font-size:12px">Nenhum item na fila de aprovação.</div>';return;}
