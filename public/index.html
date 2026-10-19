@@ -2430,7 +2430,6 @@
     <button class="sidebar-item" id="sidebar-gestao-diretoria" onclick="navigate('gestao-diretoria', this)"><span class="sidebar-dot"></span>Gestão da Diretoria</button>
     <button class="sidebar-item" onclick="navigate('rca', this)"><span class="sidebar-dot"></span>Central de RCA</button>
     <button class="sidebar-item" data-v5-page="representantes" onclick="navigate('representantes', this)"><span class="sidebar-dot"></span>Representantes</button>
-    <button class="sidebar-item" onclick="navigate('setores', this)"><span class="sidebar-dot"></span>Setores</button>
     <button class="sidebar-item" onclick="navigate('matriz', this)"><span class="sidebar-dot"></span>Matriz de Tratamento</button>
     <button class="sidebar-item" onclick="navigate('causas', this)"><span class="sidebar-dot"></span>Causas e Subcausas</button>
     <button class="sidebar-item" onclick="navigate('matriz-conhecimento', this)"><span class="sidebar-dot"></span>Matriz de Conhecimento</button>
@@ -8116,9 +8115,9 @@
   });
 
   window.relAbrirFormManual=function(){
-    let m=document.getElementById('rel-modal-manual');
-    if(!m){
-      m=document.createElement('div');m.id='rel-modal-manual';
+    const _oldM=document.getElementById('rel-modal-manual');if(_oldM)_oldM.remove();
+    {
+      const m=document.createElement('div');m.id='rel-modal-manual';
       m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9000;display:flex;align-items:center;justify-content:center;padding:16px';
       const emp=_empresa()||'Chiacchio Embalagens';
       const hoje=new Date().toISOString().slice(0,10);
@@ -8160,20 +8159,20 @@
         </div>
       </div>`;
       document.getElementById('page-relatorio-satisfacao').appendChild(m);
-    } else { m.style.display='flex'; }
+    }
   };
   window.rmBadgeHistorico=function(val,hoje){
     const b=document.getElementById('rm-badge-historico');
     if(b)b.style.display=(val&&val<hoje)?'inline-block':'none';
   };
   window.relFecharFormManual=function(){
-    const m=document.getElementById('rel-modal-manual');if(m)m.style.display='none';
+    const m=document.getElementById('rel-modal-manual');if(m)m.remove();
   };
 
   window.relAbrirFormHistorico=function(){
-    let m=document.getElementById('rel-modal-historico');
-    if(!m){
-      m=document.createElement('div');m.id='rel-modal-historico';
+    const _old=document.getElementById('rel-modal-historico');if(_old)_old.remove();
+    {
+      const m=document.createElement('div');m.id='rel-modal-historico';
       m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9000;display:flex;align-items:center;justify-content:center;padding:16px';
       const emp=_empresa()||'Chiacchio Embalagens';
       const anoAtual=new Date().getFullYear();
@@ -8224,10 +8223,10 @@
         </div>
       </div>`;
       document.getElementById('page-relatorio-satisfacao').appendChild(m);
-    } else { m.style.display='flex'; }
+    }
   };
   window.relFecharFormHistorico=function(){
-    const m=document.getElementById('rel-modal-historico');if(m)m.style.display='none';
+    const m=document.getElementById('rel-modal-historico');if(m)m.remove();
   };
   window.rhSalvar=async function(){
     const btn=document.getElementById('rh-btn-salvar');
