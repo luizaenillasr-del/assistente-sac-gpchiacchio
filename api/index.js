@@ -1674,7 +1674,9 @@ app.post('/api/representantes/manifestacoes', requerPerfil('RCA / REPRESENTANTE'
   try{
     const b=req.body||{};
     if(!b.clienteId||!b.descricao) return res.status(400).json({sucesso:false,erro:'Cliente e descrição são obrigatórios.'});
-    const id=await gerarProximoID('MANIFESTACOES','MAN','ID_MANIFESTACAO');
+    const _pfxRca = empresaCanonica(b.empresaReclamada||req.user.empresa||'');
+    const _idPfxRca = _pfxRca === 'PLASCHIO' ? 'PLAS' : _pfxRca === 'TUBAHIA' ? 'TUB' : 'CHI';
+    const id=await gerarProximoID('MANIFESTACOES',_idPfxRca,'ID_MANIFESTACAO');
     const agora=new Date().toISOString();
     const objeto={ID_MANIFESTACAO:id,DATA_ABERTURA:agora,DATA_REGISTRO:agora,EMPRESA_RECLAMANTE:b.empresa||req.user.empresa||'',CONTATO:b.contato||'',PRODUTO:b.produto||'',LOTE:b.lote||'',NFE:b.nfe||'',DESCRICAO:b.descricao,DESCRICAO_MANIFESTACAO:b.descricao,STATUS:'RECEBIDA',TIPO:'Reclamação',CANAL:'RCA',CNPJ:b.cnpj||'',TELEFONE:b.telefone||'',EMAIL:b.email||'',QUANTIDADE:b.quantidade||'',EMPRESA_RECLAMADA:b.empresaReclamada||'',AREA_RECLAMACAO:b.areaReclamacao||'',EVIDENCIA_NC:b.evidenciaNC||'NÃO SEI',CODIGO_RCA:req.user.codigoRCA||'',USUARIO_CRIACAO:req.user.usuario,ORIGEM:'REPRESENTANTE',STATUS_TRATATIVA:'NÃO INICIADA'};
     await appendObjeto('MANIFESTACOES',objeto);
@@ -1808,7 +1810,9 @@ app.post('/api/manifestacoes', requerPermissao('manifestacoes.abrir'), async (re
     // Não bloqueia na criação de colunas — a aba já existe em produção
     // RNC_SINALIZADO: campo novo para indicar que o caso merece revisão de RNC (B6)
     garantirAbaComCabecalhos('MANIFESTACOES',['ID_MANIFESTACAO','DATA_ABERTURA','DATA_REGISTRO','EMPRESA_RECLAMANTE','CONTATO','PRODUTO','LOTE','NFE','DESCRICAO','DESCRICAO_MANIFESTACAO','STATUS','TIPO','TIPO_SUGERIDO','SETOR_SUGERIDO','SETORES_SUGERIDOS','PROCEDIMENTO_SUGERIDO','SLA_HORAS','PRIORIDADE','RNC_SUGERIDO','RNC_SINALIZADO','EMPRESA_RECLAMADA','CANAL','CNPJ','TELEFONE','EMAIL','QUANTIDADE','VALOR','TRATATIVA_SUGERIDA','TRATATIVA_APLICAVEL','TRATATIVA_REALIZADA','STATUS_TRATATIVA','DEVOLUTIVA_SUGERIDA','DEVOLUTIVA_FINAL','DEVOLUTIVA_ENVIADA','ORIGEM_DOCUMENTO','ARQUIVO_ORIGEM','USUARIO_CRIACAO','ORIGEM','TIPO_CONFIRMADO','SETORES_CONFIRMADOS','ID_PROCEDIMENTO_APLICADO','GERA_RNC','DATA_INICIO_TRATATIVA','DATA_CONCLUSAO_TRATATIVA','DATA_DEVOLUTIVA','DATA_CONCLUSAO_MANIFESTACAO','STATUS_FICHA','PROCEDENTE','PROCEDENTE_JUSTIFICATIVA','CAMINHO_TRATATIVA','DATA_ENCAMINHAMENTO','PRAZO_RETORNO_SAC','TRATATIVA_SAC_INTERNA','RESP_SETOR_O_QUE','RESP_SETOR_CAUSA','RESP_SETOR_RESOLUCAO','RESP_SETOR_ACAO_PREV','RESP_SETOR_RESPONSAVEL','RESP_SETOR_PRAZO','DATA_RESPOSTA_SETOR','APROV_SETOR_DECISAO','APROV_SETOR_MOTIVO','APROV_SETOR_ORIENTACAO','VALID_SAC_DATA_RETORNO','VALID_SAC_CLIENTE_INFORMADO','VALID_SAC_RESOLVIDA','OBSERVACOES_FINAIS','DATA_VALIDACAO_SAC']).catch(()=>{});
-    const id = await gerarProximoID('MANIFESTACOES','MAN','ID_MANIFESTACAO');
+    const _pfxEmp = empresaCanonica(empresaReclamada||'');
+    const _pfx = _pfxEmp === 'PLASCHIO' ? 'PLAS' : _pfxEmp === 'TUBAHIA' ? 'TUB' : 'CHI';
+    const id = await gerarProximoID('MANIFESTACOES', _pfx, 'ID_MANIFESTACAO');
     const agora = new Date().toISOString();
     const tipoFinal = tipo || 'Reclamação';
     const objeto = {

@@ -2952,8 +2952,8 @@
         <div class="nm-card">
           <div class="nm-card-title">Volumes e Quantidades <span style="font-weight:400;font-size:10px;color:#929090;letter-spacing:0">(opcional)</span></div>
           <div class="nm-grid-3">
-            <label class="nm-label"><span>Qtd. afetada</span><input class="nm-input" placeholder="0" id="nm-qtd" type="number" oninput="nmCalcPrejuizo()"></label>
             <label class="nm-label"><span>Qtd. total do pedido</span><input class="nm-input" placeholder="0" id="nm-qtd-total" type="number" oninput="nmCalcPrejuizo()"></label>
+            <label class="nm-label"><span>Qtd. afetada</span><input class="nm-input" placeholder="0" id="nm-qtd" type="number" oninput="nmCalcPrejuizo()"></label>
             <label class="nm-label"><span>Qtd. devolvida</span><input class="nm-input" placeholder="0" id="nm-qtd-devolvida" type="number" oninput="nmCalcPrejuizo()"></label>
           </div>
           <div style="margin-top:12px;padding-top:12px;border-top:1px solid #F0F0F0">
@@ -3269,11 +3269,14 @@
         const todos = await nmCarregarUsuarios();
         // Empresa da manifestação atual
         const empAtual = (document.getElementById('nm-empresa-reclamada')?.value||'').toUpperCase();
+        // Canônico simples para comparação de empresa
+        function _empCod(v){ const n=(v||'').toUpperCase(); if(n.includes('PLAS'))return'PLASCHIO'; if(n.includes('TUBA')||n.includes('CESBAP'))return'TUBAHIA'; if(n.includes('CHIACH')||n.includes('EMBALAGEM'))return'CHIACCHIO'; return n; }
+        const empAtualCod = _empCod(empAtual);
         const pessoas = todos.filter(u=>{
           if(u.status==='INATIVO'||u.status==='BLOQUEADO'||u.status==='EXCLUIDO') return false;
           const setor = (u.setor||'').toLowerCase();
-          const emp = (u.empresa||'').toUpperCase();
-          const empOk = !empAtual || emp===empAtual || emp==='MASTER';
+          const empCod = _empCod(u.empresa||'');
+          const empOk = !empAtual || empCod===empAtualCod || empCod==='MASTER' || (u.empresa||'').toUpperCase()==='MASTER';
           return empOk && setoresSel.some(s=> setor.includes(s) || s.includes(setor.split('/')[0].trim()));
         });
         if(!pessoas.length){
@@ -3300,15 +3303,15 @@
         var el = document.getElementById('nm-vlr-estimado');
         if (!el) return;
         var result = 0;
-        // Prioridade: qtd devolvida / total × valor total; fallback para afetada; fallback para valor envolvido
-        if (qtdDev > 0 && qtdTotal > 0 && vlrTotal > 0) {
-          result = (qtdDev / qtdTotal) * vlrTotal;
-        } else if (qtdDev > 0 && qtdTotal > 0 && vlrEnv > 0) {
-          result = (qtdDev / qtdTotal) * vlrEnv;
-        } else if (qtdAfet > 0 && qtdTotal > 0 && vlrTotal > 0) {
+        // Prejuízo = (qtd. afetada / qtd. total) × valor total; fallback para qtd. devolvida; fallback para valor envolvido
+        if (qtdAfet > 0 && qtdTotal > 0 && vlrTotal > 0) {
           result = (qtdAfet / qtdTotal) * vlrTotal;
         } else if (qtdAfet > 0 && qtdTotal > 0 && vlrEnv > 0) {
           result = (qtdAfet / qtdTotal) * vlrEnv;
+        } else if (qtdDev > 0 && qtdTotal > 0 && vlrTotal > 0) {
+          result = (qtdDev / qtdTotal) * vlrTotal;
+        } else if (qtdDev > 0 && qtdTotal > 0 && vlrEnv > 0) {
+          result = (qtdDev / qtdTotal) * vlrEnv;
         } else if (vlrEnv > 0) {
           result = vlrEnv;
         }
