@@ -1217,7 +1217,9 @@ app.get('/api/health', async (req, res) => {
 });
 
 app.get('/', (req, res) => {
-  res.json({ sucesso: true, status: 'ok', versao: '5.6.0', sistema: 'Assistente SAC Chiacchio' });
+  // Redireciona raiz para a pesquisa de satisfação — impede que clientes
+  // descubram a ferramenta interna ao remover o path da pesquisa
+  res.redirect(302, '/pesquisa/chiacchio');
 });
 
 // ===== MIDDLEWARE AUTH =====

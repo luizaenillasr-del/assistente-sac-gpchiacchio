@@ -11,6 +11,7 @@
     { "source": "/api/:path*", "destination": "/api/index.js" },
     { "source": "/relatorio-publico/:path*", "destination": "/api/index.js" },
     { "source": "/pesquisa/:path*", "destination": "/api/index.js" },
+    { "source": "/", "destination": "/api/index.js" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

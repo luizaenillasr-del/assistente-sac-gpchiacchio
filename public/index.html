@@ -2417,7 +2417,7 @@
     <button class="sidebar-item active" onclick="navigate('visao-geral', this)"><span class="sidebar-dot"></span>Dashboard</button>
     <button class="sidebar-item" onclick="navigate('banco-manifestacoes', this)"><span class="sidebar-dot"></span>Manifestações</button>
     <button class="sidebar-item" onclick="navigate('nova-manifestacao', this)"><span class="sidebar-dot"></span>Nova manifestação</button>
-    <button class="sidebar-item" onclick="navigate('acompanhamento', this)" style="position:relative"><span class="sidebar-dot"></span>Minhas pendências<span id="badge-analista-notif" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);background:#C8102E;color:white;font-size:10px;font-weight:700;border-radius:10px;padding:1px 6px;min-width:18px;text-align:center"></span></button>
+    <button class="sidebar-item" onclick="navigate('banco-manifestacoes', this)" style="position:relative"><span class="sidebar-dot"></span>Minhas pendências<span id="badge-analista-notif" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);background:#C8102E;color:white;font-size:10px;font-weight:700;border-radius:10px;padding:1px 6px;min-width:18px;text-align:center"></span></button>
     <button class="sidebar-item" onclick="navigate('similares', this)"><span class="sidebar-dot"></span>Busca de similares</button>
     <button class="sidebar-item" id="sidebar-central-sac" onclick="navigate('central-sac', this)"><span class="sidebar-dot"></span>Minha Central SAC</button>
     <button class="sidebar-item" data-v5-page="setor-responsavel" onclick="navigate('setor-responsavel', this)"><span class="sidebar-dot"></span>Minha fila</button>
@@ -3391,19 +3391,8 @@
   </div>
 
   <!-- ===== ACOMPANHAMENTO ===== -->
-  <div class="page" id="page-acompanhamento">
-    <div class="topbar">
-      <div class="topbar-left">
-        <div class="breadcrumb">Operação</div>
-        <div class="page-header">
-          <h1 class="page-title">Minhas pendências</h1>
-        </div>
-      </div>
-      <div class="topbar-right">
-        <button class="btn btn-secondary" onclick="loadAcompanhamento()">Atualizar</button>
-        <button class="btn btn-primary" onclick="navigate('nova-manifestacao', document.querySelector('[onclick*=nova-manifestacao]'))">+ Nova manifestação</button>
-      </div>
-    </div>
+  <!-- page-acompanhamento: redirecionado para banco-manifestacoes (unificado) -->
+  <div class="page" id="page-acompanhamento" style="display:none">
     <div class="content">
 
       <!-- Alertas ANALISTA SAC: pesquisas baixas + portal -->
@@ -3982,32 +3971,66 @@
       </div>
     </div>
     <div class="content">
+
+      <!-- Alertas herdados do Minhas Pendências -->
+      <div id="analista-alertas-wrap" style="display:none;margin-bottom:16px;flex-direction:column;gap:10px">
+        <div id="analista-alerta-ocps" style="display:none;background:#FFF8F0;border:1px solid #F5A623;border-radius:10px;padding:14px 18px">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+            <div>
+              <div style="font-size:13px;font-weight:700;color:#7A4C00">⚠ Pesquisas com nota ≤ 6 aguardando decisão de tratamento</div>
+              <div style="font-size:12px;color:#7A4C00;margin-top:3px" id="analista-alerta-ocps-desc">—</div>
+            </div>
+          </div>
+          <div id="analista-ocps-lista" style="margin-top:10px;display:flex;flex-direction:column;gap:6px"></div>
+        </div>
+        <div id="analista-alerta-portal" style="display:none;background:#F0F6FF;border:1px solid #4A80D9;border-radius:10px;padding:14px 18px">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+            <div>
+              <div style="font-size:13px;font-weight:700;color:#24508F">🔔 Manifestações do portal aguardando análise</div>
+              <div style="font-size:12px;color:#24508F;margin-top:3px" id="analista-alerta-portal-desc">—</div>
+            </div>
+          </div>
+          <div id="analista-portal-lista" style="margin-top:10px;display:flex;flex-direction:column;gap:6px"></div>
+        </div>
+      </div>
+
       <!-- Search + filters -->
-      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px">
-        <input placeholder="Pesquisar nº, cliente, CNPJ ou motivo" id="banco-search" oninput="filtrarBanco()" style="flex:1;min-width:240px;height:36px;border:1px solid #D6D6D6;border-radius:7px;padding:0 12px;background:#fff;font-size:13px;font-family:inherit">
-        <select id="bflt-tipo-sel" onchange="filtrarBanco()" style="height:36px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:13px;font-family:inherit">
+      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px">
+        <input placeholder="Buscar por cliente, número, empresa…" id="banco-search" oninput="filtrarBanco()" style="flex:1;min-width:220px;height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 12px;background:#fff;font-size:13px;font-family:inherit">
+        <select id="bflt-status-sel" onchange="filtrarBanco()" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:13px;font-family:inherit">
+          <option value="">Status: todos</option>
+          <option value="EM ANÁLISE">Em análise</option>
+          <option value="AGUARDANDO">Aguardando decisão</option>
+          <option value="EM TRATAMENTO">Em tratamento</option>
+          <option value="APROVADA">Aprovada</option>
+          <option value="AGUARDANDO_DEVOLUTIVA">Aguard. devolutiva</option>
+          <option value="ENCERRADA">Encerrada</option>
+          <option value="REJEITADA">Rejeitada</option>
+        </select>
+        <select id="bflt-tipo-sel" onchange="filtrarBanco()" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:13px;font-family:inherit">
           <option value="">Tipo: todos</option>
           <option value="Reclamação">Reclamação</option>
           <option value="Dúvida">Dúvida</option>
           <option value="Sugestão">Sugestão</option>
           <option value="Elogio">Elogio</option>
         </select>
-        <select id="bflt-empresa-sel" onchange="filtrarBanco()" style="height:36px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:13px;font-family:inherit">
+        <select id="bflt-empresa-sel" onchange="filtrarBanco()" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:13px;font-family:inherit">
           <option value="">Empresa: todas</option>
           <option value="CHIACCHIO EMBALAGENS">Chiacchio</option>
           <option value="PLASCHIO">Plaschio</option>
           <option value="TUBAHIA">Cesbap</option>
         </select>
-        <select id="bflt-setor-sel" onchange="filtrarBanco()" style="height:36px;min-width:120px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:13px;font-family:inherit">
+        <select id="bflt-setor-sel" onchange="filtrarBanco()" style="height:34px;min-width:120px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:13px;font-family:inherit">
           <option value="">Setor: todos</option>
         </select>
-        <select id="bflt-periodo-sel" onchange="filtrarBanco()" style="height:36px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:13px;font-family:inherit">
+        <select id="bflt-periodo-sel" onchange="filtrarBanco()" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:13px;font-family:inherit">
           <option value="">Período: todos</option>
           <option value="hoje">Hoje</option>
           <option value="7">7 dias</option>
           <option value="30">30 dias</option>
           <option value="90">90 dias</option>
         </select>
+        <button onclick="(function(){document.getElementById('banco-search').value='';['bflt-status-sel','bflt-tipo-sel','bflt-empresa-sel','bflt-setor-sel','bflt-periodo-sel'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});filtrarBanco();})()" style="height:34px;border:1px solid #D6D6D6;background:#fff;border-radius:7px;padding:0 12px;cursor:pointer;font-size:13px;color:#545252;font-family:inherit">Limpar</button>
       </div>
       <!-- hidden compat filter elements used by JS -->
       <div style="display:none">
@@ -8580,6 +8603,8 @@ function doLogout() {
 }
 
 function navigate(page, el) {
+  // Acompanhamento foi unificado com banco-manifestacoes
+  if (page === 'acompanhamento') { page = 'banco-manifestacoes'; }
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
   const pageEl = document.getElementById('page-' + page);
@@ -11950,10 +11975,12 @@ function filtrarBanco() {
   const empresa = document.getElementById('bflt-empresa-sel')?.value || '';
   const setor = document.getElementById('bflt-setor-sel')?.value || '';
   const periodo = document.getElementById('bflt-periodo-sel')?.value || '';
+  const status = document.getElementById('bflt-status-sel')?.value || '';
   bancoFiltros.tipo = tipo;
   bancoFiltros.empresa = empresa;
   bancoFiltros.setor = setor;
   bancoFiltros.periodo = periodo ? parseInt(periodo) : null;
+  bancoFiltros.statusFiltro = status;
   renderBanco();
 }
 
@@ -11979,6 +12006,7 @@ function renderBanco() {
   else if (bancoFilter === 'minhas') { const meNome = (document.getElementById('sidebar-user-name')?.textContent||'').trim(); if (meNome && meNome !== 'Usuário') data = data.filter(m => (m.RESPONSAVEL||m.ANALISTA_RESPONSAVEL||m.ATENDENTE||'').toLowerCase().includes(meNome.toLowerCase())); }
 
   // Apply column filters
+  if (bancoFiltros.statusFiltro) data = data.filter(m => (m.STATUS||'').toUpperCase().includes(bancoFiltros.statusFiltro.toUpperCase().split(' ')[0]));
   if (bancoFiltros.status) data = data.filter(m => (m.STATUS||'') === bancoFiltros.status);
   if (bancoFiltros.tipo) data = data.filter(m => (m.TIPO||m.TIPO_CONFIRMADO||'') === bancoFiltros.tipo);
   if (bancoFiltros.setor) data = data.filter(m => (m.SETOR_DESTINADO||m.SETOR_CONFIRMADO||'') === bancoFiltros.setor);
