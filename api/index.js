@@ -5362,7 +5362,18 @@ app.patch('/api/usuarios/:id', requerPermissao('usuarios.editar'), async (req,re
     if(Array.isArray(b.permissoes_granted)) dados.PERMISSOES_GRANTED=JSON.stringify(b.permissoes_granted);
     if(Array.isArray(b.permissoes_blocked)) dados.PERMISSOES_BLOCKED=JSON.stringify(b.permissoes_blocked);
     dados.DATA_ULTIMA_ALTERACAO=new Date().toISOString(); dados.ALTERADO_POR=req.user.usuario;
-    const resultado=await atualizarPorID('USUARIOS',req.params.id,dados,['ID_USUARIO','USUARIO','EMAIL']);
+    // Retry com backoff em caso de 429 do Google Sheets
+    let resultado=null;
+    for(let tentativa=0;tentativa<3;tentativa++){
+      try{
+        resultado=await atualizarPorID('USUARIOS',req.params.id,dados,['ID_USUARIO','USUARIO','EMAIL']);
+        break;
+      }catch(err){
+        const st=err?.response?.status||err?.code;
+        if(st===429&&tentativa<2){ await new Promise(r=>setTimeout(r,(tentativa+1)*2000)); continue; }
+        throw err;
+      }
+    }
     if(!resultado) return res.status(404).json({sucesso:false,erro:'Usuário não encontrado. Recarregue a lista e tente novamente.'});
     // Invalida cache de status para mudanças de perfil/status/permissões valerem imediatamente
     _statusCache.delete(req.params.id);
