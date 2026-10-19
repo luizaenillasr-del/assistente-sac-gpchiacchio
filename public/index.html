@@ -10015,12 +10015,17 @@ function renderDashboard(data) {
       <td>${tempoMedio > 0 ? tempoMedio + 'h' : '--'}</td>
     </tr>`).join('');
 
-  // Fila de atenção — mostrar reclamações EM ABERTO
+  // Fila de atenção — apenas manifestações abertas/em andamento
+  const _STATUS_FECHADO = new Set(['ENCERRADA','ARQUIVADA','CANCELADA','REJEITADA','REJEITADA_SAC','RESOLVIDA','CONCLUIDA','FECHADA','EXCLUIDA','DELETADA']);
+  const filaAberta = mans.filter(x => {
+    const s = (x.STATUS || '').toUpperCase().replace(/[^A-Z_]/g,'');
+    return !_STATUS_FECHADO.has(s);
+  }).slice(0, 5);
   const filaRecs = recs.filter(x => {
     const s = (x['Status'] || '').toUpperCase();
     return s.includes('ABERTO') || s.includes('EM ABERTO') || s === '';
   }).slice(0, 5);
-  const filaAll = [...mans.slice(0,5), ...filaRecs.slice(0,5)].slice(0,8);
+  const filaAll = [...filaAberta, ...filaRecs.slice(0,5)].slice(0,8);
   document.getElementById('fila-body').innerHTML = filaAll.length > 0
     ? filaAll.map((x, i) => {
         const isMan = !!x.ID_MANIFESTACAO;
