@@ -9500,7 +9500,7 @@ function getEtapaLabel(status) {
 
 // ===== CARREGAR VISÃO GERAL =====
 // ===== ESTADO GLOBAL DO DASHBOARD =====
-let _dashData = { mans: [], recs: [], setores: [] };
+let _dashData = window._dashData = { mans: [], recs: [], setores: [] };
 let _dashFiltroEmpresa = 'Todas';
 let _dashFiltroSetor = 'Todos';
 
@@ -9977,6 +9977,7 @@ async function loadVisaoGeral() {
 
     _dashData.mans = manRes.itens || [];
     _dashData.recs = recRes.itens || [];
+    window._dashData = _dashData; // mantém referência global sincronizada
 
     // Códigos internos que não são empresas reais
     const _NAO_EMPRESAS = new Set(['TR01','TR08','SAC','RNC']);
