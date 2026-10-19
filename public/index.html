@@ -14243,6 +14243,11 @@ window.navigate = function(page, el) {
     document.getElementById('decisao-previa-descricao').style.display='none';
     document.getElementById('decisao-preview-resumo').textContent='';
     document.getElementById('decisao-historico').innerHTML='<div style="color:#B0B0B0;font-size:11.5px">Carregando…</div>';
+    // Reset campos IA
+    const _rIA=(id,v='—')=>{ const el=document.getElementById(id); if(el) el.textContent=v; };
+    _rIA('ia-classificacao'); _rIA('ia-confianca',''); _rIA('ia-prioridade'); _rIA('ia-setor');
+    const _hide=id=>{ const el=document.getElementById(id); if(el) el.style.display='none'; };
+    _hide('decisao-ia-section'); _hide('ia-causa-box'); _hide('decisao-tratativa-section'); _hide('decisao-sla-box'); _hide('decisao-aprov-sla');
     const modal=document.getElementById('modal-decisao-aprov');
     modal.style.display='flex'; modal.classList.add('aprov-open');
     decisaoAba('previa');
@@ -14279,6 +14284,92 @@ window.navigate = function(page, el) {
           document.getElementById('decisao-previa-campos').innerHTML=campos.map(c=>`<div><div style="font-size:10.5px;font-weight:700;color:#929090;margin-bottom:3px">${esc5(c.l)}</div><div style="font-size:13px;font-weight:600;color:#1F1F1F">${esc5(c.v)}</div></div>`).join('');
         } else {
           document.getElementById('decisao-previa-campos').innerHTML='';
+        }
+
+        // ── Campos IA ──
+        const iaSection = document.getElementById('decisao-ia-section');
+        const tipoIA = m.TIPO_DETECTADO||m.TIPO_MANIFESTACAO||m.TIPO||null;
+        const confIA = m.CONFIANCA_IA ?? m.CONFIANCA ?? null;
+        const priorIA = m.PRIORIDADE||null;
+        const setorIA = m.SETOR_CONFIRMADO||m.SETOR_SUGERIDO||null;
+        const causaIA = m.CAUSA_SUGERIDA||m.CAUSA_IDENTIFICADA||m.CAUSA_RAIZ||null;
+        const tratIA = m.TRATATIVA_SUGERIDA||m.DEVOLUTIVA_SUGERIDA||null;
+        if(tipoIA||confIA||priorIA||setorIA){
+          if(iaSection) iaSection.style.display='';
+          const elCls = document.getElementById('ia-classificacao');
+          const elConf = document.getElementById('ia-confianca');
+          const elPri = document.getElementById('ia-prioridade');
+          const elSet = document.getElementById('ia-setor');
+          if(elCls) elCls.textContent = tipoIA||'—';
+          if(elConf && confIA!=null){ const pct=Math.round(typeof confIA==='object'?(confIA.score||0):confIA); elConf.textContent = pct+'% confiança'; elConf.style.color = pct>=80?'#1A6632':pct>=50?'#8A5000':'#9B2020'; }
+          if(elPri){ elPri.textContent=priorIA||'—'; const priClr={'Alta':'#B84000','Crítica':'#A00000','Média':'#8A5000','Baixa':'#2A7A3A'}; elPri.style.color=priClr[priorIA]||'#B84000'; }
+          if(elSet) elSet.textContent=setorIA||'—';
+        } else {
+          if(iaSection) iaSection.style.display='none';
+        }
+        if(causaIA){
+          const box=document.getElementById('ia-causa-box');
+          const txt=document.getElementById('ia-causa-txt');
+          if(box) box.style.display='';
+          if(txt) txt.textContent=causaIA;
+        }
+        if(tratIA){
+          const sec=document.getElementById('decisao-tratativa-section');
+          const txt=document.getElementById('decisao-tratativa-txt');
+          if(sec) sec.style.display='';
+          if(txt) txt.textContent=tratIA;
+        }
+
+        // ── SLA ──
+        const dataPrazo = m.DATA_PRAZO||m.DATA_LIMITE_SLA||m.PRAZO_SLA||null;
+        const dentroDo = (m.DENTRO_DO_SLA||'').toUpperCase();
+        const slaBox = document.getElementById('decisao-sla-box');
+        if(dataPrazo && slaBox){
+          slaBox.style.display='';
+          const prazo = new Date(dataPrazo);
+          const agora = new Date();
+          const diffH = Math.round((prazo - agora) / 36e5);
+          const elRest = document.getElementById('decisao-sla-restante');
+          const elBar = document.getElementById('decisao-sla-bar');
+          const slaHoras = parseFloat(m.SLA_HORAS||m.SLA_PADRAO_HORAS||72)||72;
+          const pct = Math.max(0, Math.min(100, Math.round((diffH / slaHoras)*100)));
+          if(elRest){ if(diffH>0) elRest.textContent=diffH+'h restantes'; else elRest.textContent='Prazo vencido ('+Math.abs(diffH)+'h)'; elRest.style.color=diffH<=0?'#A00000':diffH<24?'#9A4A10':'#1A6632'; }
+          if(elBar){ elBar.style.width=pct+'%'; elBar.style.background=diffH<=0?'#DC2626':diffH<24?'#F59E0B':'#22C55E'; }
+          // Badge SLA no header
+          const slaHd = document.getElementById('decisao-aprov-sla');
+          if(slaHd){ slaHd.style.display='inline-flex'; slaHd.lastChild.textContent=' '+(diffH>0?diffH+'h':'Vencido'); slaHd.style.background=diffH<=0?'#FDECEC':diffH<24?'#FEF3DC':'#EAF2FB'; slaHd.style.color=diffH<=0?'#A00000':diffH<24?'#8A5000':'#1A4F8A'; }
+        } else if(dentroDo==='NÃO'||dentroDo==='NAO'){
+          if(slaBox){ slaBox.style.display=''; document.getElementById('decisao-sla-restante').textContent='Prazo vencido'; document.getElementById('decisao-sla-restante').style.color='#A00000'; document.getElementById('decisao-sla-bar').style.width='100%'; document.getElementById('decisao-sla-bar').style.background='#DC2626'; }
+        }
+
+        // ── Badge status header ──
+        const badge = document.getElementById('decisao-aprov-badge');
+        if(badge && m.STATUS){
+          const st=(m.STATUS||'').toUpperCase();
+          let bg='#FEF3DC',cl='#8A5000',lbl=m.STATUS;
+          if(st.includes('PENDENT')||st.includes('AGUARDANDO_APRO')||st.includes('AGUARDANDO APRO')){ bg='#FEF3DC';cl='#8A5000';lbl='Aguardando aprovação'; }
+          else if(st.includes('APROVAD')){ bg='#EAF4ED';cl='#1A6632';lbl='Aprovado'; }
+          else if(st.includes('REJEIT')){ bg='#FDECEC';cl='#A00000';lbl='Rejeitado'; }
+          else if(st.includes('DEVOLVID')){ bg='#EAF0FB';cl='#24508F';lbl='Devolvido'; }
+          badge.style.background=bg; badge.style.color=cl;
+          badge.querySelector('circle')?.setAttribute('fill', cl);
+          const span=badge.querySelector('svg+*')||badge.lastChild;
+          if(span&&span.nodeType===3) badge.innerHTML=badge.innerHTML.replace(/>[^<]+$/, '>'+lbl);
+          else badge.textContent=lbl;
+        }
+
+        // ── Histórico ──
+        const histEl = document.getElementById('decisao-historico');
+        const hist = m.HISTORICO||m.historico||[];
+        if(hist.length && histEl){
+          histEl.innerHTML=hist.slice(0,8).map(h=>`
+            <div style="border-left:2px solid #E4E4E4;padding:4px 10px">
+              <div style="font-size:10.5px;font-weight:700;color:#929090">${esc5(h.DATA||h.data||h.createdAt||'')}</div>
+              <div style="font-size:12.5px;color:#1F1F1F;margin-top:1px">${esc5(h.ACAO||h.acao||h.descricao||h.DESCRICAO||h.label||'')}</div>
+              ${(h.USUARIO||h.usuario)?`<div style="font-size:11px;color:#929090">${esc5(h.USUARIO||h.usuario)}</div>`:''}
+            </div>`).join('');
+        } else if(histEl){
+          histEl.innerHTML='<div style="color:#B0B0B0;font-size:11.5px;font-style:italic">Sem histórico registrado.</div>';
         }
       } else {
         document.getElementById('decisao-previa-campos').innerHTML='<div style="color:#929090;font-size:13px">Dados não disponíveis.</div>';
