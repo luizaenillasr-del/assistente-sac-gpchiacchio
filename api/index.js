@@ -1959,17 +1959,52 @@ app.patch('/api/manifestacoes/:id/ficha', requerPermissao('manifestacoes.editar'
         DATA_CONCLUSAO_MANIFESTACAO: agora,
       };
     } else if (acao === 'encaminhar_aprovacao') {
+      const setorConf = req.body.SETOR_CONFIRMADO || item.SETOR_SUGERIDO || '';
+      const tipoConf  = req.body.TIPO_CONFIRMADO  || item.TIPO_SUGERIDO  || '';
       dados = {
+        STATUS: 'AGUARDANDO_APROVAÇÃO',
         STATUS_FICHA: 'AGUARDANDO_APROVACAO',
-        TRATATIVA_SAC_INTERNA: req.body.tratativaSACInterna || item.TRATATIVA_SAC_INTERNA || '',
+        TRATATIVA_SAC_INTERNA: req.body.tratativaSACInterna || req.body.obs || item.TRATATIVA_SAC_INTERNA || '',
+        SETOR_CONFIRMADO: setorConf,
+        TIPO_CONFIRMADO: tipoConf,
         DATA_ENCAMINHAMENTO: agora,
         ENCAMINHADO_POR: req.user?.usuario || '',
       };
+      // Inserir na FILA_APROVACAO para aprovadores verem
+      try {
+        garantirAbaComCabecalhos('FILA_APROVACAO', FILA_APROV_HEADERS).catch(()=>{});
+        const filaExist = await lerAba('FILA_APROVACAO',2000).catch(()=>[]);
+        const jaPendente = filaExist.find(x => String(x.ID_ENTIDADE||'') === String(id) && x.STATUS === 'PENDENTE');
+        if (!jaPendente) {
+          // Busca aprovador pelo setor nas tabelas
+          const [aprovadores, rel] = await Promise.all([
+            lerAba('APROVADORES',500).catch(()=>[]),
+            lerAba('APROVADOR_COMPETENCIAS',2000).catch(()=>[]),
+          ]);
+          const setorN = normalizarTexto(setorConf);
+          const relSetor = rel.find(r => normalizarTexto(r.SETOR||r.COMPETENCIA||'') === setorN && normalizarTexto(r.STATUS||'ATIVO') !== 'inativo');
+          const aprov = relSetor ? aprovadores.find(a => String(a.ID_APROVADOR||a.USUARIO||'') === String(relSetor.ID_APROVADOR||'')) : null;
+          const filaId = await gerarProximoID('FILA_APROVACAO','FAP','ID_FILA');
+          await appendObjeto('FILA_APROVACAO', {
+            ID_FILA: filaId, ID_ENTIDADE: id, TIPO_ENTIDADE: 'SAC',
+            DESCRICAO: item.DESCRICAO || item.DESCRICAO_MANIFESTACAO || '',
+            EMPRESA: item.EMPRESA_RECLAMADA || '',
+            SETOR: setorConf, COMPETENCIA: setorConf,
+            STATUS: 'PENDENTE',
+            ID_APROVADOR: aprov?.ID_APROVADOR || aprov?.USUARIO || '',
+            NOME_APROVADOR: aprov?.NOME || aprov?.ID_APROVADOR || '',
+            DATA_ENVIO: agora, DATA_DECISAO: '',
+            OBSERVACOES: req.body.obs || '',
+            CRIADO_POR: req.user?.usuario || '',
+            ID_REGRA: '',
+          });
+        }
+      } catch(eF) { console.error('[FILA_APROVACAO insert]', eF.message); }
     } else if (acao === 'encaminhar_setor') {
       const setorDest = req.body.SETOR_CONFIRMADO || req.body.setor || '';
       if (!setorDest) return res.status(400).json({ sucesso:false, erro:'Setor de destino obrigatório.' });
       dados = {
-        STATUS: 'EM_ANDAMENTO',
+        STATUS: 'AGUARDANDO_SETOR',
         STATUS_FICHA: 'AGUARDANDO_SETOR',
         SETOR_CONFIRMADO: setorDest,
         SETOR_DESTINADO: setorDest,
@@ -2028,6 +2063,7 @@ app.patch('/api/manifestacoes/:id/ficha', requerPermissao('manifestacoes.editar'
 
 const STATUS_FICHA_LEGIVEL = {
   ABERTA: 'Aberta', EM_ANDAMENTO: 'Em andamento', AGUARDANDO_APROVACAO: 'Aguardando aprovação',
+  AGUARDANDO_SETOR: 'Aguardando setor', AGUARDANDO_TRATATIVA: 'Aguardando tratativa',
   AGUARDANDO_DEVOLUTIVA: 'Aguardando devolutiva', TRATATIVA_SAC: 'Em tratativa SAC', FECHADA: 'Fechada',
 };
 const DECISAO_APROVACAO_VALIDAS = ['APROVAR', 'SEGUIR_TRATATIVA', 'DEVOLVER'];
