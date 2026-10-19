@@ -19378,7 +19378,7 @@ async function cbScan() {
     const j = await r.json().catch(() => ({}));
     if (j.sucesso) {
       const map = { regras: j.regras||[], procedimentos: j.procedimentos||[], politicas: j.politicas||[], faq: j.faq||[], documentos: j.documentos||[] };
-      CB.scan = [].concat(...Object.entries(map).map(([t, arr]) => arr.map(x => Object.assign({ _tipo: t }, x))));
+      CB.scan = [].concat(...Object.entries(map).map(([t, arr]) => arr.map(x => Object.assign({ _tipo: t, _setor: x.SETOR||'' }, x))));
       // Popula cache individual por setor para que cbItens() ache os dados sem re-fetch
       const sets = [...new Set(CB.scan.map(x => x.SETOR).filter(Boolean))];
       for (const tipo of Object.keys(map)) {
