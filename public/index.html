@@ -2952,8 +2952,8 @@
         <div class="nm-card">
           <div class="nm-card-title">Volumes e Quantidades <span style="font-weight:400;font-size:10px;color:#929090;letter-spacing:0">(opcional)</span></div>
           <div class="nm-grid-3">
-            <label class="nm-label"><span>Qtd. afetada</span><input class="nm-input" placeholder="0" id="nm-qtd" type="number" oninput="nmCalcPrejuizo()"></label>
             <label class="nm-label"><span>Qtd. total do pedido</span><input class="nm-input" placeholder="0" id="nm-qtd-total" type="number" oninput="nmCalcPrejuizo()"></label>
+            <label class="nm-label"><span>Qtd. afetada</span><input class="nm-input" placeholder="0" id="nm-qtd" type="number" oninput="nmCalcPrejuizo()"></label>
             <label class="nm-label"><span>Qtd. devolvida</span><input class="nm-input" placeholder="0" id="nm-qtd-devolvida" type="number" oninput="nmCalcPrejuizo()"></label>
           </div>
           <div style="margin-top:12px;padding-top:12px;border-top:1px solid #F0F0F0">
@@ -3269,11 +3269,14 @@
         const todos = await nmCarregarUsuarios();
         // Empresa da manifestação atual
         const empAtual = (document.getElementById('nm-empresa-reclamada')?.value||'').toUpperCase();
+        // Canônico simples para comparação de empresa
+        function _empCod(v){ const n=(v||'').toUpperCase(); if(n.includes('PLAS'))return'PLASCHIO'; if(n.includes('TUBA')||n.includes('CESBAP'))return'TUBAHIA'; if(n.includes('CHIACH')||n.includes('EMBALAGEM'))return'CHIACCHIO'; return n; }
+        const empAtualCod = _empCod(empAtual);
         const pessoas = todos.filter(u=>{
           if(u.status==='INATIVO'||u.status==='BLOQUEADO'||u.status==='EXCLUIDO') return false;
           const setor = (u.setor||'').toLowerCase();
-          const emp = (u.empresa||'').toUpperCase();
-          const empOk = !empAtual || emp===empAtual || emp==='MASTER';
+          const empCod = _empCod(u.empresa||'');
+          const empOk = !empAtual || empCod===empAtualCod || empCod==='MASTER' || (u.empresa||'').toUpperCase()==='MASTER';
           return empOk && setoresSel.some(s=> setor.includes(s) || s.includes(setor.split('/')[0].trim()));
         });
         if(!pessoas.length){
@@ -3300,15 +3303,15 @@
         var el = document.getElementById('nm-vlr-estimado');
         if (!el) return;
         var result = 0;
-        // Prioridade: qtd devolvida / total × valor total; fallback para afetada; fallback para valor envolvido
-        if (qtdDev > 0 && qtdTotal > 0 && vlrTotal > 0) {
-          result = (qtdDev / qtdTotal) * vlrTotal;
-        } else if (qtdDev > 0 && qtdTotal > 0 && vlrEnv > 0) {
-          result = (qtdDev / qtdTotal) * vlrEnv;
-        } else if (qtdAfet > 0 && qtdTotal > 0 && vlrTotal > 0) {
+        // Prejuízo = (qtd. afetada / qtd. total) × valor total; fallback para qtd. devolvida; fallback para valor envolvido
+        if (qtdAfet > 0 && qtdTotal > 0 && vlrTotal > 0) {
           result = (qtdAfet / qtdTotal) * vlrTotal;
         } else if (qtdAfet > 0 && qtdTotal > 0 && vlrEnv > 0) {
           result = (qtdAfet / qtdTotal) * vlrEnv;
+        } else if (qtdDev > 0 && qtdTotal > 0 && vlrTotal > 0) {
+          result = (qtdDev / qtdTotal) * vlrTotal;
+        } else if (qtdDev > 0 && qtdTotal > 0 && vlrEnv > 0) {
+          result = (qtdDev / qtdTotal) * vlrEnv;
         } else if (vlrEnv > 0) {
           result = vlrEnv;
         }
@@ -11615,7 +11618,7 @@ function abrirDossie(item) {
   if (_decEl) {
     const _perfisAprov = ['APROVADOR','APROVADOR MASTER','MASTER','GESTOR SAC','ANALISTA SAC'];
     const _isAprov = _perfisAprov.includes(role());
-    const _st = (item.STATUS_FICHA || item.STATUS || '').toUpperCase();
+    const _st = (item.STATUS_FICHA || item.STATUS || '').toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
     const _aguardando = _st.includes('AGUARDANDO_APROVAC') || _st.includes('AGUARDANDO APROV');
     _decEl.style.display = (_isAprov && _aguardando) ? '' : 'none';
     // Reset do card
@@ -11800,12 +11803,24 @@ window._acompData = _acompData;
 
 const STATUS_LABELS = {
   'EM ANÁLISE': { label: 'Em análise', color: '#1D4ED8', bg: '#EFF6FF' },
+  'EM_ANALISE': { label: 'Em análise', color: '#1D4ED8', bg: '#EFF6FF' },
+  'AGUARDANDO_APROVAÇÃO': { label: 'Aguard. aprovação', color: '#92400E', bg: '#FEF3C7' },
+  'AGUARDANDO_APROVACAO': { label: 'Aguard. aprovação', color: '#92400E', bg: '#FEF3C7' },
+  'AGUARDANDO APROVAÇÃO': { label: 'Aguard. aprovação', color: '#92400E', bg: '#FEF3C7' },
+  'AGUARDANDO_SETOR':     { label: 'Aguard. setor', color: '#6D28D9', bg: '#EDE9FE' },
+  'AGUARDANDO_VALIDACAO_SAC': { label: 'Aguard. validação SAC', color: '#0369A1', bg: '#E0F2FE' },
+  'AGUARDANDO_TRATATIVA': { label: 'Aguard. tratativa', color: '#0369A1', bg: '#E0F2FE' },
   'AGUARDANDO_DECISAO': { label: 'Aguard. decisão', color: '#92400E', bg: '#FEF3C7' },
+  'EM_ANDAMENTO':  { label: 'Em andamento', color: '#7C3AED', bg: '#F3E8FF' },
+  'EM ANDAMENTO':  { label: 'Em andamento', color: '#7C3AED', bg: '#F3E8FF' },
   'APROVADA': { label: 'Aprovada', color: '#065F46', bg: '#ECFDF5' },
   'EM TRATAMENTO': { label: 'Em tratamento', color: '#7C3AED', bg: '#F3E8FF' },
   'AGUARDANDO_DEVOLUTIVA': { label: 'Aguard. devolutiva', color: '#C2410C', bg: '#FED7AA' },
-  'ENCERRADA': { label: 'Encerrada', color: '#065F46', bg: '#ECFDF5' },
+  'ENCERRADA': { label: 'Encerrada', color: '#374151', bg: '#F3F4F6' },
+  'ARQUIVADA': { label: 'Arquivada', color: '#374151', bg: '#F3F4F6' },
   'REJEITADA': { label: 'Rejeitada', color: '#DC2626', bg: '#FEE2E2' },
+  'REJEITADA_SAC': { label: 'Rejeitada SAC', color: '#DC2626', bg: '#FEE2E2' },
+  'APROVADA_SAC':  { label: 'Aprovada SAC', color: '#065F46', bg: '#ECFDF5' },
 };
 
 function getStatusInfo(status) {
@@ -14513,18 +14528,30 @@ window.navigate = function(page, el) {
       document.getElementById('sac-fila-aprov').textContent=todos.filter(x=>x.STATUS==='APROVADA_SAC'&&destesMes(x)).length;
       document.getElementById('sac-fila-rej').textContent=todos.filter(x=>x.STATUS==='REJEITADA_SAC'&&destesMes(x)).length;
       const stCor={'APROVADA_SAC':'#059669','REJEITADA_SAC':'#DC2626','DEVOLVIDA_AJUSTE':'#7C3AED'};
-      if(lista)lista.innerHTML=itens.length?itens.map(x=>{
-        const jaSac=['APROVADA_SAC','REJEITADA_SAC','DEVOLVIDA_SAC','DEVOLVIDA_AJUSTE'].includes(x.STATUS);
-        const id=esc5(x.ID_MANIFESTACAO||x._pgId||'');
-        return `<div class="portal-row"><div class="portal-row-main">
-          <div class="portal-row-title">${esc5(x.ID_MANIFESTACAO||'—')} <span style="font-size:12px;font-weight:400;color:#545252">${esc5(x.TIPO||'')}</span></div>
-          <div class="portal-row-sub">${esc5(x.EMPRESA_RECLAMADA||'')} ${x.SETOR_SUGERIDO?'· '+esc5(x.SETOR_SUGERIDO):''}</div>
-          ${x.DESCRICAO?`<div style="font-size:12px;color:#545252;margin-top:3px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${esc5(x.DESCRICAO)}</div>`:''}
-          <div style="font-size:11px;color:var(--gray-400);margin-top:2px">Aberta ${fmt5(x.DATA_ABERTURA)}</div>
-        </div><div class="portal-actions" style="flex-direction:column;gap:6px;align-items:flex-end">
-          ${jaSac?`<span style="font-size:12px;font-weight:700;color:${stCor[x.STATUS]||'#374151'}">${esc5(x.STATUS)}</span>`:`<button class="btn btn-primary" style="font-size:12px;padding:5px 12px;white-space:nowrap" onclick="abrirDecisaoSac('${id}','${esc5(x.ID_MANIFESTACAO||id)}')">Decidir →</button>`}
-        </div></div>`;
-      }).join(''):'<div style="padding:16px;color:var(--gray-400);font-size:12px">Nenhuma manifestação aberta encontrada.</div>';
+      const AGUARD_VALIDACAO_SAC_ST=['AGUARDANDO_VALIDACAO_SAC'];
+      const aguardValidacao=itens.filter(x=>AGUARD_VALIDACAO_SAC_ST.includes((x.STATUS||'').toUpperCase()));
+      const aguardAprovPortal=itens.filter(x=>(x.ORIGEM||'').toUpperCase()==='PORTAL_FUNCIONARIO'&&['AGUARDANDO_APROVAÇÃO','AGUARDANDO_APROVACAO'].includes((x.STATUS||'').toUpperCase()));
+      if(lista)lista.innerHTML=itens.length?[
+        ...(aguardValidacao.length?[`<div style="font-size:11px;font-weight:700;color:#0369A1;text-transform:uppercase;letter-spacing:.5px;margin:0 0 8px;padding:4px 0;border-bottom:1px solid #E0F2FE">✓ Respostas do setor para validar (${aguardValidacao.length})</div>`]:[]),
+        ...(aguardAprovPortal.length?[`<div style="font-size:11px;font-weight:700;color:#92400E;text-transform:uppercase;letter-spacing:.5px;margin:${aguardValidacao.length?'16px':0} 0 8px;padding:4px 0;border-bottom:1px solid #FEF3C7">⏳ Aguardando aprovação SAC — Portal do colaborador (${aguardAprovPortal.length})</div>`]:[]),
+        ...itens.map(x=>{
+          const jaSac=['APROVADA_SAC','REJEITADA_SAC','DEVOLVIDA_SAC','DEVOLVIDA_AJUSTE'].includes(x.STATUS);
+          const id=esc5(x.ID_MANIFESTACAO||x._pgId||'');
+          const isPortalPend=(x.ORIGEM||'').toUpperCase()==='PORTAL_FUNCIONARIO'&&['AGUARDANDO_APROVAÇÃO','AGUARDANDO_APROVACAO'].includes((x.STATUS||'').toUpperCase());
+          const isValidSAC=AGUARD_VALIDACAO_SAC_ST.includes((x.STATUS||'').toUpperCase());
+          const badge=isPortalPend?`<span style="font-size:10px;font-weight:700;color:#92400E;background:#FEF3C7;padding:1px 6px;border-radius:6px;margin-left:6px">Portal</span>`
+            :isValidSAC?`<span style="font-size:10px;font-weight:700;color:#0369A1;background:#E0F2FE;padding:1px 6px;border-radius:6px;margin-left:6px">Setor respondeu</span>`:'';
+          const st=getStatusInfo(x.STATUS);
+          return `<div class="portal-row" style="${isValidSAC?'border-left:3px solid #0369A1;':''}${isPortalPend?'border-left:3px solid #D97706;':''}"><div class="portal-row-main">
+            <div class="portal-row-title">${esc5(x.ID_MANIFESTACAO||'—')}${badge} <span style="font-size:12px;font-weight:400;color:#545252">${esc5(x.TIPO||'')}</span></div>
+            <div class="portal-row-sub">${esc5(x.EMPRESA_RECLAMADA||'')} ${x.SETOR_SUGERIDO?'· '+esc5(x.SETOR_SUGERIDO):''}</div>
+            ${x.DESCRICAO?`<div style="font-size:12px;color:#545252;margin-top:3px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${esc5(x.DESCRICAO)}</div>`:''}
+            <div style="font-size:11px;margin-top:4px"><span style="display:inline-block;padding:2px 8px;border-radius:8px;font-weight:600;background:${st.bg};color:${st.color}">${st.label}</span> <span style="color:var(--gray-400)">· Aberta ${fmt5(x.DATA_ABERTURA)}</span></div>
+          </div><div class="portal-actions" style="flex-direction:column;gap:6px;align-items:flex-end">
+            ${jaSac?`<span style="font-size:12px;font-weight:700;color:${stCor[x.STATUS]||'#374151'}">${esc5(x.STATUS)}</span>`:`<button class="btn btn-primary" style="font-size:12px;padding:5px 12px;white-space:nowrap" onclick="abrirDecisaoSac('${id}','${esc5(x.ID_MANIFESTACAO||id)}')">Decidir →</button>`}
+          </div></div>`;
+        })
+      ].join(''):'<div style="padding:16px;color:var(--gray-400);font-size:12px">Nenhuma manifestação aberta encontrada.</div>';
     }catch(e){if(lista)lista.innerHTML=`<div style="padding:16px;color:#C70602;font-size:12px">${esc5(e.message)}</div>`;}
   }
 
@@ -14607,7 +14634,8 @@ window.navigate = function(page, el) {
     document.getElementById('decisao-aprov-title').textContent=idEntidade;
     document.getElementById('decisao-aprov-sub').innerHTML='';
     document.getElementById('decisao-fila-ref').textContent=idFila;
-    document.getElementById('decisao-preview-resumo').style.borderLeftColor=accent;
+    const _prevRes=document.getElementById('decisao-preview-resumo');
+    if(_prevRes) _prevRes.style.borderLeftColor=accent;
     document.getElementById('decisao-obs').value='';
     // Reset decision selection state
     _decLocalSelecionada='';
@@ -14618,7 +14646,7 @@ window.navigate = function(page, el) {
     // Reset preview content
     document.getElementById('decisao-previa-campos').innerHTML='<div style="color:#929090;font-size:13px">Carregando…</div>';
     document.getElementById('decisao-previa-descricao').style.display='none';
-    document.getElementById('decisao-preview-resumo').textContent='';
+    if(_prevRes) _prevRes.textContent='';
     document.getElementById('decisao-historico').innerHTML='<div style="color:#B0B0B0;font-size:11.5px">Carregando…</div>';
     // Reset campos IA
     const _rIA=(id,v='—')=>{ const el=document.getElementById(id); if(el) el.textContent=v; };
@@ -14645,7 +14673,7 @@ window.navigate = function(page, el) {
           if(m.RESPONSAVEL||m.USUARIO_CRIACAO) campos.push({l:'Responsável',v:m.RESPONSAVEL||m.USUARIO_CRIACAO});
           const desc=m.DESCRICAO||m.RELATO||m.DESCRICAO_OCORRENCIA||'';
           document.getElementById('decisao-aprov-sub').textContent=(m.EMPRESA_RECLAMANTE||m.EMPRESA||'')+' · '+(m.SETOR_CONFIRMADO||m.SETOR_SUGERIDO||'');
-          document.getElementById('decisao-preview-resumo').textContent=desc.slice(0,200)+(desc.length>200?'…':'');
+          const _prv=document.getElementById('decisao-preview-resumo');if(_prv)_prv.textContent=desc.slice(0,200)+(desc.length>200?'…':'');
           if(desc){document.getElementById('decisao-previa-descricao').style.display='block';document.getElementById('decisao-previa-desc-txt').textContent=desc;}
         } else {
           if(m.EMPRESA) campos.push({l:'Empresa',v:m.EMPRESA});
@@ -14654,7 +14682,7 @@ window.navigate = function(page, el) {
           if(m.DATA_ABERTURA) campos.push({l:'Abertura',v:m.DATA_ABERTURA});
           document.getElementById('decisao-aprov-sub').textContent=(m.EMPRESA||'')+' · '+(m.SETOR||m.COMPETENCIA||'');
           const desc=m.DESCRICAO||m.RELATO||'';
-          document.getElementById('decisao-preview-resumo').textContent=desc.slice(0,200)+(desc.length>200?'…':'');
+          const _prv=document.getElementById('decisao-preview-resumo');if(_prv)_prv.textContent=desc.slice(0,200)+(desc.length>200?'…':'');
           if(desc){document.getElementById('decisao-previa-descricao').style.display='block';document.getElementById('decisao-previa-desc-txt').textContent=desc;}
         }
         if(campos.length){
@@ -15071,7 +15099,34 @@ window.navigate = function(page, el) {
 
   // ===== SETOR RESPONSÁVEL =====
   async function loadSetorV5(){
-    try{const d=await json5('/api/setor/minhas-pendencias');const a=d.itens||[];document.getElementById('setor-pendentes').textContent=a.length;document.getElementById('setor-em-acao').textContent=a.filter(x=>String(x.STATUS_ACAO||x.STATUS_TRATATIVA||'').toUpperCase().includes('ANDAMENTO')).length;document.getElementById('setor-eficacia').textContent=a.filter(x=>String(x.STATUS||'').toUpperCase().includes('EFIC')).length;document.getElementById('setor-concluidas').textContent=a.filter(x=>['CONCLUÍDA','CONCLUIDA','APROVADA'].includes(String(x.STATUS||'').toUpperCase())).length;document.getElementById('setor-fila').innerHTML=a.map(x=>`<div class="portal-row"><div class="portal-row-main"><div class="portal-row-title">${esc5(x.ID_RNC||x.ID_MANIFESTACAO)} · ${esc5(x.PRODUTO||x.NAO_CONFORMIDADE||'Caso')}</div><div class="portal-row-sub">${esc5(x.CLIENTE||x.EMPRESA||'')} · prazo ${esc5(x.PRAZO_ACAO||x.PRAZO||'—')}</div></div><button class="btn btn-primary" onclick="editarRncSetorV5('${esc5(x.ID_RNC)}')">Abrir tratativa</button></div>`).join('')||'<div style="padding:20px;text-align:center;color:var(--gray-400)">Nenhuma tratativa pendente.</div>'}catch(e){document.getElementById('setor-fila').innerHTML=`<div class="alert-box">${esc5(e.message)}</div>`}
+    try{
+      const d=await json5('/api/setor/minhas-pendencias');
+      const a=d.itens||[];
+      const mans=a.filter(x=>x._tipo==='MANIFESTACAO');
+      const rncs=a.filter(x=>x._tipo!=='MANIFESTACAO');
+      document.getElementById('setor-pendentes').textContent=a.length;
+      document.getElementById('setor-em-acao').textContent=mans.filter(x=>(x.STATUS||'').toUpperCase().includes('AGUARDANDO_SETOR')).length;
+      document.getElementById('setor-eficacia').textContent=mans.filter(x=>(x.STATUS||'').toUpperCase().includes('VALIDACAO')).length;
+      document.getElementById('setor-concluidas').textContent=rncs.filter(x=>['CONCLUÍDA','CONCLUIDA','APROVADA'].includes(String(x.STATUS||'').toUpperCase())).length;
+      const rowMan=x=>{
+        const st=getStatusInfo(x.STATUS);
+        const jaRespondeu=(x.STATUS||'').toUpperCase().includes('VALIDACAO');
+        return `<div class="portal-row"><div class="portal-row-main">
+          <div class="portal-row-title">${esc5(x.ID_MANIFESTACAO)} · ${esc5(x.TIPO||x.TIPO_SUGERIDO||'Manifestação')}</div>
+          <div class="portal-row-sub">${esc5(x.EMPRESA_RECLAMADA||'')} · Setor: ${esc5(x.SETOR_CONFIRMADO||x.SETOR_SUGERIDO||'—')}</div>
+          ${x.DESCRICAO?`<div style="font-size:12px;color:#545252;margin-top:3px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${esc5(x.DESCRICAO)}</div>`:''}
+          <div style="font-size:11px;margin-top:4px"><span style="display:inline-block;padding:2px 8px;border-radius:8px;font-weight:600;background:${st.bg};color:${st.color}">${st.label}</span></div>
+        </div><div class="portal-actions" style="flex-direction:column;gap:6px;align-items:flex-end">
+          ${jaRespondeu
+            ? `<span style="font-size:12px;color:#0369A1;font-weight:600">✓ Resposta enviada</span>`
+            : `<button class="btn btn-primary" style="font-size:12px;padding:5px 12px;white-space:nowrap" onclick="abrirDossieAprovador('${esc5(x.ID_MANIFESTACAO)}')">Responder →</button>`}
+        </div></div>`;
+      };
+      const rowRnc=x=>`<div class="portal-row"><div class="portal-row-main"><div class="portal-row-title">${esc5(x.ID_RNC||x.ID_MANIFESTACAO)} · ${esc5(x.PRODUTO||x.NAO_CONFORMIDADE||'RNC')}</div><div class="portal-row-sub">${esc5(x.CLIENTE||x.EMPRESA||'')} · prazo ${esc5(x.PRAZO_ACAO||x.PRAZO||'—')}</div></div><button class="btn btn-secondary" style="font-size:12px;padding:5px 12px" onclick="editarRncSetorV5('${esc5(x.ID_RNC)}')">Abrir RNC</button></div>`;
+      const html=(mans.length?`<div style="font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:.5px;margin:0 0 8px">Manifestações (${mans.length})</div>`+mans.map(rowMan).join(''):'')
+        +(rncs.length?`<div style="font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:.5px;margin:${mans.length?'16px':0} 0 8px">RNCs (${rncs.length})</div>`+rncs.map(rowRnc).join(''):'');
+      document.getElementById('setor-fila').innerHTML=html||'<div style="padding:20px;text-align:center;color:var(--gray-400)">Nenhuma tratativa pendente.</div>';
+    }catch(e){document.getElementById('setor-fila').innerHTML=`<div class="alert-box">${esc5(e.message)}</div>`}
   }
   window.loadSetorV5=loadSetorV5;
   window.editarRncSetorV5=async function(id){try{const d=await json5('/api/rnc/'+encodeURIComponent(id));const r=d.rnc;const causa=prompt('Análise de causa / causa validada:',r.CAUSA||'');if(causa===null)return;const acao=prompt('Ação corretiva RNC:',r.ACAO_CORRETIVA||'');if(acao===null)return;await json5('/api/rnc/'+encodeURIComponent(id)+'/execucao',{method:'PATCH',body:JSON.stringify({CAUSA:causa,acaoCorretiva:acao,STATUS_ACAO:'EM ANDAMENTO'})});alert('RNC atualizada.');loadSetorV5()}catch(e){alert(e.message)}};

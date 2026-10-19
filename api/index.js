@@ -1674,7 +1674,9 @@ app.post('/api/representantes/manifestacoes', requerPerfil('RCA / REPRESENTANTE'
   try{
     const b=req.body||{};
     if(!b.clienteId||!b.descricao) return res.status(400).json({sucesso:false,erro:'Cliente e descrição são obrigatórios.'});
-    const id=await gerarProximoID('MANIFESTACOES','MAN','ID_MANIFESTACAO');
+    const _pfxRca = empresaCanonica(b.empresaReclamada||req.user.empresa||'');
+    const _idPfxRca = _pfxRca === 'PLASCHIO' ? 'PLAS' : _pfxRca === 'TUBAHIA' ? 'TUB' : 'CHI';
+    const id=await gerarProximoID('MANIFESTACOES',_idPfxRca,'ID_MANIFESTACAO');
     const agora=new Date().toISOString();
     const objeto={ID_MANIFESTACAO:id,DATA_ABERTURA:agora,DATA_REGISTRO:agora,EMPRESA_RECLAMANTE:b.empresa||req.user.empresa||'',CONTATO:b.contato||'',PRODUTO:b.produto||'',LOTE:b.lote||'',NFE:b.nfe||'',DESCRICAO:b.descricao,DESCRICAO_MANIFESTACAO:b.descricao,STATUS:'RECEBIDA',TIPO:'Reclamação',CANAL:'RCA',CNPJ:b.cnpj||'',TELEFONE:b.telefone||'',EMAIL:b.email||'',QUANTIDADE:b.quantidade||'',EMPRESA_RECLAMADA:b.empresaReclamada||'',AREA_RECLAMACAO:b.areaReclamacao||'',EVIDENCIA_NC:b.evidenciaNC||'NÃO SEI',CODIGO_RCA:req.user.codigoRCA||'',USUARIO_CRIACAO:req.user.usuario,ORIGEM:'REPRESENTANTE',STATUS_TRATATIVA:'NÃO INICIADA'};
     await appendObjeto('MANIFESTACOES',objeto);
@@ -1703,7 +1705,7 @@ app.get('/api/manifestacoes', requerPermissao('manifestacoes.visualizar'), middl
       try {
         const filtros = {};
         // B2: empresa vem do usuário autenticado, não do frontend
-        const _isMasterMf = req.user && perfilCanonico(req.user.perfil) === 'MASTER';
+        const _isMasterMf = req.user && ['MASTER','APROVADOR MASTER'].includes(perfilCanonico(req.user.perfil));
         if (_isMasterMf && req.query.empresaId) filtros.empresaId = req.query.empresaId;
         else if (!_isMasterMf && req.user?.empresa) filtros.empresaId = await resolverEmpresaIdScope(req.user.empresa);
         if (req.query.status) filtros.status = req.query.status;
@@ -1808,7 +1810,9 @@ app.post('/api/manifestacoes', requerPermissao('manifestacoes.abrir'), async (re
     // Não bloqueia na criação de colunas — a aba já existe em produção
     // RNC_SINALIZADO: campo novo para indicar que o caso merece revisão de RNC (B6)
     garantirAbaComCabecalhos('MANIFESTACOES',['ID_MANIFESTACAO','DATA_ABERTURA','DATA_REGISTRO','EMPRESA_RECLAMANTE','CONTATO','PRODUTO','LOTE','NFE','DESCRICAO','DESCRICAO_MANIFESTACAO','STATUS','TIPO','TIPO_SUGERIDO','SETOR_SUGERIDO','SETORES_SUGERIDOS','PROCEDIMENTO_SUGERIDO','SLA_HORAS','PRIORIDADE','RNC_SUGERIDO','RNC_SINALIZADO','EMPRESA_RECLAMADA','CANAL','CNPJ','TELEFONE','EMAIL','QUANTIDADE','VALOR','TRATATIVA_SUGERIDA','TRATATIVA_APLICAVEL','TRATATIVA_REALIZADA','STATUS_TRATATIVA','DEVOLUTIVA_SUGERIDA','DEVOLUTIVA_FINAL','DEVOLUTIVA_ENVIADA','ORIGEM_DOCUMENTO','ARQUIVO_ORIGEM','USUARIO_CRIACAO','ORIGEM','TIPO_CONFIRMADO','SETORES_CONFIRMADOS','ID_PROCEDIMENTO_APLICADO','GERA_RNC','DATA_INICIO_TRATATIVA','DATA_CONCLUSAO_TRATATIVA','DATA_DEVOLUTIVA','DATA_CONCLUSAO_MANIFESTACAO','STATUS_FICHA','PROCEDENTE','PROCEDENTE_JUSTIFICATIVA','CAMINHO_TRATATIVA','DATA_ENCAMINHAMENTO','PRAZO_RETORNO_SAC','TRATATIVA_SAC_INTERNA','RESP_SETOR_O_QUE','RESP_SETOR_CAUSA','RESP_SETOR_RESOLUCAO','RESP_SETOR_ACAO_PREV','RESP_SETOR_RESPONSAVEL','RESP_SETOR_PRAZO','DATA_RESPOSTA_SETOR','APROV_SETOR_DECISAO','APROV_SETOR_MOTIVO','APROV_SETOR_ORIENTACAO','VALID_SAC_DATA_RETORNO','VALID_SAC_CLIENTE_INFORMADO','VALID_SAC_RESOLVIDA','OBSERVACOES_FINAIS','DATA_VALIDACAO_SAC']).catch(()=>{});
-    const id = await gerarProximoID('MANIFESTACOES','MAN','ID_MANIFESTACAO');
+    const _pfxEmp = empresaCanonica(empresaReclamada||'');
+    const _pfx = _pfxEmp === 'PLASCHIO' ? 'PLAS' : _pfxEmp === 'TUBAHIA' ? 'TUB' : 'CHI';
+    const id = await gerarProximoID('MANIFESTACOES', _pfx, 'ID_MANIFESTACAO');
     const agora = new Date().toISOString();
     const tipoFinal = tipo || 'Reclamação';
     const objeto = {
@@ -1933,7 +1937,8 @@ app.patch('/api/manifestacoes/:id/ficha', requerPermissao('manifestacoes.editar'
         RESP_SETOR_RESPONSAVEL: req.body.respSetorResponsavel || '',
         RESP_SETOR_PRAZO: req.body.respSetorPrazo || '',
         DATA_RESPOSTA_SETOR: agora,
-        STATUS_FICHA: 'EM_ANDAMENTO',
+        STATUS_FICHA: 'AGUARDANDO_VALIDACAO_SAC',
+        STATUS: 'AGUARDANDO_VALIDACAO_SAC',
       };
     } else if (acao === 'aprovacao_setor') {
       const decisao = req.body.aprovDecisao;
@@ -1955,17 +1960,52 @@ app.patch('/api/manifestacoes/:id/ficha', requerPermissao('manifestacoes.editar'
         DATA_CONCLUSAO_MANIFESTACAO: agora,
       };
     } else if (acao === 'encaminhar_aprovacao') {
+      const setorConf = req.body.SETOR_CONFIRMADO || item.SETOR_SUGERIDO || '';
+      const tipoConf  = req.body.TIPO_CONFIRMADO  || item.TIPO_SUGERIDO  || '';
       dados = {
+        STATUS: 'AGUARDANDO_APROVAÇÃO',
         STATUS_FICHA: 'AGUARDANDO_APROVACAO',
-        TRATATIVA_SAC_INTERNA: req.body.tratativaSACInterna || item.TRATATIVA_SAC_INTERNA || '',
+        TRATATIVA_SAC_INTERNA: req.body.tratativaSACInterna || req.body.obs || item.TRATATIVA_SAC_INTERNA || '',
+        SETOR_CONFIRMADO: setorConf,
+        TIPO_CONFIRMADO: tipoConf,
         DATA_ENCAMINHAMENTO: agora,
         ENCAMINHADO_POR: req.user?.usuario || '',
       };
+      // Inserir na FILA_APROVACAO para aprovadores verem
+      try {
+        garantirAbaComCabecalhos('FILA_APROVACAO', FILA_APROV_HEADERS).catch(()=>{});
+        const filaExist = await lerAba('FILA_APROVACAO',2000).catch(()=>[]);
+        const jaPendente = filaExist.find(x => String(x.ID_ENTIDADE||'') === String(id) && x.STATUS === 'PENDENTE');
+        if (!jaPendente) {
+          // Busca aprovador pelo setor nas tabelas
+          const [aprovadores, rel] = await Promise.all([
+            lerAba('APROVADORES',500).catch(()=>[]),
+            lerAba('APROVADOR_COMPETENCIAS',2000).catch(()=>[]),
+          ]);
+          const setorN = normalizarTexto(setorConf);
+          const relSetor = rel.find(r => normalizarTexto(r.SETOR||r.COMPETENCIA||'') === setorN && normalizarTexto(r.STATUS||'ATIVO') !== 'inativo');
+          const aprov = relSetor ? aprovadores.find(a => String(a.ID_APROVADOR||a.USUARIO||'') === String(relSetor.ID_APROVADOR||'')) : null;
+          const filaId = await gerarProximoID('FILA_APROVACAO','FAP','ID_FILA');
+          await appendObjeto('FILA_APROVACAO', {
+            ID_FILA: filaId, ID_ENTIDADE: id, TIPO_ENTIDADE: 'SAC',
+            DESCRICAO: item.DESCRICAO || item.DESCRICAO_MANIFESTACAO || '',
+            EMPRESA: item.EMPRESA_RECLAMADA || '',
+            SETOR: setorConf, COMPETENCIA: setorConf,
+            STATUS: 'PENDENTE',
+            ID_APROVADOR: aprov?.ID_APROVADOR || aprov?.USUARIO || '',
+            NOME_APROVADOR: aprov?.NOME || aprov?.ID_APROVADOR || '',
+            DATA_ENVIO: agora, DATA_DECISAO: '',
+            OBSERVACOES: req.body.obs || '',
+            CRIADO_POR: req.user?.usuario || '',
+            ID_REGRA: '',
+          });
+        }
+      } catch(eF) { console.error('[FILA_APROVACAO insert]', eF.message); }
     } else if (acao === 'encaminhar_setor') {
       const setorDest = req.body.SETOR_CONFIRMADO || req.body.setor || '';
       if (!setorDest) return res.status(400).json({ sucesso:false, erro:'Setor de destino obrigatório.' });
       dados = {
-        STATUS: 'EM_ANDAMENTO',
+        STATUS: 'AGUARDANDO_SETOR',
         STATUS_FICHA: 'AGUARDANDO_SETOR',
         SETOR_CONFIRMADO: setorDest,
         SETOR_DESTINADO: setorDest,
@@ -2024,6 +2064,8 @@ app.patch('/api/manifestacoes/:id/ficha', requerPermissao('manifestacoes.editar'
 
 const STATUS_FICHA_LEGIVEL = {
   ABERTA: 'Aberta', EM_ANDAMENTO: 'Em andamento', AGUARDANDO_APROVACAO: 'Aguardando aprovação',
+  AGUARDANDO_SETOR: 'Aguardando setor', AGUARDANDO_VALIDACAO_SAC: 'Aguardando validação SAC',
+  AGUARDANDO_TRATATIVA: 'Aguardando tratativa',
   AGUARDANDO_DEVOLUTIVA: 'Aguardando devolutiva', TRATATIVA_SAC: 'Em tratativa SAC', FECHADA: 'Fechada',
 };
 const DECISAO_APROVACAO_VALIDAS = ['APROVAR', 'SEGUIR_TRATATIVA', 'DEVOLVER'];
@@ -5617,9 +5659,22 @@ app.get('/api/aprovadores/:usuario/pendencias', requerPerfil('APROVADOR','APROVA
 
 app.get('/api/setor/minhas-pendencias', requerPerfil('SETOR RESPONSÁVEL','MASTER'), async (req,res)=>{
   try{
-    const rows=await lerAba('BANCO_RNC',5000); const setor=normalizarTexto(req.user.setor);
-    const itens=rows.filter(r=>!['APROVADA','ENCERRADA','CANCELADA','REJEITADA'].includes(String(r.STATUS||'').toUpperCase())&&(!setor||normalizarTexto(r.SETOR||r.SETOR_ACAO)===setor));
-    res.json({sucesso:true,total:itens.length,itens});
+    const setor=normalizarTexto(req.user.setor||'');
+    const [rncs, mans] = await Promise.all([
+      lerAba('BANCO_RNC',5000).catch(()=>[]),
+      lerAba('MANIFESTACOES',5000).catch(()=>[]),
+    ]);
+    const rncsF = rncs.filter(r=>!['APROVADA','ENCERRADA','CANCELADA','REJEITADA'].includes(String(r.STATUS||'').toUpperCase())&&(!setor||normalizarTexto(r.SETOR||r.SETOR_ACAO)===setor)).map(r=>({...r,_tipo:'RNC'}));
+    const STATUSES_SETOR = ['AGUARDANDO_SETOR','AGUARDANDO SETOR','AGUARDANDO_VALIDACAO_SAC'];
+    const mansF = mans.filter(m=>{
+      const st = (m.STATUS||'').toUpperCase().replace(/\s+/g,'_');
+      if (!STATUSES_SETOR.includes(st) && !STATUSES_SETOR.includes((m.STATUS||'').toUpperCase())) return false;
+      if (!setor) return true;
+      const setorM = normalizarTexto(m.SETOR_DESTINADO||m.SETOR_CONFIRMADO||m.SETOR_SUGERIDO||'');
+      return setorM === setor;
+    }).map(m=>({...m,_tipo:'MANIFESTACAO'}));
+    const itens=[...rncsF,...mansF];
+    res.json({sucesso:true,total:itens.length,itens,totalRnc:rncsF.length,totalManifestacoes:mansF.length});
   }catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e),itens:[]});}
 });
 
