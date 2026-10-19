@@ -125,9 +125,11 @@ async function lerRelatoriosSac() {
 }
 
 // Escopo B2: resolve o nome/código de empresa do usuário → id numérico do Postgres.
-// Retorna -1 se não encontrar (findAll filtra por -1 → 0 linhas → cai no fallback Sheets, que aplica o próprio filtro de empresa).
+// Retorna undefined se empresa for global (MASTER/todas), -1 se não encontrar.
 async function resolverEmpresaIdScope(valor) {
   if (!empresaRepo || !valor) return undefined;
+  // Empresa que resolve para MASTER = acesso global → sem filtro de empresa no PG
+  if (empresaCanonica(valor) === 'MASTER') return undefined;
   try {
     const byCod = await empresaRepo.findByCodigo(String(valor)).catch(() => null);
     if (byCod) return byCod.id;
@@ -503,7 +505,7 @@ const _PERM_PADRAO_API = {
   'MASTER':             ['manifestacoes.visualizar','manifestacoes.abrir','manifestacoes.editar','manifestacoes.gerenciar','manifestacoes.aprovar','manifestacoes.excluir','cerebro.visualizar','cerebro.adicionar_conteudo','cerebro.editar_conteudo','cerebro.adicionar_regras','cerebro.adicionar_politicas','cerebro.editar_faq','cerebro.gerenciar','rca.visualizar','rca.criar','rca.editar','rca.gerenciar','pesquisas.visualizar','pesquisas.criar','pesquisas.editar','pesquisas.gerenciar','dashboard.visualizar','dashboard.gerenciar','configuracoes.visualizar','configuracoes.editar','configuracoes.gerenciar','usuarios.visualizar','usuarios.criar','usuarios.editar','usuarios.gerenciar','aprovacoes.visualizar','aprovacoes.aprovar','aprovacoes.rejeitar'],
   'ADMINISTRADOR':      ['manifestacoes.visualizar','manifestacoes.abrir','manifestacoes.editar','manifestacoes.gerenciar','cerebro.visualizar','cerebro.gerenciar','rca.visualizar','rca.gerenciar','pesquisas.visualizar','pesquisas.gerenciar','dashboard.visualizar','dashboard.gerenciar','configuracoes.visualizar','configuracoes.editar','configuracoes.gerenciar','usuarios.visualizar','usuarios.criar','usuarios.editar','usuarios.gerenciar','aprovacoes.visualizar','aprovacoes.aprovar','aprovacoes.rejeitar'],
   'GESTOR SAC':         ['manifestacoes.visualizar','manifestacoes.editar','manifestacoes.gerenciar','manifestacoes.aprovar','cerebro.visualizar','cerebro.gerenciar','rca.visualizar','pesquisas.visualizar','pesquisas.gerenciar','dashboard.visualizar','dashboard.gerenciar','configuracoes.visualizar','configuracoes.editar','aprovacoes.visualizar','aprovacoes.aprovar','aprovacoes.rejeitar'],
-  'ANALISTA SAC':       ['manifestacoes.visualizar','manifestacoes.abrir','manifestacoes.editar','cerebro.visualizar','cerebro.adicionar_conteudo','cerebro.editar_conteudo','cerebro.adicionar_regras','cerebro.adicionar_politicas','cerebro.editar_faq','pesquisas.visualizar','pesquisas.criar','dashboard.visualizar','aprovacoes.visualizar'],
+  'ANALISTA SAC':       ['manifestacoes.visualizar','manifestacoes.abrir','manifestacoes.editar','cerebro.visualizar','cerebro.adicionar_conteudo','cerebro.editar_conteudo','cerebro.adicionar_regras','cerebro.adicionar_politicas','cerebro.editar_faq','pesquisas.visualizar','pesquisas.criar','dashboard.visualizar','aprovacoes.visualizar','aprovacoes.aprovar','aprovacoes.rejeitar','aprovacoes.devolver'],
   'APROVADOR':          ['manifestacoes.visualizar','aprovacoes.visualizar','aprovacoes.aprovar','aprovacoes.rejeitar','pesquisas.visualizar'],
   'APROVADOR MASTER':   ['manifestacoes.visualizar','aprovacoes.visualizar','aprovacoes.aprovar','aprovacoes.rejeitar','pesquisas.visualizar','dashboard.visualizar'],
   'ATENDENTE SAC':      ['manifestacoes.visualizar','manifestacoes.abrir','cerebro.visualizar','dashboard.visualizar'],
@@ -6243,8 +6245,8 @@ app.post('/api/fila-aprovacao', requerPermissao('aprovacoes.aprovar'), async (re
   } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
 
-// Decidir sobre item na fila (APROVADOR, MASTER)
-app.post('/api/fila-aprovacao/:id/decidir', requerPerfil('APROVADOR','APROVADOR MASTER','MASTER'), async (req,res)=>{
+// Decidir sobre item na fila (APROVADOR, ANALISTA SAC, MASTER)
+app.post('/api/fila-aprovacao/:id/decidir', requerPermissao('aprovacoes.aprovar'), async (req,res)=>{
   try {
     garantirAbaComCabecalhos('HISTORICO_APROVACAO', HIST_APROV_HEADERS).catch(()=>{});
     const {decisao, observacoes} = req.body||{};
@@ -6280,8 +6282,25 @@ app.post('/api/fila-aprovacao/:id/decidir', requerPerfil('APROVADOR','APROVADOR 
   } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
 
+// Decisão SAC direta em manifestação (ANALISTA SAC, GESTOR SAC, MASTER)
+app.post('/api/manifestacoes/:id/decisao-sac', requerPermissao('aprovacoes.aprovar'), middlewareEscopoEmpresa(), async (req,res)=>{
+  try {
+    const {decisao, observacoes} = req.body||{};
+    const decisoesValidas = ['APROVADO','REJEITADO','DEVOLVIDO'];
+    if(!decisoesValidas.includes(decisao)) return res.status(400).json({sucesso:false,erro:'Decisão inválida. Use APROVADO, REJEITADO ou DEVOLVIDO.'});
+    if(decisao!=='APROVADO' && !(observacoes||'').trim()) return res.status(400).json({sucesso:false,erro:'Observações obrigatórias para rejeitar ou devolver.'});
+    const now = new Date().toISOString();
+    const novoStatus = decisao==='APROVADO'?'APROVADA_SAC':decisao==='REJEITADO'?'REJEITADA_SAC':'DEVOLVIDA_AJUSTE';
+    await atualizarPorID('MANIFESTACOES',req.params.id,{STATUS:novoStatus,SAC_APROVADOR:req.user.nome||req.user.usuario,DATA_DECISAO_SAC:now,OBS_SAC:observacoes||''},['ID_MANIFESTACAO']).catch(()=>{});
+    const histId = await gerarProximoID('HISTORICO_APROVACAO','HAP','ID_HISTORICO');
+    await appendObjeto('HISTORICO_APROVACAO',{ID_HISTORICO:histId,ID_FILA:'SAC-'+req.params.id,ID_ENTIDADE:req.params.id,TIPO_ENTIDADE:'SAC',DECISAO:decisao,OBSERVACOES:observacoes||'',APROVADOR:req.user.nome||req.user.usuario,DATA_DECISAO:now,DETALHES:JSON.stringify({fonte:'decisao_sac',perfil:req.user.perfil})}).catch(()=>{});
+    await registrarAuditoria(req.user.usuario,`SAC_${decisao}`,req.params.id,'MANIFESTACOES','',JSON.stringify({decisao,observacoes}));
+    res.json({sucesso:true,decisao,entidade:req.params.id,novoStatus});
+  } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
+});
+
 // Histórico de aprovações
-app.get('/api/historico-aprovacao', requerPerfil('MASTER','APROVADOR'), middlewareEscopoEmpresa(), async (req,res)=>{
+app.get('/api/historico-aprovacao', requerPerfil('MASTER','APROVADOR','ANALISTA SAC','GESTOR SAC'), middlewareEscopoEmpresa(), async (req,res)=>{
   try {
     const hist = await lerAba('HISTORICO_APROVACAO',2000).catch(()=>[]);
     let itens = hist;

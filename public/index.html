@@ -3583,32 +3583,50 @@
         <div id="aprtab-panel-fila-sac" style="display:none">
           <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:20px">
             <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px">
-              <div style="font-size:12px;color:#666464">Enviados</div>
+              <div style="font-size:12px;color:#666464">Total abertas</div>
               <div style="font-size:24px;font-weight:700;margin-top:2px" id="sac-fila-total">--</div>
-              <div style="font-size:11.5px;color:#707070">para aprovação</div>
+              <div style="font-size:11.5px;color:#707070">manifestações</div>
             </div>
             <div style="background:#fff;border:2px solid #C70602;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px">
-              <div style="font-size:12px;color:#666464">Pendentes</div>
+              <div style="font-size:12px;color:#666464">Aguardando SAC</div>
               <div style="font-size:24px;font-weight:700;margin-top:2px;color:#C70602" id="sac-fila-pendentes">--</div>
-              <div style="font-size:11.5px;color:#707070">aguardando decisão</div>
+              <div style="font-size:11.5px;color:#707070">sem decisão SAC</div>
             </div>
             <div style="background:#fff;border:1px solid #059669;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px">
-              <div style="font-size:12px;color:#666464">Aprovados</div>
+              <div style="font-size:12px;color:#666464">Aprovadas SAC</div>
               <div style="font-size:24px;font-weight:700;margin-top:2px;color:#059669" id="sac-fila-aprov">--</div>
               <div style="font-size:11.5px;color:#707070">este mês</div>
             </div>
             <div style="background:#fff;border:1px solid #DC2626;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px">
-              <div style="font-size:12px;color:#666464">Rejeitados</div>
+              <div style="font-size:12px;color:#666464">Rejeitadas SAC</div>
               <div style="font-size:24px;font-weight:700;margin-top:2px;color:#DC2626" id="sac-fila-rej">--</div>
               <div style="font-size:11.5px;color:#707070">este mês</div>
             </div>
           </div>
           <div style="background:#fff;border:1px solid #E4E4E4;border-radius:12px;overflow:hidden">
             <div style="padding:14px 18px;border-bottom:1px solid #F0F0F0;display:flex;justify-content:space-between;align-items:center">
-              <div style="font-size:12px;font-weight:700;letter-spacing:.06em;color:#707070;text-transform:uppercase">Itens Enviados para Aprovação</div>
-              <button class="btn btn-primary" onclick="abrirModalEnviarAprovacao()" style="font-size:12px;padding:6px 14px">+ Enviar para aprovação</button>
+              <div style="font-size:12px;font-weight:700;letter-spacing:.06em;color:#707070;text-transform:uppercase">Manifestações aguardando aprovação SAC</div>
+              <button class="btn btn-secondary" onclick="carregarFilaSac()" style="font-size:12px;padding:6px 14px">↻ Atualizar</button>
             </div>
             <div style="padding:14px 18px" id="sac-fila-lista"></div>
+          </div>
+        </div>
+
+        <!-- Modal decisão SAC -->
+        <div id="modal-decisao-sac" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;align-items:center;justify-content:center">
+          <div style="background:#fff;border-radius:14px;padding:28px 28px 24px;max-width:480px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,.18)">
+            <h3 style="margin:0 0 4px;font-size:16px;font-weight:800">Decisão SAC</h3>
+            <div id="modal-sac-protocolo" style="font-size:13px;color:#545252;margin-bottom:16px"></div>
+            <div style="display:flex;gap:8px;margin-bottom:14px">
+              <button id="sac-btn-aprovar" onclick="setSacDecisao('APROVADO')" style="flex:1;padding:9px;border-radius:8px;border:2px solid #E4E4E4;background:#fff;cursor:pointer;font-weight:600;font-size:13px;font-family:inherit">✓ Aprovar</button>
+              <button id="sac-btn-devolver" onclick="setSacDecisao('DEVOLVIDO')" style="flex:1;padding:9px;border-radius:8px;border:2px solid #E4E4E4;background:#fff;cursor:pointer;font-weight:600;font-size:13px;font-family:inherit">↩ Devolver</button>
+              <button id="sac-btn-rejeitar" onclick="setSacDecisao('REJEITADO')" style="flex:1;padding:9px;border-radius:8px;border:2px solid #E4E4E4;background:#fff;cursor:pointer;font-weight:600;font-size:13px;font-family:inherit">✕ Rejeitar</button>
+            </div>
+            <textarea id="sac-obs" rows="3" placeholder="Observações / justificativa..." style="width:100%;box-sizing:border-box;border:1px solid #D6D6D6;border-radius:8px;padding:10px;font-size:13px;font-family:inherit;resize:vertical"></textarea>
+            <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:14px">
+              <button onclick="document.getElementById('modal-decisao-sac').style.display='none'" style="border:1px solid #D6D6D6;background:#fff;border-radius:8px;padding:8px 18px;cursor:pointer;font-size:13px;font-family:inherit">Cancelar</button>
+              <button id="sac-confirmar-btn" onclick="confirmarDecisaoSac()" class="btn btn-primary" style="padding:8px 20px">Confirmar</button>
+            </div>
           </div>
         </div>
 
@@ -14060,7 +14078,7 @@ window.navigate = function(page, el) {
     'MASTER':             ['manifestacoes.visualizar','manifestacoes.abrir','manifestacoes.editar','manifestacoes.gerenciar','manifestacoes.aprovar','cerebro.visualizar','cerebro.adicionar_conteudo','cerebro.editar_conteudo','cerebro.adicionar_regras','cerebro.adicionar_politicas','cerebro.editar_faq','cerebro.gerenciar','rca.visualizar','rca.criar','rca.editar','rca.gerenciar','pesquisas.visualizar','pesquisas.criar','pesquisas.editar','pesquisas.gerenciar','dashboard.visualizar','dashboard.gerenciar','configuracoes.visualizar','configuracoes.editar','configuracoes.gerenciar','usuarios.visualizar','usuarios.criar','usuarios.editar','usuarios.gerenciar','aprovacoes.visualizar','aprovacoes.aprovar','aprovacoes.rejeitar'],
     'ADMINISTRADOR':      ['manifestacoes.visualizar','manifestacoes.abrir','manifestacoes.editar','manifestacoes.gerenciar','cerebro.visualizar','cerebro.gerenciar','rca.visualizar','rca.gerenciar','pesquisas.visualizar','pesquisas.gerenciar','dashboard.visualizar','dashboard.gerenciar','configuracoes.visualizar','configuracoes.editar','configuracoes.gerenciar','usuarios.visualizar','usuarios.criar','usuarios.editar','usuarios.gerenciar','aprovacoes.visualizar','aprovacoes.aprovar','aprovacoes.rejeitar'],
     'GESTOR SAC':         ['manifestacoes.visualizar','manifestacoes.editar','manifestacoes.gerenciar','manifestacoes.aprovar','cerebro.visualizar','cerebro.gerenciar','rca.visualizar','pesquisas.visualizar','pesquisas.gerenciar','dashboard.visualizar','dashboard.gerenciar','configuracoes.visualizar','configuracoes.editar','aprovacoes.visualizar','aprovacoes.aprovar','aprovacoes.rejeitar'],
-    'ANALISTA SAC':       ['manifestacoes.visualizar','manifestacoes.abrir','manifestacoes.editar','cerebro.visualizar','cerebro.adicionar_conteudo','cerebro.editar_conteudo','cerebro.adicionar_regras','cerebro.adicionar_politicas','cerebro.editar_faq','pesquisas.visualizar','pesquisas.criar','dashboard.visualizar','aprovacoes.visualizar'],
+    'ANALISTA SAC':       ['manifestacoes.visualizar','manifestacoes.abrir','manifestacoes.editar','cerebro.visualizar','cerebro.adicionar_conteudo','cerebro.editar_conteudo','cerebro.adicionar_regras','cerebro.adicionar_politicas','cerebro.editar_faq','pesquisas.visualizar','pesquisas.criar','dashboard.visualizar','aprovacoes.visualizar','aprovacoes.aprovar','aprovacoes.rejeitar','aprovacoes.devolver'],
     'APROVADOR':          ['manifestacoes.visualizar','aprovacoes.visualizar','aprovacoes.aprovar','aprovacoes.rejeitar','pesquisas.visualizar'],
     'ATENDENTE SAC':      ['manifestacoes.visualizar','manifestacoes.abrir','cerebro.visualizar','dashboard.visualizar'],
     'SETOR RESPONSÁVEL':  ['manifestacoes.visualizar','manifestacoes.editar'],
@@ -14444,26 +14462,66 @@ window.navigate = function(page, el) {
   };
 
   // ── TAB FILA SAC (ANALISTA SAC / MASTER) ──
-  async function carregarFilaSac(){
+  let _sacDecisaoId='', _sacDecisaoAtual='';
+  window.setSacDecisao=function(d){
+    _sacDecisaoAtual=d;
+    const cores={APROVADO:'#059669',DEVOLVIDO:'#7C3AED',REJEITADO:'#DC2626'};
+    ['aprovar','devolver','rejeitar'].forEach(k=>{
+      const dec={aprovar:'APROVADO',devolver:'DEVOLVIDO',rejeitar:'REJEITADO'}[k];
+      const btn=document.getElementById('sac-btn-'+k);
+      if(btn){btn.style.borderColor=d===dec?cores[dec]:'#E4E4E4';btn.style.color=d===dec?cores[dec]:'#1F1F1F';btn.style.background=d===dec?(dec==='APROVADO'?'#F0FDF4':dec==='REJEITADO'?'#FEF2F2':'#F5F3FF'):'#fff';}
+    });
+  };
+  window.abrirDecisaoSac=function(id,protocolo){
+    _sacDecisaoId=id; _sacDecisaoAtual='';
+    document.getElementById('modal-sac-protocolo').textContent='Manifestação: '+protocolo;
+    document.getElementById('sac-obs').value='';
+    setSacDecisao('');
+    document.getElementById('modal-decisao-sac').style.display='flex';
+  };
+  window.confirmarDecisaoSac=async function(){
+    if(!_sacDecisaoAtual)return alert('Selecione uma decisão.');
+    const obs=document.getElementById('sac-obs').value.trim();
+    if(_sacDecisaoAtual!=='APROVADO'&&!obs)return alert('Informe a justificativa para '+_sacDecisaoAtual.toLowerCase()+'.');
+    const btn=document.getElementById('sac-confirmar-btn');
+    btn.disabled=true;btn.textContent='Salvando...';
     try{
-      const d=await json5('/api/fila-aprovacao');
-      const itens=d.itens||[];
-      const agora=new Date(); const mesAtual=agora.getMonth(); const anoAtual=agora.getFullYear();
-      const destesMes=x=>{const dt=new Date(x.DATA_DECISAO||''); return dt.getMonth()===mesAtual&&dt.getFullYear()===anoAtual;};
+      await json5('/api/manifestacoes/'+encodeURIComponent(_sacDecisaoId)+'/decisao-sac',{method:'POST',body:JSON.stringify({decisao:_sacDecisaoAtual,observacoes:obs})});
+      document.getElementById('modal-decisao-sac').style.display='none';
+      alert('Decisão registrada: '+_sacDecisaoAtual);
+      carregarFilaSac();
+    }catch(e){alert('Erro: '+e.message);}
+    finally{btn.disabled=false;btn.textContent='Confirmar';}
+  };
+  async function carregarFilaSac(){
+    const lista=document.getElementById('sac-fila-lista');
+    if(lista)lista.innerHTML='<div style="padding:16px;color:var(--gray-400);font-size:12px">Carregando...</div>';
+    try{
+      const d=await json5('/api/manifestacoes');
+      const todos=d.itens||[];
+      const statusEncerrado=['ENCERRADA','ARQUIVADA','CANCELADA','REJEITADA_SAC'];
+      const itens=todos.filter(x=>!statusEncerrado.includes((x.STATUS||'').toUpperCase()));
+      const agora=new Date(); const mes=agora.getMonth(); const ano=agora.getFullYear();
+      const destesMes=x=>{const dt=new Date(x.DATA_ABERTURA||x.DATA_DECISAO_SAC||''); return dt.getMonth()===mes&&dt.getFullYear()===ano;};
+      const semSac=itens.filter(x=>!x.STATUS||!['APROVADA_SAC','REJEITADA_SAC','DEVOLVIDA_AJUSTE'].includes(x.STATUS));
       document.getElementById('sac-fila-total').textContent=itens.length;
-      document.getElementById('sac-fila-pendentes').textContent=itens.filter(x=>x.STATUS==='PENDENTE').length;
-      document.getElementById('sac-fila-aprov').textContent=itens.filter(x=>x.STATUS==='APROVADO'&&destesMes(x)).length;
-      document.getElementById('sac-fila-rej').textContent=itens.filter(x=>x.STATUS==='REJEITADO'&&destesMes(x)).length;
-      const stCor={PENDENTE:'#D97706',APROVADO:'#059669',REJEITADO:'#DC2626',DEVOLVIDO:'#7C3AED',SOLICITANDO_INFORMACOES:'#2563EB'};
-      document.getElementById('sac-fila-lista').innerHTML=itens.length?itens.map(x=>`<div class="portal-row"><div class="portal-row-main">
-        <div class="portal-row-title">[${esc5(x.TIPO_ENTIDADE)}] ${esc5(x.ID_ENTIDADE)}</div>
-        <div class="portal-row-sub">${esc5(x.EMPRESA||'')} ${x.SETOR?'· '+esc5(x.SETOR):''} · competência: ${esc5(x.COMPETENCIA||'—')} · aprovador: ${esc5(x.NOME_APROVADOR||'—')}</div>
-        ${x.OBSERVACOES?`<div style="font-size:12px;color:var(--gray-500);margin-top:2px">Obs: ${esc5(x.OBSERVACOES)}</div>`:''}
-        <div style="font-size:11px;color:var(--gray-400);margin-top:2px">Enviado ${fmt5(x.DATA_ENVIO)} ${x.DATA_DECISAO?'· Decisão '+fmt5(x.DATA_DECISAO):''}</div>
-      </div><div class="portal-actions">
-        <span style="font-size:12px;font-weight:700;color:${stCor[x.STATUS]||'#374151'}">${esc5(x.STATUS)}</span>
-      </div></div>`).join(''):'<div style="padding:16px;color:var(--gray-400);font-size:12px">Nenhum item enviado para aprovação.</div>';
-    }catch(e){document.getElementById('sac-fila-lista').innerHTML=`<div class="alert-box">${esc5(e.message)}</div>`;}
+      document.getElementById('sac-fila-pendentes').textContent=semSac.length;
+      document.getElementById('sac-fila-aprov').textContent=todos.filter(x=>x.STATUS==='APROVADA_SAC'&&destesMes(x)).length;
+      document.getElementById('sac-fila-rej').textContent=todos.filter(x=>x.STATUS==='REJEITADA_SAC'&&destesMes(x)).length;
+      const stCor={'APROVADA_SAC':'#059669','REJEITADA_SAC':'#DC2626','DEVOLVIDA_AJUSTE':'#7C3AED'};
+      if(lista)lista.innerHTML=itens.length?itens.map(x=>{
+        const jaSac=['APROVADA_SAC','REJEITADA_SAC','DEVOLVIDA_SAC','DEVOLVIDA_AJUSTE'].includes(x.STATUS);
+        const id=esc5(x.ID_MANIFESTACAO||x._pgId||'');
+        return `<div class="portal-row"><div class="portal-row-main">
+          <div class="portal-row-title">${esc5(x.ID_MANIFESTACAO||'—')} <span style="font-size:12px;font-weight:400;color:#545252">${esc5(x.TIPO||'')}</span></div>
+          <div class="portal-row-sub">${esc5(x.EMPRESA_RECLAMADA||'')} ${x.SETOR_SUGERIDO?'· '+esc5(x.SETOR_SUGERIDO):''}</div>
+          ${x.DESCRICAO?`<div style="font-size:12px;color:#545252;margin-top:3px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${esc5(x.DESCRICAO)}</div>`:''}
+          <div style="font-size:11px;color:var(--gray-400);margin-top:2px">Aberta ${fmt5(x.DATA_ABERTURA)}</div>
+        </div><div class="portal-actions" style="flex-direction:column;gap:6px;align-items:flex-end">
+          ${jaSac?`<span style="font-size:12px;font-weight:700;color:${stCor[x.STATUS]||'#374151'}">${esc5(x.STATUS)}</span>`:`<button class="btn btn-primary" style="font-size:12px;padding:5px 12px;white-space:nowrap" onclick="abrirDecisaoSac('${id}','${esc5(x.ID_MANIFESTACAO||id)}')">Decidir →</button>`}
+        </div></div>`;
+      }).join(''):'<div style="padding:16px;color:var(--gray-400);font-size:12px">Nenhuma manifestação aberta encontrada.</div>';
+    }catch(e){if(lista)lista.innerHTML=`<div style="padding:16px;color:#C70602;font-size:12px">${esc5(e.message)}</div>`;}
   }
 
   // ── MODAL ENVIAR PARA APROVAÇÃO ──
