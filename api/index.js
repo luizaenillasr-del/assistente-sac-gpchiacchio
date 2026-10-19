@@ -3906,7 +3906,7 @@ app.post('/api/pesquisas/media-historica', requerPermissao('pesquisas.criar'), a
     const notas = [atendimento, prazo_entrega, qualidade, recomendacao].map(v => v != null && v !== '' ? parseFloat(v) : null).filter(n => n != null && !isNaN(n));
     const notaMedia = notas.length ? (notas.reduce((a,b)=>a+b,0)/notas.length).toFixed(2) : '';
     const _HEADERS_H = ['ID_HISTORICO','EMPRESA','ANO','MES','ATENDIMENTO','PRAZO_ENTREGA','QUALIDADE','RECOMENDACAO','NOTA_MEDIA','NPS_SCORE','TOTAL_RESPOSTAS','CRIADO_EM'];
-    await garantirAbaComCabecalhos('PESQUISA_HISTORICO', _HEADERS_H);
+    await garantirAbaComCabecalhos('PESQUISA_HISTORICO', _HEADERS_H).catch(()=>{});
     invalidarCacheAba('PESQUISA_HISTORICO');
     const rows = await lerAba('PESQUISA_HISTORICO', 500).catch(() => []);
     const idx = rows.findIndex(r => r.EMPRESA === empresa && String(r.ANO) === String(ano) && String(Number(r.MES)) === String(Number(mes)));
@@ -3935,7 +3935,7 @@ app.post('/api/pesquisas/relatorio-texto', requerPermissao('pesquisas.editar'), 
     const spreadsheetId = process.env.SPREADSHEET_ID;
     const aba = 'RELATORIO_SAC_TEXTOS';
 
-    await garantirAbaComCabecalhos(aba, ['CHAVE','TEXTOS','ATUALIZADO_EM','ATUALIZADO_POR']);
+    await garantirAbaComCabecalhos(aba, ['CHAVE','TEXTOS','ATUALIZADO_EM','ATUALIZADO_POR']).catch(()=>{});
     invalidarCacheAba(aba);
     const rows = await lerAba(aba, 500);
     const idx = rows.findIndex(r => r.CHAVE === chave);
@@ -4098,7 +4098,7 @@ app.post('/api/relatorios/gerar', requerPerfil('MASTER','ANALISTA SAC','APROVADO
     const empresaScope = _mcEmpresaScope(req.user);
     if (empresaScope && !pertenceEmpresa(empresaScope, empresa)) return res.status(403).json({ sucesso:false, erro:'Sem acesso a esta empresa.' });
     const chave = `${empresa}|${ano}|${String(mes).padStart(2,'0')}`;
-    await garantirAbaComCabecalhos('RELATORIOS_SAC', REL_HEADERS);
+    await garantirAbaComCabecalhos('RELATORIOS_SAC', REL_HEADERS).catch(()=>{});
     // Verifica se já existe rascunho para esta chave/versão
     const rows = await lerRelatoriosSac();
     const existentes = rows.filter(r=>r.CHAVE===chave);
@@ -4123,7 +4123,7 @@ app.post('/api/relatorios/:id/publicar', requerPerfil('MASTER','ANALISTA SAC','A
   try {
     const { id } = req.params;
     const { textos, indicador, nps_score } = req.body||{};
-    await garantirAbaComCabecalhos('RELATORIOS_SAC', REL_HEADERS);
+    await garantirAbaComCabecalhos('RELATORIOS_SAC', REL_HEADERS).catch(()=>{});
     const rows = await lerRelatoriosSac();
     const idx = rows.findIndex(r=>r.ID_RELATORIO===id);
     if (idx<0) return res.status(404).json({ sucesso:false, erro:'Relatório não encontrado.' });
@@ -4146,7 +4146,7 @@ app.post('/api/relatorios/:id/publicar', requerPerfil('MASTER','ANALISTA SAC','A
 app.post('/api/relatorios/:id/nova-versao', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req, res) => {
   try {
     const { id } = req.params;
-    await garantirAbaComCabecalhos('RELATORIOS_SAC', REL_HEADERS);
+    await garantirAbaComCabecalhos('RELATORIOS_SAC', REL_HEADERS).catch(()=>{});
     const rows = await lerRelatoriosSac();
     const orig = rows.find(r=>r.ID_RELATORIO===id);
     if (!orig) return res.status(404).json({ sucesso:false, erro:'Relatório não encontrado.' });
@@ -4175,7 +4175,7 @@ app.post('/api/relatorios/:id/link', requerPerfil('MASTER','ANALISTA SAC','APROV
   try {
     const { id } = req.params;
     const { dados } = req.body||{}; // snapshot JSON dos dados do relatório
-    await garantirAbaComCabecalhos('RELATORIOS_SAC', REL_HEADERS);
+    await garantirAbaComCabecalhos('RELATORIOS_SAC', REL_HEADERS).catch(()=>{});
     const rows = await lerRelatoriosSac();
     const row = rows.find(r=>r.ID_RELATORIO===id);
     if (!row) return res.status(404).json({ sucesso:false, erro:'Relatório não encontrado.' });
@@ -6216,7 +6216,8 @@ app.get('/api/fila-aprovacao', middlewareEscopoEmpresa(), requerPermissao('aprov
       itens = filaEmpresa.filter(x => n(x.ID_APROVADOR||'') === n(u.usuario) || n(x.NOME_APROVADOR||'') === n(u.nome||u.usuario) || n(x.ID_APROVADOR||'') === n(u.id||''));
     }
     const pendentes = itens.filter(x=>x.STATUS==='PENDENTE').length;
-    res.json({sucesso:true,total:itens.length,pendentes,itens});
+    const itensPendentes = itens.filter(x=>x.STATUS==='PENDENTE');
+    res.json({sucesso:true,total:itensPendentes.length,pendentes,itens:itensPendentes});
   } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
 
