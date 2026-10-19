@@ -3904,6 +3904,11 @@
         </div>
         <!-- Coluna lateral -->
         <div style="background:#FAFAFA;padding:18px 16px;overflow-y:auto;max-height:70vh;display:flex;flex-direction:column;gap:16px">
+          <!-- Abrir manifestação completa -->
+          <button id="btn-abrir-dossie-lateral" onclick="if(window._decisaoItem&&window.abrirDossie){fecharDecisaoAprovacao();window.abrirDossie(window._decisaoItem);}" style="display:none;width:100%;border:0;background:#1D4ED8;color:#fff;border-radius:10px;padding:11px 14px;font-size:13px;font-weight:700;cursor:pointer;text-align:left;display:flex;align-items:center;gap:8px">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            Abrir manifestação completa
+          </button>
           <!-- Próxima ação -->
           <div>
             <div style="font-size:10px;font-weight:700;letter-spacing:.07em;color:#A0A0A0;margin-bottom:9px">PRÓXIMA AÇÃO</div>
@@ -12111,24 +12116,30 @@ document.addEventListener('click', function(e) {
 });
 
 async function loadBancoManifestacoes() {
+  // Show loading state immediately so clicking tabs doesn't render empty
+  const _bodyEl = document.getElementById('banco-body');
+  if (_bodyEl && !_bancoDataFull.length) _bodyEl.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--gray-400);padding:24px"><div class="spinner" style="display:inline-block"></div> Carregando manifestações…</td></tr>';
   try {
     const res = await _apiFetch('/api/manifestacoes', 30000);
     if (res.aviso) console.warn('[banco] API aviso:', res.aviso);
     let itens = res.itens || [];
-    console.log('[banco] API retornou', itens.length, 'itens, fonte:', res.fonte);
     // Fallback: if API returns empty but dashboard already loaded data, reuse it
     if (!itens.length && window._dashData && (window._dashData.mans || []).length) {
-      console.log('[banco] Usando fallback _dashData.mans', window._dashData.mans.length);
       itens = window._dashData.mans;
     }
     bancoData = itens;
     _bancoDataFull = [...bancoData];
     window.bancoData = bancoData;
     window._bancoDataFull = _bancoDataFull;
+    // Populate setor filter from loaded data
+    const setorSel = document.getElementById('bflt-setor-sel');
+    if (setorSel) {
+      const setores = [...new Set(itens.map(m => m.SETOR_DESTINADO||m.SETOR_CONFIRMADO||m.SETOR_SUGERIDO).filter(Boolean))].sort();
+      setorSel.innerHTML = '<option value="">Setor: todos</option>' + setores.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
+    }
     renderBanco();
   } catch (e) {
     console.error('Erro banco:', e);
-    // Fallback to dashboard data on error
     if (window._dashData && (window._dashData.mans || []).length) {
       bancoData = window._dashData.mans;
       _bancoDataFull = [...bancoData];
@@ -14698,27 +14709,10 @@ window.navigate = function(page, el) {
           document.getElementById('decisao-previa-campos').innerHTML='';
         }
 
-        // ── Campos IA ──
+        // ── Seção IA oculta no modal de aprovação ──
         const iaSection = document.getElementById('decisao-ia-section');
-        const tipoIA = m.TIPO_DETECTADO||m.TIPO_MANIFESTACAO||m.TIPO||null;
-        const confIA = m.CONFIANCA_IA ?? m.CONFIANCA ?? null;
-        const priorIA = m.PRIORIDADE||null;
-        const setorIA = m.SETOR_CONFIRMADO||m.SETOR_SUGERIDO||null;
-        const causaIA = m.CAUSA_SUGERIDA||m.CAUSA_IDENTIFICADA||m.CAUSA_RAIZ||null;
+        if(iaSection) iaSection.style.display='none';
         const tratIA = m.TRATATIVA_SUGERIDA||m.DEVOLUTIVA_SUGERIDA||null;
-        if(tipoIA||confIA||priorIA||setorIA){
-          if(iaSection) iaSection.style.display='';
-          const elCls = document.getElementById('ia-classificacao');
-          const elConf = document.getElementById('ia-confianca');
-          const elPri = document.getElementById('ia-prioridade');
-          const elSet = document.getElementById('ia-setor');
-          if(elCls) elCls.textContent = tipoIA||'—';
-          if(elConf && confIA!=null){ const pct=Math.round(typeof confIA==='object'?(confIA.score||0):confIA); elConf.textContent = pct+'% confiança'; elConf.style.color = pct>=80?'#1A6632':pct>=50?'#8A5000':'#9B2020'; }
-          if(elPri){ elPri.textContent=priorIA||'—'; const priClr={'Alta':'#B84000','Crítica':'#A00000','Média':'#8A5000','Baixa':'#2A7A3A'}; elPri.style.color=priClr[priorIA]||'#B84000'; }
-          if(elSet) elSet.textContent=setorIA||'—';
-        } else {
-          if(iaSection) iaSection.style.display='none';
-        }
         if(causaIA){
           const box=document.getElementById('ia-causa-box');
           const txt=document.getElementById('ia-causa-txt');
