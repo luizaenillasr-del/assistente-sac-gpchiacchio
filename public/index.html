@@ -15118,14 +15118,13 @@ window.navigate = function(page, el) {
         </div><div class="portal-actions" style="flex-direction:column;gap:6px;align-items:flex-end">
           ${jaRespondeu
             ? `<span style="font-size:12px;color:#0369A1;font-weight:600">✓ Resposta enviada</span>`
-            : `<button class="btn btn-primary" style="font-size:12px;padding:5px 12px;white-space:nowrap" onclick="abrirFichaManifestacao('${esc5(x.ID_MANIFESTACAO)}')">Responder →</button>`}
+            : `<button class="btn btn-primary" style="font-size:12px;padding:5px 12px;white-space:nowrap" onclick="abrirDossieAprovador('${esc5(x.ID_MANIFESTACAO)}')">Responder →</button>`}
         </div></div>`;
       };
       const rowRnc=x=>`<div class="portal-row"><div class="portal-row-main"><div class="portal-row-title">${esc5(x.ID_RNC||x.ID_MANIFESTACAO)} · ${esc5(x.PRODUTO||x.NAO_CONFORMIDADE||'RNC')}</div><div class="portal-row-sub">${esc5(x.CLIENTE||x.EMPRESA||'')} · prazo ${esc5(x.PRAZO_ACAO||x.PRAZO||'—')}</div></div><button class="btn btn-secondary" style="font-size:12px;padding:5px 12px" onclick="editarRncSetorV5('${esc5(x.ID_RNC)}')">Abrir RNC</button></div>`;
-      document.getElementById('setor-fila').innerHTML=
-        (mans.length?`<div style="font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:.5px;margin:0 0 8px">Manifestações (${mans.length})</div>`+mans.map(rowMan).join(''):'')
-        +(rncs.length?`<div style="font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:.5px;margin:${mans.length?'16px':0} 0 8px">RNCs (${rncs.length})</div>`+rncs.map(rowRnc).join(''):'')
-        ||(a.length===0?'<div style="padding:20px;text-align:center;color:var(--gray-400)">Nenhuma tratativa pendente.</div>':'');
+      const html=(mans.length?`<div style="font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:.5px;margin:0 0 8px">Manifestações (${mans.length})</div>`+mans.map(rowMan).join(''):'')
+        +(rncs.length?`<div style="font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:.5px;margin:${mans.length?'16px':0} 0 8px">RNCs (${rncs.length})</div>`+rncs.map(rowRnc).join(''):'');
+      document.getElementById('setor-fila').innerHTML=html||'<div style="padding:20px;text-align:center;color:var(--gray-400)">Nenhuma tratativa pendente.</div>';
     }catch(e){document.getElementById('setor-fila').innerHTML=`<div class="alert-box">${esc5(e.message)}</div>`}
   }
   window.loadSetorV5=loadSetorV5;
