@@ -3846,19 +3846,14 @@
           </div>
           <span style="font-size:11px;font-weight:600;background:#F2F2F2;color:#545454;border-radius:99px;padding:3px 10px;white-space:nowrap">Responsável: Você</span>
         </div>
-        <!-- Abas -->
-        <div style="display:flex;gap:0;margin:0 -22px">
-          <button id="decisao-tab-previa" onclick="decisaoAba('previa')" style="height:36px;border:0;background:none;padding:0 18px;font-size:12.5px;font-weight:700;color:#C70602;cursor:pointer;border-bottom:2px solid #C70602;margin-bottom:-1px">Prévia</button>
-          <button id="decisao-tab-decidir" onclick="decisaoAba('decidir')" style="height:36px;border:0;background:none;padding:0 18px;font-size:12.5px;font-weight:600;color:#929090;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px">Decidir</button>
-        </div>
       </div>
-      <!-- BODY: duas colunas -->
+      <!-- BODY: duas colunas unificadas (sem abas) -->
       <div id="decisao-aba-previa" style="display:grid;grid-template-columns:1fr 300px;overflow:hidden">
         <!-- Coluna principal -->
-        <div style="padding:20px 22px;overflow-y:auto;max-height:65vh;display:flex;flex-direction:column;gap:18px;border-right:1px solid #F0F0F0">
+        <div style="padding:20px 22px;overflow-y:auto;max-height:70vh;display:flex;flex-direction:column;gap:20px;border-right:1px solid #EBEBEB">
           <!-- Resumo -->
           <section>
-            <div style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:8px">RESUMO DA MANIFESTAÇÃO</div>
+            <div style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:10px">RESUMO DA MANIFESTAÇÃO</div>
             <div style="background:#FAFAFA;border:1px solid #EBEBEB;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:12px">
               <div id="decisao-previa-campos" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px 16px"></div>
               <div id="decisao-previa-descricao" style="display:none">
@@ -3869,7 +3864,7 @@
           </section>
           <!-- Análise IA -->
           <section id="decisao-ia-section" style="display:none">
-            <div style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:8px">ANÁLISE DA IA</div>
+            <div style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:10px">ANÁLISE DA IA</div>
             <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px">
               <div style="background:#F7F7F7;border-radius:9px;padding:11px 13px">
                 <div style="font-size:9.5px;font-weight:700;letter-spacing:.06em;color:#A0A0A0;margin-bottom:3px">CLASSIFICAÇÃO</div>
@@ -3892,19 +3887,60 @@
           </section>
           <!-- Tratativa -->
           <section id="decisao-tratativa-section" style="display:none">
-            <div style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:8px">TRATATIVA PROPOSTA</div>
-            <div style="background:#F7F7F7;border-radius:10px;padding:14px 16px;font-size:13px;line-height:1.6;color:#2A2A2A" id="decisao-tratativa-txt"></div>
+            <div style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:10px">TRATATIVA PROPOSTA PELO SETOR</div>
+            <div style="border:1.5px solid #C8E6D0;background:#F4FBF5;border-radius:10px;padding:14px 16px;font-size:13px;line-height:1.6;color:#2A2A2A" id="decisao-tratativa-txt"></div>
           </section>
-          <button onclick="decisaoAba('decidir')" style="height:38px;border:0;background:#C70602;color:#fff;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer">Ir para decisão →</button>
+          <!-- DECISÃO DO APROVADOR -->
+          <section style="border:2px solid #EBEBEB;border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:12px">
+            <div style="font-size:11px;font-weight:700;letter-spacing:.07em;color:#727272">DECISÃO DO APROVADOR</div>
+            <div id="decisao-feedback" style="display:none;font-size:12.5px;border-radius:8px;padding:9px 12px;line-height:1.45"></div>
+            <!-- Botões de decisão -->
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button id="dec-btn-aprovar" onclick="decSelecionarLocal('APROVADO',this)" style="flex:1;min-width:130px;height:40px;border:2px solid #E0E0E0;background:#fff;color:#545454;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .15s">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Aprovar
+              </button>
+              <button id="dec-btn-ressalva" onclick="decSelecionarLocal('APROVADO_COM_RESSALVA',this)" style="flex:1;min-width:130px;height:40px;border:2px solid #E0E0E0;background:#fff;color:#545454;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .15s">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/><line x1="17" y1="3" x2="17" y2="9"/></svg>c/ ajustes
+              </button>
+              <button id="dec-btn-devolver" onclick="decSelecionarLocal('DEVOLVIDO',this)" style="flex:1;min-width:130px;height:40px;border:2px solid #E0E0E0;background:#fff;color:#545454;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .15s">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Sol. correção
+              </button>
+              <button id="dec-btn-rejeitar" onclick="decSelecionarLocal('REJEITADO',this)" style="flex:1;min-width:130px;height:40px;border:2px solid #E0E0E0;background:#fff;color:#545454;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .15s">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Rejeitar
+              </button>
+            </div>
+            <!-- Campo obs condicional -->
+            <div id="dec-obs-wrap" style="display:none;flex-direction:column;gap:4px">
+              <label style="font-size:11px;font-weight:700;letter-spacing:.05em;color:#545454" id="dec-obs-label">Observação</label>
+              <textarea id="decisao-obs" rows="3" placeholder="Informe a justificativa ou observações..." style="width:100%;border:1.5px solid #DCDCDC;border-radius:8px;padding:9px 11px;font-size:13px;line-height:1.45;resize:vertical;font-family:inherit"></textarea>
+            </div>
+            <!-- Botão confirmar -->
+            <div id="dec-confirm-wrap" style="display:none;justify-content:flex-end">
+              <button id="dec-btn-confirmar" onclick="submitDecisaoSelecionada()" style="border:0;background:#1A6632;color:#fff;border-radius:9px;padding:10px 24px;font-size:13.5px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:7px">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Confirmar decisão
+              </button>
+            </div>
+          </section>
         </div>
         <!-- Coluna lateral -->
-        <div style="background:#FAFAFA;padding:18px 16px;overflow-y:auto;max-height:65vh;display:flex;flex-direction:column;gap:14px">
+        <div style="background:#FAFAFA;padding:18px 16px;overflow-y:auto;max-height:70vh;display:flex;flex-direction:column;gap:16px">
+          <!-- Próxima ação -->
           <div>
-            <div style="font-size:10px;font-weight:700;letter-spacing:.07em;color:#A0A0A0;margin-bottom:8px">HISTÓRICO</div>
-            <div id="decisao-historico" style="display:flex;flex-direction:column;gap:6px;font-size:12px;color:#545252">
+            <div style="font-size:10px;font-weight:700;letter-spacing:.07em;color:#A0A0A0;margin-bottom:9px">PRÓXIMA AÇÃO</div>
+            <div style="background:#fff;border:1px solid #EBEBEB;border-radius:10px;padding:13px 14px;display:flex;flex-direction:column;gap:7px">
+              <div style="font-size:13px;font-weight:700;color:#C70602">Registrar decisão de aprovação</div>
+              <div style="font-size:11.5px;color:#545252">Responsável: <strong>Você</strong></div>
+              <div id="decisao-proxima-etapa" style="font-size:11.5px;color:#727272">Próxima etapa: devolutiva ao cliente via SAC</div>
+            </div>
+          </div>
+          <!-- Contexto -->
+          <div>
+            <div style="font-size:10px;font-weight:700;letter-spacing:.07em;color:#A0A0A0;margin-bottom:9px">CONTEXTO</div>
+            <div id="decisao-historico" style="background:#fff;border:1px solid #EBEBEB;border-radius:10px;padding:13px 14px;display:flex;flex-direction:column;gap:8px;font-size:12px;color:#545252">
               <div style="color:#B0B0B0;font-size:11.5px">Carregando...</div>
             </div>
           </div>
+          <!-- SLA -->
           <div id="decisao-sla-box" style="background:#fff;border:1px solid #EBEBEB;border-radius:10px;padding:12px 14px;display:none">
             <div style="font-size:10px;font-weight:700;letter-spacing:.07em;color:#A0A0A0;margin-bottom:8px">SLA</div>
             <div style="font-size:13px;font-weight:700" id="decisao-sla-restante">—</div>
@@ -3912,28 +3948,12 @@
               <div style="height:100%;background:#C70602;border-radius:3px" id="decisao-sla-bar"></div>
             </div>
           </div>
+          <!-- Fila ref -->
+          <div style="font-size:11px;color:#A0A0A0;padding:0 2px">Fila: <strong id="decisao-fila-ref" style="color:#545252">—</strong></div>
         </div>
       </div>
-      <!-- ABA DECIDIR -->
-      <div id="decisao-aba-decidir" style="padding:20px 22px;flex-direction:column;gap:14px;display:none;max-height:65vh;overflow-y:auto">
-        <div id="decisao-preview-resumo" style="background:#F7F7F7;border-radius:9px;padding:10px 12px;border-left:3px solid #C70602;font-size:12.5px;color:#545252;line-height:1.65"></div>
-        <div style="font-size:11.5px;color:#929090;background:#F7F7F7;border-radius:7px;padding:7px 10px">Fila: <strong id="decisao-fila-ref"></strong></div>
-        <div>
-          <label style="font-size:12px;font-weight:700;color:#1F1F1F;display:block;margin-bottom:6px">Observações <span id="decisao-obs-req" style="color:#DC2626;display:none">(obrigatório)</span></label>
-          <textarea id="decisao-obs" rows="4" placeholder="Justifique a decisão quando necessário" style="width:100%;border:1.5px solid #E4E4E4;border-radius:10px;padding:10px 12px;font-size:13px;line-height:1.65;resize:vertical;font-family:inherit"></textarea>
-        </div>
-      </div>
-      <!-- RODAPÉ -->
-      <div style="padding:14px 22px;border-top:1px solid #EBEBEB;display:flex;flex-direction:column;gap:8px;flex-shrink:0;background:#fff">
-        <div id="decisao-feedback" style="display:none;font-size:12.5px;border-radius:8px;padding:9px 12px;line-height:1.45"></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px">
-          <button id="dec-btn-aprovar" onclick="submitDecisao('APROVADO')" style="height:40px;border:2px solid #1A6632;background:#EAF4ED;color:#1A6632;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer">✓ Aprovar</button>
-          <button id="dec-btn-ressalva" onclick="submitDecisao('APROVADO_COM_RESSALVA')" style="height:40px;border:2px solid #24508F;background:#EAF0FB;color:#24508F;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer">✓ c/ ressalva</button>
-          <button id="dec-btn-devolver" onclick="submitDecisao('DEVOLVIDO')" style="height:40px;border:2px solid #9A4A10;background:#FEF3DC;color:#9A4A10;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer">↩ Devolver</button>
-          <button id="dec-btn-rejeitar" onclick="submitDecisao('REJEITADO')" style="height:40px;border:2px solid #A00000;background:#FDECEC;color:#A00000;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer">✖ Rejeitar</button>
-        </div>
-        <button id="dec-btn-solicitar" onclick="submitDecisao('SOLICITANDO_INFORMACOES')" style="height:34px;border:1.5px solid #E4E4E4;background:#fff;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;color:#545252;align-self:center;padding:0 20px">? Solicitar informações adicionais</button>
-      </div>
+      <!-- aba-decidir mantida para compat (oculta) -->
+      <div id="decisao-aba-decidir" style="display:none"></div>
     </div>
   </div>
   <style>
@@ -11621,12 +11641,24 @@ async function loadAcompanhamento() {
     set('ac-encerradas', encerradaCount);
     set('ac-vencidos', vencidoCount);
 
-    // Populate setor filter
+    // Populate setor filter — usa setores da manifestação ou busca da API
     const setorEl = document.getElementById('acomp-setor-filter');
-    if (setorEl && setoresSet.size > 0) {
+    if (setorEl) {
       const cur = setorEl.value;
-      setorEl.innerHTML = '<option value="">Todos os setores</option>' +
-        [...setoresSet].sort().map(s => `<option value="${esc(s)}"${s===cur?'selected':''}>${esc(s)}</option>`).join('');
+      if (setoresSet.size > 0) {
+        setorEl.innerHTML = '<option value="">Todos os setores</option>' +
+          [...setoresSet].sort().map(s => `<option value="${esc(s)}"${s===cur?'selected':''}>${esc(s)}</option>`).join('');
+      } else {
+        // Busca setores cadastrados como fallback
+        _apiFetch('/api/setores', 10000).then(r => {
+          const lista = (r.itens || r.setores || []).filter(s => (s.ATIVO||'SIM').toUpperCase() !== 'EXCLUIDO' && (s.ATIVO||'SIM').toUpperCase() !== 'NÃO');
+          if (lista.length > 0 && setorEl) {
+            const c = setorEl.value;
+            setorEl.innerHTML = '<option value="">Todos os setores</option>' +
+              lista.map(s => { const nm = s.SETOR || s.NOME_SETOR || s; return `<option value="${esc(nm)}"${nm===c?'selected':''}>${esc(nm)}</option>`; }).join('');
+          }
+        }).catch(() => {});
+      }
     }
 
     renderAcompanhamento(_acompData);
@@ -14272,14 +14304,39 @@ window.navigate = function(page, el) {
   };
 
   // ── MODAL DECISÃO ──
-  window.decisaoAba = function(aba){
-    const isPrevia = aba==='previa';
-    document.getElementById('decisao-aba-previa').style.display = isPrevia?'grid':'none';
-    document.getElementById('decisao-aba-decidir').style.display = isPrevia?'none':'flex';
-    const tP=document.getElementById('decisao-tab-previa');
-    const tD=document.getElementById('decisao-tab-decidir');
-    tP.style.fontWeight=isPrevia?'700':'600'; tP.style.color=isPrevia?'#C70602':'#929090'; tP.style.borderBottomColor=isPrevia?'#C70602':'transparent';
-    tD.style.fontWeight=isPrevia?'600':'700'; tD.style.color=isPrevia?'#929090':'#C70602'; tD.style.borderBottomColor=isPrevia?'transparent':'#C70602';
+  window.decisaoAba = function(aba){ /* no-op: tabs removed, unified view */ };
+
+  let _decLocalSelecionada = '';
+  const _DEC_CFG = {
+    'APROVADO':              { gc:'#1A6632', bg:'#EAF4ED', obsLabel:'Observação (opcional)',          obsPh:'Adicione uma observação se necessário.', obrigatorio:false },
+    'APROVADO_COM_RESSALVA': { gc:'#24508F', bg:'#EAF0FB', obsLabel:'Ajuste necessário (obrigatório)', obsPh:'Descreva o ajuste necessário antes de comunicar ao cliente.', obrigatorio:true },
+    'DEVOLVIDO':             { gc:'#9A4A10', bg:'#FEF3DC', obsLabel:'Motivo e orientação (obrigatório)',obsPh:'Explique o que deve ser ajustado e como conduzir…', obrigatorio:true },
+    'REJEITADO':             { gc:'#A00000', bg:'#FDECEC', obsLabel:'Justificativa (obrigatório)',     obsPh:'Informe o motivo da rejeição.', obrigatorio:true },
+  };
+  const _DEC_IDS = { 'APROVADO':'dec-btn-aprovar','APROVADO_COM_RESSALVA':'dec-btn-ressalva','DEVOLVIDO':'dec-btn-devolver','REJEITADO':'dec-btn-rejeitar' };
+
+  window.decSelecionarLocal = function(decisao, btn){
+    _decLocalSelecionada = decisao;
+    Object.values(_DEC_IDS).forEach(id=>{ const b=document.getElementById(id); if(b){b.style.borderColor='#E0E0E0';b.style.background='#fff';b.style.color='#545454';} });
+    const cfg=_DEC_CFG[decisao];
+    if(cfg&&btn){btn.style.borderColor=cfg.gc;btn.style.background=cfg.bg;btn.style.color=cfg.gc;}
+    const obsWrap=document.getElementById('dec-obs-wrap');
+    const obsLabel=document.getElementById('dec-obs-label');
+    const obsTa=document.getElementById('decisao-obs');
+    if(obsWrap) obsWrap.style.display='flex';
+    if(obsLabel&&cfg) obsLabel.textContent=cfg.obsLabel;
+    if(obsTa&&cfg){obsTa.placeholder=cfg.obsPh;obsTa.value='';}
+    const cfWrap=document.getElementById('dec-confirm-wrap');
+    const cfBtn=document.getElementById('dec-btn-confirmar');
+    if(cfWrap) cfWrap.style.display='flex';
+    if(cfBtn&&cfg) cfBtn.style.background=cfg.gc;
+    const fb=document.getElementById('decisao-feedback');
+    if(fb) fb.style.display='none';
+  };
+
+  window.submitDecisaoSelecionada = function(){
+    if(!_decLocalSelecionada){ alert('Selecione uma decisão antes de confirmar.'); return; }
+    submitDecisao(_decLocalSelecionada);
   };
 
   window.fecharDecisaoPanel = function(){
@@ -14296,6 +14353,12 @@ window.navigate = function(page, el) {
     document.getElementById('decisao-fila-ref').textContent=idFila;
     document.getElementById('decisao-preview-resumo').style.borderLeftColor=accent;
     document.getElementById('decisao-obs').value='';
+    // Reset decision selection state
+    _decLocalSelecionada='';
+    Object.values(_DEC_IDS).forEach(id=>{ const b=document.getElementById(id); if(b){b.style.borderColor='#E0E0E0';b.style.background='#fff';b.style.color='#545454';} });
+    const obsWrapR=document.getElementById('dec-obs-wrap'); if(obsWrapR) obsWrapR.style.display='none';
+    const cfWrapR=document.getElementById('dec-confirm-wrap'); if(cfWrapR) cfWrapR.style.display='none';
+    const fbR=document.getElementById('decisao-feedback'); if(fbR) fbR.style.display='none';
     // Reset preview content
     document.getElementById('decisao-previa-campos').innerHTML='<div style="color:#929090;font-size:13px">Carregando…</div>';
     document.getElementById('decisao-previa-descricao').style.display='none';
