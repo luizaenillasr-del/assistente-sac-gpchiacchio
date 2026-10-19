@@ -2417,7 +2417,7 @@
     <button class="sidebar-item active" onclick="navigate('visao-geral', this)"><span class="sidebar-dot"></span>Dashboard</button>
     <button class="sidebar-item" onclick="navigate('banco-manifestacoes', this)"><span class="sidebar-dot"></span>Manifestações</button>
     <button class="sidebar-item" onclick="navigate('nova-manifestacao', this)"><span class="sidebar-dot"></span>Nova manifestação</button>
-    <button class="sidebar-item" onclick="navigate('acompanhamento', this)" style="position:relative"><span class="sidebar-dot"></span>Minhas pendências<span id="badge-analista-notif" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);background:#C8102E;color:white;font-size:10px;font-weight:700;border-radius:10px;padding:1px 6px;min-width:18px;text-align:center"></span></button>
+    <button class="sidebar-item" onclick="navigate('banco-manifestacoes', this)" style="position:relative"><span class="sidebar-dot"></span>Minhas pendências<span id="badge-analista-notif" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);background:#C8102E;color:white;font-size:10px;font-weight:700;border-radius:10px;padding:1px 6px;min-width:18px;text-align:center"></span></button>
     <button class="sidebar-item" onclick="navigate('similares', this)"><span class="sidebar-dot"></span>Busca de similares</button>
     <button class="sidebar-item" id="sidebar-central-sac" onclick="navigate('central-sac', this)"><span class="sidebar-dot"></span>Minha Central SAC</button>
     <button class="sidebar-item" data-v5-page="setor-responsavel" onclick="navigate('setor-responsavel', this)"><span class="sidebar-dot"></span>Minha fila</button>
@@ -2564,40 +2564,7 @@
       <!-- Alerta de solicitações pendentes (MASTER only) -->
       <div id="dash-alert-solicitacoes" style="display:none;align-items:center;gap:10px;background:#FEF3C7;border:1px solid #F59E0B;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:#92400E"></div>
 
-      <!-- KPIs Principais -->
-      <div class="kpi-strip">
-        <button class="kpi" onclick="navigate('banco-manifestacoes', document.querySelector('[onclick*=banco-manifestacoes]'))">
-          <span class="kpi-label">Manifestações em andamento
-            <svg class="kpi-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-          </span>
-          <span class="kpi-value" id="kpi-reclamacoes">--</span>
-          <span class="kpi-foot" id="kpi-rec-pct">no período selecionado</span>
-        </button>
-        <div class="kpi">
-          <span class="kpi-label">Dentro do prazo de 72h</span>
-          <span class="kpi-value is-good" id="kpi-aberto">--%</span>
-          <span class="kpi-foot" id="kpi-andamento-delta">dos casos no prazo</span>
-        </div>
-        <div class="kpi" id="kpi-fora-sla-card">
-          <span class="kpi-label">Atrasadas</span>
-          <span class="kpi-value is-alert" id="kpi-atrasadas">--</span>
-          <span class="kpi-foot" id="kpi-fora-delta">fora do prazo</span>
-        </div>
-        <button class="kpi" onclick="navigate('banco-rnc', document.querySelector('[onclick*=banco-rnc]'))">
-          <span class="kpi-label">RNCs abertas
-            <svg class="kpi-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-          </span>
-          <span class="kpi-value" id="kpi-rncs">--</span>
-          <span class="kpi-foot">não conformidades</span>
-        </div>
-        <div class="kpi">
-          <span class="kpi-label">Sugestões da IA aceitas</span>
-          <span class="kpi-value" id="kpi-ia-aceitas">--%</span>
-          <span class="kpi-foot" id="kpi-ia-aceitas-delta">das sugestões aceitas</span>
-        </div>
-      </div>
-
-      <!-- Métricas secundárias (ocultas por padrão — mantidas para compatibilidade JS) -->
+      <!-- hidden IDs for JS compat -->
       <span id="kpi-encerradas" style="display:none"></span>
       <span id="kpi-enc-pct" style="display:none"></span>
       <span id="kpi-prazo" style="display:none"></span>
@@ -2608,169 +2575,172 @@
       <span id="kpi-pesquisas-mes-label" style="display:none"></span>
       <span id="kpi-pesquisas-rec" style="display:none"></span>
       <span id="kpi-pesquisas-rec-pct" style="display:none"></span>
-      <!-- hidden IDs still used by renderDashboard -->
       <span id="kpi-andamento" style="display:none"></span>
       <span id="kpi-total" style="display:none"></span>
+      <span id="kpi-andamento-delta" style="display:none"></span>
+      <span id="kpi-rec-pct" style="display:none"></span>
+      <span id="kpi-fora-delta" style="display:none"></span>
+      <span id="kpi-ia-aceitas-delta" style="display:none"></span>
 
-      <!-- Row 2 -->
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:16px;margin-bottom:16px">
-        <!-- Etapas -->
-        <div class="section-card">
-          <div class="section-title">Manifestações por etapa</div>
-          <div class="section-sub">Onde os casos estão agora</div>
-          <div id="etapas-list">
-            <div class="loading"><div class="spinner"></div> Carregando...</div>
+      <!-- KPIs linha 1 -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px">
+        <button onclick="navigate('banco-manifestacoes', document.querySelector('[onclick*=banco-manifestacoes]'))" style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px;border-left:4px solid #C70602;cursor:pointer;text-align:left">
+          <div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:4px">EM ABERTO</div>
+          <div style="font-size:30px;font-weight:800;color:#C70602;line-height:1.1" id="kpi-reclamacoes">--</div>
+          <div style="font-size:11px;color:#727272;margin-top:3px">aguardando análise ou ação</div>
+        </button>
+        <div style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px;border-left:4px solid #1A6632">
+          <div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:4px">FINALIZADAS NO PERÍODO</div>
+          <div style="font-size:30px;font-weight:800;color:#1A6632;line-height:1.1" id="kpi-encerradas-vis">--</div>
+          <div style="font-size:11px;color:#727272;margin-top:3px" id="kpi-enc-periodo">no período selecionado</div>
+        </div>
+        <div style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px;border-left:4px solid #24508F">
+          <div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:4px">DENTRO DO SLA</div>
+          <div style="font-size:30px;font-weight:800;color:#24508F;line-height:1.1" id="kpi-aberto">--%</div>
+          <div style="font-size:11px;color:#727272;margin-top:3px">dos casos resolvidos no prazo</div>
+        </div>
+        <div style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px;border-left:4px solid #C70602" id="kpi-fora-sla-card">
+          <div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:4px">ATRASADAS</div>
+          <div style="font-size:30px;font-weight:800;color:#C70602;line-height:1.1" id="kpi-atrasadas">--</div>
+          <div style="font-size:11px;color:#727272;margin-top:3px">SLA vencido — ação imediata</div>
+        </div>
+      </div>
+
+      <!-- KPIs linha 2 -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:10px">
+        <button onclick="navigate('banco-rnc', document.querySelector('[onclick*=banco-rnc]'))" style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px;border-left:4px solid #9A4A10;cursor:pointer;text-align:left">
+          <div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:4px">RNCs ABERTAS</div>
+          <div style="font-size:30px;font-weight:800;color:#9A4A10;line-height:1.1" id="kpi-rncs">--</div>
+          <div style="font-size:11px;color:#727272;margin-top:3px">não conformidades</div>
+        </button>
+        <button onclick="navigate('aprovadores', document.querySelector('[onclick*=aprovadores]'))" style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px;border-left:4px solid #8A5000;cursor:pointer;text-align:left">
+          <div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:4px">AGUARDANDO APROVAÇÃO</div>
+          <div style="font-size:30px;font-weight:800;color:#8A5000;line-height:1.1" id="kpi-aguard-aprov">--</div>
+          <div style="font-size:11px;color:#727272;margin-top:3px">pendentes de decisão</div>
+        </button>
+        <div style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px;border-left:4px solid #545252">
+          <div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:4px">AGUARDANDO SETOR</div>
+          <div style="font-size:30px;font-weight:800;color:#545252;line-height:1.1" id="kpi-aguard-setor">--</div>
+          <div style="font-size:11px;color:#727272;margin-top:3px">resposta de outro setor pendente</div>
+        </div>
+        <div style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px;border-left:4px solid #545252">
+          <div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:4px">AGUARDANDO SAC</div>
+          <div style="font-size:30px;font-weight:800;color:#545252;line-height:1.1" id="kpi-ia-aceitas">--%</div>
+          <div style="font-size:11px;color:#727272;margin-top:3px" id="kpi-ia-aceitas-det">validação ou devolutiva</div>
+        </div>
+      </div>
+
+      <!-- Fila de atenção + etapas + semanas -->
+      <div style="display:grid;grid-template-columns:1fr 340px;gap:14px;margin-top:14px">
+        <!-- etapas + semanas -->
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <!-- Manifestações por etapa -->
+          <div style="background:#fff;border:1px solid #EBEBEB;border-radius:12px;padding:16px 20px">
+            <div style="font-size:11px;font-weight:700;letter-spacing:.07em;color:#A0A0A0;margin-bottom:12px">MANIFESTAÇÕES POR ETAPA</div>
+            <div id="etapas-list">
+              <div class="loading"><div class="spinner"></div> Carregando...</div>
+            </div>
+          </div>
+          <!-- Novas por semana -->
+          <div style="background:#fff;border:1px solid #EBEBEB;border-radius:12px;padding:16px 20px">
+            <div style="font-size:11px;font-weight:700;letter-spacing:.07em;color:#A0A0A0;margin-bottom:12px">NOVAS POR SEMANA</div>
+            <div id="bar-chart-wrap">
+              <div class="loading"><div class="spinner"></div></div>
+            </div>
           </div>
         </div>
+        <!-- Fila de atenção -->
+        <div style="background:#fff;border:1px solid #EBEBEB;border-radius:12px;padding:16px 20px;display:flex;flex-direction:column">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+            <div style="font-size:11px;font-weight:700;letter-spacing:.07em;color:#A0A0A0">FILA DE ATENÇÃO</div>
+            <button class="btn btn-secondary" style="font-size:10px;padding:3px 10px" onclick="navigate('banco-manifestacoes', document.querySelector('[onclick*=banco-manifestacoes]'))">Ver todos</button>
+          </div>
+          <div style="overflow-y:auto;flex:1">
+            <table class="fila-table" style="width:100%;border-collapse:collapse">
+              <tbody id="fila-body">
+                <tr><td colspan="7"><div class="loading"><div class="spinner"></div></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
 
-        <!-- Tipos donut -->
-        <div class="section-card">
-          <div class="section-title">Por tipo de manifestação</div>
-          <div class="section-sub">Reclamação, dúvida, sugestão, elogio</div>
-          <div class="donut-wrap" id="donut-wrap">
+      <!-- TOP produtos · motivos · setores -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-top:14px">
+        <div style="background:#fff;border:1px solid #EBEBEB;border-radius:12px;padding:16px 20px">
+          <div style="font-size:11px;font-weight:700;letter-spacing:.07em;color:#A0A0A0;margin-bottom:12px">TOP PRODUTOS — MAIS RECLAMAÇÕES</div>
+          <div id="top-produtos-list" style="display:flex;flex-direction:column;gap:6px">
             <div class="loading"><div class="spinner"></div></div>
           </div>
         </div>
-
-        <!-- Procedência -->
-        <div class="section-card">
-          <div class="section-title">Procedência</div>
-          <div class="section-sub" id="proc-sub">Manifestações já decididas</div>
-          <div id="proc-content">
+        <div style="background:#fff;border:1px solid #EBEBEB;border-radius:12px;padding:16px 20px">
+          <div style="font-size:11px;font-weight:700;letter-spacing:.07em;color:#A0A0A0;margin-bottom:12px">TOP MOTIVOS — MAIS RECLAMAÇÕES</div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <table style="width:100%;border-collapse:collapse" id="causas-table">
+              <thead><tr>
+                <th style="text-align:left;font-size:11px;font-weight:600;color:#A0A0A0;padding:4px 0;border-bottom:1px solid #F0F0F0">Motivo</th>
+                <th style="text-align:right;font-size:11px;font-weight:600;color:#A0A0A0;padding:4px 0;border-bottom:1px solid #F0F0F0">Qtd</th>
+                <th style="text-align:right;font-size:11px;font-weight:600;color:#A0A0A0;padding:4px 0;border-bottom:1px solid #F0F0F0">%</th>
+              </tr></thead>
+              <tbody id="top-motivos">
+                <tr><td colspan="3"><div class="loading"><div class="spinner"></div></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div style="background:#fff;border:1px solid #EBEBEB;border-radius:12px;padding:16px 20px">
+          <div style="font-size:11px;font-weight:700;letter-spacing:.07em;color:#A0A0A0;margin-bottom:12px">TOP SETORES — MAIS RECLAMAÇÕES</div>
+          <div id="top-setores-list" style="display:flex;flex-direction:column;gap:6px">
             <div class="loading"><div class="spinner"></div></div>
           </div>
         </div>
       </div>
 
-      <!-- Row 3 -->
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:16px;margin-bottom:16px">
-        <!-- Gráfico barras -->
-        <div class="section-card">
-          <div class="section-title">Novas manifestações por semana</div>
-          <div class="section-sub" id="bar-sub">Últimas 12 semanas</div>
-          <div id="bar-chart-wrap">
-            <div class="loading"><div class="spinner"></div></div>
-          </div>
-        </div>
-
+      <!-- Pendências por setor + Desempenho empresa + Alertas operacionais -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 360px;gap:14px;margin-top:14px;margin-bottom:14px">
         <!-- Pendências por setor -->
-        <div class="section-card">
-          <div class="section-title">Pendências por setor</div>
-          <div class="section-sub">Fichas enviadas aguardando resposta</div>
-          <table class="ptable" id="ptable">
-            <thead>
-              <tr>
-                <th>Setor</th>
-                <th>Aguardando</th>
-                <th>Atrasadas</th>
-                <th>Tempo médio</th>
-              </tr>
-            </thead>
+        <div style="background:#fff;border:1px solid #EBEBEB;border-radius:12px;padding:16px 20px">
+          <div style="font-size:11px;font-weight:700;letter-spacing:.07em;color:#A0A0A0;margin-bottom:12px">PENDÊNCIAS POR SETOR</div>
+          <table id="ptable" style="width:100%;border-collapse:collapse">
+            <thead><tr>
+              <th style="text-align:left;font-size:11px;font-weight:600;color:#A0A0A0;padding:5px 0;border-bottom:1px solid #F0F0F0">Setor</th>
+              <th style="text-align:right;font-size:11px;font-weight:600;color:#A0A0A0;padding:5px 0;border-bottom:1px solid #F0F0F0">Aguardando</th>
+              <th style="text-align:right;font-size:11px;font-weight:600;color:#A0A0A0;padding:5px 0;border-bottom:1px solid #F0F0F0">Atrasadas</th>
+              <th style="text-align:right;font-size:11px;font-weight:600;color:#A0A0A0;padding:5px 0;border-bottom:1px solid #F0F0F0">T. médio</th>
+            </tr></thead>
             <tbody id="ptable-body">
               <tr><td colspan="4"><div class="loading"><div class="spinner"></div></div></td></tr>
             </tbody>
           </table>
         </div>
-      </div>
-
-      <!-- Fila de atenção -->
-      <div class="section-card">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-          <div>
-            <div class="section-title" style="margin-bottom:2px">
-              <svg style="display:inline;width:16px;height:16px;margin-right:6px;vertical-align:-2px" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-              Fila de atenção
-            </div>
-            <div class="section-sub" style="margin-bottom:0">Casos que pedem ação, ordenados por urgência</div>
-          </div>
-          <button class="btn btn-secondary" onclick="navigate('banco-manifestacoes', document.querySelector('[onclick*=banco-manifestacoes]'))">Ver todos os casos</button>
-        </div>
-        <table class="fila-table" id="fila-table">
-          <thead>
-            <tr>
-              <th>Nº</th><th>Cliente</th><th>Tipo</th><th>Setor pendente</th><th>Etapa</th><th>Prazo</th><th></th>
-            </tr>
-          </thead>
-          <tbody id="fila-body">
-            <tr class="skeleton-row"><td colspan="7"><span class="skeleton skeleton-line" style="width:92%"></span><span class="skeleton skeleton-line" style="width:76%"></span><span class="skeleton skeleton-line" style="width:84%"></span><span class="skeleton skeleton-line" style="width:68%"></span></td></tr>
-          </tbody>
-        </table>
-      </div>
-
-      <!-- Bloco por empresa + Top motivos -->
-      <div class="grid-2" style="margin-top:16px;margin-bottom:16px">
-        <div class="section-card">
-          <div class="section-title" style="margin-bottom:4px">Desempenho por empresa</div>
-          <div class="section-sub" style="margin-bottom:14px">Visão comparativa operacional — não é ranking</div>
-          <div id="empresa-cards">
+        <!-- Desempenho por empresa -->
+        <div style="background:#fff;border:1px solid #EBEBEB;border-radius:12px;padding:16px 20px">
+          <div style="font-size:11px;font-weight:700;letter-spacing:.07em;color:#A0A0A0;margin-bottom:12px">DESEMPENHO POR EMPRESA</div>
+          <div id="empresa-cards" style="display:flex;flex-direction:column;gap:10px">
             <div class="loading"><div class="spinner"></div></div>
           </div>
         </div>
-        <div class="section-card">
-          <div class="section-title" style="margin-bottom:4px">Distribuição por motivo</div>
-          <div class="section-sub" style="margin-bottom:10px">Principais causas identificadas</div>
-          <table style="width:100%;border-collapse:collapse" id="causas-table">
-            <thead>
-              <tr>
-                <th style="text-align:left;font-size:11px;font-weight:600;color:var(--gray-400);padding:6px 0;border-bottom:1px solid var(--gray-100)">Motivo</th>
-                <th style="text-align:right;font-size:11px;font-weight:600;color:var(--gray-400);padding:6px 0;border-bottom:1px solid var(--gray-100)">Qtd</th>
-                <th style="text-align:right;font-size:11px;font-weight:600;color:var(--gray-400);padding:6px 0;border-bottom:1px solid var(--gray-100)">%</th>
-              </tr>
-            </thead>
-            <tbody id="top-motivos">
-              <tr><td colspan="3"><div class="loading"><div class="spinner"></div></div></td></tr>
-            </tbody>
-          </table>
+        <!-- Alertas operacionais -->
+        <div style="background:#fff;border:1px solid #EBEBEB;border-radius:12px;padding:16px 20px;display:flex;flex-direction:column;gap:8px" id="alertas-section">
+          <div style="font-size:11px;font-weight:700;letter-spacing:.07em;color:#A0A0A0;margin-bottom:2px">ALERTAS OPERACIONAIS</div>
+          <div id="alertas-lista" style="display:flex;flex-direction:column;gap:8px">
+            <div class="loading"><div class="spinner"></div></div>
+          </div>
         </div>
       </div>
 
-      <!-- Alertas reais -->
-      <div class="section-card" style="margin-bottom:16px" id="alertas-section">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-          <div>
-            <div class="section-title" style="margin-bottom:2px">
-              <svg style="display:inline;width:15px;height:15px;margin-right:6px;vertical-align:-2px" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-              Alertas
-            </div>
-            <div class="section-sub" style="margin-bottom:0">Situações que precisam de atenção — somente dados reais</div>
-          </div>
-        </div>
-        <div id="alertas-lista">
-          <div class="loading"><div class="spinner"></div></div>
-        </div>
-      </div>
-
-      <!-- Comparativo IA x processo humano -->
-      <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:20px;display:flex;flex-direction:column;gap:16px" id="comparativo-section">
-        <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap">
-          <div>
-            <div style="font-weight:600;font-size:14.5px">Comparativo IA x processo humano</div>
-            <div style="font-size:12.5px;color:#707070">Métricas operacionais calculadas a partir das decisões registradas no período</div>
-          </div>
-          <button onclick="showPage('page-cerebro')" style="border:1px solid #D6D6D6;background:#fff;border-radius:7px;padding:7px 12px;cursor:pointer;font-size:13px">Ver comparativo completo</button>
-        </div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr));gap:16px">
-          <div style="border:1px solid #EEEEEE;border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:12px">
-            <div style="display:flex;align-items:center;gap:8px;font-weight:600;font-size:13.5px">
-              <span style="width:8px;height:8px;border-radius:2px;background:#A80502;flex-shrink:0"></span>Assistente (IA)
-            </div>
-            <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px">
-              <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:20px;font-weight:600;font-variant-numeric:tabular-nums" id="cmp-ia-total">—</span><span style="font-size:12px;color:#666464">Análises realizadas</span></div>
-              <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:20px;font-weight:600;font-variant-numeric:tabular-nums" id="cmp-ia-aprovadas">—</span><span style="font-size:12px;color:#666464">Aprovadas</span></div>
-              <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:20px;font-weight:600;font-variant-numeric:tabular-nums" id="cmp-ia-tempo">—</span><span style="font-size:12px;color:#666464">Tempo médio</span></div>
-            </div>
-          </div>
-          <div style="border:1px solid #EEEEEE;border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:12px">
-            <div style="display:flex;align-items:center;gap:8px;font-weight:600;font-size:13.5px">
-              <span style="width:8px;height:8px;border-radius:2px;background:#545252;flex-shrink:0"></span>Processo humano
-            </div>
-            <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
-              <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:20px;font-weight:600;font-variant-numeric:tabular-nums" id="cmp-hum-total">—</span><span style="font-size:12px;color:#666464">Decisões manuais</span></div>
-              <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:20px;font-weight:600;font-variant-numeric:tabular-nums" id="cmp-hum-tempo">—</span><span style="font-size:12px;color:#666464">Tempo médio</span></div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <!-- hidden compat IDs for JS -->
+      <span id="cmp-ia-total" style="display:none">—</span>
+      <span id="cmp-ia-aprovadas" style="display:none">—</span>
+      <span id="cmp-ia-tempo" style="display:none">—</span>
+      <span id="cmp-hum-total" style="display:none">—</span>
+      <span id="cmp-hum-tempo" style="display:none">—</span>
+      <div id="comparativo-section" style="display:none"></div>
+      <div id="donut-wrap" style="display:none"></div>
+      <span id="proc-sub" style="display:none"></span>
+      <div id="proc-content" style="display:none"></div>
+      <span id="bar-sub" style="display:none"></span>
+      <span id="kpi-fora-sla-card-compat" style="display:none"></span>
     </div>
   </div>
 
@@ -3391,19 +3361,8 @@
   </div>
 
   <!-- ===== ACOMPANHAMENTO ===== -->
-  <div class="page" id="page-acompanhamento">
-    <div class="topbar">
-      <div class="topbar-left">
-        <div class="breadcrumb">Operação</div>
-        <div class="page-header">
-          <h1 class="page-title">Minhas pendências</h1>
-        </div>
-      </div>
-      <div class="topbar-right">
-        <button class="btn btn-secondary" onclick="loadAcompanhamento()">Atualizar</button>
-        <button class="btn btn-primary" onclick="navigate('nova-manifestacao', document.querySelector('[onclick*=nova-manifestacao]'))">+ Nova manifestação</button>
-      </div>
-    </div>
+  <!-- page-acompanhamento: redirecionado para banco-manifestacoes (unificado) -->
+  <div class="page" id="page-acompanhamento" style="display:none">
     <div class="content">
 
       <!-- Alertas ANALISTA SAC: pesquisas baixas + portal -->
@@ -3982,32 +3941,66 @@
       </div>
     </div>
     <div class="content">
+
+      <!-- Alertas herdados do Minhas Pendências -->
+      <div id="analista-alertas-wrap" style="display:none;margin-bottom:16px;flex-direction:column;gap:10px">
+        <div id="analista-alerta-ocps" style="display:none;background:#FFF8F0;border:1px solid #F5A623;border-radius:10px;padding:14px 18px">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+            <div>
+              <div style="font-size:13px;font-weight:700;color:#7A4C00">⚠ Pesquisas com nota ≤ 6 aguardando decisão de tratamento</div>
+              <div style="font-size:12px;color:#7A4C00;margin-top:3px" id="analista-alerta-ocps-desc">—</div>
+            </div>
+          </div>
+          <div id="analista-ocps-lista" style="margin-top:10px;display:flex;flex-direction:column;gap:6px"></div>
+        </div>
+        <div id="analista-alerta-portal" style="display:none;background:#F0F6FF;border:1px solid #4A80D9;border-radius:10px;padding:14px 18px">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+            <div>
+              <div style="font-size:13px;font-weight:700;color:#24508F">🔔 Manifestações do portal aguardando análise</div>
+              <div style="font-size:12px;color:#24508F;margin-top:3px" id="analista-alerta-portal-desc">—</div>
+            </div>
+          </div>
+          <div id="analista-portal-lista" style="margin-top:10px;display:flex;flex-direction:column;gap:6px"></div>
+        </div>
+      </div>
+
       <!-- Search + filters -->
-      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px">
-        <input placeholder="Pesquisar nº, cliente, CNPJ ou motivo" id="banco-search" oninput="filtrarBanco()" style="flex:1;min-width:240px;height:36px;border:1px solid #D6D6D6;border-radius:7px;padding:0 12px;background:#fff;font-size:13px;font-family:inherit">
-        <select id="bflt-tipo-sel" onchange="filtrarBanco()" style="height:36px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:13px;font-family:inherit">
+      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px">
+        <input placeholder="Buscar por cliente, número, empresa…" id="banco-search" oninput="filtrarBanco()" style="flex:1;min-width:220px;height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 12px;background:#fff;font-size:13px;font-family:inherit">
+        <select id="bflt-status-sel" onchange="filtrarBanco()" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:13px;font-family:inherit">
+          <option value="">Status: todos</option>
+          <option value="EM ANÁLISE">Em análise</option>
+          <option value="AGUARDANDO">Aguardando decisão</option>
+          <option value="EM TRATAMENTO">Em tratamento</option>
+          <option value="APROVADA">Aprovada</option>
+          <option value="AGUARDANDO_DEVOLUTIVA">Aguard. devolutiva</option>
+          <option value="ENCERRADA">Encerrada</option>
+          <option value="REJEITADA">Rejeitada</option>
+        </select>
+        <select id="bflt-tipo-sel" onchange="filtrarBanco()" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:13px;font-family:inherit">
           <option value="">Tipo: todos</option>
           <option value="Reclamação">Reclamação</option>
           <option value="Dúvida">Dúvida</option>
           <option value="Sugestão">Sugestão</option>
           <option value="Elogio">Elogio</option>
         </select>
-        <select id="bflt-empresa-sel" onchange="filtrarBanco()" style="height:36px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:13px;font-family:inherit">
+        <select id="bflt-empresa-sel" onchange="filtrarBanco()" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:13px;font-family:inherit">
           <option value="">Empresa: todas</option>
           <option value="CHIACCHIO EMBALAGENS">Chiacchio</option>
           <option value="PLASCHIO">Plaschio</option>
           <option value="TUBAHIA">Cesbap</option>
         </select>
-        <select id="bflt-setor-sel" onchange="filtrarBanco()" style="height:36px;min-width:120px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:13px;font-family:inherit">
+        <select id="bflt-setor-sel" onchange="filtrarBanco()" style="height:34px;min-width:120px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:13px;font-family:inherit">
           <option value="">Setor: todos</option>
         </select>
-        <select id="bflt-periodo-sel" onchange="filtrarBanco()" style="height:36px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:13px;font-family:inherit">
+        <select id="bflt-periodo-sel" onchange="filtrarBanco()" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:13px;font-family:inherit">
           <option value="">Período: todos</option>
           <option value="hoje">Hoje</option>
           <option value="7">7 dias</option>
           <option value="30">30 dias</option>
           <option value="90">90 dias</option>
         </select>
+        <button onclick="(function(){document.getElementById('banco-search').value='';['bflt-status-sel','bflt-tipo-sel','bflt-empresa-sel','bflt-setor-sel','bflt-periodo-sel'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});filtrarBanco();})()" style="height:34px;border:1px solid #D6D6D6;background:#fff;border-radius:7px;padding:0 12px;cursor:pointer;font-size:13px;color:#545252;font-family:inherit">Limpar</button>
       </div>
       <!-- hidden compat filter elements used by JS -->
       <div style="display:none">
@@ -5995,101 +5988,113 @@
     </div>
     <div class="content">
 
-      <!-- Tabs: Operacionais / Indicadores da IA / Validação da IA e da ferramenta / Comparativo IA x processo humano -->
-      <div id="ind-tabs-bar" style="display:flex;gap:2px;border-bottom:1px solid #E4E4E4;overflow-x:auto;margin-bottom:20px">
-        <button onclick="switchIndTab('operacionais',this)" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#1F1F1F;border-bottom:2px solid #C70602;margin-bottom:-1px;font-weight:700;font-family:inherit">Operacionais</button>
-        <button onclick="switchIndTab('india',this)" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Indicadores da IA</button>
-        <button onclick="switchIndTab('validacao',this)" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Validação da IA e da ferramenta</button>
-        <button onclick="switchIndTab('comparativo',this)" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Comparativo IA x processo humano</button>
-      </div>
-
-      <!-- TAB: OPERACIONAIS -->
-      <div id="ind-tab-operacionais">
-        <!-- Filtros -->
-        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px">
-          <select id="pm-filtro-empresa" onchange="loadPainelMaquina()" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:13px;font-family:inherit">
+      <!-- Tabs + filtros -->
+      <div style="display:flex;align-items:center;border-bottom:1px solid #E4E4E4;margin-bottom:16px;gap:0">
+        <div id="ind-tabs-bar" style="display:flex;flex:1;gap:0;overflow-x:auto">
+          <button onclick="switchIndTab('operacionais',this)" style="border:0;background:none;padding:12px 18px;font-size:12.5px;cursor:pointer;white-space:nowrap;color:#C70602;border-bottom:2px solid #C70602;margin-bottom:-1px;font-weight:700;font-family:inherit">Operacionais</button>
+          <button onclick="switchIndTab('india',this)" style="border:0;background:none;padding:12px 18px;font-size:12.5px;cursor:pointer;white-space:nowrap;color:#727272;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Indicadores da IA</button>
+          <button onclick="switchIndTab('validacao',this)" style="border:0;background:none;padding:12px 18px;font-size:12.5px;cursor:pointer;white-space:nowrap;color:#727272;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Validação da IA e da ferramenta</button>
+          <button onclick="switchIndTab('comparativo',this)" style="border:0;background:none;padding:12px 18px;font-size:12.5px;cursor:pointer;white-space:nowrap;color:#727272;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Comparativo IA × processo humano</button>
+        </div>
+        <div style="display:flex;gap:6px;padding-left:12px;flex-shrink:0">
+          <select id="pm-filtro-empresa" onchange="loadPainelMaquina()" style="height:32px;border:1px solid #E0E0E0;border-radius:7px;padding:0 10px;background:#fff;font-size:12px;font-family:inherit">
             <option value="">Todas as empresas</option>
             <option value="CHIACCHIO">Chiacchio Embalagens</option>
             <option value="PLASCHIO">Plaschio</option>
             <option value="TUBAHIA">Cesbap</option>
           </select>
-          <select id="pm-filtro-setor" onchange="loadPainelMaquina()" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:13px;font-family:inherit">
+          <select id="pm-filtro-setor" onchange="loadPainelMaquina()" style="height:32px;border:1px solid #E0E0E0;border-radius:7px;padding:0 10px;background:#fff;font-size:12px;font-family:inherit">
             <option value="">Todos os setores</option>
           </select>
-          <select id="pm-filtro-periodo" onchange="loadPainelMaquina()" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:13px;font-family:inherit">
+          <select id="pm-filtro-periodo" onchange="loadPainelMaquina()" style="height:32px;border:1px solid #E0E0E0;border-radius:7px;padding:0 10px;background:#fff;font-size:12px;font-family:inherit">
             <option value="30">Últimos 30 dias</option>
             <option value="90">Últimos 90 dias</option>
             <option value="180">Últimos 180 dias</option>
             <option value="365">Último ano</option>
           </select>
+          <button class="btn btn-secondary" style="height:32px;font-size:12px" onclick="loadPainelMaquina()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            Exportar
+          </button>
+        </div>
+      </div>
+
+      <!-- TAB: OPERACIONAIS -->
+      <div id="ind-tab-operacionais">
+        <!-- KPI cards operacionais — 4 principais em grid -->
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px" id="pm-kpis">
+          <div style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px;border-top:3px solid #C70602"><div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:4px">VOLUME TOTAL</div><div style="font-size:28px;font-weight:800;color:#C70602;line-height:1.1" id="pm-vol">--</div><div style="font-size:11px;color:#727272;margin-top:3px">total de manifestações</div></div>
+          <div style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px;border-top:3px solid #1A6632"><div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:4px">DENTRO DO SLA</div><div style="font-size:28px;font-weight:800;color:#1A6632;line-height:1.1" id="pm-sla-pct">--%</div><div style="font-size:11px;color:#727272;margin-top:3px">encerradas no prazo</div></div>
+          <div style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px;border-top:3px solid #24508F"><div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:4px">TEMPO MÉDIO</div><div style="font-size:28px;font-weight:800;color:#24508F;line-height:1.1" id="pm-tempo">--</div><div style="font-size:11px;color:#727272;margin-top:3px">horas até encerramento</div></div>
+          <div style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px;border-top:3px solid #C70602"><div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:4px">REINCIDÊNCIA</div><div style="font-size:28px;font-weight:800;color:#C70602;line-height:1.1" id="pm-reincid-pct">--%</div><div style="font-size:11px;color:#727272;margin-top:3px">casos reincidentes</div></div>
+        </div>
+        <!-- métricas secundárias -->
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
+          <div style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px"><div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:4px">RNCs</div><div style="font-size:26px;font-weight:800;color:#9A4A10;line-height:1.1" id="pm-rncs">--</div><div style="font-size:11px;color:#727272;margin-top:3px">registros de não conformidade</div></div>
+          <div style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px"><div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:4px">TAXA DE RESOLUÇÃO</div><div style="font-size:26px;font-weight:800;color:#1A6632;line-height:1.1" id="pm-resolucao">--%</div><div style="font-size:11px;color:#727272;margin-top:3px">manifestações encerradas</div></div>
+          <div style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px"><div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:4px">DEVOLUTIVAS</div><div style="font-size:26px;font-weight:800;color:#545252;line-height:1.1" id="pm-devolutivas">--</div><div style="font-size:11px;color:#727272;margin-top:3px">retorno ao cliente enviado</div></div>
         </div>
 
-        <!-- KPI cards operacionais -->
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:16px" id="pm-kpis">
-          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px"><span style="font-size:12.5px;color:#666464">Volume</span><span style="font-size:24px;font-weight:600;margin-top:2px" id="pm-vol">--</span><span style="font-size:11.5px;color:#707070">total de manifestações</span></div>
-          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px"><span style="font-size:12.5px;color:#666464">Dentro do SLA</span><span style="font-size:24px;font-weight:600;margin-top:2px;color:#1E6B3A" id="pm-sla-pct">--%</span><span style="font-size:11.5px;color:#707070">encerradas no prazo</span></div>
-          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px"><span style="font-size:12.5px;color:#666464">Tempo médio</span><span style="font-size:24px;font-weight:600;margin-top:2px" id="pm-tempo">--</span><span style="font-size:11.5px;color:#707070">horas até encerramento</span></div>
-          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px"><span style="font-size:12.5px;color:#666464">Reincidência</span><span style="font-size:24px;font-weight:600;margin-top:2px;color:#A80502" id="pm-reincid-pct">--%</span><span style="font-size:11.5px;color:#707070">casos reincidentes</span></div>
-          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px"><span style="font-size:12.5px;color:#666464">RNCs</span><span style="font-size:24px;font-weight:600;margin-top:2px" id="pm-rncs">--</span><span style="font-size:11.5px;color:#707070">registros de não conformidade</span></div>
-          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px"><span style="font-size:12.5px;color:#666464">Taxa de resolução</span><span style="font-size:24px;font-weight:600;margin-top:2px" id="pm-resolucao">--%</span><span style="font-size:11.5px;color:#707070">manifestações encerradas</span></div>
-          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px"><span style="font-size:12.5px;color:#666464">Devolutivas</span><span style="font-size:24px;font-weight:600;margin-top:2px" id="pm-devolutivas">--</span><span style="font-size:11.5px;color:#707070">retorno ao cliente enviado</span></div>
-        </div>
-
-        <!-- Column charts -->
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:16px;margin-bottom:16px">
-          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:18px 20px;display:flex;flex-direction:column;gap:14px">
-            <div><div style="font-weight:600;font-size:14.5px">Manifestações por mês</div><div style="font-size:12.5px;color:#707070">Total de manifestações registradas</div></div>
-            <div id="pm-chart-mes" style="display:flex;align-items:flex-end;gap:6px;height:170px"><div style="color:#707070;font-size:13px;align-self:center;width:100%;text-align:center">Carregando...</div></div>
+        <!-- Volume mensal + SLA por setor -->
+        <div style="display:grid;grid-template-columns:1fr 380px;gap:14px;margin-bottom:14px">
+          <div style="background:#fff;border:1px solid #EBEBEB;border-radius:12px;padding:16px 20px">
+            <div style="font-size:11px;font-weight:700;letter-spacing:.07em;color:#A0A0A0;margin-bottom:14px">VOLUME MENSAL DE MANIFESTAÇÕES</div>
+            <div id="pm-chart-mes" style="display:flex;align-items:flex-end;gap:6px;height:160px"><div style="color:#707070;font-size:13px;align-self:center;width:100%;text-align:center">Carregando...</div></div>
           </div>
-          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:18px 20px;display:flex;flex-direction:column;gap:14px">
-            <div><div style="font-weight:600;font-size:14.5px">Por tipo de manifestação</div><div style="font-size:12.5px;color:#707070">Reclamação, Elogio, Sugestão…</div></div>
-            <div id="pm-chart-tipo" style="display:flex;align-items:flex-end;gap:6px;height:170px"><div style="color:#707070;font-size:13px;align-self:center;width:100%;text-align:center">Carregando...</div></div>
+          <div style="background:#fff;border:1px solid #EBEBEB;border-radius:12px;padding:16px 20px">
+            <div style="font-size:11px;font-weight:700;letter-spacing:.07em;color:#A0A0A0;margin-bottom:14px">CUMPRIMENTO DO SLA POR SETOR</div>
+            <div id="pm-sla" style="display:flex;flex-direction:column;gap:8px"></div>
           </div>
         </div>
 
-        <!-- Bar charts -->
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:16px">
-          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:18px 20px;display:flex;flex-direction:column;gap:14px">
-            <div><div style="font-weight:600;font-size:14.5px">Top setores responsáveis</div><div style="font-size:12.5px;color:#707070">Por volume de manifestações</div></div>
-            <div id="pm-setores" style="display:flex;flex-direction:column;gap:10px"></div>
+        <!-- Por tipo / top setores / top causas -->
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:14px">
+          <div style="background:#fff;border:1px solid #EBEBEB;border-radius:12px;padding:16px 20px">
+            <div style="font-size:11px;font-weight:700;letter-spacing:.07em;color:#A0A0A0;margin-bottom:14px">POR TIPO DE MANIFESTAÇÃO</div>
+            <div id="pm-chart-tipo" style="display:flex;align-items:flex-end;gap:6px;height:130px"><div style="color:#707070;font-size:13px;align-self:center;width:100%;text-align:center">Carregando...</div></div>
           </div>
-          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:18px 20px;display:flex;flex-direction:column;gap:14px">
-            <div><div style="font-weight:600;font-size:14.5px">Top causas identificadas</div><div style="font-size:12.5px;color:#707070">Por frequência no período</div></div>
-            <div id="pm-topCausas" style="display:flex;flex-direction:column;gap:10px"></div>
+          <div style="background:#fff;border:1px solid #EBEBEB;border-radius:12px;padding:16px 20px">
+            <div style="font-size:11px;font-weight:700;letter-spacing:.07em;color:#A0A0A0;margin-bottom:14px">TOP SETORES RESPONSÁVEIS</div>
+            <div id="pm-setores" style="display:flex;flex-direction:column;gap:8px"></div>
           </div>
-          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:18px 20px;display:flex;flex-direction:column;gap:14px">
-            <div><div style="font-weight:600;font-size:14.5px">SLA — casos em aberto</div><div style="font-size:12.5px;color:#707070">No prazo / alerta / vencido</div></div>
-            <div id="pm-sla" style="display:flex;flex-direction:column;gap:10px"></div>
+          <div style="background:#fff;border:1px solid #EBEBEB;border-radius:12px;padding:16px 20px">
+            <div style="font-size:11px;font-weight:700;letter-spacing:.07em;color:#A0A0A0;margin-bottom:14px">TOP CAUSAS IDENTIFICADAS</div>
+            <div id="pm-topCausas" style="display:flex;flex-direction:column;gap:8px"></div>
           </div>
         </div>
       </div>
 
       <!-- TAB: INDICADORES DA IA -->
       <div id="ind-tab-india" style="display:none">
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:16px">
-          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px"><span style="font-size:12.5px;color:#666464">Assertividade da IA</span><span style="font-size:24px;font-weight:600;margin-top:2px;color:#1E6B3A" id="pm-assert">--%</span><span style="font-size:11.5px;color:#707070">sugestões aceitas</span></div>
-          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px"><span style="font-size:12.5px;color:#666464">Pontuação média IA</span><span style="font-size:24px;font-weight:600;margin-top:2px" id="pm-pontuacao">--</span><span style="font-size:11.5px;color:#707070">de 100</span></div>
-          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px"><span style="font-size:12.5px;color:#666464">Análises avaliadas</span><span style="font-size:24px;font-weight:600;margin-top:2px" id="pm-avaliadas">--</span><span style="font-size:11.5px;color:#707070">com feedback</span></div>
-          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px"><span style="font-size:12.5px;color:#666464">Causas cadastradas</span><span style="font-size:24px;font-weight:600;margin-top:2px" id="pm-causas">--</span><span style="font-size:11.5px;color:#707070">no Cérebro</span></div>
+        <div style="background:#FFF8F0;border:1.5px solid #F0D9A0;border-radius:10px;padding:12px 16px;font-size:12.5px;color:#7A4C00;line-height:1.55;margin-bottom:14px">
+          Estes indicadores são calculados automaticamente a partir das análises da IA e das decisões registradas pelos usuários. <strong>Taxa de aceitação ≠ assertividade real.</strong> Assertividade é calculada somente sobre análises efetivamente validadas por humanos.
         </div>
-        <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:18px 20px">
-          <div style="font-weight:600;font-size:14.5px;margin-bottom:14px">Assertividade por critério</div>
-          <div id="pm-criterios" style="display:flex;flex-direction:column;gap:10px"></div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
+          <div style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px;border-top:3px solid #1A6632"><div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:4px">ASSERTIVIDADE DA IA</div><div style="font-size:28px;font-weight:800;color:#1A6632;line-height:1.1" id="pm-assert">--%</div><div style="font-size:11px;color:#727272;margin-top:3px">sugestões aceitas</div></div>
+          <div style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px;border-top:3px solid #24508F"><div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:4px">PONTUAÇÃO MÉDIA IA</div><div style="font-size:28px;font-weight:800;color:#24508F;line-height:1.1" id="pm-pontuacao">--</div><div style="font-size:11px;color:#727272;margin-top:3px">de 100</div></div>
+          <div style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px;border-top:3px solid #545252"><div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:4px">ANÁLISES AVALIADAS</div><div style="font-size:28px;font-weight:800;color:#545252;line-height:1.1" id="pm-avaliadas">--</div><div style="font-size:11px;color:#727272;margin-top:3px">com feedback</div></div>
+          <div style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px;border-top:3px solid #9A4A10"><div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:4px">CAUSAS CADASTRADAS</div><div style="font-size:28px;font-weight:800;color:#9A4A10;line-height:1.1" id="pm-causas">--</div><div style="font-size:11px;color:#727272;margin-top:3px">no Cérebro</div></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div style="background:#fff;border:1px solid #EBEBEB;border-radius:12px;padding:16px 20px">
+            <div style="font-size:11px;font-weight:700;letter-spacing:.07em;color:#A0A0A0;margin-bottom:14px">DECISÕES SOBRE SUGESTÕES DA IA</div>
+            <div id="ia-bar-decisoes" style="display:flex;flex-direction:column;gap:8px"></div>
+          </div>
+          <div style="background:#fff;border:1px solid #EBEBEB;border-radius:12px;padding:16px 20px">
+            <div style="font-size:11px;font-weight:700;letter-spacing:.07em;color:#A0A0A0;margin-bottom:14px">ASSERTIVIDADE POR CRITÉRIO (VALIDADA)</div>
+            <div id="pm-criterios" style="display:flex;flex-direction:column;gap:8px"></div>
+          </div>
         </div>
       </div>
 
       <!-- TAB: VALIDAÇÃO DA IA E DA FERRAMENTA -->
       <div id="ind-tab-validacao" style="display:none">
-        <div style="background:#F1EFF8;color:#7F0401;border-radius:10px;padding:14px 18px;font-size:13.5px;line-height:1.55;margin-bottom:16px">Estes indicadores são <strong>métricas operacionais</strong>, calculadas automaticamente a partir das decisões registradas pelos analistas (aceitar, editar ou rejeitar cada sugestão). Não representam uma avaliação subjetiva da IA.</div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:16px">
-          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px"><span style="font-size:12.5px;color:#666464">Total de análises</span><span style="font-size:24px;font-weight:600;margin-top:2px" id="ia-total">--</span></div>
-          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px"><span style="font-size:12.5px;color:#666464">Aceitas sem edição</span><span style="font-size:24px;font-weight:600;margin-top:2px;color:#1E6B3A" id="ia-aceitas">--</span></div>
-          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px"><span style="font-size:12.5px;color:#666464">Aceitas com edição</span><span style="font-size:24px;font-weight:600;margin-top:2px;color:#7A4C00" id="ia-editadas">--</span></div>
-          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px"><span style="font-size:12.5px;color:#666464">Rejeitadas</span><span style="font-size:24px;font-weight:600;margin-top:2px;color:#A80502" id="ia-rejeitadas">--</span></div>
-        </div>
-        <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:18px 20px;margin-bottom:16px">
-          <div style="font-weight:600;font-size:14.5px;margin-bottom:14px">Decisões sobre as sugestões</div>
-          <div id="ia-bar-decisoes" style="display:flex;flex-direction:column;gap:10px"></div>
+        <div style="background:#F1EFF8;color:#7F0401;border-radius:10px;padding:14px 18px;font-size:13px;line-height:1.55;margin-bottom:14px">Estes indicadores são <strong>métricas operacionais</strong>, calculadas automaticamente a partir das decisões registradas pelos analistas (aceitar, editar ou rejeitar cada sugestão). Não representam uma avaliação subjetiva da IA.</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
+          <div style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px;border-top:3px solid #545252"><div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:4px">TOTAL DE ANÁLISES</div><div style="font-size:28px;font-weight:800;color:#545252;line-height:1.1" id="ia-total">--</div></div>
+          <div style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px;border-top:3px solid #1A6632"><div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:4px">ACEITAS SEM EDIÇÃO</div><div style="font-size:28px;font-weight:800;color:#1A6632;line-height:1.1" id="ia-aceitas">--</div></div>
+          <div style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px;border-top:3px solid #8A5000"><div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:4px">ACEITAS COM EDIÇÃO</div><div style="font-size:28px;font-weight:800;color:#8A5000;line-height:1.1" id="ia-editadas">--</div></div>
+          <div style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px;border-top:3px solid #C70602"><div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:4px">REJEITADAS</div><div style="font-size:28px;font-weight:800;color:#C70602;line-height:1.1" id="ia-rejeitadas">--</div></div>
         </div>
       </div>
 
@@ -8580,6 +8585,8 @@ function doLogout() {
 }
 
 function navigate(page, el) {
+  // Acompanhamento foi unificado com banco-manifestacoes
+  if (page === 'acompanhamento') { page = 'banco-manifestacoes'; }
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
   const pageEl = document.getElementById('page-' + page);
@@ -11950,10 +11957,12 @@ function filtrarBanco() {
   const empresa = document.getElementById('bflt-empresa-sel')?.value || '';
   const setor = document.getElementById('bflt-setor-sel')?.value || '';
   const periodo = document.getElementById('bflt-periodo-sel')?.value || '';
+  const status = document.getElementById('bflt-status-sel')?.value || '';
   bancoFiltros.tipo = tipo;
   bancoFiltros.empresa = empresa;
   bancoFiltros.setor = setor;
   bancoFiltros.periodo = periodo ? parseInt(periodo) : null;
+  bancoFiltros.statusFiltro = status;
   renderBanco();
 }
 
@@ -11979,6 +11988,7 @@ function renderBanco() {
   else if (bancoFilter === 'minhas') { const meNome = (document.getElementById('sidebar-user-name')?.textContent||'').trim(); if (meNome && meNome !== 'Usuário') data = data.filter(m => (m.RESPONSAVEL||m.ANALISTA_RESPONSAVEL||m.ATENDENTE||'').toLowerCase().includes(meNome.toLowerCase())); }
 
   // Apply column filters
+  if (bancoFiltros.statusFiltro) data = data.filter(m => (m.STATUS||'').toUpperCase().includes(bancoFiltros.statusFiltro.toUpperCase().split(' ')[0]));
   if (bancoFiltros.status) data = data.filter(m => (m.STATUS||'') === bancoFiltros.status);
   if (bancoFiltros.tipo) data = data.filter(m => (m.TIPO||m.TIPO_CONFIRMADO||'') === bancoFiltros.tipo);
   if (bancoFiltros.setor) data = data.filter(m => (m.SETOR_DESTINADO||m.SETOR_CONFIRMADO||'') === bancoFiltros.setor);
