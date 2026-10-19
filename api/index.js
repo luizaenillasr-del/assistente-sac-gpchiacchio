@@ -1705,7 +1705,7 @@ app.get('/api/manifestacoes', requerPermissao('manifestacoes.visualizar'), middl
       try {
         const filtros = {};
         // B2: empresa vem do usuário autenticado, não do frontend
-        const _isMasterMf = req.user && perfilCanonico(req.user.perfil) === 'MASTER';
+        const _isMasterMf = req.user && ['MASTER','APROVADOR MASTER'].includes(perfilCanonico(req.user.perfil));
         if (_isMasterMf && req.query.empresaId) filtros.empresaId = req.query.empresaId;
         else if (!_isMasterMf && req.user?.empresa) filtros.empresaId = await resolverEmpresaIdScope(req.user.empresa);
         if (req.query.status) filtros.status = req.query.status;
