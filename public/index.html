@@ -2417,7 +2417,6 @@
     <button class="sidebar-item active" onclick="navigate('visao-geral', this)"><span class="sidebar-dot"></span>Dashboard</button>
     <button class="sidebar-item" onclick="navigate('banco-manifestacoes', this)"><span class="sidebar-dot"></span>Manifestações</button>
     <button class="sidebar-item" onclick="navigate('nova-manifestacao', this)"><span class="sidebar-dot"></span>Nova manifestação</button>
-    <button class="sidebar-item" onclick="navigate('banco-manifestacoes', this)" style="position:relative"><span class="sidebar-dot"></span>Minhas pendências<span id="badge-analista-notif" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);background:#C8102E;color:white;font-size:10px;font-weight:700;border-radius:10px;padding:1px 6px;min-width:18px;text-align:center"></span></button>
     <button class="sidebar-item" onclick="navigate('similares', this)"><span class="sidebar-dot"></span>Busca de similares</button>
     <button class="sidebar-item" id="sidebar-central-sac" onclick="navigate('central-sac', this)"><span class="sidebar-dot"></span>Minha Central SAC</button>
     <button class="sidebar-item" data-v5-page="setor-responsavel" onclick="navigate('setor-responsavel', this)"><span class="sidebar-dot"></span>Minha fila</button>
@@ -2427,7 +2426,7 @@
   <div style="display:flex;flex-direction:column;gap:2px">
     <button class="sidebar-item" onclick="navigate('painel-maquina', this)"><span class="sidebar-dot"></span>Indicadores</button>
     <button class="sidebar-item" onclick="navigate('banco-rnc', this)"><span class="sidebar-dot"></span>RNC</button>
-    <button class="sidebar-item" onclick="navigate('aprovadores', this)" style="position:relative"><span class="sidebar-dot"></span>Aprovações<span id="badge-aprovacoes" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);background:#C8102E;color:white;font-size:10px;font-weight:700;border-radius:10px;padding:1px 6px;min-width:18px;text-align:center" title="Aprovações pendentes"></span></button>
+    <button class="sidebar-item" onclick="navigate('aprovadores', this)" style="position:relative"><span class="sidebar-dot"></span>Pendências &amp; Aprovações<span id="badge-aprovacoes" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);background:#C8102E;color:white;font-size:10px;font-weight:700;border-radius:10px;padding:1px 6px;min-width:18px;text-align:center" title="Aprovações pendentes"></span></button>
     <button class="sidebar-item" id="sidebar-central-gerente" onclick="navigate('central-gerente', this)"><span class="sidebar-dot"></span>Central do Gerente</button>
     <button class="sidebar-item" id="sidebar-gestao-diretoria" onclick="navigate('gestao-diretoria', this)"><span class="sidebar-dot"></span>Gestão da Diretoria</button>
     <button class="sidebar-item" onclick="navigate('rca', this)"><span class="sidebar-dot"></span>Central de RCA</button>
@@ -3498,7 +3497,7 @@
       <div class="topbar-left">
         <div class="breadcrumb">Gestão</div>
         <div class="page-header">
-          <h1 class="page-title">Aprovações</h1>
+          <h1 class="page-title">Pendências &amp; Aprovações</h1>
         </div>
       </div>
       <div class="topbar-right"><span id="aprovador-nome-top" style="font-size:13px;color:#707070"></span></div>
@@ -6062,6 +6061,94 @@
             <div id="pm-topCausas" style="display:flex;flex-direction:column;gap:8px"></div>
           </div>
         </div>
+
+        <!-- Métricas adicionais com barra de progresso -->
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
+          <div style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px">
+            <div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:6px">TAXA DE REINCIDÊNCIA</div>
+            <div style="font-size:22px;font-weight:800;color:#9A4A10;line-height:1" id="pm-reincid-abs">--</div>
+            <div style="font-size:11px;color:#727272;margin:4px 0 8px" id="pm-reincid-abs-desc">clientes com 2+ rec.</div>
+            <div style="height:6px;background:#EFEFEF;border-radius:3px"><div id="pm-reincid-bar" style="height:100%;width:14%;background:#9A4A10;border-radius:3px"></div></div>
+          </div>
+          <div style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px">
+            <div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:6px">RNCs ABERTAS</div>
+            <div style="font-size:22px;font-weight:800;color:#C70602;line-height:1" id="pm-rncs-abertas">--</div>
+            <div style="font-size:11px;color:#727272;margin:4px 0 8px" id="pm-rncs-abertas-desc">aguardando análise RCA</div>
+            <div style="height:6px;background:#EFEFEF;border-radius:3px"><div id="pm-rncs-bar" style="height:100%;width:25%;background:#C70602;border-radius:3px"></div></div>
+          </div>
+          <div style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px">
+            <div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:6px">DEVOLUTIVAS ENVIADAS</div>
+            <div style="font-size:22px;font-weight:800;color:#1A6632;line-height:1" id="pm-devolt-env">--</div>
+            <div style="font-size:11px;color:#727272;margin:4px 0 8px" id="pm-devolt-env-desc">dentro do SLA</div>
+            <div style="height:6px;background:#EFEFEF;border-radius:3px"><div id="pm-devolt-bar" style="height:100%;width:91%;background:#1A6632;border-radius:3px"></div></div>
+          </div>
+          <div style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px">
+            <div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:6px">TAXA DE REABERTURA</div>
+            <div style="font-size:22px;font-weight:800;color:#8A5000;line-height:1" id="pm-reabertura">--</div>
+            <div style="font-size:11px;color:#727272;margin:4px 0 8px" id="pm-reabertura-desc">manifestações reabertas</div>
+            <div style="height:6px;background:#EFEFEF;border-radius:3px"><div id="pm-reabertura-bar" style="height:100%;width:9%;background:#8A5000;border-radius:3px"></div></div>
+          </div>
+        </div>
+
+        <!-- Métricas operacionais com ícone círculo -->
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
+          <div style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px;display:flex;align-items:center;gap:12px">
+            <div style="width:40px;height:40px;border-radius:50%;background:#EAF0FB;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#24508F" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+            <div><div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0">RESOLUÇÃO DIRETA SAC</div><div style="font-size:20px;font-weight:800;color:#24508F" id="pm-resolucao-direta">--</div><div style="font-size:11px;color:#727272">sem envio a outro setor</div></div>
+          </div>
+          <div style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px;display:flex;align-items:center;gap:12px">
+            <div style="width:40px;height:40px;border-radius:50%;background:#FEF3DC;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9A4A10" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
+            <div><div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0">EXIGIU OUTRO SETOR</div><div style="font-size:20px;font-weight:800;color:#9A4A10" id="pm-exigiu-setor">--</div><div style="font-size:11px;color:#727272">encaminhadas para tratativa</div></div>
+          </div>
+          <div style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px;display:flex;align-items:center;gap:12px">
+            <div style="width:40px;height:40px;border-radius:50%;background:#EAF4ED;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1A6632" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+            <div><div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0">RESOLUÇÃO 1º CICLO</div><div style="font-size:20px;font-weight:800;color:#1A6632" id="pm-res-1ciclo">--</div><div style="font-size:11px;color:#727272">sem devolução para ajuste</div></div>
+          </div>
+          <div style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px;display:flex;align-items:center;gap:12px">
+            <div style="width:40px;height:40px;border-radius:50%;background:#FDECEC;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C70602" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9"/><path d="M21 3v5h-5"/></svg></div>
+            <div><div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0">TAXA DE RETRABALHO</div><div style="font-size:20px;font-weight:800;color:#C70602" id="pm-retrabalho">--</div><div style="font-size:11px;color:#727272">exigiram nova tratativa</div></div>
+          </div>
+          <div style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px;display:flex;align-items:center;gap:12px">
+            <div style="width:40px;height:40px;border-radius:50%;background:#FEF3DC;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8A5000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+            <div><div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0">TM ESPERA POR SETOR</div><div style="font-size:20px;font-weight:800;color:#8A5000" id="pm-tm-espera">--</div><div style="font-size:11px;color:#727272">dias úteis aguardando</div></div>
+          </div>
+          <div style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px;display:flex;align-items:center;gap:12px">
+            <div style="width:40px;height:40px;border-radius:50%;background:#EAF4ED;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1A6632" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
+            <div><div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0">DEVOLUTIVAS NO PRAZO</div><div style="font-size:20px;font-weight:800;color:#1A6632" id="pm-devolt-prazo">--</div><div style="font-size:11px;color:#727272">enviadas dentro do SLA</div></div>
+          </div>
+        </div>
+
+        <!-- Seção financeira -->
+        <div style="margin-bottom:14px">
+          <div style="font-size:11px;font-weight:700;letter-spacing:.07em;color:#A0A0A0;margin-bottom:10px">RECLAMAÇÕES E IMPACTO FINANCEIRO</div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
+            <div style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px"><div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:4px">TOTAL DE RECLAMAÇÕES</div><div style="font-size:26px;font-weight:800;color:#C70602;line-height:1.1" id="pm-total-reclamacoes">--</div><div style="font-size:11px;color:#727272;margin-top:3px">no período</div></div>
+            <div style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px"><div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:4px">PREJUÍZO APURADO</div><div style="font-size:26px;font-weight:800;color:#C70602;line-height:1.1" id="pm-prejuizo">--</div><div style="font-size:11px;color:#727272;margin-top:3px">efetivamente registrado</div></div>
+            <div style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px"><div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:4px">DEVOLUÇÕES</div><div style="font-size:26px;font-weight:800;color:#9A4A10;line-height:1.1" id="pm-devolucoes">--</div><div style="font-size:11px;color:#727272;margin-top:3px">pedidos devolvidos</div></div>
+            <div style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px"><div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:4px">KG DEVOLVIDOS</div><div style="font-size:26px;font-weight:800;color:#545252;line-height:1.1" id="pm-kg-devolvidos">--</div><div style="font-size:11px;color:#727272;margin-top:3px">Chiacchio</div></div>
+            <div style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px"><div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:4px">CAIXAS DEVOLVIDAS</div><div style="font-size:26px;font-weight:800;color:#545252;line-height:1.1" id="pm-caixas-devolvidas">--</div><div style="font-size:11px;color:#727272;margin-top:3px">Plaschio</div></div>
+            <div style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px"><div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:4px">ROLOS DEVOLVIDOS</div><div style="font-size:26px;font-weight:800;color:#545252;line-height:1.1" id="pm-rolos-devolvidos">--</div><div style="font-size:11px;color:#727272;margin-top:3px">Tubahia</div></div>
+          </div>
+          <div style="background:#fff;border:1px solid #EBEBEB;border-radius:12px;overflow:hidden">
+            <div style="padding:14px 18px;border-bottom:1px solid #F0F0F0">
+              <div style="font-size:11px;font-weight:700;letter-spacing:.07em;color:#A0A0A0">RECLAMAÇÕES POR REPRESENTANTE</div>
+            </div>
+            <div style="overflow-x:auto">
+              <table style="border-collapse:collapse;width:100%;min-width:600px">
+                <thead><tr style="background:#FAFAFA">
+                  <th style="text-align:center;font-weight:600;font-size:11px;color:#666464;padding:9px 12px;border-bottom:1px solid #E4E4E4">#</th>
+                  <th style="text-align:left;font-weight:600;font-size:11px;color:#666464;padding:9px 12px;border-bottom:1px solid #E4E4E4">Representante</th>
+                  <th style="text-align:left;font-weight:600;font-size:11px;color:#666464;padding:9px 12px;border-bottom:1px solid #E4E4E4">Empresa</th>
+                  <th style="text-align:right;font-weight:600;font-size:11px;color:#666464;padding:9px 12px;border-bottom:1px solid #E4E4E4">Reclamações</th>
+                  <th style="text-align:left;font-weight:600;font-size:11px;color:#666464;padding:9px 12px;border-bottom:1px solid #E4E4E4;min-width:100px">%</th>
+                  <th style="text-align:right;font-weight:600;font-size:11px;color:#666464;padding:9px 12px;border-bottom:1px solid #E4E4E4">Devoluções</th>
+                  <th style="text-align:right;font-weight:600;font-size:11px;color:#666464;padding:9px 12px;border-bottom:1px solid #E4E4E4">Prejuízo</th>
+                </tr></thead>
+                <tbody id="pm-rep-body"><tr><td colspan="7" style="padding:20px;text-align:center;color:#707070;font-size:13px">Carregando...</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- TAB: INDICADORES DA IA -->
@@ -6070,12 +6157,12 @@
           Estes indicadores são calculados automaticamente a partir das análises da IA e das decisões registradas pelos usuários. <strong>Taxa de aceitação ≠ assertividade real.</strong> Assertividade é calculada somente sobre análises efetivamente validadas por humanos.
         </div>
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
-          <div style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px;border-top:3px solid #1A6632"><div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:4px">ASSERTIVIDADE DA IA</div><div style="font-size:28px;font-weight:800;color:#1A6632;line-height:1.1" id="pm-assert">--%</div><div style="font-size:11px;color:#727272;margin-top:3px">sugestões aceitas</div></div>
-          <div style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px;border-top:3px solid #24508F"><div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:4px">PONTUAÇÃO MÉDIA IA</div><div style="font-size:28px;font-weight:800;color:#24508F;line-height:1.1" id="pm-pontuacao">--</div><div style="font-size:11px;color:#727272;margin-top:3px">de 100</div></div>
-          <div style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px;border-top:3px solid #545252"><div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:4px">ANÁLISES AVALIADAS</div><div style="font-size:28px;font-weight:800;color:#545252;line-height:1.1" id="pm-avaliadas">--</div><div style="font-size:11px;color:#727272;margin-top:3px">com feedback</div></div>
-          <div style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px;border-top:3px solid #9A4A10"><div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:4px">CAUSAS CADASTRADAS</div><div style="font-size:28px;font-weight:800;color:#9A4A10;line-height:1.1" id="pm-causas">--</div><div style="font-size:11px;color:#727272;margin-top:3px">no Cérebro</div></div>
+          <div style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px;border-top:3px solid #24508F"><div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:4px">TOTAL DE ANÁLISES</div><div style="font-size:28px;font-weight:800;color:#24508F;line-height:1.1" id="pm-avaliadas">--</div><div style="font-size:11px;color:#727272;margin-top:3px">processadas pela IA</div></div>
+          <div style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px;border-top:3px solid #1A6632"><div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:4px">ACEITAS SEM EDIÇÃO</div><div style="font-size:28px;font-weight:800;color:#1A6632;line-height:1.1" id="pm-assert">--%</div><div style="font-size:11px;color:#727272;margin-top:3px">análises aprovadas direto</div></div>
+          <div style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px;border-top:3px solid #8A5000"><div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:4px">ACEITAS COM AJUSTES</div><div style="font-size:28px;font-weight:800;color:#8A5000;line-height:1.1" id="pm-pontuacao">--</div><div style="font-size:11px;color:#727272;margin-top:3px">análises com edição</div></div>
+          <div style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px;border-top:3px solid #1A6632"><div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:4px">ASSERTIVIDADE VALIDADA</div><div style="font-size:28px;font-weight:800;color:#1A6632;line-height:1.1" id="pm-causas">--</div><div style="font-size:11px;color:#727272;margin-top:3px">sobre análises avaliadas</div></div>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
           <div style="background:#fff;border:1px solid #EBEBEB;border-radius:12px;padding:16px 20px">
             <div style="font-size:11px;font-weight:700;letter-spacing:.07em;color:#A0A0A0;margin-bottom:14px">DECISÕES SOBRE SUGESTÕES DA IA</div>
             <div id="ia-bar-decisoes" style="display:flex;flex-direction:column;gap:8px"></div>
@@ -6084,6 +6171,10 @@
             <div style="font-size:11px;font-weight:700;letter-spacing:.07em;color:#A0A0A0;margin-bottom:14px">ASSERTIVIDADE POR CRITÉRIO (VALIDADA)</div>
             <div id="pm-criterios" style="display:flex;flex-direction:column;gap:8px"></div>
           </div>
+        </div>
+        <div style="background:#fff;border:1px solid #EBEBEB;border-radius:12px;padding:16px 20px">
+          <div style="font-size:11px;font-weight:700;letter-spacing:.07em;color:#A0A0A0;margin-bottom:14px">EVOLUÇÃO MENSAL DAS ANÁLISES DA IA</div>
+          <div id="ia-evolucao-mes" style="display:flex;align-items:flex-end;gap:6px;height:140px"><div style="color:#707070;font-size:13px;align-self:center;width:100%;text-align:center">Carregando...</div></div>
         </div>
       </div>
 
@@ -6096,11 +6187,82 @@
           <div style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px;border-top:3px solid #8A5000"><div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:4px">ACEITAS COM EDIÇÃO</div><div style="font-size:28px;font-weight:800;color:#8A5000;line-height:1.1" id="ia-editadas">--</div></div>
           <div style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px;border-top:3px solid #C70602"><div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:4px">REJEITADAS</div><div style="font-size:28px;font-weight:800;color:#C70602;line-height:1.1" id="ia-rejeitadas">--</div></div>
         </div>
+
+        <!-- Campos mais corrigidos + Motivos de rejeição -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+          <div style="background:#fff;border:1px solid #EBEBEB;border-radius:12px;padding:16px 20px">
+            <div style="font-size:11px;font-weight:700;letter-spacing:.07em;color:#A0A0A0;margin-bottom:14px">CAMPOS MAIS CORRIGIDOS</div>
+            <div id="pm-campos-corrigidos" style="display:flex;flex-direction:column;gap:10px">
+              <div style="color:#707070;font-size:13px;text-align:center;padding:12px 0">Carregando...</div>
+            </div>
+          </div>
+          <div style="background:#fff;border:1px solid #EBEBEB;border-radius:12px;padding:16px 20px">
+            <div style="font-size:11px;font-weight:700;letter-spacing:.07em;color:#A0A0A0;margin-bottom:14px">MOTIVOS DE REJEIÇÃO</div>
+            <div id="pm-motivos-rejeicao" style="display:flex;flex-direction:column;gap:10px">
+              <div style="color:#707070;font-size:13px;text-align:center;padding:12px 0">Carregando...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabela de divergências -->
+        <div style="background:#fff;border:1px solid #EBEBEB;border-radius:12px;overflow:hidden;margin-bottom:14px">
+          <div style="padding:14px 18px;border-bottom:1px solid #F0F0F0">
+            <div style="font-size:11px;font-weight:700;letter-spacing:.07em;color:#A0A0A0">PRINCIPAIS DIVERGÊNCIAS ENTRE IA E ANALISTAS</div>
+          </div>
+          <div style="overflow-x:auto">
+            <table style="border-collapse:collapse;width:100%;min-width:560px">
+              <thead><tr style="background:#FAFAFA">
+                <th style="text-align:left;font-weight:600;font-size:11px;color:#666464;padding:9px 16px;border-bottom:1px solid #E4E4E4">Campo</th>
+                <th style="text-align:right;font-weight:600;font-size:11px;color:#666464;padding:9px 16px;border-bottom:1px solid #E4E4E4">Qtd</th>
+                <th style="text-align:right;font-weight:600;font-size:11px;color:#666464;padding:9px 16px;border-bottom:1px solid #E4E4E4">%</th>
+                <th style="text-align:left;font-weight:600;font-size:11px;color:#666464;padding:9px 16px;border-bottom:1px solid #E4E4E4">Exemplo</th>
+              </tr></thead>
+              <tbody id="pm-divergencias-body"><tr><td colspan="4" style="padding:20px;text-align:center;color:#707070;font-size:13px">Carregando...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
       <!-- TAB: COMPARATIVO -->
       <div id="ind-tab-comparativo" style="display:none">
         <div style="font-size:13px;color:#545252;max-width:760px;margin-bottom:16px">Impacto operacional do Assistente SAC. "Processo anterior" corresponde aos 6 meses antes da implantação; "Com Assistente", ao período atual. Dados calculados automaticamente.</div>
+
+        <!-- KPIs antes/agora -->
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
+          <div style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px">
+            <div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:8px">TM ANÁLISE</div>
+            <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:4px">
+              <span style="font-size:13px;color:#A0A0A0;text-decoration:line-through" id="cmp-analise-antes">45min</span>
+              <span style="font-size:22px;font-weight:800;color:#1A6632" id="cmp-analise-agora">8min</span>
+            </div>
+            <div style="font-size:11px;color:#1A6632;font-weight:600" id="cmp-analise-delta">82% mais rápido</div>
+          </div>
+          <div style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px">
+            <div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:8px">TM TRATAMENTO</div>
+            <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:4px">
+              <span style="font-size:13px;color:#A0A0A0;text-decoration:line-through" id="cmp-trat-antes">5,8d</span>
+              <span style="font-size:22px;font-weight:800;color:#1A6632" id="cmp-trat-agora">3,2d</span>
+            </div>
+            <div style="font-size:11px;color:#1A6632;font-weight:600" id="cmp-trat-delta">45% mais rápido</div>
+          </div>
+          <div style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px">
+            <div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:8px">RETRABALHO</div>
+            <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:4px">
+              <span style="font-size:13px;color:#A0A0A0;text-decoration:line-through" id="cmp-retrab-antes">34%</span>
+              <span style="font-size:22px;font-weight:800;color:#1A6632" id="cmp-retrab-agora">18%</span>
+            </div>
+            <div style="font-size:11px;color:#1A6632;font-weight:600" id="cmp-retrab-delta">−16 pp</div>
+          </div>
+          <div style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px">
+            <div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:8px">RESOLUÇÃO 1º CICLO</div>
+            <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:4px">
+              <span style="font-size:13px;color:#A0A0A0;text-decoration:line-through" id="cmp-ciclo-antes">58%</span>
+              <span style="font-size:22px;font-weight:800;color:#1A6632" id="cmp-ciclo-agora">74%</span>
+            </div>
+            <div style="font-size:11px;color:#1A6632;font-weight:600" id="cmp-ciclo-delta">+16 pp</div>
+          </div>
+        </div>
+
         <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;overflow-x:auto">
           <table style="border-collapse:collapse;width:100%;min-width:720px">
             <thead><tr style="background:#FAFAFA">
@@ -6114,6 +6276,29 @@
               <tr><td colspan="5" style="padding:24px;text-align:center;color:#707070;font-size:13px">Carregando dados comparativos...</td></tr>
             </tbody>
           </table>
+        </div>
+
+        <!-- Horas economizadas + custo por manifestação -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px">
+          <div style="background:#EAF4ED;border:1px solid #A8DFC0;border-radius:12px;padding:20px;text-align:center">
+            <div style="font-size:11px;font-weight:700;letter-spacing:.07em;color:#1A6632;margin-bottom:8px">HORAS ECONOMIZADAS NO PERÍODO</div>
+            <div style="font-size:48px;font-weight:800;color:#1A6632;line-height:1" id="cmp-horas-econ">--</div>
+            <div style="font-size:12px;color:#1A6632;margin-top:6px">horas de trabalho economizadas pela IA</div>
+          </div>
+          <div style="background:#fff;border:1px solid #EBEBEB;border-radius:12px;padding:16px 20px">
+            <div style="font-size:11px;font-weight:700;letter-spacing:.07em;color:#A0A0A0;margin-bottom:14px">CUSTO POR MANIFESTAÇÃO</div>
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:13px;color:#545252">Processo anterior</span>
+                <span style="font-size:18px;font-weight:700;color:#C70602" id="cmp-custo-antes">--</span>
+              </div>
+              <div style="height:1px;background:#F0F0F0"></div>
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:13px;color:#545252">Com Assistente SAC</span>
+                <span style="font-size:18px;font-weight:700;color:#1A6632" id="cmp-custo-agora">--</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
