@@ -18355,9 +18355,21 @@ async function runSimilares() {
   if (results) results.innerHTML = '<div style="text-align:center;padding:32px;color:#707070;font-size:13px">Buscando…</div>';
   if (countTxt) countTxt.textContent = '';
   try {
-    const params = new URLSearchParams({ q, empresa, setor, periodo, minSim });
-    const d = await _apiFetch('/api/similares?' + params, 20000).catch(() => ({ itens: [] }));
-    const itens = d.itens || d.similares || [];
+    const tok = sessionStorage.getItem('sac-token');
+    const d = await fetch('/api/analise/similares', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},
+      body:JSON.stringify({ DESCRICAO: q, limite: 50 })
+    }).then(r=>r.json()).catch(()=>({itens:[]}));
+    let itens = d.itens || d.similares || [];
+    // filtros locais
+    if (empresa) itens = itens.filter(c => (c.empresa||'').toLowerCase().includes(empresa.toLowerCase()));
+    if (setor)   itens = itens.filter(c => (c.setor||'').toLowerCase().includes(setor.toLowerCase()));
+    if (periodo && Number(periodo) > 0) {
+      const cutoff = new Date(); cutoff.setMonth(cutoff.getMonth() - Number(periodo));
+      itens = itens.filter(c => { const d2 = c.data ? new Date(c.data) : null; return !d2 || d2 >= cutoff; });
+    }
+    itens = itens.filter(c => (c.similaridade||0) >= minSim);
     if (countTxt) countTxt.textContent = itens.length + ' resultado' + (itens.length !== 1 ? 's' : '') + ' encontrado' + (itens.length !== 1 ? 's' : '');
     if (!itens.length) {
       if (results) results.innerHTML = '<div style="text-align:center;padding:32px;color:#707070;font-size:13px">Nenhum caso similar encontrado.</div>';
