@@ -1397,8 +1397,9 @@ app.post('/api/auth/login', async (req, res) => {
           { SENHA_HASH: novoHash }, ['ID_USUARIO', 'USUARIO']
         ).catch(e => console.warn('[MIGRAÇÃO SENHA] falhou:', e.message));
       }
-      await registrarAcessoUsuario(registro);
-      await registrarAuditoria(pub.usuario,'LOGIN',null,'AUTH',null,{perfil:pub.perfil});
+      // Fire-and-forget: não bloqueia o login por operações secundárias no Sheets
+      registrarAcessoUsuario(registro).catch(e=>console.warn('[LOGIN] registrarAcesso falhou:',e.message));
+      registrarAuditoria(pub.usuario,'LOGIN',null,'AUTH',null,{perfil:pub.perfil}).catch(()=>{});
     }
     res.json({ sucesso:true, token:assinarToken(payload), usuario:pub.usuario, usuarioInfo:{...pub, primeiro_acesso: primeroAcesso || undefined}, modo:isDemo?'DEMO':'PRODUCAO' });
   } catch (e) {
