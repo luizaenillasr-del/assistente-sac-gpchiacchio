@@ -2749,6 +2749,21 @@ app.post('/api/produtos/importar', requerPerfil('MASTER','ANALISTA SAC'), async(
   } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e) }); }
 });
 
+// Scan completo do Cérebro: retorna todas as abas em paralelo (1 request em vez de N×5)
+app.get('/api/cerebro/scan', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁVEL','APROVADOR','APROVADOR MASTER'), async(req,res)=>{
+  try{
+    const [regras,procedimentos,politicas,faq,documentos,causas] = await Promise.all([
+      lerAba('REGRAS_SETORES',2000).catch(()=>[]),
+      lerAba('PROCEDIMENTOS_SETORES',2000).catch(()=>[]),
+      lerAba('POLITICAS_SETORES',2000).catch(()=>[]),
+      lerAba('FAQ_SETORES',2000).catch(()=>[]),
+      lerAba('DOCUMENTOS_SETORES',2000).catch(()=>[]),
+      lerAba('CAUSAS',2000).catch(()=>[]),
+    ]);
+    res.json({sucesso:true,regras,procedimentos,politicas,faq,documentos,causas});
+  }catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
+});
+
 app.get('/api/setores/:setor/operacional', middlewareEscopoEmpresa(), middlewareEscopoSetor(), requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC','ATENDENTE SAC','SETOR RESPONSÁVEL','ESPECIALISTA','APROVADOR','DIRETOR'), async(req,res)=>{
   try{
     const nome=decodeURIComponent(req.params.setor);

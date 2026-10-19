@@ -19031,10 +19031,9 @@ async function cdLoadAprovacaoCb() {
   if (!el) return;
   el.innerHTML = cbSpin();
   try {
-    cbInvalidar();
     const [scan, causasR] = await Promise.all([
       cbScan(),
-      _apiFetch('/api/causas').catch(()=>({itens:[]}))
+      (CB._causasCache ? Promise.resolve({itens:CB._causasCache}) : _apiFetch('/api/causas').catch(()=>({itens:[]}))).then(r=>{CB._causasCache=r.itens||[];return r;})
     ]);
     const pode = cbPode();
     CB.acoes = [];
@@ -19372,6 +19371,26 @@ async function cbItensTodos(tipo) {
 function cbInvalidar() { CB.cache = {}; CB.scan = null; CB.counts = null; }
 async function cbScan() {
   if (CB.scan) return CB.scan;
+  try {
+    // Uma única chamada ao backend em vez de N×5 chamadas por setor
+    const tok = sessionStorage.getItem('sac-token');
+    const r = await fetch('/api/cerebro/scan', { headers: { Authorization: 'Bearer ' + tok } });
+    const j = await r.json().catch(() => ({}));
+    if (j.sucesso) {
+      const map = { regras: j.regras||[], procedimentos: j.procedimentos||[], politicas: j.politicas||[], faq: j.faq||[], documentos: j.documentos||[] };
+      CB.scan = [].concat(...Object.entries(map).map(([t, arr]) => arr.map(x => Object.assign({ _tipo: t }, x))));
+      // Popula cache individual por setor para que cbItens() ache os dados sem re-fetch
+      const sets = [...new Set(CB.scan.map(x => x.SETOR).filter(Boolean))];
+      for (const tipo of Object.keys(map)) {
+        for (const setor of sets) {
+          const key = setor + '|' + tipo;
+          if (!CB.cache[key]) CB.cache[key] = map[tipo].filter(x => (x.SETOR||'') === setor).map(x => Object.assign({}, x, { _setor: setor }));
+        }
+      }
+      return CB.scan;
+    }
+  } catch(e) { /* fallback abaixo */ }
+  // Fallback: método antigo por setor
   const tipos = ['regras', 'procedimentos', 'politicas', 'faq', 'documentos'];
   const parts = await Promise.all(tipos.map(t => cbItensTodos(t).then(a => a.map(x => Object.assign({ _tipo: t }, x))).catch(() => [])));
   CB.scan = [].concat(...parts);
