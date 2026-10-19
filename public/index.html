@@ -3803,37 +3803,108 @@
 
   <!-- Modal Decisão Aprovação -->
   <!-- PAINEL LATERAL DE DECISÃO (slide-in) -->
-  <div id="modal-decisao-aprov" style="display:none;position:fixed;inset:0;z-index:400;background:rgba(20,20,20,.45)" onclick="if(event.target===this)fecharDecisaoPanel()">
-    <div id="decisao-panel" style="position:absolute;right:0;top:0;bottom:0;width:min(440px,100%);background:#fff;display:flex;flex-direction:column;overflow:hidden;animation:slideInRight .22s ease;box-shadow:-4px 0 24px rgba(0,0,0,.12)">
+  <div id="modal-decisao-aprov" style="display:none;position:fixed;inset:0;z-index:400;background:rgba(0,0,0,.38);display:none;align-items:flex-start;justify-content:center;padding:20px 16px;overflow-y:auto" onclick="if(event.target===this)fecharDecisaoPanel()">
+    <div id="decisao-panel" style="background:#fff;border-radius:16px;width:100%;max-width:980px;display:flex;flex-direction:column;box-shadow:0 24px 72px rgba(0,0,0,.2);overflow:hidden;animation:fadeInAprov .2s ease;margin:auto">
       <input type="hidden" id="decisao-aprov-id">
-      <!-- CABEÇALHO -->
-      <div style="padding:16px 20px;border-bottom:1px solid #E4E4E4;flex-shrink:0">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px">
-          <div>
-            <div style="font-size:10.5px;font-weight:700;letter-spacing:.08em;color:#929090" id="decisao-aprov-label">MANIFESTAÇÃO</div>
-            <div style="font-size:16px;font-weight:800;color:#1F1F1F;margin-top:3px" id="decisao-aprov-title"></div>
-            <div style="font-size:11.5px;color:#929090;margin-top:2px" id="decisao-aprov-sub"></div>
+      <!-- HEADER -->
+      <div style="position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid #EBEBEB;padding:16px 22px 0;flex-shrink:0">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding-bottom:12px">
+          <div style="display:flex;flex-direction:column;gap:5px">
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+              <span style="font-size:18px;font-weight:700;letter-spacing:-.01em" id="decisao-aprov-title">—</span>
+              <span id="decisao-aprov-badge" style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:3px 9px;border-radius:99px;background:#FEF3DC;color:#8A5000">
+                <svg width="8" height="8" viewBox="0 0 8 8" fill="none"><circle cx="4" cy="4" r="4" fill="#C87000"/></svg>
+                Aguardando aprovação
+              </span>
+              <span id="decisao-aprov-sla" style="display:none;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:99px;background:#EAF2FB;color:#1A4F8A">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                SLA
+              </span>
+            </div>
+            <div style="font-size:12px;color:#727272;display:flex;align-items:center;gap:8px;flex-wrap:wrap" id="decisao-aprov-sub"></div>
           </div>
-          <button onclick="fecharDecisaoPanel()" style="border:0;background:none;font-size:22px;color:#929090;cursor:pointer;padding:0;line-height:1;flex-shrink:0">×</button>
+          <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
+            <button onclick="fecharDecisaoPanel()" style="border:1px solid #D8D8D8;background:#fff;border-radius:8px;width:34px;height:34px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#444;font-size:18px;line-height:1">×</button>
+          </div>
         </div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px" id="decisao-badges"></div>
+        <!-- Faixa próxima ação -->
+        <div style="margin-bottom:12px;background:#FAFAFA;border:1px solid #E8E8E8;border-radius:9px;padding:9px 13px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:8px">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C70602" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <span style="font-size:12.5px;color:#1F1F1F"><strong>Sua vez:</strong> revisar a tratativa e registrar a decisão.</span>
+          </div>
+          <span style="font-size:11px;font-weight:600;background:#F2F2F2;color:#545454;border-radius:99px;padding:3px 10px;white-space:nowrap">Responsável: Você</span>
+        </div>
         <!-- Abas -->
-        <div style="display:flex;border-bottom:1px solid #E4E4E4;margin:0 -20px;padding:0 20px">
-          <button id="decisao-tab-previa" onclick="decisaoAba('previa')" style="height:36px;border:0;background:none;padding:0 14px;font-size:12.5px;font-weight:700;color:#C70602;cursor:pointer;border-bottom:2px solid #C70602;margin-bottom:-1px">Prévia</button>
-          <button id="decisao-tab-decidir" onclick="decisaoAba('decidir')" style="height:36px;border:0;background:none;padding:0 14px;font-size:12.5px;font-weight:600;color:#929090;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px">Decidir</button>
+        <div style="display:flex;gap:0;margin:0 -22px">
+          <button id="decisao-tab-previa" onclick="decisaoAba('previa')" style="height:36px;border:0;background:none;padding:0 18px;font-size:12.5px;font-weight:700;color:#C70602;cursor:pointer;border-bottom:2px solid #C70602;margin-bottom:-1px">Prévia</button>
+          <button id="decisao-tab-decidir" onclick="decisaoAba('decidir')" style="height:36px;border:0;background:none;padding:0 18px;font-size:12.5px;font-weight:600;color:#929090;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px">Decidir</button>
         </div>
       </div>
-      <!-- ABA PRÉVIA -->
-      <div id="decisao-aba-previa" style="flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:14px">
-        <div id="decisao-previa-campos" style="display:grid;grid-template-columns:1fr 1fr;gap:10px 16px"></div>
-        <div id="decisao-previa-descricao" style="background:#F7F7F7;border-radius:10px;padding:14px;border-left:3px solid #C70602;display:none">
-          <div style="font-size:10.5px;font-weight:700;letter-spacing:.07em;color:#929090;margin-bottom:8px">DESCRIÇÃO</div>
-          <div style="font-size:13px;color:#1F1F1F;line-height:1.75" id="decisao-previa-desc-txt"></div>
+      <!-- BODY: duas colunas -->
+      <div id="decisao-aba-previa" style="display:grid;grid-template-columns:1fr 300px;overflow:hidden">
+        <!-- Coluna principal -->
+        <div style="padding:20px 22px;overflow-y:auto;max-height:65vh;display:flex;flex-direction:column;gap:18px;border-right:1px solid #F0F0F0">
+          <!-- Resumo -->
+          <section>
+            <div style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:8px">RESUMO DA MANIFESTAÇÃO</div>
+            <div style="background:#FAFAFA;border:1px solid #EBEBEB;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:12px">
+              <div id="decisao-previa-campos" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px 16px"></div>
+              <div id="decisao-previa-descricao" style="display:none">
+                <div style="font-size:10px;font-weight:700;letter-spacing:.06em;color:#A0A0A0;margin-bottom:5px">RELATO DO CLIENTE</div>
+                <div style="font-size:13px;line-height:1.6;color:#2A2A2A" id="decisao-previa-desc-txt"></div>
+              </div>
+            </div>
+          </section>
+          <!-- Análise IA -->
+          <section id="decisao-ia-section" style="display:none">
+            <div style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:8px">ANÁLISE DA IA</div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px">
+              <div style="background:#F7F7F7;border-radius:9px;padding:11px 13px">
+                <div style="font-size:9.5px;font-weight:700;letter-spacing:.06em;color:#A0A0A0;margin-bottom:3px">CLASSIFICAÇÃO</div>
+                <div style="font-size:13px;font-weight:700" id="ia-classificacao">—</div>
+                <div style="font-size:11px;color:#2A7A3A;font-weight:600;margin-top:2px" id="ia-confianca"></div>
+              </div>
+              <div style="background:#F7F7F7;border-radius:9px;padding:11px 13px">
+                <div style="font-size:9.5px;font-weight:700;letter-spacing:.06em;color:#A0A0A0;margin-bottom:3px">PRIORIDADE</div>
+                <div style="font-size:13px;font-weight:700;color:#B84000" id="ia-prioridade">—</div>
+              </div>
+              <div style="background:#F7F7F7;border-radius:9px;padding:11px 13px">
+                <div style="font-size:9.5px;font-weight:700;letter-spacing:.06em;color:#A0A0A0;margin-bottom:3px">SETOR</div>
+                <div style="font-size:13px;font-weight:700" id="ia-setor">—</div>
+              </div>
+            </div>
+            <div id="ia-causa-box" style="background:#F0FFF4;border:1px solid #C3E6CB;border-radius:9px;padding:11px 13px;display:none">
+              <div style="font-size:9.5px;font-weight:700;letter-spacing:.06em;color:#2A7A3A;margin-bottom:4px">CAUSA RAIZ SUGERIDA</div>
+              <div style="font-size:13px;line-height:1.55" id="ia-causa-txt"></div>
+            </div>
+          </section>
+          <!-- Tratativa -->
+          <section id="decisao-tratativa-section" style="display:none">
+            <div style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:8px">TRATATIVA PROPOSTA</div>
+            <div style="background:#F7F7F7;border-radius:10px;padding:14px 16px;font-size:13px;line-height:1.6;color:#2A2A2A" id="decisao-tratativa-txt"></div>
+          </section>
+          <button onclick="decisaoAba('decidir')" style="height:38px;border:0;background:#C70602;color:#fff;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer">Ir para decisão →</button>
         </div>
-        <button onclick="decisaoAba('decidir')" style="height:38px;border:0;background:#C70602;color:#fff;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer">Ir para decisão →</button>
+        <!-- Coluna lateral -->
+        <div style="background:#FAFAFA;padding:18px 16px;overflow-y:auto;max-height:65vh;display:flex;flex-direction:column;gap:14px">
+          <div>
+            <div style="font-size:10px;font-weight:700;letter-spacing:.07em;color:#A0A0A0;margin-bottom:8px">HISTÓRICO</div>
+            <div id="decisao-historico" style="display:flex;flex-direction:column;gap:6px;font-size:12px;color:#545252">
+              <div style="color:#B0B0B0;font-size:11.5px">Carregando...</div>
+            </div>
+          </div>
+          <div id="decisao-sla-box" style="background:#fff;border:1px solid #EBEBEB;border-radius:10px;padding:12px 14px;display:none">
+            <div style="font-size:10px;font-weight:700;letter-spacing:.07em;color:#A0A0A0;margin-bottom:8px">SLA</div>
+            <div style="font-size:13px;font-weight:700" id="decisao-sla-restante">—</div>
+            <div style="height:6px;background:#E4E4E4;border-radius:3px;margin-top:8px;overflow:hidden">
+              <div style="height:100%;background:#C70602;border-radius:3px" id="decisao-sla-bar"></div>
+            </div>
+          </div>
+        </div>
       </div>
       <!-- ABA DECIDIR -->
-      <div id="decisao-aba-decidir" style="flex:1;overflow-y:auto;padding:16px 20px;flex-direction:column;gap:14px;display:none">
+      <div id="decisao-aba-decidir" style="padding:20px 22px;flex-direction:column;gap:14px;display:none;max-height:65vh;overflow-y:auto">
         <div id="decisao-preview-resumo" style="background:#F7F7F7;border-radius:9px;padding:10px 12px;border-left:3px solid #C70602;font-size:12.5px;color:#545252;line-height:1.65"></div>
         <div style="font-size:11.5px;color:#929090;background:#F7F7F7;border-radius:7px;padding:7px 10px">Fila: <strong id="decisao-fila-ref"></strong></div>
         <div>
@@ -3841,22 +3912,25 @@
           <textarea id="decisao-obs" rows="4" placeholder="Justifique a decisão quando necessário" style="width:100%;border:1.5px solid #E4E4E4;border-radius:10px;padding:10px 12px;font-size:13px;line-height:1.65;resize:vertical;font-family:inherit"></textarea>
         </div>
       </div>
-      <!-- RODAPÉ COM AÇÕES -->
-      <div style="padding:14px 20px;border-top:1px solid #E4E4E4;display:flex;flex-direction:column;gap:8px;flex-shrink:0">
+      <!-- RODAPÉ -->
+      <div style="padding:14px 22px;border-top:1px solid #EBEBEB;display:flex;flex-direction:column;gap:8px;flex-shrink:0;background:#fff">
         <div id="decisao-feedback" style="display:none;font-size:12.5px;border-radius:8px;padding:9px 12px;line-height:1.45"></div>
-        <div style="display:flex;gap:8px">
-          <button id="dec-btn-aprovar" onclick="submitDecisao('APROVADO')" style="flex:1;height:40px;border:0;background:#1E6B3A;color:#fff;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer">✓ Aprovar</button>
-          <button id="dec-btn-ressalva" onclick="submitDecisao('APROVADO_COM_RESSALVA')" style="flex:1;height:40px;border:1.5px solid #1E6B3A;background:#E6F2EA;color:#1E6B3A;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer">✓ c/ ressalva</button>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px">
+          <button id="dec-btn-aprovar" onclick="submitDecisao('APROVADO')" style="height:40px;border:2px solid #1A6632;background:#EAF4ED;color:#1A6632;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer">✓ Aprovar</button>
+          <button id="dec-btn-ressalva" onclick="submitDecisao('APROVADO_COM_RESSALVA')" style="height:40px;border:2px solid #24508F;background:#EAF0FB;color:#24508F;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer">✓ c/ ressalva</button>
+          <button id="dec-btn-devolver" onclick="submitDecisao('DEVOLVIDO')" style="height:40px;border:2px solid #9A4A10;background:#FEF3DC;color:#9A4A10;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer">↩ Devolver</button>
+          <button id="dec-btn-rejeitar" onclick="submitDecisao('REJEITADO')" style="height:40px;border:2px solid #A00000;background:#FDECEC;color:#A00000;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer">✖ Rejeitar</button>
         </div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap">
-          <button id="dec-btn-devolver" onclick="submitDecisao('DEVOLVIDO')" style="flex:1;min-width:70px;height:34px;border:1.5px solid #E4E4E4;background:#fff;border-radius:8px;font-size:11.5px;font-weight:600;cursor:pointer;color:#545252">↩ Devolver</button>
-          <button id="dec-btn-solicitar" onclick="submitDecisao('SOLICITANDO_INFORMACOES')" style="flex:1;min-width:70px;height:34px;border:1.5px solid #E4E4E4;background:#fff;border-radius:8px;font-size:11.5px;font-weight:600;cursor:pointer;color:#545252">? Solicitar info</button>
-          <button id="dec-btn-rejeitar" onclick="submitDecisao('REJEITADO')" style="flex:1;min-width:70px;height:34px;border:1.5px solid #FECACA;background:#FEF2F2;border-radius:8px;font-size:11.5px;font-weight:600;cursor:pointer;color:#DC2626">✖ Rejeitar</button>
-        </div>
+        <button id="dec-btn-solicitar" onclick="submitDecisao('SOLICITANDO_INFORMACOES')" style="height:34px;border:1.5px solid #E4E4E4;background:#fff;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;color:#545252;align-self:center;padding:0 20px">? Solicitar informações adicionais</button>
       </div>
     </div>
   </div>
-  <style>@keyframes slideInRight{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:none}}</style>
+  <style>
+    @keyframes slideInRight{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:none}}
+    @keyframes fadeInAprov{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+    #modal-decisao-aprov{display:none}
+    #modal-decisao-aprov.aprov-open{display:flex!important}
+  </style>
 
   <!-- ===== BANCO DE MANIFESTAÇÕES ===== -->
   <div class="page" id="page-banco-manifestacoes">
@@ -3914,13 +3988,55 @@
         <div id="banco-filter-dropdown"></div>
       </div>
 
-      <!-- Status tabs — pill style -->
-      <div id="banco-tabs" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px">
-        <button class="tab-btn active" onclick="filterBancoTab(this, 'todas')" style="border:1px solid #1F1F1F;background:#1F1F1F;color:#fff;border-radius:99px;padding:6px 12px;font-size:12.5px;font-weight:500;cursor:pointer;white-space:nowrap">Todas · <span id="tab-total">--</span></button>
-        <button class="tab-btn" onclick="filterBancoTab(this, 'atrasadas')" style="border:1px solid #E4E4E4;background:#fff;color:#545252;border-radius:99px;padding:6px 12px;font-size:12.5px;font-weight:500;cursor:pointer;white-space:nowrap">Atrasadas · <span id="tab-atrasadas">--</span></button>
-        <button class="tab-btn" onclick="filterBancoTab(this, 'aguardando')" style="border:1px solid #E4E4E4;background:#fff;color:#545252;border-radius:99px;padding:6px 12px;font-size:12.5px;font-weight:500;cursor:pointer;white-space:nowrap">Aguardando setor · <span id="tab-aguardando">--</span></button>
-        <button class="tab-btn" onclick="filterBancoTab(this, 'minhas')" style="border:1px solid #E4E4E4;background:#fff;color:#545252;border-radius:99px;padding:6px 12px;font-size:12.5px;font-weight:500;cursor:pointer;white-space:nowrap">Minhas · <span id="tab-minhas">--</span></button>
-        <button class="tab-btn" onclick="filterBancoTab(this, 'encerradas')" style="border:1px solid #E4E4E4;background:#fff;color:#545252;border-radius:99px;padding:6px 12px;font-size:12.5px;font-weight:500;cursor:pointer;white-space:nowrap">Encerradas · <span id="tab-encerradas">--</span></button>
+      <!-- Status cards -->
+      <div id="banco-status-cards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-bottom:14px">
+        <button class="bsc-btn bsc-active" data-filter="todas" onclick="filterBancoCard(this,'todas')" style="background:#1F1F1F;border:1.5px solid #1F1F1F;border-radius:10px;padding:10px 12px;text-align:left;cursor:pointer;transition:all .15s">
+          <div style="font-size:11px;font-weight:700;letter-spacing:.06em;color:#A0A0A0;margin-bottom:4px">TODAS</div>
+          <div style="font-size:22px;font-weight:800;color:#fff;line-height:1" id="tab-total">--</div>
+          <div style="font-size:10px;color:#888;margin-top:2px">manifestações</div>
+        </button>
+        <button class="bsc-btn" data-filter="em-aberto" onclick="filterBancoCard(this,'em-aberto')" style="background:#fff;border:1.5px solid #E4E4E4;border-radius:10px;padding:10px 12px;text-align:left;cursor:pointer;transition:all .15s">
+          <div style="font-size:11px;font-weight:700;letter-spacing:.06em;color:#A0A0A0;margin-bottom:4px">EM ABERTO</div>
+          <div style="font-size:22px;font-weight:800;color:#1F1F1F;line-height:1" id="tab-em-aberto">--</div>
+          <div style="font-size:10px;color:#888;margin-top:2px">não finalizadas</div>
+        </button>
+        <button class="bsc-btn" data-filter="em-andamento" onclick="filterBancoCard(this,'em-andamento')" style="background:#fff;border:1.5px solid #E4E4E4;border-radius:10px;padding:10px 12px;text-align:left;cursor:pointer;transition:all .15s">
+          <div style="font-size:11px;font-weight:700;letter-spacing:.06em;color:#A0A0A0;margin-bottom:4px">EM ANDAMENTO</div>
+          <div style="font-size:22px;font-weight:800;color:#2563EB;line-height:1" id="tab-em-andamento">--</div>
+          <div style="font-size:10px;color:#888;margin-top:2px">em tratamento</div>
+        </button>
+        <button class="bsc-btn" data-filter="ag-aprovacao" onclick="filterBancoCard(this,'ag-aprovacao')" style="background:#fff;border:1.5px solid #E4E4E4;border-radius:10px;padding:10px 12px;text-align:left;cursor:pointer;transition:all .15s">
+          <div style="font-size:11px;font-weight:700;letter-spacing:.06em;color:#A0A0A0;margin-bottom:4px">AG. APROVAÇÃO</div>
+          <div style="font-size:22px;font-weight:800;color:#D97706;line-height:1" id="tab-ag-aprovacao">--</div>
+          <div style="font-size:10px;color:#888;margin-top:2px">pendente decisão</div>
+        </button>
+        <button class="bsc-btn" data-filter="ag-setor" onclick="filterBancoCard(this,'ag-setor')" style="background:#fff;border:1.5px solid #E4E4E4;border-radius:10px;padding:10px 12px;text-align:left;cursor:pointer;transition:all .15s">
+          <div style="font-size:11px;font-weight:700;letter-spacing:.06em;color:#A0A0A0;margin-bottom:4px">AG. SETOR</div>
+          <div style="font-size:22px;font-weight:800;color:#7C3AED;line-height:1" id="tab-ag-setor">--</div>
+          <div style="font-size:10px;color:#888;margin-top:2px">encaminhada</div>
+        </button>
+        <button class="bsc-btn" data-filter="ag-sac" onclick="filterBancoCard(this,'ag-sac')" style="background:#fff;border:1.5px solid #E4E4E4;border-radius:10px;padding:10px 12px;text-align:left;cursor:pointer;transition:all .15s">
+          <div style="font-size:11px;font-weight:700;letter-spacing:.06em;color:#A0A0A0;margin-bottom:4px">AG. SAC</div>
+          <div style="font-size:22px;font-weight:800;color:#0891B2;line-height:1" id="tab-ag-sac">--</div>
+          <div style="font-size:10px;color:#888;margin-top:2px">devolvida ao SAC</div>
+        </button>
+        <button class="bsc-btn" data-filter="atrasadas" onclick="filterBancoCard(this,'atrasadas')" style="background:#fff;border:1.5px solid #E4E4E4;border-radius:10px;padding:10px 12px;text-align:left;cursor:pointer;transition:all .15s">
+          <div style="font-size:11px;font-weight:700;letter-spacing:.06em;color:#A0A0A0;margin-bottom:4px">ATRASADAS</div>
+          <div style="font-size:22px;font-weight:800;color:#DC2626;line-height:1" id="tab-atrasadas">--</div>
+          <div style="font-size:10px;color:#888;margin-top:2px">prazo vencido</div>
+        </button>
+        <button class="bsc-btn" data-filter="finalizadas" onclick="filterBancoCard(this,'finalizadas')" style="background:#fff;border:1.5px solid #E4E4E4;border-radius:10px;padding:10px 12px;text-align:left;cursor:pointer;transition:all .15s">
+          <div style="font-size:11px;font-weight:700;letter-spacing:.06em;color:#A0A0A0;margin-bottom:4px">FINALIZADAS</div>
+          <div style="font-size:22px;font-weight:800;color:#059669;line-height:1" id="tab-finalizadas">--</div>
+          <div style="font-size:10px;color:#888;margin-top:2px">encerradas</div>
+        </button>
+      </div>
+      <!-- Legacy tab IDs kept for JS compat -->
+      <span id="tab-aguardando" style="display:none">0</span>
+      <span id="tab-minhas" style="display:none">0</span>
+      <span id="tab-encerradas" style="display:none">0</span>
+      <!-- toolbar row -->
+      <div id="banco-tabs" style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
         <div style="flex:1"></div>
         <button onclick="exportarManifestacoes()" style="border:1px solid #D6D6D6;background:#fff;border-radius:7px;padding:7px 12px;cursor:pointer;font-size:13px;font-family:inherit">Exportar</button>
         <button onclick="navigate('nova-manifestacao', document.querySelector('[onclick*=nova-manifestacao]'))" style="border:0;background:#C70602;color:#fff;border-radius:7px;padding:8px 14px;cursor:pointer;font-size:13px;font-weight:500;font-family:inherit">Nova manifestação</button>
@@ -11697,15 +11813,34 @@ async function loadBancoManifestacoes() {
 window.setBancoData = function(d) { bancoData = d; };
 
 function filterBancoTab(btn, filter) {
+  filterBancoCard(null, filter);
+}
+
+function filterBancoCard(btn, filter) {
   bancoFilter = filter;
   bancoPagina = 1;
-  document.querySelectorAll('#banco-tabs .tab-btn').forEach(b => {
-    b.classList.remove('active');
-    b.style.background = '#fff'; b.style.color = '#545252'; b.style.borderColor = '#E4E4E4';
+  // Update card styles
+  document.querySelectorAll('#banco-status-cards .bsc-btn').forEach(b => {
+    b.classList.remove('bsc-active');
+    b.style.background = '#fff'; b.style.borderColor = '#E4E4E4';
+    const num = b.querySelector('[id^="tab-"]');
+    if (num) num.style.color = _bscDefaultColor(b.dataset.filter);
   });
-  btn.classList.add('active');
-  btn.style.background = '#1F1F1F'; btn.style.color = '#fff'; btn.style.borderColor = '#1F1F1F';
+  if (btn) {
+    btn.classList.add('bsc-active');
+    btn.style.background = '#1F1F1F'; btn.style.borderColor = '#1F1F1F';
+    const num = btn.querySelector('[id^="tab-"]');
+    if (num) num.style.color = '#fff';
+  } else {
+    // called from old filterBancoTab without a btn ref — find by data-filter
+    const b = document.querySelector(`#banco-status-cards [data-filter="${filter}"]`);
+    if (b) { b.classList.add('bsc-active'); b.style.background = '#1F1F1F'; b.style.borderColor = '#1F1F1F'; const n = b.querySelector('[id^="tab-"]'); if(n) n.style.color='#fff'; }
+  }
   renderBanco();
+}
+
+function _bscDefaultColor(f) {
+  return {todas:'#1F1F1F','em-aberto':'#1F1F1F','em-andamento':'#2563EB','ag-aprovacao':'#D97706','ag-setor':'#7C3AED','ag-sac':'#0891B2',atrasadas:'#DC2626',finalizadas:'#059669'}[f] || '#1F1F1F';
 }
 
 function filtrarBanco() {
@@ -11726,9 +11861,20 @@ function renderBanco() {
   const base = _bancoDataFull.length ? _bancoDataFull : bancoData;
   let data = base;
 
-  if (bancoFilter === 'atrasadas') data = data.filter(m => (m.DENTRO_DO_SLA||'').toUpperCase() === 'NÃO');
-  else if (bancoFilter === 'aguardando') data = data.filter(m => (m.SETOR_DESTINADO || m.SETOR_SUGERIDO) && !(m.STATUS||'').includes('FINALIZ'));
-  else if (bancoFilter === 'encerradas') data = data.filter(m => { const s=(m.STATUS||'').toUpperCase(); return s.includes('ENCERR') || s.includes('FINALIZ') || s.includes('CONCLUÍD'); });
+  const _isFinalizada = m => { const s=(m.STATUS||'').toUpperCase(); return s.includes('ENCERR')||s.includes('FINALIZ')||s.includes('CONCLUÍD')||s.includes('CONCLUIDA'); };
+  const _isAgAprov = m => { const s=(m.STATUS||'').toUpperCase(); return s.includes('AGUARDANDO_APRO')||s.includes('AGUARDANDO APRO')||s===('AGUARDANDO_APROVAÇÃO')||s===('AGUARDANDO APROVAÇÃO')||s==='PENDENTE'&&(m.APROVACAO_NECESSARIA==='SIM'); };
+  const _isAgSetor = m => { const s=(m.STATUS||'').toUpperCase(); return (s.includes('AGUARDANDO_SETOR')||s.includes('AGUARDANDO SETOR')||s.includes('ENCAMINHAD')||((m.SETOR_DESTINADO||m.SETOR_SUGERIDO)&&!_isFinalizada(m)&&!_isAgAprov(m))); };
+  const _isAgSac = m => { const s=(m.STATUS||'').toUpperCase(); return s.includes('AGUARDANDO_SAC')||s.includes('AGUARDANDO SAC')||s.includes('DEVOLVIDA')||s.includes('RETORNOU'); };
+  const _isAtrasada = m => (m.DENTRO_DO_SLA||'').toUpperCase()==='NÃO';
+  const _isEmAndamento = m => { const s=(m.STATUS||'').toUpperCase(); return !_isFinalizada(m)&&!_isAgAprov(m)&&!_isAgSetor(m)&&!_isAgSac(m)&&(s.includes('ANDAMENTO')||s.includes('TRATAMENTO')||s.includes('ANALISE')||s.includes('ANÁLISE')||s==='EM_ANDAMENTO'||s==='EM ANDAMENTO'); };
+
+  if (bancoFilter === 'atrasadas') data = data.filter(_isAtrasada);
+  else if (bancoFilter === 'ag-setor' || bancoFilter === 'aguardando') data = data.filter(_isAgSetor);
+  else if (bancoFilter === 'ag-aprovacao') data = data.filter(_isAgAprov);
+  else if (bancoFilter === 'ag-sac') data = data.filter(_isAgSac);
+  else if (bancoFilter === 'em-andamento') data = data.filter(_isEmAndamento);
+  else if (bancoFilter === 'em-aberto') data = data.filter(m => !_isFinalizada(m));
+  else if (bancoFilter === 'finalizadas' || bancoFilter === 'encerradas') data = data.filter(_isFinalizada);
   else if (bancoFilter === 'minhas') { const meNome = (document.getElementById('sidebar-user-name')?.textContent||'').trim(); if (meNome && meNome !== 'Usuário') data = data.filter(m => (m.RESPONSAVEL||m.ANALISTA_RESPONSAVEL||m.ATENDENTE||'').toLowerCase().includes(meNome.toLowerCase())); }
 
   // Apply column filters
@@ -11753,14 +11899,19 @@ function renderBanco() {
     );
   }
 
-  // Update tab counts (always from full dataset)
-  document.getElementById('tab-total').textContent = base.length;
-  document.getElementById('tab-atrasadas').textContent = base.filter(m => (m.DENTRO_DO_SLA||'').toUpperCase() === 'NÃO').length;
-  document.getElementById('tab-aguardando').textContent = base.filter(m => (m.SETOR_DESTINADO || m.SETOR_SUGERIDO) && !(m.STATUS||'').includes('FINALIZ')).length;
-  document.getElementById('tab-encerradas').textContent = base.filter(m => { const s=(m.STATUS||'').toUpperCase(); return s.includes('ENCERR')||s.includes('FINALIZ')||s.includes('CONCLUÍD'); }).length;
-  const meNome2 = (document.getElementById('sidebar-user-name')?.textContent||'').trim();
-  const minhasCount = meNome2 && meNome2 !== 'Usuário' ? base.filter(m => (m.RESPONSAVEL||m.ANALISTA_RESPONSAVEL||m.ATENDENTE||'').toLowerCase().includes(meNome2.toLowerCase())).length : '—';
-  const elMinhas = document.getElementById('tab-minhas'); if (elMinhas) elMinhas.textContent = minhasCount;
+  // Update card counts (always from full dataset, ignoring active filter)
+  const _setTabEl = (id, v) => { const el=document.getElementById(id); if(el) el.textContent=v; };
+  _setTabEl('tab-total', base.length);
+  _setTabEl('tab-em-aberto', base.filter(m=>!_isFinalizada(m)).length);
+  _setTabEl('tab-em-andamento', base.filter(_isEmAndamento).length);
+  _setTabEl('tab-ag-aprovacao', base.filter(_isAgAprov).length);
+  _setTabEl('tab-ag-setor', base.filter(_isAgSetor).length);
+  _setTabEl('tab-ag-sac', base.filter(_isAgSac).length);
+  _setTabEl('tab-atrasadas', base.filter(_isAtrasada).length);
+  _setTabEl('tab-finalizadas', base.filter(_isFinalizada).length);
+  // legacy compat
+  _setTabEl('tab-aguardando', base.filter(_isAgSetor).length);
+  _setTabEl('tab-encerradas', base.filter(_isFinalizada).length);
 
   // Pagination
   const totalPages = Math.max(1, Math.ceil(data.length / BANCO_PAGE_SIZE));
@@ -14054,7 +14205,7 @@ window.navigate = function(page, el) {
   // ── MODAL DECISÃO ──
   window.decisaoAba = function(aba){
     const isPrevia = aba==='previa';
-    document.getElementById('decisao-aba-previa').style.display = isPrevia?'flex':'none';
+    document.getElementById('decisao-aba-previa').style.display = isPrevia?'grid':'none';
     document.getElementById('decisao-aba-decidir').style.display = isPrevia?'none':'flex';
     const tP=document.getElementById('decisao-tab-previa');
     const tD=document.getElementById('decisao-tab-decidir');
@@ -14063,6 +14214,7 @@ window.navigate = function(page, el) {
   };
 
   window.fecharDecisaoPanel = function(){
+    document.getElementById('modal-decisao-aprov').classList.remove('aprov-open');
     document.getElementById('modal-decisao-aprov').style.display='none';
   };
 
@@ -14070,20 +14222,18 @@ window.navigate = function(page, el) {
     document.getElementById('decisao-aprov-id').value=idFila;
     const isSac=tipo==='SAC';
     const accent=isSac?'#C70602':'#6B24A8';
-    const bannerBg=isSac?'#FFF5F5':'#FAF5FF';
-    document.getElementById('decisao-aprov-label').textContent=tipo;
     document.getElementById('decisao-aprov-title').textContent=idEntidade;
-    document.getElementById('decisao-aprov-sub').textContent='';
-    document.getElementById('decisao-badges').innerHTML=`<span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:800;background:${bannerBg};color:${accent}">${tipo}</span>`;
+    document.getElementById('decisao-aprov-sub').innerHTML='';
     document.getElementById('decisao-fila-ref').textContent=idFila;
     document.getElementById('decisao-preview-resumo').style.borderLeftColor=accent;
-    document.getElementById('decisao-previa-descricao').style.borderLeftColor=accent;
     document.getElementById('decisao-obs').value='';
     // Reset preview content
     document.getElementById('decisao-previa-campos').innerHTML='<div style="color:#929090;font-size:13px">Carregando…</div>';
     document.getElementById('decisao-previa-descricao').style.display='none';
     document.getElementById('decisao-preview-resumo').textContent='';
-    document.getElementById('modal-decisao-aprov').style.display='flex';
+    document.getElementById('decisao-historico').innerHTML='<div style="color:#B0B0B0;font-size:11.5px">Carregando…</div>';
+    const modal=document.getElementById('modal-decisao-aprov');
+    modal.style.display='flex'; modal.classList.add('aprov-open');
     decisaoAba('previa');
     // Fetch entity data
     try{
