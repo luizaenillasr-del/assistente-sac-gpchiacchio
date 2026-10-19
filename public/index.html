@@ -7080,7 +7080,7 @@
     <button type="button" class="rs-btn-out" onclick="relAbrirFormManual()">+ Preencher pesquisa</button>
     <button type="button" class="rs-btn-out" onclick="relAbrirFormHistorico()">📂 Média histórica</button>
     <button type="button" class="rs-btn-out" onclick="relBaixarPdf()">⬇ PDF</button>
-    <button type="button" class="rs-btn-send" id="rel-btn-enviar" onclick="relCompartilharLink()" disabled>🔗 Compartilhar link</button>
+    <button type="button" class="rs-btn-send" id="rel-btn-enviar" onclick="relCompartilharLink()">🔗 Compartilhar link</button>
   </div>
 </div>
 <div class="rs-filtros rs-noprint" id="rel-barra-relatorio" style="background:#F0F4FA;border-bottom:1px solid #D0D8EE;padding:8px 18px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
@@ -7102,6 +7102,14 @@
   <label class="rs-lbl">Mês de referência<select id="rel-f-mes" class="rs-sel" onchange="relCarregar()"></select></label>
   <div class="rs-lbl">Período<div class="rs-chips" id="rel-chips-periodo" style="gap:4px"></div></div>
   <label class="rs-lbl" id="rel-meta-wrap">Meta<input type="number" step="0.1" min="0" max="10" value="8.5" id="rel-f-meta" class="rs-sel" style="width:76px" onchange="relMudarMeta(this.value)"></label>
+  <div style="position:relative">
+    <button type="button" onclick="relToggleMetasPanel()" class="btn btn-secondary" style="height:34px;font-size:12px">⚙ Metas por empresa</button>
+    <div id="rel-metas-panel" style="display:none;position:absolute;top:38px;left:0;z-index:200;background:#fff;border:1px solid #D0D8EE;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.12);padding:16px 18px;min-width:240px">
+      <div style="font-size:12px;font-weight:700;color:#444;margin-bottom:10px">Meta de satisfação por empresa</div>
+      <div id="rel-metas-list" style="display:flex;flex-direction:column;gap:8px"></div>
+      <button onclick="relFecharMetasPanel()" style="margin-top:12px;width:100%;height:30px;border:1px solid #E4E4E4;border-radius:7px;background:#F4F4F4;font-size:12px;cursor:pointer">Fechar</button>
+    </div>
+  </div>
   <button type="button" onclick="relCarregar()" class="btn btn-primary" style="height:34px;font-size:12px">↻ Atualizar</button>
   <span class="rs-note">⚡ Indicadores calculados automaticamente pelas pesquisas recebidas. ✏ Textos analíticos e dados do cabeçalho são preenchidos manualmente via <b>Preencher Dados</b>. O relatório pode ser gerado mesmo sem pesquisas. Histórico dos últimos 12 meses.</span>
 </div>
@@ -7181,7 +7189,34 @@
     if(cp) cp.innerHTML=[[6,'Últimos 6 meses'],[12,'12 meses']].map(([v,l])=>`<button type="button" class="rs-chip sq${_per===v?' on':''}" onclick="relSelPeriodo(${v})">${l}</button>`).join('');
   }
   window.relSelEmpresa=function(v){const s=_val('rel-f-empresa');if(s)s.value=v;_edit=null;_openM=null;_renderChips();_syncMetaInput();relCarregar();};
-  function _syncMetaInput(){const el=_val('rel-f-meta');if(el)el.value=getMeta();}
+  function _syncMetaInput(){const el=_val('rel-f-meta');if(el)el.value=getMeta();_renderMetasPanel();}
+  function _renderMetasPanel(){
+    const list=_val('rel-metas-list');if(!list)return;
+    list.innerHTML=EMPRESAS.map(([v,l])=>{
+      const m=_metas[v]??8.5;
+      return `<label style="display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px">
+        <span style="font-weight:500;color:#333">${esc(l)}</span>
+        <input type="number" step="0.1" min="0" max="10" value="${m}" data-emp="${esc(v)}"
+          style="width:72px;height:30px;border:1px solid #D0D8EE;border-radius:6px;text-align:center;font-size:13px;padding:0 6px"
+          onchange="relMudarMetaEmpresa('${esc(v)}',this.value)">
+      </label>`;
+    }).join('');
+  }
+  window.relMudarMetaEmpresa=function(v,val){
+    const n=parseFloat(String(val).replace(',','.'));
+    if(!isFinite(n)||n<=0||n>10)return;
+    _metas[v]=n;
+    try{localStorage.setItem('sac_rel_metas',JSON.stringify(_metas));}catch(e){}
+    const tok=sessionStorage.getItem('sac-token');
+    if(tok) fetch('/api/relatorios/metas',{method:'POST',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({empresa:v,meta:n})}).catch(()=>{});
+    if(_empresa()===v){_syncMetaInput();_renderizar();}
+  };
+  window.relToggleMetasPanel=function(){
+    const p=_val('rel-metas-panel');if(!p)return;
+    const open=p.style.display==='none'||!p.style.display;
+    if(open){_renderMetasPanel();p.style.display='';}else{p.style.display='none';}
+  };
+  window.relFecharMetasPanel=function(){const p=_val('rel-metas-panel');if(p)p.style.display='none';};
   window.relSelPeriodo=function(v){_per=v;_renderChips();_renderizar();};
   window.relMudarMeta=function(v){const n=num(v);if(n!=null&&n>0&&n<=10){setMeta(n);_renderizar();}};
 
@@ -7483,7 +7518,7 @@
       if(btnGerar) btnGerar.style.display='';
       if(btnPub) btnPub.style.display='none';
       if(btnNova) btnNova.style.display='none';
-      if(btnEnviar) btnEnviar.disabled=true;
+      if(btnEnviar) btnEnviar.disabled=false;
     } else if(meta.status==='RASCUNHO'){
       badge.textContent='Rascunho';badge.style.background='#FBF0D9';badge.style.color='#7A4C00';
       if(vtxt) vtxt.textContent=`v${meta.versao}`;
@@ -7542,26 +7577,35 @@
 
   window.relCompartilharLink=async function(){
     const meta=_d?.relMeta;
-    if(!meta){_toast('Gere um rascunho antes de compartilhar.');return;}
     const tok=sessionStorage.getItem('sac-token');
+    // Se não há relatório gerado, compartilha link de navegação com filtros atuais
+    if(!meta){
+      const empresa=_empresa(),ano=_val('rel-f-ano')?.value,mes=_val('rel-f-mes')?.value;
+      const base=window.location.origin+window.location.pathname;
+      const link=`${base}?rel_empresa=${encodeURIComponent(empresa)}&rel_ano=${ano}&rel_mes=${mes}#relatorio-satisfacao`;
+      try{
+        await navigator.clipboard.writeText(link);
+      }catch(e){
+        const ta=document.createElement('textarea');ta.value=link;ta.style.position='fixed';ta.style.opacity='0';
+        document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);
+      }
+      _toast('Link copiado! (sem relatório publicado, acesso requer login)');
+      return;
+    }
     try{
-      // Envia snapshot dos dados atuais junto com o token
       const dadosSnap={nps:_d.nps||null,criterios:_d.criterios||[]};
       const r=await fetch(`/api/relatorios/${meta.id}/link`,{method:'POST',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({dados:dadosSnap})});
       const j=await r.json().catch(()=>({}));
       if(!r.ok||j.sucesso===false){_toast('Erro: '+(j.erro||'não foi possível gerar o link.'));return;}
-      // Copia para área de transferência
       const link=j.link||'';
       try{
         await navigator.clipboard.writeText(link);
         _toast('Link copiado! '+link);
       }catch(e){
-        // fallback: seleciona texto
         const ta=document.createElement('textarea');ta.value=link;ta.style.position='fixed';ta.style.opacity='0';
         document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);
         _toast('Link copiado para a área de transferência.');
       }
-      // Abre em nova aba também
       window.open(link,'_blank');
     }catch(e){_toast('Erro ao gerar link.');}
   };
@@ -7824,11 +7868,22 @@
   document.addEventListener('DOMContentLoaded',function(){
     _populaFiltros();
     _aplicarEscopoEmpresa();
+    // Fecha painel de metas ao clicar fora
+    document.addEventListener('click',function(e){
+      const panel=_val('rel-metas-panel');
+      if(!panel||panel.style.display==='none') return;
+      if(!panel.contains(e.target)&&!e.target.closest('[onclick="relToggleMetasPanel()"]')) panel.style.display='none';
+    });
     if(typeof pageLoaders!=='undefined') pageLoaders['relatorio-satisfacao']=function(){
       const empUser=_empFromUser();
       if(empUser){const s=_val('rel-f-empresa');if(s&&!s.value)s.value=empUser;}
       _populaFiltros();
       _aplicarEscopoEmpresa();
+      // Restaura filtros do query string (link compartilhado)
+      const sp=new URLSearchParams(window.location.search);
+      if(sp.get('rel_empresa')){const s=_val('rel-f-empresa');if(s)s.value=sp.get('rel_empresa');}
+      if(sp.get('rel_ano')){const a=_val('rel-f-ano');if(a)a.value=sp.get('rel_ano');}
+      if(sp.get('rel_mes')){const m=_val('rel-f-mes');if(m)m.value=sp.get('rel_mes');}
       relCarregar();
     };
   });
@@ -9445,7 +9500,7 @@ function getEtapaLabel(status) {
 
 // ===== CARREGAR VISÃO GERAL =====
 // ===== ESTADO GLOBAL DO DASHBOARD =====
-let _dashData = { mans: [], recs: [], setores: [] };
+let _dashData = window._dashData = { mans: [], recs: [], setores: [] };
 let _dashFiltroEmpresa = 'Todas';
 let _dashFiltroSetor = 'Todos';
 
@@ -9922,6 +9977,7 @@ async function loadVisaoGeral() {
 
     _dashData.mans = manRes.itens || [];
     _dashData.recs = recRes.itens || [];
+    window._dashData = _dashData; // mantém referência global sincronizada
 
     // Códigos internos que não são empresas reais
     const _NAO_EMPRESAS = new Set(['TR01','TR08','SAC','RNC']);
@@ -11796,8 +11852,10 @@ async function loadBancoManifestacoes() {
     const res = await _apiFetch('/api/manifestacoes', 30000);
     if (res.aviso) console.warn('[banco] API aviso:', res.aviso);
     let itens = res.itens || [];
+    console.log('[banco] API retornou', itens.length, 'itens, fonte:', res.fonte);
     // Fallback: if API returns empty but dashboard already loaded data, reuse it
     if (!itens.length && window._dashData && (window._dashData.mans || []).length) {
+      console.log('[banco] Usando fallback _dashData.mans', window._dashData.mans.length);
       itens = window._dashData.mans;
     }
     bancoData = itens;
