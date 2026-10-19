@@ -384,6 +384,9 @@ async function carregarUsuarios(){
     if (sh.COMPETENCIAS && !u.COMPETENCIAS) overrides.COMPETENCIAS = sh.COMPETENCIAS;
     // Senha do Sheets como fallback se PG não tiver
     if (sh.SENHA_HASH && !u.SENHA_HASH) overrides.SENHA_HASH = sh.SENHA_HASH;
+    // Escopo de empresa/setor vem do Sheets (MASTER atualiza via modal de usuários)
+    if (sh.EMPRESA) overrides.EMPRESA = sh.EMPRESA;
+    if (sh.SETOR) overrides.SETOR = sh.SETOR;
     return Object.keys(overrides).length ? { ...u, ...overrides } : u;
   });
   // Sheets complementa o PG: usuários que existem só no Sheets (ex: aprovados recentemente) aparecem normalmente
@@ -5350,15 +5353,9 @@ app.patch('/api/usuarios/:id', requerPermissao('usuarios.editar'), async (req,re
     if(b.codigoRCA!==undefined) dados.CODIGO_RCA=b.codigoRCA;
     if(b.perfil||b.PERFIL) dados.PERFIL=perfilCanonico(b.perfil||b.PERFIL);
     if(b.empresa!==undefined||b.EMPRESA!==undefined) {
-      // Aceita lista separada por vírgula (escopo multi-empresa) ou nome único
-      const raw = String(b.empresa||b.EMPRESA||'').trim();
-      if(raw) {
-        const parts = raw.split(',').map(s=>s.trim()).filter(Boolean);
-        const canonicos = parts.map(p=>empresaCanonica(p)).filter(Boolean);
-        dados.EMPRESA = canonicos.length ? canonicos.join(',') : raw;
-      } else {
-        dados.EMPRESA = '';
-      }
+      // Preserva os nomes originais (display names) para que o escopo do usuário
+      // seja recarregado corretamente no frontend (checkboxes) sem precisar reverter canonização
+      dados.EMPRESA = String(b.empresa||b.EMPRESA||'').trim();
     }
     if(b.senha){ dados.SENHA_HASH = await hashSenha(b.senha); }
     if(Array.isArray(b.permissoes_custom)) dados.PERMISSOES_CUSTOM=JSON.stringify(b.permissoes_custom);
