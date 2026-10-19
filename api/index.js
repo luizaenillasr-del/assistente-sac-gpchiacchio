@@ -5370,7 +5370,16 @@ app.patch('/api/usuarios/:id', requerPermissao('usuarios.editar'), async (req,re
     invalidarCacheAba('USUARIOS');
     await registrarAuditoria(req.user.usuario,'ATUALIZOU_USUARIO',req.params.id,'USUARIOS',null,{campos:Object.keys(b)});
     res.json({sucesso:true});
-  }catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
+  }catch(e){
+    console.error('[PATCH /api/usuarios/:id]', e?.message, e?.response?.status);
+    const st = e?.response?.status || e?.code;
+    const msg = st === 429
+      ? 'Google Sheets sobrecarregado. Aguarde alguns segundos e tente novamente.'
+      : st === 403
+      ? 'Sem permissão para gravar na planilha. Verifique as credenciais.'
+      : erroSeguro(e);
+    res.status(500).json({sucesso:false,erro:msg});
+  }
 });
 
 // Soft-delete (MASTER only)
