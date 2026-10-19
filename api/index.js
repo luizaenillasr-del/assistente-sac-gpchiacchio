@@ -1937,7 +1937,8 @@ app.patch('/api/manifestacoes/:id/ficha', requerPermissao('manifestacoes.editar'
         RESP_SETOR_RESPONSAVEL: req.body.respSetorResponsavel || '',
         RESP_SETOR_PRAZO: req.body.respSetorPrazo || '',
         DATA_RESPOSTA_SETOR: agora,
-        STATUS_FICHA: 'EM_ANDAMENTO',
+        STATUS_FICHA: 'AGUARDANDO_VALIDACAO_SAC',
+        STATUS: 'AGUARDANDO_VALIDACAO_SAC',
       };
     } else if (acao === 'aprovacao_setor') {
       const decisao = req.body.aprovDecisao;
@@ -2063,7 +2064,8 @@ app.patch('/api/manifestacoes/:id/ficha', requerPermissao('manifestacoes.editar'
 
 const STATUS_FICHA_LEGIVEL = {
   ABERTA: 'Aberta', EM_ANDAMENTO: 'Em andamento', AGUARDANDO_APROVACAO: 'Aguardando aprovação',
-  AGUARDANDO_SETOR: 'Aguardando setor', AGUARDANDO_TRATATIVA: 'Aguardando tratativa',
+  AGUARDANDO_SETOR: 'Aguardando setor', AGUARDANDO_VALIDACAO_SAC: 'Aguardando validação SAC',
+  AGUARDANDO_TRATATIVA: 'Aguardando tratativa',
   AGUARDANDO_DEVOLUTIVA: 'Aguardando devolutiva', TRATATIVA_SAC: 'Em tratativa SAC', FECHADA: 'Fechada',
 };
 const DECISAO_APROVACAO_VALIDAS = ['APROVAR', 'SEGUIR_TRATATIVA', 'DEVOLVER'];
@@ -5657,9 +5659,22 @@ app.get('/api/aprovadores/:usuario/pendencias', requerPerfil('APROVADOR','APROVA
 
 app.get('/api/setor/minhas-pendencias', requerPerfil('SETOR RESPONSÁVEL','MASTER'), async (req,res)=>{
   try{
-    const rows=await lerAba('BANCO_RNC',5000); const setor=normalizarTexto(req.user.setor);
-    const itens=rows.filter(r=>!['APROVADA','ENCERRADA','CANCELADA','REJEITADA'].includes(String(r.STATUS||'').toUpperCase())&&(!setor||normalizarTexto(r.SETOR||r.SETOR_ACAO)===setor));
-    res.json({sucesso:true,total:itens.length,itens});
+    const setor=normalizarTexto(req.user.setor||'');
+    const [rncs, mans] = await Promise.all([
+      lerAba('BANCO_RNC',5000).catch(()=>[]),
+      lerAba('MANIFESTACOES',5000).catch(()=>[]),
+    ]);
+    const rncsF = rncs.filter(r=>!['APROVADA','ENCERRADA','CANCELADA','REJEITADA'].includes(String(r.STATUS||'').toUpperCase())&&(!setor||normalizarTexto(r.SETOR||r.SETOR_ACAO)===setor)).map(r=>({...r,_tipo:'RNC'}));
+    const STATUSES_SETOR = ['AGUARDANDO_SETOR','AGUARDANDO SETOR','AGUARDANDO_VALIDACAO_SAC'];
+    const mansF = mans.filter(m=>{
+      const st = (m.STATUS||'').toUpperCase().replace(/\s+/g,'_');
+      if (!STATUSES_SETOR.includes(st) && !STATUSES_SETOR.includes((m.STATUS||'').toUpperCase())) return false;
+      if (!setor) return true;
+      const setorM = normalizarTexto(m.SETOR_DESTINADO||m.SETOR_CONFIRMADO||m.SETOR_SUGERIDO||'');
+      return setorM === setor;
+    }).map(m=>({...m,_tipo:'MANIFESTACAO'}));
+    const itens=[...rncsF,...mansF];
+    res.json({sucesso:true,total:itens.length,itens,totalRnc:rncsF.length,totalManifestacoes:mansF.length});
   }catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e),itens:[]});}
 });
 
