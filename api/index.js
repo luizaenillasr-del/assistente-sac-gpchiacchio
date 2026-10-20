@@ -682,8 +682,8 @@ function middlewareEscopoEmpresa() {
     // Perfis com acesso global (sem filtro de empresa)
     if (perfil === 'MASTER' || perfil === 'APROVADOR MASTER') return next();
     const empresa = req.user.empresa || '';
-    // Empresa vazia: permite acesso mas sem escopo (dados de todas as empresas ficam visíveis)
-    if (!empresa.trim()) return next();
+    // Empresa vazia: bloqueia acesso — usuário sem empresa não pode acessar dados isolados por empresa
+    if (!empresa.trim()) return res.status(403).json({ sucesso: false, erro: 'Empresa não definida no perfil. Contacte o administrador.' });
     req._empresaScope = empresa;
     next();
   };
