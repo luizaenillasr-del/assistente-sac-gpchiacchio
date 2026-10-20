@@ -675,6 +675,13 @@ function pertenceEmpresa(userEmpresa, registroEmpresa) {
   return userCod === recCod;
 }
 
+// Usa req._empresaScope (definido apenas para não-MASTER pelo middlewareEscopoEmpresa).
+// Para perfis globais (MASTER, APROVADOR MASTER) _empresaScope é undefined → sem restrição.
+function escopoPermite(req, empresaRegistro) {
+  if (!req._empresaScope) return true;
+  return pertenceEmpresa(req._empresaScope, empresaRegistro);
+}
+
 function middlewareEscopoEmpresa() {
   return (req, res, next) => {
     if (!req.user) return next();
@@ -1906,7 +1913,7 @@ app.patch('/api/manifestacoes/:id/ficha', requerPermissao('manifestacoes.editar'
     const todas = await lerAba('MANIFESTACOES', 5000);
     const item = todas.find(r => r.ID_MANIFESTACAO === id);
     if (!item) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
-    if (!pertenceEmpresa(req.user?.empresa, item.EMPRESA_RECLAMADA)) {
+    if (!escopoPermite(req, item.EMPRESA_RECLAMADA)) {
       return res.status(403).json({ sucesso:false, erro:'Acesso não autorizado para esta manifestação.' });
     }
     const agora = new Date().toISOString();
@@ -2066,7 +2073,7 @@ app.get('/api/manifestacoes/:id/aprovacao', middlewareEscopoEmpresa(), requerPer
     const todas = await lerAba('MANIFESTACOES', 5000);
     const item = todas.find(r => r.ID_MANIFESTACAO === id);
     if (!item) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
-    if (!pertenceEmpresa(req.user?.empresa, item.EMPRESA_RECLAMADA)) {
+    if (!escopoPermite(req, item.EMPRESA_RECLAMADA)) {
       return res.status(403).json({ sucesso:false, erro:'Acesso negado: manifestação pertence a outra empresa.' });
     }
     const perfil = perfilCanonico(req.user?.perfil);
@@ -2152,7 +2159,7 @@ app.post('/api/manifestacoes/:id/aprovacao', middlewareEscopoEmpresa(), requerPe
     const todas = await lerAba('MANIFESTACOES', 5000);
     const item = todas.find(r => r.ID_MANIFESTACAO === id);
     if (!item) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
-    if (!pertenceEmpresa(req.user?.empresa, item.EMPRESA_RECLAMADA)) {
+    if (!escopoPermite(req, item.EMPRESA_RECLAMADA)) {
       return res.status(403).json({ sucesso:false, erro:'Acesso negado: manifestação pertence a outra empresa.' });
     }
     const perfil = perfilCanonico(req.user?.perfil);
@@ -2216,7 +2223,7 @@ app.patch('/api/manifestacoes/:id', requerPermissao('manifestacoes.editar'), asy
     const todas = await lerAba('MANIFESTACOES', 5000);
     const itemExistente = todas.find(r => r.ID_MANIFESTACAO === id);
     if (!itemExistente) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
-    if (!pertenceEmpresa(req.user?.empresa, itemExistente.EMPRESA_RECLAMADA)) {
+    if (!escopoPermite(req, itemExistente.EMPRESA_RECLAMADA)) {
       return res.status(403).json({ sucesso:false, erro:'Acesso negado: manifestação pertence a outra empresa.' });
     }
     const STATUS_VALIDOS = ['EM ANÁLISE','AGUARDANDO_DECISÃO','EM TRATAMENTO','AGUARDANDO_DEVOLUTIVA','ENCERRADA','REJEITADA','APROVADA'];
@@ -2317,7 +2324,7 @@ app.post('/api/manifestacoes/:id/decisao', requerPermissao('manifestacoes.aprova
     const item = data.find(r => r.ID_MANIFESTACAO === id);
     if (!item) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
     // B2/Item18: verificar pertencimento de empresa antes de gravar decisão
-    if (!pertenceEmpresa(req.user?.empresa, item.EMPRESA_RECLAMADA)) {
+    if (!escopoPermite(req, item.EMPRESA_RECLAMADA)) {
       return res.status(403).json({ sucesso:false, erro:'Acesso negado: manifestação pertence a outra empresa.' });
     }
     const agora = new Date().toISOString();
@@ -2383,7 +2390,7 @@ app.post('/api/manifestacoes/:id/tratativa/gerar', requerPerfil('MASTER','GESTOR
     const data = await lerAba('MANIFESTACOES',5000);
     const m = data.find(r=>r.ID_MANIFESTACAO===id);
     if (!m) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
-    if(!pertenceEmpresa(req.user?.empresa, m.EMPRESA_RECLAMADA)) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado para esta manifestação.'});
+    if(!escopoPermite(req, m.EMPRESA_RECLAMADA)) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado para esta manifestação.'});
     const analise = await executarAnalise({ ...m, empresaReclamante: m.EMPRESA_RECLAMANTE, empresaReclamada: m.EMPRESA_RECLAMADA, descricao: m.DESCRICAO });
     const tratativa = analise.tratativaEstruturada;
     if (tratativa) await tratativaEngine.salvarTratativa(id, tratativa, req.user?.usuario||'sistema').catch(()=>{});
@@ -2398,7 +2405,7 @@ app.post('/api/manifestacoes/:id/tratativa/decisao', requerPerfil('MASTER','GEST
     const data = await lerAba('MANIFESTACOES',5000);
     const m = data.find(r=>r.ID_MANIFESTACAO===req.params.id);
     if (!m) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
-    if(!pertenceEmpresa(req.user?.empresa, m.EMPRESA_RECLAMADA)) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado para esta manifestação.'});
+    if(!escopoPermite(req, m.EMPRESA_RECLAMADA)) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado para esta manifestação.'});
     await assertividadeService.registrarDecisao({
       idManifestacao: req.params.id,
       tipoRegistro: 'TRATATIVA',
@@ -2430,7 +2437,7 @@ app.post('/api/manifestacoes/:id/visualizacao', requerPerfil('MASTER','ANALISTA 
     const id=req.params.id;
     const _manV = (await lerAba('MANIFESTACOES',5000)).find(r=>r.ID_MANIFESTACAO===id);
     if(!_manV) return res.status(404).json({sucesso:false,erro:'Manifestação não encontrada.'});
-    if(!pertenceEmpresa(req.user?.empresa, _manV.EMPRESA_RECLAMADA)) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado para esta manifestação.'});
+    if(!escopoPermite(req, _manV.EMPRESA_RECLAMADA)) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado para esta manifestação.'});
     const agora=new Date().toISOString();
     await garantirAbaComCabecalhos('LOG_VISUALIZACOES',['ID_MANIFESTACAO','USUARIO','NOME','PERFIL','DATA_HORA']).catch(()=>{});
     await appendObjeto('LOG_VISUALIZACOES',{ID_MANIFESTACAO:id,USUARIO:req.user.usuario,NOME:req.user.nome||req.user.usuario,PERFIL:req.user.perfil,DATA_HORA:agora});
@@ -2472,7 +2479,7 @@ app.post('/api/manifestacoes/:id/devolutiva/gerar', requerPerfil('MASTER','GESTO
     const data = await lerAba('MANIFESTACOES',5000);
     const m = data.find(r=>r.ID_MANIFESTACAO===id);
     if (!m) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
-    if (!pertenceEmpresa(req.user?.empresa, m.EMPRESA_RECLAMADA)) {
+    if (!escopoPermite(req, m.EMPRESA_RECLAMADA)) {
       return res.status(403).json({ sucesso:false, erro:'Acesso não autorizado para esta manifestação.' });
     }
     const tipo = req.body.tipo || 'RECEBIMENTO';
@@ -2510,7 +2517,7 @@ app.get('/api/manifestacoes/:id/tratativa-completa', requerPermissao('manifestac
     const data = await lerAba('MANIFESTACOES',5000);
     const m = data.find(r=>r.ID_MANIFESTACAO===id);
     if (!m) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
-    if (!pertenceEmpresa(req.user?.empresa, m.EMPRESA_RECLAMADA)) {
+    if (!escopoPermite(req, m.EMPRESA_RECLAMADA)) {
       return res.status(403).json({ sucesso:false, erro:'Acesso não autorizado.' });
     }
     const [histRows, devRows, encRows, impactoRows, execRows, tratasRows] = await Promise.all([
@@ -2538,7 +2545,7 @@ app.post('/api/manifestacoes/:id/encaminhamentos', requerPermissao('manifestacoe
     const data = await lerAba('MANIFESTACOES',5000);
     const m = data.find(r=>r.ID_MANIFESTACAO===id);
     if (!m) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
-    if (!pertenceEmpresa(req.user?.empresa, m.EMPRESA_RECLAMADA)) {
+    if (!escopoPermite(req, m.EMPRESA_RECLAMADA)) {
       return res.status(403).json({ sucesso:false, erro:'Acesso não autorizado.' });
     }
     const { setor, responsavel, prazo, instrucoes, checklistItens } = req.body||{};
@@ -2577,7 +2584,7 @@ app.put('/api/manifestacoes/:id/impacto-financeiro', requerPermissao('manifestac
     const data = await lerAba('MANIFESTACOES',5000);
     const m = data.find(r=>r.ID_MANIFESTACAO===id);
     if (!m) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
-    if (!pertenceEmpresa(req.user?.empresa, m.EMPRESA_RECLAMADA)) {
+    if (!escopoPermite(req, m.EMPRESA_RECLAMADA)) {
       return res.status(403).json({ sucesso:false, erro:'Acesso não autorizado.' });
     }
     const { valorEstimado, categoriaEstimada, valorConfirmado, categoriaConfirmada, observacoes } = req.body||{};
@@ -2619,7 +2626,7 @@ app.post('/api/manifestacoes/:id/execucao', requerPermissao('manifestacoes.edita
     const data = await lerAba('MANIFESTACOES',5000);
     const m = data.find(r=>r.ID_MANIFESTACAO===id);
     if (!m) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
-    if (!pertenceEmpresa(req.user?.empresa, m.EMPRESA_RECLAMADA)) {
+    if (!escopoPermite(req, m.EMPRESA_RECLAMADA)) {
       return res.status(403).json({ sucesso:false, erro:'Acesso não autorizado.' });
     }
     const { acao, descricao, evidencias, impedimento, status } = req.body||{};
@@ -2650,7 +2657,7 @@ app.post('/api/manifestacoes/:id/validacao-sac', requerPermissao('aprovacoes.apr
     const data = await lerAba('MANIFESTACOES',5000);
     const m = data.find(r=>r.ID_MANIFESTACAO===id);
     if (!m) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
-    if (!pertenceEmpresa(req.user?.empresa, m.EMPRESA_RECLAMADA)) {
+    if (!escopoPermite(req, m.EMPRESA_RECLAMADA)) {
       return res.status(403).json({ sucesso:false, erro:'Acesso não autorizado.' });
     }
     const { decisao, observacoes } = req.body||{};
@@ -2678,7 +2685,7 @@ app.post('/api/manifestacoes/:id/devolutiva/aprovar', requerPermissao('aprovacoe
     const data = await lerAba('MANIFESTACOES',5000);
     const m = data.find(r=>r.ID_MANIFESTACAO===id);
     if (!m) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
-    if (!pertenceEmpresa(req.user?.empresa, m.EMPRESA_RECLAMADA)) {
+    if (!escopoPermite(req, m.EMPRESA_RECLAMADA)) {
       return res.status(403).json({ sucesso:false, erro:'Acesso não autorizado.' });
     }
     const { textoAprovado } = req.body||{};
@@ -2702,7 +2709,7 @@ app.post('/api/manifestacoes/:id/devolutiva/enviar', requerPermissao('manifestac
     const data = await lerAba('MANIFESTACOES',5000);
     const m = data.find(r=>r.ID_MANIFESTACAO===id);
     if (!m) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
-    if (!pertenceEmpresa(req.user?.empresa, m.EMPRESA_RECLAMADA)) {
+    if (!escopoPermite(req, m.EMPRESA_RECLAMADA)) {
       return res.status(403).json({ sucesso:false, erro:'Acesso não autorizado.' });
     }
     const textoFinal = (req.body||{}).texto || m.DEVOLUTIVA_FINAL || '';
@@ -2737,7 +2744,7 @@ app.post('/api/manifestacoes/:id/tratativas-setoriais', requerPermissao('manifes
     const data = await lerAba('MANIFESTACOES', 5000);
     const m = data.find(r=>r.ID_MANIFESTACAO===id);
     if (!m) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
-    if (!pertenceEmpresa(req.user?.empresa, m.EMPRESA_RECLAMADA)) return res.status(403).json({ sucesso:false, erro:'Acesso não autorizado.' });
+    if (!escopoPermite(req, m.EMPRESA_RECLAMADA)) return res.status(403).json({ sucesso:false, erro:'Acesso não autorizado.' });
     const { setor, acao, resultado, responsavel, dataExecucao, status } = req.body||{};
     if (!setor || !acao) return res.status(400).json({ sucesso:false, erro:'setor e acao são obrigatórios.' });
     const idTrat = `TRAT-${id}-${Date.now()}`;
@@ -2781,7 +2788,7 @@ app.post('/api/manifestacoes/:id/finalizar', requerPermissao('aprovacoes.aprovar
     const data = await lerAba('MANIFESTACOES', 5000);
     const m = data.find(r=>r.ID_MANIFESTACAO===id);
     if (!m) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
-    if (!pertenceEmpresa(req.user?.empresa, m.EMPRESA_RECLAMADA)) return res.status(403).json({ sucesso:false, erro:'Acesso não autorizado.' });
+    if (!escopoPermite(req, m.EMPRESA_RECLAMADA)) return res.status(403).json({ sucesso:false, erro:'Acesso não autorizado.' });
     // Critérios bloqueantes
     const bloqueios = [];
     if (!m.PROCEDENTE) bloqueios.push('Procedência não definida.');
@@ -2812,7 +2819,7 @@ app.post('/api/devolutivas/:idDev/decisao', requerPerfil('MASTER','GESTOR SAC','
     if (!['APROVADA','EDITADA','REJEITADA'].includes(decisao)) return res.status(400).json({ sucesso:false, erro:'Decisão inválida.' });
     const _devRows = await lerAba('DEVOLUTIVAS', 2000).catch(()=>[]);
     const devExist = _devRows.find(r => r.ID_DEVOLUTIVA === req.params.idDev);
-    if (devExist && !pertenceEmpresa(req.user?.empresa, devExist.EMPRESA||devExist.EMPRESA_RECLAMADA||'')) {
+    if (devExist && !escopoPermite(req, devExist.EMPRESA||devExist.EMPRESA_RECLAMADA||'')) {
       return res.status(403).json({ sucesso:false, erro:'Acesso não autorizado para esta devolutiva.' });
     }
     const result = await devolutivaEngine.registrarDecisaoDevolutiva(req.params.idDev, decisao, textoAprovado, motivo, req.user?.usuario||'sistema');
@@ -3451,7 +3458,7 @@ app.patch('/api/manifestacoes/:id/diagnostico-atraso', requerPerfil('MASTER','AN
     const todasMan = await lerAba('MANIFESTACOES', 5000);
     const itemMan = todasMan.find(r => r.ID_MANIFESTACAO === req.params.id);
     if (!itemMan) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
-    if (!pertenceEmpresa(req.user?.empresa, itemMan.EMPRESA_RECLAMADA)) {
+    if (!escopoPermite(req, itemMan.EMPRESA_RECLAMADA)) {
       return res.status(403).json({ sucesso:false, erro:'Acesso não autorizado para esta manifestação.' });
     }
     const dados = {
@@ -3614,7 +3621,7 @@ app.get('/api/rnc/:id', requerPerfil('APROVADOR','MASTER','ANALISTA SAC','SETOR 
   try{
     const rnc=(await lerAba('BANCO_RNC',5000).catch(()=>[])).find(x=>x.ID_RNC===req.params.id);
     if(!rnc) return res.status(404).json({sucesso:false,erro:'RNC não encontrada.'});
-    if(!pertenceEmpresa(req.user?.empresa, rnc.EMPRESA)) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado para esta RNC.'});
+    if(!escopoPermite(req, rnc.EMPRESA)) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado para esta RNC.'});
     const eventos=await lerAba('RNC_EVENTOS',5000).catch(()=>[]);
     const anexos=await lerAba('ANEXOS',5000).catch(()=>[]);
     res.json({sucesso:true,rnc,eventos:eventos.filter(x=>x.ID_RNC===req.params.id),anexos:anexos.filter(x=>x.ID_ENTIDADE===req.params.id)});
@@ -3627,7 +3634,7 @@ app.post('/api/rnc/:id/decisao', requerPerfil('APROVADOR','MASTER'), async (req,
     if(!decisao) return res.status(400).json({sucesso:false,erro:'Decisão é obrigatória.'});
     const rnc=(await lerAba('BANCO_RNC',5000).catch(()=>[])).find(x=>x.ID_RNC===req.params.id);
     if(!rnc) return res.status(404).json({sucesso:false,erro:'RNC não encontrada.'});
-    if(!pertenceEmpresa(req.user?.empresa, rnc.EMPRESA)) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado para esta RNC.'});
+    if(!escopoPermite(req, rnc.EMPRESA)) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado para esta RNC.'});
     const d=String(decisao).toUpperCase();
     if(d!=='APROVAR'&&(!observacoes||!String(observacoes).trim())) return res.status(400).json({sucesso:false,erro:'Justificativa é obrigatória.'});
     const status=d==='APROVAR'?'APROVADA':(d==='REJEITAR'?'REJEITADA':'DEVOLVIDA'); const agora=new Date().toISOString();
@@ -3648,7 +3655,7 @@ app.post('/api/rnc/:id/visualizacao', requerPerfil('APROVADOR','MASTER'), async 
 app.get('/api/rnc/:id/eventos', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','SETOR RESPONSÁVEL'), async(req,res)=>{
   try{
     const rnc=(await lerAba('BANCO_RNC',5000)).find(x=>x.ID_RNC===req.params.id);
-    if(rnc && !pertenceEmpresa(req.user?.empresa, rnc.EMPRESA)) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado.'});
+    if(rnc && !escopoPermite(req, rnc.EMPRESA)) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado.'});
     const data=await lerAba('RNC_EVENTOS',5000);res.json({sucesso:true,itens:data.filter(x=>x.ID_RNC===req.params.id)});}
   catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e),itens:[]});}
 });
@@ -3657,7 +3664,7 @@ app.patch('/api/rnc/:id/execucao', requerPerfil('SETOR RESPONSÁVEL','MASTER','A
   try{
     const rnc=(await lerAba('BANCO_RNC',5000)).find(x=>x.ID_RNC===req.params.id);
     if(!rnc) return res.status(404).json({sucesso:false,erro:'RNC não encontrada.'});
-    if(!pertenceEmpresa(req.user?.empresa, rnc.EMPRESA)) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado para esta RNC.'});
+    if(!escopoPermite(req, rnc.EMPRESA)) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado para esta RNC.'});
     const b=req.body||{}; const dados={};
     const campos=['CAUSA','ACAO_CONTENCAO','ACAO_CORRETIVA','RESPONSAVEL_ACAO','PRAZO_ACAO','STATUS_ACAO','RESPONSAVEL_EFICACIA','DATA_EFICACIA','RESULTADO_EFICACIA'];
     for(const c of campos){if(b[c]!==undefined)dados[c]=b[c];}
@@ -5474,7 +5481,7 @@ app.get('/api/caso/:fonte/:id', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'
     if (!item) return res.status(404).json({ sucesso: false, erro: `Caso "${id}" não encontrado.` });
     // Isolamento de empresa: MASTER vê tudo, demais só veem da própria empresa
     const empItem = item.EMPRESA_RECLAMADA || item.ORIG_EMPRESA || item.EMPRESA || '';
-    if (!pertenceEmpresa(req.user?.empresa, empItem)) {
+    if (!escopoPermite(req, empItem)) {
       return res.status(403).json({ sucesso: false, erro: 'Acesso não autorizado para este caso.' });
     }
     res.json({ sucesso: true, caso: { ...item, _fonte_real: fonteReal } });
@@ -6096,7 +6103,7 @@ app.post('/api/manifestacoes/:id/sugestoes', requerPerfil('MASTER','APROVADOR'),
     if(!usuario||!tipoSugestao||!sugestao) return res.status(400).json({sucesso:false,erro:'Campos obrigatórios faltando.'});
     const _manS = (await lerAba('MANIFESTACOES',5000)).find(r=>r.ID_MANIFESTACAO===req.params.id);
     if(!_manS) return res.status(404).json({sucesso:false,erro:'Manifestação não encontrada.'});
-    if(!pertenceEmpresa(req.user?.empresa, _manS.EMPRESA_RECLAMADA)) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado para esta manifestação.'});
+    if(!escopoPermite(req, _manS.EMPRESA_RECLAMADA)) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado para esta manifestação.'});
     const id=await gerarProximoID('SUGESTOES_APROVADOR','SUG','ID_SUGESTAO');
     await appendObjeto('SUGESTOES_APROVADOR',{ID_SUGESTAO:id,ID_MANIFESTACAO:req.params.id,ID_APROVADOR:usuario,TIPO_SUGESTAO:tipoSugestao,SUGESTAO:sugestao,JUSTIFICATIVA:justificativa||'',DATA_SUGESTAO:new Date().toISOString(),STATUS:'PENDENTE'});
     res.json({sucesso:true,id,status:'PENDENTE'});
@@ -6208,7 +6215,7 @@ app.post('/api/assertividade-ia', requerPerfil('MASTER','ANALISTA SAC','APROVADO
     // Verificar isolamento de empresa
     const mans = await lerAba('MANIFESTACOES', 5000).catch(()=>[]);
     const mRef = mans.find(m=>m.ID_MANIFESTACAO===idManifestacao);
-    if (mRef && !pertenceEmpresa(req.user?.empresa, mRef.EMPRESA_RECLAMADA)) {
+    if (mRef && !escopoPermite(req, mRef.EMPRESA_RECLAMADA)) {
       return res.status(403).json({sucesso:false,erro:'Acesso não autorizado para esta manifestação.'});
     }
     const id = await gerarProximoID('ASSERTIVIDADE_IA','ASS','ID_ASSERTIVIDADE');
@@ -9046,7 +9053,7 @@ app.post('/api/rnc/:id/enviar', requerPerfil('MASTER','ANALISTA SAC','SETOR RESP
   try {
     const rnc = (await lerAba('BANCO_RNC',5000).catch(()=>[])).find(x=>x.ID_RNC===req.params.id);
     if (!rnc) return res.status(404).json({sucesso:false,erro:'RNC não encontrada.'});
-    if (!pertenceEmpresa(req.user?.empresa, rnc.EMPRESA)) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado.'});
+    if (!escopoPermite(req, rnc.EMPRESA)) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado.'});
     const { analise, causas, acoes } = req.body || {};
     const agora = new Date().toISOString();
     await atualizarPorID('BANCO_RNC', req.params.id, {
@@ -9065,7 +9072,7 @@ app.post('/api/rnc/:id/aprovar', requerPerfil('APROVADOR','MASTER'), async (req,
   try {
     const rnc = (await lerAba('BANCO_RNC',5000).catch(()=>[])).find(x=>x.ID_RNC===req.params.id);
     if (!rnc) return res.status(404).json({sucesso:false,erro:'RNC não encontrada.'});
-    if (!pertenceEmpresa(req.user?.empresa, rnc.EMPRESA)) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado.'});
+    if (!escopoPermite(req, rnc.EMPRESA)) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado.'});
     const { observacoes } = req.body || {};
     const agora = new Date().toISOString();
     await atualizarPorID('BANCO_RNC', req.params.id, {
@@ -9082,7 +9089,7 @@ app.post('/api/rnc/:id/devolver', requerPerfil('APROVADOR','MASTER'), async (req
   try {
     const rnc = (await lerAba('BANCO_RNC',5000).catch(()=>[])).find(x=>x.ID_RNC===req.params.id);
     if (!rnc) return res.status(404).json({sucesso:false,erro:'RNC não encontrada.'});
-    if (!pertenceEmpresa(req.user?.empresa, rnc.EMPRESA)) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado.'});
+    if (!escopoPermite(req, rnc.EMPRESA)) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado.'});
     const { motivo } = req.body || {};
     if (!motivo||!String(motivo).trim()) return res.status(400).json({sucesso:false,erro:'Motivo da devolução é obrigatório.'});
     const agora = new Date().toISOString();
@@ -9100,7 +9107,7 @@ app.post('/api/rnc/:id/encerrar', requerPerfil('APROVADOR','MASTER','ANALISTA SA
   try {
     const rnc = (await lerAba('BANCO_RNC',5000).catch(()=>[])).find(x=>x.ID_RNC===req.params.id);
     if (!rnc) return res.status(404).json({sucesso:false,erro:'RNC não encontrada.'});
-    if (!pertenceEmpresa(req.user?.empresa, rnc.EMPRESA)) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado.'});
+    if (!escopoPermite(req, rnc.EMPRESA)) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado.'});
     const { verificacaoEficacia, resultado, observacoes } = req.body || {};
     const agora = new Date().toISOString();
     await atualizarPorID('BANCO_RNC', req.params.id, {
@@ -9118,7 +9125,7 @@ app.patch('/api/rnc/:id', requerPerfil('MASTER','ANALISTA SAC','SETOR RESPONSÁV
   try {
     const rnc = (await lerAba('BANCO_RNC',5000).catch(()=>[])).find(x=>x.ID_RNC===req.params.id);
     if (!rnc) return res.status(404).json({sucesso:false,erro:'RNC não encontrada.'});
-    if (!pertenceEmpresa(req.user?.empresa, rnc.EMPRESA)) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado.'});
+    if (!escopoPermite(req, rnc.EMPRESA)) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado.'});
     const b = req.body || {};
     const campos = ['STATUS','CAUSA','NAO_CONFORMIDADE','SETOR','RESPONSAVEL','PRIORIDADE','PRAZO',
       'ACAO_CONTENCAO','ACAO_CORRETIVA','RESPONSAVEL_ACAO','PRAZO_ACAO','ANALISE_CAUSA_RAIZ',

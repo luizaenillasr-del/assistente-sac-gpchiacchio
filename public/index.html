@@ -860,20 +860,14 @@
                 <div class="enc-field-row cols2">
                   <div class="enc-field">
                     <label>Setor<span class="req">*</span></label>
-                    <select id="enc-setor-select" onchange="_encValidar()">
+                    <select id="enc-setor-select" onchange="_encOnSetorChange(this.value)">
                       <option value="">Selecionar setor…</option>
-                      <option>Logística</option>
-                      <option>Comercial</option>
-                      <option>Qualidade</option>
-                      <option>Financeiro</option>
-                      <option>Produção</option>
-                      <option>TI</option>
-                      <option>RH</option>
                     </select>
                   </div>
                   <div class="enc-field">
-                    <label>Responsável</label>
-                    <input type="text" id="enc-resp-setor" placeholder="Nome do responsável" oninput="_encValidar()">
+                    <label>Responsável(is)</label>
+                    <div id="enc-resp-lista" style="border:1px solid var(--border,#d1d5db);border-radius:6px;padding:6px 8px;min-height:38px;max-height:120px;overflow-y:auto;font-size:0.85rem;color:var(--text-muted,#6b7280)">Selecione um setor primeiro</div>
+                    <input type="hidden" id="enc-resp-setor" value="">
                   </div>
                 </div>
                 <div class="enc-field">
@@ -11075,6 +11069,9 @@ function _iniciarEncAnalista(item) {
   ['enc-obs-ai','enc-obs-sac','enc-obs-setor','enc-motivo-dev','enc-motivo-rej'].forEach(id => { const el = document.getElementById(id); if(el) el.value=''; });
   const encSel = document.getElementById('enc-setor-select'); if(encSel) encSel.value='';
   const encSla = document.getElementById('enc-sla-val'); if(encSla) encSla.value='';
+  const encRespLista = document.getElementById('enc-resp-lista'); if(encRespLista) encRespLista.innerHTML='<span style="color:var(--text-muted,#6b7280)">Selecione um setor primeiro</span>';
+  const encRespHidden = document.getElementById('enc-resp-setor'); if(encRespHidden) encRespHidden.value='';
+  _encCarregarSetores();
   const encMsg = document.getElementById('enc-msg'); if(encMsg) encMsg.style.display='none';
   // IA banner
   const tipoS = item.TIPO_SUGERIDO || ''; const setorS = item.SETOR_SUGERIDO || ''; const devS = item.DEVOLUTIVA_SUGERIDA || '';
@@ -11098,6 +11095,76 @@ function _iniciarEncAnalista(item) {
   const firstTab = document.querySelector('#modal-tabs .tab-btn:first-child');
   if (firstTab) firstTab.textContent = 'Encaminhamento';
 }
+
+// Carrega setores dinamicamente do backend
+async function _encCarregarSetores() {
+  const sel = document.getElementById('enc-setor-select');
+  if (!sel || sel.dataset.loaded === '1') return;
+  try {
+    const d = await _apiFetch('/api/setores', 8000);
+    const itens = (d && d.itens) || [];
+    sel.innerHTML = '<option value="">Selecionar setor…</option>';
+    itens.forEach(s => {
+      const n = s.NOME || s.nome || '';
+      if (n) { const o = document.createElement('option'); o.value = n; o.textContent = n; sel.appendChild(o); }
+    });
+    // garante setores básicos caso Sheets esteja vazia
+    const basicos = ['Comercial','Logística','Qualidade','Financeiro','Produção','TI','RH'];
+    const existentes = new Set(itens.map(s => (s.NOME||s.nome||'').toLowerCase()));
+    basicos.forEach(b => { if (!existentes.has(b.toLowerCase())) { const o = document.createElement('option'); o.value = b; o.textContent = b; sel.appendChild(o); } });
+    sel.dataset.loaded = '1';
+  } catch(e) {
+    // fallback silencioso com setores padrão
+    ['Comercial','Logística','Qualidade','Financeiro','Produção','TI','RH'].forEach(b => {
+      const o = document.createElement('option'); o.value = b; o.textContent = b; sel.appendChild(o);
+    });
+    sel.dataset.loaded = '1';
+  }
+}
+
+async function _encOnSetorChange(setor) {
+  _encValidar();
+  const lista = document.getElementById('enc-resp-lista');
+  const hiddenInput = document.getElementById('enc-resp-setor');
+  if (!lista) return;
+  if (!setor) { lista.innerHTML = '<span style="color:var(--text-muted,#6b7280)">Selecione um setor primeiro</span>'; if(hiddenInput) hiddenInput.value=''; return; }
+  lista.innerHTML = '<span style="color:var(--text-muted,#6b7280)">Carregando…</span>';
+  try {
+    const d = await _apiFetch('/api/usuarios?limite=200', 8000);
+    const todos = (d && d.itens) || [];
+    // filtra usuários do setor selecionado ou SETOR RESPONSÁVEL
+    const setorNorm = setor.toLowerCase();
+    const doSetor = todos.filter(u => {
+      const seU = (u.setor || u.SETOR || '').toLowerCase();
+      const perfil = (u.perfil || '').toUpperCase();
+      return seU === setorNorm || seU.includes(setorNorm) || perfil.includes('SETOR');
+    });
+    if (!doSetor.length) {
+      lista.innerHTML = '<span style="color:var(--text-muted,#6b7280)">Nenhum responsável cadastrado para este setor. Digite o nome abaixo:</span><br><input type="text" id="enc-resp-manual" placeholder="Nome do responsável" style="margin-top:4px;width:100%;border:1px solid var(--border,#d1d5db);border-radius:4px;padding:4px 6px;font-size:0.85rem" oninput="document.getElementById(\'enc-resp-setor\').value=this.value">';
+      if(hiddenInput) hiddenInput.value='';
+      return;
+    }
+    lista.innerHTML = doSetor.map(u => {
+      const nome = u.nome || u.NOME || u.usuario || '';
+      const id = u.id || u.ID || u.usuario || nome;
+      return `<label style="display:flex;align-items:center;gap:6px;padding:3px 0;cursor:pointer"><input type="checkbox" value="${_esc(nome)}" onchange="_encAtualizarResps()"> ${_esc(nome)}</label>`;
+    }).join('');
+    if(hiddenInput) hiddenInput.value='';
+  } catch(e) {
+    lista.innerHTML = '<span style="color:var(--text-muted,#6b7280)">Erro ao carregar. Digite o nome:</span><br><input type="text" id="enc-resp-manual" placeholder="Nome do responsável" style="margin-top:4px;width:100%;border:1px solid var(--border,#d1d5db);border-radius:4px;padding:4px 6px;font-size:0.85rem" oninput="document.getElementById(\'enc-resp-setor\').value=this.value">';
+    if(hiddenInput) hiddenInput.value='';
+  }
+}
+
+function _encAtualizarResps() {
+  const lista = document.getElementById('enc-resp-lista');
+  const hiddenInput = document.getElementById('enc-resp-setor');
+  if (!lista || !hiddenInput) return;
+  const selecionados = [...lista.querySelectorAll('input[type=checkbox]:checked')].map(c => c.value);
+  hiddenInput.value = selecionados.join(', ');
+}
+
+function _esc(s) { return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
 function _encSelecionarOpt(card) {
   document.querySelectorAll('.enc-opt-card').forEach(c => c.classList.remove('selected'));
@@ -11171,7 +11238,10 @@ async function _encSubmeter() {
     const data = await _apiFetch(`/api/manifestacoes/${encodeURIComponent(item.ID_MANIFESTACAO)}/ficha`, 15000, { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
     if (data && data.sucesso !== false) {
       document.getElementById('modal-enc-analista').style.display = 'none';
-      if (msgEl) { msgEl.style.display='block'; msgEl.style.background='#E6F2EA'; msgEl.style.color='#1B7A3E'; msgEl.textContent='✓ Manifestação encaminhada com sucesso.'; }
+      let msgSucesso = '✓ Manifestação encaminhada com sucesso.';
+      if (_encOptAtiva === 'sac') msgSucesso = '✓ Assumida no SAC. Localize a ficha em "Banco de Manifestações" filtrando por status "Em andamento" ou "Em tratativa SAC".';
+      else if (_encOptAtiva === 'setor') msgSucesso = '✓ Encaminhada ao setor. Aguarde resposta do responsável.';
+      if (msgEl) { msgEl.style.display='block'; msgEl.style.background='#E6F2EA'; msgEl.style.color='#1B7A3E'; msgEl.textContent=msgSucesso; }
       // recarrega lista em background
       if (typeof loadManifestacoes === 'function') setTimeout(loadManifestacoes, 800);
       if (typeof loadPendencias === 'function') setTimeout(loadPendencias, 800);
