@@ -4145,6 +4145,11 @@
           <div style="font-size:22px;font-weight:800;color:#2563EB;line-height:1" id="tab-em-andamento">--</div>
           <div style="font-size:10px;color:#888;margin-top:2px">em tratamento</div>
         </button>
+        <button class="bsc-btn" data-filter="em-tratativa" onclick="filterBancoCard(this,'em-tratativa')" style="background:#fff;border:1.5px solid #E4E4E4;border-radius:10px;padding:10px 12px;text-align:left;cursor:pointer;transition:all .15s">
+          <div style="font-size:11px;font-weight:700;letter-spacing:.06em;color:#A0A0A0;margin-bottom:4px">EM TRATATIVA</div>
+          <div style="font-size:22px;font-weight:800;color:#0D9488;line-height:1" id="tab-em-tratativa">--</div>
+          <div style="font-size:10px;color:#888;margin-top:2px">assumida SAC/setor</div>
+        </button>
         <button class="bsc-btn" data-filter="ag-aprovacao" onclick="filterBancoCard(this,'ag-aprovacao')" style="background:#fff;border:1.5px solid #E4E4E4;border-radius:10px;padding:10px 12px;text-align:left;cursor:pointer;transition:all .15s">
           <div style="font-size:11px;font-weight:700;letter-spacing:.06em;color:#A0A0A0;margin-bottom:4px">AG. APROVAÇÃO</div>
           <div style="font-size:22px;font-weight:800;color:#D97706;line-height:1" id="tab-ag-aprovacao">--</div>
@@ -12515,7 +12520,7 @@ function filterBancoCard(btn, filter) {
 }
 
 function _bscDefaultColor(f) {
-  return {todas:'#1F1F1F','em-aberto':'#1F1F1F','em-andamento':'#2563EB','ag-aprovacao':'#D97706','ag-setor':'#7C3AED','ag-sac':'#0891B2',atrasadas:'#DC2626',finalizadas:'#059669'}[f] || '#1F1F1F';
+  return {todas:'#1F1F1F','em-aberto':'#1F1F1F','em-andamento':'#2563EB','em-tratativa':'#0D9488','ag-aprovacao':'#D97706','ag-setor':'#7C3AED','ag-sac':'#0891B2',atrasadas:'#DC2626',finalizadas:'#059669'}[f] || '#1F1F1F';
 }
 
 function filtrarBanco() {
@@ -12547,8 +12552,10 @@ function renderBanco() {
   const _isAgSac = m => { const s=(m.STATUS||'').toUpperCase(); return s.includes('AGUARDANDO_SAC')||s.includes('AGUARDANDO SAC')||s.includes('DEVOLVIDA')||s.includes('RETORNOU'); };
   const _isAtrasada = m => (m.DENTRO_DO_SLA||'').toUpperCase()==='NÃO';
   const _isEmAndamento = m => { const s=(m.STATUS||'').toUpperCase(); return !_isFinalizada(m)&&!_isAgAprov(m)&&!_isAgSetor(m)&&!_isAgSac(m)&&(s.includes('ANDAMENTO')||s.includes('TRATAMENTO')||s.includes('ANALISE')||s.includes('ANÁLISE')||s==='EM_ANDAMENTO'||s==='EM ANDAMENTO'); };
+  const _isEmTratativa = m => { const sf=(m.STATUS_FICHA||'').toUpperCase(); const s=(m.STATUS||'').toUpperCase(); return sf==='TRATATIVA_SAC'||sf==='AGUARDANDO_SETOR'||sf==='AGUARDANDO_VALIDACAO_SAC'||sf==='AGUARDANDO_DEVOLUTIVA'||s==='AGUARDANDO_SETOR'||s==='AGUARDANDO_VALIDACAO_SAC'; };
 
   if (bancoFilter === 'atrasadas') data = data.filter(_isAtrasada);
+  else if (bancoFilter === 'em-tratativa') data = data.filter(_isEmTratativa);
   else if (bancoFilter === 'ag-setor' || bancoFilter === 'aguardando') data = data.filter(_isAgSetor);
   else if (bancoFilter === 'ag-aprovacao') data = data.filter(_isAgAprov);
   else if (bancoFilter === 'ag-sac') data = data.filter(_isAgSac);
@@ -12585,6 +12592,7 @@ function renderBanco() {
   _setTabEl('tab-total', base.length);
   _setTabEl('tab-em-aberto', base.filter(m=>!_isFinalizada(m)).length);
   _setTabEl('tab-em-andamento', base.filter(_isEmAndamento).length);
+  _setTabEl('tab-em-tratativa', base.filter(_isEmTratativa).length);
   _setTabEl('tab-ag-aprovacao', base.filter(_isAgAprov).length);
   _setTabEl('tab-ag-setor', base.filter(_isAgSetor).length);
   _setTabEl('tab-ag-sac', base.filter(_isAgSac).length);
