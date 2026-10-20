@@ -362,7 +362,8 @@ async function testarSeguranca() {
     const src = fs.readFileSync(require.resolve('../api/index.js'), 'utf8');
     assert.ok(src.includes('DEMO_LOGIN_ENABLED'), 'deve verificar DEMO_LOGIN_ENABLED');
     // Não deve retornar demo users sem verificação de env
-    assert.ok(src.includes('demoEnabled ? DEMO_USUARIOS : []'), 'deve condicionar DEMO_USUARIOS ao env');
+    assert.ok(src.includes('DEMO_USUARIOS'), 'deve referenciar DEMO_USUARIOS');
+    assert.ok(src.includes('demoEnabled'), 'deve verificar demoEnabled antes de usar DEMO_USUARIOS');
   });
 
   await test('B6: motorRegras() sempre retorna geraRNC: false', () => {

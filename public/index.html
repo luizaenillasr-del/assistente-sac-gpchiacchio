@@ -8915,31 +8915,43 @@
     <div class="topbar-left">
       <div class="breadcrumb">Administração</div>
       <div class="page-header">
-        <h1 class="page-title">Log de auditoria</h1>
+        <h1 class="page-title">Auditoria completa</h1>
         <div class="page-actions">
-          <button class="btn btn-secondary" onclick="auditExport()">Exportar log</button>
+          <button class="btn btn-secondary" onclick="auditExportCSV()">Exportar CSV</button>
         </div>
       </div>
     </div>
   </div>
   <div class="content" style="display:flex;flex-direction:column;gap:14px">
+    <!-- Estatísticas rápidas -->
+    <div id="aud-stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px"></div>
+
+    <!-- Abas LOG_SISTEMA / AUDITORIA_ACESSO -->
+    <div style="display:flex;gap:0;border-bottom:2px solid #E4E4E4">
+      <button id="aud-tab-log" onclick="auditSetTab('log',this)" style="padding:8px 18px;font-size:13px;font-weight:700;background:none;border:none;border-bottom:2px solid #C70602;color:#1F1F1F;cursor:pointer;margin-bottom:-2px">Ações do sistema</button>
+      <button id="aud-tab-acesso" onclick="auditSetTab('acesso',this)" style="padding:8px 18px;font-size:13px;font-weight:500;background:none;border:none;border-bottom:2px solid transparent;color:#666464;cursor:pointer;margin-bottom:-2px">Acessos e permissões</button>
+    </div>
+
+    <!-- Filtros -->
     <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:12px 14px;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end">
-      <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:#666464;font-weight:600;flex:1;min-width:200px">PESQUISAR
-        <input id="aud-search" type="text" placeholder="Usuário, manifestação ou campo…" oninput="auditLoad()" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 10px;background:#fff;font-size:12.5px;font-family:inherit">
+      <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:#666464;font-weight:600;flex:2;min-width:200px">PESQUISAR
+        <input id="aud-search" type="text" placeholder="Usuário, manifestação, campo…" oninput="_auditDebounce()" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 10px;background:#fff;font-size:12.5px;font-family:inherit">
       </label>
       <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:#666464;font-weight:600">AÇÃO
         <select id="aud-acao" onchange="auditLoad()" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:12.5px;font-family:inherit">
-          <option value="">Todas</option><option>Acesso</option><option>Alteração</option><option>Aprovação</option><option>Criação</option><option>Exportação</option>
+          <option value="">Todas</option><option>Acesso</option><option>Alteração</option><option>Aprovação</option><option>Criação</option><option>Exportação</option><option>Rejeição</option>
         </select>
       </label>
       <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:#666464;font-weight:600">PERÍODO
         <select id="aud-periodo" onchange="auditLoad()" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:12.5px;font-family:inherit">
-          <option value="hoje">Hoje</option><option value="7">7 dias</option><option value="30">30 dias</option>
+          <option value="hoje">Hoje</option><option value="7">7 dias</option><option value="30" selected>30 dias</option><option value="90">90 dias</option><option value="todos">Todos</option>
         </select>
       </label>
     </div>
-    <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;overflow-x:auto">
-      <table style="border-collapse:collapse;width:100%;min-width:1100px;font-size:13px">
+
+    <!-- Tabela LOG_SISTEMA -->
+    <div id="aud-panel-log" style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;overflow-x:auto">
+      <table style="border-collapse:collapse;width:100%;min-width:1000px;font-size:13px">
         <thead>
           <tr style="background:#FAFAFA">
             <th style="text-align:left;font-weight:500;font-size:12px;color:#666464;padding:10px 12px;border-bottom:1px solid #E4E4E4;white-space:nowrap">Data</th>
@@ -8947,18 +8959,39 @@
             <th style="text-align:left;font-weight:500;font-size:12px;color:#666464;padding:10px 12px;border-bottom:1px solid #E4E4E4">Usuário</th>
             <th style="text-align:left;font-weight:500;font-size:12px;color:#666464;padding:10px 12px;border-bottom:1px solid #E4E4E4">Ação</th>
             <th style="text-align:left;font-weight:500;font-size:12px;color:#666464;padding:10px 12px;border-bottom:1px solid #E4E4E4">Manifestação</th>
-            <th style="text-align:left;font-weight:500;font-size:12px;color:#666464;padding:10px 12px;border-bottom:1px solid #E4E4E4">Campo / objeto</th>
-            <th style="text-align:left;font-weight:500;font-size:12px;color:#666464;padding:10px 12px;border-bottom:1px solid #E4E4E4">Valor anterior</th>
-            <th style="text-align:left;font-weight:500;font-size:12px;color:#666464;padding:10px 12px;border-bottom:1px solid #E4E4E4">Valor novo</th>
-            <th style="text-align:left;font-weight:500;font-size:12px;color:#666464;padding:10px 12px;border-bottom:1px solid #E4E4E4">IP</th>
+            <th style="text-align:left;font-weight:500;font-size:12px;color:#666464;padding:10px 12px;border-bottom:1px solid #E4E4E4">Campo / Entidade</th>
+            <th style="text-align:left;font-weight:500;font-size:12px;color:#666464;padding:10px 12px;border-bottom:1px solid #E4E4E4">Detalhe / Valor novo</th>
           </tr>
         </thead>
         <tbody id="aud-tbody">
-          <tr><td colspan="9" style="text-align:center;padding:24px;color:#707070">Carregando…</td></tr>
+          <tr><td colspan="7" style="text-align:center;padding:24px;color:#707070">Carregando…</td></tr>
         </tbody>
       </table>
     </div>
-    <div id="aud-count-txt" style="font-size:12.5px;color:#666464"></div>
+
+    <!-- Tabela AUDITORIA_ACESSO -->
+    <div id="aud-panel-acesso" style="display:none;background:#fff;border:1px solid #E4E4E4;border-radius:10px;overflow-x:auto">
+      <table style="border-collapse:collapse;width:100%;min-width:900px;font-size:13px">
+        <thead>
+          <tr style="background:#FAFAFA">
+            <th style="text-align:left;font-weight:500;font-size:12px;color:#666464;padding:10px 12px;border-bottom:1px solid #E4E4E4">Data/Hora</th>
+            <th style="text-align:left;font-weight:500;font-size:12px;color:#666464;padding:10px 12px;border-bottom:1px solid #E4E4E4">Usuário afetado</th>
+            <th style="text-align:left;font-weight:500;font-size:12px;color:#666464;padding:10px 12px;border-bottom:1px solid #E4E4E4">Ação</th>
+            <th style="text-align:left;font-weight:500;font-size:12px;color:#666464;padding:10px 12px;border-bottom:1px solid #E4E4E4">Módulo</th>
+            <th style="text-align:left;font-weight:500;font-size:12px;color:#666464;padding:10px 12px;border-bottom:1px solid #E4E4E4">Empresa</th>
+            <th style="text-align:left;font-weight:500;font-size:12px;color:#666464;padding:10px 12px;border-bottom:1px solid #E4E4E4">Executado por</th>
+          </tr>
+        </thead>
+        <tbody id="aud-tbody-acesso">
+          <tr><td colspan="6" style="text-align:center;padding:24px;color:#707070">Clique em "Acessos e permissões" para carregar.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <div id="aud-count-txt" style="font-size:12.5px;color:#666464"></div>
+      <div id="aud-paginacao" style="display:flex;gap:6px;align-items:center"></div>
+    </div>
   </div>
 </div>
 
@@ -19172,54 +19205,173 @@ function rcaAbrirDetalhe(r) {
 }
 
 // ── Log de Auditoria ───────────────────────────────────────
-const _auditAcaoColor = { Acesso:'background:#E6EEF8;color:#24508F', Alteração:'background:#FBF0D9;color:#7A4C00', Aprovação:'background:#E6F2EA;color:#1E6B3A', Criação:'background:#EDE8F8;color:#4B2D9E', Exportação:'background:#EEEEEE;color:#545252' };
+const _auditAcaoColor = {
+  Acesso:'background:#E6EEF8;color:#24508F', Alteração:'background:#FBF0D9;color:#7A4C00',
+  Aprovação:'background:#E6F2EA;color:#1E6B3A', Criação:'background:#EDE8F8;color:#4B2D9E',
+  Exportação:'background:#EEEEEE;color:#545252', Rejeição:'background:#FDE8E8;color:#8E1A24',
+};
+const _audit = { tab: 'log', pag: 1, total: 0, paginas: 1, itens: [], itensAcesso: [], debounce: null };
+
+function auditSetTab(tab, btn) {
+  _audit.tab = tab;
+  _audit.pag = 1;
+  document.querySelectorAll('[id^="aud-tab-"]').forEach(b => {
+    b.style.fontWeight = '500'; b.style.color = '#666464'; b.style.borderBottom = '2px solid transparent';
+  });
+  if (btn) { btn.style.fontWeight = '700'; btn.style.color = '#1F1F1F'; btn.style.borderBottom = '2px solid #C70602'; }
+  document.getElementById('aud-panel-log').style.display = tab === 'log' ? '' : 'none';
+  document.getElementById('aud-panel-acesso').style.display = tab === 'acesso' ? '' : 'none';
+  auditLoad();
+}
+
+function _auditDebounce() {
+  clearTimeout(_audit.debounce);
+  _audit.debounce = setTimeout(() => { _audit.pag = 1; auditLoad(); }, 320);
+}
+
+function _auditEsc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
 async function auditLoad() {
+  const tab = _audit.tab;
+  if (tab === 'acesso') { await _auditLoadAcesso(); return; }
   const tbody = document.getElementById('aud-tbody');
   const countTxt = document.getElementById('aud-count-txt');
   if (!tbody) return;
-  const search = (document.getElementById('aud-search') || {}).value || '';
-  const acao = (document.getElementById('aud-acao') || {}).value || '';
-  const periodo = (document.getElementById('aud-periodo') || {}).value || 'hoje';
-  tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:24px;color:#707070">Carregando…</td></tr>';
+  const search = (document.getElementById('aud-search')||{}).value||'';
+  const acao = (document.getElementById('aud-acao')||{}).value||'';
+  const periodo = (document.getElementById('aud-periodo')||{}).value||'30';
+  tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:#707070">Carregando…</td></tr>';
   try {
-    const params = new URLSearchParams();
+    const params = new URLSearchParams({ periodo, limite: 100, pagina: _audit.pag });
     if (search) params.set('q', search);
     if (acao) params.set('acao', acao);
-    if (periodo) params.set('periodo', periodo);
-    const d = await _apiFetch('/api/auditoria?' + params, 15000).catch(() => ({ itens: [] }));
-    const itens = d.itens || d.logs || [];
-    if (countTxt) countTxt.textContent = itens.length + ' registro' + (itens.length !== 1 ? 's' : '');
-    if (!itens.length) {
-      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:24px;color:#707070">Nenhum registro encontrado.</td></tr>';
+    const d = await _apiFetch('/api/auditoria?' + params, 20000).catch(() => ({ itens: [], total: 0, paginas: 1 }));
+    _audit.itens = d.itens || [];
+    _audit.total = d.total || _audit.itens.length;
+    _audit.paginas = d.paginas || 1;
+    _auditRenderStats(d);
+    if (countTxt) countTxt.textContent = _audit.total + ' registro' + (_audit.total !== 1 ? 's' : '') + (d.paginas > 1 ? ` — página ${_audit.pag} de ${d.paginas}` : '');
+    if (!_audit.itens.length) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:#707070">Nenhum registro encontrado.</td></tr>';
+      _auditRenderPag();
       return;
     }
-    tbody.innerHTML = itens.map(r => {
-      const acao2 = r.ACAO || r.acao || r.a || '';
-      const clr = _auditAcaoColor[acao2] || 'background:#EEEEEE;color:#545252';
+    tbody.innerHTML = _audit.itens.map(r => {
+      const ac = r.ACAO || '';
+      const clr = _auditAcaoColor[ac] || 'background:#EEEEEE;color:#545252';
+      const det = _auditEsc(r.DETALHES || '');
+      const detShort = det.length > 80 ? `<span title="${det}">${det.slice(0,80)}…</span>` : det;
       return `<tr style="border-bottom:1px solid #EFEFEF">
-        <td style="padding:9px 12px;font-variant-numeric:tabular-nums;font-size:12px;white-space:nowrap">${r.DATA||r.data||r.d||''}</td>
-        <td style="padding:9px 12px;font-variant-numeric:tabular-nums;font-size:12px">${r.HORA||r.hora||r.h||''}</td>
-        <td style="padding:9px 12px;white-space:nowrap">${r.USUARIO||r.usuario||r.u||''}</td>
-        <td style="padding:9px 12px"><span style="padding:2px 8px;border-radius:99px;white-space:nowrap;font-size:12px;font-weight:500;${clr}">${acao2}</span></td>
-        <td style="padding:9px 12px;font-variant-numeric:tabular-nums;font-size:12px">${r.MANIFESTACAO||r.manifestacao||r.m||'—'}</td>
-        <td style="padding:9px 12px">${r.CAMPO||r.campo||r.c||''}</td>
-        <td style="padding:9px 12px;color:#8E1A24">${r.VALOR_ANTERIOR||r.valorAnterior||r.o||'—'}</td>
-        <td style="padding:9px 12px;color:#22603A">${r.VALOR_NOVO||r.valorNovo||r.n||'—'}</td>
-        <td style="padding:9px 12px;font-variant-numeric:tabular-nums;font-size:11.5px;color:#707070">${r.IP||r.ip||''}</td>
+        <td style="padding:9px 12px;font-variant-numeric:tabular-nums;font-size:12px;white-space:nowrap">${_auditEsc(r.DATA||'')}</td>
+        <td style="padding:9px 12px;font-variant-numeric:tabular-nums;font-size:12px;white-space:nowrap">${_auditEsc(r.HORA||'')}</td>
+        <td style="padding:9px 12px;white-space:nowrap;font-size:12.5px">${_auditEsc(r.USUARIO||'')}</td>
+        <td style="padding:9px 12px"><span style="padding:2px 8px;border-radius:99px;white-space:nowrap;font-size:11.5px;font-weight:600;${clr}">${_auditEsc(ac)}</span></td>
+        <td style="padding:9px 12px;font-variant-numeric:tabular-nums;font-size:12px">${_auditEsc(r.ID_REGISTRO||'—')}</td>
+        <td style="padding:9px 12px;font-size:12px;color:#545252">${_auditEsc(r.ABA||'')}</td>
+        <td style="padding:9px 12px;font-size:12px;max-width:260px;overflow:hidden;text-overflow:ellipsis">${detShort}</td>
       </tr>`;
     }).join('');
+    _auditRenderPag();
   } catch (e) {
-    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:24px;color:#707070">Erro ao carregar log.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:#707070">Erro ao carregar log.</td></tr>';
     console.error('auditLoad', e);
   }
 }
 
-function auditExport() {
-  _apiFetch('/api/auditoria/export', 30000)
-    .then(d => { if (d.url) window.open(d.url, '_blank'); else alert('Log exportado.'); })
-    .catch(() => alert('Exportação não disponível no momento.'));
+async function _auditLoadAcesso() {
+  const tbody = document.getElementById('aud-tbody-acesso');
+  const countTxt = document.getElementById('aud-count-txt');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:#707070">Carregando…</td></tr>';
+  try {
+    const search = (document.getElementById('aud-search')||{}).value||'';
+    const params = new URLSearchParams();
+    if (search) params.set('usuario', search);
+    const d = await _apiFetch('/api/admin/auditoria-acesso?' + params, 20000).catch(() => ({ itens: [] }));
+    const itens = d.itens || [];
+    if (countTxt) countTxt.textContent = itens.length + ' registro' + (itens.length !== 1 ? 's' : '');
+    _audit.itensAcesso = itens;
+    document.getElementById('aud-paginacao').innerHTML = '';
+    if (!itens.length) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:#707070">Nenhum registro encontrado.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = itens.map(r => {
+      const ac = r.ACAO || '';
+      const isAlta = /DESATIV|REMO|EXCLU|PERMISS/i.test(ac);
+      const clr = isAlta ? 'background:#FDE8E8;color:#8E1A24' : 'background:#E6EEF8;color:#24508F';
+      return `<tr style="border-bottom:1px solid #EFEFEF">
+        <td style="padding:9px 12px;font-size:12px;white-space:nowrap">${_auditEsc(r.DATA_HORA||'')}</td>
+        <td style="padding:9px 12px;font-size:12.5px">${_auditEsc(r.USUARIO_AFETADO||r.USUARIO||'')}</td>
+        <td style="padding:9px 12px"><span style="padding:2px 8px;border-radius:99px;font-size:11.5px;font-weight:600;${clr}">${_auditEsc(ac)}</span></td>
+        <td style="padding:9px 12px;font-size:12px">${_auditEsc(r.MODULO||'')}</td>
+        <td style="padding:9px 12px;font-size:12px">${_auditEsc(r.EMPRESA||'')}</td>
+        <td style="padding:9px 12px;font-size:12px;color:#707070">${_auditEsc(r.EXECUTADO_POR||r.OPERADOR||'')}</td>
+      </tr>`;
+    }).join('');
+  } catch (e) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:#707070">Erro ao carregar log de acesso.</td></tr>';
+  }
 }
+
+function _auditRenderStats(d) {
+  const box = document.getElementById('aud-stats');
+  if (!box || !d) return;
+  const itens = d.itens || [];
+  const hoje = new Date().toLocaleDateString('pt-BR');
+  const hj = itens.filter(r => r.DATA === hoje).length;
+  const usuarios = new Set(itens.map(r => r.USUARIO).filter(Boolean)).size;
+  const acoes = itens.reduce((m, r) => { m[r.ACAO] = (m[r.ACAO]||0)+1; return m; }, {});
+  const topAcao = Object.entries(acoes).sort((a,b)=>b[1]-a[1])[0];
+  box.innerHTML = [
+    ['Total no período', d.total || itens.length, '#1F1F1F'],
+    ['Hoje', hj, '#C70602'],
+    ['Usuários únicos', usuarios, '#24508F'],
+    ['Ação mais frequente', topAcao ? `${topAcao[0]} (${topAcao[1]})` : '—', '#1E6B3A'],
+  ].map(([l, v, c]) => `<div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:12px 16px">
+    <div style="font-size:11px;font-weight:600;color:#666464;margin-bottom:4px">${l}</div>
+    <div style="font-size:22px;font-weight:700;color:${c}">${v}</div>
+  </div>`).join('');
+}
+
+function _auditRenderPag() {
+  const box = document.getElementById('aud-paginacao');
+  if (!box) return;
+  if (_audit.paginas <= 1) { box.innerHTML = ''; return; }
+  const btn = (label, pag, disabled) =>
+    `<button onclick="_auditGoPage(${pag})" ${disabled?'disabled':''} style="padding:5px 10px;border:1px solid #D6D6D6;border-radius:6px;background:${pag===_audit.pag?'#C70602':'#fff'};color:${pag===_audit.pag?'#fff':'#1F1F1F'};font-size:12px;cursor:${disabled?'default':'pointer'}">${label}</button>`;
+  const pages = [];
+  pages.push(btn('‹', _audit.pag - 1, _audit.pag <= 1));
+  for (let p = Math.max(1, _audit.pag-2); p <= Math.min(_audit.paginas, _audit.pag+2); p++) pages.push(btn(p, p, false));
+  pages.push(btn('›', _audit.pag + 1, _audit.pag >= _audit.paginas));
+  box.innerHTML = pages.join('');
+}
+
+function _auditGoPage(p) {
+  if (p < 1 || p > _audit.paginas) return;
+  _audit.pag = p;
+  auditLoad();
+}
+
+function auditExportCSV() {
+  const itens = _audit.tab === 'acesso' ? _audit.itensAcesso : _audit.itens;
+  if (!itens.length) { alert('Nenhum dado para exportar. Carregue os registros primeiro.'); return; }
+  const cols = _audit.tab === 'acesso'
+    ? ['DATA_HORA','USUARIO_AFETADO','ACAO','MODULO','EMPRESA','EXECUTADO_POR']
+    : ['DATA','HORA','USUARIO','ACAO','ID_REGISTRO','ABA','DETALHES'];
+  const csv = [cols.join(';'), ...itens.map(r => cols.map(c => {
+    const v = String(r[c] || '').replace(/"/g, '""');
+    return v.includes(';') || v.includes('"') || v.includes('\n') ? `"${v}"` : v;
+  }).join(';'))].join('\r\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `auditoria_${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function auditExport() { auditExportCSV(); }
 
 // ── Centro das Pesquisas ───────────────────────────────────
 // Fonte: GET /api/pesquisas/relatorio (linhas da planilha de respostas, somente leitura).

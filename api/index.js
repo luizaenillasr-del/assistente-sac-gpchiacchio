@@ -682,8 +682,8 @@ function middlewareEscopoEmpresa() {
     // Perfis com acesso global (sem filtro de empresa)
     if (perfil === 'MASTER' || perfil === 'APROVADOR MASTER') return next();
     const empresa = req.user.empresa || '';
-    // Empresa vazia: permite acesso mas sem escopo (dados de todas as empresas ficam visíveis)
-    if (!empresa.trim()) return next();
+    // Empresa vazia: bloqueia acesso — usuário sem empresa não pode acessar dados isolados por empresa
+    if (!empresa.trim()) return res.status(403).json({ sucesso: false, erro: 'Empresa não definida no perfil. Contacte o administrador.' });
     req._empresaScope = empresa;
     next();
   };
@@ -5550,19 +5550,49 @@ app.post('/api/caso-similar/usar-referencia', requerPerfil('MASTER','ANALISTA SA
 
 app.get('/api/auditoria', requerPerfil('MASTER','GESTOR SAC','AUDITOR'), async (req, res) => {
   try {
-    const data = await lerAba('LOG_SISTEMA', 2000);
-    const itens = data.map(r => {
+    const { q, acao, periodo, usuario, pagina, limite } = req.query;
+    const data = await lerAba('LOG_SISTEMA', 3000);
+    let itens = data.map(r => {
       const vals = Object.values(r);
+      const dataHora = r.DATA_HORA || r['DATA/HORA'] || vals[0] || '';
+      const dtParts = dataHora.split('T');
+      const datePart = dtParts[0] || '';
+      const timePart = (dtParts[1] || '').replace(/\.\d+Z?$/, '');
       return {
-        DATA_HORA:   r.DATA_HORA   || r['DATA/HORA'] || vals[0] || '',
-        USUARIO:     r.USUARIO     || vals[1] || '',
-        ACAO:        r.ACAO        || vals[2] || '',
-        ID_REGISTRO: r.ID_REGISTRO || r.ID_MANIFESTACAO || vals[3] || '',
-        ABA:         r.ABA         || r.ENTIDADE || r.TABELA || vals[4] || '',
-        DETALHES:    r.DETALHES    || r.VALOR_NOVO || vals[6] || vals[5] || '',
+        DATA_HORA:      dataHora,
+        DATA:           datePart ? new Date(datePart + 'T00:00:00').toLocaleDateString('pt-BR') : dataHora.slice(0,10),
+        HORA:           timePart.slice(0,5),
+        USUARIO:        r.USUARIO     || vals[1] || '',
+        ACAO:           r.ACAO        || vals[2] || '',
+        ID_REGISTRO:    r.ID_REGISTRO || r.ID_MANIFESTACAO || vals[3] || '',
+        ABA:            r.ABA         || r.ENTIDADE || r.TABELA || vals[4] || '',
+        VALOR_ANTERIOR: r.VALOR_ANTERIOR || vals[5] || '',
+        DETALHES:       r.DETALHES    || r.VALOR_NOVO || vals[6] || vals[5] || '',
       };
-    }).filter(r => r.DATA_HORA || r.USUARIO || r.ACAO);
-    res.json({sucesso:true, total:itens.length, itens});
+    }).filter(r => r.DATA_HORA || r.USUARIO || r.ACAO).reverse();
+
+    // filtro período
+    if (periodo && periodo !== 'todos') {
+      const diasMap = { hoje: 0, '7': 7, '30': 30, '90': 90 };
+      const dias = diasMap[periodo] ?? parseInt(periodo, 10);
+      const corte = new Date();
+      if (periodo === 'hoje') corte.setHours(0,0,0,0);
+      else corte.setDate(corte.getDate() - dias);
+      itens = itens.filter(r => { try { return new Date(r.DATA_HORA) >= corte; } catch { return true; } });
+    }
+    if (acao) itens = itens.filter(r => r.ACAO && r.ACAO.toLowerCase().includes(acao.toLowerCase()));
+    if (usuario) itens = itens.filter(r => r.USUARIO && r.USUARIO.toLowerCase().includes(usuario.toLowerCase()));
+    if (q) {
+      const ql = q.toLowerCase();
+      itens = itens.filter(r => [r.USUARIO,r.ACAO,r.ID_REGISTRO,r.ABA,r.DETALHES].some(v => v && String(v).toLowerCase().includes(ql)));
+    }
+
+    const total = itens.length;
+    const lim = Math.min(parseInt(limite,10)||200, 500);
+    const pag = Math.max(parseInt(pagina,10)||1, 1);
+    const inicio = (pag - 1) * lim;
+    const paginas = Math.ceil(total / lim);
+    res.json({ sucesso:true, total, paginas, pagina:pag, itens: itens.slice(inicio, inicio + lim) });
   }
   catch (e) { res.status(500).json({sucesso:false,erro:erroSeguro(e),dados:[]}); }
 });
