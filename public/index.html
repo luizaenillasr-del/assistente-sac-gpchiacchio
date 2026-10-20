@@ -7309,23 +7309,23 @@
 </style>
 <!-- FIM ESTILOS RELATÓRIO DE SATISFAÇÃO -->
 
-<div class="rs-top rs-noprint">
-  <div class="rs-top-title"><b>Relatório de Satisfação</b><span id="rel-topsub">Pesquisa de satisfação · relatório mensal para Diretoria e Presidência</span></div>
+<div class="rs-top rs-noprint" style="position:sticky;top:0;z-index:20">
+  <img src="/assets/logo-chiacchio-new.png" alt="" style="height:26px;width:auto" id="rel-top-logo">
+  <div class="rs-top-title"><b>Relatórios de satisfação</b><span id="rel-topsub">Pesquisa de satisfação · relatório mensal para Diretoria e Presidência</span></div>
+  <a id="rel-link-centro" href="#" onclick="navegarPara('pesquisas');return false;" style="font-size:12.5px;font-weight:600;white-space:nowrap;color:#A80502;text-decoration:none">← Centro das Pesquisas</a>
   <div class="rs-top-actions">
     <button type="button" class="rs-switch" id="rel-btn-diretoria" onclick="relToggleDiretoria()"><i><b></b></i>Visão da Diretoria</button>
-    <button type="button" class="rs-btn-send" style="background:#24508F" onclick="relAbrirFormRelatorio()">✏ Preencher Dados</button>
-    <button type="button" class="rs-btn-out" onclick="relAbrirFormManual()">+ Preencher pesquisa</button>
-    <button type="button" class="rs-btn-out" onclick="relAbrirFormHistorico()">📂 Média histórica</button>
-    <button type="button" class="rs-btn-out" onclick="relBaixarPdf()">⬇ PDF</button>
-    <button type="button" class="rs-btn-send" id="rel-btn-enviar" onclick="relCompartilharLink()">🔗 Compartilhar link</button>
+    <button type="button" class="rs-btn-out" onclick="relBaixarPdf()">Baixar PDF</button>
+    <button type="button" class="rs-btn-send" id="rel-btn-enviar" onclick="relCompartilharLink()">Enviar para Diretoria e Presidência</button>
   </div>
 </div>
-<div class="rs-filtros rs-noprint" id="rel-barra-relatorio" style="background:#F0F4FA;border-bottom:1px solid #D0D8EE;padding:8px 18px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-  <span id="rel-status-badge" style="font-size:12px;font-weight:700;padding:3px 10px;border-radius:20px;background:#E4E4E4;color:#545252">Sem relatório gerado</span>
-  <span id="rel-versao-txt" style="font-size:12px;color:#666464"></span>
-  <button type="button" id="rel-btn-gerar" class="btn btn-primary" style="height:30px;font-size:12px" onclick="relGerarRascunho()">🗂 Gerar Relatório</button>
-  <button type="button" id="rel-btn-publicar" class="btn btn-success" style="height:30px;font-size:12px;display:none" onclick="relPublicar()">✓ Publicar relatório</button>
-  <button type="button" id="rel-btn-nova-versao" class="btn btn-secondary" style="height:30px;font-size:12px;display:none" onclick="relNovaVersao()">↗ Nova versão (corrigir)</button>
+
+<!-- status bar oculta mas mantida para compatibilidade com _atualizarBarraRelatorio() -->
+<div id="rel-barra-relatorio" style="display:none">
+  <span id="rel-status-badge"></span><span id="rel-versao-txt"></span>
+  <button type="button" id="rel-btn-gerar" onclick="relGerarRascunho()" style="display:none"></button>
+  <button type="button" id="rel-btn-publicar" onclick="relPublicar()" style="display:none"></button>
+  <button type="button" id="rel-btn-nova-versao" onclick="relNovaVersao()" style="display:none"></button>
 </div>
 
 <div class="rs-filtros rs-noprint">
@@ -7335,21 +7335,31 @@
     <option value="Plaschio">Plaschio</option>
     <option value="Tubahia">Cesbap</option>
   </select>
-  <label class="rs-lbl">Ano<select id="rel-f-ano" class="rs-sel" onchange="relCarregar()"></select></label>
   <label class="rs-lbl">Mês de referência<select id="rel-f-mes" class="rs-sel" onchange="relCarregar()"></select></label>
+  <label class="rs-lbl" style="display:none">Ano<select id="rel-f-ano" class="rs-sel" onchange="relCarregar()"></select></label>
   <div class="rs-lbl">Período<div class="rs-chips" id="rel-chips-periodo" style="gap:4px"></div></div>
   <label class="rs-lbl" id="rel-meta-wrap">Meta<input type="number" step="0.1" min="0" max="10" value="8.5" id="rel-f-meta" class="rs-sel" style="width:76px" onchange="relMudarMeta(this.value)"></label>
   <div style="position:relative">
-    <button type="button" onclick="relToggleMetasPanel()" class="btn btn-secondary" style="height:34px;font-size:12px">⚙ Metas por empresa</button>
+    <button type="button" onclick="relToggleMetasPanel()" class="rs-btn-out" style="height:34px;font-size:12px">⚙ Metas por empresa</button>
     <div id="rel-metas-panel" style="display:none;position:absolute;top:38px;left:0;z-index:200;background:#fff;border:1px solid #D0D8EE;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.12);padding:16px 18px;min-width:240px">
       <div style="font-size:12px;font-weight:700;color:#444;margin-bottom:10px">Meta de satisfação por empresa</div>
       <div id="rel-metas-list" style="display:flex;flex-direction:column;gap:8px"></div>
       <button onclick="relFecharMetasPanel()" style="margin-top:12px;width:100%;height:30px;border:1px solid #E4E4E4;border-radius:7px;background:#F4F4F4;font-size:12px;cursor:pointer">Fechar</button>
     </div>
   </div>
-  <button type="button" onclick="relCarregar()" class="btn btn-primary" style="height:34px;font-size:12px">↻ Atualizar</button>
-  <span class="rs-note">⚡ Indicadores calculados automaticamente pelas pesquisas recebidas. ✏ Textos analíticos e dados do cabeçalho são preenchidos manualmente via <b>Preencher Dados</b>. O relatório pode ser gerado mesmo sem pesquisas. Histórico dos últimos 12 meses.</span>
+  <button type="button" onclick="relAbrirFormManual()" class="rs-btn-out" style="height:34px;font-size:12px">+ Pesquisa manual</button>
+  <button type="button" onclick="relAbrirFormHistorico()" class="rs-btn-out" style="height:34px;font-size:12px">📂 Histórico</button>
 </div>
+
+<!-- Accordion Preencher dados do mês -->
+<div class="rs-filtros rs-noprint" style="padding-top:8px;padding-bottom:0">
+  <button type="button" id="rel-btn-accordion" onclick="relToggleAccordion()" style="display:flex;align-items:center;gap:8px;border:1.5px solid #D6D6D6;background:#fff;border-radius:10px;padding:10px 16px;cursor:pointer;font-size:13px;font-weight:700;color:#1F1F1F;width:100%;text-align:left;font-family:inherit">
+    <span id="rel-accordion-arrow">▼</span>
+    <span id="rel-accordion-lbl">Preencher dados do mês</span>
+    <span style="margin-left:auto;font-size:12px;font-weight:500;color:#666464">Abrir para editar os dados que geram o relatório</span>
+  </button>
+</div>
+<div id="rel-accordion-body" style="display:none;max-width:1120px;width:100%;margin:0 auto;padding:0 20px 8px"></div>
 
 <div class="rs-body" id="rel-conteudo">
   <div id="rel-loading" class="rs-vazio">Carregando...</div>
@@ -7726,11 +7736,11 @@
       </div>
       <div class="rs-card"><div class="rs-card-h" style="align-items:center"><b style="white-space:nowrap">Notas baixas e tratativas</b><a href="#" onclick="navegarPara('pesquisas');return false;" style="font-size:12.5px;font-weight:600;color:${RED};text-decoration:none;white-space:nowrap;margin-left:auto">Abrir no Centro das Pesquisas</a></div>
         ${(()=>{const nb=_d.notas_baixas_stats||{};const tot=nb.total??baixas.length;const ocorr=nb.ocorrencias_geradas??0;const manif=nb.manifestacoes_formais??0;const trat=nb.tratativas_encerradas??0;
-        return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px 16px;margin-bottom:10px">
-          <div><div style="font-size:12.5px;color:#545252;margin-bottom:3px">Pesquisas com nota ≤ ${NOTA_CRITICA}</div><b style="font-size:28px;font-weight:800;color:${RED};line-height:1">${tot}</b></div>
-          <div><div style="font-size:12.5px;color:#545252;margin-bottom:3px">Ocorrências geradas</div><b style="font-size:28px;font-weight:800;color:${RED};line-height:1">${ocorr}</b></div>
-          <div><div style="font-size:12.5px;color:#545252;margin-bottom:3px">Manifestações formais</div><b style="font-size:28px;font-weight:800;color:${RED};line-height:1">${manif}</b></div>
-          <div><div style="font-size:12.5px;color:#545252;margin-bottom:3px">Tratativas encerradas</div><b style="font-size:28px;font-weight:800;color:#1E6B3A;line-height:1">${trat}</b></div>
+        return `<div class="rs-trat" style="margin-bottom:10px">
+          <div><small>Pesquisas com nota ≤ ${NOTA_CRITICA}</small><b style="color:${RED}">${tot}</b></div>
+          <div><small>Ocorrências geradas</small><b style="color:${RED}">${ocorr}</b></div>
+          <div><small>Manifestações formais</small><b style="color:${RED}">${manif}</b></div>
+          <div><small>Tratativas encerradas</small><b style="color:#1E6B3A">${trat}</b></div>
         </div>`;})()}
         <span class="rs-sub" style="line-height:1.5;color:#7A4C00">Nota ≤ ${NOTA_CRITICA} é sinalizada para análise do SAC; ocorrência e manifestação formal são decisões do SAC.</span>
       </div></div>`;
@@ -8048,7 +8058,9 @@
         if(!_d)_d={};if(!_d.textos)_d.textos={};
         _d.textos[campo]=valor;
       }
-      document.getElementById('rel-modal-relatorio').remove();
+      const _modal=document.getElementById('rel-modal-relatorio');if(_modal)_modal.remove();
+      const _accBody=document.getElementById('rel-accordion-body');
+      if(_accBody&&_accBody.style.display!=='none'){_accBody._loaded=false;relToggleAccordion();}
       _edit=null;_editTxt={};
       _renderizar();
       _toast('Relatório de '+mword(_refKey())+' atualizado.');
@@ -8063,6 +8075,67 @@
     const btn=_val('rel-btn-diretoria');
     if(btn) btn.classList.toggle('on',_dir);
     _renderizar();
+  };
+
+  window.relToggleAccordion=function(){
+    const body=document.getElementById('rel-accordion-body');
+    const arrow=document.getElementById('rel-accordion-arrow');
+    const lbl=document.getElementById('rel-accordion-lbl');
+    if(!body) return;
+    const open=body.style.display==='none'||body.style.display==='';
+    body.style.display=open?'block':'none';
+    if(arrow) arrow.textContent=open?'▲':'▼';
+    if(lbl) lbl.textContent=open?'Fechar dados do mês':'Preencher dados do mês';
+    if(open && !body._loaded){
+      body._loaded=true;
+      const textos=(_d&&_d.textos)||{};
+      const meses=_rrmMeses();
+      const _fAno=_val('rel-f-ano'),_fMes=_val('rel-f-mes');
+      const _anoAtual=_fAno?_fAno.value:(new Date().getFullYear()+'');
+      const _mesAtual=_fMes?_fMes.value:String(new Date().getMonth()+1).padStart(2,'0');
+      const _mesesNomes=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+      const _anosOpts=[...(new Set([String(new Date().getFullYear()-1),String(new Date().getFullYear()),String(new Date().getFullYear()+1),_anoAtual]))].sort().map(a=>`<option value="${a}"${a===_anoAtual?'selected':''}>${a}</option>`).join('');
+      const _mesesOpts=_mesesNomes.map((n,i)=>{const v=String(i+1).padStart(2,'0');return `<option value="${v}"${v===_mesAtual?'selected':''}>${n}</option>`;}).join('');
+      const tagManual='<span style="font-size:10px;font-weight:700;background:#E6EEF8;color:#24508F;padding:1px 6px;border-radius:99px;margin-left:4px">✏ Manual</span>';
+      const tagAuto='<span style="font-size:10px;font-weight:700;background:#FBF0D9;color:#7A4C00;padding:1px 6px;border-radius:99px;margin-left:4px">⚡ Gerado pelos dados</span>';
+      const camposDados=`<div style="background:#F0F4FA;border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px">
+        <span style="font-size:12px;font-weight:700;color:#24508F">Dados do relatório ${tagManual}</span>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <label style="display:flex;flex-direction:column;gap:3px;font-size:11px;font-weight:600;color:#545252;grid-column:1/-1">Mês de referência ${tagManual}
+            <div style="display:flex;gap:6px">
+              <select id="rrm-mes" style="flex:1;height:34px;border:1px solid #D6D6D6;border-radius:6px;padding:0 8px;font-size:13px;font-family:inherit;background:#fff">${_mesesOpts}</select>
+              <select id="rrm-ano" style="width:88px;height:34px;border:1px solid #D6D6D6;border-radius:6px;padding:0 8px;font-size:13px;font-family:inherit;background:#fff">${_anosOpts}</select>
+            </div>
+          </label>
+          <label style="display:flex;flex-direction:column;gap:3px;font-size:11px;font-weight:600;color:#545252">Responsável pela análise ${tagManual}
+            <input id="rrm-responsavel" type="text" placeholder="Nome completo" style="height:34px;border:1px solid #D6D6D6;border-radius:6px;padding:0 10px;font-size:13px;font-family:inherit" value="${esc(textos.responsavel||'')}">
+          </label>
+          <label style="display:flex;flex-direction:column;gap:3px;font-size:11px;font-weight:600;color:#545252">Cargo ${tagManual}
+            <input id="rrm-cargo_analista" type="text" placeholder="Ex: Analista de SAC" style="height:34px;border:1px solid #D6D6D6;border-radius:6px;padding:0 10px;font-size:13px;font-family:inherit" value="${esc(textos.cargo_analista||'')}">
+          </label>
+        </div>
+        <label style="display:flex;flex-direction:column;gap:3px;font-size:11px;font-weight:600;color:#545252">Resumo executivo ${tagManual}
+          <textarea id="rrm-resumo_executivo" rows="3" placeholder="Breve resumo…" style="border:1px solid #D6D6D6;border-radius:7px;padding:8px 10px;font-size:13px;font-family:inherit;resize:vertical">${esc(textos.resumo_executivo||'')}</textarea>
+        </label>
+      </div>`;
+      const camposGeral=camposDados+SEC.map(([id,titulo])=>`
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:#545252">${esc(titulo)} ${textos[id]?tagManual:tagAuto}
+          <textarea id="rrm-${id}" rows="4" style="border:1px solid #D6D6D6;border-radius:7px;padding:8px 10px;font-size:13px;font-family:inherit;resize:vertical" placeholder="Deixe em branco para usar o texto gerado automaticamente.">${esc(textos[id]||'')}</textarea>
+        </label>`).join('');
+      body.innerHTML=`<div style="background:#fff;border:1.5px solid #E4E4E4;border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:14px;margin-top:4px">
+        <div style="display:flex;gap:0;border-bottom:2px solid #E4E4E4">
+          <button id="rrm-tab-geral" onclick="rrmTab('geral')" style="border:0;background:none;padding:9px 16px;font-size:13px;cursor:pointer;font-weight:700;color:#C70602;border-bottom:2px solid #C70602;margin-bottom:-2px;font-family:inherit">Geral</button>
+          <button id="rrm-tab-mensal" onclick="rrmTab('mensal')" style="border:0;background:none;padding:9px 16px;font-size:13px;cursor:pointer;font-weight:500;color:#666464;border-bottom:2px solid transparent;margin-bottom:-2px;font-family:inherit">Mês a mês</button>
+        </div>
+        <div id="rrm-panel-geral" style="display:flex;flex-direction:column;gap:12px">${camposGeral}</div>
+        <div id="rrm-panel-mensal" style="display:none;flex-direction:column;gap:10px">${meses.map(({k,label,n})=>`<div style="border:1px solid #E4E4E4;border-radius:9px;overflow:hidden"><div style="background:#F8F8FA;padding:10px 14px;font-size:13px;font-weight:700;color:#1F1F1F;border-bottom:1px solid #E4E4E4">${esc(label)} <span style="font-weight:400;color:#707070;font-size:12px">${n} resposta${n!==1?'s':''}</span></div><div style="padding:10px 14px;display:flex;flex-direction:column;gap:10px"><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${[['rrm-mes-at-'+k,'Atendimento'],['rrm-mes-pr-'+k,'Prazo'],['rrm-mes-qu-'+k,'Qualidade'],['rrm-mes-re-'+k,'Recomendação']].map(([fid,flbl])=>`<label style="display:flex;flex-direction:column;gap:3px;font-size:11px;font-weight:600;color:#545252">${flbl} (0–10)<input id="${fid}" type="number" min="0" max="10" step="0.5" placeholder="—" style="height:32px;border:1px solid #D6D6D6;border-radius:6px;padding:0 8px;font-size:13px;font-family:inherit"></label>`).join('')}</div><textarea id="rrm-mes-${k}" rows="2" placeholder="Análise de ${esc(label)} (opcional)" style="border:1px solid #D6D6D6;border-radius:6px;padding:8px 10px;font-size:13px;font-family:inherit;resize:vertical">${esc(textos['mes_'+k.replace('-','_')]||'')}</textarea></div></div>`).join('')||'<p style="color:#707070;font-size:13px">Nenhum mês com dados disponível.</p>'}</div>
+        <div id="rrm-erro" style="color:#A80502;font-size:13px;display:none"></div>
+        <div style="display:flex;gap:8px;justify-content:flex-end">
+          <button onclick="document.getElementById('rel-accordion-body')._loaded=false;relToggleAccordion()" style="border:1px solid #D6D6D6;background:#fff;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:13px;font-weight:600;font-family:inherit">Cancelar</button>
+          <button onclick="relSalvarFormRelatorio()" id="rrm-btn-salvar" style="border:0;background:#C70602;color:#fff;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:13px;font-weight:700;font-family:inherit">Salvar relatório</button>
+        </div>
+      </div>`;
+    }
   };
 
   window.relBaixarPdf=function(){
@@ -12131,7 +12204,6 @@ async function loadBancoManifestacoes() {
     const res = await _apiFetch('/api/manifestacoes', 30000);
     if (res.aviso) console.warn('[banco] API aviso:', res.aviso);
     let itens = res.itens || [];
-    console.log('[banco] API retornou', itens.length, 'itens, fonte:', res.fonte);
     // Fallback: if API returns empty but dashboard already loaded data, reuse it
     if (!itens.length && window._dashData && (window._dashData.mans || []).length) {
       console.log('[banco] usando fallback _dashData:', window._dashData.mans.length);
