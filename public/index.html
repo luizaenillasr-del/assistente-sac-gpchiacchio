@@ -9090,11 +9090,12 @@ function navigate(page, el, _opts) {
     page = 'central-sac';
     if (typeof window.cenAba === 'function') setTimeout(()=>window.cenAba('banco', document.getElementById('mc-tab-banco')), 50);
   }
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p => { p.classList.remove('active'); p.style.display = ''; });
   document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
   const pageEl = document.getElementById('page-' + page);
   if (!pageEl) return;
   pageEl.classList.add('active');
+  pageEl.style.display = 'flex';
   if (el) el.classList.add('active');
   if (page === 'biblioteca-fichas') loadBiblioteca(true);
   if (page === 'matriz-conhecimento') loadMatrizConhecimento();
