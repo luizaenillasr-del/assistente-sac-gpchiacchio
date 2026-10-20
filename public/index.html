@@ -22785,7 +22785,16 @@ async function mudarStatusMC(id, novoStatus) {
   }
   window.cenBancoIrPag=function(p){_cenBancoPag=p;cenBancoRender();};
   window.cenBancoAbrirFicha=function(id){
-    // Navega para Fila e abre a manifestação pelo ID
+    // Se item está na fila, seleciona lá. Se não, injeta nos dados e abre.
+    const inFila=_cenAll.find(m=>m.id===id);
+    if(!inFila){
+      const bancoItem=_cenBancoAll.find(m=>(m.ID_MANIFESTACAO||m.id)===id);
+      if(bancoItem&&!inFila){
+        // Injeta temporariamente na fila para que cenSelecionarMan encontre o base
+        const fake={id:id,cli:bancoItem.NOME_CLIENTE||bancoItem.CLIENTE||'—',motivo:bancoItem.TIPO_MANIFESTACAO||bancoItem.TIPO||'—',tipo:bancoItem.TIPO_MANIFESTACAO||'',ext:true,pri:'none',grupo:'banco',raw:bancoItem};
+        _cenAll.push(fake);
+      }
+    }
     cenAba('fila',document.getElementById('mc-tab-fila'));
     setTimeout(()=>{ if(typeof window.cenSelecionarMan==='function') window.cenSelecionarMan(id); },100);
   };
