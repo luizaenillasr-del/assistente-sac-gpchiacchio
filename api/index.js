@@ -102,17 +102,19 @@ if (PG_LEITURA_ATIVA && process.env.DATABASE_URL && process.env.NODE_ENV !== 'te
 
 // F8: leituras de pesquisa/relatório — Postgres primeiro, Sheets como fallback
 async function lerRespostasPesquisa() {
-  let pgData = [];
-  if (pesquisaRepo) {
-    try { pgData = await pesquisaRepo.listarRespostas({}); } catch (e) { console.warn('[F8] respostas PG falhou:', e.message); }
-  }
-  // Se PG tem dados, retorna imediatamente — evita chamada lenta ao Sheets (5000 linhas)
-  if (pgData.length) return pgData;
-  const sheetsData = await Promise.race([
-    lerAba('PESQUISA_RESPOSTAS', 5000),
-    new Promise((_, rej) => setTimeout(() => rej(new Error('sheets timeout')), 12000)),
-  ]).catch(() => []);
-  return sheetsData;
+  const [pgData, sheetsData] = await Promise.all([
+    pesquisaRepo ? pesquisaRepo.listarRespostas({}).catch(e => { console.warn('[F8] respostas PG falhou:', e.message); return []; }) : Promise.resolve([]),
+    Promise.race([
+      lerAba('PESQUISA_RESPOSTAS', 5000),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('sheets timeout')), 12000)),
+    ]).catch(() => []),
+  ]);
+  // Merge: Sheets é fonte de verdade (dados importados manualmente aparecem); PG complementa
+  if (!sheetsData.length) return pgData;
+  if (!pgData.length) return sheetsData;
+  const pgIds = new Set(pgData.map(r => r.ID_RESPOSTA || r.id).filter(Boolean));
+  const extras = sheetsData.filter(r => !pgIds.has(r.ID_RESPOSTA));
+  return [...pgData, ...extras];
 }
 async function lerHistoricoPesquisa() {
   return lerAba('PESQUISA_HISTORICO', 500).catch(() => []);
@@ -1179,42 +1181,23 @@ function normalizarData(val) {
 // ROTAS
 // ===========================================================
 
-app.get('/api/health', async (req, res) => {
+app.get('/api/health', autenticar, async (req, res) => {
   const saude = {
     sucesso: true, status: 'ok', versao: '5.6.0',
     sistema: 'Assistente SAC Chiacchio', ts: new Date().toISOString(),
     postgresql: 'não verificado',
     sheets: 'não verificado',
-    demoAtivo: String(process.env.DEMO_LOGIN_ENABLED || 'false').toLowerCase() === 'true',
   };
-  // Verificar PG (diferencia online/offline/vazio)
   if (manifestacaoRepo) {
     try {
       const count = await manifestacaoRepo.findAll({ limit: 1 }).catch(() => null);
-      if (count === null) saude.postgresql = 'offline';
-      else if (count.length === 0) saude.postgresql = 'online_vazio';
-      else saude.postgresql = 'online_com_dados';
+      saude.postgresql = count === null ? 'offline' : count.length === 0 ? 'online_vazio' : 'online_com_dados';
     } catch (e) { saude.postgresql = 'offline'; }
   } else { saude.postgresql = 'repositório_não_carregado'; }
-  // Verificar Sheets (rápido)
   try {
     const rows = await lerAba('MANIFESTACOES', 2).catch(() => null);
     saude.sheets = rows !== null ? 'acessível' : 'inacessível';
   } catch (e) { saude.sheets = 'erro'; }
-  // Diagnóstico de usuários
-  saude.pgLeituraAtiva = !!usuarioRepo;
-  try {
-    if (usuarioRepo) {
-      const pgUsers = await usuarioRepo.findAll({ ativo: undefined });
-      saude.pgUsuariosCount = pgUsers ? pgUsers.length : 0;
-    } else {
-      saude.pgUsuariosCount = 'repo_nulo';
-    }
-  } catch(e) { saude.pgUsuariosCount = 'erro: ' + e.message; }
-  try {
-    const sheetsUsers = await lerAba('USUARIOS', 5).catch(() => null);
-    saude.sheetsUsuariosCount = sheetsUsers !== null ? sheetsUsers.length : 'inacessível';
-  } catch(e) { saude.sheetsUsuariosCount = 'erro'; }
   res.json(saude);
 });
 
@@ -1661,7 +1644,7 @@ app.get('/api/representantes/meus-clientes', requerPerfil('RCA / REPRESENTANTE')
   }catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e),itens:[]});}
 });
 
-app.get('/api/representantes/minhas-manifestacoes', requerPerfil('RCA / REPRESENTANTE'), async (req,res)=>{
+app.get('/api/representantes/minhas-manifestacoes', requerPerfil('RCA / REPRESENTANTE'), middlewareEscopoEmpresa(), async (req,res)=>{
   try{
     const rows=await lerAba('MANIFESTACOES',5000);
     const key=normalizarTexto(req.user.codigoRCA||req.user.usuario);
@@ -2388,9 +2371,15 @@ app.get('/api/manifestacoes/:id/tratativa', requerPerfil('MASTER','GESTOR SAC','
   } catch(e){ res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
 
+const _gerarTratativaRL = new Map(); // user:id → timestamp
 app.post('/api/manifestacoes/:id/tratativa/gerar', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC','SETOR RESPONSÁVEL','ESPECIALISTA'), async (req,res)=>{
   try {
     const id = req.params.id;
+    const rlKey = `${req.user?.usuario}:${id}`;
+    const agora = Date.now();
+    const ultimo = _gerarTratativaRL.get(rlKey) || 0;
+    if (agora - ultimo < 30000) return res.status(429).json({ sucesso:false, erro:'Aguarde 30 segundos antes de gerar novamente.' });
+    _gerarTratativaRL.set(rlKey, agora);
     const data = await lerAba('MANIFESTACOES',5000);
     const m = data.find(r=>r.ID_MANIFESTACAO===id);
     if (!m) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });

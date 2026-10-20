@@ -967,6 +967,13 @@
                   <label>Justificativa obrigatória<span class="req">*</span></label>
                   <textarea id="enc-motivo-rej" oninput="_encValidar()" rows="3" placeholder="Descreva detalhadamente o motivo da rejeição…"></textarea>
                 </div>
+                <div id="enc-confirm-rej" style="display:none;background:#FEF2F2;border:1.5px solid #C70602;border-radius:8px;padding:12px 14px;margin-top:8px;font-size:13px;color:#991B1B">
+                  <strong>⚠ Confirmar rejeição?</strong> Esta ação não pode ser desfeita. Clique em "Rejeitar definitivamente" para confirmar.
+                  <div style="margin-top:8px;display:flex;gap:8px">
+                    <button style="padding:6px 14px;border-radius:6px;border:none;background:#C70602;color:#fff;font-weight:700;cursor:pointer;font-size:12px" onclick="document.getElementById('enc-confirm-rej').dataset.confirmed='true';_encSubmeter()">Rejeitar definitivamente</button>
+                    <button style="padding:6px 14px;border-radius:6px;border:1px solid #ccc;background:#fff;cursor:pointer;font-size:12px" onclick="document.getElementById('enc-confirm-rej').style.display='none';document.getElementById('enc-confirm-rej').dataset.confirmed='false'">Cancelar</button>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -11113,8 +11120,20 @@ async function _encSubmeter() {
       payload.CANAL_RETORNO = document.getElementById('enc-canal-dev')?.value || '';
       payload.PRAZO_RESPOSTA = document.getElementById('enc-prazo-dev')?.value || '';
     } else if (_encOptAtiva === 'rej') {
+      const motivo = document.getElementById('enc-motivo-rej')?.value || '';
+      if (!motivo.trim()) {
+        if (msgEl) { msgEl.style.display='block'; msgEl.style.background='#FEF2F2'; msgEl.style.color='#C70602'; msgEl.textContent='Preencha a justificativa antes de rejeitar.'; }
+        btn.disabled = false; document.getElementById('enc-btn-label').textContent = origLabel; return;
+      }
+      // Confirmação inline antes de rejeitar (ação irreversível)
+      const confirmEl = document.getElementById('enc-confirm-rej');
+      if (confirmEl && confirmEl.dataset.confirmed !== 'true') {
+        confirmEl.style.display = 'block';
+        confirmEl.dataset.confirmed = 'true';
+        btn.disabled = false; document.getElementById('enc-btn-label').textContent = origLabel; return;
+      }
       payload.acao = 'rejeitar';
-      payload.MOTIVO_REJEICAO = document.getElementById('enc-motivo-rej')?.value || '';
+      payload.MOTIVO_REJEICAO = motivo;
     }
     const data = await _apiFetch(`/api/manifestacoes/${encodeURIComponent(item.ID_MANIFESTACAO)}/ficha`, 15000, { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
     if (data && data.sucesso !== false) {
@@ -11129,7 +11148,13 @@ async function _encSubmeter() {
       document.getElementById('enc-btn-label').textContent = origLabel;
     }
   } catch(e) {
-    if (msgEl) { msgEl.style.display='block'; msgEl.style.background='#FEF2F2'; msgEl.style.color='#C70602'; msgEl.textContent='Erro de conexão. Tente novamente.'; }
+    const errMsg = e?.message || '';
+    const errTxt = errMsg.includes('429') ? 'Limite de requisições atingido. Aguarde um momento.' :
+                   errMsg.includes('403') ? 'Sem permissão para esta ação.' :
+                   errMsg.includes('404') ? 'Manifestação não encontrada.' :
+                   errMsg.includes('400') ? ('Dados inválidos: ' + errMsg) :
+                   'Falha na operação. Tente novamente.';
+    if (msgEl) { msgEl.style.display='block'; msgEl.style.background='#FEF2F2'; msgEl.style.color='#C70602'; msgEl.textContent=errTxt; }
     btn.disabled = false;
     document.getElementById('enc-btn-label').textContent = origLabel;
   }
@@ -13370,6 +13395,21 @@ window.navigate = function(page, el) {
 };
 
 // Init: não chamar loadVisaoGeral() aqui — boot() cuida disso após autenticação
+
+// Auto-refresh do dashboard a cada 5 minutos quando a aba estiver ativa
+let _dashRefreshTimer = null;
+function _iniciarDashRefresh() {
+  if (_dashRefreshTimer) clearInterval(_dashRefreshTimer);
+  _dashRefreshTimer = setInterval(() => {
+    const visao = document.getElementById('page-visao-geral');
+    const acomp = document.getElementById('page-acompanhamento');
+    if (visao?.classList.contains('active') && typeof window.loadVisaoGeral === 'function') window.loadVisaoGeral();
+    else if (acomp?.classList.contains('active') && typeof window.loadAcompanhamento === 'function') window.loadAcompanhamento();
+  }, 5 * 60 * 1000);
+}
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) _iniciarDashRefresh();
+});
 </script>
 
 <script>
@@ -14141,6 +14181,7 @@ window.navigate = function(page, el) {
       await window.loadVisaoGeral();
     }
 
+    if (typeof _iniciarDashRefresh === 'function') _iniciarDashRefresh();
     if(r==='RCA / REPRESENTANTE') await loadRcaHome();
     if(r==='MASTER') { await loadUsuariosV5(); checarSolicitacoesPendentes && checarSolicitacoesPendentes(); iniciarPollingsolicitacoes && iniciarPollingsolicitacoes(); }
     if(r==='APROVADOR'||r==='APROVADOR MASTER'||r==='MASTER') await loadAprovadorV5();
