@@ -3904,7 +3904,17 @@ app.get('/api/pesquisas/relatorio', requerPermissao('pesquisas.visualizar'), asy
       if (relRow) relMeta = { id: relRow.ID_RELATORIO, status: relRow.STATUS, versao: Number(relRow.VERSAO||1), publicado_em: relRow.PUBLICADO_EM||'' };
     } catch(e) {}
 
-    res.json({ sucesso: true, itens: filtrados, media_geral: mediaGeral, criterios, historico, textos, nps, relMeta });
+    const NOTA_CRITICA_V = Number(process.env.PESQUISA_NOTA_CRITICA || 6);
+    const notas_baixas_stats = {
+      total: filtrados.filter(r => {
+        const ns = COLS_NOTA.map(c => parseFloat(String(r[c]||'').replace(',','.'))).filter(n=>!isNaN(n)&&n>=0);
+        return ns.length && ns.some(n => n <= NOTA_CRITICA_V);
+      }).length,
+      ocorrencias_geradas: filtrados.filter(r => r._statusOcp && r._statusOcp !== '').length,
+      manifestacoes_formais: filtrados.filter(r => r._statusOcp === 'TRANSFORMADA_MANIFESTACAO').length,
+      tratativas_encerradas: filtrados.filter(r => r._statusOcp === 'NAO_REQUER_TRATAMENTO').length,
+    };
+    res.json({ sucesso: true, itens: filtrados, media_geral: mediaGeral, criterios, historico, textos, nps, relMeta, notas_baixas_stats });
   } catch (e) {
     res.status(500).json({ sucesso: false, erro: erroSeguro(e), itens: [], media_geral: null, criterios: [], historico: [], textos: {} });
   }
