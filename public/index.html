@@ -5087,6 +5087,21 @@
   #page-central-sac .mc-st-enc{background:var(--mc-green-bg);color:var(--mc-green)}
   #page-central-sac .mc-empty{background:#fff;border:1px dashed #D6D6D6;border-radius:10px;padding:26px 14px;text-align:center;font-size:13px;color:#666464}
   #page-central-sac .mc-nosel{background:#fff;border:1px solid var(--mc-line);border-radius:12px;padding:60px 20px;text-align:center;color:var(--mc-mute);font-size:14px}
+  /* 3-panel layout for fila */
+  #cen-panel-body{flex:1;display:grid;grid-template-columns:268px minmax(0,1fr) 296px;overflow:hidden;min-height:0}
+  #cen-list-col{background:#fff;border-right:1px solid #E8E8E8;display:flex;flex-direction:column;overflow:hidden}
+  #cen-list-header{padding:9px 11px 6px;display:flex;align-items:center;justify-content:space-between;gap:5px;flex-shrink:0;border-bottom:1px solid #F0F0F0}
+  #cen-list-scroll{flex:1;overflow-y:auto;padding:0 8px 8px}
+  #cen-detalhe-col{display:flex;flex-direction:column;overflow:hidden;background:#F4F4F4}
+  #cen-detalhe{display:none;flex-direction:column;flex:1;overflow-y:auto;padding:14px 16px;gap:11px}
+  #cen-detalhe.active{display:flex}
+  /* Modal ficha completa */
+  #cen-ficha-overlay{display:none;position:fixed;inset:0;background:rgba(15,15,20,.45);z-index:400;align-items:center;justify-content:center;padding:32px}
+  #cen-ficha-overlay.active{display:flex}
+  #cen-ficha-modal{position:relative;background:#fff;border-radius:16px;width:100%;max-width:1100px;height:100%;max-height:88vh;box-shadow:0 24px 80px rgba(0,0,0,.28);z-index:50;display:flex;flex-direction:column;animation:cfmIn .18s ease}
+  @keyframes cfmIn{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:scale(1)}}
+  #cen-ficha-modal-head{padding:16px 20px 0;border-bottom:1px solid #EBEBEB;flex-shrink:0}
+  #cen-ficha-modal-body{flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:11px}
   #page-central-sac .mc-card{background:#fff;border:1.5px solid var(--mc-line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
   #page-central-sac .mc-card-main{padding:12px 14px;gap:10px}
   #page-central-sac .mc-card-h{font-weight:700;font-size:14px}
@@ -5169,6 +5184,11 @@
   #page-central-sac .mc-rule{background:var(--mc-amber-bg);border-radius:8px;padding:8px 10px;font-size:11.5px;margin:8px 0;color:var(--mc-amber)}
   #page-central-sac .mc-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
   #page-central-sac .mc-toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#1F1F1F;color:#fff;padding:11px 16px;border-radius:8px;font-size:13px;z-index:90;max-width:92vw}
+  /* Tabs da ficha modal */
+  #page-central-sac .cen-tab{flex:none;height:36px;border:0;border-bottom:2.5px solid transparent;background:transparent;padding:0 13px;font-size:11.5px;font-weight:500;color:#727272;cursor:pointer;white-space:nowrap;font-family:inherit}
+  #page-central-sac .cen-tab.active{font-weight:700;color:#C70602;border-bottom-color:#C70602}
+  #page-central-sac .cen-tabpanel{display:none}
+  #page-central-sac .cen-tabpanel.active{display:block}
   /* ── 3-tab layout ── */
   #page-central-sac .mc-topbar{background:#fff;border-bottom:1px solid #E4E4E4;padding:18px 32px 0;flex-shrink:0}
   #page-central-sac .mc-toprow{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:14px;flex-wrap:wrap}
@@ -5257,154 +5277,211 @@
     <div class="mc-body">
 
       <!-- ══════════ ABA: FILA ══════════ -->
-      <div class="mc-tabpanel on" id="mc-panel-fila">
+      <div class="mc-tabpanel on" id="mc-panel-fila" style="padding:0;gap:0">
 
         <!-- KPIs fila -->
-        <div class="mc-kpis" id="cen-kpis-fila"></div>
+        <div class="mc-kpis" id="cen-kpis-fila" style="background:#fff;border-bottom:1px solid #E8E8E8;padding:9px 18px;margin:0;border-radius:0;gap:8px;overflow-x:auto;flex-wrap:nowrap;flex-shrink:0"></div>
 
         <!-- Filtros -->
-        <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:12px 16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center">
-          <div style="position:relative;flex:1;min-width:200px;max-width:280px">
-            <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:13px;color:#929090">🔍</span>
-            <input id="cen-busca" class="mc-input" style="padding-left:30px" placeholder="Protocolo, cliente, motivo…" oninput="filtrarFilaCentral()">
+        <div style="background:#F5F5F5;border-bottom:1px solid #E4E4E4;padding:7px 18px;display:flex;align-items:center;gap:7px;flex-shrink:0;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:6px;height:30px;border:1px solid #E0E0E0;border-radius:7px;padding:0 9px;background:#fff;flex:1;min-width:160px;max-width:240px">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#A0A0A0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input id="cen-busca" style="border:0;background:transparent;font-size:11.5px;flex:1;color:#1F1F1F;font-family:inherit;outline:none" placeholder="Protocolo, cliente, assunto..." oninput="filtrarFilaCentral()">
           </div>
-          <select id="cen-fil-status" class="mc-sel" onchange="filtrarFilaCentral()">
-            <option value="">Todos status</option>
-            <option value="nova">Nova · triagem</option><option value="anal">Em análise</option><option value="trat">Em tratamento</option>
+          <select id="cen-fil-status" class="mc-sel" style="height:30px;border-radius:7px;font-size:11.5px" onchange="filtrarFilaCentral()">
+            <option value="">Status</option>
+            <option value="nova">Nova</option><option value="anal">Em análise</option><option value="trat">Em tratamento</option>
             <option value="aprov">Ag. aprovação</option><option value="dev">Devolutiva</option><option value="enc">Encerrada</option>
           </select>
-          <select id="cen-fil-sla" class="mc-sel" onchange="filtrarFilaCentral()">
+          <select id="cen-fil-sla" class="mc-sel" style="height:30px;border-radius:7px;font-size:11.5px" onchange="filtrarFilaCentral()">
             <option value="">Todo SLA</option><option value="late">Atrasadas</option><option value="soon">Vencem ≤8h</option><option value="ok">No prazo</option>
           </select>
-          <select id="cen-fil-tipo" class="mc-sel" onchange="filtrarFilaCentral()">
-            <option value="">Tipo</option>
-            <option value="Reclamação">Reclamação</option><option value="Solicitação">Solicitação</option><option value="Sugestão">Sugestão</option><option value="Elogio">Elogio</option>
+          <select id="cen-fil-tipo" class="mc-sel" style="height:30px;border-radius:7px;font-size:11.5px" onchange="filtrarFilaCentral()">
+            <option value="">Prioridade</option>
+            <option value="alta">Alta</option><option value="media">Média</option><option value="baixa">Baixa</option>
           </select>
-          <select id="cen-fil-prioridade" class="mc-sel" onchange="filtrarFilaCentral()">
+          <select id="cen-fil-prioridade" class="mc-sel" style="height:30px;border-radius:7px;font-size:11.5px;display:none" onchange="filtrarFilaCentral()">
             <option value="">Prioridade</option><option value="alta">Alta</option><option value="media">Média</option><option value="baixa">Baixa</option>
           </select>
-          <button type="button" id="cen-limpar" class="mc-clear" style="display:none" onclick="cenLimparFiltros()">× Limpar</button>
-          <span id="cen-list-info" style="font-size:12px;color:#929090;margin-left:auto"></span>
+          <button type="button" id="cen-limpar" class="mc-clear" style="display:none;height:30px;border:1px solid #E0E0E0;border-radius:7px;padding:0 10px;font-size:11.5px;background:#fff" onclick="cenLimparFiltros()">× Limpar</button>
+          <span id="cen-list-info" style="font-size:11px;color:#A0A0A0;margin-left:auto;white-space:nowrap"></span>
         </div>
 
-        <!-- Grupos + Detalhe -->
-        <div style="display:flex;gap:14px;flex:1;min-height:0;overflow:hidden">
+        <!-- 3-panel body -->
+        <div id="cen-panel-body">
 
-          <!-- Coluna grupos (340px) -->
-          <div style="width:340px;flex-shrink:0;display:flex;flex-direction:column;gap:10px;overflow-y:auto;min-height:0" id="cen-fila-grupos"></div>
+          <!-- Coluna esquerda: lista de cards -->
+          <div id="cen-list-col">
+            <div id="cen-list-header">
+              <span id="cen-lista-label" style="font-size:9px;font-weight:700;letter-spacing:.07em;color:#C70602;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0">FILA ATIVA</span>
+              <span id="cen-lista-count" style="font-size:10px;font-weight:700;background:#FDECEC;color:#A80502;padding:1px 7px;border-radius:99px;flex:none">0</span>
+            </div>
+            <div id="cen-list-scroll">
+              <div id="cen-fila-grupos"></div>
+            </div>
+          </div>
 
-          <!-- Painel detalhe -->
-          <div style="flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;gap:12px;overflow-y:auto">
-            <div id="cen-placeholder" class="mc-nosel">📋 Selecione uma manifestação para ver os detalhes e tomar a próxima ação.</div>
-            <div id="cen-detalhe" style="display:none;flex-direction:column;gap:12px">
+          <!-- Coluna central: detalhe inline -->
+          <div id="cen-detalhe-col">
+            <!-- Placeholder -->
+            <div id="cen-placeholder" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px;text-align:center">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#D8D8D8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom:12px"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              <div style="font-size:14px;font-weight:700;color:#C8C8C8;margin-bottom:4px">Selecione uma manifestação</div>
+              <div style="font-size:12px;color:#D8D8D8">Clique em um item da lista à esquerda</div>
+            </div>
 
-              <!-- Cabeçalho -->
+            <!-- Detalhe inline -->
+            <div id="cen-detalhe">
+              <!-- Card cabeçalho -->
               <div class="mc-card mc-card-main">
                 <div class="mc-dh">
                   <div class="mc-dh-l">
                     <div class="mc-dh-row">
                       <span class="mc-prot" id="cen-man-protocolo">—</span>
-                      <span id="cen-man-status-badge" class="mc-st mc-st-lg">—</span>
-                      <span id="cen-sla-badge" class="mc-sla mc-sla-lg mc-sla-ok">—</span>
+                      <span class="mc-st" id="cen-man-status-badge">—</span>
+                      <span class="mc-sla" id="cen-sla-badge" style="display:none"></span>
                     </div>
-                    <span class="mc-dh-sub" id="cen-man-sub">—</span>
+                    <span class="mc-dh-sub" id="cen-man-sub"></span>
                   </div>
-                  <button type="button" class="mc-lnk" onclick="cenAbrirFichaCompleta()">Abrir ficha completa ↗</button>
+                  <button type="button" class="mc-lnk" onclick="cenAbrirFichaCompleta()" style="display:inline-flex;align-items:center;gap:4px;font-size:12px">Ficha completa
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                  </button>
                 </div>
                 <div class="mc-steps" id="cen-progress-wrap"></div>
-                <div id="cen-proxima-acao" class="mc-nx">
-                  <div style="display:flex;flex-direction:column;gap:3px">
-                    <span class="mc-nx-l" id="cen-pa-label">PRÓXIMA AÇÃO</span>
-                    <span class="mc-nx-t" id="cen-pa-titulo">—</span>
-                    <span class="mc-nx-d" id="cen-pa-detalhe">—</span>
-                  </div>
-                  <div class="mc-acts" id="cen-pa-botoes"></div>
-                </div>
+              </div>
+
+              <!-- Próxima ação -->
+              <div class="mc-nx" id="cen-proxima-acao">
+                <span class="mc-nx-l">PRÓXIMA AÇÃO</span>
+                <span class="mc-nx-t" id="cen-pa-titulo">—</span>
+                <span class="mc-nx-d" id="cen-pa-detalhe"></span>
+                <div class="mc-acts" id="cen-pa-botoes"></div>
+              </div>
+
+              <!-- Dados da manifestação -->
+              <div class="mc-card">
+                <div class="mc-card-h" style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A8A8A8">DADOS DA MANIFESTAÇÃO</div>
                 <div class="mc-campos" id="cen-campos"></div>
-                <div class="mc-relato">
-                  <span class="mc-f-l">RELATO DO CLIENTE</span>
-                  <span class="mc-relato-t" id="cd-descricao"></span>
-                </div>
+                <div class="mc-relato"><div class="mc-f-l">RELATO</div><div class="mc-relato-t" id="cd-descricao"></div></div>
               </div>
 
               <!-- Prazos -->
               <div class="mc-card" id="cen-prazos-card">
-                <div style="font-size:10px;font-weight:700;letter-spacing:.07em;color:#929090">PRAZOS</div>
-                <div class="mc-prazos" id="cen-prazos-grid">
-                  <div class="mc-prazo" style="border-left:3px solid #7A4C00">
-                    <div class="mc-prazo-l">RESPOSTA DO SETOR</div>
-                    <div class="mc-prazo-v" id="cen-prazo-setor" style="color:#7A4C00">—</div>
-                    <div class="mc-prazo-r">Setores acionados</div>
-                  </div>
-                  <div class="mc-prazo" style="border-left:3px solid #0E6B73">
-                    <div class="mc-prazo-l">DEVOLUTIVA AO CLIENTE</div>
-                    <div class="mc-prazo-v" id="cen-prazo-dev" style="color:#0E6B73">—</div>
-                    <div class="mc-prazo-r">SLA total: 96h</div>
-                  </div>
-                  <div class="mc-prazo" id="cen-prazo-int-box" style="border-left:3px solid #1E6B3A">
-                    <div class="mc-prazo-l">SLA INTERNO</div>
-                    <div class="mc-prazo-v" id="cen-prazo-interno" style="color:#1E6B3A">—</div>
-                    <div class="mc-prazo-r">Referência: 72h</div>
-                  </div>
-                  <div class="mc-prazo" style="border-left:3px solid #9A4A10">
-                    <div class="mc-prazo-l">APROVAÇÃO</div>
-                    <div class="mc-prazo-v" id="cen-prazo-aprov" style="color:#9A4A10">—</div>
-                    <div class="mc-prazo-r">Prazo aprovação</div>
-                  </div>
+                <div class="mc-card-h" style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A8A8A8">PRAZOS</div>
+                <div class="mc-campos" id="cen-prazos-grid">
+                  <div><div class="mc-f-l">Prazo setor</div><div class="mc-f-v" id="cen-prazo-setor">—</div></div>
+                  <div><div class="mc-f-l">Prazo devolutiva</div><div class="mc-f-v" id="cen-prazo-dev">—</div></div>
+                  <div><div class="mc-f-l">Prazo interno</div><div class="mc-f-v" id="cen-prazo-interno">—</div></div>
+                  <div><div class="mc-f-l">Prazo aprovação</div><div class="mc-f-v" id="cen-prazo-aprov">—</div></div>
                 </div>
               </div>
 
-              <!-- Setores acionados + Tratativa interna -->
-              <div class="mc-card">
-                <div style="font-size:10px;font-weight:700;letter-spacing:.07em;color:#929090">TRATATIVA INTERNA</div>
-                <div id="cen-setores-lista" style="display:flex;flex-direction:column;gap:8px"></div>
-                <textarea id="trat-acao" class="mc-ta" rows="2" placeholder="Registrar orientação ou complementação à tratativa…"></textarea>
-                <div class="mc-row" style="margin-top:0">
-                  <button type="button" class="mc-btn mc-btn-sm" onclick="cenSalvarTratativa()">Salvar</button>
-                  <button type="button" class="mc-btn mc-btn-sm mc-btn-p" onclick="cenConcluirTratativa()">Concluir</button>
-                  <button type="button" class="mc-btn mc-btn-sm" onclick="cenSolicitarAprovacao()">Solicitar aprovação</button>
-                  <button type="button" class="mc-btn mc-btn-sm" onclick="cenIniciarTratativa()">Iniciar tratativa</button>
+              <!-- Tratativa interna / Mais ações -->
+              <div class="mc-card" id="cen-trat-card" style="display:none">
+                <div class="mc-card-h" style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A8A8A8">TRATATIVA INTERNA</div>
+                <div id="cen-setores-lista"></div>
+                <div class="mc-fgrid">
+                  <div class="mc-span2"><div class="mc-lbl">Ação realizada</div><textarea id="trat-acao" class="mc-ta" rows="3"></textarea></div>
+                  <div><div class="mc-lbl">Setor</div><input id="trat-setor" class="mc-input" style="height:34px;font-size:12.5px"></div>
+                  <div><div class="mc-lbl">Responsável</div><input id="trat-responsavel" class="mc-input" style="height:34px;font-size:12.5px"></div>
+                  <div class="mc-span2"><div class="mc-lbl">Observações</div><textarea id="trat-obs" class="mc-ta" rows="2"></textarea></div>
+                </div>
+                <div class="mc-row">
+                  <button type="button" class="mc-btn mc-btn-p mc-btn-sm" onclick="cenSalvarTratativa()">Salvar tratativa</button>
+                  <button type="button" class="mc-btn mc-btn-sm" onclick="cenEncaminharSetor()">Encaminhar ao setor</button>
                 </div>
               </div>
 
-              <!-- Devolutiva ao cliente (box verde, separada) -->
-              <div class="mc-dev-box" id="cen-dev-box">
-                <div class="mc-dev-h">DEVOLUTIVA AO CLIENTE · Canal: <span id="cen-dev-canal">—</span></div>
-                <div class="mc-dev-st" id="cen-dev-status">Devolutiva não enviada ainda.</div>
-                <textarea id="dev-texto" class="mc-ta" rows="3" style="border-color:#B8DFC0;background:#fff" placeholder="Rascunho da devolutiva (não enviado automaticamente)…"></textarea>
-                <div class="mc-row" style="margin-top:0">
-                  <button type="button" id="cen-btn-gerar-dev" class="mc-btn mc-btn-sm" style="border-color:#B8DFC0;color:#1E6B3A" onclick="cenGerarDevolutiva()">🧠 Sugestão IA</button>
-                  <button type="button" class="mc-btn mc-btn-sm" style="background:#1E6B3A;border-color:#1E6B3A;color:#fff" onclick="cenEnviarDevolutiva(false)">Registrar e encerrar</button>
-                  <button type="button" class="mc-btn mc-btn-sm" onclick="cenEnviarDevolutiva(true)">Para aprovação</button>
+              <!-- Devolutiva -->
+              <div class="mc-card" id="cen-dev-box">
+                <div class="mc-card-h" style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A8A8A8">DEVOLUTIVA AO CLIENTE</div>
+                <div class="mc-f-l">Canal: <span id="cen-dev-canal" style="font-weight:600;color:#1F1F1F">—</span></div>
+                <div class="mc-muted" id="cen-dev-status"></div>
+                <textarea id="dev-texto" class="mc-ta" rows="4" placeholder="Escreva a devolutiva ao cliente…"></textarea>
+                <div class="mc-row">
+                  <button type="button" class="mc-btn mc-btn-p mc-btn-sm" onclick="cenSalvarDevolutiva()">Salvar devolutiva</button>
+                  <button type="button" class="mc-btn mc-btn-sm" onclick="cenEnviarDevolutiva()">Enviar ao cliente</button>
                 </div>
               </div>
 
-              <!-- RNC vinculada (condicional) -->
-              <div class="mc-rnc-box" id="cen-rnc-card" style="display:none">
-                <div class="mc-rnc-h">RNC VINCULADA</div>
-                <div id="cen-rnc-id" style="font-size:13px;font-weight:700;color:#6B24A8">—</div>
-                <div id="cen-rnc-desc" style="font-size:12.5px;color:#545252;line-height:1.55"></div>
-                <div id="cen-rnc-corpo" class="mc-muted"></div>
-                <div class="mc-rule" style="color:#6B24A8;background:#F0E6F8"><strong>Regra:</strong> a IA sugere, mas a decisão é da analista.</div>
-                <div class="mc-row" style="margin-top:0">
-                  <button type="button" class="mc-btn mc-btn-sm" style="border-color:#D9B8F0;color:#6B24A8" onclick="cenCriarRNC()">Criar RNC</button>
-                  <button type="button" class="mc-btn mc-btn-sm" style="border-color:#D9B8F0;color:#6B24A8" onclick="cenEncerrarManifestacao()">Encerrar manifestação</button>
-                </div>
+              <!-- RNC -->
+              <div class="mc-card" id="cen-rnc-card" style="display:none">
+                <div class="mc-card-h" style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A8A8A8">RNC</div>
+                <div class="mc-f-l">Nº RNC: <span id="cen-rnc-id" style="font-weight:600;color:#1F1F1F">—</span></div>
+                <div class="mc-f-v" id="cen-rnc-desc"></div>
+                <div class="mc-muted" id="cen-rnc-corpo"></div>
               </div>
 
               <!-- Histórico -->
-              <div class="mc-card" style="gap:0">
-                <div class="mc-card-h" style="margin-bottom:10px">Histórico</div>
-                <div id="cen-historico-corpo"></div>
+              <div class="mc-card">
+                <div class="mc-card-h" style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A8A8A8">HISTÓRICO</div>
+                <div id="cen-historico-corpo" class="mc-hist"></div>
               </div>
 
+              <div style="height:8px"></div>
+            </div><!-- /#cen-detalhe -->
+          </div><!-- /#cen-detalhe-col -->
+
+          <!-- Coluna direita: Cérebro -->
+          <div style="background:#FFFCF4;border-left:1px solid #EDD895;display:flex;flex-direction:column;overflow-y:auto" id="cen-cerebro-wrap">
+            <div style="padding:12px 14px 9px;border-bottom:1px solid #EDD895;flex-shrink:0">
+              <div class="mc-cerebro-h" style="margin-bottom:5px"><i></i><b>Cérebro</b></div>
+              <span class="mc-ia-tag">SUGESTÃO DA IA · VALIDAR ANTES DE USAR</span>
+            </div>
+            <div style="flex:1;padding:12px 14px;overflow-y:auto">
+              <div class="mc-cerebro" id="cen-cerebro-painel"><span class="mc-muted">Selecione uma manifestação</span></div>
             </div>
           </div>
 
-          <!-- Cérebro -->
-          <div class="mc-col-r" id="cen-cerebro-wrap" style="width:270px;flex-shrink:0">
-            <div class="mc-cerebro-h"><i></i><b>Cérebro</b></div>
-            <div class="mc-cerebro" id="cen-cerebro-painel"><span class="mc-muted">Selecione uma manifestação</span></div>
+        </div><!-- /#cen-panel-body -->
+      </div><!-- /mc-panel-fila -->
+
+      <!-- Modal ficha completa -->
+      <div id="cen-ficha-overlay" onclick="if(event.target===this)cenFecharFicha()">
+        <div id="cen-ficha-modal" onclick="event.stopPropagation()">
+          <div id="cen-ficha-modal-head">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px">
+              <div style="flex:1;min-width:0">
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
+                  <span style="font-size:15px;font-weight:800;color:#C70602" id="cfm-protocolo">—</span>
+                  <span id="cfm-status" style="font-size:10.5px;font-weight:700;padding:2px 9px;border-radius:99px;background:#F0F0F0;color:#545454">—</span>
+                  <span id="cfm-atrasada" style="display:none;font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;background:#FDECEC;color:#A80502">Atrasada</span>
+                </div>
+                <div style="font-size:13px;font-weight:600;color:#1F1F1F" id="cfm-assunto">—</div>
+                <div style="font-size:11px;color:#A0A0A0;margin-top:3px" id="cfm-sub">—</div>
+              </div>
+              <button type="button" onclick="cenFecharFicha()" style="border:0;background:none;cursor:pointer;color:#A0A0A0;padding:4px;flex:none">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            <!-- Tabs ficha -->
+            <div style="display:flex;gap:0;overflow-x:auto">
+              <button type="button" class="cen-tab active" onclick="cenTab('resumo',this)">Resumo</button>
+              <button type="button" class="cen-tab" onclick="cenTab('classificacao',this)">Classificação</button>
+              <button type="button" class="cen-tab" onclick="cenTab('tratativa',this)">Tratativa</button>
+              <button type="button" class="cen-tab" onclick="cenTab('historico',this)">Histórico</button>
+            </div>
+          </div>
+          <div id="cen-ficha-modal-body">
+            <div class="cen-tabpanel active" id="centab-resumo">
+              <div style="background:#FAFAFA;border:1px solid #EBEBEB;border-radius:10px;padding:14px 16px">
+                <div style="font-size:9px;font-weight:700;letter-spacing:.08em;color:#C0C0C0;margin-bottom:10px">IDENTIFICAÇÃO</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px" id="cfm-resumo-grid"></div>
+              </div>
+              <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;margin-top:11px">
+                <div style="font-size:9px;font-weight:700;letter-spacing:.08em;color:#C0C0C0;margin-bottom:8px">RELATO ORIGINAL DO CLIENTE</div>
+                <div style="font-size:13px;line-height:1.65;color:#2A2A2A" id="cfm-relato">—</div>
+              </div>
+            </div>
+            <div class="cen-tabpanel" id="centab-classificacao">
+              <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:9px" id="cfm-class-grid"></div>
+            </div>
+            <div class="cen-tabpanel" id="centab-tratativa">
+              <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:9px" id="cfm-trat-grid"></div>
+            </div>
+            <div class="cen-tabpanel" id="centab-historico">
+              <div class="mc-hist" id="cfm-historico"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -22598,6 +22675,8 @@ async function mudarStatusMC(id, novoStatus) {
 
   // ── modelo ────────────────────────────────────────────────────────────────
   const ST_LBL={nova:'Nova · triagem',anal:'Em análise',trat:'Em tratamento',aprov:'Ag. aprovação',dev:'Devolutiva',enc:'Encerrada'};
+  const ST_CFG_BG={nova:'#F2F2F2',anal:'#EAF2FB',trat:'#EEEAFA',aprov:'#FEF3DC',dev:'#E6F4F4',enc:'#EAF4ED'};
+  const ST_CFG_FG={nova:'#545454',anal:'#1A4F8A',trat:'#4A2E9A',aprov:'#8A5000',dev:'#1A6A6A',enc:'#1A6632'};
   const NEXT={nova:'Fazer triagem',anal:'Validar análise da IA',trat:'Acompanhar setores',aprov:'Aguardando aprovador',dev:'Enviar devolutiva',enc:'Concluída'};
   const SET_LBL={atrasado:'Atrasado',pendente:'Aguardando',respondido:'Respondido'};
   const PRI_LBL={alta:'Alta',media:'Média',baixa:'Baixa'};
@@ -22999,30 +23078,49 @@ async function mudarStatusMC(id, novoStatus) {
     {id:'dev',titulo:'ENVIAR DEVOLUTIVA',accent:'#0E6B73',headerBg:'#E3F3F4',headerBd:'#A8D8DB',filtro:m=>m.st==='dev'},
   ];
 
+  const PRIO_CFG={alta:{bg:'#FDECEC',fg:'#A80502'},media:{bg:'#FEF3DC',fg:'#8A5000'},baixa:{bg:'#F0F0F0',fg:'#545454'},none:{bg:'#F0F0F0',fg:'#545454'}};
+  const ST_DOT={nova:'#A8A8A8',anal:'#1A4F8A',trat:'#4A2E9A',aprov:'#C87000',dev:'#1A8A8A',enc:'#1A6632'};
+
   function renderFilaGrupos(){
     const cont=$('cen-fila-grupos'); if(!cont) return;
     const list=visibleList();
     const hasFilter=!!(($('cen-busca')?.value||'').trim()||_cenKpi||$('cen-fil-status')?.value||$('cen-fil-sla')?.value||$('cen-fil-tipo')?.value||$('cen-fil-prioridade')?.value);
-    _setText('cen-list-info',list.filter(m=>m.st!=='enc').length+' manifestações ativas');
+    const active=list.filter(m=>m.st!=='enc');
+    _setText('cen-list-info',active.length+' manifestações ativas');
+    _setText('cen-lista-count',active.length);
+    _setText('cen-lista-label','FILA ATIVA');
     const cl=$('cen-limpar'); if(cl) cl.style.display=hasFilter?'':'none';
-    ['cen-fil-status','cen-fil-sla','cen-fil-tipo','cen-fil-prioridade'].forEach(id=>{const e=$(id);if(e)e.classList.toggle('on',!!e.value);});
-    const visGrupos=FILA_GRUPOS.map(g=>({...g,itens:list.filter(g.filtro)})).filter(g=>g.itens.length);
-    if(!visGrupos.length){
-      cont.innerHTML='<div class="mc-empty">'+(_cenErroLista?'Não foi possível carregar as manifestações.':'Nenhuma manifestação neste filtro.')+'</div>';
+    ['cen-fil-status','cen-fil-sla','cen-fil-tipo'].forEach(id=>{const e=$(id);if(e)e.classList.toggle('on',!!e.value);});
+    if(!list.length){
+      cont.innerHTML='<div style="padding:32px 16px;text-align:center"><div style="font-size:12.5px;font-weight:700;color:#C0C0C0">'+(_cenErroLista?'Erro ao carregar':'Nenhuma manifestação')+'</div><div style="font-size:11px;color:#D0D0D0;margin-top:3px">'+(_cenErroLista?'':'Ajuste os filtros')+'</div></div>';
       return;
     }
-    cont.innerHTML=visGrupos.map(g=>`
-      <div class="mc-grp">
-        <div class="mc-grp-h" style="background:${g.headerBg};border-bottom:1px solid ${g.headerBd}">
-          <span class="mc-grp-t" style="color:${g.accent}">${esc(g.titulo)}</span>
-          <span class="mc-grp-c" style="color:${g.accent}">${g.itens.length}</span>
+    const sl_fn=m=>slaTxt(m);
+    cont.innerHTML=list.map(m=>{
+      const sl=sl_fn(m);
+      const pr=PRIO_CFG[m.pri]||PRIO_CFG.none;
+      const late=isLate(m)&&m.st!=='enc';
+      const dot=ST_DOT[m.st]||'#A8A8A8';
+      return `<button type="button" class="mc-item${_cenAtual===m.id?' sel':''}" data-id="${esc(m.id)}" onclick="cenSelecionarMan(this.dataset.id)" style="display:block;width:100%;border:1.5px solid ${_cenAtual===m.id?'#C70602':'#F0F0F0'};background:${_cenAtual===m.id?'#FFFAFA':'#fff'};border-radius:9px;padding:10px 11px;cursor:pointer;text-align:left;margin-bottom:5px;animation:none">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:5px;margin-bottom:4px">
+          <span style="font-size:11px;font-weight:800;color:${_cenAtual===m.id?'#C70602':'#1F1F1F'}">${esc(m.id)}</span>
+          <div style="display:flex;gap:3px;flex-wrap:wrap;justify-content:flex-end;flex:none">
+            <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:${pr.bg};color:${pr.fg}">${esc(PRI_LBL[m.pri]||'—')}</span>
+            ${late?'<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#FDECEC;color:#A80502">Atrasada</span>':''}
+            ${m.ext?'<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#E6EEF8;color:#24508F">EXT</span>':''}
+          </div>
         </div>
-        ${g.itens.map(m=>{const sl=slaTxt(m);return `<button type="button" class="mc-item${_cenAtual===m.id?' sel':''}" data-id="${esc(m.id)}" onclick="cenSelecionarMan(this.dataset.id)" style="border-left:3px solid ${g.accent};border-radius:0;border-top:0;border-right:0;border-bottom:1px solid #F4F4F4">
-          <div class="mc-item-top"><span class="mc-item-id"><span class="mc-dot mc-p-${m.pri||'none'}"></span><span class="mc-item-prot">${esc(m.id)}</span>${m.ext?'<span class="mc-tag-ext">EXTERNO</span>':''}</span><span class="mc-sla mc-sla-${sl[1]}">${esc(sl[0])}</span></div>
-          <span class="mc-item-cli">${esc(m.cli||'—')}</span>
-          <span class="mc-item-mot">${esc(m.motivo||m.tipo||'—')}</span>
-        </button>`;}).join('')}
-      </div>`).join('');
+        <div style="font-size:12px;font-weight:600;color:#2A2A2A;margin-bottom:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.cli||'—')}</div>
+        <div style="font-size:11px;color:#727272;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:5px">${esc(m.motivo||m.tipo||'—')}</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:4px">
+          <div style="display:flex;align-items:center;gap:4px">
+            <span style="width:6px;height:6px;border-radius:50%;background:${dot};flex:none"></span>
+            <span style="font-size:10px;color:#727272">${esc(ST_LBL[m.st]||m.st)}</span>
+          </div>
+          <span style="font-size:9.5px;color:#B0B0B0">${esc(m.emp||'')}</span>
+        </div>
+      </button>`;
+    }).join('');
   }
 
   // ── filtros ───────────────────────────────────────────────────────────────
@@ -23241,8 +23339,8 @@ async function mudarStatusMC(id, novoStatus) {
     _cenRawAtual=raw;
     const n=normMan(raw);
     const sl=slaTxt(n);
-    $('cen-placeholder').style.display='none';
-    $('cen-detalhe').style.display='flex';
+    const ph=$('cen-placeholder'); if(ph) ph.style.display='none';
+    const dt=$('cen-detalhe'); if(dt) dt.classList.add('active');
     _setText('cen-man-protocolo',n.id);
     const sb=$('cen-man-status-badge');
     if(sb){sb.textContent=(n.st==='enc'&&/REJEIT|CANCEL/.test(norm(n.statusRaw)))?n.statusRaw.replace(/_/g,' ').toLowerCase().replace(/^./,c=>c.toUpperCase()):ST_LBL[n.st];sb.className='mc-st mc-st-lg mc-st-'+n.st;}
@@ -23304,11 +23402,11 @@ async function mudarStatusMC(id, novoStatus) {
     // Rola o card selecionado para visível na coluna da fila
     requestAnimationFrame(()=>{const sel=document.querySelector('#cen-fila-grupos .mc-item.sel');if(sel)sel.scrollIntoView({behavior:'smooth',block:'nearest'});});
     // Rola o painel de detalhe para o topo ao selecionar nova manifestação
-    const detEl=$('cen-detalhe')?.parentElement;
+    const detEl=$('cen-detalhe');
     if(detEl) detEl.scrollTop=0;
     const base=_cenAll.find(m=>m.id===id);
     if(base) renderDetalhe(base.raw);
-    else { $('cen-placeholder').style.display='none'; $('cen-detalhe').style.display='flex'; }
+    else { const ph=$('cen-placeholder');if(ph)ph.style.display='none'; const dt=$('cen-detalhe');if(dt)dt.classList.add('active'); }
     cenToggleAcoes(false);
     const d=await api('/api/manifestacoes/'+encodeURIComponent(id));
     if(tk!==_selTok) return;
@@ -23521,7 +23619,7 @@ async function mudarStatusMC(id, novoStatus) {
   };
 
   window.cenToggleAcoes = function(forcar){
-    const el=$('cen-acoes-expand'); if(!el) return;
+    const el=$('cen-trat-card'); if(!el) return;
     const abrir=typeof forcar==='boolean'?forcar:el.style.display==='none';
     el.style.display=abrir?'':'none';
     const b=$('cen-btn-mais'); if(b) b.textContent=abrir?'Mais ações ▴':'Mais ações ▾';
@@ -23529,11 +23627,37 @@ async function mudarStatusMC(id, novoStatus) {
   };
 
   window.cenAbrirFichaCompleta = function(){
-    // Abre a ficha completa via API (já está carregada no painel de detalhe)
-    // Rola o painel para o topo para ver todos os detalhes
-    const detalhe = $('cen-detalhe');
-    if(detalhe) detalhe.scrollTo({top:0,behavior:'smooth'});
+    if(!_cenRawAtual) return;
+    const raw=_cenRawAtual, n=normMan(raw);
+    // Preenche o modal da ficha completa
+    _setText('cfm-protocolo',n.id);
+    const st=$('cfm-status');
+    if(st){st.textContent=ST_LBL[n.st]||n.st;st.style.background=(ST_CFG_BG[n.st]||'#F0F0F0');st.style.color=(ST_CFG_FG[n.st]||'#545454');}
+    const atEl=$('cfm-atrasada');if(atEl)atEl.style.display=isLate(n)&&n.st!=='enc'?'':'none';
+    _setText('cfm-assunto',n.motivo||n.tipo||'—');
+    _setText('cfm-sub',[n.cli,n.emp,n.canal].filter(Boolean).join(' · ')||'—');
+    const rg=$('cfm-resumo-grid');
+    if(rg) rg.innerHTML=[['PROTOCOLO',n.id],['ABERTURA',fmtdt(n.abertaMs)],['EMPRESA',n.emp],['CLIENTE',n.cli],['RESPONSÁVEL SAC',pick(raw,['RESPONSAVEL_ANALISTA','RESPONSAVEL','USUARIO_CRIACAO'])],['CANAL',n.canal]].map(([l,v])=>`<div><div style="font-size:9px;font-weight:700;color:#C8C8C8">${esc(l)}</div><div style="font-size:12.5px;color:#2A2A2A;margin-top:2px">${esc(v||'—')}</div></div>`).join('');
+    _setText('cfm-relato',n.desc||'—');
+    const cg=$('cfm-class-grid');
+    if(cg) cg.innerHTML=[['TIPO',n.tipo],['PRIORIDADE',PRI_LBL[n.pri]||''],['SETOR',pick(raw,['SETOR_CONFIRMADO','SETORES_CONFIRMADOS','SETOR_SUGERIDO'])],['CAUSA PROVÁVEL',pick(raw,['CAUSA_PROVAVEL','CAUSA_RAIZ','CAUSA_IDENTIFICADA'])]].map(([l,v])=>`<div><div style="font-size:9.5px;font-weight:700;color:#C8C8C8">${esc(l)}</div><div style="font-size:12.5px;color:#2A2A2A;margin-top:2px">${esc(v||'—')}</div></div>`).join('');
+    const tg=$('cfm-trat-grid');
+    if(tg) tg.innerHTML=[['TRATATIVA REALIZADA',pick(raw,['TRATATIVA_REALIZADA'])],['DEVOLUTIVA',pick(raw,['DEVOLUTIVA_FINAL','DEVOLUTIVA_ENVIADA'])],['DATA DEVOLUTIVA',fmtdt(pick(raw,['DATA_DEVOLUTIVA']))]].map(([l,v])=>`<div><div style="font-size:9.5px;font-weight:700;color:#C8C8C8">${esc(l)}</div><div style="font-size:12.5px;color:#2A2A2A;margin-top:2px;white-space:pre-wrap">${esc(v||'—')}</div></div>`).join('');
+    const hg=$('cfm-historico');
+    if(hg){const evs=buildHistorico(n);hg.innerHTML=evs.map(ev=>`<div class="mc-hist-rail"><span class="mc-hist-dot mc-hc-${ev.c}"></span><span class="mc-hist-line"></span></div><div class="mc-hist-body"><div class="mc-hist-at">${esc(fmtdt(ev.at))}</div><div class="mc-hist-t">${esc(ev.t)}</div></div>`).join('');}
+    // Ativa tab resumo
+    cenTab('resumo',document.querySelector('#cen-ficha-modal-head .cen-tab'));
+    const ov=$('cen-ficha-overlay'); if(ov) ov.classList.add('active');
+    document.body.style.overflow='hidden';
   };
+
+  window.cenFecharFicha = function(){
+    const ov=$('cen-ficha-overlay'); if(ov) ov.classList.remove('active');
+    document.body.style.overflow='';
+  };
+
+  // Fechar com Escape
+  document.addEventListener('keydown',function(e){if(e.key==='Escape')cenFecharFicha();});
 
   // Cobrar setor / Escalar ao gestor: não existe endpoint no sistema — mantidos como no-op informativo
   window.cenCobrarSetor = function(){toast(WHY_NOENDPOINT);};
