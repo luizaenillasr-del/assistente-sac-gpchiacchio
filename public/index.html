@@ -13146,7 +13146,7 @@ var pageLoaders = window.pageLoaders = {
   'aprovadores': function() { if (typeof window.loadAprovadorDashboard === 'function') window.loadAprovadorDashboard(); },
   'banco-manifestacoes': loadBancoManifestacoes,
   'banco-rnc': loadBancoRNC,
-  'rca': loadRCA,
+  'rca': function(){ if(typeof loadRCA==='function') return loadRCA(); },
   'central-gerente': () => { if (typeof loadCentralGerente === 'function') loadCentralGerente(); },
   'gestao-diretoria': () => { if (typeof loadGestaoDiretoria === 'function') loadGestaoDiretoria(); },
   'similares': ()=>{},
