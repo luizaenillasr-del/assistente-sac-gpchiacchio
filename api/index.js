@@ -6000,7 +6000,15 @@ app.get('/api/aprovadores/:usuario/pendencias', requerPerfil('APROVADOR','APROVA
     const filaPendente = isMasterAprov
       ? fila.filter(f=>f.STATUS==='PENDENTE'&&f.TIPO_ENTIDADE==='SAC')
       : fila.filter(f=>f.STATUS==='PENDENTE'&&f.TIPO_ENTIDADE==='SAC'&&(n(f.ID_APROVADOR)===n(apId)||n(f.NOME_APROVADOR)===n(usuario)));
-    const sacDireto=mans.filter(m=>!['ENCERRADA','CONCLUÍDA','CONCLUIDA','CANCELADA','REJEITADA'].includes(String(m.STATUS||'').toUpperCase())&&(m.STATUS==='AGUARDANDO_APROVAÇÃO'||m.STATUS==='AGUARDANDO_DECISÃO'||m.STATUS_FICHA==='AGUARDANDO_APROVACAO'||m.APROVACAO_NECESSARIA==='SIM'));
+    const _sacBase=m=>!['ENCERRADA','CONCLUÍDA','CONCLUIDA','CANCELADA','REJEITADA'].includes(String(m.STATUS||'').toUpperCase())&&(m.STATUS==='AGUARDANDO_APROVAÇÃO'||m.STATUS==='AGUARDANDO_DECISÃO'||m.STATUS_FICHA==='AGUARDANDO_APROVACAO'||m.APROVACAO_NECESSARIA==='SIM');
+    const sacDireto=mans.filter(m=>{
+      if(!_sacBase(m)) return false;
+      if(isMasterAprov) return true;
+      // APROVADOR normal: filtra pela empresa e/ou competência vinculada
+      const empOk=!empresas.length||empresas.some(e=>n(e)===n(m.EMPRESA_RECLAMADA||m.EMPRESA||''));
+      const compOk=!compNames.length||compNames.some(c=>n(c)===n(m.COMPETENCIA||m.SETOR||m.TIPO||''));
+      return empOk&&compOk;
+    });
     // Merge sem duplicatas (por ID_MANIFESTACAO)
     const sacIds = new Set(sacDireto.map(m=>m.ID_MANIFESTACAO));
     const sacDeFila = filaPendente.filter(f=>!sacIds.has(f.ID_ENTIDADE)).map(f=>{
