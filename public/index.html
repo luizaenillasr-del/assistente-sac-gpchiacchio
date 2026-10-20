@@ -2416,17 +2416,15 @@
   <div class="sidebar-section">Operação</div>
   <div style="display:flex;flex-direction:column;gap:2px">
     <button class="sidebar-item active" onclick="navigate('visao-geral', this)"><span class="sidebar-dot"></span>Dashboard</button>
-    <button class="sidebar-item" onclick="navigate('banco-manifestacoes', this)"><span class="sidebar-dot"></span>Manifestações</button>
+    <button class="sidebar-item" id="sidebar-central-sac" onclick="navigate('central-sac', this)" style="position:relative"><span class="sidebar-dot"></span>Central de Manifestações<span id="badge-aprovacoes" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);background:#C8102E;color:white;font-size:10px;font-weight:700;border-radius:10px;padding:1px 6px;min-width:18px;text-align:center" title="Aprovações pendentes"></span></button>
     <button class="sidebar-item" onclick="navigate('nova-manifestacao', this)"><span class="sidebar-dot"></span>Nova manifestação</button>
     <button class="sidebar-item" onclick="navigate('similares', this)"><span class="sidebar-dot"></span>Busca de similares</button>
-    <button class="sidebar-item" id="sidebar-central-sac" onclick="navigate('central-sac', this)"><span class="sidebar-dot"></span>Minha Central SAC</button>
   </div>
 
   <div class="sidebar-section">Gestão</div>
   <div style="display:flex;flex-direction:column;gap:2px">
     <button class="sidebar-item" onclick="navigate('painel-maquina', this)"><span class="sidebar-dot"></span>Indicadores</button>
     <button class="sidebar-item" onclick="navigate('banco-rnc', this)"><span class="sidebar-dot"></span>RNC</button>
-    <button class="sidebar-item" onclick="navigate('aprovadores', this)" style="position:relative"><span class="sidebar-dot"></span>Pendências &amp; Aprovações<span id="badge-aprovacoes" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);background:#C8102E;color:white;font-size:10px;font-weight:700;border-radius:10px;padding:1px 6px;min-width:18px;text-align:center" title="Aprovações pendentes"></span></button>
     <button class="sidebar-item" id="sidebar-central-gerente" onclick="navigate('central-gerente', this)"><span class="sidebar-dot"></span>Central do Gerente</button>
     <button class="sidebar-item" id="sidebar-gestao-diretoria" onclick="navigate('gestao-diretoria', this)"><span class="sidebar-dot"></span>Gestão da Diretoria</button>
     <button class="sidebar-item" onclick="navigate('rca', this)"><span class="sidebar-dot"></span>Central de RCA</button>
@@ -2449,6 +2447,7 @@
   <div style="display:flex;flex-direction:column;gap:2px">
     <button class="sidebar-item" id="sidebar-alimentacao" onclick="navigate('alimentacao', this)"><span class="sidebar-dot"></span>Alimentação da ferramenta</button>
     <button class="sidebar-item" data-v5-page="usuarios" onclick="navigate('usuarios', this)" style="position:relative"><span class="sidebar-dot"></span>Usuários<span id="badge-solicitacoes" onclick="event.stopPropagation();abrirPainelNotificacoes()" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);background:#C8102E;color:white;font-size:10px;font-weight:700;border-radius:10px;padding:1px 6px;min-width:18px;text-align:center;cursor:pointer" title="Ver solicitações pendentes"></span></button>
+    <button class="sidebar-item" id="sidebar-aprovadores-admin" onclick="navigate('aprovadores', this)"><span class="sidebar-dot"></span>Aprovadores e Competências</button>
     <button class="sidebar-item" onclick="navigate('auditoria', this)"><span class="sidebar-dot"></span>Auditoria</button>
     <button class="sidebar-item" onclick="navigate('prazos-regionais', this)"><span class="sidebar-dot"></span>Configurações</button>
   </div>
@@ -5227,8 +5226,8 @@
     <div class="mc-topbar">
       <div class="mc-toprow">
         <div>
-          <div style="font-size:20px;font-weight:800">Minha Central SAC</div>
-          <div class="mc-sub" id="cen-greet">Olá — SAC</div>
+          <div style="font-size:20px;font-weight:800">Central de Manifestações</div>
+          <div class="mc-sub" id="cen-greet">Olá — carregando…</div>
         </div>
         <div class="mc-head-btns">
           <button type="button" class="mc-btn" onclick="abrirNovaCentralMan()">+ Nova Manifestação</button>
@@ -5238,6 +5237,15 @@
       <div class="mc-tabs">
         <button type="button" class="mc-tab on" id="mc-tab-fila" onclick="cenAba('fila',this)">
           Fila de Trabalho <span class="mc-tab-badge" id="mc-badge-fila">0</span>
+        </button>
+        <button type="button" class="mc-tab" id="mc-tab-banco" onclick="cenAba('banco',this)">
+          Banco <span class="mc-tab-badge" id="mc-badge-banco" style="display:none"></span>
+        </button>
+        <button type="button" class="mc-tab" id="mc-tab-pendencias" onclick="cenAba('pendencias',this)">
+          Pendências <span class="mc-tab-badge" id="mc-badge-pendencias" style="display:none"></span>
+        </button>
+        <button type="button" class="mc-tab" id="mc-tab-aprovacoes" onclick="cenAba('aprovacoes',this)">
+          Aprovações <span class="mc-tab-badge" id="mc-badge-aprovacoes-tab" style="display:none"></span>
         </button>
         <button type="button" class="mc-tab" id="mc-tab-rcas" onclick="cenAba('rcas',this)">RCAs</button>
         <button type="button" class="mc-tab" id="mc-tab-ind" onclick="cenAba('ind',this)">Indicadores</button>
@@ -5397,6 +5405,78 @@
             <div class="mc-cerebro-h"><i></i><b>Cérebro</b></div>
             <div class="mc-cerebro" id="cen-cerebro-painel"><span class="mc-muted">Selecione uma manifestação</span></div>
           </div>
+        </div>
+      </div>
+
+      <!-- ══════════ ABA: BANCO ══════════ -->
+      <div class="mc-tabpanel" id="mc-panel-banco" style="display:none;flex-direction:column;gap:10px">
+        <!-- Cards de status -->
+        <div style="display:flex;flex-wrap:wrap;gap:8px" id="cen-banco-cards"></div>
+        <!-- Filtros -->
+        <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:12px 16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+          <div style="position:relative;flex:1;min-width:180px;max-width:260px">
+            <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:13px;color:#929090">🔍</span>
+            <input id="cen-banco-busca" class="mc-input" style="padding-left:30px" placeholder="Protocolo, cliente…" oninput="cenBancoFiltrar()">
+          </div>
+          <select id="cen-banco-status" class="mc-sel" onchange="cenBancoFiltrar()">
+            <option value="">Todos status</option>
+            <option value="aberto">Em aberto</option>
+            <option value="andamento">Em andamento</option>
+            <option value="tratativa">Em tratativa</option>
+            <option value="aprovacao">Ag. aprovação</option>
+            <option value="setor">Ag. setor</option>
+            <option value="finalizada">Finalizada</option>
+            <option value="cancelada">Cancelada</option>
+          </select>
+          <select id="cen-banco-tipo" class="mc-sel" onchange="cenBancoFiltrar()">
+            <option value="">Tipo</option>
+            <option value="Reclamação">Reclamação</option><option value="Solicitação">Solicitação</option>
+            <option value="Sugestão">Sugestão</option><option value="Elogio">Elogio</option>
+          </select>
+          <select id="cen-banco-empresa" class="mc-sel" onchange="cenBancoFiltrar()"><option value="">Empresa</option></select>
+          <select id="cen-banco-setor" class="mc-sel" onchange="cenBancoFiltrar()"><option value="">Setor</option></select>
+          <button type="button" id="cen-banco-limpar" class="mc-clear" style="display:none" onclick="cenBancoLimpar()">× Limpar</button>
+          <button type="button" class="mc-btn mc-btn-sm" style="margin-left:auto" onclick="cenBancoExportarCSV()" title="Exportar CSV">⬇ CSV</button>
+          <span id="cen-banco-info" style="font-size:12px;color:#929090"></span>
+        </div>
+        <!-- Tabela -->
+        <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;overflow:hidden">
+          <table style="width:100%;border-collapse:collapse;font-size:13px">
+            <thead>
+              <tr style="background:#FAFAFA;border-bottom:1px solid #EBEBEB">
+                <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;letter-spacing:.04em;color:#888;white-space:nowrap">Nº</th>
+                <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;letter-spacing:.04em;color:#888;white-space:nowrap">Abertura</th>
+                <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;letter-spacing:.04em;color:#888">Cliente</th>
+                <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;letter-spacing:.04em;color:#888">Tipo</th>
+                <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;letter-spacing:.04em;color:#888">Etapa</th>
+                <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;letter-spacing:.04em;color:#888;white-space:nowrap">Prazo</th>
+                <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:700;letter-spacing:.04em;color:#888"></th>
+              </tr>
+            </thead>
+            <tbody id="cen-banco-tbody">
+              <tr><td colspan="7" style="padding:24px;text-align:center;color:#999">Carregando…</td></tr>
+            </tbody>
+          </table>
+          <div id="cen-banco-pag" style="display:flex;justify-content:center;align-items:center;gap:4px;padding:10px 16px;border-top:1px solid #EBEBEB"></div>
+        </div>
+      </div>
+
+      <!-- ══════════ ABA: PENDÊNCIAS ══════════ -->
+      <div class="mc-tabpanel" id="mc-panel-pendencias" style="display:none;flex-direction:column;gap:10px">
+        <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:16px 20px">
+          <div style="font-size:14px;font-weight:700;margin-bottom:12px">Manifestações aguardando ação</div>
+          <div id="cen-pendencias-lista" style="font-size:13px;color:#999">Carregando…</div>
+        </div>
+      </div>
+
+      <!-- ══════════ ABA: APROVAÇÕES ══════════ -->
+      <div class="mc-tabpanel" id="mc-panel-aprovacoes" style="display:none;flex-direction:column;gap:10px">
+        <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:16px 20px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <div style="font-size:14px;font-weight:700">Fila de aprovação SAC</div>
+            <span id="cen-aprov-total" style="font-size:12px;color:#666"></span>
+          </div>
+          <div id="cen-aprovacoes-lista" style="font-size:13px;color:#999">Carregando…</div>
         </div>
       </div>
 
@@ -9004,9 +9084,12 @@ function doLogout() {
   location.reload();
 }
 
-function navigate(page, el) {
-  // Acompanhamento foi unificado com banco-manifestacoes
-  if (page === 'acompanhamento') { page = 'banco-manifestacoes'; }
+function navigate(page, el, _opts) {
+  // Rotas unificadas na Central de Manifestações
+  if (page === 'acompanhamento' || page === 'banco-manifestacoes') {
+    page = 'central-sac';
+    if (typeof window.cenAba === 'function') setTimeout(()=>window.cenAba('banco', document.getElementById('mc-tab-banco')), 50);
+  }
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
   const pageEl = document.getElementById('page-' + page);
@@ -9015,6 +9098,7 @@ function navigate(page, el) {
   if (el) el.classList.add('active');
   if (page === 'biblioteca-fichas') loadBiblioteca(true);
   if (page === 'matriz-conhecimento') loadMatrizConhecimento();
+  if (page === 'central-sac' && typeof window.loadCentralSAC === 'function') window.loadCentralSAC();
   if (page === 'alimentacao' && typeof window.loadAlimentacao === 'function') window.loadAlimentacao();
   if (page === 'sugestoes-melhoria') {
     const _geralBtn = document.getElementById('cp-tab-btn-geral');
@@ -15642,14 +15726,14 @@ document.addEventListener('visibilitychange', () => {
     if (empresaOverride) filtros.empresa = empresaOverride;
 
     const def = CARD_FILTROS[cardKey];
-    if (!def) return navigate('banco-manifestacoes', document.querySelector('[onclick*=banco-manifestacoes]'));
+    if (!def) return navigate('central-sac', document.getElementById('sidebar-central-sac'));
 
     const filtroFinal = def(filtros);
 
     // Guardar filtro pendente antes de navegar
     window._bancoPendingFilter = filtroFinal;
 
-    navigate('banco-manifestacoes', document.querySelector('[onclick*=banco-manifestacoes]'));
+    navigate('central-sac', document.getElementById('sidebar-central-sac'));
   };
 
   // ──────────────────────────────────────────────────────────
@@ -22535,6 +22619,9 @@ async function mudarStatusMC(id, novoStatus) {
     if(!el) return;
     const p=String(u?.perfil||'').toUpperCase().replace(/\s+/g,'_');
     el.style.display=PERFIS_CENTRAL.includes(p)||PERFIS_CENTRAL.includes(u?.perfil||'')?'flex':'none';
+    // "Aprovadores e Competências" só para MASTER
+    const apAdmin=$('sidebar-aprovadores-admin');
+    if(apAdmin) apAdmin.style.display=(p==='MASTER'||p==='APROVADOR_MASTER')?'flex':'none';
   }
 
   function baseList(){return _cenScope==='todas'?_cenAll:_cenAll.filter(m=>m.mine||m.ext);}
@@ -22550,15 +22637,228 @@ async function mudarStatusMC(id, novoStatus) {
   }
 
   // ── abas ─────────────────────────────────────────────────────────────────
+  const _cenAbas = ['fila','banco','pendencias','aprovacoes','rcas','ind'];
   window.cenAba = function(id, btn){
-    ['fila','rcas','ind'].forEach(t=>{
+    _cenAbas.forEach(t=>{
       const tab=$('mc-tab-'+t), panel=$('mc-panel-'+t);
       if(tab) tab.classList.toggle('on',t===id);
       if(panel){panel.classList.toggle('on',t===id);panel.style.display=t===id?'flex':'none';}
     });
     if(id==='rcas') renderRCAs();
     if(id==='ind') renderIndicadores();
+    if(id==='banco') cenBancoInit();
+    if(id==='pendencias') cenPendenciasInit();
+    if(id==='aprovacoes') cenAprovacoesInit();
   };
+
+  // ── aba Banco ─────────────────────────────────────────────────────────────
+  let _cenBancoAll=[], _cenBancoFiltrado=[], _cenBancoPag=1, _cenBancoCarregado=false;
+  const _CEN_PG=20;
+  async function cenBancoInit(){
+    if(_cenBancoCarregado) return cenBancoRender();
+    $('cen-banco-tbody').innerHTML='<tr><td colspan="7" style="padding:24px;text-align:center;color:#999">Carregando…</td></tr>';
+    const [d, empD, setD] = await Promise.all([
+      api('/api/manifestacoes'),
+      api('/api/empresas').catch(()=>({sucesso:false})),
+      api('/api/setores').catch(()=>({sucesso:false}))
+    ]);
+    _cenBancoAll = d.sucesso ? (d.itens||[]) : [];
+    _cenBancoCarregado = true;
+    // Popular selects de empresa e setor
+    const empSel=$('cen-banco-empresa');
+    if(empSel){
+      const emps=[...new Set(_cenBancoAll.map(m=>m.EMPRESA_RECLAMADA||m.EMPRESA||'').filter(Boolean))].sort();
+      empSel.innerHTML='<option value="">Empresa</option>'+emps.map(e=>`<option value="${_esc(e)}">${_esc(e)}</option>`).join('');
+    }
+    const setorSel=$('cen-banco-setor');
+    if(setorSel && setD.sucesso){
+      const setus=(setD.itens||setD.setores||[]).map(s=>s.NOME||s.nome||s).filter(Boolean);
+      setorSel.innerHTML='<option value="">Setor</option>'+setus.map(s=>`<option value="${_esc(s)}">${_esc(s)}</option>`).join('');
+    }
+    cenBancoRenderCards();
+    cenBancoFiltrar();
+  }
+  function cenBancoRenderCards(){
+    const el=$('cen-banco-cards'); if(!el) return;
+    const all=_cenBancoAll;
+    const n=v=>String(v||'').toUpperCase();
+    const isAberto=m=>!['ENCERRADA','CONCLUÍDA','CONCLUIDA','CANCELADA','REJEITADA','FINALIZADA'].includes(n(m.STATUS));
+    const isAndamento=m=>{const sf=n(m.STATUS_FICHA),s=n(m.STATUS);return sf==='TRATATIVA_ANALISTA'||sf==='EM_ANALISE'||s==='EM_ANALISE'||s==='EM_ANDAMENTO';};
+    const isTratativa=m=>{const sf=n(m.STATUS_FICHA),s=n(m.STATUS);return sf==='TRATATIVA_SAC'||sf==='AGUARDANDO_SETOR'||sf==='AGUARDANDO_VALIDACAO_SAC'||sf==='AGUARDANDO_DEVOLUTIVA'||s==='AGUARDANDO_SETOR';};
+    const isAprov=m=>n(m.STATUS)==='AGUARDANDO_APROVAÇÃO'||n(m.STATUS_FICHA)==='AGUARDANDO_APROVACAO'||n(m.APROVACAO_NECESSARIA)==='SIM';
+    const isFinal=m=>['ENCERRADA','CONCLUÍDA','CONCLUIDA','FINALIZADA'].includes(n(m.STATUS));
+    const cards=[
+      {k:'todas',l:'TODAS',v:all.length,bg:'#fff',cl:'#1F1F1F'},
+      {k:'aberto',l:'EM ABERTO',v:all.filter(isAberto).length,bg:'#FEF3DC',cl:'#7A4C00'},
+      {k:'andamento',l:'EM ANDAMENTO',v:all.filter(isAndamento).length,bg:'#EAF0FB',cl:'#24508F'},
+      {k:'tratativa',l:'EM TRATATIVA',v:all.filter(isTratativa).length,bg:'#E6F2EA',cl:'#1A6632'},
+      {k:'aprovacao',l:'AG. APROVAÇÃO',v:all.filter(isAprov).length,bg:'#EEEAFA',cl:'#4F2D9A'},
+      {k:'finalizada',l:'FINALIZADAS',v:all.filter(isFinal).length,bg:'#F0F0F0',cl:'#545252'},
+    ];
+    el.innerHTML=cards.map(c=>`<button onclick="cenBancoSetCard('${c.k}')" id="cen-banco-card-${c.k}" style="background:${c.bg};border:1.5px solid #E4E4E4;border-radius:10px;padding:10px 14px;text-align:left;cursor:pointer;min-width:100px"><div style="font-size:11px;font-weight:700;letter-spacing:.05em;color:#888;margin-bottom:4px">${c.l}</div><div style="font-size:22px;font-weight:800;color:${c.cl};line-height:1">${c.v}</div></button>`).join('');
+  }
+  let _cenBancoCard='todas';
+  window.cenBancoSetCard=function(k){
+    _cenBancoCard=k;_cenBancoPag=1;
+    document.querySelectorAll('[id^=cen-banco-card-]').forEach(b=>b.style.outline=b.id.endsWith('-'+k)?'2px solid #1F1F1F':'none');
+    cenBancoFiltrar();
+  };
+  window.cenBancoFiltrar=function(){
+    const q=($('cen-banco-busca')||{}).value||'';
+    const st=($('cen-banco-status')||{}).value||'';
+    const tp=($('cen-banco-tipo')||{}).value||'';
+    const emp=($('cen-banco-empresa')||{}).value||'';
+    const set=($('cen-banco-setor')||{}).value||'';
+    const n=v=>String(v||'').toUpperCase();
+    let d=_cenBancoAll;
+    if(_cenBancoCard&&_cenBancoCard!=='todas'){
+      if(_cenBancoCard==='aberto') d=d.filter(m=>!['ENCERRADA','CONCLUÍDA','CONCLUIDA','CANCELADA','REJEITADA','FINALIZADA'].includes(n(m.STATUS)));
+      else if(_cenBancoCard==='andamento') d=d.filter(m=>n(m.STATUS_FICHA)==='TRATATIVA_ANALISTA'||n(m.STATUS_FICHA)==='EM_ANALISE'||n(m.STATUS)==='EM_ANDAMENTO');
+      else if(_cenBancoCard==='tratativa') d=d.filter(m=>n(m.STATUS_FICHA)==='TRATATIVA_SAC'||n(m.STATUS_FICHA)==='AGUARDANDO_SETOR'||n(m.STATUS)==='AGUARDANDO_SETOR');
+      else if(_cenBancoCard==='aprovacao') d=d.filter(m=>n(m.STATUS)==='AGUARDANDO_APROVAÇÃO'||n(m.STATUS_FICHA)==='AGUARDANDO_APROVACAO'||n(m.APROVACAO_NECESSARIA)==='SIM');
+      else if(_cenBancoCard==='finalizada') d=d.filter(m=>['ENCERRADA','CONCLUÍDA','CONCLUIDA','FINALIZADA'].includes(n(m.STATUS)));
+      else if(_cenBancoCard==='cancelada') d=d.filter(m=>['CANCELADA','REJEITADA'].includes(n(m.STATUS)));
+    }
+    if(st){
+      if(st==='aberto') d=d.filter(m=>!['ENCERRADA','CONCLUÍDA','CONCLUIDA','CANCELADA','REJEITADA','FINALIZADA'].includes(n(m.STATUS)));
+      else if(st==='andamento') d=d.filter(m=>n(m.STATUS_FICHA)==='EM_ANALISE'||n(m.STATUS)==='EM_ANDAMENTO');
+      else if(st==='tratativa') d=d.filter(m=>n(m.STATUS_FICHA)==='TRATATIVA_SAC'||n(m.STATUS)==='AGUARDANDO_SETOR');
+      else if(st==='aprovacao') d=d.filter(m=>n(m.STATUS)==='AGUARDANDO_APROVAÇÃO');
+      else if(st==='setor') d=d.filter(m=>n(m.STATUS)==='AGUARDANDO_SETOR'||n(m.STATUS_FICHA)==='AGUARDANDO_SETOR');
+      else if(st==='finalizada') d=d.filter(m=>['ENCERRADA','CONCLUÍDA','CONCLUIDA','FINALIZADA'].includes(n(m.STATUS)));
+      else if(st==='cancelada') d=d.filter(m=>['CANCELADA','REJEITADA'].includes(n(m.STATUS)));
+    }
+    if(tp) d=d.filter(m=>n(m.TIPO_MANIFESTACAO||m.TIPO||'')===n(tp));
+    if(emp) d=d.filter(m=>n(m.EMPRESA_RECLAMADA||m.EMPRESA||'')===n(emp));
+    if(set) d=d.filter(m=>n(m.SETOR_DESTINADO||m.SETOR_CONFIRMADO||m.SETOR||'').includes(n(set)));
+    if(q){const qn=q.toLowerCase();d=d.filter(m=>(m.PROTOCOLO||m.ID_MANIFESTACAO||'').toLowerCase().includes(qn)||(m.NOME_CLIENTE||m.CLIENTE||'').toLowerCase().includes(qn)||(m.DESCRICAO||m.MOTIVO||'').toLowerCase().includes(qn));}
+    _cenBancoFiltrado=d;
+    const limpar=$('cen-banco-limpar'); if(limpar) limpar.style.display=(q||st||tp||emp||set)?'':'none';
+    cenBancoRender();
+  };
+  window.cenBancoLimpar=function(){
+    ['cen-banco-busca','cen-banco-status','cen-banco-tipo','cen-banco-empresa','cen-banco-setor'].forEach(id=>{const el=$(id);if(el)el.value='';});
+    _cenBancoPag=1; cenBancoFiltrar();
+  };
+  function cenBancoRender(){
+    const tbody=$('cen-banco-tbody'); if(!tbody) return;
+    const d=_cenBancoFiltrado;
+    const info=$('cen-banco-info'); if(info) info.textContent=d.length+' resultado(s)';
+    if(!d.length){tbody.innerHTML='<tr><td colspan="7" style="padding:24px;text-align:center;color:#999">Nenhuma manifestação encontrada.</td></tr>';$('cen-banco-pag').innerHTML='';return;}
+    const totalPag=Math.ceil(d.length/_CEN_PG);
+    if(_cenBancoPag>totalPag) _cenBancoPag=1;
+    const page=d.slice((_cenBancoPag-1)*_CEN_PG,_cenBancoPag*_CEN_PG);
+    const stMap={'AGUARDANDO_APROVAÇÃO':'#4F2D9A','AGUARDANDO_SETOR':'#1A6632','EM_ANALISE':'#24508F','ENCERRADA':'#545252','CONCLUÍDA':'#545252','CONCLUIDA':'#545252','CANCELADA':'#888','REJEITADA':'#C70602','FINALIZADA':'#545252'};
+    tbody.innerHTML=page.map(m=>{
+      const id=m.ID_MANIFESTACAO||m.id||'';
+      const prot=m.PROTOCOLO||m.N_PROTOCOLO||id||'—';
+      const dt=m.DATA_ABERTURA||m.DATA||''; const dtF=dt?dt.slice(0,10):'—';
+      const cli=m.NOME_CLIENTE||m.CLIENTE||'—';
+      const tipo=m.TIPO_MANIFESTACAO||m.TIPO||'—';
+      const etapa=m.STATUS_FICHA||m.STATUS||'—';
+      const prazo=m.DATA_LIMITE||m.PRAZO||''; const prazoF=prazo?prazo.slice(0,10):'—';
+      const cl=stMap[etapa.toUpperCase()]||'#1F1F1F';
+      return `<tr style="border-bottom:1px solid #F4F4F4;cursor:pointer" onclick="cenBancoAbrirFicha('${_esc(id)}')">
+        <td style="padding:10px 12px;font-weight:700;color:#A80502;white-space:nowrap">${_esc(prot)}</td>
+        <td style="padding:10px 12px;white-space:nowrap;color:#666">${dtF}</td>
+        <td style="padding:10px 12px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_esc(cli)}</td>
+        <td style="padding:10px 12px;white-space:nowrap">${_esc(tipo)}</td>
+        <td style="padding:10px 12px"><span style="font-size:11px;font-weight:600;padding:3px 8px;border-radius:99px;background:${cl}22;color:${cl}">${_esc(etapa.replace(/_/g,' '))}</span></td>
+        <td style="padding:10px 12px;white-space:nowrap;color:${prazo&&new Date(prazo)<new Date()?'#C70602':'#666'}">${prazoF}</td>
+        <td style="padding:10px 12px"><button onclick="event.stopPropagation();cenBancoAbrirFicha('${_esc(id)}')" style="border:0;background:none;color:#A80502;cursor:pointer;font-size:12.5px;font-weight:600">Ver →</button></td>
+      </tr>`;
+    }).join('');
+    // Paginação
+    const pag=$('cen-banco-pag'); if(!pag) return;
+    const btns=[]; if(_cenBancoPag>1) btns.push(`<button class="page-btn" onclick="cenBancoIrPag(${_cenBancoPag-1})">←</button>`);
+    for(let p=Math.max(1,_cenBancoPag-2);p<=Math.min(totalPag,_cenBancoPag+2);p++) btns.push(`<button class="page-btn${p===_cenBancoPag?' active':''}" onclick="cenBancoIrPag(${p})">${p}</button>`);
+    if(_cenBancoPag<totalPag) btns.push(`<button class="page-btn" onclick="cenBancoIrPag(${_cenBancoPag+1})">→</button>`);
+    pag.innerHTML=btns.join('');
+  }
+  window.cenBancoIrPag=function(p){_cenBancoPag=p;cenBancoRender();};
+  window.cenBancoAbrirFicha=function(id){
+    // Seleciona na fila ou abre modal de ficha completa
+    const m=_cenAll.find(x=>(x.id||x.ID_MANIFESTACAO)===id)||_cenBancoAll.find(x=>(x.ID_MANIFESTACAO||x.id)===id);
+    if(m&&(m.id||m.ID_MANIFESTACAO)){cenAba('fila',document.getElementById('mc-tab-fila'));setTimeout(()=>window.cenSelecionarMan&&window.cenSelecionarMan(m),100);}
+  };
+  window.cenBancoExportarCSV=function(){
+    const cols=['PROTOCOLO','DATA_ABERTURA','NOME_CLIENTE','TIPO_MANIFESTACAO','STATUS','STATUS_FICHA','EMPRESA_RECLAMADA','SETOR_DESTINADO','DATA_LIMITE'];
+    const header=cols.join(';');
+    const rows=_cenBancoFiltrado.map(m=>cols.map(c=>'"'+(m[c]||'').toString().replace(/"/g,'""')+'"').join(';'));
+    const csv='﻿'+[header,...rows].join('\r\n');
+    const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+    a.download='manifestacoes_'+new Date().toISOString().slice(0,10)+'.csv';a.click();
+  };
+
+  // ── aba Pendências ────────────────────────────────────────────────────────
+  async function cenPendenciasInit(){
+    const el=$('cen-pendencias-lista'); if(!el) return;
+    el.innerHTML='<span style="color:#999">Carregando…</span>';
+    const u=s(); if(!u){el.innerHTML='<span style="color:#C70602">Usuário não autenticado.</span>';return;}
+    const d=await api('/api/manifestacoes');
+    if(!d.sucesso){el.innerHTML='<span style="color:#C70602">Erro ao carregar.</span>';return;}
+    const mans=d.itens||[];
+    const n=v=>String(v||'').toUpperCase();
+    // Pendências = manifestações que exigem ação do usuário atual
+    const perfil=(u.perfil||'').toUpperCase();
+    let pendentes=[];
+    if(perfil==='ANALISTA SAC'||perfil==='GESTOR SAC'||perfil==='MASTER'||perfil==='APROVADOR MASTER'){
+      pendentes=mans.filter(m=>{
+        const sf=n(m.STATUS_FICHA),s=n(m.STATUS);
+        return sf==='AGUARDANDO_ANALISE'||s==='AGUARDANDO_SAC'||sf==='AGUARDANDO_ANALISE_SAC'||s==='NOVA'||s==='ABERTA'||sf==='TRATATIVA_ANALISTA'||s==='EM_ANALISE'||(sf==='AGUARDANDO_VALIDACAO_SAC')||(s==='AGUARDANDO_APROVAÇÃO'&&(perfil==='APROVADOR MASTER'||perfil==='MASTER'));
+      });
+    } else if(perfil.includes('SETOR')){
+      pendentes=mans.filter(m=>n(m.STATUS)==='AGUARDANDO_SETOR'||n(m.STATUS_FICHA)==='AGUARDANDO_SETOR');
+    } else if(perfil.includes('APROVADOR')){
+      pendentes=mans.filter(m=>n(m.STATUS)==='AGUARDANDO_APROVAÇÃO'||n(m.STATUS_FICHA)==='AGUARDANDO_APROVACAO'||n(m.APROVACAO_NECESSARIA)==='SIM');
+    } else {
+      pendentes=mans.filter(m=>!['ENCERRADA','CONCLUÍDA','CONCLUIDA','CANCELADA','REJEITADA','FINALIZADA'].includes(n(m.STATUS)));
+    }
+    const badge=$('mc-badge-pendencias'); if(badge){badge.textContent=pendentes.length;badge.style.display=pendentes.length?'':'none';}
+    if(!pendentes.length){el.innerHTML='<div style="padding:20px;text-align:center;color:#999">Nenhuma pendência no momento.</div>';return;}
+    el.innerHTML=`<div style="margin-bottom:8px;font-size:12px;color:#666">${pendentes.length} manifestação(ões) requerem ação</div>`+
+      pendentes.map(m=>{
+        const id=m.ID_MANIFESTACAO||m.id||'';
+        const prot=m.PROTOCOLO||m.N_PROTOCOLO||id||'—';
+        const sf=m.STATUS_FICHA||m.STATUS||'—';
+        const cli=m.NOME_CLIENTE||m.CLIENTE||'—';
+        return `<div onclick="cenBancoAbrirFicha('${_esc(id)}')" style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border:1px solid #E4E4E4;border-radius:8px;margin-bottom:6px;cursor:pointer;background:#fff">
+          <div><div style="font-weight:700;color:#A80502;font-size:13px">${_esc(prot)}</div><div style="font-size:12px;color:#666">${_esc(cli)}</div></div>
+          <span style="font-size:11px;padding:3px 8px;background:#FEF3DC;color:#7A4C00;border-radius:99px;font-weight:600">${_esc(sf.replace(/_/g,' '))}</span>
+        </div>`;
+      }).join('');
+  }
+
+  // ── aba Aprovações ────────────────────────────────────────────────────────
+  async function cenAprovacoesInit(){
+    const el=$('cen-aprovacoes-lista'),tot=$('cen-aprov-total'); if(!el) return;
+    el.innerHTML='<span style="color:#999">Carregando…</span>';
+    const u=s(); if(!u) return;
+    const usr=u.usuario||u.email||'';
+    const d=await api('/api/aprovadores/'+encodeURIComponent(usr)+'/pendencias').catch(()=>({sucesso:false}));
+    if(!d.sucesso){
+      el.innerHTML='<div style="padding:20px;text-align:center;color:#999">Sem dados de aprovação para este perfil.</div>';
+      return;
+    }
+    const sac=d.sac||[];
+    const badge=$('mc-badge-aprovacoes-tab'); if(badge){badge.textContent=sac.length;badge.style.display=sac.length?'':'none';}
+    if(tot) tot.textContent=sac.length+' item(ns)';
+    if(!sac.length){el.innerHTML='<div style="padding:20px;text-align:center;color:#999">Nenhuma manifestação aguardando aprovação.</div>';return;}
+    el.innerHTML=sac.map(m=>{
+      const id=m.ID_MANIFESTACAO||m.id||'';
+      const prot=m.PROTOCOLO||m.N_PROTOCOLO||id||'—';
+      const cli=m.NOME_CLIENTE||m.CLIENTE||'—';
+      const desc=(m.DESCRICAO||m.MOTIVO||'').slice(0,80);
+      return `<div onclick="cenBancoAbrirFicha('${_esc(id)}')" style="display:flex;justify-content:space-between;align-items:flex-start;padding:12px 14px;border:1px solid #E4E4E4;border-radius:8px;margin-bottom:8px;cursor:pointer;background:#fff">
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:700;color:#A80502;font-size:13px">${_esc(prot)}</div>
+          <div style="font-size:12.5px;font-weight:600;margin-top:2px">${_esc(cli)}</div>
+          ${desc?`<div style="font-size:12px;color:#666;margin-top:3px">${_esc(desc)}${m.DESCRICAO&&m.DESCRICAO.length>80?'…':''}</div>`:''}
+        </div>
+        <span style="flex-shrink:0;margin-left:12px;font-size:11px;padding:3px 10px;background:#EEEAFA;color:#4F2D9A;border-radius:99px;font-weight:600;white-space:nowrap">Ag. aprovação</span>
+      </div>`;
+    }).join('');
+  }
 
   // ── carga principal ───────────────────────────────────────────────────────
   window.loadCentralSAC = async function(){
@@ -22568,14 +22868,33 @@ async function mudarStatusMC(id, novoStatus) {
     const btn=$('cen-btn-refresh'); if(btn){btn.disabled=true;btn.textContent='Atualizando…';}
     const nome=String(u.nome||u.usuario||'').trim().split(/\s+/)[0]||'—';
     const greet=$('cen-greet');
-    if(greet) greet.textContent='Olá, '+nome+' · SAC'+(u.empresa?' · '+u.empresa:'');
+    const perfil=(u.perfil||'').toUpperCase();
+    if(greet) greet.textContent='Olá, '+nome+' · '+((u.setor||u.empresa)?[u.setor,u.empresa].filter(Boolean).join(' · '):perfil);
 
     const d=await api('/api/manifestacoes');
     if(btn){btn.disabled=false;btn.textContent='↻ Atualizar';}
     if(!d.sucesso){_cenAll=[];_cenErroLista=true;}
     else{_cenErroLista=false;_cenAll=(d.itens||[]).map(normMan).filter(m=>m.id);}
+    // Invalidar cache do banco para forçar reload com dados frescos
+    _cenBancoCarregado=false;
+    _cenBancoAll=_cenAll.map(m=>({...m, ID_MANIFESTACAO:m.id||m.ID_MANIFESTACAO, PROTOCOLO:m.protocolo||m.PROTOCOLO, NOME_CLIENTE:m.cliente||m.NOME_CLIENTE, TIPO_MANIFESTACAO:m.tipo||m.TIPO_MANIFESTACAO, STATUS_FICHA:m.statusFicha||m.STATUS_FICHA, EMPRESA_RECLAMADA:m.empresa||m.EMPRESA_RECLAMADA, DATA_ABERTURA:m.dataAbertura||m.DATA_ABERTURA, DATA_LIMITE:m.dataLimite||m.DATA_LIMITE}));
+    _cenBancoFiltrado=[..._cenBancoAll];
+    _cenBancoCarregado=true;
     renderKpisGrupo();
     renderFilaGrupos();
+    // Atualizar badge no sidebar com contagem de aprovações pendentes
+    _cenAtualizarBadgeAprovacoes();
+  };
+
+  async function _cenAtualizarBadgeAprovacoes(){
+    const u=s(); if(!u) return;
+    const perfil=(u.perfil||'').toUpperCase();
+    if(!perfil.includes('APROVADOR')&&perfil!=='MASTER') return;
+    const usr=u.usuario||u.email||'';
+    const d=await api('/api/aprovadores/'+encodeURIComponent(usr)+'/pendencias').catch(()=>({sucesso:false}));
+    const total=(d.sucesso?((d.sac||[]).length+(d.rnc||[]).length):0);
+    const badge=$('badge-aprovacoes'); if(!badge) return;
+    badge.textContent=total; badge.style.display=total>0?'':'none';
   };
 
   function renderKpisGrupo(){
