@@ -14367,7 +14367,7 @@ document.addEventListener('visibilitychange', () => {
         }
       }
     } catch(_) {}
-    setUserChrome();applyRoleUI();
+    setUserChrome();applyRoleUI();if(typeof setupSidebarCentral==='function')setupSidebarCentral();
 
     // O carregamento inicial da Visão Geral acontecia antes do login.
     // Depois do login, os dados precisam ser carregados novamente.
@@ -22613,16 +22613,16 @@ async function mudarStatusMC(id, novoStatus) {
   // ── estado ────────────────────────────────────────────────────────────────
   let _cenAll=[], _cenAtual=null, _cenRawAtual=null, _cenScope='minhas', _cenKpi='', _selTok=0, _cerTok=0, _cenDevSug='', _cenErroLista=false;
 
-  function setupSidebarCentral(){
+  window.setupSidebarCentral = function setupSidebarCentral(){
     const u=s();
     const el=$('sidebar-central-sac');
-    if(!el) return;
+    // Central de Manifestações é visível para todos os usuários autenticados
+    if(el) el.style.display=u?'flex':'none';
+    // "Aprovadores e Competências" só para MASTER / APROVADOR MASTER
     const p=String(u?.perfil||'').toUpperCase().replace(/\s+/g,'_');
-    el.style.display=PERFIS_CENTRAL.includes(p)||PERFIS_CENTRAL.includes(u?.perfil||'')?'flex':'none';
-    // "Aprovadores e Competências" só para MASTER
     const apAdmin=$('sidebar-aprovadores-admin');
     if(apAdmin) apAdmin.style.display=(p==='MASTER'||p==='APROVADOR_MASTER')?'flex':'none';
-  }
+  };
 
   function baseList(){return _cenScope==='todas'?_cenAll:_cenAll.filter(m=>m.mine||m.ext);}
 
