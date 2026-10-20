@@ -22785,7 +22785,16 @@ async function mudarStatusMC(id, novoStatus) {
   }
   window.cenBancoIrPag=function(p){_cenBancoPag=p;cenBancoRender();};
   window.cenBancoAbrirFicha=function(id){
-    // Navega para Fila e abre a manifestação pelo ID
+    // Se item está na fila, seleciona lá. Se não, injeta nos dados e abre.
+    const inFila=_cenAll.find(m=>m.id===id);
+    if(!inFila){
+      const bancoItem=_cenBancoAll.find(m=>(m.ID_MANIFESTACAO||m.id)===id);
+      if(bancoItem&&!inFila){
+        // Injeta temporariamente na fila para que cenSelecionarMan encontre o base
+        const fake={id:id,cli:bancoItem.NOME_CLIENTE||bancoItem.CLIENTE||'—',motivo:bancoItem.TIPO_MANIFESTACAO||bancoItem.TIPO||'—',tipo:bancoItem.TIPO_MANIFESTACAO||'',ext:true,pri:'none',grupo:'banco',raw:bancoItem};
+        _cenAll.push(fake);
+      }
+    }
     cenAba('fila',document.getElementById('mc-tab-fila'));
     setTimeout(()=>{ if(typeof window.cenSelecionarMan==='function') window.cenSelecionarMan(id); },100);
   };
@@ -23238,6 +23247,11 @@ async function mudarStatusMC(id, novoStatus) {
     _cenAtual=id;
     const tk=++_selTok;
     renderFilaGrupos();
+    // Rola o card selecionado para visível na coluna da fila
+    requestAnimationFrame(()=>{const sel=document.querySelector('#cen-fila-grupos .mc-item.sel');if(sel)sel.scrollIntoView({behavior:'smooth',block:'nearest'});});
+    // Rola o painel de detalhe para o topo ao selecionar nova manifestação
+    const detEl=$('cen-detalhe')?.parentElement;
+    if(detEl) detEl.scrollTop=0;
     const base=_cenAll.find(m=>m.id===id);
     if(base) renderDetalhe(base.raw);
     else { $('cen-placeholder').style.display='none'; $('cen-detalhe').style.display='flex'; }
