@@ -13150,7 +13150,7 @@ var pageLoaders = window.pageLoaders = {
   'central-gerente': () => { if (typeof loadCentralGerente === 'function') loadCentralGerente(); },
   'gestao-diretoria': () => { if (typeof loadGestaoDiretoria === 'function') loadGestaoDiretoria(); },
   'similares': ()=>{},
-  'auditoria': auditLoad,
+  'auditoria': function(){ if(typeof auditLoad==='function') return auditLoad(); },
   'setores': loadSetores,
   'matriz': loadMatriz,
   'base-conhecimento': loadBaseConhecimento,
@@ -15295,9 +15295,8 @@ window.navigate = function(page, el) {
   // ──────────────────────────────────────────────────────────
   // INTERCEPTAR loadBancoManifestacoes PARA APLICAR FILTRO
   // ──────────────────────────────────────────────────────────
-  const _loadBancoOrig = window.loadBancoManifestacoes;
   window.loadBancoManifestacoes = async function () {
-    await _loadBancoOrig();
+    await loadBancoManifestacoes();
     aplicarFiltroPendente();
   };
   // Update pageLoaders to point to new wrapper so navigate() uses it
