@@ -14648,6 +14648,7 @@ window.navigate = function(page, el) {
     document.getElementById('modal-decisao-aprov').classList.remove('aprov-open');
     document.getElementById('modal-decisao-aprov').style.display='none';
   };
+  window.fecharDecisaoAprovacao = window.fecharDecisaoPanel;
 
   window.abrirDecisaoAprovacao = async function(idFila, idEntidade, tipo){
     document.getElementById('decisao-aprov-id').value=idFila;
@@ -15140,9 +15141,7 @@ window.navigate = function(page, el) {
   window.loadSetorV5=loadSetorV5;
   window.editarRncSetorV5=async function(id){try{const d=await json5('/api/rnc/'+encodeURIComponent(id));const r=d.rnc;const causa=prompt('Análise de causa / causa validada:',r.CAUSA||'');if(causa===null)return;const acao=prompt('Ação corretiva RNC:',r.ACAO_CORRETIVA||'');if(acao===null)return;await json5('/api/rnc/'+encodeURIComponent(id)+'/execucao',{method:'PATCH',body:JSON.stringify({CAUSA:causa,acaoCorretiva:acao,STATUS_ACAO:'EM ANDAMENTO'})});alert('RNC atualizada.');loadSetorV5()}catch(e){alert(e.message)}};
 
-  pageLoaders.representantes=loadRcaHome;
-  pageLoaders.usuarios=loadUsuariosV5;
-  pageLoaders['setor-responsavel']=loadSetorV5;
+  if(window.pageLoaders){ window.pageLoaders.representantes=loadRcaHome; window.pageLoaders.usuarios=loadUsuariosV5; window.pageLoaders['setor-responsavel']=loadSetorV5; }
 
 
   // ===== BOOT =====
