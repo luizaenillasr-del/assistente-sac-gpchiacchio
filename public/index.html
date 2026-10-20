@@ -2877,6 +2877,38 @@
             <label class="nm-label"><span>Código do cliente</span><input class="nm-input" placeholder="Ex.: CLI-00042" id="nm-cliente-cod"></label>
           </div>
         </div>
+        <!-- ORIGEM E PRIORIDADE -->
+        <div class="nm-card">
+          <div class="nm-card-title">Origem e Prioridade</div>
+          <div class="nm-grid-2">
+            <label class="nm-label">
+              <span>Origem da manifestação *</span>
+              <select class="nm-select" id="nm-origem">
+                <option value="">Selecionar...</option>
+                <option value="MANUAL">Manual — digitado pelo atendente</option>
+                <option value="WHATSAPP">WhatsApp</option>
+                <option value="EMAIL">E-mail</option>
+                <option value="PESQUISA_SATISFACAO">Pesquisa de Satisfação</option>
+                <option value="PORTAL_CLIENTE">Portal do Cliente</option>
+                <option value="TELEFONE">Telefone</option>
+                <option value="PRESENCIAL">Presencial</option>
+              </select>
+            </label>
+            <label class="nm-label">
+              <span>Prioridade</span>
+              <select class="nm-select" id="nm-prioridade">
+                <option value="NORMAL">Normal</option>
+                <option value="ALTA">Alta</option>
+                <option value="CRITICA">Crítica</option>
+                <option value="URGENTE">Urgente</option>
+              </select>
+            </label>
+          </div>
+          <div class="nm-grid-2">
+            <label class="nm-label"><span>Protocolo externo (se houver)</span><input class="nm-input" placeholder="Nº protocolo do cliente" id="nm-protocolo-externo"></label>
+            <label class="nm-label"><span>Vínculo (outra manifestação)</span><input class="nm-input" placeholder="MAN-0000" id="nm-vinculo-man"></label>
+          </div>
+        </div>
       </div>
 
       <!-- ETAPA 2: MANIFESTAÇÃO -->
@@ -2909,6 +2941,63 @@
             <label class="nm-label"><span>Atendente</span><input class="nm-input" readonly id="nm-atendente" style="background:#F7F7F7"></label>
           </div>
           <input class="nm-input" readonly id="nm-num" value="..." style="display:none">
+        </div>
+        <!-- classificação -->
+        <div class="nm-card">
+          <div class="nm-card-title">Classificação</div>
+          <div class="nm-grid-2">
+            <label class="nm-label">
+              <span>Categoria *</span>
+              <select class="nm-select" id="nm-categoria" onchange="nmUpdateMotivos()">
+                <option value="">Selecionar...</option>
+                <option value="QUALIDADE">Qualidade do produto</option>
+                <option value="PRAZO">Prazo / Entrega</option>
+                <option value="EMBALAGEM">Embalagem / Acondicionamento</option>
+                <option value="FATURAMENTO">Faturamento / Cobrança</option>
+                <option value="ATENDIMENTO">Atendimento</option>
+                <option value="LOGISTICA">Logística / Transporte</option>
+                <option value="ESPECIFICACAO">Especificação / Projeto</option>
+                <option value="OUTRO">Outro</option>
+              </select>
+            </label>
+            <label class="nm-label">
+              <span>Motivo</span>
+              <select class="nm-select" id="nm-motivo">
+                <option value="">Selecionar...</option>
+              </select>
+            </label>
+            <label class="nm-label">
+              <span>Severidade</span>
+              <select class="nm-select" id="nm-severidade">
+                <option value="BAIXA">Baixa</option>
+                <option value="MEDIA">Média</option>
+                <option value="ALTA">Alta</option>
+                <option value="CRITICA">Crítica</option>
+              </select>
+            </label>
+            <label class="nm-label">
+              <span>Setor responsável (inicial)</span>
+              <select class="nm-select" id="nm-setor-resp">
+                <option value="">Selecionar...</option>
+                <option value="QUALIDADE">Qualidade</option>
+                <option value="LOGISTICA">Logística</option>
+                <option value="COMERCIAL">Comercial</option>
+                <option value="PRODUCAO">Produção</option>
+                <option value="FINANCEIRO">Financeiro</option>
+                <option value="SAC">SAC</option>
+              </select>
+            </label>
+          </div>
+          <div style="display:flex;gap:20px;padding-top:4px">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12.5px;font-weight:600;color:#545252">
+              <input type="checkbox" id="nm-gera-rnc" style="width:15px;height:15px;accent-color:#C70602">
+              Gera RNC (Relatório de Não Conformidade)
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12.5px;font-weight:600;color:#545252">
+              <input type="checkbox" id="nm-analise-causa" style="width:15px;height:15px;accent-color:#C70602">
+              Requer análise de causa-raiz
+            </label>
+          </div>
         </div>
         <!-- descrição -->
         <div class="nm-card">
@@ -10299,7 +10388,8 @@ async function loadVisaoGeral() {
       _apiFetch('/api/reclamacoes', 30000).catch(() => ({ itens: [] }))
     ]);
 
-    _dashData.mans = manRes.itens || [];
+    const _EXCL_DASH = new Set(['EXCLUIDA','DELETADA','EXCLUIDO','DELETADO']);
+    _dashData.mans = (manRes.itens || []).filter(m => !_EXCL_DASH.has((m.STATUS||'').toUpperCase()));
     _dashData.recs = recRes.itens || [];
     window._dashData = _dashData; // mantém referência global sincronizada
 
@@ -10389,6 +10479,24 @@ function selectTipo(btn) {
   btn.classList.add('active');
   agendarAnalise();
   atualizarResumoFicha();
+}
+
+function nmUpdateMotivos() {
+  const cat = document.getElementById('nm-categoria')?.value;
+  const sel = document.getElementById('nm-motivo');
+  if (!sel) return;
+  const map = {
+    QUALIDADE: ['Produto fora de especificação','Defeito de fabricação','Contaminação','Dimensão incorreta','Material incorreto','Aparência/acabamento'],
+    PRAZO: ['Atraso na entrega','Entrega parcial','Cancelamento de pedido','Prazo de produção excedido'],
+    EMBALAGEM: ['Embalagem danificada','Embalagem incorreta','Quantidade incorreta','Rótulo incorreto'],
+    FATURAMENTO: ['Valor incorreto','Duplicidade de cobrança','NF com erro','Desconto não aplicado'],
+    ATENDIMENTO: ['Demora no atendimento','Informação incorreta','Falta de retorno','Descortesia'],
+    LOGISTICA: ['Transportadora','Endereço incorreto','Extravio','Avaria no transporte'],
+    ESPECIFICACAO: ['Projeto não atende requisito','Alteração não comunicada','Aprovação de amostra'],
+    OUTRO: ['Outro']
+  };
+  const opts = map[cat] || [];
+  sel.innerHTML = '<option value="">Selecionar...</option>' + opts.map(o => `<option value="${o}">${o}</option>`).join('');
 }
 
 function onCnpjChange() {
@@ -10855,6 +10963,16 @@ async function registrarManifestacao() {
         origemDocumento: _nmTipoImportacao || '',
         arquivoOrigem: window._documentoExtraido ? JSON.stringify(window._documentoExtraido) : '',
         statusFicha: document.getElementById('nm-status-ficha')?.value || 'ABERTA',
+        origem: document.getElementById('nm-origem')?.value || 'MANUAL',
+        prioridade: document.getElementById('nm-prioridade')?.value || 'NORMAL',
+        protocoloExterno: document.getElementById('nm-protocolo-externo')?.value || '',
+        vinculoManifestacao: document.getElementById('nm-vinculo-man')?.value || '',
+        categoria: document.getElementById('nm-categoria')?.value || '',
+        motivo: document.getElementById('nm-motivo')?.value || '',
+        severidade: document.getElementById('nm-severidade')?.value || 'MEDIA',
+        setorResponsavelInicial: document.getElementById('nm-setor-resp')?.value || '',
+        geraRNC: document.getElementById('nm-gera-rnc')?.checked ? 'SIM' : 'NÃO',
+        requerAnaliseCausa: document.getElementById('nm-analise-causa')?.checked ? 'SIM' : 'NÃO',
         procedente: document.getElementById('nm-procedente')?.value || '',
         procedenteJustificativa: document.getElementById('nm-procedente-justif')?.value || '',
         caminhoTratativa: document.getElementById('nm-caminho-tratativa')?.value || '',
@@ -10998,15 +11116,15 @@ async function _encSubmeter() {
       payload.acao = 'rejeitar';
       payload.MOTIVO_REJEICAO = document.getElementById('enc-motivo-rej')?.value || '';
     }
-    const r = await _apiFetch(`/api/manifestacoes/${encodeURIComponent(item.ID_MANIFESTACAO)}/ficha`, 15000, { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
-    const data = await r.json().catch(()=>({}));
-    if (r.ok && (data.sucesso !== false)) {
+    const data = await _apiFetch(`/api/manifestacoes/${encodeURIComponent(item.ID_MANIFESTACAO)}/ficha`, 15000, { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+    if (data && data.sucesso !== false) {
       document.getElementById('modal-enc-analista').style.display = 'none';
       if (msgEl) { msgEl.style.display='block'; msgEl.style.background='#E6F2EA'; msgEl.style.color='#1B7A3E'; msgEl.textContent='✓ Manifestação encaminhada com sucesso.'; }
       // recarrega lista em background
       if (typeof loadManifestacoes === 'function') setTimeout(loadManifestacoes, 800);
+      if (typeof loadPendencias === 'function') setTimeout(loadPendencias, 800);
     } else {
-      if (msgEl) { msgEl.style.display='block'; msgEl.style.background='#FEF2F2'; msgEl.style.color='#C70602'; msgEl.textContent='Erro: '+(data.erro||'Falha ao encaminhar.'); }
+      if (msgEl) { msgEl.style.display='block'; msgEl.style.background='#FEF2F2'; msgEl.style.color='#C70602'; msgEl.textContent='Erro: '+((data&&data.erro)||'Falha ao encaminhar.'); }
       btn.disabled = false;
       document.getElementById('enc-btn-label').textContent = origLabel;
     }
@@ -12289,7 +12407,10 @@ function filtrarBanco() {
 
 function renderBanco() {
   const search = (document.getElementById('banco-search')?.value || '').toLowerCase();
-  const base = _bancoDataFull.length ? _bancoDataFull : bancoData;
+  const _allData = _bancoDataFull.length ? _bancoDataFull : bancoData;
+  // Nunca exibir registros excluídos ou deletados
+  const _EXCLUIDOS = new Set(['EXCLUIDA','DELETADA','EXCLUIDO','DELETADO']);
+  const base = _allData.filter(m => !_EXCLUIDOS.has((m.STATUS||'').toUpperCase()) && !_EXCLUIDOS.has((m.ATIVO||'').toUpperCase()));
   let data = base;
 
   const _isFinalizada = m => { const s=(m.STATUS||'').toUpperCase(); return s.includes('ENCERR')||s.includes('FINALIZ')||s.includes('CONCLUÍD')||s.includes('CONCLUIDA'); };
@@ -12402,8 +12523,7 @@ function renderBanco() {
 }
 
 function navBancoPage(p) {
-  const total = Math.max(1, Math.ceil((_bancoDataFull.length || bancoData.length) / BANCO_PAGE_SIZE));
-  bancoPagina = Math.max(1, Math.min(p, total));
+  bancoPagina = Math.max(1, p);
   renderBanco();
 }
 
@@ -13434,7 +13554,8 @@ window.navigate = function(page, el) {
         jsonFetch('/api/reclamacoes'),
         jsonFetch('/api/pesquisas/resumo')
       ]);
-      _dashData.mans=results[0].status==='fulfilled'?(results[0].value.itens||[]):[];
+      const _EXCL2=new Set(['EXCLUIDA','DELETADA','EXCLUIDO','DELETADO']);
+      _dashData.mans=(results[0].status==='fulfilled'?(results[0].value.itens||[]):[]).filter(m=>!_EXCL2.has((m.STATUS||'').toUpperCase()));
       _dashData.recs=results[1].status==='fulfilled'?(results[1].value.itens||[]):[];
       // KPIs pesquisas de satisfação
       if(results[2].status==='fulfilled'){
@@ -26416,6 +26537,774 @@ window.gdDecidir=async function(id,decisao){
     await loadGestaoDiretoria();
   }catch(e){gdFlash('Erro: '+e.message);}
 };
+
+})();
+</script>
+
+<!-- ===== TELA DE TRATATIVA DE MANIFESTAÇÃO ===== -->
+<div id="page-tratativa" class="page" style="background:#F5F5F5;min-height:100vh;overflow-y:auto">
+
+  <!-- HEADER -->
+  <div style="position:sticky;top:0;z-index:50;background:#fff;border-bottom:1.5px solid #EBEBEB;padding:0 24px;height:56px;display:flex;align-items:center;gap:14px">
+    <button onclick="tratFechar()" style="border:0;background:none;cursor:pointer;display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:#C70602;font-family:inherit;padding:0">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Voltar
+    </button>
+    <div style="width:1px;height:22px;background:#EBEBEB"></div>
+    <div style="flex:1;min-width:0">
+      <div style="font-size:15px;font-weight:700;color:#1A1A1A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" id="trat-titulo">Tratativa</div>
+      <div style="font-size:11.5px;color:#8A8A8A;margin-top:1px" id="trat-subtitulo"></div>
+    </div>
+    <div id="trat-status-badge" style="font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px;background:#EFF6FF;color:#1D4ED8;white-space:nowrap"></div>
+    <div id="trat-sla-badge" style="font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;background:#D1FAE5;color:#065F46;white-space:nowrap;display:none"></div>
+    <button onclick="tratCarregar()" style="border:1px solid #EBEBEB;background:#fff;border-radius:7px;padding:6px 12px;cursor:pointer;font-size:12px;color:#545252;font-family:inherit">⟳ Atualizar</button>
+  </div>
+
+  <!-- BODY -->
+  <div style="max-width:1100px;margin:0 auto;padding:20px 20px 60px;display:flex;flex-direction:column;gap:16px" id="trat-body">
+    <div style="color:#A0A0A0;font-size:13px;padding:40px 0;text-align:center" id="trat-loading">Carregando...</div>
+  </div>
+</div>
+
+<style>
+.trat-sec{background:#fff;border:1px solid #EBEBEB;border-radius:12px;overflow:hidden}
+.trat-sec-h{padding:14px 18px;display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none;border-bottom:1px solid #F0F0F0}
+.trat-sec-h:hover{background:#FAFAFA}
+.trat-sec-badge{font-size:10px;font-weight:700;letter-spacing:.05em;padding:2px 8px;border-radius:10px;background:#F3F4F6;color:#6B7280}
+.trat-sec-badge.warn{background:#FEF3C7;color:#92400E}
+.trat-sec-badge.ok{background:#D1FAE5;color:#065F46}
+.trat-sec-badge.err{background:#FEE2E2;color:#DC2626}
+.trat-sec-body{padding:18px}
+.trat-field{margin-bottom:14px}
+.trat-field label{display:block;font-size:11px;font-weight:700;letter-spacing:.05em;color:#8A8A8A;margin-bottom:5px;text-transform:uppercase}
+.trat-field input,.trat-field textarea,.trat-field select{width:100%;border:1px solid #E4E4E4;border-radius:8px;padding:9px 12px;font-size:13px;font-family:inherit;color:#1A1A1A;background:#fff;outline:none;resize:vertical}
+.trat-field input:focus,.trat-field textarea:focus,.trat-field select:focus{border-color:#C70602}
+.trat-btn{border:0;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:opacity .15s}
+.trat-btn:hover{opacity:.88}
+.trat-btn-primary{background:#C70602;color:#fff}
+.trat-btn-secondary{background:#F3F4F6;color:#374151;border:1px solid #E4E4E4}
+.trat-btn-blue{background:#1D4ED8;color:#fff}
+.trat-btn-green{background:#059669;color:#fff}
+.trat-card{background:#FAFAFA;border:1px solid #E4E4E4;border-radius:8px;padding:12px 14px;font-size:13px}
+.trat-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:600px){.trat-grid-2{grid-template-columns:1fr}}
+.trat-tag{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;background:#EFF6FF;color:#1D4ED8}
+.trat-hist-row{padding:8px 0;border-bottom:1px solid #F0F0F0;font-size:12px;color:#545252;display:flex;gap:10px}
+.trat-hist-row:last-child{border-bottom:0}
+.trat-encamp-card{border:1px solid #E4E4E4;border-radius:8px;padding:12px;margin-bottom:8px;background:#fff}
+</style>
+
+<script>
+(function(){
+'use strict';
+
+var _tratId = null;
+var _tratData = null;
+
+function tok(){ return sessionStorage.getItem('sac-token'); }
+function hdr(){ return { 'Content-Type':'application/json', ...(tok()?{Authorization:'Bearer '+tok()}:{}) }; }
+async function apiFetch(url, opts){
+  const r = await fetch(url, { headers: hdr(), ...opts });
+  const j = await r.json().catch(()=>({sucesso:false,erro:'Resposta inválida'}));
+  if (!j.sucesso && !r.ok) throw new Error(j.erro||'Erro '+r.status);
+  return j;
+}
+
+function esc(s){ const d=document.createElement('div');d.textContent=s||'';return d.innerHTML; }
+function fmtData(s){ if(!s)return '—'; try{ return new Date(s).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}); }catch(e){ return s; } }
+function fmtMoeda(v){ if(!v&&v!==0)return '—'; return 'R$ '+(+v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+
+window.tratAbrir = function(id){
+  if (!id) return;
+  _tratId = id;
+  if (typeof navigate==='function') navigate('tratativa', null);
+  tratCarregar();
+};
+
+window.tratFechar = function(){
+  if (typeof navigate==='function') navigate('banco-manifestacoes', document.querySelector('[onclick*=banco-manifestacoes]'));
+};
+
+window.tratCarregar = async function(){
+  if (!_tratId) return;
+  const body = document.getElementById('trat-body');
+  const loading = document.getElementById('trat-loading');
+  if (!body) return;
+  body.innerHTML = '<div style="color:#A0A0A0;font-size:13px;padding:40px 0;text-align:center" id="trat-loading">Carregando...</div>';
+  try {
+    const resp = await apiFetch('/api/manifestacoes/'+encodeURIComponent(_tratId)+'/tratativa-completa');
+    _tratData = resp;
+    _renderTratativa(resp);
+  } catch(e){
+    body.innerHTML = '<div style="color:#C70602;font-size:13px;padding:40px 0;text-align:center">Erro ao carregar: '+esc(e.message)+'</div>';
+  }
+};
+
+function _renderTratativa(d){
+  const m = d.manifestacao || {};
+  const id = m.ID_MANIFESTACAO || _tratId;
+
+  // Header
+  document.getElementById('trat-titulo').textContent = 'Tratativa · '+id;
+  document.getElementById('trat-subtitulo').textContent = [m.EMPRESA_RECLAMANTE, m.EMPRESA_RECLAMADA, m.CONTATO||m.NOME_CONTATO].filter(Boolean).join(' · ');
+  const stBadge = document.getElementById('trat-status-badge');
+  const stInfo = typeof getStatusInfo==='function' ? getStatusInfo(m.STATUS||'') : {label:m.STATUS||'—',bg:'#EFF6FF',color:'#1D4ED8'};
+  stBadge.textContent = stInfo.label||m.STATUS||'—';
+  stBadge.style.background = stInfo.bg||'#EFF6FF';
+  stBadge.style.color = stInfo.color||'#1D4ED8';
+
+  const body = document.getElementById('trat-body');
+  body.innerHTML =
+    _secA(m) +
+    _secB(m) +
+    _secC(m) +
+    _secD(m, d.encaminhamentos||[]) +
+    _secI(m, d.tratasSetoriais||[]) +
+    _secE(m, d.execucoes||[]) +
+    _secF(m, d.impactoFinanceiro) +
+    _secG(m) +
+    _secH(m, d.devolutivas||[]) +
+    _secAudit(d.historico||[]);
+}
+
+// ── SEÇÃO A: Cabeçalho
+function _secA(m){
+  const id = m.ID_MANIFESTACAO||'—';
+  const campos = [
+    ['Protocolo', id],
+    ['Empresa reclamada', m.EMPRESA_RECLAMADA||'—'],
+    ['Empresa reclamante', m.EMPRESA_RECLAMANTE||'—'],
+    ['Cliente / Contato', m.CONTATO||m.NOME_CONTATO||'—'],
+    ['Status', m.STATUS||'—'],
+    ['Prioridade', m.PRIORIDADE||'—'],
+    ['Analista', m.RESPONSAVEL||m.USUARIO_CRIACAO||'—'],
+    ['SLA', (m.SLA_HORAS||72)+'h'],
+    ['Data abertura', fmtData(m.DATA_ABERTURA||m.DATA_REGISTRO)],
+    ['Data encerramento', fmtData(m.DATA_ENCERRAMENTO)],
+  ];
+  return `<div class="trat-sec">
+    <div class="trat-sec-h" onclick="tratToggleSec(this)">
+      <span style="font-size:11px;font-weight:700;color:#C70602;background:#FEE2E2;border-radius:6px;padding:2px 7px">A</span>
+      <span style="font-size:14px;font-weight:700;color:#1A1A1A;flex:1">Cabeçalho da Manifestação</span>
+      <span style="font-size:12px;color:#A0A0A0">▼</span>
+    </div>
+    <div class="trat-sec-body">
+      <div class="trat-grid-2">
+        ${campos.filter(([,v])=>v&&v!=='—').map(([k,v])=>`
+          <div style="display:flex;flex-direction:column;gap:2px">
+            <span style="font-size:10.5px;font-weight:700;letter-spacing:.05em;color:#8A8A8A;text-transform:uppercase">${esc(k)}</span>
+            <span style="font-size:13px;font-weight:600;color:#1A1A1A">${esc(v)}</span>
+          </div>`).join('')}
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── SEÇÃO B: Contexto da ocorrência
+function _secB(m){
+  const desc = m.DESCRICAO_ORIGINAL||m.DESCRICAO_MANIFESTACAO||m.DESCRICAO||'—';
+  const classif = [m.TIPO_CONFIRMADO||m.TIPO, m.CATEGORIA, m.SUBCATEGORIA, m.PRODUTO].filter(Boolean).join(' · ');
+  return `<div class="trat-sec">
+    <div class="trat-sec-h" onclick="tratToggleSec(this)">
+      <span style="font-size:11px;font-weight:700;color:#D97706;background:#FEF3C7;border-radius:6px;padding:2px 7px">B</span>
+      <span style="font-size:14px;font-weight:700;color:#1A1A1A;flex:1">Contexto da Ocorrência</span>
+      <span style="font-size:12px;color:#A0A0A0">▼</span>
+    </div>
+    <div class="trat-sec-body" style="display:flex;flex-direction:column;gap:12px">
+      <div>
+        <div style="font-size:11px;font-weight:700;letter-spacing:.05em;color:#8A8A8A;text-transform:uppercase;margin-bottom:6px">Relato original</div>
+        <div class="trat-card" style="white-space:pre-wrap;line-height:1.6">${esc(desc)}</div>
+      </div>
+      ${classif ? `<div>
+        <div style="font-size:11px;font-weight:700;letter-spacing:.05em;color:#8A8A8A;text-transform:uppercase;margin-bottom:6px">Classificação IA</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">${classif.split('·').map(c=>`<span class="trat-tag">${esc(c.trim())}</span>`).join('')}</div>
+      </div>` : ''}
+      ${(m.PRODUTO||m.LOTE||m.NFE) ? `<div class="trat-grid-2">
+        ${m.PRODUTO?`<div><span style="font-size:10.5px;font-weight:700;letter-spacing:.05em;color:#8A8A8A;text-transform:uppercase">Produto</span><div style="font-size:13px;font-weight:600;margin-top:3px">${esc(m.PRODUTO)}</div></div>`:''}
+        ${m.LOTE?`<div><span style="font-size:10.5px;font-weight:700;letter-spacing:.05em;color:#8A8A8A;text-transform:uppercase">Lote</span><div style="font-size:13px;font-weight:600;margin-top:3px">${esc(m.LOTE)}</div></div>`:''}
+        ${m.NFE?`<div><span style="font-size:10.5px;font-weight:700;letter-spacing:.05em;color:#8A8A8A;text-transform:uppercase">NF-e</span><div style="font-size:13px;font-weight:600;margin-top:3px">${esc(m.NFE)}</div></div>`:''}
+      </div>` : ''}
+      ${m.TRATATIVA_SUGERIDA ? `<div>
+        <div style="font-size:11px;font-weight:700;letter-spacing:.05em;color:#8A8A8A;text-transform:uppercase;margin-bottom:6px">Sugestão IA <span style="font-size:10px;font-weight:600;color:#7C3AED;background:#EDE9FE;padding:2px 8px;border-radius:10px;margin-left:6px">⚡ IA</span></div>
+        <div class="trat-card" style="white-space:pre-wrap;line-height:1.6;border-color:#DDD6FE">${esc(m.TRATATIVA_SUGERIDA)}</div>
+      </div>` : ''}
+    </div>
+  </div>`;
+}
+
+// ── SEÇÃO C: Diagnóstico e plano de ação
+function _secC(m){
+  const id = m.ID_MANIFESTACAO||'';
+  return `<div class="trat-sec">
+    <div class="trat-sec-h" onclick="tratToggleSec(this)">
+      <span style="font-size:11px;font-weight:700;color:#059669;background:#D1FAE5;border-radius:6px;padding:2px 7px">C</span>
+      <span style="font-size:14px;font-weight:700;color:#1A1A1A;flex:1">Diagnóstico e Plano de Ação</span>
+      <span style="font-size:12px;color:#A0A0A0">▼</span>
+    </div>
+    <div class="trat-sec-body" style="display:flex;flex-direction:column;gap:14px">
+      <div class="trat-field">
+        <label>Problema identificado</label>
+        <textarea id="trat-c-problema" rows="3" placeholder="Descreva o problema identificado...">${esc(m.CAUSA||m.CAUSA_CONFIRMADA||'')}</textarea>
+      </div>
+      <div class="trat-grid-2">
+        <div class="trat-field">
+          <label>Causa raiz</label>
+          <textarea id="trat-c-causa" rows="3" placeholder="Causa raiz identificada...">${esc(m.CAUSA_RAIZ||'')}</textarea>
+        </div>
+        <div class="trat-field">
+          <label>Ação de contenção</label>
+          <textarea id="trat-c-contencao" rows="3" placeholder="Ação de contenção imediata...">${esc(m.ACAO_CONTENCAO||'')}</textarea>
+        </div>
+      </div>
+      <div class="trat-field">
+        <label>Ação corretiva / plano de ação</label>
+        <textarea id="trat-c-plano" rows="4" placeholder="Descreva as ações corretivas planejadas...">${esc(m.TRATATIVA_REALIZADA||m.TRATATIVA_APLICAVEL||'')}</textarea>
+      </div>
+      <div id="trat-c-erro" style="color:#C70602;font-size:12px;display:none"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="trat-btn trat-btn-secondary" onclick="tratGerarDiagnosticoIA('${esc(id)}')">⚡ Sugerir com IA</button>
+        <button class="trat-btn trat-btn-primary" onclick="tratSalvarDiagnostico('${esc(id)}')">Salvar diagnóstico</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── SEÇÃO D: Encaminhamento aos setores
+function _secD(m, encaminhamentos){
+  const id = m.ID_MANIFESTACAO||'';
+  const encHtml = encaminhamentos.length ? encaminhamentos.map(e=>`
+    <div class="trat-encamp-card">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <span class="trat-tag">${esc(e.SETOR||'—')}</span>
+        <span style="font-size:11px;color:#${e.STATUS==='CONCLUIDO'?'059669':e.STATUS==='IMPEDIDO'?'C70602':'D97706'};font-weight:700">${esc(e.STATUS||'AGUARDANDO')}</span>
+        <span style="font-size:11px;color:#A0A0A0;margin-left:auto">${fmtData(e.DATA_ENCAMINHAMENTO)}</span>
+      </div>
+      ${e.RESPONSAVEL?`<div style="font-size:12px;color:#545252">Responsável: <strong>${esc(e.RESPONSAVEL)}</strong></div>`:''}
+      ${e.PRAZO?`<div style="font-size:12px;color:#545252;margin-top:3px">Prazo: <strong>${esc(e.PRAZO)}</strong></div>`:''}
+      ${e.INSTRUCOES?`<div style="font-size:12px;color:#545252;margin-top:6px;background:#F9FAFB;padding:8px;border-radius:6px">${esc(e.INSTRUCOES)}</div>`:''}
+    </div>`).join('') : '<div style="font-size:12px;color:#A0A0A0;padding:8px 0">Nenhum encaminhamento registrado.</div>';
+
+  return `<div class="trat-sec">
+    <div class="trat-sec-h" onclick="tratToggleSec(this)">
+      <span style="font-size:11px;font-weight:700;color:#1D4ED8;background:#DBEAFE;border-radius:6px;padding:2px 7px">D</span>
+      <span style="font-size:14px;font-weight:700;color:#1A1A1A;flex:1">Encaminhamento aos Setores</span>
+      <span style="font-size:11px;font-weight:600;background:#DBEAFE;color:#1D4ED8;padding:2px 8px;border-radius:10px">${encaminhamentos.length} encaminhamento(s)</span>
+      <span style="font-size:12px;color:#A0A0A0;margin-left:6px">▼</span>
+    </div>
+    <div class="trat-sec-body" style="display:flex;flex-direction:column;gap:14px">
+      <div>${encHtml}</div>
+      <details style="border:1px dashed #DBEAFE;border-radius:8px;padding:12px">
+        <summary style="font-size:13px;font-weight:700;cursor:pointer;color:#1D4ED8">+ Novo encaminhamento</summary>
+        <div style="margin-top:12px;display:flex;flex-direction:column;gap:10px">
+          <div class="trat-grid-2">
+            <div class="trat-field" style="margin:0">
+              <label>Setor</label>
+              <select id="trat-d-setor">
+                <option value="">Selecione...</option>
+                ${['SAC','Qualidade','Logística','Comercial','Produção','Financeiro','TI','Marketing','Diretoria','Representante'].map(s=>`<option>${s}</option>`).join('')}
+              </select>
+            </div>
+            <div class="trat-field" style="margin:0">
+              <label>Responsável</label>
+              <input id="trat-d-resp" type="text" placeholder="Nome do responsável">
+            </div>
+          </div>
+          <div class="trat-grid-2">
+            <div class="trat-field" style="margin:0">
+              <label>Prazo</label>
+              <input id="trat-d-prazo" type="date">
+            </div>
+          </div>
+          <div class="trat-field" style="margin:0">
+            <label>Instruções / checklist</label>
+            <textarea id="trat-d-instrucoes" rows="3" placeholder="Instruções para o setor..."></textarea>
+          </div>
+          <div id="trat-d-erro" style="color:#C70602;font-size:12px;display:none"></div>
+          <div style="display:flex;justify-content:flex-end">
+            <button class="trat-btn trat-btn-blue" onclick="tratEncaminhar('${esc(id)}')">Encaminhar setor →</button>
+          </div>
+        </div>
+      </details>
+    </div>
+  </div>`;
+}
+
+// ── SEÇÃO E: Acompanhamento da execução
+function _secE(m, execucoes){
+  const id = m.ID_MANIFESTACAO||'';
+  const execHtml = execucoes.length ? execucoes.map(e=>`
+    <div class="trat-card" style="margin-bottom:8px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <span style="font-size:12px;font-weight:700;color:#1A1A1A">${esc(e.ACAO||'—')}</span>
+        <span style="font-size:11px;font-weight:700;color:#${e.STATUS==='CONCLUIDA'?'059669':e.STATUS==='IMPEDIDA'?'C70602':'D97706'};margin-left:auto">${esc(e.STATUS||'—')}</span>
+      </div>
+      ${e.DESCRICAO?`<div style="font-size:12px;color:#545252;margin-bottom:4px">${esc(e.DESCRICAO)}</div>`:''}
+      ${e.IMPEDIMENTO?`<div style="font-size:11.5px;color:#C70602;background:#FEE2E2;padding:5px 8px;border-radius:5px;margin-top:4px">⚠ Impedimento: ${esc(e.IMPEDIMENTO)}</div>`:''}
+      <div style="font-size:11px;color:#A0A0A0;margin-top:6px">${fmtData(e.DATA_REGISTRO)} · ${esc(e.USUARIO||'—')}</div>
+    </div>`).join('') : '<div style="font-size:12px;color:#A0A0A0;padding:8px 0">Nenhuma execução registrada.</div>';
+
+  return `<div class="trat-sec">
+    <div class="trat-sec-h" onclick="tratToggleSec(this)">
+      <span style="font-size:11px;font-weight:700;color:#7C3AED;background:#EDE9FE;border-radius:6px;padding:2px 7px">E</span>
+      <span style="font-size:14px;font-weight:700;color:#1A1A1A;flex:1">Acompanhamento da Execução</span>
+      <span style="font-size:12px;color:#A0A0A0">▼</span>
+    </div>
+    <div class="trat-sec-body" style="display:flex;flex-direction:column;gap:14px">
+      <div>${execHtml}</div>
+      <details style="border:1px dashed #EDE9FE;border-radius:8px;padding:12px">
+        <summary style="font-size:13px;font-weight:700;cursor:pointer;color:#7C3AED">+ Registrar execução</summary>
+        <div style="margin-top:12px;display:flex;flex-direction:column;gap:10px">
+          <div class="trat-field" style="margin:0">
+            <label>Ação executada</label>
+            <input id="trat-e-acao" type="text" placeholder="Descreva a ação executada">
+          </div>
+          <div class="trat-field" style="margin:0">
+            <label>Detalhes / evidências</label>
+            <textarea id="trat-e-desc" rows="3" placeholder="Detalhes, link de evidência, observações..."></textarea>
+          </div>
+          <div class="trat-grid-2">
+            <div class="trat-field" style="margin:0">
+              <label>Status</label>
+              <select id="trat-e-status">
+                <option value="EM ANDAMENTO">Em andamento</option>
+                <option value="CONCLUIDA">Concluída</option>
+                <option value="IMPEDIDA">Impedida</option>
+              </select>
+            </div>
+          </div>
+          <div class="trat-field" style="margin:0">
+            <label>Impedimento (se houver)</label>
+            <input id="trat-e-impedimento" type="text" placeholder="Descreva o impedimento...">
+          </div>
+          <div id="trat-e-erro" style="color:#C70602;font-size:12px;display:none"></div>
+          <div style="display:flex;justify-content:flex-end">
+            <button class="trat-btn" style="background:#7C3AED;color:#fff" onclick="tratSalvarExecucao('${esc(id)}')">Registrar execução</button>
+          </div>
+        </div>
+      </details>
+    </div>
+  </div>`;
+}
+
+// ── SEÇÃO F: Impacto financeiro
+function _secF(m, impacto){
+  const id = m.ID_MANIFESTACAO||'';
+  const i = impacto||{};
+  return `<div class="trat-sec">
+    <div class="trat-sec-h" onclick="tratToggleSec(this)">
+      <span style="font-size:11px;font-weight:700;color:#B45309;background:#FEF3C7;border-radius:6px;padding:2px 7px">F</span>
+      <span style="font-size:14px;font-weight:700;color:#1A1A1A;flex:1">Impacto e Prejuízo Financeiro</span>
+      <span style="font-size:12px;color:#A0A0A0">▼</span>
+    </div>
+    <div class="trat-sec-body" style="display:flex;flex-direction:column;gap:14px">
+      <div class="trat-grid-2">
+        <div style="background:#FEF3C7;border-radius:8px;padding:14px">
+          <div style="font-size:11px;font-weight:700;letter-spacing:.05em;color:#92400E;text-transform:uppercase;margin-bottom:10px">Estimado (inicial)</div>
+          <div class="trat-field" style="margin-bottom:10px">
+            <label>Valor estimado (R$)</label>
+            <input id="trat-f-v-est" type="number" step="0.01" placeholder="0,00" value="${esc(i.VALOR_ESTIMADO||'')}">
+          </div>
+          <div class="trat-field" style="margin:0">
+            <label>Categoria</label>
+            <select id="trat-f-cat-est">
+              <option value="">Selecione...</option>
+              ${['Devolução de produto','Troca de produto','Desconto concedido','Crédito ao cliente','Frete de devolução','Perda de venda','Outros'].map(c=>`<option ${i.CATEGORIA_ESTIMADA===c?'selected':''}>${c}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div style="background:#D1FAE5;border-radius:8px;padding:14px">
+          <div style="font-size:11px;font-weight:700;letter-spacing:.05em;color:#065F46;text-transform:uppercase;margin-bottom:10px">Confirmado (final)</div>
+          <div class="trat-field" style="margin-bottom:10px">
+            <label>Valor confirmado (R$)</label>
+            <input id="trat-f-v-conf" type="number" step="0.01" placeholder="0,00" value="${esc(i.VALOR_CONFIRMADO||'')}">
+          </div>
+          <div class="trat-field" style="margin:0">
+            <label>Categoria</label>
+            <select id="trat-f-cat-conf">
+              <option value="">Selecione...</option>
+              ${['Devolução de produto','Troca de produto','Desconto concedido','Crédito ao cliente','Frete de devolução','Perda de venda','Outros'].map(c=>`<option ${i.CATEGORIA_CONFIRMADA===c?'selected':''}>${c}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="trat-field" style="margin:0">
+        <label>Observações</label>
+        <textarea id="trat-f-obs" rows="2" placeholder="Detalhes do impacto financeiro...">${esc(i.OBSERVACOES||'')}</textarea>
+      </div>
+      <div id="trat-f-erro" style="color:#C70602;font-size:12px;display:none"></div>
+      <div style="display:flex;justify-content:flex-end">
+        <button class="trat-btn trat-btn-primary" onclick="tratSalvarImpacto('${esc(id)}')">Salvar impacto financeiro</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── SEÇÃO G: Validação do SAC
+function _secG(m){
+  const id = m.ID_MANIFESTACAO||'';
+  const validado = m.VALIDACAO_SAC;
+  const cor = validado==='APROVADA' ? '#059669' : validado==='REJEITADA' ? '#C70602' : '#D97706';
+  const bgCor = validado==='APROVADA' ? '#D1FAE5' : validado==='REJEITADA' ? '#FEE2E2' : '#FEF3C7';
+  return `<div class="trat-sec">
+    <div class="trat-sec-h" onclick="tratToggleSec(this)">
+      <span style="font-size:11px;font-weight:700;color:#C70602;background:#FEE2E2;border-radius:6px;padding:2px 7px">G</span>
+      <span style="font-size:14px;font-weight:700;color:#1A1A1A;flex:1">Validação do SAC</span>
+      ${validado ? `<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;background:${bgCor};color:${cor}">${esc(validado)}</span>` : ''}
+      <span style="font-size:12px;color:#A0A0A0;margin-left:6px">▼</span>
+    </div>
+    <div class="trat-sec-body" style="display:flex;flex-direction:column;gap:14px">
+      ${validado ? `<div class="trat-card" style="background:${bgCor};border-color:${cor}">
+        <div style="font-size:13px;font-weight:700;color:${cor}">Validação: ${esc(validado)}</div>
+        ${m.VALIDACAO_SAC_OBS ? `<div style="font-size:12px;color:#545252;margin-top:6px">${esc(m.VALIDACAO_SAC_OBS)}</div>` : ''}
+        <div style="font-size:11px;color:#A0A0A0;margin-top:4px">${fmtData(m.VALIDACAO_SAC_DATA)} · ${esc(m.VALIDACAO_SAC_USUARIO||'—')}</div>
+      </div>` : '<div style="font-size:12px;color:#A0A0A0">Aguardando validação do SAC.</div>'}
+      <div class="trat-field" style="margin:0">
+        <label>Observações da validação</label>
+        <textarea id="trat-g-obs" rows="3" placeholder="Justificativa ou observações...">${esc(m.VALIDACAO_SAC_OBS||'')}</textarea>
+      </div>
+      <div id="trat-g-erro" style="color:#C70602;font-size:12px;display:none"></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="trat-btn trat-btn-green" onclick="tratValidarSAC('${esc(id)}','APROVADA')">✓ Aprovar tratativa</button>
+        <button class="trat-btn" style="background:#F59E0B;color:#fff" onclick="tratValidarSAC('${esc(id)}','SOLICITAR_COMPLEMENTO')">↩ Solicitar complemento</button>
+        <button class="trat-btn trat-btn-secondary" style="border-color:#C70602;color:#C70602" onclick="tratValidarSAC('${esc(id)}','REJEITADA')">✗ Rejeitar</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── SEÇÃO H: Devolutiva ao cliente
+function _secH(m, devolutivas){
+  const id = m.ID_MANIFESTACAO||'';
+  const devAtual = devolutivas.slice(-1)[0]||null;
+  const txtDevolutiva = m.DEVOLUTIVA_FINAL||devAtual?.VERSAO_FINAL||devAtual?.TEXTO_GERADO||'';
+  const statusDev = m.STATUS_DEVOLUTIVA||'';
+  const aprovada = statusDev==='APROVADA'||statusDev==='ENVIADA';
+  const enviada = statusDev==='ENVIADA';
+
+  return `<div class="trat-sec">
+    <div class="trat-sec-h" onclick="tratToggleSec(this)">
+      <span style="font-size:11px;font-weight:700;color:#1D4ED8;background:#DBEAFE;border-radius:6px;padding:2px 7px">H</span>
+      <span style="font-size:14px;font-weight:700;color:#1A1A1A;flex:1">Devolutiva ao Cliente</span>
+      ${enviada ? '<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;background:#D1FAE5;color:#065F46">ENVIADA</span>' : aprovada ? '<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;background:#DBEAFE;color:#1D4ED8">APROVADA</span>' : ''}
+      <span style="font-size:12px;color:#A0A0A0;margin-left:6px">▼</span>
+    </div>
+    <div class="trat-sec-body" style="display:flex;flex-direction:column;gap:14px">
+      ${enviada ? `<div class="trat-card" style="background:#D1FAE5;border-color:#059669">
+        <div style="font-size:12px;font-weight:700;color:#059669;margin-bottom:8px">✓ Devolutiva enviada ao cliente</div>
+        <div style="white-space:pre-wrap;font-size:13px;line-height:1.6;color:#1A1A1A">${esc(m.DEVOLUTIVA_ENVIADA||txtDevolutiva)}</div>
+      </div>` : ''}
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        ${!enviada ? `<button class="trat-btn" style="background:#7C3AED;color:#fff" onclick="tratGerarDevolutiva('${esc(id)}')">⚡ Gerar com IA</button>` : ''}
+      </div>
+      ${!enviada ? `<div class="trat-field" style="margin:0">
+        <label>Texto da devolutiva ${aprovada?'<span style="font-size:10px;font-weight:700;color:#059669;background:#D1FAE5;padding:2px 6px;border-radius:8px;margin-left:4px">APROVADA</span>':''}</label>
+        <textarea id="trat-h-texto" rows="8" placeholder="Texto da devolutiva ao cliente..." ${enviada?'readonly':''}>${esc(txtDevolutiva)}</textarea>
+      </div>
+      <div id="trat-h-erro" style="color:#C70602;font-size:12px;display:none"></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        ${!aprovada ? `<button class="trat-btn trat-btn-green" onclick="tratAprovarDevolutiva('${esc(id)}')">✓ Aprovar devolutiva</button>` : ''}
+        ${aprovada ? `<button class="trat-btn trat-btn-blue" onclick="tratEnviarDevolutiva('${esc(id)}')">📤 Marcar como enviada ao cliente</button>` : ''}
+      </div>` : ''}
+    </div>
+  </div>`;
+}
+
+// ── SEÇÃO AUDITORIA
+// ── SEÇÃO I: Tratativas por Setor
+function _secI(m, tratsSetoriais){
+  const id = m.ID_MANIFESTACAO || _tratId;
+  const setorOpts = ['QUALIDADE','LOGISTICA','COMERCIAL','PRODUCAO','FINANCEIRO','SAC'].map(s=>`<option value="${s}">${s}</option>`).join('');
+  const statusBadge = st => {
+    const map = {EM_ANDAMENTO:'background:#FEF3C7;color:#92400E',CONCLUIDA:'background:#D1FAE5;color:#065F46',CANCELADA:'background:#FEE2E2;color:#DC2626'};
+    return `<span style="font-size:11px;padding:2px 8px;border-radius:10px;${map[st]||'background:#F3F4F6;color:#6B7280'}">${st||'—'}</span>`;
+  };
+  const lista = tratsSetoriais.length ? tratsSetoriais.map(t=>`
+    <div style="border:1px solid #EBEBEB;border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font-size:11px;font-weight:700;background:#EDE9FE;color:#6D28D9;padding:2px 8px;border-radius:6px">${esc(t.SETOR||'—')}</span>
+        ${statusBadge(t.STATUS)}
+        <span style="font-size:11px;color:#8A8A8A;margin-left:auto">${fmtData(t.DATA_EXECUCAO||t.CRIADO_EM)}</span>
+      </div>
+      <div style="font-size:13px;font-weight:600;color:#1A1A1A">${esc(t.ACAO||'—')}</div>
+      ${t.RESULTADO?`<div style="font-size:12.5px;color:#545252">${esc(t.RESULTADO)}</div>`:''}
+      <div style="font-size:11.5px;color:#A0A0A0">Responsável: ${esc(t.RESPONSAVEL||'—')}</div>
+      ${t.STATUS!=='CONCLUIDA'?`<button onclick="tratFinalizarTratativaSetorial('${esc(t.ID_TRATATIVA)}','${esc(id)}')" style="align-self:flex-start;height:28px;border:1px solid #10B981;background:#D1FAE5;color:#065F46;border-radius:7px;padding:0 10px;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit">Marcar concluída</button>`:''}
+    </div>`).join('') : '<div style="color:#A0A0A0;font-size:13px;text-align:center;padding:20px 0">Nenhuma tratativa setorial registrada.</div>';
+  return `<div class="trat-sec">
+    <div class="trat-sec-h" onclick="tratToggleSec(this)">
+      <span style="font-size:11px;font-weight:700;color:#7C3AED;background:#EDE9FE;border-radius:6px;padding:2px 7px">I</span>
+      <span style="font-size:14px;font-weight:700;color:#1A1A1A;flex:1">Tratativas por Setor</span>
+      <span class="trat-sec-badge ${tratsSetoriais.filter(t=>t.STATUS==='EM_ANDAMENTO').length?'warn':tratsSetoriais.length?'ok':''}">${tratsSetoriais.length} tratativa(s)</span>
+      <span style="font-size:12px;color:#A0A0A0;margin-left:6px">▼</span>
+    </div>
+    <div class="trat-sec-body" style="display:flex;flex-direction:column;gap:10px">
+      ${lista}
+      <details style="margin-top:8px">
+        <summary style="font-size:12.5px;font-weight:700;cursor:pointer;color:#7C3AED;list-style:none;display:flex;align-items:center;gap:6px">
+          <span>+ Registrar nova tratativa setorial</span>
+        </summary>
+        <div style="margin-top:12px;border:1px dashed #C4B5FD;border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:#545252">Setor
+              <select id="trat-i-setor" class="nm-select" style="height:36px">${setorOpts}</select>
+            </label>
+            <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:#545252">Responsável
+              <input id="trat-i-resp" class="nm-input" style="height:36px" placeholder="Nome do responsável">
+            </label>
+          </div>
+          <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:#545252">Ação realizada *
+            <textarea id="trat-i-acao" class="nm-textarea" rows="2" placeholder="Descreva a ação realizada pelo setor..."></textarea>
+          </label>
+          <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:#545252">Resultado
+            <textarea id="trat-i-resultado" class="nm-textarea" rows="2" placeholder="Resultado obtido..."></textarea>
+          </label>
+          <div style="display:flex;gap:8px">
+            <button onclick="tratRegistrarSetorial('${esc(id)}')" style="height:36px;background:#7C3AED;color:#fff;border:0;border-radius:8px;padding:0 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Registrar</button>
+          </div>
+        </div>
+      </details>
+    </div>
+  </div>`;
+}
+
+function _secAudit(historico){
+  if (!historico.length) return '';
+  const rows = historico.slice(-20).reverse().map(h=>`
+    <div class="trat-hist-row">
+      <div style="color:#A0A0A0;white-space:nowrap;flex-shrink:0">${fmtData(h.DATA_HORA||h.DATA)}</div>
+      <div style="flex:1;min-width:0">
+        <span style="font-weight:600;color:#1A1A1A">${esc(h.USUARIO||'sistema')}</span>
+        <span style="color:#8A8A8A;margin:0 4px">—</span>
+        <span>${esc(h.ACAO||'—')}</span>
+        ${h.VALOR_NOVO?`<div style="font-size:11px;color:#6B7280;margin-top:2px">${esc(typeof h.VALOR_NOVO==='object'?JSON.stringify(h.VALOR_NOVO):h.VALOR_NOVO).slice(0,120)}</div>`:''}
+      </div>
+    </div>`).join('');
+  return `<div class="trat-sec">
+    <div class="trat-sec-h" onclick="tratToggleSec(this)">
+      <span style="font-size:11px;font-weight:700;color:#6B7280;background:#F3F4F6;border-radius:6px;padding:2px 7px">⟳</span>
+      <span style="font-size:14px;font-weight:700;color:#1A1A1A;flex:1">Trilha de Auditoria</span>
+      <span style="font-size:11px;font-weight:600;background:#F3F4F6;color:#6B7280;padding:2px 8px;border-radius:10px">${historico.length} registro(s)</span>
+      <span style="font-size:12px;color:#A0A0A0;margin-left:6px">▼</span>
+    </div>
+    <div class="trat-sec-body">${rows}</div>
+  </div>`;
+}
+
+// ── TOGGLE seção
+window.tratToggleSec = function(header){
+  const body = header.nextElementSibling;
+  if (!body) return;
+  const isOpen = body.style.display!=='none';
+  body.style.display = isOpen ? 'none' : '';
+  const arrow = header.querySelector('span:last-child');
+  if (arrow && (arrow.textContent==='▼'||arrow.textContent==='▲')) arrow.textContent = isOpen ? '▲' : '▼';
+};
+
+// ── AÇÕES
+
+window.tratSalvarDiagnostico = async function(id){
+  const problema = document.getElementById('trat-c-problema')?.value||'';
+  const plano = document.getElementById('trat-c-plano')?.value||'';
+  const causa = document.getElementById('trat-c-causa')?.value||'';
+  const contencao = document.getElementById('trat-c-contencao')?.value||'';
+  const erroEl = document.getElementById('trat-c-erro');
+  try {
+    await apiFetch('/api/manifestacoes/'+encodeURIComponent(id), {
+      method:'PUT',
+      body: JSON.stringify({ tratativa: plano })
+    });
+    erroEl.style.display='none';
+    await tratCarregar();
+  } catch(e){
+    erroEl.textContent=e.message; erroEl.style.display='';
+  }
+};
+
+window.tratGerarDiagnosticoIA = async function(id){
+  const erroEl = document.getElementById('trat-c-erro');
+  const btn = event.target;
+  const orig = btn.textContent;
+  btn.textContent='Gerando...'; btn.disabled=true;
+  try {
+    const resp = await apiFetch('/api/manifestacoes/'+encodeURIComponent(id)+'/tratativa/gerar', { method:'POST', body:'{}' });
+    if (resp.tratativa?.sugestao) {
+      const el = document.getElementById('trat-c-plano');
+      if (el) el.value = resp.tratativa.sugestao;
+    }
+    erroEl.style.display='none';
+  } catch(e){
+    erroEl.textContent='IA indisponível: '+e.message; erroEl.style.display='';
+  } finally { btn.textContent=orig; btn.disabled=false; }
+};
+
+window.tratRegistrarSetorial = async function(id){
+  const setor = document.getElementById('trat-i-setor')?.value||'';
+  const acao = document.getElementById('trat-i-acao')?.value||'';
+  const resultado = document.getElementById('trat-i-resultado')?.value||'';
+  const resp = document.getElementById('trat-i-resp')?.value||'';
+  if (!acao.trim()){ alert('Informe a ação realizada.'); return; }
+  try {
+    await apiFetch('/api/manifestacoes/'+encodeURIComponent(id)+'/tratativas-setoriais', {
+      method:'POST',
+      body: JSON.stringify({ setor, acao, resultado, responsavel:resp, status:'EM_ANDAMENTO' })
+    });
+    await tratCarregar();
+  } catch(e){ alert('Erro: '+e.message); }
+};
+
+window.tratFinalizarTratativaSetorial = async function(idTrat, idMan){
+  if (!confirm('Marcar esta tratativa como concluída?')) return;
+  try {
+    await apiFetch('/api/manifestacoes/'+encodeURIComponent(idMan)+'/tratativas-setoriais/'+encodeURIComponent(idTrat), {
+      method:'PUT',
+      body: JSON.stringify({ STATUS:'CONCLUIDA', DATA_CONCLUSAO: new Date().toISOString() })
+    });
+    await tratCarregar();
+  } catch(e){ alert('Erro: '+e.message); }
+};
+
+window.tratEncaminhar = async function(id){
+  const setor = document.getElementById('trat-d-setor')?.value||'';
+  const resp = document.getElementById('trat-d-resp')?.value||'';
+  const prazo = document.getElementById('trat-d-prazo')?.value||'';
+  const instrucoes = document.getElementById('trat-d-instrucoes')?.value||'';
+  const erroEl = document.getElementById('trat-d-erro');
+  if (!setor){ erroEl.textContent='Selecione um setor.'; erroEl.style.display=''; return; }
+  try {
+    await apiFetch('/api/manifestacoes/'+encodeURIComponent(id)+'/encaminhamentos', {
+      method:'POST',
+      body: JSON.stringify({ setor, responsavel:resp, prazo, instrucoes })
+    });
+    erroEl.style.display='none';
+    await tratCarregar();
+  } catch(e){ erroEl.textContent=e.message; erroEl.style.display=''; }
+};
+
+window.tratSalvarExecucao = async function(id){
+  const acao = document.getElementById('trat-e-acao')?.value||'';
+  const desc = document.getElementById('trat-e-desc')?.value||'';
+  const status = document.getElementById('trat-e-status')?.value||'EM ANDAMENTO';
+  const impedimento = document.getElementById('trat-e-impedimento')?.value||'';
+  const erroEl = document.getElementById('trat-e-erro');
+  if (!acao){ erroEl.textContent='Informe a ação executada.'; erroEl.style.display=''; return; }
+  try {
+    await apiFetch('/api/manifestacoes/'+encodeURIComponent(id)+'/execucao', {
+      method:'POST',
+      body: JSON.stringify({ acao, descricao:desc, status, impedimento })
+    });
+    erroEl.style.display='none';
+    await tratCarregar();
+  } catch(e){ erroEl.textContent=e.message; erroEl.style.display=''; }
+};
+
+window.tratSalvarImpacto = async function(id){
+  const vEst = document.getElementById('trat-f-v-est')?.value||'';
+  const catEst = document.getElementById('trat-f-cat-est')?.value||'';
+  const vConf = document.getElementById('trat-f-v-conf')?.value||'';
+  const catConf = document.getElementById('trat-f-cat-conf')?.value||'';
+  const obs = document.getElementById('trat-f-obs')?.value||'';
+  const erroEl = document.getElementById('trat-f-erro');
+  try {
+    await apiFetch('/api/manifestacoes/'+encodeURIComponent(id)+'/impacto-financeiro', {
+      method:'PUT',
+      body: JSON.stringify({ valorEstimado:vEst, categoriaEstimada:catEst, valorConfirmado:vConf, categoriaConfirmada:catConf, observacoes:obs })
+    });
+    erroEl.style.display='none';
+    await tratCarregar();
+  } catch(e){ erroEl.textContent=e.message; erroEl.style.display=''; }
+};
+
+window.tratValidarSAC = async function(id, decisao){
+  const obs = document.getElementById('trat-g-obs')?.value||'';
+  const erroEl = document.getElementById('trat-g-erro');
+  try {
+    await apiFetch('/api/manifestacoes/'+encodeURIComponent(id)+'/validacao-sac', {
+      method:'POST',
+      body: JSON.stringify({ decisao, observacoes:obs })
+    });
+    erroEl.style.display='none';
+    await tratCarregar();
+  } catch(e){ erroEl.textContent=e.message; erroEl.style.display=''; }
+};
+
+window.tratGerarDevolutiva = async function(id){
+  const erroEl = document.getElementById('trat-h-erro');
+  const btn = event.target;
+  const orig = btn.textContent;
+  btn.textContent='Gerando...'; btn.disabled=true;
+  try {
+    const resp = await apiFetch('/api/manifestacoes/'+encodeURIComponent(id)+'/devolutiva/gerar', {
+      method:'POST', body:'{}'
+    });
+    const txt = resp.devolutiva?.textoFinal||resp.devolutiva?.VERSAO_FINAL||resp.devolutiva?.TEXTO_GERADO||'';
+    const el = document.getElementById('trat-h-texto');
+    if (el && txt) el.value = txt;
+    erroEl.style.display='none';
+  } catch(e){
+    erroEl.textContent='IA indisponível: '+e.message; erroEl.style.display='';
+  } finally { btn.textContent=orig; btn.disabled=false; }
+};
+
+window.tratAprovarDevolutiva = async function(id){
+  const texto = document.getElementById('trat-h-texto')?.value||'';
+  const erroEl = document.getElementById('trat-h-erro');
+  if (!texto.trim()){ erroEl.textContent='Informe o texto da devolutiva.'; erroEl.style.display=''; return; }
+  try {
+    await apiFetch('/api/manifestacoes/'+encodeURIComponent(id)+'/devolutiva/aprovar', {
+      method:'POST',
+      body: JSON.stringify({ textoAprovado:texto })
+    });
+    erroEl.style.display='none';
+    await tratCarregar();
+  } catch(e){ erroEl.textContent=e.message; erroEl.style.display=''; }
+};
+
+window.tratEnviarDevolutiva = async function(id){
+  if (!confirm('Confirma o envio da devolutiva ao cliente? Esta ação encerrará a manifestação.')) return;
+  const erroEl = document.getElementById('trat-h-erro');
+  try {
+    await apiFetch('/api/manifestacoes/'+encodeURIComponent(id)+'/devolutiva/enviar', {
+      method:'POST', body:'{}'
+    });
+    await tratCarregar();
+  } catch(e){ erroEl.textContent=e.message; erroEl.style.display=''; }
+};
+
+// Registrar pageLoader
+if (typeof pageLoaders !== 'undefined') {
+  pageLoaders['tratativa'] = function(){
+    if (_tratId) tratCarregar();
+  };
+}
+
+// Adicionar botão "Ver Tratativa" no dossie — hook pós-load
+(function _hookarDossie(){
+  const _origAbrirDossie = window.abrirDossie;
+  if (typeof _origAbrirDossie !== 'function') return;
+  window.abrirDossie = function(item){
+    _origAbrirDossie(item);
+    // Adiciona botão de tratativa se ainda não existe no modal
+    setTimeout(function(){
+      const lateral = document.getElementById('btn-abrir-dossie-lateral');
+      if (!lateral) return;
+      const idMan = item && (item.ID_MANIFESTACAO);
+      if (!idMan) return;
+      let btnTrat = document.getElementById('btn-trat-from-dossie');
+      if (!btnTrat) {
+        btnTrat = document.createElement('button');
+        btnTrat.id = 'btn-trat-from-dossie';
+        btnTrat.style.cssText = 'width:100%;border:0;background:#7C3AED;color:#fff;border-radius:10px;padding:11px 14px;font-size:13px;font-weight:700;cursor:pointer;text-align:left;display:flex;align-items:center;gap:8px;margin-top:8px;font-family:inherit';
+        btnTrat.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Abrir tratativa completa';
+        lateral.parentNode.insertBefore(btnTrat, lateral.nextSibling);
+      }
+      btnTrat.onclick = function(){
+        if (typeof fecharDecisaoAprovacao === 'function') fecharDecisaoAprovacao();
+        if (typeof fecharModal === 'function') fecharModal();
+        window.tratAbrir(idMan);
+      };
+    }, 300);
+  };
+})();
 
 })();
 </script>
