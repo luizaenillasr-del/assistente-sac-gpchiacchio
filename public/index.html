@@ -12062,6 +12062,7 @@ window._bancoDataFull = [];
 const BANCO_PAGE_SIZE = 10;
 let bancoFiltros = { status: '', tipo: '', setor: '', empresa: '', periodo: 0, procedencia: '' };
 let _bancoDataFull = [];
+let _bancoLoading = false;
 
 function abrirFiltroDropdown(campo, anchor) {
   const dd = document.getElementById('banco-filter-dropdown');
@@ -12116,15 +12117,19 @@ document.addEventListener('click', function(e) {
 });
 
 async function loadBancoManifestacoes() {
+  if (_bancoLoading) return; // evita chamadas simultâneas
+  _bancoLoading = true;
   // Show loading state immediately so clicking tabs doesn't render empty
   const _bodyEl = document.getElementById('banco-body');
-  if (_bodyEl && !_bancoDataFull.length) _bodyEl.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--gray-400);padding:24px"><div class="spinner" style="display:inline-block"></div> Carregando manifestações…</td></tr>';
+  if (_bodyEl) _bodyEl.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--gray-400);padding:24px"><div class="spinner" style="display:inline-block"></div> Carregando manifestações…</td></tr>';
   try {
     const res = await _apiFetch('/api/manifestacoes', 30000);
     if (res.aviso) console.warn('[banco] API aviso:', res.aviso);
     let itens = res.itens || [];
+    console.log('[banco] API retornou', itens.length, 'itens, fonte:', res.fonte);
     // Fallback: if API returns empty but dashboard already loaded data, reuse it
     if (!itens.length && window._dashData && (window._dashData.mans || []).length) {
+      console.log('[banco] usando fallback _dashData:', window._dashData.mans.length);
       itens = window._dashData.mans;
     }
     bancoData = itens;
@@ -12137,9 +12142,11 @@ async function loadBancoManifestacoes() {
       const setores = [...new Set(itens.map(m => m.SETOR_DESTINADO||m.SETOR_CONFIRMADO||m.SETOR_SUGERIDO).filter(Boolean))].sort();
       setorSel.innerHTML = '<option value="">Setor: todos</option>' + setores.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
     }
+    _bancoLoading = false;
     renderBanco();
   } catch (e) {
-    console.error('Erro banco:', e);
+    _bancoLoading = false;
+    console.error('[banco] Erro ao carregar:', e);
     if (window._dashData && (window._dashData.mans || []).length) {
       bancoData = window._dashData.mans;
       _bancoDataFull = [...bancoData];
@@ -12149,7 +12156,7 @@ async function loadBancoManifestacoes() {
       return;
     }
     const el = document.getElementById('banco-body');
-    if(el) el.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--gray-400);padding:20px">Erro ao carregar dados: ${esc(e.message)}</td></tr>`;
+    if(el) el.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--red-500,#ef4444);padding:20px;font-weight:600">Erro ao carregar: ${esc(e.message)}</td></tr>`;
   }
 }
 
@@ -12179,7 +12186,7 @@ function filterBancoCard(btn, filter) {
     const b = document.querySelector(`#banco-status-cards [data-filter="${filter}"]`);
     if (b) { b.classList.add('bsc-active'); b.style.background = '#1F1F1F'; b.style.borderColor = '#1F1F1F'; const n = b.querySelector('[id^="tab-"]'); if(n) n.style.color='#fff'; }
   }
-  renderBanco();
+  if (!_bancoLoading) renderBanco(); // aguarda o carregamento inicial
 }
 
 function _bscDefaultColor(f) {
