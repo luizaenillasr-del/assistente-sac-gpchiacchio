@@ -2216,7 +2216,7 @@ app.post('/api/manifestacoes/:id/aprovacao', middlewareEscopoEmpresa(), requerPe
 });
 
 
-app.patch('/api/manifestacoes/:id', requerPermissao('manifestacoes.editar'), async (req, res) => {
+app.patch('/api/manifestacoes/:id', requerPermissao('manifestacoes.editar'), middlewareEscopoEmpresa(), async (req, res) => {
   try {
     const { id } = req.params;
     // B2/Item18: verificar pertencimento de empresa antes de gravar
