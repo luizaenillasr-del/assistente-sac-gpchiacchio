@@ -7532,10 +7532,10 @@
 
 <!-- Accordion Preencher dados do mês -->
 <div class="rs-filtros rs-noprint" style="padding-top:8px;padding-bottom:0">
-  <button type="button" id="rel-btn-accordion" onclick="relToggleAccordion()" style="display:flex;align-items:center;gap:8px;border:1.5px solid #D6D6D6;background:#fff;border-radius:10px;padding:10px 16px;cursor:pointer;font-size:13px;font-weight:700;color:#1F1F1F;width:100%;text-align:left;font-family:inherit">
+  <button type="button" id="rel-btn-accordion" onclick="relToggleAccordion()" style="display:flex;align-items:center;gap:8px;border:1.5px solid #D6D6D6;background:#fff;border-radius:10px;padding:10px 16px;cursor:pointer;font-size:13px;font-weight:700;color:#1F1F1F;width:100%;text-align:left;font-family:inherit;transition:border-color .15s,background .15s,color .15s">
     <span id="rel-accordion-arrow">▼</span>
     <span id="rel-accordion-lbl">Preencher dados do mês</span>
-    <span style="margin-left:auto;font-size:12px;font-weight:500;color:#666464">Abrir para editar os dados que geram o relatório</span>
+    <span id="rel-accordion-hint" style="margin-left:auto;font-size:12px;font-weight:500;color:#666464">Abrir para editar os dados que geram o relatório</span>
   </button>
 </div>
 <div id="rel-accordion-body" style="display:none;max-width:1120px;width:100%;margin:0 auto;padding:0 20px 8px"></div>
@@ -8193,8 +8193,34 @@
     if(fAno&&fAno.value!==ano)fAno.value=ano;
     if(fMes&&fMes.value!==mes)fMes.value=mes;
     const tok=sessionStorage.getItem('sac-token');
-    if(btn){btn.disabled=true;btn.textContent='Salvando...';}
+    if(btn){btn.disabled=true;btn.textContent='Gerando...';}
     try{
+      // Campos quantitativos novos
+      for(const campo of ['total_enviado','total_respondido','nps_score']){
+        const el=document.getElementById('rrm-'+campo);
+        if(!el)continue;
+        const valor=(el.value).trim();
+        await fetch('/api/pesquisas/relatorio-texto',{method:'POST',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({empresa,ano,mes,campo,valor})}).catch(()=>{});
+        if(!_d)_d={};if(!_d.textos)_d.textos={};_d.textos[campo]=valor;
+      }
+      // Notas por critério (manual)
+      for(const [,key] of CR){
+        const campo='cri_'+key;
+        const el=document.getElementById('rrm-cri-'+key);
+        if(!el)continue;
+        const valor=(el.value).trim();
+        await fetch('/api/pesquisas/relatorio-texto',{method:'POST',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({empresa,ano,mes,campo,valor})}).catch(()=>{});
+        if(!_d)_d={};if(!_d.textos)_d.textos={};_d.textos[campo]=valor;
+      }
+      // Notas baixas por critério
+      for(const [,key] of CR){
+        const campo='baixas_'+key;
+        const el=document.getElementById('rrm-baixas_'+key);
+        if(!el)continue;
+        const valor=(el.value).trim();
+        await fetch('/api/pesquisas/relatorio-texto',{method:'POST',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({empresa,ano,mes,campo,valor})}).catch(()=>{});
+        if(!_d)_d={};if(!_d.textos)_d.textos={};_d.textos[campo]=valor;
+      }
       // Campos manuais do cabeçalho
       for(const campo of ['responsavel','cargo_analista','resumo_executivo']){
         const el=document.getElementById('rrm-'+campo);
@@ -8245,7 +8271,7 @@
       _toast('Relatório de '+mword(_refKey())+' atualizado.');
     }catch(e){
       if(erroEl){erroEl.textContent=e.message;erroEl.style.display='';}
-      if(btn){btn.disabled=false;btn.textContent='Salvar relatório';}
+      if(btn){btn.disabled=false;btn.textContent='Gerar relatório ↓';}
     }
   };
 
@@ -8258,63 +8284,91 @@
 
   window.relToggleAccordion=function(){
     const body=document.getElementById('rel-accordion-body');
+    const btn=document.getElementById('rel-btn-accordion');
     const arrow=document.getElementById('rel-accordion-arrow');
-    const lbl=document.getElementById('rel-accordion-lbl');
+    const hint=document.getElementById('rel-accordion-hint');
     if(!body) return;
     const open=body.style.display==='none'||body.style.display==='';
     body.style.display=open?'block':'none';
+    if(btn){btn.style.border=open?'1.5px solid #C70602':'1.5px solid #D6D6D6';btn.style.background=open?'#FFF8F8':'#fff';btn.style.color=open?'#A80502':'#1F1F1F';}
     if(arrow) arrow.textContent=open?'▲':'▼';
-    if(lbl) lbl.textContent=open?'Fechar dados do mês':'Preencher dados do mês';
+    if(hint) hint.textContent=open?'Fechar':'Abrir para editar os dados que geram o relatório';
     if(open && !body._loaded){
       body._loaded=true;
       const textos=(_d&&_d.textos)||{};
-      const meses=_rrmMeses();
+      const meta=getMeta();
       const _fAno=_val('rel-f-ano'),_fMes=_val('rel-f-mes');
       const _anoAtual=_fAno?_fAno.value:(new Date().getFullYear()+'');
       const _mesAtual=_fMes?_fMes.value:String(new Date().getMonth()+1).padStart(2,'0');
       const _mesesNomes=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
       const _anosOpts=[...(new Set([String(new Date().getFullYear()-1),String(new Date().getFullYear()),String(new Date().getFullYear()+1),_anoAtual]))].sort().map(a=>`<option value="${a}"${a===_anoAtual?'selected':''}>${a}</option>`).join('');
       const _mesesOpts=_mesesNomes.map((n,i)=>{const v=String(i+1).padStart(2,'0');return `<option value="${v}"${v===_mesAtual?'selected':''}>${n}</option>`;}).join('');
-      const tagManual='<span style="font-size:10px;font-weight:700;background:#E6EEF8;color:#24508F;padding:1px 6px;border-radius:99px;margin-left:4px">✏ Manual</span>';
-      const tagAuto='<span style="font-size:10px;font-weight:700;background:#FBF0D9;color:#7A4C00;padding:1px 6px;border-radius:99px;margin-left:4px">⚡ Gerado pelos dados</span>';
-      const camposDados=`<div style="background:#F0F4FA;border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px">
-        <span style="font-size:12px;font-weight:700;color:#24508F">Dados do relatório ${tagManual}</span>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-          <label style="display:flex;flex-direction:column;gap:3px;font-size:11px;font-weight:600;color:#545252;grid-column:1/-1">Mês de referência ${tagManual}
-            <div style="display:flex;gap:6px">
-              <select id="rrm-mes" style="flex:1;height:34px;border:1px solid #D6D6D6;border-radius:6px;padding:0 8px;font-size:13px;font-family:inherit;background:#fff">${_mesesOpts}</select>
-              <select id="rrm-ano" style="width:88px;height:34px;border:1px solid #D6D6D6;border-radius:6px;padding:0 8px;font-size:13px;font-family:inherit;background:#fff">${_anosOpts}</select>
-            </div>
-          </label>
-          <label style="display:flex;flex-direction:column;gap:3px;font-size:11px;font-weight:600;color:#545252">Responsável pela análise ${tagManual}
-            <input id="rrm-responsavel" type="text" placeholder="Nome completo" style="height:34px;border:1px solid #D6D6D6;border-radius:6px;padding:0 10px;font-size:13px;font-family:inherit" value="${esc(textos.responsavel||'')}">
-          </label>
-          <label style="display:flex;flex-direction:column;gap:3px;font-size:11px;font-weight:600;color:#545252">Cargo ${tagManual}
-            <input id="rrm-cargo_analista" type="text" placeholder="Ex: Analista de SAC" style="height:34px;border:1px solid #D6D6D6;border-radius:6px;padding:0 10px;font-size:13px;font-family:inherit" value="${esc(textos.cargo_analista||'')}">
-          </label>
+      function _criStatusHtml(v,mt){if(v===''||v==null)return '';const n=+v;if(n<=6)return '<span style="font-size:10px;font-weight:700;background:#FDECEC;color:#A80502;padding:1px 8px;border-radius:99px">Crítico</span>';if(n<mt)return '<span style="font-size:10px;font-weight:700;background:#FBF0D9;color:#7A4C00;padding:1px 8px;border-radius:99px">Abaixo da meta</span>';return '<span style="font-size:10px;font-weight:700;background:#E6F2EA;color:#1E6B3A;padding:1px 8px;border-radius:99px">Atingiu a meta</span>';}
+      function _criColor(v){if(v===''||v==null)return '#D6D6D6';const n=+v;if(n<=6)return '#C70602';if(n<8)return '#B07A12';return '#1E6B3A';}
+      const criRows=CR.map(([label,key])=>{const fid='rrm-cri-'+key;const val=esc(textos['cri_'+key]||'');return `<div id="${fid}-wrap" style="border:1.5px solid ${_criColor(textos['cri_'+key]||'')};border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:6px"><div style="display:flex;justify-content:space-between;align-items:center;gap:6px"><span style="font-size:11.5px;font-weight:700;letter-spacing:.05em;color:#545252">${label}</span><span id="${fid}-status">${_criStatusHtml(textos['cri_'+key]||'',meta)}</span></div><div style="display:flex;align-items:center;gap:8px"><input id="${fid}" type="number" min="0" max="10" step="0.1" placeholder="—" value="${val}" oninput="rrmAtualizarCri('${key}',${meta})" style="width:80px;height:36px;border:1px solid #D6D6D6;border-radius:7px;padding:0 10px;font-size:17px;font-weight:700;font-family:inherit;text-align:center"><span style="font-size:12px;color:#707070">/ 10</span></div></div>`;}).join('');
+      const tagAuto='<span style="font-size:10px;font-weight:700;background:#FBF0D9;color:#7A4C00;padding:1px 6px;border-radius:99px;margin-left:4px">⚡ Auto</span>';
+      const secRows=SEC.map(([id,titulo])=>`<label style="display:flex;flex-direction:column;gap:4px;font-size:11.5px;font-weight:600;color:#545252">${esc(titulo)}${textos[id]?'':tagAuto}<textarea id="rrm-${id}" rows="3" style="border:1px solid #D6D6D6;border-radius:7px;padding:8px 10px;font-size:13px;font-family:inherit;resize:vertical" placeholder="Deixe vazio para usar o texto gerado automaticamente.">${esc(textos[id]||'')}</textarea></label>`).join('');
+      const baixasRows=CR.map(([label,key])=>`<label style="display:flex;flex-direction:column;gap:4px;font-size:11.5px;font-weight:600;color:#545252">Baixas – ${label}<input id="rrm-baixas_${key}" type="number" min="0" placeholder="—" value="${esc(textos['baixas_'+key]||'')}" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 10px;font-size:14px;font-family:inherit"></label>`).join('');
+      body.innerHTML=`<div style="background:#fff;border:1.5px solid #C70602;border-top:0;border-radius:0 0 12px 12px;padding:22px 20px;display:flex;flex-direction:column;gap:22px">
+        <!-- DADOS QUANTITATIVOS -->
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="font-size:10.5px;font-weight:700;letter-spacing:.08em;color:#929090">DADOS QUANTITATIVOS</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:10px">
+            <label style="display:flex;flex-direction:column;gap:4px;font-size:11.5px;font-weight:600;color:#545252">Total enviado<input id="rrm-total_enviado" type="number" min="0" placeholder="—" value="${esc(textos.total_enviado||'')}" style="height:36px;border:1px solid #D6D6D6;border-radius:7px;padding:0 10px;font-size:14px;font-family:inherit"></label>
+            <label style="display:flex;flex-direction:column;gap:4px;font-size:11.5px;font-weight:600;color:#545252">Total respondido<input id="rrm-total_respondido" type="number" min="0" placeholder="—" value="${esc(textos.total_respondido||'')}" style="height:36px;border:1px solid #D6D6D6;border-radius:7px;padding:0 10px;font-size:14px;font-family:inherit"></label>
+            <label style="display:flex;flex-direction:column;gap:4px;font-size:11.5px;font-weight:600;color:#545252">NPS Score<input id="rrm-nps_score" type="number" min="-100" max="100" placeholder="—" value="${esc(textos.nps_score||'')}" style="height:36px;border:1px solid #D6D6D6;border-radius:7px;padding:0 10px;font-size:14px;font-family:inherit"></label>
+            <label style="display:flex;flex-direction:column;gap:4px;font-size:11.5px;font-weight:600;color:#545252">Mês de referência<div style="display:flex;gap:6px"><select id="rrm-mes" style="flex:1;height:36px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;font-size:13px;font-family:inherit;background:#fff">${_mesesOpts}</select><select id="rrm-ano" style="width:80px;height:36px;border:1px solid #D6D6D6;border-radius:7px;padding:0 6px;font-size:13px;font-family:inherit;background:#fff">${_anosOpts}</select></div></label>
+            <label style="display:flex;flex-direction:column;gap:4px;font-size:11.5px;font-weight:600;color:#545252">Responsável<input id="rrm-responsavel" type="text" placeholder="Nome completo" value="${esc(textos.responsavel||'')}" style="height:36px;border:1px solid #D6D6D6;border-radius:7px;padding:0 10px;font-size:13px;font-family:inherit"></label>
+            <label style="display:flex;flex-direction:column;gap:4px;font-size:11.5px;font-weight:600;color:#545252">Cargo<input id="rrm-cargo_analista" type="text" placeholder="Ex: Analista de SAC" value="${esc(textos.cargo_analista||'')}" style="height:36px;border:1px solid #D6D6D6;border-radius:7px;padding:0 10px;font-size:13px;font-family:inherit"></label>
+          </div>
         </div>
-        <label style="display:flex;flex-direction:column;gap:3px;font-size:11px;font-weight:600;color:#545252">Resumo executivo ${tagManual}
-          <textarea id="rrm-resumo_executivo" rows="3" placeholder="Breve resumo…" style="border:1px solid #D6D6D6;border-radius:7px;padding:8px 10px;font-size:13px;font-family:inherit;resize:vertical">${esc(textos.resumo_executivo||'')}</textarea>
-        </label>
-      </div>`;
-      const camposGeral=camposDados+SEC.map(([id,titulo])=>`
-        <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:#545252">${esc(titulo)} ${textos[id]?tagManual:tagAuto}
-          <textarea id="rrm-${id}" rows="4" style="border:1px solid #D6D6D6;border-radius:7px;padding:8px 10px;font-size:13px;font-family:inherit;resize:vertical" placeholder="Deixe em branco para usar o texto gerado automaticamente.">${esc(textos[id]||'')}</textarea>
-        </label>`).join('');
-      body.innerHTML=`<div style="background:#fff;border:1.5px solid #E4E4E4;border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:14px;margin-top:4px">
-        <div style="display:flex;gap:0;border-bottom:2px solid #E4E4E4">
-          <button id="rrm-tab-geral" onclick="rrmTab('geral')" style="border:0;background:none;padding:9px 16px;font-size:13px;cursor:pointer;font-weight:700;color:#C70602;border-bottom:2px solid #C70602;margin-bottom:-2px;font-family:inherit">Geral</button>
-          <button id="rrm-tab-mensal" onclick="rrmTab('mensal')" style="border:0;background:none;padding:9px 16px;font-size:13px;cursor:pointer;font-weight:500;color:#666464;border-bottom:2px solid transparent;margin-bottom:-2px;font-family:inherit">Mês a mês</button>
+        <!-- NOTAS POR CRITÉRIO -->
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="font-size:10.5px;font-weight:700;letter-spacing:.08em;color:#929090">NOTAS POR CRITÉRIO (0 – 10) <span style="font-weight:400;font-size:10px;color:#b0b0b0">· Meta: ${meta.toFixed(1)}</span></div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px">${criRows}</div>
         </div>
-        <div id="rrm-panel-geral" style="display:flex;flex-direction:column;gap:12px">${camposGeral}</div>
-        <div id="rrm-panel-mensal" style="display:none;flex-direction:column;gap:10px">${meses.map(({k,label,n})=>`<div style="border:1px solid #E4E4E4;border-radius:9px;overflow:hidden"><div style="background:#F8F8FA;padding:10px 14px;font-size:13px;font-weight:700;color:#1F1F1F;border-bottom:1px solid #E4E4E4">${esc(label)} <span style="font-weight:400;color:#707070;font-size:12px">${n} resposta${n!==1?'s':''}</span></div><div style="padding:10px 14px;display:flex;flex-direction:column;gap:10px"><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${[['rrm-mes-at-'+k,'Atendimento'],['rrm-mes-pr-'+k,'Prazo'],['rrm-mes-qu-'+k,'Qualidade'],['rrm-mes-re-'+k,'Recomendação']].map(([fid,flbl])=>`<label style="display:flex;flex-direction:column;gap:3px;font-size:11px;font-weight:600;color:#545252">${flbl} (0–10)<input id="${fid}" type="number" min="0" max="10" step="0.5" placeholder="—" style="height:32px;border:1px solid #D6D6D6;border-radius:6px;padding:0 8px;font-size:13px;font-family:inherit"></label>`).join('')}</div><textarea id="rrm-mes-${k}" rows="2" placeholder="Análise de ${esc(label)} (opcional)" style="border:1px solid #D6D6D6;border-radius:6px;padding:8px 10px;font-size:13px;font-family:inherit;resize:vertical">${esc(textos['mes_'+k.replace('-','_')]||'')}</textarea></div></div>`).join('')||'<p style="color:#707070;font-size:13px">Nenhum mês com dados disponível.</p>'}</div>
+        <!-- OBSERVAÇÕES E DESTAQUES -->
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="font-size:10.5px;font-weight:700;letter-spacing:.08em;color:#929090">OBSERVAÇÕES E DESTAQUES DO MÊS</div>
+          <label style="display:flex;flex-direction:column;gap:4px;font-size:11.5px;font-weight:600;color:#545252">Resumo executivo<textarea id="rrm-resumo_executivo" rows="2" placeholder="Breve resumo para a Diretoria/Presidência…" style="border:1px solid #D6D6D6;border-radius:7px;padding:8px 10px;font-size:13px;font-family:inherit;resize:vertical">${esc(textos.resumo_executivo||'')}</textarea></label>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px">${secRows}</div>
+        </div>
+        <!-- NOTAS BAIXAS -->
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="font-size:10.5px;font-weight:700;letter-spacing:.08em;color:#929090">NOTAS BAIXAS (respostas ≤ 6)</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:10px">${baixasRows}</div>
+        </div>
         <div id="rrm-erro" style="color:#A80502;font-size:13px;display:none"></div>
-        <div style="display:flex;gap:8px;justify-content:flex-end">
-          <button onclick="document.getElementById('rel-accordion-body')._loaded=false;relToggleAccordion()" style="border:1px solid #D6D6D6;background:#fff;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:13px;font-weight:600;font-family:inherit">Cancelar</button>
-          <button onclick="relSalvarFormRelatorio()" id="rrm-btn-salvar" style="border:0;background:#C70602;color:#fff;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:13px;font-weight:700;font-family:inherit">Salvar relatório</button>
+        <div style="display:flex;gap:8px;justify-content:flex-end;padding-top:8px;border-top:1px solid #F0F0F0">
+          <button type="button" onclick="rrmLimpar()" style="border:1px solid #D6D6D6;background:#fff;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:13px;font-weight:600;font-family:inherit">Limpar</button>
+          <button type="button" onclick="relSalvarFormRelatorio()" id="rrm-btn-salvar" style="border:0;background:#C70602;color:#fff;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:13px;font-weight:700;font-family:inherit">Gerar relatório ↓</button>
         </div>
       </div>`;
     }
+  };
+
+  window.rrmAtualizarCri=function(key,meta){
+    const fid='rrm-cri-'+key;
+    const inp=document.getElementById(fid);
+    const wrap=document.getElementById(fid+'-wrap');
+    const status=document.getElementById(fid+'-status');
+    if(!inp)return;
+    const v=inp.value;
+    function _criStatusHtml(v,mt){if(v===''||v==null)return '';const n=+v;if(n<=6)return '<span style="font-size:10px;font-weight:700;background:#FDECEC;color:#A80502;padding:1px 8px;border-radius:99px">Crítico</span>';if(n<mt)return '<span style="font-size:10px;font-weight:700;background:#FBF0D9;color:#7A4C00;padding:1px 8px;border-radius:99px">Abaixo da meta</span>';return '<span style="font-size:10px;font-weight:700;background:#E6F2EA;color:#1E6B3A;padding:1px 8px;border-radius:99px">Atingiu a meta</span>';}
+    function _criColor(v){if(v===''||v==null)return '#D6D6D6';const n=+v;if(n<=6)return '#C70602';if(n<8)return '#B07A12';return '#1E6B3A';}
+    if(status)status.innerHTML=_criStatusHtml(v,meta);
+    if(wrap)wrap.style.borderColor=_criColor(v);
+  };
+
+  window.rrmLimpar=function(){
+    const fields=['rrm-total_enviado','rrm-total_respondido','rrm-nps_score','rrm-responsavel','rrm-cargo_analista','rrm-resumo_executivo'];
+    fields.forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    CR.forEach(([,key])=>{
+      const c=document.getElementById('rrm-cri-'+key);if(c)c.value='';
+      const b=document.getElementById('rrm-baixas_'+key);if(b)b.value='';
+      rrmAtualizarCri(key,getMeta());
+    });
+    SEC.forEach(([id])=>{const el=document.getElementById('rrm-'+id);if(el)el.value='';});
   };
 
   window.relBaixarPdf=function(){
