@@ -1181,7 +1181,7 @@ function normalizarData(val) {
 // ROTAS
 // ===========================================================
 
-app.get('/api/health', autenticar, async (req, res) => {
+app.get('/api/health', async (req, res) => {
   const saude = {
     sucesso: true, status: 'ok', versao: '5.6.0',
     sistema: 'Assistente SAC Chiacchio', ts: new Date().toISOString(),
