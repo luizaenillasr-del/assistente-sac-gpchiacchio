@@ -7724,10 +7724,15 @@
       <div class="rs-card"><div class="rs-card-h"><b>Motivo da compra</b><span class="rs-sub">${motivos.length?itens.length+' respostas · '+esc(mword(ref)):''}</span></div>
         ${motivos.length?motivos.map(([l,n])=>`<div class="rs-motivo"><span>${esc(l)}</span><div><i style="width:${n/mMax*100}%"></i></div><span style="text-align:right;font-weight:700">${n}</span></div>`).join(''):'<span style="font-size:13px;color:#666464">Sem respostas sobre o motivo da compra neste mês.</span>'}
       </div>
-      <div class="rs-card"><div class="rs-card-h"><b style="white-space:nowrap">Notas baixas e tratativas</b></div>
-        <div class="rs-trat"><div><small>Pesquisas com nota ≤ ${NOTA_CRITICA}</small><b style="color:${RED}">${baixas.length}</b></div><div><small>Respostas no mês</small><b>${cur.n}</b></div></div>
-        <span class="rs-sub" style="line-height:1.5">Nota ≤ ${NOTA_CRITICA} é sinalizada para análise do SAC; ocorrência e manifestação formal são decisões do SAC.</span>
-        ${baixas.length?`<div style="display:flex;flex-direction:column;gap:8px">${baixas.map(({it,m})=>`<div class="rs-baixa"><div><div style="font-size:12px;font-weight:600">${esc(kNome?it[kNome]:'—')||'—'}</div><div style="font-size:11px;color:#666464;margin-top:2px">${esc(kCom?it[kCom]:'')}</div></div><span style="font-size:18px;font-weight:700;color:#C70602;white-space:nowrap">${f2(m)}</span></div>`).join('')}</div>`:''}
+      <div class="rs-card"><div class="rs-card-h" style="align-items:center"><b style="white-space:nowrap">Notas baixas e tratativas</b><a href="#" onclick="navegarPara('pesquisas');return false;" style="font-size:12.5px;font-weight:600;color:${RED};text-decoration:none;white-space:nowrap;margin-left:auto">Abrir no Centro das Pesquisas</a></div>
+        ${(()=>{const nb=_d.notas_baixas_stats||{};const tot=nb.total??baixas.length;const ocorr=nb.ocorrencias_geradas??0;const manif=nb.manifestacoes_formais??0;const trat=nb.tratativas_encerradas??0;
+        return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px 16px;margin-bottom:10px">
+          <div><div style="font-size:12.5px;color:#545252;margin-bottom:3px">Pesquisas com nota ≤ ${NOTA_CRITICA}</div><b style="font-size:28px;font-weight:800;color:${RED};line-height:1">${tot}</b></div>
+          <div><div style="font-size:12.5px;color:#545252;margin-bottom:3px">Ocorrências geradas</div><b style="font-size:28px;font-weight:800;color:${RED};line-height:1">${ocorr}</b></div>
+          <div><div style="font-size:12.5px;color:#545252;margin-bottom:3px">Manifestações formais</div><b style="font-size:28px;font-weight:800;color:${RED};line-height:1">${manif}</b></div>
+          <div><div style="font-size:12.5px;color:#545252;margin-bottom:3px">Tratativas encerradas</div><b style="font-size:28px;font-weight:800;color:#1E6B3A;line-height:1">${trat}</b></div>
+        </div>`;})()}
+        <span class="rs-sub" style="line-height:1.5;color:#7A4C00">Nota ≤ ${NOTA_CRITICA} é sinalizada para análise do SAC; ocorrência e manifestação formal são decisões do SAC.</span>
       </div></div>`;
 
     // Análise mensal (acordeão)
