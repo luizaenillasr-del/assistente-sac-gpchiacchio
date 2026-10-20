@@ -23247,6 +23247,8 @@ async function mudarStatusMC(id, novoStatus) {
     _cenAtual=id;
     const tk=++_selTok;
     renderFilaGrupos();
+    // Rola o card selecionado para visível na coluna da fila
+    requestAnimationFrame(()=>{const sel=document.querySelector('#cen-fila-grupos .mc-item.sel');if(sel)sel.scrollIntoView({behavior:'smooth',block:'nearest'});});
     // Rola o painel de detalhe para o topo ao selecionar nova manifestação
     const detEl=$('cen-detalhe')?.parentElement;
     if(detEl) detEl.scrollTop=0;
