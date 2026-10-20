@@ -23013,8 +23013,8 @@ async function mudarStatusMC(id, novoStatus) {
   // ── carga principal ───────────────────────────────────────────────────────
   window.loadCentralSAC = async function(){
     setupSidebarCentral();
-    const u=s();
-    if(!u) return;
+    const u=s()||(typeof sess==='function'?sess():null)||(()=>{try{return JSON.parse(sessionStorage.getItem('sac-user')||'null')}catch{return null}})();
+    if(!u){ const g=$('cen-greet');if(g)g.textContent='Olá — sessão não encontrada';return; }
     const btn=$('cen-btn-refresh'); if(btn){btn.disabled=true;btn.textContent='Atualizando…';}
     const nome=String(u.nome||u.usuario||'').trim().split(/\s+/)[0]||'—';
     const greet=$('cen-greet');
@@ -23027,11 +23027,13 @@ async function mudarStatusMC(id, novoStatus) {
       greet.textContent='Olá, '+nome+' · '+partes.join(' · ');
     }
 
-    // MASTER e GESTOR SAC veem todas as manifestações por padrão
-    if(['MASTER','GESTOR SAC','GESTOR_SAC','APROVADOR MASTER'].includes(perfil)) _cenScope='todas';
+    // Perfis com visão global veem todas as manifestações
+    const perfilNorm=perfil.replace(/\s+/g,'_');
+    if(['MASTER','GESTOR_SAC','GESTOR SAC','APROVADOR_MASTER','APROVADOR MASTER'].includes(perfil)||
+       ['MASTER','GESTOR_SAC','APROVADOR_MASTER'].includes(perfilNorm)) _cenScope='todas';
     const d=await api('/api/manifestacoes');
     if(btn){btn.disabled=false;btn.textContent='↻ Atualizar';}
-    if(!d.sucesso){_cenAll=[];_cenErroLista=true;}
+    if(!d.sucesso){_cenAll=[];_cenErroLista=true;const g=$('cen-greet');if(g&&g.textContent.includes('carregando'))g.textContent+=' (erro: '+(d.erro||'falha')+')';}
     else{_cenErroLista=false;_cenAll=(d.itens||[]).map(normMan).filter(m=>m.id);}
     // Invalidar cache do banco para forçar reload com dados frescos
     _cenBancoCarregado=false;
