@@ -8200,6 +8200,8 @@
       if(sp.get('rel_ano')){const a=_val('rel-f-ano');if(a)a.value=sp.get('rel_ano');}
       if(sp.get('rel_mes')){const m=_val('rel-f-mes');if(m)m.value=sp.get('rel_mes');}
       relCarregar();
+      // Abre accordion de preenchimento por padrão
+      setTimeout(()=>{ if(typeof relToggleAccordion==='function') relToggleAccordion(); },100);
     };
   });
 
@@ -14439,6 +14441,10 @@ window.navigate = function(page, el) {
       if (!r.ok || j.sucesso === false) throw new Error(j.erro || 'Erro ao excluir.');
       fecharModal();
       if (typeof _toast === 'function') _toast(`Manifestação ${id} excluída.`);
+      // Remove do cache local para que fila/dashboard reflita imediatamente
+      if(window._dashData&&window._dashData.mans) window._dashData.mans=window._dashData.mans.filter(m=>m.ID_MANIFESTACAO!==id);
+      if(window.bancoData) window.bancoData=window.bancoData.filter(m=>m.ID_MANIFESTACAO!==id);
+      if(window._bancoDataFull) window._bancoDataFull=window._bancoDataFull.filter(m=>m.ID_MANIFESTACAO!==id);
       // Recarrega a lista
       if (typeof loadPage === 'function') loadPage(typeof _paginaAtual !== 'undefined' ? _paginaAtual : 'manifestacoes');
     } catch(e) {
@@ -14865,9 +14871,13 @@ window.navigate = function(page, el) {
         }
       } else {
         document.getElementById('decisao-previa-campos').innerHTML='<div style="color:#929090;font-size:13px">Dados não disponíveis.</div>';
+        const histElN=document.getElementById('decisao-historico');
+        if(histElN) histElN.innerHTML='<div style="color:#B0B0B0;font-size:11.5px;font-style:italic">Sem histórico registrado.</div>';
       }
     }catch(e){
       document.getElementById('decisao-previa-campos').innerHTML='<div style="color:#929090;font-size:13px">Erro ao carregar dados.</div>';
+      const histElE=document.getElementById('decisao-historico');
+      if(histElE) histElE.innerHTML='<div style="color:#B0B0B0;font-size:11.5px;font-style:italic">Sem histórico registrado.</div>';
     }
   };
 
