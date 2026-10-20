@@ -5016,7 +5016,7 @@
   #page-central-sac .mc-main *{box-sizing:border-box}
   #page-central-sac .mc-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap}
   #page-central-sac .mc-title{font-size:24px;font-weight:700}
-  #page-central-sac .mc-sub{font-size:13px;color:#666464;margin-top:2px}
+  #page-central-sac .mc-sub{font-size:12.5px;color:#929090;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:700px}
   #page-central-sac .mc-head-btns{display:flex;gap:8px;flex-wrap:wrap}
   #page-central-sac .mc-btn{font-family:inherit;border-radius:7px;padding:8px 13px;cursor:pointer;font-size:12.5px;font-weight:700;white-space:nowrap;border:1px solid #D6D6D6;background:#fff;color:#1F1F1F}
   #page-central-sac .mc-btn:hover:not(:disabled){background:#F7F7F7}
@@ -5045,9 +5045,9 @@
   #page-central-sac .mc-k-encerradas .mc-kpi-v{color:var(--mc-green)}
   #page-central-sac .mc-k-terceiros .mc-kpi-v{color:var(--mc-blue)}
   #page-central-sac .mc-cols{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start}
-  #page-central-sac .mc-col-l{flex:1 1 320px;max-width:100%;min-width:0;display:flex;flex-direction:column;gap:10px}
-  #page-central-sac .mc-col-c{flex:999 1 460px;min-width:0;display:flex;flex-direction:column;gap:12px}
-  #page-central-sac .mc-col-r{flex:1 1 280px;max-width:100%;min-width:0;background:#fff;border:1px solid var(--mc-line);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:12px}
+  #page-central-sac .mc-col-l{flex:1 1 320px;max-width:100%;min-width:0;display:flex;flex-direction:column;gap:10px;overflow-y:auto}
+  #page-central-sac .mc-col-c{flex:999 1 460px;min-width:0;display:flex;flex-direction:column;gap:12px;overflow-y:auto}
+  #page-central-sac .mc-col-r{flex:1 1 280px;max-width:100%;min-width:0;background:#fff;border:1px solid var(--mc-line);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:12px;overflow-y:auto}
   #page-central-sac .mc-input{height:38px;border:1px solid #D6D6D6;border-radius:8px;padding:0 12px;background:#fff;font-size:13px;width:100%;font-family:inherit;outline:none}
   #page-central-sac .mc-scopes{display:flex;gap:6px}
   #page-central-sac .mc-scope{font-family:inherit;border:1px solid #D6D6D6;background:#fff;color:#1F1F1F;border-radius:7px;padding:6px 12px;font-size:12.5px;font-weight:600;cursor:pointer}
@@ -5176,9 +5176,10 @@
   #page-central-sac .mc-tab{height:44px;border:0;background:none;padding:0 20px;font-size:13.5px;font-weight:500;color:#929090;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;font-family:inherit;display:flex;align-items:center;gap:7px}
   #page-central-sac .mc-tab.on{font-weight:700;color:#C70602;border-bottom-color:#C70602}
   #page-central-sac .mc-tab-badge{min-width:18px;height:18px;border-radius:9px;background:#C70602;color:#fff;font-size:10px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;padding:0 5px}
-  #page-central-sac .mc-body{flex:1;min-height:0;overflow-y:auto;padding:24px 32px;display:flex;flex-direction:column;gap:20px}
-  #page-central-sac .mc-tabpanel{display:none;flex-direction:column;gap:20px}
+  #page-central-sac .mc-body{flex:1;min-height:0;overflow:hidden;padding:0;display:flex;flex-direction:column}
+  #page-central-sac .mc-tabpanel{display:none;flex-direction:column;gap:20px;flex:1;min-height:0;overflow-y:auto;padding:24px 32px}
   #page-central-sac .mc-tabpanel.on{display:flex}
+  #page-central-sac #mc-panel-fila{overflow:hidden;padding:16px 24px;gap:12px}
   /* grupos fila */
   #page-central-sac .mc-grp{background:#fff;border:1px solid #E4E4E4;border-radius:12px;overflow:hidden}
   #page-central-sac .mc-grp-h{padding:12px 18px;display:flex;justify-content:space-between;align-items:center}
@@ -5287,7 +5288,7 @@
         </div>
 
         <!-- Grupos + Detalhe -->
-        <div style="display:flex;gap:14px;min-height:500px;overflow:hidden">
+        <div style="display:flex;gap:14px;flex:1;min-height:0;overflow:hidden">
 
           <!-- Coluna grupos (340px) -->
           <div style="width:340px;flex-shrink:0;display:flex;flex-direction:column;gap:10px;overflow-y:auto" id="cen-fila-grupos"></div>
