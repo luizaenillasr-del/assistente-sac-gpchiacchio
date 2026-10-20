@@ -23012,19 +23012,22 @@ async function mudarStatusMC(id, novoStatus) {
 
   // ── carga principal ───────────────────────────────────────────────────────
   window.loadCentralSAC = async function(){
+    try{
+    // Greet imediato — antes de qualquer async
+    const _greetEl=document.getElementById('cen-greet');
+    if(_greetEl) _greetEl.textContent='Olá — identificando…';
     setupSidebarCentral();
     const u=s()||(typeof sess==='function'?sess():null)||(()=>{try{return JSON.parse(sessionStorage.getItem('sac-user')||'null')}catch{return null}})();
-    if(!u){ const g=$('cen-greet');if(g)g.textContent='Olá — sessão não encontrada';return; }
+    if(!u){ if(_greetEl) _greetEl.textContent='Olá — sessão não encontrada';return; }
     const btn=$('cen-btn-refresh'); if(btn){btn.disabled=true;btn.textContent='Atualizando…';}
     const nome=String(u.nome||u.usuario||'').trim().split(/\s+/)[0]||'—';
-    const greet=$('cen-greet');
     const perfil=(u.perfil||'').toUpperCase();
-    if(greet){
+    if(_greetEl){
       const partes=[perfil];
       const emps=(u.empresa||'').split(',').map(e=>e.trim()).filter(Boolean);
       if(emps.length===1) partes.push(emps[0]);
       else if(emps.length>1) partes.push(emps.length+' empresas');
-      greet.textContent='Olá, '+nome+' · '+partes.join(' · ');
+      _greetEl.textContent='Olá, '+nome+' · '+partes.join(' · ');
     }
 
     // Perfis com visão global veem todas as manifestações
@@ -23033,7 +23036,7 @@ async function mudarStatusMC(id, novoStatus) {
        ['MASTER','GESTOR_SAC','APROVADOR_MASTER'].includes(perfilNorm)) _cenScope='todas';
     const d=await api('/api/manifestacoes');
     if(btn){btn.disabled=false;btn.textContent='↻ Atualizar';}
-    if(!d.sucesso){_cenAll=[];_cenErroLista=true;const g=$('cen-greet');if(g&&g.textContent.includes('carregando'))g.textContent+=' (erro: '+(d.erro||'falha')+')';}
+    if(!d.sucesso){_cenAll=[];_cenErroLista=true;if(_greetEl) _greetEl.textContent=(nome?'Olá, '+nome+' · ':'Olá — ')+'erro: '+(d.erro||'falha ao carregar');}
     else{_cenErroLista=false;_cenAll=(d.itens||[]).map(normMan).filter(m=>m.id);}
     // Invalidar cache do banco para forçar reload com dados frescos
     _cenBancoCarregado=false;
@@ -23044,6 +23047,7 @@ async function mudarStatusMC(id, novoStatus) {
     renderFilaGrupos();
     // Atualizar badge no sidebar com contagem de aprovações pendentes
     _cenAtualizarBadgeAprovacoes();
+    }catch(err){const _g=document.getElementById('cen-greet');if(_g)_g.textContent='Olá — erro JS: '+String(err?.message||err);const _b=document.getElementById('cen-btn-refresh');if(_b){_b.disabled=false;_b.textContent='↻ Atualizar';}renderKpisGrupo();renderFilaGrupos();}
   };
 
   async function _cenAtualizarBadgeAprovacoes(){
