@@ -14374,11 +14374,11 @@ document.addEventListener('visibilitychange', () => {
   const _PG_CONSULTA=['visao-geral','acompanhamento','banco-manifestacoes','banco-rnc','relatorio-satisfacao'];
   const allowed={
     // ADMINISTRADOR — acesso total
-    'MASTER':['painel-master','visao-geral','acompanhamento','nova-manifestacao','banco-manifestacoes','aprovadores','banco-rnc','usuarios','cerebro','base-conhecimento','painel-maquina','auditoria','prazos-regionais','similares','rca','biblioteca-fichas','relatorio-satisfacao','sugestoes-melhoria','setores','central-gerente','gestao-diretoria'],
+    'MASTER':['painel-master','visao-geral','acompanhamento','nova-manifestacao','banco-manifestacoes','aprovadores','banco-rnc','usuarios','cerebro','base-conhecimento','painel-maquina','auditoria','prazos-regionais','similares','rca','biblioteca-fichas','relatorio-satisfacao','sugestoes-melhoria','setores','central-gerente','gestao-diretoria','central-sac'],
     // GESTOR SAC — visão operacional completa, sem config crítica
     'GESTOR SAC':['visao-geral','acompanhamento','nova-manifestacao','banco-manifestacoes','aprovadores','banco-rnc','setores','biblioteca-fichas','matriz','base-conhecimento','cerebro','painel-maquina','sugestoes-melhoria','relatorio-satisfacao','causas','matriz-conhecimento','prazos-regionais','similares','rca','central-sac','central-gerente'],
     // ANALISTA SAC — operação do dia a dia
-    'ANALISTA SAC':['visao-geral','acompanhamento','nova-manifestacao','banco-manifestacoes','banco-rnc','cerebro','base-conhecimento','painel-maquina','similares','biblioteca-fichas','relatorio-satisfacao','sugestoes-melhoria','setores','central-gerente'],
+    'ANALISTA SAC':['visao-geral','acompanhamento','nova-manifestacao','banco-manifestacoes','banco-rnc','cerebro','base-conhecimento','painel-maquina','similares','biblioteca-fichas','relatorio-satisfacao','sugestoes-melhoria','setores','central-gerente','central-sac'],
     // ATENDENTE SAC — registro e encaminhamento
     'ATENDENTE SAC':['nova-manifestacao','banco-manifestacoes','base-conhecimento','cerebro','similares','central-sac'],
     // SETOR RESPONSÁVEL — sua fila + RNC
