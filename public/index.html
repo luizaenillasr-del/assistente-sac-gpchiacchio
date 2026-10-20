@@ -23027,6 +23027,8 @@ async function mudarStatusMC(id, novoStatus) {
       greet.textContent='Olá, '+nome+' · '+partes.join(' · ');
     }
 
+    // MASTER e GESTOR SAC veem todas as manifestações por padrão
+    if(['MASTER','GESTOR SAC','GESTOR_SAC','APROVADOR MASTER'].includes(perfil)) _cenScope='todas';
     const d=await api('/api/manifestacoes');
     if(btn){btn.disabled=false;btn.textContent='↻ Atualizar';}
     if(!d.sucesso){_cenAll=[];_cenErroLista=true;}
