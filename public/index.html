@@ -2877,6 +2877,38 @@
             <label class="nm-label"><span>Código do cliente</span><input class="nm-input" placeholder="Ex.: CLI-00042" id="nm-cliente-cod"></label>
           </div>
         </div>
+        <!-- ORIGEM E PRIORIDADE -->
+        <div class="nm-card">
+          <div class="nm-card-title">Origem e Prioridade</div>
+          <div class="nm-grid-2">
+            <label class="nm-label">
+              <span>Origem da manifestação *</span>
+              <select class="nm-select" id="nm-origem">
+                <option value="">Selecionar...</option>
+                <option value="MANUAL">Manual — digitado pelo atendente</option>
+                <option value="WHATSAPP">WhatsApp</option>
+                <option value="EMAIL">E-mail</option>
+                <option value="PESQUISA_SATISFACAO">Pesquisa de Satisfação</option>
+                <option value="PORTAL_CLIENTE">Portal do Cliente</option>
+                <option value="TELEFONE">Telefone</option>
+                <option value="PRESENCIAL">Presencial</option>
+              </select>
+            </label>
+            <label class="nm-label">
+              <span>Prioridade</span>
+              <select class="nm-select" id="nm-prioridade">
+                <option value="NORMAL">Normal</option>
+                <option value="ALTA">Alta</option>
+                <option value="CRITICA">Crítica</option>
+                <option value="URGENTE">Urgente</option>
+              </select>
+            </label>
+          </div>
+          <div class="nm-grid-2">
+            <label class="nm-label"><span>Protocolo externo (se houver)</span><input class="nm-input" placeholder="Nº protocolo do cliente" id="nm-protocolo-externo"></label>
+            <label class="nm-label"><span>Vínculo (outra manifestação)</span><input class="nm-input" placeholder="MAN-0000" id="nm-vinculo-man"></label>
+          </div>
+        </div>
       </div>
 
       <!-- ETAPA 2: MANIFESTAÇÃO -->
@@ -2909,6 +2941,63 @@
             <label class="nm-label"><span>Atendente</span><input class="nm-input" readonly id="nm-atendente" style="background:#F7F7F7"></label>
           </div>
           <input class="nm-input" readonly id="nm-num" value="..." style="display:none">
+        </div>
+        <!-- classificação -->
+        <div class="nm-card">
+          <div class="nm-card-title">Classificação</div>
+          <div class="nm-grid-2">
+            <label class="nm-label">
+              <span>Categoria *</span>
+              <select class="nm-select" id="nm-categoria" onchange="nmUpdateMotivos()">
+                <option value="">Selecionar...</option>
+                <option value="QUALIDADE">Qualidade do produto</option>
+                <option value="PRAZO">Prazo / Entrega</option>
+                <option value="EMBALAGEM">Embalagem / Acondicionamento</option>
+                <option value="FATURAMENTO">Faturamento / Cobrança</option>
+                <option value="ATENDIMENTO">Atendimento</option>
+                <option value="LOGISTICA">Logística / Transporte</option>
+                <option value="ESPECIFICACAO">Especificação / Projeto</option>
+                <option value="OUTRO">Outro</option>
+              </select>
+            </label>
+            <label class="nm-label">
+              <span>Motivo</span>
+              <select class="nm-select" id="nm-motivo">
+                <option value="">Selecionar...</option>
+              </select>
+            </label>
+            <label class="nm-label">
+              <span>Severidade</span>
+              <select class="nm-select" id="nm-severidade">
+                <option value="BAIXA">Baixa</option>
+                <option value="MEDIA">Média</option>
+                <option value="ALTA">Alta</option>
+                <option value="CRITICA">Crítica</option>
+              </select>
+            </label>
+            <label class="nm-label">
+              <span>Setor responsável (inicial)</span>
+              <select class="nm-select" id="nm-setor-resp">
+                <option value="">Selecionar...</option>
+                <option value="QUALIDADE">Qualidade</option>
+                <option value="LOGISTICA">Logística</option>
+                <option value="COMERCIAL">Comercial</option>
+                <option value="PRODUCAO">Produção</option>
+                <option value="FINANCEIRO">Financeiro</option>
+                <option value="SAC">SAC</option>
+              </select>
+            </label>
+          </div>
+          <div style="display:flex;gap:20px;padding-top:4px">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12.5px;font-weight:600;color:#545252">
+              <input type="checkbox" id="nm-gera-rnc" style="width:15px;height:15px;accent-color:#C70602">
+              Gera RNC (Relatório de Não Conformidade)
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12.5px;font-weight:600;color:#545252">
+              <input type="checkbox" id="nm-analise-causa" style="width:15px;height:15px;accent-color:#C70602">
+              Requer análise de causa-raiz
+            </label>
+          </div>
         </div>
         <!-- descrição -->
         <div class="nm-card">
@@ -10299,7 +10388,8 @@ async function loadVisaoGeral() {
       _apiFetch('/api/reclamacoes', 30000).catch(() => ({ itens: [] }))
     ]);
 
-    _dashData.mans = manRes.itens || [];
+    const _EXCL_DASH = new Set(['EXCLUIDA','DELETADA','EXCLUIDO','DELETADO']);
+    _dashData.mans = (manRes.itens || []).filter(m => !_EXCL_DASH.has((m.STATUS||'').toUpperCase()));
     _dashData.recs = recRes.itens || [];
     window._dashData = _dashData; // mantém referência global sincronizada
 
@@ -10389,6 +10479,24 @@ function selectTipo(btn) {
   btn.classList.add('active');
   agendarAnalise();
   atualizarResumoFicha();
+}
+
+function nmUpdateMotivos() {
+  const cat = document.getElementById('nm-categoria')?.value;
+  const sel = document.getElementById('nm-motivo');
+  if (!sel) return;
+  const map = {
+    QUALIDADE: ['Produto fora de especificação','Defeito de fabricação','Contaminação','Dimensão incorreta','Material incorreto','Aparência/acabamento'],
+    PRAZO: ['Atraso na entrega','Entrega parcial','Cancelamento de pedido','Prazo de produção excedido'],
+    EMBALAGEM: ['Embalagem danificada','Embalagem incorreta','Quantidade incorreta','Rótulo incorreto'],
+    FATURAMENTO: ['Valor incorreto','Duplicidade de cobrança','NF com erro','Desconto não aplicado'],
+    ATENDIMENTO: ['Demora no atendimento','Informação incorreta','Falta de retorno','Descortesia'],
+    LOGISTICA: ['Transportadora','Endereço incorreto','Extravio','Avaria no transporte'],
+    ESPECIFICACAO: ['Projeto não atende requisito','Alteração não comunicada','Aprovação de amostra'],
+    OUTRO: ['Outro']
+  };
+  const opts = map[cat] || [];
+  sel.innerHTML = '<option value="">Selecionar...</option>' + opts.map(o => `<option value="${o}">${o}</option>`).join('');
 }
 
 function onCnpjChange() {
@@ -10855,6 +10963,16 @@ async function registrarManifestacao() {
         origemDocumento: _nmTipoImportacao || '',
         arquivoOrigem: window._documentoExtraido ? JSON.stringify(window._documentoExtraido) : '',
         statusFicha: document.getElementById('nm-status-ficha')?.value || 'ABERTA',
+        origem: document.getElementById('nm-origem')?.value || 'MANUAL',
+        prioridade: document.getElementById('nm-prioridade')?.value || 'NORMAL',
+        protocoloExterno: document.getElementById('nm-protocolo-externo')?.value || '',
+        vinculoManifestacao: document.getElementById('nm-vinculo-man')?.value || '',
+        categoria: document.getElementById('nm-categoria')?.value || '',
+        motivo: document.getElementById('nm-motivo')?.value || '',
+        severidade: document.getElementById('nm-severidade')?.value || 'MEDIA',
+        setorResponsavelInicial: document.getElementById('nm-setor-resp')?.value || '',
+        geraRNC: document.getElementById('nm-gera-rnc')?.checked ? 'SIM' : 'NÃO',
+        requerAnaliseCausa: document.getElementById('nm-analise-causa')?.checked ? 'SIM' : 'NÃO',
         procedente: document.getElementById('nm-procedente')?.value || '',
         procedenteJustificativa: document.getElementById('nm-procedente-justif')?.value || '',
         caminhoTratativa: document.getElementById('nm-caminho-tratativa')?.value || '',
@@ -10998,15 +11116,15 @@ async function _encSubmeter() {
       payload.acao = 'rejeitar';
       payload.MOTIVO_REJEICAO = document.getElementById('enc-motivo-rej')?.value || '';
     }
-    const r = await _apiFetch(`/api/manifestacoes/${encodeURIComponent(item.ID_MANIFESTACAO)}/ficha`, 15000, { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
-    const data = await r.json().catch(()=>({}));
-    if (r.ok && (data.sucesso !== false)) {
+    const data = await _apiFetch(`/api/manifestacoes/${encodeURIComponent(item.ID_MANIFESTACAO)}/ficha`, 15000, { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+    if (data && data.sucesso !== false) {
       document.getElementById('modal-enc-analista').style.display = 'none';
       if (msgEl) { msgEl.style.display='block'; msgEl.style.background='#E6F2EA'; msgEl.style.color='#1B7A3E'; msgEl.textContent='✓ Manifestação encaminhada com sucesso.'; }
       // recarrega lista em background
       if (typeof loadManifestacoes === 'function') setTimeout(loadManifestacoes, 800);
+      if (typeof loadPendencias === 'function') setTimeout(loadPendencias, 800);
     } else {
-      if (msgEl) { msgEl.style.display='block'; msgEl.style.background='#FEF2F2'; msgEl.style.color='#C70602'; msgEl.textContent='Erro: '+(data.erro||'Falha ao encaminhar.'); }
+      if (msgEl) { msgEl.style.display='block'; msgEl.style.background='#FEF2F2'; msgEl.style.color='#C70602'; msgEl.textContent='Erro: '+((data&&data.erro)||'Falha ao encaminhar.'); }
       btn.disabled = false;
       document.getElementById('enc-btn-label').textContent = origLabel;
     }
@@ -12289,7 +12407,10 @@ function filtrarBanco() {
 
 function renderBanco() {
   const search = (document.getElementById('banco-search')?.value || '').toLowerCase();
-  const base = _bancoDataFull.length ? _bancoDataFull : bancoData;
+  const _allData = _bancoDataFull.length ? _bancoDataFull : bancoData;
+  // Nunca exibir registros excluídos ou deletados
+  const _EXCLUIDOS = new Set(['EXCLUIDA','DELETADA','EXCLUIDO','DELETADO']);
+  const base = _allData.filter(m => !_EXCLUIDOS.has((m.STATUS||'').toUpperCase()) && !_EXCLUIDOS.has((m.ATIVO||'').toUpperCase()));
   let data = base;
 
   const _isFinalizada = m => { const s=(m.STATUS||'').toUpperCase(); return s.includes('ENCERR')||s.includes('FINALIZ')||s.includes('CONCLUÍD')||s.includes('CONCLUIDA'); };
@@ -12402,8 +12523,7 @@ function renderBanco() {
 }
 
 function navBancoPage(p) {
-  const total = Math.max(1, Math.ceil((_bancoDataFull.length || bancoData.length) / BANCO_PAGE_SIZE));
-  bancoPagina = Math.max(1, Math.min(p, total));
+  bancoPagina = Math.max(1, p);
   renderBanco();
 }
 
@@ -13434,7 +13554,8 @@ window.navigate = function(page, el) {
         jsonFetch('/api/reclamacoes'),
         jsonFetch('/api/pesquisas/resumo')
       ]);
-      _dashData.mans=results[0].status==='fulfilled'?(results[0].value.itens||[]):[];
+      const _EXCL2=new Set(['EXCLUIDA','DELETADA','EXCLUIDO','DELETADO']);
+      _dashData.mans=(results[0].status==='fulfilled'?(results[0].value.itens||[]):[]).filter(m=>!_EXCL2.has((m.STATUS||'').toUpperCase()));
       _dashData.recs=results[1].status==='fulfilled'?(results[1].value.itens||[]):[];
       // KPIs pesquisas de satisfação
       if(results[2].status==='fulfilled'){
@@ -26538,6 +26659,7 @@ function _renderTratativa(d){
     _secB(m) +
     _secC(m) +
     _secD(m, d.encaminhamentos||[]) +
+    _secI(m, d.tratasSetoriais||[]) +
     _secE(m, d.execucoes||[]) +
     _secF(m, d.impactoFinanceiro) +
     _secG(m) +
@@ -26888,6 +27010,63 @@ function _secH(m, devolutivas){
 }
 
 // ── SEÇÃO AUDITORIA
+// ── SEÇÃO I: Tratativas por Setor
+function _secI(m, tratsSetoriais){
+  const id = m.ID_MANIFESTACAO || _tratId;
+  const setorOpts = ['QUALIDADE','LOGISTICA','COMERCIAL','PRODUCAO','FINANCEIRO','SAC'].map(s=>`<option value="${s}">${s}</option>`).join('');
+  const statusBadge = st => {
+    const map = {EM_ANDAMENTO:'background:#FEF3C7;color:#92400E',CONCLUIDA:'background:#D1FAE5;color:#065F46',CANCELADA:'background:#FEE2E2;color:#DC2626'};
+    return `<span style="font-size:11px;padding:2px 8px;border-radius:10px;${map[st]||'background:#F3F4F6;color:#6B7280'}">${st||'—'}</span>`;
+  };
+  const lista = tratsSetoriais.length ? tratsSetoriais.map(t=>`
+    <div style="border:1px solid #EBEBEB;border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font-size:11px;font-weight:700;background:#EDE9FE;color:#6D28D9;padding:2px 8px;border-radius:6px">${esc(t.SETOR||'—')}</span>
+        ${statusBadge(t.STATUS)}
+        <span style="font-size:11px;color:#8A8A8A;margin-left:auto">${fmtData(t.DATA_EXECUCAO||t.CRIADO_EM)}</span>
+      </div>
+      <div style="font-size:13px;font-weight:600;color:#1A1A1A">${esc(t.ACAO||'—')}</div>
+      ${t.RESULTADO?`<div style="font-size:12.5px;color:#545252">${esc(t.RESULTADO)}</div>`:''}
+      <div style="font-size:11.5px;color:#A0A0A0">Responsável: ${esc(t.RESPONSAVEL||'—')}</div>
+      ${t.STATUS!=='CONCLUIDA'?`<button onclick="tratFinalizarTratativaSetorial('${esc(t.ID_TRATATIVA)}','${esc(id)}')" style="align-self:flex-start;height:28px;border:1px solid #10B981;background:#D1FAE5;color:#065F46;border-radius:7px;padding:0 10px;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit">Marcar concluída</button>`:''}
+    </div>`).join('') : '<div style="color:#A0A0A0;font-size:13px;text-align:center;padding:20px 0">Nenhuma tratativa setorial registrada.</div>';
+  return `<div class="trat-sec">
+    <div class="trat-sec-h" onclick="tratToggleSec(this)">
+      <span style="font-size:11px;font-weight:700;color:#7C3AED;background:#EDE9FE;border-radius:6px;padding:2px 7px">I</span>
+      <span style="font-size:14px;font-weight:700;color:#1A1A1A;flex:1">Tratativas por Setor</span>
+      <span class="trat-sec-badge ${tratsSetoriais.filter(t=>t.STATUS==='EM_ANDAMENTO').length?'warn':tratsSetoriais.length?'ok':''}">${tratsSetoriais.length} tratativa(s)</span>
+      <span style="font-size:12px;color:#A0A0A0;margin-left:6px">▼</span>
+    </div>
+    <div class="trat-sec-body" style="display:flex;flex-direction:column;gap:10px">
+      ${lista}
+      <details style="margin-top:8px">
+        <summary style="font-size:12.5px;font-weight:700;cursor:pointer;color:#7C3AED;list-style:none;display:flex;align-items:center;gap:6px">
+          <span>+ Registrar nova tratativa setorial</span>
+        </summary>
+        <div style="margin-top:12px;border:1px dashed #C4B5FD;border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:#545252">Setor
+              <select id="trat-i-setor" class="nm-select" style="height:36px">${setorOpts}</select>
+            </label>
+            <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:#545252">Responsável
+              <input id="trat-i-resp" class="nm-input" style="height:36px" placeholder="Nome do responsável">
+            </label>
+          </div>
+          <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:#545252">Ação realizada *
+            <textarea id="trat-i-acao" class="nm-textarea" rows="2" placeholder="Descreva a ação realizada pelo setor..."></textarea>
+          </label>
+          <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:#545252">Resultado
+            <textarea id="trat-i-resultado" class="nm-textarea" rows="2" placeholder="Resultado obtido..."></textarea>
+          </label>
+          <div style="display:flex;gap:8px">
+            <button onclick="tratRegistrarSetorial('${esc(id)}')" style="height:36px;background:#7C3AED;color:#fff;border:0;border-radius:8px;padding:0 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Registrar</button>
+          </div>
+        </div>
+      </details>
+    </div>
+  </div>`;
+}
+
 function _secAudit(historico){
   if (!historico.length) return '';
   const rows = historico.slice(-20).reverse().map(h=>`
@@ -26956,6 +27135,32 @@ window.tratGerarDiagnosticoIA = async function(id){
   } catch(e){
     erroEl.textContent='IA indisponível: '+e.message; erroEl.style.display='';
   } finally { btn.textContent=orig; btn.disabled=false; }
+};
+
+window.tratRegistrarSetorial = async function(id){
+  const setor = document.getElementById('trat-i-setor')?.value||'';
+  const acao = document.getElementById('trat-i-acao')?.value||'';
+  const resultado = document.getElementById('trat-i-resultado')?.value||'';
+  const resp = document.getElementById('trat-i-resp')?.value||'';
+  if (!acao.trim()){ alert('Informe a ação realizada.'); return; }
+  try {
+    await apiFetch('/api/manifestacoes/'+encodeURIComponent(id)+'/tratativas-setoriais', {
+      method:'POST',
+      body: JSON.stringify({ setor, acao, resultado, responsavel:resp, status:'EM_ANDAMENTO' })
+    });
+    await tratCarregar();
+  } catch(e){ alert('Erro: '+e.message); }
+};
+
+window.tratFinalizarTratativaSetorial = async function(idTrat, idMan){
+  if (!confirm('Marcar esta tratativa como concluída?')) return;
+  try {
+    await apiFetch('/api/manifestacoes/'+encodeURIComponent(idMan)+'/tratativas-setoriais/'+encodeURIComponent(idTrat), {
+      method:'PUT',
+      body: JSON.stringify({ STATUS:'CONCLUIDA', DATA_CONCLUSAO: new Date().toISOString() })
+    });
+    await tratCarregar();
+  } catch(e){ alert('Erro: '+e.message); }
 };
 
 window.tratEncaminhar = async function(id){

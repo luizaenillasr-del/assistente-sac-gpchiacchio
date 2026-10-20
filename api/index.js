@@ -2524,19 +2524,21 @@ app.get('/api/manifestacoes/:id/tratativa-completa', requerPermissao('manifestac
     if (!pertenceEmpresa(req.user?.empresa, m.EMPRESA_RECLAMADA)) {
       return res.status(403).json({ sucesso:false, erro:'Acesso não autorizado.' });
     }
-    const [histRows, devRows, encRows, impactoRows, execRows] = await Promise.all([
+    const [histRows, devRows, encRows, impactoRows, execRows, tratasRows] = await Promise.all([
       lerAba('HISTORICO_MANIFESTACOES',2000).catch(()=>[]),
       lerAba('DEVOLUTIVAS',2000).catch(()=>[]),
       lerAba('ENCAMINHAMENTOS',2000).catch(()=>[]),
       lerAba('IMPACTO_FINANCEIRO',1000).catch(()=>[]),
       lerAba('EXECUCAO_TRATATIVA',2000).catch(()=>[]),
+      lerAba('TRATATIVAS_SETORIAIS',3000).catch(()=>[]),
     ]);
     const historico = histRows.filter(h=>h.ID_MANIFESTACAO===id);
     const devolutivas = devRows.filter(d=>d.ID_MANIFESTACAO===id);
     const encaminhamentos = encRows.filter(e=>e.ID_MANIFESTACAO===id);
     const impactoFin = impactoRows.find(i=>i.ID_MANIFESTACAO===id)||null;
     const execucoes = execRows.filter(e=>e.ID_MANIFESTACAO===id);
-    res.json({ sucesso:true, manifestacao:m, historico, devolutivas, encaminhamentos, impactoFinanceiro:impactoFin, execucoes });
+    const tratasSetoriais = tratasRows.filter(t=>t.ID_MANIFESTACAO===id);
+    res.json({ sucesso:true, manifestacao:m, historico, devolutivas, encaminhamentos, impactoFinanceiro:impactoFin, execucoes, tratasSetoriais });
   } catch(e){ res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
 
@@ -2725,6 +2727,92 @@ app.post('/api/manifestacoes/:id/devolutiva/enviar', requerPermissao('manifestac
       STATUS_DEVOLUTIVA: 'ENVIADA',
     });
     await registrarAuditoria(req.user?.usuario||'sistema','ENVIOU_DEVOLUTIVA',id,'MANIFESTACOES',null,{ enviadoPor: req.user?.usuario });
+    res.json({ sucesso:true, id, encerradaEm: agora });
+  } catch(e){ res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
+});
+
+// GET tratativas por setor de uma manifestação
+app.get('/api/manifestacoes/:id/tratativas-setoriais', requerPermissao('manifestacoes.visualizar'), middlewareEscopoEmpresa(), async (req,res)=>{
+  try {
+    const id = req.params.id;
+    const rows = await lerAba('TRATATIVAS_SETORIAIS', 3000).catch(()=>[]);
+    const tratativas = rows.filter(r => r.ID_MANIFESTACAO === id);
+    res.json({ sucesso:true, tratativas });
+  } catch(e){ res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
+});
+
+// POST registrar tratativa setorial (setor preenche execução)
+app.post('/api/manifestacoes/:id/tratativas-setoriais', requerPermissao('manifestacoes.editar'), middlewareEscopoEmpresa(), async (req,res)=>{
+  try {
+    const id = req.params.id;
+    const data = await lerAba('MANIFESTACOES', 5000);
+    const m = data.find(r=>r.ID_MANIFESTACAO===id);
+    if (!m) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
+    if (!pertenceEmpresa(req.user?.empresa, m.EMPRESA_RECLAMADA)) return res.status(403).json({ sucesso:false, erro:'Acesso não autorizado.' });
+    const { setor, acao, resultado, responsavel, dataExecucao, status } = req.body||{};
+    if (!setor || !acao) return res.status(400).json({ sucesso:false, erro:'setor e acao são obrigatórios.' });
+    const idTrat = `TRAT-${id}-${Date.now()}`;
+    const agora = new Date().toISOString();
+    const objeto = {
+      ID_TRATATIVA: idTrat, ID_MANIFESTACAO: id,
+      SETOR: setor, ACAO: acao, RESULTADO: resultado||'',
+      RESPONSAVEL: responsavel || req.user?.usuario || '',
+      DATA_EXECUCAO: dataExecucao || agora,
+      STATUS: status || 'EM_ANDAMENTO',
+      CRIADO_EM: agora, CRIADO_POR: req.user?.usuario||'sistema',
+      EMPRESA: m.EMPRESA_RECLAMADA||''
+    };
+    await appendObjeto('TRATATIVAS_SETORIAIS', objeto).catch(async ()=>{
+      const rows2 = await lerAba('TRATATIVAS_SETORIAIS',3000).catch(()=>[]);
+      rows2.push(objeto);
+    });
+    await registrarAuditoria(req.user?.usuario||'sistema','TRATATIVA_SETORIAL',id,'TRATATIVAS_SETORIAIS',null,{ setor, acao });
+    res.json({ sucesso:true, id:idTrat, tratativa:objeto });
+  } catch(e){ res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
+});
+
+// PUT atualizar tratativa setorial
+app.put('/api/manifestacoes/:id/tratativas-setoriais/:idTrat', requerPermissao('manifestacoes.editar'), middlewareEscopoEmpresa(), async (req,res)=>{
+  try {
+    const { id, idTrat } = req.params;
+    const rows = await lerAba('TRATATIVAS_SETORIAIS', 3000).catch(()=>[]);
+    const trat = rows.find(r=>r.ID_TRATATIVA===idTrat && r.ID_MANIFESTACAO===id);
+    if (!trat) return res.status(404).json({ sucesso:false, erro:'Tratativa não encontrada.' });
+    const updates = req.body||{};
+    await atualizarPorID('TRATATIVAS_SETORIAIS', idTrat, { ...updates, ATUALIZADO_EM: new Date().toISOString(), ATUALIZADO_POR: req.user?.usuario||'sistema' });
+    await registrarAuditoria(req.user?.usuario||'sistema','ATUALIZOU_TRATATIVA_SETORIAL',id,'TRATATIVAS_SETORIAIS',null,updates);
+    res.json({ sucesso:true, id:idTrat });
+  } catch(e){ res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
+});
+
+// POST finalizar manifestação (com validação de critérios bloqueantes)
+app.post('/api/manifestacoes/:id/finalizar', requerPermissao('aprovacoes.aprovar'), middlewareEscopoEmpresa(), async (req,res)=>{
+  try {
+    const id = req.params.id;
+    const data = await lerAba('MANIFESTACOES', 5000);
+    const m = data.find(r=>r.ID_MANIFESTACAO===id);
+    if (!m) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
+    if (!pertenceEmpresa(req.user?.empresa, m.EMPRESA_RECLAMADA)) return res.status(403).json({ sucesso:false, erro:'Acesso não autorizado.' });
+    // Critérios bloqueantes
+    const bloqueios = [];
+    if (!m.PROCEDENTE) bloqueios.push('Procedência não definida.');
+    if (!m.DEVOLUTIVA_ENVIADA && m.STATUS_DEVOLUTIVA !== 'ENVIADA') bloqueios.push('Devolutiva ao cliente não enviada.');
+    if (m.STATUS === 'ENCERRADA') bloqueios.push('Manifestação já está encerrada.');
+    // Verificar tratativas setoriais pendentes
+    const tratsRows = await lerAba('TRATATIVAS_SETORIAIS', 3000).catch(()=>[]);
+    const tratsPendentes = tratsRows.filter(r => r.ID_MANIFESTACAO===id && r.STATUS==='EM_ANDAMENTO');
+    if (tratsPendentes.length > 0) bloqueios.push(`${tratsPendentes.length} tratativa(s) setorial(is) ainda em andamento.`);
+    if (bloqueios.length > 0) return res.status(422).json({ sucesso:false, bloqueios, erro:'Critérios bloqueantes não atendidos.' });
+    const agora = new Date().toISOString();
+    const { observacaoFinal, satisfacaoCliente } = req.body||{};
+    await atualizarPorID('MANIFESTACOES', id, {
+      STATUS: 'ENCERRADA',
+      DATA_ENCERRAMENTO: agora,
+      ENCERRADA_POR: req.user?.usuario||'sistema',
+      OBSERVACAO_FINAL: observacaoFinal||'',
+      SATISFACAO_CLIENTE: satisfacaoCliente||'',
+    });
+    await registrarAuditoria(req.user?.usuario||'sistema','FINALIZOU_MANIFESTACAO',id,'MANIFESTACOES',m.STATUS,'ENCERRADA');
     res.json({ sucesso:true, id, encerradaEm: agora });
   } catch(e){ res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
@@ -3971,6 +4059,9 @@ app.get('/api/pesquisas/relatorio', requerPermissao('pesquisas.visualizar'), asy
     if (perfil !== 'MASTER' && req.user?.empresa) {
       empresa = req.user.empresa;
     }
+    // Invalida cache para garantir dados frescos no relatório
+    invalidarCacheAba('PESQUISA_RESPOSTAS');
+    invalidarCacheAba('PESQUISA_HISTORICO');
     const todasRespostas = await lerRespostasPesquisa();
     // Normaliza para campos canônicos (sem duplicar campos uppercase e camelCase)
     const dados = todasRespostas.map(r => ({
