@@ -22877,7 +22877,13 @@ async function mudarStatusMC(id, novoStatus) {
     const nome=String(u.nome||u.usuario||'').trim().split(/\s+/)[0]||'—';
     const greet=$('cen-greet');
     const perfil=(u.perfil||'').toUpperCase();
-    if(greet) greet.textContent='Olá, '+nome+' · '+((u.setor||u.empresa)?[u.setor,u.empresa].filter(Boolean).join(' · '):perfil);
+    if(greet){
+      const partes=[perfil];
+      const emps=(u.empresa||'').split(',').map(e=>e.trim()).filter(Boolean);
+      if(emps.length===1) partes.push(emps[0]);
+      else if(emps.length>1) partes.push(emps.length+' empresas');
+      greet.textContent='Olá, '+nome+' · '+partes.join(' · ');
+    }
 
     const d=await api('/api/manifestacoes');
     if(btn){btn.disabled=false;btn.textContent='↻ Atualizar';}
