@@ -12204,7 +12204,6 @@ async function loadBancoManifestacoes() {
     const res = await _apiFetch('/api/manifestacoes', 30000);
     if (res.aviso) console.warn('[banco] API aviso:', res.aviso);
     let itens = res.itens || [];
-    console.log('[banco] API retornou', itens.length, 'itens, fonte:', res.fonte);
     // Fallback: if API returns empty but dashboard already loaded data, reuse it
     if (!itens.length && window._dashData && (window._dashData.mans || []).length) {
       console.log('[banco] usando fallback _dashData:', window._dashData.mans.length);
