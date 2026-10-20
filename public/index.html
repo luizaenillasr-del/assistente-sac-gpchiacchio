@@ -22784,9 +22784,9 @@ async function mudarStatusMC(id, novoStatus) {
   }
   window.cenBancoIrPag=function(p){_cenBancoPag=p;cenBancoRender();};
   window.cenBancoAbrirFicha=function(id){
-    // Seleciona na fila ou abre modal de ficha completa
-    const m=_cenAll.find(x=>(x.id||x.ID_MANIFESTACAO)===id)||_cenBancoAll.find(x=>(x.ID_MANIFESTACAO||x.id)===id);
-    if(m&&(m.id||m.ID_MANIFESTACAO)){cenAba('fila',document.getElementById('mc-tab-fila'));setTimeout(()=>window.cenSelecionarMan&&window.cenSelecionarMan(m),100);}
+    // Navega para Fila e abre a manifestação pelo ID
+    cenAba('fila',document.getElementById('mc-tab-fila'));
+    setTimeout(()=>{ if(typeof window.cenSelecionarMan==='function') window.cenSelecionarMan(id); },100);
   };
   window.cenBancoExportarCSV=function(){
     const cols=['PROTOCOLO','DATA_ABERTURA','NOME_CLIENTE','TIPO_MANIFESTACAO','STATUS','STATUS_FICHA','EMPRESA_RECLAMADA','SETOR_DESTINADO','DATA_LIMITE'];
@@ -23454,7 +23454,10 @@ async function mudarStatusMC(id, novoStatus) {
   };
 
   window.cenAbrirFichaCompleta = function(){
-    if(_cenAtual && typeof navigate==='function') navigate('banco-manifestacoes');
+    // Abre a ficha completa via API (já está carregada no painel de detalhe)
+    // Rola o painel para o topo para ver todos os detalhes
+    const detalhe = $('cen-detalhe');
+    if(detalhe) detalhe.scrollTo({top:0,behavior:'smooth'});
   };
 
   // Cobrar setor / Escalar ao gestor: não existe endpoint no sistema — mantidos como no-op informativo
