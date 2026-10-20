@@ -5995,7 +5995,27 @@ app.get('/api/aprovadores/:usuario/pendencias', requerPerfil('APROVADOR','APROVA
     const rnc = isMasterAprov
       ? rncs.filter(r=>!['APROVADA','ENCERRADA','CANCELADA','REJEITADA'].includes(String(r.STATUS||'').toUpperCase()))
       : rncs.filter(r=>!['APROVADA','ENCERRADA','CANCELADA','REJEITADA'].includes(String(r.STATUS||'').toUpperCase())&&(compNames.some(c=>n(c)===n(r.COMPETENCIA||r.SETOR))||relAtivos.some(x=>n(x.NOME_COMPETENCIA)===n(r.COMPETENCIA||r.SETOR)))&&(!empresas.length||empresas.some(e=>n(e)===n(r.EMPRESA))));
-    const sac=mans.filter(m=>!['ENCERRADA','CONCLUÍDA','CONCLUIDA','CANCELADA','REJEITADA'].includes(String(m.STATUS||'').toUpperCase())&&(m.STATUS==='AGUARDANDO_APROVAÇÃO'||m.STATUS==='AGUARDANDO_DECISÃO'||m.STATUS_FICHA==='AGUARDANDO_APROVACAO'||m.APROVACAO_NECESSARIA==='SIM'));
+    // SAC: inclui manifestações aguardando aprovação + itens da FILA_APROVACAO pendentes
+    const fila = await lerAba('FILA_APROVACAO', 2000).catch(()=>[]);
+    const filaPendente = isMasterAprov
+      ? fila.filter(f=>f.STATUS==='PENDENTE'&&f.TIPO_ENTIDADE==='SAC')
+      : fila.filter(f=>f.STATUS==='PENDENTE'&&f.TIPO_ENTIDADE==='SAC'&&(n(f.ID_APROVADOR)===n(apId)||n(f.NOME_APROVADOR)===n(usuario)));
+    const _sacBase=m=>!['ENCERRADA','CONCLUÍDA','CONCLUIDA','CANCELADA','REJEITADA'].includes(String(m.STATUS||'').toUpperCase())&&(m.STATUS==='AGUARDANDO_APROVAÇÃO'||m.STATUS==='AGUARDANDO_DECISÃO'||m.STATUS_FICHA==='AGUARDANDO_APROVACAO'||m.APROVACAO_NECESSARIA==='SIM');
+    const sacDireto=mans.filter(m=>{
+      if(!_sacBase(m)) return false;
+      if(isMasterAprov) return true;
+      // APROVADOR normal: filtra pela empresa e/ou competência vinculada
+      const empOk=!empresas.length||empresas.some(e=>n(e)===n(m.EMPRESA_RECLAMADA||m.EMPRESA||''));
+      const compOk=!compNames.length||compNames.some(c=>n(c)===n(m.COMPETENCIA||m.SETOR||m.TIPO||''));
+      return empOk&&compOk;
+    });
+    // Merge sem duplicatas (por ID_MANIFESTACAO)
+    const sacIds = new Set(sacDireto.map(m=>m.ID_MANIFESTACAO));
+    const sacDeFila = filaPendente.filter(f=>!sacIds.has(f.ID_ENTIDADE)).map(f=>{
+      const man=mans.find(m=>m.ID_MANIFESTACAO===f.ID_ENTIDADE)||{};
+      return {...man, ID_MANIFESTACAO:f.ID_ENTIDADE, _filaId:f.ID_FILA, STATUS:'AGUARDANDO_APROVACAO', STATUS_FICHA:'AGUARDANDO_APROVACAO', EMPRESA_RECLAMADA: f.EMPRESA||man.EMPRESA_RECLAMADA||'', DESCRICAO: f.DESCRICAO||man.DESCRICAO||''};
+    });
+    const sac=[...sacDireto,...sacDeFila];
     const sugestoes=(await lerAba('SUGESTOES_APROVADOR',5000).catch(()=>[])).filter(x=>n(x.ID_APROVADOR)===n(apId));
     res.json({sucesso:true,usuario,aprovador:ap,competencias:compNames,empresas,rnc,sac,sugestoes,totais:{rnc:rnc.length,sac:sac.length,total:rnc.length+sac.length}});
   } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
