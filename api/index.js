@@ -1278,11 +1278,15 @@ app.use('/api', async (req,res,next)=>{
     '/public/solicitar-acesso',
     '/public/reclamacoes',
     '/public/empresas',
+    '/public/pesquisas-ativas',
+    '/public/whatsapp',
+    '/pesquisas/resposta-portal',
     '/pesquisas/resposta-publica',
     '/pesquisas/resposta-token',
     '/pesquisa',
   ]);
-  if(publicPaths.has(req.path) || req.path.startsWith('/pesquisa/')) return next();
+  const consultaProtocoloPublico = req.method === 'GET' && /^\/public\/protocolo\/[^/]+\/?$/.test(req.path);
+  if(publicPaths.has(req.path) || consultaProtocoloPublico || req.path.startsWith('/pesquisa/')) return next();
   const header=req.headers.authorization||'';
   const token=header.startsWith('Bearer ')?header.slice(7):'';
   const payload=verificarToken(token);

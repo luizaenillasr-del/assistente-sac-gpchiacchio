@@ -24,7 +24,7 @@ const PORT = process.env.PORT || 3000;
 
 // Replica o vercel.json: estáticos primeiro, depois a API, depois fallback p/ o
 // frontend (SPA). Prefixos abaixo são tratados pelo app Express (não são SPA).
-const APP_PREFIXES = ['/api', '/relatorio-publico', '/pesquisa'];
+const APP_PREFIXES = ['/api', '/relatorio-publico', '/pesquisa', '/portal'];
 
 const wrapper = express();
 wrapper.use(require('compression')()); // gzip
