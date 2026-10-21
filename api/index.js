@@ -9404,6 +9404,58 @@ app.post('/api/config/whatsapp', requerPerfil('MASTER','GESTOR SAC'), async (req
 });
 
 // ═════════════════════════════════════════════════════════════════════════════
+// PORTAL ADMIN — rotas administrativas do Portal do Cliente
+// ═════════════════════════════════════════════════════════════════════════════
+
+app.get('/api/portal-admin/visao-geral', requerPerfil('MASTER','GESTOR SAC'), async (req, res) => {
+  try {
+    const [respostas, mans, cfgRows] = await Promise.all([
+      lerAba('PESQUISA_RESPOSTAS', 5000).catch(()=>[]),
+      lerAba('MANIFESTACOES', 5000).catch(()=>[]),
+      lerAba('CONFIG_PORTAL', 100).catch(()=>[]),
+    ]);
+    const limite30 = new Date(Date.now() - 30*24*60*60*1000).toISOString();
+    const respostasPortal = respostas.filter(r => r.ORIGEM === 'PORTAL_PUBLICO' && (r.DATA||'') >= limite30).length;
+    const manifestacoesPortal = mans.filter(m => (m.ORIGEM === 'PORTAL_PUBLICO' || m.ORIGEM === 'PORTAL_FUNCIONARIO') && (m.DATA_ABERTURA||'') >= limite30).length;
+    const wa = cfgRows.find(r => r.TIPO === 'WHATSAPP' && r.ATIVO === 'SIM');
+    res.json({ sucesso:true, statusPublicacao:'Publicado', enderecoPublico:'/portal', empresasAtivas:3, respostasPortal, manifestacoesPortal, whatsappAtivo:!!wa });
+  } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
+});
+
+app.get('/api/portal-admin/config', requerPerfil('MASTER','GESTOR SAC'), async (req, res) => {
+  try {
+    const rows = await lerAba('CONFIG_PORTAL', 200).catch(()=>[]);
+    res.json({ sucesso:true, config: rows });
+  } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
+});
+
+app.post('/api/portal-admin/config', requerPerfil('MASTER','GESTOR SAC'), async (req, res) => {
+  try {
+    const { tipo, valor, ativo, mensagem } = req.body || {};
+    if (!tipo) return res.status(400).json({ sucesso:false, erro:'tipo obrigatório.' });
+    await garantirAbaComCabecalhos('CONFIG_PORTAL', ['TIPO','VALOR','MENSAGEM','ATIVO','UPDATED_AT','UPDATED_BY']);
+    const rows = await lerAba('CONFIG_PORTAL', 200).catch(()=>[]);
+    const existing = rows.find(r => r.TIPO === tipo);
+    const obj = { TIPO:tipo, VALOR:valor||'', MENSAGEM:mensagem||'', ATIVO:ativo||'SIM', UPDATED_AT:new Date().toISOString(), UPDATED_BY:req.user?.usuario||'' };
+    if (existing) { await atualizarPorID('CONFIG_PORTAL', tipo, obj, ['TIPO']).catch(()=>appendObjeto('CONFIG_PORTAL', obj)); } else { await appendObjeto('CONFIG_PORTAL', obj); }
+    invalidarCacheAba('CONFIG_PORTAL');
+    registrarAuditoria(req.user?.usuario||'sistema', 'PORTAL_ADMIN_CONFIG', tipo, 'CONFIG_PORTAL', null, { tipo, ativo, valor }).catch(()=>{});
+    res.json({ sucesso:true });
+  } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
+});
+
+app.get('/api/portal-admin/historico', requerPerfil('MASTER','GESTOR SAC'), async (req, res) => {
+  try {
+    const rows = await lerAba('LOG_SISTEMA', 2000).catch(()=>[]);
+    const hist = rows
+      .filter(r => String(r.ACAO||'').includes('PORTAL_ADMIN'))
+      .slice(-100).reverse()
+      .map(r => ({ dataHora:r.DATA_HORA, usuario:r.USUARIO, acao:r.ACAO, entidade:r.ENTIDADE, valorAnterior:r.VALOR_ANTERIOR, valorNovo:r.VALOR_NOVO }));
+    res.json({ sucesso:true, historico:hist });
+  } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
 // CATCH ALL
 // ═════════════════════════════════════════════════════════════════════════════
 app.use((req, res) => {
