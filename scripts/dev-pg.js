@@ -15,7 +15,7 @@ process.env.SHEETS_MOCK_PATH = path.join(__dirname, '..', 'tests', 'sheets-mock.
 
 const publicDir = path.join(__dirname, '..', 'public');
 const app = require('../api/index.js');
-const APP_PREFIXES = ['/api', '/relatorio-publico', '/pesquisa'];
+const APP_PREFIXES = ['/api', '/relatorio-publico', '/pesquisa', '/portal'];
 
 const wrapper = express();
 const compression = require('compression');

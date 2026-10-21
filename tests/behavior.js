@@ -100,6 +100,72 @@ const tokInativo    = () => makeToken({ perfil: 'ANALISTA SAC', empresa: 'CHIACC
 async function runTests() {
   console.log('\n=== TESTES COMPORTAMENTAIS ===\n');
 
+  // Portal externo: navegação e operações sem sessão interna.
+  await test('PORTAL: /portal entrega a página do cliente sem autenticação', async () => {
+    const r = await req('GET', '/portal');
+    assert.strictEqual(r.status, 200);
+    assert.ok(r.body.includes('<title>Portal do Cliente — Grupo Chiacchio</title>'));
+    assert.ok(!r.body.includes('id="page-portal-admin"'));
+  });
+
+  await test('PORTAL: Vercel resolve /portal antes do fallback da SPA interna', () => {
+    const { rewrites } = require('../vercel.json');
+    const route = rewrites.find(r => r.source === '/portal' || r.source === '/(.*)');
+    assert.strictEqual(route?.destination, '/portal.html');
+    const html = fs.readFileSync(path.join(__dirname, '..', 'public', route.destination.slice(1)), 'utf8');
+    assert.ok(html.includes('<title>Portal do Cliente — Grupo Chiacchio</title>'));
+  });
+
+  await test('PORTAL: empresas e WhatsApp podem ser consultados sem login', async () => {
+    const empresas = await req('GET', '/api/public/pesquisas-ativas');
+    assert.strictEqual(empresas.status, 200);
+    assert.strictEqual(empresas.body.sucesso, true);
+    assert.strictEqual(empresas.body.empresas.length, 3);
+    const wa = await req('GET', '/api/public/whatsapp');
+    assert.strictEqual(wa.status, 200);
+    assert.strictEqual(wa.body.sucesso, true);
+    assert.strictEqual(typeof wa.body.ativo, 'boolean');
+  });
+
+  await test('PORTAL: cliente envia pesquisa sem login e resposta fica registrada', async () => {
+    const mock = require(MOCK_PATH);
+    const r = await req('POST', '/api/pesquisas/resposta-portal', null, {
+      empresa: 'Chiacchio Embalagens', nome: 'Cliente teste portal', atendimento: '9',
+      prazo_de_entrega: '10', qualidade_do_produto: '9', recomendaria_a_empresa: '10',
+    });
+    assert.strictEqual(r.status, 200);
+    assert.strictEqual(r.body.sucesso, true);
+    const resposta = mock.DB.PESQUISA_RESPOSTAS.find(x => x.ID_RESPOSTA === r.body.id);
+    assert.ok(resposta, 'resposta não persistida no mock');
+    assert.strictEqual(resposta.ORIGEM, 'PORTAL_PUBLICO');
+    assert.strictEqual(resposta.NOME_CLIENTE, 'Cliente teste portal');
+  });
+
+  await test('PORTAL: consulta pública retorna somente o resumo do protocolo', async () => {
+    const r = await req('GET', '/api/public/protocolo/MAN-CHI-001');
+    assert.strictEqual(r.status, 200);
+    assert.strictEqual(r.body.sucesso, true);
+    assert.strictEqual(r.body.protocolo, 'MAN-CHI-001');
+    assert.ok(r.body.status);
+    assert.deepStrictEqual(Object.keys(r.body).sort(), [
+      'sucesso', 'protocolo', 'empresa', 'tipo', 'dataAbertura', 'status', 'descricaoStatus', 'dataAtualizacao',
+    ].sort());
+  });
+
+  await test('PORTAL: limite público de cinco requisições por minuto continua ativo', async () => {
+    assert.strictEqual((await req('GET', '/api/public/whatsapp')).status, 200);
+    assert.strictEqual((await req('GET', '/api/public/whatsapp')).status, 429);
+  });
+
+  await test('PORTAL: endpoints internos e administrativos continuam protegidos', async () => {
+    for (const route of ['/api/manifestacoes', '/api/portal-admin/visao-geral', '/api/portal-admin/config', '/api/portal-admin/historico', '/api/config/whatsapp', '/api/public/protocolo/MAN-CHI-001/interno']) {
+      assert.strictEqual((await req('GET', route)).status, 401, route);
+    }
+    assert.strictEqual((await req('POST', '/api/portal-admin/config', null, { tipo: 'WHATSAPP' })).status, 401);
+    assert.strictEqual((await req('GET', '/api/portal-admin/config', tokChiacchio())).status, 403);
+    assert.strictEqual((await req('GET', '/api/portal-admin/config', tokMaster())).status, 200);
+  });
+
   // ── B2: Isolamento de empresa — /api/manifestacoes ──────────────────────────
   await test('B2-MAN: Chiacchio vê "CHIACCHIO EMBALAGENS" e "CHIACHIO EMBALAGENS"', async () => {
     const r = await req('GET', '/api/manifestacoes', tokChiacchio());
