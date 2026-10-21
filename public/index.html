@@ -29354,5 +29354,15 @@ if (typeof pageLoaders !== 'undefined') {
   window.loadVisaoGeral = carregar;
 })();
 </script>
+<script>
+  (function(){
+    var originalNavigate = window.navigate;
+    if (typeof originalNavigate !== 'function') return;
+    window.navigate = function(page, el){
+      document.body.classList.toggle('nm-reference-active', page === 'nova-manifestacao');
+      return originalNavigate.apply(this, arguments);
+    };
+  })();
+</script>
 </body>
 </html>
