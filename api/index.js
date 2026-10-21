@@ -1057,6 +1057,21 @@ async function registrarAuditoria(usuario, acao, idManifestacao, entidade, valor
   } catch (e) { console.error('Erro auditoria:', e.message); }
 }
 
+// Histórico próprio da ficha: é conciso, consultável na Central e não expõe o
+// log administrativo completo a quem só pode acompanhar a manifestação.
+async function registrarHistoricoManifestacao({ id, protocolo = '', acao, descricao = '', usuario = 'sistema', etapa = '' }) {
+  try {
+    await garantirAbaComCabecalhos('HISTORICO_MANIFESTACOES', [
+      'ID_HISTORICO','ID_MANIFESTACAO','PROTOCOLO','DATA_HORA','USUARIO','ACAO','DESCRICAO','ETAPA'
+    ]);
+    await appendObjeto('HISTORICO_MANIFESTACOES', {
+      ID_HISTORICO:`HMF-${Date.now()}-${Math.random().toString(36).slice(2,6)}`,
+      ID_MANIFESTACAO:id, PROTOCOLO:protocolo, DATA_HORA:new Date().toISOString(),
+      USUARIO:usuario, ACAO:acao, DESCRICAO:descricao, ETAPA:String(etapa || ''),
+    });
+  } catch (e) { console.warn('[HISTORICO_MANIFESTACOES]', e.message); }
+}
+
 // Filtra itens de teste (prefixo TESTE-GOLIVE) das métricas
 function isTeste(item) {
   const campos = ['ID_MANIFESTACAO','ID_RNC','TITULO','NAO_CONFORMIDADE','Motivo da Reclamação','Descrição do Problema'];
@@ -1913,6 +1928,11 @@ app.post('/api/manifestacoes', requerPermissao('manifestacoes.abrir'), async (re
       });
     }
     registrarAuditoria(usuario||'sistema','CRIOU_MANIFESTAÇÃO',id,'MANIFESTACOES',null,{empresaReclamante,tipo:tipoFinal}).catch(()=>{});
+    registrarHistoricoManifestacao({
+      id, protocolo, usuario:usuario||req.user?.usuario||'sistema', etapa:rascunho ? 1 : 2,
+      acao:rascunho ? 'SALVOU_RASCUNHO' : 'REGISTROU_MANIFESTACAO',
+      descricao:rascunho ? 'Rascunho salvo sem protocolo definitivo.' : 'Manifestação recebida e encaminhada para triagem SAC.'
+    });
     // Executar análise de IA — reutiliza análise do frontend se já disponível
     // (evita dupla chamada ao Sheets e erro 429)
     const decisaoCompleta = req.body.decisaoCompleta;
@@ -2140,6 +2160,10 @@ app.patch('/api/manifestacoes/:id/ficha', requerPermissao('manifestacoes.editar'
     await atualizarPorID('MANIFESTACOES', id, dados, ['ID_MANIFESTACAO']);
     invalidarCacheAba('MANIFESTACOES');
     registrarAuditoria(req.user?.usuario||'sistema', `FICHA_${String(acao).toUpperCase()}`, id, 'MANIFESTACOES', null, dados).catch(()=>{});
+    registrarHistoricoManifestacao({
+      id, protocolo:item.PROTOCOLO||'', usuario:req.user?.usuario||'sistema', etapa:dados.ETAPA_ATUAL,
+      acao:String(acao).toUpperCase(), descricao:dados.MENSAGEM_ETAPA
+    });
     res.json({ sucesso:true, etapaAtual:dados.ETAPA_ATUAL, mensagemEtapa:dados.MENSAGEM_ETAPA });
   } catch (e) { console.error(e); res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
@@ -5706,9 +5730,10 @@ app.get('/api/auditoria', requerPerfil('MASTER','GESTOR SAC','AUDITOR'), async (
 app.get('/api/manifestacoes/:id/historico', requerPermissao('manifestacoes.visualizar'), middlewareEscopoEmpresa(), async (req, res) => {
   try {
     const { id } = req.params;
-    const [logs, manifest] = await Promise.all([
+    const [logs, manifest, historicoFicha] = await Promise.all([
       lerAba('LOG_SISTEMA', 2000).catch(() => []),
       lerAba('MANIFESTACOES', 5000).catch(() => []),
+      lerAba('HISTORICO_MANIFESTACOES', 3000).catch(() => []),
     ]);
     // Garante que a manifestação pertence à empresa do usuário
     const item = manifest.find(r => r.ID_MANIFESTACAO === id);
@@ -5732,7 +5757,11 @@ app.get('/api/manifestacoes/:id/historico', requerPermissao('manifestacoes.visua
           DETALHES:    r.DETALHES    || r.VALOR_NOVO  || vals[6] || vals[5] || '',
         };
       })
-      .filter(r => r.DATA_HORA || r.ACAO);
+      .filter(r => r.DATA_HORA || r.ACAO)
+      .concat(historicoFicha.filter(r => r.ID_MANIFESTACAO === id).map(r => ({
+        DATA_HORA:r.DATA_HORA || '', USUARIO:r.USUARIO || '', ACAO:r.ACAO || '', DETALHES:r.DESCRICAO || '', ETAPA:r.ETAPA || ''
+      })))
+      .sort((a,b) => String(a.DATA_HORA).localeCompare(String(b.DATA_HORA)));
     res.json({ sucesso: true, id, total: itens.length, itens });
   } catch (e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e) }); }
 });
