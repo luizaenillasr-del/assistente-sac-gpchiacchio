@@ -8269,6 +8269,7 @@
   function _statusLabel(meta,textos){
     if(meta){
       if(meta.status==='RASCUNHO') return {lbl:'Rascunho',bg:'#FBF0D9',fg:'#7A4C00'};
+      if(meta.status==='EM_REVISAO') return {lbl:'Em revisão',bg:'#E6EEF8',fg:'#24508F'};
       return {lbl:'Publicado',bg:'#E6F2EA',fg:'#1E6B3A'};
     }
     const t=textos||{};
@@ -8306,7 +8307,7 @@
     // Salvar rascunho: visível quando não publicado e há algum dado
     if(btnSalvar){
       const temDados=_d&&(_d.itens||[]).length>0;
-      btnSalvar.style.display=(!meta||meta.status==='RASCUNHO')&&!_dir?'':'none';
+      btnSalvar.style.display=(!meta||meta.status==='RASCUNHO'||meta.status==='EM_REVISAO')&&!_dir?'':'none';
     }
   }
 
@@ -8315,7 +8316,7 @@
     const tok=sessionStorage.getItem('sac-token');
     const cur=_d&&_serie().find(r=>r.k===_refKey());
     try{
-      const r=await fetch('/api/relatorios/gerar',{method:'POST',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({empresa,ano,mes,indicador:cur?.ind,nps_score:_d?.nps?.score})});
+      const r=await fetch('/api/relatorios/gerar',{method:'POST',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({empresa,ano,mes,indicador:cur?.ind,nps_score:_d?.nps?.score,textos:_d?.textos||{},dados:{meta:getMeta(),criterios:_d?.criterios||[],nps:_d?.nps||null}})});
       const j=await r.json().catch(()=>({}));
       if(!r.ok||j.sucesso===false){_toast('Erro ao gerar rascunho.'+(j.erro?' '+j.erro:''));return;}
       _toast('Rascunho v'+j.versao+' criado.');
@@ -8785,6 +8786,15 @@
   };
 
   window.relBaixarPdf=function(){
+    const meta=_d?.relMeta, tok=sessionStorage.getItem('sac-token');
+    if(meta?.id&&tok){
+      fetch(`/api/relatorios/${encodeURIComponent(meta.id)}/pdf`,{headers:{Authorization:'Bearer '+tok}}).then(async r=>{
+        if(!r.ok) throw new Error();
+        const blob=await r.blob(), url=URL.createObjectURL(blob), a=document.createElement('a');
+        a.href=url;a.download=`Relatorio_Satisfacao_${_empresa()}_${_refKey()}.pdf`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+      }).catch(()=>_toast('Não foi possível gerar o PDF desta versão.'));
+      return;
+    }
     document.body.classList.add('rs-printing');
     const fim=function(){document.body.classList.remove('rs-printing');window.removeEventListener('afterprint',fim);};
     window.addEventListener('afterprint',fim);
