@@ -20299,18 +20299,18 @@ async function cpDecisaoDetalhe(decisao, linhaId) {
   const justWrap = document.getElementById('cp-det-just-wrap');
   const msg = document.getElementById('cp-det-msg');
   const setor = (document.getElementById('cp-det-setor') || {}).value || '';
-  // Não requer tratamento — exige justificativa
+  // Toda decisão de tratamento exige justificativa
   const decisaoApi = decisao === 'NENHUM' ? 'NAO_REQUER' : decisao;
-  if (decisao === 'NENHUM') {
+  if (['NENHUM', 'MANIFESTACAO'].includes(decisao)) {
     if (justWrap && justWrap.style.display === 'none') {
       justWrap.style.display = 'block';
-      if (msg) msg.textContent = 'Selecione o motivo e preencha a justificativa antes de confirmar.';
+      if (msg) msg.textContent = 'Preencha a justificativa antes de confirmar o encaminhamento.';
       return;
     }
     const just = justEl ? justEl.value.trim() : '';
     if (!just) { if (msg) msg.innerHTML = '<span style="color:#A80502">Justificativa obrigatória.</span>'; return; }
   }
-  const justificativa = (decisao === 'NENHUM' && justEl) ? justEl.value.trim() : '';
+  const justificativa = justEl ? justEl.value.trim() : '';
   if (msg) msg.innerHTML = '<span style="color:#666">Registrando...</span>';
   // Busca a resposta pelo número de linha
   const resposta = _cp.all.find(r2 => String(r2.n) === String(linhaId));
@@ -28784,7 +28784,7 @@ if (typeof pageLoaders !== 'undefined') {
         <div style="display:flex;gap:10px;flex-wrap:wrap">
           <a href="/portal" target="_blank" class="btn btn-secondary" style="font-size:12.5px;height:36px;display:inline-flex;align-items:center;gap:6px;padding:0 14px;text-decoration:none">🌐 Abrir portal público</a>
           <button class="btn btn-secondary" style="font-size:12.5px;height:36px" onclick="padmTab('canais')">📱 Configurar WhatsApp</button>
-          <button class="btn btn-secondary" style="font-size:12.5px;height:36px" onclick="padmTab('empresas')">📊 Gerenciar pesquisas</button>
+          <button class="btn btn-secondary" style="font-size:12.5px;height:36px" onclick="navigate('sugestoes-melhoria')">📊 Gerenciar pesquisas</button>
           <button class="btn btn-secondary" style="font-size:12.5px;height:36px" onclick="padmTab('links')">🔗 Ver links públicos</button>
         </div>
       </div>
@@ -29163,5 +29163,9 @@ if (typeof pageLoaders !== 'undefined') {
 })();
 </script>
 
+<link rel="stylesheet" href="/assets/pesquisa-formulario.css">
+<link rel="stylesheet" href="/assets/pesquisas-admin.css">
+<script src="/assets/pesquisa-formulario.js"></script>
+<script src="/assets/pesquisas-admin.js"></script>
 </body>
 </html>

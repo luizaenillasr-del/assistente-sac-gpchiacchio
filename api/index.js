@@ -105,16 +105,22 @@ async function lerRespostasPesquisa() {
   const [pgData, sheetsData] = await Promise.all([
     pesquisaRepo ? pesquisaRepo.listarRespostas({}).catch(e => { console.warn('[F8] respostas PG falhou:', e.message); return []; }) : Promise.resolve([]),
     Promise.race([
-      lerAba('PESQUISA_RESPOSTAS', 5000),
+      lerAba('PESQUISA_RESPOSTAS').then(rows => rows.filter(r => r.STATUS_REGISTRO !== 'RESERVADA')),
       new Promise((_, rej) => setTimeout(() => rej(new Error('sheets timeout')), 12000)),
     ]).catch(() => []),
   ]);
   // Merge: Sheets é fonte de verdade (dados importados manualmente aparecem); PG complementa
   if (!sheetsData.length) return pgData;
   if (!pgData.length) return sheetsData;
-  const pgIds = new Set(pgData.map(r => r.ID_RESPOSTA || r.id).filter(Boolean));
-  const extras = sheetsData.filter(r => !pgIds.has(r.ID_RESPOSTA));
-  return [...pgData, ...extras];
+  const merged = [...pgData];
+  const byId = new Map(merged.map((r, i) => [r.ID_RESPOSTA || r.id, i]).filter(([id]) => id));
+  for (const row of sheetsData) {
+    if (row.ID_RESPOSTA && byId.has(row.ID_RESPOSTA)) {
+      const i = byId.get(row.ID_RESPOSTA);
+      merged[i] = { ...merged[i], ...row }; // Sheets preserva versão e respostas completas.
+    } else { if (row.ID_RESPOSTA) byId.set(row.ID_RESPOSTA, merged.length); merged.push(row); }
+  }
+  return merged;
 }
 async function lerHistoricoPesquisa() {
   return lerAba('PESQUISA_HISTORICO', 500).catch(() => []);
@@ -1287,8 +1293,9 @@ app.use('/api', async (req,res,next)=>{
     '/pesquisas/resposta-token',
     '/pesquisa',
   ]);
+  const formularioPublico = req.method === 'GET' && /^\/public\/pesquisas(?:\/[A-Za-z0-9_-]+)?$/.test(req.path);
   const consultaProtocoloPublico = req.method === 'GET' && /^\/public\/protocolo\/[^/]+\/?$/.test(req.path);
-  if(publicPaths.has(req.path) || consultaProtocoloPublico || req.path.startsWith('/pesquisa/')) return next();
+  if(publicPaths.has(req.path) || (req.method === 'POST' && /^\/pesquisas\/resposta\/[A-Za-z0-9_-]+$/.test(req.path)) || formularioPublico || (req.method === 'GET' && /^\/public\/pesquisa-convite\/[A-Za-z0-9_-]+$/.test(req.path)) || consultaProtocoloPublico || req.path.startsWith('/pesquisa/')) return next();
   const header=req.headers.authorization||'';
   const token=header.startsWith('Bearer ')?header.slice(7):'';
   const payload=verificarToken(token);
@@ -1361,6 +1368,19 @@ function verificarRateLimitAuth(user) {
 }
 
 // ===== AUTH =====
+const pesquisaFormularios = require('./services/pesquisaFormulariosService')({
+  empresas: () => PORTAL_EMPRESAS, canon: empresaCanonica, role: u => perfilCanonico(u?.perfil||''),
+  read: lerAba, append: appendObjeto, ensure: garantirAbaComCabecalhos, update: atualizarPorID,
+  invalidate: invalidarCacheAba, audit: registrarAuditoria, responses: lerRespostasPesquisa,
+  limite: () => Number(process.env.PESQUISA_NOTA_CRITICA || 6),
+  sync: async row => { if (pesquisaRepo) await pesquisaRepo.criarResposta(row).catch(e => console.warn('[PESQUISAS] espelho PG:', e.message)); },
+});
+require('./routes/pesquisas')(app, pesquisaFormularios, {
+  requerPermissao, role: u => perfilCanonico(u?.perfil||''), can: usuarioTemPermissao,
+  rate: publicRateLimit, read: lerAba, ensure: garantirAbaComCabecalhos, append: appendObjeto,
+  invalidate: invalidarCacheAba, appUrl: APP_URL,
+});
+
 app.post('/api/auth/login', async (req, res) => {
   try {
     const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
@@ -4070,10 +4090,10 @@ app.get('/api/pesquisas/relatorio', requerPermissao('pesquisas.visualizar'), asy
       Empresa: r.EMPRESA || '',
       Cliente: r.NOME_CLIENTE || '',
       Data: r.DATA || '',
-      Atendimento: r.ATENDIMENTO || '',
-      'Prazo de Entrega': r.PRAZO_ENTREGA || '',
-      Qualidade: r.QUALIDADE || '',
-      Recomendação: r.RECOMENDACAO || '',
+      Atendimento: r.ATENDIMENTO == null ? '' : String(r.ATENDIMENTO),
+      'Prazo de Entrega': r.PRAZO_ENTREGA == null ? '' : String(r.PRAZO_ENTREGA),
+      Qualidade: r.QUALIDADE == null ? '' : String(r.QUALIDADE),
+      Recomendação: r.RECOMENDACAO == null ? '' : String(r.RECOMENDACAO),
       Observação: r.COMENTARIO || '',
       _id: r.ID_RESPOSTA || '',
       _token: r.TOKEN || '',
@@ -9378,7 +9398,7 @@ app.get('/api/public/pesquisas-ativas', publicRateLimit, async (req, res) => {
   } catch(e) { res.status(503).json({ sucesso: false, erro: 'Não foi possível carregar as pesquisas. Tente novamente.' }); }
 });
 
-app.post('/api/pesquisas/resposta-portal', publicRateLimit, async (req, res) => {
+app.post('/api/pesquisas/resposta-portal', async (req, res) => {
   try {
     const body = req.body || {};
     const empresa = String(body.empresa || '').trim().slice(0, 100);
