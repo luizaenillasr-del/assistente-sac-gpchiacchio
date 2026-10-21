@@ -5,7 +5,7 @@ const fs = require('fs');
 
 // Logo Grupo Chiacchio — lido em runtime do arquivo físico
 const LOGO_BUF = (() => {
-  try { return fs.readFileSync(path.join(__dirname, '../../public/logo-chiacchio.png')); }
+  try { return fs.readFileSync(path.join(__dirname, '../public/logo-chiacchio.png')); }
   catch (e) { return null; }
 })();
 

@@ -14841,6 +14841,7 @@ document.addEventListener('visibilitychange', () => {
       }
     } catch(_) {}
     setUserChrome();applyRoleUI();if(typeof setupSidebarCentral==='function')setupSidebarCentral();
+    if (window.SACPortalLinks) window.SACPortalLinks.load().catch(() => {});
 
     // O carregamento inicial da Visão Geral acontecia antes do login.
     // Depois do login, os dados precisam ser carregados novamente.
@@ -20265,7 +20266,7 @@ function cpAbrirDetalhe(idx) {
     + camposExtras.map(([k,v]) => '<div><span style="font-size:10.5px;color:#888;font-weight:600;text-transform:uppercase">' + cpEsc(k) + '</span><br><span style="font-size:12.5px">' + cpEsc(String(v)) + '</span></div>').join('')
     + '</div>'
     + (raw._token ? '<div style="margin-top:10px;padding-top:10px;border-top:1px solid #E4E4E4"><span style="font-size:10.5px;color:#888;font-weight:600;text-transform:uppercase">Link da pesquisa</span><br>'
-      + '<code style="font-size:11px;color:#545252;word-break:break-all">' + cpEsc(window.location.origin + '/pesquisa?t=' + (raw._token||'')) + '</code>&nbsp;'
+      + '<code style="font-size:11px;color:#545252;word-break:break-all">' + cpEsc(window.SACPortalLinks.url('/pesquisa?t=' + encodeURIComponent(raw._token||''))) + '</code>&nbsp;'
       + '<button onclick="navigator.clipboard.writeText(\'' + cpEsc(raw._token||'').replace(/'/g,"\\'") + '\').then(()=>alert(\'Token copiado!\')).catch(()=>prompt(\'Token:\',\'' + cpEsc(raw._token||'').replace(/'/g,"\\'") + '\'))" style="border:1px solid #D6D6D6;background:#fff;border-radius:5px;padding:3px 10px;font-size:12px;cursor:pointer;font-family:inherit">Copiar token</button></div>' : '')
     + '</div></details>';
   if (baixa) {
@@ -20536,7 +20537,7 @@ function qRemoverPergunta(i) {
 }
 
 function qEditorPreview() {
-  window.open('/pesquisa/chiacchio', '_blank');
+  window.open(window.SACPortalLinks.url('/pesquisa/chiacchio'), '_blank', 'noopener');
 }
 
 async function qEditorSalvar(acao) {
@@ -20575,8 +20576,9 @@ function ntCopiarLink() {
   navigator.clipboard.writeText(_ntLink).then(() => alert('Link copiado!')).catch(() => { prompt('Copie o link:', _ntLink); });
 }
 
-function ntCopiarFixo(empresa) {
-  const link = location.origin + '/pesquisa/' + empresa;
+async function ntCopiarFixo(empresa) {
+  await window.SACPortalLinks.load();
+  const link = window.SACPortalLinks.url('/pesquisa/' + empresa);
   navigator.clipboard.writeText(link).then(() => alert('Link copiado!')).catch(() => { prompt('Copie o link:', link); });
 }
 
@@ -28927,15 +28929,15 @@ if (typeof pageLoaders !== 'undefined') {
       <div class="padm-card">
         <div class="padm-card-title">Status da publicação</div>
         <div class="padm-toggle-row">
-          <div><div class="padm-toggle-label"><span class="padm-status-dot green"></span>Portal público</div><div class="padm-toggle-sub">Rota /portal — servida pelo backend Express/Vercel</div></div>
-          <span style="font-size:12px;color:#16803C;font-weight:700">Publicado</span>
+          <div><div class="padm-toggle-label"><span class="padm-status-dot green"></span>Portal público</div><div class="padm-toggle-sub">Endereço externo: <span id="padm-public-address">carregando configuração</span></div></div>
+          <span style="font-size:12px;color:#707070;font-weight:700">Conferir na Vercel</span>
         </div>
         <div class="padm-toggle-row">
           <div><div class="padm-toggle-label"><span class="padm-status-dot green"></span>APIs públicas</div><div class="padm-toggle-sub">/api/public/* — protegidas por publicRateLimit (5 req/min)</div></div>
           <span style="font-size:12px;color:#16803C;font-weight:700">Ativas</span>
         </div>
         <div style="margin-top:12px;padding:10px;background:#F8F8F8;border-radius:8px;font-size:12px;color:#707070">
-          ℹ️ O portal é servido diretamente pelo Vercel/Express. Alterações de layout requerem deploy. Configurações de conteúdo (WhatsApp, toggles) têm efeito imediato via API.
+          O portal público tem publicação própria e usa a mesma base do SAC. Alterações de layout exigem deploy do portal; pesquisas publicadas e configurações de conteúdo são lidas pela API. Confira o estado do deploy no painel da Vercel.
         </div>
       </div>
     </div>
@@ -29110,9 +29112,9 @@ if (typeof pageLoaders !== 'undefined') {
   };
 
   // ── Links ───────────────────────────────────────────────────
-  window.padmCopiarLink = function(url) {
-    const base = window.location.origin;
-    const full = base + url;
+  window.padmCopiarLink = async function(url) {
+    await window.SACPortalLinks.load();
+    const full = window.SACPortalLinks.url(url);
     const ok = document.getElementById('padm-copy-ok');
     navigator.clipboard.writeText(full).catch(() => {
       const ta = document.createElement('textarea');
@@ -29166,6 +29168,7 @@ if (typeof pageLoaders !== 'undefined') {
 <link rel="stylesheet" href="/assets/pesquisa-formulario.css">
 <link rel="stylesheet" href="/assets/pesquisas-admin.css">
 <script src="/assets/pesquisa-formulario.js"></script>
+<script src="/assets/portal-links.js"></script>
 <script src="/assets/pesquisas-admin.js"></script>
 </body>
 </html>

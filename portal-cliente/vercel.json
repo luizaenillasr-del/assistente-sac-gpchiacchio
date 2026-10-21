@@ -1,0 +1,221 @@
+{
+  "version": 2,
+  "framework": null,
+  "installCommand": "node --version",
+  "buildCommand": "node scripts/build.js",
+  "outputDirectory": "dist",
+  "routes": [
+    {
+      "src": "/(.*)",
+      "headers": {
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "DENY",
+        "Referrer-Policy": "no-referrer",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'"
+      },
+      "continue": true
+    },
+    {
+      "src": "^/api/public/reclamacoes$",
+      "methods": [
+        "POST"
+      ],
+      "dest": "https://assistente-sac-gpchiacchio.vercel.app/api/public/reclamacoes",
+      "headers": {
+        "Cache-Control": "no-store"
+      }
+    },
+    {
+      "src": "^/api/public/empresas$",
+      "methods": [
+        "GET"
+      ],
+      "dest": "https://assistente-sac-gpchiacchio.vercel.app/api/public/empresas",
+      "headers": {
+        "Cache-Control": "no-store"
+      }
+    },
+    {
+      "src": "^/api/public/whatsapp$",
+      "methods": [
+        "GET"
+      ],
+      "dest": "https://assistente-sac-gpchiacchio.vercel.app/api/public/whatsapp",
+      "headers": {
+        "Cache-Control": "no-store"
+      }
+    },
+    {
+      "src": "^/api/public/pesquisas-ativas$",
+      "methods": [
+        "GET"
+      ],
+      "dest": "https://assistente-sac-gpchiacchio.vercel.app/api/public/pesquisas-ativas",
+      "headers": {
+        "Cache-Control": "no-store"
+      }
+    },
+    {
+      "src": "^/api/public/pesquisas$",
+      "methods": [
+        "GET"
+      ],
+      "dest": "https://assistente-sac-gpchiacchio.vercel.app/api/public/pesquisas",
+      "headers": {
+        "Cache-Control": "no-store"
+      }
+    },
+    {
+      "src": "^/api/public/pesquisas/([A-Za-z0-9_-]+)$",
+      "methods": [
+        "GET"
+      ],
+      "dest": "https://assistente-sac-gpchiacchio.vercel.app/api/public/pesquisas/$1",
+      "headers": {
+        "Cache-Control": "no-store"
+      }
+    },
+    {
+      "src": "^/api/public/pesquisa-convite/([A-Za-z0-9_-]+)$",
+      "methods": [
+        "GET"
+      ],
+      "dest": "https://assistente-sac-gpchiacchio.vercel.app/api/public/pesquisa-convite/$1",
+      "headers": {
+        "Cache-Control": "no-store"
+      }
+    },
+    {
+      "src": "^/api/public/protocolo/([A-Za-z0-9-]+)$",
+      "methods": [
+        "GET"
+      ],
+      "dest": "https://assistente-sac-gpchiacchio.vercel.app/api/public/protocolo/$1",
+      "headers": {
+        "Cache-Control": "no-store"
+      }
+    },
+    {
+      "src": "^/api/public/protocolo/consultar$",
+      "methods": [
+        "POST"
+      ],
+      "dest": "https://assistente-sac-gpchiacchio.vercel.app/api/public/protocolo/consultar",
+      "headers": {
+        "Cache-Control": "no-store"
+      }
+    },
+    {
+      "src": "^/api/pesquisas/resposta-portal$",
+      "methods": [
+        "POST"
+      ],
+      "dest": "https://assistente-sac-gpchiacchio.vercel.app/api/pesquisas/resposta-portal",
+      "headers": {
+        "Cache-Control": "no-store"
+      }
+    },
+    {
+      "src": "^/api(?:/.*)?$",
+      "status": 404,
+      "dest": "/404.html"
+    },
+    {
+      "src": "^//?$",
+      "methods": [
+        "GET",
+        "HEAD"
+      ],
+      "dest": "/index.html",
+      "headers": {
+        "Cache-Control": "no-store"
+      }
+    },
+    {
+      "src": "^/index\\.html/?$",
+      "methods": [
+        "GET",
+        "HEAD"
+      ],
+      "dest": "/index.html",
+      "headers": {
+        "Cache-Control": "no-store"
+      }
+    },
+    {
+      "src": "^/portal/?$",
+      "methods": [
+        "GET",
+        "HEAD"
+      ],
+      "dest": "/index.html",
+      "headers": {
+        "Cache-Control": "no-store"
+      }
+    },
+    {
+      "src": "^/portal\\.html/?$",
+      "methods": [
+        "GET",
+        "HEAD"
+      ],
+      "dest": "/index.html",
+      "headers": {
+        "Cache-Control": "no-store"
+      }
+    },
+    {
+      "src": "^/pesquisas/([A-Za-z0-9_-]+)/?$",
+      "methods": [
+        "GET",
+        "HEAD"
+      ],
+      "dest": "/index.html",
+      "headers": {
+        "Cache-Control": "no-store"
+      }
+    },
+    {
+      "src": "^/portal/pesquisas/([A-Za-z0-9_-]+)/?$",
+      "methods": [
+        "GET",
+        "HEAD"
+      ],
+      "dest": "/index.html",
+      "headers": {
+        "Cache-Control": "no-store"
+      }
+    },
+    {
+      "src": "^/pesquisa/([A-Za-z0-9_-]+)/?$",
+      "methods": [
+        "GET",
+        "HEAD"
+      ],
+      "dest": "/index.html",
+      "headers": {
+        "Cache-Control": "no-store"
+      }
+    },
+    {
+      "src": "^/pesquisa/?$",
+      "methods": [
+        "GET",
+        "HEAD"
+      ],
+      "dest": "/index.html",
+      "headers": {
+        "Cache-Control": "no-store"
+      }
+    },
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/(.*)",
+      "status": 404,
+      "dest": "/404.html"
+    }
+  ]
+}

@@ -324,6 +324,8 @@ module.exports = function createSurveyService(s) {
     }
   }
   const companies = () => s.empresas();
+  const surveyUrl = (id) =>
+    s.surveyUrl ? s.surveyUrl(id) : `/portal/pesquisas/${id}`;
   const company = (v) =>
     companies().find(
       (e) =>
@@ -392,7 +394,7 @@ module.exports = function createSurveyService(s) {
       editadoEm: row.CRIADO_EM || "",
       publicadoEm: row.PUBLICADO_EM || "",
       autor: row.CRIADO_POR || "",
-      url: `/portal/pesquisas/${row.FORMULARIO_ID || emp.slug}`,
+      url: surveyUrl(row.FORMULARIO_ID || emp.slug),
     };
   };
   function allForms(rows) {
@@ -443,7 +445,7 @@ module.exports = function createSurveyService(s) {
           : latest.STATUS,
         publicada: pub ? rowForm(pub) : null,
         historico: sorted.map(rowForm),
-        url: `/portal/pesquisas/${id}`,
+        url: surveyUrl(id),
       };
     });
   }

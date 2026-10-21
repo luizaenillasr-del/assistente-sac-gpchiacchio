@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
 
-const sheets = require('../services/sheets');
-const cerebro = require('../services/cerebroService');
+const sheets = require('../server-services/sheets');
+const cerebro = require('../server-services/cerebroService');
 
 // =====================================================
 // LISTAR MANIFESTAÇÕES

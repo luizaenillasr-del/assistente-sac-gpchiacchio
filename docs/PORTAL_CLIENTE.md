@@ -1,5 +1,9 @@
 # Portal do Cliente
 
+A preparação do projeto público independente e o roteiro de implantação estão em
+[Separação do Portal e SAC](SEPARACAO_PORTAL.md). Este documento descreve também
+os caminhos compatíveis mantidos no projeto interno.
+
 O portal é a interface externa do SAC. Não exige sessão interna e usa os mesmos registros, fila de aprovação, fichas, pesquisas e configuração administrativa da ferramenta.
 
 O layout segue o HTML “Portal do Cliente - Grupo Chiacchio v2” fornecido como referência: cabeçalho branco, marca, três cards de navegação e formulários em seções. As fontes Montserrat e a marca foram extraídas do próprio arquivo e são servidas localmente. O runtime de demonstração e seus dados fictícios não são usados.
@@ -12,7 +16,7 @@ O formulário diferencia cliente direto (CNPJ, razão social e representante) e 
 
 O formulário público envia para `/api/public/reclamacoes`. Registros originados no portal recebem `ORIGEM=PORTAL_PUBLICO` e protocolo aleatório com prefixo `CHI`, `PLAS` ou `TUB`. O mesmo identificador acompanha `MANIFESTACOES`, `FILA_APROVACAO`, `FICHAS_BIBLIOTECA` e `EVIDENCIAS`. O fluxo do portal é validado com a persistência Google Sheets; a migração PostgreSQL não foi validada nesta mudança.
 
-A consulta publica um resumo de andamento. A resposta oficial só aparece em registros do portal encerrados com `DEVOLUTIVA_ENVIADA` preenchida. Sugestões de IA, rascunhos, análises, causas e responsabilidades internas não fazem parte da resposta pública. O protocolo deve ser guardado pelo cliente.
+A consulta publica um resumo de andamento. A resposta oficial só aparece em registros do portal encerrados com `DEVOLUTIVA_ENVIADA` preenchida. Sugestões de IA, rascunhos, análises, causas e responsabilidades internas não fazem parte da resposta pública. O protocolo deve ser guardado pelo cliente. Protocolos antigos/sequenciais agora exigem confirmação do contato cadastrado pelo POST de consulta; os identificadores e históricos internos são preservados.
 
 Anexos: até oito fotos JPG/PNG/WebP ou PDFs, somando no máximo 3 MB para caber no limite de requisição do Vercel. São armazenados pelo serviço de Google Drive já existente, sem criar permissão pública. A equipe precisa ter acesso à pasta compartilhada configurada. Se o upload falhar, a manifestação permanece registrada e o cliente recebe um aviso para encaminhar os arquivos ao SAC usando o protocolo, sem duplicar o registro.
 
