@@ -192,7 +192,7 @@ let gerarFichaPDF;
 try { ({ gerarFichaPDF } = require('./services/pdfFicha')); } catch(e) { console.warn('[PDF] pdfFicha não disponível:', e.message); }
 
 // Google Drive upload (usa mesma service account com scope drive.file)
-async function uploadArquivoDrive(nome, mimeType, bufferOuBase64) {
+async function uploadArquivoDrive(nome, mimeType, bufferOuBase64, opcoes = {}) {
   const buf = Buffer.isBuffer(bufferOuBase64) ? bufferOuBase64 : Buffer.from(bufferOuBase64, 'base64');
   const auth = getAuth();
   const drive = google.drive({ version: 'v3', auth });
@@ -207,10 +207,12 @@ async function uploadArquivoDrive(nome, mimeType, bufferOuBase64) {
   });
   const fileId = res.data.id;
   // Torna o arquivo acessível para qualquer pessoa com o link
-  try {
-    await drive.permissions.create({ fileId, requestBody: { role: 'reader', type: 'anyone' } });
-  } catch (permErr) {
-    console.warn('[DRIVE] Não foi possível tornar o arquivo público:', permErr.message);
+  if (opcoes.publico !== false) {
+    try {
+      await drive.permissions.create({ fileId, requestBody: { role: 'reader', type: 'anyone' } });
+    } catch (permErr) {
+      console.warn('[DRIVE] Não foi possível tornar o arquivo público:', permErr.message);
+    }
   }
   return res.data; // { id, name, webViewLink, webContentLink }
 }
@@ -6785,6 +6787,11 @@ const ALLOWED_FILE_TYPES = [
   'text/plain',
 ];
 const MAX_FILE_SIZE_MB = 10;
+const PORTAL_EMPRESAS = [
+  { slug: 'chiacchio', codigo: 'CHIACCHIO', prefixo: 'CHI', nome: 'Chiacchio Embalagens', cor: '#C70602', logo: '/assets/logo-chiacchio-new.png' },
+  { slug: 'plaschio', codigo: 'PLASCHIO', prefixo: 'PLAS', nome: 'Plaschio', cor: '#1A6632', logo: '/assets/logo-plaschio-new.png' },
+  { slug: 'tubahia', codigo: 'TUBAHIA', prefixo: 'TUB', nome: 'Cesbap / Tubahia', cor: '#24508F', logo: '/assets/logo-tubahia-new.png' },
+];
 
 const FICHAS_BIBLIOTECA_HEADERS = [
   'ID_FICHA','ID_MANIFESTACAO','PROTOCOLO','DATA_REGISTRO','ANO','MES',
@@ -6800,6 +6807,15 @@ const EVIDENCIAS_HEADERS = [
 app.post('/api/public/reclamacoes', publicRateLimit, async (req, res) => {
   try {
     const b = req.body || {};
+    const viaCliente = b.origem === 'PORTAL_PUBLICO';
+    const empresaPortal = PORTAL_EMPRESAS.find(e => e.codigo === empresaCanonica(b.empresa) || normalizarTexto(e.nome) === normalizarTexto(b.empresa));
+    if (viaCliente && !empresaPortal) return res.status(400).json({ sucesso: false, erro: 'Selecione uma empresa do grupo.' });
+    if (viaCliente) {
+      const config = await lerAba('CONFIG_PORTAL', 200);
+      if (config.some(c => c.TIPO === 'FORM_MANIFESTACAO_ATIVO' && c.ATIVO === 'NAO')) {
+        return res.status(403).json({ sucesso: false, erro: 'O formulário de manifestações está temporariamente indisponível.' });
+      }
+    }
 
     // Campos obrigatórios (ficha oficial)
     const colaboradorRecebimento = String(b.colaboradorRecebimento || '').trim().slice(0, 200);
@@ -6821,6 +6837,7 @@ app.post('/api/public/reclamacoes', publicRateLimit, async (req, res) => {
     const canalRecebimento = String(b.canalRecebimento || b.canal || '').trim().slice(0, 50);
     const canalOutro = String(b.canalOutro || '').trim().slice(0, 100);
     const motivoManifestacao = String(b.motivoManifestacao || b.motivo || '').trim().slice(0, 500);
+    if (viaCliente && !motivoManifestacao) return res.status(400).json({ sucesso: false, erro: 'Informe o motivo da reclamação.' });
     const produto = String(b.produto || '').trim().slice(0, 200);
     const lote = String(b.lote || '').trim().slice(0, 100);
     const quantidadeAfetada = String(b.quantidadeAfetada || b.quantidade || '').trim().slice(0, 50);
@@ -6829,16 +6846,33 @@ app.post('/api/public/reclamacoes', publicRateLimit, async (req, res) => {
     const notaFiscal = String(b.notaFiscal || '').trim().slice(0, 100);
 
     // Validar evidências
+    if (viaCliente && b.evidencias !== undefined && (!Array.isArray(b.evidencias) || b.evidencias.length > 8)) {
+      return res.status(400).json({ sucesso: false, erro: 'Envie até 8 evidências.' });
+    }
     const evidencias = Array.isArray(b.evidencias) ? b.evidencias.slice(0, 8) : [];
+    let bytesEvidencias = 0;
     for (const ev of evidencias) {
-      if (!ev.nome || !ev.tipo || !ev.dados) continue;
+      if (!ev || typeof ev.nome !== 'string' || typeof ev.tipo !== 'string' || typeof ev.dados !== 'string' || !ev.nome || !ev.dados) {
+        return res.status(400).json({ sucesso: false, erro: 'Evidência inválida. Selecione o arquivo novamente.' });
+      }
       if (!ALLOWED_FILE_TYPES.includes(ev.tipo)) return res.status(400).json({ sucesso: false, erro: `Tipo não permitido: ${ev.tipo}` });
+      if (!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(ev.dados)) {
+        return res.status(400).json({ sucesso: false, erro: 'Arquivo inválido. Selecione o arquivo novamente.' });
+      }
+      bytesEvidencias += Buffer.byteLength(ev.dados, 'base64');
       const sizeMB = (ev.dados.length * 3 / 4) / (1024 * 1024);
       if (sizeMB > MAX_FILE_SIZE_MB) return res.status(400).json({ sucesso: false, erro: `Arquivo muito grande: ${ev.nome} (máx ${MAX_FILE_SIZE_MB}MB)` });
     }
+    if (viaCliente && bytesEvidencias > 3 * 1024 * 1024) {
+      return res.status(400).json({ sucesso: false, erro: 'Os anexos devem somar no máximo 3 MB.' });
+    }
 
     const agora = new Date().toISOString();
-    const id = await gerarProximoID('MANIFESTACOES', 'MAN', 'ID_MANIFESTACAO');
+    // O mesmo identificador liga o protocolo externo à fila e à ficha internas.
+    // A parte aleatória evita que consultas públicas sejam enumeráveis.
+    const id = viaCliente
+      ? `${empresaPortal.prefixo}-${crypto.randomBytes(12).toString('hex').toUpperCase()}`
+      : await gerarProximoID('MANIFESTACOES', 'MAN', 'ID_MANIFESTACAO');
     const canalFinal = canalRecebimento === 'Outro' && canalOutro ? `Outro: ${canalOutro}` : (canalRecebimento || 'Não informado');
     const dtReg = new Date(agora);
     const anoReg = dtReg.getFullYear().toString();
@@ -6872,14 +6906,15 @@ app.post('/api/public/reclamacoes', publicRateLimit, async (req, res) => {
       APROVACAO_NECESSARIA: 'SIM',
       TIPO: tipoManifestacao,
       TIPO_MANIFESTACAO: tipoManifestacao,
-      ORIGEM: 'PORTAL_FUNCIONARIO',
-      ORIGEM_REGISTRO: 'PORTAL_FUNCIONARIO',
+      ORIGEM: viaCliente ? 'PORTAL_PUBLICO' : 'PORTAL_FUNCIONARIO',
+      ORIGEM_REGISTRO: viaCliente ? 'PORTAL_PUBLICO' : 'PORTAL_FUNCIONARIO',
       REGISTRADO_POR: colaboradorRecebimento,
       COLABORADOR_RECEBIMENTO: colaboradorRecebimento,
       SETOR_RECEBIMENTO: setorRecebimento,
       USUARIO_CRIACAO: `portal:${colaboradorRecebimento}`,
       STATUS_TRATATIVA: 'NÃO INICIADA',
     };
+    await garantirAbaComCabecalhos('MANIFESTACOES', Object.keys(objeto));
     await appendObjeto('MANIFESTACOES', objeto);
 
     // 2. Upload evidências para o Drive (não bloqueia se falhar)
@@ -6888,7 +6923,7 @@ app.post('/api/public/reclamacoes', publicRateLimit, async (req, res) => {
       const ev = evidencias[i];
       if (!ev.nome || !ev.tipo || !ev.dados) continue;
       try {
-        const driveFile = await uploadArquivoDrive(`EV_${id}_${i+1}_${ev.nome}`, ev.tipo, ev.dados);
+        const driveFile = await uploadArquivoDrive(`EV_${id}_${i+1}_${ev.nome}`, ev.tipo, ev.dados, { publico: !viaCliente });
         const evId = await gerarProximoID('EVIDENCIAS', 'EVI', 'ID_EVIDENCIA').catch(() => `EVI-${Date.now()}-${i}`);
         const evMeta = { ID_EVIDENCIA: evId, ID_MANIFESTACAO: id, NOME: ev.nome, TIPO_MIME: ev.tipo, TAMANHO: ev.tamanho || 0, DRIVE_ID: driveFile.id || '', DRIVE_URL: driveFile.webViewLink || driveFile.webContentLink || '', DATA_UPLOAD: agora, DESCRICAO: ev.descricao || '', ORDEM: i + 1 };
         await garantirAbaComCabecalhos('EVIDENCIAS', EVIDENCIAS_HEADERS);
@@ -6918,7 +6953,7 @@ app.post('/api/public/reclamacoes', publicRateLimit, async (req, res) => {
     const pdfNome = `FICHA_${id}.pdf`;
     if (pdfBuffer) {
       try {
-        const pdfDrive = await uploadArquivoDrive(pdfNome, 'application/pdf', pdfBuffer);
+        const pdfDrive = await uploadArquivoDrive(pdfNome, 'application/pdf', pdfBuffer, { publico: !viaCliente });
         pdfDriveId = pdfDrive.id || '';
         pdfDriveUrl = pdfDrive.webViewLink || pdfDrive.webContentLink || '';
       } catch (pdfUpErr) {
@@ -6970,6 +7005,9 @@ app.post('/api/public/reclamacoes', publicRateLimit, async (req, res) => {
     }
 
     const resposta = { sucesso: true, protocolo: id, dataHora: agora };
+    if (evidenciasMetadata.length < evidencias.length) {
+      resposta.aviso = 'Sua manifestação foi registrada, mas alguns anexos não puderam ser salvos. Entre em contato com o SAC informando este protocolo para encaminhá-los. Não é necessário registrar novamente.';
+    }
     if (pdfBase64) resposta.pdfBase64 = pdfBase64;
     res.json(resposta);
   } catch (e) {
@@ -9324,13 +9362,12 @@ app.get('/portal', (req, res) => {
 
 app.get('/api/public/pesquisas-ativas', publicRateLimit, async (req, res) => {
   try {
-    const empresas = [
-      { slug: 'chiacchio', nome: 'Chiacchio Embalagens', cor: '#C70602', logo: '/assets/logo-chiacchio-new.png' },
-      { slug: 'plaschio', nome: 'Plaschio', cor: '#1A6632', logo: '/assets/logo-plaschio-new.png' },
-      { slug: 'tubahia', nome: 'Cesbap', cor: '#24508F', logo: '/assets/logo-tubahia-new.png' },
-    ];
+    const config = await lerAba('CONFIG_PORTAL', 200);
+    const empresas = PORTAL_EMPRESAS
+      .filter(e => !config.some(c => c.TIPO === `PESQUISA_ATIVA_${e.slug.toUpperCase()}` && c.ATIVO === 'NAO'))
+      .map(({ slug, nome, cor, logo }) => ({ slug, nome, cor, logo }));
     res.json({ sucesso: true, empresas });
-  } catch(e) { res.json({ sucesso: true, empresas: [] }); }
+  } catch(e) { res.status(503).json({ sucesso: false, erro: 'Não foi possível carregar as pesquisas. Tente novamente.' }); }
 });
 
 app.post('/api/pesquisas/resposta-portal', publicRateLimit, async (req, res) => {
@@ -9338,10 +9375,19 @@ app.post('/api/pesquisas/resposta-portal', publicRateLimit, async (req, res) => 
     const body = req.body || {};
     const empresa = String(body.empresa || '').trim().slice(0, 100);
     if (!empresa) return res.status(400).json({ sucesso: false, erro: 'Empresa obrigatória.' });
-    const atendimento = String(body.atendimento || '');
-    const prazo = String(body.prazo_de_entrega || '');
-    const qualidade = String(body.qualidade_do_produto || '');
-    const recomendacao = String(body.recomendaria_a_empresa || '');
+    const empresaPortal = PORTAL_EMPRESAS.find(e => e.codigo === empresaCanonica(empresa) || normalizarTexto(e.nome) === normalizarTexto(empresa));
+    if (!empresaPortal) return res.status(400).json({ sucesso: false, erro: 'Selecione uma empresa do grupo.' });
+    const config = await lerAba('CONFIG_PORTAL', 200);
+    if (config.some(c => c.TIPO === `PESQUISA_ATIVA_${empresaPortal.slug.toUpperCase()}` && c.ATIVO === 'NAO')) {
+      return res.status(403).json({ sucesso: false, erro: 'A pesquisa desta empresa está temporariamente indisponível.' });
+    }
+    const atendimento = String(body.atendimento ?? '');
+    const prazo = String(body.prazo_de_entrega ?? '');
+    const qualidade = String(body.qualidade_do_produto ?? '');
+    const recomendacao = String(body.recomendaria_a_empresa ?? '');
+    if ([atendimento, prazo, qualidade, recomendacao].some(n => n !== '' && (!Number.isFinite(Number(n)) || Number(n) < 0 || Number(n) > 10))) {
+      return res.status(400).json({ sucesso: false, erro: 'Informe avaliações entre 0 e 10.' });
+    }
     const notas = [atendimento, prazo, qualidade, recomendacao].map(n => parseFloat(n)).filter(n => !isNaN(n) && n >= 0);
     if (!notas.length) return res.status(400).json({ sucesso: false, erro: 'Informe ao menos uma avaliação.' });
     const notaMedia = (notas.reduce((a,b)=>a+b,0)/notas.length).toFixed(1);
@@ -9364,14 +9410,24 @@ app.post('/api/pesquisas/resposta-portal', publicRateLimit, async (req, res) => 
 
 app.get('/api/public/protocolo/:protocolo', publicRateLimit, async (req, res) => {
   try {
-    const proto = String(req.params.protocolo||'').replace(/[^A-Za-z0-9\-]/g,'').slice(0,50);
-    if (!proto || proto.length < 3) return res.status(400).json({ sucesso: false, erro: 'Protocolo inválido.' });
-    const rows = await lerAba('MANIFESTACOES', 5000).catch(()=>[]);
-    const man = rows.find(r => (r.ID_MANIFESTACAO||r.PROTOCOLO||'') === proto);
+    const proto = String(req.params.protocolo||'').trim().toUpperCase();
+    if (!/^[A-Z0-9-]{3,50}$/.test(proto)) return res.status(400).json({ sucesso: false, erro: 'Protocolo inválido.' });
+    const rows = await lerAba('MANIFESTACOES', 5000);
+    const man = rows.find(r => [r.ID_MANIFESTACAO, r.PROTOCOLO].some(p => p && String(p).toUpperCase() === proto));
     if (!man) return res.status(404).json({ sucesso: false, erro: 'Protocolo não encontrado.' });
-    const STATUS_MAP = { 'AGUARDANDO_APROVAÇÃO':{label:'Recebida',desc:'Sua manifestação foi recebida e está em análise.'}, 'EM_ANALISE':{label:'Em análise',desc:'Nossa equipe está analisando sua manifestação.'}, 'EM_TRATATIVA':{label:'Em tratamento',desc:'Estamos trabalhando para resolver sua solicitação.'}, 'AGUARDANDO_VALIDACAO':{label:'Em revisão final',desc:'Sua manifestação está em revisão final.'}, 'FINALIZADO':{label:'Encerrada',desc:'Sua manifestação foi encerrada. Obrigado pelo contato.'}, 'ENCERRADO':{label:'Encerrada',desc:'Sua manifestação foi encerrada. Obrigado pelo contato.'} };
-    const st = STATUS_MAP[man.STATUS] || {label:'Em andamento',desc:'Estamos analisando sua manifestação.'};
-    res.json({ sucesso:true, protocolo:proto, empresa: man.EMPRESA_RECLAMADA||man.EMPRESA_RECLAMANTE||'', tipo: man.TIPO_MANIFESTACAO||man.TIPO||'Manifestação', dataAbertura: man.DATA_ABERTURA||man.DATA_REGISTRO||'', status: st.label, descricaoStatus: st.desc, dataAtualizacao: man.UPDATED_AT||man.DATA_ABERTURA||'' });
+    const status = String(man.STATUS || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[\s-]+/g, '_');
+    const encerrada = ['ENCERRADA', 'ENCERRADO', 'FINALIZADA', 'FINALIZADO', 'CONCLUIDA', 'CONCLUIDO'].includes(status);
+    let st = { label: 'Em análise', desc: 'Nossa equipe está analisando sua manifestação.' };
+    if (['AGUARDANDO_APROVACAO', 'RECEBIDA', 'ABERTA'].includes(status)) st = { label: 'Recebida', desc: 'Sua manifestação foi recebida pelo SAC.' };
+    if (['EM_TRATATIVA', 'EM_TRATAMENTO', 'AGUARDANDO_OUTRO_SETOR', 'APROVADA'].includes(status)) st = { label: 'Em tratamento', desc: 'Estamos trabalhando para resolver sua solicitação.' };
+    if (['AGUARDANDO_VALIDACAO', 'AGUARDANDO_DEVOLUTIVA'].includes(status)) st = { label: 'Em revisão final', desc: 'O SAC está validando a conclusão do atendimento.' };
+    if (encerrada) st = { label: 'Encerrada', desc: 'Sua manifestação foi encerrada. Obrigado pelo contato.' };
+    if (['CANCELADA', 'CANCELADO', 'REJEITADA'].includes(status)) st = { label: 'Encerrada', desc: 'O atendimento foi encerrado. Para esclarecimentos, entre em contato com o SAC.' };
+    // Só a resposta efetivamente liberada ao cliente, após encerramento.
+    // Nunca publicar sugestões de IA, rascunhos, causas ou tratativas internas.
+    const enviada = String(man.DEVOLUTIVA_ENVIADA || '').trim();
+    const devolutiva = encerrada && man.ORIGEM === 'PORTAL_PUBLICO' && !['SIM', 'NAO', 'NÃO'].includes(enviada.toUpperCase()) ? enviada : '';
+    res.json({ sucesso:true, protocolo:proto, empresa: man.EMPRESA_RECLAMADA||man.EMPRESA_RECLAMANTE||'', tipo: man.TIPO_MANIFESTACAO||man.TIPO||'Manifestação', dataAbertura: man.DATA_ABERTURA||man.DATA_REGISTRO||'', status: st.label, descricaoStatus: st.desc, dataAtualizacao: man.DATA_ENCERRAMENTO||man.DATA_CONCLUSAO_MANIFESTACAO||man.UPDATED_AT||man.DATA_DEVOLUTIVA||man.DATA_ABERTURA||'', devolutiva });
   } catch(e) { res.status(500).json({ sucesso:false, erro:'Erro ao consultar protocolo.' }); }
 });
 
