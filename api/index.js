@@ -516,7 +516,7 @@ const _PERM_PADRAO_API = {
   'RCA / REPRESENTANTE':['manifestacoes.visualizar','manifestacoes.abrir','rca.visualizar','rca.criar'],
   'DIRETOR':            ['manifestacoes.visualizar','pesquisas.visualizar','dashboard.visualizar','dashboard.gerenciar','rca.visualizar'],
   'VISUALIZADOR':       ['manifestacoes.visualizar','dashboard.visualizar','pesquisas.visualizar'],
-  'AUDITOR':            ['manifestacoes.visualizar','manifestacoes.gerenciar','dashboard.visualizar'],
+  'AUDITOR':            ['manifestacoes.visualizar','manifestacoes.gerenciar','dashboard.visualizar','pesquisas.visualizar'],
   // Perfis setoriais — representam colaboradores de setores internos com acesso restrito ao SAC
   'SETOR SAC':          ['manifestacoes.visualizar','manifestacoes.abrir','manifestacoes.editar','manifestacoes.gerenciar','cerebro.visualizar','cerebro.adicionar_conteudo','cerebro.editar_conteudo','pesquisas.visualizar','pesquisas.criar','dashboard.visualizar','aprovacoes.visualizar'],
   'SETOR COMERCIAL':    ['manifestacoes.visualizar','manifestacoes.editar','rca.visualizar','rca.criar','dashboard.visualizar'],
