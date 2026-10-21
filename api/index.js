@@ -15,6 +15,7 @@ const documentService = require('../server-services/documentService');
 const aiService = require('../server-services/aiService');
 const { tratativaEngine, devolutivaEngine, assertividade: assertividadeService } = cerebroService;
 const permissoesService = require('../server-services/permissoesService');
+const fichaUnica = require('../server-services/fichaUnica');
 
 // Injeção de mock Sheets para testes — nunca ativo em produção (env var não existe em prod)
 const _sheetsMock = process.env.SHEETS_MOCK_PATH ? (() => { try { return require(process.env.SHEETS_MOCK_PATH); } catch(e) { console.warn('[MOCK] falhou ao carregar:', e.message); return null; } })() : null;
@@ -1023,6 +1024,23 @@ async function gerarProximoID(nomeAba, prefixo, campoID) {
   return `${prefixo}-${ts}${rand}`;
 }
 
+// O ID técnico continua compatível com registros antigos. O protocolo exibido
+// ao cliente é imutável e segue a regra de negócio da ficha única.
+async function gerarProtocoloFicha(empresa, canal, agora = new Date()) {
+  const data = fichaUnica.dataProtocolo(agora);
+  const prefixo = fichaUnica.prefixoEmpresa(empresa);
+  const codigo = fichaUnica.codigoCanal(canal);
+  const base = `${prefixo}-${data}-${codigo}-`;
+  const existentes = await lerAba('MANIFESTACOES', 5000).catch(() => []);
+  const maior = existentes.reduce((atual, item) => {
+    const valor = String(item.PROTOCOLO || '');
+    if (!valor.startsWith(base)) return atual;
+    const n = Number(valor.slice(base.length));
+    return Number.isFinite(n) ? Math.max(atual, n) : atual;
+  }, 0);
+  return fichaUnica.montarProtocolo({ empresa, canal, data: agora, sequencial: maior + 1 });
+}
+
 async function buscarPorID(nomeAba, id, camposID = ['ID_MANIFESTACAO','ID_RNC','ID_SETOR','ID']) {
   const dados = await lerAba(nomeAba, 5000).catch(() => []);
   return dados.find(r => camposID.some(c => String(r[c] || '').trim() === String(id).trim())) || null;
@@ -1828,21 +1846,22 @@ app.get('/api/manifestacoes/:id', requerPermissao('manifestacoes.visualizar'), m
 
 app.post('/api/manifestacoes', requerPermissao('manifestacoes.abrir'), async (req, res) => {
   try {
-    const { empresaReclamada, empresaReclamante, contato, produto, lote, nfe, descricao, tipo, canal, cnpj, telefone, email, quantidade, quantidadeDevolvida, quantidadeTotal, houveDevolucao, valor, valorTotalPedido, prejuizoEstimado, usuario, anexos = [], origemDocumento = '', arquivoOrigem = '' } = req.body;
+    const { empresaReclamada, empresaReclamante, contato, produto, lote, nfe, descricao, tipo, canal, cnpj, telefone, email, quantidade, quantidadeDevolvida, quantidadeTotal, houveDevolucao, valor, valorTotalPedido, prejuizoEstimado, usuario, anexos = [], origemDocumento = '', arquivoOrigem = '', rascunho = false } = req.body;
     if (!empresaReclamante || !descricao) return res.status(400).json({ sucesso:false, erro:'Empresa reclamante e descrição são obrigatórios.' });
     const empNorm = normalizarEmpresa(empresaReclamada);
     // Não bloqueia na criação de colunas — a aba já existe em produção
     // RNC_SINALIZADO: campo novo para indicar que o caso merece revisão de RNC (B6)
-    garantirAbaComCabecalhos('MANIFESTACOES',['ID_MANIFESTACAO','DATA_ABERTURA','DATA_REGISTRO','EMPRESA_RECLAMANTE','CONTATO','PRODUTO','LOTE','NFE','DESCRICAO','DESCRICAO_MANIFESTACAO','STATUS','TIPO','TIPO_SUGERIDO','SETOR_SUGERIDO','SETORES_SUGERIDOS','PROCEDIMENTO_SUGERIDO','SLA_HORAS','PRIORIDADE','RNC_SUGERIDO','RNC_SINALIZADO','EMPRESA_RECLAMADA','CANAL','CNPJ','TELEFONE','EMAIL','QUANTIDADE','VALOR','TRATATIVA_SUGERIDA','TRATATIVA_APLICAVEL','TRATATIVA_REALIZADA','STATUS_TRATATIVA','DEVOLUTIVA_SUGERIDA','DEVOLUTIVA_FINAL','DEVOLUTIVA_ENVIADA','ORIGEM_DOCUMENTO','ARQUIVO_ORIGEM','USUARIO_CRIACAO','ORIGEM','TIPO_CONFIRMADO','SETORES_CONFIRMADOS','ID_PROCEDIMENTO_APLICADO','GERA_RNC','DATA_INICIO_TRATATIVA','DATA_CONCLUSAO_TRATATIVA','DATA_DEVOLUTIVA','DATA_CONCLUSAO_MANIFESTACAO','STATUS_FICHA','PROCEDENTE','PROCEDENTE_JUSTIFICATIVA','CAMINHO_TRATATIVA','DATA_ENCAMINHAMENTO','PRAZO_RETORNO_SAC','TRATATIVA_SAC_INTERNA','RESP_SETOR_O_QUE','RESP_SETOR_CAUSA','RESP_SETOR_RESOLUCAO','RESP_SETOR_ACAO_PREV','RESP_SETOR_RESPONSAVEL','RESP_SETOR_PRAZO','DATA_RESPOSTA_SETOR','APROV_SETOR_DECISAO','APROV_SETOR_MOTIVO','APROV_SETOR_ORIENTACAO','VALID_SAC_DATA_RETORNO','VALID_SAC_CLIENTE_INFORMADO','VALID_SAC_RESOLVIDA','OBSERVACOES_FINAIS','DATA_VALIDACAO_SAC']).catch(()=>{});
+    garantirAbaComCabecalhos('MANIFESTACOES',['ID_MANIFESTACAO','PROTOCOLO','DATA_ABERTURA','DATA_REGISTRO','EMPRESA_RECLAMANTE','CONTATO','PRODUTO','LOTE','NFE','DESCRICAO','DESCRICAO_MANIFESTACAO','STATUS','TIPO','TIPO_SUGERIDO','SETOR_SUGERIDO','SETORES_SUGERIDOS','PROCEDIMENTO_SUGERIDO','SLA_HORAS','PRIORIDADE','RNC_SUGERIDO','RNC_SINALIZADO','EMPRESA_RECLAMADA','CANAL','CNPJ','TELEFONE','EMAIL','QUANTIDADE','VALOR','TRATATIVA_SUGERIDA','TRATATIVA_APLICAVEL','TRATATIVA_REALIZADA','STATUS_TRATATIVA','DEVOLUTIVA_SUGERIDA','DEVOLUTIVA_FINAL','DEVOLUTIVA_ENVIADA','ORIGEM_DOCUMENTO','ARQUIVO_ORIGEM','USUARIO_CRIACAO','ORIGEM','TIPO_CONFIRMADO','SETORES_CONFIRMADOS','ID_PROCEDIMENTO_APLICADO','GERA_RNC','DATA_INICIO_TRATATIVA','DATA_CONCLUSAO_TRATATIVA','DATA_DEVOLUTIVA','DATA_CONCLUSAO_MANIFESTACAO','STATUS_FICHA','PROCEDENTE','PROCEDENTE_JUSTIFICATIVA','CAMINHO_TRATATIVA','DATA_ENCAMINHAMENTO','PRAZO_RETORNO_SAC','TRATATIVA_SAC_INTERNA','RESP_SETOR_O_QUE','RESP_SETOR_CAUSA','RESP_SETOR_RESOLUCAO','RESP_SETOR_ACAO_PREV','RESP_SETOR_RESPONSAVEL','RESP_SETOR_PRAZO','DATA_RESPOSTA_SETOR','APROV_SETOR_DECISAO','APROV_SETOR_MOTIVO','APROV_SETOR_ORIENTACAO','VALID_SAC_DATA_RETORNO','VALID_SAC_CLIENTE_INFORMADO','VALID_SAC_RESOLVIDA','OBSERVACOES_FINAIS','DATA_VALIDACAO_SAC','RAZAO_SOCIAL','NOME_FANTASIA','CODIGO_CLIENTE','PEDIDO','DATA_PEDIDO','DATA_ENTREGA','VENDEDOR','DATA_RECEBIMENTO','ATENDENTE','CATEGORIA','MOTIVO','GRAVIDADE','UNIDADE_MEDIDA','QUANTIDADE_TOTAL','QUANTIDADE_AFETADA','QUANTIDADE_DEVOLVIDA','QUANTIDADE_PERDIDA','VALOR_UNITARIO','VALOR_TOTAL','PREJUIZO_ESTIMADO','PREJUIZO_CONFIRMADO','ANEXOS','EVIDENCIAS','ORIGEM','ETAPA_ATUAL','MENSAGEM_ETAPA','RESPONSAVEL','PRAZO_TRATATIVA','INVESTIGACAO_O_QUE','INVESTIGACAO_VERIFICACOES','INVESTIGACAO_EVIDENCIAS','CAUSA_RAIZ_CONFIRMADA','REINCIDENCIA','ACOES_CORRETIVAS','DATA_SOLUCAO','RESPONSAVEL_EXECUCAO']).catch(()=>{});
     const _pfxEmp = empresaCanonica(empresaReclamada||'');
     const _pfx = _pfxEmp === 'PLASCHIO' ? 'PLAS' : _pfxEmp === 'TUBAHIA' ? 'TUB' : 'CHI';
     const id = await gerarProximoID('MANIFESTACOES', _pfx, 'ID_MANIFESTACAO');
     const agora = new Date().toISOString();
+    const protocolo = rascunho ? '' : await gerarProtocoloFicha(empresaReclamada, canal, agora);
     const tipoFinal = tipo || 'Reclamação';
     const objeto = {
-      ID_MANIFESTACAO:id, DATA_ABERTURA:agora, DATA_REGISTRO:agora, EMPRESA_RECLAMANTE:empresaReclamante,
+      ID_MANIFESTACAO:id, PROTOCOLO:protocolo, DATA_ABERTURA:agora, DATA_REGISTRO:agora, EMPRESA_RECLAMANTE:empresaReclamante,
       CONTATO:contato||'', PRODUTO:produto||'', LOTE:lote||'', NFE:nfe||'', DESCRICAO:descricao,
-      DESCRICAO_MANIFESTACAO:descricao, STATUS:'EM ANÁLISE', TIPO:tipoFinal, TIPO_SUGERIDO:'',
+      DESCRICAO_MANIFESTACAO:descricao, STATUS:rascunho?'RASCUNHO':'EM ANÁLISE', TIPO:tipoFinal, TIPO_SUGERIDO:'',
       SETOR_SUGERIDO:'', SETORES_SUGERIDOS:'', PROCEDIMENTO_SUGERIDO:'', SLA_HORAS:'', PRIORIDADE:'',
       RNC_SUGERIDO:'NÃO', EMPRESA_RECLAMADA:empNorm||empresaReclamada||'', CANAL:canal||'',
       CNPJ:cnpj||'', TELEFONE:telefone||'', EMAIL:email||'', QUANTIDADE:quantidade||'',
@@ -1853,7 +1872,16 @@ app.post('/api/manifestacoes', requerPermissao('manifestacoes.abrir'), async (re
       DEVOLUTIVA_SUGERIDA:'', DEVOLUTIVA_FINAL:'', DEVOLUTIVA_ENVIADA:'',
       ORIGEM_DOCUMENTO:origemDocumento||'', ARQUIVO_ORIGEM:arquivoOrigem||'',
       USUARIO_CRIACAO:usuario||req.user?.usuario||'sistema', ORIGEM:req.body.origem||'SAC',
-      STATUS_FICHA:req.body.statusFicha||'ABERTA',
+      STATUS_FICHA:rascunho?'RASCUNHO':(req.body.statusFicha || (String(req.body.origem||'').toUpperCase().includes('PORTAL') ? 'AGUARDANDO_TRIAGEM_SAC' : 'ABERTA')),
+      ETAPA_ATUAL:rascunho?'1':'2', MENSAGEM_ETAPA:rascunho?'Rascunho em preenchimento.':'Aguardando triagem SAC.',
+      RAZAO_SOCIAL:req.body.razaoSocial||'', NOME_FANTASIA:req.body.nomeFantasia||'', CODIGO_CLIENTE:req.body.codigoCliente||'',
+      PEDIDO:req.body.pedido||'', DATA_PEDIDO:req.body.dataPedido||'', DATA_ENTREGA:req.body.dataEntrega||'', VENDEDOR:req.body.vendedor||'',
+      DATA_RECEBIMENTO:req.body.dataRecebimento||agora, ATENDENTE:req.body.atendente||req.user?.nome||req.user?.usuario||'',
+      CATEGORIA:req.body.categoria||'', MOTIVO:req.body.motivo||'', GRAVIDADE:req.body.gravidade||'',
+      UNIDADE_MEDIDA:req.body.unidadeMedida||fichaUnica.unidadeEmpresa(empresaReclamada), QUANTIDADE_AFETADA:req.body.quantidadeAfetada||quantidade||'',
+      QUANTIDADE_PERDIDA:req.body.quantidadePerdida||'', VALOR_UNITARIO:req.body.valorUnitario||valor||'',
+      VALOR_TOTAL:req.body.valorTotal||valorTotalPedido||'', PREJUIZO_CONFIRMADO:req.body.prejuizoConfirmado||'',
+      ANEXOS:Array.isArray(anexos)?JSON.stringify(anexos):(anexos||''), EVIDENCIAS:req.body.evidencias||'',
       PROCEDENTE:req.body.procedente||'',
       PROCEDENTE_JUSTIFICATIVA:req.body.procedenteJustificativa||'',
       CAMINHO_TRATATIVA:req.body.caminhoTratativa||'',
@@ -1897,7 +1925,7 @@ app.post('/api/manifestacoes', requerPermissao('manifestacoes.abrir'), async (re
       } else {
         analise = await executarAnalise({ ...objeto, empresaReclamante, empresaReclamada, descricao, tipo:tipoFinal });
       }
-      if (analise) {
+      if (analise && !rascunho) {
         await atualizarPorID('MANIFESTACOES', id, {
           TIPO_SUGERIDO:analise.tipoDetectado||analise.tipoSugerido||'',
           SETOR_SUGERIDO:Array.isArray(analise.setores)?analise.setores[0]||'':analise.setoresSugeridos?.[0]||'',
@@ -1926,7 +1954,7 @@ app.post('/api/manifestacoes', requerPermissao('manifestacoes.abrir'), async (re
         }).catch(() => {});
       }
     } catch (e) { console.error('Falha na análise automática:', e.message); }
-    res.json({ sucesso:true, id, analise, mensagem:'Manifestação registrada e analisada com sucesso.' });
+    res.json({ sucesso:true, id, protocolo, analise, rascunho:!!rascunho, mensagem:rascunho?'Rascunho salvo.':'Manifestação registrada e analisada com sucesso.' });
   } catch (e) {
     console.error('[POST /api/manifestacoes] ERRO:', e?.message, e?.response?.status, e?.stack?.split('\n')[1]);
     const status = e?.response?.status || e?.code;
@@ -1952,7 +1980,40 @@ app.patch('/api/manifestacoes/:id/ficha', requerPermissao('manifestacoes.editar'
     }
     const agora = new Date().toISOString();
     let dados = {};
-    if (acao === 'resposta_setor') {
+    if (acao === 'salvar_dados') {
+      // Lista explícita: não permitir que o navegador sobrescreva protocolo,
+      // situação de aprovação ou autoria ao editar a primeira etapa.
+      const campos = ['RAZAO_SOCIAL','NOME_FANTASIA','CNPJ','CODIGO_CLIENTE','EMPRESA_RECLAMANTE','CONTATO','TELEFONE','EMAIL','PEDIDO','NFE','DATA_PEDIDO','DATA_ENTREGA','VENDEDOR','ORIGEM','CANAL','DATA_RECEBIMENTO','ATENDENTE','TIPO','CATEGORIA','MOTIVO','DESCRICAO','DESCRICAO_MANIFESTACAO','PRODUTO','LOTE','QUANTIDADE','UNIDADE_MEDIDA','QUANTIDADE_TOTAL','QUANTIDADE_AFETADA','QUANTIDADE_DEVOLVIDA','QUANTIDADE_PERDIDA','VALOR_UNITARIO','VALOR_TOTAL','PREJUIZO_ESTIMADO','PREJUIZO_CONFIRMADO','PRIORIDADE','ANEXOS','EVIDENCIAS'];
+      for (const campo of campos) if (Object.prototype.hasOwnProperty.call(req.body, campo)) dados[campo] = req.body[campo];
+      if (dados.QUANTIDADE_TOTAL && dados.VALOR_UNITARIO && !dados.VALOR_TOTAL) {
+        const total = Number(String(dados.QUANTIDADE_TOTAL).replace(',','.')) * Number(String(dados.VALOR_UNITARIO).replace(',','.'));
+        if (Number.isFinite(total)) dados.VALOR_TOTAL = total.toFixed(2);
+      }
+      dados.DATA_ULTIMA_EDICAO = agora;
+    } else if (acao === 'triagem') {
+      const setor = req.body.setor || req.body.SETOR_CONFIRMADO || '';
+      const assumirSAC = req.body.assumirSAC === true || req.body.caminho === 'SAC';
+      dados = {
+        CATEGORIA:req.body.categoria ?? item.CATEGORIA ?? '', MOTIVO:req.body.motivo ?? item.MOTIVO ?? '',
+        PRIORIDADE:req.body.prioridade ?? item.PRIORIDADE ?? '', GRAVIDADE:req.body.gravidade ?? item.GRAVIDADE ?? '',
+        SETOR_CONFIRMADO:setor || item.SETOR_CONFIRMADO || '', RESPONSAVEL_SETOR:req.body.responsavel || item.RESPONSAVEL_SETOR || '',
+        PRAZO_TRATATIVA:req.body.prazo || item.PRAZO_TRATATIVA || '', NECESSITA_RNC:req.body.necessitaRNC || '',
+        NECESSITA_RCA:req.body.necessitaRCA || '', OBS_ENCAMINHAMENTO:req.body.observacoes || '',
+        DATA_TRIAGEM:agora, TRIADO_POR:req.user?.usuario || ''
+      };
+      if (assumirSAC) Object.assign(dados, { STATUS:'EM TRATAMENTO', STATUS_FICHA:'TRATATIVA_SAC', RESPONSAVEL_SAC:req.user?.nome||req.user?.usuario||'', DATA_ASSUMIDO_SAC:agora });
+      else if (setor) Object.assign(dados, { STATUS:'AGUARDANDO_SETOR', STATUS_FICHA:'AGUARDANDO_SETOR', DATA_ENCAMINHAMENTO:agora });
+      else return res.status(400).json({ sucesso:false, erro:'Informe o setor responsável ou assuma a tratativa pelo SAC.' });
+    } else if (acao === 'salvar_investigacao') {
+      const campos = ['INVESTIGACAO_O_QUE','INVESTIGACAO_VERIFICACOES','INVESTIGACAO_EVIDENCIAS','PROCEDENTE','PROCEDENTE_JUSTIFICATIVA','CAUSA_PROVAVEL','CAUSA_RAIZ_CONFIRMADA','EVIDENCIAS_CAUSA','REINCIDENCIA','TRATATIVA_REALIZADA','MEDIDAS_EXECUTADAS','DATA_SOLUCAO','RESPONSAVEL_EXECUCAO','PREJUIZO_CONFIRMADO','ACOES_CORRETIVAS','GERA_RNC','GERA_RCA','ANEXOS'];
+      for (const campo of campos) if (Object.prototype.hasOwnProperty.call(req.body, campo)) dados[campo] = req.body[campo];
+      dados.STATUS = 'EM TRATAMENTO'; dados.STATUS_FICHA = 'EM_TRATAMENTO'; dados.DATA_ULTIMA_TRATATIVA = agora;
+    } else if (acao === 'enviar_validacao') {
+      if (!(req.body.TRATATIVA_REALIZADA || item.TRATATIVA_REALIZADA)) return res.status(400).json({ sucesso:false, erro:'Registre a tratativa antes de enviar para validação.' });
+      dados = { STATUS:'AGUARDANDO_VALIDACAO_SAC', STATUS_FICHA:'AGUARDANDO_VALIDACAO_SAC', DATA_ENVIO_VALIDACAO:agora, ENVIADO_VALIDACAO_POR:req.user?.usuario||'' };
+    } else if (acao === 'salvar_devolutiva') {
+      dados = { DEVOLUTIVA_FINAL:req.body.texto || '', CANAL_RETORNO:req.body.canal || item.CANAL_RETORNO || item.CANAL || '', STATUS:'AGUARDANDO_DEVOLUTIVA', STATUS_FICHA:'AGUARDANDO_DEVOLUTIVA', DATA_DEVOLUTIVA_RASCUNHO:agora };
+    } else if (acao === 'resposta_setor') {
       dados = {
         RESP_SETOR_O_QUE: req.body.respSetorOQue || '',
         RESP_SETOR_CAUSA: req.body.respSetorCausa || '',
@@ -2073,9 +2134,13 @@ app.patch('/api/manifestacoes/:id/ficha', requerPermissao('manifestacoes.editar'
     } else {
       return res.status(400).json({ sucesso:false, erro:'Ação não reconhecida.' });
     }
+    const estado = { ...item, ...dados };
+    dados.ETAPA_ATUAL = String(fichaUnica.etapaAtual(estado));
+    dados.MENSAGEM_ETAPA = fichaUnica.mensagemContextual(estado);
     await atualizarPorID('MANIFESTACOES', id, dados, ['ID_MANIFESTACAO']);
     invalidarCacheAba('MANIFESTACOES');
-    res.json({ sucesso:true });
+    registrarAuditoria(req.user?.usuario||'sistema', `FICHA_${String(acao).toUpperCase()}`, id, 'MANIFESTACOES', null, dados).catch(()=>{});
+    res.json({ sucesso:true, etapaAtual:dados.ETAPA_ATUAL, mensagemEtapa:dados.MENSAGEM_ETAPA });
   } catch (e) { console.error(e); res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
 
