@@ -549,7 +549,9 @@ module.exports = function createSurveyService(s) {
       ["INATIVA", "ARQUIVADA"].includes(form.status)
     )
       fail(410, "Esta pesquisa não está disponível.");
-    const config = await read("CONFIG_PORTAL");
+    // A configuração do portal é opcional. Em planilhas antigas a aba ainda
+    // pode não existir; isso não deve impedir a listagem pública das pesquisas.
+    const config = await read("CONFIG_PORTAL").catch(() => []);
     const emp = company(form.empresa);
     if (
       config.some(
@@ -589,7 +591,7 @@ module.exports = function createSurveyService(s) {
     return publicDefinition(published);
   }
   async function catalog() {
-    const config = await read("CONFIG_PORTAL");
+    const config = await read("CONFIG_PORTAL").catch(() => []);
     return (await getAll())
       .filter(
         (f) =>
