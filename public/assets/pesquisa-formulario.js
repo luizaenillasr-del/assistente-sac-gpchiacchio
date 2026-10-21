@@ -42,8 +42,8 @@
     const logo = node("img");
     logo.src = form.aparencia?.logo || "/assets/portal-grupo-chiacchio.png";
     logo.alt = form.empresaNome || "Grupo Chiacchio";
-    intro.append(
-      logo,
+    const brand = node("div", "psv-intro-brand");
+    brand.append(
       node("div", "psv-kicker", "PESQUISA DE SATISFAÇÃO"),
       node("h2", "", form.titulo),
       node(
@@ -53,14 +53,14 @@
           "Sua opinião é importante para melhorarmos nosso atendimento.",
       ),
     );
+    intro.append(logo, brand);
     const facts = node("div", "psv-facts");
     ["Poucos minutos", "Notas de 0 a 10", "Sem login"].forEach((t) =>
       facts.append(node("span", "", t)),
     );
-    intro.append(facts);
     const start = node("button", "psv-primary", "COMEÇAR A PESQUISA");
     start.type = "button";
-    intro.append(start);
+    brand.append(facts, start);
     container.append(intro);
     const body = node("form", "psv-body");
     body.hidden = true;
