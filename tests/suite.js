@@ -658,6 +658,17 @@ async function testarDashboardExecutiva() {
     assert.strictEqual(r.satisfacao.nps, 0);
     assert.strictEqual(r.satisfacao.criterios.find(x=>x.criterio==='ATENDIMENTO').media, 9);
   });
+  await test('separa vencimentos e ranking de setores por dados reais', () => {
+    const { calcular } = require('../server-services/dashboardExecutiva');
+    const referencia = new Date('2026-10-21T12:00:00Z');
+    const r = calcular({ referencia, manifestacoes: [
+      { ID:'1', DATA_ABERTURA:'2026-10-10T00:00:00Z', STATUS_FICHA:'EM TRATATIVA', SETOR_CONFIRMADO:'Logística', SLA_HORAS:'24' },
+      { ID:'2', DATA_ABERTURA:'2026-10-20T00:00:00Z', DATA_ENCERRAMENTO:'2026-10-20T12:00:00Z', STATUS_FICHA:'FINALIZADA', SETOR_CONFIRMADO:'Produção', SLA_HORAS:'24', CAUSA_RAIZ_CONFIRMADA:'Transporte' },
+    ] });
+    assert.strictEqual(r.geral.vencidas, 1);
+    assert.strictEqual(r.geral.setores[0].setor, 'Logística');
+    assert.strictEqual(r.geral.causas[0][0], 'Transporte');
+  });
 }
 
 // ────────────────────────────────────────────────────────────
