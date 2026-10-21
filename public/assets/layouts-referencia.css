@@ -58,6 +58,37 @@
 #page-nova-manifestacao .nm-input,#page-nova-manifestacao .nm-select{height:44px;border-radius:8px}
 #page-nova-manifestacao .nm-textarea{border-radius:8px}
 
+/* Ficha de manifestação: composição do HTML de referência */
+#page-nova-manifestacao .nm-topbar{display:none}
+#page-nova-manifestacao .nm-ref-header{height:58px;background:#fff;border-bottom:1px solid #e4e4e4;display:flex;align-items:center;gap:10px;padding:0 20px;white-space:nowrap;overflow:hidden}
+#page-nova-manifestacao .nm-ref-brand{width:220px;display:flex;align-items:center;gap:8px;border-right:1px solid #e4e4e4;padding-right:16px;flex-shrink:0;font-size:10px;color:#777}
+#page-nova-manifestacao .nm-ref-brand img{width:34px;height:34px;object-fit:contain}
+#page-nova-manifestacao .nm-ref-brand span{display:block;font-size:10px}
+#page-nova-manifestacao .nm-ref-head-item{padding:0 18px;border-right:1px solid #e4e4e4;min-width:170px}
+#page-nova-manifestacao .nm-ref-head-item small{display:block;color:#999;font-size:10px;font-weight:700;letter-spacing:.08em}
+#page-nova-manifestacao .nm-ref-head-item strong{display:block;color:#c70602;font-size:15px;letter-spacing:.02em}
+#page-nova-manifestacao .nm-ref-company strong{color:#1f1f1f}.nm-ref-company em{font-style:normal;color:#777;font-weight:400}
+#page-nova-manifestacao .nm-ref-head-status{display:flex;gap:5px;align-items:center;margin-left:auto;font-size:11px}
+#page-nova-manifestacao .nm-ref-head-status span{border-radius:16px;padding:6px 11px;background:#f1f1f1;color:#555}
+#page-nova-manifestacao .nm-ref-head-status .active{background:#e8f0fb;color:#24508f;font-weight:700}.nm-ref-head-status .sla{background:#fff2d9;color:#a15e00;font-weight:700}
+#page-nova-manifestacao .nm-ref-btn{height:34px;border:1px solid #ddd;border-radius:7px;background:#fff;padding:0 13px;font:600 11px inherit;color:#555;cursor:pointer}
+#page-nova-manifestacao .nm-ref-btn.primary-outline{border-color:#c70602;color:#c70602}.nm-ref-btn.danger{background:#c70602;border-color:#c70602;color:#fff}
+#page-nova-manifestacao .nm-ref-breadcrumb{height:42px;background:#fff;border-bottom:1px solid #e4e4e4;display:flex;align-items:center;padding:0 24px;color:#9a9a9a;font-size:12px;gap:10px}
+#page-nova-manifestacao .nm-ref-breadcrumb b{color:#ccc;font-size:18px;font-weight:400}
+#page-nova-manifestacao .nm-ref-sidebar{position:absolute;z-index:2;left:0;top:100px;bottom:0;width:220px;background:#fff;border-right:1px solid #e4e4e4;padding:18px 0;overflow:auto}
+#page-nova-manifestacao .nm-ref-sidebar>small{display:block;padding:0 18px 10px;color:#999;font-size:10px;font-weight:700;letter-spacing:.1em}
+#page-nova-manifestacao .nm-ref-sidebar button{width:100%;border:0;border-left:3px solid transparent;background:#fff;text-align:left;padding:12px 14px 11px 18px;color:#444;font:500 13px inherit;cursor:pointer}
+#page-nova-manifestacao .nm-ref-sidebar button.active{background:#fff1f1;border-left-color:#c70602;color:#c70602;font-weight:700}
+#page-nova-manifestacao .nm-ref-sidebar i{display:inline-block;width:8px;height:8px;border-radius:50%;background:#bbb;margin-right:9px}
+#page-nova-manifestacao .nm-ref-sidebar button.active i{background:#c70602}.nm-ref-sidebar em{display:block;margin:4px 0 0 17px;font-size:10px;color:#999;font-style:normal;font-weight:400}.nm-ref-sidebar button.active em{color:#c70602}
+#page-nova-manifestacao #nm-steps-body{margin-left:220px;max-width:none;padding:24px 30px 64px}
+#page-nova-manifestacao #nm-steps-body:before{content:'Dados da Manifestação';display:block;font-size:23px;font-weight:700;color:#171717;margin:0 0 3px}
+#page-nova-manifestacao #nm-steps-body:after{content:'Identificação completa da ocorrência, do cliente e do impacto.';display:block;position:absolute;top:136px;left:250px;color:#a0a0a0;font-size:14px}
+#page-nova-manifestacao #nm-stepper-row,#page-nova-manifestacao #nm-step-label-main,#page-nova-manifestacao #nm-step-desc-main{display:none!important}
+#page-nova-manifestacao .nm-card{border-radius:11px;box-shadow:none}
+#page-nova-manifestacao .nm-card-title{font-size:14px;letter-spacing:0;color:#171717;text-transform:none;border-left:3px solid #c70602;padding-left:10px}
+#page-nova-manifestacao .nm-card-title:before{content:''}
+
 /* Arquivo de fichas */
 #page-biblioteca-fichas{background:var(--ref-bg)!important}
 #page-biblioteca-fichas .af-root{max-width:1240px;margin:0 auto;padding:24px 28px 64px}
@@ -68,6 +99,9 @@
   #page-visao-geral .dex2-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
   #page-visao-geral .dex2-head{align-items:flex-start;flex-direction:column}
   #page-sugestoes-melhoria .cp-top,#page-relatorio-satisfacao .rs-top{padding:12px 18px}
+  #page-nova-manifestacao .nm-ref-sidebar{display:none}
+  #page-nova-manifestacao #nm-steps-body{margin-left:0;padding:18px}
+  #page-nova-manifestacao #nm-steps-body:after{display:none}
 }
 @media(max-width:600px){
   #page-visao-geral .content{padding:0 12px 32px!important}
