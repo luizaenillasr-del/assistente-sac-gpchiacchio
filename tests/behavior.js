@@ -216,7 +216,10 @@ async function runTests() {
     await withPortalFixtures(async ({ mock, permissions }) => {
       for (const [empresa, prefixo] of [['Chiacchio Embalagens','CHI'], ['Plaschio','PLAS'], ['Cesbap','TUB']]) {
         const client = portalClient();
-        const result = await client('POST', '/api/public/reclamacoes', manifestacaoPortal(empresa));
+        const cliente = prefixo === 'TUB'
+          ? { tipoCliente: 'indireto', cpf: '12345678900', ondeComprou: 'Loja teste' }
+          : { tipoCliente: 'direto', cnpj: '12345678000199', razaoSocial: 'Empresa teste', rca: 'Representante teste' };
+        const result = await client('POST', '/api/public/reclamacoes', { ...manifestacaoPortal(empresa), ...cliente, notaFiscal: 'NF-TESTE-123' });
         assert.strictEqual(result.status, 200);
         assert.match(result.body.protocolo, new RegExp('^' + prefixo + '-[A-F0-9]{24}$'));
         const id = result.body.protocolo;
@@ -225,6 +228,16 @@ async function runTests() {
         assert.strictEqual(saved.ORIGEM, 'PORTAL_PUBLICO');
         assert.strictEqual(saved.STATUS, 'AGUARDANDO_APROVAÇÃO');
         assert.strictEqual(saved.MOTIVO, 'Embalagem danificada');
+        assert.strictEqual(saved.TIPO_CLIENTE, cliente.tipoCliente);
+        assert.strictEqual(saved.NFE, 'NF-TESTE-123');
+        if (cliente.tipoCliente === 'direto') {
+          assert.strictEqual(saved.CNPJ, cliente.cnpj);
+          assert.strictEqual(saved.RAZAO_SOCIAL, cliente.razaoSocial);
+          assert.strictEqual(saved.RCA, cliente.rca);
+        } else {
+          assert.strictEqual(saved.CPF, cliente.cpf);
+          assert.strictEqual(saved.ONDE_COMPROU, cliente.ondeComprou);
+        }
         assert.ok(mock.DB.FILA_APROVACAO.some(f => f.ID_ENTIDADE === id && f.STATUS === 'PENDENTE'));
         assert.ok(mock.DB.FICHAS_BIBLIOTECA.some(f => f.ID_MANIFESTACAO === id));
         const internal = await req('GET', '/api/manifestacoes', tokMaster());
@@ -232,6 +245,9 @@ async function runTests() {
         const publicResult = await client('GET', '/api/public/protocolo/' + id);
         assert.strictEqual(publicResult.status, 200);
         assert.strictEqual(publicResult.body.status, 'Recebida');
+        for (const field of ['CNPJ', 'CPF', 'RAZAO_SOCIAL', 'RCA', 'ONDE_COMPROU', 'NFE']) {
+          assert.ok(!(field in publicResult.body), `${field} não deve aparecer na consulta pública`);
+        }
       }
       assert.strictEqual(permissions.length, 0, 'arquivos do portal não podem ganhar acesso público no Drive');
     });
