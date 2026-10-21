@@ -13,7 +13,7 @@ Apps Script. A persistência e os serviços Google existentes são reutilizados.
 | Portal público | `public/portal.html` | Copiado como `portal-cliente/dist/index.html` |
 | Formulário público/prévia | `public/assets/pesquisa-formulario.*` | Compartilhado, sem código administrativo |
 | Marcas e fontes | Lista explícita em `portal-cliente/policy.js` | Somente os arquivos necessários |
-| API, permissões, Sheets/Drive e aprovação | `api/index.js`, `api/routes/pesquisas.js`, serviços existentes | Projeto interno |
+| API, permissões, Sheets/Drive e aprovação | `api/index.js`, `server-routes/pesquisas.js`, serviços existentes | Projeto interno |
 | Rotas externas e build estático | `portal-cliente/vercel.json`, `portal-cliente/scripts/build.js` | Segundo projeto |
 
 O `vercel.json` da raiz é do projeto interno e continua no mesmo local. Seu fallback

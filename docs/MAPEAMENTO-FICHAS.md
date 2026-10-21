@@ -176,7 +176,7 @@ Sistema atual: `BANCO_RNC` (Sheets), `Rnc`, `RncInvestigacao`, `RncAcao`, `RncEf
 
 | Requisito | Situacao |
 |---|---|
-| `api/services/pdfFicha.js` | Gera uma ficha de 1 pagina em pdfkit no layout antigo ("FICHA DE RECLAMACAO / MANIFESTACAO", 5 secoes), NAO nos modelos novos. Nao foi alterado nesta entrega |
+| `server-services/pdfFicha.js` | Gera uma ficha de 1 pagina em pdfkit no layout antigo ("FICHA DE RECLAMACAO / MANIFESTACAO", 5 secoes), NAO nos modelos novos. Nao foi alterado nesta entrega |
 | PDF do Modelo 1 / 2 / RNC preenchido | NAO EXISTE (apenas em branco, via impressao do navegador) |
 | Versionamento v1, v2 sem sobrescrever | PARCIAL: `regenerar-pdf` incrementa `VERSAO`, mas o `PDF_DRIVE_ID` atual e substituido na linha da ficha (versao anterior perde o apontamento) |
 | Armazenamento persistente | PARCIAL: usa Google Drive (`uploadArquivoDrive`), nao ha hash do arquivo |

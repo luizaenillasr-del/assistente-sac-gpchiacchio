@@ -8,13 +8,13 @@ const { Resend } = require('resend');
 const _resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 const EMAIL_FROM = process.env.EMAIL_FROM || 'SAC Grupo Chiacchio <noreply@grupochiacchio.com.br>';
 const APP_URL = (process.env.APP_URL || 'https://assistente-sac-gpchiacchio.vercel.app').replace(/\/$/, '');
-const portalEndereco = require('./services/portalEndereco')({ appUrl: APP_URL, publicUrl: process.env.PORTAL_PUBLIC_URL || '' });
-const cerebroService = require('./services/cerebroServices');
-const mcService = require('./services/matrizConhecimentoService');
-const documentService = require('./services/documentService');
-const aiService = require('./services/aiService');
+const portalEndereco = require('../server-services/portalEndereco')({ appUrl: APP_URL, publicUrl: process.env.PORTAL_PUBLIC_URL || '' });
+const cerebroService = require('../server-services/cerebroServices');
+const mcService = require('../server-services/matrizConhecimentoService');
+const documentService = require('../server-services/documentService');
+const aiService = require('../server-services/aiService');
 const { tratativaEngine, devolutivaEngine, assertividade: assertividadeService } = cerebroService;
-const permissoesService = require('./services/permissoesService');
+const permissoesService = require('../server-services/permissoesService');
 
 // Injeção de mock Sheets para testes — nunca ativo em produção (env var não existe em prod)
 const _sheetsMock = process.env.SHEETS_MOCK_PATH ? (() => { try { return require(process.env.SHEETS_MOCK_PATH); } catch(e) { console.warn('[MOCK] falhou ao carregar:', e.message); return null; } })() : null;
@@ -197,7 +197,7 @@ const SPREADSHEET_ID = process.env.SPREADSHEET_ID;
 
 // PDF service
 let gerarFichaPDF;
-try { ({ gerarFichaPDF } = require('./services/pdfFicha')); } catch(e) { console.warn('[PDF] pdfFicha não disponível:', e.message); }
+try { ({ gerarFichaPDF } = require('../server-services/pdfFicha')); } catch(e) { console.warn('[PDF] pdfFicha não disponível:', e.message); }
 
 // Google Drive upload (usa mesma service account com scope drive.file)
 async function uploadArquivoDrive(nome, mimeType, bufferOuBase64, opcoes = {}) {
@@ -1375,7 +1375,7 @@ app.get('/api/portal/endereco', (req, res) => {
 });
 
 // ===== AUTH =====
-const pesquisaFormularios = require('./services/pesquisaFormulariosService')({
+const pesquisaFormularios = require('../server-services/pesquisaFormulariosService')({
   surveyUrl: portalEndereco.survey,
   empresas: () => PORTAL_EMPRESAS, canon: empresaCanonica, role: u => perfilCanonico(u?.perfil||''),
   read: lerAba, append: appendObjeto, ensure: garantirAbaComCabecalhos, update: atualizarPorID,
@@ -1383,7 +1383,7 @@ const pesquisaFormularios = require('./services/pesquisaFormulariosService')({
   limite: () => Number(process.env.PESQUISA_NOTA_CRITICA || 6),
   sync: async row => { if (pesquisaRepo) await pesquisaRepo.criarResposta(row).catch(e => console.warn('[PESQUISAS] espelho PG:', e.message)); },
 });
-require('./routes/pesquisas')(app, pesquisaFormularios, {
+require('../server-routes/pesquisas')(app, pesquisaFormularios, {
   requerPermissao, role: u => perfilCanonico(u?.perfil||''), can: usuarioTemPermissao,
   rate: publicRateLimit, read: lerAba, ensure: garantirAbaComCabecalhos, append: appendObjeto,
   invalidate: invalidarCacheAba, appUrl: APP_URL, surveyUrl: portalEndereco.survey,
@@ -5688,7 +5688,7 @@ const ABAS_PERMITIDAS = [
 
 app.get('/api/planilha/abas', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
   try {
-    const { getSheets } = require('./services/sheets');
+    const { getSheets } = require('../server-services/sheets');
     const sheets = await getSheets();
     const meta = await sheets.spreadsheets.get({ spreadsheetId: process.env.SPREADSHEET_ID });
     const todas = (meta.data.sheets||[]).map(s=>({ nome: s.properties.title, linhas: s.properties.gridProperties?.rowCount||0, colunas: s.properties.gridProperties?.columnCount||0 }));
@@ -9264,7 +9264,7 @@ app.post('/api/alimentacao/analisar', requerPerfil('MASTER','GESTOR SAC'), async
     const { nome, conteudo, tipo_arquivo } = req.body || {};
     if (!conteudo) return res.status(400).json({sucesso:false,erro:'Conteúdo não fornecido.'});
 
-    const aiSvc = (() => { try { return require('./services/aiService'); } catch { return null; } })();
+    const aiSvc = (() => { try { return require('../server-services/aiService'); } catch { return null; } })();
     if (!aiSvc) return res.status(500).json({sucesso:false,erro:'Serviço de IA não disponível.'});
 
     const prompt = `Você é um classificador de dados para um sistema SAC empresarial.
@@ -9443,7 +9443,7 @@ app.post('/api/pesquisas/resposta-portal', async (req, res) => {
   } catch(e) { res.status(500).json({ sucesso: false, erro: 'Não foi possível registrar. Tente novamente.' }); }
 });
 
-const consultarProtocoloPortal = require('./services/portalConsulta')(lerAba);
+const consultarProtocoloPortal = require('../server-services/portalConsulta')(lerAba);
 async function responderConsultaPortal(req, res) {
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('Referrer-Policy', 'no-referrer');

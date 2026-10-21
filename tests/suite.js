@@ -116,7 +116,7 @@ async function testarAiService() {
   console.log('\n[2] aiService');
 
   await test('extrairJSON extrai JSON de texto com ruído', () => {
-    const { extrairJSON } = require('../api/services/aiService');
+    const { extrairJSON } = require('../server-services/aiService');
     const texto = 'Aqui está a resposta: {"tipo":"Reclamação","setor":"SAC"} e mais texto.';
     const resultado = extrairJSON(texto);
     assert.ok(resultado, 'deve extrair JSON');
@@ -125,7 +125,7 @@ async function testarAiService() {
   });
 
   await test('extrairJSON retorna null para texto sem JSON', () => {
-    const { extrairJSON } = require('../api/services/aiService');
+    const { extrairJSON } = require('../server-services/aiService');
     assert.strictEqual(extrairJSON('texto sem json'), null);
     assert.strictEqual(extrairJSON(''), null);
     assert.strictEqual(extrairJSON(null), null);
@@ -137,7 +137,7 @@ async function testarAiService() {
     delete process.env.ANTHROPIC_API_KEY;
     delete process.env.OPENAI_API_KEY;
     delete process.env.AI_PROVIDER;
-    const { isDisponivel } = require('../api/services/aiService');
+    const { isDisponivel } = require('../server-services/aiService');
     const result = isDisponivel();
     assert.strictEqual(result, false);
     if (orig) process.env.ANTHROPIC_API_KEY = orig;
@@ -145,7 +145,7 @@ async function testarAiService() {
   });
 
   await test('getProvider retorna openai por padrão', () => {
-    const { getProvider } = require('../api/services/aiService');
+    const { getProvider } = require('../server-services/aiService');
     delete process.env.AI_PROVIDER;
     assert.strictEqual(getProvider(), 'openai');
     process.env.AI_PROVIDER = 'anthropic';
@@ -154,7 +154,7 @@ async function testarAiService() {
   });
 
   await test('getUltimosLogs retorna array (pode estar vazio)', () => {
-    const { getUltimosLogs } = require('../api/services/aiService');
+    const { getUltimosLogs } = require('../server-services/aiService');
     const logs = getUltimosLogs(5);
     assert.ok(Array.isArray(logs));
     assert.ok(logs.length <= 5);
@@ -168,29 +168,29 @@ async function testarCerebro() {
   console.log('\n[3] cerebroServices');
 
   await test('cerebroServices exporta versão 4.0.0', () => {
-    const cerebro = require('../api/services/cerebroServices');
+    const cerebro = require('../server-services/cerebroServices');
     assert.ok(cerebro.CEREBRO_VERSION, 'deve exportar CEREBRO_VERSION');
     assert.strictEqual(cerebro.CEREBRO_VERSION, '4.0.0');
   });
 
   await test('cerebroServices exporta tratativaEngine e devolutivaEngine', () => {
-    const cerebro = require('../api/services/cerebroServices');
+    const cerebro = require('../server-services/cerebroServices');
     assert.ok(cerebro.tratativaEngine, 'deve exportar tratativaEngine');
     assert.ok(cerebro.devolutivaEngine, 'deve exportar devolutivaEngine');
   });
 
   await test('cerebroServices exporta buscarCasosSimilares (função)', () => {
-    const cerebro = require('../api/services/cerebroServices');
+    const cerebro = require('../server-services/cerebroServices');
     assert.strictEqual(typeof cerebro.buscarCasosSimilares, 'function');
   });
 
   await test('cerebroServices exporta detectarReincidencia (função)', () => {
-    const cerebro = require('../api/services/cerebroServices');
+    const cerebro = require('../server-services/cerebroServices');
     assert.strictEqual(typeof cerebro.detectarReincidencia, 'function');
   });
 
   await test('cerebroServices exporta assertividade (objeto)', () => {
-    const cerebro = require('../api/services/cerebroServices');
+    const cerebro = require('../server-services/cerebroServices');
     assert.ok(cerebro.assertividade, 'deve exportar assertividade');
     assert.strictEqual(typeof cerebro.assertividade, 'object');
   });
@@ -256,7 +256,7 @@ async function testarRegrasNegocio() {
   await test('geraRNC nunca é true na análise do Cérebro', () => {
     // Verifica que o código-fonte do Cérebro não produz geraRNC:true por análise automática
     const fs = require('fs');
-    const src = fs.readFileSync(require.resolve('../api/services/cerebroServices.js'), 'utf8');
+    const src = fs.readFileSync(require.resolve('../server-services/cerebroServices.js'), 'utf8');
     // geraRNC: false deve estar presente; geraRNC: true (hardcoded) não deve aparecer
     assert.ok(src.includes('geraRNC: false'), 'deve conter geraRNC: false');
     // Garante que não há geraRNC: true hardcoded fora de contexto de teste/comentário
@@ -265,13 +265,13 @@ async function testarRegrasNegocio() {
   });
 
   await test('CEREBRO_VERSION é 4.0.0', () => {
-    const cerebro = require('../api/services/cerebroServices');
+    const cerebro = require('../server-services/cerebroServices');
     assert.strictEqual(cerebro.CEREBRO_VERSION, '4.0.0');
   });
 
   await test('cerebroServices não importa SDK Anthropic diretamente', () => {
     const fs = require('fs');
-    const src = fs.readFileSync(require.resolve('../api/services/cerebroServices.js'), 'utf8');
+    const src = fs.readFileSync(require.resolve('../server-services/cerebroServices.js'), 'utf8');
     assert.ok(!src.includes("require('@anthropic-ai/sdk')"), 'não deve importar SDK Anthropic diretamente');
     assert.ok(!src.includes("require('anthropic')"), 'não deve importar SDK anthropic diretamente');
     assert.ok(src.includes('aiService'), 'deve usar aiService');
@@ -279,7 +279,7 @@ async function testarRegrasNegocio() {
 
   await test('aiService tem abstração de provider (anthropic|openai)', () => {
     const fs = require('fs');
-    const src = fs.readFileSync(require.resolve('../api/services/aiService.js'), 'utf8');
+    const src = fs.readFileSync(require.resolve('../server-services/aiService.js'), 'utf8');
     assert.ok(src.includes('anthropic'), 'deve suportar anthropic');
     assert.ok(src.includes('openai'), 'deve suportar openai');
     assert.ok(src.includes('AI_PROVIDER'), 'deve ler AI_PROVIDER do env');
@@ -414,7 +414,7 @@ async function testarSeguranca() {
 
   await test('B4: calcularSLA tem timezone configurável', () => {
     const fs = require('fs');
-    const src = fs.readFileSync(require.resolve('../api/services/cerebroServices.js'), 'utf8');
+    const src = fs.readFileSync(require.resolve('../server-services/cerebroServices.js'), 'utf8');
     assert.ok(src.includes('SLA_CONFIG'), 'deve ter SLA_CONFIG centralizado');
     assert.ok(src.includes('SLA_TIMEZONE'), 'deve ler timezone do env');
     assert.ok(src.includes('prazoFinalLocal'), 'deve formatar prazo no timezone correto');
