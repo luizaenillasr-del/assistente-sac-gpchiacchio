@@ -13,6 +13,7 @@
     { "source": "/relatorio-publico/:path*", "destination": "/api/index.js" },
     { "source": "/pesquisa/:path*", "destination": "/api/index.js" },
     { "source": "/", "destination": "/api/index.js" },
+    { "source": "/portal", "destination": "/portal.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
