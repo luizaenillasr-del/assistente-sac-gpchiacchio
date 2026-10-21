@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Portal do Cliente — Grupo Chiacchio</title>
+<style>
+:root{
+  --brand:#C70602;--brand2:#1A6632;--brand3:#24508F;
+  --bg:#f5f5f5;--card:#fff;--text:#1a1a1a;--muted:#666;
+  --border:#e0e0e0;--success:#1A6632;--radius:12px;
+  --shadow:0 2px 12px rgba(0,0,0,.10);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+header{background:#fff;border-bottom:1px solid var(--border);padding:16px 24px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:100;box-shadow:0 1px 4px rgba(0,0,0,.07)}
+header img{height:36px;object-fit:contain}
+header h1{font-size:1.1rem;font-weight:700;color:var(--text)}
+header span{font-size:.85rem;color:var(--muted)}
+.container{max-width:720px;margin:0 auto;padding:24px 16px}
+.view{display:none}
+.view.active{display:block}
+
+/* HOME */
+.hero{text-align:center;padding:32px 0 16px}
+.hero h2{font-size:1.6rem;font-weight:800;margin-bottom:8px}
+.hero p{color:var(--muted);font-size:1rem}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-top:24px}
+.card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:24px;cursor:pointer;border:2px solid transparent;transition:border-color .2s,transform .2s;text-align:center}
+.card:hover{transform:translateY(-2px)}
+.card .icon{font-size:2rem;margin-bottom:12px}
+.card h3{font-size:1rem;font-weight:700;margin-bottom:4px}
+.card p{font-size:.85rem;color:var(--muted)}
+.card.red{border-color:var(--brand)}
+.card.red .icon{color:var(--brand)}
+.card.green{border-color:var(--brand2)}
+.card.green .icon{color:var(--brand2)}
+.card.blue{border-color:var(--brand3)}
+.card.blue .icon{color:var(--brand3)}
+.survey-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-top:8px}
+.survey-card{background:var(--card);border-radius:var(--radius);padding:20px 16px;cursor:pointer;border:2px solid transparent;text-align:center;box-shadow:var(--shadow);transition:transform .2s,border-color .2s}
+.survey-card:hover{transform:translateY(-2px)}
+.survey-card .dot{width:14px;height:14px;border-radius:50%;margin:0 auto 10px;display:block}
+.survey-card h4{font-size:.9rem;font-weight:700}
+
+/* FORMS */
+.back-btn{background:none;border:none;color:var(--brand);cursor:pointer;font-size:.95rem;padding:0;margin-bottom:20px;display:flex;align-items:center;gap:6px;font-weight:600}
+.form-title{font-size:1.3rem;font-weight:800;margin-bottom:20px}
+.form-group{margin-bottom:16px}
+label{display:block;font-size:.9rem;font-weight:600;margin-bottom:6px;color:var(--text)}
+input,select,textarea{width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-size:.95rem;color:var(--text);background:#fff;outline:none;transition:border-color .2s}
+input:focus,select:focus,textarea:focus{border-color:var(--brand)}
+textarea{min-height:100px;resize:vertical}
+.row-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.btn{display:inline-block;padding:12px 28px;border-radius:8px;font-size:1rem;font-weight:700;cursor:pointer;border:none;transition:opacity .2s}
+.btn-primary{background:var(--brand);color:#fff}
+.btn-primary:hover{opacity:.88}
+.btn-primary:disabled{opacity:.5;cursor:not-allowed}
+.btn-outline{background:#fff;color:var(--text);border:1.5px solid var(--border)}
+.btn-outline:hover{border-color:var(--text)}
+.form-footer{margin-top:20px;display:flex;gap:12px;flex-wrap:wrap}
+
+/* RATING */
+.rating-group{margin-bottom:18px}
+.rating-label{font-size:.9rem;font-weight:600;margin-bottom:8px;display:block}
+.rating-row{display:flex;gap:6px;flex-wrap:wrap}
+.rating-btn{width:42px;height:42px;border-radius:8px;border:1.5px solid var(--border);background:#fff;font-size:.9rem;font-weight:700;cursor:pointer;transition:background .15s,border-color .15s,color .15s}
+.rating-btn.selected{background:var(--brand);border-color:var(--brand);color:#fff}
+.rating-btn.nps-low.selected{background:#e74c3c;border-color:#e74c3c;color:#fff}
+.rating-btn.nps-mid.selected{background:#f39c12;border-color:#f39c12;color:#fff}
+.rating-btn.nps-high.selected{background:#27ae60;border-color:#27ae60;color:#fff}
+
+/* PROTOCOL */
+.protocol-input-row{display:flex;gap:8px}
+.protocol-input-row input{flex:1}
+.status-card{background:var(--card);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);margin-top:16px}
+.status-badge{display:inline-block;padding:4px 14px;border-radius:20px;font-size:.82rem;font-weight:700;background:#e8f5e9;color:var(--success)}
+.status-info{margin-top:16px;display:grid;gap:8px}
+.status-row{display:flex;justify-content:space-between;font-size:.9rem;border-bottom:1px solid var(--border);padding-bottom:8px}
+.status-row:last-child{border-bottom:none}
+.status-row span:first-child{color:var(--muted)}
+
+/* SUCCESS */
+.success-box{text-align:center;padding:40px 20px;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow)}
+.success-icon{font-size:3rem;margin-bottom:16px}
+.success-box h2{font-size:1.3rem;font-weight:800;margin-bottom:8px}
+.success-box p{color:var(--muted);margin-bottom:6px}
+.proto-tag{display:inline-block;background:#f5f5f5;border:1px solid var(--border);border-radius:8px;padding:8px 18px;font-family:monospace;font-size:1rem;font-weight:700;margin:12px 0}
+
+/* ALERTS */
+.alert{padding:12px 16px;border-radius:8px;margin-bottom:16px;font-size:.9rem}
+.alert-error{background:#fdecea;color:#c62828;border:1px solid #f5c6c6}
+.alert-info{background:#e3f2fd;color:#1565c0;border:1px solid #bbdefb}
+
+/* WHATSAPP */
+.wa-fab{position:fixed;bottom:28px;right:24px;z-index:200;display:none}
+.wa-fab a{display:flex;align-items:center;justify-content:center;width:56px;height:56px;border-radius:50%;background:#25D366;box-shadow:0 4px 16px rgba(0,0,0,.25);color:#fff;font-size:1.6rem;text-decoration:none;transition:transform .2s}
+.wa-fab a:hover{transform:scale(1.1)}
+
+/* optional sections */
+.section-title{font-size:1rem;font-weight:700;margin:28px 0 12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+
+@media(max-width:500px){
+  .row-2{grid-template-columns:1fr}
+  .form-footer{flex-direction:column}
+  .btn{width:100%;text-align:center}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <img src="/assets/logo-chiacchio-new.png" alt="Grupo Chiacchio" onerror="this.style.display='none'"/>
+  <div>
+    <h1>Portal do Cliente</h1>
+    <span>Grupo Chiacchio</span>
+  </div>
+</header>
+
+<!-- HOME -->
+<div class="view active" id="view-home">
+<div class="container">
+  <div class="hero">
+    <h2>Como podemos ajudar?</h2>
+    <p>Registre uma manifestação, avalie nosso atendimento ou acompanhe seu protocolo.</p>
+  </div>
+
+  <div class="cards">
+    <div class="card red" onclick="irPara('manifestacao')">
+      <div class="icon">📋</div>
+      <h3>Registrar Manifestação</h3>
+      <p>Reclamações, sugestões e elogios</p>
+    </div>
+    <div class="card blue" onclick="irPara('protocolo')">
+      <div class="icon">🔍</div>
+      <h3>Acompanhar Protocolo</h3>
+      <p>Consulte o status da sua ocorrência</p>
+    </div>
+  </div>
+
+  <p class="section-title">Avalie nosso atendimento</p>
+  <div class="survey-cards" id="survey-cards">
+    <div class="survey-card" onclick="irPara('pesquisa','chiacchio')">
+      <span class="dot" style="background:#C70602"></span>
+      <h4>Chiacchio Embalagens</h4>
+    </div>
+    <div class="survey-card" onclick="irPara('pesquisa','plaschio')">
+      <span class="dot" style="background:#1A6632"></span>
+      <h4>Plaschio</h4>
+    </div>
+    <div class="survey-card" onclick="irPara('pesquisa','tubahia')">
+      <span class="dot" style="background:#24508F"></span>
+      <h4>Cesbap</h4>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- MANIFESTAÇÃO -->
+<div class="view" id="view-manifestacao">
+<div class="container">
+  <button class="back-btn" onclick="irPara('home')">← Voltar</button>
+  <div class="form-title">Registrar Manifestação</div>
+  <div id="alert-man"></div>
+  <form id="form-man" onsubmit="submitManifestacao(event)">
+    <div class="form-group">
+      <label>Empresa *</label>
+      <select name="empresa" required>
+        <option value="">Selecione…</option>
+        <option value="Chiacchio Embalagens">Chiacchio Embalagens</option>
+        <option value="Plaschio">Plaschio</option>
+        <option value="Cesbap">Cesbap</option>
+      </select>
+    </div>
+    <div class="row-2">
+      <div class="form-group">
+        <label>Seu nome *</label>
+        <input name="nomeCliente" required placeholder="Nome completo"/>
+      </div>
+      <div class="form-group">
+        <label>Telefone *</label>
+        <input name="telefone" required placeholder="(00) 00000-0000"/>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>E-mail</label>
+      <input name="email" type="email" placeholder="seu@email.com"/>
+    </div>
+    <div class="form-group">
+      <label>Tipo de manifestação *</label>
+      <select name="tipoManifestacao" required>
+        <option value="">Selecione…</option>
+        <option value="RECLAMACAO">Reclamação</option>
+        <option value="SUGESTAO">Sugestão</option>
+        <option value="ELOGIO">Elogio</option>
+        <option value="SOLICITACAO">Solicitação</option>
+        <option value="DUVIDA">Dúvida</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Descreva sua manifestação *</label>
+      <textarea name="descricaoOriginal" required placeholder="Descreva detalhadamente…"></textarea>
+    </div>
+    <details style="margin-bottom:16px">
+      <summary style="cursor:pointer;font-size:.9rem;color:var(--muted);padding:4px 0">Informações adicionais (opcional)</summary>
+      <div style="padding-top:12px">
+        <div class="row-2">
+          <div class="form-group">
+            <label>Produto</label>
+            <input name="produto" placeholder="Nome do produto"/>
+          </div>
+          <div class="form-group">
+            <label>Nota Fiscal</label>
+            <input name="notaFiscal" placeholder="Número da NF"/>
+          </div>
+        </div>
+        <div class="row-2">
+          <div class="form-group">
+            <label>Pedido</label>
+            <input name="pedido" placeholder="Número do pedido"/>
+          </div>
+          <div class="form-group">
+            <label>Lote</label>
+            <input name="lote" placeholder="Número do lote"/>
+          </div>
+        </div>
+      </div>
+    </details>
+    <div class="form-footer">
+      <button class="btn btn-primary" type="submit" id="btn-man">Enviar Manifestação</button>
+      <button class="btn btn-outline" type="button" onclick="irPara('home')">Cancelar</button>
+    </div>
+  </form>
+</div>
+</div>
+
+<!-- PESQUISA -->
+<div class="view" id="view-pesquisa">
+<div class="container">
+  <button class="back-btn" onclick="irPara('home')">← Voltar</button>
+  <div class="form-title" id="pesquisa-title">Avaliar Atendimento</div>
+  <div id="alert-pesq"></div>
+  <form id="form-pesq" onsubmit="submitPesquisa(event)">
+    <input type="hidden" id="pesquisa-empresa-slug" name="empresaSlug"/>
+    <input type="hidden" id="pesquisa-empresa-nome" name="empresa"/>
+
+    <div class="rating-group">
+      <span class="rating-label">1. Atendimento recebido</span>
+      <div class="rating-row" id="rating-atendimento"></div>
+    </div>
+    <div class="rating-group">
+      <span class="rating-label">2. Prazo de entrega</span>
+      <div class="rating-row" id="rating-prazo"></div>
+    </div>
+    <div class="rating-group">
+      <span class="rating-label">3. Qualidade do produto</span>
+      <div class="rating-row" id="rating-qualidade"></div>
+    </div>
+    <div class="rating-group">
+      <span class="rating-label">4. Você recomendaria nossa empresa? (0–10)</span>
+      <div class="rating-row" id="rating-recomendacao"></div>
+    </div>
+
+    <div class="form-group">
+      <label>Comentário (opcional)</label>
+      <textarea name="comentario" placeholder="Alguma observação ou sugestão?"></textarea>
+    </div>
+    <div class="form-group">
+      <label>Seu nome (opcional)</label>
+      <input name="nome" placeholder="Como podemos te chamar?"/>
+    </div>
+    <div class="form-footer">
+      <button class="btn btn-primary" type="submit" id="btn-pesq">Enviar Avaliação</button>
+      <button class="btn btn-outline" type="button" onclick="irPara('home')">Cancelar</button>
+    </div>
+  </form>
+</div>
+</div>
+
+<!-- PROTOCOLO -->
+<div class="view" id="view-protocolo">
+<div class="container">
+  <button class="back-btn" onclick="irPara('home')">← Voltar</button>
+  <div class="form-title">Acompanhar Protocolo</div>
+  <div id="alert-proto"></div>
+  <div class="protocol-input-row">
+    <input id="proto-input" placeholder="Ex.: MAN-1234567890" maxlength="50"/>
+    <button class="btn btn-primary" onclick="consultarProtocolo()">Buscar</button>
+  </div>
+  <div id="proto-result" style="display:none"></div>
+</div>
+</div>
+
+<!-- SUCCESS MANIFESTAÇÃO -->
+<div class="view" id="view-success-man">
+<div class="container">
+  <div class="success-box">
+    <div class="success-icon">✅</div>
+    <h2>Manifestação registrada!</h2>
+    <p>Seu protocolo é:</p>
+    <div class="proto-tag" id="proto-gerado">—</div>
+    <p style="margin-top:8px">Guarde este número para acompanhar o andamento.</p>
+    <div style="margin-top:24px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+      <button class="btn btn-outline" onclick="irPara('protocolo')">Acompanhar</button>
+      <button class="btn btn-primary" onclick="irPara('home')">Página inicial</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- SUCCESS PESQUISA -->
+<div class="view" id="view-success-pesq">
+<div class="container">
+  <div class="success-box">
+    <div class="success-icon">🙏</div>
+    <h2>Obrigado pela avaliação!</h2>
+    <p>Seu feedback é muito importante para continuarmos melhorando.</p>
+    <div style="margin-top:24px">
+      <button class="btn btn-primary" onclick="irPara('home')">Página inicial</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- WHATSAPP FAB -->
+<div class="wa-fab" id="wa-fab">
+  <a id="wa-link" href="#" target="_blank" rel="noopener" title="Fale pelo WhatsApp">💬</a>
+</div>
+
+<script>
+const RATINGS_1_10 = [1,2,3,4,5,6,7,8,9,10];
+const RATINGS_0_10 = [0,1,2,3,4,5,6,7,8,9,10];
+
+function buildRating(containerId, values, fieldName, isNps){
+  const el = document.getElementById(containerId);
+  values.forEach(v => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = v;
+    btn.className = 'rating-btn' + (isNps ? (v<=6?' nps-low':v<=8?' nps-mid':' nps-high') : '');
+    btn.dataset.value = v;
+    btn.dataset.field = fieldName;
+    btn.onclick = () => {
+      el.querySelectorAll('.rating-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+    };
+    el.appendChild(btn);
+  });
+}
+
+buildRating('rating-atendimento', RATINGS_1_10, 'atendimento', false);
+buildRating('rating-prazo', RATINGS_1_10, 'prazo_de_entrega', false);
+buildRating('rating-qualidade', RATINGS_1_10, 'qualidade_do_produto', false);
+buildRating('rating-recomendacao', RATINGS_0_10, 'recomendaria_a_empresa', true);
+
+function irPara(view, param){
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  if(view==='pesquisa' && param){
+    const EMPRESAS = {chiacchio:'Chiacchio Embalagens',plaschio:'Plaschio',tubahia:'Cesbap'};
+    document.getElementById('pesquisa-empresa-slug').value = param;
+    document.getElementById('pesquisa-empresa-nome').value = EMPRESAS[param]||param;
+    document.getElementById('pesquisa-title').textContent = 'Avaliar — ' + (EMPRESAS[param]||param);
+    document.querySelectorAll('.rating-btn').forEach(b => b.classList.remove('selected'));
+    document.getElementById('form-pesq').reset();
+    document.getElementById('alert-pesq').innerHTML='';
+    document.getElementById('view-pesquisa').classList.add('active');
+  } else {
+    const el = document.getElementById('view-'+view);
+    if(el) el.classList.add('active');
+  }
+  window.scrollTo(0,0);
+}
+
+function showAlert(id, msg, type='error'){
+  document.getElementById(id).innerHTML = `<div class="alert alert-${type}">${msg}</div>`;
+}
+
+async function submitManifestacao(e){
+  e.preventDefault();
+  const btn = document.getElementById('btn-man');
+  btn.disabled = true; btn.textContent = 'Enviando…';
+  document.getElementById('alert-man').innerHTML='';
+  const fd = new FormData(e.target);
+  const body = { colaboradorRecebimento:'Portal',setorRecebimento:'Portal' };
+  fd.forEach((v,k) => { if(v) body[k]=v; });
+  try{
+    const r = await fetch('/api/public/reclamacoes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const j = await r.json();
+    if(j.sucesso){
+      document.getElementById('proto-gerado').textContent = j.protocolo||j.id||'—';
+      irPara('success-man');
+    } else {
+      showAlert('alert-man', j.erro||'Erro ao enviar. Tente novamente.');
+    }
+  }catch{
+    showAlert('alert-man','Erro de conexão. Verifique sua internet e tente novamente.');
+  } finally {
+    btn.disabled=false; btn.textContent='Enviar Manifestação';
+  }
+}
+
+async function submitPesquisa(e){
+  e.preventDefault();
+  const btn = document.getElementById('btn-pesq');
+  btn.disabled=true; btn.textContent='Enviando…';
+  document.getElementById('alert-pesq').innerHTML='';
+  const body = {
+    empresa: document.getElementById('pesquisa-empresa-nome').value,
+    nome: e.target.nome?.value||'',
+    comentario: e.target.comentario?.value||'',
+  };
+  ['atendimento','prazo_de_entrega','qualidade_do_produto','recomendaria_a_empresa'].forEach(f => {
+    const sel = document.querySelector(`#rating-${f.replace(/_/g,'-').replace('recomendaria-a-empresa','recomendacao')} .rating-btn.selected`);
+    if(sel) body[f] = sel.dataset.value;
+  });
+  // fix rating IDs
+  const map = {'prazo_de_entrega':'prazo','qualidade_do_produto':'qualidade','recomendaria_a_empresa':'recomendacao'};
+  ['atendimento','prazo_de_entrega','qualidade_do_produto','recomendaria_a_empresa'].forEach(f => {
+    const id = 'rating-'+(map[f]||f);
+    const sel = document.querySelector(`#${id} .rating-btn.selected`);
+    if(sel) body[f] = sel.dataset.value;
+  });
+  try{
+    const r = await fetch('/api/pesquisas/resposta-portal',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const j = await r.json();
+    if(j.sucesso){ irPara('success-pesq'); }
+    else { showAlert('alert-pesq', j.erro||'Erro ao enviar.'); }
+  }catch{ showAlert('alert-pesq','Erro de conexão.'); }
+  finally{ btn.disabled=false; btn.textContent='Enviar Avaliação'; }
+}
+
+async function consultarProtocolo(){
+  const proto = document.getElementById('proto-input').value.trim();
+  if(!proto){ showAlert('alert-proto','Informe o número do protocolo.'); return; }
+  document.getElementById('alert-proto').innerHTML='';
+  document.getElementById('proto-result').style.display='none';
+  try{
+    const r = await fetch(`/api/public/protocolo/${encodeURIComponent(proto)}`);
+    const j = await r.json();
+    if(!j.sucesso){ showAlert('alert-proto', j.erro||'Protocolo não encontrado.'); return; }
+    const d = j;
+    const fmt = s => s ? new Date(s).toLocaleDateString('pt-BR') : '—';
+    document.getElementById('proto-result').innerHTML = `
+      <div class="status-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+          <strong>${d.protocolo}</strong>
+          <span class="status-badge">${d.status}</span>
+        </div>
+        <p style="color:var(--muted);font-size:.9rem;margin-top:8px">${d.descricaoStatus}</p>
+        <div class="status-info" style="margin-top:16px">
+          <div class="status-row"><span>Empresa</span><span>${d.empresa||'—'}</span></div>
+          <div class="status-row"><span>Tipo</span><span>${d.tipo||'—'}</span></div>
+          <div class="status-row"><span>Aberto em</span><span>${fmt(d.dataAbertura)}</span></div>
+          <div class="status-row"><span>Atualizado em</span><span>${fmt(d.dataAtualizacao)}</span></div>
+        </div>
+      </div>`;
+    document.getElementById('proto-result').style.display='block';
+  }catch{ showAlert('alert-proto','Erro de conexão.'); }
+}
+
+document.getElementById('proto-input').addEventListener('keypress', e => { if(e.key==='Enter') consultarProtocolo(); });
+
+// WhatsApp FAB
+(async()=>{
+  try{
+    const r = await fetch('/api/public/whatsapp');
+    const j = await r.json();
+    if(j.sucesso && j.ativo && j.numero){
+      const msg = encodeURIComponent(j.mensagem||'Olá, preciso de ajuda.');
+      document.getElementById('wa-link').href = `https://wa.me/${j.numero}?text=${msg}`;
+      document.getElementById('wa-fab').style.display='block';
+    }
+  }catch{}
+})();
+</script>
+</body>
+</html>

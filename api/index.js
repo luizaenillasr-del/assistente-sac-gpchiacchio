@@ -9312,6 +9312,98 @@ app.get('/api/alimentacao/pendencias', requerPerfil('MASTER','GESTOR SAC'), asyn
 });
 
 // ═════════════════════════════════════════════════════════════════════════════
+// PORTAL DO CLIENTE — rotas públicas e de configuração
+// ═════════════════════════════════════════════════════════════════════════════
+app.get('/portal', (req, res) => {
+  res.sendFile(require('path').join(__dirname, '../public/portal.html'));
+});
+
+app.get('/api/public/pesquisas-ativas', publicRateLimit, async (req, res) => {
+  try {
+    const empresas = [
+      { slug: 'chiacchio', nome: 'Chiacchio Embalagens', cor: '#C70602', logo: '/assets/logo-chiacchio-new.png' },
+      { slug: 'plaschio', nome: 'Plaschio', cor: '#1A6632', logo: '/assets/logo-plaschio-new.png' },
+      { slug: 'tubahia', nome: 'Cesbap', cor: '#24508F', logo: '/assets/logo-tubahia-new.png' },
+    ];
+    res.json({ sucesso: true, empresas });
+  } catch(e) { res.json({ sucesso: true, empresas: [] }); }
+});
+
+app.post('/api/pesquisas/resposta-portal', publicRateLimit, async (req, res) => {
+  try {
+    const body = req.body || {};
+    const empresa = String(body.empresa || '').trim().slice(0, 100);
+    if (!empresa) return res.status(400).json({ sucesso: false, erro: 'Empresa obrigatória.' });
+    const atendimento = String(body.atendimento || '');
+    const prazo = String(body.prazo_de_entrega || '');
+    const qualidade = String(body.qualidade_do_produto || '');
+    const recomendacao = String(body.recomendaria_a_empresa || '');
+    const notas = [atendimento, prazo, qualidade, recomendacao].map(n => parseFloat(n)).filter(n => !isNaN(n) && n >= 0);
+    if (!notas.length) return res.status(400).json({ sucesso: false, erro: 'Informe ao menos uma avaliação.' });
+    const notaMedia = (notas.reduce((a,b)=>a+b,0)/notas.length).toFixed(1);
+    const NOTA_CRITICA = Number(process.env.PESQUISA_NOTA_CRITICA||6);
+    const notaBaixa = notas.some(n => n <= NOTA_CRITICA) ? 'SIM' : 'NAO';
+    const aba = 'PESQUISA_RESPOSTAS';
+    const headers = ['ID_RESPOSTA','TOKEN','EMPRESA','NOME_CLIENTE','DATA','ATENDIMENTO','PRAZO_ENTREGA','QUALIDADE','RECOMENDACAO','COMENTARIO','NOTA_MEDIA','NOTA_BAIXA','STATUS_OCP','ORIGEM'];
+    await garantirAbaComCabecalhos(aba, headers);
+    const idResp = 'RSP-' + Date.now();
+    const obj = { ID_RESPOSTA: idResp, TOKEN: '', EMPRESA: empresa, NOME_CLIENTE: String(body.nome||'').trim().slice(0,200), DATA: new Date().toISOString(), ATENDIMENTO: atendimento, PRAZO_ENTREGA: prazo, QUALIDADE: qualidade, RECOMENDACAO: recomendacao, COMENTARIO: String(body.comentario||'').trim().slice(0,1000), NOTA_MEDIA: notaMedia, NOTA_BAIXA: notaBaixa, STATUS_OCP: '', ORIGEM: 'PORTAL_PUBLICO' };
+    await appendObjeto(aba, obj);
+    invalidarCacheAba(aba);
+    if (notaBaixa === 'SIM') {
+      await appendObjeto('PESQUISA_OCORRENCIAS', { ID_OCP: 'OCP-'+Date.now(), TOKEN:'', EMPRESA: empresa, DATA: new Date().toISOString(), NPS: notaMedia, STATUS:'PENDENTE', DECISAO:'', JUSTIFICATIVA:'', ID_MANIFESTACAO_GERADA:'', ANALISTA:'', DATA_DECISAO:'' }).catch(()=>{});
+      invalidarCacheAba('PESQUISA_OCORRENCIAS');
+    }
+    res.json({ sucesso: true, id: idResp });
+  } catch(e) { res.status(500).json({ sucesso: false, erro: 'Não foi possível registrar. Tente novamente.' }); }
+});
+
+app.get('/api/public/protocolo/:protocolo', publicRateLimit, async (req, res) => {
+  try {
+    const proto = String(req.params.protocolo||'').replace(/[^A-Za-z0-9\-]/g,'').slice(0,50);
+    if (!proto || proto.length < 3) return res.status(400).json({ sucesso: false, erro: 'Protocolo inválido.' });
+    const rows = await lerAba('MANIFESTACOES', 5000).catch(()=>[]);
+    const man = rows.find(r => (r.ID_MANIFESTACAO||r.PROTOCOLO||'') === proto);
+    if (!man) return res.status(404).json({ sucesso: false, erro: 'Protocolo não encontrado.' });
+    const STATUS_MAP = { 'AGUARDANDO_APROVAÇÃO':{label:'Recebida',desc:'Sua manifestação foi recebida e está em análise.'}, 'EM_ANALISE':{label:'Em análise',desc:'Nossa equipe está analisando sua manifestação.'}, 'EM_TRATATIVA':{label:'Em tratamento',desc:'Estamos trabalhando para resolver sua solicitação.'}, 'AGUARDANDO_VALIDACAO':{label:'Em revisão final',desc:'Sua manifestação está em revisão final.'}, 'FINALIZADO':{label:'Encerrada',desc:'Sua manifestação foi encerrada. Obrigado pelo contato.'}, 'ENCERRADO':{label:'Encerrada',desc:'Sua manifestação foi encerrada. Obrigado pelo contato.'} };
+    const st = STATUS_MAP[man.STATUS] || {label:'Em andamento',desc:'Estamos analisando sua manifestação.'};
+    res.json({ sucesso:true, protocolo:proto, empresa: man.EMPRESA_RECLAMADA||man.EMPRESA_RECLAMANTE||'', tipo: man.TIPO_MANIFESTACAO||man.TIPO||'Manifestação', dataAbertura: man.DATA_ABERTURA||man.DATA_REGISTRO||'', status: st.label, descricaoStatus: st.desc, dataAtualizacao: man.UPDATED_AT||man.DATA_ABERTURA||'' });
+  } catch(e) { res.status(500).json({ sucesso:false, erro:'Erro ao consultar protocolo.' }); }
+});
+
+app.get('/api/public/whatsapp', publicRateLimit, async (req, res) => {
+  try {
+    const rows = await lerAba('CONFIG_PORTAL', 100).catch(()=>[]);
+    const wa = rows.find(r => r.TIPO === 'WHATSAPP' && r.ATIVO === 'SIM');
+    if (!wa || !wa.VALOR) return res.json({ sucesso:true, ativo:false });
+    res.json({ sucesso:true, ativo:true, numero:wa.VALOR, mensagem: wa.MENSAGEM||'Olá, preciso de ajuda.' });
+  } catch(e) { res.json({ sucesso:true, ativo:false }); }
+});
+
+app.get('/api/config/whatsapp', requerPerfil('MASTER','GESTOR SAC'), async (req, res) => {
+  try {
+    const rows = await lerAba('CONFIG_PORTAL', 100).catch(()=>[]);
+    const wa = rows.find(r => r.TIPO === 'WHATSAPP') || {};
+    res.json({ sucesso:true, numero: wa.VALOR||'', mensagem: wa.MENSAGEM||'', ativo: wa.ATIVO==='SIM' });
+  } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
+});
+
+app.post('/api/config/whatsapp', requerPerfil('MASTER','GESTOR SAC'), async (req, res) => {
+  try {
+    const { numero, mensagem, ativo } = req.body || {};
+    const numeroLimpo = String(numero||'').replace(/[^0-9]/g,'');
+    if (!numeroLimpo || numeroLimpo.length < 10) return res.status(400).json({ sucesso:false, erro:'Número inválido.' });
+    await garantirAbaComCabecalhos('CONFIG_PORTAL', ['TIPO','VALOR','MENSAGEM','ATIVO','UPDATED_AT','UPDATED_BY']);
+    const rows = await lerAba('CONFIG_PORTAL', 100).catch(()=>[]);
+    const existing = rows.find(r => r.TIPO === 'WHATSAPP');
+    const obj = { TIPO:'WHATSAPP', VALOR:numeroLimpo, MENSAGEM:String(mensagem||'Olá, preciso de ajuda.').slice(0,500), ATIVO: ativo?'SIM':'NAO', UPDATED_AT:new Date().toISOString(), UPDATED_BY: req.user?.usuario||'' };
+    if (existing) { await atualizarPorID('CONFIG_PORTAL','WHATSAPP',obj,['TIPO']).catch(()=>appendObjeto('CONFIG_PORTAL',obj)); } else { await appendObjeto('CONFIG_PORTAL',obj); }
+    invalidarCacheAba('CONFIG_PORTAL');
+    res.json({ sucesso:true });
+  } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
 // CATCH ALL
 // ═════════════════════════════════════════════════════════════════════════════
 app.use((req, res) => {
