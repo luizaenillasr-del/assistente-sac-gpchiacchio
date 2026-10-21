@@ -650,6 +650,16 @@ async function testarFichaUnica() {
   });
 }
 
+async function testarRelatorioSatisfacao() {
+  console.log('\n[9] Relatórios de satisfação');
+  await test('PDF do relatório é gerado com dados mensais', async () => {
+    const { gerarPdfRelatorioSatisfacao } = require('../server-services/pdfRelatorioSatisfacao');
+    const pdf = await gerarPdfRelatorioSatisfacao({ empresa:'Chiacchio', periodo:'Setembro/2026', versao:1, status:'PUBLICADO', indicador:'8.7', nps:'72', meta:'8.5', criterios:[{criterio:'Atendimento',media:'9.0'}], textos:{resumo_executivo:'Resultado do período.'} });
+    assert.ok(Buffer.isBuffer(pdf), 'o PDF deve ser um Buffer');
+    assert.ok(pdf.length > 500, 'o PDF deve conter conteúdo');
+  });
+}
+
 // ────────────────────────────────────────────────────────────
 // Main
 // ────────────────────────────────────────────────────────────
@@ -666,6 +676,7 @@ async function main() {
   await testarSeguranca();
   await testarCorrecoesPosReview();
   await testarFichaUnica();
+  await testarRelatorioSatisfacao();
   await testarIntegracaoPG();
 
   const total = passed + failed + skipped;
