@@ -27,14 +27,14 @@ function makeToken(payload) {
   return `${body}.${sig}`;
 }
 
-function req(method, urlPath, token, body) {
+function req(method, urlPath, token, body, headers = {}) {
   return new Promise((resolve, reject) => {
     const url  = new URL(urlPath, baseUrl);
     const opts = {
       method,
       hostname: url.hostname, port: url.port, path: url.pathname + url.search,
       headers: { 'Content-Type': 'application/json',
-                 ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+                 ...(token ? { Authorization: `Bearer ${token}` } : {}), ...headers },
     };
     const r = http.request(opts, res => {
       let data = '';
@@ -95,6 +95,52 @@ const tokCesbap     = () => makeToken({ perfil: 'ANALISTA SAC', empresa: 'Cesbap
 const tokMaster     = () => makeToken({ perfil: 'MASTER',        empresa: 'Grupo Chiacchio',      usuario: 'master.test' });
 const tokInativo    = () => makeToken({ perfil: 'ANALISTA SAC', empresa: 'CHIACCHIO EMBALAGENS', usuario: 'usuario.inativo', status: 'INATIVO' });
 
+let portalClientId = 10;
+function portalClient() {
+  const headers = { 'X-Forwarded-For': `192.0.2.${portalClientId++}` };
+  return (method, route, body) => req(method, route, null, body, headers);
+}
+
+async function withPortalFixtures(fn, failUpload = false) {
+  const mock = require(MOCK_PATH);
+  const snapshot = JSON.parse(JSON.stringify(mock.DB));
+  const { google } = require('googleapis');
+  const originalDrive = google.drive;
+  const originalAuth = google.auth.GoogleAuth;
+  const originalCredentials = process.env.GOOGLE_CREDENTIALS;
+  const uploads = [], permissions = [];
+  process.env.GOOGLE_CREDENTIALS = '{}'; // fixture local, nunca uma credencial real
+  google.auth.GoogleAuth = class {};
+  google.drive = () => ({
+    files: { create: async ({ requestBody, media }) => {
+      if (failUpload) throw new Error('Drive indisponível no teste');
+      const chunks = [];
+      for await (const chunk of media.body) chunks.push(chunk);
+      uploads.push({ ...requestBody, bytes: Buffer.concat(chunks) });
+      return { data: { id: `drive-test-${uploads.length}`, webViewLink: 'https://drive.google.com/file/d/test' } };
+    } },
+    permissions: { create: async args => { permissions.push(args); } },
+  });
+  try { await fn({ mock, uploads, permissions }); }
+  finally {
+    google.drive = originalDrive;
+    google.auth.GoogleAuth = originalAuth;
+    if (originalCredentials === undefined) delete process.env.GOOGLE_CREDENTIALS;
+    else process.env.GOOGLE_CREDENTIALS = originalCredentials;
+    for (const key of Object.keys(mock.DB)) {
+      if (!(key in snapshot)) delete mock.DB[key];
+      else mock.DB[key].splice(0, mock.DB[key].length, ...snapshot[key]);
+    }
+  }
+}
+
+function manifestacaoPortal(empresa = 'Chiacchio Embalagens') {
+  return { empresa, origem: 'PORTAL_PUBLICO', nomeCliente: 'Cliente teste portal',
+    colaboradorRecebimento: 'Portal do Cliente', setorRecebimento: 'SAC',
+    descricaoOriginal: 'Embalagem danificada no recebimento.', motivoManifestacao: 'Embalagem danificada',
+    tipoManifestacao: 'Reclamação', canalRecebimento: 'Portal do Cliente' };
+}
+
 // ─── testes ──────────────────────────────────────────────────────────────────
 
 async function runTests() {
@@ -148,7 +194,7 @@ async function runTests() {
     assert.strictEqual(r.body.protocolo, 'MAN-CHI-001');
     assert.ok(r.body.status);
     assert.deepStrictEqual(Object.keys(r.body).sort(), [
-      'sucesso', 'protocolo', 'empresa', 'tipo', 'dataAbertura', 'status', 'descricaoStatus', 'dataAtualizacao',
+      'sucesso', 'protocolo', 'empresa', 'tipo', 'dataAbertura', 'status', 'descricaoStatus', 'dataAtualizacao', 'devolutiva',
     ].sort());
   });
 
@@ -164,6 +210,139 @@ async function runTests() {
     assert.strictEqual((await req('POST', '/api/portal-admin/config', null, { tipo: 'WHATSAPP' })).status, 401);
     assert.strictEqual((await req('GET', '/api/portal-admin/config', tokChiacchio())).status, 403);
     assert.strictEqual((await req('GET', '/api/portal-admin/config', tokMaster())).status, 200);
+  });
+
+  await test('PORTAL: CHI, PLAS e TUB entram no mesmo registro, ficha e fila internos', async () => {
+    await withPortalFixtures(async ({ mock, permissions }) => {
+      for (const [empresa, prefixo] of [['Chiacchio Embalagens','CHI'], ['Plaschio','PLAS'], ['Cesbap','TUB']]) {
+        const client = portalClient();
+        const result = await client('POST', '/api/public/reclamacoes', manifestacaoPortal(empresa));
+        assert.strictEqual(result.status, 200);
+        assert.match(result.body.protocolo, new RegExp('^' + prefixo + '-[A-F0-9]{24}$'));
+        const id = result.body.protocolo;
+        const saved = mock.DB.MANIFESTACOES.find(m => m.ID_MANIFESTACAO === id);
+        assert.ok(saved);
+        assert.strictEqual(saved.ORIGEM, 'PORTAL_PUBLICO');
+        assert.strictEqual(saved.STATUS, 'AGUARDANDO_APROVAÇÃO');
+        assert.strictEqual(saved.MOTIVO, 'Embalagem danificada');
+        assert.ok(mock.DB.FILA_APROVACAO.some(f => f.ID_ENTIDADE === id && f.STATUS === 'PENDENTE'));
+        assert.ok(mock.DB.FICHAS_BIBLIOTECA.some(f => f.ID_MANIFESTACAO === id));
+        const internal = await req('GET', '/api/manifestacoes', tokMaster());
+        assert.ok(internal.body.itens.some(m => m.ID_MANIFESTACAO === id), 'registro ausente no SAC');
+        const publicResult = await client('GET', '/api/public/protocolo/' + id);
+        assert.strictEqual(publicResult.status, 200);
+        assert.strictEqual(publicResult.body.status, 'Recebida');
+      }
+      assert.strictEqual(permissions.length, 0, 'arquivos do portal não podem ganhar acesso público no Drive');
+    });
+  });
+
+  await test('PORTAL: evidência é enviada ao Drive e vinculada ao protocolo interno', async () => {
+    await withPortalFixtures(async ({ mock, uploads, permissions }) => {
+      const client = portalClient();
+      const bytes = Buffer.from('%PDF-1.4\nEvidencia de teste');
+      const body = manifestacaoPortal();
+      body.evidencias = [{ nome: 'evidencia.pdf', tipo: 'application/pdf', dados: bytes.toString('base64'), tamanho: bytes.length }];
+      const result = await client('POST', '/api/public/reclamacoes', body);
+      assert.strictEqual(result.status, 200);
+      assert.ok(!result.body.aviso);
+      const evidence = mock.DB.EVIDENCIAS.find(e => e.ID_MANIFESTACAO === result.body.protocolo);
+      assert.ok(evidence);
+      assert.strictEqual(evidence.NOME, 'evidencia.pdf');
+      assert.deepStrictEqual(uploads[0].bytes, bytes);
+      assert.strictEqual(permissions.length, 0);
+    });
+  });
+
+  await test('PORTAL: falha no Drive informa que o anexo não foi salvo, sem duplicar registro', async () => {
+    await withPortalFixtures(async ({ mock }) => {
+      const client = portalClient();
+      const before = mock.DB.MANIFESTACOES.length;
+      const body = manifestacaoPortal();
+      body.evidencias = [{ nome: 'foto.png', tipo: 'image/png', dados: Buffer.from('imagem de teste').toString('base64') }];
+      const result = await client('POST', '/api/public/reclamacoes', body);
+      assert.strictEqual(result.status, 200);
+      assert.match(result.body.aviso, /anexos não puderam ser salvos/);
+      assert.strictEqual(mock.DB.MANIFESTACOES.length, before + 1);
+      assert.ok(!mock.DB.EVIDENCIAS?.some(e => e.ID_MANIFESTACAO === result.body.protocolo));
+    }, true);
+  });
+
+  await test('PORTAL: anexos inválidos são recusados antes de registrar manifestação', async () => {
+    await withPortalFixtures(async ({ mock }) => {
+      const client = portalClient();
+      const before = mock.DB.MANIFESTACOES.length;
+      const invalid = [
+        [null],
+        [{ nome: 'foto.png', tipo: 'image/png', dados: 'base64 inválido!' }],
+        [{ nome: 'script.html', tipo: 'text/html', dados: 'YWJj' }],
+        [{ nome: 'grande.pdf', tipo: 'application/pdf', dados: Buffer.alloc(3 * 1024 * 1024 + 1).toString('base64') }],
+      ];
+      for (const evidencias of invalid) {
+        const result = await client('POST', '/api/public/reclamacoes', { ...manifestacaoPortal(), evidencias });
+        assert.strictEqual(result.status, 400);
+      }
+      assert.strictEqual(mock.DB.MANIFESTACOES.length, before);
+    });
+  });
+
+  await test('PORTAL: só a devolutiva enviada após encerramento fica disponível ao cliente', async () => {
+    await withPortalFixtures(async ({ mock }) => {
+      const client = portalClient();
+      const result = await client('POST', '/api/public/reclamacoes', manifestacaoPortal());
+      const id = result.body.protocolo;
+      const record = mock.DB.MANIFESTACOES.find(m => m.ID_MANIFESTACAO === id);
+      Object.assign(record, { DEVOLUTIVA_SUGERIDA: 'Sugestão IA confidencial', DEVOLUTIVA_FINAL: 'Rascunho interno', TRATATIVA_SAC_INTERNA: 'Causa interna' });
+      let summary = await client('GET', '/api/public/protocolo/' + id);
+      assert.strictEqual(summary.body.devolutiva, '');
+      assert.ok(!JSON.stringify(summary.body).includes('confidencial'));
+      const approval = await req('POST', '/api/manifestacoes/' + id + '/devolutiva/aprovar', tokMaster(), { textoAprovado: 'Sua solicitação foi resolvida pelo SAC.' });
+      assert.strictEqual(approval.status, 200);
+      summary = await client('GET', '/api/public/protocolo/' + id);
+      assert.strictEqual(summary.body.status, 'Em revisão final');
+      assert.strictEqual(summary.body.devolutiva, '');
+      const sent = await req('POST', '/api/manifestacoes/' + id + '/devolutiva/enviar', tokMaster(), {});
+      assert.strictEqual(sent.status, 200);
+      summary = await client('GET', '/api/public/protocolo/' + id);
+      assert.strictEqual(summary.body.status, 'Encerrada');
+      assert.strictEqual(summary.body.devolutiva, 'Sua solicitação foi resolvida pelo SAC.');
+      assert.ok(!JSON.stringify(summary.body).includes('Causa interna'));
+    });
+  });
+
+  await test('PORTAL: configuração administrativa desativa a pesquisa e bloqueia respostas', async () => {
+    await withPortalFixtures(async () => {
+      const client = portalClient();
+      const config = await req('POST', '/api/portal-admin/config', tokMaster(), { tipo: 'PESQUISA_ATIVA_PLASCHIO', ativo: 'NAO' });
+      assert.strictEqual(config.status, 200);
+      const list = await client('GET', '/api/public/pesquisas-ativas');
+      assert.strictEqual(list.status, 200);
+      assert.ok(!list.body.empresas.some(e => e.slug === 'plaschio'));
+      const answer = await client('POST', '/api/pesquisas/resposta-portal', { empresa: 'Plaschio', atendimento: 10 });
+      assert.strictEqual(answer.status, 403);
+    });
+  });
+
+  await test('PORTAL: formulário desativado no SAC não aceita novos registros', async () => {
+    await withPortalFixtures(async ({ mock }) => {
+      const client = portalClient();
+      const config = await req('POST', '/api/portal-admin/config', tokMaster(), { tipo: 'FORM_MANIFESTACAO_ATIVO', ativo: 'NAO' });
+      assert.strictEqual(config.status, 200);
+      const before = mock.DB.MANIFESTACOES.length;
+      assert.strictEqual((await client('POST', '/api/public/reclamacoes', manifestacaoPortal())).status, 403);
+      assert.strictEqual(mock.DB.MANIFESTACOES.length, before);
+    });
+  });
+
+  await test('PORTAL: pesquisa aceita nota zero e recusa valores fora da escala', async () => {
+    await withPortalFixtures(async ({ mock }) => {
+      const client = portalClient();
+      const body = { empresa: 'Chiacchio Embalagens', atendimento: 0 };
+      const answer = await client('POST', '/api/pesquisas/resposta-portal', body);
+      assert.strictEqual(answer.status, 200);
+      assert.strictEqual(mock.DB.PESQUISA_RESPOSTAS.find(r => r.ID_RESPOSTA === answer.body.id).ATENDIMENTO, '0');
+      assert.strictEqual((await client('POST', '/api/pesquisas/resposta-portal', { ...body, atendimento: 11 })).status, 400);
+    });
   });
 
   // ── B2: Isolamento de empresa — /api/manifestacoes ──────────────────────────

@@ -16,7 +16,8 @@ jobs:
           node-version: 20
           cache: npm
       - name: Instalar dependências
-        run: npm ci
+        # O postinstall da aplicação também executa db push; CI de testes não altera bancos.
+        run: npm ci --ignore-scripts
       - name: Gerar Prisma Client
         run: npx prisma generate
       - name: Rodar testes
