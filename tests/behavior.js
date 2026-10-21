@@ -187,15 +187,11 @@ async function runTests() {
     assert.strictEqual(resposta.NOME_CLIENTE, 'Cliente teste portal');
   });
 
-  await test('PORTAL: consulta pública retorna somente o resumo do protocolo', async () => {
+  await test('PORTAL: protocolo sequencial não permite consulta pública sem confirmação', async () => {
     const r = await req('GET', '/api/public/protocolo/MAN-CHI-001');
-    assert.strictEqual(r.status, 200);
-    assert.strictEqual(r.body.sucesso, true);
-    assert.strictEqual(r.body.protocolo, 'MAN-CHI-001');
-    assert.ok(r.body.status);
-    assert.deepStrictEqual(Object.keys(r.body).sort(), [
-      'sucesso', 'protocolo', 'empresa', 'tipo', 'dataAbertura', 'status', 'descricaoStatus', 'dataAtualizacao', 'devolutiva',
-    ].sort());
+    assert.strictEqual(r.status, 404);
+    assert.strictEqual(r.body.sucesso, false);
+    assert.ok(!('protocolo' in r.body));
   });
 
   await test('PORTAL: limite público de cinco requisições por minuto continua ativo', async () => {

@@ -419,7 +419,7 @@ module.exports = function registerPesquisas(app, service, h) {
       res.json({
         sucesso: true,
         token,
-        link: `${h.appUrl}/portal/pesquisas/${id}?convite=${encodeURIComponent(token)}`,
+        link: `${h.surveyUrl ? h.surveyUrl(id) : h.appUrl + "/portal/pesquisas/" + id}?convite=${encodeURIComponent(token)}`,
         expira,
       });
     }),

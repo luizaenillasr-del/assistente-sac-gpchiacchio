@@ -8,6 +8,7 @@ const { Resend } = require('resend');
 const _resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 const EMAIL_FROM = process.env.EMAIL_FROM || 'SAC Grupo Chiacchio <noreply@grupochiacchio.com.br>';
 const APP_URL = (process.env.APP_URL || 'https://assistente-sac-gpchiacchio.vercel.app').replace(/\/$/, '');
+const portalEndereco = require('./services/portalEndereco')({ appUrl: APP_URL, publicUrl: process.env.PORTAL_PUBLIC_URL || '' });
 const cerebroService = require('./services/cerebroServices');
 const mcService = require('./services/matrizConhecimentoService');
 const documentService = require('./services/documentService');
@@ -151,6 +152,7 @@ async function resolverEmpresaIdScope(valor) {
 const app = express();
 const ALLOWED_ORIGINS = [
   'https://assistente-sac-gpchiacchio.vercel.app',
+  new URL(portalEndereco.root).origin,
   'https://assistente-sac-gpchiacchio-grudfk40c-luiza4.vercel.app',
 ];
 const _ORIGIN_RE = /^https:\/\/assistente-sac-gpchiacchio[a-z0-9-]*\.vercel\.app$/;
@@ -1217,9 +1219,8 @@ app.get('/api/health', async (req, res) => {
 });
 
 app.get('/', (req, res) => {
-  // Redireciona raiz para a pesquisa de satisfação — impede que clientes
-  // descubram a ferramenta interna ao remover o path da pesquisa
-  res.redirect(302, '/pesquisa/chiacchio');
+  // O projeto interno mantém sua página de acesso; o portal tem publicação própria.
+  res.sendFile(require('path').join(__dirname, '../public/index.html'));
 });
 
 // ===== MIDDLEWARE AUTH =====
@@ -1294,7 +1295,7 @@ app.use('/api', async (req,res,next)=>{
     '/pesquisa',
   ]);
   const formularioPublico = req.method === 'GET' && /^\/public\/pesquisas(?:\/[A-Za-z0-9_-]+)?$/.test(req.path);
-  const consultaProtocoloPublico = req.method === 'GET' && /^\/public\/protocolo\/[^/]+\/?$/.test(req.path);
+  const consultaProtocoloPublico = (req.method === 'POST' && req.path === '/public/protocolo/consultar') || req.method === 'GET' && /^\/public\/protocolo\/[^/]+\/?$/.test(req.path);
   if(publicPaths.has(req.path) || (req.method === 'POST' && /^\/pesquisas\/resposta\/[A-Za-z0-9_-]+$/.test(req.path)) || formularioPublico || (req.method === 'GET' && /^\/public\/pesquisa-convite\/[A-Za-z0-9_-]+$/.test(req.path)) || consultaProtocoloPublico || req.path.startsWith('/pesquisa/')) return next();
   const header=req.headers.authorization||'';
   const token=header.startsWith('Bearer ')?header.slice(7):'';
@@ -1367,8 +1368,15 @@ function verificarRateLimitAuth(user) {
   return true;
 }
 
+// Retorna apenas endereços públicos; a sessão é exigida pelo middleware acima.
+app.get('/api/portal/endereco', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  res.json({ sucesso: true, url: portalEndereco.root, separado: portalEndereco.separado });
+});
+
 // ===== AUTH =====
 const pesquisaFormularios = require('./services/pesquisaFormulariosService')({
+  surveyUrl: portalEndereco.survey,
   empresas: () => PORTAL_EMPRESAS, canon: empresaCanonica, role: u => perfilCanonico(u?.perfil||''),
   read: lerAba, append: appendObjeto, ensure: garantirAbaComCabecalhos, update: atualizarPorID,
   invalidate: invalidarCacheAba, audit: registrarAuditoria, responses: lerRespostasPesquisa,
@@ -1378,7 +1386,7 @@ const pesquisaFormularios = require('./services/pesquisaFormulariosService')({
 require('./routes/pesquisas')(app, pesquisaFormularios, {
   requerPermissao, role: u => perfilCanonico(u?.perfil||''), can: usuarioTemPermissao,
   rate: publicRateLimit, read: lerAba, ensure: garantirAbaComCabecalhos, append: appendObjeto,
-  invalidate: invalidarCacheAba, appUrl: APP_URL,
+  invalidate: invalidarCacheAba, appUrl: APP_URL, surveyUrl: portalEndereco.survey,
 });
 
 app.post('/api/auth/login', async (req, res) => {
@@ -5044,10 +5052,9 @@ app.get('/api/pesquisas/tokens', requerPermissao('pesquisas.visualizar'), async 
     const rows = await lerAba('PESQUISA_TOKENS', 2000).catch(()=>[]);
     const _pf = perfilCanonico(req.user?.perfil||'');
     const scope = _pf === 'MASTER' ? null : (req.user?.empresa||null);
-    const host = `${req.protocol}://${req.get('host')}`;
     const itens = rows
       .filter(r => !scope || pertenceEmpresa(scope, r.EMPRESA||''))
-      .map(r => ({ ...r, link: `${host}/pesquisa/${r.TOKEN}`, expirado: _tokenExpirado(r) }));
+      .map(r => ({ ...r, link: portalEndereco.invite(r.TOKEN), expirado: _tokenExpirado(r) }));
     res.json({ sucesso: true, total: itens.length, itens });
   } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e,'listar-tokens') }); }
 });
@@ -9436,28 +9443,18 @@ app.post('/api/pesquisas/resposta-portal', async (req, res) => {
   } catch(e) { res.status(500).json({ sucesso: false, erro: 'Não foi possível registrar. Tente novamente.' }); }
 });
 
-app.get('/api/public/protocolo/:protocolo', publicRateLimit, async (req, res) => {
+const consultarProtocoloPortal = require('./services/portalConsulta')(lerAba);
+async function responderConsultaPortal(req, res) {
+  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('Referrer-Policy', 'no-referrer');
   try {
-    const proto = String(req.params.protocolo||'').trim().toUpperCase();
-    if (!/^[A-Z0-9-]{3,50}$/.test(proto)) return res.status(400).json({ sucesso: false, erro: 'Protocolo inválido.' });
-    const rows = await lerAba('MANIFESTACOES', 5000);
-    const man = rows.find(r => [r.ID_MANIFESTACAO, r.PROTOCOLO].some(p => p && String(p).toUpperCase() === proto));
-    if (!man) return res.status(404).json({ sucesso: false, erro: 'Protocolo não encontrado.' });
-    const status = String(man.STATUS || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[\s-]+/g, '_');
-    const encerrada = ['ENCERRADA', 'ENCERRADO', 'FINALIZADA', 'FINALIZADO', 'CONCLUIDA', 'CONCLUIDO'].includes(status);
-    let st = { label: 'Em análise', desc: 'Nossa equipe está analisando sua manifestação.' };
-    if (['AGUARDANDO_APROVACAO', 'RECEBIDA', 'ABERTA'].includes(status)) st = { label: 'Recebida', desc: 'Sua manifestação foi recebida pelo SAC.' };
-    if (['EM_TRATATIVA', 'EM_TRATAMENTO', 'AGUARDANDO_OUTRO_SETOR', 'APROVADA'].includes(status)) st = { label: 'Em tratamento', desc: 'Estamos trabalhando para resolver sua solicitação.' };
-    if (['AGUARDANDO_VALIDACAO', 'AGUARDANDO_DEVOLUTIVA'].includes(status)) st = { label: 'Em revisão final', desc: 'O SAC está validando a conclusão do atendimento.' };
-    if (encerrada) st = { label: 'Encerrada', desc: 'Sua manifestação foi encerrada. Obrigado pelo contato.' };
-    if (['CANCELADA', 'CANCELADO', 'REJEITADA'].includes(status)) st = { label: 'Encerrada', desc: 'O atendimento foi encerrado. Para esclarecimentos, entre em contato com o SAC.' };
-    // Só a resposta efetivamente liberada ao cliente, após encerramento.
-    // Nunca publicar sugestões de IA, rascunhos, causas ou tratativas internas.
-    const enviada = String(man.DEVOLUTIVA_ENVIADA || '').trim();
-    const devolutiva = encerrada && man.ORIGEM === 'PORTAL_PUBLICO' && !['SIM', 'NAO', 'NÃO'].includes(enviada.toUpperCase()) ? enviada : '';
-    res.json({ sucesso:true, protocolo:proto, empresa: man.EMPRESA_RECLAMADA||man.EMPRESA_RECLAMANTE||'', tipo: man.TIPO_MANIFESTACAO||man.TIPO||'Manifestação', dataAbertura: man.DATA_ABERTURA||man.DATA_REGISTRO||'', status: st.label, descricaoStatus: st.desc, dataAtualizacao: man.DATA_ENCERRAMENTO||man.DATA_CONCLUSAO_MANIFESTACAO||man.UPDATED_AT||man.DATA_DEVOLUTIVA||man.DATA_ABERTURA||'', devolutiva });
-  } catch(e) { res.status(500).json({ sucesso:false, erro:'Erro ao consultar protocolo.' }); }
-});
+    res.json(await consultarProtocoloPortal(req.params.protocolo || req.body.protocolo, req.method === 'POST' ? req.body.identificador : undefined));
+  } catch (e) {
+    res.status(e.status || 500).json({ sucesso: false, erro: e.status ? e.message : 'Erro ao consultar protocolo.' });
+  }
+}
+app.get('/api/public/protocolo/:protocolo', publicRateLimit, responderConsultaPortal);
+app.post('/api/public/protocolo/consultar', publicRateLimit, responderConsultaPortal);
 
 app.get('/api/public/whatsapp', publicRateLimit, async (req, res) => {
   try {
@@ -9506,7 +9503,7 @@ app.get('/api/portal-admin/visao-geral', requerPerfil('MASTER','GESTOR SAC'), as
     const respostasPortal = respostas.filter(r => r.ORIGEM === 'PORTAL_PUBLICO' && (r.DATA||'') >= limite30).length;
     const manifestacoesPortal = mans.filter(m => (m.ORIGEM === 'PORTAL_PUBLICO' || m.ORIGEM === 'PORTAL_FUNCIONARIO') && (m.DATA_ABERTURA||'') >= limite30).length;
     const wa = cfgRows.find(r => r.TIPO === 'WHATSAPP' && r.ATIVO === 'SIM');
-    res.json({ sucesso:true, statusPublicacao:'Publicado', enderecoPublico:'/portal', empresasAtivas:3, respostasPortal, manifestacoesPortal, whatsappAtivo:!!wa });
+    res.json({ sucesso:true, statusPublicacao:'Não verificado', enderecoPublico:portalEndereco.root, portalSeparado:portalEndereco.separado, empresasAtivas:3, respostasPortal, manifestacoesPortal, whatsappAtivo:!!wa });
   } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
 
