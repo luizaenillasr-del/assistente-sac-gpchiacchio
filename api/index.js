@@ -870,12 +870,17 @@ async function _sheetsGetComRetry(sheets, params, tentativas = 3) {
 // Cache em memória para leituras do Sheets (60 s TTL) — evita quota exceeded
 const _lerAbaCache = new Map();
 const LER_ABA_TTL_MS = 60_000;
+// MANIFESTACOES é a fonte operacional oficial. Não mantemos cache dessa aba:
+// uma remoção feita diretamente na planilha precisa ser percebida na próxima
+// consulta e jamais pode ser mascarada por uma cópia antiga.
+const TTL_POR_ABA = { MANIFESTACOES: 0 };
 
 async function lerAba(nomeAba, maxRows) {
   if (_sheetsMock?.lerAba) return _sheetsMock.lerAba(nomeAba, maxRows);
   const cacheKey = `${nomeAba}|${maxRows||''}`;
   const cached = _lerAbaCache.get(cacheKey);
-  if (cached && (Date.now() - cached.ts) < LER_ABA_TTL_MS) return cached.data;
+  const ttl = Object.prototype.hasOwnProperty.call(TTL_POR_ABA, nomeAba) ? TTL_POR_ABA[nomeAba] : LER_ABA_TTL_MS;
+  if (cached && (Date.now() - cached.ts) < ttl) return cached.data;
   const sheets = await getSheets();
   const range = maxRows ? `${nomeAba}!A1:AZ${maxRows}` : nomeAba;
   const res = await _sheetsGetComRetry(sheets, { spreadsheetId: SPREADSHEET_ID, range });
@@ -1079,6 +1084,21 @@ async function registrarHistoricoManifestacao({ id, protocolo = '', acao, descri
 function isTeste(item) {
   const campos = ['ID_MANIFESTACAO','ID_RNC','TITULO','NAO_CONFORMIDADE','Motivo da Reclamação','Descrição do Problema'];
   return campos.some(c => String(item[c] || '').toUpperCase().startsWith('TESTE-GOLIVE'));
+}
+
+// A existência operacional de uma manifestação é definida exclusivamente pela
+// aba MANIFESTACOES. Banco estruturado, históricos e índices podem enriquecer
+// a consulta, mas nunca podem ressuscitar um registro ausente ou excluído.
+const MANIFESTACOES_SHEETS_SAO_FONTE_OFICIAL = true;
+function manifestacaoExcluida(item = {}) {
+  return Boolean(item.DELETED_AT || item.DATA_EXCLUSAO) ||
+    ['EXCLUIDO', 'EXCLUÍDO', 'DELETADO'].includes(normalizarTexto(item.STATUS_REGISTRO || item.STATUS || ''));
+}
+function filtrarManifestacoesOperacionais(itens = []) {
+  return itens.filter(item => !manifestacaoExcluida(item));
+}
+async function lerManifestacoesOperacionais(max = 5000) {
+  return filtrarManifestacoesOperacionais(await lerAba('MANIFESTACOES', max));
 }
 
 // ===== MOTOR DE REGRAS — MÚLTIPLOS SETORES =====
@@ -1723,7 +1743,7 @@ app.get('/api/representantes/meus-clientes', requerPerfil('RCA / REPRESENTANTE')
 
 app.get('/api/representantes/minhas-manifestacoes', requerPerfil('RCA / REPRESENTANTE'), middlewareEscopoEmpresa(), async (req,res)=>{
   try{
-    const rows=await lerAba('MANIFESTACOES',5000);
+    const rows=await lerManifestacoesOperacionais(5000);
     const key=normalizarTexto(req.user.codigoRCA||req.user.usuario);
     const itens=rows.filter(x=>normalizarTexto(x.USUARIO_CRIACAO||'')===normalizarTexto(req.user.usuario)||normalizarTexto(x.CODIGO_RCA||'')===key);
     res.json({sucesso:true,total:itens.length,itens});
@@ -1761,7 +1781,7 @@ app.get('/api/dashboard-resumo', requerPermissao('dashboard.visualizar'), middle
 app.get('/api/manifestacoes', requerPermissao('manifestacoes.visualizar'), middlewareEscopoEmpresa(), async (req, res) => {
   try {
     // F6: tenta PostgreSQL primeiro
-    if (manifestacaoRepo) {
+    if (!MANIFESTACOES_SHEETS_SAO_FONTE_OFICIAL && manifestacaoRepo) {
       try {
         const filtros = {};
         // B2: empresa vem do usuário autenticado, não do frontend
@@ -1796,7 +1816,7 @@ app.get('/api/manifestacoes', requerPermissao('manifestacoes.visualizar'), middl
     }
     // Fallback Sheets
     let sheetsErro = null;
-    let data = await lerAba('MANIFESTACOES', 5000).catch(e => { sheetsErro = e?.message; return []; });
+    let data = await lerManifestacoesOperacionais(5000).catch(e => { sheetsErro = e?.message; return []; });
     if (sheetsErro) console.warn('[GET /manifestacoes] Sheets falhou:', sheetsErro);
     if (req.user && perfilCanonico(req.user.perfil)==='RCA / REPRESENTANTE') {
       const rca=normalizarTexto(req.user.codigoRCA||req.user.usuario);
@@ -1804,6 +1824,7 @@ app.get('/api/manifestacoes', requerPermissao('manifestacoes.visualizar'), middl
     }
     // B2: legado sem empresa = global; com empresa = apenas daquela empresa
     data = filtrarPorEmpresaHistorico(data, req, COLUNA_EMPRESA_ABA.MANIFESTACOES);
+    if (req.query.status) data = data.filter(item => normalizarTexto(item.STATUS) === normalizarTexto(req.query.status));
     res.json({ sucesso: true, total: data.length, itens: data, fonte: 'sheets', ...(sheetsErro && {aviso: 'Sheets: ' + sheetsErro}) });
   } catch (e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e), dados: [] }); }
 });
@@ -1811,7 +1832,7 @@ app.get('/api/manifestacoes', requerPermissao('manifestacoes.visualizar'), middl
 app.get('/api/manifestacoes/:id', requerPermissao('manifestacoes.visualizar'), middlewareEscopoEmpresa(), async (req, res) => {
   try {
     // F6: tenta PostgreSQL primeiro
-    if (manifestacaoRepo) {
+    if (!MANIFESTACOES_SHEETS_SAO_FONTE_OFICIAL && manifestacaoRepo) {
       try {
         let pg = await manifestacaoRepo.findByProtocolo(req.params.id).catch(() => null);
         if (!pg) pg = await manifestacaoRepo.findByIdOriginal(req.params.id).catch(() => null);
@@ -1851,7 +1872,7 @@ app.get('/api/manifestacoes/:id', requerPermissao('manifestacoes.visualizar'), m
       } catch (e) { console.warn('[F6] GET /manifestacoes/:id PG falhou:', e.message); }
     }
     // Fallback Sheets
-    const data = await lerAba('MANIFESTACOES', 5000).catch(()=>[]);
+    const data = await lerManifestacoesOperacionais(5000).catch(()=>[]);
     const item = data.find(r => r.ID_MANIFESTACAO === req.params.id);
     if (!item) return res.status(404).json({ sucesso: false, erro: 'Manifestação não encontrada.' });
     // B2: verificar escopo de empresa
@@ -2424,7 +2445,7 @@ app.patch('/api/manifestacoes/:id', requerPermissao('manifestacoes.editar'), mid
 app.delete('/api/manifestacoes/:id', requerPermissao('manifestacoes.excluir'), async (req, res) => {
   try {
     const { id } = req.params;
-    const todas = await lerAba('MANIFESTACOES', 5000);
+    const todas = await lerManifestacoesOperacionais(5000);
     const item = todas.find(r => r.ID_MANIFESTACAO === id);
     if (!item) return res.status(404).json({ sucesso: false, erro: 'Manifestação não encontrada.' });
     await deletarLinhaPorID('MANIFESTACOES', id);
@@ -2436,6 +2457,9 @@ app.delete('/api/manifestacoes/:id', requerPermissao('manifestacoes.excluir'), a
         if (pg && typeof manifestacaoRepo.deletar === 'function') await manifestacaoRepo.deletar(pg.id);
       } catch (e) { console.warn('[PG] deletar manifestacao falhou:', e.message); }
     }
+    // A exclusão remove também qualquer leitura já mantida no processo atual.
+    // Isso evita que a Central continue exibindo a ficha até o próximo TTL.
+    invalidarCacheAba('MANIFESTACOES');
     await registrarAuditoria(req.user?.usuario || 'sistema', 'EXCLUIU_MANIFESTAÇÃO', id, 'MANIFESTACOES', item, null);
     res.json({ sucesso: true, id });
   } catch (e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e) }); }
