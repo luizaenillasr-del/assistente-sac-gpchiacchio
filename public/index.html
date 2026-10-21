@@ -3339,6 +3339,9 @@
       window.nmEtapa = window.nmEtapa || 1;
 
       function renderStepper(){
+        document.querySelectorAll('#page-nova-manifestacao .nm-topbar').forEach(function(el){
+          el.style.setProperty('display','none','important');
+        });
         var row = document.getElementById('nm-stepper-row');
         if(!row) return;
         var html = '';
