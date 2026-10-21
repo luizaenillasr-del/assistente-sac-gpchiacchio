@@ -2,6 +2,10 @@
 
 O portal é a interface externa do SAC. Não exige sessão interna e usa os mesmos registros, fila de aprovação, fichas, pesquisas e configuração administrativa da ferramenta.
 
+O layout segue o HTML “Portal do Cliente - Grupo Chiacchio v2” fornecido como referência: cabeçalho branco, marca, três cards de navegação e formulários em seções. As fontes Montserrat e a marca foram extraídas do próprio arquivo e são servidas localmente. O runtime de demonstração e seus dados fictícios não são usados.
+
+O formulário diferencia cliente direto (CNPJ, razão social e representante) e indireto (CPF e local da compra). A empresa do grupo também é selecionada no fluxo indireto para que o registro seja encaminhado corretamente. Esses dados ficam no registro interno; a consulta pública continua retornando apenas seu resumo autorizado. As avaliações de 1–5 do modelo são convertidas para a escala de indicadores 0–10 já usada pelo SAC, e a recomendação mantém a escala 0–10.
+
 - `/portal` e `/portal.html`: página pública `public/portal.html`.
 - `/`: ferramenta interna existente; permanece sem alterações.
 - Administração: módulo **Portal do Cliente** dentro da ferramenta, restrito aos perfis existentes. Não há uma nova rota `/admin/portal`.
