@@ -23008,17 +23008,14 @@ async function mudarStatusMC(id, novoStatus) {
   // ── aba Em Tratativa ─────────────────────────────────────────────────────
   let _tratAll=[], _tratFiltrado=[], _tratPag=1;
   const _TRAT_PG=25;
-  // Usa _cenAll (já normalizado por normMan) em vez de chamada extra à API
   function _cenAtualizarBadgeTratativas(){
     const b=$('mc-badge-tratativas'); if(!b) return;
     const n=_cenAll.filter(m=>m.st==='anal'||m.st==='trat').length;
     b.textContent=n; b.style.display=n?'':'none';
   }
   window.cenTrativasInit=function(forcar){
-    // Filtra direto de _cenAll — sem chamada extra à API
     const src=_cenAll.filter(m=>m.st==='anal'||m.st==='trat');
     _tratAll=src;
-    // Popula selects de empresa e setor
     const empSel=$('trat-f-empresa');
     if(empSel){
       const emps=[...new Set(src.map(m=>m.emp).filter(Boolean))].sort();
@@ -23036,7 +23033,7 @@ async function mudarStatusMC(id, novoStatus) {
   function cenTrativasRenderKpis(){
     const el=$('trat-kpis'); if(!el) return;
     const all=_tratAll, now=Date.now();
-    const nu=v=>String(v?.raw?.STATUS||v?.raw?.STATUS_FICHA||'').toUpperCase();
+    const nu=m=>String(m.raw?.STATUS||m.raw?.STATUS_FICHA||'').toUpperCase();
     const kpis=[
       {l:'Em tratativa',d:'total ativo',v:all.length,bg:'#fff',bd:'#E4E4E4',c:'#1F1F1F'},
       {l:'Em atraso',d:'prazo vencido',v:all.filter(m=>m.prazoMs&&m.prazoMs<now).length,bg:'#FDECEC',bd:'#F5B8B8',c:'#C70602'},
@@ -23115,7 +23112,6 @@ async function mudarStatusMC(id, novoStatus) {
   window.cenTrativasAbrirFicha=function(id){
     if(!id) return;
     cenBancoAbrirFicha(id);
-    // Após navegação, abre seção Tratativa Interna e rola até ela
     setTimeout(()=>{
       if(typeof cenToggleAcoes==='function') cenToggleAcoes(true);
       const tc=document.getElementById('cen-trat-card');
@@ -23123,7 +23119,6 @@ async function mudarStatusMC(id, novoStatus) {
       document.getElementById('trat-acao')?.focus();
     },400);
   };
-  // Complementa cenRemoverManifestacao: remove de _tratAll/_tratFiltrado também
   const _origCenRemoverManifestacao=window.cenRemoverManifestacao;
   window.cenRemoverManifestacao=function(id){
     _tratAll=_tratAll.filter(m=>m.id!==id);
