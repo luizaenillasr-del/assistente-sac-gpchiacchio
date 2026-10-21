@@ -15,6 +15,7 @@ const documentService = require('../server-services/documentService');
 const aiService = require('../server-services/aiService');
 const { tratativaEngine, devolutivaEngine, assertividade: assertividadeService } = cerebroService;
 const permissoesService = require('../server-services/permissoesService');
+const dashboardExecutiva = require('../server-services/dashboardExecutiva');
 const fichaUnica = require('../server-services/fichaUnica');
 
 // Injeção de mock Sheets para testes — nunca ativo em produção (env var não existe em prod)
@@ -3631,6 +3632,21 @@ app.get('/api/calculadora/prazos-regionais', requerPerfil('MASTER','ANALISTA SAC
 });
 
 // ===== DASHBOARD =====
+app.get('/api/dashboard/executiva', middlewareEscopoEmpresa(), requerPermissao('dashboard.visualizar'), async (req, res) => {
+  try {
+    const { empresa='', setor='', inicio='', fim='' } = req.query;
+    const [manifestacoes, respostas, logsIA] = await Promise.all([
+      lerAba('MANIFESTACOES', 5000).catch(()=>[]), lerAba('PESQUISA_RESPOSTAS', 5000).catch(()=>[]), lerAba('LOG_SISTEMA', 5000).catch(()=>[])
+    ]);
+    const scoped = filtrarPorEmpresaHistorico(manifestacoes, req, COLUNA_EMPRESA_ABA.MANIFESTACOES)
+      .filter(m=>!isTeste(m)).filter(m=>!empresa || pertenceEmpresa(empresa,m.EMPRESA_RECLAMADA||''))
+      .filter(m=>!setor || normalizarTexto(m.SETOR_CONFIRMADO||m.SETOR_DESTINADO||m.SETOR_SUGERIDO||'').includes(normalizarTexto(setor)));
+    const pesquisas = respostas.filter(r=>!empresa || pertenceEmpresa(empresa,r.EMPRESA||''));
+    const inicioData=inicio?new Date(`${inicio}T00:00:00`):null, fimData=fim?new Date(`${fim}T23:59:59`):null;
+    const dados=dashboardExecutiva.calcular({manifestacoes:scoped,respostas:pesquisas,logsIA,inicio:inicioData,fim:fimData});
+    res.json({sucesso:true,filtros:{empresa,setor,inicio,fim},fonte:{manifestacoes:'MANIFESTACOES',satisfacao:'PESQUISA_RESPOSTAS',ia:'LOG_SISTEMA'},dados});
+  } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
+});
 app.get('/api/dashboard', middlewareEscopoEmpresa(), requerPermissao('dashboard.visualizar'), async (req, res) => {
   try {
     let [mans, recs] = await Promise.all([lerAba('MANIFESTACOES', 5000).catch(()=>[]), lerAbaReclamacoes(2000)]);
