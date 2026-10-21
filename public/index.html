@@ -29356,12 +29356,16 @@ if (typeof pageLoaders !== 'undefined') {
 </script>
 <script>
   (function(){
-    var originalNavigate = window.navigate;
-    if (typeof originalNavigate !== 'function') return;
-    window.navigate = function(page, el){
-      document.body.classList.toggle('nm-reference-active', page === 'nova-manifestacao');
-      return originalNavigate.apply(this, arguments);
-    };
+    var page = document.getElementById('page-nova-manifestacao');
+    if (!page) return;
+    function sync(){
+      var active = !page.classList.contains('hidden');
+      document.body.classList.toggle('nm-reference-active', active);
+      page.querySelectorAll('.nm-topbar').forEach(function(el){ el.style.setProperty('display','none','important'); });
+      page.querySelectorAll('#nm-stepper-row,#nm-step-label-main,#nm-step-desc-main').forEach(function(el){ el.style.setProperty('display','none','important'); });
+    }
+    new MutationObserver(sync).observe(page,{attributes:true,attributeFilter:['class']});
+    sync();
   })();
 </script>
 </body>
