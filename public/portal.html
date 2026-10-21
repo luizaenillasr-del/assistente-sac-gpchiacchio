@@ -274,6 +274,8 @@ button:disabled { cursor:wait !important; opacity:.65; }
 }
 @media(prefers-reduced-motion:reduce) { *,*::before,*::after { animation:none !important;transition:none !important; } }
 </style>
+<link rel="stylesheet" href="/assets/pesquisa-formulario.css">
+<script src="/assets/pesquisa-formulario.js"></script>
 </head>
 <body>
 
@@ -567,51 +569,11 @@ button:disabled { cursor:wait !important; opacity:.65; }
                 <svg width="30" height="30" fill="none" stroke="#1A6632" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
               </div>
               <div style="font-size:22px;font-weight:800;color:#1A6632">Pesquisa enviada!</div>
-              <div style="font-size:14px;color:#545252;line-height:1.65;max-width:420px">Obrigado pela sua resposta. Sua opinião contribui para melhorarmos continuamente nosso atendimento.</div>
+              <div id="pesq-confirmation-text" style="font-size:14px;color:#545252;line-height:1.65;max-width:420px">Obrigado pela sua resposta. Sua opinião contribui para melhorarmos continuamente nosso atendimento.</div>
               <button style="height:44px;border:0;background:#1A6632;color:#fff;border-radius:9px;padding:0 30px;font-size:13.5px;font-weight:700;cursor:pointer" onclick="goTo('page-home')">Voltar ao portal</button>
             </div>
           </div>
-          <div data-condition="isPesquisa" class="portal-condition" hidden="" id="pesq-form-wrap">
-            <div style="margin-bottom:24px">
-              <h2 style="font-size:24px;font-weight:800;margin:0 0 6px" id="pesq-empresa-title">Pesquisa de Satisfação</h2>
-              <div style="font-size:14px;color:#727272">Avalie sua experiência conosco. Leva menos de 2 minutos.</div>
-            </div><div id="surveyCards" style="margin-bottom:14px"><label style="display:flex;flex-direction:column;gap:6px;font-size:12px;font-weight:700;color:#545252">Empresa do Grupo<select id="pesq-empresa" style="height:42px;border:1.5px solid #E0E0E0;border-radius:9px;padding:0 12px" onchange="selectPesquisaEmpresa()"><option value="">Carregando empresas…</option></select></label><p id="pesq-indisponivel" hidden=""></p></div><div id="pesq-error" class="portal-error" hidden="" role="alert"></div>
-            <div style="background:#fff;border:1px solid #E0E0E0;border-radius:14px;padding:22px;display:flex;flex-direction:column;gap:22px;margin-bottom:14px">
-              <div>
-                <div style="font-size:14px;font-weight:700;color:#1F1F1F;margin-bottom:10px">1. Como você avalia a qualidade dos nossos produtos?</div>
-                <div style="display:flex;gap:6px">
-                  <div style="display: contents;"><button style="flex:1;height:46px;border:2px solid #E0E0E0;background:#fff;border-radius:8px;font-size:17px;font-weight:800;color:#545252;cursor:pointer" data-score="qualidade" data-value="1" class="scale-btn" aria-label="qualidade: 1" aria-pressed="false" onclick="selectScale('qualidade',1,this)">1</button><button style="flex:1;height:46px;border:2px solid #E0E0E0;background:#fff;border-radius:8px;font-size:17px;font-weight:800;color:#545252;cursor:pointer" data-score="qualidade" data-value="2" class="scale-btn" aria-label="qualidade: 2" aria-pressed="false" onclick="selectScale('qualidade',2,this)">2</button><button style="flex:1;height:46px;border:2px solid #E0E0E0;background:#fff;border-radius:8px;font-size:17px;font-weight:800;color:#545252;cursor:pointer" data-score="qualidade" data-value="3" class="scale-btn" aria-label="qualidade: 3" aria-pressed="false" onclick="selectScale('qualidade',3,this)">3</button><button style="flex:1;height:46px;border:2px solid #E0E0E0;background:#fff;border-radius:8px;font-size:17px;font-weight:800;color:#545252;cursor:pointer" data-score="qualidade" data-value="4" class="scale-btn" aria-label="qualidade: 4" aria-pressed="false" onclick="selectScale('qualidade',4,this)">4</button><button style="flex:1;height:46px;border:2px solid #E0E0E0;background:#fff;border-radius:8px;font-size:17px;font-weight:800;color:#545252;cursor:pointer" data-score="qualidade" data-value="5" class="scale-btn" aria-label="qualidade: 5" aria-pressed="false" onclick="selectScale('qualidade',5,this)">5</button></div>
-                </div>
-                <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:11px;color:#A0A0A0"><span>Muito insatisfeito</span><span>Muito satisfeito</span></div>
-              </div>
-              <div>
-                <div style="font-size:14px;font-weight:700;color:#1F1F1F;margin-bottom:10px">2. Como você avalia o prazo e pontualidade das entregas?</div>
-                <div style="display:flex;gap:6px">
-                  <div style="display: contents;"><button style="flex:1;height:46px;border:2px solid #E0E0E0;background:#fff;border-radius:8px;font-size:17px;font-weight:800;color:#545252;cursor:pointer" data-score="prazo" data-value="1" class="scale-btn" aria-label="prazo: 1" aria-pressed="false" onclick="selectScale('prazo',1,this)">1</button><button style="flex:1;height:46px;border:2px solid #E0E0E0;background:#fff;border-radius:8px;font-size:17px;font-weight:800;color:#545252;cursor:pointer" data-score="prazo" data-value="2" class="scale-btn" aria-label="prazo: 2" aria-pressed="false" onclick="selectScale('prazo',2,this)">2</button><button style="flex:1;height:46px;border:2px solid #E0E0E0;background:#fff;border-radius:8px;font-size:17px;font-weight:800;color:#545252;cursor:pointer" data-score="prazo" data-value="3" class="scale-btn" aria-label="prazo: 3" aria-pressed="false" onclick="selectScale('prazo',3,this)">3</button><button style="flex:1;height:46px;border:2px solid #E0E0E0;background:#fff;border-radius:8px;font-size:17px;font-weight:800;color:#545252;cursor:pointer" data-score="prazo" data-value="4" class="scale-btn" aria-label="prazo: 4" aria-pressed="false" onclick="selectScale('prazo',4,this)">4</button><button style="flex:1;height:46px;border:2px solid #E0E0E0;background:#fff;border-radius:8px;font-size:17px;font-weight:800;color:#545252;cursor:pointer" data-score="prazo" data-value="5" class="scale-btn" aria-label="prazo: 5" aria-pressed="false" onclick="selectScale('prazo',5,this)">5</button></div>
-                </div>
-                <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:11px;color:#A0A0A0"><span>Muito insatisfeito</span><span>Muito satisfeito</span></div>
-              </div>
-              <div>
-                <div style="font-size:14px;font-weight:700;color:#1F1F1F;margin-bottom:10px">3. Como você avalia o atendimento do nosso time de SAC?</div>
-                <div style="display:flex;gap:6px">
-                  <div style="display: contents;"><button style="flex:1;height:46px;border:2px solid #E0E0E0;background:#fff;border-radius:8px;font-size:17px;font-weight:800;color:#545252;cursor:pointer" data-score="atendimento" data-value="1" class="scale-btn" aria-label="atendimento: 1" aria-pressed="false" onclick="selectScale('atendimento',1,this)">1</button><button style="flex:1;height:46px;border:2px solid #E0E0E0;background:#fff;border-radius:8px;font-size:17px;font-weight:800;color:#545252;cursor:pointer" data-score="atendimento" data-value="2" class="scale-btn" aria-label="atendimento: 2" aria-pressed="false" onclick="selectScale('atendimento',2,this)">2</button><button style="flex:1;height:46px;border:2px solid #E0E0E0;background:#fff;border-radius:8px;font-size:17px;font-weight:800;color:#545252;cursor:pointer" data-score="atendimento" data-value="3" class="scale-btn" aria-label="atendimento: 3" aria-pressed="false" onclick="selectScale('atendimento',3,this)">3</button><button style="flex:1;height:46px;border:2px solid #E0E0E0;background:#fff;border-radius:8px;font-size:17px;font-weight:800;color:#545252;cursor:pointer" data-score="atendimento" data-value="4" class="scale-btn" aria-label="atendimento: 4" aria-pressed="false" onclick="selectScale('atendimento',4,this)">4</button><button style="flex:1;height:46px;border:2px solid #E0E0E0;background:#fff;border-radius:8px;font-size:17px;font-weight:800;color:#545252;cursor:pointer" data-score="atendimento" data-value="5" class="scale-btn" aria-label="atendimento: 5" aria-pressed="false" onclick="selectScale('atendimento',5,this)">5</button></div>
-                </div>
-                <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:11px;color:#A0A0A0"><span>Muito insatisfeito</span><span>Muito satisfeito</span></div>
-              </div>
-              <div>
-                <div style="font-size:14px;font-weight:700;color:#1F1F1F;margin-bottom:10px">4. Você nos indicaria para outras empresas? (0 a 10)</div>
-                <div style="display:flex;gap:4px" class="portal-nps">
-                  <div style="display: contents;"><button style="flex:1;min-width:32px;height:42px;border:2px solid #E0E0E0;background:#fff;border-radius:7px;font-size:13px;font-weight:700;color:#545252;cursor:pointer" data-score="recomendacao" data-value="0" class="scale-btn" aria-label="recomendacao: 0" aria-pressed="false" onclick="selectScale('recomendacao',0,this)">0</button><button style="flex:1;min-width:32px;height:42px;border:2px solid #E0E0E0;background:#fff;border-radius:7px;font-size:13px;font-weight:700;color:#545252;cursor:pointer" data-score="recomendacao" data-value="1" class="scale-btn" aria-label="recomendacao: 1" aria-pressed="false" onclick="selectScale('recomendacao',1,this)">1</button><button style="flex:1;min-width:32px;height:42px;border:2px solid #E0E0E0;background:#fff;border-radius:7px;font-size:13px;font-weight:700;color:#545252;cursor:pointer" data-score="recomendacao" data-value="2" class="scale-btn" aria-label="recomendacao: 2" aria-pressed="false" onclick="selectScale('recomendacao',2,this)">2</button><button style="flex:1;min-width:32px;height:42px;border:2px solid #E0E0E0;background:#fff;border-radius:7px;font-size:13px;font-weight:700;color:#545252;cursor:pointer" data-score="recomendacao" data-value="3" class="scale-btn" aria-label="recomendacao: 3" aria-pressed="false" onclick="selectScale('recomendacao',3,this)">3</button><button style="flex:1;min-width:32px;height:42px;border:2px solid #E0E0E0;background:#fff;border-radius:7px;font-size:13px;font-weight:700;color:#545252;cursor:pointer" data-score="recomendacao" data-value="4" class="scale-btn" aria-label="recomendacao: 4" aria-pressed="false" onclick="selectScale('recomendacao',4,this)">4</button><button style="flex:1;min-width:32px;height:42px;border:2px solid #E0E0E0;background:#fff;border-radius:7px;font-size:13px;font-weight:700;color:#545252;cursor:pointer" data-score="recomendacao" data-value="5" class="scale-btn" aria-label="recomendacao: 5" aria-pressed="false" onclick="selectScale('recomendacao',5,this)">5</button><button style="flex:1;min-width:32px;height:42px;border:2px solid #E0E0E0;background:#fff;border-radius:7px;font-size:13px;font-weight:700;color:#545252;cursor:pointer" data-score="recomendacao" data-value="6" class="scale-btn" aria-label="recomendacao: 6" aria-pressed="false" onclick="selectScale('recomendacao',6,this)">6</button><button style="flex:1;min-width:32px;height:42px;border:2px solid #E0E0E0;background:#fff;border-radius:7px;font-size:13px;font-weight:700;color:#545252;cursor:pointer" data-score="recomendacao" data-value="7" class="scale-btn" aria-label="recomendacao: 7" aria-pressed="false" onclick="selectScale('recomendacao',7,this)">7</button><button style="flex:1;min-width:32px;height:42px;border:2px solid #E0E0E0;background:#fff;border-radius:7px;font-size:13px;font-weight:700;color:#545252;cursor:pointer" data-score="recomendacao" data-value="8" class="scale-btn" aria-label="recomendacao: 8" aria-pressed="false" onclick="selectScale('recomendacao',8,this)">8</button><button style="flex:1;min-width:32px;height:42px;border:2px solid #E0E0E0;background:#fff;border-radius:7px;font-size:13px;font-weight:700;color:#545252;cursor:pointer" data-score="recomendacao" data-value="9" class="scale-btn" aria-label="recomendacao: 9" aria-pressed="false" onclick="selectScale('recomendacao',9,this)">9</button><button style="flex:1;min-width:32px;height:42px;border:2px solid #E0E0E0;background:#fff;border-radius:7px;font-size:13px;font-weight:700;color:#545252;cursor:pointer" data-score="recomendacao" data-value="10" class="scale-btn" aria-label="recomendacao: 10" aria-pressed="false" onclick="selectScale('recomendacao',10,this)">10</button></div>
-                </div>
-                <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:11px;color:#A0A0A0"><span>0 — Nunca indicaria</span><span>10 — Com certeza</span></div>
-              </div>
-              <label style="display:flex;flex-direction:column;gap:5px">
-                <span style="font-size:14px;font-weight:700;color:#1F1F1F">5. Comentários ou sugestões (opcional)</span>
-                <textarea placeholder="Compartilhe sua opinião ou alguma sugestão de melhoria..." rows="4" style="border:1.5px solid #E0E0E0;border-radius:9px;padding:11px 13px;font-size:13.5px;line-height:1.65;resize:vertical" id="pesq-comentario"></textarea>
-              </label>
-            </div>
-            <button style="width:100%;height:52px;border:0;background:#1A6632;color:#fff;border-radius:11px;font-size:15px;font-weight:800;cursor:pointer" onclick="submitPesquisa()" id="pesq-submit">Enviar pesquisa</button>
-          </div>
+          <div data-condition="isPesquisa" class="portal-condition" hidden="" id="pesq-form-wrap"><div id="surveyCards" style="margin-bottom:14px"><label style="display:flex;flex-direction:column;gap:6px;font-size:12px;font-weight:700;color:#545252">Pesquisa / Empresa<select id="pesq-empresa" style="height:42px;border:1.5px solid #E0E0E0;border-radius:9px;padding:0 12px" onchange="selectPesquisaEmpresa()"><option value="">Carregando pesquisas…</option></select></label></div><p id="pesq-error" class="portal-error" role="alert" hidden></p><div id="pesq-dinamica"></div></div>
         </div>
       </div>
     </div>
@@ -708,7 +670,6 @@ async function lerEvidencias() {
 // O HTML e os estilos seguem o modelo fornecido; os dados vêm das APIs do SAC.
 const ui = { tela: 'inicio', tipoCliente: '', rEnviando: false, pBuscando: false, rErro: '', pErro: '', pResultado: false, toast: '' };
 let lastProtocol = '', lookupProtocol = '', _waNumero = '', _waMensagem = '', toastTimer;
-const _scaleValues = {};
 const el = id => document.getElementById(id);
 const value = id => el(id).value.trim();
 
@@ -773,52 +734,46 @@ async function apiJson(url, options) {
   return data;
 }
 
+let surveyCatalog = [], surveyToken = '';
 async function loadSurveyCards() {
-  const select = el('pesq-empresa');
+  const match = location.pathname.match(/^\/portal\/pesquisas\/([A-Za-z0-9_-]+)/);
+  const legacy = location.pathname.match(/^\/pesquisa\/([A-Za-z0-9_-]+)/);
+  surveyToken = new URLSearchParams(location.search).get('convite') || '';
   try {
-    const data = await apiJson('/api/public/pesquisas-ativas');
-    if (!Array.isArray(data.empresas)) throw new Error('Não foi possível carregar as pesquisas.');
-    select.replaceChildren(new Option('Selecione a empresa…', ''));
-    data.empresas.forEach(empresa => select.add(new Option(empresa.nome, empresa.slug)));
-    select.disabled = data.empresas.length === 0;
-    el('pesq-submit').disabled = select.disabled;
-    if (select.disabled) { el('pesq-indisponivel').textContent = 'Não há pesquisas disponíveis no momento.'; el('pesq-indisponivel').hidden = false; }
-  } catch (error) {
-    select.replaceChildren(new Option('Pesquisas indisponíveis', '')); select.disabled = true;
-    el('pesq-submit').disabled = true;
-    el('pesq-indisponivel').textContent = error.message; el('pesq-indisponivel').hidden = false;
-  }
-}
-function selectPesquisaEmpresa() { el('pesq-error').hidden = true; }
-function selectScale(field, score, button) {
-  _scaleValues[field] = score;
-  document.querySelectorAll('[data-score="' + field + '"]').forEach(node => {
-    const selected = Number(node.dataset.value) === score;
-    node.style.borderColor = selected ? '#C70602' : '#E0E0E0';
-    node.style.background = selected ? '#FDECEC' : '#fff';
-    node.style.color = selected ? '#C70602' : '#727272';
-    node.setAttribute('aria-pressed', String(selected));
-  });
-}
-async function submitPesquisa() {
-  const button = el('pesq-submit');
-  if (button.disabled) return;
-  el('pesq-error').hidden = true;
-  try {
-    if (!value('pesq-empresa')) throw new Error('Selecione a empresa que deseja avaliar.');
-    if (!['qualidade', 'prazo', 'atendimento', 'recomendacao'].every(key => Object.hasOwn(_scaleValues, key))) throw new Error('Responda todas as perguntas obrigatórias.');
-    button.disabled = true; button.textContent = 'Enviando…';
-    // O modelo usa estrelas de 1 a 5; o SAC mantém os indicadores na escala 0 a 10.
-    await apiJson('/api/pesquisas/resposta-portal', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ empresa: value('pesq-empresa'),
-        atendimento: _scaleValues.atendimento * 2, prazo_de_entrega: _scaleValues.prazo * 2,
-        qualidade_do_produto: _scaleValues.qualidade * 2, recomendaria_a_empresa: _scaleValues.recomendacao,
-        comentario: value('pesq-comentario') }),
-    });
-    ui.tela = 'pesquisaOk'; renderView(); window.scrollTo({ top: 0, behavior: 'instant' });
+    if (match || legacy) {
+      goTo('page-pesquisa'); el('surveyCards').hidden = true;
+      let id = match?.[1] || legacy?.[1];
+      if (id === 'cesbap') id = 'tubahia';
+      if (legacy && !['chiacchio','plaschio','tubahia'].includes(id)) {
+        surveyToken = id;
+        const data = await apiJson('/api/public/pesquisa-convite/' + encodeURIComponent(id));
+        renderPublishedSurvey(data.formulario); return;
+      }
+      await loadPublishedSurvey(id); return;
+    }
+    const data = await apiJson('/api/public/pesquisas');
+    surveyCatalog = data.itens || [];
+    const select = el('pesq-empresa'); select.replaceChildren(new Option('Selecione a pesquisa…',''));
+    surveyCatalog.forEach(f => select.add(new Option(f.titulo + ' · ' + f.empresaNome, f.id)));
+    select.disabled = !surveyCatalog.length;
+    if (select.disabled) throw new Error('Não há pesquisas publicadas no momento.');
   } catch (error) { el('pesq-error').textContent = error.message; el('pesq-error').hidden = false; }
-  finally { button.disabled = el('pesq-empresa').disabled; button.textContent = 'Enviar pesquisa'; }
+}
+async function loadPublishedSurvey(id) {
+  el('pesq-error').hidden = true; el('pesq-dinamica').textContent = 'Carregando pesquisa…';
+  const query = surveyToken ? '?convite=' + encodeURIComponent(surveyToken) : '';
+  try { const data = await apiJson('/api/public/pesquisas/' + encodeURIComponent(id) + query); renderPublishedSurvey(data.formulario); }
+  catch(error) { el('pesq-dinamica').textContent = ''; el('pesq-error').textContent = error.message; el('pesq-error').hidden = false; }
+}
+function selectPesquisaEmpresa() { if (value('pesq-empresa')) loadPublishedSurvey(value('pesq-empresa')); }
+function renderPublishedSurvey(form) {
+  SACSurvey.render(el('pesq-dinamica'), form, {onSubmit:async payload => {
+    const result = await apiJson('/api/pesquisas/resposta-portal', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...payload,token:surveyToken||undefined})});
+    const confirmation = el('pesq-confirmation-text');
+    if (confirmation) confirmation.textContent = form.agradecimento || 'Obrigado pela sua resposta.';
+    el('pesq-empresa').value = ''; ui.tela = 'pesquisaOk'; renderView(); window.scrollTo({top:0,behavior:'instant'});
+    return result;
+  }});
 }
 
 async function submitManifestacao() {

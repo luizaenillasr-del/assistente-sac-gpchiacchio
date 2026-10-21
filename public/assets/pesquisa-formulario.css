@@ -1,0 +1,218 @@
+.psv {
+  --psv-brand: #c70602;
+  --psv-bg: #f4f4f4;
+  background: var(--psv-bg);
+  color: #1f1f1f;
+  font:
+    13px Montserrat,
+    system-ui,
+    sans-serif;
+  padding: 24px;
+  border-radius: 14px;
+  max-width: 760px;
+  margin: auto;
+}
+.psv [hidden] {
+  display: none !important;
+}
+.psv * {
+  box-sizing: border-box;
+}
+.psv-intro {
+  text-align: center;
+  padding: 34px 24px;
+  background: #fff;
+  border: 1px solid #e4e4e4;
+  border-radius: 14px;
+}
+.psv-intro img {
+  max-width: 240px;
+  max-height: 70px;
+  object-fit: contain;
+  margin-bottom: 26px;
+}
+.psv-kicker {
+  font-size: 11px;
+  letter-spacing: 0.09em;
+  color: var(--psv-brand);
+  font-weight: 800;
+}
+.psv h2 {
+  font-size: 26px;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  font-weight: 800;
+  margin: 12px 0;
+}
+.psv p {
+  line-height: 1.7;
+}
+.psv-intro > p {
+  font-size: 14px;
+  color: #666;
+  max-width: 520px;
+  margin: 12px auto 24px;
+}
+.psv-facts {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  font-size: 11px;
+  color: #727272;
+  margin: 24px 0;
+  flex-wrap: wrap;
+}
+.psv-primary {
+  border: 0;
+  border-radius: 9px;
+  background: var(--psv-brand);
+  color: #fff;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 14px 22px;
+  cursor: pointer;
+  min-height: 46px;
+}
+.psv-body > .psv-primary {
+  width: 100%;
+  margin-top: 14px;
+}
+.psv-field {
+  min-width: 0;
+  margin: 18px 0;
+  padding: 20px;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  background: #fff;
+}
+.psv-field legend {
+  padding: 0 5px;
+  font-size: 14px;
+  font-weight: 700;
+  max-width: 100%;
+  line-height: 1.5;
+}
+.psv-section {
+  font-size: 15px;
+  margin-top: 26px;
+}
+.psv-help,
+.psv-instructions {
+  font-size: 12px;
+  color: #727272;
+  margin: 8px 0 14px;
+}
+.psv-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  color: #545252;
+}
+.psv input:not([type="checkbox"]):not([type="radio"]),
+.psv textarea {
+  display: block;
+  width: 100%;
+  border: 1px solid #d6d6d6;
+  border-radius: 8px;
+  padding: 11px;
+  font: inherit;
+  color: inherit;
+  background: #fff;
+}
+.psv textarea {
+  resize: vertical;
+}
+.psv-scores {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.psv-score {
+  flex: 1;
+  min-width: 34px;
+  height: 44px;
+  border: 1.5px solid #d6d6d6;
+  border-radius: 7px;
+  background: #fff;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  color: #545252;
+}
+.psv-score.psv-selected {
+  background: var(--psv-brand);
+  border-color: var(--psv-brand);
+  color: #fff;
+}
+.psv-endpoints {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: #929090;
+  margin-top: 7px;
+  gap: 12px;
+}
+.psv-option {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid #e4e4e4;
+  border-radius: 8px;
+  margin-bottom: 7px;
+  cursor: pointer;
+}
+.psv-option input {
+  accent-color: var(--psv-brand);
+}
+.psv-error {
+  font-size: 12px;
+  color: #a80502;
+  background: #fff5f5;
+  padding: 10px;
+  border-radius: 7px;
+  margin: 10px 0;
+}
+.psv-privacy {
+  font-size: 10.5px;
+  color: #929090;
+  text-align: center;
+}
+.psv-thanks {
+  padding: 40px;
+  text-align: center;
+  background: #fff;
+  border: 1px solid #a8dfc0;
+  border-radius: 12px;
+  font-size: 18px;
+  line-height: 1.6;
+}
+.psv :focus-visible {
+  outline: 2px solid #24508f;
+  outline-offset: 3px;
+}
+.psv button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+@media (max-width: 500px) {
+  .psv {
+    padding: 12px;
+  }
+  .psv h2 {
+    font-size: 23px;
+  }
+  .psv-field {
+    padding: 14px;
+  }
+  .psv-intro {
+    padding: 24px 16px;
+  }
+  .psv-score {
+    flex-basis: 12%;
+    min-width: 30px;
+  }
+}

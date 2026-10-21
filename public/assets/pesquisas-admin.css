@@ -1,0 +1,355 @@
+#psm-root {
+  font-family: Montserrat, system-ui, sans-serif;
+  padding: 24px;
+  max-width: 1600px;
+  margin: auto;
+  color: #1f1f1f;
+}
+#psm-root [hidden] {
+  display: none !important;
+}
+.psm-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.psm-header small {
+  font-size: 10px;
+  color: #929090;
+  letter-spacing: 0.08em;
+}
+.psm-header h2 {
+  font-size: 24px;
+  margin: 7px 0;
+}
+.psm-header p,
+.psm-muted {
+  font-size: 12px;
+  color: #727272;
+  line-height: 1.6;
+}
+.psm-nav {
+  display: flex;
+  gap: 6px;
+  border-bottom: 1px solid #e0e0e0;
+  margin: 22px 0;
+  overflow: auto;
+}
+.psm-nav button {
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  padding: 12px 16px;
+  cursor: pointer;
+  font:
+    600 13px Montserrat,
+    system-ui,
+    sans-serif;
+  white-space: nowrap;
+  color: #727272;
+}
+.psm-nav .psm-active {
+  border-color: #c70602;
+  color: #c70602;
+}
+.psm-button {
+  border: 1px solid #d6d6d6;
+  background: #fff;
+  border-radius: 7px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font:
+    600 12px Montserrat,
+    system-ui,
+    sans-serif;
+  color: #545252;
+}
+.psm-primary {
+  background: #c70602;
+  color: #fff;
+  border-color: #c70602;
+}
+.psm-actions {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.psm-company {
+  margin: 24px 0;
+}
+.psm-company h3 {
+  font-size: 14px;
+}
+.psm-survey {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 18px;
+  margin: 10px 0;
+  background: #fff;
+  border: 1px solid #e4e4e4;
+  border-radius: 12px;
+}
+.psm-survey p {
+  font-size: 11px;
+  color: #727272;
+  margin: 7px 0;
+}
+.psm-survey a {
+  font-size: 11px;
+  overflow-wrap: anywhere;
+  color: #24508f;
+}
+.psm-box {
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  padding: 20px;
+  margin: 16px 0;
+}
+.psm-workspace {
+  display: grid;
+  grid-template-columns: minmax(420px, 1fr) minmax(320px, 0.85fr);
+  gap: 22px;
+}
+.psm-workspace > div {
+  min-width: 0;
+}
+.psm-workspace aside {
+  min-width: 0;
+  position: sticky;
+  top: 16px;
+  align-self: start;
+}
+.psm-preview-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #8a5000;
+  background: #fff5de;
+  padding: 10px;
+  margin-bottom: 8px;
+  border-radius: 8px;
+}
+.psm-editor-grid {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.8fr) minmax(200px, 1fr);
+  gap: 14px;
+}
+.psm-settings {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 18px 0;
+}
+.psm-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #545252;
+}
+.psm-field input,
+.psm-field select,
+.psm-field textarea,
+.psm-filters select,
+.psm-filters input,
+.psm-box input,
+.psm-box select {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #d6d6d6;
+  background: #fff;
+  color: #1f1f1f;
+  border-radius: 7px;
+  padding: 9px;
+  font:
+    12px Montserrat,
+    system-ui,
+    sans-serif;
+}
+.psm-field input[type="checkbox"] {
+  width: auto;
+  align-self: start;
+  accent-color: #c70602;
+}
+.psm-field input[type="color"] {
+  padding: 3px;
+  min-height: 36px;
+}
+.psm-question {
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 8px;
+}
+.psm-question > .psm-button {
+  border: 0;
+  text-align: left;
+  line-height: 1.6;
+  padding: 0;
+  margin-bottom: 7px;
+}
+.psm-question small {
+  font-size: 9px;
+  color: #727272;
+}
+.psm-selected {
+  border-color: #c70602;
+}
+.psm-question-config {
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 10px;
+  padding: 16px;
+}
+.psm-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: end;
+  margin: 18px 0;
+}
+.psm-filters label {
+  display: flex;
+  flex-direction: column;
+  font-size: 11px;
+  gap: 5px;
+  flex: 1;
+  min-width: 130px;
+}
+.psm-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 12px;
+}
+.psm-kpi {
+  padding: 16px;
+  border: 1px solid #e0e0e0;
+  border-top: 2px solid #c70602;
+  border-radius: 10px;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.psm-kpi small {
+  color: #727272;
+  font-size: 11px;
+}
+.psm-kpi strong {
+  font-size: 26px;
+}
+.psm-charts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin: 20px 0;
+}
+.psm-charts section {
+  padding: 18px;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 10px;
+}
+.psm-charts h3 {
+  font-size: 13px;
+}
+.psm-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  margin: 8px 0;
+}
+.psm-bar > span {
+  width: 120px;
+  flex-shrink: 0;
+}
+.psm-bar > div {
+  height: 8px;
+  background: #eee;
+  flex: 1;
+  border-radius: 9px;
+  overflow: hidden;
+}
+.psm-bar i {
+  height: 100%;
+  background: #c70602;
+  display: block;
+}
+.psm-bar > b {
+  width: 30px;
+}
+.psm-response {
+  padding: 12px;
+  background: #fff;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+}
+.psm-response > span {
+  flex: 1;
+}
+.psm-response > strong {
+  color: #a80502;
+  font-size: 10px;
+}
+.psm-error {
+  color: #a80502;
+  background: #fff5f5;
+  padding: 12px;
+  border-radius: 8px;
+}
+#psm-message:empty {
+  display: none;
+}
+#psm-message {
+  font-size: 13px;
+  line-height: 1.6;
+}
+#psm-legacy {
+  margin-top: 24px;
+  font-size: 12px;
+}
+#psm-legacy > summary {
+  cursor: pointer;
+  padding: 14px;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+}
+@media (max-width: 1100px) {
+  .psm-workspace {
+    grid-template-columns: 1fr;
+  }
+  .psm-workspace aside {
+    position: static;
+  }
+  .psm-survey {
+    align-items: start;
+    flex-direction: column;
+  }
+}
+@media (max-width: 600px) {
+  #psm-root {
+    padding: 14px;
+  }
+  .psm-settings,
+  .psm-editor-grid,
+  .psm-charts {
+    grid-template-columns: 1fr;
+  }
+  .psm-response {
+    flex-wrap: wrap;
+  }
+  .psm-header h2 {
+    font-size: 21px;
+  }
+}
