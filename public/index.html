@@ -5586,75 +5586,169 @@
       <!-- ══════════ ABA: INDICADORES ══════════ -->
       <div class="mc-tabpanel" id="mc-panel-ind">
         <div class="mc-ind-kpis" id="cen-ind-kpis"></div>
-        <div class="mc-ind-2">
-          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:12px;padding:16px">
-            <div style="font-size:11px;font-weight:700;letter-spacing:.07em;color:#929090;margin-bottom:12px">SLA POR SETOR</div>
-            <div class="mc-sla-bar" id="cen-ind-sla"></div>
-          </div>
-          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:12px;padding:16px">
-            <div style="font-size:11px;font-weight:700;letter-spacing:.07em;color:#929090;margin-bottom:12px">PENDÊNCIAS POR ETAPA</div>
-            <div class="mc-etapas" id="cen-ind-etapas"></div>
-          </div>
+        <div style="background:#fff;border:1px solid #E4E4E4;border-radius:12px;padding:16px;margin-top:14px">
+          <div style="font-size:11px;font-weight:700;letter-spacing:.07em;color:#929090;margin-bottom:12px">PENDÊNCIAS POR ETAPA</div>
+          <div class="mc-etapas" id="cen-ind-etapas"></div>
         </div>
       </div>
 
       <!-- ══════════ ABA: EM TRATATIVA ══════════ -->
       <div class="mc-tabpanel" id="mc-panel-tratativas" style="display:none;flex-direction:column;gap:14px">
 
-        <!-- KPIs -->
-        <div style="display:flex;flex-wrap:wrap;gap:10px" id="trat-kpis"></div>
+        <!-- ── LISTA VIEW ─────────────────────────────────────────────────── -->
+        <div id="trat-lista-view" style="display:flex;flex-direction:column;gap:14px">
 
-        <!-- Busca + filtros compactos -->
-        <div style="background:#fff;border:1px solid #E4E4E4;border-radius:12px;padding:12px 16px">
-          <div style="display:grid;grid-template-columns:1fr repeat(5,auto) auto auto;gap:8px;align-items:center;flex-wrap:wrap">
-            <input id="trat-busca" class="mc-input" style="height:32px;font-size:12px;min-width:0" placeholder="Protocolo, cliente, assunto…" oninput="cenTrativasFiltrar()">
-            <select id="trat-f-empresa" class="mc-input" style="height:32px;font-size:12px" onchange="cenTrativasFiltrar()"><option value="">Empresa</option></select>
-            <select id="trat-f-setor" class="mc-input" style="height:32px;font-size:12px" onchange="cenTrativasFiltrar()"><option value="">Setor</option></select>
-            <select id="trat-f-status" class="mc-input" style="height:32px;font-size:12px" onchange="cenTrativasFiltrar()">
-              <option value="">Etapa</option>
-              <option value="anal">Em análise</option>
-              <option value="trat">Em tratamento</option>
-            </select>
-            <select id="trat-f-pri" class="mc-input" style="height:32px;font-size:12px" onchange="cenTrativasFiltrar()">
-              <option value="">Prioridade</option>
-              <option value="alta">Alta</option>
-              <option value="media">Média</option>
-              <option value="baixa">Baixa</option>
-            </select>
-            <select id="trat-f-prazo" class="mc-input" style="height:32px;font-size:12px" onchange="cenTrativasFiltrar()">
-              <option value="">Prazo</option>
-              <option value="ok">Em dia</option>
-              <option value="prox">Próx. 48h</option>
-              <option value="atrasado">Atrasado</option>
-            </select>
-            <button id="trat-btn-limpar" style="display:none;border:1px solid #E4E4E4;background:#fff;color:#C70602;cursor:pointer;font-size:12px;font-weight:600;padding:4px 10px;border-radius:6px;white-space:nowrap" onclick="cenTrativasLimpar()">✕</button>
-            <button style="border:1px solid #E4E4E4;background:#fff;color:#555;cursor:pointer;font-size:12px;padding:4px 8px;border-radius:6px" onclick="cenTrativasInit(true)" title="Atualizar">↻</button>
+          <!-- KPIs -->
+          <div style="display:flex;flex-wrap:wrap;gap:10px" id="trat-kpis"></div>
+
+          <!-- Busca + filtros compactos -->
+          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:12px;padding:12px 16px">
+            <div style="display:grid;grid-template-columns:1fr repeat(5,auto) auto auto;gap:8px;align-items:center;flex-wrap:wrap">
+              <input id="trat-busca" class="mc-input" style="height:32px;font-size:12px;min-width:0" placeholder="Protocolo, cliente, assunto…" oninput="cenTrativasFiltrar()">
+              <select id="trat-f-empresa" class="mc-input" style="height:32px;font-size:12px" onchange="cenTrativasFiltrar()"><option value="">Empresa</option></select>
+              <select id="trat-f-setor" class="mc-input" style="height:32px;font-size:12px" onchange="cenTrativasFiltrar()"><option value="">Setor</option></select>
+              <select id="trat-f-status" class="mc-input" style="height:32px;font-size:12px" onchange="cenTrativasFiltrar()">
+                <option value="">Etapa</option>
+                <option value="anal">Em análise</option>
+                <option value="trat">Em tratamento</option>
+              </select>
+              <select id="trat-f-pri" class="mc-input" style="height:32px;font-size:12px" onchange="cenTrativasFiltrar()">
+                <option value="">Prioridade</option>
+                <option value="alta">Alta</option>
+                <option value="media">Média</option>
+                <option value="baixa">Baixa</option>
+              </select>
+              <select id="trat-f-prazo" class="mc-input" style="height:32px;font-size:12px" onchange="cenTrativasFiltrar()">
+                <option value="">Prazo</option>
+                <option value="ok">Em dia</option>
+                <option value="prox">Próx. 48h</option>
+                <option value="atrasado">Atrasado</option>
+              </select>
+              <button id="trat-btn-limpar" style="display:none;border:1px solid #E4E4E4;background:#fff;color:#C70602;cursor:pointer;font-size:12px;font-weight:600;padding:4px 10px;border-radius:6px;white-space:nowrap" onclick="cenTrativasLimpar()">✕</button>
+              <button style="border:1px solid #E4E4E4;background:#fff;color:#555;cursor:pointer;font-size:12px;padding:4px 8px;border-radius:6px" onclick="cenTrativasInit(true)" title="Atualizar">↻</button>
+            </div>
+            <div style="font-size:11px;color:#929090;margin-top:6px" id="trat-info"></div>
           </div>
-          <div style="font-size:11px;color:#929090;margin-top:6px" id="trat-info"></div>
-        </div>
 
-        <!-- Lista -->
-        <div style="background:#fff;border:1px solid #E4E4E4;border-radius:12px;overflow:hidden">
-          <table style="width:100%;border-collapse:collapse;font-size:12.5px">
-            <thead>
-              <tr style="background:#FAFAFA;border-bottom:1px solid #E4E4E4">
-                <th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.06em;color:#888;white-space:nowrap">PROTOCOLO</th>
-                <th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.06em;color:#888">CLIENTE</th>
-                <th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.06em;color:#888">ASSUNTO</th>
-                <th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.06em;color:#888">EMPRESA</th>
-                <th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.06em;color:#888">SETOR</th>
-                <th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.06em;color:#888">ETAPA</th>
-                <th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.06em;color:#888;white-space:nowrap">PRAZO</th>
-                <th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.06em;color:#888">PRI.</th>
-                <th style="padding:10px 4px"></th>
-              </tr>
-            </thead>
-            <tbody id="trat-tbody">
-              <tr><td colspan="9" style="padding:48px;text-align:center;color:#999">Carregando…</td></tr>
-            </tbody>
-          </table>
-          <div id="trat-pag" style="display:flex;gap:6px;justify-content:center;padding:10px"></div>
-        </div>
+          <!-- Lista -->
+          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:12px;overflow:hidden">
+            <table style="width:100%;border-collapse:collapse;font-size:12.5px">
+              <thead>
+                <tr style="background:#FAFAFA;border-bottom:1px solid #E4E4E4">
+                  <th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.06em;color:#888;white-space:nowrap">PROTOCOLO</th>
+                  <th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.06em;color:#888">CLIENTE</th>
+                  <th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.06em;color:#888">ASSUNTO</th>
+                  <th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.06em;color:#888">EMPRESA</th>
+                  <th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.06em;color:#888">SETOR</th>
+                  <th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.06em;color:#888">ETAPA</th>
+                  <th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.06em;color:#888;white-space:nowrap">PRAZO</th>
+                  <th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.06em;color:#888">PRI.</th>
+                  <th style="padding:10px 4px"></th>
+                </tr>
+              </thead>
+              <tbody id="trat-tbody">
+                <tr><td colspan="9" style="padding:48px;text-align:center;color:#999">Carregando…</td></tr>
+              </tbody>
+            </table>
+            <div id="trat-pag" style="display:flex;gap:6px;justify-content:center;padding:10px"></div>
+          </div>
+        </div><!-- /#trat-lista-view -->
+
+        <!-- ── FICHA VIEW ──────────────────────────────────────────────────── -->
+        <div id="trat-ficha-view" style="display:none;flex-direction:column;gap:14px">
+
+          <!-- Nav: voltar + cabeçalho -->
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <button onclick="cenTrativasFichaVoltar()" style="display:inline-flex;align-items:center;gap:6px;border:1px solid #E4E4E4;background:#fff;cursor:pointer;font-size:12.5px;font-weight:600;padding:6px 14px;border-radius:8px;color:#555">← Voltar</button>
+            <span id="tf-protocolo" style="font-size:15px;font-weight:800;color:#C70602">—</span>
+            <span id="tf-status-badge" class="mc-st" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:99px;background:#F0F0F0;color:#545454">—</span>
+            <span id="tf-sla-badge" style="display:none;font-size:11px;font-weight:700;padding:3px 9px;border-radius:99px;background:#FDECEC;color:#A80502"></span>
+            <div style="margin-left:auto">
+              <button onclick="cenTrativasFichaAbrirModal()" style="display:inline-flex;align-items:center;gap:4px;border:0;background:none;cursor:pointer;font-size:12px;color:#A80502;font-weight:600">Ficha completa ↗</button>
+            </div>
+          </div>
+
+          <!-- Seção A: Dados da manifestação -->
+          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:12px;padding:16px 20px">
+            <div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A8A8A8;margin-bottom:12px">A — DADOS DA MANIFESTAÇÃO</div>
+            <div id="tf-campos" class="mc-campos" style="margin-bottom:12px"></div>
+            <div style="font-size:10px;font-weight:700;letter-spacing:.06em;color:#C0C0C0;margin-bottom:6px">RELATO ORIGINAL</div>
+            <div id="tf-relato" style="font-size:13px;color:#333;line-height:1.6;white-space:pre-wrap">—</div>
+          </div>
+
+          <!-- Seção B: Tratativa interna -->
+          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:12px;padding:16px 20px">
+            <div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A8A8A8;margin-bottom:12px">B — TRATATIVA INTERNA</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <div style="grid-column:1/-1">
+                <div class="mc-lbl">Investigação / ação realizada</div>
+                <textarea id="tf-acao" class="mc-ta" rows="3" placeholder="Descreva a investigação e ações tomadas…"></textarea>
+              </div>
+              <div>
+                <div class="mc-lbl">Causa identificada</div>
+                <input id="tf-causa" class="mc-input" style="height:34px;font-size:12.5px" placeholder="Causa provável ou confirmada">
+              </div>
+              <div>
+                <div class="mc-lbl">Responsável pelo setor</div>
+                <input id="tf-responsavel" class="mc-input" style="height:34px;font-size:12.5px">
+              </div>
+              <div>
+                <div class="mc-lbl">Setor</div>
+                <input id="tf-setor" class="mc-input" style="height:34px;font-size:12.5px">
+              </div>
+              <div>
+                <div class="mc-lbl">Pendências</div>
+                <input id="tf-pendencias" class="mc-input" style="height:34px;font-size:12.5px" placeholder="Pendências em aberto…">
+              </div>
+              <div style="grid-column:1/-1">
+                <div class="mc-lbl">Observações adicionais</div>
+                <textarea id="tf-obs" class="mc-ta" rows="2"></textarea>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+              <button onclick="cenTratativasFichaSalvarTratativa()" class="mc-btn mc-btn-p mc-btn-sm">Salvar tratativa</button>
+              <button onclick="cenTratativasFichaEncaminharSetor()" class="mc-btn mc-btn-sm">Encaminhar ao setor</button>
+              <button onclick="cenTratativasFichaConcluir()" class="mc-btn mc-btn-sm">Concluir tratativa</button>
+            </div>
+          </div>
+
+          <!-- Seção C: Validação SAC -->
+          <div id="tf-validacao-card" style="background:#fff;border:1px solid #E4E4E4;border-radius:12px;padding:16px 20px">
+            <div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A8A8A8;margin-bottom:8px">C — VALIDAÇÃO SAC</div>
+            <div id="tf-validacao-status" style="font-size:12.5px;color:#666;margin-bottom:12px">—</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button onclick="cenTratativasFichaAprovarTratativa()" class="mc-btn mc-btn-p mc-btn-sm">✓ Aprovar tratativa</button>
+              <button onclick="cenTratativasFichaDevolver()" class="mc-btn mc-btn-sm" style="color:#C70602;border-color:#F0CCCC">↩ Devolver com justificativa</button>
+            </div>
+            <div id="tf-devolucao-form" style="display:none;margin-top:12px">
+              <div class="mc-lbl">Justificativa da devolução *</div>
+              <textarea id="tf-justificativa-dev" class="mc-ta" rows="2" placeholder="Justificativa obrigatória…"></textarea>
+              <button onclick="cenTratativasFichaConfirmarDevolucao()" class="mc-btn mc-btn-sm" style="margin-top:8px;color:#C70602;border-color:#F0CCCC">Confirmar devolução</button>
+            </div>
+            <div id="tf-hist-devolucoes" style="margin-top:10px"></div>
+          </div>
+
+          <!-- Seção D: Devolutiva ao cliente -->
+          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:12px;padding:16px 20px">
+            <div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A8A8A8;margin-bottom:8px">D — DEVOLUTIVA AO CLIENTE</div>
+            <div style="font-size:12px;color:#666;margin-bottom:4px">Canal: <span id="tf-dev-canal" style="font-weight:600;color:#1F1F1F">—</span></div>
+            <div id="tf-dev-status" style="font-size:12px;color:#A0A0A0;margin-bottom:10px"></div>
+            <textarea id="tf-dev-texto" class="mc-ta" rows="4" placeholder="Escreva a devolutiva ao cliente…"></textarea>
+            <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+              <button onclick="cenTratativasFichaSalvarDevolutiva()" class="mc-btn mc-btn-p mc-btn-sm">Salvar devolutiva</button>
+              <button onclick="cenTratativasFichaEnviarDevolutiva()" class="mc-btn mc-btn-sm">Enviar ao cliente</button>
+            </div>
+          </div>
+
+          <!-- Seção E: Histórico cronológico -->
+          <div style="background:#fff;border:1px solid #E4E4E4;border-radius:12px;padding:16px 20px">
+            <div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A8A8A8;margin-bottom:12px">E — HISTÓRICO CRONOLÓGICO</div>
+            <div id="tf-historico" class="mc-hist"></div>
+          </div>
+
+          <div style="height:8px"></div>
+        </div><!-- /#trat-ficha-view -->
+
       </div>
 
     </div><!-- /mc-body -->
@@ -22963,7 +23057,7 @@ async function mudarStatusMC(id, novoStatus) {
       const emp=m.EMPRESA_RECLAMADA||m.EMPRESA||'—';
       const cl=stMap[etapa.toUpperCase()]||'#1F1F1F';
       const atrasado=prazo&&new Date(prazo)<new Date();
-      return `<tr style="border-bottom:1px solid #F4F4F4;cursor:pointer;transition:background .1s" onmouseover="this.style.background='#FAFAFA'" onmouseout="this.style.background=''" onclick="cenBancoAbrirFicha('${_esc(id)}')">
+      return `<tr style="border-bottom:1px solid #F4F4F4;cursor:pointer;transition:background .1s" onmouseover="this.style.background='#FAFAFA'" onmouseout="this.style.background=''" onclick="cenAbrirFichaModal('${_esc(id)}')">
         <td style="padding:14px 18px;font-weight:700;color:#A80502;white-space:nowrap;font-size:13px">${_esc(prot)}</td>
         <td style="padding:14px 18px;white-space:nowrap;color:#555;font-size:13px">${dtF}</td>
         <td style="padding:14px 18px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13.5px;font-weight:500">${_esc(cli)}</td>
@@ -22971,7 +23065,7 @@ async function mudarStatusMC(id, novoStatus) {
         <td style="padding:14px 18px"><span style="font-size:11.5px;font-weight:600;padding:4px 10px;border-radius:99px;background:${cl}18;color:${cl};white-space:nowrap">${_esc(etapa.replace(/_/g,' '))}</span></td>
         <td style="padding:14px 18px;white-space:nowrap;color:${atrasado?'#C70602':'#555'};font-weight:${atrasado?'700':'400'};font-size:13px">${atrasado?'⚠ ':''} ${prazoF}</td>
         <td style="padding:14px 18px;white-space:nowrap;font-size:12.5px;color:#666;max-width:160px;overflow:hidden;text-overflow:ellipsis">${_esc(emp)}</td>
-        <td style="padding:14px 18px"><button onclick="event.stopPropagation();cenBancoAbrirFicha('${_esc(id)}')" style="border:1px solid #E4E4E4;background:#fff;color:#A80502;cursor:pointer;font-size:12.5px;font-weight:600;padding:5px 12px;border-radius:6px;white-space:nowrap">Ver →</button></td>
+        <td style="padding:14px 18px"><button onclick="event.stopPropagation();cenAbrirFichaModal('${_esc(id)}')" style="border:1px solid #E4E4E4;background:#fff;color:#A80502;cursor:pointer;font-size:12.5px;font-weight:600;padding:5px 12px;border-radius:6px;white-space:nowrap">Ver →</button></td>
       </tr>`;
     }).join('');
     // Paginação
@@ -23109,16 +23203,198 @@ async function mudarStatusMC(id, novoStatus) {
     if(_tratPag<total) btns.push(`<button class="page-btn" onclick="_tratPag++;cenTrativasRender()">→</button>`);
     pag.innerHTML=btns.join('');
   }
-  window.cenTrativasAbrirFicha=function(id){
+  // ── Ficha integrada na aba Em Tratativa ──────────────────────────────────
+  window.cenTrativasAbrirFicha = async function(id){
     if(!id) return;
-    cenBancoAbrirFicha(id);
-    setTimeout(()=>{
-      if(typeof cenToggleAcoes==='function') cenToggleAcoes(true);
-      const tc=document.getElementById('cen-trat-card');
-      if(tc) setTimeout(()=>tc.scrollIntoView({behavior:'smooth',block:'start'}),100);
-      document.getElementById('trat-acao')?.focus();
-    },400);
+    _cenAtual = id;
+    const lv=$('trat-lista-view'), fv=$('trat-ficha-view');
+    if(lv) lv.style.display='none';
+    if(fv){ fv.style.display='flex'; fv.scrollTop=0; }
+    // Render rápido com cache
+    const base=_cenAll.find(m=>m.id===id);
+    if(base) _renderTratativaFicha(base.raw);
+    else { _setText('tf-protocolo',id); }
+    // Carregar dados completos
+    const d=await api('/api/manifestacoes/'+encodeURIComponent(id));
+    if(d.sucesso){
+      const full=Object.assign({},base?base.raw:{},d.manifestacao||d.item||{});
+      _renderTratativaFicha(full);
+    }
   };
+
+  window.cenTrativasFichaVoltar = function(){
+    const lv=$('trat-lista-view'), fv=$('trat-ficha-view');
+    if(lv) lv.style.display='flex';
+    if(fv) fv.style.display='none';
+  };
+
+  window.cenTrativasFichaAbrirModal = function(){
+    if(_cenRawAtual) cenAbrirFichaCompleta();
+  };
+
+  function _renderTratativaFicha(raw){
+    _cenRawAtual=raw;
+    const n=normMan(raw);
+    _setText('tf-protocolo',n.id);
+    const sb=$('tf-status-badge');
+    if(sb){sb.textContent=ST_LBL[n.st]||n.st;sb.style.background=ST_CFG_BG[n.st]||'#F0F0F0';sb.style.color=ST_CFG_FG[n.st]||'#545454';}
+    const sl=slaTxt(n);
+    const slb=$('tf-sla-badge');
+    if(slb){slb.textContent=sl[0];slb.style.display=sl[0]?'':'none';slb.className='mc-sla mc-sla-'+sl[1];}
+    // Seção A — campos
+    const camposEl=$('tf-campos');
+    if(camposEl){
+      const campos=[
+        ['Protocolo',n.id],['Empresa',n.emp],['Cliente',n.cli],['CNPJ',n.cnpj],
+        ['Tipo',n.tipo],['Motivo',n.motivo],['Prioridade',PRI_LBL[n.pri]||''],['Canal',n.canal],
+        ['Produto',pick(raw,['PRODUTO'])],['Lote',pick(raw,['LOTE'])],
+        ['Pedido',pick(raw,['PEDIDO'])],['NF',pick(raw,['NOTA_FISCAL','NFE','NF'])],
+        ['Responsável SAC',pick(raw,['RESPONSAVEL_ANALISTA','RESPONSAVEL','USUARIO_CRIACAO'])],
+        ['Setor destinado',pick(raw,['SETOR_DESTINADO','SETOR_CONFIRMADO','SETOR'])],
+        ['Data abertura',fmtdt(toDate(pick(raw,['DATA_ABERTURA','CREATED_AT','DATA_CRIACAO'])))],
+      ].filter(f=>f[1]);
+      camposEl.innerHTML=campos.map(f=>`<div><div class="mc-f-l">${esc(f[0])}</div><div class="mc-f-v">${esc(f[1]||'—')}</div></div>`).join('');
+    }
+    _setText('tf-relato',n.desc||'—');
+    // Seção B — campos do formulário tratativa
+    const setF=(id,v)=>{const e=$(id);if(e)e.value=v||'';};
+    setF('tf-acao',pick(raw,['TRATATIVA_REALIZADA']));
+    setF('tf-obs','');
+    setF('tf-setor',pick(raw,['SETOR_CONFIRMADO','SETORES_CONFIRMADOS','SETOR_SUGERIDO']));
+    setF('tf-responsavel',pick(raw,['RESPONSAVEL_SETOR','RESPONSAVEL']));
+    setF('tf-causa',pick(raw,['CAUSA_CONFIRMADA','CAUSA_PROVAVEL','CAUSA_RAIZ','CAUSA']));
+    setF('tf-pendencias',pick(raw,['PENDENCIAS','OBSERVACOES_PENDENCIAS']));
+    // Seção C — validação
+    const valSt=$('tf-validacao-status');
+    if(valSt){
+      const sf=String(raw.STATUS_FICHA||raw.STATUS||'').toUpperCase();
+      valSt.textContent=sf.includes('VALIDACAO')||sf.includes('VALIDAÇÃO')?'Aguardando validação SAC':sf.includes('DEVOLVID')?'Devolvida — aguarda correção do setor':'Tratativa em andamento';
+    }
+    const df=$('tf-devolucao-form');if(df)df.style.display='none';
+    const hd=$('tf-hist-devolucoes');
+    if(hd){
+      const devs=Array.isArray(raw.HISTORICO_DEVOLUCOES)?raw.HISTORICO_DEVOLUCOES:(Array.isArray(raw.historico_devolucoes)?raw.historico_devolucoes:[]);
+      hd.innerHTML=devs.length?`<div style="font-size:10px;font-weight:700;letter-spacing:.06em;color:#C0C0C0;margin-top:10px;margin-bottom:6px">DEVOLUÇÕES ANTERIORES</div>`+
+        devs.map(d=>`<div style="font-size:12px;color:#666;padding:6px 0;border-bottom:1px solid #F4F4F4">${esc(d.DATA?fmtdt(toDate(d.DATA))+' · ':'')}${esc(d.JUSTIFICATIVA||d.justificativa||'—')}</div>`).join(''):'';
+    }
+    // Seção D — devolutiva
+    const devCanal=$('tf-dev-canal');if(devCanal)devCanal.textContent=n.canal||'—';
+    setF('tf-dev-texto',pick(raw,['DEVOLUTIVA_FINAL','DEVOLUTIVA_ENVIADA']));
+    const devSt=$('tf-dev-status');
+    if(devSt){
+      const devEnv=pick(raw,['DEVOLUTIVA_ENVIADA','DEVOLUTIVA_FINAL']);
+      const devDt=pick(raw,['DATA_DEVOLUTIVA']);
+      devSt.textContent=devEnv?(devDt?'Enviada em '+fmtdt(devDt):'Devolutiva registrada.'):'Devolutiva não enviada ainda.';
+    }
+    // Seção E — histórico
+    const histEl=$('tf-historico');
+    if(histEl){
+      const evs=buildHistorico(n);
+      histEl.innerHTML=evs.length?evs.map(ev=>`<div class="mc-hist-rail"><span class="mc-hist-dot mc-hc-${ev.c}"></span><span class="mc-hist-line"></span></div><div class="mc-hist-body"><div class="mc-hist-at">${esc(fmtdt(ev.at))}</div><div class="mc-hist-t">${esc(ev.t)}</div></div>`).join(''):'<span style="color:#999;font-size:12px">Sem registros no histórico.</span>';
+    }
+  }
+
+  // ── Ações da ficha de tratativa ───────────────────────────────────────────
+  window.cenTratativasFichaSalvarTratativa = async function(){
+    if(!_cenAtual) return semSel();
+    const acao=($('tf-acao')?.value||'').trim(), obs=($('tf-obs')?.value||'').trim();
+    const setor=($('tf-setor')?.value||'').trim(), resp=($('tf-responsavel')?.value||'').trim();
+    const causa=($('tf-causa')?.value||'').trim();
+    if(!acao&&!obs&&!setor&&!resp){toast('Preencha ao menos um campo da tratativa.');return;}
+    const body={};
+    if(acao||obs) body.tratativa=acao+(obs?(acao?'\n\n':'')+'Observação: '+obs:'');
+    if(setor) body.setor=setor;
+    if(resp) body.responsavel=resp;
+    if(causa) body.causa=causa;
+    const d=await patchMan(body);
+    if(d.sucesso){toast('Tratativa salva.');const full=await api('/api/manifestacoes/'+encodeURIComponent(_cenAtual));if(full.sucesso)_renderTratativaFicha(Object.assign({},_cenRawAtual||{},full.manifestacao||full.item||{}));}
+    else erro(d);
+  };
+
+  window.cenTratativasFichaEncaminharSetor = async function(){
+    if(!_cenAtual||!_cenRawAtual) return semSel();
+    const setor=($('tf-setor')?.value||'').trim()||normMan(_cenRawAtual).setores[0]||'';
+    if(!setor){toast('Defina o setor antes de encaminhar.');$('tf-setor')?.focus();return;}
+    if(!confirm('Encaminhar ao setor: '+setor+'?')) return;
+    const d=await patchMan({status:'AGUARDANDO_SETOR',setor});
+    if(d.sucesso){toast('Encaminhado ao setor.');await loadCentralSAC();cenTrativasFichaVoltar();cenTrativasInit(true);}
+    else erro(d);
+  };
+
+  window.cenTratativasFichaConcluir = async function(){
+    if(!_cenAtual) return semSel();
+    if(!confirm('Concluir tratativa e avançar para devolutiva?')) return;
+    const d=await patchMan({status:'AGUARDANDO_DEVOLUTIVA'});
+    if(d.sucesso){toast('Tratativa concluída.');await loadCentralSAC();cenTrativasFichaVoltar();cenTrativasInit(true);}
+    else erro(d);
+  };
+
+  window.cenTratativasFichaAprovarTratativa = async function(){
+    if(!_cenAtual) return semSel();
+    if(!confirm('Aprovar tratativa desta manifestação?')) return;
+    const d=await patchMan({status:'APROVADA'});
+    if(d.sucesso){toast('Tratativa aprovada.');await loadCentralSAC();cenTrativasFichaVoltar();cenTrativasInit(true);}
+    else erro(d);
+  };
+
+  window.cenTratativasFichaDevolver = function(){
+    const f=$('tf-devolucao-form');if(f)f.style.display='';
+    $('tf-justificativa-dev')?.focus();
+  };
+
+  window.cenTratativasFichaConfirmarDevolucao = async function(){
+    if(!_cenAtual) return semSel();
+    const just=($('tf-justificativa-dev')?.value||'').trim();
+    if(!just){toast('Justificativa obrigatória para devolução.');return;}
+    const d=await patchMan({status:'DEVOLVIDA',justificativa_devolucao:just});
+    if(d.sucesso){
+      toast('Devolvida ao setor.');
+      const full=await api('/api/manifestacoes/'+encodeURIComponent(_cenAtual));
+      if(full.sucesso)_renderTratativaFicha(Object.assign({},_cenRawAtual||{},full.manifestacao||full.item||{}));
+      const f=$('tf-devolucao-form');if(f)f.style.display='none';
+    } else erro(d);
+  };
+
+  window.cenTratativasFichaSalvarDevolutiva = async function(){
+    if(!_cenAtual) return semSel();
+    const texto=($('tf-dev-texto')?.value||'').trim();
+    if(!texto){toast('Digite a devolutiva.');return;}
+    const d=await patchMan({devolutiva:texto});
+    if(d.sucesso){toast('Devolutiva salva.');}
+    else erro(d);
+  };
+
+  window.cenTratativasFichaEnviarDevolutiva = async function(){
+    if(!_cenAtual) return semSel();
+    const texto=($('tf-dev-texto')?.value||'').trim();
+    if(!texto){toast('Digite a devolutiva.');return;}
+    if(!confirm('Registrar a devolutiva e encerrar a manifestação?')) return;
+    const d=await patchMan({devolutiva:texto,status:'ENCERRADA'});
+    if(d&&d.requerAprovacao){toast('Aprovação necessária. Encaminhando para aprovação.');return enviarParaAprovacao('Devolutiva: '+texto);}
+    if(d.sucesso){toast('Devolutiva enviada e manifestação encerrada.');await loadCentralSAC();cenTrativasFichaVoltar();cenTrativasInit(true);}
+    else erro(d);
+  };
+
+  // ── Abrir ficha modal sem navegar para fila (Banco + Aprovações) ──────────
+  window.cenAbrirFichaModal = async function(id){
+    if(!id) return;
+    _cenAtual=id;
+    // Tenta cache primeiro
+    let base=_cenAll.find(m=>m.id===id);
+    if(!base){
+      const bi=_cenBancoAll.find(m=>(m.ID_MANIFESTACAO||m.id)===id);
+      if(bi){base={id,cli:bi.NOME_CLIENTE||bi.CLIENTE||'—',motivo:bi.TIPO_MANIFESTACAO||bi.TIPO||'—',tipo:bi.TIPO_MANIFESTACAO||'',ext:true,pri:'none',grupo:'banco',raw:bi};_cenAll.push(base);}
+    }
+    if(base){_cenRawAtual=base.raw;cenAbrirFichaCompleta();}
+    // Carrega dados completos e re-renderiza o modal
+    const d=await api('/api/manifestacoes/'+encodeURIComponent(id));
+    if(d.sucesso){
+      const full=Object.assign({},base?base.raw:{},d.manifestacao||d.item||{});
+      _cenRawAtual=full;
+      cenAbrirFichaCompleta();
+    }
+  };
+
   const _origCenRemoverManifestacao=window.cenRemoverManifestacao;
   window.cenRemoverManifestacao=function(id){
     _tratAll=_tratAll.filter(m=>m.id!==id);
@@ -23159,7 +23435,7 @@ async function mudarStatusMC(id, novoStatus) {
         const prot=m.PROTOCOLO||m.N_PROTOCOLO||id||'—';
         const sf=m.STATUS_FICHA||m.STATUS||'—';
         const cli=m.NOME_CLIENTE||m.CLIENTE||'—';
-        return `<div onclick="cenBancoAbrirFicha('${_esc(id)}')" style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border:1px solid #E4E4E4;border-radius:8px;margin-bottom:6px;cursor:pointer;background:#fff">
+        return `<div onclick="cenAbrirFichaModal('${_esc(id)}')" style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border:1px solid #E4E4E4;border-radius:8px;margin-bottom:6px;cursor:pointer;background:#fff">
           <div><div style="font-weight:700;color:#A80502;font-size:13px">${_esc(prot)}</div><div style="font-size:12px;color:#666">${_esc(cli)}</div></div>
           <span style="font-size:11px;padding:3px 8px;background:#FEF3DC;color:#7A4C00;border-radius:99px;font-weight:600">${_esc(sf.replace(/_/g,' '))}</span>
         </div>`;
@@ -23186,7 +23462,7 @@ async function mudarStatusMC(id, novoStatus) {
       const prot=m.PROTOCOLO||m.N_PROTOCOLO||id||'—';
       const cli=m.NOME_CLIENTE||m.CLIENTE||'—';
       const desc=(m.DESCRICAO||m.MOTIVO||'').slice(0,80);
-      return `<div onclick="cenBancoAbrirFicha('${_esc(id)}')" style="display:flex;justify-content:space-between;align-items:flex-start;padding:12px 14px;border:1px solid #E4E4E4;border-radius:8px;margin-bottom:8px;cursor:pointer;background:#fff">
+      return `<div onclick="cenAbrirFichaModal('${_esc(id)}')" style="display:flex;justify-content:space-between;align-items:flex-start;padding:12px 14px;border:1px solid #E4E4E4;border-radius:8px;margin-bottom:8px;cursor:pointer;background:#fff">
         <div style="flex:1;min-width:0">
           <div style="font-weight:700;color:#A80502;font-size:13px">${_esc(prot)}</div>
           <div style="font-size:12.5px;font-weight:600;margin-top:2px">${_esc(cli)}</div>
@@ -23413,25 +23689,6 @@ async function mudarStatusMC(id, novoStatus) {
     ];
     const kEl=$('cen-ind-kpis');
     if(kEl) kEl.innerHTML=kpis.map(k=>`<div class="mc-ind-kpi" style="background:${k.bg};border:1.5px solid ${k.bd}"><div class="mc-ind-l">${esc(k.l)}</div><div class="mc-ind-v" style="color:${k.c}">${esc(String(k.v))}</div><div class="mc-ind-d">${esc(k.d)}</div></div>`).join('');
-
-    // SLA por setor
-    const setorMap={};
-    all.forEach(m=>{
-      (m.setores&&m.setores.length?m.setores:['(sem setor)']).forEach(s=>{
-        if(!setorMap[s]) setorMap[s]={tot:0,late:0};
-        setorMap[s].tot++;
-        if(isLate(m)) setorMap[s].late++;
-      });
-    });
-    const slaEl=$('cen-ind-sla');
-    if(slaEl){
-      const rows=Object.entries(setorMap).sort((a,b)=>b[1].late-a[1].late).slice(0,10);
-      if(!rows.length){slaEl.innerHTML='<div style="color:#999;padding:12px">Sem dados.</div>';}
-      else slaEl.innerHTML=rows.map(([s,v])=>{
-        const pct=v.tot?Math.round((v.tot-v.late)/v.tot*100):100;
-        return `<div class="mc-sla-row"><div class="mc-sla-lbl">${esc(s)}</div><div class="mc-sla-bar"><div style="width:${pct}%;background:${pct>=80?'#1E6B3A':pct>=60?'#F0A030':'#A80502'};height:100%;border-radius:4px;transition:width .4s"></div></div><div class="mc-sla-pct" style="color:${pct>=80?'#1E6B3A':pct>=60?'#F0A030':'#A80502'}">${pct}%</div></div>`;
-      }).join('');
-    }
 
     // Pendências por etapa
     const etapas=[
