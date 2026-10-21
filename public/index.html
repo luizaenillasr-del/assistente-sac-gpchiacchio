@@ -29360,7 +29360,6 @@ if (typeof pageLoaders !== 'undefined') {
     if (!page) return;
     function sync(){
       var active = !page.classList.contains('hidden') && page.style.display !== 'none';
-      document.body.classList.toggle('nm-reference-active', active);
       page.querySelectorAll('.nm-topbar').forEach(function(el){ el.style.setProperty('display','none','important'); });
       page.querySelectorAll('#nm-stepper-row,#nm-step-label-main,#nm-step-desc-main').forEach(function(el){ el.style.setProperty('display','none','important'); });
     }
