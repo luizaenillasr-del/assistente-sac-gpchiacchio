@@ -2800,6 +2800,26 @@
 
   <!-- ===== NOVA MANIFESTAÇÃO ===== -->
   <div class="page" id="page-nova-manifestacao">
+    <div class="nm-ref-header">
+      <div class="nm-ref-brand"><img src="/assets/logo-chiacchio-new.png" alt="Grupo Chiacchio"><span>Assistente SAC</span></div>
+      <div class="nm-ref-head-item"><small>PROTOCOLO</small><strong id="nm-ref-protocolo">NOVO PROTOCOLO</strong></div>
+      <div class="nm-ref-head-item nm-ref-company"><small>EMPRESA · CLIENTE</small><strong id="nm-ref-empresa">Chiacchio · <em>Embalagens</em></strong></div>
+      <div class="nm-ref-head-status"><span>Reclamação</span><span class="active">● Em abertura</span><span class="sla">⚠ SLA: a definir</span></div>
+      <button class="nm-ref-btn" onclick="nmIrParaEtapa(Math.max(1,(window.nmEtapa||1)-1))">Reatribuir</button>
+      <button class="nm-ref-btn primary-outline" onclick="nmIrParaEtapa(window.nmEtapa||1)">Assumir tratativa</button>
+      <button class="nm-ref-btn danger" onclick="salvarRascunho()">Salvar</button>
+      <button class="nm-ref-btn" onclick="navigate('acompanhamento',null)">← Voltar</button>
+    </div>
+    <div class="nm-ref-breadcrumb">Central de Manifestações <b>›</b> Nova Manifestação</div>
+    <aside class="nm-ref-sidebar">
+      <small>SEÇÕES</small>
+      <button class="active" onclick="nmIrParaEtapa(1)"><i></i>Dados da Manifestação<em>Em preenchimento</em></button>
+      <button onclick="nmIrParaEtapa(2)"><i></i>Triagem e Encaminhamento<em>Aguardando</em></button>
+      <button onclick="nmIrParaEtapa(3)"><i></i>Investigação e Tratativa<em>Não iniciada</em></button>
+      <button onclick="nmIrParaEtapa(4)"><i></i>Validação SAC<em>Pendente</em></button>
+      <button onclick="nmIrParaEtapa(5)"><i></i>Devolutiva ao Cliente<em>Não iniciada</em></button>
+      <button onclick="nmIrParaEtapa(6)"><i></i>Histórico e Encerramento<em>Não iniciado</em></button>
+    </aside>
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap');
       #page-nova-manifestacao{flex-direction:column;height:100%;overflow:hidden;font-family:'Sora',system-ui,sans-serif}
@@ -3337,6 +3357,12 @@
         }
         row.innerHTML = html;
         var meta = NM_STEPS_META[window.nmEtapa - 1];
+        document.querySelectorAll('.nm-ref-sidebar button').forEach(function(b, idx){
+          b.classList.toggle('active', idx === Math.min(window.nmEtapa - 1, 5));
+        });
+        var empresaRef = document.getElementById('nm-ref-empresa');
+        var empresaAtual = document.getElementById('nm-empresa-reclamada');
+        if(empresaRef && empresaAtual && empresaAtual.value) empresaRef.innerHTML = empresaAtual.value + ' · <em>Cliente</em>';
         var lMain = document.getElementById('nm-step-label-main');
         var dMain = document.getElementById('nm-step-desc-main');
         if(lMain) lMain.textContent = meta.l;
