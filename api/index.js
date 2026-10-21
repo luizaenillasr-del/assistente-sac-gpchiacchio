@@ -200,6 +200,8 @@ const SPREADSHEET_ID = process.env.SPREADSHEET_ID;
 // PDF service
 let gerarFichaPDF;
 try { ({ gerarFichaPDF } = require('../server-services/pdfFicha')); } catch(e) { console.warn('[PDF] pdfFicha não disponível:', e.message); }
+let gerarPdfRelatorioSatisfacao;
+try { ({ gerarPdfRelatorioSatisfacao } = require('../server-services/pdfRelatorioSatisfacao')); } catch(e) { console.warn('[PDF] pdfRelatorioSatisfacao não disponível:', e.message); }
 
 // Google Drive upload (usa mesma service account com scope drive.file)
 async function uploadArquivoDrive(nome, mimeType, bufferOuBase64, opcoes = {}) {
@@ -1058,6 +1060,21 @@ async function registrarAuditoria(usuario, acao, idManifestacao, entidade, valor
   } catch (e) { console.error('Erro auditoria:', e.message); }
 }
 
+// Histórico próprio da ficha: é conciso, consultável na Central e não expõe o
+// log administrativo completo a quem só pode acompanhar a manifestação.
+async function registrarHistoricoManifestacao({ id, protocolo = '', acao, descricao = '', usuario = 'sistema', etapa = '' }) {
+  try {
+    await garantirAbaComCabecalhos('HISTORICO_MANIFESTACOES', [
+      'ID_HISTORICO','ID_MANIFESTACAO','PROTOCOLO','DATA_HORA','USUARIO','ACAO','DESCRICAO','ETAPA'
+    ]);
+    await appendObjeto('HISTORICO_MANIFESTACOES', {
+      ID_HISTORICO:`HMF-${Date.now()}-${Math.random().toString(36).slice(2,6)}`,
+      ID_MANIFESTACAO:id, PROTOCOLO:protocolo, DATA_HORA:new Date().toISOString(),
+      USUARIO:usuario, ACAO:acao, DESCRICAO:descricao, ETAPA:String(etapa || ''),
+    });
+  } catch (e) { console.warn('[HISTORICO_MANIFESTACOES]', e.message); }
+}
+
 // Filtra itens de teste (prefixo TESTE-GOLIVE) das métricas
 function isTeste(item) {
   const campos = ['ID_MANIFESTACAO','ID_RNC','TITULO','NAO_CONFORMIDADE','Motivo da Reclamação','Descrição do Problema'];
@@ -1914,6 +1931,11 @@ app.post('/api/manifestacoes', requerPermissao('manifestacoes.abrir'), async (re
       });
     }
     registrarAuditoria(usuario||'sistema','CRIOU_MANIFESTAÇÃO',id,'MANIFESTACOES',null,{empresaReclamante,tipo:tipoFinal}).catch(()=>{});
+    registrarHistoricoManifestacao({
+      id, protocolo, usuario:usuario||req.user?.usuario||'sistema', etapa:rascunho ? 1 : 2,
+      acao:rascunho ? 'SALVOU_RASCUNHO' : 'REGISTROU_MANIFESTACAO',
+      descricao:rascunho ? 'Rascunho salvo sem protocolo definitivo.' : 'Manifestação recebida e encaminhada para triagem SAC.'
+    });
     // Executar análise de IA — reutiliza análise do frontend se já disponível
     // (evita dupla chamada ao Sheets e erro 429)
     const decisaoCompleta = req.body.decisaoCompleta;
@@ -2141,6 +2163,10 @@ app.patch('/api/manifestacoes/:id/ficha', requerPermissao('manifestacoes.editar'
     await atualizarPorID('MANIFESTACOES', id, dados, ['ID_MANIFESTACAO']);
     invalidarCacheAba('MANIFESTACOES');
     registrarAuditoria(req.user?.usuario||'sistema', `FICHA_${String(acao).toUpperCase()}`, id, 'MANIFESTACOES', null, dados).catch(()=>{});
+    registrarHistoricoManifestacao({
+      id, protocolo:item.PROTOCOLO||'', usuario:req.user?.usuario||'sistema', etapa:dados.ETAPA_ATUAL,
+      acao:String(acao).toUpperCase(), descricao:dados.MENSAGEM_ETAPA
+    });
     res.json({ sucesso:true, etapaAtual:dados.ETAPA_ATUAL, mensagemEtapa:dados.MENSAGEM_ETAPA });
   } catch (e) { console.error(e); res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
@@ -4320,7 +4346,7 @@ app.get('/api/pesquisas/relatorio', requerPermissao('pesquisas.visualizar'), asy
       const relRows = await lerRelatoriosSac();
       const chaveRel = `${empresa}|${ano}|${String(mes).padStart(2,'0')}`;
       const relRow = relRows.filter(r=>r.CHAVE===chaveRel).sort((a,b)=>Number(b.VERSAO||1)-Number(a.VERSAO||1))[0];
-      if (relRow) relMeta = { id: relRow.ID_RELATORIO, status: relRow.STATUS, versao: Number(relRow.VERSAO||1), publicado_em: relRow.PUBLICADO_EM||'' };
+      if (relRow) relMeta = { id: relRow.ID_RELATORIO, status: relRow.STATUS, versao: Number(relRow.VERSAO||1), publicado_em: relRow.PUBLICADO_EM||'', atualizado_em:relRow.ATUALIZADO_EM||relRow.CRIADO_EM||'', atualizado_por:relRow.ATUALIZADO_POR||relRow.CRIADO_POR||'' };
     } catch(e) {}
 
     const NOTA_CRITICA_V = Number(process.env.PESQUISA_NOTA_CRITICA || 6);
@@ -4544,9 +4570,9 @@ app.post('/api/pesquisas/decisao', requerPermissao('pesquisas.gerenciar'), async
 });
 
 // ===== GESTÃO DE RELATÓRIOS (ciclo rascunho → publicado) =====
-const REL_HEADERS = ['ID_RELATORIO','CHAVE','EMPRESA','ANO','MES','VERSAO','STATUS','CRIADO_EM','PUBLICADO_EM','CRIADO_POR','INDICADOR','NPS_SCORE','TEXTOS_JSON','LINK_TOKEN','DADOS_JSON'];
+const REL_HEADERS = ['ID_RELATORIO','CHAVE','EMPRESA','ANO','MES','VERSAO','STATUS','CRIADO_EM','ATUALIZADO_EM','PUBLICADO_EM','CRIADO_POR','ATUALIZADO_POR','INDICADOR','NPS_SCORE','TEXTOS_JSON','LINK_TOKEN','DADOS_JSON','MODELO_VERSAO','REVISAO_DE'];
 
-app.get('/api/relatorios/lista', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req, res) => {
+app.get('/api/relatorios/lista', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC','APROVADOR','APROVADOR MASTER','DIRETOR','SETOR DIRETORIA','VISUALIZADOR','AUDITOR'), async (req, res) => {
   try {
     const empresaScope = _mcEmpresaScope(req.user);
     const rows = await lerRelatoriosSac();
@@ -4555,7 +4581,7 @@ app.get('/api/relatorios/lista', requerPerfil('MASTER','ANALISTA SAC','APROVADOR
     lista = lista.map(r => ({
       id: r.ID_RELATORIO, chave: r.CHAVE, empresa: r.EMPRESA,
       ano: r.ANO, mes: r.MES, versao: Number(r.VERSAO||1),
-      status: r.STATUS, criado_em: r.CRIADO_EM, publicado_em: r.PUBLICADO_EM,
+      status: r.STATUS, criado_em: r.CRIADO_EM, atualizado_em:r.ATUALIZADO_EM||r.CRIADO_EM, atualizado_por:r.ATUALIZADO_POR||r.CRIADO_POR||'', publicado_em: r.PUBLICADO_EM,
       indicador: r.INDICADOR ? Number(r.INDICADOR) : null,
       nps_score: r.NPS_SCORE !== '' && r.NPS_SCORE != null ? Number(r.NPS_SCORE) : null,
     }));
@@ -4566,24 +4592,41 @@ app.get('/api/relatorios/lista', requerPerfil('MASTER','ANALISTA SAC','APROVADOR
 
 app.post('/api/relatorios/gerar', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req, res) => {
   try {
-    const { empresa, ano, mes, indicador, nps_score } = req.body||{};
+    const { empresa, ano, mes, indicador, nps_score, dados, textos } = req.body||{};
     if (!empresa||!ano||!mes) return res.status(400).json({ sucesso:false, erro:'empresa, ano e mes são obrigatórios.' });
     const empresaScope = _mcEmpresaScope(req.user);
     if (empresaScope && !pertenceEmpresa(empresaScope, empresa)) return res.status(403).json({ sucesso:false, erro:'Sem acesso a esta empresa.' });
     const chave = `${empresa}|${ano}|${String(mes).padStart(2,'0')}`;
     await garantirAbaComCabecalhos('RELATORIOS_SAC', REL_HEADERS).catch(()=>{});
-    // Verifica se já existe rascunho para esta chave/versão
+    // Salvar rascunho é idempotente: o mesmo período não cria uma versão a
+    // cada clique. Uma versão publicada só recebe alteração via nova revisão.
     const rows = await lerRelatoriosSac();
     const existentes = rows.filter(r=>r.CHAVE===chave);
+    const rascunho = existentes.filter(r => r.STATUS === 'RASCUNHO' || r.STATUS === 'EM_REVISAO')
+      .sort((a,b)=>Number(b.VERSAO||1)-Number(a.VERSAO||1))[0];
+    const agora = new Date().toISOString();
+    const serializar = valor => valor == null ? '' : (typeof valor === 'string' ? valor : JSON.stringify(valor));
+    if (rascunho) {
+      await atualizarPorID('RELATORIOS_SAC', rascunho.ID_RELATORIO, {
+        INDICADOR:indicador!=null?String(indicador):(rascunho.INDICADOR||''),
+        NPS_SCORE:nps_score!=null?String(nps_score):(rascunho.NPS_SCORE||''),
+        DADOS_JSON:dados!=null?serializar(dados):(rascunho.DADOS_JSON||''),
+        TEXTOS_JSON:textos!=null?serializar(textos):(rascunho.TEXTOS_JSON||''),
+        ATUALIZADO_EM:agora, ATUALIZADO_POR:req.user?.nome||req.user?.usuario||''
+      }, ['ID_RELATORIO']);
+      invalidarCacheAba('RELATORIOS_SAC');
+      return res.json({ sucesso:true, id:rascunho.ID_RELATORIO, versao:Number(rascunho.VERSAO||1), atualizado:true });
+    }
     const maxVersao = existentes.reduce((m,r)=>Math.max(m,Number(r.VERSAO||1)),0);
     const id = `REL-${Date.now().toString(36).toUpperCase()}`;
     const obj = {
       ID_RELATORIO:id, CHAVE:chave, EMPRESA:empresa, ANO:String(ano), MES:String(mes).padStart(2,'0'),
       VERSAO:String(maxVersao+1), STATUS:'RASCUNHO',
-      CRIADO_EM:new Date().toISOString(), PUBLICADO_EM:'',
+      CRIADO_EM:agora, ATUALIZADO_EM:agora, PUBLICADO_EM:'',
       CRIADO_POR:req.user?.nome||req.user?.usuario||'',
+      ATUALIZADO_POR:req.user?.nome||req.user?.usuario||'',
       INDICADOR:indicador!=null?String(indicador):'', NPS_SCORE:nps_score!=null?String(nps_score):'',
-      TEXTOS_JSON:'',
+      TEXTOS_JSON:textos!=null?serializar(textos):'', DADOS_JSON:dados!=null?serializar(dados):'', MODELO_VERSAO:'1', REVISAO_DE:'',
     };
     await appendObjeto('RELATORIOS_SAC', obj);
     if (pesquisaRepo) await pesquisaRepo.criarRelatorio(obj).catch(e => console.warn('[F8] criarRelatorio PG:', e.message));
@@ -4592,7 +4635,19 @@ app.post('/api/relatorios/gerar', requerPerfil('MASTER','ANALISTA SAC','APROVADO
   } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
 
-app.post('/api/relatorios/:id/publicar', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req, res) => {
+app.post('/api/relatorios/:id/submeter-revisao', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC','APROVADOR'), async (req, res) => {
+  try {
+    const row = (await lerRelatoriosSac()).find(r => r.ID_RELATORIO === req.params.id);
+    if (!row) return res.status(404).json({ sucesso:false, erro:'Relatório não encontrado.' });
+    if (row.STATUS !== 'RASCUNHO') return res.status(409).json({ sucesso:false, erro:'Somente rascunhos podem ser submetidos para revisão.' });
+    if (_mcEmpresaScope(req.user) && !pertenceEmpresa(_mcEmpresaScope(req.user), row.EMPRESA||'')) return res.status(403).json({ sucesso:false, erro:'Sem acesso a este relatório.' });
+    await atualizarPorID('RELATORIOS_SAC', row.ID_RELATORIO, { STATUS:'EM_REVISAO', ATUALIZADO_EM:new Date().toISOString(), ATUALIZADO_POR:req.user?.nome||req.user?.usuario||'' }, ['ID_RELATORIO']);
+    registrarAuditoria(req.user?.usuario||'sistema','SUBMETEU_RELATORIO_REVISAO',row.ID_RELATORIO,'RELATORIOS_SAC','RASCUNHO','EM_REVISAO').catch(()=>{});
+    res.json({ sucesso:true, status:'EM_REVISAO' });
+  } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
+});
+
+app.post('/api/relatorios/:id/publicar', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC','APROVADOR','APROVADOR MASTER'), async (req, res) => {
   try {
     const { id } = req.params;
     const { textos, indicador, nps_score } = req.body||{};
@@ -4601,10 +4656,12 @@ app.post('/api/relatorios/:id/publicar', requerPerfil('MASTER','ANALISTA SAC','A
     const idx = rows.findIndex(r=>r.ID_RELATORIO===id);
     if (idx<0) return res.status(404).json({ sucesso:false, erro:'Relatório não encontrado.' });
     const row = rows[idx];
+    if (!['RASCUNHO','EM_REVISAO'].includes(row.STATUS)) return res.status(409).json({ sucesso:false, erro:'Crie uma revisão antes de publicar novamente.' });
     const empresaScope = _mcEmpresaScope(req.user);
     if (empresaScope && !pertenceEmpresa(empresaScope, row.EMPRESA||'')) return res.status(403).json({ sucesso:false, erro:'Sem acesso a este relatório.' });
     const atualizado = {
       STATUS:'PUBLICADO',
+      ATUALIZADO_EM:new Date().toISOString(), ATUALIZADO_POR:req.user?.nome||req.user?.usuario||'',
       PUBLICADO_EM:new Date().toISOString(),
       INDICADOR:indicador!=null?String(indicador):(row.INDICADOR||''),
       NPS_SCORE:nps_score!=null?String(nps_score):(row.NPS_SCORE||''),
@@ -4632,14 +4689,33 @@ app.post('/api/relatorios/:id/nova-versao', requerPerfil('MASTER','ANALISTA SAC'
     const novoObj = {
       ID_RELATORIO:novoId, CHAVE:orig.CHAVE, EMPRESA:orig.EMPRESA,
       ANO:orig.ANO, MES:orig.MES, VERSAO:String(maxVersao+1), STATUS:'RASCUNHO',
-      CRIADO_EM:new Date().toISOString(), PUBLICADO_EM:'',
+      CRIADO_EM:new Date().toISOString(), ATUALIZADO_EM:new Date().toISOString(), PUBLICADO_EM:'',
       CRIADO_POR:req.user?.nome||req.user?.usuario||'',
+      ATUALIZADO_POR:req.user?.nome||req.user?.usuario||'',
       INDICADOR:orig.INDICADOR||'', NPS_SCORE:orig.NPS_SCORE||'',
-      TEXTOS_JSON:orig.TEXTOS_JSON||'',
+      TEXTOS_JSON:orig.TEXTOS_JSON||'', DADOS_JSON:orig.DADOS_JSON||'', MODELO_VERSAO:orig.MODELO_VERSAO||'1', REVISAO_DE:orig.ID_RELATORIO,
     };
     await appendObjeto('RELATORIOS_SAC', novoObj);
     invalidarCacheAba('RELATORIOS_SAC');
     res.json({ sucesso:true, id:novoId, versao:maxVersao+1 });
+  } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
+});
+
+app.get('/api/relatorios/:id/pdf', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC','APROVADOR','APROVADOR MASTER','DIRETOR','SETOR DIRETORIA','VISUALIZADOR','AUDITOR'), async (req, res) => {
+  try {
+    if (!gerarPdfRelatorioSatisfacao) return res.status(503).json({ sucesso:false, erro:'Serviço de PDF indisponível.' });
+    const row = (await lerRelatoriosSac()).find(r => r.ID_RELATORIO === req.params.id);
+    if (!row) return res.status(404).json({ sucesso:false, erro:'Relatório não encontrado.' });
+    if (_mcEmpresaScope(req.user) && !pertenceEmpresa(_mcEmpresaScope(req.user), row.EMPRESA||'')) return res.status(403).json({ sucesso:false, erro:'Sem acesso a este relatório.' });
+    const perfil = perfilCanonico(req.user?.perfil||'');
+    if (['DIRETOR','SETOR DIRETORIA','VISUALIZADOR','AUDITOR'].includes(perfil) && row.STATUS !== 'PUBLICADO') return res.status(403).json({ sucesso:false, erro:'Apenas versões publicadas estão disponíveis para consulta.' });
+    let dados = {}, textos = {};
+    try { dados = JSON.parse(row.DADOS_JSON||'{}'); } catch(_) {}
+    try { textos = JSON.parse(row.TEXTOS_JSON||'{}'); } catch(_) {}
+    const periodo = new Date(Number(row.ANO), Number(row.MES)-1, 1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+    const pdf = await gerarPdfRelatorioSatisfacao({ empresa:row.EMPRESA, periodo, versao:row.VERSAO, status:row.STATUS, indicador:row.INDICADOR, nps:row.NPS_SCORE, meta:dados.meta, criterios:dados.criterios||[], textos });
+    const nome = `Relatorio_Satisfacao_${String(row.EMPRESA||'Grupo').replace(/[^a-z0-9]+/gi,'_')}_${row.ANO}-${String(row.MES).padStart(2,'0')}.pdf`;
+    res.setHeader('Content-Type','application/pdf'); res.setHeader('Content-Disposition',`attachment; filename="${nome}"`); res.send(pdf);
   } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
 
@@ -5722,9 +5798,10 @@ app.get('/api/auditoria', requerPerfil('MASTER','GESTOR SAC','AUDITOR'), async (
 app.get('/api/manifestacoes/:id/historico', requerPermissao('manifestacoes.visualizar'), middlewareEscopoEmpresa(), async (req, res) => {
   try {
     const { id } = req.params;
-    const [logs, manifest] = await Promise.all([
+    const [logs, manifest, historicoFicha] = await Promise.all([
       lerAba('LOG_SISTEMA', 2000).catch(() => []),
       lerAba('MANIFESTACOES', 5000).catch(() => []),
+      lerAba('HISTORICO_MANIFESTACOES', 3000).catch(() => []),
     ]);
     // Garante que a manifestação pertence à empresa do usuário
     const item = manifest.find(r => r.ID_MANIFESTACAO === id);
@@ -5748,7 +5825,11 @@ app.get('/api/manifestacoes/:id/historico', requerPermissao('manifestacoes.visua
           DETALHES:    r.DETALHES    || r.VALOR_NOVO  || vals[6] || vals[5] || '',
         };
       })
-      .filter(r => r.DATA_HORA || r.ACAO);
+      .filter(r => r.DATA_HORA || r.ACAO)
+      .concat(historicoFicha.filter(r => r.ID_MANIFESTACAO === id).map(r => ({
+        DATA_HORA:r.DATA_HORA || '', USUARIO:r.USUARIO || '', ACAO:r.ACAO || '', DETALHES:r.DESCRICAO || '', ETAPA:r.ETAPA || ''
+      })))
+      .sort((a,b) => String(a.DATA_HORA).localeCompare(String(b.DATA_HORA)));
     res.json({ sucesso: true, id, total: itens.length, itens });
   } catch (e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e) }); }
 });
