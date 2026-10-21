@@ -59,6 +59,8 @@
 #page-nova-manifestacao .nm-textarea{border-radius:8px}
 
 /* Ficha de manifestação: composição do HTML de referência */
+body.nm-reference-active .sidebar{display:none!important}
+body.nm-reference-active .main{width:100%;max-width:none}
 #page-nova-manifestacao{height:100vh!important;min-height:0!important;overflow:hidden!important}
 #page-nova-manifestacao .nm-topbar{display:none!important}
 #page-nova-manifestacao .nm-ref-header{height:58px;background:#fff;border-bottom:1px solid #e4e4e4;display:flex;align-items:center;gap:10px;padding:0 20px;white-space:nowrap;overflow:hidden}
@@ -82,7 +84,9 @@
 #page-nova-manifestacao .nm-ref-sidebar button.active{background:#fff1f1;border-left-color:#c70602;color:#c70602;font-weight:700}
 #page-nova-manifestacao .nm-ref-sidebar i{display:inline-block;width:8px;height:8px;border-radius:50%;background:#bbb;margin-right:9px}
 #page-nova-manifestacao .nm-ref-sidebar button.active i{background:#c70602}.nm-ref-sidebar em{display:block;margin:4px 0 0 17px;font-size:10px;color:#999;font-style:normal;font-weight:400}.nm-ref-sidebar button.active em{color:#c70602}
-#page-nova-manifestacao #nm-steps-body{margin-left:220px;max-width:none;padding:24px 30px 64px}
+#page-nova-manifestacao #nm-steps-body{margin-left:220px;width:calc(100% - 220px);max-width:none;box-sizing:border-box;padding:24px 30px 64px}
+#page-nova-manifestacao #nm-steps-body>.nm-step-panel{max-width:1240px;width:100%;margin:0 auto}
+#page-nova-manifestacao #nm-steps-body input,#page-nova-manifestacao #nm-steps-body select,#page-nova-manifestacao #nm-steps-body textarea{font-family:Montserrat,system-ui,sans-serif;font-size:13px}
 #page-nova-manifestacao #nm-steps-body:before{content:'Dados da Manifestação';display:block;font-size:23px;font-weight:700;color:#171717;margin:0 0 3px}
 #page-nova-manifestacao #nm-steps-body:after{content:'Identificação completa da ocorrência, do cliente e do impacto.';display:block;position:absolute;top:136px;left:250px;color:#a0a0a0;font-size:14px}
 #page-nova-manifestacao #nm-stepper-row,#page-nova-manifestacao #nm-step-label-main,#page-nova-manifestacao #nm-step-desc-main{display:none!important}
@@ -101,7 +105,7 @@
   #page-visao-geral .dex2-head{align-items:flex-start;flex-direction:column}
   #page-sugestoes-melhoria .cp-top,#page-relatorio-satisfacao .rs-top{padding:12px 18px}
   #page-nova-manifestacao .nm-ref-sidebar{display:none}
-  #page-nova-manifestacao #nm-steps-body{margin-left:0;padding:18px}
+  #page-nova-manifestacao #nm-steps-body{margin-left:0;width:100%;padding:18px}
   #page-nova-manifestacao #nm-steps-body:after{display:none}
 }
 @media(max-width:600px){
