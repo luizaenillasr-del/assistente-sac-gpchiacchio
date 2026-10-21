@@ -6827,33 +6827,51 @@
 .ps-ocp-l{font-size:10.5px;font-weight:700;letter-spacing:.06em;color:#7A4C00}
 .ps-man{border:1.5px solid #C70602;background:#FFF8F8;border-radius:9px;padding:10px 12px;display:flex;flex-direction:column;gap:4px}
 .ps-man-l{font-size:10.5px;font-weight:700;letter-spacing:.06em;color:#A80502}
+/* cp-top: barra superior fixa do Centro das Pesquisas */
+.cp-top{background:#fff;border-bottom:1px solid #E4E4E4;padding:0 20px;height:52px;display:flex;align-items:center;gap:12px;box-shadow:0 1px 4px rgba(0,0,0,.06);flex-wrap:nowrap;overflow:hidden}
+.cp-top-title{display:flex;flex-direction:column;gap:1px;white-space:nowrap;flex-shrink:0}
+.cp-top-title b{font-size:13.5px;font-weight:700;letter-spacing:.01em}
+.cp-top-title span{font-size:10.5px;color:#909090}
+.cp-top-filters{display:flex;gap:7px;align-items:center;flex:1;justify-content:center}
+.cp-top-filters select{height:30px;border:1px solid #D6D6D6;border-radius:6px;padding:0 8px;background:#fff;font-size:12px;color:#1F1F1F;font-weight:500;font-family:inherit;cursor:pointer}
+.cp-top-actions{display:flex;gap:6px;align-items:center;margin-left:auto;flex-shrink:0}
+@media(max-width:800px){.cp-top-filters{display:none}.cp-top-actions button span{display:none}}
+@media print{.cp-noprint{display:none!important}}
 </style>
 <!-- ps-* FIM -->
 
   <!-- ===== SUGESTÕES DE MELHORIA ===== -->
   <div class="page" id="page-sugestoes-melhoria" style="background:#F4F4F4;overflow-y:auto">
-    <!-- Banner de identidade visual por empresa -->
-    <div id="cp-empresa-banner" style="display:none;padding:14px 24px 12px;border-bottom:3px solid #B9171A;background:#fff;align-items:center;gap:14px">
-      <img id="cp-empresa-logo" src="" alt="" style="height:38px;width:auto;max-width:160px;display:block">
-      <div>
-        <div id="cp-empresa-label" style="font-size:11px;font-weight:700;letter-spacing:.08em;color:#666464">PESQUISA DE SATISFAÇÃO</div>
-        <div id="cp-empresa-nome" style="font-size:17px;font-weight:700;margin-top:1px"></div>
+    <!-- Barra superior fixa -->
+    <div class="cp-top cp-noprint" style="position:sticky;top:0;z-index:20">
+      <img src="/assets/logo-chiacchio-new.png" alt="" style="height:26px;width:auto;flex-shrink:0" id="cp-top-logo">
+      <div class="cp-top-title">
+        <b>Centro das Pesquisas</b>
+        <span>Satisfação · Chiacchio, Plaschio e Cesbap</span>
+      </div>
+      <!-- Filtros integrados na barra -->
+      <div class="cp-top-filters">
+        <select id="cp-f-empresa" onchange="cpAplica()" title="Empresa">
+          <option value="">Todas as empresas</option>
+          <option value="Chiacchio">Chiacchio</option>
+          <option value="Plaschio">Plaschio</option>
+          <option value="Cesbap">Cesbap</option>
+        </select>
+        <select id="cp-f-ano" onchange="cpAplica()" title="Ano">
+          <option value="">Todos os anos</option>
+        </select>
+        <select id="cp-f-mes" onchange="cpAplica()" title="Mês">
+          <option value="">Todos os meses</option>
+        </select>
+        <button onclick="cpClearFilters()" style="border:0;background:none;color:#A80502;cursor:pointer;font-size:12px;font-weight:600;padding:0 4px;white-space:nowrap">Limpar</button>
+      </div>
+      <div class="cp-top-actions">
+        <button onclick="cpTab('notificacoes',document.getElementById('cp-tab-btn-notificacoes'))" style="border:1px solid #D6D6D6;background:#fff;border-radius:7px;padding:6px 11px;cursor:pointer;font-size:12.5px;white-space:nowrap;font-family:inherit">Notificações</button>
+        <button onclick="navigate('relatorio-satisfacao', document.querySelector('[onclick*=relatorio-satisfacao]'))" style="border:1px solid #1F1F1F;background:#fff;color:#1F1F1F;border-radius:7px;padding:6px 11px;font-size:12.5px;font-weight:600;white-space:nowrap;cursor:pointer;font-family:inherit">Relatórios mensais</button>
+        <button onclick="cpOpenLinks()" style="border:0;background:#C70602;color:#fff;border-radius:7px;padding:7px 13px;cursor:pointer;font-size:12.5px;font-weight:600;white-space:nowrap;font-family:inherit">Links das pesquisas</button>
       </div>
     </div>
-    <div style="padding:20px 24px 56px">
-      <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:16px">
-        <div>
-          <div style="font-size:12px;color:#707070">Relacionamento / Pesquisa de satisfação</div>
-          <div style="font-size:22px;font-weight:700;letter-spacing:.01em">CENTRO DAS PESQUISAS</div>
-          <div style="font-size:13px;color:#666464;margin-top:2px">Respostas das pesquisas públicas da Chiacchio, Plaschio e Cesbap, com análise das notas e rastreabilidade.</div>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <button onclick="cpTab('notificacoes',document.getElementById('cp-tab-btn-notificacoes'))" style="border:1px solid #D6D6D6;background:#fff;border-radius:8px;padding:8px 12px;cursor:pointer;font-size:13px;white-space:nowrap">Notificações</button>
-          <button onclick="navigate('relatorio-satisfacao', document.querySelector('[onclick*=relatorio-satisfacao]'))" style="border:1px solid #1F1F1F;background:#fff;color:#1F1F1F;border-radius:8px;padding:8px 12px;font-size:13px;font-weight:600;white-space:nowrap;cursor:pointer">Relatórios mensais</button>
-          <button onclick="cpOpenLinks()" style="border:0;background:#C70602;color:#fff;border-radius:8px;padding:9px 14px;cursor:pointer;font-size:13px;font-weight:600;white-space:nowrap">Links das pesquisas</button>
-        </div>
-      </div>
-
+    <div style="padding:14px 24px 56px">
       <!-- Tab bar -->
       <div id="cp-tabbar" style="display:flex;gap:2px;border-bottom:1px solid #E4E4E4;overflow-x:auto;scrollbar-width:none;margin-bottom:14px">
         <button id="cp-tab-btn-geral" onclick="cpTab('geral',this)" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#1F1F1F;border-bottom:2px solid #C70602;margin-bottom:-1px;font-weight:700;font-family:inherit">Visão geral</button>
@@ -6864,29 +6882,6 @@
         <!-- Aba Ocorrências removida: OCP não faz parte do fluxo de pesquisa -->
         <button id="cp-tab-btn-editor" onclick="cpTab('editor',this)" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Editor do questionário</button>
         <button id="cp-tab-btn-notificacoes" onclick="cpTab('notificacoes',this)" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Notificações</button>
-      </div>
-
-      <!-- Filters card -->
-      <div id="cp-filtros" style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:12px 14px;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:14px">
-        <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:#666464;font-weight:600">EMPRESA
-          <select id="cp-f-empresa" onchange="cpAplica()" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:12.5px;color:#1F1F1F;font-weight:500">
-            <option value="">Todas</option>
-            <option value="Chiacchio">Chiacchio</option>
-            <option value="Plaschio">Plaschio</option>
-            <option value="Cesbap">Cesbap</option>
-          </select>
-        </label>
-        <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:#666464;font-weight:600">ANO
-          <select id="cp-f-ano" onchange="cpAplica()" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:12.5px;color:#1F1F1F;font-weight:500">
-            <option value="">Todos</option>
-          </select>
-        </label>
-        <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:#666464;font-weight:600">MÊS
-          <select id="cp-f-mes" onchange="cpAplica()" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:12.5px;color:#1F1F1F;font-weight:500">
-            <option value="">Todos</option>
-          </select>
-        </label>
-        <button onclick="cpClearFilters()" style="height:34px;border:0;background:none;color:#A80502;cursor:pointer;font-size:12.5px;font-weight:600;padding:0 6px">Limpar filtros</button>
       </div>
 
       <!-- Tab panels -->
