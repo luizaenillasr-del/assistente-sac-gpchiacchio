@@ -7723,12 +7723,17 @@
 
 <div class="rs-top rs-noprint" style="position:sticky;top:0;z-index:20">
   <img src="/assets/logo-chiacchio-new.png" alt="" style="height:26px;width:auto" id="rel-top-logo">
-  <div class="rs-top-title"><b>Relatórios de satisfação</b><span id="rel-topsub">Pesquisa de satisfação · relatório mensal para Diretoria e Presidência</span></div>
-  <a id="rel-link-centro" href="#" onclick="navegarPara('pesquisas');return false;" style="font-size:12.5px;font-weight:600;white-space:nowrap;color:#A80502;text-decoration:none">← Centro das Pesquisas</a>
+  <div class="rs-top-title"><b>Relatório de Satisfação</b><span id="rel-topsub">Editor do relatório mensal · Diretoria e Presidência</span></div>
+  <div id="rel-top-status" style="display:flex;flex-direction:column;gap:3px;padding:0 4px">
+    <span id="rel-top-badge" style="display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;padding:3px 10px;border-radius:99px;background:#E4E4E4;color:#545252;white-space:nowrap">Não iniciado</span>
+    <span id="rel-top-meta" style="font-size:10.5px;color:#909090;white-space:nowrap"></span>
+  </div>
+  <a id="rel-link-centro" href="#" onclick="navegarPara('pesquisas');return false;" style="font-size:12.5px;font-weight:600;white-space:nowrap;color:#A80502;text-decoration:none">← Pesquisas</a>
   <div class="rs-top-actions">
-    <button type="button" class="rs-switch" id="rel-btn-diretoria" onclick="relToggleDiretoria()"><i><b></b></i>Visão da Diretoria</button>
+    <button type="button" class="rs-switch" id="rel-btn-diretoria" onclick="relToggleDiretoria()"><i><b></b></i>Visão Diretoria</button>
+    <button type="button" id="rel-btn-salvar-rascunho" class="rs-btn-out" onclick="relSalvarRascunho()" style="display:none">Salvar rascunho</button>
     <button type="button" class="rs-btn-out" onclick="relBaixarPdf()">Baixar PDF</button>
-    <button type="button" class="rs-btn-send" id="rel-btn-enviar" onclick="relCompartilharLink()">Enviar para Diretoria e Presidência</button>
+    <button type="button" class="rs-btn-send" id="rel-btn-enviar" onclick="relCompartilharLink()">Enviar para Diretoria</button>
   </div>
 </div>
 
@@ -7767,8 +7772,8 @@
 <div class="rs-filtros rs-noprint" style="padding-top:8px;padding-bottom:0">
   <button type="button" id="rel-btn-accordion" onclick="relToggleAccordion()" style="display:flex;align-items:center;gap:8px;border:1.5px solid #D6D6D6;background:#fff;border-radius:10px;padding:10px 16px;cursor:pointer;font-size:13px;font-weight:700;color:#1F1F1F;width:100%;text-align:left;font-family:inherit;transition:border-color .15s,background .15s,color .15s">
     <span id="rel-accordion-arrow">▼</span>
-    <span id="rel-accordion-lbl">Preencher dados do mês</span>
-    <span id="rel-accordion-hint" style="margin-left:auto;font-size:12px;font-weight:500;color:#666464">Abrir para editar os dados que geram o relatório</span>
+    <span id="rel-accordion-lbl">Notas por critério e análises mensais</span>
+    <span id="rel-accordion-hint" style="margin-left:auto;font-size:12px;font-weight:500;color:#666464">Abrir para inserir notas manuais e textos mês a mês</span>
   </button>
 </div>
 <div id="rel-accordion-body" style="display:none;max-width:1120px;width:100%;margin:0 auto;padding:0 20px 8px"></div>
@@ -8010,18 +8015,48 @@
     _autos={};
     let h='';
 
-    // Cabeçalho do relatório
+    // Cabeçalho do relatório — campos editáveis inline
     const resp=textos.responsavel||'';const cargo_a=textos.cargo_analista||'';const resumo_ex=textos.resumo_executivo||'';
+    const _inpStyle='height:32px;border:1px solid #D6D6D6;border-radius:6px;padding:0 10px;font-size:12.5px;font-family:inherit;background:#fff;color:#1F1F1F';
     h+=`<div class="rs-card rs-card-flush">
-      <div class="rs-masthead-top" style="border-bottom-color:${lg[1]}"><img src="${lg[0]}" alt="${esc(empresa)}"><span class="rs-sub">${semDados?'⚠ Sem pesquisas neste período — dados manuais':'Dados atualizados automaticamente pelas pesquisas'}</span></div>
+      <div class="rs-masthead-top" style="border-bottom-color:${lg[1]}"><img src="${lg[0]}" alt="${esc(empresa)}"><span class="rs-sub">${semDados?'⚠ Sem pesquisas neste período — preencha manualmente':'Dados calculados a partir das pesquisas recebidas'}</span></div>
       <div class="rs-masthead-body">
-        <div style="min-width:0"><div class="rs-kicker">RELATÓRIO DE PESQUISA DE SATISFAÇÃO DE CLIENTES</div><div class="rs-h1">${esc(empresa.toUpperCase())} · ${esc(mlong(ref))}</div>
-        ${resp?`<div style="font-size:12.5px;color:#545252;margin-top:6px">Elaborado por: <b>${esc(resp)}</b>${cargo_a?' · '+esc(cargo_a):''} <span style="font-size:10px;background:#E6EEF8;color:#24508F;padding:1px 5px;border-radius:99px;margin-left:4px">✏ Manual</span></div>`:''}
+        <div style="min-width:0">
+          <div class="rs-kicker">RELATÓRIO DE PESQUISA DE SATISFAÇÃO DE CLIENTES</div>
+          <div class="rs-h1">${esc(empresa.toUpperCase())} · ${esc(mlong(ref))}</div>
+          ${!_dir?`<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;align-items:center">
+            <div style="display:flex;flex-direction:column;gap:3px"><span style="font-size:10.5px;font-weight:700;letter-spacing:.06em;color:#666464">ELABORADO POR</span><input id="rel-inp-responsavel" type="text" placeholder="Nome do responsável" value="${esc(resp)}" style="${_inpStyle};min-width:180px"></div>
+            <div style="display:flex;flex-direction:column;gap:3px"><span style="font-size:10.5px;font-weight:700;letter-spacing:.06em;color:#666464">CARGO</span><input id="rel-inp-cargo" type="text" placeholder="Ex: Analista de SAC" value="${esc(cargo_a)}" style="${_inpStyle};min-width:150px"></div>
+          </div>`:(resp?`<div style="font-size:12.5px;color:#545252;margin-top:6px">Elaborado por: <b>${esc(resp)}</b>${cargo_a?' · '+esc(cargo_a):''}</div>`:'')}
         </div>
         <div class="rs-meta-box"><small>META DE SATISFAÇÃO GERAL</small><b>≥ ${metaTxt()}</b></div>
       </div>
-      ${resumo_ex?`<div style="padding:14px 22px;border-top:1px solid #EFEFEF;background:#FAFAFA"><div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:#545252;margin-bottom:4px">RESUMO EXECUTIVO <span style="font-size:10px;background:#E6EEF8;color:#24508F;padding:1px 5px;border-radius:99px;font-weight:600">✏ Manual</span></div><p style="margin:0;font-size:13.5px;line-height:1.65;color:#2B2A2A">${esc(resumo_ex)}</p></div>`:''}
+      <div style="padding:14px 22px;border-top:1px solid #EFEFEF;background:#FAFAFA">
+        <div style="font-size:10.5px;font-weight:700;letter-spacing:.08em;color:#545252;margin-bottom:6px">RESUMO EXECUTIVO <span style="font-size:10px;background:#E6EEF8;color:#24508F;padding:1px 5px;border-radius:99px;font-weight:600">✏ Manual</span></div>
+        ${!_dir?`<textarea id="rel-inp-resumo" class="rs-ta" rows="2" placeholder="Breve resumo dos resultados do período para a Diretoria/Presidência…">${esc(resumo_ex)}</textarea>
+        <div style="display:flex;justify-content:flex-end;margin-top:6px"><button type="button" class="rs-btn-sm rs-noprint" style="background:#1F1F1F;color:#fff;border-color:#1F1F1F;font-weight:600;padding:6px 14px" onclick="relSalvarCabecalho()">Salvar cabeçalho</button></div>`
+        :(resumo_ex?`<p style="margin:0;font-size:13.5px;line-height:1.65;color:#2B2A2A">${esc(resumo_ex)}</p>`:`<p style="margin:0;font-size:13px;color:#909090;font-style:italic">Resumo executivo não preenchido.</p>`)}
+      </div>
     </div>`;
+
+    // Card de dados do período — preenchimento manual de quantitativos
+    const totEnv=textos.total_enviado||'';const totResp=textos.total_respondido||'';
+    const txRate=totEnv&&totResp&&+totEnv>0?Math.round(+totResp/+totEnv*100)+'%':'—';
+    if(!_dir){
+      h+=`<div class="rs-card" id="rel-card-dados-periodo" style="border-left:4px solid #24508F">
+        <div class="rs-card-h" style="align-items:center"><b>Dados do período</b>
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+            <span class="rs-src" style="background:#E6EEF8;color:#24508F">✏ Preenchimento manual · complementam os dados automáticos</span>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px">
+          <div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:11px;font-weight:600;color:#545252">PESQUISAS ENVIADAS</span><input id="rel-inp-total_enviado" type="number" min="0" placeholder="—" value="${esc(totEnv)}" style="${_inpStyle}"></div>
+          <div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:11px;font-weight:600;color:#545252">RESPOSTAS RECEBIDAS</span><input id="rel-inp-total_respondido" type="number" min="0" placeholder="—" value="${esc(totResp)}" style="${_inpStyle}"></div>
+          <div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:11px;font-weight:600;color:#545252">TAXA DE RESPOSTA</span><div style="height:32px;display:flex;align-items:center;font-size:17px;font-weight:700;color:${txRate==='—'?'#909090':'#1E6B3A'}">${esc(txRate)}</div></div>
+        </div>
+        <div style="display:flex;justify-content:flex-end"><button type="button" class="rs-btn-sm rs-noprint" style="background:#1F1F1F;color:#fff;border-color:#1F1F1F;font-weight:600;padding:6px 14px" onclick="relSalvarDados()">Salvar dados</button></div>
+      </div>`;
+    }
 
     // Aviso sem dados
     if(semDados){
@@ -8171,32 +8206,47 @@
   }
 
   // ── barra de gestão do relatório ──────────────────────────────────────────────
+  function _statusLabel(meta,textos){
+    if(meta){
+      if(meta.status==='RASCUNHO') return {lbl:'Rascunho',bg:'#FBF0D9',fg:'#7A4C00'};
+      return {lbl:'Publicado',bg:'#E6F2EA',fg:'#1E6B3A'};
+    }
+    const t=textos||{};
+    const preenchido=t.responsavel||t.resumo_executivo||t.desempenho||t.analise_critica;
+    if(preenchido) return {lbl:'Em preenchimento',bg:'#E6EEF8',fg:'#24508F'};
+    return {lbl:'Não iniciado',bg:'#E4E4E4',fg:'#545252'};
+  }
+
   function _atualizarBarraRelatorio(){
     const meta=_d&&_d.relMeta;
+    const textos=_d&&_d.textos;
     const badge=_val('rel-status-badge'),vtxt=_val('rel-versao-txt');
     const btnGerar=_val('rel-btn-gerar'),btnPub=_val('rel-btn-publicar'),btnNova=_val('rel-btn-nova-versao'),btnEnviar=_val('rel-btn-enviar');
-    if(!badge) return;
-    if(!meta){
-      badge.textContent='Sem relatório gerado';badge.style.background='#E4E4E4';badge.style.color='#545252';
-      if(vtxt) vtxt.textContent='';
-      if(btnGerar) btnGerar.style.display='';
-      if(btnPub) btnPub.style.display='none';
-      if(btnNova) btnNova.style.display='none';
+    const btnSalvar=_val('rel-btn-salvar-rascunho');
+    const topBadge=_val('rel-top-badge'),topMeta=_val('rel-top-meta');
+
+    // Hidden bar (compat)
+    if(badge){
+      if(!meta){badge.textContent='Sem relatório gerado';badge.style.background='#E4E4E4';badge.style.color='#545252';if(vtxt)vtxt.textContent='';if(btnGerar)btnGerar.style.display='';if(btnPub)btnPub.style.display='none';if(btnNova)btnNova.style.display='none';}
+      else if(meta.status==='RASCUNHO'){badge.textContent='Rascunho';badge.style.background='#FBF0D9';badge.style.color='#7A4C00';if(vtxt)vtxt.textContent=`v${meta.versao}`;if(btnGerar)btnGerar.style.display='none';if(btnPub)btnPub.style.display='';if(btnNova)btnNova.style.display='none';}
+      else{badge.textContent='Publicado';badge.style.background='#E6F2EA';badge.style.color='#1E6B3A';if(vtxt)vtxt.textContent=`v${meta.versao}`;if(btnGerar)btnGerar.style.display='none';if(btnPub)btnPub.style.display='none';if(btnNova)btnNova.style.display='';}
       if(btnEnviar) btnEnviar.disabled=false;
-    } else if(meta.status==='RASCUNHO'){
-      badge.textContent='Rascunho';badge.style.background='#FBF0D9';badge.style.color='#7A4C00';
-      if(vtxt) vtxt.textContent=`v${meta.versao}`;
-      if(btnGerar) btnGerar.style.display='none';
-      if(btnPub) btnPub.style.display='';
-      if(btnNova) btnNova.style.display='none';
-      if(btnEnviar) btnEnviar.disabled=false;
-    } else {
-      badge.textContent='Publicado';badge.style.background='#E6F2EA';badge.style.color='#1E6B3A';
-      if(vtxt) vtxt.textContent=`v${meta.versao} · ${meta.publicado_em?new Date(meta.publicado_em).toLocaleDateString('pt-BR'):''}`;
-      if(btnGerar) btnGerar.style.display='none';
-      if(btnPub) btnPub.style.display='none';
-      if(btnNova) btnNova.style.display='';
-      if(btnEnviar) btnEnviar.disabled=false;
+    }
+
+    // Top bar status badge
+    const sl=_statusLabel(meta,textos);
+    if(topBadge){topBadge.textContent=sl.lbl;topBadge.style.background=sl.bg;topBadge.style.color=sl.fg;}
+    if(topMeta){
+      let info='';
+      if(meta&&meta.atualizado_em) info='Atualizado '+new Date(meta.atualizado_em).toLocaleDateString('pt-BR');
+      else if(textos&&textos.responsavel) info='Resp.: '+textos.responsavel;
+      if(meta) info+=(info?' · ':'')+'v'+meta.versao;
+      topMeta.textContent=info;
+    }
+    // Salvar rascunho: visível quando não publicado e há algum dado
+    if(btnSalvar){
+      const temDados=_d&&(_d.itens||[]).length>0;
+      btnSalvar.style.display=(!meta||meta.status==='RASCUNHO')&&!_dir?'':'none';
     }
   }
 
@@ -8604,6 +8654,76 @@
     SEC.forEach(([id])=>{const el=document.getElementById('rrm-'+id);if(el)el.value='';});
   };
 
+  // ── salvar cabeçalho inline ───────────────────────────────────────────────────
+  window.relSalvarCabecalho=async function(){
+    const tok=sessionStorage.getItem('sac-token');
+    const empresa=_empresa(),ano=_val('rel-f-ano')?.value,mes=_val('rel-f-mes')?.value;
+    const campos={
+      responsavel:(_val('rel-inp-responsavel')?.value||'').trim(),
+      cargo_analista:(_val('rel-inp-cargo')?.value||'').trim(),
+      resumo_executivo:(_val('rel-inp-resumo')?.value||'').trim()
+    };
+    let ok=true;
+    for(const [campo,valor] of Object.entries(campos)){
+      try{
+        const r=await fetch('/api/pesquisas/relatorio-texto',{method:'POST',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({empresa,ano,mes,campo,valor})});
+        const j=await r.json().catch(()=>({}));
+        if(!r.ok||j.sucesso===false){ok=false;}
+        else{if(!_d)_d={};if(!_d.textos)_d.textos={};_d.textos[campo]=valor;}
+      }catch(e){ok=false;}
+    }
+    if(ok){_toast('Cabeçalho salvo.');_atualizarBarraRelatorio();}
+    else _toast('Erro ao salvar cabeçalho.');
+  };
+
+  // ── salvar dados quantitativos inline ─────────────────────────────────────────
+  window.relSalvarDados=async function(){
+    const tok=sessionStorage.getItem('sac-token');
+    const empresa=_empresa(),ano=_val('rel-f-ano')?.value,mes=_val('rel-f-mes')?.value;
+    const campos={
+      total_enviado:(_val('rel-inp-total_enviado')?.value||'').trim(),
+      total_respondido:(_val('rel-inp-total_respondido')?.value||'').trim()
+    };
+    let ok=true;
+    for(const [campo,valor] of Object.entries(campos)){
+      try{
+        const r=await fetch('/api/pesquisas/relatorio-texto',{method:'POST',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({empresa,ano,mes,campo,valor})});
+        const j=await r.json().catch(()=>({}));
+        if(!r.ok||j.sucesso===false)ok=false;
+        else{if(!_d)_d={};if(!_d.textos)_d.textos={};_d.textos[campo]=valor;}
+      }catch(e){ok=false;}
+    }
+    if(ok){_toast('Dados do período salvos.');_renderizar();}
+    else _toast('Erro ao salvar dados.');
+  };
+
+  // ── salvar rascunho (cria/atualiza versão rascunho) ───────────────────────────
+  window.relSalvarRascunho=async function(){
+    const empresa=_empresa(),ano=_val('rel-f-ano')?.value,mes=_val('rel-f-mes')?.value;
+    const tok=sessionStorage.getItem('sac-token');
+    const btn=_val('rel-btn-salvar-rascunho');
+    if(btn){btn.disabled=true;btn.textContent='Salvando…';}
+    // Salva cabeçalho inline primeiro (se existirem campos)
+    if(_val('rel-inp-responsavel')){
+      const campos=['responsavel','cargo_analista','resumo_executivo'];
+      const ids=['rel-inp-responsavel','rel-inp-cargo','rel-inp-resumo'];
+      for(let i=0;i<campos.length;i++){
+        const v=(_val(ids[i])?.value||'').trim();
+        await fetch('/api/pesquisas/relatorio-texto',{method:'POST',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({empresa,ano,mes,campo:campos[i],valor:v})}).catch(()=>{});
+        if(!_d)_d={};if(!_d.textos)_d.textos={};_d.textos[campos[i]]=v;
+      }
+    }
+    // Cria/atualiza rascunho
+    const cur=_d&&_serie().find(r=>r.k===_refKey());
+    try{
+      const r=await fetch('/api/relatorios/gerar',{method:'POST',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({empresa,ano,mes,indicador:cur?.ind,nps_score:_d?.nps?.score})});
+      const j=await r.json().catch(()=>({}));
+      if(!r.ok||j.sucesso===false){_toast('Erro ao salvar rascunho.'+(j.erro?' '+j.erro:''));}
+      else{_toast('Rascunho v'+j.versao+' salvo.');await relCarregar();}
+    }catch(e){_toast('Erro ao salvar rascunho.');}
+    if(btn){btn.disabled=false;btn.textContent='Salvar rascunho';}
+  };
+
   window.relBaixarPdf=function(){
     document.body.classList.add('rs-printing');
     const fim=function(){document.body.classList.remove('rs-printing');window.removeEventListener('afterprint',fim);};
@@ -8666,8 +8786,6 @@
       if(sp.get('rel_ano')){const a=_val('rel-f-ano');if(a)a.value=sp.get('rel_ano');}
       if(sp.get('rel_mes')){const m=_val('rel-f-mes');if(m)m.value=sp.get('rel_mes');}
       relCarregar();
-      // Abre accordion de preenchimento por padrão
-      setTimeout(()=>{ if(typeof relToggleAccordion==='function') relToggleAccordion(); },100);
     };
   });
 
