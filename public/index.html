@@ -603,6 +603,60 @@
 .rnc-block{border:1px solid var(--gray-200);border-radius:10px;padding:14px;margin-bottom:10px;background:#fff}.rnc-block-title{font-size:11px;text-transform:uppercase;color:var(--gray-400);font-weight:800;margin-bottom:9px}.rnc-value{font-size:13px;color:var(--gray-800);line-height:1.55;white-space:pre-wrap}.rnc-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.decision-bar{display:flex;gap:8px;padding:12px;background:var(--gray-50);border-top:1px solid var(--gray-200);position:sticky;bottom:0}.decision-bar .btn{flex:1;justify-content:center}
 .devolutiva-policy{padding:10px 12px;border:1px solid #E9D5D8;background:#FFF8F9;border-radius:8px;font-size:11px;color:var(--gray-600);line-height:1.5;margin-bottom:8px}.devolutiva-policy strong{color:var(--red)}
 @media(max-width:900px){.portal-grid,.field-grid,.field-grid.three,.rnc-grid{grid-template-columns:1fr}.portal-kpis{grid-template-columns:repeat(2,1fr)}}
+/* ===== PORTAL DO CLIENTE — ADMIN ===== */
+.padm-top{background:#fff;border-bottom:1px solid #E4E4E4;padding:0 24px;height:52px;display:flex;align-items:center;gap:8px;box-shadow:0 1px 4px rgba(0,0,0,.05);flex-shrink:0;overflow-x:auto}
+.padm-tab{height:52px;padding:0 16px;border:none;background:none;font-family:inherit;font-size:13px;font-weight:500;color:#545252;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:.15s}
+.padm-tab:hover{color:#C70602}
+.padm-tab.active{color:#C70602;border-bottom-color:#C70602;font-weight:700}
+.padm-body{flex:1;overflow-y:auto;background:#F4F4F4;padding:20px 24px 40px}
+.padm-section{display:none}
+.padm-section.active{display:block}
+.padm-kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:20px}
+.padm-kpi{background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:4px}
+.padm-kpi-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#707070}
+.padm-kpi-val{font-size:24px;font-weight:800;color:#1F1F1F}
+.padm-kpi-sub{font-size:11.5px;color:#909090}
+.padm-kpi.ok .padm-kpi-val{color:#16803C}
+.padm-kpi.warn .padm-kpi-val{color:#B45309}
+.padm-card{background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:20px;margin-bottom:16px}
+.padm-card-title{font-size:13px;font-weight:700;margin-bottom:14px;color:#1F1F1F;display:flex;align-items:center;gap:8px}
+.padm-card-title .padm-badge{font-size:10px;padding:2px 8px;border-radius:10px;background:#FDECEC;color:#C70602;font-weight:700}
+.padm-field{display:flex;flex-direction:column;gap:5px;margin-bottom:14px}
+.padm-field label{font-size:12px;font-weight:700;color:#1F1F1F}
+.padm-field input,.padm-field select,.padm-field textarea{height:40px;border:1.5px solid #D6D6D6;border-radius:7px;padding:0 10px;font-size:13.5px;font-family:inherit;color:#1F1F1F;background:#fff;transition:.15s;width:100%}
+.padm-field textarea{height:80px;padding:8px 10px;resize:vertical}
+.padm-field input:focus,.padm-field select:focus,.padm-field textarea:focus{outline:none;border-color:#C70602}
+.padm-row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.padm-toggle-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid #F0F0F0}
+.padm-toggle-row:last-child{border-bottom:none}
+.padm-toggle-label{font-size:13.5px;font-weight:500;color:#1F1F1F}
+.padm-toggle-sub{font-size:11.5px;color:#909090;margin-top:2px}
+.padm-toggle{position:relative;width:40px;height:22px;flex-shrink:0}
+.padm-toggle input{opacity:0;width:0;height:0}
+.padm-toggle-slider{position:absolute;inset:0;background:#D0D0D0;border-radius:11px;cursor:pointer;transition:.2s}
+.padm-toggle-slider:before{content:'';position:absolute;width:16px;height:16px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s}
+.padm-toggle input:checked+.padm-toggle-slider{background:#C70602}
+.padm-toggle input:checked+.padm-toggle-slider:before{transform:translateX(18px)}
+.padm-link-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #F0F0F0}
+.padm-link-row:last-child{border-bottom:none}
+.padm-link-label{font-size:12px;font-weight:600;color:#707070;min-width:140px;flex-shrink:0}
+.padm-link-url{font-size:13px;color:#1F1F1F;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.padm-link-url a{color:#C70602;text-decoration:none}
+.padm-link-url a:hover{text-decoration:underline}
+.padm-copy-btn{height:30px;padding:0 10px;font-size:11.5px;border:1.5px solid #D6D6D6;border-radius:6px;background:#fff;cursor:pointer;font-family:inherit;color:#545252;white-space:nowrap;transition:.15s}
+.padm-copy-btn:hover{border-color:#C70602;color:#C70602}
+.padm-hist-row{display:grid;grid-template-columns:160px 1fr auto;gap:12px;align-items:start;padding:10px 0;border-bottom:1px solid #F0F0F0;font-size:12.5px}
+.padm-hist-row:last-child{border-bottom:none}
+.padm-hist-date{color:#909090;font-size:11.5px}
+.padm-hist-desc{color:#1F1F1F}
+.padm-hist-user{color:#707070;text-align:right}
+.padm-actions{display:flex;gap:8px;justify-content:flex-end;padding-top:4px}
+.padm-empty{text-align:center;padding:40px;color:#909090;font-size:13.5px}
+.padm-status-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px}
+.padm-status-dot.green{background:#16803C}
+.padm-status-dot.red{background:#C70602}
+.padm-status-dot.gray{background:#D0D0D0}
+@media(max-width:700px){.padm-row2{grid-template-columns:1fr}.padm-hist-row{grid-template-columns:1fr}.padm-body{padding:14px 14px 40px}}
 </style>
 </head>
 <style>
@@ -2451,6 +2505,7 @@
     <button class="sidebar-item" id="sidebar-aprovadores-admin" onclick="navigate('aprovadores', this)"><span class="sidebar-dot"></span>Aprovadores e Competências</button>
     <button class="sidebar-item" onclick="navigate('auditoria', this)"><span class="sidebar-dot"></span>Auditoria</button>
     <button class="sidebar-item" onclick="navigate('prazos-regionais', this)"><span class="sidebar-dot"></span>Configurações</button>
+    <button class="sidebar-item" id="sidebar-portal-admin" onclick="navigate('portal-admin', this)"><span class="sidebar-dot"></span>Portal do Cliente</button>
   </div>
 
   <div class="sidebar-bottom">
@@ -9506,6 +9561,7 @@ function navigate(page, el, _opts) {
   if (page === 'matriz-conhecimento') loadMatrizConhecimento();
   if (page === 'central-sac' && typeof window.loadCentralSAC === 'function') window.loadCentralSAC();
   if (page === 'alimentacao' && typeof window.loadAlimentacao === 'function') window.loadAlimentacao();
+  if (page === 'portal-admin' && typeof window.padmLoad === 'function') window.padmLoad();
   if (page === 'sugestoes-melhoria') {
     const _geralBtn = document.getElementById('cp-tab-btn-geral');
     if (_geralBtn && typeof cpTab === 'function') cpTab('geral', _geralBtn);
@@ -14655,9 +14711,9 @@ document.addEventListener('visibilitychange', () => {
   const _PG_CONSULTA=['visao-geral','acompanhamento','banco-manifestacoes','banco-rnc','relatorio-satisfacao'];
   const allowed={
     // ADMINISTRADOR — acesso total
-    'MASTER':['visao-geral','acompanhamento','nova-manifestacao','banco-manifestacoes','aprovadores','banco-rnc','usuarios','cerebro','base-conhecimento','painel-maquina','auditoria','prazos-regionais','similares','rca','biblioteca-fichas','relatorio-satisfacao','sugestoes-melhoria','setores','central-sac'],
+    'MASTER':['visao-geral','acompanhamento','nova-manifestacao','banco-manifestacoes','aprovadores','banco-rnc','usuarios','cerebro','base-conhecimento','painel-maquina','auditoria','prazos-regionais','similares','rca','biblioteca-fichas','relatorio-satisfacao','sugestoes-melhoria','setores','central-sac','portal-admin'],
     // GESTOR SAC — visão operacional completa, sem config crítica
-    'GESTOR SAC':['visao-geral','acompanhamento','nova-manifestacao','banco-manifestacoes','aprovadores','banco-rnc','setores','biblioteca-fichas','matriz','base-conhecimento','cerebro','painel-maquina','sugestoes-melhoria','relatorio-satisfacao','causas','matriz-conhecimento','prazos-regionais','similares','rca','central-sac','central-gerente'],
+    'GESTOR SAC':['visao-geral','acompanhamento','nova-manifestacao','banco-manifestacoes','aprovadores','banco-rnc','setores','biblioteca-fichas','matriz','base-conhecimento','cerebro','painel-maquina','sugestoes-melhoria','relatorio-satisfacao','causas','matriz-conhecimento','prazos-regionais','similares','rca','central-sac','central-gerente','portal-admin'],
     // ANALISTA SAC — operação do dia a dia
     'ANALISTA SAC':['visao-geral','acompanhamento','nova-manifestacao','banco-manifestacoes','banco-rnc','cerebro','base-conhecimento','painel-maquina','similares','biblioteca-fichas','relatorio-satisfacao','sugestoes-melhoria','setores','central-gerente','central-sac'],
     // ATENDENTE SAC — registro e encaminhamento
@@ -28694,6 +28750,415 @@ if (typeof pageLoaders !== 'undefined') {
     }, 300);
   };
 })();
+
+})();
+</script>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     PORTAL DO CLIENTE — ADMINISTRAÇÃO
+     ════════════════════════════════════════════════════════════════════ -->
+<div class="page" id="page-portal-admin" style="flex-direction:column;background:#F4F4F4">
+  <!-- Top bar com abas -->
+  <div class="padm-top">
+    <button class="padm-tab active" id="padm-tab-visao" onclick="padmTab('visao')">Visão Geral</button>
+    <button class="padm-tab" id="padm-tab-empresas" onclick="padmTab('empresas')">Empresas e Pesquisas</button>
+    <button class="padm-tab" id="padm-tab-manifestacoes" onclick="padmTab('manifestacoes')">Manifestações Públicas</button>
+    <button class="padm-tab" id="padm-tab-canais" onclick="padmTab('canais')">Canais de Atendimento</button>
+    <button class="padm-tab" id="padm-tab-links" onclick="padmTab('links')">Links e Publicação</button>
+    <button class="padm-tab" id="padm-tab-historico" onclick="padmTab('historico')">Histórico</button>
+  </div>
+
+  <div class="padm-body">
+
+    <!-- VISÃO GERAL -->
+    <div class="padm-section active" id="padm-s-visao">
+      <div class="padm-kpis" id="padm-kpis">
+        <div class="padm-kpi"><span class="padm-kpi-label">Status</span><span class="padm-kpi-val" id="padm-v-status">—</span><span class="padm-kpi-sub">Portal público</span></div>
+        <div class="padm-kpi"><span class="padm-kpi-label">Respostas (30d)</span><span class="padm-kpi-val" id="padm-v-respostas">—</span><span class="padm-kpi-sub">Via portal</span></div>
+        <div class="padm-kpi"><span class="padm-kpi-label">Manifestações (30d)</span><span class="padm-kpi-val" id="padm-v-mans">—</span><span class="padm-kpi-sub">Via portal</span></div>
+        <div class="padm-kpi"><span class="padm-kpi-label">Empresas ativas</span><span class="padm-kpi-val" id="padm-v-empresas">—</span><span class="padm-kpi-sub">Com pesquisa</span></div>
+        <div class="padm-kpi"><span class="padm-kpi-label">WhatsApp</span><span class="padm-kpi-val" id="padm-v-whatsapp">—</span><span class="padm-kpi-sub">Canal de suporte</span></div>
+      </div>
+      <div class="padm-card">
+        <div class="padm-card-title">Atalhos rápidos</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <a href="/portal" target="_blank" class="btn btn-secondary" style="font-size:12.5px;height:36px;display:inline-flex;align-items:center;gap:6px;padding:0 14px;text-decoration:none">🌐 Abrir portal público</a>
+          <button class="btn btn-secondary" style="font-size:12.5px;height:36px" onclick="padmTab('canais')">📱 Configurar WhatsApp</button>
+          <button class="btn btn-secondary" style="font-size:12.5px;height:36px" onclick="padmTab('empresas')">📊 Gerenciar pesquisas</button>
+          <button class="btn btn-secondary" style="font-size:12.5px;height:36px" onclick="padmTab('links')">🔗 Ver links públicos</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- EMPRESAS E PESQUISAS -->
+    <div class="padm-section" id="padm-s-empresas">
+      <div class="padm-card">
+        <div class="padm-card-title">Empresas com pesquisa pública</div>
+        <div id="padm-empresas-list">
+          <div class="padm-toggle-row">
+            <div><div class="padm-toggle-label"><span class="padm-status-dot green"></span>Chiacchio Embalagens</div><div class="padm-toggle-sub">Link: /pesquisa/chiacchio — Pesquisa integrada ao sistema oficial</div></div>
+            <label class="padm-toggle"><input type="checkbox" id="padm-ch-chiacchio" checked onchange="padmToggleEmpresa('chiacchio',this.checked)"><span class="padm-toggle-slider"></span></label>
+          </div>
+          <div class="padm-toggle-row">
+            <div><div class="padm-toggle-label"><span class="padm-status-dot green"></span>Plaschio</div><div class="padm-toggle-sub">Link: /pesquisa/plaschio — Pesquisa integrada ao sistema oficial</div></div>
+            <label class="padm-toggle"><input type="checkbox" id="padm-ch-plaschio" checked onchange="padmToggleEmpresa('plaschio',this.checked)"><span class="padm-toggle-slider"></span></label>
+          </div>
+          <div class="padm-toggle-row">
+            <div><div class="padm-toggle-label"><span class="padm-status-dot green"></span>Cesbap / Tubahia</div><div class="padm-toggle-sub">Link: /pesquisa/tubahia — Pesquisa integrada ao sistema oficial</div></div>
+            <label class="padm-toggle"><input type="checkbox" id="padm-ch-tubahia" checked onchange="padmToggleEmpresa('tubahia',this.checked)"><span class="padm-toggle-slider"></span></label>
+          </div>
+        </div>
+        <div style="padding-top:12px;font-size:12px;color:#909090">
+          ℹ️ Respostas registradas via portal são computadas automaticamente nos indicadores do sistema (NPS, PESQUISA_RESPOSTAS, OCP quando nota ≤ 6).
+        </div>
+      </div>
+    </div>
+
+    <!-- MANIFESTAÇÕES PÚBLICAS -->
+    <div class="padm-section" id="padm-s-manifestacoes">
+      <div class="padm-card">
+        <div class="padm-card-title">Formulário público de manifestação</div>
+        <div class="padm-toggle-row">
+          <div><div class="padm-toggle-label">Formulário ativo</div><div class="padm-toggle-sub">Permite que clientes abram manifestações pelo portal público</div></div>
+          <label class="padm-toggle"><input type="checkbox" id="padm-form-ativo" checked onchange="padmSalvarConfigBool('FORM_MANIFESTACAO_ATIVO',this.checked)"><span class="padm-toggle-slider"></span></label>
+        </div>
+        <div class="padm-toggle-row">
+          <div><div class="padm-toggle-label">Tipos aceitos</div><div class="padm-toggle-sub">Reclamação, Sugestão, Elogio, Solicitação de Informação</div></div>
+          <span style="font-size:12px;color:#16803C;font-weight:600">Todos ativos</span>
+        </div>
+        <div class="padm-toggle-row">
+          <div><div class="padm-toggle-label">Protocolo automático</div><div class="padm-toggle-sub">Gerado no backend no ato da criação — não pode ser desativado</div></div>
+          <span style="font-size:12px;color:#909090;font-weight:600">Obrigatório</span>
+        </div>
+        <div class="padm-toggle-row">
+          <div><div class="padm-toggle-label">Fila de aprovação</div><div class="padm-toggle-sub">Manifestações do portal entram automaticamente na FILA_APROVACAO</div></div>
+          <span style="font-size:12px;color:#16803C;font-weight:600">Ativo</span>
+        </div>
+        <div class="padm-toggle-row">
+          <div><div class="padm-toggle-label">Origem registrada</div><div class="padm-toggle-sub">Campo ORIGEM salvo como PORTAL_PUBLICO para rastreabilidade</div></div>
+          <span style="font-size:12px;color:#16803C;font-weight:600">Ativo</span>
+        </div>
+      </div>
+      <div class="padm-card">
+        <div class="padm-card-title">Mensagem de confirmação</div>
+        <div class="padm-field">
+          <label>Texto exibido ao cliente após registrar manifestação</label>
+          <textarea id="padm-msg-confirmacao" placeholder="Ex: Sua manifestação foi registrada com sucesso. Guarde o número do protocolo para acompanhamento.">Sua manifestação foi registrada com sucesso. Guarde o número do protocolo para acompanhamento.</textarea>
+        </div>
+        <div class="padm-actions">
+          <button class="btn btn-secondary" onclick="padmSalvarMensagem('MSG_CONFIRMACAO_MANIFESTACAO','padm-msg-confirmacao')">Salvar mensagem</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CANAIS DE ATENDIMENTO -->
+    <div class="padm-section" id="padm-s-canais">
+      <div class="padm-card">
+        <div class="padm-card-title">WhatsApp <span class="padm-badge" id="padm-wa-badge">Carregando…</span></div>
+        <div class="padm-toggle-row" style="margin-bottom:12px">
+          <div><div class="padm-toggle-label">Canal ativo</div><div class="padm-toggle-sub">Exibe o botão flutuante no portal público</div></div>
+          <label class="padm-toggle"><input type="checkbox" id="padm-wa-ativo"><span class="padm-toggle-slider"></span></label>
+        </div>
+        <div class="padm-row2">
+          <div class="padm-field">
+            <label>Número (somente dígitos, sem 55)</label>
+            <input type="tel" id="padm-wa-numero" placeholder="77900000000">
+          </div>
+          <div class="padm-field">
+            <label>Código do país</label>
+            <input type="text" id="padm-wa-pais" value="55" readonly style="background:#F8F8F8;color:#909090">
+          </div>
+        </div>
+        <div class="padm-field">
+          <label>Mensagem inicial</label>
+          <textarea id="padm-wa-mensagem" placeholder="Olá! Preciso de ajuda com minha manifestação."></textarea>
+        </div>
+        <div class="padm-actions">
+          <button class="btn btn-primary" onclick="padmSalvarWhatsApp()" id="padm-wa-btn">Salvar configuração</button>
+        </div>
+        <div id="padm-wa-ok" style="display:none;margin-top:10px;padding:10px;background:#F0FDF4;border:1px solid #86efac;border-radius:7px;font-size:12.5px;color:#16803C"></div>
+        <div id="padm-wa-err" style="display:none;margin-top:10px;padding:10px;background:#FEF2F2;border:1px solid #fca5a5;border-radius:7px;font-size:12.5px;color:#b91c1c"></div>
+      </div>
+      <div class="padm-card" style="background:#FFFBEB;border-color:#FDE68A">
+        <div style="font-size:12.5px;color:#92400E;line-height:1.6">
+          <strong>⚠️ Segurança:</strong> O número de WhatsApp é lido pelo portal diretamente da configuração do backend. Alterações aqui têm efeito imediato, sem necessidade de alterar código ou fazer novo deploy.
+        </div>
+      </div>
+    </div>
+
+    <!-- LINKS E PUBLICAÇÃO -->
+    <div class="padm-section" id="padm-s-links">
+      <div class="padm-card">
+        <div class="padm-card-title">Endereços públicos do portal</div>
+        <div id="padm-links-lista">
+          <div class="padm-link-row">
+            <span class="padm-link-label">Portal principal</span>
+            <span class="padm-link-url"><a href="/portal" target="_blank">/portal</a></span>
+            <button class="padm-copy-btn" onclick="padmCopiarLink('/portal')">Copiar</button>
+          </div>
+          <div class="padm-link-row">
+            <span class="padm-link-label">Registrar reclamação</span>
+            <span class="padm-link-url"><a href="/portal" target="_blank">/portal → card Reclamação</a></span>
+            <button class="padm-copy-btn" onclick="padmCopiarLink('/portal')">Copiar</button>
+          </div>
+          <div class="padm-link-row">
+            <span class="padm-link-label">Acompanhar protocolo</span>
+            <span class="padm-link-url"><a href="/portal" target="_blank">/portal → Acompanhar</a></span>
+            <button class="padm-copy-btn" onclick="padmCopiarLink('/portal')">Copiar</button>
+          </div>
+          <div class="padm-link-row">
+            <span class="padm-link-label">Pesquisa — Chiacchio</span>
+            <span class="padm-link-url"><a href="/pesquisa/chiacchio" target="_blank">/pesquisa/chiacchio</a></span>
+            <button class="padm-copy-btn" onclick="padmCopiarLink('/pesquisa/chiacchio')">Copiar</button>
+          </div>
+          <div class="padm-link-row">
+            <span class="padm-link-label">Pesquisa — Plaschio</span>
+            <span class="padm-link-url"><a href="/pesquisa/plaschio" target="_blank">/pesquisa/plaschio</a></span>
+            <button class="padm-copy-btn" onclick="padmCopiarLink('/pesquisa/plaschio')">Copiar</button>
+          </div>
+          <div class="padm-link-row">
+            <span class="padm-link-label">Pesquisa — Cesbap</span>
+            <span class="padm-link-url"><a href="/pesquisa/tubahia" target="_blank">/pesquisa/tubahia</a></span>
+            <button class="padm-copy-btn" onclick="padmCopiarLink('/pesquisa/tubahia')">Copiar</button>
+          </div>
+        </div>
+        <div id="padm-copy-ok" style="display:none;margin-top:10px;font-size:12px;color:#16803C;padding:6px 10px;background:#F0FDF4;border-radius:6px">✓ Link copiado!</div>
+      </div>
+      <div class="padm-card">
+        <div class="padm-card-title">Status da publicação</div>
+        <div class="padm-toggle-row">
+          <div><div class="padm-toggle-label"><span class="padm-status-dot green"></span>Portal público</div><div class="padm-toggle-sub">Rota /portal — servida pelo backend Express/Vercel</div></div>
+          <span style="font-size:12px;color:#16803C;font-weight:700">Publicado</span>
+        </div>
+        <div class="padm-toggle-row">
+          <div><div class="padm-toggle-label"><span class="padm-status-dot green"></span>APIs públicas</div><div class="padm-toggle-sub">/api/public/* — protegidas por publicRateLimit (5 req/min)</div></div>
+          <span style="font-size:12px;color:#16803C;font-weight:700">Ativas</span>
+        </div>
+        <div style="margin-top:12px;padding:10px;background:#F8F8F8;border-radius:8px;font-size:12px;color:#707070">
+          ℹ️ O portal é servido diretamente pelo Vercel/Express. Alterações de layout requerem deploy. Configurações de conteúdo (WhatsApp, toggles) têm efeito imediato via API.
+        </div>
+      </div>
+    </div>
+
+    <!-- HISTÓRICO -->
+    <div class="padm-section" id="padm-s-historico">
+      <div class="padm-card">
+        <div class="padm-card-title" style="justify-content:space-between">
+          Histórico de alterações
+          <button class="btn btn-secondary" style="font-size:12px;height:32px" onclick="padmCarregarHistorico()">Atualizar</button>
+        </div>
+        <div id="padm-hist-corpo"><div class="padm-empty">Carregando…</div></div>
+      </div>
+    </div>
+
+  </div><!-- /padm-body -->
+</div><!-- /page-portal-admin -->
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// PORTAL ADMIN — módulo de administração do Portal do Cliente
+// ═══════════════════════════════════════════════════════════════
+(function(){
+  'use strict';
+
+  let _padmTabAtiva = 'visao';
+  let _padmCarregou = false;
+
+  window.padmTab = function(tab) {
+    _padmTabAtiva = tab;
+    document.querySelectorAll('.padm-tab').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.padm-section').forEach(s => s.classList.remove('active'));
+    const tabBtn = document.getElementById('padm-tab-' + tab);
+    const section = document.getElementById('padm-s-' + tab);
+    if (tabBtn) tabBtn.classList.add('active');
+    if (section) section.classList.add('active');
+    if (tab === 'canais') padmCarregarWA();
+    if (tab === 'historico') padmCarregarHistorico();
+    if (tab === 'empresas') padmCarregarEmpresasConfig();
+    if (tab === 'manifestacoes') padmCarregarFormConfig();
+  };
+
+  window.padmLoad = function() {
+    if (!document.getElementById('page-portal-admin')) return;
+    padmCarregarVisaoGeral();
+    padmCarregarEmpresasConfig();
+    _padmCarregou = true;
+  };
+
+  // ── Visão Geral ────────────────────────────────────────────
+  async function padmCarregarVisaoGeral() {
+    try {
+      const d = await _apiFetch('/api/portal-admin/visao-geral', 10000).catch(() => null);
+      if (!d) return;
+      const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+      set('padm-v-status', d.statusPublicacao || 'Publicado');
+      set('padm-v-respostas', d.respostasPortal ?? '—');
+      set('padm-v-mans', d.manifestacoesPortal ?? '—');
+      set('padm-v-empresas', d.empresasAtivas ?? 3);
+      set('padm-v-whatsapp', d.whatsappAtivo ? 'Ativo' : 'Inativo');
+    } catch(e) { /* silencioso */ }
+  }
+
+  // ── Empresas config ────────────────────────────────────────
+  async function padmCarregarEmpresasConfig() {
+    try {
+      const d = await _apiFetch('/api/portal-admin/config', 8000).catch(() => null);
+      if (!d || !d.config) return;
+      ['chiacchio','plaschio','tubahia'].forEach(slug => {
+        const key = 'PESQUISA_ATIVA_' + slug.toUpperCase();
+        const cfg = d.config.find(c => c.TIPO === key);
+        const el = document.getElementById('padm-ch-' + slug);
+        if (el && cfg) el.checked = cfg.ATIVO !== 'NAO';
+      });
+    } catch(e) {}
+  }
+
+  window.padmToggleEmpresa = async function(slug, ativo) {
+    const tipo = 'PESQUISA_ATIVA_' + slug.toUpperCase();
+    try {
+      await _apiFetch('/api/portal-admin/config', 8000, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tipo, ativo: ativo ? 'SIM' : 'NAO' }),
+      });
+    } catch(e) { console.warn('[PADM] toggle empresa:', e.message); }
+  };
+
+  // ── Form config ────────────────────────────────────────────
+  async function padmCarregarFormConfig() {
+    try {
+      const d = await _apiFetch('/api/portal-admin/config', 8000).catch(() => null);
+      if (!d || !d.config) return;
+      const ativoCfg = d.config.find(c => c.TIPO === 'FORM_MANIFESTACAO_ATIVO');
+      const ativoEl = document.getElementById('padm-form-ativo');
+      if (ativoEl && ativoCfg) ativoEl.checked = ativoCfg.ATIVO !== 'NAO';
+      const msgCfg = d.config.find(c => c.TIPO === 'MSG_CONFIRMACAO_MANIFESTACAO');
+      const msgEl = document.getElementById('padm-msg-confirmacao');
+      if (msgEl && msgCfg && msgCfg.VALOR) msgEl.value = msgCfg.VALOR;
+    } catch(e) {}
+  }
+
+  window.padmSalvarConfigBool = async function(tipo, valor) {
+    try {
+      await _apiFetch('/api/portal-admin/config', 8000, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tipo, ativo: valor ? 'SIM' : 'NAO' }),
+      });
+    } catch(e) { console.warn('[PADM] salvar config:', e.message); }
+  };
+
+  window.padmSalvarMensagem = async function(tipo, inputId) {
+    const el = document.getElementById(inputId);
+    if (!el) return;
+    try {
+      await _apiFetch('/api/portal-admin/config', 8000, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tipo, valor: el.value.trim() }),
+      });
+      _padmOk('Salvo com sucesso.');
+    } catch(e) { _padmErr('Erro ao salvar: ' + e.message); }
+  };
+
+  // ── WhatsApp ────────────────────────────────────────────────
+  async function padmCarregarWA() {
+    try {
+      const d = await _apiFetch('/api/config/whatsapp', 8000).catch(() => null);
+      if (!d) return;
+      const badge = document.getElementById('padm-wa-badge');
+      if (badge) { badge.textContent = d.ativo ? 'Ativo' : 'Inativo'; badge.style.background = d.ativo ? '#DCFCE7' : '#F3F4F6'; badge.style.color = d.ativo ? '#16803C' : '#707070'; }
+      const ativoEl = document.getElementById('padm-wa-ativo');
+      if (ativoEl) ativoEl.checked = !!d.ativo;
+      const numEl = document.getElementById('padm-wa-numero');
+      if (numEl) numEl.value = d.numero || '';
+      const msgEl = document.getElementById('padm-wa-mensagem');
+      if (msgEl) msgEl.value = d.mensagem || '';
+    } catch(e) {}
+  }
+
+  window.padmSalvarWhatsApp = async function() {
+    const btn = document.getElementById('padm-wa-btn');
+    const ok = document.getElementById('padm-wa-ok');
+    const err = document.getElementById('padm-wa-err');
+    if (ok) ok.style.display = 'none';
+    if (err) err.style.display = 'none';
+    const numero = (document.getElementById('padm-wa-numero') || {}).value || '';
+    const mensagem = (document.getElementById('padm-wa-mensagem') || {}).value || '';
+    const ativo = (document.getElementById('padm-wa-ativo') || {}).checked;
+    if (!numero.replace(/\D/g,'') || numero.replace(/\D/g,'').length < 10) {
+      if (err) { err.textContent = 'Informe um número válido (mínimo 10 dígitos).'; err.style.display = 'block'; }
+      return;
+    }
+    if (btn) { btn.disabled = true; btn.textContent = 'Salvando…'; }
+    try {
+      await _apiFetch('/api/config/whatsapp', 10000, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ numero, mensagem, ativo }),
+      });
+      if (ok) { ok.textContent = '✓ Configuração salva. O portal já utiliza o novo número.'; ok.style.display = 'block'; }
+      const badge = document.getElementById('padm-wa-badge');
+      if (badge) { badge.textContent = ativo ? 'Ativo' : 'Inativo'; badge.style.background = ativo ? '#DCFCE7' : '#F3F4F6'; badge.style.color = ativo ? '#16803C' : '#707070'; }
+      // registrar no histórico
+      _padmRegistrarHistorico('WhatsApp configurado — número atualizado');
+    } catch(e) {
+      if (err) { err.textContent = 'Erro ao salvar: ' + (e.message || 'tente novamente.'); err.style.display = 'block'; }
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = 'Salvar configuração'; }
+    }
+  };
+
+  // ── Links ───────────────────────────────────────────────────
+  window.padmCopiarLink = function(url) {
+    const base = window.location.origin;
+    const full = base + url;
+    const ok = document.getElementById('padm-copy-ok');
+    navigator.clipboard.writeText(full).catch(() => {
+      const ta = document.createElement('textarea');
+      ta.value = full; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+      document.body.removeChild(ta);
+    }).finally(() => {
+      if (ok) { ok.style.display = 'block'; setTimeout(() => { if (ok) ok.style.display = 'none'; }, 2000); }
+    });
+  };
+
+  // ── Histórico ───────────────────────────────────────────────
+  window.padmCarregarHistorico = async function() {
+    const corpo = document.getElementById('padm-hist-corpo');
+    if (!corpo) return;
+    corpo.innerHTML = '<div class="padm-empty">Carregando…</div>';
+    try {
+      const d = await _apiFetch('/api/portal-admin/historico', 10000).catch(() => null);
+      if (!d || !Array.isArray(d.historico) || !d.historico.length) {
+        corpo.innerHTML = '<div class="padm-empty">Nenhuma alteração registrada ainda.</div>';
+        return;
+      }
+      corpo.innerHTML = d.historico.map(h => {
+        const data = h.DATA_HORA ? new Date(h.DATA_HORA).toLocaleString('pt-BR') : '—';
+        const desc = h.ACAO_DESCRICAO || h.VALOR_NOVO || h.ACAO || '—';
+        const user = h.USUARIO || '—';
+        return `<div class="padm-hist-row"><span class="padm-hist-date">${data}</span><span class="padm-hist-desc">${_esc(desc)}</span><span class="padm-hist-user">${_esc(user)}</span></div>`;
+      }).join('');
+    } catch(e) {
+      corpo.innerHTML = '<div class="padm-empty" style="color:#A80502">Erro ao carregar histórico.</div>';
+    }
+  };
+
+  async function _padmRegistrarHistorico(descricao) {
+    try {
+      await _apiFetch('/api/portal-admin/historico', 8000, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ descricao }),
+      }).catch(() => {});
+    } catch(e) {}
+  }
+
+  function _esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function _padmOk(msg) { /* stub — no toast available in this scope */ console.log('[PADM]', msg); }
+  function _padmErr(msg) { console.warn('[PADM]', msg); }
 
 })();
 </script>
