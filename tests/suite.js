@@ -629,6 +629,28 @@ async function testarIntegracaoPG() {
 }
 
 // ────────────────────────────────────────────────────────────
+// Grupo 8 — Ficha única de manifestação
+// ────────────────────────────────────────────────────────────
+async function testarFichaUnica() {
+  console.log('\n[8] Ficha única de manifestação');
+  const ficha = require('../server-services/fichaUnica');
+
+  await test('protocolo usa prefixo, data e canal definidos pela ficha', () => {
+    const protocolo = ficha.montarProtocolo({ empresa:'Chiacchio Embalagens', canal:'Portal do Cliente', data:'2026-10-21T12:00:00Z', sequencial:7 });
+    assert.strictEqual(protocolo, 'CHIA-20261021-06-0007');
+    assert.strictEqual(ficha.unidadeEmpresa('Plaschio'), 'caixas');
+    assert.strictEqual(ficha.unidadeEmpresa('Cesbap'), 'rolos');
+  });
+
+  await test('etapa e mensagem acompanham o estado real da manifestação', () => {
+    const m = { STATUS_FICHA:'AGUARDANDO_SETOR', SETOR_CONFIRMADO:'Produção' };
+    assert.strictEqual(ficha.etapaAtual(m), 3);
+    assert.strictEqual(ficha.mensagemContextual(m), 'Aguardando aceite do setor de Produção.');
+    assert.strictEqual(ficha.etapaAtual({ STATUS:'ENCERRADA' }), 6);
+  });
+}
+
+// ────────────────────────────────────────────────────────────
 // Main
 // ────────────────────────────────────────────────────────────
 async function main() {
@@ -643,6 +665,7 @@ async function main() {
   await testarRegrasNegocio();
   await testarSeguranca();
   await testarCorrecoesPosReview();
+  await testarFichaUnica();
   await testarIntegracaoPG();
 
   const total = passed + failed + skipped;
