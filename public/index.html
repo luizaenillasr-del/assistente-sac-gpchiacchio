@@ -5343,9 +5343,12 @@
                     </div>
                     <span class="mc-dh-sub" id="cen-man-sub"></span>
                   </div>
-                  <button type="button" class="mc-lnk" onclick="cenAbrirFichaCompleta()" style="display:inline-flex;align-items:center;gap:4px;font-size:12px">Ficha completa
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-                  </button>
+                  <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+                    <button type="button" class="mc-btn mc-btn-p mc-btn-sm" onclick="cenToggleAcoes(true);document.getElementById('cen-trat-card')?.scrollIntoView({behavior:'smooth',block:'start'});document.getElementById('trat-acao')?.focus();" style="font-size:12px;padding:5px 12px">✏ Tratar</button>
+                    <button type="button" class="mc-lnk" onclick="cenAbrirFichaCompleta()" style="display:inline-flex;align-items:center;gap:4px;font-size:12px">Ficha completa
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                    </button>
+                  </div>
                 </div>
                 <div class="mc-steps" id="cen-progress-wrap"></div>
               </div>
@@ -9868,6 +9871,7 @@ async function afExcluirFichaAtual() {
     _bibFichasAcum = _bibFichasAcum.filter(f => f.ID_MANIFESTACAO !== id);
     afRenderTabela(_bibFichasAcum);
     loadBiblioteca(true);
+    if (typeof window.cenRemoverManifestacao === 'function') window.cenRemoverManifestacao(id);
   } catch(e) { afToast('Erro: ' + e.message); }
 }
 
@@ -23632,6 +23636,18 @@ async function mudarStatusMC(id, novoStatus) {
     el.style.display=abrir?'':'none';
     const b=$('cen-btn-mais'); if(b) b.textContent=abrir?'Mais ações ▴':'Mais ações ▾';
     if(abrir&&typeof forcar!=='boolean') el.scrollIntoView({behavior:'smooth',block:'nearest'});
+  };
+
+  window.cenRemoverManifestacao = function(id){
+    if(!id) return;
+    _cenAll=_cenAll.filter(m=>m.id!==id);
+    if(_cenAtual===id){
+      _cenAtual=null;
+      const dt=$('cen-detalhe');if(dt)dt.classList.remove('active');
+      const ph=$('cen-placeholder');if(ph)ph.style.display='';
+    }
+    renderKpisGrupo();
+    renderFilaGrupos();
   };
 
   window.cenAbrirFichaCompleta = function(){
