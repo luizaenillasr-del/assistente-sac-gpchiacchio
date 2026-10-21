@@ -59,7 +59,10 @@
 #page-nova-manifestacao .nm-textarea{border-radius:8px}
 
 /* Ficha de manifestação: composição do HTML de referência */
-#page-nova-manifestacao .nm-topbar{display:none}
+body.nm-reference-active .sidebar{display:none!important}
+body.nm-reference-active .main{width:100%;max-width:none}
+#page-nova-manifestacao{height:100vh!important;min-height:0!important;overflow:hidden!important}
+#page-nova-manifestacao .nm-topbar{display:none!important}
 #page-nova-manifestacao .nm-ref-header{height:58px;background:#fff;border-bottom:1px solid #e4e4e4;display:flex;align-items:center;gap:10px;padding:0 20px;white-space:nowrap;overflow:hidden}
 #page-nova-manifestacao .nm-ref-brand{width:220px;display:flex;align-items:center;gap:8px;border-right:1px solid #e4e4e4;padding-right:16px;flex-shrink:0;font-size:10px;color:#777}
 #page-nova-manifestacao .nm-ref-brand img{width:34px;height:34px;object-fit:contain}
