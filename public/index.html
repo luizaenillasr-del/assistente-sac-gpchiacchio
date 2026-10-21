@@ -5599,65 +5599,61 @@
       </div>
 
       <!-- ══════════ ABA: EM TRATATIVA ══════════ -->
-      <div class="mc-tabpanel" id="mc-panel-tratativas" style="display:none;flex-direction:column;gap:16px">
+      <div class="mc-tabpanel" id="mc-panel-tratativas" style="display:none;flex-direction:column;gap:14px">
 
         <!-- KPIs -->
-        <div style="display:flex;flex-wrap:wrap;gap:12px" id="trat-kpis"></div>
+        <div style="display:flex;flex-wrap:wrap;gap:10px" id="trat-kpis"></div>
 
-        <!-- Busca + filtros -->
-        <div style="background:#fff;border:1px solid #E4E4E4;border-radius:12px;padding:16px 20px">
-          <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
-            <input id="trat-busca" class="mc-input" style="flex:1;min-width:180px;height:34px;font-size:12.5px" placeholder="Buscar protocolo, cliente, assunto, empresa…" oninput="cenTrativasFiltrar()">
-            <select id="trat-f-empresa" class="mc-input" style="height:34px;font-size:12.5px;min-width:140px" onchange="cenTrativasFiltrar()"><option value="">Empresa</option></select>
-            <select id="trat-f-setor" class="mc-input" style="height:34px;font-size:12.5px;min-width:140px" onchange="cenTrativasFiltrar()"><option value="">Setor</option></select>
-            <select id="trat-f-status" class="mc-input" style="height:34px;font-size:12.5px;min-width:160px" onchange="cenTrativasFiltrar()">
-              <option value="">Status</option>
-              <option value="AGUARDANDO_SETOR">Aguardando setor</option>
-              <option value="EM_ANALISE">Em análise</option>
-              <option value="EM_ANDAMENTO">Em andamento</option>
-              <option value="AGUARDANDO_VALIDACAO_SAC">Ag. validação SAC</option>
-              <option value="DEVOLVIDA_SETOR">Devolvida ao setor</option>
+        <!-- Busca + filtros compactos -->
+        <div style="background:#fff;border:1px solid #E4E4E4;border-radius:12px;padding:12px 16px">
+          <div style="display:grid;grid-template-columns:1fr repeat(5,auto) auto auto;gap:8px;align-items:center;flex-wrap:wrap">
+            <input id="trat-busca" class="mc-input" style="height:32px;font-size:12px;min-width:0" placeholder="Protocolo, cliente, assunto…" oninput="cenTrativasFiltrar()">
+            <select id="trat-f-empresa" class="mc-input" style="height:32px;font-size:12px" onchange="cenTrativasFiltrar()"><option value="">Empresa</option></select>
+            <select id="trat-f-setor" class="mc-input" style="height:32px;font-size:12px" onchange="cenTrativasFiltrar()"><option value="">Setor</option></select>
+            <select id="trat-f-status" class="mc-input" style="height:32px;font-size:12px" onchange="cenTrativasFiltrar()">
+              <option value="">Etapa</option>
+              <option value="anal">Em análise</option>
+              <option value="trat">Em tratamento</option>
             </select>
-            <select id="trat-f-pri" class="mc-input" style="height:34px;font-size:12.5px;min-width:120px" onchange="cenTrativasFiltrar()">
+            <select id="trat-f-pri" class="mc-input" style="height:32px;font-size:12px" onchange="cenTrativasFiltrar()">
               <option value="">Prioridade</option>
-              <option value="CRITICA">Crítica</option>
-              <option value="ALTA">Alta</option>
-              <option value="MEDIA">Média</option>
-              <option value="BAIXA">Baixa</option>
+              <option value="alta">Alta</option>
+              <option value="media">Média</option>
+              <option value="baixa">Baixa</option>
             </select>
-            <select id="trat-f-prazo" class="mc-input" style="height:34px;font-size:12.5px;min-width:130px" onchange="cenTrativasFiltrar()">
+            <select id="trat-f-prazo" class="mc-input" style="height:32px;font-size:12px" onchange="cenTrativasFiltrar()">
               <option value="">Prazo</option>
               <option value="ok">Em dia</option>
-              <option value="prox">Próximo (48h)</option>
-              <option value="atrasado">Em atraso</option>
+              <option value="prox">Próx. 48h</option>
+              <option value="atrasado">Atrasado</option>
             </select>
-            <button id="trat-btn-limpar" style="display:none;border:1px solid #E4E4E4;background:#fff;color:#C70602;cursor:pointer;font-size:12.5px;font-weight:600;padding:5px 12px;border-radius:6px" onclick="cenTrativasLimpar()">✕ Limpar</button>
-            <button style="border:1px solid #E4E4E4;background:#fff;color:#555;cursor:pointer;font-size:12px;padding:5px 10px;border-radius:6px" onclick="cenTrativasInit(true)">↻</button>
+            <button id="trat-btn-limpar" style="display:none;border:1px solid #E4E4E4;background:#fff;color:#C70602;cursor:pointer;font-size:12px;font-weight:600;padding:4px 10px;border-radius:6px;white-space:nowrap" onclick="cenTrativasLimpar()">✕</button>
+            <button style="border:1px solid #E4E4E4;background:#fff;color:#555;cursor:pointer;font-size:12px;padding:4px 8px;border-radius:6px" onclick="cenTrativasInit(true)" title="Atualizar">↻</button>
           </div>
-          <div style="font-size:11.5px;color:#929090;margin-top:8px" id="trat-info"></div>
+          <div style="font-size:11px;color:#929090;margin-top:6px" id="trat-info"></div>
         </div>
 
         <!-- Lista -->
         <div style="background:#fff;border:1px solid #E4E4E4;border-radius:12px;overflow:hidden">
-          <table style="width:100%;border-collapse:collapse;font-size:13px" id="trat-tabela">
+          <table style="width:100%;border-collapse:collapse;font-size:12.5px">
             <thead>
               <tr style="background:#FAFAFA;border-bottom:1px solid #E4E4E4">
-                <th style="padding:11px 16px;text-align:left;font-size:10.5px;font-weight:700;letter-spacing:.06em;color:#888;white-space:nowrap">PROTOCOLO</th>
-                <th style="padding:11px 16px;text-align:left;font-size:10.5px;font-weight:700;letter-spacing:.06em;color:#888">CLIENTE</th>
-                <th style="padding:11px 16px;text-align:left;font-size:10.5px;font-weight:700;letter-spacing:.06em;color:#888">ASSUNTO</th>
-                <th style="padding:11px 16px;text-align:left;font-size:10.5px;font-weight:700;letter-spacing:.06em;color:#888">EMPRESA</th>
-                <th style="padding:11px 16px;text-align:left;font-size:10.5px;font-weight:700;letter-spacing:.06em;color:#888">SETOR</th>
-                <th style="padding:11px 16px;text-align:left;font-size:10.5px;font-weight:700;letter-spacing:.06em;color:#888">ETAPA</th>
-                <th style="padding:11px 16px;text-align:left;font-size:10.5px;font-weight:700;letter-spacing:.06em;color:#888;white-space:nowrap">PRAZO</th>
-                <th style="padding:11px 16px;text-align:left;font-size:10.5px;font-weight:700;letter-spacing:.06em;color:#888">PRI.</th>
-                <th style="padding:11px 2px"></th>
+                <th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.06em;color:#888;white-space:nowrap">PROTOCOLO</th>
+                <th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.06em;color:#888">CLIENTE</th>
+                <th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.06em;color:#888">ASSUNTO</th>
+                <th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.06em;color:#888">EMPRESA</th>
+                <th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.06em;color:#888">SETOR</th>
+                <th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.06em;color:#888">ETAPA</th>
+                <th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.06em;color:#888;white-space:nowrap">PRAZO</th>
+                <th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.06em;color:#888">PRI.</th>
+                <th style="padding:10px 4px"></th>
               </tr>
             </thead>
             <tbody id="trat-tbody">
               <tr><td colspan="9" style="padding:48px;text-align:center;color:#999">Carregando…</td></tr>
             </tbody>
           </table>
-          <div id="trat-pag" style="display:flex;gap:6px;justify-content:center;padding:12px"></div>
+          <div id="trat-pag" style="display:flex;gap:6px;justify-content:center;padding:10px"></div>
         </div>
       </div>
 
@@ -23010,72 +23006,45 @@ async function mudarStatusMC(id, novoStatus) {
   };
 
   // ── aba Em Tratativa ─────────────────────────────────────────────────────
-  let _tratAll=[], _tratFiltrado=[], _tratPag=1, _tratCarregado=false;
+  let _tratAll=[], _tratFiltrado=[], _tratPag=1;
   const _TRAT_PG=25;
-  const _normTrat=v=>String(v||'').toUpperCase().trim();
-  const _tratAtiva=m=>{
-    const sf=_normTrat(m.STATUS_FICHA), s=_normTrat(m.STATUS);
-    const enc=['ENCERRADA','CONCLUÍDA','CONCLUIDA','CANCELADA','REJEITADA','FINALIZADA'];
-    const preAprov=['AGUARDANDO_APROVACAO','AGUARDANDO_APROVAÇÃO','NOVA','ABERTA'];
-    if(enc.includes(s)||enc.includes(sf)) return false;
-    if(preAprov.includes(s)&&!sf) return false;
-    return sf==='AGUARDANDO_SETOR'||s==='AGUARDANDO_SETOR'||
-           sf==='TRATATIVA_SAC'||sf==='TRATATIVA_ANALISTA'||
-           sf==='EM_ANALISE'||s==='EM_ANALISE'||s==='EM_ANDAMENTO'||
-           sf==='AGUARDANDO_VALIDACAO_SAC'||s==='AGUARDANDO_VALIDACAO_SAC'||
-           sf==='AGUARDANDO_DEVOLUTIVA'||
-           sf==='DEVOLVIDA_SETOR'||s==='DEVOLVIDA_SETOR'||
-           sf==='DEVOLVIDA_PARA_CORRECAO'||s==='DEVOLVIDA_PARA_CORRECAO';
-  };
-  const _tratPrazo=m=>{
-    const v=m.DATA_LIMITE||m.PRAZO||m.DATA_PRAZO||m.DATA_LIMITE_TRATATIVA||'';
-    if(!v) return null;
-    const d=new Date(v); return isNaN(d)?null:d;
-  };
-  window.cenTrativasInit=async function(forcar){
-    if(_tratCarregado&&!forcar) return cenTrativasRender();
-    $('trat-tbody').innerHTML='<tr><td colspan="9" style="padding:48px;text-align:center;color:#999">Carregando…</td></tr>';
-    const [d, empD, setD]=await Promise.all([
-      api('/api/manifestacoes'),
-      api('/api/empresas').catch(()=>({sucesso:false})),
-      api('/api/setores').catch(()=>({sucesso:false}))
-    ]);
-    if(!d.sucesso){$('trat-tbody').innerHTML='<tr><td colspan="9" style="padding:48px;text-align:center;color:#C70602">Erro ao carregar manifestações.</td></tr>';return;}
-    _tratAll=(d.itens||[]).filter(_tratAtiva);
-    _tratCarregado=true;
+  // Usa _cenAll (já normalizado por normMan) em vez de chamada extra à API
+  function _cenAtualizarBadgeTratativas(){
+    const b=$('mc-badge-tratativas'); if(!b) return;
+    const n=_cenAll.filter(m=>m.st==='anal'||m.st==='trat').length;
+    b.textContent=n; b.style.display=n?'':'none';
+  }
+  window.cenTrativasInit=function(forcar){
+    // Filtra direto de _cenAll — sem chamada extra à API
+    const src=_cenAll.filter(m=>m.st==='anal'||m.st==='trat');
+    _tratAll=src;
     // Popula selects de empresa e setor
     const empSel=$('trat-f-empresa');
     if(empSel){
-      const emps=[...new Set(_tratAll.map(m=>m.EMPRESA_RECLAMADA||m.EMPRESA||'').filter(Boolean))].sort();
+      const emps=[...new Set(src.map(m=>m.emp).filter(Boolean))].sort();
       empSel.innerHTML='<option value="">Empresa</option>'+emps.map(e=>`<option>${_esc(e)}</option>`).join('');
     }
     const setorSel=$('trat-f-setor');
     if(setorSel){
-      const sets=[...new Set(_tratAll.map(m=>m.SETOR_DESTINADO||m.SETOR_CONFIRMADO||m.SETOR||'').filter(Boolean))].sort();
+      const sets=[...new Set(src.map(m=>m.raw?.SETOR_DESTINADO||m.raw?.SETOR_CONFIRMADO||m.raw?.SETOR||'').filter(Boolean))].sort();
       setorSel.innerHTML='<option value="">Setor</option>'+sets.map(s=>`<option>${_esc(s)}</option>`).join('');
     }
     _cenAtualizarBadgeTratativas();
     cenTrativasRenderKpis();
     cenTrativasFiltrar();
   };
-  function _cenAtualizarBadgeTratativas(){
-    const b=$('mc-badge-tratativas'); if(!b) return;
-    const n=_tratAll.length;
-    b.textContent=n; b.style.display=n?'':'none';
-  }
   function cenTrativasRenderKpis(){
     const el=$('trat-kpis'); if(!el) return;
     const all=_tratAll, now=Date.now();
-    const atrasado=m=>{const p=_tratPrazo(m);return p&&p.getTime()<now;};
-    const proxVenc=m=>{const p=_tratPrazo(m);return p&&p.getTime()>=now&&p.getTime()-now<172800000;};
+    const nu=v=>String(v?.raw?.STATUS||v?.raw?.STATUS_FICHA||'').toUpperCase();
     const kpis=[
       {l:'Em tratativa',d:'total ativo',v:all.length,bg:'#fff',bd:'#E4E4E4',c:'#1F1F1F'},
-      {l:'Em atraso',d:'prazo vencido',v:all.filter(atrasado).length,bg:'#FDECEC',bd:'#F5B8B8',c:'#C70602'},
-      {l:'Aguardando setor',d:'recebimento pendente',v:all.filter(m=>{const sf=_normTrat(m.STATUS_FICHA),s=_normTrat(m.STATUS);return sf==='AGUARDANDO_SETOR'||s==='AGUARDANDO_SETOR';}).length,bg:'#FEF3DC',bd:'#F0D8A0',c:'#7A4C00'},
-      {l:'Ag. validação SAC',d:'setor concluiu',v:all.filter(m=>{const sf=_normTrat(m.STATUS_FICHA),s=_normTrat(m.STATUS);return sf==='AGUARDANDO_VALIDACAO_SAC'||s==='AGUARDANDO_VALIDACAO_SAC';}).length,bg:'#EEEAFA',bd:'#C9B8F0',c:'#4F2D9A'},
-      {l:'Devolvidas',d:'retornou ao setor',v:all.filter(m=>{const sf=_normTrat(m.STATUS_FICHA),s=_normTrat(m.STATUS);return sf==='DEVOLVIDA_SETOR'||s==='DEVOLVIDA_SETOR'||sf==='DEVOLVIDA_PARA_CORRECAO'||s==='DEVOLVIDA_PARA_CORRECAO';}).length,bg:'#FFF4EC',bd:'#F0C8A0',c:'#8A3A00'},
+      {l:'Em atraso',d:'prazo vencido',v:all.filter(m=>m.prazoMs&&m.prazoMs<now).length,bg:'#FDECEC',bd:'#F5B8B8',c:'#C70602'},
+      {l:'Aguardando setor',d:'recebimento pendente',v:all.filter(m=>nu(m).includes('AGUARDANDO_SETOR')||nu(m).includes('AGUARDANDO SETOR')).length,bg:'#FEF3DC',bd:'#F0D8A0',c:'#7A4C00'},
+      {l:'Ag. validação SAC',d:'setor concluiu',v:all.filter(m=>nu(m).includes('VALIDACAO')||nu(m).includes('VALIDAÇÃO')).length,bg:'#EEEAFA',bd:'#C9B8F0',c:'#4F2D9A'},
+      {l:'Devolvidas',d:'retornou ao setor',v:all.filter(m=>nu(m).includes('DEVOLVID')).length,bg:'#FFF4EC',bd:'#F0C8A0',c:'#8A3A00'},
     ];
-    el.innerHTML=kpis.map(k=>`<div style="background:${k.bg};border:1.5px solid ${k.bd};border-radius:12px;padding:14px 20px;min-width:130px;flex:1"><div style="font-size:26px;font-weight:800;color:${k.c};line-height:1;margin-bottom:4px">${k.v}</div><div style="font-size:11.5px;font-weight:700;color:#1F1F1F">${k.l}</div><div style="font-size:10.5px;color:#929090;margin-top:2px">${k.d}</div></div>`).join('');
+    el.innerHTML=kpis.map(k=>`<div style="background:${k.bg};border:1.5px solid ${k.bd};border-radius:12px;padding:14px 20px;min-width:120px;flex:1"><div style="font-size:26px;font-weight:800;color:${k.c};line-height:1;margin-bottom:4px">${k.v}</div><div style="font-size:11.5px;font-weight:700;color:#1F1F1F">${k.l}</div><div style="font-size:10.5px;color:#929090;margin-top:2px">${k.d}</div></div>`).join('');
   }
   window.cenTrativasFiltrar=function(){
     const q=($('trat-busca')||{}).value||'';
@@ -23084,62 +23053,56 @@ async function mudarStatusMC(id, novoStatus) {
     const st=($('trat-f-status')||{}).value||'';
     const pri=($('trat-f-pri')||{}).value||'';
     const prazo=($('trat-f-prazo')||{}).value||'';
-    const n=v=>String(v||'').toUpperCase();
     const now=Date.now();
     let d=_tratAll;
-    if(q){const ql=q.toLowerCase();d=d.filter(m=>(m.PROTOCOLO||m.ID_MANIFESTACAO||'').toLowerCase().includes(ql)||(m.NOME_CLIENTE||m.CLIENTE||'').toLowerCase().includes(ql)||(m.DESCRICAO||m.MOTIVO||m.TIPO_MANIFESTACAO||'').toLowerCase().includes(ql)||(m.EMPRESA_RECLAMADA||m.EMPRESA||'').toLowerCase().includes(ql)||(m.SETOR_DESTINADO||m.SETOR_CONFIRMADO||m.SETOR||'').toLowerCase().includes(ql));}
-    if(emp) d=d.filter(m=>n(m.EMPRESA_RECLAMADA||m.EMPRESA||'')===n(emp));
-    if(set) d=d.filter(m=>n(m.SETOR_DESTINADO||m.SETOR_CONFIRMADO||m.SETOR||'').includes(n(set)));
-    if(st) d=d.filter(m=>{const sf=n(m.STATUS_FICHA),s=n(m.STATUS);return sf===st||s===st;});
-    if(pri) d=d.filter(m=>n(m.PRIORIDADE||m.PRIORIDADE_MANIFESTACAO||'').includes(n(pri)));
-    if(prazo==='atrasado') d=d.filter(m=>{const p=_tratPrazo(m);return p&&p.getTime()<now;});
-    else if(prazo==='prox') d=d.filter(m=>{const p=_tratPrazo(m);return p&&p.getTime()>=now&&p.getTime()-now<172800000;});
-    else if(prazo==='ok') d=d.filter(m=>{const p=_tratPrazo(m);return !p||p.getTime()>=now+172800000;});
+    if(q){const ql=q.toLowerCase();d=d.filter(m=>(m.id||'').toLowerCase().includes(ql)||(m.cli||'').toLowerCase().includes(ql)||(m.motivo||m.tipo||'').toLowerCase().includes(ql)||(m.emp||'').toLowerCase().includes(ql)||(m.raw?.SETOR_DESTINADO||m.raw?.SETOR_CONFIRMADO||m.raw?.SETOR||'').toLowerCase().includes(ql));}
+    if(emp) d=d.filter(m=>(m.emp||'').toLowerCase()===emp.toLowerCase());
+    if(set){const sl=set.toLowerCase();d=d.filter(m=>(m.raw?.SETOR_DESTINADO||m.raw?.SETOR_CONFIRMADO||m.raw?.SETOR||'').toLowerCase().includes(sl));}
+    if(st) d=d.filter(m=>m.st===st);
+    if(pri) d=d.filter(m=>m.pri===pri);
+    if(prazo==='atrasado') d=d.filter(m=>m.prazoMs&&m.prazoMs<now);
+    else if(prazo==='prox') d=d.filter(m=>m.prazoMs&&m.prazoMs>=now&&m.prazoMs-now<172800000);
+    else if(prazo==='ok') d=d.filter(m=>!m.prazoMs||m.prazoMs>=now+172800000);
     _tratFiltrado=d; _tratPag=1;
     const lb=$('trat-btn-limpar'); if(lb) lb.style.display=(q||emp||set||st||pri||prazo)?'':'none';
+    const info=$('trat-info'); if(info) info.textContent=d.length+' manifestação(ões)';
     cenTrativasRender();
   };
   window.cenTrativasLimpar=function(){
     ['trat-busca','trat-f-empresa','trat-f-setor','trat-f-status','trat-f-pri','trat-f-prazo'].forEach(id=>{const el=$(id);if(el)el.value='';});
     _tratPag=1; cenTrativasFiltrar();
   };
-  const _TRAT_ETAPA_COR={'AGUARDANDO_SETOR':'#7A4C00','TRATATIVA_SAC':'#24508F','TRATATIVA_ANALISTA':'#24508F','EM_ANALISE':'#24508F','EM_ANDAMENTO':'#24508F','AGUARDANDO_VALIDACAO_SAC':'#4F2D9A','AGUARDANDO_DEVOLUTIVA':'#1A6A6A','DEVOLVIDA_SETOR':'#8A3A00','DEVOLVIDA_PARA_CORRECAO':'#8A3A00'};
-  const _TRAT_ETAPA_LBL={'AGUARDANDO_SETOR':'Ag. setor','TRATATIVA_SAC':'Tratativa SAC','TRATATIVA_ANALISTA':'Em análise','EM_ANALISE':'Em análise','EM_ANDAMENTO':'Em andamento','AGUARDANDO_VALIDACAO_SAC':'Ag. validação SAC','AGUARDANDO_DEVOLUTIVA':'Ag. devolutiva','DEVOLVIDA_SETOR':'Devolvida setor','DEVOLVIDA_PARA_CORRECAO':'Devolvida corr.'};
-  const _TRAT_PRI_COR={'CRITICA':'#C70602','ALTA':'#C87000','MEDIA':'#24508F','BAIXA':'#545252'};
   function cenTrativasRender(){
     const tbody=$('trat-tbody'); if(!tbody) return;
-    const info=$('trat-info'); if(info) info.textContent=_tratFiltrado.length+' manifestação(ões)';
-    if(!_tratFiltrado.length){tbody.innerHTML='<tr><td colspan="9" style="padding:48px;text-align:center;color:#999">Nenhuma manifestação em tratativa com esses filtros.</td></tr>';$('trat-pag').innerHTML='';return;}
+    if(!_tratFiltrado.length){tbody.innerHTML='<tr><td colspan="9" style="padding:48px;text-align:center;color:#999">Nenhuma manifestação em tratativa com esses filtros.</td></tr>';const p=$('trat-pag');if(p)p.innerHTML='';return;}
     const total=Math.ceil(_tratFiltrado.length/_TRAT_PG);
     if(_tratPag>total) _tratPag=1;
     const pg=_tratFiltrado.slice((_tratPag-1)*_TRAT_PG,_tratPag*_TRAT_PG);
     const now=Date.now();
     tbody.innerHTML=pg.map(m=>{
-      const id=m.ID_MANIFESTACAO||m.id||'';
-      const prot=m.PROTOCOLO||m.N_PROTOCOLO||id||'—';
-      const cli=m.NOME_CLIENTE||m.CLIENTE||'—';
-      const ass=m.MOTIVO||m.TIPO_MANIFESTACAO||m.DESCRICAO||'—';
-      const emp=m.EMPRESA_RECLAMADA||m.EMPRESA||'—';
-      const set=m.SETOR_DESTINADO||m.SETOR_CONFIRMADO||m.SETOR||'—';
-      const etapaRaw=(_normTrat(m.STATUS_FICHA)||_normTrat(m.STATUS));
-      const etapaLbl=_TRAT_ETAPA_LBL[etapaRaw]||(etapaRaw.replace(/_/g,' ').toLowerCase().replace(/^./,c=>c.toUpperCase()));
-      const etapaCor=_TRAT_ETAPA_COR[etapaRaw]||'#555';
-      const prazo=_tratPrazo(m);
-      const atrasado=prazo&&prazo.getTime()<now;
-      const prazoStr=prazo?prazo.toISOString().slice(0,10):'—';
-      const priRaw=_normTrat(m.PRIORIDADE||m.PRIORIDADE_MANIFESTACAO||'');
-      const priCor=_TRAT_PRI_COR[priRaw]||'#888';
-      const priLbl=priRaw?priRaw.charAt(0)+priRaw.slice(1).toLowerCase():'—';
+      const id=m.id||'';
+      const prot=m.id||'—';
+      const cli=m.cli||'—';
+      const ass=m.motivo||m.tipo||'—';
+      const emp=m.emp||'—';
+      const set=m.raw?.SETOR_DESTINADO||m.raw?.SETOR_CONFIRMADO||m.raw?.SETOR||'—';
+      const etapaLbl=ST_LBL[m.st]||m.st||'—';
+      const etapaBg=ST_CFG_BG?.[m.st]||'#F0F0F0';
+      const etapaFg=ST_CFG_FG?.[m.st]||'#555';
+      const atrasado=m.prazoMs&&m.prazoMs<now;
+      const prazoStr=m.prazoMs?new Date(m.prazoMs).toLocaleDateString('pt-BR'):'—';
+      const priLbl=PRI_LBL?.[m.pri]||m.pri||'—';
+      const priCor={'alta':'#C70602','media':'#24508F','baixa':'#545252'}[m.pri]||'#888';
       return `<tr style="border-bottom:1px solid #F4F4F4;cursor:pointer;transition:background .1s" onmouseover="this.style.background='#FAFAFA'" onmouseout="this.style.background=''" onclick="cenTrativasAbrirFicha('${_esc(id)}')">
-        <td style="padding:13px 16px;font-weight:700;color:#A80502;white-space:nowrap;font-size:13px">${_esc(prot)}</td>
-        <td style="padding:13px 16px;font-size:13px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_esc(cli)}</td>
-        <td style="padding:13px 16px;font-size:13px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#444">${_esc(ass)}</td>
-        <td style="padding:13px 16px;font-size:12.5px;color:#555;white-space:nowrap">${_esc(emp)}</td>
-        <td style="padding:13px 16px;font-size:12.5px;color:#555;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_esc(set)}</td>
-        <td style="padding:13px 16px"><span style="font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:99px;background:${etapaCor}18;color:${etapaCor};white-space:nowrap">${_esc(etapaLbl)}</span></td>
-        <td style="padding:13px 16px;white-space:nowrap;font-size:13px;color:${atrasado?'#C70602':'#555'};font-weight:${atrasado?'700':'400'}">${atrasado?'⚠ ':''}${prazoStr}</td>
-        <td style="padding:13px 16px"><span style="font-size:11px;font-weight:700;color:${priCor}">${_esc(priLbl)}</span></td>
-        <td style="padding:13px 6px"><button onclick="event.stopPropagation();cenTrativasAbrirFicha('${_esc(id)}')" style="border:1px solid #E4E4E4;background:#fff;color:#A80502;cursor:pointer;font-size:12px;font-weight:600;padding:4px 10px;border-radius:6px;white-space:nowrap">Tratar →</button></td>
+        <td style="padding:12px 14px;font-weight:700;color:#A80502;white-space:nowrap;font-size:12.5px">${_esc(prot)}</td>
+        <td style="padding:12px 14px;font-size:12.5px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_esc(cli)}</td>
+        <td style="padding:12px 14px;font-size:12.5px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#444">${_esc(ass)}</td>
+        <td style="padding:12px 14px;font-size:12px;color:#555;white-space:nowrap">${_esc(emp)}</td>
+        <td style="padding:12px 14px;font-size:12px;color:#555;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_esc(set)}</td>
+        <td style="padding:12px 14px"><span style="font-size:11px;font-weight:600;padding:3px 8px;border-radius:99px;background:${etapaBg};color:${etapaFg};white-space:nowrap">${_esc(etapaLbl)}</span></td>
+        <td style="padding:12px 14px;white-space:nowrap;font-size:12px;color:${atrasado?'#C70602':'#555'};font-weight:${atrasado?'700':'400'}">${atrasado?'⚠ ':''}${prazoStr}</td>
+        <td style="padding:12px 14px"><span style="font-size:11px;font-weight:700;color:${priCor}">${_esc(priLbl)}</span></td>
+        <td style="padding:12px 4px"><button onclick="event.stopPropagation();cenTrativasAbrirFicha('${_esc(id)}')" style="border:1px solid #E4E4E4;background:#fff;color:#A80502;cursor:pointer;font-size:11.5px;font-weight:600;padding:4px 9px;border-radius:6px;white-space:nowrap">Tratar →</button></td>
       </tr>`;
     }).join('');
     const pag=$('trat-pag'); if(!pag) return;
@@ -23151,14 +23114,20 @@ async function mudarStatusMC(id, novoStatus) {
   }
   window.cenTrativasAbrirFicha=function(id){
     if(!id) return;
-    // Reutiliza cenBancoAbrirFicha que já sabe navegar para a fila e abrir o detalhe
     cenBancoAbrirFicha(id);
+    // Após navegação, abre seção Tratativa Interna e rola até ela
+    setTimeout(()=>{
+      if(typeof cenToggleAcoes==='function') cenToggleAcoes(true);
+      const tc=document.getElementById('cen-trat-card');
+      if(tc) setTimeout(()=>tc.scrollIntoView({behavior:'smooth',block:'start'}),100);
+      document.getElementById('trat-acao')?.focus();
+    },400);
   };
-  // Invalida cache quando uma manifestação é atualizada (status pode ter mudado)
+  // Complementa cenRemoverManifestacao: remove de _tratAll/_tratFiltrado também
   const _origCenRemoverManifestacao=window.cenRemoverManifestacao;
   window.cenRemoverManifestacao=function(id){
-    _tratAll=_tratAll.filter(m=>(m.ID_MANIFESTACAO||m.id)!==id);
-    _tratFiltrado=_tratFiltrado.filter(m=>(m.ID_MANIFESTACAO||m.id)!==id);
+    _tratAll=_tratAll.filter(m=>m.id!==id);
+    _tratFiltrado=_tratFiltrado.filter(m=>m.id!==id);
     _cenAtualizarBadgeTratativas();
     if(typeof _origCenRemoverManifestacao==='function') _origCenRemoverManifestacao(id);
   };
@@ -23299,6 +23268,8 @@ async function mudarStatusMC(id, novoStatus) {
     if(cont) cont.innerHTML=kpis.map(k=>`<div style="background:${k.bg};border:1.5px solid ${k.bd};border-radius:10px;padding:11px 13px;display:flex;flex-direction:column;gap:3px"><span style="font-size:24px;font-weight:800;color:${k.c};line-height:1">${k.v}</span><span style="font-size:11.5px;font-weight:600;color:#545252">${esc(k.l)}</span><span style="font-size:10.5px;color:#929090">${esc(k.d)}</span></div>`).join('');
     const badge=$('mc-badge-fila');
     if(badge) badge.textContent=all.filter(m=>m.st!=='enc').length;
+    // Atualiza badge da aba "Em tratativa" sempre que _cenAll mudar
+    if(typeof _cenAtualizarBadgeTratativas==='function') _cenAtualizarBadgeTratativas();
   }
 
   const FILA_GRUPOS=[
