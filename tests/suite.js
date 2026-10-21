@@ -650,6 +650,16 @@ async function testarFichaUnica() {
   });
 }
 
+async function testarDashboardExecutiva() {
+  console.log('\n[9] Dashboard executiva');
+  await test('calcula NPS sem tratar respostas ausentes como zero', () => {
+    const { calcular } = require('../server-services/dashboardExecutiva');
+    const r = calcular({ respostas:[{RECOMENDACAO:'10',ATENDIMENTO:'9'},{RECOMENDACAO:'6',QUALIDADE:'8'},{}] });
+    assert.strictEqual(r.satisfacao.nps, 0);
+    assert.strictEqual(r.satisfacao.criterios.find(x=>x.criterio==='ATENDIMENTO').media, 9);
+  });
+}
+
 // ────────────────────────────────────────────────────────────
 // Main
 // ────────────────────────────────────────────────────────────
@@ -666,6 +676,7 @@ async function main() {
   await testarSeguranca();
   await testarCorrecoesPosReview();
   await testarFichaUnica();
+  await testarDashboardExecutiva();
   await testarIntegracaoPG();
 
   const total = passed + failed + skipped;
