@@ -1323,6 +1323,7 @@
           <div class="form-group">
             <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">Status</label>
             <select id="usu-status" class="form-input">
+              <option value="PRIMEIRO_ACESSO">Primeiro acesso</option>
               <option value="ATIVO">Ativo</option>
               <option value="INATIVO">Inativo</option>
               <option value="BLOQUEADO">Bloqueado</option>
@@ -7568,7 +7569,7 @@
         <div class="field-grid">
           <div class="field" style="grid-column:1/-1"><label>Nome do setor *</label><input id="set-nome" placeholder="Ex: Qualidade, Logística..."></div>
           <div class="field" style="grid-column:1/-1"><label>Descrição</label><input id="set-descricao" placeholder="Breve descrição das responsabilidades"></div>
-          <div class="field"><label>Responsável</label><input id="set-responsavel" placeholder="Nome do responsável"></div>
+          <div class="field"><label>Responsável</label><input id="set-responsavel" list="set-responsavel-list" placeholder="Nome do responsável" autocomplete="off"><datalist id="set-responsavel-list"></datalist></div>
           <div class="field"><label>Empresa</label>
             <select id="set-empresa">
               <option value="">Todas</option>
@@ -13375,6 +13376,16 @@ window.abrirModalNovoSetor = function(setor) {
   document.getElementById('set-ativo').value = setor ? (setor.ATIVO || 'SIM') : 'SIM';
   document.getElementById('set-salvar-btn').textContent = setor ? 'Salvar alterações' : 'Criar setor';
   document.getElementById('modal-setor').style.display = 'flex';
+  // Popula datalist de responsáveis com usuários ativos
+  const dl = document.getElementById('set-responsavel-list');
+  if (dl && !dl._loaded) {
+    dl._loaded = true;
+    _apiFetch('/api/usuarios', 10000).then(function(d) {
+      const itens = (d && (d.itens || d.usuarios || [])) || [];
+      dl.innerHTML = itens.filter(function(u){ return (u.STATUS||u.status||'ATIVO').toUpperCase() !== 'EXCLUIDO'; })
+        .map(function(u){ return '<option value="' + (u.NOME||u.nome||u.USUARIO||u.usuario||'') + '">'; }).join('');
+    }).catch(function(){});
+  }
 };
 window.fecharModalSetor = function() { document.getElementById('modal-setor').style.display = 'none'; };
 window.salvarSetor = async function() {
@@ -20945,7 +20956,7 @@ function cbNorm(v) { return String(v == null ? '' : v).normalize('NFD').replace(
 function cbData(v) { if (!v) return '—'; const d = new Date(v); return isNaN(d) ? cbEsc(v) : d.toLocaleDateString('pt-BR'); }
 function cbVal(v) { return (v == null || String(v).trim() === '') ? '—' : cbEsc(v); }
 function cbPode() {
-  try { const u = JSON.parse(sessionStorage.getItem('sac-user') || '{}'); const p = String(u.PERFIL || u.perfil || '').toUpperCase(); return p.includes('MASTER') || p.includes('ANALISTA') || p.includes('APROVADOR'); } catch (e) { return false; }
+  try { const u = JSON.parse(sessionStorage.getItem('sac-user') || '{}'); const p = String(u.PERFIL || u.perfil || '').toUpperCase(); return p.includes('MASTER') || p.includes('GESTOR') || p.includes('ANALISTA') || p.includes('APROVADOR'); } catch (e) { return false; }
 }
 function cbEhMaster() {
   try { const u = JSON.parse(sessionStorage.getItem('sac-user') || '{}'); return String(u.PERFIL || u.perfil || '').toUpperCase().includes('MASTER'); } catch (e) { return false; }
@@ -26529,7 +26540,7 @@ function updateTopbarUser(user) {
     document.getElementById('usu-email').value = u&&(u.EMAIL||u.email)||'';
     document.getElementById('usu-usuario').value = u&&(u.USUARIO||u.usuario)||'';
     document.getElementById('usu-perfil').value = u&&(u.PERFIL||u.perfil)||'';
-    document.getElementById('usu-status').value = u&&(u.STATUS||u.status)||'ATIVO';
+    document.getElementById('usu-status').value = u ? (u.STATUS||u.status||'ATIVO') : 'PRIMEIRO_ACESSO';
     document.getElementById('usu-obs').value = u&&(u.OBSERVACOES||u.observacoes)||'';
     document.getElementById('usu-senha').value = '';
     document.getElementById('usu-senha-req').style.display = u ? 'none' : '';
