@@ -14,9 +14,9 @@ const aiService = require('./aiService');
 
 let manifestacaoRepo, conhecimentoRepo, prisma;
 try {
-  manifestacaoRepo = require('../../database/repositories/manifestacaoRepository');
-  conhecimentoRepo = require('../../database/repositories/conhecimentoRepository');
-  prisma = require('../../database/connection');
+  manifestacaoRepo = require('../database/repositories/manifestacaoRepository');
+  conhecimentoRepo = require('../database/repositories/conhecimentoRepository');
+  prisma = require('../database/connection');
 } catch (e) {
   console.warn('Repositórios PG não disponíveis, usando Sheets:', e.message);
 }

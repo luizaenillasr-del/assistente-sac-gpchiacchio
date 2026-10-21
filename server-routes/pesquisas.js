@@ -419,17 +419,17 @@ module.exports = function registerPesquisas(app, service, h) {
       res.json({
         sucesso: true,
         token,
-        link: `${h.appUrl}/portal/pesquisas/${id}?convite=${encodeURIComponent(token)}`,
+        link: `${h.surveyUrl ? h.surveyUrl(id) : h.appUrl + "/portal/pesquisas/" + id}?convite=${encodeURIComponent(token)}`,
         expira,
       });
     }),
   );
   app.get("/portal/pesquisas/:id", (req, res) =>
-    res.sendFile(path.join(__dirname, "../../public/portal.html")),
+    res.sendFile(path.join(__dirname, "../public/portal.html")),
   );
   app.get("/pesquisa/:token", (req, res, next) => {
     // Os links legados continuam públicos e passam a renderizar a versão cadastrada.
     if (req.params.token.length < 6) return next();
-    res.sendFile(path.join(__dirname, "../../public/portal.html"));
+    res.sendFile(path.join(__dirname, "../public/portal.html"));
   });
 };

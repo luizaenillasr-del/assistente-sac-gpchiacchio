@@ -502,7 +502,7 @@ async function edit(action, data = {}) {
         limite: () => 6,
         sync: async () => {},
       };
-      const factory = require("../api/services/pesquisaFormulariosService");
+      const factory = require("../server-services/pesquisaFormulariosService");
       const a = factory(deps),
         b = factory(deps);
       const payload = {
