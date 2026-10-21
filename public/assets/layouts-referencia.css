@@ -1,0 +1,76 @@
+/* Camada visual comum baseada nas telas de referência entregues pelo SAC.
+   Mantém os IDs e eventos dos módulos existentes; altera apenas composição, ritmo
+   visual e responsividade. */
+:root{--ref-red:#c70602;--ref-ink:#171717;--ref-muted:#737373;--ref-line:#e4e4e4;--ref-bg:#f4f4f4;--ref-green:#1e6b3a}
+
+/* Dashboard executiva */
+#page-visao-geral{background:var(--ref-bg)!important}
+#page-visao-geral .content{padding:0 20px 48px!important;max-width:none!important}
+#page-visao-geral .dex2{font-family:Montserrat,Arial,sans-serif;color:var(--ref-ink);max-width:1540px;margin:0 auto}
+#page-visao-geral .dex2-head{padding:28px 0 16px;align-items:flex-end}
+#page-visao-geral .dex2-head h1{font-size:30px;letter-spacing:-.03em}
+#page-visao-geral .dex2-head p{font-size:11px;color:#969696}
+#page-visao-geral .dex2-filtros{gap:8px}
+#page-visao-geral .dex2-filtros input,#page-visao-geral .dex2-filtros select{height:38px;border-radius:7px;min-width:150px;font-size:13px}
+#page-visao-geral .dex2-filtros button{height:38px;border-radius:7px;padding:0 15px}
+#page-visao-geral .dex2-tabs{gap:28px;margin-bottom:20px}
+#page-visao-geral .dex2-tabs button{font-size:14px;padding:12px 2px}
+#page-visao-geral .dex2-kpis{grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:16px}
+#page-visao-geral .dex2-card{min-height:116px;padding:16px 18px;border-radius:11px}
+#page-visao-geral .dex2-card span{font-size:11px;color:#777}
+#page-visao-geral .dex2-card strong{font-size:29px;letter-spacing:-.03em;overflow-wrap:anywhere}
+#page-visao-geral .dex2-card small{font-size:11px;color:#999}
+#page-visao-geral .dex2-layout{gap:16px;margin-bottom:16px}
+#page-visao-geral .dex2-panel{border-radius:11px;padding:18px}
+#page-visao-geral .dex2-panel h2{font-size:15px}
+#page-visao-geral .dex2-panel header p{font-size:12px}
+#page-visao-geral .dex2-columns{height:170px}
+#page-visao-geral .dex2-col{height:143px}
+#page-visao-geral .dex2-col i{width:14px}
+
+/* Centro das pesquisas */
+#page-sugestoes-melhoria{background:var(--ref-bg)!important;color:var(--ref-ink)}
+#page-sugestoes-melhoria .cp-top{min-height:72px;padding:0 28px;box-shadow:0 1px 0 rgba(0,0,0,.04)}
+#page-sugestoes-melhoria .cp-top-title b{font-size:18px}
+#page-sugestoes-melhoria>div:not(.cp-top){max-width:1240px;margin:0 auto}
+#page-sugestoes-melhoria #cp-tabbar{gap:12px;margin-top:8px}
+#page-sugestoes-melhoria #cp-tabbar button{padding:12px 15px;font-size:13px}
+#page-sugestoes-melhoria table th{font-size:11px;letter-spacing:.03em;color:#666;text-transform:uppercase}
+
+/* Relatório de satisfação */
+#page-relatorio-satisfacao{background:var(--ref-bg)!important}
+#page-relatorio-satisfacao .rs-top{min-height:72px;padding:0 28px;box-shadow:0 1px 0 rgba(0,0,0,.04)}
+#page-relatorio-satisfacao .rs-top-title b{font-size:18px}
+#page-relatorio-satisfacao .rs-body{max-width:1240px;padding:20px 24px 64px;gap:18px}
+#page-relatorio-satisfacao .rs-card{border-radius:11px;padding:18px 20px}
+#page-relatorio-satisfacao .rs-h1{font-size:28px;letter-spacing:-.03em}
+#page-relatorio-satisfacao .rs-hero{border-radius:11px;padding:24px}
+#page-relatorio-satisfacao .rs-hero-v{font-size:52px}
+#page-relatorio-satisfacao .rs-crit{border-radius:10px}
+
+/* Ficha única de manifestação */
+#page-nova-manifestacao{background:var(--ref-bg)!important}
+#page-nova-manifestacao .nm-topbar{height:64px;padding:0 28px;box-shadow:0 1px 0 rgba(0,0,0,.04)}
+#page-nova-manifestacao #nm-steps-body{max-width:1120px;width:100%;margin:0 auto;padding:24px 28px 64px}
+#page-nova-manifestacao .nm-card{border-radius:11px;padding:20px 22px;box-shadow:0 1px 2px rgba(0,0,0,.02)}
+#page-nova-manifestacao .nm-step-panel{gap:14px}
+#page-nova-manifestacao .nm-card-title{font-size:11px;color:#777}
+#page-nova-manifestacao .nm-input,#page-nova-manifestacao .nm-select{height:44px;border-radius:8px}
+#page-nova-manifestacao .nm-textarea{border-radius:8px}
+
+/* Arquivo de fichas */
+#page-biblioteca-fichas{background:var(--ref-bg)!important}
+#page-biblioteca-fichas .af-root{max-width:1240px;margin:0 auto;padding:24px 28px 64px}
+#page-biblioteca-fichas .af-title{font-size:28px;letter-spacing:-.03em}
+#page-biblioteca-fichas .af-card,#page-biblioteca-fichas .af-lista,#page-biblioteca-fichas .af-arvore{border-radius:11px}
+
+@media(max-width:900px){
+  #page-visao-geral .dex2-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #page-visao-geral .dex2-head{align-items:flex-start;flex-direction:column}
+  #page-sugestoes-melhoria .cp-top,#page-relatorio-satisfacao .rs-top{padding:12px 18px}
+}
+@media(max-width:600px){
+  #page-visao-geral .content{padding:0 12px 32px!important}
+  #page-visao-geral .dex2-kpis,.dex2-layout{grid-template-columns:1fr!important}
+  #page-nova-manifestacao #nm-steps-body,#page-biblioteca-fichas .af-root{padding-left:14px;padding-right:14px}
+}
