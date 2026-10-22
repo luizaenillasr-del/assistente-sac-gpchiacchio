@@ -677,21 +677,21 @@
 <style>
   /* LOGIN — split-screen */
   .login-screen { position: fixed; inset: 0; z-index: 9999; overflow-y: auto; background: #F4F4F4; }
-  .login-split { width: 100%; flex: 1 1 auto; min-height: 100vh; display: grid; grid-template-columns: repeat(auto-fit,minmax(340px,1fr)); }
-  .login-left { background: #C70602; color: #fff; padding: 48px 56px; display: flex; flex-direction: column; justify-content: space-between; gap: 40px; }
+  .login-split { width: 100%; flex: 1 1 auto; min-height: 100vh; display: grid; grid-template-columns: 42% 58%; }
+  .login-left { background: #C70602; color: #fff; padding: 52px 56px; display: flex; flex-direction: column; justify-content: space-between; gap: 40px; position:relative; overflow:hidden; }
   .login-left-brand { display: flex; align-items: center; gap: 14px; }
   .login-left-brand-text { }
   .login-left-brand-name { font-weight: 700; font-size: 15px; letter-spacing: .02em; }
   .login-left-brand-sub { font-size: 12.5px; color: #FFE1E0; }
-  .login-left-hero { max-width: 440px; }
-  .login-left-hero h2 { font-size: 30px; font-weight: 600; line-height: 1.2; }
-  .login-left-hero p { color: #FFE1E0; line-height: 1.6; margin: 14px 0 28px; font-size: 13.5px; }
-  .login-steps { display: flex; flex-direction: column; gap: 10px; font-size: 13px; color: #fff; }
+  .login-left-hero { max-width: 440px; flex:1; display:flex; flex-direction:column; justify-content:center; padding:40px 0 36px; }
+  .login-left-hero h2 { font-size: 30px; font-weight: 800; line-height: 1.22; letter-spacing:-.02em; margin-bottom:16px; }
+  .login-left-hero p { color: rgba(255,255,255,.72); line-height: 1.72; margin: 0; font-size: 14px; }
+  .login-steps { display: none; }
   .login-step { display: flex; gap: 12px; align-items: center; }
   .login-step-n { font-variant-numeric: tabular-nums; color: #FFC2BF; font-weight: 700; min-width: 20px; }
   .login-left-footer { font-size: 12px; color: #FFE1E0; display: flex; gap: 16px; flex-wrap: wrap; }
-  .login-right { display: grid; place-items: center; padding: 48px 24px; background: #F4F4F4; }
-  .login-wrap { display: flex; flex-direction: column; gap: 18px; width: 100%; max-width: 380px; }
+  .login-right { display: grid; place-items: center; padding: 48px 56px; background: #FAFAFA; }
+  .login-wrap { display: flex; flex-direction: column; gap: 18px; width: 100%; max-width: 400px; }
   .login-header { margin-bottom: 2px; }
   .login-header img { height: 44px; display: block; margin-bottom: 10px; }
   .login-header h1 { font-size: 22px; font-weight: 700; color: #1F1F1F; }
@@ -704,6 +704,8 @@
   .login-input { width: 100%; padding: 10px 12px; border: 1px solid #D6D6D6; border-radius: 8px; font-size: 14px; outline: none; font-family: inherit; background: #fff; }
   .login-input:focus { border-color: #C70602; box-shadow: 0 0 0 2px rgba(199,6,2,.1); }
   .login-btn { width: 100%; padding: 11px; background: #C70602; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; }
+  #login-panel-login { text-align:center; }
+  #login-panel-login > label { text-align:left; }
   .login-btn:hover { background: #A80502; }
   .login-error { background: #F9E3E3; color: #8E1A24; font-size: 13px; padding: 10px 12px; border-radius: 8px; margin-top: 10px; display: none; }
   .login-divider { display: flex; align-items: center; gap: 10px; margin: 4px 0; }
@@ -1471,26 +1473,14 @@
   <div class="login-split">
     <!-- PAINEL ESQUERDO — vermelho -->
     <div class="login-left">
-      <div class="login-left-brand">
-        <img src="/simbolo-branco.png" alt="Grupo Chiacchio" style="width:44px;height:auto;display:block">
-        <div class="login-left-brand-text">
-          <div class="login-left-brand-name">GRUPO CHIACCHIO</div>
-          <div class="login-left-brand-sub">Assistente SAC</div>
-        </div>
-      </div>
+      <div class="login-left-brand" aria-hidden="true"></div>
       <div class="login-left-hero">
         <h2>Gestão inteligente de manifestações</h2>
-        <p>Uma plataforma integrada para registrar, analisar e acompanhar manifestações do SAC com rastreabilidade, praticidade e histórico completo.</p>
-        <div class="login-steps">
-          <div class="login-step"><span class="login-step-n">01</span>SAC registra a manifestação e a IA auxilia na análise</div>
-          <div class="login-step"><span class="login-step-n">02</span>Analista valida e encaminha ao setor responsável</div>
-          <div class="login-step"><span class="login-step-n">03</span>Tratativa e aprovação quando necessárias</div>
-          <div class="login-step"><span class="login-step-n">04</span>Devolutiva ao cliente e histórico permanente</div>
-        </div>
+        <p>Uma plataforma integrada para registrar, analisar e acompanhar manifestações, com rastreabilidade e gestão centralizada.</p>
         <div style="display:flex;flex-direction:column;gap:10px;margin-top:32px;max-width:420px">
-          <button onclick="abrirPortalPublico()" style="height:54px;border:0;background:#fff;color:#C70602;border-radius:10px;font-weight:700;font-size:15px;letter-spacing:.04em;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.18);font-family:inherit">+ REGISTRAR MANIFESTAÇÃO</button>
+          <button onclick="abrirPortalPublico()" style="height:54px;border:0;background:#fff;color:#C70602;border-radius:10px;font-weight:700;font-size:15px;letter-spacing:.04em;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.18);font-family:inherit">+ Registrar manifestação</button>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">
-            <button onclick="abrirSolicitacaoAcesso()" style="height:44px;border:1.5px solid rgba(255,255,255,.7);background:transparent;color:#fff;border-radius:10px;font-weight:700;font-size:12.5px;letter-spacing:.04em;cursor:pointer;font-family:inherit">SOLICITAR ACESSO</button>
+            <button onclick="abrirSolicitacaoAcesso()" style="height:44px;border:1.5px solid rgba(255,255,255,.7);background:transparent;color:#fff;border-radius:10px;font-weight:600;font-size:12.5px;letter-spacing:.04em;cursor:pointer;font-family:inherit">Solicitar acesso</button>
           </div>
         </div>
       </div>
@@ -1503,7 +1493,7 @@
     <div class="login-right">
       <!-- Formulário de login -->
       <div id="login-panel-login" style="display:flex;width:100%;max-width:380px;flex-direction:column;gap:18px">
-        <img src="/logo-chiacchio.png" alt="Grupo Chiacchio" style="width:150px;height:auto;display:block;margin-bottom:6px">
+        <img src="/logo-chiacchio.png" alt="Grupo Chiacchio" style="height:64px;width:auto;display:block;margin:0 auto 20px">
         <div>
           <div style="font-size:22px;font-weight:700">Entrar</div>
           <div style="color:#666464;font-size:13px;margin-top:4px">Use seu login e senha para acesso.</div>
@@ -1517,7 +1507,6 @@
           <button onclick="abrirEsqueciSenha()" style="background:none;border:0;color:#A80502;cursor:pointer;padding:0;font-family:inherit;font-size:13px">Esqueci minha senha</button>
         </div>
         <button onclick="doLogin()" class="login-btn">Entrar</button>
-        <div style="font-size:12px;color:#707070">A sessão expira após 30 minutos sem atividade.</div>
         <div style="border-top:1px solid #E4E4E4;padding-top:16px">
           <button onclick="abrirSolicitacaoAcesso()" style="background:none;border:0;color:#A80502;cursor:pointer;padding:0;font-family:inherit;font-size:13px;text-align:left">Não tem conta? Solicitar acesso</button>
         </div>
