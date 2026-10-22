@@ -483,6 +483,15 @@ const P_LEITURA=['MASTER','GESTOR SAC','ANALISTA SAC','ATENDENTE SAC','SETOR RES
 const P_RNC=['MASTER','GESTOR SAC','ANALISTA SAC','SETOR RESPONSÁVEL','ESPECIALISTA','RCA / REPRESENTANTE'];
 const P_APROVACAO=['MASTER','APROVADOR MASTER','APROVADOR'];
 const P_RELATORIO=['MASTER','GESTOR SAC','ANALISTA SAC','ATENDENTE SAC','SETOR RESPONSÁVEL','ESPECIALISTA','APROVADOR','RCA / REPRESENTANTE','DIRETOR','VISUALIZADOR','AUDITOR'];
+const perfilProfissional = require('./perfil-profissional');
+const PERFIL_PROF_HEADERS = ['ID_USUARIO','DADOS_JSON','STATUS','VERSAO','CRIADO_EM','ATUALIZADO_EM','VALIDACAO_ADMIN'];
+async function obterPerfilProfissional(idUsuario) {
+  const rows = await lerAba('PERFIS_PROFISSIONAIS', 5000).catch(e => {
+    if (/not found|não encontrad|Unable to parse range|does not exist/i.test(String(e.message))) return [];
+    throw e;
+  });
+  return rows.find(r => String(r.ID_USUARIO) === String(idUsuario)) || null;
+}
 
 function usuarioPublico(u){
   let permissoes_custom=null;
@@ -1373,6 +1382,11 @@ app.use('/api', async (req,res,next)=>{
     permissoes_granted: infoAtual.permissoes_granted ?? payload.permissoes_granted,
     permissoes_blocked: infoAtual.permissoes_blocked ?? payload.permissoes_blocked,
   };
+  // Tokens emitidos após a implantação conhecem o estado do perfil. O servidor
+  // impede acesso direto à API operacional enquanto o onboarding é obrigatório.
+  if (payload.perfilProfissionalCompleto === false && ![
+    '/auth/me','/auth/refresh','/auth/completar-primeiro-acesso','/meu-perfil'
+  ].includes(req.path)) return res.status(428).json({sucesso:false,erro:'Conclua o Meu Perfil para acessar a ferramenta.',codigo:'PERFIL_PENDENTE'});
   next();
 });
 
@@ -1460,6 +1474,8 @@ app.post('/api/auth/login', async (req, res) => {
     if(statusNorm==='bloqueado') return res.status(403).json({sucesso:false,erro:'Usuário bloqueado. Contate o administrador.'});
     const senhaOk = await senhaValida(senha, registro.SENHA_HASH || registro.SENHA);
     if(!senhaOk) return res.status(401).json({sucesso:false,erro:'Usuário ou senha inválidos.'});
+    const profissional=await obterPerfilProfissional(pub.id);
+    const profissionalCompleto=profissional?.STATUS==='CONCLUIDO';
     const agora=Date.now();
     const primeroAcesso = statusNorm === 'primeiro_acesso' || statusNorm === 'primeiroacesso';
     const payload={
@@ -1470,6 +1486,7 @@ app.post('/api/auth/login', async (req, res) => {
       permissoes_granted: Array.isArray(pub.permissoes_granted)&&pub.permissoes_granted.length ? pub.permissoes_granted : null,
       permissoes_blocked: Array.isArray(pub.permissoes_blocked)&&pub.permissoes_blocked.length ? pub.permissoes_blocked : null,
       primeiro_acesso: primeroAcesso || undefined,
+      perfilProfissionalCompleto: profissionalCompleto,
       iat:agora, exp:agora+SESSION_TTL_MS
     };
     const isDemo = String(registro.ID_USUARIO||'').startsWith('USR-DEMO-');
@@ -1486,7 +1503,7 @@ app.post('/api/auth/login', async (req, res) => {
       registrarAcessoUsuario(registro).catch(e=>console.warn('[LOGIN] registrarAcesso falhou:',e.message));
       registrarAuditoria(pub.usuario,'LOGIN',null,'AUTH',null,{perfil:pub.perfil}).catch(()=>{});
     }
-    res.json({ sucesso:true, token:assinarToken(payload), usuario:pub.usuario, usuarioInfo:{...pub, primeiro_acesso: primeroAcesso || undefined}, modo:isDemo?'DEMO':'PRODUCAO' });
+    res.json({ sucesso:true, token:assinarToken(payload), usuario:pub.usuario, usuarioInfo:{...pub, primeiro_acesso: primeroAcesso || undefined, perfilProfissionalCompleto: profissionalCompleto}, modo:isDemo?'DEMO':'PRODUCAO' });
   } catch (e) {
     console.error(e);
     res.status(500).json({ sucesso: false, erro: erroSeguro(e) });
@@ -1520,6 +1537,7 @@ app.post('/api/auth/refresh', async (req,res)=>{
         codigoRCA: pub.codigoRCA,
         permissoes_granted: pub.permissoes_granted,
         permissoes_blocked: pub.permissoes_blocked,
+        perfilProfissionalCompleto: (await obterPerfilProfissional(pub.id))?.STATUS==='CONCLUIDO',
         iat: agora, exp: agora+SESSION_TTL_MS,
       };
       return res.json({sucesso:true, token:assinarToken(novoPayload), usuarioInfo});
@@ -1586,6 +1604,7 @@ app.post('/api/auth/completar-primeiro-acesso', async (req, res) => {
       sub: pub.id, usuario: pub.usuario, nome: pub.nome, email: pub.email, perfil: pub.perfil,
       empresa: pub.empresa, setor: pub.setor, cargo: pub.cargo || '', telefone: pub.telefone || '',
       codigoRCA: pub.codigoRCA,
+      perfilProfissionalCompleto: (await obterPerfilProfissional(pub.id))?.STATUS==='CONCLUIDO',
       permissoes_custom: payload.permissoes_custom || null,
       permissoes_granted: payload.permissoes_granted || null,
       permissoes_blocked: payload.permissoes_blocked || null,
@@ -1597,6 +1616,68 @@ app.post('/api/auth/completar-primeiro-acesso', async (req, res) => {
   } catch (e) {
     res.status(500).json({ sucesso: false, erro: erroSeguro(e) });
   }
+});
+
+// Perfil profissional vinculado à identidade autenticada. Dados oficiais nunca
+// são aceitos do formulário, e a conclusão não altera perfil/permissões.
+app.get('/api/meu-perfil', async (req,res) => {
+  try {
+    const registro=await carregarUsuarioPorLogin(req.user.usuario);
+    if(!registro) return res.status(404).json({sucesso:false,erro:'Usuário não encontrado.'});
+    const usuario=usuarioPublico(registro);
+    const row=await obterPerfilProfissional(usuario.id);
+    res.json({sucesso:true,perfil:perfilProfissional.registroParaPerfil(row,usuario),completo:row?.STATUS==='CONCLUIDO'});
+  } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
+});
+app.patch('/api/meu-perfil', async (req,res) => {
+  try {
+    const registro=await carregarUsuarioPorLogin(req.user.usuario);
+    if(!registro) return res.status(404).json({sucesso:false,erro:'Usuário não encontrado.'});
+    const usuario=usuarioPublico(registro);
+    const dados=perfilProfissional.declaracoes(req.body||{});
+    const concluir=req.body?.concluir===true;
+    await garantirAbaComCabecalhos('PERFIS_PROFISSIONAIS',PERFIL_PROF_HEADERS);
+    const antigo=await obterPerfilProfissional(usuario.id);
+    if((concluir || antigo?.STATUS==='CONCLUIDO') && !perfilProfissional.valido(dados)) return res.status(400).json({sucesso:false,erro:'Informe sua função e ao menos uma responsabilidade para concluir.'});
+    const agora=new Date().toISOString();
+    const obj={ID_USUARIO:usuario.id,DADOS_JSON:JSON.stringify(dados),STATUS:concluir||antigo?.STATUS==='CONCLUIDO'?'CONCLUIDO':'RASCUNHO',VERSAO:Number(antigo?.VERSAO||0)+1,CRIADO_EM:antigo?.CRIADO_EM||agora,ATUALIZADO_EM:agora,VALIDACAO_ADMIN:antigo?.VALIDACAO_ADMIN||'PENDENTE'};
+    if(antigo) await atualizarPorID('PERFIS_PROFISSIONAIS',usuario.id,obj,['ID_USUARIO']);
+    else await appendObjeto('PERFIS_PROFISSIONAIS',obj);
+    await registrarAuditoria(usuario.usuario,antigo?'ATUALIZOU_PERFIL_PROFISSIONAL':'CRIOU_PERFIL_PROFISSIONAL',usuario.id,'PERFIS_PROFISSIONAIS',null,{versao:obj.VERSAO,status:obj.STATUS});
+    const token=assinarToken({...req.user,perfilProfissionalCompleto:obj.STATUS==='CONCLUIDO',iat:Date.now(),exp:Date.now()+SESSION_TTL_MS});
+    res.json({sucesso:true,perfil:perfilProfissional.registroParaPerfil(obj,usuario),completo:obj.STATUS==='CONCLUIDO',token});
+  } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
+});
+
+app.get('/api/perfis/especialistas', requerPerfil(...P_LEITURA,'APROVADOR MASTER'), async(req,res) => {
+  try {
+    if(perfilCanonico(req.user.perfil)!=='MASTER' && !req.user.empresa) return res.status(403).json({sucesso:false,erro:'Empresa não autorizada.'});
+    const usuarios=await carregarUsuarios();
+    const rows=await lerAba('PERFIS_PROFISSIONAIS',5000).catch(()=>[]);
+    const ids=new Map(usuarios.map(u=>[String(usuarioPublico(u).id),u]));
+    const perfis=rows.filter(r=>ids.has(String(r.ID_USUARIO))).map(r=>{
+      const u=usuarioPublico(ids.get(String(r.ID_USUARIO)));
+      return {...perfilProfissional.registroParaPerfil(r,u),ativo:String(u.status||'ATIVO').toUpperCase()==='ATIVO'};
+    });
+    const contexto={...req.query,empresa:perfilCanonico(req.user.perfil)==='MASTER'?req.query.empresa||'':req.user.empresa};
+    res.json({sucesso:true,itens:perfilProfissional.especialistas(perfis,contexto,10)});
+  } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
+});
+
+// A Central de Cadastros consulta a identidade existente. O perfil profissional
+// é um complemento do mesmo usuário, não um segundo registro de pessoa.
+app.get('/api/perfis/colaboradores', requerPerfil(...P_LEITURA,'APROVADOR MASTER'), async(req,res) => {
+  try {
+    if (perfilCanonico(req.user.perfil)!=='MASTER' && !req.user.empresa) return res.status(403).json({sucesso:false,erro:'Empresa não autorizada.'});
+    const usuarios=await carregarUsuarios();
+    const rows=await lerAba('PERFIS_PROFISSIONAIS',5000).catch(()=>[]);
+    const byId=new Map(rows.map(r=>[String(r.ID_USUARIO),r]));
+    const itens=usuarios.map(usuarioPublico).filter(u=>perfilCanonico(req.user.perfil)==='MASTER'||pertenceEmpresa(req.user.empresa,u.empresa)).map(u=>{
+      const p=perfilProfissional.registroParaPerfil(byId.get(String(u.id)),u);
+      return {idUsuario:p.idUsuario,nome:p.nomeOficial,empresa:p.empresa,setor:p.setor,cargo:p.cargoOficial,perfilAcesso:p.perfilAcesso,descricaoFuncao:p.descricaoFuncao,processos:p.processos,especialidades:p.especialidades,status:p.status,ativo:String(u.status||'ATIVO').toUpperCase()==='ATIVO',atualizadoEm:p.atualizadoEm};
+    });
+    res.json({sucesso:true,itens});
+  } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
 
 app.post('/api/auth/forgot-password', async (req,res)=>{
@@ -1713,6 +1794,21 @@ app.post('/api/analise', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC','ATEN
       const causaSug = analise.causaProvavel || analise.causaRaiz || analise.causa || '';
       analise.aprendizado = assertividadeService.aprendizadoPorContexto(rowsAssert, { setor: setorSug, causa: causaSug, tipo });
     } catch (_) {}
+    // Sugestão consultiva baseada em competências declaradas; não altera
+    // atribuições oficiais nem considera autodeclaração prova de causa-raiz.
+    try {
+      const usuarios=await carregarUsuarios();
+      const rows=await lerAba('PERFIS_PROFISSIONAIS',5000).catch(()=>[]);
+      const byId=new Map(usuarios.map(u=>[String(usuarioPublico(u).id),usuarioPublico(u)]));
+      const perfis=rows.filter(r=>byId.has(String(r.ID_USUARIO))).map(r=>{
+        const u=byId.get(String(r.ID_USUARIO));
+        return {...perfilProfissional.registroParaPerfil(r,u),ativo:String(u.status||'ATIVO').toUpperCase()==='ATIVO'};
+      });
+      const empresa=perfilCanonico(req.user.perfil)==='MASTER'?empresaReclamada:req.user.empresa;
+      analise.especialistasSugeridos=perfilProfissional.especialistas(perfis,{empresa,produto,tipo,descricao},5);
+      const operador=perfis.find(p=>String(p.idUsuario)===String(req.user.sub));
+      analise.contextoOperador={perfilOficial:req.user.perfil,setorOficial:req.user.setor||'',funcaoDeclarada:operador?.descricaoFuncao||''};
+    } catch(e) { console.warn('[PERFIL] Sugestões indisponíveis:',e.message); analise.especialistasSugeridos=[]; }
     res.json({ sucesso: true, analise });
   } catch (e) {
     console.error(e);
@@ -3248,7 +3344,7 @@ const CADASTRO_CONFIG = {
     key: r => String(r.CODIGO || r.EMAIL || r.NOME || '').trim().toUpperCase()
   }
 };
-const CADASTRO_LEITURA = ['MASTER','GESTOR SAC','ANALISTA SAC','ATENDENTE SAC','APROVADOR','SETOR RESPONSÁVEL','DIRETOR','AUDITOR','CONSULTA'];
+const CADASTRO_LEITURA = ['MASTER','GESTOR SAC','ANALISTA SAC','ATENDENTE SAC','APROVADOR','APROVADOR MASTER','SETOR RESPONSÁVEL','DIRETOR','AUDITOR','CONSULTA'];
 const CADASTRO_EDICAO = ['MASTER','GESTOR SAC','ANALISTA SAC'];
 function cadastroConfig(tipo){ return CADASTRO_CONFIG[String(tipo||'').toLowerCase()] || null; }
 function cadastroSemDuplicidade(rows, cfg, body, ignoreId='') {
@@ -3271,6 +3367,22 @@ app.get('/api/cadastros/:tipo', middlewareEscopoEmpresa(), requerPerfil(...CADAS
     let itens=await lerAba(cfg.aba,10000);
     // RCAs antigos continuam visíveis sem copiar seus registros para uma nova base.
     if(req.params.tipo==='rcas' && !itens.length) itens=await lerAba('REPRESENTANTES',5000).catch(()=>[]);
+    if(['rcas','vendedores','gerentes'].includes(req.params.tipo)) {
+      const usuarios=(await carregarUsuarios()).map(usuarioPublico);
+      const perfis=await lerAba('PERFIS_PROFISSIONAIS',5000).catch(()=>[]);
+      const completos=new Set(perfis.filter(p=>p.STATUS==='CONCLUIDO').map(p=>String(p.ID_USUARIO)));
+      const tipo=req.params.tipo;
+      for(const u of usuarios) {
+        if(!completos.has(String(u.id)) || String(u.status||'ATIVO').toUpperCase()!=='ATIVO') continue;
+        const cargo=normalizarTexto(u.cargo||'');
+        const corresponde=tipo==='rcas' ? u.perfil==='RCA / REPRESENTANTE' : tipo==='vendedores' ? cargo.includes('vendedor') : cargo.includes('gerente') || u.perfil==='GESTOR SAC';
+        if(!corresponde) continue;
+        const code=tipo==='rcas'?u.codigoRCA||u.id:u.id;
+        if(itens.some(r=>String(r.USUARIO_ID||'')===String(u.id) || (tipo==='rcas'&&u.codigoRCA&&String(r.CODIGO_RCA||'')===String(u.codigoRCA)) || (u.email&&String(r.EMAIL||'').toLowerCase()===u.email.toLowerCase()))) continue;
+        const comum={USUARIO_ID:u.id,ORIGEM_PERFIL:'SIM',EMPRESA:u.empresa,EMPRESAS_JSON:JSON.stringify([u.empresa]),EMAIL:u.email,TELEFONE:u.telefone,ATIVO:'SIM'};
+        itens.push(tipo==='rcas'?{...comum,ID_RCA:`USR:${u.id}`,CODIGO_RCA:code,NOME_RAZAO_SOCIAL:u.nome}:tipo==='vendedores'?{...comum,ID_VENDEDOR:`USR:${u.id}`,CODIGO:code,NOME:u.nome}:{...comum,ID_GERENTE:`USR:${u.id}`,CODIGO:code,NOME:u.nome,CARGO:u.cargo});
+      }
+    }
     itens=cadastroEscopo(itens,req).filter(r=>String(r.ATIVO||'SIM').toUpperCase()!=='EXCLUIDO');
     const q=String(req.query.q||'').trim().toLowerCase();
     if(q) itens=itens.filter(r=>Object.values(r).some(v=>String(v??'').toLowerCase().includes(q)));

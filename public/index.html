@@ -2573,6 +2573,7 @@
         <div class="sidebar-user-role" id="sidebar-user-role">SAC</div>
       </div>
     </div>
+    <button class="mp-user-link" id="mp-user-link" onclick="abrirMeuPerfil()" style="display:none">Meu Perfil | Quem Sou Eu</button>
     <button onclick="doLogout()" style="width:100%;background:none;border:0;color:#666464;padding:4px 0;font-size:12.5px;cursor:pointer;display:flex;align-items:center;gap:6px;font-family:inherit;text-align:left;transition:color 0.15s" onmouseover="this.style.color='#C70602'" onmouseout="this.style.color='#666464'">Sair</button>
   </div>
 </nav>
@@ -6262,6 +6263,13 @@
       <div class="cc-card"><div class="cc-tabs" id="cc-tabs"></div><div class="cc-toolbar"><input class="cc-search" id="cc-search" placeholder="Pesquisar…" oninput="ccFiltrar()"><label class="cc-field">Empresa<select id="cc-empresa" onchange="ccFiltrar()"><option value="">Todas as empresas</option><option>Chiacchio Embalagens</option><option>Plaschio</option><option>Tubahia/CESBAP</option></select></label><button class="cc-btn cc-write-action" onclick="ccExportar()">Exportar CSV</button><label class="cc-btn cc-write-action" style="display:flex;align-items:center;cursor:pointer">Importar CSV<input id="cc-import" type="file" accept=".csv,.txt" style="display:none" onchange="ccImportar(this)"></label></div><div class="cc-meta"><span id="cc-count">Carregando…</span><span id="cc-help">Cadastros inativos permanecem preservados para histórico.</span></div><div class="cc-table-wrap"><table><thead id="cc-head-row"></thead><tbody id="cc-body"><tr><td class="cc-empty">Carregando…</td></tr></tbody></table></div></div>
     </div>
   </div>
+  <div class="page" id="page-meu-perfil" style="display:none">
+    <div class="mp-wrap">
+      <div class="mp-header"><div class="mp-avatar" id="mp-avatar">GC</div><div><h1>Meu Perfil | Quem Sou Eu</h1><div class="mp-muted" id="mp-updated">Carregando perfil…</div></div><span class="mp-badge" id="mp-badge">Perfil profissional</span></div>
+      <div class="mp-card"><div class="mp-progress" id="mp-progress"></div><div class="mp-step-label" id="mp-step-label"></div><h2 id="mp-title"></h2><p id="mp-desc"></p><div class="mp-grid" id="mp-fields"></div><div class="mp-error" id="mp-error" role="alert"></div></div>
+      <div class="mp-actions"><button type="button" class="mp-btn" id="mp-prev" onclick="mpPrev()">← Voltar</button><div class="mp-actions-right"><span class="mp-status" id="mp-status"></span><button type="button" class="mp-btn" onclick="mpSave()">Salvar rascunho</button><button type="button" class="mp-btn primary" id="mp-next" onclick="mpNext()">Continuar →</button></div></div>
+    </div>
+  </div>
   <div id="cc-modal" onclick="if(event.target===this)ccFechar()"><div class="cc-modal-box"><div class="cc-modal-h"><div><b id="cc-modal-title">Novo cadastro</b><div id="cc-modal-sub" class="cc-sub"></div></div><button class="cc-close" onclick="ccFechar()">×</button></div><div class="cc-modal-b" id="cc-modal-fields"></div><div class="cc-modal-f"><button class="cc-btn" onclick="ccFechar()">Cancelar</button><button class="cc-btn primary" onclick="ccSalvar()">Salvar cadastro</button></div></div></div>
 
   <!-- ===== CÉREBRO: ESTILOS cb-* (fim) ===== -->
@@ -9915,6 +9923,9 @@ function toggleSidebar(forceOpen) {
 }
 
 function navigate(page, el, _opts) {
+  if (window.mpPerfilPendente && page !== 'meu-perfil') {
+    page = 'meu-perfil';
+  }
   // Links antigos de gestão de RCA agora abrem o cadastro comercial unificado.
   if (page === 'rca') { page = 'central-cadastros'; _opts = { tab: 'rcas' }; }
   // Rotas unificadas na Central de Manifestações
@@ -11609,6 +11620,10 @@ function renderizarAnalise(a) {
   if (a.reincidencia?.detectada || a.reincidente) alertas.push({ tipo: 'red', msg: '⚠ Cliente reincidente — casos anteriores encontrados no histórico' });
   if (a.geraRNC) alertas.push({ tipo: 'yellow', msg: '⚠ Pode gerar RNC — avaliar na decisão' });
   if ((a.prioridade||'').toUpperCase() === 'ALTA') alertas.push({ tipo: 'red', msg: '⚠ Alta prioridade — requer atenção imediata' });
+  if (Array.isArray(a.especialistasSugeridos) && a.especialistasSugeridos.length) {
+    const nomes = a.especialistasSugeridos.map(p => `${p.nome} (${p.setor || 'setor não informado'}: ${(p.termos || []).join(', ')})`).join('; ');
+    alertas.push({ tipo: 'blue', msg: `Competências declaradas que podem apoiar esta análise: ${nomes}. Confira o responsável oficial antes de encaminhar.` });
+  }
   // Aprendizado das avaliações de assertividade — a ferramenta se alimentando das avaliações anteriores
   if (a.aprendizado && a.aprendizado.totalAvaliacoes) {
     const ap = a.aprendizado;
@@ -15265,7 +15280,10 @@ document.addEventListener('visibilitychange', () => {
         }
       }
     } catch(_) {}
-    setUserChrome();applyRoleUI();if(typeof setupSidebarCentral==='function')setupSidebarCentral();
+    setUserChrome();
+    if (window.perfilProfissionalVerificar && !(await window.perfilProfissionalVerificar())) return;
+    document.getElementById('mp-user-link')?.style.setProperty('display','block');
+    applyRoleUI();if(typeof setupSidebarCentral==='function')setupSidebarCentral();
     if (window.SACPortalLinks) window.SACPortalLinks.load().catch(() => {});
 
     // O carregamento inicial da Visão Geral acontecia antes do login.
@@ -30149,13 +30167,14 @@ if (typeof pageLoaders !== 'undefined') {
 })();
 // ===== CENTRAL DE CADASTROS =====
 (function(){
-  const types=['clientes','produtos','vendedores','rcas','gerentes'];
-  const labels={clientes:'Clientes',produtos:'Produtos',vendedores:'Vendedores',rcas:'RCAs',gerentes:'Gerentes'};
+  const types=['clientes','produtos','vendedores','rcas','gerentes','colaboradores'];
+  const labels={clientes:'Clientes',produtos:'Produtos',vendedores:'Vendedores',rcas:'RCAs',gerentes:'Gerentes',colaboradores:'Colaboradores'};
   const fields={
     clientes:[['CODIGO_INTERNO','Código interno'],['RAZAO_SOCIAL','Razão social'],['NOME_FANTASIA','Nome fantasia'],['CNPJ_CPF','CNPJ/CPF'],['SEGMENTO','Segmento'],['CONTATOS_JSON','Contatos (JSON)'],['COMPRADORES_JSON','Compradores (JSON)'],['ENDERECO_JSON','Endereço (JSON)'],['VINCULOS_JSON','Vínculos por empresa (JSON)']],
     produtos:[['EMPRESA','Empresa'],['SKU','SKU'],['DESCRICAO','Descrição'],['CATEGORIA','Categoria'],['UNIDADE','Unidade'],['QUANTIDADE_EMBALAGEM','Qtd. por embalagem'],['PESO','Peso'],['INFORMACOES_TECNICAS','Informações técnicas']],
     vendedores:[['CODIGO','Código/matrícula'],['NOME','Nome'],['TELEFONE','Telefone'],['WHATSAPP','WhatsApp'],['EMAIL','E-mail'],['EMPRESAS_JSON','Empresas (JSON)'],['GERENTES_JSON','Gerentes por empresa (JSON)'],['CARTEIRA_CLIENTES_JSON','Carteira de clientes (JSON)']],
     rcas:[['CODIGO_RCA','Código RCA'],['NOME_RAZAO_SOCIAL','Nome/Razão social'],['CPF_CNPJ','CPF/CNPJ'],['TELEFONE','Telefone'],['WHATSAPP','WhatsApp'],['EMAIL','E-mail'],['EMPRESAS_JSON','Empresas (JSON)'],['GERENTES_JSON','Gerentes por empresa (JSON)'],['REGIAO_ATUACAO','Região de atuação'],['CLIENTES_VINCULADOS_JSON','Clientes vinculados (JSON)']],
+    colaboradores:[['nome','Nome'],['empresa','Empresa'],['setor','Setor'],['cargo','Cargo'],['perfilAcesso','Perfil de acesso'],['descricaoFuncao','Função declarada'],['processos','Processos'],['especialidades','Competências']],
     gerentes:[['CODIGO','Código/matrícula'],['NOME','Nome'],['CARGO','Cargo'],['TELEFONE','Telefone'],['EMAIL','E-mail'],['EMPRESAS_JSON','Empresas (JSON)'],['VENDEDORES_SUPERVISIONADOS_JSON','Vendedores supervisionados (JSON)'],['RCAS_SUPERVISIONADOS_JSON','RCAs supervisionados (JSON)']]
   };
   let state={tipo:'clientes',items:[],edit:null};
@@ -30167,21 +30186,23 @@ if (typeof pageLoaders !== 'undefined') {
     const tabs=document.getElementById('cc-tabs');if(!tabs)return;tabs.innerHTML=types.map(t=>`<button class="cc-tab ${t===state.tipo?'on':''}" onclick="ccSelecionar('${t}')">${labels[t]}</button>`).join('');
     const fs=fields[state.tipo];document.getElementById('cc-head-row').innerHTML='<tr>'+fs.slice(0,5).map(x=>`<th>${esc(x[1])}</th>`).join('')+'<th>Situação</th><th>Ações</th></tr>';
     const rows=activeRows();document.getElementById('cc-count').textContent=`${rows.length} registro${rows.length===1?'':'s'}`;
-    document.getElementById('cc-body').innerHTML=rows.length?rows.map(r=>`<tr onclick="ccEditar('${esc(r[state.tipo==='clientes'?'ID_CLIENTE':state.tipo==='produtos'?'ID_PRODUTO':state.tipo==='vendedores'?'ID_VENDEDOR':state.tipo==='rcas'?'ID_RCA':'ID_GERENTE'])}')">${fs.slice(0,5).map(x=>`<td>${esc(r[x[0]]||'—')}</td>`).join('')}<td><span class="cc-status ${String(r.ATIVO||'SIM').toUpperCase()!=='SIM'?'off':''}">${String(r.ATIVO||'SIM').toUpperCase()==='SIM'?'Ativo':'Inativo'}</span></td><td><button class="cc-btn" onclick="event.stopPropagation();ccEditar('${esc(r[state.tipo==='clientes'?'ID_CLIENTE':state.tipo==='produtos'?'ID_PRODUTO':state.tipo==='vendedores'?'ID_VENDEDOR':state.tipo==='rcas'?'ID_RCA':'ID_GERENTE'])}')">Editar</button></td></tr>`).join(''):'<tr><td colspan="8" class="cc-empty">Nenhum cadastro encontrado.</td></tr>';
-    const canEdit=['MASTER','GESTOR SAC','ANALISTA SAC'].includes(window.role?.()||'');
+    document.getElementById('cc-body').innerHTML=rows.length?rows.map(r=>`<tr onclick="ccEditar('${esc(r[state.tipo==='clientes'?'ID_CLIENTE':state.tipo==='produtos'?'ID_PRODUTO':state.tipo==='vendedores'?'ID_VENDEDOR':state.tipo==='rcas'?'ID_RCA':state.tipo==='colaboradores'?'idUsuario':'ID_GERENTE'])}')">${fs.slice(0,5).map(x=>`<td>${esc(r[x[0]]||'—')}</td>`).join('')}<td><span class="cc-status ${String(r.ATIVO||'SIM').toUpperCase()!=='SIM'?'off':''}">${String(r.ATIVO||'SIM').toUpperCase()==='SIM'?'Ativo':'Inativo'}</span></td><td><button class="cc-btn" onclick="event.stopPropagation();ccEditar('${esc(r[state.tipo==='clientes'?'ID_CLIENTE':state.tipo==='produtos'?'ID_PRODUTO':state.tipo==='vendedores'?'ID_VENDEDOR':state.tipo==='rcas'?'ID_RCA':state.tipo==='colaboradores'?'idUsuario':'ID_GERENTE'])}')">${state.tipo==='colaboradores'?'Ver':'Editar'}</button></td></tr>`).join(''):'<tr><td colspan="8" class="cc-empty">Nenhum cadastro encontrado.</td></tr>';
+    const canEdit=state.tipo!=='colaboradores'&&['MASTER','GESTOR SAC','ANALISTA SAC'].includes(window.role?.()||'');
     const nb=document.getElementById('cc-new-btn'); if(nb){nb.textContent=`+ Novo ${labels[state.tipo].slice(0,-1).toLowerCase()}`;nb.style.display=canEdit?'':'none';}
     document.querySelectorAll('#page-central-cadastros .cc-write-action').forEach(el=>el.style.display=canEdit?'':'none');
   }
-  async function load(tipo){state.tipo=tipo||state.tipo;document.getElementById('cc-body').innerHTML='<tr><td class="cc-empty">Carregando…</td></tr>';try{const j=await api('/api/cadastros/'+state.tipo);state.items=j.itens||[];render()}catch(e){document.getElementById('cc-body').innerHTML=`<tr><td class="cc-empty">${esc(e.message)}</td></tr>`}}
+  async function load(tipo){state.tipo=tipo||state.tipo;document.getElementById('cc-body').innerHTML='<tr><td class="cc-empty">Carregando…</td></tr>';try{const j=await api(state.tipo==='colaboradores'?'/api/perfis/colaboradores':'/api/cadastros/'+state.tipo);state.items=j.itens||[];render()}catch(e){document.getElementById('cc-body').innerHTML=`<tr><td class="cc-empty">${esc(e.message)}</td></tr>`}}
   window.ccSelecionar=t=>{state.edit=null;load(t)};window.ccCarregar=t=>load(t);window.ccFiltrar=render;
-  window.ccNovo=()=>{state.edit=null;ccModal()};
-  window.ccEditar=id=>{const key=state.tipo==='clientes'?'ID_CLIENTE':state.tipo==='produtos'?'ID_PRODUTO':state.tipo==='vendedores'?'ID_VENDEDOR':state.tipo==='rcas'?'ID_RCA':'ID_GERENTE';state.edit=state.items.find(x=>String(x[key])===String(id))||null;ccModal()};
+  window.ccNovo=()=>{if(state.tipo==='colaboradores')return;state.edit=null;document.querySelector('#cc-modal .cc-modal-f').style.display='flex';ccModal()};
+  window.ccEditar=id=>{if(state.tipo==='colaboradores'){const p=state.items.find(x=>String(x.idUsuario)===String(id));if(!p)return;const fs=fields.colaboradores;document.getElementById('cc-modal-title').textContent='Perfil profissional';document.getElementById('cc-modal-sub').textContent=p.nome+' · '+p.empresa;document.getElementById('cc-modal-fields').innerHTML=fs.map(([k,l])=>`<label class="cc-field">${esc(l)}<input readonly value="${esc(Array.isArray(p[k])?p[k].join('; '):p[k]||'')}"></label>`).join('');document.querySelector('#cc-modal .cc-modal-f').style.display='none';document.getElementById('cc-modal').classList.add('open');return}document.querySelector('#cc-modal .cc-modal-f').style.display='flex';const key=state.tipo==='clientes'?'ID_CLIENTE':state.tipo==='produtos'?'ID_PRODUTO':state.tipo==='vendedores'?'ID_VENDEDOR':state.tipo==='rcas'?'ID_RCA':state.tipo==='colaboradores'?'idUsuario':'ID_GERENTE';state.edit=state.items.find(x=>String(x[key])===String(id))||null;if(state.edit?.ORIGEM_PERFIL){const r=state.edit;document.getElementById('cc-modal-title').textContent='Colaborador vinculado';document.getElementById('cc-modal-sub').textContent='Dados oficiais do usuário · edição em Usuários e Acessos';document.getElementById('cc-modal-fields').innerHTML=fields[state.tipo].map(([k,l])=>`<label class="cc-field">${esc(l)}<input readonly value="${esc(r[k]||'')}"></label>`).join('');document.querySelector('#cc-modal .cc-modal-f').style.display='none';document.getElementById('cc-modal').classList.add('open');return}ccModal()};
   function ccModal(){const fs=fields[state.tipo],r=state.edit||{};document.getElementById('cc-modal-title').textContent=state.edit?`Editar ${labels[state.tipo].slice(0,-1)}`:`Novo ${labels[state.tipo].slice(0,-1)}`;document.getElementById('cc-modal-sub').textContent=state.edit?.[state.tipo==='clientes'?'RAZAO_SOCIAL':state.tipo==='produtos'?'SKU':state.tipo==='rcas'?'NOME_RAZAO_SOCIAL':'NOME']||'';document.getElementById('cc-modal-fields').innerHTML=fs.map(([k,l])=>`<label class="cc-field ${k.includes('JSON')?'wide':''}">${esc(l)}${k==='NOME'||k==='RAZAO_SOCIAL'||k==='DESCRICAO'?' *':''}<${k.includes('JSON')?'textarea':'input'} data-cc-key="${k}" ${k.includes('JSON')?'rows="3"':''} value="${!k.includes('JSON')?esc(r[k]||''):''}" placeholder="${k.includes('JSON')?'JSON opcional':''}">${k.includes('JSON')?esc(r[k]||''):''}</${k.includes('JSON')?'textarea':'input'}></label>`).join('')+`<label class="cc-field">Situação<select data-cc-key="ATIVO"><option value="SIM" ${String(r.ATIVO||'SIM')==='SIM'?'selected':''}>Ativo</option><option value="NAO" ${String(r.ATIVO||'')!=='SIM'?'selected':''}>Inativo</option></select></label>`;document.getElementById('cc-modal').classList.add('open')}
   window.ccFechar=()=>document.getElementById('cc-modal').classList.remove('open');
-  window.ccSalvar=async()=>{const body={};document.querySelectorAll('#cc-modal-fields [data-cc-key]').forEach(e=>body[e.dataset.ccKey]=e.value.trim());const required=fields[state.tipo].filter(x=>['NOME','RAZAO_SOCIAL','DESCRICAO'].includes(x[0]));if(required.some(x=>!body[x[0]]))return alert('Preencha os campos obrigatórios.');try{const id=state.edit?.[state.tipo==='clientes'?'ID_CLIENTE':state.tipo==='produtos'?'ID_PRODUTO':state.tipo==='vendedores'?'ID_VENDEDOR':state.tipo==='rcas'?'ID_RCA':'ID_GERENTE'];await api('/api/cadastros/'+state.tipo+(id?'/'+encodeURIComponent(id):''),{method:id?'PATCH':'POST',body:JSON.stringify(body)});ccFechar();await load(state.tipo)}catch(e){alert(e.message)}};
+  window.ccSalvar=async()=>{const body={};document.querySelectorAll('#cc-modal-fields [data-cc-key]').forEach(e=>body[e.dataset.ccKey]=e.value.trim());const required=fields[state.tipo].filter(x=>['NOME','RAZAO_SOCIAL','DESCRICAO'].includes(x[0]));if(required.some(x=>!body[x[0]]))return alert('Preencha os campos obrigatórios.');try{const id=state.edit?.[state.tipo==='clientes'?'ID_CLIENTE':state.tipo==='produtos'?'ID_PRODUTO':state.tipo==='vendedores'?'ID_VENDEDOR':state.tipo==='rcas'?'ID_RCA':state.tipo==='colaboradores'?'idUsuario':'ID_GERENTE'];await api('/api/cadastros/'+state.tipo+(id?'/'+encodeURIComponent(id):''),{method:id?'PATCH':'POST',body:JSON.stringify(body)});ccFechar();await load(state.tipo)}catch(e){alert(e.message)}};
   window.ccExportar=()=>{const rows=activeRows(),fs=fields[state.tipo],csv=[fs.map(x=>x[0]).join(';')].concat(rows.map(r=>fs.map(x=>`"${String(r[x[0]]||'').replace(/"/g,'""')}"`).join(';'))).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download=`${state.tipo}.csv`;a.click();URL.revokeObjectURL(a.href)};
   window.ccImportar=async input=>{const f=input.files?.[0];if(!f)return;const text=await f.text();const lines=text.split(/\r?\n/).filter(Boolean),fs=fields[state.tipo];const itens=lines.slice(1).map(line=>{const vals=line.split(';').map(v=>v.replace(/^"|"$/g,''));return Object.fromEntries(fs.map((x,i)=>[x[0],vals[i]||'']))});try{const j=await api('/api/cadastros/'+state.tipo+'/importar',{method:'POST',body:JSON.stringify({itens})});alert(`${j.criados||0} criados e ${j.atualizados||0} atualizados.`);await load(state.tipo)}catch(e){alert(e.message)}input.value=''};
 })();
 </script>
+<link rel="stylesheet" href="/assets/meu-perfil.css">
+<script src="/assets/meu-perfil.js"></script>
 </body>
 </html>
