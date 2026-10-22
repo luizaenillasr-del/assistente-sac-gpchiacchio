@@ -680,13 +680,17 @@
   .login-split { width: 100%; flex: 1 1 auto; min-height: 100vh; display: grid; grid-template-columns: 42% 58%; }
   .login-left { background: #C70602; color: #fff; padding: 52px 56px; display: flex; flex-direction: column; justify-content: space-between; gap: 40px; position:relative; overflow:hidden; }
   .login-left-brand { display: flex; align-items: center; gap: 14px; }
+  .login-left-brand img { width: 42px; height: 42px; object-fit: contain; filter: brightness(0) invert(1); }
   .login-left-brand-text { }
   .login-left-brand-name { font-weight: 700; font-size: 15px; letter-spacing: .02em; }
   .login-left-brand-sub { font-size: 12.5px; color: #FFE1E0; }
   .login-left-hero { max-width: 440px; flex:1; display:flex; flex-direction:column; justify-content:center; padding:40px 0 36px; }
   .login-left-hero h2 { font-size: 30px; font-weight: 800; line-height: 1.22; letter-spacing:-.02em; margin-bottom:16px; }
   .login-left-hero p { color: rgba(255,255,255,.72); line-height: 1.72; margin: 0; font-size: 14px; }
-  .login-steps { display: none; }
+  .login-steps { display: flex; align-items: center; gap: 0; max-width: 420px; margin-top: 28px; }
+  .login-step-icon { width: 32px; height: 32px; border-radius: 8px; background: rgba(255,255,255,.15); display: grid; place-items: center; flex: none; }
+  .login-step-icon svg { width: 14px; height: 14px; }
+  .login-step-line { flex: 1; height: 1px; background: rgba(255,255,255,.25); margin: 0 10px; }
   .login-step { display: flex; gap: 12px; align-items: center; }
   .login-step-n { font-variant-numeric: tabular-nums; color: #FFC2BF; font-weight: 700; min-width: 20px; }
   .login-left-footer { font-size: 12px; color: #FFE1E0; display: flex; gap: 16px; flex-wrap: wrap; }
@@ -704,7 +708,7 @@
   .login-input { width: 100%; padding: 10px 12px; border: 1px solid #D6D6D6; border-radius: 8px; font-size: 14px; outline: none; font-family: inherit; background: #fff; }
   .login-input:focus { border-color: #C70602; box-shadow: 0 0 0 2px rgba(199,6,2,.1); }
   .login-btn { width: 100%; padding: 11px; background: #C70602; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; }
-  #login-panel-login { text-align:center; }
+  #login-panel-login { text-align:left; }
   #login-panel-login > label { text-align:left; }
   .login-btn:hover { background: #A80502; }
   .login-error { background: #F9E3E3; color: #8E1A24; font-size: 13px; padding: 10px 12px; border-radius: 8px; margin-top: 10px; display: none; }
@@ -762,6 +766,7 @@
     .login-right { order: -1; padding: 32px 20px 28px; }
     .login-left { padding: 34px 24px; min-height: auto; }
     .login-left-hero h2 { font-size: 25px; }
+    .login-steps { max-width: 100%; }
   }
 </style>
 
@@ -1473,10 +1478,29 @@
   <div class="login-split">
     <!-- PAINEL ESQUERDO — vermelho -->
     <div class="login-left">
-      <div class="login-left-brand" aria-hidden="true"></div>
+      <div class="login-left-brand">
+        <img src="/assets/logo-grupo-chiacchio.png" alt="Grupo Chiacchio">
+        <div class="login-left-brand-text">
+          <div class="login-left-brand-name">GRUPO CHIACCHIO</div>
+          <div class="login-left-brand-sub">Assistente SAC</div>
+        </div>
+      </div>
       <div class="login-left-hero">
         <h2>Gestão inteligente de manifestações</h2>
-        <p>Uma plataforma integrada para registrar, analisar e acompanhar manifestações, com rastreabilidade e gestão centralizada.</p>
+        <p>Uma plataforma integrada para registrar, analisar e acompanhar manifestações, com rastreabilidade, praticidade e histórico completo.</p>
+        <div class="login-steps" aria-label="Fluxo da manifestação">
+          <div class="login-step">
+            <span class="login-step-n">01</span><span>Registrar</span>
+          </div>
+          <span class="login-step-line"></span>
+          <div class="login-step">
+            <span class="login-step-n">02</span><span>Analisar</span>
+          </div>
+          <span class="login-step-line"></span>
+          <div class="login-step">
+            <span class="login-step-n">03</span><span>Resolver</span>
+          </div>
+        </div>
         <div style="display:flex;flex-direction:column;gap:10px;margin-top:32px;max-width:420px">
           <button onclick="abrirPortalPublico()" style="height:54px;border:0;background:#fff;color:#C70602;border-radius:10px;font-weight:700;font-size:15px;letter-spacing:.04em;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.18);font-family:inherit">+ Registrar manifestação</button>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">
@@ -1493,10 +1517,10 @@
     <div class="login-right">
       <!-- Formulário de login -->
       <div id="login-panel-login" style="display:flex;width:100%;max-width:380px;flex-direction:column;gap:18px">
-        <img src="/logo-chiacchio.png" alt="Grupo Chiacchio" style="height:64px;width:auto;display:block;margin:0 auto 20px">
-        <div>
-          <div style="font-size:22px;font-weight:700">Entrar</div>
-          <div style="color:#666464;font-size:13px;margin-top:4px">Use seu login e senha para acesso.</div>
+        <div style="text-align:center;margin-bottom:12px">
+          <img src="/logo-chiacchio.png" alt="Grupo Chiacchio" style="height:72px;width:auto;display:block;margin:0 auto 18px">
+          <div style="font-size:24px;font-weight:800;color:#202124;letter-spacing:-.02em">Acesse sua conta</div>
+          <div style="color:#929090;font-size:13px;line-height:1.5;margin-top:6px">Ambiente corporativo de acesso restrito.</div>
         </div>
         <div id="login-error" style="display:none;background:#F9E3E3;color:#8E1A24;border-radius:8px;padding:10px 12px;font-size:13px">E-mail ou senha inválidos.</div>
         <div id="login-forgot-sent" style="display:none;background:#E4ECF7;color:#244F8F;border-radius:8px;padding:10px 12px;font-size:13px">Se o e-mail estiver cadastrado, você receberá um link para redefinir a senha.</div>
@@ -3170,12 +3194,12 @@
       <div class="nm-step-panel" data-nm-step="4">
         <div class="nm-section-hdr"><h2>Análise com IA</h2><p>Sugestões geradas pela inteligência artificial com base nos dados preenchidos.</p></div>
         <!-- Card disparar análise -->
-        <div style="background:#C70602;color:#fff;border-radius:12px;padding:18px 20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
+        <div style="background:#FFF8F8;border:1px solid #F2C7C7;color:#1F1F1F;border-radius:12px;padding:18px 20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
           <div>
             <div style="font-weight:700;font-size:14px;margin-bottom:4px">Análise com IA</div>
-            <div style="font-size:12.5px;color:#FFE1E0;line-height:1.55;max-width:500px">A IA consulta histórico, Cérebro, Matriz de tratamento e Políticas e sugere tipo, causa provável, setor, prioridade e tratativa. Você aceita, edita ou rejeita.</div>
+            <div style="font-size:12.5px;color:#545252;line-height:1.55;max-width:500px">A IA consulta histórico, Cérebro, Matriz de tratamento e Políticas e sugere tipo, causa provável, setor, prioridade e tratativa. Você aceita, edita ou rejeita.</div>
           </div>
-          <button onclick="registrarManifestacao()" style="height:42px;border:0;background:#fff;color:#C70602;border-radius:9px;font-weight:700;cursor:pointer;font-size:13px;font-family:inherit;padding:0 20px;flex-shrink:0">Analisar com IA</button>
+          <button type="button" onclick="executarAnaliseIA()" id="nm-btn-analisar-ia" style="height:42px;border:0;background:#fff;color:#C70602;border-radius:9px;font-weight:700;cursor:pointer;font-size:13px;font-family:inherit;padding:0 20px;flex-shrink:0">Analisar com IA</button>
         </div>
 
         <!-- PAINEL ANÁLISE AUTOMÁTICA DA IA (mantido) -->
@@ -3500,6 +3524,7 @@
       };
 
       window.nmCalcPrejuizo = function(){
+        var houve = !!document.getElementById('nm-houve-devolucao')?.checked;
         var qtdDev = parseFloat(document.getElementById('nm-qtd-devolvida')?.value) || 0;
         var qtdTotal = parseFloat(document.getElementById('nm-qtd-total')?.value) || 0;
         var qtdAfet = parseFloat(document.getElementById('nm-qtd')?.value) || 0;
@@ -3507,20 +3532,16 @@
         var vlrEnv = parseFloat(String(document.getElementById('nm-valor')?.value||'').replace(',','.')) || 0;
         var el = document.getElementById('nm-vlr-estimado');
         if (!el) return;
-        var result = 0;
-        // Prejuízo = (qtd. afetada / qtd. total) × valor total; fallback para qtd. devolvida; fallback para valor envolvido
-        if (qtdAfet > 0 && qtdTotal > 0 && vlrTotal > 0) {
-          result = (qtdAfet / qtdTotal) * vlrTotal;
-        } else if (qtdAfet > 0 && qtdTotal > 0 && vlrEnv > 0) {
-          result = (qtdAfet / qtdTotal) * vlrEnv;
-        } else if (qtdDev > 0 && qtdTotal > 0 && vlrTotal > 0) {
-          result = (qtdDev / qtdTotal) * vlrTotal;
-        } else if (qtdDev > 0 && qtdTotal > 0 && vlrEnv > 0) {
-          result = (qtdDev / qtdTotal) * vlrEnv;
-        } else if (vlrEnv > 0) {
-          result = vlrEnv;
+        // Valor envolvido e quantidade afetada não comprovam prejuízo.
+        // Sem devolução, a quantidade devolvida é sempre zero e o prejuízo
+        // permanece não apurado até que uma evidência financeira seja informada.
+        if (!houve) {
+          var devEl = document.getElementById('nm-qtd-devolvida');
+          if (devEl && devEl.value) devEl.value = '0';
+          el.value = '';
+          return;
         }
-        el.value = result > 0 ? result.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}) : '';
+        el.value = '';
       };
 
       window.nmSelEmpresa = function(btn, val){
@@ -5504,7 +5525,7 @@
                     <span class="mc-dh-sub" id="cen-man-sub"></span>
                   </div>
                   <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
-                    <button type="button" class="mc-btn mc-btn-p mc-btn-sm" onclick="cenToggleAcoes(true);document.getElementById('cen-trat-card')?.scrollIntoView({behavior:'smooth',block:'start'});document.getElementById('trat-acao')?.focus();" style="font-size:12px;padding:5px 12px">✏ Tratar</button>
+                    <button type="button" class="mc-btn mc-btn-p mc-btn-sm" onclick="cenIniciarTratativa()" style="font-size:12px;padding:5px 12px">✏ Tratar</button>
                     <button type="button" class="mc-lnk" onclick="cenAbrirFichaCompleta()" style="display:inline-flex;align-items:center;gap:4px;font-size:12px">Ficha completa
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
                     </button>
@@ -5639,6 +5660,7 @@
                 <div style="font-size:9px;font-weight:700;letter-spacing:.08em;color:#C0C0C0;margin-bottom:8px">RELATO ORIGINAL DO CLIENTE</div>
                 <div style="font-size:13px;line-height:1.65;color:#2A2A2A" id="cfm-relato">—</div>
               </div>
+              <div id="cfm-evidencias" style="display:none;background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;margin-top:11px"></div>
               <div id="cfm-dados-form" style="margin-top:11px"></div>
             </div>
             <div class="cen-tabpanel" id="centab-triagem">
@@ -11511,6 +11533,9 @@ async function executarAnaliseIA() {
   // Mostrar painel
   const painel = document.getElementById('painel-analise');
   if (!painel) return;
+  const botaoIA = document.getElementById('nm-btn-analisar-ia');
+  if (botaoIA?.disabled) return;
+  if (botaoIA) { botaoIA.disabled = true; botaoIA.textContent = 'Analisando…'; botaoIA.style.opacity = '.7'; }
   painel.style.display = 'block';
   atualizarResumoFicha();
   document.getElementById('ia-analisando').style.display = 'block';
@@ -11534,6 +11559,7 @@ async function executarAnaliseIA() {
     document.getElementById('ia-analisando').innerHTML = `<div style="color:var(--red);font-size:13px">⚠ Erro na análise: ${esc(e.message)}</div>`;
   } finally {
     document.getElementById('ia-loading').style.display = 'none';
+    if (botaoIA) { botaoIA.disabled = false; botaoIA.textContent = 'Analisar novamente'; botaoIA.style.opacity = '1'; }
   }
 }
 
@@ -12908,6 +12934,23 @@ function abrirDossie(item) {
   // Registra visualização em background (não bloqueia abertura)
   if (item.ID_MANIFESTACAO) {
     _apiFetch(`/api/manifestacoes/${encodeURIComponent(item.ID_MANIFESTACAO)}/visualizacao`, 5000, {method:'POST'}).catch(()=>{});
+    // Os anexos não fazem parte da listagem resumida da Central. Carregá-los
+    // ao abrir o dossiê garante que os arquivos enviados pelo portal também
+    // sejam visualizáveis na ficha completa.
+    _apiFetch(`/api/manifestacoes/${encodeURIComponent(item.ID_MANIFESTACAO)}/evidencias`, 10000)
+      .then(d => {
+        const itens = Array.isArray(d.itens) ? d.itens : [];
+        item._anexos = itens;
+        const wrap = document.getElementById('modal-evidencias-aprov');
+        const chips = document.getElementById('modal-evidencias-chips');
+        if (!wrap || !chips) return;
+        if (!itens.length) { wrap.style.display = 'none'; return; }
+        wrap.style.display = 'flex';
+        chips.innerHTML = itens.map(a => a.url
+          ? `<a href="${esc5(a.url)}" target="_blank" rel="noopener" style="font-size:12px;font-weight:600;background:#F0F0F0;border-radius:6px;padding:4px 10px;color:#1F1F1F;text-decoration:none">📎 ${esc5(a.nome||'Anexo')}</a>`
+          : `<span style="font-size:12px;background:#F0F0F0;border-radius:6px;padding:4px 10px;color:#707070">📎 ${esc5(a.nome||'Anexo')} · sem link</span>`
+        ).join('');
+      }).catch(() => {});
   }
 }
 
@@ -24307,6 +24350,12 @@ async function mudarStatusMC(id, novoStatus) {
       const full=Object.assign({},base?base.raw:{},d.manifestacao||d.item||{});
       _cenRawAtual=full;
       cenAbrirFichaCompleta();
+    } else if (typeof window.abrirDossie === 'function') {
+      // Registros históricos do Banco de casos podem não existir na aba
+      // operacional. Ainda assim devem abrir o dossiê correspondente.
+      window.abrirDossie(base?.raw || { ID_MANIFESTACAO:id, PROTOCOLO:id });
+    } else {
+      toast(d.erro || 'Não foi possível abrir a manifestação.');
     }
   };
 
@@ -24871,8 +24920,14 @@ async function mudarStatusMC(id, novoStatus) {
 
   window.cenIniciarTratativa = async function(){
     if(!_cenAtual) return semSel();
+    const id=_cenAtual;
     const d=await patchMan({status:'EM TRATAMENTO'});
-    if(d.sucesso) depois('Tratativa iniciada.'); else erro(d);
+    if(!d.sucesso) return erro(d);
+    toast('Tratativa iniciada. A manifestação foi movida para Em tratativa.');
+    await loadCentralSAC();
+    cenAba('tratativas',document.getElementById('mc-tab-tratativas'));
+    cenTrativasInit(true);
+    if(typeof cenTrativasAbrirFicha==='function') cenTrativasAbrirFicha(id);
   };
 
   window.cenSalvarTratativa = async function(){
@@ -25069,6 +25124,15 @@ async function mudarStatusMC(id, novoStatus) {
     const rg=$('cfm-resumo-grid');
     if(rg) rg.innerHTML=[['PROTOCOLO',raw.PROTOCOLO||n.id],['ABERTURA',fmtdt(n.abertaMs)],['EMPRESA',n.emp],['CLIENTE',n.cli],['ORIGEM',raw.ORIGEM||n.canal],['SETOR RESPONSÁVEL',pick(raw,['SETOR_CONFIRMADO','SETOR_DESTINADO'])],['RESPONSÁVEL',pick(raw,['RESPONSAVEL_SAC','RESPONSAVEL_SETOR','RESPONSAVEL_ANALISTA','RESPONSAVEL'])],['PRAZO',pick(raw,['PRAZO_TRATATIVA','PRAZO_RESPOSTA','SLA_HORAS'])]].map(([l,v])=>`<div><div style="font-size:9px;font-weight:700;color:#C8C8C8">${esc(l)}</div><div style="font-size:12.5px;color:#2A2A2A;margin-top:2px">${esc(v||'—')}</div></div>`).join('');
     _setText('cfm-relato',n.desc||'—');
+    const evBox=$('cfm-evidencias');
+    if(evBox){
+      evBox.style.display='block';
+      evBox.innerHTML='<div style="font-size:9px;font-weight:700;letter-spacing:.08em;color:#C0C0C0;margin-bottom:8px">ANEXOS E EVIDÊNCIAS</div><div style="font-size:12px;color:#999">Carregando…</div>';
+      _apiFetch('/api/manifestacoes/'+encodeURIComponent(raw.ID_MANIFESTACAO)+'/evidencias',10000).then(d=>{
+        const itens=Array.isArray(d.itens)?d.itens:[];
+        evBox.innerHTML='<div style="font-size:9px;font-weight:700;letter-spacing:.08em;color:#C0C0C0;margin-bottom:8px">ANEXOS E EVIDÊNCIAS</div>'+(itens.length?'<div style="display:flex;flex-wrap:wrap;gap:7px">'+itens.map(a=>a.url?'<a href="'+esc(a.url)+'" target="_blank" rel="noopener" style="font-size:12px;color:#1D4ED8;text-decoration:none;border:1px solid #D6E4FA;border-radius:6px;padding:5px 9px">📎 '+esc(a.nome||'Anexo')+' ↗</a>':'<span style="font-size:12px;color:#707070">📎 '+esc(a.nome||'Anexo')+' · sem link</span>').join('')+'</div>':'<div style="font-size:12px;color:#999">Nenhum anexo encontrado.</div>');
+      }).catch(()=>{evBox.innerHTML='<div style="font-size:9px;font-weight:700;letter-spacing:.08em;color:#C0C0C0;margin-bottom:8px">ANEXOS E EVIDÊNCIAS</div><div style="font-size:12px;color:#999">Não foi possível carregar os anexos.</div>';});
+    }
     const cg=$('cfm-class-grid');
     if(cg) cg.innerHTML=[['TIPO',n.tipo],['PRIORIDADE',PRI_LBL[n.pri]||''],['SETOR',pick(raw,['SETOR_CONFIRMADO','SETORES_CONFIRMADOS','SETOR_SUGERIDO'])],['CAUSA PROVÁVEL',pick(raw,['CAUSA_PROVAVEL','CAUSA_RAIZ','CAUSA_IDENTIFICADA'])]].map(([l,v])=>`<div><div style="font-size:9.5px;font-weight:700;color:#C8C8C8">${esc(l)}</div><div style="font-size:12.5px;color:#2A2A2A;margin-top:2px">${esc(v||'—')}</div></div>`).join('');
     const tg=$('cfm-trat-grid');
