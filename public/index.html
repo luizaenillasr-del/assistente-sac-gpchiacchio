@@ -6990,9 +6990,17 @@
         <button id="cp-tab-btn-empresa" class="cp-tab-btn" onclick="cpTab('empresa',this)">Por empresa</button>
         <button id="cp-tab-btn-dashboard" class="cp-tab-btn" onclick="cpTab('dashboard',this)">Dashboard</button>
         <button id="cp-tab-btn-comentarios" class="cp-tab-btn" onclick="cpTab('comentarios',this)">Comentários</button>
-        <!-- Aba Ocorrências removida: OCP não faz parte do fluxo de pesquisa -->
-        <button id="cp-tab-btn-editor" class="cp-tab-btn" onclick="cpTab('editor',this)">Editor do questionário</button>
+        <button id="cp-tab-btn-ocorrencias" class="cp-tab-btn" onclick="cpTab('ocorrencias',this)">Ocorrências</button>
+        <button id="cp-tab-btn-editor" class="cp-tab-btn" onclick="cpTab('editor',this)">Formulários</button>
         <button id="cp-tab-btn-notificacoes" class="cp-tab-btn" onclick="cpTab('notificacoes',this)">Notificações</button>
+      </div>
+      <div id="cp-filtros" style="display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin:-4px 0 14px">
+        <label style="display:grid;gap:3px;font-size:10.5px;color:#666">Buscar<input id="cp-f-busca" oninput="cpAplica()" placeholder="Cliente, empresa ou comentário" style="height:34px;min-width:230px;border:1px solid #D6D6D6;border-radius:7px;padding:0 9px"></label>
+        <label style="display:grid;gap:3px;font-size:10.5px;color:#666">De<input id="cp-f-inicio" type="date" onchange="cpAplica()" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px"></label>
+        <label style="display:grid;gap:3px;font-size:10.5px;color:#666">Até<input id="cp-f-fim" type="date" onchange="cpAplica()" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px"></label>
+        <label style="display:grid;gap:3px;font-size:10.5px;color:#666">Pesquisa<select id="cp-f-formulario" onchange="cpAplica()" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px"><option value="">Todas</option></select></label>
+        <label style="display:grid;gap:3px;font-size:10.5px;color:#666">Análise<select id="cp-f-situacao" onchange="cpAplica()" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px"><option value="">Todas</option><option value="PENDENTE">Aguardando análise</option><option value="OCP">Com OCP</option><option value="MAN">Com MAN</option><option value="CONCLUIDA">Decisão concluída</option></select></label>
+        <label style="display:grid;gap:3px;font-size:10.5px;color:#666">Satisfação<select id="cp-f-nota" onchange="cpAplica()" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px"><option value="">Todas</option><option value="CRITICA">Nota ≤ 6</option><option value="NEUTRA">Nota 7–8</option><option value="ALTA">Nota 9–10</option></select></label>
       </div>
 
       <!-- Tab panels -->
@@ -7006,13 +7014,13 @@
           <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:11.5px;font-weight:600">
             <span style="display:flex;gap:6px;align-items:center"><span style="background:#F4F4F4;border-radius:6px;padding:5px 9px">Resposta recebida</span><span style="color:#707070">→</span></span>
             <span style="display:flex;gap:6px;align-items:center"><span style="background:#F4F4F4;border-radius:6px;padding:5px 9px">IA verifica notas</span><span style="color:#707070">→</span></span>
-            <span style="display:flex;gap:6px;align-items:center"><span style="background:#F4F4F4;border-radius:6px;padding:5px 9px">Nota ≤ 6: SAC decide</span><span style="color:#707070">→</span></span>
-            <span style="display:flex;gap:6px;align-items:center"><span style="background:#F4F4F4;border-radius:6px;padding:5px 9px">Nota ≤ 6: SAC decide</span><span style="color:#707070">→</span></span>
-            <span style="display:flex;gap:6px;align-items:center"><span style="background:#F4F4F4;border-radius:6px;padding:5px 9px">Manifestação ou encerrar</span></span>
+            <span style="display:flex;gap:6px;align-items:center"><span style="background:#F4F4F4;border-radius:6px;padding:5px 9px">Nota ≤ 6: SAC analisa</span><span style="color:#707070">→</span></span>
+            <span style="display:flex;gap:6px;align-items:center"><span style="background:#F4F4F4;border-radius:6px;padding:5px 9px">SAC registra a decisão</span><span style="color:#707070">→</span></span>
+            <span style="display:flex;gap:6px;align-items:center"><span style="background:#F4F4F4;border-radius:6px;padding:5px 9px">OCP, MAN ou encerramento</span></span>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px">
             <div style="border:1.5px solid #C70602;background:#FFF8F8;border-radius:9px;padding:10px 12px;display:flex;flex-direction:column;gap:4px"><span style="font-size:10.5px;font-weight:700;letter-spacing:.06em;color:#A80502">TRANSFORMAR EM MANIFESTAÇÃO</span><span style="font-size:12.5px;line-height:1.45">Abre manifestação formal no fluxo SAC. A pesquisa e a manifestação ficam vinculadas.</span></div>
+            <div style="border:1.5px solid #24508F;background:#F5F8FC;border-radius:9px;padding:10px 12px;display:flex;flex-direction:column;gap:4px"><span style="font-size:10.5px;font-weight:700;letter-spacing:.06em;color:#24508F">ABRIR OCORRÊNCIA OCP</span><span style="font-size:12.5px;line-height:1.45">Registra uma ocorrência operacional vinculada à resposta para acompanhamento e conclusão.</span></div>
             <div style="border:1.5px solid #D6D6D6;background:#FAFAFA;border-radius:9px;padding:10px 12px;display:flex;flex-direction:column;gap:4px"><span style="font-size:10.5px;font-weight:700;letter-spacing:.06em;color:#545252">NÃO REQUER TRATAMENTO</span><span style="font-size:12.5px;line-height:1.45">Decisão do SAC, sempre com justificativa obrigatória registrada.</span></div>
-            <!-- card OCP removido -->
           </div>
         </div>
         <!-- KPI grid -->
@@ -7021,6 +7029,12 @@
           <div style="background:#fff;border:1px solid #E4E4E4;border-top:1px solid #D9A400;border-radius:10px;padding:12px 14px"><span style="font-size:11px;font-weight:600;letter-spacing:.04em;color:#666464">NOTA ≤ 6</span><div style="font-size:24px;font-weight:700;margin-top:2px" id="cp-kpi-baixa">—</div></div>
           <div style="background:#fff;border:1px solid #E4E4E4;border-top:1px solid #1E6B3A;border-radius:10px;padding:12px 14px"><span style="font-size:11px;font-weight:600;letter-spacing:.04em;color:#666464">MÉDIA GERAL</span><div style="font-size:24px;font-weight:700;margin-top:2px" id="cp-kpi-media">—</div></div>
           <div style="background:#fff;border:1px solid #E4E4E4;border-top:1px solid #24508F;border-radius:10px;padding:12px 14px"><span style="font-size:11px;font-weight:600;letter-spacing:.04em;color:#666464">COM COMENTÁRIO</span><div style="font-size:24px;font-weight:700;margin-top:2px" id="cp-kpi-com">—</div></div>
+          <div style="background:#fff;border:1px solid #E4E4E4;border-top:1px solid #24508F;border-radius:10px;padding:12px 14px"><span style="font-size:11px;font-weight:600;letter-spacing:.04em;color:#666464">PESQUISAS ENVIADAS</span><div style="font-size:24px;font-weight:700;margin-top:2px" id="cp-kpi-enviadas">—</div></div>
+          <div style="background:#fff;border:1px solid #E4E4E4;border-top:1px solid #1E6B3A;border-radius:10px;padding:12px 14px"><span style="font-size:11px;font-weight:600;letter-spacing:.04em;color:#666464">TAXA DE RESPOSTA</span><div style="font-size:24px;font-weight:700;margin-top:2px" id="cp-kpi-taxa">—</div></div>
+          <div style="background:#fff;border:1px solid #E4E4E4;border-top:1px solid #24508F;border-radius:10px;padding:12px 14px"><span style="font-size:11px;font-weight:600;letter-spacing:.04em;color:#666464">NPS</span><div style="font-size:24px;font-weight:700;margin-top:2px" id="cp-kpi-nps">—</div></div>
+          <div style="background:#fff;border:1px solid #E4E4E4;border-top:1px solid #D9A400;border-radius:10px;padding:12px 14px"><span style="font-size:11px;font-weight:600;letter-spacing:.04em;color:#666464">AGUARDANDO ANÁLISE</span><div style="font-size:24px;font-weight:700;margin-top:2px" id="cp-kpi-pendentes">—</div></div>
+          <div style="background:#fff;border:1px solid #E4E4E4;border-top:1px solid #24508F;border-radius:10px;padding:12px 14px"><span style="font-size:11px;font-weight:600;letter-spacing:.04em;color:#666464">OCORRÊNCIAS OCP</span><div style="font-size:24px;font-weight:700;margin-top:2px" id="cp-kpi-ocp">—</div></div>
+          <div style="background:#fff;border:1px solid #E4E4E4;border-top:1px solid #7B2D8B;border-radius:10px;padding:12px 14px"><span style="font-size:11px;font-weight:600;letter-spacing:.04em;color:#666464">MANIFESTAÇÕES MAN</span><div style="font-size:24px;font-weight:700;margin-top:2px" id="cp-kpi-man">—</div></div>
         </div>
         <!-- Pesquisas table -->
         <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;overflow:hidden">
@@ -7049,15 +7063,28 @@
         <div id="cp-empresas" class="ps-grid-emp"></div>
       </div>
       <div id="cp-panel-dashboard" style="display:none">
-        <div id="cp-dash-kpis" class="ps-kpis"></div>
-        <div class="ps-grid-2">
-          <div class="ps-card"><div class="ps-card-h"><span>Média por critério</span><span class="ps-muted">escala 0 a 10</span></div><div id="cp-dash-crit" class="ps-body"></div></div>
-          <div class="ps-card"><div class="ps-card-h"><span>Respostas por mês</span><span class="ps-muted">cor = média do mês</span></div><div id="cp-dash-meses" class="ps-body"></div></div>
+        <div class="cp-dash-nav" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
+          <button class="cp-dash-view active" onclick="cpDashView('desempenho',this)">Desempenho</button>
+          <button class="cp-dash-view" onclick="cpDashView('qualidade',this)">Qualidade</button>
+          <button class="cp-dash-view" onclick="cpDashView('insatisfacao',this)">Insatisfação</button>
+          <button class="cp-dash-view" onclick="cpDashView('operacional',this)">Operacional</button>
+          <button class="cp-dash-view" onclick="cpDashView('efetividade',this)">Efetividade</button>
         </div>
-        <div class="ps-grid-2">
-          <div class="ps-card"><div class="ps-card-h"><span>Distribuição de notas</span><span class="ps-muted">todas as notas do recorte</span></div><div id="cp-dash-hist" class="ps-body"></div></div>
+        <div data-cp-dash-view="desempenho"><div id="cp-dash-kpis" class="ps-kpis"></div></div>
+        <div class="ps-grid-2" data-cp-dash-view="qualidade" style="display:none">
+          <div class="ps-card"><div class="ps-card-h"><span>Média por critério</span><span class="ps-muted">escala 0 a 10</span></div><div id="cp-dash-crit" class="ps-body"></div></div>
           <div class="ps-card"><div class="ps-card-h"><span>Evolução por critério</span><span class="ps-muted">últimos 6 meses</span></div><div id="cp-dash-crit-hist" class="ps-body"></div></div>
         </div>
+        <div class="ps-grid-2" data-cp-dash-view="desempenho">
+          <div class="ps-card"><div class="ps-card-h"><span>Respostas por mês</span><span class="ps-muted">cor = média do mês</span></div><div id="cp-dash-meses" class="ps-body"></div></div>
+          <div class="ps-card"><div class="ps-card-h"><span>Distribuição NPS</span><span class="ps-muted">promotores, neutros e detratores</span></div><div id="cp-dash-nps" class="ps-body"></div></div>
+        </div>
+        <div class="ps-grid-2" data-cp-dash-view="insatisfacao" style="display:none">
+          <div class="ps-card"><div class="ps-card-h"><span>Distribuição de notas</span><span class="ps-muted">todas as notas do recorte</span></div><div id="cp-dash-hist" class="ps-body"></div></div>
+          <div class="ps-card"><div class="ps-card-h"><span>Tratamento das insatisfações</span><span class="ps-muted">decisões registradas pelo SAC</span></div><div id="cp-dash-insatisfacao" class="ps-body"></div></div>
+        </div>
+        <div data-cp-dash-view="operacional" style="display:none"><div id="cp-dash-operacional" class="ps-kpis"></div></div>
+        <div data-cp-dash-view="efetividade" style="display:none"><div id="cp-dash-efetividade" class="ps-card"><div class="ps-body"></div></div></div>
       </div>
       <div id="cp-panel-comentarios" style="display:none">
         <div class="ps-card">
@@ -7065,7 +7092,7 @@
             <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
               <label class="ps-muted" style="display:flex;gap:5px;align-items:center;cursor:pointer"><input type="checkbox" id="cp-com-baixa" onchange="cpRenderComentarios()"> Nota ≤ 6</label>
               <label class="ps-muted" style="display:flex;gap:5px;align-items:center;cursor:pointer"><input type="checkbox" id="cp-com-pend" onchange="cpRenderComentarios()"> Pendentes</label>
-              <!-- Checkbox OCP removido -->
+              <label class="ps-muted" style="display:flex;gap:5px;align-items:center;cursor:pointer"><input type="checkbox" id="cp-com-ocp" onchange="cpRenderComentarios()"> Com OCP</label>
               <label class="ps-muted" style="display:flex;gap:5px;align-items:center;cursor:pointer"><input type="checkbox" id="cp-com-man" onchange="cpRenderComentarios()"> Com Manifestação</label>
             </div>
           </div>
@@ -7076,7 +7103,13 @@
         <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;overflow:hidden">
           <div style="padding:12px 16px;border-bottom:1px solid #EFEFEF;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
             <span style="font-weight:700;font-size:14px">Ocorrências de pesquisa (OCP)</span>
-            <span style="font-size:12px;color:#666464">Respostas com nota ≤ 6 aguardando decisão do SAC</span>
+            <span style="font-size:12px;color:#666464">Ocorrências operacionais abertas por decisão do SAC</span>
+          </div>
+          <div style="padding:10px 16px;border-bottom:1px solid #EFEFEF;display:flex;gap:8px;flex-wrap:wrap;align-items:end">
+            <label style="display:grid;gap:3px;font-size:10.5px;color:#666">Buscar<input id="cp-ocp-busca" oninput="cpRenderOcorrencias()" placeholder="OCP, cliente, setor ou responsável" style="height:32px;min-width:230px;border:1px solid #D6D6D6;border-radius:6px;padding:0 8px"></label>
+            <label style="display:grid;gap:3px;font-size:10.5px;color:#666">Empresa<select id="cp-ocp-empresa" onchange="cpRenderOcorrencias()" style="height:32px;border:1px solid #D6D6D6;border-radius:6px;padding:0 8px"><option value="">Todas</option><option value="CHIACCHIO">Chiacchio</option><option value="PLASCHIO">Plaschio</option><option value="CESBAP">Cesbap/Tubahia</option></select></label>
+            <label style="display:grid;gap:3px;font-size:10.5px;color:#666">Status<select id="cp-ocp-status" onchange="cpRenderOcorrencias()" style="height:32px;border:1px solid #D6D6D6;border-radius:6px;padding:0 8px"><option value="">Todos</option><option value="PENDENTE">Pendente</option><option value="EM_TRATATIVA">Em tratativa</option><option value="CONCLUIDA">Concluída</option><option value="ENCERRADA">Encerrada</option></select></label>
+            <label style="display:grid;gap:3px;font-size:10.5px;color:#666">Prazo<select id="cp-ocp-prazo" onchange="cpRenderOcorrencias()" style="height:32px;border:1px solid #D6D6D6;border-radius:6px;padding:0 8px"><option value="">Todos</option><option value="VENCIDA">Vencidas</option><option value="PROXIMA">Próximos 7 dias</option></select></label>
           </div>
           <div id="cp-ocp-lista" style="padding:12px 16px;min-height:80px">
             <div class="spinner" style="margin:24px auto"></div>
@@ -7084,24 +7117,14 @@
         </div>
       </div>
       <div id="cp-panel-editor" style="display:none">
-        <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:20px 22px">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap;gap:10px">
-            <div>
-              <div style="font-weight:700;font-size:15px;margin-bottom:3px">Editor do questionário</div>
-              <div style="font-size:12px;color:#666464">Crie e publique versões do formulário público de pesquisa.</div>
-            </div>
-            <div style="display:flex;gap:8px">
-              <button class="btn btn-secondary" onclick="qEditorPreview()">Pré-visualizar</button>
-              <button class="btn btn-secondary" onclick="qEditorSalvar('RASCUNHO')">Salvar rascunho</button>
-              <button class="btn btn-primary" onclick="qEditorSalvar('PUBLICADA')">Publicar versão</button>
-            </div>
-          </div>
-          <div id="cp-q-status" style="margin-bottom:14px;font-size:12.5px;color:#666464"></div>
-          <div id="cp-q-perguntas" style="display:flex;flex-direction:column;gap:10px"></div>
-          <button onclick="qAddPergunta()" style="margin-top:12px;border:1.5px dashed #D6D6D6;background:none;border-radius:8px;width:100%;padding:10px;cursor:pointer;color:#545252;font-size:13px;font-family:inherit">+ Adicionar pergunta</button>
-        </div>
+        <div id="cp-formularios-admin"></div>
       </div>
       <div id="cp-panel-notificacoes" style="display:none">
+        <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:16px 18px;margin-bottom:14px">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px"><div style="font-weight:700;font-size:15px">Notificações operacionais</div><button class="btn btn-secondary" onclick="cpCarregarNotificacoes()">Atualizar</button></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px"><select id="cp-notif-tipo" onchange="cpRenderNotificacoes()" style="height:32px;border:1px solid #D6D6D6;border-radius:6px;padding:0 8px"><option value="">Todos os tipos</option><option value="NOTA_CRITICA">Pesquisas críticas</option><option value="OCP">Ocorrências</option><option value="MANIFESTACAO">Manifestações</option></select><select id="cp-notif-situacao" onchange="cpRenderNotificacoes()" style="height:32px;border:1px solid #D6D6D6;border-radius:6px;padding:0 8px"><option value="">Todas</option><option value="NAO_LIDA">Não lidas</option><option value="LIDA">Lidas</option></select></div>
+          <div id="cp-notificacoes-lista"><div class="spinner" style="margin:20px auto"></div></div>
+        </div>
         <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:20px 22px">
           <div style="font-weight:700;font-size:15px;margin-bottom:10px">Enviar pesquisa</div>
           <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px">
@@ -17163,7 +17186,8 @@ async function carregarNotifAnalista() {
     if (!d || !d.sucesso) return;
     const badge = document.getElementById('badge-analista-notif');
     if (badge) {
-      if (d.total > 0) { badge.textContent = d.total; badge.style.display = 'inline-block'; }
+      const totalBadge = d.naoLidas == null ? d.total : d.naoLidas;
+      if (totalBadge > 0) { badge.textContent = totalBadge; badge.style.display = 'inline-block'; }
       else { badge.style.display = 'none'; }
     }
     // Alertas na página acompanhamento
@@ -17173,11 +17197,13 @@ async function carregarNotifAnalista() {
 
     // Pesquisas com nota baixa aguardando decisão
     const ocpWrap = document.getElementById('analista-alerta-ocps');
-    if ((d.ocpsPendentes || d.pesquisasBaixas || 0) > 0 && ocpWrap) {
+    const pesquisasCriticas = d.pesquisasBaixas || 0;
+    if (pesquisasCriticas > 0 && ocpWrap) {
       const desc = document.getElementById('analista-alerta-ocps-desc');
-      if (desc) desc.textContent = `${d.ocpsPendentes || d.pesquisasBaixas || 0} resposta(s) com nota ≤ 6 aguardando decisão de tratamento.`;
-      if (lista && d.ocps?.length) {
-        lista.innerHTML = d.ocps.slice(0,5).map(o => {
+      if (desc) desc.textContent = `${pesquisasCriticas} resposta(s) com nota ≤ 6 aguardando decisão de tratamento.`;
+      const lista = document.getElementById('analista-ocps-lista');
+      if (lista && d.pesquisas?.length) {
+        lista.innerHTML = d.pesquisas.slice(0,5).map(o => {
           const dt = o.DATA ? new Date(o.DATA).toLocaleDateString('pt-BR') : '—';
           return `<div style="background:#fff;border:1px solid #F5C97A;border-radius:7px;padding:8px 12px;font-size:12px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
             <span style="font-weight:600;color:#7A4C00">${esc(o.EMPRESA||'—')}</span>
@@ -20100,7 +20126,7 @@ function auditExport() { auditExportCSV(); }
 // ── Centro das Pesquisas ───────────────────────────────────
 // Fonte: GET /api/pesquisas/relatorio (linhas da planilha de respostas, somente leitura).
 // Agregações (ano/mês, empresa, dashboard, comentários) calculadas no cliente.
-const _cp = { all: null, cols: null, filtered: [], page: 1, loading: false, erro: null };
+const _cp = { all: null, cols: null, filtered: [], page: 1, loading: false, erro: null, ocorrencias: [], notificacoes: [], tokens: [] };
 const CP_MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 const CP_LIMITE = 6;
 function cpEsc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
@@ -20128,7 +20154,10 @@ function cpPrepara(itens) {
     const comentario = c.com.map(h => String(r[h] || '').trim()).filter(Boolean).join(' · ');
     return { n: i + 1, raw: r, d, ano: d ? d.getFullYear() : null, mes: d ? d.getMonth() + 1 : null,
       dataTxt: d ? d.toLocaleDateString('pt-BR') : String(r[c.data] || ''), emp: c.emp ? String(r[c.emp] || '') : '', cli: c.cli ? String(r[c.cli] || '') : '',
-      notas: c.notas.map(h => cpNum(r[h])), media, baixa: ns.some(n => n <= CP_LIMITE), comentario };
+      notas: c.notas.map(h => cpNum(r[h])), media, baixa: ns.some(n => n <= CP_LIMITE), comentario,
+      _formularioId: r._formularioId || '', _versaoId: r._versaoId || '', _versao: r._versao || '',
+      _analista: r._analista || '', _statusAnalise: r._statusAnalise || '', _observacoesInternas: r._observacoesInternas || '', _assumidoEm: r._assumidoEm || '',
+      _ocpId: r._ocpId || '', _manId: r._manifestacaoId || '', _decisao: r._decisao || '', _statusOcp: r._statusOcp || '' };
   }).sort((a, b) => (b.d || 0) - (a.d || 0));
 }
 function cpEmpKey(s) { s = String(s || '').toLowerCase(); return s.includes('plaschio') ? 'Plaschio' : (s.includes('tubahia') || s.includes('cesbap')) ? 'Cesbap' : s.includes('chiacchio') ? 'Chiacchio' : ''; }
@@ -20143,12 +20172,24 @@ function cpTab(name, btn) {
   const semFiltro = ['ocorrencias', 'editor', 'notificacoes'].includes(name);
   const fb = document.getElementById('cp-filtros');
   if (fb) fb.style.display = (semFiltro || name === 'anomes') ? 'none' : 'flex';
-  if (name === 'editor') qEditorCarregar();
-  else if (name === 'notificacoes') cpCarregarTokens();
+  if (name === 'editor') {
+    if (window.SACPesquisasAdmin) { SACPesquisasAdmin.open('gerenciar'); SACPesquisasAdmin.load(); }
+    else if (typeof qEditorCarregar === 'function') qEditorCarregar();
+  }
+  else if (name === 'ocorrencias') cpCarregarOcorrencias();
+  else if (name === 'notificacoes') { cpCarregarNotificacoes(); cpCarregarTokens(); }
   else cpRender();
 }
+
+function cpDashView(name, btn) {
+  document.querySelectorAll('#cp-panel-dashboard [data-cp-dash-view]').forEach(function(el){
+    el.style.display = el.getAttribute('data-cp-dash-view') === name ? '' : 'none';
+  });
+  document.querySelectorAll('#cp-panel-dashboard .cp-dash-view').forEach(function(el){ el.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+}
 function cpClearFilters() {
-  ['cp-f-empresa', 'cp-f-ano', 'cp-f-mes'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
+  ['cp-f-empresa', 'cp-f-ano', 'cp-f-mes', 'cp-f-busca', 'cp-f-inicio', 'cp-f-fim', 'cp-f-formulario', 'cp-f-situacao', 'cp-f-nota'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
   cpAplica();
 }
 function cpOpenLinks() {
@@ -20213,8 +20254,14 @@ async function cpLoad() {
   _cpAtualizarBanner(empKey);
 
   try {
-    const d = await _apiFetch('/api/pesquisas/relatorio', 30000);
+    const [d, tokensResp, ocpResp] = await Promise.all([
+      _apiFetch('/api/pesquisas/relatorio', 30000),
+      _apiFetch('/api/pesquisas/tokens', 10000).catch(() => ({itens:[]})),
+      _apiFetch('/api/pesquisas/ocorrencias', 10000).catch(() => ({itens:[]})),
+    ]);
     if (d && d.sucesso === false) throw new Error(d.erro || 'erro');
+    _cp.tokens = tokensResp.itens || [];
+    _cp.ocorrencias = ocpResp.itens || [];
     _cp.loading = false; _cp.erro = null;
     _cp.all = cpPrepara(d.itens || []);
     const anos = [...new Set(_cp.all.map(r => r.ano).filter(Boolean))].sort((a, b) => b - a);
@@ -20223,6 +20270,13 @@ async function cpLoad() {
     sa.innerHTML = '<option value="">Todos</option>' + anos.map(a => '<option value="' + a + '">' + a + '</option>').join('');
     sm.innerHTML = '<option value="">Todos</option>' + CP_MESES.map((m, i) => '<option value="' + (i + 1) + '">' + m + '</option>').join('');
     sa.value = va; sm.value = vm;
+    const sf = document.getElementById('cp-f-formulario');
+    if (sf) {
+      const vf = sf.value;
+      const formularios = [...new Set(_cp.all.map(r => r._formularioId).filter(Boolean))].sort();
+      sf.innerHTML = '<option value="">Todas</option>' + formularios.map(f => '<option value="'+cpEsc(f)+'">'+cpEsc(f)+'</option>').join('');
+      sf.value = vf;
+    }
     _cp.loading = false;
     cpAplica();
   } catch (e) {
@@ -20240,7 +20294,29 @@ async function cpLoad() {
 function cpAplica() {
   if (!_cp.all) return;
   const emp = document.getElementById('cp-f-empresa').value, ano = document.getElementById('cp-f-ano').value, mes = document.getElementById('cp-f-mes').value;
-  _cp.filtered = _cp.all.filter(r => (!emp || cpEmpKey(r.emp) === emp) && (!ano || r.ano === +ano) && (!mes || r.mes === +mes));
+  const busca = String(document.getElementById('cp-f-busca')?.value || '').trim().toLowerCase();
+  const inicio = document.getElementById('cp-f-inicio')?.value ? new Date(document.getElementById('cp-f-inicio').value + 'T00:00:00') : null;
+  const fim = document.getElementById('cp-f-fim')?.value ? new Date(document.getElementById('cp-f-fim').value + 'T23:59:59') : null;
+  const situacao = document.getElementById('cp-f-situacao')?.value || '';
+  const faixa = document.getElementById('cp-f-nota')?.value || '';
+  const formulario = document.getElementById('cp-f-formulario')?.value || '';
+  _cp.filtered = _cp.all.filter(r => {
+    if (emp && cpEmpKey(r.emp) !== emp) return false;
+    if (ano && r.ano !== +ano) return false;
+    if (mes && r.mes !== +mes) return false;
+    if (inicio && (!r.d || r.d < inicio)) return false;
+    if (fim && (!r.d || r.d > fim)) return false;
+    if (formulario && r._formularioId !== formulario) return false;
+    if (busca && ![r.emp,r.cli,r.comentario].some(v => String(v||'').toLowerCase().includes(busca))) return false;
+    if (situacao === 'PENDENTE' && !(r.baixa && !r._ocpId && !r._manId && !r._decisao)) return false;
+    if (situacao === 'OCP' && !r._ocpId) return false;
+    if (situacao === 'MAN' && !r._manId) return false;
+    if (situacao === 'CONCLUIDA' && !r._decisao && !['NAO_REQUER_TRATAMENTO','TRANSFORMADA_MANIFESTACAO'].includes(r._statusOcp)) return false;
+    if (faixa === 'CRITICA' && !r.baixa) return false;
+    if (faixa === 'NEUTRA' && !(r.media > 6 && r.media < 9)) return false;
+    if (faixa === 'ALTA' && !(r.media >= 9)) return false;
+    return true;
+  });
   _cp.page = 1;
   // Atualiza banner de identidade visual com a empresa filtrada (MASTER pode trocar)
   const empKey = _cpEmpresaUser() || (emp ? emp.toLowerCase().replace(' embalagens','') : null);
@@ -20248,7 +20324,7 @@ function cpAplica() {
   cpRender();
 }
 function cpRender() {
-  if (!_cp.all) { if (!_cp.loading) { _cp.loading = true; cpLoad(); } return; }
+  if (!_cp.all) { if (!_cp.loading && !_cp.erro) { _cp.loading = true; cpLoad(); } return; }
   const vis = [...document.querySelectorAll('[id^="cp-panel-"]')].find(p => p.style.display !== 'none');
   if (!_cp.all) {
     if (_cp.loading) return; // silencioso enquanto carrega (tbody já mostra "Carregando...")
@@ -20280,18 +20356,30 @@ function cpRenderGeral() {
   el('cp-kpi-baixa').textContent = s.baixa;
   el('cp-kpi-media').textContent = cpFmt(s.media);
   el('cp-kpi-com').textContent = s.comentarios;
+  const tokens = (_cp.tokens || []).filter(t => !document.getElementById('cp-f-empresa').value || cpEmpKey(t.EMPRESA) === document.getElementById('cp-f-empresa').value);
+  const respondidos = tokens.filter(t => String(t.STATUS||'').toUpperCase() === 'RESPONDIDO').length;
+  el('cp-kpi-enviadas').textContent = tokens.length || '—';
+  el('cp-kpi-taxa').textContent = tokens.length ? Math.round(respondidos * 100 / tokens.length) + '%' : '—';
+  const recIdx = _cp.cols.notas.findIndex(h => /recom/i.test(h));
+  const recs = recIdx >= 0 ? l.map(r => r.notas[recIdx]).filter(n => n !== null) : [];
+  el('cp-kpi-nps').textContent = recs.length ? Math.round((recs.filter(n=>n>=9).length - recs.filter(n=>n<=6).length) * 100 / recs.length) : '—';
+  el('cp-kpi-pendentes').textContent = l.filter(r => r.baixa && !r._ocpId && !r._manId && !r._decisao).length;
+  el('cp-kpi-ocp').textContent = l.filter(r => r._ocpId).length;
+  el('cp-kpi-man').textContent = l.filter(r => r._manId).length;
   el('cp-count-txt').textContent = s.total + ' resposta' + (s.total !== 1 ? 's' : '');
   const th = el('cp-thead'), c = _cp.cols;
   const isMaster = (role && role() === 'MASTER');
-  th.innerHTML = ['LINHA', 'DATA', 'EMPRESA', 'CLIENTE'].concat(c.notas.map(h => cpEsc(h.length > 22 ? h.slice(0, 21) + '…' : h).toUpperCase()), ['SINAL'])
+  th.innerHTML = ['LINHA', 'DATA', 'EMPRESA', 'CLIENTE'].concat(c.notas.map(h => cpEsc(h.length > 22 ? h.slice(0, 21) + '…' : h).toUpperCase()), ['SINAL','ANÁLISE SAC','VÍNCULO'])
     .map(x => '<th class="ps-th">' + x + '</th>').join('')
     + (isMaster ? '<th class="ps-th"></th>' : '');
   const tb = el('cp-tbody');
-  if (!l.length) { tb.innerHTML = '<tr><td colspan="' + (5 + c.notas.length + (isMaster?1:0)) + '" style="text-align:center;padding:30px;color:#666464">Nenhuma pesquisa neste recorte. Ajuste ou limpe os filtros.</td></tr>'; el('cp-more').style.display = 'none'; return; }
+  if (!l.length) { tb.innerHTML = '<tr><td colspan="' + (7 + c.notas.length + (isMaster?1:0)) + '" style="text-align:center;padding:30px;color:#666464">Nenhuma pesquisa neste recorte. Ajuste ou limpe os filtros.</td></tr>'; el('cp-more').style.display = 'none'; return; }
   const vis = l.slice(0, _cp.page * 50);
   tb.innerHTML = vis.map((r, idx) => '<tr class="ps-tr' + (r.baixa ? ' ps-low' : '') + '" style="cursor:pointer" onclick="cpAbrirDetalhe(' + (_cp.page > 1 ? ((_cp.page-1)*50+idx) : idx) + ')" title="Ver detalhes"><td class="ps-td" style="font-weight:600">#' + r.n + '</td><td class="ps-td">' + cpEsc(r.dataTxt) + '</td><td class="ps-td">' + cpEsc(r.emp || '—') + '</td><td class="ps-td" style="max-width:220px">' + cpEsc(r.cli || '—') + '</td>'
     + r.notas.map(n => '<td class="ps-td" style="text-align:center">' + cpNotaChip(n) + '</td>').join('')
     + '<td class="ps-td">' + (r.baixa ? '<span class="ps-pill ps-pill-red">NOTA ≤ 6</span>' : '<span class="ps-pill ps-pill-gray">SEM ALERTA</span>') + '</td>'
+    + '<td class="ps-td">' + (r._ocpId ? '<span class="ps-pill" style="background:#EAF0FB;color:#24508F">EM TRATAMENTO</span>' : r._manId || r._decisao ? '<span class="ps-pill" style="background:#E6F2EA;color:#1E6B3A">DECIDIDA</span>' : r._statusAnalise === 'EM_ANALISE' ? '<span class="ps-pill" style="background:#FBF0D9;color:#7A4C00">EM ANÁLISE · '+cpEsc(r._analista||'SAC')+'</span>' : r.baixa ? '<span class="ps-pill ps-pill-red">PENDENTE</span>' : '<span class="ps-pill ps-pill-gray">SEM PENDÊNCIA</span>') + '</td>'
+    + '<td class="ps-td">' + (r._ocpId ? cpEsc(r._ocpId) : r._manId ? cpEsc(r._manId) : '—') + '</td>'
     + (isMaster ? '<td class="ps-td" onclick="event.stopPropagation()"><button onclick="cpExcluirResposta(\'' + cpEsc(r.raw&&(r.raw._id||r.raw.ID_RESPOSTA)||'') + '\',' + (_cp.page > 1 ? ((_cp.page-1)*50+idx) : idx) + ')" style="background:none;border:1px solid #dc2626;color:#dc2626;border-radius:4px;padding:2px 7px;cursor:pointer;font-size:13px" title="Excluir pesquisa">🗑️</button></td>' : '')
     + '</tr>').join('');
   el('cp-more').style.display = vis.length < l.length ? 'block' : 'none';
@@ -20337,13 +20425,15 @@ function cpAbrirDetalhe(idx) {
   const respId = raw._id || raw.ID_RESPOSTA || '';
   const infoItems = [
     ['ID Resposta', respId],
+    ['Formulário', r._formularioId || 'Legado'],
+    ['Versão', r._versao || r._versaoId || '—'],
     ['Status', statusOcp || '—'],
     ['Empresa', r.emp || '—'],
     ['Cliente', r.cli || '—'],
     ['Data', r.dataTxt || '—'],
   ].filter(([,v]) => v && v !== '—');
   // Campos extras da planilha não mapeados canonicamente
-  const _cpSkip = new Set(['_id','_token','_notaBaixa','_statusOcp','Empresa','Cliente','Data','Atendimento','Prazo de Entrega','Qualidade','Recomendação','Observação','ID_RESPOSTA','TOKEN','NOTA_BAIXA','STATUS_OCP','EMPRESA','NOME_CLIENTE','COMENTARIO','ATENDIMENTO','PRAZO_ENTREGA','QUALIDADE','RECOMENDACAO']);
+  const _cpSkip = new Set(['_id','_token','_notaBaixa','_statusOcp','_formularioId','_versaoId','_versao','_analista','_statusAnalise','_observacoesInternas','_assumidoEm','_ocpId','_manifestacaoId','_decisao','Empresa','Cliente','Data','Atendimento','Prazo de Entrega','Qualidade','Recomendação','Observação','ID_RESPOSTA','TOKEN','NOTA_BAIXA','STATUS_OCP','EMPRESA','NOME_CLIENTE','COMENTARIO','ATENDIMENTO','PRAZO_ENTREGA','QUALIDADE','RECOMENDACAO']);
   const camposExtras = Object.entries(raw).filter(([k,v]) => !_cpSkip.has(k) && v !== '' && v !== undefined && v !== null);
   html += '<details style="margin-bottom:14px"><summary style="cursor:pointer;font-size:12px;font-weight:600;color:#545252;padding:8px 12px;border:1.5px solid #E4E4E4;border-radius:8px;list-style:none;display:flex;justify-content:space-between">Detalhes completos <span>▾</span></summary>'
     + '<div style="border:1.5px solid #E4E4E4;border-top:0;border-radius:0 0 8px 8px;padding:10px 14px">'
@@ -20356,12 +20446,18 @@ function cpAbrirDetalhe(idx) {
       + '<button onclick="navigator.clipboard.writeText(\'' + cpEsc(raw._token||'').replace(/'/g,"\\'") + '\').then(()=>alert(\'Token copiado!\')).catch(()=>prompt(\'Token:\',\'' + cpEsc(raw._token||'').replace(/'/g,"\\'") + '\'))" style="border:1px solid #D6D6D6;background:#fff;border-radius:5px;padding:3px 10px;font-size:12px;cursor:pointer;font-family:inherit">Copiar token</button></div>' : '')
     + '</div></details>';
   if (baixa) {
-    html += '<div style="border-top:1.5px solid #E4E4E4;padding-top:16px;margin-top:4px">'
+    html += '<div style="border:1.5px solid #E4E4E4;border-radius:8px;padding:12px 14px;margin-bottom:14px">'
+      + '<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:8px"><div><div style="font-size:12.5px;font-weight:700">Análise SAC</div><div style="font-size:11.5px;color:#666">Responsável: '+cpEsc(r._analista||'Ainda não assumida')+(r._assumidoEm?' · '+cpEsc(new Date(r._assumidoEm).toLocaleString('pt-BR')):'')+'</div></div>'
+      + (!r._analista ? '<button onclick="cpSalvarAnalise(\''+r.n+'\',true)" style="border:0;background:#1F1F1F;color:#fff;border-radius:7px;padding:7px 11px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Assumir análise</button>' : '') + '</div>'
+      + '<label style="font-size:11.5px;font-weight:600;display:block;margin-bottom:4px">Observações internas</label><textarea id="cp-det-obs" rows="3" style="width:100%;box-sizing:border-box;border:1px solid #D6D6D6;border-radius:7px;padding:7px 9px;font-family:inherit;font-size:12.5px">'+cpEsc(r._observacoesInternas||'')+'</textarea>'
+      + '<div style="display:flex;justify-content:flex-end;margin-top:7px"><button onclick="cpSalvarAnalise(\''+r.n+'\',false)" style="border:1px solid #D6D6D6;background:#fff;border-radius:7px;padding:6px 10px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Salvar observações</button></div><div id="cp-det-analise-msg" style="font-size:12px;min-height:16px;margin-top:4px"></div></div>'
+      + '<div style="border-top:1.5px solid #E4E4E4;padding-top:16px;margin-top:4px">'
       + '<div style="font-size:13px;font-weight:700;margin-bottom:10px">Decisão de tratamento</div>'
       + '<div style="margin-bottom:10px"><label style="font-size:12.5px;font-weight:600;display:block;margin-bottom:5px">Setor responsável (sugestão IA, confirme)</label>'
       + '<select id="cp-det-setor" style="width:100%;border:1.5px solid #D6D6D6;border-radius:7px;padding:7px 10px;font-size:13px;font-family:inherit">'
       + setores.map(s2 => '<option>' + s2 + '</option>').join('') + '</select></div>'
       + (manId ? '<div style="background:#E6F2EA;border:1.5px solid #1E6B3A;border-radius:9px;padding:10px 14px;margin-bottom:12px"><span style="font-size:11px;font-weight:700;letter-spacing:.06em;color:#1E6B3A">MANIFESTAÇÃO VINCULADA</span><br><span style="font-size:13px;font-weight:600">Esta resposta já possui uma manifestação vinculada (' + cpEsc(manId) + ')</span></div>' : '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">')
+      + (!r._ocpId ? '<button onclick="cpDecisaoDetalhe(\'OCP\',\''+r.n+'\')" style="flex:1;min-width:150px;border:1.5px solid #24508F;background:#fff;color:#24508F;border-radius:8px;padding:10px 12px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit">Abrir ocorrência OCP</button>' : '<div style="flex-basis:100%;background:#EAF0FB;color:#24508F;border-radius:8px;padding:9px 12px;font-size:12.5px;font-weight:600">OCP vinculada: '+cpEsc(r._ocpId)+'</div>')
       + '<button onclick="cpDecisaoDetalhe(\'MANIFESTACAO\',\''+r.n+'\')" style="flex:1;min-width:160px;border:0;background:#C70602;color:#fff;border-radius:8px;padding:10px 12px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit">Transformar em Manifestação</button>'
       + '<button onclick="cpDecisaoDetalhe(\'NENHUM\',\''+r.n+'\')" style="flex:1;min-width:160px;border:1.5px solid #D6D6D6;background:#fff;color:#545252;border-radius:8px;padding:10px 12px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit">Não requer tratamento</button>'
       + (manId ? '' : '</div>')
@@ -20376,6 +20472,23 @@ function cpAbrirDetalhe(idx) {
   document.body.insertAdjacentHTML('beforeend', html);
 }
 
+async function cpSalvarAnalise(linhaId, assumir) {
+  const resposta = _cp.all.find(r => String(r.n) === String(linhaId));
+  const respostaId = resposta && resposta.raw && (resposta.raw._id || resposta.raw.ID_RESPOSTA);
+  const msg = document.getElementById('cp-det-analise-msg');
+  if (!respostaId) { if (msg) msg.innerHTML='<span style="color:#A80502">Resposta não encontrada.</span>'; return; }
+  const observacoesInternas = (document.getElementById('cp-det-obs')||{}).value || '';
+  if (msg) msg.textContent = 'Salvando...';
+  try {
+    const d = await _apiFetch('/api/pesquisas/respostas/'+encodeURIComponent(respostaId)+'/analise', 10000, {method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({assumir,observacoesInternas})});
+    resposta._analista = d.analista || resposta._analista;
+    resposta._statusAnalise = d.status || resposta._statusAnalise;
+    resposta._observacoesInternas = observacoesInternas;
+    if (msg) msg.innerHTML='<span style="color:#1E6B3A">✓ Análise atualizada.</span>';
+    setTimeout(function(){ cpFecharDetalhe(); cpLoad(); }, 700);
+  } catch(e) { if (msg) msg.innerHTML='<span style="color:#A80502">'+cpEsc(e.message||'Não foi possível salvar.')+'</span>'; }
+}
+
 function cpFecharDetalhe() {
   const m = document.getElementById('cp-modal-overlay');
   if (m) m.remove();
@@ -20388,7 +20501,7 @@ async function cpDecisaoDetalhe(decisao, linhaId) {
   const setor = (document.getElementById('cp-det-setor') || {}).value || '';
   // Toda decisão de tratamento exige justificativa
   const decisaoApi = decisao === 'NENHUM' ? 'NAO_REQUER' : decisao;
-  if (['NENHUM', 'MANIFESTACAO'].includes(decisao)) {
+  if (['NENHUM', 'MANIFESTACAO', 'OCP'].includes(decisao)) {
     if (justWrap && justWrap.style.display === 'none') {
       justWrap.style.display = 'block';
       if (msg) msg.textContent = 'Preencha a justificativa antes de confirmar o encaminhamento.';
@@ -20410,12 +20523,26 @@ async function cpDecisaoDetalhe(decisao, linhaId) {
     if (msg) msg.innerHTML = '<span style="color:#A80502">ID da resposta não encontrado.</span>';
     return;
   }
-  // Bloquear duplicidade de manifestação
+  // Bloquear duplicidade de registros vinculados
+  if (decisao === 'OCP' && resposta._ocpId) {
+    if (msg) msg.innerHTML = '<span style="color:#A80502">Esta resposta já possui a ocorrência ' + cpEsc(resposta._ocpId) + '.</span>';
+    return;
+  }
   if (decisao === 'MANIFESTACAO' && resposta._manId) {
     if (msg) msg.innerHTML = '<span style="color:#A80502">Esta resposta já possui uma manifestação vinculada (' + cpEsc(resposta._manId) + ').</span>';
     return;
   }
   try {
+    if (decisao === 'OCP') {
+      const token = resposta.raw && (resposta.raw._token || resposta.raw.TOKEN);
+      const criado = await _apiFetch('/api/pesquisas/ocorrencias', 8000, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({respostaId,token,empresa:resposta.emp,nps:resposta.media,setor,descricao:justificativa || resposta.comentario})
+      });
+      if (msg) msg.innerHTML = '<span style="color:#1E6B3A">✓ Ocorrência '+cpEsc(criado.id||'')+' vinculada à pesquisa.</span>';
+      setTimeout(() => { cpFecharDetalhe(); cpLoad(); }, 1200);
+      return;
+    }
     const res = await _apiFetch('/api/pesquisas/decisao', 8000, {
       method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify({ respostaId, decisao: decisaoApi, justificativa, setor })
@@ -20479,6 +20606,10 @@ function cpRenderDash() {
   }
   const npsVal = npsScore !== null ? (npsScore > 0 ? '+' : '') + npsScore : '—';
   document.getElementById('cp-dash-kpis').innerHTML = k('RESPOSTAS', s.total, '#C70602') + k('MÉDIA GERAL', cpFmt(s.media), '#1E6B3A') + k('NPS DO RECORTE', npsVal, '#24508F') + k('% NOTA ≤ 6', s.total ? Math.round(s.baixa * 100 / s.total) + '%' : '—', '#D9A400');
+  const npsEl = document.getElementById('cp-dash-nps');
+  if (npsEl) npsEl.innerHTML = npsScore === null
+    ? '<div class="ps-muted">Dados insuficientes: nenhuma resposta válida de recomendação no recorte.</div>'
+    : '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;text-align:center"><div><div class="ps-big" style="color:#1E6B3A">'+pct.p+'%</div><div class="ps-muted">Promotores</div></div><div><div class="ps-big" style="color:#7A4C00">'+pct.n+'%</div><div class="ps-muted">Neutros</div></div><div><div class="ps-big" style="color:#A80502">'+pct.d+'%</div><div class="ps-muted">Detratores</div></div></div>';
   document.getElementById('cp-dash-crit').innerHTML = _cp.cols.notas.length ? _cp.cols.notas.map((h, i) => cpBarra(h, cpAvg(l.map(r => r.notas[i])))).join('') : '<div class="ps-muted">Nenhuma coluna de nota identificada.</div>';
 
   // Evolução mensal: respostas + média
@@ -20518,27 +20649,45 @@ function cpRenderDash() {
     const maxD = Math.max(1, ...dist);
     histEl.innerHTML = '<div class="ps-cols">' + dist.map((v, i) => '<div class="ps-col"><span class="ps-col-v">' + v + '</span><span class="ps-col-b" style="height:' + Math.round(v*100/maxD) + '%;background:' + (i<=6?'#C70602':i<=8?'#D9A400':'#1E6B3A') + '"></span><span class="ps-col-l">' + i + '</span></div>').join('') + '</div>';
   }
+  const insEl = document.getElementById('cp-dash-insatisfacao');
+  if (insEl) {
+    const pendentes = l.filter(r => r.baixa && !r._ocpId && !r._manId && !r._decisao).length;
+    const comOcp = l.filter(r => r._ocpId).length;
+    const comMan = l.filter(r => r._manId).length;
+    const encerradas = l.filter(r => r._decisao === 'NAO_REQUER' || r._statusOcp === 'NAO_REQUER_TRATAMENTO').length;
+    insEl.innerHTML = '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">'+k('AGUARDANDO ANÁLISE',pendentes,'#D9A400')+k('OCORRÊNCIAS OCP',comOcp,'#24508F')+k('MANIFESTAÇÕES MAN',comMan,'#7B2D8B')+k('SEM TRATAMENTO',encerradas,'#1E6B3A')+'</div>';
+  }
+  const ocps = _cp.ocorrencias || [];
+  const opEl = document.getElementById('cp-dash-operacional');
+  if (opEl) {
+    const abertas = ocps.filter(o => !['ENCERRADA','CONCLUIDA','TRATADA'].includes(String(o.STATUS||'').toUpperCase())).length;
+    const concluidas = ocps.filter(o => ['ENCERRADA','CONCLUIDA','TRATADA'].includes(String(o.STATUS||'').toUpperCase())).length;
+    const vencidas = ocps.filter(o => o.PRAZO && new Date(o.PRAZO) < new Date() && !['ENCERRADA','CONCLUIDA','TRATADA'].includes(String(o.STATUS||'').toUpperCase())).length;
+    opEl.innerHTML = k('OCORRÊNCIAS ABERTAS',abertas,'#24508F')+k('OCORRÊNCIAS ENCERRADAS',concluidas,'#1E6B3A')+k('OCORRÊNCIAS VENCIDAS',vencidas,'#C70602')+k('TOTAL DE OCPs',ocps.length,'#D9A400');
+  }
+  const efet = document.querySelector('#cp-dash-efetividade .ps-body');
+  if (efet) efet.innerHTML = '<div class="ps-muted">Indicadores de efetividade serão exibidos quando houver histórico suficiente de conclusão, reincidência e avaliação posterior. Nenhum percentual é estimado sem dados reais.</div>';
 }
 function cpRenderComentarios() {
   const sBaixa = document.getElementById('cp-com-baixa') && document.getElementById('cp-com-baixa').checked;
   const sPend = document.getElementById('cp-com-pend') && document.getElementById('cp-com-pend').checked;
-  // const sOcp removido (OCP não faz parte do fluxo)
+  const sOcp = document.getElementById('cp-com-ocp') && document.getElementById('cp-com-ocp').checked;
   const sMan = document.getElementById('cp-com-man') && document.getElementById('cp-com-man').checked;
   let l = _cp.filtered.filter(r => r.comentario);
   if (sBaixa) l = l.filter(r => r.baixa);
-  if (sPend) l = l.filter(r => r.baixa && !r._manId && !r._nrtId);
-  if (sPend) l = l.filter(r => r.baixa && !r._manId && !r._nrtId);
-  // filtro sOcp removido
+  if (sPend) l = l.filter(r => r.baixa && !r._ocpId && !r._manId && !r._decisao);
+  if (sOcp) l = l.filter(r => r._ocpId);
+  if (sMan) l = l.filter(r => r._manId);
   l = l.slice(0, 200);
   document.getElementById('cp-com-lista').innerHTML = l.length ? l.map(r => {
     const tags = [];
     if (r.baixa) tags.push('<span class="ps-pill ps-pill-red">NOTA ≤ 6</span>');
-    // tag OCP removida
+    if (r._ocpId) tags.push('<span class="ps-pill" style="background:#EAF0FB;color:#24508F;border:none">OCP: ' + cpEsc(r._ocpId) + '</span>');
     if (r._manId) tags.push('<span class="ps-pill" style="background:#E6F2EA;color:#1E6B3A;border:none">MAN: ' + cpEsc(r._manId) + '</span>');
     return '<div class="ps-com' + (r.baixa ? ' ps-com-low' : '') + '">'
       + '<div class="ps-muted">' + cpEsc(r.dataTxt) + ' · ' + cpEsc(r.emp||'—') + ' · ' + cpEsc(r.cli||'—') + ' · média ' + cpFmt(r.media) + (tags.length ? ' &nbsp;' + tags.join(' ') : '') + '</div>'
       + '<div style="margin-top:4px;line-height:1.5;white-space:pre-line">' + cpEsc(r.comentario) + '</div>'
-      + (r.baixa && !r._ocpId && !r._manId && !r._nrtId ? '<button onclick="cpAbrirDetalhePorN('+r.n+')" style="margin-top:6px;border:1px solid #C70602;color:#C70602;background:#fff;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;font-family:inherit">Decidir tratamento</button>' : '')
+      + (r.baixa && !r._ocpId && !r._manId && !r._decisao ? '<button onclick="cpAbrirDetalhePorN('+r.n+')" style="margin-top:6px;border:1px solid #C70602;color:#C70602;background:#fff;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;font-family:inherit">Decidir tratamento</button>' : '')
       + '</div>';
   }).join('') : '<div class="ps-muted" style="padding:20px;text-align:center">Nenhum comentário neste recorte.</div>';
 }
@@ -20549,8 +20698,101 @@ function cpAbrirDetalhePorN(n) {
 }
 
 
-// OCP removido do fluxo de pesquisa de satisfação conforme especificação.
-// A decisão de tratamento agora usa apenas: MANIFESTACAO ou NENHUM.
+async function cpCarregarOcorrencias() {
+  const el = document.getElementById('cp-ocp-lista');
+  if (!el) return;
+  el.innerHTML = '<div class="spinner" style="margin:24px auto"></div>';
+  try {
+    const d = await _apiFetch('/api/pesquisas/ocorrencias', 12000);
+    const itens = d.itens || [];
+    _cp.ocorrencias = itens;
+    cpRenderOcorrencias();
+  } catch(e) { el.innerHTML = '<div style="color:#A80502;padding:18px">Erro ao carregar ocorrências: '+cpEsc(e.message||'')+'</div>'; }
+}
+
+function cpRenderOcorrencias() {
+  const el = document.getElementById('cp-ocp-lista');
+  if (!el) return;
+  const busca = ((document.getElementById('cp-ocp-busca')||{}).value||'').toLowerCase().trim();
+  const empresa = ((document.getElementById('cp-ocp-empresa')||{}).value||'').toUpperCase();
+  const statusFiltro = ((document.getElementById('cp-ocp-status')||{}).value||'').toUpperCase();
+  const prazoFiltro = ((document.getElementById('cp-ocp-prazo')||{}).value||'').toUpperCase();
+  const agora = new Date(), seteDias = new Date(Date.now() + 7*86400000);
+  const itens = (_cp.ocorrencias || []).filter(function(o){
+    const r = o.resposta || {};
+    const texto = [o.ID_OCP,o.EMPRESA,r.NOME_CLIENTE,o.DESCRICAO,r.COMENTARIO,o.SETOR,o.RESPONSAVEL,o.ANALISTA].join(' ').toLowerCase();
+    const emp = cpEmpKey(o.EMPRESA||r.EMPRESA||'').toUpperCase();
+    const st = String(o.STATUS||'PENDENTE').toUpperCase();
+    const prazo = o.PRAZO ? new Date(o.PRAZO) : null;
+    if (busca && !texto.includes(busca)) return false;
+    if (empresa && emp !== empresa) return false;
+    if (statusFiltro && st !== statusFiltro) return false;
+    if (prazoFiltro === 'VENCIDA' && (!prazo || prazo >= agora || ['CONCLUIDA','ENCERRADA'].includes(st))) return false;
+    if (prazoFiltro === 'PROXIMA' && (!prazo || prazo < agora || prazo > seteDias || ['CONCLUIDA','ENCERRADA'].includes(st))) return false;
+    return true;
+  });
+  if (!itens.length) { el.innerHTML = '<div class="ps-muted" style="padding:24px;text-align:center">Nenhuma ocorrência encontrada para os filtros selecionados.</div>'; return; }
+  el.innerHTML = '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:1050px"><thead><tr><th class="ps-th">OCP</th><th class="ps-th">EMPRESA</th><th class="ps-th">CLIENTE</th><th class="ps-th">DESCRIÇÃO</th><th class="ps-th">SETOR</th><th class="ps-th">RESPONSÁVEL</th><th class="ps-th">PRAZO</th><th class="ps-th">STATUS</th><th class="ps-th">MAN VINCULADA</th><th class="ps-th">AÇÃO</th></tr></thead><tbody>' + itens.map(function(o){
+    const r=o.resposta||{}; const id=cpEsc(o.ID_OCP||''); const status=String(o.STATUS||'PENDENTE').toUpperCase();
+    return '<tr class="ps-tr"><td class="ps-td"><b>'+id+'</b></td><td class="ps-td">'+cpEsc(o.EMPRESA||r.EMPRESA||'—')+'</td><td class="ps-td">'+cpEsc(r.NOME_CLIENTE||'—')+'</td><td class="ps-td">'+cpEsc(o.DESCRICAO||r.COMENTARIO||'—')+'</td><td class="ps-td">'+cpEsc(o.SETOR||'—')+'</td><td class="ps-td">'+cpEsc(o.RESPONSAVEL||o.ANALISTA||'—')+'</td><td class="ps-td">'+cpEsc(o.PRAZO||'—')+'</td><td class="ps-td"><span class="ps-pill '+(status==='PENDENTE'?'ps-pill-red':'ps-pill-gray')+'">'+cpEsc(status.replaceAll('_',' '))+'</span></td><td class="ps-td">'+cpEsc(o.ID_MANIFESTACAO_GERADA||'—')+'</td><td class="ps-td"><button onclick="cpAbrirOcorrencia(\''+id+'\')" style="height:30px;border:1px solid #D6D6D6;background:#fff;border-radius:6px;padding:0 10px;cursor:pointer;font-family:inherit">Abrir</button></td></tr>';
+  }).join('') + '</tbody></table></div>';
+}
+
+function cpAbrirOcorrencia(id) {
+  const o = (_cp.ocorrencias||[]).find(x => x.ID_OCP === id);
+  if (!o) return;
+  const existing = document.getElementById('cp-ocp-modal'); if (existing) existing.remove();
+  document.body.insertAdjacentHTML('beforeend','<div id="cp-ocp-modal" style="position:fixed;inset:0;background:rgba(0,0,0,.42);z-index:9999;display:grid;place-items:center;padding:16px" onclick="if(event.target===this)this.remove()"><div style="background:#fff;border-radius:12px;width:min(640px,100%);max-height:92vh;overflow:auto;padding:22px"><div style="display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:16px"><div><div style="font-size:11px;color:#666;font-weight:700">OCORRÊNCIA DE PESQUISA</div><h3 style="margin:3px 0 0">'+cpEsc(o.ID_OCP)+'</h3></div><button onclick="document.getElementById(\'cp-ocp-modal\').remove()" style="border:0;background:none;font-size:24px;cursor:pointer">×</button></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><label style="display:grid;gap:4px;font-size:12px;font-weight:600">Setor<input id="cp-ocp-edit-setor" value="'+cpEsc(o.SETOR||'')+'" class="form-input"></label><label style="display:grid;gap:4px;font-size:12px;font-weight:600">Responsável<input id="cp-ocp-edit-resp" value="'+cpEsc(o.RESPONSAVEL||'')+'" class="form-input"></label><label style="display:grid;gap:4px;font-size:12px;font-weight:600">Prazo<input id="cp-ocp-edit-prazo" type="date" value="'+cpEsc(String(o.PRAZO||'').slice(0,10))+'" class="form-input"></label><label style="display:grid;gap:4px;font-size:12px;font-weight:600">Status<select id="cp-ocp-edit-status" class="form-input"><option value="PENDENTE">Pendente</option><option value="EM_TRATATIVA">Em tratativa</option><option value="CONCLUIDA">Concluída</option><option value="ENCERRADA">Encerrada</option></select></label><label style="display:grid;gap:4px;font-size:12px;font-weight:600;grid-column:1/-1">Descrição<textarea id="cp-ocp-edit-desc" rows="3" class="form-input">'+cpEsc(o.DESCRICAO||'')+'</textarea></label><label style="display:grid;gap:4px;font-size:12px;font-weight:600;grid-column:1/-1">Resultado da tratativa<textarea id="cp-ocp-edit-resultado" rows="3" class="form-input">'+cpEsc(o.RESULTADO||'')+'</textarea></label></div><div style="margin-top:14px;font-size:12px;color:#666">Pesquisa vinculada: '+cpEsc(o.ID_RESPOSTA||o.TOKEN||'—')+' · Manifestação: '+cpEsc(o.ID_MANIFESTACAO_GERADA||'—')+'</div><div id="cp-ocp-edit-msg" style="min-height:20px;margin-top:8px;font-size:12px"></div><div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px"><button onclick="document.getElementById(\'cp-ocp-modal\').remove()" class="btn btn-secondary">Cancelar</button><button onclick="cpSalvarOcorrencia(\''+cpEsc(o.ID_OCP)+'\')" class="btn btn-primary">Salvar ocorrência</button></div></div></div>');
+  document.getElementById('cp-ocp-edit-status').value = String(o.STATUS||'PENDENTE').toUpperCase();
+}
+
+async function cpSalvarOcorrencia(id) {
+  const msg = document.getElementById('cp-ocp-edit-msg');
+  const body = {setor:document.getElementById('cp-ocp-edit-setor').value.trim(),responsavel:document.getElementById('cp-ocp-edit-resp').value.trim(),prazo:document.getElementById('cp-ocp-edit-prazo').value,status:document.getElementById('cp-ocp-edit-status').value,descricao:document.getElementById('cp-ocp-edit-desc').value.trim(),resultado:document.getElementById('cp-ocp-edit-resultado').value.trim()};
+  if (['CONCLUIDA','ENCERRADA'].includes(body.status) && !body.resultado) { msg.innerHTML='<span style="color:#A80502">Informe o resultado antes de concluir a ocorrência.</span>'; return; }
+  if (msg) msg.textContent='Salvando...';
+  try {
+    await _apiFetch('/api/pesquisas/ocorrencias/'+encodeURIComponent(id), 10000, {method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    document.getElementById('cp-ocp-modal').remove();
+    await cpCarregarOcorrencias();
+  } catch(e) { if (msg) msg.innerHTML='<span style="color:#A80502">Não foi possível salvar: '+cpEsc(e.message||'erro')+'</span>'; }
+}
+
+async function cpCarregarNotificacoes() {
+  const el = document.getElementById('cp-notificacoes-lista');
+  if (!el) return;
+  try {
+    const d = await _apiFetch('/api/notificacoes/analista', 10000);
+    _cp.notificacoes = d.notificacoes || [];
+    cpRenderNotificacoes();
+  } catch(e) { el.innerHTML = '<div style="color:#A80502;padding:12px">Notificações indisponíveis para este perfil.</div>'; }
+}
+
+function cpRenderNotificacoes() {
+  const el = document.getElementById('cp-notificacoes-lista'); if (!el) return;
+  const tipo = ((document.getElementById('cp-notif-tipo')||{}).value||'').toUpperCase();
+  const situacao = ((document.getElementById('cp-notif-situacao')||{}).value||'').toUpperCase();
+  const itens = (_cp.notificacoes||[]).filter(n => {
+    if (tipo === 'OCP' && !String(n.tipo||'').startsWith('OCP_')) return false;
+    if (tipo && tipo !== 'OCP' && n.tipo !== tipo) return false;
+    if (situacao === 'LIDA' && !n.lida) return false;
+    if (situacao === 'NAO_LIDA' && n.lida) return false;
+    return true;
+  });
+  el.innerHTML = itens.length ? itens.map(function(n){
+    const acao = n.acao === 'MANIFESTACOES' ? "navigate('central-sac')" : n.acao === 'OCORRENCIAS' ? "cpTab('ocorrencias',document.getElementById('cp-tab-btn-ocorrencias'))" : "cpTab('comentarios',document.getElementById('cp-tab-btn-comentarios'))";
+    return '<div style="width:100%;display:flex;align-items:center;gap:10px;padding:11px 4px;border-bottom:1px solid #EFEFEF;background:'+(n.lida?'#FAFAFA':'#fff')+'"><button onclick="'+acao+'" style="display:flex;align-items:center;gap:10px;flex:1;border:0;background:transparent;text-align:left;cursor:pointer;font-family:inherit"><span style="width:9px;height:9px;border-radius:50%;background:'+(n.lida?'#BEBEBE':'#C70602')+'"></span><span style="flex:1"><b style="display:block;font-size:12.5px">'+cpEsc(n.titulo)+'</b><small style="color:#777">'+cpEsc(n.tipo.replaceAll('_',' '))+' · '+cpEsc(n.empresa||'—')+' · '+cpEsc(n.origem||'')+(n.data?' · '+cpEsc(new Date(n.data).toLocaleDateString('pt-BR')):'')+'</small></span><span>›</span></button>'+(n.lida?'':'<button onclick="cpMarcarNotificacao(\''+cpEsc(n.id)+'\')" style="border:1px solid #D6D6D6;background:#fff;border-radius:6px;padding:5px 8px;font-size:11px;cursor:pointer;font-family:inherit">Marcar como lida</button>')+'</div>';
+  }).join('') : '<div class="ps-muted" style="padding:18px;text-align:center">Nenhuma notificação para os filtros selecionados.</div>';
+}
+
+async function cpMarcarNotificacao(id) {
+  try {
+    await _apiFetch('/api/notificacoes/analista/'+encodeURIComponent(id)+'/lida', 10000, {method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
+    const n = (_cp.notificacoes||[]).find(x => x.id === id); if (n) n.lida = true;
+    cpRenderNotificacoes();
+    carregarNotifAnalista();
+  } catch(e) { alert('Não foi possível marcar a notificação como lida.'); }
+}
 
 // ── Editor do Questionário ─────────────────────────────────
 let _qPerguntas = [];

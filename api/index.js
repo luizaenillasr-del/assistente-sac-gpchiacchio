@@ -4224,8 +4224,13 @@ app.get('/api/pesquisas/relatorio', requerPermissao('pesquisas.visualizar'), asy
     invalidarCacheAba('PESQUISA_RESPOSTAS');
     invalidarCacheAba('PESQUISA_HISTORICO');
     const todasRespostas = await lerRespostasPesquisa();
+    const ocorrenciasPesquisa = await lerAba('PESQUISA_OCORRENCIAS', 5000).catch(() => []);
+    const manifestacoesPesquisa = await lerAba('MANIFESTACOES', 5000).catch(() => []);
     // Normaliza para campos canônicos (sem duplicar campos uppercase e camelCase)
-    const dados = todasRespostas.map(r => ({
+    const dados = todasRespostas.map(r => {
+      const ocp = ocorrenciasPesquisa.find(o => (o.TOKEN && o.TOKEN === r.TOKEN) || (o.ID_RESPOSTA && o.ID_RESPOSTA === r.ID_RESPOSTA));
+      const man = manifestacoesPesquisa.find(m => String(m.DESCRICAO || m.DESCRICAO_MANIFESTACAO || '').includes(r.ID_RESPOSTA || '__sem_id__'));
+      return ({
       Empresa: r.EMPRESA || '',
       Cliente: r.NOME_CLIENTE || '',
       Data: r.DATA || '',
@@ -4238,7 +4243,18 @@ app.get('/api/pesquisas/relatorio', requerPermissao('pesquisas.visualizar'), asy
       _token: r.TOKEN || '',
       _notaBaixa: r.NOTA_BAIXA || '',
       _statusOcp: r.STATUS_OCP || '',
-    }));
+      _formularioId: r.FORMULARIO_ID || '',
+      _versaoId: r.VERSAO_ID || '',
+      _versao: r.VERSAO || '',
+      _analista: r.ANALISTA_RESPONSAVEL || '',
+      _statusAnalise: r.STATUS_ANALISE || '',
+      _observacoesInternas: r.OBSERVACOES_INTERNAS || '',
+      _assumidoEm: r.DATA_ASSUNCAO || '',
+      _ocpId: ocp?.ID_OCP || '',
+      _manifestacaoId: ocp?.ID_MANIFESTACAO_GERADA || man?.ID_MANIFESTACAO || '',
+      _decisao: ocp?.DECISAO || (r.STATUS_OCP === 'NAO_REQUER_TRATAMENTO' ? 'NAO_REQUER' : ''),
+      });
+    });
     // Não retorna early aqui — continua para construir historico com dados manuais mesmo sem respostas
 
     const COLS_NOTA = ['Atendimento', 'Prazo de Entrega', 'Qualidade', 'Recomendação'];
@@ -4514,8 +4530,37 @@ app.delete('/api/pesquisas/respostas/:id', requerPermissao('pesquisas.gerenciar'
   }
 });
 
+// ===== ANÁLISE SAC DA RESPOSTA =====
+app.patch('/api/pesquisas/respostas/:id/analise', requerPermissao('pesquisas.criar'), async (req, res) => {
+  try {
+    const { assumir = false, observacoesInternas } = req.body || {};
+    await garantirAbaComCabecalhos('PESQUISA_RESPOSTAS', ['ID_RESPOSTA','ANALISTA_RESPONSAVEL','STATUS_ANALISE','OBSERVACOES_INTERNAS','DATA_ASSUNCAO','DATA_ATUALIZACAO_ANALISE']);
+    const rows = await lerRespostasPesquisa();
+    const resposta = rows.find(r => r.ID_RESPOSTA === req.params.id);
+    if (!resposta) return res.status(404).json({ sucesso: false, erro: 'Resposta não encontrada.' });
+    const perfilAtual = perfilCanonico(req.user?.perfil || '');
+    if (perfilAtual !== 'MASTER' && !pertenceEmpresa(req.user?.empresa || '', resposta.EMPRESA || '')) {
+      return res.status(403).json({ sucesso: false, erro: 'Acesso não autorizado para a empresa desta pesquisa.' });
+    }
+    const agora = new Date().toISOString();
+    const alteracoes = {
+      STATUS_ANALISE: assumir || resposta.ANALISTA_RESPONSAVEL ? 'EM_ANALISE' : (resposta.STATUS_ANALISE || 'PENDENTE'),
+      DATA_ATUALIZACAO_ANALISE: agora,
+    };
+    if (assumir) {
+      alteracoes.ANALISTA_RESPONSAVEL = req.user?.usuario || '';
+      alteracoes.DATA_ASSUNCAO = resposta.DATA_ASSUNCAO || agora;
+    }
+    if (observacoesInternas != null) alteracoes.OBSERVACOES_INTERNAS = String(observacoesInternas).trim().slice(0, 4000);
+    await atualizarPorID('PESQUISA_RESPOSTAS', req.params.id, alteracoes, ['ID_RESPOSTA']);
+    invalidarCacheAba('PESQUISA_RESPOSTAS');
+    await registrarAuditoria(req.user?.usuario || 'sistema', assumir ? 'ASSUMIU_ANALISE_PESQUISA' : 'ATUALIZOU_ANALISE_PESQUISA', req.params.id, 'PESQUISA_RESPOSTAS', null, alteracoes);
+    res.json({ sucesso: true, analista: alteracoes.ANALISTA_RESPONSAVEL || resposta.ANALISTA_RESPONSAVEL || '', status: alteracoes.STATUS_ANALISE });
+  } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e,'analise-pesquisa') }); }
+});
+
 // ===== PESQUISA DECISÃO (Transformar em Manifestação / Não requer tratamento) =====
-app.post('/api/pesquisas/decisao', requerPermissao('pesquisas.gerenciar'), async (req, res) => {
+app.post('/api/pesquisas/decisao', requerPermissao('pesquisas.criar'), async (req, res) => {
   try {
     const { respostaId, decisao, justificativa } = req.body || {};
     if (!respostaId || !decisao) return res.status(400).json({ sucesso: false, erro: 'respostaId e decisao são obrigatórios.' });
@@ -4526,6 +4571,19 @@ app.post('/api/pesquisas/decisao', requerPermissao('pesquisas.gerenciar'), async
     const idx = rows.findIndex(r => r.ID_RESPOSTA === respostaId);
     if (idx < 0) return res.status(404).json({ sucesso: false, erro: 'Resposta não encontrada.' });
     const resposta = rows[idx];
+    const perfilAtual = perfilCanonico(req.user?.perfil || '');
+    if (perfilAtual !== 'MASTER' && !pertenceEmpresa(req.user?.empresa || '', resposta.EMPRESA || '')) {
+      return res.status(403).json({ sucesso: false, erro: 'Acesso não autorizado para a empresa desta pesquisa.' });
+    }
+
+    if (resposta.STATUS_OCP === 'NAO_REQUER_TRATAMENTO' && decisao === 'NAO_REQUER') {
+      return res.json({ sucesso: true, decisao: resposta.STATUS_OCP, existente: true });
+    }
+    if (resposta.STATUS_OCP === 'TRANSFORMADA_MANIFESTACAO' && decisao === 'MANIFESTACAO') {
+      const manifests = await lerAba('MANIFESTACOES', 5000).catch(() => []);
+      const existente = manifests.find(m => String(m.DESCRICAO || m.DESCRICAO_MANIFESTACAO || '').includes(respostaId));
+      return res.json({ sucesso: true, decisao: resposta.STATUS_OCP, manifestacaoId: existente?.ID_MANIFESTACAO || null, existente: true });
+    }
 
     const sheets = await getSheets();
     const headers = await obterCabecalhos(aba);
@@ -5336,16 +5394,6 @@ app.post('/api/pesquisas/resposta-token', async (req, res) => {
     invalidarCacheAba(aba);
     await atualizarPorID('PESQUISA_TOKENS', token, { STATUS: 'RESPONDIDO', DATA_RESPOSTA: new Date().toISOString() }, ['TOKEN']);
     invalidarCacheAba('PESQUISA_TOKENS');
-    if (notaBaixa === 'SIM') {
-      await garantirAbaComCabecalhos('PESQUISA_OCORRENCIAS', ['ID_OCP','TOKEN','EMPRESA','DATA','NPS','STATUS','DECISAO','JUSTIFICATIVA','ID_MANIFESTACAO_GERADA','ANALISTA','DATA_DECISAO']);
-      await appendObjeto('PESQUISA_OCORRENCIAS', {
-        ID_OCP: 'OCP-' + Date.now(), TOKEN: token, EMPRESA: row.EMPRESA||'',
-        DATA: new Date().toISOString(), NPS: notaMedia,
-        STATUS: 'PENDENTE', DECISAO: '', JUSTIFICATIVA: '',
-        ID_MANIFESTACAO_GERADA: '', ANALISTA: '', DATA_DECISAO: '',
-      });
-      invalidarCacheAba('PESQUISA_OCORRENCIAS');
-    }
     res.json({ sucesso: true, flagrada: notaBaixa === 'SIM' });
   } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e,'resposta-token') }); }
 });
@@ -5355,30 +5403,61 @@ app.get('/api/notificacoes/analista', requerPerfil('MASTER','ANALISTA SAC','GEST
   try {
     const _pf = perfilCanonico(req.user?.perfil||'');
     const scope = _pf === 'MASTER' ? null : (req.user?.empresa||null);
-    const [ocps, mans, respostas] = await Promise.all([
+    const [ocps, mans, respostas, leituras] = await Promise.all([
       lerAba('PESQUISA_OCORRENCIAS', 500).catch(()=>[]),
       lerAba('MANIFESTACOES', 5000).catch(()=>[]),
       lerRespostasPesquisa(),
+      lerAba('PESQUISA_NOTIFICACOES_LIDAS', 5000).catch(()=>[]),
     ]);
     const ocpsPendentes = ocps.filter(o =>
       String(o.STATUS||'').toUpperCase() === 'PENDENTE' &&
       (!scope || pertenceEmpresa(scope, o.EMPRESA||''))
+    );
+    const pesquisasPendentes = respostas.filter(r =>
+      String(r.NOTA_BAIXA||'').toUpperCase() === 'SIM' &&
+      !['TRANSFORMADA_MANIFESTACAO','NAO_REQUER_TRATAMENTO'].includes(String(r.STATUS_OCP||'').toUpperCase()) &&
+      !ocps.some(o => (o.ID_RESPOSTA && o.ID_RESPOSTA === r.ID_RESPOSTA) || (o.TOKEN && r.TOKEN && o.TOKEN === r.TOKEN)) &&
+      (!scope || pertenceEmpresa(scope, r.EMPRESA||''))
     );
     const mansPortal = mans.filter(m =>
       m.ORIGEM === 'PORTAL_FUNCIONARIO' &&
       (String(m.STATUS||'').toUpperCase() === 'AGUARDANDO_APROVAÇÃO' || String(m.STATUS||'').toUpperCase() === 'ABERTA' || !m.STATUS) &&
       (!scope || pertenceEmpresa(scope, m.EMPRESA_RECLAMADA||''))
     );
-    // Enriquecer OCPs com dados da resposta
+    // O alerta de análise nasce da resposta crítica. OCP só existe após decisão humana.
     const ocpsEnrich = ocpsPendentes.map(o => {
-      const resp = respostas.find(r => r.TOKEN === o.TOKEN) || {};
+      const resp = respostas.find(r => (o.ID_RESPOSTA && r.ID_RESPOSTA === o.ID_RESPOSTA) || (o.TOKEN && r.TOKEN === o.TOKEN)) || {};
       return { ...o, NOME_CLIENTE: resp.NOME_CLIENTE||o.NOME_CLIENTE||'', NOTA_MEDIA: resp.NOTA_MEDIA||o.NPS||'' };
     });
+    const lidas = new Set(leituras.filter(l => l.USUARIO === (req.user?.usuario||'')).map(l => l.ID_EVENTO));
+    const notificacoes = [
+      ...pesquisasPendentes.map(r => ({
+        id: 'PESQ-' + (r.ID_RESPOSTA || r.TOKEN || ''), tipo: 'NOTA_CRITICA',
+        titulo: 'Pesquisa com nota igual ou inferior a 6', origem: r.ID_RESPOSTA || '',
+        empresa: r.EMPRESA || '', data: r.DATA || '', acao: 'COMENTARIOS', lida: lidas.has('PESQ-' + (r.ID_RESPOSTA || r.TOKEN || '')),
+      })),
+      ...ocpsPendentes.map(o => {
+        const prazo = o.PRAZO ? new Date(o.PRAZO) : null;
+        const vencida = prazo && !isNaN(prazo) && prazo < new Date();
+        const proxima = prazo && !isNaN(prazo) && prazo >= new Date() && prazo.getTime() - Date.now() <= 7*86400000;
+        const tipo = vencida ? 'OCP_VENCIDA' : proxima ? 'OCP_PROXIMA_PRAZO' : 'OCP_ATRIBUIDA';
+        const id = tipo + '-' + (o.ID_OCP || '');
+        return { id, tipo, titulo: vencida ? 'Ocorrência vencida' : proxima ? 'Ocorrência próxima do vencimento' : 'Ocorrência aguardando tratamento', origem:o.ID_OCP||'', empresa:o.EMPRESA||'', data:o.DATA||'', acao:'OCORRENCIAS', lida:lidas.has(id) };
+      }),
+      ...mansPortal.map(m => {
+        const id = 'MAN-' + (m.ID_MANIFESTACAO || '');
+        return { id, tipo:'MANIFESTACAO', titulo:'Manifestação recebida pelo Portal', origem:m.ID_MANIFESTACAO||'', empresa:m.EMPRESA_RECLAMADA||'', data:m.DATA_ABERTURA||m.DATA_REGISTRO||'', acao:'MANIFESTACOES', lida:lidas.has(id) };
+      }),
+    ].filter(n => n.origem).sort((a,b) => new Date(b.data||0) - new Date(a.data||0));
     res.json({
       sucesso: true,
-      total: ocpsPendentes.length + mansPortal.length,
+      total: pesquisasPendentes.length + ocpsPendentes.length + mansPortal.length,
+      naoLidas: notificacoes.filter(n => !n.lida).length,
+      notificacoes,
+      pesquisasBaixas: pesquisasPendentes.length,
       ocpsPendentes: ocpsPendentes.length,
       mansPortal: mansPortal.length,
+      pesquisas: pesquisasPendentes.slice(0, 20),
       ocps: ocpsEnrich.slice(0, 20),
       manifestacoes: mansPortal.slice(0, 20).map(m => ({
         id: m.ID_MANIFESTACAO, cliente: m.CLIENTE_NOME||m.NOME_CLIENTE||'', empresa: m.EMPRESA_RECLAMADA||'',
@@ -5389,10 +5468,25 @@ app.get('/api/notificacoes/analista', requerPerfil('MASTER','ANALISTA SAC','GEST
   } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e) }); }
 });
 
+app.post('/api/notificacoes/analista/:id/lida', requerPerfil('MASTER','ANALISTA SAC','GESTOR SAC'), async (req, res) => {
+  try {
+    const idEvento = String(req.params.id || '').trim().slice(0, 200);
+    if (!idEvento) return res.status(400).json({ sucesso:false, erro:'Notificação inválida.' });
+    await garantirAbaComCabecalhos('PESQUISA_NOTIFICACOES_LIDAS', ['ID_LEITURA','ID_EVENTO','USUARIO','DATA_LEITURA']);
+    const rows = await lerAba('PESQUISA_NOTIFICACOES_LIDAS', 5000).catch(()=>[]);
+    const existente = rows.find(r => r.ID_EVENTO === idEvento && r.USUARIO === (req.user?.usuario||''));
+    if (!existente) {
+      await appendObjeto('PESQUISA_NOTIFICACOES_LIDAS', { ID_LEITURA:'LID-'+Date.now(), ID_EVENTO:idEvento, USUARIO:req.user?.usuario||'', DATA_LEITURA:new Date().toISOString() });
+      invalidarCacheAba('PESQUISA_NOTIFICACOES_LIDAS');
+    }
+    res.json({ sucesso:true, existente:!!existente });
+  } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e,'ler-notificacao') }); }
+});
+
 // Listar OCPs (Ocorrências de Pesquisa)
 app.get('/api/pesquisas/ocorrencias', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','GESTOR SAC'), async (req, res) => {
   try {
-    await garantirAbaComCabecalhos('PESQUISA_OCORRENCIAS', ['ID_OCP','TOKEN','EMPRESA','DATA','NPS','STATUS','DECISAO','JUSTIFICATIVA','ID_MANIFESTACAO_GERADA','ANALISTA','DATA_DECISAO']);
+    await garantirAbaComCabecalhos('PESQUISA_OCORRENCIAS', ['ID_OCP','ID_RESPOSTA','TOKEN','EMPRESA','DATA','NPS','SETOR','RESPONSAVEL','PRAZO','STATUS','DECISAO','JUSTIFICATIVA','ID_MANIFESTACAO_GERADA','ANALISTA','DATA_DECISAO','DESCRICAO','RESULTADO','ENCERRADO_EM','HISTORICO_JSON']);
     const rows = await lerAba('PESQUISA_OCORRENCIAS', 2000);
     const _pf = perfilCanonico(req.user?.perfil||'');
     const scope = _pf === 'MASTER' ? null : (req.user?.empresa||null);
@@ -5400,7 +5494,7 @@ app.get('/api/pesquisas/ocorrencias', requerPerfil('MASTER','ANALISTA SAC','APRO
     // Juntar dados da resposta
     const respostas = await lerRespostasPesquisa();
     const enriched = itens.map(ocp => {
-      const resp = respostas.find(r => r.TOKEN === ocp.TOKEN);
+      const resp = respostas.find(r => (ocp.ID_RESPOSTA && r.ID_RESPOSTA === ocp.ID_RESPOSTA) || (ocp.TOKEN && r.TOKEN === ocp.TOKEN));
       return { ...ocp, resposta: resp || null };
     });
     res.json({ sucesso: true, total: enriched.length, itens: enriched });
@@ -9142,15 +9236,27 @@ app.post('/api/questionarios/:empresa/publicar', requerPerfil('MASTER','APROVADO
 // ─────────────────────────────────────────────────────────────────────────────
 app.post('/api/pesquisas/ocorrencias', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req, res) => {
   try {
-    const { token, empresa, nps, setor, descricao } = req.body || {};
-    if (!token) return res.status(400).json({ sucesso: false, erro: 'token obrigatório.' });
-    await garantirAbaComCabecalhos('PESQUISA_OCORRENCIAS', ['ID_OCP','TOKEN','EMPRESA','DATA','NPS','SETOR','STATUS','DECISAO','JUSTIFICATIVA','ID_MANIFESTACAO_GERADA','ANALISTA','DATA_DECISAO','DESCRICAO']);
+    const { respostaId, token, empresa, nps, setor, descricao, responsavel, prazo } = req.body || {};
+    if (!respostaId && !token) return res.status(400).json({ sucesso: false, erro: 'respostaId ou token obrigatório.' });
+    const respostas = await lerRespostasPesquisa();
+    const resposta = respostas.find(r => (respostaId && r.ID_RESPOSTA === respostaId) || (token && r.TOKEN === token));
+    if (!resposta) return res.status(404).json({ sucesso: false, erro: 'Resposta de pesquisa não encontrada.' });
+    const empresaResposta = resposta.EMPRESA || empresa || '';
+    const perfilAtual = perfilCanonico(req.user?.perfil || '');
+    if (perfilAtual !== 'MASTER' && !pertenceEmpresa(req.user?.empresa || '', empresaResposta)) {
+      return res.status(403).json({ sucesso: false, erro: 'Acesso não autorizado para a empresa desta pesquisa.' });
+    }
+    await garantirAbaComCabecalhos('PESQUISA_OCORRENCIAS', ['ID_OCP','ID_RESPOSTA','TOKEN','EMPRESA','DATA','NPS','SETOR','RESPONSAVEL','PRAZO','STATUS','DECISAO','JUSTIFICATIVA','ID_MANIFESTACAO_GERADA','ANALISTA','DATA_DECISAO','DESCRICAO','RESULTADO','ENCERRADO_EM','HISTORICO_JSON']);
+    const existentes = await lerAba('PESQUISA_OCORRENCIAS', 5000).catch(() => []);
+    const existente = existentes.find(o => ((respostaId && o.ID_RESPOSTA === respostaId) || (token && o.TOKEN === token)) && !['CANCELADA','EXCLUIDA'].includes(String(o.STATUS||'').toUpperCase()));
+    if (existente) return res.json({ sucesso: true, id: existente.ID_OCP, existente: true });
     const idOcp = 'OCP-' + Date.now();
     await appendObjeto('PESQUISA_OCORRENCIAS', {
-      ID_OCP: idOcp, TOKEN: token, EMPRESA: empresa || '', DATA: new Date().toISOString(),
-      NPS: nps != null ? String(nps) : '', SETOR: setor || '', STATUS: 'PENDENTE',
+      ID_OCP: idOcp, ID_RESPOSTA: resposta.ID_RESPOSTA || respostaId || '', TOKEN: resposta.TOKEN || token || '', EMPRESA: empresaResposta, DATA: new Date().toISOString(),
+      NPS: nps != null ? String(nps) : String(resposta.NOTA_MEDIA || ''), SETOR: setor || '', RESPONSAVEL: responsavel || '', PRAZO: prazo || '', STATUS: 'PENDENTE',
       DECISAO: '', JUSTIFICATIVA: '', ID_MANIFESTACAO_GERADA: '', DESCRICAO: descricao || '',
-      ANALISTA: req.user?.usuario || '', DATA_DECISAO: '',
+      ANALISTA: req.user?.usuario || '', DATA_DECISAO: '', RESULTADO: '', ENCERRADO_EM: '',
+      HISTORICO_JSON: JSON.stringify([{ data:new Date().toISOString(), usuario:req.user?.usuario||'', acao:'OCP_CRIADA' }]),
     });
     invalidarCacheAba('PESQUISA_OCORRENCIAS');
     res.json({ sucesso: true, id: idOcp });
@@ -9159,17 +9265,31 @@ app.post('/api/pesquisas/ocorrencias', requerPerfil('MASTER','ANALISTA SAC','APR
 
 app.patch('/api/pesquisas/ocorrencias/:id', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req, res) => {
   try {
-    const { status, decisao, justificativa, idManifestacao } = req.body || {};
+    const { status, decisao, justificativa, idManifestacao, setor, responsavel, prazo, resultado, descricao } = req.body || {};
     const rows = await lerAba('PESQUISA_OCORRENCIAS', 2000);
     const ocp = rows.find(r => r.ID_OCP === req.params.id);
     if (!ocp) return res.status(404).json({ sucesso: false, erro: 'OCP não encontrada.' });
+    const perfilAtual = perfilCanonico(req.user?.perfil || '');
+    if (perfilAtual !== 'MASTER' && !pertenceEmpresa(req.user?.empresa || '', ocp.EMPRESA || '')) {
+      return res.status(403).json({ sucesso: false, erro: 'Acesso não autorizado para a empresa desta ocorrência.' });
+    }
     const upd = {};
     if (status) upd.STATUS = status;
     if (decisao) upd.DECISAO = decisao;
     if (justificativa) upd.JUSTIFICATIVA = justificativa;
     if (idManifestacao) upd.ID_MANIFESTACAO_GERADA = idManifestacao;
+    if (setor != null) upd.SETOR = setor;
+    if (responsavel != null) upd.RESPONSAVEL = responsavel;
+    if (prazo != null) upd.PRAZO = prazo;
+    if (resultado != null) upd.RESULTADO = resultado;
+    if (descricao != null) upd.DESCRICAO = descricao;
     upd.ANALISTA = req.user?.usuario || ocp.ANALISTA || '';
     upd.DATA_DECISAO = new Date().toISOString();
+    if (['CONCLUIDA','ENCERRADA'].includes(String(status||'').toUpperCase())) upd.ENCERRADO_EM = new Date().toISOString();
+    let historico = [];
+    try { historico = JSON.parse(ocp.HISTORICO_JSON || '[]'); } catch(e) {}
+    historico.push({ data:new Date().toISOString(), usuario:req.user?.usuario||'', acao:'OCP_ATUALIZADA', status:status||ocp.STATUS||'', decisao:decisao||'' });
+    upd.HISTORICO_JSON = JSON.stringify(historico);
     await atualizarPorID('PESQUISA_OCORRENCIAS', req.params.id, upd, ['ID_OCP']);
     invalidarCacheAba('PESQUISA_OCORRENCIAS');
     res.json({ sucesso: true });
@@ -9239,15 +9359,6 @@ app.post('/api/pesquisas/resposta/:token', publicRateLimit, async (req, res) => 
     await atualizarPorID('PESQUISA_TOKENS', token, { RESPONDIDO_EM: new Date().toISOString() }, ['TOKEN']).catch(()=>{});
     invalidarCacheAba('PESQUISA_RESPOSTAS');
     invalidarCacheAba('PESQUISA_TOKENS');
-    // Se nota baixa, criar OCP automática
-    if (notaBaixa === 'SIM') {
-      await appendObjeto('PESQUISA_OCORRENCIAS', {
-        ID_OCP: 'OCP-' + Date.now(), TOKEN: token, EMPRESA: tk.EMPRESA||'',
-        DATA: new Date().toISOString(), NPS: notaGeral, STATUS: 'PENDENTE',
-        DECISAO: '', JUSTIFICATIVA: '', ID_MANIFESTACAO_GERADA: '', ANALISTA: '', DATA_DECISAO: '',
-      }).catch(()=>{});
-      invalidarCacheAba('PESQUISA_OCORRENCIAS');
-    }
     res.json({ sucesso: true, id: idResp, notaGeral, notaBaixa: notaBaixa === 'SIM' });
   } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e,'save-resposta') }); }
 });
@@ -9621,10 +9732,6 @@ app.post('/api/pesquisas/resposta-portal', async (req, res) => {
     const obj = { ID_RESPOSTA: idResp, TOKEN: '', EMPRESA: empresa, NOME_CLIENTE: String(body.nome||'').trim().slice(0,200), DATA: new Date().toISOString(), ATENDIMENTO: atendimento, PRAZO_ENTREGA: prazo, QUALIDADE: qualidade, RECOMENDACAO: recomendacao, COMENTARIO: String(body.comentario||'').trim().slice(0,1000), NOTA_MEDIA: notaMedia, NOTA_BAIXA: notaBaixa, STATUS_OCP: '', ORIGEM: 'PORTAL_PUBLICO' };
     await appendObjeto(aba, obj);
     invalidarCacheAba(aba);
-    if (notaBaixa === 'SIM') {
-      await appendObjeto('PESQUISA_OCORRENCIAS', { ID_OCP: 'OCP-'+Date.now(), TOKEN:'', EMPRESA: empresa, DATA: new Date().toISOString(), NPS: notaMedia, STATUS:'PENDENTE', DECISAO:'', JUSTIFICATIVA:'', ID_MANIFESTACAO_GERADA:'', ANALISTA:'', DATA_DECISAO:'' }).catch(()=>{});
-      invalidarCacheAba('PESQUISA_OCORRENCIAS');
-    }
     res.json({ sucesso: true, id: idResp });
   } catch(e) { res.status(500).json({ sucesso: false, erro: 'Não foi possível registrar. Tente novamente.' }); }
 });
