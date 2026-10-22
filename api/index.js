@@ -4831,6 +4831,77 @@ app.post('/api/relatorios/:id/link', requerPerfil('MASTER','ANALISTA SAC','APROV
   } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
 
+// ===== ENVIO E HISTÓRICO DE RELATÓRIOS =====
+// O relatório só pode ser enviado depois de publicado. Os destinatários são
+// conferidos contra usuários cadastrados; nenhum endereço é inventado pela API.
+const REL_ENVIO_HEADERS = ['ID_ENVIO','ID_RELATORIO','EMPRESA','ANO','MES','VERSAO','DESTINATARIOS','MENSAGEM','LINK','POSSUI_PDF','STATUS','CRIADO_EM','CRIADO_POR','ERRO'];
+
+app.get('/api/relatorios/:id/envios', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC','APROVADOR','APROVADOR MASTER','DIRETOR','SETOR DIRETORIA','VISUALIZADOR','AUDITOR'), async (req, res) => {
+  try {
+    const row = (await lerRelatoriosSac()).find(r => r.ID_RELATORIO === req.params.id);
+    if (!row) return res.status(404).json({ sucesso:false, erro:'Relatório não encontrado.' });
+    if (_mcEmpresaScope(req.user) && !pertenceEmpresa(_mcEmpresaScope(req.user), row.EMPRESA||'')) return res.status(403).json({ sucesso:false, erro:'Sem acesso a este relatório.' });
+    const perfilConsulta = perfilCanonico(req.user?.perfil||'');
+    if (['DIRETOR','SETOR DIRETORIA','VISUALIZADOR','AUDITOR'].includes(perfilConsulta) && row.STATUS !== 'PUBLICADO') return res.status(403).json({ sucesso:false, erro:'Apenas versões publicadas estão disponíveis para consulta.' });
+    const rows = await lerAba('RELATORIO_ENVIOS', 1000).catch(() => []);
+    const envios = rows.filter(r => r.ID_RELATORIO === row.ID_RELATORIO).map(r => ({
+      id:r.ID_ENVIO, destinatarios: (() => { try { return JSON.parse(r.DESTINATARIOS||'[]'); } catch (_) { return []; } })(),
+      mensagem:r.MENSAGEM||'', link:r.LINK||'', possui_pdf:String(r.POSSUI_PDF||'').toUpperCase()==='SIM',
+      status:r.STATUS||'', criado_em:r.CRIADO_EM||'', criado_por:r.CRIADO_POR||'', erro:r.ERRO||'', versao:Number(r.VERSAO||row.VERSAO||1)
+    }));
+    res.json({ sucesso:true, envios });
+  } catch (e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
+});
+
+app.post('/api/relatorios/:id/enviar', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC','APROVADOR','APROVADOR MASTER'), async (req, res) => {
+  try {
+    const { destinatarios = [], mensagem = '', anexar_pdf = false } = req.body || {};
+    const row = (await lerRelatoriosSac()).find(r => r.ID_RELATORIO === req.params.id);
+    if (!row) return res.status(404).json({ sucesso:false, erro:'Relatório não encontrado.' });
+    if (row.STATUS !== 'PUBLICADO') return res.status(409).json({ sucesso:false, erro:'Publique o relatório antes de enviá-lo.' });
+    if (_mcEmpresaScope(req.user) && !pertenceEmpresa(_mcEmpresaScope(req.user), row.EMPRESA||'')) return res.status(403).json({ sucesso:false, erro:'Sem acesso a este relatório.' });
+    const emails = [...new Set((Array.isArray(destinatarios) ? destinatarios : []).map(v => String(v||'').trim().toLowerCase()).filter(v => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)))];
+    if (!emails.length) return res.status(400).json({ sucesso:false, erro:'Selecione ao menos um destinatário com e-mail cadastrado.' });
+    const usuarios = await lerAba('USUARIOS', 5000).catch(() => []);
+    const cadastrados = new Set(usuarios.map(u => String(u.EMAIL||'').trim().toLowerCase()).filter(Boolean));
+    const invalidos = emails.filter(e => !cadastrados.has(e));
+    if (invalidos.length) return res.status(400).json({ sucesso:false, erro:'Destinatário não cadastrado: '+invalidos.join(', ') });
+
+    await garantirAbaComCabecalhos('RELATORIO_ENVIOS', REL_ENVIO_HEADERS).catch(() => {});
+    const token = row.LINK_TOKEN || require('crypto').randomBytes(18).toString('base64url');
+    if (!row.LINK_TOKEN) { await atualizarPorID('RELATORIOS_SAC', row.ID_RELATORIO, { LINK_TOKEN:token }, ['ID_RELATORIO']); invalidarCacheAba('RELATORIOS_SAC'); }
+    const link = `${APP_URL}/relatorio-publico/${token}`;
+    const id = `ENV-${Date.now().toString(36).toUpperCase()}`;
+    const base = { ID_ENVIO:id, ID_RELATORIO:row.ID_RELATORIO, EMPRESA:row.EMPRESA||'', ANO:row.ANO||'', MES:row.MES||'', VERSAO:row.VERSAO||'1', DESTINATARIOS:JSON.stringify(emails), MENSAGEM:String(mensagem||''), LINK:link, POSSUI_PDF:anexar_pdf?'SIM':'NAO', STATUS:'PENDENTE_CONFIGURACAO', CRIADO_EM:new Date().toISOString(), CRIADO_POR:req.user?.nome||req.user?.usuario||'', ERRO:'' };
+
+    if (!_resend) {
+      base.ERRO = 'Serviço de e-mail não configurado (RESEND_API_KEY).';
+      await appendObjeto('RELATORIO_ENVIOS', base);
+      registrarAuditoria(req.user?.usuario||'sistema','RELATORIO_ENVIO_PREPARADO',row.ID_RELATORIO,'RELATORIO_ENVIOS',null,{id,destinatarios:emails}).catch(()=>{});
+      return res.status(503).json({ sucesso:false, preparado:true, status:base.STATUS, id, link, erro:base.ERRO });
+    }
+
+    const periodo = new Date(Number(row.ANO), Number(row.MES)-1, 1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+    const payload = { from:EMAIL_FROM, to:emails, subject:`Relatório de satisfação — ${row.EMPRESA} — ${periodo}`, html:`<p>${String(mensagem||'Segue o relatório de satisfação para consulta.').replace(/[<>]/g,'')}</p><p><a href="${link}">Abrir relatório</a></p>` };
+    if (anexar_pdf && gerarPdfRelatorioSatisfacao) {
+      let dados = {}, textos = {}; try { dados=JSON.parse(row.DADOS_JSON||'{}'); } catch (_) {} try { textos=JSON.parse(row.TEXTOS_JSON||'{}'); } catch (_) {}
+      const pdf = await gerarPdfRelatorioSatisfacao({ empresa:row.EMPRESA, periodo, versao:row.VERSAO, status:row.STATUS, indicador:row.INDICADOR, nps:row.NPS_SCORE, meta:dados.meta, criterios:dados.criterios||[], textos });
+      payload.attachments = [{ filename:`Relatorio_Satisfacao_${String(row.EMPRESA||'Grupo').replace(/[^a-z0-9]+/gi,'_')}_${row.ANO}-${String(row.MES).padStart(2,'0')}.pdf`, content:pdf.toString('base64') }];
+    }
+    try {
+      await _resend.emails.send(payload);
+      base.STATUS='ENVIADO';
+      await appendObjeto('RELATORIO_ENVIOS', base);
+      registrarAuditoria(req.user?.usuario||'sistema','RELATORIO_ENVIADO',row.ID_RELATORIO,'RELATORIO_ENVIOS',null,{id,destinatarios:emails}).catch(()=>{});
+      res.json({ sucesso:true, id, status:base.STATUS, link });
+    } catch (e) {
+      base.STATUS='ERRO'; base.ERRO=erroSeguro(e);
+      await appendObjeto('RELATORIO_ENVIOS', base);
+      res.status(502).json({ sucesso:false, id, status:base.STATUS, erro:'O serviço de e-mail recusou o envio.' });
+    }
+  } catch (e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
+});
+
 // ===== METAS POR EMPRESA =====
 const METAS_HEADERS = ['EMPRESA','META','ATUALIZADO_EM','ATUALIZADO_POR'];
 
