@@ -4908,8 +4908,37 @@
     </button>
   </div>
 
+  <style>
+    #page-usuarios .usr-tabs{display:flex;gap:4px;padding:14px 24px 0;background:#fff;border-bottom:1px solid #E4E4E4}
+    #page-usuarios .usr-tab{border:0;background:none;border-bottom:3px solid transparent;padding:10px 14px 11px;color:#666464;font:600 13px Montserrat,inherit;cursor:pointer}
+    #page-usuarios .usr-tab:hover{background:#FAFAFA;color:#1F1F1F}
+    #page-usuarios .usr-tab.active{color:#C70602;border-bottom-color:#C70602}
+    #page-usuarios .usr-panel{display:none}
+    #page-usuarios .usr-panel.active{display:block}
+    #page-usuarios .usr-perm-card{background:#fff;border:1px solid #E4E4E4;border-radius:12px;margin:16px 24px;padding:18px}
+    #page-usuarios .usr-perm-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-top:14px}
+    #page-usuarios .usr-perm-item{border:1px solid #EFEFEF;border-radius:8px;padding:12px;font-size:12px;color:#545252}
+    @media(max-width:700px){#page-usuarios .usr-tabs{overflow-x:auto}.usr-tab{white-space:nowrap}}
+  </style>
+
+  <div class="usr-tabs" role="tablist" aria-label="Gestão de usuários">
+    <button class="usr-tab active" id="usr-tab-btn-usuarios" role="tab" aria-selected="true" onclick="switchUsrTab('usuarios')">Usuários</button>
+    <button class="usr-tab" id="usr-tab-btn-solicitacoes" role="tab" aria-selected="false" onclick="switchUsrTab('solicitacoes')">Solicitações de acesso</button>
+    <button class="usr-tab" id="usr-tab-btn-permissoes" role="tab" aria-selected="false" onclick="switchUsrTab('permissoes')">Perfis e permissões</button>
+  </div>
+
+  <div id="usr-panel-permissoes" class="usr-panel">
+    <div class="usr-perm-card">
+      <div style="font-size:16px;font-weight:700">Perfis e permissões</div>
+      <div style="font-size:12px;color:#707070;margin-top:4px">Consulte o escopo padrão de cada perfil. Alterações individuais continuam disponíveis em Editar.</div>
+      <div id="usr-perm-grid" class="usr-perm-grid"><div style="color:#707070;font-size:12px">Carregando perfis…</div></div>
+    </div>
+  </div>
+
+  <div id="usr-panel-usuarios" class="usr-panel active">
+
   <!-- SOLICITAÇÕES PENDENTES (amber collapsible banner) -->
-  <div id="usr-solicitacoes-section" style="background:#FBF0D9;border-bottom:1px solid #F0D9A0;margin:0 -28px;flex-shrink:0">
+  <div id="usr-solicitacoes-section" style="display:none;background:#FBF0D9;border-bottom:1px solid #F0D9A0;margin:0 -28px;flex-shrink:0">
     <div onclick="(function(){var l=document.getElementById('usr-solicitacoes-lista'),a=document.getElementById('usr-solic-arrow');if(l.style.display==='none'){l.style.display='flex';a.textContent='▾'}else{l.style.display='none';a.textContent='▸'}})()" style="display:flex;align-items:center;gap:10px;height:44px;cursor:pointer;padding:0 24px">
       <div style="width:8px;height:8px;border-radius:50%;background:#D97706;flex-shrink:0"></div>
       <span style="font-size:12.5px;font-weight:700;color:#7A4C00">Solicitações de Acesso — <span id="usr-req-pend-txt">Nenhuma pendente</span></span>
@@ -4920,7 +4949,7 @@
   </div>
 
   <!-- FILTROS -->
-  <div style="padding:12px 24px;background:#fff;border-bottom:1px solid #E4E4E4;display:flex;flex-wrap:wrap;gap:10px;align-items:center;flex-shrink:0;margin:0 -28px">
+  <div id="usr-filtros-wrap" style="padding:12px 24px;background:#fff;border-bottom:1px solid #E4E4E4;display:flex;flex-wrap:wrap;gap:10px;align-items:center;flex-shrink:0;margin:0 -28px">
     <input id="usu-busca" type="text" placeholder="Buscar por nome ou e-mail…" oninput="usuFiltrar()"
       style="flex:1;min-width:180px;max-width:280px;height:36px;border:1.5px solid #E4E4E4;border-radius:8px;padding:0 12px;font-size:12.5px;font-family:inherit">
     <select id="usu-fil-perfil" onchange="usuFiltrar()"
@@ -4944,7 +4973,7 @@
   </div>
 
   <!-- TABELA DE USUÁRIOS -->
-  <div style="flex:1;overflow-y:auto;padding:16px 0;margin:0 -28px">
+  <div id="usr-tabela-wrap" style="flex:1;overflow-y:auto;padding:16px 0;margin:0 -28px">
     <div style="padding:0 24px">
       <div style="background:#fff;border:1px solid #E4E4E4;border-radius:12px;overflow:hidden">
         <table style="width:100%;border-collapse:collapse;font-size:13px">
@@ -4963,6 +4992,8 @@
         <div id="usu-vazio" style="display:none;text-align:center;padding:48px;color:#929090;font-size:13px">Nenhum usuário encontrado.</div>
       </div>
     </div>
+  </div>
+
   </div>
 
 </div>
@@ -15178,7 +15209,7 @@ document.addEventListener('visibilitychange', () => {
       renderUsuariosV5(a);
       // Carregar solicitações
       await loadSolicitacoesEmbutido();
-    }catch(e){document.getElementById('usuarios-body').innerHTML=`<tr><td colspan="8" style="text-align:center;padding:24px;color:#707070">${esc5(e.message)}</td></tr>`}
+    }catch(e){const tb=document.getElementById('usuarios-body')||document.getElementById('usu-lista');if(tb)tb.innerHTML=`<tr><td colspan="8" style="text-align:center;padding:24px;color:#707070">${esc5(e.message)}</td></tr>`}
   }
   function filtrarUsuariosV5(){
     const q=(document.getElementById('usr-search')?.value||'').toLowerCase();
@@ -15196,7 +15227,8 @@ document.addEventListener('visibilitychange', () => {
       return 'background:#EEEEEE;color:#545252';
     };
     const myUser = (sess()||{}).usuario||'';
-    document.getElementById('usuarios-body').innerHTML=filtered.map(x=>{
+    const target=document.getElementById('usuarios-body')||document.getElementById('usu-lista'); if(!target)return;
+    target.innerHTML=filtered.map(x=>{
       const id = esc5(x.id||x.usuario||'');
       const st = String(x.status||'').toUpperCase();
       const isSelf = String(x.usuario||'').toLowerCase() === String(myUser).toLowerCase();
@@ -23096,17 +23128,33 @@ async function mudarStatusMC(id, novoStatus) {
 
   // ── TABS USUÁRIOS ───────────────────────────────────────────
   window.switchUsrTab = function(tab){
-    // Layout redesenhado: sem abas separadas, tudo em scroll
-    if(tab==='solicitacoes') loadSolicitacoesEmbutido?.();
-    else loadUsuariosV5?.();
+    const current=['solicitacoes','permissoes'].includes(tab)?tab:'usuarios';
+    ['usuarios','solicitacoes','permissoes'].forEach(name=>{
+      const panel=document.getElementById('usr-panel-'+name); if(panel)panel.classList.toggle('active',name===current);
+      const btn=document.getElementById('usr-tab-btn-'+name); if(btn){btn.classList.toggle('active',name===current);btn.setAttribute('aria-selected',name===current?'true':'false');}
+    });
+    const usersVisible=current==='usuarios';
+    ['usr-filtros-wrap','usr-tabela-wrap'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display=usersVisible?'':'none';});
+    const usersPanel=document.getElementById('usr-panel-usuarios');
+    if(usersPanel)usersPanel.classList.toggle('active',current!=='permissoes');
+    const req=document.getElementById('usr-solicitacoes-section');if(req)req.style.display=current==='solicitacoes'?'block':'none';
+    if(current==='solicitacoes')loadSolicitacoesEmbutido?.();
+    if(current==='usuarios')loadUsuariosV5?.();
+    if(current==='permissoes')renderPerfisPermissoes();
   };
+  function renderPerfisPermissoes(){
+    const el=document.getElementById('usr-perm-grid');if(!el)return;
+    const defs=typeof _PERM_DEF!=='undefined'?_PERM_DEF:{};
+    const keys=Object.keys(defs); el.innerHTML=keys.map(k=>{const d=defs[k];const n=Array.isArray(d)?d.length:(d&&typeof d==='object'?Object.keys(d).length:0);return `<div class="usr-perm-item"><strong>${esc5(k)}</strong><div style="margin-top:5px;color:#707070">${n?n+' permissões padrão':'Configuração administrativa'}</div></div>`}).join('')||'<div style="color:#707070;font-size:12px">Nenhum perfil configurado.</div>';
+  }
+  window.renderPerfisPermissoes=renderPerfisPermissoes;
 
   // ── CARREGAR USUÁRIOS (novo endpoint) ───────────────────────
   window.loadUsuariosAdmin = async function(){
     const empresa=document.getElementById('usr-fil-empresa')?.value||'';
     const perfil=document.getElementById('usr-fil-perfil')?.value||'';
     const status=document.getElementById('usr-fil-status')?.value||'';
-    const tbody=document.getElementById('usuarios-body');
+    const tbody=document.getElementById('usuarios-body')||document.getElementById('usu-lista');
     if(!tbody) return;
     tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--gray-400)">Carregando...</td></tr>';
     try{
@@ -23132,9 +23180,8 @@ async function mudarStatusMC(id, novoStatus) {
           <td><strong>${esc2(nome)}</strong><div style="font-size:10px;color:var(--gray-400)">${esc2(email)}</div></td>
           <td><span class="role-pill">${esc2(pf)}</span></td>
           <td>${esc2(emp)}</td>
-          <td>${esc2(u.SETOR||u.setor||'—')}</td>
           <td style="${stCls};font-weight:600">${esc2(st)}</td>
-          <td style="font-size:11px">${esc2(u.DATA_CRIACAO||u.dataCriacao||'—')}</td>
+          <td style="font-size:11px">${esc2(u.ULTIMO_ACESSO||u.ultimoAcesso||u.ULTIMO_LOGIN||u.ultimoLogin||'—')}</td>
           <td style="white-space:nowrap">
             <button class="btn btn-secondary" style="font-size:11px" onclick="abrirEdicaoPermissoes('${esc2(id)}')">Permissões</button>
             ${st.toUpperCase()==='ATIVO'?`<button class="btn" style="font-size:11px;background:var(--red);color:#fff;margin-left:4px" onclick="toggleUsuario('${esc2(id)}','desativar')">Desativar</button>`:
