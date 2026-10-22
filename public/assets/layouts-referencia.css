@@ -86,7 +86,7 @@
 #page-nova-manifestacao #nm-steps-body>.nm-step-panel{max-width:1240px;width:100%;margin:0 auto}
 #page-nova-manifestacao #nm-steps-body input,#page-nova-manifestacao #nm-steps-body select,#page-nova-manifestacao #nm-steps-body textarea{font-family:Montserrat,system-ui,sans-serif;font-size:13px}
 #page-nova-manifestacao #nm-steps-body:before{content:'Dados da Manifestação';display:block;font-size:23px;font-weight:700;color:#171717;margin:0 0 3px}
-#page-nova-manifestacao #nm-steps-body:after{content:'Identificação completa da ocorrência, do cliente e do impacto.';display:block;position:absolute;top:136px;left:250px;color:#a0a0a0;font-size:14px}
+#page-nova-manifestacao #nm-steps-body:after{content:'Identificação completa da ocorrência, do cliente e do impacto.';display:block;position:static;margin:0 0 18px;color:#a0a0a0;font-size:14px}
 #page-nova-manifestacao #nm-stepper-row,#page-nova-manifestacao #nm-step-label-main,#page-nova-manifestacao #nm-step-desc-main{display:none!important}
 #page-nova-manifestacao .nm-card{border-radius:11px;box-shadow:none}
 #page-nova-manifestacao .nm-card-title{font-size:14px;letter-spacing:0;color:#171717;text-transform:none;border-left:3px solid #c70602;padding-left:10px}
