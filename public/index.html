@@ -6958,15 +6958,15 @@
     </div>
     <div style="padding:14px 24px 56px">
       <!-- Tab bar -->
-      <div id="cp-tabbar" style="display:flex;gap:2px;border-bottom:1px solid #E4E4E4;overflow-x:auto;scrollbar-width:none;margin-bottom:14px">
-        <button id="cp-tab-btn-geral" onclick="cpTab('geral',this)" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#1F1F1F;border-bottom:2px solid #C70602;margin-bottom:-1px;font-weight:700;font-family:inherit">Visão geral</button>
-        <button id="cp-tab-btn-anomes" onclick="cpTab('anomes',this)" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Por ano e mês</button>
-        <button id="cp-tab-btn-empresa" onclick="cpTab('empresa',this)" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Por empresa</button>
-        <button id="cp-tab-btn-dashboard" onclick="cpTab('dashboard',this)" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Dashboard</button>
-        <button id="cp-tab-btn-comentarios" onclick="cpTab('comentarios',this)" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Comentários</button>
+      <div id="cp-tabbar" style="display:flex;gap:2px;border-bottom:2px solid #E4E4E4;overflow-x:auto;scrollbar-width:none;margin-bottom:18px">
+        <button id="cp-tab-btn-geral" class="cp-tab-btn active" onclick="cpTab('geral',this)">Visão geral</button>
+        <button id="cp-tab-btn-anomes" class="cp-tab-btn" onclick="cpTab('anomes',this)">Por ano e mês</button>
+        <button id="cp-tab-btn-empresa" class="cp-tab-btn" onclick="cpTab('empresa',this)">Por empresa</button>
+        <button id="cp-tab-btn-dashboard" class="cp-tab-btn" onclick="cpTab('dashboard',this)">Dashboard</button>
+        <button id="cp-tab-btn-comentarios" class="cp-tab-btn" onclick="cpTab('comentarios',this)">Comentários</button>
         <!-- Aba Ocorrências removida: OCP não faz parte do fluxo de pesquisa -->
-        <button id="cp-tab-btn-editor" onclick="cpTab('editor',this)" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Editor do questionário</button>
-        <button id="cp-tab-btn-notificacoes" onclick="cpTab('notificacoes',this)" style="border:0;background:none;padding:10px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:#666464;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Notificações</button>
+        <button id="cp-tab-btn-editor" class="cp-tab-btn" onclick="cpTab('editor',this)">Editor do questionário</button>
+        <button id="cp-tab-btn-notificacoes" class="cp-tab-btn" onclick="cpTab('notificacoes',this)">Notificações</button>
       </div>
 
       <!-- Tab panels -->
@@ -20097,10 +20097,8 @@ function cpAvg(arr) { const v = arr.filter(x => x !== null && x !== undefined); 
 function cpFmt(n) { return n === null || n === undefined ? '—' : n.toFixed(1).replace('.', ','); }
 function cpTab(name, btn) {
   document.querySelectorAll('[id^="cp-panel-"]').forEach(p => p.style.display = 'none');
-  document.querySelectorAll('#cp-tabbar button').forEach(b => {
-    b.style.color = '#666464'; b.style.fontWeight = '500'; b.style.borderBottom = '2px solid transparent';
-  });
-  if (btn) { btn.style.color = '#1F1F1F'; btn.style.fontWeight = '700'; btn.style.borderBottom = '2px solid #C70602'; }
+  document.querySelectorAll('#cp-tabbar button').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
   const panel = document.getElementById('cp-panel-' + name);
   if (panel) panel.style.display = 'block';
   const semFiltro = ['ocorrencias', 'editor', 'notificacoes'].includes(name);
