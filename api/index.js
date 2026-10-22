@@ -3664,9 +3664,10 @@ app.get('/api/dashboard/executiva', middlewareEscopoEmpresa(), requerPermissao('
     ]);
     const scoped = filtrarPorEmpresaHistorico(manifestacoes, req, COLUNA_EMPRESA_ABA.MANIFESTACOES)
       .filter(m=>!isTeste(m)).filter(m=>!empresa || pertenceEmpresa(empresa,m.EMPRESA_RECLAMADA||''))
-      .filter(m=>!setor || normalizarTexto(m.SETOR_CONFIRMADO||m.SETOR_DESTINADO||m.SETOR_SUGERIDO||'').includes(normalizarTexto(setor)));
-    const pesquisas = respostas.filter(r=>!empresa || pertenceEmpresa(empresa,r.EMPRESA||''));
+      .filter(m=>!setor || normalizarTexto(m.SETOR_CONFIRMADO||m.SETOR_DESTINADO||m.SETOR_RESPONSAVEL||m.SETOR_SUGERIDO||'').includes(normalizarTexto(setor)));
     const inicioData=inicio?new Date(`${inicio}T00:00:00`):null, fimData=fim?new Date(`${fim}T23:59:59`):null;
+    const pesquisas = respostas.filter(r=>!empresa || pertenceEmpresa(empresa,r.EMPRESA||''))
+      .filter(r=>{ const valor=r.DATA||r.DATA_RESPOSTA||r.DATA_CRIACAO||r.CREATED_AT; if(!valor) return !inicioData&&!fimData; const d=new Date(valor); return !Number.isNaN(d.getTime()) && (!inicioData||d>=inicioData) && (!fimData||d<=fimData); });
     const dados=dashboardExecutiva.calcular({manifestacoes:scoped,respostas:pesquisas,logsIA,inicio:inicioData,fim:fimData});
     res.json({sucesso:true,filtros:{empresa,setor,inicio,fim},fonte:{manifestacoes:'MANIFESTACOES',satisfacao:'PESQUISA_RESPOSTAS',ia:'LOG_SISTEMA'},dados});
   } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
@@ -9476,17 +9477,33 @@ app.post('/api/importacao/iniciar', requerPerfil('MASTER'), async (req, res) => 
   try {
     const { fonte, descricao, registros } = req.body || {};
     if (!fonte) return res.status(400).json({ sucesso: false, erro: 'fonte obrigatória.' });
+    if (!Array.isArray(registros) || !registros.length) return res.status(400).json({ sucesso: false, erro: 'envie ao menos um registro.' });
+    const fonteNormalizada = String(fonte).toUpperCase();
+    const alvo = fonteNormalizada === 'MANIFESTACOES' ? 'MANIFESTACOES' : fonteNormalizada === 'PESQUISA_RESPOSTAS' ? 'PESQUISA_RESPOSTAS' : null;
+    if (!alvo) return res.status(400).json({ sucesso: false, erro: 'fonte não autorizada para importação.' });
     await garantirAbaComCabecalhos('IMPORTACAO_HISTORICO', ['ID_IMP','FONTE','DESCRICAO','STATUS','REGISTROS_TOTAL','REGISTROS_OK','REGISTROS_ERR','USUARIO','DATA_INICIO','DATA_FIM','PODE_DESFAZER','DESFAZENDO_EM','ERROS_JSON']);
     const idImp = 'IMP-' + Date.now();
-    await appendObjeto('IMPORTACAO_HISTORICO', {
-      ID_IMP: idImp, FONTE: fonte, DESCRICAO: descricao || '', STATUS: 'PROCESSANDO',
-      REGISTROS_TOTAL: Array.isArray(registros) ? registros.length : 0,
-      REGISTROS_OK: 0, REGISTROS_ERR: 0,
-      USUARIO: req.user?.usuario || '', DATA_INICIO: new Date().toISOString(), DATA_FIM: '',
-      PODE_DESFAZER: 'SIM', DESFAZENDO_EM: '', ERROS_JSON: '[]',
+    const existentes = await lerAba(alvo, 5000).catch(()=>[]);
+    const chave = alvo === 'MANIFESTACOES' ? r => r.ID_MANIFESTACAO || r.PROTOCOLO : r => r.ID_RESPOSTA || r.TOKEN;
+    const idsExistentes = new Set(existentes.map(chave).filter(Boolean).map(String));
+    const erros = [], duplicados = [];
+    const validos = registros.filter((registro, index) => {
+      const id = chave(registro);
+      if (!id) { erros.push({linha:index+2,erro:'identificador obrigatório'}); return false; }
+      if (idsExistentes.has(String(id))) { duplicados.push({linha:index+2,id:String(id)}); return false; }
+      if (alvo === 'MANIFESTACOES' && !String(registro.EMPRESA_RECLAMADA||'').trim()) { erros.push({linha:index+2,erro:'EMPRESA_RECLAMADA obrigatória'}); return false; }
+      idsExistentes.add(String(id)); return true;
     });
-    invalidarCacheAba('IMPORTACAO_HISTORICO');
-    res.json({ sucesso: true, id: idImp, status: 'PROCESSANDO' });
+    for (const registro of validos) await appendObjeto(alvo, registro);
+    const agora = new Date().toISOString();
+    await appendObjeto('IMPORTACAO_HISTORICO', {
+      ID_IMP: idImp, FONTE: fonteNormalizada, DESCRICAO: descricao || '', STATUS: erros.length || duplicados.length ? 'CONCLUIDA_COM_ALERTAS' : 'CONCLUIDA',
+      REGISTROS_TOTAL: registros.length, REGISTROS_OK: validos.length, REGISTROS_ERR: erros.length,
+      USUARIO: req.user?.usuario || '', DATA_INICIO: agora, DATA_FIM: new Date().toISOString(),
+      PODE_DESFAZER: 'NAO', DESFAZENDO_EM: '', ERROS_JSON: JSON.stringify({erros,duplicados}),
+    });
+    invalidarCacheAba('IMPORTACAO_HISTORICO'); invalidarCacheAba(alvo);
+    res.json({ sucesso: true, id: idImp, status: 'CONCLUIDA', registrosOk: validos.length, registrosDuplicados: duplicados.length, registrosErr: erros.length, erros, duplicados });
   } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e,'importacao-iniciar') }); }
 });
 
