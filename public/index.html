@@ -2828,6 +2828,7 @@
       <input type="hidden" id="nm-status-ficha" value="ABERTA">
     </div>
     <div class="nm-ref-breadcrumb">Central de Manifestações <b>›</b> Nova Manifestação</div>
+    <div class="nm-ref-workspace">
     <aside class="nm-ref-sidebar">
       <small>SEÇÕES</small>
       <button class="active" onclick="nmIrParaEtapa(1)"><i></i>Dados da Manifestação<em>Em preenchimento</em></button>
@@ -2879,9 +2880,23 @@
       .nm-active{animation:nmFadeUp .25s ease}
       /* Status ficha pills */
       .nm-status-ficha-btn{border-radius:20px;padding:4px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:Montserrat,system-ui,sans-serif;transition:all .15s}
+      #page-nova-manifestacao{position:relative}
+      #page-nova-manifestacao .nm-ref-workspace{display:flex;flex:1;min-height:0;overflow:hidden}
+      #page-nova-manifestacao .nm-ref-sidebar{width:220px;flex:0 0 220px;overflow-y:auto;background:#fff;border-right:1px solid #E4E4E4;padding:18px 0 12px}
+      #page-nova-manifestacao .nm-ref-sidebar>small{display:block;padding:0 16px 10px;font-size:10px;font-weight:700;letter-spacing:.08em;color:#A0A0A0}
+      #page-nova-manifestacao .nm-ref-sidebar button{display:flex;flex-direction:column;align-items:flex-start;width:100%;border:0;border-left:3px solid transparent;background:#fff;padding:12px 14px 11px 16px;text-align:left;color:#545252;cursor:pointer;font:500 12.5px/1.25 Montserrat,system-ui,sans-serif}
+      #page-nova-manifestacao .nm-ref-sidebar button:hover{background:#FAFAFA}
+      #page-nova-manifestacao .nm-ref-sidebar button.active{border-left-color:#C70602;background:#FFF1F1;color:#C70602;font-weight:700}
+      #page-nova-manifestacao .nm-ref-sidebar button i{display:block;width:7px;height:7px;border-radius:50%;background:#C8C8C8;margin-bottom:5px}
+      #page-nova-manifestacao .nm-ref-sidebar button.active i{background:#C70602}
+      #page-nova-manifestacao .nm-ref-sidebar button em{font-style:normal;color:#929090;font-size:10.5px;font-weight:400;margin-top:4px}
+      #page-nova-manifestacao .nm-ref-sidebar button.active em{color:#C70602}
+      #page-nova-manifestacao .nm-ref-workarea{display:flex;flex:1;min-width:0;min-height:0;flex-direction:column;overflow:hidden}
+      @media(max-width:768px){#page-nova-manifestacao .nm-ref-sidebar{width:190px;flex-basis:190px}#page-nova-manifestacao .nm-ref-sidebar button{font-size:11.5px;padding-left:12px}}
     </style>
 
     <!-- STEPS BODY -->
+    <div class="nm-ref-workarea">
     <div id="nm-steps-body" style="flex:1;overflow-y:auto;padding:24px 28px">
 
       <!-- ETAPA 1: CLIENTE E PEDIDO -->
@@ -3323,6 +3338,8 @@
       <button onclick="nmProximaEtapa()" id="nm-btn-continuar" style="height:42px;border:0;background:#C70602;color:#fff;border-radius:10px;padding:0 32px;font-size:13px;font-weight:700;cursor:pointer;font-family:Montserrat,system-ui,sans-serif;letter-spacing:.01em">Continuar →</button>
       <button onclick="registrarManifestacao()" id="nm-btn-confirmar" style="display:none;height:42px;border:0;background:#C70602;color:#fff;border-radius:10px;padding:0 28px;font-size:13px;font-weight:700;cursor:pointer;font-family:Montserrat,system-ui,sans-serif">Confirmar e abrir manifestação</button>
     </div>
+    </div>
+    </div>
 
     <script>
     (function(){
@@ -3515,14 +3532,8 @@
       // hook into existing navigate() if available
       var _origNav = window.navigate;
       window.navigate = function(page, el){
-        var sidebar = document.getElementById('app-sidebar');
         if(page === 'nova-manifestacao'){
           initWizard();
-          if(sidebar) sidebar.style.display = 'none';
-          document.body.classList.add('nm-fullscreen');
-        } else {
-          if(sidebar) sidebar.style.display = '';
-          document.body.classList.remove('nm-fullscreen');
         }
         if(_origNav) _origNav.apply(this, arguments);
       };
@@ -9725,15 +9736,8 @@ function navigate(page, el, _opts) {
     page = 'central-sac';
     if (typeof window.cenAba === 'function') setTimeout(()=>window.cenAba('banco', document.getElementById('mc-tab-banco')), 50);
   }
-  // Nova Manifestação: hide sidebar to use full width as work window
-  const _sidebar = document.getElementById('app-sidebar');
   if (page === 'nova-manifestacao') {
-    if (_sidebar) _sidebar.style.display = 'none';
-    document.body.classList.add('nm-fullscreen');
     if (typeof window.initWizard === 'function') window.initWizard();
-  } else {
-    if (_sidebar) _sidebar.style.display = '';
-    document.body.classList.remove('nm-fullscreen');
   }
   if (window.innerWidth <= 768) toggleSidebar(false);
   document.querySelectorAll('.page').forEach(p => { p.classList.remove('active'); p.style.display = ''; });
