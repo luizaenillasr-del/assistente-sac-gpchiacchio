@@ -755,6 +755,12 @@
     .portal-field-grid { grid-template-columns: 1fr; }
     .login-wrap { max-width: 100%; }
   }
+  @media (max-width: 700px) {
+    .login-split { grid-template-columns: 1fr; }
+    .login-right { order: -1; padding: 32px 20px 28px; }
+    .login-left { padding: 34px 24px; min-height: auto; }
+    .login-left-hero h2 { font-size: 25px; }
+  }
 </style>
 
 <!-- MODAL DOSSIÊ -->
@@ -1473,8 +1479,8 @@
         </div>
       </div>
       <div class="login-left-hero">
-        <h2>Gestão inteligente de manifestações do SAC</h2>
-        <p>Registre, analise, encaminhe e acompanhe cada manifestação em um único lugar, com rastreabilidade, praticidade e histórico completo.</p>
+        <h2>Gestão inteligente de manifestações</h2>
+        <p>Uma plataforma integrada para registrar, analisar e acompanhar manifestações do SAC com rastreabilidade, praticidade e histórico completo.</p>
         <div class="login-steps">
           <div class="login-step"><span class="login-step-n">01</span>SAC registra a manifestação e a IA auxilia na análise</div>
           <div class="login-step"><span class="login-step-n">02</span>Analista valida e encaminha ao setor responsável</div>
@@ -1500,14 +1506,14 @@
         <img src="/logo-chiacchio.png" alt="Grupo Chiacchio" style="width:150px;height:auto;display:block;margin-bottom:6px">
         <div>
           <div style="font-size:22px;font-weight:700">Entrar</div>
-          <div style="color:#666464;font-size:13px;margin-top:4px">Use seu e-mail corporativo. O perfil de acesso é identificado automaticamente.</div>
+          <div style="color:#666464;font-size:13px;margin-top:4px">Use seu login e senha para acesso.</div>
         </div>
         <div id="login-error" style="display:none;background:#F9E3E3;color:#8E1A24;border-radius:8px;padding:10px 12px;font-size:13px">E-mail ou senha inválidos.</div>
         <div id="login-forgot-sent" style="display:none;background:#E4ECF7;color:#244F8F;border-radius:8px;padding:10px 12px;font-size:13px">Se o e-mail estiver cadastrado, você receberá um link para redefinir a senha.</div>
-        <label style="display:flex;flex-direction:column;gap:6px;font-size:12.5px;color:#545252">E-mail ou usuário<input id="login-user" type="text" placeholder="nome@grupochiacchio.com.br" autocomplete="username" style="height:42px;border:1px solid #D6D6D6;border-radius:8px;padding:0 12px;background:#fff;font-size:14px;font-family:inherit" onkeydown="if(event.key==='Enter')document.getElementById('login-senha').focus()"></label>
-        <label style="display:flex;flex-direction:column;gap:6px;font-size:12.5px;color:#545252">Senha<input id="login-senha" type="password" placeholder="••••••••" autocomplete="current-password" style="height:42px;border:1px solid #D6D6D6;border-radius:8px;padding:0 12px;background:#fff;font-size:14px;font-family:inherit" onkeydown="if(event.key==='Enter')doLogin()"></label>
+        <label style="display:flex;flex-direction:column;gap:6px;font-size:12.5px;color:#545252">E-mail ou usuário<input id="login-user" type="text" placeholder="Digite seu usuário ou e-mail" autocomplete="username" style="height:42px;border:1px solid #D6D6D6;border-radius:8px;padding:0 12px;background:#fff;font-size:14px;font-family:inherit" onkeydown="if(event.key==='Enter')document.getElementById('login-senha').focus()"></label>
+        <label style="display:flex;flex-direction:column;gap:6px;font-size:12.5px;color:#545252">Senha<div style="position:relative"><input id="login-senha" type="password" placeholder="Digite sua senha" autocomplete="current-password" style="height:42px;width:100%;border:1px solid #D6D6D6;border-radius:8px;padding:0 44px 0 12px;background:#fff;font-size:14px;font-family:inherit" onkeydown="if(event.key==='Enter')doLogin()"><button type="button" aria-label="Mostrar senha" onclick="toggleLoginSenha(this)" style="position:absolute;right:8px;top:7px;height:28px;border:0;background:none;color:#707070;cursor:pointer;font-family:inherit;font-size:12px">Mostrar</button></div></label>
         <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px">
-          <label style="display:flex;gap:8px;align-items:center;color:#545252;cursor:pointer"><input type="checkbox" checked style="accent-color:#C70602">Manter sessão por 8h</label>
+          <label style="display:flex;gap:8px;align-items:center;color:#545252;cursor:pointer"><input id="login-manter-sessao" type="checkbox" checked style="accent-color:#C70602">Manter minha sessão</label>
           <button onclick="abrirEsqueciSenha()" style="background:none;border:0;color:#A80502;cursor:pointer;padding:0;font-family:inherit;font-size:13px">Esqueci minha senha</button>
         </div>
         <button onclick="doLogin()" class="login-btn">Entrar</button>
@@ -1927,6 +1933,22 @@
     } catch(e) { fb.style.background='#FEE2E2';fb.style.color='#DC2626';fb.textContent='Erro: '+e.message; }
   }
 
+  function toggleLoginSenha(btn) {
+    const input = document.getElementById('login-senha');
+    if (!input) return;
+    const visible = input.type === 'text';
+    input.type = visible ? 'password' : 'text';
+    btn.textContent = visible ? 'Mostrar' : 'Ocultar';
+    btn.setAttribute('aria-label', visible ? 'Mostrar senha' : 'Ocultar senha');
+  }
+
+  function restaurarSessaoLembrada() {
+    try {
+      const lembrada = localStorage.getItem('sac-remember-token');
+      if (lembrada && !sessionStorage.getItem('sac-token')) sessionStorage.setItem('sac-token', lembrada);
+    } catch (_) {}
+  }
+
   window.abrirPainelLogin = function() {
     const empty = document.getElementById('login-panel-empty');
     const panel = document.getElementById('login-panel-login');
@@ -1953,6 +1975,10 @@
       sessionStorage.setItem('sac-token',data.token||'');
       sessionStorage.setItem('sac-auth','1');
       sessionStorage.setItem('sac-user',JSON.stringify(data.usuarioInfo||{}));
+      try {
+        if (document.getElementById('login-manter-sessao')?.checked) localStorage.setItem('sac-remember-token', data.token || '');
+        else localStorage.removeItem('sac-remember-token');
+      } catch (_) {}
       sessionStorage.removeItem('sac-demo-local');
       document.getElementById('login-screen').style.display='none';
       // Detecta usuário em primeiro acesso
@@ -9828,6 +9854,7 @@ const API = window.SAC_API ?? 'https://assistente-sac-gpchiacchio.vercel.app';
 function doLogout() {
   if (!confirm('Deseja sair do sistema?')) return;
   sessionStorage.clear();
+  try { localStorage.removeItem('sac-remember-token'); } catch (_) {}
   location.reload();
 }
 
@@ -16380,6 +16407,7 @@ document.addEventListener('visibilitychange', () => {
   // ===== BOOT =====
   async function boot(){
     sessionStorage.removeItem('sac-demo-local');
+    restaurarSessaoLembrada();
     if(!token()){document.getElementById('login-screen').style.display='flex';return;}
     try{
       const d=await json5('/api/auth/me');
@@ -16388,6 +16416,7 @@ document.addEventListener('visibilitychange', () => {
       await window.iniciarSessaoV5();
     }catch(e){
       sessionStorage.clear();
+      try { localStorage.removeItem('sac-remember-token'); } catch (_) {}
       document.getElementById('login-screen').style.display='flex';
       window.abrirPainelLogin && window.abrirPainelLogin();
     }
