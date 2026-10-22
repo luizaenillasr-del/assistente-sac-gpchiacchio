@@ -6658,7 +6658,7 @@ app.post('/api/assertividade-ia', requerPerfil('MASTER','ANALISTA SAC','APROVADO
 // ===== PAINEL DA MÁQUINA =====
 app.get('/api/painel-maquina', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC','APROVADOR','DIRETOR','AUDITOR','VISUALIZADOR'), async (req,res)=>{
   try {
-    const {setor, de, ate} = req.query;
+    const {setor, de, ate, responsavel, tipo} = req.query;
     // Empresa sempre do JWT — MASTER pode filtrar por query, demais fixo no JWT
     const perfil = perfilCanonico(req.user?.perfil||'');
     const empresaFiltro = perfil === 'MASTER' ? (req.query.empresa||null) : (req.user?.empresa||null);
@@ -6673,13 +6673,32 @@ app.get('/api/painel-maquina', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC'
     if (setor) filtradas = filtradas.filter(m=>String(m.SETOR_RESPONSAVEL||'').toLowerCase().includes(setor.toLowerCase()));
     if (de) filtradas = filtradas.filter(m=>{ const d=new Date(m.DATA_CRIACAO||m.DATA_ABERTURA||0); return d>=new Date(de); });
     if (ate) filtradas = filtradas.filter(m=>{ const d=new Date(m.DATA_CRIACAO||m.DATA_ABERTURA||0); return d<=new Date(ate+'T23:59:59'); });
+    if (responsavel) filtradas = filtradas.filter(m=>String(m.RESPONSAVEL||m.RESPONSAVEL_SETOR||m.RESPONSAVEL_ANALISTA||'').toLowerCase().includes(String(responsavel).toLowerCase()));
+    if (tipo) filtradas = filtradas.filter(m=>String(m.TIPO_MANIFESTACAO||m.TIPO||'').toLowerCase().includes(String(tipo).toLowerCase()));
 
     const total = filtradas.length;
-    const comAnalise = filtradas.filter(m=>m.ANALISE_IA_STATUS||m.DECISAO_FINAL).length;
+    const analisadas = new Set(filtradas.filter(m=>m.ANALISE_IA_STATUS||m.ANALISE_IA||m.CEREBRO_ANALISE||m.STATUS_CEREBRO||m.DECISAO_FINAL).map(m=>m.ID_MANIFESTACAO));
+    const comAnalise = analisadas.size;
     const comAssert = asserts.filter(a=>filtradas.some(m=>m.ID_MANIFESTACAO===a.ID_MANIFESTACAO));
     const aceitasTotal = comAssert.filter(a=>a.DECISAO_ACEITA==='SIM').length;
     const assertPercent = comAssert.length ? Math.round(aceitasTotal/comAssert.length*100) : 0;
+    // Assertividade exige validação humana registrada e pontuação documentada.
+    // O critério operacional adotado é pontuação >= 80/100; aceitação isolada permanece métrica separada.
+    const assertividadeValidada = comAssert.length ? Math.round(comAssert.filter(a=>Number(a.PONTUACAO)>=80).length/comAssert.length*100) : null;
     const pontuacaoMedia = comAssert.length ? Math.round(comAssert.reduce((s,a)=>s+Number(a.PONTUACAO||0),0)/comAssert.length) : 0;
+    const validacoes = comAssert.slice(0, 100).map(a => {
+      const manifestacao = filtradas.find(m => m.ID_MANIFESTACAO === a.ID_MANIFESTACAO) || {};
+      const pontuacao = Number(a.PONTUACAO);
+      return {
+        protocolo: manifestacao.PROTOCOLO || manifestacao.ID_MANIFESTACAO || '—',
+        empresa: manifestacao.EMPRESA_RECLAMADA || '—',
+        data: a.AVALIADO_EM || a.DATA_AVALIACAO || '—',
+        pontuacao: Number.isFinite(pontuacao) ? pontuacao : null,
+        decisao: a.DECISAO_ACEITA === 'SIM' ? 'Aceita' : a.DECISAO_ACEITA === 'NAO' ? 'Rejeitada' : 'Sem decisão',
+        avaliador: a.AVALIADO_POR || a.USUARIO || '—',
+        resultado: Number.isFinite(pontuacao) && pontuacao >= 80 ? 'Validada' : 'Revisar',
+      };
+    });
     const encerradas = filtradas.filter(m=>['ENCERRADA','FINALIZADA','CONCLUÍDA','CONCLUIDA'].includes((m.STATUS||'').toUpperCase()));
     const taxaResolucao = total ? Math.round(encerradas.length/total*100) : 0;
 
@@ -6695,7 +6714,8 @@ app.get('/api/painel-maquina', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC'
     const agora = Date.now();
     filtradas.filter(m=>!['ENCERRADA','FINALIZADA','CONCLUÍDA','CONCLUIDA'].includes((m.STATUS||'').toUpperCase())).forEach(m=>{
       const criacao = new Date(m.DATA_CRIACAO||m.DATA_ABERTURA||agora).getTime();
-      const slaH = Number(m.SLA_HORAS||72);
+      const slaH = Number(m.SLA_HORAS);
+      if (!Number.isFinite(slaH) || slaH <= 0) return;
       const elapsed = (agora-criacao)/3600000;
       if (elapsed>=slaH) slaStatus.vencido++;
       else if (elapsed>=slaH*0.75) slaStatus.alerta++;
@@ -6714,23 +6734,37 @@ app.get('/api/painel-maquina', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC'
     const encerradasNoPrazo = encerradas.filter(m => {
       if (!m.DATA_ABERTURA && !m.DATA_CRIACAO) return false;
       if (!m.DATA_CONCLUSAO_MANIFESTACAO) return false;
-      const slaH = Number(m.SLA_HORAS || 72);
+      const slaH = Number(m.SLA_HORAS);
+      if (!Number.isFinite(slaH) || slaH <= 0) return false;
       const elapsed = (new Date(m.DATA_CONCLUSAO_MANIFESTACAO) - new Date(m.DATA_CRIACAO||m.DATA_ABERTURA)) / 3600000;
       return elapsed <= slaH;
     }).length;
     const dentroSlaPercent = encerradas.length ? Math.round(encerradasNoPrazo / encerradas.length * 100) : 0;
+    const resolucaoDireta = encerradas.filter(m=>!String(m.SETOR_RESPONSAVEL||m.SETOR_CONFIRMADO||'').trim()).length;
+    const exigiuSetor = filtradas.filter(m=>String(m.SETOR_RESPONSAVEL||m.SETOR_CONFIRMADO||'').trim()).length;
+    const retrabalho = filtradas.filter(m=>/DEVOLVID|COMPLEMENT|RETRABALH/i.test(String(m.STATUS_TRATATIVA||m.HISTORICO_STATUS||m.OBSERVACOES||''))).length;
+    const devolutivasNoPrazo = filtradas.filter(m=>m.DEVOLUTIVA_ENVIADA && m.DATA_DEVOLUTIVA && m.PRAZO_DEVOLUTIVA && new Date(m.DATA_DEVOLUTIVA)<=new Date(m.PRAZO_DEVOLUTIVA)).length;
 
     res.json({
       sucesso:true,
       metricas:{
-        totalManifestacoes:total, comAnalise, taxaResolucao, assertPercent, pontuacaoMedia,
+        totalManifestacoes:total, comAnalise, analisesRealizadas:comAnalise, taxaUtilizacao:total?Math.round(comAnalise/total*100):null, taxaResolucao, assertPercent, assertividadeValidada, pontuacaoMedia,
         totalAvaliados:comAssert.length, totalAceitos:aceitasTotal,
+        recomendacoesGeradas: comAssert.length ? comAssert.length : null,
+        recomendacoesAceitas: comAssert.length ? aceitasTotal : null,
+        recomendacoesEditadas: null,
+        recomendacoesRejeitadas: comAssert.length ? comAssert.filter(a=>a.DECISAO_ACEITA!=='SIM').length : null,
+        avaliacoesPendentes: Math.max(0, comAnalise-comAssert.length),
         encerradas:encerradas.length, emAberto:total-encerradas.length,
         devolutivas:devolutivasCount, reincidencias:reincidenciasCount, reincidenciasPercent,
         rncs:rncsCount, tempoMedioH, dentroSlaPercent,
+        resolucaoDireta, exigiuSetor, retrabalho,
+        tempoEsperaSetor:null, resolucaoPrimeiroCiclo:null, devolutivasNoPrazo,
       },
       sla:slaStatus, topSetores, topCausas,
       totalCausasCadastradas:causas.filter(c=>c.ATIVO!=='NAO').length,
+      comparativo:{linhas:[]},
+      validacoes,
     });
   } catch(e){ res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
 });

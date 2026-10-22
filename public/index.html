@@ -4147,7 +4147,7 @@
         <div class="page-actions">
           <button class="btn btn-secondary" onclick="exportarManifestacoes()">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Exportar
+            Atualizar dados
           </button>
           <button class="btn btn-primary" onclick="navigate('nova-manifestacao', document.querySelector('[onclick*=nova-manifestacao]'))">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -6527,7 +6527,8 @@
       <div class="topbar-left">
         <div class="breadcrumb">Gestão</div>
         <div class="page-header">
-          <h1 class="page-title">Indicadores</h1>
+          <h1 class="page-title">Indicadores de Desempenho</h1>
+          <div style="font-size:12px;color:#727272;margin-top:3px">Análise operacional, qualidade dos processos e desempenho da inteligência artificial.</div>
         </div>
       </div>
       <div class="topbar-right">
@@ -6539,10 +6540,11 @@
       <!-- Tabs + filtros -->
       <div style="display:flex;align-items:center;border-bottom:1px solid #E4E4E4;margin-bottom:16px;gap:0">
         <div id="ind-tabs-bar" style="display:flex;flex:1;gap:0;overflow-x:auto">
-          <button onclick="switchIndTab('operacionais',this)" style="border:0;background:none;padding:12px 18px;font-size:12.5px;cursor:pointer;white-space:nowrap;color:#C70602;border-bottom:2px solid #C70602;margin-bottom:-1px;font-weight:700;font-family:inherit">Operacionais</button>
-          <button onclick="switchIndTab('india',this)" style="border:0;background:none;padding:12px 18px;font-size:12.5px;cursor:pointer;white-space:nowrap;color:#727272;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Indicadores da IA</button>
-          <button onclick="switchIndTab('validacao',this)" style="border:0;background:none;padding:12px 18px;font-size:12.5px;cursor:pointer;white-space:nowrap;color:#727272;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Validação da IA e da ferramenta</button>
-          <button onclick="switchIndTab('comparativo',this)" style="border:0;background:none;padding:12px 18px;font-size:12.5px;cursor:pointer;white-space:nowrap;color:#727272;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Comparativo IA × processo humano</button>
+          <button onclick="switchIndTab('operacionais',this)" style="border:0;background:none;padding:12px 18px;font-size:12.5px;cursor:pointer;white-space:nowrap;color:#C70602;border-bottom:2px solid #C70602;margin-bottom:-1px;font-weight:700;font-family:inherit">Indicadores Operacionais</button>
+          <button onclick="switchIndTab('india',this)" style="border:0;background:none;padding:12px 18px;font-size:12.5px;cursor:pointer;white-space:nowrap;color:#727272;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Desempenho da IA</button>
+          <button onclick="switchIndTab('validacao',this)" style="border:0;background:none;padding:12px 18px;font-size:12.5px;cursor:pointer;white-space:nowrap;color:#727272;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Validação da IA</button>
+          <button onclick="switchIndTab('comparativo',this)" style="border:0;background:none;padding:12px 18px;font-size:12.5px;cursor:pointer;white-space:nowrap;color:#727272;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Comparativos</button>
+          <button onclick="switchIndTab('historico',this)" style="border:0;background:none;padding:12px 18px;font-size:12.5px;cursor:pointer;white-space:nowrap;color:#727272;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Histórico e Importações</button>
         </div>
         <div style="display:flex;gap:6px;padding-left:12px;flex-shrink:0">
           <select id="pm-filtro-empresa" onchange="loadPainelMaquina()" style="height:32px;border:1px solid #E0E0E0;border-radius:7px;padding:0 10px;background:#fff;font-size:12px;font-family:inherit">
@@ -6554,12 +6556,12 @@
           <select id="pm-filtro-setor" onchange="loadPainelMaquina()" style="height:32px;border:1px solid #E0E0E0;border-radius:7px;padding:0 10px;background:#fff;font-size:12px;font-family:inherit">
             <option value="">Todos os setores</option>
           </select>
-          <select id="pm-filtro-periodo" onchange="loadPainelMaquina()" style="height:32px;border:1px solid #E0E0E0;border-radius:7px;padding:0 10px;background:#fff;font-size:12px;font-family:inherit">
-            <option value="30">Últimos 30 dias</option>
-            <option value="90">Últimos 90 dias</option>
-            <option value="180">Últimos 180 dias</option>
-            <option value="365">Último ano</option>
-          </select>
+          <input id="pm-filtro-de" type="date" title="Data inicial" style="height:32px;border:1px solid #E0E0E0;border-radius:7px;padding:0 8px;background:#fff;font-size:12px;font-family:inherit">
+          <input id="pm-filtro-ate" type="date" title="Data final" style="height:32px;border:1px solid #E0E0E0;border-radius:7px;padding:0 8px;background:#fff;font-size:12px;font-family:inherit">
+          <input id="pm-filtro-responsavel" placeholder="Responsável" title="Responsável" style="width:120px;height:32px;border:1px solid #E0E0E0;border-radius:7px;padding:0 8px;background:#fff;font-size:12px;font-family:inherit">
+          <input id="pm-filtro-tipo" placeholder="Tipo" title="Tipo de manifestação" style="width:100px;height:32px;border:1px solid #E0E0E0;border-radius:7px;padding:0 8px;background:#fff;font-size:12px;font-family:inherit">
+          <button class="btn btn-primary" style="height:32px;font-size:12px" onclick="aplicarFiltrosIndicadores()">Aplicar</button>
+          <button class="btn btn-secondary" style="height:32px;font-size:12px" onclick="limparFiltrosIndicadores()">Limpar</button>
           <button class="btn btn-secondary" style="height:32px;font-size:12px" onclick="loadPainelMaquina()">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
             Exportar
@@ -6706,9 +6708,9 @@
           Estes indicadores são calculados automaticamente a partir das análises da IA e das decisões registradas pelos usuários. <strong>Taxa de aceitação ≠ assertividade real.</strong> Assertividade é calculada somente sobre análises efetivamente validadas por humanos.
         </div>
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
-          <div style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px;border-top:3px solid #24508F"><div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:4px">TOTAL DE ANÁLISES</div><div style="font-size:28px;font-weight:800;color:#24508F;line-height:1.1" id="pm-avaliadas">--</div><div style="font-size:11px;color:#727272;margin-top:3px">processadas pela IA</div></div>
-          <div style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px;border-top:3px solid #1A6632"><div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:4px">ACEITAS SEM EDIÇÃO</div><div style="font-size:28px;font-weight:800;color:#1A6632;line-height:1.1" id="pm-assert">--%</div><div style="font-size:11px;color:#727272;margin-top:3px">análises aprovadas direto</div></div>
-          <div style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px;border-top:3px solid #8A5000"><div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:4px">ACEITAS COM AJUSTES</div><div style="font-size:28px;font-weight:800;color:#8A5000;line-height:1.1" id="pm-pontuacao">--</div><div style="font-size:11px;color:#727272;margin-top:3px">análises com edição</div></div>
+          <div style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px;border-top:3px solid #24508F"><div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:4px">ANÁLISES REALIZADAS</div><div style="font-size:28px;font-weight:800;color:#24508F;line-height:1.1" id="pm-avaliadas">--</div><div style="font-size:11px;color:#727272;margin-top:3px">execuções identificadas</div></div>
+          <div style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px;border-top:3px solid #1A6632"><div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:4px">RECOMENDAÇÕES ACEITAS</div><div style="font-size:28px;font-weight:800;color:#1A6632;line-height:1.1" id="pm-assert">--</div><div style="font-size:11px;color:#727272;margin-top:3px">decisão humana registrada</div></div>
+          <div style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px;border-top:3px solid #8A5000"><div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:4px">RECOMENDAÇÕES EDITADAS</div><div style="font-size:28px;font-weight:800;color:#8A5000;line-height:1.1" id="pm-pontuacao">--</div><div style="font-size:11px;color:#727272;margin-top:3px">registro específico necessário</div></div>
           <div style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px;border-top:3px solid #1A6632"><div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:4px">ASSERTIVIDADE VALIDADA</div><div style="font-size:28px;font-weight:800;color:#1A6632;line-height:1.1" id="pm-causas">--</div><div style="font-size:11px;color:#727272;margin-top:3px">sobre análises avaliadas</div></div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
@@ -6770,6 +6772,26 @@
             </table>
           </div>
         </div>
+
+        <div style="background:#fff;border:1px solid #EBEBEB;border-radius:12px;overflow:hidden;margin-bottom:14px">
+          <div style="padding:14px 18px;border-bottom:1px solid #F0F0F0">
+            <div style="font-size:11px;font-weight:700;letter-spacing:.07em;color:#A0A0A0">AVALIAÇÕES HUMANAS REGISTRADAS</div>
+            <div style="font-size:12px;color:#707070;margin-top:4px">Assertividade considera a pontuação documentada pelo avaliador; aceitação é exibida separadamente.</div>
+          </div>
+          <div style="overflow-x:auto">
+            <table style="border-collapse:collapse;width:100%;min-width:680px">
+              <thead><tr style="background:#FAFAFA">
+                <th style="text-align:left;font-weight:600;font-size:11px;color:#666464;padding:9px 16px;border-bottom:1px solid #E4E4E4">Protocolo</th>
+                <th style="text-align:left;font-weight:600;font-size:11px;color:#666464;padding:9px 16px;border-bottom:1px solid #E4E4E4">Empresa</th>
+                <th style="text-align:left;font-weight:600;font-size:11px;color:#666464;padding:9px 16px;border-bottom:1px solid #E4E4E4">Avaliação</th>
+                <th style="text-align:right;font-weight:600;font-size:11px;color:#666464;padding:9px 16px;border-bottom:1px solid #E4E4E4">Pontuação</th>
+                <th style="text-align:left;font-weight:600;font-size:11px;color:#666464;padding:9px 16px;border-bottom:1px solid #E4E4E4">Decisão</th>
+                <th style="text-align:left;font-weight:600;font-size:11px;color:#666464;padding:9px 16px;border-bottom:1px solid #E4E4E4">Avaliador</th>
+              </tr></thead>
+              <tbody id="pm-validacoes-body"><tr><td colspan="6" style="padding:20px;text-align:center;color:#707070;font-size:13px">Carregando...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
       <!-- TAB: COMPARATIVO -->
@@ -6781,34 +6803,34 @@
           <div style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px">
             <div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:8px">TM ANÁLISE</div>
             <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:4px">
-              <span style="font-size:13px;color:#A0A0A0;text-decoration:line-through" id="cmp-analise-antes">45min</span>
-              <span style="font-size:22px;font-weight:800;color:#1A6632" id="cmp-analise-agora">8min</span>
+              <span style="font-size:13px;color:#A0A0A0;text-decoration:line-through" id="cmp-analise-antes">—</span>
+              <span style="font-size:22px;font-weight:800;color:#1A6632" id="cmp-analise-agora">—</span>
             </div>
-            <div style="font-size:11px;color:#1A6632;font-weight:600" id="cmp-analise-delta">82% mais rápido</div>
+            <div style="font-size:11px;color:#727272;font-weight:600" id="cmp-analise-delta">Dados insuficientes</div>
           </div>
           <div style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px">
             <div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:8px">TM TRATAMENTO</div>
             <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:4px">
-              <span style="font-size:13px;color:#A0A0A0;text-decoration:line-through" id="cmp-trat-antes">5,8d</span>
-              <span style="font-size:22px;font-weight:800;color:#1A6632" id="cmp-trat-agora">3,2d</span>
+              <span style="font-size:13px;color:#A0A0A0;text-decoration:line-through" id="cmp-trat-antes">—</span>
+              <span style="font-size:22px;font-weight:800;color:#1A6632" id="cmp-trat-agora">—</span>
             </div>
-            <div style="font-size:11px;color:#1A6632;font-weight:600" id="cmp-trat-delta">45% mais rápido</div>
+            <div style="font-size:11px;color:#727272;font-weight:600" id="cmp-trat-delta">Dados insuficientes</div>
           </div>
           <div style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px">
             <div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:8px">RETRABALHO</div>
             <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:4px">
-              <span style="font-size:13px;color:#A0A0A0;text-decoration:line-through" id="cmp-retrab-antes">34%</span>
-              <span style="font-size:22px;font-weight:800;color:#1A6632" id="cmp-retrab-agora">18%</span>
+              <span style="font-size:13px;color:#A0A0A0;text-decoration:line-through" id="cmp-retrab-antes">—</span>
+              <span style="font-size:22px;font-weight:800;color:#1A6632" id="cmp-retrab-agora">—</span>
             </div>
-            <div style="font-size:11px;color:#1A6632;font-weight:600" id="cmp-retrab-delta">−16 pp</div>
+            <div style="font-size:11px;color:#727272;font-weight:600" id="cmp-retrab-delta">Dados insuficientes</div>
           </div>
           <div style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px">
             <div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:8px">RESOLUÇÃO 1º CICLO</div>
             <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:4px">
-              <span style="font-size:13px;color:#A0A0A0;text-decoration:line-through" id="cmp-ciclo-antes">58%</span>
-              <span style="font-size:22px;font-weight:800;color:#1A6632" id="cmp-ciclo-agora">74%</span>
+              <span style="font-size:13px;color:#A0A0A0;text-decoration:line-through" id="cmp-ciclo-antes">—</span>
+              <span style="font-size:22px;font-weight:800;color:#1A6632" id="cmp-ciclo-agora">—</span>
             </div>
-            <div style="font-size:11px;color:#1A6632;font-weight:600" id="cmp-ciclo-delta">+16 pp</div>
+            <div style="font-size:11px;color:#727272;font-weight:600" id="cmp-ciclo-delta">Dados insuficientes</div>
           </div>
         </div>
 
@@ -6848,6 +6870,19 @@
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      <div id="ind-tab-historico" style="display:none">
+        <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:16px 20px;margin-bottom:14px">
+          <div style="font-weight:700;font-size:14px;margin-bottom:4px">Histórico e Importações</div>
+          <div style="font-size:12px;color:#727272">Registros reais de importações e pendências de dados. Nenhum item é criado pela visualização.</div>
+        </div>
+        <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;overflow-x:auto">
+          <table style="border-collapse:collapse;width:100%;min-width:680px;font-size:12.5px">
+            <thead><tr style="background:#FAFAFA"><th style="text-align:left;padding:10px 14px">Registro</th><th style="text-align:left;padding:10px 14px">Tipo</th><th style="text-align:left;padding:10px 14px">Status</th><th style="text-align:left;padding:10px 14px">Data</th><th style="text-align:left;padding:10px 14px">Detalhes</th></tr></thead>
+            <tbody id="pm-historico-body"><tr><td colspan="5" style="padding:28px;text-align:center;color:#707070">Selecione a aba para carregar os registros.</td></tr></tbody>
+          </table>
         </div>
       </div>
 
@@ -19167,9 +19202,10 @@ console.log('[base-conhecimento-setores] carregado');
 
 // ── Painel da Máquina ──────────────────────────────────────
 let _pmUltimaSync = null;
+let _pmCadastrosCarregados = false;
 
 function switchIndTab(tab, btn) {
-  ['operacionais','india','validacao','comparativo'].forEach(t => {
+  ['operacionais','india','validacao','comparativo','historico'].forEach(t => {
     const el = document.getElementById('ind-tab-'+t);
     if (el) el.style.display = t === tab ? '' : 'none';
   });
@@ -19177,17 +19213,46 @@ function switchIndTab(tab, btn) {
     b.style.color = '#666464'; b.style.fontWeight = '500'; b.style.borderBottom = '2px solid transparent';
   });
   if (btn) { btn.style.color = '#1F1F1F'; btn.style.fontWeight = '700'; btn.style.borderBottom = '2px solid #C70602'; }
+  if (tab === 'historico') loadIndicadoresHistorico();
+}
+
+function indicadoresFiltros() {
+  return {
+    empresa: document.getElementById('pm-filtro-empresa')?.value || '',
+    setor: document.getElementById('pm-filtro-setor')?.value || '',
+    de: document.getElementById('pm-filtro-de')?.value || '',
+    ate: document.getElementById('pm-filtro-ate')?.value || '',
+    responsavel: document.getElementById('pm-filtro-responsavel')?.value || '',
+    tipo: document.getElementById('pm-filtro-tipo')?.value || '',
+  };
+}
+
+function aplicarFiltrosIndicadores() {
+  const f = indicadoresFiltros();
+  if (f.de && f.ate && f.de > f.ate) { toast('A data inicial deve ser anterior à data final.'); return; }
+  loadPainelMaquina();
+}
+
+function limparFiltrosIndicadores() {
+  ['pm-filtro-empresa','pm-filtro-setor','pm-filtro-de','pm-filtro-ate','pm-filtro-responsavel','pm-filtro-tipo'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  loadPainelMaquina();
 }
 
 async function loadPainelMaquina() {
   try {
-    const empresa = document.getElementById('pm-filtro-empresa')?.value || '';
-    const setor = document.getElementById('pm-filtro-setor')?.value || '';
-    let url = (window.SAC_API||'') + '/api/painel-maquina';
+    if (!_pmCadastrosCarregados) {
+      _pmCadastrosCarregados = true;
+      const [empresas, setores] = await Promise.all([_apiFetch('/api/empresas',8000).catch(()=>({itens:[]})), _apiFetch('/api/setores',8000).catch(()=>({itens:[]}))]);
+      const empSel=document.getElementById('pm-filtro-empresa');
+      const empItems=empresas.itens||empresas.empresas||[];
+      if(empSel&&empItems.length){const atual=empSel.value;empSel.innerHTML='<option value="">Todas as empresas</option>'+empItems.map(x=>{const v=typeof x==='string'?x:(x.EMPRESA||x.NOME||x.nome||'');return v?`<option value="${esc(v)}">${esc(v)}</option>`:''}).join('');empSel.value=atual;}
+      const setorSel=document.getElementById('pm-filtro-setor');
+      const setorItems=setores.itens||setores.setores||[];
+      if(setorSel&&setorItems.length){const atual=setorSel.value;setorSel.innerHTML='<option value="">Todos os setores</option>'+setorItems.map(x=>{const v=typeof x==='string'?x:(x.SETOR||x.NOME||x.nome||'');return v?`<option value="${esc(v)}">${esc(v)}</option>`:''}).join('');setorSel.value=atual;}
+    }
+    const filtros = indicadoresFiltros();
     const params = [];
-    if (empresa) params.push('empresa='+encodeURIComponent(empresa));
-    if (setor) params.push('setor='+encodeURIComponent(setor));
-    if (params.length) url += '?' + params.join('&');
+    Object.entries(filtros).forEach(([k,v])=>{if(v)params.push(k+'='+encodeURIComponent(v));});
 
     const res = await _apiFetch('/api/painel-maquina' + (params.length ? '?' + params.join('&') : ''), 15000);
     if (!res.sucesso) throw new Error(res.erro);
@@ -19208,15 +19273,43 @@ async function loadPainelMaquina() {
     if (resolEl) resolEl.textContent = (m.taxaResolucao ?? '--') + '%';
     const devEl = document.getElementById('pm-devolutivas');
     if (devEl) devEl.textContent = m.devolutivas ?? '--';
+    const setMetric=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v==null?'--':String(v);};
+    setMetric('pm-reincid-abs',m.reincidencias);
+    setMetric('pm-rncs-abertas',m.rncs);
+    setMetric('pm-devolt-env',m.devolutivas);
+    setMetric('pm-resolucao-direta',m.resolucaoDireta);
+    setMetric('pm-exigiu-setor',m.exigiuSetor);
+    setMetric('pm-res-1ciclo',m.resolucaoPrimeiroCiclo);
+    setMetric('pm-retrabalho',m.retrabalho);
+    setMetric('pm-tm-espera',m.tempoEsperaSetor);
+    setMetric('pm-devolt-prazo',m.devolutivasNoPrazo);
     // IA tab
     const assertEl = document.getElementById('pm-assert');
-    if (assertEl) { assertEl.textContent = (m.assertPercent ?? '--') + '%'; assertEl.style.color = m.assertPercent >= 70 ? 'var(--green)' : m.assertPercent >= 40 ? 'var(--yellow)' : 'var(--red)'; }
+    if (assertEl) { assertEl.textContent = m.recomendacoesAceitas == null ? 'Dados insuficientes' : m.recomendacoesAceitas; assertEl.style.color = 'var(--green)'; }
     const avalEl = document.getElementById('pm-avaliadas');
     if (avalEl) avalEl.textContent = m.totalAvaliados ?? '--';
     const pontEl = document.getElementById('pm-pontuacao');
-    if (pontEl) pontEl.textContent = m.pontuacaoMedia ? m.pontuacaoMedia + '/100' : '--';
+    if (pontEl) pontEl.textContent = m.recomendacoesEditadas == null ? 'Dados insuficientes' : m.recomendacoesEditadas;
     const causasEl = document.getElementById('pm-causas');
-    if (causasEl) causasEl.textContent = res.totalCausasCadastradas ?? '--';
+    if (causasEl) causasEl.textContent = m.assertividadeValidada == null ? 'Dados insuficientes' : m.assertividadeValidada + '%';
+    const setIaMetric = (id, value) => { const el=document.getElementById(id); if(el) el.textContent = value == null ? 'Dados insuficientes' : String(value); };
+    setIaMetric('ia-total', m.analisesRealizadas ?? m.comAnalise);
+    setIaMetric('ia-aceitas', m.recomendacoesAceitas);
+    setIaMetric('ia-editadas', m.recomendacoesEditadas);
+    setIaMetric('ia-rejeitadas', m.recomendacoesRejeitadas);
+
+    const validacoesBody = document.getElementById('pm-validacoes-body');
+    if (validacoesBody) {
+      const validacoes = Array.isArray(res.validacoes) ? res.validacoes : [];
+      validacoesBody.innerHTML = validacoes.length ? validacoes.map(v => `<tr>
+        <td style="padding:10px 16px;border-bottom:1px solid #F0F0F0">${esc(v.protocolo)}</td>
+        <td style="padding:10px 16px;border-bottom:1px solid #F0F0F0">${esc(v.empresa)}</td>
+        <td style="padding:10px 16px;border-bottom:1px solid #F0F0F0">${esc(v.data)}</td>
+        <td style="padding:10px 16px;text-align:right;border-bottom:1px solid #F0F0F0">${v.pontuacao == null ? '—' : esc(v.pontuacao + '/100')}</td>
+        <td style="padding:10px 16px;border-bottom:1px solid #F0F0F0"><span style="color:${v.resultado === 'Validada' ? '#1A6632' : '#A80502'}">${esc(v.resultado)} · ${esc(v.decisao)}</span></td>
+        <td style="padding:10px 16px;border-bottom:1px solid #F0F0F0">${esc(v.avaliador)}</td>
+      </tr>`).join('') : '<tr><td colspan="6" style="padding:24px;text-align:center;color:#707070">Nenhuma avaliação humana registrada no período.</td></tr>';
+    }
 
     // SLA bars
     const slaDiv = document.getElementById('pm-sla');
@@ -19253,6 +19346,15 @@ async function loadPainelMaquina() {
     renderBar(document.getElementById('pm-setores'), res.topSetores, 'setor', 'total', '#C70602');
     renderBar(document.getElementById('pm-topCausas'), res.topCausas, 'causa', 'total', '#C9922A');
 
+    const comp = res.comparativo || {};
+    const setTxt=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v==null?'Dados insuficientes':String(v);};
+    setTxt('cmp-analise-antes',comp.analise?.anterior); setTxt('cmp-analise-agora',comp.analise?.atual); setTxt('cmp-analise-delta',comp.analise?.variacao||'Dados insuficientes');
+    setTxt('cmp-trat-antes',comp.tratamento?.anterior); setTxt('cmp-trat-agora',comp.tratamento?.atual); setTxt('cmp-trat-delta',comp.tratamento?.variacao||'Dados insuficientes');
+    setTxt('cmp-retrab-antes',comp.retrabalho?.anterior); setTxt('cmp-retrab-agora',comp.retrabalho?.atual); setTxt('cmp-retrab-delta',comp.retrabalho?.variacao||'Dados insuficientes');
+    setTxt('cmp-ciclo-antes',comp.ciclo?.anterior); setTxt('cmp-ciclo-agora',comp.ciclo?.atual); setTxt('cmp-ciclo-delta',comp.ciclo?.variacao||'Dados insuficientes');
+    setTxt('cmp-horas-econ',comp.horasEconomizadas); setTxt('cmp-custo-antes',comp.custoAnterior); setTxt('cmp-custo-agora',comp.custoAtual);
+    const compBody=document.getElementById('pm-comparativo-body'); if(compBody) compBody.innerHTML=(res.comparativo?.linhas||[]).length ? res.comparativo.linhas.map(x=>`<tr><td style="padding:10px 20px">${esc(x.indicador)}</td><td style="padding:10px 20px">${esc(x.anterior)}</td><td style="padding:10px 20px">${esc(x.atual)}</td><td style="padding:10px 20px">${esc(x.variacao)}</td><td style="padding:10px 20px;color:#727272">${esc(x.formula)}</td></tr>`).join('') : '<tr><td colspan="5" style="padding:24px;text-align:center;color:#707070">Dados históricos insuficientes para comparação.</td></tr>';
+
     // Critérios
     const crit = document.getElementById('pm-criterios');
     if (crit) {
@@ -19274,6 +19376,16 @@ async function loadPainelMaquina() {
   } catch(e) {
     console.error('Erro Painel da Máquina:', e);
   }
+}
+
+async function loadIndicadoresHistorico() {
+  const body=document.getElementById('pm-historico-body'); if(!body)return;
+  body.innerHTML='<tr><td colspan="5" style="padding:28px;text-align:center;color:#707070">Carregando...</td></tr>';
+  try {
+    const d=await _apiFetch('/api/importacao/historico',10000);
+    const itens=Array.isArray(d.itens)?d.itens:[];
+    body.innerHTML=itens.length?itens.map(x=>`<tr><td style="padding:10px 14px">${esc(x.ID_IMP||'—')}</td><td style="padding:10px 14px">${esc(x.FONTE||'Importação')}</td><td style="padding:10px 14px">${esc(x.STATUS||'—')}</td><td style="padding:10px 14px">${esc(x.DATA_INICIO||'—')}</td><td style="padding:10px 14px;color:#727272">${esc(x.DESCRICAO||x.ERROS_JSON||'—')}</td></tr>`).join(''):'<tr><td colspan="5" style="padding:28px;text-align:center;color:#707070">Nenhum registro de importação disponível.</td></tr>';
+  } catch(e) { body.innerHTML='<tr><td colspan="5" style="padding:28px;text-align:center;color:#A80502">Não foi possível carregar o histórico.</td></tr>'; }
 }
 
 function atualizarSyncIndicator(status) {
