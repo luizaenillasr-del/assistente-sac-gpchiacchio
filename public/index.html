@@ -2838,8 +2838,7 @@
       <button onclick="nmIrParaEtapa(6)"><i></i>Histórico e Encerramento<em>Não iniciado</em></button>
     </aside>
     <style>
-      @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap');
-      #page-nova-manifestacao{flex-direction:column;height:100%;overflow:hidden;font-family:'Sora',system-ui,sans-serif}
+      #page-nova-manifestacao{flex-direction:column;height:100%;overflow:hidden;font-family:Montserrat,system-ui,sans-serif}
       #nm-wizard{display:flex;flex-direction:column;height:100%;overflow:hidden}
       .nm-step-panel{display:none}
       .nm-step-panel.nm-active{display:flex;flex-direction:column;gap:16px}
@@ -2851,27 +2850,27 @@
       .nm-section-hdr p{font-size:12.5px;color:#a8a8a8;margin:0}
       .nm-label{display:flex;flex-direction:column;gap:5px}
       .nm-label span{font-size:11px;color:#727272;font-weight:500;letter-spacing:.01em}
-      .nm-input{height:40px;border:1px solid #dcdcdc;border-radius:6px;padding:0 11px;font-size:13px;font-family:'Sora',inherit;width:100%;box-sizing:border-box;background:#fff;transition:border-color .15s,box-shadow .15s}
+      .nm-input{height:40px;border:1px solid #dcdcdc;border-radius:6px;padding:0 11px;font-size:13px;font-family:Montserrat,system-ui,sans-serif;width:100%;box-sizing:border-box;background:#fff;transition:border-color .15s,box-shadow .15s}
       .nm-input:focus{border-color:#C70602;box-shadow:0 0 0 2px rgba(199,6,2,.1);outline:none}
-      .nm-select{height:40px;border:1px solid #dcdcdc;border-radius:6px;padding:0 10px;font-size:13px;font-family:'Sora',inherit;width:100%;box-sizing:border-box;background:#fff;cursor:pointer;transition:border-color .15s}
+      .nm-select{height:40px;border:1px solid #dcdcdc;border-radius:6px;padding:0 10px;font-size:13px;font-family:Montserrat,system-ui,sans-serif;width:100%;box-sizing:border-box;background:#fff;cursor:pointer;transition:border-color .15s}
       .nm-select:focus{border-color:#C70602;box-shadow:0 0 0 2px rgba(199,6,2,.1);outline:none}
-      .nm-textarea{width:100%;border:1px solid #dcdcdc;border-radius:6px;padding:9px 11px;font-size:13px;line-height:1.65;resize:vertical;font-family:'Sora',inherit;box-sizing:border-box;transition:border-color .15s,box-shadow .15s}
+      .nm-textarea{width:100%;border:1px solid #dcdcdc;border-radius:6px;padding:9px 11px;font-size:13px;line-height:1.65;resize:vertical;font-family:Montserrat,system-ui,sans-serif;box-sizing:border-box;transition:border-color .15s,box-shadow .15s}
       .nm-textarea:focus{border-color:#C70602;box-shadow:0 0 0 2px rgba(199,6,2,.1);outline:none}
       .nm-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
       .nm-grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
       /* Empresa reclamada — pill buttons grandes */
-      .nm-empresa-btn{flex:1;min-width:120px;height:48px;border:2px solid #E4E4E4;background:#fff;border-radius:12px;font-size:12.5px;font-weight:700;color:#545252;cursor:pointer;font-family:'Sora',inherit;transition:border-color .15s,background .15s,color .15s;letter-spacing:.01em}
+      .nm-empresa-btn{flex:1;min-width:120px;height:48px;border:2px solid #E4E4E4;background:#fff;border-radius:12px;font-size:12.5px;font-weight:700;color:#545252;cursor:pointer;font-family:Montserrat,system-ui,sans-serif;transition:border-color .15s,background .15s,color .15s;letter-spacing:.01em}
       .nm-empresa-btn.active{border-color:#C70602;background:#FFF5F5;color:#C70602;box-shadow:0 0 0 3px rgba(199,6,2,.07)}
       .nm-empresa-btn:hover:not(.active){border-color:#BDBDBD;background:#FAFAFA}
       /* Canal / tipo — pills */
-      .nm-canal-pill{height:36px;border:1.5px solid #E4E4E4;background:#fff;border-radius:20px;padding:0 16px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:'Sora',inherit;color:#545252;white-space:nowrap;transition:all .15s}
+      .nm-canal-pill{height:36px;border:1.5px solid #E4E4E4;background:#fff;border-radius:20px;padding:0 16px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:Montserrat,system-ui,sans-serif;color:#545252;white-space:nowrap;transition:all .15s}
       .nm-canal-pill.active{border-color:#C70602;background:#FFF5F5;color:#C70602;font-weight:700}
       .nm-canal-pill:hover:not(.active){border-color:#BDBDBD}
       /* Procedência */
-      .nm-proc-btn{flex:1;min-width:90px;height:42px;border:1.5px solid #E4E4E4;background:#fff;border-radius:10px;font-size:13px;cursor:pointer;font-family:'Sora',inherit;font-weight:600;color:#545252;transition:all .15s}
+      .nm-proc-btn{flex:1;min-width:90px;height:42px;border:1.5px solid #E4E4E4;background:#fff;border-radius:10px;font-size:13px;cursor:pointer;font-family:Montserrat,system-ui,sans-serif;font-weight:600;color:#545252;transition:all .15s}
       .nm-proc-btn.active{border-color:#C70602;background:#FFF5F5;color:#C70602;font-weight:700}
       /* Stepper — círculos maiores, mais visíveis */
-      .nm-stepper-circle{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;font-weight:700;border:2px solid #D6D6D6;background:#fff;color:#929090;cursor:pointer;transition:all .2s;font-family:'Sora',inherit}
+      .nm-stepper-circle{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;font-weight:700;border:2px solid #D6D6D6;background:#fff;color:#929090;cursor:pointer;transition:all .2s;font-family:Montserrat,system-ui,sans-serif}
       .nm-stepper-circle.done{background:#1E6B3A;border-color:#1E6B3A;color:#fff}
       .nm-stepper-circle.active{background:#C70602;border-color:#C70602;color:#fff;box-shadow:0 0 0 4px rgba(199,6,2,.12)}
       .nm-stepper-line{flex:1;height:2px;background:#E4E4E4;min-width:10px;border-radius:1px;margin:0 6px}
@@ -2879,7 +2878,7 @@
       @keyframes nmFadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
       .nm-active{animation:nmFadeUp .25s ease}
       /* Status ficha pills */
-      .nm-status-ficha-btn{border-radius:20px;padding:4px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:'Sora',inherit;transition:all .15s}
+      .nm-status-ficha-btn{border-radius:20px;padding:4px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:Montserrat,system-ui,sans-serif;transition:all .15s}
     </style>
 
     <!-- STEPS BODY -->
@@ -3319,10 +3318,10 @@
 
     <!-- RODAPÉ DE NAVEGAÇÃO -->
     <div style="background:#fff;border-top:1px solid #E4E4E4;padding:14px 28px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
-      <button onclick="nmEtapaAnterior()" id="nm-btn-voltar" style="height:42px;border:1.5px solid #E4E4E4;background:#fff;border-radius:10px;padding:0 22px;font-size:13px;font-weight:600;cursor:pointer;color:#545252;font-family:'Sora',inherit">← Voltar</button>
+      <button onclick="nmEtapaAnterior()" id="nm-btn-voltar" style="height:42px;border:1.5px solid #E4E4E4;background:#fff;border-radius:10px;padding:0 22px;font-size:13px;font-weight:600;cursor:pointer;color:#545252;font-family:Montserrat,system-ui,sans-serif">← Voltar</button>
       <div style="font-size:12px;color:#929090;font-weight:500" id="nm-etapa-label">Etapa 1 de 7</div>
-      <button onclick="nmProximaEtapa()" id="nm-btn-continuar" style="height:42px;border:0;background:#C70602;color:#fff;border-radius:10px;padding:0 32px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Sora',inherit;letter-spacing:.01em">Continuar →</button>
-      <button onclick="registrarManifestacao()" id="nm-btn-confirmar" style="display:none;height:42px;border:0;background:#C70602;color:#fff;border-radius:10px;padding:0 28px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Sora',inherit">Confirmar e abrir manifestação</button>
+      <button onclick="nmProximaEtapa()" id="nm-btn-continuar" style="height:42px;border:0;background:#C70602;color:#fff;border-radius:10px;padding:0 32px;font-size:13px;font-weight:700;cursor:pointer;font-family:Montserrat,system-ui,sans-serif;letter-spacing:.01em">Continuar →</button>
+      <button onclick="registrarManifestacao()" id="nm-btn-confirmar" style="display:none;height:42px;border:0;background:#C70602;color:#fff;border-radius:10px;padding:0 28px;font-size:13px;font-weight:700;cursor:pointer;font-family:Montserrat,system-ui,sans-serif">Confirmar e abrir manifestação</button>
     </div>
 
     <script>
