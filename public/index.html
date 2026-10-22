@@ -6998,6 +6998,7 @@
         <label style="display:grid;gap:3px;font-size:10.5px;color:#666">Buscar<input id="cp-f-busca" oninput="cpAplica()" placeholder="Cliente, empresa ou comentário" style="height:34px;min-width:230px;border:1px solid #D6D6D6;border-radius:7px;padding:0 9px"></label>
         <label style="display:grid;gap:3px;font-size:10.5px;color:#666">De<input id="cp-f-inicio" type="date" onchange="cpAplica()" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px"></label>
         <label style="display:grid;gap:3px;font-size:10.5px;color:#666">Até<input id="cp-f-fim" type="date" onchange="cpAplica()" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px"></label>
+        <label style="display:grid;gap:3px;font-size:10.5px;color:#666">Pesquisa<select id="cp-f-formulario" onchange="cpAplica()" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px"><option value="">Todas</option></select></label>
         <label style="display:grid;gap:3px;font-size:10.5px;color:#666">Análise<select id="cp-f-situacao" onchange="cpAplica()" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px"><option value="">Todas</option><option value="PENDENTE">Aguardando análise</option><option value="OCP">Com OCP</option><option value="MAN">Com MAN</option><option value="CONCLUIDA">Decisão concluída</option></select></label>
         <label style="display:grid;gap:3px;font-size:10.5px;color:#666">Satisfação<select id="cp-f-nota" onchange="cpAplica()" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px"><option value="">Todas</option><option value="CRITICA">Nota ≤ 6</option><option value="NEUTRA">Nota 7–8</option><option value="ALTA">Nota 9–10</option></select></label>
       </div>
@@ -7121,6 +7122,7 @@
       <div id="cp-panel-notificacoes" style="display:none">
         <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:16px 18px;margin-bottom:14px">
           <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px"><div style="font-weight:700;font-size:15px">Notificações operacionais</div><button class="btn btn-secondary" onclick="cpCarregarNotificacoes()">Atualizar</button></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px"><select id="cp-notif-tipo" onchange="cpRenderNotificacoes()" style="height:32px;border:1px solid #D6D6D6;border-radius:6px;padding:0 8px"><option value="">Todos os tipos</option><option value="NOTA_CRITICA">Pesquisas críticas</option><option value="OCP">Ocorrências</option><option value="MANIFESTACAO">Manifestações</option></select><select id="cp-notif-situacao" onchange="cpRenderNotificacoes()" style="height:32px;border:1px solid #D6D6D6;border-radius:6px;padding:0 8px"><option value="">Todas</option><option value="NAO_LIDA">Não lidas</option><option value="LIDA">Lidas</option></select></div>
           <div id="cp-notificacoes-lista"><div class="spinner" style="margin:20px auto"></div></div>
         </div>
         <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:20px 22px">
@@ -17184,7 +17186,8 @@ async function carregarNotifAnalista() {
     if (!d || !d.sucesso) return;
     const badge = document.getElementById('badge-analista-notif');
     if (badge) {
-      if (d.total > 0) { badge.textContent = d.total; badge.style.display = 'inline-block'; }
+      const totalBadge = d.naoLidas == null ? d.total : d.naoLidas;
+      if (totalBadge > 0) { badge.textContent = totalBadge; badge.style.display = 'inline-block'; }
       else { badge.style.display = 'none'; }
     }
     // Alertas na página acompanhamento
@@ -20152,6 +20155,8 @@ function cpPrepara(itens) {
     return { n: i + 1, raw: r, d, ano: d ? d.getFullYear() : null, mes: d ? d.getMonth() + 1 : null,
       dataTxt: d ? d.toLocaleDateString('pt-BR') : String(r[c.data] || ''), emp: c.emp ? String(r[c.emp] || '') : '', cli: c.cli ? String(r[c.cli] || '') : '',
       notas: c.notas.map(h => cpNum(r[h])), media, baixa: ns.some(n => n <= CP_LIMITE), comentario,
+      _formularioId: r._formularioId || '', _versaoId: r._versaoId || '', _versao: r._versao || '',
+      _analista: r._analista || '', _statusAnalise: r._statusAnalise || '', _observacoesInternas: r._observacoesInternas || '', _assumidoEm: r._assumidoEm || '',
       _ocpId: r._ocpId || '', _manId: r._manifestacaoId || '', _decisao: r._decisao || '', _statusOcp: r._statusOcp || '' };
   }).sort((a, b) => (b.d || 0) - (a.d || 0));
 }
@@ -20184,7 +20189,7 @@ function cpDashView(name, btn) {
   if (btn) btn.classList.add('active');
 }
 function cpClearFilters() {
-  ['cp-f-empresa', 'cp-f-ano', 'cp-f-mes', 'cp-f-busca', 'cp-f-inicio', 'cp-f-fim', 'cp-f-situacao', 'cp-f-nota'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
+  ['cp-f-empresa', 'cp-f-ano', 'cp-f-mes', 'cp-f-busca', 'cp-f-inicio', 'cp-f-fim', 'cp-f-formulario', 'cp-f-situacao', 'cp-f-nota'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
   cpAplica();
 }
 function cpOpenLinks() {
@@ -20265,6 +20270,13 @@ async function cpLoad() {
     sa.innerHTML = '<option value="">Todos</option>' + anos.map(a => '<option value="' + a + '">' + a + '</option>').join('');
     sm.innerHTML = '<option value="">Todos</option>' + CP_MESES.map((m, i) => '<option value="' + (i + 1) + '">' + m + '</option>').join('');
     sa.value = va; sm.value = vm;
+    const sf = document.getElementById('cp-f-formulario');
+    if (sf) {
+      const vf = sf.value;
+      const formularios = [...new Set(_cp.all.map(r => r._formularioId).filter(Boolean))].sort();
+      sf.innerHTML = '<option value="">Todas</option>' + formularios.map(f => '<option value="'+cpEsc(f)+'">'+cpEsc(f)+'</option>').join('');
+      sf.value = vf;
+    }
     _cp.loading = false;
     cpAplica();
   } catch (e) {
@@ -20287,12 +20299,14 @@ function cpAplica() {
   const fim = document.getElementById('cp-f-fim')?.value ? new Date(document.getElementById('cp-f-fim').value + 'T23:59:59') : null;
   const situacao = document.getElementById('cp-f-situacao')?.value || '';
   const faixa = document.getElementById('cp-f-nota')?.value || '';
+  const formulario = document.getElementById('cp-f-formulario')?.value || '';
   _cp.filtered = _cp.all.filter(r => {
     if (emp && cpEmpKey(r.emp) !== emp) return false;
     if (ano && r.ano !== +ano) return false;
     if (mes && r.mes !== +mes) return false;
     if (inicio && (!r.d || r.d < inicio)) return false;
     if (fim && (!r.d || r.d > fim)) return false;
+    if (formulario && r._formularioId !== formulario) return false;
     if (busca && ![r.emp,r.cli,r.comentario].some(v => String(v||'').toLowerCase().includes(busca))) return false;
     if (situacao === 'PENDENTE' && !(r.baixa && !r._ocpId && !r._manId && !r._decisao)) return false;
     if (situacao === 'OCP' && !r._ocpId) return false;
@@ -20364,7 +20378,7 @@ function cpRenderGeral() {
   tb.innerHTML = vis.map((r, idx) => '<tr class="ps-tr' + (r.baixa ? ' ps-low' : '') + '" style="cursor:pointer" onclick="cpAbrirDetalhe(' + (_cp.page > 1 ? ((_cp.page-1)*50+idx) : idx) + ')" title="Ver detalhes"><td class="ps-td" style="font-weight:600">#' + r.n + '</td><td class="ps-td">' + cpEsc(r.dataTxt) + '</td><td class="ps-td">' + cpEsc(r.emp || '—') + '</td><td class="ps-td" style="max-width:220px">' + cpEsc(r.cli || '—') + '</td>'
     + r.notas.map(n => '<td class="ps-td" style="text-align:center">' + cpNotaChip(n) + '</td>').join('')
     + '<td class="ps-td">' + (r.baixa ? '<span class="ps-pill ps-pill-red">NOTA ≤ 6</span>' : '<span class="ps-pill ps-pill-gray">SEM ALERTA</span>') + '</td>'
-    + '<td class="ps-td">' + (r._ocpId ? '<span class="ps-pill" style="background:#EAF0FB;color:#24508F">EM TRATAMENTO</span>' : r._manId || r._decisao ? '<span class="ps-pill" style="background:#E6F2EA;color:#1E6B3A">DECIDIDA</span>' : r.baixa ? '<span class="ps-pill ps-pill-red">PENDENTE</span>' : '<span class="ps-pill ps-pill-gray">SEM PENDÊNCIA</span>') + '</td>'
+    + '<td class="ps-td">' + (r._ocpId ? '<span class="ps-pill" style="background:#EAF0FB;color:#24508F">EM TRATAMENTO</span>' : r._manId || r._decisao ? '<span class="ps-pill" style="background:#E6F2EA;color:#1E6B3A">DECIDIDA</span>' : r._statusAnalise === 'EM_ANALISE' ? '<span class="ps-pill" style="background:#FBF0D9;color:#7A4C00">EM ANÁLISE · '+cpEsc(r._analista||'SAC')+'</span>' : r.baixa ? '<span class="ps-pill ps-pill-red">PENDENTE</span>' : '<span class="ps-pill ps-pill-gray">SEM PENDÊNCIA</span>') + '</td>'
     + '<td class="ps-td">' + (r._ocpId ? cpEsc(r._ocpId) : r._manId ? cpEsc(r._manId) : '—') + '</td>'
     + (isMaster ? '<td class="ps-td" onclick="event.stopPropagation()"><button onclick="cpExcluirResposta(\'' + cpEsc(r.raw&&(r.raw._id||r.raw.ID_RESPOSTA)||'') + '\',' + (_cp.page > 1 ? ((_cp.page-1)*50+idx) : idx) + ')" style="background:none;border:1px solid #dc2626;color:#dc2626;border-radius:4px;padding:2px 7px;cursor:pointer;font-size:13px" title="Excluir pesquisa">🗑️</button></td>' : '')
     + '</tr>').join('');
@@ -20411,13 +20425,15 @@ function cpAbrirDetalhe(idx) {
   const respId = raw._id || raw.ID_RESPOSTA || '';
   const infoItems = [
     ['ID Resposta', respId],
+    ['Formulário', r._formularioId || 'Legado'],
+    ['Versão', r._versao || r._versaoId || '—'],
     ['Status', statusOcp || '—'],
     ['Empresa', r.emp || '—'],
     ['Cliente', r.cli || '—'],
     ['Data', r.dataTxt || '—'],
   ].filter(([,v]) => v && v !== '—');
   // Campos extras da planilha não mapeados canonicamente
-  const _cpSkip = new Set(['_id','_token','_notaBaixa','_statusOcp','Empresa','Cliente','Data','Atendimento','Prazo de Entrega','Qualidade','Recomendação','Observação','ID_RESPOSTA','TOKEN','NOTA_BAIXA','STATUS_OCP','EMPRESA','NOME_CLIENTE','COMENTARIO','ATENDIMENTO','PRAZO_ENTREGA','QUALIDADE','RECOMENDACAO']);
+  const _cpSkip = new Set(['_id','_token','_notaBaixa','_statusOcp','_formularioId','_versaoId','_versao','_analista','_statusAnalise','_observacoesInternas','_assumidoEm','_ocpId','_manifestacaoId','_decisao','Empresa','Cliente','Data','Atendimento','Prazo de Entrega','Qualidade','Recomendação','Observação','ID_RESPOSTA','TOKEN','NOTA_BAIXA','STATUS_OCP','EMPRESA','NOME_CLIENTE','COMENTARIO','ATENDIMENTO','PRAZO_ENTREGA','QUALIDADE','RECOMENDACAO']);
   const camposExtras = Object.entries(raw).filter(([k,v]) => !_cpSkip.has(k) && v !== '' && v !== undefined && v !== null);
   html += '<details style="margin-bottom:14px"><summary style="cursor:pointer;font-size:12px;font-weight:600;color:#545252;padding:8px 12px;border:1.5px solid #E4E4E4;border-radius:8px;list-style:none;display:flex;justify-content:space-between">Detalhes completos <span>▾</span></summary>'
     + '<div style="border:1.5px solid #E4E4E4;border-top:0;border-radius:0 0 8px 8px;padding:10px 14px">'
@@ -20430,7 +20446,12 @@ function cpAbrirDetalhe(idx) {
       + '<button onclick="navigator.clipboard.writeText(\'' + cpEsc(raw._token||'').replace(/'/g,"\\'") + '\').then(()=>alert(\'Token copiado!\')).catch(()=>prompt(\'Token:\',\'' + cpEsc(raw._token||'').replace(/'/g,"\\'") + '\'))" style="border:1px solid #D6D6D6;background:#fff;border-radius:5px;padding:3px 10px;font-size:12px;cursor:pointer;font-family:inherit">Copiar token</button></div>' : '')
     + '</div></details>';
   if (baixa) {
-    html += '<div style="border-top:1.5px solid #E4E4E4;padding-top:16px;margin-top:4px">'
+    html += '<div style="border:1.5px solid #E4E4E4;border-radius:8px;padding:12px 14px;margin-bottom:14px">'
+      + '<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:8px"><div><div style="font-size:12.5px;font-weight:700">Análise SAC</div><div style="font-size:11.5px;color:#666">Responsável: '+cpEsc(r._analista||'Ainda não assumida')+(r._assumidoEm?' · '+cpEsc(new Date(r._assumidoEm).toLocaleString('pt-BR')):'')+'</div></div>'
+      + (!r._analista ? '<button onclick="cpSalvarAnalise(\''+r.n+'\',true)" style="border:0;background:#1F1F1F;color:#fff;border-radius:7px;padding:7px 11px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Assumir análise</button>' : '') + '</div>'
+      + '<label style="font-size:11.5px;font-weight:600;display:block;margin-bottom:4px">Observações internas</label><textarea id="cp-det-obs" rows="3" style="width:100%;box-sizing:border-box;border:1px solid #D6D6D6;border-radius:7px;padding:7px 9px;font-family:inherit;font-size:12.5px">'+cpEsc(r._observacoesInternas||'')+'</textarea>'
+      + '<div style="display:flex;justify-content:flex-end;margin-top:7px"><button onclick="cpSalvarAnalise(\''+r.n+'\',false)" style="border:1px solid #D6D6D6;background:#fff;border-radius:7px;padding:6px 10px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Salvar observações</button></div><div id="cp-det-analise-msg" style="font-size:12px;min-height:16px;margin-top:4px"></div></div>'
+      + '<div style="border-top:1.5px solid #E4E4E4;padding-top:16px;margin-top:4px">'
       + '<div style="font-size:13px;font-weight:700;margin-bottom:10px">Decisão de tratamento</div>'
       + '<div style="margin-bottom:10px"><label style="font-size:12.5px;font-weight:600;display:block;margin-bottom:5px">Setor responsável (sugestão IA, confirme)</label>'
       + '<select id="cp-det-setor" style="width:100%;border:1.5px solid #D6D6D6;border-radius:7px;padding:7px 10px;font-size:13px;font-family:inherit">'
@@ -20449,6 +20470,23 @@ function cpAbrirDetalhe(idx) {
   const existing = document.getElementById('cp-modal-overlay');
   if (existing) existing.remove();
   document.body.insertAdjacentHTML('beforeend', html);
+}
+
+async function cpSalvarAnalise(linhaId, assumir) {
+  const resposta = _cp.all.find(r => String(r.n) === String(linhaId));
+  const respostaId = resposta && resposta.raw && (resposta.raw._id || resposta.raw.ID_RESPOSTA);
+  const msg = document.getElementById('cp-det-analise-msg');
+  if (!respostaId) { if (msg) msg.innerHTML='<span style="color:#A80502">Resposta não encontrada.</span>'; return; }
+  const observacoesInternas = (document.getElementById('cp-det-obs')||{}).value || '';
+  if (msg) msg.textContent = 'Salvando...';
+  try {
+    const d = await _apiFetch('/api/pesquisas/respostas/'+encodeURIComponent(respostaId)+'/analise', 10000, {method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({assumir,observacoesInternas})});
+    resposta._analista = d.analista || resposta._analista;
+    resposta._statusAnalise = d.status || resposta._statusAnalise;
+    resposta._observacoesInternas = observacoesInternas;
+    if (msg) msg.innerHTML='<span style="color:#1E6B3A">✓ Análise atualizada.</span>';
+    setTimeout(function(){ cpFecharDetalhe(); cpLoad(); }, 700);
+  } catch(e) { if (msg) msg.innerHTML='<span style="color:#A80502">'+cpEsc(e.message||'Não foi possível salvar.')+'</span>'; }
 }
 
 function cpFecharDetalhe() {
@@ -20725,12 +20763,35 @@ async function cpCarregarNotificacoes() {
   if (!el) return;
   try {
     const d = await _apiFetch('/api/notificacoes/analista', 10000);
-    const itens = [];
-    if (d.pesquisasBaixas) itens.push({titulo:d.pesquisasBaixas+' resposta(s) aguardando análise SAC',tipo:'ALERTA',acao:'comentarios'});
-    if (d.mansPortal) itens.push({titulo:d.mansPortal+' manifestação(ões) recebida(s) pelo Portal',tipo:'MANIFESTAÇÃO',acao:'central-sac'});
-    _cp.notificacoes = itens;
-    el.innerHTML = itens.length ? itens.map(function(n){ return '<button onclick="'+(n.acao==='central-sac'?"navigate('central-sac')":"cpTab('comentarios',document.getElementById('cp-tab-btn-comentarios'))")+'" style="width:100%;display:flex;align-items:center;gap:10px;padding:11px 4px;border:0;border-bottom:1px solid #EFEFEF;background:#fff;text-align:left;cursor:pointer"><span style="width:9px;height:9px;border-radius:50%;background:#C70602"></span><span style="flex:1"><b style="display:block;font-size:12.5px">'+cpEsc(n.titulo)+'</b><small style="color:#777">'+cpEsc(n.tipo)+'</small></span><span>›</span></button>'; }).join('') : '<div class="ps-muted" style="padding:18px;text-align:center">Nenhuma notificação pendente.</div>';
+    _cp.notificacoes = d.notificacoes || [];
+    cpRenderNotificacoes();
   } catch(e) { el.innerHTML = '<div style="color:#A80502;padding:12px">Notificações indisponíveis para este perfil.</div>'; }
+}
+
+function cpRenderNotificacoes() {
+  const el = document.getElementById('cp-notificacoes-lista'); if (!el) return;
+  const tipo = ((document.getElementById('cp-notif-tipo')||{}).value||'').toUpperCase();
+  const situacao = ((document.getElementById('cp-notif-situacao')||{}).value||'').toUpperCase();
+  const itens = (_cp.notificacoes||[]).filter(n => {
+    if (tipo === 'OCP' && !String(n.tipo||'').startsWith('OCP_')) return false;
+    if (tipo && tipo !== 'OCP' && n.tipo !== tipo) return false;
+    if (situacao === 'LIDA' && !n.lida) return false;
+    if (situacao === 'NAO_LIDA' && n.lida) return false;
+    return true;
+  });
+  el.innerHTML = itens.length ? itens.map(function(n){
+    const acao = n.acao === 'MANIFESTACOES' ? "navigate('central-sac')" : n.acao === 'OCORRENCIAS' ? "cpTab('ocorrencias',document.getElementById('cp-tab-btn-ocorrencias'))" : "cpTab('comentarios',document.getElementById('cp-tab-btn-comentarios'))";
+    return '<div style="width:100%;display:flex;align-items:center;gap:10px;padding:11px 4px;border-bottom:1px solid #EFEFEF;background:'+(n.lida?'#FAFAFA':'#fff')+'"><button onclick="'+acao+'" style="display:flex;align-items:center;gap:10px;flex:1;border:0;background:transparent;text-align:left;cursor:pointer;font-family:inherit"><span style="width:9px;height:9px;border-radius:50%;background:'+(n.lida?'#BEBEBE':'#C70602')+'"></span><span style="flex:1"><b style="display:block;font-size:12.5px">'+cpEsc(n.titulo)+'</b><small style="color:#777">'+cpEsc(n.tipo.replaceAll('_',' '))+' · '+cpEsc(n.empresa||'—')+' · '+cpEsc(n.origem||'')+(n.data?' · '+cpEsc(new Date(n.data).toLocaleDateString('pt-BR')):'')+'</small></span><span>›</span></button>'+(n.lida?'':'<button onclick="cpMarcarNotificacao(\''+cpEsc(n.id)+'\')" style="border:1px solid #D6D6D6;background:#fff;border-radius:6px;padding:5px 8px;font-size:11px;cursor:pointer;font-family:inherit">Marcar como lida</button>')+'</div>';
+  }).join('') : '<div class="ps-muted" style="padding:18px;text-align:center">Nenhuma notificação para os filtros selecionados.</div>';
+}
+
+async function cpMarcarNotificacao(id) {
+  try {
+    await _apiFetch('/api/notificacoes/analista/'+encodeURIComponent(id)+'/lida', 10000, {method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
+    const n = (_cp.notificacoes||[]).find(x => x.id === id); if (n) n.lida = true;
+    cpRenderNotificacoes();
+    carregarNotifAnalista();
+  } catch(e) { alert('Não foi possível marcar a notificação como lida.'); }
 }
 
 // ── Editor do Questionário ─────────────────────────────────

@@ -307,6 +307,45 @@ async function edit(action, data = {}) {
         ),
       );
     });
+    await test("SAC assume análise, registra observação e marca a notificação como lida", async () => {
+      const analysis = await request(
+        "PATCH",
+        "/api/pesquisas/respostas/" + responseId + "/analise",
+        analyst,
+        { assumir: true, observacoesInternas: "Contato com o cliente em preparação." },
+      );
+      assert.equal(analysis.status, 200);
+      assert.equal(analysis.body.analista, "ana.chiacchio");
+      const stored = mock.DB.PESQUISA_RESPOSTAS.find(
+        (r) => r.ID_RESPOSTA === responseId,
+      );
+      assert.equal(stored.STATUS_ANALISE, "EM_ANALISE");
+      assert.equal(stored.OBSERVACOES_INTERNAS, "Contato com o cliente em preparação.");
+      const forbidden = await request(
+        "PATCH",
+        "/api/pesquisas/respostas/" + responseId + "/analise",
+        token("ANALISTA SAC", "PLASCHIO", "joao.plaschio"),
+        { assumir: true },
+      );
+      assert.equal(forbidden.status, 403);
+      const notifications = await request("GET", "/api/notificacoes/analista", analyst);
+      assert.equal(notifications.status, 200);
+      assert.equal(notifications.body.pesquisasBaixas, 1);
+      const event = notifications.body.notificacoes.find(
+        (n) => n.origem === responseId,
+      );
+      assert.ok(event);
+      assert.equal(event.lida, false);
+      const read = await request(
+        "POST",
+        "/api/notificacoes/analista/" + encodeURIComponent(event.id) + "/lida",
+        analyst,
+        {},
+      );
+      assert.equal(read.status, 200);
+      const after = await request("GET", "/api/notificacoes/analista", analyst);
+      assert.equal(after.body.notificacoes.find((n) => n.id === event.id).lida, true);
+    });
     await test("SAC abre OCP manualmente para resposta crítica sem token", async () => {
       const r = mock.DB.PESQUISA_RESPOSTAS.find(
         (item) => item.ID_RESPOSTA === responseId,

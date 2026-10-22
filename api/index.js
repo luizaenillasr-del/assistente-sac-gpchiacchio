@@ -4243,6 +4243,13 @@ app.get('/api/pesquisas/relatorio', requerPermissao('pesquisas.visualizar'), asy
       _token: r.TOKEN || '',
       _notaBaixa: r.NOTA_BAIXA || '',
       _statusOcp: r.STATUS_OCP || '',
+      _formularioId: r.FORMULARIO_ID || '',
+      _versaoId: r.VERSAO_ID || '',
+      _versao: r.VERSAO || '',
+      _analista: r.ANALISTA_RESPONSAVEL || '',
+      _statusAnalise: r.STATUS_ANALISE || '',
+      _observacoesInternas: r.OBSERVACOES_INTERNAS || '',
+      _assumidoEm: r.DATA_ASSUNCAO || '',
       _ocpId: ocp?.ID_OCP || '',
       _manifestacaoId: ocp?.ID_MANIFESTACAO_GERADA || man?.ID_MANIFESTACAO || '',
       _decisao: ocp?.DECISAO || (r.STATUS_OCP === 'NAO_REQUER_TRATAMENTO' ? 'NAO_REQUER' : ''),
@@ -4521,6 +4528,35 @@ app.delete('/api/pesquisas/respostas/:id', requerPermissao('pesquisas.gerenciar'
   } catch (e) {
     res.status(500).json({ sucesso: false, erro: erroSeguro(e) });
   }
+});
+
+// ===== ANÁLISE SAC DA RESPOSTA =====
+app.patch('/api/pesquisas/respostas/:id/analise', requerPermissao('pesquisas.criar'), async (req, res) => {
+  try {
+    const { assumir = false, observacoesInternas } = req.body || {};
+    await garantirAbaComCabecalhos('PESQUISA_RESPOSTAS', ['ID_RESPOSTA','ANALISTA_RESPONSAVEL','STATUS_ANALISE','OBSERVACOES_INTERNAS','DATA_ASSUNCAO','DATA_ATUALIZACAO_ANALISE']);
+    const rows = await lerRespostasPesquisa();
+    const resposta = rows.find(r => r.ID_RESPOSTA === req.params.id);
+    if (!resposta) return res.status(404).json({ sucesso: false, erro: 'Resposta não encontrada.' });
+    const perfilAtual = perfilCanonico(req.user?.perfil || '');
+    if (perfilAtual !== 'MASTER' && !pertenceEmpresa(req.user?.empresa || '', resposta.EMPRESA || '')) {
+      return res.status(403).json({ sucesso: false, erro: 'Acesso não autorizado para a empresa desta pesquisa.' });
+    }
+    const agora = new Date().toISOString();
+    const alteracoes = {
+      STATUS_ANALISE: assumir || resposta.ANALISTA_RESPONSAVEL ? 'EM_ANALISE' : (resposta.STATUS_ANALISE || 'PENDENTE'),
+      DATA_ATUALIZACAO_ANALISE: agora,
+    };
+    if (assumir) {
+      alteracoes.ANALISTA_RESPONSAVEL = req.user?.usuario || '';
+      alteracoes.DATA_ASSUNCAO = resposta.DATA_ASSUNCAO || agora;
+    }
+    if (observacoesInternas != null) alteracoes.OBSERVACOES_INTERNAS = String(observacoesInternas).trim().slice(0, 4000);
+    await atualizarPorID('PESQUISA_RESPOSTAS', req.params.id, alteracoes, ['ID_RESPOSTA']);
+    invalidarCacheAba('PESQUISA_RESPOSTAS');
+    await registrarAuditoria(req.user?.usuario || 'sistema', assumir ? 'ASSUMIU_ANALISE_PESQUISA' : 'ATUALIZOU_ANALISE_PESQUISA', req.params.id, 'PESQUISA_RESPOSTAS', null, alteracoes);
+    res.json({ sucesso: true, analista: alteracoes.ANALISTA_RESPONSAVEL || resposta.ANALISTA_RESPONSAVEL || '', status: alteracoes.STATUS_ANALISE });
+  } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e,'analise-pesquisa') }); }
 });
 
 // ===== PESQUISA DECISÃO (Transformar em Manifestação / Não requer tratamento) =====
@@ -5367,10 +5403,11 @@ app.get('/api/notificacoes/analista', requerPerfil('MASTER','ANALISTA SAC','GEST
   try {
     const _pf = perfilCanonico(req.user?.perfil||'');
     const scope = _pf === 'MASTER' ? null : (req.user?.empresa||null);
-    const [ocps, mans, respostas] = await Promise.all([
+    const [ocps, mans, respostas, leituras] = await Promise.all([
       lerAba('PESQUISA_OCORRENCIAS', 500).catch(()=>[]),
       lerAba('MANIFESTACOES', 5000).catch(()=>[]),
       lerRespostasPesquisa(),
+      lerAba('PESQUISA_NOTIFICACOES_LIDAS', 5000).catch(()=>[]),
     ]);
     const ocpsPendentes = ocps.filter(o =>
       String(o.STATUS||'').toUpperCase() === 'PENDENTE' &&
@@ -5392,9 +5429,31 @@ app.get('/api/notificacoes/analista', requerPerfil('MASTER','ANALISTA SAC','GEST
       const resp = respostas.find(r => (o.ID_RESPOSTA && r.ID_RESPOSTA === o.ID_RESPOSTA) || (o.TOKEN && r.TOKEN === o.TOKEN)) || {};
       return { ...o, NOME_CLIENTE: resp.NOME_CLIENTE||o.NOME_CLIENTE||'', NOTA_MEDIA: resp.NOTA_MEDIA||o.NPS||'' };
     });
+    const lidas = new Set(leituras.filter(l => l.USUARIO === (req.user?.usuario||'')).map(l => l.ID_EVENTO));
+    const notificacoes = [
+      ...pesquisasPendentes.map(r => ({
+        id: 'PESQ-' + (r.ID_RESPOSTA || r.TOKEN || ''), tipo: 'NOTA_CRITICA',
+        titulo: 'Pesquisa com nota igual ou inferior a 6', origem: r.ID_RESPOSTA || '',
+        empresa: r.EMPRESA || '', data: r.DATA || '', acao: 'COMENTARIOS', lida: lidas.has('PESQ-' + (r.ID_RESPOSTA || r.TOKEN || '')),
+      })),
+      ...ocpsPendentes.map(o => {
+        const prazo = o.PRAZO ? new Date(o.PRAZO) : null;
+        const vencida = prazo && !isNaN(prazo) && prazo < new Date();
+        const proxima = prazo && !isNaN(prazo) && prazo >= new Date() && prazo.getTime() - Date.now() <= 7*86400000;
+        const tipo = vencida ? 'OCP_VENCIDA' : proxima ? 'OCP_PROXIMA_PRAZO' : 'OCP_ATRIBUIDA';
+        const id = tipo + '-' + (o.ID_OCP || '');
+        return { id, tipo, titulo: vencida ? 'Ocorrência vencida' : proxima ? 'Ocorrência próxima do vencimento' : 'Ocorrência aguardando tratamento', origem:o.ID_OCP||'', empresa:o.EMPRESA||'', data:o.DATA||'', acao:'OCORRENCIAS', lida:lidas.has(id) };
+      }),
+      ...mansPortal.map(m => {
+        const id = 'MAN-' + (m.ID_MANIFESTACAO || '');
+        return { id, tipo:'MANIFESTACAO', titulo:'Manifestação recebida pelo Portal', origem:m.ID_MANIFESTACAO||'', empresa:m.EMPRESA_RECLAMADA||'', data:m.DATA_ABERTURA||m.DATA_REGISTRO||'', acao:'MANIFESTACOES', lida:lidas.has(id) };
+      }),
+    ].filter(n => n.origem).sort((a,b) => new Date(b.data||0) - new Date(a.data||0));
     res.json({
       sucesso: true,
       total: pesquisasPendentes.length + ocpsPendentes.length + mansPortal.length,
+      naoLidas: notificacoes.filter(n => !n.lida).length,
+      notificacoes,
       pesquisasBaixas: pesquisasPendentes.length,
       ocpsPendentes: ocpsPendentes.length,
       mansPortal: mansPortal.length,
@@ -5407,6 +5466,21 @@ app.get('/api/notificacoes/analista', requerPerfil('MASTER','ANALISTA SAC','GEST
       })),
     });
   } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e) }); }
+});
+
+app.post('/api/notificacoes/analista/:id/lida', requerPerfil('MASTER','ANALISTA SAC','GESTOR SAC'), async (req, res) => {
+  try {
+    const idEvento = String(req.params.id || '').trim().slice(0, 200);
+    if (!idEvento) return res.status(400).json({ sucesso:false, erro:'Notificação inválida.' });
+    await garantirAbaComCabecalhos('PESQUISA_NOTIFICACOES_LIDAS', ['ID_LEITURA','ID_EVENTO','USUARIO','DATA_LEITURA']);
+    const rows = await lerAba('PESQUISA_NOTIFICACOES_LIDAS', 5000).catch(()=>[]);
+    const existente = rows.find(r => r.ID_EVENTO === idEvento && r.USUARIO === (req.user?.usuario||''));
+    if (!existente) {
+      await appendObjeto('PESQUISA_NOTIFICACOES_LIDAS', { ID_LEITURA:'LID-'+Date.now(), ID_EVENTO:idEvento, USUARIO:req.user?.usuario||'', DATA_LEITURA:new Date().toISOString() });
+      invalidarCacheAba('PESQUISA_NOTIFICACOES_LIDAS');
+    }
+    res.json({ sucesso:true, existente:!!existente });
+  } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e,'ler-notificacao') }); }
 });
 
 // Listar OCPs (Ocorrências de Pesquisa)
