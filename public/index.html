@@ -80,6 +80,20 @@
   .sidebar-logo { padding: 18px 6px; }
   .sidebar-bottom { padding: 14px 0 0; }
 
+  /* HAMBURGER (mobile only) */
+  .hamburger-btn { display: none; position: fixed; top: 12px; left: 12px; z-index: 300; width: 40px; height: 40px; border-radius: 8px; background: #fff; border: 1px solid #E4E4E4; cursor: pointer; align-items: center; justify-content: center; box-shadow: 0 1px 4px rgba(0,0,0,.1); }
+  .hamburger-btn svg { width: 18px; height: 18px; color: #1F1F1F; }
+  .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 198; }
+  @media (max-width: 768px) {
+    body { overflow: hidden; }
+    .hamburger-btn { display: flex; }
+    .sidebar { position: fixed; left: 0; top: 0; bottom: 0; z-index: 199; transform: translateX(-100%); transition: transform .25s ease; box-shadow: 2px 0 12px rgba(0,0,0,.12); }
+    .sidebar.open { transform: translateX(0); }
+    .sidebar-overlay.open { display: block; }
+    .main { width: 100%; }
+    .topbar { padding-left: 62px; }
+  }
+
   /* MAIN */
   .main { flex: 1; overflow-y: auto; display: flex; flex-direction: column; min-height: 0; }
   .page { display: none; flex-direction: column; flex: 1; min-height: 0; }
@@ -2457,8 +2471,14 @@
 
 <body>
 
+<!-- MOBILE OVERLAY & HAMBURGER -->
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar(false)"></div>
+<button class="hamburger-btn" id="hamburger-btn" onclick="toggleSidebar()" aria-label="Menu">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+</button>
+
 <!-- SIDEBAR -->
-<nav class="sidebar">
+<nav class="sidebar" id="app-sidebar">
   <div class="sidebar-logo">
     <div style="display:flex;align-items:center;gap:10px;padding:2px 8px 18px">
       <img src="/simbolo-vermelho.png" alt="" style="width:30px;height:auto;display:block">
@@ -9563,12 +9583,22 @@ function doLogout() {
   location.reload();
 }
 
+function toggleSidebar(forceOpen) {
+  const sidebar = document.getElementById('app-sidebar');
+  const overlay = document.getElementById('sidebar-overlay');
+  if (!sidebar) return;
+  const open = forceOpen !== undefined ? forceOpen : !sidebar.classList.contains('open');
+  sidebar.classList.toggle('open', open);
+  overlay.classList.toggle('open', open);
+}
+
 function navigate(page, el, _opts) {
   // Rotas unificadas na Central de Manifestações
   if (page === 'acompanhamento' || page === 'banco-manifestacoes') {
     page = 'central-sac';
     if (typeof window.cenAba === 'function') setTimeout(()=>window.cenAba('banco', document.getElementById('mc-tab-banco')), 50);
   }
+  if (window.innerWidth <= 768) toggleSidebar(false);
   document.querySelectorAll('.page').forEach(p => { p.classList.remove('active'); p.style.display = ''; });
   document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
   const pageEl = document.getElementById('page-' + page);
