@@ -190,13 +190,21 @@
 #page-nova-manifestacao #nm-step-desc-main{display:none!important}
 
 /* cards */
-#page-nova-manifestacao .nm-card{border-radius:12px;box-shadow:none;margin-bottom:0;background:#fff;border:1px solid #e4e4e4;padding:20px 22px}
+#page-nova-manifestacao .nm-card{border-radius:10px;box-shadow:none;margin-bottom:0;background:#fff;border:1px solid #e8e8e8;padding:18px 20px}
 #page-nova-manifestacao .nm-step-panel.nm-active{gap:14px}
-#page-nova-manifestacao .nm-card-title{font-size:13px;font-weight:700;letter-spacing:.01em;color:#171717;text-transform:none;border-left:3px solid #c70602;padding-left:10px;margin-bottom:14px}
-#page-nova-manifestacao .nm-card-title:before{content:''}
+#page-nova-manifestacao .nm-card-title{font-size:12px;font-weight:700;letter-spacing:.01em;color:#1f1f1f;text-transform:none;display:flex;align-items:center;gap:8px;margin-bottom:14px;padding-left:0}
+#page-nova-manifestacao .nm-card-title:before{content:'';display:inline-block;width:3px;height:13px;background:#c70602;border-radius:2px;flex:none}
 #page-nova-manifestacao .nm-input,
-#page-nova-manifestacao .nm-select{height:44px;border-radius:8px}
-#page-nova-manifestacao .nm-textarea{border-radius:8px}
+#page-nova-manifestacao .nm-select{height:40px;border-radius:6px;border:1px solid #dcdcdc;font-size:13px}
+#page-nova-manifestacao .nm-input:focus,
+#page-nova-manifestacao .nm-select:focus{border-color:#cc0000;box-shadow:0 0 0 2px rgba(199,6,2,.1);outline:none}
+#page-nova-manifestacao .nm-textarea{border-radius:6px;border:1px solid #dcdcdc;font-size:13px}
+#page-nova-manifestacao .nm-label span{font-size:11px;color:#727272;font-weight:500;letter-spacing:.01em}
+
+/* section header above cards */
+#page-nova-manifestacao .nm-section-hdr{margin-bottom:18px;padding-bottom:0}
+#page-nova-manifestacao .nm-section-hdr h2{font-size:16px;font-weight:700;margin:0 0 3px;color:#1f1f1f}
+#page-nova-manifestacao .nm-section-hdr p{font-size:12.5px;color:#a8a8a8;margin:0}
 
 /* ─── PESQUISAS DE SATISFAÇÃO ────────────────────────────────── */
 #page-sugestoes-melhoria{background:var(--ref-bg)!important;color:var(--ref-ink)}
