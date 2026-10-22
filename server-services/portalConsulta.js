@@ -1,5 +1,7 @@
 "use strict";
-const strongProtocol = /^(CHI|PLAS|TUB)-[A-F0-9]{24}$/;
+// Protocolos oficiais da ficha única (CHIA/PLA/TUB-AAAAMMDD-CANAL-SEQUENCIAL)
+// e identificadores aleatórios legados continuam consultáveis.
+const strongProtocol = /^(?:(?:CHIA|PLA|TUB)-\d{8}-\d{2}-\d{4}|(?:CHI|PLAS|TUB)-[A-F0-9]{24})$/;
 const deny = () =>
   Object.assign(
     new Error("Protocolo não encontrado ou dados de confirmação inválidos."),
