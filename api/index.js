@@ -3195,6 +3195,101 @@ app.post('/api/setores/importar', requerPerfil('MASTER','ANALISTA SAC'), async(r
   } catch(e) { res.status(500).json({sucesso:false, erro:erroSeguro(e)}); }
 });
 
+// ===== CENTRAL DE CADASTROS (clientes, produtos, vendedores, RCAs e gerentes) =====
+// Os cadastros comerciais ficam separados dos registros operacionais. Assim, uma
+// alteração/inativação nunca remove manifestações históricas nem seus vínculos.
+const CADASTRO_CONFIG = {
+  clientes: {
+    aba: 'CLIENTES_CADASTRO', prefixo: 'CLI', id: 'ID_CLIENTE',
+    headers: ['ID_CLIENTE','CODIGO_INTERNO','RAZAO_SOCIAL','NOME_FANTASIA','CNPJ_CPF','SEGMENTO','CONTATOS_JSON','COMPRADORES_JSON','ENDERECO_JSON','VINCULOS_JSON','ATIVO','DATA_CRIACAO','DATA_ATUALIZACAO','USUARIO_ATUALIZACAO'],
+    key: r => String(r.CNPJ_CPF || r.CODIGO_INTERNO || '').replace(/\\D/g,'').toUpperCase()
+  },
+  produtos: {
+    aba: 'PRODUTOS', prefixo: 'PRD', id: 'ID_PRODUTO',
+    headers: ['ID_PRODUTO','EMPRESA','SKU','PRODUTO','DESCRICAO','CATEGORIA','UNIDADE','QUANTIDADE_EMBALAGEM','PESO','INFORMACOES_TECNICAS','ATIVO','DATA_ATUALIZACAO','USUARIO_ATUALIZACAO'],
+    key: r => `${normalizarTexto(r.EMPRESA || '')}|${normalizarTexto(r.SKU || r.PRODUTO || '')}`
+  },
+  vendedores: {
+    aba: 'VENDEDORES', prefixo: 'VND', id: 'ID_VENDEDOR',
+    headers: ['ID_VENDEDOR','CODIGO','NOME','TELEFONE','WHATSAPP','EMAIL','EMPRESAS_JSON','GERENTES_JSON','CARTEIRA_CLIENTES_JSON','ATIVO','DATA_CRIACAO','DATA_ATUALIZACAO','USUARIO_ATUALIZACAO'],
+    key: r => String(r.CODIGO || r.EMAIL || '').trim().toUpperCase()
+  },
+  rcas: {
+    aba: 'RCAS_CADASTRO', prefixo: 'RCA', id: 'ID_RCA',
+    headers: ['ID_RCA','CODIGO_RCA','NOME_RAZAO_SOCIAL','CPF_CNPJ','TELEFONE','WHATSAPP','EMAIL','EMPRESAS_JSON','GERENTES_JSON','REGIAO_ATUACAO','CLIENTES_VINCULADOS_JSON','ATIVO','DATA_CRIACAO','DATA_ATUALIZACAO','USUARIO_ATUALIZACAO'],
+    key: r => String(r.CODIGO_RCA || r.CPF_CNPJ || '').trim().toUpperCase()
+  },
+  gerentes: {
+    aba: 'GERENTES', prefixo: 'GER', id: 'ID_GERENTE',
+    headers: ['ID_GERENTE','CODIGO','NOME','CARGO','TELEFONE','EMAIL','EMPRESAS_JSON','VENDEDORES_SUPERVISIONADOS_JSON','RCAS_SUPERVISIONADOS_JSON','ATIVO','DATA_CRIACAO','DATA_ATUALIZACAO','USUARIO_ATUALIZACAO'],
+    key: r => String(r.CODIGO || r.EMAIL || r.NOME || '').trim().toUpperCase()
+  }
+};
+const CADASTRO_LEITURA = ['MASTER','GESTOR SAC','ANALISTA SAC','ATENDENTE SAC','APROVADOR','SETOR RESPONSÁVEL','DIRETOR','AUDITOR','CONSULTA'];
+const CADASTRO_EDICAO = ['MASTER','GESTOR SAC','ANALISTA SAC'];
+function cadastroConfig(tipo){ return CADASTRO_CONFIG[String(tipo||'').toLowerCase()] || null; }
+function cadastroSemDuplicidade(rows, cfg, body, ignoreId='') {
+  const candidato = cfg.key(body);
+  if (!candidato) return null;
+  return rows.find(r => String(r[cfg.id]||'') !== String(ignoreId||'') && cfg.key(r) === candidato && String(r.ATIVO||'SIM').toUpperCase() !== 'EXCLUIDO');
+}
+function cadastroEscopo(rows, req) {
+  if (!req._empresaScope) return rows;
+  return rows.filter(r => {
+    const raw = r.EMPRESA || r.EMPRESAS || r.EMPRESAS_JSON || '';
+    if (!raw) return false;
+    return pertenceEmpresa(req._empresaScope, raw) || String(raw).toUpperCase().includes(empresaCanonica(req._empresaScope));
+  });
+}
+app.get('/api/cadastros/:tipo', middlewareEscopoEmpresa(), requerPerfil(...CADASTRO_LEITURA), async (req,res)=>{
+  try {
+    const cfg=cadastroConfig(req.params.tipo); if(!cfg) return res.status(404).json({sucesso:false,erro:'Tipo de cadastro inválido.'});
+    await garantirAbaComCabecalhos(cfg.aba,cfg.headers);
+    let itens=await lerAba(cfg.aba,10000);
+    // RCAs antigos continuam visíveis sem copiar seus registros para uma nova base.
+    if(req.params.tipo==='rcas' && !itens.length) itens=await lerAba('REPRESENTANTES',5000).catch(()=>[]);
+    itens=cadastroEscopo(itens,req).filter(r=>String(r.ATIVO||'SIM').toUpperCase()!=='EXCLUIDO');
+    const q=String(req.query.q||'').trim().toLowerCase();
+    if(q) itens=itens.filter(r=>Object.values(r).some(v=>String(v??'').toLowerCase().includes(q)));
+    res.json({sucesso:true,total:itens.length,itens});
+  } catch(e){ res.status(500).json({sucesso:false,erro:erroSeguro(e),itens:[]}); }
+});
+app.post('/api/cadastros/:tipo', requerPerfil(...CADASTRO_EDICAO), async(req,res)=>{
+  try {
+    const cfg=cadastroConfig(req.params.tipo); if(!cfg) return res.status(404).json({sucesso:false,erro:'Tipo de cadastro inválido.'});
+    await garantirAbaComCabecalhos(cfg.aba,cfg.headers);
+    const body={...(req.body||{})};
+    if(!body.NOME && body.nome) body.NOME=body.nome;
+    if(!body.ATIVO) body.ATIVO='SIM';
+    const rows=await lerAba(cfg.aba,10000); const dup=cadastroSemDuplicidade(rows,cfg,body);
+    if(dup) return res.status(409).json({sucesso:false,erro:'Cadastro duplicado.',existente:dup[cfg.id]});
+    const now=new Date().toISOString(); const obj={...body,[cfg.id]:await gerarProximoID(cfg.aba,cfg.prefixo,cfg.id),DATA_CRIACAO:now,DATA_ATUALIZACAO:now,USUARIO_ATUALIZACAO:req.user?.usuario||'sistema'};
+    await appendObjeto(cfg.aba,obj); await registrarAuditoria(req.user.usuario,'CRIOU_CADASTRO',obj[cfg.id],cfg.aba,null,obj);
+    res.status(201).json({sucesso:true,item:obj});
+  } catch(e){ res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
+});
+app.patch('/api/cadastros/:tipo/:id', requerPerfil(...CADASTRO_EDICAO), async(req,res)=>{
+  try {
+    const cfg=cadastroConfig(req.params.tipo); if(!cfg) return res.status(404).json({sucesso:false,erro:'Tipo de cadastro inválido.'});
+    await garantirAbaComCabecalhos(cfg.aba,cfg.headers); const rows=await lerAba(cfg.aba,10000); const atual=rows.find(r=>String(r[cfg.id])===String(req.params.id));
+    if(!atual) return res.status(404).json({sucesso:false,erro:'Cadastro não encontrado.'});
+    const body={...(req.body||{})}; const combinado={...atual,...body}; const dup=cadastroSemDuplicidade(rows,cfg,combinado,req.params.id);
+    if(dup) return res.status(409).json({sucesso:false,erro:'Cadastro duplicado.',existente:dup[cfg.id]});
+    const dados={...body,DATA_ATUALIZACAO:new Date().toISOString(),USUARIO_ATUALIZACAO:req.user?.usuario||'sistema'};
+    await atualizarPorID(cfg.aba,req.params.id,dados,[cfg.id,'ID']); const item=await buscarPorID(cfg.aba,req.params.id,[cfg.id,'ID']);
+    await registrarAuditoria(req.user.usuario,'ATUALIZOU_CADASTRO',req.params.id,cfg.aba,null,dados); res.json({sucesso:true,item});
+  } catch(e){ res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
+});
+app.post('/api/cadastros/:tipo/importar', requerPerfil(...CADASTRO_EDICAO), async(req,res)=>{
+  try {
+    const cfg=cadastroConfig(req.params.tipo); if(!cfg) return res.status(404).json({sucesso:false,erro:'Tipo de cadastro inválido.'});
+    const itens=Array.isArray(req.body?.itens)?req.body.itens:[]; if(!itens.length) return res.status(400).json({sucesso:false,erro:'Nenhum registro enviado.'});
+    await garantirAbaComCabecalhos(cfg.aba,cfg.headers); let rows=await lerAba(cfg.aba,10000); let criados=0,atualizados=0,duplicados=0;
+    for(const raw of itens){ const body={...(raw||{})}; if(!body.ATIVO) body.ATIVO='SIM'; const found=cadastroSemDuplicidade(rows,cfg,body); if(found){ await atualizarPorID(cfg.aba,found[cfg.id],{...body,DATA_ATUALIZACAO:new Date().toISOString(),USUARIO_ATUALIZACAO:req.user.usuario},[cfg.id,'ID']); atualizados++; } else { const obj={...body,[cfg.id]:await gerarProximoID(cfg.aba,cfg.prefixo,cfg.id),DATA_CRIACAO:new Date().toISOString(),DATA_ATUALIZACAO:new Date().toISOString(),USUARIO_ATUALIZACAO:req.user.usuario}; await appendObjeto(cfg.aba,obj); rows.push(obj); criados++; } }
+    await registrarAuditoria(req.user.usuario,'IMPORTOU_CADASTRO',`${criados}c/${atualizados}a`,cfg.aba,null,{total:itens.length}); res.json({sucesso:true,criados,atualizados,duplicados,total:criados+atualizados});
+  } catch(e){ res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
+});
+
 // ===== PRODUTOS =====
 app.get('/api/produtos', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','SETOR RESPONSÁVEL','GESTOR SAC','AUDITOR','CONSULTA'), async(req,res)=>{
   try {

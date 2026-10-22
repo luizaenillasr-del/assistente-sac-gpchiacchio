@@ -2499,8 +2499,7 @@
     <button class="sidebar-item" onclick="navigate('banco-rnc', this)"><span class="sidebar-dot"></span>RNC</button>
     <button class="sidebar-item" id="sidebar-central-gerente" onclick="navigate('central-gerente', this)"><span class="sidebar-dot"></span>Central do Gerente</button>
     <button class="sidebar-item" id="sidebar-gestao-diretoria" onclick="navigate('gestao-diretoria', this)"><span class="sidebar-dot"></span>Gestão da Diretoria</button>
-    <button class="sidebar-item" onclick="navigate('rca', this)"><span class="sidebar-dot"></span>Central de RCA</button>
-    <button class="sidebar-item" data-v5-page="representantes" onclick="navigate('representantes', this)"><span class="sidebar-dot"></span>Representantes</button>
+    <button class="sidebar-item" id="sidebar-cadastros" onclick="navigate('central-cadastros', this)"><span class="sidebar-dot"></span>Clientes e Produtos</button>
     <button class="sidebar-item" onclick="navigate('matriz', this)"><span class="sidebar-dot"></span>Matriz de Tratamento</button>
     <button class="sidebar-item" onclick="navigate('causas', this)"><span class="sidebar-dot"></span>Causas e Subcausas</button>
     <button class="sidebar-item" onclick="navigate('matriz-conhecimento', this)"><span class="sidebar-dot"></span>Matriz de Conhecimento</button>
@@ -6144,6 +6143,55 @@
     #page-cerebro #cdp-auditoria .table th{text-align:left;font-weight:600;font-size:12px;color:#666464;background:#FAFAFA}
     @media (max-width:760px){#page-cerebro .cb-mh{display:none}#page-cerebro .cb-msteps{grid-template-columns:repeat(2,minmax(0,1fr))}#page-cerebro .cb-mwrap > div{min-width:0}}
   </style>
+  <!-- ===== CENTRAL DE CADASTROS ===== -->
+  <style>
+    #page-central-cadastros{background:#F4F4F4;overflow-y:auto;font-family:Montserrat,system-ui,sans-serif;color:#242424}
+    #page-central-cadastros .cc-wrap{padding:24px 32px 48px;max-width:1500px;margin:0 auto;width:100%}
+    #page-central-cadastros .cc-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+    #page-central-cadastros .cc-eyebrow{font-size:11px;color:#929090;letter-spacing:.08em;text-transform:uppercase;font-weight:700}
+    #page-central-cadastros h1{font-size:25px;line-height:1.15;margin:4px 0;font-weight:700}
+    #page-central-cadastros .cc-sub{font-size:13px;color:#707070}
+    #page-central-cadastros .cc-card{background:#fff;border:1px solid #E4E4E4;border-radius:11px}
+    #page-central-cadastros .cc-tabs{display:flex;gap:2px;border-bottom:1px solid #E4E4E4;overflow:auto;padding:0 8px}
+    #page-central-cadastros .cc-tab{border:0;background:none;color:#929090;padding:13px 18px;border-bottom:2px solid transparent;font:500 13px Montserrat,system-ui;cursor:pointer;white-space:nowrap}
+    #page-central-cadastros .cc-tab.on{color:#C70602;font-weight:700;border-bottom-color:#C70602}
+    #page-central-cadastros .cc-toolbar{display:flex;gap:9px;align-items:flex-end;flex-wrap:wrap;padding:16px;border-bottom:1px solid #EFEFEF}
+    #page-central-cadastros .cc-field{display:flex;flex-direction:column;gap:5px;font-size:11px;font-weight:700;color:#666464;min-width:160px}
+    #page-central-cadastros input,#page-central-cadastros select,#page-central-cadastros textarea{font:400 13px Montserrat,system-ui;color:#242424;background:#fff;border:1px solid #D6D6D6;border-radius:7px;height:36px;padding:0 10px;outline:none}
+    #page-central-cadastros textarea{height:auto;padding:9px;resize:vertical}
+    #page-central-cadastros input:focus,#page-central-cadastros select:focus,#page-central-cadastros textarea:focus{border-color:#C70602;box-shadow:0 0 0 2px #FDECEC}
+    #page-central-cadastros .cc-search{flex:1;min-width:240px}
+    #page-central-cadastros .cc-btn{height:36px;border:1px solid #D6D6D6;border-radius:7px;background:#fff;padding:0 13px;font:600 12.5px Montserrat;cursor:pointer;white-space:nowrap}
+    #page-central-cadastros .cc-btn:hover{border-color:#C70602;color:#C70602}
+    #page-central-cadastros .cc-btn.primary{border-color:#C70602;background:#C70602;color:#fff}
+    #page-central-cadastros .cc-btn.primary:hover{background:#A80502;color:#fff}
+    #page-central-cadastros .cc-meta{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;color:#929090;font-size:12px;gap:10px;flex-wrap:wrap}
+    #page-central-cadastros .cc-table-wrap{overflow-x:auto}
+    #page-central-cadastros table{width:100%;border-collapse:collapse;min-width:780px;font-size:12.5px}
+    #page-central-cadastros th{text-align:left;padding:10px 16px;background:#FAFAFA;color:#929090;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;border-bottom:1px solid #E4E4E4;white-space:nowrap}
+    #page-central-cadastros td{padding:12px 16px;border-bottom:1px solid #F0F0F0;vertical-align:middle}
+    #page-central-cadastros tbody tr:hover{background:#FDF5F5;cursor:pointer}
+    #page-central-cadastros .cc-status{font-size:11px;border-radius:99px;padding:3px 8px;background:#E8F5E9;color:#2E7D32;font-weight:700;white-space:nowrap}
+    #page-central-cadastros .cc-status.off{background:#F1F1F1;color:#777}
+    #page-central-cadastros .cc-empty{padding:38px;text-align:center;color:#929090;font-size:13px}
+    #cc-modal{position:fixed;inset:0;background:rgba(0,0,0,.38);z-index:3000;display:none;align-items:center;justify-content:center;padding:20px}
+    #cc-modal.open{display:flex}
+    #cc-modal .cc-modal-box{background:#fff;border-radius:12px;width:min(760px,100%);max-height:90vh;overflow:auto;box-shadow:0 16px 50px rgba(0,0,0,.2)}
+    #cc-modal .cc-modal-h{padding:18px 22px;border-bottom:1px solid #E4E4E4;display:flex;justify-content:space-between;align-items:center}
+    #cc-modal .cc-modal-b{padding:20px 22px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+    #cc-modal .cc-modal-b .wide{grid-column:1/-1}
+    #cc-modal .cc-modal-f{padding:14px 22px;border-top:1px solid #E4E4E4;display:flex;justify-content:flex-end;gap:8px}
+    #cc-modal .cc-close{border:0;background:none;font-size:22px;color:#929090;cursor:pointer}
+    @media(max-width:720px){#page-central-cadastros .cc-wrap{padding:18px 14px 40px}#cc-modal .cc-modal-b{grid-template-columns:1fr}}
+  </style>
+  <div class="page" id="page-central-cadastros" style="display:none">
+    <div class="cc-wrap">
+      <div class="cc-head"><div><div class="cc-eyebrow">Administração</div><h1>Clientes e Produtos</h1><div class="cc-sub">Cadastros comerciais e vínculos utilizados pelo Assistente SAC.</div></div><button class="cc-btn primary" id="cc-new-btn" onclick="ccNovo()">+ Novo cadastro</button></div>
+      <div class="cc-card"><div class="cc-tabs" id="cc-tabs"></div><div class="cc-toolbar"><input class="cc-search" id="cc-search" placeholder="Pesquisar…" oninput="ccFiltrar()"><label class="cc-field">Empresa<select id="cc-empresa" onchange="ccFiltrar()"><option value="">Todas as empresas</option><option>Chiacchio Embalagens</option><option>Plaschio</option><option>Tubahia/CESBAP</option></select></label><button class="cc-btn cc-write-action" onclick="ccExportar()">Exportar CSV</button><label class="cc-btn cc-write-action" style="display:flex;align-items:center;cursor:pointer">Importar CSV<input id="cc-import" type="file" accept=".csv,.txt" style="display:none" onchange="ccImportar(this)"></label></div><div class="cc-meta"><span id="cc-count">Carregando…</span><span id="cc-help">Cadastros inativos permanecem preservados para histórico.</span></div><div class="cc-table-wrap"><table><thead id="cc-head-row"></thead><tbody id="cc-body"><tr><td class="cc-empty">Carregando…</td></tr></tbody></table></div></div>
+    </div>
+  </div>
+  <div id="cc-modal" onclick="if(event.target===this)ccFechar()"><div class="cc-modal-box"><div class="cc-modal-h"><div><b id="cc-modal-title">Novo cadastro</b><div id="cc-modal-sub" class="cc-sub"></div></div><button class="cc-close" onclick="ccFechar()">×</button></div><div class="cc-modal-b" id="cc-modal-fields"></div><div class="cc-modal-f"><button class="cc-btn" onclick="ccFechar()">Cancelar</button><button class="cc-btn primary" onclick="ccSalvar()">Salvar cadastro</button></div></div></div>
+
   <!-- ===== CÉREBRO: ESTILOS cb-* (fim) ===== -->
   <!-- ===== CÉREBRO IA ===== -->
   <!-- ===== CENTRAL DE DADOS ===== -->
@@ -7871,6 +7919,12 @@
 .rs-aviso{background:#FFFBEF;border:1px solid #F1E2B5;border-radius:10px;padding:10px 14px;font-size:13px;color:#5E3B00}
 .rs-vazio{text-align:center;padding:40px;color:#707070;font-size:13px}
 .rs-toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#1F1F1F;color:#fff;padding:11px 16px;border-radius:8px;font-size:13px;z-index:90;max-width:92vw}
+#page-relatorio-satisfacao #rel-accordion-wrap{display:none!important}
+#page-relatorio-satisfacao .rs-inline-editor{border:1px solid #E4E4E4;border-radius:12px;background:#fff;padding:18px 20px;display:flex;flex-direction:column;gap:12px}
+#page-relatorio-satisfacao .rs-inline-editor h3{font-size:15px;margin:0}
+#page-relatorio-satisfacao .rs-inline-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+#page-relatorio-satisfacao .rs-inline-field{display:flex;flex-direction:column;gap:4px;font-size:11px;font-weight:600;color:#545252}
+#page-relatorio-satisfacao .rs-inline-field input,#page-relatorio-satisfacao .rs-inline-field textarea{border:1px solid #D6D6D6;border-radius:7px;padding:8px 10px;font:400 13px Montserrat,system-ui;background:#fff}
 /* rs-nota color tokens: bad ≤6 red, mid 7-8 amber, ok 9-10 green */
 .rs-nota-bad{background:#FDECEC;color:#A80502;font-weight:700}
 .rs-nota-mid{background:#FBF0D9;color:#7A4C00;font-weight:700}
@@ -8393,6 +8447,22 @@
     </div>`;
 
     cont.innerHTML=h;
+    // Edição integrada: os dados manuais ficam no próprio documento, sem uma
+    // segunda tela/formulário separado. A Visão Diretoria continua somente leitura.
+    if(!_dir){
+      const t=(_d&&_d.textos)||{}, ed=document.createElement('div'); ed.className='rs-inline-editor rs-noprint';
+      const curVals=cur||{};
+      ed.innerHTML=`<div class="rs-card-h"><h3>Editar dados deste relatório</h3><span class="rs-sub">${esc(mlong(ref))} · alterações salvas no registro do período</span></div>
+        <div class="rs-inline-grid">
+          <label class="rs-inline-field">Total enviado<input id="rs-inline-total-enviado" type="number" min="0" value="${esc(t.total_enviado||'')}"></label>
+          <label class="rs-inline-field">Total respondido<input id="rs-inline-total-respondido" type="number" min="0" value="${esc(t.total_respondido||curVals.n||'')}"></label>
+          <label class="rs-inline-field">NPS<input id="rs-inline-nps" type="number" min="-100" max="100" step="0.1" value="${esc(t.nps_score||curVals.nps_score||'')}"></label>
+          <label class="rs-inline-field">Indicador geral<input id="rs-inline-ind" type="number" min="0" max="10" step="0.1" value="${esc(t.indicador_geral||curVals.ind||'')}"></label>
+          ${[['at','Atendimento'],['pr','Prazo de entrega'],['qu','Qualidade'],['re','Recomendação']].map(([k,l])=>`<label class="rs-inline-field">${l}<input id="rs-inline-${k}" type="number" min="0" max="10" step="0.1" value="${esc(t['cri_'+k]||curVals[k]||'')}"></label>`).join('')}
+        </div><label class="rs-inline-field">Resumo executivo<textarea id="rs-inline-resumo" rows="3">${esc(t.resumo_executivo||'')}</textarea></label>
+        <div class="rs-edit-act"><span class="rs-sub" style="margin-right:auto">Dados automáticos continuam como fonte principal; estes campos complementam o período.</span><button type="button" class="rs-btn-sm" style="padding:8px 14px;background:#C70602;color:#fff;border-color:#C70602;font-weight:700" onclick="relSalvarEdicaoInline()">Salvar alterações</button></div>`;
+      cont.insertBefore(ed,cont.firstChild);
+    }
     _atualizarBarraRelatorio();
     if(_d.relMeta?.id) setTimeout(()=>relCarregarEnvios(_d.relMeta.id),0);
   }
@@ -8576,6 +8646,18 @@
     _edit=null;_editTxt={};
     _renderizar();
     _toast('Texto salvo no relatório de '+mword(_refKey())+'.');
+  };
+  window.relSalvarEdicaoInline=async function(){
+    const campos={total_enviado:'rs-inline-total-enviado',total_respondido:'rs-inline-total-respondido',nps_score:'rs-inline-nps',indicador_geral:'rs-inline-ind',cri_at:'rs-inline-at',cri_pr:'rs-inline-pr',cri_qu:'rs-inline-qu',cri_re:'rs-inline-re',resumo_executivo:'rs-inline-resumo'};
+    const empresa=_empresa(),ano=_val('rel-f-ano')?.value,mes=_val('rel-f-mes')?.value,tok=sessionStorage.getItem('sac-token');
+    try{
+      for(const [campo,id] of Object.entries(campos)){
+        const el=_val(id); if(!el)continue;
+        const r=await fetch('/api/pesquisas/relatorio-texto',{method:'POST',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({empresa,ano,mes,campo,valor:el.value.trim()})});
+        const j=await r.json().catch(()=>({})); if(!r.ok||j.sucesso===false)throw new Error(j.erro||'Falha ao salvar');
+      }
+      _toast('Alterações salvas no relatório.'); await relCarregar();
+    }catch(e){_toast('Não foi possível salvar as alterações. '+e.message)}
   };
 
   function _rrmMeses(){
@@ -9730,6 +9812,8 @@ function toggleSidebar(forceOpen) {
 }
 
 function navigate(page, el, _opts) {
+  // Links antigos de gestão de RCA agora abrem o cadastro comercial unificado.
+  if (page === 'rca') { page = 'central-cadastros'; _opts = { tab: 'rcas' }; }
   // Rotas unificadas na Central de Manifestações
   if (page === 'acompanhamento' || page === 'banco-manifestacoes') {
     page = 'central-sac';
@@ -9758,6 +9842,9 @@ function navigate(page, el, _opts) {
   }
   if (page === 'relatorio-satisfacao' && typeof window.relCarregar === 'function') {
     window.relCarregar();
+  }
+  if (page === 'central-cadastros' && typeof window.ccCarregar === 'function') {
+    window.ccCarregar(_opts?.tab);
   }
 }
 
@@ -14903,11 +14990,11 @@ document.addEventListener('visibilitychange', () => {
   const _PG_CONSULTA=['visao-geral','acompanhamento','banco-manifestacoes','banco-rnc','relatorio-satisfacao'];
   const allowed={
     // ADMINISTRADOR — acesso total
-    'MASTER':['visao-geral','acompanhamento','nova-manifestacao','banco-manifestacoes','aprovadores','banco-rnc','usuarios','cerebro','base-conhecimento','painel-maquina','auditoria','prazos-regionais','similares','rca','biblioteca-fichas','relatorio-satisfacao','sugestoes-melhoria','setores','central-sac','portal-admin'],
+    'MASTER':['visao-geral','acompanhamento','nova-manifestacao','banco-manifestacoes','aprovadores','banco-rnc','usuarios','cerebro','base-conhecimento','painel-maquina','auditoria','prazos-regionais','similares','central-cadastros','biblioteca-fichas','relatorio-satisfacao','sugestoes-melhoria','setores','central-sac','portal-admin'],
     // GESTOR SAC — visão operacional completa, sem config crítica
-    'GESTOR SAC':['visao-geral','acompanhamento','nova-manifestacao','banco-manifestacoes','aprovadores','banco-rnc','setores','biblioteca-fichas','matriz','base-conhecimento','cerebro','painel-maquina','sugestoes-melhoria','relatorio-satisfacao','causas','matriz-conhecimento','prazos-regionais','similares','rca','central-sac','central-gerente','portal-admin'],
+    'GESTOR SAC':['visao-geral','acompanhamento','nova-manifestacao','banco-manifestacoes','aprovadores','banco-rnc','setores','biblioteca-fichas','matriz','base-conhecimento','cerebro','painel-maquina','sugestoes-melhoria','relatorio-satisfacao','causas','matriz-conhecimento','prazos-regionais','similares','central-cadastros','central-sac','central-gerente','portal-admin'],
     // ANALISTA SAC — operação do dia a dia
-    'ANALISTA SAC':['visao-geral','acompanhamento','nova-manifestacao','banco-manifestacoes','banco-rnc','cerebro','base-conhecimento','painel-maquina','similares','biblioteca-fichas','relatorio-satisfacao','sugestoes-melhoria','setores','central-gerente','central-sac'],
+    'ANALISTA SAC':['visao-geral','acompanhamento','nova-manifestacao','banco-manifestacoes','banco-rnc','cerebro','base-conhecimento','painel-maquina','similares','biblioteca-fichas','relatorio-satisfacao','sugestoes-melhoria','setores','central-cadastros','central-gerente','central-sac'],
     // ATENDENTE SAC — registro e encaminhamento
     'ATENDENTE SAC':['nova-manifestacao','banco-manifestacoes','base-conhecimento','cerebro','similares','central-sac'],
     // SETOR RESPONSÁVEL — sua fila + RNC
@@ -14915,8 +15002,8 @@ document.addEventListener('visibilitychange', () => {
     // ESPECIALISTA — fila técnica + RNC + RCA
     'ESPECIALISTA':['setor-responsavel','banco-rnc','rca','base-conhecimento','cerebro'],
     // APROVADOR — central do aprovador + RNC consulta + pesquisa de satisfação
-    'APROVADOR':['aprovadores','banco-rnc','sugestoes-melhoria'],
-    'APROVADOR MASTER':['aprovadores','banco-rnc','sugestoes-melhoria','visao-geral','acompanhamento','banco-manifestacoes','relatorio-satisfacao'],
+    'APROVADOR':['aprovadores','banco-rnc','sugestoes-melhoria','central-cadastros'],
+    'APROVADOR MASTER':['aprovadores','banco-rnc','sugestoes-melhoria','visao-geral','acompanhamento','banco-manifestacoes','relatorio-satisfacao','central-cadastros'],
     // RCA — central de causa raiz
     'RCA / REPRESENTANTE':['representantes','rca','banco-rnc'],
     // DIRETOR — visão executiva (leitura)
@@ -14966,6 +15053,8 @@ document.addEventListener('visibilitychange', () => {
         'rca.visualizar':['rca'],
         'similares.visualizar':['similares'],
         'prazos.visualizar':['prazos-regionais'],
+        'config.visualizar':['central-cadastros'],
+        'config.editar':['central-cadastros'],
       };
       const extra=new Set(list);
       // Add pages from granted permissions
@@ -29872,6 +29961,41 @@ if (typeof pageLoaders !== 'undefined') {
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
   else bind();
+})();
+// ===== CENTRAL DE CADASTROS =====
+(function(){
+  const types=['clientes','produtos','vendedores','rcas','gerentes'];
+  const labels={clientes:'Clientes',produtos:'Produtos',vendedores:'Vendedores',rcas:'RCAs',gerentes:'Gerentes'};
+  const fields={
+    clientes:[['CODIGO_INTERNO','Código interno'],['RAZAO_SOCIAL','Razão social'],['NOME_FANTASIA','Nome fantasia'],['CNPJ_CPF','CNPJ/CPF'],['SEGMENTO','Segmento'],['CONTATOS_JSON','Contatos (JSON)'],['COMPRADORES_JSON','Compradores (JSON)'],['ENDERECO_JSON','Endereço (JSON)'],['VINCULOS_JSON','Vínculos por empresa (JSON)']],
+    produtos:[['EMPRESA','Empresa'],['SKU','SKU'],['DESCRICAO','Descrição'],['CATEGORIA','Categoria'],['UNIDADE','Unidade'],['QUANTIDADE_EMBALAGEM','Qtd. por embalagem'],['PESO','Peso'],['INFORMACOES_TECNICAS','Informações técnicas']],
+    vendedores:[['CODIGO','Código/matrícula'],['NOME','Nome'],['TELEFONE','Telefone'],['WHATSAPP','WhatsApp'],['EMAIL','E-mail'],['EMPRESAS_JSON','Empresas (JSON)'],['GERENTES_JSON','Gerentes por empresa (JSON)'],['CARTEIRA_CLIENTES_JSON','Carteira de clientes (JSON)']],
+    rcas:[['CODIGO_RCA','Código RCA'],['NOME_RAZAO_SOCIAL','Nome/Razão social'],['CPF_CNPJ','CPF/CNPJ'],['TELEFONE','Telefone'],['WHATSAPP','WhatsApp'],['EMAIL','E-mail'],['EMPRESAS_JSON','Empresas (JSON)'],['GERENTES_JSON','Gerentes por empresa (JSON)'],['REGIAO_ATUACAO','Região de atuação'],['CLIENTES_VINCULADOS_JSON','Clientes vinculados (JSON)']],
+    gerentes:[['CODIGO','Código/matrícula'],['NOME','Nome'],['CARGO','Cargo'],['TELEFONE','Telefone'],['EMAIL','E-mail'],['EMPRESAS_JSON','Empresas (JSON)'],['VENDEDORES_SUPERVISIONADOS_JSON','Vendedores supervisionados (JSON)'],['RCAS_SUPERVISIONADOS_JSON','RCAs supervisionados (JSON)']]
+  };
+  let state={tipo:'clientes',items:[],edit:null};
+  function token(){return sessionStorage.getItem('sac-token')||''}
+  async function api(url,opt={}){const headers={...(opt.headers||{}),'Content-Type':'application/json'};if(token())headers.Authorization='Bearer '+token();const r=await fetch(url,{...opt,headers});const j=await r.json().catch(()=>({}));if(!r.ok||j.sucesso===false)throw new Error(j.erro||'Não foi possível concluir a operação.');return j}
+  const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  function activeRows(){const q=(document.getElementById('cc-search')?.value||'').toLowerCase(),emp=(document.getElementById('cc-empresa')?.value||'').toLowerCase();return state.items.filter(r=>(!q||Object.values(r).some(v=>String(v??'').toLowerCase().includes(q)))&&(!emp||String(r.EMPRESA||r.EMPRESAS_JSON||'').toLowerCase().includes(emp.split(' ')[0].toLowerCase())))}
+  function render(){
+    const tabs=document.getElementById('cc-tabs');if(!tabs)return;tabs.innerHTML=types.map(t=>`<button class="cc-tab ${t===state.tipo?'on':''}" onclick="ccSelecionar('${t}')">${labels[t]}</button>`).join('');
+    const fs=fields[state.tipo];document.getElementById('cc-head-row').innerHTML='<tr>'+fs.slice(0,5).map(x=>`<th>${esc(x[1])}</th>`).join('')+'<th>Situação</th><th>Ações</th></tr>';
+    const rows=activeRows();document.getElementById('cc-count').textContent=`${rows.length} registro${rows.length===1?'':'s'}`;
+    document.getElementById('cc-body').innerHTML=rows.length?rows.map(r=>`<tr onclick="ccEditar('${esc(r[state.tipo==='clientes'?'ID_CLIENTE':state.tipo==='produtos'?'ID_PRODUTO':state.tipo==='vendedores'?'ID_VENDEDOR':state.tipo==='rcas'?'ID_RCA':'ID_GERENTE'])}')">${fs.slice(0,5).map(x=>`<td>${esc(r[x[0]]||'—')}</td>`).join('')}<td><span class="cc-status ${String(r.ATIVO||'SIM').toUpperCase()!=='SIM'?'off':''}">${String(r.ATIVO||'SIM').toUpperCase()==='SIM'?'Ativo':'Inativo'}</span></td><td><button class="cc-btn" onclick="event.stopPropagation();ccEditar('${esc(r[state.tipo==='clientes'?'ID_CLIENTE':state.tipo==='produtos'?'ID_PRODUTO':state.tipo==='vendedores'?'ID_VENDEDOR':state.tipo==='rcas'?'ID_RCA':'ID_GERENTE'])}')">Editar</button></td></tr>`).join(''):'<tr><td colspan="8" class="cc-empty">Nenhum cadastro encontrado.</td></tr>';
+    const canEdit=['MASTER','GESTOR SAC','ANALISTA SAC'].includes(window.role?.()||'');
+    const nb=document.getElementById('cc-new-btn'); if(nb){nb.textContent=`+ Novo ${labels[state.tipo].slice(0,-1).toLowerCase()}`;nb.style.display=canEdit?'':'none';}
+    document.querySelectorAll('#page-central-cadastros .cc-write-action').forEach(el=>el.style.display=canEdit?'':'none');
+  }
+  async function load(tipo){state.tipo=tipo||state.tipo;document.getElementById('cc-body').innerHTML='<tr><td class="cc-empty">Carregando…</td></tr>';try{const j=await api('/api/cadastros/'+state.tipo);state.items=j.itens||[];render()}catch(e){document.getElementById('cc-body').innerHTML=`<tr><td class="cc-empty">${esc(e.message)}</td></tr>`}}
+  window.ccSelecionar=t=>{state.edit=null;load(t)};window.ccCarregar=t=>load(t);window.ccFiltrar=render;
+  window.ccNovo=()=>{state.edit=null;ccModal()};
+  window.ccEditar=id=>{const key=state.tipo==='clientes'?'ID_CLIENTE':state.tipo==='produtos'?'ID_PRODUTO':state.tipo==='vendedores'?'ID_VENDEDOR':state.tipo==='rcas'?'ID_RCA':'ID_GERENTE';state.edit=state.items.find(x=>String(x[key])===String(id))||null;ccModal()};
+  function ccModal(){const fs=fields[state.tipo],r=state.edit||{};document.getElementById('cc-modal-title').textContent=state.edit?`Editar ${labels[state.tipo].slice(0,-1)}`:`Novo ${labels[state.tipo].slice(0,-1)}`;document.getElementById('cc-modal-sub').textContent=state.edit?.[state.tipo==='clientes'?'RAZAO_SOCIAL':state.tipo==='produtos'?'SKU':state.tipo==='rcas'?'NOME_RAZAO_SOCIAL':'NOME']||'';document.getElementById('cc-modal-fields').innerHTML=fs.map(([k,l])=>`<label class="cc-field ${k.includes('JSON')?'wide':''}">${esc(l)}${k==='NOME'||k==='RAZAO_SOCIAL'||k==='DESCRICAO'?' *':''}<${k.includes('JSON')?'textarea':'input'} data-cc-key="${k}" ${k.includes('JSON')?'rows="3"':''} value="${!k.includes('JSON')?esc(r[k]||''):''}" placeholder="${k.includes('JSON')?'JSON opcional':''}">${k.includes('JSON')?esc(r[k]||''):''}</${k.includes('JSON')?'textarea':'input'}></label>`).join('')+`<label class="cc-field">Situação<select data-cc-key="ATIVO"><option value="SIM" ${String(r.ATIVO||'SIM')==='SIM'?'selected':''}>Ativo</option><option value="NAO" ${String(r.ATIVO||'')!=='SIM'?'selected':''}>Inativo</option></select></label>`;document.getElementById('cc-modal').classList.add('open')}
+  window.ccFechar=()=>document.getElementById('cc-modal').classList.remove('open');
+  window.ccSalvar=async()=>{const body={};document.querySelectorAll('#cc-modal-fields [data-cc-key]').forEach(e=>body[e.dataset.ccKey]=e.value.trim());const required=fields[state.tipo].filter(x=>['NOME','RAZAO_SOCIAL','DESCRICAO'].includes(x[0]));if(required.some(x=>!body[x[0]]))return alert('Preencha os campos obrigatórios.');try{const id=state.edit?.[state.tipo==='clientes'?'ID_CLIENTE':state.tipo==='produtos'?'ID_PRODUTO':state.tipo==='vendedores'?'ID_VENDEDOR':state.tipo==='rcas'?'ID_RCA':'ID_GERENTE'];await api('/api/cadastros/'+state.tipo+(id?'/'+encodeURIComponent(id):''),{method:id?'PATCH':'POST',body:JSON.stringify(body)});ccFechar();await load(state.tipo)}catch(e){alert(e.message)}};
+  window.ccExportar=()=>{const rows=activeRows(),fs=fields[state.tipo],csv=[fs.map(x=>x[0]).join(';')].concat(rows.map(r=>fs.map(x=>`"${String(r[x[0]]||'').replace(/"/g,'""')}"`).join(';'))).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download=`${state.tipo}.csv`;a.click();URL.revokeObjectURL(a.href)};
+  window.ccImportar=async input=>{const f=input.files?.[0];if(!f)return;const text=await f.text();const lines=text.split(/\r?\n/).filter(Boolean),fs=fields[state.tipo];const itens=lines.slice(1).map(line=>{const vals=line.split(';').map(v=>v.replace(/^"|"$/g,''));return Object.fromEntries(fs.map((x,i)=>[x[0],vals[i]||'']))});try{const j=await api('/api/cadastros/'+state.tipo+'/importar',{method:'POST',body:JSON.stringify({itens})});alert(`${j.criados||0} criados e ${j.atualizados||0} atualizados.`);await load(state.tipo)}catch(e){alert(e.message)}input.value=''};
 })();
 </script>
 </body>
