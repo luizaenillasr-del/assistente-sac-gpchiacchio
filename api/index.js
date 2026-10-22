@@ -6916,7 +6916,7 @@ app.post('/api/assertividade-ia', requerPerfil('MASTER','ANALISTA SAC','APROVADO
 // ===== PAINEL DA MÁQUINA =====
 app.get('/api/painel-maquina', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC','APROVADOR','DIRETOR','AUDITOR','VISUALIZADOR'), async (req,res)=>{
   try {
-    const {setor, de, ate, responsavel, tipo} = req.query;
+    const {setor, de, ate, responsavel, tipo, status, prioridade, canal, origem, classificacao} = req.query;
     // Empresa sempre do JWT — MASTER pode filtrar por query, demais fixo no JWT
     const perfil = perfilCanonico(req.user?.perfil||'');
     const empresaFiltro = perfil === 'MASTER' ? (req.query.empresa||null) : (req.user?.empresa||null);
@@ -6933,6 +6933,11 @@ app.get('/api/painel-maquina', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC'
     if (ate) filtradas = filtradas.filter(m=>{ const d=new Date(m.DATA_CRIACAO||m.DATA_ABERTURA||0); return d<=new Date(ate+'T23:59:59'); });
     if (responsavel) filtradas = filtradas.filter(m=>String(m.RESPONSAVEL||m.RESPONSAVEL_SETOR||m.RESPONSAVEL_ANALISTA||'').toLowerCase().includes(String(responsavel).toLowerCase()));
     if (tipo) filtradas = filtradas.filter(m=>String(m.TIPO_MANIFESTACAO||m.TIPO||'').toLowerCase().includes(String(tipo).toLowerCase()));
+    if (status) filtradas = filtradas.filter(m=>String(m.STATUS||m.STATUS_FICHA||'').toLowerCase().includes(String(status).toLowerCase()));
+    if (prioridade) filtradas = filtradas.filter(m=>String(m.PRIORIDADE||m.PRIORIDADE_MANIFESTACAO||'').toLowerCase().includes(String(prioridade).toLowerCase()));
+    if (canal) filtradas = filtradas.filter(m=>String(m.CANAL||m.CANAL_ORIGEM||'').toLowerCase().includes(String(canal).toLowerCase()));
+    if (origem) filtradas = filtradas.filter(m=>String(m.ORIGEM||m.FONTE||'').toLowerCase().includes(String(origem).toLowerCase()));
+    if (classificacao) filtradas = filtradas.filter(m=>String(m.CLASSIFICACAO||m.CATEGORIA||m.MOTIVO||'').toLowerCase().includes(String(classificacao).toLowerCase()));
 
     const total = filtradas.length;
     const analisadas = new Set(filtradas.filter(m=>m.ANALISE_IA_STATUS||m.ANALISE_IA||m.CEREBRO_ANALISE||m.STATUS_CEREBRO||m.DECISAO_FINAL).map(m=>m.ID_MANIFESTACAO));
