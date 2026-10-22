@@ -243,7 +243,7 @@ async function edit(action, data = {}) {
       );
       assert.equal(missing.status, 400);
     });
-    await test("nota zero preserva NPS, versão e sinaliza uma única insatisfação", async () => {
+    await test("nota zero preserva NPS e sinaliza análise sem abrir OCP automaticamente", async () => {
       const payload = {
         formularioId: "chiacchio",
         versaoId: published.publicada.revision,
@@ -279,9 +279,9 @@ async function edit(action, data = {}) {
         "Você recomendaria a nossa empresa?",
       );
       assert.equal(
-        mock.DB.PESQUISA_OCORRENCIAS.filter((o) => o.ID_RESPOSTA === responseId)
+        (mock.DB.PESQUISA_OCORRENCIAS || []).filter((o) => o.ID_RESPOSTA === responseId)
           .length,
-        1,
+        0,
       );
       assert.ok(
         !mock.DB.MANIFESTACOES.some((m) => m.ID_PESQUISA === responseId),
@@ -306,6 +306,55 @@ async function edit(action, data = {}) {
           (x) => x._id === responseId && x["Recomendação"] === "0",
         ),
       );
+    });
+    await test("SAC abre OCP manualmente para resposta crítica sem token", async () => {
+      const r = mock.DB.PESQUISA_RESPOSTAS.find(
+        (item) => item.ID_RESPOSTA === responseId,
+      );
+      const created = await request(
+        "POST",
+        "/api/pesquisas/ocorrencias",
+        analyst,
+        {
+          respostaId: responseId,
+          empresa: r.EMPRESA,
+          nps: r.NOTA_MEDIA,
+          setor: "Qualidade",
+          descricao: "Tratamento formal autorizado pelo SAC.",
+        },
+      );
+      assert.equal(created.status, 200);
+      assert.ok(created.body.id);
+      assert.equal(
+        (mock.DB.PESQUISA_OCORRENCIAS || []).filter(
+          (o) => o.ID_RESPOSTA === responseId,
+        ).length,
+        1,
+      );
+      const updated = await request(
+        "PATCH",
+        "/api/pesquisas/ocorrencias/" + created.body.id,
+        analyst,
+        {
+          status: "EM_TRATATIVA",
+          responsavel: "Analista SAC",
+          prazo: "2026-12-31",
+          resultado: "",
+        },
+      );
+      assert.equal(updated.status, 200);
+      const ocp = mock.DB.PESQUISA_OCORRENCIAS.find(
+        (o) => o.ID_OCP === created.body.id,
+      );
+      assert.equal(ocp.STATUS, "EM_TRATATIVA");
+      assert.equal(ocp.RESPONSAVEL, "Analista SAC");
+      const forbidden = await request(
+        "PATCH",
+        "/api/pesquisas/ocorrencias/" + created.body.id,
+        token("ANALISTA SAC", "PLASCHIO", "joao.plaschio"),
+        { status: "ENCERRADA", resultado: "Não autorizado" },
+      );
+      assert.equal(forbidden.status, 403);
     });
     await test("SAC decide uma vez e a manifestação entra na aprovação", async () => {
       const before = mock.DB.MANIFESTACOES.length;

@@ -339,6 +339,13 @@
 #page-relatorio-satisfacao .rs-chip.on{background:#c70602;border-color:#c70602;color:#fff}
 #page-relatorio-satisfacao .rs-chip.sq{border-radius:8px}
 
+/* ─── CENTRO DAS PESQUISAS ──────────────────────────────────── */
+#page-sugestoes-melhoria .cp-dash-view{height:34px;border:1px solid #e4e4e4;border-radius:7px;background:#fff;color:#666;padding:0 13px;font:600 12px Montserrat,system-ui,sans-serif;cursor:pointer}
+#page-sugestoes-melhoria .cp-dash-view.active{background:#c70602;border-color:#c70602;color:#fff}
+#page-sugestoes-melhoria #cp-formularios-admin #psm-root{padding:0;max-width:none;margin:0}
+#page-sugestoes-melhoria #cp-formularios-admin .psm-header{background:#fff;border:1px solid #e4e4e4;border-radius:10px;padding:18px 20px}
+#page-sugestoes-melhoria #cp-formularios-admin .psm-nav{background:#fff;padding:0 12px;border:1px solid #e4e4e4;border-radius:10px}
+
 /* ─── ARQUIVO DE FICHAS ──────────────────────────────────────── */
 #page-biblioteca-fichas{background:var(--ref-bg)!important}
 #page-biblioteca-fichas .af-root{max-width:1240px;margin:0 auto;padding:24px 28px 64px}
