@@ -2809,6 +2809,7 @@
       <button class="nm-ref-btn primary-outline" onclick="nmIrParaEtapa(window.nmEtapa||1)">Assumir tratativa</button>
       <button class="nm-ref-btn danger" onclick="salvarRascunho()">Salvar</button>
       <button class="nm-ref-btn" onclick="navigate('acompanhamento',null)">← Voltar</button>
+      <input type="hidden" id="nm-status-ficha" value="ABERTA">
     </div>
     <div class="nm-ref-breadcrumb">Central de Manifestações <b>›</b> Nova Manifestação</div>
     <aside class="nm-ref-sidebar">
@@ -2856,37 +2857,9 @@
       .nm-stepper-line.done{background:#1E6B3A}
       @keyframes nmFadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
       .nm-active{animation:nmFadeUp .25s ease}
-      /* Topbar NM */
-      #page-nova-manifestacao .nm-topbar{background:#fff;border-bottom:1px solid #E4E4E4;padding:0 28px;height:56px;display:flex;align-items:center;gap:12px;flex-shrink:0}
       /* Status ficha pills */
       .nm-status-ficha-btn{border-radius:20px;padding:4px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:'Sora',inherit;transition:all .15s}
     </style>
-
-    <!-- TOPBAR -->
-    <div class="nm-topbar">
-      <div style="display:flex;flex-direction:column;gap:1px">
-        <span style="font-size:10.5px;color:#929090;font-weight:500;letter-spacing:.02em">Operação</span>
-        <span style="font-size:14px;font-weight:700;color:#1F1F1F;letter-spacing:-.01em">Nova Manifestação</span>
-      </div>
-      <div style="flex:1"></div>
-      <div id="nm-status-ficha-btns" style="display:flex;gap:6px">
-        <button onclick="nmSetStatusFicha('ABERTA',this)" class="nm-status-ficha-btn" style="background:#E6F2EA;color:#1E6B3A;border:1.5px solid #A5D6B0">● Aberta</button>
-        <button onclick="nmSetStatusFicha('EM_ANDAMENTO',this)" class="nm-status-ficha-btn" style="background:#fff;color:#929090;border:1.5px solid #E4E4E4">Em andamento</button>
-        <button onclick="nmSetStatusFicha('FECHADA',this)" class="nm-status-ficha-btn" style="background:#fff;color:#929090;border:1.5px solid #E4E4E4">Fechada</button>
-      </div>
-      <input type="hidden" id="nm-status-ficha" value="ABERTA">
-      <button onclick="salvarRascunho()" style="height:36px;border:1.5px solid #E4E4E4;background:#fff;border-radius:9px;padding:0 16px;font-size:12.5px;font-weight:600;cursor:pointer;color:#545252;font-family:'Sora',inherit">Salvar rascunho</button>
-      <button onclick="navigate('acompanhamento',null)" style="height:36px;border:1.5px solid #E4E4E4;background:#fff;border-radius:9px;padding:0 14px;font-size:12.5px;font-weight:600;cursor:pointer;color:#545252;font-family:'Sora',inherit">Cancelar</button>
-    </div>
-
-    <!-- STEPPER BAR -->
-    <div style="background:#fff;border-bottom:1px solid #E4E4E4;padding:16px 28px 14px;flex-shrink:0">
-      <div id="nm-stepper-row" style="display:flex;align-items:center;max-width:640px">
-        <!-- built by JS -->
-      </div>
-      <div style="margin-top:12px;font-size:14px;font-weight:700;color:#1F1F1F;letter-spacing:-.01em" id="nm-step-label-main"></div>
-      <div style="font-size:12px;color:#929090;margin-top:3px;font-weight:400" id="nm-step-desc-main"></div>
-    </div>
 
     <!-- STEPS BODY -->
     <div id="nm-steps-body" style="flex:1;overflow-y:auto;padding:24px 28px">
@@ -3339,9 +3312,6 @@
       window.nmEtapa = window.nmEtapa || 1;
 
       function renderStepper(){
-        document.querySelectorAll('#page-nova-manifestacao .nm-topbar').forEach(function(el){
-          el.style.setProperty('display','none','important');
-        });
         var row = document.getElementById('nm-stepper-row');
         if(!row) return;
         var html = '';
@@ -29353,19 +29323,6 @@ if (typeof pageLoaders !== 'undefined') {
   if (window.pageLoaders) window.pageLoaders['visao-geral'] = carregar;
   window.loadVisaoGeral = carregar;
 })();
-</script>
-<script>
-  (function(){
-    var page = document.getElementById('page-nova-manifestacao');
-    if (!page) return;
-    function sync(){
-      var active = !page.classList.contains('hidden') && page.style.display !== 'none';
-      page.querySelectorAll('.nm-topbar').forEach(function(el){ el.style.setProperty('display','none','important'); });
-      page.querySelectorAll('#nm-stepper-row,#nm-step-label-main,#nm-step-desc-main').forEach(function(el){ el.style.setProperty('display','none','important'); });
-    }
-    new MutationObserver(sync).observe(page,{attributes:true,attributeFilter:['class','style']});
-    sync();
-  })();
 </script>
 </body>
 </html>
