@@ -3,7 +3,14 @@
    visual e responsividade. */
 :root{--ref-red:#c70602;--ref-ink:#171717;--ref-muted:#737373;--ref-line:#e4e4e4;--ref-bg:#f4f4f4;--ref-green:#1e6b3a}
 
+/* Sidebar logo */
+.sidebar-logo{padding:4px 0 0}
+.sidebar-logo img{max-width:160px;margin:0 auto 14px;display:block}
+
 /* Dashboard executiva */
+#page-visao-geral .topbar .page-header{display:none!important}
+#page-visao-geral .topbar .breadcrumb{display:none!important}
+#page-visao-geral .topbar{display:none!important}
 #page-visao-geral{background:var(--ref-bg)!important}
 #page-visao-geral .content{padding:0 20px 48px!important;max-width:none!important}
 #page-visao-geral .dex2{font-family:Montserrat,Arial,sans-serif;color:var(--ref-ink);max-width:1540px;margin:0 auto}
