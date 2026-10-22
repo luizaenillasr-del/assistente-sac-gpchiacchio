@@ -8038,18 +8038,30 @@
   // ── séries a partir do histórico da API ──
   function _serie(){
     const d=_d||{};
-    const s=(d.historico||[]).map(h=>{
-      const at=num(h.atendimento),pr=num(h.prazo),qu=num(h.qualidade),re=num(h.recomendacao);
-      const vs=[at,pr,qu,re].filter(v=>v!=null);
-      const ind=vs.length?vs.reduce((a,b)=>a+b,0)/vs.length:num(h.media);
-      return {k:h.mes,at,pr,qu,re,n:h.total||0,ind,nps_score:h.nps_score!=null?Number(h.nps_score):null};
-    }).filter(r=>r.n>0&&r.ind!=null);
+    const manual=d.textos||{};
+    const manualNum=(key)=>num(manual['cri_'+key]);
+    const manualTotal=num(manual.total_respondido);
+    const manualInd=num(manual.indicador_geral);
     const ref=_refKey();
+    const s=(d.historico||[]).map(h=>{
+      // A entrada manual complementa somente dimensões sem fonte automática.
+      // Assim, uma atualização da pesquisa nunca sobrescreve o que o analista
+      // digitou, e um mês sem respostas ainda pode ser elaborado.
+      const isRef=h.mes===ref;
+      const at=num(h.atendimento)??(isRef?manualNum('at'):null),pr=num(h.prazo)??(isRef?manualNum('pr'):null),qu=num(h.qualidade)??(isRef?manualNum('qu'):null),re=num(h.recomendacao)??(isRef?manualNum('re'):null);
+      const vs=[at,pr,qu,re].filter(v=>v!=null);
+      const ind=vs.length?vs.reduce((a,b)=>a+b,0)/vs.length:(num(h.media)??manualInd);
+      const n=Number(h.total||0)||(isRef?manualTotal:0)||0;
+      return {k:h.mes,at,pr,qu,re,n,ind,nps_score:h.nps_score!=null?Number(h.nps_score):(isRef?num(manual.nps_score):null)};
+    }).filter(r=>r.n>0&&r.ind!=null);
     if(!s.some(r=>r.k===ref)){
       const g={};(d.criterios||[]).forEach(c=>{g[c.criterio]=num(c.media);});
       const vs=[g.atendimento,g.prazo,g.qualidade,g.recomendacao].filter(v=>v!=null);
-      const n=(d.itens||[]).length;
-      if(vs.length&&n>0) s.push({k:ref,at:g.atendimento??null,pr:g.prazo??null,qu:g.qualidade??null,re:g.recomendacao??null,n,ind:vs.reduce((a,b)=>a+b,0)/vs.length});
+      const n=(d.itens||[]).length||manualTotal||0;
+      const vals={atendimento:g.atendimento??manualNum('at'),prazo:g.prazo??manualNum('pr'),qualidade:g.qualidade??manualNum('qu'),recomendacao:g.recomendacao??manualNum('re')};
+      const all=[vals.atendimento,vals.prazo,vals.qualidade,vals.recomendacao].filter(v=>v!=null);
+      const ind=all.length?all.reduce((a,b)=>a+b,0)/all.length:manualInd;
+      if(ind!=null&&n>0) s.push({k:ref,at:vals.atendimento??null,pr:vals.prazo??null,qu:vals.qualidade??null,re:vals.recomendacao??null,n,ind,nps_score:num(manual.nps_score)});
       s.sort((a,b)=>a.k<b.k?-1:1);
     }
     return s;
@@ -8332,7 +8344,21 @@
 
     cont.innerHTML=h;
     _atualizarBarraRelatorio();
+    if(_d.relMeta?.id) setTimeout(()=>relCarregarEnvios(_d.relMeta.id),0);
   }
+
+  window.relCarregarEnvios=async function(id){
+    const cont=_val('rel-conteudo');if(!cont)return;
+    try{
+      const tok=sessionStorage.getItem('sac-token');
+      const r=await fetch(`/api/relatorios/${encodeURIComponent(id)}/envios`,{headers:tok?{Authorization:'Bearer '+tok}:{}});
+      const j=await r.json().catch(()=>({}));
+      let card=_val('rel-envios-card');
+      if(!card){card=document.createElement('div');card.id='rel-envios-card';card.className='rs-card';cont.appendChild(card);}
+      const envios=Array.isArray(j.envios)?j.envios:[];
+      card.innerHTML=`<div class="rs-card-h"><b>Envios deste relatório</b><span class="rs-sub">${envios.length} registro${envios.length===1?'':'s'}</span></div>${envios.length?`<div style="display:flex;flex-direction:column;gap:7px">${envios.slice().reverse().map(e=>`<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;border-top:1px solid #EFEFEF;padding-top:8px;font-size:12px"><span style="font-weight:700">${esc(e.status||'—')}</span><span>${esc((e.destinatarios||[]).join(', '))}</span><span class="rs-sub">${e.criado_em?new Date(e.criado_em).toLocaleString('pt-BR'):''}</span><span class="rs-sub">v${e.versao||1}${e.possui_pdf?' · PDF':''}</span>${e.erro?`<span style="color:#A80502">${esc(e.erro)}</span>`:''}</div>`).join('')}</div>`:'<span class="rs-sub">Nenhum envio registrado.</span>'}`;
+    }catch(_){/* histórico é complementar ao relatório; não bloqueia sua abertura */}
+  };
 
   // ── barra de gestão do relatório ──────────────────────────────────────────────
   function _statusLabel(meta,textos){
@@ -8422,36 +8448,42 @@
   window.relCompartilharLink=async function(){
     const meta=_d?.relMeta;
     const tok=sessionStorage.getItem('sac-token');
-    // Se não há relatório gerado, compartilha link de navegação com filtros atuais
-    if(!meta){
-      const empresa=_empresa(),ano=_val('rel-f-ano')?.value,mes=_val('rel-f-mes')?.value;
-      const base=window.location.origin+window.location.pathname;
-      const link=`${base}?rel_empresa=${encodeURIComponent(empresa)}&rel_ano=${ano}&rel_mes=${mes}#relatorio-satisfacao`;
-      try{
-        await navigator.clipboard.writeText(link);
-      }catch(e){
-        const ta=document.createElement('textarea');ta.value=link;ta.style.position='fixed';ta.style.opacity='0';
-        document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);
-      }
-      _toast('Link copiado! (sem relatório publicado, acesso requer login)');
-      return;
-    }
+    if(!meta){_toast('Gere e publique o relatório antes de enviá-lo.');return;}
+    const old=_val('rel-modal-envio');if(old)old.remove();
+    const m=document.createElement('div');m.id='rel-modal-envio';m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9000;display:flex;align-items:center;justify-content:center;padding:16px';
+    m.innerHTML=`<div style="background:#fff;border-radius:14px;padding:24px;width:100%;max-width:560px;display:flex;flex-direction:column;gap:14px;box-shadow:0 8px 32px rgba(0,0,0,.18)">
+      <div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:17px">Enviar para Diretoria e Presidência</b><button type="button" onclick="document.getElementById('rel-modal-envio').remove()" style="border:0;background:none;font-size:22px;cursor:pointer;color:#707070">×</button></div>
+      <p style="margin:0;font-size:13px;color:#666464">O relatório precisa estar publicado. Use somente e-mails cadastrados na ferramenta.</p>
+      <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:#545252">Destinatários (separe por vírgula)
+        <input id="rel-env-dest" type="text" placeholder="diretoria@empresa.com.br, presidencia@empresa.com.br" style="height:38px;border:1px solid #D6D6D6;border-radius:7px;padding:0 10px;font-size:13px;font-family:inherit">
+      </label>
+      <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:#545252">Mensagem
+        <textarea id="rel-env-msg" rows="4" style="border:1px solid #D6D6D6;border-radius:7px;padding:8px 10px;font-size:13px;font-family:inherit;resize:vertical">Segue o relatório mensal de satisfação para conferência.</textarea>
+      </label>
+      <label style="display:flex;gap:8px;align-items:center;font-size:12.5px;color:#545252"><input id="rel-env-pdf" type="checkbox"> Anexar PDF ao e-mail</label>
+      <div id="rel-env-erro" style="display:none;color:#A80502;font-size:13px"></div>
+      <div style="display:flex;justify-content:flex-end;gap:8px"><button type="button" onclick="document.getElementById('rel-modal-envio').remove()" style="border:1px solid #D6D6D6;background:#fff;border-radius:8px;padding:9px 16px;cursor:pointer;font-weight:600">Cancelar</button><button type="button" id="rel-env-ok" onclick="relEnviarRelatorio()" style="border:0;background:#C70602;color:#fff;border-radius:8px;padding:9px 16px;cursor:pointer;font-weight:700">Publicar e enviar</button></div>
+    </div>`;
+    document.getElementById('page-relatorio-satisfacao').appendChild(m);
+  };
+
+  window.relEnviarRelatorio=async function(){
+    const meta=_d?.relMeta,tok=sessionStorage.getItem('sac-token'),btn=_val('rel-env-ok'),err=_val('rel-env-erro');
+    if(!meta)return;
+    const destinatarios=String(_val('rel-env-dest')?.value||'').split(',').map(v=>v.trim()).filter(Boolean);
+    if(!destinatarios.length){if(err){err.textContent='Informe ao menos um destinatário.';err.style.display='';}return;}
+    if(btn){btn.disabled=true;btn.textContent='Enviando…';}
     try{
-      const dadosSnap={nps:_d.nps||null,criterios:_d.criterios||[]};
-      const r=await fetch(`/api/relatorios/${meta.id}/link`,{method:'POST',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({dados:dadosSnap})});
+      const r=await fetch(`/api/relatorios/${encodeURIComponent(meta.id)}/enviar`,{method:'POST',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({destinatarios,mensagem:_val('rel-env-msg')?.value||'',anexar_pdf:!!_val('rel-env-pdf')?.checked})});
       const j=await r.json().catch(()=>({}));
-      if(!r.ok||j.sucesso===false){_toast('Erro: '+(j.erro||'não foi possível gerar o link.'));return;}
-      const link=j.link||'';
-      try{
-        await navigator.clipboard.writeText(link);
-        _toast('Link copiado! '+link);
-      }catch(e){
-        const ta=document.createElement('textarea');ta.value=link;ta.style.position='fixed';ta.style.opacity='0';
-        document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);
-        _toast('Link copiado para a área de transferência.');
+      if(!r.ok||j.sucesso===false){
+        if(err){err.textContent=j.erro||'Não foi possível concluir o envio.';err.style.display='';}
+        if(j.preparado)_toast('Envio preparado, mas o serviço de e-mail ainda não está configurado.');
+        return;
       }
-      window.open(link,'_blank');
-    }catch(e){_toast('Erro ao gerar link.');}
+      _val('rel-modal-envio')?.remove();_toast('Relatório enviado com sucesso.');
+    }catch(e){if(err){err.textContent='Erro de comunicação com o servidor.';err.style.display='';}}
+    finally{if(btn){btn.disabled=false;btn.textContent='Publicar e enviar';}}
   };
 
   function _editV(id,txt){return _editTxt[id]!=null?_editTxt[id]:txt;}
@@ -8546,6 +8578,9 @@
           <label style="display:flex;flex-direction:column;gap:3px;font-size:11px;font-weight:600;color:#545252">Cargo ${tagManual}
             <input id="rrm-cargo_analista" type="text" placeholder="Ex: Analista de SAC" style="height:34px;border:1px solid #D6D6D6;border-radius:6px;padding:0 10px;font-size:13px;font-family:inherit" value="${esc(textos.cargo_analista||'')}">
           </label>
+          <label style="display:flex;flex-direction:column;gap:3px;font-size:11px;font-weight:600;color:#545252">Indicador geral manual ${tagManual}
+            <input id="rrm-indicador_geral" type="number" min="0" max="10" step="0.1" placeholder="Use somente quando não houver dados automáticos" style="height:34px;border:1px solid #D6D6D6;border-radius:6px;padding:0 10px;font-size:13px;font-family:inherit" value="${esc(textos.indicador_geral||'')}">
+          </label>
         </div>
         <label style="display:flex;flex-direction:column;gap:3px;font-size:11px;font-weight:600;color:#545252">Resumo executivo ${tagManual}
           <textarea id="rrm-resumo_executivo" rows="3" placeholder="Breve resumo dos resultados do período para a Diretoria/Presidência…" style="border:1px solid #D6D6D6;border-radius:7px;padding:8px 10px;font-size:13px;font-family:inherit;resize:vertical">${esc(textos.resumo_executivo||'')}</textarea>
@@ -8609,7 +8644,7 @@
     if(btn){btn.disabled=true;btn.textContent='Gerando...';}
     try{
       // Campos quantitativos novos
-      for(const campo of ['total_enviado','total_respondido','nps_score']){
+      for(const campo of ['total_enviado','total_respondido','nps_score','indicador_geral']){
         const el=document.getElementById('rrm-'+campo);
         if(!el)continue;
         const valor=(el.value).trim();
@@ -8730,6 +8765,7 @@
             <label style="display:flex;flex-direction:column;gap:4px;font-size:11.5px;font-weight:600;color:#545252">Total enviado<input id="rrm-total_enviado" type="number" min="0" placeholder="—" value="${esc(textos.total_enviado||'')}" style="height:36px;border:1px solid #D6D6D6;border-radius:7px;padding:0 10px;font-size:14px;font-family:inherit"></label>
             <label style="display:flex;flex-direction:column;gap:4px;font-size:11.5px;font-weight:600;color:#545252">Total respondido<input id="rrm-total_respondido" type="number" min="0" placeholder="—" value="${esc(textos.total_respondido||'')}" style="height:36px;border:1px solid #D6D6D6;border-radius:7px;padding:0 10px;font-size:14px;font-family:inherit"></label>
             <label style="display:flex;flex-direction:column;gap:4px;font-size:11.5px;font-weight:600;color:#545252">NPS Score<input id="rrm-nps_score" type="number" min="-100" max="100" placeholder="—" value="${esc(textos.nps_score||'')}" style="height:36px;border:1px solid #D6D6D6;border-radius:7px;padding:0 10px;font-size:14px;font-family:inherit"></label>
+            <label style="display:flex;flex-direction:column;gap:4px;font-size:11.5px;font-weight:600;color:#545252">Indicador geral manual<input id="rrm-indicador_geral" type="number" min="0" max="10" step="0.1" placeholder="—" value="${esc(textos.indicador_geral||'')}" style="height:36px;border:1px solid #D6D6D6;border-radius:7px;padding:0 10px;font-size:14px;font-family:inherit"></label>
             <label style="display:flex;flex-direction:column;gap:4px;font-size:11.5px;font-weight:600;color:#545252">Mês de referência<div style="display:flex;gap:6px"><select id="rrm-mes" style="flex:1;height:36px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;font-size:13px;font-family:inherit;background:#fff">${_mesesOpts}</select><select id="rrm-ano" style="width:80px;height:36px;border:1px solid #D6D6D6;border-radius:7px;padding:0 6px;font-size:13px;font-family:inherit;background:#fff">${_anosOpts}</select></div></label>
             <label style="display:flex;flex-direction:column;gap:4px;font-size:11.5px;font-weight:600;color:#545252">Responsável<input id="rrm-responsavel" type="text" placeholder="Nome completo" value="${esc(textos.responsavel||'')}" style="height:36px;border:1px solid #D6D6D6;border-radius:7px;padding:0 10px;font-size:13px;font-family:inherit"></label>
             <label style="display:flex;flex-direction:column;gap:4px;font-size:11.5px;font-weight:600;color:#545252">Cargo<input id="rrm-cargo_analista" type="text" placeholder="Ex: Analista de SAC" value="${esc(textos.cargo_analista||'')}" style="height:36px;border:1px solid #D6D6D6;border-radius:7px;padding:0 10px;font-size:13px;font-family:inherit"></label>
@@ -8774,7 +8810,7 @@
   };
 
   window.rrmLimpar=function(){
-    const fields=['rrm-total_enviado','rrm-total_respondido','rrm-nps_score','rrm-responsavel','rrm-cargo_analista','rrm-resumo_executivo'];
+    const fields=['rrm-total_enviado','rrm-total_respondido','rrm-nps_score','rrm-indicador_geral','rrm-responsavel','rrm-cargo_analista','rrm-resumo_executivo'];
     fields.forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     CR.forEach(([,key])=>{
       const c=document.getElementById('rrm-cri-'+key);if(c)c.value='';
