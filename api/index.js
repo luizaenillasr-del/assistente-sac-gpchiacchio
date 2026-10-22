@@ -7637,10 +7637,11 @@ async function carregarFichasBiblioteca(req) {
       EMPRESA: _bibEmpresa(m.EMPRESA_RECLAMADA || m.EMPRESA_RECLAMANTE || idx.EMPRESA),
       NOME_CLIENTE: m.NOME_CLIENTE || m.CLIENTE_NOME || m.CONTATO || idx.NOME_CLIENTE || '',
       CNPJ_CPF: m.CNPJ || m.CNPJ_CPF || m.CNPJ_CLIENTE || '',
+      PRODUTO: m.PRODUTO || m.PRODUTO_NOME || idx.PRODUTO || m.SKU || '',
       TIPO_MANIFESTACAO: m.TIPO_MANIFESTACAO || m.TIPO || idx.TIPO_MANIFESTACAO || 'Reclamação',
       MOTIVO: m.MOTIVO || idx.MOTIVO || '',
       COLABORADOR_RECEBIMENTO: m.COLABORADOR_RECEBIMENTO || m.REGISTRADO_POR || m.USUARIO_CRIACAO || '',
-      ORIGEM: doc ? 'IMPORTADA' : 'SISTEMA', STATUS: doc ? 'CONCLUIDA' : _bibCategoria(m.STATUS_FICHA, m.STATUS), COM_TRATATIVA: doc ? true : comTrat,
+      ORIGEM: doc ? 'IMPORTADA' : 'SISTEMA', STATUS: doc && !(m.STATUS_FICHA || m.STATUS) ? 'ARQUIVADA' : _bibCategoria(m.STATUS_FICHA, m.STATUS), COM_TRATATIVA: doc ? !!comTrat : comTrat,
       STATUS_FICHA: m.STATUS_FICHA || '',
       STATUS_RAW: m.STATUS || '',
       SETOR: m.SETOR_CONFIRMADO || m.SETOR_SUGERIDO || '',
@@ -7673,10 +7674,11 @@ async function carregarFichasBiblioteca(req) {
       ID_FICHA: f.ID_FICHA || pid, ID_MANIFESTACAO: '', PROTOCOLO: pid,
       DATA_REGISTRO: dt ? dt.iso : '', ANO: dt ? dt.ano : 'S/A', MES: dt ? dt.mes : '00', DIA: dt ? dt.dia : '',
       EMPRESA: _bibEmpresa(f.EMPRESA), NOME_CLIENTE: f.NOME_CLIENTE || '', CNPJ_CPF: f.CNPJ || '',
+      PRODUTO: f.PRODUTO || f.PRODUTO_NOME || f.SKU || '',
       TIPO_MANIFESTACAO: f.TIPO_MANIFESTACAO || 'Reclamação', MOTIVO: f.MOTIVO || '',
       COLABORADOR_RECEBIMENTO: f.COLABORADOR_RECEBIMENTO || '',
-      ORIGEM: 'IMPORTADA', STATUS: 'CONCLUIDA', COM_TRATATIVA: true,
-      STATUS_FICHA: 'CONCLUIDA', STATUS_RAW: 'CONCLUIDA',
+      ORIGEM: 'IMPORTADA', STATUS: f.STATUS || f.STATUS_FICHA || 'ARQUIVADA', COM_TRATATIVA: !!(f.TRATATIVA_REALIZADA || f.TRATATIVA || f.DATA_CONCLUSAO),
+      STATUS_FICHA: f.STATUS_FICHA || f.STATUS || '', STATUS_RAW: f.STATUS || f.STATUS_FICHA || '',
       SETOR: f.SETOR_RECEBIMENTO || '', RESPONSAVEL: f.COLABORADOR_RECEBIMENTO || '',
       DATA_CONCLUSAO: f.DATA_REGISTRO || '', SLA_HORAS: 0, DATA_ABERTURA_ISO: f.DATA_REGISTRO || '',
       ARQUIVADO: String(f.ARQUIVADO || '').toUpperCase() === 'SIM' ? 'SIM' : '',
@@ -7701,9 +7703,10 @@ async function carregarFichasBiblioteca(req) {
       DATA_REGISTRO: dt ? dt.iso : '', ANO: dt ? dt.ano : 'S/A', MES: dt ? dt.mes : '00', DIA: dt ? dt.dia : '',
       EMPRESA: _bibEmpresa(h.ORIG_EMPRESA), NOME_CLIENTE: h.ORIG_CONTATO || '', CNPJ_CPF: h.ORIG_CNPJ || h.CNPJ || '',
       TIPO_MANIFESTACAO: h.TIPO_MANIFESTACAO || 'Reclamação',
+      PRODUTO: h.ORIG_PRODUTO || h.PRODUTO || h.SKU || '',
       MOTIVO: h.COMP_TIPO_PROBLEMA_VALIDADO || String(h.ORIG_DESCRICAO_RECLAMACAO || '').slice(0, 80),
       COLABORADOR_RECEBIMENTO: h.ORIG_ATENDENTE || '',
-      ORIGEM: 'IMPORTADA', STATUS: 'CONCLUIDA', COM_TRATATIVA: true,
+      ORIGEM: 'IMPORTADA', STATUS: h.STATUS_FINAL || h.STATUS || 'ARQUIVADA', COM_TRATATIVA: !!trat,
       TOTAL_EVIDENCIAS: Math.max(ev, nEv(id)),
       ARQUIVO_NOME: '', PDF_DRIVE_URL: '', PDF_NOME: '',
       _DESC: h.ORIG_DESCRICAO_RECLAMACAO || '', _TRAT: trat, _CONCLUSAO: '',
@@ -7781,7 +7784,7 @@ function _bibFiltrar(fichas, qs, { ignorar = [] } = {}) {
   if (q && !ig('q')) {
     const nq = n(q), dq = _bibDigitos(q);
     r = r.filter(f =>
-      n([f.PROTOCOLO, f.NOME_CLIENTE, f.CNPJ_CPF, f.MOTIVO, f.COLABORADOR_RECEBIMENTO, f.EMPRESA, f.SETOR, f.RESPONSAVEL].join(' ')).includes(nq) ||
+      n([f.PROTOCOLO, f.NOME_CLIENTE, f.CNPJ_CPF, f.MOTIVO, f.PRODUTO, f.SKU, f.COLABORADOR_RECEBIMENTO, f.EMPRESA, f.SETOR, f.RESPONSAVEL].join(' ')).includes(nq) ||
       (dq.length >= 4 && _bibDigitos(f.CNPJ_CPF).includes(dq)));
   }
   if (extra === 'evidencia' && !ig('extra')) r = r.filter(f => f.TOTAL_EVIDENCIAS > 0);

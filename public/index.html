@@ -9412,6 +9412,9 @@
 .af-sla-ok{color:#1E6B3A;font-size:11px;font-weight:600}
 .af-sla-alerta{color:#92400E;font-size:11px;font-weight:600}
 .af-sla-vencido{color:#A80502;font-size:11px;font-weight:600}
+.af-page-title{background:#F4F4F4;padding:18px 24px 10px}
+.af-page-title h1{font-size:24px;line-height:1.2;font-weight:700;margin:0;color:#1F1F1F}
+.af-page-title p{font-size:13px;color:#666464;margin:5px 0 0;line-height:1.45}
 </style>
 <!-- ===== ARQUIVO DE FICHAS: estilos — fim ===== -->
 
@@ -9428,6 +9431,11 @@
     <button class="af-btn" onclick="abrirModalImportarFicha()">↑ Importar fichas</button>
     <button class="af-btn" id="bib-btn-sincronizar" onclick="sincronizarBaseConhecimento()" title="Lê todas as fichas e popula automaticamente Setores, Matriz de Tratamento e Cérebro com os dados encontrados">⚡ Sincronizar base</button>
     <button class="af-btn af-btn-red" id="bib-btn-refresh" onclick="loadBiblioteca(true,true)">↻ Atualizar</button>
+  </div>
+
+  <div class="af-page-title">
+    <h1>Arquivo de Fichas</h1>
+    <p>Consulta e organização do histórico de manifestações.</p>
   </div>
 
   <!-- ABAS DE STATUS -->
@@ -9554,7 +9562,7 @@
         </div>
         <div style="overflow-x:auto">
           <table class="af-tbl" id="bib-table">
-            <thead><tr><th style="width:28px"><input type="checkbox" id="bib-sel-all" title="Selecionar todas" onchange="afToggleTodas(this.checked)" style="cursor:pointer"></th><th>Protocolo</th><th>Data</th><th>Empresa</th><th>Cliente</th><th>Tipo</th><th>Motivo</th><th>Setor</th><th>SLA</th><th>Origem</th><th>Status</th><th></th></tr></thead>
+            <thead><tr><th style="width:28px"><input type="checkbox" id="bib-sel-all" title="Selecionar todas" onchange="afToggleTodas(this.checked)" style="cursor:pointer"></th><th>Protocolo</th><th>Data</th><th>Empresa</th><th>Cliente</th><th>Motivo</th><th>Status</th><th>Origem</th><th>Ações</th></tr></thead>
             <tbody id="bib-tbody"></tbody>
           </table>
         </div>
@@ -10303,12 +10311,9 @@ function afRenderTabela(fichas) {
       <td style="white-space:nowrap;color:#545252">${escHtml(afFmtData(f))}</td>
       <td>${escHtml(f.EMPRESA || '—')}</td>
       <td style="max-width:200px"><div style="display:flex;flex-direction:column;gap:2px"><span>${escHtml(f.NOME_CLIENTE || '—')}</span>${re}</div></td>
-      <td>${escHtml(f.TIPO_MANIFESTACAO || '—')}</td>
       <td style="max-width:160px">${escHtml((f.MOTIVO || '—').slice(0,60))}</td>
-      <td style="white-space:nowrap;color:#545252;font-size:12px">${escHtml(f.SETOR || '—')}</td>
-      <td>${_afSlaHtml(f)}</td>
-      <td>${_bibOrigemBadge(f.ORIGEM)}</td>
       <td>${statusHtml}</td>
+      <td>${_bibOrigemBadge(f.ORIGEM)}</td>
       <td onclick="event.stopPropagation()" style="white-space:nowrap">
         <button class="btn btn-secondary" style="padding:3px 8px;font-size:11px;margin-right:3px" onclick="afEditarFicha(${i})">✎</button>
         ${f.ARQUIVADO === 'SIM'
@@ -10343,7 +10348,7 @@ window.afEditarFicha = function(i) {
     if (!d.sucesso) throw new Error(d.erro || 'Falha ao salvar');
     fecharEditorGenerico();
     _bibFichasAcum[i] = Object.assign({}, f, values);
-    afRenderTable(_bibFichasAcum);
+    afRenderTabela(_bibFichasAcum);
     alert('Ficha atualizada com sucesso.');
   });
 };
@@ -10398,7 +10403,7 @@ function afRenderFicha(f, evs, hist) {
     <span style="font-size:12.5px;color:#545252">${escHtml(f.EMPRESA || '—')} · ${escHtml(afFmtData(f))}</span>`;
 
   const campos = [
-    ['Cliente', f.NOME_CLIENTE], ['CNPJ', f.CNPJ_CPF], ['Tipo', f.TIPO_MANIFESTACAO], ['Motivo', f.MOTIVO],
+    ['Cliente', f.NOME_CLIENTE], ['CNPJ', f.CNPJ_CPF], ['Tipo', f.TIPO_MANIFESTACAO], ['Motivo', f.MOTIVO], ['Produto / SKU', f.PRODUTO || f.SKU],
     ['Colaborador responsável', f.COLABORADOR_RECEBIMENTO], ['Empresa', f.EMPRESA], ['Data da reclamação', afFmtData(f)],
     ['Arquivada em', f.ANO && f.ANO !== 'S/A' ? `${AF_MN[+f.MES] || f.MES}/${f.ANO}` : '—'],
   ];
