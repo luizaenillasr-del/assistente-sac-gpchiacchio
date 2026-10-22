@@ -5391,7 +5391,7 @@ app.post('/api/pesquisas/tokens/:token/abrir', async (req, res) => {
 const _pesquisaLandingHTML = () => `<!doctype html><html lang="pt-BR"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow"><title>Pesquisa de Satisfação — Grupo Chiacchio</title>
-<style>body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#F4F5F7;color:#2A2A2A;display:flex;min-height:100vh;align-items:center;justify-content:center;padding:24px}
+<style>@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap');body{margin:0;font-family:Montserrat,system-ui,sans-serif;background:#F4F5F7;color:#2A2A2A;display:flex;min-height:100vh;align-items:center;justify-content:center;padding:24px}
 .card{background:#fff;border:1px solid #E4E4E4;border-radius:14px;max-width:460px;width:100%;padding:32px;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,.05)}
 h1{font-size:19px;margin:14px 0 6px;color:#B9171A}p{font-size:14px;line-height:1.6;color:#555}
 .badge{display:inline-flex;align-items:center;justify-content:center;width:56px;height:56px;border-radius:50%;background:#FDECEC;color:#B9171A;font-size:26px}
@@ -5423,9 +5423,10 @@ app.get('/pesquisa/:token', async (req, res) => {
   try {
     const rows = await lerAba('PESQUISA_TOKENS', 2000).catch(()=>[]);
     const row = rows.find(r => r.TOKEN === token);
-    if (!row) return res.status(404).send('<html><body style="font-family:sans-serif;text-align:center;padding:40px"><h2>Link inválido</h2><p>Este link de pesquisa não existe.</p></body></html>');
-    if (_tokenExpirado(row)) return res.status(410).send('<html><body style="font-family:sans-serif;text-align:center;padding:40px"><h2>Link expirado</h2><p>Este link de pesquisa expirou.</p></body></html>');
-    if (row.STATUS === 'RESPONDIDO') return res.send('<html><body style="font-family:sans-serif;text-align:center;padding:40px"><h2>Pesquisa já respondida</h2><p>Sua resposta já foi registrada. Obrigado!</p></body></html>');
+    const fonteMontserrat = '<head><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet"></head>';
+    if (!row) return res.status(404).send(`<html>${fonteMontserrat}<body style="font-family:Montserrat,system-ui,sans-serif;text-align:center;padding:40px"><h2>Link inválido</h2><p>Este link de pesquisa não existe.</p></body></html>`);
+    if (_tokenExpirado(row)) return res.status(410).send(`<html>${fonteMontserrat}<body style="font-family:Montserrat,system-ui,sans-serif;text-align:center;padding:40px"><h2>Link expirado</h2><p>Este link de pesquisa expirou.</p></body></html>`);
+    if (row.STATUS === 'RESPONDIDO') return res.send(`<html>${fonteMontserrat}<body style="font-family:Montserrat,system-ui,sans-serif;text-align:center;padding:40px"><h2>Pesquisa já respondida</h2><p>Sua resposta já foi registrada. Obrigado!</p></body></html>`);
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.send(_pesquisaTokenHTML(token, row.EMPRESA||'', row.NOME_CLIENTE||''));
   } catch(e) {
@@ -5642,7 +5643,7 @@ function _pesquisaTokenHTML(token, empresa, nomeCliente) {
 <title>Pesquisa de Satisfação${empresaDisplay ? ' — '+empresaDisplay : ''}</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#F5F5F5;color:#1F1F1F;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:24px 16px 48px}
+body{font-family:Montserrat,system-ui,sans-serif;background:#F5F5F5;color:#1F1F1F;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:24px 16px 48px}
 .card{background:#fff;border-radius:16px;box-shadow:0 2px 16px rgba(0,0,0,.09);max-width:560px;width:100%;padding:32px 28px 36px}
 .logo-wrap{text-align:center;margin-bottom:20px}
 .logo-wrap img{max-height:64px;max-width:220px;padding:8px 14px;background:#fff;border-radius:10px;box-shadow:0 1px 6px rgba(0,0,0,.08)}
