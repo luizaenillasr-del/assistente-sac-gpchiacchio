@@ -3484,17 +3484,35 @@
         btn.classList.add('active');
         var sel = document.getElementById('nm-empresa-reclamada');
         if(sel) sel.value = val;
+        var LABELS = {'CHIACCHIO EMBALAGENS':'Chiacchio · <em>Embalagens</em>','PLASCHIO':'Plaschio · <em>Grupo</em>','TUBAHIA':'Tubahia · <em>Cesbap</em>','TUBAHIA / CESBAP':'Tubahia · <em>Cesbap</em>'};
+        var ref = document.getElementById('nm-ref-empresa');
+        if(ref) ref.innerHTML = LABELS[val] || val;
       };
 
       // init on page show
       function initWizard(){
         window.nmEtapa = 1;
+        var activeBtn = document.querySelector('.nm-empresa-btn.active');
+        var sel = document.getElementById('nm-empresa-reclamada');
+        if(activeBtn && sel && !sel.value){
+          var m = (activeBtn.getAttribute('onclick')||'').match(/'([^']+)'\s*\)/);
+          sel.value = m ? m[1] : activeBtn.textContent.trim();
+        }
         renderStepper();
       }
+      window.initWizard = initWizard;
       // hook into existing navigate() if available
       var _origNav = window.navigate;
       window.navigate = function(page, el){
-        if(page === 'nova-manifestacao') initWizard();
+        var sidebar = document.getElementById('app-sidebar');
+        if(page === 'nova-manifestacao'){
+          initWizard();
+          if(sidebar) sidebar.style.display = 'none';
+          document.body.classList.add('nm-fullscreen');
+        } else {
+          if(sidebar) sidebar.style.display = '';
+          document.body.classList.remove('nm-fullscreen');
+        }
         if(_origNav) _origNav.apply(this, arguments);
       };
       // if page already visible
@@ -9593,6 +9611,16 @@ function navigate(page, el, _opts) {
   if (page === 'acompanhamento' || page === 'banco-manifestacoes') {
     page = 'central-sac';
     if (typeof window.cenAba === 'function') setTimeout(()=>window.cenAba('banco', document.getElementById('mc-tab-banco')), 50);
+  }
+  // Nova Manifestação: hide sidebar to use full width as work window
+  const _sidebar = document.getElementById('app-sidebar');
+  if (page === 'nova-manifestacao') {
+    if (_sidebar) _sidebar.style.display = 'none';
+    document.body.classList.add('nm-fullscreen');
+    if (typeof window.initWizard === 'function') window.initWizard();
+  } else {
+    if (_sidebar) _sidebar.style.display = '';
+    document.body.classList.remove('nm-fullscreen');
   }
   if (window.innerWidth <= 768) toggleSidebar(false);
   document.querySelectorAll('.page').forEach(p => { p.classList.remove('active'); p.style.display = ''; });
@@ -23164,6 +23192,9 @@ async function mudarStatusMC(id, novoStatus) {
       if(tab) tab.classList.toggle('on',t===id);
       if(panel){panel.classList.toggle('on',t===id);panel.style.display=t===id?'flex':'none';}
     });
+    // mc-body wraps only the fila 3-panel layout; hide it when another tab is active
+    const _mcBody = document.querySelector('#page-central-sac .mc-body');
+    if(_mcBody) _mcBody.style.display = (id === 'fila') ? '' : 'none';
     if(id==='rcas') renderRCAs();
     if(id==='ind') renderIndicadores();
     if(id==='banco') cenBancoInit();
