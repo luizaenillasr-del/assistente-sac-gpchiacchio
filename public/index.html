@@ -29352,5 +29352,68 @@ if (typeof pageLoaders !== 'undefined') {
   window.loadVisaoGeral = carregar;
 })();
 </script>
+<script>
+/* Navegação resiliente da ficha: mantém os controles funcionais mesmo quando
+   a página é exibida depois da inicialização dos demais módulos da SPA. */
+(function () {
+  var TOTAL = 7;
+  var TITULOS = ['Cliente e Pedido','Manifestação','Impacto Financeiro','Análise com IA','Procedência','Encaminhamento','Revisão'];
+  function page(){ return document.getElementById('page-nova-manifestacao'); }
+  function etapaAtual(){ return Math.max(1, Math.min(TOTAL, Number(window.nmEtapa) || 1)); }
+  function render(){
+    var n = etapaAtual();
+    window.nmEtapa = n;
+    document.querySelectorAll('#page-nova-manifestacao .nm-step-panel').forEach(function (panel) {
+      panel.classList.toggle('nm-active', Number(panel.getAttribute('data-nm-step')) === n);
+    });
+    document.querySelectorAll('#page-nova-manifestacao .nm-ref-sidebar button').forEach(function (button, index) {
+      button.classList.toggle('active', index === Math.min(n - 1, 5));
+    });
+    var label = document.getElementById('nm-etapa-label');
+    if (label) label.textContent = 'Etapa ' + n + ' de ' + TOTAL;
+    var voltar = document.getElementById('nm-btn-voltar');
+    var continuar = document.getElementById('nm-btn-continuar');
+    var confirmar = document.getElementById('nm-btn-confirmar');
+    if (voltar) voltar.style.visibility = n > 1 ? 'visible' : 'hidden';
+    if (continuar) continuar.style.display = n < TOTAL ? 'block' : 'none';
+    if (confirmar) confirmar.style.display = n === TOTAL ? 'block' : 'none';
+    var body = document.getElementById('nm-steps-body');
+    if (body) body.scrollTop = 0;
+  }
+  function validar(){
+    var ativo = document.querySelector('#page-nova-manifestacao .nm-step-panel.nm-active');
+    if (!ativo) return true;
+    var obrigatorio = ativo.querySelector('input[required],select[required],textarea[required]');
+    if (obrigatorio && !obrigatorio.checkValidity()) { obrigatorio.reportValidity(); return false; }
+    return true;
+  }
+  window.nmIrParaEtapa = function (n) {
+    n = Number(n);
+    if (!Number.isInteger(n) || n < 1 || n > TOTAL) return;
+    window.nmEtapa = n;
+    render();
+  };
+  window.nmProximaEtapa = function () {
+    if (!validar()) return;
+    if (etapaAtual() < TOTAL) window.nmIrParaEtapa(etapaAtual() + 1);
+  };
+  window.nmEtapaAnterior = function () {
+    if (etapaAtual() > 1) window.nmIrParaEtapa(etapaAtual() - 1);
+  };
+  function bind(){
+    if (!page()) return;
+    var continuar = document.getElementById('nm-btn-continuar');
+    var voltar = document.getElementById('nm-btn-voltar');
+    if (continuar) continuar.onclick = window.nmProximaEtapa;
+    if (voltar) voltar.onclick = window.nmEtapaAnterior;
+    document.querySelectorAll('#page-nova-manifestacao .nm-ref-sidebar button').forEach(function (button, index) {
+      button.onclick = function () { window.nmIrParaEtapa(index + 1); };
+    });
+    render();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
+  else bind();
+})();
+</script>
 </body>
 </html>
