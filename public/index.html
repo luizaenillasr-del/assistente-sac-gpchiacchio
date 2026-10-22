@@ -9640,6 +9640,9 @@ function navigate(page, el, _opts) {
     if (_geralBtn && typeof cpTab === 'function') cpTab('geral', _geralBtn);
     if (!_cp.all && !_cp.loading) { _cp.loading = true; if (typeof cpLoad === 'function') cpLoad(); }
   }
+  if (page === 'relatorio-satisfacao' && typeof window.relCarregar === 'function') {
+    window.relCarregar();
+  }
 }
 
 // ===== ARQUIVO DE FICHAS (page-biblioteca-fichas) — início =====
