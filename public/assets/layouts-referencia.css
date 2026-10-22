@@ -74,7 +74,7 @@
 /* ─── CENTRAL DE MANIFESTAÇÕES ───────────────────────────────── */
 #page-central-sac{background:#f4f4f4!important}
 #page-central-sac .mc-topbar{background:#fff;border-bottom:1px solid #e4e4e4;padding:20px 32px 0;flex-shrink:0}
-#page-central-sac .mc-toprow{margin-bottom:16px}
+#page-central-sac .mc-toprow{margin-bottom:0}
 #page-central-sac .mc-toprow>div>div:first-child{font-size:22px;font-weight:800;color:#1f1f1f}
 #page-central-sac .mc-sub{font-size:12px;color:#909090;margin-top:2px}
 
@@ -119,7 +119,7 @@
 #page-central-sac .mc-ind-2 .mc-card{border-radius:12px;padding:18px}
 
 /* ─── NOVA MANIFESTAÇÃO ──────────────────────────────────────── */
-#page-nova-manifestacao{background:#f4f4f4!important;height:100vh!important;min-height:0!important;overflow:hidden!important}
+#page-nova-manifestacao{background:#f4f4f4!important;height:100vh!important;min-height:0!important;overflow:hidden!important;position:relative}
 
 /* header — não comprimir, scroll horizontal se necessário */
 #page-nova-manifestacao .nm-ref-header{
@@ -176,7 +176,7 @@
 .nm-ref-sidebar button.active em{color:#c70602}
 
 /* step body */
-#page-nova-manifestacao #nm-steps-body{margin-left:220px;width:calc(100% - 220px);max-width:none;box-sizing:border-box;padding:28px 32px 64px;overflow-y:auto;height:calc(100% - 98px)}
+#page-nova-manifestacao #nm-steps-body{margin-left:220px;width:calc(100% - 220px);max-width:none;box-sizing:border-box;padding:28px 32px 40px;overflow-y:auto;flex:1;min-height:0}
 #page-nova-manifestacao #nm-steps-body:before,
 #page-nova-manifestacao #nm-steps-body:after{content:none;display:none}
 #page-nova-manifestacao #nm-steps-body>.nm-step-panel{max-width:860px;width:100%;margin:0 auto}
