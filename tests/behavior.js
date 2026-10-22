@@ -217,8 +217,9 @@ async function runTests() {
           : { tipoCliente: 'direto', cnpj: '12345678000199', razaoSocial: 'Empresa teste', rca: 'Representante teste' };
         const result = await client('POST', '/api/public/reclamacoes', { ...manifestacaoPortal(empresa), ...cliente, notaFiscal: 'NF-TESTE-123' });
         assert.strictEqual(result.status, 200);
-        assert.match(result.body.protocolo, new RegExp('^' + prefixo + '-[A-F0-9]{24}$'));
-        const id = result.body.protocolo;
+        assert.match(result.body.protocolo, /^(CHIA|PLA|TUB)-\d{8}-\d{2}-\d{4}$/);
+        const id = result.body.id;
+        assert.ok(id);
         const saved = mock.DB.MANIFESTACOES.find(m => m.ID_MANIFESTACAO === id);
         assert.ok(saved);
         assert.strictEqual(saved.ORIGEM, 'PORTAL_PUBLICO');
@@ -238,7 +239,7 @@ async function runTests() {
         assert.ok(mock.DB.FICHAS_BIBLIOTECA.some(f => f.ID_MANIFESTACAO === id));
         const internal = await req('GET', '/api/manifestacoes', tokMaster());
         assert.ok(internal.body.itens.some(m => m.ID_MANIFESTACAO === id), 'registro ausente no SAC');
-        const publicResult = await client('GET', '/api/public/protocolo/' + id);
+        const publicResult = await client('GET', '/api/public/protocolo/' + result.body.protocolo);
         assert.strictEqual(publicResult.status, 200);
         assert.strictEqual(publicResult.body.status, 'Recebida');
         for (const field of ['CNPJ', 'CPF', 'RAZAO_SOCIAL', 'RCA', 'ONDE_COMPROU', 'NFE']) {
@@ -258,7 +259,7 @@ async function runTests() {
       const result = await client('POST', '/api/public/reclamacoes', body);
       assert.strictEqual(result.status, 200);
       assert.ok(!result.body.aviso);
-      const evidence = mock.DB.EVIDENCIAS.find(e => e.ID_MANIFESTACAO === result.body.protocolo);
+      const evidence = mock.DB.EVIDENCIAS.find(e => e.ID_MANIFESTACAO === result.body.id);
       assert.ok(evidence);
       assert.strictEqual(evidence.NOME, 'evidencia.pdf');
       assert.deepStrictEqual(uploads[0].bytes, bytes);
@@ -302,20 +303,21 @@ async function runTests() {
     await withPortalFixtures(async ({ mock }) => {
       const client = portalClient();
       const result = await client('POST', '/api/public/reclamacoes', manifestacaoPortal());
-      const id = result.body.protocolo;
+      const id = result.body.id;
+      const protocol = result.body.protocolo;
       const record = mock.DB.MANIFESTACOES.find(m => m.ID_MANIFESTACAO === id);
       Object.assign(record, { DEVOLUTIVA_SUGERIDA: 'Sugestão IA confidencial', DEVOLUTIVA_FINAL: 'Rascunho interno', TRATATIVA_SAC_INTERNA: 'Causa interna' });
-      let summary = await client('GET', '/api/public/protocolo/' + id);
+      let summary = await client('GET', '/api/public/protocolo/' + protocol);
       assert.strictEqual(summary.body.devolutiva, '');
       assert.ok(!JSON.stringify(summary.body).includes('confidencial'));
       const approval = await req('POST', '/api/manifestacoes/' + id + '/devolutiva/aprovar', tokMaster(), { textoAprovado: 'Sua solicitação foi resolvida pelo SAC.' });
       assert.strictEqual(approval.status, 200);
-      summary = await client('GET', '/api/public/protocolo/' + id);
+      summary = await client('GET', '/api/public/protocolo/' + protocol);
       assert.strictEqual(summary.body.status, 'Em revisão final');
       assert.strictEqual(summary.body.devolutiva, '');
       const sent = await req('POST', '/api/manifestacoes/' + id + '/devolutiva/enviar', tokMaster(), {});
       assert.strictEqual(sent.status, 200);
-      summary = await client('GET', '/api/public/protocolo/' + id);
+      summary = await client('GET', '/api/public/protocolo/' + protocol);
       assert.strictEqual(summary.body.status, 'Encerrada');
       assert.strictEqual(summary.body.devolutiva, 'Sua solicitação foi resolvida pelo SAC.');
       assert.ok(!JSON.stringify(summary.body).includes('Causa interna'));
