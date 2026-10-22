@@ -2872,6 +2872,12 @@ app.post('/api/manifestacoes/:id/devolutiva/enviar', requerPermissao('manifestac
       ENCERRADA_POR: req.user?.usuario||'sistema',
       STATUS_DEVOLUTIVA: 'ENVIADA',
     });
+    const devRows = await lerAba('DEVOLUTIVAS', 5000).catch(()=>[]);
+    const devAtual = devRows.filter(d => d.ID_MANIFESTACAO === id).sort((a,b)=>String(b.GERADA_EM||'').localeCompare(String(a.GERADA_EM||'')))[0];
+    if (devAtual) await atualizarPorID('DEVOLUTIVAS', devAtual.ID_DEVOLUTIVA, {
+      STATUS:'ENVIADA', VERSAO_FINAL:textoFinal, CANAL_ENVIO:req.body?.canal||devAtual.CANAL_ENVIO||'MANUAL',
+      ENVIADA_EM:agora, ENVIADA_POR:req.user?.usuario||'sistema',
+    }, ['ID_DEVOLUTIVA']).catch(e=>console.warn('[DEVOLUTIVA] histórico não atualizado:', e.message));
     await registrarAuditoria(req.user?.usuario||'sistema','ENVIOU_DEVOLUTIVA',id,'MANIFESTACOES',null,{ enviadoPor: req.user?.usuario });
     res.json({ sucesso:true, id, encerradaEm: agora });
   } catch(e){ res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
@@ -2958,6 +2964,23 @@ app.post('/api/manifestacoes/:id/finalizar', requerPermissao('aprovacoes.aprovar
       OBSERVACAO_FINAL: observacaoFinal||'',
       SATISFACAO_CLIENTE: satisfacaoCliente||'',
     });
+    // Consolida o conhecimento no backend sem exigir novo preenchimento na tela.
+    await garantirAbaComCabecalhos('CONSOLIDACAO_CONHECIMENTO', ['ID_CONSOLIDACAO','ID_MANIFESTACAO','EMPRESA','CAUSA','SUBCAUSA','TRATATIVAS','DEVOLUTIVAS','RESULTADO','CRIADO_EM','CRIADO_POR']).catch(()=>{});
+    const consolRows = await lerAba('CONSOLIDACAO_CONHECIMENTO', 5000).catch(()=>[]);
+    if (!consolRows.some(r => r.ID_MANIFESTACAO === id && r.RESULTADO === (m.PROCEDENTE || ''))) {
+      const [devs, trats] = await Promise.all([
+        lerAba('DEVOLUTIVAS', 5000).catch(()=>[]),
+        lerAba('TRATATIVAS_SETORIAIS', 5000).catch(()=>[]),
+      ]);
+      await appendObjeto('CONSOLIDACAO_CONHECIMENTO', {
+        ID_CONSOLIDACAO: `CON-${id}-${Date.now()}`, ID_MANIFESTACAO: id,
+        EMPRESA: m.EMPRESA_RECLAMADA || '', CAUSA: m.CAUSA_RAIZ || m.CAUSA_CONFIRMADA || '',
+        SUBCAUSA: m.SUBCAUSA || m.SUBCAUSA_CONFIRMADA || '',
+        TRATATIVAS: JSON.stringify(trats.filter(t=>t.ID_MANIFESTACAO===id)),
+        DEVOLUTIVAS: JSON.stringify(devs.filter(d=>d.ID_MANIFESTACAO===id)),
+        RESULTADO: m.PROCEDENTE || '', CRIADO_EM: agora, CRIADO_POR: req.user?.usuario || 'sistema',
+      }).catch(e => console.warn('[CONSOLIDACAO] falha não bloqueante:', e.message));
+    }
     await registrarAuditoria(req.user?.usuario||'sistema','FINALIZOU_MANIFESTACAO',id,'MANIFESTACOES',m.STATUS,'ENCERRADA');
     res.json({ sucesso:true, id, encerradaEm: agora });
   } catch(e){ res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
@@ -6706,6 +6729,84 @@ app.patch('/api/causas/:id', requerPerfil('MASTER','ANALISTA SAC'), async (req,r
     if (!r) return res.status(404).json({sucesso:false,erro:'Causa não encontrada.'});
     res.json({sucesso:true});
   } catch(e){ res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
+});
+
+// ===== CICLO DE APRENDIZADO OPERACIONAL (CÉREBRO) =====
+// Catálogos persistidos no Sheets e reutilizados pela ficha, tratativas e devolutivas.
+const CEREBRO_CAUSAS_HEADERS = ['ID_CAUSA','CATEGORIA','TIPO','CAUSA','SUBCAUSA','DESCRICAO','SINONIMOS','SETOR_RESPONSAVEL','PALAVRAS_CHAVE','ATIVO','VERSAO','DATA_CRIACAO','CRIADO_POR','ATUALIZADO_EM'];
+const CEREBRO_TRAT_HEADERS = ['ID_TRATAMENTO','EMPRESA','CATEGORIA','CAUSA_ID','CAUSA','SUBCAUSA','SETOR_RESPONSAVEL','PROCEDIMENTO','CONDICOES','EVIDENCIAS','AUTORIZACOES','CRITERIOS_CONCLUSAO','STATUS','VERSAO','CRIADO_EM','CRIADO_POR','ATUALIZADO_EM'];
+const CEREBRO_APR_HEADERS = ['ID_APRIMORAMENTO','TIPO','REGISTRO_ID','ID_MANIFESTACAO','DESCRICAO','JUSTIFICATIVA','STATUS','VERSAO_NOVA','CRIADO_EM','CRIADO_POR','APROVADO_EM','APROVADO_POR'];
+const CEREBRO_MODELO_HEADERS = ['ID_MODELO','TITULO','EMPRESA','TIPO_MANIFESTACAO','CATEGORIA','TIPO_DEVOLUTIVA','SITUACAO','ASSUNTO','TEXTO_PADRAO','VARIAVEIS','RESTRICOES','VERSAO','STATUS','CRIADO_EM','CRIADO_POR','APROVADO_EM','APROVADO_POR'];
+
+function _cNorm(v) { return String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim(); }
+function _cCsv(v) { return Array.isArray(v) ? v.join('; ') : String(v || ''); }
+function _cScopeRows(req, rows) {
+  const scope = req._empresaScope;
+  if (!scope) return rows;
+  return rows.filter(r => !r.EMPRESA || pertenceEmpresa(scope, r.EMPRESA));
+}
+function _cCanWrite(req) { return ['MASTER','GESTOR SAC','ANALISTA SAC'].includes(perfilCanonico(req.user?.perfil || '')); }
+
+app.get('/api/cerebro/matriz-operacional', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC','APROVADOR','SETOR RESPONSÁVEL','AUDITOR','CONSULTA'), middlewareEscopoEmpresa(), async (req,res)=>{
+  try {
+    const q = _cNorm(req.query.q), aba = String(req.query.aba || 'causas');
+    const [causas, tratamentos, aprimoramentos] = await Promise.all([
+      lerAba('CAUSAS', 5000).catch(()=>[]), lerAba('MATRIZ_TRATAMENTO', 5000).catch(()=>[]), lerAba('APRIMORAMENTOS_CEREBRO', 5000).catch(()=>[]),
+    ]);
+    const filtra = rows => _cScopeRows(req, rows).filter(r => !q || _cNorm(Object.values(r).join(' ')).includes(q));
+    const rows = aba === 'tratamentos' ? filtra(tratamentos) : aba === 'aprimoramentos' ? filtra(aprimoramentos) : filtra(causas);
+    const page = Math.max(1, Number(req.query.page || 1)), limit = Math.min(100, Math.max(1, Number(req.query.limit || 50)));
+    res.json({ sucesso:true, aba, itens:rows.slice((page-1)*limit,page*limit), total:rows.length, page, limit, causas:filtra(causas).length, tratamentos:filtra(tratamentos).length, aprimoramentos:filtra(aprimoramentos).length });
+  } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e), itens:[] }); }
+});
+
+app.get('/api/cerebro/causas/consultar', requerPermissao('base-conhecimento.visualizar'), middlewareEscopoEmpresa(), async (req,res)=>{
+  try {
+    const q=_cNorm(req.query.q), rows=_cScopeRows(req, await lerAba('CAUSAS',5000).catch(()=>[])).filter(r=>String(r.ATIVO||'SIM').toUpperCase()!=='NAO');
+    const itens=rows.filter(r=>!q||_cNorm([r.CAUSA,r.SUBCAUSA,r.CATEGORIA,r.SINONIMOS,r.PALAVRAS_CHAVE].join(' ')).includes(q)).slice(0,100);
+    res.json({sucesso:true,itens});
+  } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e),itens:[]});}
+});
+
+app.post('/api/cerebro/causas', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC'), middlewareEscopoEmpresa(), async (req,res)=>{
+  try {
+    const b=req.body||{}, causa=String(b.causa||b.CAUSA||'').trim();
+    if (!causa) return res.status(400).json({sucesso:false,erro:'Causa é obrigatória.'});
+    await garantirAbaComCabecalhos('CAUSAS', CEREBRO_CAUSAS_HEADERS).catch(()=>{});
+    const rows=await lerAba('CAUSAS',5000).catch(()=>[]), chave=_cNorm(causa);
+    const equivalentes=rows.filter(r => _cNorm(r.CAUSA)===chave || _cNorm(r.SINONIMOS).split(/[;,|]/).map(_cNorm).includes(chave));
+    if (equivalentes.length && b.confirmarDuplicidade !== true) return res.status(409).json({sucesso:false,duplicidade:true,equivalentes:equivalentes.slice(0,10),erro:'Já existe uma causa equivalente. Consulte o registro antes de criar outra.'});
+    const id=await gerarProximoID('CAUSAS','CAU','ID_CAUSA'); const agora=new Date().toISOString();
+    const obj={ID_CAUSA:id,CATEGORIA:b.categoria||b.CATEGORIA||'',TIPO:b.tipo||b.TIPO||'',CAUSA:causa,SUBCAUSA:b.subcausa||b.SUBCAUSA||'',DESCRICAO:b.descricao||b.DESCRICAO||'',SINONIMOS:_cCsv(b.sinonimos||b.SINONIMOS),SETOR_RESPONSAVEL:b.setorResponsavel||b.SETOR_RESPONSAVEL||'',PALAVRAS_CHAVE:_cCsv(b.palavrasChave||b.PALAVRAS_CHAVE),ATIVO:'SIM',VERSAO:'1',DATA_CRIACAO:agora,CRIADO_POR:req.user.usuario,ATUALIZADO_EM:agora};
+    await appendObjeto('CAUSAS',obj); await registrarAuditoria(req.user.usuario,'CRIOU_CAUSA_CEREBRO',id,'CAUSAS',null,obj);
+    res.status(201).json({sucesso:true,item:obj});
+  } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
+});
+
+app.post('/api/cerebro/tratamentos', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC'), middlewareEscopoEmpresa(), async (req,res)=>{
+  try {
+    const b=req.body||{}; if(!b.procedimento && !b.PROCEDIMENTO) return res.status(400).json({sucesso:false,erro:'Procedimento é obrigatório.'});
+    await garantirAbaComCabecalhos('MATRIZ_TRATAMENTO', CEREBRO_TRAT_HEADERS).catch(()=>{});
+    const id=await gerarProximoID('MATRIZ_TRATAMENTO','TRAT','ID_TRATAMENTO'), agora=new Date().toISOString();
+    const obj={ID_TRATAMENTO:id,EMPRESA:b.empresa||b.EMPRESA||'',CATEGORIA:b.categoria||b.CATEGORIA||'',CAUSA_ID:b.causaId||b.CAUSA_ID||'',CAUSA:b.causa||b.CAUSA||'',SUBCAUSA:b.subcausa||b.SUBCAUSA||'',SETOR_RESPONSAVEL:b.setorResponsavel||b.SETOR_RESPONSAVEL||'',PROCEDIMENTO:b.procedimento||b.PROCEDIMENTO,CONDICOES:b.condicoes||b.CONDICOES||'',EVIDENCIAS:_cCsv(b.evidencias||b.EVIDENCIAS),AUTORIZACOES:_cCsv(b.autorizacoes||b.AUTORIZACOES),CRITERIOS_CONCLUSAO:b.criteriosConclusao||b.CRITERIOS_CONCLUSAO||'',STATUS:'RASCUNHO',VERSAO:'1',CRIADO_EM:agora,CRIADO_POR:req.user.usuario,ATUALIZADO_EM:agora};
+    await appendObjeto('MATRIZ_TRATAMENTO',obj); await registrarAuditoria(req.user.usuario,'CRIOU_TRATAMENTO_CEREBRO',id,'MATRIZ_TRATAMENTO',null,obj); res.status(201).json({sucesso:true,item:obj});
+  } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
+});
+
+app.post('/api/cerebro/aprimoramentos', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC'), middlewareEscopoEmpresa(), async (req,res)=>{
+  try { const b=req.body||{}; if(!b.descricao) return res.status(400).json({sucesso:false,erro:'Descrição é obrigatória.'}); await garantirAbaComCabecalhos('APRIMORAMENTOS_CEREBRO',CEREBRO_APR_HEADERS).catch(()=>{}); const id=await gerarProximoID('APRIMORAMENTOS_CEREBRO','APR','ID_APRIMORAMENTO'); const obj={ID_APRIMORAMENTO:id,TIPO:b.tipo||'TRATAMENTO',REGISTRO_ID:b.registroId||'',ID_MANIFESTACAO:b.idManifestacao||'',DESCRICAO:b.descricao,JUSTIFICATIVA:b.justificativa||'',STATUS:'EM_REVISAO',VERSAO_NOVA:'',CRIADO_EM:new Date().toISOString(),CRIADO_POR:req.user.usuario,APROVADO_EM:'',APROVADO_POR:''}; await appendObjeto('APRIMORAMENTOS_CEREBRO',obj); res.status(201).json({sucesso:true,item:obj}); } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
+});
+
+app.get('/api/cerebro/devolutivas', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC','APROVADOR','SETOR RESPONSÁVEL','AUDITOR','CONSULTA'), middlewareEscopoEmpresa(), async (req,res)=>{
+  try { const q=_cNorm(req.query.q), aba=String(req.query.aba||'modelos'); await garantirAbaComCabecalhos('MODELOS_DEVOLUTIVA',CEREBRO_MODELO_HEADERS).catch(()=>{}); const [modelos, historico]=await Promise.all([lerAba('MODELOS_DEVOLUTIVA',5000).catch(()=>[]),lerAba('DEVOLUTIVAS',5000).catch(()=>[])]); const base=aba==='historico'?historico:aba==='revisao'?modelos.filter(r=>_cNorm(r.STATUS)==='em revisao'):modelos.filter(r=>_cNorm(r.STATUS)==='aprovada'||_cNorm(r.STATUS)==='publicada'||!r.STATUS); const itens=_cScopeRows(req,base).filter(r=>!q||_cNorm(Object.values(r).join(' ')).includes(q)); res.json({sucesso:true,aba,itens,total:itens.length,modelos:_cScopeRows(req,modelos),historico:_cScopeRows(req,historico)}); } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e),itens:[]});}
+});
+
+app.post('/api/cerebro/devolutivas/modelos', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC'), middlewareEscopoEmpresa(), async (req,res)=>{
+  try { const b=req.body||{}; if(!b.titulo||!b.textoPadrao) return res.status(400).json({sucesso:false,erro:'Título e texto padrão são obrigatórios.'}); await garantirAbaComCabecalhos('MODELOS_DEVOLUTIVA',CEREBRO_MODELO_HEADERS).catch(()=>{}); const id=await gerarProximoID('MODELOS_DEVOLUTIVA','MOD','ID_MODELO'); const obj={ID_MODELO:id,TITULO:b.titulo,EMPRESA:b.empresa||'',TIPO_MANIFESTACAO:b.tipoManifestacao||'',CATEGORIA:b.categoria||'',TIPO_DEVOLUTIVA:b.tipoDevolutiva||'CONCLUSAO',SITUACAO:b.situacao||'',ASSUNTO:b.assunto||'',TEXTO_PADRAO:b.textoPadrao,VARIAVEIS:_cCsv(b.variaveis),RESTRICOES:_cCsv(b.restricoes),VERSAO:'1',STATUS:'EM_REVISAO',CRIADO_EM:new Date().toISOString(),CRIADO_POR:req.user.usuario,APROVADO_EM:'',APROVADO_POR:''}; await appendObjeto('MODELOS_DEVOLUTIVA',obj); res.status(201).json({sucesso:true,item:obj}); } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
+});
+
+app.post('/api/cerebro/devolutivas/modelos/:id/status', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC'), middlewareEscopoEmpresa(), async (req,res)=>{
+  try { const status=String(req.body?.status||''); if(!['EM_REVISAO','APROVADA','ARQUIVADA'].includes(status)) return res.status(400).json({sucesso:false,erro:'Status inválido.'}); const rows=await lerAba('MODELOS_DEVOLUTIVA',5000); const item=rows.find(r=>r.ID_MODELO===req.params.id); if(!item) return res.status(404).json({sucesso:false,erro:'Modelo não encontrado.'}); if(!escopoPermite(req,item.EMPRESA)) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado.'}); const upd={STATUS:status,APROVADO_EM:status==='APROVADA'?new Date().toISOString():'',APROVADO_POR:status==='APROVADA'?req.user.usuario:'',VERSAO:status==='APROVADA'?String(Number(item.VERSAO||1)+1):item.VERSAO}; await atualizarPorID('MODELOS_DEVOLUTIVA',req.params.id,upd,['ID_MODELO']); res.json({sucesso:true,item:{...item,...upd}}); } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
 
 // ===== ASSERTIVIDADE DA IA =====
