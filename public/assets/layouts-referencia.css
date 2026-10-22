@@ -199,7 +199,7 @@
 #page-nova-manifestacao .nm-textarea{border-radius:8px}
 
 /* ─── PESQUISAS DE SATISFAÇÃO ────────────────────────────────── */
-#page-sugestoes-melhoria{background:var(--ref-bg)!important;color:var(--ref-ink);display:flex;flex-direction:column}
+#page-sugestoes-melhoria{background:var(--ref-bg)!important;color:var(--ref-ink)}
 
 /* topbar */
 #page-sugestoes-melhoria .cp-top{
@@ -267,7 +267,7 @@
 #page-sugestoes-melhoria .ps-grid-emp{gap:14px}
 
 /* ─── RELATÓRIO DE SATISFAÇÃO ────────────────────────────────── */
-#page-relatorio-satisfacao{background:var(--ref-bg)!important;display:flex;flex-direction:column;overflow-y:auto}
+#page-relatorio-satisfacao{background:var(--ref-bg)!important;overflow-y:auto}
 
 /* sticky topbar */
 #page-relatorio-satisfacao .rs-top{
