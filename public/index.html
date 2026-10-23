@@ -30440,6 +30440,18 @@ if (typeof pageLoaders !== 'undefined') {
 @media(max-width:1200px){#page-central-sac .mc-kpis-top{grid-template-columns:repeat(3,minmax(120px,1fr))}#page-central-sac #cen-panel-body{grid-template-columns:250px minmax(0,1fr) 270px}}
   @media(max-width:900px){#page-central-sac .mc-main{padding:18px 20px 32px}#page-central-sac .mc-kpis-top{grid-template-columns:repeat(3,minmax(120px,1fr))}#page-central-sac #cen-panel-body{grid-template-columns:250px minmax(0,1fr)}#page-central-sac #cen-cerebro-wrap{display:none!important}}
   @media(max-width:600px){#page-central-sac .mc-main{padding:16px 14px 24px}#page-central-sac .mc-title{font-size:23px}#page-central-sac .mc-kpis-top{grid-template-columns:repeat(2,minmax(130px,1fr));gap:8px}#page-central-sac .mc-tabs{margin:0 -14px;padding:0 8px}#page-central-sac .mc-tab{padding:0 14px;font-size:12px}#page-central-sac #cen-panel-body{display:block;overflow:auto}#page-central-sac #cen-list-col{min-height:280px;border-right:0;border-bottom:1px solid #e8e8e8}#page-central-sac #cen-detalhe-col{min-height:480px}}
+
+/* As abas secundárias devem seguir imediatamente a navegação. O layout anterior
+   mantinha o corpo como um flex-item de altura fixa e recortava seu conteúdo,
+   deixando áreas vazias antes dos filtros e tabelas. A página passa a crescer
+   com o conteúdo; somente a fila operacional preserva seus painéis internos. */
+#page-central-sac{height:auto!important;min-height:100%!important;overflow-y:auto!important;overflow-x:hidden!important;flex:0 0 auto!important}
+#page-central-sac .mc-body{display:block!important;flex:none!important;min-height:0!important;overflow:visible!important}
+#page-central-sac .mc-tabpanel{display:none;flex:none!important;height:auto!important;min-height:0!important;overflow:visible!important;padding:24px 32px!important}
+#page-central-sac .mc-tabpanel.on{display:flex!important}
+#page-central-sac #mc-panel-fila{padding:0 24px 16px!important;min-height:520px;height:calc(100vh - 280px)!important;overflow:hidden!important}
+@media(max-width:900px){#page-central-sac .mc-tabpanel{padding:18px 20px!important}#page-central-sac #mc-panel-fila{height:auto!important;min-height:620px!important;overflow:visible!important}}
+@media(max-width:600px){#page-central-sac .mc-tabpanel{padding:16px 14px!important}#page-central-sac #mc-panel-fila{padding:0!important;min-height:760px!important}}
 </style>
 <style id="nova-indicadores-layout">
 /* Nova Manifestação: uma única navegação global; as etapas ficam em uma faixa horizontal. */
