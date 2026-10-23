@@ -2,6 +2,7 @@
 
 const assert = require('node:assert/strict');
 const { analisar, missingFields } = require('../server-services/circaEngine');
+const workflow = require('../server-services/circaWorkflow');
 
 const base = {
   ID_MANIFESTACAO: 'MAN-CIRCA-001',
@@ -15,6 +16,8 @@ const base = {
   SUBCAUSA_CONFIRMADA: 'Rota não programada',
   DEVOLUTIVA_ENVIADA: 'SIM',
   PROCEDENTE: 'SIM',
+  EVIDENCIAS: 'Registro do setor',
+  AUTORIZACAO_SAC: 'SIM',
 };
 
 assert.deepEqual(missingFields(base), [], 'captura completa não deve apresentar campos ausentes');
@@ -37,4 +40,14 @@ const incomplete = analisar({ manifestacao: { ID_MANIFESTACAO: 'MAN-2', DESCRICA
 assert.equal(incomplete.etapas.captura.status, 'INCOMPLETA');
 assert.equal(incomplete.etapas.resolucao.autonomiaSAC, false);
 assert.ok(incomplete.recomendacoes.some(item => item.tipo === 'EVIDENCIA_FALTANTE'));
+assert.equal(result.analiseEstruturada.condicoesAutonomiaSAC.permitida, true);
+assert.equal(result.checklist.length, 0);
+assert.equal(workflow.stageForStatus('AGUARDANDO_VALIDACAO_SAC'), 5);
+assert.equal(workflow.canTransition('EM_TRATAMENTO', 'AGUARDANDO_VALIDACAO_SAC'), true);
+assert.equal(workflow.canTransition('FINALIZADA', 'AGUARDANDO_TRIAGEM_SAC'), false);
+const tarefas = workflow.buildChecklist([{ descricao: 'Confirmar causa' }], [{ id: 'T1', chave: 'confirmar causa', descricao: 'Confirmar causa', status: 'CONCLUIDA' }]);
+assert.equal(tarefas.length, 1);
+assert.equal(tarefas[0].status, 'CONCLUIDA', 'reanálise preserva tarefa já executada');
+assert.deepEqual(workflow.validateClosure({ status:'AGUARDANDO_ENCERRAMENTO', investigationComplete:true, validationDone:true, devolutivaDone:true }), { permitido:true, erros:[] });
+assert.equal(workflow.validateClosure({ status:'AGUARDANDO_ENCERRAMENTO', investigationComplete:false, validationDone:true, devolutivaDone:true }).permitido, false);
 console.log('CIRCA: captura, investigação, resolução, governança e bloqueio de autonomia aprovados.');

@@ -18,6 +18,7 @@ const permissoesService = require('../server-services/permissoesService');
 const dashboardExecutiva = require('../server-services/dashboardExecutiva');
 const fichaUnica = require('../server-services/fichaUnica');
 const circaEngine = require('../server-services/circaEngine');
+const circaWorkflow = require('../server-services/circaWorkflow');
 
 // Injeção de mock Sheets para testes — nunca ativo em produção (env var não existe em prod)
 const _sheetsMock = process.env.SHEETS_MOCK_PATH ? (() => { try { return require(process.env.SHEETS_MOCK_PATH); } catch(e) { console.warn('[MOCK] falhou ao carregar:', e.message); return null; } })() : null;
@@ -3074,6 +3075,9 @@ app.post('/api/manifestacoes/:id/finalizar', requerPermissao('aprovacoes.aprovar
     const tratsRows = await lerAba('TRATATIVAS_SETORIAIS', 3000).catch(()=>[]);
     const tratsPendentes = tratsRows.filter(r => r.ID_MANIFESTACAO===id && r.STATUS==='EM_ANDAMENTO');
     if (tratsPendentes.length > 0) bloqueios.push(`${tratsPendentes.length} tratativa(s) setorial(is) ainda em andamento.`);
+    const acionamentos = await lerAba('ACIONAMENTOS_INTERNOS', 5000).catch(()=>[]);
+    const abertosCriticos = acionamentos.filter(r => r.ID_MANIFESTACAO===id && ['ESCALONAMENTO','ENCAMINHAMENTO_TRATATIVA'].includes(String(r.TIPO||'').toUpperCase()) && !['CONCLUIDO','CANCELADO'].includes(String(r.STATUS||'').toUpperCase()));
+    if (abertosCriticos.length > 0 && !req.body?.dispensaAcionamentosJustificada) bloqueios.push(`${abertosCriticos.length} acionamento(s) crítico(s) ainda pendente(s).`);
     if (bloqueios.length > 0) return res.status(422).json({ sucesso:false, bloqueios, erro:'Critérios bloqueantes não atendidos.' });
     const agora = new Date().toISOString();
     const { observacaoFinal, satisfacaoCliente } = req.body||{};
@@ -6861,6 +6865,99 @@ app.get('/api/manifestacoes/:id/circa', requerPermissao('manifestacoes.visualiza
     });
     res.json({ sucesso:true, circa:resultado });
   } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e,'circa') }); }
+});
+
+// ===== FLUXO OPERACIONAL CIRCA =====
+// Os registros abaixo reutilizam a manifestação e as abas operacionais legadas.
+// Nenhum acionamento cria uma segunda ficha.
+const ACIONAMENTOS_HEADERS = ['ID_ACIONAMENTO','ID_MANIFESTACAO','PROTOCOLO','TIPO','EMPRESA','SETOR_SOLICITANTE','SETOR_DESTINO','RESPONSAVEL','ASSUNTO','MOTIVO','TAREFA','PERGUNTAS','PRAZO','PRIORIDADE','EVIDENCIAS','OBSERVACOES','RESPOSTA','STATUS','CRIADO_EM','CRIADO_POR','ATUALIZADO_EM','ATUALIZADO_POR','IDEMPOTENCY_KEY'];
+const ACIONAMENTO_STATUSES = ['CRIADO','ENVIADO','PENDENTE_DE_ATRIBUICAO','AGUARDANDO_CIENCIA','EM_ANDAMENTO','AGUARDANDO_INFORMACAO','RESPONDIDO','EM_REVISAO','CONCLUIDO','CANCELADO'];
+const ACIONAMENTO_TYPES = ['NOTIFICACAO','SOLICITACAO_INFORMACAO','SOLICITACAO_APOIO','ENCAMINHAMENTO_TRATATIVA','ESCALONAMENTO'];
+
+async function circaManifestacao(id) {
+  const rows = await lerAba('MANIFESTACOES', 5000).catch(() => []);
+  return rows.find(row => [row.ID_MANIFESTACAO, row.PROTOCOLO, row.ID, row.ID_ORIGINAL].some(v => String(v || '').trim() === String(id || '').trim()));
+}
+
+app.get('/api/manifestacoes/:id/acionamentos', requerPermissao('manifestacoes.visualizar'), middlewareEscopoEmpresa(), async (req,res) => {
+  try {
+    const m = await circaManifestacao(req.params.id);
+    if (!m) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
+    if (req._empresaScope && !pertenceEmpresa(req._empresaScope, m.EMPRESA_RECLAMADA || '')) return res.status(403).json({ sucesso:false, erro:'Acesso não autorizado.' });
+    const rows = await lerAba('ACIONAMENTOS_INTERNOS', 5000).catch(() => []);
+    const id = m.ID_MANIFESTACAO || req.params.id;
+    res.json({ sucesso:true, itens:rows.filter(row => String(row.ID_MANIFESTACAO) === String(id)), statuses:ACIONAMENTO_STATUSES, tipos:ACIONAMENTO_TYPES });
+  } catch (e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e,'acionamentos') }); }
+});
+
+app.post('/api/manifestacoes/:id/acionamentos', requerPermissao('manifestacoes.editar'), middlewareEscopoEmpresa(), async (req,res) => {
+  try {
+    const m = await circaManifestacao(req.params.id);
+    if (!m) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
+    if (req._empresaScope && !pertenceEmpresa(req._empresaScope, m.EMPRESA_RECLAMADA || '')) return res.status(403).json({ sucesso:false, erro:'Acesso não autorizado.' });
+    const body = req.body || {};
+    const tipo = String(body.tipo || '').toUpperCase();
+    if (!ACIONAMENTO_TYPES.includes(tipo)) return res.status(400).json({ sucesso:false, erro:'Tipo de acionamento inválido.' });
+    if (!body.setorDestino && tipo !== 'NOTIFICACAO') return res.status(400).json({ sucesso:false, erro:'Setor destinatário é obrigatório.' });
+    if (tipo !== 'NOTIFICACAO' && !body.tarefa && !body.motivo) return res.status(400).json({ sucesso:false, erro:'Informe o que precisa ser feito ou o motivo.' });
+    if (body.responsavel) {
+      const usuarios = await lerAba('USUARIOS', 5000).catch(() => []);
+      const alvo = usuarios.find(u => String(u.USUARIO || u.EMAIL || u.LOGIN || '').toLowerCase() === String(body.responsavel).toLowerCase());
+      if (!alvo || String(alvo.STATUS || 'ATIVO').toUpperCase() !== 'ATIVO') return res.status(400).json({ sucesso:false, erro:'Responsável inexistente ou inativo.' });
+    }
+    await garantirAbaComCabecalhos('ACIONAMENTOS_INTERNOS', ACIONAMENTOS_HEADERS);
+    const existing = body.idempotencyKey ? (await lerAba('ACIONAMENTOS_INTERNOS', 5000).catch(() => [])).find(r => String(r.IDEMPOTENCY_KEY || '') === String(body.idempotencyKey)) : null;
+    if (existing) return res.status(200).json({ sucesso:true, duplicado:true, item:existing });
+    const agora = new Date().toISOString();
+    const item = {
+      ID_ACIONAMENTO: await gerarProximoID('ACIONAMENTOS_INTERNOS','ACI','ID_ACIONAMENTO'),
+      ID_MANIFESTACAO: m.ID_MANIFESTACAO || req.params.id, PROTOCOLO:m.PROTOCOLO || '', TIPO:tipo,
+      EMPRESA:m.EMPRESA_RECLAMADA || body.empresa || '', SETOR_SOLICITANTE:body.setorSolicitante || req.user?.setor || 'SAC',
+      SETOR_DESTINO:body.setorDestino || '', RESPONSAVEL:body.responsavel || '', ASSUNTO:body.assunto || '', MOTIVO:body.motivo || '',
+      TAREFA:body.tarefa || '', PERGUNTAS:Array.isArray(body.perguntas) ? JSON.stringify(body.perguntas) : (body.perguntas || ''),
+      PRAZO:tipo === 'NOTIFICACAO' ? '' : (body.prazo || ''), PRIORIDADE:body.prioridade || 'NORMAL',
+      EVIDENCIAS:Array.isArray(body.evidencias) ? JSON.stringify(body.evidencias) : (body.evidencias || ''), OBSERVACOES:body.observacoes || '',
+      STATUS:tipo === 'NOTIFICACAO' ? 'ENVIADO' : (body.responsavel ? 'ENVIADO' : 'PENDENTE_DE_ATRIBUICAO'),
+      CRIADO_EM:agora, CRIADO_POR:req.user?.usuario || 'sistema', ATUALIZADO_EM:agora, ATUALIZADO_POR:req.user?.usuario || 'sistema', IDEMPOTENCY_KEY:body.idempotencyKey || '',
+    };
+    await appendObjeto('ACIONAMENTOS_INTERNOS', item);
+    await registrarHistoricoManifestacao({ id:item.ID_MANIFESTACAO, protocolo:item.PROTOCOLO, acao:'ACIONAMENTO_CRIADO', descricao:`${tipo} para ${item.SETOR_DESTINO || 'destinatário informado'}`, usuario:req.user?.usuario || 'sistema', etapa:'CONDUCAO' });
+    await registrarAuditoria(req.user?.usuario || 'sistema', 'CRIOU_ACIONAMENTO', item.ID_MANIFESTACAO, 'ACIONAMENTOS_INTERNOS', null, item);
+    res.status(201).json({ sucesso:true, item });
+  } catch (e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e,'acionamentos') }); }
+});
+
+app.patch('/api/manifestacoes/:id/acionamentos/:acionamentoId', requerPermissao('manifestacoes.editar'), middlewareEscopoEmpresa(), async (req,res) => {
+  try {
+    const m = await circaManifestacao(req.params.id);
+    if (!m) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
+    if (req._empresaScope && !pertenceEmpresa(req._empresaScope, m.EMPRESA_RECLAMADA || '')) return res.status(403).json({ sucesso:false, erro:'Acesso não autorizado.' });
+    const rows = await lerAba('ACIONAMENTOS_INTERNOS', 5000).catch(() => []);
+    const item = rows.find(r => String(r.ID_ACIONAMENTO) === String(req.params.acionamentoId) && String(r.ID_MANIFESTACAO) === String(m.ID_MANIFESTACAO || req.params.id));
+    if (!item) return res.status(404).json({ sucesso:false, erro:'Acionamento não encontrado.' });
+    const next = String(req.body?.status || '').toUpperCase();
+    if (!ACIONAMENTO_STATUSES.includes(next)) return res.status(400).json({ sucesso:false, erro:'Status de acionamento inválido.' });
+    const agora = new Date().toISOString();
+    await atualizarPorID('ACIONAMENTOS_INTERNOS', item.ID_ACIONAMENTO, { STATUS:next, ATUALIZADO_EM:agora, ATUALIZADO_POR:req.user?.usuario || 'sistema', RESPOSTA:req.body?.resposta || item.RESPOSTA || '', EVIDENCIAS:req.body?.evidencias || item.EVIDENCIAS || '' }, ['ID_ACIONAMENTO']);
+    await registrarHistoricoManifestacao({ id:item.ID_MANIFESTACAO, protocolo:item.PROTOCOLO, acao:'ACIONAMENTO_ATUALIZADO', descricao:`${item.ID_ACIONAMENTO}: ${next}`, usuario:req.user?.usuario || 'sistema', etapa:'CONDUCAO' });
+    res.json({ sucesso:true, item:{ ...item, STATUS:next, ATUALIZADO_EM:agora } });
+  } catch (e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e,'acionamentos') }); }
+});
+
+app.post('/api/manifestacoes/:id/transicao-circa', requerPermissao('manifestacoes.editar'), middlewareEscopoEmpresa(), async (req,res) => {
+  try {
+    const m = await circaManifestacao(req.params.id);
+    if (!m) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
+    if (req._empresaScope && !pertenceEmpresa(req._empresaScope, m.EMPRESA_RECLAMADA || '')) return res.status(403).json({ sucesso:false, erro:'Acesso não autorizado.' });
+    const to = circaWorkflow.normalizeStatus(req.body?.status);
+    const from = circaWorkflow.normalizeStatus(m.STATUS || m.STATUS_FICHA);
+    if (!circaWorkflow.canTransition(from, to)) return res.status(409).json({ sucesso:false, erro:`Transição não permitida: ${from} → ${to}.`, status:from });
+    const etapa = circaWorkflow.stageForStatus(to);
+    const agora = new Date().toISOString();
+    await atualizarPorID('MANIFESTACOES', m.ID_MANIFESTACAO || req.params.id, { STATUS:to, ETAPA_ATUAL:String(etapa), DATA_ULTIMA_EDICAO:agora }, ['ID_MANIFESTACAO','PROTOCOLO','ID']);
+    await registrarHistoricoManifestacao({ id:m.ID_MANIFESTACAO || req.params.id, protocolo:m.PROTOCOLO || '', acao:'TRANSICAO_CIRCA', descricao:`${from} → ${to}`, usuario:req.user?.usuario || 'sistema', etapa:circaWorkflow.STAGES[etapa - 1]?.id || '' });
+    res.json({ sucesso:true, status:to, etapaAtual:etapa });
+  } catch (e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e,'transicao circa') }); }
 });
 
 // ===== ANÁLISE IA POR MANIFESTAÇÃO =====

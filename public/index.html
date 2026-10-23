@@ -2882,11 +2882,12 @@
     </div>
     <div class="nm-approved-steps" role="navigation" aria-label="Etapas da manifestação">
       <button type="button" class="active" data-approved-step="1" onclick="nmIrParaEtapa(1)"><span>1</span>Dados da Manifestação</button>
-      <button type="button" data-approved-step="2" onclick="nmIrParaEtapa(2)"><span>2</span>Triagem e Encaminhamento</button>
-      <button type="button" data-approved-step="3" onclick="nmIrParaEtapa(3)"><span>3</span>Investigação e Tratativa</button>
-      <button type="button" data-approved-step="4" onclick="nmIrParaEtapa(4)"><span>4</span>Validação SAC</button>
-      <button type="button" data-approved-step="5" onclick="nmIrParaEtapa(5)"><span>5</span>Devolutiva ao Cliente</button>
-      <button type="button" data-approved-step="6" onclick="nmIrParaEtapa(6)"><span>6</span>Histórico e Encerramento</button>
+      <button type="button" data-approved-step="2" onclick="nmIrParaEtapa(2)"><span>2</span>Análise inteligente e triagem</button>
+      <button type="button" data-approved-step="3" onclick="nmIrParaEtapa(3)"><span>3</span>Condução</button>
+      <button type="button" data-approved-step="4" onclick="nmIrParaEtapa(4)"><span>4</span>Investigação e resolução</button>
+      <button type="button" data-approved-step="5" onclick="nmIrParaEtapa(5)"><span>5</span>Validação SAC</button>
+      <button type="button" data-approved-step="6" onclick="nmIrParaEtapa(6)"><span>6</span>Devolutiva conclusiva</button>
+      <button type="button" data-approved-step="7" onclick="nmIrParaEtapa(7)"><span>7</span>Encerramento e aprendizado</button>
     </div>
     <div class="nm-ref-workspace">
     <style>
@@ -3387,14 +3388,15 @@
 
     <script>
     (function(){
-      var NM_TOTAL = 6;
+      var NM_TOTAL = 7;
       var NM_STEPS_META = [
         {l:'Dados da Manifestação',d:'Identificação do cliente, registro e descrição'},
-        {l:'Triagem e Encaminhamento',d:'Tipo, categoria e setor responsável'},
-        {l:'Investigação e Tratativa',d:'Volumes, análise e procedimentos'},
+        {l:'Análise inteligente e triagem',d:'Classificação, risco e orientação operacional'},
+        {l:'Condução',d:'Caminho da tratativa e acionamentos internos'},
+        {l:'Investigação e resolução',d:'Evidências, causa e ações executadas'},
         {l:'Validação SAC',d:'Procedência e validação da manifestação'},
-        {l:'Devolutiva ao Cliente',d:'Encaminhamento e comunicação'},
-        {l:'Histórico e Encerramento',d:'Revise e confirme antes de registrar'}
+        {l:'Devolutiva conclusiva',d:'Comunicação revisada ao cliente'},
+        {l:'Encerramento e aprendizado',d:'Critérios de encerramento e conhecimento'}
       ];
       window.nmEtapa = window.nmEtapa || 1;
 
@@ -5759,6 +5761,7 @@
             <div class="cen-tabpanel" id="centab-investigacao">
               <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:9px" id="cfm-trat-grid"></div>
               <div id="cfm-investigacao-form" style="margin-top:11px"></div>
+              <div id="cfm-acionamentos" style="margin-top:11px"></div>
             </div>
             <div class="cen-tabpanel" id="centab-validacao"><div id="cfm-validacao-form"></div></div>
             <div class="cen-tabpanel" id="centab-devolutiva"><div id="cfm-devolutiva-form"></div></div>
@@ -25518,6 +25521,7 @@ async function mudarStatusMC(id, novoStatus) {
     const investigacao=$('cfm-investigacao-form');
     if(investigacao) investigacao.innerHTML=`<details style="border:1px solid #E8D5A0;background:#FFFCF4;border-radius:10px;padding:11px;margin-bottom:11px"><summary style="cursor:pointer;font-weight:700;font-size:13px">Assistência Inteligente — Cérebro</summary><p style="font-size:12px;color:#666;line-height:1.45">Consulte casos semelhantes e sugestões. Nada é enviado ou aplicado automaticamente.</p><button type="button" onclick="cenFichaBuscarCerebro()" style="border:1px solid #D8B95C;background:#fff;padding:6px 9px;border-radius:6px;cursor:pointer">Buscar casos semelhantes</button><div id="cfm-cerebro-result" style="font-size:12px;margin-top:8px"></div></details><div style="border:1px solid #E4E4E4;border-radius:10px;padding:14px;display:grid;gap:10px">${cfmCampo('cfm-oque','O QUE ACONTECEU?',raw.INVESTIGACAO_O_QUE,'textarea')}${cfmCampo('cfm-verificacoes','VERIFICAÇÕES REALIZADAS',raw.INVESTIGACAO_VERIFICACOES,'textarea')}${cfmCampo('cfm-causa','CAUSA PROVÁVEL',raw.CAUSA_PROVAVEL,'textarea')}${cfmCampo('cfm-tratativa','COMO O CASO FOI RESOLVIDO?',raw.TRATATIVA_REALIZADA,'textarea')}${cfmCampo('cfm-procedente','PROCEDÊNCIA',raw.PROCEDENTE)}${cfmCampo('cfm-prejuizo-confirmado','PREJUÍZO CONFIRMADO',raw.PREJUIZO_CONFIRMADO,'number')}${encerrada?'':`<div>${cfmBotao('salvar_investigacao','Salvar investigação')} ${cfmBotao('enviar_validacao','Enviar para validação SAC')}</div>`}</div>`;
     ['cfm-procedente','cfm-prejuizo-confirmado'].forEach((id,i)=>cfmValor(id,[raw.PROCEDENTE,raw.PREJUIZO_CONFIRMADO][i]));
+    cenCarregarAcionamentos(raw.ID_MANIFESTACAO || raw.PROTOCOLO || '');
     const validacao=$('cfm-validacao-form'); if(validacao) validacao.innerHTML=`<div style="border:1px solid #E4E4E4;border-radius:10px;padding:15px"><b style="font-size:14px">Validação SAC</b><p style="font-size:12.5px;color:#666;line-height:1.5">${esc(raw.VALIDACAO_SAC_OBS||'A validação é registrada pelo SAC após a tratativa estar concluída.')}</p><div style="font-size:12px">Status: <b>${esc(raw.STATUS_FICHA||raw.STATUS||'—')}</b></div></div>`;
     const devolutiva=$('cfm-devolutiva-form'); if(devolutiva) devolutiva.innerHTML=`<div style="border:1px solid #E4E4E4;border-radius:10px;padding:14px">${cfmCampo('cfm-devolutiva-texto','RESPOSTA OFICIAL AO CLIENTE',raw.DEVOLUTIVA_FINAL||raw.DEVOLUTIVA_ENVIADA,'textarea')}${encerrada?'':cfmBotao('salvar_devolutiva','Salvar devolutiva para aprovação')}</div>`;
   }
@@ -25541,6 +25545,18 @@ async function mudarStatusMC(id, novoStatus) {
     try { const r=await _apiFetch(`/api/manifestacoes/${encodeURIComponent(raw.ID_MANIFESTACAO)}/ficha`,30000,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({acao,...(valores[acao]||{})})}); if(!r.sucesso) throw new Error(r.erro||'Não foi possível salvar.'); Object.assign(raw,valores[acao]||{}, {ETAPA_ATUAL:r.etapaAtual||raw.ETAPA_ATUAL,MENSAGEM_ETAPA:r.mensagemEtapa||raw.MENSAGEM_ETAPA}); toast('Ficha atualizada.'); cenAbrirFichaCompleta(); } catch(e){ toast(e.message||'Erro ao salvar a ficha.'); }
   };
   window.cenFichaBuscarCerebro = async function(){ const el=$('cfm-cerebro-result'); if(el) el.textContent='Use a sugestão no painel Cérebro da Central; ela nunca é aplicada automaticamente.'; };
+  window.cenCarregarAcionamentos = async function(id){
+    const el=$('cfm-acionamentos'); if(!el || !id) return;
+    el.innerHTML='<div style="padding:12px;color:#777">Carregando acionamentos…</div>';
+    try { const d=await _apiFetch('/api/manifestacoes/'+encodeURIComponent(id)+'/acionamentos',20000); const itens=d.itens||[];
+      el.innerHTML='<div style="border:1px solid #E4E4E4;border-radius:10px;padding:14px;background:#fff"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b style="font-size:13px">Setores e Acionamentos</b><button type="button" class="btn btn-secondary" onclick="cenNovoAcionamento(\''+String(id).replace(/'/g,"\\'")+'\')">+ Acionar setor</button></div>'+(itens.length?'<div style="display:grid;gap:7px;margin-top:10px">'+itens.map(x=>'<div style="border:1px solid #eee;border-radius:7px;padding:8px;font-size:12px;display:flex;justify-content:space-between;gap:8px"><span><b>'+esc(x.TIPO||'')+'</b> · '+esc(x.SETOR_DESTINO||'—')+'<br><small>'+esc(x.MOTIVO||x.TAREFA||'')+'</small></span><span>'+esc(x.STATUS||'')+'</span></div>').join('')+'</div>':'<p style="font-size:12px;color:#777;margin:10px 0 0">Nenhum acionamento vinculado.</p>')+'</div>';
+    } catch(e) { el.innerHTML='<div style="padding:12px;color:#A80502">Não foi possível carregar os acionamentos.</div>'; }
+  };
+  window.cenNovoAcionamento = function(id){
+    if($('circa-acionamento-modal')) return;
+    document.body.insertAdjacentHTML('beforeend','<div id="circa-acionamento-modal" style="position:fixed;inset:0;background:rgba(0,0,0,.38);z-index:9999;display:flex;align-items:center;justify-content:center;padding:18px"><form id="circa-acionamento-form" style="background:#fff;border-radius:12px;width:min(560px,100%);padding:20px;display:grid;gap:10px;box-shadow:0 16px 50px rgba(0,0,0,.2)"><div style="display:flex;justify-content:space-between;align-items:center"><b>Acionar setor</b><button type="button" onclick="document.getElementById(&quot;circa-acionamento-modal&quot;).remove()" style="border:0;background:none;font-size:20px">×</button></div><label>Tipo<select name="tipo" required><option value="SOLICITACAO_INFORMACAO">Solicitação de informação</option><option value="SOLICITACAO_APOIO">Solicitação de apoio</option><option value="ENCAMINHAMENTO_TRATATIVA">Encaminhamento de tratativa</option><option value="ESCALONAMENTO">Escalonamento</option><option value="NOTIFICACAO">Notificação</option></select></label><label>Setor destinatário<input name="setorDestino" required></label><label>Responsável (login, opcional)<input name="responsavel"></label><label>Assunto<input name="assunto"></label><label>Motivo / o que precisa ser feito<textarea name="motivo" required rows="3"></textarea></label><label>Prazo<input type="date" name="prazo"></label><label>Prioridade<select name="prioridade"><option>NORMAL</option><option>ALTA</option><option>CRITICA</option></select></label><div style="display:flex;justify-content:flex-end;gap:8px"><button type="button" onclick="document.getElementById(&quot;circa-acionamento-modal&quot;).remove()">Cancelar</button><button type="submit" class="btn btn-primary">Enviar acionamento</button></div></form></div>');
+    $('circa-acionamento-form').onsubmit=async function(event){ event.preventDefault(); const body=Object.fromEntries(new FormData(event.currentTarget)); body.idempotencyKey='ACI-'+id+'-'+Date.now(); try { const r=await _apiFetch('/api/manifestacoes/'+encodeURIComponent(id)+'/acionamentos',20000,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}); if(!r.sucesso) throw new Error(r.erro||'Falha ao criar acionamento.'); $('circa-acionamento-modal').remove(); cenCarregarAcionamentos(id); toast('Acionamento criado.'); } catch(e){ toast(e.message||'Falha ao criar acionamento.'); } };
+  };
 
   window.cenAbrirFichaCompleta = function(){
     if(!_cenRawAtual) return;
@@ -30669,9 +30685,9 @@ if (typeof pageLoaders !== 'undefined') {
 /* Navegação resiliente da ficha: mantém os controles funcionais mesmo quando
    a página é exibida depois da inicialização dos demais módulos da SPA. */
 (function () {
-  var TOTAL = 6;
-  var TITULOS = ['Dados da Manifestação','Triagem e Encaminhamento','Investigação e Tratativa','Validação SAC','Devolutiva ao Cliente','Histórico e Encerramento'];
-  var PANEL_MAP = {1:[1],2:[2],3:[3,4],4:[5],5:[6],6:[7]};
+  var TOTAL = 7;
+  var TITULOS = ['Registro','Análise inteligente e triagem','Condução','Investigação e resolução','Validação SAC','Devolutiva conclusiva','Encerramento e aprendizado'];
+  var PANEL_MAP = {1:[1,2],2:[4],3:[6],4:[3],5:[5],6:[7],7:[7]};
   function page(){ return document.getElementById('page-nova-manifestacao'); }
   function etapaAtual(){ return Math.max(1, Math.min(TOTAL, Number(window.nmEtapa) || 1)); }
   function render(){
