@@ -8090,7 +8090,6 @@
 <!-- FIM ESTILOS RELATÓRIO DE SATISFAÇÃO -->
 
 <div class="rs-top rs-noprint" style="position:sticky;top:0;z-index:20">
-  <img src="/assets/logo-grupo-chiacchio.png" alt="Grupo Chiacchio" style="height:32px;width:auto;object-fit:contain" id="rel-top-logo">
   <div class="rs-top-title"><b>Relatório de Satisfação</b><span id="rel-topsub">Editor do relatório mensal · Diretoria e Presidência</span></div>
   <div id="rel-top-status" style="display:flex;flex-direction:column;gap:3px;padding:0 4px">
     <span id="rel-top-badge" style="display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;padding:3px 10px;border-radius:99px;background:#E4E4E4;color:#545252;white-space:nowrap">Não iniciado</span>
@@ -8099,9 +8098,10 @@
   <a id="rel-link-centro" href="#" onclick="navegarPara('pesquisas');return false;" style="font-size:12.5px;font-weight:600;white-space:nowrap;color:#A80502;text-decoration:none">← Pesquisas</a>
   <div class="rs-top-actions">
     <button type="button" class="rs-switch" id="rel-btn-diretoria" onclick="relToggleDiretoria()"><i><b></b></i>Visão Diretoria</button>
-    <button type="button" id="rel-btn-salvar-rascunho" class="rs-btn-out" onclick="relSalvarRascunho()" style="display:none">Salvar rascunho</button>
+    <button type="button" class="rs-btn-out" onclick="relAbrirFormHistorico()">Histórico</button>
     <button type="button" class="rs-btn-out" onclick="relBaixarPdf()">Baixar PDF</button>
-    <button type="button" class="rs-btn-send" id="rel-btn-enviar" onclick="relCompartilharLink()">Enviar para Diretoria</button>
+    <button type="button" id="rel-btn-salvar-rascunho" class="rs-btn-send" onclick="relSalvarRascunho()">Salvar</button>
+    <button type="button" id="rel-btn-enviar" class="rs-btn-out" onclick="relCompartilharLink()">Enviar para Diretoria</button>
   </div>
 </div>
 
@@ -8174,7 +8174,22 @@
   // Carrega metas do backend ao iniciar
   (async()=>{try{const tok=sessionStorage.getItem('sac-token');if(!tok)return;const r=await fetch('/api/relatorios/metas',{headers:{Authorization:'Bearer '+tok}});const j=await r.json().catch(()=>({}));if(j.metas){Object.assign(_metas,j.metas);try{localStorage.setItem('sac_rel_metas',JSON.stringify(_metas));}catch(e){}; _syncMetaInput();}}catch(e){}})();
 
-  function esc(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));}
+  function _textoSeguro(v){
+    if(v==null)return '';
+    if(typeof v==='string'||typeof v==='number'||typeof v==='boolean')return String(v);
+    if(Array.isArray(v))return v.map(x=>_textoSeguro(x)).filter(Boolean).join('\n');
+    if(typeof v==='object'){
+      const preferido=v.text??v.valor??v.value??v.conteudo??v.content??v.descricao;
+      if(preferido!=null)return _textoSeguro(preferido);
+      try{return JSON.stringify(v);}catch{return '';}
+    }
+    return String(v);
+  }
+  function _normalizarTextos(v){
+    if(!v||typeof v!=='object'||Array.isArray(v))return {};
+    return Object.fromEntries(Object.entries(v).map(([k,val])=>[k,_textoSeguro(val)]));
+  }
+  function esc(v){return _textoSeguro(v).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));}
   function num(v){if(v==null||v==='')return null;const n=parseFloat(String(v).replace(',','.'));return isFinite(n)?n:null;}
   function f2(v){return v==null?'—':v.toFixed(2).replace('.',',');}
   function sgn(d){return (d>0?'+':d<0?'−':'±')+Math.abs(d).toFixed(2).replace('.',',');}
@@ -8275,6 +8290,7 @@
     // A API indisponível não pode deixar a tela presa em "Carregando". O modelo
     // continua disponível para edição manual, mas o erro fica explícito.
     _d=erro?{itens:[],historico:[],criterios:[],textos:{},nps:null,notas_baixas_stats:{}}:(dados||{itens:[],historico:[],criterios:[],textos:{},nps:null,notas_baixas_stats:{}});
+    _d.textos=_normalizarTextos(_d.textos);
     _renderizar(erro,erroMsg);
   };
 
@@ -8376,7 +8392,7 @@
     const cont=_val('rel-conteudo');
     if(!cont) return;
     const sub=_val('rel-topsub');
-    if(sub) sub.textContent=_dir?'Visão da Diretoria · somente leitura':'Pesquisa de satisfação · relatório mensal para Diretoria e Presidência';
+    if(sub) sub.textContent='Relatório mensal de satisfação do cliente';
     const metaW=_val('rel-meta-wrap');if(metaW) metaW.style.display=_dir?'none':'';
     if(!_d){cont.innerHTML='<div class="rs-vazio" style="color:#A80502">Não foi possível carregar o relatório.<br><button type="button" class="rs-btn-sm" style="margin-top:10px" onclick="relCarregar()">Tentar novamente</button></div>';return;}
     const empresa=_empresa(),ref=_refKey();
@@ -8393,7 +8409,6 @@
     let streak=0;if(!semDados){for(let i=ri;i>=0&&ser[i].ind>=_meta;i--)streak++;}
     const total=per.reduce((a,r)=>a+r.n,0);
     const above=cur.ind!=null&&cur.ind>=_meta;
-    const lg=LOGOS[empresa]||LOGOS['Chiacchio Embalagens'];
     const ctx={cur,prev,ref,ser,ri,per,bestK,worstK};
     const textos=_d.textos||{};
     _autos={};
@@ -8402,12 +8417,16 @@
     // Cabeçalho do relatório — campos editáveis inline
     const resp=textos.responsavel||'';const cargo_a=textos.cargo_analista||'';const resumo_ex=textos.resumo_executivo||'';
     const _inpStyle='height:32px;border:1px solid #D6D6D6;border-radius:6px;padding:0 10px;font-size:12.5px;font-family:inherit;background:#fff;color:#1F1F1F';
-    h+=`<div class="rs-card rs-card-flush">
-      <div class="rs-masthead-top" style="border-bottom-color:${lg[1]}"><img src="${lg[0]}" alt="${esc(empresa)}"><span class="rs-sub">${semDados?'⚠ Sem pesquisas neste período — preencha manualmente':'Dados calculados a partir das pesquisas recebidas'}</span></div>
+    h+=`<div class="rs-report-title-block">
+      <div>
+        <div class="rs-report-title-kicker">RELATÓRIO DE SATISFAÇÃO DO CLIENTE</div>
+        <div class="rs-report-title-name">${esc(empresa)} — ${esc(mlong(ref))}</div>
+      </div>
+      <div class="rs-report-title-meta"><span>Elaborado por</span><b>${esc(resp||'Não informado')}${cargo_a?' · '+esc(cargo_a):''}</b><small>${new Date().toLocaleDateString('pt-BR')}</small></div>
+    </div>
+    <div class="rs-card rs-card-flush rs-meta-card">
       <div class="rs-masthead-body">
         <div style="min-width:0">
-          <div class="rs-kicker">RELATÓRIO DE PESQUISA DE SATISFAÇÃO DE CLIENTES</div>
-          <div class="rs-h1">${esc(empresa.toUpperCase())} · ${esc(mlong(ref))}</div>
           ${!_dir?`<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;align-items:center">
             <div style="display:flex;flex-direction:column;gap:3px"><span style="font-size:10.5px;font-weight:700;letter-spacing:.06em;color:#666464">ELABORADO POR</span><input id="rel-inp-responsavel" type="text" placeholder="Nome do responsável" value="${esc(resp)}" style="${_inpStyle};min-width:180px"></div>
             <div style="display:flex;flex-direction:column;gap:3px"><span style="font-size:10.5px;font-weight:700;letter-spacing:.06em;color:#666464">CARGO</span><input id="rel-inp-cargo" type="text" placeholder="Ex: Analista de SAC" value="${esc(cargo_a)}" style="${_inpStyle};min-width:150px"></div>
@@ -8660,7 +8679,6 @@
     }
     // Salvar rascunho: visível quando não publicado e há algum dado
     if(btnSalvar){
-      const temDados=_d&&(_d.itens||[]).length>0;
       btnSalvar.style.display=(!meta||meta.status==='RASCUNHO'||meta.status==='EM_REVISAO')&&!_dir?'':'none';
     }
   }
@@ -9160,7 +9178,7 @@
       if(!r.ok||j.sucesso===false){_toast('Erro ao salvar rascunho.'+(j.erro?' '+j.erro:''));}
       else{_toast('Rascunho v'+j.versao+' salvo.');await relCarregar();}
     }catch(e){_toast('Erro ao salvar rascunho.');}
-    if(btn){btn.disabled=false;btn.textContent='Salvar rascunho';}
+    if(btn){btn.disabled=false;btn.textContent='Salvar';}
   };
 
   window.relBaixarPdf=function(){
@@ -10001,9 +10019,6 @@ function navigate(page, el, _opts) {
     const _geralBtn = document.getElementById('cp-tab-btn-geral');
     if (_geralBtn && typeof cpTab === 'function') cpTab('geral', _geralBtn);
     if (!_cp.all && !_cp.loading) { _cp.loading = true; if (typeof cpLoad === 'function') cpLoad(); }
-  }
-  if (page === 'relatorio-satisfacao' && typeof window.relCarregar === 'function') {
-    window.relCarregar();
   }
   if (page === 'central-cadastros' && typeof window.ccCarregar === 'function') {
     window.ccCarregar(_opts?.tab);
@@ -30641,6 +30656,8 @@ if (typeof pageLoaders !== 'undefined') {
 @media(max-width:1000px){#page-sugestoes-melhoria .cp-top{height:auto!important;min-height:68px!important;flex-wrap:wrap!important}#page-sugestoes-melhoria .cp-top-filters{display:none!important}#page-sugestoes-melhoria #cp-kpis{grid-template-columns:repeat(3,minmax(0,1fr))!important;grid-template-rows:auto}}
 @media(max-width:900px){#page-sugestoes-melhoria>div:nth-child(2){padding:0 20px 36px!important}#page-sugestoes-melhoria #cp-tabbar{margin-left:-20px!important;margin-right:-20px!important;padding-left:20px!important;padding-right:20px!important}#page-sugestoes-melhoria #cp-filtros{margin-left:-20px!important;margin-right:-20px!important;padding-left:20px!important;padding-right:20px!important}#page-sugestoes-melhoria #cp-kpis{grid-template-columns:repeat(2,minmax(0,1fr))!important;grid-template-rows:auto}}
 @media(max-width:600px){#page-sugestoes-melhoria .cp-top{padding:12px 14px!important}#page-sugestoes-melhoria>div:nth-child(2){padding:0 14px 28px!important}#page-sugestoes-melhoria #cp-tabbar{margin-left:-14px!important;margin-right:-14px!important;padding-left:14px!important;padding-right:14px!important}#page-sugestoes-melhoria #cp-filtros{margin-left:-14px!important;margin-right:-14px!important;padding-left:14px!important;padding-right:14px!important}#page-sugestoes-melhoria #cp-kpis{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}#page-sugestoes-melhoria #cp-kpis>div{padding:14px!important;min-height:92px!important}}
+/* Fecha o bloco de estilos do Centro das Pesquisas antes do próximo bloco. */
+</style>
 <style id="relatorio-cerebro-reference-layout">
 /* Design aprovado aplicado às implementações ativas. */
 #page-relatorio-satisfacao{font-family:Montserrat,Arial,sans-serif;background:#f7f7f7!important}
@@ -30669,6 +30686,27 @@ if (typeof pageLoaders !== 'undefined') {
 #page-cerebro .cb-sources>div{padding:0 0 14px}
 @media(max-width:1000px){#page-cerebro .cb-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}#page-relatorio-satisfacao .rs-filtros,#page-relatorio-satisfacao .rs-body{padding-left:20px;padding-right:20px}}
 @media(max-width:600px){#page-cerebro>div:first-child{padding:16px 14px 32px!important}#page-cerebro .cb-kpis{gap:8px}#page-cerebro .cb-kpi{padding:12px;min-height:82px}#page-cerebro .cb-kpi b{font-size:23px}#page-cerebro .cb-nav-btn{padding:10px 11px!important;font-size:12px!important}#page-relatorio-satisfacao .rs-top{padding:12px 14px!important}#page-relatorio-satisfacao .rs-filtros,#page-relatorio-satisfacao .rs-body{padding-left:14px;padding-right:14px}}
+/* Layout fiel ao HTML aprovado: cabeçalho compacto, barra de seleção e área rolável. */
+#page-relatorio-satisfacao{display:flex!important;flex-direction:column!important;overflow:hidden!important}
+#page-relatorio-satisfacao .rs-top{height:68px!important;min-height:68px!important;padding:14px 28px!important;box-shadow:none!important;align-items:flex-start!important}
+#page-relatorio-satisfacao .rs-top-title b{font-size:18px!important;font-weight:800!important;line-height:1!important}
+#page-relatorio-satisfacao .rs-top-title span{font-size:11.5px!important;color:#929090!important;margin-top:4px!important}
+#page-relatorio-satisfacao .rs-top-actions{gap:7px!important}
+#page-relatorio-satisfacao .rs-filtros{max-width:none!important;width:100%!important;margin:0!important;padding:10px 28px!important;min-height:58px;background:#fafafa;border-bottom:1px solid #e5e5e5;align-items:center!important}
+#page-relatorio-satisfacao .rs-body{max-width:none!important;width:100%!important;flex:1;min-height:0;overflow-y:auto!important;padding:24px 28px 48px!important;gap:16px!important}
+#page-relatorio-satisfacao .rs-card{border-radius:10px!important}
+#page-relatorio-satisfacao .rs-report-title-block{display:flex;justify-content:space-between;align-items:center;gap:20px;background:#C70602;color:#fff;border:1px solid #C70602;border-radius:10px;padding:18px 22px;margin-bottom:0;min-height:92px}
+#page-relatorio-satisfacao .rs-report-title-kicker{font-size:11px;font-weight:700;letter-spacing:.1em;color:rgba(255,255,255,.72);text-transform:uppercase;margin-bottom:4px}
+#page-relatorio-satisfacao .rs-report-title-name{font-size:22px;font-weight:800;line-height:1.2}
+#page-relatorio-satisfacao .rs-report-title-meta{text-align:right;display:flex;flex-direction:column;gap:2px;font-size:11px;color:rgba(255,255,255,.72)}
+#page-relatorio-satisfacao .rs-report-title-meta b{font-size:13px;color:#fff}
+#page-relatorio-satisfacao .rs-report-title-meta small{font-size:11px;color:rgba(255,255,255,.6);margin-top:1px}
+#page-relatorio-satisfacao .rs-masthead-body{padding:20px 22px!important}
+#page-relatorio-satisfacao .rs-grid2{gap:14px!important}
+#page-relatorio-satisfacao .rs-hero{border-radius:10px!important;padding:18px 20px!important}
+#page-relatorio-satisfacao .rs-crit{border-radius:10px!important}
+@media(max-width:900px){#page-relatorio-satisfacao .rs-top{height:auto!important;min-height:68px!important;flex-wrap:wrap!important}#page-relatorio-satisfacao .rs-body{padding:20px!important}#page-relatorio-satisfacao .rs-filtros{padding:10px 20px!important}}
+@media(max-width:600px){#page-relatorio-satisfacao .rs-top{padding:12px 14px!important}#page-relatorio-satisfacao .rs-body{padding:16px 14px 30px!important}#page-relatorio-satisfacao .rs-filtros{padding:10px 14px!important}#page-relatorio-satisfacao .rs-top-actions{width:100%;overflow-x:auto;flex-wrap:nowrap!important}#page-relatorio-satisfacao .rs-report-title-block{align-items:flex-start;flex-direction:column;padding:16px}#page-relatorio-satisfacao .rs-report-title-meta{text-align:left}}
 </style>
 <style id="arquivo-banco-casos-reference-layout">
 /* Arquivo de Fichas e Banco de Casos: layout aprovado, escopado às telas reais. */
