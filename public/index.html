@@ -8378,7 +8378,7 @@
     const {cur,prev,ref,ser,ri,per,bestK,worstK}=ctx;
     if(cur.ind==null) return 'Sem dados de pesquisa disponíveis para este mês. Preencha os campos deste relatório manualmente.';
     const ch=CR.map(([,k,nm])=>({k,nm,v:cur[k],d:prev&&cur[k]!=null&&prev[k]!=null?cur[k]-prev[k]:0})).filter(x=>x.v!=null);
-    const above=cur.ind>=_meta;
+    const above=cur.ind>=getMeta();
     const prevK=prev?prev.k:null;
     if(s==='desempenho'){
       const p=[];
@@ -8399,20 +8399,20 @@
           :'A maior queda foi em '+w.nm+' ('+sgn(w.d)+') e o maior avanço em '+b.nm+' ('+sgn(b.d)+'). ';
       }
       t+=above?'Mesmo assim, o indicador geral segue dentro da meta.':'O indicador geral está abaixo da meta e precisa de acompanhamento mais próximo.';
-      const ab=ch.filter(x=>x.v<_meta);
+      const ab=ch.filter(x=>x.v<getMeta());
       t+=ab.length?'\nCritérios abaixo da meta: '+ab.map(x=>x.nm+' ('+f2(x.v)+')').join(', ')+'.':'\nTodos os critérios estão dentro da meta.';
       return t;
     }
     if(s==='pontos_fortes'){
-      return ch.filter(x=>x.v>=_meta).sort((a,b)=>b.v-a.v).map(x=>cap(x.nm)+' com '+f2(x.v)+(prev?' ('+sgn(x.d)+' vs '+ml(prevK)+')':'')+', dentro da meta.').join('\n')||'Nenhum critério atingiu a meta neste mês.';
+      return ch.filter(x=>x.v>=getMeta()).sort((a,b)=>b.v-a.v).map(x=>cap(x.nm)+' com '+f2(x.v)+(prev?' ('+sgn(x.d)+' vs '+ml(prevK)+')':'')+', dentro da meta.').join('\n')||'Nenhum critério atingiu a meta neste mês.';
     }
     if(s==='oportunidades'){
-      const l=ch.filter(x=>x.v<_meta||x.d<-0.3).sort((a,b)=>a.v-b.v);
-      return l.length?l.map(x=>cap(x.nm)+' com '+f2(x.v)+(x.v<_meta?', abaixo da meta':'')+(x.d<-0.3?', queda de '+Math.abs(x.d).toFixed(2).replace('.',',')+' em relação ao mês anterior':'')+'.').join('\n'):'Sem critérios abaixo da meta ou com queda relevante. Manter o acompanhamento para preservar o resultado.';
+      const l=ch.filter(x=>x.v<getMeta()||x.d<-0.3).sort((a,b)=>a.v-b.v);
+      return l.length?l.map(x=>cap(x.nm)+' com '+f2(x.v)+(x.v<getMeta()?', abaixo da meta':'')+(x.d<-0.3?', queda de '+Math.abs(x.d).toFixed(2).replace('.',',')+' em relação ao mês anterior':'')+'.').join('\n'):'Sem critérios abaixo da meta ou com queda relevante. Manter o acompanhamento para preservar o resultado.';
     }
     // acoes
     const A={pr:'Acompanhar com a Logística as entregas do mês e as notas baixas de prazo registradas nas pesquisas.',qu:'Acompanhar com a Qualidade as avaliações e comentários sobre produto para identificar se há ocorrência específica ou padrão recorrente.',at:'Manter o acompanhamento dos atendimentos realizados pelos RCA, em conjunto com a Gerência Comercial.',re:'Acompanhar a recomendação junto aos demais critérios para entender o que influencia a percepção geral dos clientes.'};
-    const l=ch.filter(x=>x.v<_meta||x.d<-0.3).map(x=>A[x.k]);
+    const l=ch.filter(x=>x.v<getMeta()||x.d<-0.3).map(x=>A[x.k]);
     if(cur.n<10) l.push('Ampliar a base de respostas, reforçando o envio da pesquisa por WhatsApp e e-mail.');
     return (l.length?l:['Manter o acompanhamento mensal dos quatro critérios e das notas baixas registradas nas pesquisas.']).join('\n');
   }
@@ -8423,7 +8423,7 @@
     if(salvo) return salvo;
     let t='Indicador de '+f2(r.ind)+' com '+r.n+' respostas. Atendimento '+f2(r.at)+', prazo de entrega '+f2(r.pr)+', qualidade '+f2(r.qu)+' e recomendação '+f2(r.re)+'.';
     if(p){const d=r.ind-p.ind;t+=' Em relação a '+mword(p.k)+', o indicador '+(d>0.005?'subiu':d<-0.005?'recuou':'ficou estável')+' ('+f2(p.ind)+' → '+f2(r.ind)+').';}
-    t+=r.ind>=_meta?' Resultado dentro da meta de '+metaTxt()+'.':' Resultado abaixo da meta de '+metaTxt()+'.';
+    t+=r.ind>=getMeta()?' Resultado dentro da meta de '+metaTxt()+'.':' Resultado abaixo da meta de '+metaTxt()+'.';
     return t;
   }
 
@@ -8445,9 +8445,9 @@
     const bestK=per.length?per.reduce((a,r)=>r.ind>a.ind?r:a,per[0]).k:null;
     const worstK=per.length?per.reduce((a,r)=>r.ind<a.ind?r:a,per[0]).k:null;
     const best=per.find(r=>r.k===bestK),worst=per.find(r=>r.k===worstK);
-    let streak=0;if(!semDados){for(let i=ri;i>=0&&ser[i].ind>=_meta;i--)streak++;}
+    let streak=0;if(!semDados){for(let i=ri;i>=0&&ser[i].ind>=getMeta();i--)streak++;}
     const total=per.reduce((a,r)=>a+r.n,0);
-    const above=cur.ind!=null&&cur.ind>=_meta;
+    const above=cur.ind!=null&&cur.ind>=getMeta();
     const ctx={cur,prev,ref,ser,ri,per,bestK,worstK};
     const textos=_d.textos||{};
     _autos={};
@@ -8511,7 +8511,7 @@
         <span style="font-size:11.5px;font-weight:700;letter-spacing:.1em;opacity:.9">INDICADOR DO MÊS <span style="font-size:10px;font-weight:500;background:rgba(255,255,255,.2);padding:1px 6px;border-radius:99px;margin-left:4px">⚡ Automático</span></span>
         ${cur.ind!=null
           ?`<div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap"><span class="rs-hero-v">${f2(cur.ind)}</span><span style="font-size:15px;font-weight:600">${prev?esc(sgn(cur.ind-prev.ind)+' vs '+ml(prev.k)):''}</span></div>
-        <span style="font-size:13.5px;font-weight:600">${above?'Acima da meta de '+metaTxt()+(streak>1?' · '+streak+'º mês consecutivo':''):'Abaixo da meta de '+metaTxt()+' · faltam '+(_meta-cur.ind).toFixed(2).replace('.',',')}</span>
+        <span style="font-size:13.5px;font-weight:600">${above?'Acima da meta de '+metaTxt()+(streak>1?' · '+streak+'º mês consecutivo':''):'Abaixo da meta de '+metaTxt()+' · faltam '+(getMeta()-cur.ind).toFixed(2).replace('.',',')}</span>
         <span style="font-size:12.5px;opacity:.92">${cur.n} respostas em ${esc(mword(ref))}${cur.n<10?' · base pequena, resultado sensível a poucas avaliações':''}</span>`
           :`<span class="rs-hero-v" style="font-size:32px;opacity:.8">—</span><span style="font-size:13.5px;font-weight:500;opacity:.9">Sem pesquisas em ${esc(mlong(ref))}</span><span style="font-size:12px;opacity:.75">Preencha os dados manualmente para gerar o relatório</span>`}
       </div>
@@ -8565,7 +8565,7 @@
     const nMax=Math.max(...per.map(r=>r.n));
     h+=`<div class="rs-card">
       <div class="rs-card-h"><b>Evolução do indicador</b><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span class="rs-sub">Média de atendimento, prazo, qualidade e recomendação · linha tracejada = meta ${metaTxt()}</span><span class="rs-src" style="background:#FBF0D9;color:#7A4C00">⚡ Automático</span></div></div>
-      <div class="rs-chart"><div class="rs-chart-meta" style="bottom:calc(${sc(_meta)}% * 202 / 220)"></div>
+      <div class="rs-chart"><div class="rs-chart-meta" style="bottom:calc(${sc(getMeta())}% * 202 / 220)"></div>
       ${per.map(r=>{const on=r.k===ref,c=col(r.ind);return `<button type="button" class="rs-bar" onclick="relIrMes('${r.k}')" title="${esc(mlong(r.k))}"><span style="color:${c}">${f2(r.ind)}</span><div style="height:${sc(r.ind)}%;background:${c};opacity:${on?1:.72};outline:${on?'2px solid '+c:'none'};outline-offset:2px"></div></button>`;}).join('')}
       </div>
       <div class="rs-chart-x">${per.map(r=>`<div><span class="lb" style="font-weight:${r.k===ref?700:500}">${ml(r.k)}</span><div class="nb"><i style="height:${Math.max(6,r.n/nMax*100)}%"></i></div><span class="nn">${r.n}</span></div>`).join('')}</div>
@@ -8577,7 +8577,7 @@
       const d=prev&&prev[k]!=null?v-prev[k]:0,c=col(v);
       return `<div class="rs-crit" style="border-top-color:${c}"><span class="rs-crit-l">${l}</span>
         <div class="rs-crit-v"><b>${f2(v)}</b><span style="color:${d>0.005?GREEN:d<-0.005?RED:'#666464'}">${prev&&prev[k]!=null?sgn(d):''}</span></div>
-        <span style="font-size:12px;color:${c};font-weight:600">${v>=_meta?'Dentro da meta':'Abaixo da meta'}</span>
+        <span style="font-size:12px;color:${c};font-weight:600">${v>=getMeta()?'Dentro da meta':'Abaixo da meta'}</span>
         <div class="rs-spark">${per.map(m=>m[k]==null?'':`<i title="${esc(ml(m.k)+': '+f2(m[k]))}" style="height:${sc(m[k])}%;background:${col(m[k])};opacity:${m.k===ref?1:.55}"></i>`).join('')}</div></div>`;
     }).join('')+`</div>`;
 
