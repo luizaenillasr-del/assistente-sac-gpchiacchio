@@ -1403,6 +1403,10 @@
             </select>
           </div>
           <div class="form-group">
+            <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">Cargo oficial</label>
+            <input id="usu-cargo" class="form-input" placeholder="Cargo ou função">
+          </div>
+          <div class="form-group">
             <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">Status</label>
             <select id="usu-status" class="form-input">
               <option value="PRIMEIRO_ACESSO">Primeiro acesso</option>
@@ -4964,11 +4968,11 @@
   <div class="page" id="page-usuarios" style="overflow:hidden">
 
   <!-- TOPBAR -->
-  <div style="height:56px;background:#fff;border-bottom:1px solid #E4E4E4;display:flex;align-items:center;padding:0 24px;gap:16px;flex-shrink:0;margin:-24px -28px 0">
-    <div style="display:flex;align-items:center;gap:8px">
-      <span style="font-size:11px;color:#929090">Administração</span>
-      <span style="font-size:11px;color:#D6D6D6">/</span>
-      <span style="font-size:13px;font-weight:700;color:#1F1F1F">Gestão de Acessos e Aprovações</span>
+  <div class="usr-header">
+    <div class="usr-head-copy">
+      <span class="usr-eyebrow">ADMINISTRAÇÃO</span>
+      <h1>Gestão de Acessos e Aprovações</h1>
+      <p>Gerenciamento de usuários, permissões, aprovadores e regras de autorização da plataforma.</p>
     </div>
     <div style="flex:1"></div>
     <button onclick="window.loadUsuariosMasterPainel&&window.loadUsuariosMasterPainel()"
@@ -4982,7 +4986,12 @@
   </div>
 
   <style>
-    #page-usuarios .usr-tabs{display:flex;gap:4px;padding:14px 24px 0;background:#fff;border-bottom:1px solid #E4E4E4}
+    #page-usuarios .usr-header{height:auto;min-height:108px;background:#fff;border-bottom:1px solid #E4E4E4;display:flex;align-items:center;padding:20px 28px;gap:16px;flex-shrink:0;margin:0}
+    #page-usuarios .usr-head-copy{display:flex;flex-direction:column;gap:3px;min-width:0}
+    #page-usuarios .usr-eyebrow{font-size:11px;color:#8b8b8b;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+    #page-usuarios .usr-head-copy h1{margin:0;color:#1f1f1f;font-size:24px;line-height:1.2;font-weight:800}
+    #page-usuarios .usr-head-copy p{margin:2px 0 0;color:#707070;font-size:13px}
+    #page-usuarios .usr-tabs{display:flex;gap:4px;padding:14px 24px 0;background:#fff;border-bottom:1px solid #E4E4E4;overflow-x:auto;scrollbar-width:thin}
     #page-usuarios .usr-tab{border:0;background:none;border-bottom:3px solid transparent;padding:10px 14px 11px;color:#666464;font:600 13px Montserrat,inherit;cursor:pointer}
     #page-usuarios .usr-tab:hover{background:#FAFAFA;color:#1F1F1F}
     #page-usuarios .usr-tab.active{color:#C70602;border-bottom-color:#C70602}
@@ -4991,7 +5000,8 @@
     #page-usuarios .usr-perm-card{background:#fff;border:1px solid #E4E4E4;border-radius:12px;margin:16px 24px;padding:18px}
     #page-usuarios .usr-perm-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-top:14px}
     #page-usuarios .usr-perm-item{border:1px solid #EFEFEF;border-radius:8px;padding:12px;font-size:12px;color:#545252}
-    @media(max-width:700px){#page-usuarios .usr-tabs{overflow-x:auto}.usr-tab{white-space:nowrap}}
+    #page-usuarios .usr-panel-usuarios.active{display:flex;flex-direction:column;min-height:0;flex:1;overflow:hidden}
+    @media(max-width:700px){#page-usuarios .usr-header{align-items:flex-start;flex-direction:column;padding:16px 18px}#page-usuarios .usr-header>div:last-child{width:100%;justify-content:flex-end}#page-usuarios .usr-head-copy h1{font-size:20px}.usr-tab{white-space:nowrap}}
   </style>
 
   <div class="usr-tabs" role="tablist" aria-label="Gestão de usuários">
@@ -5015,7 +5025,7 @@
 
   <div id="usr-aprov-bridge" class="usr-panel" aria-live="polite"></div>
 
-  <div id="usr-panel-usuarios" class="usr-panel active">
+  <div id="usr-panel-usuarios" class="usr-panel usr-panel-usuarios active">
 
   <!-- SOLICITAÇÕES PENDENTES (amber collapsible banner) -->
   <div id="usr-solicitacoes-section" style="display:none;background:#FBF0D9;border-bottom:1px solid #F0D9A0;margin:0 -28px;flex-shrink:0">
@@ -5044,12 +5054,18 @@
       <option>SETOR TI</option><option>SETOR MARKETING</option><option>SETOR DIRETORIA</option>
       <option>SETOR RESPONSÁVEL</option>
     </select>
+    <select id="usu-fil-empresa" onchange="usuFiltrar()"
+      style="height:36px;border:1.5px solid #E4E4E4;border-radius:8px;padding:0 10px;font-size:12.5px;font-family:inherit">
+      <option value="">Todas as empresas</option><option>Chiacchio Embalagens</option><option>Plaschio</option><option>Tubahia</option><option>Cesbap</option>
+    </select>
     <select id="usu-fil-status" onchange="usuFiltrar()"
       style="height:36px;border:1.5px solid #E4E4E4;border-radius:8px;padding:0 10px;font-size:12.5px;font-family:inherit">
       <option value="">Todos os status</option>
       <option value="ATIVO">Ativo</option><option value="INATIVO">Inativo</option>
       <option value="BLOQUEADO">Bloqueado</option>
     </select>
+    <button type="button" onclick="usuFiltrar()" style="height:36px;border:0;background:#C70602;color:#fff;border-radius:8px;padding:0 14px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit">Aplicar</button>
+    <button type="button" onclick="usuLimparFiltros()" style="height:36px;border:1px solid #D6D6D6;background:#fff;color:#545252;border-radius:8px;padding:0 14px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit">Limpar</button>
   </div>
 
   <!-- TABELA DE USUÁRIOS -->
@@ -5062,6 +5078,7 @@
               <th style="padding:10px 16px;text-align:left;font-size:11px;font-weight:700;letter-spacing:.05em;color:#929090;text-transform:uppercase">Usuário</th>
               <th style="padding:10px 16px;text-align:left;font-size:11px;font-weight:700;letter-spacing:.05em;color:#929090;text-transform:uppercase">Perfil</th>
               <th style="padding:10px 16px;text-align:left;font-size:11px;font-weight:700;letter-spacing:.05em;color:#929090;text-transform:uppercase">Empresa</th>
+              <th style="padding:10px 16px;text-align:left;font-size:11px;font-weight:700;letter-spacing:.05em;color:#929090;text-transform:uppercase">Setor</th>
               <th style="padding:10px 16px;text-align:left;font-size:11px;font-weight:700;letter-spacing:.05em;color:#929090;text-transform:uppercase">Status</th>
               <th style="padding:10px 16px;text-align:left;font-size:11px;font-weight:700;letter-spacing:.05em;color:#929090;text-transform:uppercase">Último acesso</th>
               <th style="padding:10px 16px;text-align:right;font-size:11px;font-weight:700;letter-spacing:.05em;color:#929090;text-transform:uppercase">Ações</th>
@@ -23526,7 +23543,7 @@ async function mudarStatusMC(id, novoStatus) {
     const usersVisible=current==='usuarios';
     ['usr-filtros-wrap','usr-tabela-wrap'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display=usersVisible?'':'none';});
     const usersPanel=document.getElementById('usr-panel-usuarios');
-    if(usersPanel)usersPanel.classList.toggle('active',current==='usuarios'||current==='solicitacoes');
+    if(usersPanel)usersPanel.classList.toggle('active',current==='usuarios');
     const bridge=document.getElementById('usr-aprov-bridge');
     if(adminTabs.includes(current)){
       mountAprovacaoPanels();
@@ -27732,7 +27749,7 @@ function updateTopbarUser(user) {
 
   async function loadUsuariosMasterPainel() {
     const r = role();
-    if (r !== 'MASTER' && r !== 'APROVADOR MASTER') {
+    if (r !== 'MASTER') {
       const pg = document.getElementById('page-usuarios');
       if (pg) pg.innerHTML = '<div style="padding:40px;text-align:center;color:#707070">Acesso restrito ao MASTER.</div>';
       return;
@@ -27741,13 +27758,13 @@ function updateTopbarUser(user) {
     const vazio = document.getElementById('usu-vazio');
     const tb = document.getElementById('usu-lista');
     if (vazio) vazio.style.display = 'none';
-    if (tb) tb.innerHTML = '<tr><td colspan="6" style="padding:20px;text-align:center;color:#707070">Carregando...</td></tr>';
+    if (tb) tb.innerHTML = '<tr><td colspan="7" style="padding:20px;text-align:center;color:#707070">Carregando...</td></tr>';
     try {
       const d = await _apiFetch('/api/usuarios');
       _usuDados = (d.usuarios || d.itens || []);
       usuRenderLista(_usuDados);
     } catch(e) {
-      if (tb) tb.innerHTML = `<tr><td colspan="6" style="padding:20px;text-align:center;color:#C70602">Erro ao carregar usuários: ${esc5(e.message)}</td></tr>`;
+      if (tb) tb.innerHTML = `<tr><td colspan="7" style="padding:20px;text-align:center;color:#C70602">Erro ao carregar usuários: ${esc5(e.message)}</td></tr>`;
       if (vazio) vazio.style.display = 'none';
     }
     // Carregar solicitações pendentes
@@ -27781,6 +27798,7 @@ function updateTopbarUser(user) {
         </td>
         <td style="padding:12px 16px"><span style="font-size:11px;font-weight:700;background:#F4F4F4;border-radius:5px;padding:3px 7px;color:#545252">${esc5(u.PERFIL||u.perfil||'—')}</span></td>
         <td style="padding:12px 16px;font-size:12.5px;color:#545252">${esc5(u.EMPRESA||u.empresa||'—')}</td>
+        <td style="padding:12px 16px;font-size:12.5px;color:#545252">${esc5(u.SETOR||u.setor||'—')}</td>
         <td style="padding:12px 16px"><span style="font-size:11px;font-weight:700;border-radius:5px;padding:3px 8px;background:${sc.bg};color:${sc.color}">${st}</span></td>
         <td style="padding:12px 16px;font-size:12px;color:#707070">${(u.ULTIMO_ACESSO||u.ultimoAcesso) ? _fmtDataCurta(u.ULTIMO_ACESSO||u.ultimoAcesso) : '—'}</td>
         <td style="padding:12px 16px;text-align:right">
@@ -27802,14 +27820,20 @@ function updateTopbarUser(user) {
   window.usuFiltrar = function() {
     const q = (document.getElementById('usu-busca')&&document.getElementById('usu-busca').value||'').toLowerCase();
     const fp = (document.getElementById('usu-fil-perfil')&&document.getElementById('usu-fil-perfil').value||'').toUpperCase();
+    const fe = (document.getElementById('usu-fil-empresa')&&document.getElementById('usu-fil-empresa').value||'').toLowerCase();
     const fs = (document.getElementById('usu-fil-status')&&document.getElementById('usu-fil-status').value||'').toUpperCase();
     const filtrado = _usuDados.filter(u => {
       if (q && !((u.NOME||u.nome||'')+(u.EMAIL||u.email||'')+(u.USUARIO||u.usuario||'')).toLowerCase().includes(q)) return false;
       if (fp && (u.PERFIL||u.perfil||'').toUpperCase() !== fp) return false;
+      if (fe && !(u.EMPRESA||u.empresa||'').toLowerCase().split(',').map(v=>v.trim()).includes(fe)) return false;
       if (fs && (u.STATUS||u.status||'ATIVO').toUpperCase() !== fs) return false;
       return true;
     });
     usuRenderLista(filtrado);
+  };
+  window.usuLimparFiltros = function() {
+    ['usu-busca','usu-fil-perfil','usu-fil-empresa','usu-fil-status'].forEach(function(id){ const el=document.getElementById(id); if(el) el.value=''; });
+    usuFiltrar();
   };
 
   window._usuMap = {};
@@ -27831,6 +27855,7 @@ function updateTopbarUser(user) {
     document.getElementById('usu-email').value = u&&(u.EMAIL||u.email)||'';
     document.getElementById('usu-usuario').value = u&&(u.USUARIO||u.usuario)||'';
     document.getElementById('usu-perfil').value = u&&(u.PERFIL||u.perfil)||'';
+    document.getElementById('usu-cargo').value = u&&(u.CARGO||u.cargo)||'';
     document.getElementById('usu-status').value = u ? (u.STATUS||u.status||'ATIVO') : 'PRIMEIRO_ACESSO';
     document.getElementById('usu-obs').value = u&&(u.OBSERVACOES||u.observacoes)||'';
     document.getElementById('usu-senha').value = '';
@@ -28005,6 +28030,7 @@ function updateTopbarUser(user) {
     const email = document.getElementById('usu-email').value.trim();
     const usuario = document.getElementById('usu-usuario').value.trim();
     const perfil = document.getElementById('usu-perfil').value;
+    const cargo = document.getElementById('usu-cargo').value.trim();
     const status = document.getElementById('usu-status').value;
     const senha = document.getElementById('usu-senha').value.trim();
     const obs = document.getElementById('usu-obs').value.trim();
@@ -28031,7 +28057,7 @@ function updateTopbarUser(user) {
       let data;
       const editId = _usuEditando && (_usuEditando.ID_USUARIO||_usuEditando.id||_usuEditando.USUARIO||_usuEditando.usuario);
       if(_usuEditando) {
-        const body = { nome, email, perfil, status, empresa: empresas, setor: setores, observacoes: obs };
+        const body = { nome, email, perfil, cargo, status, empresa: empresas, setor: setores, observacoes: obs };
         if(senha) body.senha = senha;
         data = await _apiFetch('/api/usuarios/' + encodeURIComponent(editId), 0, {
           method:'PATCH',
@@ -28049,7 +28075,7 @@ function updateTopbarUser(user) {
         data = await _apiFetch('/api/usuarios', 0, {
           method:'POST',
           headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ nome, email, usuario, perfil, status, empresa: empresas, setor: setores, senha, codigoRCA: comp,
+          body: JSON.stringify({ nome, email, usuario, perfil, cargo, status, empresa: empresas, setor: setores, senha, codigoRCA: comp,
             permissoes_granted: Array.from(_usuGranted), permissoes_blocked: Array.from(_usuBlocked), observacoes: obs }),
         });
       }
@@ -30822,15 +30848,15 @@ if (typeof pageLoaders !== 'undefined') {
 </style>
 <style id="gestao-acessos-reference-layout">
 #page-usuarios{background:#f7f7f7!important;font-family:Montserrat,Arial,sans-serif!important;overflow:hidden!important}
-#page-usuarios>div:first-child{height:68px!important;margin:0!important;padding:14px 28px!important}
-#page-usuarios>div:first-child>div:first-child{display:flex;flex-direction:column;gap:2px}
-#page-usuarios>div:first-child>div:first-child span:first-child{font-size:9.5px!important;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#bdbdbd!important}
-#page-usuarios>div:first-child>div:first-child span:last-child{font-size:18px!important;font-weight:800!important;line-height:1;color:#242424!important}
-#page-usuarios>div:first-child>div:first-child:after{content:'Gerenciamento de usuários, permissões, aprovadores e regras de autorização da plataforma.';font-size:11.5px;color:#929090;margin-top:1px}
+#page-usuarios>.usr-header{height:auto!important;min-height:108px!important;margin:0!important;padding:20px 28px!important}
+#page-usuarios>.usr-header .usr-eyebrow{font-size:9.5px!important;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#bdbdbd!important}
+#page-usuarios>.usr-header .usr-head-copy h1{font-size:24px!important;font-weight:800!important;line-height:1.2;color:#242424!important}
+#page-usuarios>.usr-header .usr-head-copy p{font-size:11.5px;color:#929090;margin-top:1px}
 #page-usuarios .usr-tabs{padding:0 28px!important;gap:0!important;overflow-x:auto!important;scrollbar-width:none}
 #page-usuarios .usr-tab{height:44px!important;padding:0 15px!important;white-space:nowrap!important;font-size:12.5px!important;border-bottom:2px solid transparent!important}
 #page-usuarios .usr-tab.active{color:#c70602!important;border-bottom-color:#c70602!important}
 #page-usuarios .usr-panel.active{display:block!important;flex:1;min-height:0;overflow-y:auto}
+#page-usuarios .usr-panel-usuarios.active{display:flex!important;flex-direction:column;overflow:hidden}
 #page-usuarios #usr-aprov-bridge{padding:18px 28px 36px!important;background:#f7f7f7}
 #page-usuarios #usr-aprov-bridge>.content{padding:0!important;display:flex;flex-direction:column;gap:16px}
 #page-usuarios #usr-aprov-bridge #aprov-page-desc{display:none}
@@ -30839,8 +30865,8 @@ if (typeof pageLoaders !== 'undefined') {
 #page-usuarios .usr-perm-card{margin:18px 28px!important;border-radius:10px!important}
 #page-usuarios .usr-filtros-wrap,#page-usuarios .usr-tabela-wrap{margin-left:28px!important;margin-right:28px!important}
 #page-aprovadores .topbar .page-title{font-size:18px!important}
-@media(max-width:900px){#page-usuarios>div:first-child{padding:14px 20px!important}#page-usuarios .usr-tabs{padding:0 20px!important}#page-usuarios #usr-aprov-bridge{padding:16px 20px 30px!important}}
-@media(max-width:640px){#page-usuarios>div:first-child{height:auto!important;min-height:72px!important;padding:12px 14px!important;align-items:flex-start!important}#page-usuarios>div:first-child>div:last-child{width:100%;overflow-x:auto}#page-usuarios .usr-tabs{padding:0 8px!important}#page-usuarios .usr-tab{padding:0 12px!important;font-size:12px!important}#page-usuarios #usr-aprov-bridge{padding:14px!important}#page-usuarios .usr-perm-card{margin:14px!important}}
+@media(max-width:900px){#page-usuarios>.usr-header{padding:14px 20px!important}#page-usuarios .usr-tabs{padding:0 20px!important}#page-usuarios #usr-aprov-bridge{padding:16px 20px 30px!important}}
+@media(max-width:640px){#page-usuarios>.usr-header{height:auto!important;min-height:72px!important;padding:12px 14px!important;align-items:flex-start!important}#page-usuarios>.usr-header>div:last-child{width:100%;overflow-x:auto}#page-usuarios .usr-tabs{padding:0 8px!important}#page-usuarios .usr-tab{padding:0 12px!important;font-size:12px!important}#page-usuarios #usr-aprov-bridge{padding:14px!important}#page-usuarios .usr-perm-card{margin:14px!important}}
 </style>
 <style id="auditoria-configuracoes-reference-layout">
 /* Auditoria e Configurações: camada visual escopada, mantendo os serviços existentes. */
