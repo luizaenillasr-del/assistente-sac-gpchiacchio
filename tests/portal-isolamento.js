@@ -235,7 +235,27 @@ async function serve(app) {
         undefined,
         login.body.token,
       );
-      assert.equal(forbidden.status, 403);
+      // O bloqueio de onboarding ocorre antes da autorização administrativa.
+      // Depois de concluir o perfil, a mesma conta deve receber 403 por não
+      // possuir permissão para administrar o portal.
+      assert.equal(forbidden.status, 428);
+      const perfil = await request(
+        inside,
+        "PATCH",
+        "/api/meu-perfil",
+        { descricaoFuncao: "Analista SAC", responsabilidades: ["Atendimento"], concluir: true },
+        login.body.token,
+      );
+      assert.equal(perfil.status, 200);
+      assert.equal(perfil.body.completo, true);
+      const forbiddenAfterOnboarding = await request(
+        inside,
+        "GET",
+        "/api/portal-admin/config",
+        undefined,
+        perfil.body.token,
+      );
+      assert.equal(forbiddenAfterOnboarding.status, 403);
       assert.equal(
         (
           await request(
@@ -243,7 +263,7 @@ async function serve(app) {
             "GET",
             "/api/manifestacoes",
             undefined,
-            login.body.token,
+            perfil.body.token,
           )
         ).status,
         200,
