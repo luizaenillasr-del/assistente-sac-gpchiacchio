@@ -6308,16 +6308,15 @@
 
       <!-- Início -->
       <div class="cd-panel" id="cdp-inicio">
-        <div class="cb-hero">
-          <div class="cb-hero-red">
-            <div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;font-weight:600;opacity:.9">Conhecimento atualizado</div>
-            <div style="display:flex;align-items:baseline;gap:10px"><span style="font-size:44px;font-weight:700;letter-spacing:-.02em;color:#fff;min-width:80px;display:inline-block" id="cb-pct-atualizado">...</span><span style="font-size:14px;color:#fff">dos conteúdos revisados</span></div>
-            <div style="height:6px;background:rgba(255,255,255,.3);border-radius:3px;overflow:hidden"><div id="cb-bar-atualizado" style="height:100%;background:#fff;width:0"></div></div>
-            <div style="font-size:12.5px" id="cb-ultima-atualizacao">Última atualização: —</div>
-          </div>
-          <div class="cb-card cb-card-pad">
-            <div style="font-weight:700;font-size:14.5px">O que a IA considera ao analisar uma manifestação</div>
-            <div style="display:flex;flex-wrap:wrap;gap:6px">
+        <div class="cb-kpis" id="cb-home-kpis">
+          <div class="cb-kpi"><span>CONTEÚDOS ATIVOS</span><b id="cb-kpi-ativos">—</b><small>Disponíveis na operação</small></div>
+          <div class="cb-kpi"><span>CONTEÚDOS APROVADOS</span><b id="cb-kpi-aprovados">—</b><small>Conhecimento validado</small></div>
+          <div class="cb-kpi"><span>AGUARDANDO APROVAÇÃO</span><b id="cb-kpi-pendentes">—</b><small>Em revisão ou pendentes</small></div>
+          <div class="cb-kpi"><span>NECESSITANDO REVISÃO</span><b id="cb-kpi-revisao">—</b><small id="cb-ultima-atualizacao">Última atualização: —</small></div>
+        </div>
+        <details class="cb-sources" open>
+          <summary>O que a IA considera ao analisar uma manifestação</summary>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">
               <span class="cb-chip">Histórico de manifestações similares</span>
               <span class="cb-chip">Regras do setor</span>
               <span class="cb-chip">Procedimentos</span>
@@ -6327,10 +6326,9 @@
               <span class="cb-chip">Documentos anexados</span>
               <span class="cb-chip">SLAs</span>
               <span class="cb-chip">Causas e subcausas</span>
-            </div>
-            <div style="font-size:12.5px;color:#666464;line-height:1.5">Somente conteúdos <strong style="color:#1F1F1F">ativos e aprovados</strong> e marcados como disponíveis para a IA entram na análise. O Cérebro é a fonte estruturada e oficial de conhecimento da plataforma.</div>
           </div>
-        </div>
+          <div style="font-size:12.5px;color:#666464;line-height:1.5">Somente conteúdos <strong style="color:#1F1F1F">ativos e aprovados</strong> e marcados como disponíveis para a IA entram na análise. O Cérebro é a fonte estruturada e oficial da plataforma.</div>
+        </details>
         <div class="cb-hgrid" id="cb-home-cards">
           <div style="text-align:center;padding:32px;color:#707070;grid-column:1/-1"><div class="spinner" style="margin:0 auto 8px"></div>Carregando...</div>
         </div>
@@ -21689,6 +21687,10 @@ async function cdLoadCerebroHome() {
   if (!cardsEl) return;
   const pctEl = document.getElementById('cb-pct-atualizado');
   const barEl = document.getElementById('cb-bar-atualizado');
+  const activeEl = document.getElementById('cb-kpi-ativos');
+  const approvedEl = document.getElementById('cb-kpi-aprovados');
+  const pendingEl = document.getElementById('cb-kpi-pendentes');
+  const reviewEl = document.getElementById('cb-kpi-revisao');
   const aulEl = document.getElementById('cb-ultima-atualizacao');
   try {
     cbInvalidar();
@@ -21720,12 +21722,18 @@ async function cdLoadCerebroHome() {
   try {
     const scan = await cbScan();
     const total = scan.length;
-    const pend = scan.filter(x=>cbStatus(x.STATUS).k==='revisao').length;
-    const pct = total ? Math.round((total - pend) / total * 100) : 0;
+    const ativos = scan.filter(x=>cbStatus(x.STATUS).k==='ativa').length;
+    const revisao = scan.filter(x=>cbStatus(x.STATUS).k==='revisao').length;
+    const pend = scan.filter(x=>['rascunho','revisao'].includes(cbStatus(x.STATUS).k)).length;
+    const pct = total ? Math.round(ativos / total * 100) : 0;
+    if (activeEl) activeEl.textContent = ativos;
+    if (approvedEl) approvedEl.textContent = ativos;
+    if (pendingEl) pendingEl.textContent = pend;
+    if (reviewEl) reviewEl.textContent = revisao;
     if (pctEl) pctEl.textContent = total ? pct + '%' : '—';
     if (barEl) barEl.style.width = pct + '%';
     const datas = scan.map(x=>x.DATA_ATUALIZACAO||x.DATA_UPLOAD||'').filter(Boolean).sort().reverse();
-    if (aulEl) aulEl.textContent = 'Última atualização: ' + (datas[0] ? cbData(datas[0]) : '—') + ' · ' + pend + ' conteúdos aguardando aprovação';
+    if (aulEl) aulEl.textContent = 'Última atualização: ' + (datas[0] ? cbData(datas[0]) : '—');
   } catch(e) {
     if (pctEl) pctEl.textContent = '—';
   }
@@ -30352,6 +30360,34 @@ if (typeof pageLoaders !== 'undefined') {
 #page-sugestoes-melhoria #cp-panel-geral>div:last-child{border-radius:10px!important}
 @media(max-width:900px){#page-banco-rnc .content{padding:18px 20px 32px!important}#page-banco-rnc .rnc-kpis{grid-template-columns:repeat(2,minmax(0,1fr))!important}#page-banco-rnc .rnc-criteria>div:first-of-type{grid-template-columns:1fr}#page-sugestoes-melhoria>div:nth-child(2){padding:16px 20px 36px!important}#page-sugestoes-melhoria #cp-kpis{grid-template-columns:repeat(2,minmax(130px,1fr))!important}}
 @media(max-width:600px){#page-banco-rnc .topbar{padding:16px!important}#page-banco-rnc .content{padding:16px 14px 24px!important}#page-banco-rnc .page-title{font-size:21px!important}#page-banco-rnc .rnc-kpis{gap:8px!important}#page-banco-rnc .rnc-kpis>div{padding:13px 14px!important}#page-sugestoes-melhoria .cp-top{padding:12px 14px!important;flex-wrap:wrap}#page-sugestoes-melhoria>div:nth-child(2){padding:14px 14px 28px!important}#page-sugestoes-melhoria #cp-kpis{grid-template-columns:1fr 1fr!important;gap:8px!important}}
+<style id="relatorio-cerebro-reference-layout">
+/* Design aprovado aplicado às implementações ativas. */
+#page-relatorio-satisfacao{font-family:Montserrat,Arial,sans-serif;background:#f7f7f7!important}
+#page-relatorio-satisfacao .rs-top{padding:14px 28px!important;min-height:68px}
+#page-relatorio-satisfacao .rs-top-title b{font-size:20px}
+#page-relatorio-satisfacao .rs-filtros{max-width:none;padding-left:28px;padding-right:28px}
+#page-relatorio-satisfacao .rs-body{max-width:none;padding-left:28px;padding-right:28px}
+#page-relatorio-satisfacao #rel-accordion-wrap{display:block!important}
+#page-relatorio-satisfacao .rs-card{border-radius:10px}
+#page-cerebro{font-family:Montserrat,Arial,sans-serif;background:#f7f7f7!important}
+#page-cerebro>div:first-child{padding:24px 28px 48px!important;gap:18px!important}
+#page-cerebro #cerebro-tabbar{flex-wrap:wrap!important;overflow:visible!important;gap:0!important;background:#fff;border:1px solid #e5e5e5;border-radius:10px;padding:0 8px}
+#page-cerebro .cb-nav-btn{flex:0 0 auto;padding:11px 14px!important}
+#page-cerebro .cb-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+#page-cerebro .cb-kpi{background:#fff;border:1px solid #e4e4e4;border-top:2px solid #c70602;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:5px;min-height:92px}
+#page-cerebro .cb-kpi:nth-child(2){border-top-color:#1e6b3a}
+#page-cerebro .cb-kpi:nth-child(3){border-top-color:#d9a400}
+#page-cerebro .cb-kpi:nth-child(4){border-top-color:#24508f}
+#page-cerebro .cb-kpi span{font-size:10.5px;font-weight:700;letter-spacing:.05em;color:#707070}
+#page-cerebro .cb-kpi b{font-size:27px;line-height:1.1;font-weight:800;color:#242424}
+#page-cerebro .cb-kpi small{font-size:11px;color:#929090}
+#page-cerebro .cb-sources{background:#fff;border:1px solid #e4e4e4;border-radius:10px;padding:0 18px}
+#page-cerebro .cb-sources summary{cursor:pointer;list-style:none;padding:14px 0;font-weight:700;font-size:14px;display:flex;justify-content:space-between;align-items:center}
+#page-cerebro .cb-sources summary::-webkit-details-marker{display:none}
+#page-cerebro .cb-sources summary:after{content:'▾';color:#929090}
+#page-cerebro .cb-sources>div{padding:0 0 14px}
+@media(max-width:1000px){#page-cerebro .cb-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}#page-relatorio-satisfacao .rs-filtros,#page-relatorio-satisfacao .rs-body{padding-left:20px;padding-right:20px}}
+@media(max-width:600px){#page-cerebro>div:first-child{padding:16px 14px 32px!important}#page-cerebro .cb-kpis{gap:8px}#page-cerebro .cb-kpi{padding:12px;min-height:82px}#page-cerebro .cb-kpi b{font-size:23px}#page-cerebro .cb-nav-btn{padding:10px 11px!important;font-size:12px!important}#page-relatorio-satisfacao .rs-top{padding:12px 14px!important}#page-relatorio-satisfacao .rs-filtros,#page-relatorio-satisfacao .rs-body{padding-left:14px;padding-right:14px}}
 </style>
 </body>
 </html>
