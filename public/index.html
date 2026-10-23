@@ -4381,6 +4381,7 @@
           <div class="rnc-page-subtitle">Acompanhamento de não conformidades, ações corretivas e verificação de eficácia.</div>
         </div>
           <div class="page-actions">
+            <button class="btn btn-secondary" onclick="loadBancoRNC()">Atualizar</button>
             <button class="btn btn-secondary" onclick="exportarRNC()">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
               Exportar
@@ -4395,7 +4396,43 @@
     </div>
     <div class="content" style="display:flex;flex-direction:column;gap:16px">
 
-      <!-- Info card -->
+      <!-- Filtros reais da listagem -->
+      <div class="rnc-filters">
+        <select id="rnc-f-empresa" aria-label="Empresa"><option value="">Empresa</option></select>
+        <select id="rnc-f-setor" aria-label="Setor"><option value="">Setor</option></select>
+        <select id="rnc-f-status" aria-label="Status"><option value="">Status</option><option value="aberta">Aberta</option><option value="tratamento">Em tratamento</option><option value="eficacia">Verificação de eficácia</option><option value="encerrada">Encerrada</option></select>
+        <input id="rnc-f-de" type="date" aria-label="Data inicial" title="Data inicial">
+        <input id="rnc-f-ate" type="date" aria-label="Data final" title="Data final">
+        <input id="rnc-f-busca" type="search" placeholder="Nº RNC ou manifestação" aria-label="Buscar RNC" oninput="rncAplicarFiltros()">
+        <button type="button" class="btn btn-primary" onclick="rncAplicarFiltros()">Aplicar</button>
+        <button type="button" class="btn btn-secondary" onclick="rncLimparFiltros()">Limpar</button>
+      </div>
+
+      <!-- KPIs -->
+      <div class="rnc-kpis" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px">
+        <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px">
+          <div style="font-size:12.5px;color:#666464">RNCs abertas</div>
+          <div style="font-size:24px;font-weight:600;margin-top:4px" id="rnc-abertas">--</div>
+          <div class="rnc-kpi-desc">Registros não encerrados</div>
+        </div>
+        <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px">
+          <div style="font-size:12.5px;color:#666464">Vencendo em 7 dias</div>
+          <div style="font-size:24px;font-weight:600;margin-top:4px" id="rnc-vencendo">--</div>
+          <div class="rnc-kpi-desc">Prazo entre hoje e os próximos 7 dias</div>
+        </div>
+        <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px">
+          <div style="font-size:12.5px;color:#666464">Em verificação de eficácia</div>
+          <div style="font-size:24px;font-weight:600;margin-top:4px" id="rnc-eficacia">--</div>
+          <div class="rnc-kpi-desc">Ações aguardando validação</div>
+        </div>
+        <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px">
+          <div style="font-size:12.5px;color:#666464">Encerradas no mês</div>
+          <div style="font-size:24px;font-weight:600;margin-top:4px" id="rnc-encerradas">--</div>
+          <div class="rnc-kpi-desc">Concluídas na competência atual</div>
+        </div>
+      </div>
+
+      <!-- Critérios oficiais, abaixo dos indicadores -->
       <details class="rnc-criteria">
         <summary>Critérios de abertura de RNC</summary>
         <div style="display:flex;flex-wrap:wrap;gap:6px">
@@ -4407,28 +4444,9 @@
         <div style="color:#545252">Reclamações registradas pelo SAC <strong>não geram RNC</strong>: seguem a Ficha de Encaminhamento de Manifestação e a tratativa dos setores.</div>
       </details>
 
-      <!-- KPIs -->
-      <div class="rnc-kpis" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px">
-        <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px">
-          <div style="font-size:12.5px;color:#666464">RNCs abertas</div>
-          <div style="font-size:24px;font-weight:600;margin-top:4px" id="rnc-abertas">--</div>
-        </div>
-        <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px">
-          <div style="font-size:12.5px;color:#666464">Vencendo em 7 dias</div>
-          <div style="font-size:24px;font-weight:600;margin-top:4px" id="rnc-vencendo">--</div>
-        </div>
-        <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px">
-          <div style="font-size:12.5px;color:#666464">Em verificação de eficácia</div>
-          <div style="font-size:24px;font-weight:600;margin-top:4px" id="rnc-eficacia">--</div>
-        </div>
-        <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px">
-          <div style="font-size:12.5px;color:#666464">Encerradas no mês</div>
-          <div style="font-size:24px;font-weight:600;margin-top:4px" id="rnc-encerradas">--</div>
-        </div>
-      </div>
-
       <!-- Table -->
       <div class="rnc-table-card" style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;overflow-x:auto">
+        <div class="rnc-table-heading"><strong>Registros de Não Conformidade</strong><span id="rnc-count">Carregando…</span></div>
         <table style="border-collapse:collapse;width:100%;min-width:880px;font-size:13px">
           <thead>
             <tr style="background:#FAFAFA">
@@ -4439,10 +4457,11 @@
               <th style="text-align:left;font-weight:600;font-size:11.5px;color:#666464;padding:10px 14px;border-bottom:1px solid #E4E4E4">RESPONSÁVEL</th>
               <th style="text-align:left;font-weight:600;font-size:11.5px;color:#666464;padding:10px 14px;border-bottom:1px solid #E4E4E4">PRAZO</th>
               <th style="text-align:left;font-weight:600;font-size:11.5px;color:#666464;padding:10px 14px;border-bottom:1px solid #E4E4E4">STATUS</th>
+              <th style="text-align:left;font-weight:600;font-size:11.5px;color:#666464;padding:10px 14px;border-bottom:1px solid #E4E4E4">AÇÃO</th>
             </tr>
           </thead>
           <tbody id="rnc-body">
-            <tr><td colspan="7" style="padding:40px;text-align:center;color:#707070;font-size:13px"><div class="spinner" style="margin:0 auto 8px"></div>Carregando...</td></tr>
+            <tr><td colspan="8" style="padding:40px;text-align:center;color:#707070;font-size:13px"><div class="spinner" style="margin:0 auto 8px"></div>Carregando...</td></tr>
           </tbody>
         </table>
       </div>
@@ -13699,7 +13718,8 @@ async function loadBancoRNC() {
   try {
     if(sessionStorage.getItem('sac-demo-local')==='1'){
       const rncs=[{ID_RNC:'RNC-139/26',ID_MANIFESTACAO:'SAC-2026-00125',SETOR_DESTINADO:'Qualidade',CAUSA_PROVAVEL:'Avaria na embalagem durante transporte',RESPONSAVEL:'Carlos Oliveira',DATA_FINALIZACAO:'30/09/2026'},{ID_RNC:'RNC-140/26',ID_MANIFESTACAO:'SAC-2026-00131',SETOR_DESTINADO:'Qualidade',CAUSA_PROVAVEL:'Em análise',RESPONSAVEL:'Maria Santos',DATA_FINALIZACAO:'02/10/2026'}];
-      document.getElementById('rnc-abertas').textContent=rncs.length;document.getElementById('rnc-abertas-sub').textContent=rncs.length+' RNCs abertas';document.getElementById('rnc-vencendo').textContent='1';document.getElementById('rnc-body').innerHTML=rncs.map(m=>`<tr><td style="font-weight:700">${m.ID_RNC}</td><td><a style="color:var(--red);font-weight:600">${m.ID_MANIFESTACAO}</a></td><td>${m.SETOR_DESTINADO}</td><td><div>${m.CAUSA_PROVAVEL}</div><div class="rnc-acao">Ação: em tratamento</div></td><td>${m.RESPONSAVEL}</td><td>${m.DATA_FINALIZACAO}</td><td><span class="status-badge em-andamento">Em tratamento</span></td></tr>`).join('');document.getElementById('causas-list').innerHTML='<div style="font-size:12px;margin-bottom:8px">Avaria na embalagem <b>1</b></div><div style="font-size:12px">Em análise <b>1</b></div>';document.getElementById('rnc-setor-list').innerHTML='<div style="font-size:12px">Qualidade <b>2</b></div>';return;
+      window._rncDataFull=rncs;
+      document.getElementById('rnc-abertas').textContent=rncs.length;document.getElementById('rnc-abertas-sub').textContent=rncs.length+' RNCs abertas';document.getElementById('rnc-vencendo').textContent='1';document.getElementById('rnc-eficacia').textContent='0';document.getElementById('rnc-encerradas').textContent='0';document.getElementById('rnc-body').innerHTML=rncs.map(m=>`<tr><td style="font-weight:700">${m.ID_RNC}</td><td><a style="color:var(--red);font-weight:600">${m.ID_MANIFESTACAO}</a></td><td>${m.SETOR_DESTINADO}</td><td><div>${m.CAUSA_PROVAVEL}</div><div class="rnc-acao">Ação: em tratamento</div></td><td>${m.RESPONSAVEL}</td><td>${m.DATA_FINALIZACAO}</td><td><span class="status-badge em-andamento">Em tratamento</span></td><td><a class="link-abrir" href="#" onclick="event.preventDefault();abrirRncAprovador('${m.ID_RNC}')">Abrir</a></td></tr>`).join('');document.getElementById('rnc-count').textContent=rncs.length+' registros';document.getElementById('causas-list').innerHTML='<div style="font-size:12px;margin-bottom:8px">Avaria na embalagem <b>1</b></div><div style="font-size:12px">Em análise <b>1</b></div>';document.getElementById('rnc-setor-list').innerHTML='<div style="font-size:12px">Qualidade <b>2</b></div>';return;
     }
     const res = await _apiFetch('/api/manifestacoes', 30000);
     const mans = res.itens || [];
@@ -13712,6 +13732,9 @@ async function loadBancoRNC() {
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const closedThisMonth = rncs.filter(m => /ENCERR|FECHAD|CONCLUID/.test(statusOf(m)) && new Date(m.DATA_ENCERRAMENTO || m.DATA_FINALIZACAO || 0) >= monthStart);
     window._rncDataFull = rncs;
+    const empSel=document.getElementById('rnc-f-empresa'), setSel=document.getElementById('rnc-f-setor');
+    if(empSel){const v=empSel.value;empSel.innerHTML='<option value="">Empresa</option>'+[...new Set(rncs.map(m=>m.EMPRESA||m.EMPRESA_RECLAMADA).filter(Boolean))].sort().map(x=>`<option value="${escHtml(x)}">${escHtml(x)}</option>`).join('');empSel.value=v;}
+    if(setSel){const v=setSel.value;setSel.innerHTML='<option value="">Setor</option>'+[...new Set(rncs.map(m=>m.SETOR_DESTINADO||m.SETOR_SUGERIDO||m.SETOR).filter(Boolean))].sort().map(x=>`<option value="${escHtml(x)}">${escHtml(x)}</option>`).join('');setSel.value=v;}
     document.getElementById('rnc-abertas').textContent = openRncs.length;
     document.getElementById('rnc-abertas-sub').textContent = openRncs.length + ' RNCs abertas';
     document.getElementById('rnc-eficacia').textContent = efficacyRncs.length;
@@ -13731,10 +13754,12 @@ async function loadBancoRNC() {
         </td>
         <td>${m.RESPONSAVEL || '[Nome]'}</td>
         <td>${fmtDate(m.DATA_FINALIZACAO) || '--'}</td>
-        <td><span class="status-badge em-andamento">Em tratamento</span></td>
+        <td><span class="status-badge ${/ENCERR|FECHAD|CONCLUID/.test(statusOf(m))?'concluida':'em-andamento'}">${/ENCERR|FECHAD|CONCLUID/.test(statusOf(m))?'Encerrada':'Em tratamento'}</span></td>
+        <td><a class="link-abrir" href="#" onclick="event.preventDefault();abrirRncAprovador('${escHtml(m.ID_RNC||'')}')">Abrir</a></td>
       </tr>
     `).join('');
-    document.getElementById('rnc-body').innerHTML = body || '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--gray-400)">Nenhuma RNC encontrada</td></tr>';
+    document.getElementById('rnc-body').innerHTML = body || '<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--gray-400)">Nenhuma RNC encontrada</td></tr>';
+    const countEl=document.getElementById('rnc-count');if(countEl)countEl.textContent=`${rncs.length} registro${rncs.length===1?'':'s'}`;
 
     // Causas recorrentes
     const causas = {};
@@ -13766,9 +13791,26 @@ async function loadBancoRNC() {
   } catch (e) {
     console.error('Erro banco RNC:', e);
     const el = document.getElementById('rnc-body');
-    if (el) el.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--gray-400);padding:20px">Erro ao carregar RNCs: ${escHtml(e.message)}</td></tr>`;
+    if (el) el.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--gray-400);padding:20px">Erro ao carregar RNCs: ${escHtml(e.message)}</td></tr>`;
   }
 }
+
+function rncAplicarFiltros(){
+  const all=window._rncDataFull||[];
+  const q=(document.getElementById('rnc-f-busca')?.value||'').trim().toLowerCase();
+  const emp=document.getElementById('rnc-f-empresa')?.value||'', setor=document.getElementById('rnc-f-setor')?.value||'', status=document.getElementById('rnc-f-status')?.value||'';
+  const de=document.getElementById('rnc-f-de')?.value||'', ate=document.getElementById('rnc-f-ate')?.value||'';
+  const norm=v=>String(v||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const out=all.filter(m=>{
+    const st=norm(m.STATUS_RNC||m.STATUS||m.STATUS_MANIFESTACAO), sd=String(m.DATA_ABERTURA||m.DATA_CRIACAO||'').slice(0,10);
+    const closed=/ENCERR|FECHAD|CONCLUID/.test(st), effic=/VERIFICACAO/.test(st);
+    return (!q||[m.ID_RNC,m.ID_MANIFESTACAO,m.PROTOCOLO_SAC,m.EMPRESA,m.EMPRESA_RECLAMADA].join(' ').toLowerCase().includes(q)) && (!emp||(m.EMPRESA||m.EMPRESA_RECLAMADA)===emp) && (!setor||(m.SETOR_DESTINADO||m.SETOR_SUGERIDO||m.SETOR)===setor) && (!status||(status==='encerrada'?closed:status==='eficacia'?effic:status==='tratamento'?(!closed&&!effic):!closed)) && (!de||sd>=de) && (!ate||sd<=ate);
+  });
+  const tbody=document.getElementById('rnc-body');if(!tbody)return;
+  tbody.innerHTML=out.slice(0,8).map((m,i)=>{const st=norm(m.STATUS_RNC||m.STATUS||m.STATUS_MANIFESTACAO), closed=/ENCERR|FECHAD|CONCLUID/.test(st);return `<tr><td style="font-weight:700">${escHtml(m.ID_RNC||('RNC-'+String(i+1).padStart(4,'0')))}</td><td><a style="color:var(--red);font-weight:600">${escHtml(m.ID_MANIFESTACAO||'—')}</a></td><td>${escHtml(m.SETOR_DESTINADO||m.SETOR_SUGERIDO||'—')}</td><td><div>${escHtml(m.CAUSA_PROVAVEL||'Causa em análise')}</div><div class="rnc-acao">Ação: ${escHtml(m.TRATATIVA?String(m.TRATATIVA).slice(0,60)+'…':'Em definição')}</div></td><td>${escHtml(m.RESPONSAVEL||'—')}</td><td>${escHtml(fmtDate(m.DATA_FINALIZACAO)||'—')}</td><td><span class="status-badge ${closed?'concluida':'em-andamento'}">${closed?'Encerrada':'Em tratamento'}</span></td><td><a class="link-abrir" href="#" onclick="event.preventDefault();abrirRncAprovador('${escHtml(m.ID_RNC||'')}')">Abrir</a></td></tr>`}).join('')||'<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--gray-400)">Nenhuma RNC encontrada</td></tr>';
+  const countEl=document.getElementById('rnc-count');if(countEl)countEl.textContent=`${out.length} registro${out.length===1?'':'s'}`;
+}
+function rncLimparFiltros(){['rnc-f-empresa','rnc-f-setor','rnc-f-status','rnc-f-de','rnc-f-ate','rnc-f-busca'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});rncAplicarFiltros();}
 
 // ===== SETORES =====
 let _setoresConfig = [];
@@ -30553,11 +30595,18 @@ if (typeof pageLoaders !== 'undefined') {
 #page-banco-rnc .rnc-criteria>div:first-of-type{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 #page-banco-rnc .rnc-criteria>div:first-of-type span{background:#fafafa!important;border:1px solid #f0f0f0;padding:9px 11px!important}
 #page-banco-rnc .rnc-kpis{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:16px!important}
-#page-banco-rnc .rnc-kpis>div{border-radius:10px!important;padding:18px 20px!important;border-top:2px solid #c70602!important}
-#page-banco-rnc .rnc-kpis>div:nth-child(2){border-top-color:#d9a400!important}
-#page-banco-rnc .rnc-kpis>div:nth-child(3){border-top-color:#24508f!important}
-#page-banco-rnc .rnc-kpis>div:nth-child(4){border-top-color:#1e6b3a!important}
+#page-banco-rnc .rnc-kpis>div{border-radius:10px!important;padding:18px 20px!important;border-top:1px solid #e4e4e4!important}
 #page-banco-rnc .rnc-kpis [id^="rnc-"]{font-size:28px!important;font-weight:800!important}
+#page-banco-rnc .rnc-kpi-desc{margin-top:5px;font-size:11px;color:#929090;line-height:1.35}
+#page-banco-rnc .rnc-filters{display:grid;grid-template-columns:1.1fr 1.1fr 1fr 150px 150px minmax(180px,1.5fr) auto auto;gap:8px;align-items:center;background:#fff;border:1px solid #e5e5e5;border-radius:10px;padding:12px}
+#page-banco-rnc .rnc-filters select,#page-banco-rnc .rnc-filters input{height:38px;min-width:0;border:1px solid #d9d9d9;border-radius:7px;background:#fff;padding:0 10px;color:#4b4b4b;font:12px Montserrat,Arial,sans-serif}
+#page-banco-rnc .rnc-filters input[type=date]{color:#666}
+#page-banco-rnc .rnc-filters .btn{height:38px;white-space:nowrap;padding:0 14px}
+#page-banco-rnc .rnc-table-heading{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid #e5e5e5;font-size:13px}
+#page-banco-rnc .rnc-table-heading span{font-size:11px;color:#929090}
+#page-banco-rnc .rnc-table-card{overflow:auto!important}
+#page-banco-rnc .rnc-table-card table{min-width:980px!important}
+#page-banco-rnc .rnc-table-card .link-abrir{color:#c70602;font-weight:700;text-decoration:none;white-space:nowrap}
 #page-banco-rnc .rnc-table-card{border-radius:10px!important}
 #page-banco-rnc .rnc-table-card th{height:42px;letter-spacing:.04em}
 #page-banco-rnc .rnc-table-card td{padding:12px 14px!important;border-bottom:1px solid #f0f0f0}
@@ -30574,8 +30623,9 @@ if (typeof pageLoaders !== 'undefined') {
 #page-sugestoes-melhoria #cp-kpis>div{border-radius:10px!important;padding:16px 18px!important}
 #page-sugestoes-melhoria #cp-kpis [id^="cp-kpi-"]{font-weight:800!important}
 #page-sugestoes-melhoria #cp-panel-geral>div:last-child{border-radius:10px!important}
-@media(max-width:900px){#page-banco-rnc .content{padding:18px 20px 32px!important}#page-banco-rnc .rnc-kpis{grid-template-columns:repeat(2,minmax(0,1fr))!important}#page-banco-rnc .rnc-criteria>div:first-of-type{grid-template-columns:1fr}#page-sugestoes-melhoria>div:nth-child(2){padding:16px 20px 36px!important}#page-sugestoes-melhoria #cp-kpis{grid-template-columns:repeat(2,minmax(130px,1fr))!important}}
-@media(max-width:600px){#page-banco-rnc .topbar{padding:16px!important}#page-banco-rnc .content{padding:16px 14px 24px!important}#page-banco-rnc .page-title{font-size:21px!important}#page-banco-rnc .rnc-kpis{gap:8px!important}#page-banco-rnc .rnc-kpis>div{padding:13px 14px!important}#page-sugestoes-melhoria .cp-top{padding:12px 14px!important;flex-wrap:wrap}#page-sugestoes-melhoria>div:nth-child(2){padding:14px 14px 28px!important}#page-sugestoes-melhoria #cp-kpis{grid-template-columns:1fr 1fr!important;gap:8px!important}}
+@media(max-width:1100px){#page-banco-rnc .rnc-filters{grid-template-columns:repeat(4,minmax(130px,1fr))}#page-banco-rnc .rnc-filters input[type=search]{grid-column:span 2}}
+@media(max-width:900px){#page-banco-rnc .content{padding:18px 20px 32px!important}#page-banco-rnc .rnc-kpis{grid-template-columns:repeat(2,minmax(0,1fr))!important}#page-banco-rnc .rnc-criteria>div:first-of-type{grid-template-columns:1fr}#page-banco-rnc .rnc-filters{grid-template-columns:repeat(2,minmax(0,1fr))}#page-banco-rnc .rnc-filters input[type=search]{grid-column:span 2}#page-sugestoes-melhoria>div:nth-child(2){padding:16px 20px 36px!important}#page-sugestoes-melhoria #cp-kpis{grid-template-columns:repeat(2,minmax(130px,1fr))!important}}
+@media(max-width:600px){#page-banco-rnc .topbar{padding:16px!important}#page-banco-rnc .content{padding:16px 14px 24px!important}#page-banco-rnc .page-title{font-size:21px!important}#page-banco-rnc .rnc-kpis{gap:8px!important}#page-banco-rnc .rnc-kpis>div{padding:13px 14px!important}#page-banco-rnc .rnc-filters{grid-template-columns:1fr;padding:10px}#page-banco-rnc .rnc-filters input[type=search]{grid-column:auto}#page-sugestoes-melhoria .cp-top{padding:12px 14px!important;flex-wrap:wrap}#page-sugestoes-melhoria>div:nth-child(2){padding:14px 14px 28px!important}#page-sugestoes-melhoria #cp-kpis{grid-template-columns:1fr 1fr!important;gap:8px!important}}
 <style id="relatorio-cerebro-reference-layout">
 /* Design aprovado aplicado às implementações ativas. */
 #page-relatorio-satisfacao{font-family:Montserrat,Arial,sans-serif;background:#f7f7f7!important}
