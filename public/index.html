@@ -9570,31 +9570,27 @@
 .af-sla-ok{color:#1E6B3A;font-size:11px;font-weight:600}
 .af-sla-alerta{color:#92400E;font-size:11px;font-weight:600}
 .af-sla-vencido{color:#A80502;font-size:11px;font-weight:600}
-.af-page-title{background:#F4F4F4;padding:18px 24px 10px}
-.af-page-title h1{font-size:24px;line-height:1.2;font-weight:700;margin:0;color:#1F1F1F}
-.af-page-title p{font-size:13px;color:#666464;margin:5px 0 0;line-height:1.45}
+.af-topbar-title{flex:1;min-width:220px}
+.af-eyebrow{display:block;font-size:9.5px;font-weight:700;color:#BDBDBD;letter-spacing:.12em;text-transform:uppercase;margin-bottom:3px}
+.af-topbar-title h1{font-size:18px;font-weight:800;color:#242424;line-height:1;margin:0}
+.af-topbar-title p{font-size:11.5px;color:#929090;margin:4px 0 0;line-height:1.35}
 </style>
 <!-- ===== ARQUIVO DE FICHAS: estilos — fim ===== -->
 
 <div class="af-root" style="display:flex;flex-direction:column;flex:1;min-height:0">
 
   <!-- TOPBAR -->
-  <div style="height:56px;background:#fff;border-bottom:1px solid #E4E4E4;display:flex;align-items:center;padding:0 24px;gap:10px;flex-shrink:0">
-    <div style="display:flex;align-items:center;gap:8px">
-      <span style="font-size:11px;color:#929090">Gestão</span>
-      <span style="font-size:11px;color:#D6D6D6">/</span>
-      <span style="font-size:13px;font-weight:700;color:#1F1F1F">Arquivo de Fichas</span>
+  <div class="af-topbar" style="min-height:72px;background:#fff;border-bottom:1px solid #E4E4E4;display:flex;align-items:center;padding:12px 28px;gap:14px;flex-shrink:0">
+    <div class="af-topbar-title">
+      <span class="af-eyebrow">OPERAÇÃO</span>
+      <h1>Arquivo de Fichas</h1>
+      <p>Consulta, organização e rastreabilidade das manifestações registradas e dos documentos históricos.</p>
     </div>
     <div style="flex:1"></div>
     <button class="af-btn" onclick="abrirModalImportarFicha()">↑ Importar fichas</button>
     <button class="af-btn" id="bib-btn-arquivo" onclick="toggleArquivoExplorar()" aria-expanded="false">▣ Explorar arquivo</button>
     <button class="af-btn" id="bib-btn-sincronizar" onclick="sincronizarBaseConhecimento()" title="Lê todas as fichas e popula automaticamente Setores, Matriz de Tratamento e Cérebro com os dados encontrados">⚡ Sincronizar base</button>
     <button class="af-btn af-btn-red" id="bib-btn-refresh" onclick="loadBiblioteca(true,true)">↻ Atualizar</button>
-  </div>
-
-  <div class="af-page-title">
-    <h1>Arquivo de Fichas</h1>
-    <p>Histórico completo das manifestações registradas e importadas.</p>
   </div>
 
   <!-- ABAS DE STATUS -->
@@ -9721,7 +9717,7 @@
         </div>
         <div style="overflow-x:auto">
           <table class="af-tbl" id="bib-table">
-            <thead><tr><th style="width:28px"><input type="checkbox" id="bib-sel-all" title="Selecionar todas" onchange="afToggleTodas(this.checked)" style="cursor:pointer"></th><th>Protocolo</th><th>Data</th><th>Empresa</th><th>Cliente</th><th>Motivo</th><th>Status</th><th>Origem</th><th>Ações</th></tr></thead>
+            <thead><tr><th style="width:28px"><input type="checkbox" id="bib-sel-all" title="Selecionar todas" onchange="afToggleTodas(this.checked)" style="cursor:pointer"></th><th>Protocolo</th><th>Data</th><th>Empresa</th><th>Cliente</th><th>Motivo</th><th>Status</th><th>Origem</th><th>Responsável</th><th>SLA</th><th>Ações</th></tr></thead>
             <tbody id="bib-tbody"></tbody>
           </table>
         </div>
@@ -10158,7 +10154,12 @@ function afAbaClick(aba, btn) {
 async function loadBiblioteca(reset, manual) {
   if (reset === undefined) reset = true;
   const tok = _afTok();
-  if (!tok) return;
+  if (!tok) {
+    _afEl('bib-loading').style.display = 'none';
+    _afEl('bib-table').style.display = 'none';
+    afMostrarVazio('Acesso não autorizado', 'Faça login novamente para consultar o Arquivo de Fichas.');
+    return;
+  }
   const my = ++_afReq;
   if (reset) { _bibPage = 1; }
   const F = afFiltros();
@@ -10178,8 +10179,22 @@ async function loadBiblioteca(reset, manual) {
 
   try {
     const H = { headers: { 'Authorization': 'Bearer ' + tok } };
-    const reqs = [fetch(API + '/api/biblioteca/fichas?' + params, H).then(r => r.json())];
-    if (reset) reqs.push(fetch(API + '/api/biblioteca/stats?' + sp, H).then(r => r.json()).catch(() => ({ sucesso: false })));
+    const json = async url => {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 20000);
+      let r;
+      try { r = await fetch(url, { ...H, signal: controller.signal }); }
+      finally { clearTimeout(timeout); }
+      const body = await r.json().catch(() => ({}));
+      if (!r.ok || body.sucesso === false) {
+        const e = new Error(body.erro || (r.status === 401 || r.status === 403 ? 'Acesso não autorizado.' : 'Erro ao consultar o Arquivo de Fichas.'));
+        e.status = r.status;
+        throw e;
+      }
+      return body;
+    };
+    const reqs = [json(API + '/api/biblioteca/fichas?' + params)];
+    if (reset) reqs.push(json(API + '/api/biblioteca/stats?' + sp).catch(e => ({ sucesso: false, _erro: e })));
     const [fichasRes, statsRes] = await Promise.all(reqs);
     if (my !== _afReq) return; // resposta antiga
 
@@ -10201,7 +10216,8 @@ async function loadBiblioteca(reset, manual) {
     afRenderTitulo();
     if (!fichasRes.sucesso) {
       _afEl('bib-table').style.display = 'none';
-      afMostrarVazio('Não foi possível carregar as fichas', fichasRes.erro || 'Tente atualizar a página.');
+      const unauthorized = fichasRes.status === 401 || fichasRes.status === 403;
+      afMostrarVazio(unauthorized ? 'Acesso não autorizado' : 'Não foi possível carregar as fichas', fichasRes.erro || 'Tente atualizar a página.');
       return;
     }
     _bibTotalPages = fichasRes.pages || 1;
@@ -10217,7 +10233,7 @@ async function loadBiblioteca(reset, manual) {
     if (my !== _afReq) return;
     _afEl('bib-loading').style.display = 'none';
     _afEl('bib-table').style.display = 'none';
-    afMostrarVazio('Não foi possível carregar as fichas', e.message || 'Erro de conexão.');
+    afMostrarVazio(e.status === 401 || e.status === 403 ? 'Acesso não autorizado' : 'Não foi possível carregar as fichas', e.message || 'Erro de conexão.');
   } finally {
     if (reset && my === _afReq && btn) { btn.disabled = false; btn.textContent = '↻ Atualizar'; }
   }
@@ -10487,6 +10503,8 @@ function afRenderTabela(fichas) {
       <td style="max-width:160px">${escHtml((f.MOTIVO || '—').slice(0,60))}</td>
       <td>${statusHtml}</td>
       <td>${_bibOrigemBadge(f.ORIGEM)}</td>
+      <td style="max-width:140px">${escHtml(f.RESPONSAVEL || f.COLABORADOR_RECEBIMENTO || '—')}</td>
+      <td style="white-space:nowrap">${_afSlaHtml(f)}</td>
       <td onclick="event.stopPropagation()" style="white-space:nowrap">
         <button class="btn btn-secondary" style="padding:3px 8px;font-size:11px;margin-right:3px" onclick="afEditarFicha(${i})">✎</button>
         ${f.ARQUIVADO === 'SIM'
@@ -30767,21 +30785,20 @@ if (typeof pageLoaders !== 'undefined') {
 /* Arquivo de Fichas e Banco de Casos: layout aprovado, escopado às telas reais. */
 #page-biblioteca-fichas{background:#f7f7f7!important;overflow:hidden!important}
 #page-biblioteca-fichas .af-root{font-family:Montserrat,Arial,sans-serif!important}
-#page-biblioteca-fichas .af-root>div:first-child{height:64px!important;padding:0 28px!important;align-items:center!important}
-#page-biblioteca-fichas .af-root>div:first-child>div:first-child{display:flex;flex-direction:column;gap:2px}
-#page-biblioteca-fichas .af-root>div:first-child>div:first-child span:first-child{font-size:9.5px!important;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#bdbdbd!important}
-#page-biblioteca-fichas .af-root>div:first-child>div:first-child span:nth-child(2){display:none}
-#page-biblioteca-fichas .af-page-title{display:none!important}
+#page-biblioteca-fichas .af-root>div:first-child{height:72px!important;padding:12px 28px!important;align-items:center!important}
+#page-biblioteca-fichas .af-topbar-title{display:block}
+#page-biblioteca-fichas .af-topbar-title h1{font-size:18px!important}
+#page-biblioteca-fichas .af-topbar-title p{font-size:11.5px!important}
 #page-biblioteca-fichas .af-root>div:nth-of-type(2){padding:0 28px!important}
 #page-biblioteca-fichas .af-root>div:nth-of-type(3){padding:10px 28px!important}
 #page-biblioteca-fichas .af-root>div:nth-of-type(4){padding:14px 28px 32px!important;gap:14px!important}
 #page-biblioteca-fichas .af-aviso{background:#fff;border:1px solid #e5e5e5;border-radius:8px;padding:10px 14px;color:#666464}
 #page-biblioteca-fichas .af-kpis{grid-template-columns:repeat(6,minmax(120px,1fr))!important;gap:10px!important}
 #page-biblioteca-fichas .af-kpi{min-height:84px!important;padding:13px 15px!important;border-radius:9px!important}
-#page-biblioteca-fichas .af-root:not(.af-explorar) #bib-sidebar-col{display:none!important}
+#page-biblioteca-fichas .af-root:not(.af-explorar) #bib-sidebar-col{flex:0 0 0;width:0!important;min-width:0!important;max-width:0;opacity:0;overflow:hidden;pointer-events:none;padding:0;border:0}
 #page-biblioteca-fichas .af-root.af-explorar #bib-sidebar-col{width:230px!important}
 #page-biblioteca-fichas .af-lista{border-radius:9px!important}
-#page-biblioteca-fichas .af-tbl{min-width:760px!important}
+#page-biblioteca-fichas .af-tbl{min-width:980px!important}
 #page-biblioteca-fichas .af-tbl th{font-size:10.5px!important}
 #page-base-conhecimento{background:#f7f7f7!important;font-family:Montserrat,Arial,sans-serif!important}
 #page-base-conhecimento>.topbar{background:#fff!important;border-bottom:1px solid #e5e5e5!important;padding:14px 28px!important}
