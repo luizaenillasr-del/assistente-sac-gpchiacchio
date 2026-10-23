@@ -3373,7 +3373,7 @@
     </div><!-- /nm-steps-body -->
 
     <!-- RODAPÉ DE NAVEGAÇÃO -->
-    <div style="background:#fff;border-top:1px solid #E4E4E4;padding:14px 28px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+    <div class="nm-navigation-footer" style="background:#fff;border-top:1px solid #E4E4E4;padding:14px 28px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
       <button onclick="nmEtapaAnterior()" id="nm-btn-voltar" style="height:42px;border:1.5px solid #E4E4E4;background:#fff;border-radius:10px;padding:0 22px;font-size:13px;font-weight:600;cursor:pointer;color:#545252;font-family:Montserrat,system-ui,sans-serif">← Voltar</button>
       <div style="font-size:12px;color:#929090;font-weight:500" id="nm-etapa-label">Etapa 1 de 7</div>
       <button onclick="nmProximaEtapa()" id="nm-btn-continuar" style="height:42px;border:0;background:#C70602;color:#fff;border-radius:10px;padding:0 32px;font-size:13px;font-weight:700;cursor:pointer;font-family:Montserrat,system-ui,sans-serif;letter-spacing:.01em">Continuar →</button>
@@ -6677,15 +6677,15 @@
     <div class="content" style="overflow-y:auto;flex:1">
 
       <!-- Tabs + filtros -->
-      <div style="display:flex;align-items:center;border-bottom:1px solid #E4E4E4;margin-bottom:16px;gap:0">
+      <div class="ind-nav-wrap" style="display:flex;align-items:center;border-bottom:1px solid #E4E4E4;margin-bottom:16px;gap:0">
         <div id="ind-tabs-bar" style="display:flex;flex:1;gap:0;overflow-x:auto">
-          <button onclick="switchIndTab('operacionais',this)" style="border:0;background:none;padding:12px 18px;font-size:12.5px;cursor:pointer;white-space:nowrap;color:#C70602;border-bottom:2px solid #C70602;margin-bottom:-1px;font-weight:700;font-family:inherit">Indicadores Operacionais</button>
+          <button class="ind-active" onclick="switchIndTab('operacionais',this)" style="border:0;background:none;padding:12px 18px;font-size:12.5px;cursor:pointer;white-space:nowrap;color:#C70602;border-bottom:2px solid #C70602;margin-bottom:-1px;font-weight:700;font-family:inherit">Indicadores Operacionais</button>
           <button onclick="switchIndTab('india',this)" style="border:0;background:none;padding:12px 18px;font-size:12.5px;cursor:pointer;white-space:nowrap;color:#727272;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Desempenho da IA</button>
           <button onclick="switchIndTab('validacao',this)" style="border:0;background:none;padding:12px 18px;font-size:12.5px;cursor:pointer;white-space:nowrap;color:#727272;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Validação da IA</button>
           <button onclick="switchIndTab('comparativo',this)" style="border:0;background:none;padding:12px 18px;font-size:12.5px;cursor:pointer;white-space:nowrap;color:#727272;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Comparativos</button>
           <button onclick="switchIndTab('historico',this)" style="border:0;background:none;padding:12px 18px;font-size:12.5px;cursor:pointer;white-space:nowrap;color:#727272;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500;font-family:inherit">Histórico e Importações</button>
         </div>
-        <div style="display:flex;gap:6px;padding-left:12px;flex-shrink:0">
+        <div class="ind-filter-row" style="display:flex;gap:6px;padding-left:12px;flex-shrink:0">
           <select id="pm-filtro-empresa" onchange="loadPainelMaquina()" style="height:32px;border:1px solid #E0E0E0;border-radius:7px;padding:0 10px;background:#fff;font-size:12px;font-family:inherit">
             <option value="">Todas as empresas</option>
             <option value="CHIACCHIO">Chiacchio Embalagens</option>
@@ -19472,7 +19472,8 @@ function switchIndTab(tab, btn) {
   document.querySelectorAll('#ind-tabs-bar button').forEach(b => {
     b.style.color = '#666464'; b.style.fontWeight = '500'; b.style.borderBottom = '2px solid transparent';
   });
-  if (btn) { btn.style.color = '#1F1F1F'; btn.style.fontWeight = '700'; btn.style.borderBottom = '2px solid #C70602'; }
+  document.querySelectorAll('#ind-tabs-bar button').forEach(b => b.classList.remove('ind-active'));
+  if (btn) { btn.classList.add('ind-active'); btn.style.color = '#1F1F1F'; btn.style.fontWeight = '700'; btn.style.borderBottom = '2px solid #C70602'; }
   if (tab === 'historico') loadIndicadoresHistorico();
 }
 
@@ -19636,6 +19637,11 @@ async function loadPainelMaquina() {
 
   } catch(e) {
     console.error('Erro Painel da Máquina:', e);
+    const msg = e?.message || 'Não foi possível carregar os indicadores.';
+    ['pm-chart-mes','pm-chart-tipo','pm-sla','pm-setores','pm-topCausas'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = `<div class="pm-data-state pm-data-error">${esc(msg)}<button type="button" onclick="loadPainelMaquina()">Tentar novamente</button></div>`;
+    });
   }
 }
 
@@ -30268,6 +30274,46 @@ if (typeof pageLoaders !== 'undefined') {
 @media(max-width:1200px){#page-central-sac .mc-kpis{grid-template-columns:repeat(3,minmax(120px,1fr))}#page-central-sac #cen-panel-body{grid-template-columns:250px minmax(0,1fr) 270px}}
 @media(max-width:900px){#page-central-sac .mc-main{padding:18px 20px 32px}#page-central-sac .mc-kpis{grid-template-columns:repeat(2,minmax(130px,1fr))}#page-central-sac #cen-panel-body{grid-template-columns:250px minmax(0,1fr)}#page-central-sac #cen-cerebro-wrap{display:none!important}}
 @media(max-width:600px){#page-central-sac .mc-main{padding:16px 14px 24px}#page-central-sac .mc-title{font-size:23px}#page-central-sac .mc-kpis{grid-template-columns:1fr 1fr;gap:8px}#page-central-sac .mc-kpi{min-height:74px;padding:11px 12px}#page-central-sac .mc-kpi-v{font-size:23px}#page-central-sac .mc-tabs{margin:0 -14px;padding:0 8px}#page-central-sac .mc-tab{padding:0 14px;font-size:12px}#page-central-sac #cen-panel-body{display:block;overflow:auto}#page-central-sac #cen-list-col{min-height:280px;border-right:0;border-bottom:1px solid #e8e8e8}#page-central-sac #cen-detalhe-col{min-height:480px}}
+</style>
+<style id="nova-indicadores-layout">
+/* Nova Manifestação: uma única navegação global; as etapas ficam em uma faixa horizontal. */
+#page-nova-manifestacao{height:100%!important;min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;background:#f7f7f7!important}
+#page-nova-manifestacao .nm-ref-workspace{display:block!important;overflow:visible!important;min-height:0!important}
+#page-nova-manifestacao .nm-ref-sidebar{position:static!important;width:100%!important;height:auto!important;min-height:0!important;display:flex!important;align-items:stretch;gap:0;overflow-x:auto!important;overflow-y:hidden!important;padding:0!important;background:#fff;border-right:0!important;border-bottom:1px solid #e4e4e4}
+#page-nova-manifestacao .nm-ref-sidebar>small{display:none!important}
+#page-nova-manifestacao .nm-ref-sidebar button{display:inline-flex!important;flex:0 0 auto;width:auto!important;min-height:48px;align-items:center!important;justify-content:center;padding:0 18px!important;border-left:0!important;border-bottom:2px solid transparent!important;white-space:nowrap;font-size:12px!important}
+#page-nova-manifestacao .nm-ref-sidebar button.active{border-left:0!important;border-bottom-color:#c70602!important;background:#fff5f5!important}
+#page-nova-manifestacao .nm-ref-sidebar button i{display:none!important}
+#page-nova-manifestacao .nm-ref-sidebar button em{display:none!important}
+#page-nova-manifestacao .nm-ref-workarea{display:block!important;overflow:visible!important;min-height:0!important}
+#page-nova-manifestacao #nm-steps-body{width:100%!important;max-width:100%!important;margin:0!important;overflow:visible!important;padding:28px 32px 32px!important}
+#page-nova-manifestacao #nm-steps-body>.nm-step-panel{max-width:1000px;width:100%;margin:0 auto}
+#page-nova-manifestacao .nm-navigation-footer{position:static!important;max-width:1000px;margin:0 auto;padding:14px 0 28px!important;background:transparent!important;border-top:0!important}
+#page-nova-manifestacao .nm-ref-header{position:relative;z-index:1}
+@media(max-width:700px){#page-nova-manifestacao #nm-steps-body{padding:20px 16px 24px!important}#page-nova-manifestacao .nm-ref-sidebar button{padding:0 13px!important;font-size:11.5px!important}.nm-navigation-footer{padding-bottom:20px!important}}
+
+/* Central de Indicadores: abas ocupam uma linha própria e os filtros ficam abaixo. */
+#page-painel-maquina{height:100%!important;min-height:0!important;overflow:hidden!important;background:#f4f4f4!important;font-family:Montserrat,Arial,sans-serif}
+#page-painel-maquina .topbar{flex:0 0 auto;background:#fff;border-bottom:1px solid #e4e4e4;padding:20px 32px!important;min-height:82px}
+#page-painel-maquina .page-title{font-size:28px!important;letter-spacing:-.03em;line-height:1.1}
+#page-painel-maquina .content{padding:0 32px 40px!important;overflow-y:auto!important;min-height:0}
+#page-painel-maquina .ind-nav-wrap{display:block!important;background:#fff;border-bottom:0!important;margin:0 -32px 0!important;padding:0 32px!important;overflow:visible!important}
+#page-painel-maquina #ind-tabs-bar{display:flex!important;flex:none!important;gap:0!important;min-height:52px;overflow-x:auto!important;border-bottom:2px solid #e4e4e4;scrollbar-width:none}
+#page-painel-maquina #ind-tabs-bar::-webkit-scrollbar{display:none}
+#page-painel-maquina #ind-tabs-bar button{flex:0 0 auto;height:52px;padding:0 20px!important;margin:0!important;border:0!important;border-bottom:2px solid transparent!important;background:transparent!important;color:#727272!important;font:500 13px Montserrat,Arial,sans-serif!important;white-space:nowrap}
+#page-painel-maquina #ind-tabs-bar button.ind-active{color:#c70602!important;font-weight:700!important;border-bottom-color:#c70602!important}
+#page-painel-maquina .ind-filter-row{display:flex!important;align-items:center;gap:8px!important;flex-wrap:wrap!important;padding:14px 0 18px!important;margin:0!important;border-bottom:1px solid #e4e4e4;background:#f7f7f7}
+#page-painel-maquina .ind-filter-row select,#page-painel-maquina .ind-filter-row input{height:38px!important;border-radius:8px!important;min-width:140px;font-size:12px!important}
+#page-painel-maquina .ind-filter-row input[placeholder="Responsável"]{width:150px!important}
+#page-painel-maquina .ind-filter-row input[placeholder="Tipo"]{width:120px!important}
+#page-painel-maquina .ind-filter-row .btn{height:38px!important;border-radius:8px!important;padding:0 15px!important}
+#page-painel-maquina #ind-tab-operacionais,#page-painel-maquina #ind-tab-india,#page-painel-maquina #ind-tab-validacao,#page-painel-maquina #ind-tab-comparativo,#page-painel-maquina #ind-tab-historico{padding-top:22px}
+#page-painel-maquina #pm-kpis{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:14px!important}
+#page-painel-maquina .pm-data-state{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;min-height:90px;padding:18px;text-align:center;color:#727272;font-size:12px}
+#page-painel-maquina .pm-data-error{color:#a80502;background:#fff5f5;border:1px solid #f1cfcf;border-radius:8px}
+#page-painel-maquina .pm-data-state button{height:32px;border:1px solid #c70602;background:#fff;color:#c70602;border-radius:7px;padding:0 12px;font:600 12px Montserrat,Arial,sans-serif;cursor:pointer}
+@media(max-width:1100px){#page-painel-maquina .content{padding:0 22px 32px!important}#page-painel-maquina .ind-nav-wrap{margin:0 -22px!important;padding:0 22px!important}#page-painel-maquina #pm-kpis{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+@media(max-width:700px){#page-painel-maquina .topbar{padding:18px 16px!important}#page-painel-maquina .page-title{font-size:23px!important}#page-painel-maquina .content{padding:0 16px 24px!important}#page-painel-maquina .ind-nav-wrap{margin:0 -16px!important;padding:0 16px!important}#page-painel-maquina #ind-tabs-bar button{padding:0 14px!important;font-size:12px!important}#page-painel-maquina .ind-filter-row{align-items:stretch!important;padding:12px 0 16px!important}#page-painel-maquina .ind-filter-row select,#page-painel-maquina .ind-filter-row input{flex:1 1 140px;min-width:0;width:auto!important}#page-painel-maquina #pm-kpis{grid-template-columns:1fr!important}}
 </style>
 </body>
 </html>
