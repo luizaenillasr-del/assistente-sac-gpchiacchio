@@ -1984,7 +1984,9 @@ app.get('/api/manifestacoes/:id', requerPermissao('manifestacoes.visualizar'), m
     }
     // Fallback Sheets
     const data = await lerManifestacoesOperacionais(5000).catch(()=>[]);
-    const item = data.find(r => r.ID_MANIFESTACAO === req.params.id);
+    const idReq = String(req.params.id || '').trim();
+    const item = data.find(r => [r.ID_MANIFESTACAO, r.PROTOCOLO, r.ID, r.ID_ORIGINAL]
+      .some(v => String(v || '').trim() === idReq));
     if (!item) return res.status(404).json({ sucesso: false, erro: 'Manifestação não encontrada.' });
     // B2: verificar escopo de empresa
     if (req._empresaScope && !pertenceEmpresa(req._empresaScope, item.EMPRESA_RECLAMADA || '')) {
@@ -6784,7 +6786,12 @@ app.post('/api/documentos/extrair', requerPerfil('MASTER','ANALISTA SAC','APROVA
 app.get('/api/manifestacoes/:id/analise', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','SETOR RESPONSÁVEL'), middlewareEscopoEmpresa(), async (req,res) => {
   try {
     const data = await lerAba('MANIFESTACOES', 5000).catch(()=>[]);
-    const m = data.find(r => r.ID_MANIFESTACAO === req.params.id);
+    // A listagem pode expor o protocolo como identificador (principalmente
+    // quando a fonte é PostgreSQL), enquanto a planilha legada mantém o
+    // identificador interno em ID_MANIFESTACAO. Aceite ambos os contratos.
+    const idReq = String(req.params.id || '').trim();
+    const m = data.find(r => [r.ID_MANIFESTACAO, r.PROTOCOLO, r.ID, r.ID_ORIGINAL]
+      .some(v => String(v || '').trim() === idReq));
     if (!m) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
     if (req._empresaScope && !pertenceEmpresa(req._empresaScope, m.EMPRESA_RECLAMADA || ''))
       return res.status(403).json({ sucesso: false, erro: 'Acesso não autorizado.' });
