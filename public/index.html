@@ -30705,6 +30705,9 @@ if (typeof pageLoaders !== 'undefined') {
       const ativo = p === alvo;
       p.classList.toggle('active', ativo);
       p.style.display = ativo ? 'flex' : '';
+      // `hidden` prevalece sobre estilos reintroduzidos por carregadores
+      // assíncronos e impede que duas telas ocupem o mesmo fluxo visual.
+      p.hidden = !ativo;
     });
   }
   window.navigate = function(page, el){
