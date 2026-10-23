@@ -29748,6 +29748,10 @@ if (typeof pageLoaders !== 'undefined') {
      PORTAL DO CLIENTE — ADMINISTRAÇÃO
      ════════════════════════════════════════════════════════════════════ -->
 <div class="page" id="page-portal-admin" style="flex-direction:column;background:#F4F4F4">
+  <div class="padm-header">
+    <div><div class="padm-breadcrumb">ADMINISTRAÇÃO</div><h1>Gestão do Portal do Cliente</h1><p>Configure, acompanhe e publique os recursos disponibilizados aos clientes.</p></div>
+    <button class="btn btn-secondary" type="button" onclick="padmLoad()">Atualizar</button>
+  </div>
   <!-- Top bar com abas -->
   <div class="padm-top">
     <button class="padm-tab active" id="padm-tab-visao" onclick="padmTab('visao')">Visão Geral</button>
@@ -29772,7 +29776,7 @@ if (typeof pageLoaders !== 'undefined') {
       <div class="padm-card">
         <div class="padm-card-title">Atalhos rápidos</div>
         <div style="display:flex;gap:10px;flex-wrap:wrap">
-          <a href="/portal" target="_blank" class="btn btn-secondary" style="font-size:12.5px;height:36px;display:inline-flex;align-items:center;gap:6px;padding:0 14px;text-decoration:none">🌐 Abrir portal público</a>
+          <a href="/portal" data-portal-path="/portal" target="_blank" rel="noopener noreferrer" class="btn btn-secondary" style="font-size:12.5px;height:36px;display:inline-flex;align-items:center;gap:6px;padding:0 14px;text-decoration:none">🌐 Abrir portal público</a>
           <button class="btn btn-secondary" style="font-size:12.5px;height:36px" onclick="padmTab('canais')">📱 Configurar WhatsApp</button>
           <button class="btn btn-secondary" style="font-size:12.5px;height:36px" onclick="navigate('sugestoes-melhoria')">📊 Gerenciar pesquisas</button>
           <button class="btn btn-secondary" style="font-size:12.5px;height:36px" onclick="padmTab('links')">🔗 Ver links públicos</button>
@@ -29921,8 +29925,8 @@ if (typeof pageLoaders !== 'undefined') {
           <span style="font-size:12px;color:#707070;font-weight:700">Conferir na Vercel</span>
         </div>
         <div class="padm-toggle-row">
-          <div><div class="padm-toggle-label"><span class="padm-status-dot green"></span>APIs públicas</div><div class="padm-toggle-sub">/api/public/* — protegidas por publicRateLimit (5 req/min)</div></div>
-          <span style="font-size:12px;color:#16803C;font-weight:700">Ativas</span>
+          <div><div class="padm-toggle-label"><span class="padm-status-dot green"></span>APIs públicas</div><div class="padm-toggle-sub">/api/public/* — protegidas por publicRateLimit</div></div>
+          <span style="font-size:12px;color:#16803C;font-weight:700">Configuradas</span>
         </div>
         <div style="margin-top:12px;padding:10px;background:#F8F8F8;border-radius:8px;font-size:12px;color:#707070">
           O portal público tem publicação própria e usa a mesma base do SAC. Alterações de layout exigem deploy do portal; pesquisas publicadas e configurações de conteúdo são lidas pela API. Confira o estado do deploy no painel da Vercel.
@@ -29981,10 +29985,10 @@ if (typeof pageLoaders !== 'undefined') {
       const d = await _apiFetch('/api/portal-admin/visao-geral', 10000).catch(() => null);
       if (!d) return;
       const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-      set('padm-v-status', d.statusPublicacao || 'Publicado');
+      set('padm-v-status', d.statusPublicacao || 'Indisponível');
       set('padm-v-respostas', d.respostasPortal ?? '—');
       set('padm-v-mans', d.manifestacoesPortal ?? '—');
-      set('padm-v-empresas', d.empresasAtivas ?? 3);
+      set('padm-v-empresas', d.empresasAtivas ?? '—');
       set('padm-v-whatsapp', d.whatsappAtivo ? 'Ativo' : 'Inativo');
     } catch(e) { /* silencioso */ }
   }
@@ -30090,8 +30094,6 @@ if (typeof pageLoaders !== 'undefined') {
       if (ok) { ok.textContent = '✓ Configuração salva. O portal já utiliza o novo número.'; ok.style.display = 'block'; }
       const badge = document.getElementById('padm-wa-badge');
       if (badge) { badge.textContent = ativo ? 'Ativo' : 'Inativo'; badge.style.background = ativo ? '#DCFCE7' : '#F3F4F6'; badge.style.color = ativo ? '#16803C' : '#707070'; }
-      // registrar no histórico
-      _padmRegistrarHistorico('WhatsApp configurado — número atualizado');
     } catch(e) {
       if (err) { err.textContent = 'Erro ao salvar: ' + (e.message || 'tente novamente.'); err.style.display = 'block'; }
     } finally {
@@ -30126,25 +30128,15 @@ if (typeof pageLoaders !== 'undefined') {
         return;
       }
       corpo.innerHTML = d.historico.map(h => {
-        const data = h.DATA_HORA ? new Date(h.DATA_HORA).toLocaleString('pt-BR') : '—';
-        const desc = h.ACAO_DESCRICAO || h.VALOR_NOVO || h.ACAO || '—';
-        const user = h.USUARIO || '—';
+        const data = h.dataHora ? new Date(h.dataHora).toLocaleString('pt-BR') : '—';
+        const desc = h.valorNovo ? (typeof h.valorNovo === 'object' ? Object.entries(h.valorNovo).map(([k,v]) => `${k}: ${v}`).join(' · ') : h.valorNovo) : (h.acao || '—');
+        const user = h.usuario || '—';
         return `<div class="padm-hist-row"><span class="padm-hist-date">${data}</span><span class="padm-hist-desc">${_esc(desc)}</span><span class="padm-hist-user">${_esc(user)}</span></div>`;
       }).join('');
     } catch(e) {
       corpo.innerHTML = '<div class="padm-empty" style="color:#A80502">Erro ao carregar histórico.</div>';
     }
   };
-
-  async function _padmRegistrarHistorico(descricao) {
-    try {
-      await _apiFetch('/api/portal-admin/historico', 8000, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ descricao }),
-      }).catch(() => {});
-    } catch(e) {}
-  }
 
   function _esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
   function _padmOk(msg) { /* stub — no toast available in this scope */ console.log('[PADM]', msg); }
@@ -30155,6 +30147,16 @@ if (typeof pageLoaders !== 'undefined') {
 
 <link rel="stylesheet" href="/assets/pesquisa-formulario.css">
 <link rel="stylesheet" href="/assets/pesquisas-admin.css">
+<style id="portal-admin-reference-layout">
+#page-portal-admin{font-family:Montserrat,Arial,sans-serif!important;background:#f7f7f7!important;overflow:hidden!important}
+#page-portal-admin .padm-header{height:68px;flex:none;background:#fff;border-bottom:1px solid #e5e5e5;padding:12px 28px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+#page-portal-admin .padm-header h1{margin:0;font-size:18px;line-height:1;font-weight:800;color:#242424}#page-portal-admin .padm-header p{margin:3px 0 0;font-size:11.5px;color:#929090}.padm-breadcrumb{font-size:9.5px;font-weight:700;letter-spacing:.12em;color:#bdbdbd;margin-bottom:3px}
+#page-portal-admin .padm-top{padding:0 28px;height:46px;box-shadow:none;border-bottom:1px solid #e5e5e5}#page-portal-admin .padm-tab{height:46px;font-size:12.5px}
+#page-portal-admin .padm-body{padding:16px 28px 32px;background:#f7f7f7;overflow-y:auto}.padm-section{max-width:1000px;margin:0 auto;width:100%}
+#page-portal-admin .padm-kpi{border-radius:9px;padding:13px 15px;border-top:2px solid #c70602}#page-portal-admin .padm-kpi:nth-child(2){border-top-color:#24508f}#page-portal-admin .padm-kpi:nth-child(3){border-top-color:#d97706}#page-portal-admin .padm-kpi:nth-child(4){border-top-color:#15803d}#page-portal-admin .padm-kpi:nth-child(5){border-top-color:#707070}
+#page-portal-admin .padm-card{border-radius:9px;padding:18px 20px;box-shadow:0 1px 2px rgba(0,0,0,.02)}
+@media(max-width:700px){#page-portal-admin .padm-header{height:auto;min-height:68px;padding:12px 14px;align-items:flex-start}#page-portal-admin .padm-header .btn{flex:none}#page-portal-admin .padm-top{padding:0 8px}#page-portal-admin .padm-body{padding:14px 14px 28px}}
+</style>
 <script src="/assets/pesquisa-formulario.js"></script>
 <script src="/assets/portal-links.js"></script>
 <script src="/assets/pesquisas-admin.js"></script>

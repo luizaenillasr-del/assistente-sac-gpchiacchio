@@ -10292,6 +10292,7 @@ app.post('/api/config/whatsapp', requerPerfil('MASTER','GESTOR SAC'), async (req
     const obj = { TIPO:'WHATSAPP', VALOR:numeroLimpo, MENSAGEM:String(mensagem||'Olá, preciso de ajuda.').slice(0,500), ATIVO: ativo?'SIM':'NAO', UPDATED_AT:new Date().toISOString(), UPDATED_BY: req.user?.usuario||'' };
     if (existing) { await atualizarPorID('CONFIG_PORTAL','WHATSAPP',obj,['TIPO']).catch(()=>appendObjeto('CONFIG_PORTAL',obj)); } else { await appendObjeto('CONFIG_PORTAL',obj); }
     invalidarCacheAba('CONFIG_PORTAL');
+    await registrarAuditoria(req.user?.usuario||'sistema','PORTAL_ADMIN_CONFIG','WHATSAPP','CONFIG_PORTAL',existing?.VALOR||'',{ativo:obj.ATIVO,valor:'[protegido]' });
     res.json({ sucesso:true });
   } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
@@ -10341,7 +10342,8 @@ app.get('/api/portal-admin/visao-geral', requerPerfil('MASTER','GESTOR SAC'), as
     const respostasPortal = respostas.filter(r => r.ORIGEM === 'PORTAL_PUBLICO' && (r.DATA||'') >= limite30).length;
     const manifestacoesPortal = mans.filter(m => (m.ORIGEM === 'PORTAL_PUBLICO' || m.ORIGEM === 'PORTAL_FUNCIONARIO') && (m.DATA_ABERTURA||'') >= limite30).length;
     const wa = cfgRows.find(r => r.TIPO === 'WHATSAPP' && r.ATIVO === 'SIM');
-    res.json({ sucesso:true, statusPublicacao:'Não verificado', enderecoPublico:portalEndereco.root, portalSeparado:portalEndereco.separado, empresasAtivas:3, respostasPortal, manifestacoesPortal, whatsappAtivo:!!wa });
+    const empresasAtivas = PORTAL_EMPRESAS.filter(e => !cfgRows.some(r => r.TIPO === `PESQUISA_ATIVA_${e.slug.toUpperCase()}` && r.ATIVO === 'NAO')).length;
+    res.json({ sucesso:true, statusPublicacao:portalEndereco.root ? 'Disponível' : 'Indisponível', enderecoPublico:portalEndereco.root, portalSeparado:portalEndereco.separado, empresasAtivas, respostasPortal, manifestacoesPortal, whatsappAtivo:!!wa });
   } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
 
