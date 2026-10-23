@@ -6,7 +6,7 @@
   "main": "api/index.js",
   "scripts": {
     "start": "node api/index.js",
-    "test": "node tests/suite.js && node tests/behavior.js && node tests/pesquisas.js && node tests/portal-isolamento.js",
+    "test": "node tests/suite.js && node tests/behavior.js && node tests/pesquisas.js && node tests/portal-isolamento.js && node tests/relatorio-satisfacao.js",
     "test:perfil": "node tests/meu-perfil.js",
     "postinstall": "prisma generate && prisma db push --accept-data-loss"
   },
