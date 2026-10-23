@@ -17,6 +17,7 @@ const { tratativaEngine, devolutivaEngine, assertividade: assertividadeService }
 const permissoesService = require('../server-services/permissoesService');
 const dashboardExecutiva = require('../server-services/dashboardExecutiva');
 const fichaUnica = require('../server-services/fichaUnica');
+const circaEngine = require('../server-services/circaEngine');
 
 // Injeção de mock Sheets para testes — nunca ativo em produção (env var não existe em prod)
 const _sheetsMock = process.env.SHEETS_MOCK_PATH ? (() => { try { return require(process.env.SHEETS_MOCK_PATH); } catch(e) { console.warn('[MOCK] falhou ao carregar:', e.message); return null; } })() : null;
@@ -3078,7 +3079,7 @@ app.post('/api/manifestacoes/:id/finalizar', requerPermissao('aprovacoes.aprovar
       SATISFACAO_CLIENTE: satisfacaoCliente||'',
     });
     // Consolida o conhecimento no backend sem exigir novo preenchimento na tela.
-    await garantirAbaComCabecalhos('CONSOLIDACAO_CONHECIMENTO', ['ID_CONSOLIDACAO','ID_MANIFESTACAO','EMPRESA','CAUSA','SUBCAUSA','TRATATIVAS','DEVOLUTIVAS','RESULTADO','CRIADO_EM','CRIADO_POR']).catch(()=>{});
+    await garantirAbaComCabecalhos('CONSOLIDACAO_CONHECIMENTO', ['ID_CONSOLIDACAO','ID_MANIFESTACAO','EMPRESA','CAUSA','SUBCAUSA','TRATATIVAS','DEVOLUTIVAS','RESULTADO','CIRCA_VERSAO','CIRCA_RESULTADO','CRIADO_EM','CRIADO_POR']).catch(()=>{});
     const consolRows = await lerAba('CONSOLIDACAO_CONHECIMENTO', 5000).catch(()=>[]);
     if (!consolRows.some(r => r.ID_MANIFESTACAO === id && r.RESULTADO === (m.PROCEDENTE || ''))) {
       const [devs, trats] = await Promise.all([
@@ -3091,7 +3092,14 @@ app.post('/api/manifestacoes/:id/finalizar', requerPermissao('aprovacoes.aprovar
         SUBCAUSA: m.SUBCAUSA || m.SUBCAUSA_CONFIRMADA || '',
         TRATATIVAS: JSON.stringify(trats.filter(t=>t.ID_MANIFESTACAO===id)),
         DEVOLUTIVAS: JSON.stringify(devs.filter(d=>d.ID_MANIFESTACAO===id)),
-        RESULTADO: m.PROCEDENTE || '', CRIADO_EM: agora, CRIADO_POR: req.user?.usuario || 'sistema',
+        RESULTADO: m.PROCEDENTE || '',
+        CIRCA_VERSAO: '1.0',
+        CIRCA_RESULTADO: JSON.stringify(circaEngine.analisar({
+          manifestacao: { ...m, STATUS: 'ENCERRADA' },
+          tratativa: trats.filter(t=>t.ID_MANIFESTACAO===id).slice(-1)[0],
+          devolutiva: devs.filter(d=>d.ID_MANIFESTACAO===id).slice(-1)[0],
+        })),
+        CRIADO_EM: agora, CRIADO_POR: req.user?.usuario || 'sistema',
       }).catch(e => console.warn('[CONSOLIDACAO] falha não bloqueante:', e.message));
     }
     await registrarAuditoria(req.user?.usuario||'sistema','FINALIZOU_MANIFESTACAO',id,'MANIFESTACOES',m.STATUS,'ENCERRADA');
@@ -6781,6 +6789,37 @@ app.post('/api/documentos/extrair', requerPerfil('MASTER','ANALISTA SAC','APROVA
     const dados=await documentService.extrairDadosDocumento(arquivo,tipoDocumento);
     res.json({sucesso:true,tipoDocumento,dados,validacaoObrigatoria:true});
   } catch(e){ res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
+});
+
+// ===== CIRCA DETERMINÍSTICO =====
+// Organiza captura, investigação, resolução, conhecimento e aprimoramento
+// usando apenas dados persistidos. A IA continua sendo apoio opcional.
+app.get('/api/manifestacoes/:id/circa', requerPermissao('manifestacoes.visualizar'), middlewareEscopoEmpresa(), async (req,res) => {
+  try {
+    const idReq = String(req.params.id || '').trim();
+    const [manifestacoes, tratativas, devolutivas, matriz, causas] = await Promise.all([
+      lerAba('MANIFESTACOES', 5000).catch(() => []),
+      lerAba('TRATATIVAS_SETORIAIS', 5000).catch(() => []),
+      lerAba('DEVOLUTIVAS', 5000).catch(() => []),
+      lerAba('MATRIZ_TRATAMENTO', 5000).catch(() => []),
+      lerAba('CAUSAS_SUBCAUSAS', 5000).catch(() => []),
+    ]);
+    const m = manifestacoes.find(r => [r.ID_MANIFESTACAO, r.PROTOCOLO, r.ID, r.ID_ORIGINAL]
+      .some(v => String(v || '').trim() === idReq));
+    if (!m) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
+    if (req._empresaScope && !pertenceEmpresa(req._empresaScope, m.EMPRESA_RECLAMADA || ''))
+      return res.status(403).json({ sucesso:false, erro:'Acesso não autorizado.' });
+    const similares = await cerebroService.buscarCasosSimilares(m, 8, req.user?.EMPRESA || null).catch(() => []);
+    const resultado = circaEngine.analisar({
+      manifestacao: m,
+      similares,
+      tratamentos: matriz.filter(r => !m.EMPRESA_RECLAMADA || pertenceEmpresa(String(m.EMPRESA_RECLAMADA), r.EMPRESA || r.EMPRESA_RECLAMADA || '')),
+      causas: causas.filter(r => !m.EMPRESA_RECLAMADA || pertenceEmpresa(String(m.EMPRESA_RECLAMADA), r.EMPRESA || r.EMPRESA_RECLAMADA || '')),
+      tratativa: tratativas.filter(r => r.ID_MANIFESTACAO === (m.ID_MANIFESTACAO || idReq)).slice(-1)[0],
+      devolutiva: devolutivas.filter(r => r.ID_MANIFESTACAO === (m.ID_MANIFESTACAO || idReq)).slice(-1)[0],
+    });
+    res.json({ sucesso:true, circa:resultado });
+  } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e,'circa') }); }
 });
 
 // ===== ANÁLISE IA POR MANIFESTAÇÃO =====
