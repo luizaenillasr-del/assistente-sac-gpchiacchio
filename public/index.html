@@ -28208,7 +28208,7 @@ function updateTopbarUser(user) {
     if(!motivo || !motivo.trim()) return;
     try {
       const d = await _apiFetch('/api/usuarios/' + encodeURIComponent(id), 0, { method:'DELETE', headers:{'Content-Type':'application/json'}, body:JSON.stringify({motivo:motivo.trim()}) });
-      if(d.sucesso) { if(window.loadUsuariosMasterPainel) await window.loadUsuariosMasterPainel(); }
+      if(d.sucesso) { fecharModalUsuario(); if(window.loadUsuariosMasterPainel) await window.loadUsuariosMasterPainel(); }
       else alert(d.erro||'Erro ao excluir.');
     } catch(e) { alert(e.message); }
   };
