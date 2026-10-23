@@ -4376,7 +4376,10 @@
       <div class="topbar-left">
         <div class="breadcrumb">Gestão</div>
         <div class="page-header">
-          <h1 class="page-title">RNC · Não conformidades</h1>
+        <div class="rnc-heading">
+          <h1 class="page-title">RNC · Não Conformidades</h1>
+          <div class="rnc-page-subtitle">Acompanhamento de não conformidades, ações corretivas e verificação de eficácia.</div>
+        </div>
           <div class="page-actions">
             <button class="btn btn-secondary" onclick="exportarRNC()">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -4393,8 +4396,8 @@
     <div class="content" style="display:flex;flex-direction:column;gap:16px">
 
       <!-- Info card -->
-      <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 18px;display:flex;flex-direction:column;gap:8px;font-size:13px;line-height:1.5">
-        <div style="font-weight:700">Quando uma RNC é aberta</div>
+      <details class="rnc-criteria">
+        <summary>Critérios de abertura de RNC</summary>
         <div style="display:flex;flex-wrap:wrap;gap:6px">
           <span style="background:#F4F4F4;border-radius:6px;padding:4px 9px">1 · Reclamação de cliente via Comercial (registrada sempre; procedência definida na avaliação)</span>
           <span style="background:#F4F4F4;border-radius:6px;padding:4px 9px">2 · Auditoria externa (certificadora, órgão regulador ou cliente)</span>
@@ -4402,10 +4405,10 @@
           <span style="background:#F4F4F4;border-radius:6px;padding:4px 9px">4 · Desvio de especificação de matéria-prima (inspeção de recebimento)</span>
         </div>
         <div style="color:#545252">Reclamações registradas pelo SAC <strong>não geram RNC</strong>: seguem a Ficha de Encaminhamento de Manifestação e a tratativa dos setores.</div>
-      </div>
+      </details>
 
       <!-- KPIs -->
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px">
+      <div class="rnc-kpis" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px">
         <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px">
           <div style="font-size:12.5px;color:#666464">RNCs abertas</div>
           <div style="font-size:24px;font-weight:600;margin-top:4px" id="rnc-abertas">--</div>
@@ -4425,7 +4428,7 @@
       </div>
 
       <!-- Table -->
-      <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;overflow-x:auto">
+      <div class="rnc-table-card" style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;overflow-x:auto">
         <table style="border-collapse:collapse;width:100%;min-width:880px;font-size:13px">
           <thead>
             <tr style="background:#FAFAFA">
@@ -4445,7 +4448,7 @@
       </div>
 
       <!-- Bottom grid: causas + setores -->
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:16px;align-items:start">
+      <div class="rnc-analysis-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:16px;align-items:start">
         <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:20px;display:flex;flex-direction:column;gap:12px">
           <div style="font-weight:700;font-size:14px">Causas recorrentes</div>
           <div style="font-size:12px;color:#707070">Mesma causa em mais de uma RNC nos últimos 90 dias</div>
@@ -7152,7 +7155,7 @@
       <img src="/assets/logo-grupo-chiacchio.png" alt="Grupo Chiacchio" style="height:32px;width:auto;flex-shrink:0;object-fit:contain" id="cp-top-logo">
       <div class="cp-top-title">
         <b>Centro das Pesquisas</b>
-        <span>Satisfação · Chiacchio, Plaschio e Cesbap</span>
+        <span>Gestão das pesquisas de satisfação e acompanhamento das respostas.</span>
       </div>
       <!-- Filtros integrados na barra -->
       <div class="cp-top-filters">
@@ -7199,24 +7202,7 @@
 
       <!-- Tab panels -->
       <div id="cp-panel-geral">
-        <!-- Visão geral info card -->
-        <div style="background:#fff;border:1px solid #E4E4E4;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:12px;margin-bottom:14px">
-          <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
-            <span style="font-weight:700;font-size:14px">Como uma resposta é tratada</span>
-            <span style="font-size:12px;color:#666464">Nota ≤ 6 é sinalizada para análise; ela não vira manifestação automaticamente.</span>
-          </div>
-          <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:11.5px;font-weight:600">
-            <span style="display:flex;gap:6px;align-items:center"><span style="background:#F4F4F4;border-radius:6px;padding:5px 9px">Resposta recebida</span><span style="color:#707070">→</span></span>
-            <span style="display:flex;gap:6px;align-items:center"><span style="background:#F4F4F4;border-radius:6px;padding:5px 9px">IA verifica notas</span><span style="color:#707070">→</span></span>
-            <span style="display:flex;gap:6px;align-items:center"><span style="background:#F4F4F4;border-radius:6px;padding:5px 9px">Nota ≤ 6: SAC analisa</span><span style="color:#707070">→</span></span>
-            <span style="display:flex;gap:6px;align-items:center"><span style="background:#F4F4F4;border-radius:6px;padding:5px 9px">SAC registra a decisão</span><span style="color:#707070">→</span></span>
-            <span style="display:flex;gap:6px;align-items:center"><span style="background:#F4F4F4;border-radius:6px;padding:5px 9px">OCP, MAN ou encerramento</span></span>
-          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px">
-            <div style="border:1.5px solid #C70602;background:#FFF8F8;border-radius:9px;padding:10px 12px;display:flex;flex-direction:column;gap:4px"><span style="font-size:10.5px;font-weight:700;letter-spacing:.06em;color:#A80502">TRANSFORMAR EM MANIFESTAÇÃO</span><span style="font-size:12.5px;line-height:1.45">Abre manifestação formal no fluxo SAC. A pesquisa e a manifestação ficam vinculadas.</span></div>
-            <div style="border:1.5px solid #24508F;background:#F5F8FC;border-radius:9px;padding:10px 12px;display:flex;flex-direction:column;gap:4px"><span style="font-size:10.5px;font-weight:700;letter-spacing:.06em;color:#24508F">ABRIR OCORRÊNCIA OCP</span><span style="font-size:12.5px;line-height:1.45">Registra uma ocorrência operacional vinculada à resposta para acompanhamento e conclusão.</span></div>
-            <div style="border:1.5px solid #D6D6D6;background:#FAFAFA;border-radius:9px;padding:10px 12px;display:flex;flex-direction:column;gap:4px"><span style="font-size:10.5px;font-weight:700;letter-spacing:.06em;color:#545252">NÃO REQUER TRATAMENTO</span><span style="font-size:12.5px;line-height:1.45">Decisão do SAC, sempre com justificativa obrigatória registrada.</span></div>
-          </div>
-        </div>
+        <!-- A análise e as decisões aparecem somente no detalhamento da resposta. -->
         <!-- KPI grid -->
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin-bottom:14px" id="cp-kpis">
           <div style="background:#fff;border:1px solid #E4E4E4;border-top:1px solid #C70602;border-radius:10px;padding:12px 14px"><span style="font-size:11px;font-weight:600;letter-spacing:.04em;color:#666464">TOTAL</span><div style="font-size:24px;font-weight:700;margin-top:2px" id="cp-kpi-total">—</div></div>
@@ -13667,10 +13653,21 @@ async function loadBancoRNC() {
     const res = await _apiFetch('/api/manifestacoes', 30000);
     const mans = res.itens || [];
     const rncs = mans.filter(m => m.ID_RNC || m.RNC_SUGERIDO === 'SIM');
+    const statusOf = m => String(m.STATUS_RNC || m.STATUS || m.STATUS_MANIFESTACAO || '').toUpperCase().replace(/[ÀÁÂÃ]/g,'A');
+    const isOpen = m => ['ABERTA','ABERTO','EM_VERIFICACAO','EM VERIFICACAO','EM_TRATAMENTO','EM_ANALISE'].includes(statusOf(m)) || (!statusOf(m) && !m.DATA_ENCERRAMENTO);
+    const openRncs = rncs.filter(isOpen);
+    const efficacyRncs = rncs.filter(m => /VERIFICACAO/.test(statusOf(m)));
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const closedThisMonth = rncs.filter(m => /ENCERR|FECHAD|CONCLUID/.test(statusOf(m)) && new Date(m.DATA_ENCERRAMENTO || m.DATA_FINALIZACAO || 0) >= monthStart);
     window._rncDataFull = rncs;
-    document.getElementById('rnc-abertas').textContent = rncs.length;
-    document.getElementById('rnc-abertas-sub').textContent = rncs.length + ' RNCs abertas';
-    document.getElementById('rnc-vencendo').textContent = Math.max(0, Math.floor(rncs.length * 0.3));
+    document.getElementById('rnc-abertas').textContent = openRncs.length;
+    document.getElementById('rnc-abertas-sub').textContent = openRncs.length + ' RNCs abertas';
+    document.getElementById('rnc-eficacia').textContent = efficacyRncs.length;
+    document.getElementById('rnc-encerradas').textContent = closedThisMonth.length;
+    const prazoDate = m => new Date(m.PRAZO || m.DATA_PRAZO || m.DATA_FINALIZACAO || 0);
+    const inSevenDays = new Date(now.getTime() + 7 * 86400000);
+    document.getElementById('rnc-vencendo').textContent = openRncs.filter(m => { const d = prazoDate(m); return d > now && d <= inSevenDays; }).length;
 
     const body = rncs.slice(0,8).map((m,i) => `
       <tr>
@@ -13690,7 +13687,7 @@ async function loadBancoRNC() {
 
     // Causas recorrentes
     const causas = {};
-    mans.forEach(m => { const c = m.CAUSA_PROVAVEL; if (c) causas[c] = (causas[c]||0) + 1; });
+    rncs.forEach(m => { const c = m.CAUSA_PROVAVEL; if (c) causas[c] = (causas[c]||0) + 1; });
     const causasList = Object.entries(causas).sort((a,b) => b[1]-a[1]).slice(0,4);
     const maxC = causasList[0]?.[1] || 1;
     document.getElementById('causas-list').innerHTML = causasList.map(([causa, count]) => `
@@ -13704,7 +13701,7 @@ async function loadBancoRNC() {
 
     // Por setor
     const setorRnc = {};
-    mans.forEach(m => { const s = m.SETOR_DESTINADO || m.SETOR_SUGERIDO || 'Outros'; setorRnc[s] = (setorRnc[s]||0) + 1; });
+    openRncs.forEach(m => { const s = m.SETOR_DESTINADO || m.SETOR_SUGERIDO || 'Outros'; setorRnc[s] = (setorRnc[s]||0) + 1; });
     const setorList = Object.entries(setorRnc).sort((a,b) => b[1]-a[1]).slice(0,5);
     const maxS = setorList[0]?.[1] || 1;
     document.getElementById('rnc-setor-list').innerHTML = setorList.map(([s, c]) => `
@@ -30314,6 +30311,47 @@ if (typeof pageLoaders !== 'undefined') {
 #page-painel-maquina .pm-data-state button{height:32px;border:1px solid #c70602;background:#fff;color:#c70602;border-radius:7px;padding:0 12px;font:600 12px Montserrat,Arial,sans-serif;cursor:pointer}
 @media(max-width:1100px){#page-painel-maquina .content{padding:0 22px 32px!important}#page-painel-maquina .ind-nav-wrap{margin:0 -22px!important;padding:0 22px!important}#page-painel-maquina #pm-kpis{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
 @media(max-width:700px){#page-painel-maquina .topbar{padding:18px 16px!important}#page-painel-maquina .page-title{font-size:23px!important}#page-painel-maquina .content{padding:0 16px 24px!important}#page-painel-maquina .ind-nav-wrap{margin:0 -16px!important;padding:0 16px!important}#page-painel-maquina #ind-tabs-bar button{padding:0 14px!important;font-size:12px!important}#page-painel-maquina .ind-filter-row{align-items:stretch!important;padding:12px 0 16px!important}#page-painel-maquina .ind-filter-row select,#page-painel-maquina .ind-filter-row input{flex:1 1 140px;min-width:0;width:auto!important}#page-painel-maquina #pm-kpis{grid-template-columns:1fr!important}}
+</style>
+<style id="rnc-pesquisas-reference-layout">
+/* Referência aprovada: estilos escopados para as telas reais, sem alterar eventos ou APIs. */
+#page-banco-rnc{background:#f7f7f7!important;font-family:Montserrat,Arial,sans-serif;color:#242424}
+#page-banco-rnc .topbar{background:#fff;border-bottom:1px solid #e5e5e5;padding:18px 28px!important}
+#page-banco-rnc .rnc-heading{flex:1;min-width:0}
+#page-banco-rnc .page-title{font-size:24px!important;line-height:1.1;letter-spacing:-.02em}
+#page-banco-rnc .rnc-page-subtitle{font-size:12.5px;color:#929090;margin-top:4px}
+#page-banco-rnc .content{padding:24px 28px 40px!important;gap:20px!important}
+#page-banco-rnc .rnc-criteria{background:#fff;border:1px solid #e5e5e5;border-radius:10px;padding:0 18px;font-size:13px;line-height:1.5}
+#page-banco-rnc .rnc-criteria summary{list-style:none;cursor:pointer;padding:14px 0;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:space-between}
+#page-banco-rnc .rnc-criteria summary::-webkit-details-marker{display:none}
+#page-banco-rnc .rnc-criteria summary:after{content:'▾';color:#929090;font-size:14px;transition:transform .15s}
+#page-banco-rnc .rnc-criteria:not([open]) summary:after{transform:rotate(-90deg)}
+#page-banco-rnc .rnc-criteria>div{padding:0 0 14px}
+#page-banco-rnc .rnc-criteria>div:first-of-type{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+#page-banco-rnc .rnc-criteria>div:first-of-type span{background:#fafafa!important;border:1px solid #f0f0f0;padding:9px 11px!important}
+#page-banco-rnc .rnc-kpis{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:16px!important}
+#page-banco-rnc .rnc-kpis>div{border-radius:10px!important;padding:18px 20px!important;border-top:2px solid #c70602!important}
+#page-banco-rnc .rnc-kpis>div:nth-child(2){border-top-color:#d9a400!important}
+#page-banco-rnc .rnc-kpis>div:nth-child(3){border-top-color:#24508f!important}
+#page-banco-rnc .rnc-kpis>div:nth-child(4){border-top-color:#1e6b3a!important}
+#page-banco-rnc .rnc-kpis [id^="rnc-"]{font-size:28px!important;font-weight:800!important}
+#page-banco-rnc .rnc-table-card{border-radius:10px!important}
+#page-banco-rnc .rnc-table-card th{height:42px;letter-spacing:.04em}
+#page-banco-rnc .rnc-table-card td{padding:12px 14px!important;border-bottom:1px solid #f0f0f0}
+#page-banco-rnc .rnc-analysis-grid>div{border-radius:10px!important;padding:18px 20px!important}
+#page-sugestoes-melhoria{font-family:Montserrat,Arial,sans-serif;background:#f7f7f7!important;color:#242424}
+#page-sugestoes-melhoria .cp-top{background:#fff!important;border-bottom:1px solid #e5e5e5!important;padding:14px 28px!important;min-height:66px}
+#page-sugestoes-melhoria .cp-top-title b{font-size:18px!important;color:#242424}
+#page-sugestoes-melhoria .cp-top-title span{font-size:11.5px!important;color:#929090}
+#page-sugestoes-melhoria>div:nth-child(2){padding:20px 28px 48px!important}
+#page-sugestoes-melhoria #cp-tabbar{margin-bottom:16px!important;border-bottom:2px solid #e5e5e5!important}
+#page-sugestoes-melhoria .cp-tab-btn{height:44px!important;padding:0 16px!important;font-size:13px!important;font-family:inherit!important}
+#page-sugestoes-melhoria #cp-filtros{padding:10px 0 16px!important;margin:0 0 16px!important;border-bottom:1px solid #e5e5e5}
+#page-sugestoes-melhoria #cp-kpis{grid-template-columns:repeat(5,minmax(130px,1fr))!important;gap:12px!important}
+#page-sugestoes-melhoria #cp-kpis>div{border-radius:10px!important;padding:16px 18px!important}
+#page-sugestoes-melhoria #cp-kpis [id^="cp-kpi-"]{font-weight:800!important}
+#page-sugestoes-melhoria #cp-panel-geral>div:last-child{border-radius:10px!important}
+@media(max-width:900px){#page-banco-rnc .content{padding:18px 20px 32px!important}#page-banco-rnc .rnc-kpis{grid-template-columns:repeat(2,minmax(0,1fr))!important}#page-banco-rnc .rnc-criteria>div:first-of-type{grid-template-columns:1fr}#page-sugestoes-melhoria>div:nth-child(2){padding:16px 20px 36px!important}#page-sugestoes-melhoria #cp-kpis{grid-template-columns:repeat(2,minmax(130px,1fr))!important}}
+@media(max-width:600px){#page-banco-rnc .topbar{padding:16px!important}#page-banco-rnc .content{padding:16px 14px 24px!important}#page-banco-rnc .page-title{font-size:21px!important}#page-banco-rnc .rnc-kpis{gap:8px!important}#page-banco-rnc .rnc-kpis>div{padding:13px 14px!important}#page-sugestoes-melhoria .cp-top{padding:12px 14px!important;flex-wrap:wrap}#page-sugestoes-melhoria>div:nth-child(2){padding:14px 14px 28px!important}#page-sugestoes-melhoria #cp-kpis{grid-template-columns:1fr 1fr!important;gap:8px!important}}
 </style>
 </body>
 </html>
