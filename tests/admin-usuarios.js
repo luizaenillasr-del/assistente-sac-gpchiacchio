@@ -11,6 +11,8 @@ const api = fs.readFileSync('api/index.js', 'utf8');
 assert.match(html, /id="usr-status-tabs"/);
 assert.match(html, /data-status-view="EXCLUIDO"/);
 assert.match(html, /onclick="usuAbrir\('\$\{uid\}'\)"/);
+assert.match(html, /usuStatus\('\$\{uid\}',\s*'desativar'\)/);
+assert.match(html, /usuExcluir\('\$\{uid\}'/);
 assert.match(html, /function _fmtDataHora/);
 assert.match(html, /prompt\('Informe o motivo da exclusão lógica:/);
 assert.match(api, /app\.delete\('\/api\/usuarios\/:id'/);
@@ -19,5 +21,7 @@ assert.match(api, /DATA_EXCLUSAO/);
 assert.match(api, /MOTIVO_EXCLUSAO/);
 assert.match(api, /Não é possível excluir o único MASTER ativo/);
 assert.match(api, /não pode excluir sua própria conta/i);
+assert.match(api, /async function persistirStatusUsuario/);
+assert.doesNotMatch(api, /DESATIVAR usuario Sheets\].message\);/);
 
 console.log('GESTAO ACESSOS: tabela, ficha, separação de status e exclusão lógica protegida aprovados.');

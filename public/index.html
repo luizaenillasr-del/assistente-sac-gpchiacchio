@@ -5027,7 +5027,10 @@
     #page-usuarios .usr-status-tab.active span{background:#FDECEC;color:#C70602}
     #page-usuarios .usr-user-table{table-layout:fixed}
     #page-usuarios .usr-user-table th,#page-usuarios .usr-user-table td{height:68px;box-sizing:border-box}
-    #page-usuarios .usr-user-table th:nth-child(1){width:34%}#page-usuarios .usr-user-table th:nth-child(2){width:20%}#page-usuarios .usr-user-table th:nth-child(3){width:18%}#page-usuarios .usr-user-table th:nth-child(4){width:14%}#page-usuarios .usr-user-table th:nth-child(5){width:14%}
+    #page-usuarios .usr-user-table th:nth-child(1){width:28%}#page-usuarios .usr-user-table th:nth-child(2){width:17%}#page-usuarios .usr-user-table th:nth-child(3){width:15%}#page-usuarios .usr-user-table th:nth-child(4){width:11%}#page-usuarios .usr-user-table th:nth-child(5){width:13%}#page-usuarios .usr-user-table th:nth-child(6){width:16%}
+    #page-usuarios .usr-row-action{border:1px solid #D6D6D6;background:#fff;color:#545252;border-radius:6px;padding:5px 8px;font-size:11px;cursor:pointer;font-family:inherit;white-space:nowrap}
+    #page-usuarios .usr-row-action:hover{border-color:#C70602;color:#A80502;background:#FFF8F8}
+    #page-usuarios .usr-row-action.usr-row-warn{color:#A80502;border-color:#F1C7C5}.usr-row-action.usr-row-ok{color:#1E6B3A;border-color:#B9DEC5}.usr-row-action.usr-row-muted{color:#707070}
     #page-usuarios .usr-user-row{cursor:pointer;transition:background .15s}
     #page-usuarios .usr-user-row:hover{background:#FAFAFA}
     #page-usuarios .usr-user-name{display:block;border:0;background:none;padding:0;text-align:left;font:700 13px Montserrat,inherit;color:#1F1F1F;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
@@ -5040,7 +5043,6 @@
     <button class="usr-tab active" id="usr-tab-btn-usuarios" role="tab" aria-selected="true" onclick="switchUsrTab('usuarios')">Usuários</button>
     <button class="usr-tab" id="usr-tab-btn-solicitacoes" role="tab" aria-selected="false" onclick="switchUsrTab('solicitacoes')">Solicitações de acesso</button>
     <button class="usr-tab" id="usr-tab-btn-permissoes" role="tab" aria-selected="false" onclick="switchUsrTab('permissoes')">Perfis e permissões</button>
-    <button class="usr-tab" id="usr-tab-btn-pendencias" role="tab" aria-selected="false" onclick="switchUsrTab('pendencias')">Pendências e aprovações</button>
     <button class="usr-tab" id="usr-tab-btn-aprovadores" role="tab" aria-selected="false" onclick="switchUsrTab('aprovadores')">Aprovadores</button>
     <button class="usr-tab" id="usr-tab-btn-competencias" role="tab" aria-selected="false" onclick="switchUsrTab('competencias')">Competências</button>
     <button class="usr-tab" id="usr-tab-btn-regras" role="tab" aria-selected="false" onclick="switchUsrTab('regras')">Regras</button>
@@ -5111,7 +5113,8 @@
               <th style="padding:10px 16px;text-align:left;font-size:11px;font-weight:700;letter-spacing:.05em;color:#929090;text-transform:uppercase">Perfil</th>
               <th style="padding:10px 16px;text-align:left;font-size:11px;font-weight:700;letter-spacing:.05em;color:#929090;text-transform:uppercase">Empresa</th>
               <th style="padding:10px 16px;text-align:left;font-size:11px;font-weight:700;letter-spacing:.05em;color:#929090;text-transform:uppercase">Status</th>
-              <th style="padding:10px 16px;text-align:left;font-size:11px;font-weight:700;letter-spacing:.05em;color:#929090;text-transform:uppercase">Último acesso</th>
+          <th style="padding:10px 16px;text-align:left;font-size:11px;font-weight:700;letter-spacing:.05em;color:#929090;text-transform:uppercase">Último acesso</th>
+          <th style="padding:10px 16px;text-align:right;font-size:11px;font-weight:700;letter-spacing:.05em;color:#929090;text-transform:uppercase">Ações</th>
             </tr>
           </thead>
           <tbody id="usu-lista"></tbody>
@@ -15615,7 +15618,7 @@ document.addEventListener('visibilitychange', () => {
   }
   async function loadSolicitacoesEmbutido(){
     try{
-      const d=await json5('/api/admin/solicitacoes').catch(()=>({itens:[]}));
+      const d=await json5('/api/admin/solicitacoes');
       const reqs=(d.itens||[]);
       const pend=reqs.filter(x=>x.STATUS==='PENDENTE');
       const setEl=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
@@ -15630,14 +15633,19 @@ document.addEventListener('visibilitychange', () => {
           <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
             <span style="font-weight:600;font-size:13.5px">${esc5(r.NOME||r.nome||'')}</span>
             <span style="font-size:12.5px;color:#666464">${esc5(r.EMAIL||r.email||'')} · ${esc5(r.EMPRESA||r.empresa||'')} · ${esc5(r.SETOR||r.setor||'')}</span>
-            <span style="font-size:12px;color:#707070">${esc5(r.ID||r.id||'')} · ${fmt5(r.DATA_SOLICITACAO||r.dataSolicitacao||'')}</span>
+            <span style="font-size:12px;color:#707070">${esc5(r.ID_SOLICITACAO||r.ID||r.id||'')} · ${fmt5(r.DATA_CRIACAO||r.DATA_SOLICITACAO||r.dataSolicitacao||'')}</span>
             <span style="margin-left:auto;padding:2px 9px;border-radius:99px;font-size:11.5px;font-weight:600;background:${stBg};color:${stFg}">${esc5(r.STATUS||r.status||'')}</span>
           </div>
           <div style="font-size:13px;color:#545252;margin-top:6px">Motivo: ${esc5(r.MOTIVO||r.motivo||'—')}</div>
-          ${r.STATUS==='PENDENTE'?`<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><button onclick="abrirConfigAcesso('${esc5(r.ID_SOLICITACAO||r.id||r.ID)}')" style="border:1px solid #D6D6D6;background:#fff;border-radius:7px;padding:7px 12px;cursor:pointer;font-size:12.5px;color:#A80502">Rejeitar</button><button onclick="abrirConfigAcesso('${esc5(r.ID_SOLICITACAO||r.id||r.ID)}')" style="border:0;background:#1F1F1F;color:#fff;border-radius:7px;padding:7px 14px;cursor:pointer;font-size:12.5px;font-weight:600">Aprovar com este perfil</button></div>`:''}
+          ${r.STATUS==='PENDENTE'?`<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><button onclick="rejeitarSolicitacaoModal('${esc5(r.ID_SOLICITACAO||r.id||r.ID)}')" style="border:1px solid #D6D6D6;background:#fff;border-radius:7px;padding:7px 12px;cursor:pointer;font-size:12.5px;color:#A80502">Rejeitar</button><button onclick="abrirConfigAcesso('${esc5(r.ID_SOLICITACAO||r.id||r.ID)}')" style="border:0;background:#1F1F1F;color:#fff;border-radius:7px;padding:7px 14px;cursor:pointer;font-size:12.5px;font-weight:600">Aprovar com este perfil</button></div>`:''}
         </div>`;
       }).join('');
-    }catch(e){console.error('Solicitações:',e);}
+    }catch(e){
+      console.error('Solicitações:',e);
+      const el=document.getElementById('usr-solicitacoes-lista');
+      if(el) { el.style.display='flex'; el.innerHTML='<div style="padding:16px 20px;color:#A80502;font-size:13px">Não foi possível carregar as solicitações. '+esc5(e.message||'Verifique a sessão e tente Atualizar.')+'</div>'; }
+      const txt=document.getElementById('usr-req-pend-txt'); if(txt) txt.textContent='Erro ao carregar';
+    }
   }
   window.loadUsuariosV5=loadUsuariosV5;
   window.loadSolicitacoesEmbutido=loadSolicitacoesEmbutido;
@@ -23627,21 +23635,24 @@ async function mudarStatusMC(id, novoStatus) {
 
   // ── TABS USUÁRIOS ───────────────────────────────────────────
   window.switchUsrTab = function(tab){
-    const adminTabs=['pendencias','aprovadores','competencias','regras','historico'];
+    // A antiga página de Pendências foi removida da Gestão de Acessos.
+    // Links antigos continuam levando o MASTER para as solicitações de acesso.
+    if(tab==='pendencias') tab='solicitacoes';
+    const adminTabs=['aprovadores','competencias','regras','historico'];
     const current=['solicitacoes','permissoes',...adminTabs].includes(tab)?tab:'usuarios';
-    ['usuarios','solicitacoes','permissoes','pendencias','aprovadores','competencias','regras','historico'].forEach(name=>{
+    ['usuarios','solicitacoes','permissoes','aprovadores','competencias','regras','historico'].forEach(name=>{
       const panel=document.getElementById('usr-panel-'+name); if(panel)panel.classList.toggle('active',name===current);
       const btn=document.getElementById('usr-tab-btn-'+name); if(btn){btn.classList.toggle('active',name===current);btn.setAttribute('aria-selected',name===current?'true':'false');}
     });
     const usersVisible=current==='usuarios';
     ['usr-filtros-wrap','usr-tabela-wrap'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display=usersVisible?'':'none';});
     const usersPanel=document.getElementById('usr-panel-usuarios');
-    if(usersPanel)usersPanel.classList.toggle('active',current==='usuarios');
+    if(usersPanel)usersPanel.classList.toggle('active',current==='usuarios'||current==='solicitacoes');
     const bridge=document.getElementById('usr-aprov-bridge');
     if(adminTabs.includes(current)){
       mountAprovacaoPanels();
       if(bridge) bridge.classList.add('active');
-      if(typeof aprvTab==='function') aprvTab(current==='pendencias'?'pendencias':current);
+      if(typeof aprvTab==='function') aprvTab(current);
     } else if(bridge) bridge.classList.remove('active');
     const req=document.getElementById('usr-solicitacoes-section');if(req)req.style.display=current==='solicitacoes'?'block':'none';
     if(current==='solicitacoes')loadSolicitacoesEmbutido?.();
@@ -23663,8 +23674,19 @@ async function mudarStatusMC(id, novoStatus) {
   function renderPerfisPermissoes(){
     const el=document.getElementById('usr-perm-grid');if(!el)return;
     const defs=window.__SAC_PERM_DEF || (typeof _PERM_DEF!=='undefined'?_PERM_DEF:{});
-    const keys=Object.keys(defs); el.innerHTML=keys.map(k=>{const d=defs[k];const n=Array.isArray(d)?d.length:(d&&typeof d==='object'?Object.keys(d).length:0);return `<div class="usr-perm-item"><strong>${esc5(k)}</strong><div style="margin-top:5px;color:#707070">${n?n+' permissões padrão':'Configuração administrativa'}</div></div>`}).join('')||'<div style="color:#707070;font-size:12px">Nenhum perfil configurado.</div>';
+    const keys=Object.keys(defs); el.innerHTML=keys.map(k=>{const d=defs[k];const n=Array.isArray(d)?d.length:(d&&typeof d==='object'&&d['*']?Object.keys(_PERM_MODULOS||{}).length:Object.keys(d||{}).length);return `<div class="usr-perm-item"><strong>${esc5(k)}</strong><div style="margin-top:5px;color:#707070">${n?n+' permissões padrão':'Acesso administrativo global'}</div><button type="button" onclick="editarUsuariosDoPerfil('${esc5(k)}')" style="margin-top:10px;border:1px solid #D6D6D6;background:#fff;border-radius:7px;padding:6px 10px;color:#A80502;cursor:pointer;font:600 11px inherit">Editar usuários deste perfil</button></div>`}).join('')||'<div style="color:#707070;font-size:12px">Nenhum perfil configurado.</div>';
   }
+  window.editarUsuariosDoPerfil=async function(perfil){
+    switchUsrTab('usuarios');
+    const sel=document.getElementById('usu-fil-perfil');
+    if(sel){ sel.value=perfil; }
+    if(!_usuDados.length && typeof loadUsuariosMasterPainel==='function') await loadUsuariosMasterPainel();
+    window._usuStatusView='ATIVO';
+    document.querySelectorAll('#usr-status-tabs .usr-status-tab').forEach(b=>b.classList.toggle('active',b.dataset.statusView==='ATIVO'));
+    usuFiltrar();
+    const box=document.getElementById('usu-tabela-wrap');
+    if(box) box.scrollIntoView({behavior:'smooth',block:'start'});
+  };
   window.renderPerfisPermissoes=renderPerfisPermissoes;
 
   // ── CARREGAR USUÁRIOS (novo endpoint) ───────────────────────
@@ -27896,6 +27918,17 @@ function updateTopbarUser(user) {
       const perfis = String(u.PERFIL||u.perfil||'—').split(',').map(v=>v.trim()).filter(Boolean);
       const perfilHtml = esc5(perfis[0] || '—') + (perfis.length > 1 ? ` <span style="font-size:10px;color:#707070">+${perfis.length-1}</span>` : '');
       const ultimo = u.ULTIMO_ACESSO||u.ultimoAcesso;
+      const sessUser = role();
+      const currentUser = (()=>{ try { return JSON.parse(sessionStorage.getItem('sac-user')||'{}'); } catch(_) { return {}; } })();
+      const isSelf = String(u.USUARIO||u.usuario||u.EMAIL||u.email||'').toLowerCase() === String(currentUser.usuario||currentUser.email||'').toLowerCase();
+      const actions = isSelf
+        ? '<span style="font-size:11px;color:#707070">Sua conta</span>'
+        : `<div style="display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap">
+            <button type="button" class="usr-row-action" onclick="event.stopPropagation();usuAbrir('${uid}')">Editar</button>
+            ${st==='ATIVO' ? `<button type="button" class="usr-row-action usr-row-warn" onclick="event.stopPropagation();usuStatus('${uid}','desativar')">Inativar</button>` : `<button type="button" class="usr-row-action usr-row-ok" onclick="event.stopPropagation();usuStatus('${uid}','ativar')">Ativar</button>`}
+            ${st==='BLOQUEADO' ? `<button type="button" class="usr-row-action usr-row-warn" onclick="event.stopPropagation();usuStatus('${uid}','desbloquear')">Desbloquear</button>` : ''}
+            ${st!=='EXCLUIDO' ? `<button type="button" class="usr-row-action usr-row-muted" onclick="event.stopPropagation();usuExcluir('${uid}','${esc5(u.NOME||u.nome||u.USUARIO||u.usuario||'')}')">Excluir</button>` : ''}
+          </div>`;
       return `<tr class="usr-user-row" onclick="usuAbrir('${uid}')">
         <td style="padding:12px 16px;max-width:260px">
           <button type="button" onclick="event.stopPropagation();usuAbrir('${uid}')" title="Abrir ficha administrativa" class="usr-user-name">${esc5(u.NOME||u.nome||u.USUARIO||u.usuario)}</button>
@@ -27905,6 +27938,7 @@ function updateTopbarUser(user) {
         <td style="padding:12px 16px" class="usr-company-count">${empresaCount ? empresaCount + (empresaCount === 1 ? ' empresa' : ' empresas') : 'Nenhuma empresa'}</td>
         <td style="padding:12px 16px"><span style="font-size:11px;font-weight:700;border-radius:5px;padding:3px 8px;background:${sc.bg};color:${sc.color}">${st}</span></td>
         <td style="padding:12px 16px;font-size:12px;color:#707070">${ultimo ? _fmtDataHora(ultimo) : 'Nunca acessou'}</td>
+        <td style="padding:12px 16px;text-align:right">${actions}</td>
       </tr>`;
     }).join('');
   }

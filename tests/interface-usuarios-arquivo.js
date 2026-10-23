@@ -5,8 +5,8 @@ function ok(condition, message) { if (!condition) throw new Error(message); cons
 const users = html.slice(html.indexOf('<div class="page" id="page-usuarios"'), html.indexOf('<!-- ===== MODAL CONFIGURAR ACESSO'));
 const head = users.match(/<table class="usr-user-table"[\s\S]*?<thead>([\s\S]*?)<\/thead>/)?.[1] || '';
 const labels = [...head.matchAll(/<th[^>]*>([^<]*)<\/th>/g)].map(m => m[1].trim());
-ok(labels.join('|') === 'Usuário|Perfil|Empresa|Status|Último acesso', 'tabela de usuários tem cinco colunas de localização');
-ok(!head.includes('Setor') && !head.includes('Ações'), 'setor e ações não vazam para a listagem principal');
+ok(labels.join('|') === 'Usuário|Perfil|Empresa|Status|Último acesso|Ações', 'tabela de usuários tem ações administrativas explícitas');
+ok(!head.includes('Setor') && head.includes('Ações'), 'ações de ativar, inativar e excluir ficam na listagem principal');
 ok(html.includes('class="usr-user-row"') && html.includes('usuAbrir'), 'linha e usuário abrem a ficha administrativa');
 ok(html.includes('Nunca acessou') && html.includes('empresas'), 'último acesso e contagem de empresas têm estados compactos');
 const archive = html.slice(html.indexOf('id="page-biblioteca-fichas"'), html.indexOf('<!-- DETALHE DA FICHA'));
@@ -15,3 +15,6 @@ ok(html.includes('TOTAL DE FICHAS') && html.includes('CRIADAS NO SISTEMA') && ht
 ok(archive.includes('<th>Assunto</th>') && archive.includes('<th>Situação</th>') && archive.includes('<th>Origem</th>'), 'tabela do arquivo usa colunas resumidas e rastreáveis');
 console.log('INTERFACES: 9 verificações aprovadas');
 ok(html.includes('window.__SAC_PERM_DEF = _PERM_DEF') && html.includes('window.__SAC_PERM_DEF ||'), 'aba de perfis usa os defaults compartilhados do frontend');
+ok(!html.includes('id="usr-tab-btn-pendencias"'), 'aba removida de pendências não aparece na gestão de acessos');
+ok(html.includes("if(tab==='pendencias') tab='solicitacoes'") && html.includes('editarUsuariosDoPerfil'), 'links antigos e edição de perfis têm compatibilidade funcional');
+ok(html.includes("const d=await json5('/api/admin/solicitacoes');") && html.includes('Erro ao carregar'), 'falhas ao carregar solicitações são exibidas ao MASTER');
