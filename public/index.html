@@ -8199,19 +8199,19 @@
   const SEC=[['desempenho','Desempenho geral'],['analise_critica','Análise crítica dos resultados'],['pontos_fortes','Pontos fortes'],['oportunidades','Oportunidades de melhoria'],['acoes','Ações recomendadas']];
   const CR=[['ATENDIMENTO','at','atendimento'],['PRAZO DE ENTREGA','pr','prazo de entrega'],['QUALIDADE','qu','qualidade'],['RECOMENDAÇÃO','re','recomendação']];
   const NOTA_CRITICA=6;
-  let _dir=false,_d=null,_per=6,_metas={},_edit=null,_openM=null,_allOpen=false,_autos={},_toastT=null;
-  // Carrega metas salvas localmente como cache e depois sincroniza do backend
-  try{const s=localStorage.getItem('sac_rel_metas');if(s)_metas=JSON.parse(s);}catch(e){}
+  let _dir=false,_d=null,_per=6,_metas={},_edit=null,_openM=null,_allOpen=false,_autos={},_toastT=null,_metasBackend=false;
   function getMeta(){return _metas[_empresa()]??8.5;}
   function setMeta(v){
+    const empresa=_empresa(), anterior=_metas[empresa];
     _metas[_empresa()]=v;
-    try{localStorage.setItem('sac_rel_metas',JSON.stringify(_metas));}catch(e){}
-    // Persiste no backend (fire-and-forget)
     const tok=sessionStorage.getItem('sac-token');
-    if(tok) fetch('/api/relatorios/metas',{method:'POST',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({empresa:_empresa(),meta:v})}).catch(()=>{});
+    if(!tok){_metas[empresa]=anterior;_toast('Sessão indisponível: a meta não foi alterada.');return;}
+    fetch('/api/relatorios/metas',{method:'POST',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({empresa,meta:v})})
+      .then(r=>{if(!r.ok)throw new Error('Não foi possível salvar a meta.');_metasBackend=true;})
+      .catch(e=>{if(anterior==null)delete _metas[empresa];else _metas[empresa]=anterior;_syncMetaInput();_toast(e.message);});
   }
-  // Carrega metas do backend ao iniciar
-  (async()=>{try{const tok=sessionStorage.getItem('sac-token');if(!tok)return;const r=await fetch('/api/relatorios/metas',{headers:{Authorization:'Bearer '+tok}});const j=await r.json().catch(()=>({}));if(j.metas){Object.assign(_metas,j.metas);try{localStorage.setItem('sac_rel_metas',JSON.stringify(_metas));}catch(e){}; _syncMetaInput();}}catch(e){}})();
+  // O backend é a única fonte autoritativa. Sem resposta válida, usa apenas a meta padrão.
+  (async()=>{try{const tok=sessionStorage.getItem('sac-token');if(!tok)return;const r=await fetch('/api/relatorios/metas',{headers:{Authorization:'Bearer '+tok}});if(!r.ok)throw new Error('Falha ao consultar metas');const j=await r.json().catch(()=>({}));if(j.metas&&typeof j.metas==='object'){_metas=j.metas;_metasBackend=true;_syncMetaInput();}}catch(e){_metas={};_metasBackend=false;}})();
 
   function _textoSeguro(v){
     if(v==null)return '';
@@ -8291,10 +8291,12 @@
   window.relMudarMetaEmpresa=function(v,val){
     const n=parseFloat(String(val).replace(',','.'));
     if(!isFinite(n)||n<=0||n>10)return;
-    _metas[v]=n;
-    try{localStorage.setItem('sac_rel_metas',JSON.stringify(_metas));}catch(e){}
+    const anterior=_metas[v];_metas[v]=n;
     const tok=sessionStorage.getItem('sac-token');
-    if(tok) fetch('/api/relatorios/metas',{method:'POST',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({empresa:v,meta:n})}).catch(()=>{});
+    if(!tok){if(anterior==null)delete _metas[v];else _metas[v]=anterior;_renderMetasPanel();_toast('Sessão indisponível: a meta não foi alterada.');return;}
+    fetch('/api/relatorios/metas',{method:'POST',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({empresa:v,meta:n})})
+      .then(r=>{if(!r.ok)throw new Error('Não foi possível salvar a meta.');_metasBackend=true;})
+      .catch(e=>{if(anterior==null)delete _metas[v];else _metas[v]=anterior;_renderMetasPanel();_toast(e.message);});
     if(_empresa()===v){_syncMetaInput();_renderizar();}
   };
   window.relToggleMetasPanel=function(){
