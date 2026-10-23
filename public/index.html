@@ -1470,9 +1470,13 @@
     <!-- footer -->
     <div style="padding:12px 20px;border-top:1px solid #EFEFEF;display:flex;justify-content:space-between;align-items:center">
       <div id="modal-usu-msg" style="font-size:12px"></div>
-      <div style="display:flex;gap:8px">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
+        <div id="usu-acoes-admin" style="display:none;gap:6px;align-items:center;margin-right:4px">
+          <button type="button" id="usu-btn-status" onclick="usuAlternarStatusAtual()" style="border:1px solid #707070;background:#fff;color:#545252;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit"></button>
+          <button type="button" id="usu-btn-excluir" onclick="usuExcluirAtual()" style="border:1px solid #C70602;background:#fff;color:#C70602;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Excluir</button>
+        </div>
         <button onclick="fecharModalUsuario()" style="border:1px solid #D6D6D6;background:#fff;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Cancelar</button>
-        <button onclick="usuSalvar()" id="usu-btn-salvar" style="background:#C70602;color:#fff;border:0;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Salvar</button>
+        <button onclick="usuSalvar()" id="usu-btn-salvar" style="background:#C70602;color:#fff;border:0;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Salvar alterações</button>
       </div>
     </div>
   </div>
@@ -23638,7 +23642,7 @@ async function mudarStatusMC(id, novoStatus) {
   }
   function renderPerfisPermissoes(){
     const el=document.getElementById('usr-perm-grid');if(!el)return;
-    const defs=typeof _PERM_DEF!=='undefined'?_PERM_DEF:{};
+    const defs=window.__SAC_PERM_DEF || (typeof _PERM_DEF!=='undefined'?_PERM_DEF:{});
     const keys=Object.keys(defs); el.innerHTML=keys.map(k=>{const d=defs[k];const n=Array.isArray(d)?d.length:(d&&typeof d==='object'?Object.keys(d).length:0);return `<div class="usr-perm-item"><strong>${esc5(k)}</strong><div style="margin-top:5px;color:#707070">${n?n+' permissões padrão':'Configuração administrativa'}</div></div>`}).join('')||'<div style="color:#707070;font-size:12px">Nenhum perfil configurado.</div>';
   }
   window.renderPerfisPermissoes=renderPerfisPermissoes;
@@ -27785,6 +27789,8 @@ function updateTopbarUser(user) {
     'SETOR MARKETING': ['manifestacoes.visualizar','fichas.acessar','fichas.ativas','indicadores.visualizar','pesquisas.visualizar','pesquisas.respostas','pesquisas.filtros','pesquisas.empresa','pesquisas.periodo'],
     'SETOR DIRETORIA': ['manifestacoes.visualizar','manifestacoes.historico','aprovacoes.visualizar','aprovacoes.aprovar','aprovacoes.reprovar','rnc.visualizar','fichas.acessar','fichas.ativas','fichas.arquivadas','fichas.pesquisar','fichas.filtros','fichas.exportar','indicadores.visualizar','indicadores.empresa','indicadores.setor','indicadores.sla','indicadores.reincidencias','indicadores.exportar','pesquisas.visualizar','pesquisas.respostas','pesquisas.exportar'],
   };
+  // Disponibiliza os defaults para a aba de consulta, que é montada em outro script.
+  window.__SAC_PERM_DEF = _PERM_DEF;
 
   let _usuDados = [];
   let _usuEditando = null;
@@ -27915,6 +27921,15 @@ function updateTopbarUser(user) {
   window.usuAbrir = function(idOuObj) {
     const u = idOuObj == null ? null : (typeof idOuObj === 'string' ? window._usuMap[idOuObj] : idOuObj);
     _usuEditando = u;
+    const adminActions = document.getElementById('usu-acoes-admin');
+    const statusButton = document.getElementById('usu-btn-status');
+    if (adminActions) adminActions.style.display = u ? 'flex' : 'none';
+    if (statusButton && u) {
+      const currentStatus = String(u.STATUS||u.status||'ATIVO').toUpperCase();
+      const action = currentStatus === 'INATIVO' ? 'ativar' : currentStatus === 'BLOQUEADO' ? 'desbloquear' : 'desativar';
+      statusButton.textContent = action === 'ativar' ? 'Ativar usuário' : action === 'desbloquear' ? 'Desbloquear usuário' : 'Inativar usuário';
+      statusButton.dataset.action = action;
+    }
     let grantedArr = [];
     let blockedArr = [];
     if (u) {
@@ -28166,11 +28181,25 @@ function updateTopbarUser(user) {
     }
   };
 
+  window.usuAlternarStatusAtual = function() {
+    const u = _usuEditando;
+    const id = u && (u.ID_USUARIO||u.id||u.USUARIO||u.usuario);
+    const action = document.getElementById('usu-btn-status')?.dataset.action;
+    if (!id || !action) return;
+    usuStatus(id, action);
+  };
+  window.usuExcluirAtual = function() {
+    const u = _usuEditando;
+    const id = u && (u.ID_USUARIO||u.id||u.USUARIO||u.usuario);
+    if (!id) return;
+    usuExcluir(id, u.NOME||u.nome||u.USUARIO||u.usuario||'usuário');
+  };
+
   window.usuStatus = async function(id, acao) {
     if(!confirm('Confirmar: ' + acao + ' este usuário?')) return;
     try {
       const d = await _apiFetch('/api/usuarios/' + encodeURIComponent(id) + '/' + acao, 0, { method:'POST', headers:{'Content-Type':'application/json'}, body:'{}' });
-      if(d.sucesso) { if(window.loadUsuariosMasterPainel) await window.loadUsuariosMasterPainel(); }
+      if(d.sucesso) { fecharModalUsuario(); if(window.loadUsuariosMasterPainel) await window.loadUsuariosMasterPainel(); }
       else alert(d.erro||'Erro.');
     } catch(e) { alert(e.message); }
   };
@@ -28181,7 +28210,7 @@ function updateTopbarUser(user) {
     if(!motivo || !motivo.trim()) return;
     try {
       const d = await _apiFetch('/api/usuarios/' + encodeURIComponent(id), 0, { method:'DELETE', headers:{'Content-Type':'application/json'}, body:JSON.stringify({motivo:motivo.trim()}) });
-      if(d.sucesso) { if(window.loadUsuariosMasterPainel) await window.loadUsuariosMasterPainel(); }
+      if(d.sucesso) { fecharModalUsuario(); if(window.loadUsuariosMasterPainel) await window.loadUsuariosMasterPainel(); }
       else alert(d.erro||'Erro ao excluir.');
     } catch(e) { alert(e.message); }
   };
