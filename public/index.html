@@ -23642,7 +23642,7 @@ async function mudarStatusMC(id, novoStatus) {
   }
   function renderPerfisPermissoes(){
     const el=document.getElementById('usr-perm-grid');if(!el)return;
-    const defs=typeof _PERM_DEF!=='undefined'?_PERM_DEF:{};
+    const defs=window.__SAC_PERM_DEF || (typeof _PERM_DEF!=='undefined'?_PERM_DEF:{});
     const keys=Object.keys(defs); el.innerHTML=keys.map(k=>{const d=defs[k];const n=Array.isArray(d)?d.length:(d&&typeof d==='object'?Object.keys(d).length:0);return `<div class="usr-perm-item"><strong>${esc5(k)}</strong><div style="margin-top:5px;color:#707070">${n?n+' permissões padrão':'Configuração administrativa'}</div></div>`}).join('')||'<div style="color:#707070;font-size:12px">Nenhum perfil configurado.</div>';
   }
   window.renderPerfisPermissoes=renderPerfisPermissoes;
@@ -27789,6 +27789,8 @@ function updateTopbarUser(user) {
     'SETOR MARKETING': ['manifestacoes.visualizar','fichas.acessar','fichas.ativas','indicadores.visualizar','pesquisas.visualizar','pesquisas.respostas','pesquisas.filtros','pesquisas.empresa','pesquisas.periodo'],
     'SETOR DIRETORIA': ['manifestacoes.visualizar','manifestacoes.historico','aprovacoes.visualizar','aprovacoes.aprovar','aprovacoes.reprovar','rnc.visualizar','fichas.acessar','fichas.ativas','fichas.arquivadas','fichas.pesquisar','fichas.filtros','fichas.exportar','indicadores.visualizar','indicadores.empresa','indicadores.setor','indicadores.sla','indicadores.reincidencias','indicadores.exportar','pesquisas.visualizar','pesquisas.respostas','pesquisas.exportar'],
   };
+  // Disponibiliza os defaults para a aba de consulta, que é montada em outro script.
+  window.__SAC_PERM_DEF = _PERM_DEF;
 
   let _usuDados = [];
   let _usuEditando = null;

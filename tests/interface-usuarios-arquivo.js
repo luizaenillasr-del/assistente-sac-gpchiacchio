@@ -13,4 +13,5 @@ const archive = html.slice(html.indexOf('id="page-biblioteca-fichas"'), html.ind
 ok(archive.includes('toggleFiltrosBib()') && archive.includes('af-advanced'), 'filtros avançados do arquivo são recolhíveis');
 ok(html.includes('TOTAL DE FICHAS') && html.includes('CRIADAS NO SISTEMA') && html.includes('HISTÓRICAS IMPORTADAS'), 'indicadores do arquivo distinguem sistema e histórico');
 ok(archive.includes('<th>Assunto</th>') && archive.includes('<th>Situação</th>') && archive.includes('<th>Origem</th>'), 'tabela do arquivo usa colunas resumidas e rastreáveis');
-console.log('INTERFACES: 8 verificações aprovadas');
+console.log('INTERFACES: 9 verificações aprovadas');
+ok(html.includes('window.__SAC_PERM_DEF = _PERM_DEF') && html.includes('window.__SAC_PERM_DEF ||'), 'aba de perfis usa os defaults compartilhados do frontend');
