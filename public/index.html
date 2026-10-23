@@ -30689,5 +30689,31 @@ if (typeof pageLoaders !== 'undefined') {
   });
 })();
 </script>
+<script>
+/* Garante que uma navegação deixe somente uma página visível.
+   Alguns carregadores assíncronos podem concluir depois da troca de rota e
+   reativar visualmente o Dashboard junto da página escolhida. */
+(function(){
+  const remap = page => page === 'rca' ? 'central-cadastros' :
+    (page === 'acompanhamento' || page === 'banco-manifestacoes') ? 'central-sac' : page;
+  const anterior = window.navigate;
+  if (typeof anterior !== 'function') return;
+  function exibirSomente(page){
+    const alvo = document.getElementById('page-' + remap(page));
+    if (!alvo) return;
+    document.querySelectorAll('.page').forEach(p => {
+      const ativo = p === alvo;
+      p.classList.toggle('active', ativo);
+      p.style.display = ativo ? 'flex' : '';
+    });
+  }
+  window.navigate = function(page, el){
+    anterior.apply(this, arguments);
+    exibirSomente(page);
+    setTimeout(() => exibirSomente(page), 0);
+    setTimeout(() => exibirSomente(page), 120);
+  };
+})();
+</script>
 </body>
 </html>
