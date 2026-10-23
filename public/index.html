@@ -29902,14 +29902,18 @@ if (typeof pageLoaders !== 'undefined') {
      ════════════════════════════════════════════════════════════════════ -->
 <div class="page" id="page-portal-admin" style="flex-direction:column;background:#F4F4F4">
   <div class="padm-header">
-    <div><div class="padm-breadcrumb">ADMINISTRAÇÃO</div><h1>Gestão do Portal do Cliente</h1><p>Configure, acompanhe e publique os recursos disponibilizados aos clientes.</p></div>
-    <button class="btn btn-secondary" type="button" onclick="padmLoad()">Atualizar</button>
+    <div><div class="padm-breadcrumb">ADMINISTRAÇÃO</div><h1>Gestão do Portal do Cliente</h1><p>Administração dos serviços, formulários, pesquisas e canais disponibilizados aos clientes.</p></div>
+    <div class="padm-header-actions">
+      <button class="btn btn-secondary" type="button" onclick="padmAbrirPortal()">↗ Visualizar portal público</button>
+      <button class="btn btn-secondary" type="button" onclick="padmLoad()">↻ Atualizar</button>
+    </div>
   </div>
   <!-- Top bar com abas -->
   <div class="padm-top">
-    <button class="padm-tab active" id="padm-tab-visao" onclick="padmTab('visao')">Visão Geral</button>
-    <button class="padm-tab" id="padm-tab-empresas" onclick="padmTab('empresas')">Empresas e Pesquisas</button>
+    <button class="padm-tab active" id="padm-tab-visao" onclick="padmTab('visao')">Visão geral</button>
+    <button class="padm-tab" id="padm-tab-empresas" onclick="padmTab('empresas')">Empresas e serviços</button>
     <button class="padm-tab" id="padm-tab-manifestacoes" onclick="padmTab('manifestacoes')">Manifestações Públicas</button>
+    <button class="padm-tab" id="padm-tab-pesquisas" onclick="padmTab('pesquisas')">Pesquisas de satisfação</button>
     <button class="padm-tab" id="padm-tab-canais" onclick="padmTab('canais')">Canais de Atendimento</button>
     <button class="padm-tab" id="padm-tab-links" onclick="padmTab('links')">Links e Publicação</button>
     <button class="padm-tab" id="padm-tab-historico" onclick="padmTab('historico')">Histórico</button>
@@ -29920,20 +29924,31 @@ if (typeof pageLoaders !== 'undefined') {
     <!-- VISÃO GERAL -->
     <div class="padm-section active" id="padm-s-visao">
       <div class="padm-kpis" id="padm-kpis">
-        <div class="padm-kpi"><span class="padm-kpi-label">Status</span><span class="padm-kpi-val" id="padm-v-status">—</span><span class="padm-kpi-sub">Portal público</span></div>
-        <div class="padm-kpi"><span class="padm-kpi-label">Respostas (30d)</span><span class="padm-kpi-val" id="padm-v-respostas">—</span><span class="padm-kpi-sub">Via portal</span></div>
-        <div class="padm-kpi"><span class="padm-kpi-label">Manifestações (30d)</span><span class="padm-kpi-val" id="padm-v-mans">—</span><span class="padm-kpi-sub">Via portal</span></div>
-        <div class="padm-kpi"><span class="padm-kpi-label">Empresas ativas</span><span class="padm-kpi-val" id="padm-v-empresas">—</span><span class="padm-kpi-sub">Com pesquisa</span></div>
-        <div class="padm-kpi"><span class="padm-kpi-label">WhatsApp</span><span class="padm-kpi-val" id="padm-v-whatsapp">—</span><span class="padm-kpi-sub">Canal de suporte</span></div>
+        <div class="padm-kpi"><span class="padm-kpi-label">Situação do portal</span><span class="padm-kpi-val" id="padm-v-status">—</span><span class="padm-kpi-sub" id="padm-v-status-sub">Verificando configuração</span></div>
+        <div class="padm-kpi"><span class="padm-kpi-label">Manifestações (30 dias)</span><span class="padm-kpi-val" id="padm-v-mans">—</span><span class="padm-kpi-sub">Via portal público</span></div>
+        <div class="padm-kpi"><span class="padm-kpi-label">Pesquisas respondidas (30 dias)</span><span class="padm-kpi-val" id="padm-v-respostas">—</span><span class="padm-kpi-sub">Todas as empresas</span></div>
+        <div class="padm-kpi"><span class="padm-kpi-label">Empresas publicadas</span><span class="padm-kpi-val" id="padm-v-empresas">—</span><span class="padm-kpi-sub">Com pesquisa ativa</span></div>
       </div>
-      <div class="padm-card">
-        <div class="padm-card-title">Atalhos rápidos</div>
+      <div class="padm-card padm-services-card">
+        <div class="padm-services-title">Situação dos serviços</div>
+        <div class="padm-services-scroll"><table class="padm-services-table"><thead><tr><th>Serviço</th><th>Empresa</th><th>Situação</th><th>Última atualização</th><th></th></tr></thead><tbody id="padm-servicos-lista"><tr><td colspan="5" class="padm-table-empty">Carregando serviços…</td></tr></tbody></table></div>
+      </div>
+      <div class="padm-quick-actions">
+        <div class="padm-quick-label">Atalhos rápidos</div>
         <div style="display:flex;gap:10px;flex-wrap:wrap">
-          <a href="/portal" data-portal-path="/portal" target="_blank" rel="noopener noreferrer" class="btn btn-secondary" style="font-size:12.5px;height:36px;display:inline-flex;align-items:center;gap:6px;padding:0 14px;text-decoration:none">🌐 Abrir portal público</a>
+          <button class="btn btn-secondary" style="font-size:12.5px;height:36px" onclick="padmAbrirPortal()">🌐 Abrir portal público</button>
           <button class="btn btn-secondary" style="font-size:12.5px;height:36px" onclick="padmTab('canais')">📱 Configurar WhatsApp</button>
           <button class="btn btn-secondary" style="font-size:12.5px;height:36px" onclick="navigate('sugestoes-melhoria')">📊 Gerenciar pesquisas</button>
           <button class="btn btn-secondary" style="font-size:12.5px;height:36px" onclick="padmTab('links')">🔗 Ver links públicos</button>
         </div>
+      </div>
+    </div>
+
+    <!-- PESQUISAS DE SATISFAÇÃO -->
+    <div class="padm-section" id="padm-s-pesquisas">
+      <div class="padm-card padm-surveys-card">
+        <div class="padm-card-title">Pesquisas de satisfação publicadas</div>
+        <div id="padm-pesquisas-lista" class="padm-surveys-list"><div class="padm-empty">Carregando pesquisas…</div></div>
       </div>
     </div>
 
@@ -30122,6 +30137,7 @@ if (typeof pageLoaders !== 'undefined') {
     if (tab === 'canais') padmCarregarWA();
     if (tab === 'historico') padmCarregarHistorico();
     if (tab === 'empresas') padmCarregarEmpresasConfig();
+    if (tab === 'pesquisas') padmCarregarPesquisas();
     if (tab === 'manifestacoes') padmCarregarFormConfig();
   };
 
@@ -30139,12 +30155,32 @@ if (typeof pageLoaders !== 'undefined') {
       if (!d) return;
       const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
       set('padm-v-status', d.statusPublicacao || 'Indisponível');
+      set('padm-v-status-sub', d.statusDetalhe || 'Sem verificação disponível');
       set('padm-v-respostas', d.respostasPortal ?? '—');
       set('padm-v-mans', d.manifestacoesPortal ?? '—');
       set('padm-v-empresas', d.empresasAtivas ?? '—');
-      set('padm-v-whatsapp', d.whatsappAtivo ? 'Ativo' : 'Inativo');
+      const corpo = document.getElementById('padm-servicos-lista');
+      if (corpo) {
+        const fmtData = valor => valor ? new Date(valor).toLocaleDateString('pt-BR') : 'Sem registro';
+        const classe = situacao => ['Publicado','Ativo'].includes(situacao) ? 'ok' : situacao === 'Configurado' ? 'neutral' : 'off';
+        const servicos = Array.isArray(d.servicos) ? d.servicos : [];
+        corpo.innerHTML = servicos.length ? servicos.map(s => `<tr><td><strong>${_esc(s.nome)}</strong></td><td>${_esc(s.empresa)}</td><td><span class="padm-service-status ${classe(s.situacao)}">${_esc(s.situacao)}</span></td><td>${fmtData(s.atualizadoEm)}</td><td><button type="button" class="padm-configure-btn" onclick="padmConfigurarServico('${_esc(s.destino)}')">Configurar</button></td></tr>`).join('') : '<tr><td colspan="5" class="padm-table-empty">Nenhum serviço configurado.</td></tr>';
+      }
     } catch(e) { /* silencioso */ }
   }
+
+  window.padmConfigurarServico = function(destino) {
+    padmTab(destino);
+    document.querySelector('#page-portal-admin .padm-body')?.scrollTo({ top:0, behavior:'smooth' });
+  };
+
+  window.padmAbrirPortal = async function() {
+    try {
+      await window.SACPortalLinks?.load?.();
+      const url = window.SACPortalLinks?.url?.('/portal') || '/portal';
+      window.open(url, '_blank', 'noopener');
+    } catch (_) { window.open('/portal', '_blank', 'noopener'); }
+  };
 
   // ── Empresas config ────────────────────────────────────────
   async function padmCarregarEmpresasConfig() {
@@ -30158,6 +30194,26 @@ if (typeof pageLoaders !== 'undefined') {
         if (el && cfg) el.checked = cfg.ATIVO !== 'NAO';
       });
     } catch(e) {}
+  }
+
+  async function padmCarregarPesquisas() {
+    const lista = document.getElementById('padm-pesquisas-lista');
+    if (!lista) return;
+    lista.innerHTML = '<div class="padm-empty">Carregando pesquisas…</div>';
+    try {
+      const d = await _apiFetch('/api/portal-admin/config', 8000);
+      const config = Array.isArray(d.config) ? d.config : [];
+      const empresas = [
+        ['chiacchio','Chiacchio Embalagens'], ['plaschio','Plaschio'], ['tubahia','Cesbap / Tubahia'],
+      ];
+      lista.innerHTML = empresas.map(([slug,nome]) => {
+        const item = config.find(c => c.TIPO === 'PESQUISA_ATIVA_' + slug.toUpperCase());
+        const publicada = !item || item.ATIVO !== 'NAO';
+        return `<div class="padm-survey-row"><div><strong>${nome}</strong><span>Pesquisa de satisfação vinculada ao Centro das Pesquisas</span></div><div class="padm-survey-actions"><span class="padm-service-status ${publicada ? 'ok' : 'off'}">${publicada ? 'Publicada' : 'Desativada'}</span><button type="button" class="padm-configure-btn" onclick="padmTab('empresas')">Configurar</button><button type="button" class="padm-configure-btn" onclick="navigate('sugestoes-melhoria')">Ver resultados</button></div></div>`;
+      }).join('');
+    } catch(e) {
+      lista.innerHTML = '<div class="padm-empty">Não foi possível carregar as pesquisas.</div>';
+    }
   }
 
   window.padmToggleEmpresa = async function(slug, ativo) {
@@ -30302,13 +30358,19 @@ if (typeof pageLoaders !== 'undefined') {
 <link rel="stylesheet" href="/assets/pesquisas-admin.css">
 <style id="portal-admin-reference-layout">
 #page-portal-admin{font-family:Montserrat,Arial,sans-serif!important;background:#f7f7f7!important;overflow:hidden!important}
-#page-portal-admin .padm-header{height:68px;flex:none;background:#fff;border-bottom:1px solid #e5e5e5;padding:12px 28px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+#page-portal-admin .padm-header{height:68px;flex:none;background:#fff;border-bottom:1px solid #e5e5e5;padding:14px 28px;display:flex;align-items:center;justify-content:space-between;gap:16px}
 #page-portal-admin .padm-header h1{margin:0;font-size:18px;line-height:1;font-weight:800;color:#242424}#page-portal-admin .padm-header p{margin:3px 0 0;font-size:11.5px;color:#929090}.padm-breadcrumb{font-size:9.5px;font-weight:700;letter-spacing:.12em;color:#bdbdbd;margin-bottom:3px}
-#page-portal-admin .padm-top{padding:0 28px;height:46px;box-shadow:none;border-bottom:1px solid #e5e5e5}#page-portal-admin .padm-tab{height:46px;font-size:12.5px}
-#page-portal-admin .padm-body{padding:16px 28px 32px;background:#f7f7f7;overflow-y:auto}.padm-section{max-width:1000px;margin:0 auto;width:100%}
-#page-portal-admin .padm-kpi{border-radius:9px;padding:13px 15px;border-top:2px solid #c70602}#page-portal-admin .padm-kpi:nth-child(2){border-top-color:#24508f}#page-portal-admin .padm-kpi:nth-child(3){border-top-color:#d97706}#page-portal-admin .padm-kpi:nth-child(4){border-top-color:#15803d}#page-portal-admin .padm-kpi:nth-child(5){border-top-color:#707070}
+#page-portal-admin .padm-header-actions{display:flex;gap:7px;flex:none}
+#page-portal-admin .padm-top{padding:0 28px;height:46px;box-shadow:none;border-bottom:1px solid #e5e5e5;gap:0}#page-portal-admin .padm-tab{height:46px;padding:0 13px;font-size:12px;font-weight:500}
+#page-portal-admin .padm-body{padding:24px 28px 32px;background:#f7f7f7;overflow-y:auto}.padm-section{max-width:none;margin:0;width:100%}
+#page-portal-admin .padm-kpis{grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:20px}
+#page-portal-admin .padm-kpi{min-height:104px;border-radius:9px;padding:18px 20px;border-top:2px solid #c70602;gap:0}#page-portal-admin .padm-kpi:nth-child(2){border-top-color:#c70602}#page-portal-admin .padm-kpi:nth-child(3){border-top-color:#24508f}#page-portal-admin .padm-kpi:nth-child(4){border-top-color:#15803d}
+#page-portal-admin .padm-kpi-label{font-size:10px;color:#929090;margin-bottom:7px}#page-portal-admin .padm-kpi-val{font-size:28px;line-height:1;margin-bottom:4px}#page-portal-admin .padm-kpi-sub{font-size:11px;color:#bdbdbd}
 #page-portal-admin .padm-card{border-radius:9px;padding:18px 20px;box-shadow:0 1px 2px rgba(0,0,0,.02)}
-@media(max-width:700px){#page-portal-admin .padm-header{height:auto;min-height:68px;padding:12px 14px;align-items:flex-start}#page-portal-admin .padm-header .btn{flex:none}#page-portal-admin .padm-top{padding:0 8px}#page-portal-admin .padm-body{padding:14px 14px 28px}}
+#page-portal-admin .padm-services-card{padding:0;overflow:hidden;margin-bottom:14px}#page-portal-admin .padm-services-title{padding:12px 18px;border-bottom:1px solid #f0f0f0;background:#fafafa;font-size:12px;font-weight:700;color:#242424}.padm-services-scroll{overflow-x:auto}.padm-services-table{width:100%;border-collapse:collapse;font-size:12.5px}.padm-services-table th{padding:9px 13px;background:#fafafa;border-bottom:1.5px solid #e5e5e5;color:#929090;text-align:left;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap}.padm-services-table td{padding:9px 13px;border-bottom:1px solid #f0f0f0;color:#242424;vertical-align:middle}.padm-services-table tr:last-child td{border-bottom:0}.padm-services-table tr:hover td{background:#fafafa}.padm-table-empty{text-align:center;color:#929090;padding:28px!important}.padm-service-status{display:inline-flex;align-items:center;border-radius:999px;padding:3px 8px;font-size:10.5px;font-weight:700}.padm-service-status.ok{background:#dcfce7;color:#15803d}.padm-service-status.neutral{background:#f5f5f5;color:#555}.padm-service-status.off{background:#fef3c7;color:#b45309}.padm-configure-btn{height:26px;padding:2px 9px;border:1px solid #d6d6d6;border-radius:6px;background:#fff;color:#545252;font:600 11px Montserrat,Arial,sans-serif;cursor:pointer;white-space:nowrap}.padm-configure-btn:hover{border-color:#c70602;color:#c70602}
+#page-portal-admin .padm-quick-actions{padding:0 2px}.padm-quick-label{font-size:11px;font-weight:700;color:#929090;text-transform:uppercase;letter-spacing:.06em;margin-bottom:9px}.padm-surveys-list{display:flex;flex-direction:column;gap:0}.padm-survey-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px solid #f0f0f0}.padm-survey-row:last-child{border-bottom:0}.padm-survey-row strong{display:block;font-size:13px;color:#242424}.padm-survey-row span:not(.padm-service-status){display:block;margin-top:2px;font-size:11.5px;color:#929090}.padm-survey-actions{display:flex;align-items:center;gap:8px;flex:none}
+@media(max-width:1100px){#page-portal-admin .padm-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){#page-portal-admin .padm-header{height:auto;min-height:68px;padding:12px 14px;align-items:flex-start;flex-direction:column}#page-portal-admin .padm-header-actions{width:100%;flex-wrap:wrap}#page-portal-admin .padm-top{padding:0 8px}#page-portal-admin .padm-body{padding:14px 14px 28px}#page-portal-admin .padm-kpis{grid-template-columns:1fr;gap:10px}.padm-survey-row{align-items:flex-start;flex-direction:column}.padm-survey-actions{flex-wrap:wrap}}
 </style>
 <script src="/assets/pesquisa-formulario.js"></script>
 <script src="/assets/portal-links.js"></script>
