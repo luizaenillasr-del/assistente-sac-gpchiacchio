@@ -2558,8 +2558,8 @@
   <div class="sidebar-section">Administração</div>
   <div style="display:flex;flex-direction:column;gap:2px">
     <button class="sidebar-item" id="sidebar-alimentacao" onclick="navigate('alimentacao', this)"><span class="sidebar-dot"></span>Alimentação da ferramenta</button>
-    <button class="sidebar-item" data-v5-page="usuarios" onclick="navigate('usuarios', this)" style="position:relative"><span class="sidebar-dot"></span>Usuários<span id="badge-solicitacoes" onclick="event.stopPropagation();abrirPainelNotificacoes()" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);background:#C8102E;color:white;font-size:10px;font-weight:700;border-radius:10px;padding:1px 6px;min-width:18px;text-align:center;cursor:pointer" title="Ver solicitações pendentes"></span></button>
-    <button class="sidebar-item" id="sidebar-aprovadores-admin" onclick="navigate('aprovadores', this)"><span class="sidebar-dot"></span>Aprovadores e Competências</button>
+    <button class="sidebar-item" data-v5-page="usuarios" onclick="navigate('usuarios', this)" style="position:relative"><span class="sidebar-dot"></span>Gestão de Acessos e Aprovações<span id="badge-solicitacoes" onclick="event.stopPropagation();abrirPainelNotificacoes()" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);background:#C8102E;color:white;font-size:10px;font-weight:700;border-radius:10px;padding:1px 6px;min-width:18px;text-align:center;cursor:pointer" title="Ver solicitações pendentes"></span></button>
+    <button class="sidebar-item" id="sidebar-aprovadores-admin" style="display:none" onclick="navigate('aprovadores', this)"><span class="sidebar-dot"></span>Aprovadores e Competências</button>
     <button class="sidebar-item" onclick="navigate('auditoria', this)"><span class="sidebar-dot"></span>Auditoria</button>
     <button class="sidebar-item" onclick="navigate('prazos-regionais', this)"><span class="sidebar-dot"></span>Configurações</button>
     <button class="sidebar-item" id="sidebar-portal-admin" onclick="navigate('portal-admin', this)"><span class="sidebar-dot"></span>Portal do Cliente</button>
@@ -2623,7 +2623,7 @@
       </div>
       <div class="topbar-right">
         <input class="topbar-search topbar-global-search" placeholder="Buscar por nº, cliente, CNPJ, NF, motivo…" autocomplete="off">
-        <button class="topbar-notif" onclick="navigate('aprovadores',document.querySelector('[onclick*=aprovadores]'))">Notificações<span class="topbar-notif-badge topbar-notif-count">0</span></button>
+        <button class="topbar-notif" onclick="navigate('usuarios',document.querySelector('[data-v5-page=usuarios]'));setTimeout(()=>switchUsrTab&&switchUsrTab('pendencias'),250)">Notificações<span class="topbar-notif-badge topbar-notif-count">0</span></button>
         <button class="topbar-user" onclick="navigate('usuarios',document.querySelector('[onclick*=usuarios]'))">
           <span class="topbar-user-avatar topbar-user-ini">US</span>
           <span style="display:flex;flex-direction:column"><span class="topbar-user-name">Usuário</span><span class="topbar-user-role">SAC</span></span>
@@ -2724,7 +2724,7 @@
           <div style="font-size:30px;font-weight:800;color:#9A4A10;line-height:1.1" id="kpi-rncs">--</div>
           <div style="font-size:11px;color:#727272;margin-top:3px">não conformidades</div>
         </button>
-        <button onclick="navigate('aprovadores', document.querySelector('[onclick*=aprovadores]'))" style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px;border-left:4px solid #8A5000;cursor:pointer;text-align:left">
+          <button onclick="navigate('usuarios', document.querySelector('[data-v5-page=usuarios]'));setTimeout(()=>switchUsrTab&&switchUsrTab('pendencias'),250)" style="background:#fff;border:1px solid #EBEBEB;border-radius:11px;padding:14px 16px;border-left:4px solid #8A5000;cursor:pointer;text-align:left">
           <div style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A0A0A0;margin-bottom:4px">AGUARDANDO APROVAÇÃO</div>
           <div style="font-size:30px;font-weight:800;color:#8A5000;line-height:1.1" id="kpi-aguard-aprov">--</div>
           <div style="font-size:11px;color:#727272;margin-top:3px">pendentes de decisão</div>
@@ -3737,7 +3737,7 @@
       <div class="topbar-left">
         <div class="breadcrumb">Gestão</div>
         <div class="page-header">
-          <h1 class="page-title">Pendências &amp; Aprovações</h1>
+          <h1 class="page-title">Gestão de Acessos e Aprovações</h1>
         </div>
       </div>
       <div class="topbar-right"><span id="aprovador-nome-top" style="font-size:13px;color:#707070"></span></div>
@@ -4949,7 +4949,7 @@
     <div style="display:flex;align-items:center;gap:8px">
       <span style="font-size:11px;color:#929090">Administração</span>
       <span style="font-size:11px;color:#D6D6D6">/</span>
-      <span style="font-size:13px;font-weight:700;color:#1F1F1F">Gestão de Usuários</span>
+      <span style="font-size:13px;font-weight:700;color:#1F1F1F">Gestão de Acessos e Aprovações</span>
     </div>
     <div style="flex:1"></div>
     <button onclick="window.loadUsuariosMasterPainel&&window.loadUsuariosMasterPainel()"
@@ -4979,6 +4979,11 @@
     <button class="usr-tab active" id="usr-tab-btn-usuarios" role="tab" aria-selected="true" onclick="switchUsrTab('usuarios')">Usuários</button>
     <button class="usr-tab" id="usr-tab-btn-solicitacoes" role="tab" aria-selected="false" onclick="switchUsrTab('solicitacoes')">Solicitações de acesso</button>
     <button class="usr-tab" id="usr-tab-btn-permissoes" role="tab" aria-selected="false" onclick="switchUsrTab('permissoes')">Perfis e permissões</button>
+    <button class="usr-tab" id="usr-tab-btn-pendencias" role="tab" aria-selected="false" onclick="switchUsrTab('pendencias')">Pendências e aprovações</button>
+    <button class="usr-tab" id="usr-tab-btn-aprovadores" role="tab" aria-selected="false" onclick="switchUsrTab('aprovadores')">Aprovadores</button>
+    <button class="usr-tab" id="usr-tab-btn-competencias" role="tab" aria-selected="false" onclick="switchUsrTab('competencias')">Competências</button>
+    <button class="usr-tab" id="usr-tab-btn-regras" role="tab" aria-selected="false" onclick="switchUsrTab('regras')">Regras</button>
+    <button class="usr-tab" id="usr-tab-btn-historico" role="tab" aria-selected="false" onclick="switchUsrTab('historico')">Histórico</button>
   </div>
 
   <div id="usr-panel-permissoes" class="usr-panel">
@@ -4988,6 +4993,8 @@
       <div id="usr-perm-grid" class="usr-perm-grid"><div style="color:#707070;font-size:12px">Carregando perfis…</div></div>
     </div>
   </div>
+
+  <div id="usr-aprov-bridge" class="usr-panel" aria-live="polite"></div>
 
   <div id="usr-panel-usuarios" class="usr-panel active">
 
@@ -11275,7 +11282,7 @@ function renderDashboard(data) {
         const st = (m.STATUS||'').toUpperCase();
         return st === 'AGUARDANDO_APROVAÇÃO' || st === 'AGUARDANDO_APROVACAO' || m.APROVACAO_NECESSARIA === 'SIM';
       }).length;
-      if (aguardAprov > 0) alertas.push({ tipo: 'yellow', msg: `⚠ ${aguardAprov} manifestação(ões) aguardando aprovação`, acao: 'Ver aprovações', fn: "navigate('aprovadores', document.querySelector('[onclick*=aprovadores]'))" });
+      if (aguardAprov > 0) alertas.push({ tipo: 'yellow', msg: `⚠ ${aguardAprov} manifestação(ões) aguardando aprovação`, acao: 'Ver aprovações', fn: "navigate('usuarios', document.querySelector('[data-v5-page=usuarios]'));setTimeout(()=>switchUsrTab&&switchUsrTab('pendencias'),250)" });
     }
 
     alertasEl.innerHTML = alertas.length > 0
@@ -15272,7 +15279,7 @@ document.addEventListener('visibilitychange', () => {
     });
     document.querySelectorAll('.page').forEach(p=>{const id=p.id.replace('page-','');if(id==='representantes'&&r==='RCA / REPRESENTANTE')p.classList.remove('active')});
     if(r==='RCA / REPRESENTANTE'||r==='REPRESENTANTE') navigate('representantes',document.querySelector('[data-v5-page="representantes"]'));
-    if(r==='APROVADOR'||r==='APROVADOR MASTER') navigate('aprovadores',document.querySelector('[onclick*=aprovadores]'));
+    if(r==='APROVADOR'||r==='APROVADOR MASTER') { navigate('usuarios',document.querySelector('[data-v5-page=usuarios]')); setTimeout(()=>switchUsrTab&&switchUsrTab('pendencias'),250); }
     if(r==='SETOR RESPONSÁVEL'||r==='ESPECIALISTA') navigate('setor-responsavel',document.querySelector('[onclick*=setor-responsavel]')||document.querySelector('[onclick*=banco-rnc]'));
     if(r==='DIRETOR'||r==='VISUALIZADOR'||r==='CONSULTA') navigate('visao-geral',document.querySelector('[onclick*=visao-geral]'));
     if(r==='ATENDENTE SAC'||r==='ANALISTA_SAC'||r==='ANALISTA SAC') navigate('visao-geral',document.querySelector('[onclick*=visao-geral]'));
@@ -23342,20 +23349,39 @@ async function mudarStatusMC(id, novoStatus) {
 
   // ── TABS USUÁRIOS ───────────────────────────────────────────
   window.switchUsrTab = function(tab){
-    const current=['solicitacoes','permissoes'].includes(tab)?tab:'usuarios';
-    ['usuarios','solicitacoes','permissoes'].forEach(name=>{
+    const adminTabs=['pendencias','aprovadores','competencias','regras','historico'];
+    const current=['solicitacoes','permissoes',...adminTabs].includes(tab)?tab:'usuarios';
+    ['usuarios','solicitacoes','permissoes','pendencias','aprovadores','competencias','regras','historico'].forEach(name=>{
       const panel=document.getElementById('usr-panel-'+name); if(panel)panel.classList.toggle('active',name===current);
       const btn=document.getElementById('usr-tab-btn-'+name); if(btn){btn.classList.toggle('active',name===current);btn.setAttribute('aria-selected',name===current?'true':'false');}
     });
     const usersVisible=current==='usuarios';
     ['usr-filtros-wrap','usr-tabela-wrap'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display=usersVisible?'':'none';});
     const usersPanel=document.getElementById('usr-panel-usuarios');
-    if(usersPanel)usersPanel.classList.toggle('active',current!=='permissoes');
+    if(usersPanel)usersPanel.classList.toggle('active',current==='usuarios'||current==='solicitacoes');
+    const bridge=document.getElementById('usr-aprov-bridge');
+    if(adminTabs.includes(current)){
+      mountAprovacaoPanels();
+      if(bridge) bridge.classList.add('active');
+      if(typeof aprvTab==='function') aprvTab(current==='pendencias'?'pendencias':current);
+    } else if(bridge) bridge.classList.remove('active');
     const req=document.getElementById('usr-solicitacoes-section');if(req)req.style.display=current==='solicitacoes'?'block':'none';
     if(current==='solicitacoes')loadSolicitacoesEmbutido?.();
     if(current==='usuarios')loadUsuariosV5?.();
     if(current==='permissoes')renderPerfisPermissoes();
   };
+  let _aprovPanelsMontados=false;
+  function mountAprovacaoPanels(){
+    if(_aprovPanelsMontados) return;
+    const bridge=document.getElementById('usr-aprov-bridge');
+    const source=document.querySelector('#page-aprovadores .content');
+    if(!bridge||!source) return;
+    const marker=document.createElement('div'); marker.id='usr-aprov-context'; marker.style.display='none';
+    bridge.appendChild(marker);
+    while(source.firstChild) bridge.appendChild(source.firstChild);
+    bridge.querySelectorAll('[id^="aprtab-panel-"]').forEach(el=>el.style.display='none');
+    _aprovPanelsMontados=true;
+  }
   function renderPerfisPermissoes(){
     const el=document.getElementById('usr-perm-grid');if(!el)return;
     const defs=typeof _PERM_DEF!=='undefined'?_PERM_DEF:{};
@@ -27293,7 +27319,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const topbarRight = `
     <div class="topbar-right">
       <input class="topbar-search topbar-global-search" placeholder="Buscar por nº, cliente, CNPJ, NF, motivo…" autocomplete="off">
-      <button class="topbar-notif" onclick="navigate('aprovadores',document.querySelector('[onclick*=aprovadores]'))">Notificações<span class="topbar-notif-badge topbar-notif-count">0</span></button>
+      <button class="topbar-notif" onclick="navigate('usuarios',document.querySelector('[data-v5-page=usuarios]'));setTimeout(()=>switchUsrTab&&switchUsrTab('pendencias'),250)">Notificações<span class="topbar-notif-badge topbar-notif-count">0</span></button>
       <button class="topbar-user" onclick="navigate('usuarios',document.querySelector('[onclick*=usuarios]'))">
         <span class="topbar-user-avatar topbar-user-ini">US</span>
         <span style="display:flex;flex-direction:column"><span class="topbar-user-name">Usuário</span><span class="topbar-user-role">SAC</span></span>
@@ -30458,6 +30484,28 @@ if (typeof pageLoaders !== 'undefined') {
 .bc-pagination>div{display:flex;gap:4px}.bc-pagination button{min-width:30px;height:30px;border:1px solid #e0e0e0;background:#fff;border-radius:6px;cursor:pointer}.bc-pagination button.ativo{background:#c70602;color:#fff;border-color:#c70602}.bc-pagination button:disabled{opacity:.45;cursor:default}
 @media(max-width:1000px){#page-biblioteca-fichas .af-kpis{grid-template-columns:repeat(3,minmax(120px,1fr))!important}#page-base-conhecimento>.content{padding:16px 20px 32px!important}#page-base-conhecimento>.topbar{padding:14px 20px!important}}
 @media(max-width:640px){#page-biblioteca-fichas .af-root>div:first-child{height:auto!important;padding:14px!important;align-items:flex-start!important}#page-biblioteca-fichas .af-root>div:first-child>div:last-child{width:100%;overflow-x:auto}#page-biblioteca-fichas .af-root>div:nth-of-type(2),#page-biblioteca-fichas .af-root>div:nth-of-type(3),#page-biblioteca-fichas .af-root>div:nth-of-type(4){padding-left:14px!important;padding-right:14px!important}#page-biblioteca-fichas .af-kpis{grid-template-columns:repeat(2,minmax(120px,1fr))!important}#page-base-conhecimento>.content{padding:14px!important}#page-base-conhecimento #banco-tab-registros>div:nth-of-type(2){grid-template-columns:repeat(2,minmax(130px,1fr))!important}}
+</style>
+<style id="gestao-acessos-reference-layout">
+#page-usuarios{background:#f7f7f7!important;font-family:Montserrat,Arial,sans-serif!important;overflow:hidden!important}
+#page-usuarios>div:first-child{height:68px!important;margin:0!important;padding:14px 28px!important}
+#page-usuarios>div:first-child>div:first-child{display:flex;flex-direction:column;gap:2px}
+#page-usuarios>div:first-child>div:first-child span:first-child{font-size:9.5px!important;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#bdbdbd!important}
+#page-usuarios>div:first-child>div:first-child span:last-child{font-size:18px!important;font-weight:800!important;line-height:1;color:#242424!important}
+#page-usuarios>div:first-child>div:first-child:after{content:'Gerenciamento de usuários, permissões, aprovadores e regras de autorização da plataforma.';font-size:11.5px;color:#929090;margin-top:1px}
+#page-usuarios .usr-tabs{padding:0 28px!important;gap:0!important;overflow-x:auto!important;scrollbar-width:none}
+#page-usuarios .usr-tab{height:44px!important;padding:0 15px!important;white-space:nowrap!important;font-size:12.5px!important;border-bottom:2px solid transparent!important}
+#page-usuarios .usr-tab.active{color:#c70602!important;border-bottom-color:#c70602!important}
+#page-usuarios .usr-panel.active{display:block!important;flex:1;min-height:0;overflow-y:auto}
+#page-usuarios #usr-aprov-bridge{padding:18px 28px 36px!important;background:#f7f7f7}
+#page-usuarios #usr-aprov-bridge>.content{padding:0!important;display:flex;flex-direction:column;gap:16px}
+#page-usuarios #usr-aprov-bridge #aprov-page-desc{display:none}
+#page-usuarios #usr-aprov-bridge [id^="aprtab-panel-"]{width:100%}
+#page-usuarios #usr-aprov-bridge .content>div{max-width:none}
+#page-usuarios .usr-perm-card{margin:18px 28px!important;border-radius:10px!important}
+#page-usuarios .usr-filtros-wrap,#page-usuarios .usr-tabela-wrap{margin-left:28px!important;margin-right:28px!important}
+#page-aprovadores .topbar .page-title{font-size:18px!important}
+@media(max-width:900px){#page-usuarios>div:first-child{padding:14px 20px!important}#page-usuarios .usr-tabs{padding:0 20px!important}#page-usuarios #usr-aprov-bridge{padding:16px 20px 30px!important}}
+@media(max-width:640px){#page-usuarios>div:first-child{height:auto!important;min-height:72px!important;padding:12px 14px!important;align-items:flex-start!important}#page-usuarios>div:first-child>div:last-child{width:100%;overflow-x:auto}#page-usuarios .usr-tabs{padding:0 8px!important}#page-usuarios .usr-tab{padding:0 12px!important;font-size:12px!important}#page-usuarios #usr-aprov-bridge{padding:14px!important}#page-usuarios .usr-perm-card{margin:14px!important}}
 </style>
 </body>
 </html>
