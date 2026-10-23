@@ -5285,7 +5285,8 @@
   #cen-list-header{padding:9px 11px 6px;display:flex;align-items:center;justify-content:space-between;gap:5px;flex-shrink:0;border-bottom:1px solid #F0F0F0}
   #cen-list-scroll{flex:1;overflow-y:auto;padding:0 8px 8px}
   #cen-detalhe-col{display:flex;flex-direction:column;overflow:hidden;background:#F4F4F4}
-  #cen-detalhe{display:none;flex-direction:column;flex:1;overflow-y:auto;padding:14px 16px;gap:11px}
+  #cen-detalhe{display:none;flex-direction:column;flex:1;overflow:hidden;padding:0;gap:0}
+  #page-central-sac .mc-detail-body{flex:1;overflow-y:auto;padding:18px 20px;display:flex;flex-direction:column;gap:14px}
   #cen-detalhe.active{display:flex}
   /* Modal ficha completa */
   #cen-ficha-overlay{display:none;position:fixed;inset:0;background:rgba(15,15,20,.45);z-index:400;align-items:center;justify-content:center;padding:32px}
@@ -5392,6 +5393,9 @@
   #page-central-sac .mc-tabs{display:flex;gap:0;overflow-x:auto;scrollbar-width:thin}
   #page-central-sac .mc-tab{height:44px;border:0;background:none;padding:0 20px;font-size:13.5px;font-weight:500;color:#929090;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;font-family:inherit;display:flex;align-items:center;gap:7px}
   #page-central-sac .mc-tab.on{font-weight:700;color:#C70602;border-bottom-color:#C70602}
+  #page-central-sac .mc-pri{font-size:10.5px;font-weight:700;border-radius:99px;padding:2px 8px;background:#FEF9C3;color:#92400E;white-space:nowrap}
+  #page-central-sac .mc-dh-client{font-size:16px;font-weight:800;color:#242424;line-height:1.25;margin-top:5px}
+  #page-central-sac .mc-dh-sub{font-size:12.5px;color:#929090;margin-top:3px;display:block}
   #page-central-sac .mc-tab-badge{min-width:18px;height:18px;border-radius:9px;background:#C70602;color:#fff;font-size:10px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;padding:0 5px}
   #page-central-sac .mc-body{flex:1;min-height:0;overflow:hidden;padding:0;display:flex;flex-direction:column}
   #page-central-sac .mc-tabpanel{display:none;flex-direction:column;gap:20px;flex:1;min-height:0;overflow-y:auto;padding:24px 32px}
@@ -5535,13 +5539,15 @@
                   <div class="mc-dh-l">
                     <div class="mc-dh-row">
                       <span class="mc-prot" id="cen-man-protocolo">—</span>
+                      <span class="mc-pri" id="cen-man-prioridade">—</span>
                       <span class="mc-st" id="cen-man-status-badge">—</span>
                       <span class="mc-sla" id="cen-sla-badge" style="display:none"></span>
                     </div>
-                    <span class="mc-dh-sub" id="cen-man-sub"></span>
+                    <div class="mc-dh-client" id="cen-man-cliente">—</div>
+                    <span class="mc-dh-sub" id="cen-man-sub">—</span>
                   </div>
                   <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
-                    <button type="button" class="mc-btn mc-btn-p mc-btn-sm" onclick="cenIniciarTratativa()" style="font-size:12px;padding:5px 12px">✏ Tratar</button>
+                    <button type="button" class="mc-btn mc-btn-p mc-btn-sm" onclick="cenIniciarTratativa()" style="font-size:12px;padding:5px 12px">Assumir tratativa</button>
                     <button type="button" class="mc-lnk" onclick="cenAbrirFichaCompleta()" style="display:inline-flex;align-items:center;gap:4px;font-size:12px">Ficha completa
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
                     </button>
@@ -5550,6 +5556,7 @@
                 <div class="mc-steps" id="cen-progress-wrap"></div>
               </div>
 
+              <div class="mc-detail-body">
               <!-- Próxima ação -->
               <div class="mc-nx" id="cen-proxima-acao">
                 <span class="mc-nx-l">PRÓXIMA AÇÃO</span>
@@ -5560,9 +5567,9 @@
 
               <!-- Dados da manifestação -->
               <div class="mc-card">
-                <div class="mc-card-h" style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A8A8A8">DADOS DA MANIFESTAÇÃO</div>
+                <div class="mc-card-h" style="font-size:9.5px;font-weight:700;letter-spacing:.08em;color:#A8A8A8">DESCRIÇÃO DA MANIFESTAÇÃO</div>
+                <div class="mc-relato-t" id="cd-descricao" style="font-size:13px;line-height:1.7;margin-bottom:12px">—</div>
                 <div class="mc-campos" id="cen-campos"></div>
-                <div class="mc-relato"><div class="mc-f-l">RELATO</div><div class="mc-relato-t" id="cd-descricao"></div></div>
               </div>
 
               <!-- Prazos -->
@@ -5620,6 +5627,7 @@
               </div>
 
               <div style="height:8px"></div>
+              </div><!-- /.mc-detail-body -->
             </div><!-- /#cen-detalhe -->
           </div><!-- /#cen-detalhe-col -->
 
@@ -24700,7 +24708,7 @@ async function mudarStatusMC(id, novoStatus) {
             <span style="width:6px;height:6px;border-radius:50%;background:${dot};flex:none"></span>
             <span style="font-size:10px;color:#727272">${esc(ST_LBL[m.st]||m.st)}</span>
           </div>
-          <span style="font-size:9.5px;color:#B0B0B0">${esc(m.emp||'')}</span>
+          <span style="font-size:9.5px;color:#B0B0B0">${esc(m.emp||'')} · ${esc((pick(m.raw||{},['DATA_ABERTURA','DATA_REGISTRO','DATA_MANIFESTACAO'])||'').slice(0,10))}</span>
         </div>
       </button>`;
     }).join('');
@@ -24908,8 +24916,13 @@ async function mudarStatusMC(id, novoStatus) {
     _setText('cen-man-protocolo',n.id);
     const sb=$('cen-man-status-badge');
     if(sb){sb.textContent=(n.st==='enc'&&/REJEIT|CANCEL/.test(norm(n.statusRaw)))?n.statusRaw.replace(/_/g,' ').toLowerCase().replace(/^./,c=>c.toUpperCase()):ST_LBL[n.st];sb.className='mc-st mc-st-lg mc-st-'+n.st;}
+    const pri=$('cen-man-prioridade');
+    if(pri){pri.textContent=PRI_LBL[n.pri]||'Sem prioridade';pri.style.display=n.pri?'':'none';}
     const slb=$('cen-sla-badge'); if(slb){slb.textContent=sl[0];slb.className='mc-sla mc-sla-lg mc-sla-'+sl[1];}
-    _setText('cen-man-sub',[n.cli,n.emp,n.canal].filter(Boolean).join(' · ')||'—');
+    _setText('cen-man-cliente',n.cli||'—');
+    const abertura=pick(raw,['DATA_ABERTURA','DATA_REGISTRO','DATA_MANIFESTACAO','DATA_CRIACAO']);
+    const aberturaTxt=abertura?fmtdt(abertura):'Data não informada';
+    _setText('cen-man-sub',[n.emp,aberturaTxt,n.canal].filter(Boolean).join(' · ')||'—');
     renderSteps(n);
     renderProximaAcao(n);
     const campos=[
@@ -24993,7 +25006,17 @@ async function mudarStatusMC(id, novoStatus) {
     p.innerHTML='<span class="mc-muted">Consultando Cérebro…</span>';
     const d=await api('/api/manifestacoes/'+encodeURIComponent(n.id)+'/analise');
     if(tk!==_cerTok) return;
-    if(!d.sucesso||!d.analise){p.innerHTML='<span class="mc-muted">'+esc(d.erro||'Análise do Cérebro indisponível.')+'</span>';return;}
+    if(!d.sucesso||!d.analise){
+      const msg=String(d.erro||'');
+      // A manifestação já foi selecionada e continua visível no painel
+      // central. Um diagnóstico ainda não disponível é um estado válido;
+      // não o apresente como se o registro tivesse desaparecido.
+      const vazio=/não encontrada|not found|indisponível/i.test(msg)
+        ? 'Análise ainda não disponível para esta manifestação.'
+        : (msg||'Análise ainda não disponível para esta manifestação.');
+      p.innerHTML='<span class="mc-muted">'+esc(vazio)+'</span>';
+      return;
+    }
     const a=d.analise;
     const casos=Array.isArray(a.casosSimilares)?a.casosSimilares:[];
     const ia=a.ia||{};
@@ -30386,7 +30409,8 @@ if (typeof pageLoaders !== 'undefined') {
 #page-central-sac .mc-tab{height:48px;padding:0 20px;font-size:13.5px}
 #page-central-sac #cen-panel-body{grid-template-columns:280px minmax(0,1fr) 300px}
 #page-central-sac #cen-list-col{background:#fff}
-#page-central-sac #cen-detalhe{padding:20px;gap:16px}
+  #page-central-sac #cen-detalhe{padding:0;gap:0}
+  #page-central-sac .mc-card-main{border-radius:0;border-left:0;border-right:0;padding:14px 20px;background:#fff;flex:none}
 #page-central-sac #cen-cerebro-wrap{background:#fffcf4!important}
 #page-central-sac .mc-item{border-radius:10px;padding:12px 14px}
 #page-central-sac .mc-card{border-radius:12px;padding:16px 18px}
