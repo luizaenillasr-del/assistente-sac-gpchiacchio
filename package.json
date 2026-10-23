@@ -25,5 +25,8 @@
     "pg": "^8.23.1",
     "prisma": "^5.22.0",
     "resend": "^6.32.0"
+  },
+  "devDependencies": {
+    "playwright": "^1.64.1"
   }
 }
