@@ -3741,20 +3741,17 @@
   <!-- ===== CENTRAL DE APROVAÇÃO (MULTI-PERFIL) ===== -->
   <div class="page" id="page-aprovadores">
     <style>
-      #page-aprovadores .aprov-admin-wrap{width:100%;max-width:100%;overflow-x:auto;border:1px solid #E4E4E4;border-radius:10px;background:#fff}
-      #page-aprovadores .aprov-admin-table{width:100%;table-layout:fixed;border-collapse:collapse;font-size:13px;min-width:640px}
+      #page-aprovadores .aprov-admin-wrap{width:100%;max-width:100%;overflow:hidden;border:1px solid #E4E4E4;border-radius:10px;background:#fff}
+      #page-aprovadores .aprov-admin-table{width:100%;table-layout:fixed;border-collapse:collapse;font-size:13px}
       #page-aprovadores .aprov-admin-table th,#page-aprovadores .aprov-admin-table td{box-sizing:border-box;vertical-align:middle}
-      #page-aprovadores .aprov-admin-table th:nth-child(1){width:34%}
-      #page-aprovadores .aprov-admin-table th:nth-child(2){width:20%}
-      #page-aprovadores .aprov-admin-table th:nth-child(3){width:20%}
-      #page-aprovadores .aprov-admin-table th:nth-child(4){width:14%}
-      #page-aprovadores .aprov-admin-table th:nth-child(5){width:12%}
-      #page-aprovadores .aprov-admin-table td{height:64px;padding:10px 12px;border-bottom:1px solid #F0F0F0;overflow:hidden;text-overflow:ellipsis}
+      #page-aprovadores .aprov-admin-table th:nth-child(1){width:23%}#page-aprovadores .aprov-admin-table th:nth-child(2){width:13%}#page-aprovadores .aprov-admin-table th:nth-child(3){width:15%}#page-aprovadores .aprov-admin-table th:nth-child(4){width:22%}#page-aprovadores .aprov-admin-table th:nth-child(5){width:15%}#page-aprovadores .aprov-admin-table th:nth-child(6){width:12%}
+      #page-aprovadores .aprov-admin-table td{height:64px;padding:10px 12px;border-bottom:1px solid #F0F0F0;overflow:hidden;vertical-align:middle}
       #page-aprovadores .aprov-admin-table tbody tr:hover{background:#FAFAFA}
       #page-aprovadores .aprov-admin-table .aprov-name{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
       #page-aprovadores .aprov-admin-table .aprov-email{font-size:11.5px;color:#707070;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:3px}
-      #page-aprovadores .aprov-admin-table .aprov-count{color:#545252;white-space:nowrap}
-      @media(max-width:700px){#page-aprovadores .content{padding-left:16px;padding-right:16px}#page-aprovadores .aprov-admin-table{min-width:560px}}
+      #page-aprovadores .aprov-admin-table .aprov-count{color:#545252;white-space:normal;word-break:break-word}
+      #page-aprovadores .aprov-chip{display:inline-block;margin:2px 3px 2px 0;padding:3px 7px;border-radius:99px;background:#F4F4F4;color:#545252;font-size:11px;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:middle}
+      @media(max-width:700px){#page-aprovadores .content{padding-left:16px;padding-right:16px}#page-aprovadores .aprov-admin-wrap{overflow-x:auto}#page-aprovadores .aprov-admin-table{min-width:760px}}
     </style>
     <!-- TOPBAR -->
     <div class="topbar">
@@ -16431,16 +16428,20 @@ document.addEventListener('visibilitychange', () => {
       const el=document.getElementById('aprov-lista');
       if(!_aprvData.aprovadores.length){el.innerHTML='<div style="padding:20px;color:var(--gray-400);font-size:12px">Nenhum aprovador cadastrado. Clique em “+ Novo aprovador” para começar.</div>';return;}
       const uniq = value => [...new Set(String(value||'').split(',').map(v=>v.trim()).filter(Boolean))];
-      el.innerHTML=`<div class="aprov-admin-wrap"><table class="aprov-admin-table"><thead><tr style="background:var(--gray-50)"><th style="padding:11px 12px;text-align:left">Aprovador</th><th style="padding:11px 12px;text-align:left">Login</th><th style="padding:11px 12px;text-align:left">Empresa</th><th style="padding:11px 12px;text-align:left">Status</th><th style="padding:11px 12px;text-align:right">Ações</th></tr></thead><tbody>`+
+      el.innerHTML=`<div class="aprov-admin-wrap"><table class="aprov-admin-table"><thead><tr style="background:var(--gray-50)"><th style="padding:11px 12px;text-align:left">Aprovador</th><th style="padding:11px 12px;text-align:left">Login</th><th style="padding:11px 12px;text-align:left">Empresa</th><th style="padding:11px 12px;text-align:left">Setor</th><th style="padding:11px 12px;text-align:left">Competências</th><th style="padding:11px 12px;text-align:left">Status</th><th style="padding:11px 12px;text-align:right">Ações</th></tr></thead><tbody>`+
         _aprvData.aprovadores.map(a=>{
           const empresas=uniq(a.EMPRESA);
+          const setores=uniq(a.SETOR);
+          const rel=_aprvData.relacionamentos.filter(r=>String(r.ID_APROVADOR||'')===String(a.ID_APROVADOR||''));
+          const competencias=uniq(rel.map(r=>r.NOME_COMPETENCIA||r.COMPETENCIA||'').join(','));
           const id=esc5(a.ID_APROVADOR||'');
+          const chips=(items,empty='Não informado')=>items.length?items.slice(0,3).map(v=>`<span class="aprov-chip" title="${esc5(v)}">${esc5(v)}</span>`).join('')+(items.length>3?`<span class="aprov-chip">+${items.length-3}</span>`:''):`<span style="color:#929090">${empty}</span>`;
           return `<tr>
             <td><div class="aprov-name" title="${esc5(a.NOME||'')}">${esc5(a.NOME||'—')}</div><div class="aprov-email">${esc5(a.EMAIL||'')}</div></td>
             <td title="${esc5(a.USUARIO||'')}">${esc5(a.USUARIO||'—')}</td>
-            <td class="aprov-count">${empresas.length ? empresas.length + (empresas.length===1 ? ' empresa' : ' empresas') : 'Não informado'}</td>
+            <td class="aprov-count">${chips(empresas)}</td><td class="aprov-count">${chips(setores)}</td><td class="aprov-count">${chips(competencias)}</td>
             <td><span style="font-size:11px;font-weight:700;border-radius:999px;padding:4px 8px;background:${a.STATUS==='ATIVO'?'#E6F2EA':'#FDECEC'};color:${a.STATUS==='ATIVO'?'#1E6B3A':'#A80502'}">${esc5(a.STATUS||'—')}</span></td>
-            <td style="text-align:right"><button class="btn btn-secondary" style="font-size:11px;padding:5px 10px" onclick="editarAprovador('${id}')">Editar ficha</button></td>
+            <td style="text-align:right"><button class="btn btn-secondary" style="font-size:11px;padding:5px 10px" onclick="editarAprovador('${id}')">Editar</button></td>
           </tr>`;
         }).join('')+'</tbody></table></div>';
     }catch(e){document.getElementById('aprov-lista').innerHTML=`<div class="alert-box">${esc5(e.message)}</div>`;}
@@ -23674,8 +23675,39 @@ async function mudarStatusMC(id, novoStatus) {
   function renderPerfisPermissoes(){
     const el=document.getElementById('usr-perm-grid');if(!el)return;
     const defs=window.__SAC_PERM_DEF || (typeof _PERM_DEF!=='undefined'?_PERM_DEF:{});
-    const keys=Object.keys(defs); el.innerHTML=keys.map(k=>{const d=defs[k];const n=Array.isArray(d)?d.length:(d&&typeof d==='object'&&d['*']?Object.keys(_PERM_MODULOS||{}).length:Object.keys(d||{}).length);return `<div class="usr-perm-item"><strong>${esc5(k)}</strong><div style="margin-top:5px;color:#707070">${n?n+' permissões padrão':'Acesso administrativo global'}</div><button type="button" onclick="editarUsuariosDoPerfil('${esc5(k)}')" style="margin-top:10px;border:1px solid #D6D6D6;background:#fff;border-radius:7px;padding:6px 10px;color:#A80502;cursor:pointer;font:600 11px inherit">Editar usuários deste perfil</button></div>`}).join('')||'<div style="color:#707070;font-size:12px">Nenhum perfil configurado.</div>';
+    const keys=Object.keys(defs); el.innerHTML=keys.map(k=>{const d=defs[k];const n=Array.isArray(d)?d.length:(d&&typeof d==='object'&&d['*']?Object.keys(_PERM_MODULOS||{}).length:Object.keys(d||{}).length);return `<div class="usr-perm-item"><strong>${esc5(k)}</strong><div style="margin-top:5px;color:#707070">${n?n+' permissões padrão':'Acesso administrativo global'}</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px"><button type="button" onclick="editarPerfilPermissoes('${esc5(k)}')" style="border:1px solid #C70602;background:#fff;border-radius:7px;padding:6px 10px;color:#A80502;cursor:pointer;font:600 11px inherit">Editar permissões</button><button type="button" onclick="editarUsuariosDoPerfil('${esc5(k)}')" style="border:1px solid #D6D6D6;background:#fff;border-radius:7px;padding:6px 10px;color:#545252;cursor:pointer;font:600 11px inherit">Ver usuários</button></div></div>`}).join('')||'<div style="color:#707070;font-size:12px">Nenhum perfil configurado.</div>';
   }
+  let _perfilEditando = null;
+  function _perfilEditorElement(){
+    let m=document.getElementById('modal-perfil-permissoes');
+    if(m) return m;
+    m=document.createElement('div'); m.id='modal-perfil-permissoes'; m.className='modal-overlay'; m.style.cssText='display:none;align-items:center;justify-content:center;z-index:10000';
+    m.innerHTML='<div class="modal-box" style="width:min(760px,94vw);max-height:88vh;overflow:hidden"><div class="modal-header"><div><strong id="perfil-perm-titulo">Editar permissões</strong><div id="perfil-perm-sub" style="font-size:12px;color:#707070;margin-top:3px"></div></div><button class="modal-close" onclick="fecharPerfilPermissoes()">×</button></div><div id="perfil-perm-lista" style="padding:18px;overflow:auto;max-height:62vh;display:grid;grid-template-columns:1fr 1fr;gap:8px 18px"></div><div id="perfil-perm-msg" style="padding:0 18px 10px;color:#A80502;font-size:12px"></div><div style="display:flex;justify-content:flex-end;gap:8px;padding:12px 18px;border-top:1px solid #E4E4E4"><button type="button" class="btn btn-secondary" onclick="fecharPerfilPermissoes()">Cancelar</button><button type="button" class="btn btn-primary" id="perfil-perm-salvar" onclick="salvarPerfilPermissoes()">Salvar permissões</button></div></div>';
+    document.body.appendChild(m); return m;
+  }
+  window.editarPerfilPermissoes=function(perfil){
+    if(String(perfil).toUpperCase()==='MASTER'){ alert('O perfil MASTER possui acesso global e não pode ter permissões reduzidas.'); return; }
+    _perfilEditando=perfil; const m=_perfilEditorElement();
+    const defs=window.__SAC_PERM_DEF||{}; const base=Array.isArray(defs[perfil])?defs[perfil]:[]; const selected=new Set(base);
+    document.getElementById('perfil-perm-titulo').textContent='Editar permissões — '+perfil;
+    document.getElementById('perfil-perm-sub').textContent='A alteração será aplicada aos usuários existentes deste perfil e ficará registrada na auditoria.';
+    document.getElementById('perfil-perm-msg').textContent='';
+    const lista=document.getElementById('perfil-perm-lista');
+    lista.innerHTML=(_PERM_MODULOS||[]).flatMap(cat=>cat.perms.map(p=>{const chave=cat.id+'.'+p.id;return `<label style="display:flex;align-items:center;gap:8px;padding:8px;border:1px solid #E8E8E8;border-radius:7px;font-size:12px;cursor:pointer"><input type="checkbox" data-perfil-perm="${esc5(chave)}" ${selected.has(chave)?'checked':''}> <span><strong>${esc5(cat.label)}</strong><br>${esc5(p.label)}</span></label>`})).join('');
+    m.style.display='flex';
+  };
+  window.fecharPerfilPermissoes=function(){const m=document.getElementById('modal-perfil-permissoes');if(m)m.style.display='none';_perfilEditando=null;};
+  window.salvarPerfilPermissoes=async function(){
+    if(!_perfilEditando)return; const btn=document.getElementById('perfil-perm-salvar'); const msg=document.getElementById('perfil-perm-msg');
+    const granted=[...document.querySelectorAll('[data-perfil-perm]:checked')].map(x=>x.dataset.perfilPerm); if(btn){btn.disabled=true;btn.textContent='Salvando…';}
+    try{
+      const d=await json5('/api/usuarios'); const usuarios=d.itens||d.usuarios||[]; const alvo=usuarios.filter(u=>String(u.PERFIL||u.perfil||'').toUpperCase()===String(_perfilEditando).toUpperCase() && String(u.PERFIL||u.perfil||'').toUpperCase()!=='MASTER');
+      if(!alvo.length) throw new Error('Nenhum usuário editável encontrado para este perfil.');
+      for(const u of alvo){const id=u.ID_USUARIO||u.id||u.USUARIO||u.usuario||u.EMAIL||u.email; await json5('/api/usuarios/'+encodeURIComponent(id)+'/permissoes',{method:'POST',body:JSON.stringify({permissoes_granted:granted,permissoes_blocked:[],justificativa:'Alteração da matriz do perfil '+_perfilEditando})});}
+      const defs=window.__SAC_PERM_DEF||{}; defs[_perfilEditando]=granted; renderPerfisPermissoes(); fecharPerfilPermissoes(); alert('Permissões atualizadas para '+alvo.length+' usuário(s).');
+    }catch(e){msg.textContent=e.message||'Não foi possível salvar as permissões.';}
+    finally{if(btn){btn.disabled=false;btn.textContent='Salvar permissões';}}
+  };
   window.editarUsuariosDoPerfil=async function(perfil){
     switchUsrTab('usuarios');
     const sel=document.getElementById('usu-fil-perfil');
