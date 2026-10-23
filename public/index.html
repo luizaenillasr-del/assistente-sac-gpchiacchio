@@ -3736,6 +3736,22 @@
 
   <!-- ===== CENTRAL DE APROVAÇÃO (MULTI-PERFIL) ===== -->
   <div class="page" id="page-aprovadores">
+    <style>
+      #page-aprovadores .aprov-admin-wrap{width:100%;max-width:100%;overflow-x:auto;border:1px solid #E4E4E4;border-radius:10px;background:#fff}
+      #page-aprovadores .aprov-admin-table{width:100%;table-layout:fixed;border-collapse:collapse;font-size:13px;min-width:640px}
+      #page-aprovadores .aprov-admin-table th,#page-aprovadores .aprov-admin-table td{box-sizing:border-box;vertical-align:middle}
+      #page-aprovadores .aprov-admin-table th:nth-child(1){width:34%}
+      #page-aprovadores .aprov-admin-table th:nth-child(2){width:20%}
+      #page-aprovadores .aprov-admin-table th:nth-child(3){width:20%}
+      #page-aprovadores .aprov-admin-table th:nth-child(4){width:14%}
+      #page-aprovadores .aprov-admin-table th:nth-child(5){width:12%}
+      #page-aprovadores .aprov-admin-table td{height:64px;padding:10px 12px;border-bottom:1px solid #F0F0F0;overflow:hidden;text-overflow:ellipsis}
+      #page-aprovadores .aprov-admin-table tbody tr:hover{background:#FAFAFA}
+      #page-aprovadores .aprov-admin-table .aprov-name{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      #page-aprovadores .aprov-admin-table .aprov-email{font-size:11.5px;color:#707070;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:3px}
+      #page-aprovadores .aprov-admin-table .aprov-count{color:#545252;white-space:nowrap}
+      @media(max-width:700px){#page-aprovadores .content{padding-left:16px;padding-right:16px}#page-aprovadores .aprov-admin-table{min-width:560px}}
+    </style>
     <!-- TOPBAR -->
     <div class="topbar">
       <div class="topbar-left">
@@ -16401,16 +16417,20 @@ document.addEventListener('visibilitychange', () => {
       _aprvData.competencias=d.competencias||[];
       _aprvData.relacionamentos=d.relacionamentos||[];
       const el=document.getElementById('aprov-lista');
-      if(!_aprvData.aprovadores.length){el.innerHTML='<div style="padding:16px;color:var(--gray-400);font-size:12px">Nenhum aprovador cadastrado. Clique em "+ Novo aprovador" para começar.</div>';return;}
-      el.innerHTML=`<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:var(--gray-50)"><th style="padding:10px 12px;text-align:left">Nome</th><th>Login</th><th>Empresa</th><th>Setor</th><th>Status</th><th>Ações</th></tr></thead><tbody>`+
-        _aprvData.aprovadores.map(a=>`<tr style="border-bottom:1px solid var(--gray-100)">
-          <td style="padding:10px 12px"><strong>${esc5(a.NOME)}</strong><div style="font-size:11px;color:var(--gray-400)">${esc5(a.EMAIL||'')}</div></td>
-          <td style="padding:8px 12px">${esc5(a.USUARIO||'—')}</td>
-          <td style="padding:8px 12px">${esc5(a.EMPRESA||'—')}</td>
-          <td style="padding:8px 12px">${esc5(a.SETOR||'—')}</td>
-          <td style="padding:8px 12px"><span style="font-size:11px;font-weight:700;color:${a.STATUS==='ATIVO'?'#059669':'#DC2626'}">${esc5(a.STATUS)}</span></td>
-          <td style="padding:8px 12px"><button class="btn btn-secondary" style="font-size:11px;padding:4px 10px" onclick="editarAprovador('${esc5(a.ID_APROVADOR)}')">Editar</button></td>
-        </tr>`).join('')+'</tbody></table>';
+      if(!_aprvData.aprovadores.length){el.innerHTML='<div style="padding:20px;color:var(--gray-400);font-size:12px">Nenhum aprovador cadastrado. Clique em “+ Novo aprovador” para começar.</div>';return;}
+      const uniq = value => [...new Set(String(value||'').split(',').map(v=>v.trim()).filter(Boolean))];
+      el.innerHTML=`<div class="aprov-admin-wrap"><table class="aprov-admin-table"><thead><tr style="background:var(--gray-50)"><th style="padding:11px 12px;text-align:left">Aprovador</th><th style="padding:11px 12px;text-align:left">Login</th><th style="padding:11px 12px;text-align:left">Empresa</th><th style="padding:11px 12px;text-align:left">Status</th><th style="padding:11px 12px;text-align:right">Ações</th></tr></thead><tbody>`+
+        _aprvData.aprovadores.map(a=>{
+          const empresas=uniq(a.EMPRESA);
+          const id=esc5(a.ID_APROVADOR||'');
+          return `<tr>
+            <td><div class="aprov-name" title="${esc5(a.NOME||'')}">${esc5(a.NOME||'—')}</div><div class="aprov-email">${esc5(a.EMAIL||'')}</div></td>
+            <td title="${esc5(a.USUARIO||'')}">${esc5(a.USUARIO||'—')}</td>
+            <td class="aprov-count">${empresas.length ? empresas.length + (empresas.length===1 ? ' empresa' : ' empresas') : 'Não informado'}</td>
+            <td><span style="font-size:11px;font-weight:700;border-radius:999px;padding:4px 8px;background:${a.STATUS==='ATIVO'?'#E6F2EA':'#FDECEC'};color:${a.STATUS==='ATIVO'?'#1E6B3A':'#A80502'}">${esc5(a.STATUS||'—')}</span></td>
+            <td style="text-align:right"><button class="btn btn-secondary" style="font-size:11px;padding:5px 10px" onclick="editarAprovador('${id}')">Editar ficha</button></td>
+          </tr>`;
+        }).join('')+'</tbody></table></div>';
     }catch(e){document.getElementById('aprov-lista').innerHTML=`<div class="alert-box">${esc5(e.message)}</div>`;}
   }
 
