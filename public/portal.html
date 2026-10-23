@@ -276,6 +276,9 @@ button:disabled { cursor:wait !important; opacity:.65; }
 </style>
 <link rel="stylesheet" href="/assets/pesquisa-formulario.css">
 <script src="/assets/pesquisa-formulario.js"></script>
+<style>
+.survey-selection-heading{text-align:center;margin:4px 0 26px}.survey-selection-kicker{font-size:10px;font-weight:700;letter-spacing:.12em;color:#C70602;margin-bottom:7px}.survey-selection-heading h2{font-size:22px;line-height:1.2;font-weight:800;color:#242424;margin:0 0 9px}.survey-selection-heading p{font-size:13px;line-height:1.6;color:#929090;max-width:510px;margin:0 auto}.survey-cards-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.survey-card{display:flex;flex-direction:column;align-items:center;text-align:center;min-height:218px;padding:24px 20px;background:#fff;border:1px solid #E5E5E5;border-radius:12px;transition:border-color .15s,box-shadow .15s}.survey-card:hover,.survey-card:focus-within{border-color:#C70602;box-shadow:0 5px 18px rgba(0,0,0,.07)}.survey-card-icon{width:46px;height:46px;border-radius:11px;background:#F0F9FF;color:#1D4ED8;display:flex;align-items:center;justify-content:center;margin-bottom:15px}.survey-card-name{font-size:14px;font-weight:800;color:#242424;margin-bottom:8px}.survey-card-copy{flex:1;font-size:12px;line-height:1.55;color:#929090;margin:0 0 18px}.survey-card-button{width:100%;height:40px;border:0;border-radius:8px;background:#C70602;color:#fff;font:700 12.5px Montserrat,Arial,sans-serif;cursor:pointer}.survey-cards-state{text-align:center;color:#929090;font-size:13px;padding:28px;grid-column:1/-1;background:#fff;border:1px solid #E5E5E5;border-radius:12px}.survey-cards-state.error{color:#A80502;background:#FFF5F5;border-color:#F5CCCC}@media(max-width:760px){.survey-cards-grid{grid-template-columns:1fr 1fr}}@media(max-width:520px){.survey-cards-grid{grid-template-columns:1fr}.survey-selection-heading h2{font-size:20px}}
+</style>
 </head>
 <body>
 
@@ -573,7 +576,17 @@ button:disabled { cursor:wait !important; opacity:.65; }
               <button style="height:44px;border:0;background:#1A6632;color:#fff;border-radius:9px;padding:0 30px;font-size:13.5px;font-weight:700;cursor:pointer" onclick="goTo('page-home')">Voltar ao portal</button>
             </div>
           </div>
-          <div data-condition="isPesquisa" class="portal-condition" hidden="" id="pesq-form-wrap"><div id="surveyCards" style="margin-bottom:14px"><label style="display:flex;flex-direction:column;gap:6px;font-size:12px;font-weight:700;color:#545252">Pesquisa / Empresa<select id="pesq-empresa" style="height:42px;border:1.5px solid #E0E0E0;border-radius:9px;padding:0 12px" onchange="selectPesquisaEmpresa()"><option value="">Carregando pesquisas…</option></select></label></div><p id="pesq-error" class="portal-error" role="alert" hidden></p><div id="pesq-dinamica"></div></div>
+          <div data-condition="isPesquisa" class="portal-condition" hidden="" id="pesq-form-wrap">
+            <div id="surveyCards" class="survey-selection" style="margin-bottom:18px">
+              <div class="survey-selection-heading">
+                <div class="survey-selection-kicker">PESQUISA DE SATISFAÇÃO</div>
+                <h2>Pesquisa de satisfação</h2>
+                <p>Selecione a empresa que deseja avaliar. Sua opinião nos ajuda a melhorar nossos produtos, serviços e atendimento.</p>
+              </div>
+              <div id="surveyCardsGrid" class="survey-cards-grid" aria-live="polite"><div class="survey-cards-state">Carregando pesquisas…</div></div>
+            </div>
+            <p id="pesq-error" class="portal-error" role="alert" hidden></p><div id="pesq-dinamica"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -762,11 +775,34 @@ async function loadSurveyCards() {
     }
     const data = await apiJson('/api/public/pesquisas');
     surveyCatalog = data.itens || [];
-    const select = el('pesq-empresa'); select.replaceChildren(new Option('Selecione a pesquisa…',''));
-    surveyCatalog.forEach(f => select.add(new Option(f.titulo + ' · ' + f.empresaNome, f.id)));
-    select.disabled = !surveyCatalog.length;
-    if (select.disabled) throw new Error('Não há pesquisas publicadas no momento.');
-  } catch (error) { el('pesq-error').textContent = error.message; el('pesq-error').hidden = false; }
+    renderSurveyCards(surveyCatalog);
+  } catch (error) {
+    const grid = el('surveyCardsGrid');
+    if (grid) { grid.innerHTML = ''; const state = document.createElement('div'); state.className = 'survey-cards-state error'; state.textContent = error.message; grid.appendChild(state); }
+    el('pesq-error').textContent = error.message; el('pesq-error').hidden = false;
+  }
+}
+function renderSurveyCards(items) {
+  const grid = el('surveyCardsGrid'); if (!grid) return;
+  grid.replaceChildren();
+  const seen = new Set();
+  const active = items.filter(f => {
+    const id = String(f.id || '').trim(); const name = String(f.empresaNome || f.empresa || '').trim();
+    const key = (name || id).toLocaleLowerCase();
+    if (!id || seen.has(key)) return false; seen.add(key); return true;
+  });
+  if (!active.length) { const state = document.createElement('div'); state.className='survey-cards-state'; state.textContent='Não há pesquisas disponíveis no momento.'; grid.appendChild(state); return; }
+  active.forEach(form => {
+    const card = document.createElement('article'); card.className='survey-card'; card.tabIndex=0;
+    card.setAttribute('aria-label', `Responder pesquisa ${form.empresaNome || form.empresa || ''}`);
+    card.addEventListener('click', () => loadPublishedSurvey(form.id));
+    card.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); loadPublishedSurvey(form.id); } });
+    const icon = document.createElement('div'); icon.className='survey-card-icon'; icon.innerHTML='<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>';
+    const name = document.createElement('div'); name.className='survey-card-name'; name.textContent=form.empresaNome || form.empresa || form.titulo;
+    const copy = document.createElement('p'); copy.className='survey-card-copy'; copy.textContent='Compartilhe sua experiência com nossos produtos, serviços e atendimento.';
+    const button = document.createElement('button'); button.type='button'; button.className='survey-card-button'; button.textContent='Responder pesquisa'; button.addEventListener('click', event => { event.stopPropagation(); loadPublishedSurvey(form.id); });
+    card.append(icon,name,copy,button); grid.appendChild(card);
+  });
 }
 async function loadPublishedSurvey(id) {
   el('pesq-error').hidden = true; el('pesq-dinamica').textContent = 'Carregando pesquisa…';
@@ -780,7 +816,7 @@ function renderPublishedSurvey(form) {
     const result = await apiJson('/api/pesquisas/resposta-portal', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...payload,token:surveyToken||undefined})});
     const confirmation = el('pesq-confirmation-text');
     if (confirmation) confirmation.textContent = form.agradecimento || 'Obrigado pela sua resposta.';
-    el('pesq-empresa').value = ''; ui.tela = 'pesquisaOk'; renderView(); window.scrollTo({top:0,behavior:'instant'});
+    ui.tela = 'pesquisaOk'; renderView(); window.scrollTo({top:0,behavior:'instant'});
     return result;
   }});
 }

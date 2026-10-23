@@ -165,7 +165,12 @@ const corsOptions = { origin: (origin, cb) => {
 }, credentials: true };
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
-app.use(express.json({ limit: '25mb' }));
+// Preserve the exact request bytes for signed Meta webhook callbacks.  Normal
+// JSON APIs continue to receive the parsed body as before.
+app.use(express.json({
+  limit: '25mb',
+  verify: (req, _res, buffer) => { req.rawBody = Buffer.from(buffer); },
+}));
 
 // ===== SECURITY HEADERS =====
 app.use((req, res, next) => {
@@ -1355,6 +1360,7 @@ app.use('/api', async (req,res,next)=>{
     '/public/empresas',
     '/public/pesquisas-ativas',
     '/public/whatsapp',
+    '/public/whatsapp/webhook',
     '/pesquisas/resposta-portal',
     '/pesquisas/resposta-publica',
     '/pesquisas/resposta-token',
@@ -6507,12 +6513,28 @@ app.delete('/api/usuarios/:id', requerPermissao('usuarios.gerenciar'), async (re
       const masters=todos.filter(u=>(u.PERFIL||u.perfil||'').toUpperCase()==='MASTER'&&(u.STATUS||u.status||'ATIVO').toUpperCase()==='ATIVO'&&String(u.ID_USUARIO||u.USUARIO)!==String(alvo.ID_USUARIO||alvo.USUARIO));
       if(masters.length===0) return res.status(403).json({sucesso:false,erro:'Não é possível excluir o único MASTER ativo do sistema.'});
     }
-    await atualizarPorID('USUARIOS', alvo.ID_USUARIO||alvo.USUARIO||alvo.EMAIL, {STATUS:'EXCLUIDO',DATA_ULTIMA_ALTERACAO:new Date().toISOString(),ALTERADO_POR:req.user.usuario||'MASTER'}, ['ID_USUARIO','USUARIO','EMAIL']).catch(e => console.warn('[DELETE usuario Sheets]', e.message));
+    const alvoRefs = new Set([String(alvo.ID_USUARIO||''), String(alvo.USUARIO||''), String(alvo.EMAIL||'')].map(v=>v.trim().toLowerCase()).filter(Boolean));
+    const [filaPendente, manifestacoesPendentes] = await Promise.all([
+      lerAba('FILA_APROVACAO', 5000).catch(()=>[]),
+      lerAba('MANIFESTACOES', 5000).catch(()=>[]),
+    ]);
+    const temResponsabilidade = filaPendente.some(item => ['PENDENTE','AGUARDANDO'].includes(String(item.STATUS||'').toUpperCase()) && alvoRefs.has(String(item.ID_APROVADOR||item.RESPONSAVEL||'').trim().toLowerCase()))
+      || manifestacoesPendentes.some(item => !['ENCERRADA','ARQUIVADA','CANCELADA'].includes(String(item.STATUS||'').toUpperCase()) && alvoRefs.has(String(item.RESPONSAVEL||item.USUARIO_RESPONSAVEL||item.USUARIO_TRATATIVA||'').trim().toLowerCase()));
+    if (temResponsabilidade && String(req.body?.redistribuir || '').toUpperCase() !== 'SIM') {
+      return res.status(409).json({sucesso:false,erro:'Usuário possui responsabilidades pendentes. Redistribua os itens antes da exclusão lógica.'});
+    }
+    const motivo = String(req.body?.motivo || '').trim();
+    if (!motivo) return res.status(400).json({sucesso:false,erro:'Informe o motivo da exclusão lógica.'});
+    const agoraExclusao = new Date().toISOString();
+    await atualizarPorID('USUARIOS', alvo.ID_USUARIO||alvo.USUARIO||alvo.EMAIL, {
+      STATUS:'EXCLUIDO', DATA_ULTIMA_ALTERACAO:agoraExclusao, DATA_EXCLUSAO:agoraExclusao,
+      EXCLUIDO_POR:req.user.usuario||'MASTER', MOTIVO_EXCLUSAO:motivo, ALTERADO_POR:req.user.usuario||'MASTER'
+    }, ['ID_USUARIO','USUARIO','EMAIL']).catch(e => console.warn('[DELETE usuario Sheets]', e.message));
     if (alvo._pgId && usuarioRepo) await usuarioRepo.update(alvo._pgId, { ativo:false }).catch(e => console.warn('[DELETE usuario PG]', e.message));
     invalidarCacheAba('USUARIOS');
     invalidarCachePermissoes(alvo.EMAIL||alvo.USUARIO||alvo.ID_USUARIO);
     _statusCache.delete(normalizarTexto(alvo.USUARIO||alvo.EMAIL||alvo.ID_USUARIO));
-    await registrarAuditoria(req.user.usuario,'EXCLUIU_USUARIO',req.params.id,'USUARIOS',null,{nome:alvo.NOME});
+    await registrarAuditoria(req.user.usuario,'EXCLUIU_USUARIO',req.params.id,'USUARIOS',null,{nome:alvo.NOME,motivo});
     res.json({sucesso:true});
   }catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
@@ -7715,6 +7737,27 @@ app.post('/api/public/reclamacoes', publicRateLimit, async (req, res) => {
     }
 
     const agora = new Date().toISOString();
+    // The portal sends one key per form submission. Persisting it lets a retry
+    // after a network timeout return the original protocol instead of creating
+    // a second manifestation.
+    const idempotencyKey = String(
+      b.idempotencyKey || req.headers['idempotency-key'] || '',
+    ).trim().slice(0, 120);
+    if (idempotencyKey) {
+      const previous = (await lerAba('MANIFESTACOES', 5000).catch(() => []))
+        .find(row => String(row.IDEMPOTENCY_KEY || '').trim() === idempotencyKey);
+      if (previous) {
+        return res.json({
+          sucesso: true,
+          id: previous.ID_MANIFESTACAO || '',
+          protocolo: previous.PROTOCOLO || '',
+          dataHora: previous.DATA_ABERTURA || previous.DATA_REGISTRO || '',
+          idempotente: true,
+          fichaId: `FIC-${previous.ID_MANIFESTACAO || ''}`,
+        });
+      }
+    }
+
     // O mesmo identificador liga o protocolo externo à fila e à ficha internas.
     // A parte aleatória evita que consultas públicas sejam enumeráveis.
     // O identificador técnico é separado do protocolo apresentado ao cliente.
@@ -7771,6 +7814,8 @@ app.post('/api/public/reclamacoes', publicRateLimit, async (req, res) => {
       SETOR_RECEBIMENTO: setorRecebimento,
       USUARIO_CRIACAO: `portal:${colaboradorRecebimento}`,
       STATUS_TRATATIVA: 'NÃO INICIADA',
+      IDEMPOTENCY_KEY: idempotencyKey,
+      CIRCA_ANALISE_STATUS: 'PENDENTE',
     };
     await garantirAbaComCabecalhos('MANIFESTACOES', Object.keys(objeto));
     await appendObjeto('MANIFESTACOES', objeto);
@@ -7819,7 +7864,10 @@ app.post('/api/public/reclamacoes', publicRateLimit, async (req, res) => {
       }
     }
 
-    // 5. Indexar na FICHAS_BIBLIOTECA
+    // 5. Indexar na FICHAS_BIBLIOTECA.  The manifestation is already
+    // durable, but the portal must not report a complete success while its
+    // official ficha index is unavailable.
+    let fichaIndexada = false;
     try {
       await garantirAbaComCabecalhos('FICHAS_BIBLIOTECA', FICHAS_BIBLIOTECA_HEADERS);
       const fichaId = `FIC-${id}`;
@@ -7833,8 +7881,19 @@ app.post('/api/public/reclamacoes', publicRateLimit, async (req, res) => {
         PDF_NOME: pdfNome, TOTAL_EVIDENCIAS: evidenciasMetadata.length,
         CREATED_AT: agora, VERSAO: '1',
       });
+      fichaIndexada = true;
     } catch (bibErr) {
       console.warn('[PUBLIC] FICHAS_BIBLIOTECA indexação falhou:', bibErr.message);
+    }
+
+    if (!fichaIndexada) {
+      return res.status(503).json({
+        sucesso: false,
+        persistido: true,
+        id,
+        protocolo,
+        erro: 'A manifestação foi recebida, mas a ficha oficial ainda não pôde ser indexada. Tente novamente sem reenviar os dados.',
+      });
     }
 
     // 6. Atualizar MANIFESTACOES com referências do PDF/Drive
@@ -7846,6 +7905,7 @@ app.post('/api/public/reclamacoes', publicRateLimit, async (req, res) => {
 
     // 7. Inserir na FILA_APROVACAO para que MASTER/APROVADOR vejam imediatamente
     // IMPORTANTE: deve ser awaited antes de res.json() — em serverless o processo termina após enviar a resposta
+    let filaCriada = false;
     try {
       await garantirAbaComCabecalhos('FILA_APROVACAO', FILA_APROV_HEADERS).catch(()=>{});
       const filaId = await gerarProximoID('FILA_APROVACAO','FAP','ID_FILA');
@@ -7858,11 +7918,60 @@ app.post('/api/public/reclamacoes', publicRateLimit, async (req, res) => {
         DATA_ENVIO: agora, DATA_DECISAO: '', OBSERVACOES: '',
         CRIADO_POR: `portal:${colaboradorRecebimento}`, ID_REGRA: '',
       });
+      filaCriada = true;
     } catch (filaErr) {
       console.warn('[PUBLIC] FILA_APROVACAO insert falhou:', filaErr.message);
     }
 
-    const resposta = { sucesso: true, id, protocolo, dataHora: agora };
+    if (!filaCriada) {
+      return res.status(503).json({
+        sucesso: false,
+        persistido: true,
+        fichaId: `FIC-${id}`,
+        id,
+        protocolo,
+        erro: 'A manifestação foi recebida, mas ainda não entrou na fila do SAC. Tente novamente sem reenviar os dados.',
+      });
+    }
+
+    // 8. Pré-análise operacional.  Itens determinísticos e recomendações são
+    // persistidos para o SAC; nenhuma decisão, aprovação, envio ou RNC é
+    // executado automaticamente.
+    let analisePortal = null;
+    try {
+      analisePortal = await executarAnalise({
+        ...objeto,
+        ID_MANIFESTACAO: id,
+        protocolo,
+        empresaReclamante: empresa,
+        empresaReclamada: empresa,
+        descricao: descricaoOriginal,
+        tipo: tipoManifestacao,
+      });
+      await atualizarPorID('MANIFESTACOES', id, {
+        TIPO_SUGERIDO: analisePortal.tipoDetectado || '',
+        SETOR_SUGERIDO: Array.isArray(analisePortal.setores) ? (analisePortal.setores[0] || '') : '',
+        SETORES_SUGERIDOS: Array.isArray(analisePortal.setores) ? analisePortal.setores.join(', ') : '',
+        PROCEDIMENTO_SUGERIDO: analisePortal.procedimentoSugerido?.nome || '',
+        SLA_HORAS: Number(analisePortal.slaHoras) || 72,
+        PRIORIDADE: analisePortal.prioridade || '',
+        RNC_SUGERIDO: 'NÃO',
+        RNC_SINALIZADO: analisePortal.rncSinalizado ? 'REVISAR' : '',
+        TRATATIVA_SUGERIDA: analisePortal.tratativaSugerida?.sugestao || '',
+        DEVOLUTIVA_SUGERIDA: analisePortal.devolutivaSugerida || '',
+        CIRCA_ANALISE_STATUS: 'CONCLUIDA',
+        CIRCA_ANALISE_EM: new Date().toISOString(),
+        CIRCA_ANALISE_ERROS: Array.isArray(analisePortal.erros) ? analisePortal.erros.join('; ') : '',
+      }, ['ID_MANIFESTACAO']);
+    } catch (analysisErr) {
+      console.warn('[PUBLIC] pré-análise não concluída:', analysisErr.message);
+      await atualizarPorID('MANIFESTACOES', id, {
+        CIRCA_ANALISE_STATUS: 'PENDENTE',
+        CIRCA_ANALISE_ERROS: String(analysisErr.message || 'Falha na pré-análise').slice(0, 500),
+      }, ['ID_MANIFESTACAO']).catch(() => {});
+    }
+
+    const resposta = { sucesso: true, id, protocolo, fichaId: `FIC-${id}`, dataHora: agora, analiseDisponivel: !!analisePortal };
     if (evidenciasMetadata.length < evidencias.length) {
       resposta.aviso = 'Sua manifestação foi registrada, mas alguns anexos não puderam ser salvos. Entre em contato com o SAC informando este protocolo para encaminhá-los. Não é necessário registrar novamente.';
     }
@@ -10316,8 +10425,83 @@ app.get('/api/public/whatsapp', publicRateLimit, async (req, res) => {
     const rows = await lerAba('CONFIG_PORTAL', 100).catch(()=>[]);
     const wa = rows.find(r => r.TIPO === 'WHATSAPP' && r.ATIVO === 'SIM');
     if (!wa || !wa.VALOR) return res.json({ sucesso:true, ativo:false });
-    res.json({ sucesso:true, ativo:true, numero:wa.VALOR, mensagem: wa.MENSAGEM||'Olá, preciso de ajuda.' });
+    const webhookConfigurado = Boolean(process.env.WHATSAPP_VERIFY_TOKEN && process.env.WHATSAPP_APP_SECRET);
+    const apiConfigurada = Boolean(process.env.WHATSAPP_ACCESS_TOKEN && process.env.WHATSAPP_PHONE_NUMBER_ID);
+    res.json({ sucesso:true, ativo:true, numero:wa.VALOR, mensagem: wa.MENSAGEM||'Olá, preciso de ajuda.',
+      integracaoTecnicaAtiva: webhookConfigurado && apiConfigurada,
+      statusTecnico: webhookConfigurado && apiConfigurada ? 'CONFIGURADO' : 'LINK_MANUAL' });
   } catch(e) { res.json({ sucesso:true, ativo:false }); }
+});
+
+// Webhook oficial da WhatsApp Business Platform. A rota apenas recebe e
+// persiste eventos; nenhuma mensagem vira manifestação sem decisão explícita
+// do SAC. Tokens e segredos permanecem exclusivamente nas variáveis do host.
+const WHATSAPP_EVENT_HEADERS = [
+  'EVENT_ID','MESSAGE_ID','PHONE_NUMBER_ID','FROM_NUMBER','PROFILE_NAME',
+  'MESSAGE_TYPE','MESSAGE_TEXT','RECEIVED_AT','STATUS','EMPRESA','ID_MANIFESTACAO',
+  'RAW_JSON','CREATED_AT',
+];
+
+function whatsappSignatureValida(req) {
+  const secret = String(process.env.WHATSAPP_APP_SECRET || '');
+  const header = String(req.headers['x-hub-signature-256'] || '');
+  if (!secret || !header.startsWith('sha256=')) return false;
+  const expected = `sha256=${crypto.createHmac('sha256', secret).update(req.rawBody || Buffer.from(JSON.stringify(req.body || {}))).digest('hex')}`;
+  const a = Buffer.from(header); const b = Buffer.from(expected);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+app.get('/api/public/whatsapp/webhook', (req, res) => {
+  const verifyToken = String(process.env.WHATSAPP_VERIFY_TOKEN || '');
+  if (!verifyToken || String(req.query['hub.verify_token'] || '') !== verifyToken) {
+    return res.status(403).send('forbidden');
+  }
+  if (String(req.query['hub.mode'] || '') !== 'subscribe' || !req.query['hub.challenge']) {
+    return res.status(400).send('invalid webhook verification');
+  }
+  return res.status(200).send(String(req.query['hub.challenge']));
+});
+
+app.post('/api/public/whatsapp/webhook', async (req, res) => {
+  if (!whatsappSignatureValida(req)) return res.status(401).json({ sucesso:false, erro:'Assinatura do webhook inválida.' });
+  try {
+    const payload = req.body || {};
+    const eventos = [];
+    for (const entry of Array.isArray(payload.entry) ? payload.entry : []) {
+      for (const change of Array.isArray(entry.changes) ? entry.changes : []) {
+        const value = change?.value || {};
+        for (const message of Array.isArray(value.messages) ? value.messages : []) {
+          const text = message.text?.body || message.button?.text || message.interactive?.button_reply?.title || '';
+          eventos.push({
+            EVENT_ID: message.id || `${entry.id || 'entry'}:${message.timestamp || Date.now()}`,
+            MESSAGE_ID: message.id || '',
+            PHONE_NUMBER_ID: value.metadata?.phone_number_id || '',
+            FROM_NUMBER: message.from || '',
+            PROFILE_NAME: value.contacts?.[0]?.profile?.name || '',
+            MESSAGE_TYPE: message.type || '',
+            MESSAGE_TEXT: String(text).slice(0, 4000),
+            RECEIVED_AT: message.timestamp ? new Date(Number(message.timestamp) * 1000).toISOString() : new Date().toISOString(),
+            STATUS: 'RECEBIDA', EMPRESA: '', ID_MANIFESTACAO: '',
+            RAW_JSON: JSON.stringify(message).slice(0, 12000), CREATED_AT: new Date().toISOString(),
+          });
+        }
+      }
+    }
+    await garantirAbaComCabecalhos('WHATSAPP_EVENTOS', WHATSAPP_EVENT_HEADERS);
+    const existentes = await lerAba('WHATSAPP_EVENTOS', 5000).catch(() => []);
+    let gravados = 0; let duplicados = 0;
+    for (const evento of eventos) {
+      if (existentes.some(row => String(row.EVENT_ID || '') === evento.EVENT_ID || (evento.MESSAGE_ID && String(row.MESSAGE_ID || '') === evento.MESSAGE_ID))) {
+        duplicados++; continue;
+      }
+      await appendObjeto('WHATSAPP_EVENTOS', evento);
+      existentes.push(evento); gravados++;
+    }
+    res.status(200).json({ sucesso:true, recebidos:eventos.length, gravados, duplicados });
+  } catch (e) {
+    console.error('[WHATSAPP] webhook:', e.message);
+    res.status(500).json({ sucesso:false, erro:'Não foi possível registrar o evento.' });
+  }
 });
 
 app.get('/api/config/whatsapp', requerPerfil('MASTER','GESTOR SAC'), async (req, res) => {
@@ -10326,6 +10510,21 @@ app.get('/api/config/whatsapp', requerPerfil('MASTER','GESTOR SAC'), async (req,
     const wa = rows.find(r => r.TIPO === 'WHATSAPP') || {};
     res.json({ sucesso:true, numero: wa.VALOR||'', mensagem: wa.MENSAGEM||'', ativo: wa.ATIVO==='SIM' });
   } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
+});
+
+app.get('/api/config/whatsapp/status', requerPerfil('MASTER','GESTOR SAC'), async (req, res) => {
+  try {
+    const rows = await lerAba('CONFIG_PORTAL', 100).catch(() => []);
+    const wa = rows.find(r => r.TIPO === 'WHATSAPP') || {};
+    const eventos = await lerAba('WHATSAPP_EVENTOS', 5000).catch(() => []);
+    const last = eventos.slice(-1)[0] || null;
+    const webhook = Boolean(process.env.WHATSAPP_VERIFY_TOKEN && process.env.WHATSAPP_APP_SECRET);
+    const api = Boolean(process.env.WHATSAPP_ACCESS_TOKEN && process.env.WHATSAPP_PHONE_NUMBER_ID);
+    res.json({ sucesso:true, canal:'WHATSAPP', empresa:wa.EMPRESA||'', numeroConfigurado:Boolean(wa.VALOR),
+      linkAtivo:wa.ATIVO === 'SIM', webhookConfigurado:webhook, apiConfigurada:api,
+      statusTecnico:webhook && api ? 'CONFIGURADO' : (wa.VALOR ? 'LINK_MANUAL' : 'NÃO_CONFIGURADO'),
+      ultimoEvento:last ? { id:last.EVENT_ID, recebidoEm:last.RECEIVED_AT, status:last.STATUS, erro:last.ERRO||'' } : null });
+  } catch (e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e,'whatsapp-status') }); }
 });
 
 app.post('/api/config/whatsapp', requerPerfil('MASTER','GESTOR SAC'), async (req, res) => {

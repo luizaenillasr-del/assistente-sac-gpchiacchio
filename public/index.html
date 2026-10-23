@@ -5001,6 +5001,10 @@
     #page-usuarios .usr-perm-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-top:14px}
     #page-usuarios .usr-perm-item{border:1px solid #EFEFEF;border-radius:8px;padding:12px;font-size:12px;color:#545252}
     #page-usuarios .usr-panel-usuarios.active{display:flex;flex-direction:column;min-height:0;flex:1;overflow:hidden}
+    #page-usuarios .usr-status-tab{border:0;border-bottom:2px solid transparent;background:none;padding:0 12px 10px;color:#707070;font:600 12px Montserrat,inherit;cursor:pointer;white-space:nowrap}
+    #page-usuarios .usr-status-tab.active{color:#C70602;border-bottom-color:#C70602}
+    #page-usuarios .usr-status-tab span{display:inline-flex;min-width:18px;justify-content:center;margin-left:3px;padding:1px 5px;border-radius:10px;background:#F1F1F1;color:#707070;font-size:10px}
+    #page-usuarios .usr-status-tab.active span{background:#FDECEC;color:#C70602}
     @media(max-width:700px){#page-usuarios .usr-header{align-items:flex-start;flex-direction:column;padding:16px 18px}#page-usuarios .usr-header>div:last-child{width:100%;justify-content:flex-end}#page-usuarios .usr-head-copy h1{font-size:20px}.usr-tab{white-space:nowrap}}
   </style>
 
@@ -5026,6 +5030,12 @@
   <div id="usr-aprov-bridge" class="usr-panel" aria-live="polite"></div>
 
   <div id="usr-panel-usuarios" class="usr-panel usr-panel-usuarios active">
+
+  <div id="usr-status-tabs" role="tablist" aria-label="Situação das contas" style="display:flex;gap:6px;padding:12px 24px 0;margin:0 -28px;background:#fff;border-bottom:1px solid #E4E4E4;flex-shrink:0">
+    <button type="button" class="usr-status-tab active" data-status-view="ATIVO" onclick="usuStatusView('ATIVO')">Ativos <span id="usr-count-ativo"></span></button>
+    <button type="button" class="usr-status-tab" data-status-view="INATIVO" onclick="usuStatusView('INATIVO')">Inativos <span id="usr-count-inativo"></span></button>
+    <button type="button" class="usr-status-tab" data-status-view="EXCLUIDO" onclick="usuStatusView('EXCLUIDO')">Excluídos <span id="usr-count-excluido"></span></button>
+  </div>
 
   <!-- SOLICITAÇÕES PENDENTES (amber collapsible banner) -->
   <div id="usr-solicitacoes-section" style="display:none;background:#FBF0D9;border-bottom:1px solid #F0D9A0;margin:0 -28px;flex-shrink:0">
@@ -6334,7 +6344,7 @@
   <!-- ===== CÉREBRO: ESTILOS cb-* (fim) ===== -->
   <!-- ===== CÉREBRO IA ===== -->
   <!-- ===== CENTRAL DE DADOS ===== -->
-  <div class="page" id="page-cerebro" style="background:#F4F4F4;overflow-y:auto">
+  <div class="page" id="page-cerebro" style="display:none;background:#F4F4F4;overflow-y:auto">
     <div style="padding:20px 24px 56px;display:flex;flex-direction:column;gap:18px">
 
       <div class="cb-page-header" style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap">
@@ -6603,7 +6613,8 @@
           <div class="section-sub">Rode o Cérebro IA manualmente em qualquer manifestação.</div>
           <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
             <input id="cerebro-id-input" class="form-input" style="width:220px" placeholder="ID da manifestação (ex: MAN-001)">
-            <button class="btn btn-primary" onclick="rodarCerebro()">▶ Rodar Análise</button>
+            <button class="btn btn-primary" onclick="rodarCerebro()">▶ Rodar Análise IA</button>
+            <button class="btn btn-secondary" onclick="consultarCirca()">◎ Consultar CIRCA</button>
           </div>
           <div id="cerebro-loading" style="display:none;margin-top:14px;color:var(--gray-400);font-size:13px">
             <div style="display:flex;align-items:center;gap:8px">
@@ -6612,6 +6623,7 @@
             </div>
           </div>
           <div id="cerebro-resultado" style="display:none;margin-top:16px"></div>
+          <div id="cerebro-circa-resultado" style="display:none;margin-top:16px"></div>
         </div>
         <div class="section-card">
           <div class="section-title">Últimas Análises Registradas</div>
@@ -7220,7 +7232,7 @@
 <!-- ps-* FIM -->
 
   <!-- ===== SUGESTÕES DE MELHORIA ===== -->
-  <div class="page" id="page-sugestoes-melhoria" style="background:#F4F4F4;overflow-y:auto">
+  <div class="page" id="page-sugestoes-melhoria" style="display:none;background:#F4F4F4;overflow-y:auto">
     <!-- Barra superior fixa -->
     <div class="cp-top cp-noprint" style="position:sticky;top:0;z-index:20">
       <img src="/assets/logo-grupo-chiacchio.png" alt="Grupo Chiacchio" style="height:32px;width:auto;flex-shrink:0;object-fit:contain" id="cp-top-logo">
@@ -7998,7 +8010,7 @@
 <!-- ═══════════════════════════════════════════════════════════
      RELATÓRIO DE SATISFAÇÃO
 ════════════════════════════════════════════════════════════ -->
-<div class="page" id="page-relatorio-satisfacao" style="background:#F4F4F4;overflow-y:auto">
+<div class="page" id="page-relatorio-satisfacao" style="display:none;background:#F4F4F4;overflow-y:auto">
 <!-- INÍCIO ESTILOS RELATÓRIO DE SATISFAÇÃO (.rs-*) -->
 <style>
 #page-relatorio-satisfacao{--rs-green:#1E6B3A;--rs-green-bg:#E6F2EA;--rs-amber:#B07A12;--rs-amber-fg:#7A4C00;--rs-amber-bg:#FBF0D9;--rs-blue:#24508F;--rs-blue-bg:#E6EEF8;--rs-red-bg:#FDECEC;--rs-red-fg:#A80502;--rs-gray-bg:#EEEEEE;--rs-gray-fg:#545252}
@@ -10040,7 +10052,8 @@ function navigate(page, el, _opts) {
     if (typeof window.initWizard === 'function') window.initWizard();
   }
   if (window.innerWidth <= 768) toggleSidebar(false);
-  document.querySelectorAll('.page').forEach(p => { p.classList.remove('active'); p.style.display = ''; });
+  // Keep page visibility explicit so page-specific layout rules cannot reveal inactive routes.
+  document.querySelectorAll('.page').forEach(p => { p.classList.remove('active'); p.style.display = 'none'; });
   document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
   const pageEl = document.getElementById('page-' + page);
   if (!pageEl) return;
@@ -23114,6 +23127,29 @@ async function rodarCerebro() {
   }
 }
 
+async function consultarCirca() {
+  const id = (document.getElementById('cerebro-id-input')?.value || '').trim();
+  const el = document.getElementById('cerebro-circa-resultado');
+  if (!id || !el) { alert('Informe o ID da manifestação.'); return; }
+  el.style.display = 'block';
+  el.innerHTML = '<div style="padding:12px;color:var(--gray-400)">Consultando o fluxo determinístico CIRCA…</div>';
+  try {
+    const res = await _apiFetch('/api/manifestacoes/' + encodeURIComponent(id) + '/circa', 30000);
+    if (!res.sucesso) throw new Error(res.erro || 'Não foi possível consultar o CIRCA.');
+    const c = res.circa || {}, etapas = c.etapas || {};
+    const nomes = { captura:'Captura', investigacao:'Investigação', resolucao:'Resolução', conhecimento:'Conhecimento', aprimoramento:'Aprimoramento' };
+    const etapaHtml = Object.keys(nomes).map(k => {
+      const e = etapas[k] || {};
+      const detalhe = e.faltantes?.length ? `Campos ausentes: ${e.faltantes.join(', ')}` : (e.status || '—');
+      return `<div style="border:1px solid var(--gray-200);border-radius:8px;padding:10px"><div style="font-size:10px;font-weight:700;color:var(--gray-400);text-transform:uppercase">${nomes[k]}</div><div style="font-size:13px;font-weight:700;margin-top:3px">${esc(e.status || '—')}</div><div style="font-size:11px;color:var(--gray-500);margin-top:3px">${esc(detalhe)}</div></div>`;
+    }).join('');
+    const recs = (c.recomendacoes || []).map(r => `<li><strong>${esc(r.tipo || 'Recomendação')}</strong> · ${esc(r.origem || 'regra persistida')}: ${esc(r.justificativa || '')}</li>`).join('');
+    el.innerHTML = `<div style="border:1px solid var(--gray-200);border-radius:12px;padding:16px"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:12px"><strong>CIRCA · ${esc(id)}</strong><span style="font-size:11px;color:var(--green)">Determinístico · v${esc(c.versao || '1.0')}</span></div><div class="circa-stages" style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px">${etapaHtml}</div><div style="margin-top:12px;font-size:12px;color:var(--gray-600)"><strong>Governança:</strong> aprovação humana obrigatória; recomendações não executam decisões.</div>${recs ? `<ul style="margin:12px 0 0 18px;font-size:12px;line-height:1.6">${recs}</ul>` : '<div style="margin-top:12px;font-size:12px;color:var(--gray-400)">Nenhuma recomendação determinística disponível.</div>'}</div>`;
+  } catch (e) {
+    el.innerHTML = `<div style="background:var(--red-light);color:var(--red);padding:12px;border-radius:8px">Erro ao consultar CIRCA: ${esc(e.message)}</div>`;
+  }
+}
+
 async function loadUltimasAnalises() {
   const el = document.getElementById('cerebro-ultimas');
   if (!el) return;
@@ -27760,6 +27796,10 @@ function updateTopbarUser(user) {
     if (!s) return '—';
     try { const d = new Date(s); return d.toLocaleDateString('pt-BR'); } catch(_) { return s; }
   }
+  function _fmtDataHora(s) {
+    if (!s) return '—';
+    try { const d = new Date(s); if (Number.isNaN(d.getTime())) return s; return d.toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}); } catch(_) { return s; }
+  }
 
   function esc5(s) {
     return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -27804,8 +27844,9 @@ function updateTopbarUser(user) {
   function usuRenderLista(lista) {
     const tb = document.getElementById('usu-lista');
     const vazio = document.getElementById('usu-vazio');
-    const _hideStatus = ['EXCLUIDO','REJEITADO'];
-    const filtrada = lista.filter(u=>!_hideStatus.includes((u.STATUS||u.status||'ATIVO').toUpperCase()));
+    const view = window._usuStatusView || 'ATIVO';
+    const filtrada = lista.filter(u=>(u.STATUS||u.status||'ATIVO').toUpperCase() === view);
+    ['ATIVO','INATIVO','EXCLUIDO'].forEach(st=>{const c=document.getElementById('usr-count-'+st.toLowerCase());if(c)c.textContent='('+lista.filter(u=>(u.STATUS||u.status||'ATIVO').toUpperCase()===st).length+')';});
     if (!filtrada.length) { if(tb) tb.innerHTML=''; if(vazio) vazio.style.display='block'; return; }
     if(vazio) vazio.style.display='none';
     const STATUS_COLORS = { ATIVO: {bg:'#E6F2EA',color:'#1E6B3A'}, INATIVO: {bg:'#EEEEEE',color:'#545252'}, BLOQUEADO: {bg:'#FDECEC',color:'#C70602'}, EXCLUIDO: {bg:'#FDECEC',color:'#A80502'}, PRIMEIRO_ACESSO: {bg:'#EAF0FB',color:'#24508F'}, PENDENTE_APROVACAO: {bg:'#FFF4E0',color:'#7A4C00'} };
@@ -27817,15 +27858,15 @@ function updateTopbarUser(user) {
       const unome = esc5(u.NOME||u.nome||u.USUARIO||u.usuario||'');
       window._usuMap[uid] = u;
       return `<tr style="border-bottom:1px solid #F4F4F4;transition:background .15s" onmouseenter="this.style.background='#FAFAFA'" onmouseleave="this.style.background=''">
-        <td style="padding:12px 16px">
-          <div style="font-weight:700;font-size:13px">${esc5(u.NOME||u.nome||u.USUARIO||u.usuario)}</div>
+        <td style="padding:12px 16px;max-width:260px">
+          <button type="button" onclick="usuAbrir('${uid}')" title="Abrir ficha administrativa" style="display:block;border:0;background:none;padding:0;text-align:left;max-width:100%;font:700 13px Montserrat,inherit;color:#1F1F1F;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc5(u.NOME||u.nome||u.USUARIO||u.usuario)}</button>
           <div style="font-size:11.5px;color:#707070">${esc5(u.EMAIL||u.email||u.USUARIO||u.usuario)}</div>
         </td>
         <td style="padding:12px 16px"><span style="font-size:11px;font-weight:700;background:#F4F4F4;border-radius:5px;padding:3px 7px;color:#545252">${esc5(u.PERFIL||u.perfil||'—')}</span></td>
-        <td style="padding:12px 16px;font-size:12.5px;color:#545252">${esc5(u.EMPRESA||u.empresa||'—')}</td>
+        <td style="padding:12px 16px;font-size:12.5px;color:#545252" title="${esc5(u.EMPRESA||u.empresa||'')}">${(String(u.EMPRESA||u.empresa||'').split(',').filter(Boolean).length>1)?esc5(String(u.EMPRESA||u.empresa).split(',').filter(Boolean).length+' empresas'):esc5(u.EMPRESA||u.empresa||'—')}</td>
         <td style="padding:12px 16px;font-size:12.5px;color:#545252">${esc5(u.SETOR||u.setor||'—')}</td>
         <td style="padding:12px 16px"><span style="font-size:11px;font-weight:700;border-radius:5px;padding:3px 8px;background:${sc.bg};color:${sc.color}">${st}</span></td>
-        <td style="padding:12px 16px;font-size:12px;color:#707070">${(u.ULTIMO_ACESSO||u.ultimoAcesso) ? _fmtDataCurta(u.ULTIMO_ACESSO||u.ultimoAcesso) : '—'}</td>
+        <td style="padding:12px 16px;font-size:12px;color:#707070">${(u.ULTIMO_ACESSO||u.ultimoAcesso) ? _fmtDataHora(u.ULTIMO_ACESSO||u.ultimoAcesso) : '—'}</td>
         <td style="padding:12px 16px;text-align:right">
           <div style="display:flex;gap:5px;justify-content:flex-end;flex-wrap:wrap">
             <button onclick="usuAbrir('${uid}')" style="border:1px solid #D6D6D6;background:#fff;border-radius:7px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:inherit">Editar</button>
@@ -27842,6 +27883,13 @@ function updateTopbarUser(user) {
     }).join('');
   }
 
+  window._usuStatusView = 'ATIVO';
+  window.usuStatusView = function(view) {
+    window._usuStatusView = view;
+    document.querySelectorAll('#usr-status-tabs .usr-status-tab').forEach(b=>b.classList.toggle('active', b.dataset.statusView===view));
+    usuFiltrar();
+  };
+
   window.usuFiltrar = function() {
     const q = (document.getElementById('usu-busca')&&document.getElementById('usu-busca').value||'').toLowerCase();
     const fp = (document.getElementById('usu-fil-perfil')&&document.getElementById('usu-fil-perfil').value||'').toUpperCase();
@@ -27852,6 +27900,7 @@ function updateTopbarUser(user) {
       if (fp && (u.PERFIL||u.perfil||'').toUpperCase() !== fp) return false;
       if (fe && !(u.EMPRESA||u.empresa||'').toLowerCase().split(',').map(v=>v.trim()).includes(fe)) return false;
       if (fs && (u.STATUS||u.status||'ATIVO').toUpperCase() !== fs) return false;
+      if (!fs && (u.STATUS||u.status||'ATIVO').toUpperCase() !== (window._usuStatusView||'ATIVO')) return false;
       return true;
     });
     usuRenderLista(filtrado);
@@ -28127,9 +28176,11 @@ function updateTopbarUser(user) {
   };
 
   window.usuExcluir = async function(id, nome) {
-    if(!confirm('Excluir o usuário "' + nome + '"?\n\nRegistros históricos serão preservados. Esta ação é irreversível.')) return;
+    if(!confirm('Excluir logicamente o usuário "' + nome + '"?\n\nO acesso será revogado e o histórico será preservado.')) return;
+    const motivo = prompt('Informe o motivo da exclusão lógica:');
+    if(!motivo || !motivo.trim()) return;
     try {
-      const d = await _apiFetch('/api/usuarios/' + encodeURIComponent(id), 0, { method:'DELETE' });
+      const d = await _apiFetch('/api/usuarios/' + encodeURIComponent(id), 0, { method:'DELETE', headers:{'Content-Type':'application/json'}, body:JSON.stringify({motivo:motivo.trim()}) });
       if(d.sucesso) { if(window.loadUsuariosMasterPainel) await window.loadUsuariosMasterPainel(); }
       else alert(d.erro||'Erro ao excluir.');
     } catch(e) { alert(e.message); }
@@ -30803,7 +30854,7 @@ if (typeof pageLoaders !== 'undefined') {
 @media(max-width:900px){#page-banco-rnc .content{padding:18px 20px 32px!important}#page-banco-rnc .rnc-kpis{grid-template-columns:repeat(2,minmax(0,1fr))!important}#page-banco-rnc .rnc-criteria>div:first-of-type{grid-template-columns:1fr}#page-banco-rnc .rnc-filters{grid-template-columns:repeat(2,minmax(0,1fr))}#page-banco-rnc .rnc-filters input[type=search]{grid-column:span 2}#page-sugestoes-melhoria>div:nth-child(2){padding:16px 20px 36px!important}#page-sugestoes-melhoria #cp-kpis{grid-template-columns:repeat(2,minmax(130px,1fr))!important}}
 @media(max-width:600px){#page-banco-rnc .topbar{padding:16px!important}#page-banco-rnc .content{padding:16px 14px 24px!important}#page-banco-rnc .page-title{font-size:21px!important}#page-banco-rnc .rnc-kpis{gap:8px!important}#page-banco-rnc .rnc-kpis>div{padding:13px 14px!important}#page-banco-rnc .rnc-filters{grid-template-columns:1fr;padding:10px}#page-banco-rnc .rnc-filters input[type=search]{grid-column:auto}#page-sugestoes-melhoria .cp-top{padding:12px 14px!important;flex-wrap:wrap}#page-sugestoes-melhoria>div:nth-child(2){padding:14px 14px 28px!important}#page-sugestoes-melhoria #cp-kpis{grid-template-columns:1fr 1fr!important;gap:8px!important}}
 /* Ajuste final de fidelidade ao HTML aprovado do Centro das Pesquisas. */
-#page-sugestoes-melhoria{display:flex!important;flex-direction:column!important;overflow:hidden!important}
+#page-sugestoes-melhoria{display:flex;flex-direction:column;overflow:hidden!important}
 #page-sugestoes-melhoria .cp-top{height:68px!important;min-height:68px!important;box-shadow:none!important}
 #page-sugestoes-melhoria #cp-top-logo{height:34px!important;width:auto!important;object-fit:contain!important}
 #page-sugestoes-melhoria>div:nth-child(2){padding:0 28px 36px!important;overflow-y:auto!important;min-height:0;flex:1}
@@ -30848,7 +30899,7 @@ if (typeof pageLoaders !== 'undefined') {
 @media(max-width:1000px){#page-cerebro .cb-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}#page-relatorio-satisfacao .rs-filtros,#page-relatorio-satisfacao .rs-body{padding-left:20px;padding-right:20px}}
 @media(max-width:600px){#page-cerebro>div:first-child{padding:16px 14px 32px!important}#page-cerebro .cb-kpis{gap:8px}#page-cerebro .cb-kpi{padding:12px;min-height:82px}#page-cerebro .cb-kpi b{font-size:23px}#page-cerebro .cb-nav-btn{padding:10px 11px!important;font-size:12px!important}#page-relatorio-satisfacao .rs-top{padding:12px 14px!important}#page-relatorio-satisfacao .rs-filtros,#page-relatorio-satisfacao .rs-body{padding-left:14px;padding-right:14px}}
 /* Cérebro: fidelidade ao HTML aprovado, com abas principais e recursos adicionais em Mais. */
-#page-cerebro{display:flex!important;flex-direction:column!important;overflow:hidden!important;background:#f7f7f7!important}
+#page-cerebro{display:flex;flex-direction:column;overflow:hidden!important;background:#f7f7f7!important}
 #page-cerebro>div:first-child{padding:0 0 36px!important;gap:0!important;min-height:0;overflow-y:auto!important}
 #page-cerebro .cb-page-header{padding:14px 28px!important;min-height:68px;background:#fff;border-bottom:1px solid #e5e5e5;align-items:center!important}
 #page-cerebro .cb-eyebrow{font-size:9.5px;font-weight:700;color:#bdbdbd;letter-spacing:.12em;text-transform:uppercase;margin-bottom:3px}
@@ -30886,8 +30937,11 @@ if (typeof pageLoaders !== 'undefined') {
 #page-cerebro .cb-kpi:nth-child(4) b{color:#c70602}
 @media(max-width:1000px){#page-cerebro .cb-home-section .cb-hgrid{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
 @media(max-width:640px){#page-cerebro .cb-home-section .cb-hgrid{grid-template-columns:1fr!important}#page-cerebro .cb-home-section-head{align-items:flex-start;flex-direction:column;gap:2px}}
+#page-cerebro .circa-stages{grid-template-columns:repeat(5,minmax(0,1fr))}
+@media(max-width:900px){#page-cerebro .circa-stages{grid-template-columns:repeat(3,minmax(0,1fr))!important}}
+@media(max-width:600px){#page-cerebro .circa-stages{grid-template-columns:1fr 1fr!important}}
 /* Layout fiel ao HTML aprovado: cabeçalho compacto, barra de seleção e área rolável. */
-#page-relatorio-satisfacao{display:flex!important;flex-direction:column!important;overflow:hidden!important}
+#page-relatorio-satisfacao{display:flex;flex-direction:column;overflow:hidden!important}
 #page-relatorio-satisfacao .rs-top{height:68px!important;min-height:68px!important;padding:14px 28px!important;box-shadow:none!important;align-items:flex-start!important}
 #page-relatorio-satisfacao .rs-top-title b{font-size:18px!important;font-weight:800!important;line-height:1!important}
 #page-relatorio-satisfacao .rs-top-title span{font-size:11.5px!important;color:#929090!important;margin-top:4px!important}
@@ -31025,7 +31079,7 @@ if (typeof pageLoaders !== 'undefined') {
     document.querySelectorAll('.page').forEach(p => {
       const ativo = p === alvo;
       p.classList.toggle('active', ativo);
-      p.style.display = ativo ? 'flex' : '';
+      p.style.display = ativo ? 'flex' : 'none';
       // `hidden` prevalece sobre estilos reintroduzidos por carregadores
       // assíncronos e impede que duas telas ocupem o mesmo fluxo visual.
       p.hidden = !ativo;
