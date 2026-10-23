@@ -6498,6 +6498,33 @@ app.patch('/api/usuarios/:id', requerPermissao('usuarios.editar'), async (req,re
   }
 });
 
+async function persistirStatusUsuario(alvo, status, req, extras = {}) {
+  const chave = alvo.ID_USUARIO || alvo.USUARIO || alvo.EMAIL;
+  let sheetAtualizado = null;
+  try {
+    sheetAtualizado = await atualizarPorID('USUARIOS', chave, {
+      STATUS: status,
+      DATA_ULTIMA_ALTERACAO: new Date().toISOString(),
+      ALTERADO_POR: req.user.usuario,
+      ...extras,
+    }, ['ID_USUARIO','USUARIO','EMAIL']);
+  } catch (e) {
+    if (!alvo._pgId) throw e;
+    console.warn('[status usuario Sheets indisponível; usuário PG]', e.message);
+  }
+  if (!sheetAtualizado && !alvo._pgId) {
+    const err = new Error('Não foi possível persistir o status do usuário na fonte oficial.');
+    err.code = 503;
+    throw err;
+  }
+  if (alvo._pgId && usuarioRepo) {
+    await usuarioRepo.update(alvo._pgId, { ativo: !['INATIVO','BLOQUEADO','EXCLUIDO'].includes(String(status).toUpperCase()) });
+  }
+  invalidarCacheAba('USUARIOS');
+  invalidarCachePermissoes(alvo.EMAIL||alvo.USUARIO||alvo.ID_USUARIO);
+  _statusCache.delete(normalizarTexto(alvo.USUARIO||alvo.EMAIL||alvo.ID_USUARIO));
+}
+
 // Soft-delete (MASTER only)
 app.delete('/api/usuarios/:id', requerPermissao('usuarios.gerenciar'), async (req,res)=>{
   try{
@@ -6526,14 +6553,10 @@ app.delete('/api/usuarios/:id', requerPermissao('usuarios.gerenciar'), async (re
     const motivo = String(req.body?.motivo || '').trim();
     if (!motivo) return res.status(400).json({sucesso:false,erro:'Informe o motivo da exclusão lógica.'});
     const agoraExclusao = new Date().toISOString();
-    await atualizarPorID('USUARIOS', alvo.ID_USUARIO||alvo.USUARIO||alvo.EMAIL, {
+    await persistirStatusUsuario(alvo, 'EXCLUIDO', req, {
       STATUS:'EXCLUIDO', DATA_ULTIMA_ALTERACAO:agoraExclusao, DATA_EXCLUSAO:agoraExclusao,
       EXCLUIDO_POR:req.user.usuario||'MASTER', MOTIVO_EXCLUSAO:motivo, ALTERADO_POR:req.user.usuario||'MASTER'
-    }, ['ID_USUARIO','USUARIO','EMAIL']).catch(e => console.warn('[DELETE usuario Sheets]', e.message));
-    if (alvo._pgId && usuarioRepo) await usuarioRepo.update(alvo._pgId, { ativo:false }).catch(e => console.warn('[DELETE usuario PG]', e.message));
-    invalidarCacheAba('USUARIOS');
-    invalidarCachePermissoes(alvo.EMAIL||alvo.USUARIO||alvo.ID_USUARIO);
-    _statusCache.delete(normalizarTexto(alvo.USUARIO||alvo.EMAIL||alvo.ID_USUARIO));
+    });
     await registrarAuditoria(req.user.usuario,'EXCLUIU_USUARIO',req.params.id,'USUARIOS',null,{nome:alvo.NOME,motivo});
     res.json({sucesso:true});
   }catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
@@ -6547,8 +6570,7 @@ app.post('/api/usuarios/:id/bloquear', requerPermissao('usuarios.gerenciar'), as
     const alvo=todos.find(u=>String(u.ID_USUARIO||u.USUARIO||u.EMAIL)===String(req.params.id)||String(u.USUARIO||'')===String(req.params.id)||String(u.EMAIL||'')===String(req.params.id));
     if(!alvo) return res.status(404).json({sucesso:false,erro:'Usuário não encontrado.'});
     if(normalizarTexto(alvo.USUARIO||alvo.EMAIL)===normalizarTexto(req.user.usuario)) return res.status(400).json({sucesso:false,erro:'Você não pode bloquear sua própria conta.'});
-    await atualizarPorID('USUARIOS',alvo.ID_USUARIO||alvo.USUARIO||alvo.EMAIL,{STATUS:'BLOQUEADO',DATA_ULTIMA_ALTERACAO:new Date().toISOString(),ALTERADO_POR:req.user.usuario},['ID_USUARIO','USUARIO','EMAIL']).catch(e => console.warn('[BLOQUEAR usuario Sheets]', e.message));
-    if (alvo._pgId && usuarioRepo) await usuarioRepo.update(alvo._pgId, { ativo:false }).catch(e => console.warn('[BLOQUEAR usuario PG]', e.message));
+    await persistirStatusUsuario(alvo, 'BLOQUEADO', req);
     await registrarAuditoria(req.user.usuario,'BLOQUEOU_USUARIO',req.params.id,'USUARIOS',null,{motivo:req.body?.motivo||''});
     res.json({sucesso:true});
   }catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
@@ -6558,8 +6580,7 @@ app.post('/api/usuarios/:id/desbloquear', requerPermissao('usuarios.gerenciar'),
     if(perfilCanonico(req.user?.perfil||'')!=='MASTER') return res.status(403).json({sucesso:false,erro:'Apenas MASTER.'});
     const alvo=(await carregarUsuarios()).find(u=>String(u.ID_USUARIO||u.USUARIO||u.EMAIL)===String(req.params.id)||String(u.USUARIO||'')===String(req.params.id)||String(u.EMAIL||'')===String(req.params.id));
     if(!alvo) return res.status(404).json({sucesso:false,erro:'Usuário não encontrado.'});
-    await atualizarPorID('USUARIOS',alvo.ID_USUARIO||alvo.USUARIO||alvo.EMAIL,{STATUS:'ATIVO',DATA_ULTIMA_ALTERACAO:new Date().toISOString(),ALTERADO_POR:req.user.usuario},['ID_USUARIO','USUARIO','EMAIL']).catch(e => console.warn('[DESBLOQUEAR usuario Sheets]', e.message));
-    if (alvo._pgId && usuarioRepo) await usuarioRepo.update(alvo._pgId, { ativo:true }).catch(e => console.warn('[DESBLOQUEAR usuario PG]', e.message));
+    await persistirStatusUsuario(alvo, 'ATIVO', req);
     await registrarAuditoria(req.user.usuario,'DESBLOQUEOU_USUARIO',req.params.id,'USUARIOS',null,{});
     res.json({sucesso:true});
   }catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
@@ -6571,8 +6592,7 @@ app.post('/api/usuarios/:id/desativar', requerPermissao('usuarios.gerenciar'), a
     const alvo=todos.find(u=>String(u.ID_USUARIO||u.USUARIO||u.EMAIL)===String(req.params.id)||String(u.USUARIO||'')===String(req.params.id)||String(u.EMAIL||'')===String(req.params.id));
     if(!alvo) return res.status(404).json({sucesso:false,erro:'Usuário não encontrado.'});
     if(normalizarTexto(alvo.USUARIO||alvo.EMAIL)===normalizarTexto(req.user.usuario)) return res.status(400).json({sucesso:false,erro:'Você não pode desativar sua própria conta.'});
-    await atualizarPorID('USUARIOS',alvo.ID_USUARIO||alvo.USUARIO||alvo.EMAIL,{STATUS:'INATIVO',DATA_ULTIMA_ALTERACAO:new Date().toISOString(),ALTERADO_POR:req.user.usuario},['ID_USUARIO','USUARIO','EMAIL']).catch(e => console.warn('[DESATIVAR usuario Sheets]', e.message));
-    if (alvo._pgId && usuarioRepo) await usuarioRepo.update(alvo._pgId, { ativo:false }).catch(e => console.warn('[DESATIVAR usuario PG]', e.message));
+    await persistirStatusUsuario(alvo, 'INATIVO', req);
     await registrarAuditoria(req.user.usuario,'DESATIVOU_USUARIO',req.params.id,'USUARIOS',null,{});
     res.json({sucesso:true});
   }catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
@@ -6582,8 +6602,7 @@ app.post('/api/usuarios/:id/ativar', requerPermissao('usuarios.gerenciar'), asyn
     if(perfilCanonico(req.user?.perfil||'')!=='MASTER') return res.status(403).json({sucesso:false,erro:'Apenas MASTER.'});
     const alvo=(await carregarUsuarios()).find(u=>String(u.ID_USUARIO||u.USUARIO||u.EMAIL)===String(req.params.id)||String(u.USUARIO||'')===String(req.params.id)||String(u.EMAIL||'')===String(req.params.id));
     if(!alvo) return res.status(404).json({sucesso:false,erro:'Usuário não encontrado.'});
-    await atualizarPorID('USUARIOS',alvo.ID_USUARIO||alvo.USUARIO||alvo.EMAIL,{STATUS:'ATIVO',DATA_ULTIMA_ALTERACAO:new Date().toISOString(),ALTERADO_POR:req.user.usuario},['ID_USUARIO','USUARIO','EMAIL']).catch(e => console.warn('[ATIVAR usuario Sheets]', e.message));
-    if (alvo._pgId && usuarioRepo) await usuarioRepo.update(alvo._pgId, { ativo:true }).catch(e => console.warn('[ATIVAR usuario PG]', e.message));
+    await persistirStatusUsuario(alvo, 'ATIVO', req);
     await registrarAuditoria(req.user.usuario,'ATIVOU_USUARIO',req.params.id,'USUARIOS',null,{});
     res.json({sucesso:true});
   }catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
