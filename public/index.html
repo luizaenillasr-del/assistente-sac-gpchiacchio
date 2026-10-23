@@ -4855,11 +4855,11 @@
   </div>
 
   <!-- ===== BASE DE CONHECIMENTO ===== -->
-  <div class="page" id="page-base-conhecimento">
+  <div class="page bc-page" id="page-base-conhecimento">
     <div class="topbar">
       <div class="topbar-left">
         <div class="breadcrumb">Conhecimento</div>
-        <div class="page-header"><h1 class="page-title">Banco de casos</h1></div>
+        <div class="page-header"><div><h1 class="page-title">Banco de Casos</h1><p class="bc-subtitle">Histórico estruturado de manifestações, causas, tratamentos e resultados.</p></div></div>
       </div>
     </div>
     <div class="content" style="display:flex;flex-direction:column;gap:16px">
@@ -4906,6 +4906,7 @@
             <tbody id="banco-tbody"><tr><td colspan="13" style="text-align:center;padding:40px;color:#707070;font-size:13px">Carregando banco de casos...</td></tr></tbody>
           </table>
         </div>
+        <div id="banco-paginacao" class="bc-pagination"></div>
       </div>
 
       <!-- Tab: Análise do banco -->
@@ -9494,13 +9495,14 @@
     </div>
     <div style="flex:1"></div>
     <button class="af-btn" onclick="abrirModalImportarFicha()">↑ Importar fichas</button>
+    <button class="af-btn" id="bib-btn-arquivo" onclick="toggleArquivoExplorar()" aria-expanded="false">▣ Explorar arquivo</button>
     <button class="af-btn" id="bib-btn-sincronizar" onclick="sincronizarBaseConhecimento()" title="Lê todas as fichas e popula automaticamente Setores, Matriz de Tratamento e Cérebro com os dados encontrados">⚡ Sincronizar base</button>
     <button class="af-btn af-btn-red" id="bib-btn-refresh" onclick="loadBiblioteca(true,true)">↻ Atualizar</button>
   </div>
 
   <div class="af-page-title">
     <h1>Arquivo de Fichas</h1>
-    <p>Consulta e organização do histórico de manifestações.</p>
+    <p>Histórico completo das manifestações registradas e importadas.</p>
   </div>
 
   <!-- ABAS DE STATUS -->
@@ -9590,7 +9592,7 @@
     <div style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap">
 
       <!-- COLUNA ESQUERDA (árvore + empresa + meses) -->
-      <div style="width:280px;flex-shrink:0;display:flex;flex-direction:column;gap:14px;min-width:220px">
+      <div id="bib-sidebar-col" style="width:280px;flex-shrink:0;display:flex;flex-direction:column;gap:14px;min-width:220px">
 
         <!-- Árvore -->
         <div class="af-arvore" style="max-height:360px;overflow-y:auto">
@@ -9982,8 +9984,16 @@ let _afMesList = [];
 let _afFichaAtual = null;
 let _afBuscaT = null;
 let _afToastT = null;
+let _afExplorarAberto = false;
 
 const _afEl = id => document.getElementById(id);
+function toggleArquivoExplorar() {
+  _afExplorarAberto = !_afExplorarAberto;
+  const root = document.querySelector('#page-biblioteca-fichas .af-root');
+  const btn = _afEl('bib-btn-arquivo');
+  if (root) root.classList.toggle('af-explorar', _afExplorarAberto);
+  if (btn) { btn.setAttribute('aria-expanded', String(_afExplorarAberto)); btn.textContent = _afExplorarAberto ? '▣ Fechar arquivo' : '▣ Explorar arquivo'; }
+}
 function _afTok() { return sessionStorage.getItem('sac-token'); }
 function _afNum(n) { return (n ?? 0).toLocaleString('pt-BR'); }
 function _afPct(a, n) { return n ? Math.round(a / n * 100) + '%' : '—'; }
@@ -14158,6 +14168,26 @@ async function loadMatriz() {
 
 // ===== BANCO DE CASOS (historico) =====
 let bcData = [];
+let bcPage = 1;
+const BC_PAGE_SIZE = 20;
+function bancoQualidade(m) {
+  const campos = [m.CAUSA || m.CAUSA_RAIZ || m.CAUSA_CONFIRMADA, m.TRATATIVA || m.TRATATIVA_REALIZADA, m.RESULTADO || m.PROCEDENCIA || m.RESULTADO_FINAL];
+  const preenchidos = campos.filter(v => String(v || '').trim()).length;
+  return preenchidos === campos.length ? 'Completo' : preenchidos > 0 ? 'Parcial' : 'Incompleto';
+}
+function renderBancoPaginacao(total) {
+  const el = document.getElementById('banco-paginacao'); if (!el) return;
+  const pages = Math.max(1, Math.ceil(total / BC_PAGE_SIZE));
+  if (bcPage > pages) bcPage = pages;
+  if (pages <= 1) { el.innerHTML = ''; return; }
+  const start = Math.max(1, Math.min(bcPage - 2, pages - 4)), end = Math.min(pages, start + 4);
+  let h = `<span>Mostrando ${Math.min((bcPage-1)*BC_PAGE_SIZE+1,total)}–${Math.min(bcPage*BC_PAGE_SIZE,total)} de ${total}</span><div>`;
+  h += `<button ${bcPage===1?'disabled':''} onclick="bcIrPagina(${bcPage-1})">←</button>`;
+  for (let i=start;i<=end;i++) h += `<button class="${i===bcPage?'ativo':''}" onclick="bcIrPagina(${i})">${i}</button>`;
+  h += `<button ${bcPage===pages?'disabled':''} onclick="bcIrPagina(${bcPage+1})">→</button></div>`;
+  el.innerHTML = h;
+}
+function bcIrPagina(page) { bcPage = Math.max(1, page); renderBancoRegistros(window._bcFiltered || bcData); }
 
 function bancoTab(tab, btn) {
   ['registros','analise'].forEach(t => {
@@ -14175,12 +14205,13 @@ async function loadBaseConhecimento() {
   try {
     const res = await _apiFetch('/api/manifestacoes?status=FINALIZADA&limit=500', 20000).catch(() => ({ manifestacoes: [] }));
     bcData = (res.manifestacoes || res.itens || []);
+    bcPage = 1;
     renderBancoRegistros(bcData);
     const total = bcData.length;
     const setEl = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
     setEl('banco-kpi-total', total);
-    const qComp = bcData.filter(m => m.CAUSA && m.TRATATIVA && m.MOTIVO).length;
-    const qInc = bcData.filter(m => !m.CAUSA || !m.TRATATIVA).length;
+    const qComp = bcData.filter(m => bancoQualidade(m) === 'Completo').length;
+    const qInc = bcData.filter(m => bancoQualidade(m) === 'Incompleto').length;
     setEl('banco-kpi-completo', qComp);
     setEl('banco-kpi-parcial', total - qComp - qInc);
     setEl('banco-kpi-incompleto', qInc);
@@ -14202,11 +14233,7 @@ function filtrarBancoHistorico() {
     if (q && !str.includes(q)) return false;
     if (setor && !(m.SETOR_RESPONSAVEL||'').includes(setor)) return false;
     if (qual) {
-      const isComp = m.CAUSA && m.TRATATIVA && m.MOTIVO;
-      const isInc = !m.CAUSA || !m.TRATATIVA;
-      if (qual === 'Completo' && !isComp) return false;
-      if (qual === 'Incompleto' && !isInc) return false;
-      if (qual === 'Parcial' && (isComp || isInc)) return false;
+      if (qual !== bancoQualidade(m)) return false;
     }
     return true;
   });
@@ -14216,18 +14243,20 @@ function filtrarBancoHistorico() {
 function renderBancoRegistros(items) {
   const tbody = document.getElementById('banco-tbody');
   if (!tbody) return;
+  window._bcFiltered = items || [];
   if (!items.length) {
     tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;padding:40px;color:#707070;font-size:13px">Nenhum caso encontrado</td></tr>';
+    renderBancoPaginacao(0);
     return;
   }
-  const isComp = m => m.CAUSA && m.TRATATIVA && m.MOTIVO;
-  const isInc = m => !m.CAUSA || !m.TRATATIVA;
   const qualBadge = m => {
-    if (isComp(m)) return '<span style="padding:2px 8px;border-radius:99px;white-space:nowrap;font-size:12px;font-weight:500;background:#E6F2EA;color:#1E6B3A">Completo</span>';
-    if (isInc(m)) return '<span style="padding:2px 8px;border-radius:99px;white-space:nowrap;font-size:12px;font-weight:500;background:#FDECEC;color:#A80502">Incompleto</span>';
+    const q = bancoQualidade(m);
+    if (q === 'Completo') return '<span style="padding:2px 8px;border-radius:99px;white-space:nowrap;font-size:12px;font-weight:500;background:#E6F2EA;color:#1E6B3A">Completo</span>';
+    if (q === 'Incompleto') return '<span style="padding:2px 8px;border-radius:99px;white-space:nowrap;font-size:12px;font-weight:500;background:#FDECEC;color:#A80502">Incompleto</span>';
     return '<span style="padding:2px 8px;border-radius:99px;white-space:nowrap;font-size:12px;font-weight:500;background:#FBF0D9;color:#7A4C00">Parcial</span>';
   };
-  tbody.innerHTML = items.slice(0, 100).map(m => `
+  const pageItems = items.slice((bcPage - 1) * BC_PAGE_SIZE, bcPage * BC_PAGE_SIZE);
+  tbody.innerHTML = pageItems.map(m => `
     <tr style="border-bottom:1px solid #EFEFEF">
       <td style="padding:10px 12px;font-variant-numeric:tabular-nums;font-weight:500;white-space:nowrap">${esc(m.ID_MANIFESTACAO||'')}</td>
       <td style="padding:10px 12px;white-space:nowrap">${fmtDate(m.DATA_ABERTURA||m.DATA_CRIACAO||'')}</td>
@@ -14241,8 +14270,9 @@ function renderBancoRegistros(items) {
       <td style="padding:10px 12px">${esc(m.TRATATIVA||'—')}</td>
       <td style="padding:10px 12px">${esc(m.PROCEDENCIA||m.RESULTADO||'—')}</td>
       <td style="padding:10px 12px">${qualBadge(m)}</td>
-      <td style="padding:10px 12px;white-space:nowrap"><div style="display:flex;gap:10px;font-size:12.5px"><button onclick="navigate('detalhe-manifestacao')" style="border:0;background:none;padding:0;color:#A80502;cursor:pointer">Ver</button></div></td>
+      <td style="padding:10px 12px;white-space:nowrap"><div style="display:flex;gap:10px;font-size:12.5px"><button onclick="abrirDossieIdx(_storeRow(${JSON.stringify(m).replace(/"/g,'&quot;')}))" style="border:0;background:none;padding:0;color:#A80502;cursor:pointer">Ver</button></div></td>
     </tr>`).join('');
+  renderBancoPaginacao(items.length);
 }
 
 function renderBancoAnalise() {
@@ -14256,7 +14286,7 @@ function renderBancoAnalise() {
   const padroes = [...new Set(bcData.map(m => m.CAUSA).filter(Boolean))].length;
   setEl('banco-an-padroes', padroes);
   setEl('banco-an-total', total);
-  setEl('banco-an-incompletos', bcData.filter(m => !m.CAUSA || !m.TRATATIVA).length);
+  setEl('banco-an-incompletos', bcData.filter(m => bancoQualidade(m) === 'Incompleto').length);
   if (!total) { el.innerHTML = '<div style="padding:24px;text-align:center;color:#707070;font-size:13px">Nenhum dado disponível</div>'; return; }
   el.innerHTML = campos.map((c, i) => {
     const v = bcData.filter(m => m[c]).length;
@@ -30388,6 +30418,46 @@ if (typeof pageLoaders !== 'undefined') {
 #page-cerebro .cb-sources>div{padding:0 0 14px}
 @media(max-width:1000px){#page-cerebro .cb-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}#page-relatorio-satisfacao .rs-filtros,#page-relatorio-satisfacao .rs-body{padding-left:20px;padding-right:20px}}
 @media(max-width:600px){#page-cerebro>div:first-child{padding:16px 14px 32px!important}#page-cerebro .cb-kpis{gap:8px}#page-cerebro .cb-kpi{padding:12px;min-height:82px}#page-cerebro .cb-kpi b{font-size:23px}#page-cerebro .cb-nav-btn{padding:10px 11px!important;font-size:12px!important}#page-relatorio-satisfacao .rs-top{padding:12px 14px!important}#page-relatorio-satisfacao .rs-filtros,#page-relatorio-satisfacao .rs-body{padding-left:14px;padding-right:14px}}
+</style>
+<style id="arquivo-banco-casos-reference-layout">
+/* Arquivo de Fichas e Banco de Casos: layout aprovado, escopado às telas reais. */
+#page-biblioteca-fichas{background:#f7f7f7!important;overflow:hidden!important}
+#page-biblioteca-fichas .af-root{font-family:Montserrat,Arial,sans-serif!important}
+#page-biblioteca-fichas .af-root>div:first-child{height:64px!important;padding:0 28px!important;align-items:center!important}
+#page-biblioteca-fichas .af-root>div:first-child>div:first-child{display:flex;flex-direction:column;gap:2px}
+#page-biblioteca-fichas .af-root>div:first-child>div:first-child span:first-child{font-size:9.5px!important;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#bdbdbd!important}
+#page-biblioteca-fichas .af-root>div:first-child>div:first-child span:nth-child(2){display:none}
+#page-biblioteca-fichas .af-page-title{display:none!important}
+#page-biblioteca-fichas .af-root>div:nth-of-type(2){padding:0 28px!important}
+#page-biblioteca-fichas .af-root>div:nth-of-type(3){padding:10px 28px!important}
+#page-biblioteca-fichas .af-root>div:nth-of-type(4){padding:14px 28px 32px!important;gap:14px!important}
+#page-biblioteca-fichas .af-aviso{background:#fff;border:1px solid #e5e5e5;border-radius:8px;padding:10px 14px;color:#666464}
+#page-biblioteca-fichas .af-kpis{grid-template-columns:repeat(6,minmax(120px,1fr))!important;gap:10px!important}
+#page-biblioteca-fichas .af-kpi{min-height:84px!important;padding:13px 15px!important;border-radius:9px!important}
+#page-biblioteca-fichas .af-root:not(.af-explorar) #bib-sidebar-col{display:none!important}
+#page-biblioteca-fichas .af-root.af-explorar #bib-sidebar-col{width:230px!important}
+#page-biblioteca-fichas .af-lista{border-radius:9px!important}
+#page-biblioteca-fichas .af-tbl{min-width:760px!important}
+#page-biblioteca-fichas .af-tbl th{font-size:10.5px!important}
+#page-base-conhecimento{background:#f7f7f7!important;font-family:Montserrat,Arial,sans-serif!important}
+#page-base-conhecimento>.topbar{background:#fff!important;border-bottom:1px solid #e5e5e5!important;padding:14px 28px!important}
+#page-base-conhecimento .bc-subtitle{font-size:11.5px;color:#929090;margin:3px 0 0}
+#page-base-conhecimento>.content{padding:18px 28px 40px!important;gap:16px!important;overflow-y:auto!important}
+#page-base-conhecimento #banco-historico-tabs{background:#fff;border:1px solid #e5e5e5;border-radius:9px;padding:0 8px}
+#page-base-conhecimento #banco-tab-registros>div:first-child{background:#fafafa;border:1px solid #e5e5e5;border-radius:8px;padding:10px 12px;margin-bottom:12px!important}
+#page-base-conhecimento #banco-tab-registros>div:nth-of-type(2){grid-template-columns:repeat(4,minmax(140px,1fr))!important;gap:10px!important}
+#page-base-conhecimento #banco-tab-registros>div:nth-of-type(2)>div{border-radius:9px!important;padding:13px 15px!important;border-top:2px solid #c70602}
+#page-base-conhecimento #banco-tab-registros>div:nth-of-type(2)>div:nth-child(2){border-top-color:#1e6b3a}
+#page-base-conhecimento #banco-tab-registros>div:nth-of-type(2)>div:nth-child(3){border-top-color:#d9a400}
+#page-base-conhecimento #banco-tab-registros>div:nth-of-type(2)>div:nth-child(4){border-top-color:#24508f}
+#page-base-conhecimento #banco-tab-registros>div:nth-of-type(3){border-radius:9px!important}
+#page-base-conhecimento #banco-tab-registros>div:nth-of-type(3) table{min-width:0!important;table-layout:fixed}
+#page-base-conhecimento #banco-tab-registros>div:nth-of-type(3) th,#page-base-conhecimento #banco-tab-registros>div:nth-of-type(3) td{padding:9px 10px!important;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#page-base-conhecimento #banco-tab-registros>div:nth-of-type(3) th:nth-child(6),#page-base-conhecimento #banco-tab-registros>div:nth-of-type(3) td:nth-child(6),#page-base-conhecimento #banco-tab-registros>div:nth-of-type(3) th:nth-child(7),#page-base-conhecimento #banco-tab-registros>div:nth-of-type(3) td:nth-child(7),#page-base-conhecimento #banco-tab-registros>div:nth-of-type(3) th:nth-child(9),#page-base-conhecimento #banco-tab-registros>div:nth-of-type(3) td:nth-child(9),#page-base-conhecimento #banco-tab-registros>div:nth-of-type(3) th:nth-child(10),#page-base-conhecimento #banco-tab-registros>div:nth-of-type(3) td:nth-child(10),#page-base-conhecimento #banco-tab-registros>div:nth-of-type(3) th:nth-child(11),#page-base-conhecimento #banco-tab-registros>div:nth-of-type(3) td:nth-child(11){display:none}
+.bc-pagination{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 2px;color:#707070;font-size:12px}
+.bc-pagination>div{display:flex;gap:4px}.bc-pagination button{min-width:30px;height:30px;border:1px solid #e0e0e0;background:#fff;border-radius:6px;cursor:pointer}.bc-pagination button.ativo{background:#c70602;color:#fff;border-color:#c70602}.bc-pagination button:disabled{opacity:.45;cursor:default}
+@media(max-width:1000px){#page-biblioteca-fichas .af-kpis{grid-template-columns:repeat(3,minmax(120px,1fr))!important}#page-base-conhecimento>.content{padding:16px 20px 32px!important}#page-base-conhecimento>.topbar{padding:14px 20px!important}}
+@media(max-width:640px){#page-biblioteca-fichas .af-root>div:first-child{height:auto!important;padding:14px!important;align-items:flex-start!important}#page-biblioteca-fichas .af-root>div:first-child>div:last-child{width:100%;overflow-x:auto}#page-biblioteca-fichas .af-root>div:nth-of-type(2),#page-biblioteca-fichas .af-root>div:nth-of-type(3),#page-biblioteca-fichas .af-root>div:nth-of-type(4){padding-left:14px!important;padding-right:14px!important}#page-biblioteca-fichas .af-kpis{grid-template-columns:repeat(2,minmax(120px,1fr))!important}#page-base-conhecimento>.content{padding:14px!important}#page-base-conhecimento #banco-tab-registros>div:nth-of-type(2){grid-template-columns:repeat(2,minmax(130px,1fr))!important}}
 </style>
 </body>
 </html>
