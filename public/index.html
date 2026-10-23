@@ -6334,7 +6334,7 @@
   <!-- ===== CÉREBRO: ESTILOS cb-* (fim) ===== -->
   <!-- ===== CÉREBRO IA ===== -->
   <!-- ===== CENTRAL DE DADOS ===== -->
-  <div class="page" id="page-cerebro" style="background:#F4F4F4;overflow-y:auto">
+  <div class="page" id="page-cerebro" style="display:none;background:#F4F4F4;overflow-y:auto">
     <div style="padding:20px 24px 56px;display:flex;flex-direction:column;gap:18px">
 
       <div class="cb-page-header" style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap">
@@ -7222,7 +7222,7 @@
 <!-- ps-* FIM -->
 
   <!-- ===== SUGESTÕES DE MELHORIA ===== -->
-  <div class="page" id="page-sugestoes-melhoria" style="background:#F4F4F4;overflow-y:auto">
+  <div class="page" id="page-sugestoes-melhoria" style="display:none;background:#F4F4F4;overflow-y:auto">
     <!-- Barra superior fixa -->
     <div class="cp-top cp-noprint" style="position:sticky;top:0;z-index:20">
       <img src="/assets/logo-grupo-chiacchio.png" alt="Grupo Chiacchio" style="height:32px;width:auto;flex-shrink:0;object-fit:contain" id="cp-top-logo">
@@ -8000,7 +8000,7 @@
 <!-- ═══════════════════════════════════════════════════════════
      RELATÓRIO DE SATISFAÇÃO
 ════════════════════════════════════════════════════════════ -->
-<div class="page" id="page-relatorio-satisfacao" style="background:#F4F4F4;overflow-y:auto">
+<div class="page" id="page-relatorio-satisfacao" style="display:none;background:#F4F4F4;overflow-y:auto">
 <!-- INÍCIO ESTILOS RELATÓRIO DE SATISFAÇÃO (.rs-*) -->
 <style>
 #page-relatorio-satisfacao{--rs-green:#1E6B3A;--rs-green-bg:#E6F2EA;--rs-amber:#B07A12;--rs-amber-fg:#7A4C00;--rs-amber-bg:#FBF0D9;--rs-blue:#24508F;--rs-blue-bg:#E6EEF8;--rs-red-bg:#FDECEC;--rs-red-fg:#A80502;--rs-gray-bg:#EEEEEE;--rs-gray-fg:#545252}
@@ -10042,7 +10042,8 @@ function navigate(page, el, _opts) {
     if (typeof window.initWizard === 'function') window.initWizard();
   }
   if (window.innerWidth <= 768) toggleSidebar(false);
-  document.querySelectorAll('.page').forEach(p => { p.classList.remove('active'); p.style.display = ''; });
+  // Keep page visibility explicit so page-specific layout rules cannot reveal inactive routes.
+  document.querySelectorAll('.page').forEach(p => { p.classList.remove('active'); p.style.display = 'none'; });
   document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
   const pageEl = document.getElementById('page-' + page);
   if (!pageEl) return;
@@ -30828,7 +30829,7 @@ if (typeof pageLoaders !== 'undefined') {
 @media(max-width:900px){#page-banco-rnc .content{padding:18px 20px 32px!important}#page-banco-rnc .rnc-kpis{grid-template-columns:repeat(2,minmax(0,1fr))!important}#page-banco-rnc .rnc-criteria>div:first-of-type{grid-template-columns:1fr}#page-banco-rnc .rnc-filters{grid-template-columns:repeat(2,minmax(0,1fr))}#page-banco-rnc .rnc-filters input[type=search]{grid-column:span 2}#page-sugestoes-melhoria>div:nth-child(2){padding:16px 20px 36px!important}#page-sugestoes-melhoria #cp-kpis{grid-template-columns:repeat(2,minmax(130px,1fr))!important}}
 @media(max-width:600px){#page-banco-rnc .topbar{padding:16px!important}#page-banco-rnc .content{padding:16px 14px 24px!important}#page-banco-rnc .page-title{font-size:21px!important}#page-banco-rnc .rnc-kpis{gap:8px!important}#page-banco-rnc .rnc-kpis>div{padding:13px 14px!important}#page-banco-rnc .rnc-filters{grid-template-columns:1fr;padding:10px}#page-banco-rnc .rnc-filters input[type=search]{grid-column:auto}#page-sugestoes-melhoria .cp-top{padding:12px 14px!important;flex-wrap:wrap}#page-sugestoes-melhoria>div:nth-child(2){padding:14px 14px 28px!important}#page-sugestoes-melhoria #cp-kpis{grid-template-columns:1fr 1fr!important;gap:8px!important}}
 /* Ajuste final de fidelidade ao HTML aprovado do Centro das Pesquisas. */
-#page-sugestoes-melhoria{display:flex!important;flex-direction:column!important;overflow:hidden!important}
+#page-sugestoes-melhoria{display:flex;flex-direction:column;overflow:hidden!important}
 #page-sugestoes-melhoria .cp-top{height:68px!important;min-height:68px!important;box-shadow:none!important}
 #page-sugestoes-melhoria #cp-top-logo{height:34px!important;width:auto!important;object-fit:contain!important}
 #page-sugestoes-melhoria>div:nth-child(2){padding:0 28px 36px!important;overflow-y:auto!important;min-height:0;flex:1}
@@ -30873,7 +30874,7 @@ if (typeof pageLoaders !== 'undefined') {
 @media(max-width:1000px){#page-cerebro .cb-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}#page-relatorio-satisfacao .rs-filtros,#page-relatorio-satisfacao .rs-body{padding-left:20px;padding-right:20px}}
 @media(max-width:600px){#page-cerebro>div:first-child{padding:16px 14px 32px!important}#page-cerebro .cb-kpis{gap:8px}#page-cerebro .cb-kpi{padding:12px;min-height:82px}#page-cerebro .cb-kpi b{font-size:23px}#page-cerebro .cb-nav-btn{padding:10px 11px!important;font-size:12px!important}#page-relatorio-satisfacao .rs-top{padding:12px 14px!important}#page-relatorio-satisfacao .rs-filtros,#page-relatorio-satisfacao .rs-body{padding-left:14px;padding-right:14px}}
 /* Cérebro: fidelidade ao HTML aprovado, com abas principais e recursos adicionais em Mais. */
-#page-cerebro{display:flex!important;flex-direction:column!important;overflow:hidden!important;background:#f7f7f7!important}
+#page-cerebro{display:flex;flex-direction:column;overflow:hidden!important;background:#f7f7f7!important}
 #page-cerebro>div:first-child{padding:0 0 36px!important;gap:0!important;min-height:0;overflow-y:auto!important}
 #page-cerebro .cb-page-header{padding:14px 28px!important;min-height:68px;background:#fff;border-bottom:1px solid #e5e5e5;align-items:center!important}
 #page-cerebro .cb-eyebrow{font-size:9.5px;font-weight:700;color:#bdbdbd;letter-spacing:.12em;text-transform:uppercase;margin-bottom:3px}
@@ -30915,7 +30916,7 @@ if (typeof pageLoaders !== 'undefined') {
 @media(max-width:900px){#page-cerebro .circa-stages{grid-template-columns:repeat(3,minmax(0,1fr))!important}}
 @media(max-width:600px){#page-cerebro .circa-stages{grid-template-columns:1fr 1fr!important}}
 /* Layout fiel ao HTML aprovado: cabeçalho compacto, barra de seleção e área rolável. */
-#page-relatorio-satisfacao{display:flex!important;flex-direction:column!important;overflow:hidden!important}
+#page-relatorio-satisfacao{display:flex;flex-direction:column;overflow:hidden!important}
 #page-relatorio-satisfacao .rs-top{height:68px!important;min-height:68px!important;padding:14px 28px!important;box-shadow:none!important;align-items:flex-start!important}
 #page-relatorio-satisfacao .rs-top-title b{font-size:18px!important;font-weight:800!important;line-height:1!important}
 #page-relatorio-satisfacao .rs-top-title span{font-size:11.5px!important;color:#929090!important;margin-top:4px!important}
@@ -31053,7 +31054,7 @@ if (typeof pageLoaders !== 'undefined') {
     document.querySelectorAll('.page').forEach(p => {
       const ativo = p === alvo;
       p.classList.toggle('active', ativo);
-      p.style.display = ativo ? 'flex' : '';
+      p.style.display = ativo ? 'flex' : 'none';
       // `hidden` prevalece sobre estilos reintroduzidos por carregadores
       // assíncronos e impede que duas telas ocupem o mesmo fluxo visual.
       p.hidden = !ativo;
