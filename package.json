@@ -6,7 +6,7 @@
   "main": "api/index.js",
   "scripts": {
     "start": "node api/index.js",
-    "test": "node tests/foundation-safety.js && node tests/relatorio-metas.js && node tests/circa.js && node tests/circa-integration.js && node tests/canais-integracao.js && node tests/admin-usuarios.js && node tests/interface-usuarios-arquivo.js && node tests/suite.js && node tests/behavior.js && node tests/pesquisas.js && node tests/portal-isolamento.js && node tests/relatorio-satisfacao.js && node tests/cerebro.js && node tests/navigation-pages.js",
+    "test": "node tests/foundation-safety.js && node tests/relatorio-metas.js && node tests/circa.js && node tests/circa-design.js && node tests/circa-integration.js && node tests/canais-integracao.js && node tests/admin-usuarios.js && node tests/interface-usuarios-arquivo.js && node tests/suite.js && node tests/behavior.js && node tests/pesquisas.js && node tests/portal-isolamento.js && node tests/relatorio-satisfacao.js && node tests/cerebro.js && node tests/navigation-pages.js",
     "test:perfil": "node tests/meu-perfil.js",
     "postinstall": "prisma generate",
     "db:validate": "prisma validate",
