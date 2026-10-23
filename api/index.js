@@ -10349,9 +10349,19 @@ app.get('/api/portal-admin/visao-geral', requerPerfil('MASTER','GESTOR SAC'), as
     const limite30 = new Date(Date.now() - 30*24*60*60*1000).toISOString();
     const respostasPortal = respostas.filter(r => r.ORIGEM === 'PORTAL_PUBLICO' && (r.DATA||'') >= limite30).length;
     const manifestacoesPortal = mans.filter(m => (m.ORIGEM === 'PORTAL_PUBLICO' || m.ORIGEM === 'PORTAL_FUNCIONARIO') && (m.DATA_ABERTURA||'') >= limite30).length;
+    const cfg = tipo => cfgRows.find(r => r.TIPO === tipo);
+    const ativo = tipo => cfg(tipo)?.ATIVO !== 'NAO';
+    const atualizado = tipo => cfg(tipo)?.UPDATED_AT || '';
     const wa = cfgRows.find(r => r.TIPO === 'WHATSAPP' && r.ATIVO === 'SIM');
-    const empresasAtivas = PORTAL_EMPRESAS.filter(e => !cfgRows.some(r => r.TIPO === `PESQUISA_ATIVA_${e.slug.toUpperCase()}` && r.ATIVO === 'NAO')).length;
-    res.json({ sucesso:true, statusPublicacao:portalEndereco.root ? 'Disponível' : 'Indisponível', enderecoPublico:portalEndereco.root, portalSeparado:portalEndereco.separado, empresasAtivas, respostasPortal, manifestacoesPortal, whatsappAtivo:!!wa });
+    const empresasAtivas = PORTAL_EMPRESAS.filter(e => ativo(`PESQUISA_ATIVA_${e.slug.toUpperCase()}`)).length;
+    const statusPortal = portalEndereco.root ? 'Configurado' : 'Indisponível';
+    const servicos = [
+      { id:'manifestacoes', nome:'Registro de manifestações', empresa:'Todas', situacao:ativo('FORM_MANIFESTACAO_ATIVO') ? 'Publicado' : 'Desativado', atualizadoEm:atualizado('FORM_MANIFESTACAO_ATIVO'), destino:'manifestacoes' },
+      { id:'protocolos', nome:'Consulta de protocolos', empresa:'Todas', situacao:portalEndereco.root ? 'Configurado' : 'Indisponível', atualizadoEm:'', destino:'links' },
+      ...PORTAL_EMPRESAS.map(e => ({ id:`pesquisa-${e.slug}`, nome:`Pesquisa — ${e.nome}`, empresa:e.nome, situacao:ativo(`PESQUISA_ATIVA_${e.slug.toUpperCase()}`) ? 'Publicado' : 'Desativado', atualizadoEm:atualizado(`PESQUISA_ATIVA_${e.slug.toUpperCase()}`), destino:'pesquisas' })),
+      { id:'whatsapp', nome:'Canal WhatsApp', empresa:'Todas', situacao:wa ? 'Ativo' : 'Inativo', atualizadoEm:wa?.UPDATED_AT || '', destino:'canais' },
+    ];
+    res.json({ sucesso:true, statusPublicacao:statusPortal, statusDetalhe:portalEndereco.root ? 'Endereço público configurado' : 'Endereço público indisponível', enderecoPublico:portalEndereco.root, portalSeparado:portalEndereco.separado, empresasAtivas, respostasPortal, manifestacoesPortal, whatsappAtivo:!!wa, servicos });
   } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
 
