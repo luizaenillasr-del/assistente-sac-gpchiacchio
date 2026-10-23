@@ -1633,6 +1633,21 @@ app.patch('/api/meu-perfil', async (req,res) => {
   try {
     const registro=await carregarUsuarioPorLogin(req.user.usuario);
     if(!registro) return res.status(404).json({sucesso:false,erro:'Usuário não encontrado.'});
+    const master=perfilCanonico(req.user.perfil)==='MASTER';
+    const oficial={};
+    // Cargo pode ser declarado/atualizado pelo próprio usuário. Os demais
+    // campos oficiais só podem ser alterados pelo MASTER.
+    if (req.body?.cargoOficial !== undefined) oficial.CARGO=String(req.body.cargoOficial||'').trim().slice(0,200);
+    if (master) {
+      if (req.body?.nomeOficial !== undefined) oficial.NOME=String(req.body.nomeOficial||'').trim().slice(0,200);
+      if (req.body?.empresa !== undefined) oficial.EMPRESA=String(req.body.empresa||'').trim().slice(0,500);
+      if (req.body?.setor !== undefined) oficial.SETOR=String(req.body.setor||'').trim().slice(0,500);
+      if (req.body?.email !== undefined) oficial.EMAIL=String(req.body.email||'').trim().slice(0,250);
+    }
+    if (Object.keys(oficial).length) {
+      await atualizarPorID('USUARIOS', registro.ID_USUARIO||registro.USUARIO, oficial, ['ID_USUARIO','USUARIO','EMAIL']);
+      Object.assign(registro, oficial);
+    }
     const usuario=usuarioPublico(registro);
     const dados=perfilProfissional.declaracoes(req.body||{});
     const concluir=req.body?.concluir===true;
@@ -1644,7 +1659,7 @@ app.patch('/api/meu-perfil', async (req,res) => {
     if(antigo) await atualizarPorID('PERFIS_PROFISSIONAIS',usuario.id,obj,['ID_USUARIO']);
     else await appendObjeto('PERFIS_PROFISSIONAIS',obj);
     await registrarAuditoria(usuario.usuario,antigo?'ATUALIZOU_PERFIL_PROFISSIONAL':'CRIOU_PERFIL_PROFISSIONAL',usuario.id,'PERFIS_PROFISSIONAIS',null,{versao:obj.VERSAO,status:obj.STATUS});
-    const token=assinarToken({...req.user,perfilProfissionalCompleto:obj.STATUS==='CONCLUIDO',iat:Date.now(),exp:Date.now()+SESSION_TTL_MS});
+    const token=assinarToken({...req.user,nome:usuario.nome,email:usuario.email,empresa:usuario.empresa,setor:usuario.setor,cargo:usuario.cargo,perfilProfissionalCompleto:obj.STATUS==='CONCLUIDO',iat:Date.now(),exp:Date.now()+SESSION_TTL_MS});
     res.json({sucesso:true,perfil:perfilProfissional.registroParaPerfil(obj,usuario),completo:obj.STATUS==='CONCLUIDO',token});
   } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
 });
