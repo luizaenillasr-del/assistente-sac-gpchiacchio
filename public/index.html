@@ -2857,28 +2857,31 @@
 
   <!-- ===== NOVA MANIFESTAÇÃO ===== -->
   <div class="page" id="page-nova-manifestacao">
-    <div class="nm-ref-header">
-      <div class="nm-ref-brand"><img src="/assets/logo-grupo-chiacchio.png" alt="Grupo Chiacchio"><span>Assistente SAC</span></div>
-      <div class="nm-ref-head-item"><small>PROTOCOLO</small><strong id="nm-ref-protocolo">NOVO PROTOCOLO</strong></div>
-      <div class="nm-ref-head-item nm-ref-company"><small>EMPRESA · CLIENTE</small><strong id="nm-ref-empresa">Chiacchio · <em>Embalagens</em></strong></div>
-      <div class="nm-ref-head-status"><span>Reclamação</span><span class="active">● Em abertura</span><span class="sla">⚠ SLA: a definir</span></div>
-      <button class="nm-ref-btn" onclick="nmIrParaEtapa(Math.max(1,(window.nmEtapa||1)-1))">Reatribuir</button>
-      <button class="nm-ref-btn primary-outline" onclick="nmIrParaEtapa(window.nmEtapa||1)">Assumir tratativa</button>
-      <button class="nm-ref-btn danger" onclick="salvarRascunho()">Salvar</button>
-      <button class="nm-ref-btn" onclick="navigate('acompanhamento',null)">← Voltar</button>
+    <div class="nm-approved-header">
+      <div class="nm-approved-topline">
+        <div class="nm-approved-breadcrumb"><button type="button" onclick="navigate('central-sac',null)">Central de Manifestações</button><b>›</b><strong>Nova Manifestação</strong></div>
+        <div class="nm-approved-actions">
+          <button type="button" class="nm-ref-btn" onclick="navigate('central-sac',null)">Voltar</button>
+          <button type="button" class="nm-ref-btn primary-outline" onclick="salvarRascunho()">Salvar</button>
+        </div>
+      </div>
+      <div class="nm-approved-meta">
+        <strong id="nm-ref-protocolo">NOVO PROTOCOLO</strong>
+        <span class="nm-status-ficha-btn" id="nm-ref-status">Em abertura</span>
+        <span class="nm-status-ficha-btn priority" id="nm-ref-prioridade">Normal</span>
+        <span id="nm-ref-empresa">Chiacchio Embalagens</span><i>·</i><span id="nm-ref-cliente">Novo cliente</span><i>·</i><span id="nm-ref-sla">SLA: a definir</span>
+      </div>
       <input type="hidden" id="nm-status-ficha" value="ABERTA">
     </div>
-    <div class="nm-ref-breadcrumb">Central de Manifestações <b>›</b> Nova Manifestação</div>
+    <div class="nm-approved-steps" role="navigation" aria-label="Etapas da manifestação">
+      <button type="button" class="active" data-approved-step="1" onclick="nmIrParaEtapa(1)"><span>1</span>Dados da Manifestação</button>
+      <button type="button" data-approved-step="2" onclick="nmIrParaEtapa(2)"><span>2</span>Triagem e Encaminhamento</button>
+      <button type="button" data-approved-step="3" onclick="nmIrParaEtapa(3)"><span>3</span>Investigação e Tratativa</button>
+      <button type="button" data-approved-step="4" onclick="nmIrParaEtapa(4)"><span>4</span>Validação SAC</button>
+      <button type="button" data-approved-step="5" onclick="nmIrParaEtapa(5)"><span>5</span>Devolutiva ao Cliente</button>
+      <button type="button" data-approved-step="6" onclick="nmIrParaEtapa(6)"><span>6</span>Histórico e Encerramento</button>
+    </div>
     <div class="nm-ref-workspace">
-    <aside class="nm-ref-sidebar">
-      <small>SEÇÕES</small>
-      <button class="active" onclick="nmIrParaEtapa(1)"><i></i>Dados da Manifestação<em>Em preenchimento</em></button>
-      <button onclick="nmIrParaEtapa(2)"><i></i>Triagem e Encaminhamento<em>Aguardando</em></button>
-      <button onclick="nmIrParaEtapa(3)"><i></i>Investigação e Tratativa<em>Não iniciada</em></button>
-      <button onclick="nmIrParaEtapa(4)"><i></i>Validação SAC<em>Pendente</em></button>
-      <button onclick="nmIrParaEtapa(5)"><i></i>Devolutiva ao Cliente<em>Não iniciada</em></button>
-      <button onclick="nmIrParaEtapa(6)"><i></i>Histórico e Encerramento<em>Não iniciado</em></button>
-    </aside>
     <style>
       #page-nova-manifestacao{flex-direction:column;height:100%;overflow:hidden;font-family:Montserrat,system-ui,sans-serif}
       #nm-wizard{display:flex;flex-direction:column;height:100%;overflow:hidden}
@@ -2961,20 +2964,13 @@
         <!-- dados do cliente -->
         <div class="nm-card">
           <div class="nm-card-title">Dados do Cliente</div>
-          <label class="nm-label" style="grid-column:1/-1">
-            <span>CNPJ ou Razão Social *</span>
-            <div style="position:relative">
-              <input class="nm-input" placeholder="00.000.000/0001-00 ou nome da empresa" id="nm-cnpj" oninput="onCnpjChange()" style="padding-right:90px">
-              <div style="position:absolute;right:4px;top:50%;transform:translateY(-50%);display:flex;gap:4px">
-                <button onclick="buscarCliente()" style="height:32px;border:0;background:#C70602;color:#fff;border-radius:7px;padding:0 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Buscar</button>
-                <button id="btn-limpar-cnpj" onclick="limparBuscaCnpj()" style="display:none;height:32px;border:0;background:#E4E4E4;color:#545252;border-radius:7px;padding:0 10px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">✕</button>
-              </div>
-            </div>
-          </label>
+          <div class="nm-client-first">
+            <label class="nm-label"><span>CPF / CNPJ</span><div style="display:flex;gap:7px"><input class="nm-input" placeholder="00.000.000/0001-00" id="nm-cnpj" oninput="onCnpjChange()"><button onclick="buscarCliente()" class="nm-inline-search">Buscar</button><button id="btn-limpar-cnpj" onclick="limparBuscaCnpj()" class="nm-inline-clear" style="display:none">✕</button></div></label>
+            <label class="nm-label"><span>Razão social / Nome</span><input class="nm-input" placeholder="Razão social do cliente" id="nm-empresa"></label>
+          </div>
           <div id="nm-historico-cliente" style="display:none;background:#F0F6FF;border:1px solid #93C5FD;border-radius:8px;padding:10px 12px;font-size:12px;color:#1D4ED8"></div>
-          <div class="nm-grid-2">
-            <label class="nm-label"><span>Nome do cliente / contato</span><input class="nm-input" placeholder="Nome do contato" id="nm-nome"></label>
-            <label class="nm-label"><span>Empresa / Razão Social</span><input class="nm-input" placeholder="Empresa reclamante" id="nm-empresa"></label>
+          <div class="nm-grid-3">
+            <label class="nm-label"><span>Nome do contato</span><input class="nm-input" placeholder="Nome do comprador" id="nm-nome"></label>
             <label class="nm-label"><span>Telefone / WhatsApp</span><input class="nm-input" placeholder="(77) 90000-0000" id="nm-tel"></label>
             <label class="nm-label"><span>E-mail</span><input class="nm-input" type="email" placeholder="contato@exemplo.com.br" id="nm-email"></label>
           </div>
@@ -3384,15 +3380,14 @@
 
     <script>
     (function(){
-      var NM_TOTAL = 7;
+      var NM_TOTAL = 6;
       var NM_STEPS_META = [
-        {l:'Cliente e Pedido',d:'Empresa reclamada, dados do cliente e nota fiscal'},
-        {l:'Manifestação',d:'Tipo, canal, descrição detalhada e evidências'},
-        {l:'Impacto Financeiro',d:'Quantidades e valores envolvidos (opcional)'},
-        {l:'Análise com IA',d:'Análise inteligente da manifestação'},
-        {l:'Procedência',d:'A reclamação é procedente?'},
-        {l:'Encaminhamento',d:'Como será conduzida a tratativa'},
-        {l:'Revisão',d:'Revise e confirme antes de registrar'}
+        {l:'Dados da Manifestação',d:'Identificação do cliente, registro e descrição'},
+        {l:'Triagem e Encaminhamento',d:'Tipo, categoria e setor responsável'},
+        {l:'Investigação e Tratativa',d:'Volumes, análise e procedimentos'},
+        {l:'Validação SAC',d:'Procedência e validação da manifestação'},
+        {l:'Devolutiva ao Cliente',d:'Encaminhamento e comunicação'},
+        {l:'Histórico e Encerramento',d:'Revise e confirme antes de registrar'}
       ];
       window.nmEtapa = window.nmEtapa || 1;
 
@@ -3415,21 +3410,26 @@
         }
         row.innerHTML = html;
         var meta = NM_STEPS_META[window.nmEtapa - 1];
-        document.querySelectorAll('.nm-ref-sidebar button').forEach(function(b, idx){
-          b.classList.toggle('active', idx === Math.min(window.nmEtapa - 1, 5));
+        document.querySelectorAll('.nm-approved-steps button').forEach(function(b, idx){
+          b.classList.toggle('active', idx === window.nmEtapa - 1);
+          b.classList.toggle('done', idx < window.nmEtapa - 1);
+          var circle=b.querySelector('span'); if(circle) circle.textContent=idx < window.nmEtapa - 1 ? '✓' : String(idx+1);
         });
         var empresaRef = document.getElementById('nm-ref-empresa');
         var empresaAtual = document.getElementById('nm-empresa-reclamada');
-        if(empresaRef && empresaAtual && empresaAtual.value) empresaRef.innerHTML = empresaAtual.value + ' · <em>Cliente</em>';
+        var clienteRef = document.getElementById('nm-ref-cliente');
+        if(empresaRef && empresaAtual && empresaAtual.value) empresaRef.textContent = empresaAtual.value;
+        if(clienteRef){var cli=(document.getElementById('nm-empresa')?.value||document.getElementById('nm-nome')?.value||'Novo cliente').trim();clienteRef.textContent=cli||'Novo cliente';}
         var lMain = document.getElementById('nm-step-label-main');
         var dMain = document.getElementById('nm-step-desc-main');
         if(lMain) lMain.textContent = meta.l;
         if(dMain) dMain.textContent = meta.d;
         var el = document.getElementById('nm-etapa-label');
         if(el) el.textContent = 'Etapa ' + window.nmEtapa + ' de ' + NM_TOTAL;
+        var panelMap={1:[1],2:[2],3:[3,4],4:[5],5:[6],6:[7]};
         document.querySelectorAll('.nm-step-panel').forEach(function(p){
           var s = parseInt(p.getAttribute('data-nm-step'));
-          p.classList.toggle('nm-active', s === window.nmEtapa);
+          p.classList.toggle('nm-active', (panelMap[window.nmEtapa]||[window.nmEtapa]).indexOf(s)>=0);
         });
         var btnV = document.getElementById('nm-btn-voltar');
         var btnC = document.getElementById('nm-btn-continuar');
@@ -3439,7 +3439,7 @@
         if(btnF) btnF.style.display = window.nmEtapa === NM_TOTAL ? 'block' : 'none';
         var body = document.getElementById('nm-steps-body');
         if(body) body.scrollTop = 0;
-        if(window.nmEtapa === 7) nmMontarResumo();
+        if(window.nmEtapa === 6) nmMontarResumo();
       }
 
       function nmMontarResumo(){
@@ -3550,9 +3550,9 @@
         btn.classList.add('active');
         var sel = document.getElementById('nm-empresa-reclamada');
         if(sel) sel.value = val;
-        var LABELS = {'CHIACCHIO EMBALAGENS':'Chiacchio · <em>Embalagens</em>','PLASCHIO':'Plaschio · <em>Grupo</em>','TUBAHIA':'Tubahia · <em>Cesbap</em>','TUBAHIA / CESBAP':'Tubahia · <em>Cesbap</em>'};
+        var LABELS = {'CHIACCHIO EMBALAGENS':'Chiacchio Embalagens','PLASCHIO':'Plaschio','TUBAHIA':'Tubahia/Cesbap','TUBAHIA / CESBAP':'Tubahia/Cesbap'};
         var ref = document.getElementById('nm-ref-empresa');
-        if(ref) ref.innerHTML = LABELS[val] || val;
+        if(ref) ref.textContent = LABELS[val] || val;
       };
 
       // init on page show
@@ -11489,13 +11489,13 @@ let _nmAnaliseAtual = null;
 let _nmDecisao = null; // 'aceita' | 'editada' | 'rejeitada'
 
 function selectCanal(btn) {
-  btn.closest('.canal-btns').querySelectorAll('.canal-btn').forEach(b => b.classList.remove('active'));
+  btn.closest('.canal-btns').querySelectorAll('button').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   atualizarResumoFicha();
 }
 
 function selectTipo(btn) {
-  btn.closest('.tipo-btns').querySelectorAll('.canal-btn').forEach(b => b.classList.remove('active'));
+  btn.closest('.tipo-btns').querySelectorAll('button').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   agendarAnalise();
   atualizarResumoFicha();
@@ -11944,17 +11944,17 @@ async function buscarCliente() {
 }
 
 async function registrarManifestacao() {
-  const empresa = document.getElementById('nm-empresa').value.trim();
+  const empresa = (document.getElementById('nm-empresa').value || document.getElementById('nm-nome').value || document.getElementById('nm-cnpj').value || '').trim();
   const desc = document.getElementById('nm-descricao').value.trim();
   const empReclamada = document.getElementById('nm-empresa-reclamada').value;
 
-  if (!empresa) return alert('Informe a empresa reclamante.');
+  if (!empresa) return alert('Informe o nome ou a identificação do cliente.');
   if (!desc || desc.length < 10) return alert('A descrição precisa ter ao menos 10 caracteres.');
   if (!empReclamada) return alert('Selecione a empresa reclamada (Chiacchio Embalagens, Plaschio ou Cesbap).');
 
-  const tipoBtn = document.querySelector('.tipo-btns .canal-btn.active');
+  const tipoBtn = document.querySelector('.tipo-btns button.active');
   const tipo = tipoBtn ? tipoBtn.textContent.trim() : 'Reclamação';
-  const canalBtn = document.querySelector('.canal-btns .canal-btn.active');
+  const canalBtn = document.querySelector('.canal-btns button.active');
   const canal = canalBtn ? canalBtn.textContent.trim() : 'WhatsApp';
   const _uRaw = sessionStorage.getItem('sac-user') || '{}';
   let _uParsed = {}; try { _uParsed = JSON.parse(_uRaw); } catch {}
@@ -30291,21 +30291,39 @@ if (typeof pageLoaders !== 'undefined') {
 /* Navegação resiliente da ficha: mantém os controles funcionais mesmo quando
    a página é exibida depois da inicialização dos demais módulos da SPA. */
 (function () {
-  var TOTAL = 7;
-  var TITULOS = ['Cliente e Pedido','Manifestação','Impacto Financeiro','Análise com IA','Procedência','Encaminhamento','Revisão'];
+  var TOTAL = 6;
+  var TITULOS = ['Dados da Manifestação','Triagem e Encaminhamento','Investigação e Tratativa','Validação SAC','Devolutiva ao Cliente','Histórico e Encerramento'];
+  var PANEL_MAP = {1:[1],2:[2],3:[3,4],4:[5],5:[6],6:[7]};
   function page(){ return document.getElementById('page-nova-manifestacao'); }
   function etapaAtual(){ return Math.max(1, Math.min(TOTAL, Number(window.nmEtapa) || 1)); }
   function render(){
     var n = etapaAtual();
     window.nmEtapa = n;
+    var visiblePanels = PANEL_MAP[n] || [n];
     document.querySelectorAll('#page-nova-manifestacao .nm-step-panel').forEach(function (panel) {
-      panel.classList.toggle('nm-active', Number(panel.getAttribute('data-nm-step')) === n);
+      panel.classList.toggle('nm-active', visiblePanels.indexOf(Number(panel.getAttribute('data-nm-step'))) >= 0);
     });
-    document.querySelectorAll('#page-nova-manifestacao .nm-ref-sidebar button').forEach(function (button, index) {
-      button.classList.toggle('active', index === Math.min(n - 1, 5));
+    document.querySelectorAll('#page-nova-manifestacao .nm-approved-steps button').forEach(function (button, index) {
+      var active = index === n - 1;
+      button.classList.toggle('active', active);
+      button.classList.toggle('done', index < n - 1);
+      var circle = button.querySelector('span');
+      if (circle) circle.textContent = index < n - 1 ? '✓' : String(index + 1);
     });
     var label = document.getElementById('nm-etapa-label');
     if (label) label.textContent = 'Etapa ' + n + ' de ' + TOTAL;
+    var empresa = document.getElementById('nm-empresa-reclamada')?.value;
+    var empresaRef = document.getElementById('nm-ref-empresa');
+    if (empresaRef && empresa) empresaRef.textContent = empresa === 'TUBAHIA' ? 'Tubahia/Cesbap' : empresa;
+    var clienteRef = document.getElementById('nm-ref-cliente');
+    var cliente = (document.getElementById('nm-empresa')?.value || document.getElementById('nm-nome')?.value || 'Novo cliente').trim();
+    if (clienteRef) clienteRef.textContent = cliente || 'Novo cliente';
+    var prioridadeRef = document.getElementById('nm-ref-prioridade');
+    var prioridade = document.getElementById('nm-prioridade')?.selectedOptions?.[0]?.textContent;
+    if (prioridadeRef && prioridade) prioridadeRef.textContent = prioridade;
+    var statusRef = document.getElementById('nm-ref-status');
+    var statusFicha = document.getElementById('nm-status-ficha')?.value;
+    if (statusRef && statusFicha) statusRef.textContent = statusFicha === 'ABERTA' ? 'Em abertura' : statusFicha;
     var voltar = document.getElementById('nm-btn-voltar');
     var continuar = document.getElementById('nm-btn-continuar');
     var confirmar = document.getElementById('nm-btn-confirmar');
@@ -30314,6 +30332,7 @@ if (typeof pageLoaders !== 'undefined') {
     if (confirmar) confirmar.style.display = n === TOTAL ? 'block' : 'none';
     var body = document.getElementById('nm-steps-body');
     if (body) body.scrollTop = 0;
+    if (n === TOTAL && typeof nmMontarResumo === 'function') nmMontarResumo();
   }
   function validar(){
     var ativo = document.querySelector('#page-nova-manifestacao .nm-step-panel.nm-active');
@@ -30341,7 +30360,7 @@ if (typeof pageLoaders !== 'undefined') {
     var voltar = document.getElementById('nm-btn-voltar');
     if (continuar) continuar.onclick = window.nmProximaEtapa;
     if (voltar) voltar.onclick = window.nmEtapaAnterior;
-    document.querySelectorAll('#page-nova-manifestacao .nm-ref-sidebar button').forEach(function (button, index) {
+    document.querySelectorAll('#page-nova-manifestacao .nm-approved-steps button').forEach(function (button, index) {
       button.onclick = function () { window.nmIrParaEtapa(index + 1); };
     });
     render();
@@ -30438,6 +30457,43 @@ if (typeof pageLoaders !== 'undefined') {
 #page-nova-manifestacao .nm-navigation-footer{position:static!important;max-width:1000px;margin:0 auto;padding:14px 0 28px!important;background:transparent!important;border-top:0!important}
 #page-nova-manifestacao .nm-ref-header{position:relative;z-index:1}
 @media(max-width:700px){#page-nova-manifestacao #nm-steps-body{padding:20px 16px 24px!important}#page-nova-manifestacao .nm-ref-sidebar button{padding:0 13px!important;font-size:11.5px!important}.nm-navigation-footer{padding-bottom:20px!important}}
+
+/* Layout aprovado da Ficha/Nova Manifestação: cabeçalho compacto, etapas
+   numeradas e conteúdo centralizado. Os IDs dos campos permanecem os
+   contratos usados pelo fluxo existente. */
+#page-nova-manifestacao{height:100%!important;min-height:0!important;display:flex!important;flex-direction:column!important;overflow:hidden!important;background:#F7F7F7!important;font-family:Montserrat,system-ui,sans-serif!important}
+#page-nova-manifestacao .nm-approved-header{flex:none;background:#fff;border-bottom:1px solid #E5E5E5;padding:12px 28px}
+#page-nova-manifestacao .nm-approved-topline{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
+#page-nova-manifestacao .nm-approved-breadcrumb{display:flex;align-items:center;gap:6px;font-size:12px;color:#929090}
+#page-nova-manifestacao .nm-approved-breadcrumb button{border:0;background:none;padding:0;color:#C70602;font:600 12px Montserrat;cursor:pointer}
+#page-nova-manifestacao .nm-approved-breadcrumb strong{color:#242424;font-weight:600}
+#page-nova-manifestacao .nm-approved-actions{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+#page-nova-manifestacao .nm-approved-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:11.5px;color:#929090}
+#page-nova-manifestacao .nm-approved-meta>strong{font-size:13px;color:#242424;font-weight:800}
+#page-nova-manifestacao .nm-approved-meta>i{font-style:normal;color:#E5E5E5}
+#page-nova-manifestacao .nm-approved-meta .nm-status-ficha-btn{background:#FEF3C7;color:#B45309;cursor:default}
+#page-nova-manifestacao .nm-approved-meta .nm-status-ficha-btn.priority{background:#FDECEC;color:#C70602}
+#page-nova-manifestacao .nm-approved-meta #nm-ref-sla{color:#B45309}
+#page-nova-manifestacao .nm-approved-steps{flex:none;background:#fff;border-bottom:1px solid #E5E5E5;padding:0 28px;display:flex;gap:0;overflow-x:auto;min-width:0}
+#page-nova-manifestacao .nm-approved-steps button{height:42px;border:0;border-bottom:2.5px solid transparent;background:none;color:#929090;padding:0 14px;font:500 12px Montserrat;white-space:nowrap;display:inline-flex;align-items:center;gap:7px;cursor:pointer}
+#page-nova-manifestacao .nm-approved-steps button span{width:18px;height:18px;border-radius:50%;background:#E5E5E5;color:#929090;font-size:9px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex:none}
+#page-nova-manifestacao .nm-approved-steps button.active{color:#C70602;font-weight:700;border-bottom-color:#C70602}
+#page-nova-manifestacao .nm-approved-steps button.active span{background:#C70602;color:#fff}
+#page-nova-manifestacao .nm-approved-steps button.done{color:#15803D;font-weight:600;border-bottom-color:#15803D}
+#page-nova-manifestacao .nm-approved-steps button.done span{background:#15803D;color:#fff}
+#page-nova-manifestacao .nm-ref-workspace{display:flex!important;flex:1!important;min-height:0!important;overflow:hidden!important;flex-direction:column!important}
+#page-nova-manifestacao #nm-steps-body{flex:1!important;overflow-y:auto!important;overflow-x:hidden!important;background:#F7F7F7!important;padding:24px 28px 48px!important;width:auto!important;max-width:none!important;margin:0!important}
+#page-nova-manifestacao #nm-steps-body>.nm-step-panel{max-width:960px;width:100%;margin:0 auto}
+#page-nova-manifestacao .nm-card{border-radius:8px;padding:16px 18px;gap:12px;box-shadow:none}
+#page-nova-manifestacao .nm-card-title{font-size:11px;font-weight:700;color:#929090;text-transform:uppercase;letter-spacing:.06em}
+#page-nova-manifestacao .nm-card-title::before{display:none}
+#page-nova-manifestacao .nm-client-first{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+#page-nova-manifestacao .nm-inline-search{height:40px;border:0;background:#C70602;color:#fff;border-radius:6px;padding:0 12px;font:700 12px Montserrat;cursor:pointer;white-space:nowrap}
+#page-nova-manifestacao .nm-inline-clear{height:40px;border:0;background:#E4E4E4;color:#545252;border-radius:6px;padding:0 10px;font:600 12px Montserrat;cursor:pointer}
+#page-nova-manifestacao .nm-empresa-btn{height:34px;min-width:0;border:1px solid #E5E5E5;border-radius:6px;padding:0 12px;font-size:11.5px;font-weight:600}
+#page-nova-manifestacao .nm-empresa-btn.active{border-color:#C70602;background:#FFF5F5;box-shadow:none}
+#page-nova-manifestacao .nm-navigation-footer{flex:none;max-width:960px;width:calc(100% - 56px);margin:0 auto;padding:12px 0 20px!important;background:#F7F7F7!important;border-top:0!important}
+@media(max-width:700px){#page-nova-manifestacao .nm-approved-header{padding:10px 16px}#page-nova-manifestacao .nm-approved-steps{padding:0 8px}#page-nova-manifestacao #nm-steps-body{padding:18px 16px 32px!important}#page-nova-manifestacao .nm-navigation-footer{width:calc(100% - 32px)}#page-nova-manifestacao .nm-client-first{grid-template-columns:1fr}#page-nova-manifestacao .nm-grid-3{grid-template-columns:1fr}}
 
 /* Central de Indicadores: abas ocupam uma linha própria e os filtros ficam abaixo. */
 #page-painel-maquina{height:100%!important;min-height:0!important;overflow:hidden!important;background:#f4f4f4!important;font-family:Montserrat,Arial,sans-serif}
