@@ -5001,6 +5001,10 @@
     #page-usuarios .usr-perm-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-top:14px}
     #page-usuarios .usr-perm-item{border:1px solid #EFEFEF;border-radius:8px;padding:12px;font-size:12px;color:#545252}
     #page-usuarios .usr-panel-usuarios.active{display:flex;flex-direction:column;min-height:0;flex:1;overflow:hidden}
+    #page-usuarios .usr-status-tab{border:0;border-bottom:2px solid transparent;background:none;padding:0 12px 10px;color:#707070;font:600 12px Montserrat,inherit;cursor:pointer;white-space:nowrap}
+    #page-usuarios .usr-status-tab.active{color:#C70602;border-bottom-color:#C70602}
+    #page-usuarios .usr-status-tab span{display:inline-flex;min-width:18px;justify-content:center;margin-left:3px;padding:1px 5px;border-radius:10px;background:#F1F1F1;color:#707070;font-size:10px}
+    #page-usuarios .usr-status-tab.active span{background:#FDECEC;color:#C70602}
     @media(max-width:700px){#page-usuarios .usr-header{align-items:flex-start;flex-direction:column;padding:16px 18px}#page-usuarios .usr-header>div:last-child{width:100%;justify-content:flex-end}#page-usuarios .usr-head-copy h1{font-size:20px}.usr-tab{white-space:nowrap}}
   </style>
 
@@ -5026,6 +5030,12 @@
   <div id="usr-aprov-bridge" class="usr-panel" aria-live="polite"></div>
 
   <div id="usr-panel-usuarios" class="usr-panel usr-panel-usuarios active">
+
+  <div id="usr-status-tabs" role="tablist" aria-label="Situação das contas" style="display:flex;gap:6px;padding:12px 24px 0;margin:0 -28px;background:#fff;border-bottom:1px solid #E4E4E4;flex-shrink:0">
+    <button type="button" class="usr-status-tab active" data-status-view="ATIVO" onclick="usuStatusView('ATIVO')">Ativos <span id="usr-count-ativo"></span></button>
+    <button type="button" class="usr-status-tab" data-status-view="INATIVO" onclick="usuStatusView('INATIVO')">Inativos <span id="usr-count-inativo"></span></button>
+    <button type="button" class="usr-status-tab" data-status-view="EXCLUIDO" onclick="usuStatusView('EXCLUIDO')">Excluídos <span id="usr-count-excluido"></span></button>
+  </div>
 
   <!-- SOLICITAÇÕES PENDENTES (amber collapsible banner) -->
   <div id="usr-solicitacoes-section" style="display:none;background:#FBF0D9;border-bottom:1px solid #F0D9A0;margin:0 -28px;flex-shrink:0">
@@ -27786,6 +27796,10 @@ function updateTopbarUser(user) {
     if (!s) return '—';
     try { const d = new Date(s); return d.toLocaleDateString('pt-BR'); } catch(_) { return s; }
   }
+  function _fmtDataHora(s) {
+    if (!s) return '—';
+    try { const d = new Date(s); if (Number.isNaN(d.getTime())) return s; return d.toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}); } catch(_) { return s; }
+  }
 
   function esc5(s) {
     return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -27830,8 +27844,9 @@ function updateTopbarUser(user) {
   function usuRenderLista(lista) {
     const tb = document.getElementById('usu-lista');
     const vazio = document.getElementById('usu-vazio');
-    const _hideStatus = ['EXCLUIDO','REJEITADO'];
-    const filtrada = lista.filter(u=>!_hideStatus.includes((u.STATUS||u.status||'ATIVO').toUpperCase()));
+    const view = window._usuStatusView || 'ATIVO';
+    const filtrada = lista.filter(u=>(u.STATUS||u.status||'ATIVO').toUpperCase() === view);
+    ['ATIVO','INATIVO','EXCLUIDO'].forEach(st=>{const c=document.getElementById('usr-count-'+st.toLowerCase());if(c)c.textContent='('+lista.filter(u=>(u.STATUS||u.status||'ATIVO').toUpperCase()===st).length+')';});
     if (!filtrada.length) { if(tb) tb.innerHTML=''; if(vazio) vazio.style.display='block'; return; }
     if(vazio) vazio.style.display='none';
     const STATUS_COLORS = { ATIVO: {bg:'#E6F2EA',color:'#1E6B3A'}, INATIVO: {bg:'#EEEEEE',color:'#545252'}, BLOQUEADO: {bg:'#FDECEC',color:'#C70602'}, EXCLUIDO: {bg:'#FDECEC',color:'#A80502'}, PRIMEIRO_ACESSO: {bg:'#EAF0FB',color:'#24508F'}, PENDENTE_APROVACAO: {bg:'#FFF4E0',color:'#7A4C00'} };
@@ -27843,15 +27858,15 @@ function updateTopbarUser(user) {
       const unome = esc5(u.NOME||u.nome||u.USUARIO||u.usuario||'');
       window._usuMap[uid] = u;
       return `<tr style="border-bottom:1px solid #F4F4F4;transition:background .15s" onmouseenter="this.style.background='#FAFAFA'" onmouseleave="this.style.background=''">
-        <td style="padding:12px 16px">
-          <div style="font-weight:700;font-size:13px">${esc5(u.NOME||u.nome||u.USUARIO||u.usuario)}</div>
+        <td style="padding:12px 16px;max-width:260px">
+          <button type="button" onclick="usuAbrir('${uid}')" title="Abrir ficha administrativa" style="display:block;border:0;background:none;padding:0;text-align:left;max-width:100%;font:700 13px Montserrat,inherit;color:#1F1F1F;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc5(u.NOME||u.nome||u.USUARIO||u.usuario)}</button>
           <div style="font-size:11.5px;color:#707070">${esc5(u.EMAIL||u.email||u.USUARIO||u.usuario)}</div>
         </td>
         <td style="padding:12px 16px"><span style="font-size:11px;font-weight:700;background:#F4F4F4;border-radius:5px;padding:3px 7px;color:#545252">${esc5(u.PERFIL||u.perfil||'—')}</span></td>
-        <td style="padding:12px 16px;font-size:12.5px;color:#545252">${esc5(u.EMPRESA||u.empresa||'—')}</td>
+        <td style="padding:12px 16px;font-size:12.5px;color:#545252" title="${esc5(u.EMPRESA||u.empresa||'')}">${(String(u.EMPRESA||u.empresa||'').split(',').filter(Boolean).length>1)?esc5(String(u.EMPRESA||u.empresa).split(',').filter(Boolean).length+' empresas'):esc5(u.EMPRESA||u.empresa||'—')}</td>
         <td style="padding:12px 16px;font-size:12.5px;color:#545252">${esc5(u.SETOR||u.setor||'—')}</td>
         <td style="padding:12px 16px"><span style="font-size:11px;font-weight:700;border-radius:5px;padding:3px 8px;background:${sc.bg};color:${sc.color}">${st}</span></td>
-        <td style="padding:12px 16px;font-size:12px;color:#707070">${(u.ULTIMO_ACESSO||u.ultimoAcesso) ? _fmtDataCurta(u.ULTIMO_ACESSO||u.ultimoAcesso) : '—'}</td>
+        <td style="padding:12px 16px;font-size:12px;color:#707070">${(u.ULTIMO_ACESSO||u.ultimoAcesso) ? _fmtDataHora(u.ULTIMO_ACESSO||u.ultimoAcesso) : '—'}</td>
         <td style="padding:12px 16px;text-align:right">
           <div style="display:flex;gap:5px;justify-content:flex-end;flex-wrap:wrap">
             <button onclick="usuAbrir('${uid}')" style="border:1px solid #D6D6D6;background:#fff;border-radius:7px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:inherit">Editar</button>
@@ -27868,6 +27883,13 @@ function updateTopbarUser(user) {
     }).join('');
   }
 
+  window._usuStatusView = 'ATIVO';
+  window.usuStatusView = function(view) {
+    window._usuStatusView = view;
+    document.querySelectorAll('#usr-status-tabs .usr-status-tab').forEach(b=>b.classList.toggle('active', b.dataset.statusView===view));
+    usuFiltrar();
+  };
+
   window.usuFiltrar = function() {
     const q = (document.getElementById('usu-busca')&&document.getElementById('usu-busca').value||'').toLowerCase();
     const fp = (document.getElementById('usu-fil-perfil')&&document.getElementById('usu-fil-perfil').value||'').toUpperCase();
@@ -27878,6 +27900,7 @@ function updateTopbarUser(user) {
       if (fp && (u.PERFIL||u.perfil||'').toUpperCase() !== fp) return false;
       if (fe && !(u.EMPRESA||u.empresa||'').toLowerCase().split(',').map(v=>v.trim()).includes(fe)) return false;
       if (fs && (u.STATUS||u.status||'ATIVO').toUpperCase() !== fs) return false;
+      if (!fs && (u.STATUS||u.status||'ATIVO').toUpperCase() !== (window._usuStatusView||'ATIVO')) return false;
       return true;
     });
     usuRenderLista(filtrado);
@@ -28153,9 +28176,11 @@ function updateTopbarUser(user) {
   };
 
   window.usuExcluir = async function(id, nome) {
-    if(!confirm('Excluir o usuário "' + nome + '"?\n\nRegistros históricos serão preservados. Esta ação é irreversível.')) return;
+    if(!confirm('Excluir logicamente o usuário "' + nome + '"?\n\nO acesso será revogado e o histórico será preservado.')) return;
+    const motivo = prompt('Informe o motivo da exclusão lógica:');
+    if(!motivo || !motivo.trim()) return;
     try {
-      const d = await _apiFetch('/api/usuarios/' + encodeURIComponent(id), 0, { method:'DELETE' });
+      const d = await _apiFetch('/api/usuarios/' + encodeURIComponent(id), 0, { method:'DELETE', headers:{'Content-Type':'application/json'}, body:JSON.stringify({motivo:motivo.trim()}) });
       if(d.sucesso) { if(window.loadUsuariosMasterPainel) await window.loadUsuariosMasterPainel(); }
       else alert(d.erro||'Erro ao excluir.');
     } catch(e) { alert(e.message); }
