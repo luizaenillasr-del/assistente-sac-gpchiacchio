@@ -677,8 +677,8 @@
 <style>
   /* LOGIN — split-screen */
   .login-screen { position: fixed; inset: 0; z-index: 9999; overflow-y: auto; background: #F4F4F4; }
-  .login-split { width: 100%; flex: 1 1 auto; min-height: 100vh; display: grid; grid-template-columns: 42% 58%; }
-  .login-left { background: #C70602; color: #fff; padding: 52px 56px; display: flex; flex-direction: column; justify-content: space-between; gap: 40px; position:relative; overflow:hidden; }
+  .login-split { width: 100%; flex: 1 1 auto; min-height: 100vh; display: grid; grid-template-columns: 55% 45%; }
+  .login-left { order: 2; background: #C70602; color: #fff; padding: 52px 56px; display: flex; flex-direction: column; justify-content: space-between; gap: 40px; position:relative; overflow:hidden; }
   .login-left-brand { display: flex; align-items: center; gap: 14px; }
   .login-left-brand img { width: 42px; height: 42px; object-fit: contain; filter: brightness(0) invert(1); }
   .login-left-brand-text { }
@@ -694,7 +694,7 @@
   .login-step { display: flex; gap: 12px; align-items: center; }
   .login-step-n { font-variant-numeric: tabular-nums; color: #FFC2BF; font-weight: 700; min-width: 20px; }
   .login-left-footer { font-size: 12px; color: #FFE1E0; display: flex; gap: 16px; flex-wrap: wrap; }
-  .login-right { display: grid; place-items: center; padding: 48px 56px; background: #FAFAFA; }
+  .login-right { order: 1; display: grid; place-items: center; padding: 48px 56px; background: #FAFAFA; }
   .login-wrap { display: flex; flex-direction: column; gap: 18px; width: 100%; max-width: 400px; }
   .login-header { margin-bottom: 2px; }
   .login-header img { height: 44px; display: block; margin-bottom: 10px; }
@@ -764,7 +764,7 @@
   @media (max-width: 700px) {
     .login-split { grid-template-columns: 1fr; }
     .login-right { order: -1; padding: 32px 20px 28px; }
-    .login-left { padding: 34px 24px; min-height: auto; }
+    .login-left { order: 2; padding: 34px 24px; min-height: auto; }
     .login-left-hero h2 { font-size: 25px; }
     .login-steps { max-width: 100%; }
   }

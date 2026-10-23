@@ -35,6 +35,9 @@ async function main(){
   mock.DB.PERFIS_PROFISSIONAIS.push({ID_USUARIO:'USR-RCA-TEST',STATUS:'CONCLUIDO',DADOS_JSON:JSON.stringify({descricaoFuncao:'Representação',responsabilidades:['Clientes']})});
   const rcas=await request('/api/cadastros/rcas','GET',token);assert.equal(rcas.status,200);assert.ok(rcas.body.itens.some(x=>x.USUARIO_ID==='USR-RCA-TEST'&&x.ORIGEM_PERFIL==='SIM'));
   assert.equal(rcas.body.itens.filter(x=>x.USUARIO_ID==='USR-RCA-TEST').length,1);
+  const cargoEdit=await request('/api/meu-perfil','PATCH',token,{cargoOficial:'Analista SAC Sênior',descricaoFuncao:'Analisa entregas',responsabilidades:['Atendimento']});assert.equal(cargoEdit.status,200);assert.equal(cargoEdit.body.perfil.cargoOficial,'Analista SAC Sênior');assert.equal(cargoEdit.body.perfil.empresa,'CHIACCHIO EMBALAGENS');
+  const masterLogin=await request('/api/auth/login','POST','',{usuario:'master.test',senha:'masterPass'});assert.equal(masterLogin.status,200);const masterToken=masterLogin.body.token;
+  const masterEdit=await request('/api/meu-perfil','PATCH',masterToken,{nomeOficial:'Master Atualizado',empresa:'CHIACCHIO EMBALAGENS, PLASCHIO',setor:'SAC, Diretoria',email:'master.atualizado@chiacchio.com.br',cargoOficial:'Administrador'});assert.equal(masterEdit.status,200);assert.equal(masterEdit.body.perfil.nomeOficial,'Master Atualizado');assert.equal(masterEdit.body.perfil.empresa,'CHIACCHIO EMBALAGENS, PLASCHIO');assert.equal(masterEdit.body.perfil.email,'master.atualizado@chiacchio.com.br');
   console.log('Perfil: onboarding, rascunho, dados oficiais, conclusão, retorno, autorização e escopo aprovados.');
  }finally{server.closeAllConnections();await new Promise(r=>server.close(r));}
 }
