@@ -6686,13 +6686,12 @@
     <div class="topbar">
       <div class="topbar-left">
         <div class="breadcrumb">Gestão</div>
-        <div class="page-header">
-          <h1 class="page-title">Indicadores de Desempenho</h1>
-          <div style="font-size:12px;color:#727272;margin-top:3px">Análise operacional, qualidade dos processos e desempenho da inteligência artificial.</div>
-        </div>
+        <h1 class="page-title">Indicadores de Desempenho</h1>
+        <div class="pm-page-subtitle">Análise operacional, qualidade dos processos e desempenho da inteligência artificial.</div>
       </div>
       <div class="topbar-right">
         <button class="btn btn-secondary" onclick="loadPainelMaquina()">Atualizar</button>
+        <button class="btn btn-secondary" onclick="exportarIndicadoresCSV()">Exportar</button>
       </div>
     </div>
     <div class="content" style="overflow-y:auto;flex:1">
@@ -6722,10 +6721,6 @@
           <input id="pm-filtro-tipo" placeholder="Tipo" title="Tipo de manifestação" style="width:100px;height:32px;border:1px solid #E0E0E0;border-radius:7px;padding:0 8px;background:#fff;font-size:12px;font-family:inherit">
           <button class="btn btn-primary" style="height:32px;font-size:12px" onclick="aplicarFiltrosIndicadores()">Aplicar</button>
           <button class="btn btn-secondary" style="height:32px;font-size:12px" onclick="limparFiltrosIndicadores()">Limpar</button>
-          <button class="btn btn-secondary" style="height:32px;font-size:12px" onclick="loadPainelMaquina()">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-            Exportar
-          </button>
         </div>
       </div>
 
@@ -30530,6 +30525,16 @@ if (typeof pageLoaders !== 'undefined') {
 #page-painel-maquina .pm-data-state button{height:32px;border:1px solid #c70602;background:#fff;color:#c70602;border-radius:7px;padding:0 12px;font:600 12px Montserrat,Arial,sans-serif;cursor:pointer}
 @media(max-width:1100px){#page-painel-maquina .content{padding:0 22px 32px!important}#page-painel-maquina .ind-nav-wrap{margin:0 -22px!important;padding:0 22px!important}#page-painel-maquina #pm-kpis{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
 @media(max-width:700px){#page-painel-maquina .topbar{padding:18px 16px!important}#page-painel-maquina .page-title{font-size:23px!important}#page-painel-maquina .content{padding:0 16px 24px!important}#page-painel-maquina .ind-nav-wrap{margin:0 -16px!important;padding:0 16px!important}#page-painel-maquina #ind-tabs-bar button{padding:0 14px!important;font-size:12px!important}#page-painel-maquina .ind-filter-row{align-items:stretch!important;padding:12px 0 16px!important}#page-painel-maquina .ind-filter-row select,#page-painel-maquina .ind-filter-row input{flex:1 1 140px;min-width:0;width:auto!important}#page-painel-maquina #pm-kpis{grid-template-columns:1fr!important}}
+#page-painel-maquina .pm-page-subtitle{font-size:12px;color:#727272;margin-top:5px;line-height:1.45}
+#page-painel-maquina .topbar-right{align-self:flex-start;padding-top:7px}
+#page-painel-maquina #pm-kpis>div{border-top:1px solid #EBEBEB!important}
+#page-painel-maquina .ind-filter-row{flex-wrap:nowrap!important;overflow-x:auto;scrollbar-width:thin}
+#page-painel-maquina .ind-filter-row>*{flex:0 0 auto}
+#page-painel-maquina .ind-filter-row select{min-width:145px}
+#page-painel-maquina .ind-filter-row input[type=date]{min-width:145px}
+#page-painel-maquina #ind-tab-operacionais{color:#171717}
+@media(max-width:1100px){#page-painel-maquina .ind-filter-row{flex-wrap:wrap!important;overflow:visible}#page-painel-maquina .ind-filter-row>*{flex:1 1 140px}}
+@media(max-width:700px){#page-painel-maquina .topbar{flex-wrap:wrap}#page-painel-maquina .topbar-left{width:100%;flex-basis:100%}#page-painel-maquina .topbar-right{width:100%;padding-top:0}#page-painel-maquina .topbar-right .btn{flex:1;justify-content:center}.pm-page-subtitle{max-width:100%}}
 </style>
 <style id="rnc-pesquisas-reference-layout">
 /* Referência aprovada: estilos escopados para as telas reais, sem alterar eventos ou APIs. */
