@@ -6183,7 +6183,7 @@ app.post('/api/caso-similar/usar-referencia', requerPerfil('MASTER','ANALISTA SA
 
 app.get('/api/auditoria', requerPerfil('MASTER','GESTOR SAC','AUDITOR'), async (req, res) => {
   try {
-    const { q, acao, periodo, usuario, pagina, limite } = req.query;
+    const { q, acao, periodo, usuario, modulo, empresa, pagina, limite } = req.query;
     const data = await lerAba('LOG_SISTEMA', 3000);
     let itens = data.map(r => {
       const vals = Object.values(r);
@@ -6215,6 +6215,8 @@ app.get('/api/auditoria', requerPerfil('MASTER','GESTOR SAC','AUDITOR'), async (
     }
     if (acao) itens = itens.filter(r => r.ACAO && r.ACAO.toLowerCase().includes(acao.toLowerCase()));
     if (usuario) itens = itens.filter(r => r.USUARIO && r.USUARIO.toLowerCase().includes(usuario.toLowerCase()));
+    if (modulo) itens = itens.filter(r => r.ABA && r.ABA.toLowerCase().includes(modulo.toLowerCase()));
+    if (empresa) itens = itens.filter(r => String(r.DETALHES||'').toLowerCase().includes(empresa.toLowerCase()));
     if (q) {
       const ql = q.toLowerCase();
       itens = itens.filter(r => [r.USUARIO,r.ACAO,r.ID_REGISTRO,r.ABA,r.DETALHES].some(v => v && String(v).toLowerCase().includes(ql)));
@@ -10292,6 +10294,36 @@ app.post('/api/config/whatsapp', requerPerfil('MASTER','GESTOR SAC'), async (req
     invalidarCacheAba('CONFIG_PORTAL');
     res.json({ sucesso:true });
   } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
+});
+
+// Configurações operacionais compartilhadas pela Central de Configurações.
+// Somente chaves com suporte explícito são aceitas; valores ficam persistidos
+// na base oficial e cada alteração gera trilha de auditoria.
+const CONFIGURACOES_EDITAVEIS = new Set(['canais','prazos']);
+app.get('/api/configuracoes', requerPerfil('MASTER','GESTOR SAC'), async (req,res)=>{
+  try {
+    await garantirAbaComCabecalhos('CONFIGURACOES',['CHAVE','VALOR_JSON','ATUALIZADO_EM','ATUALIZADO_POR']);
+    const rows=await lerAba('CONFIGURACOES',200);
+    const valores={};
+    rows.forEach(r=>{ if(!r.CHAVE) return; try{ valores[r.CHAVE]=JSON.parse(r.VALOR_JSON||'null'); }catch(_){ valores[r.CHAVE]=null; } });
+    res.json({sucesso:true,valores});
+  } catch(e){ res.status(500).json({sucesso:false,erro:erroSeguro(e),valores:{}}); }
+});
+app.put('/api/configuracoes', requerPerfil('MASTER','GESTOR SAC'), async (req,res)=>{
+  try {
+    const chave=String(req.body?.chave||'').trim();
+    if(!CONFIGURACOES_EDITAVEIS.has(chave)) return res.status(400).json({sucesso:false,erro:'Configuração não editável por este serviço.'});
+    if(req.body?.valor===undefined) return res.status(400).json({sucesso:false,erro:'Valor obrigatório.'});
+    const valor=JSON.stringify(req.body.valor);
+    if(valor.length>10000) return res.status(400).json({sucesso:false,erro:'Valor excede o limite permitido.'});
+    await garantirAbaComCabecalhos('CONFIGURACOES',['CHAVE','VALOR_JSON','ATUALIZADO_EM','ATUALIZADO_POR']);
+    const rows=await lerAba('CONFIGURACOES',200); const antigo=rows.find(r=>r.CHAVE===chave);
+    const obj={CHAVE:chave,VALOR_JSON:valor,ATUALIZADO_EM:new Date().toISOString(),ATUALIZADO_POR:req.user?.usuario||''};
+    if(antigo) await atualizarPorID('CONFIGURACOES',chave,obj,['CHAVE']); else await appendObjeto('CONFIGURACOES',obj);
+    invalidarCacheAba('CONFIGURACOES');
+    await registrarAuditoria(req.user?.usuario||'sistema','CONFIGURACAO_ALTERADA',chave,'CONFIGURACOES',antigo?.VALOR_JSON||'',valor);
+    res.json({sucesso:true,chave,valor:req.body.valor});
+  } catch(e){ res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
 });
 
 // ═════════════════════════════════════════════════════════════════════════════

@@ -7659,10 +7659,20 @@
   <div class="topbar">
     <div class="topbar-left">
       <div class="breadcrumb">Administração</div>
-      <div class="page-header"><h1 class="page-title">Configurações</h1></div>
+      <div class="page-header"><div><h1 class="page-title">Configurações</h1><div class="page-subtitle">Parâmetros gerais, integrações e funcionamento da plataforma.</div></div><div class="page-actions"><button class="btn btn-secondary" type="button" onclick="window.location.reload()">Atualizar</button></div></div>
     </div>
   </div>
-  <div class="content" style="display:flex;flex-direction:column;gap:16px">
+  <div class="content cfg-page-content" style="display:flex;flex-direction:column;gap:16px">
+    <div class="cfg-tabs" role="tablist" aria-label="Seções de configurações">
+      <button class="cfg-tab active" data-cfg-tab="geral" role="tab" aria-selected="true">Geral</button>
+      <button class="cfg-tab" data-cfg-tab="empresas" role="tab" aria-selected="false">Empresas e canais</button>
+      <button class="cfg-tab" data-cfg-tab="prazos" role="tab" aria-selected="false">Protocolos e prazos</button>
+      <button class="cfg-tab" data-cfg-tab="notificacoes" role="tab" aria-selected="false">Notificações</button>
+      <button class="cfg-tab" data-cfg-tab="ia" role="tab" aria-selected="false">Inteligência artificial</button>
+      <button class="cfg-tab" data-cfg-tab="integracoes" role="tab" aria-selected="false">Integrações</button>
+      <button class="cfg-tab" data-cfg-tab="seguranca" role="tab" aria-selected="false">Segurança e retenção</button>
+    </div>
+    <div id="cfg-tab-empty" class="cfg-tab-empty" hidden></div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:16px;align-items:stretch">
 
       <!-- Empresas do grupo -->
@@ -7782,8 +7792,24 @@
 </div>
 <script>
 (function(){
-  function cfgGet(key,def){ try{return JSON.parse(localStorage.getItem('cfg_'+key)||'null')||def;}catch(e){return def;} }
-  function cfgSet(key,val){ try{localStorage.setItem('cfg_'+key,JSON.stringify(val));}catch(e){} }
+  const cfgServer={};
+  function cfgGet(key,def){ return Object.prototype.hasOwnProperty.call(cfgServer,key) ? cfgServer[key] : def; }
+  function cfgSet(key,val){
+    cfgServer[key]=val;
+    const base=window.SAC_API||'';
+    return fetch(base+'/api/configuracoes',{method:'PUT',credentials:'include',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(sessionStorage.getItem('sac-token')||'')},body:JSON.stringify({chave:key,valor:val})})
+      .then(r=>r.json().then(j=>{if(!r.ok||j.sucesso===false)throw new Error(j.erro||'Não foi possível salvar a configuração.');return j;}))
+      .catch(e=>{if(typeof _toast==='function')_toast(e.message||'Erro ao salvar configuração.');else console.error(e);return {sucesso:false,erro:e.message};});
+  }
+  async function cfgLoadServer(){
+    try{const r=await fetch((window.SAC_API||'')+'/api/configuracoes',{credentials:'include',headers:{'Authorization':'Bearer '+(sessionStorage.getItem('sac-token')||'')}});const j=await r.json();if(!r.ok||j.sucesso===false)throw new Error(j.erro||'Falha ao carregar configurações.');Object.assign(cfgServer,j.valores||{});cfgAplicarServer();}
+    catch(e){console.warn('[configuracoes]',e.message||e);}
+  }
+  function cfgAplicarServer(){
+    const c=cfgGet('canais',null),p=cfgGet('prazos',null);
+    if(c){const b=s=>s==='Ativo'?`<span style="color:#1E6B3A;background:#E6F2EA;border-radius:99px;padding:2px 10px;font-size:11.5px;font-weight:600">Ativo</span>`:`<span style="color:#888;background:#F0F0F0;border-radius:99px;padding:2px 10px;font-size:11.5px">Inativo</span>`;['telefone','whatsapp','pesquisa'].forEach(k=>{const el=document.getElementById('cfg-canal-'+k);if(el)el.outerHTML=b(c[k]||'Inativo');});['email','site'].forEach(k=>{const el=document.getElementById('cfg-canal-'+k);if(el)el.textContent=c[k]||'';});}
+    if(p){['formato','contagem','cobranca','followup'].forEach(k=>{const el=document.getElementById('cfg-prazo-'+k);if(el&&p[k])el.textContent=p[k];});}
+  }
 
   function cfgAbrirModal(titulo, bodyHtml, onSave){
     document.getElementById('modal-cfg-titulo').textContent=titulo;
@@ -7864,15 +7890,8 @@
   };
 
   // Restaurar valores salvos ao carregar
-  (function restaurarCfg(){
-    const p=cfgGet('prazos',null);
-    if(p){
-      ['formato','contagem','cobranca','followup'].forEach(k=>{
-        const el=document.getElementById('cfg-prazo-'+k);
-        if(el&&p[k])el.textContent=p[k];
-      });
-    }
-  })();
+  window.cfgLoadServer=cfgLoadServer;
+  cfgLoadServer();
 })();
 </script>
 
@@ -9815,8 +9834,9 @@
     <div class="topbar-left">
       <div class="breadcrumb">Administração</div>
       <div class="page-header">
-        <h1 class="page-title">Auditoria completa</h1>
+        <div><h1 class="page-title">Auditoria</h1><div class="page-subtitle">Histórico de atividades, alterações e acessos realizados na plataforma.</div></div>
         <div class="page-actions">
+          <button class="btn btn-secondary" onclick="auditLoad()">Atualizar</button>
           <button class="btn btn-secondary" onclick="auditExportCSV()">Exportar CSV</button>
         </div>
       </div>
@@ -9830,6 +9850,7 @@
     <div style="display:flex;gap:0;border-bottom:2px solid #E4E4E4">
       <button id="aud-tab-log" onclick="auditSetTab('log',this)" style="padding:8px 18px;font-size:13px;font-weight:700;background:none;border:none;border-bottom:2px solid #C70602;color:#1F1F1F;cursor:pointer;margin-bottom:-2px">Ações do sistema</button>
       <button id="aud-tab-acesso" onclick="auditSetTab('acesso',this)" style="padding:8px 18px;font-size:13px;font-weight:500;background:none;border:none;border-bottom:2px solid transparent;color:#666464;cursor:pointer;margin-bottom:-2px">Acessos e permissões</button>
+      <button id="aud-tab-analise" onclick="auditSetTab('analise',this)" style="padding:8px 18px;font-size:13px;font-weight:500;background:none;border:none;border-bottom:2px solid transparent;color:#666464;cursor:pointer;margin-bottom:-2px">Análise de auditoria</button>
     </div>
 
     <!-- Filtros -->
@@ -9841,6 +9862,12 @@
         <select id="aud-acao" onchange="auditLoad()" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:12.5px;font-family:inherit">
           <option value="">Todas</option><option>Acesso</option><option>Alteração</option><option>Aprovação</option><option>Criação</option><option>Exportação</option><option>Rejeição</option>
         </select>
+      </label>
+      <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:#666464;font-weight:600">MÓDULO
+        <select id="aud-modulo" onchange="auditLoad()" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:12.5px;font-family:inherit"><option value="">Todos</option><option value="USUARIOS">Usuários</option><option value="MANIFESTACOES">Manifestações</option><option value="RNC">RNC</option><option value="CEREBRO">Cérebro</option><option value="CONFIG">Configurações</option></select>
+      </label>
+      <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:#666464;font-weight:600">EMPRESA
+        <select id="aud-empresa" onchange="auditLoad()" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:12.5px;font-family:inherit"><option value="">Todas</option><option value="CHIACCHIO">Chiacchio</option><option value="PLASCHIO">Plaschio</option><option value="TUBAHIA">Tubahia</option></select>
       </label>
       <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:#666464;font-weight:600">PERÍODO
         <select id="aud-periodo" onchange="auditLoad()" style="height:34px;border:1px solid #D6D6D6;border-radius:7px;padding:0 8px;background:#fff;font-size:12.5px;font-family:inherit">
@@ -9887,6 +9914,8 @@
         </tbody>
       </table>
     </div>
+    <div id="aud-panel-analise" class="aud-analysis-panel" style="display:none"></div>
+    <aside id="aud-detalhe" class="aud-detail-panel" hidden></aside>
 
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
       <div id="aud-count-txt" style="font-size:12.5px;color:#666464"></div>
@@ -20458,6 +20487,12 @@ function auditSetTab(tab, btn) {
   if (btn) { btn.style.fontWeight = '700'; btn.style.color = '#1F1F1F'; btn.style.borderBottom = '2px solid #C70602'; }
   document.getElementById('aud-panel-log').style.display = tab === 'log' ? '' : 'none';
   document.getElementById('aud-panel-acesso').style.display = tab === 'acesso' ? '' : 'none';
+  document.getElementById('aud-panel-analise').style.display = tab === 'analise' ? '' : 'none';
+  if (tab === 'analise') {
+    if (!_audit.itens.length) { _audit.tab='log'; auditLoad().then(()=>{_audit.tab='analise';_auditRenderAnalysis();}); }
+    else _auditRenderAnalysis();
+    return;
+  }
   auditLoad();
 }
 
@@ -20467,6 +20502,16 @@ function _auditDebounce() {
 }
 
 function _auditEsc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function _auditDetailLabel(v){
+  if(v==null||v==='') return 'Informação não registrada';
+  try{const o=typeof v==='string'?JSON.parse(v):v;if(o&&typeof o==='object'){return Object.entries(o).filter(([k])=>!/(token|senha|secret|credential|authorization)/i.test(k)).map(([k,x])=>`${k}: ${typeof x==='object'?JSON.stringify(x):x}`).join(' · ')||'Informação técnica protegida';}}catch(_){ }
+  return String(v).slice(0,180);
+}
+function auditShowDetail(kind,index){
+  const item=kind==='acesso'?(_audit.itensAcesso||[])[index]:(_audit.itens||[])[index]; const box=document.getElementById('aud-detalhe'); if(!box||!item)return;
+  const pairs=Object.entries(item).filter(([k])=>!/(token|senha|secret|credential|authorization)/i.test(k)).map(([k,v])=>`<div><dt>${_auditEsc(k.replaceAll('_',' '))}</dt><dd>${_auditEsc(_auditDetailLabel(v))}</dd></div>`).join('');
+  box.hidden=false; box.innerHTML=`<div class="aud-detail-head"><strong>Detalhes do evento</strong><button type="button" onclick="this.closest('#aud-detalhe').hidden=true">Fechar</button></div><dl>${pairs}</dl><details><summary>Informações técnicas</summary><p>Campos sensíveis foram omitidos. Os códigos originais permanecem preservados no registro.</p></details>`;
+}
 
 async function auditLoad() {
   const tab = _audit.tab;
@@ -20482,6 +20527,8 @@ async function auditLoad() {
     const params = new URLSearchParams({ periodo, limite: 100, pagina: _audit.pag });
     if (search) params.set('q', search);
     if (acao) params.set('acao', acao);
+    const modulo=(document.getElementById('aud-modulo')||{}).value||''; if(modulo) params.set('modulo',modulo);
+    const empresa=(document.getElementById('aud-empresa')||{}).value||''; if(empresa) params.set('empresa',empresa);
     const d = await _apiFetch('/api/auditoria?' + params, 20000).catch(() => ({ itens: [], total: 0, paginas: 1 }));
     _audit.itens = d.itens || [];
     _audit.total = d.total || _audit.itens.length;
@@ -20505,7 +20552,7 @@ async function auditLoad() {
         <td style="padding:9px 12px"><span style="padding:2px 8px;border-radius:99px;white-space:nowrap;font-size:11.5px;font-weight:600;${clr}">${_auditEsc(ac)}</span></td>
         <td style="padding:9px 12px;font-variant-numeric:tabular-nums;font-size:12px">${_auditEsc(r.ID_REGISTRO||'—')}</td>
         <td style="padding:9px 12px;font-size:12px;color:#545252">${_auditEsc(r.ABA||'')}</td>
-        <td style="padding:9px 12px;font-size:12px;max-width:260px;overflow:hidden;text-overflow:ellipsis">${detShort}</td>
+        <td style="padding:9px 12px;font-size:12px;max-width:260px;overflow:hidden;text-overflow:ellipsis"><span title="${det}">${_auditEsc(_auditDetailLabel(r.DETALHES))}</span> <button type="button" class="aud-detail-btn" onclick="auditShowDetail('log',${_audit.itens.indexOf(r)})">Ver detalhes</button></td>
       </tr>`;
     }).join('');
     _auditRenderPag();
@@ -20543,7 +20590,7 @@ async function _auditLoadAcesso() {
         <td style="padding:9px 12px"><span style="padding:2px 8px;border-radius:99px;font-size:11.5px;font-weight:600;${clr}">${_auditEsc(ac)}</span></td>
         <td style="padding:9px 12px;font-size:12px">${_auditEsc(r.MODULO||'')}</td>
         <td style="padding:9px 12px;font-size:12px">${_auditEsc(r.EMPRESA||'')}</td>
-        <td style="padding:9px 12px;font-size:12px;color:#707070">${_auditEsc(r.EXECUTADO_POR||r.OPERADOR||'')}</td>
+        <td style="padding:9px 12px;font-size:12px;color:#707070">${_auditEsc(r.EXECUTADO_POR||r.OPERADOR||'')} <button type="button" class="aud-detail-btn" onclick="auditShowDetail('acesso',${itens.indexOf(r)})">Ver detalhes</button></td>
       </tr>`;
     }).join('');
   } catch (e) {
@@ -20569,6 +20616,15 @@ function _auditRenderStats(d) {
     <div style="font-size:11px;font-weight:600;color:#666464;margin-bottom:4px">${l}</div>
     <div style="font-size:22px;font-weight:700;color:${c}">${v}</div>
   </div>`).join('');
+}
+
+function _auditRenderAnalysis() {
+  const box=document.getElementById('aud-panel-analise'); if(!box) return;
+  const itens=_audit.itens||[];
+  if(!itens.length){ box.innerHTML='<div style="color:#707070;font-size:13px">Carregue os eventos na aba Atividades do sistema para consultar a análise do período.</div>'; return; }
+  const by=(key)=>Object.entries(itens.reduce((m,r)=>{const k=String(r[key]||'Não informado');m[k]=(m[k]||0)+1;return m},{})).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const row=(title,items)=>`<section><h3 style="font-size:13px;margin:0 0 8px;color:#242424">${_auditEsc(title)}</h3>${items.map(([k,v])=>`<div style="display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-top:1px solid #efefef;font-size:12px"><span>${_auditEsc(k)}</span><strong>${v}</strong></div>`).join('')}</section>`;
+  box.innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:22px">${row('Ações mais frequentes',by('ACAO'))}${row('Módulos com maior atividade',by('ABA'))}</div><p style="margin:18px 0 0;color:#707070;font-size:11.5px">Análise calculada a partir dos eventos retornados pelo serviço de auditoria, respeitando o período e os filtros aplicados.</p>`;
 }
 
 function _auditRenderPag() {
@@ -30507,5 +30563,45 @@ if (typeof pageLoaders !== 'undefined') {
 @media(max-width:900px){#page-usuarios>div:first-child{padding:14px 20px!important}#page-usuarios .usr-tabs{padding:0 20px!important}#page-usuarios #usr-aprov-bridge{padding:16px 20px 30px!important}}
 @media(max-width:640px){#page-usuarios>div:first-child{height:auto!important;min-height:72px!important;padding:12px 14px!important;align-items:flex-start!important}#page-usuarios>div:first-child>div:last-child{width:100%;overflow-x:auto}#page-usuarios .usr-tabs{padding:0 8px!important}#page-usuarios .usr-tab{padding:0 12px!important;font-size:12px!important}#page-usuarios #usr-aprov-bridge{padding:14px!important}#page-usuarios .usr-perm-card{margin:14px!important}}
 </style>
+<style id="auditoria-configuracoes-reference-layout">
+/* Auditoria e Configurações: camada visual escopada, mantendo os serviços existentes. */
+#page-auditoria,#page-prazos-regionais{background:#f7f7f7!important;font-family:Montserrat,Arial,sans-serif!important;overflow:hidden!important}
+#page-auditoria>.topbar,#page-prazos-regionais>.topbar{background:#fff!important;border-bottom:1px solid #e5e5e5!important;padding:14px 28px!important;min-height:68px}
+#page-auditoria .page-subtitle,#page-prazos-regionais .page-subtitle{font-size:11.5px;color:#929090;margin-top:3px}
+#page-auditoria>.content{padding:14px 28px 30px!important;overflow-y:auto!important;gap:14px!important}
+#page-auditoria #aud-stats{grid-template-columns:repeat(4,minmax(150px,1fr))!important;gap:10px!important}
+#page-auditoria #aud-stats>div{border-radius:9px!important;padding:12px 14px!important;border-top:2px solid #c70602}
+#page-auditoria #aud-stats>div:nth-child(2){border-top-color:#1d4ed8}#page-auditoria #aud-stats>div:nth-child(3){border-top-color:#15803d}#page-auditoria #aud-stats>div:nth-child(4){border-top-color:#d97706}
+#page-auditoria #aud-panel-log,#page-auditoria #aud-panel-acesso,#page-auditoria .aud-analysis-panel{border-radius:9px!important;box-shadow:0 1px 2px rgba(0,0,0,.02)}
+#page-auditoria .aud-analysis-panel{background:#fff;border:1px solid #e4e4e4;padding:18px;min-height:130px}
+#page-auditoria .aud-detail-panel{background:#fff;border:1px solid #e4e4e4;border-radius:9px;padding:16px 18px;box-shadow:0 1px 2px rgba(0,0,0,.02)}
+#page-auditoria .aud-detail-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;font-size:13px}.aud-detail-head button{border:1px solid #d6d6d6;background:#fff;border-radius:6px;padding:5px 10px;cursor:pointer;font:12px Montserrat,Arial,sans-serif}
+#page-auditoria .aud-detail-panel dl{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px 18px;margin:0}.aud-detail-panel dt{font-size:10px;color:#929090;text-transform:uppercase;letter-spacing:.04em}.aud-detail-panel dd{margin:2px 0 0;font-size:12px;color:#242424;overflow-wrap:anywhere}.aud-detail-panel details{margin-top:14px;font-size:11.5px;color:#707070}.aud-detail-btn{border:0;background:none;color:#24508f;font:600 11px Montserrat,Arial,sans-serif;cursor:pointer;white-space:nowrap}
+#page-prazos-regionais>.content{padding:0 28px 30px!important;overflow-y:auto!important}
+#page-prazos-regionais .cfg-tabs{display:flex;gap:0;overflow-x:auto;background:#fff;border-bottom:1px solid #e5e5e5;margin:0 -28px;padding:0 28px;scrollbar-width:none}
+#page-prazos-regionais .cfg-tab{height:44px;padding:0 14px;border:0;border-bottom:2px solid transparent;background:none;color:#929090;font:500 12px Montserrat,Arial,sans-serif;white-space:nowrap;cursor:pointer}
+#page-prazos-regionais .cfg-tab.active{color:#c70602;border-bottom-color:#c70602;font-weight:700}
+#page-prazos-regionais .cfg-tab-empty{background:#fff;border:1px solid #e5e5e5;border-radius:9px;padding:22px;color:#707070;font-size:13px}
+@media(max-width:900px){#page-auditoria>.topbar,#page-prazos-regionais>.topbar{padding-left:20px!important;padding-right:20px!important}#page-auditoria>.content{padding-left:20px!important;padding-right:20px!important}#page-prazos-regionais>.content{padding-left:20px!important;padding-right:20px!important}#page-prazos-regionais .cfg-tabs{margin-left:-20px;margin-right:-20px;padding-left:20px;padding-right:20px}#page-auditoria #aud-stats{grid-template-columns:repeat(2,minmax(150px,1fr))!important}}
+@media(max-width:600px){#page-auditoria>.topbar,#page-prazos-regionais>.topbar{padding:12px 14px!important}#page-auditoria>.content{padding:12px 14px 24px!important}#page-prazos-regionais>.content{padding:0 14px 24px!important}#page-prazos-regionais .cfg-tabs{margin-left:-14px;margin-right:-14px;padding-left:14px;padding-right:14px}#page-auditoria #aud-stats{grid-template-columns:repeat(2,minmax(120px,1fr))!important}}
+</style>
+<script>
+(function(){
+  function cfgTab(tab){
+    const root=document.getElementById('page-prazos-regionais'); if(!root) return;
+    const cards=[...root.querySelectorAll('.cfg-page-content>div:nth-of-type(3)>div')];
+    const map={empresas:[0,1],prazos:[2],seguranca:[3],geral:[0,1,2,3]};
+    const empty=root.querySelector('#cfg-tab-empty');
+    root.querySelectorAll('.cfg-tab').forEach(b=>{const on=b.dataset.cfgTab===tab;b.classList.toggle('active',on);b.setAttribute('aria-selected',on?'true':'false')});
+    cards.forEach((c,i)=>c.style.display=(map[tab]||map.geral).includes(i)?'':'none');
+    if(empty){const labels={notificacoes:'Notificações não possuem parâmetros editáveis nesta versão. Os eventos são processados pelos serviços existentes.',ia:'A configuração da inteligência artificial é administrada pelos serviços de IA e pelas regras aprovadas no Cérebro.',integracoes:'As integrações são lidas pelos serviços configurados no ambiente. Nenhuma integração adicional foi criada nesta tela.'}; empty.hidden=!labels[tab]; empty.textContent=labels[tab]||'';}
+  }
+  window.cfgTab=cfgTab;
+  document.addEventListener('DOMContentLoaded',function(){
+    document.querySelectorAll('#page-prazos-regionais .cfg-tab').forEach(b=>b.addEventListener('click',()=>cfgTab(b.dataset.cfgTab)));
+    cfgTab('geral');
+  });
+})();
+</script>
 </body>
 </html>
