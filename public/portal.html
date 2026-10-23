@@ -277,7 +277,7 @@ button:disabled { cursor:wait !important; opacity:.65; }
 <link rel="stylesheet" href="/assets/pesquisa-formulario.css">
 <script src="/assets/pesquisa-formulario.js"></script>
 <style>
-.survey-selection-heading{text-align:center;margin:4px 0 26px}.survey-selection-kicker{font-size:10px;font-weight:700;letter-spacing:.12em;color:#C70602;margin-bottom:7px}.survey-selection-heading h2{font-size:22px;line-height:1.2;font-weight:800;color:#242424;margin:0 0 9px}.survey-selection-heading p{font-size:13px;line-height:1.6;color:#929090;max-width:510px;margin:0 auto}.survey-cards-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.survey-card{display:flex;flex-direction:column;align-items:center;text-align:center;min-height:218px;padding:24px 20px;background:#fff;border:1px solid #E5E5E5;border-radius:12px;transition:border-color .15s,box-shadow .15s}.survey-card:hover,.survey-card:focus-within{border-color:#C70602;box-shadow:0 5px 18px rgba(0,0,0,.07)}.survey-card-icon{width:46px;height:46px;border-radius:11px;background:#F0F9FF;color:#1D4ED8;display:flex;align-items:center;justify-content:center;margin-bottom:15px}.survey-card-name{font-size:14px;font-weight:800;color:#242424;margin-bottom:8px}.survey-card-copy{flex:1;font-size:12px;line-height:1.55;color:#929090;margin:0 0 18px}.survey-card-button{width:100%;height:40px;border:0;border-radius:8px;background:#C70602;color:#fff;font:700 12.5px Montserrat,Arial,sans-serif;cursor:pointer}.survey-cards-state{text-align:center;color:#929090;font-size:13px;padding:28px;grid-column:1/-1;background:#fff;border:1px solid #E5E5E5;border-radius:12px}.survey-cards-state.error{color:#A80502;background:#FFF5F5;border-color:#F5CCCC}@media(max-width:760px){.survey-cards-grid{grid-template-columns:1fr 1fr}}@media(max-width:520px){.survey-cards-grid{grid-template-columns:1fr}.survey-selection-heading h2{font-size:20px}}
+.survey-selection-heading{text-align:center;margin:0 0 36px}.survey-selection-kicker{font-size:11px;font-weight:700;letter-spacing:.12em;color:#C70602;margin-bottom:8px;text-transform:uppercase}.survey-selection-heading h2{font-size:22px;line-height:1.2;font-weight:800;color:#242424;margin:0 0 10px}.survey-selection-heading p{font-size:13.5px;line-height:1.65;color:#929090;max-width:500px;margin:0 auto}.survey-cards-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin-bottom:40px}.survey-card{display:flex;flex-direction:column;align-items:center;text-align:center;min-height:250px;padding:28px 24px;background:#fff;border:1px solid #E5E5E5;border-radius:10px;transition:border-color .15s,box-shadow .15s}.survey-card:hover,.survey-card:focus-within{border-color:#C70602;box-shadow:0 4px 16px rgba(0,0,0,.07)}.survey-card-logo-wrap{height:56px;display:flex;align-items:center;justify-content:center;margin-bottom:18px}.survey-card-logo{max-height:52px;max-width:160px;width:auto;object-fit:contain}.survey-card-name{font-size:14px;font-weight:800;color:#242424;margin-bottom:8px}.survey-card-copy{flex:1;font-size:12.5px;line-height:1.6;color:#929090;margin:0 0 20px}.survey-card-button{width:100%;height:40px;border:0;border-radius:8px;background:#C70602;color:#fff;font:700 12.5px Montserrat,Arial,sans-serif;cursor:pointer}.survey-cards-state{text-align:center;color:#929090;font-size:13px;padding:28px;grid-column:1/-1;background:#fff;border:1px solid #E5E5E5;border-radius:10px}.survey-cards-state.error{color:#A80502;background:#FFF5F5;border-color:#F5CCCC}#page-pesquisa .survey-selection{max-width:1100px;margin:0 auto}#page-pesquisa #pesq-success,#page-pesquisa #pesq-form-wrap{max-width:620px;margin-left:auto;margin-right:auto}@media(max-width:900px){.survey-cards-grid{grid-template-columns:1fr 1fr}}@media(max-width:600px){.survey-cards-grid{grid-template-columns:1fr}.survey-selection-heading h2{font-size:20px}}
 </style>
 </head>
 <body>
@@ -565,7 +565,7 @@ button:disabled { cursor:wait !important; opacity:.65; }
     <!-- ===== PESQUISA ===== -->
     <div data-condition="isPesquisaOrOk" class="portal-condition page" hidden="" id="page-pesquisa">
       <div style="flex:1;display:flex;justify-content:center;padding:32px 24px 64px;animation:fadeUp .25s ease">
-        <div style="width:100%;max-width:620px">
+        <div style="width:100%;max-width:1100px">
           <div data-condition="isPesquisaOk" class="portal-condition" hidden="" id="pesq-success">
             <div style="background:#fff;border:1.5px solid #A8DFC0;border-radius:16px;padding:40px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:14px">
               <div style="width:64px;height:64px;background:#EAF4ED;border-radius:50%;display:flex;align-items:center;justify-content:center">
@@ -580,8 +580,8 @@ button:disabled { cursor:wait !important; opacity:.65; }
             <div id="surveyCards" class="survey-selection" style="margin-bottom:18px">
               <div class="survey-selection-heading">
                 <div class="survey-selection-kicker">PESQUISA DE SATISFAÇÃO</div>
-                <h2>Pesquisa de satisfação</h2>
-                <p>Selecione a empresa que deseja avaliar. Sua opinião nos ajuda a melhorar nossos produtos, serviços e atendimento.</p>
+                <h2>Selecione a empresa</h2>
+                <p>Selecione a empresa que deseja avaliar. Sua opinião é importante para melhorarmos continuamente nossos produtos, serviços e atendimento.</p>
               </div>
               <div id="surveyCardsGrid" class="survey-cards-grid" aria-live="polite"><div class="survey-cards-state">Carregando pesquisas…</div></div>
             </div>
@@ -797,11 +797,15 @@ function renderSurveyCards(items) {
     card.setAttribute('aria-label', `Responder pesquisa ${form.empresaNome || form.empresa || ''}`);
     card.addEventListener('click', () => loadPublishedSurvey(form.id));
     card.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); loadPublishedSurvey(form.id); } });
-    const icon = document.createElement('div'); icon.className='survey-card-icon'; icon.innerHTML='<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>';
-    const name = document.createElement('div'); name.className='survey-card-name'; name.textContent=form.empresaNome || form.empresa || form.titulo;
+    const nome = String(form.empresaNome || form.empresa || form.titulo || '').trim();
+    const normalizado = nome.toLocaleLowerCase();
+    const logo = normalizado.includes('plas') ? '/assets/logo-plaschio.svg' : normalizado.includes('tub') || normalizado.includes('cesb') ? '/assets/logo-tubahia.svg' : '/assets/logo-chiacchio-embalagens.svg';
+    const logoWrap = document.createElement('div'); logoWrap.className='survey-card-logo-wrap';
+    const logoImg = document.createElement('img'); logoImg.className='survey-card-logo'; logoImg.src=logo; logoImg.alt=nome; logoWrap.appendChild(logoImg);
+    const name = document.createElement('div'); name.className='survey-card-name'; name.textContent=nome;
     const copy = document.createElement('p'); copy.className='survey-card-copy'; copy.textContent='Compartilhe sua experiência com nossos produtos, serviços e atendimento.';
     const button = document.createElement('button'); button.type='button'; button.className='survey-card-button'; button.textContent='Responder pesquisa'; button.addEventListener('click', event => { event.stopPropagation(); loadPublishedSurvey(form.id); });
-    card.append(icon,name,copy,button); grid.appendChild(card);
+    card.append(logoWrap,name,copy,button); grid.appendChild(card);
   });
 }
 async function loadPublishedSurvey(id) {
