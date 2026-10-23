@@ -30461,7 +30461,7 @@ if (typeof pageLoaders !== 'undefined') {
 /* Layout aprovado da Ficha/Nova Manifestação: cabeçalho compacto, etapas
    numeradas e conteúdo centralizado. Os IDs dos campos permanecem os
    contratos usados pelo fluxo existente. */
-#page-nova-manifestacao{height:100%!important;min-height:0!important;flex-direction:column!important;overflow:hidden!important;background:#F7F7F7!important;font-family:Montserrat,system-ui,sans-serif!important}
+#page-nova-manifestacao{height:100%!important;min-height:0!important;flex-direction:column!important;overflow-y:auto!important;overflow-x:hidden!important;background:#F7F7F7!important;font-family:Montserrat,system-ui,sans-serif!important}
 #page-nova-manifestacao .nm-approved-header{flex:none;background:#fff;border-bottom:1px solid #E5E5E5;padding:12px 28px}
 #page-nova-manifestacao .nm-approved-topline{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
 #page-nova-manifestacao .nm-approved-breadcrumb{display:flex;align-items:center;gap:6px;font-size:12px;color:#929090}
@@ -30481,8 +30481,9 @@ if (typeof pageLoaders !== 'undefined') {
 #page-nova-manifestacao .nm-approved-steps button.active span{background:#C70602;color:#fff}
 #page-nova-manifestacao .nm-approved-steps button.done{color:#15803D;font-weight:600;border-bottom-color:#15803D}
 #page-nova-manifestacao .nm-approved-steps button.done span{background:#15803D;color:#fff}
-#page-nova-manifestacao .nm-ref-workspace{display:flex!important;flex:1!important;min-height:0!important;overflow:hidden!important;flex-direction:column!important}
-#page-nova-manifestacao #nm-steps-body{flex:1!important;overflow-y:auto!important;overflow-x:hidden!important;background:#F7F7F7!important;padding:24px 28px 48px!important;width:auto!important;max-width:none!important;margin:0!important}
+#page-nova-manifestacao .nm-ref-workspace{display:block!important;min-height:0!important;overflow:visible!important}
+#page-nova-manifestacao .nm-ref-workarea{display:block!important;min-height:0!important;overflow:visible!important}
+#page-nova-manifestacao #nm-steps-body{overflow:visible!important;background:#F7F7F7!important;padding:24px 28px 48px!important;width:auto!important;max-width:none!important;margin:0!important}
 #page-nova-manifestacao #nm-steps-body>.nm-step-panel{max-width:960px;width:100%;margin:0 auto}
 #page-nova-manifestacao .nm-card{border-radius:8px;padding:16px 18px;gap:12px;box-shadow:none}
 #page-nova-manifestacao .nm-card-title{font-size:11px;font-weight:700;color:#929090;text-transform:uppercase;letter-spacing:.06em}
