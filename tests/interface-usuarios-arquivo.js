@@ -15,6 +15,8 @@ ok(html.includes('TOTAL DE FICHAS') && html.includes('CRIADAS NO SISTEMA') && ht
 ok(archive.includes('<th>Assunto</th>') && archive.includes('<th>Situação</th>') && archive.includes('<th>Origem</th>'), 'tabela do arquivo usa colunas resumidas e rastreáveis');
 console.log('INTERFACES: 9 verificações aprovadas');
 ok(html.includes('window.__SAC_PERM_DEF = _PERM_DEF') && html.includes('window.__SAC_PERM_DEF ||'), 'aba de perfis usa os defaults compartilhados do frontend');
+ok(html.includes('editarPerfilPermissoes') && html.includes('salvarPerfilPermissoes'), 'matriz de permissões possui edição e gravação para os usuários do perfil');
+ok(html.includes('Competências') && html.includes('aprov-chip') && html.includes('const setores=uniq'), 'aprovadores exibem empresa, setor e competências em colunas organizadas');
 ok(!html.includes('id="usr-tab-btn-pendencias"'), 'aba removida de pendências não aparece na gestão de acessos');
 ok(html.includes("if(tab==='pendencias') tab='solicitacoes'") && html.includes('editarUsuariosDoPerfil'), 'links antigos e edição de perfis têm compatibilidade funcional');
 ok(html.includes("const d=await json5('/api/admin/solicitacoes');") && html.includes('Erro ao carregar'), 'falhas ao carregar solicitações são exibidas ao MASTER');
