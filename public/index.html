@@ -8007,7 +8007,6 @@
 .rs-aviso{background:#FFFBEF;border:1px solid #F1E2B5;border-radius:10px;padding:10px 14px;font-size:13px;color:#5E3B00}
 .rs-vazio{text-align:center;padding:40px;color:#707070;font-size:13px}
 .rs-toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#1F1F1F;color:#fff;padding:11px 16px;border-radius:8px;font-size:13px;z-index:90;max-width:92vw}
-#page-relatorio-satisfacao #rel-accordion-wrap{display:none!important}
 #page-relatorio-satisfacao .rs-inline-editor{border:1px solid #E4E4E4;border-radius:12px;background:#fff;padding:18px 20px;display:flex;flex-direction:column;gap:12px}
 #page-relatorio-satisfacao .rs-inline-editor h3{font-size:15px;margin:0}
 #page-relatorio-satisfacao .rs-inline-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
@@ -8203,28 +8202,29 @@
   window.relMudarMeta=function(v){const n=num(v);if(n!=null&&n>0&&n<=10){setMeta(n);_renderizar();}};
 
   window.relCarregar=async function(){
-    _populaFiltros();
-    _syncMetaInput();
+    try{_populaFiltros();_syncMetaInput();}catch(e){
+      const c=_val('rel-conteudo');if(c)c.innerHTML='<div class="rs-vazio" style="color:#A80502">Não foi possível inicializar o relatório: '+esc(e.message||e)+'<br><button type="button" class="rs-btn-sm" style="margin-top:10px" onclick="relCarregar()">Tentar novamente</button></div>';
+      return;
+    }
     const empresa=_empresa();
     const ano=_val('rel-f-ano')?.value,mes=_val('rel-f-mes')?.value;
     const cont=_val('rel-conteudo');
     if(cont) cont.innerHTML='<div id="rel-loading" class="rs-vazio">Carregando...</div>';
     _edit=null;
-    let dados=null,erro=false;
+    let dados=null,erro=false,erroMsg='';
     try{
       const tok=sessionStorage.getItem('sac-token');
       const ctrl=new AbortController();
       const tid=setTimeout(()=>ctrl.abort(),8000);
       try{
         const r=await fetch(`/api/pesquisas/relatorio?empresa=${encodeURIComponent(empresa)}&ano=${ano}&mes=${mes}`,{headers:tok?{Authorization:'Bearer '+tok}:{},signal:ctrl.signal});
-        if(r.ok) dados=await r.json(); else erro=true;
+        if(r.ok) dados=await r.json(); else {erro=true;erroMsg='Servidor retornou HTTP '+r.status+'.';}
       }finally{clearTimeout(tid);}
-    }catch(e){erro=true;}
-    // Uma indisponibilidade temporária da API não pode deixar a tela presa em
-    // "Carregando". Mantemos o esqueleto completo com estado sem dados e
-    // permitimos nova tentativa pelo carregamento da página.
-    _d=erro?{itens:[],historico:[],criterios:[],textos:{},nps:null,notas_baixas_stats:{}}:dados;
-    _renderizar(false);
+    }catch(e){erro=true;erroMsg=e&&e.name==='AbortError'?'Tempo limite ao consultar os dados.':(e.message||'Não foi possível consultar os dados.');}
+    // A API indisponível não pode deixar a tela presa em "Carregando". O modelo
+    // continua disponível para edição manual, mas o erro fica explícito.
+    _d=erro?{itens:[],historico:[],criterios:[],textos:{},nps:null,notas_baixas_stats:{}}:(dados||{itens:[],historico:[],criterios:[],textos:{},nps:null,notas_baixas_stats:{}});
+    _renderizar(erro,erroMsg);
   };
 
   // ── séries a partir do histórico da API ──
@@ -8321,13 +8321,13 @@
     return t;
   }
 
-  function _renderizar(erro){
+  function _renderizar(erro,erroMsg){
     const cont=_val('rel-conteudo');
     if(!cont) return;
     const sub=_val('rel-topsub');
     if(sub) sub.textContent=_dir?'Visão da Diretoria · somente leitura':'Pesquisa de satisfação · relatório mensal para Diretoria e Presidência';
     const metaW=_val('rel-meta-wrap');if(metaW) metaW.style.display=_dir?'none':'';
-    if(erro||!_d){cont.innerHTML='<div class="rs-vazio">Não foi possível carregar o relatório. Verifique sua conexão ou permissão e use “Atualizar”.</div>';return;}
+    if(!_d){cont.innerHTML='<div class="rs-vazio" style="color:#A80502">Não foi possível carregar o relatório.<br><button type="button" class="rs-btn-sm" style="margin-top:10px" onclick="relCarregar()">Tentar novamente</button></div>';return;}
     const empresa=_empresa(),ref=_refKey();
     const ser=_serie();
     const ri=ser.findIndex(r=>r.k===ref);
@@ -8346,7 +8346,7 @@
     const ctx={cur,prev,ref,ser,ri,per,bestK,worstK};
     const textos=_d.textos||{};
     _autos={};
-    let h='';
+    let h=erro?`<div class="rs-aviso" style="color:#7F0401;background:#FDECEC;border-color:#F3CFCF;display:flex;justify-content:space-between;gap:12px;align-items:center"><span>Não foi possível atualizar os dados automáticos: ${esc(erroMsg||'erro de carregamento')}.</span><button type="button" class="rs-btn-sm" onclick="relCarregar()">Tentar novamente</button></div>`:'';
 
     // Cabeçalho do relatório — campos editáveis inline
     const resp=textos.responsavel||'';const cargo_a=textos.cargo_analista||'';const resumo_ex=textos.resumo_executivo||'';
