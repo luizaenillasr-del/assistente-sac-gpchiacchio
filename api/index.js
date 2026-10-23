@@ -6513,12 +6513,28 @@ app.delete('/api/usuarios/:id', requerPermissao('usuarios.gerenciar'), async (re
       const masters=todos.filter(u=>(u.PERFIL||u.perfil||'').toUpperCase()==='MASTER'&&(u.STATUS||u.status||'ATIVO').toUpperCase()==='ATIVO'&&String(u.ID_USUARIO||u.USUARIO)!==String(alvo.ID_USUARIO||alvo.USUARIO));
       if(masters.length===0) return res.status(403).json({sucesso:false,erro:'Não é possível excluir o único MASTER ativo do sistema.'});
     }
-    await atualizarPorID('USUARIOS', alvo.ID_USUARIO||alvo.USUARIO||alvo.EMAIL, {STATUS:'EXCLUIDO',DATA_ULTIMA_ALTERACAO:new Date().toISOString(),ALTERADO_POR:req.user.usuario||'MASTER'}, ['ID_USUARIO','USUARIO','EMAIL']).catch(e => console.warn('[DELETE usuario Sheets]', e.message));
+    const alvoRefs = new Set([String(alvo.ID_USUARIO||''), String(alvo.USUARIO||''), String(alvo.EMAIL||'')].map(v=>v.trim().toLowerCase()).filter(Boolean));
+    const [filaPendente, manifestacoesPendentes] = await Promise.all([
+      lerAba('FILA_APROVACAO', 5000).catch(()=>[]),
+      lerAba('MANIFESTACOES', 5000).catch(()=>[]),
+    ]);
+    const temResponsabilidade = filaPendente.some(item => ['PENDENTE','AGUARDANDO'].includes(String(item.STATUS||'').toUpperCase()) && alvoRefs.has(String(item.ID_APROVADOR||item.RESPONSAVEL||'').trim().toLowerCase()))
+      || manifestacoesPendentes.some(item => !['ENCERRADA','ARQUIVADA','CANCELADA'].includes(String(item.STATUS||'').toUpperCase()) && alvoRefs.has(String(item.RESPONSAVEL||item.USUARIO_RESPONSAVEL||item.USUARIO_TRATATIVA||'').trim().toLowerCase()));
+    if (temResponsabilidade && String(req.body?.redistribuir || '').toUpperCase() !== 'SIM') {
+      return res.status(409).json({sucesso:false,erro:'Usuário possui responsabilidades pendentes. Redistribua os itens antes da exclusão lógica.'});
+    }
+    const motivo = String(req.body?.motivo || '').trim();
+    if (!motivo) return res.status(400).json({sucesso:false,erro:'Informe o motivo da exclusão lógica.'});
+    const agoraExclusao = new Date().toISOString();
+    await atualizarPorID('USUARIOS', alvo.ID_USUARIO||alvo.USUARIO||alvo.EMAIL, {
+      STATUS:'EXCLUIDO', DATA_ULTIMA_ALTERACAO:agoraExclusao, DATA_EXCLUSAO:agoraExclusao,
+      EXCLUIDO_POR:req.user.usuario||'MASTER', MOTIVO_EXCLUSAO:motivo, ALTERADO_POR:req.user.usuario||'MASTER'
+    }, ['ID_USUARIO','USUARIO','EMAIL']).catch(e => console.warn('[DELETE usuario Sheets]', e.message));
     if (alvo._pgId && usuarioRepo) await usuarioRepo.update(alvo._pgId, { ativo:false }).catch(e => console.warn('[DELETE usuario PG]', e.message));
     invalidarCacheAba('USUARIOS');
     invalidarCachePermissoes(alvo.EMAIL||alvo.USUARIO||alvo.ID_USUARIO);
     _statusCache.delete(normalizarTexto(alvo.USUARIO||alvo.EMAIL||alvo.ID_USUARIO));
-    await registrarAuditoria(req.user.usuario,'EXCLUIU_USUARIO',req.params.id,'USUARIOS',null,{nome:alvo.NOME});
+    await registrarAuditoria(req.user.usuario,'EXCLUIU_USUARIO',req.params.id,'USUARIOS',null,{nome:alvo.NOME,motivo});
     res.json({sucesso:true});
   }catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
