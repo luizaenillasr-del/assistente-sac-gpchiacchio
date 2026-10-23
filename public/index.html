@@ -5384,14 +5384,19 @@
   /* ── 3-tab layout ── */
   #page-central-sac .mc-topbar{background:#fff;border-bottom:1px solid #E4E4E4;padding:18px 32px 0;flex-shrink:0}
   #page-central-sac .mc-toprow{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:14px;flex-wrap:wrap}
-  #page-central-sac .mc-tabs{display:flex;gap:0}
+  #page-central-sac .mc-eyebrow{font-size:9.5px;font-weight:700;color:#BDBDBD;letter-spacing:.12em;text-transform:uppercase;margin-bottom:4px}
+  #page-central-sac .mc-kpis-top{display:grid;grid-template-columns:repeat(6,minmax(120px,1fr));gap:10px;padding:0 0 14px}
+  #page-central-sac .mc-kpis-top>div{background:#fff!important;border:1px solid #E5E5E5!important;border-radius:8px!important;padding:10px 12px!important;min-height:68px;box-shadow:none}
+  #page-central-sac .mc-kpis-top>div span:first-child{font-size:22px!important;font-weight:800!important}
+  #page-central-sac .mc-kpis-top>div span:last-child{font-size:10.5px!important;color:#929090!important}
+  #page-central-sac .mc-tabs{display:flex;gap:0;overflow-x:auto;scrollbar-width:thin}
   #page-central-sac .mc-tab{height:44px;border:0;background:none;padding:0 20px;font-size:13.5px;font-weight:500;color:#929090;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;font-family:inherit;display:flex;align-items:center;gap:7px}
   #page-central-sac .mc-tab.on{font-weight:700;color:#C70602;border-bottom-color:#C70602}
   #page-central-sac .mc-tab-badge{min-width:18px;height:18px;border-radius:9px;background:#C70602;color:#fff;font-size:10px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;padding:0 5px}
   #page-central-sac .mc-body{flex:1;min-height:0;overflow:hidden;padding:0;display:flex;flex-direction:column}
   #page-central-sac .mc-tabpanel{display:none;flex-direction:column;gap:20px;flex:1;min-height:0;overflow-y:auto;padding:24px 32px}
   #page-central-sac .mc-tabpanel.on{display:flex}
-  #page-central-sac #mc-panel-fila{overflow:hidden;padding:16px 24px;gap:12px}
+  #page-central-sac #mc-panel-fila{overflow:hidden;padding:0 24px 16px;gap:12px}
   /* grupos fila */
   #page-central-sac .mc-grp{background:#fff;border:1px solid #E4E4E4;border-radius:12px;overflow:hidden}
   #page-central-sac .mc-grp-h{padding:12px 18px;display:flex;justify-content:space-between;align-items:center}
@@ -5435,18 +5440,20 @@
   <!-- MC09-STYLE-END -->
   <div class="page" id="page-central-sac" style="background:#F4F4F4;overflow:hidden;display:none;flex-direction:column">
 
-    <!-- TOPBAR + ABAS -->
+    <!-- CABEÇALHO + INDICADORES + ABAS -->
     <div class="mc-topbar">
       <div class="mc-toprow">
         <div>
-          <div style="font-size:20px;font-weight:800">Central de Manifestações</div>
-          <div class="mc-sub" id="cen-greet">Olá — carregando…</div>
+          <div class="mc-eyebrow">OPERAÇÃO</div>
+          <div style="font-size:18px;font-weight:800;line-height:1">Central de Manifestações</div>
+          <div class="mc-sub" id="cen-greet">Gestão e acompanhamento das manifestações registradas.</div>
         </div>
         <div class="mc-head-btns">
-          <button type="button" class="mc-btn" onclick="abrirNovaCentralMan()">+ Nova Manifestação</button>
-          <button type="button" id="cen-btn-refresh" class="mc-btn mc-btn-p" onclick="loadCentralSAC()">↻ Atualizar</button>
+          <button type="button" id="cen-btn-refresh" class="mc-btn" onclick="loadCentralSAC()">↻ Atualizar</button>
+          <button type="button" class="mc-btn mc-btn-p" onclick="abrirNovaCentralMan()">＋ Nova Manifestação</button>
         </div>
       </div>
+      <div class="mc-kpis mc-kpis-top" id="cen-kpis-fila"></div>
       <div class="mc-tabs">
         <button type="button" class="mc-tab on" id="mc-tab-fila" onclick="cenAba('fila',this)">
           Fila de Trabalho <span class="mc-tab-badge" id="mc-badge-fila">0</span>
@@ -5471,9 +5478,6 @@
 
       <!-- ══════════ ABA: FILA ══════════ -->
       <div class="mc-tabpanel on" id="mc-panel-fila" style="padding:0;gap:0">
-
-        <!-- KPIs fila -->
-        <div class="mc-kpis" id="cen-kpis-fila" style="background:#fff;border-bottom:1px solid #E8E8E8;padding:9px 18px;margin:0;border-radius:0;gap:8px;overflow-x:auto;flex-wrap:nowrap;flex-shrink:0"></div>
 
         <!-- Filtros -->
         <div style="background:#F5F5F5;border-bottom:1px solid #E4E4E4;padding:7px 18px;display:flex;align-items:center;gap:7px;flex-shrink:0;flex-wrap:wrap">
@@ -24036,9 +24040,9 @@ async function mudarStatusMC(id, novoStatus) {
       if(tab) tab.classList.toggle('on',t===id);
       if(panel){panel.classList.toggle('on',t===id);panel.style.display=t===id?'flex':'none';}
     });
-    // mc-body wraps only the fila 3-panel layout; hide it when another tab is active
-    const _mcBody = document.querySelector('#page-central-sac .mc-body');
-    if(_mcBody) _mcBody.style.display = (id === 'fila') ? '' : 'none';
+    // O corpo contém todas as abas; a visibilidade é controlada pelos próprios painéis.
+    // Mantê-lo montado evita que as abas secundárias fiquem inacessíveis após a
+    // reorganização do cabeçalho (indicadores antes das abas).
     if(id==='rcas') renderRCAs();
     if(id==='ind') renderIndicadores();
     if(id==='banco') cenBancoInit();
@@ -24641,7 +24645,7 @@ async function mudarStatusMC(id, novoStatus) {
       {l:'Encerradas',v:all.filter(m=>m.st==='enc').length,d:'no período',c:'#1E6B3A',bg:'#F0FAF3',bd:'#A8DFC0'},
     ];
     const cont=$('cen-kpis-fila');
-    if(cont) cont.innerHTML=kpis.map(k=>`<div style="background:${k.bg};border:1.5px solid ${k.bd};border-radius:10px;padding:11px 13px;display:flex;flex-direction:column;gap:3px"><span style="font-size:24px;font-weight:800;color:${k.c};line-height:1">${k.v}</span><span style="font-size:11.5px;font-weight:600;color:#545252">${esc(k.l)}</span><span style="font-size:10.5px;color:#929090">${esc(k.d)}</span></div>`).join('');
+    if(cont) cont.innerHTML=kpis.map(k=>`<div style="display:flex;flex-direction:column;gap:3px"><span style="font-size:24px;font-weight:800;color:${k.c};line-height:1">${k.v}</span><span style="font-size:11.5px;font-weight:600;color:#242424">${esc(k.l)}</span><span style="font-size:10.5px;color:#929090">${esc(k.d)}</span></div>`).join('');
     const badge=$('mc-badge-fila');
     if(badge) badge.textContent=all.filter(m=>m.st!=='enc').length;
     // Atualiza badge da aba "Em tratativa" sempre que _cenAll mudar
@@ -30388,9 +30392,9 @@ if (typeof pageLoaders !== 'undefined') {
 #page-central-sac .mc-sel{height:38px;border-radius:8px}
 #page-central-sac .mc-btn{min-height:38px;border-radius:8px}
 #page-central-sac .mc-empty,#page-central-sac .mc-nosel{border-radius:12px}
-@media(max-width:1200px){#page-central-sac .mc-kpis{grid-template-columns:repeat(3,minmax(120px,1fr))}#page-central-sac #cen-panel-body{grid-template-columns:250px minmax(0,1fr) 270px}}
-@media(max-width:900px){#page-central-sac .mc-main{padding:18px 20px 32px}#page-central-sac .mc-kpis{grid-template-columns:repeat(2,minmax(130px,1fr))}#page-central-sac #cen-panel-body{grid-template-columns:250px minmax(0,1fr)}#page-central-sac #cen-cerebro-wrap{display:none!important}}
-@media(max-width:600px){#page-central-sac .mc-main{padding:16px 14px 24px}#page-central-sac .mc-title{font-size:23px}#page-central-sac .mc-kpis{grid-template-columns:1fr 1fr;gap:8px}#page-central-sac .mc-kpi{min-height:74px;padding:11px 12px}#page-central-sac .mc-kpi-v{font-size:23px}#page-central-sac .mc-tabs{margin:0 -14px;padding:0 8px}#page-central-sac .mc-tab{padding:0 14px;font-size:12px}#page-central-sac #cen-panel-body{display:block;overflow:auto}#page-central-sac #cen-list-col{min-height:280px;border-right:0;border-bottom:1px solid #e8e8e8}#page-central-sac #cen-detalhe-col{min-height:480px}}
+@media(max-width:1200px){#page-central-sac .mc-kpis-top{grid-template-columns:repeat(3,minmax(120px,1fr))}#page-central-sac #cen-panel-body{grid-template-columns:250px minmax(0,1fr) 270px}}
+  @media(max-width:900px){#page-central-sac .mc-main{padding:18px 20px 32px}#page-central-sac .mc-kpis-top{grid-template-columns:repeat(3,minmax(120px,1fr))}#page-central-sac #cen-panel-body{grid-template-columns:250px minmax(0,1fr)}#page-central-sac #cen-cerebro-wrap{display:none!important}}
+  @media(max-width:600px){#page-central-sac .mc-main{padding:16px 14px 24px}#page-central-sac .mc-title{font-size:23px}#page-central-sac .mc-kpis-top{grid-template-columns:repeat(2,minmax(130px,1fr));gap:8px}#page-central-sac .mc-tabs{margin:0 -14px;padding:0 8px}#page-central-sac .mc-tab{padding:0 14px;font-size:12px}#page-central-sac #cen-panel-body{display:block;overflow:auto}#page-central-sac #cen-list-col{min-height:280px;border-right:0;border-bottom:1px solid #e8e8e8}#page-central-sac #cen-detalhe-col{min-height:480px}}
 </style>
 <style id="nova-indicadores-layout">
 /* Nova Manifestação: uma única navegação global; as etapas ficam em uma faixa horizontal. */
