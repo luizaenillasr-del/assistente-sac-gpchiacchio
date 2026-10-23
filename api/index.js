@@ -803,17 +803,29 @@ async function carregarUsuarioPorLogin(login){
       if (!pgU) pgU = await usuarioRepo.findByEmail(login).catch(() => null);
       const pgPerfil = pgU?.perfil?.codigo || pgU?.perfil?.nome || null;
       if (pgU && normalizarTexto(pgU.status || 'ATIVO') !== 'inativo' && pgPerfil) {
+        // A aprovação administrativa grava primeiro no Sheets e pode espelhar
+        // no PostgreSQL. Reconcile a linha mais recente do Sheets antes de
+        // validar a senha, evitando que um usuário PG legado invalide a senha
+        // temporária recém-gerada ou o estado PRIMEIRO_ACESSO.
+        let sheetOverride = null;
+        try {
+          const sheetRows = await lerAba('USUARIOS', 1000);
+          const email = String(pgU.email || '').toLowerCase();
+          sheetOverride = sheetRows
+            .filter(row => email && String(row.EMAIL || '').toLowerCase() === email)
+            .sort((a, b) => String(b.DATA_CRIACAO || '').localeCompare(String(a.DATA_CRIACAO || '')))[0] || null;
+        } catch (_) { /* PostgreSQL continua sendo fallback quando Sheets está indisponível. */ }
         return {
           ID_USUARIO: pgU.idOriginal || `USR-PG-${pgU.id}`,
-          USUARIO: pgU.login || pgU.email,
+          USUARIO: sheetOverride?.USUARIO || pgU.login || pgU.email,
           EMAIL: pgU.email || '',
           NOME: pgU.nome || pgU.login,
           PERFIL: pgPerfil,
           EMPRESA: pgU.empresa?.nome || '',
           SETOR: pgU.setor?.nome || '',
-          STATUS: pgU.ativo === false ? 'INATIVO' : 'ATIVO',
-          SENHA_HASH: pgU.senhaHash || '',
-          SENHA: pgU.senhaHash || '',
+          STATUS: pgU.ativo === false ? 'INATIVO' : (sheetOverride?.STATUS || 'ATIVO'),
+          SENHA_HASH: sheetOverride?.SENHA_HASH || pgU.senhaHash || '',
+          SENHA: sheetOverride?.SENHA_HASH || pgU.senhaHash || '',
           CODIGO_RCA: pgU.codigoRca || '',
           _pgId: pgU.id,
         };
