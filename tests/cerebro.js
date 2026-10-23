@@ -49,6 +49,7 @@ const app = require('../api/index.js');
     }
     assert.equal(await page.locator('#cb-home-cards .cb-home-section').count(), 3, 'a home deve agrupar conhecimento, inteligência e governança');
     assert.equal(await page.locator('#cb-home-cards .cb-hcard').count(), 13, 'os atalhos devem ser renderizados sem duplicidade');
+    assert.equal(await page.locator('button[onclick="consultarCirca()"]' ).count(), 1, 'a consulta determinística deve estar disponível na área de inteligência');
 
     for (const tab of ['setores', 'matriz-cb', 'aprovacao-cb', 'auditoria']) {
       await page.locator(`#cd-tab-btn-${tab === 'matriz-cb' ? 'matriz' : tab === 'aprovacao-cb' ? 'aprovacao' : tab}`).click();
