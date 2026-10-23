@@ -5005,6 +5005,14 @@
     #page-usuarios .usr-status-tab.active{color:#C70602;border-bottom-color:#C70602}
     #page-usuarios .usr-status-tab span{display:inline-flex;min-width:18px;justify-content:center;margin-left:3px;padding:1px 5px;border-radius:10px;background:#F1F1F1;color:#707070;font-size:10px}
     #page-usuarios .usr-status-tab.active span{background:#FDECEC;color:#C70602}
+    #page-usuarios .usr-user-table{table-layout:fixed}
+    #page-usuarios .usr-user-table th,#page-usuarios .usr-user-table td{height:68px;box-sizing:border-box}
+    #page-usuarios .usr-user-table th:nth-child(1){width:34%}#page-usuarios .usr-user-table th:nth-child(2){width:20%}#page-usuarios .usr-user-table th:nth-child(3){width:18%}#page-usuarios .usr-user-table th:nth-child(4){width:14%}#page-usuarios .usr-user-table th:nth-child(5){width:14%}
+    #page-usuarios .usr-user-row{cursor:pointer;transition:background .15s}
+    #page-usuarios .usr-user-row:hover{background:#FAFAFA}
+    #page-usuarios .usr-user-name{display:block;border:0;background:none;padding:0;text-align:left;font:700 13px Montserrat,inherit;color:#1F1F1F;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+    #page-usuarios .usr-user-email{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#707070;font-size:11.5px;margin-top:3px}
+    #page-usuarios .usr-company-count{color:#545252;font-size:12.5px;white-space:nowrap}
     @media(max-width:700px){#page-usuarios .usr-header{align-items:flex-start;flex-direction:column;padding:16px 18px}#page-usuarios .usr-header>div:last-child{width:100%;justify-content:flex-end}#page-usuarios .usr-head-copy h1{font-size:20px}.usr-tab{white-space:nowrap}}
   </style>
 
@@ -5068,12 +5076,6 @@
       style="height:36px;border:1.5px solid #E4E4E4;border-radius:8px;padding:0 10px;font-size:12.5px;font-family:inherit">
       <option value="">Todas as empresas</option><option>Chiacchio Embalagens</option><option>Plaschio</option><option>Tubahia</option><option>Cesbap</option>
     </select>
-    <select id="usu-fil-status" onchange="usuFiltrar()"
-      style="height:36px;border:1.5px solid #E4E4E4;border-radius:8px;padding:0 10px;font-size:12.5px;font-family:inherit">
-      <option value="">Todos os status</option>
-      <option value="ATIVO">Ativo</option><option value="INATIVO">Inativo</option>
-      <option value="BLOQUEADO">Bloqueado</option>
-    </select>
     <button type="button" onclick="usuFiltrar()" style="height:36px;border:0;background:#C70602;color:#fff;border-radius:8px;padding:0 14px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit">Aplicar</button>
     <button type="button" onclick="usuLimparFiltros()" style="height:36px;border:1px solid #D6D6D6;background:#fff;color:#545252;border-radius:8px;padding:0 14px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit">Limpar</button>
   </div>
@@ -5082,16 +5084,14 @@
   <div id="usr-tabela-wrap" style="flex:1;overflow-y:auto;padding:16px 0;margin:0 -28px">
     <div style="padding:0 24px">
       <div style="background:#fff;border:1px solid #E4E4E4;border-radius:12px;overflow:hidden">
-        <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <table class="usr-user-table" style="width:100%;border-collapse:collapse;font-size:13px">
           <thead>
             <tr style="background:#F7F7F7;border-bottom:1px solid #E4E4E4">
               <th style="padding:10px 16px;text-align:left;font-size:11px;font-weight:700;letter-spacing:.05em;color:#929090;text-transform:uppercase">Usuário</th>
               <th style="padding:10px 16px;text-align:left;font-size:11px;font-weight:700;letter-spacing:.05em;color:#929090;text-transform:uppercase">Perfil</th>
               <th style="padding:10px 16px;text-align:left;font-size:11px;font-weight:700;letter-spacing:.05em;color:#929090;text-transform:uppercase">Empresa</th>
-              <th style="padding:10px 16px;text-align:left;font-size:11px;font-weight:700;letter-spacing:.05em;color:#929090;text-transform:uppercase">Setor</th>
               <th style="padding:10px 16px;text-align:left;font-size:11px;font-weight:700;letter-spacing:.05em;color:#929090;text-transform:uppercase">Status</th>
               <th style="padding:10px 16px;text-align:left;font-size:11px;font-weight:700;letter-spacing:.05em;color:#929090;text-transform:uppercase">Último acesso</th>
-              <th style="padding:10px 16px;text-align:right;font-size:11px;font-weight:700;letter-spacing:.05em;color:#929090;text-transform:uppercase">Ações</th>
             </tr>
           </thead>
           <tbody id="usu-lista"></tbody>
@@ -9586,6 +9586,15 @@
 .af-arq-c select,.af-arq-c input{height:32px;border:1px solid #D6D6D6;border-radius:6px;padding:0 6px;background:#fff;font-size:12.5px}
 .af-toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#1F1F1F;color:#fff;padding:11px 16px;border-radius:8px;font-size:13px;z-index:400;max-width:92vw;display:none}
 .af-toast.on{display:block}
+#page-biblioteca-fichas .af-filter-row .af-advanced{display:none}
+#page-biblioteca-fichas .af-filter-row.advanced-open .af-advanced{display:flex}
+#page-biblioteca-fichas .af-filter-toggle{height:36px;padding:0 12px}
+#page-biblioteca-fichas .af-root:not(.af-explorar) #bib-sidebar-col{display:none}
+#page-biblioteca-fichas .af-root:not(.af-explorar) .af-lista{flex-basis:100%}
+#page-biblioteca-fichas .af-kpis{grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+#page-biblioteca-fichas .af-kpi{cursor:default}
+@media(max-width:900px){#page-biblioteca-fichas .af-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){#page-biblioteca-fichas .af-kpis{grid-template-columns:1fr}}
 @media (max-width:640px){.af-main{padding:16px 14px 48px}.af-dr-b{padding:14px}.af-title{font-size:21px}}
 /* Abas de status */
 .af-abas{display:flex;gap:6px;flex-wrap:wrap;border-bottom:2px solid #E4E4E4;padding-bottom:0;margin-bottom:2px}
@@ -9615,7 +9624,7 @@
     <div class="af-topbar-title">
       <span class="af-eyebrow">OPERAÇÃO</span>
       <h1>Arquivo de Fichas</h1>
-      <p>Consulta, organização e rastreabilidade das manifestações registradas e dos documentos históricos.</p>
+      <p>Consulta e histórico das manifestações registradas e documentos importados.</p>
     </div>
     <div style="flex:1"></div>
     <button class="af-btn" onclick="abrirModalImportarFicha()">↑ Importar fichas</button>
@@ -9638,7 +9647,7 @@
 
   <!-- FILTROS -->
   <div style="background:#fff;border-bottom:1px solid #E4E4E4;padding:10px 24px;flex-shrink:0">
-    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end">
+    <div class="af-filter-row" style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end">
       <label class="af-lbl" style="flex:1;min-width:200px;max-width:300px">
         <span>Busca</span>
         <input id="bib-f-q" class="af-input" type="text" placeholder="Protocolo, cliente, CNPJ, motivo…" oninput="afBuscaDigitou()" onkeydown="if(event.key==='Enter')afBuscaAgora()">
@@ -9647,11 +9656,11 @@
         <span>Empresa</span>
         <select id="bib-f-empresa" class="af-select" onchange="afFiltroMudou()"><option value="">Todas</option></select>
       </label>
-      <label class="af-lbl">
+      <label class="af-lbl af-advanced">
         <span>Setor</span>
         <select id="bib-f-setor" class="af-select" onchange="afFiltroMudou()"><option value="">Todos</option></select>
       </label>
-      <label class="af-lbl">
+      <label class="af-lbl af-advanced">
         <span>Tipo</span>
         <select id="bib-f-tipo" class="af-select" onchange="afFiltroMudou()">
           <option value="">Todos</option>
@@ -9659,11 +9668,11 @@
           <option value="Solicitação">Solicitação</option><option value="Elogio">Elogio</option>
         </select>
       </label>
-      <label class="af-lbl">
+      <label class="af-lbl af-advanced">
         <span>Ano</span>
         <select id="bib-f-ano" class="af-select" onchange="afFiltroMudou()"><option value="">Todos</option></select>
       </label>
-      <label class="af-lbl">
+      <label class="af-lbl af-advanced">
         <span>Mês</span>
         <select id="bib-f-mes" class="af-select" onchange="afFiltroMudou()" style="min-width:110px">
           <option value="">Todos</option>
@@ -9673,13 +9682,13 @@
           <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
         </select>
       </label>
-      <label class="af-lbl">
+      <label class="af-lbl af-advanced">
         <span>Origem</span>
         <select id="bib-f-origem" class="af-select" onchange="afFiltroMudou()">
           <option value="">Todas</option><option value="SISTEMA">Sistema</option><option value="IMPORTADA">Histórica</option>
         </select>
       </label>
-      <label class="af-lbl">
+      <label class="af-lbl af-advanced">
         <span>SLA</span>
         <select id="bib-f-sla" class="af-select" onchange="afFiltroMudou()">
           <option value="">Todos</option>
@@ -9694,6 +9703,7 @@
         <span>até</span>
         <input id="bib-f-abertura-fim" class="af-input" type="date" style="min-width:130px" onchange="afFiltroMudou()">
       </label>
+      <button class="af-btn af-filter-toggle" type="button" onclick="toggleFiltrosBib()" aria-expanded="false">＋ Filtros</button>
       <button class="af-limpar" onclick="limparFiltrosBib()" style="margin-bottom:0">× Limpar</button>
     </div>
   </div>
@@ -9748,8 +9758,8 @@
         </div>
         <div style="overflow-x:auto">
           <table class="af-tbl" id="bib-table">
-            <thead><tr><th style="width:28px"><input type="checkbox" id="bib-sel-all" title="Selecionar todas" onchange="afToggleTodas(this.checked)" style="cursor:pointer"></th><th>Protocolo</th><th>Data</th><th>Empresa</th><th>Cliente</th><th>Motivo</th><th>Status</th><th>Origem</th><th>Responsável</th><th>SLA</th><th>Ações</th></tr></thead>
-            <tbody id="bib-tbody"></tbody>
+            <thead><tr><th>Protocolo</th><th>Data</th><th>Empresa</th><th>Cliente</th><th>Assunto</th><th>Situação</th><th>Origem</th><th>Ações</th></tr></thead>
+            <tbody id="bib-tbody"><tr><td colspan="8" style="text-align:center;padding:24px;color:#707070">Carregando…</td></tr></tbody>
           </table>
         </div>
         <div id="bib-loading" style="text-align:center;padding:34px;color:#707070;display:none;font-size:13px">Carregando fichas…</div>
@@ -9984,7 +9994,7 @@
           </tr>
         </thead>
         <tbody id="aud-tbody">
-          <tr><td colspan="7" style="text-align:center;padding:24px;color:#707070">Carregando…</td></tr>
+          <tr><td colspan="8" style="text-align:center;padding:24px;color:#707070">Carregando…</td></tr>
         </tbody>
       </table>
     </div>
@@ -10114,6 +10124,14 @@ let _afToastT = null;
 let _afExplorarAberto = false;
 
 const _afEl = id => document.getElementById(id);
+function toggleFiltrosBib() {
+  const row = document.querySelector('#page-biblioteca-fichas .af-filter-row');
+  const btn = document.querySelector('#page-biblioteca-fichas .af-filter-toggle');
+  if (!row) return;
+  const open = row.classList.toggle('advanced-open');
+  if (btn) { btn.setAttribute('aria-expanded', String(open)); btn.textContent = open ? '− Filtros' : '＋ Filtros'; }
+}
+
 function toggleArquivoExplorar() {
   _afExplorarAberto = !_afExplorarAberto;
   const root = document.querySelector('#page-biblioteca-fichas .af-root');
@@ -10311,13 +10329,13 @@ function afRenderKpis(s) {
     const clk = estatico ? '' : ` onclick="bibToggleFiltroExtra('${extra}')"`;
     return `<button class="${cls}"${clk}><span class="af-kpi-l">${l}</span><span class="af-kpi-v" style="color:${cor}">${s ? _afNum(v) : '—'}</span><span class="af-kpi-d">${escHtml(s ? d : '')}</span></button>`;
   };
+  const sistema = s?.sistema ?? s?.criadasSistema ?? 0;
+  const historicas = s?.historicas ?? s?.historicasImportadas ?? 0;
   wrap.innerHTML = [
-    K('TOTAL ATIVAS', s?.totalAtivas ?? s?.totalFichas, s ? `${_afNum(s.historicas)} históricas · ${_afNum(s.sistema)} no sistema` : '', '#1F1F1F', '', false, true),
-    K('ABERTAS', s?.abertas, 'aguardando início do tratamento', '#24508F', '', false, true),
-    K('EM ANDAMENTO', s?.emAndamento, 'em análise, tratativa ou aprovação', '#7A4C00', '', false, true),
-    K('CONCLUÍDAS', s?.concluidas, `${_afPct(s?.concluidas, total)} do total ativo`, '#1E6B3A', '', false, true),
-    K('SLA VENCIDO', s?.slaVencido, 'fichas ativas com prazo excedido', '#C70602', 'sla_vencido', true),
-    K('REINCIDENTES', s?.reincidentes, `${_afNum(s?.reincidentesFichas)} fichas · clientes com 2+ reclamações em 12 meses`, '#C70602', 'reincidente', true),
+    K('TOTAL DE FICHAS', s?.totalFichas ?? s?.totalAtivas ?? 0, s ? 'registros no recorte atual' : '', '#1F1F1F', '', false, true),
+    K('CRIADAS NO SISTEMA', sistema, 'manifestações registradas na plataforma', '#24508F', '', false, true),
+    K('HISTÓRICAS IMPORTADAS', historicas, 'documentos anteriores à ferramenta', '#545252', '', false, true),
+    K('REINCIDENTES', s?.reincidentes ?? 0, s ? `${_afNum(s?.reincidentesFichas ?? 0)} fichas relacionadas` : '', '#C70602', 'reincidente', true),
   ].join('');
 
   // Atualizar contadores das abas
@@ -10522,27 +10540,17 @@ function afRenderTabela(fichas) {
   _afAtualizarBarraSel();
   _afEl('bib-tbody').innerHTML = fichas.map((f, i) => {
     const re = f.REINCIDENTE ? `<span style="font-size:10.5px;font-weight:700;color:#A80502;display:block">⚠ reincidente</span>` : '';
-    const arqPill = f.ARQUIVADO === 'SIM' ? `<span class="af-pill-arq">📦 Arquivada</span>` : '';
-    const statusHtml = f.ARQUIVADO === 'SIM'
-      ? `<span class="af-pill af-st-arquivada">Arquivada</span>`
-      : `${_bibStatusBadge(f.STATUS)}${arqPill}`;
+    const statusHtml = f.ARQUIVADO === 'SIM' ? `<span class="af-pill af-st-arquivada">Arquivada</span>` : _bibStatusBadge(f.STATUS);
+    const assunto = String(f.MOTIVO || f.DESCRICAO || f.ASSUNTO || 'Não informado').trim();
     return `<tr class="af-row${ativa && ativa === f.PROTOCOLO ? ' ativa' : ''}" onclick="afAbrirFicha(${i})">
-      <td onclick="event.stopPropagation()" style="width:28px;padding:9px 6px 9px 12px"><input type="checkbox" class="af-chk" style="cursor:pointer" onchange="afToggleSel(${i},this.checked)"></td>
       <td style="font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums">${escHtml(f.PROTOCOLO || f.ID_MANIFESTACAO || '—')}</td>
       <td style="white-space:nowrap;color:#545252">${escHtml(afFmtData(f))}</td>
-      <td>${escHtml(f.EMPRESA || '—')}</td>
-      <td style="max-width:200px"><div style="display:flex;flex-direction:column;gap:2px"><span>${escHtml(f.NOME_CLIENTE || '—')}</span>${re}</div></td>
-      <td style="max-width:160px">${escHtml((f.MOTIVO || '—').slice(0,60))}</td>
+      <td>${escHtml(f.EMPRESA || 'Não informado')}</td>
+      <td style="max-width:170px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(f.NOME_CLIENTE || 'Não informado')}</div>${re}</td>
+      <td style="max-width:230px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escHtml(assunto)}">${escHtml(assunto.slice(0,90))}</div></td>
       <td>${statusHtml}</td>
       <td>${_bibOrigemBadge(f.ORIGEM)}</td>
-      <td style="max-width:140px">${escHtml(f.RESPONSAVEL || f.COLABORADOR_RECEBIMENTO || '—')}</td>
-      <td style="white-space:nowrap">${_afSlaHtml(f)}</td>
-      <td onclick="event.stopPropagation()" style="white-space:nowrap">
-        <button class="btn btn-secondary" style="padding:3px 8px;font-size:11px;margin-right:3px" onclick="afEditarFicha(${i})">✎</button>
-        ${f.ARQUIVADO === 'SIM'
-          ? `<button class="af-btn-sm" title="Desarquivar" onclick="afDesarquivarFicha(${i})">↩ Restaurar</button>`
-          : `<button class="af-btn-sm" title="Arquivar" onclick="afArquivarFicha(${i})">📦</button>`}
-      </td>
+      <td onclick="event.stopPropagation()"><button class="af-btn-sm" onclick="afAbrirFicha(${i})">Abrir ficha</button></td>
     </tr>`;
   }).join('');
 }
@@ -27857,28 +27865,20 @@ function updateTopbarUser(user) {
       const uid = esc5(u.ID_USUARIO||u.id||u.USUARIO||u.usuario||'');
       const unome = esc5(u.NOME||u.nome||u.USUARIO||u.usuario||'');
       window._usuMap[uid] = u;
-      return `<tr style="border-bottom:1px solid #F4F4F4;transition:background .15s" onmouseenter="this.style.background='#FAFAFA'" onmouseleave="this.style.background=''">
+      const rawEmpresas = String(u.EMPRESA||u.empresa||'').split(',').map(v=>v.trim()).filter(Boolean);
+      const empresaCount = rawEmpresas.length || (u.EMPRESA||u.empresa ? 1 : 0);
+      const perfis = String(u.PERFIL||u.perfil||'—').split(',').map(v=>v.trim()).filter(Boolean);
+      const perfilHtml = esc5(perfis[0] || '—') + (perfis.length > 1 ? ` <span style="font-size:10px;color:#707070">+${perfis.length-1}</span>` : '');
+      const ultimo = u.ULTIMO_ACESSO||u.ultimoAcesso;
+      return `<tr class="usr-user-row" onclick="usuAbrir('${uid}')">
         <td style="padding:12px 16px;max-width:260px">
-          <button type="button" onclick="usuAbrir('${uid}')" title="Abrir ficha administrativa" style="display:block;border:0;background:none;padding:0;text-align:left;max-width:100%;font:700 13px Montserrat,inherit;color:#1F1F1F;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc5(u.NOME||u.nome||u.USUARIO||u.usuario)}</button>
-          <div style="font-size:11.5px;color:#707070">${esc5(u.EMAIL||u.email||u.USUARIO||u.usuario)}</div>
+          <button type="button" onclick="event.stopPropagation();usuAbrir('${uid}')" title="Abrir ficha administrativa" class="usr-user-name">${esc5(u.NOME||u.nome||u.USUARIO||u.usuario)}</button>
+          <div class="usr-user-email">${esc5(u.EMAIL||u.email||u.USUARIO||u.usuario)}</div>
         </td>
-        <td style="padding:12px 16px"><span style="font-size:11px;font-weight:700;background:#F4F4F4;border-radius:5px;padding:3px 7px;color:#545252">${esc5(u.PERFIL||u.perfil||'—')}</span></td>
-        <td style="padding:12px 16px;font-size:12.5px;color:#545252" title="${esc5(u.EMPRESA||u.empresa||'')}">${(String(u.EMPRESA||u.empresa||'').split(',').filter(Boolean).length>1)?esc5(String(u.EMPRESA||u.empresa).split(',').filter(Boolean).length+' empresas'):esc5(u.EMPRESA||u.empresa||'—')}</td>
-        <td style="padding:12px 16px;font-size:12.5px;color:#545252">${esc5(u.SETOR||u.setor||'—')}</td>
+        <td style="padding:12px 16px"><span style="font-size:11px;font-weight:700;background:#F4F4F4;border-radius:5px;padding:3px 7px;color:#545252;white-space:nowrap">${perfilHtml}</span></td>
+        <td style="padding:12px 16px" class="usr-company-count">${empresaCount ? empresaCount + (empresaCount === 1 ? ' empresa' : ' empresas') : 'Nenhuma empresa'}</td>
         <td style="padding:12px 16px"><span style="font-size:11px;font-weight:700;border-radius:5px;padding:3px 8px;background:${sc.bg};color:${sc.color}">${st}</span></td>
-        <td style="padding:12px 16px;font-size:12px;color:#707070">${(u.ULTIMO_ACESSO||u.ultimoAcesso) ? _fmtDataHora(u.ULTIMO_ACESSO||u.ultimoAcesso) : '—'}</td>
-        <td style="padding:12px 16px;text-align:right">
-          <div style="display:flex;gap:5px;justify-content:flex-end;flex-wrap:wrap">
-            <button onclick="usuAbrir('${uid}')" style="border:1px solid #D6D6D6;background:#fff;border-radius:7px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:inherit">Editar</button>
-            ${st==='BLOQUEADO'
-              ? `<button onclick="usuStatus('${uid}','desbloquear')" style="border:1px solid #1E6B3A;color:#1E6B3A;background:#fff;border-radius:7px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:inherit">Desbloquear</button>`
-              : `<button onclick="usuStatus('${uid}','bloquear')" style="border:1px solid #C70602;color:#C70602;background:#fff;border-radius:7px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:inherit">Bloquear</button>`}
-            ${st==='INATIVO'
-              ? `<button onclick="usuStatus('${uid}','ativar')" style="border:1px solid #24508F;color:#24508F;background:#fff;border-radius:7px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:inherit">Ativar</button>`
-              : `<button onclick="usuStatus('${uid}','desativar')" style="border:1px solid #707070;color:#707070;background:#fff;border-radius:7px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:inherit">Desativar</button>`}
-            <button onclick="usuExcluir('${uid}','${unome}')" style="border:1px solid #E4E4E4;background:#fff;color:#707070;border-radius:7px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:inherit">Excluir</button>
-          </div>
-        </td>
+        <td style="padding:12px 16px;font-size:12px;color:#707070">${ultimo ? _fmtDataHora(ultimo) : 'Nunca acessou'}</td>
       </tr>`;
     }).join('');
   }
@@ -28069,8 +28069,8 @@ function updateTopbarUser(user) {
     const setoresEl = document.getElementById('usu-setores-checks');
     if(setoresEl) {
       _apiFetch('/api/setores').then(function(d) {
-        const SETORES = (d.setores||d.itens||[]).map(function(s){return s.SETOR||s.NOME||s.nome||'';}).filter(Boolean);
-        const atual = (u&&(u.SETOR||u.setor)||'').split(',').map(function(s){return s.trim();});
+        const SETORES = [...new Set((d.setores||d.itens||[]).map(function(s){return String(s.SETOR||s.NOME||s.nome||'').trim();}).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+        const atual = [...new Set((u&&(u.SETOR||u.setor)||'').split(',').map(function(s){return s.trim();}).filter(Boolean))];
         setoresEl.innerHTML = SETORES.map(function(s) {
           return '<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" value="' + esc5(s) + '" ' + (atual.includes(s)?'checked':'') + '> ' + esc5(s) + '</label>';
         }).join('');
