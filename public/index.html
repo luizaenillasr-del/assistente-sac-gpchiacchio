@@ -6320,14 +6320,14 @@
   <div class="page" id="page-cerebro" style="background:#F4F4F4;overflow-y:auto">
     <div style="padding:20px 24px 56px;display:flex;flex-direction:column;gap:18px">
 
-      <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap">
+      <div class="cb-page-header" style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap">
         <div style="min-width:0">
-          <div style="font-size:12px;color:#707070">Conhecimento / Cérebro</div>
-          <div style="font-size:22px;font-weight:700;letter-spacing:-.01em">CÉREBRO</div>
-          <div style="font-size:13px;color:#666464;margin-top:2px">Base de conhecimento estruturada para análise, encaminhamento e tratamento das manifestações pela IA.</div>
+          <div class="cb-eyebrow">CONHECIMENTO</div>
+          <div class="cb-page-title">Cérebro</div>
+          <div class="cb-page-subtitle">Gestão do conhecimento e inteligência operacional do SAC.</div>
         </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button onclick="history.back()" style="border:1px solid #D6D6D6;background:#fff;color:#1F1F1F;border-radius:8px;padding:9px 14px;cursor:pointer;font-size:13px;font-weight:600">← Voltar</button>
+        <div class="cb-page-actions" style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="cb-btn" onclick="cdLoadCerebroHome()">↻ Atualizar</button>
           <button id="cb-btn-nova-regra" onclick="cbNovaRegra()" style="border:0;background:#C70602;color:#fff;border-radius:8px;padding:9px 14px;cursor:pointer;font-size:13px;font-weight:600">+ Nova regra</button>
         </div>
       </div>
@@ -6337,12 +6337,17 @@
         <button class="cb-nav-btn cb-on" data-tab="inicio" id="cd-tab-btn-inicio" onclick="cdTab('inicio')">Início</button>
         <button class="cb-nav-btn" data-tab="setores" id="cd-tab-btn-setores" onclick="cdTab('setores')">Regras dos setores</button>
         <button class="cb-nav-btn" data-tab="matriz-cb" id="cd-tab-btn-matriz" onclick="cdTab('matriz-cb')">Matriz de tratamento</button>
-        <button class="cb-nav-btn" data-tab="causas-cd" id="cd-tab-btn-causas-cd" onclick="cdTab('causas-cd')">Causas e subcausas</button>
         <button class="cb-nav-btn" data-tab="aprovacao-cb" id="cd-tab-btn-aprovacao" onclick="cdTab('aprovacao-cb')">Aprovação do conhecimento</button>
-        <button class="cb-nav-btn" data-tab="versoes-cb" id="cd-tab-btn-versoes" onclick="cdTab('versoes-cb')">Histórico de versões</button>
-        <button class="cb-nav-btn" data-tab="auditoria" id="cd-tab-btn-auditoria" onclick="cdTab('auditoria')">Auditoria</button>
         <button class="cb-nav-btn" data-tab="calc" id="cd-tab-btn-calc" onclick="cbIrCalculadora()">Calculadora de atraso</button>
-        <button class="cb-nav-btn" data-tab="ia" id="cd-tab-btn-ia" onclick="cdTab('ia')">Análise IA</button>
+        <button class="cb-nav-btn" data-tab="auditoria" id="cd-tab-btn-auditoria" onclick="cdTab('auditoria')">Auditoria</button>
+        <div class="cb-more-wrap">
+          <button class="cb-nav-btn cb-more-toggle" type="button" onclick="cbAlternarMais()">Mais ▾</button>
+          <div id="cb-more-menu" class="cb-more-menu" hidden>
+            <button type="button" onclick="cdTab('causas-cd');cbAlternarMais(false)">Causas e subcausas</button>
+            <button type="button" onclick="cdTab('versoes-cb');cbAlternarMais(false)">Histórico de versões</button>
+            <button type="button" onclick="cdTab('ia');cbAlternarMais(false)">Análise IA</button>
+          </div>
+        </div>
       </div>
 
       <!-- Início -->
@@ -6353,8 +6358,8 @@
           <div class="cb-kpi"><span>AGUARDANDO APROVAÇÃO</span><b id="cb-kpi-pendentes">—</b><small>Em revisão ou pendentes</small></div>
           <div class="cb-kpi"><span>NECESSITANDO REVISÃO</span><b id="cb-kpi-revisao">—</b><small id="cb-ultima-atualizacao">Última atualização: —</small></div>
         </div>
-        <details class="cb-sources" open>
-          <summary>O que a IA considera ao analisar uma manifestação</summary>
+        <details class="cb-sources">
+          <summary>Fontes de conhecimento utilizadas pela IA</summary>
           <div style="display:flex;flex-wrap:wrap;gap:6px">
               <span class="cb-chip">Histórico de manifestações similares</span>
               <span class="cb-chip">Regras do setor</span>
@@ -6366,7 +6371,7 @@
               <span class="cb-chip">SLAs</span>
               <span class="cb-chip">Causas e subcausas</span>
           </div>
-          <div style="font-size:12.5px;color:#666464;line-height:1.5">Somente conteúdos <strong style="color:#1F1F1F">ativos e aprovados</strong> e marcados como disponíveis para a IA entram na análise. O Cérebro é a fonte estruturada e oficial da plataforma.</div>
+          <div style="font-size:12.5px;color:#666464;line-height:1.5">Somente conteúdos <strong style="color:#1F1F1F">ativos, aprovados e vigentes</strong> entram nas recomendações operacionais. Conteúdos pendentes ou desatualizados permanecem disponíveis para revisão, sem fundamentar decisões definitivas.</div>
         </details>
         <div class="cb-hgrid" id="cb-home-cards">
           <div style="text-align:center;padding:32px;color:#707070;grid-column:1/-1"><div class="spinner" style="margin:0 auto 8px"></div>Carregando...</div>
@@ -21711,6 +21716,12 @@ async function gerarSugestaoMelhoriaAuto(idManifestacao) {
 // ===== CENTRAL DE DADOS: TABS =====
 let _cdData = { man:[], rnc:[], hist:[], set:[], prod:[], usr:[], rep:[], caus:[], aud:[] };
 
+function cbAlternarMais(force) {
+  const menu = document.getElementById('cb-more-menu');
+  if (!menu) return;
+  menu.hidden = typeof force === 'boolean' ? !force : !menu.hidden;
+}
+
 function cdTab(name, btn) {
   document.querySelectorAll('.cd-panel').forEach(p=>p.style.display='none');
   // aba do menu destacada (a página do setor pertence a "Regras dos setores"; visão geral pertence a "Início")
@@ -21879,12 +21890,13 @@ async function cdLoadCerebroHome() {
   try {
     const scan = await cbScan();
     const total = scan.length;
-    const ativos = scan.filter(x=>cbStatus(x.STATUS).k==='ativa').length;
+    const ativos = scan.filter(x=>!cbNorm(x.ATIVO||'SIM').startsWith('n') && !['obsoleta','expirada','inativa','inativo'].includes(cbNorm(x.STATUS))).length;
+    const aprovados = scan.filter(x=>['validada','aprovada','aprovado'].includes(cbNorm(x.STATUS)) || cbNorm(x.STATUS)==='ativo').length;
     const revisao = scan.filter(x=>cbStatus(x.STATUS).k==='revisao').length;
     const pend = scan.filter(x=>['rascunho','revisao'].includes(cbStatus(x.STATUS).k)).length;
     const pct = total ? Math.round(ativos / total * 100) : 0;
     if (activeEl) activeEl.textContent = ativos;
-    if (approvedEl) approvedEl.textContent = ativos;
+    if (approvedEl) approvedEl.textContent = aprovados;
     if (pendingEl) pendingEl.textContent = pend;
     if (reviewEl) reviewEl.textContent = revisao;
     if (pctEl) pctEl.textContent = total ? pct + '%' : '—';
@@ -30686,6 +30698,31 @@ if (typeof pageLoaders !== 'undefined') {
 #page-cerebro .cb-sources>div{padding:0 0 14px}
 @media(max-width:1000px){#page-cerebro .cb-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}#page-relatorio-satisfacao .rs-filtros,#page-relatorio-satisfacao .rs-body{padding-left:20px;padding-right:20px}}
 @media(max-width:600px){#page-cerebro>div:first-child{padding:16px 14px 32px!important}#page-cerebro .cb-kpis{gap:8px}#page-cerebro .cb-kpi{padding:12px;min-height:82px}#page-cerebro .cb-kpi b{font-size:23px}#page-cerebro .cb-nav-btn{padding:10px 11px!important;font-size:12px!important}#page-relatorio-satisfacao .rs-top{padding:12px 14px!important}#page-relatorio-satisfacao .rs-filtros,#page-relatorio-satisfacao .rs-body{padding-left:14px;padding-right:14px}}
+/* Cérebro: fidelidade ao HTML aprovado, com abas principais e recursos adicionais em Mais. */
+#page-cerebro{display:flex!important;flex-direction:column!important;overflow:hidden!important;background:#f7f7f7!important}
+#page-cerebro>div:first-child{padding:0 0 36px!important;gap:0!important;min-height:0;overflow-y:auto!important}
+#page-cerebro .cb-page-header{padding:14px 28px!important;min-height:68px;background:#fff;border-bottom:1px solid #e5e5e5;align-items:center!important}
+#page-cerebro .cb-eyebrow{font-size:9.5px;font-weight:700;color:#bdbdbd;letter-spacing:.12em;text-transform:uppercase;margin-bottom:3px}
+#page-cerebro .cb-page-title{font-size:18px;font-weight:800;color:#242424;line-height:1}
+#page-cerebro .cb-page-subtitle{font-size:11.5px;color:#929090;margin-top:3px}
+#page-cerebro .cb-page-actions{gap:7px!important}
+#page-cerebro .cb-page-actions .cb-btn{height:36px;padding:8px 13px;border-radius:7px;font-size:12.5px}
+#page-cerebro #cerebro-tabbar{padding:0 28px!important;border:0;border-bottom:1px solid #e5e5e5;border-radius:0;background:#fff;overflow:visible!important;flex-wrap:nowrap!important;position:relative}
+#page-cerebro .cb-nav-btn{height:44px;padding:0 16px!important;border-bottom:2px solid transparent!important;font-size:12.5px!important}
+#page-cerebro .cb-nav-btn.cb-on{color:#c70602!important;border-bottom-color:#c70602!important}
+#page-cerebro .cb-more-wrap{position:relative;flex:none}
+#page-cerebro .cb-more-menu{position:absolute;right:0;top:42px;z-index:40;min-width:190px;padding:6px;background:#fff;border:1px solid #e5e5e5;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.12)}
+#page-cerebro .cb-more-menu[hidden]{display:none}
+#page-cerebro .cb-more-menu button{display:block;width:100%;padding:9px 11px;border:0;background:#fff;text-align:left;border-radius:5px;color:#3a3939;font:12px inherit;cursor:pointer}
+#page-cerebro .cb-more-menu button:hover{background:#fafafa;color:#c70602}
+#page-cerebro #cdp-inicio,#page-cerebro #cdp-setores,#page-cerebro #cdp-matriz-cb,#page-cerebro #cdp-aprovacao-cb,#page-cerebro #cdp-causas-cd,#page-cerebro #cdp-auditoria,#page-cerebro #cdp-ia{padding:24px 28px 0!important}
+#page-cerebro .cb-kpis{grid-template-columns:repeat(4,minmax(0,1fr));gap:12px!important}
+#page-cerebro .cb-kpi{border-top:1px solid #e4e4e4!important;min-height:104px!important;padding:18px 20px!important}
+#page-cerebro .cb-hgrid{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:12px!important}
+#page-cerebro .cb-hcard{min-height:112px!important;padding:16px 18px!important}
+#page-cerebro .cb-sources{margin-bottom:20px!important;padding:0 18px!important}
+@media(max-width:1000px){#page-cerebro .cb-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}#page-cerebro .cb-hgrid{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+@media(max-width:640px){#page-cerebro .cb-page-header{padding:12px 14px!important;align-items:flex-start!important;flex-wrap:wrap!important}#page-cerebro .cb-page-actions{width:100%;overflow-x:auto;flex-wrap:nowrap!important}#page-cerebro #cerebro-tabbar{padding:0 8px!important;overflow-x:auto!important}#page-cerebro #cdp-inicio,#page-cerebro #cdp-setores,#page-cerebro #cdp-matriz-cb,#page-cerebro #cdp-aprovacao-cb,#page-cerebro #cdp-causas-cd,#page-cerebro #cdp-auditoria,#page-cerebro #cdp-ia{padding:16px 14px 0!important}#page-cerebro .cb-kpis{grid-template-columns:1fr 1fr!important;gap:8px!important}#page-cerebro .cb-hgrid{grid-template-columns:1fr!important}}
 /* Layout fiel ao HTML aprovado: cabeçalho compacto, barra de seleção e área rolável. */
 #page-relatorio-satisfacao{display:flex!important;flex-direction:column!important;overflow:hidden!important}
 #page-relatorio-satisfacao .rs-top{height:68px!important;min-height:68px!important;padding:14px 28px!important;box-shadow:none!important;align-items:flex-start!important}
