@@ -6603,7 +6603,8 @@
           <div class="section-sub">Rode o Cérebro IA manualmente em qualquer manifestação.</div>
           <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
             <input id="cerebro-id-input" class="form-input" style="width:220px" placeholder="ID da manifestação (ex: MAN-001)">
-            <button class="btn btn-primary" onclick="rodarCerebro()">▶ Rodar Análise</button>
+            <button class="btn btn-primary" onclick="rodarCerebro()">▶ Rodar Análise IA</button>
+            <button class="btn btn-secondary" onclick="consultarCirca()">◎ Consultar CIRCA</button>
           </div>
           <div id="cerebro-loading" style="display:none;margin-top:14px;color:var(--gray-400);font-size:13px">
             <div style="display:flex;align-items:center;gap:8px">
@@ -6612,6 +6613,7 @@
             </div>
           </div>
           <div id="cerebro-resultado" style="display:none;margin-top:16px"></div>
+          <div id="cerebro-circa-resultado" style="display:none;margin-top:16px"></div>
         </div>
         <div class="section-card">
           <div class="section-title">Últimas Análises Registradas</div>
@@ -23114,6 +23116,29 @@ async function rodarCerebro() {
   }
 }
 
+async function consultarCirca() {
+  const id = (document.getElementById('cerebro-id-input')?.value || '').trim();
+  const el = document.getElementById('cerebro-circa-resultado');
+  if (!id || !el) { alert('Informe o ID da manifestação.'); return; }
+  el.style.display = 'block';
+  el.innerHTML = '<div style="padding:12px;color:var(--gray-400)">Consultando o fluxo determinístico CIRCA…</div>';
+  try {
+    const res = await _apiFetch('/api/manifestacoes/' + encodeURIComponent(id) + '/circa', 30000);
+    if (!res.sucesso) throw new Error(res.erro || 'Não foi possível consultar o CIRCA.');
+    const c = res.circa || {}, etapas = c.etapas || {};
+    const nomes = { captura:'Captura', investigacao:'Investigação', resolucao:'Resolução', conhecimento:'Conhecimento', aprimoramento:'Aprimoramento' };
+    const etapaHtml = Object.keys(nomes).map(k => {
+      const e = etapas[k] || {};
+      const detalhe = e.faltantes?.length ? `Campos ausentes: ${e.faltantes.join(', ')}` : (e.status || '—');
+      return `<div style="border:1px solid var(--gray-200);border-radius:8px;padding:10px"><div style="font-size:10px;font-weight:700;color:var(--gray-400);text-transform:uppercase">${nomes[k]}</div><div style="font-size:13px;font-weight:700;margin-top:3px">${esc(e.status || '—')}</div><div style="font-size:11px;color:var(--gray-500);margin-top:3px">${esc(detalhe)}</div></div>`;
+    }).join('');
+    const recs = (c.recomendacoes || []).map(r => `<li><strong>${esc(r.tipo || 'Recomendação')}</strong> · ${esc(r.origem || 'regra persistida')}: ${esc(r.justificativa || '')}</li>`).join('');
+    el.innerHTML = `<div style="border:1px solid var(--gray-200);border-radius:12px;padding:16px"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:12px"><strong>CIRCA · ${esc(id)}</strong><span style="font-size:11px;color:var(--green)">Determinístico · v${esc(c.versao || '1.0')}</span></div><div class="circa-stages" style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px">${etapaHtml}</div><div style="margin-top:12px;font-size:12px;color:var(--gray-600)"><strong>Governança:</strong> aprovação humana obrigatória; recomendações não executam decisões.</div>${recs ? `<ul style="margin:12px 0 0 18px;font-size:12px;line-height:1.6">${recs}</ul>` : '<div style="margin-top:12px;font-size:12px;color:var(--gray-400)">Nenhuma recomendação determinística disponível.</div>'}</div>`;
+  } catch (e) {
+    el.innerHTML = `<div style="background:var(--red-light);color:var(--red);padding:12px;border-radius:8px">Erro ao consultar CIRCA: ${esc(e.message)}</div>`;
+  }
+}
+
 async function loadUltimasAnalises() {
   const el = document.getElementById('cerebro-ultimas');
   if (!el) return;
@@ -30886,6 +30911,9 @@ if (typeof pageLoaders !== 'undefined') {
 #page-cerebro .cb-kpi:nth-child(4) b{color:#c70602}
 @media(max-width:1000px){#page-cerebro .cb-home-section .cb-hgrid{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
 @media(max-width:640px){#page-cerebro .cb-home-section .cb-hgrid{grid-template-columns:1fr!important}#page-cerebro .cb-home-section-head{align-items:flex-start;flex-direction:column;gap:2px}}
+#page-cerebro .circa-stages{grid-template-columns:repeat(5,minmax(0,1fr))}
+@media(max-width:900px){#page-cerebro .circa-stages{grid-template-columns:repeat(3,minmax(0,1fr))!important}}
+@media(max-width:600px){#page-cerebro .circa-stages{grid-template-columns:1fr 1fr!important}}
 /* Layout fiel ao HTML aprovado: cabeçalho compacto, barra de seleção e área rolável. */
 #page-relatorio-satisfacao{display:flex!important;flex-direction:column!important;overflow:hidden!important}
 #page-relatorio-satisfacao .rs-top{height:68px!important;min-height:68px!important;padding:14px 28px!important;box-shadow:none!important;align-items:flex-start!important}
