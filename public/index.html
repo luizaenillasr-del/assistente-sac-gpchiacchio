@@ -3053,6 +3053,7 @@
         {l:'Encerramento e aprendizado',d:'Critérios de encerramento e conhecimento'}
       ];
       window.nmEtapa = window.nmEtapa || 1;
+      window._nmEtapasConcluidas = window._nmEtapasConcluidas || new Set([1]);
 
       function renderStepper(){
         var row = document.getElementById('nm-stepper-row');
@@ -11314,7 +11315,7 @@ function onCnpjChange() {
 function onDescricaoChange() {
   const desc = document.getElementById('nm-descricao').value;
   const el = document.getElementById('nm-chars');
-  if (el) el.textContent = `${desc.length} caracteres${desc.length < 30 ? ' — digite ao menos 30 para análise automática' : ' — analisando...'}`;
+  if (el) el.textContent = `${desc.length} caracteres${desc.length < 30 ? ' — digite ao menos 30 para análise automática' : ' — pronto para análise automática'}`;
   agendarAnalise();
   atualizarResumoFicha();
 }
@@ -11372,7 +11373,7 @@ function renderizarCircaDeterministico(resultado) {
   const stamp=document.getElementById('ia-timestamp'); if(stamp) stamp.textContent='Consulta determinística concluída · regras + histórico + matriz';
 }
 
-async function nmCarregarAnaliseDeterministica() {
+window.nmCarregarAnaliseDeterministica = async function nmCarregarAnaliseDeterministica() {
   if(!_nmCardId) return null;
   try { const r=await _apiFetch(`/api/manifestacoes/${encodeURIComponent(_nmCardId)}/circa`,15000); if(r?.sucesso){renderizarCircaDeterministico(r.circa);return r.circa;} } catch(e){ console.warn('CIRCA determinístico indisponível:',e.message); }
   return null;
@@ -11391,6 +11392,7 @@ function nmRegistrarLembrete(){return nmCriarAcionamento('NOTIFICACAO');}
 async function executarAnaliseIA() {
   const desc = (document.getElementById('nm-descricao')?.value || '').trim();
   if (desc.length < 30) return;
+  const charsEl=document.getElementById('nm-chars'); if(charsEl) charsEl.textContent=desc.length+' caracteres — análise em processamento...';
 
   await nmCarregarAnaliseDeterministica();
   const tipo = document.getElementById('nm-tipo')?.value || 'Reclamação';
@@ -11429,6 +11431,7 @@ async function executarAnaliseIA() {
   } finally {
     document.getElementById('ia-loading').style.display = 'none';
     if (botaoIA) { botaoIA.disabled = false; botaoIA.textContent = 'Analisar novamente'; botaoIA.style.opacity = '1'; }
+    const charsFinal=document.getElementById('nm-chars'); if(charsFinal) charsFinal.textContent=desc.length+' caracteres — análise concluída ou indisponível; triagem determinística disponível';
   }
 }
 
@@ -13515,7 +13518,7 @@ function nmCardPayload() {
   const val=id=>document.getElementById(id)?.value||'';
   let currentUser={}; try { currentUser=JSON.parse(sessionStorage.getItem('sac-user')||'{}'); } catch(e) {}
   return {
-    empresaReclamada:val('nm-empresa-reclamada'), empresaReclamante:val('nm-empresa')||val('nm-nome')||val('nm-cnpj'), contato:val('nm-nome'), cnpj:val('nm-cnpj'), telefone:val('nm-tel'), email:val('nm-email'), produto:val('nm-produto'), lote:val('nm-lote'), nfe:val('nm-nfe'), descricao:val('nm-descricao')||'Rascunho em preenchimento.', tipo:val('nm-tipo')||'Reclamação', canal:val('nm-origem')||'MANUAL', origem:val('nm-origem')||'MANUAL', prioridade:val('nm-prioridade')||'NORMAL', usuario:currentUser.usuario||currentUser.USUARIO||'analista', etapaAtual:String(window.nmEtapa||1), mensagemEtapa:'Rascunho em preenchimento.', rascunho:true,
+    empresaReclamada:val('nm-empresa-reclamada'), empresaReclamante:val('nm-empresa')||val('nm-nome')||val('nm-cnpj'), contato:val('nm-nome'), cnpj:val('nm-cnpj'), telefone:val('nm-tel'), email:val('nm-email'), produto:val('nm-produto'), lote:val('nm-lote'), nfe:val('nm-nfe'), descricao:val('nm-descricao')||'Rascunho em preenchimento.', tipo:val('nm-tipo')||'Reclamação', canal:val('nm-origem')||'MANUAL', origem:val('nm-origem')||'MANUAL', prioridade:val('nm-prioridade')||'NORMAL', usuario:currentUser.usuario||currentUser.USUARIO||'analista', etapaAtual:String(window.nmEtapa||1), ETAPA_ATUAL:String(window.nmEtapa||1), STATUS:{1:'RASCUNHO',2:'EM_TRIAGEM',3:'EM_TRATATIVA',4:'EM_INVESTIGACAO',5:'AGUARDANDO_VALIDACAO_SAC',6:'AGUARDANDO_DEVOLUTIVA',7:'AGUARDANDO_ENCERRAMENTO'}[Number(window.nmEtapa)||1], STATUS_FICHA:{1:'RASCUNHO',2:'EM_TRIAGEM',3:'EM_TRATATIVA',4:'EM_INVESTIGACAO',5:'AGUARDANDO_VALIDACAO_SAC',6:'AGUARDANDO_DEVOLUTIVA',7:'AGUARDANDO_ENCERRAMENTO'}[Number(window.nmEtapa)||1], mensagemEtapa:'Rascunho em preenchimento.', MENSAGEM_ETAPA:'Rascunho em preenchimento.', rascunho:true,
     CAMINHO_TRATATIVA:val('nm-caminho-tratativa'), TRATATIVA_SAC_INTERNA:val('nm-tratativa-sac'), INVESTIGACAO_O_QUE:val('nm-investigacao-verificada'), INVESTIGACAO_EVIDENCIAS:val('nm-investigacao-resultado'), CAUSA_RAIZ_CONFIRMADA:val('nm-causa-raiz'), ACOES_CORRETIVAS:val('nm-acao-executada'), PROCEDENTE:val('nm-procedente'), PROCEDENTE_JUSTIFICATIVA:val('nm-procedente-justif'), DEVOLUTIVA_FINAL:val('nm-devolutiva'), OBSERVACOES_FINAIS:val('nm-observacoes-finais')
   };
 }
@@ -30397,6 +30400,7 @@ if (typeof pageLoaders !== 'undefined') {
   var PANEL_MAP = {1:[1],2:[2],3:[3],4:[4],5:[5],6:[6],7:[7]};
   function page(){ return document.getElementById('page-nova-manifestacao'); }
   function etapaAtual(){ return Math.max(1, Math.min(TOTAL, Number(window.nmEtapa) || 1)); }
+  function etapasAutorizadas(n){ var concluidas=window._nmEtapasConcluidas||new Set([1]); for(var i=1;i<n;i++){if(!concluidas.has(i)) return false;} return true; }
   function render(){
     var n = etapaAtual();
     window.nmEtapa = n;
@@ -30433,33 +30437,44 @@ if (typeof pageLoaders !== 'undefined') {
     if (confirmar) confirmar.style.display = n === TOTAL ? 'block' : 'none';
     var body = document.getElementById('nm-steps-body');
     if (body) body.scrollTop = 0;
+    if (n === 2 && window._nmCardId && typeof window.nmCarregarAnaliseDeterministica === 'function') window.nmCarregarAnaliseDeterministica();
     if (n === TOTAL && typeof nmMontarResumo === 'function') nmMontarResumo();
   }
   function validar(){
     var ativo = document.querySelector('#page-nova-manifestacao .nm-step-panel.nm-active');
     if (!ativo) return true;
     var obrigatorio = ativo.querySelector('input[required],select[required],textarea[required]');
-    if (obrigatorio && !obrigatorio.checkValidity()) { obrigatorio.reportValidity(); return false; }
+    if (obrigatorio && !obrigatorio.checkValidity()) { obrigatorio.reportValidity(); obrigatorio.focus(); return false; }
     var n=etapaAtual(), val=id=>String(document.getElementById(id)?.value||'').trim();
-    var missing='';
-    if(n===1 && (!val('nm-empresa')&&!val('nm-nome')&&!val('nm-cnpj') || val('nm-descricao').length<10 || !val('nm-empresa-reclamada'))) missing='Informe empresa, cliente e relato antes de continuar.';
-    if(n===3 && !val('nm-caminho-tratativa')) missing='Selecione como o SAC conduzirá a tratativa.';
-    if(n===4 && !val('nm-investigacao-resultado')&&!val('nm-investigacao-notas')) missing='Registre evidências ou resultado da investigação.';
-    if(n===5 && !val('nm-procedente')) missing='Registre a procedência antes de validar.';
-    if(n===6 && !val('nm-devolutiva')) missing='Registre a devolutiva antes de prosseguir.';
-    if(missing){alert(missing);return false;} return true;
+    function fail(id,msg){ alert(msg); var el=document.getElementById(id); if(el){el.focus();el.scrollIntoView({behavior:'smooth',block:'center'});} return false; }
+    if(n===1){
+      if(!val('nm-empresa-reclamada')) return fail('nm-empresa-reclamada','Informe a empresa responsável pela manifestação.');
+      if(!val('nm-empresa')&&!val('nm-nome')&&!val('nm-cnpj')) return fail('nm-empresa','Informe o cliente da manifestação.');
+      if(!val('nm-nome')&&!val('nm-tel')&&!val('nm-email')) return fail('nm-nome','Informe ao menos um contato do cliente.');
+      if(!val('nm-tipo')) return fail('nm-tipo','Informe o tipo da manifestação.');
+      if(!val('nm-origem')) return fail('nm-origem','Informe o canal de origem.');
+      if(!val('nm-data')) return fail('nm-data','Informe a data do registro.');
+      if(val('nm-descricao').length<10) return fail('nm-descricao','Preencha a descrição da manifestação.');
+    }
+    if(n===3 && !val('nm-caminho-tratativa')) return fail('nm-caminho-sac','Selecione como o SAC conduzirá a tratativa.');
+    if(n===4 && !val('nm-investigacao-resultado')&&!val('nm-investigacao-notas')) return fail('nm-investigacao-resultado','Registre evidências ou resultado da investigação.');
+    if(n===5 && !val('nm-procedente')) return fail('nm-procedente','Registre a procedência antes de validar.');
+    if(n===6 && !val('nm-devolutiva')) return fail('nm-devolutiva','Registre a devolutiva antes de prosseguir.');
+    return true;
   }
   window.nmIrParaEtapa = function (n) {
     n = Number(n);
     if (!Number.isInteger(n) || n < 1 || n > TOTAL) return;
-    if(n>etapaAtual() && !validar()) return;
+    if(n>etapaAtual() && (!etapasAutorizadas(n) || !validar())) { if(!etapasAutorizadas(n)) alert('Esta etapa depende da conclusão das etapas anteriores.'); return; }
+    window._nmEtapasConcluidas = window._nmEtapasConcluidas || new Set([1]);
+    if(n>etapaAtual()) window._nmEtapasConcluidas.add(etapaAtual());
     window.nmEtapa = n;
     render();
   };
   window.nmProximaEtapa = async function () {
     if (!validar()) return;
     if (etapaAtual() < TOTAL) {
-      if (etapaAtual() <= 3 && typeof window.salvarRascunho === 'function') {
+      if (typeof window.salvarRascunho === 'function') {
         const ok = await window.salvarRascunho({silent:true});
         if (!ok) return;
       }
