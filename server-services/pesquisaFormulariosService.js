@@ -345,10 +345,11 @@ module.exports = function createSurveyService(s) {
     if (!canAccess(user, emp))
       fail(403, "Sem acesso à empresa desta pesquisa.");
   }
-  const read = async (name) => {
-    s.invalidate(name);
-    return s.read(name);
-  };
+  // Leituras usam o cache compartilhado do backend. Invalidar antes de cada
+  // GET transformava uma abertura do editor em várias leituras consecutivas do
+  // Sheets e fazia a página atingir o limite de quota (HTTP 429). A invalidação
+  // continua ocorrendo depois das escritas, em `write` e nos fluxos de update.
+  const read = async (name) => s.read(name);
   const write = async (name, row) => {
     await s.ensure(name, Object.keys(row));
     await s.append(name, row);

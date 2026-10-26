@@ -2,6 +2,7 @@ const fs = require('fs');
 
 const page = fs.readFileSync('public/index.html', 'utf8');
 const admin = fs.readFileSync('public/assets/pesquisas-admin.js', 'utf8');
+const service = fs.readFileSync('server-services/pesquisaFormulariosService.js', 'utf8');
 
 function check(condition, message) {
   if (!condition) throw new Error(message);
@@ -19,5 +20,6 @@ check(/r\.formulario\.id !== selectedId/.test(admin), 'Editor valida a identidad
 check(/Tentar novamente/.test(admin), 'falha de carregamento oferece nova tentativa');
 check(/Salvar rascunho/.test(admin) && /Visualizar prévia/.test(admin) && /Publicar alterações/.test(admin), 'ações do editor permanecem disponíveis');
 check(/baseId = r\.formulario\.revision/.test(admin), 'salvamento mantém controle de versão');
+check(/const read = async \(name\) => s\.read\(name\)/.test(service), 'leituras do editor respeitam o cache do Sheets');
 
-console.log('PESQUISAS ADMIN: 11 verificações aprovadas');
+console.log('PESQUISAS ADMIN: 12 verificações aprovadas');
