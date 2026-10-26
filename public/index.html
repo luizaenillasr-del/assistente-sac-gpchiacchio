@@ -9302,13 +9302,22 @@
     <div class="af-topbar-title">
       <span class="af-eyebrow">OPERAÇÃO</span>
       <h1>Arquivo de Fichas</h1>
-      <p>Consulta e histórico das manifestações registradas e documentos importados.</p>
+      <p>Histórico documental das manifestações do Grupo Chiacchio.</p>
     </div>
     <div style="flex:1"></div>
+    <div id="bib-sync-status" style="display:flex;align-items:center;gap:5px;font-size:11px;color:#929090;margin-right:4px;white-space:nowrap">
+      <span style="width:6px;height:6px;border-radius:50%;background:#15803D;display:inline-block;flex:none"></span>
+      Base operacional
+    </div>
     <button class="af-btn" onclick="abrirModalImportarFicha()">↑ Importar fichas</button>
     <button class="af-btn" id="bib-btn-arquivo" onclick="toggleArquivoExplorar()" aria-expanded="false">▣ Explorar arquivo</button>
-    <button class="af-btn" id="bib-btn-sincronizar" onclick="sincronizarBaseConhecimento()" title="Lê todas as fichas e popula automaticamente Setores, Matriz de Tratamento e Cérebro com os dados encontrados">⚡ Sincronizar base</button>
-    <button class="af-btn af-btn-red" id="bib-btn-refresh" onclick="loadBiblioteca(true,true)">↻ Atualizar</button>
+    <button class="af-btn" id="bib-btn-sincronizar" onclick="sincronizarBaseConhecimento()" title="Lê todas as fichas e popula automaticamente Setores, Matriz de Tratamento e Cérebro com os dados encontrados">⚡ Sincronizar</button>
+    <button class="af-btn" id="bib-btn-refresh" onclick="loadBiblioteca(true,true)">↻ Atualizar</button>
+  </div>
+
+  <!-- INDICADORES COMPACTOS -->
+  <div style="background:#fff;border-bottom:1px solid #E4E4E4;padding:10px 28px;flex-shrink:0">
+    <div class="af-kpis" id="bib-kpis"></div>
   </div>
 
   <!-- ABAS DE STATUS -->
@@ -9328,7 +9337,7 @@
     <div class="af-filter-row" style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end">
       <label class="af-lbl" style="flex:1;min-width:200px;max-width:300px">
         <span>Busca</span>
-        <input id="bib-f-q" class="af-input" type="text" placeholder="Protocolo, cliente, CNPJ, motivo…" oninput="afBuscaDigitou()" onkeydown="if(event.key==='Enter')afBuscaAgora()">
+        <input id="bib-f-q" class="af-input" type="text" placeholder="Protocolo, cliente, produto, lote ou palavra-chave..." oninput="afBuscaDigitou()" onkeydown="if(event.key==='Enter')afBuscaAgora()">
       </label>
       <label class="af-lbl">
         <span>Empresa</span>
@@ -9391,9 +9400,6 @@
 
     <!-- AVISO -->
     <div class="af-aviso" style="font-size:12.5px">Os números abaixo incluem as fichas <strong>criadas no sistema</strong> e as <strong>fichas históricas importadas</strong> (PDF ou DOCX de antes da ferramenta). Cada ficha importada fica arquivada pela empresa, mês e ano da reclamação original.</div>
-
-    <!-- INDICADORES -->
-    <div class="af-kpis" id="bib-kpis"></div>
 
     <!-- COLUNA ESQUERDA + TABELA -->
     <div style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap">
@@ -30847,6 +30853,16 @@ if (typeof pageLoaders !== 'undefined') {
 #page-biblioteca-fichas .af-lista{border-radius:9px!important}
 #page-biblioteca-fichas .af-tbl{min-width:980px!important}
 #page-biblioteca-fichas .af-tbl th{font-size:10.5px!important}
+#page-biblioteca-fichas .af-root>div:nth-of-type(2){padding:10px 28px!important}
+#page-biblioteca-fichas .af-root>div:nth-of-type(3){padding:0 28px!important}
+#page-biblioteca-fichas .af-root>div:nth-of-type(4){padding:9px 28px!important}
+#page-biblioteca-fichas .af-root>div:nth-of-type(5){padding:14px 28px 32px!important;gap:14px!important}
+#page-biblioteca-fichas .af-kpis{display:flex!important;gap:0!important;grid-template-columns:none!important}
+#page-biblioteca-fichas .af-kpi{flex:1 1 0;min-height:58px!important;padding:6px 16px!important;border:0;border-right:1px solid #F0F0F0!important;border-radius:0!important;display:flex;flex-direction:row;align-items:center;gap:10px;cursor:default!important;background:#fff!important}
+#page-biblioteca-fichas .af-kpi:last-child{border-right:0!important}
+#page-biblioteca-fichas .af-kpi-v{font-size:22px!important;line-height:1!important;flex:none}
+#page-biblioteca-fichas .af-kpi-l{font-size:11.5px!important;color:#242424!important;letter-spacing:0!important;white-space:nowrap}
+#page-biblioteca-fichas .af-kpi-d{font-size:10.5px!important;color:#BDBDBD!important;white-space:nowrap}
 #page-base-conhecimento{background:#f7f7f7!important;font-family:Montserrat,Arial,sans-serif!important}
 #page-base-conhecimento>.topbar{background:#fff!important;border-bottom:1px solid #e5e5e5!important;padding:14px 28px!important}
 #page-base-conhecimento .bc-subtitle{font-size:11.5px;color:#929090;margin:3px 0 0}
@@ -30864,8 +30880,8 @@ if (typeof pageLoaders !== 'undefined') {
 #page-base-conhecimento #banco-tab-registros>div:nth-of-type(3) th:nth-child(6),#page-base-conhecimento #banco-tab-registros>div:nth-of-type(3) td:nth-child(6),#page-base-conhecimento #banco-tab-registros>div:nth-of-type(3) th:nth-child(7),#page-base-conhecimento #banco-tab-registros>div:nth-of-type(3) td:nth-child(7),#page-base-conhecimento #banco-tab-registros>div:nth-of-type(3) th:nth-child(9),#page-base-conhecimento #banco-tab-registros>div:nth-of-type(3) td:nth-child(9),#page-base-conhecimento #banco-tab-registros>div:nth-of-type(3) th:nth-child(10),#page-base-conhecimento #banco-tab-registros>div:nth-of-type(3) td:nth-child(10),#page-base-conhecimento #banco-tab-registros>div:nth-of-type(3) th:nth-child(11),#page-base-conhecimento #banco-tab-registros>div:nth-of-type(3) td:nth-child(11){display:none}
 .bc-pagination{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 2px;color:#707070;font-size:12px}
 .bc-pagination>div{display:flex;gap:4px}.bc-pagination button{min-width:30px;height:30px;border:1px solid #e0e0e0;background:#fff;border-radius:6px;cursor:pointer}.bc-pagination button.ativo{background:#c70602;color:#fff;border-color:#c70602}.bc-pagination button:disabled{opacity:.45;cursor:default}
-@media(max-width:1000px){#page-biblioteca-fichas .af-kpis{grid-template-columns:repeat(3,minmax(120px,1fr))!important}#page-base-conhecimento>.content{padding:16px 20px 32px!important}#page-base-conhecimento>.topbar{padding:14px 20px!important}}
-@media(max-width:640px){#page-biblioteca-fichas .af-root>div:first-child{height:auto!important;padding:14px!important;align-items:flex-start!important}#page-biblioteca-fichas .af-root>div:first-child>div:last-child{width:100%;overflow-x:auto}#page-biblioteca-fichas .af-root>div:nth-of-type(2),#page-biblioteca-fichas .af-root>div:nth-of-type(3),#page-biblioteca-fichas .af-root>div:nth-of-type(4){padding-left:14px!important;padding-right:14px!important}#page-biblioteca-fichas .af-kpis{grid-template-columns:repeat(2,minmax(120px,1fr))!important}#page-base-conhecimento>.content{padding:14px!important}#page-base-conhecimento #banco-tab-registros>div:nth-of-type(2){grid-template-columns:repeat(2,minmax(130px,1fr))!important}}
+@media(max-width:1000px){#page-biblioteca-fichas .af-kpis{flex-wrap:wrap!important}#page-biblioteca-fichas .af-kpi{flex:1 1 45%!important}#page-base-conhecimento>.content{padding:16px 20px 32px!important}#page-base-conhecimento>.topbar{padding:14px 20px!important}}
+@media(max-width:640px){#page-biblioteca-fichas .af-root>div:first-child{height:auto!important;padding:14px!important;align-items:flex-start!important}#page-biblioteca-fichas .af-root>div:first-child>div:last-child{width:100%;overflow-x:auto}#page-biblioteca-fichas .af-root>div:nth-of-type(2),#page-biblioteca-fichas .af-root>div:nth-of-type(3),#page-biblioteca-fichas .af-root>div:nth-of-type(4),#page-biblioteca-fichas .af-root>div:nth-of-type(5){padding-left:14px!important;padding-right:14px!important}#page-biblioteca-fichas .af-kpis{flex-wrap:wrap!important}#page-biblioteca-fichas .af-kpi{flex:1 1 100%!important;border-right:0!important;border-bottom:1px solid #F0F0F0!important}#page-base-conhecimento>.content{padding:14px!important}#page-base-conhecimento #banco-tab-registros>div:nth-of-type(2){grid-template-columns:repeat(2,minmax(130px,1fr))!important}}
 </style>
 <style id="gestao-acessos-reference-layout">
 #page-usuarios{background:#f7f7f7!important;font-family:Montserrat,Arial,sans-serif!important;overflow:hidden!important}
