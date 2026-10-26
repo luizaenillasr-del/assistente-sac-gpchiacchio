@@ -154,6 +154,13 @@ async function resolverEmpresaIdScope(valor) {
 }
 
 const app = express();
+// RNC permanece preservado para reativação futura, mas está fora da operação
+// até que o setor responsável forneça as regras oficiais.
+const RNC_ENABLED = String(process.env.RNC_ENABLED || 'false').toLowerCase() === 'true';
+function rncFeatureGuard(req, res, next) {
+  if (RNC_ENABLED) return next();
+  return res.status(503).json({ sucesso: false, codigo: 'RNC_DESATIVADO', erro: 'O módulo RNC está temporariamente indisponível.' });
+}
 const ALLOWED_ORIGINS = [
   'https://assistente-sac-gpchiacchio.vercel.app',
   new URL(portalEndereco.root).origin,
@@ -172,6 +179,8 @@ app.use(express.json({
   limit: '25mb',
   verify: (req, _res, buffer) => { req.rawBody = Buffer.from(buffer); },
 }));
+// Bloqueia toda a superfície operacional RNC sem apagar rotas, dados ou código.
+app.use(['/api/rnc', '/api/rnc-metricas'], rncFeatureGuard);
 
 // ===== SECURITY HEADERS =====
 app.use((req, res, next) => {

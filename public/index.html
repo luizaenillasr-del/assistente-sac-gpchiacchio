@@ -30931,6 +30931,36 @@ if (typeof pageLoaders !== 'undefined') {
 })();
 </script>
 <script>
+/* RNC temporariamente desativado: preserva dados/código para reativação futura. */
+(function(){
+  'use strict';
+  window.RNC_ENABLED = false;
+  const rncPage = 'banco-rnc';
+  function remover(el){ if(el && el.parentNode) el.parentNode.removeChild(el); }
+  function desativarRncUI(){
+    document.querySelectorAll('[onclick*="banco-rnc"]').forEach(el => remover(el.closest('.sidebar-item') || el));
+    ['page-banco-rnc','modal-rnc-aprovador-v5','cdp-rnc','cen-rnc-card','modal-tab-btn-rnc','modal-tab-rnc','ficha-tab-rnc'].forEach(id => remover(document.getElementById(id)));
+    ['kpi-rncs','ap-rnca','pm-rncs','pm-rncs-abertas','pm-rncs-bar'].forEach(id => {
+      const el=document.getElementById(id); if(!el) return;
+      remover(el.closest('.portal-card,.dashboard-card,.kpi-card,.card') || el.parentElement || el);
+    });
+    document.querySelectorAll('#comp-tipo option[value="RNC"],#comp-tipo option[value="AMBOS"],#regra-tipo option[value="RNC"],#regra-tipo option[value="AMBOS"],#env-tipo option[value="RNC"]').forEach(remover);
+    document.querySelectorAll('[onclick*="switchModalTab(\'rnc\'"],[onclick*="switchFichaTab(\'rnc\'"]').forEach(remover);
+  }
+  const anterior = window.navigate;
+  if (typeof anterior === 'function') {
+    window.navigate = function(page, el){
+      if(page === rncPage){
+        desativarRncUI();
+        return anterior.call(this, 'central-sac', document.querySelector('[onclick*="central-sac"]'));
+      }
+      return anterior.apply(this, arguments);
+    };
+  }
+  document.addEventListener('DOMContentLoaded',()=>{ desativarRncUI(); setTimeout(desativarRncUI, 300); });
+})();
+</script>
+<script>
 /* Garante que uma navegação deixe somente uma página visível.
    Alguns carregadores assíncronos podem concluir depois da troca de rota e
    reativar visualmente o Dashboard junto da página escolhida. */
