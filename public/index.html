@@ -9771,6 +9771,16 @@ function navigate(page, el, _opts) {
   if (page === 'nova-manifestacao') {
     if (typeof window.initWizard === 'function') window.initWizard();
   }
+  // O módulo administrativo do Portal é carregado no fim do documento. Ao
+  // abri-lo, garanta que ele pertença ao contêiner de conteúdo da SPA; fora
+  // de `.main` a rota fica ativa no menu, mas não ocupa a área visível.
+  if (page === 'portal-admin') {
+    const portalAdmin = document.getElementById('page-portal-admin');
+    const conteudoPrincipal = document.querySelector('main.main');
+    if (portalAdmin && conteudoPrincipal && portalAdmin.parentElement !== conteudoPrincipal) {
+      conteudoPrincipal.appendChild(portalAdmin);
+    }
+  }
   if (window.innerWidth <= 768) toggleSidebar(false);
   // Keep page visibility explicit so page-specific layout rules cannot reveal inactive routes.
   document.querySelectorAll('.page').forEach(p => {
@@ -31124,6 +31134,12 @@ if (typeof pageLoaders !== 'undefined') {
     (page === 'acompanhamento' || page === 'banco-manifestacoes') ? 'central-sac' : page;
   const anterior = window.navigate;
   if (typeof anterior !== 'function') return;
+  function montarPortalAdmin(page){
+    if (page !== 'portal-admin') return;
+    const painel = document.getElementById('page-portal-admin');
+    const principal = document.querySelector('main.main');
+    if (painel && principal && painel.parentElement !== principal) principal.appendChild(painel);
+  }
   function exibirSomente(page){
     const alvo = document.getElementById('page-' + remap(page));
     if (!alvo) return;
@@ -31137,7 +31153,9 @@ if (typeof pageLoaders !== 'undefined') {
     });
   }
   window.navigate = function(page, el){
+    montarPortalAdmin(page);
     anterior.apply(this, arguments);
+    montarPortalAdmin(page);
     exibirSomente(page);
     setTimeout(() => exibirSomente(page), 0);
     setTimeout(() => exibirSomente(page), 120);

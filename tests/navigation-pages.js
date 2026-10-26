@@ -42,6 +42,7 @@ const app = require('../api/index.js');
       ['sugestoes-melhoria', 'Centro das Pesquisas'],
       ['relatorio-satisfacao', 'Relatório de Satisfação'],
       ['cerebro', 'Cérebro'],
+      ['portal-admin', 'Portal do Cliente'],
     ];
     for (const [route, label] of routes) {
       await page.evaluate(routeName => window.navigate(routeName), route);
@@ -50,6 +51,13 @@ const app = require('../api/index.js');
         .filter(node => getComputedStyle(node).display !== 'none')
         .map(node => node.id));
       assert.deepEqual(visible, [`page-${route}`], `${label}: somente a página ativa deve estar visível`);
+      if (route === 'portal-admin') {
+        assert.equal(
+          await page.locator('#page-portal-admin').evaluate(node => node.parentElement?.matches('main.main')),
+          true,
+          'Portal do Cliente: o painel deve ser montado dentro da área principal'
+        );
+      }
     }
     assert.equal(errors.length, 0, errors.join('\n'));
     console.log('Navegação SPA: uma única página visível por rota aprovada.');
