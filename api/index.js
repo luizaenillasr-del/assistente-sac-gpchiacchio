@@ -829,10 +829,7 @@ async function carregarUsuarioPorLogin(login){
       const rowEmail = normalizarTexto(row.EMAIL || '');
       const status = normalizarTexto(row.STATUS || 'ATIVO');
       return (rowLogin === alvo || rowEmail === alvo || normalizarTexto(rowEmail.split('@')[0]) === alvo) && !['excluido','inativo','bloqueado'].includes(status) && (row.SENHA_HASH || row.SENHA);
-    }).sort((a,b) => {
-      const data = String(b.row.DATA_CRIACAO || b.row.DATA_ULTIMA_ALTERACAO || '').localeCompare(String(a.row.DATA_CRIACAO || a.row.DATA_ULTIMA_ALTERACAO || ''));
-      return data || b.index - a.index;
-    });
+    }).sort((a,b) => b.index - a.index);
     if (candidatos[0]) return candidatos[0].row;
   } catch (_) { /* PG segue como fonte de fallback quando Sheets está indisponível. */ }
   // F4: tenta PostgreSQL primeiro por login ou email
@@ -860,7 +857,7 @@ async function carregarUsuarioPorLogin(login){
               const rowId = String(row.ID_USUARIO || row.ID || '').trim().toLowerCase();
               return (email && rowEmail === email) || (loginNorm && rowLogin === loginNorm) || (idNorm && rowId === idNorm);
             })
-            .sort((a, b) => String(b.row.DATA_CRIACAO || '').localeCompare(String(a.row.DATA_CRIACAO || '')) || b.index - a.index)[0]?.row || null;
+            .sort((a, b) => b.index - a.index)[0]?.row || null;
         } catch (_) { /* PostgreSQL continua sendo fallback quando Sheets está indisponível. */ }
         return {
           ID_USUARIO: pgU.idOriginal || `USR-PG-${pgU.id}`,
