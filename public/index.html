@@ -15276,9 +15276,12 @@ document.addEventListener('visibilitychange', () => {
       }
     } catch(_) {}
     setUserChrome();
+    // Aplica o menu autorizado antes da validação do perfil profissional.
+    // Se o cadastro estiver incompleto, a tela de preenchimento não deve
+    // reexibir módulos que não pertencem ao perfil atual.
+    applyRoleUI();if(typeof setupSidebarCentral==='function')setupSidebarCentral();
     if (window.perfilProfissionalVerificar && !(await window.perfilProfissionalVerificar())) return;
     document.getElementById('mp-user-link')?.style.setProperty('display','block');
-    applyRoleUI();if(typeof setupSidebarCentral==='function')setupSidebarCentral();
     if (window.SACPortalLinks) window.SACPortalLinks.load().catch(() => {});
 
     // O carregamento inicial da Visão Geral acontecia antes do login.
