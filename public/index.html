@@ -20689,6 +20689,10 @@ function cpEmpKey(s) { s = String(s || '').toLowerCase(); return s.includes('pla
 function cpAvg(arr) { const v = arr.filter(x => x !== null && x !== undefined); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; }
 function cpFmt(n) { return n === null || n === undefined ? '—' : n.toFixed(1).replace('.', ','); }
 function cpTab(name, btn) {
+  // O Centro usa a rolagem do contêiner principal. Ao trocar de aba, volte
+  // ao topo para que nenhuma aba fique presa na posição anterior.
+  const main = document.querySelector('.main');
+  if (main) main.scrollTop = 0;
   document.querySelectorAll('[id^="cp-panel-"]').forEach(p => p.style.display = 'none');
   document.querySelectorAll('#cp-tabbar button').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
@@ -30875,10 +30879,14 @@ if (typeof pageLoaders !== 'undefined') {
 @media(max-width:900px){#page-banco-rnc .content{padding:18px 20px 32px!important}#page-banco-rnc .rnc-kpis{grid-template-columns:repeat(2,minmax(0,1fr))!important}#page-banco-rnc .rnc-criteria>div:first-of-type{grid-template-columns:1fr}#page-banco-rnc .rnc-filters{grid-template-columns:repeat(2,minmax(0,1fr))}#page-banco-rnc .rnc-filters input[type=search]{grid-column:span 2}#page-sugestoes-melhoria>div:nth-child(2){padding:16px 20px 36px!important}#page-sugestoes-melhoria #cp-kpis{grid-template-columns:repeat(2,minmax(130px,1fr))!important}}
 @media(max-width:600px){#page-banco-rnc .topbar{padding:16px!important}#page-banco-rnc .content{padding:16px 14px 24px!important}#page-banco-rnc .page-title{font-size:21px!important}#page-banco-rnc .rnc-kpis{gap:8px!important}#page-banco-rnc .rnc-kpis>div{padding:13px 14px!important}#page-banco-rnc .rnc-filters{grid-template-columns:1fr;padding:10px}#page-banco-rnc .rnc-filters input[type=search]{grid-column:auto}#page-sugestoes-melhoria .cp-top{padding:12px 14px!important;flex-wrap:wrap}#page-sugestoes-melhoria>div:nth-child(2){padding:14px 14px 28px!important}#page-sugestoes-melhoria #cp-kpis{grid-template-columns:1fr 1fr!important;gap:8px!important}}
 /* Ajuste final de fidelidade ao HTML aprovado do Centro das Pesquisas. */
-#page-sugestoes-melhoria{display:flex;flex-direction:column;overflow:hidden!important}
-#page-sugestoes-melhoria .cp-top{height:68px!important;min-height:68px!important;box-shadow:none!important}
+#page-sugestoes-melhoria{min-height:100%;overflow:visible!important}
+#page-sugestoes-melhoria.page.active{display:block!important}
+#page-sugestoes-melhoria .cp-top{height:auto!important;min-height:68px!important;box-shadow:none!important;overflow:visible!important;flex-wrap:wrap!important;padding:12px 28px!important}
 #page-sugestoes-melhoria #cp-top-logo{height:34px!important;width:auto!important;object-fit:contain!important}
-#page-sugestoes-melhoria>div:nth-child(2){padding:0 28px 36px!important;overflow-y:auto!important;min-height:0;flex:1}
+#page-sugestoes-melhoria .cp-top-title{flex:0 1 auto;min-width:220px}
+#page-sugestoes-melhoria .cp-top-filters{order:3;flex:1 1 420px;justify-content:flex-start;min-width:0}
+#page-sugestoes-melhoria .cp-top-actions{order:4;flex:0 1 auto;justify-content:flex-end;max-width:100%;flex-wrap:wrap}
+#page-sugestoes-melhoria>div:nth-child(2){padding:0 28px 36px!important;overflow:visible!important;min-height:auto!important;flex:none!important}
 #page-sugestoes-melhoria #cp-tabbar{height:45px!important;align-items:stretch!important;margin:0 -28px!important;padding:0 28px!important;background:#fff;border-bottom:1px solid #e5e5e5!important}
 #page-sugestoes-melhoria #cp-filtros{padding:10px 28px!important;margin:0 -28px 24px!important;border-top:1px solid #e5e5e5;border-bottom:1px solid #e5e5e5;background:#fafafa;min-height:58px}
 #page-sugestoes-melhoria #cp-filtros label{min-width:130px!important}
