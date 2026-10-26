@@ -820,9 +820,16 @@ async function carregarUsuarioPorLogin(login){
         let sheetOverride = null;
         try {
           const sheetRows = await lerAba('USUARIOS', 1000);
-          const email = String(pgU.email || '').toLowerCase();
+          const email = String(pgU.email || '').trim().toLowerCase();
+          const loginNorm = normalizarTexto(pgU.login || pgU.email || login);
+          const idNorm = String(pgU.idOriginal || '').trim().toLowerCase();
           sheetOverride = sheetRows
-            .filter(row => email && String(row.EMAIL || '').toLowerCase() === email)
+            .filter(row => {
+              const rowEmail = String(row.EMAIL || '').trim().toLowerCase();
+              const rowLogin = normalizarTexto(row.USUARIO || row.LOGIN || '');
+              const rowId = String(row.ID_USUARIO || row.ID || '').trim().toLowerCase();
+              return (email && rowEmail === email) || (loginNorm && rowLogin === loginNorm) || (idNorm && rowId === idNorm);
+            })
             .sort((a, b) => String(b.DATA_CRIACAO || '').localeCompare(String(a.DATA_CRIACAO || '')))[0] || null;
         } catch (_) { /* PostgreSQL continua sendo fallback quando Sheets está indisponível. */ }
         return {
@@ -2075,6 +2082,38 @@ app.post('/api/manifestacoes', requerPermissao('manifestacoes.abrir'), async (re
       console.error('[MANIFESTACOES][appendObjeto] FALHOU:', e.message, e?.stack);
       throw e;
     });
+    // Mantém o cadastro comercial mínimo do cliente para formar histórico sem
+    // copiar dados que não pertencem à manifestação. A falha deste cadastro
+    // nunca bloqueia o registro operacional já criado.
+    if (!rascunho && (cnpj || contato || email)) {
+      try {
+        const clienteHeaders = CADASTRO_CONFIG.clientes.headers;
+        await garantirAbaComCabecalhos('CLIENTES_CADASTRO', clienteHeaders);
+        const clientes = await lerAba('CLIENTES_CADASTRO', 10000);
+        const cnpjNorm = String(cnpj || '').replace(/\D/g, '');
+        const contatoNorm = normalizarTexto(contato || email || '');
+        const existente = clientes.find(c => {
+          const cCnpj = String(c.CNPJ_CPF || '').replace(/\D/g, '');
+          const cContato = normalizarTexto(`${c.RAZAO_SOCIAL || ''} ${c.NOME_FANTASIA || ''} ${c.CONTATOS_JSON || ''}`);
+          return (cnpjNorm && cCnpj && cCnpj === cnpjNorm) || (!cnpjNorm && contatoNorm && cContato.includes(contatoNorm));
+        });
+        if (!existente) {
+          await appendObjeto('CLIENTES_CADASTRO', {
+            ID_CLIENTE: await gerarProximoID('CLIENTES_CADASTRO', 'CLI', 'ID_CLIENTE'),
+            CODIGO_INTERNO: cnpjNorm ? `CNPJ-${cnpjNorm}` : `MAN-${id}`,
+            RAZAO_SOCIAL: req.body.razaoSocial || contato || email || 'Cliente da manifestação',
+            NOME_FANTASIA: req.body.nomeFantasia || '',
+            CNPJ_CPF: cnpj || '',
+            SEGMENTO: tipoFinal || '',
+            CONTATOS_JSON: JSON.stringify({ telefone: telefone || '', email: email || '', origem: id }),
+            COMPRADORES_JSON: '', ENDERECO_JSON: '',
+            VINCULOS_JSON: JSON.stringify({ empresa: empresaReclamante || empresaReclamada || '', manifestacoes: [id] }),
+            ATIVO: 'SIM', DATA_CRIACAO: agora, DATA_ATUALIZACAO: agora,
+            USUARIO_ATUALIZACAO: usuario || req.user?.usuario || 'sistema'
+          });
+        }
+      } catch (e) { console.warn('[CLIENTES_CADASTRO] criação automática ignorada:', e.message); }
+    }
     // B3: dual-write para PostgreSQL — rastreia sucesso/falha (não-bloqueante)
     if (manifestacaoRepo) {
       manifestacaoRepo.upsertFromSheets({

@@ -677,6 +677,12 @@
 <style>
   /* LOGIN — split-screen */
   .login-screen { position: fixed; inset: 0; z-index: 9999; overflow-y: auto; background: #F4F4F4; }
+  @media print {
+    body.pm-printing * { visibility: hidden !important; }
+    body.pm-printing #page-painel-maquina, body.pm-printing #page-painel-maquina * { visibility: visible !important; }
+    body.pm-printing #page-painel-maquina { position: absolute; inset: 0; width: 100%; overflow: visible !important; }
+    body.pm-printing #page-painel-maquina .topbar-right, body.pm-printing #page-painel-maquina .ind-nav-wrap { display: none !important; }
+  }
   .login-split { width: 100%; flex: 1 1 auto; min-height: 100vh; display: grid; grid-template-columns: 55% 45%; }
   .login-left { order: 2; background: #C70602; color: #fff; padding: 52px 56px; display: flex; flex-direction: column; justify-content: space-between; gap: 40px; position:relative; overflow:hidden; }
   .login-left-brand { display: flex; align-items: center; gap: 14px; }
@@ -1482,7 +1488,7 @@
   </div>
 </div>
 
-<div class="login-screen" id="login-screen" style="display:flex">
+<div class="login-screen" id="login-screen" style="display:flex;visibility:hidden">
   <div class="login-split">
     <!-- PAINEL ESQUERDO — vermelho -->
     <div class="login-left">
@@ -6415,7 +6421,8 @@
       </div>
       <div class="topbar-right">
         <button class="btn btn-secondary" onclick="loadPainelMaquina()">Atualizar</button>
-        <button class="btn btn-secondary" onclick="exportarIndicadoresCSV()">Exportar</button>
+        <button class="btn btn-secondary" onclick="exportarIndicadoresCSV()">Exportar CSV</button>
+        <button class="btn btn-secondary" onclick="exportarIndicadoresPDF()">Exportar PDF</button>
       </div>
     </div>
     <div class="content" style="overflow-y:auto;flex:1">
@@ -13542,7 +13549,7 @@ async function salvarRascunho(options={}) {
     const payload=nmCardPayload();
     let res;
     if(_nmCardId) res=await _apiFetch(`/api/manifestacoes/${encodeURIComponent(_nmCardId)}/circa-dados`,60000,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-    else res=await _apiFetch('/api/manifestacoes',60000,{method:'POST',headers:{'Content-Type':'application/json'},body:payload});
+    else res=await _apiFetch('/api/manifestacoes',60000,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     if(!res?.sucesso) throw new Error(res?.erro||'Falha ao salvar o rascunho.');
     _nmCardId=_nmCardId||res.id;
     if(!silent) alert(`Rascunho salvo${_nmCardId?' ('+_nmCardId+')':''}.`);
@@ -16476,16 +16483,19 @@ document.addEventListener('visibilitychange', () => {
   async function boot(){
     sessionStorage.removeItem('sac-demo-local');
     restaurarSessaoLembrada();
-    if(!token()){document.getElementById('login-screen').style.display='flex';return;}
+    const loginScreen=document.getElementById('login-screen');
+    if(!token()){loginScreen.style.display='flex';loginScreen.style.visibility='visible';return;}
     try{
       const d=await json5('/api/auth/me');
       sessionStorage.setItem('sac-user',JSON.stringify(d.usuario));
-      document.getElementById('login-screen').style.display='none';
+      loginScreen.style.display='none';
+      loginScreen.style.visibility='visible';
       await window.iniciarSessaoV5();
     }catch(e){
       sessionStorage.clear();
       try { localStorage.removeItem('sac-remember-token'); } catch (_) {}
-      document.getElementById('login-screen').style.display='flex';
+      loginScreen.style.display='flex';
+      loginScreen.style.visibility='visible';
       window.abrirPainelLogin && window.abrirPainelLogin();
     }
   }
@@ -19454,7 +19464,21 @@ async function loadPainelMaquina() {
       const [empresas, setores] = await Promise.all([_apiFetch('/api/empresas',8000).catch(()=>({itens:[]})), _apiFetch('/api/setores',8000).catch(()=>({itens:[]}))]);
       const empSel=document.getElementById('pm-filtro-empresa');
       const empItems=empresas.itens||empresas.empresas||[];
-      if(empSel&&empItems.length){const atual=empSel.value;empSel.innerHTML='<option value="">Todas as empresas</option>'+empItems.map(x=>{const v=typeof x==='string'?x:(x.EMPRESA||x.NOME||x.nome||'');return v?`<option value="${esc(v)}">${esc(v)}</option>`:''}).join('');empSel.value=atual;}
+      if(empSel&&empItems.length){
+        const canonEmpresa = value => {
+          const raw=String(value||'').trim();
+          const key=raw.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/\s+/g,' ');
+          if(key.includes('CHIACCHIO') || key.includes('EMBALAG')) return 'CHIACCHIO EMBALAGENS';
+          if(key.includes('PLASCH')) return 'PLASCHIO';
+          if(key.includes('TUBAH') || key.includes('CESBAP')) return 'TUBAHIA';
+          return raw;
+        };
+        const valores=new Map();
+        empItems.forEach(x=>{const v=typeof x==='string'?x:(x.EMPRESA||x.NOME||x.nome||'');const c=canonEmpresa(v);if(c&&!valores.has(c))valores.set(c,c);});
+        const atual=canonEmpresa(empSel.value);
+        empSel.innerHTML='<option value="">Todas as empresas</option>'+[...valores.values()].sort().map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');
+        empSel.value=valores.has(atual)?atual:'';
+      }
       const setorSel=document.getElementById('pm-filtro-setor');
       const setorItems=setores.itens||setores.setores||[];
       if(setorSel&&setorItems.length){const atual=setorSel.value;setorSel.innerHTML='<option value="">Todos os setores</option>'+setorItems.map(x=>{const v=typeof x==='string'?x:(x.SETOR||x.NOME||x.nome||'');return v?`<option value="${esc(v)}">${esc(v)}</option>`:''}).join('');setorSel.value=atual;}
@@ -19606,6 +19630,19 @@ function exportarIndicadoresCSV() {
   const csv = rows.map(row=>row.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join('\r\n');
   const blob = new Blob(['\ufeff'+csv], {type:'text/csv;charset=utf-8'});
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='indicadores_'+new Date().toISOString().slice(0,10)+'.csv'; a.click(); URL.revokeObjectURL(a.href);
+}
+
+function exportarIndicadoresPDF() {
+  if (!_pmUltimoResultado?.metricas) { toast('Atualize os indicadores antes de exportar.'); return; }
+  // Usa o mecanismo nativo do navegador para gerar PDF, mantendo exatamente
+  // os filtros e cards que o usuário está visualizando.
+  const page=document.getElementById('page-painel-maquina');
+  if(!page){toast('Painel de indicadores indisponível.');return;}
+  document.body.classList.add('pm-printing');
+  const cleanup=()=>document.body.classList.remove('pm-printing');
+  window.addEventListener('afterprint',cleanup,{once:true});
+  window.print();
+  setTimeout(cleanup,1500);
 }
 
 function importarIndicadoresCSV(input) {
@@ -22789,15 +22826,30 @@ function handleUploadProdutos(input) {
   const reader = new FileReader();
   reader.onload = function(e) {
     try {
-      const text = e.target.result;
-      const lines = text.split(/\r?\n/).filter(l => l.trim());
-      if (lines.length < 2) { status.textContent = 'Arquivo vazio ou sem dados.'; return; }
-      const sep = lines[0].includes(';') ? ';' : ',';
-      const headers = lines[0].split(sep).map(h => h.trim().replace(/^"|"$/g,'').toUpperCase());
-      const rows = lines.slice(1).map(l => {
-        const vals = l.split(sep).map(v => v.trim().replace(/^"|"$/g,''));
+      const text = String(e.target.result || '').replace(/^\uFEFF/, '');
+      const firstLine = text.split(/\r?\n/, 1)[0] || '';
+      if (!firstLine.trim()) { status.textContent = 'Arquivo vazio ou sem dados.'; return; }
+      const sep = (firstLine.match(/;/g)||[]).length >= (firstLine.match(/,/g)||[]).length ? ';' : ',';
+      const parseCsv = (source, delimiter) => {
+        const records=[]; let row=[], cell='', quoted=false;
+        for(let i=0;i<source.length;i++){
+          const ch=source[i], next=source[i+1];
+          if(ch==='"' && quoted && next==='"'){ cell+='"'; i++; continue; }
+          if(ch==='"'){ quoted=!quoted; continue; }
+          if(ch===delimiter && !quoted){ row.push(cell.trim()); cell=''; continue; }
+          if((ch==='\n'||ch==='\r') && !quoted){ if(ch==='\r'&&next==='\n')i++; row.push(cell.trim()); cell=''; if(row.some(v=>v!==''))records.push(row); row=[]; continue; }
+          cell+=ch;
+        }
+        if(cell!==''||row.length){row.push(cell.trim()); if(row.some(v=>v!==''))records.push(row);}
+        return records;
+      };
+      const records=parseCsv(text,sep);
+      if (records.length < 2) { status.textContent = 'Arquivo vazio ou sem dados.'; return; }
+      const headers = records[0].map(h => h.trim().toUpperCase().replace(/\s+/g,'_'));
+      const rows = records.slice(1).map(vals => {
         const obj = {};
-        headers.forEach((h, i) => obj[h] = vals[i]||'');
+        headers.forEach((h, i) => obj[h] = String(vals[i]||'').trim());
+        if(!obj.PRODUTO && obj.NOME) obj.PRODUTO=obj.NOME;
         return obj;
       }).filter(r => Object.values(r).some(v=>v));
       _produtosParaImportar = rows;
