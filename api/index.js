@@ -411,7 +411,12 @@ async function carregarUsuarios(){
     const overrides = {};
     // Preserva login (username) do Sheets caso PG só tenha o email como USUARIO
     if (sh.USUARIO && sh.USUARIO !== e) overrides.USUARIO = sh.USUARIO;
-    if ((sh.STATUS||'').toUpperCase() === 'PRIMEIRO_ACESSO') overrides.STATUS = 'PRIMEIRO_ACESSO';
+    // O status administrativo persistido no Sheets deve prevalecer sobre o
+    // ativo/inativo legado do PostgreSQL, inclusive para exclusão lógica.
+    const statusSheets = String(sh.STATUS || '').trim().toUpperCase();
+    if (['ATIVO','PRIMEIRO_ACESSO','INATIVO','BLOQUEADO','EXCLUIDO','EXCLUÍDO'].includes(statusSheets)) {
+      overrides.STATUS = statusSheets === 'EXCLUÍDO' ? 'EXCLUIDO' : statusSheets;
+    }
     // Permissões customizadas e competências vêm do Sheets (definidas na aprovação)
     if (sh.PERMISSOES_CUSTOM && !u.PERMISSOES_CUSTOM) overrides.PERMISSOES_CUSTOM = sh.PERMISSOES_CUSTOM;
     if (sh.PERMISSOES_GRANTED && !u.PERMISSOES_GRANTED) overrides.PERMISSOES_GRANTED = sh.PERMISSOES_GRANTED;
