@@ -16,4 +16,7 @@ for (const id of ['nm-descricao','nm-empresa-reclamada','nm-procedente','nm-cami
   if (!flow.includes(`id="${id}"`)) throw new Error(`integração ausente: ${id}`);
 }
 if (flow.includes('display:none!important')) throw new Error('fluxo usa ocultação proibida');
+if (!fs.readFileSync('api/index.js','utf8').includes("/api/manifestacoes/:id/circa-dados")) throw new Error('persistência do card CIRCA ausente');
+const map = html.match(/var PANEL_MAP = (\{[^;]+\});/);
+if (!map || !map[1].includes('1:[1]') || !map[1].includes('7:[7]')) throw new Error('navegação não aponta cada etapa para seu painel');
 console.log('CIRCA design: sete etapas, componentes legados removidos e integrações essenciais presentes.');
