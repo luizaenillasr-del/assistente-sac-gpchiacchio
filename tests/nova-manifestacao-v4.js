@@ -10,6 +10,7 @@ assert.ok(html.includes('data-nm-step="7"'), 'etapa 7 deve existir');
 assert.ok(html.includes('id="nm-btn-continuar"'), 'botão Continuar deve existir');
 assert.ok(html.includes('onclick="nmProximaEtapa()"'), 'Continuar deve usar a navegação CIRCA');
 assert.ok(html.includes('salvarRascunho({silent:true})'), 'avanço deve aguardar o salvamento do rascunho');
+assert.match(html, /salvarRascunho\(\{silent:true,reportError:true\}\)[\s\S]{0,400}_nmEtapasConcluidas\.add\(etapaAtual\(\)\)[\s\S]{0,200}nmIrParaEtapa\(etapaAtual\(\) \+ 1\)/, 'a etapa atual deve ser concluída antes da validação da próxima');
 assert.ok(html.includes("nmSetCaminhoTratativa('COMPLEMENTO',this)"), 'a solicitação de complementação deve ter caminho próprio');
 assert.ok(html.includes("caminho==='COMPLEMENTO' && !val('nm-complemento-pedido')"), 'o caminho de complementação deve validar o pedido');
 assert.ok(html.includes("caminho==='SETOR'"), 'o encaminhamento ao setor deve validar o escopo');
@@ -22,5 +23,6 @@ assert.ok(html.includes('Setor: ${esc(x)}'), 'setores devem ser exibidos como it
 assert.ok(html.includes('Responsável: ${esc(x)}'), 'responsáveis devem ser separados dos setores');
 assert.ok(!html.includes('Deseja registrar sem decisão?'), 'o envio não deve ser bloqueado pelo fluxo decisório antigo');
 assert.ok(!html.includes('body.decisaoCompleta = window._nmDecisaoPayload'), 'o fluxo antigo não deve modificar o payload do registro');
+assert.ok(html.includes('placeholder="Conforme SLA aplicável"'), 'o formulário não deve impor prazo genérico de 72 horas');
 
 console.log('Nova manifestação v4: fluxo de sete etapas, avanço com persistência e remoção dos controles legados aprovados.');

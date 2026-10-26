@@ -10,9 +10,13 @@ const api = fs.readFileSync('api/index.js', 'utf8');
 
 assert.match(html, /id="usr-status-tabs"/);
 assert.match(html, /data-status-view="EXCLUIDO"/);
+assert.match(html, /data-status-view="PRIMEIRO_ACESSO"/);
+assert.match(html, /id="usr-count-primeiro_acesso"/);
 assert.match(html, /onclick="usuAbrir\('\$\{uid\}'\)"/);
 assert.match(html, /usuStatus\('\$\{uid\}',\s*'desativar'\)/);
+assert.match(html, /st==='PRIMEIRO_ACESSO'[\s\S]{0,220}usuStatus\('\$\{uid\}',\s*'desativar'\)/);
 assert.match(html, /usuExcluir\('\$\{uid\}'/);
+assert.match(html, /window\.loadUsuariosV5 = loadUsuariosMasterPainel/);
 assert.match(html, /function _fmtDataHora/);
 assert.match(html, /prompt\('Informe o motivo da exclusão lógica:/);
 assert.match(api, /app\.delete\('\/api\/usuarios\/:id'/);
@@ -22,6 +26,9 @@ assert.match(api, /MOTIVO_EXCLUSAO/);
 assert.match(api, /Não é possível excluir o único MASTER ativo/);
 assert.match(api, /não pode excluir sua própria conta/i);
 assert.match(api, /async function persistirStatusUsuario/);
+assert.match(api, /\['INATIVO','BLOQUEADO','EXCLUIDO'\]/, 'sessões de usuários sem acesso devem ser revogadas');
+assert.match(api, /\['inativo','bloqueado','excluido'\]/, 'login deve recusar usuários sem acesso');
+assert.match(api, /Usuário excluído\. Contate o administrador/, 'login deve informar exclusão lógica');
 assert.doesNotMatch(api, /DESATIVAR usuario Sheets\].message\);/);
 
 console.log('GESTAO ACESSOS: tabela, ficha, separação de status e exclusão lógica protegida aprovados.');
