@@ -28099,7 +28099,9 @@ function updateTopbarUser(user) {
             headers:{'Content-Type':'application/json'},
             body: JSON.stringify({ permissoes_granted: Array.from(_usuGranted), permissoes_blocked: Array.from(_usuBlocked) }),
           });
-        } catch(permErr) { /* 403 on own MASTER perms is expected — ignore */ }
+        } catch(permErr) {
+          throw new Error('Dados salvos, mas as permissões não foram atualizadas: ' + permErr.message);
+        }
       } else {
         data = await _apiFetch('/api/usuarios', 0, {
           method:'POST',
