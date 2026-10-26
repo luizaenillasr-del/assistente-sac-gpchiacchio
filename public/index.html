@@ -3009,7 +3009,7 @@
       <!-- ETAPA 3: CONDUÇÃO -->
       <div class="nm-step-panel" data-nm-step="3"><div class="nm-section-hdr"><h2>Condução</h2><p>Defina o caminho da tratativa e os próximos responsáveis.</p></div>
         <div class="circa-path-grid"><div class="circa-path-card"><div class="circa-path-title"><span class="circa-path-icon">A</span>Resolver pelo SAC</div><p>Use quando houver procedimento validado e autonomia para concluir.</p><div class="circa-alert">Confirme a orientação, registre a ação e prepare a devolutiva.</div><button onclick="nmSetCaminhoTratativa('SAC',this)" id="nm-caminho-sac" class="btn btn-secondary">Selecionar caminho</button></div>
-          <div class="circa-path-card"><div class="circa-path-title"><span class="circa-path-icon">B</span>Solicitar informações complementares</div><p>Peça os dados necessários antes de definir a resolução.</p><label class="nm-label"><span>O que solicitar</span><textarea id="nm-complemento-pedido" class="nm-textarea" rows="3"></textarea></label><div class="nm-grid-2"><label class="nm-label"><span>Prazo de retorno</span><input class="nm-input" id="nm-prazo-retorno" value="72 horas"></label><label class="nm-label"><span>Canal de retorno</span><select class="nm-select" id="nm-canal-retorno"><option>WhatsApp</option><option>E-mail</option><option>Telefone</option></select></label></div><button onclick="nmSetCaminhoTratativa('COMPLEMENTO',this)" id="nm-caminho-complemento" class="btn btn-secondary">Selecionar caminho</button></div>
+          <div class="circa-path-card"><div class="circa-path-title"><span class="circa-path-icon">B</span>Solicitar informações complementares</div><p>Peça os dados necessários antes de definir a resolução.</p><label class="nm-label"><span>O que solicitar</span><textarea id="nm-complemento-pedido" class="nm-textarea" rows="3"></textarea></label><div class="nm-grid-2"><label class="nm-label"><span>Prazo de retorno</span><input class="nm-input" id="nm-prazo-retorno" placeholder="Conforme SLA aplicável"></label><label class="nm-label"><span>Canal de retorno</span><select class="nm-select" id="nm-canal-retorno"><option>WhatsApp</option><option>E-mail</option><option>Telefone</option></select></label></div><button onclick="nmSetCaminhoTratativa('COMPLEMENTO',this)" id="nm-caminho-complemento" class="btn btn-secondary">Selecionar caminho</button></div>
           <div class="circa-path-card"><div class="circa-path-title"><span class="circa-path-icon">C</span>Acionar setor responsável</div><p>Crie uma tarefa com escopo, responsável, prazo e prioridade.</p><div class="nm-grid-2"><label class="nm-label"><span>Setor</span><select class="nm-select" id="nm-setor-acionado"><option value="">Selecionar setor</option><option>Qualidade</option><option>Logística</option><option>Comercial</option><option>Produção</option><option>Financeiro</option></select></label><label class="nm-label"><span>Responsável</span><input class="nm-input" id="nm-responsavel-acionado"></label></div><label class="nm-label"><span>Escopo da tarefa</span><textarea class="nm-textarea" rows="3" id="nm-escopo-acionado"></textarea></label><button onclick="nmSetCaminhoTratativa('SETOR',this)" id="nm-caminho-setor" class="btn btn-secondary">Selecionar caminho</button><button onclick="nmCriarAcionamento('ENCAMINHAMENTO_TRATATIVA')" class="btn btn-primary">Criar acionamento</button></div></div>
         <input type="hidden" id="nm-caminho-tratativa"><input type="date" id="nm-data-encaminhamento" class="nm-visually-hidden"><div id="nm-box-tratativa-sac" class="nm-card" style="display:none"><div class="section-label">Tratativa interna SAC</div><textarea id="nm-tratativa-sac" class="nm-textarea" rows="5" placeholder="Descreva como o SAC conduzirá a resolução..."></textarea></div><div id="nm-box-complemento" class="nm-card" style="display:none"><div class="section-label">Solicitação de complementação</div><p>Os dados solicitados, o canal e o prazo serão registrados na ficha antes do avanço da tratativa.</p></div><div id="nm-box-encaminhamento-setor" class="nm-card" style="display:none"><div class="section-label">Acionamento preparado</div><p>O setor receberá a ficha após o registro e deverá responder dentro do prazo definido.</p></div>
       </div>
@@ -11389,7 +11389,8 @@ async function nmCriarAcionamento(tipo='ENCAMINHAMENTO_TRATATIVA') {
   const setor=document.getElementById('nm-setor-acionado')?.value||'';
   const tarefa=document.getElementById('nm-escopo-acionado')?.value||document.getElementById('nm-complemento-pedido')?.value||'Solicitação registrada pelo card CIRCA.';
   if(tipo!=='NOTIFICACAO'&&!setor){ alert('Selecione o setor destinatário antes de criar o acionamento.'); return; }
-  try { const r=await _apiFetch(`/api/manifestacoes/${encodeURIComponent(_nmCardId)}/acionamentos`,15000,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tipo,setorDestino:setor,tarefa,motivo:tarefa,prazo:document.getElementById('nm-prazo-retorno')?.value||'72 horas',prioridade:document.getElementById('nm-prioridade')?.value||'NORMAL',idempotencyKey:`${_nmCardId}-${tipo}-${setor}-${tarefa}`})}); if(!r?.sucesso)throw new Error(r?.erro||'Falha ao criar acionamento.'); alert('Acionamento criado com histórico e prazo.'); } catch(e){ alert('Não foi possível criar o acionamento: '+e.message); }
+  const prazo=document.getElementById('nm-prazo-retorno')?.value?.trim()||'';
+  try { const r=await _apiFetch(`/api/manifestacoes/${encodeURIComponent(_nmCardId)}/acionamentos`,15000,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tipo,setorDestino:setor,tarefa,motivo:tarefa,prazo,prioridade:document.getElementById('nm-prioridade')?.value||'NORMAL',idempotencyKey:`${_nmCardId}-${tipo}-${setor}-${tarefa}`})}); if(!r?.sucesso)throw new Error(r?.erro||'Falha ao criar acionamento.'); alert('Acionamento criado com histórico' + (prazo ? ' e prazo.' : '.')); } catch(e){ alert('Não foi possível criar o acionamento: '+e.message); }
 }
 function nmSolicitarComplementacao(){return nmCriarAcionamento('SOLICITACAO_INFORMACAO');}
 function nmRegistrarLembrete(){return nmCriarAcionamento('NOTIFICACAO');}
@@ -13529,12 +13530,13 @@ function nmCardPayload() {
   let currentUser={}; try { currentUser=JSON.parse(sessionStorage.getItem('sac-user')||'{}'); } catch(e) {}
   return {
     empresaReclamada:val('nm-empresa-reclamada'), empresaReclamante:val('nm-empresa')||val('nm-nome')||val('nm-cnpj'), contato:val('nm-nome'), cnpj:val('nm-cnpj'), telefone:val('nm-tel'), email:val('nm-email'), produto:val('nm-produto'), lote:val('nm-lote'), nfe:val('nm-nfe'), descricao:val('nm-descricao')||'Rascunho em preenchimento.', tipo:val('nm-tipo')||'Reclamação', canal:val('nm-origem')||'MANUAL', origem:val('nm-origem')||'MANUAL', prioridade:val('nm-prioridade')||'NORMAL', usuario:currentUser.usuario||currentUser.USUARIO||'analista', etapaAtual:String(window.nmEtapa||1), ETAPA_ATUAL:String(window.nmEtapa||1), STATUS:{1:'RASCUNHO',2:'EM_TRIAGEM',3:'EM_TRATATIVA',4:'EM_INVESTIGACAO',5:'AGUARDANDO_VALIDACAO_SAC',6:'AGUARDANDO_DEVOLUTIVA',7:'AGUARDANDO_ENCERRAMENTO'}[Number(window.nmEtapa)||1], STATUS_FICHA:{1:'RASCUNHO',2:'EM_TRIAGEM',3:'EM_TRATATIVA',4:'EM_INVESTIGACAO',5:'AGUARDANDO_VALIDACAO_SAC',6:'AGUARDANDO_DEVOLUTIVA',7:'AGUARDANDO_ENCERRAMENTO'}[Number(window.nmEtapa)||1], mensagemEtapa:'Rascunho em preenchimento.', MENSAGEM_ETAPA:'Rascunho em preenchimento.', rascunho:true,
-    CAMINHO_TRATATIVA:val('nm-caminho-tratativa'), TRATATIVA_SAC_INTERNA:val('nm-tratativa-sac'), INVESTIGACAO_O_QUE:val('nm-investigacao-verificada'), INVESTIGACAO_EVIDENCIAS:val('nm-investigacao-resultado'), CAUSA_RAIZ_CONFIRMADA:val('nm-causa-raiz'), ACOES_CORRETIVAS:val('nm-acao-executada'), PROCEDENTE:val('nm-procedente'), PROCEDENTE_JUSTIFICATIVA:val('nm-procedente-justif'), DEVOLUTIVA_FINAL:val('nm-devolutiva'), OBSERVACOES_FINAIS:val('nm-observacoes-finais')
+    CAMINHO_TRATATIVA:val('nm-caminho-tratativa'), TRATATIVA_SAC_INTERNA:val('nm-tratativa-sac'), COMPLEMENTO_PEDIDO:val('nm-complemento-pedido'), CANAL_RETORNO:val('nm-canal-retorno'), PRAZO_RETORNO_SAC:val('nm-prazo-retorno'), INVESTIGACAO_O_QUE:val('nm-investigacao-verificada'), INVESTIGACAO_EVIDENCIAS:val('nm-investigacao-resultado'), CAUSA_RAIZ_CONFIRMADA:val('nm-causa-raiz'), ACOES_CORRETIVAS:val('nm-acao-executada'), PROCEDENTE:val('nm-procedente'), PROCEDENTE_JUSTIFICATIVA:val('nm-procedente-justif'), DEVOLUTIVA_FINAL:val('nm-devolutiva'), OBSERVACOES_FINAIS:val('nm-observacoes-finais')
   };
 }
 
 async function salvarRascunho(options={}) {
   const silent=!!options.silent;
+  const reportError=!!options.reportError || !silent;
   try {
     const payload=nmCardPayload();
     let res;
@@ -13545,7 +13547,7 @@ async function salvarRascunho(options={}) {
     if(!silent) alert(`Rascunho salvo${_nmCardId?' ('+_nmCardId+')':''}.`);
     return true;
   } catch(e) {
-    if(!silent) alert('Não foi possível salvar o rascunho: '+(e.message||'erro desconhecido'));
+    if(reportError) alert('Não foi possível salvar os dados desta etapa: '+(e.message||'erro desconhecido'));
     return false;
   }
 }
@@ -27670,12 +27672,18 @@ function updateTopbarUser(user) {
       const sessUser = role();
       const currentUser = (()=>{ try { return JSON.parse(sessionStorage.getItem('sac-user')||'{}'); } catch(_) { return {}; } })();
       const isSelf = String(u.USUARIO||u.usuario||u.EMAIL||u.email||'').toLowerCase() === String(currentUser.usuario||currentUser.email||'').toLowerCase();
+      const statusAction = st==='ATIVO'
+        ? `<button type="button" class="usr-row-action usr-row-warn" onclick="event.stopPropagation();usuStatus('${uid}','desativar')">Inativar</button>`
+        : st==='INATIVO'
+        ? `<button type="button" class="usr-row-action usr-row-ok" onclick="event.stopPropagation();usuStatus('${uid}','ativar')">Ativar</button>`
+        : st==='BLOQUEADO'
+        ? `<button type="button" class="usr-row-action usr-row-ok" onclick="event.stopPropagation();usuStatus('${uid}','desbloquear')">Desbloquear</button>`
+        : '';
       const actions = isSelf
         ? '<span style="font-size:11px;color:#707070">Sua conta</span>'
         : `<div style="display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap">
             <button type="button" class="usr-row-action" onclick="event.stopPropagation();usuAbrir('${uid}')">Editar</button>
-            ${st==='ATIVO' ? `<button type="button" class="usr-row-action usr-row-warn" onclick="event.stopPropagation();usuStatus('${uid}','desativar')">Inativar</button>` : `<button type="button" class="usr-row-action usr-row-ok" onclick="event.stopPropagation();usuStatus('${uid}','ativar')">Ativar</button>`}
-            ${st==='BLOQUEADO' ? `<button type="button" class="usr-row-action usr-row-warn" onclick="event.stopPropagation();usuStatus('${uid}','desbloquear')">Desbloquear</button>` : ''}
+            ${statusAction}
             ${st!=='EXCLUIDO' ? `<button type="button" class="usr-row-action usr-row-muted" onclick="event.stopPropagation();usuExcluir('${uid}','${esc5(u.NOME||u.nome||u.USUARIO||u.usuario||'')}')">Excluir</button>` : ''}
           </div>`;
       return `<tr class="usr-user-row" onclick="usuAbrir('${uid}')">
@@ -28002,7 +28010,11 @@ function updateTopbarUser(user) {
     if(!confirm('Confirmar: ' + acao + ' este usuário?')) return;
     try {
       const d = await _apiFetch('/api/usuarios/' + encodeURIComponent(id) + '/' + acao, 0, { method:'POST', headers:{'Content-Type':'application/json'}, body:'{}' });
-      if(d.sucesso) { fecharModalUsuario(); if(window.loadUsuariosMasterPainel) await window.loadUsuariosMasterPainel(); }
+      if(d.sucesso) {
+        fecharModalUsuario();
+        if(window.loadUsuariosMasterPainel) await window.loadUsuariosMasterPainel();
+        alert(acao === 'desativar' ? 'Usuário desativado. O acesso e as sessões foram revogados.' : acao === 'ativar' ? 'Usuário reativado com sucesso.' : 'Usuário desbloqueado com sucesso.');
+      }
       else alert(d.erro||'Erro.');
     } catch(e) { alert(e.message); }
   };
@@ -28013,7 +28025,11 @@ function updateTopbarUser(user) {
     if(!motivo || !motivo.trim()) return;
     try {
       const d = await _apiFetch('/api/usuarios/' + encodeURIComponent(id), 0, { method:'DELETE', headers:{'Content-Type':'application/json'}, body:JSON.stringify({motivo:motivo.trim()}) });
-      if(d.sucesso) { fecharModalUsuario(); if(window.loadUsuariosMasterPainel) await window.loadUsuariosMasterPainel(); }
+      if(d.sucesso) {
+        fecharModalUsuario();
+        if(window.loadUsuariosMasterPainel) await window.loadUsuariosMasterPainel();
+        alert('Usuário excluído logicamente. O histórico foi preservado.');
+      }
       else alert(d.erro||'Erro ao excluir.');
     } catch(e) { alert(e.message); }
   };
@@ -30476,9 +30492,11 @@ if (typeof pageLoaders !== 'undefined') {
     if (!validar()) return;
     if (etapaAtual() < TOTAL) {
       if (typeof window.salvarRascunho === 'function') {
-        const ok = await window.salvarRascunho({silent:true});
+        const ok = await window.salvarRascunho({silent:true,reportError:true});
         if (!ok) return;
       }
+      window._nmEtapasConcluidas = window._nmEtapasConcluidas || new Set([1]);
+      window._nmEtapasConcluidas.add(etapaAtual());
       window.nmIrParaEtapa(etapaAtual() + 1);
     }
   };

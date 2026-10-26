@@ -22,6 +22,9 @@ assert.match(api, /MOTIVO_EXCLUSAO/);
 assert.match(api, /Não é possível excluir o único MASTER ativo/);
 assert.match(api, /não pode excluir sua própria conta/i);
 assert.match(api, /async function persistirStatusUsuario/);
+assert.match(api, /\['INATIVO','BLOQUEADO','EXCLUIDO'\]/, 'sessões de usuários sem acesso devem ser revogadas');
+assert.match(api, /\['inativo','bloqueado','excluido'\]/, 'login deve recusar usuários sem acesso');
+assert.match(api, /Usuário excluído\. Contate o administrador/, 'login deve informar exclusão lógica');
 assert.doesNotMatch(api, /DESATIVAR usuario Sheets\].message\);/);
 
 console.log('GESTAO ACESSOS: tabela, ficha, separação de status e exclusão lógica protegida aprovados.');

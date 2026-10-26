@@ -94,6 +94,7 @@ const tokTubahia    = () => makeToken({ perfil: 'ANALISTA SAC', empresa: 'TUBAHI
 const tokCesbap     = () => makeToken({ perfil: 'ANALISTA SAC', empresa: 'Cesbap',               usuario: 'pedro.cesbap' });
 const tokMaster     = () => makeToken({ perfil: 'MASTER',        empresa: 'Grupo Chiacchio',      usuario: 'master.test' });
 const tokInativo    = () => makeToken({ perfil: 'ANALISTA SAC', empresa: 'CHIACCHIO EMBALAGENS', usuario: 'usuario.inativo', status: 'INATIVO' });
+const tokExcluido   = () => makeToken({ perfil: 'ANALISTA SAC', empresa: 'CHIACCHIO EMBALAGENS', usuario: 'usuario.excluido', status: 'EXCLUIDO' });
 
 let portalClientId = 10;
 function portalClient() {
@@ -505,6 +506,14 @@ async function runTests() {
     const r = await req('POST', '/api/login', null, { usuario: 'usuario.inativo', senha: 'inativo123' });
     assert.ok(r.status === 401 || r.body?.sucesso === false,
       `login de inativo deve falhar, status=${r.status}`);
+  });
+
+  await test('AUTH: usuário excluído não autentica nem mantém sessão', async () => {
+    const login = await req('POST', '/api/login', null, { usuario: 'usuario.excluido', senha: 'excluido123' });
+    assert.ok(login.status === 401 || login.status === 403 || login.body?.sucesso === false,
+      `login de excluído deve falhar, status=${login.status}`);
+    const sessao = await req('GET', '/api/manifestacoes', tokExcluido());
+    assert.strictEqual(sessao.status, 401, `sessão de excluído deve ser revogada, status=${sessao.status}`);
   });
 
   // ── Concorrência ───────────────────────────────────────────────────────────

@@ -844,7 +844,7 @@ async function carregarUsuarioPorLogin(login){
   }
   // Fallback Sheets + PG mesclado
   const usuarios=await carregarUsuarios();
-  const ativo = u => normalizarTexto(u.STATUS||'ATIVO')!=='inativo';
+  const ativo = u => !['inativo','bloqueado','excluido'].includes(normalizarTexto(u.STATUS||'ATIVO'));
   // 1) Busca por USUARIO exato
   let u = usuarios.find(u=>normalizarTexto(u.USUARIO||u.EMAIL||u.ID_USUARIO)===alvo && ativo(u));
   // 2) Se não encontrado, tenta pelo prefixo do email (login sem @dominio)
@@ -1397,9 +1397,9 @@ app.use('/api', async (req,res,next)=>{
   if(!payload) return res.status(401).json({sucesso:false,erro:'Sessão inválida ou expirada.'});
   // Item10: verificar se usuário ainda está ativo (detecta desativação pós-login)
   const infoAtual = await verificarStatusUsuario(payload.usuario);
-  if (infoAtual.status === 'INATIVO') {
+  if (['INATIVO','BLOQUEADO','EXCLUIDO'].includes(String(infoAtual.status || '').toUpperCase())) {
     _statusCache.delete(payload.usuario); // forçar re-verificação na próxima vez
-    return res.status(401).json({sucesso:false,erro:'Usuário inativo. Sessão encerrada.'});
+    return res.status(401).json({sucesso:false,erro:'Acesso revogado. Sessão encerrada.'});
   }
   if (!verificarRateLimitAuth(payload.usuario)) {
     return res.status(429).json({ sucesso: false, erro: 'Muitas requisições. Tente novamente em instantes.' });
@@ -1501,6 +1501,7 @@ app.post('/api/auth/login', async (req, res) => {
     const statusNorm=normalizarTexto(pub.status||'');
     if(statusNorm==='inativo') return res.status(403).json({sucesso:false,erro:'Usuário inativo. Contate o administrador.'});
     if(statusNorm==='bloqueado') return res.status(403).json({sucesso:false,erro:'Usuário bloqueado. Contate o administrador.'});
+    if(statusNorm==='excluido') return res.status(403).json({sucesso:false,erro:'Usuário excluído. Contate o administrador.'});
     const senhaOk = await senhaValida(senha, registro.SENHA_HASH || registro.SENHA);
     if(!senhaOk) return res.status(401).json({sucesso:false,erro:'Usuário ou senha inválidos.'});
     const profissional=await obterPerfilProfissional(pub.id);
@@ -6547,7 +6548,10 @@ async function persistirStatusUsuario(alvo, status, req, extras = {}) {
   }
   invalidarCacheAba('USUARIOS');
   invalidarCachePermissoes(alvo.EMAIL||alvo.USUARIO||alvo.ID_USUARIO);
-  _statusCache.delete(normalizarTexto(alvo.USUARIO||alvo.EMAIL||alvo.ID_USUARIO));
+  [alvo.USUARIO, alvo.EMAIL, alvo.ID_USUARIO].filter(Boolean).forEach(chave => {
+    _statusCache.delete(chave);
+    _statusCache.delete(normalizarTexto(chave));
+  });
 }
 
 // Soft-delete (MASTER only)
@@ -6900,7 +6904,7 @@ app.patch('/api/manifestacoes/:id/circa-dados', requerPermissao('manifestacoes.e
     const currentStage=circaWorkflow.stageForStatus(m.STATUS||m.STATUS_FICHA||'RASCUNHO');
     if(requestedStage && (!Number.isInteger(requestedStage)||requestedStage<1||requestedStage>7)) return res.status(400).json({sucesso:false,erro:'Etapa CIRCA inválida.'});
     if(requestedStage && requestedStage>currentStage+1 && String(req.user?.PERFIL||req.user?.perfil||'').toUpperCase()!=='MASTER') return res.status(409).json({sucesso:false,erro:'A etapa solicitada depende da conclusão das etapas anteriores.',etapaAtual:currentStage});
-    const allowed=['STATUS','STATUS_FICHA','EMPRESA_RECLAMADA','EMPRESA_RECLAMANTE','CONTATO','CNPJ','TELEFONE','EMAIL','PRODUTO','LOTE','NFE','DESCRICAO','DESCRICAO_MANIFESTACAO','TIPO','CANAL','ORIGEM','PRIORIDADE','CATEGORIA','MOTIVO','GRAVIDADE','ETAPA_ATUAL','MENSAGEM_ETAPA','CAMINHO_TRATATIVA','PRAZO_RETORNO_SAC','TRATATIVA_SAC_INTERNA','INVESTIGACAO_O_QUE','INVESTIGACAO_VERIFICACOES','INVESTIGACAO_EVIDENCIAS','CAUSA_RAIZ_CONFIRMADA','ACOES_CORRETIVAS','DATA_SOLUCAO','RESPONSAVEL_EXECUCAO','PROCEDENTE','PROCEDENTE_JUSTIFICATIVA','VALID_SAC_DATA_RETORNO','VALID_SAC_CLIENTE_INFORMADO','VALID_SAC_RESOLVIDA','OBSERVACOES_FINAIS','DEVOLUTIVA_FINAL','DEVOLUTIVA_ENVIADA','STATUS_TRATATIVA','ANEXOS','EVIDENCIAS'];
+    const allowed=['STATUS','STATUS_FICHA','EMPRESA_RECLAMADA','EMPRESA_RECLAMANTE','CONTATO','CNPJ','TELEFONE','EMAIL','PRODUTO','LOTE','NFE','DESCRICAO','DESCRICAO_MANIFESTACAO','TIPO','CANAL','ORIGEM','PRIORIDADE','CATEGORIA','MOTIVO','GRAVIDADE','ETAPA_ATUAL','MENSAGEM_ETAPA','CAMINHO_TRATATIVA','COMPLEMENTO_PEDIDO','CANAL_RETORNO','PRAZO_RETORNO_SAC','TRATATIVA_SAC_INTERNA','INVESTIGACAO_O_QUE','INVESTIGACAO_VERIFICACOES','INVESTIGACAO_EVIDENCIAS','CAUSA_RAIZ_CONFIRMADA','ACOES_CORRETIVAS','DATA_SOLUCAO','RESPONSAVEL_EXECUCAO','PROCEDENTE','PROCEDENTE_JUSTIFICATIVA','VALID_SAC_DATA_RETORNO','VALID_SAC_CLIENTE_INFORMADO','VALID_SAC_RESOLVIDA','OBSERVACOES_FINAIS','DEVOLUTIVA_FINAL','DEVOLUTIVA_ENVIADA','STATUS_TRATATIVA','ANEXOS','EVIDENCIAS'];
     const patch={}; for(const key of allowed) if(Object.prototype.hasOwnProperty.call(req.body||{},key)) patch[key]=req.body[key] ?? '';
     if (req.body?.finalizar) {
       patch.PROTOCOLO = m.PROTOCOLO || await gerarProtocoloFicha(m.EMPRESA_RECLAMADA || '', m.CANAL || 'MANUAL', new Date().toISOString());
