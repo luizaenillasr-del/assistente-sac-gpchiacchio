@@ -1450,7 +1450,8 @@ app.use('/api', async (req,res,next)=>{
   };
   // Tokens emitidos após a implantação conhecem o estado do perfil. O servidor
   // impede acesso direto à API operacional enquanto o onboarding é obrigatório.
-  if (payload.perfilProfissionalCompleto === false && ![
+  const masterSemOnboarding = perfilCanonico(payload.perfil) === 'MASTER';
+  if (!masterSemOnboarding && payload.perfilProfissionalCompleto === false && ![
     '/auth/me','/auth/refresh','/auth/completar-primeiro-acesso','/meu-perfil'
   ].includes(req.path)) return res.status(428).json({sucesso:false,erro:'Conclua o Meu Perfil para acessar a ferramenta.',codigo:'PERFIL_PENDENTE'});
   next();
