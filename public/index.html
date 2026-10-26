@@ -4709,6 +4709,7 @@
 
   <div id="usr-status-tabs" role="tablist" aria-label="Situação das contas" style="display:flex;gap:6px;padding:12px 24px 0;margin:0 -28px;background:#fff;border-bottom:1px solid #E4E4E4;flex-shrink:0">
     <button type="button" class="usr-status-tab active" data-status-view="ATIVO" onclick="usuStatusView('ATIVO')">Ativos <span id="usr-count-ativo"></span></button>
+    <button type="button" class="usr-status-tab" data-status-view="PRIMEIRO_ACESSO" onclick="usuStatusView('PRIMEIRO_ACESSO')">Primeiro acesso <span id="usr-count-primeiro_acesso"></span></button>
     <button type="button" class="usr-status-tab" data-status-view="INATIVO" onclick="usuStatusView('INATIVO')">Inativos <span id="usr-count-inativo"></span></button>
     <button type="button" class="usr-status-tab" data-status-view="EXCLUIDO" onclick="usuStatusView('EXCLUIDO')">Excluídos <span id="usr-count-excluido"></span></button>
   </div>
@@ -15245,7 +15246,9 @@ document.addEventListener('visibilitychange', () => {
 
     if (typeof _iniciarDashRefresh === 'function') _iniciarDashRefresh();
     if(r==='RCA / REPRESENTANTE') await loadRcaHome();
-    if(r==='MASTER') { await loadUsuariosV5(); checarSolicitacoesPendentes && checarSolicitacoesPendentes(); iniciarPollingsolicitacoes && iniciarPollingsolicitacoes(); }
+    // A tela administrativa possui um único carregador. O carregador legado
+    // renderizava a mesma tabela com outro contrato e podia misturar status.
+    if(r==='MASTER') { await (window.loadUsuariosMasterPainel ? window.loadUsuariosMasterPainel() : loadUsuariosV5()); checarSolicitacoesPendentes && checarSolicitacoesPendentes(); iniciarPollingsolicitacoes && iniciarPollingsolicitacoes(); }
     if(r==='APROVADOR'||r==='APROVADOR MASTER'||r==='MASTER') await loadAprovadorV5();
     if(r==='ANALISTA SAC'||r==='GESTOR SAC') setupAprovacaoUI();
     if(r==='ANALISTA SAC'||r==='GESTOR SAC'||r==='MASTER') setTimeout(()=>{ if(typeof carregarNotifAnalista==='function') carregarNotifAnalista(); },1500);
@@ -15579,7 +15582,7 @@ document.addEventListener('visibilitychange', () => {
       permissoes_granted: perms.granted,
       permissoes_blocked: perms.blocked,
     };
-    try { await json5('/api/usuarios', {method:'POST', body:JSON.stringify(b)}); alert('Usuário criado.'); fecharModalUsuario(); loadUsuariosV5(); }
+    try { await json5('/api/usuarios', {method:'POST', body:JSON.stringify(b)}); alert('Usuário criado.'); fecharModalUsuario(); (window.loadUsuariosMasterPainel ? window.loadUsuariosMasterPainel() : loadUsuariosV5()); }
     catch(e) { alert(e.message); }
   };
   window.editarUsuarioV5 = async function(id) {
@@ -15614,7 +15617,7 @@ document.addEventListener('visibilitychange', () => {
           permissoes_blocked: perms.blocked,
         };
         const s = document.getElementById('usr-senha').value; if (s) b.senha = s;
-        try { await json5('/api/usuarios/' + encodeURIComponent(id), {method:'PATCH', body:JSON.stringify(b)}); alert('Usuário atualizado com sucesso!\n\nO usuário precisa fazer logout e login novamente para que as novas permissões e telas apareçam.'); fecharModalUsuario(); loadUsuariosV5(); }
+        try { await json5('/api/usuarios/' + encodeURIComponent(id), {method:'PATCH', body:JSON.stringify(b)}); alert('Usuário atualizado com sucesso!\n\nO usuário precisa fazer logout e login novamente para que as novas permissões e telas apareçam.'); fecharModalUsuario(); (window.loadUsuariosMasterPainel ? window.loadUsuariosMasterPainel() : loadUsuariosV5()); }
         catch(e) { alert(e.message); }
       };
       document.getElementById('modal-usuario-v5').style.display = 'flex';
@@ -15628,27 +15631,27 @@ document.addEventListener('visibilitychange', () => {
   // Ações rápidas de status
   window.usrBloquear = async function(id) {
     if (!confirm('Bloquear este usuário? Ele não conseguirá fazer login.')) return;
-    try { await json5('/api/usuarios/'+encodeURIComponent(id)+'/bloquear',{method:'POST',body:'{}'}); loadUsuariosV5(); }
+    try { await json5('/api/usuarios/'+encodeURIComponent(id)+'/bloquear',{method:'POST',body:'{}'}); (window.loadUsuariosMasterPainel ? window.loadUsuariosMasterPainel() : loadUsuariosV5()); }
     catch(e) { alert(e.message); }
   };
   window.usrDesbloquear = async function(id) {
     if (!confirm('Desbloquear este usuário?')) return;
-    try { await json5('/api/usuarios/'+encodeURIComponent(id)+'/desbloquear',{method:'POST',body:'{}'}); loadUsuariosV5(); }
+    try { await json5('/api/usuarios/'+encodeURIComponent(id)+'/desbloquear',{method:'POST',body:'{}'}); (window.loadUsuariosMasterPainel ? window.loadUsuariosMasterPainel() : loadUsuariosV5()); }
     catch(e) { alert(e.message); }
   };
   window.usrDesativar = async function(id) {
     if (!confirm('Desativar este usuário? Ele não conseguirá fazer login.')) return;
-    try { await json5('/api/usuarios/'+encodeURIComponent(id)+'/desativar',{method:'POST',body:'{}'}); loadUsuariosV5(); }
+    try { await json5('/api/usuarios/'+encodeURIComponent(id)+'/desativar',{method:'POST',body:'{}'}); (window.loadUsuariosMasterPainel ? window.loadUsuariosMasterPainel() : loadUsuariosV5()); }
     catch(e) { alert(e.message); }
   };
   window.usrAtivar = async function(id) {
     if (!confirm('Reativar este usuário?')) return;
-    try { await json5('/api/usuarios/'+encodeURIComponent(id)+'/ativar',{method:'POST',body:'{}'}); loadUsuariosV5(); }
+    try { await json5('/api/usuarios/'+encodeURIComponent(id)+'/ativar',{method:'POST',body:'{}'}); (window.loadUsuariosMasterPainel ? window.loadUsuariosMasterPainel() : loadUsuariosV5()); }
     catch(e) { alert(e.message); }
   };
   window.usrExcluir = async function(id, nome) {
     if (!confirm('Excluir o usuário "' + nome + '"? Esta ação não pode ser desfeita.')) return;
-    try { await json5('/api/usuarios/'+encodeURIComponent(id),{method:'DELETE'}); loadUsuariosV5(); }
+    try { await json5('/api/usuarios/'+encodeURIComponent(id),{method:'DELETE'}); (window.loadUsuariosMasterPainel ? window.loadUsuariosMasterPainel() : loadUsuariosV5()); }
     catch(e) { alert(e.message); }
   };
 
@@ -23363,7 +23366,12 @@ async function mudarStatusMC(id, novoStatus) {
     } else if(bridge) bridge.classList.remove('active');
     const req=document.getElementById('usr-solicitacoes-section');if(req)req.style.display=current==='solicitacoes'?'block':'none';
     if(current==='solicitacoes')loadSolicitacoesEmbutido?.();
-    if(current==='usuarios')loadUsuariosV5?.();
+    if(current==='usuarios') {
+      // Sempre usa a versão administrativa atual; o carregador legado possui
+      // uma renderização diferente e não deve disputar o mesmo tbody.
+      if(typeof window.loadUsuariosMasterPainel==='function') window.loadUsuariosMasterPainel();
+      else window.loadUsuariosV5?.();
+    }
     if(current==='permissoes')renderPerfisPermissoes();
   };
   let _aprovPanelsMontados=false;
@@ -23469,11 +23477,12 @@ async function mudarStatusMC(id, novoStatus) {
     }catch(e){tbody.innerHTML=`<tr><td colspan="7" style="color:var(--red)">${esc2(e.message)}</td></tr>`;}
   };
 
-  // Override do loadUsuariosV5 antigo para chamar o novo
+  // Compatibilidade para chamadas antigas: encaminha para a tela atual assim
+  // que ela estiver disponível, sem chamar o renderer intermediário.
   const _oldLoadV5=window.loadUsuariosV5;
   window.loadUsuariosV5=function(){
-    if(document.getElementById('usr-panel-usuarios')) loadUsuariosAdmin();
-    else if(typeof _oldLoadV5==='function') _oldLoadV5();
+    if(typeof window.loadUsuariosMasterPainel==='function') return window.loadUsuariosMasterPainel();
+    if(typeof _oldLoadV5==='function') return _oldLoadV5();
   };
 
   window.toggleUsuario = async function(id, acao){
@@ -27653,7 +27662,13 @@ function updateTopbarUser(user) {
     const vazio = document.getElementById('usu-vazio');
     const view = window._usuStatusView || 'ATIVO';
     const filtrada = lista.filter(u=>(u.STATUS||u.status||'ATIVO').toUpperCase() === view);
-    ['ATIVO','INATIVO','EXCLUIDO'].forEach(st=>{const c=document.getElementById('usr-count-'+st.toLowerCase());if(c)c.textContent='('+lista.filter(u=>(u.STATUS||u.status||'ATIVO').toUpperCase()===st).length+')';});
+    // Os totais refletem a fonte completa, mesmo quando há busca por nome,
+    // perfil ou empresa aplicada na tabela.
+    const todos = Array.isArray(_usuDados) ? _usuDados : lista;
+    ['ATIVO','PRIMEIRO_ACESSO','INATIVO','EXCLUIDO'].forEach(st=>{
+      const c=document.getElementById('usr-count-'+st.toLowerCase());
+      if(c)c.textContent='('+todos.filter(u=>(u.STATUS||u.status||'ATIVO').toUpperCase()===st).length+')';
+    });
     if (!filtrada.length) { if(tb) tb.innerHTML=''; if(vazio) vazio.style.display='block'; return; }
     if(vazio) vazio.style.display='none';
     const STATUS_COLORS = { ATIVO: {bg:'#E6F2EA',color:'#1E6B3A'}, INATIVO: {bg:'#EEEEEE',color:'#545252'}, BLOQUEADO: {bg:'#FDECEC',color:'#C70602'}, EXCLUIDO: {bg:'#FDECEC',color:'#A80502'}, PRIMEIRO_ACESSO: {bg:'#EAF0FB',color:'#24508F'}, PENDENTE_APROVACAO: {bg:'#FFF4E0',color:'#7A4C00'} };
@@ -27673,6 +27688,8 @@ function updateTopbarUser(user) {
       const currentUser = (()=>{ try { return JSON.parse(sessionStorage.getItem('sac-user')||'{}'); } catch(_) { return {}; } })();
       const isSelf = String(u.USUARIO||u.usuario||u.EMAIL||u.email||'').toLowerCase() === String(currentUser.usuario||currentUser.email||'').toLowerCase();
       const statusAction = st==='ATIVO'
+        ? `<button type="button" class="usr-row-action usr-row-warn" onclick="event.stopPropagation();usuStatus('${uid}','desativar')">Inativar</button>`
+        : st==='PRIMEIRO_ACESSO'
         ? `<button type="button" class="usr-row-action usr-row-warn" onclick="event.stopPropagation();usuStatus('${uid}','desativar')">Inativar</button>`
         : st==='INATIVO'
         ? `<button type="button" class="usr-row-action usr-row-ok" onclick="event.stopPropagation();usuStatus('${uid}','ativar')">Ativar</button>`
@@ -27711,13 +27728,10 @@ function updateTopbarUser(user) {
     const q = (document.getElementById('usu-busca')&&document.getElementById('usu-busca').value||'').toLowerCase();
     const fp = (document.getElementById('usu-fil-perfil')&&document.getElementById('usu-fil-perfil').value||'').toUpperCase();
     const fe = (document.getElementById('usu-fil-empresa')&&document.getElementById('usu-fil-empresa').value||'').toLowerCase();
-    const fs = (document.getElementById('usu-fil-status')&&document.getElementById('usu-fil-status').value||'').toUpperCase();
     const filtrado = _usuDados.filter(u => {
       if (q && !((u.NOME||u.nome||'')+(u.EMAIL||u.email||'')+(u.USUARIO||u.usuario||'')).toLowerCase().includes(q)) return false;
       if (fp && (u.PERFIL||u.perfil||'').toUpperCase() !== fp) return false;
       if (fe && !(u.EMPRESA||u.empresa||'').toLowerCase().split(',').map(v=>v.trim()).includes(fe)) return false;
-      if (fs && (u.STATUS||u.status||'ATIVO').toUpperCase() !== fs) return false;
-      if (!fs && (u.STATUS||u.status||'ATIVO').toUpperCase() !== (window._usuStatusView||'ATIVO')) return false;
       return true;
     });
     usuRenderLista(filtrado);
@@ -28034,10 +28048,10 @@ function updateTopbarUser(user) {
     } catch(e) { alert(e.message); }
   };
 
+  // Mantém somente a versão atual como destino de todas as entradas antigas.
+  window.loadUsuariosV5 = loadUsuariosMasterPainel;
   if (typeof window.pageLoaders !== 'undefined') {
     window.pageLoaders.usuarios = loadUsuariosMasterPainel;
-  } else {
-    window.loadUsuariosV5 = loadUsuariosV5;
   }
 
 })();
