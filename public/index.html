@@ -9773,11 +9773,19 @@ function navigate(page, el, _opts) {
   }
   if (window.innerWidth <= 768) toggleSidebar(false);
   // Keep page visibility explicit so page-specific layout rules cannot reveal inactive routes.
-  document.querySelectorAll('.page').forEach(p => { p.classList.remove('active'); p.style.display = 'none'; });
+  document.querySelectorAll('.page').forEach(p => {
+    p.classList.remove('active');
+    p.style.display = 'none';
+    p.hidden = true;
+  });
   document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
   const pageEl = document.getElementById('page-' + page);
   if (!pageEl) return;
   pageEl.classList.add('active');
+  // `hidden` prevalece sobre qualquer regra de CSS. Sem removê-lo, uma
+  // rota pode ficar selecionada no menu, mas continuar em branco na área
+  // principal quando a página tiver sido ocultada por uma navegação anterior.
+  pageEl.hidden = false;
   pageEl.style.display = 'flex';
   if (el) el.classList.add('active');
   if (page === 'biblioteca-fichas') loadBiblioteca(true);
