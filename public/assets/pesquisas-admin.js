@@ -77,9 +77,10 @@
       message("Selecione uma pesquisa em Gerenciar pesquisas.");
   }
   async function load() {
+    message("Carregando formulários…");
     try {
       const r = await call("formularios");
-      state.forms = r.itens;
+      state.forms = Array.isArray(r.itens) ? r.itens : [];
       state.canManage = r.podeGerenciar;
       state.loaded = true;
       renderList();
@@ -89,6 +90,18 @@
       if (!state.canManage) open("gerenciar");
     } catch (e) {
       message(e.message, true);
+      const list = $("psm-list");
+      if (list) {
+        list.innerHTML = "";
+        list.append(
+          Object.assign(document.createElement("button"), {
+            className: "psm-button",
+            type: "button",
+            textContent: "Tentar carregar novamente",
+            onclick: () => load(),
+          }),
+        );
+      }
     }
   }
   function fillFilters() {
@@ -191,22 +204,38 @@
     }
   }
   async function edit(id) {
+    const selectedId = String(id || "");
+    if (!selectedId) return message("Formulário inválido.", true);
     try {
       if (
         state.dirty &&
         !confirm("Há alterações não salvas. Deseja descartá-las?")
       )
         return;
-      const r = await call("formularios/" + encodeURIComponent(id));
+      open("editor");
+      message("Carregando o formulário selecionado…");
+      const r = await call("formularios/" + encodeURIComponent(selectedId));
+      if (!r.formulario || r.formulario.id !== selectedId)
+        throw new Error("A API não retornou o formulário selecionado.");
       state.draft = clone(r.formulario);
       state.draft.baseId = r.formulario.revision;
       state.index = 0;
       state.dirty = false;
       renderEditor();
-      open("editor");
       message("");
     } catch (e) {
       message(e.message, true);
+      const host = $("psm-editor");
+      if (host) {
+        host.replaceChildren(
+          Object.assign(document.createElement("p"), {
+            className: "psm-error-text",
+            textContent: e.message,
+          }),
+          button("Tentar novamente", () => edit(selectedId)),
+          button("Voltar para gerenciamento", () => open("gerenciar")),
+        );
+      }
     }
   }
   function editValue(key, value) {
@@ -234,6 +263,7 @@
     const toolbar = document.createElement("div");
     toolbar.className = "psm-actions";
     toolbar.append(
+      button("← Gerenciar formulários", () => open("gerenciar")),
       button("Salvar rascunho", () => save("RASCUNHO")),
       button("Visualizar prévia", preview),
       button("Publicar alterações", () => save("PUBLICADA"), "psm-primary"),
@@ -552,6 +582,10 @@
   async function save(action) {
     try {
       if (!state.draft) throw new Error("Selecione uma pesquisa.");
+      if (!state.draft.titulo?.trim())
+        throw new Error("Informe o título da pesquisa antes de salvar.");
+      if (!Array.isArray(state.draft.perguntas) || !state.draft.perguntas.length)
+        throw new Error("O formulário precisa ter ao menos uma pergunta.");
       const r = await call(
         "formularios/" + encodeURIComponent(state.draft.id),
         { ...state.draft, acao: action },
