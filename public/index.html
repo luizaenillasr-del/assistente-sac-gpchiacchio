@@ -27810,6 +27810,8 @@ function updateTopbarUser(user) {
         ? `<button type="button" class="usr-row-action usr-row-ok" onclick="event.stopPropagation();usuStatus('${uid}','ativar')">Ativar</button>`
         : st==='BLOQUEADO'
         ? `<button type="button" class="usr-row-action usr-row-ok" onclick="event.stopPropagation();usuStatus('${uid}','desbloquear')">Desbloquear</button>`
+        : st==='EXCLUIDO'
+        ? `<button type="button" class="usr-row-action usr-row-ok" onclick="event.stopPropagation();usuRestaurar('${uid}','${esc5(u.NOME||u.nome||u.USUARIO||u.usuario||'')}')">Restaurar</button>`
         : '';
       const actions = isSelf
         ? '<span style="font-size:11px;color:#707070">Sua conta</span>'
@@ -28145,6 +28147,19 @@ function updateTopbarUser(user) {
         alert(acao === 'desativar' ? 'Usuário desativado. O acesso e as sessões foram revogados.' : acao === 'ativar' ? 'Usuário reativado com sucesso.' : 'Usuário desbloqueado com sucesso.');
       }
       else alert(d.erro||'Erro.');
+    } catch(e) { alert(e.message); }
+  };
+
+  window.usuRestaurar = async function(id, nome) {
+    if(!confirm('Restaurar o usuário "' + nome + '"? Ele voltará como INATIVO e não terá acesso até nova ativação.')) return;
+    const motivo = prompt('Informe o motivo da restauração (obrigatório):');
+    if(motivo===null || !motivo.trim()) return;
+    try {
+      const d = await _apiFetch('/api/usuarios/' + encodeURIComponent(id) + '/restaurar', 0, {
+        method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status:'INATIVO',motivo:motivo.trim()})
+      });
+      if(d.sucesso) { await window.loadUsuariosMasterPainel(); alert('Usuário restaurado como INATIVO.'); }
+      else alert(d.erro||'Erro ao restaurar.');
     } catch(e) { alert(e.message); }
   };
 

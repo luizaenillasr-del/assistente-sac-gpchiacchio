@@ -6519,6 +6519,15 @@ app.post('/api/usuarios', requerPermissao('usuarios.criar'), async (req,res)=>{
   try{
     const b=req.body||{};
     if(!b.usuario||!b.nome||!b.perfil) return res.status(400).json({sucesso:false,erro:'Usuário, nome e perfil são obrigatórios.'});
+    const usuariosExistentes = await carregarUsuarios();
+    const loginNorm = normalizarTexto(b.usuario);
+    const emailNorm = normalizarTexto(b.email||'');
+    const duplicado = usuariosExistentes.find(u => {
+      const status = String(u.STATUS||'').toUpperCase();
+      if (status === 'EXCLUIDO' || status === 'EXCLUÍDO') return false;
+      return normalizarTexto(u.USUARIO||'') === loginNorm || (emailNorm && normalizarTexto(u.EMAIL||'') === emailNorm);
+    });
+    if (duplicado) return res.status(409).json({sucesso:false,erro:'Já existe um usuário ativo ou pendente com este login/e-mail.'});
     const id=await gerarProximoID('USUARIOS','USR','ID_USUARIO');
     const hash=b.senha ? await hashSenha(b.senha) : '';
     const obj={ID_USUARIO:id,USUARIO:b.usuario,EMAIL:b.email||'',NOME:b.nome,CARGO:b.cargo||'',PERFIL:perfilCanonico(b.perfil),EMPRESA:b.empresa||'',SETOR:b.setor||'',CODIGO_RCA:b.codigoRCA||'',STATUS:b.status||'ATIVO',SENHA_HASH:hash,DATA_CRIACAO:new Date().toISOString(),ULTIMO_ACESSO:'',PERMISSOES_CUSTOM:Array.isArray(b.permissoes_custom)?JSON.stringify(b.permissoes_custom):''};
@@ -6530,6 +6539,14 @@ app.post('/api/usuarios', requerPermissao('usuarios.criar'), async (req,res)=>{
 app.patch('/api/usuarios/:id', requerPermissao('usuarios.editar'), async (req,res)=>{
   try{
     const b=req.body||{};
+    const usuariosAtuais = await carregarUsuarios();
+    const alvoAtual = usuariosAtuais.find(u=>String(u.ID_USUARIO||u.USUARIO||u.EMAIL)===String(req.params.id)||String(u.USUARIO||'')===String(req.params.id)||String(u.EMAIL||'')===String(req.params.id));
+    if (!alvoAtual) return res.status(404).json({sucesso:false,erro:'Usuário não encontrado.'});
+    const statusSolicitado = b.status!==undefined ? String(b.status).toUpperCase() : '';
+    const statusAtual = String(alvoAtual.STATUS||'ATIVO').toUpperCase();
+    if (statusSolicitado === 'EXCLUIDO' || statusSolicitado === 'EXCLUÍDO') return res.status(400).json({sucesso:false,erro:'Use a exclusão lógica para mover o usuário à aba Excluídos.'});
+    if (['EXCLUIDO','EXCLUÍDO'].includes(statusAtual) && statusSolicitado === 'ATIVO') return res.status(409).json({sucesso:false,erro:'Usuário excluído só pode ser restaurado pelo fluxo administrativo.'});
+    if ((b.perfil!==undefined || b.PERFIL!==undefined || b.status!==undefined) && perfilCanonico(req.user?.perfil||'') !== 'MASTER') return res.status(403).json({sucesso:false,erro:'Apenas MASTER pode alterar perfil ou situação.'});
     // Whitelist de campos permitidos — impede mass assignment
     const dados={};
     if(b.nome!==undefined) dados.NOME=b.nome;
@@ -6692,6 +6709,10 @@ app.post('/api/usuarios/:id/desativar', requerPermissao('usuarios.gerenciar'), a
     const alvo=todos.find(u=>String(u.ID_USUARIO||u.USUARIO||u.EMAIL)===String(req.params.id)||String(u.USUARIO||'')===String(req.params.id)||String(u.EMAIL||'')===String(req.params.id));
     if(!alvo) return res.status(404).json({sucesso:false,erro:'Usuário não encontrado.'});
     if(normalizarTexto(alvo.USUARIO||alvo.EMAIL)===normalizarTexto(req.user.usuario)) return res.status(400).json({sucesso:false,erro:'Você não pode desativar sua própria conta.'});
+    if (perfilCanonico(alvo.PERFIL||'') === 'MASTER' && String(alvo.STATUS||'ATIVO').toUpperCase() === 'ATIVO') {
+      const outrosMastersAtivos = todos.filter(u => perfilCanonico(u.PERFIL||'') === 'MASTER' && String(u.STATUS||'ATIVO').toUpperCase() === 'ATIVO' && String(u.ID_USUARIO||u.USUARIO||u.EMAIL) !== String(alvo.ID_USUARIO||alvo.USUARIO||alvo.EMAIL));
+      if (!outrosMastersAtivos.length) return res.status(403).json({sucesso:false,erro:'Não é possível inativar o único MASTER ativo do sistema.'});
+    }
     await persistirStatusUsuario(alvo, 'INATIVO', req);
     await registrarAuditoria(req.user.usuario,'DESATIVOU_USUARIO',req.params.id,'USUARIOS',null,{});
     res.json({sucesso:true});
@@ -6702,10 +6723,27 @@ app.post('/api/usuarios/:id/ativar', requerPermissao('usuarios.gerenciar'), asyn
     if(perfilCanonico(req.user?.perfil||'')!=='MASTER') return res.status(403).json({sucesso:false,erro:'Apenas MASTER.'});
     const alvo=(await carregarUsuarios()).find(u=>String(u.ID_USUARIO||u.USUARIO||u.EMAIL)===String(req.params.id)||String(u.USUARIO||'')===String(req.params.id)||String(u.EMAIL||'')===String(req.params.id));
     if(!alvo) return res.status(404).json({sucesso:false,erro:'Usuário não encontrado.'});
+    if (['EXCLUIDO','EXCLUÍDO'].includes(String(alvo.STATUS||'').toUpperCase())) return res.status(409).json({sucesso:false,erro:'Usuário excluído só pode voltar por restauração administrativa.'});
     await persistirStatusUsuario(alvo, 'ATIVO', req);
     await registrarAuditoria(req.user.usuario,'ATIVOU_USUARIO',req.params.id,'USUARIOS',null,{});
     res.json({sucesso:true});
   }catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
+});
+
+// Restauração explícita de exclusão lógica. Não usa o botão comum de ativação.
+app.post('/api/usuarios/:id/restaurar', requerPermissao('usuarios.gerenciar'), async (req,res)=>{
+  try{
+    if (perfilCanonico(req.user?.perfil||'') !== 'MASTER') return res.status(403).json({sucesso:false,erro:'Apenas MASTER pode restaurar usuários.'});
+    const usuarios = await carregarUsuarios();
+    const alvo = usuarios.find(u => String(u.ID_USUARIO||u.USUARIO||u.EMAIL)===String(req.params.id) || String(u.USUARIO||'')===String(req.params.id) || String(u.EMAIL||'')===String(req.params.id));
+    if (!alvo) return res.status(404).json({sucesso:false,erro:'Usuário não encontrado.'});
+    if (!['EXCLUIDO','EXCLUÍDO'].includes(String(alvo.STATUS||'').toUpperCase())) return res.status(409).json({sucesso:false,erro:'Somente usuários excluídos podem ser restaurados.'});
+    const destino = String(req.body?.status||'INATIVO').toUpperCase();
+    if (!['INATIVO','PRIMEIRO_ACESSO'].includes(destino)) return res.status(400).json({sucesso:false,erro:'A restauração deve retornar para INATIVO ou PRIMEIRO_ACESSO.'});
+    await persistirStatusUsuario(alvo, destino, req, { DATA_RESTAURACAO:new Date().toISOString(), RESTAURADO_POR:req.user.usuario||'MASTER', MOTIVO_RESTAURACAO:String(req.body?.motivo||'') });
+    await registrarAuditoriaAcesso(alvo.EMAIL||alvo.USUARIO, 'USUARIO_RESTAURADO', 'USUARIOS', alvo.EMPRESA||'', {status:'EXCLUIDO'}, {status:destino,motivo:String(req.body?.motivo||'')}, req.user.usuario||'MASTER');
+    res.json({sucesso:true,mensagem:`Usuário restaurado como ${destino}.`});
+  } catch(e) { res.status(e.code===503?503:500).json({sucesso:false,erro:erroSeguro(e)}); }
 });
 
 // ===== PERMISSÕES DO USUÁRIO (MASTER only) =====
@@ -9693,7 +9731,7 @@ app.get('/api/admin/usuarios', requerPerfil('MASTER'), async (req, res) => {
 app.get('/api/admin/usuarios/:id', requerPerfil('MASTER'), async (req, res) => {
   try {
     const usuarios = await carregarUsuarios();
-    const u = usuarios.find(u2=>u2.ID_USUARIO===req.params.id||u2.USUARIO===req.params.id);
+    const u = usuarios.find(u2=>u2.ID_USUARIO===req.params.id||u2.USUARIO===req.params.id||u2.EMAIL===req.params.id);
     if (!u) return res.status(404).json({sucesso:false,erro:'Usuário não encontrado.'});
     const perms = await carregarPermissoesUsuario(u.EMAIL||u.USUARIO||u.ID_USUARIO);
     res.json({sucesso:true, usuario:{
@@ -9710,7 +9748,7 @@ app.patch('/api/admin/usuarios/:id/permissoes', requerPerfil('MASTER'), async (r
   try {
     const { perfil, empresa, setor, email, modulosNiveis, competencias } = req.body||{};
     const usuarios = await carregarUsuarios();
-    const u = usuarios.find(u2=>u2.ID_USUARIO===req.params.id||u2.USUARIO===req.params.id);
+    const u = usuarios.find(u2=>u2.ID_USUARIO===req.params.id||u2.USUARIO===req.params.id||u2.EMAIL===req.params.id);
     if (!u) return res.status(404).json({sucesso:false,erro:'Usuário não encontrado.'});
 
     const anterior = { perfil:u.PERFIL, empresa:u.EMPRESA };
@@ -9736,7 +9774,8 @@ app.patch('/api/admin/usuarios/:id/permissoes', requerPerfil('MASTER'), async (r
 
     // Persiste alterações na planilha USUARIOS
     const chaveId = u.ID_USUARIO || u.USUARIO || u.EMAIL;
-    await atualizarPorID('USUARIOS', chaveId, updates, ['ID_USUARIO','USUARIO','EMAIL']).catch(e => console.warn('[PERM] Sheets update falhou:', e.message));
+    const atualizacaoUsuario = await atualizarPorID('USUARIOS', chaveId, updates, ['ID_USUARIO','USUARIO','EMAIL']);
+    if (!atualizacaoUsuario && !u._pgId) return res.status(503).json({sucesso:false,erro:'Não foi possível persistir as alterações do usuário.'});
 
     // Atualiza também a aba PERMISSOES_USUARIO (fonte lida por carregarPermissoesUsuario)
     if (modulosNiveis !== undefined || competencias !== undefined) {
@@ -9758,7 +9797,7 @@ app.patch('/api/admin/usuarios/:id/permissoes', requerPerfil('MASTER'), async (r
           COMPETENCIAS: competenciasStr,
           ATUALIZADO_EM: new Date().toISOString(),
           ATUALIZADO_POR: req.user.usuario||'MASTER',
-        }, ['ID_PERMISSAO','USUARIO_ID']).catch(e => console.warn('[PERM] PERMISSOES_USUARIO update falhou:', e.message));
+        }, ['ID_PERMISSAO','USUARIO_ID']);
       } else {
         // Cria nova linha
         const idPerm = await gerarProximoID('PERMISSOES_USUARIO','PRM','ID_PERMISSAO').catch(()=>null);
@@ -9776,7 +9815,7 @@ app.patch('/api/admin/usuarios/:id/permissoes', requerPerfil('MASTER'), async (r
           CRIADO_POR: req.user.usuario||'MASTER',
           ATUALIZADO_EM: new Date().toISOString(),
           ATUALIZADO_POR: req.user.usuario||'MASTER',
-        }).catch(e => console.warn('[PERM] PERMISSOES_USUARIO append falhou:', e.message));
+        });
       }
       invalidarCacheAba('PERMISSOES_USUARIO');
     }
@@ -9793,13 +9832,10 @@ app.patch('/api/admin/usuarios/:id/permissoes', requerPerfil('MASTER'), async (r
 app.post('/api/admin/usuarios/:id/ativar', requerPerfil('MASTER'), async (req, res) => {
   try {
     const usuarios = await carregarUsuarios();
-    const u = usuarios.find(u2=>u2.ID_USUARIO===req.params.id||u2.USUARIO===req.params.id);
+    const u = usuarios.find(u2=>u2.ID_USUARIO===req.params.id||u2.USUARIO===req.params.id||u2.EMAIL===req.params.id);
     if (!u) return res.status(404).json({sucesso:false,erro:'Usuário não encontrado.'});
-    if (u._pgId && usuarioRepo) await usuarioRepo.update(u._pgId, { ativo: true }).catch(()=>{});
-    await atualizarPorID('USUARIOS', u.ID_USUARIO||u.USUARIO||u.EMAIL, { STATUS:'ATIVO', DATA_ULTIMA_ALTERACAO:new Date().toISOString(), ALTERADO_POR:req.user.usuario||'MASTER' }, ['ID_USUARIO','USUARIO','EMAIL']).catch(e => console.warn('[ATIVAR] Sheets update falhou:', e.message));
-    invalidarCacheAba('USUARIOS');
-    invalidarCachePermissoes(u.EMAIL||u.USUARIO||u.ID_USUARIO);
-    _statusCache.delete(normalizarTexto(u.USUARIO||u.EMAIL||u.ID_USUARIO));
+    if (['EXCLUIDO','EXCLUÍDO'].includes(String(u.STATUS||'').toUpperCase())) return res.status(409).json({sucesso:false,erro:'Usuário excluído só pode ser restaurado pelo fluxo administrativo.'});
+    await persistirStatusUsuario(u, 'ATIVO', req);
     await registrarAuditoriaAcesso(u.EMAIL||u.USUARIO, 'USUARIO_ATIVADO', '', u.EMPRESA, u.STATUS||'INATIVO', 'ATIVO', req.user.usuario||'MASTER');
     res.json({sucesso:true, mensagem:'Usuário ativado.'});
   } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
@@ -9808,17 +9844,50 @@ app.post('/api/admin/usuarios/:id/ativar', requerPerfil('MASTER'), async (req, r
 app.post('/api/admin/usuarios/:id/desativar', requerPerfil('MASTER'), async (req, res) => {
   try {
     const usuarios = await carregarUsuarios();
-    const u = usuarios.find(u2=>u2.ID_USUARIO===req.params.id||u2.USUARIO===req.params.id);
+    const u = usuarios.find(u2=>u2.ID_USUARIO===req.params.id||u2.USUARIO===req.params.id||u2.EMAIL===req.params.id);
     if (!u) return res.status(404).json({sucesso:false,erro:'Usuário não encontrado.'});
-    if (normalizarPerfil(u.PERFIL)==='MASTER' && u.ID_USUARIO===req.user.id) return res.status(400).json({sucesso:false,erro:'Não pode desativar a si mesmo.'});
-    if (u._pgId && usuarioRepo) await usuarioRepo.update(u._pgId, { ativo: false }).catch(()=>{});
-    await atualizarPorID('USUARIOS', u.ID_USUARIO||u.USUARIO||u.EMAIL, { STATUS:'INATIVO', DATA_ULTIMA_ALTERACAO:new Date().toISOString(), ALTERADO_POR:req.user.usuario||'MASTER' }, ['ID_USUARIO','USUARIO','EMAIL']).catch(e => console.warn('[DESATIVAR] Sheets update falhou:', e.message));
-    invalidarCacheAba('USUARIOS');
-    invalidarCachePermissoes(u.EMAIL||u.USUARIO||u.ID_USUARIO);
-    _statusCache.delete(normalizarTexto(u.USUARIO||u.EMAIL||u.ID_USUARIO));
+    if (normalizarTexto(u.USUARIO||u.EMAIL||u.ID_USUARIO)===normalizarTexto(req.user.usuario||req.user.email||req.user.id)) return res.status(400).json({sucesso:false,erro:'Você não pode desativar sua própria conta.'});
+    if (normalizarPerfil(u.PERFIL)==='MASTER' && String(u.STATUS||'ATIVO').toUpperCase()==='ATIVO') {
+      const outros = usuarios.filter(x=>normalizarPerfil(x.PERFIL)==='MASTER' && String(x.STATUS||'ATIVO').toUpperCase()==='ATIVO' && String(x.ID_USUARIO||x.USUARIO||x.EMAIL)!==String(u.ID_USUARIO||u.USUARIO||u.EMAIL));
+      if (!outros.length) return res.status(403).json({sucesso:false,erro:'Não é possível inativar o único MASTER ativo do sistema.'});
+    }
+    await persistirStatusUsuario(u, 'INATIVO', req);
     await registrarAuditoriaAcesso(u.EMAIL||u.USUARIO, 'USUARIO_DESATIVADO', '', u.EMPRESA, u.STATUS||'ATIVO', 'INATIVO', req.user.usuario||'MASTER');
     res.json({sucesso:true, mensagem:'Usuário desativado. Acesso revogado imediatamente.'});
   } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
+});
+
+app.delete('/api/admin/usuarios/:id', requerPerfil('MASTER'), async (req, res) => {
+  try {
+    const usuarios = await carregarUsuarios();
+    const u = usuarios.find(x=>x.ID_USUARIO===req.params.id||x.USUARIO===req.params.id||x.EMAIL===req.params.id);
+    if (!u) return res.status(404).json({sucesso:false,erro:'Usuário não encontrado.'});
+    if (normalizarTexto(u.USUARIO||u.EMAIL||u.ID_USUARIO)===normalizarTexto(req.user.usuario||req.user.email||req.user.id)) return res.status(400).json({sucesso:false,erro:'Você não pode excluir sua própria conta.'});
+    if (normalizarPerfil(u.PERFIL)==='MASTER') {
+      const outros = usuarios.filter(x=>normalizarPerfil(x.PERFIL)==='MASTER' && String(x.STATUS||'ATIVO').toUpperCase()==='ATIVO' && String(x.ID_USUARIO||x.USUARIO||x.EMAIL)!==String(u.ID_USUARIO||u.USUARIO||u.EMAIL));
+      if (!outros.length) return res.status(403).json({sucesso:false,erro:'Não é possível excluir o único MASTER ativo do sistema.'});
+    }
+    const motivo = String(req.body?.motivo||'').trim();
+    if (!motivo) return res.status(400).json({sucesso:false,erro:'Informe o motivo da exclusão lógica.'});
+    const agora = new Date().toISOString();
+    await persistirStatusUsuario(u,'EXCLUIDO',req,{DATA_EXCLUSAO:agora,EXCLUIDO_POR:req.user.usuario||'MASTER',MOTIVO_EXCLUSAO:motivo});
+    await registrarAuditoriaAcesso(u.EMAIL||u.USUARIO,'USUARIO_EXCLUIDO','USUARIOS',u.EMPRESA||'',{status:u.STATUS||'ATIVO'},{status:'EXCLUIDO',motivo},req.user.usuario||'MASTER');
+    res.json({sucesso:true,mensagem:'Usuário excluído logicamente.'});
+  } catch(e) { res.status(e.code===503?503:500).json({sucesso:false,erro:erroSeguro(e)}); }
+});
+
+app.post('/api/admin/usuarios/:id/restaurar', requerPerfil('MASTER'), async (req, res) => {
+  try {
+    const usuarios = await carregarUsuarios();
+    const u = usuarios.find(x=>x.ID_USUARIO===req.params.id||x.USUARIO===req.params.id||x.EMAIL===req.params.id);
+    if (!u) return res.status(404).json({sucesso:false,erro:'Usuário não encontrado.'});
+    if (!['EXCLUIDO','EXCLUÍDO'].includes(String(u.STATUS||'').toUpperCase())) return res.status(409).json({sucesso:false,erro:'Somente usuários excluídos podem ser restaurados.'});
+    const destino = String(req.body?.status||'INATIVO').toUpperCase();
+    if (!['INATIVO','PRIMEIRO_ACESSO'].includes(destino)) return res.status(400).json({sucesso:false,erro:'Status de restauração inválido.'});
+    await persistirStatusUsuario(u,destino,req,{DATA_RESTAURACAO:new Date().toISOString(),RESTAURADO_POR:req.user.usuario||'MASTER',MOTIVO_RESTAURACAO:String(req.body?.motivo||'')});
+    await registrarAuditoriaAcesso(u.EMAIL||u.USUARIO,'USUARIO_RESTAURADO','USUARIOS',u.EMPRESA||'',{status:'EXCLUIDO'},{status:destino},req.user.usuario||'MASTER');
+    res.json({sucesso:true,mensagem:`Usuário restaurado como ${destino}.`});
+  } catch(e) { res.status(e.code===503?503:500).json({sucesso:false,erro:erroSeguro(e)}); }
 });
 
 app.get('/api/admin/auditoria-acesso', requerPerfil('MASTER','AUDITOR'), async (req, res) => {
