@@ -1052,7 +1052,10 @@ async function atualizarPorID(nomeAba, id, dados, camposID = ['ID_MANIFESTACAO',
   if (!idxCandidatos.length) return null;
   let rowIndex = -1;
   const idNorm = String(id).trim();
-  for (let i=1;i<rows.length;i++) {
+  const indices = nomeAba === 'USUARIOS'
+    ? Array.from({length: Math.max(0, rows.length - 1)}, (_, n) => rows.length - 1 - n)
+    : Array.from({length: Math.max(0, rows.length - 1)}, (_, n) => n + 1);
+  for (const i of indices) {
     if (idxCandidatos.some(idx => String(rows[i][idx] || '').trim() === idNorm)) { rowIndex=i+1; break; }
   }
   if (rowIndex < 0) return null;
@@ -1848,7 +1851,8 @@ app.post('/api/auth/reset-password', async (req,res)=>{
 
   // Atualizar senha do usuário
   try {
-    await atualizarPorID('USUARIOS', registro.USUARIO, {SENHA: hash, SENHA_HASH: hash}, ['USUARIO','EMAIL']);
+    const atualizado = await atualizarPorID('USUARIOS', registro.EMAIL || registro.USUARIO, {SENHA: hash, SENHA_HASH: hash}, ['USUARIO','EMAIL']);
+    if (!atualizado) return res.status(500).json({sucesso:false, erro:'Não foi possível localizar o cadastro para atualizar a senha.'});
   } catch(e) {
     return res.status(500).json({sucesso:false, erro:'Erro ao atualizar senha.'});
   }
