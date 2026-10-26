@@ -6879,6 +6879,28 @@ app.get('/api/manifestacoes/:id/circa', requerPermissao('manifestacoes.visualiza
   } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e,'circa') }); }
 });
 
+// Atualiza os dados operacionais da ficha CIRCA sem criar uma segunda manifestação.
+app.patch('/api/manifestacoes/:id/circa-dados', requerPermissao('manifestacoes.editar'), middlewareEscopoEmpresa(), async (req,res) => {
+  try {
+    const idReq=String(req.params.id||'').trim();
+    const rows=await lerAba('MANIFESTACOES',5000).catch(()=>[]);
+    const m=rows.find(r=>[r.ID_MANIFESTACAO,r.PROTOCOLO,r.ID,r.ID_ORIGINAL].some(v=>String(v||'').trim()===idReq));
+    if(!m) return res.status(404).json({sucesso:false,erro:'Manifestação não encontrada.'});
+    if(req._empresaScope && !pertenceEmpresa(req._empresaScope,m.EMPRESA_RECLAMADA||'')) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado.'});
+    const allowed=['EMPRESA_RECLAMADA','EMPRESA_RECLAMANTE','CONTATO','CNPJ','TELEFONE','EMAIL','PRODUTO','LOTE','NFE','DESCRICAO','DESCRICAO_MANIFESTACAO','TIPO','CANAL','ORIGEM','PRIORIDADE','CATEGORIA','MOTIVO','GRAVIDADE','ETAPA_ATUAL','MENSAGEM_ETAPA','CAMINHO_TRATATIVA','PRAZO_RETORNO_SAC','TRATATIVA_SAC_INTERNA','INVESTIGACAO_O_QUE','INVESTIGACAO_VERIFICACOES','INVESTIGACAO_EVIDENCIAS','CAUSA_RAIZ_CONFIRMADA','ACOES_CORRETIVAS','DATA_SOLUCAO','RESPONSAVEL_EXECUCAO','PROCEDENTE','PROCEDENTE_JUSTIFICATIVA','VALID_SAC_DATA_RETORNO','VALID_SAC_CLIENTE_INFORMADO','VALID_SAC_RESOLVIDA','OBSERVACOES_FINAIS','DEVOLUTIVA_FINAL','DEVOLUTIVA_ENVIADA','STATUS_TRATATIVA','ANEXOS','EVIDENCIAS'];
+    const patch={}; for(const key of allowed) if(Object.prototype.hasOwnProperty.call(req.body||{},key)) patch[key]=req.body[key] ?? '';
+    if (req.body?.finalizar) {
+      patch.PROTOCOLO = m.PROTOCOLO || await gerarProtocoloFicha(m.EMPRESA_RECLAMADA || '', m.CANAL || 'MANUAL', new Date().toISOString());
+      patch.STATUS = 'AGUARDANDO_TRIAGEM_SAC'; patch.STATUS_FICHA = 'ABERTA'; patch.ETAPA_ATUAL = '2';
+      patch.MENSAGEM_ETAPA = 'Aguardando triagem SAC.';
+    }
+    patch.DATA_ULTIMA_EDICAO=new Date().toISOString(); patch.ATUALIZADO_POR=req.user?.usuario||'sistema';
+    await atualizarPorID('MANIFESTACOES',m.ID_MANIFESTACAO||idReq,patch,['ID_MANIFESTACAO','PROTOCOLO','ID']);
+    await registrarHistoricoManifestacao({id:m.ID_MANIFESTACAO||idReq,protocolo:m.PROTOCOLO||'',usuario:req.user?.usuario||'sistema',etapa:patch.ETAPA_ATUAL||m.ETAPA_ATUAL||'',acao:'ATUALIZOU_CARD_CIRCA',descricao:'Dados operacionais atualizados no novo card.'});
+    res.json({sucesso:true,id:m.ID_MANIFESTACAO||idReq,atualizadoEm:patch.DATA_ULTIMA_EDICAO});
+  } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e,'dados circa')});}
+});
+
 // ===== FLUXO OPERACIONAL CIRCA =====
 // Os registros abaixo reutilizam a manifestação e as abas operacionais legadas.
 // Nenhum acionamento cria uma segunda ficha.
