@@ -3003,15 +3003,15 @@
           <div class="circa-analysis-card"><div class="section-label">4 · Responsáveis e competências</div><div id="ia-setores" class="circa-tag-list"><span class="circa-muted">Aguardando classificação.</span></div></div>
           <div class="circa-analysis-card"><div class="section-label">5 · Casos semelhantes encontrados</div><div id="ia-similares" class="circa-similar-list"><span class="circa-muted">O histórico será consultado automaticamente.</span></div></div>
           <div class="circa-analysis-card"><div class="section-label">Recomendação complementar da IA</div><div id="ia-alertas-wrap"><div id="ia-alertas" class="circa-muted">A IA poderá complementar a orientação após a consulta determinística.</div></div><div class="circa-confidence">Confiança <strong id="ia-confianca-pct">—</strong><span class="progress-bar"><span id="ia-confianca-bar" class="progress-fill"></span></span></div></div></div>
-        <div class="circa-analysis-footer"><span>As recomendações são sugestões. A decisão e a validação permanecem com o SAC.</span><div><button class="btn btn-ghost" onclick="rejeitarAnalise()">Descartar</button><button class="btn btn-secondary" onclick="editarAnalise()">Ajustar orientação</button><button class="btn btn-primary" onclick="aceitarAnalise()">Utilizar orientação</button></div></div><div id="ia-decisao-status" style="display:none"></div><div id="ia-analisando" style="display:none"></div><div id="ia-resultado" style="display:none"></div><div id="ia-loading" style="display:none"></div><div id="ia-sla" class="nm-visually-hidden"></div><div id="ia-proc-wrap" class="nm-visually-hidden"></div><div id="ia-perguntas-wrap" class="nm-visually-hidden"></div><div id="ia-similares-wrap" class="nm-visually-hidden"></div><div id="ia-devolutiva-tipo" class="nm-visually-hidden"></div><div id="ia-devolutiva-bloqueadas" class="nm-visually-hidden"></div><textarea id="ia-devolutiva" class="nm-visually-hidden"></textarea>
+        <div class="circa-analysis-footer"><span>As recomendações são sugestões. A decisão e a validação permanecem com o SAC. Continue para registrar a orientação adotada nas etapas seguintes.</span></div><div id="ia-decisao-status" style="display:none"></div><div id="ia-analisando" style="display:none"></div><div id="ia-resultado" style="display:none"></div><div id="ia-loading" style="display:none"></div><div id="ia-sla" class="nm-visually-hidden"></div><div id="ia-proc-wrap" class="nm-visually-hidden"></div><div id="ia-perguntas-wrap" class="nm-visually-hidden"></div><div id="ia-similares-wrap" class="nm-visually-hidden"></div><div id="ia-devolutiva-tipo" class="nm-visually-hidden"></div><div id="ia-devolutiva-bloqueadas" class="nm-visually-hidden"></div><textarea id="ia-devolutiva" class="nm-visually-hidden"></textarea>
       </div>
 
       <!-- ETAPA 3: CONDUÇÃO -->
       <div class="nm-step-panel" data-nm-step="3"><div class="nm-section-hdr"><h2>Condução</h2><p>Defina o caminho da tratativa e os próximos responsáveis.</p></div>
         <div class="circa-path-grid"><div class="circa-path-card"><div class="circa-path-title"><span class="circa-path-icon">A</span>Resolver pelo SAC</div><p>Use quando houver procedimento validado e autonomia para concluir.</p><div class="circa-alert">Confirme a orientação, registre a ação e prepare a devolutiva.</div><button onclick="nmSetCaminhoTratativa('SAC',this)" id="nm-caminho-sac" class="btn btn-secondary">Selecionar caminho</button></div>
-          <div class="circa-path-card"><div class="circa-path-title"><span class="circa-path-icon">B</span>Solicitar informações complementares</div><p>Peça os dados necessários antes de definir a resolução.</p><label class="nm-label"><span>O que solicitar</span><textarea id="nm-complemento-pedido" class="nm-textarea" rows="3"></textarea></label><div class="nm-grid-2"><label class="nm-label"><span>Prazo de retorno</span><input class="nm-input" id="nm-prazo-retorno" value="72 horas"></label><label class="nm-label"><span>Canal de retorno</span><select class="nm-select" id="nm-canal-retorno"><option>WhatsApp</option><option>E-mail</option><option>Telefone</option></select></label></div></div>
+          <div class="circa-path-card"><div class="circa-path-title"><span class="circa-path-icon">B</span>Solicitar informações complementares</div><p>Peça os dados necessários antes de definir a resolução.</p><label class="nm-label"><span>O que solicitar</span><textarea id="nm-complemento-pedido" class="nm-textarea" rows="3"></textarea></label><div class="nm-grid-2"><label class="nm-label"><span>Prazo de retorno</span><input class="nm-input" id="nm-prazo-retorno" value="72 horas"></label><label class="nm-label"><span>Canal de retorno</span><select class="nm-select" id="nm-canal-retorno"><option>WhatsApp</option><option>E-mail</option><option>Telefone</option></select></label></div><button onclick="nmSetCaminhoTratativa('COMPLEMENTO',this)" id="nm-caminho-complemento" class="btn btn-secondary">Selecionar caminho</button></div>
           <div class="circa-path-card"><div class="circa-path-title"><span class="circa-path-icon">C</span>Acionar setor responsável</div><p>Crie uma tarefa com escopo, responsável, prazo e prioridade.</p><div class="nm-grid-2"><label class="nm-label"><span>Setor</span><select class="nm-select" id="nm-setor-acionado"><option value="">Selecionar setor</option><option>Qualidade</option><option>Logística</option><option>Comercial</option><option>Produção</option><option>Financeiro</option></select></label><label class="nm-label"><span>Responsável</span><input class="nm-input" id="nm-responsavel-acionado"></label></div><label class="nm-label"><span>Escopo da tarefa</span><textarea class="nm-textarea" rows="3" id="nm-escopo-acionado"></textarea></label><button onclick="nmSetCaminhoTratativa('SETOR',this)" id="nm-caminho-setor" class="btn btn-secondary">Selecionar caminho</button><button onclick="nmCriarAcionamento('ENCAMINHAMENTO_TRATATIVA')" class="btn btn-primary">Criar acionamento</button></div></div>
-        <input type="hidden" id="nm-caminho-tratativa"><input type="date" id="nm-data-encaminhamento" class="nm-visually-hidden"><div id="nm-box-tratativa-sac" class="nm-card" style="display:none"><div class="section-label">Tratativa interna SAC</div><textarea id="nm-tratativa-sac" class="nm-textarea" rows="5" placeholder="Descreva como o SAC conduzirá a resolução..."></textarea></div><div id="nm-box-encaminhamento-setor" class="nm-card" style="display:none"><div class="section-label">Acionamento preparado</div><p>O setor receberá a ficha após o registro e deverá responder dentro do prazo definido.</p></div>
+        <input type="hidden" id="nm-caminho-tratativa"><input type="date" id="nm-data-encaminhamento" class="nm-visually-hidden"><div id="nm-box-tratativa-sac" class="nm-card" style="display:none"><div class="section-label">Tratativa interna SAC</div><textarea id="nm-tratativa-sac" class="nm-textarea" rows="5" placeholder="Descreva como o SAC conduzirá a resolução..."></textarea></div><div id="nm-box-complemento" class="nm-card" style="display:none"><div class="section-label">Solicitação de complementação</div><p>Os dados solicitados, o canal e o prazo serão registrados na ficha antes do avanço da tratativa.</p></div><div id="nm-box-encaminhamento-setor" class="nm-card" style="display:none"><div class="section-label">Acionamento preparado</div><p>O setor receberá a ficha após o registro e deverá responder dentro do prazo definido.</p></div>
       </div>
 
       <!-- ETAPA 4: INVESTIGAÇÃO E RESOLUÇÃO -->
@@ -3131,17 +3131,9 @@
         }).join('');
       }
 
-      window.nmIrParaEtapa = function(n){
-        if(n < 1 || n > NM_TOTAL) return;
-        window.nmEtapa = n;
-        renderStepper();
-      };
-      window.nmProximaEtapa = function(){
-        if(window.nmEtapa < NM_TOTAL) nmIrParaEtapa(window.nmEtapa + 1);
-      };
-      window.nmEtapaAnterior = function(){
-        if(window.nmEtapa > 1) nmIrParaEtapa(window.nmEtapa - 1);
-      };
+      // A navegação pública da ficha é definida uma única vez no patch CIRCA
+      // resiliente ao final do documento, depois que todos os componentes foram
+      // carregados.
       var _nmUsuariosCache = null;
       async function nmCarregarUsuarios(){
         if(_nmUsuariosCache) return _nmUsuariosCache;
@@ -11374,7 +11366,14 @@ function renderizarCircaDeterministico(resultado) {
   const missing=a.informacoesAusentes||[]; set('ia-perguntas',missing.length?missing.map(x=>'• '+x).join('\n'):'Nenhuma informação essencial ausente.');
   const checklist=resultado.checklist||[]; const action=document.getElementById('ia-tratativa'); if(action) action.innerHTML=(checklist.length?checklist.map((x,i)=>`<div class="checklist-item"><span class="check-box">${i+1}</span><span>${esc(x.descricao||x.titulo||x)}</span></div>`): '<div class="circa-muted">Nenhuma tarefa determinística pendente.</div>');
   const proc=document.getElementById('ia-proc-nome'); if(proc) proc.textContent=(a.procedimentosAplicaveis||a.acoesSugeridas||[]).join(' · ')||'Nenhum procedimento validado encontrado.';
-  const sectors=[...(a.setoresRecomendados||[]),...(a.responsaveisElegiveis||[])].filter(Boolean); const se=document.getElementById('ia-setores'); if(se) se.innerHTML=sectors.length?sectors.map(x=>`<span class="circa-source">${esc(x)}</span>`).join(''):'<span class="circa-muted">Nenhum responsável elegível encontrado.</span>';
+  const separarItens = valor => String(valor ?? '').split(/[;,\n|]+/).map(x => x.trim()).filter(Boolean);
+  const unicos = lista => [...new Map(lista.map(x => [String(x).toLocaleLowerCase('pt-BR'), String(x)])).values()];
+  const setores = unicos((a.setoresRecomendados || []).flatMap(separarItens));
+  const responsaveis = unicos((a.responsaveisElegiveis || []).flatMap(separarItens));
+  const se=document.getElementById('ia-setores');
+  if(se) se.innerHTML = setores.length || responsaveis.length
+    ? [...setores.map(x=>`<span class="circa-source">Setor: ${esc(x)}</span>`), ...responsaveis.map(x=>`<span class="circa-source">Responsável: ${esc(x)}</span>`)].join('')
+    : '<span class="circa-muted">Nenhum setor ou responsável elegível encontrado.</span>';
   const sim=document.getElementById('ia-similares'); if(sim) sim.innerHTML=(a.casosSemelhantes||[]).length?(a.casosSemelhantes||[]).map(x=>`<div class="checklist-item"><span>${esc(x)}</span></div>`).join(''):'<span class="circa-muted">Nenhum caso semelhante encontrado.</span>';
   const stamp=document.getElementById('ia-timestamp'); if(stamp) stamp.textContent='Consulta determinística concluída · regras + histórico + matriz';
 }
@@ -11469,9 +11468,13 @@ function renderizarAnalise(a) {
 
   // Tipo e confiança
   document.getElementById('ia-tipo').textContent = a.tipoDetectado || a.tipoSugerido || 'Não identificado';
-  const conf = (typeof a.confianca === 'object' ? a.confianca?.score : a.confianca) ?? 0;
-  document.getElementById('ia-confianca-bar').style.width = conf + '%';
-  document.getElementById('ia-confianca-pct').textContent = conf + '%';
+  const confRaw = typeof a.confianca === 'object' ? a.confianca?.score : a.confianca;
+  const conf = Number(confRaw);
+  const confValido = Number.isFinite(conf) && conf >= 0 && conf <= 100;
+  const confBar = document.getElementById('ia-confianca-bar');
+  const confPct = document.getElementById('ia-confianca-pct');
+  if (confBar) confBar.style.width = confValido ? conf + '%' : '0%';
+  if (confPct) confPct.textContent = confValido ? conf + '%' : 'Não calculada';
 
   // Prioridade
   const priEl = document.getElementById('ia-prioridade-badge');
@@ -12131,12 +12134,13 @@ function nmSetProcedente(valor, btn) {
 
 function nmSetCaminhoTratativa(caminho, btn) {
   document.getElementById('nm-caminho-tratativa').value = caminho;
-  ['nm-caminho-sac','nm-caminho-setor'].forEach(id => {
+  ['nm-caminho-sac','nm-caminho-complemento','nm-caminho-setor'].forEach(id => {
     const b = document.getElementById(id);
     if (b) { b.style.background = '#fff'; b.style.color = '#666464'; b.style.borderColor = '#D6D6D6'; b.style.fontWeight = '500'; }
   });
   btn.style.background = '#EFF6FF'; btn.style.color = '#1D4ED8'; btn.style.borderColor = '#3B82F6'; btn.style.fontWeight = '700';
   document.getElementById('nm-box-tratativa-sac').style.display = caminho === 'SAC' ? 'block' : 'none';
+  document.getElementById('nm-box-complemento').style.display = caminho === 'COMPLEMENTO' ? 'block' : 'none';
   document.getElementById('nm-box-encaminhamento-setor').style.display = caminho === 'SETOR' ? 'block' : 'none';
 }
 
@@ -17635,8 +17639,8 @@ window.renderizarAnalise = function(a){
   // Renderizar bloco de origem da sugestão
   renderOrigemSugestao(a);
 
-  // Renderizar bloco de decisão completo
-  renderBlocoDecisao(a);
+  // A decisão operacional ocorre nas etapas CIRCA seguintes. O painel de
+  // análise exibe recomendações e evidências, sem duplicar controles decisórios.
 };
 
 function renderCasosSemelhantesDetalhado(a){
@@ -17717,6 +17721,10 @@ function renderOrigemSugestao(a){
 }
 
 function renderBlocoDecisao(a){
+  // Mantido como compatibilidade para chamadas legadas, mas a interface
+  // decisória antiga não é mais renderizada no fluxo CIRCA.
+  return;
+  /* legado não renderizado
   const painel = document.getElementById('painel-analise');
   if(!painel) return;
 
@@ -17769,7 +17777,7 @@ function renderBlocoDecisao(a){
     <!-- Status atual da decisão -->
     <div id="decisao-status-atual" style="display:none;margin-top:12px"></div>`;
 
-  painel.appendChild(el);
+  painel.appendChild(el); */
 }
 
 window.selecionarOrigem = function(btn, origem){
@@ -18028,37 +18036,19 @@ function adicionarEventoAuditoria(tipo, decisao){
   window._nmAuditoria.push(evento);
 }
 
-// ── INTERCEPTAR registrarManifestacao PARA INCLUIR DECISÃO ───
+// Compatibilidade de identificação para referências de casos semelhantes.
+// A decisão operacional pertence às etapas CIRCA e não altera o envio final.
 const _origRegistrar = window.registrarManifestacao;
 window.registrarManifestacao = async function(){
-  // Se há análise e nenhuma decisão, avisar
-  if(window._nmAnaliseAtual && !window._nmDecisaoCompleta?.tipo){
-    const confirmou = confirm('Ainda não há decisão registrada sobre a sugestão da IA. Deseja registrar sem decisão?');
-    if(!confirmou) return;
-  }
-
-  // Injetar dados da decisão no body do POST original
-  window._nmDecisaoPayload = window._nmDecisaoCompleta || null;
-  window._nmAuditoriaPayload = window._nmAuditoria || [];
-
   if(typeof _origRegistrar === 'function') await _origRegistrar();
 };
 
-// Sobrescrever para incluir payload de decisão e capturar ID gerado
+// Captura apenas o identificador retornado pela API. Não altera requisições.
 const _origFetch = window.fetch.bind(window);
 window.fetch = function(input, options={}){
   const _url = typeof input === 'string' ? input : (input?.url || '');
   const _method = (options.method || 'GET').toUpperCase();
   if(_url.includes('/api/manifestacoes') && _method === 'POST'){
-    if(options.body && window._nmDecisaoPayload){
-      try{
-        const body = JSON.parse(options.body);
-        body.decisaoCompleta = window._nmDecisaoPayload;
-        body.auditoria = window._nmAuditoriaPayload;
-        options.body = JSON.stringify(body);
-        window._nmDecisaoPayload = null;
-      }catch(e){ /* ignora */ }
-    }
     return _origFetch(input, options).then(async response => {
       const clone = response.clone();
       try {
@@ -18074,11 +18064,7 @@ window.fetch = function(input, options={}){
 // ── RESETAR AO INICIAR NOVA MANIFESTAÇÃO ─────────────────────
 const _origInitNova = window.initNovaManifestacao;
 window.initNovaManifestacao = async function(){
-  window._nmDecisaoCompleta = null;
-  window._nmAuditoria = [];
   if(typeof _origInitNova==='function') await _origInitNova();
-  // Remover bloco de decisão antigo se existir
-  document.getElementById('bloco-decisao-analista')?.remove();
 };
 
 console.log('[patch-nova-manifestacao] carregado');
@@ -30462,7 +30448,16 @@ if (typeof pageLoaders !== 'undefined') {
       if(!val('nm-data')) return fail('nm-data','Informe a data do registro.');
       if(val('nm-descricao').length<10) return fail('nm-descricao','Preencha a descrição da manifestação.');
     }
-    if(n===3 && !val('nm-caminho-tratativa')) return fail('nm-caminho-sac','Selecione como o SAC conduzirá a tratativa.');
+    if(n===3){
+      var caminho=val('nm-caminho-tratativa');
+      if(!caminho) return fail('nm-caminho-sac','Selecione como o SAC conduzirá a tratativa.');
+      if(caminho==='SAC' && !val('nm-tratativa-sac')) return fail('nm-tratativa-sac','Descreva a tratativa que será conduzida pelo SAC.');
+      if(caminho==='COMPLEMENTO' && !val('nm-complemento-pedido')) return fail('nm-complemento-pedido','Informe quais dados precisam ser complementados.');
+      if(caminho==='SETOR'){
+        if(!val('nm-setor-acionado')) return fail('nm-setor-acionado','Selecione o setor responsável.');
+        if(!val('nm-escopo-acionado')) return fail('nm-escopo-acionado','Descreva o escopo do acionamento.');
+      }
+    }
     if(n===4 && !val('nm-investigacao-resultado')&&!val('nm-investigacao-notas')) return fail('nm-investigacao-resultado','Registre evidências ou resultado da investigação.');
     if(n===5 && !val('nm-procedente')) return fail('nm-procedente','Registre a procedência antes de validar.');
     if(n===6 && !val('nm-devolutiva')) return fail('nm-devolutiva','Registre a devolutiva antes de prosseguir.');
