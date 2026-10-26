@@ -824,13 +824,16 @@ async function carregarUsuarioPorLogin(login){
   // que ainda possa existir no PostgreSQL.
   try {
     const sheetRows = await lerAba('USUARIOS', 1000);
-    const candidatos = sheetRows.filter(row => {
+    const candidatos = sheetRows.map((row, index) => ({ row, index })).filter(({ row }) => {
       const rowLogin = normalizarTexto(row.USUARIO || row.LOGIN || '');
       const rowEmail = normalizarTexto(row.EMAIL || '');
       const status = normalizarTexto(row.STATUS || 'ATIVO');
       return (rowLogin === alvo || rowEmail === alvo || normalizarTexto(rowEmail.split('@')[0]) === alvo) && !['excluido','inativo','bloqueado'].includes(status) && (row.SENHA_HASH || row.SENHA);
-    }).sort((a,b) => String(b.DATA_CRIACAO || b.DATA_ULTIMA_ALTERACAO || '').localeCompare(String(a.DATA_CRIACAO || a.DATA_ULTIMA_ALTERACAO || '')));
-    if (candidatos[0]) return candidatos[0];
+    }).sort((a,b) => {
+      const data = String(b.row.DATA_CRIACAO || b.row.DATA_ULTIMA_ALTERACAO || '').localeCompare(String(a.row.DATA_CRIACAO || a.row.DATA_ULTIMA_ALTERACAO || ''));
+      return data || b.index - a.index;
+    });
+    if (candidatos[0]) return candidatos[0].row;
   } catch (_) { /* PG segue como fonte de fallback quando Sheets está indisponível. */ }
   // F4: tenta PostgreSQL primeiro por login ou email
   if (usuarioRepo) {
@@ -850,13 +853,14 @@ async function carregarUsuarioPorLogin(login){
           const loginNorm = normalizarTexto(pgU.login || pgU.email || login);
           const idNorm = String(pgU.idOriginal || '').trim().toLowerCase();
           sheetOverride = sheetRows
-            .filter(row => {
+            .map((row, index) => ({ row, index }))
+            .filter(({ row }) => {
               const rowEmail = String(row.EMAIL || '').trim().toLowerCase();
               const rowLogin = normalizarTexto(row.USUARIO || row.LOGIN || '');
               const rowId = String(row.ID_USUARIO || row.ID || '').trim().toLowerCase();
               return (email && rowEmail === email) || (loginNorm && rowLogin === loginNorm) || (idNorm && rowId === idNorm);
             })
-            .sort((a, b) => String(b.DATA_CRIACAO || '').localeCompare(String(a.DATA_CRIACAO || '')))[0] || null;
+            .sort((a, b) => String(b.row.DATA_CRIACAO || '').localeCompare(String(a.row.DATA_CRIACAO || '')) || b.index - a.index)[0]?.row || null;
         } catch (_) { /* PostgreSQL continua sendo fallback quando Sheets está indisponível. */ }
         return {
           ID_USUARIO: pgU.idOriginal || `USR-PG-${pgU.id}`,
