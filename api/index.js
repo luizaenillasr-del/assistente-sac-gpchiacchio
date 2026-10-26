@@ -6563,6 +6563,31 @@ app.patch('/api/usuarios/:id', requerPermissao('usuarios.editar'), async (req,re
     }
     const pgAlvo = usuarioRepo ? (await carregarUsuarios()).find(u => String(u.ID_USUARIO||u.USUARIO||u.EMAIL) === String(req.params.id) || String(u.USUARIO||'') === String(req.params.id) || String(u.EMAIL||'') === String(req.params.id)) : null;
     if(!resultado && !(pgAlvo && pgAlvo._pgId)) return res.status(404).json({sucesso:false,erro:'Usuário não encontrado. Recarregue a lista e tente novamente.'});
+    // Usuários provisionados apenas no PostgreSQL precisam de uma linha de
+    // espelho na aba administrativa. Sem isso, empresa/setor/perfil/cargo
+    // eram aceitos pela API, mas desapareciam no próximo carregamento.
+    if (!resultado && pgAlvo?._pgId) {
+      await garantirAbaComCabecalhos('USUARIOS', ['ID_USUARIO','USUARIO','EMAIL','NOME','CARGO','PERFIL','EMPRESA','SETOR','STATUS','SENHA_HASH','DATA_CRIACAO','ULTIMO_ACESSO','PERMISSOES_GRANTED','PERMISSOES_BLOCKED','DATA_ULTIMA_ALTERACAO','ALTERADO_POR']);
+      await appendObjeto('USUARIOS', {
+        ID_USUARIO: pgAlvo.ID_USUARIO || req.params.id,
+        USUARIO: pgAlvo.USUARIO || pgAlvo.EMAIL || '',
+        EMAIL: b.email !== undefined ? String(b.email).toLowerCase() : (pgAlvo.EMAIL || ''),
+        NOME: b.nome !== undefined ? b.nome : (pgAlvo.NOME || ''),
+        CARGO: b.cargo !== undefined ? b.cargo : (pgAlvo.CARGO || ''),
+        PERFIL: b.perfil !== undefined ? perfilCanonico(b.perfil) : (pgAlvo.PERFIL || ''),
+        EMPRESA: b.empresa !== undefined ? String(b.empresa).trim() : (pgAlvo.EMPRESA || ''),
+        SETOR: b.setor !== undefined ? String(b.setor).trim() : (pgAlvo.SETOR || ''),
+        STATUS: b.status !== undefined ? String(b.status).toUpperCase() : (pgAlvo.STATUS || 'ATIVO'),
+        SENHA_HASH: dados.SENHA_HASH || pgAlvo.SENHA_HASH || '',
+        DATA_CRIACAO: pgAlvo.DATA_CRIACAO || new Date().toISOString(),
+        ULTIMO_ACESSO: pgAlvo.ULTIMO_ACESSO || '',
+        PERMISSOES_GRANTED: Array.isArray(b.permissoes_granted) ? JSON.stringify(b.permissoes_granted) : (pgAlvo.PERMISSOES_GRANTED || ''),
+        PERMISSOES_BLOCKED: Array.isArray(b.permissoes_blocked) ? JSON.stringify(b.permissoes_blocked) : (pgAlvo.PERMISSOES_BLOCKED || ''),
+        DATA_ULTIMA_ALTERACAO: dados.DATA_ULTIMA_ALTERACAO,
+        ALTERADO_POR: req.user.usuario,
+      });
+      resultado = { espelhoCriado: true };
+    }
     // Usuários vindos do PostgreSQL não possuem necessariamente uma linha
     // correspondente na planilha. Persista também a edição básica na fonte
     // estruturada para que ela não desapareça no próximo carregamento.
@@ -6573,7 +6598,7 @@ app.patch('/api/usuarios/:id', requerPermissao('usuarios.editar'), async (req,re
         if (b.nome !== undefined) pgDados.nome = b.nome;
         if (b.email !== undefined) pgDados.email = String(b.email).toLowerCase();
         if (b.senha) pgDados.senhaHash = dados.SENHA_HASH;
-        if (b.status !== undefined) pgDados.ativo = String(b.status).toUpperCase() !== 'INATIVO' && String(b.status).toUpperCase() !== 'EXCLUIDO';
+        if (b.status !== undefined) pgDados.ativo = !['INATIVO','BLOQUEADO','EXCLUIDO','EXCLUÍDO'].includes(String(b.status).toUpperCase());
         if (Object.keys(pgDados).length) await usuarioRepo.update(alvo._pgId, pgDados).catch(e => console.warn('[PATCH usuario PG]', e.message));
       }
     }
