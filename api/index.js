@@ -818,6 +818,20 @@ async function carregarUsuarioPorLogin(login){
     const demo=DEMO_USUARIOS.find(u=>normalizarTexto(u.USUARIO)===alvo);
     if(demo) return demo;
   }
+  // Quando existem registros históricos com o mesmo login (por exemplo, um
+  // cadastro excluído e outro recriado), a linha mais recente do Sheets é a
+  // credencial administrativa vigente. Isso evita autenticar com o hash antigo
+  // que ainda possa existir no PostgreSQL.
+  try {
+    const sheetRows = await lerAba('USUARIOS', 1000);
+    const candidatos = sheetRows.filter(row => {
+      const rowLogin = normalizarTexto(row.USUARIO || row.LOGIN || '');
+      const rowEmail = normalizarTexto(row.EMAIL || '');
+      const status = normalizarTexto(row.STATUS || 'ATIVO');
+      return (rowLogin === alvo || rowEmail === alvo || normalizarTexto(rowEmail.split('@')[0]) === alvo) && !['excluido','inativo','bloqueado'].includes(status) && (row.SENHA_HASH || row.SENHA);
+    }).sort((a,b) => String(b.DATA_CRIACAO || b.DATA_ULTIMA_ALTERACAO || '').localeCompare(String(a.DATA_CRIACAO || a.DATA_ULTIMA_ALTERACAO || '')));
+    if (candidatos[0]) return candidatos[0];
+  } catch (_) { /* PG segue como fonte de fallback quando Sheets está indisponível. */ }
   // F4: tenta PostgreSQL primeiro por login ou email
   if (usuarioRepo) {
     try {
