@@ -429,16 +429,23 @@ async function carregarUsuarios(){
     return Object.keys(overrides).length ? { ...u, ...overrides } : u;
   });
   // Sheets complementa o PG: usuários que existem só no Sheets (ex: aprovados recentemente) aparecem normalmente
-  const _seenEmails = new Set();
-  const sheetsOnly = rows.filter(r => {
-    const emailOrUser = (r.EMAIL||r.USUARIO||'').toLowerCase();
+  // Deduplica registros antigos do Sheets priorizando o cadastro mais recente
+  // e não excluído. Isso permite recriar um login após sua exclusão lógica.
+  const sheetsByLogin = new Map();
+  rows.forEach(r => {
+    const emailOrUser = String(r.EMAIL || r.USUARIO || '').trim().toLowerCase();
     const id = r.ID_USUARIO;
-    if (pgIds.has(id) || pgEmails.has(emailOrUser)) return false;
-    // dedup interno do Sheets: primeiro registro com esse email/usuario ganha
-    if (_seenEmails.has(emailOrUser)) return false;
-    _seenEmails.add(emailOrUser);
-    return true;
+    if (!emailOrUser || pgIds.has(id) || pgEmails.has(emailOrUser)) return;
+    const anterior = sheetsByLogin.get(emailOrUser);
+    const status = String(r.STATUS || '').toUpperCase();
+    const statusAnterior = String(anterior?.STATUS || '').toUpperCase();
+    const ativo = !['EXCLUIDO','EXCLUÍDO'].includes(status);
+    const ativoAnterior = !['EXCLUIDO','EXCLUÍDO'].includes(statusAnterior);
+    const dataAtual = String(r.DATA_CRIACAO || r.DATA_ULTIMA_ALTERACAO || '');
+    const dataAnterior = String(anterior?.DATA_CRIACAO || anterior?.DATA_ULTIMA_ALTERACAO || '');
+    if (!anterior || (ativo && !ativoAnterior) || (ativo === ativoAnterior && dataAtual >= dataAnterior)) sheetsByLogin.set(emailOrUser, r);
   });
+  const sheetsOnly = [...sheetsByLogin.values()];
   const pgMerged = pgMapped; // PG é a fonte única — perfil/empresa vêm do PG
   const demoEnabled=String(process.env.DEMO_LOGIN_ENABLED||'false').toLowerCase()==='true';
   // Dedup envUsers contra PG
