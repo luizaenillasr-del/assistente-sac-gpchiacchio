@@ -28089,8 +28089,19 @@ function updateTopbarUser(user) {
     if(!confirm('Excluir logicamente o usuário "' + nome + '"?\n\nO acesso será revogado e o histórico será preservado.')) return;
     const motivo = prompt('Informe o motivo da exclusão lógica:');
     if(!motivo || !motivo.trim()) return;
+    const endpoint='/api/usuarios/' + encodeURIComponent(id);
+    const excluir = async redistribuir => _apiFetch(endpoint, 0, {
+      method:'DELETE', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({motivo:motivo.trim(), ...(redistribuir ? {redistribuir:'SIM'} : {})})
+    });
     try {
-      const d = await _apiFetch('/api/usuarios/' + encodeURIComponent(id), 0, { method:'DELETE', headers:{'Content-Type':'application/json'}, body:JSON.stringify({motivo:motivo.trim()}) });
+      let d = await excluir(false);
+      // Usuários de teste podem ainda estar vinculados a uma fila pendente.
+      // Nunca redistribui silenciosamente: pede confirmação explícita ao MASTER.
+      if(d && d.erro && /responsabilidades pendentes/i.test(d.erro)) {
+        const confirmarRedistribuicao=confirm('Este usuário possui itens pendentes. Deseja redistribuí-los antes da exclusão?');
+        if(confirmarRedistribuicao) d=await excluir(true);
+      }
       if(d.sucesso) {
         fecharModalUsuario();
         if(window.loadUsuariosMasterPainel) await window.loadUsuariosMasterPainel();
