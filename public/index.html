@@ -9315,6 +9315,15 @@
     <button class="af-btn" id="bib-btn-refresh" onclick="loadBiblioteca(true,true)">↻ Atualizar</button>
   </div>
 
+  <!-- ABAS PRINCIPAIS DO ARQUIVO -->
+  <div class="af-main-tabs" id="bib-main-tabs" style="background:#fff;border-bottom:1px solid #E4E4E4;padding:0 24px;display:flex;gap:4px;flex-shrink:0">
+    <button class="af-aba ativa" data-bib-main-tab="arquivo" onclick="afMainTabClick('arquivo',this)">Arquivo de Fichas</button>
+    <button class="af-aba" data-bib-main-tab="importacoes" onclick="afMainTabClick('importacoes',this)">Importações e Conferência</button>
+    <button class="af-aba" data-bib-main-tab="conhecimento" onclick="afMainTabClick('conhecimento',this)">Conhecimento Extraído</button>
+  </div>
+
+  <div id="bib-tab-arquivo">
+
   <!-- INDICADORES COMPACTOS -->
   <div style="background:#fff;border-bottom:1px solid #E4E4E4;padding:10px 28px;flex-shrink:0">
     <div class="af-kpis" id="bib-kpis"></div>
@@ -9456,6 +9465,23 @@
       </div>
     </div>
   </div>
+  <section id="bib-tab-importacoes" class="af-card" style="display:none;margin:16px 24px;gap:14px;flex-direction:column">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
+      <div><div class="af-card-t">IMPORTAÇÕES E CONFERÊNCIA</div><p style="font-size:12.5px;color:#666464;margin-top:5px;line-height:1.5">Importe fichas históricas em PDF ou DOCX e revise empresa, data e vínculos antes da publicação.</p></div>
+      <button class="af-btn af-btn-red" onclick="abrirModalImportarFicha()">↑ Importar fichas</button>
+    </div>
+    <div class="af-aviso">A importação usa os dados reais do arquivo e exige conferência antes de registrar a ficha. Nenhum dado demonstrativo é criado automaticamente.</div>
+    <div class="af-box"><div class="af-card-t">CONFERÊNCIA</div><p style="font-size:12.5px;color:#707070;margin-top:6px">Arquivos selecionados e pendências de validação aparecem nesta etapa durante o fluxo de importação.</p></div>
+  </section>
+
+  <section id="bib-tab-conhecimento" class="af-card" style="display:none;margin:16px 24px;gap:14px;flex-direction:column">
+    <div><div class="af-card-t">CONHECIMENTO EXTRAÍDO</div><p style="font-size:12.5px;color:#666464;margin-top:5px;line-height:1.5">Consulte e valide propostas extraídas das fichas antes de alimentar o CIRCA e as bases oficiais.</p></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">
+      <button class="af-box" style="text-align:left;cursor:pointer" onclick="navigate('base-conhecimento')"><strong>Banco de casos</strong><div style="font-size:12px;color:#707070;margin-top:5px">Consultar casos consolidados e lições aprendidas.</div></button>
+      <button class="af-box" style="text-align:left;cursor:pointer" onclick="navigate('banco-devolutivas')"><strong>Banco de devolutivas</strong><div style="font-size:12px;color:#707070;margin-top:5px">Validar modelos e respostas aprovadas.</div></button>
+      <button class="af-box" style="text-align:left;cursor:pointer" onclick="navigate('matriz-conhecimento')"><strong>Causas e tratamentos</strong><div style="font-size:12px;color:#707070;margin-top:5px">Revisar conhecimento operacional do CIRCA.</div></button>
+    </div>
+  </section>
 </div>
 
 <!-- DETALHE DA FICHA (painel lateral) -->
@@ -9883,6 +9909,17 @@ function afAbaClick(aba, btn) {
   if (btn) btn.classList.add('ativa');
   closeBibPainel();
   loadBiblioteca(true);
+}
+
+function afMainTabClick(tab, btn) {
+  const arquivo = document.getElementById('bib-tab-arquivo');
+  const importacoes = document.getElementById('bib-tab-importacoes');
+  const conhecimento = document.getElementById('bib-tab-conhecimento');
+  if (arquivo) arquivo.style.display = tab === 'arquivo' ? '' : 'none';
+  if (importacoes) importacoes.style.display = tab === 'importacoes' ? 'flex' : 'none';
+  if (conhecimento) conhecimento.style.display = tab === 'conhecimento' ? 'flex' : 'none';
+  document.querySelectorAll('#bib-main-tabs [data-bib-main-tab]').forEach(b => b.classList.toggle('ativa', b === btn));
+  if (tab === 'arquivo') loadBiblioteca(true);
 }
 
 async function loadBiblioteca(reset, manual) {
@@ -26006,6 +26043,7 @@ textarea.al-form-in{height:auto;padding:8px 10px;resize:vertical}
     </div>
   </div>
 </div>
+
 </div>
 
 </div><!-- /page-alimentacao -->
@@ -28089,8 +28127,19 @@ function updateTopbarUser(user) {
     if(!confirm('Excluir logicamente o usuário "' + nome + '"?\n\nO acesso será revogado e o histórico será preservado.')) return;
     const motivo = prompt('Informe o motivo da exclusão lógica:');
     if(!motivo || !motivo.trim()) return;
+    const endpoint='/api/usuarios/' + encodeURIComponent(id);
+    const excluir = async redistribuir => _apiFetch(endpoint, 0, {
+      method:'DELETE', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({motivo:motivo.trim(), ...(redistribuir ? {redistribuir:'SIM'} : {})})
+    });
     try {
-      const d = await _apiFetch('/api/usuarios/' + encodeURIComponent(id), 0, { method:'DELETE', headers:{'Content-Type':'application/json'}, body:JSON.stringify({motivo:motivo.trim()}) });
+      let d = await excluir(false);
+      // Usuários de teste podem ainda estar vinculados a uma fila pendente.
+      // Nunca redistribui silenciosamente: pede confirmação explícita ao MASTER.
+      if(d && d.erro && /responsabilidades pendentes/i.test(d.erro)) {
+        const confirmarRedistribuicao=confirm('Este usuário possui itens pendentes. Deseja redistribuí-los antes da exclusão?');
+        if(confirmarRedistribuicao) d=await excluir(true);
+      }
       if(d.sucesso) {
         fecharModalUsuario();
         if(window.loadUsuariosMasterPainel) await window.loadUsuariosMasterPainel();

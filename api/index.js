@@ -411,7 +411,12 @@ async function carregarUsuarios(){
     const overrides = {};
     // Preserva login (username) do Sheets caso PG só tenha o email como USUARIO
     if (sh.USUARIO && sh.USUARIO !== e) overrides.USUARIO = sh.USUARIO;
-    if ((sh.STATUS||'').toUpperCase() === 'PRIMEIRO_ACESSO') overrides.STATUS = 'PRIMEIRO_ACESSO';
+    // O status administrativo persistido no Sheets deve prevalecer sobre o
+    // ativo/inativo legado do PostgreSQL, inclusive para exclusão lógica.
+    const statusSheets = String(sh.STATUS || '').trim().toUpperCase();
+    if (['ATIVO','PRIMEIRO_ACESSO','INATIVO','BLOQUEADO','EXCLUIDO','EXCLUÍDO'].includes(statusSheets)) {
+      overrides.STATUS = statusSheets === 'EXCLUÍDO' ? 'EXCLUIDO' : statusSheets;
+    }
     // Permissões customizadas e competências vêm do Sheets (definidas na aprovação)
     if (sh.PERMISSOES_CUSTOM && !u.PERMISSOES_CUSTOM) overrides.PERMISSOES_CUSTOM = sh.PERMISSOES_CUSTOM;
     if (sh.PERMISSOES_GRANTED && !u.PERMISSOES_GRANTED) overrides.PERMISSOES_GRANTED = sh.PERMISSOES_GRANTED;
@@ -424,16 +429,23 @@ async function carregarUsuarios(){
     return Object.keys(overrides).length ? { ...u, ...overrides } : u;
   });
   // Sheets complementa o PG: usuários que existem só no Sheets (ex: aprovados recentemente) aparecem normalmente
-  const _seenEmails = new Set();
-  const sheetsOnly = rows.filter(r => {
-    const emailOrUser = (r.EMAIL||r.USUARIO||'').toLowerCase();
+  // Deduplica registros antigos do Sheets priorizando o cadastro mais recente
+  // e não excluído. Isso permite recriar um login após sua exclusão lógica.
+  const sheetsByLogin = new Map();
+  rows.forEach(r => {
+    const emailOrUser = String(r.EMAIL || r.USUARIO || '').trim().toLowerCase();
     const id = r.ID_USUARIO;
-    if (pgIds.has(id) || pgEmails.has(emailOrUser)) return false;
-    // dedup interno do Sheets: primeiro registro com esse email/usuario ganha
-    if (_seenEmails.has(emailOrUser)) return false;
-    _seenEmails.add(emailOrUser);
-    return true;
+    if (!emailOrUser || pgIds.has(id) || pgEmails.has(emailOrUser)) return;
+    const anterior = sheetsByLogin.get(emailOrUser);
+    const status = String(r.STATUS || '').toUpperCase();
+    const statusAnterior = String(anterior?.STATUS || '').toUpperCase();
+    const ativo = !['EXCLUIDO','EXCLUÍDO'].includes(status);
+    const ativoAnterior = !['EXCLUIDO','EXCLUÍDO'].includes(statusAnterior);
+    const dataAtual = String(r.DATA_CRIACAO || r.DATA_ULTIMA_ALTERACAO || '');
+    const dataAnterior = String(anterior?.DATA_CRIACAO || anterior?.DATA_ULTIMA_ALTERACAO || '');
+    if (!anterior || (ativo && !ativoAnterior) || (ativo === ativoAnterior && dataAtual >= dataAnterior)) sheetsByLogin.set(emailOrUser, r);
   });
+  const sheetsOnly = [...sheetsByLogin.values()];
   const pgMerged = pgMapped; // PG é a fonte única — perfil/empresa vêm do PG
   const demoEnabled=String(process.env.DEMO_LOGIN_ENABLED||'false').toLowerCase()==='true';
   // Dedup envUsers contra PG
@@ -806,6 +818,20 @@ async function carregarUsuarioPorLogin(login){
     const demo=DEMO_USUARIOS.find(u=>normalizarTexto(u.USUARIO)===alvo);
     if(demo) return demo;
   }
+  // Quando existem registros históricos com o mesmo login (por exemplo, um
+  // cadastro excluído e outro recriado), a linha mais recente do Sheets é a
+  // credencial administrativa vigente. Isso evita autenticar com o hash antigo
+  // que ainda possa existir no PostgreSQL.
+  try {
+    const sheetRows = await lerAba('USUARIOS', 1000);
+    const candidatos = sheetRows.filter(row => {
+      const rowLogin = normalizarTexto(row.USUARIO || row.LOGIN || '');
+      const rowEmail = normalizarTexto(row.EMAIL || '');
+      const status = normalizarTexto(row.STATUS || 'ATIVO');
+      return (rowLogin === alvo || rowEmail === alvo || normalizarTexto(rowEmail.split('@')[0]) === alvo) && !['excluido','inativo','bloqueado'].includes(status) && (row.SENHA_HASH || row.SENHA);
+    }).sort((a,b) => String(b.DATA_CRIACAO || b.DATA_ULTIMA_ALTERACAO || '').localeCompare(String(a.DATA_CRIACAO || a.DATA_ULTIMA_ALTERACAO || '')));
+    if (candidatos[0]) return candidatos[0];
+  } catch (_) { /* PG segue como fonte de fallback quando Sheets está indisponível. */ }
   // F4: tenta PostgreSQL primeiro por login ou email
   if (usuarioRepo) {
     try {
