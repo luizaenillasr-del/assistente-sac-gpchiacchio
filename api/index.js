@@ -161,6 +161,65 @@ async function resolverEmpresaIdScope(valor) {
 }
 
 const app = express();
+
+// ── BANCO_HISTORICO: mutex em memória para evitar duplo registro por concorrência ──
+const _bancoHistoricoEmAndamento = new Set();
+
+/**
+ * Registra manifestação encerrada no BANCO_HISTORICO com idempotência por ID_MANIFESTACAO.
+ * ID determinístico (sem Date.now) garante deduplicação mesmo se dois caminhos dispararem.
+ * Mutex em memória bloqueia chamadas concorrentes para a mesma manifestação.
+ */
+async function _feedBancoHistorico(id, m, extras, fonte, usuario) {
+  if (_bancoHistoricoEmAndamento.has(id)) {
+    console.log(`[BANCO_HISTORICO] ${id} já em andamento — concorrência bloqueada (${fonte})`);
+    return;
+  }
+  _bancoHistoricoEmAndamento.add(id);
+  try {
+    const historicoRows = await lerAba('BANCO_HISTORICO', 500).catch(()=>[]);
+    const jaExiste = historicoRows.some(r => r.ID_MANIFESTACAO === id || r.ORIG_ID_MANIFESTACAO === id);
+    if (jaExiste) {
+      console.log(`[BANCO_HISTORICO] ${id} já registrado — pulando (${fonte})`);
+      return;
+    }
+    const agora = new Date().toISOString();
+    await garantirAbaComCabecalhos('BANCO_HISTORICO', [
+      'ID_HISTORICO','ORIG_ID_MANIFESTACAO','ORIG_DATA_ABERTURA','DRV_EMPRESA_NORMALIZADA',
+      'ORIG_EMPRESA','ORIG_CONTATO','ORIG_CANAL','ORIG_DESCRICAO_RECLAMACAO',
+      'COMP_TIPO_PROBLEMA_VALIDADO','COMP_CAUSA_PROVAVEL','CAUSA_RAIZ','SUBCAUSA',
+      'SETOR_RESPONSAVEL','TRATATIVA_REALIZADA','RESULTADO','DEVOLUTIVA_FINAL',
+      'DATA_ENCERRAMENTO','ENCERRADO_POR','FONTE',
+    ]).catch(()=>{});
+    await appendObjeto('BANCO_HISTORICO', {
+      ID_HISTORICO: `HIST-${id}`, // determinístico: sem Date.now
+      ORIG_ID_MANIFESTACAO: id,
+      ORIG_DATA_ABERTURA: m.DATA_ABERTURA || m.DATA_CRIACAO || m.DATA_REGISTRO || '',
+      DRV_EMPRESA_NORMALIZADA: m.EMPRESA_RECLAMADA || '',
+      ORIG_EMPRESA: m.EMPRESA_RECLAMADA || '',
+      ORIG_CONTATO: m.EMPRESA_RECLAMANTE || m.CONTATO || '',
+      ORIG_CANAL: m.CANAL || '',
+      ORIG_DESCRICAO_RECLAMACAO: m.DESCRICAO || m.DESCRICAO_MANIFESTACAO || '',
+      COMP_TIPO_PROBLEMA_VALIDADO: m.TIPO_CONFIRMADO || m.TIPO || '',
+      COMP_CAUSA_PROVAVEL: m.CAUSA_RAIZ_CONFIRMADA || m.CAUSA_RAIZ || m.SUBCAUSA || '',
+      CAUSA_RAIZ: m.CAUSA_RAIZ_CONFIRMADA || m.CAUSA_RAIZ || '',
+      SUBCAUSA: m.SUBCAUSA || m.SUBCAUSA_CONFIRMADA || '',
+      SETOR_RESPONSAVEL: m.SETOR_ACIONADO || m.SETORES_CONFIRMADOS || '',
+      TRATATIVA_REALIZADA: extras.tratativa || m.TRATATIVA_REALIZADA || '',
+      RESULTADO: extras.resultado || m.PROCEDENTE || '',
+      DEVOLUTIVA_FINAL: extras.devolutiva || m.DEVOLUTIVA_FINAL || '',
+      DATA_ENCERRAMENTO: agora,
+      ENCERRADO_POR: usuario || 'sistema',
+      FONTE: fonte,
+    }).catch(e => console.warn(`[BANCO_HISTORICO] append falhou (${fonte}):`, e.message));
+    invalidarCacheAba('BANCO_HISTORICO');
+  } catch(e) {
+    console.warn(`[BANCO_HISTORICO] erro não bloqueante (${fonte}):`, e.message);
+  } finally {
+    _bancoHistoricoEmAndamento.delete(id);
+  }
+}
+
 // RNC permanece preservado para reativação futura, mas está fora da operação
 // até que o setor responsável forneça as regras oficiais.
 const RNC_ENABLED = String(process.env.RNC_ENABLED || 'false').toLowerCase() === 'true';
@@ -2754,36 +2813,10 @@ app.patch('/api/manifestacoes/:id', requerPermissao('manifestacoes.editar'), mid
     await registrarAuditoria(req.user?.usuario||'sistema','ATUALIZOU_MANIFESTAÇÃO',id,'MANIFESTACOES',null,dados);
     // Auto-feed BANCO_HISTORICO quando STATUS muda para ENCERRADA via PATCH simples
     if (dados.STATUS === 'ENCERRADA') {
-      try {
-        const historicoRows = await lerAba('BANCO_HISTORICO', 100).catch(()=>[]);
-        const jaExiste = historicoRows.some(r => r.ID_MANIFESTACAO === id || r.ORIG_ID_MANIFESTACAO === id);
-        if (!jaExiste) {
-          const agora = new Date().toISOString();
-          await garantirAbaComCabecalhos('BANCO_HISTORICO', ['ID_HISTORICO','ORIG_ID_MANIFESTACAO','ORIG_DATA_ABERTURA','DRV_EMPRESA_NORMALIZADA','ORIG_EMPRESA','ORIG_CONTATO','ORIG_CANAL','ORIG_DESCRICAO_RECLAMACAO','COMP_TIPO_PROBLEMA_VALIDADO','COMP_CAUSA_PROVAVEL','CAUSA_RAIZ','SUBCAUSA','SETOR_RESPONSAVEL','TRATATIVA_REALIZADA','RESULTADO','DEVOLUTIVA_FINAL','DATA_ENCERRAMENTO','ENCERRADO_POR','FONTE']).catch(()=>{});
-          await appendObjeto('BANCO_HISTORICO', {
-            ID_HISTORICO: `HIST-${id}-${Date.now()}`,
-            ORIG_ID_MANIFESTACAO: id,
-            ORIG_DATA_ABERTURA: itemExistente.DATA_ABERTURA || itemExistente.DATA_CRIACAO || itemExistente.DATA_REGISTRO || '',
-            DRV_EMPRESA_NORMALIZADA: itemExistente.EMPRESA_RECLAMADA || '',
-            ORIG_EMPRESA: itemExistente.EMPRESA_RECLAMADA || '',
-            ORIG_CONTATO: itemExistente.EMPRESA_RECLAMANTE || itemExistente.CONTATO || '',
-            ORIG_CANAL: itemExistente.CANAL || '',
-            ORIG_DESCRICAO_RECLAMACAO: itemExistente.DESCRICAO || itemExistente.DESCRICAO_MANIFESTACAO || '',
-            COMP_TIPO_PROBLEMA_VALIDADO: itemExistente.TIPO_CONFIRMADO || itemExistente.TIPO || '',
-            COMP_CAUSA_PROVAVEL: itemExistente.CAUSA_RAIZ_CONFIRMADA || itemExistente.CAUSA_RAIZ || '',
-            CAUSA_RAIZ: itemExistente.CAUSA_RAIZ_CONFIRMADA || itemExistente.CAUSA_RAIZ || '',
-            SUBCAUSA: itemExistente.SUBCAUSA || '',
-            SETOR_RESPONSAVEL: itemExistente.SETOR_ACIONADO || itemExistente.SETORES_CONFIRMADOS || '',
-            TRATATIVA_REALIZADA: dados.TRATATIVA_REALIZADA || itemExistente.TRATATIVA_REALIZADA || '',
-            RESULTADO: itemExistente.PROCEDENTE || '',
-            DEVOLUTIVA_FINAL: dados.DEVOLUTIVA_FINAL || itemExistente.DEVOLUTIVA_FINAL || '',
-            DATA_ENCERRAMENTO: agora,
-            ENCERRADO_POR: req.user?.usuario || 'sistema',
-            FONTE: 'PATCH_STATUS_ENCERRADA',
-          }).catch(e => console.warn('[BANCO_HISTORICO] patch auto-feed falhou:', e.message));
-          invalidarCacheAba('BANCO_HISTORICO');
-        }
-      } catch(eFeed){ console.warn('[BANCO_HISTORICO] patch auto-feed erro:', eFeed.message); }
+      await _feedBancoHistorico(id, itemExistente, {
+        tratativa: dados.TRATATIVA_REALIZADA,
+        devolutiva: dados.DEVOLUTIVA_FINAL,
+      }, 'PATCH_STATUS_ENCERRADA', req.user?.usuario);
     }
     res.json({ sucesso:true, id, atualizado: dados });
   } catch(e){ res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
@@ -3122,7 +3155,16 @@ app.get('/api/manifestacoes/:id/tratativa-completa', requerPermissao('manifestac
     const encaminhamentos = encRows.filter(e=>e.ID_MANIFESTACAO===id);
     const impactoFin = impactoRows.find(i=>i.ID_MANIFESTACAO===id)||null;
     const execucoes = execRows.filter(e=>e.ID_MANIFESTACAO===id);
-    const tratasSetoriais = tratasRows.filter(t=>t.ID_MANIFESTACAO===id);
+    // Normaliza aliases de colunas antigas para compatibilidade com linhas pré-schema
+    const tratasSetoriais = tratasRows.filter(t=>t.ID_MANIFESTACAO===id).map(t => ({
+      ...t,
+      SETOR: t.SETOR || t.SETOR_RESPONSAVEL || t.SETOR_DESTINO || '',
+      ACAO: t.ACAO || t.DESCRICAO_TRATATIVA || t.TRATATIVA || t.DESCRICAO || '',
+      RESULTADO: t.RESULTADO || t.CONCLUSAO || t.RESOLUCAO || '',
+      RESPONSAVEL: t.RESPONSAVEL || t.RESPONSAVEL_SETOR || t.USUARIO || '',
+      STATUS: t.STATUS || t.STATUS_TRATATIVA || 'EM_ANDAMENTO',
+      DATA_EXECUCAO: t.DATA_EXECUCAO || t.DATA_CRIACAO || t.CRIADO_EM || '',
+    }));
     res.json({ sucesso:true, manifestacao:m, historico, devolutivas, encaminhamentos, impactoFinanceiro:impactoFin, execucoes, tratasSetoriais });
   } catch(e){ res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
@@ -3431,49 +3473,19 @@ app.post('/api/manifestacoes/:id/finalizar', requerPermissao('aprovacoes.aprovar
       }).catch(e => console.warn('[CONSOLIDACAO] falha não bloqueante:', e.message));
     }
     // Auto-feed BANCO_HISTORICO: registra manifestação encerrada para alimentar casos similares futuros
-    try {
-      const historicoRows = await lerAba('BANCO_HISTORICO', 100).catch(()=>[]);
-      const jaExiste = historicoRows.some(r => r.ID_MANIFESTACAO === id || r.ORIG_ID_MANIFESTACAO === id);
-      if (!jaExiste) {
-        const [devsFeed, tratsFeed] = await Promise.all([
-          lerAba('DEVOLUTIVAS', 2000).catch(()=>[]),
-          lerAba('TRATATIVAS_SETORIAIS', 2000).catch(()=>[]),
-        ]);
-        const devFinal = devsFeed.filter(d=>d.ID_MANIFESTACAO===id).slice(-1)[0] || {};
-        const tratFinal = tratsFeed.filter(t=>t.ID_MANIFESTACAO===id && t.STATUS==='CONCLUIDO').slice(-1)[0] ||
-                          tratsFeed.filter(t=>t.ID_MANIFESTACAO===id).slice(-1)[0] || {};
-        await garantirAbaComCabecalhos('BANCO_HISTORICO', [
-          'ID_HISTORICO','ORIG_ID_MANIFESTACAO','ORIG_DATA_ABERTURA','DRV_EMPRESA_NORMALIZADA',
-          'ORIG_EMPRESA','ORIG_CONTATO','ORIG_CANAL','ORIG_DESCRICAO_RECLAMACAO',
-          'COMP_TIPO_PROBLEMA_VALIDADO','COMP_CAUSA_PROVAVEL','CAUSA_RAIZ','SUBCAUSA',
-          'SETOR_RESPONSAVEL','TRATATIVA_REALIZADA','RESULTADO','DEVOLUTIVA_FINAL',
-          'DATA_ENCERRAMENTO','ENCERRADO_POR','FONTE',
-        ]).catch(()=>{});
-        await appendObjeto('BANCO_HISTORICO', {
-          ID_HISTORICO: `HIST-${id}-${Date.now()}`,
-          ORIG_ID_MANIFESTACAO: id,
-          ORIG_DATA_ABERTURA: m.DATA_ABERTURA || m.DATA_CRIACAO || m.DATA_REGISTRO || '',
-          DRV_EMPRESA_NORMALIZADA: m.EMPRESA_RECLAMADA || '',
-          ORIG_EMPRESA: m.EMPRESA_RECLAMADA || '',
-          ORIG_CONTATO: m.EMPRESA_RECLAMANTE || m.CONTATO || '',
-          ORIG_CANAL: m.CANAL || '',
-          ORIG_DESCRICAO_RECLAMACAO: m.DESCRICAO || m.DESCRICAO_MANIFESTACAO || '',
-          COMP_TIPO_PROBLEMA_VALIDADO: m.TIPO_CONFIRMADO || m.TIPO || '',
-          COMP_CAUSA_PROVAVEL: m.CAUSA_RAIZ_CONFIRMADA || m.CAUSA_RAIZ || m.SUBCAUSA || '',
-          CAUSA_RAIZ: m.CAUSA_RAIZ_CONFIRMADA || m.CAUSA_RAIZ || '',
-          SUBCAUSA: m.SUBCAUSA || m.SUBCAUSA_CONFIRMADA || '',
-          SETOR_RESPONSAVEL: m.SETOR_ACIONADO || m.SETORES_CONFIRMADOS || '',
-          TRATATIVA_REALIZADA: tratFinal.DESCRICAO_TRATATIVA || tratFinal.TRATATIVA || m.TRATATIVA_REALIZADA || '',
-          RESULTADO: m.PROCEDENTE || observacaoFinal || '',
-          DEVOLUTIVA_FINAL: devFinal.VERSAO_FINAL || devFinal.TEXTO_GERADO || m.DEVOLUTIVA_FINAL || '',
-          DATA_ENCERRAMENTO: agora,
-          ENCERRADO_POR: req.user?.usuario || 'sistema',
-          FONTE: 'FINALIZAR_MANIFESTACAO',
-        }).catch(e => console.warn('[BANCO_HISTORICO] auto-feed falhou:', e.message));
-        invalidarCacheAba('BANCO_HISTORICO');
-      }
-    } catch (eFeed) {
-      console.warn('[BANCO_HISTORICO] auto-feed erro não bloqueante:', eFeed.message);
+    {
+      const [devsFeed, tratsFeed] = await Promise.all([
+        lerAba('DEVOLUTIVAS', 2000).catch(()=>[]),
+        lerAba('TRATATIVAS_SETORIAIS', 2000).catch(()=>[]),
+      ]);
+      const devFinal = devsFeed.filter(d=>d.ID_MANIFESTACAO===id).slice(-1)[0] || {};
+      const tratFinal = tratsFeed.filter(t=>t.ID_MANIFESTACAO===id && t.STATUS==='CONCLUIDO').slice(-1)[0] ||
+                        tratsFeed.filter(t=>t.ID_MANIFESTACAO===id).slice(-1)[0] || {};
+      await _feedBancoHistorico(id, m, {
+        tratativa: tratFinal.DESCRICAO_TRATATIVA || tratFinal.TRATATIVA || m.TRATATIVA_REALIZADA,
+        resultado: observacaoFinal,
+        devolutiva: devFinal.VERSAO_FINAL || devFinal.TEXTO_GERADO || m.DEVOLUTIVA_FINAL,
+      }, 'FINALIZAR_MANIFESTACAO', req.user?.usuario);
     }
     // Auto-aprimoramento: se causa recorrente ou reincidência confirmada, cria sugestão automática
     try {
