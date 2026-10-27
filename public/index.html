@@ -5272,6 +5272,7 @@
           </select>
           <button type="button" id="cen-limpar" class="mc-clear" style="display:none;height:30px;border:1px solid #E0E0E0;border-radius:7px;padding:0 10px;font-size:11.5px;background:#fff" onclick="cenLimparFiltros()">× Limpar</button>
           <span id="cen-list-info" style="font-size:11px;color:#A0A0A0;margin-left:auto;white-space:nowrap"></span>
+          <button type="button" id="cen-btn-excluir-selecionadas" class="mc-btn mc-btn-sm" style="display:none;border-color:#C70602;color:#C70602" onclick="cenExcluirSelecionadas()">Excluir selecionadas</button>
         </div>
 
         <!-- 3-panel body -->
@@ -24704,13 +24705,12 @@ async function mudarStatusMC(id, novoStatus) {
     const id=raw.ID_MANIFESTACAO||raw.PROTOCOLO;
     const protocolo=String(raw.PROTOCOLO||raw.ID_MANIFESTACAO||id||'').trim();
     if(!id||!protocolo) return toast('Manifestação sem protocolo válido.');
-    const motivo=window.prompt('Motivo obrigatório para excluir '+protocolo+':');
-    if(!motivo||!motivo.trim()) return;
-    const confirmar=window.prompt('Digite o protocolo '+protocolo+' para confirmar a exclusão lógica:');
-    if(confirmar!==protocolo) return toast('Protocolo não confirmado.');
     const btn=$('tf-btn-excluir'); if(btn){btn.disabled=true;btn.textContent='Excluindo…';}
     try{
-      const d=await api('/api/manifestacoes/'+encodeURIComponent(id),{method:'DELETE',body:{motivo:motivo.trim(),protocoloConfirmacao:protocolo}});
+      const d=await Promise.race([
+        api('/api/manifestacoes/'+encodeURIComponent(id),{method:'DELETE',body:{motivo:'Exclusão solicitada pelo MASTER.',protocoloConfirmacao:protocolo}}),
+        new Promise((_,rej)=>setTimeout(()=>rej(new Error('A exclusão demorou mais que o esperado. Tente atualizar a tela.')),15000))
+      ]);
       if(!d.sucesso) throw new Error(d.erro||'Não foi possível excluir.');
       toast('Manifestação excluída logicamente.');
       await loadCentralSAC();
@@ -25006,9 +25006,9 @@ async function mudarStatusMC(id, novoStatus) {
       const pr=PRIO_CFG[m.pri]||PRIO_CFG.none;
       const late=isLate(m)&&m.st!=='enc';
       const dot=ST_DOT[m.st]||'#A8A8A8';
-      return `<button type="button" class="mc-item${_cenAtual===m.id?' sel':''}" data-id="${esc(m.id)}" onclick="cenSelecionarMan(this.dataset.id)" style="display:block;width:100%;border:1.5px solid ${_cenAtual===m.id?'#C70602':'#F0F0F0'};background:${_cenAtual===m.id?'#FFFAFA':'#fff'};border-radius:9px;padding:10px 11px;cursor:pointer;text-align:left;margin-bottom:5px;animation:none">
+      return `<div class="mc-item${_cenAtual===m.id?' sel':''}" data-id="${esc(m.id)}" style="display:block;width:100%;border:1.5px solid ${_cenAtual===m.id?'#C70602':'#F0F0F0'};background:${_cenAtual===m.id?'#FFFAFA':'#fff'};border-radius:9px;padding:10px 11px;margin-bottom:5px;animation:none;cursor:pointer" onclick="cenSelecionarMan(this.dataset.id)">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:5px;margin-bottom:4px">
-          <span style="font-size:11px;font-weight:800;color:${_cenAtual===m.id?'#C70602':'#1F1F1F'}">${esc(m.id)}</span>
+          <span style="display:flex;align-items:center;gap:6px"><input type="checkbox" class="cen-sel-man" data-id="${esc(m.id)}" onclick="event.stopPropagation();cenAtualizarSelecao()" style="accent-color:#C70602;width:14px;height:14px"><span style="font-size:11px;font-weight:800;color:${_cenAtual===m.id?'#C70602':'#1F1F1F'}">${esc(m.id)}</span></span>
           <div style="display:flex;gap:3px;flex-wrap:wrap;justify-content:flex-end;flex:none">
             <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:${pr.bg};color:${pr.fg}">${esc(PRI_LBL[m.pri]||'—')}</span>
             ${late?'<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#FDECEC;color:#A80502">Atrasada</span>':''}
@@ -25024,9 +25024,35 @@ async function mudarStatusMC(id, novoStatus) {
           </div>
           <span style="font-size:9.5px;color:#B0B0B0">${esc(m.emp||'')} · ${esc((pick(m.raw||{},['DATA_ABERTURA','DATA_REGISTRO','DATA_MANIFESTACAO'])||'').slice(0,10))}</span>
         </div>
-      </button>`;
+      </div>`;
     }).join('');
+    cenAtualizarSelecao();
   }
+
+  window.cenAtualizarSelecao=function(){
+    const b=$('cen-btn-excluir-selecionadas');
+    const n=document.querySelectorAll('.cen-sel-man:checked').length;
+    if(b){b.style.display=n?'inline-flex':'none';b.textContent=n?'Excluir selecionadas ('+n+')':'Excluir selecionadas';}
+  };
+  window.cenExcluirSelecionadas=async function(){
+    const ids=[...document.querySelectorAll('.cen-sel-man:checked')].map(e=>e.dataset.id).filter(Boolean);
+    if(!ids.length)return;
+    const b=$('cen-btn-excluir-selecionadas'); if(b){b.disabled=true;b.textContent='Excluindo…';}
+    let ok=0, falhas=[];
+    for(const id of ids){
+      const raw=(_cenAll.find(m=>m.id===id)||{}).raw||{};
+      const protocolo=String(raw.PROTOCOLO||raw.ID_MANIFESTACAO||id).trim();
+      try{
+        const d=await Promise.race([api('/api/manifestacoes/'+encodeURIComponent(id),{method:'DELETE',body:{motivo:'Exclusão solicitada pelo MASTER.',protocoloConfirmacao:protocolo}}),new Promise((_,rej)=>setTimeout(()=>rej(new Error('Tempo esgotado')),15000))]);
+        if(!d.sucesso)throw new Error(d.erro||'Falha ao excluir');
+        ok++;
+      }catch(e){falhas.push(id+': '+e.message);}
+    }
+    if(b){b.disabled=false;}
+    toast(falhas.length?`${ok} excluída(s). Falhas: ${falhas.length}`:`${ok} manifestação(ões) excluída(s).`);
+    await loadCentralSAC();
+    if(typeof cenTrativasInit==='function') cenTrativasInit(true);
+  };
 
   // ── filtros ───────────────────────────────────────────────────────────────
   window.filtrarFilaCentral = function(){renderFilaGrupos();};
