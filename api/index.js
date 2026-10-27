@@ -808,10 +808,21 @@ async function carregarUsuarioPorLogin(login){
   // Fallback Sheets + PG mesclado
   const usuarios=await carregarUsuarios();
   const ativo = u => normalizarTexto(u.STATUS||'ATIVO')!=='inativo';
+  // Quando há múltiplas linhas para o mesmo login (duplicatas na planilha),
+  // prioriza: ATIVO com SENHA_HASH > ATIVO sem hash > PRIMEIRO_ACESSO com hash > outros ativos
+  const _prioridadeUsuario = u => {
+    const st = normalizarTexto(u.STATUS||'ATIVO');
+    const temHash = !!(u.SENHA_HASH||'').startsWith('$2');
+    if (st === 'ativo' && temHash) return 0;
+    if (st === 'ativo') return 1;
+    if ((st === 'primeiro_acesso' || st === 'primeiroacesso') && temHash) return 2;
+    return 3;
+  };
+  const _melhorUsuario = (lista) => lista.sort((a,b) => _prioridadeUsuario(a) - _prioridadeUsuario(b))[0];
   // 1) Busca por USUARIO exato
-  let u = usuarios.find(u=>normalizarTexto(u.USUARIO||u.EMAIL||u.ID_USUARIO)===alvo && ativo(u));
+  let u = _melhorUsuario(usuarios.filter(u=>normalizarTexto(u.USUARIO||u.EMAIL||u.ID_USUARIO)===alvo && ativo(u)));
   // 2) Se não encontrado, tenta pelo prefixo do email (login sem @dominio)
-  if (!u) u = usuarios.find(u => normalizarTexto((u.EMAIL||'').split('@')[0])===alvo && ativo(u));
+  if (!u) u = _melhorUsuario(usuarios.filter(u => normalizarTexto((u.EMAIL||'').split('@')[0])===alvo && ativo(u)));
   // 3) Busca direta no PG por prefixo de email (quando Sheets não mesclou USUARIO)
   if (!u && usuarioRepo) {
     try {
