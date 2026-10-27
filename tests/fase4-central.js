@@ -1,0 +1,21 @@
+"use strict";
+const assert = require("assert/strict");
+const fs = require("fs");
+const api = fs.readFileSync("api/index.js", "utf8");
+const html = fs.readFileSync("public/index.html", "utf8");
+
+assert.match(api, /app\.delete\('\/api\/manifestacoes\/:id', requerPerfil\('MASTER'\)/);
+assert.match(api, /protocoloConfirmacao/);
+assert.match(api, /MOTIVO_EXCLUSAO/);
+assert.match(api, /app\.get\('\/api\/manifestacoes-excluidas', requerPerfil\('MASTER'\)/);
+assert.ok(api.indexOf("app.get('/api/manifestacoes-excluidas'") < api.indexOf("app.get('/api/manifestacoes/:id'"), 'rota de excluídos deve preceder rota parametrizada');
+assert.match(api, /app\.post\('\/api\/manifestacoes\/:id\/restaurar', requerPerfil\('MASTER'\)/);
+assert.doesNotMatch(api.slice(api.indexOf("app.delete('/api/manifestacoes/:id'"), api.indexOf("app.post('/api/manifestacoes/:id/restaurar'")), /deletarLinhaPorID/);
+assert.doesNotMatch(html, /WHY_NOENDPOINT\);};/);
+assert.match(html, /SOLICITACAO_INFORMACAO/);
+assert.match(html, /Erro ao buscar similares:/);
+assert.match(html, /typeof v==='number'&&Number\.isFinite\(v\)\?new Date\(v\):toDate\(v\)/, 'timestamp de SLA deve ser formatado como data');
+assert.match(html, /if\(prazoMs===null\)/, 'prazo inválido deve usar SLA_HORAS como fallback');
+assert.match(api, /GESTOR_NAO_CADASTRADO/, 'escalonamento deve exigir gestor cadastrado');
+assert.match(api, /NOTIFICACOES_INTERNAS/, 'acionamentos devem gerar notificação interna persistida');
+console.log("FASE 4 CENTRAL: exclusão lógica MASTER, restauração, ações operacionais e erros de similares verificados.");
