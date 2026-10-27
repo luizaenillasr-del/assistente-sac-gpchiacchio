@@ -19,18 +19,43 @@ function stripDataUrl(value) {
   return { mimeType:'application/octet-stream', base64:String(value||'') };
 }
 
+const MAX_ANEXO_BYTES = 50 * 1024 * 1024;
+const MIME_ANEXOS = new Set([
+  'application/pdf', 'image/png', 'image/jpeg', 'image/webp', 'image/gif',
+  'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+]);
+
+function validarArquivo(arquivo) {
+  if (!arquivo || !arquivo.dataBase64) {
+    const e = new Error('Arquivo não informado.'); e.code = 'ERR_VALIDACAO_ARQUIVO'; throw e;
+  }
+  const { mimeType, base64 } = stripDataUrl(arquivo.dataBase64);
+  if (!base64 || !/^[A-Za-z0-9+/\s]+={0,2}$/.test(base64)) {
+    const e = new Error('Arquivo com conteúdo Base64 inválido.'); e.code = 'ERR_VALIDACAO_ARQUIVO'; throw e;
+  }
+  const bytes = Buffer.from(base64.replace(/\s/g, ''), 'base64').length;
+  if (!bytes) { const e = new Error('Arquivo sem conteúdo.'); e.code = 'ERR_VALIDACAO_ARQUIVO'; throw e; }
+  if (bytes > MAX_ANEXO_BYTES) { const e = new Error('Arquivo acima de 50 MB.'); e.code = 'ERR_VALIDACAO_ARQUIVO'; throw e; }
+  if (!MIME_ANEXOS.has(String(mimeType).toLowerCase())) {
+    const e = new Error(`Tipo de arquivo não permitido: ${mimeType}.`); e.code = 'ERR_VALIDACAO_ARQUIVO'; throw e;
+  }
+  return { mimeType, base64, bytes };
+}
+
 function normalizarJson(texto) {
   let t=String(texto||'').trim();
+  if (!t) { const e = new Error('Resposta de extração vazia.'); e.code = 'ERR_JSON_EXTRACAO'; throw e; }
   t=t.replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'').trim();
   const inicio=t.indexOf('{'); const fim=t.lastIndexOf('}');
-  if(inicio>=0 && fim>inicio) t=t.slice(inicio,fim+1);
-  return JSON.parse(t);
+  if(inicio<0 || fim<=inicio) { const e = new Error('Resposta de extração sem JSON válido.'); e.code = 'ERR_JSON_EXTRACAO'; throw e; }
+  try { return JSON.parse(t.slice(inicio,fim+1)); }
+  catch (_) { const e = new Error('Resposta de extração com JSON inválido.'); e.code = 'ERR_JSON_EXTRACAO'; throw e; }
 }
 
 async function salvarArquivoGoogleDrive(arquivo) {
-  if (!arquivo?.dataBase64) return { fileId:'', url:'' };
-  const {mimeType,base64}=stripDataUrl(arquivo.dataBase64);
-  if(!base64) throw new Error('Arquivo sem conteúdo.');
+  const {mimeType,base64}=validarArquivo(arquivo);
+  if (!process.env.GOOGLE_CREDENTIALS) { const e = new Error('Google Drive indisponível: GOOGLE_CREDENTIALS não configurada.'); e.code = 'ERR_INTEGRACAO_CONFIG'; throw e; }
   const auth=await getAuth().getClient();
   const drive=google.drive({version:'v3',auth});
   const buffer=Buffer.from(base64,'base64');
@@ -84,7 +109,8 @@ async function _deleteOpenAIFile(fileId, apiKey) {
 }
 
 async function extrairDadosDocumento(arquivo, tipoDocumento) {
-  if (!process.env.OPENAI_API_KEY) throw new Error('OPENAI_API_KEY não configurada.');
+  validarArquivo(arquivo);
+  if (!process.env.OPENAI_API_KEY) { const e = new Error('IA indisponível: OPENAI_API_KEY não configurada.'); e.code = 'ERR_INTEGRACAO_CONFIG'; throw e; }
   const apiKey = process.env.OPENAI_API_KEY;
   const { mimeType, base64 } = stripDataUrl(arquivo.dataBase64);
   const modelo = process.env.OPENAI_EXTRACTION_MODEL || 'gpt-4o';
@@ -142,4 +168,4 @@ async function extrairDadosDocumento(arquivo, tipoDocumento) {
   }
 }
 
-module.exports={salvarArquivoGoogleDrive,extrairDadosDocumento};
+module.exports={salvarArquivoGoogleDrive,extrairDadosDocumento,validarArquivo,normalizarJson,MAX_ANEXO_BYTES};

@@ -201,7 +201,9 @@ app.use((req, res, next) => {
 function getAuth() {
   const raw = process.env.GOOGLE_CREDENTIALS;
   if (!raw) throw new Error('GOOGLE_CREDENTIALS não configurada.');
-  const creds = JSON.parse(raw);
+  let creds;
+  try { creds = JSON.parse(raw); } catch (_) { throw new Error('GOOGLE_CREDENTIALS inválida: JSON malformado.'); }
+  if (!creds || typeof creds !== 'object') throw new Error('GOOGLE_CREDENTIALS inválida: objeto ausente.');
   return new google.auth.GoogleAuth({
     credentials: creds,
     scopes: [
@@ -940,8 +942,10 @@ async function _sheetsGetComRetry(sheets, params, tentativas = 3) {
       const status = e?.response?.status || e?.code;
       // Retry apenas em 429 (rate limit) e 503 (serviço indisponível)
       if ((status === 429 || status === 503) && i < tentativas - 1) {
-        await new Promise(r => setTimeout(r, espera));
-        espera *= 2;
+        // Jitter evita que várias renderizações concorrentes repitam juntas.
+        const atraso = espera + Math.floor(Math.random() * Math.max(100, espera * 0.25));
+        await new Promise(r => setTimeout(r, atraso));
+        espera = Math.min(8000, espera * 2);
         continue;
       }
       throw e;
@@ -951,6 +955,7 @@ async function _sheetsGetComRetry(sheets, params, tentativas = 3) {
 
 // Cache em memória para leituras do Sheets (60 s TTL) — evita quota exceeded
 const _lerAbaCache = new Map();
+const _lerAbaInFlight = new Map();
 const LER_ABA_TTL_MS = 60_000;
 // MANIFESTACOES é a fonte operacional oficial. Não mantemos cache dessa aba:
 // uma remoção feita diretamente na planilha precisa ser percebida na próxima
@@ -963,19 +968,37 @@ async function lerAba(nomeAba, maxRows) {
   const cached = _lerAbaCache.get(cacheKey);
   const ttl = Object.prototype.hasOwnProperty.call(TTL_POR_ABA, nomeAba) ? TTL_POR_ABA[nomeAba] : LER_ABA_TTL_MS;
   if (cached && (Date.now() - cached.ts) < ttl) return cached.data;
-  const sheets = await getSheets();
-  const range = maxRows ? `${nomeAba}!A1:AZ${maxRows}` : nomeAba;
-  const res = await _sheetsGetComRetry(sheets, { spreadsheetId: SPREADSHEET_ID, range });
-  const rows = res.data.values || [];
-  if (rows.length < 2) { _lerAbaCache.set(cacheKey, { data: [], ts: Date.now() }); return []; }
-  const headers = rows[0];
-  const data = rows.slice(1).map(row => {
-    const obj = {};
-    headers.forEach((h, i) => { if (h) obj[h] = row[i] || ''; });
-    return obj;
-  });
-  _lerAbaCache.set(cacheKey, { data, ts: Date.now() });
-  return data;
+  // Deduplica renders/rotas concorrentes que solicitam exatamente a mesma aba.
+  // Todas aguardam a mesma leitura e apenas uma chamada chega ao Sheets.
+  if (_lerAbaInFlight.has(cacheKey)) return _lerAbaInFlight.get(cacheKey);
+  const leitura = (async () => {
+  try {
+    const sheets = await getSheets();
+    const range = maxRows ? `${nomeAba}!A1:AZ${maxRows}` : nomeAba;
+    const res = await _sheetsGetComRetry(sheets, { spreadsheetId: SPREADSHEET_ID, range });
+    const rows = res.data.values || [];
+    if (rows.length < 2) { _lerAbaCache.set(cacheKey, { data: [], ts: Date.now() }); return []; }
+    const headers = rows[0];
+    const data = rows.slice(1).map(row => {
+      const obj = {};
+      headers.forEach((h, i) => { if (h) obj[h] = row[i] || ''; });
+      return obj;
+    });
+    _lerAbaCache.set(cacheKey, { data, ts: Date.now() });
+    return data;
+  } catch (e) {
+    // Em 429/503, uma leitura pública pode continuar usando o último snapshot
+    // consistente em memória. Escritas nunca usam este fallback.
+    if (cached?.data) {
+      console.warn(`[Sheets] ${nomeAba} indisponível (${e.message}); usando snapshot anterior.`);
+      return cached.data;
+    }
+    throw e;
+  }
+  })();
+  _lerAbaInFlight.set(cacheKey, leitura);
+  try { return await leitura; }
+  finally { if (_lerAbaInFlight.get(cacheKey) === leitura) _lerAbaInFlight.delete(cacheKey); }
 }
 
 function invalidarCacheAba(nomeAba) {
@@ -1374,7 +1397,31 @@ async function verificarStatusUsuario(login) {
   const agora = Date.now();
   const cached = _statusCache.get(login);
   if (cached && (agora - cached.ts) < _STATUS_CACHE_TTL) return cached;
-  // F4: PostgreSQL primeiro — evita tratar usuário que só existe no PG como inativo.
+  // O cadastro administrativo (Sheets) é a fonte autoritativa do status.
+  // Antes o PostgreSQL era consultado primeiro, fazendo usuários excluídos ou
+  // inativados na administração continuarem com sessão válida quando o PG
+  // ainda os marcava como ativos.
+  try {
+    const rows = await lerAba('USUARIOS', 1000);
+    const alvo = normalizarTexto(login);
+    const u = rows.slice().reverse().find(r => {
+      const usuario = normalizarTexto(r.USUARIO || r.LOGIN || '');
+      const email = normalizarTexto(r.EMAIL || '');
+      return usuario === alvo || email === alvo || normalizarTexto(email.split('@')[0]) === alvo;
+    });
+    if (u) {
+      let permissoes_granted = null, permissoes_blocked = null;
+      try { if (u.PERMISSOES_GRANTED) permissoes_granted = JSON.parse(u.PERMISSOES_GRANTED); } catch(_) {}
+      try { if (u.PERMISSOES_BLOCKED) permissoes_blocked = JSON.parse(u.PERMISSOES_BLOCKED); } catch(_) {}
+      const entry = { status: String(u.STATUS || 'ATIVO').toUpperCase(), ts: agora, permissoes_granted, permissoes_blocked };
+      _statusCache.set(login, entry);
+      return entry;
+    }
+    // Usuários criados somente no PostgreSQL continuam válidos quando não há
+    // espelho administrativo na planilha.
+  } catch(e) {
+    console.error('[verificarStatusUsuario] Erro ao ler planilha:', e.message || e);
+  }
   if (usuarioRepo) {
     try {
       const pgU = await usuarioRepo.findByLogin(login).catch(() => null);
@@ -1383,22 +1430,14 @@ async function verificarStatusUsuario(login) {
         _statusCache.set(login, entry);
         return entry;
       }
-    } catch (e) { /* cai no Sheets */ }
+    } catch (e) { /* fallback abaixo */ }
   }
   try {
-    const rows = await lerAba('USUARIOS', 1000);
-    const u = rows.find(r => normalizarTexto(r.USUARIO||'') === normalizarTexto(login));
-    // Se não encontrado no Sheets mas encontrado antes (cache expirado), mantém como ATIVO —
-    // usuário criado via PG pode não existir no Sheets.
-    const status = u ? (u.STATUS || 'ATIVO').toUpperCase() : (cached ? cached.status : 'INATIVO');
-    let permissoes_granted = null, permissoes_blocked = null;
-    if (u) {
-      try { if (u.PERMISSOES_GRANTED) permissoes_granted = JSON.parse(u.PERMISSOES_GRANTED); } catch(_) {}
-      try { if (u.PERMISSOES_BLOCKED) permissoes_blocked = JSON.parse(u.PERMISSOES_BLOCKED); } catch(_) {}
-    } else if (cached) {
-      permissoes_granted = cached.permissoes_granted;
-      permissoes_blocked = cached.permissoes_blocked;
-    }
+    // Se não encontrado no Sheets/PG mas encontrado antes (cache expirado),
+    // mantém o estado conhecido; sem qualquer fonte, nega por segurança.
+    const status = cached ? cached.status : 'INATIVO';
+    const permissoes_granted = cached?.permissoes_granted ?? null;
+    const permissoes_blocked = cached?.permissoes_blocked ?? null;
     const entry = { status, ts: agora, permissoes_granted, permissoes_blocked };
     _statusCache.set(login, entry);
     if (_statusCache.size > 2000) {
@@ -2020,6 +2059,14 @@ app.get('/api/manifestacoes', requerPermissao('manifestacoes.visualizar'), middl
   } catch (e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e), dados: [] }); }
 });
 
+// Rota específica deve preceder /api/manifestacoes/:id para não ser tratada como um identificador.
+app.get('/api/manifestacoes-excluidas', requerPerfil('MASTER'), async (req, res) => {
+  try {
+    const itens = (await lerAba('MANIFESTACOES', 5000)).filter(manifestacaoExcluida);
+    res.json({ sucesso:true, total:itens.length, itens });
+  } catch (e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e), itens:[] }); }
+});
+
 app.get('/api/manifestacoes/:id', requerPermissao('manifestacoes.visualizar'), middlewareEscopoEmpresa(), async (req, res) => {
   try {
     // F6: tenta PostgreSQL primeiro
@@ -2078,7 +2125,12 @@ app.get('/api/manifestacoes/:id', requerPermissao('manifestacoes.visualizar'), m
 
 app.post('/api/manifestacoes', requerPermissao('manifestacoes.abrir'), async (req, res) => {
   try {
-    const { empresaReclamada, empresaReclamante, contato, produto, lote, nfe, descricao, tipo, canal, cnpj, telefone, email, quantidade, quantidadeDevolvida, quantidadeTotal, houveDevolucao, valor, valorTotalPedido, prejuizoEstimado, usuario, anexos = [], origemDocumento = '', arquivoOrigem = '', rascunho = false } = req.body;
+    const { empresaReclamada, contato, produto, lote, nfe, tipo, canal, cnpj, telefone, email, quantidade, quantidadeDevolvida, quantidadeTotal, houveDevolucao, valor, valorTotalPedido, prejuizoEstimado, usuario, anexos = [], origemDocumento = '', arquivoOrigem = '', rascunho = false } = req.body;
+    // Rascunhos podem ser salvos antes de todos os dados do cliente estarem
+    // disponíveis. O bloqueio de campos obrigatórios deve acontecer apenas na
+    // conclusão da manifestação, não no botão Continuar entre etapas.
+    const empresaReclamante = String(req.body?.empresaReclamante || '').trim() || (rascunho ? 'Cliente não informado' : '');
+    const descricao = String(req.body?.descricao || '').trim() || (rascunho ? 'Rascunho em preenchimento.' : '');
     if (!empresaReclamante || !descricao) return res.status(400).json({ sucesso:false, erro:'Empresa reclamante e descrição são obrigatórios.' });
     const empNorm = normalizarEmpresa(empresaReclamada);
     // Não bloqueia na criação de colunas — a aba já existe em produção
@@ -2667,27 +2719,57 @@ app.patch('/api/manifestacoes/:id', requerPermissao('manifestacoes.editar'), mid
   } catch(e){ res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
 
-app.delete('/api/manifestacoes/:id', requerPermissao('manifestacoes.excluir'), async (req, res) => {
+app.delete('/api/manifestacoes/:id', requerPerfil('MASTER'), async (req, res) => {
   try {
     const { id } = req.params;
-    const todas = await lerManifestacoesOperacionais(5000);
-    const item = todas.find(r => r.ID_MANIFESTACAO === id);
+    const todas = await lerAba('MANIFESTACOES', 5000);
+    const item = todas.find(r => [r.ID_MANIFESTACAO, r.PROTOCOLO, r.ID].some(v => String(v || '').trim() === String(id).trim()));
     if (!item) return res.status(404).json({ sucesso: false, erro: 'Manifestação não encontrada.' });
-    await deletarLinhaPorID('MANIFESTACOES', id);
-    // Remove do PG também, se existir
+    if (manifestacaoExcluida(item)) return res.status(409).json({ sucesso:false, erro:'A manifestação já está excluída.' });
+    const motivo = String(req.body?.motivo || '').trim();
+    const protocoloConfirmacao = String(req.body?.protocoloConfirmacao || '').trim();
+    const protocolo = String(item.PROTOCOLO || item.ID_MANIFESTACAO || id).trim();
+    if (!motivo) return res.status(400).json({ sucesso:false, erro:'Informe o motivo obrigatório da exclusão.' });
+    if (!protocoloConfirmacao || protocoloConfirmacao !== protocolo) return res.status(400).json({ sucesso:false, erro:'Confirme o protocolo exato para excluir a manifestação.' });
+    const agora = new Date().toISOString();
+    await atualizarPorID('MANIFESTACOES', item.ID_MANIFESTACAO || item.PROTOCOLO || id, {
+      STATUS_REGISTRO:'EXCLUIDO', STATUS:'EXCLUIDO', STATUS_ANTES_EXCLUSAO:item.STATUS || item.STATUS_FICHA || '',
+      DATA_EXCLUSAO:agora, DELETED_AT:agora, EXCLUIDO_POR:req.user?.usuario || 'MASTER', MOTIVO_EXCLUSAO:motivo,
+      DATA_ULTIMA_EDICAO:agora, ATUALIZADO_POR:req.user?.usuario || 'MASTER',
+    }, ['ID_MANIFESTACAO','PROTOCOLO','ID']);
+    // Mantém a linha no Sheets e apenas marca o registro como excluído.
     if (manifestacaoRepo) {
       try {
         const pg = (await manifestacaoRepo.findByProtocolo(id).catch(() => null))
                 || (await manifestacaoRepo.findByIdOriginal(id).catch(() => null));
-        if (pg && typeof manifestacaoRepo.deletar === 'function') await manifestacaoRepo.deletar(pg.id);
+        if (pg && typeof manifestacaoRepo.update === 'function') await manifestacaoRepo.update(pg.id, { status:'EXCLUIDA' });
       } catch (e) { console.warn('[PG] deletar manifestacao falhou:', e.message); }
     }
     // A exclusão remove também qualquer leitura já mantida no processo atual.
     // Isso evita que a Central continue exibindo a ficha até o próximo TTL.
     invalidarCacheAba('MANIFESTACOES');
-    await registrarAuditoria(req.user?.usuario || 'sistema', 'EXCLUIU_MANIFESTAÇÃO', id, 'MANIFESTACOES', item, null);
-    res.json({ sucesso: true, id });
+    await registrarHistoricoManifestacao({ id:item.ID_MANIFESTACAO || id, protocolo, usuario:req.user?.usuario || 'MASTER', acao:'MANIFESTAÇÃO_EXCLUÍDA', descricao:motivo, etapa:item.ETAPA_ATUAL || '' });
+    await registrarAuditoria(req.user?.usuario || 'sistema', 'EXCLUIU_MANIFESTAÇÃO', item.ID_MANIFESTACAO || id, 'MANIFESTACOES', item, { ...item, STATUS:'EXCLUIDO', MOTIVO_EXCLUSAO:motivo });
+    res.json({ sucesso: true, id:item.ID_MANIFESTACAO || id, protocolo, status:'EXCLUIDO' });
   } catch (e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e) }); }
+});
+
+app.post('/api/manifestacoes/:id/restaurar', requerPerfil('MASTER'), async (req, res) => {
+  try {
+    const rows = await lerAba('MANIFESTACOES', 5000);
+    const item = rows.find(r => [r.ID_MANIFESTACAO,r.PROTOCOLO,r.ID].some(v => String(v || '').trim() === String(req.params.id || '').trim()));
+    if (!item) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
+    if (!manifestacaoExcluida(item)) return res.status(409).json({ sucesso:false, erro:'A manifestação não está excluída.' });
+    const agora = new Date().toISOString();
+    await atualizarPorID('MANIFESTACOES', item.ID_MANIFESTACAO || item.PROTOCOLO || req.params.id, {
+      STATUS:item.STATUS_ANTES_EXCLUSAO || 'AGUARDANDO_TRIAGEM_SAC', STATUS_REGISTRO:'', DATA_EXCLUSAO:'', DELETED_AT:'',
+      EXCLUIDO_POR:'', MOTIVO_EXCLUSAO:'', DATA_ULTIMA_EDICAO:agora, ATUALIZADO_POR:req.user?.usuario || 'MASTER',
+    }, ['ID_MANIFESTACAO','PROTOCOLO','ID']);
+    await registrarHistoricoManifestacao({ id:item.ID_MANIFESTACAO || req.params.id, protocolo:item.PROTOCOLO || '', usuario:req.user?.usuario || 'MASTER', acao:'MANIFESTAÇÃO_RESTAURADA', descricao:'Registro restaurado pelo MASTER.', etapa:item.ETAPA_ATUAL || '' });
+    await registrarAuditoria(req.user?.usuario || 'MASTER', 'RESTAURou_MANIFESTAÇÃO'.toUpperCase(), item.ID_MANIFESTACAO || req.params.id, 'MANIFESTACOES', item, { STATUS:item.STATUS_ANTES_EXCLUSAO || 'AGUARDANDO_TRIAGEM_SAC' });
+    invalidarCacheAba('MANIFESTACOES');
+    res.json({ sucesso:true, id:item.ID_MANIFESTACAO || req.params.id, status:item.STATUS_ANTES_EXCLUSAO || 'AGUARDANDO_TRIAGEM_SAC' });
+  } catch (e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
 
 app.post('/api/manifestacoes/:id/decisao', requerPermissao('manifestacoes.aprovar'), async (req, res) => {
@@ -6631,34 +6713,70 @@ app.patch('/api/usuarios/:id', requerPermissao('usuarios.editar'), async (req,re
   }
 });
 
-async function persistirStatusUsuario(alvo, status, req, extras = {}) {
+function encontrarUsuarioPorIdentificador(usuarios, id) {
+  const alvo = String(id || '').trim().toLowerCase();
+  return usuarios.find(u => [u.ID_USUARIO, u.USUARIO, u.EMAIL, u.id, u.usuario, u.email]
+    .some(v => String(v || '').trim().toLowerCase() === alvo));
+}
+
+async function persistirDadosUsuario(alvo, dados, req, { permitirSomentePg = false } = {}) {
   const chave = alvo.ID_USUARIO || alvo.USUARIO || alvo.EMAIL;
   let sheetAtualizado = null;
+  let sheetErro = null;
   try {
-    sheetAtualizado = await atualizarPorID('USUARIOS', chave, {
-      STATUS: status,
-      DATA_ULTIMA_ALTERACAO: new Date().toISOString(),
-      ALTERADO_POR: req.user.usuario,
-      ...extras,
-    }, ['ID_USUARIO','USUARIO','EMAIL']);
+    sheetAtualizado = await atualizarPorID('USUARIOS', chave, dados, ['ID_USUARIO','USUARIO','EMAIL']);
   } catch (e) {
-    if (!alvo._pgId) throw e;
-    console.warn('[status usuario Sheets indisponível; usuário PG]', e.message);
+    sheetErro = e;
+    if (!alvo._pgId || !permitirSomentePg) throw e;
   }
-  if (!sheetAtualizado && !alvo._pgId) {
-    const err = new Error('Não foi possível persistir o status do usuário na fonte oficial.');
-    err.code = 503;
+  // Usuário originado no PostgreSQL pode não ter linha administrativa ainda.
+  // Cria o espelho para que status, escopo e permissões não desapareçam no
+  // próximo carregamento e para que a revogação seja reconhecida pelo auth.
+  if (!sheetAtualizado && alvo._pgId && !permitirSomentePg) {
+    await garantirAbaComCabecalhos('USUARIOS', [
+      'ID_USUARIO','USUARIO','EMAIL','NOME','CARGO','PERFIL','EMPRESA','SETOR','STATUS',
+      'SENHA_HASH','DATA_CRIACAO','ULTIMO_ACESSO','PERMISSOES_GRANTED','PERMISSOES_BLOCKED',
+      'COMPETENCIAS','DATA_ULTIMA_ALTERACAO','ALTERADO_POR','DATA_EXCLUSAO','EXCLUIDO_POR','MOTIVO_EXCLUSAO'
+    ]);
+    await appendObjeto('USUARIOS', {
+      ID_USUARIO: alvo.ID_USUARIO || `USR-PG-${alvo._pgId}`,
+      USUARIO: alvo.USUARIO || alvo.EMAIL || '', EMAIL: alvo.EMAIL || '', NOME: alvo.NOME || alvo.USUARIO || '',
+      CARGO: alvo.CARGO || '', PERFIL: alvo.PERFIL || '', EMPRESA: alvo.EMPRESA || '', SETOR: alvo.SETOR || '',
+      STATUS: alvo.STATUS || 'ATIVO', SENHA_HASH: alvo.SENHA_HASH || '', DATA_CRIACAO: alvo.DATA_CRIACAO || '',
+      ULTIMO_ACESSO: alvo.ULTIMO_ACESSO || '', ...dados,
+    });
+    sheetAtualizado = { espelhoCriado: true };
+  }
+  if (!sheetAtualizado && !alvo._pgId && !permitirSomentePg) {
+    const err = sheetErro || new Error('Não foi possível persistir o usuário na fonte oficial.');
+    err.code = err.code || 503;
     throw err;
   }
   if (alvo._pgId && usuarioRepo) {
-    await usuarioRepo.update(alvo._pgId, { ativo: !['INATIVO','BLOQUEADO','EXCLUIDO'].includes(String(status).toUpperCase()) });
+    const pgDados = {};
+    if (dados.NOME !== undefined) pgDados.nome = dados.NOME;
+    if (dados.EMAIL !== undefined) pgDados.email = String(dados.EMAIL).toLowerCase();
+    if (dados.SENHA_HASH !== undefined) pgDados.senhaHash = dados.SENHA_HASH;
+    if (dados.STATUS !== undefined) pgDados.ativo = !['INATIVO','BLOQUEADO','EXCLUIDO','EXCLUÍDO'].includes(String(dados.STATUS).toUpperCase());
+    if (Object.keys(pgDados).length) await usuarioRepo.update(alvo._pgId, pgDados);
   }
   invalidarCacheAba('USUARIOS');
-  invalidarCachePermissoes(alvo.EMAIL||alvo.USUARIO||alvo.ID_USUARIO);
-  [alvo.USUARIO, alvo.EMAIL, alvo.ID_USUARIO].filter(Boolean).forEach(chave => {
-    _statusCache.delete(chave);
-    _statusCache.delete(normalizarTexto(chave));
+  invalidarCachePermissoes(alvo.EMAIL || alvo.USUARIO || alvo.ID_USUARIO);
+  [alvo.USUARIO, alvo.EMAIL, alvo.ID_USUARIO].filter(Boolean).forEach(chaveAtual => {
+    _statusCache.delete(chaveAtual);
+    _statusCache.delete(normalizarTexto(chaveAtual));
   });
+  return sheetAtualizado;
+}
+
+async function persistirStatusUsuario(alvo, status, req, extras = {}) {
+  const chave = alvo.ID_USUARIO || alvo.USUARIO || alvo.EMAIL;
+  await persistirDadosUsuario(alvo, {
+    STATUS: status,
+    DATA_ULTIMA_ALTERACAO: new Date().toISOString(),
+    ALTERADO_POR: req.user.usuario,
+    ...extras,
+  }, req);
 }
 
 // Soft-delete (MASTER only)
@@ -6955,7 +7073,10 @@ app.post('/api/anexos', requerPerfil('MASTER','ANALISTA SAC'), async (req,res) =
     if(!arquivo?.dataBase64) return res.status(400).json({sucesso:false,erro:'Arquivo não informado.'});
     const item=await salvarAnexo({...arquivo,categoria},{tipoEntidade,idEntidade,usuario});
     res.json({sucesso:true,anexo:item});
-  } catch(e){ res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
+  } catch(e){
+    const status = e?.code === 'ERR_VALIDACAO_ARQUIVO' ? 400 : e?.code === 'ERR_INTEGRACAO_CONFIG' ? 503 : 500;
+    res.status(status).json({sucesso:false,erro:erroSeguro(e)});
+  }
 });
 
 // ===== DOCUMENTOS =====
@@ -6965,7 +7086,10 @@ app.post('/api/documentos/extrair', requerPerfil('MASTER','ANALISTA SAC','APROVA
     if(!arquivo?.dataBase64) return res.status(400).json({sucesso:false,erro:'Arquivo não informado.'});
     const dados=await documentService.extrairDadosDocumento(arquivo,tipoDocumento);
     res.json({sucesso:true,tipoDocumento,dados,validacaoObrigatoria:true});
-  } catch(e){ res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
+  } catch(e){
+    const status = e?.code === 'ERR_VALIDACAO_ARQUIVO' ? 400 : e?.code === 'ERR_INTEGRACAO_CONFIG' ? 503 : e?.code === 'ERR_JSON_EXTRACAO' ? 422 : 500;
+    res.status(status).json({sucesso:false,erro:erroSeguro(e)});
+  }
 });
 
 // ===== CIRCA DETERMINÍSTICO =====
@@ -7031,6 +7155,28 @@ app.patch('/api/manifestacoes/:id/circa-dados', requerPermissao('manifestacoes.e
 const ACIONAMENTOS_HEADERS = ['ID_ACIONAMENTO','ID_MANIFESTACAO','PROTOCOLO','TIPO','EMPRESA','SETOR_SOLICITANTE','SETOR_DESTINO','RESPONSAVEL','ASSUNTO','MOTIVO','TAREFA','PERGUNTAS','PRAZO','PRIORIDADE','EVIDENCIAS','OBSERVACOES','RESPOSTA','STATUS','CRIADO_EM','CRIADO_POR','ATUALIZADO_EM','ATUALIZADO_POR','IDEMPOTENCY_KEY'];
 const ACIONAMENTO_STATUSES = ['CRIADO','ENVIADO','PENDENTE_DE_ATRIBUICAO','AGUARDANDO_CIENCIA','EM_ANDAMENTO','AGUARDANDO_INFORMACAO','RESPONDIDO','EM_REVISAO','CONCLUIDO','CANCELADO'];
 const ACIONAMENTO_TYPES = ['NOTIFICACAO','SOLICITACAO_INFORMACAO','SOLICITACAO_APOIO','ENCAMINHAMENTO_TRATATIVA','ESCALONAMENTO'];
+const NOTIFICACOES_INTERNAS_HEADERS = ['ID_NOTIFICACAO','ID_MANIFESTACAO','ID_ACIONAMENTO','DESTINATARIO','CANAL','TIPO','TITULO','MENSAGEM','STATUS','CRIADO_EM','CRIADO_POR'];
+
+function empresasDoCadastro(row = {}) {
+  try { const parsed = JSON.parse(row.EMPRESAS_JSON || '[]'); if (Array.isArray(parsed)) return parsed; } catch (_) {}
+  return [row.EMPRESA || ''].filter(Boolean);
+}
+async function gestorCompetente({ setor, empresa }) {
+  const gerentes = await lerAba('GERENTES', 2000).catch(() => []);
+  const empresaNorm = empresaCanonica(empresa || '');
+  return gerentes.find(g => {
+    if (String(g.ATIVO || 'SIM').toUpperCase() !== 'SIM') return false;
+    const empresas = empresasDoCadastro(g).map(empresaCanonica);
+    return !empresas.length || empresas.includes(empresaNorm) || empresas.includes('MASTER');
+  }) || null;
+}
+async function registrarNotificacaoInterna({ manifestacaoId, acionamentoId, destinatario, tipo, titulo, mensagem, usuario }) {
+  if (!destinatario) return null;
+  await garantirAbaComCabecalhos('NOTIFICACOES_INTERNAS', NOTIFICACOES_INTERNAS_HEADERS);
+  const item = { ID_NOTIFICACAO:`NTF-${Date.now()}-${Math.random().toString(36).slice(2,7)}`, ID_MANIFESTACAO:manifestacaoId, ID_ACIONAMENTO:acionamentoId, DESTINATARIO:destinatario, CANAL:'INTERNO', TIPO:tipo, TITULO:titulo, MENSAGEM:mensagem, STATUS:'PENDENTE', CRIADO_EM:new Date().toISOString(), CRIADO_POR:usuario || 'sistema' };
+  await appendObjeto('NOTIFICACOES_INTERNAS', item);
+  return item;
+}
 
 async function circaManifestacao(id) {
   const rows = await lerAba('MANIFESTACOES', 5000).catch(() => []);
@@ -7058,6 +7204,14 @@ app.post('/api/manifestacoes/:id/acionamentos', requerPermissao('manifestacoes.e
     if (!ACIONAMENTO_TYPES.includes(tipo)) return res.status(400).json({ sucesso:false, erro:'Tipo de acionamento inválido.' });
     if (!body.setorDestino && tipo !== 'NOTIFICACAO') return res.status(400).json({ sucesso:false, erro:'Setor destinatário é obrigatório.' });
     if (tipo !== 'NOTIFICACAO' && !body.tarefa && !body.motivo) return res.status(400).json({ sucesso:false, erro:'Informe o que precisa ser feito ou o motivo.' });
+    // Escalonamento só existe quando há gestor cadastrado para a empresa. Nunca
+    // inventamos um destinatário nem fingimos que a notificação foi entregue.
+    const gestor = tipo === 'ESCALONAMENTO'
+      ? await gestorCompetente({ setor:body.setorDestino, empresa:m.EMPRESA_RECLAMADA })
+      : null;
+    if (tipo === 'ESCALONAMENTO' && !gestor) {
+      return res.status(422).json({ sucesso:false, codigo:'GESTOR_NAO_CADASTRADO', erro:'Não há gestor ativo cadastrado para esta empresa. Regularize o cadastro antes de escalar.' });
+    }
     if (body.responsavel) {
       const usuarios = await lerAba('USUARIOS', 5000).catch(() => []);
       const alvo = usuarios.find(u => String(u.USUARIO || u.EMAIL || u.LOGIN || '').toLowerCase() === String(body.responsavel).toLowerCase());
@@ -7071,7 +7225,7 @@ app.post('/api/manifestacoes/:id/acionamentos', requerPermissao('manifestacoes.e
       ID_ACIONAMENTO: await gerarProximoID('ACIONAMENTOS_INTERNOS','ACI','ID_ACIONAMENTO'),
       ID_MANIFESTACAO: m.ID_MANIFESTACAO || req.params.id, PROTOCOLO:m.PROTOCOLO || '', TIPO:tipo,
       EMPRESA:m.EMPRESA_RECLAMADA || body.empresa || '', SETOR_SOLICITANTE:body.setorSolicitante || req.user?.setor || 'SAC',
-      SETOR_DESTINO:body.setorDestino || '', RESPONSAVEL:body.responsavel || '', ASSUNTO:body.assunto || '', MOTIVO:body.motivo || '',
+      SETOR_DESTINO:body.setorDestino || '', RESPONSAVEL:body.responsavel || gestor?.USUARIO || gestor?.EMAIL || gestor?.NOME || '', ASSUNTO:body.assunto || '', MOTIVO:body.motivo || '',
       TAREFA:body.tarefa || '', PERGUNTAS:Array.isArray(body.perguntas) ? JSON.stringify(body.perguntas) : (body.perguntas || ''),
       PRAZO:tipo === 'NOTIFICACAO' ? '' : (body.prazo || ''), PRIORIDADE:body.prioridade || 'NORMAL',
       EVIDENCIAS:Array.isArray(body.evidencias) ? JSON.stringify(body.evidencias) : (body.evidencias || ''), OBSERVACOES:body.observacoes || '',
@@ -7081,7 +7235,9 @@ app.post('/api/manifestacoes/:id/acionamentos', requerPermissao('manifestacoes.e
     await appendObjeto('ACIONAMENTOS_INTERNOS', item);
     await registrarHistoricoManifestacao({ id:item.ID_MANIFESTACAO, protocolo:item.PROTOCOLO, acao:'ACIONAMENTO_CRIADO', descricao:`${tipo} para ${item.SETOR_DESTINO || 'destinatário informado'}`, usuario:req.user?.usuario || 'sistema', etapa:'CONDUCAO' });
     await registrarAuditoria(req.user?.usuario || 'sistema', 'CRIOU_ACIONAMENTO', item.ID_MANIFESTACAO, 'ACIONAMENTOS_INTERNOS', null, item);
-    res.status(201).json({ sucesso:true, item });
+    const destinatario = item.RESPONSAVEL || item.SETOR_DESTINO;
+    const notificacao = await registrarNotificacaoInterna({ manifestacaoId:item.ID_MANIFESTACAO, acionamentoId:item.ID_ACIONAMENTO, destinatario, tipo, titulo:`${tipo.replace(/_/g,' ')} — ${item.PROTOCOLO || item.ID_MANIFESTACAO}`, mensagem:item.MOTIVO || item.TAREFA, usuario:req.user?.usuario });
+    res.status(201).json({ sucesso:true, item, notificacao });
   } catch (e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e,'acionamentos') }); }
 });
 
@@ -9180,7 +9336,10 @@ app.post('/api/matriz-conhecimento/:id/itens', async (req, res) => {
     if (!await _mcVerificarEmpresa(req, res, req.params.id)) return;
     const item = await mcService.adicionarItem(req.params.id, req.body, req.user.usuario);
     res.json({ sucesso: true, id: item.ID });
-  } catch (e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e,'mc-item-add') }); }
+  } catch (e) {
+    const status = e?.code === 'ERR_DUPLICATE_KNOWLEDGE' ? 409 : 500;
+    res.status(status).json({ sucesso: false, erro: erroSeguro(e,'mc-item-add') });
+  }
 });
 
 // ITENS — remover
@@ -9729,7 +9888,7 @@ app.get('/api/admin/usuarios', requerPerfil('MASTER'), async (req, res) => {
 app.get('/api/admin/usuarios/:id', requerPerfil('MASTER'), async (req, res) => {
   try {
     const usuarios = await carregarUsuarios();
-    const u = usuarios.find(u2=>u2.ID_USUARIO===req.params.id||u2.USUARIO===req.params.id);
+    const u = encontrarUsuarioPorIdentificador(usuarios, req.params.id);
     if (!u) return res.status(404).json({sucesso:false,erro:'Usuário não encontrado.'});
     const perms = await carregarPermissoesUsuario(u.EMAIL||u.USUARIO||u.ID_USUARIO);
     res.json({sucesso:true, usuario:{
@@ -9746,7 +9905,7 @@ app.patch('/api/admin/usuarios/:id/permissoes', requerPerfil('MASTER'), async (r
   try {
     const { perfil, empresa, setor, email, modulosNiveis, competencias } = req.body||{};
     const usuarios = await carregarUsuarios();
-    const u = usuarios.find(u2=>u2.ID_USUARIO===req.params.id||u2.USUARIO===req.params.id);
+    const u = encontrarUsuarioPorIdentificador(usuarios, req.params.id);
     if (!u) return res.status(404).json({sucesso:false,erro:'Usuário não encontrado.'});
 
     const anterior = { perfil:u.PERFIL, empresa:u.EMPRESA };
@@ -9770,9 +9929,9 @@ app.patch('/api/admin/usuarios/:id/permissoes', requerPerfil('MASTER'), async (r
       updates.COMPETENCIAS = Array.isArray(competencias) ? competencias.join(',') : (competencias||'');
     }
 
-    // Persiste alterações na planilha USUARIOS
-    const chaveId = u.ID_USUARIO || u.USUARIO || u.EMAIL;
-    await atualizarPorID('USUARIOS', chaveId, updates, ['ID_USUARIO','USUARIO','EMAIL']).catch(e => console.warn('[PERM] Sheets update falhou:', e.message));
+    // Persiste alterações na fonte administrativa e, quando necessário, cria
+    // o espelho de usuários que vieram apenas do PostgreSQL.
+    await persistirDadosUsuario(u, updates, req);
 
     // Atualiza também a aba PERMISSOES_USUARIO (fonte lida por carregarPermissoesUsuario)
     if (modulosNiveis !== undefined || competencias !== undefined) {
@@ -9829,13 +9988,9 @@ app.patch('/api/admin/usuarios/:id/permissoes', requerPerfil('MASTER'), async (r
 app.post('/api/admin/usuarios/:id/ativar', requerPerfil('MASTER'), async (req, res) => {
   try {
     const usuarios = await carregarUsuarios();
-    const u = usuarios.find(u2=>u2.ID_USUARIO===req.params.id||u2.USUARIO===req.params.id);
+    const u = encontrarUsuarioPorIdentificador(usuarios, req.params.id);
     if (!u) return res.status(404).json({sucesso:false,erro:'Usuário não encontrado.'});
-    if (u._pgId && usuarioRepo) await usuarioRepo.update(u._pgId, { ativo: true }).catch(()=>{});
-    await atualizarPorID('USUARIOS', u.ID_USUARIO||u.USUARIO||u.EMAIL, { STATUS:'ATIVO', DATA_ULTIMA_ALTERACAO:new Date().toISOString(), ALTERADO_POR:req.user.usuario||'MASTER' }, ['ID_USUARIO','USUARIO','EMAIL']).catch(e => console.warn('[ATIVAR] Sheets update falhou:', e.message));
-    invalidarCacheAba('USUARIOS');
-    invalidarCachePermissoes(u.EMAIL||u.USUARIO||u.ID_USUARIO);
-    _statusCache.delete(normalizarTexto(u.USUARIO||u.EMAIL||u.ID_USUARIO));
+    await persistirStatusUsuario(u, 'ATIVO', req);
     await registrarAuditoriaAcesso(u.EMAIL||u.USUARIO, 'USUARIO_ATIVADO', '', u.EMPRESA, u.STATUS||'INATIVO', 'ATIVO', req.user.usuario||'MASTER');
     res.json({sucesso:true, mensagem:'Usuário ativado.'});
   } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
@@ -9844,14 +9999,10 @@ app.post('/api/admin/usuarios/:id/ativar', requerPerfil('MASTER'), async (req, r
 app.post('/api/admin/usuarios/:id/desativar', requerPerfil('MASTER'), async (req, res) => {
   try {
     const usuarios = await carregarUsuarios();
-    const u = usuarios.find(u2=>u2.ID_USUARIO===req.params.id||u2.USUARIO===req.params.id);
+    const u = encontrarUsuarioPorIdentificador(usuarios, req.params.id);
     if (!u) return res.status(404).json({sucesso:false,erro:'Usuário não encontrado.'});
     if (normalizarPerfil(u.PERFIL)==='MASTER' && u.ID_USUARIO===req.user.id) return res.status(400).json({sucesso:false,erro:'Não pode desativar a si mesmo.'});
-    if (u._pgId && usuarioRepo) await usuarioRepo.update(u._pgId, { ativo: false }).catch(()=>{});
-    await atualizarPorID('USUARIOS', u.ID_USUARIO||u.USUARIO||u.EMAIL, { STATUS:'INATIVO', DATA_ULTIMA_ALTERACAO:new Date().toISOString(), ALTERADO_POR:req.user.usuario||'MASTER' }, ['ID_USUARIO','USUARIO','EMAIL']).catch(e => console.warn('[DESATIVAR] Sheets update falhou:', e.message));
-    invalidarCacheAba('USUARIOS');
-    invalidarCachePermissoes(u.EMAIL||u.USUARIO||u.ID_USUARIO);
-    _statusCache.delete(normalizarTexto(u.USUARIO||u.EMAIL||u.ID_USUARIO));
+    await persistirStatusUsuario(u, 'INATIVO', req);
     await registrarAuditoriaAcesso(u.EMAIL||u.USUARIO, 'USUARIO_DESATIVADO', '', u.EMPRESA, u.STATUS||'ATIVO', 'INATIVO', req.user.usuario||'MASTER');
     res.json({sucesso:true, mensagem:'Usuário desativado. Acesso revogado imediatamente.'});
   } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
