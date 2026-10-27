@@ -6812,6 +6812,23 @@ app.delete('/api/usuarios/:id', requerPermissao('usuarios.gerenciar'), async (re
       STATUS:'EXCLUIDO', DATA_ULTIMA_ALTERACAO:agoraExclusao, DATA_EXCLUSAO:agoraExclusao,
       EXCLUIDO_POR:req.user.usuario||'MASTER', MOTIVO_EXCLUSAO:motivo, ALTERADO_POR:req.user.usuario||'MASTER'
     });
+    // Um usuário pode ter uma linha administrativa e outra linha legada com
+    // o mesmo login/e-mail. Atualiza todas as cópias para que a listagem não
+    // reconstitua um registro ATIVO depois da exclusão lógica.
+    const refsAlvo = new Set([alvo.ID_USUARIO, alvo.USUARIO, alvo.EMAIL]
+      .map(v => String(v || '').trim().toLowerCase()).filter(Boolean));
+    const linhasUsuarios = await lerAba('USUARIOS', 5000).catch(() => []);
+    for (const linha of linhasUsuarios) {
+      const refsLinha = [linha.ID_USUARIO, linha.USUARIO, linha.EMAIL]
+        .map(v => String(v || '').trim().toLowerCase()).filter(Boolean);
+      if (!refsLinha.some(v => refsAlvo.has(v))) continue;
+      const chaveLinha = linha.ID_USUARIO || linha.USUARIO || linha.EMAIL;
+      if (!chaveLinha || String(chaveLinha) === String(alvo.ID_USUARIO || alvo.USUARIO || alvo.EMAIL)) continue;
+      await atualizarPorID('USUARIOS', chaveLinha, {
+        STATUS:'EXCLUIDO', DATA_ULTIMA_ALTERACAO:agoraExclusao, DATA_EXCLUSAO:agoraExclusao,
+        EXCLUIDO_POR:req.user.usuario||'MASTER', MOTIVO_EXCLUSAO:motivo, ALTERADO_POR:req.user.usuario||'MASTER'
+      }, ['ID_USUARIO','USUARIO','EMAIL']);
+    }
     await registrarAuditoria(req.user.usuario,'EXCLUIU_USUARIO',req.params.id,'USUARIOS',null,{nome:alvo.NOME,motivo});
     res.json({sucesso:true});
   }catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
