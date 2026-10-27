@@ -28129,7 +28129,7 @@ function updateTopbarUser(user) {
     if (adminActions) adminActions.style.display = u ? 'flex' : 'none';
     if (statusButton && u) {
       const currentStatus = String(u.STATUS||u.status||'ATIVO').toUpperCase();
-      const action = currentStatus === 'INATIVO' ? 'ativar' : currentStatus === 'BLOQUEADO' ? 'desbloquear' : 'desativar';
+      const action = currentStatus === 'ATIVO' ? 'desativar' : currentStatus === 'BLOQUEADO' ? 'desbloquear' : 'ativar';
       statusButton.textContent = action === 'ativar' ? 'Ativar usuário' : action === 'desbloquear' ? 'Desbloquear usuário' : 'Inativar usuário';
       statusButton.dataset.action = action;
     }
