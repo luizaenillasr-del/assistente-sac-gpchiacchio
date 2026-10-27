@@ -999,7 +999,7 @@ async function lerAba(nomeAba, maxRows) {
     const headers = rows[0];
     const data = rows.slice(1).map(row => {
       const obj = {};
-      headers.forEach((h, i) => { if (h) obj[h] = row[i] || ''; });
+      headers.forEach((h, i) => { if (h && !(h in obj)) obj[h] = row[i] || ''; });
       return obj;
     });
     _lerAbaCache.set(cacheKey, { data, ts: Date.now() });
