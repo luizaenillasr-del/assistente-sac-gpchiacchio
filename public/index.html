@@ -5316,6 +5316,7 @@
                     <span class="mc-dh-sub" id="cen-man-sub">—</span>
                   </div>
                   <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+                    <button type="button" id="cen-btn-excluir-man" onclick="cenExcluirManifestacaoAtual()" style="display:none;border:1px solid #C70602;background:#fff;color:#C70602;border-radius:8px;padding:5px 10px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">🗑</button>
                     <button type="button" class="mc-btn mc-btn-p mc-btn-sm" onclick="cenIniciarTratativa()" style="font-size:12px;padding:5px 12px">Assumir tratativa</button>
                     <button type="button" class="mc-lnk" onclick="cenAbrirFichaCompleta()" style="display:inline-flex;align-items:center;gap:4px;font-size:12px">Ficha completa
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
@@ -5775,13 +5776,17 @@
   </div><!-- /page-central-sac -->
 
   <!-- MODAL CONFIRMAR EXCLUSÃO MANIFESTAÇÃO -->
-  <div id="modal-confirmar-exclusao" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2000;display:none;align-items:center;justify-content:center" onclick="if(event.target===this)_exclConfFechar()">
-    <div style="background:#fff;border-radius:14px;padding:28px 28px 22px;max-width:420px;width:calc(100% - 40px);box-shadow:0 8px 40px rgba(0,0,0,.18)">
+  <div id="modal-confirmar-exclusao" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2000;align-items:center;justify-content:center" onclick="if(event.target===this)_exclConfFechar()">
+    <div style="background:#fff;border-radius:14px;padding:28px 28px 22px;max-width:440px;width:calc(100% - 40px);box-shadow:0 8px 40px rgba(0,0,0,.18)">
       <div style="font-size:20px;font-weight:800;color:#1F1F1F;margin-bottom:6px">Excluir manifestação</div>
-      <div style="font-size:13px;color:#555;line-height:1.55;margin-bottom:18px" id="excl-modal-msg">Esta manifestação será movida para a aba <strong>Excluídos</strong> e poderá ser restaurada posteriormente.</div>
+      <div style="font-size:13px;color:#555;line-height:1.55;margin-bottom:16px" id="excl-modal-msg">Esta manifestação será movida para a aba <strong>Excluídos</strong> e poderá ser restaurada posteriormente.</div>
+      <div style="margin-bottom:18px">
+        <label style="display:block;font-size:12px;font-weight:700;color:#1F1F1F;margin-bottom:5px;letter-spacing:.03em">MOTIVO DA EXCLUSÃO <span style="color:#C70602">*</span></label>
+        <input id="excl-modal-motivo" type="text" placeholder="Ex: Registrado em duplicidade, erro de cadastro…" style="width:100%;border:1.5px solid #D6D6D6;border-radius:8px;padding:9px 12px;font-size:13px;font-family:inherit;outline:none" oninput="document.getElementById('excl-modal-btn-conf').disabled=!this.value.trim()" onkeydown="if(event.key==='Enter'&&this.value.trim())_exclConfConfirmar()">
+      </div>
       <div style="display:flex;gap:10px;justify-content:flex-end">
         <button onclick="_exclConfFechar()" style="border:1px solid #D6D6D6;background:#fff;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Cancelar</button>
-        <button id="excl-modal-btn-conf" onclick="_exclConfConfirmar()" style="border:0;background:#C70602;color:#fff;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Excluir</button>
+        <button id="excl-modal-btn-conf" onclick="_exclConfConfirmar()" disabled style="border:0;background:#C70602;color:#fff;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;opacity:.5" onmouseover="if(!this.disabled)this.style.opacity='1'" onmouseout="if(!this.disabled)this.style.opacity='1'">Excluir</button>
       </div>
     </div>
   </div>
@@ -16169,8 +16174,12 @@ document.addEventListener('visibilitychange', () => {
     _exclPendente = { id, protocolo, cb };
     const msg = document.getElementById('excl-modal-msg');
     if (msg) msg.innerHTML = `A manifestação <strong>${protocolo || id}</strong> será movida para a aba <strong>Excluídos</strong> e poderá ser restaurada a qualquer momento.`;
+    const inp = document.getElementById('excl-modal-motivo');
+    if (inp) { inp.value = ''; }
+    const btn = document.getElementById('excl-modal-btn-conf');
+    if (btn) { btn.disabled = true; btn.style.opacity = '.5'; btn.textContent = 'Excluir'; }
     const m = document.getElementById('modal-confirmar-exclusao');
-    if (m) { m.style.display = 'flex'; }
+    if (m) { m.style.display = 'flex'; setTimeout(() => inp && inp.focus(), 80); }
   }
   function _exclConfFechar() {
     _exclPendente = null;
@@ -16180,16 +16189,17 @@ document.addEventListener('visibilitychange', () => {
   async function _exclConfConfirmar() {
     if (!_exclPendente) return;
     const { id, protocolo, cb } = _exclPendente;
-    const motivo = window.prompt(`Motivo obrigatório para excluir ${protocolo || id}:`);
-    if (!motivo || !motivo.trim()) return;
-    _exclConfFechar();
+    const inp = document.getElementById('excl-modal-motivo');
+    const motivo = inp ? inp.value.trim() : '';
+    if (!motivo) return;
     const btn = document.getElementById('excl-modal-btn-conf');
-    if (btn) { btn.disabled = true; btn.textContent = 'Excluindo...'; }
+    if (btn) { btn.disabled = true; btn.style.opacity = '1'; btn.textContent = 'Excluindo...'; }
     try {
       const tok = sessionStorage.getItem('sac-token');
-      const r = await fetch(`/api/manifestacoes/${encodeURIComponent(id)}`, { method: 'DELETE', headers: { 'Content-Type':'application/json', Authorization: 'Bearer ' + tok }, body: JSON.stringify({ motivo: motivo.trim(), protocoloConfirmacao: protocolo || id }) });
+      const r = await fetch(`/api/manifestacoes/${encodeURIComponent(id)}`, { method: 'DELETE', headers: { 'Content-Type':'application/json', Authorization: 'Bearer ' + tok }, body: JSON.stringify({ motivo }) });
       const j = await r.json().catch(() => ({}));
       if (!r.ok || j.sucesso === false) throw new Error(j.erro || 'Erro ao excluir.');
+      _exclConfFechar();
       const filtrarOut = m => m.ID_MANIFESTACAO !== id;
       if(window._dashData?.mans) window._dashData.mans = window._dashData.mans.filter(filtrarOut);
       if(window.bancoData) window.bancoData = window.bancoData.filter(filtrarOut);
@@ -16199,9 +16209,9 @@ document.addEventListener('visibilitychange', () => {
       if (typeof _toast === 'function') _toast(`Manifestação ${protocolo || id} movida para Excluídos.`);
       if(typeof cb === 'function') cb();
     } catch(e) {
+      if (btn) { btn.disabled = false; btn.style.opacity = '1'; btn.textContent = 'Excluir'; }
       alert('Erro ao excluir: ' + e.message);
     }
-    if (btn) { btn.disabled = false; btn.textContent = 'Excluir'; }
   }
   window._exclConfFechar = _exclConfFechar;
   window._exclConfConfirmar = _exclConfConfirmar;
@@ -16218,6 +16228,16 @@ document.addEventListener('visibilitychange', () => {
     });
   };
 
+  window.cenExcluirManifestacaoAtual = function(){
+    const id = window._cenAtual;
+    if (!id) return;
+    const raw = (window._cenDataFull || []).find(m => m.ID_MANIFESTACAO === id || m.PROTOCOLO === id);
+    const proto = (raw && (raw.PROTOCOLO || raw.ID_MANIFESTACAO)) || id;
+    _exclConfAbrir(id, proto, async () => {
+      if (typeof loadCentralSAC === 'function') await loadCentralSAC();
+    });
+  };
+
   // ── Aba Excluídos ──────────────────────────────────────────────────
   var _cenExcData = [];
   window.cenCarregarExcluidos = async function() {
@@ -16229,7 +16249,7 @@ document.addEventListener('visibilitychange', () => {
     if (wrap) wrap.style.display = 'none';
     try {
       const tok = sessionStorage.getItem('sac-token');
-      const r = await fetch('/api/manifestacoes/excluidas', { headers: { Authorization: 'Bearer ' + tok } });
+      const r = await fetch('/api/manifestacoes-excluidas', { headers: { Authorization: 'Bearer ' + tok } });
       const j = await r.json().catch(() => ({}));
       if (!r.ok || j.sucesso === false) throw new Error(j.erro || 'Erro ao carregar.');
       _cenExcData = j.itens || [];
@@ -25686,6 +25706,8 @@ async function mudarStatusMC(id, novoStatus) {
     if(base) renderDetalhe(base.raw);
     else { const ph=$('cen-placeholder');if(ph)ph.style.display='none'; const dt=$('cen-detalhe');if(dt)dt.classList.add('active'); }
     cenToggleAcoes(false);
+    const btnExcl=$('cen-btn-excluir-man');
+    if(btnExcl) btnExcl.style.display=(typeof role==='function'&&role()==='MASTER')?'':'none';
     const d=await api('/api/manifestacoes/'+encodeURIComponent(id));
     if(tk!==_selTok) return;
     let n=base;
