@@ -6,7 +6,7 @@ const page = html.slice(html.indexOf('id="page-biblioteca-fichas"'), html.indexO
 
 assert(page.includes('Histórico documental das manifestações do Grupo Chiacchio.'));
 assert(page.includes('id="bib-sync-status"'));
-assert(page.includes('>⚡ Sincronizar<'));
+assert(page.includes('id="bib-btn-sincronizar"'));
 assert(page.includes('id="bib-kpis"'));
 assert(page.includes('Protocolo, cliente, produto, lote ou palavra-chave...'));
 
