@@ -25039,18 +25039,14 @@ async function mudarStatusMC(id, novoStatus) {
     const ids=[...document.querySelectorAll('.cen-sel-man:checked')].map(e=>e.dataset.id).filter(Boolean);
     if(!ids.length)return;
     const b=$('cen-btn-excluir-selecionadas'); if(b){b.disabled=true;b.textContent='Excluindo…';}
-    let ok=0, falhas=[];
-    for(const id of ids){
-      const raw=(_cenAll.find(m=>m.id===id)||{}).raw||{};
-      const protocolo=String(raw.PROTOCOLO||raw.ID_MANIFESTACAO||id).trim();
-      try{
-        const d=await Promise.race([api('/api/manifestacoes/'+encodeURIComponent(id),{method:'DELETE',body:{motivo:'Exclusão solicitada pelo MASTER.',protocoloConfirmacao:protocolo}}),new Promise((_,rej)=>setTimeout(()=>rej(new Error('Tempo esgotado')),15000))]);
-        if(!d.sucesso)throw new Error(d.erro||'Falha ao excluir');
-        ok++;
-      }catch(e){falhas.push(id+': '+e.message);}
-    }
+    let ok=0, falhas=0;
+    try {
+      const d=await Promise.race([api('/api/manifestacoes/excluir-lote',{method:'POST',body:{ids}}),new Promise((_,rej)=>setTimeout(()=>rej(new Error('A exclusão demorou mais que o esperado.')),30000))]);
+      if(!d.sucesso) throw new Error(d.erro||'Falha ao excluir');
+      ok=Number(d.excluidas||0); falhas=Number(d.falhas||0);
+    } catch(e) { falhas=ids.length; toast(e.message||'Erro ao excluir.'); }
     if(b){b.disabled=false;}
-    toast(falhas.length?`${ok} excluída(s). Falhas: ${falhas.length}`:`${ok} manifestação(ões) excluída(s).`);
+    if (ok || !falhas) toast(falhas?`${ok} excluída(s). Falhas: ${falhas}`:`${ok} manifestação(ões) excluída(s).`);
     await loadCentralSAC();
     if(typeof cenTrativasInit==='function') cenTrativasInit(true);
   };

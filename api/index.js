@@ -2756,6 +2756,45 @@ app.patch('/api/manifestacoes/:id', requerPermissao('manifestacoes.editar'), mid
   } catch(e){ res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
 
+// Exclusão lógica em lote para operações administrativas da Central.
+// Não exige confirmação individual de protocolo: o MASTER já autenticou a operação.
+app.post('/api/manifestacoes/excluir-lote', requerPerfil('MASTER'), async (req, res) => {
+  try {
+    const ids = Array.isArray(req.body?.ids)
+      ? [...new Set(req.body.ids.map(v => String(v || '').trim()).filter(Boolean))].slice(0, 100)
+      : [];
+    if (!ids.length) return res.status(400).json({ sucesso:false, erro:'Selecione ao menos uma manifestação.' });
+    const motivo = String(req.body?.motivo || 'Exclusão solicitada pelo MASTER.').trim();
+    const todas = await lerAba('MANIFESTACOES', 5000);
+    const agora = new Date().toISOString();
+    const resultados = [];
+    for (const id of ids) {
+      const item = todas.find(r => [r.ID_MANIFESTACAO, r.PROTOCOLO, r.ID].some(v => String(v || '').trim() === id));
+      if (!item) { resultados.push({ id, sucesso:false, erro:'Manifestação não encontrada.' }); continue; }
+      if (manifestacaoExcluida(item)) { resultados.push({ id, sucesso:false, erro:'A manifestação já está excluída.' }); continue; }
+      const chave = item.ID_MANIFESTACAO || item.PROTOCOLO || id;
+      await atualizarPorID('MANIFESTACOES', chave, {
+        STATUS_REGISTRO:'EXCLUIDO', STATUS:'EXCLUIDO', STATUS_ANTES_EXCLUSAO:item.STATUS || item.STATUS_FICHA || '',
+        DATA_EXCLUSAO:agora, DELETED_AT:agora, EXCLUIDO_POR:req.user?.usuario || 'MASTER', MOTIVO_EXCLUSAO:motivo,
+        DATA_ULTIMA_EDICAO:agora, ATUALIZADO_POR:req.user?.usuario || 'MASTER',
+      }, ['ID_MANIFESTACAO','PROTOCOLO','ID']);
+      if (manifestacaoRepo) {
+        try {
+          const pg = (await manifestacaoRepo.findByProtocolo(id).catch(() => null))
+                  || (await manifestacaoRepo.findByIdOriginal(id).catch(() => null));
+          if (pg && typeof manifestacaoRepo.update === 'function') await manifestacaoRepo.update(pg.id, { status:'EXCLUIDA' });
+        } catch (e) { console.warn('[PG] exclusão em lote falhou:', e.message); }
+      }
+      await registrarHistoricoManifestacao({ id:chave, protocolo:item.PROTOCOLO || id, usuario:req.user?.usuario || 'MASTER', acao:'MANIFESTAÇÃO_EXCLUÍDA', descricao:motivo, etapa:item.ETAPA_ATUAL || '' });
+      await registrarAuditoria(req.user?.usuario || 'sistema', 'EXCLUIU_MANIFESTAÇÃO', chave, 'MANIFESTACOES', item, { ...item, STATUS:'EXCLUIDO', MOTIVO_EXCLUSAO:motivo });
+      resultados.push({ id, sucesso:true, protocolo:item.PROTOCOLO || id });
+    }
+    invalidarCacheAba('MANIFESTACOES');
+    const excluidas = resultados.filter(r => r.sucesso).length;
+    res.json({ sucesso:true, excluidas, falhas:resultados.length - excluidas, resultados });
+  } catch (e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
+});
+
 app.delete('/api/manifestacoes/:id', requerPerfil('MASTER'), async (req, res) => {
   try {
     const { id } = req.params;
