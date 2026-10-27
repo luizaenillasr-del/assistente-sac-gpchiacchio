@@ -41,7 +41,21 @@ function analisar(input = {}) {
   const procedencia = first(m, ['PROCEDENTE', 'PROCEDENCIA']);
   const autonomia = !faltantes.length && Boolean(causa || subcausa) && Boolean(procedimento || first(m, ['TRATATIVA_REALIZADA'])) && !['critica', 'alta'].includes(norm(m.PRIORIDADE)) && !m.FORA_ALCADA;
   const procedures = tratamentos.filter(t => norm(t.STATUS || 'APROVADO') === 'aprovado' || !t.STATUS);
-  const hypotheses = workflow.normalizeList([causa, subcausa].filter(Boolean));
+  // Enriquecer hipóteses com causas da aba CAUSAS que coincidam com texto da manifestação
+  const descNorm = norm(first(m, ['DESCRICAO','DESCRIÇÃO','ORIG_DESCRICAO_RECLAMACAO']) || '');
+  const causasMatriz = causas
+    .filter(c => {
+      const ativo = String(c.ATIVO || 'SIM').toUpperCase() !== 'NAO' && String(c.ATIVO || 'SIM').toUpperCase() !== 'EXCLUIDO';
+      if (!ativo || !descNorm) return false;
+      const causaN = norm(c.CAUSA || '');
+      const subcausaN = norm(c.SUBCAUSA || '');
+      const palavras = [...causaN.split(' '), ...subcausaN.split(' ')].filter(p => p.length >= 4);
+      return palavras.some(p => descNorm.includes(p));
+    })
+    .map(c => c.CAUSA + (c.SUBCAUSA ? ` / ${c.SUBCAUSA}` : ''))
+    .filter(Boolean)
+    .slice(0, 3);
+  const hypotheses = workflow.normalizeList([causa, subcausa, ...causasMatriz].filter(Boolean));
   const checklist = workflow.buildChecklist([
     ...faltantes.map(field => ({ descricao: `Completar informação: ${field}`, obrigatoria: true, origem: 'CIRCA_CAPTURA' })),
     ...(!causa ? [{ descricao: 'Confirmar causa com evidência', obrigatoria: true, origem: 'CIRCA_INVESTIGACAO' }] : []),

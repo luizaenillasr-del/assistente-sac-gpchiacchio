@@ -3397,6 +3397,51 @@ app.post('/api/manifestacoes/:id/finalizar', requerPermissao('aprovacoes.aprovar
         CRIADO_EM: agora, CRIADO_POR: req.user?.usuario || 'sistema',
       }).catch(e => console.warn('[CONSOLIDACAO] falha não bloqueante:', e.message));
     }
+    // Auto-feed BANCO_HISTORICO: registra manifestação encerrada para alimentar casos similares futuros
+    try {
+      const historicoRows = await lerAba('BANCO_HISTORICO', 100).catch(()=>[]);
+      const jaExiste = historicoRows.some(r => r.ID_MANIFESTACAO === id || r.ORIG_ID_MANIFESTACAO === id);
+      if (!jaExiste) {
+        const [devsFeed, tratsFeed] = await Promise.all([
+          lerAba('DEVOLUTIVAS', 2000).catch(()=>[]),
+          lerAba('TRATATIVAS_SETORIAIS', 2000).catch(()=>[]),
+        ]);
+        const devFinal = devsFeed.filter(d=>d.ID_MANIFESTACAO===id).slice(-1)[0] || {};
+        const tratFinal = tratsFeed.filter(t=>t.ID_MANIFESTACAO===id && t.STATUS==='CONCLUIDO').slice(-1)[0] ||
+                          tratsFeed.filter(t=>t.ID_MANIFESTACAO===id).slice(-1)[0] || {};
+        await garantirAbaComCabecalhos('BANCO_HISTORICO', [
+          'ID_HISTORICO','ORIG_ID_MANIFESTACAO','ORIG_DATA_ABERTURA','DRV_EMPRESA_NORMALIZADA',
+          'ORIG_EMPRESA','ORIG_CONTATO','ORIG_CANAL','ORIG_DESCRICAO_RECLAMACAO',
+          'COMP_TIPO_PROBLEMA_VALIDADO','COMP_CAUSA_PROVAVEL','CAUSA_RAIZ','SUBCAUSA',
+          'SETOR_RESPONSAVEL','TRATATIVA_REALIZADA','RESULTADO','DEVOLUTIVA_FINAL',
+          'DATA_ENCERRAMENTO','ENCERRADO_POR','FONTE',
+        ]).catch(()=>{});
+        await appendObjeto('BANCO_HISTORICO', {
+          ID_HISTORICO: `HIST-${id}-${Date.now()}`,
+          ORIG_ID_MANIFESTACAO: id,
+          ORIG_DATA_ABERTURA: m.DATA_ABERTURA || m.DATA_CRIACAO || m.DATA_REGISTRO || '',
+          DRV_EMPRESA_NORMALIZADA: m.EMPRESA_RECLAMADA || '',
+          ORIG_EMPRESA: m.EMPRESA_RECLAMADA || '',
+          ORIG_CONTATO: m.EMPRESA_RECLAMANTE || m.CONTATO || '',
+          ORIG_CANAL: m.CANAL || '',
+          ORIG_DESCRICAO_RECLAMACAO: m.DESCRICAO || m.DESCRICAO_MANIFESTACAO || '',
+          COMP_TIPO_PROBLEMA_VALIDADO: m.TIPO_CONFIRMADO || m.TIPO || '',
+          COMP_CAUSA_PROVAVEL: m.CAUSA_RAIZ_CONFIRMADA || m.CAUSA_RAIZ || m.SUBCAUSA || '',
+          CAUSA_RAIZ: m.CAUSA_RAIZ_CONFIRMADA || m.CAUSA_RAIZ || '',
+          SUBCAUSA: m.SUBCAUSA || m.SUBCAUSA_CONFIRMADA || '',
+          SETOR_RESPONSAVEL: m.SETOR_ACIONADO || m.SETORES_CONFIRMADOS || '',
+          TRATATIVA_REALIZADA: tratFinal.DESCRICAO_TRATATIVA || tratFinal.TRATATIVA || m.TRATATIVA_REALIZADA || '',
+          RESULTADO: m.PROCEDENTE || observacaoFinal || '',
+          DEVOLUTIVA_FINAL: devFinal.VERSAO_FINAL || devFinal.TEXTO_GERADO || m.DEVOLUTIVA_FINAL || '',
+          DATA_ENCERRAMENTO: agora,
+          ENCERRADO_POR: req.user?.usuario || 'sistema',
+          FONTE: 'FINALIZAR_MANIFESTACAO',
+        }).catch(e => console.warn('[BANCO_HISTORICO] auto-feed falhou:', e.message));
+        invalidarCacheAba('BANCO_HISTORICO');
+      }
+    } catch (eFeed) {
+      console.warn('[BANCO_HISTORICO] auto-feed erro não bloqueante:', eFeed.message);
+    }
     await registrarAuditoria(req.user?.usuario||'sistema','FINALIZOU_MANIFESTACAO',id,'MANIFESTACOES',m.STATUS,'ENCERRADA');
     res.json({ sucesso:true, id, encerradaEm: agora });
   } catch(e){ res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
@@ -7263,10 +7308,11 @@ app.get('/api/manifestacoes/:id/circa', requerPermissao('manifestacoes.visualiza
     if (req._empresaScope && !pertenceEmpresa(req._empresaScope, m.EMPRESA_RECLAMADA || ''))
       return res.status(403).json({ sucesso:false, erro:'Acesso não autorizado.' });
     const similares = await cerebroService.buscarCasosSimilares(m, 8, req.user?.EMPRESA || null).catch(() => []);
+    const normTratCirca = r => ({ ...r, PROCEDIMENTO: r.PROCEDIMENTO || r.TRATATIVA_PADRAO || '', STATUS: r.STATUS || (r.ATIVO === 'NAO' ? 'INATIVO' : r.ATIVO ? 'APROVADO' : '') });
     const resultado = circaEngine.analisar({
       manifestacao: m,
       similares,
-      tratamentos: matriz.filter(r => !m.EMPRESA_RECLAMADA || pertenceEmpresa(String(m.EMPRESA_RECLAMADA), r.EMPRESA || r.EMPRESA_RECLAMADA || '')),
+      tratamentos: matriz.filter(r => !m.EMPRESA_RECLAMADA || pertenceEmpresa(String(m.EMPRESA_RECLAMADA), r.EMPRESA || r.EMPRESA_RECLAMADA || '')).map(normTratCirca),
       causas: causas.filter(r => !m.EMPRESA_RECLAMADA || pertenceEmpresa(String(m.EMPRESA_RECLAMADA), r.EMPRESA || r.EMPRESA_RECLAMADA || '')),
       tratativa: tratativas.filter(r => r.ID_MANIFESTACAO === (m.ID_MANIFESTACAO || idReq)).slice(-1)[0],
       devolutiva: devolutivas.filter(r => r.ID_MANIFESTACAO === (m.ID_MANIFESTACAO || idReq)).slice(-1)[0],
@@ -7574,12 +7620,13 @@ app.patch('/api/causas/:id', requerPerfil('MASTER','ANALISTA SAC'), async (req,r
 
 // ===== CICLO DE APRENDIZADO OPERACIONAL (CÉREBRO) =====
 // Catálogos persistidos no Sheets e reutilizados pela ficha, tratativas e devolutivas.
-const CEREBRO_CAUSAS_HEADERS = ['ID_CAUSA','CATEGORIA','TIPO','CAUSA','SUBCAUSA','DESCRICAO','SINONIMOS','SETOR_RESPONSAVEL','PALAVRAS_CHAVE','ATIVO','VERSAO','DATA_CRIACAO','CRIADO_POR','ATUALIZADO_EM'];
-const CEREBRO_TRAT_HEADERS = ['ID_TRATAMENTO','EMPRESA','CATEGORIA','CAUSA_ID','CAUSA','SUBCAUSA','SETOR_RESPONSAVEL','PROCEDIMENTO','CONDICOES','EVIDENCIAS','AUTORIZACOES','CRITERIOS_CONCLUSAO','STATUS','VERSAO','CRIADO_EM','CRIADO_POR','ATUALIZADO_EM'];
-const CEREBRO_APR_HEADERS = ['ID_APRIMORAMENTO','TIPO','REGISTRO_ID','ID_MANIFESTACAO','DESCRICAO','JUSTIFICATIVA','STATUS','VERSAO_NOVA','CRIADO_EM','CRIADO_POR','APROVADO_EM','APROVADO_POR'];
+const CEREBRO_CAUSAS_HEADERS = ['ID_CAUSA','CATEGORIA','TIPO','CAUSA','SUBCAUSA','DESCRICAO','EMPRESA','SETOR_RESPONSAVEL','SINONIMOS','PALAVRAS_CHAVE','FREQUENCIA_OCORRENCIAS','STATUS_VALIDACAO','ATIVO','VERSAO','DATA_CRIACAO','CRIADO_POR','ATUALIZADO_EM','ATUALIZADO_POR'];
+const CEREBRO_TRAT_HEADERS = ['ID_TRATAMENTO','EMPRESA','CATEGORIA','CAUSA_ID','CAUSA','SUBCAUSA','PROBLEMA_TRATADO','PROCEDIMENTO','ACOES','RESPONSAVEL','SETOR_RESPONSAVEL','SETORES_ENVOLVIDOS','ALCADA_APROVACAO','SLA_HORAS','EVIDENCIAS_EXIGIDAS','CONDICOES','VERSAO','STATUS','CRIADO_EM','CRIADO_POR','ATUALIZADO_EM'];
+const CEREBRO_APR_HEADERS = ['ID_APRIMORAMENTO','TIPO','CAUSA_ID','CAUSA','ID_MANIFESTACAO','PROBLEMA_RECORRENTE','DESCRICAO','JUSTIFICATIVA','QUANTIDADE_OCORRENCIAS','IMPACTO','PROPOSTA_MELHORIA','SETOR_RESPONSAVEL','PRAZO','STATUS','RESULTADO','EVIDENCIA','VERSAO','CRIADO_EM','CRIADO_POR','APROVADO_EM','APROVADO_POR','ATUALIZADO_EM'];
 const CEREBRO_MODELO_HEADERS = ['ID_MODELO','TITULO','EMPRESA','TIPO_MANIFESTACAO','CATEGORIA','TIPO_DEVOLUTIVA','SITUACAO','ASSUNTO','TEXTO_PADRAO','VARIAVEIS','RESTRICOES','VERSAO','STATUS','CRIADO_EM','CRIADO_POR','APROVADO_EM','APROVADO_POR'];
 
 function _cNorm(v) { return String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim(); }
+function _cStatusNorm(v) { return _cNorm(v).replace(/_/g,' '); }
 function _cCsv(v) { return Array.isArray(v) ? v.join('; ') : String(v || ''); }
 function _cScopeRows(req, rows) {
   const scope = req._empresaScope;
@@ -7595,7 +7642,8 @@ app.get('/api/cerebro/matriz-operacional', requerPerfil('MASTER','GESTOR SAC','A
       lerAba('CAUSAS', 5000).catch(()=>[]), lerAba('MATRIZ_TRATAMENTO', 5000).catch(()=>[]), lerAba('APRIMORAMENTOS_CEREBRO', 5000).catch(()=>[]),
     ]);
     const filtra = rows => _cScopeRows(req, rows).filter(r => !q || _cNorm(Object.values(r).join(' ')).includes(q));
-    const rows = aba === 'tratamentos' ? filtra(tratamentos) : aba === 'aprimoramentos' ? filtra(aprimoramentos) : filtra(causas);
+    const normTrat = r => ({ ...r, ID_TRATAMENTO: r.ID_TRATAMENTO || r.ID_REGRA || '', PROBLEMA_TRATADO: r.PROBLEMA_TRATADO || r.TIPO_MANIFESTACAO || '', PROCEDIMENTO: r.PROCEDIMENTO || r.TRATATIVA_PADRAO || '', CAUSA: r.CAUSA || '', STATUS: r.STATUS || (r.ATIVO === 'NAO' ? 'INATIVO' : r.ATIVO === 'SIM' || r.ATIVO === '1' || r.ATIVO === 'true' ? 'APROVADO' : r.ATIVO ? 'APROVADO' : '') });
+    const rows = aba === 'tratamentos' ? filtra(tratamentos).map(normTrat) : aba === 'aprimoramentos' ? filtra(aprimoramentos) : filtra(causas);
     const page = Math.max(1, Number(req.query.page || 1)), limit = Math.min(100, Math.max(1, Number(req.query.limit || 50)));
     res.json({ sucesso:true, aba, itens:rows.slice((page-1)*limit,page*limit), total:rows.length, page, limit, causas:filtra(causas).length, tratamentos:filtra(tratamentos).length, aprimoramentos:filtra(aprimoramentos).length });
   } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e), itens:[] }); }
@@ -7618,7 +7666,7 @@ app.post('/api/cerebro/causas', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC
     const equivalentes=rows.filter(r => _cNorm(r.CAUSA)===chave || _cNorm(r.SINONIMOS).split(/[;,|]/).map(_cNorm).includes(chave));
     if (equivalentes.length && b.confirmarDuplicidade !== true) return res.status(409).json({sucesso:false,duplicidade:true,equivalentes:equivalentes.slice(0,10),erro:'Já existe uma causa equivalente. Consulte o registro antes de criar outra.'});
     const id=await gerarProximoID('CAUSAS','CAU','ID_CAUSA'); const agora=new Date().toISOString();
-    const obj={ID_CAUSA:id,CATEGORIA:b.categoria||b.CATEGORIA||'',TIPO:b.tipo||b.TIPO||'',CAUSA:causa,SUBCAUSA:b.subcausa||b.SUBCAUSA||'',DESCRICAO:b.descricao||b.DESCRICAO||'',SINONIMOS:_cCsv(b.sinonimos||b.SINONIMOS),SETOR_RESPONSAVEL:b.setorResponsavel||b.SETOR_RESPONSAVEL||'',PALAVRAS_CHAVE:_cCsv(b.palavrasChave||b.PALAVRAS_CHAVE),ATIVO:'SIM',VERSAO:'1',DATA_CRIACAO:agora,CRIADO_POR:req.user.usuario,ATUALIZADO_EM:agora};
+    const obj={ID_CAUSA:id,CATEGORIA:b.categoria||b.CATEGORIA||'',TIPO:b.tipo||b.TIPO||'',CAUSA:causa,SUBCAUSA:b.subcausa||b.SUBCAUSA||'',DESCRICAO:b.descricao||b.DESCRICAO||'',EMPRESA:b.empresa||b.EMPRESA||'',SETOR_RESPONSAVEL:b.setorResponsavel||b.SETOR_RESPONSAVEL||'',SINONIMOS:_cCsv(b.sinonimos||b.SINONIMOS),PALAVRAS_CHAVE:_cCsv(b.palavrasChave||b.PALAVRAS_CHAVE),FREQUENCIA_OCORRENCIAS:'0',STATUS_VALIDACAO:b.statusValidacao||b.STATUS_VALIDACAO||'HIPOTESE',ATIVO:'SIM',VERSAO:'1',DATA_CRIACAO:agora,CRIADO_POR:req.user.usuario,ATUALIZADO_EM:agora,ATUALIZADO_POR:''};
     await appendObjeto('CAUSAS',obj); await registrarAuditoria(req.user.usuario,'CRIOU_CAUSA_CEREBRO',id,'CAUSAS',null,obj);
     res.status(201).json({sucesso:true,item:obj});
   } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
@@ -7629,25 +7677,132 @@ app.post('/api/cerebro/tratamentos', requerPerfil('MASTER','GESTOR SAC','ANALIST
     const b=req.body||{}; if(!b.procedimento && !b.PROCEDIMENTO) return res.status(400).json({sucesso:false,erro:'Procedimento é obrigatório.'});
     await garantirAbaComCabecalhos('MATRIZ_TRATAMENTO', CEREBRO_TRAT_HEADERS).catch(()=>{});
     const id=await gerarProximoID('MATRIZ_TRATAMENTO','TRAT','ID_TRATAMENTO'), agora=new Date().toISOString();
-    const obj={ID_TRATAMENTO:id,EMPRESA:b.empresa||b.EMPRESA||'',CATEGORIA:b.categoria||b.CATEGORIA||'',CAUSA_ID:b.causaId||b.CAUSA_ID||'',CAUSA:b.causa||b.CAUSA||'',SUBCAUSA:b.subcausa||b.SUBCAUSA||'',SETOR_RESPONSAVEL:b.setorResponsavel||b.SETOR_RESPONSAVEL||'',PROCEDIMENTO:b.procedimento||b.PROCEDIMENTO,CONDICOES:b.condicoes||b.CONDICOES||'',EVIDENCIAS:_cCsv(b.evidencias||b.EVIDENCIAS),AUTORIZACOES:_cCsv(b.autorizacoes||b.AUTORIZACOES),CRITERIOS_CONCLUSAO:b.criteriosConclusao||b.CRITERIOS_CONCLUSAO||'',STATUS:'RASCUNHO',VERSAO:'1',CRIADO_EM:agora,CRIADO_POR:req.user.usuario,ATUALIZADO_EM:agora};
-    await appendObjeto('MATRIZ_TRATAMENTO',obj); await registrarAuditoria(req.user.usuario,'CRIOU_TRATAMENTO_CEREBRO',id,'MATRIZ_TRATAMENTO',null,obj); res.status(201).json({sucesso:true,item:obj});
+    const obj={ID_TRATAMENTO:id,EMPRESA:b.empresa||b.EMPRESA||'',CATEGORIA:b.categoria||b.CATEGORIA||'',CAUSA_ID:b.causaId||b.CAUSA_ID||'',CAUSA:b.causa||b.CAUSA||'',SUBCAUSA:b.subcausa||b.SUBCAUSA||'',PROBLEMA_TRATADO:b.problemaTratado||b.PROBLEMA_TRATADO||'',SETOR_RESPONSAVEL:b.setorResponsavel||b.SETOR_RESPONSAVEL||'',PROCEDIMENTO:b.procedimento||b.PROCEDIMENTO||'',ACOES:b.acoes||b.ACOES||'',RESPONSAVEL:b.responsavel||b.RESPONSAVEL||'',SETORES_ENVOLVIDOS:b.setoresEnvolvidos||b.SETORES_ENVOLVIDOS||'',ALCADA_APROVACAO:b.alcadaAprovacao||b.ALCADA_APROVACAO||'',SLA_HORAS:b.slaHoras||b.SLA_HORAS||'',EVIDENCIAS_EXIGIDAS:_cCsv(b.evidenciasExigidas||b.EVIDENCIAS_EXIGIDAS),CONDICOES:b.condicoes||b.CONDICOES||'',STATUS:'RASCUNHO',VERSAO:'1',CRIADO_EM:agora,CRIADO_POR:req.user.usuario,ATUALIZADO_EM:agora};
+    await appendObjeto('MATRIZ_TRATAMENTO',obj); await registrarAuditoria(req.user.usuario,'CRIOU_TRATAMENTO_CEREBRO',id,'MATRIZ_TRATAMENTO',null,obj); invalidarCacheAba('MATRIZ_TRATAMENTO'); res.status(201).json({sucesso:true,item:obj});
   } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
 });
 
+app.patch('/api/cerebro/tratamentos/:id', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC'), middlewareEscopoEmpresa(), async (req,res)=>{
+  try {
+    const rows=await lerAba('MATRIZ_TRATAMENTO',5000);
+    const item=rows.find(r=>r.ID_TRATAMENTO===req.params.id);
+    if(!item) return res.status(404).json({sucesso:false,erro:'Tratamento não encontrado.'});
+    if(!escopoPermite(req,item.EMPRESA)) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado.'});
+    const b=req.body||{};
+    const campos=['EMPRESA','CATEGORIA','CAUSA_ID','CAUSA','SUBCAUSA','PROBLEMA_TRATADO','SETOR_RESPONSAVEL','PROCEDIMENTO','ACOES','RESPONSAVEL','SETORES_ENVOLVIDOS','ALCADA_APROVACAO','SLA_HORAS','EVIDENCIAS_EXIGIDAS','CONDICOES','VERSAO','STATUS'];
+    const upd={};
+    campos.forEach(c=>{if(b[c]!==undefined)upd[c]=b[c];});
+    upd.ATUALIZADO_EM=new Date().toISOString();
+    if(!Object.keys(upd).filter(k=>k!=='ATUALIZADO_EM').length) return res.status(400).json({sucesso:false,erro:'Nenhum campo para atualizar.'});
+    await atualizarPorID('MATRIZ_TRATAMENTO',req.params.id,upd,['ID_TRATAMENTO']);
+    invalidarCacheAba('MATRIZ_TRATAMENTO');
+    await registrarAuditoria(req.user.usuario,'ATUALIZOU_TRATAMENTO_CEREBRO',req.params.id,'MATRIZ_TRATAMENTO',item,upd);
+    res.json({sucesso:true,item:{...item,...upd}});
+  } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
+});
+
+app.delete('/api/cerebro/tratamentos/:id', requerPerfil('MASTER','GESTOR SAC'), middlewareEscopoEmpresa(), async (req,res)=>{
+  try {
+    const rows=await lerAba('MATRIZ_TRATAMENTO',5000);
+    const item=rows.find(r=>r.ID_TRATAMENTO===req.params.id);
+    if(!item) return res.status(404).json({sucesso:false,erro:'Tratamento não encontrado.'});
+    if(!escopoPermite(req,item.EMPRESA)) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado.'});
+    await atualizarPorID('MATRIZ_TRATAMENTO',req.params.id,{STATUS:'INATIVO',ATIVO:'NAO',ATUALIZADO_EM:new Date().toISOString()},['ID_TRATAMENTO']);
+    invalidarCacheAba('MATRIZ_TRATAMENTO');
+    await registrarAuditoria(req.user.usuario,'INATIVOU_TRATAMENTO_CEREBRO',req.params.id,'MATRIZ_TRATAMENTO',null,{STATUS:'INATIVO'});
+    res.json({sucesso:true});
+  } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
+});
+
 app.post('/api/cerebro/aprimoramentos', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC'), middlewareEscopoEmpresa(), async (req,res)=>{
-  try { const b=req.body||{}; if(!b.descricao) return res.status(400).json({sucesso:false,erro:'Descrição é obrigatória.'}); await garantirAbaComCabecalhos('APRIMORAMENTOS_CEREBRO',CEREBRO_APR_HEADERS).catch(()=>{}); const id=await gerarProximoID('APRIMORAMENTOS_CEREBRO','APR','ID_APRIMORAMENTO'); const obj={ID_APRIMORAMENTO:id,TIPO:b.tipo||'TRATAMENTO',REGISTRO_ID:b.registroId||'',ID_MANIFESTACAO:b.idManifestacao||'',DESCRICAO:b.descricao,JUSTIFICATIVA:b.justificativa||'',STATUS:'EM_REVISAO',VERSAO_NOVA:'',CRIADO_EM:new Date().toISOString(),CRIADO_POR:req.user.usuario,APROVADO_EM:'',APROVADO_POR:''}; await appendObjeto('APRIMORAMENTOS_CEREBRO',obj); res.status(201).json({sucesso:true,item:obj}); } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
+  try {
+    const b=req.body||{}, agora=new Date().toISOString();
+    const descricao=String(b.descricao||b.problemaRecorrente||b.DESCRICAO||'').trim();
+    if(!descricao) return res.status(400).json({sucesso:false,erro:'Descrição é obrigatória.'});
+    await garantirAbaComCabecalhos('APRIMORAMENTOS_CEREBRO',CEREBRO_APR_HEADERS).catch(()=>{});
+    const id=await gerarProximoID('APRIMORAMENTOS_CEREBRO','APR','ID_APRIMORAMENTO');
+    const obj={ID_APRIMORAMENTO:id,TIPO:b.tipo||b.TIPO||'TRATAMENTO',CAUSA_ID:b.causaId||b.CAUSA_ID||'',CAUSA:b.causa||b.CAUSA||'',ID_MANIFESTACAO:b.idManifestacao||b.ID_MANIFESTACAO||'',PROBLEMA_RECORRENTE:b.problemaRecorrente||b.PROBLEMA_RECORRENTE||descricao,DESCRICAO:descricao,JUSTIFICATIVA:b.justificativa||b.JUSTIFICATIVA||'',QUANTIDADE_OCORRENCIAS:String(b.quantidadeOcorrencias||b.QUANTIDADE_OCORRENCIAS||''),IMPACTO:b.impacto||b.IMPACTO||'',PROPOSTA_MELHORIA:b.propostaMelhoria||b.PROPOSTA_MELHORIA||'',SETOR_RESPONSAVEL:b.setorResponsavel||b.SETOR_RESPONSAVEL||'',PRAZO:b.prazo||b.PRAZO||'',STATUS:'EM_REVISAO',RESULTADO:'',EVIDENCIA:'',VERSAO:'1',CRIADO_EM:agora,CRIADO_POR:req.user.usuario,APROVADO_EM:'',APROVADO_POR:'',ATUALIZADO_EM:agora};
+    await appendObjeto('APRIMORAMENTOS_CEREBRO',obj);
+    invalidarCacheAba('APRIMORAMENTOS_CEREBRO');
+    res.status(201).json({sucesso:true,item:obj});
+  } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
+});
+
+app.patch('/api/cerebro/causas/:id', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC'), middlewareEscopoEmpresa(), async (req,res)=>{
+  try {
+    const rows=await lerAba('CAUSAS',5000).catch(()=>[]);
+    const item=rows.find(r=>r.ID_CAUSA===req.params.id);
+    if(!item) return res.status(404).json({sucesso:false,erro:'Causa não encontrada.'});
+    const b=req.body||{};
+    const campos=['CATEGORIA','TIPO','CAUSA','SUBCAUSA','DESCRICAO','EMPRESA','SETOR_RESPONSAVEL','SINONIMOS','PALAVRAS_CHAVE','FREQUENCIA_OCORRENCIAS','STATUS_VALIDACAO','ATIVO'];
+    const upd={}; campos.forEach(c=>{if(b[c]!==undefined)upd[c]=b[c];});
+    upd.ATUALIZADO_EM=new Date().toISOString(); upd.ATUALIZADO_POR=req.user.usuario;
+    if(!Object.keys(upd).filter(k=>!['ATUALIZADO_EM','ATUALIZADO_POR'].includes(k)).length) return res.status(400).json({sucesso:false,erro:'Nenhum campo para atualizar.'});
+    await atualizarPorID('CAUSAS',req.params.id,upd,['ID_CAUSA']);
+    invalidarCacheAba('CAUSAS');
+    await registrarAuditoria(req.user.usuario,'ATUALIZOU_CAUSA_CEREBRO',req.params.id,'CAUSAS',item,upd);
+    res.json({sucesso:true,item:{...item,...upd}});
+  } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
+});
+
+app.delete('/api/cerebro/causas/:id', requerPerfil('MASTER','GESTOR SAC'), middlewareEscopoEmpresa(), async (req,res)=>{
+  try {
+    const rows=await lerAba('CAUSAS',5000).catch(()=>[]);
+    const item=rows.find(r=>r.ID_CAUSA===req.params.id);
+    if(!item) return res.status(404).json({sucesso:false,erro:'Causa não encontrada.'});
+    const agora=new Date().toISOString();
+    await atualizarPorID('CAUSAS',req.params.id,{ATIVO:'NAO',ATUALIZADO_EM:agora,ATUALIZADO_POR:req.user.usuario},['ID_CAUSA']);
+    invalidarCacheAba('CAUSAS');
+    await registrarAuditoria(req.user.usuario,'INATIVOU_CAUSA_CEREBRO',req.params.id,'CAUSAS',null,{ATIVO:'NAO'});
+    res.json({sucesso:true});
+  } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
+});
+
+app.patch('/api/cerebro/aprimoramentos/:id', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC'), middlewareEscopoEmpresa(), async (req,res)=>{
+  try {
+    const rows=await lerAba('APRIMORAMENTOS_CEREBRO',5000).catch(()=>[]);
+    const item=rows.find(r=>r.ID_APRIMORAMENTO===req.params.id);
+    if(!item) return res.status(404).json({sucesso:false,erro:'Aprimoramento não encontrado.'});
+    const b=req.body||{};
+    const campos=['TIPO','CAUSA_ID','CAUSA','ID_MANIFESTACAO','PROBLEMA_RECORRENTE','DESCRICAO','JUSTIFICATIVA','QUANTIDADE_OCORRENCIAS','IMPACTO','PROPOSTA_MELHORIA','SETOR_RESPONSAVEL','PRAZO','STATUS','RESULTADO','EVIDENCIA'];
+    const upd={}; campos.forEach(c=>{if(b[c]!==undefined)upd[c]=b[c];});
+    if(b.STATUS==='APROVADO'){upd.APROVADO_EM=new Date().toISOString();upd.APROVADO_POR=req.user.usuario;}
+    upd.ATUALIZADO_EM=new Date().toISOString();
+    if(!Object.keys(upd).filter(k=>k!=='ATUALIZADO_EM').length) return res.status(400).json({sucesso:false,erro:'Nenhum campo para atualizar.'});
+    await atualizarPorID('APRIMORAMENTOS_CEREBRO',req.params.id,upd,['ID_APRIMORAMENTO']);
+    invalidarCacheAba('APRIMORAMENTOS_CEREBRO');
+    await registrarAuditoria(req.user.usuario,'ATUALIZOU_APRIMORAMENTO_CEREBRO',req.params.id,'APRIMORAMENTOS_CEREBRO',item,upd);
+    res.json({sucesso:true,item:{...item,...upd}});
+  } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
 
 app.get('/api/cerebro/devolutivas', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC','APROVADOR','SETOR RESPONSÁVEL','AUDITOR','CONSULTA'), middlewareEscopoEmpresa(), async (req,res)=>{
-  try { const q=_cNorm(req.query.q), aba=String(req.query.aba||'modelos'); await garantirAbaComCabecalhos('MODELOS_DEVOLUTIVA',CEREBRO_MODELO_HEADERS).catch(()=>{}); const [modelos, historico]=await Promise.all([lerAba('MODELOS_DEVOLUTIVA',5000).catch(()=>[]),lerAba('DEVOLUTIVAS',5000).catch(()=>[])]); const base=aba==='historico'?historico:aba==='revisao'?modelos.filter(r=>_cNorm(r.STATUS)==='em revisao'):modelos.filter(r=>_cNorm(r.STATUS)==='aprovada'||_cNorm(r.STATUS)==='publicada'||!r.STATUS); const itens=_cScopeRows(req,base).filter(r=>!q||_cNorm(Object.values(r).join(' ')).includes(q)); res.json({sucesso:true,aba,itens,total:itens.length,modelos:_cScopeRows(req,modelos),historico:_cScopeRows(req,historico)}); } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e),itens:[]});}
+  try { const q=_cNorm(req.query.q), aba=String(req.query.aba||'modelos'); await garantirAbaComCabecalhos('MODELOS_DEVOLUTIVA',CEREBRO_MODELO_HEADERS).catch(()=>{}); const [modelos, historico]=await Promise.all([lerAba('MODELOS_DEVOLUTIVA',5000).catch(()=>[]),lerAba('DEVOLUTIVAS',5000).catch(()=>[])]); const base=aba==='historico'?historico:aba==='revisao'?modelos.filter(r=>_cStatusNorm(r.STATUS)==='em revisao'):modelos.filter(r=>_cStatusNorm(r.STATUS)==='aprovada'||_cStatusNorm(r.STATUS)==='publicada'); const itens=_cScopeRows(req,base).filter(r=>!q||_cNorm(Object.values(r).join(' ')).includes(q)); res.json({sucesso:true,aba,itens,total:itens.length,modelos:_cScopeRows(req,modelos),historico:_cScopeRows(req,historico)}); } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e),itens:[]});}
 });
 
 app.post('/api/cerebro/devolutivas/modelos', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC'), middlewareEscopoEmpresa(), async (req,res)=>{
-  try { const b=req.body||{}; if(!b.titulo||!b.textoPadrao) return res.status(400).json({sucesso:false,erro:'Título e texto padrão são obrigatórios.'}); await garantirAbaComCabecalhos('MODELOS_DEVOLUTIVA',CEREBRO_MODELO_HEADERS).catch(()=>{}); const id=await gerarProximoID('MODELOS_DEVOLUTIVA','MOD','ID_MODELO'); const obj={ID_MODELO:id,TITULO:b.titulo,EMPRESA:b.empresa||'',TIPO_MANIFESTACAO:b.tipoManifestacao||'',CATEGORIA:b.categoria||'',TIPO_DEVOLUTIVA:b.tipoDevolutiva||'CONCLUSAO',SITUACAO:b.situacao||'',ASSUNTO:b.assunto||'',TEXTO_PADRAO:b.textoPadrao,VARIAVEIS:_cCsv(b.variaveis),RESTRICOES:_cCsv(b.restricoes),VERSAO:'1',STATUS:'EM_REVISAO',CRIADO_EM:new Date().toISOString(),CRIADO_POR:req.user.usuario,APROVADO_EM:'',APROVADO_POR:''}; await appendObjeto('MODELOS_DEVOLUTIVA',obj); res.status(201).json({sucesso:true,item:obj}); } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
+  try { const b=req.body||{}; if(!b.titulo||!b.textoPadrao) return res.status(400).json({sucesso:false,erro:'Título e texto padrão são obrigatórios.'}); await garantirAbaComCabecalhos('MODELOS_DEVOLUTIVA',CEREBRO_MODELO_HEADERS).catch(()=>{}); const id=await gerarProximoID('MODELOS_DEVOLUTIVA','MOD','ID_MODELO'); const obj={ID_MODELO:id,TITULO:b.titulo,EMPRESA:b.empresa||'',TIPO_MANIFESTACAO:b.tipoManifestacao||'',CATEGORIA:b.categoria||'',TIPO_DEVOLUTIVA:b.tipoDevolutiva||'CONCLUSAO',SITUACAO:b.situacao||'',ASSUNTO:b.assunto||'',TEXTO_PADRAO:b.textoPadrao,VARIAVEIS:_cCsv(b.variaveis),RESTRICOES:_cCsv(b.restricoes),VERSAO:'1',STATUS:'EM_REVISAO',CRIADO_EM:new Date().toISOString(),CRIADO_POR:req.user.usuario,APROVADO_EM:'',APROVADO_POR:''}; await appendObjeto('MODELOS_DEVOLUTIVA',obj); invalidarCacheAba('MODELOS_DEVOLUTIVA'); res.status(201).json({sucesso:true,item:obj}); } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
+});
+
+app.patch('/api/cerebro/devolutivas/modelos/:id', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC'), middlewareEscopoEmpresa(), async (req,res)=>{
+  try {
+    const rows=await lerAba('MODELOS_DEVOLUTIVA',5000);
+    const item=rows.find(r=>r.ID_MODELO===req.params.id);
+    if(!item) return res.status(404).json({sucesso:false,erro:'Modelo não encontrado.'});
+    if(!escopoPermite(req,item.EMPRESA)) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado.'});
+    const b=req.body||{};
+    const campos=['TITULO','EMPRESA','TIPO_MANIFESTACAO','CATEGORIA','TIPO_DEVOLUTIVA','SITUACAO','ASSUNTO','TEXTO_PADRAO','VARIAVEIS','RESTRICOES'];
+    const upd={};
+    campos.forEach(c=>{if(b[c]!==undefined)upd[c]=b[c];});
+    if(!Object.keys(upd).length) return res.status(400).json({sucesso:false,erro:'Nenhum campo para atualizar.'});
+    await atualizarPorID('MODELOS_DEVOLUTIVA',req.params.id,upd,['ID_MODELO']);
+    invalidarCacheAba('MODELOS_DEVOLUTIVA');
+    res.json({sucesso:true,item:{...item,...upd}});
+  } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
 
 app.post('/api/cerebro/devolutivas/modelos/:id/status', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC'), middlewareEscopoEmpresa(), async (req,res)=>{
-  try { const status=String(req.body?.status||''); if(!['EM_REVISAO','APROVADA','ARQUIVADA'].includes(status)) return res.status(400).json({sucesso:false,erro:'Status inválido.'}); const rows=await lerAba('MODELOS_DEVOLUTIVA',5000); const item=rows.find(r=>r.ID_MODELO===req.params.id); if(!item) return res.status(404).json({sucesso:false,erro:'Modelo não encontrado.'}); if(!escopoPermite(req,item.EMPRESA)) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado.'}); const upd={STATUS:status,APROVADO_EM:status==='APROVADA'?new Date().toISOString():'',APROVADO_POR:status==='APROVADA'?req.user.usuario:'',VERSAO:status==='APROVADA'?String(Number(item.VERSAO||1)+1):item.VERSAO}; await atualizarPorID('MODELOS_DEVOLUTIVA',req.params.id,upd,['ID_MODELO']); res.json({sucesso:true,item:{...item,...upd}}); } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
+  try { const status=String(req.body?.status||''); if(!['EM_REVISAO','APROVADA','ARQUIVADA','REJEITADA'].includes(status)) return res.status(400).json({sucesso:false,erro:'Status inválido.'}); const rows=await lerAba('MODELOS_DEVOLUTIVA',5000); const item=rows.find(r=>r.ID_MODELO===req.params.id); if(!item) return res.status(404).json({sucesso:false,erro:'Modelo não encontrado.'}); if(!escopoPermite(req,item.EMPRESA)) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado.'}); const upd={STATUS:status,APROVADO_EM:status==='APROVADA'?new Date().toISOString():'',APROVADO_POR:status==='APROVADA'?req.user.usuario:'',VERSAO:status==='APROVADA'?String(Number(item.VERSAO||1)+1):item.VERSAO}; await atualizarPorID('MODELOS_DEVOLUTIVA',req.params.id,upd,['ID_MODELO']); invalidarCacheAba('MODELOS_DEVOLUTIVA'); res.json({sucesso:true,item:{...item,...upd}}); } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
 
 // ===== ASSERTIVIDADE DA IA =====
