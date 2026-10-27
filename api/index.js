@@ -138,18 +138,25 @@ async function lerRelatoriosSac() {
 }
 
 // Escopo B2: resolve o nome/código de empresa do usuário → id numérico do Postgres.
-// Retorna undefined se empresa for global (MASTER/todas), -1 se não encontrar.
+// Para mais de uma empresa retorna uma lista de ids; undefined é escopo global
+// e -1 significa que nenhum escopo informado corresponde a uma empresa válida.
 async function resolverEmpresaIdScope(valor) {
   if (!empresaRepo || !valor) return undefined;
+  const codigos = empresasCanonicas(valor);
   // Empresa que resolve para MASTER = acesso global → sem filtro de empresa no PG
-  if (empresaCanonica(valor) === 'MASTER') return undefined;
+  if (codigos.includes('MASTER')) return undefined;
+  if (!codigos.length) return -1;
   try {
-    const byCod = await empresaRepo.findByCodigo(String(valor)).catch(() => null);
-    if (byCod) return byCod.id;
     const todas = await empresaRepo.findAll().catch(() => []);
-    const vl = String(valor).toLowerCase().trim();
-    const e = todas.find(x => x.codigo.toLowerCase() === vl || x.nome.toLowerCase().includes(vl) || vl.includes(x.codigo.toLowerCase()));
-    return e ? e.id : -1;
+    const ids = [];
+    for (const codigo of codigos) {
+      const byCod = await empresaRepo.findByCodigo(String(codigo)).catch(() => null);
+      const e = byCod || todas.find(x => empresaCanonica(x.codigo || x.nome || '') === codigo);
+      if (e?.id) ids.push(e.id);
+    }
+    const unicos = [...new Set(ids)];
+    if (!unicos.length) return -1;
+    return unicos.length === 1 ? unicos[0] : unicos;
   } catch { return -1; }
 }
 
@@ -318,6 +325,22 @@ function empresaCanonica(texto) {
     if (grafias.some(g => norm === g)) return cod;
   }
   return null;
+}
+
+// O cadastro administrativo permite uma ou mais empresas por pessoa.  A
+// planilha legada armazena esse escopo em uma única coluna, separado por
+// vírgula.  Centralizar a leitura aqui evita que "Chiacchio, Plaschio" seja
+// interpretado como uma empresa inexistente e bloqueie a sessão.
+function empresasCanonicas(valor) {
+  let itens = valor;
+  if (typeof itens === 'string') {
+    const texto = itens.trim();
+    if (texto.startsWith('[')) {
+      try { itens = JSON.parse(texto); } catch (_) { itens = texto; }
+    }
+  }
+  if (!Array.isArray(itens)) itens = String(itens || '').split(/[,;|]/);
+  return [...new Set(itens.map(empresaCanonica).filter(Boolean))];
 }
 function b64url(v){ return Buffer.from(v).toString('base64url'); }
 function assinarToken(payload){
@@ -720,12 +743,12 @@ function requerPermissao(...chaves) {
 
 // B2: Isolamento de empresa — comparação por código canônico
 function pertenceEmpresa(userEmpresa, registroEmpresa) {
-  if (!userEmpresa || String(userEmpresa).trim() === '') return false; // empresa vazia = sem acesso (não é MASTER)
-  const userCod = empresaCanonica(userEmpresa);
-  if (!userCod || userCod === 'MASTER') return true; // MASTER vê tudo
-  const recCod = empresaCanonica(registroEmpresa || '');
-  if (!recCod) return false; // empresa desconhecida = invisível para não-MASTER
-  return userCod === recCod;
+  const empresasUsuario = empresasCanonicas(userEmpresa);
+  if (!empresasUsuario.length) return false; // empresa vazia = sem acesso (não é MASTER)
+  if (empresasUsuario.includes('MASTER')) return true; // MASTER vê tudo
+  const empresasRegistro = empresasCanonicas(registroEmpresa);
+  if (!empresasRegistro.length) return false; // empresa desconhecida = invisível para não-MASTER
+  return empresasRegistro.some(codigo => empresasUsuario.includes(codigo));
 }
 
 // Usa req._empresaScope (definido apenas para não-MASTER pelo middlewareEscopoEmpresa).
@@ -743,7 +766,7 @@ function middlewareEscopoEmpresa() {
     if (perfil === 'MASTER' || perfil === 'APROVADOR MASTER') return next();
     const empresa = req.user.empresa || '';
     // Empresa vazia: bloqueia acesso — usuário sem empresa não pode acessar dados isolados por empresa
-    if (!empresa.trim()) return res.status(403).json({ sucesso: false, erro: 'Empresa não definida no perfil. Contacte o administrador.' });
+    if (!empresasCanonicas(empresa).length) return res.status(403).json({ sucesso: false, erro: 'Empresa não definida no perfil. Contacte o administrador.' });
     req._empresaScope = empresa;
     next();
   };
@@ -754,12 +777,10 @@ function middlewareEscopoEmpresa() {
 // Sem empresa no item → invisível para não-MASTER (dado sem dono).
 function filtrarPorEmpresa(itens, req, campoEmpresa) {
   if (!req._empresaScope) return itens;
-  const userCod = empresaCanonica(req._empresaScope);
-  if (!userCod || userCod === 'MASTER') return itens;
   return itens.filter(item => {
     const val = item[campoEmpresa] || '';
     if (!val) return false;
-    return empresaCanonica(val) === userCod;
+    return pertenceEmpresa(req._empresaScope, val);
   });
 }
 
@@ -768,12 +789,10 @@ function filtrarPorEmpresa(itens, req, campoEmpresa) {
 // Com empresa preenchida → apenas daquela empresa e MASTER.
 function filtrarPorEmpresaHistorico(itens, req, campoEmpresa) {
   if (!req._empresaScope) return itens;
-  const userCod = empresaCanonica(req._empresaScope);
-  if (!userCod || userCod === 'MASTER') return itens;
   return itens.filter(item => {
     const val = item[campoEmpresa] || '';
     if (!val) return true; // legado sem empresa = compartilhado
-    return empresaCanonica(val) === userCod;
+    return pertenceEmpresa(req._empresaScope, val);
   });
 }
 
@@ -781,12 +800,10 @@ function filtrarPorEmpresaHistorico(itens, req, campoEmpresa) {
 // Sem empresa no item → global (visível para todos). Com empresa → apenas daquela empresa e MASTER.
 function filtrarPorEmpresaConfig(itens, req, campoEmpresa = 'EMPRESA') {
   if (!req._empresaScope) return itens;
-  const userCod = empresaCanonica(req._empresaScope);
-  if (!userCod || userCod === 'MASTER') return itens;
   return itens.filter(item => {
     const val = item[campoEmpresa] || '';
     if (!val) return true; // sem empresa = global
-    return empresaCanonica(val) === userCod;
+    return pertenceEmpresa(req._empresaScope, val);
   });
 }
 
@@ -795,14 +812,14 @@ function middlewareEscopoSetor() {
     if (!req.user) return res.status(401).json({ sucesso: false, erro: 'Sessão inválida.' });
     if (perfilCanonico(req.user.perfil) === 'MASTER') return next();
     if (!req._empresaScope) return res.status(403).json({ sucesso: false, erro: 'Token sem empresa definida.' });
-    const userCod = empresaCanonica(req._empresaScope);
-    if (!userCod || userCod === 'MASTER') return next();
+    const empresasUsuario = empresasCanonicas(req._empresaScope);
+    if (empresasUsuario.includes('MASTER')) return next();
     const nome = decodeURIComponent(req.params.setor || '');
     try {
       const rows = await lerAba('CONFIG_SETORES', 500).catch(() => []);
       const setorRow = rows.find(r => normalizarTexto(r.SETOR || r.NOME_SETOR || '') === normalizarTexto(nome));
       if (!setorRow || !(setorRow.EMPRESA || '').trim()) return next(); // setor global ou não encontrado
-      if (empresaCanonica(setorRow.EMPRESA) !== userCod) {
+      if (!pertenceEmpresa(req._empresaScope, setorRow.EMPRESA)) {
         return res.status(403).json({ sucesso: false, erro: 'Acesso restrito à empresa do setor.' });
       }
       next();
@@ -1414,7 +1431,14 @@ async function verificarStatusUsuario(login) {
       let permissoes_granted = null, permissoes_blocked = null;
       try { if (u.PERMISSOES_GRANTED) permissoes_granted = JSON.parse(u.PERMISSOES_GRANTED); } catch(_) {}
       try { if (u.PERMISSOES_BLOCKED) permissoes_blocked = JSON.parse(u.PERMISSOES_BLOCKED); } catch(_) {}
-      const entry = { status: String(u.STATUS || 'ATIVO').toUpperCase(), ts: agora, permissoes_granted, permissoes_blocked };
+      // A mesma leitura usada para validar a sessão também reidrata o escopo.
+      // Assim, quando o MASTER define a empresa de um usuário, uma sessão já
+      // aberta deixa de receber 403 sem depender de logout/login manual.
+      const entry = {
+        status: String(u.STATUS || 'ATIVO').toUpperCase(), ts: agora,
+        permissoes_granted, permissoes_blocked,
+        empresa: String(u.EMPRESA || '').trim(), setor: String(u.SETOR || '').trim(),
+      };
       _statusCache.set(login, entry);
       return entry;
     }
@@ -1427,7 +1451,11 @@ async function verificarStatusUsuario(login) {
     try {
       const pgU = await usuarioRepo.findByLogin(login).catch(() => null);
       if (pgU) {
-        const entry = { status: pgU.ativo === false ? 'INATIVO' : 'ATIVO', ts: agora, permissoes_granted: null, permissoes_blocked: null };
+        const entry = {
+          status: pgU.ativo === false ? 'INATIVO' : 'ATIVO', ts: agora,
+          permissoes_granted: null, permissoes_blocked: null,
+          empresa: pgU.empresa?.nome || '', setor: pgU.setor?.nome || '',
+        };
         _statusCache.set(login, entry);
         return entry;
       }
@@ -1439,7 +1467,10 @@ async function verificarStatusUsuario(login) {
     const status = cached ? cached.status : 'INATIVO';
     const permissoes_granted = cached?.permissoes_granted ?? null;
     const permissoes_blocked = cached?.permissoes_blocked ?? null;
-    const entry = { status, ts: agora, permissoes_granted, permissoes_blocked };
+    const entry = {
+      status, ts: agora, permissoes_granted, permissoes_blocked,
+      empresa: cached?.empresa || '', setor: cached?.setor || '',
+    };
     _statusCache.set(login, entry);
     if (_statusCache.size > 2000) {
       for (const [k, v] of _statusCache) {
@@ -1453,7 +1484,7 @@ async function verificarStatusUsuario(login) {
     console.error('[verificarStatusUsuario] Erro ao ler planilha:', e.message || e);
     if (cached) return { ...cached, ts: agora };
     // JWT já foi validado — se Sheets está indisponível e não há cache, não derruba a sessão
-    return { status: 'ATIVO', ts: agora, permissoes_granted: null, permissoes_blocked: null };
+    return { status: 'ATIVO', ts: agora, permissoes_granted: null, permissoes_blocked: null, empresa: '', setor: '' };
   }
 }
 
@@ -1498,6 +1529,11 @@ app.use('/api', async (req,res,next)=>{
     ...payload,
     permissoes_granted: infoAtual.permissoes_granted ?? payload.permissoes_granted,
     permissoes_blocked: infoAtual.permissoes_blocked ?? payload.permissoes_blocked,
+    // Só substitui quando o registro administrativo possui valor.  Isto
+    // mantém compatibilidade com sessões antigas e, ao mesmo tempo, torna a
+    // atribuição de empresa efetiva imediatamente.
+    empresa: infoAtual.empresa || payload.empresa || '',
+    setor: infoAtual.setor || payload.setor || '',
   };
   // Tokens emitidos após a implantação conhecem o estado do perfil. O servidor
   // impede acesso direto à API operacional enquanto o onboarding é obrigatório.
@@ -3579,7 +3615,7 @@ function cadastroEscopo(rows, req) {
   return rows.filter(r => {
     const raw = r.EMPRESA || r.EMPRESAS || r.EMPRESAS_JSON || '';
     if (!raw) return false;
-    return pertenceEmpresa(req._empresaScope, raw) || String(raw).toUpperCase().includes(empresaCanonica(req._empresaScope));
+    return pertenceEmpresa(req._empresaScope, raw);
   });
 }
 app.get('/api/cadastros/:tipo', middlewareEscopoEmpresa(), requerPerfil(...CADASTRO_LEITURA), async (req,res)=>{
@@ -4722,8 +4758,7 @@ app.get('/api/pesquisas/relatorio', requerPermissao('pesquisas.visualizar'), asy
       if (ano && Number(ano) !== anoR) return null;
       if (mes && Number(mes) !== mesR) return null;
       if (empresa) {
-        const empRow = String(row.Empresa || row.EMPRESA || '').toLowerCase();
-        if (!empRow.includes(empresa.toLowerCase())) return null;
+        if (!pertenceEmpresa(empresa, row.Empresa || row.EMPRESA || '')) return null;
       }
       return { d, anoR, mesR };
     }
@@ -4758,7 +4793,7 @@ app.get('/api/pesquisas/relatorio', requerPermissao('pesquisas.visualizar'), asy
         const partes = raw.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
         const dd = partes ? new Date(+partes[3],+partes[2]-1,+partes[1]) : new Date(raw);
         if (isNaN(dd)) return false;
-        if (empresa && !String(r.Empresa||r.EMPRESA||'').toLowerCase().includes(empresa.toLowerCase())) return false;
+        if (empresa && !pertenceEmpresa(empresa, r.Empresa || r.EMPRESA || '')) return false;
         return dd.getFullYear()===anoH && dd.getMonth()+1===mesH;
       });
       const ms = grupo.map(_media).filter(n=>n!==null);
@@ -4781,7 +4816,7 @@ app.get('/api/pesquisas/relatorio', requerPermissao('pesquisas.visualizar'), asy
       // Se não há respostas individuais, usa média histórica importada
       if (!ms.length) {
         const chaveH = `${anoH}-${String(mesH).padStart(2,'0')}`;
-        const hRow = historicoRows.find(r => r.ANO == anoH && Number(r.MES) === mesH && (!empresa || String(r.EMPRESA||'').toLowerCase().includes(empresa.toLowerCase())));
+        const hRow = historicoRows.find(r => r.ANO == anoH && Number(r.MES) === mesH && (!empresa || pertenceEmpresa(empresa, r.EMPRESA || '')));
         if (hRow) {
           const _f = v => { const n = parseFloat(String(v||'').replace(',','.')); return isNaN(n) ? null : n; };
           entryMedia = _f(hRow.NOTA_MEDIA);
@@ -4797,7 +4832,7 @@ app.get('/api/pesquisas/relatorio', requerPermissao('pesquisas.visualizar'), asy
     // Se não há respostas individuais para o mês/ano selecionado, usa histórico importado para media_geral e criterios
     if (!filtrados.length && ano && mes) {
       const _fh = v => { const n = parseFloat(String(v||'').replace(',','.')); return isNaN(n) ? null : n; };
-      const hRowAtual = historicoRows.find(r => r.ANO == ano && Number(r.MES) === Number(mes) && (!empresa || String(r.EMPRESA||'').toLowerCase().includes(empresa.toLowerCase())));
+      const hRowAtual = historicoRows.find(r => r.ANO == ano && Number(r.MES) === Number(mes) && (!empresa || pertenceEmpresa(empresa, r.EMPRESA || '')));
       if (hRowAtual) {
         if (mediaGeral === null) mediaGeral = _fh(hRowAtual.NOTA_MEDIA);
         criterios.forEach(c => {
@@ -6613,9 +6648,16 @@ app.post('/api/usuarios', requerPermissao('usuarios.criar'), async (req,res)=>{
   try{
     const b=req.body||{};
     if(!b.usuario||!b.nome||!b.perfil) return res.status(400).json({sucesso:false,erro:'Usuário, nome e perfil são obrigatórios.'});
+    const perfil = perfilCanonico(b.perfil);
+    const empresas = empresasCanonicas(b.empresa);
+    if (perfil !== 'MASTER' && !empresas.length) return res.status(400).json({sucesso:false,erro:'Selecione ao menos uma empresa para liberar o acesso do usuário.'});
     const id=await gerarProximoID('USUARIOS','USR','ID_USUARIO');
     const hash=b.senha ? await hashSenha(b.senha) : '';
-    const obj={ID_USUARIO:id,USUARIO:b.usuario,EMAIL:b.email||'',NOME:b.nome,CARGO:b.cargo||'',PERFIL:perfilCanonico(b.perfil),EMPRESA:b.empresa||'',SETOR:b.setor||'',CODIGO_RCA:b.codigoRCA||'',STATUS:b.status||'ATIVO',SENHA_HASH:hash,DATA_CRIACAO:new Date().toISOString(),ULTIMO_ACESSO:'',PERMISSOES_CUSTOM:Array.isArray(b.permissoes_custom)?JSON.stringify(b.permissoes_custom):''};
+    const statusSolicitado = String(b.status || 'ATIVO').toUpperCase();
+    // Empresa atribuída é a liberação operacional. Não há uma segunda etapa
+    // de aprovação para transformar PRIMEIRO_ACESSO em conta utilizável.
+    const status = empresas.length && ['PRIMEIRO_ACESSO','PENDENTE_APROVACAO'].includes(statusSolicitado) ? 'ATIVO' : statusSolicitado;
+    const obj={ID_USUARIO:id,USUARIO:b.usuario,EMAIL:b.email||'',NOME:b.nome,CARGO:b.cargo||'',PERFIL:perfil,EMPRESA:b.empresa||'',SETOR:b.setor||'',CODIGO_RCA:b.codigoRCA||'',STATUS:status,SENHA_HASH:hash,DATA_CRIACAO:new Date().toISOString(),ULTIMO_ACESSO:'',PERMISSOES_CUSTOM:Array.isArray(b.permissoes_custom)?JSON.stringify(b.permissoes_custom):'',PERMISSOES_GRANTED:Array.isArray(b.permissoes_granted)?JSON.stringify(b.permissoes_granted):'',PERMISSOES_BLOCKED:Array.isArray(b.permissoes_blocked)?JSON.stringify(b.permissoes_blocked):''};
     await appendObjeto('USUARIOS',obj);
     await registrarAuditoria(req.user.usuario,'CRIOU_USUARIO',id,'USUARIOS',null,{perfil:obj.PERFIL});
     res.json({sucesso:true,usuario:usuarioPublico(obj)});
@@ -6624,19 +6666,39 @@ app.post('/api/usuarios', requerPermissao('usuarios.criar'), async (req,res)=>{
 app.patch('/api/usuarios/:id', requerPermissao('usuarios.editar'), async (req,res)=>{
   try{
     const b=req.body||{};
+    // O token é indexado pelo login, enquanto a tela costuma enviar o ID.
+    // Guardamos as chaves do cadastro para invalidar a sessão certa após uma
+    // mudança de empresa, perfil, status ou permissões.
+    const precisaInvalidarSessao = ['empresa','EMPRESA','setor','status','perfil','PERFIL','permissoes_granted','permissoes_blocked','senha']
+      .some(campo => b[campo] !== undefined);
+    const alvoCache = precisaInvalidarSessao
+      ? encontrarUsuarioPorIdentificador(await carregarUsuarios(), req.params.id)
+      : null;
     // Whitelist de campos permitidos — impede mass assignment
     const dados={};
     if(b.nome!==undefined) dados.NOME=b.nome;
     if(b.email!==undefined) dados.EMAIL=b.email;
     if(b.cargo!==undefined||b.CARGO!==undefined) dados.CARGO=String(b.cargo??b.CARGO??'').trim();
     if(b.setor!==undefined) dados.SETOR=b.setor;
-    if(b.status!==undefined) dados.STATUS=b.status;
+    if(b.status!==undefined) dados.STATUS=String(b.status).toUpperCase();
     if(b.codigoRCA!==undefined) dados.CODIGO_RCA=b.codigoRCA;
     if(b.perfil||b.PERFIL) dados.PERFIL=perfilCanonico(b.perfil||b.PERFIL);
     if(b.empresa!==undefined||b.EMPRESA!==undefined) {
       // Preserva os nomes originais (display names) para que o escopo do usuário
       // seja recarregado corretamente no frontend (checkboxes) sem precisar reverter canonização
       dados.EMPRESA = String(b.empresa||b.EMPRESA||'').trim();
+      const empresas = empresasCanonicas(dados.EMPRESA);
+      const perfilAlvo = perfilCanonico(b.perfil || b.PERFIL || '');
+      if (dados.EMPRESA && !empresas.length) return res.status(400).json({sucesso:false,erro:'Empresa inválida. Selecione uma empresa cadastrada.'});
+      // Ao definir empresa para uma conta em primeiro acesso, ela pode operar
+      // imediatamente. O preenchimento de perfil continua sendo uma ação do
+      // próprio usuário, não uma aprovação administrativa adicional.
+      if (empresas.length && ['PRIMEIRO_ACESSO','PENDENTE_APROVACAO'].includes(String(dados.STATUS || '').toUpperCase())) dados.STATUS='ATIVO';
+      if (empresas.length && !dados.STATUS && perfilAlvo !== 'MASTER') {
+        const atual = await carregarUsuarios();
+        const usuarioAtual = encontrarUsuarioPorIdentificador(atual, req.params.id);
+        if (['PRIMEIRO_ACESSO','PENDENTE_APROVACAO'].includes(String(usuarioAtual?.STATUS || '').toUpperCase())) dados.STATUS='ATIVO';
+      }
     }
     if(b.senha){ dados.SENHA_HASH = await hashSenha(b.senha); }
     if(Array.isArray(b.permissoes_custom)) dados.PERMISSOES_CUSTOM=JSON.stringify(b.permissoes_custom);
@@ -6697,8 +6759,11 @@ app.patch('/api/usuarios/:id', requerPermissao('usuarios.editar'), async (req,re
       }
     }
     // Invalida cache de status para mudanças de perfil/status/permissões valerem imediatamente
-    _statusCache.delete(req.params.id);
-    _statusCache.delete(normalizarTexto(req.params.id));
+    [req.params.id, alvoCache?.ID_USUARIO, alvoCache?.USUARIO, alvoCache?.EMAIL]
+      .filter(Boolean).forEach(chave => {
+        _statusCache.delete(chave);
+        _statusCache.delete(normalizarTexto(chave));
+      });
     invalidarCacheAba('USUARIOS');
     await registrarAuditoria(req.user.usuario,'ATUALIZOU_USUARIO',req.params.id,'USUARIOS',null,{campos:Object.keys(b)});
     res.json({sucesso:true});
@@ -9010,7 +9075,7 @@ app.post('/api/biblioteca/importar-ficha', middlewareEscopoEmpresa(), requerPerf
     const dt = _bibData(campos.data_reclamacao);
     if (!dt) return res.status(400).json({ sucesso: false, erro: 'Informe a data da reclamação.' });
     if (dt.iso > new Date().toISOString().slice(0, 10)) return res.status(400).json({ sucesso: false, erro: 'A data da reclamação não pode ser futura.' });
-    if (req._empresaScope && empresaCanonica(req._empresaScope) !== empresaCanonica(empresa)) {
+    if (req._empresaScope && !pertenceEmpresa(req._empresaScope, empresa)) {
       return res.status(403).json({ sucesso: false, erro: 'Sem permissão para importar fichas desta empresa.' });
     }
     const tiposOk = ['Reclamação', 'Sugestão', 'Solicitação', 'Elogio'];

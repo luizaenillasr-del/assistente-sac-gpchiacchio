@@ -26,7 +26,8 @@ const rncRepository = {
 
   async findAll({ empresaId, setorId, status, skip = 0, take = 100 } = {}) {
     const where = {};
-    if (empresaId) where.empresaId = Number(empresaId);
+    if (Array.isArray(empresaId)) where.empresaId = { in: empresaId.map(Number).filter(Number.isFinite) };
+    else if (empresaId) where.empresaId = Number(empresaId);
     if (setorId) where.setorId = Number(setorId);
     if (status) where.status = status;
     return prisma.rnc.findMany({
@@ -62,7 +63,9 @@ const rncRepository = {
   },
 
   async metricas(empresaId) {
-    const where = empresaId ? { empresaId: Number(empresaId) } : {};
+    const where = Array.isArray(empresaId)
+      ? { empresaId: { in: empresaId.map(Number).filter(Number.isFinite) } }
+      : empresaId ? { empresaId: Number(empresaId) } : {};
     const [total, pendentes, aprovadas, encerradas] = await Promise.all([
       prisma.rnc.count({ where }),
       prisma.rnc.count({ where: { ...where, status: { in: ['AGUARDANDO_APROVACAO', 'EM_INVESTIGACAO'] } } }),
