@@ -3131,8 +3131,10 @@
           return '<div style="background:#FAFAFA;border-radius:8px;padding:10px 12px"><div style="font-size:9.5px;font-weight:700;color:#929090;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">'+c.l+'</div><div style="font-size:12.5px;font-weight:700;color:#242424">'+c.v+'</div></div>';
         }).join('');
         // Atualiza previews do conhecimento CIRCA
-        var casoTxt = v('nm-causa-raiz') !== '—' ? ('Caso: ' + v('nm-produto') + ' · Causa: ' + v('nm-causa-raiz') + ' · ' + v('nm-procedente')) : '—';
-        var matrizTxt = v('nm-causa-raiz') !== '—' ? ('Causa: ' + v('nm-causa-raiz') + ' · Ação: ' + v('nm-acao-executada')) : '—';
+        var iaAnalise = window._nmAnaliseAtual;
+        var causaFinal = v('nm-causa-raiz') !== '—' ? v('nm-causa-raiz') : (iaAnalise?.ia?.causaProvavel && iaAnalise.ia.causaProvavel !== 'DADO_NAO_ENCONTRADO' ? iaAnalise.ia.causaProvavel : '—');
+        var casoTxt = causaFinal !== '—' ? ('Caso: ' + v('nm-produto') + ' · Causa: ' + causaFinal + ' · ' + v('nm-procedente')) : '—';
+        var matrizTxt = causaFinal !== '—' ? ('Causa: ' + causaFinal + ' · Ação: ' + v('nm-acao-executada')) : '—';
         var casoPreview = document.getElementById('nm-aprendizado-caso-preview');
         var matrizPreview = document.getElementById('nm-aprendizado-matriz-preview');
         if(casoPreview && casoTxt !== '—') casoPreview.textContent = casoTxt;
@@ -3142,6 +3144,20 @@
         var matrizTextarea = document.getElementById('nm-aprendizado-matriz');
         if(casoTextarea && !casoTextarea.value && casoTxt !== '—') casoTextarea.value = casoTxt;
         if(matrizTextarea && !matrizTextarea.value && matrizTxt !== '—') matrizTextarea.value = matrizTxt;
+      }
+
+      function nmPreencherValidacao() {
+        const g = id => document.getElementById(id)?.value?.trim() || '';
+        const dest = document.getElementById('nm-validacao-resultado');
+        if (!dest || dest.value?.trim()) return;
+        const resultado = g('nm-investigacao-resultado') || g('nm-investigacao-notas');
+        const causa = g('nm-causa-raiz');
+        const acao = g('nm-acao-executada');
+        const partes = [];
+        if (resultado) partes.push(resultado);
+        if (causa) partes.push('Causa: ' + causa);
+        if (acao) partes.push('Ação: ' + acao);
+        if (partes.length) dest.value = partes.join('\n');
       }
 
       function nmMontarDevolutiva(){
@@ -11467,6 +11483,9 @@ function renderizarCircaDeterministico(resultado) {
 }
 
 window.nmCarregarAnaliseDeterministica = async function nmCarregarAnaliseDeterministica() {
+  if(!_nmCardId && typeof window.salvarRascunho === 'function') {
+    await window.salvarRascunho({silent:true}).catch(()=>{});
+  }
   if(!_nmCardId) return null;
   try { const r=await _apiFetch(`/api/manifestacoes/${encodeURIComponent(_nmCardId)}/circa`,15000); if(r?.sucesso){renderizarCircaDeterministico(r.circa);return r.circa;} } catch(e){ console.warn('CIRCA determinístico indisponível:',e.message); }
   return null;
@@ -11514,7 +11533,18 @@ async function executarAnaliseIA() {
     const res = await _apiFetch('/api/analise', 15000, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ descricao: desc, tipo, empresaReclamada: empresaRec, empresaReclamante: empresaRec2, produto, lote })
+      body: JSON.stringify({
+        descricao: desc, tipo, empresaReclamada: empresaRec, empresaReclamante: empresaRec2, produto, lote,
+        nfe: document.getElementById('nm-nfe')?.value || '',
+        canal: document.getElementById('nm-canal')?.value || document.getElementById('nm-origem')?.value || '',
+        prioridade: document.getElementById('nm-prioridade')?.value || '',
+        dataRegistro: document.getElementById('nm-data')?.value || '',
+        cnpj: document.getElementById('nm-cnpj')?.value || '',
+        telefone: document.getElementById('nm-tel')?.value || '',
+        email: document.getElementById('nm-email')?.value || '',
+        quantidade: document.getElementById('nm-quantidade')?.value || '',
+        nome: document.getElementById('nm-nome')?.value || ''
+      })
     });
 
     if (!res.sucesso) throw new Error(res.erro);
@@ -11792,7 +11822,30 @@ function renderizarAnalise(a) {
   } else {
     devEl.value = a.devolutivaSugerida || a.DEVOLUTIVA_SUGERIDA || a.devolutiva || '';
   }
+  nmAplicarSugestoes(a);
 }
+
+function nmAplicarSugestoes(a) {
+  if (!a) return;
+  const g = id => document.getElementById(id);
+  const setIfEmpty = (id, val) => { const el = g(id); if (el && !el.value?.trim() && val && val !== 'DADO_NAO_ENCONTRADO') { el.value = val; el.style.borderColor = '#D97706'; el.title = 'Sugerido pela IA — revise antes de confirmar'; el.dataset.nmOriginal = 'ia-sugestao'; el.addEventListener('input', function(){ this.style.borderColor=''; this.dataset.nmOriginal='editado'; }, {once:true}); } };
+  const causaSugerida = (a.ia?.causaProvavel && a.ia.causaProvavel !== 'DADO_NAO_ENCONTRADO') ? a.ia.causaProvavel : (a.tratativaEstruturada?.diagnostico?.causa || '');
+  setIfEmpty('nm-causa-raiz', causaSugerida);
+  const setorSugerido = (a.setores || a.setoresSugeridos || [])[0] || '';
+  setIfEmpty('nm-setor-acionado', setorSugerido);
+}
+
+window.gerarDevolutiva = function gerarDevolutiva() {
+  const textarea = document.getElementById('nm-devolutiva');
+  if (!textarea) return;
+  const dev = window._nmAnaliseAtual?.devolutivaSugerida || window._nmAnaliseAtual?.DEVOLUTIVA_SUGERIDA || window._nmAnaliseAtual?.devolutiva;
+  if (!dev || !dev.trim()) { alert('Execute a análise primeiro (Etapa 2) para gerar uma sugestão de devolutiva.'); return; }
+  if (textarea.value?.trim() && !confirm('Substituir o texto atual pela sugestão gerada pela IA?')) return;
+  textarea.value = dev;
+  textarea.style.borderColor = '#D97706';
+  textarea.title = 'Sugestão gerada pela IA — revise antes de aprovar';
+  textarea.dispatchEvent(new Event('input'));
+};
 
 function aceitarAnalise() {
   _nmDecisao = 'aceita';
@@ -30671,9 +30724,10 @@ if (typeof pageLoaders !== 'undefined') {
     if (confirmar) confirmar.style.display = n === TOTAL ? 'block' : 'none';
     var body = document.getElementById('nm-steps-body');
     if (body) body.scrollTop = 0;
-    if (n === 2 && window._nmCardId && typeof window.nmCarregarAnaliseDeterministica === 'function') window.nmCarregarAnaliseDeterministica();
+    if (n === 2 && typeof window.nmCarregarAnaliseDeterministica === 'function') window.nmCarregarAnaliseDeterministica();
     if (n === TOTAL && typeof nmMontarResumo === 'function') nmMontarResumo();
     if (n === 6 && typeof nmMontarDevolutiva === 'function') nmMontarDevolutiva();
+    if (n === 5 && typeof nmPreencherValidacao === 'function') nmPreencherValidacao();
   }
   function validar(){
     var ativo = document.querySelector('#page-nova-manifestacao .nm-step-panel.nm-active');
