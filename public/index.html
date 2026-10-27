@@ -5646,6 +5646,7 @@
             <span id="tf-status-badge" class="mc-st" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:99px;background:#F0F0F0;color:#545454">—</span>
             <span id="tf-sla-badge" style="display:none;font-size:11px;font-weight:700;padding:3px 9px;border-radius:99px;background:#FDECEC;color:#A80502"></span>
             <div style="margin-left:auto">
+              <button id="tf-btn-excluir" onclick="cenTrativasExcluirAtual()" style="display:none;margin-right:10px;border:1px solid #C70602;background:#fff;color:#C70602;cursor:pointer;font-size:12px;font-weight:700;padding:6px 10px;border-radius:7px">🗑 Excluir</button>
               <button onclick="cenTrativasFichaAbrirModal()" style="display:inline-flex;align-items:center;gap:4px;border:0;background:none;cursor:pointer;font-size:12px;color:#A80502;font-weight:600">Ficha completa ↗</button>
             </div>
           </div>
@@ -24643,6 +24644,8 @@ async function mudarStatusMC(id, novoStatus) {
     const sl=slaTxt(n);
     const slb=$('tf-sla-badge');
     if(slb){slb.textContent=sl[0];slb.style.display=sl[0]?'':'none';slb.className='mc-sla mc-sla-'+sl[1];}
+    const excluirBtn=$('tf-btn-excluir');
+    if(excluirBtn) excluirBtn.style.display=(String(window.role?.()||'').trim().toUpperCase()==='MASTER' && !!(raw.ID_MANIFESTACAO||raw.PROTOCOLO))?'inline-block':'none';
     // Seção A — campos
     const camposEl=$('tf-campos');
     if(camposEl){
@@ -24695,6 +24698,26 @@ async function mudarStatusMC(id, novoStatus) {
       histEl.innerHTML=evs.length?evs.map(ev=>`<div class="mc-hist-rail"><span class="mc-hist-dot mc-hc-${ev.c}"></span><span class="mc-hist-line"></span></div><div class="mc-hist-body"><div class="mc-hist-at">${esc(fmtdt(ev.at))}</div><div class="mc-hist-t">${esc(ev.t)}</div></div>`).join(''):'<span style="color:#999;font-size:12px">Sem registros no histórico.</span>';
     }
   }
+
+  window.cenTrativasExcluirAtual=async function(){
+    const raw=_cenRawAtual||{};
+    const id=raw.ID_MANIFESTACAO||raw.PROTOCOLO;
+    const protocolo=String(raw.PROTOCOLO||raw.ID_MANIFESTACAO||id||'').trim();
+    if(!id||!protocolo) return toast('Manifestação sem protocolo válido.');
+    const motivo=window.prompt('Motivo obrigatório para excluir '+protocolo+':');
+    if(!motivo||!motivo.trim()) return;
+    const confirmar=window.prompt('Digite o protocolo '+protocolo+' para confirmar a exclusão lógica:');
+    if(confirmar!==protocolo) return toast('Protocolo não confirmado.');
+    const btn=$('tf-btn-excluir'); if(btn){btn.disabled=true;btn.textContent='Excluindo…';}
+    try{
+      const d=await api('/api/manifestacoes/'+encodeURIComponent(id),{method:'DELETE',body:{motivo:motivo.trim(),protocoloConfirmacao:protocolo}});
+      if(!d.sucesso) throw new Error(d.erro||'Não foi possível excluir.');
+      toast('Manifestação excluída logicamente.');
+      await loadCentralSAC();
+      cenTrativasFichaVoltar();
+      cenTrativasInit(true);
+    }catch(e){toast(e.message||'Erro ao excluir.');if(btn){btn.disabled=false;btn.textContent='🗑 Excluir';}}
+  };
 
   // ── Ações da ficha de tratativa ───────────────────────────────────────────
   window.cenTratativasFichaSalvarTratativa = async function(){
