@@ -2182,8 +2182,7 @@ app.post('/api/manifestacoes', requerPermissao('manifestacoes.abrir'), async (re
       acao:rascunho ? 'SALVOU_RASCUNHO' : 'REGISTROU_MANIFESTACAO',
       descricao:rascunho ? 'Rascunho salvo sem protocolo definitivo.' : 'Manifestação recebida e encaminhada para triagem SAC.'
     });
-    // Executar análise de IA — reutiliza análise do frontend se já disponível
-    // (evita dupla chamada ao Sheets e erro 429)
+    // Executar análise de IA — rascunho pula análise (evita timeout Vercel de 60s)
     const decisaoCompleta = req.body.decisaoCompleta;
     let analise = null;
     try {
@@ -2191,7 +2190,8 @@ app.post('/api/manifestacoes', requerPermissao('manifestacoes.abrir'), async (re
       const analisePrevia = req.body.analiseIA ? (() => { try { return JSON.parse(req.body.analiseIA); } catch { return null; } })() : null;
       if (analisePrevia && analisePrevia.tipoDetectado) {
         analise = analisePrevia;
-      } else {
+      } else if (!rascunho) {
+        // Só executa análise de IA no registro definitivo, não em rascunhos
         analise = await executarAnalise({ ...objeto, empresaReclamante, empresaReclamada, descricao, tipo:tipoFinal });
       }
       if (analise && !rascunho) {
