@@ -7415,6 +7415,11 @@ app.patch('/api/manifestacoes/:id/circa-dados', requerPermissao('manifestacoes.e
     if(requestedStage && requestedStage>currentStage+1 && String(req.user?.PERFIL||req.user?.perfil||'').toUpperCase()!=='MASTER') return res.status(409).json({sucesso:false,erro:'A etapa solicitada depende da conclusão das etapas anteriores.',etapaAtual:currentStage});
     const allowed=['STATUS','STATUS_FICHA','EMPRESA_RECLAMADA','EMPRESA_RECLAMANTE','CONTATO','CNPJ','TELEFONE','EMAIL','PRODUTO','LOTE','NFE','DESCRICAO','DESCRICAO_MANIFESTACAO','TIPO','CANAL','ORIGEM','PRIORIDADE','CATEGORIA','MOTIVO','GRAVIDADE','ETAPA_ATUAL','MENSAGEM_ETAPA','CAMINHO_TRATATIVA','COMPLEMENTO_PEDIDO','CANAL_RETORNO','PRAZO_RETORNO_SAC','TRATATIVA_SAC_INTERNA','SETOR_ACIONADO','ESCOPO_ACIONAMENTO','INVESTIGACAO_O_QUE','INVESTIGACAO_VERIFICACOES','INVESTIGACAO_EVIDENCIAS','INVESTIGACAO_NOTAS','SUBCAUSA','CAUSA_RAIZ_CONFIRMADA','ACOES_CORRETIVAS','DATA_SOLUCAO','RESPONSAVEL_EXECUCAO','VALIDACAO_RESULTADO','PROCEDENTE','PROCEDENTE_JUSTIFICATIVA','VALID_SAC_DATA_RETORNO','VALID_SAC_CLIENTE_INFORMADO','VALID_SAC_RESOLVIDA','RESUMO_RESOLUCAO','DEVOLUTIVA_CANAL','DEVOLUTIVA_DESTINATARIO','DEVOLUTIVA_FINAL','DEVOLUTIVA_ENVIADA','APRENDIZADO_CASO','APRENDIZADO_MATRIZ','OBSERVACOES_FINAIS','STATUS_TRATATIVA','ANEXOS','EVIDENCIAS'];
     const patch={}; for(const key of allowed) if(Object.prototype.hasOwnProperty.call(req.body||{},key)) patch[key]=req.body[key] ?? '';
+    // Mapeia descricao (minúsculo, enviado pelo frontend nm-card) para as colunas corretas no Sheets
+    if (Object.prototype.hasOwnProperty.call(req.body||{}, 'descricao') && req.body.descricao) {
+      patch.DESCRICAO = req.body.descricao;
+      patch.DESCRICAO_MANIFESTACAO = req.body.descricao;
+    }
     if (req.body?.finalizar) {
       patch.PROTOCOLO = m.PROTOCOLO || await gerarProtocoloFicha(m.EMPRESA_RECLAMADA || '', m.CANAL || 'MANUAL', new Date().toISOString());
       patch.STATUS = 'AGUARDANDO_TRIAGEM_SAC'; patch.STATUS_FICHA = 'ABERTA'; patch.ETAPA_ATUAL = '2';
