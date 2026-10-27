@@ -95,6 +95,7 @@ const tokCesbap     = () => makeToken({ perfil: 'ANALISTA SAC', empresa: 'Cesbap
 const tokMaster     = () => makeToken({ perfil: 'MASTER',        empresa: 'Grupo Chiacchio',      usuario: 'master.test' });
 const tokInativo    = () => makeToken({ perfil: 'ANALISTA SAC', empresa: 'CHIACCHIO EMBALAGENS', usuario: 'usuario.inativo', status: 'INATIVO' });
 const tokExcluido   = () => makeToken({ perfil: 'ANALISTA SAC', empresa: 'CHIACCHIO EMBALAGENS', usuario: 'usuario.excluido', status: 'EXCLUIDO' });
+const tokSemEmpresa = () => makeToken({ perfil: 'ANALISTA SAC', empresa: '', usuario: 'usuario.sem.empresa' });
 
 let portalClientId = 10;
 function portalClient() {
@@ -716,6 +717,46 @@ async function runTests() {
     assert.strictEqual(rncAntes, rncDepois, `BANCO_RNC cresceu de ${rncAntes} para ${rncDepois} — RNC gerada automaticamente`);
   });
 
+  await test('ACESSO: empresa atribuída ativa a conta e atualiza a sessão sem aprovação adicional', async () => {
+    const mock = require(MOCK_PATH);
+    const usuario = {
+      ID_USUARIO: 'USR-ACESSO-001', USUARIO: 'acesso.empresa', EMAIL: 'acesso@teste.local',
+      SENHA: 'sha256:' + crypto.createHash('sha256').update('senhaAcesso').digest('hex'),
+      PERFIL: 'ANALISTA SAC', EMPRESA: '', STATUS: 'PRIMEIRO_ACESSO',
+    };
+    mock.DB.USUARIOS.push(usuario);
+    try {
+      const primeiro = await req('PATCH', '/api/usuarios/USR-ACESSO-001', tokMaster(), {
+        empresa: 'Chiacchio Embalagens', status: 'PRIMEIRO_ACESSO', perfil: 'ANALISTA SAC',
+      });
+      assert.strictEqual(primeiro.status, 200, JSON.stringify(primeiro.body));
+      assert.strictEqual(usuario.STATUS, 'ATIVO', 'empresa atribuída deve ativar o usuário');
+      assert.strictEqual(usuario.EMPRESA, 'Chiacchio Embalagens');
+
+      // Token emitido antes do cadastro de escopo não fica permanentemente
+      // bloqueado: a API reidrata a empresa do cadastro administrativo.
+      const tokenAntigo = makeToken({ perfil: 'ANALISTA SAC', empresa: '', usuario: 'acesso.empresa' });
+      const chi = await req('GET', '/api/manifestacoes', tokenAntigo);
+      assert.strictEqual(chi.status, 200, JSON.stringify(chi.body));
+      assert.ok(!(chi.body.itens || []).some(m => /plaschio|tubahia|cesbap/i.test(m.EMPRESA_RECLAMADA || '')),
+        'conta Chiacchio não pode receber registros de outra empresa');
+
+      const segundo = await req('PATCH', '/api/usuarios/USR-ACESSO-001', tokMaster(), {
+        empresa: 'Chiacchio Embalagens,Plaschio', status: 'ATIVO', perfil: 'ANALISTA SAC',
+      });
+      assert.strictEqual(segundo.status, 200, JSON.stringify(segundo.body));
+      const multi = await req('GET', '/api/manifestacoes', tokenAntigo);
+      assert.strictEqual(multi.status, 200, JSON.stringify(multi.body));
+      const empresas = new Set((multi.body.itens || []).map(m => m.EMPRESA_RECLAMADA));
+      assert.ok([...empresas].some(e => /chiacchio/i.test(e)), 'Chiacchio ausente do escopo múltiplo');
+      assert.ok([...empresas].some(e => /plaschio/i.test(e)), 'Plaschio ausente do escopo múltiplo');
+      assert.ok(![...empresas].some(e => /tubahia|cesbap/i.test(e)), 'empresa não autorizada vazou para o escopo múltiplo');
+    } finally {
+      const idx = mock.DB.USUARIOS.indexOf(usuario);
+      if (idx >= 0) mock.DB.USUARIOS.splice(idx, 1);
+    }
+  });
+
   // ── Reclamações filtradas por empresa ──────────────────────────────────────
   await test('B2-REC: Chiacchio não vê reclamações de PLASCHIO', async () => {
     const r = await req('GET', '/api/reclamacoes', tokChiacchio());
@@ -746,8 +787,7 @@ async function runTests() {
   await test('HIST-MAN (HTTP): empresa vazia no token → sistema retorna 403 antes de chegar na rota', async () => {
     // Testa que a camada HTTP (middleware + rota) rejeita empresa vazia com 403.
     // O 403 pode vir de middlewareEscopoEmpresa() ou do check !empScope na rota — ambos corretos.
-    const tokSemEmpresa = makeToken({ perfil: 'ANALISTA SAC', empresa: '', usuario: 'ana.chiacchio' });
-    const r = await req('GET', '/api/manifestacoes/MAN-CHI-001/historico', tokSemEmpresa);
+    const r = await req('GET', '/api/manifestacoes/MAN-CHI-001/historico', tokSemEmpresa());
     assert.strictEqual(r.status, 403, `esperava 403, got ${r.status}: ${JSON.stringify(r.body)}`);
   });
 
@@ -780,8 +820,7 @@ async function runTests() {
 
   // tratativa
   await test('B2-TRAT(1): empresa vazia → 403 em /tratativa', async () => {
-    const tokSemEmpresa = makeToken({ perfil: 'ANALISTA SAC', empresa: '', usuario: 'ana.chiacchio' });
-    const r = await req('GET', '/api/manifestacoes/MAN-CHI-001/tratativa', tokSemEmpresa);
+    const r = await req('GET', '/api/manifestacoes/MAN-CHI-001/tratativa', tokSemEmpresa());
     assert.strictEqual(r.status, 403, `esperava 403, got ${r.status}`);
   });
   await test('B2-TRAT(2): empresa errada (PLASCHIO pedindo MAN-CHI-001) → 403', async () => {
@@ -799,8 +838,7 @@ async function runTests() {
 
   // visualizacoes
   await test('B2-VIZ(1): empresa vazia → 403 em /visualizacoes', async () => {
-    const tokSemEmpresa = makeToken({ perfil: 'ANALISTA SAC', empresa: '', usuario: 'ana.chiacchio' });
-    const r = await req('GET', '/api/manifestacoes/MAN-CHI-001/visualizacoes', tokSemEmpresa);
+    const r = await req('GET', '/api/manifestacoes/MAN-CHI-001/visualizacoes', tokSemEmpresa());
     assert.strictEqual(r.status, 403, `esperava 403, got ${r.status}`);
   });
   await test('B2-VIZ(2): empresa errada (PLASCHIO pedindo MAN-CHI-001) → 403', async () => {
@@ -818,8 +856,7 @@ async function runTests() {
 
   // devolutivas
   await test('B2-DEV(1): empresa vazia → 403 em /devolutivas', async () => {
-    const tokSemEmpresa = makeToken({ perfil: 'ANALISTA SAC', empresa: '', usuario: 'ana.chiacchio' });
-    const r = await req('GET', '/api/manifestacoes/MAN-CHI-001/devolutivas', tokSemEmpresa);
+    const r = await req('GET', '/api/manifestacoes/MAN-CHI-001/devolutivas', tokSemEmpresa());
     assert.strictEqual(r.status, 403, `esperava 403, got ${r.status}`);
   });
   await test('B2-DEV(2): empresa errada (PLASCHIO pedindo MAN-CHI-001) → 403', async () => {
@@ -837,8 +874,7 @@ async function runTests() {
 
   // analise
   await test('B2-ANAL(1): empresa vazia → 403 em /analise', async () => {
-    const tokSemEmpresa = makeToken({ perfil: 'ANALISTA SAC', empresa: '', usuario: 'ana.chiacchio' });
-    const r = await req('GET', '/api/manifestacoes/MAN-CHI-001/analise', tokSemEmpresa);
+    const r = await req('GET', '/api/manifestacoes/MAN-CHI-001/analise', tokSemEmpresa());
     assert.strictEqual(r.status, 403, `esperava 403, got ${r.status}`);
   });
   await test('B2-ANAL(2): empresa errada (PLASCHIO pedindo MAN-CHI-001) → 403', async () => {
@@ -856,8 +892,7 @@ async function runTests() {
 
   // sugestoes
   await test('B2-SUG(1): empresa vazia → 403 em /sugestoes', async () => {
-    const tokSemEmpresa = makeToken({ perfil: 'ANALISTA SAC', empresa: '', usuario: 'ana.chiacchio' });
-    const r = await req('GET', '/api/manifestacoes/MAN-CHI-001/sugestoes', tokSemEmpresa);
+    const r = await req('GET', '/api/manifestacoes/MAN-CHI-001/sugestoes', tokSemEmpresa());
     assert.strictEqual(r.status, 403, `esperava 403, got ${r.status}`);
   });
   await test('B2-SUG(2): empresa errada (PLASCHIO pedindo MAN-CHI-001) → 403', async () => {

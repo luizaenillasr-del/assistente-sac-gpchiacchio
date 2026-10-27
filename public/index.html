@@ -1454,6 +1454,7 @@
           <div class="form-group">
             <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">Empresas autorizadas</label>
             <div id="usu-empresas-checks" style="display:flex;flex-direction:column;gap:6px;border:1px solid #E4E4E4;border-radius:8px;padding:10px;max-height:160px;overflow-y:auto"></div>
+            <div style="margin-top:6px;font-size:11px;color:#707070">Ao selecionar a empresa e salvar, o acesso do usuário é liberado automaticamente para ela.</div>
           </div>
           <div class="form-group">
             <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">Setores autorizados</label>
@@ -27978,6 +27979,7 @@ function updateTopbarUser(user) {
   let _usuEditando = null;
   let _usuGranted = new Set();
   let _usuBlocked = new Set();
+  let _usuPermissoesOriginais = { granted: '[]', blocked: '[]' };
 
   function _permDefault(perfil, chave) {
     const p = (perfil||'').toUpperCase();
@@ -28143,6 +28145,10 @@ function updateTopbarUser(user) {
     }
     _usuGranted = new Set(Array.isArray(grantedArr) ? grantedArr : []);
     _usuBlocked = new Set(Array.isArray(blockedArr) ? blockedArr : []);
+    _usuPermissoesOriginais = {
+      granted: JSON.stringify(Array.from(_usuGranted).sort()),
+      blocked: JSON.stringify(Array.from(_usuBlocked).sort()),
+    };
 
     document.getElementById('modal-usu-titulo').textContent = u ? ('Editar — ' + (u.NOME||u.nome||u.USUARIO||u.usuario)) : 'Novo Usuário';
     document.getElementById('usu-nome').value = u&&(u.NOME||u.nome)||'';
@@ -28283,7 +28289,7 @@ function updateTopbarUser(user) {
       const EMPRESAS = ['Chiacchio Embalagens','Plaschio','Tubahia'];
       const atual = (u&&(u.EMPRESA||u.empresa)||'').split(',').map(function(s){return s.trim();});
       empresasEl.innerHTML = EMPRESAS.map(function(e) {
-        return '<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" value="' + esc5(e) + '" ' + (atual.includes(e)?'checked':'') + '> ' + esc5(e) + '</label>';
+        return '<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" onchange="usuEmpresaEscopoChanged()" value="' + esc5(e) + '" ' + (atual.includes(e)?'checked':'') + '> ' + esc5(e) + '</label>';
       }).join('');
     }
     const setoresEl = document.getElementById('usu-setores-checks');
@@ -28299,6 +28305,16 @@ function updateTopbarUser(user) {
     const compEl = document.getElementById('usu-competencias');
     if(compEl) compEl.value = u&&(u.CODIGO_RCA||u.codigoRCA||u.COMPETENCIAS||u.competencias)||'';
   }
+
+  window.usuEmpresaEscopoChanged = function() {
+    const empresas = Array.from(document.querySelectorAll('#usu-empresas-checks input:checked'));
+    const status = document.getElementById('usu-status');
+    const msg = document.getElementById('modal-usu-msg');
+    if (empresas.length && status && ['PRIMEIRO_ACESSO','PENDENTE_APROVACAO'].includes(status.value)) {
+      status.value = 'ATIVO';
+      if (msg) { msg.style.color = '#1E6B3A'; msg.textContent = 'Empresa definida: o usuário ficará ativo ao salvar.'; }
+    }
+  };
 
   function usuCarregarHistorico(idUsuario) {
     const el = document.getElementById('usu-historico-lista');
@@ -28343,6 +28359,14 @@ function updateTopbarUser(user) {
     const setores = Array.from(document.querySelectorAll('#usu-setores-checks input:checked')).map(function(i){return i.value;}).join(',');
     const comp = document.getElementById('usu-competencias').value.trim();
 
+    if (String(perfil).toUpperCase() !== 'MASTER' && !empresas) {
+      if(msg){msg.style.color='#C70602';msg.textContent='Selecione ao menos uma empresa para liberar o acesso do usuário.';}
+      return;
+    }
+    // A definição de empresa é suficiente para a conta operar. Mantemos
+    // INATIVO/BLOQUEADO quando escolhidos intencionalmente pelo MASTER.
+    const statusEfetivo = empresas && ['PRIMEIRO_ACESSO','PENDENTE_APROVACAO'].includes(String(status).toUpperCase()) ? 'ATIVO' : status;
+
     const btn = document.getElementById('usu-btn-salvar');
     if(btn){btn.style.opacity='.7';btn.style.pointerEvents='none';btn.textContent='Salvando...';}
     if(msg){msg.textContent='';}
@@ -28351,7 +28375,7 @@ function updateTopbarUser(user) {
       let data;
       const editId = _usuEditando && (_usuEditando.ID_USUARIO||_usuEditando.id||_usuEditando.USUARIO||_usuEditando.usuario);
       if(_usuEditando) {
-        const body = { nome, email, perfil, cargo, status, empresa: empresas, setor: setores, observacoes: obs };
+        const body = { nome, email, perfil, cargo, status: statusEfetivo, empresa: empresas, setor: setores, observacoes: obs };
         if(senha) body.senha = senha;
         data = await _apiFetch('/api/usuarios/' + encodeURIComponent(editId), 0, {
           method:'PATCH',
@@ -28368,22 +28392,29 @@ function updateTopbarUser(user) {
         const loginAlvo = String(_usuEditando.USUARIO||_usuEditando.usuario||_usuEditando.EMAIL||_usuEditando.email||'').trim().toLowerCase();
         const loginAtual = String(sessaoAtual.usuario||sessaoAtual.email||'').trim().toLowerCase();
         const proprioMaster = String(sessaoAtual.perfil||sessaoAtual.PERFIL||'').toUpperCase() === 'MASTER' && loginAlvo && loginAlvo === loginAtual;
+        const permissoesMudaram = _usuPermissoesOriginais.granted !== JSON.stringify(Array.from(_usuGranted).sort())
+          || _usuPermissoesOriginais.blocked !== JSON.stringify(Array.from(_usuBlocked).sort());
+        // Escopo, perfil e dados cadastrais são gravados no PATCH acima. Só
+        // chama a rota de permissões quando houve mudança real nela; isso evita
+        // uma segunda aprovação/requisição desnecessária para liberar acesso.
         if (!proprioMaster) {
-          try {
-            await _apiFetch('/api/usuarios/' + encodeURIComponent(editId) + '/permissoes', 0, {
-              method:'POST',
-              headers:{'Content-Type':'application/json'},
-              body: JSON.stringify({ permissoes_granted: Array.from(_usuGranted), permissoes_blocked: Array.from(_usuBlocked) }),
-            });
-          } catch(permErr) {
-            throw new Error('Dados salvos, mas as permissões não foram atualizadas: ' + permErr.message);
+          if (permissoesMudaram) {
+            try {
+              await _apiFetch('/api/usuarios/' + encodeURIComponent(editId) + '/permissoes', 0, {
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({ permissoes_granted: Array.from(_usuGranted), permissoes_blocked: Array.from(_usuBlocked) }),
+              });
+            } catch(permErr) {
+              throw new Error('Dados salvos, mas as permissões não foram atualizadas: ' + permErr.message);
+            }
           }
         }
       } else {
         data = await _apiFetch('/api/usuarios', 0, {
           method:'POST',
           headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ nome, email, usuario, perfil, cargo, status, empresa: empresas, setor: setores, senha, codigoRCA: comp,
+          body: JSON.stringify({ nome, email, usuario, perfil, cargo, status: statusEfetivo, empresa: empresas, setor: setores, senha, codigoRCA: comp,
             permissoes_granted: Array.from(_usuGranted), permissoes_blocked: Array.from(_usuBlocked), observacoes: obs }),
         });
       }
