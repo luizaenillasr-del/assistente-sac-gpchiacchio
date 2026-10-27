@@ -365,12 +365,19 @@ async function obterSlaConfigurado({ empresaId, setorId, tipo, categoria } = {})
 // 4. BASE DE CONHECIMENTO (PostgreSQL → fallback Sheets)
 // ──────────────────────────────────────────────────────────────
 
-async function consultarBaseConhecimento(tipo, setor, empresaId) {
+async function consultarBaseConhecimento(tipo, setor, empresaId, descricao) {
   const relevantes = [];
+  const idsVistos = new Set();
+
+  function adicionarSeNovo(item) {
+    const chave = item.fonte_aba + ':' + (item.id || item.nome || '');
+    if (idsVistos.has(chave)) return;
+    idsVistos.add(chave);
+    relevantes.push(item);
+  }
 
   try {
     if (conhecimentoRepo) {
-      // Resolver setorId se tiver nome de setor
       let setorId;
       if (setor && prisma) {
         const setorObj = await prisma.setor.findFirst({
@@ -384,13 +391,13 @@ async function consultarBaseConhecimento(tipo, setor, empresaId) {
         conhecimentoRepo.findProcedimentos({ empresaId, setorId, tipo }),
       ]);
 
-      politicas.forEach(p => relevantes.push({
+      politicas.forEach(p => adicionarSeNovo({
         tipo: 'Política', id: String(p.id), nome: p.nome, descricao: p.descricao,
-        setor, versao: POLITICAS_VERSION, fonte: 'postgresql',
+        setor, versao: POLITICAS_VERSION, fonte: 'postgresql', fonte_aba: 'POLITICAS',
       }));
-      procedimentos.forEach(p => relevantes.push({
+      procedimentos.forEach(p => adicionarSeNovo({
         tipo: 'Procedimento', id: String(p.id), nome: p.nome, passos: p.passos,
-        setor, versao: BASE_CONHECIMENTO_VERSION, fonte: 'postgresql',
+        setor, versao: BASE_CONHECIMENTO_VERSION, fonte: 'postgresql', fonte_aba: 'PROCEDIMENTOS',
       }));
 
       if (relevantes.length > 0) {
@@ -401,21 +408,25 @@ async function consultarBaseConhecimento(tipo, setor, empresaId) {
     console.warn('Fallback Sheets para conhecimento:', e.message);
   }
 
-  // Fallback Sheets
+  // Fallback Sheets — consulta POLITICAS, PROCEDIMENTOS, BASE_CONHECIMENTO (FAQs) e CAUSAS
   try {
-    const [politicas, procedimentos] = await Promise.all([
+    const [politicas, procedimentos, faqs, causasTab] = await Promise.all([
       sheets.lerAba('POLITICAS', 200).catch(() => []),
       sheets.lerAba('PROCEDIMENTOS', 200).catch(() => []),
+      sheets.lerAba('BASE_CONHECIMENTO', 500).catch(() => []),
+      sheets.lerAba('CAUSAS', 500).catch(() => []),
     ]);
 
     const setorN = normalizar(setor || '');
     const tipoN = normalizar(tipo || '');
+    const descN = normalizar(descricao || '');
+    const tokensDesc = descN ? descN.split(' ').filter(t => t.length >= 4 && !STOPWORDS.has(t)) : [];
 
     politicas.forEach(p => {
       const setorP = normalizar(p.SETOR_RESPONSAVEL || p.SETOR || '');
       const ativo = (p.ATIVO || 'SIM').toUpperCase() !== 'NAO';
-      if (ativo && (setorN && setorP && setorP.includes(setorN.split(' ')[0]))) {
-        relevantes.push({ tipo: 'Política', id: p.ID_POLITICA || p.ID, nome: p.POLITICA || p.NOME, descricao: p.DESCRICAO || '', setor: p.SETOR_RESPONSAVEL || p.SETOR, versao: POLITICAS_VERSION, fonte: 'sheets' });
+      if (ativo && setorN && setorP && setorP.includes(setorN.split(' ')[0])) {
+        adicionarSeNovo({ tipo: 'Política', id: p.ID_POLITICA || p.ID, nome: p.POLITICA || p.NOME, descricao: p.DESCRICAO || '', setor: p.SETOR_RESPONSAVEL || p.SETOR, versao: POLITICAS_VERSION, fonte: 'sheets', fonte_aba: 'POLITICAS' });
       }
     });
     procedimentos.forEach(p => {
@@ -425,7 +436,36 @@ async function consultarBaseConhecimento(tipo, setor, empresaId) {
       const matchSetor = setorN && setorP && setorP.includes(setorN.split(' ')[0]);
       const matchTipo = tipoN && tiposProc && tiposProc.includes(tipoN.split(' ')[0]);
       if (ativo && (matchSetor || matchTipo)) {
-        relevantes.push({ tipo: 'Procedimento', id: p.ID_PROCEDIMENTO || p.ID, nome: p.NOME, passos: p.PASSOS || '', setor: p.SETOR_RESPONSAVEL || p.SETOR, versao: BASE_CONHECIMENTO_VERSION, fonte: 'sheets' });
+        adicionarSeNovo({ tipo: 'Procedimento', id: p.ID_PROCEDIMENTO || p.ID, nome: p.NOME, passos: p.PASSOS || '', setor: p.SETOR_RESPONSAVEL || p.SETOR, versao: BASE_CONHECIMENTO_VERSION, fonte: 'sheets', fonte_aba: 'PROCEDIMENTOS' });
+      }
+    });
+
+    // FAQs da BASE_CONHECIMENTO — match por palavras-chave da descrição
+    faqs.forEach(faq => {
+      const ativo = (faq.ATIVO || 'SIM').toUpperCase() !== 'NAO';
+      if (!ativo) return;
+      const pergunta = normalizar(faq.PERGUNTA || faq.TITULO || faq.NOME || '');
+      const resposta = normalizar(faq.RESPOSTA || faq.CONTEUDO || faq.DESCRICAO || '');
+      const textoFaq = pergunta + ' ' + resposta;
+      const matchPalavras = tokensDesc.length > 0 && tokensDesc.some(t => textoFaq.includes(t));
+      const matchTipo = tipoN && (pergunta.includes(tipoN.split(' ')[0]) || resposta.includes(tipoN.split(' ')[0]));
+      if (matchPalavras || matchTipo) {
+        adicionarSeNovo({ tipo: 'FAQ', id: faq.ID_FAQ || faq.ID || faq.TITULO, nome: faq.PERGUNTA || faq.TITULO || faq.NOME, descricao: faq.RESPOSTA || faq.CONTEUDO || '', setor: faq.SETOR || '', versao: BASE_CONHECIMENTO_VERSION, fonte: 'sheets', fonte_aba: 'BASE_CONHECIMENTO' });
+      }
+    });
+
+    // Causas da CAUSAS tab — match por palavras-chave da descrição ou tipo
+    causasTab.forEach(c => {
+      const ativo = (c.ATIVO || 'SIM').toUpperCase() !== 'NAO';
+      if (!ativo) return;
+      const causa = normalizar(c.CAUSA || '');
+      const subcausa = normalizar(c.SUBCAUSA || '');
+      const categoria = normalizar(c.CATEGORIA || '');
+      const textoCausa = causa + ' ' + subcausa + ' ' + categoria;
+      const matchPalavras = tokensDesc.length > 0 && tokensDesc.some(t => textoCausa.includes(t));
+      const matchTipo = tipoN && textoCausa.includes(tipoN.split(' ')[0]);
+      if (matchPalavras || matchTipo) {
+        adicionarSeNovo({ tipo: 'Causa', id: c.ID_CAUSA || c.ID, nome: c.CAUSA, subcausa: c.SUBCAUSA || '', categoria: c.CATEGORIA || '', descricao: c.SUBCAUSA || c.CAUSA, setor: c.SETOR_RESPONSAVEL || '', versao: BASE_CONHECIMENTO_VERSION, fonte: 'sheets', fonte_aba: 'CAUSAS' });
       }
     });
   } catch (e) {
@@ -436,7 +476,7 @@ async function consultarBaseConhecimento(tipo, setor, empresaId) {
     status: relevantes.length > 0 ? 'CONHECIMENTO_RELEVANTE' : 'CONHECIMENTO_INSUFICIENTE',
     itens: relevantes,
     total: relevantes.length,
-    fonte: 'POLITICAS + PROCEDIMENTOS (sheets)',
+    fonte: 'POLITICAS + PROCEDIMENTOS + BASE_CONHECIMENTO + CAUSAS (sheets)',
     versao: BASE_CONHECIMENTO_VERSION,
   };
 }
@@ -873,11 +913,43 @@ async function analisarManifestacaoCompleta(manifestacao, regras = {}, usuario =
   const [casosSimilares, reincidencia, baseConhecimento] = await Promise.all([
     buscarCasosSimilares(manifestacao, 8, empresaManif).catch(e => { erros.push('similares: ' + e.message); return []; }),
     detectarReincidencia(manifestacao).catch(e => { erros.push('reincidencia: ' + e.message); return { nivel: 'SEM_REINCIDENCIA', detectada: false, quantidade: 0, casos: [] }; }),
-    consultarBaseConhecimento(tipo, setor).catch(e => { erros.push('conhecimento: ' + e.message); return { status: 'CONHECIMENTO_INSUFICIENTE', itens: [], total: 0 }; }),
+    consultarBaseConhecimento(tipo, setor, undefined, descricao).catch(e => { erros.push('conhecimento: ' + e.message); return { status: 'CONHECIMENTO_INSUFICIENTE', itens: [], total: 0 }; }),
   ]);
 
   const sla = calcularSLA(dataAbertura, regras.slaHoras || 72);
   const tratativa = gerarSugestaoTratativa(casosSimilares, tipo, regras.setores, descricao);
+
+  // Busca modelos de devolutiva aprovados e setores competentes em paralelo
+  const [modelosDevolutiva, setoresConfig] = await Promise.all([
+    sheets.lerAba('MODELOS_DEVOLUTIVA', 200).catch(() => []),
+    sheets.lerAba('CONFIG_SETORES', 500).catch(() => []),
+  ]);
+
+  // Setores relevantes a partir de CONFIG_SETORES (match por tipo/categoria)
+  const tipoN = normalizar(tipo || '');
+  const setoresRecomendadosConfig = setoresConfig
+    .filter(s => {
+      const ativo = (s.ATIVO || 'SIM').toUpperCase() !== 'EXCLUIDO' && (s.ATIVO || 'SIM').toUpperCase() !== 'NAO';
+      if (!ativo) return false;
+      const resp = normalizar(s.RESPONSABILIDADES || s.REGRAS_OPERACIONAIS || '');
+      return tipoN && resp && resp.includes(tipoN.split(' ')[0]);
+    })
+    .map(s => s.SETOR)
+    .filter(Boolean);
+
+  // Modelo de devolutiva aprovado mais relevante para o tipo/empresa
+  const _cNrm = v => String(v || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/_/g, ' ').trim();
+  const modeloAprovado = modelosDevolutiva.find(m => {
+    const st = _cNrm(m.STATUS || '');
+    const aprovado = st === 'aprovada' || st === 'publicada' || st === 'aprovado';
+    if (!aprovado) return false;
+    const tipoMod = normalizar(m.TIPO_MANIFESTACAO || '');
+    const empMod = normalizar(m.EMPRESA || '');
+    const matchTipo = !tipoMod || !tipoN || tipoMod.includes(tipoN.split(' ')[0]) || tipoN.includes(tipoMod.split(' ')[0]);
+    const matchEmp = !empMod || !empresaManif || normalizar(empresaManif).includes(empMod.split(' ')[0]);
+    return matchTipo && matchEmp;
+  });
+  const devolutivaModelo = modeloAprovado ? (modeloAprovado.TEXTO_PADRAO || '') : null;
 
   const matrizConhecimento = manifestacao.matrizConhecimento || null;
   const contextoIA = { manifestacao, tipoDetectado: tipo, setores: regras.setores || [], casosSimilares, reincidencia, sla, baseConhecimento, matrizConhecimento };
@@ -908,10 +980,13 @@ async function analisarManifestacaoCompleta(manifestacao, regras = {}, usuario =
     });
   } catch (e) { erros.push('devolutivaEngine: ' + e.message); }
 
-  // Prioridade: 1) devolutiva de caso histórico similar, 2) IA como complemento, 3) template estruturado
+  // Prioridade: 1) devolutiva de caso histórico similar, 2) modelo aprovado do banco, 3) IA como complemento, 4) template estruturado
   const devolutivaHistorica = casosSimilares?.find(c => c.devolutiva && c.devolutiva.trim().length > 20 && c.similaridade >= 30)?.devolutiva || null;
-  const devolutiva = devolutivaHistorica || (ia?.devolutivaSugerida && !ia.erro ? ia.devolutivaSugerida : (devolutivaEstruturada?.textoGerado || gerarDevolutiva(campo(manifestacao, ['empresaReclamante','EMPRESA_RECLAMANTE']), tipo, setor, tratativa.sugestao)));
-  const origemDevolutiva = devolutivaHistorica ? 'HISTORICO' : (ia?.devolutivaSugerida && !ia.erro ? 'IA' : 'TEMPLATE');
+  const devolutiva = devolutivaHistorica ||
+    (devolutivaModelo && devolutivaModelo.trim().length > 20 ? devolutivaModelo : null) ||
+    (ia?.devolutivaSugerida && !ia.erro ? ia.devolutivaSugerida : null) ||
+    (devolutivaEstruturada?.textoGerado || gerarDevolutiva(campo(manifestacao, ['empresaReclamante','EMPRESA_RECLAMANTE']), tipo, setor, tratativa.sugestao));
+  const origemDevolutiva = devolutivaHistorica ? 'HISTORICO' : (devolutivaModelo && devolutivaModelo.trim().length > 20 ? 'MODELO_APROVADO' : (ia?.devolutivaSugerida && !ia.erro ? 'IA' : 'TEMPLATE'));
 
   const dadosParaConfianca = { regraAplicada: regras.regraAplicada, tipoDetectado: tipo, tipoConfianca: regras.tipoConfianca, casosSimilares, baseConhecimento, ia };
   const confianca = calcularConfianca(dadosParaConfianca);
@@ -923,16 +998,24 @@ async function analisarManifestacaoCompleta(manifestacao, regras = {}, usuario =
 
   const necessitaValidacaoHumana = confianca.nivel === 'BAIXA' || conflitos.length > 0 || reincidencia.nivel === 'REINCIDENCIA_CONFIRMADA' || tratativaEstruturada?.necessitaAprovacao;
 
+  const setoresFinais = [
+    ...(regras.setores || []),
+    ...setoresRecomendadosConfig.filter(s => !(regras.setores || []).includes(s)),
+  ].filter(Boolean).slice(0, 5) || ['SAC'];
+
   const analise = {
     protocolo, tipoDetectado: tipo, tipoConfianca: regras.tipoConfianca || 0,
-    setores: regras.setores || ['SAC'], regraAplicada: regras.regraAplicada || null,
+    setores: setoresFinais.length ? setoresFinais : ['SAC'], regraAplicada: regras.regraAplicada || null,
+    setoresRecomendadosConfig,
     prioridade: regras.prioridade || 'Média', slaHoras: regras.slaHoras || 72,
     geraRNC: false, // RNC nunca automático — apenas por critério humano/auditoria
     procedimentoSugerido: regras.procedimentoSugerido || null, perguntasNecessarias: _filtrarPerguntasContextuais(regras.perguntasNecessarias || [], manifestacao),
     casosSimilares, reincidencia, sla, baseConhecimento,
     tratativaSugerida: { aplicavel: tratativa.aplicavel, confianca: tratativa.confianca, sugestao: tratativa.sugestao, quantidadeCasos: tratativa.quantidadeCasos, evidencia: tratativa.evidencia, origem: tratativa.origem||'HISTORICO', todasSugestoes: tratativa.todasSugestoes||[] },
     tratativaEstruturada, devolutivaEstruturada, ia, confianca, conflitos,
-    informacoesAusentes, devolutivaSugerida: devolutiva, origemDevolutiva, necessitaValidacaoHumana,
+    informacoesAusentes, devolutivaSugerida: devolutiva, origemDevolutiva,
+    modeloDevolutivaId: modeloAprovado ? (modeloAprovado.ID_MODELO || '') : null,
+    necessitaValidacaoHumana,
     explicabilidade: null,
     versoes: { cerebro: CEREBRO_VERSION, baseConhecimento: BASE_CONHECIMENTO_VERSION, politicas: POLITICAS_VERSION, matriz: MATRIZ_VERSION },
     tempoMs: Date.now() - inicio, erros, geradaEm: new Date().toISOString(),

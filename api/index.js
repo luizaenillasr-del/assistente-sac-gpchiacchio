@@ -3397,6 +3397,51 @@ app.post('/api/manifestacoes/:id/finalizar', requerPermissao('aprovacoes.aprovar
         CRIADO_EM: agora, CRIADO_POR: req.user?.usuario || 'sistema',
       }).catch(e => console.warn('[CONSOLIDACAO] falha não bloqueante:', e.message));
     }
+    // Auto-feed BANCO_HISTORICO: registra manifestação encerrada para alimentar casos similares futuros
+    try {
+      const historicoRows = await lerAba('BANCO_HISTORICO', 100).catch(()=>[]);
+      const jaExiste = historicoRows.some(r => r.ID_MANIFESTACAO === id || r.ORIG_ID_MANIFESTACAO === id);
+      if (!jaExiste) {
+        const [devsFeed, tratsFeed] = await Promise.all([
+          lerAba('DEVOLUTIVAS', 2000).catch(()=>[]),
+          lerAba('TRATATIVAS_SETORIAIS', 2000).catch(()=>[]),
+        ]);
+        const devFinal = devsFeed.filter(d=>d.ID_MANIFESTACAO===id).slice(-1)[0] || {};
+        const tratFinal = tratsFeed.filter(t=>t.ID_MANIFESTACAO===id && t.STATUS==='CONCLUIDO').slice(-1)[0] ||
+                          tratsFeed.filter(t=>t.ID_MANIFESTACAO===id).slice(-1)[0] || {};
+        await garantirAbaComCabecalhos('BANCO_HISTORICO', [
+          'ID_HISTORICO','ORIG_ID_MANIFESTACAO','ORIG_DATA_ABERTURA','DRV_EMPRESA_NORMALIZADA',
+          'ORIG_EMPRESA','ORIG_CONTATO','ORIG_CANAL','ORIG_DESCRICAO_RECLAMACAO',
+          'COMP_TIPO_PROBLEMA_VALIDADO','COMP_CAUSA_PROVAVEL','CAUSA_RAIZ','SUBCAUSA',
+          'SETOR_RESPONSAVEL','TRATATIVA_REALIZADA','RESULTADO','DEVOLUTIVA_FINAL',
+          'DATA_ENCERRAMENTO','ENCERRADO_POR','FONTE',
+        ]).catch(()=>{});
+        await appendObjeto('BANCO_HISTORICO', {
+          ID_HISTORICO: `HIST-${id}-${Date.now()}`,
+          ORIG_ID_MANIFESTACAO: id,
+          ORIG_DATA_ABERTURA: m.DATA_ABERTURA || m.DATA_CRIACAO || m.DATA_REGISTRO || '',
+          DRV_EMPRESA_NORMALIZADA: m.EMPRESA_RECLAMADA || '',
+          ORIG_EMPRESA: m.EMPRESA_RECLAMADA || '',
+          ORIG_CONTATO: m.EMPRESA_RECLAMANTE || m.CONTATO || '',
+          ORIG_CANAL: m.CANAL || '',
+          ORIG_DESCRICAO_RECLAMACAO: m.DESCRICAO || m.DESCRICAO_MANIFESTACAO || '',
+          COMP_TIPO_PROBLEMA_VALIDADO: m.TIPO_CONFIRMADO || m.TIPO || '',
+          COMP_CAUSA_PROVAVEL: m.CAUSA_RAIZ_CONFIRMADA || m.CAUSA_RAIZ || m.SUBCAUSA || '',
+          CAUSA_RAIZ: m.CAUSA_RAIZ_CONFIRMADA || m.CAUSA_RAIZ || '',
+          SUBCAUSA: m.SUBCAUSA || m.SUBCAUSA_CONFIRMADA || '',
+          SETOR_RESPONSAVEL: m.SETOR_ACIONADO || m.SETORES_CONFIRMADOS || '',
+          TRATATIVA_REALIZADA: tratFinal.DESCRICAO_TRATATIVA || tratFinal.TRATATIVA || m.TRATATIVA_REALIZADA || '',
+          RESULTADO: m.PROCEDENTE || observacaoFinal || '',
+          DEVOLUTIVA_FINAL: devFinal.VERSAO_FINAL || devFinal.TEXTO_GERADO || m.DEVOLUTIVA_FINAL || '',
+          DATA_ENCERRAMENTO: agora,
+          ENCERRADO_POR: req.user?.usuario || 'sistema',
+          FONTE: 'FINALIZAR_MANIFESTACAO',
+        }).catch(e => console.warn('[BANCO_HISTORICO] auto-feed falhou:', e.message));
+        invalidarCacheAba('BANCO_HISTORICO');
+      }
+    } catch (eFeed) {
+      console.warn('[BANCO_HISTORICO] auto-feed erro não bloqueante:', eFeed.message);
+    }
     await registrarAuditoria(req.user?.usuario||'sistema','FINALIZOU_MANIFESTACAO',id,'MANIFESTACOES',m.STATUS,'ENCERRADA');
     res.json({ sucesso:true, id, encerradaEm: agora });
   } catch(e){ res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
