@@ -2667,26 +2667,74 @@ app.patch('/api/manifestacoes/:id', requerPermissao('manifestacoes.editar'), mid
   } catch(e){ res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
 
+// Listagem de manifestações excluídas logicamente
+app.get('/api/manifestacoes/excluidas', requerPermissao('manifestacoes.excluir'), async (req, res) => {
+  try {
+    const todas = await lerAba('MANIFESTACOES', 5000);
+    const excluidas = todas.filter(item => manifestacaoExcluida(item));
+    const { empresa } = req.query;
+    const filtradas = empresa
+      ? excluidas.filter(i => normalizarTexto(i.EMPRESA_RECLAMADA || '') === normalizarTexto(empresa))
+      : excluidas;
+    res.json({ sucesso: true, total: filtradas.length, itens: filtradas.map(i => ({
+      ID_MANIFESTACAO: i.ID_MANIFESTACAO,
+      PROTOCOLO: i.PROTOCOLO,
+      EMPRESA_RECLAMADA: i.EMPRESA_RECLAMADA,
+      NOME_CLIENTE: i.NOME_CLIENTE,
+      TIPO: i.TIPO,
+      STATUS: i.STATUS,
+      STATUS_REGISTRO: i.STATUS_REGISTRO,
+      DATA_EXCLUSAO: i.DATA_EXCLUSAO,
+      EXCLUIDO_POR: i.EXCLUIDO_POR,
+      DATA_ABERTURA: i.DATA_ABERTURA,
+      MOTIVO_MANIFESTACAO: i.MOTIVO_MANIFESTACAO || i.DESCRICAO_MANIFESTACAO || i.ASSUNTO,
+    })) });
+  } catch (e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e) }); }
+});
+
+// Exclusão lógica (não remove o registro — apenas marca como EXCLUIDO)
 app.delete('/api/manifestacoes/:id', requerPermissao('manifestacoes.excluir'), async (req, res) => {
   try {
     const { id } = req.params;
-    const todas = await lerManifestacoesOperacionais(5000);
+    // Busca em TODAS as linhas (incluindo já excluídas — para evitar dupla exclusão)
+    const todas = await lerAba('MANIFESTACOES', 5000);
     const item = todas.find(r => r.ID_MANIFESTACAO === id);
     if (!item) return res.status(404).json({ sucesso: false, erro: 'Manifestação não encontrada.' });
-    await deletarLinhaPorID('MANIFESTACOES', id);
-    // Remove do PG também, se existir
-    if (manifestacaoRepo) {
-      try {
-        const pg = (await manifestacaoRepo.findByProtocolo(id).catch(() => null))
-                || (await manifestacaoRepo.findByIdOriginal(id).catch(() => null));
-        if (pg && typeof manifestacaoRepo.deletar === 'function') await manifestacaoRepo.deletar(pg.id);
-      } catch (e) { console.warn('[PG] deletar manifestacao falhou:', e.message); }
-    }
-    // A exclusão remove também qualquer leitura já mantida no processo atual.
-    // Isso evita que a Central continue exibindo a ficha até o próximo TTL.
+    if (manifestacaoExcluida(item)) return res.status(409).json({ sucesso: false, erro: 'Manifestação já está excluída.' });
+    const agora = new Date().toISOString();
+    const usuario = req.user?.usuario || req.user?.nome || 'sistema';
+    // Exclusão lógica: mantém o registro, apenas marca STATUS_REGISTRO
+    await atualizarPorID('MANIFESTACOES', id, {
+      STATUS_REGISTRO: 'EXCLUIDO',
+      DATA_EXCLUSAO: agora,
+      EXCLUIDO_POR: usuario,
+    });
     invalidarCacheAba('MANIFESTACOES');
-    await registrarAuditoria(req.user?.usuario || 'sistema', 'EXCLUIU_MANIFESTAÇÃO', id, 'MANIFESTACOES', item, null);
+    await registrarAuditoria(usuario, 'EXCLUIU_MANIFESTAÇÃO', id, 'MANIFESTACOES', item, { STATUS_REGISTRO: 'EXCLUIDO', DATA_EXCLUSAO: agora });
     res.json({ sucesso: true, id });
+  } catch (e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e) }); }
+});
+
+// Restaurar manifestação excluída logicamente
+app.post('/api/manifestacoes/:id/restaurar', requerPermissao('manifestacoes.excluir'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const todas = await lerAba('MANIFESTACOES', 5000);
+    const item = todas.find(r => r.ID_MANIFESTACAO === id);
+    if (!item) return res.status(404).json({ sucesso: false, erro: 'Manifestação não encontrada.' });
+    if (!manifestacaoExcluida(item)) return res.status(409).json({ sucesso: false, erro: 'Manifestação não está excluída.' });
+    const agora = new Date().toISOString();
+    const usuario = req.user?.usuario || req.user?.nome || 'sistema';
+    await atualizarPorID('MANIFESTACOES', id, {
+      STATUS_REGISTRO: '',
+      DATA_EXCLUSAO: '',
+      EXCLUIDO_POR: '',
+      RESTAURADO_EM: agora,
+      RESTAURADO_POR: usuario,
+    });
+    invalidarCacheAba('MANIFESTACOES');
+    await registrarAuditoria(usuario, 'RESTAUROU_MANIFESTAÇÃO', id, 'MANIFESTACOES', null, { STATUS_REGISTRO: '', RESTAURADO_EM: agora });
+    res.json({ sucesso: true, id, statusAnterior: item.STATUS });
   } catch (e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e) }); }
 });
 
