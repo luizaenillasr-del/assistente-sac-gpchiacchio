@@ -22,7 +22,7 @@ const app = require('../api/index.js');
 
   const browser = await chromium.launch({
     headless: true,
-    executablePath: '/usr/bin/chromium',
+    executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
     args: ['--no-sandbox', '--ignore-certificate-errors'],
   });
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });

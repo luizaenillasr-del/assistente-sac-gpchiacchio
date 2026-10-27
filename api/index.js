@@ -2915,7 +2915,8 @@ app.delete('/api/manifestacoes/:id', requerPerfil('MASTER'), async (req, res) =>
     invalidarCacheAba('MANIFESTACOES');
     await registrarHistoricoManifestacao({ id:item.ID_MANIFESTACAO || id, protocolo, usuario:req.user?.usuario || 'MASTER', acao:'MANIFESTAÇÃO_EXCLUÍDA', descricao:motivo, etapa:item.ETAPA_ATUAL || '' });
     await registrarAuditoria(req.user?.usuario || 'sistema', 'EXCLUIU_MANIFESTAÇÃO', item.ID_MANIFESTACAO || id, 'MANIFESTACOES', item, { ...item, STATUS:'EXCLUIDO', MOTIVO_EXCLUSAO:motivo });
-    res.json({ sucesso: true, id:item.ID_MANIFESTACAO || id, protocolo, status:'EXCLUIDO' });
+    const protocoloConfirmacao = `DEL-${protocolo}-${Date.now()}`;
+    res.json({ sucesso: true, id:item.ID_MANIFESTACAO || id, protocolo, protocoloConfirmacao, status:'EXCLUIDO' });
   } catch (e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e) }); }
 });
 
