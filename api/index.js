@@ -2828,10 +2828,8 @@ app.delete('/api/manifestacoes/:id', requerPerfil('MASTER'), async (req, res) =>
     if (!item) return res.status(404).json({ sucesso: false, erro: 'Manifestação não encontrada.' });
     if (manifestacaoExcluida(item)) return res.status(409).json({ sucesso:false, erro:'A manifestação já está excluída.' });
     const motivo = String(req.body?.motivo || '').trim();
-    const protocoloConfirmacao = String(req.body?.protocoloConfirmacao || '').trim();
     const protocolo = String(item.PROTOCOLO || item.ID_MANIFESTACAO || id).trim();
-    if (!motivo) return res.status(400).json({ sucesso:false, erro:'Informe o motivo obrigatório da exclusão.' });
-    if (!protocoloConfirmacao || protocoloConfirmacao !== protocolo) return res.status(400).json({ sucesso:false, erro:'Confirme o protocolo exato para excluir a manifestação.' });
+    if (!motivo) return res.status(400).json({ sucesso:false, erro:'Informe o motivo da exclusão.' });
     const agora = new Date().toISOString();
     await atualizarPorID('MANIFESTACOES', item.ID_MANIFESTACAO || item.PROTOCOLO || id, {
       STATUS_REGISTRO:'EXCLUIDO', STATUS:'EXCLUIDO', STATUS_ANTES_EXCLUSAO:item.STATUS || item.STATUS_FICHA || '',
