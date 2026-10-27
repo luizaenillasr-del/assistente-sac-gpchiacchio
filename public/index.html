@@ -13025,6 +13025,22 @@ function abrirDossie(item) {
   window._dossieItem = item;
   const isMan = !!item.ID_MANIFESTACAO;
 
+  // A listagem da Central é resumida e não contém o relato completo nem os
+  // anexos. Carrega a ficha oficial em segundo plano e redesenha o dossiê
+  // quando a API retornar, sem bloquear a abertura do modal.
+  if (isMan && !item.__fichaCompletaSolicitada && typeof _apiFetch === 'function') {
+    const completa = { ...item };
+    Object.defineProperty(completa, '__fichaCompletaSolicitada', { value: true, enumerable: false });
+    _apiFetch('/api/manifestacoes/' + encodeURIComponent(item.ID_MANIFESTACAO), 15000)
+      .then(d => {
+        if (!d?.manifestacao) return;
+        const atualizada = { ...item, ...d.manifestacao };
+        Object.defineProperty(atualizada, '__fichaCompletaSolicitada', { value: true, enumerable: false });
+        abrirDossie(atualizada);
+      })
+      .catch(() => {});
+  }
+
   const id    = isMan ? item.ID_MANIFESTACAO : ('REC-' + Math.random().toString(36).slice(2,7).toUpperCase());
   const empReclamada  = isMan ? (item.EMPRESA_RECLAMADA || '--') : (item['Empresa'] || '--');
   const empReclamante = isMan ? (item.EMPRESA_RECLAMANTE || '--') : '--';
