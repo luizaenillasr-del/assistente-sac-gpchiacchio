@@ -138,18 +138,25 @@ async function lerRelatoriosSac() {
 }
 
 // Escopo B2: resolve o nome/código de empresa do usuário → id numérico do Postgres.
-// Retorna undefined se empresa for global (MASTER/todas), -1 se não encontrar.
+// Para mais de uma empresa retorna uma lista de ids; undefined é escopo global
+// e -1 significa que nenhum escopo informado corresponde a uma empresa válida.
 async function resolverEmpresaIdScope(valor) {
   if (!empresaRepo || !valor) return undefined;
+  const codigos = empresasCanonicas(valor);
   // Empresa que resolve para MASTER = acesso global → sem filtro de empresa no PG
-  if (empresaCanonica(valor) === 'MASTER') return undefined;
+  if (codigos.includes('MASTER')) return undefined;
+  if (!codigos.length) return -1;
   try {
-    const byCod = await empresaRepo.findByCodigo(String(valor)).catch(() => null);
-    if (byCod) return byCod.id;
     const todas = await empresaRepo.findAll().catch(() => []);
-    const vl = String(valor).toLowerCase().trim();
-    const e = todas.find(x => x.codigo.toLowerCase() === vl || x.nome.toLowerCase().includes(vl) || vl.includes(x.codigo.toLowerCase()));
-    return e ? e.id : -1;
+    const ids = [];
+    for (const codigo of codigos) {
+      const byCod = await empresaRepo.findByCodigo(String(codigo)).catch(() => null);
+      const e = byCod || todas.find(x => empresaCanonica(x.codigo || x.nome || '') === codigo);
+      if (e?.id) ids.push(e.id);
+    }
+    const unicos = [...new Set(ids)];
+    if (!unicos.length) return -1;
+    return unicos.length === 1 ? unicos[0] : unicos;
   } catch { return -1; }
 }
 
@@ -201,7 +208,9 @@ app.use((req, res, next) => {
 function getAuth() {
   const raw = process.env.GOOGLE_CREDENTIALS;
   if (!raw) throw new Error('GOOGLE_CREDENTIALS não configurada.');
-  const creds = JSON.parse(raw);
+  let creds;
+  try { creds = JSON.parse(raw); } catch (_) { throw new Error('GOOGLE_CREDENTIALS inválida: JSON malformado.'); }
+  if (!creds || typeof creds !== 'object') throw new Error('GOOGLE_CREDENTIALS inválida: objeto ausente.');
   return new google.auth.GoogleAuth({
     credentials: creds,
     scopes: [
@@ -316,6 +325,22 @@ function empresaCanonica(texto) {
     if (grafias.some(g => norm === g)) return cod;
   }
   return null;
+}
+
+// O cadastro administrativo permite uma ou mais empresas por pessoa.  A
+// planilha legada armazena esse escopo em uma única coluna, separado por
+// vírgula.  Centralizar a leitura aqui evita que "Chiacchio, Plaschio" seja
+// interpretado como uma empresa inexistente e bloqueie a sessão.
+function empresasCanonicas(valor) {
+  let itens = valor;
+  if (typeof itens === 'string') {
+    const texto = itens.trim();
+    if (texto.startsWith('[')) {
+      try { itens = JSON.parse(texto); } catch (_) { itens = texto; }
+    }
+  }
+  if (!Array.isArray(itens)) itens = String(itens || '').split(/[,;|]/);
+  return [...new Set(itens.map(empresaCanonica).filter(Boolean))];
 }
 function b64url(v){ return Buffer.from(v).toString('base64url'); }
 function assinarToken(payload){
@@ -718,12 +743,12 @@ function requerPermissao(...chaves) {
 
 // B2: Isolamento de empresa — comparação por código canônico
 function pertenceEmpresa(userEmpresa, registroEmpresa) {
-  if (!userEmpresa || String(userEmpresa).trim() === '') return false; // empresa vazia = sem acesso (não é MASTER)
-  const userCod = empresaCanonica(userEmpresa);
-  if (!userCod || userCod === 'MASTER') return true; // MASTER vê tudo
-  const recCod = empresaCanonica(registroEmpresa || '');
-  if (!recCod) return false; // empresa desconhecida = invisível para não-MASTER
-  return userCod === recCod;
+  const empresasUsuario = empresasCanonicas(userEmpresa);
+  if (!empresasUsuario.length) return false; // empresa vazia = sem acesso (não é MASTER)
+  if (empresasUsuario.includes('MASTER')) return true; // MASTER vê tudo
+  const empresasRegistro = empresasCanonicas(registroEmpresa);
+  if (!empresasRegistro.length) return false; // empresa desconhecida = invisível para não-MASTER
+  return empresasRegistro.some(codigo => empresasUsuario.includes(codigo));
 }
 
 // Usa req._empresaScope (definido apenas para não-MASTER pelo middlewareEscopoEmpresa).
@@ -741,7 +766,7 @@ function middlewareEscopoEmpresa() {
     if (perfil === 'MASTER' || perfil === 'APROVADOR MASTER') return next();
     const empresa = req.user.empresa || '';
     // Empresa vazia: bloqueia acesso — usuário sem empresa não pode acessar dados isolados por empresa
-    if (!empresa.trim()) return res.status(403).json({ sucesso: false, erro: 'Empresa não definida no perfil. Contacte o administrador.' });
+    if (!empresasCanonicas(empresa).length) return res.status(403).json({ sucesso: false, erro: 'Empresa não definida no perfil. Contacte o administrador.' });
     req._empresaScope = empresa;
     next();
   };
@@ -752,12 +777,10 @@ function middlewareEscopoEmpresa() {
 // Sem empresa no item → invisível para não-MASTER (dado sem dono).
 function filtrarPorEmpresa(itens, req, campoEmpresa) {
   if (!req._empresaScope) return itens;
-  const userCod = empresaCanonica(req._empresaScope);
-  if (!userCod || userCod === 'MASTER') return itens;
   return itens.filter(item => {
     const val = item[campoEmpresa] || '';
     if (!val) return false;
-    return empresaCanonica(val) === userCod;
+    return pertenceEmpresa(req._empresaScope, val);
   });
 }
 
@@ -766,12 +789,10 @@ function filtrarPorEmpresa(itens, req, campoEmpresa) {
 // Com empresa preenchida → apenas daquela empresa e MASTER.
 function filtrarPorEmpresaHistorico(itens, req, campoEmpresa) {
   if (!req._empresaScope) return itens;
-  const userCod = empresaCanonica(req._empresaScope);
-  if (!userCod || userCod === 'MASTER') return itens;
   return itens.filter(item => {
     const val = item[campoEmpresa] || '';
     if (!val) return true; // legado sem empresa = compartilhado
-    return empresaCanonica(val) === userCod;
+    return pertenceEmpresa(req._empresaScope, val);
   });
 }
 
@@ -779,12 +800,10 @@ function filtrarPorEmpresaHistorico(itens, req, campoEmpresa) {
 // Sem empresa no item → global (visível para todos). Com empresa → apenas daquela empresa e MASTER.
 function filtrarPorEmpresaConfig(itens, req, campoEmpresa = 'EMPRESA') {
   if (!req._empresaScope) return itens;
-  const userCod = empresaCanonica(req._empresaScope);
-  if (!userCod || userCod === 'MASTER') return itens;
   return itens.filter(item => {
     const val = item[campoEmpresa] || '';
     if (!val) return true; // sem empresa = global
-    return empresaCanonica(val) === userCod;
+    return pertenceEmpresa(req._empresaScope, val);
   });
 }
 
@@ -793,14 +812,14 @@ function middlewareEscopoSetor() {
     if (!req.user) return res.status(401).json({ sucesso: false, erro: 'Sessão inválida.' });
     if (perfilCanonico(req.user.perfil) === 'MASTER') return next();
     if (!req._empresaScope) return res.status(403).json({ sucesso: false, erro: 'Token sem empresa definida.' });
-    const userCod = empresaCanonica(req._empresaScope);
-    if (!userCod || userCod === 'MASTER') return next();
+    const empresasUsuario = empresasCanonicas(req._empresaScope);
+    if (empresasUsuario.includes('MASTER')) return next();
     const nome = decodeURIComponent(req.params.setor || '');
     try {
       const rows = await lerAba('CONFIG_SETORES', 500).catch(() => []);
       const setorRow = rows.find(r => normalizarTexto(r.SETOR || r.NOME_SETOR || '') === normalizarTexto(nome));
       if (!setorRow || !(setorRow.EMPRESA || '').trim()) return next(); // setor global ou não encontrado
-      if (empresaCanonica(setorRow.EMPRESA) !== userCod) {
+      if (!pertenceEmpresa(req._empresaScope, setorRow.EMPRESA)) {
         return res.status(403).json({ sucesso: false, erro: 'Acesso restrito à empresa do setor.' });
       }
       next();
@@ -940,8 +959,10 @@ async function _sheetsGetComRetry(sheets, params, tentativas = 3) {
       const status = e?.response?.status || e?.code;
       // Retry apenas em 429 (rate limit) e 503 (serviço indisponível)
       if ((status === 429 || status === 503) && i < tentativas - 1) {
-        await new Promise(r => setTimeout(r, espera));
-        espera *= 2;
+        // Jitter evita que várias renderizações concorrentes repitam juntas.
+        const atraso = espera + Math.floor(Math.random() * Math.max(100, espera * 0.25));
+        await new Promise(r => setTimeout(r, atraso));
+        espera = Math.min(8000, espera * 2);
         continue;
       }
       throw e;
@@ -951,11 +972,13 @@ async function _sheetsGetComRetry(sheets, params, tentativas = 3) {
 
 // Cache em memória para leituras do Sheets (60 s TTL) — evita quota exceeded
 const _lerAbaCache = new Map();
+const _lerAbaInFlight = new Map();
 const LER_ABA_TTL_MS = 60_000;
-// MANIFESTACOES é a fonte operacional oficial. Não mantemos cache dessa aba:
-// uma remoção feita diretamente na planilha precisa ser percebida na próxima
-// consulta e jamais pode ser mascarada por uma cópia antiga.
-const TTL_POR_ABA = { MANIFESTACOES: 0 };
+// MANIFESTACOES e USUARIOS são fontes operacionais oficiais. Não mantemos
+// cache dessas abas: uma alteração de status, exclusão lógica ou permissão
+// precisa ser percebida na próxima consulta, inclusive em outra instância
+// serverless, e jamais pode ser mascarada por uma cópia antiga.
+const TTL_POR_ABA = { MANIFESTACOES: 0, USUARIOS: 0, PERMISSOES_USUARIO: 0 };
 
 async function lerAba(nomeAba, maxRows) {
   if (_sheetsMock?.lerAba) return _sheetsMock.lerAba(nomeAba, maxRows);
@@ -963,19 +986,37 @@ async function lerAba(nomeAba, maxRows) {
   const cached = _lerAbaCache.get(cacheKey);
   const ttl = Object.prototype.hasOwnProperty.call(TTL_POR_ABA, nomeAba) ? TTL_POR_ABA[nomeAba] : LER_ABA_TTL_MS;
   if (cached && (Date.now() - cached.ts) < ttl) return cached.data;
-  const sheets = await getSheets();
-  const range = maxRows ? `${nomeAba}!A1:AZ${maxRows}` : nomeAba;
-  const res = await _sheetsGetComRetry(sheets, { spreadsheetId: SPREADSHEET_ID, range });
-  const rows = res.data.values || [];
-  if (rows.length < 2) { _lerAbaCache.set(cacheKey, { data: [], ts: Date.now() }); return []; }
-  const headers = rows[0];
-  const data = rows.slice(1).map(row => {
-    const obj = {};
-    headers.forEach((h, i) => { if (h) obj[h] = row[i] || ''; });
-    return obj;
-  });
-  _lerAbaCache.set(cacheKey, { data, ts: Date.now() });
-  return data;
+  // Deduplica renders/rotas concorrentes que solicitam exatamente a mesma aba.
+  // Todas aguardam a mesma leitura e apenas uma chamada chega ao Sheets.
+  if (_lerAbaInFlight.has(cacheKey)) return _lerAbaInFlight.get(cacheKey);
+  const leitura = (async () => {
+  try {
+    const sheets = await getSheets();
+    const range = maxRows ? `${nomeAba}!A1:AZ${maxRows}` : nomeAba;
+    const res = await _sheetsGetComRetry(sheets, { spreadsheetId: SPREADSHEET_ID, range });
+    const rows = res.data.values || [];
+    if (rows.length < 2) { _lerAbaCache.set(cacheKey, { data: [], ts: Date.now() }); return []; }
+    const headers = rows[0];
+    const data = rows.slice(1).map(row => {
+      const obj = {};
+      headers.forEach((h, i) => { if (h) obj[h] = row[i] || ''; });
+      return obj;
+    });
+    _lerAbaCache.set(cacheKey, { data, ts: Date.now() });
+    return data;
+  } catch (e) {
+    // Em 429/503, uma leitura pública pode continuar usando o último snapshot
+    // consistente em memória. Escritas nunca usam este fallback.
+    if (cached?.data) {
+      console.warn(`[Sheets] ${nomeAba} indisponível (${e.message}); usando snapshot anterior.`);
+      return cached.data;
+    }
+    throw e;
+  }
+  })();
+  _lerAbaInFlight.set(cacheKey, leitura);
+  try { return await leitura; }
+  finally { if (_lerAbaInFlight.get(cacheKey) === leitura) _lerAbaInFlight.delete(cacheKey); }
 }
 
 function invalidarCacheAba(nomeAba) {
@@ -1374,32 +1415,62 @@ async function verificarStatusUsuario(login) {
   const agora = Date.now();
   const cached = _statusCache.get(login);
   if (cached && (agora - cached.ts) < _STATUS_CACHE_TTL) return cached;
-  // F4: PostgreSQL primeiro — evita tratar usuário que só existe no PG como inativo.
+  // O cadastro administrativo (Sheets) é a fonte autoritativa do status.
+  // Antes o PostgreSQL era consultado primeiro, fazendo usuários excluídos ou
+  // inativados na administração continuarem com sessão válida quando o PG
+  // ainda os marcava como ativos.
+  try {
+    const rows = await lerAba('USUARIOS', 1000);
+    const alvo = normalizarTexto(login);
+    const u = rows.slice().reverse().find(r => {
+      const usuario = normalizarTexto(r.USUARIO || r.LOGIN || '');
+      const email = normalizarTexto(r.EMAIL || '');
+      return usuario === alvo || email === alvo || normalizarTexto(email.split('@')[0]) === alvo;
+    });
+    if (u) {
+      let permissoes_granted = null, permissoes_blocked = null;
+      try { if (u.PERMISSOES_GRANTED) permissoes_granted = JSON.parse(u.PERMISSOES_GRANTED); } catch(_) {}
+      try { if (u.PERMISSOES_BLOCKED) permissoes_blocked = JSON.parse(u.PERMISSOES_BLOCKED); } catch(_) {}
+      // A mesma leitura usada para validar a sessão também reidrata o escopo.
+      // Assim, quando o MASTER define a empresa de um usuário, uma sessão já
+      // aberta deixa de receber 403 sem depender de logout/login manual.
+      const entry = {
+        status: String(u.STATUS || 'ATIVO').toUpperCase(), ts: agora,
+        permissoes_granted, permissoes_blocked,
+        empresa: String(u.EMPRESA || '').trim(), setor: String(u.SETOR || '').trim(),
+      };
+      _statusCache.set(login, entry);
+      return entry;
+    }
+    // Usuários criados somente no PostgreSQL continuam válidos quando não há
+    // espelho administrativo na planilha.
+  } catch(e) {
+    console.error('[verificarStatusUsuario] Erro ao ler planilha:', e.message || e);
+  }
   if (usuarioRepo) {
     try {
       const pgU = await usuarioRepo.findByLogin(login).catch(() => null);
       if (pgU) {
-        const entry = { status: pgU.ativo === false ? 'INATIVO' : 'ATIVO', ts: agora, permissoes_granted: null, permissoes_blocked: null };
+        const entry = {
+          status: pgU.ativo === false ? 'INATIVO' : 'ATIVO', ts: agora,
+          permissoes_granted: null, permissoes_blocked: null,
+          empresa: pgU.empresa?.nome || '', setor: pgU.setor?.nome || '',
+        };
         _statusCache.set(login, entry);
         return entry;
       }
-    } catch (e) { /* cai no Sheets */ }
+    } catch (e) { /* fallback abaixo */ }
   }
   try {
-    const rows = await lerAba('USUARIOS', 1000);
-    const u = rows.find(r => normalizarTexto(r.USUARIO||'') === normalizarTexto(login));
-    // Se não encontrado no Sheets mas encontrado antes (cache expirado), mantém como ATIVO —
-    // usuário criado via PG pode não existir no Sheets.
-    const status = u ? (u.STATUS || 'ATIVO').toUpperCase() : (cached ? cached.status : 'INATIVO');
-    let permissoes_granted = null, permissoes_blocked = null;
-    if (u) {
-      try { if (u.PERMISSOES_GRANTED) permissoes_granted = JSON.parse(u.PERMISSOES_GRANTED); } catch(_) {}
-      try { if (u.PERMISSOES_BLOCKED) permissoes_blocked = JSON.parse(u.PERMISSOES_BLOCKED); } catch(_) {}
-    } else if (cached) {
-      permissoes_granted = cached.permissoes_granted;
-      permissoes_blocked = cached.permissoes_blocked;
-    }
-    const entry = { status, ts: agora, permissoes_granted, permissoes_blocked };
+    // Se não encontrado no Sheets/PG mas encontrado antes (cache expirado),
+    // mantém o estado conhecido; sem qualquer fonte, nega por segurança.
+    const status = cached ? cached.status : 'INATIVO';
+    const permissoes_granted = cached?.permissoes_granted ?? null;
+    const permissoes_blocked = cached?.permissoes_blocked ?? null;
+    const entry = {
+      status, ts: agora, permissoes_granted, permissoes_blocked,
+      empresa: cached?.empresa || '', setor: cached?.setor || '',
+    };
     _statusCache.set(login, entry);
     if (_statusCache.size > 2000) {
       for (const [k, v] of _statusCache) {
@@ -1413,7 +1484,7 @@ async function verificarStatusUsuario(login) {
     console.error('[verificarStatusUsuario] Erro ao ler planilha:', e.message || e);
     if (cached) return { ...cached, ts: agora };
     // JWT já foi validado — se Sheets está indisponível e não há cache, não derruba a sessão
-    return { status: 'ATIVO', ts: agora, permissoes_granted: null, permissoes_blocked: null };
+    return { status: 'ATIVO', ts: agora, permissoes_granted: null, permissoes_blocked: null, empresa: '', setor: '' };
   }
 }
 
@@ -1458,6 +1529,11 @@ app.use('/api', async (req,res,next)=>{
     ...payload,
     permissoes_granted: infoAtual.permissoes_granted ?? payload.permissoes_granted,
     permissoes_blocked: infoAtual.permissoes_blocked ?? payload.permissoes_blocked,
+    // Só substitui quando o registro administrativo possui valor.  Isto
+    // mantém compatibilidade com sessões antigas e, ao mesmo tempo, torna a
+    // atribuição de empresa efetiva imediatamente.
+    empresa: infoAtual.empresa || payload.empresa || '',
+    setor: infoAtual.setor || payload.setor || '',
   };
   // Tokens emitidos após a implantação conhecem o estado do perfil. O servidor
   // impede acesso direto à API operacional enquanto o onboarding é obrigatório.
@@ -2020,6 +2096,14 @@ app.get('/api/manifestacoes', requerPermissao('manifestacoes.visualizar'), middl
   } catch (e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e), dados: [] }); }
 });
 
+// Rota específica deve preceder /api/manifestacoes/:id para não ser tratada como um identificador.
+app.get('/api/manifestacoes-excluidas', requerPerfil('MASTER'), async (req, res) => {
+  try {
+    const itens = (await lerAba('MANIFESTACOES', 5000)).filter(manifestacaoExcluida);
+    res.json({ sucesso:true, total:itens.length, itens });
+  } catch (e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e), itens:[] }); }
+});
+
 app.get('/api/manifestacoes/:id', requerPermissao('manifestacoes.visualizar'), middlewareEscopoEmpresa(), async (req, res) => {
   try {
     // F6: tenta PostgreSQL primeiro
@@ -2078,7 +2162,12 @@ app.get('/api/manifestacoes/:id', requerPermissao('manifestacoes.visualizar'), m
 
 app.post('/api/manifestacoes', requerPermissao('manifestacoes.abrir'), async (req, res) => {
   try {
-    const { empresaReclamada, empresaReclamante, contato, produto, lote, nfe, descricao, tipo, canal, cnpj, telefone, email, quantidade, quantidadeDevolvida, quantidadeTotal, houveDevolucao, valor, valorTotalPedido, prejuizoEstimado, usuario, anexos = [], origemDocumento = '', arquivoOrigem = '', rascunho = false } = req.body;
+    const { empresaReclamada, contato, produto, lote, nfe, tipo, canal, cnpj, telefone, email, quantidade, quantidadeDevolvida, quantidadeTotal, houveDevolucao, valor, valorTotalPedido, prejuizoEstimado, usuario, anexos = [], origemDocumento = '', arquivoOrigem = '', rascunho = false } = req.body;
+    // Rascunhos podem ser salvos antes de todos os dados do cliente estarem
+    // disponíveis. O bloqueio de campos obrigatórios deve acontecer apenas na
+    // conclusão da manifestação, não no botão Continuar entre etapas.
+    const empresaReclamante = String(req.body?.empresaReclamante || '').trim() || (rascunho ? 'Cliente não informado' : '');
+    const descricao = String(req.body?.descricao || '').trim() || (rascunho ? 'Rascunho em preenchimento.' : '');
     if (!empresaReclamante || !descricao) return res.status(400).json({ sucesso:false, erro:'Empresa reclamante e descrição são obrigatórios.' });
     const empNorm = normalizarEmpresa(empresaReclamada);
     // Não bloqueia na criação de colunas — a aba já existe em produção
@@ -2668,7 +2757,7 @@ app.patch('/api/manifestacoes/:id', requerPermissao('manifestacoes.editar'), mid
 });
 
 // Listagem de manifestações excluídas logicamente
-app.get('/api/manifestacoes/excluidas', requerPermissao('manifestacoes.excluir'), async (req, res) => {
+app.get('/api/manifestacoes/excluidas', requerPerfil('MASTER'), async (req, res) => {
   try {
     const todas = await lerAba('MANIFESTACOES', 5000);
     const excluidas = todas.filter(item => manifestacaoExcluida(item));
@@ -2692,50 +2781,96 @@ app.get('/api/manifestacoes/excluidas', requerPermissao('manifestacoes.excluir')
   } catch (e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e) }); }
 });
 
-// Exclusão lógica (não remove o registro — apenas marca como EXCLUIDO)
-app.delete('/api/manifestacoes/:id', requerPermissao('manifestacoes.excluir'), async (req, res) => {
+// Exclusão lógica em lote para operações administrativas da Central.
+// Não exige confirmação individual de protocolo: o MASTER já autenticou a operação.
+app.post('/api/manifestacoes/excluir-lote', requerPerfil('MASTER'), async (req, res) => {
+  try {
+    const ids = Array.isArray(req.body?.ids)
+      ? [...new Set(req.body.ids.map(v => String(v || '').trim()).filter(Boolean))].slice(0, 100)
+      : [];
+    if (!ids.length) return res.status(400).json({ sucesso:false, erro:'Selecione ao menos uma manifestação.' });
+    const motivo = String(req.body?.motivo || 'Exclusão solicitada pelo MASTER.').trim();
+    const todas = await lerAba('MANIFESTACOES', 5000);
+    const agora = new Date().toISOString();
+    const resultados = [];
+    for (const id of ids) {
+      const item = todas.find(r => [r.ID_MANIFESTACAO, r.PROTOCOLO, r.ID].some(v => String(v || '').trim() === id));
+      if (!item) { resultados.push({ id, sucesso:false, erro:'Manifestação não encontrada.' }); continue; }
+      if (manifestacaoExcluida(item)) { resultados.push({ id, sucesso:false, erro:'A manifestação já está excluída.' }); continue; }
+      const chave = item.ID_MANIFESTACAO || item.PROTOCOLO || id;
+      await atualizarPorID('MANIFESTACOES', chave, {
+        STATUS_REGISTRO:'EXCLUIDO', STATUS:'EXCLUIDO', STATUS_ANTES_EXCLUSAO:item.STATUS || item.STATUS_FICHA || '',
+        DATA_EXCLUSAO:agora, DELETED_AT:agora, EXCLUIDO_POR:req.user?.usuario || 'MASTER', MOTIVO_EXCLUSAO:motivo,
+        DATA_ULTIMA_EDICAO:agora, ATUALIZADO_POR:req.user?.usuario || 'MASTER',
+      }, ['ID_MANIFESTACAO','PROTOCOLO','ID']);
+      if (manifestacaoRepo) {
+        try {
+          const pg = (await manifestacaoRepo.findByProtocolo(id).catch(() => null))
+                  || (await manifestacaoRepo.findByIdOriginal(id).catch(() => null));
+          if (pg && typeof manifestacaoRepo.update === 'function') await manifestacaoRepo.update(pg.id, { status:'EXCLUIDA' });
+        } catch (e) { console.warn('[PG] exclusão em lote falhou:', e.message); }
+      }
+      await registrarHistoricoManifestacao({ id:chave, protocolo:item.PROTOCOLO || id, usuario:req.user?.usuario || 'MASTER', acao:'MANIFESTAÇÃO_EXCLUÍDA', descricao:motivo, etapa:item.ETAPA_ATUAL || '' });
+      await registrarAuditoria(req.user?.usuario || 'sistema', 'EXCLUIU_MANIFESTAÇÃO', chave, 'MANIFESTACOES', item, { ...item, STATUS:'EXCLUIDO', MOTIVO_EXCLUSAO:motivo });
+      resultados.push({ id, sucesso:true, protocolo:item.PROTOCOLO || id });
+    }
+    invalidarCacheAba('MANIFESTACOES');
+    const excluidas = resultados.filter(r => r.sucesso).length;
+    res.json({ sucesso:true, excluidas, falhas:resultados.length - excluidas, resultados });
+  } catch (e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
+});
+
+app.delete('/api/manifestacoes/:id', requerPerfil('MASTER'), async (req, res) => {
   try {
     const { id } = req.params;
-    // Busca em TODAS as linhas (incluindo já excluídas — para evitar dupla exclusão)
     const todas = await lerAba('MANIFESTACOES', 5000);
-    const item = todas.find(r => r.ID_MANIFESTACAO === id);
+    const item = todas.find(r => [r.ID_MANIFESTACAO, r.PROTOCOLO, r.ID].some(v => String(v || '').trim() === String(id).trim()));
     if (!item) return res.status(404).json({ sucesso: false, erro: 'Manifestação não encontrada.' });
-    if (manifestacaoExcluida(item)) return res.status(409).json({ sucesso: false, erro: 'Manifestação já está excluída.' });
+    if (manifestacaoExcluida(item)) return res.status(409).json({ sucesso:false, erro:'A manifestação já está excluída.' });
+    const motivo = String(req.body?.motivo || '').trim();
+    const protocoloConfirmacao = String(req.body?.protocoloConfirmacao || '').trim();
+    const protocolo = String(item.PROTOCOLO || item.ID_MANIFESTACAO || id).trim();
+    if (!motivo) return res.status(400).json({ sucesso:false, erro:'Informe o motivo obrigatório da exclusão.' });
+    if (!protocoloConfirmacao || protocoloConfirmacao !== protocolo) return res.status(400).json({ sucesso:false, erro:'Confirme o protocolo exato para excluir a manifestação.' });
     const agora = new Date().toISOString();
-    const usuario = req.user?.usuario || req.user?.nome || 'sistema';
-    // Exclusão lógica: mantém o registro, apenas marca STATUS_REGISTRO
-    await atualizarPorID('MANIFESTACOES', id, {
-      STATUS_REGISTRO: 'EXCLUIDO',
-      DATA_EXCLUSAO: agora,
-      EXCLUIDO_POR: usuario,
-    });
+    await atualizarPorID('MANIFESTACOES', item.ID_MANIFESTACAO || item.PROTOCOLO || id, {
+      STATUS_REGISTRO:'EXCLUIDO', STATUS:'EXCLUIDO', STATUS_ANTES_EXCLUSAO:item.STATUS || item.STATUS_FICHA || '',
+      DATA_EXCLUSAO:agora, DELETED_AT:agora, EXCLUIDO_POR:req.user?.usuario || 'MASTER', MOTIVO_EXCLUSAO:motivo,
+      DATA_ULTIMA_EDICAO:agora, ATUALIZADO_POR:req.user?.usuario || 'MASTER',
+    }, ['ID_MANIFESTACAO','PROTOCOLO','ID']);
+    // Mantém a linha no Sheets e apenas marca o registro como excluído.
+    if (manifestacaoRepo) {
+      try {
+        const pg = (await manifestacaoRepo.findByProtocolo(id).catch(() => null))
+                || (await manifestacaoRepo.findByIdOriginal(id).catch(() => null));
+        if (pg && typeof manifestacaoRepo.update === 'function') await manifestacaoRepo.update(pg.id, { status:'EXCLUIDA' });
+      } catch (e) { console.warn('[PG] deletar manifestacao falhou:', e.message); }
+    }
+    // A exclusão remove também qualquer leitura já mantida no processo atual.
+    // Isso evita que a Central continue exibindo a ficha até o próximo TTL.
     invalidarCacheAba('MANIFESTACOES');
-    await registrarAuditoria(usuario, 'EXCLUIU_MANIFESTAÇÃO', id, 'MANIFESTACOES', item, { STATUS_REGISTRO: 'EXCLUIDO', DATA_EXCLUSAO: agora });
-    res.json({ sucesso: true, id });
+    await registrarHistoricoManifestacao({ id:item.ID_MANIFESTACAO || id, protocolo, usuario:req.user?.usuario || 'MASTER', acao:'MANIFESTAÇÃO_EXCLUÍDA', descricao:motivo, etapa:item.ETAPA_ATUAL || '' });
+    await registrarAuditoria(req.user?.usuario || 'sistema', 'EXCLUIU_MANIFESTAÇÃO', item.ID_MANIFESTACAO || id, 'MANIFESTACOES', item, { ...item, STATUS:'EXCLUIDO', MOTIVO_EXCLUSAO:motivo });
+    res.json({ sucesso: true, id:item.ID_MANIFESTACAO || id, protocolo, status:'EXCLUIDO' });
   } catch (e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e) }); }
 });
 
-// Restaurar manifestação excluída logicamente
-app.post('/api/manifestacoes/:id/restaurar', requerPermissao('manifestacoes.excluir'), async (req, res) => {
+app.post('/api/manifestacoes/:id/restaurar', requerPerfil('MASTER'), async (req, res) => {
   try {
-    const { id } = req.params;
-    const todas = await lerAba('MANIFESTACOES', 5000);
-    const item = todas.find(r => r.ID_MANIFESTACAO === id);
-    if (!item) return res.status(404).json({ sucesso: false, erro: 'Manifestação não encontrada.' });
-    if (!manifestacaoExcluida(item)) return res.status(409).json({ sucesso: false, erro: 'Manifestação não está excluída.' });
+    const rows = await lerAba('MANIFESTACOES', 5000);
+    const item = rows.find(r => [r.ID_MANIFESTACAO,r.PROTOCOLO,r.ID].some(v => String(v || '').trim() === String(req.params.id || '').trim()));
+    if (!item) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
+    if (!manifestacaoExcluida(item)) return res.status(409).json({ sucesso:false, erro:'A manifestação não está excluída.' });
     const agora = new Date().toISOString();
-    const usuario = req.user?.usuario || req.user?.nome || 'sistema';
-    await atualizarPorID('MANIFESTACOES', id, {
-      STATUS_REGISTRO: '',
-      DATA_EXCLUSAO: '',
-      EXCLUIDO_POR: '',
-      RESTAURADO_EM: agora,
-      RESTAURADO_POR: usuario,
-    });
+    await atualizarPorID('MANIFESTACOES', item.ID_MANIFESTACAO || item.PROTOCOLO || req.params.id, {
+      STATUS:item.STATUS_ANTES_EXCLUSAO || 'AGUARDANDO_TRIAGEM_SAC', STATUS_REGISTRO:'', DATA_EXCLUSAO:'', DELETED_AT:'',
+      EXCLUIDO_POR:'', MOTIVO_EXCLUSAO:'', DATA_ULTIMA_EDICAO:agora, ATUALIZADO_POR:req.user?.usuario || 'MASTER',
+    }, ['ID_MANIFESTACAO','PROTOCOLO','ID']);
+    await registrarHistoricoManifestacao({ id:item.ID_MANIFESTACAO || req.params.id, protocolo:item.PROTOCOLO || '', usuario:req.user?.usuario || 'MASTER', acao:'MANIFESTAÇÃO_RESTAURADA', descricao:'Registro restaurado pelo MASTER.', etapa:item.ETAPA_ATUAL || '' });
+    await registrarAuditoria(req.user?.usuario || 'MASTER', 'RESTAURou_MANIFESTAÇÃO'.toUpperCase(), item.ID_MANIFESTACAO || req.params.id, 'MANIFESTACOES', item, { STATUS:item.STATUS_ANTES_EXCLUSAO || 'AGUARDANDO_TRIAGEM_SAC' });
     invalidarCacheAba('MANIFESTACOES');
-    await registrarAuditoria(usuario, 'RESTAUROU_MANIFESTAÇÃO', id, 'MANIFESTACOES', null, { STATUS_REGISTRO: '', RESTAURADO_EM: agora });
-    res.json({ sucesso: true, id, statusAnterior: item.STATUS });
-  } catch (e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e) }); }
+    res.json({ sucesso:true, id:item.ID_MANIFESTACAO || req.params.id, status:item.STATUS_ANTES_EXCLUSAO || 'AGUARDANDO_TRIAGEM_SAC' });
+  } catch (e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
 
 app.post('/api/manifestacoes/:id/decisao', requerPermissao('manifestacoes.aprovar'), async (req, res) => {
@@ -3544,7 +3679,7 @@ function cadastroEscopo(rows, req) {
   return rows.filter(r => {
     const raw = r.EMPRESA || r.EMPRESAS || r.EMPRESAS_JSON || '';
     if (!raw) return false;
-    return pertenceEmpresa(req._empresaScope, raw) || String(raw).toUpperCase().includes(empresaCanonica(req._empresaScope));
+    return pertenceEmpresa(req._empresaScope, raw);
   });
 }
 app.get('/api/cadastros/:tipo', middlewareEscopoEmpresa(), requerPerfil(...CADASTRO_LEITURA), async (req,res)=>{
@@ -4687,8 +4822,7 @@ app.get('/api/pesquisas/relatorio', requerPermissao('pesquisas.visualizar'), asy
       if (ano && Number(ano) !== anoR) return null;
       if (mes && Number(mes) !== mesR) return null;
       if (empresa) {
-        const empRow = String(row.Empresa || row.EMPRESA || '').toLowerCase();
-        if (!empRow.includes(empresa.toLowerCase())) return null;
+        if (!pertenceEmpresa(empresa, row.Empresa || row.EMPRESA || '')) return null;
       }
       return { d, anoR, mesR };
     }
@@ -4723,7 +4857,7 @@ app.get('/api/pesquisas/relatorio', requerPermissao('pesquisas.visualizar'), asy
         const partes = raw.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
         const dd = partes ? new Date(+partes[3],+partes[2]-1,+partes[1]) : new Date(raw);
         if (isNaN(dd)) return false;
-        if (empresa && !String(r.Empresa||r.EMPRESA||'').toLowerCase().includes(empresa.toLowerCase())) return false;
+        if (empresa && !pertenceEmpresa(empresa, r.Empresa || r.EMPRESA || '')) return false;
         return dd.getFullYear()===anoH && dd.getMonth()+1===mesH;
       });
       const ms = grupo.map(_media).filter(n=>n!==null);
@@ -4746,7 +4880,7 @@ app.get('/api/pesquisas/relatorio', requerPermissao('pesquisas.visualizar'), asy
       // Se não há respostas individuais, usa média histórica importada
       if (!ms.length) {
         const chaveH = `${anoH}-${String(mesH).padStart(2,'0')}`;
-        const hRow = historicoRows.find(r => r.ANO == anoH && Number(r.MES) === mesH && (!empresa || String(r.EMPRESA||'').toLowerCase().includes(empresa.toLowerCase())));
+        const hRow = historicoRows.find(r => r.ANO == anoH && Number(r.MES) === mesH && (!empresa || pertenceEmpresa(empresa, r.EMPRESA || '')));
         if (hRow) {
           const _f = v => { const n = parseFloat(String(v||'').replace(',','.')); return isNaN(n) ? null : n; };
           entryMedia = _f(hRow.NOTA_MEDIA);
@@ -4762,7 +4896,7 @@ app.get('/api/pesquisas/relatorio', requerPermissao('pesquisas.visualizar'), asy
     // Se não há respostas individuais para o mês/ano selecionado, usa histórico importado para media_geral e criterios
     if (!filtrados.length && ano && mes) {
       const _fh = v => { const n = parseFloat(String(v||'').replace(',','.')); return isNaN(n) ? null : n; };
-      const hRowAtual = historicoRows.find(r => r.ANO == ano && Number(r.MES) === Number(mes) && (!empresa || String(r.EMPRESA||'').toLowerCase().includes(empresa.toLowerCase())));
+      const hRowAtual = historicoRows.find(r => r.ANO == ano && Number(r.MES) === Number(mes) && (!empresa || pertenceEmpresa(empresa, r.EMPRESA || '')));
       if (hRowAtual) {
         if (mediaGeral === null) mediaGeral = _fh(hRowAtual.NOTA_MEDIA);
         criterios.forEach(c => {
@@ -6578,9 +6712,16 @@ app.post('/api/usuarios', requerPermissao('usuarios.criar'), async (req,res)=>{
   try{
     const b=req.body||{};
     if(!b.usuario||!b.nome||!b.perfil) return res.status(400).json({sucesso:false,erro:'Usuário, nome e perfil são obrigatórios.'});
+    const perfil = perfilCanonico(b.perfil);
+    const empresas = empresasCanonicas(b.empresa);
+    if (perfil !== 'MASTER' && !empresas.length) return res.status(400).json({sucesso:false,erro:'Selecione ao menos uma empresa para liberar o acesso do usuário.'});
     const id=await gerarProximoID('USUARIOS','USR','ID_USUARIO');
     const hash=b.senha ? await hashSenha(b.senha) : '';
-    const obj={ID_USUARIO:id,USUARIO:b.usuario,EMAIL:b.email||'',NOME:b.nome,CARGO:b.cargo||'',PERFIL:perfilCanonico(b.perfil),EMPRESA:b.empresa||'',SETOR:b.setor||'',CODIGO_RCA:b.codigoRCA||'',STATUS:b.status||'ATIVO',SENHA_HASH:hash,DATA_CRIACAO:new Date().toISOString(),ULTIMO_ACESSO:'',PERMISSOES_CUSTOM:Array.isArray(b.permissoes_custom)?JSON.stringify(b.permissoes_custom):''};
+    const statusSolicitado = String(b.status || 'ATIVO').toUpperCase();
+    // Empresa atribuída é a liberação operacional. Não há uma segunda etapa
+    // de aprovação para transformar PRIMEIRO_ACESSO em conta utilizável.
+    const status = empresas.length && ['PRIMEIRO_ACESSO','PENDENTE_APROVACAO'].includes(statusSolicitado) ? 'ATIVO' : statusSolicitado;
+    const obj={ID_USUARIO:id,USUARIO:b.usuario,EMAIL:b.email||'',NOME:b.nome,CARGO:b.cargo||'',PERFIL:perfil,EMPRESA:b.empresa||'',SETOR:b.setor||'',CODIGO_RCA:b.codigoRCA||'',STATUS:status,SENHA_HASH:hash,DATA_CRIACAO:new Date().toISOString(),ULTIMO_ACESSO:'',PERMISSOES_CUSTOM:Array.isArray(b.permissoes_custom)?JSON.stringify(b.permissoes_custom):'',PERMISSOES_GRANTED:Array.isArray(b.permissoes_granted)?JSON.stringify(b.permissoes_granted):'',PERMISSOES_BLOCKED:Array.isArray(b.permissoes_blocked)?JSON.stringify(b.permissoes_blocked):''};
     await appendObjeto('USUARIOS',obj);
     await registrarAuditoria(req.user.usuario,'CRIOU_USUARIO',id,'USUARIOS',null,{perfil:obj.PERFIL});
     res.json({sucesso:true,usuario:usuarioPublico(obj)});
@@ -6589,19 +6730,46 @@ app.post('/api/usuarios', requerPermissao('usuarios.criar'), async (req,res)=>{
 app.patch('/api/usuarios/:id', requerPermissao('usuarios.editar'), async (req,res)=>{
   try{
     const b=req.body||{};
+    // O token é indexado pelo login, enquanto a tela costuma enviar o ID.
+    // Guardamos as chaves do cadastro para invalidar a sessão certa após uma
+    // mudança de empresa, perfil, status ou permissões.
+    const precisaInvalidarSessao = ['empresa','EMPRESA','setor','status','perfil','PERFIL','permissoes_granted','permissoes_blocked','senha']
+      .some(campo => b[campo] !== undefined);
+    const alvoCache = precisaInvalidarSessao
+      ? encontrarUsuarioPorIdentificador(await carregarUsuarios(), req.params.id)
+      : null;
     // Whitelist de campos permitidos — impede mass assignment
     const dados={};
     if(b.nome!==undefined) dados.NOME=b.nome;
     if(b.email!==undefined) dados.EMAIL=b.email;
     if(b.cargo!==undefined||b.CARGO!==undefined) dados.CARGO=String(b.cargo??b.CARGO??'').trim();
     if(b.setor!==undefined) dados.SETOR=b.setor;
-    if(b.status!==undefined) dados.STATUS=b.status;
+    if(b.status!==undefined) dados.STATUS=String(b.status).toUpperCase();
     if(b.codigoRCA!==undefined) dados.CODIGO_RCA=b.codigoRCA;
     if(b.perfil||b.PERFIL) dados.PERFIL=perfilCanonico(b.perfil||b.PERFIL);
     if(b.empresa!==undefined||b.EMPRESA!==undefined) {
       // Preserva os nomes originais (display names) para que o escopo do usuário
       // seja recarregado corretamente no frontend (checkboxes) sem precisar reverter canonização
       dados.EMPRESA = String(b.empresa||b.EMPRESA||'').trim();
+      const empresas = empresasCanonicas(dados.EMPRESA);
+      const perfilAlvo = perfilCanonico(b.perfil || b.PERFIL || '');
+      if (dados.EMPRESA && !empresas.length) return res.status(400).json({sucesso:false,erro:'Empresa inválida. Selecione uma empresa cadastrada.'});
+      // Ao definir empresa para uma conta em primeiro acesso, ela pode operar
+      // imediatamente. O preenchimento de perfil continua sendo uma ação do
+      // próprio usuário, não uma aprovação administrativa adicional.
+      if (empresas.length && ['PRIMEIRO_ACESSO','PENDENTE_APROVACAO'].includes(String(dados.STATUS || '').toUpperCase())) dados.STATUS='ATIVO';
+      if (empresas.length && !dados.STATUS && perfilAlvo !== 'MASTER') {
+        const atual = await carregarUsuarios();
+        const usuarioAtual = encontrarUsuarioPorIdentificador(atual, req.params.id);
+        if (['PRIMEIRO_ACESSO','PENDENTE_APROVACAO'].includes(String(usuarioAtual?.STATUS || '').toUpperCase())) dados.STATUS='ATIVO';
+      }
+    }
+    // Registros antigos podem já possuir empresa, mas ainda estar marcados
+    // como PRIMEIRO_ACESSO. A empresa existente também libera a conta.
+    if (['PRIMEIRO_ACESSO','PENDENTE_APROVACAO'].includes(String(dados.STATUS || '').toUpperCase())) {
+      const atual = await carregarUsuarios();
+      const usuarioAtual = encontrarUsuarioPorIdentificador(atual, req.params.id);
+      if (empresasCanonicas(dados.EMPRESA || usuarioAtual?.EMPRESA || '').length) dados.STATUS='ATIVO';
     }
     if(b.senha){ dados.SENHA_HASH = await hashSenha(b.senha); }
     if(Array.isArray(b.permissoes_custom)) dados.PERMISSOES_CUSTOM=JSON.stringify(b.permissoes_custom);
@@ -6662,8 +6830,11 @@ app.patch('/api/usuarios/:id', requerPermissao('usuarios.editar'), async (req,re
       }
     }
     // Invalida cache de status para mudanças de perfil/status/permissões valerem imediatamente
-    _statusCache.delete(req.params.id);
-    _statusCache.delete(normalizarTexto(req.params.id));
+    [req.params.id, alvoCache?.ID_USUARIO, alvoCache?.USUARIO, alvoCache?.EMAIL]
+      .filter(Boolean).forEach(chave => {
+        _statusCache.delete(chave);
+        _statusCache.delete(normalizarTexto(chave));
+      });
     invalidarCacheAba('USUARIOS');
     await registrarAuditoria(req.user.usuario,'ATUALIZOU_USUARIO',req.params.id,'USUARIOS',null,{campos:Object.keys(b)});
     res.json({sucesso:true});
@@ -6679,34 +6850,70 @@ app.patch('/api/usuarios/:id', requerPermissao('usuarios.editar'), async (req,re
   }
 });
 
-async function persistirStatusUsuario(alvo, status, req, extras = {}) {
+function encontrarUsuarioPorIdentificador(usuarios, id) {
+  const alvo = String(id || '').trim().toLowerCase();
+  return usuarios.find(u => [u.ID_USUARIO, u.USUARIO, u.EMAIL, u.id, u.usuario, u.email]
+    .some(v => String(v || '').trim().toLowerCase() === alvo));
+}
+
+async function persistirDadosUsuario(alvo, dados, req, { permitirSomentePg = false } = {}) {
   const chave = alvo.ID_USUARIO || alvo.USUARIO || alvo.EMAIL;
   let sheetAtualizado = null;
+  let sheetErro = null;
   try {
-    sheetAtualizado = await atualizarPorID('USUARIOS', chave, {
-      STATUS: status,
-      DATA_ULTIMA_ALTERACAO: new Date().toISOString(),
-      ALTERADO_POR: req.user.usuario,
-      ...extras,
-    }, ['ID_USUARIO','USUARIO','EMAIL']);
+    sheetAtualizado = await atualizarPorID('USUARIOS', chave, dados, ['ID_USUARIO','USUARIO','EMAIL']);
   } catch (e) {
-    if (!alvo._pgId) throw e;
-    console.warn('[status usuario Sheets indisponível; usuário PG]', e.message);
+    sheetErro = e;
+    if (!alvo._pgId || !permitirSomentePg) throw e;
   }
-  if (!sheetAtualizado && !alvo._pgId) {
-    const err = new Error('Não foi possível persistir o status do usuário na fonte oficial.');
-    err.code = 503;
+  // Usuário originado no PostgreSQL pode não ter linha administrativa ainda.
+  // Cria o espelho para que status, escopo e permissões não desapareçam no
+  // próximo carregamento e para que a revogação seja reconhecida pelo auth.
+  if (!sheetAtualizado && alvo._pgId && !permitirSomentePg) {
+    await garantirAbaComCabecalhos('USUARIOS', [
+      'ID_USUARIO','USUARIO','EMAIL','NOME','CARGO','PERFIL','EMPRESA','SETOR','STATUS',
+      'SENHA_HASH','DATA_CRIACAO','ULTIMO_ACESSO','PERMISSOES_GRANTED','PERMISSOES_BLOCKED',
+      'COMPETENCIAS','DATA_ULTIMA_ALTERACAO','ALTERADO_POR','DATA_EXCLUSAO','EXCLUIDO_POR','MOTIVO_EXCLUSAO'
+    ]);
+    await appendObjeto('USUARIOS', {
+      ID_USUARIO: alvo.ID_USUARIO || `USR-PG-${alvo._pgId}`,
+      USUARIO: alvo.USUARIO || alvo.EMAIL || '', EMAIL: alvo.EMAIL || '', NOME: alvo.NOME || alvo.USUARIO || '',
+      CARGO: alvo.CARGO || '', PERFIL: alvo.PERFIL || '', EMPRESA: alvo.EMPRESA || '', SETOR: alvo.SETOR || '',
+      STATUS: alvo.STATUS || 'ATIVO', SENHA_HASH: alvo.SENHA_HASH || '', DATA_CRIACAO: alvo.DATA_CRIACAO || '',
+      ULTIMO_ACESSO: alvo.ULTIMO_ACESSO || '', ...dados,
+    });
+    sheetAtualizado = { espelhoCriado: true };
+  }
+  if (!sheetAtualizado && !alvo._pgId && !permitirSomentePg) {
+    const err = sheetErro || new Error('Não foi possível persistir o usuário na fonte oficial.');
+    err.code = err.code || 503;
     throw err;
   }
   if (alvo._pgId && usuarioRepo) {
-    await usuarioRepo.update(alvo._pgId, { ativo: !['INATIVO','BLOQUEADO','EXCLUIDO'].includes(String(status).toUpperCase()) });
+    const pgDados = {};
+    if (dados.NOME !== undefined) pgDados.nome = dados.NOME;
+    if (dados.EMAIL !== undefined) pgDados.email = String(dados.EMAIL).toLowerCase();
+    if (dados.SENHA_HASH !== undefined) pgDados.senhaHash = dados.SENHA_HASH;
+    if (dados.STATUS !== undefined) pgDados.ativo = !['INATIVO','BLOQUEADO','EXCLUIDO','EXCLUÍDO'].includes(String(dados.STATUS).toUpperCase());
+    if (Object.keys(pgDados).length) await usuarioRepo.update(alvo._pgId, pgDados);
   }
   invalidarCacheAba('USUARIOS');
-  invalidarCachePermissoes(alvo.EMAIL||alvo.USUARIO||alvo.ID_USUARIO);
-  [alvo.USUARIO, alvo.EMAIL, alvo.ID_USUARIO].filter(Boolean).forEach(chave => {
-    _statusCache.delete(chave);
-    _statusCache.delete(normalizarTexto(chave));
+  invalidarCachePermissoes(alvo.EMAIL || alvo.USUARIO || alvo.ID_USUARIO);
+  [alvo.USUARIO, alvo.EMAIL, alvo.ID_USUARIO].filter(Boolean).forEach(chaveAtual => {
+    _statusCache.delete(chaveAtual);
+    _statusCache.delete(normalizarTexto(chaveAtual));
   });
+  return sheetAtualizado;
+}
+
+async function persistirStatusUsuario(alvo, status, req, extras = {}) {
+  const chave = alvo.ID_USUARIO || alvo.USUARIO || alvo.EMAIL;
+  await persistirDadosUsuario(alvo, {
+    STATUS: status,
+    DATA_ULTIMA_ALTERACAO: new Date().toISOString(),
+    ALTERADO_POR: req.user.usuario,
+    ...extras,
+  }, req);
 }
 
 // Soft-delete (MASTER only)
@@ -6741,6 +6948,23 @@ app.delete('/api/usuarios/:id', requerPermissao('usuarios.gerenciar'), async (re
       STATUS:'EXCLUIDO', DATA_ULTIMA_ALTERACAO:agoraExclusao, DATA_EXCLUSAO:agoraExclusao,
       EXCLUIDO_POR:req.user.usuario||'MASTER', MOTIVO_EXCLUSAO:motivo, ALTERADO_POR:req.user.usuario||'MASTER'
     });
+    // Um usuário pode ter uma linha administrativa e outra linha legada com
+    // o mesmo login/e-mail. Atualiza todas as cópias para que a listagem não
+    // reconstitua um registro ATIVO depois da exclusão lógica.
+    const refsAlvo = new Set([alvo.ID_USUARIO, alvo.USUARIO, alvo.EMAIL]
+      .map(v => String(v || '').trim().toLowerCase()).filter(Boolean));
+    const linhasUsuarios = await lerAba('USUARIOS', 5000).catch(() => []);
+    for (const linha of linhasUsuarios) {
+      const refsLinha = [linha.ID_USUARIO, linha.USUARIO, linha.EMAIL]
+        .map(v => String(v || '').trim().toLowerCase()).filter(Boolean);
+      if (!refsLinha.some(v => refsAlvo.has(v))) continue;
+      const chaveLinha = linha.ID_USUARIO || linha.USUARIO || linha.EMAIL;
+      if (!chaveLinha || String(chaveLinha) === String(alvo.ID_USUARIO || alvo.USUARIO || alvo.EMAIL)) continue;
+      await atualizarPorID('USUARIOS', chaveLinha, {
+        STATUS:'EXCLUIDO', DATA_ULTIMA_ALTERACAO:agoraExclusao, DATA_EXCLUSAO:agoraExclusao,
+        EXCLUIDO_POR:req.user.usuario||'MASTER', MOTIVO_EXCLUSAO:motivo, ALTERADO_POR:req.user.usuario||'MASTER'
+      }, ['ID_USUARIO','USUARIO','EMAIL']);
+    }
     await registrarAuditoria(req.user.usuario,'EXCLUIU_USUARIO',req.params.id,'USUARIOS',null,{nome:alvo.NOME,motivo});
     res.json({sucesso:true});
   }catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
@@ -7003,7 +7227,10 @@ app.post('/api/anexos', requerPerfil('MASTER','ANALISTA SAC'), async (req,res) =
     if(!arquivo?.dataBase64) return res.status(400).json({sucesso:false,erro:'Arquivo não informado.'});
     const item=await salvarAnexo({...arquivo,categoria},{tipoEntidade,idEntidade,usuario});
     res.json({sucesso:true,anexo:item});
-  } catch(e){ res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
+  } catch(e){
+    const status = e?.code === 'ERR_VALIDACAO_ARQUIVO' ? 400 : e?.code === 'ERR_INTEGRACAO_CONFIG' ? 503 : 500;
+    res.status(status).json({sucesso:false,erro:erroSeguro(e)});
+  }
 });
 
 // ===== DOCUMENTOS =====
@@ -7013,7 +7240,10 @@ app.post('/api/documentos/extrair', requerPerfil('MASTER','ANALISTA SAC','APROVA
     if(!arquivo?.dataBase64) return res.status(400).json({sucesso:false,erro:'Arquivo não informado.'});
     const dados=await documentService.extrairDadosDocumento(arquivo,tipoDocumento);
     res.json({sucesso:true,tipoDocumento,dados,validacaoObrigatoria:true});
-  } catch(e){ res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
+  } catch(e){
+    const status = e?.code === 'ERR_VALIDACAO_ARQUIVO' ? 400 : e?.code === 'ERR_INTEGRACAO_CONFIG' ? 503 : e?.code === 'ERR_JSON_EXTRACAO' ? 422 : 500;
+    res.status(status).json({sucesso:false,erro:erroSeguro(e)});
+  }
 });
 
 // ===== CIRCA DETERMINÍSTICO =====
@@ -7079,6 +7309,28 @@ app.patch('/api/manifestacoes/:id/circa-dados', requerPermissao('manifestacoes.e
 const ACIONAMENTOS_HEADERS = ['ID_ACIONAMENTO','ID_MANIFESTACAO','PROTOCOLO','TIPO','EMPRESA','SETOR_SOLICITANTE','SETOR_DESTINO','RESPONSAVEL','ASSUNTO','MOTIVO','TAREFA','PERGUNTAS','PRAZO','PRIORIDADE','EVIDENCIAS','OBSERVACOES','RESPOSTA','STATUS','CRIADO_EM','CRIADO_POR','ATUALIZADO_EM','ATUALIZADO_POR','IDEMPOTENCY_KEY'];
 const ACIONAMENTO_STATUSES = ['CRIADO','ENVIADO','PENDENTE_DE_ATRIBUICAO','AGUARDANDO_CIENCIA','EM_ANDAMENTO','AGUARDANDO_INFORMACAO','RESPONDIDO','EM_REVISAO','CONCLUIDO','CANCELADO'];
 const ACIONAMENTO_TYPES = ['NOTIFICACAO','SOLICITACAO_INFORMACAO','SOLICITACAO_APOIO','ENCAMINHAMENTO_TRATATIVA','ESCALONAMENTO'];
+const NOTIFICACOES_INTERNAS_HEADERS = ['ID_NOTIFICACAO','ID_MANIFESTACAO','ID_ACIONAMENTO','DESTINATARIO','CANAL','TIPO','TITULO','MENSAGEM','STATUS','CRIADO_EM','CRIADO_POR'];
+
+function empresasDoCadastro(row = {}) {
+  try { const parsed = JSON.parse(row.EMPRESAS_JSON || '[]'); if (Array.isArray(parsed)) return parsed; } catch (_) {}
+  return [row.EMPRESA || ''].filter(Boolean);
+}
+async function gestorCompetente({ setor, empresa }) {
+  const gerentes = await lerAba('GERENTES', 2000).catch(() => []);
+  const empresaNorm = empresaCanonica(empresa || '');
+  return gerentes.find(g => {
+    if (String(g.ATIVO || 'SIM').toUpperCase() !== 'SIM') return false;
+    const empresas = empresasDoCadastro(g).map(empresaCanonica);
+    return !empresas.length || empresas.includes(empresaNorm) || empresas.includes('MASTER');
+  }) || null;
+}
+async function registrarNotificacaoInterna({ manifestacaoId, acionamentoId, destinatario, tipo, titulo, mensagem, usuario }) {
+  if (!destinatario) return null;
+  await garantirAbaComCabecalhos('NOTIFICACOES_INTERNAS', NOTIFICACOES_INTERNAS_HEADERS);
+  const item = { ID_NOTIFICACAO:`NTF-${Date.now()}-${Math.random().toString(36).slice(2,7)}`, ID_MANIFESTACAO:manifestacaoId, ID_ACIONAMENTO:acionamentoId, DESTINATARIO:destinatario, CANAL:'INTERNO', TIPO:tipo, TITULO:titulo, MENSAGEM:mensagem, STATUS:'PENDENTE', CRIADO_EM:new Date().toISOString(), CRIADO_POR:usuario || 'sistema' };
+  await appendObjeto('NOTIFICACOES_INTERNAS', item);
+  return item;
+}
 
 async function circaManifestacao(id) {
   const rows = await lerAba('MANIFESTACOES', 5000).catch(() => []);
@@ -7106,6 +7358,14 @@ app.post('/api/manifestacoes/:id/acionamentos', requerPermissao('manifestacoes.e
     if (!ACIONAMENTO_TYPES.includes(tipo)) return res.status(400).json({ sucesso:false, erro:'Tipo de acionamento inválido.' });
     if (!body.setorDestino && tipo !== 'NOTIFICACAO') return res.status(400).json({ sucesso:false, erro:'Setor destinatário é obrigatório.' });
     if (tipo !== 'NOTIFICACAO' && !body.tarefa && !body.motivo) return res.status(400).json({ sucesso:false, erro:'Informe o que precisa ser feito ou o motivo.' });
+    // Escalonamento só existe quando há gestor cadastrado para a empresa. Nunca
+    // inventamos um destinatário nem fingimos que a notificação foi entregue.
+    const gestor = tipo === 'ESCALONAMENTO'
+      ? await gestorCompetente({ setor:body.setorDestino, empresa:m.EMPRESA_RECLAMADA })
+      : null;
+    if (tipo === 'ESCALONAMENTO' && !gestor) {
+      return res.status(422).json({ sucesso:false, codigo:'GESTOR_NAO_CADASTRADO', erro:'Não há gestor ativo cadastrado para esta empresa. Regularize o cadastro antes de escalar.' });
+    }
     if (body.responsavel) {
       const usuarios = await lerAba('USUARIOS', 5000).catch(() => []);
       const alvo = usuarios.find(u => String(u.USUARIO || u.EMAIL || u.LOGIN || '').toLowerCase() === String(body.responsavel).toLowerCase());
@@ -7119,7 +7379,7 @@ app.post('/api/manifestacoes/:id/acionamentos', requerPermissao('manifestacoes.e
       ID_ACIONAMENTO: await gerarProximoID('ACIONAMENTOS_INTERNOS','ACI','ID_ACIONAMENTO'),
       ID_MANIFESTACAO: m.ID_MANIFESTACAO || req.params.id, PROTOCOLO:m.PROTOCOLO || '', TIPO:tipo,
       EMPRESA:m.EMPRESA_RECLAMADA || body.empresa || '', SETOR_SOLICITANTE:body.setorSolicitante || req.user?.setor || 'SAC',
-      SETOR_DESTINO:body.setorDestino || '', RESPONSAVEL:body.responsavel || '', ASSUNTO:body.assunto || '', MOTIVO:body.motivo || '',
+      SETOR_DESTINO:body.setorDestino || '', RESPONSAVEL:body.responsavel || gestor?.USUARIO || gestor?.EMAIL || gestor?.NOME || '', ASSUNTO:body.assunto || '', MOTIVO:body.motivo || '',
       TAREFA:body.tarefa || '', PERGUNTAS:Array.isArray(body.perguntas) ? JSON.stringify(body.perguntas) : (body.perguntas || ''),
       PRAZO:tipo === 'NOTIFICACAO' ? '' : (body.prazo || ''), PRIORIDADE:body.prioridade || 'NORMAL',
       EVIDENCIAS:Array.isArray(body.evidencias) ? JSON.stringify(body.evidencias) : (body.evidencias || ''), OBSERVACOES:body.observacoes || '',
@@ -7129,7 +7389,9 @@ app.post('/api/manifestacoes/:id/acionamentos', requerPermissao('manifestacoes.e
     await appendObjeto('ACIONAMENTOS_INTERNOS', item);
     await registrarHistoricoManifestacao({ id:item.ID_MANIFESTACAO, protocolo:item.PROTOCOLO, acao:'ACIONAMENTO_CRIADO', descricao:`${tipo} para ${item.SETOR_DESTINO || 'destinatário informado'}`, usuario:req.user?.usuario || 'sistema', etapa:'CONDUCAO' });
     await registrarAuditoria(req.user?.usuario || 'sistema', 'CRIOU_ACIONAMENTO', item.ID_MANIFESTACAO, 'ACIONAMENTOS_INTERNOS', null, item);
-    res.status(201).json({ sucesso:true, item });
+    const destinatario = item.RESPONSAVEL || item.SETOR_DESTINO;
+    const notificacao = await registrarNotificacaoInterna({ manifestacaoId:item.ID_MANIFESTACAO, acionamentoId:item.ID_ACIONAMENTO, destinatario, tipo, titulo:`${tipo.replace(/_/g,' ')} — ${item.PROTOCOLO || item.ID_MANIFESTACAO}`, mensagem:item.MOTIVO || item.TAREFA, usuario:req.user?.usuario });
+    res.status(201).json({ sucesso:true, item, notificacao });
   } catch (e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e,'acionamentos') }); }
 });
 
@@ -8884,7 +9146,7 @@ app.post('/api/biblioteca/importar-ficha', middlewareEscopoEmpresa(), requerPerf
     const dt = _bibData(campos.data_reclamacao);
     if (!dt) return res.status(400).json({ sucesso: false, erro: 'Informe a data da reclamação.' });
     if (dt.iso > new Date().toISOString().slice(0, 10)) return res.status(400).json({ sucesso: false, erro: 'A data da reclamação não pode ser futura.' });
-    if (req._empresaScope && empresaCanonica(req._empresaScope) !== empresaCanonica(empresa)) {
+    if (req._empresaScope && !pertenceEmpresa(req._empresaScope, empresa)) {
       return res.status(403).json({ sucesso: false, erro: 'Sem permissão para importar fichas desta empresa.' });
     }
     const tiposOk = ['Reclamação', 'Sugestão', 'Solicitação', 'Elogio'];
@@ -9228,7 +9490,10 @@ app.post('/api/matriz-conhecimento/:id/itens', async (req, res) => {
     if (!await _mcVerificarEmpresa(req, res, req.params.id)) return;
     const item = await mcService.adicionarItem(req.params.id, req.body, req.user.usuario);
     res.json({ sucesso: true, id: item.ID });
-  } catch (e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e,'mc-item-add') }); }
+  } catch (e) {
+    const status = e?.code === 'ERR_DUPLICATE_KNOWLEDGE' ? 409 : 500;
+    res.status(status).json({ sucesso: false, erro: erroSeguro(e,'mc-item-add') });
+  }
 });
 
 // ITENS — remover
@@ -9777,7 +10042,7 @@ app.get('/api/admin/usuarios', requerPerfil('MASTER'), async (req, res) => {
 app.get('/api/admin/usuarios/:id', requerPerfil('MASTER'), async (req, res) => {
   try {
     const usuarios = await carregarUsuarios();
-    const u = usuarios.find(u2=>u2.ID_USUARIO===req.params.id||u2.USUARIO===req.params.id);
+    const u = encontrarUsuarioPorIdentificador(usuarios, req.params.id);
     if (!u) return res.status(404).json({sucesso:false,erro:'Usuário não encontrado.'});
     const perms = await carregarPermissoesUsuario(u.EMAIL||u.USUARIO||u.ID_USUARIO);
     res.json({sucesso:true, usuario:{
@@ -9794,7 +10059,7 @@ app.patch('/api/admin/usuarios/:id/permissoes', requerPerfil('MASTER'), async (r
   try {
     const { perfil, empresa, setor, email, modulosNiveis, competencias } = req.body||{};
     const usuarios = await carregarUsuarios();
-    const u = usuarios.find(u2=>u2.ID_USUARIO===req.params.id||u2.USUARIO===req.params.id);
+    const u = encontrarUsuarioPorIdentificador(usuarios, req.params.id);
     if (!u) return res.status(404).json({sucesso:false,erro:'Usuário não encontrado.'});
 
     const anterior = { perfil:u.PERFIL, empresa:u.EMPRESA };
@@ -9818,9 +10083,9 @@ app.patch('/api/admin/usuarios/:id/permissoes', requerPerfil('MASTER'), async (r
       updates.COMPETENCIAS = Array.isArray(competencias) ? competencias.join(',') : (competencias||'');
     }
 
-    // Persiste alterações na planilha USUARIOS
-    const chaveId = u.ID_USUARIO || u.USUARIO || u.EMAIL;
-    await atualizarPorID('USUARIOS', chaveId, updates, ['ID_USUARIO','USUARIO','EMAIL']).catch(e => console.warn('[PERM] Sheets update falhou:', e.message));
+    // Persiste alterações na fonte administrativa e, quando necessário, cria
+    // o espelho de usuários que vieram apenas do PostgreSQL.
+    await persistirDadosUsuario(u, updates, req);
 
     // Atualiza também a aba PERMISSOES_USUARIO (fonte lida por carregarPermissoesUsuario)
     if (modulosNiveis !== undefined || competencias !== undefined) {
@@ -9877,13 +10142,9 @@ app.patch('/api/admin/usuarios/:id/permissoes', requerPerfil('MASTER'), async (r
 app.post('/api/admin/usuarios/:id/ativar', requerPerfil('MASTER'), async (req, res) => {
   try {
     const usuarios = await carregarUsuarios();
-    const u = usuarios.find(u2=>u2.ID_USUARIO===req.params.id||u2.USUARIO===req.params.id);
+    const u = encontrarUsuarioPorIdentificador(usuarios, req.params.id);
     if (!u) return res.status(404).json({sucesso:false,erro:'Usuário não encontrado.'});
-    if (u._pgId && usuarioRepo) await usuarioRepo.update(u._pgId, { ativo: true }).catch(()=>{});
-    await atualizarPorID('USUARIOS', u.ID_USUARIO||u.USUARIO||u.EMAIL, { STATUS:'ATIVO', DATA_ULTIMA_ALTERACAO:new Date().toISOString(), ALTERADO_POR:req.user.usuario||'MASTER' }, ['ID_USUARIO','USUARIO','EMAIL']).catch(e => console.warn('[ATIVAR] Sheets update falhou:', e.message));
-    invalidarCacheAba('USUARIOS');
-    invalidarCachePermissoes(u.EMAIL||u.USUARIO||u.ID_USUARIO);
-    _statusCache.delete(normalizarTexto(u.USUARIO||u.EMAIL||u.ID_USUARIO));
+    await persistirStatusUsuario(u, 'ATIVO', req);
     await registrarAuditoriaAcesso(u.EMAIL||u.USUARIO, 'USUARIO_ATIVADO', '', u.EMPRESA, u.STATUS||'INATIVO', 'ATIVO', req.user.usuario||'MASTER');
     res.json({sucesso:true, mensagem:'Usuário ativado.'});
   } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
@@ -9892,14 +10153,10 @@ app.post('/api/admin/usuarios/:id/ativar', requerPerfil('MASTER'), async (req, r
 app.post('/api/admin/usuarios/:id/desativar', requerPerfil('MASTER'), async (req, res) => {
   try {
     const usuarios = await carregarUsuarios();
-    const u = usuarios.find(u2=>u2.ID_USUARIO===req.params.id||u2.USUARIO===req.params.id);
+    const u = encontrarUsuarioPorIdentificador(usuarios, req.params.id);
     if (!u) return res.status(404).json({sucesso:false,erro:'Usuário não encontrado.'});
     if (normalizarPerfil(u.PERFIL)==='MASTER' && u.ID_USUARIO===req.user.id) return res.status(400).json({sucesso:false,erro:'Não pode desativar a si mesmo.'});
-    if (u._pgId && usuarioRepo) await usuarioRepo.update(u._pgId, { ativo: false }).catch(()=>{});
-    await atualizarPorID('USUARIOS', u.ID_USUARIO||u.USUARIO||u.EMAIL, { STATUS:'INATIVO', DATA_ULTIMA_ALTERACAO:new Date().toISOString(), ALTERADO_POR:req.user.usuario||'MASTER' }, ['ID_USUARIO','USUARIO','EMAIL']).catch(e => console.warn('[DESATIVAR] Sheets update falhou:', e.message));
-    invalidarCacheAba('USUARIOS');
-    invalidarCachePermissoes(u.EMAIL||u.USUARIO||u.ID_USUARIO);
-    _statusCache.delete(normalizarTexto(u.USUARIO||u.EMAIL||u.ID_USUARIO));
+    await persistirStatusUsuario(u, 'INATIVO', req);
     await registrarAuditoriaAcesso(u.EMAIL||u.USUARIO, 'USUARIO_DESATIVADO', '', u.EMPRESA, u.STATUS||'ATIVO', 'INATIVO', req.user.usuario||'MASTER');
     res.json({sucesso:true, mensagem:'Usuário desativado. Acesso revogado imediatamente.'});
   } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }

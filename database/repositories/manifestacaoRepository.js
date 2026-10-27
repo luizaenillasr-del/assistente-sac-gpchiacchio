@@ -36,7 +36,8 @@ const manifestacaoRepository = {
 
   async findAll({ empresaId, setorId, status, clienteId, skip = 0, take = 100 } = {}) {
     const where = {};
-    if (empresaId) where.empresaId = Number(empresaId);
+    if (Array.isArray(empresaId)) where.empresaId = { in: empresaId.map(Number).filter(Number.isFinite) };
+    else if (empresaId) where.empresaId = Number(empresaId);
     if (setorId) where.setorId = Number(setorId);
     if (status) where.status = status;
     if (clienteId) where.clienteId = Number(clienteId);
@@ -58,7 +59,8 @@ const manifestacaoRepository = {
   // sem baixar todas as linhas para somar no cliente.
   async aggregateDashboard({ empresaId } = {}) {
     const where = {};
-    if (empresaId && Number(empresaId) > 0) where.empresaId = Number(empresaId);
+    if (Array.isArray(empresaId)) where.empresaId = { in: empresaId.map(Number).filter(Number.isFinite) };
+    else if (empresaId && Number(empresaId) > 0) where.empresaId = Number(empresaId);
     const [total, porStatus, porTipo, porEmpresa, encerradas] = await Promise.all([
       prisma.manifestacao.count({ where }),
       prisma.manifestacao.groupBy({ by: ['status'], where, _count: { _all: true } }),

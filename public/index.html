@@ -1454,6 +1454,7 @@
           <div class="form-group">
             <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">Empresas autorizadas</label>
             <div id="usu-empresas-checks" style="display:flex;flex-direction:column;gap:6px;border:1px solid #E4E4E4;border-radius:8px;padding:10px;max-height:160px;overflow-y:auto"></div>
+            <div style="margin-top:6px;font-size:11px;color:#707070">Ao selecionar a empresa e salvar, o acesso do usuário é liberado automaticamente para ela.</div>
           </div>
           <div class="form-group">
             <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">Setores autorizados</label>
@@ -3108,6 +3109,7 @@
         if(btnF) btnF.style.display = window.nmEtapa === NM_TOTAL ? 'block' : 'none';
         var body = document.getElementById('nm-steps-body');
         if(body) body.scrollTop = 0;
+        if(window.nmEtapa === 5 && typeof nmPreencherValidacao === 'function') nmPreencherValidacao();
         if(window.nmEtapa === 7) nmMontarResumo();
         if(window.nmEtapa === 6) nmMontarDevolutiva();
       }
@@ -3125,6 +3127,7 @@
           {l:'Produto', v: v('nm-produto')},
           {l:'Lote', v: v('nm-lote')},
           {l:'Procedência', v: v('nm-procedente') || 'A avaliar'},
+          {l:'Causa provável', v: v('nm-causa-raiz') || (_nmAnaliseAtual?.causaProvavel || 'A confirmar')},
           {l:'Caminho', v: v('nm-caminho-tratativa') || 'Não definido'},
         ];
         grid.innerHTML = campos.map(function(c){
@@ -5271,6 +5274,7 @@
           </select>
           <button type="button" id="cen-limpar" class="mc-clear" style="display:none;height:30px;border:1px solid #E0E0E0;border-radius:7px;padding:0 10px;font-size:11.5px;background:#fff" onclick="cenLimparFiltros()">× Limpar</button>
           <span id="cen-list-info" style="font-size:11px;color:#A0A0A0;margin-left:auto;white-space:nowrap"></span>
+          <button type="button" id="cen-btn-excluir-selecionadas" class="mc-btn mc-btn-sm" style="display:none;border-color:#C70602;color:#C70602" onclick="cenExcluirSelecionadas()">Excluir selecionadas</button>
         </div>
 
         <!-- 3-panel body -->
@@ -5645,6 +5649,7 @@
             <span id="tf-status-badge" class="mc-st" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:99px;background:#F0F0F0;color:#545454">—</span>
             <span id="tf-sla-badge" style="display:none;font-size:11px;font-weight:700;padding:3px 9px;border-radius:99px;background:#FDECEC;color:#A80502"></span>
             <div style="margin-left:auto">
+              <button id="tf-btn-excluir" onclick="cenTrativasExcluirAtual()" style="display:none;margin-right:10px;border:1px solid #C70602;background:#fff;color:#C70602;cursor:pointer;font-size:12px;font-weight:700;padding:6px 10px;border-radius:7px">🗑 Excluir</button>
               <button onclick="cenTrativasFichaAbrirModal()" style="display:inline-flex;align-items:center;gap:4px;border:0;background:none;cursor:pointer;font-size:12px;color:#A80502;font-weight:600">Ficha completa ↗</button>
             </div>
           </div>
@@ -10488,12 +10493,15 @@ function afDesmarcarTodas() {
   const chkAll = _afEl('bib-sel-all'); if (chkAll) chkAll.checked = false;
   _afAtualizarBarraSel();
 }
-async function _afExecExcluirIds(ids) {
+async function _afExecExcluirIds(ids, motivo) {
+  if (!motivo || !motivo.trim()) { motivo = window.prompt('Motivo obrigatório para excluir as fichas selecionadas:'); }
+  if (!motivo || !motivo.trim()) return;
   const tok = _afTok(); if (!tok) return;
   let ok = 0, erros = 0;
   for (const id of ids) {
     try {
-      const r = await fetch(API + '/api/manifestacoes/' + encodeURIComponent(id), { method: 'DELETE', headers: { Authorization: 'Bearer ' + tok } });
+      const proto = _bibFichasAcum.find(f => f.ID_MANIFESTACAO === id)?.PROTOCOLO || id;
+      const r = await fetch(API + '/api/manifestacoes/' + encodeURIComponent(id), { method: 'DELETE', headers: { 'Content-Type':'application/json', Authorization: 'Bearer ' + tok }, body: JSON.stringify({ motivo:motivo.trim(), protocoloConfirmacao:proto }) });
       const d = await r.json().catch(() => ({}));
       if (d.sucesso) ok++; else erros++;
     } catch { erros++; }
@@ -10753,10 +10761,11 @@ async function afExcluirFichaAtual() {
   const f = _afFichaAtual?.ficha; if (!f) return;
   const id = f.ID_MANIFESTACAO; if (!id) return;
   const proto = f.PROTOCOLO || id;
-  if (!confirm(`Mover a ficha ${proto} para Excluídos?\n\nPoderá ser restaurada posteriormente.`)) return;
+  const motivo = window.prompt(`Motivo obrigatório para excluir a ficha ${proto}:`);
+  if (!motivo || !motivo.trim()) return;
   const tok = _afTok(); if (!tok) return;
   try {
-    const r = await fetch(API + '/api/manifestacoes/' + encodeURIComponent(id), { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + tok } });
+    const r = await fetch(API + '/api/manifestacoes/' + encodeURIComponent(id), { method: 'DELETE', headers: { 'Content-Type':'application/json', 'Authorization': 'Bearer ' + tok }, body: JSON.stringify({ motivo:motivo.trim(), protocoloConfirmacao:proto }) });
     const d = await r.json();
     if (!d.sucesso) throw new Error(d.erro || 'Erro ao excluir.');
     afToast('Ficha ' + proto + ' movida para Excluídos.');
@@ -11738,6 +11747,41 @@ window.nmCarregarAnaliseDeterministica = async function nmCarregarAnaliseDetermi
   return null;
 }
 
+function nmAplicarSugestoes(analise) {
+  const causa = analise?.causaProvavel || analise?.problemaIdentificado || analise?.tratativaEstruturada?.diagnostico?.causa || '';
+  const setores = analise?.setores || analise?.setoresSugeridos || [];
+  const setor = Array.isArray(setores) ? setores[0] : setores;
+  [['nm-causa-raiz', causa], ['nm-setor-acionado', setor]].forEach(([id, valor]) => {
+    const campo = document.getElementById(id);
+    if (!campo || campo.value || !String(valor || '').trim()) return;
+    const opcao = Array.from(campo.options || []).find(o => o.value.toLowerCase() === String(valor).toLowerCase());
+    campo.value = opcao ? opcao.value : String(valor);
+    campo.style.borderColor = '#D97706';
+    campo.dataset.sugestaoIa = 'true';
+  });
+}
+
+window.gerarDevolutiva = function gerarDevolutiva() {
+  const campo = document.getElementById('nm-devolutiva');
+  const sugestao = _nmAnaliseAtual?.devolutivaSugerida || _nmAnaliseAtual?.devolutivaEstruturada?.textoGerado || '';
+  if (!campo) return;
+  if (!sugestao) { alert('Faça a análise antes de gerar uma sugestão de devolutiva.'); return; }
+  if (campo.value.trim() && !window.confirm('Substituir o texto atual pela sugestão da análise?')) return;
+  campo.value = sugestao;
+  campo.focus();
+};
+
+function nmPreencherValidacao() {
+  const campo = document.getElementById('nm-validacao-resultado');
+  if (!campo || campo.value.trim()) return;
+  const partes = [
+    document.getElementById('nm-investigacao-resultado')?.value,
+    document.getElementById('nm-causa-raiz')?.value || _nmAnaliseAtual?.causaProvavel,
+    document.getElementById('nm-acao-executada')?.value,
+  ].map(v => String(v || '').trim()).filter(Boolean);
+  if (partes.length) campo.value = partes.join('\n');
+}
+
 async function nmCriarAcionamento(tipo='ENCAMINHAMENTO_TRATATIVA') {
   if(!_nmCardId){ if(!(await salvarRascunho({silent:true}))) return; }
   const setor=document.getElementById('nm-setor-acionado')?.value||'';
@@ -11760,6 +11804,15 @@ async function executarAnaliseIA() {
   const empresaRec2 = document.getElementById('nm-empresa')?.value || '';
   const produto = document.getElementById('nm-produto')?.value || '';
   const lote = document.getElementById('nm-lote')?.value || '';
+  const nfe = document.getElementById('nm-nfe')?.value || '';
+  const canal = document.getElementById('nm-origem')?.value || '';
+  const prioridade = document.getElementById('nm-prioridade')?.value || '';
+  const dataRegistro = document.getElementById('nm-data')?.value || '';
+  const cnpj = document.getElementById('nm-cnpj')?.value || '';
+  const telefone = document.getElementById('nm-tel')?.value || '';
+  const email = document.getElementById('nm-email')?.value || '';
+  const quantidade = document.getElementById('nm-qtd')?.value || '';
+  const nome = document.getElementById('nm-nome')?.value || '';
 
   // Mostrar painel
   const painel = document.getElementById('painel-analise');
@@ -13251,7 +13304,8 @@ function abrirDossie(item) {
 
   // Botão excluir: visível apenas para MASTER
   const _btnExcluir = document.getElementById('modal-btn-excluir');
-  if (_btnExcluir) _btnExcluir.style.display = (typeof role === 'function' && role() === 'MASTER' && isMan) ? '' : 'none';
+  const _perfilAtual = typeof role === 'function' ? String(role() || '').trim().toUpperCase() : '';
+  if (_btnExcluir) _btnExcluir.style.display = (_perfilAtual === 'MASTER' && isMan) ? '' : 'none';
 
   document.getElementById('modal-dossie').style.display = 'flex';
   switchModalTab('ciclo', document.querySelector('#modal-tabs .tab-btn'));
@@ -16112,7 +16166,7 @@ document.addEventListener('visibilitychange', () => {
   // ── Exclusão com modal de confirmação ──────────────────────────────
   var _exclPendente = null;
   function _exclConfAbrir(id, protocolo, cb) {
-    _exclPendente = { id, cb };
+    _exclPendente = { id, protocolo, cb };
     const msg = document.getElementById('excl-modal-msg');
     if (msg) msg.innerHTML = `A manifestação <strong>${protocolo || id}</strong> será movida para a aba <strong>Excluídos</strong> e poderá ser restaurada a qualquer momento.`;
     const m = document.getElementById('modal-confirmar-exclusao');
@@ -16125,23 +16179,25 @@ document.addEventListener('visibilitychange', () => {
   }
   async function _exclConfConfirmar() {
     if (!_exclPendente) return;
-    const { id, cb } = _exclPendente;
+    const { id, protocolo, cb } = _exclPendente;
+    const motivo = window.prompt(`Motivo obrigatório para excluir ${protocolo || id}:`);
+    if (!motivo || !motivo.trim()) return;
     _exclConfFechar();
     const btn = document.getElementById('excl-modal-btn-conf');
     if (btn) { btn.disabled = true; btn.textContent = 'Excluindo...'; }
     try {
       const tok = sessionStorage.getItem('sac-token');
-      const r = await fetch(`/api/manifestacoes/${encodeURIComponent(id)}`, { method: 'DELETE', headers: { Authorization: 'Bearer ' + tok } });
+      const r = await fetch(`/api/manifestacoes/${encodeURIComponent(id)}`, { method: 'DELETE', headers: { 'Content-Type':'application/json', Authorization: 'Bearer ' + tok }, body: JSON.stringify({ motivo: motivo.trim(), protocoloConfirmacao: protocolo || id }) });
       const j = await r.json().catch(() => ({}));
       if (!r.ok || j.sucesso === false) throw new Error(j.erro || 'Erro ao excluir.');
-      // Limpa caches locais para refletir imediatamente
       const filtrarOut = m => m.ID_MANIFESTACAO !== id;
       if(window._dashData?.mans) window._dashData.mans = window._dashData.mans.filter(filtrarOut);
       if(window.bancoData) window.bancoData = window.bancoData.filter(filtrarOut);
       if(window._bancoDataFull) window._bancoDataFull = window._bancoDataFull.filter(filtrarOut);
       if(window._cenDataFull) window._cenDataFull = window._cenDataFull.filter(filtrarOut);
+      fecharModal();
+      if (typeof _toast === 'function') _toast(`Manifestação ${protocolo || id} movida para Excluídos.`);
       if(typeof cb === 'function') cb();
-      if (typeof _toast === 'function') _toast(`Manifestação ${id} movida para Excluídos.`);
     } catch(e) {
       alert('Erro ao excluir: ' + e.message);
     }
@@ -20383,11 +20439,13 @@ async function runSimilares() {
   if (countTxt) countTxt.textContent = '';
   try {
     const tok = sessionStorage.getItem('sac-token');
-    const d = await fetch('/api/analise/similares', {
+    const response = await fetch('/api/analise/similares', {
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},
-      body:JSON.stringify({ DESCRICAO: q, limite: 50 })
-    }).then(r=>r.json()).catch(()=>({itens:[]}));
+      body:JSON.stringify({ DESCRICAO: q, EMPRESA_RECLAMADA: empresa, SETOR: setor, limite: 50 })
+    });
+    const d = await response.json().catch(()=>({}));
+    if (!response.ok || d.sucesso === false) throw new Error(d.erro || `Falha na consulta (${response.status}).`);
     let itens = d.itens || d.similares || [];
     // filtros locais
     if (empresa) itens = itens.filter(c => (c.empresa||'').toLowerCase().includes(empresa.toLowerCase()));
@@ -20427,7 +20485,7 @@ async function runSimilares() {
       </div>`;
     }).join('');
   } catch (e) {
-    if (results) results.innerHTML = '<div style="text-align:center;padding:32px;color:#707070;font-size:13px">Erro ao buscar similares.</div>';
+    if (results) results.innerHTML = `<div style="text-align:center;padding:32px;color:#A80502;font-size:13px">Erro ao buscar similares: ${String(e.message||'falha de consulta').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}</div>`;
     console.error('runSimilares', e);
   }
 }
@@ -24506,7 +24564,11 @@ async function mudarStatusMC(id, novoStatus) {
     if(br){let y=+br[3];if(y<100)y+=2000;const d=new Date(y,+br[2]-1,+br[1],+(br[4]||0),+(br[5]||0));return isNaN(d)?null:d;}
     const d=new Date(str);return isNaN(d)?null:d;
   }
-  function fmtdt(v){const d=toDate(v);return d?d.toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}):(v?String(v):'—')}
+  function fmtdt(v){
+    // Datas de SLA são calculadas em milissegundos. Não exibir o timestamp bruto.
+    const d=typeof v==='number'&&Number.isFinite(v)?new Date(v):toDate(v);
+    return d&&!isNaN(d)?d.toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}):(v?'Data não informada':'—');
+  }
   async function api(url,opt={}){
     try{
       const tok=sessionStorage.getItem('sac-token')||s()?.token||'';
@@ -24547,7 +24609,7 @@ async function mudarStatusMC(id, novoStatus) {
     let prazoMs=null;
     const prazoStr=pick(m,['PRAZO_RESPOSTA','PRAZO']);
     if(prazoStr){const d=toDate(prazoStr);if(d)prazoMs=d.getTime();}
-    else{
+    if(prazoMs===null){
       const sla=parseFloat(String(m.SLA_HORAS==null?'':m.SLA_HORAS).replace(',','.'));
       const a=toDate(abertura);
       if(sla>0&&a) prazoMs=a.getTime()+sla*3600000;
@@ -24948,6 +25010,8 @@ async function mudarStatusMC(id, novoStatus) {
     const sl=slaTxt(n);
     const slb=$('tf-sla-badge');
     if(slb){slb.textContent=sl[0];slb.style.display=sl[0]?'':'none';slb.className='mc-sla mc-sla-'+sl[1];}
+    const excluirBtn=$('tf-btn-excluir');
+    if(excluirBtn) excluirBtn.style.display=(String(window.role?.()||'').trim().toUpperCase()==='MASTER' && !!(raw.ID_MANIFESTACAO||raw.PROTOCOLO))?'inline-block':'none';
     // Seção A — campos
     const camposEl=$('tf-campos');
     if(camposEl){
@@ -25000,6 +25064,25 @@ async function mudarStatusMC(id, novoStatus) {
       histEl.innerHTML=evs.length?evs.map(ev=>`<div class="mc-hist-rail"><span class="mc-hist-dot mc-hc-${ev.c}"></span><span class="mc-hist-line"></span></div><div class="mc-hist-body"><div class="mc-hist-at">${esc(fmtdt(ev.at))}</div><div class="mc-hist-t">${esc(ev.t)}</div></div>`).join(''):'<span style="color:#999;font-size:12px">Sem registros no histórico.</span>';
     }
   }
+
+  window.cenTrativasExcluirAtual=async function(){
+    const raw=_cenRawAtual||{};
+    const id=raw.ID_MANIFESTACAO||raw.PROTOCOLO;
+    const protocolo=String(raw.PROTOCOLO||raw.ID_MANIFESTACAO||id||'').trim();
+    if(!id||!protocolo) return toast('Manifestação sem protocolo válido.');
+    const btn=$('tf-btn-excluir'); if(btn){btn.disabled=true;btn.textContent='Excluindo…';}
+    try{
+      const d=await Promise.race([
+        api('/api/manifestacoes/'+encodeURIComponent(id),{method:'DELETE',body:{motivo:'Exclusão solicitada pelo MASTER.',protocoloConfirmacao:protocolo}}),
+        new Promise((_,rej)=>setTimeout(()=>rej(new Error('A exclusão demorou mais que o esperado. Tente atualizar a tela.')),15000))
+      ]);
+      if(!d.sucesso) throw new Error(d.erro||'Não foi possível excluir.');
+      toast('Manifestação excluída logicamente.');
+      await loadCentralSAC();
+      cenTrativasFichaVoltar();
+      cenTrativasInit(true);
+    }catch(e){toast(e.message||'Erro ao excluir.');if(btn){btn.disabled=false;btn.textContent='🗑 Excluir';}}
+  };
 
   // ── Ações da ficha de tratativa ───────────────────────────────────────────
   window.cenTratativasFichaSalvarTratativa = async function(){
@@ -25288,9 +25371,9 @@ async function mudarStatusMC(id, novoStatus) {
       const pr=PRIO_CFG[m.pri]||PRIO_CFG.none;
       const late=isLate(m)&&m.st!=='enc';
       const dot=ST_DOT[m.st]||'#A8A8A8';
-      return `<button type="button" class="mc-item${_cenAtual===m.id?' sel':''}" data-id="${esc(m.id)}" onclick="cenSelecionarMan(this.dataset.id)" style="display:block;width:100%;border:1.5px solid ${_cenAtual===m.id?'#C70602':'#F0F0F0'};background:${_cenAtual===m.id?'#FFFAFA':'#fff'};border-radius:9px;padding:10px 11px;cursor:pointer;text-align:left;margin-bottom:5px;animation:none">
+      return `<div class="mc-item${_cenAtual===m.id?' sel':''}" data-id="${esc(m.id)}" style="display:block;width:100%;border:1.5px solid ${_cenAtual===m.id?'#C70602':'#F0F0F0'};background:${_cenAtual===m.id?'#FFFAFA':'#fff'};border-radius:9px;padding:10px 11px;margin-bottom:5px;animation:none;cursor:pointer" onclick="cenSelecionarMan(this.dataset.id)">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:5px;margin-bottom:4px">
-          <span style="font-size:11px;font-weight:800;color:${_cenAtual===m.id?'#C70602':'#1F1F1F'}">${esc(m.id)}</span>
+          <span style="display:flex;align-items:center;gap:6px"><input type="checkbox" class="cen-sel-man" data-id="${esc(m.id)}" onclick="event.stopPropagation();cenAtualizarSelecao()" style="accent-color:#C70602;width:14px;height:14px"><span style="font-size:11px;font-weight:800;color:${_cenAtual===m.id?'#C70602':'#1F1F1F'}">${esc(m.id)}</span></span>
           <div style="display:flex;gap:3px;flex-wrap:wrap;justify-content:flex-end;flex:none">
             <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:${pr.bg};color:${pr.fg}">${esc(PRI_LBL[m.pri]||'—')}</span>
             ${late?'<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#FDECEC;color:#A80502">Atrasada</span>':''}
@@ -25306,9 +25389,31 @@ async function mudarStatusMC(id, novoStatus) {
           </div>
           <span style="font-size:9.5px;color:#B0B0B0">${esc(m.emp||'')} · ${esc((pick(m.raw||{},['DATA_ABERTURA','DATA_REGISTRO','DATA_MANIFESTACAO'])||'').slice(0,10))}</span>
         </div>
-      </button>`;
+      </div>`;
     }).join('');
+    cenAtualizarSelecao();
   }
+
+  window.cenAtualizarSelecao=function(){
+    const b=$('cen-btn-excluir-selecionadas');
+    const n=document.querySelectorAll('.cen-sel-man:checked').length;
+    if(b){b.style.display=n?'inline-flex':'none';b.textContent=n?'Excluir selecionadas ('+n+')':'Excluir selecionadas';}
+  };
+  window.cenExcluirSelecionadas=async function(){
+    const ids=[...document.querySelectorAll('.cen-sel-man:checked')].map(e=>e.dataset.id).filter(Boolean);
+    if(!ids.length)return;
+    const b=$('cen-btn-excluir-selecionadas'); if(b){b.disabled=true;b.textContent='Excluindo…';}
+    let ok=0, falhas=0;
+    try {
+      const d=await Promise.race([api('/api/manifestacoes/excluir-lote',{method:'POST',body:{ids}}),new Promise((_,rej)=>setTimeout(()=>rej(new Error('A exclusão demorou mais que o esperado.')),30000))]);
+      if(!d.sucesso) throw new Error(d.erro||'Falha ao excluir');
+      ok=Number(d.excluidas||0); falhas=Number(d.falhas||0);
+    } catch(e) { falhas=ids.length; toast(e.message||'Erro ao excluir.'); }
+    if(b){b.disabled=false;}
+    if (ok || !falhas) toast(falhas?`${ok} excluída(s). Falhas: ${falhas}`:`${ok} manifestação(ões) excluída(s).`);
+    await loadCentralSAC();
+    if(typeof cenTrativasInit==='function') cenTrativasInit(true);
+  };
 
   // ── filtros ───────────────────────────────────────────────────────────────
   window.filtrarFilaCentral = function(){renderFilaGrupos();};
@@ -25451,7 +25556,7 @@ async function mudarStatusMC(id, novoStatus) {
       if(late&&n.setores.length){
         t='Cobrar resposta de '+n.setores.join(', ');
         d='Prazo vencido em '+fmtdt(n.prazoMs)+'.'+(pick(n.raw,['RESPONSAVEL_SETOR','RESPONSAVEL'])?' Responsável: '+pick(n.raw,['RESPONSAVEL_SETOR','RESPONSAVEL'])+'.':'');
-        acts=[disabledAct('Cobrar setor',WHY_NOENDPOINT,true),disabledAct('Escalar ao gestor',WHY_NOENDPOINT,false)];
+        acts=[{l:'Cobrar setor',p:true,fn:cenCobrarSetor},{l:'Escalar ao gestor',p:false,fn:cenEscalarGestor}];
       } else {
         t='Acompanhar a tratativa dos setores';
         d=n.setores.length?'Setores acionados com prazo em andamento.':'Nenhum setor acionado ainda. Registre a tratativa em "Mais ações".';
@@ -25931,9 +26036,27 @@ async function mudarStatusMC(id, novoStatus) {
   // Fechar com Escape
   document.addEventListener('keydown',function(e){if(e.key==='Escape')cenFecharFicha();});
 
-  // Cobrar setor / Escalar ao gestor: não existe endpoint no sistema — mantidos como no-op informativo
-  window.cenCobrarSetor = function(){toast(WHY_NOENDPOINT);};
-  window.cenEscalarGestor = function(){toast(WHY_NOENDPOINT);};
+  async function criarAcionamentoCentral(tipo, titulo) {
+    const id = _cenAtual;
+    if (!id) return;
+    const setor = window.prompt(`${titulo}: informe o setor destinatário`);
+    if (!setor || !setor.trim()) return;
+    const motivo = window.prompt(`${titulo}: informe o motivo`);
+    if (!motivo || !motivo.trim()) return;
+    const r = await _apiFetch(`/api/manifestacoes/${encodeURIComponent(id)}/acionamentos`, 20000, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ tipo, setorDestino:setor.trim(), motivo:motivo.trim(), tarefa:motivo.trim(), prioridade:'ALTA', idempotencyKey:`CENTRAL-${id}-${tipo}-${setor.trim()}-${motivo.trim()}` })
+    });
+    if (!r?.sucesso) throw new Error(r?.erro || 'Não foi possível registrar a ação.');
+    toast(`${titulo} registrado e persistido.`);
+    cenCarregarAcionamentos(id).catch(()=>{});
+    const d = await _apiFetch(`/api/manifestacoes/${encodeURIComponent(id)}`, 15000);
+    if (d?.sucesso) renderDetalhe(Object.assign({}, _cenRawAtual||{}, d.manifestacao||d.item||{}));
+    // Recarrega fila e indicadores somente após a confirmação do backend.
+    if (typeof loadCentralSAC === 'function') await loadCentralSAC();
+  }
+  window.cenCobrarSetor = function(){ criarAcionamentoCentral('SOLICITACAO_INFORMACAO','Cobrar setor').catch(e=>toast(e.message||'Falha ao cobrar setor.')); };
+  window.cenEscalarGestor = function(){ criarAcionamentoCentral('ESCALONAMENTO','Escalar ao gestor').catch(e=>toast(e.message||'Falha ao escalar ao gestor.')); };
 
   window.cenTab = function(tab, btn){
     document.querySelectorAll('.cen-tabpanel').forEach(p=>p.classList.remove('active'));
@@ -28216,6 +28339,7 @@ function updateTopbarUser(user) {
   let _usuEditando = null;
   let _usuGranted = new Set();
   let _usuBlocked = new Set();
+  let _usuPermissoesOriginais = { granted: '[]', blocked: '[]' };
 
   function _permDefault(perfil, chave) {
     const p = (perfil||'').toUpperCase();
@@ -28369,7 +28493,7 @@ function updateTopbarUser(user) {
     if (adminActions) adminActions.style.display = u ? 'flex' : 'none';
     if (statusButton && u) {
       const currentStatus = String(u.STATUS||u.status||'ATIVO').toUpperCase();
-      const action = currentStatus === 'INATIVO' ? 'ativar' : currentStatus === 'BLOQUEADO' ? 'desbloquear' : 'desativar';
+      const action = currentStatus === 'ATIVO' ? 'desativar' : currentStatus === 'BLOQUEADO' ? 'desbloquear' : 'ativar';
       statusButton.textContent = action === 'ativar' ? 'Ativar usuário' : action === 'desbloquear' ? 'Desbloquear usuário' : 'Inativar usuário';
       statusButton.dataset.action = action;
     }
@@ -28381,6 +28505,10 @@ function updateTopbarUser(user) {
     }
     _usuGranted = new Set(Array.isArray(grantedArr) ? grantedArr : []);
     _usuBlocked = new Set(Array.isArray(blockedArr) ? blockedArr : []);
+    _usuPermissoesOriginais = {
+      granted: JSON.stringify(Array.from(_usuGranted).sort()),
+      blocked: JSON.stringify(Array.from(_usuBlocked).sort()),
+    };
 
     document.getElementById('modal-usu-titulo').textContent = u ? ('Editar — ' + (u.NOME||u.nome||u.USUARIO||u.usuario)) : 'Novo Usuário';
     document.getElementById('usu-nome').value = u&&(u.NOME||u.nome)||'';
@@ -28519,10 +28647,18 @@ function updateTopbarUser(user) {
     const empresasEl = document.getElementById('usu-empresas-checks');
     if(empresasEl) {
       const EMPRESAS = ['Chiacchio Embalagens','Plaschio','Tubahia'];
-      const atual = (u&&(u.EMPRESA||u.empresa)||'').split(',').map(function(s){return s.trim();});
+      const atual = (u&&(u.EMPRESA||u.empresa)||'').split(/[,;|]/).map(function(s){return s.trim().toLowerCase();});
       empresasEl.innerHTML = EMPRESAS.map(function(e) {
-        return '<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" value="' + esc5(e) + '" ' + (atual.includes(e)?'checked':'') + '> ' + esc5(e) + '</label>';
+        return '<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" onchange="usuEmpresaEscopoChanged()" value="' + esc5(e) + '" ' + (atual.includes(e.toLowerCase())?'checked':'') + '> ' + esc5(e) + '</label>';
       }).join('');
+      // Corrige registros legados: empresa definida não deve permanecer em
+      // PRIMEIRO_ACESSO aguardando uma aprovação que não existe mais.
+      const status = document.getElementById('usu-status');
+      if (status && atual.length && ['PRIMEIRO_ACESSO','PENDENTE_APROVACAO'].includes(String(status.value).toUpperCase())) {
+        status.value = 'ATIVO';
+        const msg = document.getElementById('modal-usu-msg');
+        if (msg) { msg.style.color = '#1E6B3A'; msg.textContent = 'Empresa definida: o usuário ficará ativo ao salvar.'; }
+      }
     }
     const setoresEl = document.getElementById('usu-setores-checks');
     if(setoresEl) {
@@ -28537,6 +28673,16 @@ function updateTopbarUser(user) {
     const compEl = document.getElementById('usu-competencias');
     if(compEl) compEl.value = u&&(u.CODIGO_RCA||u.codigoRCA||u.COMPETENCIAS||u.competencias)||'';
   }
+
+  window.usuEmpresaEscopoChanged = function() {
+    const empresas = Array.from(document.querySelectorAll('#usu-empresas-checks input:checked'));
+    const status = document.getElementById('usu-status');
+    const msg = document.getElementById('modal-usu-msg');
+    if (empresas.length && status && ['PRIMEIRO_ACESSO','PENDENTE_APROVACAO'].includes(status.value)) {
+      status.value = 'ATIVO';
+      if (msg) { msg.style.color = '#1E6B3A'; msg.textContent = 'Empresa definida: o usuário ficará ativo ao salvar.'; }
+    }
+  };
 
   function usuCarregarHistorico(idUsuario) {
     const el = document.getElementById('usu-historico-lista');
@@ -28581,6 +28727,14 @@ function updateTopbarUser(user) {
     const setores = Array.from(document.querySelectorAll('#usu-setores-checks input:checked')).map(function(i){return i.value;}).join(',');
     const comp = document.getElementById('usu-competencias').value.trim();
 
+    if (String(perfil).toUpperCase() !== 'MASTER' && !empresas) {
+      if(msg){msg.style.color='#C70602';msg.textContent='Selecione ao menos uma empresa para liberar o acesso do usuário.';}
+      return;
+    }
+    // A definição de empresa é suficiente para a conta operar. Mantemos
+    // INATIVO/BLOQUEADO quando escolhidos intencionalmente pelo MASTER.
+    const statusEfetivo = empresas && ['PRIMEIRO_ACESSO','PENDENTE_APROVACAO'].includes(String(status).toUpperCase()) ? 'ATIVO' : status;
+
     const btn = document.getElementById('usu-btn-salvar');
     if(btn){btn.style.opacity='.7';btn.style.pointerEvents='none';btn.textContent='Salvando...';}
     if(msg){msg.textContent='';}
@@ -28589,27 +28743,46 @@ function updateTopbarUser(user) {
       let data;
       const editId = _usuEditando && (_usuEditando.ID_USUARIO||_usuEditando.id||_usuEditando.USUARIO||_usuEditando.usuario);
       if(_usuEditando) {
-        const body = { nome, email, perfil, cargo, status, empresa: empresas, setor: setores, observacoes: obs };
+        const body = { nome, email, perfil, cargo, status: statusEfetivo, empresa: empresas, setor: setores, observacoes: obs };
         if(senha) body.senha = senha;
         data = await _apiFetch('/api/usuarios/' + encodeURIComponent(editId), 0, {
           method:'PATCH',
           headers:{'Content-Type':'application/json'},
           body: JSON.stringify(body),
         });
-        try {
-          await _apiFetch('/api/usuarios/' + encodeURIComponent(editId) + '/permissoes', 0, {
-            method:'POST',
-            headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({ permissoes_granted: Array.from(_usuGranted), permissoes_blocked: Array.from(_usuBlocked) }),
-          });
-        } catch(permErr) {
-          throw new Error('Dados salvos, mas as permissões não foram atualizadas: ' + permErr.message);
+        // O backend impede que um MASTER altere as próprias permissões. A
+        // edição dos dados cadastrais e do escopo continua permitida; nesse
+        // caso não devemos transformar o bloqueio esperado em erro de gravação.
+        const sessaoAtual = (() => {
+          try { return JSON.parse(sessionStorage.getItem('sac-user') || localStorage.getItem('sac-user') || '{}'); }
+          catch(_) { return {}; }
+        })();
+        const loginAlvo = String(_usuEditando.USUARIO||_usuEditando.usuario||_usuEditando.EMAIL||_usuEditando.email||'').trim().toLowerCase();
+        const loginAtual = String(sessaoAtual.usuario||sessaoAtual.email||'').trim().toLowerCase();
+        const proprioMaster = String(sessaoAtual.perfil||sessaoAtual.PERFIL||'').toUpperCase() === 'MASTER' && loginAlvo && loginAlvo === loginAtual;
+        const permissoesMudaram = _usuPermissoesOriginais.granted !== JSON.stringify(Array.from(_usuGranted).sort())
+          || _usuPermissoesOriginais.blocked !== JSON.stringify(Array.from(_usuBlocked).sort());
+        // Escopo, perfil e dados cadastrais são gravados no PATCH acima. Só
+        // chama a rota de permissões quando houve mudança real nela; isso evita
+        // uma segunda aprovação/requisição desnecessária para liberar acesso.
+        if (!proprioMaster) {
+          if (permissoesMudaram) {
+            try {
+              await _apiFetch('/api/usuarios/' + encodeURIComponent(editId) + '/permissoes', 0, {
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({ permissoes_granted: Array.from(_usuGranted), permissoes_blocked: Array.from(_usuBlocked) }),
+              });
+            } catch(permErr) {
+              throw new Error('Dados salvos, mas as permissões não foram atualizadas: ' + permErr.message);
+            }
+          }
         }
       } else {
         data = await _apiFetch('/api/usuarios', 0, {
           method:'POST',
           headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ nome, email, usuario, perfil, cargo, status, empresa: empresas, setor: setores, senha, codigoRCA: comp,
+          body: JSON.stringify({ nome, email, usuario, perfil, cargo, status: statusEfetivo, empresa: empresas, setor: setores, senha, codigoRCA: comp,
             permissoes_granted: Array.from(_usuGranted), permissoes_blocked: Array.from(_usuBlocked), observacoes: obs }),
         });
       }

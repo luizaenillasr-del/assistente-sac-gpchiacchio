@@ -2,6 +2,13 @@
 const crypto = require("crypto");
 const path = require("path");
 module.exports = function registerPesquisas(app, service, h) {
+  // Catálogo público é somente leitura e pode ser solicitado por todos os
+  // clientes do Portal ao mesmo tempo. Mantemos um snapshot curto por
+  // processo para que um 429/503 transitório do Sheets não interrompa a
+  // abertura do formulário já publicado. Respostas e alterações nunca usam
+  // este fallback.
+  let publicCatalogCache = null;
+  const PUBLIC_CATALOG_TTL_MS = 60_000;
   const viewer = h.requerPermissao("pesquisas.visualizar");
   const manage = (req, res, next) => {
     if (
@@ -138,9 +145,22 @@ module.exports = function registerPesquisas(app, service, h) {
   app.get(
     "/api/public/pesquisas",
     h.rate,
-    run(async (req, res) =>
-      res.json({ sucesso: true, itens: await service.catalog() }),
-    ),
+    run(async (req, res) => {
+      const now = Date.now();
+      if (publicCatalogCache && now - publicCatalogCache.ts < PUBLIC_CATALOG_TTL_MS)
+        return res.json({ sucesso: true, itens: publicCatalogCache.itens });
+      try {
+        const itens = await service.catalog();
+        publicCatalogCache = { itens, ts: Date.now() };
+        return res.json({ sucesso: true, itens });
+      } catch (e) {
+        if (publicCatalogCache?.itens) {
+          console.warn("[PESQUISAS] catálogo indisponível; usando snapshot público anterior.", e.message);
+          return res.json({ sucesso: true, itens: publicCatalogCache.itens, degradado: true });
+        }
+        throw e;
+      }
+    }),
   );
   app.get(
     "/api/public/pesquisa-convite/:token",

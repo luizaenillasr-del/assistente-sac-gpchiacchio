@@ -261,10 +261,23 @@ async function listarItens(matrizId) {
 async function adicionarItem(matrizId, dados, usuario) {
   await garantirAbas();
   const existentes = await listarItens(matrizId);
+  const tipoFonte = dados.tipoFonte || 'BASE_CONHECIMENTO';
+  const fonteId = String(dados.fonteId || '').trim();
+  const titulo = normalizar(dados.titulo || '');
+  const duplicado = existentes.find(item =>
+    String(item.TIPO_FONTE || '') === String(tipoFonte) &&
+    ((fonteId && String(item.FONTE_ID || '').trim() === fonteId) ||
+      (!fonteId && titulo && normalizar(item.TITULO || '') === titulo))
+  );
+  if (duplicado) {
+    const e = new Error('Conhecimento já vinculado a esta matriz.');
+    e.code = 'ERR_DUPLICATE_KNOWLEDGE';
+    throw e;
+  }
   const obj = {
     ID: gerarId('MCI'),
     MATRIZ_ID: matrizId,
-    TIPO_FONTE: dados.tipoFonte || 'BASE_CONHECIMENTO',
+    TIPO_FONTE: tipoFonte,
     FONTE_ID: dados.fonteId || '',
     TITULO: dados.titulo || '',
     DESCRICAO: dados.descricao || '',

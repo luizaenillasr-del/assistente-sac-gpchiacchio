@@ -29,6 +29,8 @@ assert.match(api, /async function persistirStatusUsuario/);
 assert.match(api, /espelho na aba administrativa/);
 assert.match(api, /appendObjeto\('USUARIOS', \{/);
 assert.match(html, /Dados salvos, mas as permissões não foram atualizadas/);
+assert.match(html, /const proprioMaster =/);
+assert.match(html, /if \(!proprioMaster\)/);
 assert.match(api, /\['INATIVO','BLOQUEADO','EXCLUIDO'\]/, 'sessões de usuários sem acesso devem ser revogadas');
 assert.match(api, /\['inativo','bloqueado','excluido'\]/, 'login deve recusar usuários sem acesso');
 assert.match(api, /Usuário excluído\. Contate o administrador/, 'login deve informar exclusão lógica');

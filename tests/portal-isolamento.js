@@ -191,19 +191,17 @@ async function serve(app) {
           outputDir: folder,
         }),
       );
-      assert.throws(() =>
-        addressFactory({
-          appUrl: inside,
-          publicUrl: "https://example.com/private",
-        }),
-      );
-      assert.throws(() =>
-        addressFactory({
-          appUrl: inside,
-          publicUrl: "https://user:pass@example.com",
-        }),
-      );
-      assert.throws(() => addressFactory({appUrl: inside, publicUrl: inside}));
+      // Configurações externas inválidas não derrubam o servidor: o módulo
+      // volta para a rota interna, sem aceitar a URL insegura como destino.
+      for (const publicUrl of [
+        "https://example.com/private",
+        "https://user:pass@example.com",
+        inside,
+      ]) {
+        const fallback = addressFactory({ appUrl: inside, publicUrl });
+        assert.equal(fallback.separado, false);
+        assert.equal(fallback.root, inside + "/portal");
+      }
       const legacy = addressFactory({ appUrl: inside });
       assert.equal(legacy.root, inside + "/portal");
       assert.equal(
