@@ -6739,6 +6739,13 @@ app.patch('/api/usuarios/:id', requerPermissao('usuarios.editar'), async (req,re
         if (['PRIMEIRO_ACESSO','PENDENTE_APROVACAO'].includes(String(usuarioAtual?.STATUS || '').toUpperCase())) dados.STATUS='ATIVO';
       }
     }
+    // Registros antigos podem já possuir empresa, mas ainda estar marcados
+    // como PRIMEIRO_ACESSO. A empresa existente também libera a conta.
+    if (['PRIMEIRO_ACESSO','PENDENTE_APROVACAO'].includes(String(dados.STATUS || '').toUpperCase())) {
+      const atual = await carregarUsuarios();
+      const usuarioAtual = encontrarUsuarioPorIdentificador(atual, req.params.id);
+      if (empresasCanonicas(dados.EMPRESA || usuarioAtual?.EMPRESA || '').length) dados.STATUS='ATIVO';
+    }
     if(b.senha){ dados.SENHA_HASH = await hashSenha(b.senha); }
     if(Array.isArray(b.permissoes_custom)) dados.PERMISSOES_CUSTOM=JSON.stringify(b.permissoes_custom);
     if(Array.isArray(b.permissoes_granted)) dados.PERMISSOES_GRANTED=JSON.stringify(b.permissoes_granted);

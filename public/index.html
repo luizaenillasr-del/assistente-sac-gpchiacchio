@@ -28283,10 +28283,18 @@ function updateTopbarUser(user) {
     const empresasEl = document.getElementById('usu-empresas-checks');
     if(empresasEl) {
       const EMPRESAS = ['Chiacchio Embalagens','Plaschio','Tubahia'];
-      const atual = (u&&(u.EMPRESA||u.empresa)||'').split(',').map(function(s){return s.trim();});
+      const atual = (u&&(u.EMPRESA||u.empresa)||'').split(/[,;|]/).map(function(s){return s.trim().toLowerCase();});
       empresasEl.innerHTML = EMPRESAS.map(function(e) {
-        return '<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" onchange="usuEmpresaEscopoChanged()" value="' + esc5(e) + '" ' + (atual.includes(e)?'checked':'') + '> ' + esc5(e) + '</label>';
+        return '<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" onchange="usuEmpresaEscopoChanged()" value="' + esc5(e) + '" ' + (atual.includes(e.toLowerCase())?'checked':'') + '> ' + esc5(e) + '</label>';
       }).join('');
+      // Corrige registros legados: empresa definida não deve permanecer em
+      // PRIMEIRO_ACESSO aguardando uma aprovação que não existe mais.
+      const status = document.getElementById('usu-status');
+      if (status && atual.length && ['PRIMEIRO_ACESSO','PENDENTE_APROVACAO'].includes(String(status.value).toUpperCase())) {
+        status.value = 'ATIVO';
+        const msg = document.getElementById('modal-usu-msg');
+        if (msg) { msg.style.color = '#1E6B3A'; msg.textContent = 'Empresa definida: o usuário ficará ativo ao salvar.'; }
+      }
     }
     const setoresEl = document.getElementById('usu-setores-checks');
     if(setoresEl) {
