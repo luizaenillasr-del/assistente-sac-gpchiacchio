@@ -28308,14 +28308,26 @@ function updateTopbarUser(user) {
           headers:{'Content-Type':'application/json'},
           body: JSON.stringify(body),
         });
-        try {
-          await _apiFetch('/api/usuarios/' + encodeURIComponent(editId) + '/permissoes', 0, {
-            method:'POST',
-            headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({ permissoes_granted: Array.from(_usuGranted), permissoes_blocked: Array.from(_usuBlocked) }),
-          });
-        } catch(permErr) {
-          throw new Error('Dados salvos, mas as permissões não foram atualizadas: ' + permErr.message);
+        // O backend impede que um MASTER altere as próprias permissões. A
+        // edição dos dados cadastrais e do escopo continua permitida; nesse
+        // caso não devemos transformar o bloqueio esperado em erro de gravação.
+        const sessaoAtual = (() => {
+          try { return JSON.parse(sessionStorage.getItem('sac-user') || localStorage.getItem('sac-user') || '{}'); }
+          catch(_) { return {}; }
+        })();
+        const loginAlvo = String(_usuEditando.USUARIO||_usuEditando.usuario||_usuEditando.EMAIL||_usuEditando.email||'').trim().toLowerCase();
+        const loginAtual = String(sessaoAtual.usuario||sessaoAtual.email||'').trim().toLowerCase();
+        const proprioMaster = String(sessaoAtual.perfil||sessaoAtual.PERFIL||'').toUpperCase() === 'MASTER' && loginAlvo && loginAlvo === loginAtual;
+        if (!proprioMaster) {
+          try {
+            await _apiFetch('/api/usuarios/' + encodeURIComponent(editId) + '/permissoes', 0, {
+              method:'POST',
+              headers:{'Content-Type':'application/json'},
+              body: JSON.stringify({ permissoes_granted: Array.from(_usuGranted), permissoes_blocked: Array.from(_usuBlocked) }),
+            });
+          } catch(permErr) {
+            throw new Error('Dados salvos, mas as permissões não foram atualizadas: ' + permErr.message);
+          }
         }
       } else {
         data = await _apiFetch('/api/usuarios', 0, {
