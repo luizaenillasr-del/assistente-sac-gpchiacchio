@@ -3016,7 +3016,7 @@
       <div class="nm-step-panel" data-nm-step="3"><div class="nm-section-hdr"><h2>Condução</h2><p>Defina o caminho da tratativa e os próximos responsáveis.</p></div>
         <div class="circa-path-grid"><div class="circa-path-card"><div class="circa-path-title"><span class="circa-path-icon">A</span>Resolver pelo SAC</div><p>Use quando houver procedimento validado e autonomia para concluir.</p><div class="circa-alert">Confirme a orientação, registre a ação e prepare a devolutiva.</div><button onclick="nmSetCaminhoTratativa('SAC',this)" id="nm-caminho-sac" class="btn btn-secondary">Selecionar caminho</button></div>
           <div class="circa-path-card"><div class="circa-path-title"><span class="circa-path-icon">B</span>Solicitar informações complementares</div><p>Peça os dados necessários antes de definir a resolução.</p><label class="nm-label"><span>O que solicitar</span><textarea id="nm-complemento-pedido" class="nm-textarea" rows="3"></textarea></label><div class="nm-grid-2"><label class="nm-label"><span>Prazo de retorno</span><input class="nm-input" id="nm-prazo-retorno" placeholder="Conforme SLA aplicável"></label><label class="nm-label"><span>Canal de retorno</span><select class="nm-select" id="nm-canal-retorno"><option>WhatsApp</option><option>E-mail</option><option>Telefone</option></select></label></div><button onclick="nmSetCaminhoTratativa('COMPLEMENTO',this)" id="nm-caminho-complemento" class="btn btn-secondary">Selecionar caminho</button></div>
-          <div class="circa-path-card"><div class="circa-path-title"><span class="circa-path-icon">C</span>Acionar setor responsável</div><p>Crie uma tarefa com escopo, responsável, prazo e prioridade.</p><div class="nm-grid-2"><label class="nm-label"><span>Setor</span><select class="nm-select" id="nm-setor-acionado"><option value="">Selecionar setor</option><option>Qualidade</option><option>Logística</option><option>Comercial</option><option>Produção</option><option>Financeiro</option></select></label><label class="nm-label"><span>Responsável</span><input class="nm-input" id="nm-responsavel-acionado"></label></div><label class="nm-label"><span>Escopo da tarefa</span><textarea class="nm-textarea" rows="3" id="nm-escopo-acionado"></textarea></label><button onclick="nmSetCaminhoTratativa('SETOR',this)" id="nm-caminho-setor" class="btn btn-secondary">Selecionar caminho</button><button onclick="nmCriarAcionamento('ENCAMINHAMENTO_TRATATIVA')" class="btn btn-primary">Criar acionamento</button></div></div>
+          <div class="circa-path-card"><div class="circa-path-title"><span class="circa-path-icon">C</span>Acionar setor responsável</div><p>Crie uma tarefa com escopo, responsável, prazo e prioridade.</p><div class="nm-grid-2"><label class="nm-label"><span>Setor</span><select class="nm-select" id="nm-setor-acionado"><option value="">Selecionar setor</option><option>Qualidade</option><option>Logística</option><option>Comercial</option><option>Produção</option><option>Financeiro</option></select></label><label class="nm-label"><span>Responsável</span><input class="nm-input" id="nm-responsavel-acionado"></label></div><label class="nm-label"><span>Escopo da tarefa</span><textarea class="nm-textarea" rows="3" id="nm-escopo-acionado"></textarea></label><button onclick="nmSetCaminhoTratativa('SETOR',this)" id="nm-caminho-setor" class="btn btn-secondary">Selecionar caminho</button><button onclick="nmCriarAcionamento('ENCAMINHAMENTO_TRATATIVA')" id="nm-btn-criar-acionamento" class="btn btn-primary" style="display:none">Confirmar e encaminhar →</button></div></div>
         <input type="hidden" id="nm-caminho-tratativa"><input type="date" id="nm-data-encaminhamento" class="nm-visually-hidden"><div id="nm-box-tratativa-sac" class="nm-card" style="display:none"><div class="section-label">Tratativa interna SAC</div><textarea id="nm-tratativa-sac" class="nm-textarea" rows="5" placeholder="Descreva como o SAC conduzirá a resolução..."></textarea></div><div id="nm-box-complemento" class="nm-card" style="display:none"><div class="section-label">Solicitação de complementação</div><p>Os dados solicitados, o canal e o prazo serão registrados na ficha antes do avanço da tratativa.</p></div><div id="nm-box-encaminhamento-setor" class="nm-card" style="display:none"><div class="section-label">Acionamento preparado</div><p>O setor receberá a ficha após o registro e deverá responder dentro do prazo definido.</p></div>
       </div>
 
@@ -11538,7 +11538,9 @@ function renderizarAnalise(a) {
   const confBar = document.getElementById('ia-confianca-bar');
   const confPct = document.getElementById('ia-confianca-pct');
   if (confBar) confBar.style.width = confValido ? conf + '%' : '0%';
-  if (confPct) confPct.textContent = confValido ? conf + '%' : 'Não calculada';
+  const confNivel = typeof a.confianca === 'object' ? (a.confianca?.nivel || '') : '';
+  const confLabel = confNivel === 'ALTA' ? 'Alta' : confNivel === 'MEDIA' || confNivel === 'MÉDIA' ? 'Média' : confNivel === 'BAIXA' ? 'Baixa' : '';
+  if (confPct) confPct.textContent = confLabel ? confLabel : (confValido ? conf + '%' : 'Não calculada');
 
   // Prioridade
   const priEl = document.getElementById('ia-prioridade-badge');
@@ -11585,8 +11587,18 @@ function renderizarAnalise(a) {
     </span>`
   ).join('') || '<span style="color:var(--gray-400);font-size:12px">Sem dados suficientes</span>';
 
-  // Causa
-  document.getElementById('ia-causa').textContent = 'Não identificada com os dados disponíveis';
+  // Problema identificado — usa problemaIdentificado da IA (específico) ou causaProvavel ou diagnóstico
+  const problemaIA = (a.ia?.problemaIdentificado && a.ia.problemaIdentificado !== 'DADO_NAO_ENCONTRADO') ? a.ia.problemaIdentificado : null;
+  const causaIA = (a.ia?.causaProvavel && a.ia.causaProvavel !== 'DADO_NAO_ENCONTRADO') ? a.ia.causaProvavel : null;
+  const causaDiag = a.tratativaEstruturada?.diagnostico?.descricao || null;
+  const nivelCausaBadge = a.ia?.nivelCausa ? ` <span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;background:${a.ia.nivelCausa==='FATO'?'#DCFCE7':a.ia.nivelCausa==='HIPÓTESE'?'#FEF9C3':'#FEE2E2'};color:${a.ia.nivelCausa==='FATO'?'#15803D':a.ia.nivelCausa==='HIPÓTESE'?'#854D0E':'#9F1239'}">${esc(a.ia.nivelCausa)}</span>` : '';
+  const causaEl = document.getElementById('ia-causa');
+  const textoProblema = problemaIA || causaIA || causaDiag;
+  if (textoProblema) {
+    causaEl.innerHTML = esc(textoProblema) + nivelCausaBadge;
+  } else {
+    causaEl.textContent = 'Não identificada com os dados disponíveis';
+  }
 
   // Procedimento
   const proc = a.procedimentoSugerido;
@@ -11598,19 +11610,44 @@ function renderizarAnalise(a) {
     procWrap.style.display = 'none';
   }
 
-  // Perguntas necessárias
+  // Ação imediata da IA — adiciona no topo da card de tratamento
+  const acaoImediataText = a.ia?.acaoImediata && !a.ia.erro && a.ia.acaoImediata !== 'DADO_NAO_ENCONTRADO' ? a.ia.acaoImediata : null;
+  const impactoText = a.ia?.impactoOperacional && !a.ia.erro && a.ia.impactoOperacional !== 'DADO_NAO_ENCONTRADO' ? a.ia.impactoOperacional : null;
+
+  // Impacto operacional — exibido em ia-prioridade-badge (card 1)
+  const priEl2 = document.getElementById('ia-prioridade-badge');
+  if (impactoText) {
+    priEl2.innerHTML = esc(impactoText);
+    priEl2.style.cssText = 'display:block;font-size:12px;color:#374151;padding:6px 10px;border-radius:6px;background:#F3F4F6';
+  }
+
+  // Informações ausentes da IA (somente o que não está na ficha)
+  const infoAusentesIA = Array.isArray(a.ia?.informacoesAusentes) ? a.ia.informacoesAusentes.filter(i => i && String(i).trim()) : [];
+
+  // Perguntas necessárias (determinísticas por tipo) + informações ausentes da IA combinadas
   const pergs = a.perguntasNecessarias || [];
+  const pergEl = document.getElementById('ia-perguntas');
   const pergsWrap = document.getElementById('ia-perguntas-wrap');
-  if (pergs.length > 0) {
-    pergsWrap.style.display = 'block';
-    document.getElementById('ia-perguntas').innerHTML = pergs.map(p =>
-      `<div style="display:flex;gap:6px;margin-bottom:4px">
-        <span style="color:var(--red);font-weight:700;flex-shrink:0">•</span>
-        <span>${p.pergunta}${p.obrigatoria ? ' <span style="color:var(--red);font-size:10px;font-weight:700">*obrigatório</span>' : ''}</span>
-      </div>`
-    ).join('');
+  if (pergs.length > 0 || infoAusentesIA.length > 0) {
+    if (pergsWrap) pergsWrap.style.display = 'block';
+    let pergHtml = '';
+    if (infoAusentesIA.length > 0) {
+      pergHtml += infoAusentesIA.map(i =>
+        `<div style="display:flex;gap:6px;margin-bottom:4px"><span style="color:#D97706;font-weight:700;flex-shrink:0">?</span><span>${esc(i)}</span></div>`
+      ).join('');
+    }
+    if (pergs.length > 0) {
+      pergHtml += pergs.map(p =>
+        `<div style="display:flex;gap:6px;margin-bottom:4px">
+          <span style="color:var(--red);font-weight:700;flex-shrink:0">•</span>
+          <span>${p.pergunta}${p.obrigatoria ? ' <span style="color:var(--red);font-size:10px;font-weight:700">*obrigatório</span>' : ''}</span>
+        </div>`
+      ).join('');
+    }
+    if (pergEl) pergEl.innerHTML = pergHtml;
   } else {
-    pergsWrap.style.display = 'none';
+    if (pergsWrap) pergsWrap.style.display = 'none';
+    if (pergEl) pergEl.textContent = 'Nenhuma informação adicional identificada.';
   }
 
   // Casos semelhantes
@@ -11639,7 +11676,11 @@ function renderizarAnalise(a) {
     const corTipo = { OBRIGATORIA:'#DC2626', RECOMENDADA:'#D97706', CONDICIONAL:'#2563EB', PROIBIDA:'#6B7280' };
     const bgTipo  = { OBRIGATORIA:'#FEE2E2', RECOMENDADA:'#FEF3C7', CONDICIONAL:'#EFF6FF', PROIBIDA:'#F3F4F6' };
     const labelTipo = { OBRIGATORIA:'● OBRIGATÓRIA', RECOMENDADA:'● RECOMENDADA', CONDICIONAL:'◎ CONDICIONAL', PROIBIDA:'✕ PROIBIDA' };
-    let html = '';
+    // Ação imediata da IA no topo da card de tratamento
+    let html = acaoImediataText ? `<div style="background:#EFF6FF;border-radius:8px;padding:10px;margin-bottom:10px;border-left:3px solid #2563EB">
+      <div style="font-size:10px;font-weight:700;color:#1D4ED8;margin-bottom:3px">AÇÃO IMEDIATA — SUGESTÃO IA</div>
+      <div style="font-size:12px;color:#1F2937">${esc5(acaoImediataText)}</div>
+    </div>` : '';
     if (te.diagnostico?.descricao) {
       const nivelCor = te.diagnostico.nivel === 'CONFIRMADO' ? '#16A34A' : te.diagnostico.nivel === 'HIPOTESE' ? '#D97706' : '#6B7280';
       html += `<div style="background:#F0FDF4;border-radius:8px;padding:10px;margin-bottom:10px;border-left:3px solid ${nivelCor}">
@@ -12206,6 +12247,9 @@ function nmSetCaminhoTratativa(caminho, btn) {
   document.getElementById('nm-box-tratativa-sac').style.display = caminho === 'SAC' ? 'block' : 'none';
   document.getElementById('nm-box-complemento').style.display = caminho === 'COMPLEMENTO' ? 'block' : 'none';
   document.getElementById('nm-box-encaminhamento-setor').style.display = caminho === 'SETOR' ? 'block' : 'none';
+  // Botão de criar acionamento só visível após selecionar o caminho SETOR
+  const btnAcionamento = document.getElementById('nm-btn-criar-acionamento');
+  if (btnAcionamento) btnAcionamento.style.display = caminho === 'SETOR' ? 'inline-flex' : 'none';
 }
 
 // ===== FICHA DE ENCAMINHAMENTO — MODAL =====
