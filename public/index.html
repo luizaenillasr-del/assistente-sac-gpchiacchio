@@ -5241,6 +5241,7 @@
         <button type="button" class="mc-tab" id="mc-tab-rcas" onclick="cenAba('rcas',this)">RCAs</button>
         <button type="button" class="mc-tab" id="mc-tab-ind" onclick="cenAba('ind',this)">Indicadores</button>
         <button type="button" class="mc-tab" id="mc-tab-tratativas" onclick="cenAba('tratativas',this)">Em tratativa <span class="mc-tab-badge" id="mc-badge-tratativas" style="display:none"></span></button>
+        <button type="button" class="mc-tab" id="mc-tab-excluidos" onclick="cenAba('excluidos',this)" style="display:none">Excluídos <span class="mc-tab-badge" id="mc-badge-excluidos" style="display:none;background:#C70602;color:#fff"></span></button>
       </div>
     </div>
 
@@ -5736,10 +5737,54 @@
         </div><!-- /#trat-ficha-view -->
       </div>
 
+      <!-- ══════════ ABA: EXCLUÍDOS ══════════ -->
+      <div class="mc-tabpanel" id="mc-panel-excluidos" style="display:none;flex-direction:column;gap:0;padding:0">
+        <div style="background:#F5F5F5;border-bottom:1px solid #E4E4E4;padding:8px 18px;display:flex;align-items:center;gap:10px;flex-shrink:0">
+          <input id="cen-exc-busca" placeholder="Protocolo, cliente ou empresa…" oninput="cenExcFiltrar()" style="height:30px;border:1px solid #E0E0E0;border-radius:7px;padding:0 10px;font-size:11.5px;background:#fff;width:260px;font-family:inherit">
+          <span id="cen-exc-count" style="font-size:11px;color:#A0A0A0;margin-left:auto"></span>
+          <button onclick="cenCarregarExcluidos()" style="height:30px;border:1px solid #E0E0E0;border-radius:7px;padding:0 12px;font-size:11.5px;background:#fff;cursor:pointer;font-family:inherit">↻ Atualizar</button>
+        </div>
+        <div style="flex:1;overflow-y:auto;padding:16px 18px">
+          <div id="cen-exc-loading" style="text-align:center;padding:40px;color:#A0A0A0;font-size:13px">Carregando...</div>
+          <div id="cen-exc-empty" style="display:none;text-align:center;padding:48px;color:#C0C0C0">
+            <div style="font-size:32px;margin-bottom:8px">🗑</div>
+            <div style="font-weight:700;font-size:14px">Nenhuma manifestação excluída</div>
+          </div>
+          <div id="cen-exc-table-wrap" style="display:none;overflow-x:auto;background:#fff;border:1px solid #E4E4E4;border-radius:12px;overflow:hidden">
+            <table style="width:100%;border-collapse:collapse;font-size:12.5px">
+              <thead>
+                <tr style="background:#FAFAFA;border-bottom:1px solid #E4E4E4">
+                  <th style="padding:10px 14px;text-align:left;font-size:10.5px;font-weight:700;color:#707070;letter-spacing:.06em;white-space:nowrap">PROTOCOLO</th>
+                  <th style="padding:10px 14px;text-align:left;font-size:10.5px;font-weight:700;color:#707070;letter-spacing:.06em">EMPRESA</th>
+                  <th style="padding:10px 14px;text-align:left;font-size:10.5px;font-weight:700;color:#707070;letter-spacing:.06em">CLIENTE</th>
+                  <th style="padding:10px 14px;text-align:left;font-size:10.5px;font-weight:700;color:#707070;letter-spacing:.06em">MOTIVO</th>
+                  <th style="padding:10px 14px;text-align:left;font-size:10.5px;font-weight:700;color:#707070;letter-spacing:.06em;white-space:nowrap">DATA EXCLUSÃO</th>
+                  <th style="padding:10px 14px;text-align:left;font-size:10.5px;font-weight:700;color:#707070;letter-spacing:.06em">EXCLUÍDO POR</th>
+                  <th style="padding:10px 14px;text-align:center;font-size:10.5px;font-weight:700;color:#707070;letter-spacing:.06em">AÇÕES</th>
+                </tr>
+              </thead>
+              <tbody id="cen-exc-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
     </div><!-- /mc-body -->
 
     <div id="mc-toast" class="mc-toast" style="display:none"></div>
   </div><!-- /page-central-sac -->
+
+  <!-- MODAL CONFIRMAR EXCLUSÃO MANIFESTAÇÃO -->
+  <div id="modal-confirmar-exclusao" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2000;display:none;align-items:center;justify-content:center" onclick="if(event.target===this)_exclConfFechar()">
+    <div style="background:#fff;border-radius:14px;padding:28px 28px 22px;max-width:420px;width:calc(100% - 40px);box-shadow:0 8px 40px rgba(0,0,0,.18)">
+      <div style="font-size:20px;font-weight:800;color:#1F1F1F;margin-bottom:6px">Excluir manifestação</div>
+      <div style="font-size:13px;color:#555;line-height:1.55;margin-bottom:18px" id="excl-modal-msg">Esta manifestação será movida para a aba <strong>Excluídos</strong> e poderá ser restaurada posteriormente.</div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button onclick="_exclConfFechar()" style="border:1px solid #D6D6D6;background:#fff;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Cancelar</button>
+        <button id="excl-modal-btn-conf" onclick="_exclConfConfirmar()" style="border:0;background:#C70602;color:#fff;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Excluir</button>
+      </div>
+    </div>
+  </div>
 
   <!-- ===== PORTAL SETOR RESPONSÁVEL ===== -->
   <div class="page" id="page-setor-responsavel">
@@ -9941,6 +9986,11 @@ function navigate(page, el, _opts) {
   if (page === 'biblioteca-fichas') loadBiblioteca(true);
   if (page === 'matriz-conhecimento') loadMatrizConhecimento();
   if (page === 'central-sac' && typeof window.loadCentralSAC === 'function') window.loadCentralSAC();
+  if (page === 'central-sac') {
+    const u = typeof sess === 'function' ? sess() : null;
+    const tabExcl = document.getElementById('mc-tab-excluidos');
+    if (tabExcl && u && (u.perfil === 'MASTER' || u.PERFIL === 'MASTER')) tabExcl.style.display = '';
+  }
   if (page === 'alimentacao' && typeof window.loadAlimentacao === 'function') window.loadAlimentacao();
   if (page === 'portal-admin' && typeof window.padmLoad === 'function') window.padmLoad();
   if (page === 'sugestoes-melhoria') {
@@ -10443,10 +10493,8 @@ function afDesmarcarTodas() {
   const chkAll = _afEl('bib-sel-all'); if (chkAll) chkAll.checked = false;
   _afAtualizarBarraSel();
 }
-async function afExcluirSelecionadas() {
-  const ids = [..._afSelecionadas].map(i => _bibFichasAcum[i]).filter(Boolean).map(f => f.ID_MANIFESTACAO).filter(Boolean);
-  if (!ids.length) return;
-  const motivo = window.prompt('Motivo obrigatório para excluir as fichas selecionadas:');
+async function _afExecExcluirIds(ids, motivo) {
+  if (!motivo || !motivo.trim()) { motivo = window.prompt('Motivo obrigatório para excluir as fichas selecionadas:'); }
   if (!motivo || !motivo.trim()) return;
   const tok = _afTok(); if (!tok) return;
   let ok = 0, erros = 0;
@@ -10462,7 +10510,13 @@ async function afExcluirSelecionadas() {
   _bibFichasAcum = _bibFichasAcum.filter(f => !ids.includes(f.ID_MANIFESTACAO));
   afRenderTabela(_bibFichasAcum);
   _afAtualizarBarraSel();
-  afToast(ok + ' ficha(s) excluída(s)' + (erros ? ` · ${erros} erro(s)` : '.'));
+  afToast(ok + ' ficha(s) movida(s) para Excluídos' + (erros ? ` · ${erros} erro(s)` : '.'));
+}
+async function afExcluirSelecionadas() {
+  const ids = [..._afSelecionadas].map(i => _bibFichasAcum[i]).filter(Boolean).map(f => f.ID_MANIFESTACAO).filter(Boolean);
+  if (!ids.length) return;
+  if (!confirm(`Mover ${ids.length} ficha(s) para Excluídos?\n\nPoderão ser restauradas posteriormente.`)) return;
+  await _afExecExcluirIds(ids);
 }
 
 function afRenderTabela(fichas) {
@@ -10714,7 +10768,7 @@ async function afExcluirFichaAtual() {
     const r = await fetch(API + '/api/manifestacoes/' + encodeURIComponent(id), { method: 'DELETE', headers: { 'Content-Type':'application/json', 'Authorization': 'Bearer ' + tok }, body: JSON.stringify({ motivo:motivo.trim(), protocoloConfirmacao:proto }) });
     const d = await r.json();
     if (!d.sucesso) throw new Error(d.erro || 'Erro ao excluir.');
-    afToast('Ficha ' + proto + ' excluída.');
+    afToast('Ficha ' + proto + ' movida para Excluídos.');
     closeBibPainel();
     _bibFichasAcum = _bibFichasAcum.filter(f => f.ID_MANIFESTACAO !== id);
     afRenderTabela(_bibFichasAcum);
@@ -16109,33 +16163,137 @@ document.addEventListener('visibilitychange', () => {
 
   // Helper: fechar qualquer modal
   window.fecharModal = function(id){ if(!id){ document.getElementById('modal-dossie').style.display='none'; return; } const el=document.getElementById(id); if(el) el.style.display='none'; };
-  window.excluirManifestacaoAtual = async function(){
-    const item = window._dossieItem;
-    if (!item || !item.ID_MANIFESTACAO) return;
-    const id = item.ID_MANIFESTACAO;
-    const protocolo = String(item.PROTOCOLO || item.ID_MANIFESTACAO || id);
-    const motivo = window.prompt(`Motivo obrigatório para excluir ${protocolo}:`);
+  // ── Exclusão com modal de confirmação ──────────────────────────────
+  var _exclPendente = null;
+  function _exclConfAbrir(id, protocolo, cb) {
+    _exclPendente = { id, protocolo, cb };
+    const msg = document.getElementById('excl-modal-msg');
+    if (msg) msg.innerHTML = `A manifestação <strong>${protocolo || id}</strong> será movida para a aba <strong>Excluídos</strong> e poderá ser restaurada a qualquer momento.`;
+    const m = document.getElementById('modal-confirmar-exclusao');
+    if (m) { m.style.display = 'flex'; }
+  }
+  function _exclConfFechar() {
+    _exclPendente = null;
+    const m = document.getElementById('modal-confirmar-exclusao');
+    if (m) m.style.display = 'none';
+  }
+  async function _exclConfConfirmar() {
+    if (!_exclPendente) return;
+    const { id, protocolo, cb } = _exclPendente;
+    const motivo = window.prompt(`Motivo obrigatório para excluir ${protocolo || id}:`);
     if (!motivo || !motivo.trim()) return;
-    const confirmar = window.prompt(`Digite o protocolo ${protocolo} para confirmar a exclusão lógica:`);
-    if (confirmar !== protocolo) { alert('Protocolo não confirmado. A manifestação não foi excluída.'); return; }
-    const btn = document.getElementById('modal-btn-excluir');
+    _exclConfFechar();
+    const btn = document.getElementById('excl-modal-btn-conf');
     if (btn) { btn.disabled = true; btn.textContent = 'Excluindo...'; }
     try {
       const tok = sessionStorage.getItem('sac-token');
-      const r = await fetch(`/api/manifestacoes/${encodeURIComponent(id)}`, { method: 'DELETE', headers: { 'Content-Type':'application/json', Authorization: 'Bearer ' + tok }, body: JSON.stringify({ motivo: motivo.trim(), protocoloConfirmacao: protocolo }) });
+      const r = await fetch(`/api/manifestacoes/${encodeURIComponent(id)}`, { method: 'DELETE', headers: { 'Content-Type':'application/json', Authorization: 'Bearer ' + tok }, body: JSON.stringify({ motivo: motivo.trim(), protocoloConfirmacao: protocolo || id }) });
       const j = await r.json().catch(() => ({}));
       if (!r.ok || j.sucesso === false) throw new Error(j.erro || 'Erro ao excluir.');
+      const filtrarOut = m => m.ID_MANIFESTACAO !== id;
+      if(window._dashData?.mans) window._dashData.mans = window._dashData.mans.filter(filtrarOut);
+      if(window.bancoData) window.bancoData = window.bancoData.filter(filtrarOut);
+      if(window._bancoDataFull) window._bancoDataFull = window._bancoDataFull.filter(filtrarOut);
+      if(window._cenDataFull) window._cenDataFull = window._cenDataFull.filter(filtrarOut);
       fecharModal();
-      if (typeof _toast === 'function') _toast(`Manifestação ${protocolo} excluída logicamente.`);
-      // Remove do cache local para que fila/dashboard reflita imediatamente
-      if(window._dashData&&window._dashData.mans) window._dashData.mans=window._dashData.mans.filter(m=>m.ID_MANIFESTACAO!==id);
-      if(window.bancoData) window.bancoData=window.bancoData.filter(m=>m.ID_MANIFESTACAO!==id);
-      if(window._bancoDataFull) window._bancoDataFull=window._bancoDataFull.filter(m=>m.ID_MANIFESTACAO!==id);
-      // Recarrega a lista
-      if (typeof loadPage === 'function') loadPage(typeof _paginaAtual !== 'undefined' ? _paginaAtual : 'manifestacoes');
+      if (typeof _toast === 'function') _toast(`Manifestação ${protocolo || id} movida para Excluídos.`);
+      if(typeof cb === 'function') cb();
     } catch(e) {
       alert('Erro ao excluir: ' + e.message);
-      if (btn) { btn.disabled = false; btn.textContent = '🗑 Excluir'; }
+    }
+    if (btn) { btn.disabled = false; btn.textContent = 'Excluir'; }
+  }
+  window._exclConfFechar = _exclConfFechar;
+  window._exclConfConfirmar = _exclConfConfirmar;
+
+  window.excluirManifestacaoAtual = function(){
+    const item = window._dossieItem;
+    if (!item || !item.ID_MANIFESTACAO) return;
+    const id = item.ID_MANIFESTACAO;
+    const proto = item.PROTOCOLO || id;
+    _exclConfAbrir(id, proto, () => {
+      fecharModal();
+      if (typeof loadCentralSAC === 'function') loadCentralSAC();
+      else if (typeof loadPage === 'function') loadPage('central-sac');
+    });
+  };
+
+  // ── Aba Excluídos ──────────────────────────────────────────────────
+  var _cenExcData = [];
+  window.cenCarregarExcluidos = async function() {
+    const loading = document.getElementById('cen-exc-loading');
+    const empty = document.getElementById('cen-exc-empty');
+    const wrap = document.getElementById('cen-exc-table-wrap');
+    if (loading) loading.style.display = '';
+    if (empty) empty.style.display = 'none';
+    if (wrap) wrap.style.display = 'none';
+    try {
+      const tok = sessionStorage.getItem('sac-token');
+      const r = await fetch('/api/manifestacoes/excluidas', { headers: { Authorization: 'Bearer ' + tok } });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || j.sucesso === false) throw new Error(j.erro || 'Erro ao carregar.');
+      _cenExcData = j.itens || [];
+      cenExcFiltrar();
+    } catch(e) {
+      if (loading) { loading.style.display = ''; loading.textContent = 'Erro: ' + e.message; }
+    }
+  };
+  window.cenExcFiltrar = function() {
+    const q = (document.getElementById('cen-exc-busca')?.value || '').toLowerCase();
+    const filtrados = _cenExcData.filter(i =>
+      !q ||
+      (i.PROTOCOLO||'').toLowerCase().includes(q) ||
+      (i.NOME_CLIENTE||'').toLowerCase().includes(q) ||
+      (i.EMPRESA_RECLAMADA||'').toLowerCase().includes(q)
+    );
+    const loading = document.getElementById('cen-exc-loading');
+    const empty = document.getElementById('cen-exc-empty');
+    const wrap = document.getElementById('cen-exc-table-wrap');
+    const count = document.getElementById('cen-exc-count');
+    const badge = document.getElementById('mc-badge-excluidos');
+    if (loading) loading.style.display = 'none';
+    if (count) count.textContent = filtrados.length + ' registro(s)';
+    if (badge) { badge.textContent = _cenExcData.length; badge.style.display = _cenExcData.length ? '' : 'none'; }
+    if (!filtrados.length) { if (empty) empty.style.display = ''; return; }
+    if (empty) empty.style.display = 'none';
+    const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    const fmtDate = s => { if (!s) return '—'; try { return new Date(s).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}); } catch{return s;} };
+    document.getElementById('cen-exc-tbody').innerHTML = filtrados.map(i => `
+      <tr style="border-bottom:1px solid #F0F0F0" onmouseover="this.style.background='#FAFAFA'" onmouseout="this.style.background=''">
+        <td style="padding:10px 14px;font-family:monospace;font-size:12px;font-weight:700;color:#444">${esc(i.PROTOCOLO||i.ID_MANIFESTACAO)}</td>
+        <td style="padding:10px 14px;font-size:12px;color:#333">${esc(i.EMPRESA_RECLAMADA||'—')}</td>
+        <td style="padding:10px 14px;font-size:12px;color:#333">${esc(i.NOME_CLIENTE||'—')}</td>
+        <td style="padding:10px 14px;font-size:12px;color:#555;max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${esc(i.MOTIVO_MANIFESTACAO||'')}">${esc(i.MOTIVO_MANIFESTACAO||'—')}</td>
+        <td style="padding:10px 14px;font-size:11.5px;color:#707070;white-space:nowrap">${fmtDate(i.DATA_EXCLUSAO)}</td>
+        <td style="padding:10px 14px;font-size:12px;color:#555">${esc(i.EXCLUIDO_POR||'—')}</td>
+        <td style="padding:10px 14px;text-align:center">
+          <div style="display:flex;gap:6px;justify-content:center">
+            <button onclick="cenAbrirDossieExcluido('${esc(i.ID_MANIFESTACAO)}')" style="border:1px solid #D6D6D6;background:#fff;border-radius:6px;padding:4px 10px;font-size:11.5px;cursor:pointer;font-family:inherit">Visualizar</button>
+            <button onclick="cenRestaurarManifestacao('${esc(i.ID_MANIFESTACAO)}','${esc(i.PROTOCOLO||i.ID_MANIFESTACAO)}')" style="border:1px solid #1E6B3A;background:#fff;color:#1E6B3A;border-radius:6px;padding:4px 10px;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit">↩ Restaurar</button>
+          </div>
+        </td>
+      </tr>`).join('');
+    if (wrap) wrap.style.display = '';
+  };
+  window.cenAbrirDossieExcluido = function(id) {
+    if (typeof abrirDossie === 'function') abrirDossie(id);
+    else if (typeof abrirModal === 'function') abrirModal(id);
+  };
+  window.cenRestaurarManifestacao = async function(id, proto) {
+    if (!confirm(`Restaurar a manifestação ${proto || id} para a fila ativa?`)) return;
+    try {
+      const tok = sessionStorage.getItem('sac-token');
+      const r = await fetch(`/api/manifestacoes/${encodeURIComponent(id)}/restaurar`, { method: 'POST', headers: { Authorization: 'Bearer ' + tok } });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || j.sucesso === false) throw new Error(j.erro || 'Erro ao restaurar.');
+      if (typeof _toast === 'function') _toast(`Manifestação ${proto||id} restaurada.`);
+      // Remove do cache local de excluídas
+      _cenExcData = _cenExcData.filter(i => i.ID_MANIFESTACAO !== id);
+      cenExcFiltrar();
+      // Força recarga da fila principal na próxima visita
+      if (typeof loadCentralSAC === 'function') loadCentralSAC();
+    } catch(e) {
+      alert('Erro ao restaurar: ' + e.message);
     }
   };
 
@@ -24528,7 +24686,7 @@ async function mudarStatusMC(id, novoStatus) {
   }
 
   // ── abas ─────────────────────────────────────────────────────────────────
-  const _cenAbas = ['fila','banco','pendencias','aprovacoes','rcas','ind','tratativas'];
+  const _cenAbas = ['fila','banco','pendencias','aprovacoes','rcas','ind','tratativas','excluidos'];
   window.cenAba = function(id, btn){
     _cenAbas.forEach(t=>{
       const tab=$('mc-tab-'+t), panel=$('mc-panel-'+t);
@@ -24544,7 +24702,20 @@ async function mudarStatusMC(id, novoStatus) {
     if(id==='pendencias') cenPendenciasInit();
     if(id==='aprovacoes') cenAprovacoesInit();
     if(id==='tratativas') cenTrativasInit();
+    if(id==='excluidos') cenCarregarExcluidos();
   };
+  // Mostrar aba Excluídos apenas para MASTER
+  (function(){
+    const u = typeof sess === 'function' ? sess() : null;
+    const tabExcl = document.getElementById('mc-tab-excluidos');
+    if (tabExcl && u && (u.perfil === 'MASTER' || u.PERFIL === 'MASTER')) tabExcl.style.display = '';
+    // Fallback: verificar após login
+    document.addEventListener('sac-login', function() {
+      const u2 = typeof sess === 'function' ? sess() : null;
+      const t = document.getElementById('mc-tab-excluidos');
+      if (t && u2 && (u2.perfil === 'MASTER' || u2.PERFIL === 'MASTER')) t.style.display = '';
+    }, { once: false });
+  })();
 
   // ── aba Banco ─────────────────────────────────────────────────────────────
   let _cenBancoAll=[], _cenBancoFiltrado=[], _cenBancoPag=1, _cenBancoCarregado=false;
@@ -31504,13 +31675,13 @@ if (typeof pageLoaders !== 'undefined') {
 /* Arquivo de Fichas e Banco de Casos: layout aprovado, escopado às telas reais. */
 #page-biblioteca-fichas{background:#f7f7f7!important;overflow:hidden!important}
 #page-biblioteca-fichas .af-root{font-family:Montserrat,Arial,sans-serif!important}
-#page-biblioteca-fichas .af-root>div:first-child{height:72px!important;padding:12px 28px!important;align-items:center!important}
+#page-biblioteca-fichas .af-root:not(.af-ov):not(.af-md)>div:first-child{height:72px!important;padding:12px 28px!important;align-items:center!important}
 #page-biblioteca-fichas .af-topbar-title{display:block}
 #page-biblioteca-fichas .af-topbar-title h1{font-size:18px!important}
 #page-biblioteca-fichas .af-topbar-title p{font-size:11.5px!important}
-#page-biblioteca-fichas .af-root>div:nth-of-type(2){padding:0 28px!important}
-#page-biblioteca-fichas .af-root>div:nth-of-type(3){padding:10px 28px!important}
-#page-biblioteca-fichas .af-root>div:nth-of-type(4){padding:14px 28px 32px!important;gap:14px!important}
+#page-biblioteca-fichas .af-root:not(.af-ov):not(.af-md)>div:nth-of-type(2){padding:0 28px!important}
+#page-biblioteca-fichas .af-root:not(.af-ov):not(.af-md)>div:nth-of-type(3){padding:10px 28px!important}
+#page-biblioteca-fichas .af-root:not(.af-ov):not(.af-md)>div:nth-of-type(4){padding:14px 28px 32px!important;gap:14px!important}
 #page-biblioteca-fichas .af-aviso{background:#fff;border:1px solid #e5e5e5;border-radius:8px;padding:10px 14px;color:#666464}
 #page-biblioteca-fichas .af-kpis{grid-template-columns:repeat(6,minmax(120px,1fr))!important;gap:10px!important}
 #page-biblioteca-fichas .af-kpi{min-height:84px!important;padding:13px 15px!important;border-radius:9px!important}
@@ -31519,10 +31690,10 @@ if (typeof pageLoaders !== 'undefined') {
 #page-biblioteca-fichas .af-lista{border-radius:9px!important}
 #page-biblioteca-fichas .af-tbl{min-width:980px!important}
 #page-biblioteca-fichas .af-tbl th{font-size:10.5px!important}
-#page-biblioteca-fichas .af-root>div:nth-of-type(2){padding:10px 28px!important}
-#page-biblioteca-fichas .af-root>div:nth-of-type(3){padding:0 28px!important}
-#page-biblioteca-fichas .af-root>div:nth-of-type(4){padding:9px 28px!important}
-#page-biblioteca-fichas .af-root>div:nth-of-type(5){padding:14px 28px 32px!important;gap:14px!important}
+#page-biblioteca-fichas .af-root:not(.af-ov):not(.af-md)>div:nth-of-type(2){padding:10px 28px!important}
+#page-biblioteca-fichas .af-root:not(.af-ov):not(.af-md)>div:nth-of-type(3){padding:0 28px!important}
+#page-biblioteca-fichas .af-root:not(.af-ov):not(.af-md)>div:nth-of-type(4){padding:9px 28px!important}
+#page-biblioteca-fichas .af-root:not(.af-ov):not(.af-md)>div:nth-of-type(5){padding:14px 28px 32px!important;gap:14px!important}
 #page-biblioteca-fichas .af-kpis{display:flex!important;gap:0!important;grid-template-columns:none!important}
 #page-biblioteca-fichas .af-kpi{flex:1 1 0;min-height:58px!important;padding:6px 16px!important;border:0;border-right:1px solid #F0F0F0!important;border-radius:0!important;display:flex;flex-direction:row;align-items:center;gap:10px;cursor:default!important;background:#fff!important}
 #page-biblioteca-fichas .af-kpi:last-child{border-right:0!important}
@@ -31547,7 +31718,7 @@ if (typeof pageLoaders !== 'undefined') {
 .bc-pagination{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 2px;color:#707070;font-size:12px}
 .bc-pagination>div{display:flex;gap:4px}.bc-pagination button{min-width:30px;height:30px;border:1px solid #e0e0e0;background:#fff;border-radius:6px;cursor:pointer}.bc-pagination button.ativo{background:#c70602;color:#fff;border-color:#c70602}.bc-pagination button:disabled{opacity:.45;cursor:default}
 @media(max-width:1000px){#page-biblioteca-fichas .af-kpis{flex-wrap:wrap!important}#page-biblioteca-fichas .af-kpi{flex:1 1 45%!important}#page-base-conhecimento>.content{padding:16px 20px 32px!important}#page-base-conhecimento>.topbar{padding:14px 20px!important}}
-@media(max-width:640px){#page-biblioteca-fichas .af-root>div:first-child{height:auto!important;padding:14px!important;align-items:flex-start!important}#page-biblioteca-fichas .af-root>div:first-child>div:last-child{width:100%;overflow-x:auto}#page-biblioteca-fichas .af-root>div:nth-of-type(2),#page-biblioteca-fichas .af-root>div:nth-of-type(3),#page-biblioteca-fichas .af-root>div:nth-of-type(4),#page-biblioteca-fichas .af-root>div:nth-of-type(5){padding-left:14px!important;padding-right:14px!important}#page-biblioteca-fichas .af-kpis{flex-wrap:wrap!important}#page-biblioteca-fichas .af-kpi{flex:1 1 100%!important;border-right:0!important;border-bottom:1px solid #F0F0F0!important}#page-base-conhecimento>.content{padding:14px!important}#page-base-conhecimento #banco-tab-registros>div:nth-of-type(2){grid-template-columns:repeat(2,minmax(130px,1fr))!important}}
+@media(max-width:640px){#page-biblioteca-fichas .af-root:not(.af-ov):not(.af-md)>div:first-child{height:auto!important;padding:14px!important;align-items:flex-start!important}#page-biblioteca-fichas .af-root:not(.af-ov):not(.af-md)>div:first-child>div:last-child{width:100%;overflow-x:auto}#page-biblioteca-fichas .af-root:not(.af-ov):not(.af-md)>div:nth-of-type(2),#page-biblioteca-fichas .af-root:not(.af-ov):not(.af-md)>div:nth-of-type(3),#page-biblioteca-fichas .af-root:not(.af-ov):not(.af-md)>div:nth-of-type(4),#page-biblioteca-fichas .af-root:not(.af-ov):not(.af-md)>div:nth-of-type(5){padding-left:14px!important;padding-right:14px!important}#page-biblioteca-fichas .af-kpis{flex-wrap:wrap!important}#page-biblioteca-fichas .af-kpi{flex:1 1 100%!important;border-right:0!important;border-bottom:1px solid #F0F0F0!important}#page-base-conhecimento>.content{padding:14px!important}#page-base-conhecimento #banco-tab-registros>div:nth-of-type(2){grid-template-columns:repeat(2,minmax(130px,1fr))!important}}
 </style>
 <style id="gestao-acessos-reference-layout">
 #page-usuarios{background:#f7f7f7!important;font-family:Montserrat,Arial,sans-serif!important;overflow:hidden!important}

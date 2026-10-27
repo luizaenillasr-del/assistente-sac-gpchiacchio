@@ -2756,6 +2756,31 @@ app.patch('/api/manifestacoes/:id', requerPermissao('manifestacoes.editar'), mid
   } catch(e){ res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
 
+// Listagem de manifestações excluídas logicamente
+app.get('/api/manifestacoes/excluidas', requerPerfil('MASTER'), async (req, res) => {
+  try {
+    const todas = await lerAba('MANIFESTACOES', 5000);
+    const excluidas = todas.filter(item => manifestacaoExcluida(item));
+    const { empresa } = req.query;
+    const filtradas = empresa
+      ? excluidas.filter(i => normalizarTexto(i.EMPRESA_RECLAMADA || '') === normalizarTexto(empresa))
+      : excluidas;
+    res.json({ sucesso: true, total: filtradas.length, itens: filtradas.map(i => ({
+      ID_MANIFESTACAO: i.ID_MANIFESTACAO,
+      PROTOCOLO: i.PROTOCOLO,
+      EMPRESA_RECLAMADA: i.EMPRESA_RECLAMADA,
+      NOME_CLIENTE: i.NOME_CLIENTE,
+      TIPO: i.TIPO,
+      STATUS: i.STATUS,
+      STATUS_REGISTRO: i.STATUS_REGISTRO,
+      DATA_EXCLUSAO: i.DATA_EXCLUSAO,
+      EXCLUIDO_POR: i.EXCLUIDO_POR,
+      DATA_ABERTURA: i.DATA_ABERTURA,
+      MOTIVO_MANIFESTACAO: i.MOTIVO_MANIFESTACAO || i.DESCRICAO_MANIFESTACAO || i.ASSUNTO,
+    })) });
+  } catch (e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e) }); }
+});
+
 // Exclusão lógica em lote para operações administrativas da Central.
 // Não exige confirmação individual de protocolo: o MASTER já autenticou a operação.
 app.post('/api/manifestacoes/excluir-lote', requerPerfil('MASTER'), async (req, res) => {
