@@ -957,10 +957,11 @@ async function _sheetsGetComRetry(sheets, params, tentativas = 3) {
 const _lerAbaCache = new Map();
 const _lerAbaInFlight = new Map();
 const LER_ABA_TTL_MS = 60_000;
-// MANIFESTACOES é a fonte operacional oficial. Não mantemos cache dessa aba:
-// uma remoção feita diretamente na planilha precisa ser percebida na próxima
-// consulta e jamais pode ser mascarada por uma cópia antiga.
-const TTL_POR_ABA = { MANIFESTACOES: 0 };
+// MANIFESTACOES e USUARIOS são fontes operacionais oficiais. Não mantemos
+// cache dessas abas: uma alteração de status, exclusão lógica ou permissão
+// precisa ser percebida na próxima consulta, inclusive em outra instância
+// serverless, e jamais pode ser mascarada por uma cópia antiga.
+const TTL_POR_ABA = { MANIFESTACOES: 0, USUARIOS: 0, PERMISSOES_USUARIO: 0 };
 
 async function lerAba(nomeAba, maxRows) {
   if (_sheetsMock?.lerAba) return _sheetsMock.lerAba(nomeAba, maxRows);
