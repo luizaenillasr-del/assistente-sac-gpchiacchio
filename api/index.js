@@ -2752,6 +2752,39 @@ app.patch('/api/manifestacoes/:id', requerPermissao('manifestacoes.editar'), mid
       } catch (e) { console.warn('[PG] dual-write update manifestacao falhou:', e.message); }
     }
     await registrarAuditoria(req.user?.usuario||'sistema','ATUALIZOU_MANIFESTAÇÃO',id,'MANIFESTACOES',null,dados);
+    // Auto-feed BANCO_HISTORICO quando STATUS muda para ENCERRADA via PATCH simples
+    if (dados.STATUS === 'ENCERRADA') {
+      try {
+        const historicoRows = await lerAba('BANCO_HISTORICO', 100).catch(()=>[]);
+        const jaExiste = historicoRows.some(r => r.ID_MANIFESTACAO === id || r.ORIG_ID_MANIFESTACAO === id);
+        if (!jaExiste) {
+          const agora = new Date().toISOString();
+          await garantirAbaComCabecalhos('BANCO_HISTORICO', ['ID_HISTORICO','ORIG_ID_MANIFESTACAO','ORIG_DATA_ABERTURA','DRV_EMPRESA_NORMALIZADA','ORIG_EMPRESA','ORIG_CONTATO','ORIG_CANAL','ORIG_DESCRICAO_RECLAMACAO','COMP_TIPO_PROBLEMA_VALIDADO','COMP_CAUSA_PROVAVEL','CAUSA_RAIZ','SUBCAUSA','SETOR_RESPONSAVEL','TRATATIVA_REALIZADA','RESULTADO','DEVOLUTIVA_FINAL','DATA_ENCERRAMENTO','ENCERRADO_POR','FONTE']).catch(()=>{});
+          await appendObjeto('BANCO_HISTORICO', {
+            ID_HISTORICO: `HIST-${id}-${Date.now()}`,
+            ORIG_ID_MANIFESTACAO: id,
+            ORIG_DATA_ABERTURA: itemExistente.DATA_ABERTURA || itemExistente.DATA_CRIACAO || itemExistente.DATA_REGISTRO || '',
+            DRV_EMPRESA_NORMALIZADA: itemExistente.EMPRESA_RECLAMADA || '',
+            ORIG_EMPRESA: itemExistente.EMPRESA_RECLAMADA || '',
+            ORIG_CONTATO: itemExistente.EMPRESA_RECLAMANTE || itemExistente.CONTATO || '',
+            ORIG_CANAL: itemExistente.CANAL || '',
+            ORIG_DESCRICAO_RECLAMACAO: itemExistente.DESCRICAO || itemExistente.DESCRICAO_MANIFESTACAO || '',
+            COMP_TIPO_PROBLEMA_VALIDADO: itemExistente.TIPO_CONFIRMADO || itemExistente.TIPO || '',
+            COMP_CAUSA_PROVAVEL: itemExistente.CAUSA_RAIZ_CONFIRMADA || itemExistente.CAUSA_RAIZ || '',
+            CAUSA_RAIZ: itemExistente.CAUSA_RAIZ_CONFIRMADA || itemExistente.CAUSA_RAIZ || '',
+            SUBCAUSA: itemExistente.SUBCAUSA || '',
+            SETOR_RESPONSAVEL: itemExistente.SETOR_ACIONADO || itemExistente.SETORES_CONFIRMADOS || '',
+            TRATATIVA_REALIZADA: dados.TRATATIVA_REALIZADA || itemExistente.TRATATIVA_REALIZADA || '',
+            RESULTADO: itemExistente.PROCEDENTE || '',
+            DEVOLUTIVA_FINAL: dados.DEVOLUTIVA_FINAL || itemExistente.DEVOLUTIVA_FINAL || '',
+            DATA_ENCERRAMENTO: agora,
+            ENCERRADO_POR: req.user?.usuario || 'sistema',
+            FONTE: 'PATCH_STATUS_ENCERRADA',
+          }).catch(e => console.warn('[BANCO_HISTORICO] patch auto-feed falhou:', e.message));
+          invalidarCacheAba('BANCO_HISTORICO');
+        }
+      } catch(eFeed){ console.warn('[BANCO_HISTORICO] patch auto-feed erro:', eFeed.message); }
+    }
     res.json({ sucesso:true, id, atualizado: dados });
   } catch(e){ res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
@@ -3442,6 +3475,53 @@ app.post('/api/manifestacoes/:id/finalizar', requerPermissao('aprovacoes.aprovar
     } catch (eFeed) {
       console.warn('[BANCO_HISTORICO] auto-feed erro não bloqueante:', eFeed.message);
     }
+    // Auto-aprimoramento: se causa recorrente ou reincidência confirmada, cria sugestão automática
+    try {
+      const causaFinal = m.CAUSA_RAIZ_CONFIRMADA || m.CAUSA_RAIZ || m.SUBCAUSA || '';
+      if (causaFinal) {
+        const aprimRows = await lerAba('APRIMORAMENTOS_CEREBRO', 2000).catch(()=>[]);
+        const jaExisteAprim = aprimRows.some(a =>
+          _cNorm(a.CAUSA||'') === _cNorm(causaFinal) &&
+          a.STATUS !== 'CONCLUIDO' && a.STATUS !== 'DESCARTADO' &&
+          a.CRIADO_EM && (Date.now() - new Date(a.CRIADO_EM).getTime()) < 90 * 24 * 3600 * 1000
+        );
+        if (!jaExisteAprim) {
+          const causasRows = await lerAba('CAUSAS', 2000).catch(()=>[]);
+          const causaRef = causasRows.find(c => _cNorm(c.CAUSA||'') === _cNorm(causaFinal));
+          const freq = Number(causaRef?.FREQUENCIA_OCORRENCIAS || 0);
+          const reincidencia = (m.REINCIDENCIA||'').toUpperCase() === 'SIM';
+          if (freq >= 2 || reincidencia) {
+            await garantirAbaComCabecalhos('APRIMORAMENTOS_CEREBRO', CEREBRO_APR_HEADERS).catch(()=>{});
+            const idApr = await gerarProximoID('APRIMORAMENTOS_CEREBRO','APR','ID_APRIMORAMENTO');
+            await appendObjeto('APRIMORAMENTOS_CEREBRO', {
+              ID_APRIMORAMENTO: idApr,
+              TIPO: reincidencia ? 'PREVENCAO' : 'MELHORIA',
+              CAUSA_ID: causaRef?.ID_CAUSA || '',
+              CAUSA: causaFinal,
+              ID_MANIFESTACAO: id,
+              PROBLEMA_RECORRENTE: `Causa "${causaFinal}" identificada ${freq >= 2 ? `${freq} vezes` : '(reincidência)'}. Manifestação ${id}.`,
+              DESCRICAO: m.DESCRICAO || m.DESCRICAO_MANIFESTACAO || '',
+              JUSTIFICATIVA: `Gerado automaticamente ao encerrar manifestação ${id}.`,
+              QUANTIDADE_OCORRENCIAS: String(freq || 1),
+              IMPACTO: freq >= 5 ? 'ALTO' : freq >= 3 ? 'MEDIO' : 'BAIXO',
+              PROPOSTA_MELHORIA: '',
+              SETOR_RESPONSAVEL: m.SETOR_ACIONADO || m.SETORES_CONFIRMADOS || '',
+              PRAZO: '',
+              STATUS: 'PENDENTE',
+              RESULTADO: '',
+              EVIDENCIA: '',
+              VERSAO: '1',
+              CRIADO_EM: agora,
+              CRIADO_POR: 'SISTEMA_CIRCA',
+              APROVADO_EM: '',
+              APROVADO_POR: '',
+              ATUALIZADO_EM: agora,
+            }).catch(e => console.warn('[APR] auto-aprim falhou:', e.message));
+            invalidarCacheAba('APRIMORAMENTOS_CEREBRO');
+          }
+        }
+      }
+    } catch(eApr){ console.warn('[CIRCA] auto-aprimoramento erro:', eApr.message); }
     await registrarAuditoria(req.user?.usuario||'sistema','FINALIZOU_MANIFESTACAO',id,'MANIFESTACOES',m.STATUS,'ENCERRADA');
     res.json({ sucesso:true, id, encerradaEm: agora });
   } catch(e){ res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
@@ -7343,6 +7423,19 @@ app.patch('/api/manifestacoes/:id/circa-dados', requerPermissao('manifestacoes.e
     patch.DATA_ULTIMA_EDICAO=new Date().toISOString(); patch.ATUALIZADO_POR=req.user?.usuario||'sistema';
     await atualizarPorID('MANIFESTACOES',m.ID_MANIFESTACAO||idReq,patch,['ID_MANIFESTACAO','PROTOCOLO','ID']);
     await registrarHistoricoManifestacao({id:m.ID_MANIFESTACAO||idReq,protocolo:m.PROTOCOLO||'',usuario:req.user?.usuario||'sistema',etapa:patch.ETAPA_ATUAL||m.ETAPA_ATUAL||'',acao:'ATUALIZOU_CARD_CIRCA',descricao:'Dados operacionais atualizados no novo card.'});
+    // Auto-increment FREQUENCIA_OCORRENCIAS na aba CAUSAS quando causa raiz é confirmada
+    if (patch.CAUSA_RAIZ_CONFIRMADA && patch.CAUSA_RAIZ_CONFIRMADA !== (m.CAUSA_RAIZ_CONFIRMADA||'')) {
+      try {
+        const causasRows = await lerAba('CAUSAS', 5000).catch(()=>[]);
+        const cauN = _cNorm(patch.CAUSA_RAIZ_CONFIRMADA);
+        const causaMatch = causasRows.find(c => _cNorm(c.CAUSA||'') === cauN || _cNorm(c.SUBCAUSA||'') === cauN);
+        if (causaMatch) {
+          const novaFreq = String(Number(causaMatch.FREQUENCIA_OCORRENCIAS||0) + 1);
+          await atualizarPorID('CAUSAS', causaMatch.ID_CAUSA, { FREQUENCIA_OCORRENCIAS: novaFreq, ATUALIZADO_EM: new Date().toISOString() }, ['ID_CAUSA']).catch(()=>{});
+          invalidarCacheAba('CAUSAS');
+        }
+      } catch(eFreq){ console.warn('[CIRCA] freq causas falhou:', eFreq.message); }
+    }
     res.json({sucesso:true,id:m.ID_MANIFESTACAO||idReq,atualizadoEm:patch.DATA_ULTIMA_EDICAO});
   } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e,'dados circa')});}
 });
