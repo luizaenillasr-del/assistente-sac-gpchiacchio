@@ -9334,6 +9334,33 @@
 .af-eyebrow{display:block;font-size:9.5px;font-weight:700;color:#BDBDBD;letter-spacing:.12em;text-transform:uppercase;margin-bottom:3px}
 .af-topbar-title h1{font-size:18px;font-weight:800;color:#242424;line-height:1;margin:0}
 .af-topbar-title p{font-size:11.5px;color:#929090;margin:4px 0 0;line-height:1.35}
+/* Mais ações dropdown */
+.af-dropdown{position:relative;display:inline-block}
+.af-dropdown-menu{position:absolute;right:0;top:calc(100% + 4px);background:#fff;border:1px solid #D6D6D6;border-radius:10px;padding:4px;min-width:190px;z-index:200;box-shadow:0 4px 16px rgba(0,0,0,.12);display:none;flex-direction:column;gap:0}
+.af-dropdown-menu.on{display:flex}
+.af-dropdown-item{border:0;background:none;border-radius:7px;padding:9px 12px;cursor:pointer;font-size:13px;font-weight:600;color:#1F1F1F;text-align:left;display:flex;align-items:center;gap:8px;width:100%}
+.af-dropdown-item:hover{background:#F4F4F4}
+.af-dropdown-sep{height:1px;background:#E4E4E4;margin:4px 0}
+/* Seções da ficha */
+.af-ficha-sec{background:#fff;border:1px solid #E4E4E4;border-radius:10px;overflow:hidden}
+.af-ficha-sec-hd{padding:10px 14px;background:#FAFAFA;border-bottom:1px solid #E4E4E4;font-size:11px;font-weight:700;letter-spacing:.08em;color:#545252}
+.af-ficha-sec-bd{padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.af-campo{display:flex;flex-direction:column;gap:3px}
+.af-campo .af-k{font-size:10.5px;color:#707070;font-weight:600}
+.af-campo .af-v{font-size:13px;overflow-wrap:anywhere;line-height:1.45}
+/* Aba Importações */
+.af-lote{border:1px solid #E4E4E4;border-radius:10px;overflow:hidden}
+.af-lote-h{display:grid;grid-template-columns:1fr auto;gap:8px 16px;padding:10px 14px;background:#FAFAFA;border-bottom:1px solid #E4E4E4;align-items:start}
+.af-lote-b{padding:10px 14px;display:flex;gap:8px;flex-wrap:wrap;font-size:12px;color:#666464}
+/* Conhecimento */
+.af-know-cat{border:1px solid #E4E4E4;border-radius:10px;overflow:hidden}
+.af-know-hd{padding:10px 14px;background:#FAFAFA;border-bottom:1px solid #E4E4E4;display:flex;justify-content:space-between;align-items:center}
+.af-know-item{padding:10px 14px;border-bottom:1px solid #EFEFEF;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center}
+.af-know-item:last-child{border-bottom:none}
+.af-badge-val{padding:2px 8px;border-radius:99px;font-size:10px;font-weight:700;white-space:nowrap}
+.af-badge-val.ok{background:#E6F2EA;color:#1E6B3A}
+.af-badge-val.pend{background:#FBF0D9;color:#7A4C00}
+.af-badge-val.rev{background:#EEE8F7;color:#5B3FA0}
 </style>
 <!-- ===== ARQUIVO DE FICHAS: estilos — fim ===== -->
 
@@ -9351,10 +9378,16 @@
       <span style="width:6px;height:6px;border-radius:50%;background:#15803D;display:inline-block;flex:none"></span>
       Base operacional
     </div>
-    <button class="af-btn" onclick="abrirModalImportarFicha()">↑ Importar fichas</button>
-    <button class="af-btn" id="bib-btn-arquivo" onclick="toggleArquivoExplorar()" aria-expanded="false">▣ Explorar arquivo</button>
-    <button class="af-btn" id="bib-btn-sincronizar" onclick="sincronizarBaseConhecimento()" title="Lê todas as fichas e popula automaticamente Setores, Matriz de Tratamento e Cérebro com os dados encontrados">⚡ Sincronizar</button>
-    <button class="af-btn" id="bib-btn-refresh" onclick="loadBiblioteca(true,true)">↻ Atualizar</button>
+    <button class="af-btn af-btn-red" style="font-size:13px" onclick="abrirModalImportarFicha()">↑ Importar fichas</button>
+    <div class="af-dropdown" id="af-mais-dropdown">
+      <button class="af-btn" onclick="afToggleDropdown()" id="af-mais-btn">Mais ações ▾</button>
+      <div class="af-dropdown-menu" id="af-mais-menu">
+        <button class="af-dropdown-item" id="bib-btn-arquivo" onclick="toggleArquivoExplorar();afFecharDropdown()" aria-expanded="false">▣ Explorar arquivo</button>
+        <button class="af-dropdown-item" id="bib-btn-sincronizar" onclick="sincronizarBaseConhecimento();afFecharDropdown()" title="Lê todas as fichas e popula Setores, Matriz e Cérebro">⚡ Sincronizar base</button>
+        <div class="af-dropdown-sep"></div>
+        <button class="af-dropdown-item" id="bib-btn-refresh" onclick="loadBiblioteca(true,true);afFecharDropdown()">↻ Atualizar lista</button>
+      </div>
+    </div>
   </div>
 
   <!-- ABAS PRINCIPAIS DO ARQUIVO -->
@@ -9433,6 +9466,24 @@
           <option value="VENCIDO">Vencido</option><option value="OK">No prazo</option>
         </select>
       </label>
+      <label class="af-lbl af-advanced">
+        <span>Prioridade</span>
+        <select id="bib-f-prioridade" class="af-select" onchange="afFiltroMudou()">
+          <option value="">Todas</option>
+          <option value="ALTA">Alta</option><option value="MEDIA">Média</option><option value="BAIXA">Baixa</option>
+        </select>
+      </label>
+      <label class="af-lbl af-advanced" style="max-width:200px">
+        <span>Produto</span>
+        <input id="bib-f-produto" class="af-input" type="text" placeholder="Nome ou SKU do produto…" oninput="afBuscaDigitou()">
+      </label>
+      <label class="af-lbl af-advanced">
+        <span>Reincidência</span>
+        <select id="bib-f-reincidente" class="af-select" onchange="afFiltroMudou()">
+          <option value="">Todas</option>
+          <option value="SIM">Somente reincidentes</option><option value="NAO">Sem reincidência</option>
+        </select>
+      </label>
       <label class="af-lbl">
         <span>Abertura de</span>
         <input id="bib-f-abertura-ini" class="af-input" type="date" style="min-width:130px" onchange="afFiltroMudou()">
@@ -9507,21 +9558,63 @@
       </div>
     </div>
   </div>
-  <section id="bib-tab-importacoes" class="af-card" style="display:none;margin:16px 24px;gap:14px;flex-direction:column">
+  <section id="bib-tab-importacoes" style="display:none;margin:16px 24px;flex-direction:column;gap:14px">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
-      <div><div class="af-card-t">IMPORTAÇÕES E CONFERÊNCIA</div><p style="font-size:12.5px;color:#666464;margin-top:5px;line-height:1.5">Importe fichas históricas em PDF ou DOCX e revise empresa, data e vínculos antes da publicação.</p></div>
-      <button class="af-btn af-btn-red" onclick="abrirModalImportarFicha()">↑ Importar fichas</button>
+      <div>
+        <div style="font-size:16px;font-weight:700">Importações e Conferência</div>
+        <p style="font-size:12.5px;color:#666464;margin-top:5px;line-height:1.5">Histórico de lotes importados. Clique em um lote para revisar os arquivos e corrigir pendências antes da publicação.</p>
+      </div>
+      <button class="af-btn af-btn-red" onclick="abrirModalImportarFicha()">↑ Novo lote</button>
     </div>
-    <div class="af-aviso">A importação usa os dados reais do arquivo e exige conferência antes de registrar a ficha. Nenhum dado demonstrativo é criado automaticamente.</div>
-    <div class="af-box"><div class="af-card-t">CONFERÊNCIA</div><p style="font-size:12.5px;color:#707070;margin-top:6px">Arquivos selecionados e pendências de validação aparecem nesta etapa durante o fluxo de importação.</p></div>
+    <div class="af-aviso">A importação usa os dados reais do arquivo. Cada lote fica pendente até conferência; após aprovação, as fichas são arquivadas pela data original da reclamação.</div>
+    <!-- Lotes -->
+    <div id="bib-imp-lotes" style="display:flex;flex-direction:column;gap:10px">
+      <div style="text-align:center;color:#707070;font-size:13px;padding:24px 0">Carregando lotes de importação…</div>
+    </div>
   </section>
 
-  <section id="bib-tab-conhecimento" class="af-card" style="display:none;margin:16px 24px;gap:14px;flex-direction:column">
-    <div><div class="af-card-t">CONHECIMENTO EXTRAÍDO</div><p style="font-size:12.5px;color:#666464;margin-top:5px;line-height:1.5">Consulte e valide propostas extraídas das fichas antes de alimentar o CIRCA e as bases oficiais.</p></div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">
-      <button class="af-box" style="text-align:left;cursor:pointer" onclick="navigate('base-conhecimento')"><strong>Banco de casos</strong><div style="font-size:12px;color:#707070;margin-top:5px">Consultar casos consolidados e lições aprendidas.</div></button>
-      <button class="af-box" style="text-align:left;cursor:pointer" onclick="navigate('banco-devolutivas')"><strong>Banco de devolutivas</strong><div style="font-size:12px;color:#707070;margin-top:5px">Validar modelos e respostas aprovadas.</div></button>
-      <button class="af-box" style="text-align:left;cursor:pointer" onclick="navigate('matriz-conhecimento')"><strong>Causas e tratamentos</strong><div style="font-size:12px;color:#707070;margin-top:5px">Revisar conhecimento operacional do CIRCA.</div></button>
+  <section id="bib-tab-conhecimento" style="display:none;margin:16px 24px;flex-direction:column;gap:14px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
+      <div>
+        <div style="font-size:16px;font-weight:700">Conhecimento Extraído</div>
+        <p style="font-size:12.5px;color:#666464;margin-top:5px;line-height:1.5">Propostas extraídas das fichas e sincronizadas para validação antes de alimentar o CIRCA e as bases oficiais.</p>
+      </div>
+      <button class="af-btn" id="bib-btn-sincronizar-know" onclick="sincronizarBaseConhecimento()">⚡ Sincronizar base</button>
+    </div>
+    <div class="af-aviso">Nenhuma entrada é aprovada automaticamente. Revise cada proposta e use "Validar" para incorporar ao banco oficial. Propostas não validadas não afetam o CIRCA.</div>
+    <div id="bib-know-categorias" style="display:flex;flex-direction:column;gap:12px">
+      <!-- Casos -->
+      <div class="af-know-cat">
+        <div class="af-know-hd">
+          <div style="font-size:12px;font-weight:700;letter-spacing:.06em;color:#545252">CASOS SIMILARES</div>
+          <button class="af-btn-sm" onclick="navigate('base-conhecimento')">Ver banco completo →</button>
+        </div>
+        <div id="bib-know-casos"><div style="padding:14px 16px;font-size:12.5px;color:#707070">Sincronize para ver propostas extraídas das fichas.</div></div>
+      </div>
+      <!-- Causas -->
+      <div class="af-know-cat">
+        <div class="af-know-hd">
+          <div style="font-size:12px;font-weight:700;letter-spacing:.06em;color:#545252">CAUSAS IDENTIFICADAS</div>
+          <button class="af-btn-sm" onclick="navigate('matriz-conhecimento')">Ver matriz completa →</button>
+        </div>
+        <div id="bib-know-causas"><div style="padding:14px 16px;font-size:12.5px;color:#707070">Sincronize para ver causas mapeadas.</div></div>
+      </div>
+      <!-- Tratamentos -->
+      <div class="af-know-cat">
+        <div class="af-know-hd">
+          <div style="font-size:12px;font-weight:700;letter-spacing:.06em;color:#545252">TRATAMENTOS APLICADOS</div>
+          <button class="af-btn-sm" onclick="navigate('matriz-conhecimento')">Ver tratamentos →</button>
+        </div>
+        <div id="bib-know-trat"><div style="padding:14px 16px;font-size:12.5px;color:#707070">Sincronize para ver tratamentos.</div></div>
+      </div>
+      <!-- Devolutivas -->
+      <div class="af-know-cat">
+        <div class="af-know-hd">
+          <div style="font-size:12px;font-weight:700;letter-spacing:.06em;color:#545252">DEVOLUTIVAS APROVADAS</div>
+          <button class="af-btn-sm" onclick="navigate('banco-devolutivas')">Ver banco de devolutivas →</button>
+        </div>
+        <div id="bib-know-dev"><div style="padding:14px 16px;font-size:12.5px;color:#707070">Sincronize para ver devolutivas validadas.</div></div>
+      </div>
     </div>
   </section>
 </div>
@@ -9874,6 +9967,8 @@ const AF_FILTROS = [
   ['empresa','bib-f-empresa'],['setor','bib-f-setor'],
   ['tipo','bib-f-tipo'],['origem','bib-f-origem'],
   ['sla_status','bib-f-sla'],
+  ['prioridade','bib-f-prioridade'],['produto','bib-f-produto'],
+  ['reincidente','bib-f-reincidente'],
   ['data_abertura_ini','bib-f-abertura-ini'],['data_abertura_fim','bib-f-abertura-fim'],
 ];
 let _bibAbaAtiva = ''; // ''|'ABERTA'|'EM_ANDAMENTO'|'CONCLUIDA'|'REINCIDENTE'|'ARQUIVADA'
@@ -9909,6 +10004,17 @@ function toggleArquivoExplorar() {
   if (root) root.classList.toggle('af-explorar', _afExplorarAberto);
   if (btn) { btn.setAttribute('aria-expanded', String(_afExplorarAberto)); btn.textContent = _afExplorarAberto ? '▣ Fechar arquivo' : '▣ Explorar arquivo'; }
 }
+function afToggleDropdown() {
+  const m = _afEl('af-mais-menu'); if (!m) return;
+  m.classList.toggle('on');
+}
+function afFecharDropdown() {
+  const m = _afEl('af-mais-menu'); if (m) m.classList.remove('on');
+}
+document.addEventListener('click', function(e) {
+  const d = document.getElementById('af-mais-dropdown');
+  if (d && !d.contains(e.target)) afFecharDropdown();
+});
 function _afTok() { return sessionStorage.getItem('sac-token'); }
 function _afNum(n) { return (n ?? 0).toLocaleString('pt-BR'); }
 function _afPct(a, n) { return n ? Math.round(a / n * 100) + '%' : '—'; }
@@ -9980,6 +10086,43 @@ function afMainTabClick(tab, btn) {
   if (conhecimento) conhecimento.style.display = tab === 'conhecimento' ? 'flex' : 'none';
   document.querySelectorAll('#bib-main-tabs [data-bib-main-tab]').forEach(b => b.classList.toggle('ativa', b === btn));
   if (tab === 'arquivo') loadBiblioteca(true);
+  if (tab === 'importacoes') afCarregarLotes();
+}
+
+async function afCarregarLotes() {
+  const wrap = _afEl('bib-imp-lotes'); if (!wrap) return;
+  wrap.innerHTML = '<div style="text-align:center;color:#707070;font-size:13px;padding:24px 0">Carregando lotes…</div>';
+  const tok = _afTok();
+  if (!tok) { wrap.innerHTML = '<div style="color:#A80502;padding:14px;font-size:13px">Acesso não autorizado.</div>'; return; }
+  try {
+    const r = await fetch(API + '/api/biblioteca/importacoes?limit=30', { headers: { 'Authorization': 'Bearer ' + tok } });
+    const d = await r.json().catch(() => ({}));
+    if (!d.sucesso || !d.lotes?.length) {
+      wrap.innerHTML = '<div style="padding:24px 0;text-align:center;color:#707070;font-size:13px">Nenhum lote de importação registrado. Use "Novo lote" para importar fichas históricas.</div>';
+      return;
+    }
+    wrap.innerHTML = d.lotes.map(l => {
+      const statusCls = l.pendentes > 0 ? 'af-st-analise' : (l.erros > 0 ? 'af-or-sistema' : 'af-st-conc');
+      const statusTxt = l.pendentes > 0 ? 'Pendente' : (l.erros > 0 ? 'Com erros' : 'Concluído');
+      return `<div class="af-lote">
+        <div class="af-lote-h">
+          <div>
+            <div style="font-weight:700;font-size:13px">${escHtml(l.id || l.lote_id || '—')}</div>
+            <div style="font-size:11.5px;color:#666464;margin-top:2px">${escHtml(afFmtQuando(l.criado_em || l.data))} · ${escHtml(l.usuario || 'usuário não registrado')} · ${escHtml(l.empresa || 'empresa não informada')}</div>
+          </div>
+          <span class="af-pill ${statusCls}">${statusTxt}</span>
+        </div>
+        <div class="af-lote-b">
+          <span>📁 ${l.total ?? '—'} arquivo(s)</span>
+          <span style="color:#1E6B3A">✓ ${l.processados ?? 0} processados</span>
+          ${l.pendentes > 0 ? `<span style="color:#7A4C00">⏳ ${l.pendentes} pendentes</span>` : ''}
+          ${l.erros > 0 ? `<span style="color:#A80502">✗ ${l.erros} com erro</span>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    wrap.innerHTML = `<div style="color:#A80502;padding:14px;font-size:13px">Erro ao carregar lotes: ${escHtml(e.message)}</div>`;
+  }
 }
 
 async function loadBiblioteca(reset, manual) {
@@ -10414,13 +10557,12 @@ function afRenderFicha(f, evs, hist) {
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span style="font-weight:700;font-size:18px" id="bib-painel-titulo">${escHtml(f.PROTOCOLO)}</span>${afPill(AF_ORIGEM, f.ORIGEM, true)}${afPill(AF_STATUS, f.STATUS, true)}</div>
     <span style="font-size:12.5px;color:#545252">${escHtml(f.EMPRESA || '—')} · ${escHtml(afFmtData(f))}</span>`;
 
-  const campos = [
-    ['Cliente', f.NOME_CLIENTE], ['CNPJ', f.CNPJ_CPF], ['Tipo', f.TIPO_MANIFESTACAO], ['Motivo', f.MOTIVO], ['Produto / SKU', f.PRODUTO || f.SKU],
-    ['Colaborador responsável', f.COLABORADOR_RECEBIMENTO], ['Empresa', f.EMPRESA], ['Data da reclamação', afFmtData(f)],
-    ['Arquivada em', f.ANO && f.ANO !== 'S/A' ? `${AF_MN[+f.MES] || f.MES}/${f.ANO}` : '—'],
-  ];
+  const c = (l, v) => `<div class="af-campo"><span class="af-k">${escHtml(l)}</span><span class="af-v">${escHtml(v || '—')}</span></div>`;
   const desc = f.DESCRICAO || (imp ? 'Conteúdo disponível no documento original anexado. Ficha anterior à ferramenta.' : '—');
   const trat = f.TRATATIVA || (imp ? 'Consulte a tratativa na ficha original.' : (f.COM_TRATATIVA ? 'Tratativa concluída.' : 'Tratativa não concluída.'));
+  const devolut = f.DEVOLUTIVA || f.RESPOSTA_CLIENTE || '';
+  const causa = f.CAUSA_RAIZ || f.CAUSA || '';
+  const prioridade = f.PRIORIDADE || '';
 
   const docs = [];
   if (imp) {
@@ -10440,11 +10582,62 @@ function afRenderFicha(f, evs, hist) {
   const hh = [...hist].reverse().map(h => `<div style="display:grid;grid-template-columns:14px minmax(0,1fr);gap:12px"><div style="display:flex;flex-direction:column;align-items:center"><span style="width:10px;height:10px;border-radius:50%;background:#707070;margin-top:4px;flex:none"></span><span style="flex:1;width:2px;background:#EFEFEF"></span></div><div style="padding-bottom:12px"><div style="font-size:11.5px;color:#707070">${afFmtQuando(h.em)}</div><div style="font-size:13px">${escHtml(h.texto)}</div></div></div>`).join('');
 
   _afEl('bib-painel-body').innerHTML = `
-    ${f.REINCIDENTE ? `<div style="background:#FDECEC;border:1.5px solid #C70602;border-radius:10px;padding:12px 14px;font-size:13px;color:#7F0401"><strong>Cliente reincidente:</strong> ${f.REINCIDENTE_N} fichas nos últimos 12 meses (${escHtml((f.REINCIDENTE_IDS || []).join(', '))}).</div>` : ''}
-    <div class="af-box af-grid">${campos.map(([l, v]) => `<div><div class="af-k">${escHtml(l)}</div><div style="font-size:13px;overflow-wrap:anywhere">${escHtml(v || '—')}</div></div>`).join('')}</div>
-    <div class="af-box" style="display:flex;flex-direction:column;gap:6px"><span class="af-k">DESCRIÇÃO DA RECLAMAÇÃO</span><span style="font-size:13.5px;line-height:1.55;white-space:pre-wrap">${escHtml(desc)}</span><span class="af-k" style="margin-top:6px">TRATATIVA</span><span style="font-size:13.5px;line-height:1.55;white-space:pre-wrap">${escHtml(trat)}</span></div>
-    <div class="af-box" style="display:flex;flex-direction:column;gap:10px"><span style="font-weight:700;font-size:14px">Documentos e evidências</span>${docs.join('')}${evs.length ? '' : '<span style="font-size:12.5px;color:#707070">Nenhuma evidência anexada.</span>'}</div>
-    <div class="af-box"><div style="font-weight:700;font-size:14px;margin-bottom:10px">Histórico</div>${hh || '<span style="font-size:12.5px;color:#707070">Sem eventos registrados.</span>'}</div>`;
+    ${f.REINCIDENTE ? `<div style="background:#FDECEC;border:1.5px solid #C70602;border-radius:10px;padding:12px 14px;font-size:13px;color:#7F0401"><strong>⚠ Cliente reincidente:</strong> ${f.REINCIDENTE_N} fichas nos últimos 12 meses (${escHtml((f.REINCIDENTE_IDS || []).join(', '))}).</div>` : ''}
+
+    <!-- Identificação -->
+    <div class="af-ficha-sec">
+      <div class="af-ficha-sec-hd">IDENTIFICAÇÃO</div>
+      <div class="af-ficha-sec-bd">
+        <div class="af-grid">
+          ${c('Empresa', f.EMPRESA)}
+          ${c('Cliente', f.NOME_CLIENTE)}
+          ${c('CNPJ / CPF', f.CNPJ_CPF)}
+          ${c('Protocolo', f.PROTOCOLO)}
+          ${c('Data da reclamação', afFmtData(f))}
+          ${c('Tipo', f.TIPO_MANIFESTACAO)}
+          ${prioridade ? c('Prioridade', prioridade) : ''}
+          ${c('Colaborador responsável', f.COLABORADOR_RECEBIMENTO)}
+          ${c('Setor de recebimento', f.SETOR_RECEBIMENTO)}
+        </div>
+      </div>
+    </div>
+
+    <!-- Manifestação -->
+    <div class="af-ficha-sec">
+      <div class="af-ficha-sec-hd">MANIFESTAÇÃO</div>
+      <div class="af-ficha-sec-bd">
+        ${c('Produto / SKU', f.PRODUTO || f.SKU)}
+        ${c('Motivo', f.MOTIVO)}
+        <div class="af-campo"><span class="af-k">DESCRIÇÃO</span><span class="af-v" style="white-space:pre-wrap">${escHtml(desc)}</span></div>
+      </div>
+    </div>
+
+    <!-- Tratativa -->
+    <div class="af-ficha-sec">
+      <div class="af-ficha-sec-hd">TRATATIVA E CONCLUSÃO</div>
+      <div class="af-ficha-sec-bd">
+        ${causa ? `<div class="af-campo"><span class="af-k">CAUSA RAIZ</span><span class="af-v" style="white-space:pre-wrap">${escHtml(causa)}</span></div>` : ''}
+        <div class="af-campo"><span class="af-k">TRATATIVA</span><span class="af-v" style="white-space:pre-wrap">${escHtml(trat)}</span></div>
+        ${devolut ? `<div class="af-campo"><span class="af-k">DEVOLUTIVA AO CLIENTE</span><span class="af-v" style="white-space:pre-wrap">${escHtml(devolut)}</span></div>` : ''}
+        ${f.DATA_CONCLUSAO ? c('Data de conclusão', afFmtQuando(f.DATA_CONCLUSAO)) : ''}
+        ${c('SLA', f.SLA_HORAS ? f.SLA_HORAS + 'h' : '—')}
+      </div>
+    </div>
+
+    <!-- Documentos e evidências -->
+    <div class="af-ficha-sec">
+      <div class="af-ficha-sec-hd">DOCUMENTOS E EVIDÊNCIAS</div>
+      <div class="af-ficha-sec-bd">
+        ${docs.join('')}
+        ${evs.length === 0 && !imp ? '<span style="font-size:12.5px;color:#707070">Nenhuma evidência anexada.</span>' : ''}
+      </div>
+    </div>
+
+    <!-- Histórico -->
+    <div class="af-ficha-sec">
+      <div class="af-ficha-sec-hd">HISTÓRICO</div>
+      <div class="af-ficha-sec-bd">${hh || '<span style="font-size:12.5px;color:#707070">Sem eventos registrados.</span>'}</div>
+    </div>`;
 
   const btnArquivar = f.ARQUIVADO === 'SIM'
     ? `<button class="af-btn" onclick="afDesarquivarFichaAtual()" style="border-color:#1E6B3A;color:#1E6B3A">↩ Desarquivar</button>`
