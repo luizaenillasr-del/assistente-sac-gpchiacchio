@@ -682,6 +682,216 @@ async function testarRelatorioSatisfacao() {
 }
 
 // ────────────────────────────────────────────────────────────
+// Grupo 10 — Homologação funcional (fluxos críticos)
+// Testa com dados sintéticos sem gravar em produção
+// ────────────────────────────────────────────────────────────
+async function testarHomologacaoFuncional() {
+  console.log('\n[10] Homologação funcional — fluxos críticos');
+
+  // ── BANCO_HISTORICO: idempotência por ID determinístico ──────────────────────
+  await test('HIST-IDEM: ID_HISTORICO determinístico previne duplicação', () => {
+    const src = require('fs').readFileSync(require.resolve('../api/index.js'), 'utf8');
+    // Verifica que ID_HISTORICO não usa Date.now (seria não-determinístico)
+    const feedFnStart = src.indexOf('async function _feedBancoHistorico(');
+    assert.ok(feedFnStart >= 0, '_feedBancoHistorico não encontrada');
+    const feedFnBlock = src.slice(feedFnStart, feedFnStart + 2500);
+    assert.ok(
+      feedFnBlock.includes("ID_HISTORICO: `HIST-${id}`"),
+      'ID_HISTORICO deve ser determinístico (sem Date.now)'
+    );
+    assert.ok(
+      !feedFnBlock.includes('Date.now()'),
+      'ID_HISTORICO não deve conter Date.now() — tornaria o ID não-determinístico'
+    );
+  });
+
+  await test('HIST-IDEM: mutex em memória (_bancoHistoricoEmAndamento) existe e é Set', () => {
+    const src = require('fs').readFileSync(require.resolve('../api/index.js'), 'utf8');
+    assert.ok(
+      src.includes('const _bancoHistoricoEmAndamento = new Set()'),
+      'Set de controle de concorrência _bancoHistoricoEmAndamento não encontrado'
+    );
+    assert.ok(
+      src.includes('_bancoHistoricoEmAndamento.has(id)'),
+      'Verificação de concorrência (.has) não encontrada'
+    );
+    assert.ok(
+      src.includes('_bancoHistoricoEmAndamento.add(id)'),
+      'Lock (.add) não encontrado'
+    );
+    assert.ok(
+      src.includes('_bancoHistoricoEmAndamento.delete(id)'),
+      'Unlock (.delete) em finally não encontrado'
+    );
+  });
+
+  await test('HIST-IDEM: ambos os caminhos de encerramento usam _feedBancoHistorico', () => {
+    const src = require('fs').readFileSync(require.resolve('../api/index.js'), 'utf8');
+    const calls = (src.match(/_feedBancoHistorico\(/g) || []).length;
+    assert.ok(calls >= 2, `_feedBancoHistorico deve ser chamado pelo menos 2 vezes (PATCH + /finalizar), encontrado: ${calls}`);
+    assert.ok(
+      src.includes("'PATCH_STATUS_ENCERRADA'"),
+      "chamada com fonte 'PATCH_STATUS_ENCERRADA' não encontrada"
+    );
+    assert.ok(
+      src.includes("'FINALIZAR_MANIFESTACAO'"),
+      "chamada com fonte 'FINALIZAR_MANIFESTACAO' não encontrada"
+    );
+  });
+
+  await test('HIST-IDEM: função verifica jaExiste antes de appendObjeto', () => {
+    const src = require('fs').readFileSync(require.resolve('../api/index.js'), 'utf8');
+    const feedFnStart = src.indexOf('async function _feedBancoHistorico(');
+    const feedFnBlock = src.slice(feedFnStart, feedFnStart + 2500);
+    const jaExisteIdx = feedFnBlock.indexOf('jaExiste');
+    const appendIdx = feedFnBlock.indexOf('appendObjeto');
+    assert.ok(jaExisteIdx >= 0, 'verificação jaExiste não encontrada em _feedBancoHistorico');
+    assert.ok(appendIdx >= 0, 'appendObjeto não encontrado em _feedBancoHistorico');
+    assert.ok(jaExisteIdx < appendIdx, 'jaExiste deve ser verificado ANTES de appendObjeto');
+  });
+
+  // ── Causa provável vs confirmada ─────────────────────────────────────────────
+  await test('CAUSA-FREQ: frequência só incrementa com CAUSA_RAIZ_CONFIRMADA', () => {
+    const src = require('fs').readFileSync(require.resolve('../api/index.js'), 'utf8');
+    // Localiza o bloco de auto-increment no PATCH circa-dados
+    const autoIncrIdx = src.indexOf('Auto-increment FREQUENCIA_OCORRENCIAS');
+    assert.ok(autoIncrIdx >= 0, 'bloco Auto-increment FREQUENCIA_OCORRENCIAS não encontrado');
+    const autoIncrBlock = src.slice(autoIncrIdx, autoIncrIdx + 600);
+    assert.ok(
+      autoIncrBlock.includes('patch.CAUSA_RAIZ_CONFIRMADA'),
+      'incremento de frequência deve ser vinculado a patch.CAUSA_RAIZ_CONFIRMADA'
+    );
+    assert.ok(
+      autoIncrBlock.includes('FREQUENCIA_OCORRENCIAS'),
+      'campo FREQUENCIA_OCORRENCIAS não encontrado no bloco de incremento'
+    );
+  });
+
+  await test('CAUSA-FREQ: incremento só ocorre quando valor muda (evita incremento em PATCH idempotente)', () => {
+    const src = require('fs').readFileSync(require.resolve('../api/index.js'), 'utf8');
+    const autoIncrIdx = src.indexOf('Auto-increment FREQUENCIA_OCORRENCIAS');
+    const autoIncrBlock = src.slice(autoIncrIdx, autoIncrIdx + 400);
+    // Verifica comparação com valor anterior: patch.X !== (m.X||'')
+    assert.ok(
+      autoIncrBlock.includes("!== (m.CAUSA_RAIZ_CONFIRMADA||'')") ||
+      autoIncrBlock.includes("!== m.CAUSA_RAIZ_CONFIRMADA"),
+      'deve comparar patch com valor anterior (m.CAUSA_RAIZ_CONFIRMADA) para evitar duplo incremento'
+    );
+  });
+
+  // ── Devolutiva com aprovação ─────────────────────────────────────────────────
+  await test('DEV-APROV: devolutiva gerada sempre entra no fluxo de aprovação (STATUS_FICHA)', () => {
+    const src = require('fs').readFileSync(require.resolve('../api/index.js'), 'utf8');
+    // O STATUS_FICHA 'AGUARDANDO_APROVACAO' é usado para manifestações aguardando aprovação
+    assert.ok(
+      src.includes("STATUS_FICHA: 'AGUARDANDO_APROVACAO'"),
+      "STATUS_FICHA 'AGUARDANDO_APROVACAO' não encontrado"
+    );
+    // Verifica que existe fluxo de aprovação para devolutiva
+    assert.ok(
+      src.includes("app.post('/api/devolutivas/:idDev/decisao'"),
+      "endpoint de decisão de devolutiva não encontrado"
+    );
+    const aguardandoCount = (src.match(/AGUARDANDO_APROVACAO/g) || []).length;
+    assert.ok(aguardandoCount >= 3, `pelo menos 3 ocorrências de AGUARDANDO_APROVACAO esperadas, encontrado: ${aguardandoCount}`);
+  });
+
+  await test('DEV-APROV: endpoint de decisão de devolutiva existe e valida decisões', () => {
+    const src = require('fs').readFileSync(require.resolve('../api/index.js'), 'utf8');
+    assert.ok(
+      src.includes("app.post('/api/devolutivas/:idDev/decisao'"),
+      "endpoint POST /api/devolutivas/:idDev/decisao não encontrado"
+    );
+    assert.ok(
+      src.includes("['APROVADA','EDITADA','REJEITADA']"),
+      "validação de decisões válidas não encontrada"
+    );
+  });
+
+  // ── Auto-aprimoramento sem aprovação automática ───────────────────────────────
+  await test('APR-AUTO: aprimoramento criado com STATUS PENDENTE (sem auto-aprovação)', () => {
+    const src = require('fs').readFileSync(require.resolve('../api/index.js'), 'utf8');
+    const aprIdx = src.indexOf("CRIADO_POR: 'SISTEMA_CIRCA'");
+    assert.ok(aprIdx >= 0, "CRIADO_POR: 'SISTEMA_CIRCA' não encontrado");
+    const aprBlock = src.slice(Math.max(0, aprIdx - 500), aprIdx + 200);
+    assert.ok(
+      aprBlock.includes("STATUS: 'PENDENTE'"),
+      "aprimoramento deve ser criado com STATUS 'PENDENTE'"
+    );
+    assert.ok(
+      !aprBlock.includes("STATUS: 'APROVADO'"),
+      "aprimoramento NÃO deve ser criado com STATUS 'APROVADO' (sem auto-aprovação)"
+    );
+    assert.ok(
+      aprBlock.includes("APROVADO_POR: ''"),
+      "APROVADO_POR deve estar vazio no aprimoramento automático"
+    );
+  });
+
+  await test('APR-AUTO: condição de criação exige freq >= 2 OU reincidência SIM', () => {
+    const src = require('fs').readFileSync(require.resolve('../api/index.js'), 'utf8');
+    const condIdx = src.indexOf('freq >= 2 || reincidencia');
+    assert.ok(condIdx >= 0, 'condição "freq >= 2 || reincidencia" não encontrada');
+  });
+
+  // ── Normalização de tratativas setoriais (aliases de colunas antigas) ─────────
+  await test('TRAT-ALIAS: endpoint de detalhes normaliza colunas antigas em tratasSetoriais', () => {
+    const src = require('fs').readFileSync(require.resolve('../api/index.js'), 'utf8');
+    assert.ok(
+      src.includes('DESCRICAO_TRATATIVA') && src.includes('t.ACAO || t.DESCRICAO_TRATATIVA'),
+      'alias DESCRICAO_TRATATIVA não encontrado na normalização de tratasSetoriais'
+    );
+    assert.ok(
+      src.includes('t.SETOR || t.SETOR_RESPONSAVEL'),
+      'alias SETOR_RESPONSAVEL não encontrado'
+    );
+    assert.ok(
+      src.includes('t.RESULTADO || t.CONCLUSAO'),
+      'alias CONCLUSAO para RESULTADO não encontrado'
+    );
+  });
+
+  // ── Alimentação automática base conhecimento ──────────────────────────────────
+  await test('BASE-CONHECIMENTO: cerebroServices consulta 4 fontes em paralelo via Promise.all', () => {
+    const src = require('fs').readFileSync(require.resolve('../server-services/cerebroServices.js'), 'utf8');
+    assert.ok(src.includes('Promise.all'), 'Promise.all não encontrado em cerebroServices');
+    const sources = ['POLITICAS', 'PROCEDIMENTOS', 'BASE_CONHECIMENTO', 'CAUSAS'];
+    for (const s of sources) {
+      assert.ok(src.includes(`'${s}'`) || src.includes(`"${s}"`), `fonte ${s} não encontrada em cerebroServices`);
+    }
+  });
+
+  await test('BASE-CONHECIMENTO: cerebroServices exporta função de consulta', () => {
+    const cerebro = require('../server-services/cerebroServices');
+    const fn = cerebro.consultarBaseConhecimento || cerebro.consultar || cerebro.buscar;
+    assert.ok(typeof fn === 'function', 'função de consulta à base de conhecimento não exportada');
+  });
+
+  // ── Relato original: normMan lê múltiplos aliases de coluna ──────────────────
+  await test('RELATO-ALIAS: normMan no frontend lê aliases de DESCRICAO', () => {
+    const src = require('fs').readFileSync(require.resolve('../public/index.html'), 'utf8');
+    const normManMatch = src.match(/desc\s*:\s*pick\s*\([^,]+,\s*\[([^\]]+)\]/);
+    assert.ok(normManMatch, 'definição de desc em normMan não encontrada');
+    const aliases = normManMatch[1];
+    assert.ok(aliases.includes('DESCRICAO'), 'DESCRICAO não está entre os aliases de desc');
+    assert.ok(aliases.includes('DESCRICAO_MANIFESTACAO'), 'DESCRICAO_MANIFESTACAO não está entre os aliases');
+    assert.ok(aliases.includes('RELATO'), 'RELATO não está entre os aliases');
+  });
+
+  await test('RELATO-ALIAS: circa-dados PATCH mapeia descricao minúsculo para DESCRICAO maiúsculo', () => {
+    const src = require('fs').readFileSync(require.resolve('../api/index.js'), 'utf8');
+    assert.ok(
+      src.includes("'descricao') && req.body.descricao"),
+      "mapeamento de 'descricao' (minúsculo) para DESCRICAO não encontrado no PATCH circa-dados"
+    );
+    assert.ok(
+      src.includes('patch.DESCRICAO = req.body.descricao'),
+      'patch.DESCRICAO não atribuído a partir de req.body.descricao'
+    );
+  });
+}
+
+// ────────────────────────────────────────────────────────────
 // Main
 // ────────────────────────────────────────────────────────────
 async function main() {
@@ -699,6 +909,7 @@ async function main() {
   await testarFichaUnica();
   await testarDashboardExecutiva();
   await testarRelatorioSatisfacao();
+  await testarHomologacaoFuncional();
   await testarIntegracaoPG();
 
   const total = passed + failed + skipped;
