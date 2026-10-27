@@ -17,6 +17,8 @@ const { tratativaEngine, devolutivaEngine, assertividade: assertividadeService }
 const permissoesService = require('../server-services/permissoesService');
 const dashboardExecutiva = require('../server-services/dashboardExecutiva');
 const fichaUnica = require('../server-services/fichaUnica');
+const circaEngine = require('../server-services/circaEngine');
+const circaWorkflow = require('../server-services/circaWorkflow');
 
 // Injeção de mock Sheets para testes — nunca ativo em produção (env var não existe em prod)
 const _sheetsMock = process.env.SHEETS_MOCK_PATH ? (() => { try { return require(process.env.SHEETS_MOCK_PATH); } catch(e) { console.warn('[MOCK] falhou ao carregar:', e.message); return null; } })() : null;
@@ -152,6 +154,13 @@ async function resolverEmpresaIdScope(valor) {
 }
 
 const app = express();
+// RNC permanece preservado para reativação futura, mas está fora da operação
+// até que o setor responsável forneça as regras oficiais.
+const RNC_ENABLED = String(process.env.RNC_ENABLED || 'false').toLowerCase() === 'true';
+function rncFeatureGuard(req, res, next) {
+  if (RNC_ENABLED) return next();
+  return res.status(503).json({ sucesso: false, codigo: 'RNC_DESATIVADO', erro: 'O módulo RNC está temporariamente indisponível.' });
+}
 const ALLOWED_ORIGINS = [
   'https://assistente-sac-gpchiacchio.vercel.app',
   new URL(portalEndereco.root).origin,
@@ -164,7 +173,14 @@ const corsOptions = { origin: (origin, cb) => {
 }, credentials: true };
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
-app.use(express.json({ limit: '25mb' }));
+// Preserve the exact request bytes for signed Meta webhook callbacks.  Normal
+// JSON APIs continue to receive the parsed body as before.
+app.use(express.json({
+  limit: '25mb',
+  verify: (req, _res, buffer) => { req.rawBody = Buffer.from(buffer); },
+}));
+// Bloqueia toda a superfície operacional RNC sem apagar rotas, dados ou código.
+app.use(['/api/rnc', '/api/rnc-metricas'], rncFeatureGuard);
 
 // ===== SECURITY HEADERS =====
 app.use((req, res, next) => {
@@ -395,7 +411,12 @@ async function carregarUsuarios(){
     const overrides = {};
     // Preserva login (username) do Sheets caso PG só tenha o email como USUARIO
     if (sh.USUARIO && sh.USUARIO !== e) overrides.USUARIO = sh.USUARIO;
-    if ((sh.STATUS||'').toUpperCase() === 'PRIMEIRO_ACESSO') overrides.STATUS = 'PRIMEIRO_ACESSO';
+    // O status administrativo persistido no Sheets deve prevalecer sobre o
+    // ativo/inativo legado do PostgreSQL, inclusive para exclusão lógica.
+    const statusSheets = String(sh.STATUS || '').trim().toUpperCase();
+    if (['ATIVO','PRIMEIRO_ACESSO','INATIVO','BLOQUEADO','EXCLUIDO','EXCLUÍDO'].includes(statusSheets)) {
+      overrides.STATUS = statusSheets === 'EXCLUÍDO' ? 'EXCLUIDO' : statusSheets;
+    }
     // Permissões customizadas e competências vêm do Sheets (definidas na aprovação)
     if (sh.PERMISSOES_CUSTOM && !u.PERMISSOES_CUSTOM) overrides.PERMISSOES_CUSTOM = sh.PERMISSOES_CUSTOM;
     if (sh.PERMISSOES_GRANTED && !u.PERMISSOES_GRANTED) overrides.PERMISSOES_GRANTED = sh.PERMISSOES_GRANTED;
@@ -408,16 +429,23 @@ async function carregarUsuarios(){
     return Object.keys(overrides).length ? { ...u, ...overrides } : u;
   });
   // Sheets complementa o PG: usuários que existem só no Sheets (ex: aprovados recentemente) aparecem normalmente
-  const _seenEmails = new Set();
-  const sheetsOnly = rows.filter(r => {
-    const emailOrUser = (r.EMAIL||r.USUARIO||'').toLowerCase();
+  // Deduplica registros antigos do Sheets priorizando o cadastro mais recente
+  // e não excluído. Isso permite recriar um login após sua exclusão lógica.
+  const sheetsByLogin = new Map();
+  rows.forEach(r => {
+    const emailOrUser = String(r.EMAIL || r.USUARIO || '').trim().toLowerCase();
     const id = r.ID_USUARIO;
-    if (pgIds.has(id) || pgEmails.has(emailOrUser)) return false;
-    // dedup interno do Sheets: primeiro registro com esse email/usuario ganha
-    if (_seenEmails.has(emailOrUser)) return false;
-    _seenEmails.add(emailOrUser);
-    return true;
+    if (!emailOrUser || pgIds.has(id) || pgEmails.has(emailOrUser)) return;
+    const anterior = sheetsByLogin.get(emailOrUser);
+    const status = String(r.STATUS || '').toUpperCase();
+    const statusAnterior = String(anterior?.STATUS || '').toUpperCase();
+    const ativo = !['EXCLUIDO','EXCLUÍDO'].includes(status);
+    const ativoAnterior = !['EXCLUIDO','EXCLUÍDO'].includes(statusAnterior);
+    const dataAtual = String(r.DATA_CRIACAO || r.DATA_ULTIMA_ALTERACAO || '');
+    const dataAnterior = String(anterior?.DATA_CRIACAO || anterior?.DATA_ULTIMA_ALTERACAO || '');
+    if (!anterior || (ativo && !ativoAnterior) || (ativo === ativoAnterior && dataAtual >= dataAnterior)) sheetsByLogin.set(emailOrUser, r);
   });
+  const sheetsOnly = [...sheetsByLogin.values()];
   const pgMerged = pgMapped; // PG é a fonte única — perfil/empresa vêm do PG
   const demoEnabled=String(process.env.DEMO_LOGIN_ENABLED||'false').toLowerCase()==='true';
   // Dedup envUsers contra PG
@@ -483,6 +511,15 @@ const P_LEITURA=['MASTER','GESTOR SAC','ANALISTA SAC','ATENDENTE SAC','SETOR RES
 const P_RNC=['MASTER','GESTOR SAC','ANALISTA SAC','SETOR RESPONSÁVEL','ESPECIALISTA','RCA / REPRESENTANTE'];
 const P_APROVACAO=['MASTER','APROVADOR MASTER','APROVADOR'];
 const P_RELATORIO=['MASTER','GESTOR SAC','ANALISTA SAC','ATENDENTE SAC','SETOR RESPONSÁVEL','ESPECIALISTA','APROVADOR','RCA / REPRESENTANTE','DIRETOR','VISUALIZADOR','AUDITOR'];
+const perfilProfissional = require('./perfil-profissional');
+const PERFIL_PROF_HEADERS = ['ID_USUARIO','DADOS_JSON','STATUS','VERSAO','CRIADO_EM','ATUALIZADO_EM','VALIDACAO_ADMIN'];
+async function obterPerfilProfissional(idUsuario) {
+  const rows = await lerAba('PERFIS_PROFISSIONAIS', 5000).catch(e => {
+    if (/not found|não encontrad|Unable to parse range|does not exist/i.test(String(e.message))) return [];
+    throw e;
+  });
+  return rows.find(r => String(r.ID_USUARIO) === String(idUsuario)) || null;
+}
 
 function usuarioPublico(u){
   let permissoes_custom=null;
@@ -781,6 +818,20 @@ async function carregarUsuarioPorLogin(login){
     const demo=DEMO_USUARIOS.find(u=>normalizarTexto(u.USUARIO)===alvo);
     if(demo) return demo;
   }
+  // Quando existem registros históricos com o mesmo login (por exemplo, um
+  // cadastro excluído e outro recriado), a linha mais recente do Sheets é a
+  // credencial administrativa vigente. Isso evita autenticar com o hash antigo
+  // que ainda possa existir no PostgreSQL.
+  try {
+    const sheetRows = await lerAba('USUARIOS', 1000);
+    const candidatos = sheetRows.map((row, index) => ({ row, index })).filter(({ row }) => {
+      const rowLogin = normalizarTexto(row.USUARIO || row.LOGIN || '');
+      const rowEmail = normalizarTexto(row.EMAIL || '');
+      const status = normalizarTexto(row.STATUS || 'ATIVO');
+      return (rowLogin === alvo || rowEmail === alvo || normalizarTexto(rowEmail.split('@')[0]) === alvo) && !['excluido','inativo','bloqueado'].includes(status) && (row.SENHA_HASH || row.SENHA);
+    }).sort((a,b) => b.index - a.index);
+    if (candidatos[0]) return candidatos[0].row;
+  } catch (_) { /* PG segue como fonte de fallback quando Sheets está indisponível. */ }
   // F4: tenta PostgreSQL primeiro por login ou email
   if (usuarioRepo) {
     try {
@@ -788,17 +839,37 @@ async function carregarUsuarioPorLogin(login){
       if (!pgU) pgU = await usuarioRepo.findByEmail(login).catch(() => null);
       const pgPerfil = pgU?.perfil?.codigo || pgU?.perfil?.nome || null;
       if (pgU && normalizarTexto(pgU.status || 'ATIVO') !== 'inativo' && pgPerfil) {
+        // A aprovação administrativa grava primeiro no Sheets e pode espelhar
+        // no PostgreSQL. Reconcile a linha mais recente do Sheets antes de
+        // validar a senha, evitando que um usuário PG legado invalide a senha
+        // temporária recém-gerada ou o estado PRIMEIRO_ACESSO.
+        let sheetOverride = null;
+        try {
+          const sheetRows = await lerAba('USUARIOS', 1000);
+          const email = String(pgU.email || '').trim().toLowerCase();
+          const loginNorm = normalizarTexto(pgU.login || pgU.email || login);
+          const idNorm = String(pgU.idOriginal || '').trim().toLowerCase();
+          sheetOverride = sheetRows
+            .map((row, index) => ({ row, index }))
+            .filter(({ row }) => {
+              const rowEmail = String(row.EMAIL || '').trim().toLowerCase();
+              const rowLogin = normalizarTexto(row.USUARIO || row.LOGIN || '');
+              const rowId = String(row.ID_USUARIO || row.ID || '').trim().toLowerCase();
+              return (email && rowEmail === email) || (loginNorm && rowLogin === loginNorm) || (idNorm && rowId === idNorm);
+            })
+            .sort((a, b) => b.index - a.index)[0]?.row || null;
+        } catch (_) { /* PostgreSQL continua sendo fallback quando Sheets está indisponível. */ }
         return {
           ID_USUARIO: pgU.idOriginal || `USR-PG-${pgU.id}`,
-          USUARIO: pgU.login || pgU.email,
+          USUARIO: sheetOverride?.USUARIO || pgU.login || pgU.email,
           EMAIL: pgU.email || '',
           NOME: pgU.nome || pgU.login,
           PERFIL: pgPerfil,
           EMPRESA: pgU.empresa?.nome || '',
           SETOR: pgU.setor?.nome || '',
-          STATUS: pgU.ativo === false ? 'INATIVO' : 'ATIVO',
-          SENHA_HASH: pgU.senhaHash || '',
-          SENHA: pgU.senhaHash || '',
+          STATUS: pgU.ativo === false ? 'INATIVO' : (sheetOverride?.STATUS || 'ATIVO'),
+          SENHA_HASH: sheetOverride?.SENHA_HASH || pgU.senhaHash || '',
+          SENHA: sheetOverride?.SENHA_HASH || pgU.senhaHash || '',
           CODIGO_RCA: pgU.codigoRca || '',
           _pgId: pgU.id,
         };
@@ -807,7 +878,7 @@ async function carregarUsuarioPorLogin(login){
   }
   // Fallback Sheets + PG mesclado
   const usuarios=await carregarUsuarios();
-  const ativo = u => normalizarTexto(u.STATUS||'ATIVO')!=='inativo';
+  const ativo = u => !['inativo','bloqueado','excluido'].includes(normalizarTexto(u.STATUS||'ATIVO'));
   // Quando há múltiplas linhas para o mesmo login (duplicatas na planilha),
   // prioriza: ATIVO com SENHA_HASH > ATIVO sem hash > PRIMEIRO_ACESSO com hash > outros ativos
   const _prioridadeUsuario = u => {
@@ -989,7 +1060,10 @@ async function atualizarPorID(nomeAba, id, dados, camposID = ['ID_MANIFESTACAO',
   if (!idxCandidatos.length) return null;
   let rowIndex = -1;
   const idNorm = String(id).trim();
-  for (let i=1;i<rows.length;i++) {
+  const indices = nomeAba === 'USUARIOS'
+    ? Array.from({length: Math.max(0, rows.length - 1)}, (_, n) => rows.length - 1 - n)
+    : Array.from({length: Math.max(0, rows.length - 1)}, (_, n) => n + 1);
+  for (const i of indices) {
     if (idxCandidatos.some(idx => String(rows[i][idx] || '').trim() === idNorm)) { rowIndex=i+1; break; }
   }
   if (rowIndex < 0) return null;
@@ -1356,6 +1430,7 @@ app.use('/api', async (req,res,next)=>{
     '/public/empresas',
     '/public/pesquisas-ativas',
     '/public/whatsapp',
+    '/public/whatsapp/webhook',
     '/pesquisas/resposta-portal',
     '/pesquisas/resposta-publica',
     '/pesquisas/resposta-token',
@@ -1370,9 +1445,9 @@ app.use('/api', async (req,res,next)=>{
   if(!payload) return res.status(401).json({sucesso:false,erro:'Sessão inválida ou expirada.'});
   // Item10: verificar se usuário ainda está ativo (detecta desativação pós-login)
   const infoAtual = await verificarStatusUsuario(payload.usuario);
-  if (infoAtual.status === 'INATIVO') {
+  if (['INATIVO','BLOQUEADO','EXCLUIDO'].includes(String(infoAtual.status || '').toUpperCase())) {
     _statusCache.delete(payload.usuario); // forçar re-verificação na próxima vez
-    return res.status(401).json({sucesso:false,erro:'Usuário inativo. Sessão encerrada.'});
+    return res.status(401).json({sucesso:false,erro:'Acesso revogado. Sessão encerrada.'});
   }
   if (!verificarRateLimitAuth(payload.usuario)) {
     return res.status(429).json({ sucesso: false, erro: 'Muitas requisições. Tente novamente em instantes.' });
@@ -1384,6 +1459,12 @@ app.use('/api', async (req,res,next)=>{
     permissoes_granted: infoAtual.permissoes_granted ?? payload.permissoes_granted,
     permissoes_blocked: infoAtual.permissoes_blocked ?? payload.permissoes_blocked,
   };
+  // Tokens emitidos após a implantação conhecem o estado do perfil. O servidor
+  // impede acesso direto à API operacional enquanto o onboarding é obrigatório.
+  const masterSemOnboarding = perfilCanonico(payload.perfil) === 'MASTER';
+  if (!masterSemOnboarding && payload.perfilProfissionalCompleto === false && ![
+    '/auth/me','/auth/refresh','/auth/completar-primeiro-acesso','/meu-perfil'
+  ].includes(req.path)) return res.status(428).json({sucesso:false,erro:'Conclua o Meu Perfil para acessar a ferramenta.',codigo:'PERFIL_PENDENTE'});
   next();
 });
 
@@ -1469,8 +1550,11 @@ app.post('/api/auth/login', async (req, res) => {
     const statusNorm=normalizarTexto(pub.status||'');
     if(statusNorm==='inativo') return res.status(403).json({sucesso:false,erro:'Usuário inativo. Contate o administrador.'});
     if(statusNorm==='bloqueado') return res.status(403).json({sucesso:false,erro:'Usuário bloqueado. Contate o administrador.'});
+    if(statusNorm==='excluido') return res.status(403).json({sucesso:false,erro:'Usuário excluído. Contate o administrador.'});
     const senhaOk = await senhaValida(senha, registro.SENHA_HASH || registro.SENHA);
     if(!senhaOk) return res.status(401).json({sucesso:false,erro:'Usuário ou senha inválidos.'});
+    const profissional=await obterPerfilProfissional(pub.id);
+    const profissionalCompleto=profissional?.STATUS==='CONCLUIDO';
     const agora=Date.now();
     const primeroAcesso = statusNorm === 'primeiro_acesso' || statusNorm === 'primeiroacesso';
     const payload={
@@ -1481,6 +1565,7 @@ app.post('/api/auth/login', async (req, res) => {
       permissoes_granted: Array.isArray(pub.permissoes_granted)&&pub.permissoes_granted.length ? pub.permissoes_granted : null,
       permissoes_blocked: Array.isArray(pub.permissoes_blocked)&&pub.permissoes_blocked.length ? pub.permissoes_blocked : null,
       primeiro_acesso: primeroAcesso || undefined,
+      perfilProfissionalCompleto: profissionalCompleto,
       iat:agora, exp:agora+SESSION_TTL_MS
     };
     const isDemo = String(registro.ID_USUARIO||'').startsWith('USR-DEMO-');
@@ -1497,7 +1582,7 @@ app.post('/api/auth/login', async (req, res) => {
       registrarAcessoUsuario(registro).catch(e=>console.warn('[LOGIN] registrarAcesso falhou:',e.message));
       registrarAuditoria(pub.usuario,'LOGIN',null,'AUTH',null,{perfil:pub.perfil}).catch(()=>{});
     }
-    res.json({ sucesso:true, token:assinarToken(payload), usuario:pub.usuario, usuarioInfo:{...pub, primeiro_acesso: primeroAcesso || undefined}, modo:isDemo?'DEMO':'PRODUCAO' });
+    res.json({ sucesso:true, token:assinarToken(payload), usuario:pub.usuario, usuarioInfo:{...pub, primeiro_acesso: primeroAcesso || undefined, perfilProfissionalCompleto: profissionalCompleto}, modo:isDemo?'DEMO':'PRODUCAO' });
   } catch (e) {
     console.error(e);
     res.status(500).json({ sucesso: false, erro: erroSeguro(e) });
@@ -1531,6 +1616,7 @@ app.post('/api/auth/refresh', async (req,res)=>{
         codigoRCA: pub.codigoRCA,
         permissoes_granted: pub.permissoes_granted,
         permissoes_blocked: pub.permissoes_blocked,
+        perfilProfissionalCompleto: (await obterPerfilProfissional(pub.id))?.STATUS==='CONCLUIDO',
         iat: agora, exp: agora+SESSION_TTL_MS,
       };
       return res.json({sucesso:true, token:assinarToken(novoPayload), usuarioInfo});
@@ -1597,6 +1683,7 @@ app.post('/api/auth/completar-primeiro-acesso', async (req, res) => {
       sub: pub.id, usuario: pub.usuario, nome: pub.nome, email: pub.email, perfil: pub.perfil,
       empresa: pub.empresa, setor: pub.setor, cargo: pub.cargo || '', telefone: pub.telefone || '',
       codigoRCA: pub.codigoRCA,
+      perfilProfissionalCompleto: (await obterPerfilProfissional(pub.id))?.STATUS==='CONCLUIDO',
       permissoes_custom: payload.permissoes_custom || null,
       permissoes_granted: payload.permissoes_granted || null,
       permissoes_blocked: payload.permissoes_blocked || null,
@@ -1608,6 +1695,83 @@ app.post('/api/auth/completar-primeiro-acesso', async (req, res) => {
   } catch (e) {
     res.status(500).json({ sucesso: false, erro: erroSeguro(e) });
   }
+});
+
+// Perfil profissional vinculado à identidade autenticada. Dados oficiais nunca
+// são aceitos do formulário, e a conclusão não altera perfil/permissões.
+app.get('/api/meu-perfil', async (req,res) => {
+  try {
+    const registro=await carregarUsuarioPorLogin(req.user.usuario);
+    if(!registro) return res.status(404).json({sucesso:false,erro:'Usuário não encontrado.'});
+    const usuario=usuarioPublico(registro);
+    const row=await obterPerfilProfissional(usuario.id);
+    res.json({sucesso:true,perfil:perfilProfissional.registroParaPerfil(row,usuario),completo:row?.STATUS==='CONCLUIDO'});
+  } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
+});
+app.patch('/api/meu-perfil', async (req,res) => {
+  try {
+    const registro=await carregarUsuarioPorLogin(req.user.usuario);
+    if(!registro) return res.status(404).json({sucesso:false,erro:'Usuário não encontrado.'});
+    const master=perfilCanonico(req.user.perfil)==='MASTER';
+    const oficial={};
+    // Cargo pode ser declarado/atualizado pelo próprio usuário. Os demais
+    // campos oficiais só podem ser alterados pelo MASTER.
+    if (req.body?.cargoOficial !== undefined) oficial.CARGO=String(req.body.cargoOficial||'').trim().slice(0,200);
+    if (master) {
+      if (req.body?.nomeOficial !== undefined) oficial.NOME=String(req.body.nomeOficial||'').trim().slice(0,200);
+      if (req.body?.empresa !== undefined) oficial.EMPRESA=String(req.body.empresa||'').trim().slice(0,500);
+      if (req.body?.setor !== undefined) oficial.SETOR=String(req.body.setor||'').trim().slice(0,500);
+      if (req.body?.email !== undefined) oficial.EMAIL=String(req.body.email||'').trim().slice(0,250);
+    }
+    if (Object.keys(oficial).length) {
+      await atualizarPorID('USUARIOS', registro.ID_USUARIO||registro.USUARIO, oficial, ['ID_USUARIO','USUARIO','EMAIL']);
+      Object.assign(registro, oficial);
+    }
+    const usuario=usuarioPublico(registro);
+    const dados=perfilProfissional.declaracoes(req.body||{});
+    const concluir=req.body?.concluir===true;
+    await garantirAbaComCabecalhos('PERFIS_PROFISSIONAIS',PERFIL_PROF_HEADERS);
+    const antigo=await obterPerfilProfissional(usuario.id);
+    if((concluir || antigo?.STATUS==='CONCLUIDO') && !perfilProfissional.valido(dados)) return res.status(400).json({sucesso:false,erro:'Informe sua função e ao menos uma responsabilidade para concluir.'});
+    const agora=new Date().toISOString();
+    const obj={ID_USUARIO:usuario.id,DADOS_JSON:JSON.stringify(dados),STATUS:concluir||antigo?.STATUS==='CONCLUIDO'?'CONCLUIDO':'RASCUNHO',VERSAO:Number(antigo?.VERSAO||0)+1,CRIADO_EM:antigo?.CRIADO_EM||agora,ATUALIZADO_EM:agora,VALIDACAO_ADMIN:antigo?.VALIDACAO_ADMIN||'PENDENTE'};
+    if(antigo) await atualizarPorID('PERFIS_PROFISSIONAIS',usuario.id,obj,['ID_USUARIO']);
+    else await appendObjeto('PERFIS_PROFISSIONAIS',obj);
+    await registrarAuditoria(usuario.usuario,antigo?'ATUALIZOU_PERFIL_PROFISSIONAL':'CRIOU_PERFIL_PROFISSIONAL',usuario.id,'PERFIS_PROFISSIONAIS',null,{versao:obj.VERSAO,status:obj.STATUS});
+    const token=assinarToken({...req.user,nome:usuario.nome,email:usuario.email,empresa:usuario.empresa,setor:usuario.setor,cargo:usuario.cargo,perfilProfissionalCompleto:obj.STATUS==='CONCLUIDO',iat:Date.now(),exp:Date.now()+SESSION_TTL_MS});
+    res.json({sucesso:true,perfil:perfilProfissional.registroParaPerfil(obj,usuario),completo:obj.STATUS==='CONCLUIDO',token});
+  } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
+});
+
+app.get('/api/perfis/especialistas', requerPerfil(...P_LEITURA,'APROVADOR MASTER'), async(req,res) => {
+  try {
+    if(perfilCanonico(req.user.perfil)!=='MASTER' && !req.user.empresa) return res.status(403).json({sucesso:false,erro:'Empresa não autorizada.'});
+    const usuarios=await carregarUsuarios();
+    const rows=await lerAba('PERFIS_PROFISSIONAIS',5000).catch(()=>[]);
+    const ids=new Map(usuarios.map(u=>[String(usuarioPublico(u).id),u]));
+    const perfis=rows.filter(r=>ids.has(String(r.ID_USUARIO))).map(r=>{
+      const u=usuarioPublico(ids.get(String(r.ID_USUARIO)));
+      return {...perfilProfissional.registroParaPerfil(r,u),ativo:String(u.status||'ATIVO').toUpperCase()==='ATIVO'};
+    });
+    const contexto={...req.query,empresa:perfilCanonico(req.user.perfil)==='MASTER'?req.query.empresa||'':req.user.empresa};
+    res.json({sucesso:true,itens:perfilProfissional.especialistas(perfis,contexto,10)});
+  } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
+});
+
+// A Central de Cadastros consulta a identidade existente. O perfil profissional
+// é um complemento do mesmo usuário, não um segundo registro de pessoa.
+app.get('/api/perfis/colaboradores', requerPerfil(...P_LEITURA,'APROVADOR MASTER'), async(req,res) => {
+  try {
+    if (perfilCanonico(req.user.perfil)!=='MASTER' && !req.user.empresa) return res.status(403).json({sucesso:false,erro:'Empresa não autorizada.'});
+    const usuarios=await carregarUsuarios();
+    const rows=await lerAba('PERFIS_PROFISSIONAIS',5000).catch(()=>[]);
+    const byId=new Map(rows.map(r=>[String(r.ID_USUARIO),r]));
+    const itens=usuarios.map(usuarioPublico).filter(u=>perfilCanonico(req.user.perfil)==='MASTER'||pertenceEmpresa(req.user.empresa,u.empresa)).map(u=>{
+      const p=perfilProfissional.registroParaPerfil(byId.get(String(u.id)),u);
+      return {idUsuario:p.idUsuario,nome:p.nomeOficial,empresa:p.empresa,setor:p.setor,cargo:p.cargoOficial,perfilAcesso:p.perfilAcesso,descricaoFuncao:p.descricaoFuncao,processos:p.processos,especialidades:p.especialidades,status:p.status,ativo:String(u.status||'ATIVO').toUpperCase()==='ATIVO',atualizadoEm:p.atualizadoEm};
+    });
+    res.json({sucesso:true,itens});
+  } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
 
 app.post('/api/auth/forgot-password', async (req,res)=>{
@@ -1696,7 +1860,8 @@ app.post('/api/auth/reset-password', async (req,res)=>{
 
   // Atualizar senha do usuário
   try {
-    await atualizarPorID('USUARIOS', registro.USUARIO, {SENHA: hash, SENHA_HASH: hash}, ['USUARIO','EMAIL']);
+    const atualizado = await atualizarPorID('USUARIOS', registro.EMAIL || registro.USUARIO, {SENHA: hash, SENHA_HASH: hash}, ['USUARIO','EMAIL']);
+    if (!atualizado) return res.status(500).json({sucesso:false, erro:'Não foi possível localizar o cadastro para atualizar a senha.'});
   } catch(e) {
     return res.status(500).json({sucesso:false, erro:'Erro ao atualizar senha.'});
   }
@@ -1724,6 +1889,21 @@ app.post('/api/analise', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC','ATEN
       const causaSug = analise.causaProvavel || analise.causaRaiz || analise.causa || '';
       analise.aprendizado = assertividadeService.aprendizadoPorContexto(rowsAssert, { setor: setorSug, causa: causaSug, tipo });
     } catch (_) {}
+    // Sugestão consultiva baseada em competências declaradas; não altera
+    // atribuições oficiais nem considera autodeclaração prova de causa-raiz.
+    try {
+      const usuarios=await carregarUsuarios();
+      const rows=await lerAba('PERFIS_PROFISSIONAIS',5000).catch(()=>[]);
+      const byId=new Map(usuarios.map(u=>[String(usuarioPublico(u).id),usuarioPublico(u)]));
+      const perfis=rows.filter(r=>byId.has(String(r.ID_USUARIO))).map(r=>{
+        const u=byId.get(String(r.ID_USUARIO));
+        return {...perfilProfissional.registroParaPerfil(r,u),ativo:String(u.status||'ATIVO').toUpperCase()==='ATIVO'};
+      });
+      const empresa=perfilCanonico(req.user.perfil)==='MASTER'?empresaReclamada:req.user.empresa;
+      analise.especialistasSugeridos=perfilProfissional.especialistas(perfis,{empresa,produto,tipo,descricao},5);
+      const operador=perfis.find(p=>String(p.idUsuario)===String(req.user.sub));
+      analise.contextoOperador={perfilOficial:req.user.perfil,setorOficial:req.user.setor||'',funcaoDeclarada:operador?.descricaoFuncao||''};
+    } catch(e) { console.warn('[PERFIL] Sugestões indisponíveis:',e.message); analise.especialistasSugeridos=[]; }
     res.json({ sucesso: true, analise });
   } catch (e) {
     console.error(e);
@@ -1884,7 +2064,9 @@ app.get('/api/manifestacoes/:id', requerPermissao('manifestacoes.visualizar'), m
     }
     // Fallback Sheets
     const data = await lerManifestacoesOperacionais(5000).catch(()=>[]);
-    const item = data.find(r => r.ID_MANIFESTACAO === req.params.id);
+    const idReq = String(req.params.id || '').trim();
+    const item = data.find(r => [r.ID_MANIFESTACAO, r.PROTOCOLO, r.ID, r.ID_ORIGINAL]
+      .some(v => String(v || '').trim() === idReq));
     if (!item) return res.status(404).json({ sucesso: false, erro: 'Manifestação não encontrada.' });
     // B2: verificar escopo de empresa
     if (req._empresaScope && !pertenceEmpresa(req._empresaScope, item.EMPRESA_RECLAMADA || '')) {
@@ -1915,8 +2097,8 @@ app.post('/api/manifestacoes', requerPermissao('manifestacoes.abrir'), async (re
       SETOR_SUGERIDO:'', SETORES_SUGERIDOS:'', PROCEDIMENTO_SUGERIDO:'', SLA_HORAS:'', PRIORIDADE:'',
       RNC_SUGERIDO:'NÃO', EMPRESA_RECLAMADA:empNorm||empresaReclamada||'', CANAL:canal||'',
       CNPJ:cnpj||'', TELEFONE:telefone||'', EMAIL:email||'', QUANTIDADE:quantidade||'',
-      QUANTIDADE_DEVOLVIDA:quantidadeDevolvida||'', QUANTIDADE_TOTAL:quantidadeTotal||'',
-      HOUVE_DEVOLUCAO:houveDevolucao||'NÃO', VALOR:valor||'',
+      QUANTIDADE_DEVOLVIDA:String(houveDevolucao||'NÃO').toUpperCase()==='SIM' ? (quantidadeDevolvida||'') : '', QUANTIDADE_TOTAL:quantidadeTotal||'',
+      HOUVE_DEVOLUCAO:String(houveDevolucao||'NÃO').toUpperCase()==='SIM' ? 'SIM' : 'NÃO', VALOR:valor||'',
       VALOR_TOTAL_PEDIDO:valorTotalPedido||'', PREJUIZO_ESTIMADO:prejuizoEstimado||'',
       TRATATIVA_SUGERIDA:'', TRATATIVA_APLICAVEL:'', TRATATIVA_REALIZADA:'', STATUS_TRATATIVA:'NÃO INICIADA',
       DEVOLUTIVA_SUGERIDA:'', DEVOLUTIVA_FINAL:'', DEVOLUTIVA_ENVIADA:'',
@@ -1943,6 +2125,38 @@ app.post('/api/manifestacoes', requerPermissao('manifestacoes.abrir'), async (re
       console.error('[MANIFESTACOES][appendObjeto] FALHOU:', e.message, e?.stack);
       throw e;
     });
+    // Mantém o cadastro comercial mínimo do cliente para formar histórico sem
+    // copiar dados que não pertencem à manifestação. A falha deste cadastro
+    // nunca bloqueia o registro operacional já criado.
+    if (!rascunho && (cnpj || contato || email)) {
+      try {
+        const clienteHeaders = CADASTRO_CONFIG.clientes.headers;
+        await garantirAbaComCabecalhos('CLIENTES_CADASTRO', clienteHeaders);
+        const clientes = await lerAba('CLIENTES_CADASTRO', 10000);
+        const cnpjNorm = String(cnpj || '').replace(/\D/g, '');
+        const contatoNorm = normalizarTexto(contato || email || '');
+        const existente = clientes.find(c => {
+          const cCnpj = String(c.CNPJ_CPF || '').replace(/\D/g, '');
+          const cContato = normalizarTexto(`${c.RAZAO_SOCIAL || ''} ${c.NOME_FANTASIA || ''} ${c.CONTATOS_JSON || ''}`);
+          return (cnpjNorm && cCnpj && cCnpj === cnpjNorm) || (!cnpjNorm && contatoNorm && cContato.includes(contatoNorm));
+        });
+        if (!existente) {
+          await appendObjeto('CLIENTES_CADASTRO', {
+            ID_CLIENTE: await gerarProximoID('CLIENTES_CADASTRO', 'CLI', 'ID_CLIENTE'),
+            CODIGO_INTERNO: cnpjNorm ? `CNPJ-${cnpjNorm}` : `MAN-${id}`,
+            RAZAO_SOCIAL: req.body.razaoSocial || contato || email || 'Cliente da manifestação',
+            NOME_FANTASIA: req.body.nomeFantasia || '',
+            CNPJ_CPF: cnpj || '',
+            SEGMENTO: tipoFinal || '',
+            CONTATOS_JSON: JSON.stringify({ telefone: telefone || '', email: email || '', origem: id }),
+            COMPRADORES_JSON: '', ENDERECO_JSON: '',
+            VINCULOS_JSON: JSON.stringify({ empresa: empresaReclamante || empresaReclamada || '', manifestacoes: [id] }),
+            ATIVO: 'SIM', DATA_CRIACAO: agora, DATA_ATUALIZACAO: agora,
+            USUARIO_ATUALIZACAO: usuario || req.user?.usuario || 'sistema'
+          });
+        }
+      } catch (e) { console.warn('[CLIENTES_CADASTRO] criação automática ignorada:', e.message); }
+    }
     // B3: dual-write para PostgreSQL — rastreia sucesso/falha (não-bloqueante)
     if (manifestacaoRepo) {
       manifestacaoRepo.upsertFromSheets({
@@ -2883,6 +3097,12 @@ app.post('/api/manifestacoes/:id/devolutiva/enviar', requerPermissao('manifestac
       ENCERRADA_POR: req.user?.usuario||'sistema',
       STATUS_DEVOLUTIVA: 'ENVIADA',
     });
+    const devRows = await lerAba('DEVOLUTIVAS', 5000).catch(()=>[]);
+    const devAtual = devRows.filter(d => d.ID_MANIFESTACAO === id).sort((a,b)=>String(b.GERADA_EM||'').localeCompare(String(a.GERADA_EM||'')))[0];
+    if (devAtual) await atualizarPorID('DEVOLUTIVAS', devAtual.ID_DEVOLUTIVA, {
+      STATUS:'ENVIADA', VERSAO_FINAL:textoFinal, CANAL_ENVIO:req.body?.canal||devAtual.CANAL_ENVIO||'MANUAL',
+      ENVIADA_EM:agora, ENVIADA_POR:req.user?.usuario||'sistema',
+    }, ['ID_DEVOLUTIVA']).catch(e=>console.warn('[DEVOLUTIVA] histórico não atualizado:', e.message));
     await registrarAuditoria(req.user?.usuario||'sistema','ENVIOU_DEVOLUTIVA',id,'MANIFESTACOES',null,{ enviadoPor: req.user?.usuario });
     res.json({ sucesso:true, id, encerradaEm: agora });
   } catch(e){ res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
@@ -2959,6 +3179,9 @@ app.post('/api/manifestacoes/:id/finalizar', requerPermissao('aprovacoes.aprovar
     const tratsRows = await lerAba('TRATATIVAS_SETORIAIS', 3000).catch(()=>[]);
     const tratsPendentes = tratsRows.filter(r => r.ID_MANIFESTACAO===id && r.STATUS==='EM_ANDAMENTO');
     if (tratsPendentes.length > 0) bloqueios.push(`${tratsPendentes.length} tratativa(s) setorial(is) ainda em andamento.`);
+    const acionamentos = await lerAba('ACIONAMENTOS_INTERNOS', 5000).catch(()=>[]);
+    const abertosCriticos = acionamentos.filter(r => r.ID_MANIFESTACAO===id && ['ESCALONAMENTO','ENCAMINHAMENTO_TRATATIVA'].includes(String(r.TIPO||'').toUpperCase()) && !['CONCLUIDO','CANCELADO'].includes(String(r.STATUS||'').toUpperCase()));
+    if (abertosCriticos.length > 0 && !req.body?.dispensaAcionamentosJustificada) bloqueios.push(`${abertosCriticos.length} acionamento(s) crítico(s) ainda pendente(s).`);
     if (bloqueios.length > 0) return res.status(422).json({ sucesso:false, bloqueios, erro:'Critérios bloqueantes não atendidos.' });
     const agora = new Date().toISOString();
     const { observacaoFinal, satisfacaoCliente } = req.body||{};
@@ -2969,6 +3192,30 @@ app.post('/api/manifestacoes/:id/finalizar', requerPermissao('aprovacoes.aprovar
       OBSERVACAO_FINAL: observacaoFinal||'',
       SATISFACAO_CLIENTE: satisfacaoCliente||'',
     });
+    // Consolida o conhecimento no backend sem exigir novo preenchimento na tela.
+    await garantirAbaComCabecalhos('CONSOLIDACAO_CONHECIMENTO', ['ID_CONSOLIDACAO','ID_MANIFESTACAO','EMPRESA','CAUSA','SUBCAUSA','TRATATIVAS','DEVOLUTIVAS','RESULTADO','CIRCA_VERSAO','CIRCA_RESULTADO','CRIADO_EM','CRIADO_POR']).catch(()=>{});
+    const consolRows = await lerAba('CONSOLIDACAO_CONHECIMENTO', 5000).catch(()=>[]);
+    if (!consolRows.some(r => r.ID_MANIFESTACAO === id && r.RESULTADO === (m.PROCEDENTE || ''))) {
+      const [devs, trats] = await Promise.all([
+        lerAba('DEVOLUTIVAS', 5000).catch(()=>[]),
+        lerAba('TRATATIVAS_SETORIAIS', 5000).catch(()=>[]),
+      ]);
+      await appendObjeto('CONSOLIDACAO_CONHECIMENTO', {
+        ID_CONSOLIDACAO: `CON-${id}-${Date.now()}`, ID_MANIFESTACAO: id,
+        EMPRESA: m.EMPRESA_RECLAMADA || '', CAUSA: m.CAUSA_RAIZ || m.CAUSA_CONFIRMADA || '',
+        SUBCAUSA: m.SUBCAUSA || m.SUBCAUSA_CONFIRMADA || '',
+        TRATATIVAS: JSON.stringify(trats.filter(t=>t.ID_MANIFESTACAO===id)),
+        DEVOLUTIVAS: JSON.stringify(devs.filter(d=>d.ID_MANIFESTACAO===id)),
+        RESULTADO: m.PROCEDENTE || '',
+        CIRCA_VERSAO: '1.0',
+        CIRCA_RESULTADO: JSON.stringify(circaEngine.analisar({
+          manifestacao: { ...m, STATUS: 'ENCERRADA' },
+          tratativa: trats.filter(t=>t.ID_MANIFESTACAO===id).slice(-1)[0],
+          devolutiva: devs.filter(d=>d.ID_MANIFESTACAO===id).slice(-1)[0],
+        })),
+        CRIADO_EM: agora, CRIADO_POR: req.user?.usuario || 'sistema',
+      }).catch(e => console.warn('[CONSOLIDACAO] falha não bloqueante:', e.message));
+    }
     await registrarAuditoria(req.user?.usuario||'sistema','FINALIZOU_MANIFESTACAO',id,'MANIFESTACOES',m.STATUS,'ENCERRADA');
     res.json({ sucesso:true, id, encerradaEm: agora });
   } catch(e){ res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
@@ -3204,6 +3451,117 @@ app.post('/api/setores/importar', requerPerfil('MASTER','ANALISTA SAC'), async(r
     }
     res.json({sucesso:true, criados});
   } catch(e) { res.status(500).json({sucesso:false, erro:erroSeguro(e)}); }
+});
+
+// ===== CENTRAL DE CADASTROS (clientes, produtos, vendedores, RCAs e gerentes) =====
+// Os cadastros comerciais ficam separados dos registros operacionais. Assim, uma
+// alteração/inativação nunca remove manifestações históricas nem seus vínculos.
+const CADASTRO_CONFIG = {
+  clientes: {
+    aba: 'CLIENTES_CADASTRO', prefixo: 'CLI', id: 'ID_CLIENTE',
+    headers: ['ID_CLIENTE','CODIGO_INTERNO','RAZAO_SOCIAL','NOME_FANTASIA','CNPJ_CPF','SEGMENTO','CONTATOS_JSON','COMPRADORES_JSON','ENDERECO_JSON','VINCULOS_JSON','ATIVO','DATA_CRIACAO','DATA_ATUALIZACAO','USUARIO_ATUALIZACAO'],
+    key: r => String(r.CNPJ_CPF || r.CODIGO_INTERNO || '').replace(/\\D/g,'').toUpperCase()
+  },
+  produtos: {
+    aba: 'PRODUTOS', prefixo: 'PRD', id: 'ID_PRODUTO',
+    headers: ['ID_PRODUTO','EMPRESA','SKU','PRODUTO','DESCRICAO','CATEGORIA','UNIDADE','QUANTIDADE_EMBALAGEM','PESO','INFORMACOES_TECNICAS','ATIVO','DATA_ATUALIZACAO','USUARIO_ATUALIZACAO'],
+    key: r => `${normalizarTexto(r.EMPRESA || '')}|${normalizarTexto(r.SKU || r.PRODUTO || '')}`
+  },
+  vendedores: {
+    aba: 'VENDEDORES', prefixo: 'VND', id: 'ID_VENDEDOR',
+    headers: ['ID_VENDEDOR','CODIGO','NOME','TELEFONE','WHATSAPP','EMAIL','EMPRESAS_JSON','GERENTES_JSON','CARTEIRA_CLIENTES_JSON','ATIVO','DATA_CRIACAO','DATA_ATUALIZACAO','USUARIO_ATUALIZACAO'],
+    key: r => String(r.CODIGO || r.EMAIL || '').trim().toUpperCase()
+  },
+  rcas: {
+    aba: 'RCAS_CADASTRO', prefixo: 'RCA', id: 'ID_RCA',
+    headers: ['ID_RCA','CODIGO_RCA','NOME_RAZAO_SOCIAL','CPF_CNPJ','TELEFONE','WHATSAPP','EMAIL','EMPRESAS_JSON','GERENTES_JSON','REGIAO_ATUACAO','CLIENTES_VINCULADOS_JSON','ATIVO','DATA_CRIACAO','DATA_ATUALIZACAO','USUARIO_ATUALIZACAO'],
+    key: r => String(r.CODIGO_RCA || r.CPF_CNPJ || '').trim().toUpperCase()
+  },
+  gerentes: {
+    aba: 'GERENTES', prefixo: 'GER', id: 'ID_GERENTE',
+    headers: ['ID_GERENTE','CODIGO','NOME','CARGO','TELEFONE','EMAIL','EMPRESAS_JSON','VENDEDORES_SUPERVISIONADOS_JSON','RCAS_SUPERVISIONADOS_JSON','ATIVO','DATA_CRIACAO','DATA_ATUALIZACAO','USUARIO_ATUALIZACAO'],
+    key: r => String(r.CODIGO || r.EMAIL || r.NOME || '').trim().toUpperCase()
+  }
+};
+const CADASTRO_LEITURA = ['MASTER','GESTOR SAC','ANALISTA SAC','ATENDENTE SAC','APROVADOR','APROVADOR MASTER','SETOR RESPONSÁVEL','DIRETOR','AUDITOR','CONSULTA'];
+const CADASTRO_EDICAO = ['MASTER','GESTOR SAC','ANALISTA SAC'];
+function cadastroConfig(tipo){ return CADASTRO_CONFIG[String(tipo||'').toLowerCase()] || null; }
+function cadastroSemDuplicidade(rows, cfg, body, ignoreId='') {
+  const candidato = cfg.key(body);
+  if (!candidato) return null;
+  return rows.find(r => String(r[cfg.id]||'') !== String(ignoreId||'') && cfg.key(r) === candidato && String(r.ATIVO||'SIM').toUpperCase() !== 'EXCLUIDO');
+}
+function cadastroEscopo(rows, req) {
+  if (!req._empresaScope) return rows;
+  return rows.filter(r => {
+    const raw = r.EMPRESA || r.EMPRESAS || r.EMPRESAS_JSON || '';
+    if (!raw) return false;
+    return pertenceEmpresa(req._empresaScope, raw) || String(raw).toUpperCase().includes(empresaCanonica(req._empresaScope));
+  });
+}
+app.get('/api/cadastros/:tipo', middlewareEscopoEmpresa(), requerPerfil(...CADASTRO_LEITURA), async (req,res)=>{
+  try {
+    const cfg=cadastroConfig(req.params.tipo); if(!cfg) return res.status(404).json({sucesso:false,erro:'Tipo de cadastro inválido.'});
+    await garantirAbaComCabecalhos(cfg.aba,cfg.headers);
+    let itens=await lerAba(cfg.aba,10000);
+    // RCAs antigos continuam visíveis sem copiar seus registros para uma nova base.
+    if(req.params.tipo==='rcas' && !itens.length) itens=await lerAba('REPRESENTANTES',5000).catch(()=>[]);
+    if(['rcas','vendedores','gerentes'].includes(req.params.tipo)) {
+      const usuarios=(await carregarUsuarios()).map(usuarioPublico);
+      const perfis=await lerAba('PERFIS_PROFISSIONAIS',5000).catch(()=>[]);
+      const completos=new Set(perfis.filter(p=>p.STATUS==='CONCLUIDO').map(p=>String(p.ID_USUARIO)));
+      const tipo=req.params.tipo;
+      for(const u of usuarios) {
+        if(!completos.has(String(u.id)) || String(u.status||'ATIVO').toUpperCase()!=='ATIVO') continue;
+        const cargo=normalizarTexto(u.cargo||'');
+        const corresponde=tipo==='rcas' ? u.perfil==='RCA / REPRESENTANTE' : tipo==='vendedores' ? cargo.includes('vendedor') : cargo.includes('gerente') || u.perfil==='GESTOR SAC';
+        if(!corresponde) continue;
+        const code=tipo==='rcas'?u.codigoRCA||u.id:u.id;
+        if(itens.some(r=>String(r.USUARIO_ID||'')===String(u.id) || (tipo==='rcas'&&u.codigoRCA&&String(r.CODIGO_RCA||'')===String(u.codigoRCA)) || (u.email&&String(r.EMAIL||'').toLowerCase()===u.email.toLowerCase()))) continue;
+        const comum={USUARIO_ID:u.id,ORIGEM_PERFIL:'SIM',EMPRESA:u.empresa,EMPRESAS_JSON:JSON.stringify([u.empresa]),EMAIL:u.email,TELEFONE:u.telefone,ATIVO:'SIM'};
+        itens.push(tipo==='rcas'?{...comum,ID_RCA:`USR:${u.id}`,CODIGO_RCA:code,NOME_RAZAO_SOCIAL:u.nome}:tipo==='vendedores'?{...comum,ID_VENDEDOR:`USR:${u.id}`,CODIGO:code,NOME:u.nome}:{...comum,ID_GERENTE:`USR:${u.id}`,CODIGO:code,NOME:u.nome,CARGO:u.cargo});
+      }
+    }
+    itens=cadastroEscopo(itens,req).filter(r=>String(r.ATIVO||'SIM').toUpperCase()!=='EXCLUIDO');
+    const q=String(req.query.q||'').trim().toLowerCase();
+    if(q) itens=itens.filter(r=>Object.values(r).some(v=>String(v??'').toLowerCase().includes(q)));
+    res.json({sucesso:true,total:itens.length,itens});
+  } catch(e){ res.status(500).json({sucesso:false,erro:erroSeguro(e),itens:[]}); }
+});
+app.post('/api/cadastros/:tipo', requerPerfil(...CADASTRO_EDICAO), async(req,res)=>{
+  try {
+    const cfg=cadastroConfig(req.params.tipo); if(!cfg) return res.status(404).json({sucesso:false,erro:'Tipo de cadastro inválido.'});
+    await garantirAbaComCabecalhos(cfg.aba,cfg.headers);
+    const body={...(req.body||{})};
+    if(!body.NOME && body.nome) body.NOME=body.nome;
+    if(!body.ATIVO) body.ATIVO='SIM';
+    const rows=await lerAba(cfg.aba,10000); const dup=cadastroSemDuplicidade(rows,cfg,body);
+    if(dup) return res.status(409).json({sucesso:false,erro:'Cadastro duplicado.',existente:dup[cfg.id]});
+    const now=new Date().toISOString(); const obj={...body,[cfg.id]:await gerarProximoID(cfg.aba,cfg.prefixo,cfg.id),DATA_CRIACAO:now,DATA_ATUALIZACAO:now,USUARIO_ATUALIZACAO:req.user?.usuario||'sistema'};
+    await appendObjeto(cfg.aba,obj); await registrarAuditoria(req.user.usuario,'CRIOU_CADASTRO',obj[cfg.id],cfg.aba,null,obj);
+    res.status(201).json({sucesso:true,item:obj});
+  } catch(e){ res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
+});
+app.patch('/api/cadastros/:tipo/:id', requerPerfil(...CADASTRO_EDICAO), async(req,res)=>{
+  try {
+    const cfg=cadastroConfig(req.params.tipo); if(!cfg) return res.status(404).json({sucesso:false,erro:'Tipo de cadastro inválido.'});
+    await garantirAbaComCabecalhos(cfg.aba,cfg.headers); const rows=await lerAba(cfg.aba,10000); const atual=rows.find(r=>String(r[cfg.id])===String(req.params.id));
+    if(!atual) return res.status(404).json({sucesso:false,erro:'Cadastro não encontrado.'});
+    const body={...(req.body||{})}; const combinado={...atual,...body}; const dup=cadastroSemDuplicidade(rows,cfg,combinado,req.params.id);
+    if(dup) return res.status(409).json({sucesso:false,erro:'Cadastro duplicado.',existente:dup[cfg.id]});
+    const dados={...body,DATA_ATUALIZACAO:new Date().toISOString(),USUARIO_ATUALIZACAO:req.user?.usuario||'sistema'};
+    await atualizarPorID(cfg.aba,req.params.id,dados,[cfg.id,'ID']); const item=await buscarPorID(cfg.aba,req.params.id,[cfg.id,'ID']);
+    await registrarAuditoria(req.user.usuario,'ATUALIZOU_CADASTRO',req.params.id,cfg.aba,null,dados); res.json({sucesso:true,item});
+  } catch(e){ res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
+});
+app.post('/api/cadastros/:tipo/importar', requerPerfil(...CADASTRO_EDICAO), async(req,res)=>{
+  try {
+    const cfg=cadastroConfig(req.params.tipo); if(!cfg) return res.status(404).json({sucesso:false,erro:'Tipo de cadastro inválido.'});
+    const itens=Array.isArray(req.body?.itens)?req.body.itens:[]; if(!itens.length) return res.status(400).json({sucesso:false,erro:'Nenhum registro enviado.'});
+    await garantirAbaComCabecalhos(cfg.aba,cfg.headers); let rows=await lerAba(cfg.aba,10000); let criados=0,atualizados=0,duplicados=0;
+    for(const raw of itens){ const body={...(raw||{})}; if(!body.ATIVO) body.ATIVO='SIM'; const found=cadastroSemDuplicidade(rows,cfg,body); if(found){ await atualizarPorID(cfg.aba,found[cfg.id],{...body,DATA_ATUALIZACAO:new Date().toISOString(),USUARIO_ATUALIZACAO:req.user.usuario},[cfg.id,'ID']); atualizados++; } else { const obj={...body,[cfg.id]:await gerarProximoID(cfg.aba,cfg.prefixo,cfg.id),DATA_CRIACAO:new Date().toISOString(),DATA_ATUALIZACAO:new Date().toISOString(),USUARIO_ATUALIZACAO:req.user.usuario}; await appendObjeto(cfg.aba,obj); rows.push(obj); criados++; } }
+    await registrarAuditoria(req.user.usuario,'IMPORTOU_CADASTRO',`${criados}c/${atualizados}a`,cfg.aba,null,{total:itens.length}); res.json({sucesso:true,criados,atualizados,duplicados,total:criados+atualizados});
+  } catch(e){ res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
 });
 
 // ===== PRODUTOS =====
@@ -3675,9 +4033,10 @@ app.get('/api/dashboard/executiva', middlewareEscopoEmpresa(), requerPermissao('
     ]);
     const scoped = filtrarPorEmpresaHistorico(manifestacoes, req, COLUNA_EMPRESA_ABA.MANIFESTACOES)
       .filter(m=>!isTeste(m)).filter(m=>!empresa || pertenceEmpresa(empresa,m.EMPRESA_RECLAMADA||''))
-      .filter(m=>!setor || normalizarTexto(m.SETOR_CONFIRMADO||m.SETOR_DESTINADO||m.SETOR_SUGERIDO||'').includes(normalizarTexto(setor)));
-    const pesquisas = respostas.filter(r=>!empresa || pertenceEmpresa(empresa,r.EMPRESA||''));
+      .filter(m=>!setor || normalizarTexto(m.SETOR_CONFIRMADO||m.SETOR_DESTINADO||m.SETOR_RESPONSAVEL||m.SETOR_SUGERIDO||'').includes(normalizarTexto(setor)));
     const inicioData=inicio?new Date(`${inicio}T00:00:00`):null, fimData=fim?new Date(`${fim}T23:59:59`):null;
+    const pesquisas = respostas.filter(r=>!empresa || pertenceEmpresa(empresa,r.EMPRESA||''))
+      .filter(r=>{ const valor=r.DATA||r.DATA_RESPOSTA||r.DATA_CRIACAO||r.CREATED_AT; if(!valor) return !inicioData&&!fimData; const d=new Date(valor); return !Number.isNaN(d.getTime()) && (!inicioData||d>=inicioData) && (!fimData||d<=fimData); });
     const dados=dashboardExecutiva.calcular({manifestacoes:scoped,respostas:pesquisas,logsIA,inicio:inicioData,fim:fimData});
     res.json({sucesso:true,filtros:{empresa,setor,inicio,fim},fonte:{manifestacoes:'MANIFESTACOES',satisfacao:'PESQUISA_RESPOSTAS',ia:'LOG_SISTEMA'},dados});
   } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
@@ -4235,8 +4594,13 @@ app.get('/api/pesquisas/relatorio', requerPermissao('pesquisas.visualizar'), asy
     invalidarCacheAba('PESQUISA_RESPOSTAS');
     invalidarCacheAba('PESQUISA_HISTORICO');
     const todasRespostas = await lerRespostasPesquisa();
+    const ocorrenciasPesquisa = await lerAba('PESQUISA_OCORRENCIAS', 5000).catch(() => []);
+    const manifestacoesPesquisa = await lerAba('MANIFESTACOES', 5000).catch(() => []);
     // Normaliza para campos canônicos (sem duplicar campos uppercase e camelCase)
-    const dados = todasRespostas.map(r => ({
+    const dados = todasRespostas.map(r => {
+      const ocp = ocorrenciasPesquisa.find(o => (o.TOKEN && o.TOKEN === r.TOKEN) || (o.ID_RESPOSTA && o.ID_RESPOSTA === r.ID_RESPOSTA));
+      const man = manifestacoesPesquisa.find(m => String(m.DESCRICAO || m.DESCRICAO_MANIFESTACAO || '').includes(r.ID_RESPOSTA || '__sem_id__'));
+      return ({
       Empresa: r.EMPRESA || '',
       Cliente: r.NOME_CLIENTE || '',
       Data: r.DATA || '',
@@ -4249,7 +4613,18 @@ app.get('/api/pesquisas/relatorio', requerPermissao('pesquisas.visualizar'), asy
       _token: r.TOKEN || '',
       _notaBaixa: r.NOTA_BAIXA || '',
       _statusOcp: r.STATUS_OCP || '',
-    }));
+      _formularioId: r.FORMULARIO_ID || '',
+      _versaoId: r.VERSAO_ID || '',
+      _versao: r.VERSAO || '',
+      _analista: r.ANALISTA_RESPONSAVEL || '',
+      _statusAnalise: r.STATUS_ANALISE || '',
+      _observacoesInternas: r.OBSERVACOES_INTERNAS || '',
+      _assumidoEm: r.DATA_ASSUNCAO || '',
+      _ocpId: ocp?.ID_OCP || '',
+      _manifestacaoId: ocp?.ID_MANIFESTACAO_GERADA || man?.ID_MANIFESTACAO || '',
+      _decisao: ocp?.DECISAO || (r.STATUS_OCP === 'NAO_REQUER_TRATAMENTO' ? 'NAO_REQUER' : ''),
+      });
+    });
     // Não retorna early aqui — continua para construir historico com dados manuais mesmo sem respostas
 
     const COLS_NOTA = ['Atendimento', 'Prazo de Entrega', 'Qualidade', 'Recomendação'];
@@ -4525,8 +4900,37 @@ app.delete('/api/pesquisas/respostas/:id', requerPermissao('pesquisas.gerenciar'
   }
 });
 
+// ===== ANÁLISE SAC DA RESPOSTA =====
+app.patch('/api/pesquisas/respostas/:id/analise', requerPermissao('pesquisas.criar'), async (req, res) => {
+  try {
+    const { assumir = false, observacoesInternas } = req.body || {};
+    await garantirAbaComCabecalhos('PESQUISA_RESPOSTAS', ['ID_RESPOSTA','ANALISTA_RESPONSAVEL','STATUS_ANALISE','OBSERVACOES_INTERNAS','DATA_ASSUNCAO','DATA_ATUALIZACAO_ANALISE']);
+    const rows = await lerRespostasPesquisa();
+    const resposta = rows.find(r => r.ID_RESPOSTA === req.params.id);
+    if (!resposta) return res.status(404).json({ sucesso: false, erro: 'Resposta não encontrada.' });
+    const perfilAtual = perfilCanonico(req.user?.perfil || '');
+    if (perfilAtual !== 'MASTER' && !pertenceEmpresa(req.user?.empresa || '', resposta.EMPRESA || '')) {
+      return res.status(403).json({ sucesso: false, erro: 'Acesso não autorizado para a empresa desta pesquisa.' });
+    }
+    const agora = new Date().toISOString();
+    const alteracoes = {
+      STATUS_ANALISE: assumir || resposta.ANALISTA_RESPONSAVEL ? 'EM_ANALISE' : (resposta.STATUS_ANALISE || 'PENDENTE'),
+      DATA_ATUALIZACAO_ANALISE: agora,
+    };
+    if (assumir) {
+      alteracoes.ANALISTA_RESPONSAVEL = req.user?.usuario || '';
+      alteracoes.DATA_ASSUNCAO = resposta.DATA_ASSUNCAO || agora;
+    }
+    if (observacoesInternas != null) alteracoes.OBSERVACOES_INTERNAS = String(observacoesInternas).trim().slice(0, 4000);
+    await atualizarPorID('PESQUISA_RESPOSTAS', req.params.id, alteracoes, ['ID_RESPOSTA']);
+    invalidarCacheAba('PESQUISA_RESPOSTAS');
+    await registrarAuditoria(req.user?.usuario || 'sistema', assumir ? 'ASSUMIU_ANALISE_PESQUISA' : 'ATUALIZOU_ANALISE_PESQUISA', req.params.id, 'PESQUISA_RESPOSTAS', null, alteracoes);
+    res.json({ sucesso: true, analista: alteracoes.ANALISTA_RESPONSAVEL || resposta.ANALISTA_RESPONSAVEL || '', status: alteracoes.STATUS_ANALISE });
+  } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e,'analise-pesquisa') }); }
+});
+
 // ===== PESQUISA DECISÃO (Transformar em Manifestação / Não requer tratamento) =====
-app.post('/api/pesquisas/decisao', requerPermissao('pesquisas.gerenciar'), async (req, res) => {
+app.post('/api/pesquisas/decisao', requerPermissao('pesquisas.criar'), async (req, res) => {
   try {
     const { respostaId, decisao, justificativa } = req.body || {};
     if (!respostaId || !decisao) return res.status(400).json({ sucesso: false, erro: 'respostaId e decisao são obrigatórios.' });
@@ -4537,6 +4941,19 @@ app.post('/api/pesquisas/decisao', requerPermissao('pesquisas.gerenciar'), async
     const idx = rows.findIndex(r => r.ID_RESPOSTA === respostaId);
     if (idx < 0) return res.status(404).json({ sucesso: false, erro: 'Resposta não encontrada.' });
     const resposta = rows[idx];
+    const perfilAtual = perfilCanonico(req.user?.perfil || '');
+    if (perfilAtual !== 'MASTER' && !pertenceEmpresa(req.user?.empresa || '', resposta.EMPRESA || '')) {
+      return res.status(403).json({ sucesso: false, erro: 'Acesso não autorizado para a empresa desta pesquisa.' });
+    }
+
+    if (resposta.STATUS_OCP === 'NAO_REQUER_TRATAMENTO' && decisao === 'NAO_REQUER') {
+      return res.json({ sucesso: true, decisao: resposta.STATUS_OCP, existente: true });
+    }
+    if (resposta.STATUS_OCP === 'TRANSFORMADA_MANIFESTACAO' && decisao === 'MANIFESTACAO') {
+      const manifests = await lerAba('MANIFESTACOES', 5000).catch(() => []);
+      const existente = manifests.find(m => String(m.DESCRICAO || m.DESCRICAO_MANIFESTACAO || '').includes(respostaId));
+      return res.json({ sucesso: true, decisao: resposta.STATUS_OCP, manifestacaoId: existente?.ID_MANIFESTACAO || null, existente: true });
+    }
 
     const sheets = await getSheets();
     const headers = await obterCabecalhos(aba);
@@ -4782,6 +5199,77 @@ app.post('/api/relatorios/:id/link', requerPerfil('MASTER','ANALISTA SAC','APROV
     await registrarAuditoria('RELATORIO_LINK_GERADO', `Link gerado para ${id} (${row.CHAVE})`, req.user?.nome||'', row.EMPRESA);
     res.json({ sucesso:true, token, link });
   } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
+});
+
+// ===== ENVIO E HISTÓRICO DE RELATÓRIOS =====
+// O relatório só pode ser enviado depois de publicado. Os destinatários são
+// conferidos contra usuários cadastrados; nenhum endereço é inventado pela API.
+const REL_ENVIO_HEADERS = ['ID_ENVIO','ID_RELATORIO','EMPRESA','ANO','MES','VERSAO','DESTINATARIOS','MENSAGEM','LINK','POSSUI_PDF','STATUS','CRIADO_EM','CRIADO_POR','ERRO'];
+
+app.get('/api/relatorios/:id/envios', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC','APROVADOR','APROVADOR MASTER','DIRETOR','SETOR DIRETORIA','VISUALIZADOR','AUDITOR'), async (req, res) => {
+  try {
+    const row = (await lerRelatoriosSac()).find(r => r.ID_RELATORIO === req.params.id);
+    if (!row) return res.status(404).json({ sucesso:false, erro:'Relatório não encontrado.' });
+    if (_mcEmpresaScope(req.user) && !pertenceEmpresa(_mcEmpresaScope(req.user), row.EMPRESA||'')) return res.status(403).json({ sucesso:false, erro:'Sem acesso a este relatório.' });
+    const perfilConsulta = perfilCanonico(req.user?.perfil||'');
+    if (['DIRETOR','SETOR DIRETORIA','VISUALIZADOR','AUDITOR'].includes(perfilConsulta) && row.STATUS !== 'PUBLICADO') return res.status(403).json({ sucesso:false, erro:'Apenas versões publicadas estão disponíveis para consulta.' });
+    const rows = await lerAba('RELATORIO_ENVIOS', 1000).catch(() => []);
+    const envios = rows.filter(r => r.ID_RELATORIO === row.ID_RELATORIO).map(r => ({
+      id:r.ID_ENVIO, destinatarios: (() => { try { return JSON.parse(r.DESTINATARIOS||'[]'); } catch (_) { return []; } })(),
+      mensagem:r.MENSAGEM||'', link:r.LINK||'', possui_pdf:String(r.POSSUI_PDF||'').toUpperCase()==='SIM',
+      status:r.STATUS||'', criado_em:r.CRIADO_EM||'', criado_por:r.CRIADO_POR||'', erro:r.ERRO||'', versao:Number(r.VERSAO||row.VERSAO||1)
+    }));
+    res.json({ sucesso:true, envios });
+  } catch (e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
+});
+
+app.post('/api/relatorios/:id/enviar', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC','APROVADOR','APROVADOR MASTER'), async (req, res) => {
+  try {
+    const { destinatarios = [], mensagem = '', anexar_pdf = false } = req.body || {};
+    const row = (await lerRelatoriosSac()).find(r => r.ID_RELATORIO === req.params.id);
+    if (!row) return res.status(404).json({ sucesso:false, erro:'Relatório não encontrado.' });
+    if (row.STATUS !== 'PUBLICADO') return res.status(409).json({ sucesso:false, erro:'Publique o relatório antes de enviá-lo.' });
+    if (_mcEmpresaScope(req.user) && !pertenceEmpresa(_mcEmpresaScope(req.user), row.EMPRESA||'')) return res.status(403).json({ sucesso:false, erro:'Sem acesso a este relatório.' });
+    const emails = [...new Set((Array.isArray(destinatarios) ? destinatarios : []).map(v => String(v||'').trim().toLowerCase()).filter(v => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)))];
+    if (!emails.length) return res.status(400).json({ sucesso:false, erro:'Selecione ao menos um destinatário com e-mail cadastrado.' });
+    const usuarios = await lerAba('USUARIOS', 5000).catch(() => []);
+    const cadastrados = new Set(usuarios.map(u => String(u.EMAIL||'').trim().toLowerCase()).filter(Boolean));
+    const invalidos = emails.filter(e => !cadastrados.has(e));
+    if (invalidos.length) return res.status(400).json({ sucesso:false, erro:'Destinatário não cadastrado: '+invalidos.join(', ') });
+
+    await garantirAbaComCabecalhos('RELATORIO_ENVIOS', REL_ENVIO_HEADERS).catch(() => {});
+    const token = row.LINK_TOKEN || require('crypto').randomBytes(18).toString('base64url');
+    if (!row.LINK_TOKEN) { await atualizarPorID('RELATORIOS_SAC', row.ID_RELATORIO, { LINK_TOKEN:token }, ['ID_RELATORIO']); invalidarCacheAba('RELATORIOS_SAC'); }
+    const link = `${APP_URL}/relatorio-publico/${token}`;
+    const id = `ENV-${Date.now().toString(36).toUpperCase()}`;
+    const base = { ID_ENVIO:id, ID_RELATORIO:row.ID_RELATORIO, EMPRESA:row.EMPRESA||'', ANO:row.ANO||'', MES:row.MES||'', VERSAO:row.VERSAO||'1', DESTINATARIOS:JSON.stringify(emails), MENSAGEM:String(mensagem||''), LINK:link, POSSUI_PDF:anexar_pdf?'SIM':'NAO', STATUS:'PENDENTE_CONFIGURACAO', CRIADO_EM:new Date().toISOString(), CRIADO_POR:req.user?.nome||req.user?.usuario||'', ERRO:'' };
+
+    if (!_resend) {
+      base.ERRO = 'Serviço de e-mail não configurado (RESEND_API_KEY).';
+      await appendObjeto('RELATORIO_ENVIOS', base);
+      registrarAuditoria(req.user?.usuario||'sistema','RELATORIO_ENVIO_PREPARADO',row.ID_RELATORIO,'RELATORIO_ENVIOS',null,{id,destinatarios:emails}).catch(()=>{});
+      return res.status(503).json({ sucesso:false, preparado:true, status:base.STATUS, id, link, erro:base.ERRO });
+    }
+
+    const periodo = new Date(Number(row.ANO), Number(row.MES)-1, 1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+    const payload = { from:EMAIL_FROM, to:emails, subject:`Relatório de satisfação — ${row.EMPRESA} — ${periodo}`, html:`<p>${String(mensagem||'Segue o relatório de satisfação para consulta.').replace(/[<>]/g,'')}</p><p><a href="${link}">Abrir relatório</a></p>` };
+    if (anexar_pdf && gerarPdfRelatorioSatisfacao) {
+      let dados = {}, textos = {}; try { dados=JSON.parse(row.DADOS_JSON||'{}'); } catch (_) {} try { textos=JSON.parse(row.TEXTOS_JSON||'{}'); } catch (_) {}
+      const pdf = await gerarPdfRelatorioSatisfacao({ empresa:row.EMPRESA, periodo, versao:row.VERSAO, status:row.STATUS, indicador:row.INDICADOR, nps:row.NPS_SCORE, meta:dados.meta, criterios:dados.criterios||[], textos });
+      payload.attachments = [{ filename:`Relatorio_Satisfacao_${String(row.EMPRESA||'Grupo').replace(/[^a-z0-9]+/gi,'_')}_${row.ANO}-${String(row.MES).padStart(2,'0')}.pdf`, content:pdf.toString('base64') }];
+    }
+    try {
+      await _resend.emails.send(payload);
+      base.STATUS='ENVIADO';
+      await appendObjeto('RELATORIO_ENVIOS', base);
+      registrarAuditoria(req.user?.usuario||'sistema','RELATORIO_ENVIADO',row.ID_RELATORIO,'RELATORIO_ENVIOS',null,{id,destinatarios:emails}).catch(()=>{});
+      res.json({ sucesso:true, id, status:base.STATUS, link });
+    } catch (e) {
+      base.STATUS='ERRO'; base.ERRO=erroSeguro(e);
+      await appendObjeto('RELATORIO_ENVIOS', base);
+      res.status(502).json({ sucesso:false, id, status:base.STATUS, erro:'O serviço de e-mail recusou o envio.' });
+    }
+  } catch (e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
 
 // ===== METAS POR EMPRESA =====
@@ -5273,7 +5761,7 @@ app.post('/api/pesquisas/tokens/:token/abrir', async (req, res) => {
 const _pesquisaLandingHTML = () => `<!doctype html><html lang="pt-BR"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow"><title>Pesquisa de Satisfação — Grupo Chiacchio</title>
-<style>body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#F4F5F7;color:#2A2A2A;display:flex;min-height:100vh;align-items:center;justify-content:center;padding:24px}
+<style>@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap');body{margin:0;font-family:Montserrat,system-ui,sans-serif;background:#F4F5F7;color:#2A2A2A;display:flex;min-height:100vh;align-items:center;justify-content:center;padding:24px}
 .card{background:#fff;border:1px solid #E4E4E4;border-radius:14px;max-width:460px;width:100%;padding:32px;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,.05)}
 h1{font-size:19px;margin:14px 0 6px;color:#B9171A}p{font-size:14px;line-height:1.6;color:#555}
 .badge{display:inline-flex;align-items:center;justify-content:center;width:56px;height:56px;border-radius:50%;background:#FDECEC;color:#B9171A;font-size:26px}
@@ -5305,9 +5793,10 @@ app.get('/pesquisa/:token', async (req, res) => {
   try {
     const rows = await lerAba('PESQUISA_TOKENS', 2000).catch(()=>[]);
     const row = rows.find(r => r.TOKEN === token);
-    if (!row) return res.status(404).send('<html><body style="font-family:sans-serif;text-align:center;padding:40px"><h2>Link inválido</h2><p>Este link de pesquisa não existe.</p></body></html>');
-    if (_tokenExpirado(row)) return res.status(410).send('<html><body style="font-family:sans-serif;text-align:center;padding:40px"><h2>Link expirado</h2><p>Este link de pesquisa expirou.</p></body></html>');
-    if (row.STATUS === 'RESPONDIDO') return res.send('<html><body style="font-family:sans-serif;text-align:center;padding:40px"><h2>Pesquisa já respondida</h2><p>Sua resposta já foi registrada. Obrigado!</p></body></html>');
+    const fonteMontserrat = '<head><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet"></head>';
+    if (!row) return res.status(404).send(`<html>${fonteMontserrat}<body style="font-family:Montserrat,system-ui,sans-serif;text-align:center;padding:40px"><h2>Link inválido</h2><p>Este link de pesquisa não existe.</p></body></html>`);
+    if (_tokenExpirado(row)) return res.status(410).send(`<html>${fonteMontserrat}<body style="font-family:Montserrat,system-ui,sans-serif;text-align:center;padding:40px"><h2>Link expirado</h2><p>Este link de pesquisa expirou.</p></body></html>`);
+    if (row.STATUS === 'RESPONDIDO') return res.send(`<html>${fonteMontserrat}<body style="font-family:Montserrat,system-ui,sans-serif;text-align:center;padding:40px"><h2>Pesquisa já respondida</h2><p>Sua resposta já foi registrada. Obrigado!</p></body></html>`);
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.send(_pesquisaTokenHTML(token, row.EMPRESA||'', row.NOME_CLIENTE||''));
   } catch(e) {
@@ -5347,16 +5836,6 @@ app.post('/api/pesquisas/resposta-token', async (req, res) => {
     invalidarCacheAba(aba);
     await atualizarPorID('PESQUISA_TOKENS', token, { STATUS: 'RESPONDIDO', DATA_RESPOSTA: new Date().toISOString() }, ['TOKEN']);
     invalidarCacheAba('PESQUISA_TOKENS');
-    if (notaBaixa === 'SIM') {
-      await garantirAbaComCabecalhos('PESQUISA_OCORRENCIAS', ['ID_OCP','TOKEN','EMPRESA','DATA','NPS','STATUS','DECISAO','JUSTIFICATIVA','ID_MANIFESTACAO_GERADA','ANALISTA','DATA_DECISAO']);
-      await appendObjeto('PESQUISA_OCORRENCIAS', {
-        ID_OCP: 'OCP-' + Date.now(), TOKEN: token, EMPRESA: row.EMPRESA||'',
-        DATA: new Date().toISOString(), NPS: notaMedia,
-        STATUS: 'PENDENTE', DECISAO: '', JUSTIFICATIVA: '',
-        ID_MANIFESTACAO_GERADA: '', ANALISTA: '', DATA_DECISAO: '',
-      });
-      invalidarCacheAba('PESQUISA_OCORRENCIAS');
-    }
     res.json({ sucesso: true, flagrada: notaBaixa === 'SIM' });
   } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e,'resposta-token') }); }
 });
@@ -5366,30 +5845,61 @@ app.get('/api/notificacoes/analista', requerPerfil('MASTER','ANALISTA SAC','GEST
   try {
     const _pf = perfilCanonico(req.user?.perfil||'');
     const scope = _pf === 'MASTER' ? null : (req.user?.empresa||null);
-    const [ocps, mans, respostas] = await Promise.all([
+    const [ocps, mans, respostas, leituras] = await Promise.all([
       lerAba('PESQUISA_OCORRENCIAS', 500).catch(()=>[]),
       lerAba('MANIFESTACOES', 5000).catch(()=>[]),
       lerRespostasPesquisa(),
+      lerAba('PESQUISA_NOTIFICACOES_LIDAS', 5000).catch(()=>[]),
     ]);
     const ocpsPendentes = ocps.filter(o =>
       String(o.STATUS||'').toUpperCase() === 'PENDENTE' &&
       (!scope || pertenceEmpresa(scope, o.EMPRESA||''))
+    );
+    const pesquisasPendentes = respostas.filter(r =>
+      String(r.NOTA_BAIXA||'').toUpperCase() === 'SIM' &&
+      !['TRANSFORMADA_MANIFESTACAO','NAO_REQUER_TRATAMENTO'].includes(String(r.STATUS_OCP||'').toUpperCase()) &&
+      !ocps.some(o => (o.ID_RESPOSTA && o.ID_RESPOSTA === r.ID_RESPOSTA) || (o.TOKEN && r.TOKEN && o.TOKEN === r.TOKEN)) &&
+      (!scope || pertenceEmpresa(scope, r.EMPRESA||''))
     );
     const mansPortal = mans.filter(m =>
       m.ORIGEM === 'PORTAL_FUNCIONARIO' &&
       (String(m.STATUS||'').toUpperCase() === 'AGUARDANDO_APROVAÇÃO' || String(m.STATUS||'').toUpperCase() === 'ABERTA' || !m.STATUS) &&
       (!scope || pertenceEmpresa(scope, m.EMPRESA_RECLAMADA||''))
     );
-    // Enriquecer OCPs com dados da resposta
+    // O alerta de análise nasce da resposta crítica. OCP só existe após decisão humana.
     const ocpsEnrich = ocpsPendentes.map(o => {
-      const resp = respostas.find(r => r.TOKEN === o.TOKEN) || {};
+      const resp = respostas.find(r => (o.ID_RESPOSTA && r.ID_RESPOSTA === o.ID_RESPOSTA) || (o.TOKEN && r.TOKEN === o.TOKEN)) || {};
       return { ...o, NOME_CLIENTE: resp.NOME_CLIENTE||o.NOME_CLIENTE||'', NOTA_MEDIA: resp.NOTA_MEDIA||o.NPS||'' };
     });
+    const lidas = new Set(leituras.filter(l => l.USUARIO === (req.user?.usuario||'')).map(l => l.ID_EVENTO));
+    const notificacoes = [
+      ...pesquisasPendentes.map(r => ({
+        id: 'PESQ-' + (r.ID_RESPOSTA || r.TOKEN || ''), tipo: 'NOTA_CRITICA',
+        titulo: 'Pesquisa com nota igual ou inferior a 6', origem: r.ID_RESPOSTA || '',
+        empresa: r.EMPRESA || '', data: r.DATA || '', acao: 'COMENTARIOS', lida: lidas.has('PESQ-' + (r.ID_RESPOSTA || r.TOKEN || '')),
+      })),
+      ...ocpsPendentes.map(o => {
+        const prazo = o.PRAZO ? new Date(o.PRAZO) : null;
+        const vencida = prazo && !isNaN(prazo) && prazo < new Date();
+        const proxima = prazo && !isNaN(prazo) && prazo >= new Date() && prazo.getTime() - Date.now() <= 7*86400000;
+        const tipo = vencida ? 'OCP_VENCIDA' : proxima ? 'OCP_PROXIMA_PRAZO' : 'OCP_ATRIBUIDA';
+        const id = tipo + '-' + (o.ID_OCP || '');
+        return { id, tipo, titulo: vencida ? 'Ocorrência vencida' : proxima ? 'Ocorrência próxima do vencimento' : 'Ocorrência aguardando tratamento', origem:o.ID_OCP||'', empresa:o.EMPRESA||'', data:o.DATA||'', acao:'OCORRENCIAS', lida:lidas.has(id) };
+      }),
+      ...mansPortal.map(m => {
+        const id = 'MAN-' + (m.ID_MANIFESTACAO || '');
+        return { id, tipo:'MANIFESTACAO', titulo:'Manifestação recebida pelo Portal', origem:m.ID_MANIFESTACAO||'', empresa:m.EMPRESA_RECLAMADA||'', data:m.DATA_ABERTURA||m.DATA_REGISTRO||'', acao:'MANIFESTACOES', lida:lidas.has(id) };
+      }),
+    ].filter(n => n.origem).sort((a,b) => new Date(b.data||0) - new Date(a.data||0));
     res.json({
       sucesso: true,
-      total: ocpsPendentes.length + mansPortal.length,
+      total: pesquisasPendentes.length + ocpsPendentes.length + mansPortal.length,
+      naoLidas: notificacoes.filter(n => !n.lida).length,
+      notificacoes,
+      pesquisasBaixas: pesquisasPendentes.length,
       ocpsPendentes: ocpsPendentes.length,
       mansPortal: mansPortal.length,
+      pesquisas: pesquisasPendentes.slice(0, 20),
       ocps: ocpsEnrich.slice(0, 20),
       manifestacoes: mansPortal.slice(0, 20).map(m => ({
         id: m.ID_MANIFESTACAO, cliente: m.CLIENTE_NOME||m.NOME_CLIENTE||'', empresa: m.EMPRESA_RECLAMADA||'',
@@ -5400,10 +5910,25 @@ app.get('/api/notificacoes/analista', requerPerfil('MASTER','ANALISTA SAC','GEST
   } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e) }); }
 });
 
+app.post('/api/notificacoes/analista/:id/lida', requerPerfil('MASTER','ANALISTA SAC','GESTOR SAC'), async (req, res) => {
+  try {
+    const idEvento = String(req.params.id || '').trim().slice(0, 200);
+    if (!idEvento) return res.status(400).json({ sucesso:false, erro:'Notificação inválida.' });
+    await garantirAbaComCabecalhos('PESQUISA_NOTIFICACOES_LIDAS', ['ID_LEITURA','ID_EVENTO','USUARIO','DATA_LEITURA']);
+    const rows = await lerAba('PESQUISA_NOTIFICACOES_LIDAS', 5000).catch(()=>[]);
+    const existente = rows.find(r => r.ID_EVENTO === idEvento && r.USUARIO === (req.user?.usuario||''));
+    if (!existente) {
+      await appendObjeto('PESQUISA_NOTIFICACOES_LIDAS', { ID_LEITURA:'LID-'+Date.now(), ID_EVENTO:idEvento, USUARIO:req.user?.usuario||'', DATA_LEITURA:new Date().toISOString() });
+      invalidarCacheAba('PESQUISA_NOTIFICACOES_LIDAS');
+    }
+    res.json({ sucesso:true, existente:!!existente });
+  } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e,'ler-notificacao') }); }
+});
+
 // Listar OCPs (Ocorrências de Pesquisa)
 app.get('/api/pesquisas/ocorrencias', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','GESTOR SAC'), async (req, res) => {
   try {
-    await garantirAbaComCabecalhos('PESQUISA_OCORRENCIAS', ['ID_OCP','TOKEN','EMPRESA','DATA','NPS','STATUS','DECISAO','JUSTIFICATIVA','ID_MANIFESTACAO_GERADA','ANALISTA','DATA_DECISAO']);
+    await garantirAbaComCabecalhos('PESQUISA_OCORRENCIAS', ['ID_OCP','ID_RESPOSTA','TOKEN','EMPRESA','DATA','NPS','SETOR','RESPONSAVEL','PRAZO','STATUS','DECISAO','JUSTIFICATIVA','ID_MANIFESTACAO_GERADA','ANALISTA','DATA_DECISAO','DESCRICAO','RESULTADO','ENCERRADO_EM','HISTORICO_JSON']);
     const rows = await lerAba('PESQUISA_OCORRENCIAS', 2000);
     const _pf = perfilCanonico(req.user?.perfil||'');
     const scope = _pf === 'MASTER' ? null : (req.user?.empresa||null);
@@ -5411,7 +5936,7 @@ app.get('/api/pesquisas/ocorrencias', requerPerfil('MASTER','ANALISTA SAC','APRO
     // Juntar dados da resposta
     const respostas = await lerRespostasPesquisa();
     const enriched = itens.map(ocp => {
-      const resp = respostas.find(r => r.TOKEN === ocp.TOKEN);
+      const resp = respostas.find(r => (ocp.ID_RESPOSTA && r.ID_RESPOSTA === ocp.ID_RESPOSTA) || (ocp.TOKEN && r.TOKEN === ocp.TOKEN));
       return { ...ocp, resposta: resp || null };
     });
     res.json({ sucesso: true, total: enriched.length, itens: enriched });
@@ -5488,7 +6013,7 @@ function _pesquisaTokenHTML(token, empresa, nomeCliente) {
 <title>Pesquisa de Satisfação${empresaDisplay ? ' — '+empresaDisplay : ''}</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#F5F5F5;color:#1F1F1F;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:24px 16px 48px}
+body{font-family:Montserrat,system-ui,sans-serif;background:#F5F5F5;color:#1F1F1F;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:24px 16px 48px}
 .card{background:#fff;border-radius:16px;box-shadow:0 2px 16px rgba(0,0,0,.09);max-width:560px;width:100%;padding:32px 28px 36px}
 .logo-wrap{text-align:center;margin-bottom:20px}
 .logo-wrap img{max-height:64px;max-width:220px;padding:8px 14px;background:#fff;border-radius:10px;box-shadow:0 1px 6px rgba(0,0,0,.08)}
@@ -5782,7 +6307,7 @@ app.post('/api/caso-similar/usar-referencia', requerPerfil('MASTER','ANALISTA SA
 
 app.get('/api/auditoria', requerPerfil('MASTER','GESTOR SAC','AUDITOR'), async (req, res) => {
   try {
-    const { q, acao, periodo, usuario, pagina, limite } = req.query;
+    const { q, acao, periodo, usuario, modulo, empresa, pagina, limite } = req.query;
     const data = await lerAba('LOG_SISTEMA', 3000);
     let itens = data.map(r => {
       const vals = Object.values(r);
@@ -5814,6 +6339,8 @@ app.get('/api/auditoria', requerPerfil('MASTER','GESTOR SAC','AUDITOR'), async (
     }
     if (acao) itens = itens.filter(r => r.ACAO && r.ACAO.toLowerCase().includes(acao.toLowerCase()));
     if (usuario) itens = itens.filter(r => r.USUARIO && r.USUARIO.toLowerCase().includes(usuario.toLowerCase()));
+    if (modulo) itens = itens.filter(r => r.ABA && r.ABA.toLowerCase().includes(modulo.toLowerCase()));
+    if (empresa) itens = itens.filter(r => String(r.DETALHES||'').toLowerCase().includes(empresa.toLowerCase()));
     if (q) {
       const ql = q.toLowerCase();
       itens = itens.filter(r => [r.USUARIO,r.ACAO,r.ID_REGISTRO,r.ABA,r.DETALHES].some(v => v && String(v).toLowerCase().includes(ql)));
@@ -6005,7 +6532,7 @@ app.post('/api/usuarios', requerPermissao('usuarios.criar'), async (req,res)=>{
     if(!b.usuario||!b.nome||!b.perfil) return res.status(400).json({sucesso:false,erro:'Usuário, nome e perfil são obrigatórios.'});
     const id=await gerarProximoID('USUARIOS','USR','ID_USUARIO');
     const hash=b.senha ? await hashSenha(b.senha) : '';
-    const obj={ID_USUARIO:id,USUARIO:b.usuario,EMAIL:b.email||'',NOME:b.nome,PERFIL:perfilCanonico(b.perfil),EMPRESA:b.empresa||'',SETOR:b.setor||'',CODIGO_RCA:b.codigoRCA||'',STATUS:b.status||'ATIVO',SENHA_HASH:hash,DATA_CRIACAO:new Date().toISOString(),ULTIMO_ACESSO:'',PERMISSOES_CUSTOM:Array.isArray(b.permissoes_custom)?JSON.stringify(b.permissoes_custom):''};
+    const obj={ID_USUARIO:id,USUARIO:b.usuario,EMAIL:b.email||'',NOME:b.nome,CARGO:b.cargo||'',PERFIL:perfilCanonico(b.perfil),EMPRESA:b.empresa||'',SETOR:b.setor||'',CODIGO_RCA:b.codigoRCA||'',STATUS:b.status||'ATIVO',SENHA_HASH:hash,DATA_CRIACAO:new Date().toISOString(),ULTIMO_ACESSO:'',PERMISSOES_CUSTOM:Array.isArray(b.permissoes_custom)?JSON.stringify(b.permissoes_custom):''};
     await appendObjeto('USUARIOS',obj);
     await registrarAuditoria(req.user.usuario,'CRIOU_USUARIO',id,'USUARIOS',null,{perfil:obj.PERFIL});
     res.json({sucesso:true,usuario:usuarioPublico(obj)});
@@ -6018,6 +6545,7 @@ app.patch('/api/usuarios/:id', requerPermissao('usuarios.editar'), async (req,re
     const dados={};
     if(b.nome!==undefined) dados.NOME=b.nome;
     if(b.email!==undefined) dados.EMAIL=b.email;
+    if(b.cargo!==undefined||b.CARGO!==undefined) dados.CARGO=String(b.cargo??b.CARGO??'').trim();
     if(b.setor!==undefined) dados.SETOR=b.setor;
     if(b.status!==undefined) dados.STATUS=b.status;
     if(b.codigoRCA!==undefined) dados.CODIGO_RCA=b.codigoRCA;
@@ -6044,7 +6572,47 @@ app.patch('/api/usuarios/:id', requerPermissao('usuarios.editar'), async (req,re
         throw err;
       }
     }
-    if(!resultado) return res.status(404).json({sucesso:false,erro:'Usuário não encontrado. Recarregue a lista e tente novamente.'});
+    const pgAlvo = usuarioRepo ? (await carregarUsuarios()).find(u => String(u.ID_USUARIO||u.USUARIO||u.EMAIL) === String(req.params.id) || String(u.USUARIO||'') === String(req.params.id) || String(u.EMAIL||'') === String(req.params.id)) : null;
+    if(!resultado && !(pgAlvo && pgAlvo._pgId)) return res.status(404).json({sucesso:false,erro:'Usuário não encontrado. Recarregue a lista e tente novamente.'});
+    // Usuários provisionados apenas no PostgreSQL precisam de uma linha de
+    // espelho na aba administrativa. Sem isso, empresa/setor/perfil/cargo
+    // eram aceitos pela API, mas desapareciam no próximo carregamento.
+    if (!resultado && pgAlvo?._pgId) {
+      await garantirAbaComCabecalhos('USUARIOS', ['ID_USUARIO','USUARIO','EMAIL','NOME','CARGO','PERFIL','EMPRESA','SETOR','STATUS','SENHA_HASH','DATA_CRIACAO','ULTIMO_ACESSO','PERMISSOES_GRANTED','PERMISSOES_BLOCKED','DATA_ULTIMA_ALTERACAO','ALTERADO_POR']);
+      await appendObjeto('USUARIOS', {
+        ID_USUARIO: pgAlvo.ID_USUARIO || req.params.id,
+        USUARIO: pgAlvo.USUARIO || pgAlvo.EMAIL || '',
+        EMAIL: b.email !== undefined ? String(b.email).toLowerCase() : (pgAlvo.EMAIL || ''),
+        NOME: b.nome !== undefined ? b.nome : (pgAlvo.NOME || ''),
+        CARGO: b.cargo !== undefined ? b.cargo : (pgAlvo.CARGO || ''),
+        PERFIL: b.perfil !== undefined ? perfilCanonico(b.perfil) : (pgAlvo.PERFIL || ''),
+        EMPRESA: b.empresa !== undefined ? String(b.empresa).trim() : (pgAlvo.EMPRESA || ''),
+        SETOR: b.setor !== undefined ? String(b.setor).trim() : (pgAlvo.SETOR || ''),
+        STATUS: b.status !== undefined ? String(b.status).toUpperCase() : (pgAlvo.STATUS || 'ATIVO'),
+        SENHA_HASH: dados.SENHA_HASH || pgAlvo.SENHA_HASH || '',
+        DATA_CRIACAO: pgAlvo.DATA_CRIACAO || new Date().toISOString(),
+        ULTIMO_ACESSO: pgAlvo.ULTIMO_ACESSO || '',
+        PERMISSOES_GRANTED: Array.isArray(b.permissoes_granted) ? JSON.stringify(b.permissoes_granted) : (pgAlvo.PERMISSOES_GRANTED || ''),
+        PERMISSOES_BLOCKED: Array.isArray(b.permissoes_blocked) ? JSON.stringify(b.permissoes_blocked) : (pgAlvo.PERMISSOES_BLOCKED || ''),
+        DATA_ULTIMA_ALTERACAO: dados.DATA_ULTIMA_ALTERACAO,
+        ALTERADO_POR: req.user.usuario,
+      });
+      resultado = { espelhoCriado: true };
+    }
+    // Usuários vindos do PostgreSQL não possuem necessariamente uma linha
+    // correspondente na planilha. Persista também a edição básica na fonte
+    // estruturada para que ela não desapareça no próximo carregamento.
+    if (usuarioRepo) {
+      const alvo = pgAlvo;
+      if (alvo?._pgId) {
+        const pgDados = {};
+        if (b.nome !== undefined) pgDados.nome = b.nome;
+        if (b.email !== undefined) pgDados.email = String(b.email).toLowerCase();
+        if (b.senha) pgDados.senhaHash = dados.SENHA_HASH;
+        if (b.status !== undefined) pgDados.ativo = !['INATIVO','BLOQUEADO','EXCLUIDO','EXCLUÍDO'].includes(String(b.status).toUpperCase());
+        if (Object.keys(pgDados).length) await usuarioRepo.update(alvo._pgId, pgDados).catch(e => console.warn('[PATCH usuario PG]', e.message));
+      }
+    }
     // Invalida cache de status para mudanças de perfil/status/permissões valerem imediatamente
     _statusCache.delete(req.params.id);
     _statusCache.delete(normalizarTexto(req.params.id));
@@ -6063,6 +6631,36 @@ app.patch('/api/usuarios/:id', requerPermissao('usuarios.editar'), async (req,re
   }
 });
 
+async function persistirStatusUsuario(alvo, status, req, extras = {}) {
+  const chave = alvo.ID_USUARIO || alvo.USUARIO || alvo.EMAIL;
+  let sheetAtualizado = null;
+  try {
+    sheetAtualizado = await atualizarPorID('USUARIOS', chave, {
+      STATUS: status,
+      DATA_ULTIMA_ALTERACAO: new Date().toISOString(),
+      ALTERADO_POR: req.user.usuario,
+      ...extras,
+    }, ['ID_USUARIO','USUARIO','EMAIL']);
+  } catch (e) {
+    if (!alvo._pgId) throw e;
+    console.warn('[status usuario Sheets indisponível; usuário PG]', e.message);
+  }
+  if (!sheetAtualizado && !alvo._pgId) {
+    const err = new Error('Não foi possível persistir o status do usuário na fonte oficial.');
+    err.code = 503;
+    throw err;
+  }
+  if (alvo._pgId && usuarioRepo) {
+    await usuarioRepo.update(alvo._pgId, { ativo: !['INATIVO','BLOQUEADO','EXCLUIDO'].includes(String(status).toUpperCase()) });
+  }
+  invalidarCacheAba('USUARIOS');
+  invalidarCachePermissoes(alvo.EMAIL||alvo.USUARIO||alvo.ID_USUARIO);
+  [alvo.USUARIO, alvo.EMAIL, alvo.ID_USUARIO].filter(Boolean).forEach(chave => {
+    _statusCache.delete(chave);
+    _statusCache.delete(normalizarTexto(chave));
+  });
+}
+
 // Soft-delete (MASTER only)
 app.delete('/api/usuarios/:id', requerPermissao('usuarios.gerenciar'), async (req,res)=>{
   try{
@@ -6078,11 +6676,24 @@ app.delete('/api/usuarios/:id', requerPermissao('usuarios.gerenciar'), async (re
       const masters=todos.filter(u=>(u.PERFIL||u.perfil||'').toUpperCase()==='MASTER'&&(u.STATUS||u.status||'ATIVO').toUpperCase()==='ATIVO'&&String(u.ID_USUARIO||u.USUARIO)!==String(alvo.ID_USUARIO||alvo.USUARIO));
       if(masters.length===0) return res.status(403).json({sucesso:false,erro:'Não é possível excluir o único MASTER ativo do sistema.'});
     }
-    await atualizarPorID('USUARIOS', alvo.ID_USUARIO||alvo.USUARIO, {STATUS:'EXCLUIDO',DATA_ULTIMA_ALTERACAO:new Date().toISOString(),ALTERADO_POR:req.user.usuario||'MASTER'}, ['ID_USUARIO','USUARIO','EMAIL']);
-    invalidarCacheAba('USUARIOS');
-    invalidarCachePermissoes(alvo.EMAIL||alvo.USUARIO||alvo.ID_USUARIO);
-    _statusCache.delete(normalizarTexto(alvo.USUARIO||alvo.EMAIL||alvo.ID_USUARIO));
-    await registrarAuditoria(req.user.usuario,'EXCLUIU_USUARIO',req.params.id,'USUARIOS',null,{nome:alvo.NOME});
+    const alvoRefs = new Set([String(alvo.ID_USUARIO||''), String(alvo.USUARIO||''), String(alvo.EMAIL||'')].map(v=>v.trim().toLowerCase()).filter(Boolean));
+    const [filaPendente, manifestacoesPendentes] = await Promise.all([
+      lerAba('FILA_APROVACAO', 5000).catch(()=>[]),
+      lerAba('MANIFESTACOES', 5000).catch(()=>[]),
+    ]);
+    const temResponsabilidade = filaPendente.some(item => ['PENDENTE','AGUARDANDO'].includes(String(item.STATUS||'').toUpperCase()) && alvoRefs.has(String(item.ID_APROVADOR||item.RESPONSAVEL||'').trim().toLowerCase()))
+      || manifestacoesPendentes.some(item => !['ENCERRADA','ARQUIVADA','CANCELADA'].includes(String(item.STATUS||'').toUpperCase()) && alvoRefs.has(String(item.RESPONSAVEL||item.USUARIO_RESPONSAVEL||item.USUARIO_TRATATIVA||'').trim().toLowerCase()));
+    if (temResponsabilidade && String(req.body?.redistribuir || '').toUpperCase() !== 'SIM') {
+      return res.status(409).json({sucesso:false,erro:'Usuário possui responsabilidades pendentes. Redistribua os itens antes da exclusão lógica.'});
+    }
+    const motivo = String(req.body?.motivo || '').trim();
+    if (!motivo) return res.status(400).json({sucesso:false,erro:'Informe o motivo da exclusão lógica.'});
+    const agoraExclusao = new Date().toISOString();
+    await persistirStatusUsuario(alvo, 'EXCLUIDO', req, {
+      STATUS:'EXCLUIDO', DATA_ULTIMA_ALTERACAO:agoraExclusao, DATA_EXCLUSAO:agoraExclusao,
+      EXCLUIDO_POR:req.user.usuario||'MASTER', MOTIVO_EXCLUSAO:motivo, ALTERADO_POR:req.user.usuario||'MASTER'
+    });
+    await registrarAuditoria(req.user.usuario,'EXCLUIU_USUARIO',req.params.id,'USUARIOS',null,{nome:alvo.NOME,motivo});
     res.json({sucesso:true});
   }catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
@@ -6092,10 +6703,10 @@ app.post('/api/usuarios/:id/bloquear', requerPermissao('usuarios.gerenciar'), as
   try{
     if(perfilCanonico(req.user?.perfil||'')!=='MASTER') return res.status(403).json({sucesso:false,erro:'Apenas MASTER.'});
     const todos=await carregarUsuarios();
-    const alvo=todos.find(u=>String(u.ID_USUARIO||u.USUARIO)===String(req.params.id)||String(u.USUARIO)===String(req.params.id));
+    const alvo=todos.find(u=>String(u.ID_USUARIO||u.USUARIO||u.EMAIL)===String(req.params.id)||String(u.USUARIO||'')===String(req.params.id)||String(u.EMAIL||'')===String(req.params.id));
     if(!alvo) return res.status(404).json({sucesso:false,erro:'Usuário não encontrado.'});
     if(normalizarTexto(alvo.USUARIO||alvo.EMAIL)===normalizarTexto(req.user.usuario)) return res.status(400).json({sucesso:false,erro:'Você não pode bloquear sua própria conta.'});
-    await atualizarPorID('USUARIOS',req.params.id,{STATUS:'BLOQUEADO',DATA_ULTIMA_ALTERACAO:new Date().toISOString(),ALTERADO_POR:req.user.usuario},['ID_USUARIO','USUARIO','EMAIL']);
+    await persistirStatusUsuario(alvo, 'BLOQUEADO', req);
     await registrarAuditoria(req.user.usuario,'BLOQUEOU_USUARIO',req.params.id,'USUARIOS',null,{motivo:req.body?.motivo||''});
     res.json({sucesso:true});
   }catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
@@ -6103,7 +6714,9 @@ app.post('/api/usuarios/:id/bloquear', requerPermissao('usuarios.gerenciar'), as
 app.post('/api/usuarios/:id/desbloquear', requerPermissao('usuarios.gerenciar'), async (req,res)=>{
   try{
     if(perfilCanonico(req.user?.perfil||'')!=='MASTER') return res.status(403).json({sucesso:false,erro:'Apenas MASTER.'});
-    await atualizarPorID('USUARIOS',req.params.id,{STATUS:'ATIVO',DATA_ULTIMA_ALTERACAO:new Date().toISOString(),ALTERADO_POR:req.user.usuario},['ID_USUARIO','USUARIO','EMAIL']);
+    const alvo=(await carregarUsuarios()).find(u=>String(u.ID_USUARIO||u.USUARIO||u.EMAIL)===String(req.params.id)||String(u.USUARIO||'')===String(req.params.id)||String(u.EMAIL||'')===String(req.params.id));
+    if(!alvo) return res.status(404).json({sucesso:false,erro:'Usuário não encontrado.'});
+    await persistirStatusUsuario(alvo, 'ATIVO', req);
     await registrarAuditoria(req.user.usuario,'DESBLOQUEOU_USUARIO',req.params.id,'USUARIOS',null,{});
     res.json({sucesso:true});
   }catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
@@ -6112,10 +6725,10 @@ app.post('/api/usuarios/:id/desativar', requerPermissao('usuarios.gerenciar'), a
   try{
     if(perfilCanonico(req.user?.perfil||'')!=='MASTER') return res.status(403).json({sucesso:false,erro:'Apenas MASTER.'});
     const todos=await carregarUsuarios();
-    const alvo=todos.find(u=>String(u.ID_USUARIO||u.USUARIO)===String(req.params.id)||String(u.USUARIO)===String(req.params.id));
+    const alvo=todos.find(u=>String(u.ID_USUARIO||u.USUARIO||u.EMAIL)===String(req.params.id)||String(u.USUARIO||'')===String(req.params.id)||String(u.EMAIL||'')===String(req.params.id));
     if(!alvo) return res.status(404).json({sucesso:false,erro:'Usuário não encontrado.'});
     if(normalizarTexto(alvo.USUARIO||alvo.EMAIL)===normalizarTexto(req.user.usuario)) return res.status(400).json({sucesso:false,erro:'Você não pode desativar sua própria conta.'});
-    await atualizarPorID('USUARIOS',req.params.id,{STATUS:'INATIVO',DATA_ULTIMA_ALTERACAO:new Date().toISOString(),ALTERADO_POR:req.user.usuario},['ID_USUARIO','USUARIO','EMAIL']);
+    await persistirStatusUsuario(alvo, 'INATIVO', req);
     await registrarAuditoria(req.user.usuario,'DESATIVOU_USUARIO',req.params.id,'USUARIOS',null,{});
     res.json({sucesso:true});
   }catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
@@ -6123,7 +6736,9 @@ app.post('/api/usuarios/:id/desativar', requerPermissao('usuarios.gerenciar'), a
 app.post('/api/usuarios/:id/ativar', requerPermissao('usuarios.gerenciar'), async (req,res)=>{
   try{
     if(perfilCanonico(req.user?.perfil||'')!=='MASTER') return res.status(403).json({sucesso:false,erro:'Apenas MASTER.'});
-    await atualizarPorID('USUARIOS',req.params.id,{STATUS:'ATIVO',DATA_ULTIMA_ALTERACAO:new Date().toISOString(),ALTERADO_POR:req.user.usuario},['ID_USUARIO','USUARIO','EMAIL']);
+    const alvo=(await carregarUsuarios()).find(u=>String(u.ID_USUARIO||u.USUARIO||u.EMAIL)===String(req.params.id)||String(u.USUARIO||'')===String(req.params.id)||String(u.EMAIL||'')===String(req.params.id));
+    if(!alvo) return res.status(404).json({sucesso:false,erro:'Usuário não encontrado.'});
+    await persistirStatusUsuario(alvo, 'ATIVO', req);
     await registrarAuditoria(req.user.usuario,'ATIVOU_USUARIO',req.params.id,'USUARIOS',null,{});
     res.json({sucesso:true});
   }catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
@@ -6149,12 +6764,25 @@ app.post('/api/usuarios/:id/permissoes', requerPermissao('usuarios.gerenciar'), 
       return res.status(403).json({ sucesso: false, erro: 'Não é possível alterar as próprias permissões de MASTER.' });
 
     const agora = new Date().toISOString();
-    await atualizarPorID('USUARIOS', id, {
+    const permUpdate = await atualizarPorID('USUARIOS', id, {
       PERMISSOES_GRANTED: JSON.stringify(permissoes_granted),
       PERMISSOES_BLOCKED: JSON.stringify(permissoes_blocked),
       DATA_ULTIMA_ALTERACAO: agora,
       ALTERADO_POR: req.user.usuario,
     }, ['ID_USUARIO','USUARIO','EMAIL']);
+    // Usuários provisionados apenas no PostgreSQL ainda precisam de uma linha
+    // de preferências na aba USUARIOS para que as permissões granulares sejam
+    // carregadas no próximo request.
+    if (!permUpdate) {
+      await garantirAbaComCabecalhos('USUARIOS', ['ID_USUARIO','USUARIO','EMAIL','NOME','PERFIL','EMPRESA','SETOR','STATUS','PERMISSOES_GRANTED','PERMISSOES_BLOCKED']).catch(()=>{});
+      await appendObjeto('USUARIOS', {
+        ID_USUARIO: alvo.ID_USUARIO || id,
+        USUARIO: alvo.USUARIO || '', EMAIL: alvo.EMAIL || '', NOME: alvo.NOME || '',
+        PERFIL: alvo.PERFIL || '', EMPRESA: alvo.EMPRESA || '', SETOR: alvo.SETOR || '', STATUS: alvo.STATUS || 'ATIVO',
+        PERMISSOES_GRANTED: JSON.stringify(permissoes_granted), PERMISSOES_BLOCKED: JSON.stringify(permissoes_blocked),
+        DATA_ULTIMA_ALTERACAO: agora, ALTERADO_POR: req.user.usuario,
+      });
+    }
 
     // Sincroniza PERMISSOES_USUARIO (enforcement real das permissões)
     try {
@@ -6297,6 +6925,30 @@ app.get('/api/anexos', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','SETOR R
     res.json({sucesso:true,total:itens.length,itens});
   } catch(e){ res.status(500).json({sucesso:false,erro:erroSeguro(e,'anexos-get'),itens:[]}); }
 });
+
+// Evidências da manifestação: a ficha completa usa o mesmo vínculo para
+// anexos enviados pelo portal e arquivos adicionados internamente.
+app.get('/api/manifestacoes/:id/evidencias', middlewareEscopoEmpresa(), requerPerfil('MASTER','ANALISTA SAC','APROVADOR','SETOR RESPONSÁVEL','GESTOR SAC','ATENDENTE SAC','AUDITOR'), async (req,res) => {
+  try {
+    const id = String(req.params.id || '').trim();
+    const mans = await lerAba('MANIFESTACOES', 5000).catch(() => []);
+    const man = mans.find(m => String(m.ID_MANIFESTACAO || '').trim() === id || String(m.PROTOCOLO || '').trim() === id);
+    if (!man) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.', itens:[] });
+    if (req._empresaScope && !pertenceEmpresa(req._empresaScope, man.EMPRESA_RECLAMADA || man.EMPRESA_RECLAMANTE || '')) {
+      return res.status(403).json({ sucesso:false, erro:'Acesso não autorizado.', itens:[] });
+    }
+    const [evs, anexos] = await Promise.all([
+      lerAba('EVIDENCIAS', 5000).catch(() => []),
+      lerAba('ANEXOS', 5000).catch(() => []),
+    ]);
+    const ids = new Set([id, man.ID_MANIFESTACAO, man.PROTOCOLO].filter(Boolean).map(String));
+    const itens = [
+      ...evs.filter(e => ids.has(String(e.ID_MANIFESTACAO || '').trim())).map(e => ({ nome:e.NOME || e.NOME_ARQUIVO, mimeType:e.TIPO_MIME || e.MIME_TYPE, tamanho:e.TAMANHO, url:e.DRIVE_URL || e.URL_ARQUIVO, data:e.DATA_UPLOAD, origem:'evidencia' })),
+      ...anexos.filter(a => ids.has(String(a.ID_ENTIDADE || '').trim())).map(a => ({ nome:a.NOME_ARQUIVO || a.NOME, mimeType:a.MIME_TYPE || a.TIPO_MIME, tamanho:a.TAMANHO, url:a.URL_ARQUIVO || a.DRIVE_URL, data:a.DATA_UPLOAD, origem:'anexo' })),
+    ];
+    res.json({ sucesso:true, itens });
+  } catch (e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e,'manifestacao-evidencias'), itens:[] }); }
+});
 app.post('/api/anexos', requerPerfil('MASTER','ANALISTA SAC'), async (req,res) => {
   try {
     const {arquivo,tipoEntidade,idEntidade,usuario,categoria}=req.body||{};
@@ -6316,11 +6968,166 @@ app.post('/api/documentos/extrair', requerPerfil('MASTER','ANALISTA SAC','APROVA
   } catch(e){ res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
 });
 
+// ===== CIRCA DETERMINÍSTICO =====
+// Organiza captura, investigação, resolução, conhecimento e aprimoramento
+// usando apenas dados persistidos. A IA continua sendo apoio opcional.
+app.get('/api/manifestacoes/:id/circa', requerPermissao('manifestacoes.visualizar'), middlewareEscopoEmpresa(), async (req,res) => {
+  try {
+    const idReq = String(req.params.id || '').trim();
+    const [manifestacoes, tratativas, devolutivas, matriz, causas] = await Promise.all([
+      lerAba('MANIFESTACOES', 5000).catch(() => []),
+      lerAba('TRATATIVAS_SETORIAIS', 5000).catch(() => []),
+      lerAba('DEVOLUTIVAS', 5000).catch(() => []),
+      lerAba('MATRIZ_TRATAMENTO', 5000).catch(() => []),
+      lerAba('CAUSAS_SUBCAUSAS', 5000).catch(() => []),
+    ]);
+    const m = manifestacoes.find(r => [r.ID_MANIFESTACAO, r.PROTOCOLO, r.ID, r.ID_ORIGINAL]
+      .some(v => String(v || '').trim() === idReq));
+    if (!m) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
+    if (req._empresaScope && !pertenceEmpresa(req._empresaScope, m.EMPRESA_RECLAMADA || ''))
+      return res.status(403).json({ sucesso:false, erro:'Acesso não autorizado.' });
+    const similares = await cerebroService.buscarCasosSimilares(m, 8, req.user?.EMPRESA || null).catch(() => []);
+    const resultado = circaEngine.analisar({
+      manifestacao: m,
+      similares,
+      tratamentos: matriz.filter(r => !m.EMPRESA_RECLAMADA || pertenceEmpresa(String(m.EMPRESA_RECLAMADA), r.EMPRESA || r.EMPRESA_RECLAMADA || '')),
+      causas: causas.filter(r => !m.EMPRESA_RECLAMADA || pertenceEmpresa(String(m.EMPRESA_RECLAMADA), r.EMPRESA || r.EMPRESA_RECLAMADA || '')),
+      tratativa: tratativas.filter(r => r.ID_MANIFESTACAO === (m.ID_MANIFESTACAO || idReq)).slice(-1)[0],
+      devolutiva: devolutivas.filter(r => r.ID_MANIFESTACAO === (m.ID_MANIFESTACAO || idReq)).slice(-1)[0],
+    });
+    res.json({ sucesso:true, circa:resultado });
+  } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e,'circa') }); }
+});
+
+// Atualiza os dados operacionais da ficha CIRCA sem criar uma segunda manifestação.
+app.patch('/api/manifestacoes/:id/circa-dados', requerPermissao('manifestacoes.editar'), middlewareEscopoEmpresa(), async (req,res) => {
+  try {
+    const idReq=String(req.params.id||'').trim();
+    const rows=await lerAba('MANIFESTACOES',5000).catch(()=>[]);
+    const m=rows.find(r=>[r.ID_MANIFESTACAO,r.PROTOCOLO,r.ID,r.ID_ORIGINAL].some(v=>String(v||'').trim()===idReq));
+    if(!m) return res.status(404).json({sucesso:false,erro:'Manifestação não encontrada.'});
+    if(req._empresaScope && !pertenceEmpresa(req._empresaScope,m.EMPRESA_RECLAMADA||'')) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado.'});
+    const requestedStage=Number(req.body?.ETAPA_ATUAL||0);
+    const currentStage=circaWorkflow.stageForStatus(m.STATUS||m.STATUS_FICHA||'RASCUNHO');
+    if(requestedStage && (!Number.isInteger(requestedStage)||requestedStage<1||requestedStage>7)) return res.status(400).json({sucesso:false,erro:'Etapa CIRCA inválida.'});
+    if(requestedStage && requestedStage>currentStage+1 && String(req.user?.PERFIL||req.user?.perfil||'').toUpperCase()!=='MASTER') return res.status(409).json({sucesso:false,erro:'A etapa solicitada depende da conclusão das etapas anteriores.',etapaAtual:currentStage});
+    const allowed=['STATUS','STATUS_FICHA','EMPRESA_RECLAMADA','EMPRESA_RECLAMANTE','CONTATO','CNPJ','TELEFONE','EMAIL','PRODUTO','LOTE','NFE','DESCRICAO','DESCRICAO_MANIFESTACAO','TIPO','CANAL','ORIGEM','PRIORIDADE','CATEGORIA','MOTIVO','GRAVIDADE','ETAPA_ATUAL','MENSAGEM_ETAPA','CAMINHO_TRATATIVA','COMPLEMENTO_PEDIDO','CANAL_RETORNO','PRAZO_RETORNO_SAC','TRATATIVA_SAC_INTERNA','INVESTIGACAO_O_QUE','INVESTIGACAO_VERIFICACOES','INVESTIGACAO_EVIDENCIAS','CAUSA_RAIZ_CONFIRMADA','ACOES_CORRETIVAS','DATA_SOLUCAO','RESPONSAVEL_EXECUCAO','PROCEDENTE','PROCEDENTE_JUSTIFICATIVA','VALID_SAC_DATA_RETORNO','VALID_SAC_CLIENTE_INFORMADO','VALID_SAC_RESOLVIDA','OBSERVACOES_FINAIS','DEVOLUTIVA_FINAL','DEVOLUTIVA_ENVIADA','STATUS_TRATATIVA','ANEXOS','EVIDENCIAS'];
+    const patch={}; for(const key of allowed) if(Object.prototype.hasOwnProperty.call(req.body||{},key)) patch[key]=req.body[key] ?? '';
+    if (req.body?.finalizar) {
+      patch.PROTOCOLO = m.PROTOCOLO || await gerarProtocoloFicha(m.EMPRESA_RECLAMADA || '', m.CANAL || 'MANUAL', new Date().toISOString());
+      patch.STATUS = 'AGUARDANDO_TRIAGEM_SAC'; patch.STATUS_FICHA = 'ABERTA'; patch.ETAPA_ATUAL = '2';
+      patch.MENSAGEM_ETAPA = 'Aguardando triagem SAC.';
+    }
+    patch.DATA_ULTIMA_EDICAO=new Date().toISOString(); patch.ATUALIZADO_POR=req.user?.usuario||'sistema';
+    await atualizarPorID('MANIFESTACOES',m.ID_MANIFESTACAO||idReq,patch,['ID_MANIFESTACAO','PROTOCOLO','ID']);
+    await registrarHistoricoManifestacao({id:m.ID_MANIFESTACAO||idReq,protocolo:m.PROTOCOLO||'',usuario:req.user?.usuario||'sistema',etapa:patch.ETAPA_ATUAL||m.ETAPA_ATUAL||'',acao:'ATUALIZOU_CARD_CIRCA',descricao:'Dados operacionais atualizados no novo card.'});
+    res.json({sucesso:true,id:m.ID_MANIFESTACAO||idReq,atualizadoEm:patch.DATA_ULTIMA_EDICAO});
+  } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e,'dados circa')});}
+});
+
+// ===== FLUXO OPERACIONAL CIRCA =====
+// Os registros abaixo reutilizam a manifestação e as abas operacionais legadas.
+// Nenhum acionamento cria uma segunda ficha.
+const ACIONAMENTOS_HEADERS = ['ID_ACIONAMENTO','ID_MANIFESTACAO','PROTOCOLO','TIPO','EMPRESA','SETOR_SOLICITANTE','SETOR_DESTINO','RESPONSAVEL','ASSUNTO','MOTIVO','TAREFA','PERGUNTAS','PRAZO','PRIORIDADE','EVIDENCIAS','OBSERVACOES','RESPOSTA','STATUS','CRIADO_EM','CRIADO_POR','ATUALIZADO_EM','ATUALIZADO_POR','IDEMPOTENCY_KEY'];
+const ACIONAMENTO_STATUSES = ['CRIADO','ENVIADO','PENDENTE_DE_ATRIBUICAO','AGUARDANDO_CIENCIA','EM_ANDAMENTO','AGUARDANDO_INFORMACAO','RESPONDIDO','EM_REVISAO','CONCLUIDO','CANCELADO'];
+const ACIONAMENTO_TYPES = ['NOTIFICACAO','SOLICITACAO_INFORMACAO','SOLICITACAO_APOIO','ENCAMINHAMENTO_TRATATIVA','ESCALONAMENTO'];
+
+async function circaManifestacao(id) {
+  const rows = await lerAba('MANIFESTACOES', 5000).catch(() => []);
+  return rows.find(row => [row.ID_MANIFESTACAO, row.PROTOCOLO, row.ID, row.ID_ORIGINAL].some(v => String(v || '').trim() === String(id || '').trim()));
+}
+
+app.get('/api/manifestacoes/:id/acionamentos', requerPermissao('manifestacoes.visualizar'), middlewareEscopoEmpresa(), async (req,res) => {
+  try {
+    const m = await circaManifestacao(req.params.id);
+    if (!m) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
+    if (req._empresaScope && !pertenceEmpresa(req._empresaScope, m.EMPRESA_RECLAMADA || '')) return res.status(403).json({ sucesso:false, erro:'Acesso não autorizado.' });
+    const rows = await lerAba('ACIONAMENTOS_INTERNOS', 5000).catch(() => []);
+    const id = m.ID_MANIFESTACAO || req.params.id;
+    res.json({ sucesso:true, itens:rows.filter(row => String(row.ID_MANIFESTACAO) === String(id)), statuses:ACIONAMENTO_STATUSES, tipos:ACIONAMENTO_TYPES });
+  } catch (e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e,'acionamentos') }); }
+});
+
+app.post('/api/manifestacoes/:id/acionamentos', requerPermissao('manifestacoes.editar'), middlewareEscopoEmpresa(), async (req,res) => {
+  try {
+    const m = await circaManifestacao(req.params.id);
+    if (!m) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
+    if (req._empresaScope && !pertenceEmpresa(req._empresaScope, m.EMPRESA_RECLAMADA || '')) return res.status(403).json({ sucesso:false, erro:'Acesso não autorizado.' });
+    const body = req.body || {};
+    const tipo = String(body.tipo || '').toUpperCase();
+    if (!ACIONAMENTO_TYPES.includes(tipo)) return res.status(400).json({ sucesso:false, erro:'Tipo de acionamento inválido.' });
+    if (!body.setorDestino && tipo !== 'NOTIFICACAO') return res.status(400).json({ sucesso:false, erro:'Setor destinatário é obrigatório.' });
+    if (tipo !== 'NOTIFICACAO' && !body.tarefa && !body.motivo) return res.status(400).json({ sucesso:false, erro:'Informe o que precisa ser feito ou o motivo.' });
+    if (body.responsavel) {
+      const usuarios = await lerAba('USUARIOS', 5000).catch(() => []);
+      const alvo = usuarios.find(u => String(u.USUARIO || u.EMAIL || u.LOGIN || '').toLowerCase() === String(body.responsavel).toLowerCase());
+      if (!alvo || String(alvo.STATUS || 'ATIVO').toUpperCase() !== 'ATIVO') return res.status(400).json({ sucesso:false, erro:'Responsável inexistente ou inativo.' });
+    }
+    await garantirAbaComCabecalhos('ACIONAMENTOS_INTERNOS', ACIONAMENTOS_HEADERS);
+    const existing = body.idempotencyKey ? (await lerAba('ACIONAMENTOS_INTERNOS', 5000).catch(() => [])).find(r => String(r.IDEMPOTENCY_KEY || '') === String(body.idempotencyKey)) : null;
+    if (existing) return res.status(200).json({ sucesso:true, duplicado:true, item:existing });
+    const agora = new Date().toISOString();
+    const item = {
+      ID_ACIONAMENTO: await gerarProximoID('ACIONAMENTOS_INTERNOS','ACI','ID_ACIONAMENTO'),
+      ID_MANIFESTACAO: m.ID_MANIFESTACAO || req.params.id, PROTOCOLO:m.PROTOCOLO || '', TIPO:tipo,
+      EMPRESA:m.EMPRESA_RECLAMADA || body.empresa || '', SETOR_SOLICITANTE:body.setorSolicitante || req.user?.setor || 'SAC',
+      SETOR_DESTINO:body.setorDestino || '', RESPONSAVEL:body.responsavel || '', ASSUNTO:body.assunto || '', MOTIVO:body.motivo || '',
+      TAREFA:body.tarefa || '', PERGUNTAS:Array.isArray(body.perguntas) ? JSON.stringify(body.perguntas) : (body.perguntas || ''),
+      PRAZO:tipo === 'NOTIFICACAO' ? '' : (body.prazo || ''), PRIORIDADE:body.prioridade || 'NORMAL',
+      EVIDENCIAS:Array.isArray(body.evidencias) ? JSON.stringify(body.evidencias) : (body.evidencias || ''), OBSERVACOES:body.observacoes || '',
+      STATUS:tipo === 'NOTIFICACAO' ? 'ENVIADO' : (body.responsavel ? 'ENVIADO' : 'PENDENTE_DE_ATRIBUICAO'),
+      CRIADO_EM:agora, CRIADO_POR:req.user?.usuario || 'sistema', ATUALIZADO_EM:agora, ATUALIZADO_POR:req.user?.usuario || 'sistema', IDEMPOTENCY_KEY:body.idempotencyKey || '',
+    };
+    await appendObjeto('ACIONAMENTOS_INTERNOS', item);
+    await registrarHistoricoManifestacao({ id:item.ID_MANIFESTACAO, protocolo:item.PROTOCOLO, acao:'ACIONAMENTO_CRIADO', descricao:`${tipo} para ${item.SETOR_DESTINO || 'destinatário informado'}`, usuario:req.user?.usuario || 'sistema', etapa:'CONDUCAO' });
+    await registrarAuditoria(req.user?.usuario || 'sistema', 'CRIOU_ACIONAMENTO', item.ID_MANIFESTACAO, 'ACIONAMENTOS_INTERNOS', null, item);
+    res.status(201).json({ sucesso:true, item });
+  } catch (e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e,'acionamentos') }); }
+});
+
+app.patch('/api/manifestacoes/:id/acionamentos/:acionamentoId', requerPermissao('manifestacoes.editar'), middlewareEscopoEmpresa(), async (req,res) => {
+  try {
+    const m = await circaManifestacao(req.params.id);
+    if (!m) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
+    if (req._empresaScope && !pertenceEmpresa(req._empresaScope, m.EMPRESA_RECLAMADA || '')) return res.status(403).json({ sucesso:false, erro:'Acesso não autorizado.' });
+    const rows = await lerAba('ACIONAMENTOS_INTERNOS', 5000).catch(() => []);
+    const item = rows.find(r => String(r.ID_ACIONAMENTO) === String(req.params.acionamentoId) && String(r.ID_MANIFESTACAO) === String(m.ID_MANIFESTACAO || req.params.id));
+    if (!item) return res.status(404).json({ sucesso:false, erro:'Acionamento não encontrado.' });
+    const next = String(req.body?.status || '').toUpperCase();
+    if (!ACIONAMENTO_STATUSES.includes(next)) return res.status(400).json({ sucesso:false, erro:'Status de acionamento inválido.' });
+    const agora = new Date().toISOString();
+    await atualizarPorID('ACIONAMENTOS_INTERNOS', item.ID_ACIONAMENTO, { STATUS:next, ATUALIZADO_EM:agora, ATUALIZADO_POR:req.user?.usuario || 'sistema', RESPOSTA:req.body?.resposta || item.RESPOSTA || '', EVIDENCIAS:req.body?.evidencias || item.EVIDENCIAS || '' }, ['ID_ACIONAMENTO']);
+    await registrarHistoricoManifestacao({ id:item.ID_MANIFESTACAO, protocolo:item.PROTOCOLO, acao:'ACIONAMENTO_ATUALIZADO', descricao:`${item.ID_ACIONAMENTO}: ${next}`, usuario:req.user?.usuario || 'sistema', etapa:'CONDUCAO' });
+    res.json({ sucesso:true, item:{ ...item, STATUS:next, ATUALIZADO_EM:agora } });
+  } catch (e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e,'acionamentos') }); }
+});
+
+app.post('/api/manifestacoes/:id/transicao-circa', requerPermissao('manifestacoes.editar'), middlewareEscopoEmpresa(), async (req,res) => {
+  try {
+    const m = await circaManifestacao(req.params.id);
+    if (!m) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
+    if (req._empresaScope && !pertenceEmpresa(req._empresaScope, m.EMPRESA_RECLAMADA || '')) return res.status(403).json({ sucesso:false, erro:'Acesso não autorizado.' });
+    const to = circaWorkflow.normalizeStatus(req.body?.status);
+    const from = circaWorkflow.normalizeStatus(m.STATUS || m.STATUS_FICHA);
+    if (!circaWorkflow.canTransition(from, to)) return res.status(409).json({ sucesso:false, erro:`Transição não permitida: ${from} → ${to}.`, status:from });
+    const etapa = circaWorkflow.stageForStatus(to);
+    const agora = new Date().toISOString();
+    await atualizarPorID('MANIFESTACOES', m.ID_MANIFESTACAO || req.params.id, { STATUS:to, ETAPA_ATUAL:String(etapa), DATA_ULTIMA_EDICAO:agora }, ['ID_MANIFESTACAO','PROTOCOLO','ID']);
+    await registrarHistoricoManifestacao({ id:m.ID_MANIFESTACAO || req.params.id, protocolo:m.PROTOCOLO || '', acao:'TRANSICAO_CIRCA', descricao:`${from} → ${to}`, usuario:req.user?.usuario || 'sistema', etapa:circaWorkflow.STAGES[etapa - 1]?.id || '' });
+    res.json({ sucesso:true, status:to, etapaAtual:etapa });
+  } catch (e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e,'transicao circa') }); }
+});
+
 // ===== ANÁLISE IA POR MANIFESTAÇÃO =====
 app.get('/api/manifestacoes/:id/analise', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','SETOR RESPONSÁVEL'), middlewareEscopoEmpresa(), async (req,res) => {
   try {
     const data = await lerAba('MANIFESTACOES', 5000).catch(()=>[]);
-    const m = data.find(r => r.ID_MANIFESTACAO === req.params.id);
+    // A listagem pode expor o protocolo como identificador (principalmente
+    // quando a fonte é PostgreSQL), enquanto a planilha legada mantém o
+    // identificador interno em ID_MANIFESTACAO. Aceite ambos os contratos.
+    const idReq = String(req.params.id || '').trim();
+    const m = data.find(r => [r.ID_MANIFESTACAO, r.PROTOCOLO, r.ID, r.ID_ORIGINAL]
+      .some(v => String(v || '').trim() === idReq));
     if (!m) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
     if (req._empresaScope && !pertenceEmpresa(req._empresaScope, m.EMPRESA_RECLAMADA || ''))
       return res.status(403).json({ sucesso: false, erro: 'Acesso não autorizado.' });
@@ -6457,6 +7264,84 @@ app.patch('/api/causas/:id', requerPerfil('MASTER','ANALISTA SAC'), async (req,r
   } catch(e){ res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
 });
 
+// ===== CICLO DE APRENDIZADO OPERACIONAL (CÉREBRO) =====
+// Catálogos persistidos no Sheets e reutilizados pela ficha, tratativas e devolutivas.
+const CEREBRO_CAUSAS_HEADERS = ['ID_CAUSA','CATEGORIA','TIPO','CAUSA','SUBCAUSA','DESCRICAO','SINONIMOS','SETOR_RESPONSAVEL','PALAVRAS_CHAVE','ATIVO','VERSAO','DATA_CRIACAO','CRIADO_POR','ATUALIZADO_EM'];
+const CEREBRO_TRAT_HEADERS = ['ID_TRATAMENTO','EMPRESA','CATEGORIA','CAUSA_ID','CAUSA','SUBCAUSA','SETOR_RESPONSAVEL','PROCEDIMENTO','CONDICOES','EVIDENCIAS','AUTORIZACOES','CRITERIOS_CONCLUSAO','STATUS','VERSAO','CRIADO_EM','CRIADO_POR','ATUALIZADO_EM'];
+const CEREBRO_APR_HEADERS = ['ID_APRIMORAMENTO','TIPO','REGISTRO_ID','ID_MANIFESTACAO','DESCRICAO','JUSTIFICATIVA','STATUS','VERSAO_NOVA','CRIADO_EM','CRIADO_POR','APROVADO_EM','APROVADO_POR'];
+const CEREBRO_MODELO_HEADERS = ['ID_MODELO','TITULO','EMPRESA','TIPO_MANIFESTACAO','CATEGORIA','TIPO_DEVOLUTIVA','SITUACAO','ASSUNTO','TEXTO_PADRAO','VARIAVEIS','RESTRICOES','VERSAO','STATUS','CRIADO_EM','CRIADO_POR','APROVADO_EM','APROVADO_POR'];
+
+function _cNorm(v) { return String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim(); }
+function _cCsv(v) { return Array.isArray(v) ? v.join('; ') : String(v || ''); }
+function _cScopeRows(req, rows) {
+  const scope = req._empresaScope;
+  if (!scope) return rows;
+  return rows.filter(r => !r.EMPRESA || pertenceEmpresa(scope, r.EMPRESA));
+}
+function _cCanWrite(req) { return ['MASTER','GESTOR SAC','ANALISTA SAC'].includes(perfilCanonico(req.user?.perfil || '')); }
+
+app.get('/api/cerebro/matriz-operacional', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC','APROVADOR','SETOR RESPONSÁVEL','AUDITOR','CONSULTA'), middlewareEscopoEmpresa(), async (req,res)=>{
+  try {
+    const q = _cNorm(req.query.q), aba = String(req.query.aba || 'causas');
+    const [causas, tratamentos, aprimoramentos] = await Promise.all([
+      lerAba('CAUSAS', 5000).catch(()=>[]), lerAba('MATRIZ_TRATAMENTO', 5000).catch(()=>[]), lerAba('APRIMORAMENTOS_CEREBRO', 5000).catch(()=>[]),
+    ]);
+    const filtra = rows => _cScopeRows(req, rows).filter(r => !q || _cNorm(Object.values(r).join(' ')).includes(q));
+    const rows = aba === 'tratamentos' ? filtra(tratamentos) : aba === 'aprimoramentos' ? filtra(aprimoramentos) : filtra(causas);
+    const page = Math.max(1, Number(req.query.page || 1)), limit = Math.min(100, Math.max(1, Number(req.query.limit || 50)));
+    res.json({ sucesso:true, aba, itens:rows.slice((page-1)*limit,page*limit), total:rows.length, page, limit, causas:filtra(causas).length, tratamentos:filtra(tratamentos).length, aprimoramentos:filtra(aprimoramentos).length });
+  } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e), itens:[] }); }
+});
+
+app.get('/api/cerebro/causas/consultar', requerPermissao('base-conhecimento.visualizar'), middlewareEscopoEmpresa(), async (req,res)=>{
+  try {
+    const q=_cNorm(req.query.q), rows=_cScopeRows(req, await lerAba('CAUSAS',5000).catch(()=>[])).filter(r=>String(r.ATIVO||'SIM').toUpperCase()!=='NAO');
+    const itens=rows.filter(r=>!q||_cNorm([r.CAUSA,r.SUBCAUSA,r.CATEGORIA,r.SINONIMOS,r.PALAVRAS_CHAVE].join(' ')).includes(q)).slice(0,100);
+    res.json({sucesso:true,itens});
+  } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e),itens:[]});}
+});
+
+app.post('/api/cerebro/causas', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC'), middlewareEscopoEmpresa(), async (req,res)=>{
+  try {
+    const b=req.body||{}, causa=String(b.causa||b.CAUSA||'').trim();
+    if (!causa) return res.status(400).json({sucesso:false,erro:'Causa é obrigatória.'});
+    await garantirAbaComCabecalhos('CAUSAS', CEREBRO_CAUSAS_HEADERS).catch(()=>{});
+    const rows=await lerAba('CAUSAS',5000).catch(()=>[]), chave=_cNorm(causa);
+    const equivalentes=rows.filter(r => _cNorm(r.CAUSA)===chave || _cNorm(r.SINONIMOS).split(/[;,|]/).map(_cNorm).includes(chave));
+    if (equivalentes.length && b.confirmarDuplicidade !== true) return res.status(409).json({sucesso:false,duplicidade:true,equivalentes:equivalentes.slice(0,10),erro:'Já existe uma causa equivalente. Consulte o registro antes de criar outra.'});
+    const id=await gerarProximoID('CAUSAS','CAU','ID_CAUSA'); const agora=new Date().toISOString();
+    const obj={ID_CAUSA:id,CATEGORIA:b.categoria||b.CATEGORIA||'',TIPO:b.tipo||b.TIPO||'',CAUSA:causa,SUBCAUSA:b.subcausa||b.SUBCAUSA||'',DESCRICAO:b.descricao||b.DESCRICAO||'',SINONIMOS:_cCsv(b.sinonimos||b.SINONIMOS),SETOR_RESPONSAVEL:b.setorResponsavel||b.SETOR_RESPONSAVEL||'',PALAVRAS_CHAVE:_cCsv(b.palavrasChave||b.PALAVRAS_CHAVE),ATIVO:'SIM',VERSAO:'1',DATA_CRIACAO:agora,CRIADO_POR:req.user.usuario,ATUALIZADO_EM:agora};
+    await appendObjeto('CAUSAS',obj); await registrarAuditoria(req.user.usuario,'CRIOU_CAUSA_CEREBRO',id,'CAUSAS',null,obj);
+    res.status(201).json({sucesso:true,item:obj});
+  } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
+});
+
+app.post('/api/cerebro/tratamentos', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC'), middlewareEscopoEmpresa(), async (req,res)=>{
+  try {
+    const b=req.body||{}; if(!b.procedimento && !b.PROCEDIMENTO) return res.status(400).json({sucesso:false,erro:'Procedimento é obrigatório.'});
+    await garantirAbaComCabecalhos('MATRIZ_TRATAMENTO', CEREBRO_TRAT_HEADERS).catch(()=>{});
+    const id=await gerarProximoID('MATRIZ_TRATAMENTO','TRAT','ID_TRATAMENTO'), agora=new Date().toISOString();
+    const obj={ID_TRATAMENTO:id,EMPRESA:b.empresa||b.EMPRESA||'',CATEGORIA:b.categoria||b.CATEGORIA||'',CAUSA_ID:b.causaId||b.CAUSA_ID||'',CAUSA:b.causa||b.CAUSA||'',SUBCAUSA:b.subcausa||b.SUBCAUSA||'',SETOR_RESPONSAVEL:b.setorResponsavel||b.SETOR_RESPONSAVEL||'',PROCEDIMENTO:b.procedimento||b.PROCEDIMENTO,CONDICOES:b.condicoes||b.CONDICOES||'',EVIDENCIAS:_cCsv(b.evidencias||b.EVIDENCIAS),AUTORIZACOES:_cCsv(b.autorizacoes||b.AUTORIZACOES),CRITERIOS_CONCLUSAO:b.criteriosConclusao||b.CRITERIOS_CONCLUSAO||'',STATUS:'RASCUNHO',VERSAO:'1',CRIADO_EM:agora,CRIADO_POR:req.user.usuario,ATUALIZADO_EM:agora};
+    await appendObjeto('MATRIZ_TRATAMENTO',obj); await registrarAuditoria(req.user.usuario,'CRIOU_TRATAMENTO_CEREBRO',id,'MATRIZ_TRATAMENTO',null,obj); res.status(201).json({sucesso:true,item:obj});
+  } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
+});
+
+app.post('/api/cerebro/aprimoramentos', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC'), middlewareEscopoEmpresa(), async (req,res)=>{
+  try { const b=req.body||{}; if(!b.descricao) return res.status(400).json({sucesso:false,erro:'Descrição é obrigatória.'}); await garantirAbaComCabecalhos('APRIMORAMENTOS_CEREBRO',CEREBRO_APR_HEADERS).catch(()=>{}); const id=await gerarProximoID('APRIMORAMENTOS_CEREBRO','APR','ID_APRIMORAMENTO'); const obj={ID_APRIMORAMENTO:id,TIPO:b.tipo||'TRATAMENTO',REGISTRO_ID:b.registroId||'',ID_MANIFESTACAO:b.idManifestacao||'',DESCRICAO:b.descricao,JUSTIFICATIVA:b.justificativa||'',STATUS:'EM_REVISAO',VERSAO_NOVA:'',CRIADO_EM:new Date().toISOString(),CRIADO_POR:req.user.usuario,APROVADO_EM:'',APROVADO_POR:''}; await appendObjeto('APRIMORAMENTOS_CEREBRO',obj); res.status(201).json({sucesso:true,item:obj}); } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
+});
+
+app.get('/api/cerebro/devolutivas', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC','APROVADOR','SETOR RESPONSÁVEL','AUDITOR','CONSULTA'), middlewareEscopoEmpresa(), async (req,res)=>{
+  try { const q=_cNorm(req.query.q), aba=String(req.query.aba||'modelos'); await garantirAbaComCabecalhos('MODELOS_DEVOLUTIVA',CEREBRO_MODELO_HEADERS).catch(()=>{}); const [modelos, historico]=await Promise.all([lerAba('MODELOS_DEVOLUTIVA',5000).catch(()=>[]),lerAba('DEVOLUTIVAS',5000).catch(()=>[])]); const base=aba==='historico'?historico:aba==='revisao'?modelos.filter(r=>_cNorm(r.STATUS)==='em revisao'):modelos.filter(r=>_cNorm(r.STATUS)==='aprovada'||_cNorm(r.STATUS)==='publicada'||!r.STATUS); const itens=_cScopeRows(req,base).filter(r=>!q||_cNorm(Object.values(r).join(' ')).includes(q)); res.json({sucesso:true,aba,itens,total:itens.length,modelos:_cScopeRows(req,modelos),historico:_cScopeRows(req,historico)}); } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e),itens:[]});}
+});
+
+app.post('/api/cerebro/devolutivas/modelos', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC'), middlewareEscopoEmpresa(), async (req,res)=>{
+  try { const b=req.body||{}; if(!b.titulo||!b.textoPadrao) return res.status(400).json({sucesso:false,erro:'Título e texto padrão são obrigatórios.'}); await garantirAbaComCabecalhos('MODELOS_DEVOLUTIVA',CEREBRO_MODELO_HEADERS).catch(()=>{}); const id=await gerarProximoID('MODELOS_DEVOLUTIVA','MOD','ID_MODELO'); const obj={ID_MODELO:id,TITULO:b.titulo,EMPRESA:b.empresa||'',TIPO_MANIFESTACAO:b.tipoManifestacao||'',CATEGORIA:b.categoria||'',TIPO_DEVOLUTIVA:b.tipoDevolutiva||'CONCLUSAO',SITUACAO:b.situacao||'',ASSUNTO:b.assunto||'',TEXTO_PADRAO:b.textoPadrao,VARIAVEIS:_cCsv(b.variaveis),RESTRICOES:_cCsv(b.restricoes),VERSAO:'1',STATUS:'EM_REVISAO',CRIADO_EM:new Date().toISOString(),CRIADO_POR:req.user.usuario,APROVADO_EM:'',APROVADO_POR:''}; await appendObjeto('MODELOS_DEVOLUTIVA',obj); res.status(201).json({sucesso:true,item:obj}); } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
+});
+
+app.post('/api/cerebro/devolutivas/modelos/:id/status', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC'), middlewareEscopoEmpresa(), async (req,res)=>{
+  try { const status=String(req.body?.status||''); if(!['EM_REVISAO','APROVADA','ARQUIVADA'].includes(status)) return res.status(400).json({sucesso:false,erro:'Status inválido.'}); const rows=await lerAba('MODELOS_DEVOLUTIVA',5000); const item=rows.find(r=>r.ID_MODELO===req.params.id); if(!item) return res.status(404).json({sucesso:false,erro:'Modelo não encontrado.'}); if(!escopoPermite(req,item.EMPRESA)) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado.'}); const upd={STATUS:status,APROVADO_EM:status==='APROVADA'?new Date().toISOString():'',APROVADO_POR:status==='APROVADA'?req.user.usuario:'',VERSAO:status==='APROVADA'?String(Number(item.VERSAO||1)+1):item.VERSAO}; await atualizarPorID('MODELOS_DEVOLUTIVA',req.params.id,upd,['ID_MODELO']); res.json({sucesso:true,item:{...item,...upd}}); } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
+});
+
 // ===== ASSERTIVIDADE DA IA =====
 app.post('/api/assertividade-ia', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','SETOR RESPONSÁVEL'), async (req,res)=>{
   try {
@@ -6503,7 +7388,7 @@ app.post('/api/assertividade-ia', requerPerfil('MASTER','ANALISTA SAC','APROVADO
 // ===== PAINEL DA MÁQUINA =====
 app.get('/api/painel-maquina', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC','APROVADOR','DIRETOR','AUDITOR','VISUALIZADOR'), async (req,res)=>{
   try {
-    const {setor, de, ate} = req.query;
+    const {setor, de, ate, responsavel, tipo} = req.query;
     // Empresa sempre do JWT — MASTER pode filtrar por query, demais fixo no JWT
     const perfil = perfilCanonico(req.user?.perfil||'');
     const empresaFiltro = perfil === 'MASTER' ? (req.query.empresa||null) : (req.user?.empresa||null);
@@ -6518,13 +7403,32 @@ app.get('/api/painel-maquina', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC'
     if (setor) filtradas = filtradas.filter(m=>String(m.SETOR_RESPONSAVEL||'').toLowerCase().includes(setor.toLowerCase()));
     if (de) filtradas = filtradas.filter(m=>{ const d=new Date(m.DATA_CRIACAO||m.DATA_ABERTURA||0); return d>=new Date(de); });
     if (ate) filtradas = filtradas.filter(m=>{ const d=new Date(m.DATA_CRIACAO||m.DATA_ABERTURA||0); return d<=new Date(ate+'T23:59:59'); });
+    if (responsavel) filtradas = filtradas.filter(m=>String(m.RESPONSAVEL||m.RESPONSAVEL_SETOR||m.RESPONSAVEL_ANALISTA||'').toLowerCase().includes(String(responsavel).toLowerCase()));
+    if (tipo) filtradas = filtradas.filter(m=>String(m.TIPO_MANIFESTACAO||m.TIPO||'').toLowerCase().includes(String(tipo).toLowerCase()));
 
     const total = filtradas.length;
-    const comAnalise = filtradas.filter(m=>m.ANALISE_IA_STATUS||m.DECISAO_FINAL).length;
+    const analisadas = new Set(filtradas.filter(m=>m.ANALISE_IA_STATUS||m.ANALISE_IA||m.CEREBRO_ANALISE||m.STATUS_CEREBRO||m.DECISAO_FINAL).map(m=>m.ID_MANIFESTACAO));
+    const comAnalise = analisadas.size;
     const comAssert = asserts.filter(a=>filtradas.some(m=>m.ID_MANIFESTACAO===a.ID_MANIFESTACAO));
     const aceitasTotal = comAssert.filter(a=>a.DECISAO_ACEITA==='SIM').length;
     const assertPercent = comAssert.length ? Math.round(aceitasTotal/comAssert.length*100) : 0;
+    // Assertividade exige validação humana registrada e pontuação documentada.
+    // O critério operacional adotado é pontuação >= 80/100; aceitação isolada permanece métrica separada.
+    const assertividadeValidada = comAssert.length ? Math.round(comAssert.filter(a=>Number(a.PONTUACAO)>=80).length/comAssert.length*100) : null;
     const pontuacaoMedia = comAssert.length ? Math.round(comAssert.reduce((s,a)=>s+Number(a.PONTUACAO||0),0)/comAssert.length) : 0;
+    const validacoes = comAssert.slice(0, 100).map(a => {
+      const manifestacao = filtradas.find(m => m.ID_MANIFESTACAO === a.ID_MANIFESTACAO) || {};
+      const pontuacao = Number(a.PONTUACAO);
+      return {
+        protocolo: manifestacao.PROTOCOLO || manifestacao.ID_MANIFESTACAO || '—',
+        empresa: manifestacao.EMPRESA_RECLAMADA || '—',
+        data: a.AVALIADO_EM || a.DATA_AVALIACAO || '—',
+        pontuacao: Number.isFinite(pontuacao) ? pontuacao : null,
+        decisao: a.DECISAO_ACEITA === 'SIM' ? 'Aceita' : a.DECISAO_ACEITA === 'NAO' ? 'Rejeitada' : 'Sem decisão',
+        avaliador: a.AVALIADO_POR || a.USUARIO || '—',
+        resultado: Number.isFinite(pontuacao) && pontuacao >= 80 ? 'Validada' : 'Revisar',
+      };
+    });
     const encerradas = filtradas.filter(m=>['ENCERRADA','FINALIZADA','CONCLUÍDA','CONCLUIDA'].includes((m.STATUS||'').toUpperCase()));
     const taxaResolucao = total ? Math.round(encerradas.length/total*100) : 0;
 
@@ -6540,7 +7444,8 @@ app.get('/api/painel-maquina', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC'
     const agora = Date.now();
     filtradas.filter(m=>!['ENCERRADA','FINALIZADA','CONCLUÍDA','CONCLUIDA'].includes((m.STATUS||'').toUpperCase())).forEach(m=>{
       const criacao = new Date(m.DATA_CRIACAO||m.DATA_ABERTURA||agora).getTime();
-      const slaH = Number(m.SLA_HORAS||72);
+      const slaH = Number(m.SLA_HORAS);
+      if (!Number.isFinite(slaH) || slaH <= 0) return;
       const elapsed = (agora-criacao)/3600000;
       if (elapsed>=slaH) slaStatus.vencido++;
       else if (elapsed>=slaH*0.75) slaStatus.alerta++;
@@ -6559,23 +7464,37 @@ app.get('/api/painel-maquina', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC'
     const encerradasNoPrazo = encerradas.filter(m => {
       if (!m.DATA_ABERTURA && !m.DATA_CRIACAO) return false;
       if (!m.DATA_CONCLUSAO_MANIFESTACAO) return false;
-      const slaH = Number(m.SLA_HORAS || 72);
+      const slaH = Number(m.SLA_HORAS);
+      if (!Number.isFinite(slaH) || slaH <= 0) return false;
       const elapsed = (new Date(m.DATA_CONCLUSAO_MANIFESTACAO) - new Date(m.DATA_CRIACAO||m.DATA_ABERTURA)) / 3600000;
       return elapsed <= slaH;
     }).length;
     const dentroSlaPercent = encerradas.length ? Math.round(encerradasNoPrazo / encerradas.length * 100) : 0;
+    const resolucaoDireta = encerradas.filter(m=>!String(m.SETOR_RESPONSAVEL||m.SETOR_CONFIRMADO||'').trim()).length;
+    const exigiuSetor = filtradas.filter(m=>String(m.SETOR_RESPONSAVEL||m.SETOR_CONFIRMADO||'').trim()).length;
+    const retrabalho = filtradas.filter(m=>/DEVOLVID|COMPLEMENT|RETRABALH/i.test(String(m.STATUS_TRATATIVA||m.HISTORICO_STATUS||m.OBSERVACOES||''))).length;
+    const devolutivasNoPrazo = filtradas.filter(m=>m.DEVOLUTIVA_ENVIADA && m.DATA_DEVOLUTIVA && m.PRAZO_DEVOLUTIVA && new Date(m.DATA_DEVOLUTIVA)<=new Date(m.PRAZO_DEVOLUTIVA)).length;
 
     res.json({
       sucesso:true,
       metricas:{
-        totalManifestacoes:total, comAnalise, taxaResolucao, assertPercent, pontuacaoMedia,
+        totalManifestacoes:total, comAnalise, analisesRealizadas:comAnalise, taxaUtilizacao:total?Math.round(comAnalise/total*100):null, taxaResolucao, assertPercent, assertividadeValidada, pontuacaoMedia,
         totalAvaliados:comAssert.length, totalAceitos:aceitasTotal,
+        recomendacoesGeradas: comAssert.length ? comAssert.length : null,
+        recomendacoesAceitas: comAssert.length ? aceitasTotal : null,
+        recomendacoesEditadas: null,
+        recomendacoesRejeitadas: comAssert.length ? comAssert.filter(a=>a.DECISAO_ACEITA!=='SIM').length : null,
+        avaliacoesPendentes: Math.max(0, comAnalise-comAssert.length),
         encerradas:encerradas.length, emAberto:total-encerradas.length,
         devolutivas:devolutivasCount, reincidencias:reincidenciasCount, reincidenciasPercent,
         rncs:rncsCount, tempoMedioH, dentroSlaPercent,
+        resolucaoDireta, exigiuSetor, retrabalho,
+        tempoEsperaSetor:null, resolucaoPrimeiroCiclo:null, devolutivasNoPrazo,
       },
       sla:slaStatus, topSetores, topCausas,
       totalCausasCadastradas:causas.filter(c=>c.ATIVO!=='NAO').length,
+      comparativo:{linhas:[]},
+      validacoes,
     });
   } catch(e){ res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
 });
@@ -7092,20 +8011,44 @@ app.post('/api/public/reclamacoes', publicRateLimit, async (req, res) => {
     }
 
     const agora = new Date().toISOString();
+    // The portal sends one key per form submission. Persisting it lets a retry
+    // after a network timeout return the original protocol instead of creating
+    // a second manifestation.
+    const idempotencyKey = String(
+      b.idempotencyKey || req.headers['idempotency-key'] || '',
+    ).trim().slice(0, 120);
+    if (idempotencyKey) {
+      const previous = (await lerAba('MANIFESTACOES', 5000).catch(() => []))
+        .find(row => String(row.IDEMPOTENCY_KEY || '').trim() === idempotencyKey);
+      if (previous) {
+        return res.json({
+          sucesso: true,
+          id: previous.ID_MANIFESTACAO || '',
+          protocolo: previous.PROTOCOLO || '',
+          dataHora: previous.DATA_ABERTURA || previous.DATA_REGISTRO || '',
+          idempotente: true,
+          fichaId: `FIC-${previous.ID_MANIFESTACAO || ''}`,
+        });
+      }
+    }
+
     // O mesmo identificador liga o protocolo externo à fila e à ficha internas.
     // A parte aleatória evita que consultas públicas sejam enumeráveis.
-    const id = viaCliente
-      ? `${empresaPortal.prefixo}-${crypto.randomBytes(12).toString('hex').toUpperCase()}`
-      : await gerarProximoID('MANIFESTACOES', 'MAN', 'ID_MANIFESTACAO');
+    // O identificador técnico é separado do protocolo apresentado ao cliente.
+    // Antes o portal usava o mesmo valor aleatório para os dois, o que quebrava
+    // a rastreabilidade e deixava a manifestação sem protocolo oficial.
+    const id = await gerarProximoID('MANIFESTACOES', empresaPortal?.prefixo || 'MAN', 'ID_MANIFESTACAO');
     const canalFinal = canalRecebimento === 'Outro' && canalOutro ? `Outro: ${canalOutro}` : (canalRecebimento || 'Não informado');
     const dtReg = new Date(agora);
     const anoReg = dtReg.getFullYear().toString();
     const mesReg = String(dtReg.getMonth() + 1).padStart(2, '0');
     const dataRegistroFmt = dtReg.toLocaleDateString('pt-BR') + ' ' + dtReg.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
+    const protocolo = await gerarProtocoloFicha(empresa, canalFinal, dtReg);
 
     // 1. Salvar manifestação no Sheets
     const objeto = {
       ID_MANIFESTACAO: id,
+      PROTOCOLO: protocolo,
       DATA_ABERTURA: agora,
       DATA_REGISTRO: agora,
       EMPRESA_RECLAMADA: empresa,
@@ -7145,6 +8088,8 @@ app.post('/api/public/reclamacoes', publicRateLimit, async (req, res) => {
       SETOR_RECEBIMENTO: setorRecebimento,
       USUARIO_CRIACAO: `portal:${colaboradorRecebimento}`,
       STATUS_TRATATIVA: 'NÃO INICIADA',
+      IDEMPOTENCY_KEY: idempotencyKey,
+      CIRCA_ANALISE_STATUS: 'PENDENTE',
     };
     await garantirAbaComCabecalhos('MANIFESTACOES', Object.keys(objeto));
     await appendObjeto('MANIFESTACOES', objeto);
@@ -7171,7 +8116,7 @@ app.post('/api/public/reclamacoes', publicRateLimit, async (req, res) => {
     let pdfBase64 = null;
     if (gerarFichaPDF) {
       try {
-        const dadosPDF = { protocolo: id, dataRegistroFmt, setorRecebimento, colaboradorRecebimento, nomeCliente, empresa, telefone, email, canalRecebimento: canalFinal, tipoManifestacao, motivoManifestacao, descricaoOriginal, produto, lote, quantidadeAfetada, observacoes, totalEvidencias: evidenciasMetadata.length };
+        const dadosPDF = { protocolo, dataRegistroFmt, setorRecebimento, colaboradorRecebimento, nomeCliente, empresa, telefone, email, canalRecebimento: canalFinal, tipoManifestacao, motivoManifestacao, descricaoOriginal, produto, lote, quantidadeAfetada, observacoes, totalEvidencias: evidenciasMetadata.length };
         pdfBuffer = await gerarFichaPDF(dadosPDF);
         pdfBase64 = pdfBuffer.toString('base64');
       } catch (pdfErr) {
@@ -7182,7 +8127,7 @@ app.post('/api/public/reclamacoes', publicRateLimit, async (req, res) => {
     // 4. Upload PDF para o Drive
     let pdfDriveId = '';
     let pdfDriveUrl = '';
-    const pdfNome = `FICHA_${id}.pdf`;
+    const pdfNome = `FICHA_${protocolo}.pdf`;
     if (pdfBuffer) {
       try {
         const pdfDrive = await uploadArquivoDrive(pdfNome, 'application/pdf', pdfBuffer, { publico: !viaCliente });
@@ -7193,12 +8138,15 @@ app.post('/api/public/reclamacoes', publicRateLimit, async (req, res) => {
       }
     }
 
-    // 5. Indexar na FICHAS_BIBLIOTECA
+    // 5. Indexar na FICHAS_BIBLIOTECA.  The manifestation is already
+    // durable, but the portal must not report a complete success while its
+    // official ficha index is unavailable.
+    let fichaIndexada = false;
     try {
       await garantirAbaComCabecalhos('FICHAS_BIBLIOTECA', FICHAS_BIBLIOTECA_HEADERS);
       const fichaId = `FIC-${id}`;
       await appendObjeto('FICHAS_BIBLIOTECA', {
-        ID_FICHA: fichaId, ID_MANIFESTACAO: id, PROTOCOLO: id,
+        ID_FICHA: fichaId, ID_MANIFESTACAO: id, PROTOCOLO: protocolo,
         DATA_REGISTRO: agora, ANO: anoReg, MES: mesReg,
         EMPRESA: empresa, SETOR_RECEBIMENTO: setorRecebimento,
         COLABORADOR_RECEBIMENTO: colaboradorRecebimento, NOME_CLIENTE: nomeCliente,
@@ -7207,8 +8155,19 @@ app.post('/api/public/reclamacoes', publicRateLimit, async (req, res) => {
         PDF_NOME: pdfNome, TOTAL_EVIDENCIAS: evidenciasMetadata.length,
         CREATED_AT: agora, VERSAO: '1',
       });
+      fichaIndexada = true;
     } catch (bibErr) {
       console.warn('[PUBLIC] FICHAS_BIBLIOTECA indexação falhou:', bibErr.message);
+    }
+
+    if (!fichaIndexada) {
+      return res.status(503).json({
+        sucesso: false,
+        persistido: true,
+        id,
+        protocolo,
+        erro: 'A manifestação foi recebida, mas a ficha oficial ainda não pôde ser indexada. Tente novamente sem reenviar os dados.',
+      });
     }
 
     // 6. Atualizar MANIFESTACOES com referências do PDF/Drive
@@ -7220,6 +8179,7 @@ app.post('/api/public/reclamacoes', publicRateLimit, async (req, res) => {
 
     // 7. Inserir na FILA_APROVACAO para que MASTER/APROVADOR vejam imediatamente
     // IMPORTANTE: deve ser awaited antes de res.json() — em serverless o processo termina após enviar a resposta
+    let filaCriada = false;
     try {
       await garantirAbaComCabecalhos('FILA_APROVACAO', FILA_APROV_HEADERS).catch(()=>{});
       const filaId = await gerarProximoID('FILA_APROVACAO','FAP','ID_FILA');
@@ -7232,11 +8192,60 @@ app.post('/api/public/reclamacoes', publicRateLimit, async (req, res) => {
         DATA_ENVIO: agora, DATA_DECISAO: '', OBSERVACOES: '',
         CRIADO_POR: `portal:${colaboradorRecebimento}`, ID_REGRA: '',
       });
+      filaCriada = true;
     } catch (filaErr) {
       console.warn('[PUBLIC] FILA_APROVACAO insert falhou:', filaErr.message);
     }
 
-    const resposta = { sucesso: true, protocolo: id, dataHora: agora };
+    if (!filaCriada) {
+      return res.status(503).json({
+        sucesso: false,
+        persistido: true,
+        fichaId: `FIC-${id}`,
+        id,
+        protocolo,
+        erro: 'A manifestação foi recebida, mas ainda não entrou na fila do SAC. Tente novamente sem reenviar os dados.',
+      });
+    }
+
+    // 8. Pré-análise operacional.  Itens determinísticos e recomendações são
+    // persistidos para o SAC; nenhuma decisão, aprovação, envio ou RNC é
+    // executado automaticamente.
+    let analisePortal = null;
+    try {
+      analisePortal = await executarAnalise({
+        ...objeto,
+        ID_MANIFESTACAO: id,
+        protocolo,
+        empresaReclamante: empresa,
+        empresaReclamada: empresa,
+        descricao: descricaoOriginal,
+        tipo: tipoManifestacao,
+      });
+      await atualizarPorID('MANIFESTACOES', id, {
+        TIPO_SUGERIDO: analisePortal.tipoDetectado || '',
+        SETOR_SUGERIDO: Array.isArray(analisePortal.setores) ? (analisePortal.setores[0] || '') : '',
+        SETORES_SUGERIDOS: Array.isArray(analisePortal.setores) ? analisePortal.setores.join(', ') : '',
+        PROCEDIMENTO_SUGERIDO: analisePortal.procedimentoSugerido?.nome || '',
+        SLA_HORAS: Number(analisePortal.slaHoras) || 72,
+        PRIORIDADE: analisePortal.prioridade || '',
+        RNC_SUGERIDO: 'NÃO',
+        RNC_SINALIZADO: analisePortal.rncSinalizado ? 'REVISAR' : '',
+        TRATATIVA_SUGERIDA: analisePortal.tratativaSugerida?.sugestao || '',
+        DEVOLUTIVA_SUGERIDA: analisePortal.devolutivaSugerida || '',
+        CIRCA_ANALISE_STATUS: 'CONCLUIDA',
+        CIRCA_ANALISE_EM: new Date().toISOString(),
+        CIRCA_ANALISE_ERROS: Array.isArray(analisePortal.erros) ? analisePortal.erros.join('; ') : '',
+      }, ['ID_MANIFESTACAO']);
+    } catch (analysisErr) {
+      console.warn('[PUBLIC] pré-análise não concluída:', analysisErr.message);
+      await atualizarPorID('MANIFESTACOES', id, {
+        CIRCA_ANALISE_STATUS: 'PENDENTE',
+        CIRCA_ANALISE_ERROS: String(analysisErr.message || 'Falha na pré-análise').slice(0, 500),
+      }, ['ID_MANIFESTACAO']).catch(() => {});
+    }
+
+    const resposta = { sucesso: true, id, protocolo, fichaId: `FIC-${id}`, dataHora: agora, analiseDisponivel: !!analisePortal };
     if (evidenciasMetadata.length < evidencias.length) {
       resposta.aviso = 'Sua manifestação foi registrada, mas alguns anexos não puderam ser salvos. Entre em contato com o SAC informando este protocolo para encaminhá-los. Não é necessário registrar novamente.';
     }
@@ -7353,10 +8362,11 @@ async function carregarFichasBiblioteca(req) {
       EMPRESA: _bibEmpresa(m.EMPRESA_RECLAMADA || m.EMPRESA_RECLAMANTE || idx.EMPRESA),
       NOME_CLIENTE: m.NOME_CLIENTE || m.CLIENTE_NOME || m.CONTATO || idx.NOME_CLIENTE || '',
       CNPJ_CPF: m.CNPJ || m.CNPJ_CPF || m.CNPJ_CLIENTE || '',
+      PRODUTO: m.PRODUTO || m.PRODUTO_NOME || idx.PRODUTO || m.SKU || '',
       TIPO_MANIFESTACAO: m.TIPO_MANIFESTACAO || m.TIPO || idx.TIPO_MANIFESTACAO || 'Reclamação',
       MOTIVO: m.MOTIVO || idx.MOTIVO || '',
       COLABORADOR_RECEBIMENTO: m.COLABORADOR_RECEBIMENTO || m.REGISTRADO_POR || m.USUARIO_CRIACAO || '',
-      ORIGEM: doc ? 'IMPORTADA' : 'SISTEMA', STATUS: doc ? 'CONCLUIDA' : _bibCategoria(m.STATUS_FICHA, m.STATUS), COM_TRATATIVA: doc ? true : comTrat,
+      ORIGEM: doc ? 'IMPORTADA' : 'SISTEMA', STATUS: doc && !(m.STATUS_FICHA || m.STATUS) ? 'ARQUIVADA' : _bibCategoria(m.STATUS_FICHA, m.STATUS), COM_TRATATIVA: doc ? !!comTrat : comTrat,
       STATUS_FICHA: m.STATUS_FICHA || '',
       STATUS_RAW: m.STATUS || '',
       SETOR: m.SETOR_CONFIRMADO || m.SETOR_SUGERIDO || '',
@@ -7389,10 +8399,11 @@ async function carregarFichasBiblioteca(req) {
       ID_FICHA: f.ID_FICHA || pid, ID_MANIFESTACAO: '', PROTOCOLO: pid,
       DATA_REGISTRO: dt ? dt.iso : '', ANO: dt ? dt.ano : 'S/A', MES: dt ? dt.mes : '00', DIA: dt ? dt.dia : '',
       EMPRESA: _bibEmpresa(f.EMPRESA), NOME_CLIENTE: f.NOME_CLIENTE || '', CNPJ_CPF: f.CNPJ || '',
+      PRODUTO: f.PRODUTO || f.PRODUTO_NOME || f.SKU || '',
       TIPO_MANIFESTACAO: f.TIPO_MANIFESTACAO || 'Reclamação', MOTIVO: f.MOTIVO || '',
       COLABORADOR_RECEBIMENTO: f.COLABORADOR_RECEBIMENTO || '',
-      ORIGEM: 'IMPORTADA', STATUS: 'CONCLUIDA', COM_TRATATIVA: true,
-      STATUS_FICHA: 'CONCLUIDA', STATUS_RAW: 'CONCLUIDA',
+      ORIGEM: 'IMPORTADA', STATUS: f.STATUS || f.STATUS_FICHA || 'ARQUIVADA', COM_TRATATIVA: !!(f.TRATATIVA_REALIZADA || f.TRATATIVA || f.DATA_CONCLUSAO),
+      STATUS_FICHA: f.STATUS_FICHA || f.STATUS || '', STATUS_RAW: f.STATUS || f.STATUS_FICHA || '',
       SETOR: f.SETOR_RECEBIMENTO || '', RESPONSAVEL: f.COLABORADOR_RECEBIMENTO || '',
       DATA_CONCLUSAO: f.DATA_REGISTRO || '', SLA_HORAS: 0, DATA_ABERTURA_ISO: f.DATA_REGISTRO || '',
       ARQUIVADO: String(f.ARQUIVADO || '').toUpperCase() === 'SIM' ? 'SIM' : '',
@@ -7417,9 +8428,10 @@ async function carregarFichasBiblioteca(req) {
       DATA_REGISTRO: dt ? dt.iso : '', ANO: dt ? dt.ano : 'S/A', MES: dt ? dt.mes : '00', DIA: dt ? dt.dia : '',
       EMPRESA: _bibEmpresa(h.ORIG_EMPRESA), NOME_CLIENTE: h.ORIG_CONTATO || '', CNPJ_CPF: h.ORIG_CNPJ || h.CNPJ || '',
       TIPO_MANIFESTACAO: h.TIPO_MANIFESTACAO || 'Reclamação',
+      PRODUTO: h.ORIG_PRODUTO || h.PRODUTO || h.SKU || '',
       MOTIVO: h.COMP_TIPO_PROBLEMA_VALIDADO || String(h.ORIG_DESCRICAO_RECLAMACAO || '').slice(0, 80),
       COLABORADOR_RECEBIMENTO: h.ORIG_ATENDENTE || '',
-      ORIGEM: 'IMPORTADA', STATUS: 'CONCLUIDA', COM_TRATATIVA: true,
+      ORIGEM: 'IMPORTADA', STATUS: h.STATUS_FINAL || h.STATUS || 'ARQUIVADA', COM_TRATATIVA: !!trat,
       TOTAL_EVIDENCIAS: Math.max(ev, nEv(id)),
       ARQUIVO_NOME: '', PDF_DRIVE_URL: '', PDF_NOME: '',
       _DESC: h.ORIG_DESCRICAO_RECLAMACAO || '', _TRAT: trat, _CONCLUSAO: '',
@@ -7497,7 +8509,7 @@ function _bibFiltrar(fichas, qs, { ignorar = [] } = {}) {
   if (q && !ig('q')) {
     const nq = n(q), dq = _bibDigitos(q);
     r = r.filter(f =>
-      n([f.PROTOCOLO, f.NOME_CLIENTE, f.CNPJ_CPF, f.MOTIVO, f.COLABORADOR_RECEBIMENTO, f.EMPRESA, f.SETOR, f.RESPONSAVEL].join(' ')).includes(nq) ||
+      n([f.PROTOCOLO, f.NOME_CLIENTE, f.CNPJ_CPF, f.MOTIVO, f.PRODUTO, f.SKU, f.COLABORADOR_RECEBIMENTO, f.EMPRESA, f.SETOR, f.RESPONSAVEL].join(' ')).includes(nq) ||
       (dq.length >= 4 && _bibDigitos(f.CNPJ_CPF).includes(dq)));
   }
   if (extra === 'evidencia' && !ig('extra')) r = r.filter(f => f.TOTAL_EVIDENCIAS > 0);
@@ -9153,15 +10165,27 @@ app.post('/api/questionarios/:empresa/publicar', requerPerfil('MASTER','APROVADO
 // ─────────────────────────────────────────────────────────────────────────────
 app.post('/api/pesquisas/ocorrencias', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req, res) => {
   try {
-    const { token, empresa, nps, setor, descricao } = req.body || {};
-    if (!token) return res.status(400).json({ sucesso: false, erro: 'token obrigatório.' });
-    await garantirAbaComCabecalhos('PESQUISA_OCORRENCIAS', ['ID_OCP','TOKEN','EMPRESA','DATA','NPS','SETOR','STATUS','DECISAO','JUSTIFICATIVA','ID_MANIFESTACAO_GERADA','ANALISTA','DATA_DECISAO','DESCRICAO']);
+    const { respostaId, token, empresa, nps, setor, descricao, responsavel, prazo } = req.body || {};
+    if (!respostaId && !token) return res.status(400).json({ sucesso: false, erro: 'respostaId ou token obrigatório.' });
+    const respostas = await lerRespostasPesquisa();
+    const resposta = respostas.find(r => (respostaId && r.ID_RESPOSTA === respostaId) || (token && r.TOKEN === token));
+    if (!resposta) return res.status(404).json({ sucesso: false, erro: 'Resposta de pesquisa não encontrada.' });
+    const empresaResposta = resposta.EMPRESA || empresa || '';
+    const perfilAtual = perfilCanonico(req.user?.perfil || '');
+    if (perfilAtual !== 'MASTER' && !pertenceEmpresa(req.user?.empresa || '', empresaResposta)) {
+      return res.status(403).json({ sucesso: false, erro: 'Acesso não autorizado para a empresa desta pesquisa.' });
+    }
+    await garantirAbaComCabecalhos('PESQUISA_OCORRENCIAS', ['ID_OCP','ID_RESPOSTA','TOKEN','EMPRESA','DATA','NPS','SETOR','RESPONSAVEL','PRAZO','STATUS','DECISAO','JUSTIFICATIVA','ID_MANIFESTACAO_GERADA','ANALISTA','DATA_DECISAO','DESCRICAO','RESULTADO','ENCERRADO_EM','HISTORICO_JSON']);
+    const existentes = await lerAba('PESQUISA_OCORRENCIAS', 5000).catch(() => []);
+    const existente = existentes.find(o => ((respostaId && o.ID_RESPOSTA === respostaId) || (token && o.TOKEN === token)) && !['CANCELADA','EXCLUIDA'].includes(String(o.STATUS||'').toUpperCase()));
+    if (existente) return res.json({ sucesso: true, id: existente.ID_OCP, existente: true });
     const idOcp = 'OCP-' + Date.now();
     await appendObjeto('PESQUISA_OCORRENCIAS', {
-      ID_OCP: idOcp, TOKEN: token, EMPRESA: empresa || '', DATA: new Date().toISOString(),
-      NPS: nps != null ? String(nps) : '', SETOR: setor || '', STATUS: 'PENDENTE',
+      ID_OCP: idOcp, ID_RESPOSTA: resposta.ID_RESPOSTA || respostaId || '', TOKEN: resposta.TOKEN || token || '', EMPRESA: empresaResposta, DATA: new Date().toISOString(),
+      NPS: nps != null ? String(nps) : String(resposta.NOTA_MEDIA || ''), SETOR: setor || '', RESPONSAVEL: responsavel || '', PRAZO: prazo || '', STATUS: 'PENDENTE',
       DECISAO: '', JUSTIFICATIVA: '', ID_MANIFESTACAO_GERADA: '', DESCRICAO: descricao || '',
-      ANALISTA: req.user?.usuario || '', DATA_DECISAO: '',
+      ANALISTA: req.user?.usuario || '', DATA_DECISAO: '', RESULTADO: '', ENCERRADO_EM: '',
+      HISTORICO_JSON: JSON.stringify([{ data:new Date().toISOString(), usuario:req.user?.usuario||'', acao:'OCP_CRIADA' }]),
     });
     invalidarCacheAba('PESQUISA_OCORRENCIAS');
     res.json({ sucesso: true, id: idOcp });
@@ -9170,17 +10194,31 @@ app.post('/api/pesquisas/ocorrencias', requerPerfil('MASTER','ANALISTA SAC','APR
 
 app.patch('/api/pesquisas/ocorrencias/:id', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), async (req, res) => {
   try {
-    const { status, decisao, justificativa, idManifestacao } = req.body || {};
+    const { status, decisao, justificativa, idManifestacao, setor, responsavel, prazo, resultado, descricao } = req.body || {};
     const rows = await lerAba('PESQUISA_OCORRENCIAS', 2000);
     const ocp = rows.find(r => r.ID_OCP === req.params.id);
     if (!ocp) return res.status(404).json({ sucesso: false, erro: 'OCP não encontrada.' });
+    const perfilAtual = perfilCanonico(req.user?.perfil || '');
+    if (perfilAtual !== 'MASTER' && !pertenceEmpresa(req.user?.empresa || '', ocp.EMPRESA || '')) {
+      return res.status(403).json({ sucesso: false, erro: 'Acesso não autorizado para a empresa desta ocorrência.' });
+    }
     const upd = {};
     if (status) upd.STATUS = status;
     if (decisao) upd.DECISAO = decisao;
     if (justificativa) upd.JUSTIFICATIVA = justificativa;
     if (idManifestacao) upd.ID_MANIFESTACAO_GERADA = idManifestacao;
+    if (setor != null) upd.SETOR = setor;
+    if (responsavel != null) upd.RESPONSAVEL = responsavel;
+    if (prazo != null) upd.PRAZO = prazo;
+    if (resultado != null) upd.RESULTADO = resultado;
+    if (descricao != null) upd.DESCRICAO = descricao;
     upd.ANALISTA = req.user?.usuario || ocp.ANALISTA || '';
     upd.DATA_DECISAO = new Date().toISOString();
+    if (['CONCLUIDA','ENCERRADA'].includes(String(status||'').toUpperCase())) upd.ENCERRADO_EM = new Date().toISOString();
+    let historico = [];
+    try { historico = JSON.parse(ocp.HISTORICO_JSON || '[]'); } catch(e) {}
+    historico.push({ data:new Date().toISOString(), usuario:req.user?.usuario||'', acao:'OCP_ATUALIZADA', status:status||ocp.STATUS||'', decisao:decisao||'' });
+    upd.HISTORICO_JSON = JSON.stringify(historico);
     await atualizarPorID('PESQUISA_OCORRENCIAS', req.params.id, upd, ['ID_OCP']);
     invalidarCacheAba('PESQUISA_OCORRENCIAS');
     res.json({ sucesso: true });
@@ -9250,15 +10288,6 @@ app.post('/api/pesquisas/resposta/:token', publicRateLimit, async (req, res) => 
     await atualizarPorID('PESQUISA_TOKENS', token, { RESPONDIDO_EM: new Date().toISOString() }, ['TOKEN']).catch(()=>{});
     invalidarCacheAba('PESQUISA_RESPOSTAS');
     invalidarCacheAba('PESQUISA_TOKENS');
-    // Se nota baixa, criar OCP automática
-    if (notaBaixa === 'SIM') {
-      await appendObjeto('PESQUISA_OCORRENCIAS', {
-        ID_OCP: 'OCP-' + Date.now(), TOKEN: token, EMPRESA: tk.EMPRESA||'',
-        DATA: new Date().toISOString(), NPS: notaGeral, STATUS: 'PENDENTE',
-        DECISAO: '', JUSTIFICATIVA: '', ID_MANIFESTACAO_GERADA: '', ANALISTA: '', DATA_DECISAO: '',
-      }).catch(()=>{});
-      invalidarCacheAba('PESQUISA_OCORRENCIAS');
-    }
     res.json({ sucesso: true, id: idResp, notaGeral, notaBaixa: notaBaixa === 'SIM' });
   } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e,'save-resposta') }); }
 });
@@ -9270,17 +10299,33 @@ app.post('/api/importacao/iniciar', requerPerfil('MASTER'), async (req, res) => 
   try {
     const { fonte, descricao, registros } = req.body || {};
     if (!fonte) return res.status(400).json({ sucesso: false, erro: 'fonte obrigatória.' });
+    if (!Array.isArray(registros) || !registros.length) return res.status(400).json({ sucesso: false, erro: 'envie ao menos um registro.' });
+    const fonteNormalizada = String(fonte).toUpperCase();
+    const alvo = fonteNormalizada === 'MANIFESTACOES' ? 'MANIFESTACOES' : fonteNormalizada === 'PESQUISA_RESPOSTAS' ? 'PESQUISA_RESPOSTAS' : null;
+    if (!alvo) return res.status(400).json({ sucesso: false, erro: 'fonte não autorizada para importação.' });
     await garantirAbaComCabecalhos('IMPORTACAO_HISTORICO', ['ID_IMP','FONTE','DESCRICAO','STATUS','REGISTROS_TOTAL','REGISTROS_OK','REGISTROS_ERR','USUARIO','DATA_INICIO','DATA_FIM','PODE_DESFAZER','DESFAZENDO_EM','ERROS_JSON']);
     const idImp = 'IMP-' + Date.now();
-    await appendObjeto('IMPORTACAO_HISTORICO', {
-      ID_IMP: idImp, FONTE: fonte, DESCRICAO: descricao || '', STATUS: 'PROCESSANDO',
-      REGISTROS_TOTAL: Array.isArray(registros) ? registros.length : 0,
-      REGISTROS_OK: 0, REGISTROS_ERR: 0,
-      USUARIO: req.user?.usuario || '', DATA_INICIO: new Date().toISOString(), DATA_FIM: '',
-      PODE_DESFAZER: 'SIM', DESFAZENDO_EM: '', ERROS_JSON: '[]',
+    const existentes = await lerAba(alvo, 5000).catch(()=>[]);
+    const chave = alvo === 'MANIFESTACOES' ? r => r.ID_MANIFESTACAO || r.PROTOCOLO : r => r.ID_RESPOSTA || r.TOKEN;
+    const idsExistentes = new Set(existentes.map(chave).filter(Boolean).map(String));
+    const erros = [], duplicados = [];
+    const validos = registros.filter((registro, index) => {
+      const id = chave(registro);
+      if (!id) { erros.push({linha:index+2,erro:'identificador obrigatório'}); return false; }
+      if (idsExistentes.has(String(id))) { duplicados.push({linha:index+2,id:String(id)}); return false; }
+      if (alvo === 'MANIFESTACOES' && !String(registro.EMPRESA_RECLAMADA||'').trim()) { erros.push({linha:index+2,erro:'EMPRESA_RECLAMADA obrigatória'}); return false; }
+      idsExistentes.add(String(id)); return true;
     });
-    invalidarCacheAba('IMPORTACAO_HISTORICO');
-    res.json({ sucesso: true, id: idImp, status: 'PROCESSANDO' });
+    for (const registro of validos) await appendObjeto(alvo, registro);
+    const agora = new Date().toISOString();
+    await appendObjeto('IMPORTACAO_HISTORICO', {
+      ID_IMP: idImp, FONTE: fonteNormalizada, DESCRICAO: descricao || '', STATUS: erros.length || duplicados.length ? 'CONCLUIDA_COM_ALERTAS' : 'CONCLUIDA',
+      REGISTROS_TOTAL: registros.length, REGISTROS_OK: validos.length, REGISTROS_ERR: erros.length,
+      USUARIO: req.user?.usuario || '', DATA_INICIO: agora, DATA_FIM: new Date().toISOString(),
+      PODE_DESFAZER: 'NAO', DESFAZENDO_EM: '', ERROS_JSON: JSON.stringify({erros,duplicados}),
+    });
+    invalidarCacheAba('IMPORTACAO_HISTORICO'); invalidarCacheAba(alvo);
+    res.json({ sucesso: true, id: idImp, status: 'CONCLUIDA', registrosOk: validos.length, registrosDuplicados: duplicados.length, registrosErr: erros.length, erros, duplicados });
   } catch(e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e,'importacao-iniciar') }); }
 });
 
@@ -9632,10 +10677,6 @@ app.post('/api/pesquisas/resposta-portal', async (req, res) => {
     const obj = { ID_RESPOSTA: idResp, TOKEN: '', EMPRESA: empresa, NOME_CLIENTE: String(body.nome||'').trim().slice(0,200), DATA: new Date().toISOString(), ATENDIMENTO: atendimento, PRAZO_ENTREGA: prazo, QUALIDADE: qualidade, RECOMENDACAO: recomendacao, COMENTARIO: String(body.comentario||'').trim().slice(0,1000), NOTA_MEDIA: notaMedia, NOTA_BAIXA: notaBaixa, STATUS_OCP: '', ORIGEM: 'PORTAL_PUBLICO' };
     await appendObjeto(aba, obj);
     invalidarCacheAba(aba);
-    if (notaBaixa === 'SIM') {
-      await appendObjeto('PESQUISA_OCORRENCIAS', { ID_OCP: 'OCP-'+Date.now(), TOKEN:'', EMPRESA: empresa, DATA: new Date().toISOString(), NPS: notaMedia, STATUS:'PENDENTE', DECISAO:'', JUSTIFICATIVA:'', ID_MANIFESTACAO_GERADA:'', ANALISTA:'', DATA_DECISAO:'' }).catch(()=>{});
-      invalidarCacheAba('PESQUISA_OCORRENCIAS');
-    }
     res.json({ sucesso: true, id: idResp });
   } catch(e) { res.status(500).json({ sucesso: false, erro: 'Não foi possível registrar. Tente novamente.' }); }
 });
@@ -9658,8 +10699,83 @@ app.get('/api/public/whatsapp', publicRateLimit, async (req, res) => {
     const rows = await lerAba('CONFIG_PORTAL', 100).catch(()=>[]);
     const wa = rows.find(r => r.TIPO === 'WHATSAPP' && r.ATIVO === 'SIM');
     if (!wa || !wa.VALOR) return res.json({ sucesso:true, ativo:false });
-    res.json({ sucesso:true, ativo:true, numero:wa.VALOR, mensagem: wa.MENSAGEM||'Olá, preciso de ajuda.' });
+    const webhookConfigurado = Boolean(process.env.WHATSAPP_VERIFY_TOKEN && process.env.WHATSAPP_APP_SECRET);
+    const apiConfigurada = Boolean(process.env.WHATSAPP_ACCESS_TOKEN && process.env.WHATSAPP_PHONE_NUMBER_ID);
+    res.json({ sucesso:true, ativo:true, numero:wa.VALOR, mensagem: wa.MENSAGEM||'Olá, preciso de ajuda.',
+      integracaoTecnicaAtiva: webhookConfigurado && apiConfigurada,
+      statusTecnico: webhookConfigurado && apiConfigurada ? 'CONFIGURADO' : 'LINK_MANUAL' });
   } catch(e) { res.json({ sucesso:true, ativo:false }); }
+});
+
+// Webhook oficial da WhatsApp Business Platform. A rota apenas recebe e
+// persiste eventos; nenhuma mensagem vira manifestação sem decisão explícita
+// do SAC. Tokens e segredos permanecem exclusivamente nas variáveis do host.
+const WHATSAPP_EVENT_HEADERS = [
+  'EVENT_ID','MESSAGE_ID','PHONE_NUMBER_ID','FROM_NUMBER','PROFILE_NAME',
+  'MESSAGE_TYPE','MESSAGE_TEXT','RECEIVED_AT','STATUS','EMPRESA','ID_MANIFESTACAO',
+  'RAW_JSON','CREATED_AT',
+];
+
+function whatsappSignatureValida(req) {
+  const secret = String(process.env.WHATSAPP_APP_SECRET || '');
+  const header = String(req.headers['x-hub-signature-256'] || '');
+  if (!secret || !header.startsWith('sha256=')) return false;
+  const expected = `sha256=${crypto.createHmac('sha256', secret).update(req.rawBody || Buffer.from(JSON.stringify(req.body || {}))).digest('hex')}`;
+  const a = Buffer.from(header); const b = Buffer.from(expected);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+app.get('/api/public/whatsapp/webhook', (req, res) => {
+  const verifyToken = String(process.env.WHATSAPP_VERIFY_TOKEN || '');
+  if (!verifyToken || String(req.query['hub.verify_token'] || '') !== verifyToken) {
+    return res.status(403).send('forbidden');
+  }
+  if (String(req.query['hub.mode'] || '') !== 'subscribe' || !req.query['hub.challenge']) {
+    return res.status(400).send('invalid webhook verification');
+  }
+  return res.status(200).send(String(req.query['hub.challenge']));
+});
+
+app.post('/api/public/whatsapp/webhook', async (req, res) => {
+  if (!whatsappSignatureValida(req)) return res.status(401).json({ sucesso:false, erro:'Assinatura do webhook inválida.' });
+  try {
+    const payload = req.body || {};
+    const eventos = [];
+    for (const entry of Array.isArray(payload.entry) ? payload.entry : []) {
+      for (const change of Array.isArray(entry.changes) ? entry.changes : []) {
+        const value = change?.value || {};
+        for (const message of Array.isArray(value.messages) ? value.messages : []) {
+          const text = message.text?.body || message.button?.text || message.interactive?.button_reply?.title || '';
+          eventos.push({
+            EVENT_ID: message.id || `${entry.id || 'entry'}:${message.timestamp || Date.now()}`,
+            MESSAGE_ID: message.id || '',
+            PHONE_NUMBER_ID: value.metadata?.phone_number_id || '',
+            FROM_NUMBER: message.from || '',
+            PROFILE_NAME: value.contacts?.[0]?.profile?.name || '',
+            MESSAGE_TYPE: message.type || '',
+            MESSAGE_TEXT: String(text).slice(0, 4000),
+            RECEIVED_AT: message.timestamp ? new Date(Number(message.timestamp) * 1000).toISOString() : new Date().toISOString(),
+            STATUS: 'RECEBIDA', EMPRESA: '', ID_MANIFESTACAO: '',
+            RAW_JSON: JSON.stringify(message).slice(0, 12000), CREATED_AT: new Date().toISOString(),
+          });
+        }
+      }
+    }
+    await garantirAbaComCabecalhos('WHATSAPP_EVENTOS', WHATSAPP_EVENT_HEADERS);
+    const existentes = await lerAba('WHATSAPP_EVENTOS', 5000).catch(() => []);
+    let gravados = 0; let duplicados = 0;
+    for (const evento of eventos) {
+      if (existentes.some(row => String(row.EVENT_ID || '') === evento.EVENT_ID || (evento.MESSAGE_ID && String(row.MESSAGE_ID || '') === evento.MESSAGE_ID))) {
+        duplicados++; continue;
+      }
+      await appendObjeto('WHATSAPP_EVENTOS', evento);
+      existentes.push(evento); gravados++;
+    }
+    res.status(200).json({ sucesso:true, recebidos:eventos.length, gravados, duplicados });
+  } catch (e) {
+    console.error('[WHATSAPP] webhook:', e.message);
+    res.status(500).json({ sucesso:false, erro:'Não foi possível registrar o evento.' });
+  }
 });
 
 app.get('/api/config/whatsapp', requerPerfil('MASTER','GESTOR SAC'), async (req, res) => {
@@ -9668,6 +10784,21 @@ app.get('/api/config/whatsapp', requerPerfil('MASTER','GESTOR SAC'), async (req,
     const wa = rows.find(r => r.TIPO === 'WHATSAPP') || {};
     res.json({ sucesso:true, numero: wa.VALOR||'', mensagem: wa.MENSAGEM||'', ativo: wa.ATIVO==='SIM' });
   } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
+});
+
+app.get('/api/config/whatsapp/status', requerPerfil('MASTER','GESTOR SAC'), async (req, res) => {
+  try {
+    const rows = await lerAba('CONFIG_PORTAL', 100).catch(() => []);
+    const wa = rows.find(r => r.TIPO === 'WHATSAPP') || {};
+    const eventos = await lerAba('WHATSAPP_EVENTOS', 5000).catch(() => []);
+    const last = eventos.slice(-1)[0] || null;
+    const webhook = Boolean(process.env.WHATSAPP_VERIFY_TOKEN && process.env.WHATSAPP_APP_SECRET);
+    const api = Boolean(process.env.WHATSAPP_ACCESS_TOKEN && process.env.WHATSAPP_PHONE_NUMBER_ID);
+    res.json({ sucesso:true, canal:'WHATSAPP', empresa:wa.EMPRESA||'', numeroConfigurado:Boolean(wa.VALOR),
+      linkAtivo:wa.ATIVO === 'SIM', webhookConfigurado:webhook, apiConfigurada:api,
+      statusTecnico:webhook && api ? 'CONFIGURADO' : (wa.VALOR ? 'LINK_MANUAL' : 'NÃO_CONFIGURADO'),
+      ultimoEvento:last ? { id:last.EVENT_ID, recebidoEm:last.RECEIVED_AT, status:last.STATUS, erro:last.ERRO||'' } : null });
+  } catch (e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e,'whatsapp-status') }); }
 });
 
 app.post('/api/config/whatsapp', requerPerfil('MASTER','GESTOR SAC'), async (req, res) => {
@@ -9681,8 +10812,39 @@ app.post('/api/config/whatsapp', requerPerfil('MASTER','GESTOR SAC'), async (req
     const obj = { TIPO:'WHATSAPP', VALOR:numeroLimpo, MENSAGEM:String(mensagem||'Olá, preciso de ajuda.').slice(0,500), ATIVO: ativo?'SIM':'NAO', UPDATED_AT:new Date().toISOString(), UPDATED_BY: req.user?.usuario||'' };
     if (existing) { await atualizarPorID('CONFIG_PORTAL','WHATSAPP',obj,['TIPO']).catch(()=>appendObjeto('CONFIG_PORTAL',obj)); } else { await appendObjeto('CONFIG_PORTAL',obj); }
     invalidarCacheAba('CONFIG_PORTAL');
+    await registrarAuditoria(req.user?.usuario||'sistema','PORTAL_ADMIN_CONFIG','WHATSAPP','CONFIG_PORTAL',existing?.VALOR||'',{ativo:obj.ATIVO,valor:'[protegido]' });
     res.json({ sucesso:true });
   } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
+});
+
+// Configurações operacionais compartilhadas pela Central de Configurações.
+// Somente chaves com suporte explícito são aceitas; valores ficam persistidos
+// na base oficial e cada alteração gera trilha de auditoria.
+const CONFIGURACOES_EDITAVEIS = new Set(['canais','prazos']);
+app.get('/api/configuracoes', requerPerfil('MASTER','GESTOR SAC'), async (req,res)=>{
+  try {
+    await garantirAbaComCabecalhos('CONFIGURACOES',['CHAVE','VALOR_JSON','ATUALIZADO_EM','ATUALIZADO_POR']);
+    const rows=await lerAba('CONFIGURACOES',200);
+    const valores={};
+    rows.forEach(r=>{ if(!r.CHAVE) return; try{ valores[r.CHAVE]=JSON.parse(r.VALOR_JSON||'null'); }catch(_){ valores[r.CHAVE]=null; } });
+    res.json({sucesso:true,valores});
+  } catch(e){ res.status(500).json({sucesso:false,erro:erroSeguro(e),valores:{}}); }
+});
+app.put('/api/configuracoes', requerPerfil('MASTER','GESTOR SAC'), async (req,res)=>{
+  try {
+    const chave=String(req.body?.chave||'').trim();
+    if(!CONFIGURACOES_EDITAVEIS.has(chave)) return res.status(400).json({sucesso:false,erro:'Configuração não editável por este serviço.'});
+    if(req.body?.valor===undefined) return res.status(400).json({sucesso:false,erro:'Valor obrigatório.'});
+    const valor=JSON.stringify(req.body.valor);
+    if(valor.length>10000) return res.status(400).json({sucesso:false,erro:'Valor excede o limite permitido.'});
+    await garantirAbaComCabecalhos('CONFIGURACOES',['CHAVE','VALOR_JSON','ATUALIZADO_EM','ATUALIZADO_POR']);
+    const rows=await lerAba('CONFIGURACOES',200); const antigo=rows.find(r=>r.CHAVE===chave);
+    const obj={CHAVE:chave,VALOR_JSON:valor,ATUALIZADO_EM:new Date().toISOString(),ATUALIZADO_POR:req.user?.usuario||''};
+    if(antigo) await atualizarPorID('CONFIGURACOES',chave,obj,['CHAVE']); else await appendObjeto('CONFIGURACOES',obj);
+    invalidarCacheAba('CONFIGURACOES');
+    await registrarAuditoria(req.user?.usuario||'sistema','CONFIGURACAO_ALTERADA',chave,'CONFIGURACOES',antigo?.VALOR_JSON||'',valor);
+    res.json({sucesso:true,chave,valor:req.body.valor});
+  } catch(e){ res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
 });
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -9699,8 +10861,19 @@ app.get('/api/portal-admin/visao-geral', requerPerfil('MASTER','GESTOR SAC'), as
     const limite30 = new Date(Date.now() - 30*24*60*60*1000).toISOString();
     const respostasPortal = respostas.filter(r => r.ORIGEM === 'PORTAL_PUBLICO' && (r.DATA||'') >= limite30).length;
     const manifestacoesPortal = mans.filter(m => (m.ORIGEM === 'PORTAL_PUBLICO' || m.ORIGEM === 'PORTAL_FUNCIONARIO') && (m.DATA_ABERTURA||'') >= limite30).length;
+    const cfg = tipo => cfgRows.find(r => r.TIPO === tipo);
+    const ativo = tipo => cfg(tipo)?.ATIVO !== 'NAO';
+    const atualizado = tipo => cfg(tipo)?.UPDATED_AT || '';
     const wa = cfgRows.find(r => r.TIPO === 'WHATSAPP' && r.ATIVO === 'SIM');
-    res.json({ sucesso:true, statusPublicacao:'Não verificado', enderecoPublico:portalEndereco.root, portalSeparado:portalEndereco.separado, empresasAtivas:3, respostasPortal, manifestacoesPortal, whatsappAtivo:!!wa });
+    const empresasAtivas = PORTAL_EMPRESAS.filter(e => ativo(`PESQUISA_ATIVA_${e.slug.toUpperCase()}`)).length;
+    const statusPortal = portalEndereco.root ? 'Configurado' : 'Indisponível';
+    const servicos = [
+      { id:'manifestacoes', nome:'Registro de manifestações', empresa:'Todas', situacao:ativo('FORM_MANIFESTACAO_ATIVO') ? 'Publicado' : 'Desativado', atualizadoEm:atualizado('FORM_MANIFESTACAO_ATIVO'), destino:'manifestacoes' },
+      { id:'protocolos', nome:'Consulta de protocolos', empresa:'Todas', situacao:portalEndereco.root ? 'Configurado' : 'Indisponível', atualizadoEm:'', destino:'links' },
+      ...PORTAL_EMPRESAS.map(e => ({ id:`pesquisa-${e.slug}`, nome:`Pesquisa — ${e.nome}`, empresa:e.nome, situacao:ativo(`PESQUISA_ATIVA_${e.slug.toUpperCase()}`) ? 'Publicado' : 'Desativado', atualizadoEm:atualizado(`PESQUISA_ATIVA_${e.slug.toUpperCase()}`), destino:'pesquisas' })),
+      { id:'whatsapp', nome:'Canal WhatsApp', empresa:'Todas', situacao:wa ? 'Ativo' : 'Inativo', atualizadoEm:wa?.UPDATED_AT || '', destino:'canais' },
+    ];
+    res.json({ sucesso:true, statusPublicacao:statusPortal, statusDetalhe:portalEndereco.root ? 'Endereço público configurado' : 'Endereço público indisponível', enderecoPublico:portalEndereco.root, portalSeparado:portalEndereco.separado, empresasAtivas, respostasPortal, manifestacoesPortal, whatsappAtivo:!!wa, servicos });
   } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
 

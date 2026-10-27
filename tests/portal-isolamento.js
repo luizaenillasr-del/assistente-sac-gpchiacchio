@@ -235,7 +235,27 @@ async function serve(app) {
         undefined,
         login.body.token,
       );
-      assert.equal(forbidden.status, 403);
+      // O bloqueio de onboarding ocorre antes da autorização administrativa.
+      // Depois de concluir o perfil, a mesma conta deve receber 403 por não
+      // possuir permissão para administrar o portal.
+      assert.equal(forbidden.status, 428);
+      const perfil = await request(
+        inside,
+        "PATCH",
+        "/api/meu-perfil",
+        { descricaoFuncao: "Analista SAC", responsabilidades: ["Atendimento"], concluir: true },
+        login.body.token,
+      );
+      assert.equal(perfil.status, 200);
+      assert.equal(perfil.body.completo, true);
+      const forbiddenAfterOnboarding = await request(
+        inside,
+        "GET",
+        "/api/portal-admin/config",
+        undefined,
+        perfil.body.token,
+      );
+      assert.equal(forbiddenAfterOnboarding.status, 403);
       assert.equal(
         (
           await request(
@@ -243,7 +263,7 @@ async function serve(app) {
             "GET",
             "/api/manifestacoes",
             undefined,
-            login.body.token,
+            perfil.body.token,
           )
         ).status,
         200,
@@ -323,16 +343,18 @@ async function serve(app) {
       });
       assert.equal(result.status, 200);
       protocol = result.body.protocolo;
-      assert.match(protocol, /^CHI-[A-F0-9]{24}$/);
+      const id = result.body.id;
+      assert.match(protocol, /^CHIA-\d{8}-\d{2}-\d{4}$/);
+      assert.ok(id);
       assert.ok(
         mock.DB.MANIFESTACOES.some(
           (m) =>
-            m.ID_MANIFESTACAO === protocol && m.ORIGEM === "PORTAL_PUBLICO",
+            m.ID_MANIFESTACAO === id && m.PROTOCOLO === protocol && m.ORIGEM === "PORTAL_PUBLICO",
         ),
       );
       assert.ok(
         mock.DB.FILA_APROVACAO.some(
-          (m) => m.ID_ENTIDADE === protocol && m.STATUS === "PENDENTE",
+          (m) => m.ID_ENTIDADE === id && m.STATUS === "PENDENTE",
         ),
       );
       const list = await request(
@@ -342,7 +364,7 @@ async function serve(app) {
         undefined,
         auth(),
       );
-      assert.ok(list.body.itens.some((m) => m.ID_MANIFESTACAO === protocol));
+      assert.ok(list.body.itens.some((m) => m.ID_MANIFESTACAO === id && m.PROTOCOLO === protocol));
       const status = await request(
         base,
         "POST",
@@ -462,7 +484,7 @@ async function serve(app) {
     });
     await test("somente a devolutiva efetivamente liberada após encerramento aparece no portal", async () => {
       const man = mock.DB.MANIFESTACOES.find(
-        (m) => m.ID_MANIFESTACAO === protocol,
+        (m) => m.PROTOCOLO === protocol,
       );
       Object.assign(man, {
         DEVOLUTIVA_ENVIADA: "Resposta aprovada pelo SAC",

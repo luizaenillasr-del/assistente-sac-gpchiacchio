@@ -6,8 +6,11 @@
   "main": "api/index.js",
   "scripts": {
     "start": "node api/index.js",
-    "test": "node tests/suite.js && node tests/behavior.js && node tests/pesquisas.js && node tests/portal-isolamento.js",
-    "postinstall": "prisma generate && prisma db push --accept-data-loss"
+    "test": "node tests/foundation-safety.js && node tests/relatorio-metas.js && node tests/circa.js && node tests/circa-design.js && node tests/circa-integration.js && node tests/canais-integracao.js && node tests/admin-usuarios.js && node tests/interface-usuarios-arquivo.js && node tests/arquivo-fichas-v3.js && node tests/nova-manifestacao-v4.js && node tests/rnc-disabled.js && node tests/suite.js && node tests/behavior.js && node tests/pesquisas.js && node tests/portal-isolamento.js && node tests/relatorio-satisfacao.js && node tests/cerebro.js && node tests/navigation-pages.js",
+    "test:perfil": "node tests/meu-perfil.js",
+    "postinstall": "prisma generate",
+    "db:validate": "prisma validate",
+    "db:migrate:deploy": "prisma migrate deploy"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
@@ -22,5 +25,8 @@
     "pg": "^8.23.1",
     "prisma": "^5.22.0",
     "resend": "^6.32.0"
+  },
+  "devDependencies": {
+    "playwright": "^1.64.1"
   }
 }

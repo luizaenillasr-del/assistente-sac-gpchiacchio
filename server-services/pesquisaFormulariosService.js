@@ -345,10 +345,11 @@ module.exports = function createSurveyService(s) {
     if (!canAccess(user, emp))
       fail(403, "Sem acesso à empresa desta pesquisa.");
   }
-  const read = async (name) => {
-    s.invalidate(name);
-    return s.read(name);
-  };
+  // Leituras usam o cache compartilhado do backend. Invalidar antes de cada
+  // GET transformava uma abertura do editor em várias leituras consecutivas do
+  // Sheets e fazia a página atingir o limite de quota (HTTP 429). A invalidação
+  // continua ocorrendo depois das escritas, em `write` e nos fluxos de update.
+  const read = async (name) => s.read(name);
   const write = async (name, row) => {
     await s.ensure(name, Object.keys(row));
     await s.append(name, row);
@@ -613,27 +614,6 @@ module.exports = function createSurveyService(s) {
         versao: f.publicada.versao,
       }));
   }
-  async function ensureOccurrence(row) {
-    if (row.NOTA_BAIXA !== "SIM") return;
-    const id = "OCP-" + hash(row.ID_RESPOSTA);
-    const rows = await read("PESQUISA_OCORRENCIAS");
-    if (rows.some((r) => r.ID_OCP === id || r.ID_RESPOSTA === row.ID_RESPOSTA))
-      return;
-    await write("PESQUISA_OCORRENCIAS", {
-      ID_OCP: id,
-      ID_RESPOSTA: row.ID_RESPOSTA,
-      TOKEN: row.TOKEN,
-      EMPRESA: row.EMPRESA,
-      DATA: row.DATA,
-      NPS: row.NOTA_MEDIA,
-      STATUS: "PENDENTE",
-      DECISAO: "",
-      JUSTIFICATIVA: "",
-      ID_MANIFESTACAO_GERADA: "",
-      ANALISTA: "",
-      DATA_DECISAO: "",
-    });
-  }
   async function reserveInvite(tk) {
     const id = "RSP-" + hash(`${tk.FORMULARIO_ID}|${tk.TOKEN}`);
     await write("PESQUISA_RESPOSTAS", {
@@ -697,7 +677,6 @@ module.exports = function createSurveyService(s) {
       if (previous && previous.STATUS_REGISTRO !== "RESERVADA") {
         if (previous.HASH_RESPOSTAS && previous.HASH_RESPOSTAS !== fingerprint)
           fail(409, "Este envio já foi registrado com outras respostas.");
-        await ensureOccurrence(previous);
         await finishInvite(tk, previous);
         return {
           sucesso: true,
@@ -752,7 +731,6 @@ module.exports = function createSurveyService(s) {
         await s.update("PESQUISA_RESPOSTAS", id, row, ["ID_RESPOSTA"]);
         s.invalidate("PESQUISA_RESPOSTAS");
       } else await write("PESQUISA_RESPOSTAS", row);
-      await ensureOccurrence(row);
       await finishInvite(tk, row);
       await s.sync(row);
       return { sucesso: true, id, notaBaixa: critical };

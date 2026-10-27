@@ -77,37 +77,54 @@
       message("Selecione uma pesquisa em Gerenciar pesquisas.");
   }
   async function load() {
+    message("Carregando formulários…");
     try {
       const r = await call("formularios");
-      state.forms = r.itens;
+      state.forms = Array.isArray(r.itens) ? r.itens : [];
       state.canManage = r.podeGerenciar;
       state.loaded = true;
       renderList();
       fillFilters();
       $("psm-new-button").hidden = !state.canManage;
       $("psm-tab-editor").hidden = !state.canManage;
-      if (!state.canManage) open("resultados");
+      if (!state.canManage) open("gerenciar");
     } catch (e) {
       message(e.message, true);
+      const list = $("psm-list");
+      if (list) {
+        list.innerHTML = "";
+        list.append(
+          Object.assign(document.createElement("button"), {
+            className: "psm-button",
+            type: "button",
+            textContent: "Tentar carregar novamente",
+            onclick: () => load(),
+          }),
+        );
+      }
     }
   }
   function fillFilters() {
-    const previous = $("psm-filter-form").value;
-    $("psm-filter-form").innerHTML =
-      '<option value="">Todas as pesquisas</option>' +
-      state.forms
-        .map(
-          (f) =>
-            '<option value="' + esc(f.id) + '">' + esc(f.titulo) + "</option>",
-        )
-        .join("");
-    $("psm-filter-form").value = previous;
+    const formFilter = $("psm-filter-form");
+    if (formFilter) {
+      const previous = formFilter.value;
+      formFilter.innerHTML =
+        '<option value="">Todas as pesquisas</option>' +
+        state.forms
+          .map(
+            (f) =>
+              '<option value="' + esc(f.id) + '">' + esc(f.titulo) + "</option>",
+          )
+          .join("");
+      formFilter.value = previous;
+    }
     const companies = [
       ...new Map(state.forms.map((f) => [f.empresa, f.empresaNome])).entries(),
     ];
     for (const id of ["psm-filter-company", "psm-new-company"]) {
       const select = $(id),
-        old = select.value;
+        old = select ? select.value : "";
+      if (!select) continue;
       select.innerHTML =
         (id === "psm-filter-company"
           ? '<option value="">Todas as empresas</option>'
@@ -187,22 +204,38 @@
     }
   }
   async function edit(id) {
+    const selectedId = String(id || "");
+    if (!selectedId) return message("Formulário inválido.", true);
     try {
       if (
         state.dirty &&
         !confirm("Há alterações não salvas. Deseja descartá-las?")
       )
         return;
-      const r = await call("formularios/" + encodeURIComponent(id));
+      open("editor");
+      message("Carregando o formulário selecionado…");
+      const r = await call("formularios/" + encodeURIComponent(selectedId));
+      if (!r.formulario || r.formulario.id !== selectedId)
+        throw new Error("A API não retornou o formulário selecionado.");
       state.draft = clone(r.formulario);
       state.draft.baseId = r.formulario.revision;
       state.index = 0;
       state.dirty = false;
       renderEditor();
-      open("editor");
       message("");
     } catch (e) {
       message(e.message, true);
+      const host = $("psm-editor");
+      if (host) {
+        host.replaceChildren(
+          Object.assign(document.createElement("p"), {
+            className: "psm-error-text",
+            textContent: e.message,
+          }),
+          button("Tentar novamente", () => edit(selectedId)),
+          button("Voltar para gerenciamento", () => open("gerenciar")),
+        );
+      }
     }
   }
   function editValue(key, value) {
@@ -230,6 +263,7 @@
     const toolbar = document.createElement("div");
     toolbar.className = "psm-actions";
     toolbar.append(
+      button("← Gerenciar formulários", () => open("gerenciar")),
       button("Salvar rascunho", () => save("RASCUNHO")),
       button("Visualizar prévia", preview),
       button("Publicar alterações", () => save("PUBLICADA"), "psm-primary"),
@@ -548,6 +582,10 @@
   async function save(action) {
     try {
       if (!state.draft) throw new Error("Selecione uma pesquisa.");
+      if (!state.draft.titulo?.trim())
+        throw new Error("Informe o título da pesquisa antes de salvar.");
+      if (!Array.isArray(state.draft.perguntas) || !state.draft.perguntas.length)
+        throw new Error("O formulário precisa ter ao menos uma pergunta.");
       const r = await call(
         "formularios/" + encodeURIComponent(state.draft.id),
         { ...state.draft, acao: action },
@@ -845,17 +883,12 @@
   function mount() {
     const page = $("page-sugestoes-melhoria");
     if (!page || $("psm-root")) return;
-    const legacy = document.createElement("div");
-    while (page.firstChild) legacy.append(page.firstChild);
-    for (const panel of [...document.querySelectorAll('[id^="cp-panel-"]')])
-      if (!legacy.contains(panel)) legacy.append(panel);
+    const host = $("cp-formularios-admin");
+    if (!host) return;
     const root = document.createElement("div");
     root.id = "psm-root";
-    root.innerHTML = `<header class="psm-header"><div><small>RELACIONAMENTO / PESQUISAS</small><h2>Pesquisas de Satisfação</h2><p>Gerencie os formulários e acompanhe as respostas do Portal do Cliente.</p></div></header><nav class="psm-nav"><button data-psm-tab="gerenciar" class="psm-active">Gerenciar pesquisas</button><button id="psm-tab-editor" data-psm-tab="editor">Editor de formulário</button><button data-psm-tab="resultados">Resultados das pesquisas</button></nav><p id="psm-message" role="status"></p><section data-psm-view="gerenciar"><button id="psm-new-button" class="psm-button psm-primary">+ Nova pesquisa</button><div id="psm-new" class="psm-box" hidden><label>Empresa<select id="psm-new-company"></select></label><label>Título<input id="psm-new-title" maxlength="200"></label><button id="psm-create" class="psm-button">Criar rascunho</button></div><div id="psm-list"></div><div id="psm-invite" class="psm-box" hidden></div></section><section data-psm-view="editor" hidden><div class="psm-workspace"><div id="psm-editor"><p>Selecione uma pesquisa para editar.</p></div><aside><div class="psm-preview-label">Pré-visualização · não registra respostas</div><div id="psm-preview"></div></aside></div></section><section data-psm-view="resultados" hidden><div class="psm-filters"><label>Empresa<select id="psm-filter-company"></select></label><label>Pesquisa<select id="psm-filter-form"></select></label><label>De<input id="psm-filter-start" type="date"></label><label>Até<input id="psm-filter-end" type="date"></label><button id="psm-apply" class="psm-button">Aplicar filtros</button></div><div id="psm-kpis" class="psm-kpis"></div><div id="psm-charts" class="psm-charts"></div><div id="psm-responses"></div><div id="psm-response-detail" class="psm-box" hidden></div><details id="psm-legacy"><summary>Consultas, notificações, envios e relatórios existentes</summary></details></section>`;
-    page.append(root);
-    $("psm-legacy").append(legacy);
-    const oldEditor = $("cp-tab-btn-editor");
-    if (oldEditor) oldEditor.hidden = true;
+    root.innerHTML = `<header class="psm-header"><div><small>CENTRO DAS PESQUISAS / FORMULÁRIOS</small><h2>Formulários de satisfação</h2><p>Gerencie, edite, versione e publique os formulários consumidos pelo Portal do Cliente.</p></div></header><nav class="psm-nav"><button data-psm-tab="gerenciar" class="psm-active">Gerenciar formulários</button><button id="psm-tab-editor" data-psm-tab="editor">Editor de formulário</button></nav><p id="psm-message" role="status"></p><section data-psm-view="gerenciar"><button id="psm-new-button" class="psm-button psm-primary">+ Novo formulário</button><div id="psm-new" class="psm-box" hidden><label>Empresa<select id="psm-new-company"></select></label><label>Título<input id="psm-new-title" maxlength="200"></label><button id="psm-create" class="psm-button">Criar rascunho</button></div><div id="psm-list"></div><div id="psm-invite" class="psm-box" hidden></div></section><section data-psm-view="editor" hidden><div class="psm-workspace"><div id="psm-editor"><p>Selecione um formulário para editar.</p></div><aside><div class="psm-preview-label">Pré-visualização · não registra respostas</div><div id="psm-preview"></div></aside></div></section>`;
+    host.append(root);
     root.querySelectorAll("[data-psm-tab]").forEach(
       (b) =>
         (b.onclick = () => {
@@ -866,10 +899,9 @@
     $("psm-new-button").onclick = () =>
       ($("psm-new").hidden = !$("psm-new").hidden);
     $("psm-create").onclick = create;
-    $("psm-apply").onclick = loadResults;
     window.qEditorCarregar = () => {
-      open("editor");
-      if (!state.draft && state.forms.length) edit(state.forms[0].id);
+      open("gerenciar");
+      if (!state.loaded) load();
     };
     const observer = new MutationObserver(() => {
       if (page.classList.contains("active") && !state.loaded) load();
