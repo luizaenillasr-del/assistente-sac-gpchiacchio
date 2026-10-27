@@ -13054,7 +13054,8 @@ function abrirDossie(item) {
 
   // Botão excluir: visível apenas para MASTER
   const _btnExcluir = document.getElementById('modal-btn-excluir');
-  if (_btnExcluir) _btnExcluir.style.display = (typeof role === 'function' && role() === 'MASTER' && isMan) ? '' : 'none';
+  const _perfilAtual = typeof role === 'function' ? String(role() || '').trim().toUpperCase() : '';
+  if (_btnExcluir) _btnExcluir.style.display = (_perfilAtual === 'MASTER' && isMan) ? '' : 'none';
 
   document.getElementById('modal-dossie').style.display = 'flex';
   switchModalTab('ciclo', document.querySelector('#modal-tabs .tab-btn'));
