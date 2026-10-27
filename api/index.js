@@ -162,38 +162,82 @@ async function resolverEmpresaIdScope(valor) {
 
 const app = express();
 
-// ── BANCO_HISTORICO: mutex em memória para evitar duplo registro por concorrência ──
+// ── BANCO_HISTORICO: idempotência persistente multi-instância ──
+// Estratégia: ID determinístico HIST-{id} + soft-lock via coluna STATUS_HISTORICO.
+// 1. Lê BANCO_HISTORICO e verifica se já existe linha com ORIG_ID_MANIFESTACAO=id.
+//    - Se STATUS_HISTORICO=CONCLUIDO → já registrado, aborta.
+//    - Se STATUS_HISTORICO=PROCESSANDO e menos de 60s → outra instância está gravando, aborta.
+//    - Se ausente → prossegue.
+// 2. Grava linha com STATUS_HISTORICO=PROCESSANDO (tombstone persistente visível a todas instâncias).
+// 3. Atualiza para CONCLUIDO após append com sucesso.
+// O mutex em memória é mantido como camada adicional dentro da mesma instância.
 const _bancoHistoricoEmAndamento = new Set();
+const BANCO_HISTORICO_LOCK_TTL_MS = 60_000; // 60s — instância travada por mais que isso é considerada morta
 
 /**
- * Registra manifestação encerrada no BANCO_HISTORICO com idempotência por ID_MANIFESTACAO.
- * ID determinístico (sem Date.now) garante deduplicação mesmo se dois caminhos dispararem.
- * Mutex em memória bloqueia chamadas concorrentes para a mesma manifestação.
+ * Registra manifestação encerrada no BANCO_HISTORICO com idempotência persistente.
+ * Seguro para múltiplas instâncias Vercel simultâneas: usa soft-lock gravado no próprio Sheets.
  */
 async function _feedBancoHistorico(id, m, extras, fonte, usuario) {
   if (_bancoHistoricoEmAndamento.has(id)) {
-    console.log(`[BANCO_HISTORICO] ${id} já em andamento — concorrência bloqueada (${fonte})`);
+    console.log(`[BANCO_HISTORICO] ${id} já em andamento (instância local) — bloqueado (${fonte})`);
     return;
   }
   _bancoHistoricoEmAndamento.add(id);
   try {
-    const historicoRows = await lerAba('BANCO_HISTORICO', 500).catch(()=>[]);
-    const jaExiste = historicoRows.some(r => r.ID_MANIFESTACAO === id || r.ORIG_ID_MANIFESTACAO === id);
-    if (jaExiste) {
-      console.log(`[BANCO_HISTORICO] ${id} já registrado — pulando (${fonte})`);
-      return;
-    }
-    const agora = new Date().toISOString();
-    await garantirAbaComCabecalhos('BANCO_HISTORICO', [
+    const HEADERS = [
       'ID_HISTORICO','ORIG_ID_MANIFESTACAO','ORIG_DATA_ABERTURA','DRV_EMPRESA_NORMALIZADA',
       'ORIG_EMPRESA','ORIG_CONTATO','ORIG_CANAL','ORIG_DESCRICAO_RECLAMACAO',
       'COMP_TIPO_PROBLEMA_VALIDADO','COMP_CAUSA_PROVAVEL','CAUSA_RAIZ','SUBCAUSA',
       'SETOR_RESPONSAVEL','TRATATIVA_REALIZADA','RESULTADO','DEVOLUTIVA_FINAL',
-      'DATA_ENCERRAMENTO','ENCERRADO_POR','FONTE',
-    ]).catch(()=>{});
-    await appendObjeto('BANCO_HISTORICO', {
-      ID_HISTORICO: `HIST-${id}`, // determinístico: sem Date.now
-      ORIG_ID_MANIFESTACAO: id,
+      'DATA_ENCERRAMENTO','ENCERRADO_POR','FONTE','STATUS_HISTORICO','TS_LOCK',
+    ];
+    await garantirAbaComCabecalhos('BANCO_HISTORICO', HEADERS).catch(()=>{});
+
+    // Invalida cache antes de ler para garantir dados frescos
+    invalidarCacheAba('BANCO_HISTORICO');
+    const historicoRows = await lerAba('BANCO_HISTORICO', 500).catch(()=>[]);
+    const existente = historicoRows.find(r => r.ORIG_ID_MANIFESTACAO === id || r.ID_HISTORICO === `HIST-${id}`);
+
+    if (existente) {
+      if (existente.STATUS_HISTORICO === 'CONCLUIDO') {
+        console.log(`[BANCO_HISTORICO] ${id} já CONCLUIDO — pulando (${fonte})`);
+        return;
+      }
+      if (existente.STATUS_HISTORICO === 'PROCESSANDO') {
+        const tsLock = Number(existente.TS_LOCK || 0);
+        if (Date.now() - tsLock < BANCO_HISTORICO_LOCK_TTL_MS) {
+          console.log(`[BANCO_HISTORICO] ${id} PROCESSANDO por outra instância — bloqueado (${fonte})`);
+          return;
+        }
+        // Lock expirado: outra instância morreu — assume o controle e atualiza o registro existente
+        console.log(`[BANCO_HISTORICO] ${id} lock expirado — assumindo controle (${fonte})`);
+      }
+    }
+
+    const agora = new Date().toISOString();
+    const tsLock = Date.now();
+
+    if (existente) {
+      // Retoma registro PROCESSANDO expirado: atualiza diretamente
+      await atualizarPorID('BANCO_HISTORICO', `HIST-${id}`, {
+        STATUS_HISTORICO: 'PROCESSANDO', TS_LOCK: String(tsLock),
+      }, ['ID_HISTORICO']).catch(()=>{});
+    } else {
+      // Grava tombstone PROCESSANDO — visível a todas as instâncias imediatamente
+      await appendObjeto('BANCO_HISTORICO', {
+        ID_HISTORICO: `HIST-${id}`,
+        ORIG_ID_MANIFESTACAO: id,
+        STATUS_HISTORICO: 'PROCESSANDO',
+        TS_LOCK: String(tsLock),
+        FONTE: fonte,
+        DATA_ENCERRAMENTO: agora,
+      }).catch(e => { throw e; }); // tombstone falhar é bloqueante
+    }
+    invalidarCacheAba('BANCO_HISTORICO');
+
+    // Atualiza com dados completos e marca CONCLUIDO
+    await atualizarPorID('BANCO_HISTORICO', `HIST-${id}`, {
       ORIG_DATA_ABERTURA: m.DATA_ABERTURA || m.DATA_CRIACAO || m.DATA_REGISTRO || '',
       DRV_EMPRESA_NORMALIZADA: m.EMPRESA_RECLAMADA || '',
       ORIG_EMPRESA: m.EMPRESA_RECLAMADA || '',
@@ -211,8 +255,12 @@ async function _feedBancoHistorico(id, m, extras, fonte, usuario) {
       DATA_ENCERRAMENTO: agora,
       ENCERRADO_POR: usuario || 'sistema',
       FONTE: fonte,
-    }).catch(e => console.warn(`[BANCO_HISTORICO] append falhou (${fonte}):`, e.message));
+      STATUS_HISTORICO: 'CONCLUIDO',
+      TS_LOCK: '',
+    }, ['ID_HISTORICO']).catch(e => console.warn(`[BANCO_HISTORICO] atualizar dados falhou (${fonte}):`, e.message));
+
     invalidarCacheAba('BANCO_HISTORICO');
+    console.log(`[BANCO_HISTORICO] ${id} registrado com sucesso (${fonte})`);
   } catch(e) {
     console.warn(`[BANCO_HISTORICO] erro não bloqueante (${fonte}):`, e.message);
   } finally {

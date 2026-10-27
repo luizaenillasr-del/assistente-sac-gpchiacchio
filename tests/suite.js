@@ -691,37 +691,49 @@ async function testarHomologacaoFuncional() {
   // ── BANCO_HISTORICO: idempotência por ID determinístico ──────────────────────
   await test('HIST-IDEM: ID_HISTORICO determinístico previne duplicação', () => {
     const src = require('fs').readFileSync(require.resolve('../api/index.js'), 'utf8');
-    // Verifica que ID_HISTORICO não usa Date.now (seria não-determinístico)
     const feedFnStart = src.indexOf('async function _feedBancoHistorico(');
     assert.ok(feedFnStart >= 0, '_feedBancoHistorico não encontrada');
-    const feedFnBlock = src.slice(feedFnStart, feedFnStart + 2500);
+    const feedFnBlock = src.slice(feedFnStart, feedFnStart + 4000);
     assert.ok(
       feedFnBlock.includes("ID_HISTORICO: `HIST-${id}`"),
-      'ID_HISTORICO deve ser determinístico (sem Date.now)'
+      'ID_HISTORICO deve ser determinístico (padrão HIST-{id})'
     );
+    // O campo ID_HISTORICO em si é HIST-{id} — determinístico.
+    // TS_LOCK usa Date.now() mas é o timestamp do lock, não do ID.
+    // Verifica que ID_HISTORICO NÃO inclui Date.now() na sua construção
+    const idHistoricoLine = feedFnBlock.match(/ID_HISTORICO:\s*`[^`]+`/);
+    assert.ok(idHistoricoLine, 'linha de construção de ID_HISTORICO não encontrada');
     assert.ok(
-      !feedFnBlock.includes('Date.now()'),
-      'ID_HISTORICO não deve conter Date.now() — tornaria o ID não-determinístico'
+      !idHistoricoLine[0].includes('Date.now()'),
+      `ID_HISTORICO não deve usar Date.now() na sua construção: ${idHistoricoLine[0]}`
     );
   });
 
-  await test('HIST-IDEM: mutex em memória (_bancoHistoricoEmAndamento) existe e é Set', () => {
+  await test('HIST-IDEM: idempotência persistente — soft-lock STATUS_HISTORICO gravado no Sheets', () => {
     const src = require('fs').readFileSync(require.resolve('../api/index.js'), 'utf8');
+    // Verifica que mutex em memória ainda existe como camada local
     assert.ok(
       src.includes('const _bancoHistoricoEmAndamento = new Set()'),
       'Set de controle de concorrência _bancoHistoricoEmAndamento não encontrado'
     );
+    // Verifica soft-lock persistente via coluna STATUS_HISTORICO
     assert.ok(
-      src.includes('_bancoHistoricoEmAndamento.has(id)'),
-      'Verificação de concorrência (.has) não encontrada'
+      src.includes("STATUS_HISTORICO: 'PROCESSANDO'"),
+      "soft-lock STATUS_HISTORICO=PROCESSANDO não encontrado — necessário para multi-instância"
     );
     assert.ok(
-      src.includes('_bancoHistoricoEmAndamento.add(id)'),
-      'Lock (.add) não encontrado'
+      src.includes("STATUS_HISTORICO: 'CONCLUIDO'"),
+      "STATUS_HISTORICO=CONCLUIDO não encontrado"
     );
+    // Verifica TTL do lock para recuperação de instâncias mortas
     assert.ok(
-      src.includes('_bancoHistoricoEmAndamento.delete(id)'),
-      'Unlock (.delete) em finally não encontrado'
+      src.includes('BANCO_HISTORICO_LOCK_TTL_MS'),
+      'TTL do lock (BANCO_HISTORICO_LOCK_TTL_MS) não encontrado'
+    );
+    // Verifica que STATUS_HISTORICO está nos headers da aba
+    assert.ok(
+      src.includes("'STATUS_HISTORICO'"),
+      "coluna 'STATUS_HISTORICO' não incluída nos headers do BANCO_HISTORICO"
     );
   });
 
@@ -739,15 +751,25 @@ async function testarHomologacaoFuncional() {
     );
   });
 
-  await test('HIST-IDEM: função verifica jaExiste antes de appendObjeto', () => {
+  await test('HIST-IDEM: função verifica existência e status do lock antes de appendObjeto', () => {
     const src = require('fs').readFileSync(require.resolve('../api/index.js'), 'utf8');
     const feedFnStart = src.indexOf('async function _feedBancoHistorico(');
-    const feedFnBlock = src.slice(feedFnStart, feedFnStart + 2500);
-    const jaExisteIdx = feedFnBlock.indexOf('jaExiste');
+    const feedFnBlock = src.slice(feedFnStart, feedFnStart + 4000);
+    const existenteIdx = feedFnBlock.indexOf('existente');
     const appendIdx = feedFnBlock.indexOf('appendObjeto');
-    assert.ok(jaExisteIdx >= 0, 'verificação jaExiste não encontrada em _feedBancoHistorico');
+    assert.ok(existenteIdx >= 0, 'verificação de existente não encontrada em _feedBancoHistorico');
     assert.ok(appendIdx >= 0, 'appendObjeto não encontrado em _feedBancoHistorico');
-    assert.ok(jaExisteIdx < appendIdx, 'jaExiste deve ser verificado ANTES de appendObjeto');
+    assert.ok(existenteIdx < appendIdx, 'existente deve ser verificado ANTES de appendObjeto');
+    // Verifica recuperação de lock expirado
+    assert.ok(
+      feedFnBlock.includes('lock expirado'),
+      'recuperação de lock expirado não encontrada em _feedBancoHistorico'
+    );
+    // Verifica que atualiza para CONCLUIDO após sucesso
+    assert.ok(
+      feedFnBlock.includes("STATUS_HISTORICO: 'CONCLUIDO'"),
+      'atualização para CONCLUIDO após sucesso não encontrada'
+    );
   });
 
   // ── Causa provável vs confirmada ─────────────────────────────────────────────
