@@ -31673,13 +31673,14 @@ if (typeof pageLoaders !== 'undefined') {
 </style>
 <style id="arquivo-banco-casos-reference-layout">
 /* Arquivo de Fichas e Banco de Casos: layout aprovado, escopado às telas reais. */
-#page-biblioteca-fichas{background:#f7f7f7!important;overflow:hidden!important;min-height:0!important}
-#page-biblioteca-fichas>.af-root{display:flex!important;flex:1 1 auto!important;flex-direction:column!important;min-height:0!important;height:100%!important;overflow:hidden!important}
-/* A rolagem pertence ao conteúdo da aba ativa. Antes, o contêiner da página
-   bloqueava a altura disponível e a tabela ficava sem área rolável. */
-#page-biblioteca-fichas #bib-tab-arquivo{display:flex!important;flex:1 1 auto!important;flex-direction:column!important;min-height:0!important;overflow:hidden!important}
-#page-biblioteca-fichas #bib-tab-arquivo>div:last-child{flex:1 1 auto!important;min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior:contain;padding-bottom:40px!important}
-#page-biblioteca-fichas #bib-tab-importacoes,#page-biblioteca-fichas #bib-tab-conhecimento{flex:1 1 auto!important;min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;padding-bottom:40px!important}
+#page-biblioteca-fichas{background:#f7f7f7!important;overflow:visible!important;flex:0 0 auto!important;min-height:100%!important}
+#page-biblioteca-fichas>.af-root{display:flex!important;flex:0 0 auto!important;flex-direction:column!important;min-height:100%!important;height:auto!important;overflow:visible!important}
+/* A rolagem deve ocorrer na área principal da aplicação, como nas demais
+   páginas. Não usamos uma segunda barra dentro da lista: ela escondia o
+   cabeçalho da tabela e deixava o conteúdo visualmente cortado. */
+#page-biblioteca-fichas #bib-tab-arquivo{display:block!important;flex:none!important;min-height:0!important;overflow:visible!important}
+#page-biblioteca-fichas #bib-tab-arquivo>div:last-child{flex:none!important;min-height:0!important;overflow:visible!important;padding-bottom:40px!important}
+#page-biblioteca-fichas #bib-tab-importacoes,#page-biblioteca-fichas #bib-tab-conhecimento{flex:none!important;min-height:0!important;overflow:visible!important;padding-bottom:40px!important}
 #page-biblioteca-fichas .af-root{font-family:Montserrat,Arial,sans-serif!important}
 #page-biblioteca-fichas .af-root:not(.af-ov):not(.af-md)>div:first-child{height:72px!important;padding:12px 28px!important;align-items:center!important}
 #page-biblioteca-fichas .af-topbar-title{display:block}
