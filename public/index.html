@@ -25394,10 +25394,11 @@ async function mudarStatusMC(id, novoStatus) {
       return `<div class="mc-item${_cenAtual===m.id?' sel':''}" data-id="${esc(m.id)}" style="display:block;width:100%;border:1.5px solid ${_cenAtual===m.id?'#C70602':'#F0F0F0'};background:${_cenAtual===m.id?'#FFFAFA':'#fff'};border-radius:9px;padding:10px 11px;margin-bottom:5px;animation:none;cursor:pointer" onclick="cenSelecionarMan(this.dataset.id)">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:5px;margin-bottom:4px">
           <span style="display:flex;align-items:center;gap:6px"><input type="checkbox" class="cen-sel-man" data-id="${esc(m.id)}" onclick="event.stopPropagation();cenAtualizarSelecao()" style="accent-color:#C70602;width:14px;height:14px"><span style="font-size:11px;font-weight:800;color:${_cenAtual===m.id?'#C70602':'#1F1F1F'}">${esc(m.id)}</span></span>
-          <div style="display:flex;gap:3px;flex-wrap:wrap;justify-content:flex-end;flex:none">
+          <div style="display:flex;gap:3px;flex-wrap:wrap;justify-content:flex-end;align-items:center;flex:none">
             <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:${pr.bg};color:${pr.fg}">${esc(PRI_LBL[m.pri]||'—')}</span>
             ${late?'<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#FDECEC;color:#A80502">Atrasada</span>':''}
             ${m.ext?'<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#E6EEF8;color:#24508F">EXT</span>':''}
+            ${(typeof role==='function'&&role()==='MASTER')?`<button onclick="event.stopPropagation();cenExcluirCard('${esc(m.id)}')" title="Excluir manifestação" style="border:1px solid #C70602;background:#fff;color:#C70602;border-radius:5px;padding:1px 6px;font-size:11px;cursor:pointer;line-height:1.4;font-family:inherit">🗑</button>`:''}
           </div>
         </div>
         <div style="font-size:12px;font-weight:600;color:#2A2A2A;margin-bottom:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.cli||'—')}</div>
@@ -25413,6 +25414,17 @@ async function mudarStatusMC(id, novoStatus) {
     }).join('');
     cenAtualizarSelecao();
   }
+
+  window.cenExcluirCard = function(id) {
+    const raw = (_cenAll||[]).find(m=>m.id===id);
+    const proto = (raw?.raw?.PROTOCOLO) || id;
+    _exclConfAbrir(id, proto, async () => {
+      _cenAll = (_cenAll||[]).filter(m=>m.id!==id);
+      if(window._cenDataFull) window._cenDataFull = window._cenDataFull.filter(m=>m.ID_MANIFESTACAO!==id&&m.PROTOCOLO!==id);
+      renderKpisGrupo(); renderFilaGrupos();
+      if(typeof _toast==='function') _toast('Manifestação '+proto+' excluída.');
+    });
+  };
 
   window.cenAtualizarSelecao=function(){
     const b=$('cen-btn-excluir-selecionadas');
