@@ -7580,6 +7580,7 @@ const CEREBRO_APR_HEADERS = ['ID_APRIMORAMENTO','TIPO','REGISTRO_ID','ID_MANIFES
 const CEREBRO_MODELO_HEADERS = ['ID_MODELO','TITULO','EMPRESA','TIPO_MANIFESTACAO','CATEGORIA','TIPO_DEVOLUTIVA','SITUACAO','ASSUNTO','TEXTO_PADRAO','VARIAVEIS','RESTRICOES','VERSAO','STATUS','CRIADO_EM','CRIADO_POR','APROVADO_EM','APROVADO_POR'];
 
 function _cNorm(v) { return String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim(); }
+function _cStatusNorm(v) { return _cNorm(v).replace(/_/g,' '); }
 function _cCsv(v) { return Array.isArray(v) ? v.join('; ') : String(v || ''); }
 function _cScopeRows(req, rows) {
   const scope = req._empresaScope;
@@ -7639,15 +7640,32 @@ app.post('/api/cerebro/aprimoramentos', requerPerfil('MASTER','GESTOR SAC','ANAL
 });
 
 app.get('/api/cerebro/devolutivas', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC','APROVADOR','SETOR RESPONSÁVEL','AUDITOR','CONSULTA'), middlewareEscopoEmpresa(), async (req,res)=>{
-  try { const q=_cNorm(req.query.q), aba=String(req.query.aba||'modelos'); await garantirAbaComCabecalhos('MODELOS_DEVOLUTIVA',CEREBRO_MODELO_HEADERS).catch(()=>{}); const [modelos, historico]=await Promise.all([lerAba('MODELOS_DEVOLUTIVA',5000).catch(()=>[]),lerAba('DEVOLUTIVAS',5000).catch(()=>[])]); const base=aba==='historico'?historico:aba==='revisao'?modelos.filter(r=>_cNorm(r.STATUS)==='em revisao'):modelos.filter(r=>_cNorm(r.STATUS)==='aprovada'||_cNorm(r.STATUS)==='publicada'||!r.STATUS); const itens=_cScopeRows(req,base).filter(r=>!q||_cNorm(Object.values(r).join(' ')).includes(q)); res.json({sucesso:true,aba,itens,total:itens.length,modelos:_cScopeRows(req,modelos),historico:_cScopeRows(req,historico)}); } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e),itens:[]});}
+  try { const q=_cNorm(req.query.q), aba=String(req.query.aba||'modelos'); await garantirAbaComCabecalhos('MODELOS_DEVOLUTIVA',CEREBRO_MODELO_HEADERS).catch(()=>{}); const [modelos, historico]=await Promise.all([lerAba('MODELOS_DEVOLUTIVA',5000).catch(()=>[]),lerAba('DEVOLUTIVAS',5000).catch(()=>[])]); const base=aba==='historico'?historico:aba==='revisao'?modelos.filter(r=>_cStatusNorm(r.STATUS)==='em revisao'):modelos.filter(r=>_cStatusNorm(r.STATUS)==='aprovada'||_cStatusNorm(r.STATUS)==='publicada'); const itens=_cScopeRows(req,base).filter(r=>!q||_cNorm(Object.values(r).join(' ')).includes(q)); res.json({sucesso:true,aba,itens,total:itens.length,modelos:_cScopeRows(req,modelos),historico:_cScopeRows(req,historico)}); } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e),itens:[]});}
 });
 
 app.post('/api/cerebro/devolutivas/modelos', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC'), middlewareEscopoEmpresa(), async (req,res)=>{
-  try { const b=req.body||{}; if(!b.titulo||!b.textoPadrao) return res.status(400).json({sucesso:false,erro:'Título e texto padrão são obrigatórios.'}); await garantirAbaComCabecalhos('MODELOS_DEVOLUTIVA',CEREBRO_MODELO_HEADERS).catch(()=>{}); const id=await gerarProximoID('MODELOS_DEVOLUTIVA','MOD','ID_MODELO'); const obj={ID_MODELO:id,TITULO:b.titulo,EMPRESA:b.empresa||'',TIPO_MANIFESTACAO:b.tipoManifestacao||'',CATEGORIA:b.categoria||'',TIPO_DEVOLUTIVA:b.tipoDevolutiva||'CONCLUSAO',SITUACAO:b.situacao||'',ASSUNTO:b.assunto||'',TEXTO_PADRAO:b.textoPadrao,VARIAVEIS:_cCsv(b.variaveis),RESTRICOES:_cCsv(b.restricoes),VERSAO:'1',STATUS:'EM_REVISAO',CRIADO_EM:new Date().toISOString(),CRIADO_POR:req.user.usuario,APROVADO_EM:'',APROVADO_POR:''}; await appendObjeto('MODELOS_DEVOLUTIVA',obj); res.status(201).json({sucesso:true,item:obj}); } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
+  try { const b=req.body||{}; if(!b.titulo||!b.textoPadrao) return res.status(400).json({sucesso:false,erro:'Título e texto padrão são obrigatórios.'}); await garantirAbaComCabecalhos('MODELOS_DEVOLUTIVA',CEREBRO_MODELO_HEADERS).catch(()=>{}); const id=await gerarProximoID('MODELOS_DEVOLUTIVA','MOD','ID_MODELO'); const obj={ID_MODELO:id,TITULO:b.titulo,EMPRESA:b.empresa||'',TIPO_MANIFESTACAO:b.tipoManifestacao||'',CATEGORIA:b.categoria||'',TIPO_DEVOLUTIVA:b.tipoDevolutiva||'CONCLUSAO',SITUACAO:b.situacao||'',ASSUNTO:b.assunto||'',TEXTO_PADRAO:b.textoPadrao,VARIAVEIS:_cCsv(b.variaveis),RESTRICOES:_cCsv(b.restricoes),VERSAO:'1',STATUS:'EM_REVISAO',CRIADO_EM:new Date().toISOString(),CRIADO_POR:req.user.usuario,APROVADO_EM:'',APROVADO_POR:''}; await appendObjeto('MODELOS_DEVOLUTIVA',obj); invalidarCacheAba('MODELOS_DEVOLUTIVA'); res.status(201).json({sucesso:true,item:obj}); } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
+});
+
+app.patch('/api/cerebro/devolutivas/modelos/:id', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC'), middlewareEscopoEmpresa(), async (req,res)=>{
+  try {
+    const rows=await lerAba('MODELOS_DEVOLUTIVA',5000);
+    const item=rows.find(r=>r.ID_MODELO===req.params.id);
+    if(!item) return res.status(404).json({sucesso:false,erro:'Modelo não encontrado.'});
+    if(!escopoPermite(req,item.EMPRESA)) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado.'});
+    const b=req.body||{};
+    const campos=['TITULO','EMPRESA','TIPO_MANIFESTACAO','CATEGORIA','TIPO_DEVOLUTIVA','SITUACAO','ASSUNTO','TEXTO_PADRAO','VARIAVEIS','RESTRICOES'];
+    const upd={};
+    campos.forEach(c=>{if(b[c]!==undefined)upd[c]=b[c];});
+    if(!Object.keys(upd).length) return res.status(400).json({sucesso:false,erro:'Nenhum campo para atualizar.'});
+    await atualizarPorID('MODELOS_DEVOLUTIVA',req.params.id,upd,['ID_MODELO']);
+    invalidarCacheAba('MODELOS_DEVOLUTIVA');
+    res.json({sucesso:true,item:{...item,...upd}});
+  } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
 
 app.post('/api/cerebro/devolutivas/modelos/:id/status', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC'), middlewareEscopoEmpresa(), async (req,res)=>{
-  try { const status=String(req.body?.status||''); if(!['EM_REVISAO','APROVADA','ARQUIVADA'].includes(status)) return res.status(400).json({sucesso:false,erro:'Status inválido.'}); const rows=await lerAba('MODELOS_DEVOLUTIVA',5000); const item=rows.find(r=>r.ID_MODELO===req.params.id); if(!item) return res.status(404).json({sucesso:false,erro:'Modelo não encontrado.'}); if(!escopoPermite(req,item.EMPRESA)) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado.'}); const upd={STATUS:status,APROVADO_EM:status==='APROVADA'?new Date().toISOString():'',APROVADO_POR:status==='APROVADA'?req.user.usuario:'',VERSAO:status==='APROVADA'?String(Number(item.VERSAO||1)+1):item.VERSAO}; await atualizarPorID('MODELOS_DEVOLUTIVA',req.params.id,upd,['ID_MODELO']); res.json({sucesso:true,item:{...item,...upd}}); } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
+  try { const status=String(req.body?.status||''); if(!['EM_REVISAO','APROVADA','ARQUIVADA','REJEITADA'].includes(status)) return res.status(400).json({sucesso:false,erro:'Status inválido.'}); const rows=await lerAba('MODELOS_DEVOLUTIVA',5000); const item=rows.find(r=>r.ID_MODELO===req.params.id); if(!item) return res.status(404).json({sucesso:false,erro:'Modelo não encontrado.'}); if(!escopoPermite(req,item.EMPRESA)) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado.'}); const upd={STATUS:status,APROVADO_EM:status==='APROVADA'?new Date().toISOString():'',APROVADO_POR:status==='APROVADA'?req.user.usuario:'',VERSAO:status==='APROVADA'?String(Number(item.VERSAO||1)+1):item.VERSAO}; await atualizarPorID('MODELOS_DEVOLUTIVA',req.params.id,upd,['ID_MODELO']); invalidarCacheAba('MODELOS_DEVOLUTIVA'); res.json({sucesso:true,item:{...item,...upd}}); } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
 
 // ===== ASSERTIVIDADE DA IA =====
