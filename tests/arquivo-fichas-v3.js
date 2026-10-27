@@ -10,8 +10,8 @@ assert(page.includes('id="bib-btn-sincronizar"'));
 assert(page.includes('id="bib-kpis"'));
 assert(page.includes('Protocolo, cliente, produto, lote ou palavra-chave...'));
 
-assert(html.includes('#page-biblioteca-fichas #bib-tab-arquivo{display:flex!important;flex:1 1 auto!important;flex-direction:column!important;min-height:0!important;overflow:hidden!important}'));
-assert(html.includes('#page-biblioteca-fichas #bib-tab-arquivo>div:last-child{flex:1 1 auto!important;min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior:contain;padding-bottom:40px!important}'));
+assert(html.includes('#page-biblioteca-fichas{background:#f7f7f7!important;overflow:visible!important;flex:0 0 auto!important;min-height:100%!important}'));
+assert(html.includes('#page-biblioteca-fichas #bib-tab-arquivo>div:last-child{flex:none!important;min-height:0!important;overflow:visible!important;padding-bottom:40px!important}'));
 
 const topbar = page.indexOf('class="af-topbar"');
 const kpis = page.indexOf('id="bib-kpis"');
