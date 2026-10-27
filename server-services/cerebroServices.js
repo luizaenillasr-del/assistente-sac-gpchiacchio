@@ -652,6 +652,40 @@ function gerarExplicabilidade(dados) {
   };
 }
 
+// Remove perguntas sobre campos já preenchidos na manifestação
+function _filtrarPerguntasContextuais(perguntas, manifestacao) {
+  if (!perguntas || !perguntas.length) return perguntas;
+  // Mapa de palavras-chave por campo preenchido
+  const campoKeywords = {
+    descricao: ['descricao','descrição','relato','ocorrência','problema'],
+    produto: ['produto','material','item'],
+    lote: ['lote','batch','rastreabilidade'],
+    quantidade: ['quantidade','qtd','volume'],
+    empresa: ['empresa','fornecedor','reclamada'],
+    cliente: ['cliente','reclamante'],
+    nfe: ['nota fiscal','nfe','nf '],
+    categoria: ['categoria','tipo de','classificação'],
+  };
+  const preenchidos = new Set();
+  const m = manifestacao;
+  if (campo(m, ['descricao','DESCRICAO'])) preenchidos.add('descricao');
+  if (campo(m, ['produto','PRODUTO'])) preenchidos.add('produto');
+  if (campo(m, ['lote','LOTE'])) preenchidos.add('lote');
+  if (campo(m, ['quantidade','QUANTIDADE'])) preenchidos.add('quantidade');
+  if (campo(m, ['empresaReclamada','EMPRESA_RECLAMADA'])) preenchidos.add('empresa');
+  if (campo(m, ['empresaReclamante','EMPRESA_RECLAMANTE'])) preenchidos.add('cliente');
+  if (campo(m, ['nfe','NF_NUMERO','NFE'])) preenchidos.add('nfe');
+  if (campo(m, ['categoria','CATEGORIA'])) preenchidos.add('categoria');
+
+  return perguntas.filter(p => {
+    const texto = normalizar(p.pergunta || '');
+    for (const [campoNome, kws] of Object.entries(campoKeywords)) {
+      if (preenchidos.has(campoNome) && kws.some(k => texto.includes(k))) return false;
+    }
+    return true;
+  });
+}
+
 // ──────────────────────────────────────────────────────────────
 // 10. CHAMADA IA — Usa aiService (F11 desacoplamento)
 // ──────────────────────────────────────────────────────────────
@@ -673,17 +707,29 @@ async function chamarIA(contexto) {
       .trim();
   }
 
+  const m = contexto.manifestacao;
   const dadosManifestacao = {
-    descricao: _sanitizarCampoPrompt(contexto.manifestacao.descricao || contexto.manifestacao.DESCRICAO),
-    empresa: _sanitizarCampoPrompt(contexto.manifestacao.empresaReclamada || contexto.manifestacao.EMPRESA_RECLAMADA),
-    cliente: _sanitizarCampoPrompt(contexto.manifestacao.empresaReclamante || contexto.manifestacao.EMPRESA_RECLAMANTE),
-    produto: _sanitizarCampoPrompt(contexto.manifestacao.produto || contexto.manifestacao.PRODUTO),
-    tipo: _sanitizarCampoPrompt(contexto.manifestacao.tipo || contexto.manifestacao.TIPO),
+    descricao: _sanitizarCampoPrompt(m.descricao || m.DESCRICAO),
+    empresa: _sanitizarCampoPrompt(m.empresaReclamada || m.EMPRESA_RECLAMADA),
+    cliente: _sanitizarCampoPrompt(m.empresaReclamante || m.EMPRESA_RECLAMANTE),
+    produto: _sanitizarCampoPrompt(m.produto || m.PRODUTO),
+    lote: _sanitizarCampoPrompt(m.lote || m.LOTE),
+    quantidade: _sanitizarCampoPrompt(String(m.quantidade || m.QUANTIDADE || '')),
+    categoria: _sanitizarCampoPrompt(m.categoria || m.CATEGORIA),
+    subcategoria: _sanitizarCampoPrompt(m.subcategoria || m.SUBCATEGORIA),
+    nomeContato: _sanitizarCampoPrompt(m.nomeCliente || m.NOME_CONTATO || m.CONTATO),
+    dataAbertura: _sanitizarCampoPrompt(m.dataAbertura || m.DATA_ABERTURA || m.DATA_CRIACAO),
+    tipo: _sanitizarCampoPrompt(m.tipo || m.TIPO),
   };
+
+  // Lista de campos já preenchidos — a IA não deve perguntar sobre eles
+  const camposPreenchidos = Object.entries(dadosManifestacao)
+    .filter(([, v]) => v && v !== 'DADO_NAO_ENCONTRADO')
+    .map(([k]) => k);
 
   const prompt = `Você é o módulo de IA do Assistente SAC do Grupo Chiacchio (fabricante de embalagens e produtos plásticos). Analise a manifestação e responda SOMENTE em JSON válido, sem texto adicional.
 
-MANIFESTAÇÃO:
+MANIFESTAÇÃO (campos já preenchidos na ficha: ${camposPreenchidos.join(', ')}):
 ${JSON.stringify(dadosManifestacao, null, 2)}
 
 CONTEXTO DO SISTEMA:
@@ -701,18 +747,25 @@ REGRAS OBRIGATÓRIAS:
 3. NÃO tome decisões irreversíveis. Recomende, não decida.
 4. A decisão final é sempre do humano.
 5. SAC NÃO gera RNC automaticamente. Apenas reincidência confirmada pode sugerir investigação.
+6. "informacoesAusentes" deve listar APENAS dados não presentes na ficha. NÃO pergunte sobre: ${camposPreenchidos.join(', ')}.
+7. "problemaIdentificado" deve ser específico ao caso, não genérico.
+8. "acaoImediata" deve ser concreta (ex: "Acionar Qualidade para inspecionar lote X"), não vaga.
 
 Responda com este JSON exato:
 {
   "classificacao": "string",
+  "problemaIdentificado": "descrição específica do problema concreto identificado na manifestação",
   "causaProvavel": "string ou DADO_NAO_ENCONTRADO",
+  "nivelCausa": "FATO|HIPÓTESE|RISCO|INFORMAÇÃO_PENDENTE",
+  "impactoOperacional": "como isso afeta o cliente/operação",
   "evidencias": ["string"],
   "setorSugerido": "string",
   "risco": "BAIXO|MÉDIO|ALTO",
+  "acaoImediata": "o que o SAC deve fazer agora (ação concreta e executável)",
   "tratamentoRecomendado": "string",
   "justificativa": "string",
   "devolutivaSugerida": "string",
-  "informacoesAusentes": ["string"],
+  "informacoesAusentes": ["somente o que não está na ficha e é necessário para a análise"],
   "nivelConfianca": 0
 }`;
 
@@ -875,7 +928,7 @@ async function analisarManifestacaoCompleta(manifestacao, regras = {}, usuario =
     setores: regras.setores || ['SAC'], regraAplicada: regras.regraAplicada || null,
     prioridade: regras.prioridade || 'Média', slaHoras: regras.slaHoras || 72,
     geraRNC: false, // RNC nunca automático — apenas por critério humano/auditoria
-    procedimentoSugerido: regras.procedimentoSugerido || null, perguntasNecessarias: regras.perguntasNecessarias || [],
+    procedimentoSugerido: regras.procedimentoSugerido || null, perguntasNecessarias: _filtrarPerguntasContextuais(regras.perguntasNecessarias || [], manifestacao),
     casosSimilares, reincidencia, sla, baseConhecimento,
     tratativaSugerida: { aplicavel: tratativa.aplicavel, confianca: tratativa.confianca, sugestao: tratativa.sugestao, quantidadeCasos: tratativa.quantidadeCasos, evidencia: tratativa.evidencia, origem: tratativa.origem||'HISTORICO', todasSugestoes: tratativa.todasSugestoes||[] },
     tratativaEstruturada, devolutivaEstruturada, ia, confianca, conflitos,
