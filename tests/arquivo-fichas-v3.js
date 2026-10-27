@@ -9,6 +9,8 @@ assert(page.includes('id="bib-sync-status"'));
 assert(page.includes('id="bib-btn-sincronizar"'));
 assert(page.includes('id="bib-kpis"'));
 assert(page.includes('Protocolo, cliente, produto, lote ou palavra-chave...'));
+assert(page.includes("_apiFetch('/api/manifestacoes/' + encodeURIComponent(item.ID_MANIFESTACAO)"),
+  'a abertura do dossiê deve hidratar a manifestação completa');
 
 assert(html.includes('#page-biblioteca-fichas{background:#f7f7f7!important;overflow:visible!important;flex:0 0 auto!important;min-height:100%!important}'));
 assert(html.includes('#page-biblioteca-fichas #bib-tab-arquivo>div:last-child{flex:none!important;min-height:0!important;overflow:visible!important;padding-bottom:40px!important}'));
