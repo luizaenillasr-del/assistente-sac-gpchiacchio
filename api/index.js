@@ -7263,10 +7263,11 @@ app.get('/api/manifestacoes/:id/circa', requerPermissao('manifestacoes.visualiza
     if (req._empresaScope && !pertenceEmpresa(req._empresaScope, m.EMPRESA_RECLAMADA || ''))
       return res.status(403).json({ sucesso:false, erro:'Acesso não autorizado.' });
     const similares = await cerebroService.buscarCasosSimilares(m, 8, req.user?.EMPRESA || null).catch(() => []);
+    const normTratCirca = r => ({ ...r, PROCEDIMENTO: r.PROCEDIMENTO || r.TRATATIVA_PADRAO || '', STATUS: r.STATUS || (r.ATIVO === 'NAO' ? 'INATIVO' : r.ATIVO ? 'APROVADO' : '') });
     const resultado = circaEngine.analisar({
       manifestacao: m,
       similares,
-      tratamentos: matriz.filter(r => !m.EMPRESA_RECLAMADA || pertenceEmpresa(String(m.EMPRESA_RECLAMADA), r.EMPRESA || r.EMPRESA_RECLAMADA || '')),
+      tratamentos: matriz.filter(r => !m.EMPRESA_RECLAMADA || pertenceEmpresa(String(m.EMPRESA_RECLAMADA), r.EMPRESA || r.EMPRESA_RECLAMADA || '')).map(normTratCirca),
       causas: causas.filter(r => !m.EMPRESA_RECLAMADA || pertenceEmpresa(String(m.EMPRESA_RECLAMADA), r.EMPRESA || r.EMPRESA_RECLAMADA || '')),
       tratativa: tratativas.filter(r => r.ID_MANIFESTACAO === (m.ID_MANIFESTACAO || idReq)).slice(-1)[0],
       devolutiva: devolutivas.filter(r => r.ID_MANIFESTACAO === (m.ID_MANIFESTACAO || idReq)).slice(-1)[0],
@@ -7596,7 +7597,8 @@ app.get('/api/cerebro/matriz-operacional', requerPerfil('MASTER','GESTOR SAC','A
       lerAba('CAUSAS', 5000).catch(()=>[]), lerAba('MATRIZ_TRATAMENTO', 5000).catch(()=>[]), lerAba('APRIMORAMENTOS_CEREBRO', 5000).catch(()=>[]),
     ]);
     const filtra = rows => _cScopeRows(req, rows).filter(r => !q || _cNorm(Object.values(r).join(' ')).includes(q));
-    const rows = aba === 'tratamentos' ? filtra(tratamentos) : aba === 'aprimoramentos' ? filtra(aprimoramentos) : filtra(causas);
+    const normTrat = r => ({ ...r, PROCEDIMENTO: r.PROCEDIMENTO || r.TRATATIVA_PADRAO || '', CAUSA: r.CAUSA || '', STATUS: r.STATUS || (r.ATIVO === 'NAO' ? 'INATIVO' : r.ATIVO === 'SIM' || r.ATIVO === '1' || r.ATIVO === 'true' ? 'APROVADO' : r.ATIVO ? 'APROVADO' : '') });
+    const rows = aba === 'tratamentos' ? filtra(tratamentos).map(normTrat) : aba === 'aprimoramentos' ? filtra(aprimoramentos) : filtra(causas);
     const page = Math.max(1, Number(req.query.page || 1)), limit = Math.min(100, Math.max(1, Number(req.query.limit || 50)));
     res.json({ sucesso:true, aba, itens:rows.slice((page-1)*limit,page*limit), total:rows.length, page, limit, causas:filtra(causas).length, tratamentos:filtra(tratamentos).length, aprimoramentos:filtra(aprimoramentos).length });
   } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e), itens:[] }); }
@@ -7631,8 +7633,40 @@ app.post('/api/cerebro/tratamentos', requerPerfil('MASTER','GESTOR SAC','ANALIST
     await garantirAbaComCabecalhos('MATRIZ_TRATAMENTO', CEREBRO_TRAT_HEADERS).catch(()=>{});
     const id=await gerarProximoID('MATRIZ_TRATAMENTO','TRAT','ID_TRATAMENTO'), agora=new Date().toISOString();
     const obj={ID_TRATAMENTO:id,EMPRESA:b.empresa||b.EMPRESA||'',CATEGORIA:b.categoria||b.CATEGORIA||'',CAUSA_ID:b.causaId||b.CAUSA_ID||'',CAUSA:b.causa||b.CAUSA||'',SUBCAUSA:b.subcausa||b.SUBCAUSA||'',SETOR_RESPONSAVEL:b.setorResponsavel||b.SETOR_RESPONSAVEL||'',PROCEDIMENTO:b.procedimento||b.PROCEDIMENTO,CONDICOES:b.condicoes||b.CONDICOES||'',EVIDENCIAS:_cCsv(b.evidencias||b.EVIDENCIAS),AUTORIZACOES:_cCsv(b.autorizacoes||b.AUTORIZACOES),CRITERIOS_CONCLUSAO:b.criteriosConclusao||b.CRITERIOS_CONCLUSAO||'',STATUS:'RASCUNHO',VERSAO:'1',CRIADO_EM:agora,CRIADO_POR:req.user.usuario,ATUALIZADO_EM:agora};
-    await appendObjeto('MATRIZ_TRATAMENTO',obj); await registrarAuditoria(req.user.usuario,'CRIOU_TRATAMENTO_CEREBRO',id,'MATRIZ_TRATAMENTO',null,obj); res.status(201).json({sucesso:true,item:obj});
+    await appendObjeto('MATRIZ_TRATAMENTO',obj); await registrarAuditoria(req.user.usuario,'CRIOU_TRATAMENTO_CEREBRO',id,'MATRIZ_TRATAMENTO',null,obj); invalidarCacheAba('MATRIZ_TRATAMENTO'); res.status(201).json({sucesso:true,item:obj});
   } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
+});
+
+app.patch('/api/cerebro/tratamentos/:id', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC'), middlewareEscopoEmpresa(), async (req,res)=>{
+  try {
+    const rows=await lerAba('MATRIZ_TRATAMENTO',5000);
+    const item=rows.find(r=>r.ID_TRATAMENTO===req.params.id);
+    if(!item) return res.status(404).json({sucesso:false,erro:'Tratamento não encontrado.'});
+    if(!escopoPermite(req,item.EMPRESA)) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado.'});
+    const b=req.body||{};
+    const campos=['EMPRESA','CATEGORIA','CAUSA_ID','CAUSA','SUBCAUSA','SETOR_RESPONSAVEL','PROCEDIMENTO','CONDICOES','EVIDENCIAS','AUTORIZACOES','CRITERIOS_CONCLUSAO','STATUS','VERSAO'];
+    const upd={};
+    campos.forEach(c=>{if(b[c]!==undefined)upd[c]=b[c];});
+    upd.ATUALIZADO_EM=new Date().toISOString();
+    if(!Object.keys(upd).filter(k=>k!=='ATUALIZADO_EM').length) return res.status(400).json({sucesso:false,erro:'Nenhum campo para atualizar.'});
+    await atualizarPorID('MATRIZ_TRATAMENTO',req.params.id,upd,['ID_TRATAMENTO']);
+    invalidarCacheAba('MATRIZ_TRATAMENTO');
+    await registrarAuditoria(req.user.usuario,'ATUALIZOU_TRATAMENTO_CEREBRO',req.params.id,'MATRIZ_TRATAMENTO',item,upd);
+    res.json({sucesso:true,item:{...item,...upd}});
+  } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
+});
+
+app.delete('/api/cerebro/tratamentos/:id', requerPerfil('MASTER','GESTOR SAC'), middlewareEscopoEmpresa(), async (req,res)=>{
+  try {
+    const rows=await lerAba('MATRIZ_TRATAMENTO',5000);
+    const item=rows.find(r=>r.ID_TRATAMENTO===req.params.id);
+    if(!item) return res.status(404).json({sucesso:false,erro:'Tratamento não encontrado.'});
+    if(!escopoPermite(req,item.EMPRESA)) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado.'});
+    await atualizarPorID('MATRIZ_TRATAMENTO',req.params.id,{STATUS:'INATIVO',ATIVO:'NAO',ATUALIZADO_EM:new Date().toISOString()},['ID_TRATAMENTO']);
+    invalidarCacheAba('MATRIZ_TRATAMENTO');
+    await registrarAuditoria(req.user.usuario,'INATIVOU_TRATAMENTO_CEREBRO',req.params.id,'MATRIZ_TRATAMENTO',null,{STATUS:'INATIVO'});
+    res.json({sucesso:true});
+  } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
 
 app.post('/api/cerebro/aprimoramentos', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC'), middlewareEscopoEmpresa(), async (req,res)=>{
