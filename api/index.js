@@ -8552,7 +8552,7 @@ const PORTAL_EMPRESAS = [
 
 const FICHAS_BIBLIOTECA_HEADERS = [
   'ID_FICHA','ID_MANIFESTACAO','PROTOCOLO','DATA_REGISTRO','ANO','MES',
-  'EMPRESA','SETOR_RECEBIMENTO','COLABORADOR_RECEBIMENTO','NOME_CLIENTE',
+  'EMPRESA','SETOR_ORIGEM','SETOR_RECEBIMENTO','COLABORADOR_RECEBIMENTO','NOME_CLIENTE',
   'TIPO_MANIFESTACAO','MOTIVO','STATUS','PDF_DRIVE_ID','PDF_DRIVE_URL',
   'PDF_NOME','TOTAL_EVIDENCIAS','CREATED_AT','VERSAO',
 ];
@@ -8697,10 +8697,11 @@ app.post('/api/public/reclamacoes', publicRateLimit, async (req, res) => {
       APROVACAO_NECESSARIA: '',
       TIPO: tipoManifestacao,
       TIPO_MANIFESTACAO: tipoManifestacao,
-      ORIGEM: viaCliente ? 'PORTAL_PUBLICO' : 'PORTAL_FUNCIONARIO',
-      ORIGEM_REGISTRO: viaCliente ? 'PORTAL_PUBLICO' : 'PORTAL_FUNCIONARIO',
+      ORIGEM: viaCliente ? 'PORTAL_PUBLICO' : 'FORMULARIO_PUBLICO_SAC',
+      ORIGEM_REGISTRO: viaCliente ? 'PORTAL_PUBLICO' : 'FORMULARIO_PUBLICO_SAC',
       REGISTRADO_POR: colaboradorRecebimento,
       COLABORADOR_RECEBIMENTO: colaboradorRecebimento,
+      SETOR_ORIGEM: setorRecebimento,
       SETOR_RECEBIMENTO: setorRecebimento,
       USUARIO_CRIACAO: `portal:${colaboradorRecebimento}`,
       STATUS_TRATATIVA: 'NÃO INICIADA',
@@ -8709,7 +8710,7 @@ app.post('/api/public/reclamacoes', publicRateLimit, async (req, res) => {
     };
     await garantirAbaComCabecalhos('MANIFESTACOES', Object.keys(objeto));
     await appendObjeto('MANIFESTACOES', objeto);
-    await registrarHistoricoManifestacao({ id, protocolo, usuario: colaboradorRecebimento || 'PORTAL_PUBLICO', acao: 'REGISTROU_MANIFESTACAO', descricao: `Manifestação registrada via ${canalFinal} (Portal do Cliente).`, etapa: 'TRIAGEM_SAC' });
+    await registrarHistoricoManifestacao({ id, protocolo, usuario: colaboradorRecebimento || 'PORTAL_PUBLICO', acao: 'REGISTROU_MANIFESTACAO', descricao: `Manifestação registrada via ${viaCliente ? 'Portal do Cliente' : 'Formulário interno SAC'}; setor de origem: ${setorRecebimento}; aguardando triagem SAC.`, etapa: 'TRIAGEM_SAC' });
 
     // 2. Upload evidências para o Drive (não bloqueia se falhar)
     const evidenciasMetadata = [];
@@ -8765,7 +8766,7 @@ app.post('/api/public/reclamacoes', publicRateLimit, async (req, res) => {
       await appendObjeto('FICHAS_BIBLIOTECA', {
         ID_FICHA: fichaId, ID_MANIFESTACAO: id, PROTOCOLO: protocolo,
         DATA_REGISTRO: agora, ANO: anoReg, MES: mesReg,
-        EMPRESA: empresa, SETOR_RECEBIMENTO: setorRecebimento,
+        EMPRESA: empresa, SETOR_ORIGEM: setorRecebimento, SETOR_RECEBIMENTO: setorRecebimento,
         COLABORADOR_RECEBIMENTO: colaboradorRecebimento, NOME_CLIENTE: nomeCliente,
         TIPO_MANIFESTACAO: tipoManifestacao, MOTIVO: motivoManifestacao,
         STATUS: 'NOVA', PDF_DRIVE_ID: pdfDriveId, PDF_DRIVE_URL: pdfDriveUrl,
@@ -8803,7 +8804,9 @@ app.post('/api/public/reclamacoes', publicRateLimit, async (req, res) => {
       await appendObjeto('FILA_APROVACAO', {
         ID_FILA: filaId, ID_ENTIDADE: id, TIPO_ENTIDADE: 'SAC',
         DESCRICAO: `[Portal] ${tipoManifestacao} - ${nomeCliente} (${empresa})`,
-        EMPRESA: empresaCanonica(empresa)||empresa, SETOR: setorRecebimento,
+        // A fila é do SAC. O setor informado pelo colaborador é apenas origem
+        // e não pode ser usado para distribuir automaticamente a tratativa.
+        EMPRESA: empresaCanonica(empresa)||empresa, SETOR: '',
         COMPETENCIA: '', STATUS: 'PENDENTE',
         ID_APROVADOR: '', NOME_APROVADOR: '',
         DATA_ENVIO: agora, DATA_DECISAO: '', OBSERVACOES: '',
