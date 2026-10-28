@@ -1,0 +1,263 @@
+name: Aplicar protocolos atômicos (produção)
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_production:
+        description: "Digite PRODUCTION para confirmar o destino"
+        required: true
+        type: string
+      authorize_protocols:
+        description: "Digite APLICAR_PROTOCOLOS para autorizar a migração"
+        required: true
+        type: string
+      recovery_confirmation:
+        description: "Digite SNAPSHOT_OK após confirmar o ponto de recuperação no Neon"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: prisma-protocolos-production
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    name: Validar e aplicar protocolos atômicos no Neon production
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    if: ${{ github.ref == 'refs/heads/main' && github.event.inputs.confirm_production == 'PRODUCTION' && github.event.inputs.authorize_protocols == 'APLICAR_PROTOCOLOS' && github.event.inputs.recovery_confirmation == 'SNAPSHOT_OK' }}
+    env:
+      DATABASE_URL: ${{ secrets.NEON_DATABASE_URL_UNPOOLED }}
+      DATABASE_URL_UNPOOLED: ${{ secrets.NEON_DATABASE_URL_UNPOOLED }}
+      EXPECTED_NEON_HOSTNAME: ${{ secrets.NEON_PRODUCTION_HOSTNAME }}
+      EXPECTED_DATABASE_NAME: ${{ secrets.NEON_PRODUCTION_DATABASE_NAME }}
+
+    steps:
+      - name: Baixar código da main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci --ignore-scripts
+
+      - name: Confirmar ponto de recuperação informado
+        env:
+          RECOVERY_CONFIRMATION: ${{ github.event.inputs.recovery_confirmation }}
+        run: |
+          set -euo pipefail
+          if [ "$RECOVERY_CONFIRMATION" != "SNAPSHOT_OK" ]; then
+            echo "Ponto de recuperação não confirmado; nenhuma alteração será executada."
+            exit 1
+          fi
+          echo "Ponto de recuperação do Neon confirmado pelo operador."
+
+      - name: Confirmar destino Neon sem expor credenciais
+        run: |
+          node <<'NODE'
+          const { Client } = require('pg');
+          const parsed = new URL(process.env.DATABASE_URL);
+          const expectedHost = process.env.EXPECTED_NEON_HOSTNAME;
+          if (!expectedHost || parsed.hostname !== expectedHost) {
+            throw new Error('Destino recusado: o host não corresponde ao Neon production configurado.');
+          }
+          if (!process.env.EXPECTED_DATABASE_NAME) {
+            throw new Error('Destino recusado: NEON_PRODUCTION_DATABASE_NAME não configurado.');
+          }
+          const client = new Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: true } });
+          (async () => {
+            await client.connect();
+            const result = await client.query('SELECT current_database() AS database_name, current_schema() AS schema_name');
+            const row = result.rows[0] || {};
+            await client.end();
+            if (String(row.database_name || '') !== process.env.EXPECTED_DATABASE_NAME || String(row.schema_name || '') !== 'public') {
+              throw new Error('Destino recusado: banco ou schema não corresponde ao Neon production configurado.');
+            }
+            console.log('Destino confirmado: host, banco e schema public correspondem à produção.');
+          })().catch(async error => {
+            try { await client.end(); } catch {}
+            console.error(error.message);
+            process.exit(1);
+          });
+          NODE
+
+      - name: Confirmar init aplicada e somente protocolos pendente
+        run: |
+          set -euo pipefail
+          status_file="$(mktemp)"
+          trap 'rm -f "$status_file"' EXIT
+          set +e
+          npx prisma migrate status --schema prisma/schema.prisma > "$status_file" 2>&1
+          status_code=$?
+          set -e
+          cat "$status_file"
+          if [ "$status_code" -gt 1 ]; then
+            echo "prisma migrate status falhou de forma inesperada (código $status_code)."
+            exit "$status_code"
+          fi
+
+          STATUS_FILE="$status_file" DATABASE_URL="$DATABASE_URL" node <<'NODE'
+          const fs = require('fs');
+          const { Client } = require('pg');
+          const output = fs.readFileSync(process.env.STATUS_FILE, 'utf8');
+          if (output.includes('20260930000001_init') && /not yet been applied|pending|pendente/i.test(output)) {
+            throw new Error('A migração init aparece como pendente no status do Prisma.');
+          }
+          (async () => {
+            const client = new Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: true } });
+            await client.connect();
+            const { rows } = await client.query(`
+              SELECT migration_name, finished_at, rolled_back_at
+                FROM "_prisma_migrations"
+               ORDER BY started_at, migration_name
+            `);
+            await client.end();
+            const known = new Set([
+              '20260930000001_init',
+              '20261028000001_protocolos_atomicos',
+            ]);
+            const unexpected = rows.filter(row => !known.has(row.migration_name));
+            if (unexpected.length) {
+              throw new Error(`Histórico contém migrações inesperadas: ${unexpected.map(row => row.migration_name).join(', ')}`);
+            }
+            const applied = new Set(rows
+              .filter(row => row.finished_at && !row.rolled_back_at)
+              .map(row => row.migration_name));
+            if (!applied.has('20260930000001_init')) {
+              throw new Error('A migração init não está registrada como aplicada.');
+            }
+            const pending = ['20260930000001_init', '20261028000001_protocolos_atomicos']
+              .filter(name => !applied.has(name));
+            if (JSON.stringify(pending) !== JSON.stringify(['20261028000001_protocolos_atomicos'])) {
+              throw new Error(`Migrações pendentes inesperadas: ${pending.join(', ') || '(nenhuma)'}`);
+            }
+            console.log('Histórico confirmado: init aplicada e somente protocolos atômicos pendente.');
+          })().catch(error => {
+            console.error(error.message);
+            process.exit(1);
+          });
+          NODE
+
+      - name: Validar SQL da migração sem comandos destrutivos
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const file = 'prisma/migrations/20261028000001_protocolos_atomicos/migration.sql';
+          const sql = fs.readFileSync(file, 'utf8');
+          if (/\b(DROP|ALTER|TRUNCATE|DELETE|UPDATE|INSERT|GRANT|REVOKE)\b/i.test(sql)) {
+            throw new Error('A migração contém comando destrutivo ou alteração de dados/estruturas existentes.');
+          }
+          const tables = [...sql.matchAll(/CREATE TABLE IF NOT EXISTS\s+([a-z_]+)/gi)].map(match => match[1]).sort();
+          const indexes = [...sql.matchAll(/CREATE INDEX IF NOT EXISTS\s+([a-z_]+)/gi)].map(match => match[1]).sort();
+          if (JSON.stringify(tables) !== JSON.stringify(['protocol_counter', 'protocol_reservation'])) {
+            throw new Error(`Tabelas previstas não correspondem ao SQL: ${tables.join(', ')}`);
+          }
+          if (JSON.stringify(indexes) !== JSON.stringify(['protocol_reservation_status_idx'])) {
+            throw new Error(`Índices previstos não correspondem ao SQL: ${indexes.join(', ')}`);
+          }
+          console.log('SQL aprovado: somente as duas tabelas e o índice dos protocolos serão criados.');
+          NODE
+
+      - name: Aplicar migração autorizada dos protocolos atômicos
+        run: npx prisma migrate deploy --schema prisma/schema.prisma
+
+      - name: Validar estruturas e histórico após a aplicação (somente leitura)
+        env:
+          DATABASE_URL: ${{ secrets.NEON_DATABASE_URL_UNPOOLED }}
+        run: |
+          node <<'NODE'
+          const { Client } = require('pg');
+          const expectedColumns = {
+            protocol_counter: ['chave', 'seq'],
+            protocol_reservation: ['idempotency_key', 'chave', 'protocolo', 'seq', 'status', 'entity_id', 'last_error', 'created_at', 'updated_at'],
+          };
+          (async () => {
+            const client = new Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: true } });
+            await client.connect();
+            const tables = await client.query(`
+              SELECT table_name
+                FROM information_schema.tables
+               WHERE table_schema = 'public'
+                 AND table_name IN ('protocol_counter', 'protocol_reservation')
+               ORDER BY table_name
+            `);
+            if (tables.rows.map(row => row.table_name).join(',') !== 'protocol_counter,protocol_reservation') {
+              throw new Error('As duas tabelas de protocolos não foram encontradas.');
+            }
+            const columns = await client.query(`
+              SELECT table_name, column_name
+                FROM information_schema.columns
+               WHERE table_schema = 'public'
+                 AND table_name IN ('protocol_counter', 'protocol_reservation')
+               ORDER BY table_name, ordinal_position
+            `);
+            for (const table of Object.keys(expectedColumns)) {
+              const actual = columns.rows.filter(row => row.table_name === table).map(row => row.column_name);
+              if (JSON.stringify(actual) !== JSON.stringify(expectedColumns[table])) {
+                throw new Error(`Colunas inesperadas em ${table}: ${actual.join(', ')}`);
+              }
+            }
+            const indexes = await client.query(`
+              SELECT indexname
+                FROM pg_indexes
+               WHERE schemaname = 'public'
+                 AND indexname = 'protocol_reservation_status_idx'
+            `);
+            if (indexes.rowCount !== 1) throw new Error('Índice protocol_reservation_status_idx não encontrado.');
+            const constraints = await client.query(`
+              SELECT c.relname AS table_name, pg_get_constraintdef(pc.oid) AS definition
+                FROM pg_constraint pc
+                JOIN pg_class c ON c.oid = pc.conrelid
+               WHERE c.relnamespace = 'public'::regnamespace
+                 AND c.relname IN ('protocol_counter', 'protocol_reservation')
+            `);
+            const definitions = constraints.rows.map(row => `${row.table_name}:${row.definition}`.replace(/\s+/g, ' '));
+            const required = [
+              /protocol_counter:PRIMARY KEY \(chave\)/i,
+              /protocol_reservation:PRIMARY KEY \(idempotency_key\)/i,
+              /protocol_reservation:UNIQUE \(protocolo\)/i,
+              /protocol_reservation:UNIQUE \(chave, seq\)/i,
+              /protocol_reservation:CHECK .*seq > 0/i,
+              /protocol_reservation:CHECK .*status.*RESERVED.*PERSISTED.*PERSISTENCE_FAILED/i,
+            ];
+            if (required.some(pattern => !definitions.some(definition => pattern.test(definition)))) {
+              throw new Error('As restrições da migração não correspondem ao esperado.');
+            }
+            const migration = await client.query(`
+              SELECT finished_at, rolled_back_at
+                FROM "_prisma_migrations"
+               WHERE migration_name = '20261028000001_protocolos_atomicos'
+            `);
+            await client.end();
+            if (migration.rowCount !== 1 || !migration.rows[0].finished_at || migration.rows[0].rolled_back_at) {
+              throw new Error('A migração dos protocolos não consta como concluída.');
+            }
+            console.log('Pós-validação aprovada: tabelas, índice, restrições e histórico confirmados.');
+          })().catch(error => {
+            console.error(error.message);
+            process.exit(1);
+          });
+          NODE
+
+      - name: Confirmar status sem migrações pendentes
+        run: |
+          set -euo pipefail
+          status_file="$(mktemp)"
+          trap 'rm -f "$status_file"' EXIT
+          npx prisma migrate status --schema prisma/schema.prisma > "$status_file" 2>&1
+          cat "$status_file"
+          if grep -Eqi 'pending|not yet been applied|pendente|following migration' "$status_file"; then
+            echo 'O Prisma ainda reporta migrações pendentes.'
+            exit 1
+          fi
+          echo 'Status final confirmado: nenhuma migração pendente.'
