@@ -1,4 +1,4 @@
-name: Prisma migrate deploy (produção)
+name: Verificar migrações Prisma (produção)
 
 on:
   workflow_dispatch:
@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   migrate:
-    name: Aplicar migrações no Neon production
+    name: Verificar migrações no Neon production
     runs-on: ubuntu-latest
     environment: production
     if: ${{ github.event.inputs.confirm_production == 'PRODUCTION' }}
@@ -70,6 +70,3 @@ jobs:
 
       - name: Verificar estado das migrações
         run: npx prisma migrate status
-
-      - name: Aplicar migrações pendentes
-        run: npx prisma migrate deploy
