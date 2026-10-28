@@ -26350,8 +26350,9 @@ async function mudarStatusMC(id, novoStatus) {
     try{const d=await api('/api/manifestacoes/'+encodeURIComponent(id));if(d?.sucesso!==false)full=Object.assign({},full,d.manifestacao||d.item||d);}catch(e){console.warn('[Ficha v2] carregamento da Central:',e.message)}
     return window.fichaV2Open(full,opts);
   }
+  function _cenOrigemTab(){return document.querySelector('.mc-tab.on')?.id?.replace(/^mc-tab-/,'')||'fila'}
   window.cenAbrirFichaCompleta=function(){
-    if(window.fichaV2Open&&_cenRawAtual)return window.fichaV2Open(_cenRawAtual,{returnPage:'central-sac'});
+    if(window.fichaV2Open&&_cenRawAtual)return window.fichaV2Open(_cenRawAtual,{returnPage:'central-sac',returnTab:_cenOrigemTab()});
     return typeof _cenFichaCompletaLegada==='function'?_cenFichaCompletaLegada.apply(this,arguments):undefined;
   };
   window.cenTrativasFichaAbrirModal=function(){
@@ -26368,7 +26369,7 @@ async function mudarStatusMC(id, novoStatus) {
     if(!id)return;
     const base=_cenAll.find(m=>m.id===id)||_cenBancoAll.find(m=>(m.ID_MANIFESTACAO||m.id)===id);
     const seed=base?.raw||base||{ID_MANIFESTACAO:id,PROTOCOLO:id};
-    if(window.fichaV2Open)return _cenAbrirFichaV2(id,seed,{returnPage:'central-sac'});
+    if(window.fichaV2Open)return _cenAbrirFichaV2(id,seed,{returnPage:'central-sac',returnTab:_cenOrigemTab()});
     return typeof _cenFichaModalLegada==='function'?_cenFichaModalLegada.apply(this,arguments):undefined;
   };
 
