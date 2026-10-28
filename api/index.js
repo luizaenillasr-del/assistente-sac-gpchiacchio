@@ -1133,6 +1133,29 @@ function invalidarCacheAba(nomeAba) {
   }
 }
 
+// A planilha existente chama a base de aprimoramentos de
+// CEREBRO_APRENDIZADO. APRIMORAMENTOS_CEREBRO é mantido somente como alias
+// legado; nunca criamos uma segunda aba quando a base canônica existe.
+const APRIMORAMENTO_ABAS = ['CEREBRO_APRENDIZADO', 'APRIMORAMENTOS_CEREBRO'];
+async function resolverAbaAprimoramentos() {
+  for (const nome of APRIMORAMENTO_ABAS) {
+    try {
+      const headers = await obterCabecalhos(nome);
+      if (headers.length) return nome;
+    } catch (_) { /* aba ausente: testar o próximo nome */ }
+    try {
+      const rows = await lerAba(nome, 10);
+      if (rows.length) return nome;
+    } catch (_) { /* aba ausente: testar o próximo nome */ }
+  }
+  return null;
+}
+async function lerAprimoramentosCerebro(maxRows = 5000) {
+  const aba = await resolverAbaAprimoramentos();
+  if (!aba) return { aba: null, rows: [] };
+  return { aba, rows: await lerAba(aba, maxRows).catch(() => []) };
+}
+
 // Tenta 'Reclamações + devolutiva' primeiro; cai para 'Reclamações' se vazio
 async function lerAbaReclamacoes(max = 2000) {
   if (_sheetsMock?.lerAbaReclamacoes) return _sheetsMock.lerAbaReclamacoes(max);
@@ -3641,7 +3664,8 @@ app.post('/api/manifestacoes/:id/finalizar', requerPermissao('aprovacoes.aprovar
     try {
       const causaFinal = m.CAUSA_RAIZ_CONFIRMADA || m.CAUSA_RAIZ || m.SUBCAUSA || '';
       if (causaFinal) {
-        const aprimRows = await lerAba('APRIMORAMENTOS_CEREBRO', 2000).catch(()=>[]);
+        const aprimBase = await lerAprimoramentosCerebro(2000);
+        const aprimRows = aprimBase.rows;
         const jaExisteAprim = aprimRows.some(a =>
           _cNorm(a.CAUSA||'') === _cNorm(causaFinal) &&
           a.STATUS !== 'CONCLUIDO' && a.STATUS !== 'DESCARTADO' &&
@@ -3653,9 +3677,10 @@ app.post('/api/manifestacoes/:id/finalizar', requerPermissao('aprovacoes.aprovar
           const freq = Number(causaRef?.FREQUENCIA_OCORRENCIAS || 0);
           const reincidencia = (m.REINCIDENCIA||'').toUpperCase() === 'SIM';
           if (freq >= 2 || reincidencia) {
-            await garantirAbaComCabecalhos('APRIMORAMENTOS_CEREBRO', CEREBRO_APR_HEADERS).catch(()=>{});
-            const idApr = await gerarProximoID('APRIMORAMENTOS_CEREBRO','APR','ID_APRIMORAMENTO');
-            await appendObjeto('APRIMORAMENTOS_CEREBRO', {
+            if (!aprimBase.aba) throw new Error('Base de aprimoramentos CIRCA não encontrada; nenhuma aba será criada automaticamente.');
+            await garantirAbaComCabecalhos(aprimBase.aba, CEREBRO_APR_HEADERS).catch(()=>{});
+            const idApr = await gerarProximoID(aprimBase.aba,'APR','ID_APRIMORAMENTO');
+            await appendObjeto(aprimBase.aba, {
               ID_APRIMORAMENTO: idApr,
               TIPO: reincidencia ? 'PREVENCAO' : 'MELHORIA',
               CAUSA_ID: causaRef?.ID_CAUSA || '',
@@ -3679,7 +3704,7 @@ app.post('/api/manifestacoes/:id/finalizar', requerPermissao('aprovacoes.aprovar
               APROVADO_POR: '',
               ATUALIZADO_EM: agora,
             }).catch(e => console.warn('[APR] auto-aprim falhou:', e.message));
-            invalidarCacheAba('APRIMORAMENTOS_CEREBRO');
+            invalidarCacheAba(aprimBase.aba);
           }
         }
       }
@@ -7600,7 +7625,9 @@ app.get('/api/manifestacoes/:id/circa', requerPermissao('manifestacoes.visualiza
       lerAba('TRATATIVAS_SETORIAIS', 5000).catch(() => []),
       lerAba('DEVOLUTIVAS', 5000).catch(() => []),
       lerAba('MATRIZ_TRATAMENTO', 5000).catch(() => []),
-      lerAba('CAUSAS_SUBCAUSAS', 5000).catch(() => []),
+      // The inventory confirms CAUSAS is the canonical catalog. Keep the
+      // historical alias only as a read-only fallback for older sheets.
+      lerAba('CAUSAS', 5000).then(rows => rows.length ? rows : lerAba('CAUSAS_SUBCAUSAS', 5000).catch(() => [])).catch(() => []),
     ]);
     const m = manifestacoes.find(r => [r.ID_MANIFESTACAO, r.PROTOCOLO, r.ID, r.ID_ORIGINAL]
       .some(v => String(v || '').trim() === idReq));
@@ -7608,7 +7635,14 @@ app.get('/api/manifestacoes/:id/circa', requerPermissao('manifestacoes.visualiza
     if (req._empresaScope && !pertenceEmpresa(req._empresaScope, m.EMPRESA_RECLAMADA || ''))
       return res.status(403).json({ sucesso:false, erro:'Acesso não autorizado.' });
     const similares = await cerebroService.buscarCasosSimilares(m, 8, req.user?.EMPRESA || null).catch(() => []);
-    const normTratCirca = r => ({ ...r, PROCEDIMENTO: r.PROCEDIMENTO || r.TRATATIVA_PADRAO || '', STATUS: r.STATUS || (r.ATIVO === 'NAO' ? 'INATIVO' : r.ATIVO ? 'APROVADO' : '') });
+    const normTratCirca = r => ({
+      ...r,
+      ID_TRATAMENTO: r.ID_TRATAMENTO || r.ID_REGRA || r.ID || '',
+      PROCEDIMENTO: r.PROCEDIMENTO || r.TRATATIVA_RECOMENDADA || r.TRATATIVA_PADRAO || '',
+      CAUSA: r.CAUSA || '',
+      SUBCAUSA: r.SUBCAUSA || r.SUBCATEGORIA || '',
+      STATUS: r.STATUS || (String(r.ATIVO || '').toUpperCase() === 'NAO' ? 'INATIVO' : String(r.ATIVO || '').toUpperCase() === 'SIM' ? 'APROVADO' : ''),
+    });
     const resultado = circaEngine.analisar({
       manifestacao: m,
       similares,
@@ -7897,22 +7931,25 @@ app.post('/api/causas/popular-historico', requerPerfil('MASTER','ANALISTA SAC'),
   try {
     const hist = await lerAba('BANCO_HISTORICO', 5000);
     const existentes = await lerAba('CAUSAS', 2000).catch(()=>[]);
-    const causasExistentes = new Set(existentes.map(c=>(c.CAUSA||'').toLowerCase().trim()));
+    const normalizarCausa = valor => String(valor || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
+    const chaveCausa = (c = {}) => [c.EMPRESA || '', c.CATEGORIA || '', c.TIPO || '', c.CAUSA || '', c.SUBCAUSA || ''].map(normalizarCausa).join('|');
+    const causasExistentes = new Set(existentes.map(chaveCausa));
 
     const mapa = {}; // "tipo|causa|subcausa" -> contagem
     for (const h of hist) {
       const tipo = (h.COMP_TIPO_PROBLEMA_VALIDADO||h.TIPO_PROBLEMA_VALIDADO||'').trim();
-      const causa = (h.COMP_CAUSA_RAIZ||h.COMP_CAUSA_PROVAVEL||h.CAUSA_RAIZ||'').trim();
-      const subcausa = (h.COMP_SUBCAUSA||h.SUBCAUSA||'').trim();
+      const causa = (h.CAUSA_RAIZ_VALIDADA||h.COMP_CAUSA_RAIZ||h.COMP_CAUSA_PROVAVEL||h.CAUSA_RAIZ||h.CAUSA||'').trim();
+      const subcausa = (h.COMP_SUBCAUSA||h.SUBCAUSA||h.SUBCAUSA_CONFIRMADA||'').trim();
       const categoria = (h.COMP_CATEGORIA||h.CATEGORIA||tipo||'').trim();
+      const empresa = (h.EMPRESA_RECLAMADA||h.ORIG_EMPRESA||h.EMPRESA||'').trim();
       const setor = (h.COMP_SETOR_RESPONSAVEL||h.SETOR_RESPONSAVEL||h.SETOR||'').trim();
       if (!causa) continue;
-      const key = `${tipo}|${causa}|${subcausa}`;
-      if (!mapa[key]) mapa[key] = { tipo, causa, subcausa, categoria, setor, count: 0 };
+      const key = chaveCausa({ empresa, categoria, tipo, causa, subcausa });
+      if (!mapa[key]) mapa[key] = { empresa, tipo, causa, subcausa, categoria, setor, count: 0 };
       mapa[key].count++;
     }
 
-    const novas = Object.values(mapa).filter(m => !causasExistentes.has(m.causa.toLowerCase()));
+    const novas = Object.values(mapa).filter(m => !causasExistentes.has(chaveCausa(m)));
     if (!novas.length) return res.json({ sucesso: true, inseridas: 0, mensagem: 'Todas as causas já existem.' });
 
     // Garantir cabeçalho da aba
@@ -7922,7 +7959,7 @@ app.post('/api/causas/popular-historico', requerPerfil('MASTER','ANALISTA SAC'),
     for (const m of novas) {
       const id = await gerarProximoID('CAUSAS','CAU','ID_CAUSA').catch(()=>'CAU-'+Date.now().toString().slice(-6));
       await appendObjeto('CAUSAS', {
-        ID_CAUSA: id, CATEGORIA: m.categoria||m.tipo||'GERAL', TIPO: m.tipo||'',
+        ID_CAUSA: id, CATEGORIA: m.categoria||m.tipo||'GERAL', TIPO: m.tipo||'', EMPRESA: m.empresa||'',
         CAUSA: m.causa, SUBCAUSA: m.subcausa, SETOR_RESPONSAVEL: m.setor,
         PALAVRAS_CHAVE: '', ATIVO: 'SIM',
         DATA_CRIACAO: new Date().toISOString(),
@@ -7971,9 +8008,10 @@ function _cCanWrite(req) { return ['MASTER','GESTOR SAC','ANALISTA SAC'].include
 app.get('/api/cerebro/matriz-operacional', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC','APROVADOR','SETOR RESPONSÁVEL','AUDITOR','CONSULTA'), middlewareEscopoEmpresa(), async (req,res)=>{
   try {
     const q = _cNorm(req.query.q), aba = String(req.query.aba || 'causas');
-    const [causas, tratamentos, aprimoramentos] = await Promise.all([
-      lerAba('CAUSAS', 5000).catch(()=>[]), lerAba('MATRIZ_TRATAMENTO', 5000).catch(()=>[]), lerAba('APRIMORAMENTOS_CEREBRO', 5000).catch(()=>[]),
+    const [causas, tratamentos, aprimBase] = await Promise.all([
+      lerAba('CAUSAS', 5000).catch(()=>[]), lerAba('MATRIZ_TRATAMENTO', 5000).catch(()=>[]), lerAprimoramentosCerebro(5000),
     ]);
+    const aprimoramentos = aprimBase.rows;
     const filtra = rows => _cScopeRows(req, rows).filter(r => !q || _cNorm(Object.values(r).join(' ')).includes(q));
     const normTrat = r => ({ ...r, ID_TRATAMENTO: r.ID_TRATAMENTO || r.ID_REGRA || '', PROBLEMA_TRATADO: r.PROBLEMA_TRATADO || r.TIPO_MANIFESTACAO || '', PROCEDIMENTO: r.PROCEDIMENTO || r.TRATATIVA_PADRAO || '', CAUSA: r.CAUSA || '', STATUS: r.STATUS || (r.ATIVO === 'NAO' ? 'INATIVO' : r.ATIVO === 'SIM' || r.ATIVO === '1' || r.ATIVO === 'true' ? 'APROVADO' : r.ATIVO ? 'APROVADO' : '') });
     const rows = aba === 'tratamentos' ? filtra(tratamentos).map(normTrat) : aba === 'aprimoramentos' ? filtra(aprimoramentos) : filtra(causas);
@@ -8052,11 +8090,13 @@ app.post('/api/cerebro/aprimoramentos', requerPerfil('MASTER','GESTOR SAC','ANAL
     const b=req.body||{}, agora=new Date().toISOString();
     const descricao=String(b.descricao||b.problemaRecorrente||b.DESCRICAO||'').trim();
     if(!descricao) return res.status(400).json({sucesso:false,erro:'Descrição é obrigatória.'});
-    await garantirAbaComCabecalhos('APRIMORAMENTOS_CEREBRO',CEREBRO_APR_HEADERS).catch(()=>{});
-    const id=await gerarProximoID('APRIMORAMENTOS_CEREBRO','APR','ID_APRIMORAMENTO');
+    const aba = await resolverAbaAprimoramentos();
+    if (!aba) return res.status(503).json({sucesso:false,erro:'Base de aprimoramentos CIRCA não está disponível.'});
+    await garantirAbaComCabecalhos(aba,CEREBRO_APR_HEADERS).catch(()=>{});
+    const id=await gerarProximoID(aba,'APR','ID_APRIMORAMENTO');
     const obj={ID_APRIMORAMENTO:id,TIPO:b.tipo||b.TIPO||'TRATAMENTO',CAUSA_ID:b.causaId||b.CAUSA_ID||'',CAUSA:b.causa||b.CAUSA||'',ID_MANIFESTACAO:b.idManifestacao||b.ID_MANIFESTACAO||'',PROBLEMA_RECORRENTE:b.problemaRecorrente||b.PROBLEMA_RECORRENTE||descricao,DESCRICAO:descricao,JUSTIFICATIVA:b.justificativa||b.JUSTIFICATIVA||'',QUANTIDADE_OCORRENCIAS:String(b.quantidadeOcorrencias||b.QUANTIDADE_OCORRENCIAS||''),IMPACTO:b.impacto||b.IMPACTO||'',PROPOSTA_MELHORIA:b.propostaMelhoria||b.PROPOSTA_MELHORIA||'',SETOR_RESPONSAVEL:b.setorResponsavel||b.SETOR_RESPONSAVEL||'',PRAZO:b.prazo||b.PRAZO||'',STATUS:'EM_REVISAO',RESULTADO:'',EVIDENCIA:'',VERSAO:'1',CRIADO_EM:agora,CRIADO_POR:req.user.usuario,APROVADO_EM:'',APROVADO_POR:'',ATUALIZADO_EM:agora};
-    await appendObjeto('APRIMORAMENTOS_CEREBRO',obj);
-    invalidarCacheAba('APRIMORAMENTOS_CEREBRO');
+    await appendObjeto(aba,obj);
+    invalidarCacheAba(aba);
     res.status(201).json({sucesso:true,item:obj});
   } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
 });
@@ -8093,7 +8133,9 @@ app.delete('/api/cerebro/causas/:id', requerPerfil('MASTER','GESTOR SAC'), middl
 
 app.patch('/api/cerebro/aprimoramentos/:id', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC'), middlewareEscopoEmpresa(), async (req,res)=>{
   try {
-    const rows=await lerAba('APRIMORAMENTOS_CEREBRO',5000).catch(()=>[]);
+    const aba = await resolverAbaAprimoramentos();
+    if (!aba) return res.status(404).json({sucesso:false,erro:'Base de aprimoramentos CIRCA não está disponível.'});
+    const rows=await lerAba(aba,5000).catch(()=>[]);
     const item=rows.find(r=>r.ID_APRIMORAMENTO===req.params.id);
     if(!item) return res.status(404).json({sucesso:false,erro:'Aprimoramento não encontrado.'});
     const b=req.body||{};
@@ -8102,15 +8144,15 @@ app.patch('/api/cerebro/aprimoramentos/:id', requerPerfil('MASTER','GESTOR SAC',
     if(b.STATUS==='APROVADO'){upd.APROVADO_EM=new Date().toISOString();upd.APROVADO_POR=req.user.usuario;}
     upd.ATUALIZADO_EM=new Date().toISOString();
     if(!Object.keys(upd).filter(k=>k!=='ATUALIZADO_EM').length) return res.status(400).json({sucesso:false,erro:'Nenhum campo para atualizar.'});
-    await atualizarPorID('APRIMORAMENTOS_CEREBRO',req.params.id,upd,['ID_APRIMORAMENTO']);
-    invalidarCacheAba('APRIMORAMENTOS_CEREBRO');
-    await registrarAuditoria(req.user.usuario,'ATUALIZOU_APRIMORAMENTO_CEREBRO',req.params.id,'APRIMORAMENTOS_CEREBRO',item,upd);
+    await atualizarPorID(aba,req.params.id,upd,['ID_APRIMORAMENTO']);
+    invalidarCacheAba(aba);
+    await registrarAuditoria(req.user.usuario,'ATUALIZOU_APRIMORAMENTO_CEREBRO',req.params.id,aba,item,upd);
     res.json({sucesso:true,item:{...item,...upd}});
   } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
 
 app.get('/api/cerebro/devolutivas', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC','APROVADOR','SETOR RESPONSÁVEL','AUDITOR','CONSULTA'), middlewareEscopoEmpresa(), async (req,res)=>{
-  try { const q=_cNorm(req.query.q), aba=String(req.query.aba||'modelos'); await garantirAbaComCabecalhos('MODELOS_DEVOLUTIVA',CEREBRO_MODELO_HEADERS).catch(()=>{}); const [modelos, historico]=await Promise.all([lerAba('MODELOS_DEVOLUTIVA',5000).catch(()=>[]),lerAba('DEVOLUTIVAS',5000).catch(()=>[])]); const base=aba==='historico'?historico:aba==='revisao'?modelos.filter(r=>_cStatusNorm(r.STATUS)==='em revisao'):modelos.filter(r=>_cStatusNorm(r.STATUS)==='aprovada'||_cStatusNorm(r.STATUS)==='publicada'); const itens=_cScopeRows(req,base).filter(r=>!q||_cNorm(Object.values(r).join(' ')).includes(q)); res.json({sucesso:true,aba,itens,total:itens.length,modelos:_cScopeRows(req,modelos),historico:_cScopeRows(req,historico)}); } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e),itens:[]});}
+  try { const q=_cNorm(req.query.q), aba=String(req.query.aba||'modelos'); const [modelos, historico]=await Promise.all([lerAba('MODELOS_DEVOLUTIVA',5000).catch(()=>[]),lerAba('DEVOLUTIVAS',5000).catch(()=>[])]); const base=aba==='historico'?historico:aba==='revisao'?modelos.filter(r=>_cStatusNorm(r.STATUS)==='em revisao'):modelos.filter(r=>_cStatusNorm(r.STATUS)==='aprovada'||_cStatusNorm(r.STATUS)==='publicada'); const itens=_cScopeRows(req,base).filter(r=>!q||_cNorm(Object.values(r).join(' ')).includes(q)); res.json({sucesso:true,aba,itens,total:itens.length,modelos:_cScopeRows(req,modelos),historico:_cScopeRows(req,historico)}); } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e),itens:[]});}
 });
 
 app.post('/api/cerebro/devolutivas/modelos', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC'), middlewareEscopoEmpresa(), async (req,res)=>{

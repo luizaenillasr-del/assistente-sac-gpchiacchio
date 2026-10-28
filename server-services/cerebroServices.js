@@ -250,7 +250,16 @@ async function detectarReincidencia(manifestacao) {
   try {
     const historico = await sheets.lerAba('MANIFESTACOES', 5000);
     const historicoBanco = await sheets.lerAba('BANCO_HISTORICO', 5000).catch(() => []);
-    const todos = [...historico, ...historicoBanco];
+    // A manifestação pode aparecer nas duas bases durante a transição. Use
+    // o identificador persistido para não contar a mesma ocorrência duas vezes.
+    const idsVistos = new Set();
+    const todos = [...historico, ...historicoBanco].filter(h => {
+      const id = String(campo(h, ['ID_HISTORICO','ID_MANIFESTACAO','ID','PROTOCOLO']) || '').trim();
+      if (!id) return true;
+      if (idsVistos.has(id)) return false;
+      idsVistos.add(id);
+      return true;
+    });
 
     const casos = todos.filter(h => {
       const cH = normalizar(campo(h, ['ORIG_CONTATO','EMPRESA_RECLAMANTE','CLIENTE','CONTATO']));
@@ -276,7 +285,7 @@ async function detectarReincidencia(manifestacao) {
         id: campo(h, ['ID_HISTORICO','ID_MANIFESTACAO']),
         data: campo(h, ['ORIG_DATA_ABERTURA','DATA_ABERTURA']),
         motivo: campo(h, ['ORIG_MOTIVO_RELATADO','MOTIVO','TIPO']),
-        causa: campo(h, ['COMP_CAUSA_PROVAVEL','CAUSA_RAIZ','CAUSA']),
+        causa: campo(h, ['CAUSA_RAIZ_VALIDADA','COMP_CAUSA_PROVAVEL','COMP_CAUSA_RAIZ','CAUSA_RAIZ','CAUSA']),
         tratativa: campo(h, ['TRATATIVA_REALIZADA','ORIG_TRATATIVA']),
         produto: campo(h, ['PRODUTO']),
       })),
@@ -408,13 +417,15 @@ async function consultarBaseConhecimento(tipo, setor, empresaId, descricao) {
     console.warn('Fallback Sheets para conhecimento:', e.message);
   }
 
-  // Fallback Sheets — consulta POLITICAS, PROCEDIMENTOS, BASE_CONHECIMENTO (FAQs) e CAUSAS
+  // Fallback Sheets — consulta POLITICAS, PROCEDIMENTOS, BASE_CONHECIMENTO
+  // (FAQs), CAUSAS e o histórico sanitizado para hipóteses não confirmadas.
   try {
-    const [politicas, procedimentos, faqs, causasTab] = await Promise.all([
+    const [politicas, procedimentos, faqs, causasTab, historicoTab] = await Promise.all([
       sheets.lerAba('POLITICAS', 200).catch(() => []),
       sheets.lerAba('PROCEDIMENTOS', 200).catch(() => []),
       sheets.lerAba('BASE_CONHECIMENTO', 500).catch(() => []),
       sheets.lerAba('CAUSAS', 500).catch(() => []),
+      sheets.lerAba('BANCO_HISTORICO', 5000).catch(() => []),
     ]);
 
     const setorN = normalizar(setor || '');
@@ -468,6 +479,35 @@ async function consultarBaseConhecimento(tipo, setor, empresaId, descricao) {
         adicionarSeNovo({ tipo: 'Causa', id: c.ID_CAUSA || c.ID, nome: c.CAUSA, subcausa: c.SUBCAUSA || '', categoria: c.CATEGORIA || '', descricao: c.SUBCAUSA || c.CAUSA, setor: c.SETOR_RESPONSAVEL || '', versao: BASE_CONHECIMENTO_VERSION, fonte: 'sheets', fonte_aba: 'CAUSAS' });
       }
     });
+
+    // O inventário encontrou o catálogo CAUSAS vazio, embora o histórico
+    // contenha causas úteis. Elas entram somente como hipóteses históricas:
+    // nunca são marcadas como confirmadas nem substituem uma decisão humana.
+    historicoTab.forEach(h => {
+      const causa = campo(h, ['CAUSA_RAIZ_VALIDADA','COMP_CAUSA_PROVAVEL','COMP_CAUSA_RAIZ','CAUSA_RAIZ','CAUSA']);
+      if (!causa) return;
+      const subcausa = campo(h, ['COMP_SUBCAUSA','SUBCAUSA','SUBCAUSA_CONFIRMADA']);
+      const categoria = campo(h, ['COMP_CATEGORIA','CATEGORIA','COMP_TIPO_PROBLEMA_VALIDADO','TIPO_PROBLEMA_VALIDADO']);
+      const textoCausa = normalizar(`${causa} ${subcausa} ${categoria}`);
+      const matchPalavras = tokensDesc.length > 0 && tokensDesc.some(t => textoCausa.includes(t));
+      const matchTipo = tipoN && categoria && normalizar(categoria).includes(tipoN.split(' ')[0]);
+      if (!matchPalavras && !matchTipo) return;
+      const idHistorico = campo(h, ['ID_HISTORICO','ID_MANIFESTACAO','ID','PROTOCOLO']);
+      adicionarSeNovo({
+        tipo: 'Causa',
+        id: `${idHistorico || causa}:HIPOTESE`,
+        nome: causa,
+        subcausa,
+        categoria,
+        descricao: 'Hipótese derivada de caso histórico; requer validação humana.',
+        setor: campo(h, ['SETOR_RESPONSAVEL','SETOR']),
+        versao: BASE_CONHECIMENTO_VERSION,
+        fonte: 'sheets',
+        fonte_aba: 'BANCO_HISTORICO',
+        nivel: 'HIPOTESE_HISTORICA',
+        confirmada: false,
+      });
+    });
   } catch (e) {
     console.error('Erro base conhecimento:', e.message);
   }
@@ -476,7 +516,7 @@ async function consultarBaseConhecimento(tipo, setor, empresaId, descricao) {
     status: relevantes.length > 0 ? 'CONHECIMENTO_RELEVANTE' : 'CONHECIMENTO_INSUFICIENTE',
     itens: relevantes,
     total: relevantes.length,
-    fonte: 'POLITICAS + PROCEDIMENTOS + BASE_CONHECIMENTO + CAUSAS (sheets)',
+    fonte: 'POLITICAS + PROCEDIMENTOS + BASE_CONHECIMENTO + CAUSAS + BANCO_HISTORICO (sheets)',
     versao: BASE_CONHECIMENTO_VERSION,
   };
 }
@@ -990,7 +1030,11 @@ async function analisarManifestacaoCompleta(manifestacao, regras = {}, usuario =
   try {
     devolutivaEstruturada = await devolutivaEngine.gerarDevolutiva({
       idManifestacao: protocolo, tipo: 'RECEBIMENTO', empresa, tipoManifestacao: tipo,
-      categoria: campo(manifestacao, ['CATEGORIA','categoria']) || '', setor, protocolo,
+      categoria: campo(manifestacao, ['CATEGORIA','categoria']) || '',
+      subcategoria: campo(manifestacao, ['SUBCATEGORIA','subcategoria','SUBCAUSA','SUBCAUSA_CONFIRMADA']) || '',
+      causa: campo(manifestacao, ['CAUSA_RAIZ_CONFIRMADA','CAUSA_RAIZ_VALIDADA','CAUSA_RAIZ','CAUSA']) || ia?.causaProvavel || '',
+      subcausa: campo(manifestacao, ['SUBCAUSA_CONFIRMADA','SUBCAUSA']) || '',
+      setor, protocolo,
       prazo: (regras.slaHoras || 72) + ' horas úteis', setorResponsavel: setor || regras.setores?.[0] || 'SAC',
       reincidente: reincidenteBool, prioridade: regras.prioridade || 'Média',
       diagnostico: tratativaEstruturada?.diagnostico?.descricao || '',

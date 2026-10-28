@@ -77,6 +77,9 @@ assert.equal(resolved.MODELOS_DEVOLUTIVA.actualName, 'Modelos de Devolutivas');
 assert.equal(resolved.DEVOLUTIVAS.actualName, 'Devolutiva');
 assert.equal(resolved.BANCO_HISTORICO.actualName, 'Banco de Casos');
 assert.equal(resolved.APRIMORAMENTOS_CEREBRO.status, 'ABA_AUSENTE');
+const realLearningSheet = resolveSheetNames(['CEREBRO_APRENDIZADO']);
+assert.equal(realLearningSheet.APRIMORAMENTOS_CEREBRO.status, 'OK');
+assert.equal(realLearningSheet.APRIMORAMENTOS_CEREBRO.actualName, 'CEREBRO_APRENDIZADO');
 assert.equal(quoteSheetRange("Aba de teste's"), "'Aba de teste''s'!A:AZ");
 
 const missingReport = analyzeSheets({
