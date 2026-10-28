@@ -225,7 +225,7 @@ async function runTests() {
         const saved = mock.DB.MANIFESTACOES.find(m => m.ID_MANIFESTACAO === id);
         assert.ok(saved);
         assert.strictEqual(saved.ORIGEM, 'PORTAL_PUBLICO');
-        assert.strictEqual(saved.STATUS, 'AGUARDANDO_APROVAÇÃO');
+        assert.strictEqual(saved.STATUS, 'AGUARDANDO_TRIAGEM_SAC');
         assert.strictEqual(saved.MOTIVO, 'Embalagem danificada');
         assert.strictEqual(saved.TIPO_CLIENTE, cliente.tipoCliente);
         assert.strictEqual(saved.NFE, 'NF-TESTE-123');
