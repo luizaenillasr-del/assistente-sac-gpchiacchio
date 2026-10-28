@@ -70,10 +70,51 @@ const SHEET_PROFILES = {
 
 const SHEETS = Object.keys(SHEET_PROFILES);
 
+const SHEET_ALIASES = {
+  CAUSAS: ['CAUSAS', 'CAUSAS E SUBCAUSAS', 'BASE DE CAUSAS'],
+  MATRIZ_TRATAMENTO: ['MATRIZ_TRATAMENTO', 'MATRIZ TRATAMENTO', 'MATRIZ DE TRATAMENTO', 'MATRIZ DE TRATAMENTOS'],
+  MODELOS_DEVOLUTIVA: ['MODELOS_DEVOLUTIVA', 'MODELOS DEVOLUTIVA', 'MODELOS DEVOLUTIVAS', 'MODELOS DE DEVOLUTIVA', 'MODELOS DE DEVOLUTIVAS', 'BANCO DE DEVOLUTIVAS'],
+  DEVOLUTIVAS: ['DEVOLUTIVAS', 'DEVOLUTIVA', 'HISTORICO DEVOLUTIVAS', 'HISTORICO DE DEVOLUTIVAS'],
+  BANCO_HISTORICO: ['BANCO_HISTORICO', 'BANCO HISTORICO', 'BANCO DE CASOS', 'HISTORICO', 'HISTORICO DE CASOS'],
+  APRIMORAMENTOS_CEREBRO: ['APRIMORAMENTOS_CEREBRO', 'APRIMORAMENTOS CEREBRO', 'APRIMORAMENTOS DO CEREBRO', 'APRIMORAMENTOS CIRCA', 'APRIMORAMENTOS'],
+};
+
 function normalize(value) {
   return String(value ?? '')
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     .toLowerCase().replace(/[\s\-_]+/g, ' ').trim();
+}
+
+function normalizeSheetTitle(value) {
+  return normalize(value).replace(/[^a-z0-9]/g, '');
+}
+
+function resolveSheetNames(availableTitles) {
+  const titles = [...new Set((availableTitles || []).map(String).filter(Boolean))];
+  const result = {};
+  for (const expected of SHEETS) {
+    const aliases = [expected, ...(SHEET_ALIASES[expected] || [])].map(normalizeSheetTitle);
+    const candidates = titles.filter(title => aliases.includes(normalizeSheetTitle(title)));
+    if (candidates.length === 1) {
+      result[expected] = { expected, status: 'OK', actualName: candidates[0], candidates };
+    } else if (candidates.length > 1) {
+      result[expected] = { expected, status: 'ABA_AMBIGUA', actualName: null, candidates };
+    } else {
+      result[expected] = { expected, status: 'ABA_AUSENTE', actualName: null, candidates: [] };
+    }
+  }
+  return result;
+}
+
+function quoteSheetRange(title) {
+  return `'${String(title).replace(/'/g, "''")}'!A:AZ`;
+}
+
+function inventoryError(code, message, cause) {
+  const error = new Error(message);
+  error.inventoryCode = code;
+  error.cause = cause;
+  return error;
 }
 
 function hashToken(value) {
@@ -89,11 +130,6 @@ function safeCategory(value) {
 
 function firstField(headers, aliases) {
   return (aliases || []).find(alias => headers.includes(alias)) || null;
-}
-
-function valueFor(row, headers, aliases) {
-  const field = firstField(headers, aliases);
-  return field ? String(row[field] ?? '').trim() : '';
 }
 
 function nonBlankRows(rows) {
@@ -226,7 +262,7 @@ function referenceCheck(data) {
   return refs;
 }
 
-function analyzeSheets(rawSheets) {
+function analyzeSheets(rawSheets, context = {}) {
   const data = {};
   for (const sheet of SHEETS) {
     const raw = rawSheets[sheet] || { headers: [], rows: [] };
@@ -252,6 +288,8 @@ function analyzeSheets(rawSheets) {
         .map(([key, values]) => ({ token: hashToken(key), versions: [...values].sort() }));
     }
     data[sheet] = {
+      status: raw.status || 'OK',
+      actualName: raw.actualName || null,
       count: rows.length,
       headers,
       fields: {
@@ -280,6 +318,8 @@ function analyzeSheets(rawSheets) {
     schemaVersion: 1,
     generatedAt: new Date().toISOString(),
     mode: 'read-only',
+    availableSheets: context.availableSheets || [],
+    sheetMap: context.sheetMap || resolveSheetNames(context.availableSheets || []),
     sheets: Object.fromEntries(SHEETS.map(sheet => {
       const item = { ...data[sheet] };
       delete item.rows;
@@ -297,29 +337,74 @@ function analyzeSheets(rawSheets) {
 }
 
 function safeError(error) {
+  const code = error?.inventoryCode;
+  if (code === 'CONFIG_MISSING') return 'Configuração ausente para o inventário.';
+  if (code === 'AUTHENTICATION') return 'Falha de autenticação no Google Sheets.';
+  if (code === 'PERMISSION') return 'A conta configurada não tem permissão de leitura na planilha.';
+  if (code === 'API_COMMUNICATION') return 'Falha de comunicação com a API Google Sheets.';
+  if (code === 'API_METADATA') return 'Falha ao consultar os metadados da planilha.';
+  if (code === 'API_VALUES') return 'Falha ao ler os valores das abas existentes.';
   const message = String(error?.message || error || 'erro desconhecido');
-  if (/credential|token|secret|password|authorization|spreadsheet/i.test(message)) {
+  if (/credential|token|secret|password|authorization/i.test(message)) {
     return 'Falha de autenticação ou acesso ao Google Sheets.';
   }
   return message.replace(/https?:\/\/[^\s]+/gi, '[url omitida]').slice(0, 240);
 }
 
+function classifyGoogleError(error, fallbackCode) {
+  if (['ETIMEDOUT', 'ECONNRESET', 'ENOTFOUND', 'EAI_AGAIN', 'ECONNREFUSED'].includes(String(error?.code || ''))) {
+    return inventoryError('API_COMMUNICATION', 'Falha de comunicação com a API Google Sheets.', error);
+  }
+  const status = Number(error?.response?.status || error?.code || 0);
+  if (status === 401) return inventoryError('AUTHENTICATION', 'Google Sheets rejeitou a autenticação.', error);
+  if (status === 403) return inventoryError('PERMISSION', 'A conta não possui permissão suficiente.', error);
+  if (status === 429 || status >= 500) return inventoryError('API_COMMUNICATION', 'A API Google Sheets está indisponível.', error);
+  return inventoryError(fallbackCode, 'Falha na API Google Sheets.', error);
+}
+
 async function readSheets() {
-  if (!process.env.GOOGLE_CREDENTIALS) throw new Error('GOOGLE_CREDENTIALS ausente');
-  if (!process.env.SPREADSHEET_ID) throw new Error('SPREADSHEET_ID ausente');
+  if (!process.env.GOOGLE_CREDENTIALS) throw inventoryError('CONFIG_MISSING', 'GOOGLE_CREDENTIALS ausente');
+  if (!process.env.SPREADSHEET_ID) throw inventoryError('CONFIG_MISSING', 'SPREADSHEET_ID ausente');
   let credentials;
-  try { credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS); } catch (_) { throw new Error('credencial inválida'); }
+  try { credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS); } catch (_) { throw inventoryError('AUTHENTICATION', 'Credencial inválida'); }
   const auth = new google.auth.GoogleAuth({ credentials, scopes: [READONLY_SCOPE] });
-  const client = await auth.getClient();
+  let client;
+  try { client = await auth.getClient(); } catch (error) { throw classifyGoogleError(error, 'AUTHENTICATION'); }
   const sheets = google.sheets({ version: 'v4', auth: client });
-  const response = await sheets.spreadsheets.values.batchGet({
-    spreadsheetId: process.env.SPREADSHEET_ID,
-    ranges: SHEETS.map(sheet => `${sheet}!A:AZ`),
-    valueRenderOption: 'FORMATTED_VALUE',
-  });
+
+  let metadata;
+  try {
+    metadata = await sheets.spreadsheets.get({
+      spreadsheetId: process.env.SPREADSHEET_ID,
+      fields: 'sheets(properties(title,sheetId,index,hidden))',
+    });
+  } catch (error) { throw classifyGoogleError(error, 'API_METADATA'); }
+
+  const availableSheets = (metadata.data.sheets || []).map(item => ({
+    title: String(item.properties?.title || ''),
+    sheetId: Number(item.properties?.sheetId || 0),
+    index: Number(item.properties?.index || 0),
+    hidden: Boolean(item.properties?.hidden),
+  })).filter(item => item.title);
+  const sheetMap = resolveSheetNames(availableSheets.map(item => item.title));
+  const readable = SHEETS.filter(expected => sheetMap[expected].status === 'OK');
+  let response = { data: { valueRanges: [] } };
+  if (readable.length) {
+    try {
+      response = await sheets.spreadsheets.values.batchGet({
+        spreadsheetId: process.env.SPREADSHEET_ID,
+        ranges: readable.map(expected => quoteSheetRange(sheetMap[expected].actualName)),
+        valueRenderOption: 'FORMATTED_VALUE',
+      });
+    } catch (error) { throw classifyGoogleError(error, 'API_VALUES'); }
+  }
+
+  const valuesByExpected = new Map();
+  readable.forEach((expected, index) => valuesByExpected.set(expected, response.data.valueRanges?.[index]?.values || []));
   const result = {};
-  for (const [index, sheet] of SHEETS.entries()) {
-    const values = response.data.valueRanges?.[index]?.values || [];
+  for (const sheet of SHEETS) {
+    const resolution = sheetMap[sheet];
+    const values = valuesByExpected.get(sheet) || [];
     const headers = values[0] || [];
     const rows = values.slice(1).map((row, rowIndex) => {
       const item = { __linha: rowIndex + 2 };
@@ -328,17 +413,18 @@ async function readSheets() {
       });
       return item;
     });
-    result[sheet] = { headers, rows };
+    result[sheet] = { headers, rows, status: resolution.status, actualName: resolution.actualName };
   }
-  return result;
+  return { sheets: result, availableSheets, sheetMap };
 }
 
 async function main() {
   const output = process.env.INVENTARIO_OUTPUT || path.join(process.cwd(), 'circa-inventario.json');
   try {
-    const report = analyzeSheets(await readSheets());
+    const source = await readSheets();
+    const report = analyzeSheets(source.sheets, source);
     fs.writeFileSync(output, `${JSON.stringify(report, null, 2)}\n`, { mode: 0o600 });
-    for (const sheet of SHEETS) console.log(`${sheet}: ${report.sheets[sheet].count} registros`);
+    for (const sheet of SHEETS) console.log(`${sheet}: ${report.sheets[sheet].status} (${report.sheets[sheet].count} registros)`);
     console.log(`Relatório sanitizado gravado em ${output}`);
   } catch (error) {
     console.error(`Inventário interrompido: ${safeError(error)}`);
@@ -352,7 +438,10 @@ module.exports = {
   READONLY_SCOPE,
   SHEETS,
   SHEET_PROFILES,
+  SHEET_ALIASES,
   analyzeSheets,
+  resolveSheetNames,
+  quoteSheetRange,
   normalize,
   safeError,
 };
