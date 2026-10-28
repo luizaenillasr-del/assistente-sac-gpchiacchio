@@ -3,7 +3,7 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { analyzeSheets, READONLY_SCOPE, SHEETS } = require('../scripts/inventario-circa');
+const { analyzeSheets, READONLY_SCOPE, SHEETS, resolveSheetNames, quoteSheetRange, safeError } = require('../scripts/inventario-circa');
 
 const workflow = fs.readFileSync(path.join(__dirname, '..', '.github', 'workflows', 'inventario-circa-manual.yml'), 'utf8');
 const script = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'inventario-circa.js'), 'utf8');
@@ -14,6 +14,8 @@ assert.doesNotMatch(workflow, /migrate\s+(deploy|resolve|reset)|DATABASE_URL|pri
 assert.doesNotMatch(workflow, /values\.(append|update|batchUpdate)|spreadsheets\.batchUpdate/i);
 assert.equal(READONLY_SCOPE, 'https://www.googleapis.com/auth/spreadsheets.readonly');
 assert.match(script, /spreadsheets\.readonly/);
+assert.match(script, /spreadsheets\.get/);
+assert.match(script, /sheets\(properties\(title,sheetId,index,hidden\)\)/);
 assert.match(script, /values\.batchGet/);
 assert.doesNotMatch(script, /values\.(append|update|batchUpdate)|spreadsheets\.batchUpdate/);
 assert.doesNotMatch(script, /console\.(log|error)\([^\n]*(row|relato|texto|nome|email|cliente)/i);
@@ -60,5 +62,37 @@ assert.equal(report.privacy.personalDataIncluded, false);
 const serialized = JSON.stringify(report);
 assert.doesNotMatch(serialized, /pessoa@example\.com|relato confidencial/i);
 assert.doesNotMatch(serialized, /Falha A|Procedimento/);
+
+const resolved = resolveSheetNames([
+  'CAUSAS E SUBCAUSAS',
+  'Matriz de Tratamentos',
+  'Modelos de Devolutivas',
+  'Devolutiva',
+  'Banco de Casos',
+]);
+assert.equal(resolved.CAUSAS.status, 'OK');
+assert.equal(resolved.CAUSAS.actualName, 'CAUSAS E SUBCAUSAS');
+assert.equal(resolved.MATRIZ_TRATAMENTO.status, 'OK');
+assert.equal(resolved.MODELOS_DEVOLUTIVA.actualName, 'Modelos de Devolutivas');
+assert.equal(resolved.DEVOLUTIVAS.actualName, 'Devolutiva');
+assert.equal(resolved.BANCO_HISTORICO.actualName, 'Banco de Casos');
+assert.equal(resolved.APRIMORAMENTOS_CEREBRO.status, 'ABA_AUSENTE');
+assert.equal(quoteSheetRange("Aba de teste's"), "'Aba de teste''s'!A:AZ");
+
+const missingReport = analyzeSheets({
+  ...rows,
+  APRIMORAMENTOS_CEREBRO: { headers: [], rows: [], status: 'ABA_AUSENTE', actualName: null },
+}, {
+  availableSheets: [{ title: 'CAUSAS E SUBCAUSAS', sheetId: 1, index: 0, hidden: false }],
+  sheetMap: resolved,
+});
+assert.equal(missingReport.sheets.APRIMORAMENTOS_CEREBRO.status, 'ABA_AUSENTE');
+assert.equal(missingReport.sheets.APRIMORAMENTOS_CEREBRO.count, 0);
+assert.equal(missingReport.sheetMap.APRIMORAMENTOS_CEREBRO.status, 'ABA_AUSENTE');
+assert.equal(missingReport.sheets.CAUSAS.status, 'OK');
+assert.match(safeError(Object.assign(new Error('range not found'), { inventoryCode: 'API_VALUES' })), /valores das abas existentes/);
+assert.match(safeError(Object.assign(new Error('permission denied'), { inventoryCode: 'PERMISSION' })), /permissão de leitura/);
+assert.match(safeError(Object.assign(new Error('network'), { inventoryCode: 'API_COMMUNICATION' })), /comunicação/);
+assert.doesNotMatch(safeError(new Error('APRIMORAMENTOS_CEREBRO!A:AZ not found')), /ABA_AUSENTE/);
 
 console.log('Inventário CIRCA: testes de segurança e agregação aprovados.');
