@@ -1,4 +1,4 @@
-name: Verificar migrações Prisma (produção)
+name: Registrar baseline Prisma (produção)
 
 on:
   workflow_dispatch:
@@ -7,16 +7,25 @@ on:
         description: "Digite PRODUCTION para confirmar o destino"
         required: true
         type: string
+      authorize_baseline:
+        description: "Digite APLICAR_BASELINE para registrar somente a migração init"
+        required: true
+        type: string
 
 permissions:
   contents: read
 
+concurrency:
+  group: prisma-baseline-production
+  cancel-in-progress: false
+
 jobs:
   migrate:
-    name: Verificar migrações no Neon production
+    name: Validar estrutura e registrar baseline no Neon production
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     environment: production
-    if: ${{ github.event.inputs.confirm_production == 'PRODUCTION' }}
+    if: ${{ github.event.inputs.confirm_production == 'PRODUCTION' && github.event.inputs.authorize_baseline == 'APLICAR_BASELINE' }}
     services:
       prisma-shadow:
         image: postgres:16-alpine
@@ -83,9 +92,12 @@ jobs:
           });
           NODE
 
-      - name: Comparar migração init com o Neon (somente leitura)
+      - name: Validar migração init e divergências permitidas (somente leitura)
         run: |
+          set -euo pipefail
           temp_migrations="$(mktemp -d)"
+          diff_file=""
+          trap 'rm -rf "$temp_migrations" ${diff_file:+"$diff_file"}' EXIT
           cp prisma/migrations/migration_lock.toml "$temp_migrations/migration_lock.toml"
           cp -R prisma/migrations/20260930000001_init "$temp_migrations/20260930000001_init"
           diff_file="$(mktemp)"
@@ -94,12 +106,90 @@ jobs:
             --to-migrations "$temp_migrations" \
             --shadow-database-url "$SHADOW_DATABASE_URL" \
             --script > "$diff_file"
-          if [ -s "$diff_file" ]; then
-            echo "A estrutura do Neon diverge da migração 20260930000001_init. Diff SQL somente leitura:"
-            cat "$diff_file"
-            exit 1
-          fi
-          echo "A estrutura do Neon é compatível com 20260930000001_init."
 
-      - name: Verificar estado das migrações
-        run: npx prisma migrate status
+          DIFF_FILE="$diff_file" node <<'NODE'
+          const fs = require('fs');
+          const actual = fs.readFileSync(process.env.DIFF_FILE, 'utf8')
+            .split(/\r?\n/)
+            .map(line => line.trim())
+            .filter(line => line && !line.startsWith('--'))
+            .join('\n')
+            .split(';')
+            .map(statement => statement.trim())
+            .filter(Boolean)
+            .map(statement => `${statement};`)
+            .sort();
+
+          const allowed = [
+            'ALTER TABLE "usuarios" DROP COLUMN "ultimo_acesso";',
+            'DROP INDEX "devolutivas_manifestacao_id_idx";',
+            'DROP INDEX "manifestacao_historico_manifestacao_id_idx";',
+            'DROP INDEX "manifestacoes_criada_em_idx";',
+            'DROP INDEX "manifestacoes_data_abertura_idx";',
+            'DROP INDEX "manifestacoes_empresa_id_status_idx";',
+            'DROP INDEX "manifestacoes_status_idx";',
+            'DROP INDEX "rncs_data_abertura_idx";',
+            'DROP INDEX "rncs_empresa_id_status_idx";',
+            'DROP INDEX "tratativas_manifestacao_id_idx";',
+            'DROP TABLE "pesquisa_respostas";',
+            'DROP TABLE "relatorios_sac";',
+            'DROP TABLE "solicitacoes_acesso";',
+          ].sort();
+
+          if (JSON.stringify(actual) !== JSON.stringify(allowed)) {
+            console.error('A estrutura do Neon não corresponde à init mais os objetos adicionais aprovados.');
+            console.error(`Comandos encontrados: ${actual.length}; esperados: ${allowed.length}.`);
+            console.error(actual.join('\n') || '(nenhum comando)');
+            process.exit(1);
+          }
+          console.log('As 29 estruturas da init estão presentes; somente 13 objetos adicionais previamente validados foram detectados.');
+          console.log('Nenhuma tabela, coluna, índice ou FK existente será alterada nesta execução.');
+          NODE
+
+      - name: Registrar somente a migração init autorizada
+        run: npx prisma migrate resolve --schema prisma/schema.prisma --applied 20260930000001_init
+
+      - name: Confirmar que somente protocolos permanece pendente
+        run: |
+          set -euo pipefail
+          status_file="$(mktemp)"
+          trap 'rm -f "$status_file"' EXIT
+          set +e
+          npx prisma migrate status --schema prisma/schema.prisma > "$status_file" 2>&1
+          status_code=$?
+          set -e
+          cat "$status_file"
+          if [ "$status_code" -gt 1 ]; then
+            echo "O comando prisma migrate status falhou de forma inesperada (código $status_code)."
+            exit "$status_code"
+          fi
+
+          STATUS_FILE="$status_file" DATABASE_URL="$DATABASE_URL" node <<'NODE'
+          const fs = require('fs');
+          const { Client } = require('pg');
+          const output = fs.readFileSync(process.env.STATUS_FILE, 'utf8');
+          if (output.includes('20260930000001_init') && /not yet been applied|pending|pendente/i.test(output)) {
+            throw new Error('A migração init ainda aparece como pendente.');
+          }
+          (async () => {
+            const client = new Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: true } });
+            await client.connect();
+            const { rows } = await client.query(`
+              SELECT migration_name, finished_at, rolled_back_at
+                FROM "_prisma_migrations"
+               ORDER BY started_at, migration_name
+            `);
+            await client.end();
+            const pending = rows
+              .filter(row => !row.finished_at || row.rolled_back_at)
+              .map(row => row.migration_name);
+            const expected = ['20261028000001_protocolos_atomicos'];
+            if (JSON.stringify(pending) !== JSON.stringify(expected)) {
+              throw new Error(`Migrações pendentes inesperadas: ${pending.join(', ') || '(nenhuma)'}`);
+            }
+            console.log('Baseline registrado. Somente 20261028000001_protocolos_atomicos permanece pendente.');
+          })().catch(error => {
+            console.error(error.message);
+            process.exit(1);
+          });
+          NODE
