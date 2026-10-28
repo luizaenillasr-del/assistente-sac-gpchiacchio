@@ -3169,15 +3169,15 @@
           {l:'Produto', v: v('nm-produto')},
           {l:'Lote', v: v('nm-lote')},
           {l:'Procedência', v: v('nm-procedente') || 'A avaliar'},
-          {l:'Causa provável', v: v('nm-causa-raiz') || (_nmAnaliseAtual?.causaProvavel || 'A confirmar')},
+          {l:'Causa provável', v: v('nm-causa-raiz') || (nmTextoEstruturado(_nmAnaliseAtual?.causaProvavel) || 'A confirmar')},
           {l:'Caminho', v: v('nm-caminho-tratativa') || 'Não definido'},
         ];
         grid.innerHTML = campos.map(function(c){
-          return '<div style="background:#FAFAFA;border-radius:8px;padding:10px 12px"><div style="font-size:9.5px;font-weight:700;color:#929090;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">'+c.l+'</div><div style="font-size:12.5px;font-weight:700;color:#242424">'+c.v+'</div></div>';
+          return '<div style="background:#FAFAFA;border-radius:8px;padding:10px 12px"><div style="font-size:9.5px;font-weight:700;color:#929090;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">'+esc(c.l)+'</div><div style="font-size:12.5px;font-weight:700;color:#242424">'+esc(nmTextoEstruturado(c.v,'—'))+'</div></div>';
         }).join('');
         // Atualiza previews do conhecimento CIRCA
         var iaAnalise = window._nmAnaliseAtual;
-        var causaFinal = v('nm-causa-raiz') !== '—' ? v('nm-causa-raiz') : (iaAnalise?.ia?.causaProvavel && iaAnalise.ia.causaProvavel !== 'DADO_NAO_ENCONTRADO' ? iaAnalise.ia.causaProvavel : '—');
+        var causaFinal = v('nm-causa-raiz') !== '—' ? v('nm-causa-raiz') : (iaAnalise?.ia?.causaProvavel && iaAnalise.ia.causaProvavel !== 'DADO_NAO_ENCONTRADO' ? nmTextoEstruturado(iaAnalise.ia.causaProvavel) : '—');
         var casoTxt = causaFinal !== '—' ? ('Caso: ' + v('nm-produto') + ' · Causa: ' + causaFinal + ' · ' + v('nm-procedente')) : '—';
         var matrizTxt = causaFinal !== '—' ? ('Causa: ' + causaFinal + ' · Ação: ' + v('nm-acao-executada')) : '—';
         var casoPreview = document.getElementById('nm-aprendizado-caso-preview');
@@ -11680,6 +11680,23 @@ let _nmAnaliseTimer = null;
 let _nmAnaliseAtual = null;
 let _nmDecisao = null; // 'aceita' | 'editada' | 'rejeitada'
 let _nmCardId = null;
+let _nmIdempotencyKey = null;
+let _nmAnalisePersistidaCarregada = false;
+
+function nmTextoEstruturado(valor, fallback = '') {
+  if (valor === undefined || valor === null || valor === '') return fallback;
+  if (typeof valor === 'string') return valor;
+  if (Array.isArray(valor)) return valor.map(v => nmTextoEstruturado(v)).filter(Boolean).join(' · ');
+  if (typeof valor === 'object') {
+    return String(valor.descricao || valor.texto || valor.sugestao || valor.nome || valor.causa || valor.resultado || valor.valor || '').trim() || fallback;
+  }
+  return String(valor);
+}
+
+function nmGarantirIdempotencyKey() {
+  if (!_nmIdempotencyKey) _nmIdempotencyKey = 'NOVA-MANIFESTACAO-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+  return _nmIdempotencyKey;
+}
 
 function selectCanal(btn) {
   btn.closest('.canal-btns').querySelectorAll('button').forEach(b => b.classList.remove('active'));
@@ -11768,11 +11785,11 @@ function agendarAnalise() {
 function renderizarCircaDeterministico(resultado) {
   const a=resultado?.analiseEstruturada||{};
   const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v||'Sem informação persistida.';};
-  set('ia-causa',(a.hipotesesCausa||[]).join(' · ')||'Causa ainda não confirmada.');
+  set('ia-causa',(a.hipotesesCausa||[]).map(nmTextoEstruturado).filter(Boolean).join(' · ')||'Causa ainda não confirmada.');
   set('ia-prioridade-badge',a.prioridade||'Normal');
-  const missing=a.informacoesAusentes||[]; set('ia-perguntas',missing.length?missing.map(x=>'• '+x).join('\n'):'Nenhuma informação essencial ausente.');
+  const missing=(a.informacoesAusentes||[]).map(nmTextoEstruturado).filter(Boolean); set('ia-perguntas',missing.length?missing.map(x=>'• '+x).join('\n'):'Nenhuma informação essencial ausente.');
   const checklist=resultado.checklist||[]; const action=document.getElementById('ia-tratativa'); if(action) action.innerHTML=(checklist.length?checklist.map((x,i)=>`<div class="checklist-item"><span class="check-box">${i+1}</span><span>${esc(x.descricao||x.titulo||x)}</span></div>`): '<div class="circa-muted">Nenhuma tarefa determinística pendente.</div>');
-  const proc=document.getElementById('ia-proc-nome'); if(proc) proc.textContent=(a.procedimentosAplicaveis||a.acoesSugeridas||[]).join(' · ')||'Nenhum procedimento validado encontrado.';
+  const proc=document.getElementById('ia-proc-nome'); if(proc) proc.textContent=(a.procedimentosAplicaveis||a.acoesSugeridas||[]).map(nmTextoEstruturado).filter(Boolean).join(' · ')||'Nenhum procedimento validado encontrado.';
   const separarItens = valor => String(valor ?? '').split(/[;,\n|]+/).map(x => x.trim()).filter(Boolean);
   const unicos = lista => [...new Map(lista.map(x => [String(x).toLocaleLowerCase('pt-BR'), String(x)])).values()];
   const setores = unicos((a.setoresRecomendados || []).flatMap(separarItens));
@@ -11781,7 +11798,7 @@ function renderizarCircaDeterministico(resultado) {
   if(se) se.innerHTML = setores.length || responsaveis.length
     ? [...setores.map(x=>`<span class="circa-source">Setor: ${esc(x)}</span>`), ...responsaveis.map(x=>`<span class="circa-source">Responsável: ${esc(x)}</span>`)].join('')
     : '<span class="circa-muted">Nenhum setor ou responsável elegível encontrado.</span>';
-  const sim=document.getElementById('ia-similares'); if(sim) sim.innerHTML=(a.casosSemelhantes||[]).length?(a.casosSemelhantes||[]).map(x=>`<div class="checklist-item"><span>${esc(x)}</span></div>`).join(''):'<span class="circa-muted">Nenhum caso semelhante encontrado.</span>';
+  const sim=document.getElementById('ia-similares'); if(sim) sim.innerHTML=(a.casosSemelhantes||[]).length?(a.casosSemelhantes||[]).map(x=>`<div class="checklist-item"><span>${esc(nmTextoEstruturado(x))}</span></div>`).join(''):'<span class="circa-muted">Nenhum caso semelhante encontrado.</span>';
   const stamp=document.getElementById('ia-timestamp'); if(stamp) stamp.textContent='Consulta determinística concluída · regras + histórico + matriz';
 }
 
@@ -11794,15 +11811,27 @@ window.nmCarregarAnaliseDeterministica = async function nmCarregarAnaliseDetermi
   return null;
 }
 
+async function nmCarregarAnalisePersistida() {
+  if (_nmAnaliseAtual || _nmAnalisePersistidaCarregada || !_nmCardId) return _nmAnaliseAtual;
+  _nmAnalisePersistidaCarregada = true;
+  try {
+    const r = await _apiFetch(`/api/manifestacoes/${encodeURIComponent(_nmCardId)}`, 15000);
+    let valor = r?.manifestacao?.ANALISE_IA || r?.manifestacao?.analiseIA;
+    if (typeof valor === 'string' && valor.trim()) valor = JSON.parse(valor);
+    if (valor && typeof valor === 'object') { _nmAnaliseAtual = valor; renderizarAnalise(valor); }
+  } catch (e) { console.warn('Análise persistida indisponível:', e.message); }
+  return _nmAnaliseAtual;
+}
+
 function nmAplicarSugestoes(analise) {
-  const causa = analise?.causaProvavel || analise?.problemaIdentificado || analise?.tratativaEstruturada?.diagnostico?.causa || '';
+  const causa = nmTextoEstruturado(analise?.causaProvavel || analise?.problemaIdentificado || analise?.tratativaEstruturada?.diagnostico?.causa);
   const setores = analise?.setores || analise?.setoresSugeridos || [];
   const setor = Array.isArray(setores) ? setores[0] : setores;
   [['nm-causa-raiz', causa], ['nm-setor-acionado', setor]].forEach(([id, valor]) => {
     const campo = document.getElementById(id);
     if (!campo || campo.value || !String(valor || '').trim()) return;
     const opcao = Array.from(campo.options || []).find(o => o.value.toLowerCase() === String(valor).toLowerCase());
-    campo.value = opcao ? opcao.value : String(valor);
+    campo.value = opcao ? opcao.value : nmTextoEstruturado(valor);
     campo.style.borderColor = '#D97706';
     campo.dataset.sugestaoIa = 'true';
   });
@@ -11810,7 +11839,7 @@ function nmAplicarSugestoes(analise) {
 
 window.gerarDevolutiva = function gerarDevolutiva() {
   const campo = document.getElementById('nm-devolutiva');
-  const sugestao = _nmAnaliseAtual?.devolutivaSugerida || _nmAnaliseAtual?.devolutivaEstruturada?.textoGerado || '';
+  const sugestao = nmTextoEstruturado(_nmAnaliseAtual?.devolutivaSugerida || _nmAnaliseAtual?.devolutivaEstruturada?.textoGerado);
   if (!campo) return;
   if (!sugestao) { alert('Faça a análise antes de gerar uma sugestão de devolutiva.'); return; }
   if (campo.value.trim() && !window.confirm('Substituir o texto atual pela sugestão da análise?')) return;
@@ -11823,7 +11852,7 @@ function nmPreencherValidacao() {
   if (!campo || campo.value.trim()) return;
   const partes = [
     document.getElementById('nm-investigacao-resultado')?.value,
-    document.getElementById('nm-causa-raiz')?.value || _nmAnaliseAtual?.causaProvavel,
+    document.getElementById('nm-causa-raiz')?.value || nmTextoEstruturado(_nmAnaliseAtual?.causaProvavel),
     document.getElementById('nm-acao-executada')?.value,
   ].map(v => String(v || '').trim()).filter(Boolean);
   if (partes.length) campo.value = partes.join('\n');
@@ -11883,13 +11912,13 @@ async function executarAnaliseIA() {
       body: JSON.stringify({
         descricao: desc, tipo, empresaReclamada: empresaRec, empresaReclamante: empresaRec2, produto, lote,
         nfe: document.getElementById('nm-nfe')?.value || '',
-        canal: document.getElementById('nm-canal')?.value || document.getElementById('nm-origem')?.value || '',
+        canal: document.getElementById('nm-origem')?.value || document.getElementById('nm-canal')?.value || '',
         prioridade: document.getElementById('nm-prioridade')?.value || '',
         dataRegistro: document.getElementById('nm-data')?.value || '',
         cnpj: document.getElementById('nm-cnpj')?.value || '',
         telefone: document.getElementById('nm-tel')?.value || '',
         email: document.getElementById('nm-email')?.value || '',
-        quantidade: document.getElementById('nm-quantidade')?.value || '',
+        quantidade: document.getElementById('nm-qtd')?.value || document.getElementById('nm-quantidade')?.value || '',
         nome: document.getElementById('nm-nome')?.value || ''
       })
     });
@@ -11977,8 +12006,8 @@ function renderizarAnalise(a) {
   if (a.aprendizado && a.aprendizado.totalAvaliacoes) {
     const ap = a.aprendizado;
     let msg = `📚 Aprendizado: em ${ap.totalAvaliacoes} caso(s) ${ap.escopo==='contexto'?'parecido(s)':'avaliado(s)'}, ${ap.taxaAssertividade}% foram assertivos`;
-    if (ap.setorMaisConfirmado) msg += ` · setor mais confirmado: ${ap.setorMaisConfirmado.valor}`;
-    if (ap.causaMaisConfirmada) msg += ` · causa frequente: ${ap.causaMaisConfirmada.valor}`;
+    if (ap.setorMaisConfirmado) msg += ` · setor mais confirmado: ${nmTextoEstruturado(ap.setorMaisConfirmado.valor || ap.setorMaisConfirmado)}`;
+    if (ap.causaMaisConfirmada) msg += ` · causa frequente: ${nmTextoEstruturado(ap.causaMaisConfirmada.valor || ap.causaMaisConfirmada)}`;
     alertas.push({ tipo: ap.taxaAssertividade < 60 ? 'yellow' : 'blue', msg });
     (ap.comentariosAtencao||[]).forEach(c => alertas.push({ tipo:'yellow', msg: '📝 Avaliação anterior: '+c }));
   }
@@ -11996,7 +12025,7 @@ function renderizarAnalise(a) {
   setoresEl.innerHTML = (a.setores || a.setoresSugeridos || []).map(s =>
     `<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;background:var(--red-light);color:var(--red);font-size:12px;font-weight:600">
       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
-      ${s}
+      ${esc(nmTextoEstruturado(s))}
     </span>`
   ).join('') || '<span style="color:var(--gray-400);font-size:12px">Sem dados suficientes</span>';
 
@@ -12006,7 +12035,7 @@ function renderizarAnalise(a) {
   const causaDiag = a.tratativaEstruturada?.diagnostico?.descricao || null;
   const nivelCausaBadge = a.ia?.nivelCausa ? ` <span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;background:${a.ia.nivelCausa==='FATO'?'#DCFCE7':a.ia.nivelCausa==='HIPÓTESE'?'#FEF9C3':'#FEE2E2'};color:${a.ia.nivelCausa==='FATO'?'#15803D':a.ia.nivelCausa==='HIPÓTESE'?'#854D0E':'#9F1239'}">${esc(a.ia.nivelCausa)}</span>` : '';
   const causaEl = document.getElementById('ia-causa');
-  const textoProblema = problemaIA || causaIA || causaDiag;
+  const textoProblema = nmTextoEstruturado(problemaIA || causaIA || causaDiag);
   if (textoProblema) {
     causaEl.innerHTML = esc(textoProblema) + nivelCausaBadge;
   } else {
@@ -12024,8 +12053,8 @@ function renderizarAnalise(a) {
   }
 
   // Ação imediata da IA — adiciona no topo da card de tratamento
-  const acaoImediataText = a.ia?.acaoImediata && !a.ia.erro && a.ia.acaoImediata !== 'DADO_NAO_ENCONTRADO' ? a.ia.acaoImediata : null;
-  const impactoText = a.ia?.impactoOperacional && !a.ia.erro && a.ia.impactoOperacional !== 'DADO_NAO_ENCONTRADO' ? a.ia.impactoOperacional : null;
+  const acaoImediataText = a.ia?.acaoImediata && !a.ia.erro && a.ia.acaoImediata !== 'DADO_NAO_ENCONTRADO' ? nmTextoEstruturado(a.ia.acaoImediata) : null;
+  const impactoText = a.ia?.impactoOperacional && !a.ia.erro && a.ia.impactoOperacional !== 'DADO_NAO_ENCONTRADO' ? nmTextoEstruturado(a.ia.impactoOperacional) : null;
 
   // Impacto operacional — exibido em ia-prioridade-badge (card 1)
   const priEl2 = document.getElementById('ia-prioridade-badge');
@@ -12035,7 +12064,7 @@ function renderizarAnalise(a) {
   }
 
   // Informações ausentes da IA (somente o que não está na ficha)
-  const infoAusentesIA = Array.isArray(a.ia?.informacoesAusentes) ? a.ia.informacoesAusentes.filter(i => i && String(i).trim()) : [];
+  const infoAusentesIA = Array.isArray(a.ia?.informacoesAusentes) ? a.ia.informacoesAusentes.map(i => nmTextoEstruturado(i)).filter(Boolean) : [];
 
   // Perguntas necessárias (determinísticas por tipo) + informações ausentes da IA combinadas
   const pergs = a.perguntasNecessarias || [];
@@ -12098,8 +12127,8 @@ function renderizarAnalise(a) {
       const nivelCor = te.diagnostico.nivel === 'CONFIRMADO' ? '#16A34A' : te.diagnostico.nivel === 'HIPOTESE' ? '#D97706' : '#6B7280';
       html += `<div style="background:#F0FDF4;border-radius:8px;padding:10px;margin-bottom:10px;border-left:3px solid ${nivelCor}">
         <div style="font-size:10px;font-weight:700;color:${nivelCor};margin-bottom:3px">DIAGNÓSTICO · ${te.diagnostico.nivel||'EM INVESTIGAÇÃO'}</div>
-        <div style="font-size:12px;color:#1F2937">${esc5(te.diagnostico.descricao)}</div>
-        ${te.diagnostico.causa ? `<div style="font-size:11px;color:#6B7280;margin-top:3px">Causa provável: ${esc5(te.diagnostico.causa)}</div>` : ''}
+        <div style="font-size:12px;color:#1F2937">${esc5(nmTextoEstruturado(te.diagnostico.descricao))}</div>
+        ${te.diagnostico.causa ? `<div style="font-size:11px;color:#6B7280;margin-top:3px">Causa provável: ${esc5(nmTextoEstruturado(te.diagnostico.causa))}</div>` : ''}
       </div>`;
     }
     if (te.acoes?.length) {
@@ -12112,16 +12141,16 @@ function renderizarAnalise(a) {
           <div style="font-size:10px;font-weight:700;color:${corTipo[tipo]};margin-bottom:4px">${labelTipo[tipo]}</div>`;
         for (const ac of grupos[tipo]) {
           html += `<div style="background:${bgTipo[tipo]};border-radius:6px;padding:6px 10px;margin-bottom:3px;font-size:12px;color:#1F2937">
-            ${esc5(ac.descricao)}
-            ${ac.responsavel ? `<span style="color:#6B7280;font-size:10px"> · ${esc5(ac.responsavel)}</span>` : ''}
-            ${ac.prazo ? `<span style="color:#6B7280;font-size:10px"> · Prazo: ${esc5(ac.prazo)}</span>` : ''}
+            ${esc5(nmTextoEstruturado(ac.descricao))}
+            ${ac.responsavel ? `<span style="color:#6B7280;font-size:10px"> · ${esc5(nmTextoEstruturado(ac.responsavel))}</span>` : ''}
+            ${ac.prazo ? `<span style="color:#6B7280;font-size:10px"> · Prazo: ${esc5(nmTextoEstruturado(ac.prazo))}</span>` : ''}
           </div>`;
         }
         html += '</div>';
       }
     }
     if (te.necessitaAprovacao) {
-      html += `<div style="background:#FEF3C7;border-radius:6px;padding:6px 10px;font-size:11px;color:#92400E;margin-top:4px">⚠ Necessita aprovação${te.quemAprova ? ': ' + esc5(te.quemAprova) : ''}</div>`;
+      html += `<div style="background:#FEF3C7;border-radius:6px;padding:6px 10px;font-size:11px;color:#92400E;margin-top:4px">⚠ Necessita aprovação${te.quemAprova ? ': ' + esc5(nmTextoEstruturado(te.quemAprova)) : ''}</div>`;
     }
     if (te.necessitaEscalonamento) {
       html += `<div style="background:#FEE2E2;border-radius:6px;padding:6px 10px;font-size:11px;color:#DC2626;margin-top:4px">🔺 Necessita escalonamento</div>`;
@@ -12132,10 +12161,10 @@ function renderizarAnalise(a) {
     const tratativaSugerida = extrairTratativaSugerida(a);
     const acoes = a.tratativaSugerida?.acoes || a.acoesSugeridas || [];
     if (tratativaSugerida) {
-      let html = `<div style="font-size:13px;color:#1F2937;white-space:pre-wrap">${esc5(tratativaSugerida)}</div>`;
+      let html = `<div style="font-size:13px;color:#1F2937;white-space:pre-wrap">${esc5(nmTextoEstruturado(tratativaSugerida))}</div>`;
       if (acoes.length) {
         html += '<div style="margin-top:8px">' + acoes.map((ac,i) =>
-          `<div style="background:#EFF6FF;border-radius:5px;padding:5px 8px;margin-bottom:3px;font-size:12px">${i+1}. ${esc5(ac)}</div>`
+          `<div style="background:#EFF6FF;border-radius:5px;padding:5px 8px;margin-bottom:3px;font-size:12px">${i+1}. ${esc5(nmTextoEstruturado(ac))}</div>`
         ).join('') + '</div>';
       }
       tratEl.innerHTML = html;
@@ -12148,7 +12177,7 @@ function renderizarAnalise(a) {
   const de = a.devolutivaEstruturada;
   const devEl = document.getElementById('ia-devolutiva');
   if (de?.textoGerado) {
-    devEl.value = de.textoGerado;
+    devEl.value = nmTextoEstruturado(de.textoGerado);
     // Badge de tipo de devolutiva
     const tipoDevEl = document.getElementById('ia-devolutiva-tipo');
     if (tipoDevEl) {
@@ -12161,13 +12190,13 @@ function renderizarAnalise(a) {
       if (de.informacoesBloqueadas?.length) {
         bloqEl.style.display = 'block';
         bloqEl.innerHTML = `<span style="font-size:10px;font-weight:700;color:#DC2626">ℹ INFORMAÇÕES OMITIDAS:</span> ` +
-          de.informacoesBloqueadas.map(b => `<span style="background:#FEE2E2;color:#DC2626;padding:1px 5px;border-radius:3px;font-size:10px">${esc5(b)}</span>`).join(' ');
+        de.informacoesBloqueadas.map(b => `<span style="background:#FEE2E2;color:#DC2626;padding:1px 5px;border-radius:3px;font-size:10px">${esc5(nmTextoEstruturado(b))}</span>`).join(' ');
       } else {
         bloqEl.style.display = 'none';
       }
     }
   } else {
-    devEl.value = a.devolutivaSugerida || a.DEVOLUTIVA_SUGERIDA || a.devolutiva || '';
+    devEl.value = nmTextoEstruturado(a.devolutivaSugerida || a.DEVOLUTIVA_SUGERIDA || a.devolutiva);
   }
   nmAplicarSugestoes(a);
 }
@@ -12175,18 +12204,19 @@ function renderizarAnalise(a) {
 function nmAplicarSugestoes(a) {
   if (!a) return;
   const g = id => document.getElementById(id);
-  const setIfEmpty = (id, val) => { const el = g(id); if (el && !el.value?.trim() && val && val !== 'DADO_NAO_ENCONTRADO') { el.value = val; el.style.borderColor = '#D97706'; el.title = 'Sugerido pela IA — revise antes de confirmar'; el.dataset.nmOriginal = 'ia-sugestao'; el.addEventListener('input', function(){ this.style.borderColor=''; this.dataset.nmOriginal='editado'; }, {once:true}); } };
-  const causaSugerida = (a.ia?.causaProvavel && a.ia.causaProvavel !== 'DADO_NAO_ENCONTRADO') ? a.ia.causaProvavel : (a.tratativaEstruturada?.diagnostico?.causa || '');
+  const setIfEmpty = (id, val) => { const el = g(id); const texto = nmTextoEstruturado(val); if (el && !el.value?.trim() && texto && texto !== 'DADO_NAO_ENCONTRADO') { el.value = texto; el.style.borderColor = '#D97706'; el.title = 'Sugerido pela IA — revise antes de confirmar'; el.dataset.nmOriginal = 'ia-sugestao'; el.addEventListener('input', function(){ this.style.borderColor=''; this.dataset.nmOriginal='editado'; }, {once:true}); } };
+  const causaSugerida = nmTextoEstruturado((a.ia?.causaProvavel && a.ia.causaProvavel !== 'DADO_NAO_ENCONTRADO') ? a.ia.causaProvavel : (a.tratativaEstruturada?.diagnostico?.causa || ''));
   setIfEmpty('nm-causa-raiz', causaSugerida);
-  const setorSugerido = (a.setores || a.setoresSugeridos || [])[0] || '';
+  const setorSugerido = nmTextoEstruturado((a.setores || a.setoresSugeridos || [])[0] || '');
   setIfEmpty('nm-setor-acionado', setorSugerido);
 }
 
-window.gerarDevolutiva = function gerarDevolutiva() {
+window.gerarDevolutiva = async function gerarDevolutiva() {
   const textarea = document.getElementById('nm-devolutiva');
   if (!textarea) return;
-  const dev = window._nmAnaliseAtual?.devolutivaSugerida || window._nmAnaliseAtual?.DEVOLUTIVA_SUGERIDA || window._nmAnaliseAtual?.devolutiva;
-  if (!dev || !dev.trim()) { alert('Execute a análise primeiro (Etapa 2) para gerar uma sugestão de devolutiva.'); return; }
+  await nmCarregarAnalisePersistida();
+  const dev = nmTextoEstruturado(window._nmAnaliseAtual?.devolutivaSugerida || window._nmAnaliseAtual?.DEVOLUTIVA_SUGERIDA || window._nmAnaliseAtual?.devolutiva || window._nmAnaliseAtual?.devolutivaEstruturada?.textoGerado);
+  if (!dev || !dev.trim()) { alert('A análise ainda não possui uma devolutiva utilizável. Revise os dados antes de gerar uma sugestão.'); return; }
   if (textarea.value?.trim() && !confirm('Substituir o texto atual pela sugestão gerada pela IA?')) return;
   textarea.value = dev;
   textarea.style.borderColor = '#D97706';
@@ -12259,8 +12289,10 @@ async function initNovaManifestacao() {
   document.getElementById('painel-analise').style.display = 'none';
   document.getElementById('nm-historico-cliente').style.display = 'none';
   _nmAnaliseAtual = null;
+  _nmAnalisePersistidaCarregada = false;
   _nmDecisao = null;
   _nmCardId = null;
+  _nmIdempotencyKey = null;
   _nmEvidencias = []; renderEvidencias();
   const es=document.getElementById('nm-extracao-status'); if(es) es.style.display='none'; const ep=document.getElementById('nm-extracao-preview'); if(ep) ep.style.display='none';
   try {
@@ -12330,10 +12362,13 @@ async function registrarManifestacao() {
 
   try {
     if (_nmCardId) {
-      const draft = nmCardPayload(); draft.finalizar = true; draft.rascunho = false;
+      const draft = nmCardPayload();
+      draft.finalizar = true; draft.rascunho = false; draft.idempotencyKey = nmGarantirIdempotencyKey();
+      draft.analiseIA = _nmAnaliseAtual ? JSON.stringify(_nmAnaliseAtual) : '';
+      draft.anexos = await Promise.all(_nmEvidencias.map(async f => ({ nome:f.name, mimeType:f.type, tamanho:f.size, dataBase64:await fileToBase64(f), categoria:'EVIDENCIA' })));
       const finalRes = await _apiFetch(`/api/manifestacoes/${encodeURIComponent(_nmCardId)}/circa-dados`,60000,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(draft)});
       if (!finalRes?.sucesso) throw new Error(finalRes?.erro||'Falha ao concluir a manifestação.');
-      alert(`✅ Manifestação ${_nmCardId} concluída e encaminhada para triagem.`);
+      alert(`✅ Manifestação ${finalRes.protocolo || _nmCardId} concluída e encaminhada para triagem.`);
       navigate('banco-manifestacoes', document.querySelector('[onclick*=banco-manifestacoes]')); loadBancoManifestacoes(); return;
     }
     const res = await _apiFetch('/api/manifestacoes', 60000,{
@@ -12360,6 +12395,7 @@ async function registrarManifestacao() {
         valorTotalPedido: document.getElementById('nm-vlr-pedido').value,
         prejuizoEstimado: document.getElementById('nm-vlr-estimado').value,
         usuario,
+        idempotencyKey: nmGarantirIdempotencyKey(),
         analiseIA: _nmAnaliseAtual ? JSON.stringify(_nmAnaliseAtual) : null,
         decisaoAnalista: _nmDecisao || 'pendente',
         devolutivaSugerida: document.getElementById('ia-devolutiva')?.value || '',
@@ -12387,7 +12423,7 @@ async function registrarManifestacao() {
     });
 
     if (res.sucesso) {
-      alert(`✅ Manifestação ${res.id} registrada com sucesso!\n\nA análise inteligente foi iniciada.`);
+      alert(`✅ Manifestação ${res.protocolo || res.id} registrada com sucesso!\n\nA análise inteligente foi iniciada.`);
       navigate('banco-manifestacoes', document.querySelector('[onclick*=banco-manifestacoes]'));
       loadBancoManifestacoes();
     } else {
@@ -13066,24 +13102,24 @@ function abrirDossie(item) {
   _dossieItem = item;
   window._dossieItem = item;
   const isMan = !!item.ID_MANIFESTACAO;
+  const technicalId = isMan ? (item.ID_MANIFESTACAO || item.ID_ORIGINAL || item.PROTOCOLO) : null;
 
   // A listagem da Central é resumida e não contém o relato completo nem os
   // anexos. Carrega a ficha oficial em segundo plano e redesenha o dossiê
   // quando a API retornar, sem bloquear a abertura do modal.
   if (isMan && !item.__fichaCompletaSolicitada && typeof _apiFetch === 'function') {
     const completa = { ...item };
-    Object.defineProperty(completa, '__fichaCompletaSolicitada', { value: true, enumerable: false });
+    completa.__fichaCompletaSolicitada = true;
     _apiFetch('/api/manifestacoes/' + encodeURIComponent(item.ID_MANIFESTACAO), 15000)
       .then(d => {
         if (!d?.manifestacao) return;
         const atualizada = { ...item, ...d.manifestacao };
-        Object.defineProperty(atualizada, '__fichaCompletaSolicitada', { value: true, enumerable: false });
+        atualizada.__fichaCompletaSolicitada = true;
         abrirDossie(atualizada);
       })
       .catch(() => {});
   }
-
-  const id    = isMan ? item.ID_MANIFESTACAO : ('REC-' + Math.random().toString(36).slice(2,7).toUpperCase());
+  const id    = isMan ? (item.PROTOCOLO || technicalId) : ('REC-' + Math.random().toString(36).slice(2,7).toUpperCase());
   const empReclamada  = isMan ? (item.EMPRESA_RECLAMADA || '--') : (item['Empresa'] || '--');
   const empReclamante = isMan ? (item.EMPRESA_RECLAMANTE || '--') : '--';
   const cliente = isMan ? (item.CONTATO || item.NOME_CONTATO || '--') : (item['Contato'] || '--');
@@ -13145,7 +13181,7 @@ function abrirDossie(item) {
 
   // ── Info grid
   const fields = [
-    ['ID', id], ['Data de abertura', _fmtData(dataAb)],
+    ['Protocolo', id], ['Data de abertura', _fmtData(dataAb)],
     ['Empresa reclamante', empReclamante], ['Empresa reclamada', empReclamada],
     ['Cliente / Contato', cliente], ['Tipo', tipo], ['Canal', item.CANAL||'--'],
     ['CNPJ', item.CNPJ||'--'], ['Produto', item.PRODUTO||'--'], ['Lote', item.LOTE||'--'],
@@ -13298,7 +13334,13 @@ function abrirDossie(item) {
     const _anx = item._anexos || [];
     if (_anx.length) {
       _evWrap.style.display = 'flex';
-      if (_chips) _chips.innerHTML = _anx.map(a=>`<a href="${esc5(a.URL||a.LINK||'#')}" target="_blank" style="font-size:12px;font-weight:600;background:#F0F0F0;border-radius:6px;padding:4px 10px;color:#1F1F1F;text-decoration:none">📎 ${esc5(a.NOME||a.NOME_ARQUIVO||'Anexo')}</a>`).join('');
+      if (_chips) _chips.innerHTML = _anx.map(a=>{
+        const url = a.url || a.URL || a.LINK || a.driveUrl || a.DRIVE_URL || '';
+        const nome = a.nome || a.NOME || a.NOME_ARQUIVO || 'Anexo';
+        return url
+          ? `<a href="${esc5(url)}" target="_blank" rel="noopener" style="font-size:12px;font-weight:600;background:#F0F0F0;border-radius:6px;padding:4px 10px;color:#1F1F1F;text-decoration:none">📎 ${esc5(nome)}</a>`
+          : `<span style="font-size:12px;background:#F0F0F0;border-radius:6px;padding:4px 10px;color:#707070">📎 ${esc5(nome)} · aguardando upload</span>`;
+      }).join('');
     } else { _evWrap.style.display = 'none'; }
   }
   // modal-info-grid — formato compacto
@@ -13385,12 +13427,12 @@ function abrirDossie(item) {
     // As 4 tabs principais (ciclo, analise, historico, dados) ficam sempre visíveis
   });
   // Registra visualização em background (não bloqueia abertura)
-  if (item.ID_MANIFESTACAO) {
-    _apiFetch(`/api/manifestacoes/${encodeURIComponent(item.ID_MANIFESTACAO)}/visualizacao`, 5000, {method:'POST'}).catch(()=>{});
+  if (technicalId) {
+    _apiFetch(`/api/manifestacoes/${encodeURIComponent(technicalId)}/visualizacao`, 5000, {method:'POST'}).catch(()=>{});
     // Os anexos não fazem parte da listagem resumida da Central. Carregá-los
     // ao abrir o dossiê garante que os arquivos enviados pelo portal também
     // sejam visualizáveis na ficha completa.
-    _apiFetch(`/api/manifestacoes/${encodeURIComponent(item.ID_MANIFESTACAO)}/evidencias`, 10000)
+    _apiFetch(`/api/manifestacoes/${encodeURIComponent(technicalId)}/evidencias`, 10000)
       .then(d => {
         const itens = Array.isArray(d.itens) ? d.itens : [];
         item._anexos = itens;
@@ -13982,7 +14024,7 @@ function renderBanco() {
 
   if (search) {
     data = data.filter(m =>
-      (m.ID_MANIFESTACAO||'').toLowerCase().includes(search) ||
+      (m.PROTOCOLO||m.ID_MANIFESTACAO||'').toLowerCase().includes(search) ||
       (m.EMPRESA_NORMALIZADA||'').toLowerCase().includes(search) ||
       (m.EMPRESA_RECLAMANTE||'').toLowerCase().includes(search) ||
       (m.CONTATO||'').toLowerCase().includes(search) ||
@@ -14041,7 +14083,7 @@ function renderBanco() {
         const horaAbertura = dataAberturaObj && !isNaN(dataAberturaObj) ? dataAberturaObj.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '';
         return `<tr>
           <td>
-            <div class="num-bold">${escHtml(m.ID_MANIFESTACAO || '--')}</div>
+            <div class="num-bold">${escHtml(m.PROTOCOLO || m.ID_MANIFESTACAO || '--')}</div>
           </td>
           <td style="white-space:nowrap">
             <div style="font-size:13px;font-weight:600;color:var(--gray-800)">${dataAberturaStr||'—'}</div>
@@ -31381,16 +31423,22 @@ if (typeof pageLoaders !== 'undefined') {
     if (body) body.scrollTop = 0;
     if (n === 2 && typeof window.nmCarregarAnaliseDeterministica === 'function') window.nmCarregarAnaliseDeterministica();
     if (n === TOTAL && typeof nmMontarResumo === 'function') nmMontarResumo();
-    if (n === 6 && typeof nmMontarDevolutiva === 'function') nmMontarDevolutiva();
+    if (n === 6 && typeof nmMontarDevolutiva === 'function') { nmMontarDevolutiva(); nmCarregarAnalisePersistida(); }
     if (n === 5 && typeof nmPreencherValidacao === 'function') nmPreencherValidacao();
   }
   function validar(){
     var ativo = document.querySelector('#page-nova-manifestacao .nm-step-panel.nm-active');
     if (!ativo) return true;
-    var obrigatorio = ativo.querySelector('input[required],select[required],textarea[required]');
-    if (obrigatorio && !obrigatorio.checkValidity()) { obrigatorio.reportValidity(); obrigatorio.focus(); return false; }
+    var obrigatorios = Array.from(ativo.querySelectorAll('input[required],select[required],textarea[required]')).filter(function(el){ return !el.checkValidity(); });
+    if (obrigatorios.length) {
+      var primeiro = obrigatorios[0];
+      var erro = document.getElementById('nm-etapa-erro');
+      if (!erro) { erro = document.createElement('div'); erro.id = 'nm-etapa-erro'; erro.setAttribute('role','alert'); erro.style.cssText = 'margin:10px 0;padding:10px 12px;border:1px solid #FCA5A5;background:#FEF2F2;color:#991B1B;border-radius:8px;font-size:12px;font-weight:600;'; ativo.prepend(erro); }
+      erro.textContent = 'Preencha os campos obrigatórios: ' + obrigatorios.map(function(el){ return el.getAttribute('aria-label') || el.closest('label')?.querySelector('span')?.textContent || el.id || 'campo'; }).join(', ') + '.';
+      primeiro.focus(); primeiro.scrollIntoView({behavior:'smooth',block:'center'}); return false;
+    }
     var n=etapaAtual(), val=id=>String(document.getElementById(id)?.value||'').trim();
-    function fail(id,msg){ alert(msg); var el=document.getElementById(id); if(el){el.focus();el.scrollIntoView({behavior:'smooth',block:'center'});} return false; }
+    function fail(id,msg){ var erro=document.getElementById('nm-etapa-erro'); if(!erro){erro=document.createElement('div');erro.id='nm-etapa-erro';erro.setAttribute('role','alert');erro.style.cssText='margin:10px 0;padding:10px 12px;border:1px solid #FCA5A5;background:#FEF2F2;color:#991B1B;border-radius:8px;font-size:12px;font-weight:600;';ativo.prepend(erro);} erro.textContent=msg; var el=document.getElementById(id); if(el){el.focus();el.scrollIntoView({behavior:'smooth',block:'center');} return false; }
     if(n===1){
       if(!val('nm-empresa-reclamada')) return fail('nm-empresa-reclamada','Informe a empresa responsável pela manifestação.');
       if(!val('nm-empresa')&&!val('nm-nome')&&!val('nm-cnpj')) return fail('nm-empresa','Informe o cliente da manifestação.');
@@ -31418,7 +31466,7 @@ if (typeof pageLoaders !== 'undefined') {
   window.nmIrParaEtapa = function (n) {
     n = Number(n);
     if (!Number.isInteger(n) || n < 1 || n > TOTAL) return;
-    if(n>etapaAtual() && (!etapasAutorizadas(n) || !validar())) { if(!etapasAutorizadas(n)) alert('Esta etapa depende da conclusão das etapas anteriores.'); return; }
+    if(n>etapaAtual() && (!etapasAutorizadas(n) || !validar())) { if(!etapasAutorizadas(n)) { var erro=document.getElementById('nm-etapa-erro'); if(!erro){erro=document.createElement('div');erro.id='nm-etapa-erro';erro.setAttribute('role','alert');erro.style.cssText='margin:10px 0;padding:10px 12px;border:1px solid #FCA5A5;background:#FEF2F2;color:#991B1B;border-radius:8px;font-size:12px;font-weight:600;';document.querySelector('#page-nova-manifestacao .nm-step-panel.nm-active')?.prepend(erro);} erro.textContent='Conclua a etapa atual antes de continuar.';} return; }
     window._nmEtapasConcluidas = window._nmEtapasConcluidas || new Set([1]);
     if(n>etapaAtual()) window._nmEtapasConcluidas.add(etapaAtual());
     window.nmEtapa = n;
