@@ -1,0 +1,72 @@
+name: Verificar migrações Prisma (produção)
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_production:
+        description: "Digite PRODUCTION para confirmar o destino"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  migrate:
+    name: Verificar migrações no Neon production
+    runs-on: ubuntu-latest
+    environment: production
+    if: ${{ github.event.inputs.confirm_production == 'PRODUCTION' }}
+    env:
+      # A URL direta é usada somente durante esta execução administrativa.
+      # O mesmo valor atende DATABASE_URL e DATABASE_URL_UNPOOLED porque o
+      # schema do Prisma exige ambas as variáveis no carregamento.
+      DATABASE_URL: ${{ secrets.NEON_DATABASE_URL_UNPOOLED }}
+      DATABASE_URL_UNPOOLED: ${{ secrets.NEON_DATABASE_URL_UNPOOLED }}
+      EXPECTED_NEON_HOSTNAME: ${{ secrets.NEON_PRODUCTION_HOSTNAME }}
+      EXPECTED_DATABASE_NAME: ${{ secrets.NEON_PRODUCTION_DATABASE_NAME }}
+
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci --ignore-scripts
+
+      - name: Confirmar destino Neon sem expor credenciais
+        run: |
+          node <<'NODE'
+          const { Client } = require('pg');
+          const parsed = new URL(process.env.DATABASE_URL);
+          const expectedHost = process.env.EXPECTED_NEON_HOSTNAME;
+          if (!expectedHost || parsed.hostname !== expectedHost) {
+            throw new Error('Destino recusado: o host da conexão não corresponde ao host Neon de produção configurado.');
+          }
+          if (!process.env.EXPECTED_DATABASE_NAME) {
+            throw new Error('Destino recusado: secret NEON_PRODUCTION_DATABASE_NAME não configurado.');
+          }
+          const client = new Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: true } });
+          (async () => {
+            await client.connect();
+            const result = await client.query('SELECT current_database() AS database_name');
+            const actual = String(result.rows[0]?.database_name || '');
+            await client.end();
+            if (actual !== process.env.EXPECTED_DATABASE_NAME) {
+              throw new Error('Destino recusado: o nome do banco não corresponde ao banco Neon de produção configurado.');
+            }
+            console.log('Destino confirmado: host e banco Neon de produção correspondem aos valores esperados.');
+          })().catch(async error => {
+            try { await client.end(); } catch {}
+            console.error(error.message);
+            process.exit(1);
+          });
+          NODE
+
+      - name: Verificar estado das migrações
+        run: npx prisma migrate status
