@@ -12398,7 +12398,16 @@ async function initNovaManifestacao() {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
-  document.getElementById('nm-empresa-reclamada').value = '';
+  // A empresa é escolhida no card visual, enquanto o select mantém o valor
+  // canônico enviado ao backend. O reset anterior limpava apenas o select e
+  // deixava o card aparentando estar preenchido; a validação então bloqueava
+  // a Etapa 1 sem explicar o motivo.
+  const empresaReclamada = document.getElementById('nm-empresa-reclamada');
+  const empresaAtiva = document.querySelector('.nm-empresa-btn.active') || document.querySelector('.nm-empresa-btn');
+  if (empresaReclamada) {
+    const match = (empresaAtiva?.getAttribute('onclick') || '').match(/'([^']+)'\s*\)/);
+    empresaReclamada.value = match ? match[1] : (empresaAtiva?.dataset?.empresa || 'CHIACCHIO EMBALAGENS');
+  }
   document.getElementById('nm-chars').textContent = '0 caracteres — digite ao menos 30 para análise automática';
   document.getElementById('painel-analise').style.display = 'none';
   document.getElementById('nm-historico-cliente').style.display = 'none';
@@ -31528,6 +31537,7 @@ if (typeof pageLoaders !== 'undefined') {
    a página é exibida depois da inicialização dos demais módulos da SPA. */
 (function () {
   var TOTAL = 7;
+  var nmNavigationBusy = false;
   var TITULOS = ['Registro','Análise inteligente e triagem','Condução','Investigação e resolução','Validação SAC','Devolutiva conclusiva','Encerramento e aprendizado'];
   var PANEL_MAP = {1:[1],2:[2],3:[3],4:[4],5:[5],6:[6],7:[7]};
   function page(){ return document.getElementById('page-nova-manifestacao'); }
@@ -31586,7 +31596,7 @@ if (typeof pageLoaders !== 'undefined') {
       primeiro.focus(); primeiro.scrollIntoView({behavior:'smooth',block:'center'}); return false;
     }
     var n=etapaAtual(), val=id=>String(document.getElementById(id)?.value||'').trim();
-    function fail(id,msg){ var erro=document.getElementById('nm-etapa-erro'); if(!erro){erro=document.createElement('div');erro.id='nm-etapa-erro';erro.setAttribute('role','alert');erro.style.cssText='margin:10px 0;padding:10px 12px;border:1px solid #FCA5A5;background:#FEF2F2;color:#991B1B;border-radius:8px;font-size:12px;font-weight:600;';ativo.prepend(erro);} erro.textContent=msg; var el=document.getElementById(id); if(el){el.focus();el.scrollIntoView({behavior:'smooth',block:'center');} return false; }
+    function fail(id,msg){ var erro=document.getElementById('nm-etapa-erro'); if(!erro){erro=document.createElement('div');erro.id='nm-etapa-erro';erro.setAttribute('role','alert');erro.style.cssText='margin:10px 0;padding:10px 12px;border:1px solid #FCA5A5;background:#FEF2F2;color:#991B1B;border-radius:8px;font-size:12px;font-weight:600;';ativo.prepend(erro);} erro.textContent=msg; var el=document.getElementById(id); if(el){el.focus();el.scrollIntoView({behavior:'smooth',block:'center'});} return false; }
     if(n===1){
       if(!val('nm-empresa-reclamada')) return fail('nm-empresa-reclamada','Informe a empresa responsável pela manifestação.');
       if(!val('nm-empresa')&&!val('nm-nome')&&!val('nm-cnpj')) return fail('nm-empresa','Informe o cliente da manifestação.');
@@ -31621,15 +31631,27 @@ if (typeof pageLoaders !== 'undefined') {
     render();
   };
   window.nmProximaEtapa = async function () {
-    if (!validar()) return;
-    if (etapaAtual() < TOTAL) {
-      if (typeof window.salvarRascunho === 'function') {
-        const ok = await window.salvarRascunho({silent:true,reportError:true});
-        if (!ok) return;
+    if (nmNavigationBusy) return;
+    nmNavigationBusy = true;
+    var continuar = document.getElementById('nm-btn-continuar');
+    var textoOriginal = continuar ? continuar.textContent : '';
+    if (continuar) { continuar.disabled = true; continuar.setAttribute('aria-busy','true'); continuar.style.cursor='wait'; continuar.textContent='Salvando…'; }
+    try {
+      if (!validar()) return;
+      if (etapaAtual() < TOTAL) {
+        if (typeof window.salvarRascunho === 'function') {
+          // O rascunho salva os campos; os anexos continuam pendentes para a
+          // conclusão e não podem impedir a troca de etapa.
+          const ok = await window.salvarRascunho({silent:true,reportError:true});
+          if (!ok) return;
+        }
+        window._nmEtapasConcluidas = window._nmEtapasConcluidas || new Set([1]);
+        window._nmEtapasConcluidas.add(etapaAtual());
+        window.nmIrParaEtapa(etapaAtual() + 1);
       }
-      window._nmEtapasConcluidas = window._nmEtapasConcluidas || new Set([1]);
-      window._nmEtapasConcluidas.add(etapaAtual());
-      window.nmIrParaEtapa(etapaAtual() + 1);
+    } finally {
+      nmNavigationBusy = false;
+      if (continuar) { continuar.disabled = false; continuar.removeAttribute('aria-busy'); continuar.style.cursor='pointer'; continuar.textContent = textoOriginal || 'Continuar →'; }
     }
   };
   window.nmEtapaAnterior = function () {

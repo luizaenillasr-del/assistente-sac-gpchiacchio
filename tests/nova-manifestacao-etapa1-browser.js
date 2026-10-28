@@ -1,0 +1,145 @@
+'use strict';
+
+// Regra de regressão em navegador para o bloqueio da Etapa 1. O servidor
+// abaixo só entrega o HTML; as chamadas da API são simuladas pelo Playwright
+// para que o teste possa exercitar o clique, a persistência do rascunho e a
+// navegação sem tocar em dados externos.
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const http = require('node:http');
+const path = require('node:path');
+const { chromium } = require('playwright');
+
+const html = fs.readFileSync(path.resolve(__dirname, '../public/index.html'), 'utf8');
+const chromiumPath = process.env.CHROMIUM_PATH || '/usr/bin/chromium';
+const arquivos = [
+  { name: 'evidencia.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4\nregressao') },
+  { name: 'foto.png', mimeType: 'image/png', buffer: Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]) },
+];
+
+function json(res, body, status = 200) {
+  const payload = Buffer.from(JSON.stringify(body));
+  res.writeHead(status, { 'Content-Type': 'application/json', 'Content-Length': payload.length });
+  res.end(payload);
+}
+
+async function main() {
+  const server = http.createServer((req, res) => {
+    if (req.url.startsWith('/api/')) return json(res, { sucesso: true, itens: [], total: 0 });
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    res.end(html);
+  });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+
+  const browser = await chromium.launch({ headless: true, executablePath: chromiumPath, args: ['--no-sandbox'] });
+  const context = await browser.newContext();
+  await context.addInitScript(() => {
+    sessionStorage.setItem('sac-token', 'browser-regression-token');
+    sessionStorage.setItem('sac-auth', '1');
+    sessionStorage.setItem('sac-user', JSON.stringify({ usuario: 'teste.nova', nome: 'Teste Nova Manifestação', perfil: 'MASTER', empresa: 'Grupo Chiacchio' }));
+  });
+  const page = await context.newPage();
+  const errosPagina = [];
+  const requisicoes = [];
+  page.on('pageerror', error => errosPagina.push(error));
+  await page.route('**/api/**', async route => {
+    const req = route.request();
+    const url = new URL(req.url());
+    requisicoes.push({ method: req.method(), path: url.pathname });
+    if (url.pathname === '/api/auth/me') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ sucesso: true, usuario: { usuario: 'teste.nova', nome: 'Teste Nova Manifestação', perfil: 'MASTER', empresa: 'Grupo Chiacchio' } }) });
+    }
+    if (url.pathname === '/api/manifestacoes' && req.method() === 'POST') {
+      await new Promise(resolve => setTimeout(resolve, 80));
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ sucesso: true, id: 'NM-BROWSER-001', protocolo: 'CHIA-20261028-01-0001' }) });
+    }
+    if (url.pathname.endsWith('/circa-dados') && req.method() === 'PATCH') {
+      await new Promise(resolve => setTimeout(resolve, 80));
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ sucesso: true, id: 'NM-BROWSER-001', protocolo: 'CHIA-20261028-01-0001' }) });
+    }
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ sucesso: true, itens: [], total: 0, dados: {} }) });
+  });
+
+  try {
+    await page.goto(`http://127.0.0.1:${server.address().port}/`, { waitUntil: 'domcontentloaded' });
+    // O objetivo deste teste é o fluxo da ficha; a autenticação real é
+    // exercitada pelos testes de integração. Depois do boot, escondemos a
+    // tela de login com a sessão de teste e abrimos a rota diretamente.
+    await page.waitForTimeout(3000);
+    await page.evaluate(() => {
+      sessionStorage.setItem('sac-token', 'browser-regression-token');
+      sessionStorage.setItem('sac-auth', '1');
+      sessionStorage.setItem('sac-user', JSON.stringify({ usuario: 'teste.nova', nome: 'Teste Nova Manifestação', perfil: 'MASTER', empresa: 'Grupo Chiacchio' }));
+      document.getElementById('login-screen').style.display = 'none';
+      navigate('nova-manifestacao');
+    });
+    const pageRoot = page.locator('#page-nova-manifestacao');
+    await pageRoot.waitFor({ state: 'visible' });
+
+    await page.locator('#nm-empresa').fill('Cliente de regressão');
+    await page.locator('#nm-nome').fill('Contato de regressão');
+    await page.locator('#nm-email').fill('teste@example.com');
+    await page.locator('#nm-data').fill('2026-10-28');
+    await page.locator('#nm-origem').selectOption('MANUAL');
+    await page.locator('#nm-tipo').selectOption({ label: 'Reclamação' });
+    await page.locator('#nm-produto').fill('Produto de teste');
+    await page.locator('#nm-lote').fill('LOTE-001');
+    await page.locator('#nm-nfe').fill('NF-123/PED-456');
+    await page.locator('#nm-expectativa').fill('Cliente espera substituição e retorno do SAC.');
+    await page.locator('#nm-descricao').fill('Relato completo da manifestação para validar o avanço da primeira etapa.');
+    await page.locator('#nm-evidencias').setInputFiles(arquivos);
+    await assertFileNames(page, ['evidencia.pdf', 'foto.png']);
+
+    const continuar = page.locator('#nm-btn-continuar');
+    // Dois cliques no mesmo ciclo não podem criar dois rascunhos.
+    await page.evaluate(() => {
+      const button = document.getElementById('nm-btn-continuar');
+      button.click();
+      button.click();
+    });
+    await page.waitForTimeout(3000);
+    await page.locator('#nm-etapa-label').filter({ hasText: 'Etapa 2 de 7' }).waitFor();
+    assert.equal(await page.locator('#page-nova-manifestacao .nm-step-panel.nm-active').getAttribute('data-nm-step'), '2');
+    assert.equal(requisicoes.filter(r => r.method === 'POST' && r.path === '/api/manifestacoes').length, 1, 'dois cliques não podem criar dois rascunhos');
+    assert.equal(requisicoes.filter(r => r.path.includes('/anexos')).length, 0, 'anexos selecionados na Etapa 1 não devem bloquear o salvamento do rascunho');
+
+    await page.locator('#nm-btn-voltar').click();
+    await page.locator('#nm-etapa-label').filter({ hasText: 'Etapa 1 de 7' }).waitFor();
+    assert.equal(await page.locator('#nm-descricao').inputValue(), 'Relato completo da manifestação para validar o avanço da primeira etapa.');
+    await assertFileNames(page, ['evidencia.pdf', 'foto.png']);
+
+    // O mesmo registro deve atravessar as etapas seguintes sem perder os dados.
+    await continuar.click();
+    await page.locator('#nm-etapa-label').filter({ hasText: 'Etapa 2 de 7' }).waitFor();
+    await continuar.click();
+    await page.locator('#nm-etapa-label').filter({ hasText: 'Etapa 3 de 7' }).waitFor();
+    await page.locator('#nm-caminho-sac').click();
+    await page.locator('#nm-tratativa-sac').fill('Tratativa conduzida pelo SAC no ambiente de teste.');
+    await continuar.click();
+    await page.locator('#nm-investigacao-resultado').fill('Evidência e resultado da investigação de regressão.');
+    await continuar.click();
+    await page.locator('.nm-proc-btn').first().click();
+    await continuar.click();
+    await page.locator('#nm-devolutiva').fill('Devolutiva de teste revisada pelo SAC.');
+    await continuar.click();
+    await page.locator('#nm-etapa-label').filter({ hasText: 'Etapa 7 de 7' }).waitFor();
+    assert.equal(await page.locator('#page-nova-manifestacao .nm-step-panel.nm-active').getAttribute('data-nm-step'), '7');
+    assert.equal(await page.locator('#nm-empresa').inputValue(), 'Cliente de regressão');
+    assert.equal(await page.locator('#nm-nfe').inputValue(), 'NF-123/PED-456');
+    // O boot do dashboard dispara chamadas fora do fluxo testado; somente
+    // erros originados na navegação da ficha bloqueiam esta regressão.
+    const errosCriticos = errosPagina.filter(error => /nmProximaEtapa|nm-btn-continuar|SyntaxError|salvarRascunho/.test(error.message));
+    assert.equal(errosCriticos.length, 0, `erros JavaScript críticos no fluxo: ${errosCriticos.map(e => e.message).join('; ')}`);
+    console.log('Nova manifestação (navegador): Etapa 1, dois anexos, bloqueio contra duplo clique, retorno sem perda e avanço até a Etapa 7 aprovados.');
+  } finally {
+    await browser.close();
+    server.close();
+  }
+}
+
+async function assertFileNames(page, expected) {
+  const names = await page.locator('#nm-evidencias-list .upload-item').allTextContents();
+  for (const name of expected) assert.ok(names.some(text => text.includes(name)), `anexo ${name} não apareceu na ficha`);
+}
+
+main().catch(error => { console.error(error); process.exitCode = 1; });
