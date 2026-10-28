@@ -2120,7 +2120,14 @@ app.get('/api/manifestacoes/:id', requerPermissao('manifestacoes.visualizar'), m
               return res.status(403).json({ sucesso: false, erro: 'Acesso não autorizado para esta manifestação.' });
             }
           }
+          // Complementa o registro do PostgreSQL com a linha oficial do Sheets.
+          // O PG pode conter apenas o resumo operacional; a ficha completa e os
+          // vínculos de anexos ainda podem estar na linha MANIFESTACOES.
+          const sheetsFull = await lerManifestacoesOperacionais(5000).catch(() => []);
+          const sheetItem = sheetsFull.find(r => [r.ID_MANIFESTACAO, r.PROTOCOLO, r.ID, r.ID_ORIGINAL]
+            .some(v => String(v || '').trim() === String(req.params.id || '').trim()));
           const item = {
+            ...(sheetItem || {}),
             ID_MANIFESTACAO: pg.protocolo || pg.idOriginal || String(pg.id),
             DATA_ABERTURA: pg.criadaEm?.toISOString?.() || '',
             EMPRESA_RECLAMANTE: pg.contato || pg.empresaNome || '',
