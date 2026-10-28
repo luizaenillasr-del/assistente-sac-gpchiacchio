@@ -2505,16 +2505,33 @@ app.patch('/api/manifestacoes/:id/ficha', requerPermissao('manifestacoes.editar'
         APROV_SETOR_ORIENTACAO: req.body.aprovOrientacao || '',
       };
     } else if (acao === 'validacao_sac') {
+      // Três decisões possíveis: VALIDAR (prossegue para devolutiva), COMPLEMENTAR (retorna ao responsável), DEVOLVER (registra inconsistência e exige correção)
+      const decisaoVal = String(req.body.decisao || '').toUpperCase();
+      if (!['VALIDAR','COMPLEMENTAR','DEVOLVER'].includes(decisaoVal))
+        return res.status(400).json({ sucesso:false, erro:'Decisão obrigatória: VALIDAR, COMPLEMENTAR ou DEVOLVER.' });
       dados = {
+        VALID_SAC_DECISAO: decisaoVal,
         VALID_SAC_DATA_RETORNO: req.body.validDataRetorno || '',
         VALID_SAC_CLIENTE_INFORMADO: req.body.validClienteInformado || '',
         VALID_SAC_RESOLVIDA: req.body.validResolvida || '',
         OBSERVACOES_FINAIS: req.body.observacoesFinais || '',
         DATA_VALIDACAO_SAC: agora,
-        STATUS_FICHA: 'FECHADA',
-        STATUS: 'ENCERRADA',
-        DATA_CONCLUSAO_MANIFESTACAO: agora,
+        VALIDADO_POR: req.user?.usuario || '',
       };
+      if (decisaoVal === 'VALIDAR') {
+        // Resolução confirmada: segue para devolutiva
+        Object.assign(dados, { STATUS: 'AGUARDANDO_DEVOLUTIVA', STATUS_FICHA: 'AGUARDANDO_DEVOLUTIVA' });
+      } else if (decisaoVal === 'COMPLEMENTAR') {
+        // Devolve ao responsável para complementação, com justificativa
+        if (!req.body.observacoesFinais) return res.status(400).json({ sucesso:false, erro:'Justificativa e pendências obrigatórias para solicitar complementação.' });
+        const statusRetorno = item.SETOR_CONFIRMADO ? 'AGUARDANDO_SETOR' : 'EM TRATAMENTO';
+        const statusFichaRetorno = item.SETOR_CONFIRMADO ? 'AGUARDANDO_SETOR' : 'EM_TRATAMENTO';
+        Object.assign(dados, { STATUS: statusRetorno, STATUS_FICHA: statusFichaRetorno, VALID_SAC_PENDENCIAS: req.body.observacoesFinais });
+      } else {
+        // DEVOLVER: registra inconsistência e exige correção
+        if (!req.body.observacoesFinais) return res.status(400).json({ sucesso:false, erro:'Descrição da inconsistência obrigatória para devolver para correção.' });
+        Object.assign(dados, { STATUS: 'EM TRATAMENTO', STATUS_FICHA: 'EM_TRATAMENTO', VALID_SAC_INCONSISTENCIA: req.body.observacoesFinais });
+      }
     } else if (acao === 'encaminhar_aprovacao') {
       const setorConf = req.body.SETOR_CONFIRMADO || item.SETOR_SUGERIDO || '';
       const tipoConf  = req.body.TIPO_CONFIRMADO  || item.TIPO_SUGERIDO  || '';
@@ -2599,6 +2616,25 @@ app.patch('/api/manifestacoes/:id/ficha', requerPermissao('manifestacoes.editar'
         STATUS_FICHA: 'FECHADA',
         RESULTADO_FINAL: 'Rejeitada',
         MOTIVO_REJEICAO: motivo,
+        DATA_CONCLUSAO_MANIFESTACAO: agora,
+        ENCERRADO_POR: req.user?.usuario || '',
+      };
+    } else if (acao === 'registrar_devolutiva') {
+      // Registra que a devolutiva foi efetivamente enviada ao cliente.
+      // Só permitido após devolutiva ter sido preparada (STATUS_FICHA === AGUARDANDO_DEVOLUTIVA).
+      const statusAtual = String(item.STATUS_FICHA || item.STATUS || '').toUpperCase();
+      if (!statusAtual.includes('DEVOLUTIVA'))
+        return res.status(400).json({ sucesso:false, erro:'A devolutiva só pode ser registrada quando o status for AGUARDANDO_DEVOLUTIVA.' });
+      const canalDev = req.body.canal || item.CANAL_RETORNO || item.CANAL || '';
+      if (!canalDev) return res.status(400).json({ sucesso:false, erro:'Canal de envio da devolutiva obrigatório.' });
+      dados = {
+        STATUS: 'ENCERRADA',
+        STATUS_FICHA: 'FECHADA',
+        DEVOLUTIVA_ENVIADA: 'SIM',
+        CANAL_DEVOLUTIVA: canalDev,
+        RESPONSAVEL_DEVOLUTIVA: req.body.responsavel || req.user?.nome || req.user?.usuario || '',
+        DATA_DEVOLUTIVA: agora,
+        CONFIRMACAO_DEVOLUTIVA: req.body.confirmacao || '',
         DATA_CONCLUSAO_MANIFESTACAO: agora,
         ENCERRADO_POR: req.user?.usuario || '',
       };
