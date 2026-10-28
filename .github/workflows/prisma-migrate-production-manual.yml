@@ -180,9 +180,17 @@ jobs:
                ORDER BY started_at, migration_name
             `);
             await client.end();
-            const pending = rows
-              .filter(row => !row.finished_at || row.rolled_back_at)
-              .map(row => row.migration_name);
+            const known = [
+              '20260930000001_init',
+              '20261028000001_protocolos_atomicos',
+            ];
+            const applied = new Set(rows
+              .filter(row => row.finished_at && !row.rolled_back_at)
+              .map(row => row.migration_name));
+            const pending = known.filter(name => !applied.has(name));
+            rows
+              .filter(row => (!row.finished_at || row.rolled_back_at) && !known.includes(row.migration_name))
+              .forEach(row => pending.push(row.migration_name));
             const expected = ['20261028000001_protocolos_atomicos'];
             if (JSON.stringify(pending) !== JSON.stringify(expected)) {
               throw new Error(`Migrações pendentes inesperadas: ${pending.join(', ') || '(nenhuma)'}`);
