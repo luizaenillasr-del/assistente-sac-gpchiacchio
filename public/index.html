@@ -12474,7 +12474,7 @@ async function _encOnSetorChange(setor) {
     lista.innerHTML = doSetor.map(u => {
       const nome = u.nome || u.NOME || u.usuario || '';
       const id = u.id || u.ID || u.usuario || nome;
-      return `<label style="display:flex;align-items:center;gap:6px;padding:3px 0;cursor:pointer"><input type="checkbox" value="${_esc(nome)}" onchange="_encAtualizarResps()"> ${_esc(nome)}</label>`;
+      return `<label style="display:flex;align-items:center;gap:6px;padding:3px 0;cursor:pointer"><input type="radio" name="enc-responsavel" value="${_esc(nome)}" onchange="_encAtualizarResps()"> ${_esc(nome)}</label>`;
     }).join('');
     if(hiddenInput) hiddenInput.value='';
   } catch(e) {
@@ -12510,7 +12510,7 @@ function _encValidar() {
   lbl.textContent = _ENC_LABELS[_encOptAtiva] || 'Encaminhar';
   let ok = false;
   if (_encOptAtiva==='ai')    { ok = true; }
-  else if (_encOptAtiva==='setor') { const s=document.getElementById('enc-setor-select')?.value; const d=document.getElementById('enc-sla-val')?.value; ok=!!s&&!!d&&Number(d)>0; }
+  else if (_encOptAtiva==='setor') { const s=document.getElementById('enc-setor-select')?.value; const r=document.getElementById('enc-resp-setor')?.value; const d=document.getElementById('enc-sla-val')?.value; ok=!!s&&!!r&&!!d&&Number(d)>0; }
   else if (_encOptAtiva==='sac')   { ok = true; }
   else if (_encOptAtiva==='dev')   { ok = (document.getElementById('enc-motivo-dev')?.value||'').trim().length >= 10; }
   else if (_encOptAtiva==='rej')   { ok = (document.getElementById('enc-motivo-rej')?.value||'').trim().length >= 15; }
