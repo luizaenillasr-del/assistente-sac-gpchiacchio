@@ -2430,7 +2430,13 @@ app.patch('/api/manifestacoes/:id/ficha', requerPermissao('manifestacoes.editar'
       const setor = req.body.setor || req.body.SETOR_CONFIRMADO || '';
       const assumirSAC = req.body.assumirSAC === true || req.body.caminho === 'SAC';
       dados = {
-        CATEGORIA:req.body.categoria ?? item.CATEGORIA ?? '', MOTIVO:req.body.motivo ?? item.MOTIVO ?? '',
+        CATEGORIA:req.body.categoria ?? item.CATEGORIA ?? '',
+        MOTIVO_ORIGINAL: item.MOTIVO_ORIGINAL || item.MOTIVO || '',
+        MOTIVO_VALIDADO: req.body.motivo ?? item.MOTIVO_VALIDADO ?? item.MOTIVO ?? '',
+        MOTIVO: req.body.motivo ?? item.MOTIVO_VALIDADO ?? item.MOTIVO ?? '',
+        MOTIVO_RECLASSIFICACAO_JUSTIFICATIVA: req.body.justificativaMotivo || item.MOTIVO_RECLASSIFICACAO_JUSTIFICATIVA || '',
+        MOTIVO_RECLASSIFICADO_POR: req.body.motivo !== undefined && req.body.motivo !== item.MOTIVO ? (req.user?.usuario || '') : (item.MOTIVO_RECLASSIFICADO_POR || ''),
+        MOTIVO_RECLASSIFICADO_EM: req.body.motivo !== undefined && req.body.motivo !== item.MOTIVO ? agora : (item.MOTIVO_RECLASSIFICADO_EM || ''),
         PRIORIDADE:req.body.prioridade ?? item.PRIORIDADE ?? '', GRAVIDADE:req.body.gravidade ?? item.GRAVIDADE ?? '',
         SETOR_CONFIRMADO:setor || item.SETOR_CONFIRMADO || '', RESPONSAVEL_SETOR:req.body.responsavel || item.RESPONSAVEL_SETOR || '',
         PRAZO_TRATATIVA:req.body.prazo || item.PRAZO_TRATATIVA || '', NECESSITA_RNC:req.body.necessitaRNC || '',
@@ -7382,9 +7388,12 @@ app.get('/api/manifestacoes/:id/evidencias', middlewareEscopoEmpresa(), requerPe
     ]);
     const ids = new Set([id, man.ID_MANIFESTACAO, man.PROTOCOLO].filter(Boolean).map(String));
     const itens = [
-      ...evs.filter(e => ids.has(String(e.ID_MANIFESTACAO || '').trim())).map(e => ({ nome:e.NOME || e.NOME_ARQUIVO, mimeType:e.TIPO_MIME || e.MIME_TYPE, tamanho:e.TAMANHO, url:e.DRIVE_URL || e.URL_ARQUIVO, data:e.DATA_UPLOAD, origem:'evidencia' })),
-      ...anexos.filter(a => ids.has(String(a.ID_ENTIDADE || '').trim())).map(a => ({ nome:a.NOME_ARQUIVO || a.NOME, mimeType:a.MIME_TYPE || a.TIPO_MIME, tamanho:a.TAMANHO, url:a.URL_ARQUIVO || a.DRIVE_URL, data:a.DATA_UPLOAD, origem:'anexo' })),
+      ...evs.filter(e => ids.has(String(e.ID_MANIFESTACAO || '').trim())).map(e => ({ nome:e.NOME || e.NOME_ARQUIVO, mimeType:e.TIPO_MIME || e.MIME_TYPE, tamanho:e.TAMANHO, url:e.DRIVE_URL || e.URL_ARQUIVO, data:e.DATA_UPLOAD, origem:e.ORIGEM || 'evidencia', responsavel:e.USUARIO_UPLOAD || e.USUARIO || 'cliente', armazenamento:(e.DRIVE_ID || e.DRIVE_URL || e.URL_ARQUIVO) ? 'armazenado' : 'pendente' })),
+      ...anexos.filter(a => ids.has(String(a.ID_ENTIDADE || '').trim()) || ids.has(String(a.ID_MANIFESTACAO || '').trim())).map(a => ({ nome:a.NOME_ARQUIVO || a.NOME, mimeType:a.MIME_TYPE || a.TIPO_MIME, tamanho:a.TAMANHO, url:a.URL_ARQUIVO || a.DRIVE_URL, data:a.DATA_UPLOAD, origem:a.ORIGEM || 'anexo', responsavel:a.USUARIO_UPLOAD || a.USUARIO || 'SAC', armazenamento:(a.DRIVE_FILE_ID || a.URL_ARQUIVO || a.DRIVE_URL) ? 'armazenado' : 'pendente' })),
     ];
+    // Registros antigos podem carregar os metadados apenas na própria ficha.
+    const emb = [man.ANEXOS, man.EVIDENCIAS].flatMap(v => { try { return Array.isArray(v) ? v : (typeof v === 'string' && v.trim().startsWith('[') ? JSON.parse(v) : []); } catch (_) { return []; } });
+    for (const a of emb) if (a && !itens.some(i => String(i.nome || '') === String(a.nome || a.NOME || a.NOME_ARQUIVO || ''))) itens.push({ nome:a.nome || a.NOME || a.NOME_ARQUIVO, mimeType:a.tipo || a.TIPO_MIME || a.MIME_TYPE, tamanho:a.tamanho || a.TAMANHO, url:a.url || a.DRIVE_URL || a.URL_ARQUIVO, data:a.data || a.DATA_UPLOAD, origem:a.origem || 'manifestacao', armazenamento:(a.url || a.DRIVE_URL || a.URL_ARQUIVO) ? 'armazenado' : 'pendente' });
     res.json({ sucesso:true, itens });
   } catch (e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e,'manifestacao-evidencias'), itens:[] }); }
 });
@@ -8681,6 +8690,8 @@ app.post('/api/public/reclamacoes', publicRateLimit, async (req, res) => {
       QUANTIDADE: quantidadeAfetada,
       CANAL: canalFinal,
       MOTIVO: motivoManifestacao,
+      MOTIVO_ORIGINAL: motivoManifestacao,
+      MOTIVO_VALIDADO: motivoManifestacao,
       OBSERVACOES: observacoes,
       STATUS: 'AGUARDANDO_TRIAGEM_SAC',
       APROVACAO_NECESSARIA: '',
@@ -8698,6 +8709,7 @@ app.post('/api/public/reclamacoes', publicRateLimit, async (req, res) => {
     };
     await garantirAbaComCabecalhos('MANIFESTACOES', Object.keys(objeto));
     await appendObjeto('MANIFESTACOES', objeto);
+    await registrarHistoricoManifestacao({ id, protocolo, usuario: colaboradorRecebimento || 'PORTAL_PUBLICO', acao: 'REGISTROU_MANIFESTACAO', descricao: `Manifestação registrada via ${canalFinal} (Portal do Cliente).`, etapa: 'TRIAGEM_SAC' });
 
     // 2. Upload evidências para o Drive (não bloqueia se falhar)
     const evidenciasMetadata = [];
