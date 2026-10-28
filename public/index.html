@@ -12467,7 +12467,7 @@ async function _encOnSetorChange(setor) {
       return seU === setorNorm || seU.includes(setorNorm) || perfil.includes('SETOR');
     });
     if (!doSetor.length) {
-      lista.innerHTML = '<span style="color:var(--text-muted,#6b7280)">Nenhum responsável cadastrado para este setor. Digite o nome abaixo:</span><br><input type="text" id="enc-resp-manual" placeholder="Nome do responsável" style="margin-top:4px;width:100%;border:1px solid var(--border,#d1d5db);border-radius:4px;padding:4px 6px;font-size:0.85rem" oninput="document.getElementById(\'enc-resp-setor\').value=this.value">';
+      lista.innerHTML = '<span style="color:var(--text-muted,#6b7280)">Nenhum responsável ativo cadastrado para este setor.</span>';
       if(hiddenInput) hiddenInput.value='';
       return;
     }
@@ -12478,7 +12478,7 @@ async function _encOnSetorChange(setor) {
     }).join('');
     if(hiddenInput) hiddenInput.value='';
   } catch(e) {
-    lista.innerHTML = '<span style="color:var(--text-muted,#6b7280)">Erro ao carregar. Digite o nome:</span><br><input type="text" id="enc-resp-manual" placeholder="Nome do responsável" style="margin-top:4px;width:100%;border:1px solid var(--border,#d1d5db);border-radius:4px;padding:4px 6px;font-size:0.85rem" oninput="document.getElementById(\'enc-resp-setor\').value=this.value">';
+    lista.innerHTML = '<span style="color:var(--text-muted,#6b7280)">Não foi possível carregar os responsáveis deste setor.</span>';
     if(hiddenInput) hiddenInput.value='';
   }
 }

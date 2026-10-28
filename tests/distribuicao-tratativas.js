@@ -1,0 +1,15 @@
+const fs = require('fs');
+const api = fs.readFileSync('api/index.js','utf8');
+const page = fs.readFileSync('public/index.html','utf8');
+const check = (x,m)=>{if(!x)throw new Error(m); console.log('✓ '+m)};
+check(/acao === 'encaminhar_setor'/.test(api),'encaminhamento setorial usa a rota de ficha existente');
+check(/responsavelDest/.test(api) && /responsável cadastrado/.test(api),'responsável cadastrado é obrigatório');
+check(/AGUARDANDO_RESPOSTA_SETOR/.test(api),'encaminhamento atualiza status operacional');
+check(/registrarNotificacaoInterna\(\{ manifestacaoId:id/.test(api),'encaminhamento cria notificação interna');
+check(/registrarHistoricoManifestacao\(\{/.test(api),'movimentações entram no histórico');
+check(/name=\"enc-responsavel\"/.test(page),'interface seleciona um responsável real');
+check(!/enc-resp-manual/.test(page),'interface não aceita responsável fictício digitado');
+check(/enc-resp-setor.*value/.test(page),'responsável selecionado é enviado à API');
+check(/acao === 'assumir_sac'/.test(api) && /RESPONSAVEL_SAC/.test(api),'SAC pode assumir a tratativa');
+check(/acao === 'enviar_validacao'/.test(api) && /AGUARDANDO_VALIDACAO_SAC/.test(api),'tratativa pode ser enviada para validação SAC');
+console.log('DISTRIBUIÇÃO: 10 verificações aprovadas');
