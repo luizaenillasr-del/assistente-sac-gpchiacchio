@@ -7413,7 +7413,7 @@
 <script>
 (function(){
   'use strict';
-  const S={item:null,id:null,tab:0,attachments:[],history:[],circa:null,loading:false,showAttachments:false,path:'',anexoFiltro:'todos',setores:[],usuarios:[]};
+  const S={item:null,id:null,tab:0,attachments:[],history:[],circa:null,loading:false,showAttachments:false,path:'',anexoFiltro:'todos',setores:[],usuarios:[],originPage:null,originTab:null};
   const $=id=>document.getElementById(id);
   const esc=v=>{const d=document.createElement('div');d.textContent=v==null?'':String(v);return d.innerHTML};
   const val=(o,...ks)=>{for(const k of ks){const v=o?.[k];if(v!==undefined&&v!==null&&String(v).trim()!=='')return v}return ''};
@@ -7445,7 +7445,7 @@
   function renderContent(){const fn=[renderData,renderTriage,renderTreatment,renderValidation,renderHistory][S.tab]||renderData;$('ficha-v2-content').innerHTML=fn();renderTabs();renderAttachments()}
   function showMsg(id,msg,ok){const e=$(id);if(!e)return;e.style.display='block';e.style.background=ok?'#E6F2EA':'#FEF2F2';e.style.color=ok?'#1E6B3A':'#C70602';e.textContent=msg;}
   async function patch(body){const r=await _apiFetch('/api/manifestacoes/'+encodeURIComponent(id())+'/ficha',30000,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});if(!r.sucesso)throw new Error(r.erro||'Falha ao salvar');return r}
-  window.fichaV2Navigate=page=>{const sb=document.getElementById('app-sidebar');if(sb)sb.style.display='';navigate(page)};window.fichaV2Tab=i=>{S.tab=i;renderContent()};window.fichaV2ToggleAnexos=()=>{S.showAttachments=!S.showAttachments;renderAttachments()};window.fichaV2FiltroAnexo=f=>{S.anexoFiltro=f;renderAttachments()};window.fichaV2ToggleCirca=()=>{S.circaOpen=!S.circaOpen;renderContent()};window.fichaV2Path=p=>{S.path=S.path===p?'':p;renderContent()};window.fichaV2Voltar=()=>{S.showAttachments=false;const sb=document.getElementById('app-sidebar');if(sb)sb.style.display='';navigate('central-sac',document.querySelector('[onclick*="central-sac"]'))};window.fichaV2Reatribuir=()=>{S.tab=1;S.path='setor';renderContent();setTimeout(()=>$("fv2-setor-input")?.focus(),0)};
+  window.fichaV2Navigate=page=>{const sb=document.getElementById('app-sidebar');if(sb)sb.style.display='';navigate(page)};window.fichaV2Tab=i=>{S.tab=i;renderContent()};window.fichaV2ToggleAnexos=()=>{S.showAttachments=!S.showAttachments;renderAttachments()};window.fichaV2FiltroAnexo=f=>{S.anexoFiltro=f;renderAttachments()};window.fichaV2ToggleCirca=()=>{S.circaOpen=!S.circaOpen;renderContent()};window.fichaV2Path=p=>{S.path=S.path===p?'':p;renderContent()};window.fichaV2Voltar=()=>{S.showAttachments=false;const sb=document.getElementById('app-sidebar');if(sb)sb.style.display='';const page=S.originPage||'central-sac';const tab=S.originTab;navigate(page,document.querySelector('[onclick*="'+page+'"]'));if(tab&&page==='central-sac')setTimeout(()=>{if(typeof window.cenAba==='function')window.cenAba(tab,document.getElementById('mc-tab-'+tab));},50)};window.fichaV2Reatribuir=()=>{S.tab=1;S.path='setor';renderContent();setTimeout(()=>$("fv2-setor-input")?.focus(),0)};
   window.fichaV2Assumir=async()=>{try{await patch({acao:'assumir_sac'});Object.assign(S.item,{STATUS:'EM_ANDAMENTO',STATUS_FICHA:'TRATATIVA_SAC',RESPONSAVEL_SAC:val(typeof sess==='function'?sess():{},'nome','usuario')});renderHeader();renderContent();showMsg('fv2-trat-msg','Tratativa assumida pelo SAC.',true)}catch(e){alert(e.message)}};
   window.fichaV2Salvar=async()=>{const m=item();const body={acao:'salvar_dados'};['RAZAO_SOCIAL','NOME_FANTASIA','CNPJ','CODIGO_CLIENTE','EMPRESA_RECLAMANTE','CONTATO','TELEFONE','EMAIL','PEDIDO','NFE','DATA_PEDIDO','DATA_ENTREGA','VENDEDOR','ORIGEM','CANAL','DATA_RECEBIMENTO','ATENDENTE','TIPO','CATEGORIA','MOTIVO','DESCRICAO','DESCRICAO_MANIFESTACAO','PRODUTO','LOTE','QUANTIDADE','UNIDADE_MEDIDA','QUANTIDADE_TOTAL','QUANTIDADE_AFETADA','QUANTIDADE_DEVOLVIDA','QUANTIDADE_PERDIDA','VALOR_UNITARIO','VALOR_TOTAL','PREJUIZO_ESTIMADO','PREJUIZO_CONFIRMADO','PRIORIDADE'].forEach(k=>{if(Object.prototype.hasOwnProperty.call(m,k))body[k]=m[k]});try{await patch(body);showMsg('fv2-triagem-msg','Dados salvos com sucesso.',true)}catch(e){alert(e.message)}};
   window.fichaV2Encaminhar=async()=>{const body={acao:'encaminhar_setor',SETOR_CONFIRMADO:$("fv2-setor-input")?.value||'',RESPONSAVEL_SETOR:$("fv2-responsavel-input")?.value.trim()||'',SLA_HORAS:$("fv2-prazo-input")?.value||'',obs:$("fv2-orientacoes")?.value.trim()||''};try{await patch(body);Object.assign(S.item,{...body,STATUS:'AGUARDANDO_RESPOSTA_SETOR',STATUS_FICHA:'AGUARDANDO_SETOR'});renderHeader();renderContent();showMsg('fv2-triagem-msg','Manifestação encaminhada ao setor.',true)}catch(e){showMsg('fv2-triagem-msg',e.message,false)}};
@@ -7457,7 +7457,7 @@
   window.fichaV2EnviarDevolutiva=async()=>{try{await patch({acao:'registrar_devolutiva',canal:val(item(),'CANAL_RETORNO','CANAL'),responsavel:resp()});Object.assign(S.item,{STATUS:'ENCERRADA',STATUS_FICHA:'FECHADA'});renderHeader();renderContent();showMsg('fv2-dev-msg','Envio registrado e manifestação encerrada.',true)}catch(e){showMsg('fv2-dev-msg',e.message,false)}};
   window.fichaV2Upload=async files=>{const arr=[...(files||[])];for(const f of arr){try{const data=await fileToBase64(f);const r=await _apiFetch('/api/anexos',60000,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tipoEntidade:'MANIFESTACAO',idEntidade:id(),usuario:val(typeof sess==='function'?sess():{},'usuario','nome'),arquivo:{nome:f.name,mimeType:f.type,tamanho:f.size,dataBase64:data,categoria:'EVIDENCIA'}})});if(r.anexo)S.attachments.push(r.anexo)}catch(e){alert('Não foi possível enviar '+f.name+': '+e.message)}}renderHeader();renderAttachments()};
   async function loadExtras(){const key=encodeURIComponent(id());const [ev,h,ci,setRes,userRes]=await Promise.all([_apiFetch('/api/manifestacoes/'+key+'/evidencias',10000).catch(()=>({itens:[]})),_apiFetch('/api/manifestacoes/'+key+'/historico',10000).catch(()=>({itens:[]})),_apiFetch('/api/manifestacoes/'+key+'/circa',10000).catch(()=>({})),_apiFetch('/api/setores-unicos',10000).catch(()=>({itens:[]})),_apiFetch('/api/usuarios',10000).catch(()=>({itens:[]}))]);S.setores=Array.isArray(setRes.itens)?setRes.itens.map(x=>typeof x==='string'?x:val(x,'SETOR','NOME')).filter(Boolean):[];S.usuarios=Array.isArray(userRes.itens)?userRes.itens:[];S.attachments=Array.isArray(ev.itens)?ev.itens:[];S.history=Array.isArray(h.itens)?h.itens:[];S.circa=ci?.analise||ci?.dados||ci||{};renderHeader();renderContent()}
-  window.fichaV2Open=async function(raw){let m=typeof raw==='string'?{ID_MANIFESTACAO:raw,PROTOCOLO:raw}:raw||{};S.item=m;S.id=val(m,'ID_MANIFESTACAO','id','PROTOCOLO');S.tab=0;S.path='';S.attachments=[];S.history=[];S.circa=null;S.showAttachments=false;const sb=document.getElementById('app-sidebar');if(sb)sb.style.display='none';const u=typeof sess==='function'?sess():{};const un=$("ficha-v2-user-name");const ur=$("ficha-v2-user-role");if(un)un.textContent=val(u,'nome','usuario')||'Usuário';if(ur)ur.textContent=val(u,'perfil','PERFIL')||'SAC';navigate('ficha-manifestacao-v2',null);renderHeader();renderContent();try{const d=await _apiFetch('/api/manifestacoes/'+encodeURIComponent(S.id),15000);if(d?.manifestacao||d?.item)S.item=Object.assign({},m,d.manifestacao||d.item);else if(d?.ID_MANIFESTACAO)S.item=Object.assign({},m,d);S.id=val(S.item,'ID_MANIFESTACAO','PROTOCOLO')||S.id;renderHeader();renderContent();await loadExtras()}catch(e){console.warn('[Ficha v2] carregamento detalhado:',e.message);await loadExtras()}};
+  window.fichaV2Open=async function(raw,opts){const active=document.querySelector('.page.active')?.id?.replace(/^page-/,'');S.originPage=opts?.returnPage||(active&&active!=='ficha-manifestacao-v2'?active:'central-sac');S.originTab=opts?.returnTab||null;let m=typeof raw==='string'?{ID_MANIFESTACAO:raw,PROTOCOLO:raw}:raw||{};S.item=m;S.id=val(m,'ID_MANIFESTACAO','id','PROTOCOLO');S.tab=0;S.path='';S.attachments=[];S.history=[];S.circa=null;S.showAttachments=false;const sb=document.getElementById('app-sidebar');if(sb)sb.style.display='none';const u=typeof sess==='function'?sess():{};const un=$("ficha-v2-user-name");const ur=$("ficha-v2-user-role");if(un)un.textContent=val(u,'nome','usuario')||'Usuário';if(ur)ur.textContent=val(u,'perfil','PERFIL')||'SAC';navigate('ficha-manifestacao-v2',null);renderHeader();renderContent();try{const d=await _apiFetch('/api/manifestacoes/'+encodeURIComponent(S.id),15000);if(d?.manifestacao||d?.item)S.item=Object.assign({},m,d.manifestacao||d.item);else if(d?.ID_MANIFESTACAO)S.item=Object.assign({},m,d);S.id=val(S.item,'ID_MANIFESTACAO','PROTOCOLO')||S.id;renderHeader();renderContent();await loadExtras()}catch(e){console.warn('[Ficha v2] carregamento detalhado:',e.message);await loadExtras()}};
   window.fichaV2Recarregar=()=>S.item&&window.fichaV2Open(S.item);
   window.addEventListener('beforeunload',()=>{if(S.item)S.item=null});
   window.abrirDossie=function(raw){window.fichaV2Open(raw)};
@@ -26336,6 +26336,40 @@ async function mudarStatusMC(id, novoStatus) {
     const panel=$('centab-'+tab);
     if(panel) panel.classList.add('active');
     if(btn) btn.classList.add('active');
+  };
+
+  // Todos os atalhos operacionais da Central usam a mesma Ficha V2.
+  // Os componentes legados permanecem no DOM apenas para compatibilidade, mas
+  // não são mais a interface ativa para consultar ou tratar uma manifestação.
+  const _cenFichaCompletaLegada=window.cenAbrirFichaCompleta;
+  const _cenFichaModalLegada=window.cenAbrirFichaModal;
+  const _cenTrativasFichaLegada=window.cenTrativasAbrirFicha;
+  const _cenTrativasModalLegada=window.cenTrativasFichaAbrirModal;
+  async function _cenAbrirFichaV2(id,seed,opts){
+    let full=seed||{ID_MANIFESTACAO:id,PROTOCOLO:id};
+    try{const d=await api('/api/manifestacoes/'+encodeURIComponent(id));if(d?.sucesso!==false)full=Object.assign({},full,d.manifestacao||d.item||d);}catch(e){console.warn('[Ficha v2] carregamento da Central:',e.message)}
+    return window.fichaV2Open(full,opts);
+  }
+  window.cenAbrirFichaCompleta=function(){
+    if(window.fichaV2Open&&_cenRawAtual)return window.fichaV2Open(_cenRawAtual,{returnPage:'central-sac'});
+    return typeof _cenFichaCompletaLegada==='function'?_cenFichaCompletaLegada.apply(this,arguments):undefined;
+  };
+  window.cenTrativasFichaAbrirModal=function(){
+    if(window.fichaV2Open&&_cenRawAtual)return window.fichaV2Open(_cenRawAtual,{returnPage:'central-sac',returnTab:'tratativas'});
+    return typeof _cenTrativasModalLegada==='function'?_cenTrativasModalLegada.apply(this,arguments):undefined;
+  };
+  window.cenTrativasAbrirFicha=async function(id){
+    if(!id)return;
+    const base=_cenAll.find(m=>m.id===id);
+    if(window.fichaV2Open)return _cenAbrirFichaV2(id,base?.raw||{ID_MANIFESTACAO:id,PROTOCOLO:id},{returnPage:'central-sac',returnTab:'tratativas'});
+    return typeof _cenTrativasFichaLegada==='function'?_cenTrativasFichaLegada.apply(this,arguments):undefined;
+  };
+  window.cenAbrirFichaModal=async function(id){
+    if(!id)return;
+    const base=_cenAll.find(m=>m.id===id)||_cenBancoAll.find(m=>(m.ID_MANIFESTACAO||m.id)===id);
+    const seed=base?.raw||base||{ID_MANIFESTACAO:id,PROTOCOLO:id};
+    if(window.fichaV2Open)return _cenAbrirFichaV2(id,seed,{returnPage:'central-sac'});
+    return typeof _cenFichaModalLegada==='function'?_cenFichaModalLegada.apply(this,arguments):undefined;
   };
 
   // ── pageLoader + default page ─────────────────────────────────────────────
