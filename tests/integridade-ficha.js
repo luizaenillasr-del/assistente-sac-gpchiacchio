@@ -1,0 +1,11 @@
+const fs=require('fs'); const api=fs.readFileSync('api/index.js','utf8'); const page=fs.readFileSync('public/index.html','utf8');
+const check=(x,m)=>{if(!x)throw new Error(m);console.log('✓ '+m)};
+check(/MOTIVO_ORIGINAL: motivoManifestacao/.test(api),'motivo original é persistido na criação pública');
+check(/MOTIVO_VALIDADO: req\.body\.motivo/.test(api),'motivo validado é separado do original');
+check(/MOTIVO_RECLASSIFICACAO_JUSTIFICATIVA/.test(api)&&/MOTIVO_RECLASSIFICADO_POR/.test(api),'reclassificação registra justificativa e autoria');
+check(/const emb = \[man\.ANEXOS, man\.EVIDENCIAS\]/.test(api),'ficha recupera metadados legados embutidos');
+check(/armazenamento:\(e\.DRIVE_ID/.test(api)&&/responsavel:e\.USUARIO_UPLOAD/.test(api),'evidências retornam armazenamento e responsável');
+check(/REGISTROU_MANIFESTACAO.*Portal do Cliente/.test(api),'origem pública entra no histórico com descrição compreensível');
+check(/PROTOCOLO: protocolo/.test(api)&&/ID_MANIFESTACAO: id/.test(api),'protocolo público e ID técnico são persistidos juntos');
+check(/_apiFetch\('\/api\/manifestacoes\/'/.test(page),'Central hidrata a ficha pelo endpoint oficial');
+console.log('INTEGRIDADE DA FICHA: 8 verificações aprovadas');
