@@ -2607,14 +2607,24 @@ app.patch('/api/manifestacoes/:id/ficha', requerPermissao('manifestacoes.editar'
         }
       } catch(eF) { console.error('[FILA_APROVACAO insert]', eF.message); }
     } else if (acao === 'encaminhar_setor') {
-      const setorDest = req.body.SETOR_CONFIRMADO || req.body.setor || '';
-      if (!setorDest) return res.status(400).json({ sucesso:false, erro:'Setor de destino obrigatório.' });
+      const setorDest = String(req.body.SETOR_CONFIRMADO || req.body.setor || '').trim();
+      const responsavelDest = String(req.body.RESPONSAVEL_SETOR || req.body.responsavel || '').trim();
+      if (!setorDest || /nenhum|não informado|nao informado/i.test(setorDest)) return res.status(400).json({ sucesso:false, erro:'Selecione um setor de destino válido.' });
+      if (!responsavelDest || /nenhum|não informado|nao informado/i.test(responsavelDest)) return res.status(400).json({ sucesso:false, erro:'Selecione um responsável cadastrado.' });
+      const usuariosDestino = await lerAba('USUARIOS', 5000).catch(()=>[]);
+      const alvo = usuariosDestino.find(u => {
+        const chave = String(u.USUARIO || u.LOGIN || u.EMAIL || u.NOME || '').trim().toLowerCase();
+        const nomes = responsavelDest.split(',').map(v => v.trim().toLowerCase()).filter(Boolean);
+        const setorU = String(u.SETOR || u.SETOR_PRINCIPAL || u.SETORES || u.SETORES_AUTORIZADOS || '').toLowerCase();
+        return nomes.length === 1 && chave === nomes[0] && String(u.STATUS || 'ATIVO').toUpperCase() === 'ATIVO' && (setorU.includes(setorDest.toLowerCase()) || String(u.PERFIL || '').toUpperCase().includes('SETOR'));
+      });
+      if (!alvo) return res.status(422).json({ sucesso:false, erro:'O responsável precisa estar ativo e cadastrado no setor selecionado.' });
       dados = {
-        STATUS: 'AGUARDANDO_SETOR',
+        STATUS: 'AGUARDANDO_RESPOSTA_SETOR',
         STATUS_FICHA: 'AGUARDANDO_SETOR',
         SETOR_CONFIRMADO: setorDest,
         SETOR_DESTINADO: setorDest,
-        RESPONSAVEL_SETOR: req.body.RESPONSAVEL_SETOR || '',
+        RESPONSAVEL_SETOR: responsavelDest,
         SLA_HORAS: req.body.SLA_HORAS || '',
         SLA_UNIDADE: req.body.SLA_UNIDADE || 'dias',
         OBS_ENCAMINHAMENTO: req.body.obs || '',
@@ -2677,6 +2687,9 @@ app.patch('/api/manifestacoes/:id/ficha', requerPermissao('manifestacoes.editar'
     dados.ETAPA_ATUAL = String(fichaUnica.etapaAtual(estado));
     dados.MENSAGEM_ETAPA = fichaUnica.mensagemContextual(estado);
     await atualizarPorID('MANIFESTACOES', id, dados, ['ID_MANIFESTACAO']);
+    if (acao === 'encaminhar_setor') {
+      await registrarNotificacaoInterna({ manifestacaoId:id, destinatario:dados.RESPONSAVEL_SETOR, tipo:'ENCAMINHAMENTO_TRATATIVA', titulo:`Tratativa atribuída — ${item.PROTOCOLO || id}`, mensagem:dados.OBS_ENCAMINHAMENTO || `Nova tratativa atribuída ao setor ${dados.SETOR_CONFIRMADO}.`, usuario:req.user?.usuario || 'sistema' }).catch(e => console.warn('[NOTIFICACAO] encaminhamento:', e.message));
+    }
     invalidarCacheAba('MANIFESTACOES');
     registrarAuditoria(req.user?.usuario||'sistema', `FICHA_${String(acao).toUpperCase()}`, id, 'MANIFESTACOES', null, dados).catch(()=>{});
     registrarHistoricoManifestacao({
