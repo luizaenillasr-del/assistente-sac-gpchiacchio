@@ -5,6 +5,8 @@ const checks = [
   ['página V2 registrada', html.includes('id="page-ficha-manifestacao-v2"')],
   ['layout da referência (SLA, tabs e anexos)', ['fv2-sla','Dados','Triagem e Direcionamento','Tratativa','Validação e Devolutiva','Histórico','fv2-attachments'].every(x=>html.includes(x))],
   ['abertura do dossiê navega para a ficha V2', html.includes('window.fichaV2Open') && html.includes('ficha-manifestacao-v2-final-bridge') && html.includes('window.abrirDossie = function(item){ return window.fichaV2Open(item); }')],
+  ['Central e Em tratativa unificadas na V2', html.includes('window.cenAbrirFichaCompleta=function(){') && html.includes('window.cenAbrirFichaModal=async function(id){') && html.includes('window.cenTrativasAbrirFicha=async function(id){') && html.includes("returnTab:'tratativas'")],
+  ['retorno preserva a lista de origem', html.includes('originPage') && html.includes('originTab') && html.includes("navigate(page,document.querySelector")],
   ['carregamento de dados reais', html.includes("/api/manifestacoes/'+encodeURIComponent(S.id)") && html.includes('DESCRICAO_ORIGINAL') && html.includes('ID_MANIFESTACAO')],
   ['anexos vinculados e upload integrado', html.includes("/api/manifestacoes/'+key+'/evidencias") && html.includes("_apiFetch('/api/anexos'")],
   ['histórico e CIRCA persistidos', html.includes("/historico") && html.includes("/circa")],
