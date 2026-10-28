@@ -68,5 +68,22 @@ jobs:
           });
           NODE
 
+      - name: Comparar migração init com o Neon (somente leitura)
+        run: |
+          temp_migrations="$(mktemp -d)"
+          cp prisma/migrations/migration_lock.toml "$temp_migrations/migration_lock.toml"
+          cp -R prisma/migrations/20260930000001_init "$temp_migrations/20260930000001_init"
+          diff_file="$(mktemp)"
+          npx prisma migrate diff \
+            --from-url "$DATABASE_URL_UNPOOLED" \
+            --to-migrations "$temp_migrations" \
+            --script > "$diff_file"
+          if [ -s "$diff_file" ]; then
+            echo "A estrutura do Neon diverge da migração 20260930000001_init. Diff SQL somente leitura:"
+            cat "$diff_file"
+            exit 1
+          fi
+          echo "A estrutura do Neon é compatível com 20260930000001_init."
+
       - name: Verificar estado das migrações
         run: npx prisma migrate status
