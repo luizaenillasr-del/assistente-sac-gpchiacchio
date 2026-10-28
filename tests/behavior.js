@@ -98,6 +98,7 @@ const tokExcluido   = () => makeToken({ perfil: 'ANALISTA SAC', empresa: 'CHIACC
 const tokSemEmpresa = () => makeToken({ perfil: 'ANALISTA SAC', empresa: '', usuario: 'usuario.sem.empresa' });
 
 let portalClientId = 10;
+let manifestacaoIdempotency = 0;
 function portalClient() {
   const headers = { 'X-Forwarded-For': `192.0.2.${portalClientId++}` };
   return (method, route, body) => req(method, route, null, body, headers);
@@ -137,8 +138,8 @@ async function withPortalFixtures(fn, failUpload = false) {
 }
 
 function manifestacaoPortal(empresa = 'Chiacchio Embalagens') {
-  return { empresa, origem: 'PORTAL_PUBLICO', nomeCliente: 'Cliente teste portal',
-    colaboradorRecebimento: 'Portal do Cliente', setorRecebimento: 'SAC',
+  return { empresa, origem: 'PORTAL_PUBLICO', idempotencyKey: `portal-behavior-${++manifestacaoIdempotency}`, nomeCliente: 'Cliente teste portal',
+    email: 'cliente.portal@example.test', colaboradorRecebimento: 'Portal do Cliente', setorRecebimento: 'SAC',
     descricaoOriginal: 'Embalagem danificada no recebimento.', motivoManifestacao: 'Embalagem danificada',
     tipoManifestacao: 'Reclamação', canalRecebimento: 'Portal do Cliente' };
 }
@@ -241,7 +242,7 @@ async function runTests() {
         assert.ok(mock.DB.FICHAS_BIBLIOTECA.some(f => f.ID_MANIFESTACAO === id));
         const internal = await req('GET', '/api/manifestacoes', tokMaster());
         assert.ok(internal.body.itens.some(m => m.ID_MANIFESTACAO === id), 'registro ausente no SAC');
-        const publicResult = await client('GET', '/api/public/protocolo/' + result.body.protocolo);
+        const publicResult = await client('GET', '/api/public/protocolo/' + result.body.protocolo + '?identificador=cliente.portal%40example.test');
         assert.strictEqual(publicResult.status, 200);
         assert.strictEqual(publicResult.body.status, 'Recebida');
         for (const field of ['CNPJ', 'CPF', 'RAZAO_SOCIAL', 'RCA', 'ONDE_COMPROU', 'NFE']) {
@@ -309,17 +310,17 @@ async function runTests() {
       const protocol = result.body.protocolo;
       const record = mock.DB.MANIFESTACOES.find(m => m.ID_MANIFESTACAO === id);
       Object.assign(record, { DEVOLUTIVA_SUGERIDA: 'Sugestão IA confidencial', DEVOLUTIVA_FINAL: 'Rascunho interno', TRATATIVA_SAC_INTERNA: 'Causa interna' });
-      let summary = await client('GET', '/api/public/protocolo/' + protocol);
+      let summary = await client('GET', '/api/public/protocolo/' + protocol + '?identificador=cliente.portal%40example.test');
       assert.strictEqual(summary.body.devolutiva, '');
       assert.ok(!JSON.stringify(summary.body).includes('confidencial'));
       const approval = await req('POST', '/api/manifestacoes/' + id + '/devolutiva/aprovar', tokMaster(), { textoAprovado: 'Sua solicitação foi resolvida pelo SAC.' });
       assert.strictEqual(approval.status, 200);
-      summary = await client('GET', '/api/public/protocolo/' + protocol);
+      summary = await client('GET', '/api/public/protocolo/' + protocol + '?identificador=cliente.portal%40example.test');
       assert.strictEqual(summary.body.status, 'Em revisão final');
       assert.strictEqual(summary.body.devolutiva, '');
       const sent = await req('POST', '/api/manifestacoes/' + id + '/devolutiva/enviar', tokMaster(), {});
       assert.strictEqual(sent.status, 200);
-      summary = await client('GET', '/api/public/protocolo/' + protocol);
+      summary = await client('GET', '/api/public/protocolo/' + protocol + '?identificador=cliente.portal%40example.test');
       assert.strictEqual(summary.body.status, 'Encerrada');
       assert.strictEqual(summary.body.devolutiva, 'Sua solicitação foi resolvida pelo SAC.');
       assert.ok(!JSON.stringify(summary.body).includes('Causa interna'));
@@ -522,7 +523,7 @@ async function runTests() {
     const promises = Array.from({ length: 10 }, (_, i) =>
       req('POST', '/api/manifestacoes', tokChiacchio(), {
         tipo: 'RECLAMAÇÃO', empresaReclamante: 'CHIACCHIO EMBALAGENS',
-        descricao: `Teste concorrência ${i}`, produto: `Produto ${i}`, canal: 'SAC',
+        descricao: `Teste concorrência ${i}`, produto: `Produto ${i}`, canal: 'SAC', idempotencyKey: `concorr-behavior-${i}`,
       })
     );
     const resps = await Promise.all(promises);
@@ -546,7 +547,7 @@ async function runTests() {
   await test('LGPD/IA: criação de manifestação não gera RNC automaticamente', async () => {
     const r = await req('POST', '/api/manifestacoes', tokChiacchio(), {
       tipo: 'RECLAMAÇÃO', empresaReclamante: 'CHIACCHIO EMBALAGENS',
-      descricao: 'reincidência grave produto defeituoso com risco alto', produto: 'ProdutoX',
+      descricao: 'reincidência grave produto defeituoso com risco alto', produto: 'ProdutoX', idempotencyKey: 'lgpd-sem-rnc-1',
     });
     assert.ok([200, 201].includes(r.status), `status=${r.status}`);
     const idRnc = r.body?.dados?.ID_RNC || r.body?.ID_RNC;

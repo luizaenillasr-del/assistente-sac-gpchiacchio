@@ -1698,7 +1698,8 @@
         </div>
         <div class="portal-field">
           <label class="portal-label">Setor <span>*</span></label>
-          <input class="portal-input" id="p-setor-reg" type="text" placeholder="Ex: Comercial, Logística, Vendas...">
+          <input class="portal-input" id="p-setor-reg" type="search" list="p-setores-list" autocomplete="off" placeholder="Pesquise e selecione seu setor...">
+          <datalist id="p-setores-list"></datalist>
         </div>
         <div class="portal-field">
           <label class="portal-label">Colaborador (Recebimento) <span>*</span></label>
@@ -2343,6 +2344,39 @@
   let _portalFiles = [];
   let _portalPdfBase64 = null;
   let _portalProtocolo = null;
+  let _portalSetoresAtivos = [];
+  let _portalIdempotencyKey = (crypto.randomUUID ? crypto.randomUUID() : `portal-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+
+  async function carregarSetoresFormulario() {
+    const input = document.getElementById('p-setor-reg');
+    const lista = document.getElementById('p-setores-list');
+    if (!input || !lista || input.dataset.setoresCarregados === '1') return;
+    input.dataset.setoresCarregando = '1';
+    try {
+      const resposta = typeof _apiFetch === 'function'
+        ? await _apiFetch('/api/setores', 10000)
+        : await fetch(window.SAC_API + '/api/setores').then(r => r.json());
+      const itens = Array.isArray(resposta?.itens) ? resposta.itens : [];
+      const unicos = new Map();
+      itens.forEach(item => {
+        const nome = String(item?.NOME || item?.SETOR || item?.nome || item?.setor || '').trim();
+        const ativo = String(item?.ATIVO ?? item?.ativo ?? item?.STATUS ?? item?.status ?? 'SIM').trim().toUpperCase();
+        if (!nome || ['NAO','NÃO','INATIVO','EXCLUIDO','EXCLUÍDO','FALSE','0'].includes(ativo)) return;
+        const chave = nome.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+        if (!unicos.has(chave)) unicos.set(chave, nome);
+      });
+      _portalSetoresAtivos = [...unicos.values()].sort((a,b) => a.localeCompare(b, 'pt-BR'));
+      lista.innerHTML = _portalSetoresAtivos.map(nome => `<option value="${String(nome).replace(/&/g,'&amp;').replace(/"/g,'&quot;')}"></option>`).join('');
+      input.dataset.setoresCarregados = '1';
+      input.dataset.setoresErro = '0';
+    } catch (e) {
+      _portalSetoresAtivos = [];
+      input.dataset.setoresErro = '1';
+      console.warn('Não foi possível carregar os setores ativos:', e.message);
+    } finally {
+      delete input.dataset.setoresCarregando;
+    }
+  }
 
   function abrirPortalPublico() {
     document.getElementById('portal-screen').style.display='block';
@@ -2351,6 +2385,7 @@
     const agora = new Date();
     const dataFmt = agora.toLocaleDateString('pt-BR') + ' ' + agora.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
     document.getElementById('p-data-reg').value = dataFmt;
+    carregarSetoresFormulario();
     // Carrega lista de empresas
     const _empPadrao = ['Chiacchio Embalagens','Plaschio','Cesbap'];
     const _selEmp = document.getElementById('p-empresa');
@@ -2438,6 +2473,7 @@
     if(tipoRec) tipoRec.checked=true;
     document.getElementById('p-canal-outro-wrap').style.display='none';
     _portalFiles=[]; _portalPdfBase64=null; _portalProtocolo=null;
+    _portalIdempotencyKey = (crypto.randomUUID ? crypto.randomUUID() : `portal-${Date.now()}-${Math.random().toString(36).slice(2)}`);
     renderPortalFiles();
     document.getElementById('portal-screen').scrollTop=0;
     const agora = new Date();
@@ -2472,7 +2508,10 @@
     const tipoManifestacao = tipoSel ? tipoSel.value : 'Reclamação';
 
     if (!colaboradorRecebimento) { errEl.textContent='Informe seu nome.'; errEl.style.display='block'; document.getElementById('p-nome-reg').focus(); return; }
-    if (!setorRecebimento) { errEl.textContent='Informe seu setor.'; errEl.style.display='block'; document.getElementById('p-setor-reg').focus(); return; }
+    const setorNormalizado = setorRecebimento.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    const setorAtivo = _portalSetoresAtivos.find(s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase() === setorNormalizado);
+    if (!setorRecebimento || !setorAtivo) { errEl.textContent='Selecione um setor ativo cadastrado.'; errEl.style.display='block'; document.getElementById('p-setor-reg').focus(); return; }
+    if (document.getElementById('p-setor-reg')?.dataset.setoresErro === '1') { errEl.textContent='Não foi possível carregar os setores ativos. Atualize a tela e tente novamente.'; errEl.style.display='block'; return; }
     if (!empresa) { errEl.textContent='Selecione a empresa.'; errEl.style.display='block'; document.getElementById('p-empresa').focus(); return; }
     if (!nomeCliente) { errEl.textContent='Informe o nome do cliente.'; errEl.style.display='block'; document.getElementById('p-nome-cliente').focus(); return; }
     if (!descricaoOriginal || descricaoOriginal.length < 10) { errEl.textContent='Descreva a manifestação (mínimo 10 caracteres).'; errEl.style.display='block'; document.getElementById('p-descricao').focus(); return; }
@@ -2484,6 +2523,8 @@
 
     const payload = {
       colaboradorRecebimento, setorRecebimento, empresa,
+      origem: 'FORMULARIO_PUBLICO_SAC',
+      idempotencyKey: _portalIdempotencyKey,
       nomeCliente, descricaoOriginal, tipoManifestacao,
       canalRecebimento, canalOutro: v('p-canal-outro'),
       telefone: v('p-tel'), email: v('p-email'),
@@ -13108,7 +13149,7 @@ function abrirDossie(item) {
     ['Empresa reclamante', empReclamante], ['Empresa reclamada', empReclamada],
     ['Cliente / Contato', cliente], ['Tipo', tipo], ['Canal', item.CANAL||'--'],
     ['CNPJ', item.CNPJ||'--'], ['Produto', item.PRODUTO||'--'], ['Lote', item.LOTE||'--'],
-    ['NFe', item.NFE||'--'], ['Setor responsável', setor],
+    ['NFe', item.NFE||'--'], ['Setor de origem', item.SETOR_ORIGEM || item.SETOR_RECEBIMENTO || '--'], ['Setor responsável', setor],
     ['Analista criador', responsavel], ['SLA', `${slaHoras}h`],
     ['Quantidade', item.QUANTIDADE||'--'], ['Valor', item.VALOR||'--'],
   ].filter(([,v]) => v && v !== '--');

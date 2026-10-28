@@ -319,4 +319,5 @@ module.exports = {
   reset() { appendedRows.length = 0; },
   USUARIOS,
   DB,
+  protocoloPrisma: require('./protocolo-prisma-mock'),
 };

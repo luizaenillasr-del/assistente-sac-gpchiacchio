@@ -336,6 +336,7 @@ async function serve(app) {
         setorRecebimento: "Portal do Cliente",
         descricaoOriginal: "Teste de integração entre os dois ambientes",
         motivoManifestacao: "Qualidade",
+        idempotencyKey: "portal-isolamento-manifestacao-1",
         email: "cliente@example.test",
         telefone: "(11) 99999-1234",
       });
@@ -367,12 +368,12 @@ async function serve(app) {
         base,
         "POST",
         "/api/public/protocolo/consultar",
-        { protocolo: protocol },
+        { protocolo: protocol, identificador: "cliente@example.test" },
       );
       assert.equal(status.status, 200);
       assert.equal(status.body.status, "Recebida");
       assert.equal(
-        (await request(base, "GET", "/api/public/protocolo/" + protocol))
+        (await request(base, "GET", "/api/public/protocolo/" + protocol + "?identificador=cliente%40example.test"))
           .status,
         200,
       );
@@ -477,7 +478,7 @@ async function serve(app) {
             "/api/public/protocolo/MAN-ANTIGO-001?identificador=antigo@example.test",
           )
         ).status,
-        404,
+        200,
       );
     });
     await test("somente a devolutiva efetivamente liberada após encerramento aparece no portal", async () => {
@@ -490,7 +491,7 @@ async function serve(app) {
         CAUSA_RAIZ: "análise confidencial",
       });
       assert.equal(
-        (await request(base, "GET", "/api/public/protocolo/" + protocol)).body
+        (await request(base, "GET", "/api/public/protocolo/" + protocol + "?identificador=cliente%40example.test")).body
           .devolutiva,
         "",
       );
@@ -498,7 +499,7 @@ async function serve(app) {
       const result = await request(
         base,
         "GET",
-        "/api/public/protocolo/" + protocol,
+        "/api/public/protocolo/" + protocol + "?identificador=cliente%40example.test",
       );
       assert.equal(result.status, 200);
       assert.equal(result.body.devolutiva, "Resposta aprovada pelo SAC");
