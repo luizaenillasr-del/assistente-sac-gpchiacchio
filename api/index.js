@@ -1218,24 +1218,31 @@ async function gerarProximoID(nomeAba, prefixo, campoID) {
   return `${prefixo}-${ts}${rand}`;
 }
 
-// Inicializa geração atômica de protocolos com as funções de I/O locais.
-// Feito aqui para que lerAba, appendObjeto e invalidarCacheAba já estejam
-// definidos. Em testes sem DATABASE_URL, a estratégia Sheets é usada.
 protocoloAtomico.init({
-  lerAba,
-  appendObjeto,
-  invalidarCacheAba,
-  garantirAbaComCabecalhos,
-  prisma: (() => { try { return process.env.DATABASE_URL ? require('../database/connection') : null; } catch { return null; } })(),
-  claimWindowMs: process.env.NODE_ENV === 'test' ? 0 : 250,
+  prisma: (() => {
+    try {
+      if (process.env.DATABASE_URL) return require('../database/connection');
+      if (process.env.NODE_ENV === 'test') return _sheetsMock?.protocoloPrisma || null;
+      return null;
+    } catch { return null; }
+  })(),
+  readExistingMax: async base => {
+    const rows = await lerAba('MANIFESTACOES',5000);
+    return rows.reduce((max,row) => {
+      const value=String(row.PROTOCOLO||'');
+      if (!value.startsWith(base)) return max;
+      const seq=Number(value.slice(base.length));
+      return Number.isSafeInteger(seq) ? Math.max(max,seq) : max;
+    },0);
+  },
 });
 
 // O ID técnico continua compatível com registros antigos. O protocolo exibido
 // ao cliente é imutável e segue a regra de negócio da ficha única.
 // Delegado ao módulo protocoloAtomico — elimina a leitura do maior sequencial
 // seguida de incremento sem proteção contra concorrência.
-function gerarProtocoloFicha(empresa, canal, agora = new Date()) {
-  return protocoloAtomico.gerarProtocolo(empresa, canal, agora);
+function gerarProtocoloFicha(empresa, canal, agora, idempotencyKey) {
+  return protocoloAtomico.gerarProtocolo(empresa, canal, agora || new Date(), { idempotencyKey });
 }
 
 async function buscarPorID(nomeAba, id, camposID = ['ID_MANIFESTACAO','ID_RNC','ID_SETOR','ID']) {
@@ -2084,17 +2091,27 @@ app.post('/api/representantes/manifestacoes', requerPerfil('RCA / REPRESENTANTE'
   try{
     const b=req.body||{};
     if(!b.clienteId||!b.descricao) return res.status(400).json({sucesso:false,erro:'Cliente e descrição são obrigatórios.'});
+    const protocoloKey=String(b.idempotencyKey||req.headers['idempotency-key']||'').trim();
+    if(!protocoloKey) return res.status(400).json({sucesso:false,erro:'Chave de idempotência obrigatória.',codigo:'IDEMPOTENCY_KEY_REQUIRED'});
+    const existenteRca=(await lerAba('MANIFESTACOES',5000).catch(()=>[])).find(m=>String(m.IDEMPOTENCY_KEY||'')===protocoloKey);
+    if(existenteRca) return res.json({sucesso:true,id:existenteRca.ID_MANIFESTACAO,protocolo:existenteRca.PROTOCOLO,idempotente:true});
     const _pfxRca = empresaCanonica(b.empresaReclamada||req.user.empresa||'');
     const _idPfxRca = _pfxRca === 'PLASCHIO' ? 'PLAS' : _pfxRca === 'TUBAHIA' ? 'TUB' : 'CHI';
     const id=await gerarProximoID('MANIFESTACOES',_idPfxRca,'ID_MANIFESTACAO');
     const agora=new Date();
-    const protocolo=await gerarProtocoloFicha(b.empresaReclamada||req.user.empresa||'', 'RCA', agora);
+    const protocolo=await gerarProtocoloFicha(b.empresaReclamada||req.user.empresa||'', 'RCA', agora, protocoloKey);
     const agoraISO=agora.toISOString();
-    const objeto={ID_MANIFESTACAO:id,PROTOCOLO:protocolo,DATA_ABERTURA:agoraISO,DATA_REGISTRO:agoraISO,EMPRESA_RECLAMANTE:b.empresa||req.user.empresa||'',CONTATO:b.contato||'',PRODUTO:b.produto||'',LOTE:b.lote||'',NFE:b.nfe||'',DESCRICAO:b.descricao,DESCRICAO_MANIFESTACAO:b.descricao,STATUS:'RECEBIDA',TIPO:'Reclamação',CANAL:'RCA',CNPJ:b.cnpj||'',TELEFONE:b.telefone||'',EMAIL:b.email||'',QUANTIDADE:b.quantidade||'',EMPRESA_RECLAMADA:b.empresaReclamada||'',AREA_RECLAMACAO:b.areaReclamacao||'',EVIDENCIA_NC:b.evidenciaNC||'NÃO SEI',CODIGO_RCA:req.user.codigoRCA||'',USUARIO_CRIACAO:req.user.usuario,ORIGEM:'REPRESENTANTE',STATUS_TRATATIVA:'NÃO INICIADA'};
-    await appendObjeto('MANIFESTACOES',objeto);
+    const objeto={ID_MANIFESTACAO:id,PROTOCOLO:protocolo,IDEMPOTENCY_KEY:protocoloKey,DATA_ABERTURA:agoraISO,DATA_REGISTRO:agoraISO,EMPRESA_RECLAMANTE:b.empresa||req.user.empresa||'',CONTATO:b.contato||'',PRODUTO:b.produto||'',LOTE:b.lote||'',NFE:b.nfe||'',DESCRICAO:b.descricao,DESCRICAO_MANIFESTACAO:b.descricao,STATUS:'AGUARDANDO_TRIAGEM_SAC',STATUS_FICHA:'AGUARDANDO_TRIAGEM_SAC',TIPO:'Reclamação',CANAL:'RCA',CNPJ:b.cnpj||'',TELEFONE:b.telefone||'',EMAIL:b.email||'',QUANTIDADE:b.quantidade||'',EMPRESA_RECLAMADA:b.empresaReclamada||'',AREA_RECLAMACAO:b.areaReclamacao||'',EVIDENCIA_NC:b.evidenciaNC||'NÃO SEI',CODIGO_RCA:req.user.codigoRCA||'',USUARIO_CRIACAO:req.user.usuario,ORIGEM:'REPRESENTANTE',STATUS_TRATATIVA:'NÃO INICIADA'};
+    try {
+      await appendObjeto('MANIFESTACOES',objeto);
+      await protocoloAtomico.confirmarPersistencia(protocoloKey,id);
+    } catch (e) {
+      await protocoloAtomico.registrarFalhaPersistencia(protocoloKey,e).catch(()=>{});
+      throw e;
+    }
     registrarHistoricoManifestacao({id,protocolo,acao:'ABERTURA_RCA',descricao:'Manifestação aberta por representante',usuario:req.user?.usuario||'sistema',etapa:'1'}).catch(()=>{});
     res.json({sucesso:true,id,protocolo});
-  }catch(e){console.error(e);res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
+  }catch(e){console.error(e);res.status(Number(e?.status)||500).json({sucesso:false,erro:erroSeguro(e),codigo:e?.code||''});}
 });
 
 // ===== MANIFESTAÇÕES =====
@@ -2254,6 +2271,12 @@ app.post('/api/manifestacoes', requerPermissao('manifestacoes.abrir'), async (re
     const empresaReclamante = String(req.body?.empresaReclamante || '').trim() || (rascunho ? 'Cliente não informado' : '');
     const descricao = String(req.body?.descricao || '').trim() || (rascunho ? 'Rascunho em preenchimento.' : '');
     if (!empresaReclamante || !descricao) return res.status(400).json({ sucesso:false, erro:'Empresa reclamante e descrição são obrigatórios.' });
+    const protocoloKeyInput=String(req.body.idempotencyKey||req.headers['idempotency-key']||'').trim();
+    if(!rascunho && !protocoloKeyInput) return res.status(400).json({sucesso:false,erro:'Chave de idempotência obrigatória.',codigo:'IDEMPOTENCY_KEY_REQUIRED'});
+    if(!rascunho) {
+      const existente=(await lerAba('MANIFESTACOES',5000).catch(()=>[])).find(m=>String(m.IDEMPOTENCY_KEY||'')===protocoloKeyInput);
+      if(existente) return res.json({sucesso:true,id:existente.ID_MANIFESTACAO,protocolo:existente.PROTOCOLO,idempotente:true});
+    }
     const empNorm = normalizarEmpresa(empresaReclamada);
     // Não bloqueia na criação de colunas — a aba já existe em produção
     // RNC_SINALIZADO: campo novo para indicar que o caso merece revisão de RNC (B6)
@@ -2262,12 +2285,14 @@ app.post('/api/manifestacoes', requerPermissao('manifestacoes.abrir'), async (re
     const _pfx = _pfxEmp === 'PLASCHIO' ? 'PLAS' : _pfxEmp === 'TUBAHIA' ? 'TUB' : 'CHI';
     const id = await gerarProximoID('MANIFESTACOES', _pfx, 'ID_MANIFESTACAO');
     const agora = new Date().toISOString();
-    const protocolo = rascunho ? '' : await gerarProtocoloFicha(empresaReclamada, canal, agora);
+    const protocoloKey = protocoloKeyInput || `RASCUNHO:${id}`;
+    const protocolo = rascunho ? '' : await gerarProtocoloFicha(empresaReclamada, canal, agora, protocoloKey);
     const tipoFinal = tipo || 'Reclamação';
     const objeto = {
       ID_MANIFESTACAO:id, PROTOCOLO:protocolo, DATA_ABERTURA:agora, DATA_REGISTRO:agora, EMPRESA_RECLAMANTE:empresaReclamante,
+      IDEMPOTENCY_KEY:rascunho?'':protocoloKey,
       CONTATO:contato||'', PRODUTO:produto||'', LOTE:lote||'', NFE:nfe||'', DESCRICAO:descricao,
-      DESCRICAO_MANIFESTACAO:descricao, STATUS:rascunho?'RASCUNHO':'EM ANÁLISE', TIPO:tipoFinal, TIPO_SUGERIDO:'',
+      DESCRICAO_MANIFESTACAO:descricao, STATUS:rascunho?'RASCUNHO':'AGUARDANDO_TRIAGEM_SAC', TIPO:tipoFinal, TIPO_SUGERIDO:'',
       SETOR_SUGERIDO:'', SETORES_SUGERIDOS:'', PROCEDIMENTO_SUGERIDO:'', SLA_HORAS:'', PRIORIDADE:'',
       RNC_SUGERIDO:'NÃO', EMPRESA_RECLAMADA:empNorm||empresaReclamada||'', CANAL:canal||'',
       CNPJ:cnpj||'', TELEFONE:telefone||'', EMAIL:email||'', QUANTIDADE:quantidade||'',
@@ -2278,7 +2303,7 @@ app.post('/api/manifestacoes', requerPermissao('manifestacoes.abrir'), async (re
       DEVOLUTIVA_SUGERIDA:'', DEVOLUTIVA_FINAL:'', DEVOLUTIVA_ENVIADA:'',
       ORIGEM_DOCUMENTO:origemDocumento||'', ARQUIVO_ORIGEM:arquivoOrigem||'',
       USUARIO_CRIACAO:usuario||req.user?.usuario||'sistema', ORIGEM:req.body.origem||'SAC',
-      STATUS_FICHA:rascunho?'RASCUNHO':(req.body.statusFicha || (String(req.body.origem||'').toUpperCase().includes('PORTAL') ? 'AGUARDANDO_TRIAGEM_SAC' : 'ABERTA')),
+      STATUS_FICHA:rascunho?'RASCUNHO':'AGUARDANDO_TRIAGEM_SAC',
       ETAPA_ATUAL:rascunho?'1':'2', MENSAGEM_ETAPA:rascunho?'Rascunho em preenchimento.':'Aguardando triagem SAC.',
       RAZAO_SOCIAL:req.body.razaoSocial||'', NOME_FANTASIA:req.body.nomeFantasia||'', CODIGO_CLIENTE:req.body.codigoCliente||'',
       PEDIDO:req.body.pedido||'', DATA_PEDIDO:req.body.dataPedido||'', DATA_ENTREGA:req.body.dataEntrega||'', VENDEDOR:req.body.vendedor||'',
@@ -2295,10 +2320,12 @@ app.post('/api/manifestacoes', requerPermissao('manifestacoes.abrir'), async (re
       PRAZO_RETORNO_SAC:req.body.prazoRetornoSAC||'72 horas',
       TRATATIVA_SAC_INTERNA:req.body.tratativaSACInterna||'',
     };
-    await appendObjeto('MANIFESTACOES', objeto).catch(e => {
+    await appendObjeto('MANIFESTACOES', objeto).catch(async e => {
       console.error('[MANIFESTACOES][appendObjeto] FALHOU:', e.message, e?.stack);
+      if (!rascunho) await protocoloAtomico.registrarFalhaPersistencia(protocoloKey,e).catch(()=>{});
       throw e;
     });
+    if (!rascunho) await protocoloAtomico.confirmarPersistencia(protocoloKey,id);
     // Mantém o cadastro comercial mínimo do cliente para formar histórico sem
     // copiar dados que não pertencem à manifestação. A falha deste cadastro
     // nunca bloqueia o registro operacional já criado.
@@ -2377,15 +2404,13 @@ app.post('/api/manifestacoes', requerPermissao('manifestacoes.abrir'), async (re
           SLA_HORAS:Number(analise.slaHoras)||72, PRIORIDADE:analise.prioridade||'',
           // B6: RNC_SUGERIDO sempre NÃO — RNC só por decisão humana explícita
           RNC_SUGERIDO:'NÃO', RNC_SINALIZADO:analise.rncSinalizado?'REVISAR':'', TRATATIVA_SUGERIDA:analise.tratativaSugerida?.sugestao||'',
-          DEVOLUTIVA_SUGERIDA:analise.devolutivaSugerida||'', STATUS:'AGUARDANDO_DECISÃO'
+          DEVOLUTIVA_SUGERIDA:analise.devolutivaSugerida||''
         }).catch(()=>{});
       }
       if (decisaoCompleta && decisaoCompleta.tipo) {
         const tipoDecisao = decisaoCompleta.tipo;
         const df = decisaoCompleta.decisaoFinal || {};
-        let novoStatus = 'AGUARDANDO_DECISÃO';
-        if (tipoDecisao === 'rejeitada') novoStatus = 'REJEITADA';
-        else if (tipoDecisao === 'aceita' || tipoDecisao === 'editada') novoStatus = 'EM TRATAMENTO';
+        const novoStatus = 'AGUARDANDO_TRIAGEM_SAC';
         await atualizarPorID('MANIFESTACOES', id, {
           STATUS: novoStatus,
           TIPO_CONFIRMADO: df.tipo || analise?.tipoDetectado || '',
@@ -2406,7 +2431,7 @@ app.post('/api/manifestacoes', requerPermissao('manifestacoes.abrir'), async (re
       : status === 403
       ? 'Sem permissão para gravar na planilha. Verifique as credenciais da conta de serviço.'
       : erroSeguro(e);
-    res.status(500).json({ sucesso:false, erro: msgClara });
+    res.status(Number(e?.status)||500).json({ sucesso:false, erro: msgClara, codigo:e?.code||'' });
   }
 });
 
@@ -5328,7 +5353,8 @@ app.post('/api/pesquisas/decisao', requerPermissao('pesquisas.criar'), async (re
       const agoraDt = new Date();
       const agora = agoraDt.toISOString();
       const empresaPesquisa = resposta.EMPRESA || resposta.EMPRESA_RECLAMADA || '';
-      const protocoloPesquisa = await gerarProtocoloFicha(empresaPesquisa, 'PESQUISA', agoraDt);
+      const protocoloKey = `PESQUISA:${respostaId}`;
+      const protocoloPesquisa = await gerarProtocoloFicha(empresaPesquisa, 'PESQUISA', agoraDt, protocoloKey);
       const obj = {
         ID_MANIFESTACAO: manifestacaoId,
         PROTOCOLO: protocoloPesquisa,
@@ -5339,7 +5365,9 @@ app.post('/api/pesquisas/decisao', requerPermissao('pesquisas.criar'), async (re
         CONTATO: resposta.NOME_CLIENTE || '',
         DESCRICAO: `[Originado de pesquisa ${respostaId}] ${resposta.COMENTARIO || 'Nota baixa na pesquisa de satisfação'}`,
         DESCRICAO_MANIFESTACAO: `[Originado de pesquisa ${respostaId}] ${resposta.COMENTARIO || ''}`,
-        STATUS: 'RECEBIDA',
+        STATUS: 'AGUARDANDO_TRIAGEM_SAC',
+        STATUS_FICHA: 'AGUARDANDO_TRIAGEM_SAC',
+        IDEMPOTENCY_KEY: protocoloKey,
         TIPO: 'Reclamação',
         CANAL: 'PESQUISA',
         NOTA_PESQUISA: resposta.NOTA_MEDIA || '',
@@ -5347,7 +5375,13 @@ app.post('/api/pesquisas/decisao', requerPermissao('pesquisas.criar'), async (re
         ORIGEM: 'PESQUISA_SATISFACAO',
         STATUS_TRATATIVA: 'NÃO INICIADA',
       };
-      await appendObjeto('MANIFESTACOES', obj);
+      try {
+        await appendObjeto('MANIFESTACOES', obj);
+        await protocoloAtomico.confirmarPersistencia(protocoloKey,manifestacaoId);
+      } catch (e) {
+        await protocoloAtomico.registrarFalhaPersistencia(protocoloKey,e).catch(()=>{});
+        throw e;
+      }
       invalidarCacheAba('MANIFESTACOES');
       registrarHistoricoManifestacao({id:manifestacaoId,protocolo:protocoloPesquisa,acao:'ABERTURA_PESQUISA',descricao:`Manifestação originada de pesquisa de satisfação ${respostaId}`,usuario:req.user?.usuario||'sistema',etapa:'1'}).catch(()=>{});
       // dual-write para PostgreSQL (não-bloqueante), igual ao POST /api/manifestacoes
@@ -5385,7 +5419,7 @@ app.post('/api/pesquisas/decisao', requerPermissao('pesquisas.criar'), async (re
     registrarAuditoria(req.user.usuario, `PESQUISA_DECISAO_${decisao}`, respostaId, aba, null, { justificativa, manifestacaoId }).catch(() => {});
     res.json({ sucesso: true, decisao: novoStatus, manifestacaoId });
   } catch (e) {
-    res.status(500).json({ sucesso: false, erro: erroSeguro(e) });
+    res.status(Number(e?.status)||500).json({ sucesso: false, erro: erroSeguro(e), codigo:e?.code||'' });
   }
 });
 
@@ -7487,12 +7521,20 @@ app.patch('/api/manifestacoes/:id/circa-dados', requerPermissao('manifestacoes.e
       patch.DESCRICAO_MANIFESTACAO = req.body.descricao;
     }
     if (req.body?.finalizar) {
-      patch.PROTOCOLO = m.PROTOCOLO || await gerarProtocoloFicha(m.EMPRESA_RECLAMADA || '', m.CANAL || 'MANUAL', new Date().toISOString());
-      patch.STATUS = 'AGUARDANDO_TRIAGEM_SAC'; patch.STATUS_FICHA = 'ABERTA'; patch.ETAPA_ATUAL = '2';
+      const protocoloKey = String(req.body.idempotencyKey||req.headers['idempotency-key']||`FINALIZAR:${m.ID_MANIFESTACAO||idReq}`);
+      patch.PROTOCOLO = m.PROTOCOLO || await gerarProtocoloFicha(m.EMPRESA_RECLAMADA || '', m.CANAL || 'MANUAL', new Date(), protocoloKey);
+      patch.IDEMPOTENCY_KEY = protocoloKey;
+      patch.STATUS = 'AGUARDANDO_TRIAGEM_SAC'; patch.STATUS_FICHA = 'AGUARDANDO_TRIAGEM_SAC'; patch.ETAPA_ATUAL = '2';
       patch.MENSAGEM_ETAPA = 'Aguardando triagem SAC.';
     }
     patch.DATA_ULTIMA_EDICAO=new Date().toISOString(); patch.ATUALIZADO_POR=req.user?.usuario||'sistema';
-    await atualizarPorID('MANIFESTACOES',m.ID_MANIFESTACAO||idReq,patch,['ID_MANIFESTACAO','PROTOCOLO','ID']);
+    await atualizarPorID('MANIFESTACOES',m.ID_MANIFESTACAO||idReq,patch,['ID_MANIFESTACAO','PROTOCOLO','ID']).catch(async e => {
+      if (req.body?.finalizar && patch.IDEMPOTENCY_KEY) await protocoloAtomico.registrarFalhaPersistencia(patch.IDEMPOTENCY_KEY,e).catch(()=>{});
+      throw e;
+    });
+    if (req.body?.finalizar && patch.IDEMPOTENCY_KEY) {
+      await protocoloAtomico.confirmarPersistencia(patch.IDEMPOTENCY_KEY,m.ID_MANIFESTACAO||idReq);
+    }
     await registrarHistoricoManifestacao({id:m.ID_MANIFESTACAO||idReq,protocolo:m.PROTOCOLO||'',usuario:req.user?.usuario||'sistema',etapa:patch.ETAPA_ATUAL||m.ETAPA_ATUAL||'',acao:'ATUALIZOU_CARD_CIRCA',descricao:'Dados operacionais atualizados no novo card.'});
     // Auto-increment FREQUENCIA_OCORRENCIAS na aba CAUSAS quando causa raiz é confirmada
     if (patch.CAUSA_RAIZ_CONFIRMADA && patch.CAUSA_RAIZ_CONFIRMADA !== (m.CAUSA_RAIZ_CONFIRMADA||'')) {
@@ -8644,6 +8686,9 @@ app.post('/api/public/reclamacoes', publicRateLimit, async (req, res) => {
     const idempotencyKey = String(
       b.idempotencyKey || req.headers['idempotency-key'] || '',
     ).trim().slice(0, 120);
+    if (!idempotencyKey) {
+      return res.status(400).json({ sucesso:false, erro:'Chave de idempotência obrigatória.', codigo:'IDEMPOTENCY_KEY_REQUIRED' });
+    }
     if (idempotencyKey) {
       const previous = (await lerAba('MANIFESTACOES', 5000).catch(() => []))
         .find(row => String(row.IDEMPOTENCY_KEY || '').trim() === idempotencyKey);
@@ -8665,12 +8710,13 @@ app.post('/api/public/reclamacoes', publicRateLimit, async (req, res) => {
     // Antes o portal usava o mesmo valor aleatório para os dois, o que quebrava
     // a rastreabilidade e deixava a manifestação sem protocolo oficial.
     const id = await gerarProximoID('MANIFESTACOES', empresaPortal?.prefixo || 'MAN', 'ID_MANIFESTACAO');
+    const protocoloKey = idempotencyKey;
     const canalFinal = canalRecebimento === 'Outro' && canalOutro ? `Outro: ${canalOutro}` : (canalRecebimento || 'Não informado');
     const dtReg = new Date(agora);
     const anoReg = dtReg.getFullYear().toString();
     const mesReg = String(dtReg.getMonth() + 1).padStart(2, '0');
     const dataRegistroFmt = dtReg.toLocaleDateString('pt-BR') + ' ' + dtReg.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
-    const protocolo = await gerarProtocoloFicha(empresa, canalFinal, dtReg);
+    const protocolo = await gerarProtocoloFicha(empresa, canalFinal, dtReg, protocoloKey);
 
     // 1. Salvar manifestação no Sheets
     const objeto = {
@@ -8718,11 +8764,17 @@ app.post('/api/public/reclamacoes', publicRateLimit, async (req, res) => {
       SETOR_RECEBIMENTO: setorRecebimento,
       USUARIO_CRIACAO: `portal:${colaboradorRecebimento}`,
       STATUS_TRATATIVA: 'NÃO INICIADA',
-      IDEMPOTENCY_KEY: idempotencyKey,
+      IDEMPOTENCY_KEY: protocoloKey,
       CIRCA_ANALISE_STATUS: 'PENDENTE',
     };
     await garantirAbaComCabecalhos('MANIFESTACOES', Object.keys(objeto));
-    await appendObjeto('MANIFESTACOES', objeto);
+    try {
+      await appendObjeto('MANIFESTACOES', objeto);
+      await protocoloAtomico.confirmarPersistencia(protocoloKey,id);
+    } catch (e) {
+      await protocoloAtomico.registrarFalhaPersistencia(protocoloKey,e).catch(()=>{});
+      throw e;
+    }
     await registrarHistoricoManifestacao({ id, protocolo, usuario: colaboradorRecebimento || 'PORTAL_PUBLICO', acao: 'REGISTROU_MANIFESTACAO', descricao: `Manifestação registrada via ${viaCliente ? 'Portal do Cliente' : 'Formulário interno SAC'}; setor de origem: ${setorRecebimento}; aguardando triagem SAC.`, etapa: 'TRIAGEM_SAC' });
 
     // 2. Upload evidências para o Drive (não bloqueia se falhar)
@@ -8886,7 +8938,8 @@ app.post('/api/public/reclamacoes', publicRateLimit, async (req, res) => {
     res.json(resposta);
   } catch (e) {
     console.error('[PUBLIC] POST /api/public/reclamacoes:', e.message);
-    res.status(500).json({ sucesso: false, erro: 'Não foi possível registrar. Tente novamente.' });
+    const status = Number(e?.status)||500;
+    res.status(status).json({ sucesso: false, erro: status === 503 ? 'Emissão de protocolo temporariamente indisponível. Tente novamente mais tarde.' : 'Não foi possível registrar. Tente novamente.', codigo:e?.code||'' });
   }
 });
 
@@ -11314,7 +11367,8 @@ async function responderConsultaPortal(req, res) {
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('Referrer-Policy', 'no-referrer');
   try {
-    res.json(await consultarProtocoloPortal(req.params.protocolo || req.body.protocolo, req.method === 'POST' ? req.body.identificador : undefined));
+    const identificador = req.method === 'POST' ? req.body.identificador : req.query.identificador;
+    res.json(await consultarProtocoloPortal(req.params.protocolo || req.body.protocolo, identificador));
   } catch (e) {
     res.status(e.status || 500).json({ sucesso: false, erro: e.status ? e.message : 'Erro ao consultar protocolo.' });
   }

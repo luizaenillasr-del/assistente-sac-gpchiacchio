@@ -109,8 +109,9 @@ module.exports = function createLookup(read) {
     )
       throw deny();
     const strong = strongProtocol.test(proto);
-    // Não consultar a base para um ID sequencial sem confirmação adicional.
-    if (!strong && !identifier) throw deny();
+    // Protocolo é identificador de atendimento, não credencial. Toda consulta
+    // pública exige confirmação de e-mail ou telefone, inclusive no Portal.
+    if (!identifier) throw deny();
     const all = (await read("MANIFESTACOES")).filter((r) =>
       [r.ID_MANIFESTACAO, r.PROTOCOLO].some(
         (p) => p && String(p).toUpperCase() === proto,
@@ -140,26 +141,11 @@ module.exports = function createLookup(read) {
         );
         throw err;
       } else {
-        // Sem identificador ou identificador não bate: usa o primeiro registro
-        // com ORIGEM=PORTAL_PUBLICO se existir, respeitando a isenção de
-        // identificador para registros do portal público.
-        const portalPub = all.filter(r => r.ORIGEM === "PORTAL_PUBLICO");
-        if (strong && portalPub.length === 1) {
-          man = portalPub[0];
-        } else if (strong && portalPub.length > 1) {
-          const err = Object.assign(
-            new Error("Protocolo com múltiplos registros. Entre em contato com o SAC para esclarecimento."),
-            { status: 409 },
-          );
-          throw err;
-        } else {
-          throw deny();
-        }
+        throw deny();
       }
     }
 
     if (
-      !(strong && man.ORIGEM === "PORTAL_PUBLICO") &&
       !contactMatches(man, identifier)
     )
       throw deny();

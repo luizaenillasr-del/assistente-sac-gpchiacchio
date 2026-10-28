@@ -2345,6 +2345,7 @@
   let _portalPdfBase64 = null;
   let _portalProtocolo = null;
   let _portalSetoresAtivos = [];
+  let _portalIdempotencyKey = (crypto.randomUUID ? crypto.randomUUID() : `portal-${Date.now()}-${Math.random().toString(36).slice(2)}`);
 
   async function carregarSetoresFormulario() {
     const input = document.getElementById('p-setor-reg');
@@ -2472,6 +2473,7 @@
     if(tipoRec) tipoRec.checked=true;
     document.getElementById('p-canal-outro-wrap').style.display='none';
     _portalFiles=[]; _portalPdfBase64=null; _portalProtocolo=null;
+    _portalIdempotencyKey = (crypto.randomUUID ? crypto.randomUUID() : `portal-${Date.now()}-${Math.random().toString(36).slice(2)}`);
     renderPortalFiles();
     document.getElementById('portal-screen').scrollTop=0;
     const agora = new Date();
@@ -2522,6 +2524,7 @@
     const payload = {
       colaboradorRecebimento, setorRecebimento, empresa,
       origem: 'FORMULARIO_PUBLICO_SAC',
+      idempotencyKey: _portalIdempotencyKey,
       nomeCliente, descricaoOriginal, tipoManifestacao,
       canalRecebimento, canalOutro: v('p-canal-outro'),
       telefone: v('p-tel'), email: v('p-email'),

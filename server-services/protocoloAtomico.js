@@ -1,123 +1,112 @@
 'use strict';
-/**
- * Geração atômica de protocolo de ficha única.
- *
- * Estratégia dual:
- *  1. PostgreSQL (preferido): INSERT … ON CONFLICT DO UPDATE RETURNING seq
- *     garante unicidade entre instâncias serverless sem lock em memória.
- *  2. Sheets (fallback): claim-row em CONTADORES_PROTOCOLO + leitura por
- *     posição de inserção dentro de uma janela de 3 s. Muito mais robusto que
- *     o read-max-increment anterior, mas não é completamente atômico sob
- *     concorrência intensa — recomenda-se PostgreSQL para alta carga.
- *
- * Nenhuma estratégia usa mutex em memória, timestamps como garantia de
- * unicidade, ou renumeração retroativa de protocolos existentes.
- */
 
 const fichaUnica = require('./fichaUnica');
 
-let _deps = null;
+let _prisma = null;
+let _readExistingMax = null;
 
-/**
- * @param {{ lerAba, appendObjeto, invalidarCacheAba, garantirAbaComCabecalhos, prisma?, claimWindowMs? }} deps
- *   claimWindowMs: tempo de espera após append antes de ler o contador (default 250).
- *                  Use 0 em testes sequenciais.
- */
-function init(deps) {
-  _deps = deps;
+function init({ prisma, readExistingMax } = {}) {
+  _prisma = prisma || null;
+  _readExistingMax = typeof readExistingMax === 'function' ? readExistingMax : null;
 }
 
-const _HEADERS_CONTADOR = ['CHAVE', 'CLAIM_ID', 'MAX_INICIAL', 'DATA_HORA'];
-
-async function _maxExistente(base) {
-  const rows = await _deps.lerAba('MANIFESTACOES', 5000).catch(() => []);
-  return rows.reduce((cur, item) => {
-    const v = String(item.PROTOCOLO || '');
-    if (!v.startsWith(base)) return cur;
-    const n = Number(v.slice(base.length));
-    return Number.isFinite(n) ? Math.max(cur, n) : cur;
-  }, 0);
-}
-
-async function _seqPostgres(chave, maxExistente) {
-  const prisma = _deps.prisma;
-  await prisma.$executeRaw`
-    CREATE TABLE IF NOT EXISTS protocol_counter (
-      chave TEXT PRIMARY KEY,
-      seq   INT  NOT NULL DEFAULT 0
-    )`;
-  const rows = await prisma.$queryRaw`
-    INSERT INTO protocol_counter (chave, seq)
-    VALUES (${chave}, ${maxExistente + 1})
-    ON CONFLICT (chave) DO UPDATE
-      SET seq = GREATEST(protocol_counter.seq, ${maxExistente}) + 1
-    RETURNING seq`;
-  return Number(rows[0].seq);
-}
-
-async function _seqSheets(chave, maxExistente) {
-  const claimId = Date.now().toString(36).toUpperCase() + '-' +
-    Math.random().toString(36).slice(2, 6).toUpperCase();
-  const claimTime = Date.now();
-
-  await _deps.garantirAbaComCabecalhos('CONTADORES_PROTOCOLO', _HEADERS_CONTADOR);
-  await _deps.appendObjeto('CONTADORES_PROTOCOLO', {
-    CHAVE: chave,
-    CLAIM_ID: claimId,
-    MAX_INICIAL: String(maxExistente),
-    DATA_HORA: new Date(claimTime).toISOString(),
+function indisponivel() {
+  return Object.assign(new Error('Emissão de protocolo temporariamente indisponível.'), {
+    code: 'PROTOCOLO_STORAGE_UNAVAILABLE', status: 503,
   });
-  _deps.invalidarCacheAba('CONTADORES_PROTOCOLO');
+}
 
-  const windowMs = typeof _deps.claimWindowMs === 'number' ? _deps.claimWindowMs : 250;
-  if (windowMs > 0) await new Promise(r => setTimeout(r, windowMs));
-
-  const linhas = await _deps.lerAba('CONTADORES_PROTOCOLO').catch(() => []);
-  // Conta somente claims dentro de uma janela de 3 s ao redor do nosso append:
-  // impede que claims de gerações anteriores do mesmo dia/canal inflem a posição.
-  const windowSec = 3000;
-  const concurrent = linhas.filter(r => {
-    if (String(r.CHAVE || '') !== chave) return false;
-    const t = new Date(r.DATA_HORA || 0).getTime();
-    return Math.abs(t - claimTime) <= windowSec;
-  });
-
-  const pos = concurrent.findIndex(r => String(r.CLAIM_ID || '') === claimId);
-  if (pos < 0) {
-    // Fallback conservador: retorna seq mínimo seguro e emite aviso para reconciliação.
-    console.warn(`[protocoloAtomico] claim ${claimId} não encontrado após append para chave ${chave}; usando fallback seq=${maxExistente + 1}`);
-    return maxExistente + 1;
+function normalizarChave(valor) {
+  const key = String(valor || '').trim();
+  if (!key || key.length > 160) {
+    throw Object.assign(new Error('Chave de idempotência obrigatória para emissão do protocolo.'), {
+      code: 'IDEMPOTENCY_KEY_REQUIRED', status: 400,
+    });
   }
-  return maxExistente + pos + 1;
+  return key;
 }
 
-/**
- * Gera o próximo protocolo oficial para a combinação empresa/canal/data.
- * Preserva prefixos CHIA/PLA/TUB e compatibilidade com protocolos históricos.
- *
- * @param {string}      empresa
- * @param {string}      canal
- * @param {Date|string} agora
- * @returns {Promise<string>}  ex: 'PLA-20261028-06-0001'
- */
-async function gerarProtocolo(empresa, canal, agora = new Date()) {
-  if (!_deps) throw new Error('[protocoloAtomico] init() deve ser chamado antes de gerarProtocolo()');
+function conflitoIdempotencia() {
+  return Object.assign(new Error('A chave de idempotência já foi usada para outra manifestação.'), {
+    code: 'IDEMPOTENCY_KEY_CONFLICT', status: 409,
+  });
+}
+
+async function buscarReserva(idempotencyKey) {
+  if (!_prisma) throw indisponivel();
+  const key = normalizarChave(idempotencyKey);
+  const rows = await _prisma.$queryRaw`
+    SELECT idempotency_key, chave, protocolo, seq, status, entity_id, last_error
+      FROM protocol_reservation
+     WHERE idempotency_key = ${key}
+     LIMIT 1`;
+  return rows[0] || null;
+}
+
+async function gerarProtocolo(empresa, canal, agora = new Date(), options = {}) {
+  if (!_prisma) throw indisponivel();
+  const idempotencyKey = normalizarChave(options.idempotencyKey);
   const dataObj = agora instanceof Date ? agora : new Date(agora);
-  const dataStr = fichaUnica.dataProtocolo(dataObj);
-  const prefixo = fichaUnica.prefixoEmpresa(empresa);
-  const codigo = fichaUnica.codigoCanal(canal);
-  const chave = `${prefixo}-${dataStr}-${codigo}`;
-  const base = `${chave}-`;
+  if (Number.isNaN(dataObj.getTime())) throw new Error('Data inválida para emissão do protocolo.');
+  const chave = `${fichaUnica.prefixoEmpresa(empresa)}-${fichaUnica.dataProtocolo(dataObj)}-${fichaUnica.codigoCanal(canal)}`;
+  const contadorAtual = await _prisma.$queryRaw`SELECT seq FROM protocol_counter WHERE chave = ${chave} LIMIT 1`;
+  const floor = contadorAtual[0] ? 0 : Math.max(0, Number(await _readExistingMax?.(`${chave}-`)) || 0);
 
-  const maxExistente = await _maxExistente(base);
+  const reservar = async tx => {
+    const existente = await tx.$queryRaw`
+      SELECT idempotency_key, chave, protocolo, seq, status, entity_id
+        FROM protocol_reservation
+       WHERE idempotency_key = ${idempotencyKey}
+       LIMIT 1`;
+    if (existente[0]) {
+      if (existente[0].chave !== chave) throw conflitoIdempotencia();
+      return existente[0].protocolo;
+    }
 
-  let seq;
-  if (_deps.prisma) {
-    seq = await _seqPostgres(chave, maxExistente);
-  } else {
-    seq = await _seqSheets(chave, maxExistente);
+    const contador = await tx.$queryRaw`
+      INSERT INTO protocol_counter (chave, seq)
+      VALUES (${chave}, ${floor + 1})
+      ON CONFLICT (chave) DO UPDATE SET seq = GREATEST(protocol_counter.seq, ${floor}) + 1
+      RETURNING seq`;
+    const seq = Number(contador[0]?.seq);
+    if (!Number.isSafeInteger(seq) || seq < 1) throw new Error('Contador de protocolo retornou valor inválido.');
+    const protocolo = fichaUnica.montarProtocolo({ empresa, canal, data: dataObj, sequencial: seq });
+    await tx.$executeRaw`
+      INSERT INTO protocol_reservation
+        (idempotency_key, chave, protocolo, seq, status, created_at, updated_at)
+      VALUES (${idempotencyKey}, ${chave}, ${protocolo}, ${seq}, 'RESERVED', NOW(), NOW())`;
+    return protocolo;
+  };
+
+  try {
+    return await _prisma.$transaction(reservar);
+  } catch (e) {
+    if (e?.code === 'IDEMPOTENCY_KEY_CONFLICT') throw e;
+    if (e?.code === '23505' || e?.code === 'P2002') {
+      const existente = await buscarReserva(idempotencyKey);
+      if (existente?.chave !== chave) throw conflitoIdempotencia();
+      if (existente?.protocolo) return existente.protocolo;
+    }
+    throw e;
   }
-  return fichaUnica.montarProtocolo({ empresa, canal, data: dataObj, sequencial: seq });
 }
 
-module.exports = { init, gerarProtocolo };
+async function confirmarPersistencia(idempotencyKey, entityId) {
+  if (!_prisma) throw indisponivel();
+  const key = normalizarChave(idempotencyKey);
+  await _prisma.$executeRaw`
+    UPDATE protocol_reservation
+       SET status = 'PERSISTED', entity_id = ${String(entityId || '')}, last_error = NULL, updated_at = NOW()
+     WHERE idempotency_key = ${key}`;
+}
+
+async function registrarFalhaPersistencia(idempotencyKey, erro) {
+  if (!_prisma) return;
+  const key = normalizarChave(idempotencyKey);
+  await _prisma.$executeRaw`
+    UPDATE protocol_reservation
+       SET status = 'PERSISTENCE_FAILED', last_error = ${String(erro?.message || erro || '').slice(0, 500)}, updated_at = NOW()
+     WHERE idempotency_key = ${key}`;
+}
+
+module.exports = { init, gerarProtocolo, buscarReserva, confirmarPersistencia, registrarFalhaPersistencia };
