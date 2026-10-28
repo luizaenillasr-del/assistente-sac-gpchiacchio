@@ -111,15 +111,56 @@ module.exports = function createLookup(read) {
     const strong = strongProtocol.test(proto);
     // Não consultar a base para um ID sequencial sem confirmação adicional.
     if (!strong && !identifier) throw deny();
-    const man = (await read("MANIFESTACOES")).find((r) =>
+    const all = (await read("MANIFESTACOES")).filter((r) =>
       [r.ID_MANIFESTACAO, r.PROTOCOLO].some(
         (p) => p && String(p).toUpperCase() === proto,
       ),
     );
+    if (!all.length) throw deny();
+
+    let man;
+    if (all.length === 1) {
+      man = all[0];
+    } else {
+      // Protocolo duplicado detectado — logar para reconciliação manual.
+      console.warn(
+        `[portalConsulta] CONFLITO: protocolo "${proto}" encontrado em ${all.length} registros. IDs: ${all.map(r => r.ID_MANIFESTACAO).join(", ")} — encaminhar para reconciliação.`,
+      );
+      // Prioriza o registro que confirme o identificador fornecido.
+      const byContact = identifier
+        ? all.filter((r) => contactMatches(r, identifier))
+        : [];
+      if (byContact.length === 1) {
+        man = byContact[0];
+      } else if (byContact.length > 1) {
+        // Ambiguidade irredutível mesmo com identificador.
+        const err = Object.assign(
+          new Error("Protocolo com múltiplos registros. Entre em contato com o SAC para esclarecimento."),
+          { status: 409 },
+        );
+        throw err;
+      } else {
+        // Sem identificador ou identificador não bate: usa o primeiro registro
+        // com ORIGEM=PORTAL_PUBLICO se existir, respeitando a isenção de
+        // identificador para registros do portal público.
+        const portalPub = all.filter(r => r.ORIGEM === "PORTAL_PUBLICO");
+        if (strong && portalPub.length === 1) {
+          man = portalPub[0];
+        } else if (strong && portalPub.length > 1) {
+          const err = Object.assign(
+            new Error("Protocolo com múltiplos registros. Entre em contato com o SAC para esclarecimento."),
+            { status: 409 },
+          );
+          throw err;
+        } else {
+          throw deny();
+        }
+      }
+    }
+
     if (
-      !man ||
-      (!(strong && man.ORIGEM === "PORTAL_PUBLICO") &&
-        !contactMatches(man, identifier))
+      !(strong && man.ORIGEM === "PORTAL_PUBLICO") &&
+      !contactMatches(man, identifier)
     )
       throw deny();
     return summary(man, proto);

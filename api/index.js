@@ -17,6 +17,7 @@ const { tratativaEngine, devolutivaEngine, assertividade: assertividadeService }
 const permissoesService = require('../server-services/permissoesService');
 const dashboardExecutiva = require('../server-services/dashboardExecutiva');
 const fichaUnica = require('../server-services/fichaUnica');
+const protocoloAtomico = require('../server-services/protocoloAtomico');
 const circaEngine = require('../server-services/circaEngine');
 const circaWorkflow = require('../server-services/circaWorkflow');
 
@@ -1037,7 +1038,7 @@ const LER_ABA_TTL_MS = 60_000;
 // cache dessas abas: uma alteração de status, exclusão lógica ou permissão
 // precisa ser percebida na próxima consulta, inclusive em outra instância
 // serverless, e jamais pode ser mascarada por uma cópia antiga.
-const TTL_POR_ABA = { MANIFESTACOES: 0, USUARIOS: 0, PERMISSOES_USUARIO: 0 };
+const TTL_POR_ABA = { MANIFESTACOES: 0, USUARIOS: 0, PERMISSOES_USUARIO: 0, CONTADORES_PROTOCOLO: 0 };
 
 async function lerAba(nomeAba, maxRows) {
   if (_sheetsMock?.lerAba) return _sheetsMock.lerAba(nomeAba, maxRows);
@@ -1217,21 +1218,24 @@ async function gerarProximoID(nomeAba, prefixo, campoID) {
   return `${prefixo}-${ts}${rand}`;
 }
 
+// Inicializa geração atômica de protocolos com as funções de I/O locais.
+// Feito aqui para que lerAba, appendObjeto e invalidarCacheAba já estejam
+// definidos. Em testes sem DATABASE_URL, a estratégia Sheets é usada.
+protocoloAtomico.init({
+  lerAba,
+  appendObjeto,
+  invalidarCacheAba,
+  garantirAbaComCabecalhos,
+  prisma: (() => { try { return process.env.DATABASE_URL ? require('../database/connection') : null; } catch { return null; } })(),
+  claimWindowMs: process.env.NODE_ENV === 'test' ? 0 : 250,
+});
+
 // O ID técnico continua compatível com registros antigos. O protocolo exibido
 // ao cliente é imutável e segue a regra de negócio da ficha única.
-async function gerarProtocoloFicha(empresa, canal, agora = new Date()) {
-  const data = fichaUnica.dataProtocolo(agora);
-  const prefixo = fichaUnica.prefixoEmpresa(empresa);
-  const codigo = fichaUnica.codigoCanal(canal);
-  const base = `${prefixo}-${data}-${codigo}-`;
-  const existentes = await lerAba('MANIFESTACOES', 5000).catch(() => []);
-  const maior = existentes.reduce((atual, item) => {
-    const valor = String(item.PROTOCOLO || '');
-    if (!valor.startsWith(base)) return atual;
-    const n = Number(valor.slice(base.length));
-    return Number.isFinite(n) ? Math.max(atual, n) : atual;
-  }, 0);
-  return fichaUnica.montarProtocolo({ empresa, canal, data: agora, sequencial: maior + 1 });
+// Delegado ao módulo protocoloAtomico — elimina a leitura do maior sequencial
+// seguida de incremento sem proteção contra concorrência.
+function gerarProtocoloFicha(empresa, canal, agora = new Date()) {
+  return protocoloAtomico.gerarProtocolo(empresa, canal, agora);
 }
 
 async function buscarPorID(nomeAba, id, camposID = ['ID_MANIFESTACAO','ID_RNC','ID_SETOR','ID']) {
@@ -2083,10 +2087,13 @@ app.post('/api/representantes/manifestacoes', requerPerfil('RCA / REPRESENTANTE'
     const _pfxRca = empresaCanonica(b.empresaReclamada||req.user.empresa||'');
     const _idPfxRca = _pfxRca === 'PLASCHIO' ? 'PLAS' : _pfxRca === 'TUBAHIA' ? 'TUB' : 'CHI';
     const id=await gerarProximoID('MANIFESTACOES',_idPfxRca,'ID_MANIFESTACAO');
-    const agora=new Date().toISOString();
-    const objeto={ID_MANIFESTACAO:id,DATA_ABERTURA:agora,DATA_REGISTRO:agora,EMPRESA_RECLAMANTE:b.empresa||req.user.empresa||'',CONTATO:b.contato||'',PRODUTO:b.produto||'',LOTE:b.lote||'',NFE:b.nfe||'',DESCRICAO:b.descricao,DESCRICAO_MANIFESTACAO:b.descricao,STATUS:'RECEBIDA',TIPO:'Reclamação',CANAL:'RCA',CNPJ:b.cnpj||'',TELEFONE:b.telefone||'',EMAIL:b.email||'',QUANTIDADE:b.quantidade||'',EMPRESA_RECLAMADA:b.empresaReclamada||'',AREA_RECLAMACAO:b.areaReclamacao||'',EVIDENCIA_NC:b.evidenciaNC||'NÃO SEI',CODIGO_RCA:req.user.codigoRCA||'',USUARIO_CRIACAO:req.user.usuario,ORIGEM:'REPRESENTANTE',STATUS_TRATATIVA:'NÃO INICIADA'};
+    const agora=new Date();
+    const protocolo=await gerarProtocoloFicha(b.empresaReclamada||req.user.empresa||'', 'RCA', agora);
+    const agoraISO=agora.toISOString();
+    const objeto={ID_MANIFESTACAO:id,PROTOCOLO:protocolo,DATA_ABERTURA:agoraISO,DATA_REGISTRO:agoraISO,EMPRESA_RECLAMANTE:b.empresa||req.user.empresa||'',CONTATO:b.contato||'',PRODUTO:b.produto||'',LOTE:b.lote||'',NFE:b.nfe||'',DESCRICAO:b.descricao,DESCRICAO_MANIFESTACAO:b.descricao,STATUS:'RECEBIDA',TIPO:'Reclamação',CANAL:'RCA',CNPJ:b.cnpj||'',TELEFONE:b.telefone||'',EMAIL:b.email||'',QUANTIDADE:b.quantidade||'',EMPRESA_RECLAMADA:b.empresaReclamada||'',AREA_RECLAMACAO:b.areaReclamacao||'',EVIDENCIA_NC:b.evidenciaNC||'NÃO SEI',CODIGO_RCA:req.user.codigoRCA||'',USUARIO_CRIACAO:req.user.usuario,ORIGEM:'REPRESENTANTE',STATUS_TRATATIVA:'NÃO INICIADA'};
     await appendObjeto('MANIFESTACOES',objeto);
-    res.json({sucesso:true,id});
+    registrarHistoricoManifestacao({id,protocolo,acao:'ABERTURA_RCA',descricao:'Manifestação aberta por representante',usuario:req.user?.usuario||'sistema',etapa:'1'}).catch(()=>{});
+    res.json({sucesso:true,id,protocolo});
   }catch(e){console.error(e);res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
 
@@ -5318,12 +5325,17 @@ app.post('/api/pesquisas/decisao', requerPermissao('pesquisas.criar'), async (re
     if (decisao === 'MANIFESTACAO') {
       // Criar manifestação a partir da pesquisa
       manifestacaoId = await gerarProximoID('MANIFESTACOES', 'MAN', 'ID_MANIFESTACAO');
-      const agora = new Date().toISOString();
+      const agoraDt = new Date();
+      const agora = agoraDt.toISOString();
+      const empresaPesquisa = resposta.EMPRESA || resposta.EMPRESA_RECLAMADA || '';
+      const protocoloPesquisa = await gerarProtocoloFicha(empresaPesquisa, 'PESQUISA', agoraDt);
       const obj = {
         ID_MANIFESTACAO: manifestacaoId,
+        PROTOCOLO: protocoloPesquisa,
         DATA_ABERTURA: agora,
         DATA_REGISTRO: agora,
-        EMPRESA_RECLAMANTE: resposta.EMPRESA || '',
+        EMPRESA_RECLAMANTE: empresaPesquisa,
+        EMPRESA_RECLAMADA: resposta.EMPRESA_RECLAMADA || empresaPesquisa,
         CONTATO: resposta.NOME_CLIENTE || '',
         DESCRICAO: `[Originado de pesquisa ${respostaId}] ${resposta.COMENTARIO || 'Nota baixa na pesquisa de satisfação'}`,
         DESCRICAO_MANIFESTACAO: `[Originado de pesquisa ${respostaId}] ${resposta.COMENTARIO || ''}`,
@@ -5337,6 +5349,7 @@ app.post('/api/pesquisas/decisao', requerPermissao('pesquisas.criar'), async (re
       };
       await appendObjeto('MANIFESTACOES', obj);
       invalidarCacheAba('MANIFESTACOES');
+      registrarHistoricoManifestacao({id:manifestacaoId,protocolo:protocoloPesquisa,acao:'ABERTURA_PESQUISA',descricao:`Manifestação originada de pesquisa de satisfação ${respostaId}`,usuario:req.user?.usuario||'sistema',etapa:'1'}).catch(()=>{});
       // dual-write para PostgreSQL (não-bloqueante), igual ao POST /api/manifestacoes
       if (manifestacaoRepo) {
         manifestacaoRepo.upsertFromSheets({
