@@ -1,0 +1,64 @@
+name: Inventário CIRCA (somente leitura)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: inventario-circa-readonly
+  cancel-in-progress: false
+
+jobs:
+  inventario:
+    name: Inventariar bases CIRCA sem escrita
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    env:
+      GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+      SPREADSHEET_ID: ${{ secrets.SPREADSHEET_ID }}
+
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Instalar dependências sem scripts de instalação
+        run: npm ci --ignore-scripts
+
+      - name: Verificar secrets necessários sem exibir valores
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=()
+          [[ -n "${GOOGLE_CREDENTIALS:-}" ]] || missing+=(GOOGLE_CREDENTIALS)
+          [[ -n "${SPREADSHEET_ID:-}" ]] || missing+=(SPREADSHEET_ID)
+          if (( ${#missing[@]} > 0 )); then
+            echo "Inventário interrompido. Configuração ausente: ${missing[*]}."
+            exit 1
+          fi
+          node -e "JSON.parse(process.env.GOOGLE_CREDENTIALS); console.log('Secrets presentes; valores não serão exibidos.')"
+
+      - name: Executar testes de segurança do inventário
+        run: node tests/inventario-circa.js
+
+      - name: Ler as seis abas e gerar relatório sanitizado
+        env:
+          INVENTARIO_OUTPUT: ${{ runner.temp }}/circa-inventario.json
+        run: node scripts/inventario-circa.js
+
+      - name: Publicar relatório sanitizado
+        if: ${{ success() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: inventario-circa-${{ github.run_id }}
+          path: ${{ runner.temp }}/circa-inventario.json
+          if-no-files-found: error
+          retention-days: 7
