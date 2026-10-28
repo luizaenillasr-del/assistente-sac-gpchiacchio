@@ -2492,6 +2492,7 @@
       quantidadeAfetada: v('p-qtd'), pedido: v('p-pedido'),
       notaFiscal: v('p-nf'), observacoes: v('p-obs'),
       evidencias: _portalFiles.filter(f=>f.dados),
+      origem: 'FORMULARIO_PUBLICO_SAC',
     };
 
     try {
@@ -13520,6 +13521,8 @@ const STATUS_LABELS = {
   'REJEITADA': { label: 'Rejeitada', color: '#DC2626', bg: '#FEE2E2' },
   'REJEITADA_SAC': { label: 'Rejeitada SAC', color: '#DC2626', bg: '#FEE2E2' },
   'APROVADA_SAC':  { label: 'Aprovada SAC', color: '#065F46', bg: '#ECFDF5' },
+  'AGUARDANDO_TRIAGEM_SAC': { label: 'Aguard. triagem SAC', color: '#B45309', bg: '#FEF9C3' },
+  'AGUARDANDO_TRIAGEM': { label: 'Aguard. triagem', color: '#B45309', bg: '#FEF9C3' },
 };
 
 function getStatusInfo(status) {
@@ -24642,7 +24645,7 @@ async function mudarStatusMC(id, novoStatus) {
 
   function stageOf(status){
     const n=norm(status);
-    if(!n||n==='NOVA'||n==='RECEBIDA') return 'nova';
+    if(!n||n==='NOVA'||n==='RECEBIDA'||n.includes('TRIAGEM')) return 'nova';
     if(/ENCERRAD|CONCLUID|REJEITAD|CANCELAD/.test(n)) return 'enc';
     if(n.includes('APROVACAO')) return 'aprov';
     if(n.includes('DEVOLUTIVA')||n==='APROVADA') return 'dev';
@@ -24674,12 +24677,15 @@ async function mudarStatusMC(id, novoStatus) {
     const setoresRaw=pick(m,['SETORES_CONFIRMADOS','SETOR_CONFIRMADO','SETORES_SUGERIDOS','SETOR_SUGERIDO','SETOR_RESPONSAVEL','SETOR']);
     const setores=setoresRaw?setoresRaw.split(/[,;]/).map(x=>x.trim()).filter(Boolean):[];
     return {
-      raw:m, id:pick(m,['ID_MANIFESTACAO','PROTOCOLO','ID']), st, h, prazoMs, mine, ext, pri,
-      cli:pick(m,['EMPRESA_RECLAMANTE','CLIENTE','NOME_CLIENTE','CONTATO']),
+      raw:m,
+      id:pick(m,['ID_MANIFESTACAO','ID']),
+      protocolo:pick(m,['PROTOCOLO','ID_MANIFESTACAO','ID']),
+      st, h, prazoMs, mine, ext, pri,
+      cli:pick(m,['NOME_CLIENTE','CLIENTE_NOME','EMPRESA_RECLAMANTE','CLIENTE','CONTATO']),
       emp:pick(m,['EMPRESA_RECLAMADA','EMPRESA']),
       cnpj:pick(m,['CNPJ']),
       tipo:pick(m,['TIPO_CONFIRMADO','TIPO','TIPO_MANIFESTACAO']),
-      motivo:pick(m,['MOTIVO','CATEGORIA','TIPO_SUGERIDO']),
+      motivo:pick(m,['MOTIVO','CATEGORIA']),
       canal:pick(m,['CANAL']),
       desc:pick(m,['DESCRICAO','DESCRICAO_MANIFESTACAO','RELATO','DESCRICAO_RECLAMACAO','DESCRICAO_COMPLETA','OBSERVACOES']),
       statusRaw:pick(m,['STATUS']),
@@ -24989,7 +24995,7 @@ async function mudarStatusMC(id, novoStatus) {
     const now=Date.now();
     tbody.innerHTML=pg.map(m=>{
       const id=m.id||'';
-      const prot=m.id||'—';
+      const prot=m.protocolo||m.id||'—';
       const cli=m.cli||'—';
       const ass=m.motivo||m.tipo||'—';
       const emp=m.emp||'—';
@@ -25052,7 +25058,7 @@ async function mudarStatusMC(id, novoStatus) {
   function _renderTratativaFicha(raw){
     _cenRawAtual=raw;
     const n=normMan(raw);
-    _setText('tf-protocolo',n.id);
+    _setText('tf-protocolo',n.protocolo||n.id);
     const sb=$('tf-status-badge');
     if(sb){sb.textContent=ST_LBL[n.st]||n.st;sb.style.background=ST_CFG_BG[n.st]||'#F0F0F0';sb.style.color=ST_CFG_FG[n.st]||'#545454';}
     const sl=slaTxt(n);
@@ -25064,7 +25070,7 @@ async function mudarStatusMC(id, novoStatus) {
     const camposEl=$('tf-campos');
     if(camposEl){
       const campos=[
-        ['Protocolo',n.id],['Empresa',n.emp],['Cliente',n.cli],['CNPJ',n.cnpj],
+        ['Protocolo',n.protocolo||n.id],['Empresa',n.emp],['Cliente',n.cli],['CNPJ',n.cnpj],
         ['Tipo',n.tipo],['Motivo',n.motivo],['Prioridade',PRI_LBL[n.pri]||''],['Canal',n.canal],
         ['Produto',pick(raw,['PRODUTO'])],['Lote',pick(raw,['LOTE'])],
         ['Pedido',pick(raw,['PEDIDO'])],['NF',pick(raw,['NOTA_FISCAL','NFE','NF'])],
@@ -25674,7 +25680,7 @@ async function mudarStatusMC(id, novoStatus) {
     const sl=slaTxt(n);
     const ph=$('cen-placeholder'); if(ph) ph.style.display='none';
     const dt=$('cen-detalhe'); if(dt) dt.classList.add('active');
-    _setText('cen-man-protocolo',n.id);
+    _setText('cen-man-protocolo',n.protocolo||n.id);
     const sb=$('cen-man-status-badge');
     if(sb){sb.textContent=(n.st==='enc'&&/REJEIT|CANCEL/.test(norm(n.statusRaw)))?n.statusRaw.replace(/_/g,' ').toLowerCase().replace(/^./,c=>c.toUpperCase()):ST_LBL[n.st];sb.className='mc-st mc-st-lg mc-st-'+n.st;}
     const pri=$('cen-man-prioridade');
@@ -25832,14 +25838,10 @@ async function mudarStatusMC(id, novoStatus) {
 
   async function cenValidarEncaminhar(){
     if(!_cenAtual||!_cenRawAtual) return semSel();
-    const n=normMan(_cenRawAtual), u=s()||{};
-    if(!n.setores.length){toast('Defina o setor em "Mais ações" antes de encaminhar.');cenToggleAcoes(true);$('trat-setor')?.focus();return;}
-    if(!confirm('Validar a análise e encaminhar aos setores: '+n.setores.join(', ')+'?')) return;
-    const d=await api('/api/manifestacoes/'+encodeURIComponent(_cenAtual)+'/decisao',{method:'POST',body:{
-      usuario:u.usuario||u.nome||'', tipoConfirmado:n.tipo, setoresConfirmados:n.setores,
-      prioridade:pick(_cenRawAtual,['PRIORIDADE']), slaHoras:pick(_cenRawAtual,['SLA_HORAS']), decisaoStatus:'APROVADA'
-    }});
-    if(d.sucesso) depois('Análise validada e encaminhada aos setores.'); else erro(d);
+    // Abre a ficha na aba Triagem para que o responsável preencha setor e responsável antes de encaminhar
+    cenAbrirFichaCompleta();
+    const triagemTabBtn=document.querySelector('.cen-tab[onclick*="triagem"]');
+    if(triagemTabBtn) cenTab('triagem', triagemTabBtn);
   }
 
   async function cenSeguirDevolutiva(){
@@ -26059,7 +26061,7 @@ async function mudarStatusMC(id, novoStatus) {
     if(!_cenRawAtual) return;
     const raw=_cenRawAtual, n=normMan(raw);
     // Preenche o modal da ficha completa
-    _setText('cfm-protocolo',raw.PROTOCOLO||n.id);
+    _setText('cfm-protocolo',n.protocolo||n.id);
     const st=$('cfm-status');
     if(st){st.textContent=ST_LBL[n.st]||n.st;st.style.background=(ST_CFG_BG[n.st]||'#F0F0F0');st.style.color=(ST_CFG_FG[n.st]||'#545454');}
     const atEl=$('cfm-atrasada');if(atEl)atEl.style.display=isLate(n)&&n.st!=='enc'?'':'none';

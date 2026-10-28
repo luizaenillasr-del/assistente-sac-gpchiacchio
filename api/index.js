@@ -8573,6 +8573,9 @@ app.post('/api/public/reclamacoes', publicRateLimit, async (req, res) => {
   try {
     const b = req.body || {};
     const viaCliente = b.origem === 'PORTAL_PUBLICO';
+    const origemEnviada = String(b.origem || '').trim().toUpperCase();
+    const _ORIGENS_VALIDAS = new Set(['PORTAL_PUBLICO', 'FORMULARIO_PUBLICO_SAC', 'PORTAL_FUNCIONARIO']);
+    const origemFinal = _ORIGENS_VALIDAS.has(origemEnviada) ? origemEnviada : (viaCliente ? 'PORTAL_PUBLICO' : 'FORMULARIO_PUBLICO_SAC');
     const empresaPortal = PORTAL_EMPRESAS.find(e => e.codigo === empresaCanonica(b.empresa) || normalizarTexto(e.nome) === normalizarTexto(b.empresa));
     if (viaCliente && !empresaPortal) return res.status(400).json({ sucesso: false, erro: 'Selecione uma empresa do grupo.' });
     if (viaCliente) {
@@ -8674,7 +8677,7 @@ app.post('/api/public/reclamacoes', publicRateLimit, async (req, res) => {
       DATA_ABERTURA: agora,
       DATA_REGISTRO: agora,
       EMPRESA_RECLAMADA: empresa,
-      EMPRESA_RECLAMANTE: empresa,
+      EMPRESA_RECLAMANTE: nomeCliente,
       CLIENTE_NOME: nomeCliente,
       NOME_CLIENTE: nomeCliente,
       TELEFONE: telefone,
@@ -8699,12 +8702,13 @@ app.post('/api/public/reclamacoes', publicRateLimit, async (req, res) => {
       CANAL: canalFinal,
       MOTIVO: motivoManifestacao,
       OBSERVACOES: observacoes,
-      STATUS: 'AGUARDANDO_APROVAÇÃO',
+      STATUS: 'AGUARDANDO_TRIAGEM_SAC',
+      ETAPA_ATUAL: 'TRIAGEM',
       APROVACAO_NECESSARIA: 'SIM',
       TIPO: tipoManifestacao,
       TIPO_MANIFESTACAO: tipoManifestacao,
-      ORIGEM: viaCliente ? 'PORTAL_PUBLICO' : 'PORTAL_FUNCIONARIO',
-      ORIGEM_REGISTRO: viaCliente ? 'PORTAL_PUBLICO' : 'PORTAL_FUNCIONARIO',
+      ORIGEM: origemFinal,
+      ORIGEM_REGISTRO: origemFinal,
       REGISTRADO_POR: colaboradorRecebimento,
       COLABORADOR_RECEBIMENTO: colaboradorRecebimento,
       SETOR_RECEBIMENTO: setorRecebimento,
