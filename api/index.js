@@ -2073,9 +2073,16 @@ app.post('/api/auth/reset-password', async (req,res)=>{
 // ===== ANÁLISE IA =====
 app.post('/api/analise', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC','ATENDENTE SAC','SETOR RESPONSÁVEL','ESPECIALISTA','APROVADOR'), async (req, res) => {
   try {
-    const { descricao, tipo, empresaReclamada, empresaReclamante, produto, lote } = req.body;
+    const { descricao, tipo, empresaReclamada, empresaReclamante, produto, lote,
+      nfe, canal, prioridade, dataRegistro, cnpj, telefone, email, quantidade, nome } = req.body;
     if (!descricao) return res.status(400).json({ sucesso: false, erro: 'Descrição é obrigatória.' });
-    const analise = await executarAnalise({ descricao, tipo, empresaReclamada, empresaReclamante, produto, lote });
+    // Mantém os campos preenchidos no formulário no mesmo contrato usado pelo
+    // Cérebro. Antes, somente os seis campos originais chegavam à análise e a
+    // IA recebia empresa/canal/contato como ausentes.
+    const analise = await executarAnalise({ descricao, tipo, empresaReclamada, empresaReclamante, produto, lote,
+      nfe, canal, prioridade, dataAbertura:dataRegistro, dataRegistro, cnpj, telefone, email, quantidade, nome,
+      CANAL: canal, EMPRESA_RECLAMADA: empresaReclamada, EMPRESA_RECLAMANTE: empresaReclamante,
+      DESCRICAO: descricao, CONTATO: nome || telefone || email || '' });
     // A ferramenta "se alimenta" das avaliações: anexa aprendizado do histórico de assertividade
     try {
       const rowsAssert = await lerAba('ASSERTIVIDADE_IA', 2000).catch(() => []);
@@ -2309,7 +2316,7 @@ app.post('/api/manifestacoes', requerPermissao('manifestacoes.abrir'), async (re
     const empNorm = normalizarEmpresa(empresaReclamada);
     // Não bloqueia na criação de colunas — a aba já existe em produção
     // RNC_SINALIZADO: campo novo para indicar que o caso merece revisão de RNC (B6)
-    garantirAbaComCabecalhos('MANIFESTACOES',['ID_MANIFESTACAO','PROTOCOLO','DATA_ABERTURA','DATA_REGISTRO','EMPRESA_RECLAMANTE','CONTATO','PRODUTO','LOTE','NFE','DESCRICAO','DESCRICAO_MANIFESTACAO','STATUS','TIPO','TIPO_SUGERIDO','SETOR_SUGERIDO','SETORES_SUGERIDOS','PROCEDIMENTO_SUGERIDO','SLA_HORAS','PRIORIDADE','RNC_SUGERIDO','RNC_SINALIZADO','EMPRESA_RECLAMADA','CANAL','CNPJ','TELEFONE','EMAIL','QUANTIDADE','VALOR','TRATATIVA_SUGERIDA','TRATATIVA_APLICAVEL','TRATATIVA_REALIZADA','STATUS_TRATATIVA','DEVOLUTIVA_SUGERIDA','DEVOLUTIVA_FINAL','DEVOLUTIVA_ENVIADA','ORIGEM_DOCUMENTO','ARQUIVO_ORIGEM','USUARIO_CRIACAO','ORIGEM','TIPO_CONFIRMADO','SETORES_CONFIRMADOS','ID_PROCEDIMENTO_APLICADO','GERA_RNC','DATA_INICIO_TRATATIVA','DATA_CONCLUSAO_TRATATIVA','DATA_DEVOLUTIVA','DATA_CONCLUSAO_MANIFESTACAO','STATUS_FICHA','PROCEDENTE','PROCEDENTE_JUSTIFICATIVA','CAMINHO_TRATATIVA','DATA_ENCAMINHAMENTO','PRAZO_RETORNO_SAC','TRATATIVA_SAC_INTERNA','SETOR_ACIONADO','ESCOPO_ACIONAMENTO','RESP_SETOR_O_QUE','RESP_SETOR_CAUSA','RESP_SETOR_RESOLUCAO','RESP_SETOR_ACAO_PREV','RESP_SETOR_RESPONSAVEL','RESP_SETOR_PRAZO','DATA_RESPOSTA_SETOR','APROV_SETOR_DECISAO','APROV_SETOR_MOTIVO','APROV_SETOR_ORIENTACAO','VALID_SAC_DATA_RETORNO','VALID_SAC_CLIENTE_INFORMADO','VALID_SAC_RESOLVIDA','VALIDACAO_RESULTADO','OBSERVACOES_FINAIS','DATA_VALIDACAO_SAC','RAZAO_SOCIAL','NOME_FANTASIA','CODIGO_CLIENTE','PEDIDO','DATA_PEDIDO','DATA_ENTREGA','VENDEDOR','DATA_RECEBIMENTO','ATENDENTE','CATEGORIA','MOTIVO','GRAVIDADE','UNIDADE_MEDIDA','QUANTIDADE_TOTAL','QUANTIDADE_AFETADA','QUANTIDADE_DEVOLVIDA','QUANTIDADE_PERDIDA','VALOR_UNITARIO','VALOR_TOTAL','PREJUIZO_ESTIMADO','PREJUIZO_CONFIRMADO','ANEXOS','EVIDENCIAS','ORIGEM','ETAPA_ATUAL','MENSAGEM_ETAPA','RESPONSAVEL','PRAZO_TRATATIVA','INVESTIGACAO_O_QUE','INVESTIGACAO_VERIFICACOES','INVESTIGACAO_EVIDENCIAS','INVESTIGACAO_NOTAS','SUBCAUSA','CAUSA_RAIZ_CONFIRMADA','REINCIDENCIA','ACOES_CORRETIVAS','DATA_SOLUCAO','RESPONSAVEL_EXECUCAO','RESUMO_RESOLUCAO','DEVOLUTIVA_CANAL','DEVOLUTIVA_DESTINATARIO','APRENDIZADO_CASO','APRENDIZADO_MATRIZ']).catch(()=>{});
+    garantirAbaComCabecalhos('MANIFESTACOES',['ID_MANIFESTACAO','PROTOCOLO','IDEMPOTENCY_KEY','DATA_ABERTURA','DATA_REGISTRO','EMPRESA_RECLAMANTE','CONTATO','PRODUTO','LOTE','NFE','DESCRICAO','DESCRICAO_MANIFESTACAO','STATUS','TIPO','TIPO_SUGERIDO','SETOR_SUGERIDO','SETORES_SUGERIDOS','PROCEDIMENTO_SUGERIDO','SLA_HORAS','PRIORIDADE','RNC_SUGERIDO','RNC_SINALIZADO','EMPRESA_RECLAMADA','CANAL','CNPJ','TELEFONE','EMAIL','QUANTIDADE','VALOR','TRATATIVA_SUGERIDA','TRATATIVA_APLICAVEL','TRATATIVA_REALIZADA','STATUS_TRATATIVA','DEVOLUTIVA_SUGERIDA','DEVOLUTIVA_FINAL','DEVOLUTIVA_ENVIADA','ANALISE_IA','ORIGEM_DOCUMENTO','ARQUIVO_ORIGEM','USUARIO_CRIACAO','ORIGEM','TIPO_CONFIRMADO','SETORES_CONFIRMADOS','ID_PROCEDIMENTO_APLICADO','GERA_RNC','DATA_INICIO_TRATATIVA','DATA_CONCLUSAO_TRATATIVA','DATA_DEVOLUTIVA','DATA_CONCLUSAO_MANIFESTACAO','STATUS_FICHA','PROCEDENTE','PROCEDENTE_JUSTIFICATIVA','CAMINHO_TRATATIVA','DATA_ENCAMINHAMENTO','PRAZO_RETORNO_SAC','TRATATIVA_SAC_INTERNA','SETOR_ACIONADO','ESCOPO_ACIONAMENTO','RESP_SETOR_O_QUE','RESP_SETOR_CAUSA','RESP_SETOR_RESOLUCAO','RESP_SETOR_ACAO_PREV','RESP_SETOR_RESPONSAVEL','RESP_SETOR_PRAZO','DATA_RESPOSTA_SETOR','APROV_SETOR_DECISAO','APROV_SETOR_MOTIVO','APROV_SETOR_ORIENTACAO','VALID_SAC_DATA_RETORNO','VALID_SAC_CLIENTE_INFORMADO','VALID_SAC_RESOLVIDA','VALIDACAO_RESULTADO','OBSERVACOES_FINAIS','DATA_VALIDACAO_SAC','RAZAO_SOCIAL','NOME_FANTASIA','CODIGO_CLIENTE','PEDIDO','DATA_PEDIDO','DATA_ENTREGA','VENDEDOR','DATA_RECEBIMENTO','ATENDENTE','CATEGORIA','MOTIVO','GRAVIDADE','UNIDADE_MEDIDA','QUANTIDADE_TOTAL','QUANTIDADE_AFETADA','QUANTIDADE_DEVOLVIDA','QUANTIDADE_PERDIDA','VALOR_UNITARIO','VALOR_TOTAL','PREJUIZO_ESTIMADO','PREJUIZO_CONFIRMADO','ANEXOS','EVIDENCIAS','ORIGEM','ETAPA_ATUAL','MENSAGEM_ETAPA','RESPONSAVEL','PRAZO_TRATATIVA','INVESTIGACAO_O_QUE','INVESTIGACAO_VERIFICACOES','INVESTIGACAO_EVIDENCIAS','INVESTIGACAO_NOTAS','SUBCAUSA','CAUSA_RAIZ_CONFIRMADA','REINCIDENCIA','ACOES_CORRETIVAS','DATA_SOLUCAO','RESPONSAVEL_EXECUCAO','RESUMO_RESOLUCAO','DEVOLUTIVA_CANAL','DEVOLUTIVA_DESTINATARIO','APRENDIZADO_CASO','APRENDIZADO_MATRIZ']).catch(()=>{});
     const _pfxEmp = empresaCanonica(empresaReclamada||'');
     const _pfx = _pfxEmp === 'PLASCHIO' ? 'PLAS' : _pfxEmp === 'TUBAHIA' ? 'TUB' : 'CHI';
     const id = await gerarProximoID('MANIFESTACOES', _pfx, 'ID_MANIFESTACAO');
@@ -2341,7 +2348,9 @@ app.post('/api/manifestacoes', requerPermissao('manifestacoes.abrir'), async (re
       UNIDADE_MEDIDA:req.body.unidadeMedida||fichaUnica.unidadeEmpresa(empresaReclamada), QUANTIDADE_AFETADA:req.body.quantidadeAfetada||quantidade||'',
       QUANTIDADE_PERDIDA:req.body.quantidadePerdida||'', VALOR_UNITARIO:req.body.valorUnitario||valor||'',
       VALOR_TOTAL:req.body.valorTotal||valorTotalPedido||'', PREJUIZO_CONFIRMADO:req.body.prejuizoConfirmado||'',
-      ANEXOS:Array.isArray(anexos)?JSON.stringify(anexos):(anexos||''), EVIDENCIAS:req.body.evidencias||'',
+      // Somente metadados vão para o Sheets; os arquivos são enviados ao
+      // Drive depois que a ficha recebe seu ID técnico.
+      ANEXOS:JSON.stringify(metadadosAnexos(anexos)), EVIDENCIAS:req.body.evidencias||'',
       PROCEDENTE:req.body.procedente||'',
       PROCEDENTE_JUSTIFICATIVA:req.body.procedenteJustificativa||'',
       CAMINHO_TRATATIVA:req.body.caminhoTratativa||'',
@@ -2354,6 +2363,10 @@ app.post('/api/manifestacoes', requerPermissao('manifestacoes.abrir'), async (re
       if (!rascunho) await protocoloAtomico.registrarFalhaPersistencia(protocoloKey,e).catch(()=>{});
       throw e;
     });
+    if (!rascunho && Array.isArray(anexos) && anexos.length) {
+      const anexosPersistidos = await persistirAnexosManifestacao(anexos, id, usuario || req.user?.usuario || 'sistema');
+      await atualizarPorID('MANIFESTACOES', id, { ANEXOS: JSON.stringify(anexosPersistidos) }, ['ID_MANIFESTACAO']).catch(e => console.warn('[ANEXOS][MANIFESTACAO] vínculo pendente:', e.message));
+    }
     if (!rascunho) await protocoloAtomico.confirmarPersistencia(protocoloKey,id);
     // Mantém o cadastro comercial mínimo do cliente para formar histórico sem
     // copiar dados que não pertencem à manifestação. A falha deste cadastro
@@ -2433,7 +2446,8 @@ app.post('/api/manifestacoes', requerPermissao('manifestacoes.abrir'), async (re
           SLA_HORAS:Number(analise.slaHoras)||72, PRIORIDADE:analise.prioridade||'',
           // B6: RNC_SUGERIDO sempre NÃO — RNC só por decisão humana explícita
           RNC_SUGERIDO:'NÃO', RNC_SINALIZADO:analise.rncSinalizado?'REVISAR':'', TRATATIVA_SUGERIDA:analise.tratativaSugerida?.sugestao||'',
-          DEVOLUTIVA_SUGERIDA:analise.devolutivaSugerida||''
+          DEVOLUTIVA_SUGERIDA:analise.devolutivaSugerida||'',
+          ANALISE_IA: JSON.stringify(analise)
         }).catch(()=>{});
       }
       if (decisaoCompleta && decisaoCompleta.tipo) {
@@ -7471,6 +7485,46 @@ async function salvarAnexo(anexo, contexto = {}) {
   });
   return { id, ...resultado };
 }
+
+// O formulário recebe Base64 para transmitir o arquivo, mas esse conteúdo não
+// deve ser gravado na célula da manifestação (limite do Sheets e risco de
+// HTTP 500). A ficha mantém somente metadados; o binário fica no Drive e é
+// vinculado pela aba ANEXOS.
+function metadadosAnexos(anexos = []) {
+  return (Array.isArray(anexos) ? anexos : []).filter(a => a && (a.nome || a.name)).map(a => ({
+    nome: a.nome || a.name || '',
+    mimeType: a.mimeType || a.type || 'application/octet-stream',
+    tamanho: a.tamanho || a.size || '',
+    categoria: a.categoria || 'EVIDENCIA',
+    status: a.dataBase64 ? 'PENDENTE_UPLOAD' : (a.status || 'PENDENTE_UPLOAD'),
+    url: a.url || a.URL_ARQUIVO || '',
+    driveFileId: a.driveFileId || a.DRIVE_FILE_ID || '',
+  }));
+}
+
+async function persistirAnexosManifestacao(anexos, idManifestacao, usuario, existentes = []) {
+  const atuais = Array.isArray(existentes) ? existentes : [];
+  const resultado = [...atuais];
+  for (const anexo of (Array.isArray(anexos) ? anexos : [])) {
+    const nome = String(anexo?.nome || anexo?.name || '').trim();
+    if (!nome) continue;
+    const jaVinculado = resultado.find(x => String(x.nome || x.NOME || x.NOME_ARQUIVO || '').trim() === nome && (x.url || x.URL_ARQUIVO || x.driveFileId || x.DRIVE_FILE_ID));
+    if (jaVinculado) continue;
+    const base = { nome, mimeType: anexo.mimeType || anexo.type || '', tamanho: anexo.tamanho || anexo.size || '', categoria: anexo.categoria || 'EVIDENCIA' };
+    if (!anexo.dataBase64) { resultado.push({ ...base, status: anexo.status || 'PENDENTE_UPLOAD' }); continue; }
+    try {
+      const salvo = await salvarAnexo({ ...anexo, nome, mimeType: base.mimeType, tamanho: base.tamanho }, { tipoEntidade:'MANIFESTACAO', idEntidade:idManifestacao, usuario });
+      resultado.push({ ...base, status:'ARMAZENADO', url:salvo.url || '', driveFileId:salvo.fileId || '', id:salvo.id || '' });
+    } catch (e) {
+      // A manifestação já foi persistida. Mantemos o item visível como
+      // pendente e permitimos reprocessamento pelo endpoint de anexos, sem
+      // transformar uma falha de Drive em uma segunda manifestação.
+      console.warn('[ANEXOS][MANIFESTACAO] upload pendente:', nome, e.message);
+      resultado.push({ ...base, status:'PENDENTE_UPLOAD', erro: e.code || 'UPLOAD_FALHOU' });
+    }
+  }
+  return resultado;
+}
 app.get('/api/anexos', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','SETOR RESPONSÁVEL','GESTOR SAC','AUDITOR'), async (req,res) => {
   try {
     const data=await lerAba('ANEXOS',5000);
@@ -7579,8 +7633,9 @@ app.patch('/api/manifestacoes/:id/circa-dados', requerPermissao('manifestacoes.e
     const currentStage=circaWorkflow.stageForStatus(m.STATUS||m.STATUS_FICHA||'RASCUNHO');
     if(requestedStage && (!Number.isInteger(requestedStage)||requestedStage<1||requestedStage>7)) return res.status(400).json({sucesso:false,erro:'Etapa CIRCA inválida.'});
     if(requestedStage && requestedStage>currentStage+1 && String(req.user?.PERFIL||req.user?.perfil||'').toUpperCase()!=='MASTER') return res.status(409).json({sucesso:false,erro:'A etapa solicitada depende da conclusão das etapas anteriores.',etapaAtual:currentStage});
-    const allowed=['STATUS','STATUS_FICHA','EMPRESA_RECLAMADA','EMPRESA_RECLAMANTE','CONTATO','CNPJ','TELEFONE','EMAIL','PRODUTO','LOTE','NFE','DESCRICAO','DESCRICAO_MANIFESTACAO','TIPO','CANAL','ORIGEM','PRIORIDADE','CATEGORIA','MOTIVO','GRAVIDADE','ETAPA_ATUAL','MENSAGEM_ETAPA','CAMINHO_TRATATIVA','COMPLEMENTO_PEDIDO','CANAL_RETORNO','PRAZO_RETORNO_SAC','TRATATIVA_SAC_INTERNA','SETOR_ACIONADO','ESCOPO_ACIONAMENTO','INVESTIGACAO_O_QUE','INVESTIGACAO_VERIFICACOES','INVESTIGACAO_EVIDENCIAS','INVESTIGACAO_NOTAS','SUBCAUSA','CAUSA_RAIZ_CONFIRMADA','ACOES_CORRETIVAS','DATA_SOLUCAO','RESPONSAVEL_EXECUCAO','VALIDACAO_RESULTADO','PROCEDENTE','PROCEDENTE_JUSTIFICATIVA','VALID_SAC_DATA_RETORNO','VALID_SAC_CLIENTE_INFORMADO','VALID_SAC_RESOLVIDA','RESUMO_RESOLUCAO','DEVOLUTIVA_CANAL','DEVOLUTIVA_DESTINATARIO','DEVOLUTIVA_FINAL','DEVOLUTIVA_ENVIADA','APRENDIZADO_CASO','APRENDIZADO_MATRIZ','OBSERVACOES_FINAIS','STATUS_TRATATIVA','ANEXOS','EVIDENCIAS'];
+    const allowed=['STATUS','STATUS_FICHA','EMPRESA_RECLAMADA','EMPRESA_RECLAMANTE','CONTATO','CNPJ','TELEFONE','EMAIL','PRODUTO','LOTE','NFE','DESCRICAO','DESCRICAO_MANIFESTACAO','TIPO','CANAL','ORIGEM','PRIORIDADE','CATEGORIA','MOTIVO','GRAVIDADE','ETAPA_ATUAL','MENSAGEM_ETAPA','CAMINHO_TRATATIVA','COMPLEMENTO_PEDIDO','CANAL_RETORNO','PRAZO_RETORNO_SAC','TRATATIVA_SAC_INTERNA','SETOR_ACIONADO','ESCOPO_ACIONAMENTO','INVESTIGACAO_O_QUE','INVESTIGACAO_VERIFICACOES','INVESTIGACAO_EVIDENCIAS','INVESTIGACAO_NOTAS','SUBCAUSA','CAUSA_RAIZ_CONFIRMADA','ACOES_CORRETIVAS','DATA_SOLUCAO','RESPONSAVEL_EXECUCAO','VALIDACAO_RESULTADO','PROCEDENTE','PROCEDENTE_JUSTIFICATIVA','VALID_SAC_DATA_RETORNO','VALID_SAC_CLIENTE_INFORMADO','VALID_SAC_RESOLVIDA','RESUMO_RESOLUCAO','DEVOLUTIVA_CANAL','DEVOLUTIVA_DESTINATARIO','DEVOLUTIVA_FINAL','DEVOLUTIVA_ENVIADA','APRENDIZADO_CASO','APRENDIZADO_MATRIZ','OBSERVACOES_FINAIS','STATUS_TRATATIVA','ANEXOS','EVIDENCIAS','ANALISE_IA'];
     const patch={}; for(const key of allowed) if(Object.prototype.hasOwnProperty.call(req.body||{},key)) patch[key]=req.body[key] ?? '';
+    if (Object.prototype.hasOwnProperty.call(req.body || {}, 'analiseIA') && req.body.analiseIA) patch.ANALISE_IA = req.body.analiseIA;
     // Mapeia descricao (minúsculo, enviado pelo frontend nm-card) para as colunas corretas no Sheets
     if (Object.prototype.hasOwnProperty.call(req.body||{}, 'descricao') && req.body.descricao) {
       patch.DESCRICAO = req.body.descricao;
@@ -7593,6 +7648,12 @@ app.patch('/api/manifestacoes/:id/circa-dados', requerPermissao('manifestacoes.e
       patch.STATUS = 'AGUARDANDO_TRIAGEM_SAC'; patch.STATUS_FICHA = 'AGUARDANDO_TRIAGEM_SAC'; patch.ETAPA_ATUAL = '2';
       patch.MENSAGEM_ETAPA = 'Aguardando triagem SAC.';
     }
+    if (Array.isArray(req.body?.anexos) && req.body.anexos.length) {
+      let existentes = [];
+      try { existentes = typeof m.ANEXOS === 'string' && m.ANEXOS.trim().startsWith('[') ? JSON.parse(m.ANEXOS) : (Array.isArray(m.ANEXOS) ? m.ANEXOS : []); } catch (_) {}
+      const anexosPersistidos = await persistirAnexosManifestacao(req.body.anexos, m.ID_MANIFESTACAO || idReq, req.user?.usuario || 'sistema', existentes);
+      patch.ANEXOS = JSON.stringify(anexosPersistidos);
+    }
     patch.DATA_ULTIMA_EDICAO=new Date().toISOString(); patch.ATUALIZADO_POR=req.user?.usuario||'sistema';
     await atualizarPorID('MANIFESTACOES',m.ID_MANIFESTACAO||idReq,patch,['ID_MANIFESTACAO','PROTOCOLO','ID']).catch(async e => {
       if (req.body?.finalizar && patch.IDEMPOTENCY_KEY) await protocoloAtomico.registrarFalhaPersistencia(patch.IDEMPOTENCY_KEY,e).catch(()=>{});
@@ -7601,7 +7662,7 @@ app.patch('/api/manifestacoes/:id/circa-dados', requerPermissao('manifestacoes.e
     if (req.body?.finalizar && patch.IDEMPOTENCY_KEY) {
       await protocoloAtomico.confirmarPersistencia(patch.IDEMPOTENCY_KEY,m.ID_MANIFESTACAO||idReq);
     }
-    await registrarHistoricoManifestacao({id:m.ID_MANIFESTACAO||idReq,protocolo:m.PROTOCOLO||'',usuario:req.user?.usuario||'sistema',etapa:patch.ETAPA_ATUAL||m.ETAPA_ATUAL||'',acao:'ATUALIZOU_CARD_CIRCA',descricao:'Dados operacionais atualizados no novo card.'});
+    await registrarHistoricoManifestacao({id:m.ID_MANIFESTACAO||idReq,protocolo:patch.PROTOCOLO||m.PROTOCOLO||'',usuario:req.user?.usuario||'sistema',etapa:patch.ETAPA_ATUAL||m.ETAPA_ATUAL||'',acao:'ATUALIZOU_CARD_CIRCA',descricao:'Dados operacionais atualizados no novo card.'});
     // Auto-increment FREQUENCIA_OCORRENCIAS na aba CAUSAS quando causa raiz é confirmada
     if (patch.CAUSA_RAIZ_CONFIRMADA && patch.CAUSA_RAIZ_CONFIRMADA !== (m.CAUSA_RAIZ_CONFIRMADA||'')) {
       try {
@@ -7615,7 +7676,7 @@ app.patch('/api/manifestacoes/:id/circa-dados', requerPermissao('manifestacoes.e
         }
       } catch(eFreq){ console.warn('[CIRCA] freq causas falhou:', eFreq.message); }
     }
-    res.json({sucesso:true,id:m.ID_MANIFESTACAO||idReq,atualizadoEm:patch.DATA_ULTIMA_EDICAO});
+    res.json({sucesso:true,id:m.ID_MANIFESTACAO||idReq,protocolo:patch.PROTOCOLO||m.PROTOCOLO||'',atualizadoEm:patch.DATA_ULTIMA_EDICAO});
   } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e,'dados circa')});}
 });
 

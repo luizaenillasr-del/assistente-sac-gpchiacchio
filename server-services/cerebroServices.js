@@ -752,6 +752,7 @@ async function chamarIA(contexto) {
     descricao: _sanitizarCampoPrompt(m.descricao || m.DESCRICAO),
     empresa: _sanitizarCampoPrompt(m.empresaReclamada || m.EMPRESA_RECLAMADA),
     cliente: _sanitizarCampoPrompt(m.empresaReclamante || m.EMPRESA_RECLAMANTE),
+    canal: _sanitizarCampoPrompt(m.canal || m.CANAL || m.origem || m.ORIGEM),
     produto: _sanitizarCampoPrompt(m.produto || m.PRODUTO),
     lote: _sanitizarCampoPrompt(m.lote || m.LOTE),
     quantidade: _sanitizarCampoPrompt(String(m.quantidade || m.QUANTIDADE || '')),
@@ -903,6 +904,7 @@ async function analisarManifestacaoCompleta(manifestacao, regras = {}, usuario =
   if (!descricao) informacoesAusentes.push('DESCRICAO');
   if (!campo(manifestacao, ['empresa','EMPRESA_RECLAMADA','empresaReclamada'])) informacoesAusentes.push('EMPRESA_RECLAMADA');
   if (!campo(manifestacao, ['cliente','EMPRESA_RECLAMANTE','empresaReclamante'])) informacoesAusentes.push('EMPRESA_RECLAMANTE');
+  if (!campo(manifestacao, ['canal','CANAL','origem','ORIGEM'])) informacoesAusentes.push('CANAL');
 
   const protocolo = campo(manifestacao, ['protocolo','ID_MANIFESTACAO']);
   const setor = regras.setores?.[0] || '';
@@ -954,6 +956,21 @@ async function analisarManifestacaoCompleta(manifestacao, regras = {}, usuario =
   const matrizConhecimento = manifestacao.matrizConhecimento || null;
   const contextoIA = { manifestacao, tipoDetectado: tipo, setores: regras.setores || [], casosSimilares, reincidencia, sla, baseConhecimento, matrizConhecimento };
   const ia = await chamarIA(contextoIA).catch(e => { erros.push('ia: ' + e.message); return { disponivel: false, erro: e.message }; });
+  // A resposta do modelo pode repetir um campo como ausente mesmo quando o
+  // formulário o preencheu. Filtre somente contra os valores canônicos antes
+  // de expor o resultado ao frontend.
+  if (ia && Array.isArray(ia.informacoesAusentes)) {
+    const preenchidos = new Set([
+      ['DESCRICAO', descricao],
+      ['EMPRESA_RECLAMADA', campo(manifestacao, ['empresa','EMPRESA_RECLAMADA','empresaReclamada'])],
+      ['EMPRESA_RECLAMANTE', campo(manifestacao, ['cliente','EMPRESA_RECLAMANTE','empresaReclamante'])],
+      ['CANAL', campo(manifestacao, ['canal','CANAL','origem','ORIGEM'])],
+    ].filter(([, valor]) => String(valor || '').trim()).map(([nome]) => nome));
+    ia.informacoesAusentes = ia.informacoesAusentes.filter(item => {
+      const chave = normalizar(item).replace(/\s+/g, '_').toUpperCase();
+      return !preenchidos.has(chave);
+    });
+  }
 
   const empresa = campo(manifestacao, ['empresaReclamada','EMPRESA_RECLAMADA']);
   const reincidenteBool = reincidencia.nivel === 'REINCIDENCIA_CONFIRMADA';
