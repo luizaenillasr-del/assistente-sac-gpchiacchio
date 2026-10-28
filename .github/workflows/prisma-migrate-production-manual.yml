@@ -17,6 +17,20 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     if: ${{ github.event.inputs.confirm_production == 'PRODUCTION' }}
+    services:
+      prisma-shadow:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: prisma
+          POSTGRES_PASSWORD: prisma-shadow-only
+          POSTGRES_DB: prisma_shadow
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U prisma -d prisma_shadow"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
     env:
       # A URL direta é usada somente durante esta execução administrativa.
       # O mesmo valor atende DATABASE_URL e DATABASE_URL_UNPOOLED porque o
@@ -25,6 +39,7 @@ jobs:
       DATABASE_URL_UNPOOLED: ${{ secrets.NEON_DATABASE_URL_UNPOOLED }}
       EXPECTED_NEON_HOSTNAME: ${{ secrets.NEON_PRODUCTION_HOSTNAME }}
       EXPECTED_DATABASE_NAME: ${{ secrets.NEON_PRODUCTION_DATABASE_NAME }}
+      SHADOW_DATABASE_URL: postgresql://prisma:prisma-shadow-only@127.0.0.1:5432/prisma_shadow
 
     steps:
       - name: Baixar código
@@ -77,6 +92,7 @@ jobs:
           npx prisma migrate diff \
             --from-url "$DATABASE_URL_UNPOOLED" \
             --to-migrations "$temp_migrations" \
+            --shadow-database-url "$SHADOW_DATABASE_URL" \
             --script > "$diff_file"
           if [ -s "$diff_file" ]; then
             echo "A estrutura do Neon diverge da migração 20260930000001_init. Diff SQL somente leitura:"
