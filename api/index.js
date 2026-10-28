@@ -163,38 +163,82 @@ async function resolverEmpresaIdScope(valor) {
 
 const app = express();
 
-// ── BANCO_HISTORICO: mutex em memória para evitar duplo registro por concorrência ──
+// ── BANCO_HISTORICO: idempotência persistente multi-instância ──
+// Estratégia: ID determinístico HIST-{id} + soft-lock via coluna STATUS_HISTORICO.
+// 1. Lê BANCO_HISTORICO e verifica se já existe linha com ORIG_ID_MANIFESTACAO=id.
+//    - Se STATUS_HISTORICO=CONCLUIDO → já registrado, aborta.
+//    - Se STATUS_HISTORICO=PROCESSANDO e menos de 60s → outra instância está gravando, aborta.
+//    - Se ausente → prossegue.
+// 2. Grava linha com STATUS_HISTORICO=PROCESSANDO (tombstone persistente visível a todas instâncias).
+// 3. Atualiza para CONCLUIDO após append com sucesso.
+// O mutex em memória é mantido como camada adicional dentro da mesma instância.
 const _bancoHistoricoEmAndamento = new Set();
+const BANCO_HISTORICO_LOCK_TTL_MS = 60_000; // 60s — instância travada por mais que isso é considerada morta
 
 /**
- * Registra manifestação encerrada no BANCO_HISTORICO com idempotência por ID_MANIFESTACAO.
- * ID determinístico (sem Date.now) garante deduplicação mesmo se dois caminhos dispararem.
- * Mutex em memória bloqueia chamadas concorrentes para a mesma manifestação.
+ * Registra manifestação encerrada no BANCO_HISTORICO com idempotência persistente.
+ * Seguro para múltiplas instâncias Vercel simultâneas: usa soft-lock gravado no próprio Sheets.
  */
 async function _feedBancoHistorico(id, m, extras, fonte, usuario) {
   if (_bancoHistoricoEmAndamento.has(id)) {
-    console.log(`[BANCO_HISTORICO] ${id} já em andamento — concorrência bloqueada (${fonte})`);
+    console.log(`[BANCO_HISTORICO] ${id} já em andamento (instância local) — bloqueado (${fonte})`);
     return;
   }
   _bancoHistoricoEmAndamento.add(id);
   try {
-    const historicoRows = await lerAba('BANCO_HISTORICO', 500).catch(()=>[]);
-    const jaExiste = historicoRows.some(r => r.ID_MANIFESTACAO === id || r.ORIG_ID_MANIFESTACAO === id);
-    if (jaExiste) {
-      console.log(`[BANCO_HISTORICO] ${id} já registrado — pulando (${fonte})`);
-      return;
-    }
-    const agora = new Date().toISOString();
-    await garantirAbaComCabecalhos('BANCO_HISTORICO', [
+    const HEADERS = [
       'ID_HISTORICO','ORIG_ID_MANIFESTACAO','ORIG_DATA_ABERTURA','DRV_EMPRESA_NORMALIZADA',
       'ORIG_EMPRESA','ORIG_CONTATO','ORIG_CANAL','ORIG_DESCRICAO_RECLAMACAO',
       'COMP_TIPO_PROBLEMA_VALIDADO','COMP_CAUSA_PROVAVEL','CAUSA_RAIZ','SUBCAUSA',
       'SETOR_RESPONSAVEL','TRATATIVA_REALIZADA','RESULTADO','DEVOLUTIVA_FINAL',
-      'DATA_ENCERRAMENTO','ENCERRADO_POR','FONTE',
-    ]).catch(()=>{});
-    await appendObjeto('BANCO_HISTORICO', {
-      ID_HISTORICO: `HIST-${id}`, // determinístico: sem Date.now
-      ORIG_ID_MANIFESTACAO: id,
+      'DATA_ENCERRAMENTO','ENCERRADO_POR','FONTE','STATUS_HISTORICO','TS_LOCK',
+    ];
+    await garantirAbaComCabecalhos('BANCO_HISTORICO', HEADERS).catch(()=>{});
+
+    // Invalida cache antes de ler para garantir dados frescos
+    invalidarCacheAba('BANCO_HISTORICO');
+    const historicoRows = await lerAba('BANCO_HISTORICO', 500).catch(()=>[]);
+    const existente = historicoRows.find(r => r.ORIG_ID_MANIFESTACAO === id || r.ID_HISTORICO === `HIST-${id}`);
+
+    if (existente) {
+      if (existente.STATUS_HISTORICO === 'CONCLUIDO') {
+        console.log(`[BANCO_HISTORICO] ${id} já CONCLUIDO — pulando (${fonte})`);
+        return;
+      }
+      if (existente.STATUS_HISTORICO === 'PROCESSANDO') {
+        const tsLock = Number(existente.TS_LOCK || 0);
+        if (Date.now() - tsLock < BANCO_HISTORICO_LOCK_TTL_MS) {
+          console.log(`[BANCO_HISTORICO] ${id} PROCESSANDO por outra instância — bloqueado (${fonte})`);
+          return;
+        }
+        // Lock expirado: outra instância morreu — assume o controle e atualiza o registro existente
+        console.log(`[BANCO_HISTORICO] ${id} lock expirado — assumindo controle (${fonte})`);
+      }
+    }
+
+    const agora = new Date().toISOString();
+    const tsLock = Date.now();
+
+    if (existente) {
+      // Retoma registro PROCESSANDO expirado: atualiza diretamente
+      await atualizarPorID('BANCO_HISTORICO', `HIST-${id}`, {
+        STATUS_HISTORICO: 'PROCESSANDO', TS_LOCK: String(tsLock),
+      }, ['ID_HISTORICO']).catch(()=>{});
+    } else {
+      // Grava tombstone PROCESSANDO — visível a todas as instâncias imediatamente
+      await appendObjeto('BANCO_HISTORICO', {
+        ID_HISTORICO: `HIST-${id}`,
+        ORIG_ID_MANIFESTACAO: id,
+        STATUS_HISTORICO: 'PROCESSANDO',
+        TS_LOCK: String(tsLock),
+        FONTE: fonte,
+        DATA_ENCERRAMENTO: agora,
+      }).catch(e => { throw e; }); // tombstone falhar é bloqueante
+    }
+    invalidarCacheAba('BANCO_HISTORICO');
+
+    // Atualiza com dados completos e marca CONCLUIDO
+    await atualizarPorID('BANCO_HISTORICO', `HIST-${id}`, {
       ORIG_DATA_ABERTURA: m.DATA_ABERTURA || m.DATA_CRIACAO || m.DATA_REGISTRO || '',
       DRV_EMPRESA_NORMALIZADA: m.EMPRESA_RECLAMADA || '',
       ORIG_EMPRESA: m.EMPRESA_RECLAMADA || '',
@@ -212,8 +256,12 @@ async function _feedBancoHistorico(id, m, extras, fonte, usuario) {
       DATA_ENCERRAMENTO: agora,
       ENCERRADO_POR: usuario || 'sistema',
       FONTE: fonte,
-    }).catch(e => console.warn(`[BANCO_HISTORICO] append falhou (${fonte}):`, e.message));
+      STATUS_HISTORICO: 'CONCLUIDO',
+      TS_LOCK: '',
+    }, ['ID_HISTORICO']).catch(e => console.warn(`[BANCO_HISTORICO] atualizar dados falhou (${fonte}):`, e.message));
+
     invalidarCacheAba('BANCO_HISTORICO');
+    console.log(`[BANCO_HISTORICO] ${id} registrado com sucesso (${fonte})`);
   } catch(e) {
     console.warn(`[BANCO_HISTORICO] erro não bloqueante (${fonte}):`, e.message);
   } finally {
@@ -2145,15 +2193,9 @@ app.get('/api/manifestacoes', requerPermissao('manifestacoes.visualizar'), middl
           let itens = pgData.map(m => ({
             ID_MANIFESTACAO: m.protocolo || m.idOriginal || String(m.id),
             DATA_ABERTURA: m.criadaEm?.toISOString?.() || '',
-            EMPRESA_RECLAMANTE: m.empresaNome || m.contato || '',
+            EMPRESA_RECLAMANTE: m.contato || m.empresaNome || '',
             EMPRESA_RECLAMADA: m.empresa?.nome || m.empresaNome || '',
-            NOME_CLIENTE: m.contato || '',
-            CONTATO: m.contato || '',
             DESCRICAO: m.descricao || '',
-            DESCRICAO_ORIGINAL: m.descricao || '',
-            DESCRICAO_MANIFESTACAO: m.descricao || '',
-            MOTIVO: m.motivo || m.assunto || '',
-            CATEGORIA: m.categoria || '',
             STATUS: m.status || '',
             TIPO: m.tipo || '',
             PRODUTO: m.produto || '',
@@ -2209,25 +2251,12 @@ app.get('/api/manifestacoes/:id', requerPermissao('manifestacoes.visualizar'), m
               return res.status(403).json({ sucesso: false, erro: 'Acesso não autorizado para esta manifestação.' });
             }
           }
-          // Complementa o registro do PostgreSQL com a linha oficial do Sheets.
-          // O PG pode conter apenas o resumo operacional; a ficha completa e os
-          // vínculos de anexos ainda podem estar na linha MANIFESTACOES.
-          const sheetsFull = await lerManifestacoesOperacionais(5000).catch(() => []);
-          const sheetItem = sheetsFull.find(r => [r.ID_MANIFESTACAO, r.PROTOCOLO, r.ID, r.ID_ORIGINAL]
-            .some(v => String(v || '').trim() === String(req.params.id || '').trim()));
           const item = {
-            ...(sheetItem || {}),
             ID_MANIFESTACAO: pg.protocolo || pg.idOriginal || String(pg.id),
             DATA_ABERTURA: pg.criadaEm?.toISOString?.() || '',
-            EMPRESA_RECLAMANTE: pg.empresaNome || pg.contato || '',
+            EMPRESA_RECLAMANTE: pg.contato || pg.empresaNome || '',
             EMPRESA_RECLAMADA: pg.empresa?.nome || pg.empresaNome || '',
-            NOME_CLIENTE: pg.contato || '',
-            CONTATO: pg.contato || '',
             DESCRICAO: pg.descricao || '',
-            DESCRICAO_ORIGINAL: pg.descricao || '',
-            DESCRICAO_MANIFESTACAO: pg.descricao || '',
-            MOTIVO: pg.motivo || pg.assunto || '',
-            CATEGORIA: pg.categoria || '',
             STATUS: pg.status || '',
             TIPO: pg.tipo || '',
             PRODUTO: pg.produto || '',
@@ -2508,16 +2537,33 @@ app.patch('/api/manifestacoes/:id/ficha', requerPermissao('manifestacoes.editar'
         APROV_SETOR_ORIENTACAO: req.body.aprovOrientacao || '',
       };
     } else if (acao === 'validacao_sac') {
+      // Três decisões possíveis: VALIDAR (prossegue para devolutiva), COMPLEMENTAR (retorna ao responsável), DEVOLVER (registra inconsistência e exige correção)
+      const decisaoVal = String(req.body.decisao || '').toUpperCase();
+      if (!['VALIDAR','COMPLEMENTAR','DEVOLVER'].includes(decisaoVal))
+        return res.status(400).json({ sucesso:false, erro:'Decisão obrigatória: VALIDAR, COMPLEMENTAR ou DEVOLVER.' });
       dados = {
+        VALID_SAC_DECISAO: decisaoVal,
         VALID_SAC_DATA_RETORNO: req.body.validDataRetorno || '',
         VALID_SAC_CLIENTE_INFORMADO: req.body.validClienteInformado || '',
         VALID_SAC_RESOLVIDA: req.body.validResolvida || '',
         OBSERVACOES_FINAIS: req.body.observacoesFinais || '',
         DATA_VALIDACAO_SAC: agora,
-        STATUS_FICHA: 'FECHADA',
-        STATUS: 'ENCERRADA',
-        DATA_CONCLUSAO_MANIFESTACAO: agora,
+        VALIDADO_POR: req.user?.usuario || '',
       };
+      if (decisaoVal === 'VALIDAR') {
+        // Resolução confirmada: segue para devolutiva
+        Object.assign(dados, { STATUS: 'AGUARDANDO_DEVOLUTIVA', STATUS_FICHA: 'AGUARDANDO_DEVOLUTIVA' });
+      } else if (decisaoVal === 'COMPLEMENTAR') {
+        // Devolve ao responsável para complementação, com justificativa
+        if (!req.body.observacoesFinais) return res.status(400).json({ sucesso:false, erro:'Justificativa e pendências obrigatórias para solicitar complementação.' });
+        const statusRetorno = item.SETOR_CONFIRMADO ? 'AGUARDANDO_SETOR' : 'EM TRATAMENTO';
+        const statusFichaRetorno = item.SETOR_CONFIRMADO ? 'AGUARDANDO_SETOR' : 'EM_TRATAMENTO';
+        Object.assign(dados, { STATUS: statusRetorno, STATUS_FICHA: statusFichaRetorno, VALID_SAC_PENDENCIAS: req.body.observacoesFinais });
+      } else {
+        // DEVOLVER: registra inconsistência e exige correção
+        if (!req.body.observacoesFinais) return res.status(400).json({ sucesso:false, erro:'Descrição da inconsistência obrigatória para devolver para correção.' });
+        Object.assign(dados, { STATUS: 'EM TRATAMENTO', STATUS_FICHA: 'EM_TRATAMENTO', VALID_SAC_INCONSISTENCIA: req.body.observacoesFinais });
+      }
     } else if (acao === 'encaminhar_aprovacao') {
       const setorConf = req.body.SETOR_CONFIRMADO || item.SETOR_SUGERIDO || '';
       const tipoConf  = req.body.TIPO_CONFIRMADO  || item.TIPO_SUGERIDO  || '';
@@ -2561,24 +2607,14 @@ app.patch('/api/manifestacoes/:id/ficha', requerPermissao('manifestacoes.editar'
         }
       } catch(eF) { console.error('[FILA_APROVACAO insert]', eF.message); }
     } else if (acao === 'encaminhar_setor') {
-      const setorDest = String(req.body.SETOR_CONFIRMADO || req.body.setor || '').trim();
-      const responsavelDest = String(req.body.RESPONSAVEL_SETOR || req.body.responsavel || '').trim();
-      if (!setorDest || /nenhum|não informado|nao informado/i.test(setorDest)) return res.status(400).json({ sucesso:false, erro:'Selecione um setor de destino válido.' });
-      if (!responsavelDest || /nenhum|não informado|nao informado/i.test(responsavelDest)) return res.status(400).json({ sucesso:false, erro:'Selecione um responsável cadastrado.' });
-      const usuariosDestino = await lerAba('USUARIOS', 5000).catch(()=>[]);
-      const alvo = usuariosDestino.find(u => {
-        const chave = String(u.USUARIO || u.LOGIN || u.EMAIL || u.NOME || '').trim().toLowerCase();
-        const nomes = responsavelDest.split(',').map(v => v.trim().toLowerCase()).filter(Boolean);
-        const setorU = String(u.SETOR || u.SETOR_PRINCIPAL || u.SETORES || u.SETORES_AUTORIZADOS || '').toLowerCase();
-        return nomes.length === 1 && chave === nomes[0] && String(u.STATUS || 'ATIVO').toUpperCase() === 'ATIVO' && (setorU.includes(setorDest.toLowerCase()) || String(u.PERFIL || '').toUpperCase().includes('SETOR'));
-      });
-      if (!alvo) return res.status(422).json({ sucesso:false, erro:'O responsável precisa estar ativo e cadastrado no setor selecionado.' });
+      const setorDest = req.body.SETOR_CONFIRMADO || req.body.setor || '';
+      if (!setorDest) return res.status(400).json({ sucesso:false, erro:'Setor de destino obrigatório.' });
       dados = {
-        STATUS: 'AGUARDANDO_RESPOSTA_SETOR',
+        STATUS: 'AGUARDANDO_SETOR',
         STATUS_FICHA: 'AGUARDANDO_SETOR',
         SETOR_CONFIRMADO: setorDest,
         SETOR_DESTINADO: setorDest,
-        RESPONSAVEL_SETOR: responsavelDest,
+        RESPONSAVEL_SETOR: req.body.RESPONSAVEL_SETOR || '',
         SLA_HORAS: req.body.SLA_HORAS || '',
         SLA_UNIDADE: req.body.SLA_UNIDADE || 'dias',
         OBS_ENCAMINHAMENTO: req.body.obs || '',
@@ -2615,6 +2651,25 @@ app.patch('/api/manifestacoes/:id/ficha', requerPermissao('manifestacoes.editar'
         DATA_CONCLUSAO_MANIFESTACAO: agora,
         ENCERRADO_POR: req.user?.usuario || '',
       };
+    } else if (acao === 'registrar_devolutiva') {
+      // Registra que a devolutiva foi efetivamente enviada ao cliente.
+      // Só permitido após devolutiva ter sido preparada (STATUS_FICHA === AGUARDANDO_DEVOLUTIVA).
+      const statusAtual = String(item.STATUS_FICHA || item.STATUS || '').toUpperCase();
+      if (!statusAtual.includes('DEVOLUTIVA'))
+        return res.status(400).json({ sucesso:false, erro:'A devolutiva só pode ser registrada quando o status for AGUARDANDO_DEVOLUTIVA.' });
+      const canalDev = req.body.canal || item.CANAL_RETORNO || item.CANAL || '';
+      if (!canalDev) return res.status(400).json({ sucesso:false, erro:'Canal de envio da devolutiva obrigatório.' });
+      dados = {
+        STATUS: 'ENCERRADA',
+        STATUS_FICHA: 'FECHADA',
+        DEVOLUTIVA_ENVIADA: 'SIM',
+        CANAL_DEVOLUTIVA: canalDev,
+        RESPONSAVEL_DEVOLUTIVA: req.body.responsavel || req.user?.nome || req.user?.usuario || '',
+        DATA_DEVOLUTIVA: agora,
+        CONFIRMACAO_DEVOLUTIVA: req.body.confirmacao || '',
+        DATA_CONCLUSAO_MANIFESTACAO: agora,
+        ENCERRADO_POR: req.user?.usuario || '',
+      };
     } else {
       return res.status(400).json({ sucesso:false, erro:'Ação não reconhecida.' });
     }
@@ -2622,9 +2677,6 @@ app.patch('/api/manifestacoes/:id/ficha', requerPermissao('manifestacoes.editar'
     dados.ETAPA_ATUAL = String(fichaUnica.etapaAtual(estado));
     dados.MENSAGEM_ETAPA = fichaUnica.mensagemContextual(estado);
     await atualizarPorID('MANIFESTACOES', id, dados, ['ID_MANIFESTACAO']);
-    if (acao === 'encaminhar_setor') {
-      await registrarNotificacaoInterna({ manifestacaoId:id, destinatario:dados.RESPONSAVEL_SETOR, tipo:'ENCAMINHAMENTO_TRATATIVA', titulo:`Tratativa atribuída — ${item.PROTOCOLO || id}`, mensagem:dados.OBS_ENCAMINHAMENTO || `Nova tratativa atribuída ao setor ${dados.SETOR_CONFIRMADO}.`, usuario:req.user?.usuario || 'sistema' }).catch(e => console.warn('[NOTIFICACAO] encaminhamento:', e.message));
-    }
     invalidarCacheAba('MANIFESTACOES');
     registrarAuditoria(req.user?.usuario||'sistema', `FICHA_${String(acao).toUpperCase()}`, id, 'MANIFESTACOES', null, dados).catch(()=>{});
     registrarHistoricoManifestacao({
@@ -2985,7 +3037,8 @@ app.delete('/api/manifestacoes/:id', requerPerfil('MASTER'), async (req, res) =>
     invalidarCacheAba('MANIFESTACOES');
     await registrarHistoricoManifestacao({ id:item.ID_MANIFESTACAO || id, protocolo, usuario:req.user?.usuario || 'MASTER', acao:'MANIFESTAÇÃO_EXCLUÍDA', descricao:motivo, etapa:item.ETAPA_ATUAL || '' });
     await registrarAuditoria(req.user?.usuario || 'sistema', 'EXCLUIU_MANIFESTAÇÃO', item.ID_MANIFESTACAO || id, 'MANIFESTACOES', item, { ...item, STATUS:'EXCLUIDO', MOTIVO_EXCLUSAO:motivo });
-    res.json({ sucesso: true, id:item.ID_MANIFESTACAO || id, protocolo, status:'EXCLUIDO' });
+    const protocoloConfirmacao = `DEL-${protocolo}-${Date.now()}`;
+    res.json({ sucesso: true, id:item.ID_MANIFESTACAO || id, protocolo, protocoloConfirmacao, status:'EXCLUIDO' });
   } catch (e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e) }); }
 });
 
@@ -8620,6 +8673,9 @@ app.post('/api/public/reclamacoes', publicRateLimit, async (req, res) => {
   try {
     const b = req.body || {};
     const viaCliente = b.origem === 'PORTAL_PUBLICO';
+    const origemEnviada = String(b.origem || '').trim().toUpperCase();
+    const _ORIGENS_VALIDAS = new Set(['PORTAL_PUBLICO', 'FORMULARIO_PUBLICO_SAC', 'PORTAL_FUNCIONARIO']);
+    const origemFinal = _ORIGENS_VALIDAS.has(origemEnviada) ? origemEnviada : (viaCliente ? 'PORTAL_PUBLICO' : 'FORMULARIO_PUBLICO_SAC');
     const empresaPortal = PORTAL_EMPRESAS.find(e => e.codigo === empresaCanonica(b.empresa) || normalizarTexto(e.nome) === normalizarTexto(b.empresa));
     if (viaCliente && !empresaPortal) return res.status(400).json({ sucesso: false, erro: 'Selecione uma empresa do grupo.' });
     if (viaCliente) {
@@ -8725,7 +8781,7 @@ app.post('/api/public/reclamacoes', publicRateLimit, async (req, res) => {
       DATA_ABERTURA: agora,
       DATA_REGISTRO: agora,
       EMPRESA_RECLAMADA: empresa,
-      EMPRESA_RECLAMANTE: empresa,
+      EMPRESA_RECLAMANTE: nomeCliente,
       CLIENTE_NOME: nomeCliente,
       NOME_CLIENTE: nomeCliente,
       TELEFONE: telefone,
@@ -8753,11 +8809,12 @@ app.post('/api/public/reclamacoes', publicRateLimit, async (req, res) => {
       MOTIVO_VALIDADO: motivoManifestacao,
       OBSERVACOES: observacoes,
       STATUS: 'AGUARDANDO_TRIAGEM_SAC',
-      APROVACAO_NECESSARIA: '',
+      ETAPA_ATUAL: 'TRIAGEM',
+      APROVACAO_NECESSARIA: 'SIM',
       TIPO: tipoManifestacao,
       TIPO_MANIFESTACAO: tipoManifestacao,
-      ORIGEM: viaCliente ? 'PORTAL_PUBLICO' : 'FORMULARIO_PUBLICO_SAC',
-      ORIGEM_REGISTRO: viaCliente ? 'PORTAL_PUBLICO' : 'FORMULARIO_PUBLICO_SAC',
+      ORIGEM: origemFinal,
+      ORIGEM_REGISTRO: origemFinal,
       REGISTRADO_POR: colaboradorRecebimento,
       COLABORADOR_RECEBIMENTO: colaboradorRecebimento,
       SETOR_ORIGEM: setorRecebimento,

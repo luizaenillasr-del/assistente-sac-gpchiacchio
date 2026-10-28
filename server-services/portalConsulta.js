@@ -44,7 +44,7 @@ function summary(man, proto) {
     label: "Em análise",
     desc: "Nossa equipe está analisando sua manifestação.",
   };
-  if (["AGUARDANDO_APROVACAO", "AGUARDANDO_TRIAGEM_SAC", "RECEBIDA", "ABERTA"].includes(status))
+  if (["AGUARDANDO_APROVACAO", "AGUARDANDO_TRIAGEM_SAC", "AGUARDANDO_TRIAGEM", "RECEBIDA", "ABERTA"].includes(status))
     st = { label: "Recebida", desc: "Sua manifestação foi recebida pelo SAC." };
   if (
     [

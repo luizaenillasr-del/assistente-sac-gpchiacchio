@@ -2533,6 +2533,7 @@
       quantidadeAfetada: v('p-qtd'), pedido: v('p-pedido'),
       notaFiscal: v('p-nf'), observacoes: v('p-obs'),
       evidencias: _portalFiles.filter(f=>f.dados),
+      origem: 'FORMULARIO_PUBLICO_SAC',
     };
 
     try {
@@ -13561,6 +13562,8 @@ const STATUS_LABELS = {
   'REJEITADA': { label: 'Rejeitada', color: '#DC2626', bg: '#FEE2E2' },
   'REJEITADA_SAC': { label: 'Rejeitada SAC', color: '#DC2626', bg: '#FEE2E2' },
   'APROVADA_SAC':  { label: 'Aprovada SAC', color: '#065F46', bg: '#ECFDF5' },
+  'AGUARDANDO_TRIAGEM_SAC': { label: 'Aguard. triagem SAC', color: '#B45309', bg: '#FEF9C3' },
+  'AGUARDANDO_TRIAGEM': { label: 'Aguard. triagem', color: '#B45309', bg: '#FEF9C3' },
 };
 
 function getStatusInfo(status) {
@@ -24683,7 +24686,7 @@ async function mudarStatusMC(id, novoStatus) {
 
   function stageOf(status){
     const n=norm(status);
-    if(!n||n==='NOVA'||n==='RECEBIDA') return 'nova';
+    if(!n||n==='NOVA'||n==='RECEBIDA'||n.includes('TRIAGEM')) return 'nova';
     if(/ENCERRAD|CONCLUID|REJEITAD|CANCELAD/.test(n)) return 'enc';
     if(n.includes('APROVACAO')) return 'aprov';
     if(n.includes('DEVOLUTIVA')||n==='APROVADA') return 'dev';
@@ -24715,12 +24718,15 @@ async function mudarStatusMC(id, novoStatus) {
     const setoresRaw=pick(m,['SETORES_CONFIRMADOS','SETOR_CONFIRMADO','SETORES_SUGERIDOS','SETOR_SUGERIDO','SETOR_RESPONSAVEL','SETOR']);
     const setores=setoresRaw?setoresRaw.split(/[,;]/).map(x=>x.trim()).filter(Boolean):[];
     return {
-      raw:m, id:pick(m,['ID_MANIFESTACAO','PROTOCOLO','ID']), st, h, prazoMs, mine, ext, pri,
-      cli:pick(m,['EMPRESA_RECLAMANTE','CLIENTE','NOME_CLIENTE','CONTATO']),
+      raw:m,
+      id:pick(m,['ID_MANIFESTACAO','ID']),
+      protocolo:pick(m,['PROTOCOLO','ID_MANIFESTACAO','ID']),
+      st, h, prazoMs, mine, ext, pri,
+      cli:pick(m,['NOME_CLIENTE','CLIENTE_NOME','EMPRESA_RECLAMANTE','CLIENTE','CONTATO']),
       emp:pick(m,['EMPRESA_RECLAMADA','EMPRESA']),
       cnpj:pick(m,['CNPJ']),
       tipo:pick(m,['TIPO_CONFIRMADO','TIPO','TIPO_MANIFESTACAO']),
-      motivo:pick(m,['MOTIVO','CATEGORIA','TIPO_SUGERIDO']),
+      motivo:pick(m,['MOTIVO','CATEGORIA']),
       canal:pick(m,['CANAL']),
       desc:pick(m,['DESCRICAO','DESCRICAO_MANIFESTACAO','RELATO','DESCRICAO_RECLAMACAO','DESCRICAO_COMPLETA','OBSERVACOES']),
       statusRaw:pick(m,['STATUS']),
@@ -25030,7 +25036,7 @@ async function mudarStatusMC(id, novoStatus) {
     const now=Date.now();
     tbody.innerHTML=pg.map(m=>{
       const id=m.id||'';
-      const prot=m.id||'—';
+      const prot=m.protocolo||m.id||'—';
       const cli=m.cli||'—';
       const ass=m.motivo||m.tipo||'—';
       const emp=m.emp||'—';
@@ -25093,7 +25099,7 @@ async function mudarStatusMC(id, novoStatus) {
   function _renderTratativaFicha(raw){
     _cenRawAtual=raw;
     const n=normMan(raw);
-    _setText('tf-protocolo',n.id);
+    _setText('tf-protocolo',n.protocolo||n.id);
     const sb=$('tf-status-badge');
     if(sb){sb.textContent=ST_LBL[n.st]||n.st;sb.style.background=ST_CFG_BG[n.st]||'#F0F0F0';sb.style.color=ST_CFG_FG[n.st]||'#545454';}
     const sl=slaTxt(n);
@@ -25105,7 +25111,7 @@ async function mudarStatusMC(id, novoStatus) {
     const camposEl=$('tf-campos');
     if(camposEl){
       const campos=[
-        ['Protocolo',n.id],['Empresa',n.emp],['Cliente',n.cli],['CNPJ',n.cnpj],
+        ['Protocolo',n.protocolo||n.id],['Empresa',n.emp],['Cliente',n.cli],['CNPJ',n.cnpj],
         ['Tipo',n.tipo],['Motivo',n.motivo],['Prioridade',PRI_LBL[n.pri]||''],['Canal',n.canal],
         ['Produto',pick(raw,['PRODUTO'])],['Lote',pick(raw,['LOTE'])],
         ['Pedido',pick(raw,['PEDIDO'])],['NF',pick(raw,['NOTA_FISCAL','NFE','NF'])],
@@ -25715,7 +25721,7 @@ async function mudarStatusMC(id, novoStatus) {
     const sl=slaTxt(n);
     const ph=$('cen-placeholder'); if(ph) ph.style.display='none';
     const dt=$('cen-detalhe'); if(dt) dt.classList.add('active');
-    _setText('cen-man-protocolo',n.id);
+    _setText('cen-man-protocolo',n.protocolo||n.id);
     const sb=$('cen-man-status-badge');
     if(sb){sb.textContent=(n.st==='enc'&&/REJEIT|CANCEL/.test(norm(n.statusRaw)))?n.statusRaw.replace(/_/g,' ').toLowerCase().replace(/^./,c=>c.toUpperCase()):ST_LBL[n.st];sb.className='mc-st mc-st-lg mc-st-'+n.st;}
     const pri=$('cen-man-prioridade');
@@ -25873,14 +25879,10 @@ async function mudarStatusMC(id, novoStatus) {
 
   async function cenValidarEncaminhar(){
     if(!_cenAtual||!_cenRawAtual) return semSel();
-    const n=normMan(_cenRawAtual), u=s()||{};
-    if(!n.setores.length){toast('Defina o setor em "Mais ações" antes de encaminhar.');cenToggleAcoes(true);$('trat-setor')?.focus();return;}
-    if(!confirm('Validar a análise e encaminhar aos setores: '+n.setores.join(', ')+'?')) return;
-    const d=await api('/api/manifestacoes/'+encodeURIComponent(_cenAtual)+'/decisao',{method:'POST',body:{
-      usuario:u.usuario||u.nome||'', tipoConfirmado:n.tipo, setoresConfirmados:n.setores,
-      prioridade:pick(_cenRawAtual,['PRIORIDADE']), slaHoras:pick(_cenRawAtual,['SLA_HORAS']), decisaoStatus:'APROVADA'
-    }});
-    if(d.sucesso) depois('Análise validada e encaminhada aos setores.'); else erro(d);
+    // Abre a ficha na aba Triagem para que o responsável preencha setor e responsável antes de encaminhar
+    cenAbrirFichaCompleta();
+    const triagemTabBtn=document.querySelector('.cen-tab[onclick*="triagem"]');
+    if(triagemTabBtn) cenTab('triagem', triagemTabBtn);
   }
 
   async function cenSeguirDevolutiva(){
@@ -26042,6 +26044,7 @@ async function mudarStatusMC(id, novoStatus) {
   }
   function cfmValor(id, valor){ const el=$(id); if(el && el.tagName==='INPUT') el.value=valor||''; }
   function cfmBotao(acao, texto){ return `<button type="button" onclick="cenFichaSalvar('${acao}')" style="margin-top:12px;background:#C70602;color:#fff;border:0;border-radius:7px;padding:9px 13px;font:600 12.5px inherit;cursor:pointer">${esc(texto)}</button>`; }
+  window.cfmFluxoToggle=function(){const v=document.querySelector('[name="cfm-fluxo"]:checked')?.value;const sf=document.getElementById('cfm-setor-fields');if(sf)sf.style.display=v==='SAC'?'none':'grid';document.querySelectorAll('.cfm-fluxo-lbl').forEach(function(el){const inp=el.querySelector('input');el.style.borderColor=inp&&inp.checked?'#24508F':'#E0E0E0';el.style.background=inp&&inp.checked?'#F0F5FF':'#FAFAFA';});};
   function cfmRenderForms(raw, n){
     const encerrada=n.st==='enc';
     const etapa=Number(raw.ETAPA_ATUAL||0);
@@ -26054,14 +26057,19 @@ async function mudarStatusMC(id, novoStatus) {
     if(dados) dados.innerHTML=`<div style="margin-top:11px;border:1px solid #E4E4E4;border-radius:10px;padding:14px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">${cfmCampo('cfm-razao','RAZÃO SOCIAL',raw.RAZAO_SOCIAL||raw.EMPRESA_RECLAMANTE)}${cfmCampo('cfm-contato','CONTATO',raw.CONTATO)}${cfmCampo('cfm-pedido','PEDIDO',raw.PEDIDO)}${cfmCampo('cfm-nfe','NOTA FISCAL',raw.NFE||raw.NOTA_FISCAL||raw.NF)}${cfmCampo('cfm-produto','PRODUTO',raw.PRODUTO)}${cfmCampo('cfm-lote','LOTE',raw.LOTE)}${cfmCampo('cfm-qtd-total','QUANTIDADE TOTAL',raw.QUANTIDADE_TOTAL,'number')}${cfmCampo('cfm-qtd-afetada','QUANTIDADE AFETADA',raw.QUANTIDADE_AFETADA||raw.QUANTIDADE,'number')}${cfmCampo('cfm-unidade','UNIDADE',raw.UNIDADE_MEDIDA||'kg')}${cfmCampo('cfm-prejuizo','PREJUÍZO ESTIMADO',raw.PREJUIZO_ESTIMADO,'number')}<div style="grid-column:1/-1">${cfmCampo('cfm-descricao','DESCRIÇÃO COMPLETA',raw.DESCRICAO||raw.DESCRICAO_MANIFESTACAO||raw.DESCRICAO_RECLAMACAO||raw.DESCRICAO_COMPLETA,'textarea')}</div><div style="grid-column:1/-1">${encerrada?'':cfmBotao('salvar_dados','Salvar dados da manifestação')}</div></div>`;
     ['cfm-razao','cfm-contato','cfm-pedido','cfm-nfe','cfm-produto','cfm-lote','cfm-qtd-total','cfm-qtd-afetada','cfm-unidade','cfm-prejuizo'].forEach((id,i)=>cfmValor(id,[raw.RAZAO_SOCIAL||raw.EMPRESA_RECLAMANTE,raw.CONTATO,raw.PEDIDO,raw.NFE,raw.PRODUTO,raw.LOTE,raw.QUANTIDADE_TOTAL,raw.QUANTIDADE_AFETADA||raw.QUANTIDADE,raw.UNIDADE_MEDIDA||'kg',raw.PREJUIZO_ESTIMADO][i]));
     const triagem=$('cfm-triagem-form');
-    if(triagem) triagem.innerHTML=`<div style="border:1px solid #E4E4E4;border-radius:10px;padding:14px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">${cfmCampo('cfm-categoria','CATEGORIA',raw.CATEGORIA)}${cfmCampo('cfm-motivo','MOTIVO',raw.MOTIVO)}${cfmCampo('cfm-setor','SETOR RESPONSÁVEL',raw.SETOR_CONFIRMADO||raw.SETOR_SUGERIDO)}${cfmCampo('cfm-responsavel','COLABORADOR RESPONSÁVEL',raw.RESPONSAVEL_SETOR)}${cfmCampo('cfm-prazo','PRAZO',raw.PRAZO_TRATATIVA,'date')}<label style="display:flex;gap:7px;align-items:center;font-size:12.5px"><input id="cfm-assumir-sac" type="checkbox"> SAC assume a tratativa</label><div style="grid-column:1/-1">${cfmCampo('cfm-triagem-obs','ORIENTAÇÕES E OBSERVAÇÕES',raw.OBS_ENCAMINHAMENTO,'textarea')}</div><div style="grid-column:1/-1">${encerrada?'':cfmBotao('triagem','Salvar triagem e encaminhar')}</div></div>`;
+    const _sacAtivo=!!(raw.RESPONSAVEL_SAC||raw.DATA_ASSUMIDO_SAC)&&!raw.SETOR_CONFIRMADO;
+    if(triagem) triagem.innerHTML=`<div style="border:1px solid #E4E4E4;border-radius:10px;padding:14px;display:grid;gap:12px"><div><div style="font-size:10px;font-weight:700;color:#858585;letter-spacing:.05em;margin-bottom:8px">DECISÃO DE FLUXO</div><div style="display:flex;gap:10px;flex-wrap:wrap"><label class="cfm-fluxo-lbl" style="display:flex;align-items:center;gap:7px;font-size:12.5px;cursor:pointer;padding:7px 11px;border:1.5px solid ${_sacAtivo?'#24508F':'#E0E0E0'};border-radius:8px;background:${_sacAtivo?'#F0F5FF':'#FAFAFA'}"><input type="radio" name="cfm-fluxo" value="SAC" onchange="cfmFluxoToggle()" ${_sacAtivo?'checked':''}>SAC assume a tratativa <em style="font-style:normal;font-size:11px;color:#888;margin-left:3px">(Fluxo A)</em></label><label class="cfm-fluxo-lbl" style="display:flex;align-items:center;gap:7px;font-size:12.5px;cursor:pointer;padding:7px 11px;border:1.5px solid ${!_sacAtivo?'#24508F':'#E0E0E0'};border-radius:8px;background:${!_sacAtivo?'#F0F5FF':'#FAFAFA'}"><input type="radio" name="cfm-fluxo" value="SETOR" onchange="cfmFluxoToggle()" ${!_sacAtivo?'checked':''}>Encaminhar para setor <em style="font-style:normal;font-size:11px;color:#888;margin-left:3px">(Fluxo B)</em></label></div></div><div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">${cfmCampo('cfm-categoria','CATEGORIA',raw.CATEGORIA)}${cfmCampo('cfm-motivo','MOTIVO',raw.MOTIVO)}${cfmCampo('cfm-prazo','PRAZO',raw.PRAZO_TRATATIVA,'date')}<div></div></div><div id="cfm-setor-fields" style="display:${_sacAtivo?'none':'grid'};grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">${cfmCampo('cfm-setor','SETOR RESPONSÁVEL',raw.SETOR_CONFIRMADO||raw.SETOR_SUGERIDO)}${cfmCampo('cfm-responsavel','COLABORADOR RESPONSÁVEL',raw.RESPONSAVEL_SETOR)}<div style="grid-column:1/-1">${cfmCampo('cfm-triagem-obs','ORIENTAÇÕES E OBSERVAÇÕES',raw.OBS_ENCAMINHAMENTO,'textarea')}</div></div><div>${encerrada?'':cfmBotao('triagem','Confirmar triagem')}</div></div>`;
     ['cfm-categoria','cfm-motivo','cfm-setor','cfm-responsavel','cfm-prazo'].forEach((id,i)=>cfmValor(id,[raw.CATEGORIA,raw.MOTIVO,raw.SETOR_CONFIRMADO||raw.SETOR_SUGERIDO,raw.RESPONSAVEL_SETOR,raw.PRAZO_TRATATIVA][i]));
     const investigacao=$('cfm-investigacao-form');
-    if(investigacao) investigacao.innerHTML=`<details style="border:1px solid #E8D5A0;background:#FFFCF4;border-radius:10px;padding:11px;margin-bottom:11px"><summary style="cursor:pointer;font-weight:700;font-size:13px">Assistência Inteligente — Cérebro</summary><p style="font-size:12px;color:#666;line-height:1.45">Consulte casos semelhantes e sugestões. Nada é enviado ou aplicado automaticamente.</p><button type="button" onclick="cenFichaBuscarCerebro()" style="border:1px solid #D8B95C;background:#fff;padding:6px 9px;border-radius:6px;cursor:pointer">Buscar casos semelhantes</button><div id="cfm-cerebro-result" style="font-size:12px;margin-top:8px"></div></details><div style="border:1px solid #E4E4E4;border-radius:10px;padding:14px;display:grid;gap:10px">${cfmCampo('cfm-oque','O QUE ACONTECEU?',raw.INVESTIGACAO_O_QUE,'textarea')}${cfmCampo('cfm-verificacoes','VERIFICAÇÕES REALIZADAS',raw.INVESTIGACAO_VERIFICACOES,'textarea')}${cfmCampo('cfm-causa','CAUSA PROVÁVEL',raw.CAUSA_PROVAVEL,'textarea')}${cfmCampo('cfm-tratativa','COMO O CASO FOI RESOLVIDO?',raw.TRATATIVA_REALIZADA,'textarea')}${cfmCampo('cfm-procedente','PROCEDÊNCIA',raw.PROCEDENTE)}${cfmCampo('cfm-prejuizo-confirmado','PREJUÍZO CONFIRMADO',raw.PREJUIZO_CONFIRMADO,'number')}${encerrada?'':`<div>${cfmBotao('salvar_investigacao','Salvar investigação')} ${cfmBotao('enviar_validacao','Enviar para validação SAC')}</div>`}</div>`;
+    if(investigacao) investigacao.innerHTML=`<details style="border:1px solid #E8D5A0;background:#FFFCF4;border-radius:10px;padding:11px;margin-bottom:11px"><summary style="cursor:pointer;font-weight:700;font-size:13px">Assistência Inteligente — Cérebro</summary><p style="font-size:12px;color:#666;line-height:1.45">Consulte casos semelhantes e sugestões. Nada é enviado ou aplicado automaticamente.</p><button type="button" onclick="cenFichaBuscarCerebro()" style="border:1px solid #D8B95C;background:#fff;padding:6px 9px;border-radius:6px;cursor:pointer">Buscar casos semelhantes</button><div id="cfm-cerebro-result" style="font-size:12px;margin-top:8px"></div></details><div style="border:1px solid #E4E4E4;border-radius:10px;padding:14px;display:grid;gap:10px">${cfmCampo('cfm-oque','O QUE ACONTECEU?',raw.INVESTIGACAO_O_QUE,'textarea')}${cfmCampo('cfm-verificacoes','VERIFICAÇÕES REALIZADAS',raw.INVESTIGACAO_VERIFICACOES,'textarea')}${cfmCampo('cfm-causa','CAUSA PROVÁVEL',raw.CAUSA_PROVAVEL,'textarea')}${cfmCampo('cfm-tratativa','COMO O CASO FOI RESOLVIDO?',raw.TRATATIVA_REALIZADA,'textarea')}${cfmCampo('cfm-procedente','PROCEDÊNCIA',raw.PROCEDENTE)}${cfmCampo('cfm-prejuizo-confirmado','PREJUÍZO CONFIRMADO',raw.PREJUIZO_CONFIRMADO,'number')}${encerrada?'':`<div>${cfmBotao('salvar_investigacao','Salvar investigação')} ${/AGUARDANDO_SETOR/i.test(raw.STATUS_FICHA||raw.STATUS)?cfmBotao('resposta_setor','Concluir e enviar resposta ao SAC'):cfmBotao('enviar_validacao','Enviar para validação SAC')}</div>`}</div>`;
     ['cfm-procedente','cfm-prejuizo-confirmado'].forEach((id,i)=>cfmValor(id,[raw.PROCEDENTE,raw.PREJUIZO_CONFIRMADO][i]));
     cenCarregarAcionamentos(raw.ID_MANIFESTACAO || raw.PROTOCOLO || '');
-    const validacao=$('cfm-validacao-form'); if(validacao) validacao.innerHTML=`<div style="border:1px solid #E4E4E4;border-radius:10px;padding:15px"><b style="font-size:14px">Validação SAC</b><p style="font-size:12.5px;color:#666;line-height:1.5">${esc(raw.VALIDACAO_SAC_OBS||'A validação é registrada pelo SAC após a tratativa estar concluída.')}</p><div style="font-size:12px">Status: <b>${esc(raw.STATUS_FICHA||raw.STATUS||'—')}</b></div></div>`;
-    const devolutiva=$('cfm-devolutiva-form'); if(devolutiva) devolutiva.innerHTML=`<div style="border:1px solid #E4E4E4;border-radius:10px;padding:14px">${cfmCampo('cfm-devolutiva-texto','RESPOSTA OFICIAL AO CLIENTE',raw.DEVOLUTIVA_FINAL||raw.DEVOLUTIVA_ENVIADA,'textarea')}${encerrada?'':cfmBotao('salvar_devolutiva','Salvar devolutiva para aprovação')}</div>`;
+    const _aguVal=/VALIDACAO/i.test(raw.STATUS_FICHA||raw.STATUS);
+    const _trat=raw.TRATATIVA_REALIZADA||'';
+    const validacao=$('cfm-validacao-form');
+    if(validacao) validacao.innerHTML=`<div style="border:1px solid #E4E4E4;border-radius:10px;padding:15px;display:grid;gap:12px"><div style="display:flex;align-items:center;gap:9px"><b style="font-size:13px">Validação SAC</b><span style="font-size:11px;padding:2px 8px;border-radius:99px;background:${_aguVal?'#ECFCF2':'#F3F3F3'};color:${_aguVal?'#1E6B3A':'#555'}">${esc(raw.STATUS_FICHA||raw.STATUS||'—')}</span></div>${_trat?`<div style="background:#FAFAFA;border:1px solid #EEE;border-radius:8px;padding:10px"><div style="font-size:10px;font-weight:700;color:#A0A0A0;letter-spacing:.05em;margin-bottom:4px">TRATATIVA REALIZADA</div><p style="font-size:12.5px;color:#333;margin:0;line-height:1.5;white-space:pre-wrap">${esc(_trat)}</p></div>`:''}${!encerrada&&_aguVal?`<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:4px"><label style="display:flex;flex-direction:column;gap:4px"><span style="font-size:10px;font-weight:700;color:#858585;letter-spacing:.05em">CLIENTE INFORMADO?</span><select id="cfm-valid-informado" style="border:1px solid #DDD;border-radius:7px;padding:8px;font:inherit;font-size:12.5px"><option value="">—</option><option value="SIM" ${raw.VALID_SAC_CLIENTE_INFORMADO==='SIM'?'selected':''}>Sim</option><option value="NAO" ${raw.VALID_SAC_CLIENTE_INFORMADO==='NAO'?'selected':''}>Não</option></select></label><label style="display:flex;flex-direction:column;gap:4px"><span style="font-size:10px;font-weight:700;color:#858585;letter-spacing:.05em">CASO RESOLVIDO?</span><select id="cfm-valid-resolvida" style="border:1px solid #DDD;border-radius:7px;padding:8px;font:inherit;font-size:12.5px"><option value="">—</option><option value="SIM" ${raw.VALID_SAC_RESOLVIDA==='SIM'?'selected':''}>Sim</option><option value="NAO" ${raw.VALID_SAC_RESOLVIDA==='NAO'?'selected':''}>Não</option></select></label><label style="display:flex;flex-direction:column;gap:4px"><span style="font-size:10px;font-weight:700;color:#858585;letter-spacing:.05em">DATA RETORNO AO CLIENTE</span><input type="date" id="cfm-valid-retorno" value="${esc(raw.VALID_SAC_DATA_RETORNO||'')}" style="border:1px solid #DDD;border-radius:7px;padding:8px;font:inherit;font-size:12.5px"></label><div></div><div style="grid-column:1/-1">${cfmCampo('cfm-valid-obs','OBSERVAÇÕES FINAIS',raw.OBSERVACOES_FINAIS,'textarea')}</div><div style="grid-column:1/-1"><div style="border:1px solid #DDD;border-radius:8px;padding:11px;display:grid;gap:7px"><span style="font-size:10px;font-weight:700;color:#858585;letter-spacing:.05em">DECISÃO DE VALIDAÇÃO *</span><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="radio" name="cfm-valid-decisao" value="VALIDAR" style="accent-color:#24508F"><span style="font-size:12.5px;color:#333">Validar resolução — confirmar que a investigação e a solução são suficientes</span></label><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="radio" name="cfm-valid-decisao" value="COMPLEMENTAR" style="accent-color:#24508F"><span style="font-size:12.5px;color:#333">Solicitar complementação — devolver ao responsável com justificativa e pendências</span></label><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="radio" name="cfm-valid-decisao" value="DEVOLVER" style="accent-color:#24508F"><span style="font-size:12.5px;color:#333">Devolver para correção — registrar inconsistência e exigir correção</span></label></div></div><div style="grid-column:1/-1">${cfmBotao('validacao_sac','Confirmar decisão de validação')}</div></div>`:'<p style="font-size:12.5px;color:#666;margin:0">'+(encerrada?esc(raw.OBSERVACOES_FINAIS||raw.VALIDACAO_SAC_OBS||'Manifestação encerrada.'):'Disponível após a tratativa ser enviada para validação.')+'</p>'}</div>`;
+    const devolutiva=$('cfm-devolutiva-form');
+    if(devolutiva) devolutiva.innerHTML=`<div style="border:1px solid #E4E4E4;border-radius:10px;padding:14px;display:grid;gap:11px"><label style="display:flex;flex-direction:column;gap:4px"><span style="font-size:10px;font-weight:700;color:#858585;letter-spacing:.05em">CANAL DE RETORNO AO CLIENTE</span><select id="cfm-devolutiva-canal" style="border:1px solid #DDD;border-radius:7px;padding:8px;font:inherit;font-size:12.5px"><option value="">— selecione —</option><option value="EMAIL" ${/EMAIL/i.test(raw.CANAL_RETORNO||'')?'selected':''}>E-mail</option><option value="TELEFONE" ${/TELEFONE/i.test(raw.CANAL_RETORNO||'')?'selected':''}>Telefone</option><option value="WHATSAPP" ${/WHATSAPP/i.test(raw.CANAL_RETORNO||'')?'selected':''}>WhatsApp</option><option value="CARTA" ${/CARTA/i.test(raw.CANAL_RETORNO||'')?'selected':''}>Carta / Correspondência</option><option value="PRESENCIAL" ${/PRESENCIAL/i.test(raw.CANAL_RETORNO||'')?'selected':''}>Presencial</option></select></label>${cfmCampo('cfm-devolutiva-texto','RESPOSTA OFICIAL AO CLIENTE',raw.DEVOLUTIVA_FINAL||raw.DEVOLUTIVA_ENVIADA,'textarea')}${encerrada?'':`<div style="display:flex;gap:9px;flex-wrap:wrap"><button type="button" onclick="cenFichaSalvar('salvar_devolutiva')" style="border:1.5px solid #C70602;color:#C70602;background:#fff;border-radius:7px;padding:8px 13px;font:600 12.5px inherit;cursor:pointer">Salvar rascunho</button><button type="button" onclick="cenFichaSalvar('encaminhar_aprovacao')" style="background:#24508F;color:#fff;border:0;border-radius:7px;padding:9px 13px;font:600 12.5px inherit;cursor:pointer">Enviar para aprovação</button></div>${/AGUARDANDO_DEVOLUTIVA/i.test(raw.STATUS_FICHA||raw.STATUS)?`<div style="border-top:1px solid #EEE;padding-top:11px;display:grid;gap:9px"><div style="font-size:10px;font-weight:700;color:#858585;letter-spacing:.05em">REGISTRAR ENVIO AO CLIENTE</div>${cfmCampo('cfm-devolutiva-responsavel','RESPONSÁVEL PELO ENVIO',raw.RESPONSAVEL_DEVOLUTIVA||'')}${cfmCampo('cfm-devolutiva-confirmacao','CONFIRMAÇÃO / NÚMERO DE PROTOCOLO DO ENVIO',raw.CONFIRMACAO_DEVOLUTIVA||'')}<button type="button" onclick="cenFichaSalvar('registrar_devolutiva')" style="background:#1E6B3A;color:#fff;border:0;border-radius:7px;padding:9px 13px;font:600 12.5px inherit;cursor:pointer">✓ Registrar devolutiva enviada ao cliente</button></div>`:''}`}</div>`;
   }
   function cfmMensagem(raw){
     const st=String(raw.STATUS_FICHA||raw.STATUS||'').toUpperCase();
@@ -26076,9 +26084,14 @@ async function mudarStatusMC(id, novoStatus) {
     const raw=_cenRawAtual; if(!raw?.ID_MANIFESTACAO) return;
     const valores={
       salvar_dados:{RAZAO_SOCIAL:$('cfm-razao')?.value,CONTATO:$('cfm-contato')?.value,PEDIDO:$('cfm-pedido')?.value,NFE:$('cfm-nfe')?.value,PRODUTO:$('cfm-produto')?.value,LOTE:$('cfm-lote')?.value,QUANTIDADE_TOTAL:$('cfm-qtd-total')?.value,QUANTIDADE_AFETADA:$('cfm-qtd-afetada')?.value,UNIDADE_MEDIDA:$('cfm-unidade')?.value,PREJUIZO_ESTIMADO:$('cfm-prejuizo')?.value,DESCRICAO:$('cfm-descricao')?.value,DESCRICAO_MANIFESTACAO:$('cfm-descricao')?.value},
-      triagem:{categoria:$('cfm-categoria')?.value,motivo:$('cfm-motivo')?.value,setor:$('cfm-setor')?.value,responsavel:$('cfm-responsavel')?.value,prazo:$('cfm-prazo')?.value,observacoes:$('cfm-triagem-obs')?.value,assumirSAC:!!$('cfm-assumir-sac')?.checked},
+      triagem:{categoria:$('cfm-categoria')?.value,motivo:$('cfm-motivo')?.value,setor:$('cfm-setor')?.value,responsavel:$('cfm-responsavel')?.value,prazo:$('cfm-prazo')?.value,observacoes:$('cfm-triagem-obs')?.value,assumirSAC:document.querySelector('[name="cfm-fluxo"]:checked')?.value==='SAC'},
       salvar_investigacao:{INVESTIGACAO_O_QUE:$('cfm-oque')?.value,INVESTIGACAO_VERIFICACOES:$('cfm-verificacoes')?.value,CAUSA_PROVAVEL:$('cfm-causa')?.value,TRATATIVA_REALIZADA:$('cfm-tratativa')?.value,PROCEDENTE:$('cfm-procedente')?.value,PREJUIZO_CONFIRMADO:$('cfm-prejuizo-confirmado')?.value},
-      enviar_validacao:{TRATATIVA_REALIZADA:$('cfm-tratativa')?.value}, salvar_devolutiva:{texto:$('cfm-devolutiva-texto')?.value}
+      enviar_validacao:{TRATATIVA_REALIZADA:$('cfm-tratativa')?.value},
+      salvar_devolutiva:{texto:$('cfm-devolutiva-texto')?.value,canal:$('cfm-devolutiva-canal')?.value},
+      validacao_sac:{decisao:document.querySelector('[name="cfm-valid-decisao"]:checked')?.value||'',validDataRetorno:$('cfm-valid-retorno')?.value,validClienteInformado:$('cfm-valid-informado')?.value,validResolvida:$('cfm-valid-resolvida')?.value,observacoesFinais:$('cfm-valid-obs')?.value},
+      encaminhar_aprovacao:{obs:$('cfm-devolutiva-texto')?.value,SETOR_CONFIRMADO:raw.SETOR_CONFIRMADO||'',TIPO_CONFIRMADO:raw.TIPO_CONFIRMADO||raw.TIPO||''},
+      registrar_devolutiva:{canal:$('cfm-devolutiva-canal')?.value,responsavel:$('cfm-devolutiva-responsavel')?.value,confirmacao:$('cfm-devolutiva-confirmacao')?.value},
+      resposta_setor:{respSetorOQue:$('cfm-oque')?.value,respSetorCausa:$('cfm-causa')?.value,respSetorResolucao:$('cfm-tratativa')?.value,INVESTIGACAO_VERIFICACOES:$('cfm-verificacoes')?.value,PROCEDENTE:$('cfm-procedente')?.value}
     };
     try { const r=await _apiFetch(`/api/manifestacoes/${encodeURIComponent(raw.ID_MANIFESTACAO)}/ficha`,30000,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({acao,...(valores[acao]||{})})}); if(!r.sucesso) throw new Error(r.erro||'Não foi possível salvar.'); Object.assign(raw,valores[acao]||{}, {ETAPA_ATUAL:r.etapaAtual||raw.ETAPA_ATUAL,MENSAGEM_ETAPA:r.mensagemEtapa||raw.MENSAGEM_ETAPA}); toast('Ficha atualizada.'); cenAbrirFichaCompleta(); } catch(e){ toast(e.message||'Erro ao salvar a ficha.'); }
   };
@@ -26100,10 +26113,10 @@ async function mudarStatusMC(id, novoStatus) {
     if(!_cenRawAtual) return;
     const raw=_cenRawAtual, n=normMan(raw);
     // Preenche o modal da ficha completa
-    _setText('cfm-protocolo',raw.PROTOCOLO||n.id);
+    _setText('cfm-protocolo',n.protocolo||n.id);
     const st=$('cfm-status');
     if(st){st.textContent=ST_LBL[n.st]||n.st;st.style.background=(ST_CFG_BG[n.st]||'#F0F0F0');st.style.color=(ST_CFG_FG[n.st]||'#545454');}
-    const atEl=$('cfm-atrasada');if(atEl)atEl.style.display=isLate(n)&&n.st!=='enc'?'':'none';
+    const atEl=$('cfm-atrasada');if(atEl){const _late=isLate(n)&&n.st!=='enc';if(_late&&n.prazoMs){const _d=Math.ceil((Date.now()-n.prazoMs)/86400000);atEl.textContent=_d>1?'Atrasada '+_d+'d':'Atrasada';}else{atEl.textContent='Atrasada';}atEl.style.display=_late?'':'none';}
     _setText('cfm-assunto',n.motivo||n.tipo||'—');
     _setText('cfm-sub',[n.cli,n.emp,n.canal].filter(Boolean).join(' · ')||'—');
     const rg=$('cfm-resumo-grid');
