@@ -11,6 +11,7 @@ const devolutivaEngine = require('./devolutivaEngine');
 const matrizTratamento = require('./matrizTratamentoService');
 const assertividade = require('./assertividadeService');
 const aiService = require('./aiService');
+const circaEngine = require('./circaEngine');
 
 let manifestacaoRepo, conhecimentoRepo, prisma;
 try {
@@ -260,15 +261,15 @@ async function detectarReincidencia(manifestacao) {
 
         let nivel = 'SEM_REINCIDENCIA';
         if (comMesmoProblema.length >= 2) nivel = 'REINCIDENCIA_CONFIRMADA';
-        else if (comMesmoProblema.length >= 1 || manifestacoes.length >= 3) nivel = 'POSSIVEL_REINCIDENCIA';
+        else if (comMesmoProblema.length >= 1) nivel = 'POSSIVEL_REINCIDENCIA';
 
         return {
           nivel,
-          detectada: manifestacoes.length > 0,
-          quantidade: manifestacoes.length,
+          detectada: comMesmoProblema.length > 0,
+          quantidade: comMesmoProblema.length,
           quantidadeMesmoProblema: comMesmoProblema.length,
           fonte: 'postgresql',
-          casos: manifestacoes.slice(0, 10).map(m => ({
+          casos: comMesmoProblema.slice(0, 10).map(m => ({
             id: m.protocolo || String(m.id),
             data: m.criadaEm?.toISOString().split('T')[0],
             motivo: m.tipo,
@@ -314,15 +315,15 @@ async function detectarReincidencia(manifestacao) {
 
     let nivel = 'SEM_REINCIDENCIA';
     if (casosComMesmoProblema.length >= 2) nivel = 'REINCIDENCIA_CONFIRMADA';
-    else if (casosComMesmoProblema.length >= 1 || casos.length >= 3) nivel = 'POSSIVEL_REINCIDENCIA';
+    else if (casosComMesmoProblema.length >= 1) nivel = 'POSSIVEL_REINCIDENCIA';
 
     return {
       nivel,
-      detectada: casos.length > 0,
-      quantidade: casos.length,
+      detectada: casosComMesmoProblema.length > 0,
+      quantidade: casosComMesmoProblema.length,
       quantidadeMesmoProblema: casosComMesmoProblema.length,
       fonte: 'sheets',
-      casos: casos.slice(-10).map(h => ({
+      casos: casosComMesmoProblema.slice(-10).map(h => ({
         id: campo(h, ['ID_HISTORICO','ID_MANIFESTACAO']),
         data: campo(h, ['ORIG_DATA_ABERTURA','DATA_ABERTURA']),
         motivo: campo(h, ['ORIG_MOTIVO_RELATADO','MOTIVO','TIPO']),
@@ -985,7 +986,7 @@ async function analisarManifestacaoCompleta(manifestacao, regras = {}, usuario =
   if (!descricao) informacoesAusentes.push('DESCRICAO');
   if (!campo(manifestacao, ['empresa','EMPRESA_RECLAMADA','empresaReclamada'])) informacoesAusentes.push('EMPRESA_RECLAMADA');
   if (!campo(manifestacao, ['cliente','EMPRESA_RECLAMANTE','empresaReclamante'])) informacoesAusentes.push('EMPRESA_RECLAMANTE');
-  if (!campo(manifestacao, ['canal','CANAL','origem','ORIGEM'])) informacoesAusentes.push('CANAL');
+  if (!campo(manifestacao, ['canal','CANAL','ORIG_CANAL','CANAL_RECEBIMENTO','origem','ORIGEM'])) informacoesAusentes.push('CANAL');
 
   const protocolo = campo(manifestacao, ['protocolo','ID_MANIFESTACAO']);
   const setor = regras.setores?.[0] || '';
@@ -1045,11 +1046,19 @@ async function analisarManifestacaoCompleta(manifestacao, regras = {}, usuario =
       ['DESCRICAO', descricao],
       ['EMPRESA_RECLAMADA', campo(manifestacao, ['empresa','EMPRESA_RECLAMADA','empresaReclamada'])],
       ['EMPRESA_RECLAMANTE', campo(manifestacao, ['cliente','EMPRESA_RECLAMANTE','empresaReclamante'])],
-      ['CANAL', campo(manifestacao, ['canal','CANAL','origem','ORIGEM'])],
+      ['CANAL', campo(manifestacao, ['canal','CANAL','ORIG_CANAL','CANAL_RECEBIMENTO','origem','ORIGEM'])],
     ].filter(([, valor]) => String(valor || '').trim()).map(([nome]) => nome));
     ia.informacoesAusentes = ia.informacoesAusentes.filter(item => {
       const chave = normalizar(item).replace(/\s+/g, '_').toUpperCase();
-      return !preenchidos.has(chave);
+      if (preenchidos.has(chave)) return false;
+      // Modelos podem devolver frases ("canal de recebimento ausente") em
+      // vez do nome da coluna. Remova somente a indicação correspondente a
+      // um valor realmente preenchido, sem inventar um valor para a ficha.
+      if (preenchidos.has('DESCRICAO') && (chave.includes('DESCRICAO') || chave.includes('RELATO'))) return false;
+      if (preenchidos.has('CANAL') && chave.includes('CANAL')) return false;
+      if (preenchidos.has('EMPRESA_RECLAMADA') && chave.includes('EMPRESA')) return false;
+      if (preenchidos.has('EMPRESA_RECLAMANTE') && (chave.includes('CLIENTE') || chave.includes('CONTATO') || chave.includes('RECLAMANTE'))) return false;
+      return true;
     });
   }
 
@@ -1103,11 +1112,18 @@ async function analisarManifestacaoCompleta(manifestacao, regras = {}, usuario =
   const setoresFinais = [
     ...(regras.setores || []),
     ...setoresRecomendadosConfig.filter(s => !(regras.setores || []).includes(s)),
-  ].filter(Boolean).slice(0, 5) || ['SAC'];
+  ].filter(Boolean).slice(0, 5);
+  const hipotesesClassificacao = circaEngine.classificarHipoteses(manifestacao);
+  const limitacoes = [];
+  if (!regras.regraAplicada && !setoresFinais.length) {
+    limitacoes.push('Nenhuma regra ou setor elegível foi encontrado nas bases canônicas; a classificação e o encaminhamento dependem de decisão humana.');
+  }
 
   const analise = {
     protocolo, tipoDetectado: tipo, tipoConfianca: regras.tipoConfianca || 0,
-    setores: setoresFinais.length ? setoresFinais : ['SAC'], regraAplicada: regras.regraAplicada || null,
+    setores: setoresFinais, regraAplicada: regras.regraAplicada || null,
+    hipotesesClassificacao,
+    limitacoes,
     setoresRecomendadosConfig,
     prioridade: regras.prioridade || 'Média', slaHoras: regras.slaHoras || 72,
     geraRNC: false, // RNC nunca automático — apenas por critério humano/auditoria

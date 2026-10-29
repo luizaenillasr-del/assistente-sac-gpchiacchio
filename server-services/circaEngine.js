@@ -14,18 +14,52 @@ const first = (obj, keys) => {
   return '';
 };
 
+// Os registros chegam de três contratos (formulário, Sheets e ficha). A
+// análise não deve depender da capitalização ou do nome histórico da coluna.
+const FIELD_ALIASES = {
+  empresa: ['EMPRESA_RECLAMADA', 'EMPRESA', 'empresaReclamada', 'empresa', 'ORIG_EMPRESA'],
+  cliente: ['CONTATO', 'CLIENTE', 'CLIENTE_NOME', 'contato', 'cliente', 'empresaReclamante', 'EMPRESA_RECLAMANTE', 'ORIG_CONTATO'],
+  descricao: ['DESCRICAO', 'DESCRIÇÃO', 'descricao', 'ORIG_DESCRICAO_RECLAMACAO', 'DESCRICAO_RECLAMACAO', 'relato', 'RELATO'],
+  canal: ['CANAL', 'canal', 'ORIG_CANAL', 'CANAL_RECEBIMENTO', 'origem', 'ORIGEM'],
+};
+
+function normalizarManifestacao(manifestacao = {}) {
+  const m = { ...manifestacao };
+  for (const [canonical, aliases] of Object.entries(FIELD_ALIASES)) {
+    const value = first(manifestacao, aliases);
+    if (value !== '') {
+      const target = canonical === 'empresa' ? 'EMPRESA_RECLAMADA'
+        : canonical === 'cliente' ? 'CONTATO'
+        : canonical === 'descricao' ? 'DESCRICAO' : 'CANAL';
+      if (!first(m, [target])) m[target] = value;
+    }
+  }
+  return m;
+}
+
 function missingFields(manifestacao) {
-  const fields = [
-    ['empresa', ['EMPRESA_RECLAMADA', 'EMPRESA']],
-    ['cliente', ['CONTATO', 'CLIENTE', 'CLIENTE_NOME']],
-    ['descricao', ['DESCRICAO', 'DESCRIÇÃO', 'ORIG_DESCRICAO_RECLAMACAO']],
-    ['canal', ['CANAL', 'ORIG_CANAL']],
-  ];
+  const fields = Object.entries(FIELD_ALIASES);
   return fields.filter(([, keys]) => !first(manifestacao, keys)).map(([name]) => name);
 }
 
+/**
+ * Reconhece problemas distintos somente como hipóteses de classificação. A
+ * confirmação continua dependente da investigação e de uma causa cadastrada.
+ */
+function classificarHipoteses(manifestacao = {}) {
+  const descricao = norm(first(manifestacao, FIELD_ALIASES.descricao));
+  const result = [];
+  if (/\b(atras|entreg|prazo|logistic|pedido)\w*/.test(descricao)) {
+    result.push({ codigo: 'ATRASO_LOGISTICO', descricao: 'Possível atraso logístico na entrega', origem: 'RELATO', confirmada: false });
+  }
+  if (/(tamp|encaix|pote|produto|defeit|nao conform|conformidade)/.test(descricao)) {
+    result.push({ codigo: 'NAO_CONFORMIDADE_PRODUTO', descricao: 'Possível não conformidade do produto ou do encaixe', origem: 'RELATO', confirmada: false });
+  }
+  return result;
+}
+
 function analisar(input = {}) {
-  const m = input.manifestacao || {};
+  const m = normalizarManifestacao(input.manifestacao || {});
   const similares = Array.isArray(input.similares) ? input.similares : [];
   const tratamentos = Array.isArray(input.tratamentos) ? input.tratamentos : [];
   const causas = Array.isArray(input.causas) ? input.causas : [];
@@ -40,22 +74,32 @@ function analisar(input = {}) {
   const devolutivaEnviada = Boolean(first(m, ['DEVOLUTIVA_ENVIADA', 'DATA_DEVOLUTIVA']) || first(devolutiva, ['DATA_ENVIO', 'ENVIADA_EM']));
   const procedencia = first(m, ['PROCEDENTE', 'PROCEDENCIA']);
   const autonomia = !faltantes.length && Boolean(causa || subcausa) && Boolean(procedimento || first(m, ['TRATATIVA_REALIZADA'])) && !['critica', 'alta'].includes(norm(m.PRIORIDADE)) && !m.FORA_ALCADA;
-  const procedures = tratamentos.filter(t => norm(t.STATUS || 'APROVADO') === 'aprovado' || !t.STATUS);
+  const procedures = tratamentos.filter(t => {
+    const status = norm(t.STATUS || t.ATIVO);
+    const id = first(t, ['ID_TRATAMENTO', 'ID_REGRA', 'ID_PROC', 'ID']);
+    // A validação estrutural da Matriz ocorre antes deste módulo. Aqui
+    // mantemos compatibilidade com registros já normalizados pelo endpoint;
+    // somente itens explicitamente aprovados/ativos e identificados entram.
+    return ['aprovado', 'publicada', 'ativo', 'sim'].includes(status) && Boolean(id);
+  });
   // Enriquecer hipóteses com causas da aba CAUSAS que coincidam com texto da manifestação
   const descNorm = norm(first(m, ['DESCRICAO','DESCRIÇÃO','ORIG_DESCRICAO_RECLAMACAO']) || '');
   const causasMatriz = causas
     .filter(c => {
-      const ativo = String(c.ATIVO || 'SIM').toUpperCase() !== 'NAO' && String(c.ATIVO || 'SIM').toUpperCase() !== 'EXCLUIDO';
+      const ativo = !['NAO', 'NÃO', 'EXCLUIDO', 'EXCLUÍDO', 'INATIVO', 'RASCUNHO'].includes(String(c.ATIVO || '').toUpperCase()) &&
+        !['NAO', 'NÃO', 'EXCLUIDO', 'EXCLUÍDO', 'INATIVO', 'RASCUNHO'].includes(String(c.STATUS || c.STATUS_VALIDACAO || '').toUpperCase());
       if (!ativo || !descNorm) return false;
-      const causaN = norm(c.CAUSA || '');
-      const subcausaN = norm(c.SUBCAUSA || '');
+      if (!first(c, ['ID_CAUSA', 'ID', 'CODIGO'])) return false;
+      const causaN = norm(first(c, ['CAUSA', 'DESCRICAO']));
+      const subcausaN = norm(first(c, ['SUBCAUSA', 'SUBCAUSA_DESCRICAO']));
       const palavras = [...causaN.split(' '), ...subcausaN.split(' ')].filter(p => p.length >= 4);
       return palavras.some(p => descNorm.includes(p));
     })
-    .map(c => c.CAUSA + (c.SUBCAUSA ? ` / ${c.SUBCAUSA}` : ''))
+    .map(c => first(c, ['CAUSA', 'DESCRICAO']) + (first(c, ['SUBCAUSA', 'SUBCAUSA_DESCRICAO']) ? ` / ${first(c, ['SUBCAUSA', 'SUBCAUSA_DESCRICAO'])}` : ''))
     .filter(Boolean)
     .slice(0, 3);
   const hypotheses = workflow.normalizeList([causa, subcausa, ...causasMatriz].filter(Boolean));
+  const hipotesesClassificacao = classificarHipoteses(m);
   const checklist = workflow.buildChecklist([
     ...faltantes.map(field => ({ descricao: `Completar informação: ${field}`, obrigatoria: true, origem: 'CIRCA_CAPTURA' })),
     ...(!causa ? [{ descricao: 'Confirmar causa com evidência', obrigatoria: true, origem: 'CIRCA_INVESTIGACAO' }] : []),
@@ -82,11 +126,13 @@ function analisar(input = {}) {
       aprimoramento: { status: encerrada && (!causa || !procedimento) ? 'NECESSITA_REVISAO' : 'AGUARDANDO_RESULTADO', eficacia: first(m, ['EFICACIA_TRATAMENTO', 'RESULTADO']) || '' },
     },
     recomendacoes,
+    hipotesesClassificacao,
     analiseEstruturada: {
       classificacaoPreliminar: first(m, ['TIPO_CONFIRMADO', 'TIPO_SUGERIDO', 'TIPO', 'CATEGORIA']),
       prioridade: first(m, ['PRIORIDADE']) || 'Normal',
       justificativaRisco: first(m, ['GRAVIDADE', 'RISCO_JUSTIFICATIVA']),
       hipotesesCausa: hypotheses,
+      hipotesesClassificacao,
       informacoesAusentes: faltantes,
       perguntasRecomendadas: faltantes.map(field => `Informe ${field}.`),
       acoesSugeridas: procedures.map(t => first(t, ['PROCEDIMENTO', 'NOME', 'TRATAMENTO'])).filter(Boolean),
@@ -104,4 +150,4 @@ function analisar(input = {}) {
   };
 }
 
-module.exports = { analisar, missingFields };
+module.exports = { analisar, missingFields, classificarHipoteses, normalizarManifestacao };

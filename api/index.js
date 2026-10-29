@@ -1456,14 +1456,6 @@ async function motorRegras(descricao, tipo, empresa) {
       }
     }
 
-    if (setoresSet.size === 0) {
-      if (texto.includes('entrega') || texto.includes('prazo') || texto.includes('atraso')) setoresSet.add('Logística');
-      if (texto.includes('qualidade') || texto.includes('defeito') || texto.includes('ruptura') || texto.includes('embalagem') || texto.includes('quantidade') || texto.includes('padrao') || texto.includes('padrão')) setoresSet.add('Qualidade');
-      if (texto.includes('nota') || texto.includes('nf') || texto.includes('cobrança') || texto.includes('valor') || texto.includes('preco') || texto.includes('preço') || texto.includes('cobrado')) setoresSet.add('Financeiro');
-      if (texto.includes('comercial') || texto.includes('pedido')) setoresSet.add('Comercial');
-      if (setoresSet.size === 0) setoresSet.add('SAC');
-    }
-
     const setores = [...setoresSet];
 
     let slaHoras = 72;
@@ -1492,10 +1484,18 @@ async function motorRegras(descricao, tipo, empresa) {
     const rncSinalizado = texto.includes('reincidência') || texto.includes('terceira') || texto.includes('repetiu') || prioridade === 'Alta';
     const geraRNC = false; // Imutável. RNC só é criado por decisão humana explícita.
 
-    return { tipoDetectado, tipoID, tipoConfianca, setores, regraAplicada, slaHoras, prioridade, procedimentoSugerido, perguntasNecessarias, geraRNC, rncSinalizado };
+    return {
+      tipoDetectado, tipoID, tipoConfianca, setores, regraAplicada, slaHoras, prioridade,
+      procedimentoSugerido, perguntasNecessarias, geraRNC, rncSinalizado,
+      limitacaoSetor: setores.length ? '' : 'Nenhuma regra de roteamento ativa correspondeu ao relato; selecione o setor durante a triagem SAC.',
+    };
   } catch (e) {
     console.error('Erro motor regras:', e.message);
-    return { tipoDetectado: 'Não identificado', tipoConfianca: 0, setores: ['SAC'], slaHoras: 72, prioridade: 'Média', geraRNC: false };
+    return {
+      tipoDetectado: 'Não identificado', tipoConfianca: 0, setores: [], slaHoras: 72,
+      prioridade: 'Média', geraRNC: false,
+      limitacaoSetor: 'Não foi possível validar as regras de roteamento; selecione o setor durante a triagem SAC.',
+    };
   }
 }
 
@@ -1517,11 +1517,35 @@ function gerarDevolutiva(empresa, tipo, setores, tratativa) {
 
 async function executarAnalise(manifestacao) {
   const inicio = Date.now();
-  const regras = await motorRegras(
+  let regras = await motorRegras(
     manifestacao.descricao || manifestacao.DESCRICAO || '',
     manifestacao.tipo || manifestacao.TIPO || '',
     manifestacao.empresaReclamada || manifestacao.EMPRESA_RECLAMADA || ''
   );
+  // A Matriz de Tratamento é a fonte canônica para setor/procedimento. O
+  // motor textual só classifica o tipo e o SLA; não transforma palavras do
+  // relato em encaminhamento. Regras incompletas/inativas já são descartadas
+  // pelo serviço antes de chegar aqui.
+  const regraMatriz = await matrizTratamentoService.consultarMatriz({
+    empresa: manifestacao.empresaReclamada || manifestacao.EMPRESA_RECLAMADA || '',
+    tipo: manifestacao.tipo || manifestacao.TIPO || '',
+    categoria: manifestacao.categoria || manifestacao.CATEGORIA || '',
+    subcategoria: manifestacao.subcategoria || manifestacao.SUBCATEGORIA || '',
+    causa: manifestacao.causa || manifestacao.CAUSA || '',
+  }).catch(() => null);
+  if (regraMatriz && regraMatriz.origem === 'MATRIZ') {
+    regras = {
+      ...regras,
+      setores: regraMatriz.setorResponsavel ? [regraMatriz.setorResponsavel] : [],
+      regraAplicada: regraMatriz.idRegra || regraMatriz.idTratamento || regras.regraAplicada,
+      procedimentoSugerido: regraMatriz.idTratamento ? {
+        id: regraMatriz.idTratamento,
+        nome: (regraMatriz.acoesObrigatorias || []).join('; '),
+      } : regras.procedimentoSugerido,
+      matrizTratamento: regraMatriz,
+      limitacaoSetor: '',
+    };
+  }
   // Resolver Matriz de Conhecimento antes de chamar o Cérebro
   const matrizConhecimento = await mcService.resolverConhecimento({
     ...manifestacao,
@@ -2169,21 +2193,11 @@ app.post('/api/analise', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC','ATEN
       const causaSug = analise.causaProvavel || analise.causaRaiz || analise.causa || '';
       analise.aprendizado = assertividadeService.aprendizadoPorContexto(rowsAssert, { setor: setorSug, causa: causaSug, tipo });
     } catch (_) {}
-    // Sugestão consultiva baseada em competências declaradas; não altera
-    // atribuições oficiais nem considera autodeclaração prova de causa-raiz.
-    try {
-      const usuarios=await carregarUsuarios();
-      const rows=await lerAba('PERFIS_PROFISSIONAIS',5000).catch(()=>[]);
-      const byId=new Map(usuarios.map(u=>[String(usuarioPublico(u).id),usuarioPublico(u)]));
-      const perfis=rows.filter(r=>byId.has(String(r.ID_USUARIO))).map(r=>{
-        const u=byId.get(String(r.ID_USUARIO));
-        return {...perfilProfissional.registroParaPerfil(r,u),ativo:String(u.status||'ATIVO').toUpperCase()==='ATIVO'};
-      });
-      const empresa=perfilCanonico(req.user.perfil)==='MASTER'?empresaReclamada:req.user.empresa;
-      analise.especialistasSugeridos=perfilProfissional.especialistas(perfis,{empresa,produto,tipo,descricao},5);
-      const operador=perfis.find(p=>String(p.idUsuario)===String(req.user.sub));
-      analise.contextoOperador={perfilOficial:req.user.perfil,setorOficial:req.user.setor||'',funcaoDeclarada:operador?.descricaoFuncao||''};
-    } catch(e) { console.warn('[PERFIL] Sugestões indisponíveis:',e.message); analise.especialistasSugeridos=[]; }
+    // Pessoas nunca são inferidas do texto da manifestação. O setor e o
+    // responsável só podem ser escolhidos na triagem a partir dos cadastros e
+    // permissões vigentes; o endpoint administrativo de competências continua
+    // disponível para consulta explícita, sem alimentar esta recomendação.
+    analise.especialistasSugeridos = [];
     res.json({ sucesso: true, analise });
   } catch (e) {
     console.error(e);
