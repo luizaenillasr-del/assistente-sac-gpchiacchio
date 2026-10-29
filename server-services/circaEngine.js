@@ -129,10 +129,15 @@ function analisar(input = {}) {
   const hypotheses = workflow.normalizeList([causa, subcausa, ...causasMatriz].filter(Boolean));
   const hipotesesClassificacao = classificarHipoteses(m);
   const alertaProdutoManifestacao = alertaProduto(first(m, ['PRODUTO','produto']), first(m, FIELD_ALIASES.descricao));
+  const abertura = first(m, ['DATA_ABERTURA', 'DATA_CRIACAO', 'dataAbertura']);
+  const vencimento = (horas) => {
+    if (!horas || !abertura || isNaN(new Date(abertura))) return '';
+    return new Date(new Date(abertura).getTime() + Number(horas) * 3600000).toISOString();
+  };
   const checklist = workflow.buildChecklist([
-    ...faltantes.map(field => ({ descricao: `Completar informação: ${field}`, obrigatoria: true, origem: 'CIRCA_CAPTURA' })),
-    ...(!causa ? [{ descricao: 'Confirmar causa com evidência', obrigatoria: true, origem: 'CIRCA_INVESTIGACAO' }] : []),
-    ...(!procedimento ? [{ descricao: 'Selecionar procedimento validado ou justificar ausência', obrigatoria: true, origem: 'CIRCA_RESOLUCAO' }] : []),
+    ...faltantes.map(field => ({ descricao: `Completar informação: ${field}`, obrigatoria: true, origem: 'CIRCA_CAPTURA', prazoHoras: 24, vencimento: vencimento(24) })),
+    ...(!causa ? [{ descricao: 'Confirmar causa com evidência', obrigatoria: true, origem: 'CIRCA_INVESTIGACAO', prazoHoras: 72, vencimento: vencimento(72) }] : []),
+    ...(!procedimento ? [{ descricao: 'Selecionar procedimento validado ou justificar ausência', obrigatoria: true, origem: 'CIRCA_RESOLUCAO', prazoHoras: 72, vencimento: vencimento(72) }] : []),
   ], input.checklist || []);
 
   const recomendacoes = [];

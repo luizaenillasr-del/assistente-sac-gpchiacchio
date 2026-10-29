@@ -72,6 +72,12 @@ function filtrarColetas(acoes = [], m = {}) {
       .replace(/^(?:solicitar|coletar|pedir)$/i, '')
       .trim();
     if (!descricao) return null;
+    // Resíduos de uma ação composta precisam continuar sendo instruções
+    // executáveis, nunca fragmentos como "lote como evidência".
+    descricao = descricao
+      .replace(/^lote\s+como\s+evid[eê]ncia$/i, 'Solicitar o número do lote ao cliente e registrar a evidência.')
+      .replace(/^foto(?:s)?\s+como\s+evid[eê]ncia$/i, 'Solicitar foto do produto com identificação visível e registrar a evidência.')
+      .replace(/^nf\s+como\s+evid[eê]ncia$/i, 'Solicitar o número da nota fiscal ao cliente e registrar a evidência.');
     // Se nada foi alterado, preservar a ação integralmente.
     return descricao === antes ? a : { ...a, descricao };
   }).filter(Boolean);

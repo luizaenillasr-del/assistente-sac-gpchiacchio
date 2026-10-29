@@ -42,6 +42,7 @@ async function main() {
   const errosPagina = [];
   const requisicoes = [];
   const rascunhosEnviados = [];
+  const checklistSalvos = [];
   page.on('pageerror', error => errosPagina.push(error));
   await page.route('**/api/**', async route => {
     const req = route.request();
@@ -56,6 +57,8 @@ async function main() {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ sucesso: true, id: 'NM-BROWSER-001', protocolo: 'CHIA-20261028-01-0001' }) });
     }
     if (url.pathname.endsWith('/circa-dados') && req.method() === 'PATCH') {
+      const body = req.postDataJSON() || {};
+      if (body.CHECKLIST_CIRCA) checklistSalvos.push(body);
       await new Promise(resolve => setTimeout(resolve, 80));
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ sucesso: true, id: 'NM-BROWSER-001', protocolo: 'CHIA-20261028-01-0001' }) });
     }
@@ -71,7 +74,7 @@ async function main() {
               { codigo: 'NAO_CONFORMIDADE_PRODUTO', descricao: 'Possível não conformidade de produto (hipótese; validar na triagem)' }
             ],
             procedimentosAplicaveis: [], setoresRecomendados: [], responsaveisElegiveis: [], casosSemelhantes: []
-          }, checklist: []
+          }, checklist: [{ id: 'circa-confirmar-causa', descricao: 'Confirmar causa com evidência', prazo: '72h' }], checklistPersistido: [], checklistVersao: 0
         }
       }) });
     }
@@ -131,6 +134,11 @@ async function main() {
     assert.match(classificacao, /Atraso logístico/);
     assert.match(classificacao, /não conformidade de produto/i);
     assert.doesNotMatch(classificacao, /Outras não conformidades de conversão/i);
+    const tarefa = page.locator('input[data-checklist-id="circa-confirmar-causa"]');
+    await tarefa.waitFor({ state: 'attached' });
+    await tarefa.evaluate(el => { el.checked = true; el.dispatchEvent(new Event('change', { bubbles: true })); });
+    await page.waitForTimeout(150);
+    assert.ok(checklistSalvos.some(body => JSON.parse(body.CHECKLIST_CIRCA).some(item => item.id === 'circa-confirmar-causa' && item.status === 'CONCLUIDA')), 'conclusão do checklist deve ser persistida');
 
     await page.locator('#nm-btn-voltar').click();
     await page.locator('#nm-etapa-label').filter({ hasText: 'Etapa 1 de 7' }).waitFor();

@@ -85,9 +85,9 @@ function buildChecklist(recommendations = [], previous = []) {
     const key = String(description).trim().toLowerCase();
     const existing = byKey.get(key);
     const stableId = `circa-${key.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`;
-    return existing ? { ...existing, id: existing.id || stableId, origem: existing.origem || 'HISTORICO' } : {
+    return existing ? { ...existing, id: existing.id || stableId, prazo: existing.prazo || item.prazo || '', prazoHoras: existing.prazoHoras || item.prazoHoras || null, vencimento: existing.vencimento || item.vencimento || '', origem: existing.origem || 'HISTORICO' } : {
       id: stableId,
-      chave: key, descricao: description, responsavel: item.responsavel || '', prazo: item.prazo || '',
+      chave: key, descricao: description, responsavel: item.responsavel || '', prazo: item.prazo || (item.prazoHoras ? `${item.prazoHoras}h` : ''), prazoHoras: item.prazoHoras || null, vencimento: item.vencimento || '',
       obrigatoria: item.obrigatoria !== false, status: 'PENDENTE', evidencia: '', origem: item.origem || 'CIRCA',
     };
   }).filter(item => item.descricao);
