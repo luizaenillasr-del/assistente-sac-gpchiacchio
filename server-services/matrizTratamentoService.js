@@ -63,8 +63,12 @@ function normalizarRegra(row = {}) {
 /** Valida uma regra sem alterar a origem. Regras ativas incompletas não são
  * elegíveis para recomendações do CIRCA. */
 function validarRegra(regra = {}) {
-  const ativa = !['NAO', 'INATIVO', 'INACTIVE', '0', 'FALSE'].includes(String(regra.ATIVO || '').trim().toUpperCase()) &&
-    !['INATIVO', 'INACTIVE', 'RASCUNHO', 'DESCARTADO'].includes(String(regra.STATUS || '').trim().toUpperCase());
+  // As planilhas usam tanto "NAO" quanto "NÃO". Normalizar antes de
+  // comparar evita que uma regra explicitamente inativa entre no CIRCA.
+  const estado = String(regra.ATIVO || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase();
+  const status = String(regra.STATUS || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase();
+  const ativa = !['NAO', 'INATIVO', 'INACTIVE', '0', 'FALSE'].includes(estado) &&
+    !['INATIVO', 'INACTIVE', 'RASCUNHO', 'DESCARTADO'].includes(status);
   const contrato = regra.CONTRATO || (Object.prototype.hasOwnProperty.call(regra, 'ID_TRATAMENTO') ? 'CANONICO' : 'LEGADO');
   const obrigatorios = contrato === 'CANONICO'
     ? [
@@ -80,12 +84,14 @@ function validarRegra(regra = {}) {
         ['TRATATIVA_PADRAO', regra.TRATATIVA_PADRAO || regra.TRATATIVA_RECOMENDADA],
       ];
   const motivos = obrigatorios.filter(([, value]) => String(value ?? '').trim() === '').map(([nome]) => nome);
-  return { ativa, contrato, motivos, utilizavel: !ativa || motivos.length === 0 };
+  // "utilizavel" é deliberadamente igual ao critério do motor: uma regra
+  // inativa nunca pode ser recomendada, ainda que esteja completa.
+  return { ativa, contrato, motivos, utilizavel: ativa && motivos.length === 0 };
 }
 
 function regraUtilizavel(regra = {}) {
   const validacao = validarRegra(regra);
-  return validacao.ativa && validacao.motivos.length === 0;
+  return validacao.utilizavel;
 }
 
 function norm(v) {
