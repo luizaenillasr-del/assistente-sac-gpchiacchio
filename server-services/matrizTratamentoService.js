@@ -155,7 +155,9 @@ async function consultarMatriz(ctx) {
     responsavel: melhor.RESPONSAVEL || '',
     prioridade: melhor.PRIORIDADE || 'Média',
     risco: melhor.RISCO || 'MÉDIO',
-    prazo: melhor.PRAZO_TRATATIVA || '72h',
+    // Prazo de procedimento só existe quando a regra o informa. Os SLAs
+    // operacionais (24/72/96h) são exibidos separadamente pelo CIRCA.
+    prazo: melhor.PRAZO_TRATATIVA || null,
     acoesObrigatorias: split(melhor.TRATATIVA_OBRIGATORIA),
     acoesRecomendadas: split(melhor.TRATATIVA_RECOMENDADA),
     acoesCondicionais: split(melhor.TRATATIVA_CONDICIONAL),
@@ -222,7 +224,7 @@ function regrasDefault(ctx) {
     responsavel: '',
     prioridade: ctx.prioridade || 'Média',
     risco: 'MÉDIO',
-    prazo: '72h',
+    prazo: null,
     ...base,
     necessitaAprovacao: false,
     quemAprova: '',

@@ -11928,6 +11928,13 @@ function renderizarCircaDeterministico(resultado) {
   const missing=(a.informacoesAusentes||[]).map(nmTextoEstruturado).filter(Boolean); set('ia-perguntas',missing.length?missing.map(x=>'• '+x).join('\n'):'Nenhuma informação essencial ausente.');
   const checklist=resultado.checklist||[]; const salvo=Array.isArray(resultado.checklistPersistido)?resultado.checklistPersistido:[]; window._nmChecklist=salvo; window._nmChecklistVersao=resultado.checklistVersao||0; const action=document.getElementById('ia-tratativa'); if(action) action.innerHTML=(checklist.length?checklist.map((x,i)=>{const id=x.id||`circa-${String(x.descricao||x.titulo||x).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}`; const item=salvo.find(v=>v.id===id)||{};return `<label class="checklist-item"><input type="checkbox" data-checklist-id="${esc(id)}" ${item.status==='CONCLUIDA'?'checked':''} onchange="nmSalvarChecklist('${esc(id)}',this.checked)"><span>${esc(x.descricao||x.titulo||x)}</span><small style="margin-left:auto;color:#777">${esc(item.status||'PENDENTE')}</small></label>`}).join(''): '<div class="circa-muted">Nenhuma tarefa determinística pendente.</div>');
   const pend=document.getElementById('ia-alertas'); const pendencias=resultado.pendenciasValidacaoHumana||[]; if(pend&&pendencias.length) pend.innerHTML='<div class="alert-box yellow">Validação humana pendente: '+pendencias.map(nmTextoEstruturado).join(', ')+'</div>';
+  if (a.alertaProduto) {
+    document.getElementById('ia-alerta-produto')?.remove();
+    const avisoProduto = document.createElement('div'); avisoProduto.id = 'ia-alerta-produto';
+    avisoProduto.style.cssText = 'margin:8px 0;padding:9px 12px;border-left:3px solid #D97706;background:#FEF3C7;color:#92400E;font-size:12px;border-radius:6px';
+    avisoProduto.textContent = `⚠ Produto cadastrado “${a.alertaProduto.produtoCadastrado}” diverge do relato (${(a.alertaProduto.termosRelato || []).join(', ')}). Validação humana necessária.`;
+    const procWrapDet = document.getElementById('ia-proc-wrap'); if (procWrapDet?.parentNode) procWrapDet.parentNode.insertBefore(avisoProduto, procWrapDet);
+  }
   const proc=document.getElementById('ia-proc-nome'); if(proc) proc.textContent=(a.procedimentosAplicaveis||a.acoesSugeridas||[]).map(nmTextoEstruturado).filter(Boolean).join(' · ')||'Nenhum procedimento validado encontrado.';
   const separarItens = valor => String(valor ?? '').split(/[;,\n|]+/).map(x => x.trim()).filter(Boolean);
   const unicos = lista => [...new Map(lista.map(x => [String(x).toLocaleLowerCase('pt-BR'), String(x)])).values()];
@@ -12160,7 +12167,11 @@ function renderizarAnalise(a) {
   if (confLabel) { const ts = document.getElementById('ia-timestamp'); if(ts) ts.textContent += ` · Confiança: ${confLabel}`; }
   // Popula badges do cabeçalho com tipo e prioridade
   const tipoBadgeHdr = document.getElementById('ia-tipo-badge');
-  if (tipoBadgeHdr && (a.tipoDetectado || a.tipoSugerido)) { tipoBadgeHdr.textContent = a.tipoDetectado || a.tipoSugerido; tipoBadgeHdr.style.display = 'inline-flex'; }
+  if (tipoBadgeHdr && (a.tipoDetectado || a.tipoSugerido || a.classificacaoStatus)) {
+    const tipoTexto = a.tipoDetectado || a.tipoSugerido || 'Não identificado';
+    tipoBadgeHdr.textContent = a.classificacaoStatus === 'PENDENTE_VALIDACAO' ? `${tipoTexto} · validar` : tipoTexto;
+    tipoBadgeHdr.style.display = 'inline-flex';
+  }
   const priHdrBadge = document.getElementById('ia-prioridade-hdr');
   if (priHdrBadge && a.prioridade) { priHdrBadge.textContent = 'Prioridade ' + a.prioridade; priHdrBadge.style.display = 'inline-flex'; const priHdrMap = {'Alta':'background:#FEE2E2;color:#DC2626','Média':'background:#FEF3C7;color:#B45309','Baixa':'background:#F5F5F5;color:#555','Crítica':'background:#DC2626;color:#fff'}; priHdrBadge.style.cssText += ';' + (priHdrMap[a.prioridade]||priHdrMap['Média']); }
 
@@ -12171,11 +12182,18 @@ function renderizarAnalise(a) {
   priEl.style.cssText = `display:inline-flex;padding:4px 10px;border-radius:20px;font-size:13px;font-weight:700;${priMap[a.prioridade] || priMap['Média']}`;
 
   // SLA
-  document.getElementById('ia-sla').textContent = a.slaHoras ? `${a.slaHoras} horas` : 'Não definido';
+  document.getElementById('ia-sla').textContent = a.slas
+    ? `Triagem SAC ${a.slas.triagemSAC}h · setor ${a.slas.retornoSetor}h · cliente ${a.slas.retornoCliente}h${a.slas.procedimento ? ` · procedimento ${a.slas.procedimento}h` : ''}`
+    : (a.slaHoras ? `${a.slaHoras} horas` : 'Conforme SLA aplicável');
 
   // Alertas
   const alertas = [];
-  if (a.reincidencia?.detectada || a.reincidente) alertas.push({ tipo: 'red', msg: '⚠ Cliente reincidente — casos anteriores encontrados no histórico' });
+  if (a.reincidencia?.nivel === 'REINCIDENCIA_CONFIRMADA') {
+    const ids = (a.reincidencia.casos || []).map(c => c.id || c.protocolo).filter(Boolean).slice(0, 3);
+    alertas.push({ tipo: 'red', msg: `⚠ Reincidência comprovada — ${a.reincidencia.quantidade || ids.length} ocorrência(s) rastreável(is)${ids.length ? `: ${ids.join(', ')}` : ''}` });
+  } else if (a.reincidencia?.nivel === 'POSSIVEL_REINCIDENCIA') {
+    alertas.push({ tipo: 'yellow', msg: '⚠ Possível reincidência — relato semelhante encontrado; confirme os registros antes de concluir.' });
+  }
   if (a.geraRNC) alertas.push({ tipo: 'yellow', msg: '⚠ Pode gerar RNC — avaliar na decisão' });
   if ((a.prioridade||'').toUpperCase() === 'ALTA') alertas.push({ tipo: 'red', msg: '⚠ Alta prioridade — requer atenção imediata' });
   // Pessoas e competências são escolhidas na triagem a partir dos cadastros;
@@ -12224,6 +12242,12 @@ function renderizarAnalise(a) {
   } else {
     causaEl.textContent = 'Não identificada com os dados disponíveis';
   }
+  if (a.classificacaoStatus === 'PENDENTE_VALIDACAO' && !document.getElementById('ia-alerta-classificacao')) {
+    const avisoClass = document.createElement('div'); avisoClass.id = 'ia-alerta-classificacao';
+    avisoClass.style.cssText = 'margin:8px 0;padding:9px 12px;border-left:3px solid #D97706;background:#FEF3C7;color:#92400E;font-size:12px;border-radius:6px';
+    avisoClass.textContent = 'Classificação pendente de validação humana. As hipóteses acima não são causas confirmadas.';
+    causaEl.parentNode.insertBefore(avisoClass, causaEl);
+  }
 
   // Procedimento
   const proc = a.procedimentoSugerido;
@@ -12236,6 +12260,7 @@ function renderizarAnalise(a) {
   }
   const alertaProduto = a.alertaProduto;
   if (alertaProduto) {
+    document.getElementById('ia-alerta-produto')?.remove();
     const aviso = document.createElement('div'); aviso.id = 'ia-alerta-produto';
     aviso.style.cssText = 'margin:8px 0;padding:9px 12px;border-left:3px solid #D97706;background:#FEF3C7;color:#92400E;font-size:12px;border-radius:6px';
     aviso.textContent = `⚠ Produto cadastrado “${alertaProduto.produtoCadastrado}” diverge do relato (${alertaProduto.termosRelato.join(', ')}). Validação humana necessária.`;

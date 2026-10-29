@@ -997,6 +997,7 @@ async function analisarManifestacaoCompleta(manifestacao, regras = {}, usuario =
   const protocolo = campo(manifestacao, ['protocolo','ID_MANIFESTACAO']);
   const setor = regras.setores?.[0] || '';
   const tipo = regras.tipoDetectado || '';
+  const tipoExibicao = tipo || 'Não identificado';
   const dataAbertura = campo(manifestacao, ['dataAbertura','DATA_ABERTURA','DATA_CRIACAO']);
 
   const empresaManif = campo(manifestacao, ['empresaReclamada','EMPRESA_RECLAMADA']);
@@ -1006,7 +1007,9 @@ async function analisarManifestacaoCompleta(manifestacao, regras = {}, usuario =
     consultarBaseConhecimento(tipo, setor, undefined, descricao).catch(e => { erros.push('conhecimento: ' + e.message); return { status: 'CONHECIMENTO_INSUFICIENTE', itens: [], total: 0 }; }),
   ]);
 
-  const sla = calcularSLA(dataAbertura, regras.slaHoras || 72);
+  const prazoProcedimento = Number(regras.slaHoras) > 0 ? Number(regras.slaHoras) : null;
+  const slas = { triagemSAC: 24, retornoSetor: 72, retornoCliente: 96, procedimento: prazoProcedimento };
+  const sla = calcularSLA(dataAbertura, prazoProcedimento);
   const tratativa = gerarSugestaoTratativa(casosSimilares, tipo, regras.setores, descricao);
 
   // Busca modelos de devolutiva aprovados e setores competentes em paralelo
@@ -1026,6 +1029,18 @@ async function analisarManifestacaoCompleta(manifestacao, regras = {}, usuario =
     })
     .map(s => s.SETOR)
     .filter(Boolean);
+  // Uma manifestação pode conter frentes distintas. Use somente setores
+  // ativos cadastrados; palavras do relato servem para localizar a frente,
+  // nunca para inventar responsáveis.
+  const setoresAtivos = setoresConfig
+    .filter(s => !['NAO','NÃO','INATIVO','EXCLUIDO'].includes(normalizar(s.ATIVO || 'SIM').toUpperCase()))
+    .map(s => String(s.SETOR || s.NOME_SETOR || '').trim()).filter(Boolean);
+  const descSetor = normalizar(descricao);
+  const setoresPorFrente = [
+    { nomes: ['logistica','logística'], termos: ['atraso','entrega','pedido','transport','prazo'] },
+    { nomes: ['qualidade'], termos: ['pote','tampa','defeito','encaixe','produto','lote','conformidade'] },
+  ].filter(frente => frente.termos.some(t => descSetor.includes(normalizar(t))))
+    .flatMap(frente => setoresAtivos.filter(s => frente.nomes.includes(normalizar(s))));
 
   // Modelo de devolutiva aprovado mais relevante para o tipo/empresa
   const _cNrm = v => String(v || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/_/g, ' ').trim();
@@ -1042,7 +1057,7 @@ async function analisarManifestacaoCompleta(manifestacao, regras = {}, usuario =
   const devolutivaModelo = modeloAprovado ? (modeloAprovado.TEXTO_PADRAO || '') : null;
 
   const matrizConhecimento = manifestacao.matrizConhecimento || null;
-  const contextoIA = { manifestacao, tipoDetectado: tipo, setores: regras.setores || [], casosSimilares, reincidencia, sla, baseConhecimento, matrizConhecimento };
+  const contextoIA = { manifestacao, tipoDetectado: tipoExibicao, setores: regras.setores || [], casosSimilares, reincidencia, sla, slas, baseConhecimento, matrizConhecimento };
   const ia = await chamarIA(contextoIA).catch(e => { erros.push('ia: ' + e.message); return { disponivel: false, erro: e.message }; });
   if (ia?.erro) erros.push('ia: ' + ia.erro);
   // A resposta do modelo pode repetir um campo como ausente mesmo quando o
@@ -1092,7 +1107,7 @@ async function analisarManifestacaoCompleta(manifestacao, regras = {}, usuario =
       causa: campo(manifestacao, ['CAUSA_RAIZ_CONFIRMADA','CAUSA_RAIZ_VALIDADA','CAUSA_RAIZ','CAUSA']) || ia?.causaProvavel || '',
       subcausa: campo(manifestacao, ['SUBCAUSA_CONFIRMADA','SUBCAUSA']) || '',
       setor, protocolo,
-      prazo: (regras.slaHoras || 72) + ' horas úteis', setorResponsavel: setor || regras.setores?.[0] || 'SAC',
+      prazo: prazoProcedimento ? prazoProcedimento + ' horas úteis' : `${slas.retornoCliente} horas úteis para retorno ao cliente`, setorResponsavel: setor || regras.setores?.[0] || 'SAC',
       reincidente: reincidenteBool, prioridade: regras.prioridade || 'Média',
       diagnostico: tratativaEstruturada?.diagnostico?.descricao || '',
     });
@@ -1118,7 +1133,8 @@ async function analisarManifestacaoCompleta(manifestacao, regras = {}, usuario =
 
   const setoresFinais = [
     ...(regras.setores || []),
-    ...setoresRecomendadosConfig.filter(s => !(regras.setores || []).includes(s)),
+    ...setoresRecomendadosConfig,
+    ...setoresPorFrente,
   ].filter(Boolean).slice(0, 5);
   const hipotesesClassificacao = circaEngine.classificarHipoteses(manifestacao);
   const limitacoes = [];
@@ -1127,13 +1143,13 @@ async function analisarManifestacaoCompleta(manifestacao, regras = {}, usuario =
   }
 
   const analise = {
-    protocolo, tipoDetectado: tipo, tipoConfianca: regras.tipoConfianca || 0,
+    protocolo, tipoDetectado: tipoExibicao, classificacaoStatus: tipo ? 'PENDENTE_VALIDACAO' : 'NAO_IDENTIFICADA', tipoConfianca: regras.tipoConfianca || 0,
     statusExecucao: erros.length ? 'PARCIAL' : 'CONCLUIDA',
     setores: setoresFinais, regraAplicada: regras.regraAplicada || null,
     hipotesesClassificacao,
     limitacoes,
     setoresRecomendadosConfig,
-    prioridade: regras.prioridade || 'Média', slaHoras: regras.slaHoras || 72,
+    prioridade: regras.prioridade || 'Média', slaHoras: prazoProcedimento, slas,
     geraRNC: false, // RNC nunca automático — apenas por critério humano/auditoria
     procedimentoSugerido: regras.procedimentoSugerido || null, perguntasNecessarias: _filtrarPerguntasContextuais(regras.perguntasNecessarias || [], manifestacao),
     casosSimilares, reincidencia, sla, baseConhecimento,

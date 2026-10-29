@@ -105,12 +105,12 @@ async function calcularAtraso(manifestacao) {
 function montarAcoes(regras, ctx, atrasoInfo) {
   const acoes = [];
   const agora = new Date().toISOString();
-  const prazo = regras.prazo || '72h';
+  const prazo = regras.prazo || null;
 
   const addAcao = (tipo, descricao, extra = {}) => {
     // Não adicionar ações proibidas
     if (regras.acoesProibidas?.some(p => descricao.toLowerCase().includes(p.toLowerCase().slice(0, 20)))) return;
-    acoes.push({ tipo, descricao, responsavel: extra.responsavel || regras.responsavel || '', setor: extra.setor || regras.setorResponsavel || '', prazo: extra.prazo || prazo, status: STATUS_ACAO.PENDENTE, evidenciaNecessaria: tipo === 'OBRIGATORIA' && regras.necessitaEvidencia });
+    acoes.push({ tipo, descricao, responsavel: extra.responsavel || regras.responsavel || '', setor: extra.setor || regras.setorResponsavel || '', prazo: extra.prazo || prazo || 'Conforme SLA aplicável', status: extra.status || STATUS_ACAO.PENDENTE, evidenciaNecessaria: tipo === 'OBRIGATORIA' && regras.necessitaEvidencia });
   };
 
   // Ações obrigatórias da Matriz / defaults
