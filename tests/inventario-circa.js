@@ -80,6 +80,14 @@ assert.equal(resolved.APRIMORAMENTOS_CEREBRO.status, 'ABA_AUSENTE');
 const realLearningSheet = resolveSheetNames(['CEREBRO_APRENDIZADO']);
 assert.equal(realLearningSheet.APRIMORAMENTOS_CEREBRO.status, 'OK');
 assert.equal(realLearningSheet.APRIMORAMENTOS_CEREBRO.actualName, 'CEREBRO_APRENDIZADO');
+const learningContract = analyzeSheets({
+  APRIMORAMENTOS_CEREBRO: {
+    headers: ['ID_CASO', 'EMPRESA', 'TIPO_DESCRICAO', 'CAUSA_RAIZ'],
+    rows: [{ ID_CASO: 'CASO-1', EMPRESA: 'CHIACCHIO', TIPO_DESCRICAO: 'Descrição', CAUSA_RAIZ: 'Causa', __linha: 2 }],
+  },
+});
+assert.equal(learningContract.sheets.APRIMORAMENTOS_CEREBRO.ids.field, 'ID_CASO');
+assert.equal(learningContract.sheets.APRIMORAMENTOS_CEREBRO.incomplete.missingHeaders.includes('status'), true);
 assert.equal(quoteSheetRange("Aba de teste's"), "'Aba de teste''s'!A:AZ");
 
 const missingReport = analyzeSheets({
