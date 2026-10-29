@@ -41,6 +41,7 @@ async function main() {
   const page = await context.newPage();
   const errosPagina = [];
   const requisicoes = [];
+  const rascunhosEnviados = [];
   page.on('pageerror', error => errosPagina.push(error));
   await page.route('**/api/**', async route => {
     const req = route.request();
@@ -50,12 +51,29 @@ async function main() {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ sucesso: true, usuario: { usuario: 'teste.nova', nome: 'Teste Nova Manifestação', perfil: 'MASTER', empresa: 'Grupo Chiacchio' } }) });
     }
     if (url.pathname === '/api/manifestacoes' && req.method() === 'POST') {
+      rascunhosEnviados.push(req.postDataJSON());
       await new Promise(resolve => setTimeout(resolve, 80));
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ sucesso: true, id: 'NM-BROWSER-001', protocolo: 'CHIA-20261028-01-0001' }) });
     }
     if (url.pathname.endsWith('/circa-dados') && req.method() === 'PATCH') {
       await new Promise(resolve => setTimeout(resolve, 80));
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ sucesso: true, id: 'NM-BROWSER-001', protocolo: 'CHIA-20261028-01-0001' }) });
+    }
+    if (url.pathname === '/api/manifestacoes/NM-BROWSER-001/circa' && req.method() === 'GET') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
+        sucesso: true,
+        circa: {
+          analiseEstruturada: {
+            informacoesAusentes: [],
+            prioridade: 'Média',
+            hipotesesClassificacao: [
+              { codigo: 'ATRASO_LOGISTICO', descricao: 'Atraso logístico (hipótese; validar na triagem)' },
+              { codigo: 'NAO_CONFORMIDADE_PRODUTO', descricao: 'Possível não conformidade de produto (hipótese; validar na triagem)' }
+            ],
+            procedimentosAplicaveis: [], setoresRecomendados: [], responsaveisElegiveis: [], casosSemelhantes: []
+          }, checklist: []
+        }
+      }) });
     }
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ sucesso: true, itens: [], total: 0, dados: {} }) });
   });
@@ -76,17 +94,19 @@ async function main() {
     const pageRoot = page.locator('#page-nova-manifestacao');
     await pageRoot.waitFor({ state: 'visible' });
 
+    const descricaoCenario = ('A entrega para Chiacchio Embalagens atrasou três dias. ' +
+      'Foram identificados aproximadamente 1.200 potes com dificuldade de encaixe das tampas. ').repeat(6).slice(0, 745);
     await page.locator('#nm-empresa').fill('Cliente de regressão');
     await page.locator('#nm-nome').fill('Contato de regressão');
     await page.locator('#nm-email').fill('teste@example.com');
     await page.locator('#nm-data').fill('2026-10-28');
-    await page.locator('#nm-origem').selectOption('MANUAL');
+    await page.locator('#nm-origem').selectOption('TELEFONE');
     await page.locator('#nm-tipo').selectOption({ label: 'Reclamação' });
-    await page.locator('#nm-produto').fill('Produto de teste');
-    await page.locator('#nm-lote').fill('LOTE-001');
-    await page.locator('#nm-nfe').fill('NF-123/PED-456');
+    await page.locator('#nm-produto').fill('potes');
+    await page.locator('#nm-lote').fill('123456');
+    await page.locator('#nm-nfe').fill('987654');
     await page.locator('#nm-expectativa').fill('Cliente espera substituição e retorno do SAC.');
-    await page.locator('#nm-descricao').fill('Relato completo da manifestação para validar o avanço da primeira etapa.');
+    await page.locator('#nm-descricao').fill(descricaoCenario);
     await page.locator('#nm-evidencias').setInputFiles(arquivos);
     await assertFileNames(page, ['evidencia.pdf', 'foto.png']);
 
@@ -102,10 +122,19 @@ async function main() {
     assert.equal(await page.locator('#page-nova-manifestacao .nm-step-panel.nm-active').getAttribute('data-nm-step'), '2');
     assert.equal(requisicoes.filter(r => r.method === 'POST' && r.path === '/api/manifestacoes').length, 1, 'dois cliques não podem criar dois rascunhos');
     assert.equal(requisicoes.filter(r => r.path.includes('/anexos')).length, 0, 'anexos selecionados na Etapa 1 não devem bloquear o salvamento do rascunho');
+    assert.equal(requisicoes.filter(r => r.path === '/api/analise').length, 0, 'a Etapa 1 não pode iniciar análise concorrente antes de salvar o rascunho');
+    assert.equal(rascunhosEnviados.length, 1);
+    assert.equal(rascunhosEnviados[0].descricao, descricaoCenario, 'o payload deve levar a descrição completa preenchida');
+    assert.equal(rascunhosEnviados[0].canal, 'TELEFONE', 'o payload deve levar o canal selecionado');
+    assert.equal((await page.locator('#ia-perguntas').textContent()).trim(), 'Nenhuma informação essencial ausente.');
+    const classificacao = await page.locator('#ia-causa').textContent();
+    assert.match(classificacao, /Atraso logístico/);
+    assert.match(classificacao, /não conformidade de produto/i);
+    assert.doesNotMatch(classificacao, /Outras não conformidades de conversão/i);
 
     await page.locator('#nm-btn-voltar').click();
     await page.locator('#nm-etapa-label').filter({ hasText: 'Etapa 1 de 7' }).waitFor();
-    assert.equal(await page.locator('#nm-descricao').inputValue(), 'Relato completo da manifestação para validar o avanço da primeira etapa.');
+    assert.equal(await page.locator('#nm-descricao').inputValue(), descricaoCenario);
     await assertFileNames(page, ['evidencia.pdf', 'foto.png']);
 
     // O mesmo registro deve atravessar as etapas seguintes sem perder os dados.
@@ -125,7 +154,7 @@ async function main() {
     await page.locator('#nm-etapa-label').filter({ hasText: 'Etapa 7 de 7' }).waitFor();
     assert.equal(await page.locator('#page-nova-manifestacao .nm-step-panel.nm-active').getAttribute('data-nm-step'), '7');
     assert.equal(await page.locator('#nm-empresa').inputValue(), 'Cliente de regressão');
-    assert.equal(await page.locator('#nm-nfe').inputValue(), 'NF-123/PED-456');
+    assert.equal(await page.locator('#nm-nfe').inputValue(), '987654');
     // O boot do dashboard dispara chamadas fora do fluxo testado; somente
     // erros originados na navegação da ficha bloqueiam esta regressão.
     const errosCriticos = errosPagina.filter(error => /nmProximaEtapa|nm-btn-continuar|SyntaxError|salvarRascunho/.test(error.message));

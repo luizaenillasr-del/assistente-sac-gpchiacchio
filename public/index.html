@@ -11909,6 +11909,12 @@ function agendarAnalise() {
   if (_nmAnaliseTimer) clearTimeout(_nmAnaliseTimer);
   const desc = (document.getElementById('nm-descricao')?.value || '').trim();
   if (desc.length < 30) return;
+  // A etapa 1 ainda é um formulário em edição. Disparar uma análise aqui
+  // concorria com o salvamento do rascunho feito ao clicar em "Continuar":
+  // a resposta do rascunho anterior podia então sobrescrever a análise da
+  // ficha recém-salva. A análise automática só pode consultar a ficha que
+  // acabou de ser persistida na etapa 2.
+  if (Number(window.nmEtapa || 1) !== 2) return;
   _nmAnaliseTimer = setTimeout(executarAnaliseIA, 800);
 }
 
@@ -11940,9 +11946,12 @@ window.nmCarregarAnaliseDeterministica = async function nmCarregarAnaliseDetermi
       await window.salvarRascunho({silent:true}).catch(()=>{});
     }
     if(!_nmCardId) return null;
+    // Não leia nem renderize o resultado de outra ficha caso a pessoa inicie
+    // uma nova manifestação enquanto esta requisição ainda estiver pendente.
+    const cardIdConsultado = String(_nmCardId);
     try {
-      const r=await _apiFetch(`/api/manifestacoes/${encodeURIComponent(_nmCardId)}/circa`,30000);
-      if(r?.sucesso){renderizarCircaDeterministico(r.circa);return r.circa;}
+      const r=await _apiFetch(`/api/manifestacoes/${encodeURIComponent(cardIdConsultado)}/circa`,30000);
+      if(r?.sucesso && String(_nmCardId || '') === cardIdConsultado){renderizarCircaDeterministico(r.circa);return r.circa;}
     } catch(e){ console.warn('CIRCA determinístico indisponível:',e.message); }
     return null;
   })();
@@ -12469,6 +12478,9 @@ async function initNovaManifestacao() {
   _nmAnalisePersistidaCarregada = false;
   _nmDecisao = null;
   _nmCardId = null;
+  // Libera uma consulta nova; a resposta de qualquer consulta anterior será
+  // descartada pela verificação do identificador acima.
+  _nmDeterministicaPromise = null;
   _nmIdempotencyKey = null;
   _nmEvidencias = []; renderEvidencias();
   const es=document.getElementById('nm-extracao-status'); if(es) es.style.display='none'; const ep=document.getElementById('nm-extracao-preview'); if(ep) ep.style.display='none';

@@ -74,8 +74,9 @@ function request(base, method, route, auth, body) {
     const anexo = { nome:'evidencia.txt', mimeType:'image/png', tamanho:3, categoria:'EVIDENCIA', dataBase64:'data:image/png;base64,AQID' };
     const criado = await request(base, 'POST', '/api/manifestacoes', master, {
       idempotencyKey:key, empresaReclamada:'CHIACCHIO EMBALAGENS', empresaReclamante:'Cliente Teste',
-      contato:'Contato Teste', descricao:'Relato completo para registrar uma reclamação.', tipo:'Reclamação',
-      canal:'E-mail', anexos:[anexo], analiseIA:JSON.stringify({ tipoDetectado:'Reclamação', devolutivaSugerida:'Recebemos seu relato e iniciaremos a apuração.' }),
+      contato:'Contato Teste', descricao:'A entrega atrasou três dias e aproximadamente 1.200 potes apresentam dificuldade de encaixe das tampas. Relato completo para registrar a reclamação.', tipo:'Reclamação',
+      canal:'TELEFONE', produto:'potes', lote:'123456', nfe:'987654',
+      anexos:[anexo], analiseIA:JSON.stringify({ tipoDetectado:'Reclamação', devolutivaSugerida:'Recebemos seu relato e iniciaremos a apuração.' }),
     });
     assert.equal(criado.status, 200, JSON.stringify(criado.body));
     createdId = criado.body.id;
@@ -83,12 +84,21 @@ function request(base, method, route, auth, body) {
     const row = mock.DB.MANIFESTACOES.find(r => r.ID_MANIFESTACAO === criado.body.id);
     assert.equal(row.STATUS, 'AGUARDANDO_TRIAGEM_SAC');
     assert.equal(row.PROTOCOLO, criado.body.protocolo);
+    assert.match(row.DESCRICAO, /atrasou três dias/i, 'o rascunho deve persistir o relato completo');
+    assert.equal(row.CANAL, 'TELEFONE', 'o rascunho deve persistir o canal selecionado');
     assert.ok(!String(row.ANEXOS).includes('dataBase64'), 'Base64 não pode ser gravado na ficha');
     assert.ok(String(row.ANEXOS).includes('evidencia.txt'), 'metadado do anexo deve permanecer vinculado');
 
     const recuperada = await request(base, 'GET', `/api/manifestacoes/${encodeURIComponent(criado.body.id)}`, master);
     assert.equal(recuperada.status, 200, JSON.stringify(recuperada.body));
     assert.ok(String(recuperada.body.manifestacao?.ANALISE_IA || '').includes('tipoDetectado'), 'análise deve permanecer recuperável na ficha');
+    const circaPersistido = await request(base, 'GET', `/api/manifestacoes/${encodeURIComponent(criado.body.id)}/circa`, master);
+    assert.equal(circaPersistido.status, 200, JSON.stringify(circaPersistido.body));
+    const ausentesPersistidos = circaPersistido.body.circa?.analiseEstruturada?.informacoesAusentes || [];
+    assert.ok(!ausentesPersistidos.includes('DESCRICAO'), 'o CIRCA da ficha persistida deve reconhecer a descrição');
+    assert.ok(!ausentesPersistidos.includes('CANAL'), 'o CIRCA da ficha persistida deve reconhecer o canal');
+    const hipotesesPersistidas = circaPersistido.body.circa?.analiseEstruturada?.hipotesesClassificacao || [];
+    assert.deepEqual(hipotesesPersistidas.map(h => h.codigo), ['ATRASO_LOGISTICO', 'NAO_CONFORMIDADE_PRODUTO'], 'o CIRCA deve distinguir atraso e possível defeito do produto');
     const evidencias = await request(base, 'GET', `/api/manifestacoes/${encodeURIComponent(criado.body.id)}/evidencias`, master);
     assert.equal(evidencias.status, 200, JSON.stringify(evidencias.body));
     assert.ok(evidencias.body.itens.some(item => item.nome === 'evidencia.txt'), 'anexo deve ser recuperável pelo protocolo interno');
