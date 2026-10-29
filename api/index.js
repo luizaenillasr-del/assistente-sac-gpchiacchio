@@ -7769,7 +7769,7 @@ app.get('/api/manifestacoes/:id/circa', requerPermissao('manifestacoes.visualiza
     let analisePersistida = {}; try { analisePersistida = JSON.parse(m.ANALISE_IA || '{}'); } catch (_) {}
     try { const raw=m.CHECKLIST_CIRCA || analisePersistida.checklistPersistido || '[]'; const parsed=typeof raw==='string'?JSON.parse(raw):raw; checklistPersistido=Array.isArray(parsed)?parsed:Object.entries(parsed||{}).map(([id,status])=>({id,status})); } catch (_) { checklistPersistido = []; }
     try { pendenciasPersistidas = JSON.parse(m.PENDENCIAS_VALIDACAO_HUMANA || analisePersistida.pendenciasValidacaoHumana || '[]'); } catch (_) { pendenciasPersistidas = []; }
-    res.json({ sucesso:true, circa:{ ...resultado, checklistPersistido, checklistVersao: analisePersistida.checklistVersao||0, pendenciasValidacaoHumana: pendenciasPersistidas } });
+    res.json({ sucesso:true, circa:{ ...resultado, checklistPersistido, checklistVersao: analisePersistida.checklistVersao||0, pendenciasValidacaoHumana: pendenciasPersistidas, decisaoEtapa2: analisePersistida.decisaoEtapa2 || null } });
   } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e,'circa') }); }
 });
 
@@ -7810,7 +7810,22 @@ app.patch('/api/manifestacoes/:id/circa-dados', requerPermissao('manifestacoes.e
       }
       patch.ANALISE_IA=JSON.stringify(meta); delete patch.CHECKLIST_CIRCA; delete patch.PENDENCIAS_VALIDACAO_HUMANA;
     }
-    if (Object.prototype.hasOwnProperty.call(req.body || {}, 'analiseIA') && req.body.analiseIA) patch.ANALISE_IA = req.body.analiseIA;
+    // Decisões da Etapa 2 são metadados da análise existente. Fazemos merge
+    // no servidor para preservar hipóteses, regras, checklist e histórico da
+    // execução anterior, sem confiar em um snapshot parcial enviado pelo
+    // navegador.
+    if (req.body?.analisePatch && typeof req.body.analisePatch === 'object') {
+      const permitido = ['status','justificativa','origem','classificacao','hipoteses','orientacoes','pendencias','revisadoEm'];
+      const patchAnalise = {};
+      for (const chave of permitido) if (Object.prototype.hasOwnProperty.call(req.body.analisePatch, chave)) patchAnalise[chave] = req.body.analisePatch[chave];
+      const estados = ['GERADA','REVISADA','ORIENTACAO_ACEITA','ORIENTACAO_PARCIAL','ORIENTACAO_REJEITADA','PENDENTE_VALIDACAO'];
+      if (patchAnalise.status && !estados.includes(String(patchAnalise.status))) return res.status(400).json({sucesso:false,erro:'Estado de decisão da análise inválido.'});
+      let base = {}; try { base = JSON.parse(m.ANALISE_IA || '{}'); } catch (_) {}
+      const atual = base.decisaoEtapa2 && typeof base.decisaoEtapa2 === 'object' ? base.decisaoEtapa2 : {};
+      base.decisaoEtapa2 = { ...atual, ...patchAnalise, revisadoEm: patchAnalise.revisadoEm || new Date().toISOString(), revisadoPor: req.user?.usuario || req.user?.login || 'sistema' };
+      patch.ANALISE_IA = JSON.stringify(base);
+      delete patch.analisePatch;
+    }
     // Mapeia descricao (minúsculo, enviado pelo frontend nm-card) para as colunas corretas no Sheets
     if (Object.prototype.hasOwnProperty.call(req.body||{}, 'descricao') && req.body.descricao) {
       patch.DESCRICAO = req.body.descricao;

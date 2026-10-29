@@ -3051,7 +3051,7 @@
           <div class="circa-analysis-card"><div class="section-label">4 · Responsáveis e competências</div><div id="ia-setores" class="circa-tag-list"><span class="circa-muted">Aguardando classificação.</span></div></div>
           <div class="circa-analysis-card"><div class="section-label">5 · Casos semelhantes encontrados</div><div id="ia-similares" class="circa-similar-list"><span class="circa-muted">O histórico será consultado automaticamente.</span></div></div>
           <div class="circa-analysis-card"><div class="section-label">Recomendação complementar da IA</div><div id="ia-alertas-wrap"><div id="ia-alertas" class="circa-muted">A IA poderá complementar a orientação após a consulta determinística.</div></div><div class="circa-confidence">Confiança <strong id="ia-confianca-pct">—</strong><span class="progress-bar"><span id="ia-confianca-bar" class="progress-fill"></span></span></div></div></div>
-        <div class="circa-analysis-footer"><span>As recomendações são sugestões baseadas no histórico e na matriz. A decisão operacional é da analista.</span><div><button class="btn btn-ghost" style="font-size:12px" onclick="nmProximaEtapa()">Ajustar condução</button><button class="btn btn-primary" style="font-size:12px" onclick="nmProximaEtapa()">Utilizar orientação →</button></div></div><div id="ia-decisao-status" style="display:none"></div><div id="ia-analisando" style="display:none"></div><div id="ia-resultado" style="display:none"></div><div id="ia-loading" style="display:none"></div><div id="ia-sla" class="nm-visually-hidden"></div><div id="ia-proc-wrap" class="nm-visually-hidden"></div><div id="ia-perguntas-wrap" class="nm-visually-hidden"></div><div id="ia-similares-wrap" class="nm-visually-hidden"></div><div id="ia-devolutiva-tipo" class="nm-visually-hidden"></div><div id="ia-devolutiva-bloqueadas" class="nm-visually-hidden"></div><textarea id="ia-devolutiva" class="nm-visually-hidden"></textarea>
+        <div class="circa-analysis-footer"><span>As recomendações são sugestões baseadas no histórico e na matriz. A decisão operacional é da analista.</span><div><button class="btn btn-ghost" style="font-size:12px" onclick="nmAbrirRevisaoOrientacao()">Ajustar condução</button><button class="btn btn-primary" style="font-size:12px" onclick="nmUtilizarOrientacao()">Utilizar orientação →</button></div></div><div id="nm-revisao-orientacao" class="nm-card" style="display:none;margin-top:12px;border-color:#F59E0B;background:#FFFBEB"><div class="section-label">Revisão humana da orientação</div><p style="font-size:12px;color:#66520A;margin:6px 0 12px">Revise as hipóteses e recomendações antes de transferir a decisão para a condução. A análise original permanece preservada.</p><div class="nm-grid-2"><label class="nm-label"><span>Estado da análise</span><select id="nm-revisao-status" class="nm-select"><option value="REVISADA">Revisada — validar manualmente</option><option value="ORIENTACAO_PARCIAL">Aceita parcialmente</option><option value="ORIENTACAO_REJEITADA">Rejeitar orientação</option></select></label><label class="nm-label"><span>Classificação humana (opcional)</span><input id="nm-revisao-classificacao" class="nm-input" placeholder="Informe somente se confirmado pelo SAC"></label></div><label class="nm-label"><span>Justificativa / ajustes</span><textarea id="nm-revisao-justificativa" class="nm-textarea" rows="3" placeholder="Registre a decisão, ajustes ou motivo da rejeição..."></textarea></label><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-secondary" onclick="nmFecharRevisaoOrientacao()">Cancelar</button><button class="btn btn-primary" onclick="nmSalvarRevisaoOrientacao()">Salvar revisão</button></div></div><div id="ia-decisao-status" style="display:none"></div><div id="ia-analisando" style="display:none"></div><div id="ia-resultado" style="display:none"></div><div id="ia-loading" style="display:none"></div><div id="ia-sla" class="nm-visually-hidden"></div><div id="ia-proc-wrap" class="nm-visually-hidden"></div><div id="ia-perguntas-wrap" class="nm-visually-hidden"></div><div id="ia-similares-wrap" class="nm-visually-hidden"></div><div id="ia-devolutiva-tipo" class="nm-visually-hidden"></div><div id="ia-devolutiva-bloqueadas" class="nm-visually-hidden"></div><textarea id="ia-devolutiva" class="nm-visually-hidden"></textarea>
       </div>
 
       <!-- ETAPA 3: CONDUÇÃO -->
@@ -11920,6 +11920,7 @@ function agendarAnalise() {
 
 function renderizarCircaDeterministico(resultado) {
   window._nmDeterministicoAtual = resultado;
+  if (resultado?.decisaoEtapa2) nmMostrarDecisaoEtapa2(resultado.decisaoEtapa2);
   const a=resultado?.analiseEstruturada||{};
   const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v||'Sem informação persistida.';};
   const hip = a.hipotesesClassificacao || resultado.hipotesesClassificacao || [];
@@ -11954,6 +11955,53 @@ window.nmSalvarChecklist = async function(id, concluida) {
   const indice=atual.findIndex(x=>x.id===id); const anterior=indice>=0?{...atual[indice]}:null; const item={ id, status: concluida ? 'CONCLUIDA' : 'PENDENTE' }; if(indice>=0) atual[indice]=item; else atual.push(item);
   window._nmChecklist = atual;
   try { await _apiFetch(`/api/manifestacoes/${encodeURIComponent(_nmCardId)}/circa-dados`, 15000, {method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({CHECKLIST_CIRCA:JSON.stringify(atual),CHECKLIST_VERSAO:window._nmChecklistVersao})}); window._nmChecklistVersao++; } catch(e) { if(indice>=0) atual[indice]=anterior; else atual.splice(atual.length-1,1); window._nmChecklist=atual; alert('Não foi possível salvar a atividade. O estado anterior foi restaurado.'); renderizarCircaDeterministico(window._nmDeterministicoAtual||{}); }
+};
+
+function nmMostrarDecisaoEtapa2(decisao) {
+  const el = document.getElementById('ia-decisao-status');
+  if (!el || !decisao?.status) return;
+  const labels = { GERADA:'Análise gerada — revisão humana pendente', REVISADA:'Análise revisada pelo SAC', ORIENTACAO_ACEITA:'Orientação aceita pelo SAC', ORIENTACAO_PARCIAL:'Orientação aceita parcialmente pelo SAC', ORIENTACAO_REJEITADA:'Orientação rejeitada pelo SAC', PENDENTE_VALIDACAO:'Validação humana pendente' };
+  const cor = decisao.status === 'ORIENTACAO_REJEITADA' ? 'red' : decisao.status === 'ORIENTACAO_ACEITA' ? 'green' : 'yellow';
+  el.style.display = 'block';
+  el.innerHTML = `<div class="alert-box ${cor}" style="font-size:12px">${esc(labels[decisao.status] || decisao.status)}${decisao.justificativa ? ` — ${esc(decisao.justificativa)}` : ''}</div>`;
+}
+
+window.nmAbrirRevisaoOrientacao = function() {
+  const painel = document.getElementById('nm-revisao-orientacao');
+  if (!painel) return;
+  const d = window._nmDeterministicoAtual?.decisaoEtapa2 || window._nmAnaliseAtual?.decisaoEtapa2 || {};
+  const status = document.getElementById('nm-revisao-status'); if (status && d.status) status.value = d.status === 'ORIENTACAO_ACEITA' ? 'REVISADA' : d.status;
+  const just = document.getElementById('nm-revisao-justificativa'); if (just && d.justificativa) just.value = d.justificativa;
+  const cls = document.getElementById('nm-revisao-classificacao'); if (cls && d.classificacao) cls.value = d.classificacao;
+  painel.style.display = 'block';
+  painel.scrollIntoView({behavior:'smooth', block:'nearest'});
+};
+window.nmFecharRevisaoOrientacao = function() { const p=document.getElementById('nm-revisao-orientacao'); if(p) p.style.display='none'; };
+window.nmSalvarRevisaoOrientacao = async function() {
+  if (!_nmCardId) { if (!(await salvarRascunho({silent:true, reportError:true}))) return; }
+  const status = document.getElementById('nm-revisao-status')?.value || 'REVISADA';
+  const justificativa = document.getElementById('nm-revisao-justificativa')?.value.trim() || '';
+  if (status === 'ORIENTACAO_REJEITADA' && justificativa.length < 10) { alert('Informe uma justificativa de pelo menos 10 caracteres para rejeitar a orientação.'); return; }
+  const classificacao = document.getElementById('nm-revisao-classificacao')?.value.trim() || '';
+  try {
+    const r = await _apiFetch(`/api/manifestacoes/${encodeURIComponent(_nmCardId)}/circa-dados`, 15000, {method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({analisePatch:{status, justificativa, classificacao, origem:'SAC', revisadoEm:new Date().toISOString()}})});
+    if (!r?.sucesso) throw new Error(r?.erro || 'Falha ao salvar a revisão.');
+    window._nmAnaliseAtual = {...(window._nmAnaliseAtual||{}), decisaoEtapa2:{...(window._nmAnaliseAtual?.decisaoEtapa2||{}), status, justificativa, classificacao, origem:'SAC'}};
+    if (window._nmDeterministicoAtual) window._nmDeterministicoAtual.decisaoEtapa2 = window._nmAnaliseAtual.decisaoEtapa2;
+    nmMostrarDecisaoEtapa2(window._nmAnaliseAtual.decisaoEtapa2);
+    nmFecharRevisaoOrientacao();
+  } catch (e) { alert('Não foi possível salvar a revisão: '+e.message); }
+};
+window.nmUtilizarOrientacao = async function() {
+  if (!_nmAnaliseAtual && !_nmDeterministicoAtual) { alert('Execute a análise antes de utilizar uma orientação.'); return; }
+  if (!_nmCardId && !(await salvarRascunho({silent:true, reportError:true}))) return;
+  try {
+    const r = await _apiFetch(`/api/manifestacoes/${encodeURIComponent(_nmCardId)}/circa-dados`, 15000, {method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({analisePatch:{status:'ORIENTACAO_ACEITA', origem:'SAC', revisadoEm:new Date().toISOString()}})});
+    if (!r?.sucesso) throw new Error(r?.erro || 'Falha ao registrar a decisão.');
+    window._nmAnaliseAtual = {...(window._nmAnaliseAtual||{}), decisaoEtapa2:{...(window._nmAnaliseAtual?.decisaoEtapa2||{}), status:'ORIENTACAO_ACEITA', origem:'SAC'}};
+    nmMostrarDecisaoEtapa2(window._nmAnaliseAtual.decisaoEtapa2);
+    await nmProximaEtapa();
+  } catch (e) { alert('Não foi possível utilizar a orientação: '+e.message); }
 };
 
 window.nmCarregarAnaliseDeterministica = async function nmCarregarAnaliseDeterministica() {
@@ -12028,7 +12076,7 @@ async function nmCriarAcionamento(tipo='ENCAMINHAMENTO_TRATATIVA') {
   const tarefa=document.getElementById('nm-escopo-acionado')?.value||document.getElementById('nm-complemento-pedido')?.value||'Solicitação registrada pelo card CIRCA.';
   if(tipo!=='NOTIFICACAO'&&!setor){ alert('Selecione o setor destinatário antes de criar o acionamento.'); return; }
   const prazo=document.getElementById('nm-prazo-retorno')?.value?.trim()||'';
-  try { const r=await _apiFetch(`/api/manifestacoes/${encodeURIComponent(_nmCardId)}/acionamentos`,15000,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tipo,setorDestino:setor,tarefa,motivo:tarefa,prazo,prioridade:document.getElementById('nm-prioridade')?.value||'NORMAL',idempotencyKey:`${_nmCardId}-${tipo}-${setor}-${tarefa}`})}); if(!r?.sucesso)throw new Error(r?.erro||'Falha ao criar acionamento.'); alert('Acionamento criado com histórico' + (prazo ? ' e prazo.' : '.')); } catch(e){ alert('Não foi possível criar o acionamento: '+e.message); }
+  try { const responsavel=document.getElementById('nm-responsavel-acionado')?.value?.trim()||''; const r=await _apiFetch(`/api/manifestacoes/${encodeURIComponent(_nmCardId)}/acionamentos`,15000,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tipo,setorDestino:setor,responsavel,tarefa,motivo:tarefa,prazo,prioridade:document.getElementById('nm-prioridade')?.value||'NORMAL',idempotencyKey:`${_nmCardId}-${tipo}-${setor}-${responsavel}-${tarefa}`})}); if(!r?.sucesso)throw new Error(r?.erro||'Falha ao criar acionamento.'); alert('Acionamento criado com histórico' + (prazo ? ' e prazo.' : '.')); } catch(e){ alert('Não foi possível criar o acionamento: '+e.message); }
 }
 function nmSolicitarComplementacao(){return nmCriarAcionamento('SOLICITACAO_INFORMACAO');}
 function nmRegistrarLembrete(){return nmCriarAcionamento('NOTIFICACAO');}

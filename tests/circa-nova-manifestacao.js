@@ -87,6 +87,13 @@ const originalLerAba = sheets.lerAba;
     assert.match(html, /HIPÓTESE — validar/, 'classificações do texto devem aparecer como hipóteses');
     assert.match(html, /ia-alerta-produto/, 'divergência de produto deve ser visível na Etapa 2');
     assert.match(html, /checklistPersistido/, 'checklist visual deve usar estado persistido');
+    assert.match(html, /nmAbrirRevisaoOrientacao/, 'ajuste de condução deve abrir revisão humana sem avançar automaticamente');
+    assert.match(html, /nmUtilizarOrientacao/, 'utilizar orientação deve registrar decisão antes de avançar');
+    assert.match(html, /ORIENTACAO_REJEITADA/, 'rejeição da orientação deve ter estado explícito');
+    const api = fs.readFileSync(path.resolve(__dirname, '../api/index.js'), 'utf8');
+    assert.match(api, /analisePatch/, 'backend deve persistir decisão como patch da análise existente');
+    assert.match(api, /revisadoPor: req\.user/, 'identidade da decisão deve vir da sessão do backend');
+    assert.match(html, /responsavel,tarefa/, 'acionamento deve preservar responsável e tarefa da frente');
     console.log('CIRCA Nova Manifestação: campos PLASCHIO, hipóteses múltiplas, regras inválidas, isolamento de reincidência e renderização aprovados.');
   } finally {
     sheets.lerAba = originalLerAba;
