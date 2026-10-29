@@ -7767,9 +7767,9 @@ app.get('/api/manifestacoes/:id/circa', requerPermissao('manifestacoes.visualiza
     let checklistPersistido = [];
     let pendenciasPersistidas = [];
     let analisePersistida = {}; try { analisePersistida = JSON.parse(m.ANALISE_IA || '{}'); } catch (_) {}
-    try { checklistPersistido = JSON.parse(m.CHECKLIST_CIRCA || analisePersistida.checklistPersistido || '[]'); } catch (_) { checklistPersistido = []; }
+    try { const raw=m.CHECKLIST_CIRCA || analisePersistida.checklistPersistido || '[]'; const parsed=typeof raw==='string'?JSON.parse(raw):raw; checklistPersistido=Array.isArray(parsed)?parsed:Object.entries(parsed||{}).map(([id,status])=>({id,status})); } catch (_) { checklistPersistido = []; }
     try { pendenciasPersistidas = JSON.parse(m.PENDENCIAS_VALIDACAO_HUMANA || analisePersistida.pendenciasValidacaoHumana || '[]'); } catch (_) { pendenciasPersistidas = []; }
-    res.json({ sucesso:true, circa:{ ...resultado, checklistPersistido, pendenciasValidacaoHumana: pendenciasPersistidas } });
+    res.json({ sucesso:true, circa:{ ...resultado, checklistPersistido, checklistVersao: analisePersistida.checklistVersao||0, pendenciasValidacaoHumana: pendenciasPersistidas } });
   } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e,'circa') }); }
 });
 
@@ -7792,8 +7792,12 @@ app.patch('/api/manifestacoes/:id/circa-dados', requerPermissao('manifestacoes.e
       let meta={}; try { meta=JSON.parse(m.ANALISE_IA||'{}'); } catch (_) {}
       if (req.body.CHECKLIST_CIRCA !== undefined) {
         let items; try { items=JSON.parse(req.body.CHECKLIST_CIRCA); } catch (_) { return res.status(400).json({sucesso:false,erro:'Checklist inválido.'}); }
-        if (!Array.isArray(items) || items.some(x => !x || typeof x.id !== 'string' || !['PENDENTE','EM_ANDAMENTO','CONCLUIDA','NAO_APLICAVEL'].includes(x.status))) return res.status(400).json({sucesso:false,erro:'Checklist com estado ou identificador inválido.'});
+        const anterior=Array.isArray(meta.checklistPersistido)?meta.checklistPersistido:[];
+        if (req.body.CHECKLIST_VERSAO && String(req.body.CHECKLIST_VERSAO)!==String(meta.checklistVersao||0)) return res.status(409).json({sucesso:false,erro:'Checklist alterado por outro usuário. Atualize a ficha antes de salvar.'});
+        if (!Array.isArray(items) || items.some(x => !x || typeof x.id !== 'string' || !/^circa-[a-z0-9-]+$/.test(x.id) || !['PENDENTE','EM_ANDAMENTO','CONCLUIDA','NAO_APLICAVEL'].includes(x.status))) return res.status(400).json({sucesso:false,erro:'Checklist com estado ou identificador inválido.'});
+        if (anterior.length && items.some(x=>!anterior.some(y=>y.id===x.id))) return res.status(400).json({sucesso:false,erro:'Atividade não pertence ao checklist persistido.'});
         meta.checklistPersistido=items.map(x=>({id:x.id,status:x.status,responsavel:req.user?.usuario||req.user?.login||'sistema',data:new Date().toISOString(),justificativa:String(x.justificativa||'').slice(0,500)}));
+        meta.checklistVersao=Number(meta.checklistVersao||0)+1;
       }
       if (req.body.PENDENCIAS_VALIDACAO_HUMANA !== undefined) {
         let items; try { items=JSON.parse(req.body.PENDENCIAS_VALIDACAO_HUMANA); } catch (_) { return res.status(400).json({sucesso:false,erro:'Pendências inválidas.'}); }
