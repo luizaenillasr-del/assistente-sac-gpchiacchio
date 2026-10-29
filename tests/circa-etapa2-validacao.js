@@ -24,4 +24,7 @@ const persistido = [{id:ids[1],status:'CONCLUIDA'},{id:ids[0],status:'PENDENTE'}
 assert.equal(persistido.find(x=>x.id===ids[0]).status, 'PENDENTE', 'reordenação preserva por ID');
 assert.ok(/^circa-[a-z0-9-]+$/.test(ids[0]), 'IDs persistidos seguem contrato');
 assert.ok(ui.includes('CHECKLIST_VERSAO'), 'cliente envia versão otimista');
+assert.match(api, /hasOwnProperty\.call\(req\.body, 'CHECKLIST_VERSAO'\)/, 'versão zero deve ser validada');
+assert.match(api, /Atividade não pertence ao checklist real/, 'IDs precisam pertencer ao checklist gerado');
+assert.match(api, /meta\.checklistPersistido/, 'persistência deve preservar metadados da análise');
 console.log('Etapa 2: regressões aprovadas.');
