@@ -38,6 +38,25 @@ function normalizarEmpresa(value) {
   return 'OUTRA';
 }
 
+function normalizarEstado(value) {
+  return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase();
+}
+
+function estadoAtivo(regra) {
+  const ativo = normalizarEstado(regra.ATIVO);
+  if (!ativo) return 'ATIVO_NAO_INFORMADO';
+  if (['SIM', 'ATIVO', 'TRUE', '1'].includes(ativo)) return 'ATIVO';
+  if (['NAO', 'INATIVO', 'INACTIVE', 'FALSE', '0'].includes(ativo)) return 'INATIVO';
+  return 'ATIVO_NAO_RECONHECIDO';
+}
+
+function aprovacaoOperacional(regra) {
+  const status = normalizarEstado(regra.STATUS);
+  if (['APROVADA', 'APROVADO', 'PUBLICADA'].includes(status)) return 'APROVADA';
+  if (!status) return 'NAO_INFORMADA';
+  return 'NAO_APROVADA';
+}
+
 function parseSheet(values) {
   const headers = (values[0] || []).map(v => String(v || '').trim());
   return (values.slice(1) || []).map((line, index) => {
@@ -51,17 +70,41 @@ function tratarMatriz(rows) {
   return rows.map(row => {
     const regra = matriz.normalizarRegra(row);
     const validacao = matriz.validarRegra(regra);
+    // O workflow deve medir a mesma condição consumida pelo motor CIRCA;
+    // validarRegra detalha pendências, enquanto regraUtilizavel aplica também
+    // a exigência de estado ativo.
+    const elegivelCirca = matriz.regraUtilizavel(regra);
+    const motivos = [
+      ...(validacao.ativa ? [] : ['REGRA_INATIVA_OU_STATUS_BLOQUEADO']),
+      ...validacao.motivos,
+    ];
     return {
       id: token(regra.ID_TRATAMENTO || regra.ID_REGRA || `linha:${row.__linha}`),
       linha: row.__linha,
       contrato: regra.CONTRATO,
       empresa: normalizarEmpresa(regra.EMPRESA),
       campos: fieldMask(regra, ['ID_TRATAMENTO', 'ID_REGRA', 'EMPRESA', 'TIPO_MANIFESTACAO', 'CATEGORIA', 'SUBCATEGORIA', 'CAUSA', 'SUBCAUSA', 'SETOR_RESPONSAVEL', 'TRATATIVA_OBRIGATORIA', 'TRATATIVA_RECOMENDADA', 'CONDICAO', 'ATIVO', 'STATUS']),
-      estadoCadastral: filled(regra.STATUS) ? String(regra.STATUS).trim().toUpperCase() : (String(regra.ATIVO).trim().toUpperCase() === 'SIM' ? 'ATIVO_SEM_STATUS_OPERACIONAL' : 'SEM_ESTADO'),
-      elegivelCirca: Boolean(validacao.utilizavel),
-      motivosInelegibilidade: validacao.utilizavel ? [] : validacao.motivos,
+      estadoAtivo: estadoAtivo(regra),
+      aprovacaoOperacionalHumana: aprovacaoOperacional(regra),
+      elegibilidadeEstrutural: validacao.motivos.length === 0,
+      elegivelCirca,
+      motivosInelegibilidade: elegivelCirca ? [] : [...new Set(motivos)],
     };
   });
+}
+
+function motivosHistoricoInelegivel(row = {}) {
+  const motivos = [];
+  const status = String(row.STATUS_DADO || row.STATUS_HISTORICO || '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const id = row.ID_HISTORICO || row.ORIG_ID_MANIFESTACAO || row.ID_MANIFESTACAO || row.PROTOCOLO || row.ID;
+  const empresa = row.DRV_EMPRESA_NORMALIZADA || row.ORIG_EMPRESA || row.EMPRESA_RECLAMADA || row.EMPRESA;
+  const descricao = row.ORIG_DESCRICAO_RECLAMACAO || row.DESCRICAO_RECLAMACAO || row.DESCRICAO;
+  if (status.includes('incomplet') || status.includes('pendente')) motivos.push('STATUS_HISTORICO_NAO_CONFIAVEL');
+  if (!filled(id)) motivos.push('IDENTIFICADOR_TECNICO_AUSENTE');
+  if (!filled(empresa)) motivos.push('EMPRESA_AUSENTE');
+  if (!filled(descricao)) motivos.push('RELATO_AUSENTE');
+  return motivos;
 }
 
 function tratarHistorico(rows) {
@@ -78,6 +121,7 @@ function tratarHistorico(rows) {
       campos: fieldMask(row, ['ID_HISTORICO', 'ORIG_ID_MANIFESTACAO', 'DRV_EMPRESA_NORMALIZADA', 'ORIG_EMPRESA', 'ORIG_DESCRICAO_RECLAMACAO', 'STATUS_DADO', 'STATUS_HISTORICO']),
       elegivelSimilaridade: elegivel,
       elegivelReincidencia: elegivel,
+      motivosInelegibilidade: elegivel ? [] : motivosHistoricoInelegivel(row),
       duplicado: false,
     };
   }).map(item => ({ ...item, duplicado: ids.get(item.id) > 1 }));
@@ -91,6 +135,10 @@ function tratarModelos(rows) {
       id: token(row.ID_MODELO || `linha:${row.__linha}`), linha: row.__linha,
       empresa: normalizarEmpresa(row.EMPRESA),
       campos: fieldMask(row, ['ID_MODELO', 'TITULO', 'TEXTO_PADRAO', 'STATUS', 'VERSAO']),
+      estruturalmenteValido: filled(row.ID_MODELO) && filled(row.TEXTO_PADRAO) && filled(row.VERSAO),
+      aprovadoOperacionalmente: aprovado,
+      disponivelParaSelecao: elegivel,
+      adequacaoAoCaso: 'NAO_AVALIADA',
       elegivelDevolutiva: elegivel,
       motivo: elegivel ? '' : 'ID_TEXTO_OU_STATUS_INSUFICIENTE',
     };
@@ -205,4 +253,4 @@ async function main() {
 
 if (require.main === module) main().catch(error => { console.error(`Reconciliação interrompida: ${error.message === 'GOOGLE_SHEETS_CONFIG_AUSENTE' ? 'configuração Google Sheets ausente.' : 'falha de leitura.'}`); process.exitCode = 1; });
 
-module.exports = { token, fieldMask, normalizarEmpresa, tratarMatriz, tratarHistorico, tratarModelos, tratarCasosAprendidos, comparar, origemInterface, lerPostgresReadonly };
+module.exports = { token, fieldMask, normalizarEmpresa, tratarMatriz, tratarHistorico, tratarModelos, tratarCasosAprendidos, comparar, origemInterface, lerPostgresReadonly, estadoAtivo, aprovacaoOperacional, motivosHistoricoInelegivel };
