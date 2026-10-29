@@ -981,6 +981,12 @@ async function analisarManifestacaoCompleta(manifestacao, regras = {}, usuario =
   const inicio = Date.now();
   const erros = [];
 
+  // Unifica os contratos do formulário, Sheets e ficha antes de qualquer
+  // leitura. A fonte pode ter nomes históricos (por exemplo
+  // DESCRICAO_MANIFESTACAO/CANAL_ORIGEM), mas o motor trabalha sempre com
+  // os valores canônicos sem inventar conteúdo.
+  manifestacao = circaEngine.normalizarManifestacao(manifestacao || {});
+
   const descricao = campo(manifestacao, ['descricao','DESCRICAO','DESCRICAO_RECLAMACAO']);
   const informacoesAusentes = [];
   if (!descricao) informacoesAusentes.push('DESCRICAO');
@@ -1038,6 +1044,7 @@ async function analisarManifestacaoCompleta(manifestacao, regras = {}, usuario =
   const matrizConhecimento = manifestacao.matrizConhecimento || null;
   const contextoIA = { manifestacao, tipoDetectado: tipo, setores: regras.setores || [], casosSimilares, reincidencia, sla, baseConhecimento, matrizConhecimento };
   const ia = await chamarIA(contextoIA).catch(e => { erros.push('ia: ' + e.message); return { disponivel: false, erro: e.message }; });
+  if (ia?.erro) erros.push('ia: ' + ia.erro);
   // A resposta do modelo pode repetir um campo como ausente mesmo quando o
   // formulário o preencheu. Filtre somente contra os valores canônicos antes
   // de expor o resultado ao frontend.
@@ -1121,6 +1128,7 @@ async function analisarManifestacaoCompleta(manifestacao, regras = {}, usuario =
 
   const analise = {
     protocolo, tipoDetectado: tipo, tipoConfianca: regras.tipoConfianca || 0,
+    statusExecucao: erros.length ? 'PARCIAL' : 'CONCLUIDA',
     setores: setoresFinais, regraAplicada: regras.regraAplicada || null,
     hipotesesClassificacao,
     limitacoes,
