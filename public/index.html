@@ -11919,13 +11919,15 @@ function agendarAnalise() {
 }
 
 function renderizarCircaDeterministico(resultado) {
+  window._nmDeterministicoAtual = resultado;
   const a=resultado?.analiseEstruturada||{};
   const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v||'Sem informação persistida.';};
   const hip = a.hipotesesClassificacao || resultado.hipotesesClassificacao || [];
   set('ia-causa', hip.map(h => nmTextoEstruturado(h)).filter(Boolean).join(' · ') || (a.hipotesesCausa||[]).map(nmTextoEstruturado).filter(Boolean).join(' · ') || 'Causa ainda não confirmada.');
   set('ia-prioridade-badge',a.prioridade||'Normal');
   const missing=(a.informacoesAusentes||[]).map(nmTextoEstruturado).filter(Boolean); set('ia-perguntas',missing.length?missing.map(x=>'• '+x).join('\n'):'Nenhuma informação essencial ausente.');
-  const checklist=resultado.checklist||[]; const action=document.getElementById('ia-tratativa'); if(action) action.innerHTML=(checklist.length?checklist.map((x,i)=>`<div class="checklist-item"><span class="check-box">${i+1}</span><span>${esc(x.descricao||x.titulo||x)}</span></div>`): '<div class="circa-muted">Nenhuma tarefa determinística pendente.</div>');
+  const checklist=resultado.checklist||[]; const salvo=Array.isArray(resultado.checklistPersistido)?resultado.checklistPersistido:[]; window._nmChecklist=salvo; window._nmChecklistVersao=resultado.checklistVersao||0; const action=document.getElementById('ia-tratativa'); if(action) action.innerHTML=(checklist.length?checklist.map((x,i)=>{const id=x.id||`circa-${String(x.descricao||x.titulo||x).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}`; const item=salvo.find(v=>v.id===id)||{};return `<label class="checklist-item"><input type="checkbox" data-checklist-id="${esc(id)}" ${item.status==='CONCLUIDA'?'checked':''} onchange="nmSalvarChecklist('${esc(id)}',this.checked)"><span>${esc(x.descricao||x.titulo||x)}</span><small style="margin-left:auto;color:#777">${esc(item.status||'PENDENTE')}</small></label>`}).join(''): '<div class="circa-muted">Nenhuma tarefa determinística pendente.</div>');
+  const pend=document.getElementById('ia-alertas'); const pendencias=resultado.pendenciasValidacaoHumana||[]; if(pend&&pendencias.length) pend.innerHTML='<div class="alert-box yellow">Validação humana pendente: '+pendencias.map(nmTextoEstruturado).join(', ')+'</div>';
   const proc=document.getElementById('ia-proc-nome'); if(proc) proc.textContent=(a.procedimentosAplicaveis||a.acoesSugeridas||[]).map(nmTextoEstruturado).filter(Boolean).join(' · ')||'Nenhum procedimento validado encontrado.';
   const separarItens = valor => String(valor ?? '').split(/[;,\n|]+/).map(x => x.trim()).filter(Boolean);
   const unicos = lista => [...new Map(lista.map(x => [String(x).toLocaleLowerCase('pt-BR'), String(x)])).values()];
@@ -11938,6 +11940,14 @@ function renderizarCircaDeterministico(resultado) {
   const sim=document.getElementById('ia-similares'); if(sim) sim.innerHTML=(a.casosSemelhantes||[]).length?(a.casosSemelhantes||[]).map(x=>`<div class="checklist-item"><span>${esc(nmTextoEstruturado(x))}</span></div>`).join(''):'<span class="circa-muted">Nenhum caso semelhante encontrado.</span>';
   const stamp=document.getElementById('ia-timestamp'); if(stamp) stamp.textContent='Consulta determinística concluída · regras + histórico + matriz';
 }
+
+window.nmSalvarChecklist = async function(id, concluida) {
+  if (!_nmCardId) return;
+  const atual = Array.isArray(window._nmChecklist) ? window._nmChecklist.slice() : [];
+  const indice=atual.findIndex(x=>x.id===id); const anterior=indice>=0?{...atual[indice]}:null; const item={ id, status: concluida ? 'CONCLUIDA' : 'PENDENTE' }; if(indice>=0) atual[indice]=item; else atual.push(item);
+  window._nmChecklist = atual;
+  try { await _apiFetch(`/api/manifestacoes/${encodeURIComponent(_nmCardId)}/circa-dados`, 15000, {method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({CHECKLIST_CIRCA:JSON.stringify(atual),CHECKLIST_VERSAO:window._nmChecklistVersao})}); window._nmChecklistVersao++; } catch(e) { if(indice>=0) atual[indice]=anterior; else atual.splice(atual.length-1,1); window._nmChecklist=atual; alert('Não foi possível salvar a atividade. O estado anterior foi restaurado.'); renderizarCircaDeterministico(window._nmDeterministicoAtual||{}); }
+};
 
 window.nmCarregarAnaliseDeterministica = async function nmCarregarAnaliseDeterministica() {
   if (_nmDeterministicaPromise) return _nmDeterministicaPromise;
