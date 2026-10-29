@@ -20,7 +20,9 @@ jobs:
         run: npm ci --ignore-scripts
       - name: Gerar Prisma Client
         run: npx prisma generate
+      - name: Instalar Chromium do Playwright
+        run: npx playwright install --with-deps chromium
       - name: Rodar testes
-        run: npm test
+        run: timeout --signal=TERM 15m npm test
         env:
           NODE_ENV: test
