@@ -31,25 +31,61 @@ async function carregarMatriz() {
   const rows = await sheets.lerAba('MATRIZ_TRATAMENTO', 1000).catch(() => []);
   _cache = rows
     .map(normalizarRegra)
-    .filter(r => (r.ATIVO || 'SIM').toUpperCase() !== 'NAO' && (r.ID_TRATAMENTO || r.TIPO_MANIFESTACAO || r.SETOR_RESPONSAVEL));
+    .filter(regraUtilizavel);
   _cacheTs = Date.now();
   return _cache;
 }
 
 function normalizarRegra(row = {}) {
   const regra = { ...row };
-  regra.ID_TRATAMENTO = regra.ID_TRATAMENTO || regra.ID_REGRA || regra.ID || '';
+  // ID_REGRA identifica a regra de seleção; ID_TRATAMENTO identifica o
+  // procedimento aplicado. Eles podem coexistir e nunca devem ser
+  // substituídos um pelo outro.
+  regra.ID_REGRA = regra.ID_REGRA || '';
+  regra.ID_TRATAMENTO = regra.ID_TRATAMENTO || '';
+  regra.CONTRATO = Object.prototype.hasOwnProperty.call(row, 'ID_TRATAMENTO')
+    ? 'CANONICO'
+    : (Object.prototype.hasOwnProperty.call(row, 'ID_REGRA') ? 'LEGADO' : 'DESCONHECIDO');
   regra.TIPO_MANIFESTACAO = regra.TIPO_MANIFESTACAO || regra.PROBLEMA_TRATADO || '';
   regra.SUBCATEGORIA = regra.SUBCATEGORIA || regra.SUBCAUSA || '';
-  regra.TRATATIVA_OBRIGATORIA = regra.TRATATIVA_OBRIGATORIA || '';
-  regra.TRATATIVA_RECOMENDADA = regra.TRATATIVA_RECOMENDADA || regra.TRATATIVA_PADRAO || '';
+  regra.TRATATIVA_OBRIGATORIA = regra.TRATATIVA_OBRIGATORIA || regra.PROCEDIMENTO || '';
+  regra.TRATATIVA_RECOMENDADA = regra.TRATATIVA_RECOMENDADA || regra.TRATATIVA_PADRAO || regra.PROCEDIMENTO || '';
   regra.TRATATIVA_CONDICIONAL = regra.TRATATIVA_CONDICIONAL || '';
   regra.TRATATIVA_NAO_PERMITIDA = regra.TRATATIVA_NAO_PERMITIDA || '';
   regra.PRAZO_TRATATIVA = regra.PRAZO_TRATATIVA || regra.SLA_HORAS || '';
   regra.NECESSITA_APROVACAO = regra.NECESSITA_APROVACAO || regra.REQUER_APROVACAO || '';
   regra.MODELO_DEVOLUTIVA = regra.MODELO_DEVOLUTIVA || regra.DEVOLUTIVA_PADRAO || '';
   regra.NECESSITA_EVIDENCIA = regra.NECESSITA_EVIDENCIA || regra.EVIDENCIAS_EXIGIDAS || '';
+  regra.MOTIVOS_INCOMPLETUDE = validarRegra(regra).motivos;
   return regra;
+}
+
+/** Valida uma regra sem alterar a origem. Regras ativas incompletas não são
+ * elegíveis para recomendações do CIRCA. */
+function validarRegra(regra = {}) {
+  const ativa = !['NAO', 'INATIVO', 'INACTIVE', '0', 'FALSE'].includes(String(regra.ATIVO || '').trim().toUpperCase()) &&
+    !['INATIVO', 'INACTIVE', 'RASCUNHO', 'DESCARTADO'].includes(String(regra.STATUS || '').trim().toUpperCase());
+  const contrato = regra.CONTRATO || (Object.prototype.hasOwnProperty.call(regra, 'ID_TRATAMENTO') ? 'CANONICO' : 'LEGADO');
+  const obrigatorios = contrato === 'CANONICO'
+    ? [
+        ['ID_TRATAMENTO', regra.ID_TRATAMENTO], ['EMPRESA', regra.EMPRESA],
+        ['TIPO_MANIFESTACAO', regra.TIPO_MANIFESTACAO], ['CATEGORIA', regra.CATEGORIA],
+        ['SUBCATEGORIA', regra.SUBCATEGORIA], ['SETOR_RESPONSAVEL', regra.SETOR_RESPONSAVEL],
+        ['TRATATIVA_OBRIGATORIA', regra.TRATATIVA_OBRIGATORIA],
+      ]
+    : [
+        ['ID_REGRA', regra.ID_REGRA], ['EMPRESA', regra.EMPRESA],
+        ['TIPO_MANIFESTACAO', regra.TIPO_MANIFESTACAO], ['SETOR_RESPONSAVEL', regra.SETOR_RESPONSAVEL],
+        ['SLA_HORAS', regra.SLA_HORAS], ['PRIORIDADE', regra.PRIORIDADE],
+        ['TRATATIVA_PADRAO', regra.TRATATIVA_PADRAO || regra.TRATATIVA_RECOMENDADA],
+      ];
+  const motivos = obrigatorios.filter(([, value]) => String(value ?? '').trim() === '').map(([nome]) => nome);
+  return { ativa, contrato, motivos, utilizavel: !ativa || motivos.length === 0 };
+}
+
+function regraUtilizavel(regra = {}) {
+  const validacao = validarRegra(regra);
+  return validacao.ativa && validacao.motivos.length === 0;
 }
 
 function norm(v) {
@@ -100,7 +136,8 @@ async function consultarMatriz(ctx) {
   const split = (v) => (v || '').split(/[;\n]/).map(s => s.trim()).filter(Boolean);
 
   return {
-    idTratamento: melhor.ID_TRATAMENTO,
+    idTratamento: melhor.ID_TRATAMENTO || null,
+    idRegra: melhor.ID_REGRA || null,
     setorResponsavel: melhor.SETOR_RESPONSAVEL || ctx.setor || 'SAC',
     responsavel: melhor.RESPONSAVEL || '',
     prioridade: melhor.PRIORIDADE || 'Média',
@@ -165,6 +202,7 @@ function regrasDefault(ctx) {
   const base = DEFAULTS[setor] || DEFAULTS['SAC'];
   return {
     idTratamento: null,
+    idRegra: null,
     setorResponsavel: setor,
     responsavel: '',
     prioridade: ctx.prioridade || 'Média',
@@ -192,4 +230,12 @@ async function obterRegras(ctx) {
   return daMatriz || regrasDefault(ctx);
 }
 
-module.exports = { carregarMatriz, consultarMatriz, obterRegras, regrasDefault };
+module.exports = {
+  carregarMatriz,
+  consultarMatriz,
+  obterRegras,
+  regrasDefault,
+  normalizarRegra,
+  validarRegra,
+  regraUtilizavel,
+};

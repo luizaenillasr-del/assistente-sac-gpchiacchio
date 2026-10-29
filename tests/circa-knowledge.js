@@ -13,7 +13,7 @@ const fixtures = {
   MATRIZ_TRATAMENTO: [{
     ID_REGRA: 'REG-1', EMPRESA: 'TODAS', TIPO_MANIFESTACAO: 'Reclamação',
     CAUSA: 'Atraso logístico', TRATATIVA_PADRAO: 'Confirmar rastreamento',
-    REQUER_APROVACAO: 'SIM', ATIVO: 'SIM', VERSAO: '1.0', SETOR_RESPONSAVEL: 'Logística',
+    REQUER_APROVACAO: 'SIM', ATIVO: 'SIM', SLA_HORAS: '72', PRIORIDADE: 'NORMAL', VERSAO: '1.0', SETOR_RESPONSAVEL: 'Logística',
   }],
   MODELOS_DEVOLUTIVA: [{
     ID_MODELO: 'MOD-1', TITULO: 'Recebimento aprovado', EMPRESA: 'TODAS',
@@ -27,7 +27,7 @@ const fixtures = {
     CAUSA_RAIZ_VALIDADA: '',
   }],
   MANIFESTACOES: [{
-    ID_MANIFESTACAO: 'HIST-1', EMPRESA_RECLAMANTE: 'Cliente teste', PRODUTO: 'Caixa',
+    ID_MANIFESTACAO: 'HIST-1', EMPRESA_RECLAMANTE: 'Cliente teste', EMPRESA_RECLAMADA: 'CHIACCHIO EMBALAGENS', PRODUTO: 'Caixa',
   }],
   POLITICAS: [], PROCEDIMENTOS: [], BASE_CONHECIMENTO: [], CAUSAS: [],
 };
@@ -52,7 +52,8 @@ const cerebro = require('../server-services/cerebroServices');
   const regra = await matriz.consultarMatriz({
     empresa: 'CHIACCHIO EMBALAGENS', tipo: 'Reclamação', causa: 'Atraso logístico',
   });
-  assert.equal(regra.idTratamento, 'REG-1', 'ID_REGRA legado deve ser normalizado');
+  assert.equal(regra.idTratamento, null, 'ID_REGRA não pode ser usado como ID_TRATAMENTO');
+  assert.equal(regra.idRegra, 'REG-1', 'ID_REGRA deve ser preservado separadamente');
   assert.ok(regra.acoesRecomendadas.includes('Confirmar rastreamento'));
   assert.equal(regra.necessitaAprovacao, true);
   assert.equal(regra.origem, 'MATRIZ');
@@ -73,7 +74,7 @@ const cerebro = require('../server-services/cerebroServices');
   assert.equal(hipotese.confirmada, false);
 
   const reincidencia = await cerebro.detectarReincidencia({
-    EMPRESA_RECLAMANTE: 'Cliente teste', PRODUTO: 'Caixa', ID_MANIFESTACAO: 'ATUAL-1',
+    EMPRESA_RECLAMANTE: 'Cliente teste', EMPRESA_RECLAMADA: 'CHIACCHIO EMBALAGENS', PRODUTO: 'Caixa', ID_MANIFESTACAO: 'ATUAL-1',
   });
   assert.equal(reincidencia.quantidade, 1, 'mesmo ID em MANIFESTACOES e histórico não pode duplicar ocorrência');
   assert.equal(writes, 0, 'leituras do CIRCA não podem criar abas ou registros');
