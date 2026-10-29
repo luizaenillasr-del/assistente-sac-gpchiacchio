@@ -12224,6 +12224,13 @@ function renderizarAnalise(a) {
   } else {
     procWrap.style.display = 'none';
   }
+  const alertaProduto = a.alertaProduto;
+  if (alertaProduto) {
+    const aviso = document.createElement('div'); aviso.id = 'ia-alerta-produto';
+    aviso.style.cssText = 'margin:8px 0;padding:9px 12px;border-left:3px solid #D97706;background:#FEF3C7;color:#92400E;font-size:12px;border-radius:6px';
+    aviso.textContent = `⚠ Produto cadastrado “${alertaProduto.produtoCadastrado}” diverge do relato (${alertaProduto.termosRelato.join(', ')}). Validação humana necessária.`;
+    procWrap.parentNode.insertBefore(aviso, procWrap);
+  }
 
   // Ação imediata da IA — adiciona no topo da card de tratamento
   const acaoImediataText = a.ia?.acaoImediata && !a.ia.erro && a.ia.acaoImediata !== 'DADO_NAO_ENCONTRADO' ? nmTextoEstruturado(a.ia.acaoImediata) : null;
@@ -12300,6 +12307,7 @@ function renderizarAnalise(a) {
       <div style="font-size:10px;font-weight:700;color:#1D4ED8;margin-bottom:3px">AÇÃO IMEDIATA — SUGESTÃO IA</div>
       <div style="font-size:12px;color:#1F2937">${esc5(acaoImediataText)}</div>
     </div>` : '';
+    if (a.slas) html += `<div style="font-size:11px;color:#4B5563;background:#F9FAFB;padding:7px 10px;border-radius:6px;margin-bottom:8px">SLAs: triagem SAC ${a.slas.triagemSAC}h · retorno setor ${a.slas.retornoSetor}h · retorno cliente ${a.slas.retornoCliente}h${a.slas.procedimento ? ` · procedimento ${a.slas.procedimento}h` : ''}</div>`;
     if (te.diagnostico?.descricao) {
       const nivelCor = te.diagnostico.nivel === 'CONFIRMADO' ? '#16A34A' : te.diagnostico.nivel === 'HIPOTESE' ? '#D97706' : '#6B7280';
       html += `<div style="background:#F0FDF4;border-radius:8px;padding:10px;margin-bottom:10px;border-left:3px solid ${nivelCor}">
