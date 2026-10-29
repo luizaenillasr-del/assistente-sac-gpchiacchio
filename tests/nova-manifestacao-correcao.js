@@ -62,6 +62,15 @@ function request(base, method, route, auth, body) {
     assert.ok(!ausentes.includes('EMPRESA_RECLAMADA'), 'empresa preenchida não pode aparecer como ausente');
     assert.ok(!ausentes.includes('CANAL'), 'canal preenchido não pode aparecer como ausente');
 
+    const plaschio = await request(base, 'POST', '/api/analise', master, {
+      empresaReclamada:'PLASCHIO', empresaReclamante:'Cliente PLASCHIO', canal:'TELEFONE',
+      tipo:'Reclamação', produto:'Potes', lote:'123', nfe:'3215', nome:'Cliente PLASCHIO',
+      descricao:'Atraso de três dias na entrega e aproximadamente 1.200 potes com dificuldade de encaixe das tampas.',
+    });
+    assert.equal(plaschio.status, 200, JSON.stringify(plaschio.body));
+    assert.deepEqual(plaschio.body.analise?.hipotesesClassificacao?.map(h => h.codigo), ['ATRASO_LOGISTICO', 'NAO_CONFORMIDADE_PRODUTO']);
+    assert.deepEqual(plaschio.body.analise?.informacoesAusentes || [], [], 'o caso PLASCHIO não pode perder descrição/canal no backend');
+
     const anexo = { nome:'evidencia.txt', mimeType:'image/png', tamanho:3, categoria:'EVIDENCIA', dataBase64:'data:image/png;base64,AQID' };
     const criado = await request(base, 'POST', '/api/manifestacoes', master, {
       idempotencyKey:key, empresaReclamada:'CHIACCHIO EMBALAGENS', empresaReclamante:'Cliente Teste',

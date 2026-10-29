@@ -1517,6 +1517,18 @@ function gerarDevolutiva(empresa, tipo, setores, tratativa) {
 
 async function executarAnalise(manifestacao) {
   const inicio = Date.now();
+  // O mesmo objeto pode chegar do formulário (camelCase), da ficha (caixa
+  // alta) ou de uma linha histórica. Normalize antes de consultar regras e o
+  // Cérebro para que nenhum campo preenchido seja perdido entre camadas.
+  manifestacao = circaEngine.normalizarManifestacao(manifestacao || {});
+  manifestacao.descricao = manifestacao.descricao || manifestacao.DESCRICAO || '';
+  manifestacao.canal = manifestacao.canal || manifestacao.CANAL || '';
+  manifestacao.empresaReclamada = manifestacao.empresaReclamada || manifestacao.EMPRESA_RECLAMADA || '';
+  manifestacao.empresaReclamante = manifestacao.empresaReclamante || manifestacao.EMPRESA_RECLAMANTE || manifestacao.CONTATO || '';
+  manifestacao.DESCRICAO = manifestacao.DESCRICAO || manifestacao.descricao;
+  manifestacao.CANAL = manifestacao.CANAL || manifestacao.canal;
+  manifestacao.EMPRESA_RECLAMADA = manifestacao.EMPRESA_RECLAMADA || manifestacao.empresaReclamada;
+  manifestacao.EMPRESA_RECLAMANTE = manifestacao.EMPRESA_RECLAMANTE || manifestacao.empresaReclamante;
   let regras = await motorRegras(
     manifestacao.descricao || manifestacao.DESCRICAO || '',
     manifestacao.tipo || manifestacao.TIPO || '',
@@ -2176,8 +2188,22 @@ app.post('/api/auth/reset-password', async (req,res)=>{
 // ===== ANÁLISE IA =====
 app.post('/api/analise', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC','ATENDENTE SAC','SETOR RESPONSÁVEL','ESPECIALISTA','APROVADOR'), async (req, res) => {
   try {
-    const { descricao, tipo, empresaReclamada, empresaReclamante, produto, lote,
-      nfe, canal, prioridade, dataRegistro, cnpj, telefone, email, quantidade, nome } = req.body;
+    const entrada = circaEngine.normalizarManifestacao(req.body || {});
+    const descricao = entrada.descricao || entrada.DESCRICAO || '';
+    const tipo = entrada.tipo || entrada.TIPO || entrada.TIPO_MANIFESTACAO || '';
+    const empresaReclamada = entrada.empresaReclamada || entrada.EMPRESA_RECLAMADA || entrada.EMPRESA || '';
+    const empresaReclamante = entrada.empresaReclamante || entrada.EMPRESA_RECLAMANTE || entrada.CONTATO || '';
+    const produto = entrada.produto || entrada.PRODUTO || '';
+    const lote = entrada.lote || entrada.LOTE || '';
+    const nfe = entrada.nfe || entrada.NFE || entrada.NF || '';
+    const canal = entrada.canal || entrada.CANAL || '';
+    const prioridade = entrada.prioridade || entrada.PRIORIDADE || '';
+    const dataRegistro = entrada.dataRegistro || entrada.DATA_REGISTRO || entrada.DATA_ABERTURA || '';
+    const cnpj = entrada.cnpj || entrada.CNPJ || '';
+    const telefone = entrada.telefone || entrada.TELEFONE || '';
+    const email = entrada.email || entrada.EMAIL || '';
+    const quantidade = entrada.quantidade || entrada.QUANTIDADE || '';
+    const nome = entrada.nome || entrada.NOME_CONTATO || entrada.CONTATO || '';
     if (!descricao) return res.status(400).json({ sucesso: false, erro: 'Descrição é obrigatória.' });
     // Mantém os campos preenchidos no formulário no mesmo contrato usado pelo
     // Cérebro. Antes, somente os seis campos originais chegavam à análise e a

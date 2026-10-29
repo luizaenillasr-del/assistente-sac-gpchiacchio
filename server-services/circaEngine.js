@@ -17,10 +17,17 @@ const first = (obj, keys) => {
 // Os registros chegam de três contratos (formulário, Sheets e ficha). A
 // análise não deve depender da capitalização ou do nome histórico da coluna.
 const FIELD_ALIASES = {
-  empresa: ['EMPRESA_RECLAMADA', 'EMPRESA', 'empresaReclamada', 'empresa', 'ORIG_EMPRESA'],
-  cliente: ['CONTATO', 'CLIENTE', 'CLIENTE_NOME', 'contato', 'cliente', 'empresaReclamante', 'EMPRESA_RECLAMANTE', 'ORIG_CONTATO'],
-  descricao: ['DESCRICAO', 'DESCRIÇÃO', 'descricao', 'ORIG_DESCRICAO_RECLAMACAO', 'DESCRICAO_RECLAMACAO', 'relato', 'RELATO'],
-  canal: ['CANAL', 'canal', 'ORIG_CANAL', 'CANAL_RECEBIMENTO', 'origem', 'ORIGEM'],
+  empresa: ['EMPRESA_RECLAMADA', 'EMPRESA', 'empresaReclamada', 'empresa', 'ORIG_EMPRESA', 'ORIG_EMPRESA_RECLAMADA'],
+  cliente: ['CONTATO', 'CLIENTE', 'CLIENTE_NOME', 'contato', 'cliente', 'empresaReclamante', 'EMPRESA_RECLAMANTE', 'ORIG_CONTATO', 'NOME_CONTATO'],
+  descricao: [
+    'DESCRICAO', 'DESCRIÇÃO', 'descricao', 'DESCRICAO_MANIFESTACAO',
+    'DESCRICAO_RECLAMACAO', 'ORIG_DESCRICAO_RECLAMACAO', 'RELATO_ORIGINAL',
+    'RELATO_CLIENTE', 'relato', 'RELATO', 'MENSAGEM',
+  ],
+  canal: [
+    'CANAL', 'canal', 'CANAL_ORIGEM', 'ORIGEM_CANAL', 'ORIG_CANAL',
+    'CANAL_RECEBIMENTO', 'MEIO_CONTATO', 'TIPO_CANAL', 'origem', 'ORIGEM',
+  ],
 };
 
 function normalizarManifestacao(manifestacao = {}) {

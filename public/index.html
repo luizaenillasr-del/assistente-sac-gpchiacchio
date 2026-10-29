@@ -11796,6 +11796,8 @@ let _nmDecisao = null; // 'aceita' | 'editada' | 'rejeitada'
 let _nmCardId = null;
 let _nmIdempotencyKey = null;
 let _nmAnalisePersistidaCarregada = false;
+let _nmDeterministicaPromise = null;
+let _nmAnaliseInFlight = false;
 
 function nmTextoEstruturado(valor, fallback = '') {
   if (valor === undefined || valor === null || valor === '') return fallback;
@@ -11932,12 +11934,19 @@ function renderizarCircaDeterministico(resultado) {
 }
 
 window.nmCarregarAnaliseDeterministica = async function nmCarregarAnaliseDeterministica() {
-  if(!_nmCardId && typeof window.salvarRascunho === 'function') {
-    await window.salvarRascunho({silent:true}).catch(()=>{});
-  }
-  if(!_nmCardId) return null;
-  try { const r=await _apiFetch(`/api/manifestacoes/${encodeURIComponent(_nmCardId)}/circa`,15000); if(r?.sucesso){renderizarCircaDeterministico(r.circa);return r.circa;} } catch(e){ console.warn('CIRCA determinístico indisponível:',e.message); }
-  return null;
+  if (_nmDeterministicaPromise) return _nmDeterministicaPromise;
+  _nmDeterministicaPromise = (async () => {
+    if(!_nmCardId && typeof window.salvarRascunho === 'function') {
+      await window.salvarRascunho({silent:true}).catch(()=>{});
+    }
+    if(!_nmCardId) return null;
+    try {
+      const r=await _apiFetch(`/api/manifestacoes/${encodeURIComponent(_nmCardId)}/circa`,30000);
+      if(r?.sucesso){renderizarCircaDeterministico(r.circa);return r.circa;}
+    } catch(e){ console.warn('CIRCA determinístico indisponível:',e.message); }
+    return null;
+  })();
+  try { return await _nmDeterministicaPromise; } finally { _nmDeterministicaPromise = null; }
 }
 
 async function nmCarregarAnalisePersistida() {
@@ -12001,41 +12010,41 @@ function nmRegistrarLembrete(){return nmCriarAcionamento('NOTIFICACAO');}
 async function executarAnaliseIA() {
   const desc = (document.getElementById('nm-descricao')?.value || '').trim();
   if (desc.length < 30) return;
+  if (_nmAnaliseInFlight) return;
+  _nmAnaliseInFlight = true;
   const charsEl=document.getElementById('nm-chars'); if(charsEl) charsEl.textContent=desc.length+' caracteres — análise em processamento...';
-
-  await nmCarregarAnaliseDeterministica();
-  const tipo = document.getElementById('nm-tipo')?.value || 'Reclamação';
-  const empresaRec = document.getElementById('nm-empresa-reclamada')?.value || '';
-  const empresaRec2 = document.getElementById('nm-empresa')?.value || '';
-  const produto = document.getElementById('nm-produto')?.value || '';
-  const lote = document.getElementById('nm-lote')?.value || '';
-  const nfe = document.getElementById('nm-nfe')?.value || '';
-  const canal = nmCanalSelecionado();
-  const prioridade = document.getElementById('nm-prioridade')?.value || '';
-  const dataRegistro = document.getElementById('nm-data')?.value || '';
-  const cnpj = document.getElementById('nm-cnpj')?.value || '';
-  const telefone = document.getElementById('nm-tel')?.value || '';
-  const email = document.getElementById('nm-email')?.value || '';
-  const quantidade = document.getElementById('nm-qtd')?.value || '';
-  const nome = document.getElementById('nm-nome')?.value || '';
-
-  // Mostrar painel
   const painel = document.getElementById('painel-analise');
-  if (!painel) return;
   const botaoIA = document.getElementById('nm-btn-analisar-ia');
-  if (botaoIA?.disabled) return;
+  if (!painel || botaoIA?.disabled) { _nmAnaliseInFlight = false; return; }
   if (botaoIA) { botaoIA.disabled = true; botaoIA.textContent = 'Analisando…'; botaoIA.style.opacity = '.7'; }
   painel.style.display = 'block';
   atualizarResumoFicha();
   document.getElementById('ia-analisando').style.display = 'block';
+  document.getElementById('ia-analisando').textContent = 'Consultando o Cérebro SAC…';
   document.getElementById('ia-resultado').style.display = 'none';
   document.getElementById('ia-loading').style.display = 'block';
   document.getElementById('ia-timestamp').textContent = 'Analisando agora...';
   document.getElementById('ia-decisao-status').style.display = 'none';
+  document.getElementById('ia-confianca-pct').textContent = '—';
+  document.getElementById('ia-confianca-bar').style.width = '0%';
+  _nmAnaliseAtual = null;
   _nmDecisao = null;
 
   try {
-    const res = await _apiFetch('/api/analise', 15000, {
+    await nmCarregarAnaliseDeterministica();
+    const tipo = document.getElementById('nm-tipo')?.value || 'Reclamação';
+    const empresaRec = document.getElementById('nm-empresa-reclamada')?.value || '';
+    const empresaRec2 = document.getElementById('nm-empresa')?.value || '';
+    const produto = document.getElementById('nm-produto')?.value || '';
+    const lote = document.getElementById('nm-lote')?.value || '';
+    const prioridade = document.getElementById('nm-prioridade')?.value || '';
+    const dataRegistro = document.getElementById('nm-data')?.value || '';
+    const cnpj = document.getElementById('nm-cnpj')?.value || '';
+    const telefone = document.getElementById('nm-tel')?.value || '';
+    const email = document.getElementById('nm-email')?.value || '';
+    const quantidade = document.getElementById('nm-qtd')?.value || '';
+    const nome = document.getElementById('nm-nome')?.value || '';
+    const res = await _apiFetch('/api/analise', 60000, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -12056,11 +12065,31 @@ async function executarAnaliseIA() {
     _nmAnaliseAtual = res.analise;
     renderizarAnalise(res.analise);
   } catch (e) {
-    document.getElementById('ia-analisando').innerHTML = `<div style="color:var(--red);font-size:13px">⚠ Erro na análise: ${esc(e.message)}</div>`;
+    _nmAnaliseAtual = null;
+    document.getElementById('ia-resultado').style.display = 'none';
+    document.getElementById('ia-analisando').style.display = 'block';
+    document.getElementById('ia-analisando').innerHTML = `<div role="alert" style="color:var(--red);font-size:13px">⚠ A análise não foi concluída: ${esc(e.message || 'erro desconhecido')}. Os dados foram preservados; tente novamente.</div>`;
+    document.getElementById('ia-timestamp').textContent = 'Falha na análise · nenhuma recomendação concluída';
+    document.getElementById('ia-confianca-pct').textContent = 'Não calculada';
+    document.getElementById('ia-confianca-bar').style.width = '0%';
+    document.getElementById('ia-causa').textContent = 'Análise indisponível — confirme os dados manualmente.';
+    document.getElementById('ia-prioridade-badge').textContent = 'Não calculada';
+    document.getElementById('ia-setores').innerHTML = '<span class="circa-muted">Nenhum setor recomendado enquanto a análise estiver indisponível.</span>';
+    document.getElementById('ia-proc-nome').textContent = 'Nenhum procedimento recomendado.';
+    document.getElementById('ia-perguntas').textContent = 'A análise falhou; tente novamente.';
+    document.getElementById('ia-tratativa').innerHTML = '<div class="circa-muted">Nenhuma orientação concluída.</div>';
+    document.getElementById('ia-similares').innerHTML = '<span class="circa-muted">Consulta não concluída.</span>';
+    document.getElementById('ia-alertas-wrap').style.display = 'block';
+    document.getElementById('ia-alertas').innerHTML = '<div class="alert-box red" style="font-size:12px">A análise não foi concluída. Nenhuma recomendação ou confiança deve ser considerada válida.</div>';
   } finally {
     document.getElementById('ia-loading').style.display = 'none';
     if (botaoIA) { botaoIA.disabled = false; botaoIA.textContent = 'Analisar novamente'; botaoIA.style.opacity = '1'; }
-    const charsFinal=document.getElementById('nm-chars'); if(charsFinal) charsFinal.textContent=desc.length+' caracteres — análise concluída ou indisponível; triagem determinística disponível';
+    const charsFinal=document.getElementById('nm-chars');
+    if(charsFinal) {
+      const estado = _nmAnaliseAtual?.statusExecucao === 'PARCIAL' ? 'análise parcial' : (_nmAnaliseAtual ? 'análise concluída' : 'análise indisponível');
+      charsFinal.textContent = desc.length + ' caracteres — ' + estado;
+    }
+    _nmAnaliseInFlight = false;
   }
 }
 
@@ -12089,7 +12118,10 @@ function renderizarAnalise(a) {
   document.getElementById('ia-analisando').style.display = 'none';
   document.getElementById('ia-resultado').style.display = 'block';
   const _iaHora = new Date().toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
-  document.getElementById('ia-timestamp').textContent = `Gerada em ${_iaHora} · IA + Histórico + Matriz`;
+  const analiseParcial = a?.statusExecucao === 'PARCIAL' || Boolean(a?.ia?.erro);
+  document.getElementById('ia-timestamp').textContent = analiseParcial
+    ? `Análise parcial em ${_iaHora} · IA indisponível; valide os dados manualmente`
+    : `Gerada em ${_iaHora} · IA + Histórico + Matriz`;
   // Muda botão de "Analisar agora" para "Reanalisar" após primeira análise
   const btnAnalisar = document.getElementById('nm-btn-analisar-ia');
   if (btnAnalisar) btnAnalisar.textContent = 'Reanalisar';
@@ -12101,10 +12133,10 @@ function renderizarAnalise(a) {
   const confValido = Number.isFinite(conf) && conf >= 0 && conf <= 100;
   const confBar = document.getElementById('ia-confianca-bar');
   const confPct = document.getElementById('ia-confianca-pct');
-  if (confBar) confBar.style.width = confValido ? conf + '%' : '0%';
+  if (confBar) confBar.style.width = analiseParcial ? '0%' : (confValido ? conf + '%' : '0%');
   const confNivel = typeof a.confianca === 'object' ? (a.confianca?.nivel || '') : '';
   const confLabel = confNivel === 'ALTA' ? 'Alta' : confNivel === 'MEDIA' || confNivel === 'MÉDIA' ? 'Média' : confNivel === 'BAIXA' ? 'Baixa' : '';
-  if (confPct) confPct.textContent = confLabel ? confLabel : (confValido ? conf + '%' : 'Não calculada');
+  if (confPct) confPct.textContent = analiseParcial ? 'Não calculada' : (confLabel ? confLabel : (confValido ? conf + '%' : 'Não calculada'));
   // Atualiza timestamp do cabeçalho com nível de confiança
   if (confLabel) { const ts = document.getElementById('ia-timestamp'); if(ts) ts.textContent += ` · Confiança: ${confLabel}`; }
   // Popula badges do cabeçalho com tipo e prioridade
@@ -12196,7 +12228,11 @@ function renderizarAnalise(a) {
   }
 
   // Informações ausentes da IA (somente o que não está na ficha)
-  const infoAusentesIA = Array.isArray(a.ia?.informacoesAusentes) ? a.ia.informacoesAusentes.map(i => nmTextoEstruturado(i)).filter(Boolean) : [];
+  const infoAusentesIA = [
+    ...(Array.isArray(a.informacoesAusentes) ? a.informacoesAusentes : []),
+    ...(Array.isArray(a.ia?.informacoesAusentes) ? a.ia.informacoesAusentes : []),
+  ].map(i => nmTextoEstruturado(i)).filter(Boolean)
+    .filter((item, index, lista) => lista.indexOf(item) === index);
 
   // Perguntas necessárias (determinísticas por tipo) + informações ausentes da IA combinadas
   const pergs = a.perguntasNecessarias || [];
@@ -14415,7 +14451,7 @@ window.filtrarSetoresPorEmpresa = function(empresa, btn) {
 async function _apiFetch(url, timeoutMs, extraOptions) {
   const token = sessionStorage.getItem('sac-token') || '';
   const controller = new AbortController();
-  const tid = timeoutMs ? setTimeout(() => controller.abort(), timeoutMs) : null;
+  const tid = timeoutMs ? setTimeout(() => controller.abort('request-timeout'), timeoutMs) : null;
   try {
     const opts = {
       ...extraOptions,
@@ -14428,6 +14464,17 @@ async function _apiFetch(url, timeoutMs, extraOptions) {
     try { data = text ? JSON.parse(text) : {}; } catch { data = { raw: text }; }
     if (!r.ok) throw new Error((data.erro || data.error || data.raw || '') + ' (HTTP ' + r.status + ')');
     return data;
+  } catch (error) {
+    // Este controller só é acionado pelo prazo da requisição. Alguns
+    // navegadores expõem o cancelamento como "signal is aborted without
+    // reason"; converta-o em erro operacional sem mascarar HTTP/validação.
+    if (controller.signal.aborted || error?.name === 'AbortError') {
+      const timeoutError = new Error(`Tempo limite excedido ao consultar ${url}.`);
+      timeoutError.code = 'REQUEST_TIMEOUT';
+      timeoutError.url = url;
+      throw timeoutError;
+    }
+    throw error;
   } finally {
     if (tid) clearTimeout(tid);
   }
