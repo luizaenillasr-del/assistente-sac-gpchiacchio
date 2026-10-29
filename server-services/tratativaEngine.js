@@ -8,6 +8,7 @@
 
 const sheets = require('./sheets');
 const matrizService = require('./matrizTratamentoService');
+const { filtrarColetas } = require('./etapa2Validacao');
 
 const CABECALHOS_TRATATIVAS = [
   'ID_TRATATIVA','ID_MANIFESTACAO','DATA_CRIACAO','PROBLEMA','CATEGORIA',
@@ -212,7 +213,7 @@ async function gerarTratativaEstruturada(params) {
   const diagCausa = diagnosticarCausa(manifestacao, casosSimilares, iaResultado);
 
   // 5. Montar ações estruturadas
-  const acoes = montarAcoes(regras, ctx, atrasoInfo);
+  const acoes = filtrarColetas(montarAcoes(regras, ctx, atrasoInfo), manifestacao);
 
   // 6. Verificar conflito entre regras, IA e histórico
   const conflitos = [];
@@ -243,6 +244,7 @@ async function gerarTratativaEstruturada(params) {
     },
     regras: {
       idTratamento: regras.idTratamento,
+      rastreabilidade: regras.rastreabilidade || null,
       idRegra: regras.idRegra || null,
       origem: regras.origem,
       score: regras.score,

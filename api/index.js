@@ -1547,6 +1547,9 @@ async function executarAnalise(manifestacao) {
       procedimentoSugerido: regraMatriz.idTratamento ? {
         id: regraMatriz.idTratamento,
         nome: (regraMatriz.acoesObrigatorias || []).join('; '),
+        origem: regraMatriz.origem,
+        elegibilidade: true,
+        criteriosCorrespondencia: { empresa: manifestacao.empresaReclamada || '', tipo: manifestacao.tipo || '', categoria: manifestacao.categoria || '', subcategoria: manifestacao.subcategoria || '' },
       } : regras.procedimentoSugerido,
       matrizTratamento: regraMatriz,
       limitacaoSetor: '',
