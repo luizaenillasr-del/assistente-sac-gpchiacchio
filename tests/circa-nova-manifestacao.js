@@ -92,7 +92,11 @@ const originalLerAba = sheets.lerAba;
     assert.match(html, /ORIENTACAO_REJEITADA/, 'rejeição da orientação deve ter estado explícito');
     const api = fs.readFileSync(path.resolve(__dirname, '../api/index.js'), 'utf8');
     assert.match(api, /analisePatch/, 'backend deve persistir decisão como patch da análise existente');
-    assert.match(api, /revisadoPor: req\.user/, 'identidade da decisão deve vir da sessão do backend');
+    assert.match(api, /const revisadoPor = req\.user/, 'identidade da decisão deve vir da sessão do backend');
+    assert.match(api, /complemento Sheets indisponível/, 'ficha deve complementar um registro PG resumido com a fonte oficial do Sheets');
+    assert.match(api, /historico: \[\.\.\.historico, registro\]/, 'revisões repetidas devem manter histórico auditável');
+    assert.match(html, /sac-rascunho-id/, 'rascunho deve poder ser retomado pelo ID persistido');
+    assert.match(html, /ci\?\.circa/, 'ficha deve ler o envelope CIRCA correto após recarregar');
     assert.match(html, /responsavel,tarefa/, 'acionamento deve preservar responsável e tarefa da frente');
     console.log('CIRCA Nova Manifestação: campos PLASCHIO, hipóteses múltiplas, regras inválidas, isolamento de reincidência e renderização aprovados.');
   } finally {

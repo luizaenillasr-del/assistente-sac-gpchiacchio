@@ -7423,7 +7423,7 @@
   const id=()=>S.id||val(S.item,'ID_MANIFESTACAO','PROTOCOLO');
   const item=()=>S.item||{};
   function badgeStyle(kind){const st=String(kind||'').toUpperCase();if(st.includes('ENCERR')||st.includes('FECH')||st.includes('CONCL'))return 'background:#DCFCE7;color:#15803D';if(st.includes('ATRAS')||st.includes('ALTA'))return 'background:#FDECEC;color:#C70602';if(st.includes('AGUARD')||st.includes('TRAT')||st.includes('ANDAMENTO'))return 'background:#FEF3C7;color:#B45309';return 'background:#F0F0F0;color:#555'}
-  function status(){return val(item(),'STATUS_FICHA_LEGIVEL','STATUS_FICHA','STATUS')||'Aberta'}
+  function status(){const sf=val(item(),'STATUS_FICHA_LEGIVEL','STATUS_FICHA');const s=val(item(),'STATUS');if(sf&&/^RASCUNHO$/i.test(String(sf))&&s&&!/^RASCUNHO$/i.test(String(s)))return s;return sf||s||'Aberta'}
   function relato(){return val(item(),'DESCRICAO_ORIGINAL','DESCRICAO_MANIFESTACAO','DESCRICAO','RELATO','RELATO_ORIGINAL','OBSERVACOES')||'Relato original não informado.'}
   function setor(){return val(item(),'SETOR_CONFIRMADO','SETOR_DESTINADO','RESP_SETOR','SETOR_SUGERIDO','SETOR_ORIGEM')||'Não definido'}
   function resp(){return val(item(),'RESPONSAVEL_SETOR','RESPONSAVEL_SAC','RESPONSAVEL','RESPONSAVEL_TRATATIVA','USUARIO_CRIACAO')||'Não definido'}
@@ -7456,7 +7456,7 @@
   window.fichaV2SalvarDevolutiva=async()=>{try{const t=$("fv2-devolutiva")?.value.trim()||'';if(!t)throw new Error('Informe o texto da devolutiva.');await patch({acao:'salvar_devolutiva',texto:t,canal:val(item(),'CANAL_RETORNO','CANAL')});Object.assign(S.item,{DEVOLUTIVA_FINAL:t,STATUS:'AGUARDANDO_DEVOLUTIVA',STATUS_FICHA:'AGUARDANDO_DEVOLUTIVA'});renderHeader();showMsg('fv2-dev-msg','Rascunho salvo.',true)}catch(e){showMsg('fv2-dev-msg',e.message,false)}};
   window.fichaV2EnviarDevolutiva=async()=>{try{await patch({acao:'registrar_devolutiva',canal:val(item(),'CANAL_RETORNO','CANAL'),responsavel:resp()});Object.assign(S.item,{STATUS:'ENCERRADA',STATUS_FICHA:'FECHADA'});renderHeader();renderContent();showMsg('fv2-dev-msg','Envio registrado e manifestação encerrada.',true)}catch(e){showMsg('fv2-dev-msg',e.message,false)}};
   window.fichaV2Upload=async files=>{const arr=[...(files||[])];for(const f of arr){try{const data=await fileToBase64(f);const r=await _apiFetch('/api/anexos',60000,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tipoEntidade:'MANIFESTACAO',idEntidade:id(),usuario:val(typeof sess==='function'?sess():{},'usuario','nome'),arquivo:{nome:f.name,mimeType:f.type,tamanho:f.size,dataBase64:data,categoria:'EVIDENCIA'}})});if(r.anexo)S.attachments.push(r.anexo)}catch(e){alert('Não foi possível enviar '+f.name+': '+e.message)}}renderHeader();renderAttachments()};
-  async function loadExtras(){const key=encodeURIComponent(id());const [ev,h,ci,setRes,userRes]=await Promise.all([_apiFetch('/api/manifestacoes/'+key+'/evidencias',10000).catch(()=>({itens:[]})),_apiFetch('/api/manifestacoes/'+key+'/historico',10000).catch(()=>({itens:[]})),_apiFetch('/api/manifestacoes/'+key+'/circa',10000).catch(()=>({})),_apiFetch('/api/setores-unicos',10000).catch(()=>({itens:[]})),_apiFetch('/api/usuarios',10000).catch(()=>({itens:[]}))]);S.setores=Array.isArray(setRes.itens)?setRes.itens.map(x=>typeof x==='string'?x:val(x,'SETOR','NOME')).filter(Boolean):[];S.usuarios=Array.isArray(userRes.itens)?userRes.itens:[];S.attachments=Array.isArray(ev.itens)?ev.itens:[];S.history=Array.isArray(h.itens)?h.itens:[];S.circa=ci?.analise||ci?.dados||ci||{};renderHeader();renderContent()}
+  async function loadExtras(){const key=encodeURIComponent(id());const [ev,h,ci,setRes,userRes]=await Promise.all([_apiFetch('/api/manifestacoes/'+key+'/evidencias',10000).catch(()=>({itens:[]})),_apiFetch('/api/manifestacoes/'+key+'/historico',10000).catch(()=>({itens:[]})),_apiFetch('/api/manifestacoes/'+key+'/circa',10000).catch(()=>({})),_apiFetch('/api/setores-unicos',10000).catch(()=>({itens:[]})),_apiFetch('/api/usuarios',10000).catch(()=>({itens:[]}))]);S.setores=Array.isArray(setRes.itens)?setRes.itens.map(x=>typeof x==='string'?x:val(x,'SETOR','NOME')).filter(Boolean):[];S.usuarios=Array.isArray(userRes.itens)?userRes.itens:[];S.attachments=Array.isArray(ev.itens)?ev.itens:[];S.history=Array.isArray(h.itens)?h.itens:[];S.circa=ci?.circa||ci?.analise||ci?.dados||ci||{};renderHeader();renderContent()}
   window.fichaV2Open=async function(raw,opts){const active=document.querySelector('.page.active')?.id?.replace(/^page-/,'');S.originPage=opts?.returnPage||(active&&active!=='ficha-manifestacao-v2'?active:'central-sac');S.originTab=opts?.returnTab||null;let m=typeof raw==='string'?{ID_MANIFESTACAO:raw,PROTOCOLO:raw}:raw||{};S.item=m;S.id=val(m,'ID_MANIFESTACAO','id','PROTOCOLO');S.tab=0;S.path='';S.attachments=[];S.history=[];S.circa=null;S.showAttachments=false;const sb=document.getElementById('app-sidebar');if(sb)sb.style.display='none';const u=typeof sess==='function'?sess():{};const un=$("ficha-v2-user-name");const ur=$("ficha-v2-user-role");if(un)un.textContent=val(u,'nome','usuario')||'Usuário';if(ur)ur.textContent=val(u,'perfil','PERFIL')||'SAC';navigate('ficha-manifestacao-v2',null);renderHeader();renderContent();try{const d=await _apiFetch('/api/manifestacoes/'+encodeURIComponent(S.id),15000);if(d?.manifestacao||d?.item)S.item=Object.assign({},m,d.manifestacao||d.item);else if(d?.ID_MANIFESTACAO)S.item=Object.assign({},m,d);S.id=val(S.item,'ID_MANIFESTACAO','PROTOCOLO')||S.id;renderHeader();renderContent();await loadExtras()}catch(e){console.warn('[Ficha v2] carregamento detalhado:',e.message);await loadExtras()}};
   window.fichaV2Recarregar=()=>S.item&&window.fichaV2Open(S.item);
   window.addEventListener('beforeunload',()=>{if(S.item)S.item=null});
@@ -12585,6 +12585,21 @@ async function initNovaManifestacao() {
       Object.entries(rascunho).forEach(([id, val]) => { const el = document.getElementById(id); if (el && val) el.value = val; });
     }
   } catch(e) { /* ignora erro de localStorage */ }
+  // Um rascunho persistido pode ser retomado depois de uma atualização ou
+  // retorno pela Central. O ID é reutilizado para impedir novo protocolo.
+  try {
+    const resumeId = localStorage.getItem('sac-rascunho-id');
+    if (resumeId) {
+      const d = await _apiFetch(`/api/manifestacoes/${encodeURIComponent(resumeId)}`, 15000);
+      const m = d?.manifestacao || d?.item;
+      if (m && !/^(ENCERRADA|FECHADA|CONCLUIDA)$/i.test(String(m.STATUS || m.STATUS_FICHA || ''))) {
+        _nmCardId = m.ID_MANIFESTACAO || resumeId;
+        const mapa = {DESCRICAO:'nm-descricao',DESCRICAO_MANIFESTACAO:'nm-descricao',EMPRESA_RECLAMANTE:'nm-empresa',CONTATO:'nm-nome',CNPJ:'nm-cnpj',TELEFONE:'nm-tel',EMAIL:'nm-email',PRODUTO:'nm-produto',LOTE:'nm-lote',NFE:'nm-nfe',PRIORIDADE:'nm-prioridade',CANAL:'nm-origem',TIPO:'nm-tipo',DATA_REGISTRO:'nm-data'};
+        for (const [campo,id] of Object.entries(mapa)) { const el=document.getElementById(id); if (el && m[campo] !== undefined && String(m[campo]).trim()) el.value=m[campo]; }
+        window.nmEtapa = Math.max(1, Math.min(7, Number(m.ETAPA_ATUAL || 1)));
+      }
+    }
+  } catch(e) { console.warn('Rascunho persistido indisponível:', e.message); }
   // Hook oninput para campos de cliente dispararem atualização do resumo
   ['nm-nome','nm-empresa','nm-tel','nm-email','nm-produto','nm-lote'].forEach(id => {
     const el = document.getElementById(id);
@@ -12651,6 +12666,7 @@ async function registrarManifestacao() {
       draft.anexos = await Promise.all(_nmEvidencias.map(async f => ({ nome:f.name, mimeType:f.type, tamanho:f.size, dataBase64:await fileToBase64(f), categoria:'EVIDENCIA' })));
       const finalRes = await _apiFetch(`/api/manifestacoes/${encodeURIComponent(_nmCardId)}/circa-dados`,60000,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(draft)});
       if (!finalRes?.sucesso) throw new Error(finalRes?.erro||'Falha ao concluir a manifestação.');
+      localStorage.removeItem('sac-rascunho-id');
       alert(`✅ Manifestação ${finalRes.protocolo || _nmCardId} concluída e encaminhada para triagem.`);
       navigate('banco-manifestacoes', document.querySelector('[onclick*=banco-manifestacoes]')); loadBancoManifestacoes(); return;
     }
@@ -12706,6 +12722,7 @@ async function registrarManifestacao() {
     });
 
     if (res.sucesso) {
+      localStorage.removeItem('sac-rascunho-id');
       alert(`✅ Manifestação ${res.protocolo || res.id} registrada com sucesso!\n\nA análise inteligente foi iniciada.`);
       navigate('banco-manifestacoes', document.querySelector('[onclick*=banco-manifestacoes]'));
       loadBancoManifestacoes();
@@ -14435,6 +14452,16 @@ async function salvarRascunho(options={}) {
     else res=await _apiFetch('/api/manifestacoes',60000,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     if(!res?.sucesso) throw new Error(res?.erro||'Falha ao salvar o rascunho.');
     _nmCardId=_nmCardId||res.id;
+    if (_nmCardId) localStorage.setItem('sac-rascunho-id', String(_nmCardId));
+    // O vínculo de arquivos usa a mesma ficha e o mesmo endpoint de anexos;
+    // o rascunho não perde os arquivos selecionados quando a página é
+    // atualizada. O servidor deduplica nomes já vinculados e marca falhas
+    // como pendentes, sem bloquear a navegação.
+    if (_nmEvidencias.length) {
+      const anexos = await Promise.all(_nmEvidencias.map(async f => ({nome:f.name,mimeType:f.type,tamanho:f.size,dataBase64:await fileToBase64(f),categoria:'EVIDENCIA'})));
+      const upload = await _apiFetch(`/api/manifestacoes/${encodeURIComponent(_nmCardId)}/circa-dados`,60000,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({anexos})});
+      if (!upload?.sucesso) throw new Error(upload?.erro || 'Falha ao vincular os anexos do rascunho.');
+    }
     if(!silent) alert(`Rascunho salvo${_nmCardId?' ('+_nmCardId+')':''}.`);
     return true;
   } catch(e) {

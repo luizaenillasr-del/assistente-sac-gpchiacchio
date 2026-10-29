@@ -2401,6 +2401,18 @@ app.get('/api/manifestacoes/:id', requerPermissao('manifestacoes.visualizar'), m
             devolutivas: pg.devolutivas || [],
             _pgId: pg.id,
           };
+          // O dual-write do PostgreSQL pode conter apenas o subconjunto
+          // operacional. A ficha oficial precisa recuperar os campos
+          // completos da mesma MANIFESTACOES usada pela Central. Mesclamos
+          // somente valores não vazios do Sheets, sem permitir que um PG
+          // resumido oculte relato, canal, prioridade, autoria ou anexos.
+          try {
+            const sheetsRows = await lerManifestacoesOperacionais(5000).catch(() => []);
+            const sheetItem = sheetsRows.find(r => [r.ID_MANIFESTACAO, r.PROTOCOLO, r.ID, r.ID_ORIGINAL].some(v => String(v || '').trim() === String(req.params.id || '').trim()));
+            if (sheetItem) for (const [key, value] of Object.entries(sheetItem)) {
+              if (value !== undefined && value !== null && String(value).trim() !== '') item[key] = value;
+            }
+          } catch (eSheets) { console.warn('[F6] complemento Sheets indisponível:', eSheets.message); }
           return res.json({ sucesso: true, manifestacao: item, fonte: 'postgresql' });
         }
       } catch (e) { console.warn('[F6] GET /manifestacoes/:id PG falhou:', e.message); }
@@ -7787,6 +7799,7 @@ app.patch('/api/manifestacoes/:id/circa-dados', requerPermissao('manifestacoes.e
     if(requestedStage && requestedStage>currentStage+1 && String(req.user?.PERFIL||req.user?.perfil||'').toUpperCase()!=='MASTER') return res.status(409).json({sucesso:false,erro:'A etapa solicitada depende da conclusão das etapas anteriores.',etapaAtual:currentStage});
     const allowed=['STATUS','STATUS_FICHA','EMPRESA_RECLAMADA','EMPRESA_RECLAMANTE','CONTATO','CNPJ','TELEFONE','EMAIL','PRODUTO','LOTE','NFE','DESCRICAO','DESCRICAO_MANIFESTACAO','TIPO','CANAL','ORIGEM','PRIORIDADE','CATEGORIA','MOTIVO','GRAVIDADE','ETAPA_ATUAL','MENSAGEM_ETAPA','CAMINHO_TRATATIVA','COMPLEMENTO_PEDIDO','CANAL_RETORNO','PRAZO_RETORNO_SAC','TRATATIVA_SAC_INTERNA','SETOR_ACIONADO','ESCOPO_ACIONAMENTO','INVESTIGACAO_O_QUE','INVESTIGACAO_VERIFICACOES','INVESTIGACAO_EVIDENCIAS','INVESTIGACAO_NOTAS','SUBCAUSA','CAUSA_RAIZ_CONFIRMADA','ACOES_CORRETIVAS','DATA_SOLUCAO','RESPONSAVEL_EXECUCAO','VALIDACAO_RESULTADO','PROCEDENTE','PROCEDENTE_JUSTIFICATIVA','VALID_SAC_DATA_RETORNO','VALID_SAC_CLIENTE_INFORMADO','VALID_SAC_RESOLVIDA','RESUMO_RESOLUCAO','DEVOLUTIVA_CANAL','DEVOLUTIVA_DESTINATARIO','DEVOLUTIVA_FINAL','DEVOLUTIVA_ENVIADA','APRENDIZADO_CASO','APRENDIZADO_MATRIZ','OBSERVACOES_FINAIS','STATUS_TRATATIVA','ANEXOS','EVIDENCIAS','ANALISE_IA','CHECKLIST_CIRCA','PENDENCIAS_VALIDACAO_HUMANA'];
     const patch={}; for(const key of allowed) if(Object.prototype.hasOwnProperty.call(req.body||{},key)) patch[key]=req.body[key] ?? '';
+    let decisaoEtapa2Audit = null;
     if (Object.prototype.hasOwnProperty.call(req.body || {}, 'CHECKLIST_CIRCA') || Object.prototype.hasOwnProperty.call(req.body || {}, 'PENDENCIAS_VALIDACAO_HUMANA')) {
       if (!m.ID_MANIFESTACAO) return res.status(409).json({sucesso:false,erro:'A manifestação ainda não possui ID persistido.'});
       let meta={}; try { meta=JSON.parse(m.ANALISE_IA||'{}'); } catch (_) {}
@@ -7822,7 +7835,12 @@ app.patch('/api/manifestacoes/:id/circa-dados', requerPermissao('manifestacoes.e
       if (patchAnalise.status && !estados.includes(String(patchAnalise.status))) return res.status(400).json({sucesso:false,erro:'Estado de decisão da análise inválido.'});
       let base = {}; try { base = JSON.parse(m.ANALISE_IA || '{}'); } catch (_) {}
       const atual = base.decisaoEtapa2 && typeof base.decisaoEtapa2 === 'object' ? base.decisaoEtapa2 : {};
-      base.decisaoEtapa2 = { ...atual, ...patchAnalise, revisadoEm: patchAnalise.revisadoEm || new Date().toISOString(), revisadoPor: req.user?.usuario || req.user?.login || 'sistema' };
+      const revisadoEm = patchAnalise.revisadoEm || new Date().toISOString();
+      const revisadoPor = req.user?.usuario || req.user?.login || 'sistema';
+      const registro = { ...patchAnalise, revisadoEm, revisadoPor };
+      const historico = Array.isArray(atual.historico) ? atual.historico : [];
+      base.decisaoEtapa2 = { ...atual, ...registro, historico: [...historico, registro].slice(-50) };
+      decisaoEtapa2Audit = registro;
       patch.ANALISE_IA = JSON.stringify(base);
       delete patch.analisePatch;
     }
@@ -7853,6 +7871,7 @@ app.patch('/api/manifestacoes/:id/circa-dados', requerPermissao('manifestacoes.e
       await protocoloAtomico.confirmarPersistencia(patch.IDEMPOTENCY_KEY,m.ID_MANIFESTACAO||idReq);
     }
     await registrarHistoricoManifestacao({id:m.ID_MANIFESTACAO||idReq,protocolo:patch.PROTOCOLO||m.PROTOCOLO||'',usuario:req.user?.usuario||'sistema',etapa:patch.ETAPA_ATUAL||m.ETAPA_ATUAL||'',acao:'ATUALIZOU_CARD_CIRCA',descricao:'Dados operacionais atualizados no novo card.'});
+    if (decisaoEtapa2Audit) await registrarHistoricoManifestacao({ id:m.ID_MANIFESTACAO||idReq, protocolo:patch.PROTOCOLO||m.PROTOCOLO||'', usuario:decisaoEtapa2Audit.revisadoPor, etapa:'2', acao:'REVISOU_ANALISE_CIRCA', descricao:`Estado ${decisaoEtapa2Audit.status || 'REVISADA'} registrado no servidor.` });
     // Auto-increment FREQUENCIA_OCORRENCIAS na aba CAUSAS quando causa raiz é confirmada
     if (patch.CAUSA_RAIZ_CONFIRMADA && patch.CAUSA_RAIZ_CONFIRMADA !== (m.CAUSA_RAIZ_CONFIRMADA||'')) {
       try {
