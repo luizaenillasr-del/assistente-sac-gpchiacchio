@@ -34,6 +34,7 @@ assert.equal(alertaProduto('Pote plástico com tampa', 'Recebemos potes, tampas 
 assert.equal(alertaProduto('sacola', manifestacao.descricao).requerValidacaoHumana, true, 'produto divergente exige validação humana');
 assert.equal(classificacaoTipos('Relato sem termos cadastrados', [{ ID_TIPO: 'X', TIPO: 'Conversão', PALAVRAS_CHAVE: 'aba, colado', ATIVO: 'SIM' }]).status, 'NAO_IDENTIFICADO');
 assert.deepEqual(filtrarColetas([{ descricao: 'Coletar NF, lote ou foto como evidência' }], { NFE: 'NF-1', ANEXOS: '[foto]' }).map(x => x.descricao), ['Solicitar o número do lote ao cliente e registrar a evidência.'], 'coleta parcial vira instrução operacional');
+assert.match(filtrarColetas([{ descricao: 'Coletar NF, lote ou foto como evidência' }], {}).at(0).descricao, /número da nota fiscal.*lote.*foto/i, 'coleta completa deve ser uma instrução clara');
 const checklistA = buildChecklist([{ descricao: 'Confirmar causa com evidência' }]);
 const checklistB = buildChecklist([{ descricao: 'Confirmar causa com evidência' }]);
 assert.equal(checklistA[0].id, checklistB[0].id, 'checklist mantém ID estável entre reanálises');
