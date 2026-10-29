@@ -31847,8 +31847,9 @@ if (typeof pageLoaders !== 'undefined') {
       if(!caminho) return fail('nm-caminho-sac','Selecione como o SAC conduzirá a tratativa.');
       var caminhos=caminho.split(',');
       if(caminhos.includes('SAC') && !val('nm-tratativa-sac')) return fail('nm-tratativa-sac','Descreva a tratativa que será conduzida pelo SAC.');
+      if(caminho==='COMPLEMENTO' && !val('nm-complemento-pedido')) return fail('nm-complemento-pedido','Informe quais dados precisam ser complementados.');
       if(caminhos.includes('COMPLEMENTO') && !val('nm-complemento-pedido')) return fail('nm-complemento-pedido','Informe quais dados precisam ser complementados.');
-      if(caminhos.includes('SETOR')){
+      if(caminho==='SETOR' || caminhos.includes('SETOR')){
         if(!val('nm-setor-acionado')) return fail('nm-setor-acionado','Selecione o setor responsável.');
         if(!val('nm-escopo-acionado')) return fail('nm-escopo-acionado','Descreva o escopo do acionamento.');
       }
