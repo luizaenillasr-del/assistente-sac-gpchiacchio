@@ -656,6 +656,21 @@ async function obterPerfilProfissional(idUsuario) {
 }
 
 function usuarioPublico(u){
+  const listaCadastro = (valor) => {
+    if (Array.isArray(valor)) return valor.flatMap(listaCadastro);
+    if (valor && typeof valor === 'object') return Object.values(valor).flatMap(listaCadastro);
+    const texto = String(valor || '').trim();
+    if (!texto) return [];
+    try { const parsed = JSON.parse(texto); if (parsed !== valor) return listaCadastro(parsed); } catch (_) {}
+    return texto.split(/[;,\n|]+/).map(v => v.trim()).filter(Boolean);
+  };
+  const setores = [...new Set([
+    ...listaCadastro(u.SETOR), ...listaCadastro(u.SETOR_PRINCIPAL),
+    ...listaCadastro(u.SETORES), ...listaCadastro(u.SETORES_AUTORIZADOS),
+  ])];
+  const empresas = [...new Set([
+    ...listaCadastro(u.EMPRESA), ...listaCadastro(u.EMPRESAS), ...listaCadastro(u.EMPRESAS_JSON),
+  ])];
   let permissoes_custom=null;
   if(u.PERMISSOES_CUSTOM){try{permissoes_custom=typeof u.PERMISSOES_CUSTOM==='string'?JSON.parse(u.PERMISSOES_CUSTOM):u.PERMISSOES_CUSTOM;}catch(e){}}
   let permissoes_granted=null;
@@ -670,7 +685,8 @@ function usuarioPublico(u){
     nome:u.NOME||u.NOME_COMPLETO||u.USUARIO||u.EMAIL,
     email:u.EMAIL||'',
     perfil:perfilCanonico(u.PERFIL||u.PERFIL_USUARIO),
-    empresa:u.EMPRESA||'', setor:u.SETOR||'', cargo:u.CARGO||'', telefone:u.TELEFONE||'',
+    empresa:u.EMPRESA||'', empresas, setor:u.SETOR||'', setorPrincipal:u.SETOR_PRINCIPAL||u.SETOR||'', setores,
+    setoresAutorizados:setores, cargo:u.CARGO||'', telefone:u.TELEFONE||'',
     codigoRCA:u.CODIGO_RCA||u.RCA||'', status:u.STATUS||'ATIVO',
     ultimoAcesso:u.ULTIMO_ACESSO||'', dataCriacao:u.DATA_CRIACAO||'',
     permissoes_custom: Array.isArray(permissoes_custom)&&permissoes_custom.length?permissoes_custom:null,
@@ -7146,11 +7162,25 @@ app.get('/api/log-sistema', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), a
 });
 
 // ===== USUÁRIOS =====
-app.get('/api/usuarios', requerPermissao('usuarios.visualizar'), async (req,res)=>{
+app.get('/api/usuarios', (req,res,next)=>{
+  // A operação de condução precisa consultar responsáveis sem conceder acesso
+  // ao módulo administrativo de usuários. O retorno operacional é sanitizado
+  // e limitado à empresa do usuário quando ele não possui usuarios.visualizar.
+  if (!usuarioTemPermissao(req.user, 'usuarios.visualizar') && !usuarioTemPermissao(req.user, 'manifestacoes.editar')) {
+    return res.status(403).json({sucesso:false,erro:'Sem permissão: usuarios.visualizar'});
+  }
+  req._usuariosSomenteResponsaveis = !usuarioTemPermissao(req.user, 'usuarios.visualizar');
+  next();
+}, async (req,res)=>{
   try{
     const itens=await carregarUsuarios();
     const _dbg = itens._debug || {};
-    res.json({sucesso:true,total:itens.length,itens:itens.map(usuarioPublico),_dbg});
+    let publicos=itens.map(usuarioPublico);
+    if (req._usuariosSomenteResponsaveis) {
+      publicos=publicos.filter(u => pertenceEmpresa(req.user?.empresa || '', u.empresa || (u.empresas||[]).join(',')));
+      publicos=publicos.map(u => ({id:u.id,usuario:u.usuario,nome:u.nome,perfil:u.perfil,status:u.status,empresa:u.empresa,empresas:u.empresas,setor:u.setor,setorPrincipal:u.setorPrincipal,setores:u.setores,setoresAutorizados:u.setoresAutorizados}));
+    }
+    res.json({sucesso:true,total:publicos.length,itens:publicos,_dbg});
   }
   catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e),itens:[]});}
 });
@@ -7898,8 +7928,31 @@ const ACIONAMENTO_TYPES = ['NOTIFICACAO','SOLICITACAO_INFORMACAO','SOLICITACAO_A
 const NOTIFICACOES_INTERNAS_HEADERS = ['ID_NOTIFICACAO','ID_MANIFESTACAO','ID_ACIONAMENTO','DESTINATARIO','CANAL','TIPO','TITULO','MENSAGEM','STATUS','CRIADO_EM','CRIADO_POR'];
 
 function empresasDoCadastro(row = {}) {
-  try { const parsed = JSON.parse(row.EMPRESAS_JSON || '[]'); if (Array.isArray(parsed)) return parsed; } catch (_) {}
-  return [row.EMPRESA || ''].filter(Boolean);
+  const valores = [row.EMPRESA, row.EMPRESAS, row.EMPRESAS_JSON];
+  const saida = [];
+  const adicionar = valor => {
+    if (Array.isArray(valor)) return valor.forEach(adicionar);
+    if (valor && typeof valor === 'object') return Object.values(valor).forEach(adicionar);
+    const texto = String(valor || '').trim(); if (!texto) return;
+    try { const parsed = JSON.parse(texto); if (parsed !== valor) return adicionar(parsed); } catch (_) {}
+    texto.split(/[;,\n|]+/).map(v=>v.trim()).filter(Boolean).forEach(v=>saida.push(v));
+  };
+  valores.forEach(adicionar);
+  return [...new Set(saida)];
+}
+
+function setoresDoCadastro(row = {}) {
+  const valores = [row.SETOR, row.SETOR_PRINCIPAL, row.SETORES, row.SETORES_AUTORIZADOS];
+  const saida = [];
+  const adicionar = valor => {
+    if (Array.isArray(valor)) return valor.forEach(adicionar);
+    if (valor && typeof valor === 'object') return Object.values(valor).forEach(adicionar);
+    const texto = String(valor || '').trim(); if (!texto) return;
+    try { const parsed = JSON.parse(texto); if (parsed !== valor) return adicionar(parsed); } catch (_) {}
+    texto.split(/[;,\n|]+/).map(v=>v.trim()).filter(Boolean).forEach(v=>saida.push(v));
+  };
+  valores.forEach(adicionar);
+  return [...new Set(saida)];
 }
 async function gestorCompetente({ setor, empresa }) {
   const gerentes = await lerAba('GERENTES', 2000).catch(() => []);
@@ -7958,8 +8011,8 @@ app.post('/api/manifestacoes/:id/acionamentos', requerPermissao('manifestacoes.e
       const alvo = usuarios.find(u => String(u.USUARIO || u.EMAIL || u.LOGIN || '').toLowerCase() === String(body.responsavel).toLowerCase());
       if (!alvo || String(alvo.STATUS || 'ATIVO').toUpperCase() !== 'ATIVO') return res.status(400).json({ sucesso:false, erro:'Responsável inexistente ou inativo.' });
       const setorNorm = normalizarTexto(body.setorDestino || '');
-      const setoresAlvo = normalizarTexto([alvo.SETOR, alvo.SETOR_PRINCIPAL, alvo.SETORES, alvo.SETORES_AUTORIZADOS].filter(Boolean).join(' '));
-      if (setorNorm && !setoresAlvo.includes(setorNorm)) return res.status(422).json({ sucesso:false, codigo:'RESPONSAVEL_FORA_DO_SETOR', erro:'O responsável selecionado não está autorizado para o setor escolhido.' });
+      const setoresAlvo = setoresDoCadastro(alvo).map(normalizarTexto).filter(Boolean);
+      if (setorNorm && !setoresAlvo.some(s => s === setorNorm || s.includes(setorNorm) || setorNorm.includes(s))) return res.status(422).json({ sucesso:false, codigo:'RESPONSAVEL_FORA_DO_SETOR', erro:'O responsável selecionado não está autorizado para o setor escolhido.' });
       const empresasAlvo = empresasDoCadastro(alvo).map(empresaCanonica).filter(Boolean);
       const empresaManifestacao = empresaCanonica(m.EMPRESA_RECLAMADA || '');
       if (empresasAlvo.length && !empresasAlvo.includes('MASTER') && !empresasAlvo.includes(empresaManifestacao)) return res.status(422).json({ sucesso:false, codigo:'RESPONSAVEL_FORA_DA_EMPRESA', erro:'O responsável selecionado não está autorizado para esta empresa.' });

@@ -7810,8 +7810,9 @@
       .catch(e=>{if(typeof _toast==='function')_toast(e.message||'Erro ao salvar configuração.');else console.error(e);return {sucesso:false,erro:e.message};});
   }
   async function cfgLoadServer(){
-    try{const r=await fetch((window.SAC_API||'')+'/api/configuracoes',{credentials:'include',headers:{'Authorization':'Bearer '+(sessionStorage.getItem('sac-token')||'')}});const j=await r.json();if(!r.ok||j.sucesso===false)throw new Error(j.erro||'Falha ao carregar configurações.');Object.assign(cfgServer,j.valores||{});cfgAplicarServer();}
-    catch(e){console.warn('[configuracoes]',e.message||e);}
+    window.__SAC_CONFIG_STATUS='LOADING';
+    try{const r=await fetch((window.SAC_API||'')+'/api/configuracoes',{credentials:'include',headers:{'Authorization':'Bearer '+(sessionStorage.getItem('sac-token')||'')}});const j=await r.json();if(!r.ok||j.sucesso===false){const err=new Error(j.erro||'Falha ao carregar configurações.');err.status=r.status;throw err;}Object.assign(cfgServer,j.valores||{});window.__SAC_CONFIG_STATUS='READY';cfgAplicarServer();}
+    catch(e){window.__SAC_CONFIG_STATUS=e.status===401?'AUTH_REQUIRED':'ERROR';console.warn('[configuracoes]',window.__SAC_CONFIG_STATUS,e.message||e);}
   }
   function cfgAplicarServer(){
     const c=cfgGet('canais',null),p=cfgGet('prazos',null);
@@ -11679,7 +11680,7 @@ async function checarSolicitacoesPendentes() {
     // Badge no botão "Aprovações": combina fila (novas) + pendências diretas (antigas sem fila)
     const [filaData, pendData] = await Promise.all([
       _apiFetch('/api/fila-aprovacao', 8000).catch(() => null),
-      _apiFetch('/api/aprovadores/' + encodeURIComponent(_u.usuario||_u.USUARIO||''), 8000).catch(() => null),
+      _apiFetch('/api/aprovadores/' + encodeURIComponent(_u.usuario||_u.USUARIO||'') + '/pendencias', 8000).catch(e => { window.__SAC_APROVADORES_STATUS=e.status===404?'NOT_FOUND':e.status===401?'AUTH_REQUIRED':'ERROR'; return null; }),
     ]);
     const pendFila = filaData ? (filaData.itens||[]).filter(x => x.STATUS === 'PENDENTE').length : 0;
     // Manifestações pendentes que não estão na fila (antigas — backfill via pendências diretas)
@@ -13026,12 +13027,15 @@ function nmSetCaminhoTratativa(caminho, btn) {
 window._nmPlanoConducao = window._nmPlanoConducao || [];
 function nmCarregarResponsaveisSetor() {
   const select=document.getElementById('nm-responsavel-acionado'); if(!select || select.dataset.loaded==='true') return;
+  select.dataset.loaded='loading';
+  select.innerHTML='<option value="">Carregando responsáveis…</option>';
   _apiFetch('/api/usuarios',15000).then(r=>{
     const setor=document.getElementById('nm-setor-acionado')?.value||'';
     const setorN=String(setor).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
-    const itens=(r?.itens||[]).filter(u=>String(u.STATUS||'ATIVO').toUpperCase()==='ATIVO').filter(u=>{const s=[u.SETOR,u.SETOR_PRINCIPAL,u.SETORES,u.SETORES_AUTORIZADOS].filter(Boolean).join(' ').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();return !setorN||s.includes(setorN)});
-    select.innerHTML='<option value="">Selecione um responsável cadastrado</option>'+itens.map(u=>{const id=u.USUARIO||u.LOGIN||u.EMAIL||u.ID_USUARIO||u.ID;return `<option value="${esc(id)}">${esc(u.NOME||id)}</option>`}).join(''); select.dataset.loaded='true';
-  }).catch(()=>{select.innerHTML='<option value="">Não foi possível carregar responsáveis</option>';});
+    const textoCampo=v=>Array.isArray(v)?v.join(' '):typeof v==='object'&&v!==null?Object.values(v).join(' '):String(v||'');
+    const itens=(r?.itens||[]).filter(u=>String(u.STATUS||u.status||'ATIVO').toUpperCase()==='ATIVO').filter(u=>{const s=[u.SETOR,u.setor,u.SETOR_PRINCIPAL,u.setorPrincipal,u.SETORES,u.setores,u.SETORES_AUTORIZADOS,u.setoresAutorizados].map(textoCampo).join(' ').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();return !setorN||s.includes(setorN)});
+    select.innerHTML='<option value="">Selecione um responsável cadastrado</option>'+itens.map(u=>{const id=u.USUARIO||u.usuario||u.LOGIN||u.login||u.EMAIL||u.email||u.ID_USUARIO||u.id;return `<option value="${esc(id)}">${esc(u.NOME||u.nome||id)}</option>`}).join('') || '<option value="">Nenhum responsável ativo e autorizado para este setor</option>'; select.dataset.loaded='true';
+  }).catch(e=>{select.dataset.loaded='error';select.innerHTML='<option value="">Erro ao carregar responsáveis. Tente novamente.</option>';select.title=e?.message||'Falha de comunicação';});
 }
 function nmRenderizarPlano() {
   const el=document.getElementById('nm-plano-lista'); if(!el)return; const plano=window._nmPlanoConducao||[];
@@ -14632,7 +14636,7 @@ async function _apiFetch(url, timeoutMs, extraOptions) {
     const text = await r.text();
     let data;
     try { data = text ? JSON.parse(text) : {}; } catch { data = { raw: text }; }
-    if (!r.ok) throw new Error((data.erro || data.error || data.raw || '') + ' (HTTP ' + r.status + ')');
+    if (!r.ok) { const httpError = new Error((data.erro || data.error || data.raw || '') + ' (HTTP ' + r.status + ')'); httpError.status = r.status; httpError.response = data; throw httpError; }
     return data;
   } catch (error) {
     // Este controller só é acionado pelo prazo da requisição. Alguns
@@ -16354,7 +16358,7 @@ document.addEventListener('visibilitychange', () => {
   window.loadUsuariosV5=loadUsuariosV5;
   window.loadSolicitacoesEmbutido=loadSolicitacoesEmbutido;
   // ── Módulos e permissões por chave curta (ex: "manifestacoes.visualizar") ──
-  const _PERM_MODULOS = [
+  const _PERM_MODULOS = window.__SAC_PERM_MODULOS = [
     { id: 'manifestacoes', label: 'Manifestações', perms: [
       { id: 'visualizar',  label: 'Visualizar' },
       { id: 'abrir',       label: 'Abrir' },
@@ -24542,8 +24546,11 @@ async function mudarStatusMC(id, novoStatus) {
   }
   function renderPerfisPermissoes(){
     const el=document.getElementById('usr-perm-grid');if(!el)return;
-    const defs=window.__SAC_PERM_DEF || (typeof _PERM_DEF!=='undefined'?_PERM_DEF:{});
-    const keys=Object.keys(defs); el.innerHTML=keys.map(k=>{const d=defs[k];const n=Array.isArray(d)?d.length:(d&&typeof d==='object'&&d['*']?Object.keys(_PERM_MODULOS||{}).length:Object.keys(d||{}).length);return `<div class="usr-perm-item"><strong>${esc5(k)}</strong><div style="margin-top:5px;color:#707070">${n?n+' permissões padrão':'Acesso administrativo global'}</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px"><button type="button" onclick="editarPerfilPermissoes('${esc5(k)}')" style="border:1px solid #C70602;background:#fff;border-radius:7px;padding:6px 10px;color:#A80502;cursor:pointer;font:600 11px inherit">Editar permissões</button><button type="button" onclick="editarUsuariosDoPerfil('${esc5(k)}')" style="border:1px solid #D6D6D6;background:#fff;border-radius:7px;padding:6px 10px;color:#545252;cursor:pointer;font:600 11px inherit">Ver usuários</button></div></div>`}).join('')||'<div style="color:#707070;font-size:12px">Nenhum perfil configurado.</div>';
+    try {
+      const defs=window.__SAC_PERM_DEF || (typeof _PERM_DEF!=='undefined'?_PERM_DEF:{});
+      const modulos=window.__SAC_PERM_MODULOS||[];
+      const keys=Object.keys(defs); el.dataset.state=keys.length?'success':'empty'; el.innerHTML=keys.map(k=>{const d=defs[k];const n=Array.isArray(d)?d.length:(d&&typeof d==='object'&&d['*']?modulos.reduce((t,m)=>t+(m.perms||[]).length,0):Object.keys(d||{}).length);return `<div class="usr-perm-item"><strong>${esc5(k)}</strong><div style="margin-top:5px;color:#707070">${n?n+' permissões padrão':'Acesso administrativo global'}</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px"><button type="button" onclick="editarPerfilPermissoes('${esc5(k)}')" style="border:1px solid #C70602;background:#fff;border-radius:7px;padding:6px 10px;color:#A80502;cursor:pointer;font:600 11px inherit">Editar permissões</button><button type="button" onclick="editarUsuariosDoPerfil('${esc5(k)}')" style="border:1px solid #D6D6D6;background:#fff;border-radius:7px;padding:6px 10px;color:#545252;cursor:pointer;font:600 11px inherit">Ver usuários</button></div></div>`}).join('')||'<div style="color:#707070;font-size:12px">Nenhum perfil configurado.</div>';
+    } catch (e) { el.dataset.state='error'; el.innerHTML='<div style="color:#A80502;font-size:12px">Não foi possível carregar os perfis e permissões.</div>'; console.error('[permissoes]',e); }
   }
   let _perfilEditando = null;
   function _perfilEditorElement(){
@@ -24561,7 +24568,7 @@ async function mudarStatusMC(id, novoStatus) {
     document.getElementById('perfil-perm-sub').textContent='A alteração será aplicada aos usuários existentes deste perfil e ficará registrada na auditoria.';
     document.getElementById('perfil-perm-msg').textContent='';
     const lista=document.getElementById('perfil-perm-lista');
-    lista.innerHTML=(_PERM_MODULOS||[]).flatMap(cat=>cat.perms.map(p=>{const chave=cat.id+'.'+p.id;return `<label style="display:flex;align-items:center;gap:8px;padding:8px;border:1px solid #E8E8E8;border-radius:7px;font-size:12px;cursor:pointer"><input type="checkbox" data-perfil-perm="${esc5(chave)}" ${selected.has(chave)?'checked':''}> <span><strong>${esc5(cat.label)}</strong><br>${esc5(p.label)}</span></label>`})).join('');
+    lista.innerHTML=(window.__SAC_PERM_MODULOS||[]).flatMap(cat=>(cat.perms||[]).map(p=>{const chave=cat.id+'.'+p.id;return `<label style="display:flex;align-items:center;gap:8px;padding:8px;border:1px solid #E8E8E8;border-radius:7px;font-size:12px;cursor:pointer"><input type="checkbox" data-perfil-perm="${esc5(chave)}" ${selected.has(chave)?'checked':''}> <span><strong>${esc5(cat.label)}</strong><br>${esc5(p.label)}</span></label>`})).join('');
     m.style.display='flex';
   };
   window.fecharPerfilPermissoes=function(){const m=document.getElementById('modal-perfil-permissoes');if(m)m.style.display='none';_perfilEditando=null;};
