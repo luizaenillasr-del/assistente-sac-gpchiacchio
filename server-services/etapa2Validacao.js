@@ -31,7 +31,13 @@ function filtrarColetas(acoes = [], m = {}) {
   const nf = m.NFE || m.NF || m.nfe;
   const lote = m.LOTE || m.lote;
   const anexos = m.ANEXOS || m.anexos || m.EVIDENCIAS;
-  return acoes.filter(a => !((nf && /\bnf\b|nota fiscal/.test(texto(a))) || (lote && /\blote\b/.test(texto(a))) || (anexos && /anex|foto|imagem/.test(texto(a)))));
+  return acoes.map(a => {
+    let descricao = String(a.descricao || '');
+    if (nf) descricao = descricao.replace(/(?:solicitar|coletar|pedir)\s+(?:a\s+)?(?:NF|nota fiscal)\s*(?:e\s*)?/ig, '').trim();
+    if (lote) descricao = descricao.replace(/(?:solicitar|coletar|pedir)\s+(?:o\s+)?lote\s*(?:e\s*)?/ig, '').trim();
+    if (anexos) descricao = descricao.replace(/(?:solicitar|coletar|pedir)\s+(?:fotos?|imagens?|anexos?)\s*(?:e\s*)?/ig, '').trim();
+    return descricao ? { ...a, descricao } : null;
+  }).filter(Boolean);
 }
 
 module.exports = { classificacaoTipos, alertaProduto, slaOperacional, filtrarColetas };

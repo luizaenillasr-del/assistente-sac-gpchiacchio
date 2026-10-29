@@ -138,6 +138,8 @@ async function consultarMatriz(ctx) {
     .sort((a, b) => b.score - a.score);
 
   const melhor = rankeadas[0].regra;
+  const criterios = ['EMPRESA','TIPO_MANIFESTACAO','CATEGORIA','SUBCATEGORIA','CAUSA','SUBCAUSA','SETOR_RESPONSAVEL'];
+  const correspondencia = Object.fromEntries(criterios.map(c => ({ [c]: { esperado: melhor[c] || '', encontrado: ctx[c.toLowerCase()] || '', corresponde: bate(melhor[c], ctx[c.toLowerCase()] || '') } } ).map(x => Object.entries(x)[0])));
 
   const split = (v) => (v || '').split(/[;\n]/).map(s => s.trim()).filter(Boolean);
 
@@ -168,6 +170,8 @@ async function consultarMatriz(ctx) {
     versao: melhor.VERSAO || '1.0',
     origem: 'MATRIZ',
     score: rankeadas[0].score,
+    elegibilidade: true,
+    criteriosCorrespondencia: correspondencia,
   };
 }
 

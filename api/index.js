@@ -1548,8 +1548,8 @@ async function executarAnalise(manifestacao) {
         id: regraMatriz.idTratamento,
         nome: (regraMatriz.acoesObrigatorias || []).join('; '),
         origem: regraMatriz.origem,
-        elegibilidade: true,
-        criteriosCorrespondencia: { empresa: manifestacao.empresaReclamada || '', tipo: manifestacao.tipo || '', categoria: manifestacao.categoria || '', subcategoria: manifestacao.subcategoria || '' },
+        elegibilidade: Boolean(regraMatriz.elegibilidade),
+        criteriosCorrespondencia: regraMatriz.criteriosCorrespondencia || {},
       } : regras.procedimentoSugerido,
       matrizTratamento: regraMatriz,
       limitacaoSetor: '',
@@ -1583,6 +1583,7 @@ async function executarAnalise(manifestacao) {
   return { ...analise, matrizConhecimento, tipoID: regras.tipoID,
     classificacaoOrigem: regras.classificacaoOrigem || null,
     alertaProduto: etapa2Validacao.alertaProduto(manifestacao.produto || manifestacao.PRODUTO, manifestacao.descricao || manifestacao.DESCRICAO),
+    pendenciasValidacaoHumana: etapa2Validacao.alertaProduto(manifestacao.produto || manifestacao.PRODUTO, manifestacao.descricao || manifestacao.DESCRICAO) ? ['PRODUTO_RELATO_DIVERGENTE'] : [],
     slas: etapa2Validacao.slaOperacional(regraMatriz?.prazo),
     tempoAnaliseSegundos: Math.round((Date.now() - inicio) / 1000) };
 }
