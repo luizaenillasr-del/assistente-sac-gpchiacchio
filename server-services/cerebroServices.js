@@ -997,6 +997,7 @@ async function analisarManifestacaoCompleta(manifestacao, regras = {}, usuario =
   const protocolo = campo(manifestacao, ['protocolo','ID_MANIFESTACAO']);
   const setor = regras.setores?.[0] || '';
   const tipo = regras.tipoDetectado || '';
+  const hipotesesClassificacao = circaEngine.classificarHipoteses(manifestacao);
   const tipoExibicao = tipo || 'Não identificado';
   const dataAbertura = campo(manifestacao, ['dataAbertura','DATA_ABERTURA','DATA_CRIACAO']);
 
@@ -1136,14 +1137,13 @@ async function analisarManifestacaoCompleta(manifestacao, regras = {}, usuario =
     ...setoresRecomendadosConfig,
     ...setoresPorFrente,
   ].filter(Boolean).slice(0, 5);
-  const hipotesesClassificacao = circaEngine.classificarHipoteses(manifestacao);
   const limitacoes = [];
   if (!regras.regraAplicada && !setoresFinais.length) {
     limitacoes.push('Nenhuma regra ou setor elegível foi encontrado nas bases canônicas; a classificação e o encaminhamento dependem de decisão humana.');
   }
 
   const analise = {
-    protocolo, tipoDetectado: tipoExibicao, classificacaoStatus: tipo ? 'PENDENTE_VALIDACAO' : 'NAO_IDENTIFICADA', tipoConfianca: regras.tipoConfianca || 0,
+    protocolo, tipoDetectado: tipoExibicao, classificacaoStatus: (tipo || hipotesesClassificacao.length) ? 'PENDENTE_VALIDACAO' : 'NAO_IDENTIFICADA', tipoConfianca: regras.tipoConfianca || 0,
     statusExecucao: erros.length ? 'PARCIAL' : 'CONCLUIDA',
     setores: setoresFinais, regraAplicada: regras.regraAplicada || null,
     hipotesesClassificacao,
