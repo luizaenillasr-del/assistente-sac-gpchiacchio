@@ -7793,7 +7793,8 @@ app.patch('/api/manifestacoes/:id/circa-dados', requerPermissao('manifestacoes.e
       if (req.body.CHECKLIST_CIRCA !== undefined) {
         let items; try { items=JSON.parse(req.body.CHECKLIST_CIRCA); } catch (_) { return res.status(400).json({sucesso:false,erro:'Checklist inválido.'}); }
         const anterior=Array.isArray(meta.checklistPersistido)?meta.checklistPersistido:[];
-        if (Object.prototype.hasOwnProperty.call(req.body, 'CHECKLIST_VERSAO') && String(req.body.CHECKLIST_VERSAO)!==String(meta.checklistVersao||0)) return res.status(409).json({sucesso:false,erro:'Checklist alterado por outro usuário. Atualize a ficha antes de salvar.'});
+        if (!Object.prototype.hasOwnProperty.call(req.body, 'CHECKLIST_VERSAO') || !/^\d+$/.test(String(req.body.CHECKLIST_VERSAO))) return res.status(400).json({sucesso:false,erro:'Versão do checklist é obrigatória.'});
+        if (String(req.body.CHECKLIST_VERSAO)!==String(meta.checklistVersao||0)) return res.status(409).json({sucesso:false,erro:'Checklist alterado por outro usuário. Atualize a ficha antes de salvar.'});
         if (!Array.isArray(items) || items.some(x => !x || typeof x.id !== 'string' || !/^circa-[a-z0-9-]+$/.test(x.id) || !['PENDENTE','EM_ANDAMENTO','CONCLUIDA','NAO_APLICAVEL'].includes(x.status))) return res.status(400).json({sucesso:false,erro:'Checklist com estado ou identificador inválido.'});
         const checklistGerado = circaEngine.analisar({manifestacao:m}).checklist || [];
         const idsGerados = new Set(checklistGerado.map(x=>`circa-${String(x.descricao||x.titulo||x).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}`));
