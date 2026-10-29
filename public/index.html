@@ -3057,9 +3057,9 @@
       <!-- ETAPA 3: CONDUÇÃO -->
       <div class="nm-step-panel" data-nm-step="3"><div class="nm-section-hdr"><h2>Condução</h2><p>Defina o caminho da tratativa e os próximos responsáveis.</p></div>
         <div class="circa-path-grid"><div class="circa-path-card"><div class="circa-path-title"><span class="circa-path-icon">A</span>Resolver pelo SAC</div><p>Use quando houver procedimento validado e autonomia para concluir.</p><div class="circa-alert">Confirme a orientação, registre a ação e prepare a devolutiva.</div><button onclick="nmSetCaminhoTratativa('SAC',this)" id="nm-caminho-sac" class="btn btn-secondary">Selecionar caminho</button></div>
-          <div class="circa-path-card"><div class="circa-path-title"><span class="circa-path-icon">B</span>Solicitar informações complementares</div><p>Peça os dados necessários antes de definir a resolução.</p><label class="nm-label"><span>O que solicitar</span><textarea id="nm-complemento-pedido" class="nm-textarea" rows="3"></textarea></label><div class="nm-grid-2"><label class="nm-label"><span>Prazo de retorno</span><input class="nm-input" id="nm-prazo-retorno" placeholder="Conforme SLA aplicável"></label><label class="nm-label"><span>Canal de retorno</span><select class="nm-select" id="nm-canal-retorno"><option>WhatsApp</option><option>E-mail</option><option>Telefone</option></select></label></div><button onclick="nmSetCaminhoTratativa('COMPLEMENTO',this)" id="nm-caminho-complemento" class="btn btn-secondary">Selecionar caminho</button></div>
-          <div class="circa-path-card"><div class="circa-path-title"><span class="circa-path-icon">C</span>Acionar setor responsável</div><p>Crie uma tarefa com escopo, responsável, prazo e prioridade.</p><div class="nm-grid-2"><label class="nm-label"><span>Setor</span><select class="nm-select" id="nm-setor-acionado"><option value="">Selecionar setor</option><option>Qualidade</option><option>Logística</option><option>Comercial</option><option>Produção</option><option>Financeiro</option></select></label><label class="nm-label"><span>Responsável</span><input class="nm-input" id="nm-responsavel-acionado"></label></div><label class="nm-label"><span>Escopo da tarefa</span><textarea class="nm-textarea" rows="3" id="nm-escopo-acionado"></textarea></label><button onclick="nmSetCaminhoTratativa('SETOR',this)" id="nm-caminho-setor" class="btn btn-secondary">Selecionar caminho</button><button onclick="nmCriarAcionamento('ENCAMINHAMENTO_TRATATIVA')" id="nm-btn-criar-acionamento" class="btn btn-primary" style="display:none">Confirmar e encaminhar →</button></div></div>
-        <input type="hidden" id="nm-caminho-tratativa"><input type="date" id="nm-data-encaminhamento" class="nm-visually-hidden"><div id="nm-box-tratativa-sac" class="nm-card" style="display:none"><div class="section-label">Tratativa interna SAC</div><textarea id="nm-tratativa-sac" class="nm-textarea" rows="5" placeholder="Descreva como o SAC conduzirá a resolução..."></textarea></div><div id="nm-box-complemento" class="nm-card" style="display:none"><div class="section-label">Solicitação de complementação</div><p>Os dados solicitados, o canal e o prazo serão registrados na ficha antes do avanço da tratativa.</p></div><div id="nm-box-encaminhamento-setor" class="nm-card" style="display:none"><div class="section-label">Acionamento preparado</div><p>O setor receberá a ficha após o registro e deverá responder dentro do prazo definido.</p></div>
+          <div class="circa-path-card"><div class="circa-path-title"><span class="circa-path-icon">B</span>Solicitar informações complementares</div><p>Peça os dados necessários antes de definir a resolução.</p><label class="nm-label"><span>O que solicitar</span><textarea id="nm-complemento-pedido" class="nm-textarea" rows="3"></textarea></label><div class="nm-grid-2"><label class="nm-label"><span>Prazo de retorno</span><input class="nm-input" id="nm-prazo-retorno" placeholder="Conforme SLA aplicável"></label><label class="nm-label"><span>Canal de retorno</span><select class="nm-select" id="nm-canal-retorno"><option>WhatsApp</option><option>E-mail</option><option>Telefone</option></select></label></div><button onclick="nmSetCaminhoTratativa('COMPLEMENTO',this);nmAdicionarAcaoPlano('COMPLEMENTO')" id="nm-caminho-complemento" class="btn btn-secondary">Adicionar ao plano</button></div>
+          <div class="circa-path-card"><div class="circa-path-title"><span class="circa-path-icon">C</span>Acionar setor responsável</div><p>Crie uma tarefa com escopo, responsável, prazo e prioridade.</p><div class="nm-grid-2"><label class="nm-label"><span>Setor</span><select class="nm-select" id="nm-setor-acionado" onchange="document.getElementById('nm-responsavel-acionado').dataset.loaded='';nmCarregarResponsaveisSetor()"><option value="">Selecionar setor</option><option>Qualidade</option><option>Logística</option><option>Comercial</option><option>Produção</option><option>Financeiro</option></select></label><label class="nm-label"><span>Responsável</span><select class="nm-select" id="nm-responsavel-acionado"><option value="">Carregando responsáveis…</option></select></label></div><label class="nm-label"><span>Escopo da tarefa</span><textarea class="nm-textarea" rows="3" id="nm-escopo-acionado"></textarea></label><button onclick="nmSetCaminhoTratativa('SETOR',this)" id="nm-caminho-setor" class="btn btn-secondary">Adicionar ao plano</button><button onclick="nmAdicionarAcaoPlano('SETOR')" id="nm-btn-criar-acionamento" class="btn btn-primary" style="display:none">Adicionar frente ao plano</button></div></div>
+        <input type="hidden" id="nm-caminho-tratativa"><input type="date" id="nm-data-encaminhamento" class="nm-visually-hidden"><div id="nm-plano-conducao" class="nm-card" style="margin-top:12px"><div class="section-label">Plano de condução</div><p style="font-size:12px;color:#777;margin:4px 0 9px">Prepare ações independentes; elas serão confirmadas juntas, sem criar outra manifestação.</p><div id="nm-plano-lista" class="circa-muted">Nenhuma ação preparada.</div><button type="button" class="btn btn-primary" style="margin-top:10px" onclick="nmConfirmarPlano()">Confirmar ações do plano</button><div id="nm-plano-status" style="margin-top:8px"></div></div><div id="nm-box-tratativa-sac" class="nm-card" style="display:none"><div class="section-label">Tratativa interna SAC</div><textarea id="nm-tratativa-sac" class="nm-textarea" rows="5" placeholder="Descreva como o SAC conduzirá a resolução..."></textarea><button type="button" class="btn btn-secondary" style="margin-top:8px" onclick="nmAdicionarAcaoPlano('SAC')">Adicionar tratativa SAC ao plano</button></div><div id="nm-box-complemento" class="nm-card" style="display:none"><div class="section-label">Solicitação de complementação</div><p>Os dados solicitados, o canal e o prazo serão registrados na ficha antes do avanço da tratativa.</p></div><div id="nm-box-encaminhamento-setor" class="nm-card" style="display:none"><div class="section-label">Acionamento preparado</div><p>O setor receberá a ficha após o registro e deverá responder dentro do prazo definido.</p></div>
       </div>
 
       <!-- ETAPA 4: INVESTIGAÇÃO E RESOLUÇÃO -->
@@ -13010,19 +13010,56 @@ function nmSetProcedente(valor, btn) {
 }
 
 function nmSetCaminhoTratativa(caminho, btn) {
-  document.getElementById('nm-caminho-tratativa').value = caminho;
-  ['nm-caminho-sac','nm-caminho-complemento','nm-caminho-setor'].forEach(id => {
-    const b = document.getElementById(id);
-    if (b) { b.style.background = '#fff'; b.style.color = '#666464'; b.style.borderColor = '#D6D6D6'; b.style.fontWeight = '500'; }
-  });
-  btn.style.background = '#EFF6FF'; btn.style.color = '#1D4ED8'; btn.style.borderColor = '#3B82F6'; btn.style.fontWeight = '700';
-  document.getElementById('nm-box-tratativa-sac').style.display = caminho === 'SAC' ? 'block' : 'none';
-  document.getElementById('nm-box-complemento').style.display = caminho === 'COMPLEMENTO' ? 'block' : 'none';
-  document.getElementById('nm-box-encaminhamento-setor').style.display = caminho === 'SETOR' ? 'block' : 'none';
-  // Botão de criar acionamento só visível após selecionar o caminho SETOR
-  const btnAcionamento = document.getElementById('nm-btn-criar-acionamento');
-  if (btnAcionamento) btnAcionamento.style.display = caminho === 'SETOR' ? 'inline-flex' : 'none';
+  const atuais = new Set(String(document.getElementById('nm-caminho-tratativa')?.value || '').split(',').filter(Boolean));
+  if (atuais.has(caminho)) atuais.delete(caminho); else atuais.add(caminho);
+  document.getElementById('nm-caminho-tratativa').value = [...atuais].join(',');
+  const mapa = {SAC:'nm-caminho-sac', COMPLEMENTO:'nm-caminho-complemento', SETOR:'nm-caminho-setor'};
+  Object.entries(mapa).forEach(([chave,id]) => { const b=document.getElementById(id); const ativo=atuais.has(chave); if(b){b.style.background=ativo?'#EFF6FF':'#fff';b.style.color=ativo?'#1D4ED8':'#666464';b.style.borderColor=ativo?'#3B82F6':'#D6D6D6';b.style.fontWeight=ativo?'700':'500';} });
+  document.getElementById('nm-box-tratativa-sac').style.display = atuais.has('SAC') ? 'block' : 'none';
+  document.getElementById('nm-box-complemento').style.display = atuais.has('COMPLEMENTO') ? 'block' : 'none';
+  document.getElementById('nm-box-encaminhamento-setor').style.display = atuais.has('SETOR') ? 'block' : 'none';
+  const btnAcionamento = document.getElementById('nm-btn-criar-acionamento'); if (btnAcionamento) btnAcionamento.style.display = atuais.has('SETOR') ? 'inline-flex' : 'none';
+  if (caminho === 'SETOR') nmCarregarResponsaveisSetor();
+  if (typeof nmRenderizarPlano === 'function') nmRenderizarPlano();
 }
+
+window._nmPlanoConducao = window._nmPlanoConducao || [];
+function nmCarregarResponsaveisSetor() {
+  const select=document.getElementById('nm-responsavel-acionado'); if(!select || select.dataset.loaded==='true') return;
+  _apiFetch('/api/usuarios',15000).then(r=>{
+    const setor=document.getElementById('nm-setor-acionado')?.value||'';
+    const setorN=String(setor).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+    const itens=(r?.itens||[]).filter(u=>String(u.STATUS||'ATIVO').toUpperCase()==='ATIVO').filter(u=>{const s=[u.SETOR,u.SETOR_PRINCIPAL,u.SETORES,u.SETORES_AUTORIZADOS].filter(Boolean).join(' ').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();return !setorN||s.includes(setorN)});
+    select.innerHTML='<option value="">Selecione um responsável cadastrado</option>'+itens.map(u=>{const id=u.USUARIO||u.LOGIN||u.EMAIL||u.ID_USUARIO||u.ID;return `<option value="${esc(id)}">${esc(u.NOME||id)}</option>`}).join(''); select.dataset.loaded='true';
+  }).catch(()=>{select.innerHTML='<option value="">Não foi possível carregar responsáveis</option>';});
+}
+function nmRenderizarPlano() {
+  const el=document.getElementById('nm-plano-lista'); if(!el)return; const plano=window._nmPlanoConducao||[];
+  el.innerHTML=plano.length?plano.map((a,i)=>`<div class="checklist-item" data-plano-id="${esc(a.id)}"><span><b>${esc(a.tipoLabel)}</b> · ${esc(a.setor||'SAC')}</span><small style="margin-left:auto">${esc(a.responsavel||'SAC')} · ${esc(a.prazo||'SLA aplicável')} <button type="button" class="btn btn-ghost" style="padding:2px 6px" onclick="nmRemoverAcaoPlano(${i})">Remover</button></small><div style="width:100%;font-size:11px;color:#666">${esc(a.tarefa)}</div></div>`).join(''):'<div class="circa-muted">Nenhuma ação preparada.</div>';
+}
+window.nmRemoverAcaoPlano=function(i){(window._nmPlanoConducao||[]).splice(i,1);nmRenderizarPlano();};
+window.nmAdicionarAcaoPlano=function(caminho){
+  const setor=caminho==='SETOR'?(document.getElementById('nm-setor-acionado')?.value||''):'SAC';
+  const responsavel=caminho==='SETOR'?(document.getElementById('nm-responsavel-acionado')?.value||''):'SAC';
+  const tarefa=caminho==='COMPLEMENTO'?(document.getElementById('nm-complemento-pedido')?.value||''):(caminho==='SETOR'?(document.getElementById('nm-escopo-acionado')?.value||''):(document.getElementById('nm-tratativa-sac')?.value||''));
+  if(caminho==='SETOR'&&!setor){alert('Selecione o setor antes de adicionar a frente.');return;}
+  if(caminho==='SETOR'&&!responsavel){alert('Selecione um responsável ativo e autorizado.');return;}
+  if(!tarefa.trim()){alert('Descreva o escopo da ação antes de adicionar ao plano.');return;}
+  const tipo=caminho==='COMPLEMENTO'?'SOLICITACAO_INFORMACAO':caminho==='SETOR'?'ENCAMINHAMENTO_TRATATIVA':'NOTIFICACAO';
+  const chave=`${tipo}|${setor}|${responsavel}|${tarefa.trim()}`;
+  if((window._nmPlanoConducao||[]).some(x=>x.chave===chave)){alert('Essa ação já está no plano.');return;}
+  window._nmPlanoConducao.push({id:'plano-'+window._nmPlanoConducao.length+'-'+Date.now(),chave,tipo,tipoLabel:caminho==='COMPLEMENTO'?'Solicitação ao cliente':caminho==='SETOR'?'Encaminhamento':'Tratativa SAC',setor,responsavel,tarefa:tarefa.trim(),prazo:document.getElementById('nm-prazo-retorno')?.value||''}); nmRenderizarPlano();
+};
+window.nmConfirmarPlano=async function(){
+  if(!_nmCardId&&!(await salvarRascunho({silent:true,reportError:true})))return;
+  const plano=window._nmPlanoConducao||[]; if(!plano.length){alert('Adicione pelo menos uma ação ao plano.');return;}
+  const status=document.getElementById('nm-plano-status'); let ok=0;
+  for(const a of plano){try{const r=await _apiFetch(`/api/manifestacoes/${encodeURIComponent(_nmCardId)}/acionamentos`,15000,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tipo:a.tipo,setorDestino:a.setor,responsavel:a.responsavel==='SAC'?'':a.responsavel,tarefa:a.tarefa,motivo:a.tarefa,prazo:a.prazo,prazoOrigem:a.tipo==='SOLICITACAO_INFORMACAO'?'SLA_RETORNO_CLIENTE_96H':'SLA_RETORNO_SETOR_72H',prioridade:document.getElementById('nm-prioridade')?.value||'NORMAL',idempotencyKey:`${_nmCardId}-${a.id}`})});if(!r?.sucesso)throw new Error(r?.erro||'falha');ok++;}catch(e){if(status)status.innerHTML=`<div class="alert-box red">${esc(ok)} ação(ões) confirmada(s); falha ao confirmar ${esc(a.tipoLabel)}: ${esc(e.message)}</div>`;return;}}
+  if(status)status.innerHTML=`<div class="alert-box green">${ok} ação(ões) confirmada(s) no mesmo protocolo.</div>`;
+};
+window.nmCarregarPlanoPersistido=async function(){
+  if(!_nmCardId)return; try{const r=await _apiFetch(`/api/manifestacoes/${encodeURIComponent(_nmCardId)}/acionamentos`,10000); const itens=r?.itens||[]; window._nmPlanoConducao=itens.filter(x=>!['CANCELADO'].includes(String(x.STATUS||'').toUpperCase())).map(x=>({id:x.ID_ACIONAMENTO,chave:x.ID_ACIONAMENTO,tipo:x.TIPO,tipoLabel:x.TIPO==='SOLICITACAO_INFORMACAO'?'Solicitação ao cliente':x.TIPO==='ENCAMINHAMENTO_TRATATIVA'?'Encaminhamento':'Tratativa SAC',setor:x.SETOR_DESTINO||'SAC',responsavel:x.RESPONSAVEL||'SAC',tarefa:x.TAREFA||x.MOTIVO||'',prazo:x.PRAZO||''})); nmRenderizarPlano();}catch(e){console.warn('Plano de condução indisponível:',e.message)}
+};
 
 // ===== FICHA DE ENCAMINHAMENTO — MODAL =====
 function fichaCarregarDados(item) {
@@ -31778,6 +31815,7 @@ if (typeof pageLoaders !== 'undefined') {
     var body = document.getElementById('nm-steps-body');
     if (body) body.scrollTop = 0;
     if (n === 2 && typeof window.nmCarregarAnaliseDeterministica === 'function') window.nmCarregarAnaliseDeterministica();
+    if (n === 3 && typeof window.nmCarregarPlanoPersistido === 'function') window.nmCarregarPlanoPersistido();
     if (n === TOTAL && typeof nmMontarResumo === 'function') nmMontarResumo();
     if (n === 6 && typeof nmMontarDevolutiva === 'function') { nmMontarDevolutiva(); nmCarregarAnalisePersistida(); }
     if (n === 5 && typeof nmPreencherValidacao === 'function') nmPreencherValidacao();
@@ -31807,9 +31845,10 @@ if (typeof pageLoaders !== 'undefined') {
     if(n===3){
       var caminho=val('nm-caminho-tratativa');
       if(!caminho) return fail('nm-caminho-sac','Selecione como o SAC conduzirá a tratativa.');
-      if(caminho==='SAC' && !val('nm-tratativa-sac')) return fail('nm-tratativa-sac','Descreva a tratativa que será conduzida pelo SAC.');
-      if(caminho==='COMPLEMENTO' && !val('nm-complemento-pedido')) return fail('nm-complemento-pedido','Informe quais dados precisam ser complementados.');
-      if(caminho==='SETOR'){
+      var caminhos=caminho.split(',');
+      if(caminhos.includes('SAC') && !val('nm-tratativa-sac')) return fail('nm-tratativa-sac','Descreva a tratativa que será conduzida pelo SAC.');
+      if(caminhos.includes('COMPLEMENTO') && !val('nm-complemento-pedido')) return fail('nm-complemento-pedido','Informe quais dados precisam ser complementados.');
+      if(caminhos.includes('SETOR')){
         if(!val('nm-setor-acionado')) return fail('nm-setor-acionado','Selecione o setor responsável.');
         if(!val('nm-escopo-acionado')) return fail('nm-escopo-acionado','Descreva o escopo do acionamento.');
       }

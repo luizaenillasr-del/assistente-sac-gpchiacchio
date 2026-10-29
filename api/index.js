@@ -7892,7 +7892,7 @@ app.patch('/api/manifestacoes/:id/circa-dados', requerPermissao('manifestacoes.e
 // ===== FLUXO OPERACIONAL CIRCA =====
 // Os registros abaixo reutilizam a manifestação e as abas operacionais legadas.
 // Nenhum acionamento cria uma segunda ficha.
-const ACIONAMENTOS_HEADERS = ['ID_ACIONAMENTO','ID_MANIFESTACAO','PROTOCOLO','TIPO','EMPRESA','SETOR_SOLICITANTE','SETOR_DESTINO','RESPONSAVEL','ASSUNTO','MOTIVO','TAREFA','PERGUNTAS','PRAZO','PRIORIDADE','EVIDENCIAS','OBSERVACOES','RESPOSTA','STATUS','CRIADO_EM','CRIADO_POR','ATUALIZADO_EM','ATUALIZADO_POR','IDEMPOTENCY_KEY'];
+const ACIONAMENTOS_HEADERS = ['ID_ACIONAMENTO','ID_MANIFESTACAO','PROTOCOLO','TIPO','EMPRESA','SETOR_SOLICITANTE','SETOR_DESTINO','RESPONSAVEL','RESPONSAVEL_ID','ASSUNTO','MOTIVO','TAREFA','PERGUNTAS','PRAZO','PRAZO_ORIGEM','DATA_LIMITE','PRIORIDADE','EVIDENCIAS','OBSERVACOES','RESPOSTA','STATUS','CRIADO_EM','CRIADO_POR','ATUALIZADO_EM','ATUALIZADO_POR','IDEMPOTENCY_KEY'];
 const ACIONAMENTO_STATUSES = ['CRIADO','ENVIADO','PENDENTE_DE_ATRIBUICAO','AGUARDANDO_CIENCIA','EM_ANDAMENTO','AGUARDANDO_INFORMACAO','RESPONDIDO','EM_REVISAO','CONCLUIDO','CANCELADO'];
 const ACIONAMENTO_TYPES = ['NOTIFICACAO','SOLICITACAO_INFORMACAO','SOLICITACAO_APOIO','ENCAMINHAMENTO_TRATATIVA','ESCALONAMENTO'];
 const NOTIFICACOES_INTERNAS_HEADERS = ['ID_NOTIFICACAO','ID_MANIFESTACAO','ID_ACIONAMENTO','DESTINATARIO','CANAL','TIPO','TITULO','MENSAGEM','STATUS','CRIADO_EM','CRIADO_POR'];
@@ -7952,10 +7952,18 @@ app.post('/api/manifestacoes/:id/acionamentos', requerPermissao('manifestacoes.e
     if (tipo === 'ESCALONAMENTO' && !gestor) {
       return res.status(422).json({ sucesso:false, codigo:'GESTOR_NAO_CADASTRADO', erro:'Não há gestor ativo cadastrado para esta empresa. Regularize o cadastro antes de escalar.' });
     }
+    let responsavelCadastro = null;
     if (body.responsavel) {
       const usuarios = await lerAba('USUARIOS', 5000).catch(() => []);
       const alvo = usuarios.find(u => String(u.USUARIO || u.EMAIL || u.LOGIN || '').toLowerCase() === String(body.responsavel).toLowerCase());
       if (!alvo || String(alvo.STATUS || 'ATIVO').toUpperCase() !== 'ATIVO') return res.status(400).json({ sucesso:false, erro:'Responsável inexistente ou inativo.' });
+      const setorNorm = normalizarTexto(body.setorDestino || '');
+      const setoresAlvo = normalizarTexto([alvo.SETOR, alvo.SETOR_PRINCIPAL, alvo.SETORES, alvo.SETORES_AUTORIZADOS].filter(Boolean).join(' '));
+      if (setorNorm && !setoresAlvo.includes(setorNorm)) return res.status(422).json({ sucesso:false, codigo:'RESPONSAVEL_FORA_DO_SETOR', erro:'O responsável selecionado não está autorizado para o setor escolhido.' });
+      const empresasAlvo = empresasDoCadastro(alvo).map(empresaCanonica).filter(Boolean);
+      const empresaManifestacao = empresaCanonica(m.EMPRESA_RECLAMADA || '');
+      if (empresasAlvo.length && !empresasAlvo.includes('MASTER') && !empresasAlvo.includes(empresaManifestacao)) return res.status(422).json({ sucesso:false, codigo:'RESPONSAVEL_FORA_DA_EMPRESA', erro:'O responsável selecionado não está autorizado para esta empresa.' });
+      responsavelCadastro = alvo;
     }
     await garantirAbaComCabecalhos('ACIONAMENTOS_INTERNOS', ACIONAMENTOS_HEADERS);
     const existing = body.idempotencyKey ? (await lerAba('ACIONAMENTOS_INTERNOS', 5000).catch(() => [])).find(r => String(r.IDEMPOTENCY_KEY || '') === String(body.idempotencyKey)) : null;
@@ -7965,9 +7973,9 @@ app.post('/api/manifestacoes/:id/acionamentos', requerPermissao('manifestacoes.e
       ID_ACIONAMENTO: await gerarProximoID('ACIONAMENTOS_INTERNOS','ACI','ID_ACIONAMENTO'),
       ID_MANIFESTACAO: m.ID_MANIFESTACAO || req.params.id, PROTOCOLO:m.PROTOCOLO || '', TIPO:tipo,
       EMPRESA:m.EMPRESA_RECLAMADA || body.empresa || '', SETOR_SOLICITANTE:body.setorSolicitante || req.user?.setor || 'SAC',
-      SETOR_DESTINO:body.setorDestino || '', RESPONSAVEL:body.responsavel || gestor?.USUARIO || gestor?.EMAIL || gestor?.NOME || '', ASSUNTO:body.assunto || '', MOTIVO:body.motivo || '',
+      SETOR_DESTINO:body.setorDestino || '', RESPONSAVEL:body.responsavel || gestor?.USUARIO || gestor?.EMAIL || gestor?.NOME || '', RESPONSAVEL_ID:responsavelCadastro?.ID_USUARIO || responsavelCadastro?.ID || responsavelCadastro?.USUARIO || body.responsavel || '', ASSUNTO:body.assunto || '', MOTIVO:body.motivo || '',
       TAREFA:body.tarefa || '', PERGUNTAS:Array.isArray(body.perguntas) ? JSON.stringify(body.perguntas) : (body.perguntas || ''),
-      PRAZO:tipo === 'NOTIFICACAO' ? '' : (body.prazo || ''), PRIORIDADE:body.prioridade || 'NORMAL',
+      PRAZO:tipo === 'NOTIFICACAO' ? '' : (body.prazo || ''), PRAZO_ORIGEM:body.prazoOrigem || (tipo === 'SOLICITACAO_INFORMACAO' ? 'SLA_RETORNO_CLIENTE_96H' : 'SLA_RETORNO_SETOR_72H'), DATA_LIMITE:body.dataLimite || '', PRIORIDADE:body.prioridade || 'NORMAL',
       EVIDENCIAS:Array.isArray(body.evidencias) ? JSON.stringify(body.evidencias) : (body.evidencias || ''), OBSERVACOES:body.observacoes || '',
       STATUS:tipo === 'NOTIFICACAO' ? 'ENVIADO' : (body.responsavel ? 'ENVIADO' : 'PENDENTE_DE_ATRIBUICAO'),
       CRIADO_EM:agora, CRIADO_POR:req.user?.usuario || 'sistema', ATUALIZADO_EM:agora, ATUALIZADO_POR:req.user?.usuario || 'sistema', IDEMPOTENCY_KEY:body.idempotencyKey || '',

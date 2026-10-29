@@ -97,6 +97,12 @@ const originalLerAba = sheets.lerAba;
     assert.match(api, /historico: \[\.\.\.historico, registro\]/, 'revisões repetidas devem manter histórico auditável');
     assert.match(html, /sac-rascunho-id/, 'rascunho deve poder ser retomado pelo ID persistido');
     assert.match(html, /ci\?\.circa/, 'ficha deve ler o envelope CIRCA correto após recarregar');
+    assert.match(html, /nmPlanoConducao/, 'Etapa 3 deve exibir plano de condução persistível');
+    assert.match(html, /nmConfirmarPlano/, 'Etapa 3 deve confirmar as ações preparadas em conjunto');
+    assert.match(html, /nmCarregarResponsaveisSetor/, 'responsáveis devem vir do cadastro por setor');
+    assert.match(api, /RESPONSAVEL_FORA_DO_SETOR/, 'backend deve bloquear responsável de setor incompatível');
+    assert.match(api, /RESPONSAVEL_ID/, 'acionamento deve persistir o identificador do responsável');
+    assert.match(api, /PRAZO_ORIGEM/, 'acionamento deve registrar a origem do prazo');
     assert.match(html, /responsavel,tarefa/, 'acionamento deve preservar responsável e tarefa da frente');
     console.log('CIRCA Nova Manifestação: campos PLASCHIO, hipóteses múltiplas, regras inválidas, isolamento de reincidência e renderização aprovados.');
   } finally {
