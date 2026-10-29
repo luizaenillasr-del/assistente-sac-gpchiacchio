@@ -1137,6 +1137,20 @@ function invalidarCacheAba(nomeAba) {
 // CEREBRO_APRENDIZADO. APRIMORAMENTOS_CEREBRO é mantido somente como alias
 // legado; nunca criamos uma segunda aba quando a base canônica existe.
 const APRIMORAMENTO_ABAS = ['CEREBRO_APRENDIZADO', 'APRIMORAMENTOS_CEREBRO'];
+function classificarAbaAprimoramentos(headers = []) {
+  const tem = nome => headers.includes(nome);
+  if (['ID_APRIMORAMENTO', 'DESCRICAO', 'STATUS'].every(tem)) return 'APRIMORAMENTO_CANONICO';
+  if (['ID_CASO', 'TIPO_DESCRICAO', 'CAUSA_RAIZ'].every(tem)) return 'CEREBRO_APRENDIZADO';
+  return 'INCOMPATIVEL';
+}
+function normalizarAprimoramento(row = {}) {
+  return {
+    ...row,
+    ID_APRIMORAMENTO: row.ID_APRIMORAMENTO || row.ID_CASO || row.ID || '',
+    DESCRICAO: row.DESCRICAO || row.TIPO_DESCRICAO || row.PROBLEMA_RECORRENTE || '',
+    STATUS: row.STATUS || '',
+  };
+}
 async function resolverAbaAprimoramentos() {
   for (const nome of APRIMORAMENTO_ABAS) {
     try {
@@ -1153,7 +1167,48 @@ async function resolverAbaAprimoramentos() {
 async function lerAprimoramentosCerebro(maxRows = 5000) {
   const aba = await resolverAbaAprimoramentos();
   if (!aba) return { aba: null, rows: [] };
-  return { aba, rows: await lerAba(aba, maxRows).catch(() => []) };
+  const [headers, rows] = await Promise.all([
+    obterCabecalhos(aba).catch(() => []),
+    lerAba(aba, maxRows).catch(() => []),
+  ]);
+  return { aba, headers, contrato: classificarAbaAprimoramentos(headers), rows: rows.map(normalizarAprimoramento) };
+}
+
+function mapearAprimoramentoParaAba(obj, contrato) {
+  if (contrato === 'APRIMORAMENTO_CANONICO') return obj;
+  if (contrato !== 'CEREBRO_APRENDIZADO') return null;
+  // CEREBRO_APRENDIZADO é uma base de casos aprendidos, não um catálogo de
+  // aprimoramentos com status. O registro permanece não validado até uma
+  // revisão humana (DATA_VALIDACAO/RESPONSAVEL_VALIDACAO vazios).
+  return {
+    ID_CASO: obj.ID_APRIMORAMENTO,
+    FONTE: 'SISTEMA_CIRCA',
+    DATA_REGISTRO: obj.CRIADO_EM || new Date().toISOString(),
+    EMPRESA: obj.EMPRESA || '',
+    TIPO_PROBLEMA: obj.TIPO || '',
+    TIPO_DESCRICAO: obj.DESCRICAO || obj.PROBLEMA_RECORRENTE || '',
+    SETOR_ACIONADO: obj.SETOR_RESPONSAVEL || '',
+    CAUSA_RAIZ: obj.CAUSA || '',
+    TRATATIVA_APLICADA: obj.TRATATIVA_APLICADA || '',
+    TRATATIVA_FUNCIONOU: '',
+    DEVOLUTIVA_MODELO: obj.DEVOLUTIVA_MODELO || '',
+    PROCEDIMENTO_USADO: obj.PROCEDIMENTO_USADO || '',
+    SLA_HORAS_LIMITE: obj.PRAZO || '',
+    TEMPO_RESOLUCAO_H: '',
+    DENTRO_DO_SLA: '',
+    IA_TIPO_SUGERIDO: '',
+    IA_SETOR_SUGERIDO: '',
+    IA_ACEITA_PELO_ANALISTA: '',
+    IA_CAMPO_CORRIGIDO: '',
+    IA_CONFIANCA: '',
+    TAGS: 'CIRCA_APRIMORAMENTO',
+    CLIENTE_REINCIDENTE: obj.REINCIDENCIA || '',
+    QTD_OCORRENCIAS_SIMILARES: obj.QUANTIDADE_OCORRENCIAS || '',
+    GEROU_RNC: 'NAO',
+    DATA_VALIDACAO: '',
+    RESPONSAVEL_VALIDACAO: '',
+    OBSERVACOES: obj.JUSTIFICATIVA || '',
+  };
 }
 
 // Tenta 'Reclamações + devolutiva' primeiro; cai para 'Reclamações' se vazio
@@ -3667,9 +3722,9 @@ app.post('/api/manifestacoes/:id/finalizar', requerPermissao('aprovacoes.aprovar
         const aprimBase = await lerAprimoramentosCerebro(2000);
         const aprimRows = aprimBase.rows;
         const jaExisteAprim = aprimRows.some(a =>
-          _cNorm(a.CAUSA||'') === _cNorm(causaFinal) &&
+          _cNorm(a.CAUSA || a.CAUSA_RAIZ || '') === _cNorm(causaFinal) &&
           a.STATUS !== 'CONCLUIDO' && a.STATUS !== 'DESCARTADO' &&
-          a.CRIADO_EM && (Date.now() - new Date(a.CRIADO_EM).getTime()) < 90 * 24 * 3600 * 1000
+          (a.CRIADO_EM || a.DATA_REGISTRO) && (Date.now() - new Date(a.CRIADO_EM || a.DATA_REGISTRO).getTime()) < 90 * 24 * 3600 * 1000
         );
         if (!jaExisteAprim) {
           const causasRows = await lerAba('CAUSAS', 2000).catch(()=>[]);
@@ -3678,16 +3733,22 @@ app.post('/api/manifestacoes/:id/finalizar', requerPermissao('aprovacoes.aprovar
           const reincidencia = (m.REINCIDENCIA||'').toUpperCase() === 'SIM';
           if (freq >= 2 || reincidencia) {
             if (!aprimBase.aba) throw new Error('Base de aprimoramentos CIRCA não encontrada; nenhuma aba será criada automaticamente.');
-            await garantirAbaComCabecalhos(aprimBase.aba, CEREBRO_APR_HEADERS).catch(()=>{});
-            const idApr = await gerarProximoID(aprimBase.aba,'APR','ID_APRIMORAMENTO');
-            await appendObjeto(aprimBase.aba, {
+            if (aprimBase.contrato === 'INCOMPATIVEL') throw new Error('Base de aprimoramentos CIRCA possui contrato incompatível; nenhum registro foi gravado.');
+            if (aprimBase.contrato === 'APRIMORAMENTO_CANONICO') await garantirAbaComCabecalhos(aprimBase.aba, CEREBRO_APR_HEADERS).catch(()=>{});
+            const idField = aprimBase.contrato === 'CEREBRO_APRENDIZADO' ? 'ID_CASO' : 'ID_APRIMORAMENTO';
+            const idApr = await gerarProximoID(aprimBase.aba,'APR',idField);
+            const aprimoramento = {
               ID_APRIMORAMENTO: idApr,
               TIPO: reincidencia ? 'PREVENCAO' : 'MELHORIA',
               CAUSA_ID: causaRef?.ID_CAUSA || '',
               CAUSA: causaFinal,
               ID_MANIFESTACAO: id,
+              EMPRESA: m.EMPRESA_RECLAMADA || '',
               PROBLEMA_RECORRENTE: `Causa "${causaFinal}" identificada ${freq >= 2 ? `${freq} vezes` : '(reincidência)'}. Manifestação ${id}.`,
               DESCRICAO: m.DESCRICAO || m.DESCRICAO_MANIFESTACAO || '',
+              TRATATIVA_APLICADA: m.TRATATIVA_REALIZADA || m.TRATATIVA_SAC_INTERNA || '',
+              DEVOLUTIVA_MODELO: m.DEVOLUTIVA_FINAL || m.DEVOLUTIVA_SUGERIDA || '',
+              PROCEDIMENTO_USADO: m.PROCEDIMENTO_SUGERIDO || '',
               JUSTIFICATIVA: `Gerado automaticamente ao encerrar manifestação ${id}.`,
               QUANTIDADE_OCORRENCIAS: String(freq || 1),
               IMPACTO: freq >= 5 ? 'ALTO' : freq >= 3 ? 'MEDIO' : 'BAIXO',
@@ -3703,7 +3764,10 @@ app.post('/api/manifestacoes/:id/finalizar', requerPermissao('aprovacoes.aprovar
               APROVADO_EM: '',
               APROVADO_POR: '',
               ATUALIZADO_EM: agora,
-            }).catch(e => console.warn('[APR] auto-aprim falhou:', e.message));
+            };
+            const linhaApr = mapearAprimoramentoParaAba(aprimoramento, aprimBase.contrato);
+            if (!linhaApr) throw new Error('Contrato de aprimoramentos CIRCA não permite gravação segura.');
+            await appendObjeto(aprimBase.aba, linhaApr).catch(e => console.warn('[APR] auto-aprim falhou:', e.message));
             invalidarCacheAba(aprimBase.aba);
           }
         }
@@ -8090,13 +8154,17 @@ app.post('/api/cerebro/aprimoramentos', requerPerfil('MASTER','GESTOR SAC','ANAL
     const b=req.body||{}, agora=new Date().toISOString();
     const descricao=String(b.descricao||b.problemaRecorrente||b.DESCRICAO||'').trim();
     if(!descricao) return res.status(400).json({sucesso:false,erro:'Descrição é obrigatória.'});
-    const aba = await resolverAbaAprimoramentos();
-    if (!aba) return res.status(503).json({sucesso:false,erro:'Base de aprimoramentos CIRCA não está disponível.'});
-    await garantirAbaComCabecalhos(aba,CEREBRO_APR_HEADERS).catch(()=>{});
-    const id=await gerarProximoID(aba,'APR','ID_APRIMORAMENTO');
+    const base = await lerAprimoramentosCerebro(10);
+    if (!base.aba) return res.status(503).json({sucesso:false,erro:'Base de aprimoramentos CIRCA não está disponível.'});
+    if (base.contrato === 'INCOMPATIVEL') return res.status(409).json({sucesso:false,erro:'Contrato da base de aprimoramentos CIRCA incompatível; nenhum dado foi alterado.'});
+    if (base.contrato === 'APRIMORAMENTO_CANONICO') await garantirAbaComCabecalhos(base.aba,CEREBRO_APR_HEADERS).catch(()=>{});
+    const idField = base.contrato === 'CEREBRO_APRENDIZADO' ? 'ID_CASO' : 'ID_APRIMORAMENTO';
+    const id=await gerarProximoID(base.aba,'APR',idField);
     const obj={ID_APRIMORAMENTO:id,TIPO:b.tipo||b.TIPO||'TRATAMENTO',CAUSA_ID:b.causaId||b.CAUSA_ID||'',CAUSA:b.causa||b.CAUSA||'',ID_MANIFESTACAO:b.idManifestacao||b.ID_MANIFESTACAO||'',PROBLEMA_RECORRENTE:b.problemaRecorrente||b.PROBLEMA_RECORRENTE||descricao,DESCRICAO:descricao,JUSTIFICATIVA:b.justificativa||b.JUSTIFICATIVA||'',QUANTIDADE_OCORRENCIAS:String(b.quantidadeOcorrencias||b.QUANTIDADE_OCORRENCIAS||''),IMPACTO:b.impacto||b.IMPACTO||'',PROPOSTA_MELHORIA:b.propostaMelhoria||b.PROPOSTA_MELHORIA||'',SETOR_RESPONSAVEL:b.setorResponsavel||b.SETOR_RESPONSAVEL||'',PRAZO:b.prazo||b.PRAZO||'',STATUS:'EM_REVISAO',RESULTADO:'',EVIDENCIA:'',VERSAO:'1',CRIADO_EM:agora,CRIADO_POR:req.user.usuario,APROVADO_EM:'',APROVADO_POR:'',ATUALIZADO_EM:agora};
-    await appendObjeto(aba,obj);
-    invalidarCacheAba(aba);
+    const linha = mapearAprimoramentoParaAba(obj, base.contrato);
+    if (!linha) return res.status(409).json({sucesso:false,erro:'Contrato da base de aprimoramentos CIRCA não permite gravação segura.'});
+    await appendObjeto(base.aba,linha);
+    invalidarCacheAba(base.aba);
     res.status(201).json({sucesso:true,item:obj});
   } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
 });
@@ -8133,10 +8201,9 @@ app.delete('/api/cerebro/causas/:id', requerPerfil('MASTER','GESTOR SAC'), middl
 
 app.patch('/api/cerebro/aprimoramentos/:id', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC'), middlewareEscopoEmpresa(), async (req,res)=>{
   try {
-    const aba = await resolverAbaAprimoramentos();
-    if (!aba) return res.status(404).json({sucesso:false,erro:'Base de aprimoramentos CIRCA não está disponível.'});
-    const rows=await lerAba(aba,5000).catch(()=>[]);
-    const item=rows.find(r=>r.ID_APRIMORAMENTO===req.params.id);
+    const base = await lerAprimoramentosCerebro(5000);
+    if (!base.aba) return res.status(404).json({sucesso:false,erro:'Base de aprimoramentos CIRCA não está disponível.'});
+    const item=base.rows.find(r=>r.ID_APRIMORAMENTO===req.params.id);
     if(!item) return res.status(404).json({sucesso:false,erro:'Aprimoramento não encontrado.'});
     const b=req.body||{};
     const campos=['TIPO','CAUSA_ID','CAUSA','ID_MANIFESTACAO','PROBLEMA_RECORRENTE','DESCRICAO','JUSTIFICATIVA','QUANTIDADE_OCORRENCIAS','IMPACTO','PROPOSTA_MELHORIA','SETOR_RESPONSAVEL','PRAZO','STATUS','RESULTADO','EVIDENCIA'];
@@ -8144,9 +8211,24 @@ app.patch('/api/cerebro/aprimoramentos/:id', requerPerfil('MASTER','GESTOR SAC',
     if(b.STATUS==='APROVADO'){upd.APROVADO_EM=new Date().toISOString();upd.APROVADO_POR=req.user.usuario;}
     upd.ATUALIZADO_EM=new Date().toISOString();
     if(!Object.keys(upd).filter(k=>k!=='ATUALIZADO_EM').length) return res.status(400).json({sucesso:false,erro:'Nenhum campo para atualizar.'});
-    await atualizarPorID(aba,req.params.id,upd,['ID_APRIMORAMENTO']);
-    invalidarCacheAba(aba);
-    await registrarAuditoria(req.user.usuario,'ATUALIZOU_APRIMORAMENTO_CEREBRO',req.params.id,aba,item,upd);
+    if (base.contrato === 'INCOMPATIVEL') return res.status(409).json({sucesso:false,erro:'Contrato da base de aprimoramentos CIRCA incompatível; nenhum dado foi alterado.'});
+    const atualizacao = base.contrato === 'CEREBRO_APRENDIZADO'
+      ? {
+          ...(upd.TIPO !== undefined ? { TIPO_PROBLEMA: upd.TIPO } : {}),
+          ...(upd.DESCRICAO !== undefined ? { TIPO_DESCRICAO: upd.DESCRICAO } : {}),
+          ...(upd.CAUSA !== undefined ? { CAUSA_RAIZ: upd.CAUSA } : {}),
+          ...(upd.SETOR_RESPONSAVEL !== undefined ? { SETOR_ACIONADO: upd.SETOR_RESPONSAVEL } : {}),
+          ...(upd.PRAZO !== undefined ? { SLA_HORAS_LIMITE: upd.PRAZO } : {}),
+          ...(upd.JUSTIFICATIVA !== undefined ? { OBSERVACOES: upd.JUSTIFICATIVA } : {}),
+        }
+      : upd;
+    if (base.contrato === 'CEREBRO_APRENDIZADO' && !Object.keys(atualizacao).length) {
+      return res.status(409).json({sucesso:false,erro:'CEREBRO_APRENDIZADO não possui campo compatível para essa alteração; nenhum dado foi alterado.'});
+    }
+    const idField = base.contrato === 'CEREBRO_APRENDIZADO' ? 'ID_CASO' : 'ID_APRIMORAMENTO';
+    await atualizarPorID(base.aba,req.params.id,atualizacao,[idField,'ID_APRIMORAMENTO']);
+    invalidarCacheAba(base.aba);
+    await registrarAuditoria(req.user.usuario,'ATUALIZOU_APRIMORAMENTO_CEREBRO',req.params.id,base.aba,item,atualizacao);
     res.json({sucesso:true,item:{...item,...upd}});
   } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
 });
