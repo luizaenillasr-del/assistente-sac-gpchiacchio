@@ -49,6 +49,33 @@ function campo(obj, nomes) {
   return '';
 }
 
+// Registros históricos são preservados para rastreabilidade, mas só podem
+// alimentar o CIRCA quando possuem identidade, empresa e relato confiáveis.
+// Isso impede que linhas incompletas (ou chaves formadas apenas por vazios e
+// data) gerem reincidência, similaridade ou conhecimento confirmado.
+function historicoIdConfiavel(row = {}) {
+  return Boolean(String(campo(row, ['ID_HISTORICO', 'ORIG_ID_MANIFESTACAO', 'ID_MANIFESTACAO', 'PROTOCOLO', 'ID'])).trim());
+}
+
+function historicoIdentificador(row = {}) {
+  return String(campo(row, ['ORIG_ID_MANIFESTACAO', 'ID_MANIFESTACAO', 'ID_HISTORICO', 'PROTOCOLO', 'ID'])).trim();
+}
+
+function historicoPodeAlimentarCirca(row = {}) {
+  const status = normalizar(campo(row, ['STATUS_DADO', 'STATUS_HISTORICO']));
+  if (status.includes('incomplet') || status.includes('incomplete') || status.includes('pendente')) return false;
+  const empresa = campo(row, ['DRV_EMPRESA_NORMALIZADA', 'ORIG_EMPRESA', 'EMPRESA_RECLAMADA', 'EMPRESA']);
+  const descricao = campo(row, ['ORIG_DESCRICAO_RECLAMACAO', 'DESCRICAO_RECLAMACAO', 'DESCRICAO']);
+  return historicoIdConfiavel(row) && Boolean(String(empresa).trim()) && Boolean(String(descricao).trim());
+}
+
+function mesmaEmpresaCirca(a, b) {
+  const na = normalizar(a), nb = normalizar(b);
+  if (!na || !nb) return false;
+  const ca = _empresaCodigoSimil(a), cb = _empresaCodigoSimil(b);
+  return ca && cb ? ca === cb : na === nb;
+}
+
 const STOPWORDS = new Set([
   'a','o','e','de','da','do','das','dos','em','no','na','nos','nas',
   'um','uma','para','por','com','que','se','foi','ser','está','esta',
@@ -156,7 +183,7 @@ async function buscarCasosSimilares(manifestacao, limite = 8, empresaFiltro = nu
   try {
     const historico = await sheets.lerAba('BANCO_HISTORICO', 5000);
     const mapeados = historico
-      .filter(h => campo(h, ['ORIG_DESCRICAO_RECLAMACAO','DESCRICAO_RECLAMACAO','DESCRICAO']))
+      .filter(h => historicoPodeAlimentarCirca(h))
       .map(h => {
         const dh = campo(h, ['ORIG_DESCRICAO_RECLAMACAO','DESCRICAO_RECLAMACAO','DESCRICAO']);
         return {
@@ -176,7 +203,8 @@ async function buscarCasosSimilares(manifestacao, limite = 8, empresaFiltro = nu
           similaridade: calcularSimilaridade(descricao, dh),
         };
       })
-      .filter(caso => caso.similaridade >= 10);
+      .filter(caso => caso.similaridade >= 10)
+      .filter(caso => !empresaFiltro || mesmaEmpresaCirca(empresaFiltro, caso.empresa));
     return filtrarPorEmpresaSimil(mapeados)
       .sort((a, b) => b.similaridade - a.similaridade)
       .slice(0, limite);
@@ -194,14 +222,22 @@ async function detectarReincidencia(manifestacao) {
   const clienteNome = normalizar(campo(manifestacao, ['EMPRESA_RECLAMANTE','CLIENTE','CONTATO','nomeCliente']));
   const produto = normalizar(campo(manifestacao, ['PRODUTO','produto']));
   const idAtual = campo(manifestacao, ['ID_MANIFESTACAO','protocolo']);
+  const empresaAtual = campo(manifestacao, ['EMPRESA_RECLAMADA','EMPRESA','empresa']);
 
-  if (!clienteNome) return { nivel: 'SEM_REINCIDENCIA', detectada: false, quantidade: 0, casos: [] };
+  if (!clienteNome || !empresaAtual) return { nivel: 'SEM_REINCIDENCIA', detectada: false, quantidade: 0, casos: [] };
 
   try {
     if (prisma) {
       // Busca cliente por nome
+      let empresaId;
+      const empresaObj = await prisma.empresa.findFirst({
+        where: { OR: [{ codigo: { equals: empresaAtual, mode: 'insensitive' } }, { nome: { equals: empresaAtual, mode: 'insensitive' } }] },
+        select: { id: true },
+      }).catch(() => null);
+      empresaId = empresaObj?.id;
+      if (!empresaId) return { nivel: 'SEM_REINCIDENCIA', detectada: false, quantidade: 0, casos: [] };
       const cliente = await prisma.cliente.findFirst({
-        where: { nome: { contains: clienteNome, mode: 'insensitive' } },
+        where: { nome: { contains: clienteNome, mode: 'insensitive' }, empresaId },
       });
       if (cliente) {
         const manifestacoes = await prisma.manifestacao.findMany({
@@ -253,12 +289,17 @@ async function detectarReincidencia(manifestacao) {
     // A manifestação pode aparecer nas duas bases durante a transição. Use
     // o identificador persistido para não contar a mesma ocorrência duas vezes.
     const idsVistos = new Set();
-    const todos = [...historico, ...historicoBanco].filter(h => {
-      const id = String(campo(h, ['ID_HISTORICO','ID_MANIFESTACAO','ID','PROTOCOLO']) || '').trim();
-      if (!id) return true;
+    const todos = [
+      ...historico.map(h => ({ ...h, __fonteCirca: 'MANIFESTACOES' })),
+      ...historicoBanco.map(h => ({ ...h, __fonteCirca: 'BANCO_HISTORICO' })),
+    ].filter(h => {
+      const id = historicoIdentificador(h);
+      if (h.__fonteCirca === 'BANCO_HISTORICO' && !historicoPodeAlimentarCirca(h)) return false;
+      if (!historicoIdConfiavel(h)) return false;
       if (idsVistos.has(id)) return false;
       idsVistos.add(id);
-      return true;
+      const empresaH = campo(h, ['DRV_EMPRESA_NORMALIZADA','ORIG_EMPRESA','EMPRESA_RECLAMADA','EMPRESA']);
+      return mesmaEmpresaCirca(empresaAtual, empresaH);
     });
 
     const casos = todos.filter(h => {
@@ -483,7 +524,7 @@ async function consultarBaseConhecimento(tipo, setor, empresaId, descricao) {
     // O inventário encontrou o catálogo CAUSAS vazio, embora o histórico
     // contenha causas úteis. Elas entram somente como hipóteses históricas:
     // nunca são marcadas como confirmadas nem substituem uma decisão humana.
-    historicoTab.forEach(h => {
+    historicoTab.filter(h => historicoPodeAlimentarCirca(h)).forEach(h => {
       const causa = campo(h, ['CAUSA_RAIZ_VALIDADA','COMP_CAUSA_PROVAVEL','COMP_CAUSA_RAIZ','CAUSA_RAIZ','CAUSA']);
       if (!causa) return;
       const subcausa = campo(h, ['COMP_SUBCAUSA','SUBCAUSA','SUBCAUSA_CONFIRMADA']);
@@ -1099,6 +1140,10 @@ async function analisarManifestacao(manifestacao, regras = {}) {
 
 module.exports = {
   normalizar,
+  historicoIdConfiavel,
+  historicoIdentificador,
+  historicoPodeAlimentarCirca,
+  mesmaEmpresaCirca,
   calcularSimilaridade,
   buscarCasosSimilares,
   detectarReincidencia,

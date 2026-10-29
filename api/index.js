@@ -20,6 +20,7 @@ const fichaUnica = require('../server-services/fichaUnica');
 const protocoloAtomico = require('../server-services/protocoloAtomico');
 const circaEngine = require('../server-services/circaEngine');
 const circaWorkflow = require('../server-services/circaWorkflow');
+const matrizTratamentoService = require('../server-services/matrizTratamentoService');
 
 // Injeção de mock Sheets para testes — nunca ativo em produção (env var não existe em prod)
 const _sheetsMock = process.env.SHEETS_MOCK_PATH ? (() => { try { return require(process.env.SHEETS_MOCK_PATH); } catch(e) { console.warn('[MOCK] falhou ao carregar:', e.message); return null; } })() : null;
@@ -2989,12 +2990,14 @@ app.patch('/api/manifestacoes/:id', requerPermissao('manifestacoes.editar'), mid
       const causa = itemExistente.CAUSA || itemExistente.CAUSA_CONFIRMADA || '';
       const empresa = itemExistente.EMPRESA_RECLAMADA || '';
       const matrizRows = await lerAba('MATRIZ_TRATAMENTO', 5000).catch(() => []);
-      const regra = matrizRows.find(r =>
-        r.ATIVO !== 'NAO' &&
-        (!r.TIPO_MANIFESTACAO || r.TIPO_MANIFESTACAO.trim().toLowerCase() === tipo.trim().toLowerCase()) &&
-        (!r.CAUSA            || r.CAUSA.trim().toLowerCase()            === causa.trim().toLowerCase()) &&
-        (!r.EMPRESA          || r.EMPRESA === 'TODAS' || r.EMPRESA.trim().toLowerCase() === empresa.trim().toLowerCase())
-      );
+      const regra = matrizRows
+        .map(matrizTratamentoService.normalizarRegra)
+        .filter(matrizTratamentoService.regraUtilizavel)
+        .find(r =>
+          (!r.TIPO_MANIFESTACAO || r.TIPO_MANIFESTACAO.trim().toLowerCase() === tipo.trim().toLowerCase()) &&
+          (!r.CAUSA            || r.CAUSA.trim().toLowerCase()            === causa.trim().toLowerCase()) &&
+          (!r.EMPRESA          || r.EMPRESA === 'TODAS' || r.EMPRESA.trim().toLowerCase() === empresa.trim().toLowerCase())
+        );
       if (regra && String(regra.REQUER_APROVACAO).trim().toUpperCase() === 'SIM' && status === 'ENCERRADA') {
         return res.status(409).json({
           sucesso: false,
@@ -7700,17 +7703,21 @@ app.get('/api/manifestacoes/:id/circa', requerPermissao('manifestacoes.visualiza
       return res.status(403).json({ sucesso:false, erro:'Acesso não autorizado.' });
     const similares = await cerebroService.buscarCasosSimilares(m, 8, req.user?.EMPRESA || null).catch(() => []);
     const normTratCirca = r => ({
-      ...r,
-      ID_TRATAMENTO: r.ID_TRATAMENTO || r.ID_REGRA || r.ID || '',
+      ...matrizTratamentoService.normalizarRegra(r),
+      // Mantém os identificadores separados: regra não é procedimento.
       PROCEDIMENTO: r.PROCEDIMENTO || r.TRATATIVA_RECOMENDADA || r.TRATATIVA_PADRAO || '',
       CAUSA: r.CAUSA || '',
       SUBCAUSA: r.SUBCAUSA || r.SUBCATEGORIA || '',
       STATUS: r.STATUS || (String(r.ATIVO || '').toUpperCase() === 'NAO' ? 'INATIVO' : String(r.ATIVO || '').toUpperCase() === 'SIM' ? 'APROVADO' : ''),
     });
+    const tratamentosCirca = matriz
+      .map(normTratCirca)
+      .filter(matrizTratamentoService.regraUtilizavel)
+      .filter(r => !m.EMPRESA_RECLAMADA || pertenceEmpresa(String(m.EMPRESA_RECLAMADA), r.EMPRESA || r.EMPRESA_RECLAMADA || ''));
     const resultado = circaEngine.analisar({
       manifestacao: m,
       similares,
-      tratamentos: matriz.filter(r => !m.EMPRESA_RECLAMADA || pertenceEmpresa(String(m.EMPRESA_RECLAMADA), r.EMPRESA || r.EMPRESA_RECLAMADA || '')).map(normTratCirca),
+      tratamentos: tratamentosCirca,
       causas: causas.filter(r => !m.EMPRESA_RECLAMADA || pertenceEmpresa(String(m.EMPRESA_RECLAMADA), r.EMPRESA || r.EMPRESA_RECLAMADA || '')),
       tratativa: tratativas.filter(r => r.ID_MANIFESTACAO === (m.ID_MANIFESTACAO || idReq)).slice(-1)[0],
       devolutiva: devolutivas.filter(r => r.ID_MANIFESTACAO === (m.ID_MANIFESTACAO || idReq)).slice(-1)[0],
@@ -8077,10 +8084,17 @@ app.get('/api/cerebro/matriz-operacional', requerPerfil('MASTER','GESTOR SAC','A
     ]);
     const aprimoramentos = aprimBase.rows;
     const filtra = rows => _cScopeRows(req, rows).filter(r => !q || _cNorm(Object.values(r).join(' ')).includes(q));
-    const normTrat = r => ({ ...r, ID_TRATAMENTO: r.ID_TRATAMENTO || r.ID_REGRA || '', PROBLEMA_TRATADO: r.PROBLEMA_TRATADO || r.TIPO_MANIFESTACAO || '', PROCEDIMENTO: r.PROCEDIMENTO || r.TRATATIVA_PADRAO || '', CAUSA: r.CAUSA || '', STATUS: r.STATUS || (r.ATIVO === 'NAO' ? 'INATIVO' : r.ATIVO === 'SIM' || r.ATIVO === '1' || r.ATIVO === 'true' ? 'APROVADO' : r.ATIVO ? 'APROVADO' : '') });
-    const rows = aba === 'tratamentos' ? filtra(tratamentos).map(normTrat) : aba === 'aprimoramentos' ? filtra(aprimoramentos) : filtra(causas);
+    const normTrat = r => ({
+      ...matrizTratamentoService.normalizarRegra(r),
+      PROBLEMA_TRATADO: r.PROBLEMA_TRATADO || r.TIPO_MANIFESTACAO || '',
+      PROCEDIMENTO: r.PROCEDIMENTO || r.TRATATIVA_PADRAO || '',
+      CAUSA: r.CAUSA || '',
+      STATUS: r.STATUS || (r.ATIVO === 'NAO' ? 'INATIVO' : r.ATIVO === 'SIM' || r.ATIVO === '1' || r.ATIVO === 'true' ? 'APROVADO' : r.ATIVO ? 'APROVADO' : ''),
+    });
+    const tratamentosValidos = tratamentos.map(normTrat).filter(matrizTratamentoService.regraUtilizavel);
+    const rows = aba === 'tratamentos' ? filtra(tratamentosValidos) : aba === 'aprimoramentos' ? filtra(aprimoramentos) : filtra(causas);
     const page = Math.max(1, Number(req.query.page || 1)), limit = Math.min(100, Math.max(1, Number(req.query.limit || 50)));
-    res.json({ sucesso:true, aba, itens:rows.slice((page-1)*limit,page*limit), total:rows.length, page, limit, causas:filtra(causas).length, tratamentos:filtra(tratamentos).length, aprimoramentos:filtra(aprimoramentos).length });
+    res.json({ sucesso:true, aba, itens:rows.slice((page-1)*limit,page*limit), total:rows.length, page, limit, causas:filtra(causas).length, tratamentos:filtra(tratamentosValidos).length, aprimoramentos:filtra(aprimoramentos).length });
   } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e), itens:[] }); }
 });
 
@@ -8129,6 +8143,10 @@ app.patch('/api/cerebro/tratamentos/:id', requerPerfil('MASTER','GESTOR SAC','AN
     campos.forEach(c=>{if(b[c]!==undefined)upd[c]=b[c];});
     upd.ATUALIZADO_EM=new Date().toISOString();
     if(!Object.keys(upd).filter(k=>k!=='ATUALIZADO_EM').length) return res.status(400).json({sucesso:false,erro:'Nenhum campo para atualizar.'});
+    if (String(upd.STATUS || '').toUpperCase() === 'APROVADO' || String(upd.ATIVO || '').toUpperCase() === 'SIM') {
+      const validacao = _validarAtivacaoMatriz({ ...item, ...upd });
+      if (!validacao.valida) return res.status(422).json({ sucesso:false, codigo:'REGRA_MATRIZ_INCOMPLETA', erro:'A regra não pode ser aprovada sem os campos obrigatórios.', camposAusentes:validacao.motivos });
+    }
     await atualizarPorID('MATRIZ_TRATAMENTO',req.params.id,upd,['ID_TRATAMENTO']);
     invalidarCacheAba('MATRIZ_TRATAMENTO');
     await registrarAuditoria(req.user.usuario,'ATUALIZOU_TRATAMENTO_CEREBRO',req.params.id,'MATRIZ_TRATAMENTO',item,upd);
@@ -9364,6 +9382,9 @@ async function carregarFichasBiblioteca(req) {
     const dt = _bibData(h.ORIG_DATA_ABERTURA || h.DATA_ABERTURA || h['Data de Registro']);
     const trat = String(h.COMP_TRATATIVA_ADOTADA || h.COMP_ACAO_CORRETIVA || h.TRATATIVA_REALIZADA || '').trim();
     const ev = h.ORIG_EVIDENCIA || h.EVIDENCIA_URL ? 1 : 0;
+    const circaUtilizavel = typeof cerebroService.historicoPodeAlimentarCirca === 'function'
+      ? cerebroService.historicoPodeAlimentarCirca(h)
+      : Boolean(h.ORIG_EMPRESA && h.ORIG_DESCRICAO_RECLAMACAO);
     out.push({
       ID_FICHA: id, ID_MANIFESTACAO: '', PROTOCOLO: id,
       DATA_REGISTRO: dt ? dt.iso : '', ANO: dt ? dt.ano : 'S/A', MES: dt ? dt.mes : '00', DIA: dt ? dt.dia : '',
@@ -9374,6 +9395,7 @@ async function carregarFichasBiblioteca(req) {
       COLABORADOR_RECEBIMENTO: h.ORIG_ATENDENTE || '',
       ORIGEM: 'IMPORTADA', STATUS: h.STATUS_FINAL || h.STATUS || 'ARQUIVADA', COM_TRATATIVA: !!trat,
       TOTAL_EVIDENCIAS: Math.max(ev, nEv(id)),
+      CIRCA_HISTORICO_ELEGIVEL: circaUtilizavel ? 'SIM' : 'NAO',
       ARQUIVO_NOME: '', PDF_DRIVE_URL: '', PDF_NOME: '',
       _DESC: h.ORIG_DESCRICAO_RECLAMACAO || '', _TRAT: trat, _CONCLUSAO: '',
     });
@@ -9388,11 +9410,11 @@ async function carregarFichasBiblioteca(req) {
   const grupos = {};
   escopo.forEach(f => {
     f._K = chave(f); f._I = mIdx(f);
-    if (f._K && f._I !== null && normalizarTexto(f.TIPO_MANIFESTACAO).startsWith('reclama')) (grupos[f._K] = grupos[f._K] || []).push(f);
+    if (f.CIRCA_HISTORICO_ELEGIVEL !== 'NAO' && f._K && f._I !== null && normalizarTexto(f.TIPO_MANIFESTACAO).startsWith('reclama')) (grupos[f._K] = grupos[f._K] || []).push(f);
   });
   escopo.forEach(f => {
     f.REINCIDENTE = false; f.REINCIDENTE_N = 0; f.REINCIDENTE_IDS = [];
-    if (!f._K || f._I === null || !normalizarTexto(f.TIPO_MANIFESTACAO).startsWith('reclama')) return;
+    if (f.CIRCA_HISTORICO_ELEGIVEL === 'NAO' || !f._K || f._I === null || !normalizarTexto(f.TIPO_MANIFESTACAO).startsWith('reclama')) return;
     const par = (grupos[f._K] || []).filter(x => Math.abs(x._I - f._I) <= 11);
     if (par.length >= 2) { f.REINCIDENTE = true; f.REINCIDENTE_N = par.length; f.REINCIDENTE_IDS = par.map(x => x.PROTOCOLO); }
   });
@@ -10987,6 +11009,14 @@ app.post('/api/alimentacao/upload-docx', requerPerfil('MASTER','ANALISTA SAC'), 
   req.pipe(bb);
 });
 
+function _validarAtivacaoMatriz(obj) {
+  const normalizada = matrizTratamentoService.normalizarRegra(obj);
+  const validacao = matrizTratamentoService.validarRegra(normalizada);
+  return validacao.ativa && validacao.motivos.length
+    ? { valida: false, contrato: validacao.contrato, motivos: validacao.motivos }
+    : { valida: true, contrato: validacao.contrato, motivos: [] };
+}
+
 app.post('/api/matriz-tratamento', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
   try {
     const b = req.body||{};
@@ -11008,6 +11038,8 @@ app.post('/api/matriz-tratamento', requerPerfil('MASTER','ANALISTA SAC'), async 
       DATA_CRIACAO:new Date().toISOString(),
       CRIADO_POR:req.user.usuario
     };
+    const validacao = _validarAtivacaoMatriz(obj);
+    if (!validacao.valida) return res.status(422).json({ sucesso:false, codigo:'REGRA_MATRIZ_INCOMPLETA', erro:'A regra não pode ser ativada sem os campos obrigatórios.', camposAusentes:validacao.motivos });
     await appendObjeto('MATRIZ_TRATAMENTO',obj).catch(e => console.warn('[matriz] Sheets falhou (seguindo p/ PG):', e.message));
     if (conhecimentoRepo && typeof conhecimentoRepo.upsertMatriz === 'function') await conhecimentoRepo.upsertMatriz({
       empresa: obj.EMPRESA, tipo: obj.TIPO_MANIFESTACAO, categoria: obj.CAUSA, subcategoria: obj.SUBCAUSA, setor: obj.SETOR_RESPONSAVEL,
@@ -11028,6 +11060,9 @@ app.post('/api/matriz-tratamento', requerPerfil('MASTER','ANALISTA SAC'), async 
 app.patch('/api/matriz-tratamento/:id', requerPerfil('MASTER','ANALISTA SAC'), async (req,res)=>{
   try {
     const b = req.body||{};
+    const existentes = await lerAba('MATRIZ_TRATAMENTO', 5000).catch(() => []);
+    const existente = existentes.find(r => String(r.ID_REGRA || r.ID_TRATAMENTO || r.ID || '') === String(req.params.id));
+    if (!existente) return res.status(404).json({sucesso:false,erro:'Regra não encontrada.'});
     const dados = {};
     if (b.TIPO_MANIFESTACAO!==undefined) dados.TIPO_MANIFESTACAO=b.TIPO_MANIFESTACAO;
     if (b.CAUSA!==undefined) dados.CAUSA=b.CAUSA;
@@ -11038,7 +11073,11 @@ app.patch('/api/matriz-tratamento/:id', requerPerfil('MASTER','ANALISTA SAC'), a
     if (b.TRATATIVA_PADRAO!==undefined) dados.TRATATIVA_PADRAO=b.TRATATIVA_PADRAO;
     if (b.DEVOLUTIVA_PADRAO!==undefined) dados.DEVOLUTIVA_PADRAO=b.DEVOLUTIVA_PADRAO;
     if (b.ATIVO!==undefined) dados.ATIVO=b.ATIVO;
-    const r = await atualizarPorID('MATRIZ_TRATAMENTO', req.params.id, dados, ['ID_REGRA']);
+    const consolidada = { ...existente, ...dados };
+    const validacao = _validarAtivacaoMatriz(consolidada);
+    if (!validacao.valida) return res.status(422).json({ sucesso:false, codigo:'REGRA_MATRIZ_INCOMPLETA', erro:'A regra não pode permanecer ativa sem os campos obrigatórios.', camposAusentes:validacao.motivos });
+    const chave = existente.ID_TRATAMENTO ? 'ID_TRATAMENTO' : (existente.ID_REGRA ? 'ID_REGRA' : 'ID');
+    const r = await atualizarPorID('MATRIZ_TRATAMENTO', req.params.id, dados, [chave]);
     if (!r) return res.status(404).json({sucesso:false,erro:'Regra não encontrada.'});
     res.json({sucesso:true});
   } catch(e){ res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }

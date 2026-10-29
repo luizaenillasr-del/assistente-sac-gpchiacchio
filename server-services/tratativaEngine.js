@@ -243,6 +243,7 @@ async function gerarTratativaEstruturada(params) {
     },
     regras: {
       idTratamento: regras.idTratamento,
+      idRegra: regras.idRegra || null,
       origem: regras.origem,
       score: regras.score,
     },
@@ -266,7 +267,7 @@ async function gerarTratativaEstruturada(params) {
     informacoesProibidas: regras.informacoesProibidas,
     modeloDevolutiva: regras.modeloDevolutiva,
     conflitos,
-    confianca: regras.idTratamento ? 80 : 45,
+    confianca: (regras.idTratamento || regras.idRegra) ? 80 : 45,
     tempoMs: Date.now() - inicio,
     geradaEm: new Date().toISOString(),
   };
@@ -348,7 +349,7 @@ async function salvarTratativa(idManifestacao, tratativa, usuario) {
     VERSAO_CEREBRO: '2.0.0',
     VERSAO_POLITICAS: '1.0',
     VERSAO_MATRIZ: '1.0',
-    REGRAS_CONSULTADAS: tratativa.regras.idTratamento || 'PADRAO',
+    REGRAS_CONSULTADAS: tratativa.regras.idTratamento || tratativa.regras.idRegra || 'PADRAO',
     CASOS_SIMILARES_IDS: '',
     SLA_STATUS: '',
     CALCULO_ATRASO: tratativa.diagnostico.atraso ? JSON.stringify(tratativa.diagnostico.atraso) : '',
