@@ -11796,6 +11796,8 @@ let _nmAnaliseAtual = null;
 let _nmDecisao = null; // 'aceita' | 'editada' | 'rejeitada'
 let _nmCardId = null;
 let _nmIdempotencyKey = null;
+let _nmRascunhoUltimaEdicao = '';
+let _nmEvidenciasPersistidas = [];
 let _nmAnalisePersistidaCarregada = false;
 let _nmDeterministicaPromise = null;
 let _nmAnaliseInFlight = false;
@@ -12526,7 +12528,7 @@ function fmtBytes(n){ if(!n) return ''; if(n<1024) return n+' B'; if(n<1024*1024
 function abrirImportacaoDocumento(tipo){ _nmTipoImportacao=tipo; const i=document.getElementById('nm-import-file'); i.value=''; i.click(); }
 function adicionarEvidencias(files){ [...(files||[])].forEach(f=>{ if(!_nmEvidencias.some(x=>x.name===f.name&&x.size===f.size)){_nmEvidencias.push(f);} }); renderEvidencias(); }
 function removerEvidencia(i){_nmEvidencias.splice(i,1);renderEvidencias();}
-function renderEvidencias(){const el=document.getElementById('nm-evidencias-list'); if(!el)return; el.innerHTML=_nmEvidencias.map((f,i)=>`<div class="upload-item"><span>📎 ${esc(f.name)}</span><small>${fmtBytes(f.size)} <button class="btn btn-ghost" style="padding:2px 5px" onclick="event.stopPropagation();removerEvidencia(${i})">Remover</button></small></div>`).join('');}
+function renderEvidencias(){const el=document.getElementById('nm-evidencias-list'); if(!el)return; const salvos=_nmEvidenciasPersistidas.map(f=>`<div class="upload-item"><span>📎 ${esc(f.nome||f.NOME||f.NOME_ARQUIVO||'arquivo')}</span><small>${fmtBytes(f.tamanho||f.TAMANHO||0)} · ${String(f.status||'ARMAZENADO').replace('_',' ').toLowerCase()}</small></div>`).join(''); const novos=_nmEvidencias.map((f,i)=>`<div class="upload-item"><span>📎 ${esc(f.name)}</span><small>${fmtBytes(f.size)} <button class="btn btn-ghost" style="padding:2px 5px" onclick="event.stopPropagation();removerEvidencia(${i})">Remover</button></small></div>`).join(''); el.innerHTML=salvos+novos;}
 function fileToBase64(file){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsDataURL(file);});}
 async function processarDocumentoImportado(file){
   if(!file)return; const status=document.getElementById('nm-extracao-status'); const preview=document.getElementById('nm-extracao-preview');
@@ -12573,6 +12575,8 @@ async function initNovaManifestacao() {
   _nmAnalisePersistidaCarregada = false;
   _nmDecisao = null;
   _nmCardId = null;
+  _nmRascunhoUltimaEdicao = '';
+  _nmEvidenciasPersistidas = [];
   // Libera uma consulta nova; a resposta de qualquer consulta anterior será
   // descartada pela verificação do identificador acima.
   _nmDeterministicaPromise = null;
@@ -12595,8 +12599,10 @@ async function initNovaManifestacao() {
       const m = d?.manifestacao || d?.item;
       if (m && !/^(ENCERRADA|FECHADA|CONCLUIDA)$/i.test(String(m.STATUS || m.STATUS_FICHA || ''))) {
         _nmCardId = m.ID_MANIFESTACAO || resumeId;
-        const mapa = {DESCRICAO:'nm-descricao',DESCRICAO_MANIFESTACAO:'nm-descricao',EMPRESA_RECLAMANTE:'nm-empresa',CONTATO:'nm-nome',CNPJ:'nm-cnpj',TELEFONE:'nm-tel',EMAIL:'nm-email',PRODUTO:'nm-produto',LOTE:'nm-lote',NFE:'nm-nfe',PRIORIDADE:'nm-prioridade',CANAL:'nm-origem',TIPO:'nm-tipo',DATA_REGISTRO:'nm-data'};
+        const mapa = {DESCRICAO:'nm-descricao',DESCRICAO_MANIFESTACAO:'nm-descricao',EMPRESA_RECLAMADA:'nm-empresa-reclamada',EMPRESA_RECLAMANTE:'nm-empresa',CONTATO:'nm-nome',CNPJ:'nm-cnpj',TELEFONE:'nm-tel',EMAIL:'nm-email',PRODUTO:'nm-produto',LOTE:'nm-lote',NFE:'nm-nfe',QUANTIDADE:'nm-qtd',QUANTIDADE_TOTAL:'nm-qtd-total',PRIORIDADE:'nm-prioridade',CANAL:'nm-origem',TIPO:'nm-tipo',ORIGEM:'nm-origem',DATA_REGISTRO:'nm-data',CATEGORIA:'nm-categoria',MOTIVO:'nm-motivo',CAMINHO_TRATATIVA:'nm-caminho-tratativa',TRATATIVA_SAC_INTERNA:'nm-tratativa-sac',COMPLEMENTO_PEDIDO:'nm-complemento-pedido',CANAL_RETORNO:'nm-canal-retorno',PRAZO_RETORNO_SAC:'nm-prazo-retorno',SETOR_ACIONADO:'nm-setor-acionado',ESCOPO_ACIONAMENTO:'nm-escopo-acionado',INVESTIGACAO_O_QUE:'nm-investigacao-verificada',INVESTIGACAO_NOTAS:'nm-investigacao-notas',INVESTIGACAO_EVIDENCIAS:'nm-investigacao-resultado',SUBCAUSA:'nm-subcausa',CAUSA_RAIZ_CONFIRMADA:'nm-causa-raiz',ACOES_CORRETIVAS:'nm-acao-executada',VALIDACAO_RESULTADO:'nm-validacao-resultado',PROCEDENTE:'nm-procedente',PROCEDENTE_JUSTIFICATIVA:'nm-procedente-justif',RESUMO_RESOLUCAO:'nm-resumo-resolucao',DEVOLUTIVA_CANAL:'nm-devolutiva-canal',DEVOLUTIVA_DESTINATARIO:'nm-devolutiva-destinatario',DEVOLUTIVA_FINAL:'nm-devolutiva',APRENDIZADO_CASO:'nm-aprendizado-caso',APRENDIZADO_MATRIZ:'nm-aprendizado-matriz',OBSERVACOES_FINAIS:'nm-observacoes-finais'};
         for (const [campo,id] of Object.entries(mapa)) { const el=document.getElementById(id); if (el && m[campo] !== undefined && String(m[campo]).trim()) el.value=m[campo]; }
+        try { const anexos=typeof m.ANEXOS==='string'?JSON.parse(m.ANEXOS||'[]'):(Array.isArray(m.ANEXOS)?m.ANEXOS:[]); _nmEvidenciasPersistidas=Array.isArray(anexos)?anexos:[]; } catch (_) { _nmEvidenciasPersistidas=[]; }
+        _nmRascunhoUltimaEdicao=String(m.DATA_ULTIMA_EDICAO||''); renderEvidencias();
         window.nmEtapa = Math.max(1, Math.min(7, Number(m.ETAPA_ATUAL || 1)));
       }
     }
@@ -14474,7 +14480,7 @@ function nmCardPayload() {
   const val=id=>document.getElementById(id)?.value||'';
   let currentUser={}; try { currentUser=JSON.parse(sessionStorage.getItem('sac-user')||'{}'); } catch(e) {}
   return {
-    empresaReclamada:val('nm-empresa-reclamada'), empresaReclamante:val('nm-empresa')||val('nm-nome')||val('nm-cnpj'), contato:val('nm-nome'), cnpj:val('nm-cnpj'), telefone:val('nm-tel'), email:val('nm-email'), produto:val('nm-produto'), lote:val('nm-lote'), nfe:val('nm-nfe'), descricao:val('nm-descricao')||'Rascunho em preenchimento.', tipo:val('nm-tipo')||'Reclamação', canal:nmCanalSelecionado(), origem:nmCanalSelecionado(), prioridade:val('nm-prioridade')||'NORMAL', dataRegistro:val('nm-data'), DATA_REGISTRO:val('nm-data'), usuario:currentUser.usuario||currentUser.USUARIO||'analista', etapaAtual:String(window.nmEtapa||1), ETAPA_ATUAL:String(window.nmEtapa||1), STATUS:{1:'RASCUNHO',2:'EM_TRIAGEM',3:'EM_TRATATIVA',4:'EM_INVESTIGACAO',5:'AGUARDANDO_VALIDACAO_SAC',6:'AGUARDANDO_DEVOLUTIVA',7:'AGUARDANDO_ENCERRAMENTO'}[Number(window.nmEtapa)||1], STATUS_FICHA:{1:'RASCUNHO',2:'EM_TRIAGEM',3:'EM_TRATATIVA',4:'EM_INVESTIGACAO',5:'AGUARDANDO_VALIDACAO_SAC',6:'AGUARDANDO_DEVOLUTIVA',7:'AGUARDANDO_ENCERRAMENTO'}[Number(window.nmEtapa)||1], mensagemEtapa:'Rascunho em preenchimento.', MENSAGEM_ETAPA:'Rascunho em preenchimento.', rascunho:true,
+    empresaReclamada:val('nm-empresa-reclamada'), empresaReclamante:val('nm-empresa')||val('nm-nome')||val('nm-cnpj'), contato:val('nm-nome'), cnpj:val('nm-cnpj'), telefone:val('nm-tel'), email:val('nm-email'), produto:val('nm-produto'), lote:val('nm-lote'), nfe:val('nm-nfe'), quantidade:val('nm-qtd'), quantidadeTotal:val('nm-qtd-total'), pedido:val('nm-pedido'), descricao:val('nm-descricao')||'Rascunho em preenchimento.', tipo:val('nm-tipo')||'Reclamação', canal:nmCanalSelecionado(), origem:nmCanalSelecionado(), prioridade:val('nm-prioridade')||'NORMAL', categoria:val('nm-categoria'), motivo:val('nm-motivo'), gravidade:val('nm-severidade'), dataRegistro:val('nm-data'), DATA_REGISTRO:val('nm-data'), usuario:currentUser.usuario||currentUser.USUARIO||'analista', etapaAtual:String(window.nmEtapa||1), ETAPA_ATUAL:String(window.nmEtapa||1), STATUS:{1:'RASCUNHO',2:'EM_TRIAGEM',3:'EM_TRATATIVA',4:'EM_INVESTIGACAO',5:'AGUARDANDO_VALIDACAO_SAC',6:'AGUARDANDO_DEVOLUTIVA',7:'AGUARDANDO_ENCERRAMENTO'}[Number(window.nmEtapa)||1], STATUS_FICHA:{1:'RASCUNHO',2:'EM_TRIAGEM',3:'EM_TRATATIVA',4:'EM_INVESTIGACAO',5:'AGUARDANDO_VALIDACAO_SAC',6:'AGUARDANDO_DEVOLUTIVA',7:'AGUARDANDO_ENCERRAMENTO'}[Number(window.nmEtapa)||1], mensagemEtapa:'Rascunho em preenchimento.', MENSAGEM_ETAPA:'Rascunho em preenchimento.', rascunho:true,
     CAMINHO_TRATATIVA:val('nm-caminho-tratativa'), TRATATIVA_SAC_INTERNA:val('nm-tratativa-sac'), COMPLEMENTO_PEDIDO:val('nm-complemento-pedido'), CANAL_RETORNO:val('nm-canal-retorno'), PRAZO_RETORNO_SAC:val('nm-prazo-retorno'), SETOR_ACIONADO:val('nm-setor-acionado'), ESCOPO_ACIONAMENTO:val('nm-escopo-acionado'),
     INVESTIGACAO_O_QUE:val('nm-investigacao-verificada'), INVESTIGACAO_NOTAS:val('nm-investigacao-notas'), INVESTIGACAO_EVIDENCIAS:val('nm-investigacao-resultado'), SUBCAUSA:val('nm-subcausa'), CAUSA_RAIZ_CONFIRMADA:val('nm-causa-raiz'), ACOES_CORRETIVAS:val('nm-acao-executada'),
     VALIDACAO_RESULTADO:val('nm-validacao-resultado'), PROCEDENTE:val('nm-procedente'), PROCEDENTE_JUSTIFICATIVA:val('nm-procedente-justif'),
@@ -14488,11 +14494,13 @@ async function salvarRascunho(options={}) {
   const reportError=!!options.reportError || !silent;
   try {
     const payload=nmCardPayload();
+    if (_nmRascunhoUltimaEdicao) payload.ultimaEdicaoConhecida=_nmRascunhoUltimaEdicao;
     let res;
     if(_nmCardId) res=await _apiFetch(`/api/manifestacoes/${encodeURIComponent(_nmCardId)}/circa-dados`,60000,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     else res=await _apiFetch('/api/manifestacoes',60000,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     if(!res?.sucesso) throw new Error(res?.erro||'Falha ao salvar o rascunho.');
     _nmCardId=_nmCardId||res.id;
+    _nmRascunhoUltimaEdicao=String(res.atualizadoEm||_nmRascunhoUltimaEdicao||'');
     if (_nmCardId) localStorage.setItem('sac-rascunho-id', String(_nmCardId));
     // O vínculo de arquivos usa a mesma ficha e o mesmo endpoint de anexos;
     // o rascunho não perde os arquivos selecionados quando a página é
@@ -14502,6 +14510,7 @@ async function salvarRascunho(options={}) {
       const anexos = await Promise.all(_nmEvidencias.map(async f => ({nome:f.name,mimeType:f.type,tamanho:f.size,dataBase64:await fileToBase64(f),categoria:'EVIDENCIA'})));
       const upload = await _apiFetch(`/api/manifestacoes/${encodeURIComponent(_nmCardId)}/circa-dados`,60000,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({anexos})});
       if (!upload?.sucesso) throw new Error(upload?.erro || 'Falha ao vincular os anexos do rascunho.');
+      _nmRascunhoUltimaEdicao=String(upload.atualizadoEm||_nmRascunhoUltimaEdicao||'');
     }
     if(!silent) alert(`Rascunho salvo${_nmCardId?' ('+_nmCardId+')':''}.`);
     return true;

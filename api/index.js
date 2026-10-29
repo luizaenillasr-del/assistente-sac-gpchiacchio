@@ -2478,7 +2478,7 @@ app.post('/api/manifestacoes', requerPermissao('manifestacoes.abrir'), async (re
       IDEMPOTENCY_KEY:rascunho?'':protocoloKey,
       CONTATO:contato||'', PRODUTO:produto||'', LOTE:lote||'', NFE:nfe||'', DESCRICAO:descricao,
       DESCRICAO_MANIFESTACAO:descricao, STATUS:rascunho?'RASCUNHO':'AGUARDANDO_TRIAGEM_SAC', TIPO:tipoFinal, TIPO_SUGERIDO:'',
-      SETOR_SUGERIDO:'', SETORES_SUGERIDOS:'', PROCEDIMENTO_SUGERIDO:'', SLA_HORAS:'', PRIORIDADE:'',
+      SETOR_SUGERIDO:'', SETORES_SUGERIDOS:'', PROCEDIMENTO_SUGERIDO:'', SLA_HORAS:'', PRIORIDADE:req.body.prioridade||'NORMAL',
       RNC_SUGERIDO:'NÃO', EMPRESA_RECLAMADA:empNorm||empresaReclamada||'', CANAL:canal||'',
       CNPJ:cnpj||'', TELEFONE:telefone||'', EMAIL:email||'', QUANTIDADE:quantidade||'',
       QUANTIDADE_DEVOLVIDA:String(houveDevolucao||'NÃO').toUpperCase()==='SIM' ? (quantidadeDevolvida||'') : '', QUANTIDADE_TOTAL:quantidadeTotal||'',
@@ -2614,7 +2614,7 @@ app.post('/api/manifestacoes', requerPermissao('manifestacoes.abrir'), async (re
         }).catch(() => {});
       }
     } catch (e) { console.error('Falha na análise automática:', e.message); }
-    res.json({ sucesso:true, id, protocolo, analise, rascunho:!!rascunho, mensagem:rascunho?'Rascunho salvo.':'Manifestação registrada e analisada com sucesso.' });
+    res.json({ sucesso:true, id, protocolo, analise, rascunho:!!rascunho, atualizadoEm:agora, mensagem:rascunho?'Rascunho salvo.':'Manifestação registrada e analisada com sucesso.' });
   } catch (e) {
     console.error('[POST /api/manifestacoes] ERRO:', e?.message, e?.response?.status, e?.stack?.split('\n')[1]);
     const status = e?.response?.status || e?.code;
@@ -7825,10 +7825,51 @@ app.patch('/api/manifestacoes/:id/circa-dados', requerPermissao('manifestacoes.e
     if(req._empresaScope && !pertenceEmpresa(req._empresaScope,m.EMPRESA_RECLAMADA||'')) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado.'});
     const requestedStage=Number(req.body?.ETAPA_ATUAL||0);
     const currentStage=circaWorkflow.stageForStatus(m.STATUS||m.STATUS_FICHA||'RASCUNHO');
+    const versaoConhecida=String(req.body?.ultimaEdicaoConhecida||'').trim();
+    const versaoAtual=String(m.DATA_ULTIMA_EDICAO||'').trim();
+    if (versaoConhecida && versaoAtual && versaoConhecida !== versaoAtual) return res.status(409).json({sucesso:false,erro:'O rascunho foi alterado em outra sessão. Recarregue a ficha antes de salvar.',codigo:'RASCUNHO_CONCORRENTE',atualizadoEm:versaoAtual});
     if(requestedStage && (!Number.isInteger(requestedStage)||requestedStage<1||requestedStage>7)) return res.status(400).json({sucesso:false,erro:'Etapa CIRCA inválida.'});
     if(requestedStage && requestedStage>currentStage+1 && String(req.user?.PERFIL||req.user?.perfil||'').toUpperCase()!=='MASTER') return res.status(409).json({sucesso:false,erro:'A etapa solicitada depende da conclusão das etapas anteriores.',etapaAtual:currentStage});
-    const allowed=['STATUS','STATUS_FICHA','EMPRESA_RECLAMADA','EMPRESA_RECLAMANTE','CONTATO','CNPJ','TELEFONE','EMAIL','PRODUTO','LOTE','NFE','DESCRICAO','DESCRICAO_MANIFESTACAO','TIPO','CANAL','ORIGEM','PRIORIDADE','CATEGORIA','MOTIVO','GRAVIDADE','ETAPA_ATUAL','MENSAGEM_ETAPA','CAMINHO_TRATATIVA','COMPLEMENTO_PEDIDO','CANAL_RETORNO','PRAZO_RETORNO_SAC','TRATATIVA_SAC_INTERNA','SETOR_ACIONADO','ESCOPO_ACIONAMENTO','INVESTIGACAO_O_QUE','INVESTIGACAO_VERIFICACOES','INVESTIGACAO_EVIDENCIAS','INVESTIGACAO_NOTAS','SUBCAUSA','CAUSA_RAIZ_CONFIRMADA','ACOES_CORRETIVAS','DATA_SOLUCAO','RESPONSAVEL_EXECUCAO','VALIDACAO_RESULTADO','PROCEDENTE','PROCEDENTE_JUSTIFICATIVA','VALID_SAC_DATA_RETORNO','VALID_SAC_CLIENTE_INFORMADO','VALID_SAC_RESOLVIDA','RESUMO_RESOLUCAO','DEVOLUTIVA_CANAL','DEVOLUTIVA_DESTINATARIO','DEVOLUTIVA_FINAL','DEVOLUTIVA_ENVIADA','APRENDIZADO_CASO','APRENDIZADO_MATRIZ','OBSERVACOES_FINAIS','STATUS_TRATATIVA','ANEXOS','EVIDENCIAS','ANALISE_IA','CHECKLIST_CIRCA','PENDENCIAS_VALIDACAO_HUMANA'];
-    const patch={}; for(const key of allowed) if(Object.prototype.hasOwnProperty.call(req.body||{},key)) patch[key]=req.body[key] ?? '';
+    const allowed=['STATUS','STATUS_FICHA','EMPRESA_RECLAMADA','EMPRESA_RECLAMANTE','CONTATO','CNPJ','TELEFONE','EMAIL','PRODUTO','LOTE','NFE','DESCRICAO','DESCRICAO_MANIFESTACAO','TIPO','CANAL','ORIGEM','PRIORIDADE','CATEGORIA','MOTIVO','GRAVIDADE','ETAPA_ATUAL','MENSAGEM_ETAPA','CAMINHO_TRATATIVA','COMPLEMENTO_PEDIDO','CANAL_RETORNO','PRAZO_RETORNO_SAC','TRATATIVA_SAC_INTERNA','SETOR_ACIONADO','ESCOPO_ACIONAMENTO','INVESTIGACAO_O_QUE','INVESTIGACAO_VERIFICACOES','INVESTIGACAO_EVIDENCIAS','INVESTIGACAO_NOTAS','SUBCAUSA','CAUSA_RAIZ_CONFIRMADA','ACOES_CORRETIVAS','DATA_SOLUCAO','RESPONSAVEL_EXECUCAO','VALIDACAO_RESULTADO','PROCEDENTE','PROCEDENTE_JUSTIFICATIVA','VALID_SAC_DATA_RETORNO','VALID_SAC_CLIENTE_INFORMADO','VALID_SAC_RESOLVIDA','RESUMO_RESOLUCAO','DEVOLUTIVA_CANAL','DEVOLUTIVA_DESTINATARIO','DEVOLUTIVA_FINAL','DEVOLUTIVA_ENVIADA','APRENDIZADO_CASO','APRENDIZADO_MATRIZ','OBSERVACOES_FINAIS','STATUS_TRATATIVA','ANEXOS','EVIDENCIAS','ANALISE_IA','CHECKLIST_CIRCA','PENDENCIAS_VALIDACAO_HUMANA','QUANTIDADE','QUANTIDADE_TOTAL','QUANTIDADE_DEVOLVIDA','PEDIDO','DATA_PEDIDO','DATA_ENTREGA','VENDEDOR','DATA_RECEBIMENTO','RAZAO_SOCIAL','NOME_FANTASIA','CODIGO_CLIENTE','UNIDADE_MEDIDA','QUANTIDADE_AFETADA','VALOR_UNITARIO','VALOR_TOTAL','PREJUIZO_ESTIMADO','PREJUIZO_CONFIRMADO','RESPONSAVEL'];
+    // O formulário envia aliases em camelCase/minúsculo. Em atualizações de
+    // rascunho não podemos transformar um snapshot parcial em uma limpeza
+    // acidental: campos vazios preservam o valor persistido, salvo quando o
+    // cliente declara explicitamente `camposLimpar`.
+    const aliases={
+      EMPRESA_RECLAMADA:'empresaReclamada',EMPRESA_RECLAMANTE:'empresaReclamante',CONTATO:'contato',CNPJ:'cnpj',TELEFONE:'telefone',EMAIL:'email',
+      PRODUTO:'produto',LOTE:'lote',NFE:'nfe',DESCRICAO:'descricao',DESCRICAO_MANIFESTACAO:'descricao',TIPO:'tipo',CANAL:'canal',ORIGEM:'origem',PRIORIDADE:'prioridade',
+      CATEGORIA:'categoria',MOTIVO:'motivo',GRAVIDADE:'gravidade',ETAPA_ATUAL:'etapaAtual',STATUS:'status',STATUS_FICHA:'statusFicha',MENSAGEM_ETAPA:'mensagemEtapa',
+      CAMINHO_TRATATIVA:'caminhoTratativa',COMPLEMENTO_PEDIDO:'complementoPedido',CANAL_RETORNO:'canalRetorno',PRAZO_RETORNO_SAC:'prazoRetornoSAC',
+      TRATATIVA_SAC_INTERNA:'tratativaSACInterna',SETOR_ACIONADO:'setorAcionado',ESCOPO_ACIONAMENTO:'escopoAcionamento',
+      INVESTIGACAO_O_QUE:'investigacaoOQue',INVESTIGACAO_VERIFICACOES:'investigacaoVerificacoes',INVESTIGACAO_EVIDENCIAS:'investigacaoEvidencias',INVESTIGACAO_NOTAS:'investigacaoNotas',
+      SUBCAUSA:'subcausa',CAUSA_RAIZ_CONFIRMADA:'causaRaizConfirmada',ACOES_CORRETIVAS:'acoesCorretivas',DATA_SOLUCAO:'dataSolucao',RESPONSAVEL_EXECUCAO:'responsavelExecucao',
+      VALIDACAO_RESULTADO:'validacaoResultado',PROCEDENTE:'procedente',PROCEDENTE_JUSTIFICATIVA:'procedenteJustificativa',VALID_SAC_DATA_RETORNO:'validSacDataRetorno',
+      VALID_SAC_CLIENTE_INFORMADO:'validSacClienteInformado',VALID_SAC_RESOLVIDA:'validSacResolvida',RESUMO_RESOLUCAO:'resumoResolucao',DEVOLUTIVA_CANAL:'devolutivaCanal',
+      DEVOLUTIVA_DESTINATARIO:'devolutivaDestinatario',DEVOLUTIVA_FINAL:'devolutivaFinal',DEVOLUTIVA_ENVIADA:'devolutivaEnviada',APRENDIZADO_CASO:'aprendizadoCaso',
+      APRENDIZADO_MATRIZ:'aprendizadoMatriz',OBSERVACOES_FINAIS:'observacoesFinais',STATUS_TRATATIVA:'statusTratativa',ANALISE_IA:'analiseIA',ANEXOS:'anexos',EVIDENCIAS:'evidencias',
+      QUANTIDADE:'quantidade',QUANTIDADE_TOTAL:'quantidadeTotal',QUANTIDADE_DEVOLVIDA:'quantidadeDevolvida',PEDIDO:'pedido',DATA_PEDIDO:'dataPedido',
+    };
+    const camposLimpar=new Set(Array.isArray(req.body?.camposLimpar)?req.body.camposLimpar:[]);
+    const patch={};
+    for(const key of allowed){
+      const alias=aliases[key]; const fonte=Object.prototype.hasOwnProperty.call(req.body||{},key)?key:(alias&&Object.prototype.hasOwnProperty.call(req.body||{},alias)?alias:null);
+      if(!fonte) continue;
+      const valor=req.body[fonte];
+      if((valor===undefined||valor===null||valor==='') && !camposLimpar.has(key) && String(m[key]||'')!=='') continue;
+      patch[key]=valor ?? '';
+    }
+    if (patch.ANALISE_IA && m.ANALISE_IA) {
+      try {
+        const anteriorAnalise=JSON.parse(m.ANALISE_IA); const novaAnalise=typeof patch.ANALISE_IA==='string'?JSON.parse(patch.ANALISE_IA):patch.ANALISE_IA;
+        if (anteriorAnalise && novaAnalise && typeof anteriorAnalise==='object' && typeof novaAnalise==='object') {
+          patch.ANALISE_IA=JSON.stringify({ ...anteriorAnalise, ...novaAnalise,
+            decisaoEtapa2:{ ...(anteriorAnalise.decisaoEtapa2||{}), ...(novaAnalise.decisaoEtapa2||{}) },
+            checklistPersistido:novaAnalise.checklistPersistido||anteriorAnalise.checklistPersistido,
+            pendenciasValidacaoHumana:novaAnalise.pendenciasValidacaoHumana||anteriorAnalise.pendenciasValidacaoHumana,
+          });
+        }
+      } catch (_) { /* payload inválido será tratado pelo contrato existente */ }
+    }
     let decisaoEtapa2Audit = null;
     if (Object.prototype.hasOwnProperty.call(req.body || {}, 'CHECKLIST_CIRCA') || Object.prototype.hasOwnProperty.call(req.body || {}, 'PENDENCIAS_VALIDACAO_HUMANA')) {
       if (!m.ID_MANIFESTACAO) return res.status(409).json({sucesso:false,erro:'A manifestação ainda não possui ID persistido.'});
