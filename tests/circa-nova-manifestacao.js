@@ -33,10 +33,14 @@ assert.ok(classificarHipoteses(manifestacao).every(h => h.confirmada === false),
 assert.equal(alertaProduto('Pote plástico com tampa', 'Recebemos potes, tampas e embalagens plásticas.'), null, 'termos equivalentes não geram divergência');
 assert.equal(alertaProduto('sacola', manifestacao.descricao).requerValidacaoHumana, true, 'produto divergente exige validação humana');
 assert.equal(classificacaoTipos('Relato sem termos cadastrados', [{ ID_TIPO: 'X', TIPO: 'Conversão', PALAVRAS_CHAVE: 'aba, colado', ATIVO: 'SIM' }]).status, 'NAO_IDENTIFICADO');
-assert.deepEqual(filtrarColetas([{ descricao: 'Coletar NF, lote ou foto como evidência' }], { NFE: 'NF-1', ANEXOS: '[foto]' }).map(x => x.descricao), ['lote como evidência'], 'coleta parcial preserva item faltante');
+assert.deepEqual(filtrarColetas([{ descricao: 'Coletar NF, lote ou foto como evidência' }], { NFE: 'NF-1', ANEXOS: '[foto]' }).map(x => x.descricao), ['Solicitar o número do lote ao cliente e registrar a evidência.'], 'coleta parcial vira instrução operacional');
+assert.match(filtrarColetas([{ descricao: 'Coletar NF, lote ou foto como evidência' }], {}).at(0).descricao, /número da nota fiscal.*lote.*foto/i, 'coleta completa deve ser uma instrução clara');
 const checklistA = buildChecklist([{ descricao: 'Confirmar causa com evidência' }]);
 const checklistB = buildChecklist([{ descricao: 'Confirmar causa com evidência' }]);
 assert.equal(checklistA[0].id, checklistB[0].id, 'checklist mantém ID estável entre reanálises');
+const checklistComPrazo = buildChecklist([{ descricao: 'Confirmar causa com evidência', prazoHoras: 72, vencimento: '2026-10-30T12:00:00.000Z' }]);
+assert.equal(checklistComPrazo[0].prazo, '72h');
+assert.equal(checklistComPrazo[0].vencimento, '2026-10-30T12:00:00.000Z');
 
 const semRegra = analisar({
   manifestacao,
@@ -51,10 +55,14 @@ assert.deepEqual(semRegra.analiseEstruturada.setoresRecomendados, [], 'setor nã
 assert.equal(semRegra.hipotesesClassificacao.length, 2);
 assert.equal(semRegra.analiseEstruturada.classificacaoStatus, 'PENDENTE_VALIDACAO');
 assert.equal(semRegra.analiseEstruturada.alertaProduto, null, 'produto equivalente não gera pendência');
+assert.equal(semRegra.checklist[0].prazo, '72h', 'atividade de investigação recebe SLA conhecido');
 
 const originalLerAba = sheets.lerAba;
 (async () => {
   try {
+    const relatada = await cerebro.detectarReincidencia({ EMPRESA_RECLAMADA: 'PLASCHIO', DESCRICAO: 'O mesmo problema ocorreu novamente.' });
+    assert.equal(relatada.nivel, 'REINCIDENCIA_RELATADA', 'relato sem cliente/histórico não pode ser confirmado');
+    assert.equal(relatada.casos.length, 0);
     sheets.lerAba = async nome => {
       if (nome === 'MANIFESTACOES') return [{
         ID_MANIFESTACAO: 'PLAS-ANT-1', EMPRESA_RECLAMADA: 'PLASCHIO', EMPRESA_RECLAMANTE: 'Cliente de teste',

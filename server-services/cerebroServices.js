@@ -224,8 +224,11 @@ async function detectarReincidencia(manifestacao) {
   const produto = normalizar(campo(manifestacao, ['PRODUTO','produto']));
   const idAtual = campo(manifestacao, ['ID_MANIFESTACAO','protocolo']);
   const empresaAtual = campo(manifestacao, ['EMPRESA_RECLAMADA','EMPRESA','empresa']);
+  const relato = normalizar(campo(manifestacao, ['DESCRICAO','DESCRICAO_RECLAMACAO','descricao']));
+  const relatada = /\b(novamente|de novo|segunda vez|outra vez|reincid|já ocorreu|ja ocorreu)\b/.test(relato);
+  const semComunicacao = () => ({ nivel: relatada ? 'REINCIDENCIA_RELATADA' : 'SEM_REINCIDENCIA', detectada: false, relatada, quantidade: 0, casos: [] });
 
-  if (!clienteNome || !empresaAtual) return { nivel: 'SEM_REINCIDENCIA', detectada: false, quantidade: 0, casos: [] };
+  if (!clienteNome || !empresaAtual) return semComunicacao();
 
   try {
     if (prisma) {
@@ -236,7 +239,7 @@ async function detectarReincidencia(manifestacao) {
         select: { id: true },
       }).catch(() => null);
       empresaId = empresaObj?.id;
-      if (!empresaId) return { nivel: 'SEM_REINCIDENCIA', detectada: false, quantidade: 0, casos: [] };
+      if (!empresaId) return semComunicacao();
       const cliente = await prisma.cliente.findFirst({
         where: { nome: { contains: clienteNome, mode: 'insensitive' }, empresaId },
       });
@@ -259,13 +262,14 @@ async function detectarReincidencia(manifestacao) {
           ? manifestacoes.filter(m => normalizar(m.produto || '').includes(produto.slice(0, 5)))
           : [];
 
-        let nivel = 'SEM_REINCIDENCIA';
+        let nivel = relatada && comMesmoProblema.length === 0 ? 'REINCIDENCIA_RELATADA' : 'SEM_REINCIDENCIA';
         if (comMesmoProblema.length >= 2) nivel = 'REINCIDENCIA_CONFIRMADA';
         else if (comMesmoProblema.length >= 1) nivel = 'POSSIVEL_REINCIDENCIA';
 
         return {
           nivel,
           detectada: comMesmoProblema.length > 0,
+          relatada,
           quantidade: comMesmoProblema.length,
           quantidadeMesmoProblema: comMesmoProblema.length,
           fonte: 'postgresql',
@@ -313,13 +317,14 @@ async function detectarReincidencia(manifestacao) {
       ? casos.filter(h => normalizar(campo(h, ['PRODUTO'])).includes(produto.slice(0, 5)))
       : [];
 
-    let nivel = 'SEM_REINCIDENCIA';
+    let nivel = relatada && casosComMesmoProblema.length === 0 ? 'REINCIDENCIA_RELATADA' : 'SEM_REINCIDENCIA';
     if (casosComMesmoProblema.length >= 2) nivel = 'REINCIDENCIA_CONFIRMADA';
     else if (casosComMesmoProblema.length >= 1) nivel = 'POSSIVEL_REINCIDENCIA';
 
     return {
       nivel,
       detectada: casosComMesmoProblema.length > 0,
+      relatada,
       quantidade: casosComMesmoProblema.length,
       quantidadeMesmoProblema: casosComMesmoProblema.length,
       fonte: 'sheets',
@@ -334,7 +339,7 @@ async function detectarReincidencia(manifestacao) {
     };
   } catch (erro) {
     console.error('Erro reincidência:', erro.message);
-    return { nivel: 'SEM_REINCIDENCIA', detectada: false, quantidade: 0, casos: [] };
+    return semComunicacao();
   }
 }
 
@@ -1136,7 +1141,10 @@ async function analisarManifestacaoCompleta(manifestacao, regras = {}, usuario =
     ...(regras.setores || []),
     ...setoresRecomendadosConfig,
     ...setoresPorFrente,
-  ].filter(Boolean).slice(0, 5);
+  ].filter(Boolean).filter((setor, index, lista) => {
+    const chave = normalizar(setor);
+    return lista.findIndex(item => normalizar(item) === chave) === index;
+  }).slice(0, 5);
   const limitacoes = [];
   if (!regras.regraAplicada && !setoresFinais.length) {
     limitacoes.push('Nenhuma regra ou setor elegível foi encontrado nas bases canônicas; a classificação e o encaminhamento dependem de decisão humana.');
