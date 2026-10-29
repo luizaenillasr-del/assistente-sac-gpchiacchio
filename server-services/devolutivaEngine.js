@@ -38,10 +38,66 @@ const CACHE_TTL = 5 * 60 * 1000;
 
 async function _carregarTemplates() {
   if (_devCache && Date.now() - _devCacheTs < CACHE_TTL) return _devCache;
-  await sheets.garantirAbaComCabecalhos('DEVOLUTIVAS', CABECALHOS_DEVOLUTIVAS).catch(() => {});
-  _devCache = {};
+  // Gerar uma sugestão é uma leitura. A criação da aba DEVOLUTIVAS fica
+  // restrita a salvarDevolutiva(), quando há uma decisão explícita de gravar.
+  const modelos = await sheets.lerAba('MODELOS_DEVOLUTIVA', 5000).catch(() => []);
+  _devCache = modelos.filter(modelo => {
+    const status = normalizar(modelo.STATUS);
+    return ['aprovada', 'publicada', 'aprovado'].includes(status) && String(modelo.TEXTO_PADRAO || '').trim();
+  });
   _devCacheTs = Date.now();
   return _devCache;
+}
+
+function normalizar(valor) {
+  return String(valor || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function modeloCompativel(modelo, params) {
+  const campos = [
+    ['EMPRESA', params.empresa],
+    ['TIPO_MANIFESTACAO', params.tipoManifestacao],
+    ['CATEGORIA', params.categoria],
+    ['SITUACAO', params.situacao],
+    ['TIPO_DEVOLUTIVA', params.tipo],
+  ];
+  let score = 0;
+  for (const [campo, valor] of campos) {
+    const configurado = normalizar(modelo[campo]);
+    const procurado = normalizar(valor);
+    if (!configurado || !procurado) continue;
+    if (['todas', 'todos', 'qualquer', 'global'].includes(configurado)) { score++; continue; }
+    if (!configurado.includes(procurado) && !procurado.includes(configurado)) return null;
+    score += campo === 'EMPRESA' ? 4 : campo === 'TIPO_DEVOLUTIVA' ? 3 : 2;
+  }
+  return score;
+}
+
+function selecionarModeloDevolutiva(modelos, params) {
+  return (modelos || [])
+    .map(modelo => ({ modelo, score: modeloCompativel(modelo, params) }))
+    .filter(item => item.score !== null)
+    .sort((a, b) => b.score - a.score || Number(b.modelo.VERSAO || 0) - Number(a.modelo.VERSAO || 0))[0]?.modelo || null;
+}
+
+function preencherModelo(texto, params) {
+  const valores = {
+    protocolo: params.protocolo || params.idManifestacao || '',
+    idManifestacao: params.idManifestacao || '',
+    nomeCliente: params.nomeCliente || '',
+    empresa: params.empresa || '',
+    prazo: params.prazo || '72 horas úteis',
+    setorResponsavel: params.setorResponsavel || params.setor || 'SAC',
+    tipoManifestacao: params.tipoManifestacao || '',
+    categoria: params.categoria || '',
+    causa: params.causa || '',
+    subcausa: params.subcausa || '',
+    descricaoSolucao: params.descricaoSolucao || '',
+    acoesTomadas: params.acoesTomadas || '',
+    resumoConclusao: params.resumoConclusao || '',
+    informacoesSolicitadas: params.informacoesSolicitadas || '',
+  };
+  return String(texto || '').replace(/{{\s*([\wÀ-ÿ]+)\s*}}/gi, (_, chave) => valores[chave] == null ? '' : String(valores[chave]));
 }
 
 // ── Filtra texto para remover informações proibidas ──────────────
@@ -171,9 +227,12 @@ async function gerarDevolutiva(params) {
     informacoesSolicitadas,
     reincidente,
     prioridade,
+    situacao,
+    causa,
+    subcausa,
   } = params;
 
-  await _carregarTemplates();
+  const modelos = await _carregarTemplates();
 
   // Busca regras da matriz para informações permitidas/proibidas
   const regras = await obterRegras({
@@ -201,11 +260,14 @@ async function gerarDevolutiva(params) {
     justificativaImprocedencia, descricaoProcedencia, resumoConclusao, informacoesSolicitadas,
   };
 
+  const modelo = selecionarModeloDevolutiva(modelos, { empresa, tipoManifestacao, categoria, situacao, tipo });
   const saudacao = montarSaudacao(empresa, nomeCliente);
-  const corpo    = templateBase(tipo, ctx);
-  const assinatura = `\nAtenciosamente,\nEquipe SAC – ${empresa || 'G.P. Chiacchio'}`;
+  const corpo = modelo
+    ? preencherModelo(modelo.TEXTO_PADRAO, { ...params, protocolo: protocolo || idManifestacao })
+    : templateBase(tipo, ctx);
+  const assinatura = modelo ? '' : `\nAtenciosamente,\nEquipe SAC – ${empresa || 'G.P. Chiacchio'}`;
 
-  const textoCompleto = `${saudacao}\n\n${corpo}${assinatura}`;
+  const textoCompleto = modelo ? corpo : `${saudacao}\n\n${corpo}${assinatura}`;
 
   const { texto: textoFiltrado, bloqueadas } = aplicarFiltroInformacoes(textoCompleto, permitidas, proibidas);
 
@@ -227,7 +289,10 @@ async function gerarDevolutiva(params) {
     informacoesBloqueadas: bloqueadas,
     confianca: Math.round(confianca * 100),
     status: 'AGUARDANDO_APROVACAO',
-    modeloDevolutiva: regras?.modeloDevolutiva || 'PADRAO',
+    modeloDevolutiva: modelo?.ID_MODELO || regras?.modeloDevolutiva || 'PADRAO',
+    modeloDevolutivaTitulo: modelo?.TITULO || '',
+    modeloDevolutivaVersao: modelo?.VERSAO || '',
+    modeloDevolutivaOrigem: modelo ? 'MODELOS_DEVOLUTIVA' : 'TEMPLATE_PADRAO',
     regrasDevolutiva: regras?.regrasDevolutiva || [],
     geradaEm: new Date().toISOString(),
   };
@@ -298,6 +363,8 @@ async function buscarDevolutivasPorManifestacao(idManifestacao) {
 module.exports = {
   TIPOS_DEVOLUTIVA,
   gerarDevolutiva,
+  selecionarModeloDevolutiva,
+  preencherModelo,
   salvarDevolutiva,
   registrarDecisaoDevolutiva,
   buscarDevolutivasPorManifestacao,

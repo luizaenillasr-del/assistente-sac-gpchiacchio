@@ -25,11 +25,31 @@ const CACHE_TTL = 5 * 60 * 1000;
 
 async function carregarMatriz() {
   if (_cache && Date.now() - _cacheTs < CACHE_TTL) return _cache;
-  await sheets.garantirAbaComCabecalhos('MATRIZ_TRATAMENTO', CABECALHOS_MATRIZ).catch(() => {});
+  // Leitura não pode criar colunas nem abas. A planilha real possui uma
+  // versão legada do contrato (ID_REGRA/TRATATIVA_PADRAO); a normalização
+  // abaixo permite reutilizar esses registros sem reescrever a fonte.
   const rows = await sheets.lerAba('MATRIZ_TRATAMENTO', 1000).catch(() => []);
-  _cache = rows.filter(r => (r.ATIVO || 'SIM').toUpperCase() !== 'NAO' && (r.ID_TRATAMENTO || r.TIPO_MANIFESTACAO || r.SETOR_RESPONSAVEL));
+  _cache = rows
+    .map(normalizarRegra)
+    .filter(r => (r.ATIVO || 'SIM').toUpperCase() !== 'NAO' && (r.ID_TRATAMENTO || r.TIPO_MANIFESTACAO || r.SETOR_RESPONSAVEL));
   _cacheTs = Date.now();
   return _cache;
+}
+
+function normalizarRegra(row = {}) {
+  const regra = { ...row };
+  regra.ID_TRATAMENTO = regra.ID_TRATAMENTO || regra.ID_REGRA || regra.ID || '';
+  regra.TIPO_MANIFESTACAO = regra.TIPO_MANIFESTACAO || regra.PROBLEMA_TRATADO || '';
+  regra.SUBCATEGORIA = regra.SUBCATEGORIA || regra.SUBCAUSA || '';
+  regra.TRATATIVA_OBRIGATORIA = regra.TRATATIVA_OBRIGATORIA || '';
+  regra.TRATATIVA_RECOMENDADA = regra.TRATATIVA_RECOMENDADA || regra.TRATATIVA_PADRAO || '';
+  regra.TRATATIVA_CONDICIONAL = regra.TRATATIVA_CONDICIONAL || '';
+  regra.TRATATIVA_NAO_PERMITIDA = regra.TRATATIVA_NAO_PERMITIDA || '';
+  regra.PRAZO_TRATATIVA = regra.PRAZO_TRATATIVA || regra.SLA_HORAS || '';
+  regra.NECESSITA_APROVACAO = regra.NECESSITA_APROVACAO || regra.REQUER_APROVACAO || '';
+  regra.MODELO_DEVOLUTIVA = regra.MODELO_DEVOLUTIVA || regra.DEVOLUTIVA_PADRAO || '';
+  regra.NECESSITA_EVIDENCIA = regra.NECESSITA_EVIDENCIA || regra.EVIDENCIAS_EXIGIDAS || '';
+  return regra;
 }
 
 function norm(v) {
@@ -38,7 +58,10 @@ function norm(v) {
 
 function bate(campo, valor) {
   if (!campo || campo === '*' || !campo.trim()) return true;
-  return norm(campo).split('|').some(p => norm(valor).includes(p.trim()) || p.trim() === '*');
+  return norm(campo).split('|').some(p => {
+    const esperado = p.trim();
+    return ['*', 'todas', 'todos', 'qualquer', 'global'].includes(esperado) || norm(valor).includes(esperado);
+  });
 }
 
 function scoreRegra(regra, ctx) {
@@ -47,6 +70,8 @@ function scoreRegra(regra, ctx) {
   if (bate(regra.TIPO_MANIFESTACAO, ctx.tipo)) score++;
   if (bate(regra.CATEGORIA, ctx.categoria)) score++;
   if (bate(regra.SUBCATEGORIA, ctx.subcategoria)) score++;
+  if (bate(regra.CAUSA, ctx.causa)) score += 2;
+  if (bate(regra.SUBCAUSA, ctx.subcausa || ctx.subcategoria)) score += 2;
   if (bate(regra.SETOR_RESPONSAVEL, ctx.setor)) score++;
   const cond = norm(regra.CONDICAO || '');
   if (cond === 'reincidente' && ctx.reincidente) score += 2;
