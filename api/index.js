@@ -1433,16 +1433,9 @@ async function motorRegras(descricao, tipo, empresa) {
     ]);
     const texto = (descricao || '').toLowerCase();
 
-    let tipoDetectado = null, tipoConfianca = 0, tipoID = null;
-    for (const t of tipos) {
-      const palavras = (t.PALAVRAS_CHAVE || '').toLowerCase().split(',').map(p => p.trim()).filter(Boolean);
-      let matches = 0;
-      for (const p of palavras) { if (p && texto.includes(p)) matches++; }
-      if (matches > 0) {
-        const conf = Math.min(99, Math.round((matches / Math.max(palavras.length, 1)) * 100 * 2));
-        if (conf > tipoConfianca) { tipoConfianca = conf; tipoDetectado = t.TIPO || t.ID_TIPO; tipoID = t.ID_TIPO; }
-      }
-    }
+    const selecaoTipo = require('./../server-services/etapa2Validacao').classificacaoTipos(descricao, tipos);
+    const escolhido = selecaoTipo.escolhido;
+    let tipoDetectado = escolhido?.tipo || null, tipoConfianca = selecaoTipo.confianca, tipoID = escolhido?.tipoID || null;
     if (!tipoDetectado) { tipoDetectado = 'Não identificado'; tipoConfianca = 0; }
 
     const setoresSet = new Set();
@@ -1485,7 +1478,7 @@ async function motorRegras(descricao, tipo, empresa) {
     const geraRNC = false; // Imutável. RNC só é criado por decisão humana explícita.
 
     return {
-      tipoDetectado, tipoID, tipoConfianca, setores, regraAplicada, slaHoras, prioridade,
+      tipoDetectado, tipoID, tipoConfianca, classificacaoOrigem: escolhido, setores, regraAplicada, slaHoras, prioridade,
       procedimentoSugerido, perguntasNecessarias, geraRNC, rncSinalizado,
       limitacaoSetor: setores.length ? '' : 'Nenhuma regra de roteamento ativa correspondeu ao relato; selecione o setor durante a triagem SAC.',
     };
@@ -1529,6 +1522,7 @@ async function executarAnalise(manifestacao) {
   manifestacao.CANAL = manifestacao.CANAL || manifestacao.canal;
   manifestacao.EMPRESA_RECLAMADA = manifestacao.EMPRESA_RECLAMADA || manifestacao.empresaReclamada;
   manifestacao.EMPRESA_RECLAMANTE = manifestacao.EMPRESA_RECLAMANTE || manifestacao.empresaReclamante;
+  const etapa2Validacao = require('../server-services/etapa2Validacao');
   let regras = await motorRegras(
     manifestacao.descricao || manifestacao.DESCRICAO || '',
     manifestacao.tipo || manifestacao.TIPO || '',
@@ -1583,7 +1577,11 @@ async function executarAnalise(manifestacao) {
     mcService.registrarAuditoria(protocolo, matrizConhecimento, 'sistema', analise.versoes?.cerebro || '4.0.0').catch(() => {});
   }
 
-  return { ...analise, matrizConhecimento, tipoID: regras.tipoID, tempoAnaliseSegundos: Math.round((Date.now() - inicio) / 1000) };
+  return { ...analise, matrizConhecimento, tipoID: regras.tipoID,
+    classificacaoOrigem: regras.classificacaoOrigem || null,
+    alertaProduto: etapa2Validacao.alertaProduto(manifestacao.produto || manifestacao.PRODUTO, manifestacao.descricao || manifestacao.DESCRICAO),
+    slas: etapa2Validacao.slaOperacional(regraMatriz?.prazo),
+    tempoAnaliseSegundos: Math.round((Date.now() - inicio) / 1000) };
 }
 
 function normalizarEmpresa(raw) {
