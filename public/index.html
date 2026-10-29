@@ -11807,6 +11807,17 @@ function nmTextoEstruturado(valor, fallback = '') {
   return String(valor);
 }
 
+function nmCampoValor(...ids) {
+  for (const id of ids) {
+    const valor = document.getElementById(id)?.value;
+    if (valor !== undefined && valor !== null && String(valor).trim()) return String(valor).trim();
+  }
+  return '';
+}
+function nmCanalSelecionado() {
+  return nmCampoValor('nm-origem', 'nm-canal') || 'MANUAL';
+}
+
 function nmGarantirIdempotencyKey() {
   if (!_nmIdempotencyKey) _nmIdempotencyKey = 'NOVA-MANIFESTACAO-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
   return _nmIdempotencyKey;
@@ -11815,6 +11826,9 @@ function nmGarantirIdempotencyKey() {
 function selectCanal(btn) {
   btn.closest('.canal-btns').querySelectorAll('button').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
+  const value = btn.dataset.canal || btn.getAttribute('data-value') || btn.textContent.trim();
+  const campo = document.getElementById('nm-canal') || document.getElementById('nm-origem');
+  if (campo && value) campo.value = value;
   atualizarResumoFicha();
 }
 
@@ -11860,12 +11874,12 @@ function atualizarResumoFicha() {
   const el = document.getElementById('nm-resumo-ficha');
   if (!el) return;
   const v = id => (document.getElementById(id)?.value || '').trim();
-  const canal = document.getElementById('nm-origem');
+  const canal = nmCanalSelecionado();
   const tipo = document.getElementById('nm-tipo');
   const iaVisible = document.getElementById('painel-analise')?.style.display !== 'none';
   const evidencias = document.getElementById('nm-evidencias-list')?.children.length || 0;
   const secoes = [
-    { label: '1. Dados do Registro', ok: !!v('nm-origem') },
+    { label: '1. Dados do Registro', ok: !!canal },
     { label: '2. Dados do Cliente', ok: !!(v('nm-nome') || v('nm-empresa')) },
     { label: '3. Tipo e descrição', ok: !!(v('nm-tipo') && v('nm-descricao').length >= 30) },
     { label: '4. Produto (opcional)', ok: !!(v('nm-produto') || v('nm-lote')), opcional: true },
@@ -11899,7 +11913,8 @@ function agendarAnalise() {
 function renderizarCircaDeterministico(resultado) {
   const a=resultado?.analiseEstruturada||{};
   const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v||'Sem informação persistida.';};
-  set('ia-causa',(a.hipotesesCausa||[]).map(nmTextoEstruturado).filter(Boolean).join(' · ')||'Causa ainda não confirmada.');
+  const hip = a.hipotesesClassificacao || resultado.hipotesesClassificacao || [];
+  set('ia-causa', hip.map(h => nmTextoEstruturado(h)).filter(Boolean).join(' · ') || (a.hipotesesCausa||[]).map(nmTextoEstruturado).filter(Boolean).join(' · ') || 'Causa ainda não confirmada.');
   set('ia-prioridade-badge',a.prioridade||'Normal');
   const missing=(a.informacoesAusentes||[]).map(nmTextoEstruturado).filter(Boolean); set('ia-perguntas',missing.length?missing.map(x=>'• '+x).join('\n'):'Nenhuma informação essencial ausente.');
   const checklist=resultado.checklist||[]; const action=document.getElementById('ia-tratativa'); if(action) action.innerHTML=(checklist.length?checklist.map((x,i)=>`<div class="checklist-item"><span class="check-box">${i+1}</span><span>${esc(x.descricao||x.titulo||x)}</span></div>`): '<div class="circa-muted">Nenhuma tarefa determinística pendente.</div>');
@@ -11995,7 +12010,7 @@ async function executarAnaliseIA() {
   const produto = document.getElementById('nm-produto')?.value || '';
   const lote = document.getElementById('nm-lote')?.value || '';
   const nfe = document.getElementById('nm-nfe')?.value || '';
-  const canal = document.getElementById('nm-origem')?.value || '';
+  const canal = nmCanalSelecionado();
   const prioridade = document.getElementById('nm-prioridade')?.value || '';
   const dataRegistro = document.getElementById('nm-data')?.value || '';
   const cnpj = document.getElementById('nm-cnpj')?.value || '';
@@ -12026,7 +12041,7 @@ async function executarAnaliseIA() {
       body: JSON.stringify({
         descricao: desc, tipo, empresaReclamada: empresaRec, empresaReclamante: empresaRec2, produto, lote,
         nfe: document.getElementById('nm-nfe')?.value || '',
-        canal: document.getElementById('nm-origem')?.value || document.getElementById('nm-canal')?.value || '',
+        canal: nmCanalSelecionado(),
         prioridade: document.getElementById('nm-prioridade')?.value || '',
         dataRegistro: document.getElementById('nm-data')?.value || '',
         cnpj: document.getElementById('nm-cnpj')?.value || '',
@@ -12112,9 +12127,10 @@ function renderizarAnalise(a) {
   if (a.reincidencia?.detectada || a.reincidente) alertas.push({ tipo: 'red', msg: '⚠ Cliente reincidente — casos anteriores encontrados no histórico' });
   if (a.geraRNC) alertas.push({ tipo: 'yellow', msg: '⚠ Pode gerar RNC — avaliar na decisão' });
   if ((a.prioridade||'').toUpperCase() === 'ALTA') alertas.push({ tipo: 'red', msg: '⚠ Alta prioridade — requer atenção imediata' });
-  if (Array.isArray(a.especialistasSugeridos) && a.especialistasSugeridos.length) {
-    const nomes = a.especialistasSugeridos.map(p => `${p.nome} (${p.setor || 'setor não informado'}: ${(p.termos || []).join(', ')})`).join('; ');
-    alertas.push({ tipo: 'blue', msg: `Competências declaradas que podem apoiar esta análise: ${nomes}. Confira o responsável oficial antes de encaminhar.` });
+  // Pessoas e competências são escolhidas na triagem a partir dos cadastros;
+  // termos extraídos do relato nunca são exibidos como recomendação de pessoa.
+  if (Array.isArray(a.limitacoes) && a.limitacoes.length) {
+    a.limitacoes.forEach(l => alertas.push({ tipo: 'yellow', msg: `Limitação de dados: ${nmTextoEstruturado(l)}` }));
   }
   // Aprendizado das avaliações de assertividade — a ferramenta se alimentando das avaliações anteriores
   if (a.aprendizado && a.aprendizado.totalAvaliacoes) {
@@ -12144,14 +12160,16 @@ function renderizarAnalise(a) {
   ).join('') || '<span style="color:var(--gray-400);font-size:12px">Sem dados suficientes</span>';
 
   // Problema identificado — usa problemaIdentificado da IA (específico) ou causaProvavel ou diagnóstico
+  const hipoteses = Array.isArray(a.hipotesesClassificacao) ? a.hipotesesClassificacao : [];
+  const problemaHipotese = hipoteses.map(h => nmTextoEstruturado(h)).filter(Boolean).join(' · ');
   const problemaIA = (a.ia?.problemaIdentificado && a.ia.problemaIdentificado !== 'DADO_NAO_ENCONTRADO') ? a.ia.problemaIdentificado : null;
   const causaIA = (a.ia?.causaProvavel && a.ia.causaProvavel !== 'DADO_NAO_ENCONTRADO') ? a.ia.causaProvavel : null;
   const causaDiag = a.tratativaEstruturada?.diagnostico?.descricao || null;
   const nivelCausaBadge = a.ia?.nivelCausa ? ` <span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;background:${a.ia.nivelCausa==='FATO'?'#DCFCE7':a.ia.nivelCausa==='HIPÓTESE'?'#FEF9C3':'#FEE2E2'};color:${a.ia.nivelCausa==='FATO'?'#15803D':a.ia.nivelCausa==='HIPÓTESE'?'#854D0E':'#9F1239'}">${esc(a.ia.nivelCausa)}</span>` : '';
   const causaEl = document.getElementById('ia-causa');
-  const textoProblema = nmTextoEstruturado(problemaIA || causaIA || causaDiag);
+  const textoProblema = problemaHipotese || nmTextoEstruturado(problemaIA || causaIA || causaDiag);
   if (textoProblema) {
-    causaEl.innerHTML = esc(textoProblema) + nivelCausaBadge;
+    causaEl.innerHTML = esc(textoProblema) + (problemaHipotese ? ' <span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;background:#FEF9C3;color:#854D0E">HIPÓTESE — validar</span>' : nivelCausaBadge);
   } else {
     causaEl.textContent = 'Não identificada com os dados disponíveis';
   }
@@ -12478,7 +12496,7 @@ async function registrarManifestacao() {
   if (!empReclamada) return alert('Selecione a empresa reclamada (Chiacchio Embalagens, Plaschio ou Cesbap).');
 
   const tipo = document.getElementById('nm-tipo')?.value || 'Reclamação';
-  const canal = document.getElementById('nm-origem')?.value || 'MANUAL';
+  const canal = nmCanalSelecionado();
   const _uRaw = sessionStorage.getItem('sac-user') || '{}';
   let _uParsed = {}; try { _uParsed = JSON.parse(_uRaw); } catch {}
   const usuario = _uParsed.usuario || _uParsed.USUARIO || 'analista';
@@ -12525,7 +12543,7 @@ async function registrarManifestacao() {
         origemDocumento: _nmTipoImportacao || '',
         arquivoOrigem: window._documentoExtraido ? JSON.stringify(window._documentoExtraido) : '',
         statusFicha: document.getElementById('nm-status-ficha')?.value || 'ABERTA',
-        origem: document.getElementById('nm-origem')?.value || 'MANUAL',
+        origem: nmCanalSelecionado(),
         prioridade: document.getElementById('nm-prioridade')?.value || 'NORMAL',
         protocoloExterno: document.getElementById('nm-protocolo-externo')?.value || '',
         vinculoManifestacao: document.getElementById('nm-vinculo-man')?.value || '',
@@ -14256,7 +14274,7 @@ function nmCardPayload() {
   const val=id=>document.getElementById(id)?.value||'';
   let currentUser={}; try { currentUser=JSON.parse(sessionStorage.getItem('sac-user')||'{}'); } catch(e) {}
   return {
-    empresaReclamada:val('nm-empresa-reclamada'), empresaReclamante:val('nm-empresa')||val('nm-nome')||val('nm-cnpj'), contato:val('nm-nome'), cnpj:val('nm-cnpj'), telefone:val('nm-tel'), email:val('nm-email'), produto:val('nm-produto'), lote:val('nm-lote'), nfe:val('nm-nfe'), descricao:val('nm-descricao')||'Rascunho em preenchimento.', tipo:val('nm-tipo')||'Reclamação', canal:val('nm-origem')||'MANUAL', origem:val('nm-origem')||'MANUAL', prioridade:val('nm-prioridade')||'NORMAL', dataRegistro:val('nm-data'), DATA_REGISTRO:val('nm-data'), usuario:currentUser.usuario||currentUser.USUARIO||'analista', etapaAtual:String(window.nmEtapa||1), ETAPA_ATUAL:String(window.nmEtapa||1), STATUS:{1:'RASCUNHO',2:'EM_TRIAGEM',3:'EM_TRATATIVA',4:'EM_INVESTIGACAO',5:'AGUARDANDO_VALIDACAO_SAC',6:'AGUARDANDO_DEVOLUTIVA',7:'AGUARDANDO_ENCERRAMENTO'}[Number(window.nmEtapa)||1], STATUS_FICHA:{1:'RASCUNHO',2:'EM_TRIAGEM',3:'EM_TRATATIVA',4:'EM_INVESTIGACAO',5:'AGUARDANDO_VALIDACAO_SAC',6:'AGUARDANDO_DEVOLUTIVA',7:'AGUARDANDO_ENCERRAMENTO'}[Number(window.nmEtapa)||1], mensagemEtapa:'Rascunho em preenchimento.', MENSAGEM_ETAPA:'Rascunho em preenchimento.', rascunho:true,
+    empresaReclamada:val('nm-empresa-reclamada'), empresaReclamante:val('nm-empresa')||val('nm-nome')||val('nm-cnpj'), contato:val('nm-nome'), cnpj:val('nm-cnpj'), telefone:val('nm-tel'), email:val('nm-email'), produto:val('nm-produto'), lote:val('nm-lote'), nfe:val('nm-nfe'), descricao:val('nm-descricao')||'Rascunho em preenchimento.', tipo:val('nm-tipo')||'Reclamação', canal:nmCanalSelecionado(), origem:nmCanalSelecionado(), prioridade:val('nm-prioridade')||'NORMAL', dataRegistro:val('nm-data'), DATA_REGISTRO:val('nm-data'), usuario:currentUser.usuario||currentUser.USUARIO||'analista', etapaAtual:String(window.nmEtapa||1), ETAPA_ATUAL:String(window.nmEtapa||1), STATUS:{1:'RASCUNHO',2:'EM_TRIAGEM',3:'EM_TRATATIVA',4:'EM_INVESTIGACAO',5:'AGUARDANDO_VALIDACAO_SAC',6:'AGUARDANDO_DEVOLUTIVA',7:'AGUARDANDO_ENCERRAMENTO'}[Number(window.nmEtapa)||1], STATUS_FICHA:{1:'RASCUNHO',2:'EM_TRIAGEM',3:'EM_TRATATIVA',4:'EM_INVESTIGACAO',5:'AGUARDANDO_VALIDACAO_SAC',6:'AGUARDANDO_DEVOLUTIVA',7:'AGUARDANDO_ENCERRAMENTO'}[Number(window.nmEtapa)||1], mensagemEtapa:'Rascunho em preenchimento.', MENSAGEM_ETAPA:'Rascunho em preenchimento.', rascunho:true,
     CAMINHO_TRATATIVA:val('nm-caminho-tratativa'), TRATATIVA_SAC_INTERNA:val('nm-tratativa-sac'), COMPLEMENTO_PEDIDO:val('nm-complemento-pedido'), CANAL_RETORNO:val('nm-canal-retorno'), PRAZO_RETORNO_SAC:val('nm-prazo-retorno'), SETOR_ACIONADO:val('nm-setor-acionado'), ESCOPO_ACIONAMENTO:val('nm-escopo-acionado'),
     INVESTIGACAO_O_QUE:val('nm-investigacao-verificada'), INVESTIGACAO_NOTAS:val('nm-investigacao-notas'), INVESTIGACAO_EVIDENCIAS:val('nm-investigacao-resultado'), SUBCAUSA:val('nm-subcausa'), CAUSA_RAIZ_CONFIRMADA:val('nm-causa-raiz'), ACOES_CORRETIVAS:val('nm-acao-executada'),
     VALIDACAO_RESULTADO:val('nm-validacao-resultado'), PROCEDENTE:val('nm-procedente'), PROCEDENTE_JUSTIFICATIVA:val('nm-procedente-justif'),
