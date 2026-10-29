@@ -84,8 +84,9 @@ function buildChecklist(recommendations = [], previous = []) {
     const description = typeof item === 'string' ? item : item.descricao || item.titulo || '';
     const key = String(description).trim().toLowerCase();
     const existing = byKey.get(key);
-    return existing ? { ...existing, origem: existing.origem || 'HISTORICO' } : {
-      id: `TASK-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
+    const stableId = `circa-${key.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`;
+    return existing ? { ...existing, id: existing.id || stableId, origem: existing.origem || 'HISTORICO' } : {
+      id: stableId,
       chave: key, descricao: description, responsavel: item.responsavel || '', prazo: item.prazo || '',
       obrigatoria: item.obrigatoria !== false, status: 'PENDENTE', evidencia: '', origem: item.origem || 'CIRCA',
     };

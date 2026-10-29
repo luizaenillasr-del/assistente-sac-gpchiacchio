@@ -11,6 +11,8 @@ delete process.env.DATABASE_URL;
 delete process.env.GOOGLE_CREDENTIALS;
 
 const { analisar, missingFields, classificarHipoteses } = require('../server-services/circaEngine');
+const { alertaProduto, classificacaoTipos, filtrarColetas } = require('../server-services/etapa2Validacao');
+const { buildChecklist } = require('../server-services/circaWorkflow');
 const cerebro = require('../server-services/cerebroServices');
 const sheets = require('../server-services/sheets');
 
@@ -28,6 +30,13 @@ const manifestacao = {
 assert.deepEqual(missingFields(manifestacao), [], 'aliases do formulário não podem aparecer como campos ausentes');
 assert.deepEqual(classificarHipoteses(manifestacao).map(h => h.codigo), ['ATRASO_LOGISTICO', 'NAO_CONFORMIDADE_PRODUTO']);
 assert.ok(classificarHipoteses(manifestacao).every(h => h.confirmada === false), 'classificação textual permanece hipótese');
+assert.equal(alertaProduto('Pote plástico com tampa', 'Recebemos potes, tampas e embalagens plásticas.'), null, 'termos equivalentes não geram divergência');
+assert.equal(alertaProduto('sacola', manifestacao.descricao).requerValidacaoHumana, true, 'produto divergente exige validação humana');
+assert.equal(classificacaoTipos('Relato sem termos cadastrados', [{ ID_TIPO: 'X', TIPO: 'Conversão', PALAVRAS_CHAVE: 'aba, colado', ATIVO: 'SIM' }]).status, 'NAO_IDENTIFICADO');
+assert.deepEqual(filtrarColetas([{ descricao: 'Coletar NF, lote ou foto como evidência' }], { NFE: 'NF-1', ANEXOS: '[foto]' }).map(x => x.descricao), ['lote como evidência'], 'coleta parcial preserva item faltante');
+const checklistA = buildChecklist([{ descricao: 'Confirmar causa com evidência' }]);
+const checklistB = buildChecklist([{ descricao: 'Confirmar causa com evidência' }]);
+assert.equal(checklistA[0].id, checklistB[0].id, 'checklist mantém ID estável entre reanálises');
 
 const semRegra = analisar({
   manifestacao,
@@ -40,6 +49,8 @@ assert.deepEqual(semRegra.analiseEstruturada.informacoesAusentes, [], 'dados pre
 assert.equal(semRegra.analiseEstruturada.procedimentosAplicaveis.length, 0, 'regra sem identidade/inativa não pode ser recomendada');
 assert.deepEqual(semRegra.analiseEstruturada.setoresRecomendados, [], 'setor não pode ser extraído diretamente de palavras do relato');
 assert.equal(semRegra.hipotesesClassificacao.length, 2);
+assert.equal(semRegra.analiseEstruturada.classificacaoStatus, 'PENDENTE_VALIDACAO');
+assert.equal(semRegra.analiseEstruturada.alertaProduto, null, 'produto equivalente não gera pendência');
 
 const originalLerAba = sheets.lerAba;
 (async () => {
@@ -66,6 +77,8 @@ const originalLerAba = sheets.lerAba;
     assert.match(html, /_nmEvidencias\.map/, 'anexos devem permanecer no estado entre etapas');
     assert.ok(!html.includes('(p.termos || []).join'), 'termos livres não podem ser apresentados como competência/responsável');
     assert.match(html, /HIPÓTESE — validar/, 'classificações do texto devem aparecer como hipóteses');
+    assert.match(html, /ia-alerta-produto/, 'divergência de produto deve ser visível na Etapa 2');
+    assert.match(html, /checklistPersistido/, 'checklist visual deve usar estado persistido');
     console.log('CIRCA Nova Manifestação: campos PLASCHIO, hipóteses múltiplas, regras inválidas, isolamento de reincidência e renderização aprovados.');
   } finally {
     sheets.lerAba = originalLerAba;

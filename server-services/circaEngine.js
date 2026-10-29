@@ -6,6 +6,7 @@
 const norm = value => String(value == null ? '' : value)
   .normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
 const workflow = require('./circaWorkflow');
+const { alertaProduto } = require('./etapa2Validacao');
 
 const first = (obj, keys) => {
   for (const key of keys) {
@@ -81,13 +82,33 @@ function analisar(input = {}) {
   const devolutivaEnviada = Boolean(first(m, ['DEVOLUTIVA_ENVIADA', 'DATA_DEVOLUTIVA']) || first(devolutiva, ['DATA_ENVIO', 'ENVIADA_EM']));
   const procedencia = first(m, ['PROCEDENTE', 'PROCEDENCIA']);
   const autonomia = !faltantes.length && Boolean(causa || subcausa) && Boolean(procedimento || first(m, ['TRATATIVA_REALIZADA'])) && !['critica', 'alta'].includes(norm(m.PRIORIDADE)) && !m.FORA_ALCADA;
+  const criterioBate = (esperado, encontrado) => {
+    if (!String(esperado || '').trim()) return true;
+    if (!String(encontrado || '').trim()) return false;
+    const e = norm(esperado); const v = norm(encontrado);
+    return e.split('|').some(item => item === '*' || v.includes(item.trim()));
+  };
+  const tratamentoCompativel = t => {
+    const campos = [
+      ['EMPRESA', first(t, ['EMPRESA','EMPRESA_RECLAMADA']), first(m, ['EMPRESA_RECLAMADA','EMPRESA'])],
+      ['TIPO_MANIFESTACAO', first(t, ['TIPO_MANIFESTACAO','TIPO']), first(m, ['TIPO','TIPO_MANIFESTACAO'])],
+      ['CATEGORIA', first(t, ['CATEGORIA']), first(m, ['CATEGORIA'])],
+      ['SUBCATEGORIA', first(t, ['SUBCATEGORIA','SUBCAUSA']), first(m, ['SUBCATEGORIA','SUBCAUSA'])],
+      ['SETOR_RESPONSAVEL', first(t, ['SETOR_RESPONSAVEL','SETOR']), first(m, ['SETOR_SUGERIDO','SETOR'])],
+    ];
+    // Critérios ainda não informados na ficha ficam pendentes para triagem;
+    // não são tratados como conflito. Todo critério que já possui valor,
+    // porém, precisa corresponder e ao menos um critério concreto deve existir.
+    const comparaveis = campos.filter(([, esperado, encontrado]) => String(esperado || '').trim() && String(encontrado || '').trim());
+    return comparaveis.length > 0 && comparaveis.every(([, esperado, encontrado]) => criterioBate(esperado, encontrado));
+  };
   const procedures = tratamentos.filter(t => {
     const status = norm(t.STATUS || t.ATIVO);
     const id = first(t, ['ID_TRATAMENTO', 'ID_REGRA', 'ID_PROC', 'ID']);
     // A validação estrutural da Matriz ocorre antes deste módulo. Aqui
     // mantemos compatibilidade com registros já normalizados pelo endpoint;
     // somente itens explicitamente aprovados/ativos e identificados entram.
-    return ['aprovado', 'publicada', 'ativo', 'sim'].includes(status) && Boolean(id);
+    return ['aprovado', 'publicada', 'ativo', 'sim'].includes(status) && Boolean(id) && tratamentoCompativel(t);
   });
   // Enriquecer hipóteses com causas da aba CAUSAS que coincidam com texto da manifestação
   const descNorm = norm(first(m, ['DESCRICAO','DESCRIÇÃO','ORIG_DESCRICAO_RECLAMACAO']) || '');
@@ -107,6 +128,7 @@ function analisar(input = {}) {
     .slice(0, 3);
   const hypotheses = workflow.normalizeList([causa, subcausa, ...causasMatriz].filter(Boolean));
   const hipotesesClassificacao = classificarHipoteses(m);
+  const alertaProdutoManifestacao = alertaProduto(first(m, ['PRODUTO','produto']), first(m, FIELD_ALIASES.descricao));
   const checklist = workflow.buildChecklist([
     ...faltantes.map(field => ({ descricao: `Completar informação: ${field}`, obrigatoria: true, origem: 'CIRCA_CAPTURA' })),
     ...(!causa ? [{ descricao: 'Confirmar causa com evidência', obrigatoria: true, origem: 'CIRCA_INVESTIGACAO' }] : []),
@@ -135,7 +157,8 @@ function analisar(input = {}) {
     recomendacoes,
     hipotesesClassificacao,
     analiseEstruturada: {
-      classificacaoPreliminar: first(m, ['TIPO_CONFIRMADO', 'TIPO_SUGERIDO', 'TIPO', 'CATEGORIA']),
+      classificacaoPreliminar: first(m, ['TIPO_CONFIRMADO', 'TIPO_SUGERIDO', 'TIPO', 'CATEGORIA']) || (hipotesesClassificacao.length ? 'Não identificado' : ''),
+      classificacaoStatus: first(m, ['TIPO_CONFIRMADO']) ? 'CONFIRMADA' : (hipotesesClassificacao.length ? 'PENDENTE_VALIDACAO' : 'NAO_IDENTIFICADA'),
       prioridade: first(m, ['PRIORIDADE']) || 'Normal',
       justificativaRisco: first(m, ['GRAVIDADE', 'RISCO_JUSTIFICATIVA']),
       hipotesesCausa: hypotheses,
@@ -147,10 +170,13 @@ function analisar(input = {}) {
       casosSemelhantes: similares.map(item => first(item, ['ID_MANIFESTACAO', 'ID', 'PROTOCOLO'])).filter(Boolean),
       setoresRecomendados: workflow.normalizeList(first(m, ['SETORES_SUGERIDOS', 'SETOR_SUGERIDO'])),
       responsaveisElegiveis: workflow.normalizeList(first(m, ['RESPONSAVEIS_ELEGIVEIS'])),
-      condicoesAutonomiaSAC: workflow.autonomia({ procedimentoValidado: procedures.length > 0, compatibilidade: Boolean(causa || subcausa), evidencias: Boolean(first(m, ['EVIDENCIAS', 'ANEXOS'])), risco: !['critica', 'alta'].includes(norm(m.PRIORIDADE)), alçada: !m.FORA_ALCADA, autorizacao: Boolean(m.AUTORIZACAO_SAC || m.STATUS === 'EM TRATAMENTO'), historico: Boolean(first(m, ['ID_MANIFESTACAO'])) }),
+      // Autonomia mede a tratativa efetivamente registrada, não a existência
+      // de uma recomendação automática da Matriz.
+      condicoesAutonomiaSAC: workflow.autonomia({ procedimentoValidado: Boolean(procedimento || first(m, ['TRATATIVA_REALIZADA'])), compatibilidade: Boolean(causa || subcausa), evidencias: Boolean(first(m, ['EVIDENCIAS', 'ANEXOS'])), risco: !['critica', 'alta'].includes(norm(m.PRIORIDADE)), alçada: !m.FORA_ALCADA, autorizacao: Boolean(m.AUTORIZACAO_SAC || m.STATUS === 'EM TRATAMENTO'), historico: Boolean(first(m, ['ID_MANIFESTACAO'])) }),
       evidenciasNecessarias: faltantes.length ? ['Evidência documental ou registro do setor responsável'] : [],
       origemRecomendacoes: 'REGRAS_E_REGISTROS_PERSISTIDOS',
       confianca: procedures.length || similares.length ? 'APOIO_HISTORICO' : 'SEM_BASE_SUFICIENTE',
+      alertaProduto: alertaProdutoManifestacao,
     },
     checklist,
     governanca: { origem: 'REGRAS_E_REGISTROS_PERSISTIDOS', exigeAprovacaoHumana: true, causaConfirmada: Boolean(causa), tratamentoValidado: procedures.length > 0, publicarAutomaticamente: false, encerrarAutomaticamente: false },
