@@ -1,0 +1,59 @@
+name: Reconciliação CIRCA Sheets × PostgreSQL (somente leitura)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: circa-reconciliacao-readonly-production
+  cancel-in-progress: false
+
+jobs:
+  reconciliar:
+    name: Reconciliar conhecimento CIRCA sem escrita
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    env:
+      GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+      SPREADSHEET_ID: ${{ secrets.SPREADSHEET_ID }}
+      DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Instalar dependências sem scripts de instalação
+        run: npm ci --ignore-scripts
+      - name: Verificar configuração sem revelar segredos
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=()
+          [[ -n "${GOOGLE_CREDENTIALS:-}" ]] || missing+=(GOOGLE_CREDENTIALS)
+          [[ -n "${SPREADSHEET_ID:-}" ]] || missing+=(SPREADSHEET_ID)
+          if (( ${#missing[@]} > 0 )); then
+            echo "Reconciliação interrompida. Configuração ausente: ${missing[*]}."
+            exit 1
+          fi
+          node -e "JSON.parse(process.env.GOOGLE_CREDENTIALS); console.log('Configuração Google Sheets presente; valores não serão exibidos.')"
+          if [[ -z "${DATABASE_URL_UNPOOLED:-}" ]]; then
+            echo "PostgreSQL não será comparado: DATABASE_URL_UNPOOLED não está configurada. O artefato registrará essa limitação."
+          fi
+      - name: Testar contrato sanitizado
+        run: node tests/circa-reconciliacao-readonly.js
+      - name: Executar reconciliação somente leitura
+        env:
+          RECONCILIACAO_OUTPUT: ${{ runner.temp }}/circa-reconciliacao.json
+        run: node scripts/reconciliar-circa-readonly.js
+      - name: Publicar relatório sanitizado
+        uses: actions/upload-artifact@v4
+        with:
+          name: circa-reconciliacao-${{ github.run_id }}
+          path: ${{ runner.temp }}/circa-reconciliacao.json
+          if-no-files-found: error
+          retention-days: 7
