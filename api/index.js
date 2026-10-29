@@ -7766,8 +7766,9 @@ app.get('/api/manifestacoes/:id/circa', requerPermissao('manifestacoes.visualiza
     });
     let checklistPersistido = [];
     let pendenciasPersistidas = [];
-    try { checklistPersistido = JSON.parse(m.CHECKLIST_CIRCA || '[]'); } catch (_) {}
-    try { pendenciasPersistidas = JSON.parse(m.PENDENCIAS_VALIDACAO_HUMANA || '[]'); } catch (_) {}
+    let analisePersistida = {}; try { analisePersistida = JSON.parse(m.ANALISE_IA || '{}'); } catch (_) {}
+    try { checklistPersistido = JSON.parse(m.CHECKLIST_CIRCA || analisePersistida.checklistPersistido || '[]'); } catch (_) { checklistPersistido = []; }
+    try { pendenciasPersistidas = JSON.parse(m.PENDENCIAS_VALIDACAO_HUMANA || analisePersistida.pendenciasValidacaoHumana || '[]'); } catch (_) { pendenciasPersistidas = []; }
     res.json({ sucesso:true, circa:{ ...resultado, checklistPersistido, pendenciasValidacaoHumana: pendenciasPersistidas } });
   } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e,'circa') }); }
 });
@@ -7786,6 +7787,21 @@ app.patch('/api/manifestacoes/:id/circa-dados', requerPermissao('manifestacoes.e
     if(requestedStage && requestedStage>currentStage+1 && String(req.user?.PERFIL||req.user?.perfil||'').toUpperCase()!=='MASTER') return res.status(409).json({sucesso:false,erro:'A etapa solicitada depende da conclusão das etapas anteriores.',etapaAtual:currentStage});
     const allowed=['STATUS','STATUS_FICHA','EMPRESA_RECLAMADA','EMPRESA_RECLAMANTE','CONTATO','CNPJ','TELEFONE','EMAIL','PRODUTO','LOTE','NFE','DESCRICAO','DESCRICAO_MANIFESTACAO','TIPO','CANAL','ORIGEM','PRIORIDADE','CATEGORIA','MOTIVO','GRAVIDADE','ETAPA_ATUAL','MENSAGEM_ETAPA','CAMINHO_TRATATIVA','COMPLEMENTO_PEDIDO','CANAL_RETORNO','PRAZO_RETORNO_SAC','TRATATIVA_SAC_INTERNA','SETOR_ACIONADO','ESCOPO_ACIONAMENTO','INVESTIGACAO_O_QUE','INVESTIGACAO_VERIFICACOES','INVESTIGACAO_EVIDENCIAS','INVESTIGACAO_NOTAS','SUBCAUSA','CAUSA_RAIZ_CONFIRMADA','ACOES_CORRETIVAS','DATA_SOLUCAO','RESPONSAVEL_EXECUCAO','VALIDACAO_RESULTADO','PROCEDENTE','PROCEDENTE_JUSTIFICATIVA','VALID_SAC_DATA_RETORNO','VALID_SAC_CLIENTE_INFORMADO','VALID_SAC_RESOLVIDA','RESUMO_RESOLUCAO','DEVOLUTIVA_CANAL','DEVOLUTIVA_DESTINATARIO','DEVOLUTIVA_FINAL','DEVOLUTIVA_ENVIADA','APRENDIZADO_CASO','APRENDIZADO_MATRIZ','OBSERVACOES_FINAIS','STATUS_TRATATIVA','ANEXOS','EVIDENCIAS','ANALISE_IA','CHECKLIST_CIRCA','PENDENCIAS_VALIDACAO_HUMANA'];
     const patch={}; for(const key of allowed) if(Object.prototype.hasOwnProperty.call(req.body||{},key)) patch[key]=req.body[key] ?? '';
+    if (Object.prototype.hasOwnProperty.call(req.body || {}, 'CHECKLIST_CIRCA') || Object.prototype.hasOwnProperty.call(req.body || {}, 'PENDENCIAS_VALIDACAO_HUMANA')) {
+      if (!m.ID_MANIFESTACAO) return res.status(409).json({sucesso:false,erro:'A manifestação ainda não possui ID persistido.'});
+      let meta={}; try { meta=JSON.parse(m.ANALISE_IA||'{}'); } catch (_) {}
+      if (req.body.CHECKLIST_CIRCA !== undefined) {
+        let items; try { items=JSON.parse(req.body.CHECKLIST_CIRCA); } catch (_) { return res.status(400).json({sucesso:false,erro:'Checklist inválido.'}); }
+        if (!Array.isArray(items) || items.some(x => !x || typeof x.id !== 'string' || !['PENDENTE','EM_ANDAMENTO','CONCLUIDA','NAO_APLICAVEL'].includes(x.status))) return res.status(400).json({sucesso:false,erro:'Checklist com estado ou identificador inválido.'});
+        meta.checklistPersistido=items.map(x=>({id:x.id,status:x.status,responsavel:req.user?.usuario||req.user?.login||'sistema',data:new Date().toISOString(),justificativa:String(x.justificativa||'').slice(0,500)}));
+      }
+      if (req.body.PENDENCIAS_VALIDACAO_HUMANA !== undefined) {
+        let items; try { items=JSON.parse(req.body.PENDENCIAS_VALIDACAO_HUMANA); } catch (_) { return res.status(400).json({sucesso:false,erro:'Pendências inválidas.'}); }
+        if (!Array.isArray(items) || items.some(x => typeof x !== 'string')) return res.status(400).json({sucesso:false,erro:'Pendências inválidas.'});
+        meta.pendenciasValidacaoHumana=items.map(x=>String(x).slice(0,120));
+      }
+      patch.ANALISE_IA=JSON.stringify(meta); delete patch.CHECKLIST_CIRCA; delete patch.PENDENCIAS_VALIDACAO_HUMANA;
+    }
     if (Object.prototype.hasOwnProperty.call(req.body || {}, 'analiseIA') && req.body.analiseIA) patch.ANALISE_IA = req.body.analiseIA;
     // Mapeia descricao (minúsculo, enviado pelo frontend nm-card) para as colunas corretas no Sheets
     if (Object.prototype.hasOwnProperty.call(req.body||{}, 'descricao') && req.body.descricao) {
