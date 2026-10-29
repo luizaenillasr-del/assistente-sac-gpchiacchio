@@ -127,8 +127,10 @@ async function consultarMatriz(ctx) {
   if (!matriz.length) return null;
 
   const elegíveis = matriz.filter(r =>
-    bate(r.EMPRESA, ctx.empresa) &&
-    bate(r.TIPO_MANIFESTACAO, ctx.tipo)
+    ['EMPRESA','TIPO_MANIFESTACAO','CATEGORIA','SUBCATEGORIA','CAUSA','SUBCAUSA','SETOR_RESPONSAVEL'].every(c => {
+      const valor = c === 'TIPO_MANIFESTACAO' ? ctx.tipo : ctx[c.toLowerCase()];
+      return !String(r[c] || '').trim() || !String(valor || '').trim() || bate(r[c], valor || '');
+    })
   );
 
   if (!elegíveis.length) return null;
@@ -139,7 +141,10 @@ async function consultarMatriz(ctx) {
 
   const melhor = rankeadas[0].regra;
   const criterios = ['EMPRESA','TIPO_MANIFESTACAO','CATEGORIA','SUBCATEGORIA','CAUSA','SUBCAUSA','SETOR_RESPONSAVEL'];
-  const correspondencia = Object.fromEntries(criterios.map(c => ({ [c]: { esperado: melhor[c] || '', encontrado: ctx[c.toLowerCase()] || '', corresponde: bate(melhor[c], ctx[c.toLowerCase()] || '') } } ).map(x => Object.entries(x)[0])));
+  const correspondencia = Object.fromEntries(criterios.map(c => {
+    const encontrado = c === 'TIPO_MANIFESTACAO' ? ctx.tipo : (ctx[c.toLowerCase()] || '');
+    return [c, { esperado: melhor[c] || '', encontrado, corresponde: !String(melhor[c] || '').trim() || !String(encontrado || '').trim() || bate(melhor[c], encontrado) }];
+  }));
 
   const split = (v) => (v || '').split(/[;\n]/).map(s => s.trim()).filter(Boolean);
 
@@ -170,7 +175,7 @@ async function consultarMatriz(ctx) {
     versao: melhor.VERSAO || '1.0',
     origem: 'MATRIZ',
     score: rankeadas[0].score,
-    elegibilidade: true,
+    elegibilidade: Object.values(correspondencia).every(c => c.corresponde),
     criteriosCorrespondencia: correspondencia,
   };
 }
