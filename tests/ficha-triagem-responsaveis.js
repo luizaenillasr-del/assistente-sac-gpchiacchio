@@ -1,0 +1,16 @@
+'use strict';
+const fs = require('fs');
+const api = fs.readFileSync('api/index.js','utf8');
+const page = fs.readFileSync('public/index.html','utf8');
+const check = (ok, msg) => { if (!ok) throw new Error(msg); console.log(`✓ ${msg}`); };
+check(/setorSelecionado:'',responsaveisRequest:0/.test(page), 'estado do setor e contador de requisição existem');
+check(/S\.setorSelecionado=String\(setorNovo\|\|''\)/.test(page), 'troca de setor é persistida no estado antes do re-render');
+check(/request!==S\.responsaveisRequest/.test(page), 'resposta assíncrona antiga não restaura setor ou responsáveis');
+check(/S\.responsaveis=\[\];S\.responsaveisError='';renderContent\(\)/.test(page), 'troca de setor limpa responsável anterior');
+check(/onchange="fichaV2CarregarResponsaveis\(this\.value\)"/.test(page), 'seletor possui evento change funcional');
+check(/Não foi possível consultar as complementações persistidas/.test(page), 'falha CIRCA não é apresentada como ausência de complementações');
+check(/analiseBruta = m\.ANALISE_IA \|\| m\.ANALISE_IA_JSON \|\| m\.CEREBRO_ANALISE/.test(api), 'leitura aceita aliases legados da análise persistida');
+check(/analiseLeitura = analiseBruta \? 'OK' : 'AUSENTE'/.test(api), 'estado de leitura distingue análise ausente de inválida');
+check(/lerAba\('MANIFESTACOES', 5000\),/.test(api), 'falha da fonte principal não é convertida em lista vazia');
+check(/analiseFonte:analiseBruta \? 'MANIFESTACOES\.ANALISE_IA'/.test(api), 'resposta informa a fonte sanitizada da análise');
+console.log('FICHA TRIAGEM/COMPLEMENTAÇÕES: 10 verificações aprovadas');

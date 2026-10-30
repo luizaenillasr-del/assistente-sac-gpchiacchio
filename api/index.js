@@ -7993,8 +7993,10 @@ app.post('/api/documentos/extrair', requerPerfil('MASTER','ANALISTA SAC','APROVA
 app.get('/api/manifestacoes/:id/circa', requerPermissao('manifestacoes.visualizar'), middlewareEscopoEmpresa(), async (req,res) => {
   try {
     const idReq = String(req.params.id || '').trim();
+    // A manifestação é a fonte obrigatória. Falha nessa leitura deve chegar
+    // ao cliente como indisponibilidade, nunca como lista vazia.
     const [manifestacoes, tratativas, devolutivas, matriz, causas] = await Promise.all([
-      lerAba('MANIFESTACOES', 5000).catch(() => []),
+      lerAba('MANIFESTACOES', 5000),
       lerAba('TRATATIVAS_SETORIAIS', 5000).catch(() => []),
       lerAba('DEVOLUTIVAS', 5000).catch(() => []),
       lerAba('MATRIZ_TRATAMENTO', 5000).catch(() => []),
@@ -8007,7 +8009,13 @@ app.get('/api/manifestacoes/:id/circa', requerPermissao('manifestacoes.visualiza
     if (!m) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
     if (req._empresaScope && !pertenceEmpresa(req._empresaScope, m.EMPRESA_RECLAMADA || ''))
       return res.status(403).json({ sucesso:false, erro:'Acesso não autorizado.' });
-    let analisePersistida = {}; try { analisePersistida = JSON.parse(m.ANALISE_IA || '{}'); } catch (_) {}
+    const analiseBruta = m.ANALISE_IA || m.ANALISE_IA_JSON || m.CEREBRO_ANALISE || '';
+    let analisePersistida = {};
+    let analiseLeitura = analiseBruta ? 'OK' : 'AUSENTE';
+    if (analiseBruta) {
+      try { analisePersistida = typeof analiseBruta === 'string' ? JSON.parse(analiseBruta) : analiseBruta; }
+      catch (_) { analisePersistida = {}; analiseLeitura = 'INVALIDA'; }
+    }
     const categoriasMap = new Map();
     matriz.map(matrizTratamentoService.normalizarRegra).forEach(r => {
       const categoria = String(r.CATEGORIA || '').trim();
@@ -8045,7 +8053,7 @@ app.get('/api/manifestacoes/:id/circa', requerPermissao('manifestacoes.visualiza
     let pendenciasPersistidas = [];
     try { const raw=m.CHECKLIST_CIRCA || analisePersistida.checklistPersistido || '[]'; const parsed=typeof raw==='string'?JSON.parse(raw):raw; checklistPersistido=Array.isArray(parsed)?parsed:Object.entries(parsed||{}).map(([id,status])=>({id,status})); } catch (_) { checklistPersistido = []; }
     try { pendenciasPersistidas = JSON.parse(m.PENDENCIAS_VALIDACAO_HUMANA || analisePersistida.pendenciasValidacaoHumana || '[]'); } catch (_) { pendenciasPersistidas = []; }
-    res.json({ sucesso:true, circa:{ ...resultado, categoriasDisponiveis, complementacoes: complementacoesPersistidas, checklistPersistido, checklistVersao: analisePersistida.checklistVersao||0, pendenciasValidacaoHumana: pendenciasPersistidas, decisaoEtapa2: analisePersistida.decisaoEtapa2 || null } });
+    res.json({ sucesso:true, circa:{ ...resultado, categoriasDisponiveis, complementacoes: complementacoesPersistidas, analiseLeitura, analiseFonte:analiseBruta ? 'MANIFESTACOES.ANALISE_IA' : 'MANIFESTACOES', checklistPersistido, checklistVersao: analisePersistida.checklistVersao||0, pendenciasValidacaoHumana: pendenciasPersistidas, decisaoEtapa2: analisePersistida.decisaoEtapa2 || null } });
   } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e,'circa') }); }
 });
 
