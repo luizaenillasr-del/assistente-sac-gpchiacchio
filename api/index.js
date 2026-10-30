@@ -7786,6 +7786,17 @@ app.get('/api/manifestacoes/:id/circa', requerPermissao('manifestacoes.visualiza
     if (!m) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
     if (req._empresaScope && !pertenceEmpresa(req._empresaScope, m.EMPRESA_RECLAMADA || ''))
       return res.status(403).json({ sucesso:false, erro:'Acesso não autorizado.' });
+    let analisePersistida = {}; try { analisePersistida = JSON.parse(m.ANALISE_IA || '{}'); } catch (_) {}
+    const categoriasMap = new Map();
+    matriz.map(matrizTratamentoService.normalizarRegra).forEach(r => {
+      const categoria = String(r.CATEGORIA || '').trim();
+      if (!categoria) return;
+      const atual = categoriasMap.get(categoria) || new Set();
+      if (String(r.SUBCATEGORIA || '').trim()) atual.add(String(r.SUBCATEGORIA).trim());
+      categoriasMap.set(categoria, atual);
+    });
+    const categoriasDisponiveis = [...categoriasMap.entries()].map(([categoria, subcategorias]) => ({ categoria, subcategorias: [...subcategorias] }));
+    const complementacoesPersistidas = analisePersistida.complementacoes && typeof analisePersistida.complementacoes === 'object' ? analisePersistida.complementacoes : {};
     const similares = await cerebroService.buscarCasosSimilares(m, 8, req.user?.EMPRESA || null).catch(() => []);
     const normTratCirca = r => ({
       ...matrizTratamentoService.normalizarRegra(r),
@@ -7801,6 +7812,8 @@ app.get('/api/manifestacoes/:id/circa', requerPermissao('manifestacoes.visualiza
       .filter(r => !m.EMPRESA_RECLAMADA || pertenceEmpresa(String(m.EMPRESA_RECLAMADA), r.EMPRESA || r.EMPRESA_RECLAMADA || ''));
     const resultado = circaEngine.analisar({
       manifestacao: m,
+      categoriasDisponiveis,
+      complementacoes: complementacoesPersistidas,
       similares,
       tratamentos: tratamentosCirca,
       causas: causas.filter(r => !m.EMPRESA_RECLAMADA || pertenceEmpresa(String(m.EMPRESA_RECLAMADA), r.EMPRESA || r.EMPRESA_RECLAMADA || '')),
@@ -7809,10 +7822,9 @@ app.get('/api/manifestacoes/:id/circa', requerPermissao('manifestacoes.visualiza
     });
     let checklistPersistido = [];
     let pendenciasPersistidas = [];
-    let analisePersistida = {}; try { analisePersistida = JSON.parse(m.ANALISE_IA || '{}'); } catch (_) {}
     try { const raw=m.CHECKLIST_CIRCA || analisePersistida.checklistPersistido || '[]'; const parsed=typeof raw==='string'?JSON.parse(raw):raw; checklistPersistido=Array.isArray(parsed)?parsed:Object.entries(parsed||{}).map(([id,status])=>({id,status})); } catch (_) { checklistPersistido = []; }
     try { pendenciasPersistidas = JSON.parse(m.PENDENCIAS_VALIDACAO_HUMANA || analisePersistida.pendenciasValidacaoHumana || '[]'); } catch (_) { pendenciasPersistidas = []; }
-    res.json({ sucesso:true, circa:{ ...resultado, checklistPersistido, checklistVersao: analisePersistida.checklistVersao||0, pendenciasValidacaoHumana: pendenciasPersistidas, decisaoEtapa2: analisePersistida.decisaoEtapa2 || null } });
+    res.json({ sucesso:true, circa:{ ...resultado, categoriasDisponiveis, complementacoes: complementacoesPersistidas, checklistPersistido, checklistVersao: analisePersistida.checklistVersao||0, pendenciasValidacaoHumana: pendenciasPersistidas, decisaoEtapa2: analisePersistida.decisaoEtapa2 || null } });
   } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e,'circa') }); }
 });
 
@@ -7900,19 +7912,45 @@ app.patch('/api/manifestacoes/:id/circa-dados', requerPermissao('manifestacoes.e
     // execução anterior, sem confiar em um snapshot parcial enviado pelo
     // navegador.
     if (req.body?.analisePatch && typeof req.body.analisePatch === 'object') {
-      const permitido = ['status','justificativa','origem','classificacao','hipoteses','orientacoes','pendencias','revisadoEm'];
+      const permitido = ['status','justificativa','origem','classificacao','hipoteses','orientacoes','pendencias','revisadoEm','complementacoes'];
       const patchAnalise = {};
       for (const chave of permitido) if (Object.prototype.hasOwnProperty.call(req.body.analisePatch, chave)) patchAnalise[chave] = req.body.analisePatch[chave];
       const estados = ['GERADA','REVISADA','ORIENTACAO_ACEITA','ORIENTACAO_PARCIAL','ORIENTACAO_REJEITADA','PENDENTE_VALIDACAO'];
       if (patchAnalise.status && !estados.includes(String(patchAnalise.status))) return res.status(400).json({sucesso:false,erro:'Estado de decisão da análise inválido.'});
       let base = {}; try { base = JSON.parse(m.ANALISE_IA || '{}'); } catch (_) {}
+      if (patchAnalise.complementacoes !== undefined) {
+        const estadosComplementacao = ['PREENCHIDA','PENDENTE','AGUARDANDO_CLIENTE','NAO_DISPONIVEL'];
+        if (!patchAnalise.complementacoes || typeof patchAnalise.complementacoes !== 'object' || Array.isArray(patchAnalise.complementacoes)) return res.status(400).json({sucesso:false,erro:'Complementações inválidas.'});
+        const anteriores = base.complementacoes && typeof base.complementacoes === 'object' ? base.complementacoes : {};
+        const normalizadas = { ...anteriores };
+        for (const [campo, valor] of Object.entries(patchAnalise.complementacoes)) {
+          if (!/^[A-Za-z][A-Za-z0-9_]{1,60}$/.test(campo) || !valor || typeof valor !== 'object') return res.status(400).json({sucesso:false,erro:'Campo de complementação inválido.'});
+          const status = String(valor.status || 'PENDENTE').toUpperCase();
+          if (!estadosComplementacao.includes(status)) return res.status(400).json({sucesso:false,erro:'Estado de complementação inválido.'});
+          if (status !== 'PREENCHIDA' && !String(valor.justificativa || '').trim()) return res.status(400).json({sucesso:false,erro:'Justificativa obrigatória para pendência não preenchida.'});
+          normalizadas[campo] = {
+            campo, valor: typeof valor.valor === 'string' ? valor.valor.slice(0, 500) : (Number.isFinite(valor.valor) ? valor.valor : ''),
+            unidade: String(valor.unidade || '').slice(0, 40), status,
+            justificativa: String(valor.justificativa || '').slice(0, 500), observacoes: String(valor.observacoes || '').slice(0, 1000),
+            evidencias: String(valor.evidencias || '').slice(0, 1000), origem: ['CLIENTE','ANALISTA'].includes(String(valor.origem || '').toUpperCase()) ? String(valor.origem).toUpperCase() : 'ANALISTA',
+            atualizadoPor: req.user?.usuario || req.user?.login || 'sistema', atualizadoEm: new Date().toISOString(),
+          };
+        }
+        base.complementacoes = normalizadas;
+        delete patchAnalise.complementacoes;
+      }
       const atual = base.decisaoEtapa2 && typeof base.decisaoEtapa2 === 'object' ? base.decisaoEtapa2 : {};
-      const revisadoEm = patchAnalise.revisadoEm || new Date().toISOString();
-      const revisadoPor = req.user?.usuario || req.user?.login || 'sistema';
-      const registro = { ...patchAnalise, revisadoEm, revisadoPor };
-      const historico = Array.isArray(atual.historico) ? atual.historico : [];
-      base.decisaoEtapa2 = { ...atual, ...registro, historico: [...historico, registro].slice(-50) };
-      decisaoEtapa2Audit = registro;
+      // Complementações são atualização de dados faltantes, não uma decisão
+      // do SAC. Não criar um snapshot/auditoria de decisão vazio quando a
+      // requisição contém somente complementacoes.
+      if (Object.keys(patchAnalise).length) {
+        const revisadoEm = patchAnalise.revisadoEm || new Date().toISOString();
+        const revisadoPor = req.user?.usuario || req.user?.login || 'sistema';
+        const registro = { ...patchAnalise, revisadoEm, revisadoPor };
+        const historico = Array.isArray(atual.historico) ? atual.historico : [];
+        base.decisaoEtapa2 = { ...atual, ...registro, historico: [...historico, registro].slice(-50) };
+        decisaoEtapa2Audit = registro;
+      }
       patch.ANALISE_IA = JSON.stringify(base);
       delete patch.analisePatch;
     }
