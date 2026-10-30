@@ -962,6 +962,36 @@ async function carregarUsuarioPorLogin(login){
     const demo=DEMO_USUARIOS.find(u=>normalizarTexto(u.USUARIO)===alvo);
     if(demo) return demo;
   }
+  // Quando o PostgreSQL está ativo, ele é a fonte primária de autenticação.
+  // Isso evita uma leitura da aba USUARIOS a cada login e mantém o Sheets como
+  // fallback para cadastros legados ou indisponibilidade do banco.
+  if (usuarioRepo) {
+    try {
+      const pgU = await usuarioRepo.findByLogin(login);
+      const pgPerfil = pgU?.perfil?.codigo || pgU?.perfil?.nome || null;
+      if (pgU && pgU.ativo !== false && pgPerfil && pgU.senhaHash) {
+        return {
+          ID_USUARIO: pgU.idOriginal || `USR-PG-${pgU.id}`,
+          USUARIO: String(pgU.email || login).split('@')[0],
+          EMAIL: pgU.email || '',
+          NOME: pgU.nome || pgU.email,
+          PERFIL: pgPerfil,
+          EMPRESA: pgU.empresa?.nome || '',
+          SETOR: pgU.setor?.nome || '',
+          STATUS: 'ATIVO',
+          SENHA_HASH: pgU.senhaHash,
+          SENHA: pgU.senhaHash,
+          CODIGO_RCA: pgU.codigoRca || '',
+          PERMISSOES_GRANTED: Array.isArray(pgU.perfil?.permissoes) ? pgU.perfil.permissoes : '',
+          _pgId: pgU.id,
+        };
+      }
+    } catch (e) {
+      // Timeout/indisponibilidade do pool não libera acesso: apenas aciona o
+      // fallback já existente, que continua validando a senha no Sheets.
+      console.warn('[AUTH] PostgreSQL indisponível; usando fallback Sheets:', e.message);
+    }
+  }
   // Quando existem registros históricos com o mesmo login (por exemplo, um
   // cadastro excluído e outro recriado), a linha mais recente do Sheets é a
   // credencial administrativa vigente. Isso evita autenticar com o hash antigo
@@ -1061,7 +1091,8 @@ async function registrarAcessoUsuario(usuario){
   // F4: atualiza PostgreSQL se disponível
   try {
     if (usuarioRepo && usuario._pgId && typeof usuarioRepo.registrarAcesso === 'function') {
-      usuarioRepo.registrarAcesso(usuario._pgId).catch(() => {});
+      await usuarioRepo.registrarAcesso(usuario._pgId);
+      return;
     }
   } catch(e) { console.warn('[F4] registrarAcesso PG:', e.message); }
   try{
@@ -1880,7 +1911,14 @@ app.post('/api/auth/login', async (req, res) => {
     if(statusNorm==='excluido') return res.status(403).json({sucesso:false,erro:'Usuário excluído. Contate o administrador.'});
     const senhaOk = await senhaValida(senha, registro.SENHA_HASH || registro.SENHA);
     if(!senhaOk) return res.status(401).json({sucesso:false,erro:'Usuário ou senha inválidos.'});
-    const profissional=await obterPerfilProfissional(pub.id);
+    let profissional = null;
+    // O perfil profissional é um complemento legado do Sheets. Usuários
+    // autenticados pela fonte PostgreSQL não precisam dessa leitura adicional
+    // para validar a sessão, evitando uma chamada de quota por login.
+    if (!registro._pgId) {
+      try { profissional = await obterPerfilProfissional(pub.id); }
+      catch (e) { console.warn('[LOGIN] perfil profissional indisponível:', e.message); }
+    }
     const profissionalCompleto=profissional?.STATUS==='CONCLUIDO';
     const agora=Date.now();
     const primeroAcesso = statusNorm === 'primeiro_acesso' || statusNorm === 'primeiroacesso';
