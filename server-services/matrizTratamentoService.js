@@ -126,10 +126,17 @@ async function consultarMatriz(ctx) {
   const matriz = await carregarMatriz();
   if (!matriz.length) return null;
 
+  const valorContexto = c => c === 'TIPO_MANIFESTACAO' ? ctx.tipo
+    : c === 'SETOR_RESPONSAVEL' ? ctx.setor
+    : ctx[c.toLowerCase()];
+
   const elegíveis = matriz.filter(r =>
     ['EMPRESA','TIPO_MANIFESTACAO','CATEGORIA','SUBCATEGORIA','CAUSA','SUBCAUSA','SETOR_RESPONSAVEL'].every(c => {
-      const valor = c === 'TIPO_MANIFESTACAO' ? ctx.tipo : ctx[c.toLowerCase()];
-      return !String(r[c] || '').trim() || !String(valor || '').trim() || bate(r[c], valor || '');
+      const valor = valorContexto(c);
+      const esperado = String(r[c] || '').trim();
+      // Critério preenchido na regra é obrigatório: valor ausente na
+      // manifestação deixa a regra pendente, nunca elegível por omissão.
+      return !esperado || (Boolean(String(valor || '').trim()) && bate(r[c], valor || ''));
     })
   );
 
@@ -142,8 +149,8 @@ async function consultarMatriz(ctx) {
   const melhor = rankeadas[0].regra;
   const criterios = ['EMPRESA','TIPO_MANIFESTACAO','CATEGORIA','SUBCATEGORIA','CAUSA','SUBCAUSA','SETOR_RESPONSAVEL'];
   const correspondencia = Object.fromEntries(criterios.map(c => {
-    const encontrado = c === 'TIPO_MANIFESTACAO' ? ctx.tipo : (ctx[c.toLowerCase()] || '');
-    return [c, { esperado: melhor[c] || '', encontrado, corresponde: !String(melhor[c] || '').trim() || !String(encontrado || '').trim() || bate(melhor[c], encontrado) }];
+    const encontrado = valorContexto(c) || '';
+    return [c, { esperado: melhor[c] || '', encontrado, corresponde: !String(melhor[c] || '').trim() || (Boolean(String(encontrado || '').trim()) && bate(melhor[c], encontrado)) }];
   }));
 
   const split = (v) => (v || '').split(/[;\n]/).map(s => s.trim()).filter(Boolean);

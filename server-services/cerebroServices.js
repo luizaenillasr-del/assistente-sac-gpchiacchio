@@ -1003,7 +1003,8 @@ async function analisarManifestacaoCompleta(manifestacao, regras = {}, usuario =
   const setor = regras.setores?.[0] || '';
   const tipo = regras.tipoDetectado || '';
   const hipotesesClassificacao = circaEngine.classificarHipoteses(manifestacao);
-  const tipoExibicao = tipo || 'Não identificado';
+  const problemasRelatados = circaEngine.identificarProblemas(manifestacao);
+  const tipoExibicao = tipo || (hipotesesClassificacao.length ? 'Pendente de validação' : 'Não identificado');
   const dataAbertura = campo(manifestacao, ['dataAbertura','DATA_ABERTURA','DATA_CRIACAO']);
 
   const empresaManif = campo(manifestacao, ['empresaReclamada','EMPRESA_RECLAMADA']);
@@ -1063,7 +1064,7 @@ async function analisarManifestacaoCompleta(manifestacao, regras = {}, usuario =
   const devolutivaModelo = modeloAprovado ? (modeloAprovado.TEXTO_PADRAO || '') : null;
 
   const matrizConhecimento = manifestacao.matrizConhecimento || null;
-  const contextoIA = { manifestacao, tipoDetectado: tipoExibicao, setores: regras.setores || [], casosSimilares, reincidencia, sla, slas, baseConhecimento, matrizConhecimento };
+  const contextoIA = { manifestacao, tipoDetectado: tipo || 'Pendente de validação', problemasRelatados, setores: regras.setores || [], casosSimilares, reincidencia, sla, slas, baseConhecimento, matrizConhecimento };
   const ia = await chamarIA(contextoIA).catch(e => { erros.push('ia: ' + e.message); return { disponivel: false, erro: e.message }; });
   if (ia?.erro) erros.push('ia: ' + ia.erro);
   // A resposta do modelo pode repetir um campo como ausente mesmo quando o
@@ -1160,7 +1161,7 @@ async function analisarManifestacaoCompleta(manifestacao, regras = {}, usuario =
     prioridade: regras.prioridade || 'Média', slaHoras: prazoProcedimento, slas,
     geraRNC: false, // RNC nunca automático — apenas por critério humano/auditoria
     procedimentoSugerido: regras.procedimentoSugerido || null, perguntasNecessarias: _filtrarPerguntasContextuais(regras.perguntasNecessarias || [], manifestacao),
-    casosSimilares, reincidencia, sla, baseConhecimento,
+    casosSimilares, reincidencia, sla, baseConhecimento, problemasRelatados,
     tratativaSugerida: { aplicavel: tratativa.aplicavel, confianca: tratativa.confianca, sugestao: tratativa.sugestao, quantidadeCasos: tratativa.quantidadeCasos, evidencia: tratativa.evidencia, origem: tratativa.origem||'HISTORICO', todasSugestoes: tratativa.todasSugestoes||[] },
     tratativaEstruturada, devolutivaEstruturada, ia, confianca, conflitos,
     informacoesAusentes, devolutivaSugerida: devolutiva, origemDevolutiva,

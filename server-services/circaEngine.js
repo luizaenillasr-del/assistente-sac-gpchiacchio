@@ -54,16 +54,35 @@ function missingFields(manifestacao) {
  * Reconhece problemas distintos somente como hipóteses de classificação. A
  * confirmação continua dependente da investigação e de uma causa cadastrada.
  */
-function classificarHipoteses(manifestacao = {}) {
+function identificarProblemas(manifestacao = {}) {
   const descricao = norm(first(manifestacao, FIELD_ALIASES.descricao));
-  const result = [];
-  if (/\b(atras|entreg|prazo|logistic|pedido)\w*/.test(descricao)) {
-    result.push({ codigo: 'ATRASO_LOGISTICO', descricao: 'Possível atraso logístico na entrega', origem: 'RELATO', confirmada: false });
+  const problemas = [];
+  const adicionar = (problema) => {
+    if (!problemas.some(item => item.codigo === problema.codigo)) problemas.push({
+      ...problema,
+      origem: 'RELATO',
+      trechoOrigem: first(manifestacao, FIELD_ALIASES.descricao),
+      causa: { status: 'HIPOTESE', valor: null },
+      confirmada: false,
+      evidenciasDisponiveis: Boolean(first(manifestacao, ['ANEXOS', 'EVIDENCIAS'])),
+      evidenciasPendentes: problema.evidenciasPendentes || [],
+      validacaoHumana: 'PENDENTE',
+    });
+  };
+  if (/\b(quantidade|qtd|inferior|faltou|faltante|unidades?|recebid[oa]s? a menos|divergenc\w* de quantidade)/.test(descricao)) {
+    adicionar({ codigo: 'DIVERGENCIA_QUANTIDADE', descricao: 'Possível divergência entre quantidade solicitada, faturada e entregue', investigacao: ['pedido', 'faturamento', 'separação', 'expedição', 'entrega'], evidenciasPendentes: ['pedido ou NF', 'quantidade entregue'] });
   }
-  if (/(tamp|encaix|pote|produto|defeit|nao conform|conformidade)/.test(descricao)) {
-    result.push({ codigo: 'NAO_CONFORMIDADE_PRODUTO', descricao: 'Possível não conformidade do produto ou do encaixe', origem: 'RELATO', confirmada: false });
+  if (/\b(atras|entreg|prazo|logistic|pedido|transport|dias? depois)\w*/.test(descricao)) {
+    adicionar({ codigo: 'ATRASO_LOGISTICO', descricao: 'Possível atraso logístico na entrega', investigacao: ['prazo acordado', 'expedição', 'transporte', 'comprovante de entrega'], evidenciasPendentes: ['prazo contratado', 'comprovante de entrega'] });
   }
-  return result;
+  if (/(tamp|encaix|pote|produto|defeit|nao conform|conformidade|qualidade|embalagen)/.test(descricao)) {
+    adicionar({ codigo: 'NAO_CONFORMIDADE_PRODUTO', descricao: 'Possível não conformidade do produto ou da embalagem', investigacao: ['lote', 'especificação', 'quantidade afetada', 'inspeção'], evidenciasPendentes: ['lote', 'fotos ou amostras'] });
+  }
+  return problemas;
+}
+
+function classificarHipoteses(manifestacao = {}) {
+  return identificarProblemas(manifestacao).map(({ codigo, descricao, origem, confirmada }) => ({ codigo, descricao, origem, confirmada }));
 }
 
 function analisar(input = {}) {
@@ -88,7 +107,7 @@ function analisar(input = {}) {
     const e = norm(esperado); const v = norm(encontrado);
     return e.split('|').some(item => item === '*' || v.includes(item.trim()));
   };
-  const tratamentoCompativel = t => {
+  const compararTratamento = t => {
     const campos = [
       ['EMPRESA', first(t, ['EMPRESA','EMPRESA_RECLAMADA']), first(m, ['EMPRESA_RECLAMADA','EMPRESA'])],
       ['TIPO_MANIFESTACAO', first(t, ['TIPO_MANIFESTACAO','TIPO']), first(m, ['TIPO','TIPO_MANIFESTACAO'])],
@@ -96,11 +115,12 @@ function analisar(input = {}) {
       ['SUBCATEGORIA', first(t, ['SUBCATEGORIA','SUBCAUSA']), first(m, ['SUBCATEGORIA','SUBCAUSA'])],
       ['SETOR_RESPONSAVEL', first(t, ['SETOR_RESPONSAVEL','SETOR']), first(m, ['SETOR_SUGERIDO','SETOR'])],
     ];
-    // Critérios ainda não informados na ficha ficam pendentes para triagem;
-    // não são tratados como conflito. Todo critério que já possui valor,
-    // porém, precisa corresponder e ao menos um critério concreto deve existir.
-    const comparaveis = campos.filter(([, esperado, encontrado]) => String(esperado || '').trim() && String(encontrado || '').trim());
-    return comparaveis.length > 0 && comparaveis.every(([, esperado, encontrado]) => criterioBate(esperado, encontrado));
+    const aplicaveis = campos.filter(([, esperado]) => String(esperado || '').trim());
+    const criterios = Object.fromEntries(aplicaveis.map(([nome, esperado, encontrado]) => [nome, {
+      esperado: String(esperado || ''), encontrado: String(encontrado || ''),
+      corresponde: criterioBate(esperado, encontrado),
+    }]));
+    return { criterios, aplicaveis, corresponde: aplicaveis.length > 0 && aplicaveis.every(([, esperado, encontrado]) => criterioBate(esperado, encontrado)) };
   };
   const procedures = tratamentos.filter(t => {
     const status = norm(t.STATUS || t.ATIVO);
@@ -108,8 +128,9 @@ function analisar(input = {}) {
     // A validação estrutural da Matriz ocorre antes deste módulo. Aqui
     // mantemos compatibilidade com registros já normalizados pelo endpoint;
     // somente itens explicitamente aprovados/ativos e identificados entram.
-    return ['aprovado', 'publicada', 'ativo', 'sim'].includes(status) && Boolean(id) && tratamentoCompativel(t);
-  });
+    const comparacao = compararTratamento(t);
+    return ['aprovado', 'publicada', 'ativo', 'sim'].includes(status) && Boolean(id) && comparacao.corresponde;
+  }).map(t => ({ ...t, criteriosCorrespondencia: compararTratamento(t).criterios }));
   // Enriquecer hipóteses com causas da aba CAUSAS que coincidam com texto da manifestação
   const descNorm = norm(first(m, ['DESCRICAO','DESCRIÇÃO','ORIG_DESCRICAO_RECLAMACAO']) || '');
   const causasMatriz = causas
@@ -127,6 +148,7 @@ function analisar(input = {}) {
     .filter(Boolean)
     .slice(0, 3);
   const hypotheses = workflow.normalizeList([causa, subcausa, ...causasMatriz].filter(Boolean));
+  const problemasRelatados = identificarProblemas(m);
   const hipotesesClassificacao = classificarHipoteses(m);
   const alertaProdutoManifestacao = alertaProduto(first(m, ['PRODUTO','produto']), first(m, FIELD_ALIASES.descricao));
   const abertura = first(m, ['DATA_ABERTURA', 'DATA_CRIACAO', 'dataAbertura']);
@@ -136,8 +158,8 @@ function analisar(input = {}) {
   };
   const checklist = workflow.buildChecklist([
     ...faltantes.map(field => ({ descricao: `Completar informação: ${field}`, obrigatoria: true, origem: 'CIRCA_CAPTURA', prazoHoras: 24, vencimento: vencimento(24) })),
-    ...(!causa ? [{ descricao: 'Confirmar causa com evidência', obrigatoria: true, origem: 'CIRCA_INVESTIGACAO', prazoHoras: 72, vencimento: vencimento(72) }] : []),
-    ...(!procedimento ? [{ descricao: 'Selecionar procedimento validado ou justificar ausência', obrigatoria: true, origem: 'CIRCA_RESOLUCAO', prazoHoras: 72, vencimento: vencimento(72) }] : []),
+    ...(!causa ? [{ descricao: 'Confirmar causa com evidência ou registrar investigação inconclusiva', obrigatoria: true, origem: 'CIRCA_INVESTIGACAO', prazoOrigem: 'PRAZO_NAO_DEFINIDO', prazoHoras: null, vencimento: '' }] : []),
+    ...(!procedimento ? [{ descricao: 'Selecionar procedimento elegível ou justificar ausência', obrigatoria: true, origem: 'CIRCA_RESOLUCAO', prazoOrigem: 'PRAZO_NAO_DEFINIDO', prazoHoras: null, vencimento: '' }] : []),
   ], input.checklist || []);
 
   const recomendacoes = [];
@@ -168,10 +190,12 @@ function analisar(input = {}) {
       justificativaRisco: first(m, ['GRAVIDADE', 'RISCO_JUSTIFICATIVA']),
       hipotesesCausa: hypotheses,
       hipotesesClassificacao,
+      problemasRelatados,
       informacoesAusentes: faltantes,
       perguntasRecomendadas: faltantes.map(field => `Informe ${field}.`),
       acoesSugeridas: procedures.map(t => first(t, ['PROCEDIMENTO', 'NOME', 'TRATAMENTO'])).filter(Boolean),
-      procedimentosAplicaveis: procedures.map(t => first(t, ['ID_TRATAMENTO', 'ID_PROC', 'NOME', 'PROCEDIMENTO'])).filter(Boolean),
+      procedimentosAplicaveis: procedures.map(t => first(t, ['ID_TRATAMENTO', 'ID_PROC', 'ID_REGRA', 'ID'])).filter(Boolean),
+      procedimentosDetalhados: procedures.map(t => ({ id: first(t, ['ID_TRATAMENTO', 'ID_PROC', 'ID_REGRA', 'ID']), origem: t.ORIGEM || 'MATRIZ_TRATAMENTO', criteriosCorrespondencia: t.criteriosCorrespondencia || {} })).filter(item => item.id),
       casosSemelhantes: similares.map(item => first(item, ['ID_MANIFESTACAO', 'ID', 'PROTOCOLO'])).filter(Boolean),
       setoresRecomendados: workflow.normalizeList(first(m, ['SETORES_SUGERIDOS', 'SETOR_SUGERIDO'])),
       responsaveisElegiveis: workflow.normalizeList(first(m, ['RESPONSAVEIS_ELEGIVEIS'])),
@@ -184,8 +208,9 @@ function analisar(input = {}) {
       alertaProduto: alertaProdutoManifestacao,
     },
     checklist,
+    problemasRelatados,
     governanca: { origem: 'REGRAS_E_REGISTROS_PERSISTIDOS', exigeAprovacaoHumana: true, causaConfirmada: Boolean(causa), tratamentoValidado: procedures.length > 0, publicarAutomaticamente: false, encerrarAutomaticamente: false },
   };
 }
 
-module.exports = { analisar, missingFields, classificarHipoteses, normalizarManifestacao };
+module.exports = { analisar, missingFields, classificarHipoteses, identificarProblemas, normalizarManifestacao };

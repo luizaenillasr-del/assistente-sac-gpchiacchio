@@ -12311,6 +12311,14 @@ function renderizarAnalise(a) {
     avisoClass.textContent = 'Classificação pendente de validação humana. As hipóteses acima não são causas confirmadas.';
     causaEl.parentNode.insertBefore(avisoClass, causaEl);
   }
+  const problemasEstruturados = Array.isArray(a.problemasRelatados) ? a.problemasRelatados : (Array.isArray(a.analiseEstruturada?.problemasRelatados) ? a.analiseEstruturada.problemasRelatados : []);
+  document.getElementById('ia-problemas-relatados')?.remove();
+  if (problemasEstruturados.length && causaEl) {
+    const bloco = document.createElement('div'); bloco.id = 'ia-problemas-relatados';
+    bloco.style.cssText = 'margin-top:8px;padding:9px 12px;border:1px solid #E5E7EB;border-radius:6px;background:#FAFAFA;font-size:12px;color:#4B5563';
+    bloco.innerHTML = '<strong>Problemas identificados no relato</strong>' + problemasEstruturados.map(p => `<div style="margin-top:5px"><b>${esc(p.codigo || 'PROBLEMA')}</b> — ${esc(p.descricao || '')} <span style="color:#92400E">(hipótese; validar)</span></div>`).join('');
+    causaEl.parentNode.insertBefore(bloco, causaEl.nextSibling);
+  }
 
   // Procedimento
   const proc = a.procedimentoSugerido;
@@ -12320,6 +12328,14 @@ function renderizarAnalise(a) {
     document.getElementById('ia-proc-nome').textContent = `${proc.id} — ${proc.nome}`;
   } else {
     procWrap.style.display = 'none';
+  }
+  document.getElementById('ia-procedimentos-rastreio')?.remove();
+  const procedimentosRastreio = a.analiseEstruturada?.procedimentosDetalhados || a.procedimentosDetalhados || [];
+  if (procedimentosRastreio.length && procWrap?.parentNode) {
+    const rastreio = document.createElement('div'); rastreio.id = 'ia-procedimentos-rastreio';
+    rastreio.style.cssText = 'margin:8px 0;padding:9px 12px;border:1px solid #E5E7EB;border-radius:6px;font-size:11px;color:#4B5563';
+    rastreio.innerHTML = '<strong>Rastreabilidade da regra</strong>' + procedimentosRastreio.map(p => `<div style="margin-top:4px"><b>${esc(p.id)}</b> · origem ${esc(p.origem || 'MATRIZ_TRATAMENTO')} · critérios ${esc(Object.entries(p.criteriosCorrespondencia || {}).map(([k,v]) => `${k}: ${v.corresponde ? 'corresponde' : 'não corresponde'}`).join(', ') || 'não informado')}</div>`).join('');
+    procWrap.parentNode.insertBefore(rastreio, procWrap.nextSibling);
   }
   const alertaProduto = a.alertaProduto;
   if (alertaProduto) {

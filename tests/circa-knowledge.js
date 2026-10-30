@@ -14,6 +14,9 @@ const fixtures = {
     ID_REGRA: 'REG-1', EMPRESA: 'TODAS', TIPO_MANIFESTACAO: 'Reclamação',
     CAUSA: 'Atraso logístico', TRATATIVA_PADRAO: 'Confirmar rastreamento',
     REQUER_APROVACAO: 'SIM', ATIVO: 'SIM', SLA_HORAS: '72', PRIORIDADE: 'NORMAL', VERSAO: '1.0', SETOR_RESPONSAVEL: 'Logística',
+  }, {
+    ID_REGRA: 'REG-CATEGORIA', EMPRESA: 'TODAS', TIPO_MANIFESTACAO: 'Reclamação', CATEGORIA: 'Faturamento',
+    SETOR_RESPONSAVEL: 'Financeiro', TRATATIVA_PADRAO: 'Conferir cobrança', ATIVO: 'SIM', SLA_HORAS: '72', PRIORIDADE: 'NORMAL',
   }],
   MODELOS_DEVOLUTIVA: [{
     ID_MODELO: 'MOD-1', TITULO: 'Recebimento aprovado', EMPRESA: 'TODAS',
@@ -50,13 +53,15 @@ const cerebro = require('../server-services/cerebroServices');
   assert.match(circaSource, /lerAba\('CAUSAS'/, 'CIRCA deve usar a aba canônica CAUSAS');
 
   const regra = await matriz.consultarMatriz({
-    empresa: 'CHIACCHIO EMBALAGENS', tipo: 'Reclamação', causa: 'Atraso logístico',
+    empresa: 'CHIACCHIO EMBALAGENS', tipo: 'Reclamação', causa: 'Atraso logístico', setor: 'Logística',
   });
   assert.equal(regra.idTratamento, null, 'ID_REGRA não pode ser usado como ID_TRATAMENTO');
   assert.equal(regra.idRegra, 'REG-1', 'ID_REGRA deve ser preservado separadamente');
   assert.ok(regra.acoesRecomendadas.includes('Confirmar rastreamento'));
   assert.equal(regra.necessitaAprovacao, true);
   assert.equal(regra.origem, 'MATRIZ');
+  const regraSemCategoria = await matriz.consultarMatriz({ empresa: 'CHIACCHIO EMBALAGENS', tipo: 'Reclamação' });
+  assert.equal(regraSemCategoria, null, 'regra com critério obrigatório ausente não pode ser elegível');
 
   const resposta = await devolutiva.gerarDevolutiva({
     idManifestacao: 'MAN-1', protocolo: 'CHIA-0001', tipo: 'RECEBIMENTO',
