@@ -603,12 +603,21 @@ async function carregarUsuarios(){
 // que é a fonte que contém empresa, setor e permissões operacionais. A rota
 // retorna somente dados públicos do responsável e falha explicitamente quando
 // o cadastro não pode ser consultado.
+const _responsaveisCache = new Map();
+const _responsaveisInFlight = new Map();
+const RESPONSAVEIS_CACHE_TTL_MS = 30_000;
+
 async function carregarResponsaveisElegiveis({ empresa, setor } = {}) {
-  const rows = await lerAba('USUARIOS', 1000);
+  const cacheKey = `${empresaCanonica(empresa || '')}|${normalizarTexto(setor || '')}`;
+  const cached = _responsaveisCache.get(cacheKey);
+  if (cached && Date.now() - cached.ts < RESPONSAVEIS_CACHE_TTL_MS) return cached.itens;
+  if (_responsaveisInFlight.has(cacheKey)) return _responsaveisInFlight.get(cacheKey);
+  const leitura = (async () => {
+    const rows = await lerAba('USUARIOS', 1000);
   const empresaNorm = empresaCanonica(empresa || '');
   const setorNorm = normalizarTexto(setor || '');
   const perfisTratativa = new Set(['MASTER','GESTOR SAC','ANALISTA SAC','SETOR RESPONSÁVEL','ESPECIALISTA']);
-  return rows.filter(u => {
+  const itens = rows.filter(u => {
     // PRIMEIRO_ACESSO ainda não é uma conta operacional autorizada para receber tratativas.
     if (String(u.STATUS || 'ATIVO').toUpperCase() !== 'ATIVO') return false;
     const perfil = perfilCanonico(u.PERFIL || u.PERFIL_USUARIO);
@@ -628,6 +637,23 @@ async function carregarResponsaveisElegiveis({ empresa, setor } = {}) {
     cargo: String(u.CARGO || '').trim(), perfil: perfilCanonico(u.PERFIL || u.PERFIL_USUARIO),
     empresa: String(u.EMPRESA || '').trim(), setores: setoresDoCadastro(u), status: 'ATIVO',
   })).filter(u => u.id && u.usuario);
+    _responsaveisCache.set(cacheKey, { itens, ts: Date.now() });
+    return itens;
+  })();
+  _responsaveisInFlight.set(cacheKey, leitura);
+  try {
+    return await leitura;
+  } catch (e) {
+    // Só usa snapshot de responsáveis que já foi validado anteriormente para
+    // a mesma empresa/setor; nunca transforma uma falha inédita em lista vazia.
+    if (cached?.itens && Date.now() - cached.ts < 5 * 60_000) {
+      console.warn('[RESPONSAVEIS] cadastro indisponível; usando snapshot recente');
+      return cached.itens;
+    }
+    throw e;
+  } finally {
+    if (_responsaveisInFlight.get(cacheKey) === leitura) _responsaveisInFlight.delete(cacheKey);
+  }
 }
 
 async function encontrarResponsavelElegivel({ empresa, setor, identificador } = {}) {
