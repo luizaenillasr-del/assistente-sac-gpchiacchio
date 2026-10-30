@@ -1117,7 +1117,7 @@ async function lerAba(nomeAba, maxRows) {
   const leitura = (async () => {
   try {
     const sheets = await getSheets();
-    const range = maxRows ? `${nomeAba}!A1:AZ${maxRows}` : nomeAba;
+    const range = maxRows ? `${nomeAba}!1:${maxRows + 1}` : nomeAba;
     const res = await _sheetsGetComRetry(sheets, { spreadsheetId: SPREADSHEET_ID, range });
     const rows = res.data.values || [];
     if (rows.length < 2) { _lerAbaCache.set(cacheKey, { data: [], ts: Date.now() }); return []; }
