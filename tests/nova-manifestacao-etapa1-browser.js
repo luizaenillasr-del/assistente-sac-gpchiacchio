@@ -43,6 +43,9 @@ async function main() {
   const requisicoes = [];
   const rascunhosEnviados = [];
   const checklistSalvos = [];
+  let complementacoesPersistidas = {};
+  let complementacoesPatchCount = 0;
+  let complementacaoModo = 'success';
   page.on('pageerror', error => errosPagina.push(error));
   await page.route('**/api/**', async route => {
     const req = route.request();
@@ -50,6 +53,13 @@ async function main() {
     requisicoes.push({ method: req.method(), path: url.pathname });
     if (url.pathname === '/api/auth/me') {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ sucesso: true, usuario: { usuario: 'teste.nova', nome: 'Teste Nova Manifestação', perfil: 'MASTER', empresa: 'Grupo Chiacchio' } }) });
+    }
+    if (url.pathname === '/api/analise' && req.method() === 'POST') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ sucesso: true, analise: {
+        tipoDetectado: 'Reclamação', confianca: 80, informacoesAusentes: ['CANAL', 'CATEGORIA'],
+        hipotesesClassificacao: [{ codigo: 'ATRASO_LOGISTICO', descricao: 'Atraso logístico' }, { codigo: 'NAO_CONFORMIDADE_PRODUTO', descricao: 'Possível não conformidade de produto' }],
+        procedimentosAplicaveis: [], setoresRecomendados: [], responsaveisElegiveis: [], casosSemelhantes: []
+      } }) });
     }
     if (url.pathname === '/api/manifestacoes' && req.method() === 'POST') {
       rascunhosEnviados.push(req.postDataJSON());
@@ -62,6 +72,12 @@ async function main() {
     if (url.pathname.endsWith('/circa-dados') && req.method() === 'PATCH') {
       const body = req.postDataJSON() || {};
       if (body.CHECKLIST_CIRCA) checklistSalvos.push(body);
+      if (body.analisePatch?.complementacoes) {
+        complementacoesPatchCount += 1;
+        if (complementacaoModo === 'http-error') return route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ sucesso: false, erro: 'Falha controlada de persistência.' }) });
+        if (complementacaoModo === 'timeout') { await new Promise(resolve => setTimeout(resolve, 16000)); return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ sucesso: true }) }); }
+        if (complementacaoModo !== 'divergent') complementacoesPersistidas = body.analisePatch.complementacoes;
+      }
       await new Promise(resolve => setTimeout(resolve, 80));
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ sucesso: true, id: 'NM-BROWSER-001', protocolo: 'CHIA-20261028-01-0001' }) });
     }
@@ -70,7 +86,8 @@ async function main() {
         sucesso: true,
         circa: {
           analiseEstruturada: {
-            informacoesAusentes: [],
+            informacoesAusentes: ['CANAL', 'CATEGORIA'],
+            complementacoes: complementacoesPersistidas,
             prioridade: 'Média',
             hipotesesClassificacao: [
               { codigo: 'ATRASO_LOGISTICO', descricao: 'Atraso logístico (hipótese; validar na triagem)' },
@@ -78,6 +95,7 @@ async function main() {
             ],
             procedimentosAplicaveis: [], setoresRecomendados: [], responsaveisElegiveis: [], casosSemelhantes: []
           }, checklist: [{ id: 'circa-confirmar-causa', descricao: 'Confirmar causa com evidência', prazo: '72h' }], checklistPersistido: [], checklistVersao: 0
+          , categoriasDisponiveis: [{ categoria: 'Qualidade', subcategorias: [] }]
         }
       }) });
     }
@@ -132,7 +150,39 @@ async function main() {
     assert.equal(rascunhosEnviados.length, 1);
     assert.equal(rascunhosEnviados[0].descricao, descricaoCenario, 'o payload deve levar a descrição completa preenchida');
     assert.equal(rascunhosEnviados[0].canal, 'TELEFONE', 'o payload deve levar o canal selecionado');
-    assert.equal((await page.locator('#ia-perguntas').textContent()).trim(), 'Nenhuma informação essencial ausente.');
+    await page.locator('#nm-btn-analisar-ia').click();
+    await page.locator('#ia-perguntas [data-comp-value="CANAL"]').waitFor({ state: 'visible' });
+    const perguntas = page.locator('#ia-perguntas');
+    await perguntas.locator('[data-comp-value="CANAL"]').fill('TELEFONE');
+    await perguntas.locator('[data-comp-value="CATEGORIA"]').selectOption({ label: 'Qualidade' });
+    await perguntas.locator('[data-comp-status="CANAL"]').selectOption('PREENCHIDA');
+    await perguntas.locator('[data-comp-status="CATEGORIA"]').selectOption('PREENCHIDA');
+    await page.evaluate(() => {
+      window.nmCarregarAnaliseDeterministica = async () => { const resultado = { complementacoes: {
+        CANAL: { valor: 'TELEFONE', status: 'PREENCHIDA' },
+        CATEGORIA: { valor: 'Qualidade', status: 'PREENCHIDA' },
+      }, analiseEstruturada: { hipotesesClassificacao: [{ codigo: 'ATRASO_LOGISTICO', descricao: 'Atraso logístico' }, { codigo: 'NAO_CONFORMIDADE_PRODUTO', descricao: 'Possível não conformidade de produto' }] }, categoriasDisponiveis: [{ categoria: 'Qualidade', subcategorias: [] }], checklist: [{ id: 'circa-confirmar-causa', descricao: 'Confirmar causa com evidência', prazo: '72h' }], checklistPersistido: [], checklistVersao: 0 }; renderizarCircaDeterministico(resultado); return resultado; };
+    });
+    const salvarComplementacoes = page.locator('#nm-salvar-complementacoes');
+    await salvarComplementacoes.evaluate(button => { button.click(); button.click(); });
+    await page.waitForTimeout(500);
+    await page.locator('#nm-complementacoes-msg').filter({ hasText: 'salvas e confirmadas' }).waitFor();
+    assert.equal(complementacoesPatchCount, 1, 'cliques simultâneos não podem duplicar complementações');
+    assert.equal(await perguntas.locator('[data-comp-value="CANAL"]').inputValue(), 'TELEFONE');
+    assert.equal(await perguntas.locator('[data-comp-value="CATEGORIA"]').inputValue(), 'Qualidade');
+    complementacaoModo = 'http-error';
+    await perguntas.locator('[data-comp-value="CATEGORIA"]').selectOption({ label: 'Qualidade' });
+    await salvarComplementacoes.click();
+    await page.locator('#nm-complementacoes-msg').filter({ hasText: 'Falha controlada de persistência' }).waitFor();
+    assert.equal(await perguntas.locator('[data-comp-value="CATEGORIA"]').inputValue(), 'Qualidade', 'falha HTTP não pode apagar o campo');
+    complementacaoModo = 'divergent';
+    await perguntas.locator('[data-comp-value="CANAL"]').fill('EMAIL');
+    await salvarComplementacoes.click();
+    await page.locator('#nm-complementacoes-msg').filter({ hasText: 'não confirmou' }).waitFor();
+    complementacaoModo = 'timeout';
+    await perguntas.locator('[data-comp-value="CANAL"]').fill('WHATSAPP');
+    await salvarComplementacoes.click();
+    await page.locator('#nm-complementacoes-msg').filter({ hasText: 'Tempo limite excedido' }).waitFor();
     const classificacao = await page.locator('#ia-causa').textContent();
     assert.match(classificacao, /Atraso logístico/);
     assert.match(classificacao, /não conformidade de produto/i);
@@ -151,6 +201,9 @@ async function main() {
     // O mesmo registro deve atravessar as etapas seguintes sem perder os dados.
     await continuar.click();
     await page.locator('#nm-etapa-label').filter({ hasText: 'Etapa 2 de 7' }).waitFor();
+    await page.locator('#ia-perguntas [data-comp-value="CANAL"]').waitFor();
+    assert.equal(await page.locator('#ia-perguntas [data-comp-value="CANAL"]').inputValue(), 'TELEFONE', 'complementação deve sobreviver à navegação');
+    assert.equal(await page.locator('#ia-perguntas [data-comp-value="CATEGORIA"]').inputValue(), 'Qualidade', 'complementação deve sobreviver à reanálise');
     await continuar.click();
     await page.locator('#nm-etapa-label').filter({ hasText: 'Etapa 3 de 7' }).waitFor();
     await page.locator('#nm-caminho-sac').click();
