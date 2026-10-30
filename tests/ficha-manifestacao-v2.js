@@ -16,6 +16,8 @@ const checks = [
   ['relato legado é preservado', html.includes("DESCRICAO_RECLAMACAO','RELATO")],
   ['SLAs sem prazo artificial', html.includes("SLA da triagem SAC") && html.includes("SLA do setor") && html.includes("value:'Não informado'") && html.includes('SLA_TOTAL_HORAS')],
   ['histórico e CIRCA persistidos', html.includes("/historico") && html.includes("/circa")],
+  ['complementações da Etapa 2 recuperadas e exibidas', html.includes('function renderComplementacoes()') && html.includes('S.circa.complementacoes') && html.includes('Complementações da Etapa 2')],
+  ['histórico específico de complementações', api.includes("acao:'COMPLEMENTACOES_CIRCA_ATUALIZADAS'") && api.includes('complementacoesAudit')],
   ['ações usam ficha existente', html.includes("/api/manifestacoes/'+encodeURIComponent(id())+'/ficha") && html.includes("acao:'encaminhar_setor") && html.includes("acao:'salvar_investigacao")],
   ['não usa dados fictícios do standalone', !html.includes('PLAS-MVS6GPQV9JF')],
 ];

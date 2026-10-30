@@ -93,6 +93,12 @@ function request(base, method, route, auth, body) {
     assert.equal(complementacoesCirca.status, 200, JSON.stringify(complementacoesCirca.body));
     assert.equal(complementacoesCirca.body.circa.complementacoes.CANAL.valor, 'TELEFONE');
     assert.equal(complementacoesCirca.body.circa.complementacoes.CATEGORIA.valor, 'Qualidade');
+    const complementacoesHistory = await request(base, 'GET', `/api/manifestacoes/${encodeURIComponent(draftId)}/historico`, master);
+    assert.equal(complementacoesHistory.status, 200, JSON.stringify(complementacoesHistory.body));
+    const complementacaoEvent = complementacoesHistory.body.itens.find(item => item.ACAO === 'COMPLEMENTACOES_CIRCA_ATUALIZADAS');
+    assert.ok(complementacaoEvent, 'a atualização deve gerar evento específico de auditoria da complementação');
+    assert.match(String(complementacaoEvent.DETALHES || ''), /CANAL/);
+    assert.match(String(complementacaoEvent.DETALHES || ''), /CATEGORIA/);
     const stale=await request(base,'PATCH',`/api/manifestacoes/${encodeURIComponent(draftId)}/circa-dados`,master,{produto:'Outro',ultimaEdicaoConhecida:draft.body.atualizadoEm});
     assert.equal(stale.status,409,'gravação com versão antiga deve ser rejeitada sem sobrescrever dados');
 
