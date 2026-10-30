@@ -7884,6 +7884,7 @@ app.patch('/api/manifestacoes/:id/circa-dados', requerPermissao('manifestacoes.e
       } catch (_) { /* payload inválido será tratado pelo contrato existente */ }
     }
     let decisaoEtapa2Audit = null;
+    let complementacoesEsperadas = null;
     if (Object.prototype.hasOwnProperty.call(req.body || {}, 'CHECKLIST_CIRCA') || Object.prototype.hasOwnProperty.call(req.body || {}, 'PENDENCIAS_VALIDACAO_HUMANA')) {
       if (!m.ID_MANIFESTACAO) return res.status(409).json({sucesso:false,erro:'A manifestação ainda não possui ID persistido.'});
       let meta={}; try { meta=JSON.parse(m.ANALISE_IA||'{}'); } catch (_) {}
@@ -7937,6 +7938,7 @@ app.patch('/api/manifestacoes/:id/circa-dados', requerPermissao('manifestacoes.e
           };
         }
         base.complementacoes = normalizadas;
+        complementacoesEsperadas = normalizadas;
         delete patchAnalise.complementacoes;
       }
       const atual = base.decisaoEtapa2 && typeof base.decisaoEtapa2 === 'object' ? base.decisaoEtapa2 : {};
@@ -7978,10 +7980,20 @@ app.patch('/api/manifestacoes/:id/circa-dados', requerPermissao('manifestacoes.e
       patch.ANEXOS = JSON.stringify(anexosPersistidos);
     }
     patch.DATA_ULTIMA_EDICAO=new Date().toISOString(); patch.ATUALIZADO_POR=req.user?.usuario||'sistema';
-    await atualizarPorID('MANIFESTACOES',m.ID_MANIFESTACAO||idReq,patch,['ID_MANIFESTACAO','PROTOCOLO','ID']).catch(async e => {
+    const atualizacao = await atualizarPorID('MANIFESTACOES',m.ID_MANIFESTACAO||idReq,patch,['ID_MANIFESTACAO','PROTOCOLO','ID']).catch(async e => {
       if (req.body?.finalizar && patch.IDEMPOTENCY_KEY) await protocoloAtomico.registrarFalhaPersistencia(patch.IDEMPOTENCY_KEY,e).catch(()=>{});
       throw e;
     });
+    if (!atualizacao) throw new Error('A manifestação não foi localizada para atualização.');
+    if (complementacoesEsperadas) {
+      const confirmadas = await lerAba('MANIFESTACOES',5000);
+      const mesma = confirmadas.find(row => [row.ID_MANIFESTACAO,row.PROTOCOLO,row.ID].some(v => String(v||'').trim() === String(m.ID_MANIFESTACAO||idReq).trim()));
+      let metaConfirmada = {};
+      try { metaConfirmada = JSON.parse(mesma?.ANALISE_IA || '{}'); } catch (_) {}
+      if (!mesma || JSON.stringify(metaConfirmada.complementacoes || {}) !== JSON.stringify(complementacoesEsperadas)) {
+        throw new Error('A gravação das complementações não foi confirmada na fonte persistida.');
+      }
+    }
     if (req.body?.finalizar && patch.IDEMPOTENCY_KEY) {
       await protocoloAtomico.confirmarPersistencia(patch.IDEMPOTENCY_KEY,m.ID_MANIFESTACAO||idReq);
     }

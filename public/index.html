@@ -11961,7 +11961,7 @@ function renderizarCircaDeterministico(resultado) {
   const stamp=document.getElementById('ia-timestamp'); if(stamp) stamp.textContent='Consulta determinística concluída · regras + histórico + matriz';
 }
 
-const NM_COMPLEMENTACAO_LABELS = { QUANTIDADE:'Quantidade', CATEGORIA:'Categoria', SUBCATEGORIA:'Subcategoria', SITUACAO_OCORRENCIA:'Situação da ocorrência', DATA_INICIO:'Data de início' };
+const NM_COMPLEMENTACAO_LABELS = { CANAL:'Canal', QUANTIDADE:'Quantidade', CATEGORIA:'Categoria', SUBCATEGORIA:'Subcategoria', SITUACAO_OCORRENCIA:'Situação da ocorrência', DATA_INICIO:'Data de início' };
 const NM_COMPLEMENTACAO_STATUS = [['PREENCHIDA','Preenchida'],['PENDENTE','Pendente'],['AGUARDANDO_CLIENTE','Aguardando cliente'],['NAO_DISPONIVEL','Não disponível']];
 function nmRenderComplementacoes(resultado = {}) {
   const host = document.getElementById('ia-perguntas'); if (!host) return;
@@ -11996,7 +11996,14 @@ window.nmComplementacaoCategoriaChange = function(select) {
   sub.innerHTML = '<option value="">Selecionar subcategoria...</option>' + (item?.subcategorias || []).map(x => `<option value="${esc(String(x))}">${esc(String(x))}</option>`).join('');
 };
 window.nmSalvarComplementacoes = async function() {
-  if (!_nmCardId) { alert('Salve a manifestação antes de complementar a análise.'); return; }
+  if (!_nmCardId) {
+    const salvo = typeof window.salvarRascunho === 'function' && await window.salvarRascunho({silent:true,reportError:true});
+    if (!salvo || !_nmCardId) {
+      const msg = document.getElementById('nm-complementacoes-msg');
+      if (msg) { msg.style.color='#B91C1C'; msg.textContent='Não foi possível criar o rascunho persistido. Nenhuma complementação foi gravada.'; }
+      return;
+    }
+  }
   const payload = {};
   document.querySelectorAll('[data-comp-status]').forEach(statusEl => {
     const campo = statusEl.dataset.compStatus; const valueEl = document.querySelector(`[data-comp-value="${campo}"]`); const unitEl = document.querySelector(`[data-comp-unit="${campo}"]`); const justEl = document.querySelector(`[data-comp-just="${campo}"]`); const obsEl = document.querySelector(`[data-comp-obs="${campo}"]`);
@@ -12008,8 +12015,13 @@ window.nmSalvarComplementacoes = async function() {
   try {
     const r = await _apiFetch(`/api/manifestacoes/${encodeURIComponent(_nmCardId)}/circa-dados`,15000,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({analisePatch:{complementacoes:payload}})});
     if (!r?.sucesso) throw new Error(r?.erro || 'Falha ao salvar complementações.');
-    if(msg){msg.style.color='#166534';msg.textContent='Complementações salvas e análise atualizada.';}
-    await nmCarregarAnaliseDeterministica();
+    const atualizada = await nmCarregarAnaliseDeterministica();
+    const naoConfirmadas = Object.entries(payload).filter(([campo, valor]) => {
+      const salvo = atualizada?.complementacoes?.[campo];
+      return !salvo || salvo.status !== valor.status || String(salvo.valor ?? '') !== String(valor.valor ?? '');
+    });
+    if (naoConfirmadas.length) throw new Error('O servidor não confirmou todas as complementações.');
+    if(msg){msg.style.color='#166534';msg.textContent='Complementações salvas e confirmadas pelo servidor.';}
   } catch(e) { if(msg){msg.style.color='#B91C1C';msg.textContent=`Não foi possível salvar: ${e.message}`;} }
 };
 window.nmSolicitarComplementacoesAoCliente = function() {
@@ -12078,7 +12090,8 @@ window.nmCarregarAnaliseDeterministica = async function nmCarregarAnaliseDetermi
   if (_nmDeterministicaPromise) return _nmDeterministicaPromise;
   _nmDeterministicaPromise = (async () => {
     if(!_nmCardId && typeof window.salvarRascunho === 'function') {
-      await window.salvarRascunho({silent:true}).catch(()=>{});
+      const salvo = await window.salvarRascunho({silent:true,reportError:true});
+      if (!salvo) return null;
     }
     if(!_nmCardId) return null;
     // Não leia nem renderize o resultado de outra ficha caso a pessoa inicie

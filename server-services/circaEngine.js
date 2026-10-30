@@ -47,7 +47,7 @@ function normalizarManifestacao(manifestacao = {}) {
 
 function aplicarComplementacoes(manifestacao = {}, complementacoes = {}) {
   const m = { ...manifestacao };
-  const campos = { quantidade: 'QUANTIDADE', categoria: 'CATEGORIA', subcategoria: 'SUBCATEGORIA', situacaoOcorrencia: 'SITUACAO_OCORRENCIA', dataInicio: 'DATA_INICIO_OCORRENCIA' };
+  const campos = { canal: 'CANAL', quantidade: 'QUANTIDADE', categoria: 'CATEGORIA', subcategoria: 'SUBCATEGORIA', situacaoOcorrencia: 'SITUACAO_OCORRENCIA', dataInicio: 'DATA_INICIO_OCORRENCIA' };
   Object.entries(campos).forEach(([chave, destino]) => {
     // O armazenamento usa o nome canônico em maiúsculas, enquanto versões
     // antigas do formulário enviavam camelCase. Aceitar ambos mantém a
