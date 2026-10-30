@@ -53,7 +53,7 @@ function request(base, method, route, auth, body) {
   const base = `http://127.0.0.1:${server.address().port}`;
   const master = token({ perfil:'MASTER', empresa:'Grupo Chiacchio', usuario:'master.test', id:'USR-MST-001' });
   const key = 'NOVA-CORRECAO-001';
-  let createdId = '', draftId = '';
+  let createdId = '', draftId = '', actionIds = [];
   try {
     const draft = await request(base, 'POST', '/api/manifestacoes', master, {
       rascunho:true, empresaReclamada:'PLASCHIO', empresaReclamante:'Cliente Rascunho', contato:'Contato Rascunho', cnpj:'123', telefone:'555', email:'draft@example.test',
@@ -123,6 +123,22 @@ function request(base, method, route, auth, body) {
     assert.equal(evidencias.status, 200, JSON.stringify(evidencias.body));
     assert.ok(evidencias.body.itens.some(item => item.nome === 'evidencia.txt'), 'anexo deve ser recuperável pelo protocolo interno');
 
+    const actionBodies = [
+      { tipo:'NOTIFICACAO', tarefa:'Solicitar retorno ao cliente', prazoOrigem:'SLA_RETORNO_CLIENTE_96H', idempotencyKey:key+'-cliente' },
+      { tipo:'ENCAMINHAMENTO_TRATATIVA', setorDestino:'QUALIDADE', tarefa:'Investigar encaixe das tampas', prazo:'72', prazoOrigem:'SLA_RETORNO_SETOR_72H', idempotencyKey:key+'-qualidade' },
+      { tipo:'ENCAMINHAMENTO_TRATATIVA', setorDestino:'LOGÍSTICA', tarefa:'Verificar atraso de entrega', prazo:'72', prazoOrigem:'SLA_RETORNO_SETOR_72H', idempotencyKey:key+'-logistica' },
+    ];
+    for (const body of actionBodies) {
+      const createdAction = await request(base,'POST',`/api/manifestacoes/${encodeURIComponent(createdId)}/acionamentos`,master,body);
+      assert.equal(createdAction.status,201,JSON.stringify(createdAction.body));
+      actionIds.push(createdAction.body.item.ID_ACIONAMENTO);
+    }
+    const actionList = await request(base,'GET',`/api/manifestacoes/${encodeURIComponent(createdId)}/acionamentos`,master);
+    assert.equal(actionList.status,200,JSON.stringify(actionList.body));
+    assert.equal(actionList.body.itens.filter(a=>actionIds.includes(a.ID_ACIONAMENTO)).length,3,'as três frentes devem ser recuperáveis do armazenamento');
+    assert.deepEqual(actionList.body.itens.filter(a=>actionIds.includes(a.ID_ACIONAMENTO)).map(a=>a.SETOR_DESTINO||a.TIPO),['NOTIFICACAO','QUALIDADE','LOGÍSTICA']);
+    assert.equal(actionList.body.itens.find(a=>a.ID_ACIONAMENTO===actionIds[1]).PRAZO_ORIGEM,'SLA_RETORNO_SETOR_72H');
+
     const repetido = await request(base, 'POST', '/api/manifestacoes', master, {
       idempotencyKey:key, empresaReclamada:'CHIACCHIO EMBALAGENS', empresaReclamante:'Outro cliente',
       contato:'Outro contato', descricao:'Tentativa repetida não deve criar segunda ficha.', canal:'E-mail',
@@ -136,6 +152,7 @@ function request(base, method, route, auth, body) {
     if (i >= 0) mock.DB.MANIFESTACOES.splice(i, 1);
     const di = mock.DB.MANIFESTACOES.findIndex(r => r.ID_MANIFESTACAO === draftId);
     if (di >= 0) mock.DB.MANIFESTACOES.splice(di, 1);
+    for (let i=mock.DB.ACIONAMENTOS_INTERNOS.length-1;i>=0;i--) if(actionIds.includes(mock.DB.ACIONAMENTOS_INTERNOS[i].ID_ACIONAMENTO)) mock.DB.ACIONAMENTOS_INTERNOS.splice(i,1);
     server.closeAllConnections?.();
     await new Promise(resolve => server.close(resolve));
   }
