@@ -110,7 +110,10 @@ function montarAcoes(regras, ctx, atrasoInfo) {
   const addAcao = (tipo, descricao, extra = {}) => {
     // Não adicionar ações proibidas
     if (regras.acoesProibidas?.some(p => descricao.toLowerCase().includes(p.toLowerCase().slice(0, 20)))) return;
-    acoes.push({ tipo, descricao, responsavel: extra.responsavel || regras.responsavel || '', setor: extra.setor || regras.setorResponsavel || '', prazo: extra.prazo || prazo || 'Conforme SLA aplicável', status: extra.status || STATUS_ACAO.PENDENTE, evidenciaNecessaria: tipo === 'OBRIGATORIA' && regras.necessitaEvidencia });
+    const setorAcao = extra.setor || regras.setorResponsavel || '';
+    const prazoAcao = extra.prazo || prazo || (extra.prazoOrigem === 'SLA_RETORNO_CLIENTE_96H' ? '96h' : (extra.prazoOrigem === 'SLA_RETORNO_SETOR_72H' ? '72h' : 'Prazo não definido'));
+    const prazoOrigem = extra.prazoOrigem || (prazo ? 'PRAZO_PROCEDIMENTO' : (setorAcao ? 'SLA_RETORNO_SETOR_72H' : 'PRAZO_NAO_DEFINIDO'));
+    acoes.push({ tipo, descricao, responsavel: extra.responsavel || regras.responsavel || '', setor: setorAcao, prazo: prazoAcao, prazoOrigem, status: extra.status || STATUS_ACAO.PENDENTE, evidenciaNecessaria: tipo === 'OBRIGATORIA' && regras.necessitaEvidencia });
   };
 
   // Ações obrigatórias da Matriz / defaults
@@ -123,7 +126,7 @@ function montarAcoes(regras, ctx, atrasoInfo) {
     if (!acoes.some(a => a.descricao.toLowerCase().includes('rastrea'))) {
       addAcao('OBRIGATORIA', 'Verificar rastreamento e identificar etapa do atraso', { setor: atrasoInfo.etapaDesviada || 'Logística' });
     }
-    addAcao('OBRIGATORIA', 'Confirmar novo prazo de entrega e comunicar ao cliente', { prazo: '24h' });
+    addAcao('OBRIGATORIA', 'Confirmar novo prazo de entrega e comunicar ao cliente', { prazo: '96h', prazoOrigem: 'SLA_RETORNO_CLIENTE_96H' });
   }
 
   // Análise técnica se necessário

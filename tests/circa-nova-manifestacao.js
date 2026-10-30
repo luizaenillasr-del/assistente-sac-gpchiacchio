@@ -55,7 +55,16 @@ assert.deepEqual(semRegra.analiseEstruturada.setoresRecomendados, [], 'setor nã
 assert.equal(semRegra.hipotesesClassificacao.length, 2);
 assert.equal(semRegra.analiseEstruturada.classificacaoStatus, 'PENDENTE_VALIDACAO');
 assert.equal(semRegra.analiseEstruturada.alertaProduto, null, 'produto equivalente não gera pendência');
-assert.equal(semRegra.checklist[0].prazo, '72h', 'atividade de investigação recebe SLA conhecido');
+assert.equal(semRegra.checklist.find(x => /Confirmar causa/.test(x.descricao)).prazo, '', 'confirmação de causa não recebe 72h artificial');
+assert.ok(Array.isArray(semRegra.analiseEstruturada.procedimentosDetalhados), 'procedimentos expõem rastreabilidade estruturada');
+
+const multiproblema = analisar({ manifestacao: {
+  ...manifestacao,
+  descricao: 'Recebemos quantidade inferior à solicitada, potes com defeito e atraso de quatro dias na entrega.',
+} });
+assert.deepEqual(multiproblema.problemasRelatados.map(p => p.codigo), ['DIVERGENCIA_QUANTIDADE', 'ATRASO_LOGISTICO', 'NAO_CONFORMIDADE_PRODUTO']);
+assert.ok(multiproblema.problemasRelatados.every(p => p.causa.status === 'HIPOTESE' && p.confirmada === false));
+assert.ok(multiproblema.problemasRelatados.every(p => p.validacaoHumana === 'PENDENTE'));
 
 const originalLerAba = sheets.lerAba;
 (async () => {

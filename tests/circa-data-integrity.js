@@ -81,7 +81,7 @@ const manifestacoes = [
     assert.equal(matriz.regraUtilizavel(matriz.normalizarRegra(matrizRows[3])), false, 'regra inativa não deve ser utilizada');
 
     matriz._cache = null;
-    const regra = await matriz.consultarMatriz({ empresa: 'CHIACCHIO', tipo: 'Reclamação', causa: 'Atraso' });
+    const regra = await matriz.consultarMatriz({ empresa: 'CHIACCHIO', tipo: 'Reclamação', causa: 'Atraso', setor: 'Logística' });
     assert.ok(regra, 'uma regra completa deve ser encontrada');
     assert.equal(regra.idRegra, 'MTR-LEG-1');
     assert.equal(regra.idTratamento, null, 'consulta não pode misturar os identificadores');
