@@ -7010,8 +7010,9 @@ app.get('/api/manifestacoes/:id/historico', requerPermissao('manifestacoes.visua
       lerAba('HISTORICO_MANIFESTACOES', 3000).catch(() => []),
     ]);
     // Garante que a manifestação pertence à empresa do usuário
-    const item = manifest.find(r => r.ID_MANIFESTACAO === id);
+    const item = manifest.find(r => [r.ID_MANIFESTACAO, r.PROTOCOLO, r.ID, r.ID_ORIGINAL].some(v => String(v || '').trim() === String(id).trim()));
     if (!item) return res.status(404).json({ sucesso: false, erro: 'Manifestação não encontrada.' });
+    const ids = idsManifestacao(item, id);
     const _pfHist = perfilCanonico(req.user.perfil);
     if (_pfHist !== 'MASTER') {
       const empScope = req.user?.empresa_scope || req.user?.empresa || '';
@@ -7021,7 +7022,7 @@ app.get('/api/manifestacoes/:id/historico', requerPermissao('manifestacoes.visua
       }
     }
     const itens = logs
-      .filter(r => (r.ID_REGISTRO || r.ID_MANIFESTACAO || '') === id)
+      .filter(r => ids.has(String(r.ID_REGISTRO || r.ID_MANIFESTACAO || r.PROTOCOLO || '').trim()))
       .map(r => {
         const vals = Object.values(r);
         return {
@@ -7032,7 +7033,7 @@ app.get('/api/manifestacoes/:id/historico', requerPermissao('manifestacoes.visua
         };
       })
       .filter(r => r.DATA_HORA || r.ACAO)
-      .concat(historicoFicha.filter(r => r.ID_MANIFESTACAO === id).map(r => ({
+      .concat(historicoFicha.filter(r => ids.has(String(r.ID_MANIFESTACAO || r.PROTOCOLO || '').trim())).map(r => ({
         DATA_HORA:r.DATA_HORA || '', USUARIO:r.USUARIO || '', ACAO:r.ACAO || '', DETALHES:r.DESCRICAO || '', ETAPA:r.ETAPA || ''
       })))
       .sort((a,b) => String(a.DATA_HORA).localeCompare(String(b.DATA_HORA)));
@@ -8016,6 +8017,10 @@ async function circaManifestacao(id) {
   const rows = await lerAba('MANIFESTACOES', 5000).catch(() => []);
   return rows.find(row => [row.ID_MANIFESTACAO, row.PROTOCOLO, row.ID, row.ID_ORIGINAL].some(v => String(v || '').trim() === String(id || '').trim()));
 }
+function idsManifestacao(manifestacao, solicitado) {
+  return new Set([manifestacao?.ID_MANIFESTACAO, manifestacao?.PROTOCOLO, manifestacao?.ID, manifestacao?.ID_ORIGINAL, solicitado]
+    .filter(v => v !== undefined && v !== null && String(v).trim() !== '').map(v => String(v).trim()));
+}
 
 app.get('/api/manifestacoes/:id/acionamentos', requerPermissao('manifestacoes.visualizar'), middlewareEscopoEmpresa(), async (req,res) => {
   try {
@@ -8023,8 +8028,8 @@ app.get('/api/manifestacoes/:id/acionamentos', requerPermissao('manifestacoes.vi
     if (!m) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
     if (req._empresaScope && !pertenceEmpresa(req._empresaScope, m.EMPRESA_RECLAMADA || '')) return res.status(403).json({ sucesso:false, erro:'Acesso não autorizado.' });
     const rows = await lerAba('ACIONAMENTOS_INTERNOS', 5000).catch(() => []);
-    const id = m.ID_MANIFESTACAO || req.params.id;
-    res.json({ sucesso:true, itens:rows.filter(row => String(row.ID_MANIFESTACAO) === String(id)), statuses:ACIONAMENTO_STATUSES, tipos:ACIONAMENTO_TYPES });
+    const ids = idsManifestacao(m, req.params.id);
+    res.json({ sucesso:true, itens:rows.filter(row => ids.has(String(row.ID_MANIFESTACAO || row.PROTOCOLO || row.ID || '').trim())), statuses:ACIONAMENTO_STATUSES, tipos:ACIONAMENTO_TYPES });
   } catch (e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e,'acionamentos') }); }
 });
 

@@ -138,6 +138,13 @@ function request(base, method, route, auth, body) {
     assert.equal(actionList.body.itens.filter(a=>actionIds.includes(a.ID_ACIONAMENTO)).length,3,'as três frentes devem ser recuperáveis do armazenamento');
     assert.deepEqual(actionList.body.itens.filter(a=>actionIds.includes(a.ID_ACIONAMENTO)).map(a=>a.SETOR_DESTINO||a.TIPO),['NOTIFICACAO','QUALIDADE','LOGÍSTICA']);
     assert.equal(actionList.body.itens.find(a=>a.ID_ACIONAMENTO===actionIds[1]).PRAZO_ORIGEM,'SLA_RETORNO_SETOR_72H');
+    const actionByProtocol = await request(base,'GET',`/api/manifestacoes/${encodeURIComponent(criado.body.protocolo)}/acionamentos`,master);
+    assert.equal(actionByProtocol.status,200,JSON.stringify(actionByProtocol.body));
+    assert.equal(actionByProtocol.body.itens.filter(a=>actionIds.includes(a.ID_ACIONAMENTO)).length,3,'o protocolo público deve resolver as mesmas frentes pelo vínculo persistido');
+    const historyByProtocol = await request(base,'GET',`/api/manifestacoes/${encodeURIComponent(criado.body.protocolo)}/historico`,master);
+    assert.equal(historyByProtocol.status,200,JSON.stringify(historyByProtocol.body));
+    const evidenceByProtocol = await request(base,'GET',`/api/manifestacoes/${encodeURIComponent(criado.body.protocolo)}/evidencias`,master);
+    assert.equal(evidenceByProtocol.status,200,JSON.stringify(evidenceByProtocol.body));
 
     const repetido = await request(base, 'POST', '/api/manifestacoes', master, {
       idempotencyKey:key, empresaReclamada:'CHIACCHIO EMBALAGENS', empresaReclamante:'Outro cliente',
