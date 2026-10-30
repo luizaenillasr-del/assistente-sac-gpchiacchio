@@ -14,3 +14,6 @@ check(/analiseLeitura = analiseBruta \? 'OK' : 'AUSENTE'/.test(api), 'estado de 
 check(/lerAba\('MANIFESTACOES', 5000\),/.test(api), 'falha da fonte principal não é convertida em lista vazia');
 check(/analiseFonte:analiseBruta \? 'MANIFESTACOES\.ANALISE_IA'/.test(api), 'resposta informa a fonte sanitizada da análise');
 console.log('FICHA TRIAGEM/COMPLEMENTAÇÕES: 10 verificações aprovadas');
+check(/_responsaveisCache/.test(api) && /_responsaveisInFlight/.test(api), 'consultas concorrentes de responsáveis são deduplicadas');
+check(/snapshot recente/.test(api) && /nunca transforma uma falha inédita em lista vazia/.test(api), 'fallback só usa snapshot previamente validado');
+check(/RESPONSAVEIS_INDISPONIVEIS/.test(api) && /NENHUM_ELEGIVEL/.test(api), 'indisponibilidade e ausência de elegíveis permanecem distintas');
