@@ -2458,7 +2458,10 @@ app.post('/api/manifestacoes', requerPermissao('manifestacoes.abrir'), async (re
     if (!empresaReclamante || !descricao) return res.status(400).json({ sucesso:false, erro:'Empresa reclamante e descrição são obrigatórios.' });
     const protocoloKeyInput=String(req.body.idempotencyKey||req.headers['idempotency-key']||'').trim();
     if(!rascunho && !protocoloKeyInput) return res.status(400).json({sucesso:false,erro:'Chave de idempotência obrigatória.',codigo:'IDEMPOTENCY_KEY_REQUIRED'});
-    if(!rascunho) {
+    // Rascunhos também recebem uma chave estável. Se a resposta do POST se
+    // perder ou a confirmação precisar ser repetida, a tentativa seguinte
+    // devolve a mesma ficha em vez de criar outra manifestação.
+    if(protocoloKeyInput) {
       const existente=(await lerAba('MANIFESTACOES',5000).catch(()=>[])).find(m=>String(m.IDEMPOTENCY_KEY||'')===protocoloKeyInput);
       if(existente) return res.json({sucesso:true,id:existente.ID_MANIFESTACAO,protocolo:existente.PROTOCOLO,idempotente:true});
     }
@@ -2475,7 +2478,7 @@ app.post('/api/manifestacoes', requerPermissao('manifestacoes.abrir'), async (re
     const tipoFinal = tipo || 'Reclamação';
     const objeto = {
       ID_MANIFESTACAO:id, PROTOCOLO:protocolo, DATA_ABERTURA:agora, DATA_CRIACAO:agora, DATA_REGISTRO:agora, EMPRESA_RECLAMANTE:empresaReclamante,
-      IDEMPOTENCY_KEY:rascunho?'':protocoloKey,
+      IDEMPOTENCY_KEY:protocoloKey,
       CONTATO:contato||'', PRODUTO:produto||'', LOTE:lote||'', NFE:nfe||'', DESCRICAO:descricao,
       DESCRICAO_MANIFESTACAO:descricao, DESCRICAO_RECLAMACAO:descricao, DESCRICAO_ORIGINAL:descricao, STATUS:rascunho?'RASCUNHO':'AGUARDANDO_TRIAGEM_SAC', TIPO:tipoFinal, TIPO_SUGERIDO:'',
       SETOR_SUGERIDO:'', SETORES_SUGERIDOS:'', PROCEDIMENTO_SUGERIDO:'', SLA_HORAS:'', PRIORIDADE:req.body.prioridade||'NORMAL',

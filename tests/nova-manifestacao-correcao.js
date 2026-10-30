@@ -21,6 +21,9 @@ assert.ok(html.includes('/api/manifestacoes/${encodeURIComponent(technicalId)}/e
 assert.match(html, /_nmRascunhoUltimaEdicao/, 'o rascunho deve controlar a versão retornada pelo armazenamento');
 assert.match(html, /_nmEvidenciasPersistidas/, 'anexos persistidos devem continuar visíveis após reabrir a ficha');
 assert.match(html, /ultimaEdicaoConhecida/, 'salvamentos concorrentes devem enviar a versão conhecida');
+assert.match(html, /idempotencyKey:nmGarantirIdempotencyKey\(\)/, 'rascunhos devem reutilizar a chave de idempotência');
+assert.match(html, /O rascunho foi aceito, mas ainda não foi confirmado/, 'o ID só deve ser usado após confirmação de leitura');
+assert.match(fs.readFileSync(path.resolve(__dirname, '../api/index.js'), 'utf8'), /if\(protocoloKeyInput\)/, 'o POST deve deduplicar também rascunhos');
 assert.match(fs.readFileSync(path.resolve(__dirname, '../api/index.js'), 'utf8'), /RASCUNHO_CONCORRENTE/, 'o backend deve rejeitar uma gravação fora de ordem');
 assert.ok(html.includes('Preencha os campos obrigatórios:'), 'a navegação deve informar campos obrigatórios pendentes');
 assert.ok(html.includes('nmTextoEstruturado'), 'valores estruturados do Cérebro devem ser normalizados antes da exibição');
@@ -60,6 +63,17 @@ function request(base, method, route, auth, body) {
       tipo:'Reclamação', canal:'TELEFONE', prioridade:'ALTA', produto:'Potes', lote:'L-9', nfe:'NF-9', quantidade:'10', descricao:'Relato original completo do rascunho que deve permanecer intacto após atualizações parciais.',
     });
     assert.equal(draft.status, 200, JSON.stringify(draft.body)); draftId=draft.body.id;
+    const draftRetry = await request(base, 'POST', '/api/manifestacoes', master, {
+      rascunho:true, idempotencyKey:'RASCUNHO-IDEMPOTENTE-001', empresaReclamada:'PLASCHIO', empresaReclamante:'Cliente Rascunho', contato:'Contato Rascunho', canal:'TELEFONE', descricao:'Rascunho idempotente para validar confirmação sem duplicação de ficha.'
+    });
+    const draftRetryAgain = await request(base, 'POST', '/api/manifestacoes', master, {
+      rascunho:true, idempotencyKey:'RASCUNHO-IDEMPOTENTE-001', empresaReclamada:'PLASCHIO', empresaReclamante:'Outro cliente', contato:'Outro contato', canal:'EMAIL', descricao:'Tentativa repetida do mesmo rascunho.'
+    });
+    assert.equal(draftRetry.status, 200); assert.equal(draftRetryAgain.status, 200);
+    assert.equal(draftRetryAgain.body.id, draftRetry.body.id, 'repetição de POST de rascunho deve devolver o mesmo ID');
+    assert.equal(mock.DB.MANIFESTACOES.filter(r => r.ID_MANIFESTACAO === draftRetry.body.id).length, 1);
+    const retryIndex = mock.DB.MANIFESTACOES.findIndex(r => r.ID_MANIFESTACAO === draftRetry.body.id);
+    if (retryIndex >= 0) mock.DB.MANIFESTACOES.splice(retryIndex, 1);
     let draftRow=mock.DB.MANIFESTACOES.find(r=>r.ID_MANIFESTACAO===draftId);
     assert.equal(draftRow.PRIORIDADE,'ALTA'); assert.equal(draftRow.DESCRICAO,'Relato original completo do rascunho que deve permanecer intacto após atualizações parciais.'); assert.equal(draftRow.DESCRICAO_RECLAMACAO,'Relato original completo do rascunho que deve permanecer intacto após atualizações parciais.');
     draftRow.ANALISE_IA=JSON.stringify({hipoteses:['hipotese-preservada'],decisaoEtapa2:{status:'PENDENTE_VALIDACAO'}});
