@@ -44,12 +44,13 @@ assert.equal(checklistComPrazo[0].vencimento, '2026-10-30T12:00:00.000Z');
 
 const semRegra = analisar({
   manifestacao,
+  categoriasDisponiveis: [{ categoria: 'Qualidade', subcategorias: ['Defeito de produto'] }],
   tratamentos: [
     { ID_REGRA: '', STATUS: 'APROVADO', SETOR_RESPONSAVEL: '', PROCEDIMENTO: '' },
     { ID_REGRA: 'INAT-1', STATUS: 'INATIVO', SETOR_RESPONSAVEL: 'Qualidade', PROCEDIMENTO: 'Não usar' },
   ],
 });
-assert.deepEqual(semRegra.analiseEstruturada.informacoesAusentes, [], 'dados preenchidos permanecem presentes');
+assert.deepEqual(semRegra.analiseEstruturada.informacoesAusentes, ['CATEGORIA'], 'somente a categoria realmente ausente deve permanecer pendente');
 assert.equal(semRegra.analiseEstruturada.procedimentosAplicaveis.length, 0, 'regra sem identidade/inativa não pode ser recomendada');
 assert.deepEqual(semRegra.analiseEstruturada.setoresRecomendados, [], 'setor não pode ser extraído diretamente de palavras do relato');
 assert.equal(semRegra.hipotesesClassificacao.length, 2);
@@ -65,6 +66,28 @@ const multiproblema = analisar({ manifestacao: {
 assert.deepEqual(multiproblema.problemasRelatados.map(p => p.codigo), ['DIVERGENCIA_QUANTIDADE', 'ATRASO_LOGISTICO', 'NAO_CONFORMIDADE_PRODUTO']);
 assert.ok(multiproblema.problemasRelatados.every(p => p.causa.status === 'HIPOTESE' && p.confirmada === false));
 assert.ok(multiproblema.problemasRelatados.every(p => p.validacaoHumana === 'PENDENTE'));
+
+const relatoSacolas = analisar({ manifestacao: {
+  ...manifestacao,
+  descricao: 'Cliente informa sacolas com espessura inferior à especificada e unidades que rasgam durante o uso.',
+} });
+assert.deepEqual(relatoSacolas.problemasRelatados.map(p => p.codigo), ['NAO_CONFORMIDADE_PRODUTO'], '"unidades" isolado não deve ser confundido com divergência quantitativa');
+
+const semComplementacao = { ...manifestacao, CANAL: '', canal: '', CATEGORIA: '', SUBCATEGORIA: '' };
+const complementada = analisar({
+  manifestacao: semComplementacao,
+  complementacoes: {
+    CANAL: { status: 'PREENCHIDA', valor: 'TELEFONE' },
+    CATEGORIA: { status: 'PREENCHIDA', valor: 'Qualidade' },
+    SUBCATEGORIA: { status: 'PREENCHIDA', valor: 'Defeito de produto' },
+    QUANTIDADE: { status: 'PREENCHIDA', valor: 1200, unidade: 'unidades' },
+  },
+});
+assert.ok(!complementada.analiseEstruturada.informacoesAusentes.includes('CATEGORIA'), 'categoria preenchida na complementação deve sair das pendências');
+assert.ok(!complementada.analiseEstruturada.informacoesAusentes.includes('SUBCATEGORIA'), 'subcategoria preenchida na complementação deve sair das pendências');
+assert.ok(!complementada.analiseEstruturada.informacoesAusentes.includes('CANAL'), 'canal informado na complementação deve sair das pendências');
+assert.equal(semComplementacao.CATEGORIA, '', 'complementação não pode alterar o relato ou o objeto original');
+assert.equal(complementada.complementacoes.CATEGORIA.valor, 'Qualidade', 'complementações devem ser devolvidas para recuperação da interface');
 
 const originalLerAba = sheets.lerAba;
 (async () => {
@@ -95,6 +118,12 @@ const originalLerAba = sheets.lerAba;
     assert.ok(!html.includes('(p.termos || []).join'), 'termos livres não podem ser apresentados como competência/responsável');
     assert.match(html, /HIPÓTESE — validar/, 'classificações do texto devem aparecer como hipóteses');
     assert.match(html, /ia-alerta-produto/, 'divergência de produto deve ser visível na Etapa 2');
+    assert.match(html, /nmSalvarComplementacoes/, 'informações faltantes devem possuir salvamento contextual');
+    assert.match(html, /Complementar informações da manifestação/, 'formulário deve ser visível abaixo das informações faltantes');
+    assert.match(html, /confirmadas pelo servidor/, 'sucesso só pode ser exibido após leitura de confirmação');
+    assert.match(html, /salvarRascunho\(\{silent:true,reportError:true\}\)/, 'complementação sem ID deve criar rascunho com erro explícito');
+    assert.match(html, /nmSolicitarComplementacoesAoCliente/, 'pendências do cliente devem ser encaminháveis à Etapa 3');
+    assert.match(html, /data-comp-status/, 'cada complementação deve possuir estado persistível');
     assert.match(html, /checklistPersistido/, 'checklist visual deve usar estado persistido');
     assert.match(html, /nmAbrirRevisaoOrientacao/, 'ajuste de condução deve abrir revisão humana sem avançar automaticamente');
     assert.match(html, /nmUtilizarOrientacao/, 'utilizar orientação deve registrar decisão antes de avançar');
@@ -102,6 +131,9 @@ const originalLerAba = sheets.lerAba;
     const api = fs.readFileSync(path.resolve(__dirname, '../api/index.js'), 'utf8');
     assert.match(api, /analisePatch/, 'backend deve persistir decisão como patch da análise existente');
     assert.match(api, /const revisadoPor = req\.user/, 'identidade da decisão deve vir da sessão do backend');
+    assert.match(api, /estadosComplementacao/, 'backend deve validar estados das complementações');
+    assert.match(api, /atualizadoPor: req\.user/, 'backend deve registrar usuário da complementação pela sessão');
+    assert.match(api, /gravação das complementações não foi confirmada/, 'backend deve confirmar a persistência na fonte oficial');
     assert.match(api, /complemento Sheets indisponível/, 'ficha deve complementar um registro PG resumido com a fonte oficial do Sheets');
     assert.match(api, /historico: \[\.\.\.historico, registro\]/, 'revisões repetidas devem manter histórico auditável');
     assert.match(html, /sac-rascunho-id/, 'rascunho deve poder ser retomado pelo ID persistido');

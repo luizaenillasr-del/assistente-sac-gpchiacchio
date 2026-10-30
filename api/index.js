@@ -2458,7 +2458,10 @@ app.post('/api/manifestacoes', requerPermissao('manifestacoes.abrir'), async (re
     if (!empresaReclamante || !descricao) return res.status(400).json({ sucesso:false, erro:'Empresa reclamante e descrição são obrigatórios.' });
     const protocoloKeyInput=String(req.body.idempotencyKey||req.headers['idempotency-key']||'').trim();
     if(!rascunho && !protocoloKeyInput) return res.status(400).json({sucesso:false,erro:'Chave de idempotência obrigatória.',codigo:'IDEMPOTENCY_KEY_REQUIRED'});
-    if(!rascunho) {
+    // Rascunhos também recebem uma chave estável. Se a resposta do POST se
+    // perder ou a confirmação precisar ser repetida, a tentativa seguinte
+    // devolve a mesma ficha em vez de criar outra manifestação.
+    if(protocoloKeyInput) {
       const existente=(await lerAba('MANIFESTACOES',5000).catch(()=>[])).find(m=>String(m.IDEMPOTENCY_KEY||'')===protocoloKeyInput);
       if(existente) return res.json({sucesso:true,id:existente.ID_MANIFESTACAO,protocolo:existente.PROTOCOLO,idempotente:true});
     }
@@ -2475,7 +2478,7 @@ app.post('/api/manifestacoes', requerPermissao('manifestacoes.abrir'), async (re
     const tipoFinal = tipo || 'Reclamação';
     const objeto = {
       ID_MANIFESTACAO:id, PROTOCOLO:protocolo, DATA_ABERTURA:agora, DATA_CRIACAO:agora, DATA_REGISTRO:agora, EMPRESA_RECLAMANTE:empresaReclamante,
-      IDEMPOTENCY_KEY:rascunho?'':protocoloKey,
+      IDEMPOTENCY_KEY:protocoloKey,
       CONTATO:contato||'', PRODUTO:produto||'', LOTE:lote||'', NFE:nfe||'', DESCRICAO:descricao,
       DESCRICAO_MANIFESTACAO:descricao, DESCRICAO_RECLAMACAO:descricao, DESCRICAO_ORIGINAL:descricao, STATUS:rascunho?'RASCUNHO':'AGUARDANDO_TRIAGEM_SAC', TIPO:tipoFinal, TIPO_SUGERIDO:'',
       SETOR_SUGERIDO:'', SETORES_SUGERIDOS:'', PROCEDIMENTO_SUGERIDO:'', SLA_HORAS:'', PRIORIDADE:req.body.prioridade||'NORMAL',
@@ -7786,6 +7789,17 @@ app.get('/api/manifestacoes/:id/circa', requerPermissao('manifestacoes.visualiza
     if (!m) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
     if (req._empresaScope && !pertenceEmpresa(req._empresaScope, m.EMPRESA_RECLAMADA || ''))
       return res.status(403).json({ sucesso:false, erro:'Acesso não autorizado.' });
+    let analisePersistida = {}; try { analisePersistida = JSON.parse(m.ANALISE_IA || '{}'); } catch (_) {}
+    const categoriasMap = new Map();
+    matriz.map(matrizTratamentoService.normalizarRegra).forEach(r => {
+      const categoria = String(r.CATEGORIA || '').trim();
+      if (!categoria) return;
+      const atual = categoriasMap.get(categoria) || new Set();
+      if (String(r.SUBCATEGORIA || '').trim()) atual.add(String(r.SUBCATEGORIA).trim());
+      categoriasMap.set(categoria, atual);
+    });
+    const categoriasDisponiveis = [...categoriasMap.entries()].map(([categoria, subcategorias]) => ({ categoria, subcategorias: [...subcategorias] }));
+    const complementacoesPersistidas = analisePersistida.complementacoes && typeof analisePersistida.complementacoes === 'object' ? analisePersistida.complementacoes : {};
     const similares = await cerebroService.buscarCasosSimilares(m, 8, req.user?.EMPRESA || null).catch(() => []);
     const normTratCirca = r => ({
       ...matrizTratamentoService.normalizarRegra(r),
@@ -7801,6 +7815,8 @@ app.get('/api/manifestacoes/:id/circa', requerPermissao('manifestacoes.visualiza
       .filter(r => !m.EMPRESA_RECLAMADA || pertenceEmpresa(String(m.EMPRESA_RECLAMADA), r.EMPRESA || r.EMPRESA_RECLAMADA || ''));
     const resultado = circaEngine.analisar({
       manifestacao: m,
+      categoriasDisponiveis,
+      complementacoes: complementacoesPersistidas,
       similares,
       tratamentos: tratamentosCirca,
       causas: causas.filter(r => !m.EMPRESA_RECLAMADA || pertenceEmpresa(String(m.EMPRESA_RECLAMADA), r.EMPRESA || r.EMPRESA_RECLAMADA || '')),
@@ -7809,10 +7825,9 @@ app.get('/api/manifestacoes/:id/circa', requerPermissao('manifestacoes.visualiza
     });
     let checklistPersistido = [];
     let pendenciasPersistidas = [];
-    let analisePersistida = {}; try { analisePersistida = JSON.parse(m.ANALISE_IA || '{}'); } catch (_) {}
     try { const raw=m.CHECKLIST_CIRCA || analisePersistida.checklistPersistido || '[]'; const parsed=typeof raw==='string'?JSON.parse(raw):raw; checklistPersistido=Array.isArray(parsed)?parsed:Object.entries(parsed||{}).map(([id,status])=>({id,status})); } catch (_) { checklistPersistido = []; }
     try { pendenciasPersistidas = JSON.parse(m.PENDENCIAS_VALIDACAO_HUMANA || analisePersistida.pendenciasValidacaoHumana || '[]'); } catch (_) { pendenciasPersistidas = []; }
-    res.json({ sucesso:true, circa:{ ...resultado, checklistPersistido, checklistVersao: analisePersistida.checklistVersao||0, pendenciasValidacaoHumana: pendenciasPersistidas, decisaoEtapa2: analisePersistida.decisaoEtapa2 || null } });
+    res.json({ sucesso:true, circa:{ ...resultado, categoriasDisponiveis, complementacoes: complementacoesPersistidas, checklistPersistido, checklistVersao: analisePersistida.checklistVersao||0, pendenciasValidacaoHumana: pendenciasPersistidas, decisaoEtapa2: analisePersistida.decisaoEtapa2 || null } });
   } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e,'circa') }); }
 });
 
@@ -7872,6 +7887,7 @@ app.patch('/api/manifestacoes/:id/circa-dados', requerPermissao('manifestacoes.e
       } catch (_) { /* payload inválido será tratado pelo contrato existente */ }
     }
     let decisaoEtapa2Audit = null;
+    let complementacoesEsperadas = null;
     if (Object.prototype.hasOwnProperty.call(req.body || {}, 'CHECKLIST_CIRCA') || Object.prototype.hasOwnProperty.call(req.body || {}, 'PENDENCIAS_VALIDACAO_HUMANA')) {
       if (!m.ID_MANIFESTACAO) return res.status(409).json({sucesso:false,erro:'A manifestação ainda não possui ID persistido.'});
       let meta={}; try { meta=JSON.parse(m.ANALISE_IA||'{}'); } catch (_) {}
@@ -7900,19 +7916,46 @@ app.patch('/api/manifestacoes/:id/circa-dados', requerPermissao('manifestacoes.e
     // execução anterior, sem confiar em um snapshot parcial enviado pelo
     // navegador.
     if (req.body?.analisePatch && typeof req.body.analisePatch === 'object') {
-      const permitido = ['status','justificativa','origem','classificacao','hipoteses','orientacoes','pendencias','revisadoEm'];
+      const permitido = ['status','justificativa','origem','classificacao','hipoteses','orientacoes','pendencias','revisadoEm','complementacoes'];
       const patchAnalise = {};
       for (const chave of permitido) if (Object.prototype.hasOwnProperty.call(req.body.analisePatch, chave)) patchAnalise[chave] = req.body.analisePatch[chave];
       const estados = ['GERADA','REVISADA','ORIENTACAO_ACEITA','ORIENTACAO_PARCIAL','ORIENTACAO_REJEITADA','PENDENTE_VALIDACAO'];
       if (patchAnalise.status && !estados.includes(String(patchAnalise.status))) return res.status(400).json({sucesso:false,erro:'Estado de decisão da análise inválido.'});
       let base = {}; try { base = JSON.parse(m.ANALISE_IA || '{}'); } catch (_) {}
+      if (patchAnalise.complementacoes !== undefined) {
+        const estadosComplementacao = ['PREENCHIDA','PENDENTE','AGUARDANDO_CLIENTE','NAO_DISPONIVEL'];
+        if (!patchAnalise.complementacoes || typeof patchAnalise.complementacoes !== 'object' || Array.isArray(patchAnalise.complementacoes)) return res.status(400).json({sucesso:false,erro:'Complementações inválidas.'});
+        const anteriores = base.complementacoes && typeof base.complementacoes === 'object' ? base.complementacoes : {};
+        const normalizadas = { ...anteriores };
+        for (const [campo, valor] of Object.entries(patchAnalise.complementacoes)) {
+          if (!/^[A-Za-z][A-Za-z0-9_]{1,60}$/.test(campo) || !valor || typeof valor !== 'object') return res.status(400).json({sucesso:false,erro:'Campo de complementação inválido.'});
+          const status = String(valor.status || 'PENDENTE').toUpperCase();
+          if (!estadosComplementacao.includes(status)) return res.status(400).json({sucesso:false,erro:'Estado de complementação inválido.'});
+          if (status !== 'PREENCHIDA' && !String(valor.justificativa || '').trim()) return res.status(400).json({sucesso:false,erro:'Justificativa obrigatória para pendência não preenchida.'});
+          normalizadas[campo] = {
+            campo, valor: typeof valor.valor === 'string' ? valor.valor.slice(0, 500) : (Number.isFinite(valor.valor) ? valor.valor : ''),
+            unidade: String(valor.unidade || '').slice(0, 40), status,
+            justificativa: String(valor.justificativa || '').slice(0, 500), observacoes: String(valor.observacoes || '').slice(0, 1000),
+            evidencias: String(valor.evidencias || '').slice(0, 1000), origem: ['CLIENTE','ANALISTA'].includes(String(valor.origem || '').toUpperCase()) ? String(valor.origem).toUpperCase() : 'ANALISTA',
+            atualizadoPor: req.user?.usuario || req.user?.login || 'sistema', atualizadoEm: new Date().toISOString(),
+          };
+        }
+        base.complementacoes = normalizadas;
+        complementacoesEsperadas = normalizadas;
+        delete patchAnalise.complementacoes;
+      }
       const atual = base.decisaoEtapa2 && typeof base.decisaoEtapa2 === 'object' ? base.decisaoEtapa2 : {};
-      const revisadoEm = patchAnalise.revisadoEm || new Date().toISOString();
-      const revisadoPor = req.user?.usuario || req.user?.login || 'sistema';
-      const registro = { ...patchAnalise, revisadoEm, revisadoPor };
-      const historico = Array.isArray(atual.historico) ? atual.historico : [];
-      base.decisaoEtapa2 = { ...atual, ...registro, historico: [...historico, registro].slice(-50) };
-      decisaoEtapa2Audit = registro;
+      // Complementações são atualização de dados faltantes, não uma decisão
+      // do SAC. Não criar um snapshot/auditoria de decisão vazio quando a
+      // requisição contém somente complementacoes.
+      if (Object.keys(patchAnalise).length) {
+        const revisadoEm = patchAnalise.revisadoEm || new Date().toISOString();
+        const revisadoPor = req.user?.usuario || req.user?.login || 'sistema';
+        const registro = { ...patchAnalise, revisadoEm, revisadoPor };
+        const historico = Array.isArray(atual.historico) ? atual.historico : [];
+        base.decisaoEtapa2 = { ...atual, ...registro, historico: [...historico, registro].slice(-50) };
+        decisaoEtapa2Audit = registro;
+      }
       patch.ANALISE_IA = JSON.stringify(base);
       delete patch.analisePatch;
     }
@@ -7940,10 +7983,41 @@ app.patch('/api/manifestacoes/:id/circa-dados', requerPermissao('manifestacoes.e
       patch.ANEXOS = JSON.stringify(anexosPersistidos);
     }
     patch.DATA_ULTIMA_EDICAO=new Date().toISOString(); patch.ATUALIZADO_POR=req.user?.usuario||'sistema';
-    await atualizarPorID('MANIFESTACOES',m.ID_MANIFESTACAO||idReq,patch,['ID_MANIFESTACAO','PROTOCOLO','ID']).catch(async e => {
+    const atualizacao = await atualizarPorID('MANIFESTACOES',m.ID_MANIFESTACAO||idReq,patch,['ID_MANIFESTACAO','PROTOCOLO','ID']).catch(async e => {
       if (req.body?.finalizar && patch.IDEMPOTENCY_KEY) await protocoloAtomico.registrarFalhaPersistencia(patch.IDEMPOTENCY_KEY,e).catch(()=>{});
       throw e;
     });
+    if (!atualizacao) throw new Error('A manifestação não foi localizada para atualização.');
+    if (complementacoesEsperadas) {
+      // A confirmação precisa ler novamente a fonte persistida.  Não compare
+      // JSON bruto (a ordem das propriedades pode mudar no Sheets); compare
+      // cada valor gravado e os metadados de auditoria exigidos pelo contrato.
+      // Em planilhas eventualmente consistentes alguns instantes depois da
+      // atualização, fazemos poucas tentativas sem transformar falha em
+      // sucesso.
+      let mesma = null; let metaConfirmada = {}; let confirmado = false;
+      for (let tentativa = 0; tentativa < 3 && !confirmado; tentativa += 1) {
+        const confirmadas = await lerAba('MANIFESTACOES',5000);
+        mesma = confirmadas.find(row => [row.ID_MANIFESTACAO,row.PROTOCOLO,row.ID,row.ID_ORIGINAL]
+          .some(v => String(v||'').trim() === String(m.ID_MANIFESTACAO||idReq).trim()));
+        try { metaConfirmada = JSON.parse(mesma?.ANALISE_IA || '{}'); } catch (_) { metaConfirmada = {}; }
+        const persistidas = metaConfirmada.complementacoes && typeof metaConfirmada.complementacoes === 'object'
+          ? metaConfirmada.complementacoes : {};
+        confirmado = Object.entries(complementacoesEsperadas).every(([campo, esperado]) => {
+          const atual = persistidas[campo];
+          return atual && String(atual.campo || campo) === campo
+            && String(atual.status || '') === String(esperado.status || '')
+            && String(atual.valor ?? '') === String(esperado.valor ?? '')
+            && String(atual.unidade ?? '') === String(esperado.unidade ?? '')
+            && String(atual.atualizadoPor || '').trim() !== ''
+            && String(atual.atualizadoEm || '').trim() !== '';
+        });
+        if (!confirmado && tentativa < 2) await new Promise(resolve => setTimeout(resolve, 150));
+      }
+      if (!confirmado) {
+        throw new Error('A gravação das complementações não foi confirmada na fonte persistida.');
+      }
+    }
     if (req.body?.finalizar && patch.IDEMPOTENCY_KEY) {
       await protocoloAtomico.confirmarPersistencia(patch.IDEMPOTENCY_KEY,m.ID_MANIFESTACAO||idReq);
     }

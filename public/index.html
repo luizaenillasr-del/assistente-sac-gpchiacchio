@@ -11938,7 +11938,7 @@ function renderizarCircaDeterministico(resultado) {
   const hip = a.hipotesesClassificacao || resultado.hipotesesClassificacao || [];
   set('ia-causa', hip.map(h => nmTextoEstruturado(h)).filter(Boolean).join(' · ') || (a.hipotesesCausa||[]).map(nmTextoEstruturado).filter(Boolean).join(' · ') || 'Causa ainda não confirmada.');
   set('ia-prioridade-badge',a.prioridade||'Normal');
-  const missing=(a.informacoesAusentes||[]).map(nmTextoEstruturado).filter(Boolean); set('ia-perguntas',missing.length?missing.map(x=>'• '+x).join('\n'):'Nenhuma informação essencial ausente.');
+  nmRenderComplementacoes(resultado);
   const checklist=resultado.checklist||[]; const salvo=Array.isArray(resultado.checklistPersistido)?resultado.checklistPersistido:[]; window._nmChecklist=salvo; window._nmChecklistVersao=resultado.checklistVersao||0; const action=document.getElementById('ia-tratativa'); if(action) action.innerHTML=(checklist.length?checklist.map((x,i)=>{const id=x.id||`circa-${String(x.descricao||x.titulo||x).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}`; const item=salvo.find(v=>v.id===id)||{}; const prazo=item.prazo||x.prazo||''; const vencimento=item.vencimento||x.vencimento||''; const vencimentoTexto=vencimento?` · vence ${new Date(vencimento).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})}`:''; return `<label class="checklist-item"><input type="checkbox" data-checklist-id="${esc(id)}" ${item.status==='CONCLUIDA'?'checked':''} onchange="nmSalvarChecklist('${esc(id)}',this.checked)"><span>${esc(x.descricao||x.titulo||x)}${prazo?` <small style="color:#777">· prazo ${esc(prazo)}${vencimentoTexto}</small>`:''}</span><small style="margin-left:auto;color:#777">${esc(item.status||'PENDENTE')}</small></label>`}).join(''): '<div class="circa-muted">Nenhuma tarefa determinística pendente.</div>');
   const pend=document.getElementById('ia-alertas'); const pendencias=resultado.pendenciasValidacaoHumana||[]; if(pend&&pendencias.length) pend.innerHTML='<div class="alert-box yellow">Validação humana pendente: '+pendencias.map(nmTextoEstruturado).join(', ')+'</div>';
   if (a.alertaProduto) {
@@ -11960,6 +11960,76 @@ function renderizarCircaDeterministico(resultado) {
   const sim=document.getElementById('ia-similares'); if(sim) sim.innerHTML=(a.casosSemelhantes||[]).length?(a.casosSemelhantes||[]).map(x=>`<div class="checklist-item"><span>${esc(nmTextoEstruturado(x))}</span></div>`).join(''):'<span class="circa-muted">Nenhum caso semelhante encontrado.</span>';
   const stamp=document.getElementById('ia-timestamp'); if(stamp) stamp.textContent='Consulta determinística concluída · regras + histórico + matriz';
 }
+
+const NM_COMPLEMENTACAO_LABELS = { CANAL:'Canal', QUANTIDADE:'Quantidade', CATEGORIA:'Categoria', SUBCATEGORIA:'Subcategoria', SITUACAO_OCORRENCIA:'Situação da ocorrência', DATA_INICIO:'Data de início' };
+const NM_COMPLEMENTACAO_STATUS = [['PREENCHIDA','Preenchida'],['PENDENTE','Pendente'],['AGUARDANDO_CLIENTE','Aguardando cliente'],['NAO_DISPONIVEL','Não disponível']];
+function nmRenderComplementacoes(resultado = {}) {
+  const host = document.getElementById('ia-perguntas'); if (!host) return;
+  const analise = resultado.analiseEstruturada || {};
+  const missing = Array.isArray(analise.informacoesAusentes) ? analise.informacoesAusentes : [];
+  const persistidas = resultado.complementacoes && typeof resultado.complementacoes === 'object' ? resultado.complementacoes : {};
+  const campos = [...new Set([...missing, ...Object.keys(persistidas)])];
+  window._nmComplementacoes = persistidas;
+  window._nmCategorias = Array.isArray(resultado.categoriasDisponiveis) ? resultado.categoriasDisponiveis : [];
+  if (!campos.length) { host.innerHTML = '<span style="color:var(--gray-500)">Nenhuma informação essencial ausente.</span>'; return; }
+  const escLocal = v => esc(String(v ?? ''));
+  const opcoes = (valor, lista) => lista.map(([v,l]) => `<option value="${v}" ${String(valor||'')===v?'selected':''}>${l}</option>`).join('');
+  const categorias = window._nmCategorias;
+  const categoriaAtual = persistidas.CATEGORIA?.valor || '';
+  const categoriaOptions = '<option value="">Selecionar categoria...</option>' + categorias.map(x => `<option value="${escLocal(x.categoria)}" ${String(categoriaAtual)===String(x.categoria)?'selected':''}>${escLocal(x.categoria)}</option>`).join('');
+  const campoHtml = campo => {
+    const item = persistidas[campo] || {}; const status = item.status || 'PENDENTE'; const label = NM_COMPLEMENTACAO_LABELS[campo] || campo;
+    let input = '';
+    if (campo === 'QUANTIDADE') input = `<div style="display:flex;gap:6px"><input class="nm-input" type="number" min="0" step="any" data-comp-value="${campo}" value="${escLocal(item.valor)}" placeholder="Quantidade"><input class="nm-input" style="max-width:130px" data-comp-unit="${campo}" value="${escLocal(item.unidade)}" placeholder="Unidade"></div>`;
+    else if (campo === 'CATEGORIA') input = `<select class="nm-select" data-comp-value="${campo}" onchange="nmComplementacaoCategoriaChange(this)">${categoriaOptions}</select>`;
+    else if (campo === 'SUBCATEGORIA') input = `<select class="nm-select" data-comp-value="${campo}" data-comp-category="${escLocal(categoriaAtual)}"><option value="">Selecionar subcategoria...</option>${(categorias.find(x=>String(x.categoria)===String(categoriaAtual))?.subcategorias||[]).map(x=>`<option value="${escLocal(x)}" ${String(item.valor)===String(x)?'selected':''}>${escLocal(x)}</option>`).join('')}</select>`;
+    else if (campo === 'SITUACAO_OCORRENCIA') input = `<select class="nm-select" data-comp-value="${campo}"><option value="">Selecionar...</option>${opcoes(item.valor,[['ATUAL','Atual'],['PASSADA_RESOLVIDA','Passada/resolvida'],['RECORRENTE','Recorrente'],['NAO_DETERMINADA','Não determinada']])}</select>`;
+    else if (campo === 'DATA_INICIO') input = `<input class="nm-input" type="date" data-comp-value="${campo}" value="${escLocal(item.valor)}">`;
+    else input = `<input class="nm-input" data-comp-value="${campo}" value="${escLocal(item.valor)}">`;
+    return `<div class="nm-card" style="margin:8px 0;padding:10px;border:1px solid #E5E7EB"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b>${escLocal(label)}</b><select class="nm-select" style="max-width:180px" data-comp-status="${campo}">${opcoes(status,NM_COMPLEMENTACAO_STATUS)}</select></div><div style="margin-top:7px">${input}</div><input class="nm-input" style="margin-top:6px" data-comp-just="${campo}" value="${escLocal(item.justificativa)}" placeholder="Justificativa quando pendente ou não disponível"><textarea class="nm-textarea" rows="2" style="margin-top:6px" data-comp-obs="${campo}" placeholder="Observações/evidências complementares">${escLocal(item.observacoes || item.evidencias)}</textarea><small style="color:#777">Origem: ${escLocal(item.origem || 'ANALISTA')}${item.atualizadoPor ? ` · ${escLocal(item.atualizadoPor)}` : ''}</small></div>`;
+  };
+  host.innerHTML = `<div style="font-size:13px;font-weight:700;color:#1F2937;margin:12px 0 6px">Complementar informações da manifestação</div><div style="font-size:12px;color:#555;margin-bottom:8px">Complete apenas o que estiver disponível. O relato original permanece preservado.</div>${campos.map(campoHtml).join('')}<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button type="button" class="btn btn-primary" onclick="nmSalvarComplementacoes()">Salvar complementações</button><button type="button" class="btn btn-secondary" onclick="nmSolicitarComplementacoesAoCliente()">Solicitar ao cliente na Etapa 3</button></div><div id="nm-complementacoes-msg" style="margin-top:7px;font-size:12px"></div>`;
+}
+window.nmComplementacaoCategoriaChange = function(select) {
+  const sub = document.querySelector('[data-comp-value="SUBCATEGORIA"]'); if (!sub) return;
+  const item = window._nmCategorias.find(x => String(x.categoria) === String(select.value));
+  sub.innerHTML = '<option value="">Selecionar subcategoria...</option>' + (item?.subcategorias || []).map(x => `<option value="${esc(String(x))}">${esc(String(x))}</option>`).join('');
+};
+window.nmSalvarComplementacoes = async function() {
+  if (!_nmCardId) {
+    const salvo = typeof window.salvarRascunho === 'function' && await window.salvarRascunho({silent:true,reportError:true});
+    if (!salvo || !_nmCardId) {
+      const msg = document.getElementById('nm-complementacoes-msg');
+      if (msg) { msg.style.color='#B91C1C'; msg.textContent='Não foi possível criar o rascunho persistido. Nenhuma complementação foi gravada.'; }
+      return;
+    }
+  }
+  const payload = {};
+  document.querySelectorAll('[data-comp-status]').forEach(statusEl => {
+    const campo = statusEl.dataset.compStatus; const valueEl = document.querySelector(`[data-comp-value="${campo}"]`); const unitEl = document.querySelector(`[data-comp-unit="${campo}"]`); const justEl = document.querySelector(`[data-comp-just="${campo}"]`); const obsEl = document.querySelector(`[data-comp-obs="${campo}"]`);
+    payload[campo] = { valor:valueEl?.value || '', unidade:unitEl?.value || '', status:statusEl.value, justificativa:justEl?.value || '', observacoes:obsEl?.value || '', origem:'ANALISTA' };
+  });
+  const invalid = Object.entries(payload).find(([,v]) => v.status !== 'PREENCHIDA' && !v.justificativa.trim());
+  if (invalid) { const msg=document.getElementById('nm-complementacoes-msg'); if(msg){msg.style.color='#B45309';msg.textContent=`Informe uma justificativa para ${NM_COMPLEMENTACAO_LABELS[invalid[0]] || invalid[0]}.`;} return; }
+  const msg=document.getElementById('nm-complementacoes-msg'); if(msg){msg.style.color='#666';msg.textContent='Salvando…';}
+  try {
+    const r = await _apiFetch(`/api/manifestacoes/${encodeURIComponent(_nmCardId)}/circa-dados`,15000,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({analisePatch:{complementacoes:payload}})});
+    if (!r?.sucesso) throw new Error(r?.erro || 'Falha ao salvar complementações.');
+    const atualizada = await nmCarregarAnaliseDeterministica();
+    const naoConfirmadas = Object.entries(payload).filter(([campo, valor]) => {
+      const salvo = atualizada?.complementacoes?.[campo];
+      return !salvo || salvo.status !== valor.status || String(salvo.valor ?? '') !== String(valor.valor ?? '');
+    });
+    if (naoConfirmadas.length) throw new Error('O servidor não confirmou todas as complementações.');
+    if(msg){msg.style.color='#166534';msg.textContent='Complementações salvas e confirmadas pelo servidor.';}
+  } catch(e) { if(msg){msg.style.color='#B91C1C';msg.textContent=`Não foi possível salvar: ${e.message}`;} }
+};
+window.nmSolicitarComplementacoesAoCliente = function() {
+  const pendentes = Object.entries(window._nmComplementacoes || {}).filter(([,v]) => v.status !== 'PREENCHIDA').map(([k]) => NM_COMPLEMENTACAO_LABELS[k] || k);
+  const texto = pendentes.length ? `Solicitar ao cliente: ${pendentes.join(', ')}` : 'Solicitar informações complementares ao cliente.';
+  const campo = document.getElementById('nm-complemento-pedido'); if (campo) campo.value = texto;
+  if (typeof nmAdicionarAcaoPlano === 'function') nmAdicionarAcaoPlano('COMPLEMENTO');
+};
 
 window.nmSalvarChecklist = async function(id, concluida) {
   if (!_nmCardId) return;
@@ -12020,7 +12090,8 @@ window.nmCarregarAnaliseDeterministica = async function nmCarregarAnaliseDetermi
   if (_nmDeterministicaPromise) return _nmDeterministicaPromise;
   _nmDeterministicaPromise = (async () => {
     if(!_nmCardId && typeof window.salvarRascunho === 'function') {
-      await window.salvarRascunho({silent:true}).catch(()=>{});
+      const salvo = await window.salvarRascunho({silent:true,reportError:true});
+      if (!salvo) return null;
     }
     if(!_nmCardId) return null;
     // Não leia nem renderize o resultado de outra ficha caso a pessoa inicie
@@ -12201,6 +12272,15 @@ function extrairTratativaSugerida(a) {
 }
 
 function renderizarAnalise(a) {
+  // A análise de IA pode chegar depois da resposta determinística e não
+  // carrega necessariamente as complementações/categorias. Preserve o
+  // contexto persistido já carregado para que o formulário não desapareça.
+  const deterministica = window._nmDeterministicoAtual || {};
+  nmRenderComplementacoes({
+    analiseEstruturada: a?.analiseEstruturada || deterministica.analiseEstruturada || a,
+    complementacoes: a?.complementacoes || deterministica.complementacoes || {},
+    categoriasDisponiveis: a?.categoriasDisponiveis || deterministica.categoriasDisponiveis || []
+  });
   document.getElementById('ia-analisando').style.display = 'none';
   document.getElementById('ia-resultado').style.display = 'block';
   const _iaHora = new Date().toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
@@ -12498,6 +12578,22 @@ function renderizarAnalise(a) {
     devEl.value = nmTextoEstruturado(a.devolutivaSugerida || a.DEVOLUTIVA_SUGERIDA || a.devolutiva);
   }
   nmAplicarSugestoes(a);
+  // Esta função também renderiza a análise de IA, que pode chegar depois da
+  // resposta determinística. Reaplique o formulário no fim para que o bloco
+  // dinâmico não seja substituído pelo texto estático de perguntas.
+  const estruturaDeterministica = window._nmDeterministicoAtual?.analiseEstruturada || {};
+  const estruturaIA = a?.analiseEstruturada || {};
+  const estruturaComplementacoes = {
+    ...estruturaDeterministica,
+    ...estruturaIA,
+    informacoesAusentes: Array.isArray(estruturaIA.informacoesAusentes) && estruturaIA.informacoesAusentes.length
+      ? estruturaIA.informacoesAusentes : estruturaDeterministica.informacoesAusentes
+  };
+  nmRenderComplementacoes({
+    analiseEstruturada: estruturaComplementacoes,
+    complementacoes: a?.complementacoes || window._nmDeterministicoAtual?.complementacoes || {},
+    categoriasDisponiveis: a?.categoriasDisponiveis || window._nmDeterministicoAtual?.categoriasDisponiveis || []
+  });
 }
 
 function nmAplicarSugestoes(a) {
@@ -14505,7 +14601,7 @@ function nmCardPayload() {
   const val=id=>document.getElementById(id)?.value||'';
   let currentUser={}; try { currentUser=JSON.parse(sessionStorage.getItem('sac-user')||'{}'); } catch(e) {}
   return {
-    empresaReclamada:val('nm-empresa-reclamada'), empresaReclamante:val('nm-empresa')||val('nm-nome')||val('nm-cnpj'), contato:val('nm-nome'), cnpj:val('nm-cnpj'), telefone:val('nm-tel'), email:val('nm-email'), produto:val('nm-produto'), lote:val('nm-lote'), nfe:val('nm-nfe'), quantidade:val('nm-qtd'), quantidadeTotal:val('nm-qtd-total'), pedido:val('nm-pedido'), descricao:val('nm-descricao')||'Rascunho em preenchimento.', tipo:val('nm-tipo')||'Reclamação', canal:nmCanalSelecionado(), origem:nmCanalSelecionado(), prioridade:val('nm-prioridade')||'NORMAL', categoria:val('nm-categoria'), motivo:val('nm-motivo'), gravidade:val('nm-severidade'), dataRegistro:val('nm-data'), DATA_REGISTRO:val('nm-data'), usuario:currentUser.usuario||currentUser.USUARIO||'analista', etapaAtual:String(window.nmEtapa||1), ETAPA_ATUAL:String(window.nmEtapa||1), STATUS:{1:'RASCUNHO',2:'EM_TRIAGEM',3:'EM_TRATATIVA',4:'EM_INVESTIGACAO',5:'AGUARDANDO_VALIDACAO_SAC',6:'AGUARDANDO_DEVOLUTIVA',7:'AGUARDANDO_ENCERRAMENTO'}[Number(window.nmEtapa)||1], STATUS_FICHA:{1:'RASCUNHO',2:'EM_TRIAGEM',3:'EM_TRATATIVA',4:'EM_INVESTIGACAO',5:'AGUARDANDO_VALIDACAO_SAC',6:'AGUARDANDO_DEVOLUTIVA',7:'AGUARDANDO_ENCERRAMENTO'}[Number(window.nmEtapa)||1], mensagemEtapa:'Rascunho em preenchimento.', MENSAGEM_ETAPA:'Rascunho em preenchimento.', rascunho:true,
+    idempotencyKey:nmGarantirIdempotencyKey(), empresaReclamada:val('nm-empresa-reclamada'), empresaReclamante:val('nm-empresa')||val('nm-nome')||val('nm-cnpj'), contato:val('nm-nome'), cnpj:val('nm-cnpj'), telefone:val('nm-tel'), email:val('nm-email'), produto:val('nm-produto'), lote:val('nm-lote'), nfe:val('nm-nfe'), quantidade:val('nm-qtd'), quantidadeTotal:val('nm-qtd-total'), pedido:val('nm-pedido'), descricao:val('nm-descricao')||'Rascunho em preenchimento.', tipo:val('nm-tipo')||'Reclamação', canal:nmCanalSelecionado(), origem:nmCanalSelecionado(), prioridade:val('nm-prioridade')||'NORMAL', categoria:val('nm-categoria'), motivo:val('nm-motivo'), gravidade:val('nm-severidade'), dataRegistro:val('nm-data'), DATA_REGISTRO:val('nm-data'), usuario:currentUser.usuario||currentUser.USUARIO||'analista', etapaAtual:String(window.nmEtapa||1), ETAPA_ATUAL:String(window.nmEtapa||1), STATUS:{1:'RASCUNHO',2:'EM_TRIAGEM',3:'EM_TRATATIVA',4:'EM_INVESTIGACAO',5:'AGUARDANDO_VALIDACAO_SAC',6:'AGUARDANDO_DEVOLUTIVA',7:'AGUARDANDO_ENCERRAMENTO'}[Number(window.nmEtapa)||1], STATUS_FICHA:{1:'RASCUNHO',2:'EM_TRIAGEM',3:'EM_TRATATIVA',4:'EM_INVESTIGACAO',5:'AGUARDANDO_VALIDACAO_SAC',6:'AGUARDANDO_DEVOLUTIVA',7:'AGUARDANDO_ENCERRAMENTO'}[Number(window.nmEtapa)||1], mensagemEtapa:'Rascunho em preenchimento.', MENSAGEM_ETAPA:'Rascunho em preenchimento.', rascunho:true,
     CAMINHO_TRATATIVA:val('nm-caminho-tratativa'), TRATATIVA_SAC_INTERNA:val('nm-tratativa-sac'), COMPLEMENTO_PEDIDO:val('nm-complemento-pedido'), CANAL_RETORNO:val('nm-canal-retorno'), PRAZO_RETORNO_SAC:val('nm-prazo-retorno'), SETOR_ACIONADO:val('nm-setor-acionado'), ESCOPO_ACIONAMENTO:val('nm-escopo-acionado'),
     INVESTIGACAO_O_QUE:val('nm-investigacao-verificada'), INVESTIGACAO_NOTAS:val('nm-investigacao-notas'), INVESTIGACAO_EVIDENCIAS:val('nm-investigacao-resultado'), SUBCAUSA:val('nm-subcausa'), CAUSA_RAIZ_CONFIRMADA:val('nm-causa-raiz'), ACOES_CORRETIVAS:val('nm-acao-executada'),
     VALIDACAO_RESULTADO:val('nm-validacao-resultado'), PROCEDENTE:val('nm-procedente'), PROCEDENTE_JUSTIFICATIVA:val('nm-procedente-justif'),
@@ -14524,7 +14620,21 @@ async function salvarRascunho(options={}) {
     if(_nmCardId) res=await _apiFetch(`/api/manifestacoes/${encodeURIComponent(_nmCardId)}/circa-dados`,60000,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     else res=await _apiFetch('/api/manifestacoes',60000,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     if(!res?.sucesso) throw new Error(res?.erro||'Falha ao salvar o rascunho.');
-    _nmCardId=_nmCardId||res.id;
+    if (!_nmCardId && res.id) {
+      // O ID só entra no estado do wizard depois de uma leitura confirmatória.
+      // Assim um POST aceito mas ainda não visível no armazenamento não vira
+      // um PATCH prematuro que retorna 404.
+      let confirmado = null;
+      for (let tentativa=0; tentativa<3 && !confirmado; tentativa++) {
+        try {
+          const leitura = await _apiFetch(`/api/manifestacoes/${encodeURIComponent(res.id)}`,10000);
+          if (leitura?.sucesso && leitura.manifestacao?.ID_MANIFESTACAO === res.id) confirmado = leitura.manifestacao;
+        } catch (_) {}
+        if (!confirmado && tentativa < 2) await new Promise(resolve => setTimeout(resolve, 250));
+      }
+      if (!confirmado) throw new Error('O rascunho foi aceito, mas ainda não foi confirmado no armazenamento. Tente salvar novamente.');
+      _nmCardId = confirmado.ID_MANIFESTACAO;
+    }
     _nmRascunhoUltimaEdicao=String(res.atualizadoEm||_nmRascunhoUltimaEdicao||'');
     if (_nmCardId) localStorage.setItem('sac-rascunho-id', String(_nmCardId));
     // O vínculo de arquivos usa a mesma ficha e o mesmo endpoint de anexos;
