@@ -1190,7 +1190,9 @@ async function lerAba(nomeAba, maxRows) {
   } catch (e) {
     // Em 429/503, uma leitura pública pode continuar usando o último snapshot
     // consistente em memória. Escritas nunca usam este fallback.
-    if (cached?.data) {
+    const cacheAutorizacao = nomeAba === 'USUARIOS' || nomeAba === 'PERMISSOES_USUARIO';
+    const cacheAindaValido = cached && (Date.now() - cached.ts) < ttl;
+    if (cached?.data && (!cacheAutorizacao || cacheAindaValido)) {
       console.warn(`[Sheets] ${nomeAba} indisponível (${e.message}); usando snapshot anterior.`);
       return cached.data;
     }
