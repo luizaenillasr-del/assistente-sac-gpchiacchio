@@ -2846,6 +2846,12 @@ app.patch('/api/manifestacoes/:id/ficha', requerPermissao('manifestacoes.editar'
       dados.STATUS = 'EM TRATAMENTO'; dados.STATUS_FICHA = 'EM_TRATAMENTO'; dados.DATA_ULTIMA_TRATATIVA = agora;
     } else if (acao === 'enviar_validacao') {
       if (!(req.body.TRATATIVA_REALIZADA || item.TRATATIVA_REALIZADA)) return res.status(400).json({ sucesso:false, erro:'Registre a tratativa antes de enviar para validação.' });
+      let frentes;
+      try { frentes = await lerAba('ACIONAMENTOS_INTERNOS', 5000); }
+      catch (e) { return res.status(503).json({ sucesso:false, codigo:'ACIONAMENTOS_INDISPONIVEIS', erro:'Não foi possível confirmar o estado das frentes setoriais.' }); }
+      const idsFicha = idsManifestacao(item, id);
+      const pendenteSetor = frentes.some(f => idsFicha.has(String(f.ID_MANIFESTACAO || f.PROTOCOLO || f.ID || '').trim()) && ['ENVIADO','AGUARDANDO_CIENCIA','EM_ANDAMENTO','AGUARDANDO_INFORMACAO','PENDENTE_COMPLEMENTACAO','PENDENTE_DE_ATRIBUICAO'].includes(String(f.STATUS||'').toUpperCase()));
+      if (pendenteSetor) return res.status(409).json({ sucesso:false, codigo:'FRENTE_SETOR_PENDENTE', erro:'A frente setorial ainda não foi concluída pelo responsável.' });
       dados = { STATUS:'AGUARDANDO_VALIDACAO_SAC', STATUS_FICHA:'AGUARDANDO_VALIDACAO_SAC', DATA_ENVIO_VALIDACAO:agora, ENVIADO_VALIDACAO_POR:req.user?.usuario||'' };
     } else if (acao === 'salvar_devolutiva') {
       dados = { DEVOLUTIVA_FINAL:req.body.texto || '', CANAL_RETORNO:req.body.canal || item.CANAL_RETORNO || item.CANAL || '', STATUS:'AGUARDANDO_DEVOLUTIVA', STATUS_FICHA:'AGUARDANDO_DEVOLUTIVA', DATA_DEVOLUTIVA_RASCUNHO:agora };
@@ -3043,7 +3049,7 @@ app.patch('/api/manifestacoes/:id/ficha', requerPermissao('manifestacoes.editar'
           ID_ACIONAMENTO: await gerarProximoID('ACIONAMENTOS_INTERNOS','ACI','ID_ACIONAMENTO'),
           ID_MANIFESTACAO: item.ID_MANIFESTACAO || id, PROTOCOLO:item.PROTOCOLO || '', TIPO:'ENCAMINHAMENTO_TRATATIVA',
           EMPRESA:item.EMPRESA_RECLAMADA || item.EMPRESA_NORMALIZADA || '', SETOR_SOLICITANTE:req.user?.setor || 'SAC',
-          SETOR_DESTINO:dados.SETOR_DESTINADO, RESPONSAVEL:dados.RESPONSAVEL_SETOR, RESPONSAVEL_ID:dados.RESPONSAVEL_SETOR_ID,
+          SETOR_DESTINO:dados.SETOR_DESTINADO, RESPONSAVEL:dados.RESPONSAVEL_SETOR, RESPONSAVEL_ID:dados.RESPONSAVEL_SETOR_ID, RESPONSAVEL_NOME:alvo.nome,
           MOTIVO:dados.OBS_ENCAMINHAMENTO || '', TAREFA:dados.OBS_ENCAMINHAMENTO || `Tratativa do setor ${dados.SETOR_DESTINADO}`,
           PRAZO:`${dados.SLA_HORAS}h`, PRAZO_ORIGEM:'SLA_RETORNO_SETOR_72H', DATA_LIMITE:dataLimite,
           PRIORIDADE:item.PRIORIDADE || 'NORMAL', STATUS:'ENVIADO', CRIADO_EM:criadoEm, CRIADO_POR:req.user?.usuario || 'sistema',
@@ -8323,7 +8329,7 @@ app.patch('/api/manifestacoes/:id/circa-dados', requerPermissao('manifestacoes.e
 // Os registros abaixo reutilizam a manifestação e as abas operacionais legadas.
 // Nenhum acionamento cria uma segunda ficha.
 const ACIONAMENTOS_HEADERS = ['ID_ACIONAMENTO','ID_MANIFESTACAO','PROTOCOLO','TIPO','EMPRESA','SETOR_SOLICITANTE','SETOR_DESTINO','RESPONSAVEL','RESPONSAVEL_ID','ASSUNTO','MOTIVO','TAREFA','PERGUNTAS','PRAZO','PRAZO_ORIGEM','DATA_LIMITE','PRIORIDADE','EVIDENCIAS','OBSERVACOES','RESPOSTA','STATUS','CRIADO_EM','CRIADO_POR','ATUALIZADO_EM','ATUALIZADO_POR','IDEMPOTENCY_KEY'];
-const ACIONAMENTO_STATUSES = ['CRIADO','ENVIADO','PENDENTE_DE_ATRIBUICAO','AGUARDANDO_CIENCIA','EM_ANDAMENTO','AGUARDANDO_INFORMACAO','RESPONDIDO','EM_REVISAO','CONCLUIDO','CANCELADO'];
+const ACIONAMENTO_STATUSES = ['CRIADO','ENVIADO','PENDENTE_DE_ATRIBUICAO','AGUARDANDO_CIENCIA','EM_ANDAMENTO','AGUARDANDO_INFORMACAO','PENDENTE_COMPLEMENTACAO','INCONCLUSIVO','RESPONDIDO','EM_REVISAO','CONCLUIDO','CANCELADO'];
 const ACIONAMENTO_TYPES = ['NOTIFICACAO','SOLICITACAO_INFORMACAO','SOLICITACAO_APOIO','ENCAMINHAMENTO_TRATATIVA','ESCALONAMENTO'];
 const NOTIFICACOES_INTERNAS_HEADERS = ['ID_NOTIFICACAO','ID_MANIFESTACAO','ID_ACIONAMENTO','DESTINATARIO','CANAL','TIPO','TITULO','MENSAGEM','STATUS','CRIADO_EM','CRIADO_POR'];
 
@@ -8387,7 +8393,16 @@ app.get('/api/manifestacoes/:id/acionamentos', requerPermissao('manifestacoes.vi
     if (req._empresaScope && !pertenceEmpresa(req._empresaScope, m.EMPRESA_RECLAMADA || '')) return res.status(403).json({ sucesso:false, erro:'Acesso não autorizado.' });
     const rows = await lerAba('ACIONAMENTOS_INTERNOS', 5000);
     const ids = idsManifestacao(m, req.params.id);
-    const itens=rows.filter(row => ids.has(String(row.ID_MANIFESTACAO || row.PROTOCOLO || row.ID || '').trim()));
+    const correspondentes=rows.filter(row => ids.has(String(row.ID_MANIFESTACAO || row.PROTOCOLO || row.ID || '').trim()));
+    let usuarios=[];
+    try { usuarios = await lerAba('USUARIOS', 1000); }
+    catch (e) { return res.status(503).json({ sucesso:false, codigo:'CADASTRO_RESPONSAVEIS_INDISPONIVEL', erro:'Não foi possível resolver os nomes dos responsáveis no cadastro.' }); }
+    const itens=correspondentes.map(row => {
+      if (row.RESPONSAVEL_NOME) return row;
+      const chave=String(row.RESPONSAVEL_ID || row.RESPONSAVEL || '').trim().toLowerCase();
+      const u=usuarios.find(x => [x.ID_USUARIO,x.ID,x.USUARIO,x.LOGIN,x.EMAIL].some(v=>String(v||'').trim().toLowerCase()===chave));
+      return { ...row, RESPONSAVEL_NOME:u?.NOME || u?.NOME_COMPLETO || '' };
+    });
     res.json({ sucesso:true, itens, statuses:ACIONAMENTO_STATUSES, tipos:ACIONAMENTO_TYPES, diagnostico:{ fonte:'ACIONAMENTOS_INTERNOS', armazenamento:'Google Sheets', identificadores:[...ids], totalLidos:rows.length, totalCorrespondentes:itens.length, escopoEmpresa: req._empresaScope ? 'aplicado' : 'MASTER/global' } });
   } catch (e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e,'acionamentos') }); }
 });
@@ -8461,12 +8476,26 @@ app.patch('/api/manifestacoes/:id/acionamentos/:acionamentoId', requerPermissao(
     const rows = await lerAba('ACIONAMENTOS_INTERNOS', 5000).catch(() => []);
     const item = rows.find(r => String(r.ID_ACIONAMENTO) === String(req.params.acionamentoId) && String(r.ID_MANIFESTACAO) === String(m.ID_MANIFESTACAO || req.params.id));
     if (!item) return res.status(404).json({ sucesso:false, erro:'Acionamento não encontrado.' });
+    const perfil = perfilCanonico(req.user?.perfil);
+    const administrativo = ['MASTER','GESTOR SAC','ANALISTA SAC','ATENDENTE SAC','APROVADOR'].includes(perfil);
+    const identidade = [req.user?.usuario, req.user?.id, req.user?.ID_USUARIO, req.user?.email]
+      .map(v => normalizarTexto(v)).filter(Boolean);
+    const responsavelIds = [item.RESPONSAVEL_ID, item.RESPONSAVEL]
+      .map(v => normalizarTexto(v)).filter(Boolean);
+    if (!administrativo && (!responsavelIds.length || !identidade.some(v => responsavelIds.includes(v)))) {
+      return res.status(403).json({ sucesso:false, codigo:'ACIONAMENTO_NAO_AUTORIZADO', erro:'Somente o responsável designado ou o SAC pode atualizar esta frente.' });
+    }
     const next = String(req.body?.status || '').toUpperCase();
     if (!ACIONAMENTO_STATUSES.includes(next)) return res.status(400).json({ sucesso:false, erro:'Status de acionamento inválido.' });
     const agora = new Date().toISOString();
     await atualizarPorID('ACIONAMENTOS_INTERNOS', item.ID_ACIONAMENTO, { STATUS:next, ATUALIZADO_EM:agora, ATUALIZADO_POR:req.user?.usuario || 'sistema', RESPOSTA:req.body?.resposta || item.RESPOSTA || '', EVIDENCIAS:req.body?.evidencias || item.EVIDENCIAS || '' }, ['ID_ACIONAMENTO']);
-    await registrarHistoricoManifestacao({ id:item.ID_MANIFESTACAO, protocolo:item.PROTOCOLO, acao:'ACIONAMENTO_ATUALIZADO', descricao:`${item.ID_ACIONAMENTO}: ${next}`, usuario:req.user?.usuario || 'sistema', etapa:'CONDUCAO' });
-    res.json({ sucesso:true, item:{ ...item, STATUS:next, ATUALIZADO_EM:agora } });
+    const persistido = (await lerAba('ACIONAMENTOS_INTERNOS', 5000)).find(r => String(r.ID_ACIONAMENTO) === String(item.ID_ACIONAMENTO));
+    if (!persistido || String(persistido.STATUS || '').toUpperCase() !== next) {
+      return res.status(503).json({ sucesso:false, codigo:'PERSISTENCIA_ACIONAMENTO_NAO_CONFIRMADA', erro:'A resposta não foi confirmada no armazenamento.' });
+    }
+    const resumo = req.body?.resposta ? 'Resposta da frente registrada.' : `Status atualizado para ${next}.`;
+    await registrarHistoricoManifestacao({ id:item.ID_MANIFESTACAO, protocolo:item.PROTOCOLO, acao:'ACIONAMENTO_ATUALIZADO', descricao:`${item.ID_ACIONAMENTO}: ${resumo}`, usuario:req.user?.usuario || 'sistema', etapa:'CONDUCAO' });
+    res.json({ sucesso:true, item:persistido });
   } catch (e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e,'acionamentos') }); }
 });
 
