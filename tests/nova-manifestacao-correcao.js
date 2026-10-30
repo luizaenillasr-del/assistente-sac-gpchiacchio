@@ -82,6 +82,17 @@ function request(base, method, route, auth, body) {
     draftRow=mock.DB.MANIFESTACOES.find(r=>r.ID_MANIFESTACAO===draftId);
     assert.equal(draftRow.DESCRICAO,'Relato alterado somente no campo permitido.'); assert.equal(draftRow.DESCRICAO_RECLAMACAO,'Relato original completo do rascunho que deve permanecer intacto após atualizações parciais.'); assert.equal(draftRow.PRODUTO,'Potes'); assert.equal(draftRow.LOTE,'L-9'); assert.equal(draftRow.NFE,'NF-9'); assert.equal(draftRow.CANAL,'TELEFONE'); assert.equal(draftRow.EMPRESA_RECLAMANTE,'Cliente Rascunho');
     const analiseRascunho=JSON.parse(draftRow.ANALISE_IA); assert.deepEqual(analiseRascunho.hipoteses,['hipotese-preservada']); assert.deepEqual(analiseRascunho.orientacoes,['orientacao-nova']); assert.equal(analiseRascunho.decisaoEtapa2.status,'PENDENTE_VALIDACAO');
+    const complementacoes = await request(base, 'PATCH', `/api/manifestacoes/${encodeURIComponent(draftId)}/circa-dados`, master, {
+      analisePatch: { complementacoes: {
+        CANAL: { valor:'TELEFONE', status:'PREENCHIDA', origem:'ANALISTA' },
+        CATEGORIA: { valor:'Qualidade', status:'PREENCHIDA', origem:'ANALISTA' },
+      } }
+    });
+    assert.equal(complementacoes.status, 200, JSON.stringify(complementacoes.body));
+    const complementacoesCirca = await request(base, 'GET', `/api/manifestacoes/${encodeURIComponent(draftId)}/circa`, master);
+    assert.equal(complementacoesCirca.status, 200, JSON.stringify(complementacoesCirca.body));
+    assert.equal(complementacoesCirca.body.circa.complementacoes.CANAL.valor, 'TELEFONE');
+    assert.equal(complementacoesCirca.body.circa.complementacoes.CATEGORIA.valor, 'Qualidade');
     const stale=await request(base,'PATCH',`/api/manifestacoes/${encodeURIComponent(draftId)}/circa-dados`,master,{produto:'Outro',ultimaEdicaoConhecida:draft.body.atualizadoEm});
     assert.equal(stale.status,409,'gravação com versão antiga deve ser rejeitada sem sobrescrever dados');
 
