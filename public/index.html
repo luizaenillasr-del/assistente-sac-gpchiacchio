@@ -11988,7 +11988,7 @@ function nmRenderComplementacoes(resultado = {}) {
     else input = `<input class="nm-input" data-comp-value="${campo}" value="${escLocal(item.valor)}">`;
     return `<div class="nm-card" style="margin:8px 0;padding:10px;border:1px solid #E5E7EB"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b>${escLocal(label)}</b><select class="nm-select" style="max-width:180px" data-comp-status="${campo}">${opcoes(status,NM_COMPLEMENTACAO_STATUS)}</select></div><div style="margin-top:7px">${input}</div><input class="nm-input" style="margin-top:6px" data-comp-just="${campo}" value="${escLocal(item.justificativa)}" placeholder="Justificativa quando pendente ou não disponível"><textarea class="nm-textarea" rows="2" style="margin-top:6px" data-comp-obs="${campo}" placeholder="Observações/evidências complementares">${escLocal(item.observacoes || item.evidencias)}</textarea><small style="color:#777">Origem: ${escLocal(item.origem || 'ANALISTA')}${item.atualizadoPor ? ` · ${escLocal(item.atualizadoPor)}` : ''}</small></div>`;
   };
-  host.innerHTML = `<div style="font-size:12px;color:#555;margin-bottom:8px">Complete apenas o que estiver disponível. O relato original permanece preservado.</div>${campos.map(campoHtml).join('')}<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button type="button" class="btn btn-primary" onclick="nmSalvarComplementacoes()">Salvar complementações</button><button type="button" class="btn btn-secondary" onclick="nmSolicitarComplementacoesAoCliente()">Solicitar ao cliente na Etapa 3</button></div><div id="nm-complementacoes-msg" style="margin-top:7px;font-size:12px"></div>`;
+  host.innerHTML = `<div style="font-size:13px;font-weight:700;color:#1F2937;margin:12px 0 6px">Complementar informações da manifestação</div><div style="font-size:12px;color:#555;margin-bottom:8px">Complete apenas o que estiver disponível. O relato original permanece preservado.</div>${campos.map(campoHtml).join('')}<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button type="button" class="btn btn-primary" onclick="nmSalvarComplementacoes()">Salvar complementações</button><button type="button" class="btn btn-secondary" onclick="nmSolicitarComplementacoesAoCliente()">Solicitar ao cliente na Etapa 3</button></div><div id="nm-complementacoes-msg" style="margin-top:7px;font-size:12px"></div>`;
 }
 window.nmComplementacaoCategoriaChange = function(select) {
   const sub = document.querySelector('[data-comp-value="SUBCATEGORIA"]'); if (!sub) return;
@@ -12565,6 +12565,22 @@ function renderizarAnalise(a) {
     devEl.value = nmTextoEstruturado(a.devolutivaSugerida || a.DEVOLUTIVA_SUGERIDA || a.devolutiva);
   }
   nmAplicarSugestoes(a);
+  // Esta função também renderiza a análise de IA, que pode chegar depois da
+  // resposta determinística. Reaplique o formulário no fim para que o bloco
+  // dinâmico não seja substituído pelo texto estático de perguntas.
+  const estruturaDeterministica = window._nmDeterministicoAtual?.analiseEstruturada || {};
+  const estruturaIA = a?.analiseEstruturada || {};
+  const estruturaComplementacoes = {
+    ...estruturaDeterministica,
+    ...estruturaIA,
+    informacoesAusentes: Array.isArray(estruturaIA.informacoesAusentes) && estruturaIA.informacoesAusentes.length
+      ? estruturaIA.informacoesAusentes : estruturaDeterministica.informacoesAusentes
+  };
+  nmRenderComplementacoes({
+    analiseEstruturada: estruturaComplementacoes,
+    complementacoes: a?.complementacoes || window._nmDeterministicoAtual?.complementacoes || {},
+    categoriasDisponiveis: a?.categoriasDisponiveis || window._nmDeterministicoAtual?.categoriasDisponiveis || []
+  });
 }
 
 function nmAplicarSugestoes(a) {

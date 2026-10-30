@@ -117,6 +117,7 @@ const originalLerAba = sheets.lerAba;
     assert.match(html, /HIPÓTESE — validar/, 'classificações do texto devem aparecer como hipóteses');
     assert.match(html, /ia-alerta-produto/, 'divergência de produto deve ser visível na Etapa 2');
     assert.match(html, /nmSalvarComplementacoes/, 'informações faltantes devem possuir salvamento contextual');
+    assert.match(html, /Complementar informações da manifestação/, 'formulário deve ser visível abaixo das informações faltantes');
     assert.match(html, /nmSolicitarComplementacoesAoCliente/, 'pendências do cliente devem ser encaminháveis à Etapa 3');
     assert.match(html, /data-comp-status/, 'cada complementação deve possuir estado persistível');
     assert.match(html, /checklistPersistido/, 'checklist visual deve usar estado persistido');
