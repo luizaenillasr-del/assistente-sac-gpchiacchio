@@ -3051,15 +3051,15 @@
           <div class="circa-analysis-card"><div class="section-label">4 · Responsáveis e competências</div><div id="ia-setores" class="circa-tag-list"><span class="circa-muted">Aguardando classificação.</span></div></div>
           <div class="circa-analysis-card"><div class="section-label">5 · Casos semelhantes encontrados</div><div id="ia-similares" class="circa-similar-list"><span class="circa-muted">O histórico será consultado automaticamente.</span></div></div>
           <div class="circa-analysis-card"><div class="section-label">Recomendação complementar da IA</div><div id="ia-alertas-wrap"><div id="ia-alertas" class="circa-muted">A IA poderá complementar a orientação após a consulta determinística.</div></div><div class="circa-confidence">Confiança <strong id="ia-confianca-pct">—</strong><span class="progress-bar"><span id="ia-confianca-bar" class="progress-fill"></span></span></div></div></div>
-        <div class="circa-analysis-footer"><span>As recomendações são sugestões baseadas no histórico e na matriz. A decisão operacional é da analista.</span><div><button class="btn btn-ghost" style="font-size:12px" onclick="nmProximaEtapa()">Ajustar condução</button><button class="btn btn-primary" style="font-size:12px" onclick="nmProximaEtapa()">Utilizar orientação →</button></div></div><div id="ia-decisao-status" style="display:none"></div><div id="ia-analisando" style="display:none"></div><div id="ia-resultado" style="display:none"></div><div id="ia-loading" style="display:none"></div><div id="ia-sla" class="nm-visually-hidden"></div><div id="ia-proc-wrap" class="nm-visually-hidden"></div><div id="ia-perguntas-wrap" class="nm-visually-hidden"></div><div id="ia-similares-wrap" class="nm-visually-hidden"></div><div id="ia-devolutiva-tipo" class="nm-visually-hidden"></div><div id="ia-devolutiva-bloqueadas" class="nm-visually-hidden"></div><textarea id="ia-devolutiva" class="nm-visually-hidden"></textarea>
+        <div class="circa-analysis-footer"><span>As recomendações são sugestões baseadas no histórico e na matriz. A decisão operacional é da analista.</span><div><button class="btn btn-ghost" style="font-size:12px" onclick="nmAbrirRevisaoOrientacao()">Ajustar condução</button><button class="btn btn-primary" style="font-size:12px" onclick="nmUtilizarOrientacao()">Utilizar orientação →</button></div></div><div id="nm-revisao-orientacao" class="nm-card" style="display:none;margin-top:12px;border-color:#F59E0B;background:#FFFBEB"><div class="section-label">Revisão humana da orientação</div><p style="font-size:12px;color:#66520A;margin:6px 0 12px">Revise as hipóteses e recomendações antes de transferir a decisão para a condução. A análise original permanece preservada.</p><div class="nm-grid-2"><label class="nm-label"><span>Estado da análise</span><select id="nm-revisao-status" class="nm-select"><option value="REVISADA">Revisada — validar manualmente</option><option value="ORIENTACAO_PARCIAL">Aceita parcialmente</option><option value="ORIENTACAO_REJEITADA">Rejeitar orientação</option></select></label><label class="nm-label"><span>Classificação humana (opcional)</span><input id="nm-revisao-classificacao" class="nm-input" placeholder="Informe somente se confirmado pelo SAC"></label></div><label class="nm-label"><span>Justificativa / ajustes</span><textarea id="nm-revisao-justificativa" class="nm-textarea" rows="3" placeholder="Registre a decisão, ajustes ou motivo da rejeição..."></textarea></label><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-secondary" onclick="nmFecharRevisaoOrientacao()">Cancelar</button><button class="btn btn-primary" onclick="nmSalvarRevisaoOrientacao()">Salvar revisão</button></div></div><div id="ia-decisao-status" style="display:none"></div><div id="ia-analisando" style="display:none"></div><div id="ia-resultado" style="display:none"></div><div id="ia-loading" style="display:none"></div><div id="ia-sla" class="nm-visually-hidden"></div><div id="ia-proc-wrap" class="nm-visually-hidden"></div><div id="ia-perguntas-wrap" class="nm-visually-hidden"></div><div id="ia-similares-wrap" class="nm-visually-hidden"></div><div id="ia-devolutiva-tipo" class="nm-visually-hidden"></div><div id="ia-devolutiva-bloqueadas" class="nm-visually-hidden"></div><textarea id="ia-devolutiva" class="nm-visually-hidden"></textarea>
       </div>
 
       <!-- ETAPA 3: CONDUÇÃO -->
       <div class="nm-step-panel" data-nm-step="3"><div class="nm-section-hdr"><h2>Condução</h2><p>Defina o caminho da tratativa e os próximos responsáveis.</p></div>
         <div class="circa-path-grid"><div class="circa-path-card"><div class="circa-path-title"><span class="circa-path-icon">A</span>Resolver pelo SAC</div><p>Use quando houver procedimento validado e autonomia para concluir.</p><div class="circa-alert">Confirme a orientação, registre a ação e prepare a devolutiva.</div><button onclick="nmSetCaminhoTratativa('SAC',this)" id="nm-caminho-sac" class="btn btn-secondary">Selecionar caminho</button></div>
-          <div class="circa-path-card"><div class="circa-path-title"><span class="circa-path-icon">B</span>Solicitar informações complementares</div><p>Peça os dados necessários antes de definir a resolução.</p><label class="nm-label"><span>O que solicitar</span><textarea id="nm-complemento-pedido" class="nm-textarea" rows="3"></textarea></label><div class="nm-grid-2"><label class="nm-label"><span>Prazo de retorno</span><input class="nm-input" id="nm-prazo-retorno" placeholder="Conforme SLA aplicável"></label><label class="nm-label"><span>Canal de retorno</span><select class="nm-select" id="nm-canal-retorno"><option>WhatsApp</option><option>E-mail</option><option>Telefone</option></select></label></div><button onclick="nmSetCaminhoTratativa('COMPLEMENTO',this)" id="nm-caminho-complemento" class="btn btn-secondary">Selecionar caminho</button></div>
-          <div class="circa-path-card"><div class="circa-path-title"><span class="circa-path-icon">C</span>Acionar setor responsável</div><p>Crie uma tarefa com escopo, responsável, prazo e prioridade.</p><div class="nm-grid-2"><label class="nm-label"><span>Setor</span><select class="nm-select" id="nm-setor-acionado"><option value="">Selecionar setor</option><option>Qualidade</option><option>Logística</option><option>Comercial</option><option>Produção</option><option>Financeiro</option></select></label><label class="nm-label"><span>Responsável</span><input class="nm-input" id="nm-responsavel-acionado"></label></div><label class="nm-label"><span>Escopo da tarefa</span><textarea class="nm-textarea" rows="3" id="nm-escopo-acionado"></textarea></label><button onclick="nmSetCaminhoTratativa('SETOR',this)" id="nm-caminho-setor" class="btn btn-secondary">Selecionar caminho</button><button onclick="nmCriarAcionamento('ENCAMINHAMENTO_TRATATIVA')" id="nm-btn-criar-acionamento" class="btn btn-primary" style="display:none">Confirmar e encaminhar →</button></div></div>
-        <input type="hidden" id="nm-caminho-tratativa"><input type="date" id="nm-data-encaminhamento" class="nm-visually-hidden"><div id="nm-box-tratativa-sac" class="nm-card" style="display:none"><div class="section-label">Tratativa interna SAC</div><textarea id="nm-tratativa-sac" class="nm-textarea" rows="5" placeholder="Descreva como o SAC conduzirá a resolução..."></textarea></div><div id="nm-box-complemento" class="nm-card" style="display:none"><div class="section-label">Solicitação de complementação</div><p>Os dados solicitados, o canal e o prazo serão registrados na ficha antes do avanço da tratativa.</p></div><div id="nm-box-encaminhamento-setor" class="nm-card" style="display:none"><div class="section-label">Acionamento preparado</div><p>O setor receberá a ficha após o registro e deverá responder dentro do prazo definido.</p></div>
+          <div class="circa-path-card"><div class="circa-path-title"><span class="circa-path-icon">B</span>Solicitar informações complementares</div><p>Peça os dados necessários antes de definir a resolução.</p><label class="nm-label"><span>O que solicitar</span><textarea id="nm-complemento-pedido" class="nm-textarea" rows="3"></textarea></label><div class="nm-grid-2"><label class="nm-label"><span>Prazo de retorno</span><input class="nm-input" id="nm-prazo-retorno" placeholder="Conforme SLA aplicável"></label><label class="nm-label"><span>Canal de retorno</span><select class="nm-select" id="nm-canal-retorno"><option>WhatsApp</option><option>E-mail</option><option>Telefone</option></select></label></div><button onclick="nmSetCaminhoTratativa('COMPLEMENTO',this);nmAdicionarAcaoPlano('COMPLEMENTO')" id="nm-caminho-complemento" class="btn btn-secondary">Adicionar ao plano</button></div>
+          <div class="circa-path-card"><div class="circa-path-title"><span class="circa-path-icon">C</span>Acionar setor responsável</div><p>Crie uma tarefa com escopo, responsável, prazo e prioridade.</p><div class="nm-grid-2"><label class="nm-label"><span>Setor</span><select class="nm-select" id="nm-setor-acionado" onchange="document.getElementById('nm-responsavel-acionado').dataset.loaded='';nmCarregarResponsaveisSetor()"><option value="">Selecionar setor</option><option>Qualidade</option><option>Logística</option><option>Comercial</option><option>Produção</option><option>Financeiro</option></select></label><label class="nm-label"><span>Responsável</span><select class="nm-select" id="nm-responsavel-acionado"><option value="">Carregando responsáveis…</option></select></label></div><label class="nm-label"><span>Escopo da tarefa</span><textarea class="nm-textarea" rows="3" id="nm-escopo-acionado"></textarea></label><button onclick="nmSetCaminhoTratativa('SETOR',this)" id="nm-caminho-setor" class="btn btn-secondary">Adicionar ao plano</button><button onclick="nmAdicionarAcaoPlano('SETOR')" id="nm-btn-criar-acionamento" class="btn btn-primary" style="display:none">Adicionar frente ao plano</button></div></div>
+        <input type="hidden" id="nm-caminho-tratativa"><input type="date" id="nm-data-encaminhamento" class="nm-visually-hidden"><div id="nm-plano-conducao" class="nm-card" style="margin-top:12px"><div class="section-label">Plano de condução</div><p style="font-size:12px;color:#777;margin:4px 0 9px">Prepare ações independentes; elas serão confirmadas juntas, sem criar outra manifestação.</p><div id="nm-plano-lista" class="circa-muted">Nenhuma ação preparada.</div><button type="button" class="btn btn-primary" style="margin-top:10px" onclick="nmConfirmarPlano()">Confirmar ações do plano</button><div id="nm-plano-status" style="margin-top:8px"></div></div><div id="nm-box-tratativa-sac" class="nm-card" style="display:none"><div class="section-label">Tratativa interna SAC</div><textarea id="nm-tratativa-sac" class="nm-textarea" rows="5" placeholder="Descreva como o SAC conduzirá a resolução..."></textarea><button type="button" class="btn btn-secondary" style="margin-top:8px" onclick="nmAdicionarAcaoPlano('SAC')">Adicionar tratativa SAC ao plano</button></div><div id="nm-box-complemento" class="nm-card" style="display:none"><div class="section-label">Solicitação de complementação</div><p>Os dados solicitados, o canal e o prazo serão registrados na ficha antes do avanço da tratativa.</p></div><div id="nm-box-encaminhamento-setor" class="nm-card" style="display:none"><div class="section-label">Acionamento preparado</div><p>O setor receberá a ficha após o registro e deverá responder dentro do prazo definido.</p></div>
       </div>
 
       <!-- ETAPA 4: INVESTIGAÇÃO E RESOLUÇÃO -->
@@ -7413,7 +7413,7 @@
 <script>
 (function(){
   'use strict';
-  const S={item:null,id:null,tab:0,attachments:[],history:[],circa:null,loading:false,showAttachments:false,path:'',anexoFiltro:'todos',setores:[],usuarios:[],originPage:null,originTab:null};
+  const S={item:null,id:null,tab:0,attachments:[],history:[],circa:null,acionamentos:[],extrasErrors:{},loading:false,showAttachments:false,path:'',anexoFiltro:'todos',setores:[],usuarios:[],originPage:null,originTab:null};
   const $=id=>document.getElementById(id);
   const esc=v=>{const d=document.createElement('div');d.textContent=v==null?'':String(v);return d.innerHTML};
   const val=(o,...ks)=>{for(const k of ks){const v=o?.[k];if(v!==undefined&&v!==null&&String(v).trim()!=='')return v}return ''};
@@ -7423,14 +7423,16 @@
   const id=()=>S.id||val(S.item,'ID_MANIFESTACAO','PROTOCOLO');
   const item=()=>S.item||{};
   function badgeStyle(kind){const st=String(kind||'').toUpperCase();if(st.includes('ENCERR')||st.includes('FECH')||st.includes('CONCL'))return 'background:#DCFCE7;color:#15803D';if(st.includes('ATRAS')||st.includes('ALTA'))return 'background:#FDECEC;color:#C70602';if(st.includes('AGUARD')||st.includes('TRAT')||st.includes('ANDAMENTO'))return 'background:#FEF3C7;color:#B45309';return 'background:#F0F0F0;color:#555'}
-  function status(){return val(item(),'STATUS_FICHA_LEGIVEL','STATUS_FICHA','STATUS')||'Aberta'}
-  function relato(){return val(item(),'DESCRICAO_ORIGINAL','DESCRICAO_MANIFESTACAO','DESCRICAO','RELATO','RELATO_ORIGINAL','OBSERVACOES')||'Relato original não informado.'}
-  function setor(){return val(item(),'SETOR_CONFIRMADO','SETOR_DESTINADO','RESP_SETOR','SETOR_SUGERIDO','SETOR_ORIGEM')||'Não definido'}
-  function resp(){return val(item(),'RESPONSAVEL_SETOR','RESPONSAVEL_SAC','RESPONSAVEL','RESPONSAVEL_TRATATIVA','USUARIO_CRIACAO')||'Não definido'}
-  function prazo(){return val(item(),'SLA_HORAS','PRAZO_TRATATIVA','PRAZO_RESPOSTA','SLA')||72}
-  function slaLine(label, start, hours, color){const h=Number(hours)||72;let pct=0,remain='—';try{const t=new Date(start||Date.now()), end=new Date(t.getTime()+h*3600000), now=new Date();pct=Math.max(0,Math.min(100,((now-t)/(h*3600000))*100));const rem=(end-now)/3600000;remain=rem<0?'Vencido':(rem>=24?Math.floor(rem/24)+'d '+Math.floor(rem%24)+'h':Math.floor(rem)+'h '+Math.floor((rem%1)*60)+'min')}catch{};return {label,value:remain,pct:Math.round(pct),color}};
+  function status(){const sf=val(item(),'STATUS_FICHA_LEGIVEL','STATUS_FICHA');const s=val(item(),'STATUS');if(sf&&/^RASCUNHO$/i.test(String(sf))&&s&&!/^RASCUNHO$/i.test(String(s)))return s;return sf||s||'Aberta'}
+  function relato(){return val(item(),'DESCRICAO_ORIGINAL','DESCRICAO_MANIFESTACAO','DESCRICAO','DESCRICAO_RECLAMACAO','RELATO','RELATO_ORIGINAL','OBSERVACOES')||'Relato original não informado.'}
+  function acoesAtivas(){return (S.acionamentos||[]).filter(a=>!['CANCELADO','CANCELADA'].includes(String(val(a,'STATUS','status')).toUpperCase()))}
+  function listaFrentes(campo){return [...new Set(acoesAtivas().map(a=>val(a,campo)).filter(Boolean).map(String))].join(' · ')}
+  function setor(){return val(item(),'SETOR_CONFIRMADO','SETOR_DESTINADO','RESP_SETOR','SETOR_SUGERIDO','SETOR_ORIGEM')||listaFrentes('SETOR_DESTINO')||'Não definido'}
+  function resp(){return val(item(),'RESPONSAVEL_SETOR','RESPONSAVEL_SAC','RESPONSAVEL','RESPONSAVEL_TRATATIVA','USUARIO_CRIACAO')||listaFrentes('RESPONSAVEL')||'Não definido'}
+  function prazo(){return val(item(),'SLA_HORAS','PRAZO_TRATATIVA','PRAZO_RESPOSTA','SLA')}
+  function slaLine(label, start, hours, color){const h=Number(hours);if(!h)return {label,value:'Não informado',pct:0,color};let pct=0,remain='Não informado';try{const t=new Date(start||Date.now()), end=new Date(t.getTime()+h*3600000), now=new Date();pct=Math.max(0,Math.min(100,((now-t)/(h*3600000))*100));const rem=(end-now)/3600000;remain=rem<0?'Vencido':(rem>=24?Math.floor(rem/24)+'d '+Math.floor(rem%24)+'h':Math.floor(rem)+'h '+Math.floor((rem%1)*60)+'min')}catch{};return {label,value:remain,pct:Math.round(pct),color}};
   function renderHeader(){const m=item(), p=val(m,'PROTOCOLO','ID_MANIFESTACAO')||'—';$('ficha-v2-breadcrumb').textContent=p;$('ficha-v2-proto').textContent=p;$('ficha-v2-status').textContent=status();$('ficha-v2-status').style.cssText=badgeStyle(status());$('ficha-v2-prioridade').textContent=val(m,'PRIORIDADE','PRIORIDADE_CONFIRMADA')||'Não definida';$('ficha-v2-prioridade').style.cssText=badgeStyle(val(m,'PRIORIDADE','PRIORIDADE_CONFIRMADA'));$('ficha-v2-tipo').textContent=val(m,'TIPO_CONFIRMADO','TIPO_SUGERIDO','TIPO')||'—';$('ficha-v2-empresa').textContent=val(m,'EMPRESA_RECLAMADA','EMPRESA_NORMALIZADA','EMPRESA')||'—';$('ficha-v2-cliente').textContent=val(m,'EMPRESA_RECLAMANTE','CLIENTE','CONTATO')||'—';$('ficha-v2-responsavel').textContent=resp();$('ficha-v2-setor').textContent=setor();$('ficha-v2-aberto').textContent=date(val(m,'DATA_ABERTURA','DATA_REGISTRO','CREATED_AT'));
-    const start=val(m,'DATA_ABERTURA','DATA_REGISTRO','CREATED_AT');const s=[slaLine('SLA da manifestação',start,prazo(),'#D97706'),slaLine('SLA da etapa',val(m,'DATA_ENCAMINHAMENTO','DATA_TRIAGEM',start),val(m,'PRAZO_TRATATIVA','SLA_HORAS',24),'#C70602'),slaLine('Tempo com responsável',val(m,'DATA_INICIO_TRATATIVA','DATA_ENCAMINHAMENTO',start),val(m,'PRAZO_TRATATIVA',72),'#1D4ED8'),slaLine('Tempo total',start,72,'#929090')];$('ficha-v2-sla').innerHTML=s.map(x=>`<div class="fv2-sla-item"><div class="fv2-sla-label">${esc(x.label)}</div><div class="fv2-sla-value" style="color:${x.color}">${esc(x.value)}</div><div class="fv2-progress"><i style="width:${x.pct}%;background:${x.color}"></i></div></div>`).join('');
+    const start=val(m,'DATA_ABERTURA','DATA_REGISTRO','CREATED_AT');const s=[slaLine('SLA da manifestação',start,prazo(),'#D97706'),slaLine('SLA da triagem SAC',val(m,'DATA_TRIAGEM',start),val(m,'SLA_TRIAGEM_HORAS',24),'#C70602'),slaLine('SLA do setor',val(m,'DATA_INICIO_TRATATIVA','DATA_ENCAMINHAMENTO',start),val(m,'SLA_SETOR_HORAS','PRAZO_TRATATIVA'),'#1D4ED8'),slaLine('Tempo total',start,val(m,'SLA_TOTAL_HORAS'),'#929090')];$('ficha-v2-sla').innerHTML=s.map(x=>`<div class="fv2-sla-item"><div class="fv2-sla-label">${esc(x.label)}</div><div class="fv2-sla-value" style="color:${x.color}">${esc(x.value)}</div><div class="fv2-progress"><i style="width:${x.pct}%;background:${x.color}"></i></div></div>`).join('');
     $('ficha-v2-anexos-btn').textContent='📎 Anexos ('+S.attachments.length+')';
   }
   function renderTabs(){const labels=['Dados','Triagem e Direcionamento','Tratativa','Validação e Devolutiva','Histórico'];$('ficha-v2-tabs').innerHTML=labels.map((l,i)=>`<button type="button" class="fv2-tab ${i===S.tab?'active':''}" onclick="fichaV2Tab(${i})">${l}</button>`).join('')}
@@ -7439,7 +7441,14 @@
   function renderAttachments(){const root=$('ficha-v2-attachments');if(!S.showAttachments){root.hidden=true;root.innerHTML='';return}root.hidden=false;const filters=['todos','original','evidencia','tratativa'];const filtered=S.attachments.filter(a=>S.anexoFiltro==='todos'||String(val(a,'origem','ORIGEM')||'').toLowerCase().includes(S.anexoFiltro)||String(val(a,'categoria','CATEGORIA')||'').toLowerCase().includes(S.anexoFiltro));root.innerHTML=`<div class="fv2-attachments-head"><div><div style="font-size:13px;font-weight:800">Todos os anexos</div><div class="fv2-muted" style="margin-top:1px">${S.attachments.length} arquivos acessíveis</div></div><button class="fv2-btn-ghost" style="height:26px;padding:2px 8px" onclick="fichaV2ToggleAnexos()">✕</button></div><div style="flex:none;padding:8px 14px;border-bottom:1px solid #F0F0F0;display:flex;gap:5px;overflow-x:auto">${filters.map(f=>`<button class="fv2-btn-ghost" style="height:26px;padding:2px 8px;font-size:10.5px;${f===S.anexoFiltro?'border-color:#C70602;color:#C70602;background:#FDECEC':''}" onclick="fichaV2FiltroAnexo('${f}')">${f==='todos'?'Todos':f==='original'?'Originais':f==='evidencia'?'Evidências':'Tratativa'}</button>`).join('')}</div><div class="fv2-attachments-list">${filtered.length?filtered.map(a=>anexoHtml(a,true)).join(''):'<div class="fv2-empty">Nenhum anexo registrado.</div>'}</div><div style="flex:none;padding:10px 14px;border-top:1px solid #F0F0F0"><input id="ficha-v2-upload" type="file" multiple style="display:none" onchange="fichaV2Upload(this.files)"><button class="fv2-btn-ghost" style="width:100%;justify-content:center" onclick="$('ficha-v2-upload').click()">+ Adicionar arquivo</button></div>`}
   function renderData(){const m=item();const orig=S.attachments.filter(a=>String(val(a,'origem','ORIGEM')||'').toLowerCase().includes('original')||String(val(a,'origem','ORIGEM')||'').toLowerCase().includes('portal'));return `<div class="fv2-card"><div class="fv2-section">Identificação</div><div class="fv2-g4">${field('Protocolo',val(m,'PROTOCOLO','ID_MANIFESTACAO'))}${field('Empresa',val(m,'EMPRESA_RECLAMADA','EMPRESA_NORMALIZADA','EMPRESA'))}${field('Tipo',val(m,'TIPO_CONFIRMADO','TIPO_SUGERIDO','TIPO'))}${field('Prioridade',val(m,'PRIORIDADE'))}${field('Cliente',val(m,'EMPRESA_RECLAMANTE','CLIENTE','CONTATO'))}${field('Canal',val(m,'CANAL'))}${field('Origem',val(m,'ORIGEM','ORIGEM_MANIFESTACAO'))}${field('Registrado por',val(m,'USUARIO_CRIACAO','REGISTRADO_POR','ATENDENTE'))}${field('Data de abertura',date(val(m,'DATA_ABERTURA','DATA_REGISTRO')))}${field('Setor atual',setor())}${field('Responsável',resp())}${field('Status',status())}</div></div><div class="fv2-card"><div class="fv2-section">Relato original</div><div class="fv2-muted" style="margin-bottom:8px">◈ Conteúdo original preservado — somente leitura</div><div class="fv2-relato">${esc(relato())}</div></div><div class="fv2-card"><div class="fv2-section">Anexos originais</div>${orig.length?orig.map(a=>anexoHtml(a)).join(''):'<div class="fv2-empty">Nenhum anexo registrado na abertura.</div>'}</div>`}
   function renderTriage(){const m=item();const chosen=S.path||((val(m,'SETOR_CONFIRMADO','SETOR_DESTINADO'))?'setor':'');const users=S.usuarios||[];const setores=S.setores||[...new Set(users.map(u=>val(u,'SETOR','SETOR_PRINCIPAL')).filter(Boolean))];return `<div class="fv2-card"><div class="fv2-section">Classificação</div><div class="fv2-g3"><div><label>Categoria</label><input id="fv2-categoria" value="${esc(val(m,'CATEGORIA','TIPO_CONFIRMADO','TIPO'))}"></div><div><label>Motivo validado</label><input id="fv2-motivo" value="${esc(val(m,'MOTIVO_VALIDADO','MOTIVO'))}"></div><div><label>Prioridade</label><select id="fv2-prioridade-input"><option ${val(m,'PRIORIDADE')==='Alta'?'selected':''}>Alta</option><option ${val(m,'PRIORIDADE')==='Média'?'selected':''}>Média</option><option ${val(m,'PRIORIDADE')==='Baixa'?'selected':''}>Baixa</option></select></div></div><div style="margin-top:12px"><label>Motivo original <span style="font-weight:400;color:#929090">(somente leitura)</span></label><div style="background:#FAFAFA;border:1px solid #EDEDF0;border-radius:7px;padding:9px 12px;font-size:12.5px;color:#555">${esc(val(m,'MOTIVO_ORIGINAL','MOTIVO'))||'—'}</div></div><div style="margin-top:12px"><label>Observações da triagem</label><textarea id="fv2-triagem-obs" rows="2">${esc(val(m,'OBS_ENCAMINHAMENTO','OBS_TRIAGEM'))}</textarea></div></div><div class="fv2-card"><div style="font-size:13px;font-weight:800;margin-bottom:4px">Quem executará a tratativa?</div><div class="fv2-muted" style="margin-bottom:14px">Selecione uma das opções abaixo.</div><div class="fv2-path-grid"><div class="fv2-path ${chosen==='SAC'?'selected':''}" onclick="fichaV2Path('SAC')"><b>✓ &nbsp;SAC assume a tratativa</b><div class="fv2-muted" style="margin-top:4px">O SAC investiga e resolve a manifestação internamente.</div></div><div class="fv2-path ${chosen==='setor'?'selected':''}" onclick="fichaV2Path('setor')"><b>♙ &nbsp;Encaminhar para outro setor</b><div class="fv2-muted" style="margin-top:4px">A manifestação depende de investigação ou decisão de outra área.</div>${chosen==='setor'?`<div style="margin-top:10px;padding:12px 14px;background:#FFF5F5;border-radius:7px;border:1px solid #FECACA" onclick="event.stopPropagation()"><div class="fv2-g3" style="gap:10px;margin-bottom:10px"><div><label>Setor</label><select id="fv2-setor-input">${setores.length?setores.map(x=>`<option ${x===setor()?'selected':''}>${esc(x)}</option>`).join(''):'<option value="">Selecione um setor</option>'}</select></div><div><label>Responsável</label><select id="fv2-responsavel-input">${users.filter(u=>String(val(u,'STATUS')||'ATIVO').toUpperCase()==='ATIVO').map(u=>{const k=val(u,'USUARIO','LOGIN','EMAIL','NOME');return `<option value="${esc(k)}" ${k===val(m,'RESPONSAVEL_SETOR','RESPONSAVEL')?'selected':''}>${esc(val(u,'NOME','USUARIO','EMAIL'))}</option>`}).join('')||'<option value="">Selecione um responsável</option>'}</select></div><div><label>Prazo de retorno</label><input id="fv2-prazo-input" type="date" value="${esc(String(val(m,'PRAZO_TRATATIVA')||'').slice(0,10))}"></div></div><label>Orientações para o setor</label><textarea id="fv2-orientacoes" rows="2">${esc(val(m,'OBS_ENCAMINHAMENTO'))}</textarea><div class="fv2-actions-row" style="justify-content:flex-end"><button class="fv2-btn-primary" onclick="event.stopPropagation();fichaV2Encaminhar()">Encaminhar ao setor</button></div></div>`:''}</div></div></div><div id="fv2-triagem-msg" class="fv2-message"></div>`}
-  function renderTreatment(){const m=item();const circa=S.circa||{};const causa=val(m,'CAUSA_RAIZ_CONFIRMADA','CAUSA_PROVAVEL','CAUSA_RAIZ')||val(circa,'causaProvavel','CAUSA_PROVAVEL');return `<div class="fv2-card"><div class="fv2-section">Responsável pela tratativa</div><div class="fv2-g4">${field('Setor',setor())}${field('Responsável',resp())}${field('Encaminhado em',date(val(m,'DATA_ENCAMINHAMENTO')))}${field('Prazo',dateShort(val(m,'PRAZO_TRATATIVA')))}${field('Permanência',date(val(m,'DATA_INICIO_TRATATIVA')))}${field('Status',status())}</div></div><div class="fv2-card"><div class="fv2-section">Investigação</div><div style="display:flex;flex-direction:column;gap:12px"><div><label>O que aconteceu?</label><textarea id="fv2-investigacao" rows="3">${esc(val(m,'INVESTIGACAO_O_QUE','RESP_SETOR_O_QUE','TRATATIVA_REALIZADA'))}</textarea></div><div class="fv2-g2"><div><label>Causa identificada</label><input id="fv2-causa" value="${esc(txt(causa))}"></div><div><label>Procedência</label><select id="fv2-procedente"><option value="">Selecione</option><option ${val(m,'PROCEDENTE')==='SIM'?'selected':''}>SIM</option><option ${val(m,'PROCEDENTE')==='NAO'?'selected':''}>NAO</option><option ${val(m,'PROCEDENTE')==='PARCIAL'?'selected':''}>PARCIAL</option></select></div></div><div><label>Solução aplicada</label><textarea id="fv2-solucao" rows="2">${esc(val(m,'TRATATIVA_REALIZADA','RESP_SETOR_RESOLUCAO'))}</textarea></div><div><label>Ação preventiva</label><textarea id="fv2-acao-prev" rows="2">${esc(val(m,'ACOES_CORRETIVAS','RESP_SETOR_ACAO_PREV'))}</textarea></div><div class="fv2-actions-row"><button class="fv2-btn-primary" onclick="fichaV2SalvarInvestigacao()">Salvar investigação</button><button class="fv2-btn-secondary" onclick="fichaV2EnviarValidacao()">Enviar para validação SAC</button></div><div id="fv2-trat-msg" class="fv2-message"></div></div></div><div class="fv2-circa"><div style="display:flex;align-items:center;justify-content:space-between"><b style="color:#0369A1">◉ Assistência Inteligente CIRCA</b><button class="fv2-btn-ghost" onclick="fichaV2ToggleCirca()">${S.circaOpen?'Recolher':'Expandir'}</button></div>${S.circaOpen?`<div style="font-size:12.5px;color:#0C4A6E;line-height:1.65;margin-top:10px">${esc(txt(val(circa,'causaProvavel','CAUSA_PROVAVEL')||causa||'Sem sugestão persistida.'))}<br><span class="fv2-muted">Dados provenientes da análise persistida; valide antes de usar.</span></div>`:''}</div><div class="fv2-card"><div class="fv2-section">Evidências da tratativa</div>${S.attachments.filter(a=>!String(val(a,'origem','ORIGEM')||'').toLowerCase().includes('original')).map(a=>anexoHtml(a)).join('')||'<div class="fv2-empty">Nenhuma evidência registrada.</div>'}</div>`}
+  function renderFrentes(){
+    if(S.extrasErrors.acionamentos)return '<div class="fv2-card"><div class="fv2-section">Frentes de tratamento</div><div class="fv2-empty" style="color:#B91C1C">Não foi possível recuperar os acionamentos persistidos. Tente recarregar a ficha.</div></div>';
+    const actions=acoesAtivas();
+    if(!actions.length)return '<div class="fv2-card"><div class="fv2-section">Frentes de tratamento</div><div class="fv2-empty">Nenhum acionamento persistido para esta manifestação.</div></div>';
+    const rows=actions.map(a=>{const tipo=String(val(a,'TIPO','tipo')||'').toUpperCase();const frente=tipo==='SOLICITACAO_INFORMACAO'?'Solicitação ao cliente':(val(a,'SETOR_DESTINO','setorDestino')||val(a,'TIPO','tipo')||'Frente de tratamento');const tarefa=val(a,'TAREFA','MOTIVO','ASSUNTO')||'Não informado';const prazoAcao=val(a,'PRAZO','prazo')||'Não informado';const prazoOrigem=val(a,'PRAZO_ORIGEM','prazoOrigem');const limite=val(a,'DATA_LIMITE','dataLimite');const responsavel=val(a,'RESPONSAVEL','responsavel')||'Não designado';const statusAcao=val(a,'STATUS','status')||'Não informado';return `<div style="border:1px solid #E5E7EB;border-radius:8px;padding:11px 12px;margin-top:8px"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><strong>${esc(frente)}</strong><span class="fv2-badge" style="${badgeStyle(statusAcao)}">${esc(statusAcao)}</span></div><div class="fv2-g4" style="margin-top:9px">${field('Responsável',responsavel)}${field('ID do responsável',val(a,'RESPONSAVEL_ID','responsavelId')||'Não informado')}${field('Tarefa',tarefa)}${field('Prazo',prazoAcao)}${field('Origem do prazo',prazoOrigem||'Não informado')}${field('Data limite',limite?date(limite):'Não informado')}${field('Criado em',date(val(a,'CRIADO_EM','criadoEm')))}${field('Evidências',val(a,'EVIDENCIAS','evidencias')||'Não informado')}</div>${val(a,'RESPOSTA','resposta')?`<div style="margin-top:8px"><div class="fv2-ri-label">Resposta registrada</div><div class="fv2-relato">${esc(txt(val(a,'RESPOSTA','resposta')))}</div></div>`:''}</div>`}).join('');
+    return `<div class="fv2-card"><div class="fv2-section">Frentes de tratamento (${actions.length})</div><div class="fv2-muted">Cada acionamento é uma responsabilidade persistida e permanece visível mesmo quando o SAC assume a condução.</div>${rows}</div>`;
+  }
+  function renderTreatment(){const m=item();const circa=S.circa||{};const causa=val(m,'CAUSA_RAIZ_CONFIRMADA','CAUSA_PROVAVEL','CAUSA_RAIZ')||val(circa,'causaProvavel','CAUSA_PROVAVEL');return `${renderFrentes()}<div class="fv2-card"><div class="fv2-section">Responsável pela tratativa</div><div class="fv2-g4">${field('Setor',setor())}${field('Responsável',resp())}${field('Encaminhado em',date(val(m,'DATA_ENCAMINHAMENTO')))}${field('Prazo',dateShort(val(m,'PRAZO_TRATATIVA')))}${field('Permanência',date(val(m,'DATA_INICIO_TRATATIVA')))}${field('Status',status())}</div></div><div class="fv2-card"><div class="fv2-section">Investigação</div><div style="display:flex;flex-direction:column;gap:12px"><div><label>O que aconteceu?</label><textarea id="fv2-investigacao" rows="3">${esc(val(m,'INVESTIGACAO_O_QUE','RESP_SETOR_O_QUE','TRATATIVA_REALIZADA'))}</textarea></div><div class="fv2-g2"><div><label>Causa identificada</label><input id="fv2-causa" value="${esc(txt(causa))}"></div><div><label>Procedência</label><select id="fv2-procedente"><option value="">Selecione</option><option ${val(m,'PROCEDENTE')==='SIM'?'selected':''}>SIM</option><option ${val(m,'PROCEDENTE')==='NAO'?'selected':''}>NAO</option><option ${val(m,'PROCEDENTE')==='PARCIAL'?'selected':''}>PARCIAL</option></select></div></div><div><label>Solução aplicada</label><textarea id="fv2-solucao" rows="2">${esc(val(m,'TRATATIVA_REALIZADA','RESP_SETOR_RESOLUCAO'))}</textarea></div><div><label>Ação preventiva</label><textarea id="fv2-acao-prev" rows="2">${esc(val(m,'ACOES_CORRETIVAS','RESP_SETOR_ACAO_PREV'))}</textarea></div><div class="fv2-actions-row"><button class="fv2-btn-primary" onclick="fichaV2SalvarInvestigacao()">Salvar investigação</button><button class="fv2-btn-secondary" onclick="fichaV2EnviarValidacao()">Enviar para validação SAC</button></div><div id="fv2-trat-msg" class="fv2-message"></div></div></div><div class="fv2-circa"><div style="display:flex;align-items:center;justify-content:space-between"><b style="color:#0369A1">◉ Assistência Inteligente CIRCA</b><button class="fv2-btn-ghost" onclick="fichaV2ToggleCirca()">${S.circaOpen?'Recolher':'Expandir'}</button></div>${S.circaOpen?`<div style="font-size:12.5px;color:#0C4A6E;line-height:1.65;margin-top:10px">${esc(txt(val(circa,'causaProvavel','CAUSA_PROVAVEL')||causa||'Sem sugestão persistida.'))}<br><span class="fv2-muted">Dados provenientes da análise persistida; valide antes de usar.</span></div>`:''}</div><div class="fv2-card"><div class="fv2-section">Evidências da tratativa</div>${S.attachments.filter(a=>!String(val(a,'origem','ORIGEM')||'').toLowerCase().includes('original')).map(a=>anexoHtml(a)).join('')||'<div class="fv2-empty">Nenhuma evidência registrada.</div>'}</div>`}
   function renderValidation(){const m=item();return `<div class="fv2-card"><div class="fv2-section">Validação SAC</div><div class="fv2-g2" style="margin-bottom:14px">${field('Causa confirmada',val(m,'CAUSA_RAIZ_CONFIRMADA','CAUSA_PROVAVEL'))}${field('Solução aplicada',val(m,'TRATATIVA_REALIZADA','RESP_SETOR_RESOLUCAO'))}${field('Procedência',val(m,'PROCEDENTE'))}${field('Situação',status())}</div><label>Observações da validação</label><textarea id="fv2-valid-obs" rows="2">${esc(val(m,'OBSERVACOES_FINAIS','VALID_SAC_PENDENCIAS'))}</textarea><div class="fv2-actions-row"><button class="fv2-btn-primary" onclick="fichaV2Validar('VALIDAR')">✓ Validar tratativa</button><button class="fv2-btn-secondary" onclick="fichaV2Validar('COMPLEMENTAR')">Solicitar complementação</button><button class="fv2-btn-ghost" onclick="fichaV2Validar('DEVOLVER')">Devolver para correção</button></div><div id="fv2-valid-msg" class="fv2-message"></div></div><div class="fv2-card"><div class="fv2-section">Devolutiva ao cliente</div><div class="fv2-g3" style="margin-bottom:12px">${field('Situação',status())}${field('Canal',val(m,'CANAL_RETORNO','CANAL'))}${field('Data de envio',date(val(m,'DATA_DEVOLUTIVA')))}</div><label>Texto da devolutiva</label><textarea id="fv2-devolutiva" rows="5">${esc(val(m,'DEVOLUTIVA_FINAL','DEVOLUTIVA_SUGERIDA','DEVOLUTIVA'))}</textarea><div class="fv2-actions-row"><button class="fv2-btn-ghost" onclick="fichaV2GerarDevolutiva(event)">Gerar sugestão</button><button class="fv2-btn-secondary" onclick="fichaV2SalvarDevolutiva()">Salvar rascunho</button><button class="fv2-btn-primary" style="background:#15803D" onclick="fichaV2EnviarDevolutiva()">Registrar envio</button></div><div id="fv2-dev-msg" class="fv2-message"></div></div>`}
   function renderHistory(){const events=(S.history||[]).map((e,i)=>`<div class="fv2-timeline-item"><div class="fv2-dot" style="background:${i%2?'#1D4ED8':'#15803D'}"></div><div style="flex:1"><div style="font-size:12.5px;font-weight:700">${esc(val(e,'ACAO','acao')||'Ação')}</div><div style="font-size:11.5px;color:#929090">${esc(val(e,'USUARIO','user')||'Sistema')} · ${esc(date(val(e,'DATA_HORA','DATA','data')))}</div><div style="font-size:11.5px;color:#555;margin-top:3px;line-height:1.5">${esc(txt(val(e,'DETALHES','DESCRICAO','obs')))}</div></div></div>`).join('');return `<div class="fv2-card"><div class="fv2-section">Linha do tempo</div>${events||'<div class="fv2-empty">Nenhum evento registrado.</div>'}</div><div class="fv2-card" style="padding:0;overflow:hidden"><div style="padding:12px 18px;border-bottom:1px solid #F0F0F0;background:#FAFAFA;font-size:12px;font-weight:700">Tempo e responsabilidades</div><div style="overflow-x:auto"><table class="fv2-table"><thead><tr><th>Setor/Responsável</th><th>Entrada</th><th>Saída</th><th>Permanência</th><th>Situação</th></tr></thead><tbody><tr><td>${esc(setor())} / ${esc(resp())}</td><td>${esc(date(val(item(),'DATA_ENCAMINHAMENTO','DATA_ABERTURA')))}</td><td>—</td><td>—</td><td><span class="fv2-badge" style="${badgeStyle(status())}">${esc(status())}</span></td></tr></tbody></table></div></div>`}
   function renderContent(){const fn=[renderData,renderTriage,renderTreatment,renderValidation,renderHistory][S.tab]||renderData;$('ficha-v2-content').innerHTML=fn();renderTabs();renderAttachments()}
@@ -7456,8 +7465,8 @@
   window.fichaV2SalvarDevolutiva=async()=>{try{const t=$("fv2-devolutiva")?.value.trim()||'';if(!t)throw new Error('Informe o texto da devolutiva.');await patch({acao:'salvar_devolutiva',texto:t,canal:val(item(),'CANAL_RETORNO','CANAL')});Object.assign(S.item,{DEVOLUTIVA_FINAL:t,STATUS:'AGUARDANDO_DEVOLUTIVA',STATUS_FICHA:'AGUARDANDO_DEVOLUTIVA'});renderHeader();showMsg('fv2-dev-msg','Rascunho salvo.',true)}catch(e){showMsg('fv2-dev-msg',e.message,false)}};
   window.fichaV2EnviarDevolutiva=async()=>{try{await patch({acao:'registrar_devolutiva',canal:val(item(),'CANAL_RETORNO','CANAL'),responsavel:resp()});Object.assign(S.item,{STATUS:'ENCERRADA',STATUS_FICHA:'FECHADA'});renderHeader();renderContent();showMsg('fv2-dev-msg','Envio registrado e manifestação encerrada.',true)}catch(e){showMsg('fv2-dev-msg',e.message,false)}};
   window.fichaV2Upload=async files=>{const arr=[...(files||[])];for(const f of arr){try{const data=await fileToBase64(f);const r=await _apiFetch('/api/anexos',60000,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tipoEntidade:'MANIFESTACAO',idEntidade:id(),usuario:val(typeof sess==='function'?sess():{},'usuario','nome'),arquivo:{nome:f.name,mimeType:f.type,tamanho:f.size,dataBase64:data,categoria:'EVIDENCIA'}})});if(r.anexo)S.attachments.push(r.anexo)}catch(e){alert('Não foi possível enviar '+f.name+': '+e.message)}}renderHeader();renderAttachments()};
-  async function loadExtras(){const key=encodeURIComponent(id());const [ev,h,ci,setRes,userRes]=await Promise.all([_apiFetch('/api/manifestacoes/'+key+'/evidencias',10000).catch(()=>({itens:[]})),_apiFetch('/api/manifestacoes/'+key+'/historico',10000).catch(()=>({itens:[]})),_apiFetch('/api/manifestacoes/'+key+'/circa',10000).catch(()=>({})),_apiFetch('/api/setores-unicos',10000).catch(()=>({itens:[]})),_apiFetch('/api/usuarios',10000).catch(()=>({itens:[]}))]);S.setores=Array.isArray(setRes.itens)?setRes.itens.map(x=>typeof x==='string'?x:val(x,'SETOR','NOME')).filter(Boolean):[];S.usuarios=Array.isArray(userRes.itens)?userRes.itens:[];S.attachments=Array.isArray(ev.itens)?ev.itens:[];S.history=Array.isArray(h.itens)?h.itens:[];S.circa=ci?.analise||ci?.dados||ci||{};renderHeader();renderContent()}
-  window.fichaV2Open=async function(raw,opts){const active=document.querySelector('.page.active')?.id?.replace(/^page-/,'');S.originPage=opts?.returnPage||(active&&active!=='ficha-manifestacao-v2'?active:'central-sac');S.originTab=opts?.returnTab||null;let m=typeof raw==='string'?{ID_MANIFESTACAO:raw,PROTOCOLO:raw}:raw||{};S.item=m;S.id=val(m,'ID_MANIFESTACAO','id','PROTOCOLO');S.tab=0;S.path='';S.attachments=[];S.history=[];S.circa=null;S.showAttachments=false;const sb=document.getElementById('app-sidebar');if(sb)sb.style.display='none';const u=typeof sess==='function'?sess():{};const un=$("ficha-v2-user-name");const ur=$("ficha-v2-user-role");if(un)un.textContent=val(u,'nome','usuario')||'Usuário';if(ur)ur.textContent=val(u,'perfil','PERFIL')||'SAC';navigate('ficha-manifestacao-v2',null);renderHeader();renderContent();try{const d=await _apiFetch('/api/manifestacoes/'+encodeURIComponent(S.id),15000);if(d?.manifestacao||d?.item)S.item=Object.assign({},m,d.manifestacao||d.item);else if(d?.ID_MANIFESTACAO)S.item=Object.assign({},m,d);S.id=val(S.item,'ID_MANIFESTACAO','PROTOCOLO')||S.id;renderHeader();renderContent();await loadExtras()}catch(e){console.warn('[Ficha v2] carregamento detalhado:',e.message);await loadExtras()}};
+  async function loadExtras(){const key=encodeURIComponent(id());const read=(url,empty)=>_apiFetch(url,10000).then(x=>({data:x,error:''})).catch(e=>({data:empty,error:e?.message||'Falha de comunicação'}));const [ev,h,ciRes,setRes,userRes,acRes]=await Promise.all([read('/api/manifestacoes/'+key+'/evidencias',{itens:[]}),read('/api/manifestacoes/'+key+'/historico',{itens:[]}),read('/api/manifestacoes/'+key+'/circa',{}),read('/api/setores-unicos',{itens:[]}),read('/api/usuarios',{itens:[]}),read('/api/manifestacoes/'+key+'/acionamentos',{itens:[]})]);const ci=ciRes.data||{};S.extrasErrors={evidencias:ev.error,historico:h.error,circa:ciRes.error,setores:setRes.error,usuarios:userRes.error,acionamentos:acRes.error};const evd=ev.data||{},hd=h.data||{},sd=setRes.data||{},ud=userRes.data||{},ad=acRes.data||{};S.setores=Array.isArray(sd.itens)?sd.itens.map(x=>typeof x==='string'?x:val(x,'SETOR','NOME')).filter(Boolean):[];S.usuarios=Array.isArray(ud.itens)?ud.itens:[];S.attachments=Array.isArray(evd.itens)?evd.itens:[];S.history=Array.isArray(hd.itens)?hd.itens:[];S.circa=ci?.circa||ci?.analise||ci?.dados||ci||{};S.acionamentos=Array.isArray(ad.itens)?ad.itens:[];renderHeader();renderContent()}
+  window.fichaV2Open=async function(raw,opts){const active=document.querySelector('.page.active')?.id?.replace(/^page-/,'');S.originPage=opts?.returnPage||(active&&active!=='ficha-manifestacao-v2'?active:'central-sac');S.originTab=opts?.returnTab||null;let m=typeof raw==='string'?{ID_MANIFESTACAO:raw,PROTOCOLO:raw}:raw||{};S.item=m;S.id=val(m,'ID_MANIFESTACAO','id','PROTOCOLO');S.tab=0;S.path='';S.attachments=[];S.history=[];S.circa=null;S.acionamentos=[];S.extrasErrors={};S.showAttachments=false;const sb=document.getElementById('app-sidebar');if(sb)sb.style.display='none';const u=typeof sess==='function'?sess():{};const un=$("ficha-v2-user-name");const ur=$("ficha-v2-user-role");if(un)un.textContent=val(u,'nome','usuario')||'Usuário';if(ur)ur.textContent=val(u,'perfil','PERFIL')||'SAC';navigate('ficha-manifestacao-v2',null);renderHeader();renderContent();try{const d=await _apiFetch('/api/manifestacoes/'+encodeURIComponent(S.id),15000);if(d?.manifestacao||d?.item)S.item=Object.assign({},m,d.manifestacao||d.item);else if(d?.ID_MANIFESTACAO)S.item=Object.assign({},m,d);S.id=val(S.item,'ID_MANIFESTACAO','PROTOCOLO')||S.id;renderHeader();renderContent();await loadExtras()}catch(e){console.warn('[Ficha v2] carregamento detalhado:',e.message);await loadExtras()}};
   window.fichaV2Recarregar=()=>S.item&&window.fichaV2Open(S.item);
   window.addEventListener('beforeunload',()=>{if(S.item)S.item=null});
   window.abrirDossie=function(raw){window.fichaV2Open(raw)};
@@ -7810,8 +7819,9 @@
       .catch(e=>{if(typeof _toast==='function')_toast(e.message||'Erro ao salvar configuração.');else console.error(e);return {sucesso:false,erro:e.message};});
   }
   async function cfgLoadServer(){
-    try{const r=await fetch((window.SAC_API||'')+'/api/configuracoes',{credentials:'include',headers:{'Authorization':'Bearer '+(sessionStorage.getItem('sac-token')||'')}});const j=await r.json();if(!r.ok||j.sucesso===false)throw new Error(j.erro||'Falha ao carregar configurações.');Object.assign(cfgServer,j.valores||{});cfgAplicarServer();}
-    catch(e){console.warn('[configuracoes]',e.message||e);}
+    window.__SAC_CONFIG_STATUS='LOADING';
+    try{const r=await fetch((window.SAC_API||'')+'/api/configuracoes',{credentials:'include',headers:{'Authorization':'Bearer '+(sessionStorage.getItem('sac-token')||'')}});const j=await r.json();if(!r.ok||j.sucesso===false){const err=new Error(j.erro||'Falha ao carregar configurações.');err.status=r.status;throw err;}Object.assign(cfgServer,j.valores||{});window.__SAC_CONFIG_STATUS='READY';cfgAplicarServer();}
+    catch(e){window.__SAC_CONFIG_STATUS=e.status===401?'AUTH_REQUIRED':'ERROR';console.warn('[configuracoes]',window.__SAC_CONFIG_STATUS,e.message||e);}
   }
   function cfgAplicarServer(){
     const c=cfgGet('canais',null),p=cfgGet('prazos',null);
@@ -11679,7 +11689,7 @@ async function checarSolicitacoesPendentes() {
     // Badge no botão "Aprovações": combina fila (novas) + pendências diretas (antigas sem fila)
     const [filaData, pendData] = await Promise.all([
       _apiFetch('/api/fila-aprovacao', 8000).catch(() => null),
-      _apiFetch('/api/aprovadores/' + encodeURIComponent(_u.usuario||_u.USUARIO||''), 8000).catch(() => null),
+      _apiFetch('/api/aprovadores/' + encodeURIComponent(_u.usuario||_u.USUARIO||'') + '/pendencias', 8000).catch(e => { window.__SAC_APROVADORES_STATUS=e.status===404?'NOT_FOUND':e.status===401?'AUTH_REQUIRED':'ERROR'; return null; }),
     ]);
     const pendFila = filaData ? (filaData.itens||[]).filter(x => x.STATUS === 'PENDENTE').length : 0;
     // Manifestações pendentes que não estão na fila (antigas — backfill via pendências diretas)
@@ -11795,6 +11805,8 @@ let _nmAnaliseAtual = null;
 let _nmDecisao = null; // 'aceita' | 'editada' | 'rejeitada'
 let _nmCardId = null;
 let _nmIdempotencyKey = null;
+let _nmRascunhoUltimaEdicao = '';
+let _nmEvidenciasPersistidas = [];
 let _nmAnalisePersistidaCarregada = false;
 let _nmDeterministicaPromise = null;
 let _nmAnaliseInFlight = false;
@@ -11920,6 +11932,7 @@ function agendarAnalise() {
 
 function renderizarCircaDeterministico(resultado) {
   window._nmDeterministicoAtual = resultado;
+  if (resultado?.decisaoEtapa2) nmMostrarDecisaoEtapa2(resultado.decisaoEtapa2);
   const a=resultado?.analiseEstruturada||{};
   const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v||'Sem informação persistida.';};
   const hip = a.hipotesesClassificacao || resultado.hipotesesClassificacao || [];
@@ -11954,6 +11967,53 @@ window.nmSalvarChecklist = async function(id, concluida) {
   const indice=atual.findIndex(x=>x.id===id); const anterior=indice>=0?{...atual[indice]}:null; const item={ id, status: concluida ? 'CONCLUIDA' : 'PENDENTE' }; if(indice>=0) atual[indice]=item; else atual.push(item);
   window._nmChecklist = atual;
   try { await _apiFetch(`/api/manifestacoes/${encodeURIComponent(_nmCardId)}/circa-dados`, 15000, {method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({CHECKLIST_CIRCA:JSON.stringify(atual),CHECKLIST_VERSAO:window._nmChecklistVersao})}); window._nmChecklistVersao++; } catch(e) { if(indice>=0) atual[indice]=anterior; else atual.splice(atual.length-1,1); window._nmChecklist=atual; alert('Não foi possível salvar a atividade. O estado anterior foi restaurado.'); renderizarCircaDeterministico(window._nmDeterministicoAtual||{}); }
+};
+
+function nmMostrarDecisaoEtapa2(decisao) {
+  const el = document.getElementById('ia-decisao-status');
+  if (!el || !decisao?.status) return;
+  const labels = { GERADA:'Análise gerada — revisão humana pendente', REVISADA:'Análise revisada pelo SAC', ORIENTACAO_ACEITA:'Orientação aceita pelo SAC', ORIENTACAO_PARCIAL:'Orientação aceita parcialmente pelo SAC', ORIENTACAO_REJEITADA:'Orientação rejeitada pelo SAC', PENDENTE_VALIDACAO:'Validação humana pendente' };
+  const cor = decisao.status === 'ORIENTACAO_REJEITADA' ? 'red' : decisao.status === 'ORIENTACAO_ACEITA' ? 'green' : 'yellow';
+  el.style.display = 'block';
+  el.innerHTML = `<div class="alert-box ${cor}" style="font-size:12px">${esc(labels[decisao.status] || decisao.status)}${decisao.justificativa ? ` — ${esc(decisao.justificativa)}` : ''}</div>`;
+}
+
+window.nmAbrirRevisaoOrientacao = function() {
+  const painel = document.getElementById('nm-revisao-orientacao');
+  if (!painel) return;
+  const d = window._nmDeterministicoAtual?.decisaoEtapa2 || window._nmAnaliseAtual?.decisaoEtapa2 || {};
+  const status = document.getElementById('nm-revisao-status'); if (status && d.status) status.value = d.status === 'ORIENTACAO_ACEITA' ? 'REVISADA' : d.status;
+  const just = document.getElementById('nm-revisao-justificativa'); if (just && d.justificativa) just.value = d.justificativa;
+  const cls = document.getElementById('nm-revisao-classificacao'); if (cls && d.classificacao) cls.value = d.classificacao;
+  painel.style.display = 'block';
+  painel.scrollIntoView({behavior:'smooth', block:'nearest'});
+};
+window.nmFecharRevisaoOrientacao = function() { const p=document.getElementById('nm-revisao-orientacao'); if(p) p.style.display='none'; };
+window.nmSalvarRevisaoOrientacao = async function() {
+  if (!_nmCardId) { if (!(await salvarRascunho({silent:true, reportError:true}))) return; }
+  const status = document.getElementById('nm-revisao-status')?.value || 'REVISADA';
+  const justificativa = document.getElementById('nm-revisao-justificativa')?.value.trim() || '';
+  if (status === 'ORIENTACAO_REJEITADA' && justificativa.length < 10) { alert('Informe uma justificativa de pelo menos 10 caracteres para rejeitar a orientação.'); return; }
+  const classificacao = document.getElementById('nm-revisao-classificacao')?.value.trim() || '';
+  try {
+    const r = await _apiFetch(`/api/manifestacoes/${encodeURIComponent(_nmCardId)}/circa-dados`, 15000, {method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({analisePatch:{status, justificativa, classificacao, origem:'SAC', revisadoEm:new Date().toISOString()}})});
+    if (!r?.sucesso) throw new Error(r?.erro || 'Falha ao salvar a revisão.');
+    window._nmAnaliseAtual = {...(window._nmAnaliseAtual||{}), decisaoEtapa2:{...(window._nmAnaliseAtual?.decisaoEtapa2||{}), status, justificativa, classificacao, origem:'SAC'}};
+    if (window._nmDeterministicoAtual) window._nmDeterministicoAtual.decisaoEtapa2 = window._nmAnaliseAtual.decisaoEtapa2;
+    nmMostrarDecisaoEtapa2(window._nmAnaliseAtual.decisaoEtapa2);
+    nmFecharRevisaoOrientacao();
+  } catch (e) { alert('Não foi possível salvar a revisão: '+e.message); }
+};
+window.nmUtilizarOrientacao = async function() {
+  if (!_nmAnaliseAtual && !_nmDeterministicoAtual) { alert('Execute a análise antes de utilizar uma orientação.'); return; }
+  if (!_nmCardId && !(await salvarRascunho({silent:true, reportError:true}))) return;
+  try {
+    const r = await _apiFetch(`/api/manifestacoes/${encodeURIComponent(_nmCardId)}/circa-dados`, 15000, {method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({analisePatch:{status:'ORIENTACAO_ACEITA', origem:'SAC', revisadoEm:new Date().toISOString()}})});
+    if (!r?.sucesso) throw new Error(r?.erro || 'Falha ao registrar a decisão.');
+    window._nmAnaliseAtual = {...(window._nmAnaliseAtual||{}), decisaoEtapa2:{...(window._nmAnaliseAtual?.decisaoEtapa2||{}), status:'ORIENTACAO_ACEITA', origem:'SAC'}};
+    nmMostrarDecisaoEtapa2(window._nmAnaliseAtual.decisaoEtapa2);
+    await nmProximaEtapa();
+  } catch (e) { alert('Não foi possível utilizar a orientação: '+e.message); }
 };
 
 window.nmCarregarAnaliseDeterministica = async function nmCarregarAnaliseDeterministica() {
@@ -12028,7 +12088,7 @@ async function nmCriarAcionamento(tipo='ENCAMINHAMENTO_TRATATIVA') {
   const tarefa=document.getElementById('nm-escopo-acionado')?.value||document.getElementById('nm-complemento-pedido')?.value||'Solicitação registrada pelo card CIRCA.';
   if(tipo!=='NOTIFICACAO'&&!setor){ alert('Selecione o setor destinatário antes de criar o acionamento.'); return; }
   const prazo=document.getElementById('nm-prazo-retorno')?.value?.trim()||'';
-  try { const r=await _apiFetch(`/api/manifestacoes/${encodeURIComponent(_nmCardId)}/acionamentos`,15000,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tipo,setorDestino:setor,tarefa,motivo:tarefa,prazo,prioridade:document.getElementById('nm-prioridade')?.value||'NORMAL',idempotencyKey:`${_nmCardId}-${tipo}-${setor}-${tarefa}`})}); if(!r?.sucesso)throw new Error(r?.erro||'Falha ao criar acionamento.'); alert('Acionamento criado com histórico' + (prazo ? ' e prazo.' : '.')); } catch(e){ alert('Não foi possível criar o acionamento: '+e.message); }
+  try { const responsavel=document.getElementById('nm-responsavel-acionado')?.value?.trim()||''; const r=await _apiFetch(`/api/manifestacoes/${encodeURIComponent(_nmCardId)}/acionamentos`,15000,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tipo,setorDestino:setor,responsavel,tarefa,motivo:tarefa,prazo,prioridade:document.getElementById('nm-prioridade')?.value||'NORMAL',idempotencyKey:`${_nmCardId}-${tipo}-${setor}-${responsavel}-${tarefa}`})}); if(!r?.sucesso)throw new Error(r?.erro||'Falha ao criar acionamento.'); alert('Acionamento criado com histórico' + (prazo ? ' e prazo.' : '.')); } catch(e){ alert('Não foi possível criar o acionamento: '+e.message); }
 }
 function nmSolicitarComplementacao(){return nmCriarAcionamento('SOLICITACAO_INFORMACAO');}
 function nmRegistrarLembrete(){return nmCriarAcionamento('NOTIFICACAO');}
@@ -12477,7 +12537,7 @@ function fmtBytes(n){ if(!n) return ''; if(n<1024) return n+' B'; if(n<1024*1024
 function abrirImportacaoDocumento(tipo){ _nmTipoImportacao=tipo; const i=document.getElementById('nm-import-file'); i.value=''; i.click(); }
 function adicionarEvidencias(files){ [...(files||[])].forEach(f=>{ if(!_nmEvidencias.some(x=>x.name===f.name&&x.size===f.size)){_nmEvidencias.push(f);} }); renderEvidencias(); }
 function removerEvidencia(i){_nmEvidencias.splice(i,1);renderEvidencias();}
-function renderEvidencias(){const el=document.getElementById('nm-evidencias-list'); if(!el)return; el.innerHTML=_nmEvidencias.map((f,i)=>`<div class="upload-item"><span>📎 ${esc(f.name)}</span><small>${fmtBytes(f.size)} <button class="btn btn-ghost" style="padding:2px 5px" onclick="event.stopPropagation();removerEvidencia(${i})">Remover</button></small></div>`).join('');}
+function renderEvidencias(){const el=document.getElementById('nm-evidencias-list'); if(!el)return; const salvos=_nmEvidenciasPersistidas.map(f=>`<div class="upload-item"><span>📎 ${esc(f.nome||f.NOME||f.NOME_ARQUIVO||'arquivo')}</span><small>${fmtBytes(f.tamanho||f.TAMANHO||0)} · ${String(f.status||'ARMAZENADO').replace('_',' ').toLowerCase()}</small></div>`).join(''); const novos=_nmEvidencias.map((f,i)=>`<div class="upload-item"><span>📎 ${esc(f.name)}</span><small>${fmtBytes(f.size)} <button class="btn btn-ghost" style="padding:2px 5px" onclick="event.stopPropagation();removerEvidencia(${i})">Remover</button></small></div>`).join(''); el.innerHTML=salvos+novos;}
 function fileToBase64(file){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsDataURL(file);});}
 async function processarDocumentoImportado(file){
   if(!file)return; const status=document.getElementById('nm-extracao-status'); const preview=document.getElementById('nm-extracao-preview');
@@ -12524,6 +12584,8 @@ async function initNovaManifestacao() {
   _nmAnalisePersistidaCarregada = false;
   _nmDecisao = null;
   _nmCardId = null;
+  _nmRascunhoUltimaEdicao = '';
+  _nmEvidenciasPersistidas = [];
   // Libera uma consulta nova; a resposta de qualquer consulta anterior será
   // descartada pela verificação do identificador acima.
   _nmDeterministicaPromise = null;
@@ -12537,6 +12599,23 @@ async function initNovaManifestacao() {
       Object.entries(rascunho).forEach(([id, val]) => { const el = document.getElementById(id); if (el && val) el.value = val; });
     }
   } catch(e) { /* ignora erro de localStorage */ }
+  // Um rascunho persistido pode ser retomado depois de uma atualização ou
+  // retorno pela Central. O ID é reutilizado para impedir novo protocolo.
+  try {
+    const resumeId = localStorage.getItem('sac-rascunho-id');
+    if (resumeId) {
+      const d = await _apiFetch(`/api/manifestacoes/${encodeURIComponent(resumeId)}`, 15000);
+      const m = d?.manifestacao || d?.item;
+      if (m && !/^(ENCERRADA|FECHADA|CONCLUIDA)$/i.test(String(m.STATUS || m.STATUS_FICHA || ''))) {
+        _nmCardId = m.ID_MANIFESTACAO || resumeId;
+        const mapa = {DESCRICAO:'nm-descricao',DESCRICAO_MANIFESTACAO:'nm-descricao',EMPRESA_RECLAMADA:'nm-empresa-reclamada',EMPRESA_RECLAMANTE:'nm-empresa',CONTATO:'nm-nome',CNPJ:'nm-cnpj',TELEFONE:'nm-tel',EMAIL:'nm-email',PRODUTO:'nm-produto',LOTE:'nm-lote',NFE:'nm-nfe',QUANTIDADE:'nm-qtd',QUANTIDADE_TOTAL:'nm-qtd-total',PRIORIDADE:'nm-prioridade',CANAL:'nm-origem',TIPO:'nm-tipo',ORIGEM:'nm-origem',DATA_REGISTRO:'nm-data',CATEGORIA:'nm-categoria',MOTIVO:'nm-motivo',CAMINHO_TRATATIVA:'nm-caminho-tratativa',TRATATIVA_SAC_INTERNA:'nm-tratativa-sac',COMPLEMENTO_PEDIDO:'nm-complemento-pedido',CANAL_RETORNO:'nm-canal-retorno',PRAZO_RETORNO_SAC:'nm-prazo-retorno',SETOR_ACIONADO:'nm-setor-acionado',ESCOPO_ACIONAMENTO:'nm-escopo-acionado',INVESTIGACAO_O_QUE:'nm-investigacao-verificada',INVESTIGACAO_NOTAS:'nm-investigacao-notas',INVESTIGACAO_EVIDENCIAS:'nm-investigacao-resultado',SUBCAUSA:'nm-subcausa',CAUSA_RAIZ_CONFIRMADA:'nm-causa-raiz',ACOES_CORRETIVAS:'nm-acao-executada',VALIDACAO_RESULTADO:'nm-validacao-resultado',PROCEDENTE:'nm-procedente',PROCEDENTE_JUSTIFICATIVA:'nm-procedente-justif',RESUMO_RESOLUCAO:'nm-resumo-resolucao',DEVOLUTIVA_CANAL:'nm-devolutiva-canal',DEVOLUTIVA_DESTINATARIO:'nm-devolutiva-destinatario',DEVOLUTIVA_FINAL:'nm-devolutiva',APRENDIZADO_CASO:'nm-aprendizado-caso',APRENDIZADO_MATRIZ:'nm-aprendizado-matriz',OBSERVACOES_FINAIS:'nm-observacoes-finais'};
+        for (const [campo,id] of Object.entries(mapa)) { const el=document.getElementById(id); if (el && m[campo] !== undefined && String(m[campo]).trim()) el.value=m[campo]; }
+        try { const anexos=typeof m.ANEXOS==='string'?JSON.parse(m.ANEXOS||'[]'):(Array.isArray(m.ANEXOS)?m.ANEXOS:[]); _nmEvidenciasPersistidas=Array.isArray(anexos)?anexos:[]; } catch (_) { _nmEvidenciasPersistidas=[]; }
+        _nmRascunhoUltimaEdicao=String(m.DATA_ULTIMA_EDICAO||''); renderEvidencias();
+        window.nmEtapa = Math.max(1, Math.min(7, Number(m.ETAPA_ATUAL || 1)));
+      }
+    }
+  } catch(e) { console.warn('Rascunho persistido indisponível:', e.message); }
   // Hook oninput para campos de cliente dispararem atualização do resumo
   ['nm-nome','nm-empresa','nm-tel','nm-email','nm-produto','nm-lote'].forEach(id => {
     const el = document.getElementById(id);
@@ -12603,6 +12682,7 @@ async function registrarManifestacao() {
       draft.anexos = await Promise.all(_nmEvidencias.map(async f => ({ nome:f.name, mimeType:f.type, tamanho:f.size, dataBase64:await fileToBase64(f), categoria:'EVIDENCIA' })));
       const finalRes = await _apiFetch(`/api/manifestacoes/${encodeURIComponent(_nmCardId)}/circa-dados`,60000,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(draft)});
       if (!finalRes?.sucesso) throw new Error(finalRes?.erro||'Falha ao concluir a manifestação.');
+      localStorage.removeItem('sac-rascunho-id');
       alert(`✅ Manifestação ${finalRes.protocolo || _nmCardId} concluída e encaminhada para triagem.`);
       navigate('banco-manifestacoes', document.querySelector('[onclick*=banco-manifestacoes]')); loadBancoManifestacoes(); return;
     }
@@ -12658,6 +12738,7 @@ async function registrarManifestacao() {
     });
 
     if (res.sucesso) {
+      localStorage.removeItem('sac-rascunho-id');
       alert(`✅ Manifestação ${res.protocolo || res.id} registrada com sucesso!\n\nA análise inteligente foi iniciada.`);
       navigate('banco-manifestacoes', document.querySelector('[onclick*=banco-manifestacoes]'));
       loadBancoManifestacoes();
@@ -12945,19 +13026,59 @@ function nmSetProcedente(valor, btn) {
 }
 
 function nmSetCaminhoTratativa(caminho, btn) {
-  document.getElementById('nm-caminho-tratativa').value = caminho;
-  ['nm-caminho-sac','nm-caminho-complemento','nm-caminho-setor'].forEach(id => {
-    const b = document.getElementById(id);
-    if (b) { b.style.background = '#fff'; b.style.color = '#666464'; b.style.borderColor = '#D6D6D6'; b.style.fontWeight = '500'; }
-  });
-  btn.style.background = '#EFF6FF'; btn.style.color = '#1D4ED8'; btn.style.borderColor = '#3B82F6'; btn.style.fontWeight = '700';
-  document.getElementById('nm-box-tratativa-sac').style.display = caminho === 'SAC' ? 'block' : 'none';
-  document.getElementById('nm-box-complemento').style.display = caminho === 'COMPLEMENTO' ? 'block' : 'none';
-  document.getElementById('nm-box-encaminhamento-setor').style.display = caminho === 'SETOR' ? 'block' : 'none';
-  // Botão de criar acionamento só visível após selecionar o caminho SETOR
-  const btnAcionamento = document.getElementById('nm-btn-criar-acionamento');
-  if (btnAcionamento) btnAcionamento.style.display = caminho === 'SETOR' ? 'inline-flex' : 'none';
+  const atuais = new Set(String(document.getElementById('nm-caminho-tratativa')?.value || '').split(',').filter(Boolean));
+  if (atuais.has(caminho)) atuais.delete(caminho); else atuais.add(caminho);
+  document.getElementById('nm-caminho-tratativa').value = [...atuais].join(',');
+  const mapa = {SAC:'nm-caminho-sac', COMPLEMENTO:'nm-caminho-complemento', SETOR:'nm-caminho-setor'};
+  Object.entries(mapa).forEach(([chave,id]) => { const b=document.getElementById(id); const ativo=atuais.has(chave); if(b){b.style.background=ativo?'#EFF6FF':'#fff';b.style.color=ativo?'#1D4ED8':'#666464';b.style.borderColor=ativo?'#3B82F6':'#D6D6D6';b.style.fontWeight=ativo?'700':'500';} });
+  document.getElementById('nm-box-tratativa-sac').style.display = atuais.has('SAC') ? 'block' : 'none';
+  document.getElementById('nm-box-complemento').style.display = atuais.has('COMPLEMENTO') ? 'block' : 'none';
+  document.getElementById('nm-box-encaminhamento-setor').style.display = atuais.has('SETOR') ? 'block' : 'none';
+  const btnAcionamento = document.getElementById('nm-btn-criar-acionamento'); if (btnAcionamento) btnAcionamento.style.display = atuais.has('SETOR') ? 'inline-flex' : 'none';
+  if (caminho === 'SETOR') nmCarregarResponsaveisSetor();
+  if (typeof nmRenderizarPlano === 'function') nmRenderizarPlano();
 }
+
+window._nmPlanoConducao = window._nmPlanoConducao || [];
+function nmCarregarResponsaveisSetor() {
+  const select=document.getElementById('nm-responsavel-acionado'); if(!select || select.dataset.loaded==='true') return;
+  select.dataset.loaded='loading';
+  select.innerHTML='<option value="">Carregando responsáveis…</option>';
+  _apiFetch('/api/usuarios',15000).then(r=>{
+    const setor=document.getElementById('nm-setor-acionado')?.value||'';
+    const setorN=String(setor).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+    const textoCampo=v=>Array.isArray(v)?v.join(' '):typeof v==='object'&&v!==null?Object.values(v).join(' '):String(v||'');
+    const itens=(r?.itens||[]).filter(u=>String(u.STATUS||u.status||'ATIVO').toUpperCase()==='ATIVO').filter(u=>{const s=[u.SETOR,u.setor,u.SETOR_PRINCIPAL,u.setorPrincipal,u.SETORES,u.setores,u.SETORES_AUTORIZADOS,u.setoresAutorizados].map(textoCampo).join(' ').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();return !setorN||s.includes(setorN)});
+    select.innerHTML='<option value="">Selecione um responsável cadastrado</option>'+itens.map(u=>{const id=u.USUARIO||u.usuario||u.LOGIN||u.login||u.EMAIL||u.email||u.ID_USUARIO||u.id;return `<option value="${esc(id)}">${esc(u.NOME||u.nome||id)}</option>`}).join('') || '<option value="">Nenhum responsável ativo e autorizado para este setor</option>'; select.dataset.loaded='true';
+  }).catch(e=>{select.dataset.loaded='error';select.innerHTML='<option value="">Erro ao carregar responsáveis. Tente novamente.</option>';select.title=e?.message||'Falha de comunicação';});
+}
+function nmRenderizarPlano() {
+  const el=document.getElementById('nm-plano-lista'); if(!el)return; const plano=window._nmPlanoConducao||[];
+  el.innerHTML=plano.length?plano.map((a,i)=>`<div class="checklist-item" data-plano-id="${esc(a.id)}"><span><b>${esc(a.tipoLabel)}</b> · ${esc(a.setor||'SAC')}</span><small style="margin-left:auto">${esc(a.responsavel||'SAC')} · ${esc(a.prazo||'SLA aplicável')} <button type="button" class="btn btn-ghost" style="padding:2px 6px" onclick="nmRemoverAcaoPlano(${i})">Remover</button></small><div style="width:100%;font-size:11px;color:#666">${esc(a.tarefa)}</div></div>`).join(''):'<div class="circa-muted">Nenhuma ação preparada.</div>';
+}
+window.nmRemoverAcaoPlano=function(i){(window._nmPlanoConducao||[]).splice(i,1);nmRenderizarPlano();};
+window.nmAdicionarAcaoPlano=function(caminho){
+  const setor=caminho==='SETOR'?(document.getElementById('nm-setor-acionado')?.value||''):'SAC';
+  const responsavel=caminho==='SETOR'?(document.getElementById('nm-responsavel-acionado')?.value||''):'SAC';
+  const tarefa=caminho==='COMPLEMENTO'?(document.getElementById('nm-complemento-pedido')?.value||''):(caminho==='SETOR'?(document.getElementById('nm-escopo-acionado')?.value||''):(document.getElementById('nm-tratativa-sac')?.value||''));
+  if(caminho==='SETOR'&&!setor){alert('Selecione o setor antes de adicionar a frente.');return;}
+  if(caminho==='SETOR'&&!responsavel){alert('Selecione um responsável ativo e autorizado.');return;}
+  if(!tarefa.trim()){alert('Descreva o escopo da ação antes de adicionar ao plano.');return;}
+  const tipo=caminho==='COMPLEMENTO'?'SOLICITACAO_INFORMACAO':caminho==='SETOR'?'ENCAMINHAMENTO_TRATATIVA':'NOTIFICACAO';
+  const chave=`${tipo}|${setor}|${responsavel}|${tarefa.trim()}`;
+  if((window._nmPlanoConducao||[]).some(x=>x.chave===chave)){alert('Essa ação já está no plano.');return;}
+  window._nmPlanoConducao.push({id:'plano-'+window._nmPlanoConducao.length+'-'+Date.now(),chave,tipo,tipoLabel:caminho==='COMPLEMENTO'?'Solicitação ao cliente':caminho==='SETOR'?'Encaminhamento':'Tratativa SAC',setor,responsavel,tarefa:tarefa.trim(),prazo:document.getElementById('nm-prazo-retorno')?.value||''}); nmRenderizarPlano();
+};
+window.nmConfirmarPlano=async function(){
+  if(!_nmCardId&&!(await salvarRascunho({silent:true,reportError:true})))return;
+  const plano=window._nmPlanoConducao||[]; if(!plano.length){alert('Adicione pelo menos uma ação ao plano.');return;}
+  const status=document.getElementById('nm-plano-status'); let ok=0; const chaves=[];
+  for(const a of plano){const idempotencyKey=`${_nmCardId}-${a.id}`;try{const r=await _apiFetch(`/api/manifestacoes/${encodeURIComponent(_nmCardId)}/acionamentos`,15000,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tipo:a.tipo,setorDestino:a.setor,responsavel:a.responsavel==='SAC'?'':a.responsavel,tarefa:a.tarefa,motivo:a.tarefa,prazo:a.prazo,prazoOrigem:a.tipo==='SOLICITACAO_INFORMACAO'?'SLA_RETORNO_CLIENTE_96H':'SLA_RETORNO_SETOR_72H',prioridade:document.getElementById('nm-prioridade')?.value||'NORMAL',idempotencyKey})});if(!r?.sucesso||!r?.item)throw new Error(r?.erro||'A API não confirmou o registro persistido.');chaves.push(String(r.item.IDEMPOTENCY_KEY||idempotencyKey));ok++;}catch(e){if(status)status.innerHTML=`<div class="alert-box red">${esc(ok)} ação(ões) confirmada(s); falha ao confirmar ${esc(a.tipoLabel)}: ${esc(e.message)}</div>`;return;}}
+  try { const confirmacao=await _apiFetch(`/api/manifestacoes/${encodeURIComponent(_nmCardId)}/acionamentos`,15000); const persistidos=Array.isArray(confirmacao?.itens)?confirmacao.itens:[]; const encontrados=chaves.filter(k=>persistidos.some(x=>String(x.IDEMPOTENCY_KEY||'')===k)); if(encontrados.length!==chaves.length) throw new Error(`A API confirmou ${encontrados.length} de ${chaves.length} ações na leitura de confirmação.`); window._nmPlanoConducao=persistidos.filter(x=>!['CANCELADO','CANCELADA'].includes(String(x.STATUS||'').toUpperCase())).map(x=>({id:x.ID_ACIONAMENTO,chave:x.ID_ACIONAMENTO,tipo:x.TIPO,tipoLabel:x.TIPO==='SOLICITACAO_INFORMACAO'?'Solicitação ao cliente':x.TIPO==='ENCAMINHAMENTO_TRATATIVA'?'Encaminhamento':'Tratativa SAC',setor:x.SETOR_DESTINO||'SAC',responsavel:x.RESPONSAVEL||'SAC',tarefa:x.TAREFA||x.MOTIVO||'',prazo:x.PRAZO||''})); nmRenderizarPlano(); if(status)status.innerHTML=`<div class="alert-box green">${ok} ação(ões) persistida(s) e confirmada(s) no mesmo protocolo.</div>`; } catch(e) { if(status)status.innerHTML=`<div class="alert-box red">As ações foram enviadas, mas a leitura de confirmação falhou: ${esc(e.message)}. Nenhum sucesso foi declarado.</div>`; }
+};
+window.nmCarregarPlanoPersistido=async function(){
+  if(!_nmCardId)return; try{const r=await _apiFetch(`/api/manifestacoes/${encodeURIComponent(_nmCardId)}/acionamentos`,10000); const itens=r?.itens||[]; window._nmPlanoConducao=itens.filter(x=>!['CANCELADO'].includes(String(x.STATUS||'').toUpperCase())).map(x=>({id:x.ID_ACIONAMENTO,chave:x.ID_ACIONAMENTO,tipo:x.TIPO,tipoLabel:x.TIPO==='SOLICITACAO_INFORMACAO'?'Solicitação ao cliente':x.TIPO==='ENCAMINHAMENTO_TRATATIVA'?'Encaminhamento':'Tratativa SAC',setor:x.SETOR_DESTINO||'SAC',responsavel:x.RESPONSAVEL||'SAC',tarefa:x.TAREFA||x.MOTIVO||'',prazo:x.PRAZO||''})); nmRenderizarPlano();}catch(e){console.warn('Plano de condução indisponível:',e.message)}
+};
 
 // ===== FICHA DE ENCAMINHAMENTO — MODAL =====
 function fichaCarregarDados(item) {
@@ -14368,7 +14489,7 @@ function nmCardPayload() {
   const val=id=>document.getElementById(id)?.value||'';
   let currentUser={}; try { currentUser=JSON.parse(sessionStorage.getItem('sac-user')||'{}'); } catch(e) {}
   return {
-    empresaReclamada:val('nm-empresa-reclamada'), empresaReclamante:val('nm-empresa')||val('nm-nome')||val('nm-cnpj'), contato:val('nm-nome'), cnpj:val('nm-cnpj'), telefone:val('nm-tel'), email:val('nm-email'), produto:val('nm-produto'), lote:val('nm-lote'), nfe:val('nm-nfe'), descricao:val('nm-descricao')||'Rascunho em preenchimento.', tipo:val('nm-tipo')||'Reclamação', canal:nmCanalSelecionado(), origem:nmCanalSelecionado(), prioridade:val('nm-prioridade')||'NORMAL', dataRegistro:val('nm-data'), DATA_REGISTRO:val('nm-data'), usuario:currentUser.usuario||currentUser.USUARIO||'analista', etapaAtual:String(window.nmEtapa||1), ETAPA_ATUAL:String(window.nmEtapa||1), STATUS:{1:'RASCUNHO',2:'EM_TRIAGEM',3:'EM_TRATATIVA',4:'EM_INVESTIGACAO',5:'AGUARDANDO_VALIDACAO_SAC',6:'AGUARDANDO_DEVOLUTIVA',7:'AGUARDANDO_ENCERRAMENTO'}[Number(window.nmEtapa)||1], STATUS_FICHA:{1:'RASCUNHO',2:'EM_TRIAGEM',3:'EM_TRATATIVA',4:'EM_INVESTIGACAO',5:'AGUARDANDO_VALIDACAO_SAC',6:'AGUARDANDO_DEVOLUTIVA',7:'AGUARDANDO_ENCERRAMENTO'}[Number(window.nmEtapa)||1], mensagemEtapa:'Rascunho em preenchimento.', MENSAGEM_ETAPA:'Rascunho em preenchimento.', rascunho:true,
+    empresaReclamada:val('nm-empresa-reclamada'), empresaReclamante:val('nm-empresa')||val('nm-nome')||val('nm-cnpj'), contato:val('nm-nome'), cnpj:val('nm-cnpj'), telefone:val('nm-tel'), email:val('nm-email'), produto:val('nm-produto'), lote:val('nm-lote'), nfe:val('nm-nfe'), quantidade:val('nm-qtd'), quantidadeTotal:val('nm-qtd-total'), pedido:val('nm-pedido'), descricao:val('nm-descricao')||'Rascunho em preenchimento.', tipo:val('nm-tipo')||'Reclamação', canal:nmCanalSelecionado(), origem:nmCanalSelecionado(), prioridade:val('nm-prioridade')||'NORMAL', categoria:val('nm-categoria'), motivo:val('nm-motivo'), gravidade:val('nm-severidade'), dataRegistro:val('nm-data'), DATA_REGISTRO:val('nm-data'), usuario:currentUser.usuario||currentUser.USUARIO||'analista', etapaAtual:String(window.nmEtapa||1), ETAPA_ATUAL:String(window.nmEtapa||1), STATUS:{1:'RASCUNHO',2:'EM_TRIAGEM',3:'EM_TRATATIVA',4:'EM_INVESTIGACAO',5:'AGUARDANDO_VALIDACAO_SAC',6:'AGUARDANDO_DEVOLUTIVA',7:'AGUARDANDO_ENCERRAMENTO'}[Number(window.nmEtapa)||1], STATUS_FICHA:{1:'RASCUNHO',2:'EM_TRIAGEM',3:'EM_TRATATIVA',4:'EM_INVESTIGACAO',5:'AGUARDANDO_VALIDACAO_SAC',6:'AGUARDANDO_DEVOLUTIVA',7:'AGUARDANDO_ENCERRAMENTO'}[Number(window.nmEtapa)||1], mensagemEtapa:'Rascunho em preenchimento.', MENSAGEM_ETAPA:'Rascunho em preenchimento.', rascunho:true,
     CAMINHO_TRATATIVA:val('nm-caminho-tratativa'), TRATATIVA_SAC_INTERNA:val('nm-tratativa-sac'), COMPLEMENTO_PEDIDO:val('nm-complemento-pedido'), CANAL_RETORNO:val('nm-canal-retorno'), PRAZO_RETORNO_SAC:val('nm-prazo-retorno'), SETOR_ACIONADO:val('nm-setor-acionado'), ESCOPO_ACIONAMENTO:val('nm-escopo-acionado'),
     INVESTIGACAO_O_QUE:val('nm-investigacao-verificada'), INVESTIGACAO_NOTAS:val('nm-investigacao-notas'), INVESTIGACAO_EVIDENCIAS:val('nm-investigacao-resultado'), SUBCAUSA:val('nm-subcausa'), CAUSA_RAIZ_CONFIRMADA:val('nm-causa-raiz'), ACOES_CORRETIVAS:val('nm-acao-executada'),
     VALIDACAO_RESULTADO:val('nm-validacao-resultado'), PROCEDENTE:val('nm-procedente'), PROCEDENTE_JUSTIFICATIVA:val('nm-procedente-justif'),
@@ -14382,11 +14503,24 @@ async function salvarRascunho(options={}) {
   const reportError=!!options.reportError || !silent;
   try {
     const payload=nmCardPayload();
+    if (_nmRascunhoUltimaEdicao) payload.ultimaEdicaoConhecida=_nmRascunhoUltimaEdicao;
     let res;
     if(_nmCardId) res=await _apiFetch(`/api/manifestacoes/${encodeURIComponent(_nmCardId)}/circa-dados`,60000,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     else res=await _apiFetch('/api/manifestacoes',60000,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     if(!res?.sucesso) throw new Error(res?.erro||'Falha ao salvar o rascunho.');
     _nmCardId=_nmCardId||res.id;
+    _nmRascunhoUltimaEdicao=String(res.atualizadoEm||_nmRascunhoUltimaEdicao||'');
+    if (_nmCardId) localStorage.setItem('sac-rascunho-id', String(_nmCardId));
+    // O vínculo de arquivos usa a mesma ficha e o mesmo endpoint de anexos;
+    // o rascunho não perde os arquivos selecionados quando a página é
+    // atualizada. O servidor deduplica nomes já vinculados e marca falhas
+    // como pendentes, sem bloquear a navegação.
+    if (_nmEvidencias.length) {
+      const anexos = await Promise.all(_nmEvidencias.map(async f => ({nome:f.name,mimeType:f.type,tamanho:f.size,dataBase64:await fileToBase64(f),categoria:'EVIDENCIA'})));
+      const upload = await _apiFetch(`/api/manifestacoes/${encodeURIComponent(_nmCardId)}/circa-dados`,60000,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({anexos})});
+      if (!upload?.sucesso) throw new Error(upload?.erro || 'Falha ao vincular os anexos do rascunho.');
+      _nmRascunhoUltimaEdicao=String(upload.atualizadoEm||_nmRascunhoUltimaEdicao||'');
+    }
     if(!silent) alert(`Rascunho salvo${_nmCardId?' ('+_nmCardId+')':''}.`);
     return true;
   } catch(e) {
@@ -14520,7 +14654,7 @@ async function _apiFetch(url, timeoutMs, extraOptions) {
     const text = await r.text();
     let data;
     try { data = text ? JSON.parse(text) : {}; } catch { data = { raw: text }; }
-    if (!r.ok) throw new Error((data.erro || data.error || data.raw || '') + ' (HTTP ' + r.status + ')');
+    if (!r.ok) { const httpError = new Error((data.erro || data.error || data.raw || '') + ' (HTTP ' + r.status + ')'); httpError.status = r.status; httpError.response = data; throw httpError; }
     return data;
   } catch (error) {
     // Este controller só é acionado pelo prazo da requisição. Alguns
@@ -16242,7 +16376,7 @@ document.addEventListener('visibilitychange', () => {
   window.loadUsuariosV5=loadUsuariosV5;
   window.loadSolicitacoesEmbutido=loadSolicitacoesEmbutido;
   // ── Módulos e permissões por chave curta (ex: "manifestacoes.visualizar") ──
-  const _PERM_MODULOS = [
+  const _PERM_MODULOS = window.__SAC_PERM_MODULOS = [
     { id: 'manifestacoes', label: 'Manifestações', perms: [
       { id: 'visualizar',  label: 'Visualizar' },
       { id: 'abrir',       label: 'Abrir' },
@@ -24430,8 +24564,11 @@ async function mudarStatusMC(id, novoStatus) {
   }
   function renderPerfisPermissoes(){
     const el=document.getElementById('usr-perm-grid');if(!el)return;
-    const defs=window.__SAC_PERM_DEF || (typeof _PERM_DEF!=='undefined'?_PERM_DEF:{});
-    const keys=Object.keys(defs); el.innerHTML=keys.map(k=>{const d=defs[k];const n=Array.isArray(d)?d.length:(d&&typeof d==='object'&&d['*']?Object.keys(_PERM_MODULOS||{}).length:Object.keys(d||{}).length);return `<div class="usr-perm-item"><strong>${esc5(k)}</strong><div style="margin-top:5px;color:#707070">${n?n+' permissões padrão':'Acesso administrativo global'}</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px"><button type="button" onclick="editarPerfilPermissoes('${esc5(k)}')" style="border:1px solid #C70602;background:#fff;border-radius:7px;padding:6px 10px;color:#A80502;cursor:pointer;font:600 11px inherit">Editar permissões</button><button type="button" onclick="editarUsuariosDoPerfil('${esc5(k)}')" style="border:1px solid #D6D6D6;background:#fff;border-radius:7px;padding:6px 10px;color:#545252;cursor:pointer;font:600 11px inherit">Ver usuários</button></div></div>`}).join('')||'<div style="color:#707070;font-size:12px">Nenhum perfil configurado.</div>';
+    try {
+      const defs=window.__SAC_PERM_DEF || (typeof _PERM_DEF!=='undefined'?_PERM_DEF:{});
+      const modulos=window.__SAC_PERM_MODULOS||[];
+      const keys=Object.keys(defs); el.dataset.state=keys.length?'success':'empty'; el.innerHTML=keys.map(k=>{const d=defs[k];const n=Array.isArray(d)?d.length:(d&&typeof d==='object'&&d['*']?modulos.reduce((t,m)=>t+(m.perms||[]).length,0):Object.keys(d||{}).length);return `<div class="usr-perm-item"><strong>${esc5(k)}</strong><div style="margin-top:5px;color:#707070">${n?n+' permissões padrão':'Acesso administrativo global'}</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px"><button type="button" onclick="editarPerfilPermissoes('${esc5(k)}')" style="border:1px solid #C70602;background:#fff;border-radius:7px;padding:6px 10px;color:#A80502;cursor:pointer;font:600 11px inherit">Editar permissões</button><button type="button" onclick="editarUsuariosDoPerfil('${esc5(k)}')" style="border:1px solid #D6D6D6;background:#fff;border-radius:7px;padding:6px 10px;color:#545252;cursor:pointer;font:600 11px inherit">Ver usuários</button></div></div>`}).join('')||'<div style="color:#707070;font-size:12px">Nenhum perfil configurado.</div>';
+    } catch (e) { el.dataset.state='error'; el.innerHTML='<div style="color:#A80502;font-size:12px">Não foi possível carregar os perfis e permissões.</div>'; console.error('[permissoes]',e); }
   }
   let _perfilEditando = null;
   function _perfilEditorElement(){
@@ -24449,7 +24586,7 @@ async function mudarStatusMC(id, novoStatus) {
     document.getElementById('perfil-perm-sub').textContent='A alteração será aplicada aos usuários existentes deste perfil e ficará registrada na auditoria.';
     document.getElementById('perfil-perm-msg').textContent='';
     const lista=document.getElementById('perfil-perm-lista');
-    lista.innerHTML=(_PERM_MODULOS||[]).flatMap(cat=>cat.perms.map(p=>{const chave=cat.id+'.'+p.id;return `<label style="display:flex;align-items:center;gap:8px;padding:8px;border:1px solid #E8E8E8;border-radius:7px;font-size:12px;cursor:pointer"><input type="checkbox" data-perfil-perm="${esc5(chave)}" ${selected.has(chave)?'checked':''}> <span><strong>${esc5(cat.label)}</strong><br>${esc5(p.label)}</span></label>`})).join('');
+    lista.innerHTML=(window.__SAC_PERM_MODULOS||[]).flatMap(cat=>(cat.perms||[]).map(p=>{const chave=cat.id+'.'+p.id;return `<label style="display:flex;align-items:center;gap:8px;padding:8px;border:1px solid #E8E8E8;border-radius:7px;font-size:12px;cursor:pointer"><input type="checkbox" data-perfil-perm="${esc5(chave)}" ${selected.has(chave)?'checked':''}> <span><strong>${esc5(cat.label)}</strong><br>${esc5(p.label)}</span></label>`})).join('');
     m.style.display='flex';
   };
   window.fecharPerfilPermissoes=function(){const m=document.getElementById('modal-perfil-permissoes');if(m)m.style.display='none';_perfilEditando=null;};
@@ -31703,6 +31840,7 @@ if (typeof pageLoaders !== 'undefined') {
     var body = document.getElementById('nm-steps-body');
     if (body) body.scrollTop = 0;
     if (n === 2 && typeof window.nmCarregarAnaliseDeterministica === 'function') window.nmCarregarAnaliseDeterministica();
+    if (n === 3 && typeof window.nmCarregarPlanoPersistido === 'function') window.nmCarregarPlanoPersistido();
     if (n === TOTAL && typeof nmMontarResumo === 'function') nmMontarResumo();
     if (n === 6 && typeof nmMontarDevolutiva === 'function') { nmMontarDevolutiva(); nmCarregarAnalisePersistida(); }
     if (n === 5 && typeof nmPreencherValidacao === 'function') nmPreencherValidacao();
@@ -31732,9 +31870,11 @@ if (typeof pageLoaders !== 'undefined') {
     if(n===3){
       var caminho=val('nm-caminho-tratativa');
       if(!caminho) return fail('nm-caminho-sac','Selecione como o SAC conduzirá a tratativa.');
-      if(caminho==='SAC' && !val('nm-tratativa-sac')) return fail('nm-tratativa-sac','Descreva a tratativa que será conduzida pelo SAC.');
+      var caminhos=caminho.split(',');
+      if(caminhos.includes('SAC') && !val('nm-tratativa-sac')) return fail('nm-tratativa-sac','Descreva a tratativa que será conduzida pelo SAC.');
       if(caminho==='COMPLEMENTO' && !val('nm-complemento-pedido')) return fail('nm-complemento-pedido','Informe quais dados precisam ser complementados.');
-      if(caminho==='SETOR'){
+      if(caminhos.includes('COMPLEMENTO') && !val('nm-complemento-pedido')) return fail('nm-complemento-pedido','Informe quais dados precisam ser complementados.');
+      if(caminho==='SETOR' || caminhos.includes('SETOR')){
         if(!val('nm-setor-acionado')) return fail('nm-setor-acionado','Selecione o setor responsável.');
         if(!val('nm-escopo-acionado')) return fail('nm-escopo-acionado','Descreva o escopo do acionamento.');
       }

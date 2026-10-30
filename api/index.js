@@ -656,6 +656,21 @@ async function obterPerfilProfissional(idUsuario) {
 }
 
 function usuarioPublico(u){
+  const listaCadastro = (valor) => {
+    if (Array.isArray(valor)) return valor.flatMap(listaCadastro);
+    if (valor && typeof valor === 'object') return Object.values(valor).flatMap(listaCadastro);
+    const texto = String(valor || '').trim();
+    if (!texto) return [];
+    try { const parsed = JSON.parse(texto); if (parsed !== valor) return listaCadastro(parsed); } catch (_) {}
+    return texto.split(/[;,\n|]+/).map(v => v.trim()).filter(Boolean);
+  };
+  const setores = [...new Set([
+    ...listaCadastro(u.SETOR), ...listaCadastro(u.SETOR_PRINCIPAL),
+    ...listaCadastro(u.SETORES), ...listaCadastro(u.SETORES_AUTORIZADOS),
+  ])];
+  const empresas = [...new Set([
+    ...listaCadastro(u.EMPRESA), ...listaCadastro(u.EMPRESAS), ...listaCadastro(u.EMPRESAS_JSON),
+  ])];
   let permissoes_custom=null;
   if(u.PERMISSOES_CUSTOM){try{permissoes_custom=typeof u.PERMISSOES_CUSTOM==='string'?JSON.parse(u.PERMISSOES_CUSTOM):u.PERMISSOES_CUSTOM;}catch(e){}}
   let permissoes_granted=null;
@@ -670,7 +685,8 @@ function usuarioPublico(u){
     nome:u.NOME||u.NOME_COMPLETO||u.USUARIO||u.EMAIL,
     email:u.EMAIL||'',
     perfil:perfilCanonico(u.PERFIL||u.PERFIL_USUARIO),
-    empresa:u.EMPRESA||'', setor:u.SETOR||'', cargo:u.CARGO||'', telefone:u.TELEFONE||'',
+    empresa:u.EMPRESA||'', empresas, setor:u.SETOR||'', setorPrincipal:u.SETOR_PRINCIPAL||u.SETOR||'', setores,
+    setoresAutorizados:setores, cargo:u.CARGO||'', telefone:u.TELEFONE||'',
     codigoRCA:u.CODIGO_RCA||u.RCA||'', status:u.STATUS||'ATIVO',
     ultimoAcesso:u.ULTIMO_ACESSO||'', dataCriacao:u.DATA_CRIACAO||'',
     permissoes_custom: Array.isArray(permissoes_custom)&&permissoes_custom.length?permissoes_custom:null,
@@ -2401,6 +2417,18 @@ app.get('/api/manifestacoes/:id', requerPermissao('manifestacoes.visualizar'), m
             devolutivas: pg.devolutivas || [],
             _pgId: pg.id,
           };
+          // O dual-write do PostgreSQL pode conter apenas o subconjunto
+          // operacional. A ficha oficial precisa recuperar os campos
+          // completos da mesma MANIFESTACOES usada pela Central. Mesclamos
+          // somente valores não vazios do Sheets, sem permitir que um PG
+          // resumido oculte relato, canal, prioridade, autoria ou anexos.
+          try {
+            const sheetsRows = await lerManifestacoesOperacionais(5000).catch(() => []);
+            const sheetItem = sheetsRows.find(r => [r.ID_MANIFESTACAO, r.PROTOCOLO, r.ID, r.ID_ORIGINAL].some(v => String(v || '').trim() === String(req.params.id || '').trim()));
+            if (sheetItem) for (const [key, value] of Object.entries(sheetItem)) {
+              if (value !== undefined && value !== null && String(value).trim() !== '') item[key] = value;
+            }
+          } catch (eSheets) { console.warn('[F6] complemento Sheets indisponível:', eSheets.message); }
           return res.json({ sucesso: true, manifestacao: item, fonte: 'postgresql' });
         }
       } catch (e) { console.warn('[F6] GET /manifestacoes/:id PG falhou:', e.message); }
@@ -2450,7 +2478,7 @@ app.post('/api/manifestacoes', requerPermissao('manifestacoes.abrir'), async (re
       IDEMPOTENCY_KEY:rascunho?'':protocoloKey,
       CONTATO:contato||'', PRODUTO:produto||'', LOTE:lote||'', NFE:nfe||'', DESCRICAO:descricao,
       DESCRICAO_MANIFESTACAO:descricao, STATUS:rascunho?'RASCUNHO':'AGUARDANDO_TRIAGEM_SAC', TIPO:tipoFinal, TIPO_SUGERIDO:'',
-      SETOR_SUGERIDO:'', SETORES_SUGERIDOS:'', PROCEDIMENTO_SUGERIDO:'', SLA_HORAS:'', PRIORIDADE:'',
+      SETOR_SUGERIDO:'', SETORES_SUGERIDOS:'', PROCEDIMENTO_SUGERIDO:'', SLA_HORAS:'', PRIORIDADE:req.body.prioridade||'NORMAL',
       RNC_SUGERIDO:'NÃO', EMPRESA_RECLAMADA:empNorm||empresaReclamada||'', CANAL:canal||'',
       CNPJ:cnpj||'', TELEFONE:telefone||'', EMAIL:email||'', QUANTIDADE:quantidade||'',
       QUANTIDADE_DEVOLVIDA:String(houveDevolucao||'NÃO').toUpperCase()==='SIM' ? (quantidadeDevolvida||'') : '', QUANTIDADE_TOTAL:quantidadeTotal||'',
@@ -2586,7 +2614,7 @@ app.post('/api/manifestacoes', requerPermissao('manifestacoes.abrir'), async (re
         }).catch(() => {});
       }
     } catch (e) { console.error('Falha na análise automática:', e.message); }
-    res.json({ sucesso:true, id, protocolo, analise, rascunho:!!rascunho, mensagem:rascunho?'Rascunho salvo.':'Manifestação registrada e analisada com sucesso.' });
+    res.json({ sucesso:true, id, protocolo, analise, rascunho:!!rascunho, atualizadoEm:agora, mensagem:rascunho?'Rascunho salvo.':'Manifestação registrada e analisada com sucesso.' });
   } catch (e) {
     console.error('[POST /api/manifestacoes] ERRO:', e?.message, e?.response?.status, e?.stack?.split('\n')[1]);
     const status = e?.response?.status || e?.code;
@@ -6977,13 +7005,14 @@ app.get('/api/manifestacoes/:id/historico', requerPermissao('manifestacoes.visua
   try {
     const { id } = req.params;
     const [logs, manifest, historicoFicha] = await Promise.all([
-      lerAba('LOG_SISTEMA', 2000).catch(() => []),
-      lerAba('MANIFESTACOES', 5000).catch(() => []),
-      lerAba('HISTORICO_MANIFESTACOES', 3000).catch(() => []),
+      lerAba('LOG_SISTEMA', 2000),
+      lerAba('MANIFESTACOES', 5000),
+      lerAba('HISTORICO_MANIFESTACOES', 3000),
     ]);
     // Garante que a manifestação pertence à empresa do usuário
-    const item = manifest.find(r => r.ID_MANIFESTACAO === id);
+    const item = manifest.find(r => [r.ID_MANIFESTACAO, r.PROTOCOLO, r.ID, r.ID_ORIGINAL].some(v => String(v || '').trim() === String(id).trim()));
     if (!item) return res.status(404).json({ sucesso: false, erro: 'Manifestação não encontrada.' });
+    const ids = idsManifestacao(item, id);
     const _pfHist = perfilCanonico(req.user.perfil);
     if (_pfHist !== 'MASTER') {
       const empScope = req.user?.empresa_scope || req.user?.empresa || '';
@@ -6993,7 +7022,7 @@ app.get('/api/manifestacoes/:id/historico', requerPermissao('manifestacoes.visua
       }
     }
     const itens = logs
-      .filter(r => (r.ID_REGISTRO || r.ID_MANIFESTACAO || '') === id)
+      .filter(r => ids.has(String(r.ID_REGISTRO || r.ID_MANIFESTACAO || r.PROTOCOLO || '').trim()))
       .map(r => {
         const vals = Object.values(r);
         return {
@@ -7004,7 +7033,7 @@ app.get('/api/manifestacoes/:id/historico', requerPermissao('manifestacoes.visua
         };
       })
       .filter(r => r.DATA_HORA || r.ACAO)
-      .concat(historicoFicha.filter(r => r.ID_MANIFESTACAO === id).map(r => ({
+      .concat(historicoFicha.filter(r => ids.has(String(r.ID_MANIFESTACAO || r.PROTOCOLO || '').trim())).map(r => ({
         DATA_HORA:r.DATA_HORA || '', USUARIO:r.USUARIO || '', ACAO:r.ACAO || '', DETALHES:r.DESCRICAO || '', ETAPA:r.ETAPA || ''
       })))
       .sort((a,b) => String(a.DATA_HORA).localeCompare(String(b.DATA_HORA)));
@@ -7134,11 +7163,25 @@ app.get('/api/log-sistema', requerPerfil('MASTER','ANALISTA SAC','APROVADOR'), a
 });
 
 // ===== USUÁRIOS =====
-app.get('/api/usuarios', requerPermissao('usuarios.visualizar'), async (req,res)=>{
+app.get('/api/usuarios', (req,res,next)=>{
+  // A operação de condução precisa consultar responsáveis sem conceder acesso
+  // ao módulo administrativo de usuários. O retorno operacional é sanitizado
+  // e limitado à empresa do usuário quando ele não possui usuarios.visualizar.
+  if (!usuarioTemPermissao(req.user, 'usuarios.visualizar') && !usuarioTemPermissao(req.user, 'manifestacoes.editar')) {
+    return res.status(403).json({sucesso:false,erro:'Sem permissão: usuarios.visualizar'});
+  }
+  req._usuariosSomenteResponsaveis = !usuarioTemPermissao(req.user, 'usuarios.visualizar');
+  next();
+}, async (req,res)=>{
   try{
     const itens=await carregarUsuarios();
     const _dbg = itens._debug || {};
-    res.json({sucesso:true,total:itens.length,itens:itens.map(usuarioPublico),_dbg});
+    let publicos=itens.map(usuarioPublico);
+    if (req._usuariosSomenteResponsaveis) {
+      publicos=publicos.filter(u => pertenceEmpresa(req.user?.empresa || '', u.empresa || (u.empresas||[]).join(',')));
+      publicos=publicos.map(u => ({id:u.id,usuario:u.usuario,nome:u.nome,perfil:u.perfil,status:u.status,empresa:u.empresa,empresas:u.empresas,setor:u.setor,setorPrincipal:u.setorPrincipal,setores:u.setores,setoresAutorizados:u.setoresAutorizados}));
+    }
+    res.json({sucesso:true,total:publicos.length,itens:publicos,_dbg});
   }
   catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e),itens:[]});}
 });
@@ -7677,15 +7720,15 @@ app.get('/api/anexos', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','SETOR R
 app.get('/api/manifestacoes/:id/evidencias', middlewareEscopoEmpresa(), requerPerfil('MASTER','ANALISTA SAC','APROVADOR','SETOR RESPONSÁVEL','GESTOR SAC','ATENDENTE SAC','AUDITOR'), async (req,res) => {
   try {
     const id = String(req.params.id || '').trim();
-    const mans = await lerAba('MANIFESTACOES', 5000).catch(() => []);
+    const mans = await lerAba('MANIFESTACOES', 5000);
     const man = mans.find(m => String(m.ID_MANIFESTACAO || '').trim() === id || String(m.PROTOCOLO || '').trim() === id);
     if (!man) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.', itens:[] });
     if (req._empresaScope && !pertenceEmpresa(req._empresaScope, man.EMPRESA_RECLAMADA || man.EMPRESA_RECLAMANTE || '')) {
       return res.status(403).json({ sucesso:false, erro:'Acesso não autorizado.', itens:[] });
     }
     const [evs, anexos] = await Promise.all([
-      lerAba('EVIDENCIAS', 5000).catch(() => []),
-      lerAba('ANEXOS', 5000).catch(() => []),
+      lerAba('EVIDENCIAS', 5000),
+      lerAba('ANEXOS', 5000),
     ]);
     const ids = new Set([id, man.ID_MANIFESTACAO, man.PROTOCOLO].filter(Boolean).map(String));
     const itens = [
@@ -7769,7 +7812,7 @@ app.get('/api/manifestacoes/:id/circa', requerPermissao('manifestacoes.visualiza
     let analisePersistida = {}; try { analisePersistida = JSON.parse(m.ANALISE_IA || '{}'); } catch (_) {}
     try { const raw=m.CHECKLIST_CIRCA || analisePersistida.checklistPersistido || '[]'; const parsed=typeof raw==='string'?JSON.parse(raw):raw; checklistPersistido=Array.isArray(parsed)?parsed:Object.entries(parsed||{}).map(([id,status])=>({id,status})); } catch (_) { checklistPersistido = []; }
     try { pendenciasPersistidas = JSON.parse(m.PENDENCIAS_VALIDACAO_HUMANA || analisePersistida.pendenciasValidacaoHumana || '[]'); } catch (_) { pendenciasPersistidas = []; }
-    res.json({ sucesso:true, circa:{ ...resultado, checklistPersistido, checklistVersao: analisePersistida.checklistVersao||0, pendenciasValidacaoHumana: pendenciasPersistidas } });
+    res.json({ sucesso:true, circa:{ ...resultado, checklistPersistido, checklistVersao: analisePersistida.checklistVersao||0, pendenciasValidacaoHumana: pendenciasPersistidas, decisaoEtapa2: analisePersistida.decisaoEtapa2 || null } });
   } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e,'circa') }); }
 });
 
@@ -7783,10 +7826,52 @@ app.patch('/api/manifestacoes/:id/circa-dados', requerPermissao('manifestacoes.e
     if(req._empresaScope && !pertenceEmpresa(req._empresaScope,m.EMPRESA_RECLAMADA||'')) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado.'});
     const requestedStage=Number(req.body?.ETAPA_ATUAL||0);
     const currentStage=circaWorkflow.stageForStatus(m.STATUS||m.STATUS_FICHA||'RASCUNHO');
+    const versaoConhecida=String(req.body?.ultimaEdicaoConhecida||'').trim();
+    const versaoAtual=String(m.DATA_ULTIMA_EDICAO||'').trim();
+    if (versaoConhecida && versaoAtual && versaoConhecida !== versaoAtual) return res.status(409).json({sucesso:false,erro:'O rascunho foi alterado em outra sessão. Recarregue a ficha antes de salvar.',codigo:'RASCUNHO_CONCORRENTE',atualizadoEm:versaoAtual});
     if(requestedStage && (!Number.isInteger(requestedStage)||requestedStage<1||requestedStage>7)) return res.status(400).json({sucesso:false,erro:'Etapa CIRCA inválida.'});
     if(requestedStage && requestedStage>currentStage+1 && String(req.user?.PERFIL||req.user?.perfil||'').toUpperCase()!=='MASTER') return res.status(409).json({sucesso:false,erro:'A etapa solicitada depende da conclusão das etapas anteriores.',etapaAtual:currentStage});
-    const allowed=['STATUS','STATUS_FICHA','EMPRESA_RECLAMADA','EMPRESA_RECLAMANTE','CONTATO','CNPJ','TELEFONE','EMAIL','PRODUTO','LOTE','NFE','DESCRICAO','DESCRICAO_MANIFESTACAO','TIPO','CANAL','ORIGEM','PRIORIDADE','CATEGORIA','MOTIVO','GRAVIDADE','ETAPA_ATUAL','MENSAGEM_ETAPA','CAMINHO_TRATATIVA','COMPLEMENTO_PEDIDO','CANAL_RETORNO','PRAZO_RETORNO_SAC','TRATATIVA_SAC_INTERNA','SETOR_ACIONADO','ESCOPO_ACIONAMENTO','INVESTIGACAO_O_QUE','INVESTIGACAO_VERIFICACOES','INVESTIGACAO_EVIDENCIAS','INVESTIGACAO_NOTAS','SUBCAUSA','CAUSA_RAIZ_CONFIRMADA','ACOES_CORRETIVAS','DATA_SOLUCAO','RESPONSAVEL_EXECUCAO','VALIDACAO_RESULTADO','PROCEDENTE','PROCEDENTE_JUSTIFICATIVA','VALID_SAC_DATA_RETORNO','VALID_SAC_CLIENTE_INFORMADO','VALID_SAC_RESOLVIDA','RESUMO_RESOLUCAO','DEVOLUTIVA_CANAL','DEVOLUTIVA_DESTINATARIO','DEVOLUTIVA_FINAL','DEVOLUTIVA_ENVIADA','APRENDIZADO_CASO','APRENDIZADO_MATRIZ','OBSERVACOES_FINAIS','STATUS_TRATATIVA','ANEXOS','EVIDENCIAS','ANALISE_IA','CHECKLIST_CIRCA','PENDENCIAS_VALIDACAO_HUMANA'];
-    const patch={}; for(const key of allowed) if(Object.prototype.hasOwnProperty.call(req.body||{},key)) patch[key]=req.body[key] ?? '';
+    const allowed=['STATUS','STATUS_FICHA','EMPRESA_RECLAMADA','EMPRESA_RECLAMANTE','CONTATO','CNPJ','TELEFONE','EMAIL','PRODUTO','LOTE','NFE','DESCRICAO','DESCRICAO_MANIFESTACAO','TIPO','CANAL','ORIGEM','PRIORIDADE','CATEGORIA','MOTIVO','GRAVIDADE','ETAPA_ATUAL','MENSAGEM_ETAPA','CAMINHO_TRATATIVA','COMPLEMENTO_PEDIDO','CANAL_RETORNO','PRAZO_RETORNO_SAC','TRATATIVA_SAC_INTERNA','SETOR_ACIONADO','ESCOPO_ACIONAMENTO','INVESTIGACAO_O_QUE','INVESTIGACAO_VERIFICACOES','INVESTIGACAO_EVIDENCIAS','INVESTIGACAO_NOTAS','SUBCAUSA','CAUSA_RAIZ_CONFIRMADA','ACOES_CORRETIVAS','DATA_SOLUCAO','RESPONSAVEL_EXECUCAO','VALIDACAO_RESULTADO','PROCEDENTE','PROCEDENTE_JUSTIFICATIVA','VALID_SAC_DATA_RETORNO','VALID_SAC_CLIENTE_INFORMADO','VALID_SAC_RESOLVIDA','RESUMO_RESOLUCAO','DEVOLUTIVA_CANAL','DEVOLUTIVA_DESTINATARIO','DEVOLUTIVA_FINAL','DEVOLUTIVA_ENVIADA','APRENDIZADO_CASO','APRENDIZADO_MATRIZ','OBSERVACOES_FINAIS','STATUS_TRATATIVA','ANEXOS','EVIDENCIAS','ANALISE_IA','CHECKLIST_CIRCA','PENDENCIAS_VALIDACAO_HUMANA','QUANTIDADE','QUANTIDADE_TOTAL','QUANTIDADE_DEVOLVIDA','PEDIDO','DATA_PEDIDO','DATA_ENTREGA','VENDEDOR','DATA_RECEBIMENTO','RAZAO_SOCIAL','NOME_FANTASIA','CODIGO_CLIENTE','UNIDADE_MEDIDA','QUANTIDADE_AFETADA','VALOR_UNITARIO','VALOR_TOTAL','PREJUIZO_ESTIMADO','PREJUIZO_CONFIRMADO','RESPONSAVEL'];
+    // O formulário envia aliases em camelCase/minúsculo. Em atualizações de
+    // rascunho não podemos transformar um snapshot parcial em uma limpeza
+    // acidental: campos vazios preservam o valor persistido, salvo quando o
+    // cliente declara explicitamente `camposLimpar`.
+    const aliases={
+      EMPRESA_RECLAMADA:'empresaReclamada',EMPRESA_RECLAMANTE:'empresaReclamante',CONTATO:'contato',CNPJ:'cnpj',TELEFONE:'telefone',EMAIL:'email',
+      PRODUTO:'produto',LOTE:'lote',NFE:'nfe',DESCRICAO:'descricao',DESCRICAO_MANIFESTACAO:'descricao',TIPO:'tipo',CANAL:'canal',ORIGEM:'origem',PRIORIDADE:'prioridade',
+      CATEGORIA:'categoria',MOTIVO:'motivo',GRAVIDADE:'gravidade',ETAPA_ATUAL:'etapaAtual',STATUS:'status',STATUS_FICHA:'statusFicha',MENSAGEM_ETAPA:'mensagemEtapa',
+      CAMINHO_TRATATIVA:'caminhoTratativa',COMPLEMENTO_PEDIDO:'complementoPedido',CANAL_RETORNO:'canalRetorno',PRAZO_RETORNO_SAC:'prazoRetornoSAC',
+      TRATATIVA_SAC_INTERNA:'tratativaSACInterna',SETOR_ACIONADO:'setorAcionado',ESCOPO_ACIONAMENTO:'escopoAcionamento',
+      INVESTIGACAO_O_QUE:'investigacaoOQue',INVESTIGACAO_VERIFICACOES:'investigacaoVerificacoes',INVESTIGACAO_EVIDENCIAS:'investigacaoEvidencias',INVESTIGACAO_NOTAS:'investigacaoNotas',
+      SUBCAUSA:'subcausa',CAUSA_RAIZ_CONFIRMADA:'causaRaizConfirmada',ACOES_CORRETIVAS:'acoesCorretivas',DATA_SOLUCAO:'dataSolucao',RESPONSAVEL_EXECUCAO:'responsavelExecucao',
+      VALIDACAO_RESULTADO:'validacaoResultado',PROCEDENTE:'procedente',PROCEDENTE_JUSTIFICATIVA:'procedenteJustificativa',VALID_SAC_DATA_RETORNO:'validSacDataRetorno',
+      VALID_SAC_CLIENTE_INFORMADO:'validSacClienteInformado',VALID_SAC_RESOLVIDA:'validSacResolvida',RESUMO_RESOLUCAO:'resumoResolucao',DEVOLUTIVA_CANAL:'devolutivaCanal',
+      DEVOLUTIVA_DESTINATARIO:'devolutivaDestinatario',DEVOLUTIVA_FINAL:'devolutivaFinal',DEVOLUTIVA_ENVIADA:'devolutivaEnviada',APRENDIZADO_CASO:'aprendizadoCaso',
+      APRENDIZADO_MATRIZ:'aprendizadoMatriz',OBSERVACOES_FINAIS:'observacoesFinais',STATUS_TRATATIVA:'statusTratativa',ANALISE_IA:'analiseIA',ANEXOS:'anexos',EVIDENCIAS:'evidencias',
+      QUANTIDADE:'quantidade',QUANTIDADE_TOTAL:'quantidadeTotal',QUANTIDADE_DEVOLVIDA:'quantidadeDevolvida',PEDIDO:'pedido',DATA_PEDIDO:'dataPedido',
+    };
+    const camposLimpar=new Set(Array.isArray(req.body?.camposLimpar)?req.body.camposLimpar:[]);
+    const patch={};
+    for(const key of allowed){
+      const alias=aliases[key]; const fonte=Object.prototype.hasOwnProperty.call(req.body||{},key)?key:(alias&&Object.prototype.hasOwnProperty.call(req.body||{},alias)?alias:null);
+      if(!fonte) continue;
+      const valor=req.body[fonte];
+      if((valor===undefined||valor===null||valor==='') && !camposLimpar.has(key) && String(m[key]||'')!=='') continue;
+      patch[key]=valor ?? '';
+    }
+    if (patch.ANALISE_IA && m.ANALISE_IA) {
+      try {
+        const anteriorAnalise=JSON.parse(m.ANALISE_IA); const novaAnalise=typeof patch.ANALISE_IA==='string'?JSON.parse(patch.ANALISE_IA):patch.ANALISE_IA;
+        if (anteriorAnalise && novaAnalise && typeof anteriorAnalise==='object' && typeof novaAnalise==='object') {
+          patch.ANALISE_IA=JSON.stringify({ ...anteriorAnalise, ...novaAnalise,
+            decisaoEtapa2:{ ...(anteriorAnalise.decisaoEtapa2||{}), ...(novaAnalise.decisaoEtapa2||{}) },
+            checklistPersistido:novaAnalise.checklistPersistido||anteriorAnalise.checklistPersistido,
+            pendenciasValidacaoHumana:novaAnalise.pendenciasValidacaoHumana||anteriorAnalise.pendenciasValidacaoHumana,
+          });
+        }
+      } catch (_) { /* payload inválido será tratado pelo contrato existente */ }
+    }
+    let decisaoEtapa2Audit = null;
     if (Object.prototype.hasOwnProperty.call(req.body || {}, 'CHECKLIST_CIRCA') || Object.prototype.hasOwnProperty.call(req.body || {}, 'PENDENCIAS_VALIDACAO_HUMANA')) {
       if (!m.ID_MANIFESTACAO) return res.status(409).json({sucesso:false,erro:'A manifestação ainda não possui ID persistido.'});
       let meta={}; try { meta=JSON.parse(m.ANALISE_IA||'{}'); } catch (_) {}
@@ -7810,7 +7895,27 @@ app.patch('/api/manifestacoes/:id/circa-dados', requerPermissao('manifestacoes.e
       }
       patch.ANALISE_IA=JSON.stringify(meta); delete patch.CHECKLIST_CIRCA; delete patch.PENDENCIAS_VALIDACAO_HUMANA;
     }
-    if (Object.prototype.hasOwnProperty.call(req.body || {}, 'analiseIA') && req.body.analiseIA) patch.ANALISE_IA = req.body.analiseIA;
+    // Decisões da Etapa 2 são metadados da análise existente. Fazemos merge
+    // no servidor para preservar hipóteses, regras, checklist e histórico da
+    // execução anterior, sem confiar em um snapshot parcial enviado pelo
+    // navegador.
+    if (req.body?.analisePatch && typeof req.body.analisePatch === 'object') {
+      const permitido = ['status','justificativa','origem','classificacao','hipoteses','orientacoes','pendencias','revisadoEm'];
+      const patchAnalise = {};
+      for (const chave of permitido) if (Object.prototype.hasOwnProperty.call(req.body.analisePatch, chave)) patchAnalise[chave] = req.body.analisePatch[chave];
+      const estados = ['GERADA','REVISADA','ORIENTACAO_ACEITA','ORIENTACAO_PARCIAL','ORIENTACAO_REJEITADA','PENDENTE_VALIDACAO'];
+      if (patchAnalise.status && !estados.includes(String(patchAnalise.status))) return res.status(400).json({sucesso:false,erro:'Estado de decisão da análise inválido.'});
+      let base = {}; try { base = JSON.parse(m.ANALISE_IA || '{}'); } catch (_) {}
+      const atual = base.decisaoEtapa2 && typeof base.decisaoEtapa2 === 'object' ? base.decisaoEtapa2 : {};
+      const revisadoEm = patchAnalise.revisadoEm || new Date().toISOString();
+      const revisadoPor = req.user?.usuario || req.user?.login || 'sistema';
+      const registro = { ...patchAnalise, revisadoEm, revisadoPor };
+      const historico = Array.isArray(atual.historico) ? atual.historico : [];
+      base.decisaoEtapa2 = { ...atual, ...registro, historico: [...historico, registro].slice(-50) };
+      decisaoEtapa2Audit = registro;
+      patch.ANALISE_IA = JSON.stringify(base);
+      delete patch.analisePatch;
+    }
     // Mapeia descricao (minúsculo, enviado pelo frontend nm-card) para as colunas corretas no Sheets
     if (Object.prototype.hasOwnProperty.call(req.body||{}, 'descricao') && req.body.descricao) {
       patch.DESCRICAO = req.body.descricao;
@@ -7838,6 +7943,7 @@ app.patch('/api/manifestacoes/:id/circa-dados', requerPermissao('manifestacoes.e
       await protocoloAtomico.confirmarPersistencia(patch.IDEMPOTENCY_KEY,m.ID_MANIFESTACAO||idReq);
     }
     await registrarHistoricoManifestacao({id:m.ID_MANIFESTACAO||idReq,protocolo:patch.PROTOCOLO||m.PROTOCOLO||'',usuario:req.user?.usuario||'sistema',etapa:patch.ETAPA_ATUAL||m.ETAPA_ATUAL||'',acao:'ATUALIZOU_CARD_CIRCA',descricao:'Dados operacionais atualizados no novo card.'});
+    if (decisaoEtapa2Audit) await registrarHistoricoManifestacao({ id:m.ID_MANIFESTACAO||idReq, protocolo:patch.PROTOCOLO||m.PROTOCOLO||'', usuario:decisaoEtapa2Audit.revisadoPor, etapa:'2', acao:'REVISOU_ANALISE_CIRCA', descricao:`Estado ${decisaoEtapa2Audit.status || 'REVISADA'} registrado no servidor.` });
     // Auto-increment FREQUENCIA_OCORRENCIAS na aba CAUSAS quando causa raiz é confirmada
     if (patch.CAUSA_RAIZ_CONFIRMADA && patch.CAUSA_RAIZ_CONFIRMADA !== (m.CAUSA_RAIZ_CONFIRMADA||'')) {
       try {
@@ -7858,14 +7964,37 @@ app.patch('/api/manifestacoes/:id/circa-dados', requerPermissao('manifestacoes.e
 // ===== FLUXO OPERACIONAL CIRCA =====
 // Os registros abaixo reutilizam a manifestação e as abas operacionais legadas.
 // Nenhum acionamento cria uma segunda ficha.
-const ACIONAMENTOS_HEADERS = ['ID_ACIONAMENTO','ID_MANIFESTACAO','PROTOCOLO','TIPO','EMPRESA','SETOR_SOLICITANTE','SETOR_DESTINO','RESPONSAVEL','ASSUNTO','MOTIVO','TAREFA','PERGUNTAS','PRAZO','PRIORIDADE','EVIDENCIAS','OBSERVACOES','RESPOSTA','STATUS','CRIADO_EM','CRIADO_POR','ATUALIZADO_EM','ATUALIZADO_POR','IDEMPOTENCY_KEY'];
+const ACIONAMENTOS_HEADERS = ['ID_ACIONAMENTO','ID_MANIFESTACAO','PROTOCOLO','TIPO','EMPRESA','SETOR_SOLICITANTE','SETOR_DESTINO','RESPONSAVEL','RESPONSAVEL_ID','ASSUNTO','MOTIVO','TAREFA','PERGUNTAS','PRAZO','PRAZO_ORIGEM','DATA_LIMITE','PRIORIDADE','EVIDENCIAS','OBSERVACOES','RESPOSTA','STATUS','CRIADO_EM','CRIADO_POR','ATUALIZADO_EM','ATUALIZADO_POR','IDEMPOTENCY_KEY'];
 const ACIONAMENTO_STATUSES = ['CRIADO','ENVIADO','PENDENTE_DE_ATRIBUICAO','AGUARDANDO_CIENCIA','EM_ANDAMENTO','AGUARDANDO_INFORMACAO','RESPONDIDO','EM_REVISAO','CONCLUIDO','CANCELADO'];
 const ACIONAMENTO_TYPES = ['NOTIFICACAO','SOLICITACAO_INFORMACAO','SOLICITACAO_APOIO','ENCAMINHAMENTO_TRATATIVA','ESCALONAMENTO'];
 const NOTIFICACOES_INTERNAS_HEADERS = ['ID_NOTIFICACAO','ID_MANIFESTACAO','ID_ACIONAMENTO','DESTINATARIO','CANAL','TIPO','TITULO','MENSAGEM','STATUS','CRIADO_EM','CRIADO_POR'];
 
 function empresasDoCadastro(row = {}) {
-  try { const parsed = JSON.parse(row.EMPRESAS_JSON || '[]'); if (Array.isArray(parsed)) return parsed; } catch (_) {}
-  return [row.EMPRESA || ''].filter(Boolean);
+  const valores = [row.EMPRESA, row.EMPRESAS, row.EMPRESAS_JSON];
+  const saida = [];
+  const adicionar = valor => {
+    if (Array.isArray(valor)) return valor.forEach(adicionar);
+    if (valor && typeof valor === 'object') return Object.values(valor).forEach(adicionar);
+    const texto = String(valor || '').trim(); if (!texto) return;
+    try { const parsed = JSON.parse(texto); if (parsed !== valor) return adicionar(parsed); } catch (_) {}
+    texto.split(/[;,\n|]+/).map(v=>v.trim()).filter(Boolean).forEach(v=>saida.push(v));
+  };
+  valores.forEach(adicionar);
+  return [...new Set(saida)];
+}
+
+function setoresDoCadastro(row = {}) {
+  const valores = [row.SETOR, row.SETOR_PRINCIPAL, row.SETORES, row.SETORES_AUTORIZADOS];
+  const saida = [];
+  const adicionar = valor => {
+    if (Array.isArray(valor)) return valor.forEach(adicionar);
+    if (valor && typeof valor === 'object') return Object.values(valor).forEach(adicionar);
+    const texto = String(valor || '').trim(); if (!texto) return;
+    try { const parsed = JSON.parse(texto); if (parsed !== valor) return adicionar(parsed); } catch (_) {}
+    texto.split(/[;,\n|]+/).map(v=>v.trim()).filter(Boolean).forEach(v=>saida.push(v));
+  };
+  valores.forEach(adicionar);
+  return [...new Set(saida)];
 }
 async function gestorCompetente({ setor, empresa }) {
   const gerentes = await lerAba('GERENTES', 2000).catch(() => []);
@@ -7885,8 +8014,12 @@ async function registrarNotificacaoInterna({ manifestacaoId, acionamentoId, dest
 }
 
 async function circaManifestacao(id) {
-  const rows = await lerAba('MANIFESTACOES', 5000).catch(() => []);
+  const rows = await lerAba('MANIFESTACOES', 5000);
   return rows.find(row => [row.ID_MANIFESTACAO, row.PROTOCOLO, row.ID, row.ID_ORIGINAL].some(v => String(v || '').trim() === String(id || '').trim()));
+}
+function idsManifestacao(manifestacao, solicitado) {
+  return new Set([manifestacao?.ID_MANIFESTACAO, manifestacao?.PROTOCOLO, manifestacao?.ID, manifestacao?.ID_ORIGINAL, solicitado]
+    .filter(v => v !== undefined && v !== null && String(v).trim() !== '').map(v => String(v).trim()));
 }
 
 app.get('/api/manifestacoes/:id/acionamentos', requerPermissao('manifestacoes.visualizar'), middlewareEscopoEmpresa(), async (req,res) => {
@@ -7894,9 +8027,10 @@ app.get('/api/manifestacoes/:id/acionamentos', requerPermissao('manifestacoes.vi
     const m = await circaManifestacao(req.params.id);
     if (!m) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
     if (req._empresaScope && !pertenceEmpresa(req._empresaScope, m.EMPRESA_RECLAMADA || '')) return res.status(403).json({ sucesso:false, erro:'Acesso não autorizado.' });
-    const rows = await lerAba('ACIONAMENTOS_INTERNOS', 5000).catch(() => []);
-    const id = m.ID_MANIFESTACAO || req.params.id;
-    res.json({ sucesso:true, itens:rows.filter(row => String(row.ID_MANIFESTACAO) === String(id)), statuses:ACIONAMENTO_STATUSES, tipos:ACIONAMENTO_TYPES });
+    const rows = await lerAba('ACIONAMENTOS_INTERNOS', 5000);
+    const ids = idsManifestacao(m, req.params.id);
+    const itens=rows.filter(row => ids.has(String(row.ID_MANIFESTACAO || row.PROTOCOLO || row.ID || '').trim()));
+    res.json({ sucesso:true, itens, statuses:ACIONAMENTO_STATUSES, tipos:ACIONAMENTO_TYPES, diagnostico:{ fonte:'ACIONAMENTOS_INTERNOS', armazenamento:'Google Sheets', identificadores:[...ids], totalLidos:rows.length, totalCorrespondentes:itens.length, escopoEmpresa: req._empresaScope ? 'aplicado' : 'MASTER/global' } });
   } catch (e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e,'acionamentos') }); }
 });
 
@@ -7918,10 +8052,18 @@ app.post('/api/manifestacoes/:id/acionamentos', requerPermissao('manifestacoes.e
     if (tipo === 'ESCALONAMENTO' && !gestor) {
       return res.status(422).json({ sucesso:false, codigo:'GESTOR_NAO_CADASTRADO', erro:'Não há gestor ativo cadastrado para esta empresa. Regularize o cadastro antes de escalar.' });
     }
+    let responsavelCadastro = null;
     if (body.responsavel) {
       const usuarios = await lerAba('USUARIOS', 5000).catch(() => []);
       const alvo = usuarios.find(u => String(u.USUARIO || u.EMAIL || u.LOGIN || '').toLowerCase() === String(body.responsavel).toLowerCase());
       if (!alvo || String(alvo.STATUS || 'ATIVO').toUpperCase() !== 'ATIVO') return res.status(400).json({ sucesso:false, erro:'Responsável inexistente ou inativo.' });
+      const setorNorm = normalizarTexto(body.setorDestino || '');
+      const setoresAlvo = setoresDoCadastro(alvo).map(normalizarTexto).filter(Boolean);
+      if (setorNorm && !setoresAlvo.some(s => s === setorNorm || s.includes(setorNorm) || setorNorm.includes(s))) return res.status(422).json({ sucesso:false, codigo:'RESPONSAVEL_FORA_DO_SETOR', erro:'O responsável selecionado não está autorizado para o setor escolhido.' });
+      const empresasAlvo = empresasDoCadastro(alvo).map(empresaCanonica).filter(Boolean);
+      const empresaManifestacao = empresaCanonica(m.EMPRESA_RECLAMADA || '');
+      if (empresasAlvo.length && !empresasAlvo.includes('MASTER') && !empresasAlvo.includes(empresaManifestacao)) return res.status(422).json({ sucesso:false, codigo:'RESPONSAVEL_FORA_DA_EMPRESA', erro:'O responsável selecionado não está autorizado para esta empresa.' });
+      responsavelCadastro = alvo;
     }
     await garantirAbaComCabecalhos('ACIONAMENTOS_INTERNOS', ACIONAMENTOS_HEADERS);
     const existing = body.idempotencyKey ? (await lerAba('ACIONAMENTOS_INTERNOS', 5000).catch(() => [])).find(r => String(r.IDEMPOTENCY_KEY || '') === String(body.idempotencyKey)) : null;
@@ -7931,9 +8073,9 @@ app.post('/api/manifestacoes/:id/acionamentos', requerPermissao('manifestacoes.e
       ID_ACIONAMENTO: await gerarProximoID('ACIONAMENTOS_INTERNOS','ACI','ID_ACIONAMENTO'),
       ID_MANIFESTACAO: m.ID_MANIFESTACAO || req.params.id, PROTOCOLO:m.PROTOCOLO || '', TIPO:tipo,
       EMPRESA:m.EMPRESA_RECLAMADA || body.empresa || '', SETOR_SOLICITANTE:body.setorSolicitante || req.user?.setor || 'SAC',
-      SETOR_DESTINO:body.setorDestino || '', RESPONSAVEL:body.responsavel || gestor?.USUARIO || gestor?.EMAIL || gestor?.NOME || '', ASSUNTO:body.assunto || '', MOTIVO:body.motivo || '',
+      SETOR_DESTINO:body.setorDestino || '', RESPONSAVEL:body.responsavel || gestor?.USUARIO || gestor?.EMAIL || gestor?.NOME || '', RESPONSAVEL_ID:responsavelCadastro?.ID_USUARIO || responsavelCadastro?.ID || responsavelCadastro?.USUARIO || body.responsavel || '', ASSUNTO:body.assunto || '', MOTIVO:body.motivo || '',
       TAREFA:body.tarefa || '', PERGUNTAS:Array.isArray(body.perguntas) ? JSON.stringify(body.perguntas) : (body.perguntas || ''),
-      PRAZO:tipo === 'NOTIFICACAO' ? '' : (body.prazo || ''), PRIORIDADE:body.prioridade || 'NORMAL',
+      PRAZO:tipo === 'NOTIFICACAO' ? '' : (body.prazo || ''), PRAZO_ORIGEM:body.prazoOrigem || (tipo === 'SOLICITACAO_INFORMACAO' ? 'SLA_RETORNO_CLIENTE_96H' : 'SLA_RETORNO_SETOR_72H'), DATA_LIMITE:body.dataLimite || '', PRIORIDADE:body.prioridade || 'NORMAL',
       EVIDENCIAS:Array.isArray(body.evidencias) ? JSON.stringify(body.evidencias) : (body.evidencias || ''), OBSERVACOES:body.observacoes || '',
       STATUS:tipo === 'NOTIFICACAO' ? 'ENVIADO' : (body.responsavel ? 'ENVIADO' : 'PENDENTE_DE_ATRIBUICAO'),
       CRIADO_EM:agora, CRIADO_POR:req.user?.usuario || 'sistema', ATUALIZADO_EM:agora, ATUALIZADO_POR:req.user?.usuario || 'sistema', IDEMPOTENCY_KEY:body.idempotencyKey || '',

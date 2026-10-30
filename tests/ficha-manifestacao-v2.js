@@ -1,6 +1,7 @@
 'use strict';
 const fs = require('fs');
 const html = fs.readFileSync('public/index.html','utf8');
+const api = fs.readFileSync(require('path').resolve(__dirname, '../api/index.js'),'utf8');
 const checks = [
   ['página V2 registrada', html.includes('id="page-ficha-manifestacao-v2"')],
   ['layout da referência (SLA, tabs e anexos)', ['fv2-sla','Dados','Triagem e Direcionamento','Tratativa','Validação e Devolutiva','Histórico','fv2-attachments'].every(x=>html.includes(x))],
@@ -9,6 +10,11 @@ const checks = [
   ['retorno preserva a lista de origem', html.includes('originPage') && html.includes('originTab') && html.includes("navigate(page,document.querySelector")],
   ['carregamento de dados reais', html.includes("/api/manifestacoes/'+encodeURIComponent(S.id)") && html.includes('DESCRICAO_ORIGINAL') && html.includes('ID_MANIFESTACAO')],
   ['anexos vinculados e upload integrado', html.includes("/api/manifestacoes/'+key+'/evidencias") && html.includes("_apiFetch('/api/anexos'")],
+  ['frentes de tratamento recuperadas do armazenamento', html.includes("/api/manifestacoes/'+key+'/acionamentos") && html.includes('Frentes de tratamento') && html.includes('RESPONSAVEL_ID') && html.includes('PRAZO_ORIGEM')],
+  ['falha de acionamentos não é confundida com lista vazia', html.includes('S.extrasErrors.acionamentos') && html.includes('Não foi possível recuperar os acionamentos persistidos')],
+  ['falha de armazenamento não vira resposta vazia', /const rows = await lerAba\('ACIONAMENTOS_INTERNOS', 5000\);/.test(api) && /diagnostico:\{ fonte:'ACIONAMENTOS_INTERNOS'/.test(api)],
+  ['relato legado é preservado', html.includes("DESCRICAO_RECLAMACAO','RELATO")],
+  ['SLAs sem prazo artificial', html.includes("SLA da triagem SAC") && html.includes("SLA do setor") && html.includes("value:'Não informado'") && html.includes('SLA_TOTAL_HORAS')],
   ['histórico e CIRCA persistidos', html.includes("/historico") && html.includes("/circa")],
   ['ações usam ficha existente', html.includes("/api/manifestacoes/'+encodeURIComponent(id())+'/ficha") && html.includes("acao:'encaminhar_setor") && html.includes("acao:'salvar_investigacao")],
   ['não usa dados fictícios do standalone', !html.includes('PLAS-MVS6GPQV9JF')],
