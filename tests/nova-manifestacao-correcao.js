@@ -135,6 +135,9 @@ function request(base, method, route, auth, body) {
     }
     const actionList = await request(base,'GET',`/api/manifestacoes/${encodeURIComponent(createdId)}/acionamentos`,master);
     assert.equal(actionList.status,200,JSON.stringify(actionList.body));
+    assert.equal(actionList.body.diagnostico?.fonte,'ACIONAMENTOS_INTERNOS');
+    assert.equal(actionList.body.diagnostico?.armazenamento,'Google Sheets');
+    assert.equal(actionList.body.diagnostico?.totalCorrespondentes,3,'a leitura deve informar quantas ações realmente encontrou');
     assert.equal(actionList.body.itens.filter(a=>actionIds.includes(a.ID_ACIONAMENTO)).length,3,'as três frentes devem ser recuperáveis do armazenamento');
     assert.deepEqual(actionList.body.itens.filter(a=>actionIds.includes(a.ID_ACIONAMENTO)).map(a=>a.SETOR_DESTINO||a.TIPO),['NOTIFICACAO','QUALIDADE','LOGÍSTICA']);
     assert.equal(actionList.body.itens.find(a=>a.ID_ACIONAMENTO===actionIds[1]).PRAZO_ORIGEM,'SLA_RETORNO_SETOR_72H');

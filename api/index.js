@@ -7005,9 +7005,9 @@ app.get('/api/manifestacoes/:id/historico', requerPermissao('manifestacoes.visua
   try {
     const { id } = req.params;
     const [logs, manifest, historicoFicha] = await Promise.all([
-      lerAba('LOG_SISTEMA', 2000).catch(() => []),
-      lerAba('MANIFESTACOES', 5000).catch(() => []),
-      lerAba('HISTORICO_MANIFESTACOES', 3000).catch(() => []),
+      lerAba('LOG_SISTEMA', 2000),
+      lerAba('MANIFESTACOES', 5000),
+      lerAba('HISTORICO_MANIFESTACOES', 3000),
     ]);
     // Garante que a manifestação pertence à empresa do usuário
     const item = manifest.find(r => [r.ID_MANIFESTACAO, r.PROTOCOLO, r.ID, r.ID_ORIGINAL].some(v => String(v || '').trim() === String(id).trim()));
@@ -7720,15 +7720,15 @@ app.get('/api/anexos', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','SETOR R
 app.get('/api/manifestacoes/:id/evidencias', middlewareEscopoEmpresa(), requerPerfil('MASTER','ANALISTA SAC','APROVADOR','SETOR RESPONSÁVEL','GESTOR SAC','ATENDENTE SAC','AUDITOR'), async (req,res) => {
   try {
     const id = String(req.params.id || '').trim();
-    const mans = await lerAba('MANIFESTACOES', 5000).catch(() => []);
+    const mans = await lerAba('MANIFESTACOES', 5000);
     const man = mans.find(m => String(m.ID_MANIFESTACAO || '').trim() === id || String(m.PROTOCOLO || '').trim() === id);
     if (!man) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.', itens:[] });
     if (req._empresaScope && !pertenceEmpresa(req._empresaScope, man.EMPRESA_RECLAMADA || man.EMPRESA_RECLAMANTE || '')) {
       return res.status(403).json({ sucesso:false, erro:'Acesso não autorizado.', itens:[] });
     }
     const [evs, anexos] = await Promise.all([
-      lerAba('EVIDENCIAS', 5000).catch(() => []),
-      lerAba('ANEXOS', 5000).catch(() => []),
+      lerAba('EVIDENCIAS', 5000),
+      lerAba('ANEXOS', 5000),
     ]);
     const ids = new Set([id, man.ID_MANIFESTACAO, man.PROTOCOLO].filter(Boolean).map(String));
     const itens = [
@@ -8014,7 +8014,7 @@ async function registrarNotificacaoInterna({ manifestacaoId, acionamentoId, dest
 }
 
 async function circaManifestacao(id) {
-  const rows = await lerAba('MANIFESTACOES', 5000).catch(() => []);
+  const rows = await lerAba('MANIFESTACOES', 5000);
   return rows.find(row => [row.ID_MANIFESTACAO, row.PROTOCOLO, row.ID, row.ID_ORIGINAL].some(v => String(v || '').trim() === String(id || '').trim()));
 }
 function idsManifestacao(manifestacao, solicitado) {
@@ -8027,9 +8027,10 @@ app.get('/api/manifestacoes/:id/acionamentos', requerPermissao('manifestacoes.vi
     const m = await circaManifestacao(req.params.id);
     if (!m) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
     if (req._empresaScope && !pertenceEmpresa(req._empresaScope, m.EMPRESA_RECLAMADA || '')) return res.status(403).json({ sucesso:false, erro:'Acesso não autorizado.' });
-    const rows = await lerAba('ACIONAMENTOS_INTERNOS', 5000).catch(() => []);
+    const rows = await lerAba('ACIONAMENTOS_INTERNOS', 5000);
     const ids = idsManifestacao(m, req.params.id);
-    res.json({ sucesso:true, itens:rows.filter(row => ids.has(String(row.ID_MANIFESTACAO || row.PROTOCOLO || row.ID || '').trim())), statuses:ACIONAMENTO_STATUSES, tipos:ACIONAMENTO_TYPES });
+    const itens=rows.filter(row => ids.has(String(row.ID_MANIFESTACAO || row.PROTOCOLO || row.ID || '').trim()));
+    res.json({ sucesso:true, itens, statuses:ACIONAMENTO_STATUSES, tipos:ACIONAMENTO_TYPES, diagnostico:{ fonte:'ACIONAMENTOS_INTERNOS', armazenamento:'Google Sheets', identificadores:[...ids], totalLidos:rows.length, totalCorrespondentes:itens.length, escopoEmpresa: req._empresaScope ? 'aplicado' : 'MASTER/global' } });
   } catch (e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e,'acionamentos') }); }
 });
 
