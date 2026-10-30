@@ -56,6 +56,9 @@ async function main() {
       await new Promise(resolve => setTimeout(resolve, 80));
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ sucesso: true, id: 'NM-BROWSER-001', protocolo: 'CHIA-20261028-01-0001' }) });
     }
+    if (url.pathname === '/api/manifestacoes/NM-BROWSER-001' && req.method() === 'GET') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ sucesso: true, manifestacao: { ID_MANIFESTACAO: 'NM-BROWSER-001', CANAL: 'TELEFONE', DESCRICAO: 'Rascunho de navegador confirmado.' } }) });
+    }
     if (url.pathname.endsWith('/circa-dados') && req.method() === 'PATCH') {
       const body = req.postDataJSON() || {};
       if (body.CHECKLIST_CIRCA) checklistSalvos.push(body);
