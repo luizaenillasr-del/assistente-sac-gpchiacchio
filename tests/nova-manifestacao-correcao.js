@@ -48,9 +48,9 @@ function request(base, method, route, auth, body) {
   mock.protocoloPrisma.reset();
   Object.keys(require.cache).filter(k => k.includes('/api/index')).forEach(k => delete require.cache[k]);
   const app = require('../api/index');
-  const server = http.createServer(app);
+  let server = http.createServer(app);
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
-  const base = `http://127.0.0.1:${server.address().port}`;
+  let base = `http://127.0.0.1:${server.address().port}`;
   const master = token({ perfil:'MASTER', empresa:'Grupo Chiacchio', usuario:'master.test', id:'USR-MST-001' });
   const key = 'NOVA-CORRECAO-001';
   let createdId = '', draftId = '', actionIds = [];
@@ -145,6 +145,13 @@ function request(base, method, route, auth, body) {
     assert.equal(historyByProtocol.status,200,JSON.stringify(historyByProtocol.body));
     const evidenceByProtocol = await request(base,'GET',`/api/manifestacoes/${encodeURIComponent(criado.body.protocolo)}/evidencias`,master);
     assert.equal(evidenceByProtocol.status,200,JSON.stringify(evidenceByProtocol.body));
+    await new Promise(resolve => server.close(resolve));
+    server = http.createServer(app);
+    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+    base = `http://127.0.0.1:${server.address().port}`;
+    const reopened = await request(base,'GET',`/api/manifestacoes/${encodeURIComponent(criado.body.protocolo)}/acionamentos`,master);
+    assert.equal(reopened.status,200,JSON.stringify(reopened.body));
+    assert.equal(reopened.body.itens.filter(a=>actionIds.includes(a.ID_ACIONAMENTO)).length,3,'as três ações devem sobreviver à reinicialização da aplicação');
 
     const repetido = await request(base, 'POST', '/api/manifestacoes', master, {
       idempotencyKey:key, empresaReclamada:'CHIACCHIO EMBALAGENS', empresaReclamante:'Outro cliente',

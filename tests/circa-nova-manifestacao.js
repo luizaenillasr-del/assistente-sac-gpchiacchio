@@ -99,6 +99,8 @@ const originalLerAba = sheets.lerAba;
     assert.match(html, /ci\?\.circa/, 'ficha deve ler o envelope CIRCA correto após recarregar');
     assert.match(html, /nmPlanoConducao/, 'Etapa 3 deve exibir plano de condução persistível');
     assert.match(html, /nmConfirmarPlano/, 'Etapa 3 deve confirmar as ações preparadas em conjunto');
+    assert.match(html, /A API confirmou .* ações na leitura de confirmação/, 'Confirmar ações deve verificar a persistência antes de exibir sucesso');
+    assert.match(html, /Nenhum sucesso foi declarado/, 'falha na confirmação das ações não pode ser mascarada');
     assert.match(html, /nmCarregarResponsaveisSetor/, 'responsáveis devem vir do cadastro por setor');
     assert.match(html, /\/api\/aprovadores\/'.*pendencias/, 'pendências devem usar a rota canônica com o sufixo pendencias');
     assert.match(html, /window\.__SAC_PERM_MODULOS/, 'catálogo de permissões deve atravessar os escopos por uma referência global');
