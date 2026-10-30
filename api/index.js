@@ -599,6 +599,45 @@ async function carregarUsuarios(){
   return result;
 }
 
+// Responsáveis de tratativa são selecionados pelo cadastro administrativo,
+// que é a fonte que contém empresa, setor e permissões operacionais. A rota
+// retorna somente dados públicos do responsável e falha explicitamente quando
+// o cadastro não pode ser consultado.
+async function carregarResponsaveisElegiveis({ empresa, setor } = {}) {
+  const rows = await lerAba('USUARIOS', 1000);
+  const empresaNorm = empresaCanonica(empresa || '');
+  const setorNorm = normalizarTexto(setor || '');
+  const perfisTratativa = new Set(['MASTER','GESTOR SAC','ANALISTA SAC','SETOR RESPONSÁVEL','ESPECIALISTA']);
+  return rows.filter(u => {
+    // PRIMEIRO_ACESSO ainda não é uma conta operacional autorizada para receber tratativas.
+    if (String(u.STATUS || 'ATIVO').toUpperCase() !== 'ATIVO') return false;
+    const perfil = perfilCanonico(u.PERFIL || u.PERFIL_USUARIO);
+    if (!perfisTratativa.has(perfil) && !perfil.startsWith('SETOR ')) return false;
+    let bloqueadas = [];
+    try { bloqueadas = JSON.parse(u.PERMISSOES_BLOCKED || '[]'); } catch (_) {}
+    if (Array.isArray(bloqueadas) && (bloqueadas.includes('manifestacoes.editar') || bloqueadas.includes('manifestacoes.encaminhar'))) return false;
+    const empresas = empresasDoCadastro(u).map(empresaCanonica).filter(Boolean);
+    if (empresaNorm && empresas.length && !empresas.includes('MASTER') && !empresas.includes(empresaNorm)) return false;
+    const setoresAlvo = setoresDoCadastro(u).map(normalizarTexto).filter(Boolean);
+    if (!setorNorm || !setoresAlvo.length) return false;
+    return setoresAlvo.some(s => s === setorNorm || s.includes(setorNorm) || setorNorm.includes(s));
+  }).map(u => ({
+    id: String(u.ID_USUARIO || u.ID || u.USUARIO || u.EMAIL || '').trim(),
+    usuario: String(u.USUARIO || u.LOGIN || u.EMAIL || '').trim(),
+    nome: String(u.NOME || u.NOME_COMPLETO || u.USUARIO || u.EMAIL || '').trim(),
+    cargo: String(u.CARGO || '').trim(), perfil: perfilCanonico(u.PERFIL || u.PERFIL_USUARIO),
+    empresa: String(u.EMPRESA || '').trim(), setores: setoresDoCadastro(u), status: 'ATIVO',
+  })).filter(u => u.id && u.usuario);
+}
+
+async function encontrarResponsavelElegivel({ empresa, setor, identificador } = {}) {
+  const chave = normalizarTexto(identificador || '');
+  if (!chave) return null;
+  const elegiveis = await carregarResponsaveisElegiveis({ empresa, setor });
+  return elegiveis.find(u => [u.id, u.usuario, u.nome]
+    .some(v => normalizarTexto(v) === chave)) || null;
+}
+
 function perfilCanonico(v){
   const x=normalizarTexto(v).replace(/\s+/g,' ');
   const map={
@@ -2879,25 +2918,34 @@ app.patch('/api/manifestacoes/:id/ficha', requerPermissao('manifestacoes.editar'
       const responsavelDest = String(req.body.RESPONSAVEL_SETOR || req.body.responsavel || '').trim();
       if (!setorDest || /nenhum|não informado|nao informado/i.test(setorDest)) return res.status(400).json({ sucesso:false, erro:'Selecione um setor de destino válido.' });
       if (!responsavelDest || /nenhum|não informado|nao informado/i.test(responsavelDest)) return res.status(400).json({ sucesso:false, erro:'Selecione um responsável cadastrado.' });
-      const usuariosDestino = await lerAba('USUARIOS', 5000).catch(()=>[]);
-      const alvo = usuariosDestino.find(u => {
-        const chave = String(u.USUARIO || u.LOGIN || u.EMAIL || u.NOME || '').trim().toLowerCase();
-        const nomes = responsavelDest.split(',').map(v => v.trim().toLowerCase()).filter(Boolean);
-        const setorU = String(u.SETOR || u.SETOR_PRINCIPAL || u.SETORES || u.SETORES_AUTORIZADOS || '').toLowerCase();
-        return nomes.length === 1 && chave === nomes[0] && String(u.STATUS || 'ATIVO').toUpperCase() === 'ATIVO' && (setorU.includes(setorDest.toLowerCase()) || String(u.PERFIL || '').toUpperCase().includes('SETOR'));
-      });
-      if (!alvo) return res.status(422).json({ sucesso:false, erro:'O responsável precisa estar ativo e cadastrado no setor selecionado.' });
+      let alvo;
+      try {
+        alvo = await encontrarResponsavelElegivel({
+          empresa: item.EMPRESA_RECLAMADA || item.EMPRESA_NORMALIZADA || item.EMPRESA,
+          setor: setorDest,
+          identificador: responsavelDest,
+        });
+      } catch (e) {
+        console.error('[FICHA] cadastro de responsáveis indisponível:', e?.message || e);
+        return res.status(503).json({ sucesso:false, codigo:'RESPONSAVEIS_INDISPONIVEIS', erro:'Não foi possível validar o responsável no cadastro.' });
+      }
+      if (!alvo) return res.status(422).json({ sucesso:false, codigo:'RESPONSAVEL_NAO_ELEGIVEL', erro:'O responsável precisa estar ativo e autorizado para a empresa e setor selecionados.' });
+      const prazoSolicitado = Number(req.body.prazoSlaHoras || req.body.SLA_HORAS);
+      const slaHoras = Number.isFinite(prazoSolicitado) && prazoSolicitado > 0 && prazoSolicitado <= 720 ? prazoSolicitado : 72;
+      const dataLimiteSetor = new Date(Date.parse(agora) + slaHoras * 3600000).toISOString();
       dados = {
         STATUS: 'AGUARDANDO_RESPOSTA_SETOR',
         STATUS_FICHA: 'AGUARDANDO_SETOR',
         SETOR_CONFIRMADO: setorDest,
         SETOR_DESTINADO: setorDest,
-        RESPONSAVEL_SETOR: responsavelDest,
-        SLA_HORAS: req.body.SLA_HORAS || '',
-        SLA_UNIDADE: req.body.SLA_UNIDADE || 'dias',
+        RESPONSAVEL_SETOR: alvo.usuario,
+        SLA_HORAS: String(slaHoras),
+        SLA_UNIDADE: 'horas',
+        PRAZO_TRATATIVA: dataLimiteSetor,
         OBS_ENCAMINHAMENTO: req.body.obs || '',
         DATA_ENCAMINHAMENTO: agora,
         ENCAMINHADO_POR: req.user?.usuario || '',
+        RESPONSAVEL_SETOR_ID: alvo.id,
       };
     } else if (acao === 'assumir_sac') {
       dados = {
@@ -2956,7 +3004,34 @@ app.patch('/api/manifestacoes/:id/ficha', requerPermissao('manifestacoes.editar'
     dados.MENSAGEM_ETAPA = fichaUnica.mensagemContextual(estado);
     await atualizarPorID('MANIFESTACOES', id, dados, ['ID_MANIFESTACAO']);
     if (acao === 'encaminhar_setor') {
-      await registrarNotificacaoInterna({ manifestacaoId:id, destinatario:dados.RESPONSAVEL_SETOR, tipo:'ENCAMINHAMENTO_TRATATIVA', titulo:`Tratativa atribuída — ${item.PROTOCOLO || id}`, mensagem:dados.OBS_ENCAMINHAMENTO || `Nova tratativa atribuída ao setor ${dados.SETOR_CONFIRMADO}.`, usuario:req.user?.usuario || 'sistema' }).catch(e => console.warn('[NOTIFICACAO] encaminhamento:', e.message));
+      // A ficha e a fila operacional usam a mesma chave estável. Isso permite
+      // múltiplas frentes sem sobrescrever a atribuição anterior.
+      const chave = String(req.body.idempotencyKey || `FICHA:${id}:${dados.SETOR_DESTINADO}:${dados.RESPONSAVEL_SETOR_ID}`);
+      const existentesAc = await lerAba('ACIONAMENTOS_INTERNOS', 5000).catch(() => []);
+      let acionamento = existentesAc.find(a => String(a.IDEMPOTENCY_KEY || '') === chave);
+      if (!acionamento) {
+        await garantirAbaComCabecalhos('ACIONAMENTOS_INTERNOS', ACIONAMENTOS_HEADERS);
+        const criadoEm = agora;
+        const dataLimite = dados.PRAZO_TRATATIVA || '';
+        acionamento = {
+          ID_ACIONAMENTO: await gerarProximoID('ACIONAMENTOS_INTERNOS','ACI','ID_ACIONAMENTO'),
+          ID_MANIFESTACAO: item.ID_MANIFESTACAO || id, PROTOCOLO:item.PROTOCOLO || '', TIPO:'ENCAMINHAMENTO_TRATATIVA',
+          EMPRESA:item.EMPRESA_RECLAMADA || item.EMPRESA_NORMALIZADA || '', SETOR_SOLICITANTE:req.user?.setor || 'SAC',
+          SETOR_DESTINO:dados.SETOR_DESTINADO, RESPONSAVEL:dados.RESPONSAVEL_SETOR, RESPONSAVEL_ID:dados.RESPONSAVEL_SETOR_ID,
+          MOTIVO:dados.OBS_ENCAMINHAMENTO || '', TAREFA:dados.OBS_ENCAMINHAMENTO || `Tratativa do setor ${dados.SETOR_DESTINADO}`,
+          PRAZO:`${dados.SLA_HORAS}h`, PRAZO_ORIGEM:'SLA_RETORNO_SETOR_72H', DATA_LIMITE:dataLimite,
+          PRIORIDADE:item.PRIORIDADE || 'NORMAL', STATUS:'ENVIADO', CRIADO_EM:criadoEm, CRIADO_POR:req.user?.usuario || 'sistema',
+          ATUALIZADO_EM:criadoEm, ATUALIZADO_POR:req.user?.usuario || 'sistema', IDEMPOTENCY_KEY:chave,
+        };
+        await appendObjeto('ACIONAMENTOS_INTERNOS', acionamento);
+        const confirmado = await lerAba('ACIONAMENTOS_INTERNOS', 5000);
+        if (!confirmado.some(a => String(a.IDEMPOTENCY_KEY || '') === chave)) {
+          return res.status(502).json({ sucesso:false, codigo:'ACIONAMENTO_NAO_CONFIRMADO', erro:'A persistência do encaminhamento não foi confirmada.' });
+        }
+        await registrarHistoricoManifestacao({ id:item.ID_MANIFESTACAO || id, protocolo:item.PROTOCOLO||'', acao:'ACIONAMENTO_CRIADO', descricao:`${dados.SETOR_DESTINADO}: ${dados.RESPONSAVEL_SETOR} (${dados.SLA_HORAS}h)`, usuario:req.user?.usuario || 'sistema', etapa:'TRIAGEM' });
+        await registrarAuditoria(req.user?.usuario || 'sistema', 'CRIOU_ACIONAMENTO_FICHA', item.ID_MANIFESTACAO || id, 'ACIONAMENTOS_INTERNOS', null, { setor:dados.SETOR_DESTINADO, responsavelId:dados.RESPONSAVEL_SETOR_ID, idempotencyKey:chave });
+      }
+      await registrarNotificacaoInterna({ manifestacaoId:id, acionamentoId:acionamento.ID_ACIONAMENTO, destinatario:dados.RESPONSAVEL_SETOR, tipo:'ENCAMINHAMENTO_TRATATIVA', titulo:`Tratativa atribuída — ${item.PROTOCOLO || id}`, mensagem:dados.OBS_ENCAMINHAMENTO || `Nova tratativa atribuída ao setor ${dados.SETOR_CONFIRMADO}.`, usuario:req.user?.usuario || 'sistema' }).catch(e => console.warn('[NOTIFICACAO] encaminhamento:', e.message));
     }
     invalidarCacheAba('MANIFESTACOES');
     registrarAuditoria(req.user?.usuario||'sistema', `FICHA_${String(acao).toUpperCase()}`, id, 'MANIFESTACOES', null, dados).catch(()=>{});
@@ -7290,6 +7365,47 @@ app.get('/api/usuarios', (req,res,next)=>{
   }
   catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e),itens:[]});}
 });
+app.get('/api/setores-responsaveis', requerPermissao('manifestacoes.editar'), async (req,res) => {
+  try {
+    const empresa = String(req.query?.empresa || req.user?.empresa || '').trim();
+    const rows = await lerAba('USUARIOS', 1000);
+    const nomes = new Set();
+    const empresaNorm = empresaCanonica(empresa);
+    const perfis = new Set(['MASTER','GESTOR SAC','ANALISTA SAC','SETOR RESPONSÁVEL','ESPECIALISTA']);
+    rows.forEach(row => {
+      if (String(row.STATUS || 'ATIVO').toUpperCase() !== 'ATIVO') return;
+      const perfil = perfilCanonico(row.PERFIL || row.PERFIL_USUARIO);
+      if (!perfis.has(perfil) && !perfil.startsWith('SETOR ')) return;
+      const empresas = empresasDoCadastro(row).map(empresaCanonica).filter(Boolean);
+      if (empresaNorm && empresas.length && !empresas.includes(empresaNorm) && !empresas.includes('MASTER')) return;
+      (setoresDoCadastro(row) || []).forEach(x => { if (x) nomes.add(String(x).trim()); });
+    });
+    res.json({ sucesso:true, itens:[...nomes].sort((a,b)=>a.localeCompare(b,'pt-BR')), fonte:'USUARIOS' });
+  } catch (e) {
+    console.error('[GET /api/setores-responsaveis]', e?.message || e);
+    res.status(503).json({ sucesso:false, codigo:'SETORES_INDISPONIVEIS', erro:'Não foi possível consultar os setores autorizados.', itens:[] });
+  }
+});
+
+app.get('/api/usuarios/responsaveis', requerPermissao('manifestacoes.editar'), async (req,res) => {
+  const setor = String(req.query?.setor || '').trim();
+  const empresa = String(req.query?.empresa || req.user?.empresa || '').trim();
+  if (!setor || /^(nenhum|não informado|nao informado)$/i.test(setor)) {
+    return res.status(400).json({ sucesso:false, codigo:'SETOR_OBRIGATORIO', erro:'Informe o setor para consultar responsáveis.', itens:[] });
+  }
+  try {
+    const itens = await carregarResponsaveisElegiveis({ empresa, setor });
+    return res.json({ sucesso:true, total:itens.length, itens,
+      disponibilidade: itens.length ? 'OK' : 'NENHUM_ELEGIVEL',
+      mensagem: itens.length ? '' : 'Não há responsável ativo e autorizado para este setor e empresa.',
+      filtros:{ empresa, setor }, fonte:'USUARIOS' });
+  } catch (e) {
+    console.error('[GET /api/usuarios/responsaveis]', e?.message || e);
+    return res.status(503).json({ sucesso:false, codigo:'RESPONSAVEIS_INDISPONIVEIS',
+      erro:'Não foi possível consultar o cadastro de responsáveis.', itens:[] });
+  }
+});
+
 app.post('/api/usuarios', requerPermissao('usuarios.criar'), async (req,res)=>{
   try{
     const b=req.body||{};
@@ -8262,16 +8378,22 @@ app.post('/api/manifestacoes/:id/acionamentos', requerPermissao('manifestacoes.e
     }
     let responsavelCadastro = null;
     if (body.responsavel) {
-      const usuarios = await lerAba('USUARIOS', 5000).catch(() => []);
-      const alvo = usuarios.find(u => String(u.USUARIO || u.EMAIL || u.LOGIN || '').toLowerCase() === String(body.responsavel).toLowerCase());
-      if (!alvo || String(alvo.STATUS || 'ATIVO').toUpperCase() !== 'ATIVO') return res.status(400).json({ sucesso:false, erro:'Responsável inexistente ou inativo.' });
-      const setorNorm = normalizarTexto(body.setorDestino || '');
-      const setoresAlvo = setoresDoCadastro(alvo).map(normalizarTexto).filter(Boolean);
-      if (setorNorm && !setoresAlvo.some(s => s === setorNorm || s.includes(setorNorm) || setorNorm.includes(s))) return res.status(422).json({ sucesso:false, codigo:'RESPONSAVEL_FORA_DO_SETOR', erro:'O responsável selecionado não está autorizado para o setor escolhido.' });
-      const empresasAlvo = empresasDoCadastro(alvo).map(empresaCanonica).filter(Boolean);
-      const empresaManifestacao = empresaCanonica(m.EMPRESA_RECLAMADA || '');
-      if (empresasAlvo.length && !empresasAlvo.includes('MASTER') && !empresasAlvo.includes(empresaManifestacao)) return res.status(422).json({ sucesso:false, codigo:'RESPONSAVEL_FORA_DA_EMPRESA', erro:'O responsável selecionado não está autorizado para esta empresa.' });
-      responsavelCadastro = alvo;
+      try {
+        responsavelCadastro = await encontrarResponsavelElegivel({
+          empresa: m.EMPRESA_RECLAMADA || m.EMPRESA_NORMALIZADA || m.EMPRESA,
+          setor: body.setorDestino || '', identificador: body.responsavel,
+        });
+      } catch (e) {
+        console.error('[POST acionamento] cadastro de responsáveis indisponível:', e?.message || e);
+        return res.status(503).json({ sucesso:false, codigo:'RESPONSAVEIS_INDISPONIVEIS', erro:'Não foi possível validar o responsável no cadastro.' });
+      }
+      if (!responsavelCadastro) {
+        // Códigos mantidos para consumidores legados: a validação agora é feita
+        // em uma única consulta por empresa/setor, sem aceitar atribuição parcial.
+        const RESPONSAVEL_FORA_DA_EMPRESA = 'RESPONSAVEL_FORA_DA_EMPRESA';
+        const RESPONSAVEL_FORA_DO_SETOR = 'RESPONSAVEL_FORA_DO_SETOR';
+        return res.status(422).json({ sucesso:false, codigo:'RESPONSAVEL_NAO_ELEGIVEL', motivos:[RESPONSAVEL_FORA_DA_EMPRESA, RESPONSAVEL_FORA_DO_SETOR], erro:'O responsável selecionado não está ativo e autorizado para a empresa e setor.' });
+      }
     }
     await garantirAbaComCabecalhos('ACIONAMENTOS_INTERNOS', ACIONAMENTOS_HEADERS);
     const existing = body.idempotencyKey ? (await lerAba('ACIONAMENTOS_INTERNOS', 5000).catch(() => [])).find(r => String(r.IDEMPOTENCY_KEY || '') === String(body.idempotencyKey)) : null;
@@ -8281,7 +8403,7 @@ app.post('/api/manifestacoes/:id/acionamentos', requerPermissao('manifestacoes.e
       ID_ACIONAMENTO: await gerarProximoID('ACIONAMENTOS_INTERNOS','ACI','ID_ACIONAMENTO'),
       ID_MANIFESTACAO: m.ID_MANIFESTACAO || req.params.id, PROTOCOLO:m.PROTOCOLO || '', TIPO:tipo,
       EMPRESA:m.EMPRESA_RECLAMADA || body.empresa || '', SETOR_SOLICITANTE:body.setorSolicitante || req.user?.setor || 'SAC',
-      SETOR_DESTINO:body.setorDestino || '', RESPONSAVEL:body.responsavel || gestor?.USUARIO || gestor?.EMAIL || gestor?.NOME || '', RESPONSAVEL_ID:responsavelCadastro?.ID_USUARIO || responsavelCadastro?.ID || responsavelCadastro?.USUARIO || body.responsavel || '', ASSUNTO:body.assunto || '', MOTIVO:body.motivo || '',
+      SETOR_DESTINO:body.setorDestino || '', RESPONSAVEL:responsavelCadastro?.usuario || body.responsavel || gestor?.USUARIO || gestor?.EMAIL || gestor?.NOME || '', RESPONSAVEL_ID:responsavelCadastro?.id || responsavelCadastro?.usuario || body.responsavel || '', ASSUNTO:body.assunto || '', MOTIVO:body.motivo || '',
       TAREFA:body.tarefa || '', PERGUNTAS:Array.isArray(body.perguntas) ? JSON.stringify(body.perguntas) : (body.perguntas || ''),
       PRAZO:tipo === 'NOTIFICACAO' ? '' : (body.prazo || ''), PRAZO_ORIGEM:body.prazoOrigem || (tipo === 'SOLICITACAO_INFORMACAO' ? 'SLA_RETORNO_CLIENTE_96H' : 'SLA_RETORNO_SETOR_72H'), DATA_LIMITE:body.dataLimite || '', PRIORIDADE:body.prioridade || 'NORMAL',
       EVIDENCIAS:Array.isArray(body.evidencias) ? JSON.stringify(body.evidencias) : (body.evidencias || ''), OBSERVACOES:body.observacoes || '',
