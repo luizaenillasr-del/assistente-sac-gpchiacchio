@@ -21,6 +21,11 @@ assert.match(apiSource, /PostgreSQL.*fonte primária de autenticação/s);
 assert.match(connectionSource, /connection_limit/);
 assert.match(connectionSource, /pool_timeout/);
 assert.match(connectionSource, /connect_timeout/);
+assert.match(apiSource, /PG_SEED_PERFIS_ON_STARTUP/);
+assert.match(apiSource, /status:\s*'INDISPONIVEL'/);
+assert.match(apiSource, /temporariamente indisponível/);
+assert.match(apiSource, /_sheetsQuotaBlockedUntil/);
+assert.match(apiSource, /fonte:'sheets'/);
 
 const mock = require('./sheets-mock');
 for (const key of Object.keys(require.cache)) {

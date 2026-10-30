@@ -98,8 +98,13 @@ if (PG_LEITURA_ATIVA && process.env.DATABASE_URL && process.env.NODE_ENV !== 'te
     pesquisaRepo = require('../database/repositories/pesquisaRepository');
     solicitacaoRepo = require('../database/repositories/solicitacaoRepository');
     console.info('[PG] Repositórios carregados — leituras via PostgreSQL ativas.');
-    // Garante que os registros básicos de Perfil existam no banco
-    _seedPerfisSeNecessario().catch(e => console.warn('[PG] seed perfis falhou:', e.message));
+    // O seed é uma operação administrativa e não deve ocorrer em cada cold
+    // start da Vercel. Além de pressionar o pool do Neon, ele podia falhar
+    // junto com requests legítimos (por exemplo /api/configuracoes). Execute
+    // explicitamente somente em uma janela de manutenção autorizada.
+    if (String(process.env.PG_SEED_PERFIS_ON_STARTUP || '').toLowerCase() === 'true') {
+      _seedPerfisSeNecessario().catch(e => console.warn('[PG] seed perfis falhou:', e.message));
+    }
   } catch (e) {
     console.warn('[PG] Repositórios não disponíveis, usando Sheets:', e.message);
   }
@@ -1089,12 +1094,14 @@ async function carregarUsuarioPorLogin(login){
 
 async function registrarAcessoUsuario(usuario){
   // F4: atualiza PostgreSQL se disponível
-  try {
-    if (usuarioRepo && usuario._pgId && typeof usuarioRepo.registrarAcesso === 'function') {
+  if (usuarioRepo && usuario._pgId && typeof usuarioRepo.registrarAcesso === 'function') {
+    try {
       await usuarioRepo.registrarAcesso(usuario._pgId);
-      return;
-    }
-  } catch(e) { console.warn('[F4] registrarAcesso PG:', e.message); }
+    } catch(e) { console.warn('[F4] registrarAcesso PG:', e.message); }
+    // Usuários autenticados pela fonte PostgreSQL não devem provocar uma
+    // escrita de fallback no Sheets quando o Neon estiver instável.
+    return;
+  }
   try{
     await atualizarPorID('USUARIOS',usuario.ID_USUARIO||usuario.USUARIO||usuario.EMAIL,{ULTIMO_ACESSO:new Date().toISOString()},['ID_USUARIO','USUARIO','EMAIL']);
   }catch(e){}
@@ -1107,6 +1114,14 @@ async function getSheets() {
 }
 
 async function _sheetsGetComRetry(sheets, params, tentativas = 3) {
+  // Circuito curto para 429: sem ele, cada request concorrente repetia o
+  // mesmo retry e ampliava a janela de quota. Leituras com snapshot em cache
+  // continuam podendo ser atendidas por lerAba; gravações nunca usam cache.
+  if (_sheetsQuotaBlockedUntil > Date.now()) {
+    const erro = new Error('Google Sheets temporariamente limitado por quota.');
+    erro.code = 429;
+    throw erro;
+  }
   let espera = 1000;
   for (let i = 0; i < tentativas; i++) {
     try {
@@ -1114,6 +1129,10 @@ async function _sheetsGetComRetry(sheets, params, tentativas = 3) {
     } catch (e) {
       const status = e?.response?.status || e?.code;
       // Retry apenas em 429 (rate limit) e 503 (serviço indisponível)
+      if (Number(status) === 429) {
+        const retryAfter = Number(e?.response?.headers?.['retry-after'] || e?.response?.headers?.['Retry-After']);
+        _sheetsQuotaBlockedUntil = Date.now() + Math.min(30000, Math.max(5000, Number.isFinite(retryAfter) ? retryAfter * 1000 : 10000));
+      }
       if ((status === 429 || status === 503) && i < tentativas - 1) {
         // Jitter evita que várias renderizações concorrentes repitam juntas.
         const atraso = espera + Math.floor(Math.random() * Math.max(100, espera * 0.25));
@@ -1129,12 +1148,20 @@ async function _sheetsGetComRetry(sheets, params, tentativas = 3) {
 // Cache em memória para leituras do Sheets (60 s TTL) — evita quota exceeded
 const _lerAbaCache = new Map();
 const _lerAbaInFlight = new Map();
+let _sheetsQuotaBlockedUntil = 0;
 const LER_ABA_TTL_MS = 60_000;
-// MANIFESTACOES e USUARIOS são fontes operacionais oficiais. Não mantemos
-// cache dessas abas: uma alteração de status, exclusão lógica ou permissão
-// precisa ser percebida na próxima consulta, inclusive em outra instância
-// serverless, e jamais pode ser mascarada por uma cópia antiga.
-const TTL_POR_ABA = { MANIFESTACOES: 0, USUARIOS: 0, PERMISSOES_USUARIO: 0, CONTADORES_PROTOCOLO: 0 };
+// MANIFESTACOES e CONTADORES_PROTOCOLO são fontes operacionais que precisam
+// ser lidas frescas. USUARIOS e PERMISSOES_USUARIO têm uma janela curta para
+// absorver picos concorrentes de autenticação sem esconder revogações por
+// mais de alguns segundos nesta instância serverless.
+const TTL_POR_ABA = {
+  MANIFESTACOES: 0,
+  // A validação de sessão mantém uma janela curta para reduzir quota sem
+  // deixar uma revogação administrativa persistir indefinidamente.
+  USUARIOS: 15_000,
+  PERMISSOES_USUARIO: 15_000,
+  CONTADORES_PROTOCOLO: 0,
+};
 
 async function lerAba(nomeAba, maxRows) {
   if (_sheetsMock?.lerAba) return _sheetsMock.lerAba(nomeAba, maxRows);
@@ -1696,6 +1723,7 @@ const _STATUS_CACHE_TTL = 2 * 60 * 1000;
 async function verificarStatusUsuario(login) {
   const agora = Date.now();
   const cached = _statusCache.get(login);
+  let erroLeitura = false;
   if (cached && (agora - cached.ts) < _STATUS_CACHE_TTL) return cached;
   // O cadastro administrativo (Sheets) é a fonte autoritativa do status.
   // Antes o PostgreSQL era consultado primeiro, fazendo usuários excluídos ou
@@ -1727,6 +1755,7 @@ async function verificarStatusUsuario(login) {
     // Usuários criados somente no PostgreSQL continuam válidos quando não há
     // espelho administrativo na planilha.
   } catch(e) {
+    erroLeitura = true;
     console.error('[verificarStatusUsuario] Erro ao ler planilha:', e.message || e);
   }
   if (usuarioRepo) {
@@ -1741,7 +1770,10 @@ async function verificarStatusUsuario(login) {
         _statusCache.set(login, entry);
         return entry;
       }
-    } catch (e) { /* fallback abaixo */ }
+    } catch (e) { erroLeitura = true; /* fallback abaixo */ }
+  }
+  if (erroLeitura) {
+    return { status: 'INDISPONIVEL', ts: agora, erroInfra: true, permissoes_granted: null, permissoes_blocked: null, empresa: '', setor: '' };
   }
   try {
     // Se não encontrado no Sheets/PG mas encontrado antes (cache expirado),
@@ -1761,12 +1793,13 @@ async function verificarStatusUsuario(login) {
     }
     return entry;
   } catch(e) {
-    // Falha ao ler Sheets: se houver cache anterior, usa-o para não derrubar sessões ativas.
-    // Se não há cache, nega acesso por segurança.
+    // Falha inesperada ao montar o estado: nunca autorizar sem fonte válida.
     console.error('[verificarStatusUsuario] Erro ao ler planilha:', e.message || e);
-    if (cached) return { ...cached, ts: agora };
-    // JWT já foi validado — se Sheets está indisponível e não há cache, não derruba a sessão
-    return { status: 'ATIVO', ts: agora, permissoes_granted: null, permissoes_blocked: null, empresa: '', setor: '' };
+    // O JWT já foi validado, mas não há fonte confiável para revalidar a sessão.
+    // Nunca autorizar por
+    // ausência de dados: o middleware traduz este estado em 503 para permitir
+    // recuperação sem transformar indisponibilidade em autenticação válida.
+    return { status: 'INDISPONIVEL', ts: agora, erroInfra: true, permissoes_granted: null, permissoes_blocked: null, empresa: '', setor: '' };
   }
 }
 
@@ -1798,6 +1831,9 @@ app.use('/api', async (req,res,next)=>{
   if(!payload) return res.status(401).json({sucesso:false,erro:'Sessão inválida ou expirada.'});
   // Item10: verificar se usuário ainda está ativo (detecta desativação pós-login)
   const infoAtual = await verificarStatusUsuario(payload.usuario);
+  if (infoAtual.erroInfra || String(infoAtual.status || '').toUpperCase() === 'INDISPONIVEL') {
+    return res.status(503).json({ sucesso:false, erro:'Serviço de autenticação temporariamente indisponível. Tente novamente.' });
+  }
   if (['INATIVO','BLOQUEADO','EXCLUIDO'].includes(String(infoAtual.status || '').toUpperCase())) {
     _statusCache.delete(payload.usuario); // forçar re-verificação na próxima vez
     return res.status(401).json({sucesso:false,erro:'Acesso revogado. Sessão encerrada.'});
@@ -1947,6 +1983,15 @@ app.post('/api/auth/login', async (req, res) => {
       registrarAcessoUsuario(registro).catch(e=>console.warn('[LOGIN] registrarAcesso falhou:',e.message));
       registrarAuditoria(pub.usuario,'LOGIN',null,'AUTH',null,{perfil:pub.perfil}).catch(()=>{});
     }
+    // Reaproveita a validação recém-concluída no primeiro request autenticado
+    // e evita uma leitura imediata adicional da aba USUARIOS.
+    _statusCache.set(pub.usuario, {
+      status: String(pub.status || 'ATIVO').toUpperCase(),
+      ts: Date.now(),
+      permissoes_granted: pub.permissoes_granted || null,
+      permissoes_blocked: pub.permissoes_blocked || null,
+      empresa: pub.empresa || '', setor: pub.setor || '',
+    });
     res.json({ sucesso:true, token:assinarToken(payload), usuario:pub.usuario, usuarioInfo:{...pub, primeiro_acesso: primeroAcesso || undefined, perfilProfissionalCompleto: profissionalCompleto}, modo:isDemo?'DEMO':'PRODUCAO' });
   } catch (e) {
     console.error(e);
@@ -2351,10 +2396,27 @@ app.get('/api/dashboard-resumo', requerPermissao('dashboard.visualizar'), middle
     if (manifestacaoRepo && typeof manifestacaoRepo.aggregateDashboard === 'function') {
       const _isMaster = perfilCanonico(req.user?.perfil) === 'MASTER';
       const empresaId = _isMaster ? null : await resolverEmpresaIdScope(req.user?.empresa);
-      const agg = await manifestacaoRepo.aggregateDashboard({ empresaId });
-      return res.json({ sucesso: true, fonte: 'postgresql', ...agg });
+      try {
+        const agg = await manifestacaoRepo.aggregateDashboard({ empresaId });
+        return res.json({ sucesso: true, fonte: 'postgresql', ...agg });
+      } catch (e) {
+        // O Postgres é uma projeção opcional; sua indisponibilidade não pode
+        // derrubar a Central quando MANIFESTACOES tem uma fonte operacional
+        // válida no Sheets. Não expor o erro nem misturar resultados parciais.
+        console.warn('[DASHBOARD] agregação PG indisponível; usando Sheets:', e.message);
+      }
     }
-    return res.status(503).json({ sucesso: false, erro: 'Agregação Postgres indisponível (rode em modo PG).' });
+    let itens = await lerManifestacoesOperacionais(5000);
+    if (perfilCanonico(req.user?.perfil) !== 'MASTER') {
+      itens = filtrarPorEmpresaHistorico(itens, req, COLUNA_EMPRESA_ABA.MANIFESTACOES);
+    }
+    const total = itens.length;
+    const encerradas = itens.filter(i => ['ENCERRADA','FINALIZADA','CONCLUIDA'].includes(String(i.STATUS || '').toUpperCase())).length;
+    const contar = campo => itens.reduce((acc, item) => {
+      const chave = item[campo] || '(sem)'; acc[chave] = (acc[chave] || 0) + 1; return acc;
+    }, {});
+    return res.json({ sucesso:true, fonte:'sheets', total, encerradas, emAberto:total-encerradas,
+      porStatus:contar('STATUS'), porTipo:contar('TIPO'), porEmpresa:contar('EMPRESA_RECLAMADA') });
   } catch (e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e) }); }
 });
 
