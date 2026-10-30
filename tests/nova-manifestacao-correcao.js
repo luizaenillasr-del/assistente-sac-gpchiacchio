@@ -61,12 +61,12 @@ function request(base, method, route, auth, body) {
     });
     assert.equal(draft.status, 200, JSON.stringify(draft.body)); draftId=draft.body.id;
     let draftRow=mock.DB.MANIFESTACOES.find(r=>r.ID_MANIFESTACAO===draftId);
-    assert.equal(draftRow.PRIORIDADE,'ALTA'); assert.equal(draftRow.DESCRICAO,'Relato original completo do rascunho que deve permanecer intacto após atualizações parciais.');
+    assert.equal(draftRow.PRIORIDADE,'ALTA'); assert.equal(draftRow.DESCRICAO,'Relato original completo do rascunho que deve permanecer intacto após atualizações parciais.'); assert.equal(draftRow.DESCRICAO_RECLAMACAO,'Relato original completo do rascunho que deve permanecer intacto após atualizações parciais.');
     draftRow.ANALISE_IA=JSON.stringify({hipoteses:['hipotese-preservada'],decisaoEtapa2:{status:'PENDENTE_VALIDACAO'}});
     const patchDraft=await request(base,'PATCH',`/api/manifestacoes/${encodeURIComponent(draftId)}/circa-dados`,master,{descricao:'Relato alterado somente no campo permitido.',empresaReclamante:'',analiseIA:JSON.stringify({orientacoes:['orientacao-nova']}),ultimaEdicaoConhecida:draft.body.atualizadoEm});
     assert.equal(patchDraft.status,200,JSON.stringify(patchDraft.body));
     draftRow=mock.DB.MANIFESTACOES.find(r=>r.ID_MANIFESTACAO===draftId);
-    assert.equal(draftRow.DESCRICAO,'Relato alterado somente no campo permitido.'); assert.equal(draftRow.PRODUTO,'Potes'); assert.equal(draftRow.LOTE,'L-9'); assert.equal(draftRow.NFE,'NF-9'); assert.equal(draftRow.CANAL,'TELEFONE'); assert.equal(draftRow.EMPRESA_RECLAMANTE,'Cliente Rascunho');
+    assert.equal(draftRow.DESCRICAO,'Relato alterado somente no campo permitido.'); assert.equal(draftRow.DESCRICAO_RECLAMACAO,'Relato original completo do rascunho que deve permanecer intacto após atualizações parciais.'); assert.equal(draftRow.PRODUTO,'Potes'); assert.equal(draftRow.LOTE,'L-9'); assert.equal(draftRow.NFE,'NF-9'); assert.equal(draftRow.CANAL,'TELEFONE'); assert.equal(draftRow.EMPRESA_RECLAMANTE,'Cliente Rascunho');
     const analiseRascunho=JSON.parse(draftRow.ANALISE_IA); assert.deepEqual(analiseRascunho.hipoteses,['hipotese-preservada']); assert.deepEqual(analiseRascunho.orientacoes,['orientacao-nova']); assert.equal(analiseRascunho.decisaoEtapa2.status,'PENDENTE_VALIDACAO');
     const stale=await request(base,'PATCH',`/api/manifestacoes/${encodeURIComponent(draftId)}/circa-dados`,master,{produto:'Outro',ultimaEdicaoConhecida:draft.body.atualizadoEm});
     assert.equal(stale.status,409,'gravação com versão antiga deve ser rejeitada sem sobrescrever dados');
@@ -105,6 +105,10 @@ function request(base, method, route, auth, body) {
     assert.equal(row.STATUS, 'AGUARDANDO_TRIAGEM_SAC');
     assert.equal(row.PROTOCOLO, criado.body.protocolo);
     assert.match(row.DESCRICAO, /atrasou três dias/i, 'o rascunho deve persistir o relato completo');
+    assert.match(row.DESCRICAO_RECLAMACAO, /atrasou três dias/i, 'o alias legado do relato deve persistir o mesmo conteúdo');
+    assert.match(row.DESCRICAO_ORIGINAL, /atrasou três dias/i, 'a cópia de relato original deve persistir o mesmo conteúdo');
+    assert.equal(row.EMPRESA_NORMALIZADA, 'CHIACCHIO EMBALAGENS');
+    assert.ok(row.DATA_CRIACAO, 'a data de criação deve ser persistida');
     assert.equal(row.CANAL, 'TELEFONE', 'o rascunho deve persistir o canal selecionado');
     assert.ok(!String(row.ANEXOS).includes('dataBase64'), 'Base64 não pode ser gravado na ficha');
     assert.ok(String(row.ANEXOS).includes('evidencia.txt'), 'metadado do anexo deve permanecer vinculado');
