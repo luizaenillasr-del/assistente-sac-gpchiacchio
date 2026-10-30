@@ -19,10 +19,18 @@ const usuarioRepository = {
 
   async findByLogin(login) {
     const norm = login.toLowerCase().trim();
-    return prisma.usuario.findFirst({
+    const exact = await prisma.usuario.findFirst({
       where: {
         OR: [{ email: norm }, { nome: { contains: norm, mode: 'insensitive' } }],
       },
+      include: { perfil: true, empresa: true },
+    });
+    if (exact) return exact;
+    // O login legado é a parte anterior ao domínio do e-mail e não possui
+    // coluna própria no PostgreSQL. Permitir essa consulta evita recorrer ao
+    // Sheets em todo login de usuário legado.
+    return prisma.usuario.findFirst({
+      where: { email: { startsWith: `${norm}@`, mode: 'insensitive' } },
       include: { perfil: true, empresa: true },
     });
   },
