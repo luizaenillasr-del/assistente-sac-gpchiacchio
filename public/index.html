@@ -29082,6 +29082,25 @@ function updateTopbarUser(user) {
   let _usuGranted = new Set();
   let _usuBlocked = new Set();
   let _usuPermissoesOriginais = { granted: '[]', blocked: '[]' };
+  let _usuEscopo = { status: 'idle', request: 0, usuario: null };
+
+  function _usuEscopoLista(...valores) {
+    const out=[];
+    const add=v=>{
+      if (Array.isArray(v)) return v.forEach(add);
+      if (v && typeof v==='object') return Object.values(v).forEach(add);
+      const s=String(v??'').trim(); if(!s)return;
+      try { const parsed=JSON.parse(s); if(parsed!==v) return add(parsed); } catch(_) {}
+      s.split(/[;,|\n]+/).map(x=>x.trim()).filter(Boolean).forEach(x=>out.push(x));
+    };
+    valores.forEach(add);
+    return [...new Set(out)];
+  }
+  function _usuEscopoNorm(v) {
+    return String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase()
+      .replace(/\bembalagens?\b/g,'').replace(/\s+/g,' ')
+      .replace(/^tubahia\s*\/\s*cesbap$/,'tubahia').trim();
+  }
 
   function _permDefault(perfil, chave) {
     const p = (perfil||'').toUpperCase();
@@ -29230,6 +29249,7 @@ function updateTopbarUser(user) {
   window.usuAbrir = function(idOuObj) {
     const u = idOuObj == null ? null : (typeof idOuObj === 'string' ? window._usuMap[idOuObj] : idOuObj);
     _usuEditando = u;
+    _usuEscopo = { status: 'loading', request: _usuEscopo.request + 1, usuario: u };
     const adminActions = document.getElementById('usu-acoes-admin');
     const statusButton = document.getElementById('usu-btn-status');
     if (adminActions) adminActions.style.display = u ? 'flex' : 'none';
@@ -29275,7 +29295,7 @@ function updateTopbarUser(user) {
     m.style.alignItems = 'center';
     m.style.justifyContent = 'center';
   };
-  window.fecharModalUsuario = function() { document.getElementById('modal-usuario').style.display='none'; };
+  window.fecharModalUsuario = function() { _usuEscopo = { status:'idle', request:_usuEscopo.request+1, usuario:null }; document.getElementById('modal-usuario').style.display='none'; };
 
   window.usuModalTab = function(tab, btn) {
     ['dados','permissoes','escopo','historico'].forEach(function(t) {
@@ -29386,12 +29406,14 @@ function updateTopbarUser(user) {
   };
 
   function usuCarregarEscopo(u) {
+    const request = _usuEscopo.request;
     const empresasEl = document.getElementById('usu-empresas-checks');
     if(empresasEl) {
       const EMPRESAS = ['Chiacchio Embalagens','Plaschio','Tubahia'];
-      const atual = (u&&(u.EMPRESA||u.empresa)||'').split(/[,;|]/).map(function(s){return s.trim().toLowerCase();});
+      const atual = _usuEscopoLista(u?.EMPRESA,u?.empresa,u?.EMPRESAS,u?.empresas,u?.EMPRESAS_JSON,u?.empresasJson);
+      const atualNorm = new Set(atual.map(_usuEscopoNorm));
       empresasEl.innerHTML = EMPRESAS.map(function(e) {
-        return '<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" onchange="usuEmpresaEscopoChanged()" value="' + esc5(e) + '" ' + (atual.includes(e.toLowerCase())?'checked':'') + '> ' + esc5(e) + '</label>';
+        return '<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" onchange="usuEmpresaEscopoChanged()" value="' + esc5(e) + '" ' + (atualNorm.has(_usuEscopoNorm(e))?'checked':'') + '> ' + esc5(e) + '</label>';
       }).join('');
       // Corrige registros legados: empresa definida não deve permanecer em
       // PRIMEIRO_ACESSO aguardando uma aprovação que não existe mais.
@@ -29404,13 +29426,25 @@ function updateTopbarUser(user) {
     }
     const setoresEl = document.getElementById('usu-setores-checks');
     if(setoresEl) {
+      setoresEl.innerHTML='<div style="color:#707070;font-size:12px">Carregando setores autorizados...</div>';
       _apiFetch('/api/setores').then(function(d) {
-        const SETORES = [...new Set((d.setores||d.itens||[]).map(function(s){return String(s.SETOR||s.NOME||s.nome||'').trim();}).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
-        const atual = [...new Set((u&&(u.SETOR||u.setor)||'').split(',').map(function(s){return s.trim();}).filter(Boolean))];
+        if(request!==_usuEscopo.request || _usuEditando!==u) return;
+        const atual = _usuEscopoLista(u?.SETOR,u?.setor,u?.SETORES,u?.setores,u?.SETORES_AUTORIZADOS,u?.setoresAutorizados);
+        const catalogo=(d.setores||d.itens||[]).map(function(s){return String(s.SETOR||s.NOME||s.nome||'').trim();}).filter(Boolean);
+        // Mantém valores persistidos que não estejam no catálogo atual visíveis,
+        // evitando que uma releitura incompleta os transforme em escopo vazio.
+        const SETORES = [...new Set([...catalogo,...atual])].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+        const atualNorm = new Set(atual.map(_usuEscopoNorm));
         setoresEl.innerHTML = SETORES.map(function(s) {
-          return '<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" value="' + esc5(s) + '" ' + (atual.includes(s)?'checked':'') + '> ' + esc5(s) + '</label>';
+          return '<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" value="' + esc5(s) + '" ' + (atualNorm.has(_usuEscopoNorm(s))?'checked':'') + '> ' + esc5(s) + '</label>';
         }).join('');
-      }).catch(function(){ setoresEl.innerHTML='<div style="color:#707070;font-size:12px">Setores indisponíveis.</div>'; });
+        _usuEscopo.status='ready';
+      }).catch(function(e){
+        if(request!==_usuEscopo.request || _usuEditando!==u) return;
+        _usuEscopo.status='error';
+        setoresEl.innerHTML='<div style="color:#C70602;font-size:12px">Não foi possível ler os setores. Nenhuma alteração de escopo será salva.</div>';
+        const msg=document.getElementById('modal-usu-msg'); if(msg){msg.style.color='#C70602';msg.textContent=e?.message||'Cadastro de setores indisponível.';}
+      });
     }
     const compEl = document.getElementById('usu-competencias');
     if(compEl) compEl.value = u&&(u.CODIGO_RCA||u.codigoRCA||u.COMPETENCIAS||u.competencias)||'';
@@ -29465,6 +29499,11 @@ function updateTopbarUser(user) {
       return;
     }
 
+    if (_usuEscopo.status !== 'ready') {
+      if(msg){msg.style.color='#C70602';msg.textContent='Aguarde a leitura completa do escopo antes de salvar. Nenhuma seleção foi alterada.';}
+      return;
+    }
+
     const empresas = Array.from(document.querySelectorAll('#usu-empresas-checks input:checked')).map(function(i){return i.value;}).join(',');
     const setores = Array.from(document.querySelectorAll('#usu-setores-checks input:checked')).map(function(i){return i.value;}).join(',');
     const comp = document.getElementById('usu-competencias').value.trim();
@@ -29485,7 +29524,7 @@ function updateTopbarUser(user) {
       let data;
       const editId = _usuEditando && (_usuEditando.ID_USUARIO||_usuEditando.id||_usuEditando.USUARIO||_usuEditando.usuario);
       if(_usuEditando) {
-        const body = { nome, email, perfil, cargo, status: statusEfetivo, empresa: empresas, setor: setores, observacoes: obs };
+        const body = { nome, email, perfil, cargo, status: statusEfetivo, empresa: empresas, setor: setores, escopoConfirmado: true, observacoes: obs };
         if(senha) body.senha = senha;
         data = await _apiFetch('/api/usuarios/' + encodeURIComponent(editId), 0, {
           method:'PATCH',
@@ -29524,7 +29563,7 @@ function updateTopbarUser(user) {
         data = await _apiFetch('/api/usuarios', 0, {
           method:'POST',
           headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ nome, email, usuario, perfil, cargo, status: statusEfetivo, empresa: empresas, setor: setores, senha, codigoRCA: comp,
+          body: JSON.stringify({ nome, email, usuario, perfil, cargo, status: statusEfetivo, empresa: empresas, setor: setores, escopoConfirmado: true, senha, codigoRCA: comp,
             permissoes_granted: Array.from(_usuGranted), permissoes_blocked: Array.from(_usuBlocked), observacoes: obs }),
         });
       }

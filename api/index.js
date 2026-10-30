@@ -7468,19 +7468,26 @@ app.patch('/api/usuarios/:id', requerPermissao('usuarios.editar'), async (req,re
     const alvoCache = precisaInvalidarSessao
       ? encontrarUsuarioPorIdentificador(await carregarUsuarios(), req.params.id)
       : null;
+    const escopoConfirmado = req.body?.escopoConfirmado === true;
     // Whitelist de campos permitidos — impede mass assignment
     const dados={};
     if(b.nome!==undefined) dados.NOME=b.nome;
     if(b.email!==undefined) dados.EMAIL=b.email;
     if(b.cargo!==undefined||b.CARGO!==undefined) dados.CARGO=String(b.cargo??b.CARGO??'').trim();
-    if(b.setor!==undefined) dados.SETOR=b.setor;
+    if(b.setor!==undefined) {
+      const setorRecebido = String(b.setor || '').trim();
+      // Uma falha de carregamento da tela não pode apagar um escopo existente.
+      // A limpeza intencional precisa vir acompanhada da confirmação explícita.
+      dados.SETOR = setorRecebido || (escopoConfirmado ? '' : String(alvoCache?.SETOR || alvoCache?.SETORES || '').trim());
+    }
     if(b.status!==undefined) dados.STATUS=String(b.status).toUpperCase();
     if(b.codigoRCA!==undefined) dados.CODIGO_RCA=b.codigoRCA;
     if(b.perfil||b.PERFIL) dados.PERFIL=perfilCanonico(b.perfil||b.PERFIL);
     if(b.empresa!==undefined||b.EMPRESA!==undefined) {
       // Preserva os nomes originais (display names) para que o escopo do usuário
       // seja recarregado corretamente no frontend (checkboxes) sem precisar reverter canonização
-      dados.EMPRESA = String(b.empresa||b.EMPRESA||'').trim();
+      const empresaRecebida = String(b.empresa||b.EMPRESA||'').trim();
+      dados.EMPRESA = empresaRecebida || (escopoConfirmado ? '' : String(alvoCache?.EMPRESA || alvoCache?.EMPRESAS || alvoCache?.EMPRESAS_JSON || '').trim());
       const empresas = empresasCanonicas(dados.EMPRESA);
       const perfilAlvo = perfilCanonico(b.perfil || b.PERFIL || '');
       if (dados.EMPRESA && !empresas.length) return res.status(400).json({sucesso:false,erro:'Empresa inválida. Selecione uma empresa cadastrada.'});
@@ -7566,8 +7573,11 @@ app.patch('/api/usuarios/:id', requerPermissao('usuarios.editar'), async (req,re
         _statusCache.delete(normalizarTexto(chave));
       });
     invalidarCacheAba('USUARIOS');
+    const confirmados = await carregarUsuarios();
+    const confirmado = encontrarUsuarioPorIdentificador(confirmados, req.params.id);
+    if (!confirmado) return res.status(503).json({sucesso:false, codigo:'USUARIO_NAO_CONFIRMADO', erro:'A alteração não foi confirmada na releitura do cadastro.'});
     await registrarAuditoria(req.user.usuario,'ATUALIZOU_USUARIO',req.params.id,'USUARIOS',null,{campos:Object.keys(b)});
-    res.json({sucesso:true});
+    res.json({sucesso:true, usuario:usuarioPublico(confirmado)});
   }catch(e){
     console.error('[PATCH /api/usuarios/:id]', e?.message, e?.response?.status);
     const st = e?.response?.status || e?.code;
