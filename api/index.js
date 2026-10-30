@@ -2575,7 +2575,7 @@ app.post('/api/manifestacoes', requerPermissao('manifestacoes.abrir'), async (re
     registrarHistoricoManifestacao({
       id, protocolo, usuario:usuario||req.user?.usuario||'sistema', etapa:rascunho ? 1 : 2,
       acao:rascunho ? 'SALVOU_RASCUNHO' : 'REGISTROU_MANIFESTACAO',
-      descricao:rascunho ? 'Rascunho salvo sem protocolo definitivo.' : 'Manifestação recebida e encaminhada para triagem SAC.'
+      descricao:rascunho ? `Rascunho persistido. Identificador técnico: ${id}. Protocolo definitivo ainda não gerado.` : 'Manifestação recebida e encaminhada para triagem SAC.'
     });
     // Executar análise de IA — rascunho pula análise (evita timeout Vercel de 60s)
     const decisaoCompleta = req.body.decisaoCompleta;
@@ -7888,6 +7888,7 @@ app.patch('/api/manifestacoes/:id/circa-dados', requerPermissao('manifestacoes.e
     }
     let decisaoEtapa2Audit = null;
     let complementacoesEsperadas = null;
+    let complementacoesAudit = null;
     if (Object.prototype.hasOwnProperty.call(req.body || {}, 'CHECKLIST_CIRCA') || Object.prototype.hasOwnProperty.call(req.body || {}, 'PENDENCIAS_VALIDACAO_HUMANA')) {
       if (!m.ID_MANIFESTACAO) return res.status(409).json({sucesso:false,erro:'A manifestação ainda não possui ID persistido.'});
       let meta={}; try { meta=JSON.parse(m.ANALISE_IA||'{}'); } catch (_) {}
@@ -7927,6 +7928,7 @@ app.patch('/api/manifestacoes/:id/circa-dados', requerPermissao('manifestacoes.e
         if (!patchAnalise.complementacoes || typeof patchAnalise.complementacoes !== 'object' || Array.isArray(patchAnalise.complementacoes)) return res.status(400).json({sucesso:false,erro:'Complementações inválidas.'});
         const anteriores = base.complementacoes && typeof base.complementacoes === 'object' ? base.complementacoes : {};
         const normalizadas = { ...anteriores };
+        const alteracoes = [];
         for (const [campo, valor] of Object.entries(patchAnalise.complementacoes)) {
           if (!/^[A-Za-z][A-Za-z0-9_]{1,60}$/.test(campo) || !valor || typeof valor !== 'object') return res.status(400).json({sucesso:false,erro:'Campo de complementação inválido.'});
           const status = String(valor.status || 'PENDENTE').toUpperCase();
@@ -7939,9 +7941,24 @@ app.patch('/api/manifestacoes/:id/circa-dados', requerPermissao('manifestacoes.e
             evidencias: String(valor.evidencias || '').slice(0, 1000), origem: ['CLIENTE','ANALISTA'].includes(String(valor.origem || '').toUpperCase()) ? String(valor.origem).toUpperCase() : 'ANALISTA',
             atualizadoPor: req.user?.usuario || req.user?.login || 'sistema', atualizadoEm: new Date().toISOString(),
           };
+          const anterior = anteriores[campo] || {};
+          alteracoes.push({
+            campo,
+            valorAnterior: anterior.valor ?? '',
+            valor: normalizadas[campo].valor,
+            situacaoAnterior: anterior.status || 'AUSENTE',
+            situacao: normalizadas[campo].status,
+            justificativa: normalizadas[campo].justificativa,
+            evidencias: normalizadas[campo].evidencias,
+          });
         }
         base.complementacoes = normalizadas;
         complementacoesEsperadas = normalizadas;
+        complementacoesAudit = {
+          campos: alteracoes,
+          usuario: req.user?.usuario || req.user?.login || 'sistema',
+          data: new Date().toISOString(),
+        };
         delete patchAnalise.complementacoes;
       }
       const atual = base.decisaoEtapa2 && typeof base.decisaoEtapa2 === 'object' ? base.decisaoEtapa2 : {};
@@ -8020,6 +8037,16 @@ app.patch('/api/manifestacoes/:id/circa-dados', requerPermissao('manifestacoes.e
     }
     if (req.body?.finalizar && patch.IDEMPOTENCY_KEY) {
       await protocoloAtomico.confirmarPersistencia(patch.IDEMPOTENCY_KEY,m.ID_MANIFESTACAO||idReq);
+    }
+    if (complementacoesAudit?.campos?.length) {
+      await registrarHistoricoManifestacao({
+        id:m.ID_MANIFESTACAO||idReq,
+        protocolo:patch.PROTOCOLO||m.PROTOCOLO||'',
+        usuario:complementacoesAudit.usuario,
+        etapa:'2',
+        acao:'COMPLEMENTACOES_CIRCA_ATUALIZADAS',
+        descricao:JSON.stringify(complementacoesAudit),
+      });
     }
     await registrarHistoricoManifestacao({id:m.ID_MANIFESTACAO||idReq,protocolo:patch.PROTOCOLO||m.PROTOCOLO||'',usuario:req.user?.usuario||'sistema',etapa:patch.ETAPA_ATUAL||m.ETAPA_ATUAL||'',acao:'ATUALIZOU_CARD_CIRCA',descricao:'Dados operacionais atualizados no novo card.'});
     if (decisaoEtapa2Audit) await registrarHistoricoManifestacao({ id:m.ID_MANIFESTACAO||idReq, protocolo:patch.PROTOCOLO||m.PROTOCOLO||'', usuario:decisaoEtapa2Audit.revisadoPor, etapa:'2', acao:'REVISOU_ANALISE_CIRCA', descricao:`Estado ${decisaoEtapa2Audit.status || 'REVISADA'} registrado no servidor.` });
