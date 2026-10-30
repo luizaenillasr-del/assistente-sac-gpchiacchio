@@ -29,8 +29,8 @@ assert.deepEqual(
 );
 assert.ok(circa.classificarHipoteses(fichaLegada).every(item => item.confirmada === false));
 
-const resultado = circa.analisar({ manifestacao: fichaLegada, tratamentos: [] });
-assert.deepEqual(resultado.analiseEstruturada.informacoesAusentes, []);
+const resultado = circa.analisar({ manifestacao: fichaLegada, categoriasDisponiveis: [{ categoria: 'Qualidade', subcategorias: ['Defeito de produto'] }], tratamentos: [] });
+assert.deepEqual(resultado.analiseEstruturada.informacoesAusentes, ['CATEGORIA']);
 assert.deepEqual(resultado.analiseEstruturada.procedimentosAplicaveis, [], 'sem regra válida não há procedimento recomendado');
 assert.deepEqual(resultado.analiseEstruturada.setoresRecomendados, [], 'setor não pode ser inferido de palavras do relato');
 assert.match(resultado.analiseEstruturada.confianca, /SEM_BASE|APOIO/);

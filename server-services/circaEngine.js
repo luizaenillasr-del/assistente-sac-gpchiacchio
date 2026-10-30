@@ -45,6 +45,20 @@ function normalizarManifestacao(manifestacao = {}) {
   return m;
 }
 
+function aplicarComplementacoes(manifestacao = {}, complementacoes = {}) {
+  const m = { ...manifestacao };
+  const campos = { quantidade: 'QUANTIDADE', categoria: 'CATEGORIA', subcategoria: 'SUBCATEGORIA', situacaoOcorrencia: 'SITUACAO_OCORRENCIA', dataInicio: 'DATA_INICIO_OCORRENCIA' };
+  Object.entries(campos).forEach(([chave, destino]) => {
+    // O armazenamento usa o nome canônico em maiúsculas, enquanto versões
+    // antigas do formulário enviavam camelCase. Aceitar ambos mantém a
+    // recuperação compatível sem alterar o relato original.
+    const item = complementacoes?.[destino] || complementacoes?.[chave] || (chave === 'dataInicio' ? complementacoes?.DATA_INICIO : null);
+    if (!item || item.status !== 'PREENCHIDA' || item.valor == null || String(item.valor).trim() === '') return;
+    m[destino] = item.valor;
+  });
+  return m;
+}
+
 function missingFields(manifestacao) {
   const fields = Object.entries(FIELD_ALIASES);
   return fields.filter(([, keys]) => !first(manifestacao, keys)).map(([name]) => name);
@@ -69,13 +83,13 @@ function identificarProblemas(manifestacao = {}) {
       validacaoHumana: 'PENDENTE',
     });
   };
-  if (/\b(quantidade|qtd|inferior|faltou|faltante|unidades?|recebid[oa]s? a menos|divergenc\w* de quantidade)/.test(descricao)) {
+  if (/\b(quantidade|qtd|faltou|faltante|recebid[oa]s? a menos|mais unidades|menos unidades|divergenc\w* de quantidade)/.test(descricao)) {
     adicionar({ codigo: 'DIVERGENCIA_QUANTIDADE', descricao: 'Possível divergência entre quantidade solicitada, faturada e entregue', investigacao: ['pedido', 'faturamento', 'separação', 'expedição', 'entrega'], evidenciasPendentes: ['pedido ou NF', 'quantidade entregue'] });
   }
   if (/\b(atras|entreg|prazo|logistic|pedido|transport|dias? depois)\w*/.test(descricao)) {
     adicionar({ codigo: 'ATRASO_LOGISTICO', descricao: 'Possível atraso logístico na entrega', investigacao: ['prazo acordado', 'expedição', 'transporte', 'comprovante de entrega'], evidenciasPendentes: ['prazo contratado', 'comprovante de entrega'] });
   }
-  if (/(tamp|encaix|pote|produto|defeit|nao conform|conformidade|qualidade|embalagen)/.test(descricao)) {
+  if (/(tamp|encaix|pote|sacol|espess|rasg|produto|defeit|nao conform|conformidade|qualidade|embalagen)/.test(descricao)) {
     adicionar({ codigo: 'NAO_CONFORMIDADE_PRODUTO', descricao: 'Possível não conformidade do produto ou da embalagem', investigacao: ['lote', 'especificação', 'quantidade afetada', 'inspeção'], evidenciasPendentes: ['lote', 'fotos ou amostras'] });
   }
   return problemas;
@@ -86,21 +100,33 @@ function classificarHipoteses(manifestacao = {}) {
 }
 
 function analisar(input = {}) {
-  const m = normalizarManifestacao(input.manifestacao || {});
+  const complementacoes = input.complementacoes && typeof input.complementacoes === 'object' ? input.complementacoes : {};
+  const m = aplicarComplementacoes(normalizarManifestacao(input.manifestacao || {}), complementacoes);
   const similares = Array.isArray(input.similares) ? input.similares : [];
   const tratamentos = Array.isArray(input.tratamentos) ? input.tratamentos : [];
   const causas = Array.isArray(input.causas) ? input.causas : [];
+  const categoriasDisponiveis = Array.isArray(input.categoriasDisponiveis) ? input.categoriasDisponiveis : [];
   const tratativa = input.tratativa || {};
   const devolutiva = input.devolutiva || {};
   const status = norm(m.STATUS);
   const encerrada = ['encerrada', 'fechada', 'finalizada', 'resolvida'].includes(status);
   const faltantes = missingFields(m);
+  const descricaoNorm = norm(first(m, FIELD_ALIASES.descricao));
+  const quantidadeInformadaNoRelato = /\b(quantidade|qtd|faltante|faltou|recebid[oa]s? a menos|mais unidades|menos unidades)\b/.test(descricaoNorm);
+  if (!first(m, ['QUANTIDADE', 'QUANTIDADE_TOTAL', 'quantidade']) && quantidadeInformadaNoRelato) faltantes.push('QUANTIDADE');
+  if (!first(m, ['CATEGORIA', 'categoria']) && categoriasDisponiveis.length) faltantes.push('CATEGORIA');
+  const categoriaAtual = first(m, ['CATEGORIA', 'categoria']);
+  const categoriaCadastro = categoriasDisponiveis.find(item => norm(item?.categoria || item?.CATEGORIA) === norm(categoriaAtual));
+  if (categoriaAtual && categoriaCadastro && Array.isArray(categoriaCadastro.subcategorias) && categoriaCadastro.subcategorias.length && !first(m, ['SUBCATEGORIA', 'subcategoria'])) faltantes.push('SUBCATEGORIA');
+  if (!first(m, ['SITUACAO_OCORRENCIA', 'situacaoOcorrencia']) && /\b(atual|atualmente|desde|ocorreu|ocorr[eê]ncia|recorrente|novamente|passad[oa]|resolvid[oa])\b/.test(descricaoNorm)) faltantes.push('SITUACAO_OCORRENCIA');
+  if (!first(m, ['DATA_INICIO_OCORRENCIA', 'dataInicio']) && /\b(desde|em\s+\d{1,2}[\/-]\d{1,2}|no dia|ocorreu em)\b/.test(descricaoNorm)) faltantes.push('DATA_INICIO');
+  const faltantesUnicos = [...new Set(faltantes)];
   const causa = first(m, ['CAUSA_CONFIRMADA', 'CAUSA_RAIZ', 'CAUSA']);
   const subcausa = first(m, ['SUBCAUSA_CONFIRMADA', 'SUBCAUSA']);
   const procedimento = first(tratativa, ['PROCEDIMENTO', 'PROCEDIMENTO_USADO', 'TRATAMENTO']);
   const devolutivaEnviada = Boolean(first(m, ['DEVOLUTIVA_ENVIADA', 'DATA_DEVOLUTIVA']) || first(devolutiva, ['DATA_ENVIO', 'ENVIADA_EM']));
   const procedencia = first(m, ['PROCEDENTE', 'PROCEDENCIA']);
-  const autonomia = !faltantes.length && Boolean(causa || subcausa) && Boolean(procedimento || first(m, ['TRATATIVA_REALIZADA'])) && !['critica', 'alta'].includes(norm(m.PRIORIDADE)) && !m.FORA_ALCADA;
+  const autonomia = !faltantesUnicos.length && Boolean(causa || subcausa) && Boolean(procedimento || first(m, ['TRATATIVA_REALIZADA'])) && !['critica', 'alta'].includes(norm(m.PRIORIDADE)) && !m.FORA_ALCADA;
   const criterioBate = (esperado, encontrado) => {
     if (!String(esperado || '').trim()) return true;
     if (!String(encontrado || '').trim()) return false;
@@ -157,7 +183,7 @@ function analisar(input = {}) {
     return new Date(new Date(abertura).getTime() + Number(horas) * 3600000).toISOString();
   };
   const checklist = workflow.buildChecklist([
-    ...faltantes.map(field => ({ descricao: `Completar informação: ${field}`, obrigatoria: true, origem: 'CIRCA_CAPTURA', prazoHoras: 24, vencimento: vencimento(24) })),
+    ...faltantesUnicos.map(field => ({ descricao: `Completar informação: ${field}`, obrigatoria: true, origem: 'CIRCA_CAPTURA', prazoOrigem: 'PRAZO_NAO_DEFINIDO', prazoHoras: null, vencimento: '' })),
     ...(!causa ? [{ descricao: 'Confirmar causa com evidência ou registrar investigação inconclusiva', obrigatoria: true, origem: 'CIRCA_INVESTIGACAO', prazoOrigem: 'PRAZO_NAO_DEFINIDO', prazoHoras: null, vencimento: '' }] : []),
     ...(!procedimento ? [{ descricao: 'Selecionar procedimento elegível ou justificar ausência', obrigatoria: true, origem: 'CIRCA_RESOLUCAO', prazoOrigem: 'PRAZO_NAO_DEFINIDO', prazoHoras: null, vencimento: '' }] : []),
   ], input.checklist || []);
@@ -175,7 +201,7 @@ function analisar(input = {}) {
     idManifestacao: first(m, ['ID_MANIFESTACAO', 'id']),
     empresa: first(m, ['EMPRESA_RECLAMADA', 'EMPRESA']),
     etapas: {
-      captura: { status: faltantes.length ? 'INCOMPLETA' : 'CONCLUIDA', faltantes },
+      captura: { status: faltantesUnicos.length ? 'INCOMPLETA' : 'CONCLUIDA', faltantes: faltantesUnicos },
       investigacao: { status: causa || similares.length ? 'EM_ANDAMENTO' : 'PENDENTE', casosSemelhantes: similares.length, causa, subcausa, evidencias: first(m, ['EVIDENCIAS', 'ANEXOS']) || '' },
       resolucao: { status: procedimento || first(m, ['TRATATIVA_REALIZADA']) ? 'DISPONIVEL' : 'PENDENTE', procedimento, devolutivaEnviada, autonomiaSAC: autonomia },
       conhecimento: { status: encerrada ? 'ELEGIVEL_PARA_VALIDACAO' : 'AGUARDANDO_ENCERRAMENTO', promoverAutomaticamente: false, procedencia },
@@ -191,8 +217,8 @@ function analisar(input = {}) {
       hipotesesCausa: hypotheses,
       hipotesesClassificacao,
       problemasRelatados,
-      informacoesAusentes: faltantes,
-      perguntasRecomendadas: faltantes.map(field => `Informe ${field}.`),
+      informacoesAusentes: faltantesUnicos,
+      perguntasRecomendadas: faltantesUnicos.map(field => `Informe ${field}.`),
       acoesSugeridas: procedures.map(t => first(t, ['PROCEDIMENTO', 'NOME', 'TRATAMENTO'])).filter(Boolean),
       procedimentosAplicaveis: procedures.map(t => first(t, ['ID_TRATAMENTO', 'ID_PROC', 'ID_REGRA', 'ID'])).filter(Boolean),
       procedimentosDetalhados: procedures.map(t => ({ id: first(t, ['ID_TRATAMENTO', 'ID_PROC', 'ID_REGRA', 'ID']), origem: t.ORIGEM || 'MATRIZ_TRATAMENTO', criteriosCorrespondencia: t.criteriosCorrespondencia || {} })).filter(item => item.id),
@@ -202,12 +228,13 @@ function analisar(input = {}) {
       // Autonomia mede a tratativa efetivamente registrada, não a existência
       // de uma recomendação automática da Matriz.
       condicoesAutonomiaSAC: workflow.autonomia({ procedimentoValidado: Boolean(procedimento || first(m, ['TRATATIVA_REALIZADA'])), compatibilidade: Boolean(causa || subcausa), evidencias: Boolean(first(m, ['EVIDENCIAS', 'ANEXOS'])), risco: !['critica', 'alta'].includes(norm(m.PRIORIDADE)), alçada: !m.FORA_ALCADA, autorizacao: Boolean(m.AUTORIZACAO_SAC || m.STATUS === 'EM TRATAMENTO'), historico: Boolean(first(m, ['ID_MANIFESTACAO'])) }),
-      evidenciasNecessarias: faltantes.length ? ['Evidência documental ou registro do setor responsável'] : [],
+      evidenciasNecessarias: faltantesUnicos.length ? ['Evidência documental ou registro do setor responsável'] : [],
       origemRecomendacoes: 'REGRAS_E_REGISTROS_PERSISTIDOS',
       confianca: procedures.length || similares.length ? 'APOIO_HISTORICO' : 'SEM_BASE_SUFICIENTE',
       alertaProduto: alertaProdutoManifestacao,
     },
     checklist,
+    complementacoes,
     problemasRelatados,
     governanca: { origem: 'REGRAS_E_REGISTROS_PERSISTIDOS', exigeAprovacaoHumana: true, causaConfirmada: Boolean(causa), tratamentoValidado: procedures.length > 0, publicarAutomaticamente: false, encerrarAutomaticamente: false },
   };
