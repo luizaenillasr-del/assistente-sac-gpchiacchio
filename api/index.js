@@ -373,16 +373,23 @@ if (!process.env.SPREADSHEET_ID) {
   console.error('[FATAL C5] SPREADSHEET_ID não configurada. Defina SPREADSHEET_ID nas variáveis de ambiente antes de ir para produção.');
   if (process.env.NODE_ENV === 'production') process.exit(1);
 }
+// A1: PESQUISA_SPREADSHEET_ID obrigatória em produção para evitar gravação em planilha incorreta
 if (!process.env.PESQUISA_SPREADSHEET_ID) {
-  console.warn('[AVISO C5] PESQUISA_SPREADSHEET_ID não configurada — módulo de pesquisas usará planilha de fallback hardcoded. Configure em produção.');
+  if (process.env.NODE_ENV === 'production') {
+    console.error('[FATAL A1] PESQUISA_SPREADSHEET_ID não configurada em produção. Defina a variável de ambiente para evitar gravação de pesquisas em planilha incorreta.');
+    process.exit(1);
+  } else {
+    console.warn('[AVISO A1] PESQUISA_SPREADSHEET_ID não configurada — módulo de pesquisas usará planilha de fallback hardcoded. Configure em produção.');
+  }
 }
 if (!process.env.SESSION_SECRET || process.env.SESSION_SECRET.length < 32) {
   console.error('FATAL: SESSION_SECRET não definida ou com menos de 32 caracteres. Defina SESSION_SECRET nas variáveis de ambiente.');
   if (process.env.NODE_ENV === 'production') process.exit(1);
 }
-// B5: Aviso explícito sobre usuários demo em produção
+// B4: DEMO_LOGIN_ENABLED=true em produção é um risco crítico de segurança
 if (String(process.env.DEMO_LOGIN_ENABLED || 'false').toLowerCase() === 'true' && process.env.NODE_ENV === 'production') {
-  console.error('[SEGURANÇA B5] DEMO_LOGIN_ENABLED=true em NODE_ENV=production. Usuários demo ATIVOS em produção. Defina DEMO_LOGIN_ENABLED=false imediatamente.');
+  console.error('[FATAL B4] DEMO_LOGIN_ENABLED=true em NODE_ENV=production. Usuários demo ATIVOS em produção. Defina DEMO_LOGIN_ENABLED=false imediatamente.');
+  process.exit(1);
 }
 if (String(process.env.DEMO_LOGIN_ENABLED || 'false').toLowerCase() !== 'true') {
   console.info('[SEGURANÇA] Usuários demo desabilitados (DEMO_LOGIN_ENABLED != true). Correto para produção.');
@@ -1795,11 +1802,12 @@ app.use('/api', async (req,res,next)=>{
   next();
 });
 
-// ===== HELPER DE ERRO SEGURO (E2) =====
+// ===== HELPER DE ERRO SEGURO (C2) =====
 function erroSeguro(e, contexto) {
+  const correlacaoId = crypto.randomBytes(4).toString('hex').toUpperCase();
   const msg = e?.message || 'Erro desconhecido';
-  console.error(`[${contexto || 'API'}]`, msg, e?.stack ? e.stack.split('\n')[1] : '');
-  if (process.env.NODE_ENV === 'production') return 'Erro interno do servidor.';
+  console.error(`[${contexto || 'API'}][ref:${correlacaoId}]`, msg, e?.stack ? e.stack.split('\n')[1] : '');
+  if (process.env.NODE_ENV === 'production') return `Erro interno do servidor. [ref:${correlacaoId}]`;
   return msg;
 }
 
@@ -10305,13 +10313,15 @@ app.post('/api/biblioteca/sincronizar-base', requerPerfil('MASTER','ANALISTA SAC
 
 // ===== MATRIZ DE CONHECIMENTO =====
 
+const MC_PERFIS_LEITOR = new Set(['MASTER','ADMINISTRADOR','ANALISTA SAC','GESTOR SAC','APROVADOR','APROVADOR MASTER','ATENDENTE SAC','AUDITOR']);
 const MC_PERFIS_EDITOR = new Set(['MASTER','ADMINISTRADOR','ANALISTA SAC','GESTOR SAC']);
-const MC_PERFIS_APROVADOR = new Set(['MASTER','ADMINISTRADOR']);
+const MC_PERFIS_APROVADOR = new Set(['MASTER','ADMINISTRADOR','APROVADOR MASTER']);
 const MC_PERFIS_PUBLICADOR = new Set(['MASTER','ADMINISTRADOR']);
 
+// C1: visualizar restrito a perfis autorizados (antes retornava true para todos)
 function podeMC(perfil, acao) {
   const p = (perfil || '').toUpperCase();
-  if (acao === 'visualizar') return true;
+  if (acao === 'visualizar') return MC_PERFIS_LEITOR.has(p);
   if (acao === 'criar' || acao === 'editar') return MC_PERFIS_EDITOR.has(p);
   if (acao === 'aprovar') return MC_PERFIS_APROVADOR.has(p);
   if (acao === 'publicar' || acao === 'arquivar') return MC_PERFIS_PUBLICADOR.has(p);
