@@ -10736,19 +10736,28 @@ app.post('/api/biblioteca/sincronizar-base', requerPerfil('MASTER','ANALISTA SAC
 
 // ===== MATRIZ DE CONHECIMENTO =====
 
-const MC_PERFIS_LEITOR = new Set(['MASTER','ADMINISTRADOR','ANALISTA SAC','GESTOR SAC','APROVADOR','APROVADOR MASTER','ATENDENTE SAC','AUDITOR']);
+const MC_PERFIS_LEITOR = new Set(['MASTER','ADMINISTRADOR','ANALISTA SAC','GESTOR SAC','APROVADOR','APROVADOR MASTER','ATENDENTE SAC','AUDITOR',
+  'SAC','APROVADOR_SETORIAL','DIRETORIA_GESTOR',
+  // perfis legados que mapeiam para APROVADOR_SETORIAL e DIRETORIA_GESTOR
+  'SETOR RESPONSÁVEL','ESPECIALISTA','DIRETOR']);
+// Edição restrita a analistas/gestores SAC — ATENDENTE SAC (mapeia p/ SAC funcional) não edita
 const MC_PERFIS_EDITOR = new Set(['MASTER','ADMINISTRADOR','ANALISTA SAC','GESTOR SAC']);
-const MC_PERFIS_APROVADOR = new Set(['MASTER','ADMINISTRADOR','APROVADOR MASTER']);
+const MC_PERFIS_APROVADOR = new Set(['MASTER','ADMINISTRADOR','APROVADOR MASTER',
+  'DIRETORIA_GESTOR']);
 const MC_PERFIS_PUBLICADOR = new Set(['MASTER','ADMINISTRADOR']);
 
-// C1: visualizar restrito a perfis autorizados (antes retornava true para todos)
-function podeMC(perfil, acao) {
+// C1: visualizar restrito a perfis autorizados — suporta perfis legados e funcionais (modeloAutorizacao)
+// Hierarquia: MASTER > DIRETORIA_GESTOR > APROVADOR_SETORIAL > SAC > leitura restrita
+function podeMC(perfil, acao, perfilFuncional) {
   const p = (perfil || '').toUpperCase();
-  if (acao === 'visualizar') return MC_PERFIS_LEITOR.has(p);
-  if (acao === 'criar' || acao === 'editar') return MC_PERFIS_EDITOR.has(p);
-  if (acao === 'aprovar') return MC_PERFIS_APROVADOR.has(p);
-  if (acao === 'publicar' || acao === 'arquivar') return MC_PERFIS_PUBLICADOR.has(p);
-  if (acao === 'historico') return MC_PERFIS_EDITOR.has(p);
+  const pf = (perfilFuncional || modeloAutorizacao.perfilFuncional(p) || '').toUpperCase();
+  const candidatos = new Set([p, pf].filter(Boolean));
+  const temAlgum = (set) => [...candidatos].some(c => set.has(c));
+  if (acao === 'visualizar') return temAlgum(MC_PERFIS_LEITOR);
+  if (acao === 'criar' || acao === 'editar') return temAlgum(MC_PERFIS_EDITOR);
+  if (acao === 'aprovar') return temAlgum(MC_PERFIS_APROVADOR);
+  if (acao === 'publicar' || acao === 'arquivar') return temAlgum(MC_PERFIS_PUBLICADOR);
+  if (acao === 'historico') return temAlgum(MC_PERFIS_EDITOR);
   return false;
 }
 
@@ -10761,7 +10770,7 @@ function _mcEmpresaScope(user) {
 // Listar matrizes
 app.get('/api/matriz-conhecimento', async (req, res) => {
   try {
-    if (!podeMC(req.user?.perfil, 'visualizar')) return res.status(403).json({ sucesso: false, erro: 'Sem permissão.' });
+    if (!podeMC(req.user?.perfil, 'visualizar', req.user?.perfilFuncional)) return res.status(403).json({ sucesso: false, erro: 'Sem permissão.' });
     const empresaScope = _mcEmpresaScope(req.user);
     const filtros = {
       empresa: empresaScope || req.query.empresa,
@@ -10781,7 +10790,7 @@ app.get('/api/matriz-conhecimento', async (req, res) => {
 // Obter matriz por ID
 app.get('/api/matriz-conhecimento/:id', async (req, res) => {
   try {
-    if (!podeMC(req.user?.perfil, 'visualizar')) return res.status(403).json({ sucesso: false, erro: 'Sem permissão.' });
+    if (!podeMC(req.user?.perfil, 'visualizar', req.user?.perfilFuncional)) return res.status(403).json({ sucesso: false, erro: 'Sem permissão.' });
     const matriz = await mcService.obterMatriz(req.params.id);
     if (!matriz) return res.status(404).json({ sucesso: false, erro: 'Matriz não encontrada.' });
     const empresaScope = _mcEmpresaScope(req.user);
@@ -10800,7 +10809,7 @@ app.get('/api/matriz-conhecimento/:id', async (req, res) => {
 // Criar matriz
 app.post('/api/matriz-conhecimento', async (req, res) => {
   try {
-    if (!podeMC(req.user?.perfil, 'criar')) return res.status(403).json({ sucesso: false, erro: 'Sem permissão.' });
+    if (!podeMC(req.user?.perfil, 'criar', req.user?.perfilFuncional)) return res.status(403).json({ sucesso: false, erro: 'Sem permissão.' });
     if (!req.body?.nome) return res.status(400).json({ sucesso: false, erro: 'Campo "nome" obrigatório.' });
     const empresaScope = _mcEmpresaScope(req.user);
     const body = empresaScope ? { ...req.body, empresa: empresaScope } : req.body;
@@ -10813,7 +10822,7 @@ app.post('/api/matriz-conhecimento', async (req, res) => {
 // Atualizar matriz
 app.put('/api/matriz-conhecimento/:id', async (req, res) => {
   try {
-    if (!podeMC(req.user?.perfil, 'editar')) return res.status(403).json({ sucesso: false, erro: 'Sem permissão.' });
+    if (!podeMC(req.user?.perfil, 'editar', req.user?.perfilFuncional)) return res.status(403).json({ sucesso: false, erro: 'Sem permissão.' });
     const matriz = await mcService.obterMatriz(req.params.id);
     if (!matriz) return res.status(404).json({ sucesso: false, erro: 'Matriz não encontrada.' });
     const empresaScope = _mcEmpresaScope(req.user);
@@ -10832,7 +10841,7 @@ app.post('/api/matriz-conhecimento/:id/status', async (req, res) => {
     const { status } = req.body || {};
     if (!status) return res.status(400).json({ sucesso: false, erro: 'status obrigatório.' });
     const acao = status === 'APROVADA' ? 'aprovar' : status === 'PUBLICADA' ? 'publicar' : 'arquivar';
-    if (!podeMC(req.user?.perfil, acao)) return res.status(403).json({ sucesso: false, erro: 'Sem permissão para esta ação.' });
+    if (!podeMC(req.user?.perfil, acao, req.user?.perfilFuncional)) return res.status(403).json({ sucesso: false, erro: 'Sem permissão para esta ação.' });
     const matriz = await mcService.obterMatriz(req.params.id);
     if (!matriz) return res.status(404).json({ sucesso: false, erro: 'Matriz não encontrada.' });
     const empresaScope = _mcEmpresaScope(req.user);
@@ -10860,7 +10869,7 @@ async function _mcVerificarEmpresa(req, res, matrizId) {
 // ITENS — adicionar
 app.post('/api/matriz-conhecimento/:id/itens', async (req, res) => {
   try {
-    if (!podeMC(req.user?.perfil, 'editar')) return res.status(403).json({ sucesso: false, erro: 'Sem permissão.' });
+    if (!podeMC(req.user?.perfil, 'editar', req.user?.perfilFuncional)) return res.status(403).json({ sucesso: false, erro: 'Sem permissão.' });
     if (!await _mcVerificarEmpresa(req, res, req.params.id)) return;
     const item = await mcService.adicionarItem(req.params.id, req.body, req.user.usuario);
     res.json({ sucesso: true, id: item.ID });
@@ -10873,7 +10882,7 @@ app.post('/api/matriz-conhecimento/:id/itens', async (req, res) => {
 // ITENS — remover
 app.delete('/api/matriz-conhecimento/:id/itens/:itemId', async (req, res) => {
   try {
-    if (!podeMC(req.user?.perfil, 'editar')) return res.status(403).json({ sucesso: false, erro: 'Sem permissão.' });
+    if (!podeMC(req.user?.perfil, 'editar', req.user?.perfilFuncional)) return res.status(403).json({ sucesso: false, erro: 'Sem permissão.' });
     if (!await _mcVerificarEmpresa(req, res, req.params.id)) return;
     await mcService.removerItem(req.params.itemId, req.user.usuario);
     res.json({ sucesso: true });
@@ -10883,7 +10892,7 @@ app.delete('/api/matriz-conhecimento/:id/itens/:itemId', async (req, res) => {
 // EVIDÊNCIAS — adicionar
 app.post('/api/matriz-conhecimento/:id/evidencias', async (req, res) => {
   try {
-    if (!podeMC(req.user?.perfil, 'editar')) return res.status(403).json({ sucesso: false, erro: 'Sem permissão.' });
+    if (!podeMC(req.user?.perfil, 'editar', req.user?.perfilFuncional)) return res.status(403).json({ sucesso: false, erro: 'Sem permissão.' });
     if (!await _mcVerificarEmpresa(req, res, req.params.id)) return;
     const ev = await mcService.adicionarEvidencia(req.params.id, req.body);
     res.json({ sucesso: true, id: ev.ID });
@@ -10893,7 +10902,7 @@ app.post('/api/matriz-conhecimento/:id/evidencias', async (req, res) => {
 // EVIDÊNCIAS — remover
 app.delete('/api/matriz-conhecimento/:id/evidencias/:evId', async (req, res) => {
   try {
-    if (!podeMC(req.user?.perfil, 'editar')) return res.status(403).json({ sucesso: false, erro: 'Sem permissão.' });
+    if (!podeMC(req.user?.perfil, 'editar', req.user?.perfilFuncional)) return res.status(403).json({ sucesso: false, erro: 'Sem permissão.' });
     if (!await _mcVerificarEmpresa(req, res, req.params.id)) return;
     await mcService.removerEvidencia(req.params.evId);
     res.json({ sucesso: true });
@@ -10903,7 +10912,7 @@ app.delete('/api/matriz-conhecimento/:id/evidencias/:evId', async (req, res) => 
 // EXCEÇÕES — adicionar
 app.post('/api/matriz-conhecimento/:id/excecoes', async (req, res) => {
   try {
-    if (!podeMC(req.user?.perfil, 'editar')) return res.status(403).json({ sucesso: false, erro: 'Sem permissão.' });
+    if (!podeMC(req.user?.perfil, 'editar', req.user?.perfilFuncional)) return res.status(403).json({ sucesso: false, erro: 'Sem permissão.' });
     if (!await _mcVerificarEmpresa(req, res, req.params.id)) return;
     const ex = await mcService.adicionarExcecao(req.params.id, req.body);
     res.json({ sucesso: true, id: ex.ID });
@@ -10913,7 +10922,7 @@ app.post('/api/matriz-conhecimento/:id/excecoes', async (req, res) => {
 // EXCEÇÕES — remover
 app.delete('/api/matriz-conhecimento/:id/excecoes/:exId', async (req, res) => {
   try {
-    if (!podeMC(req.user?.perfil, 'editar')) return res.status(403).json({ sucesso: false, erro: 'Sem permissão.' });
+    if (!podeMC(req.user?.perfil, 'editar', req.user?.perfilFuncional)) return res.status(403).json({ sucesso: false, erro: 'Sem permissão.' });
     if (!await _mcVerificarEmpresa(req, res, req.params.id)) return;
     await atualizarPorID('MC_EXCECOES', req.params.exId, { ATIVO: 'NÃO' }, ['ID']);
     res.json({ sucesso: true });
@@ -10923,7 +10932,7 @@ app.delete('/api/matriz-conhecimento/:id/excecoes/:exId', async (req, res) => {
 // RESOLVER — endpoint de teste/consulta
 app.post('/api/matriz-conhecimento/resolver', async (req, res) => {
   try {
-    if (!podeMC(req.user?.perfil, 'visualizar')) return res.status(403).json({ sucesso: false, erro: 'Sem permissão.' });
+    if (!podeMC(req.user?.perfil, 'visualizar', req.user?.perfilFuncional)) return res.status(403).json({ sucesso: false, erro: 'Sem permissão.' });
     const resultado = await mcService.resolverConhecimento(req.body || {});
     res.json({ sucesso: true, resultado });
   } catch (e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e) }); }

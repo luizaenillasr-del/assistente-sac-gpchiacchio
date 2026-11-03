@@ -6,13 +6,16 @@
 //   1. Sem token               → 401 (middleware global rejeita)
 //   2. Token inválido          → 401 (assinatura incorreta)
 //   3. Token expirado          → 401
-//   4. Perfil não-MC (SETOR RESPONSÁVEL, VISUALIZADOR, RCA) → 403 em leitura
-//   5. Perfil leitor (ANALISTA SAC, GESTOR SAC, ATENDENTE SAC, AUDITOR) → 200 em leitura
+//   4. Perfil não-MC (SETOR RESPONSÁVEL, VISUALIZADOR, RCA, DIRETOR legado) → 403 em leitura
+//   5. Perfil leitor legado (ANALISTA SAC, GESTOR SAC, ATENDENTE SAC, AUDITOR, APROVADOR) → 200 em leitura
 //   6. Perfil leitor → 403 em escrita (POST/PUT/DELETE)
-//   7. Perfil editor (ANALISTA SAC, GESTOR SAC) → pode criar/editar
+//   7. Perfil editor legado (ANALISTA SAC, GESTOR SAC) → pode criar/editar
 //   8. Perfil MASTER → acesso global (sem escopo de empresa)
 //   9. Perfil não-MASTER → escopo restrito à própria empresa
 //  10. Cross-company: usuário empresa A não acessa matriz da empresa B
+//  11. Perfis funcionais canônicos (SAC, APROVADOR_SETORIAL, DIRETORIA_GESTOR, MASTER)
+//      — compatibilidade com modeloAutorizacao.perfilFuncional()
+//  12. Endpoint /resolver autenticado por perfil funcional
 
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
@@ -168,14 +171,27 @@ function request(base, method, route, auth, body) {
     const r1g = await request(base, 'GET', '/api/matriz-conhecimento', tokenExpirado);
     ok('GET lista token expirado → 401', r1g.status === 401);
 
-    // ── Bloco 2: Perfis não-autorizados para MC → 403 em leitura ─────────
-    process.stdout.write('\n[2] Perfis sem acesso à Matriz de Conhecimento → 403\n');
+    // ── Bloco 2: Perfis sem acesso à MC → 403; perfis com acesso via funcional → 200 ──
+    // VISUALIZADOR e RCA: não mapeiam para nenhum perfil funcional com acesso → 403
+    // SETOR RESPONSÁVEL → APROVADOR_SETORIAL → leitura permitida → 200
+    // DIRETOR → DIRETORIA_GESTOR → leitura permitida → 200
+    process.stdout.write('\n[2] Perfis externos sem acesso à Matriz de Conhecimento → 403\n');
 
-    for (const [nome, tok] of [['SETOR RESPONSÁVEL', tSetor], ['VISUALIZADOR', tVisualizador], ['RCA', tRCA], ['DIRETOR', tDiretor]]) {
+    for (const [nome, tok] of [['VISUALIZADOR', tVisualizador], ['RCA', tRCA]]) {
       const r = await request(base, 'GET', '/api/matriz-conhecimento', tok);
       ok(`GET lista com perfil ${nome} → 403`, r.status === 403);
       const rb = await request(base, 'GET', `/api/matriz-conhecimento/${ID_MC_CHIACCHIO}`, tok);
       ok(`GET detalhe com perfil ${nome} → 403`, rb.status === 403);
+    }
+
+    // SETOR RESPONSÁVEL e DIRETOR mapeiam para perfis funcionais com leitura (APROVADOR_SETORIAL / DIRETORIA_GESTOR)
+    process.stdout.write('\n[2b] Perfis com acesso via mapeamento funcional → 200 em leitura\n');
+    for (const [nome, tok] of [['SETOR RESPONSÁVEL', tSetor], ['DIRETOR', tDiretor]]) {
+      const r = await request(base, 'GET', '/api/matriz-conhecimento', tok);
+      ok(`GET lista com perfil ${nome} → 200 (mapeado para perfil funcional com leitura)`, r.status === 200);
+      const rb = await request(base, 'GET', `/api/matriz-conhecimento/${ID_MC_CHIACCHIO}`, tok);
+      // detalhe pode ser 200 (mesmo escopo) ou 403 (isolamento empresa), não é falha auth
+      ok(`GET detalhe com perfil ${nome} → não é 401`, rb.status !== 401);
     }
 
     // ── Bloco 3: Perfis leitores autorizados → 200 em leitura ────────────
@@ -253,17 +269,57 @@ function request(base, method, route, auth, body) {
     const rCrossDetalhe2 = await request(base, 'GET', `/api/matriz-conhecimento/${ID_MC_PLASCHIO}`, tAnalistaSAC);
     ok('Chiacchio acessa detalhe de Plaschio → 403 (cross-company bloqueado)', rCrossDetalhe2.status === 403);
 
-    // ── Bloco 7: Endpoint /resolver ──────────────────────────────────────
-    process.stdout.write('\n[7] Endpoint /resolver\n');
+    // ── Bloco 7: Perfis funcionais (modeloAutorizacao) ───────────────────
+    // Verifica que os 4 perfis canônicos funcionam sem depender de aliases legados
+    process.stdout.write('\n[7] Perfis funcionais canônicos\n');
+
+    // SAC funcional = leitura (edição requer perfil legado específico: ANALISTA SAC ou GESTOR SAC)
+    const tSACFuncional = token({ perfil: 'SAC', perfilFuncional: 'SAC', empresa: 'CHIACCHIO EMBALAGENS', usuario: 'analista.test' });
+    const rSACleitura = await request(base, 'GET', '/api/matriz-conhecimento', tSACFuncional);
+    ok('GET lista perfil funcional SAC → 200', rSACleitura.status === 200);
+    const rSACescrita = await request(base, 'POST', '/api/matriz-conhecimento', tSACFuncional, { nome: 'MC SAC', empresa: 'CHIACCHIO EMBALAGENS', setor: 'SAC' });
+    ok('POST criar perfil funcional SAC genérico → 403 (editor requer ANALISTA/GESTOR SAC)', rSACescrita.status === 403);
+
+    // APROVADOR_SETORIAL funcional = leitura; não pode criar/editar
+    const tAprovSetorial = token({ perfil: 'APROVADOR_SETORIAL', perfilFuncional: 'APROVADOR_SETORIAL', empresa: 'CHIACCHIO EMBALAGENS', usuario: 'aprovador.test' });
+    const rAprovLeitura = await request(base, 'GET', '/api/matriz-conhecimento', tAprovSetorial);
+    ok('GET lista perfil funcional APROVADOR_SETORIAL → 200', rAprovLeitura.status === 200);
+    const rAprovEscrita = await request(base, 'POST', '/api/matriz-conhecimento', tAprovSetorial, { nome: 'MC Aprov', empresa: 'CHIACCHIO EMBALAGENS' });
+    ok('POST criar perfil funcional APROVADOR_SETORIAL → 403', rAprovEscrita.status === 403);
+
+    // DIRETORIA_GESTOR funcional = leitura + aprovação; não pode criar/editar
+    const tDirGestor = token({ perfil: 'DIRETORIA_GESTOR', perfilFuncional: 'DIRETORIA_GESTOR', empresa: 'CHIACCHIO EMBALAGENS', usuario: 'diretor.test' });
+    const rDirLeitura = await request(base, 'GET', '/api/matriz-conhecimento', tDirGestor);
+    ok('GET lista perfil funcional DIRETORIA_GESTOR → 200', rDirLeitura.status === 200);
+    const rDirEscrita = await request(base, 'POST', '/api/matriz-conhecimento', tDirGestor, { nome: 'MC Dir', empresa: 'CHIACCHIO EMBALAGENS' });
+    ok('POST criar perfil funcional DIRETORIA_GESTOR → 403', rDirEscrita.status === 403);
+
+    // MASTER funcional = acesso total
+    const tMasterFuncional = token({ perfil: 'MASTER', perfilFuncional: 'MASTER', empresa: '', usuario: 'master.test' });
+    const rMasterF = await request(base, 'GET', '/api/matriz-conhecimento', tMasterFuncional);
+    ok('GET lista perfil funcional MASTER → 200', rMasterF.status === 200);
+
+    // ── Bloco 8: Endpoint /resolver ──────────────────────────────────────
+    process.stdout.write('\n[8] Endpoint /resolver\n');
 
     const rResolverSemToken = await request(base, 'POST', '/api/matriz-conhecimento/resolver', null, { tipo: 'RECLAMACAO' });
     ok('POST /resolver sem token → 401', rResolverSemToken.status === 401);
 
+    // SETOR RESPONSÁVEL → APROVADOR_SETORIAL → tem acesso de leitura → /resolver permitido
     const rResolverSetor = await request(base, 'POST', '/api/matriz-conhecimento/resolver', tSetor, { tipo: 'RECLAMACAO' });
-    ok('POST /resolver perfil SETOR RESPONSÁVEL → 403', rResolverSetor.status === 403);
+    ok('POST /resolver perfil SETOR RESPONSÁVEL → não é 401/403 (tem leitura via APROVADOR_SETORIAL)', rResolverSetor.status !== 401 && rResolverSetor.status !== 403);
 
     const rResolverAnalista = await request(base, 'POST', '/api/matriz-conhecimento/resolver', tAnalistaSAC, { tipo: 'RECLAMACAO' });
     ok('POST /resolver ANALISTA SAC → não é 401/403', rResolverAnalista.status !== 401 && rResolverAnalista.status !== 403);
+
+    const rResolverSAC = await request(base, 'POST', '/api/matriz-conhecimento/resolver', tSACFuncional, { tipo: 'RECLAMACAO' });
+    ok('POST /resolver funcional SAC → não é 401/403', rResolverSAC.status !== 401 && rResolverSAC.status !== 403);
+
+    const rResolverAprov = await request(base, 'POST', '/api/matriz-conhecimento/resolver', tAprovSetorial, { tipo: 'RECLAMACAO' });
+    ok('POST /resolver funcional APROVADOR_SETORIAL → não é 401/403', rResolverAprov.status !== 401 && rResolverAprov.status !== 403);
+
+    const rResolverDir = await request(base, 'POST', '/api/matriz-conhecimento/resolver', tDirGestor, { tipo: 'RECLAMACAO' });
+    ok('POST /resolver funcional DIRETORIA_GESTOR → não é 401/403', rResolverDir.status !== 401 && rResolverDir.status !== 403);
 
   } finally {
     server.close();
