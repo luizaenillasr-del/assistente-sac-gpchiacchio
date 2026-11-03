@@ -471,7 +471,7 @@ async function consultarBaseConhecimento(tipo, setor, empresaId, descricao) {
       sheets.lerAba('POLITICAS', 200).catch(() => []),
       sheets.lerAba('PROCEDIMENTOS', 200).catch(() => []),
       sheets.lerAba('BASE_CONHECIMENTO', 500).catch(() => []),
-      sheets.lerAba('CAUSAS', 500).catch(() => []),
+      sheets.lerAba('CAUSAS', 500).then(r => r.length ? r : sheets.lerAba('CAUSAS_SUBCAUSAS', 500).catch(() => [])).catch(() => []),
       sheets.lerAba('BANCO_HISTORICO', 5000).catch(() => []),
       sheets.lerAba('PERGUNTAS_ANALISE', 300).catch(() => []),
     ]);
@@ -827,8 +827,12 @@ function _filtrarPerguntasContextuais(perguntas, manifestacao) {
   if (campo(m, ['nfe','NF_NUMERO','NFE'])) preenchidos.add('nfe');
   if (campo(m, ['categoria','CATEGORIA'])) preenchidos.add('categoria');
 
+  const vistos = new Set();
   return perguntas.filter(p => {
     const texto = normalizar(p.pergunta || '');
+    if (!texto) return false;
+    if (vistos.has(texto)) return false;
+    vistos.add(texto);
     for (const [campoNome, kws] of Object.entries(campoKeywords)) {
       if (preenchidos.has(campoNome) && kws.some(k => texto.includes(k))) return false;
     }
