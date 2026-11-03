@@ -29538,7 +29538,7 @@ function updateTopbarUser(user) {
       let data;
       const editId = _usuEditando && (_usuEditando.ID_USUARIO||_usuEditando.id||_usuEditando.USUARIO||_usuEditando.usuario);
       if(_usuEditando) {
-        const body = { nome, email, perfil, nivelHierarquico, competenciasAlcadas: comp, cargo, status: statusEfetivo, empresa: empresas, setor: setores, escopoConfirmado: true, observacoes: obs };
+        const body = { nome, email, perfil, cargo, status: statusEfetivo, nivelHierarquico, competenciasAlcadas: comp, empresa: empresas, setor: setores, escopoConfirmado: true, observacoes: obs };
         if(senha) body.senha = senha;
         data = await _apiFetch('/api/usuarios/' + encodeURIComponent(editId), 0, {
           method:'PATCH',
