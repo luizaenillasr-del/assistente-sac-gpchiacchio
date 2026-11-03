@@ -39,4 +39,8 @@ ok(/escopoConfirmado: true/.test(page), 'frontend envia confirmação explícita
 ok(/escopoConfirmado = req\.body\?\.escopoConfirmado === true/.test(api), 'backend diferencia limpeza intencional de payload vazio');
 ok(/USUARIO_NAO_CONFIRMADO/.test(api) && /confirmados = await carregarUsuarios/.test(api), 'backend relê o cadastro antes de confirmar sucesso');
 ok(/registrarAuditoria\(req\.user\.usuario,'ATUALIZOU_USUARIO'/.test(api), 'alterações continuam auditadas');
+ok(/if\(b\.perfil\|\|b\.PERFIL\)/.test(api) && /PERFIL_INVALIDO/.test(api), 'perfil inválido é rejeitado sem restaurar o anterior');
+ok(/overrides\.PERFIL = perfilCanonico\(sh\.PERFIL\)/.test(api), 'perfil persistido no Sheets prevalece na releitura consolidada');
+ok(/findPerfilByCodigo/.test(api) && /perfilId = perfilRegistro\.id/.test(api), 'perfil relacional do PostgreSQL é atualizado quando disponível');
+ok(/escopoConfirmado: true/.test(page) && /perfil, cargo, status/.test(page), 'frontend envia o novo perfil junto ao escopo preservado');
 console.log('GESTÃO DE ESCOPO: regressão de Larissa/Karol aprovada');
