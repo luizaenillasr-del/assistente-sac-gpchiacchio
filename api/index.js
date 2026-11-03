@@ -2850,6 +2850,9 @@ app.patch('/api/manifestacoes/:id/ficha', requerPermissao('manifestacoes.editar'
     }
     const agora = new Date().toISOString();
     let dados = {};
+    // Mantém o responsável validado disponível para a criação da frente
+    // persistida após a montagem dos dados da ficha.
+    let alvo = null;
     if (acao === 'salvar_dados') {
       // Lista explícita: não permitir que o navegador sobrescreva protocolo,
       // situação de aprovação ou autoria ao editar a primeira etapa.
@@ -2990,7 +2993,6 @@ app.patch('/api/manifestacoes/:id/ficha', requerPermissao('manifestacoes.editar'
       const responsavelDest = String(req.body.RESPONSAVEL_SETOR || req.body.responsavel || '').trim();
       if (!setorDest || /nenhum|não informado|nao informado/i.test(setorDest)) return res.status(400).json({ sucesso:false, erro:'Selecione um setor de destino válido.' });
       if (!responsavelDest || /nenhum|não informado|nao informado/i.test(responsavelDest)) return res.status(400).json({ sucesso:false, erro:'Selecione um responsável cadastrado.' });
-      let alvo;
       try {
         alvo = await encontrarResponsavelElegivel({
           empresa: item.EMPRESA_RECLAMADA || item.EMPRESA_NORMALIZADA || item.EMPRESA,
@@ -3002,7 +3004,11 @@ app.patch('/api/manifestacoes/:id/ficha', requerPermissao('manifestacoes.editar'
         return res.status(503).json({ sucesso:false, codigo:'RESPONSAVEIS_INDISPONIVEIS', erro:'Não foi possível validar o responsável no cadastro.' });
       }
       if (!alvo) return res.status(422).json({ sucesso:false, codigo:'RESPONSAVEL_NAO_ELEGIVEL', erro:'O responsável precisa estar ativo e autorizado para a empresa e setor selecionados.' });
-      const prazoSolicitado = Number(req.body.prazoSlaHoras || req.body.SLA_HORAS);
+      const prazoInformado = req.body.prazoSlaHoras ?? req.body.SLA_HORAS;
+      const prazoSolicitado = Number(prazoInformado);
+      if (prazoInformado !== undefined && prazoInformado !== '' && (!Number.isFinite(prazoSolicitado) || prazoSolicitado <= 0 || prazoSolicitado > 720)) {
+        return res.status(400).json({ sucesso:false, codigo:'PRAZO_INVALIDO', erro:'O prazo do setor deve estar entre 1 e 720 horas.' });
+      }
       const slaHoras = Number.isFinite(prazoSolicitado) && prazoSolicitado > 0 && prazoSolicitado <= 720 ? prazoSolicitado : 72;
       const dataLimiteSetor = new Date(Date.parse(agora) + slaHoras * 3600000).toISOString();
       dados = {
