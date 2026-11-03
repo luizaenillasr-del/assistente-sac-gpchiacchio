@@ -43,6 +43,9 @@ async function main() {
   const requisicoes = [];
   const rascunhosEnviados = [];
   const checklistSalvos = [];
+  const patchBodies = [];
+  let armazenamentoVersao = '';
+  let sequenciaVersao = 0;
   let complementacoesPersistidas = {};
   let complementacoesPatchCount = 0;
   let complementacaoModo = 'success';
@@ -71,6 +74,10 @@ async function main() {
     }
     if (url.pathname.endsWith('/circa-dados') && req.method() === 'PATCH') {
       const body = req.postDataJSON() || {};
+      patchBodies.push(body);
+      if (body.ultimaEdicaoConhecida && armazenamentoVersao && body.ultimaEdicaoConhecida !== armazenamentoVersao) {
+        return route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ sucesso: false, codigo: 'RASCUNHO_CONCORRENTE', erro: 'O rascunho foi alterado em outra sessão.' }) });
+      }
       if (body.CHECKLIST_CIRCA) checklistSalvos.push(body);
       if (body.analisePatch?.complementacoes) {
         complementacoesPatchCount += 1;
@@ -79,7 +86,8 @@ async function main() {
         if (complementacaoModo !== 'divergent') complementacoesPersistidas = body.analisePatch.complementacoes;
       }
       await new Promise(resolve => setTimeout(resolve, 80));
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ sucesso: true, id: 'NM-BROWSER-001', protocolo: 'CHIA-20261028-01-0001' }) });
+      armazenamentoVersao = `v${++sequenciaVersao}`;
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ sucesso: true, id: 'NM-BROWSER-001', protocolo: 'CHIA-20261028-01-0001', atualizadoEm: armazenamentoVersao }) });
     }
     if (url.pathname === '/api/manifestacoes/NM-BROWSER-001/circa' && req.method() === 'GET') {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
@@ -119,6 +127,7 @@ async function main() {
     });
     const pageRoot = page.locator('#page-nova-manifestacao');
     await pageRoot.waitFor({ state: 'visible' });
+    assert.match(page.url(), /\/nova-manifestacao$/, 'a rota deve acompanhar a página Nova Manifestação');
     await page.waitForTimeout(350);
     assert.equal(await page.locator('#nm-descricao').inputValue(), '', 'uma nova manifestação não pode carregar rascunho implicitamente');
     assert.equal(await page.locator('#nm-evidencias-list .upload-item').count(), 0, 'anexos antigos não podem vazar para uma nova manifestação');
@@ -242,6 +251,16 @@ async function main() {
     assert.equal(await page.locator('#page-nova-manifestacao .nm-step-panel.nm-active').getAttribute('data-nm-step'), '7');
     assert.equal(await page.locator('#nm-empresa').inputValue(), 'Cliente de regressão');
     assert.equal(await page.locator('#nm-nfe').inputValue(), '987654');
+    // Utilizar orientação faz uma decisão e, em seguida, um autosave. O
+    // segundo PATCH precisa usar a versão devolvida pelo primeiro, sem 409
+    // falso; o mock rejeita apenas versões realmente obsoletas.
+    await page.evaluate(() => nmIrParaEtapa(2));
+    await page.waitForTimeout(250);
+    await page.evaluate(() => window.nmUtilizarOrientacao());
+    await page.locator('#nm-etapa-label').filter({ hasText: 'Etapa 3 de 7' }).waitFor();
+    const autosavesComVersao = patchBodies.filter(body => body.ultimaEdicaoConhecida);
+    assert.ok(autosavesComVersao.length > 0, 'gravações posteriores devem enviar a versão persistida');
+    assert.ok(!errosPagina.some(error => /409|outra sessão/i.test(error.message)), 'a própria sessão não pode gerar conflito falso');
     // O boot do dashboard dispara chamadas fora do fluxo testado; somente
     // erros originados na navegação da ficha bloqueiam esta regressão.
     const errosCriticos = errosPagina.filter(error => /nmProximaEtapa|nm-btn-continuar|SyntaxError|salvarRascunho/.test(error.message));

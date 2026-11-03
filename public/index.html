@@ -11844,6 +11844,12 @@ let _nmAnalisePersistidaCarregada = false;
 let _nmDeterministicaPromise = null;
 let _nmAnaliseInFlight = false;
 
+function nmSincronizarVersaoPersistida(res) {
+  const versao = res?.atualizadoEm || res?.manifestacao?.DATA_ULTIMA_EDICAO || res?.item?.DATA_ULTIMA_EDICAO;
+  if (versao) _nmRascunhoUltimaEdicao = String(versao);
+  return _nmRascunhoUltimaEdicao;
+}
+
 function nmTextoEstruturado(valor, fallback = '') {
   if (valor === undefined || valor === null || valor === '') return fallback;
   if (typeof valor === 'string') return valor;
@@ -12060,8 +12066,9 @@ window.nmSalvarComplementacoes = async function() {
   const invalid = Object.entries(payload).find(([,v]) => v.status !== 'PREENCHIDA' && !v.justificativa.trim());
   if (invalid) { window.nmAtualizarEstadoComplementacoes('error', `Informe uma justificativa para ${NM_COMPLEMENTACAO_LABELS[invalid[0]] || invalid[0]}.`); return; }
   try {
-    const r = await _apiFetch(`/api/manifestacoes/${encodeURIComponent(_nmCardId)}/circa-dados`,15000,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({analisePatch:{complementacoes:payload}})});
+    const r = await _apiFetch(`/api/manifestacoes/${encodeURIComponent(_nmCardId)}/circa-dados`,15000,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({ultimaEdicaoConhecida:_nmRascunhoUltimaEdicao,analisePatch:{complementacoes:payload}})});
     if (!r?.sucesso) throw new Error(r?.erro || 'Falha ao salvar complementações.');
+    nmSincronizarVersaoPersistida(r);
     const atualizada = await nmCarregarAnaliseDeterministica();
     const naoConfirmadas = Object.entries(payload).filter(([campo, valor]) => {
       const salvo = atualizada?.complementacoes?.[campo];
@@ -12069,7 +12076,12 @@ window.nmSalvarComplementacoes = async function() {
     });
     if (naoConfirmadas.length) throw new Error('O servidor não confirmou todas as complementações.');
     window.nmAtualizarEstadoComplementacoes('success', 'Complementações salvas e confirmadas pelo servidor.');
-  } catch(e) { window.nmAtualizarEstadoComplementacoes('error', `Não foi possível salvar: ${e.message}`); }
+  } catch(e) {
+    const conflito = e?.codigo === 'RASCUNHO_CONCORRENTE' || /outra sessão|conflito/i.test(String(e?.message||''));
+    window.nmAtualizarEstadoComplementacoes('error', conflito
+      ? 'Conflito de edição: outra sessão alterou esta ficha. Seus campos permanecem preenchidos; recarregue antes de tentar gravar novamente.'
+      : `Não foi possível salvar: ${e.message}`);
+  }
   finally {
     if (window._nmComplementacoesSaveState === 'saving') window.nmAtualizarEstadoComplementacoes('error', 'Não foi possível confirmar a gravação das complementações.');
   }
@@ -12086,7 +12098,7 @@ window.nmSalvarChecklist = async function(id, concluida) {
   const atual = Array.isArray(window._nmChecklist) ? window._nmChecklist.slice() : [];
   const indice=atual.findIndex(x=>x.id===id); const anterior=indice>=0?{...atual[indice]}:null; const item={ id, status: concluida ? 'CONCLUIDA' : 'PENDENTE' }; if(indice>=0) atual[indice]=item; else atual.push(item);
   window._nmChecklist = atual;
-  try { await _apiFetch(`/api/manifestacoes/${encodeURIComponent(_nmCardId)}/circa-dados`, 15000, {method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({CHECKLIST_CIRCA:JSON.stringify(atual),CHECKLIST_VERSAO:window._nmChecklistVersao})}); window._nmChecklistVersao++; } catch(e) { if(indice>=0) atual[indice]=anterior; else atual.splice(atual.length-1,1); window._nmChecklist=atual; alert('Não foi possível salvar a atividade. O estado anterior foi restaurado.'); renderizarCircaDeterministico(window._nmDeterministicoAtual||{}); }
+  try { const resposta=await _apiFetch(`/api/manifestacoes/${encodeURIComponent(_nmCardId)}/circa-dados`, 15000, {method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({ultimaEdicaoConhecida:_nmRascunhoUltimaEdicao,CHECKLIST_CIRCA:JSON.stringify(atual),CHECKLIST_VERSAO:window._nmChecklistVersao})}); nmSincronizarVersaoPersistida(resposta); window._nmChecklistVersao++; } catch(e) { if(indice>=0) atual[indice]=anterior; else atual.splice(atual.length-1,1); window._nmChecklist=atual; alert('Não foi possível salvar a atividade. O estado anterior foi restaurado.'); renderizarCircaDeterministico(window._nmDeterministicoAtual||{}); }
 };
 
 function nmMostrarDecisaoEtapa2(decisao) {
@@ -12116,8 +12128,9 @@ window.nmSalvarRevisaoOrientacao = async function() {
   if (status === 'ORIENTACAO_REJEITADA' && justificativa.length < 10) { alert('Informe uma justificativa de pelo menos 10 caracteres para rejeitar a orientação.'); return; }
   const classificacao = document.getElementById('nm-revisao-classificacao')?.value.trim() || '';
   try {
-    const r = await _apiFetch(`/api/manifestacoes/${encodeURIComponent(_nmCardId)}/circa-dados`, 15000, {method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({analisePatch:{status, justificativa, classificacao, origem:'SAC', revisadoEm:new Date().toISOString()}})});
+    const r = await _apiFetch(`/api/manifestacoes/${encodeURIComponent(_nmCardId)}/circa-dados`, 15000, {method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ultimaEdicaoConhecida:_nmRascunhoUltimaEdicao,analisePatch:{status, justificativa, classificacao, origem:'SAC', revisadoEm:new Date().toISOString()}})});
     if (!r?.sucesso) throw new Error(r?.erro || 'Falha ao salvar a revisão.');
+    nmSincronizarVersaoPersistida(r);
     window._nmAnaliseAtual = {...(window._nmAnaliseAtual||{}), decisaoEtapa2:{...(window._nmAnaliseAtual?.decisaoEtapa2||{}), status, justificativa, classificacao, origem:'SAC'}};
     if (window._nmDeterministicoAtual) window._nmDeterministicoAtual.decisaoEtapa2 = window._nmAnaliseAtual.decisaoEtapa2;
     nmMostrarDecisaoEtapa2(window._nmAnaliseAtual.decisaoEtapa2);
@@ -12128,8 +12141,9 @@ window.nmUtilizarOrientacao = async function() {
   if (!_nmAnaliseAtual && !_nmDeterministicoAtual) { alert('Execute a análise antes de utilizar uma orientação.'); return; }
   if (!_nmCardId && !(await salvarRascunho({silent:true, reportError:true}))) return;
   try {
-    const r = await _apiFetch(`/api/manifestacoes/${encodeURIComponent(_nmCardId)}/circa-dados`, 15000, {method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({analisePatch:{status:'ORIENTACAO_ACEITA', origem:'SAC', revisadoEm:new Date().toISOString()}})});
+    const r = await _apiFetch(`/api/manifestacoes/${encodeURIComponent(_nmCardId)}/circa-dados`, 15000, {method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ultimaEdicaoConhecida:_nmRascunhoUltimaEdicao,analisePatch:{status:'ORIENTACAO_ACEITA', origem:'SAC', revisadoEm:new Date().toISOString()}})});
     if (!r?.sucesso) throw new Error(r?.erro || 'Falha ao registrar a decisão.');
+    nmSincronizarVersaoPersistida(r);
     window._nmAnaliseAtual = {...(window._nmAnaliseAtual||{}), decisaoEtapa2:{...(window._nmAnaliseAtual?.decisaoEtapa2||{}), status:'ORIENTACAO_ACEITA', origem:'SAC'}};
     nmMostrarDecisaoEtapa2(window._nmAnaliseAtual.decisaoEtapa2);
     await nmProximaEtapa();
@@ -14906,7 +14920,7 @@ async function _apiFetch(url, timeoutMs, extraOptions) {
     const text = await r.text();
     let data;
     try { data = text ? JSON.parse(text) : {}; } catch { data = { raw: text }; }
-    if (!r.ok) { const httpError = new Error((data.erro || data.error || data.raw || '') + ' (HTTP ' + r.status + ')'); httpError.status = r.status; httpError.response = data; throw httpError; }
+    if (!r.ok) { const httpError = new Error((data.erro || data.error || data.raw || '') + ' (HTTP ' + r.status + ')'); httpError.status = r.status; httpError.codigo = data.codigo || data.code || ''; httpError.response = data; throw httpError; }
     return data;
   } catch (error) {
     // Este controller só é acionado pelo prazo da requisição. Alguns
@@ -29889,7 +29903,15 @@ function updateTopbarUser(user) {
   window.navigate = function(page, el){
     if(typeof _navOrig === 'function') _navOrig(page, el);
     if(_interno) return;
-    try { const url = '/' + slugDe(page); if(location.pathname !== url) history.pushState({page}, '', url); } catch(e){}
+    try {
+      // A navegação pode ser redirecionada pelo guard de perfil. Use a página
+      // efetivamente ativa para que a URL não permaneça em /meu-perfil quando
+      // o conteúdo exibido já é Nova Manifestação (e vice-versa).
+      const ativa=document.querySelector('.page.active[id^="page-"]');
+      const efetiva=ativa?.id?.slice(5) || page;
+      const url = '/' + slugDe(efetiva);
+      if(location.pathname !== url) history.pushState({page:efetiva}, '', url);
+    } catch(e){}
   };
 
   function irPara(page){
