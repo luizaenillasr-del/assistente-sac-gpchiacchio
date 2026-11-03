@@ -15,10 +15,10 @@
 |---|---|---|---|
 | A.1 | Autorização MC por perfil funcional — VISUALIZADOR/RCA bloqueados; APROVADOR_SETORIAL/DIRETORIA_GESTOR com leitura; ANALISTA/GESTOR SAC com edição | ✅ Corrigido (commits 595d543 + fb4323f) | C1 |
 | A.2 | Logging estruturado ativo em produção para diagnóstico de erros | ✅ Corrigido (commit 595d543) | C2 |
-| A.3 | `PESQUISA_SPREADSHEET_ID` configurada e validada obrigatoriamente em produção | ✅ Corrigido (commit 595d543) | A1 |
-| A.4 | `AI_PROVIDER` configurada explicitamente (`openai`) em produção | ⚠️ Configuração pendente no Vercel (código apenas emite aviso) | A2 |
+| A.3 | `PESQUISA_SPREADSHEET_ID` configurada e validada obrigatoriamente em produção | ⚠️ Código corrigido (process.exit se ausente). Variável **não visível** no Vercel — confirmar existência ou adicionar antes do go-live | A1 |
+| A.4 | `AI_PROVIDER` configurada explicitamente (`openai`) em produção | ✅ Confirmado no Vercel (Production, 2026-11-03) — visível nas screenshots do dashboard | A2 |
 | A.5 | PG offline não causa null-pointer exceptions — fallback seguro implementado | ✅ Corrigido (commit 595d543) | A3 |
-| A.6 | `npm test` passa com zero falhas — suítes com mock | ✅ 34/35 suítes (navigation-pages timeout em cloud — pré-existente, não regressão) | — |
+| A.6 | `npm test` passa com zero falhas — suítes com mock | ✅ 35/35 suítes em GitHub Actions CI (commit 3c99549) — incluindo 3 suítes Playwright | — |
 | A.7 | Nenhuma credencial (DATABASE_URL, GOOGLE_CREDENTIALS, chaves de API) exposta em respostas HTTP | ✅ Atendido | — |
 | A.8 | `SESSION_SECRET` com ≥ 32 caracteres configurada em produção | ✅ Atendido (exit se ausente) | — |
 | A.9 | Isolamento por empresa funcional — usuário de empresa A não acessa dados de empresa B | ✅ Atendido | — |
@@ -140,15 +140,18 @@ Para considerar o sistema homologado, os seguintes fluxos devem ser validados em
 
 ```
 Estado do código:          5 falhas corrigidas (C1 reclassificada, C2, A1, A3, B4)
-                           34/35 suítes passando; 3 testes Playwright bloqueados
-                           (pré-existentes — não regressão da PR)
+                           35/35 suítes passando em GitHub Actions CI (commit 3c99549)
+                           incluindo 3 suítes Playwright — zero regressões
 Configuração confirmada:   SPREADSHEET_ID ✅  SESSION_SECRET ✅  DEMO_LOGIN ✅
-                           PESQUISA_SPREADSHEET_ID ⚠️ aguarda verificação Vercel
-                           AI_PROVIDER ⚠️ aguarda definição explícita no Vercel
+                           AI_PROVIDER ✅ confirmada no Vercel (Production, 2026-11-03)
+                           GOOGLE_CREDENTIALS ✅  OPENAI_API_KEY ✅  RESEND_API_KEY ✅
+                           PESQUISA_SPREADSHEET_ID ⚠️ não visível no dashboard — verificar
+                           DRIVE_FOLDER_ID ⚠️ não visível — necessária para upload de anexos
 Integração testada:        NENHUM fluxo testado com armazenamento real
 Homologação aprovada:      NÃO INICIADA
 
-CONCLUSÃO: Sistema NÃO HOMOLOGADO — PR #482 limpa, CI Vercel verde,
-código corrigido. Próximo passo: definir AI_PROVIDER e PESQUISA_SPREADSHEET_ID
-no Vercel, e executar plano de testes ponta a ponta em staging.
+CONCLUSÃO: Sistema NÃO HOMOLOGADO — PR #482 limpa, CI verde (35/35),
+todos os bloqueadores de código resolvidos. Único bloqueador restante:
+verificar/adicionar PESQUISA_SPREADSHEET_ID no Vercel e executar plano
+de testes ponta a ponta em staging com armazenamento real isolado.
 ```
