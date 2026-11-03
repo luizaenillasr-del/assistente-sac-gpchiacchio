@@ -108,6 +108,14 @@ function request(base, method, route, auth, body) {
     assert.match(String(complementacaoEvent.DETALHES || ''), /CATEGORIA/);
     const stale=await request(base,'PATCH',`/api/manifestacoes/${encodeURIComponent(draftId)}/circa-dados`,master,{produto:'Outro',ultimaEdicaoConhecida:draft.body.atualizadoEm});
     assert.equal(stale.status,409,'gravação com versão antiga deve ser rejeitada sem sobrescrever dados');
+    const stage3=await request(base,'PATCH',`/api/manifestacoes/${encodeURIComponent(draftId)}/circa-dados`,master,{ETAPA_ATUAL:'3',STATUS:'RASCUNHO',STATUS_FICHA:'RASCUNHO'});
+    assert.equal(stage3.status,200,JSON.stringify(stage3.body));
+    draftRow=mock.DB.MANIFESTACOES.find(r=>r.ID_MANIFESTACAO===draftId);
+    assert.equal(draftRow.ETAPA_ATUAL,'3'); assert.equal(draftRow.STATUS,'RASCUNHO');
+    draftRow.STATUS='AGUARDANDO_RESPOSTA_SETOR'; draftRow.STATUS_FICHA='AGUARDANDO_SETOR';
+    const downgrade=await request(base,'PATCH',`/api/manifestacoes/${encodeURIComponent(draftId)}/circa-dados`,master,{STATUS:'RASCUNHO',ETAPA_ATUAL:'3'});
+    assert.equal(downgrade.status,409,'uma tratativa iniciada não pode voltar a rascunho');
+    assert.equal(draftRow.STATUS,'AGUARDANDO_RESPOSTA_SETOR');
 
     const analise = await request(base, 'POST', '/api/analise', master, {
       descricao:'A embalagem chegou danificada e o cliente solicita retorno.', tipo:'Reclamação',

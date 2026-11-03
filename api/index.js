@@ -8207,7 +8207,7 @@ app.patch('/api/manifestacoes/:id/circa-dados', requerPermissao('manifestacoes.e
     if(!m) return res.status(404).json({sucesso:false,erro:'Manifestação não encontrada.'});
     if(req._empresaScope && !pertenceEmpresa(req._empresaScope,m.EMPRESA_RECLAMADA||'')) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado.'});
     const requestedStage=Number(req.body?.ETAPA_ATUAL||0);
-    const currentStage=circaWorkflow.stageForStatus(m.STATUS||m.STATUS_FICHA||'RASCUNHO');
+    const currentStage=Math.max(Number(m.ETAPA_ATUAL)||0, circaWorkflow.stageForStatus(m.STATUS||m.STATUS_FICHA||'RASCUNHO'));
     const versaoConhecida=String(req.body?.ultimaEdicaoConhecida||'').trim();
     const versaoAtual=String(m.DATA_ULTIMA_EDICAO||'').trim();
     if (versaoConhecida && versaoAtual && versaoConhecida !== versaoAtual) return res.status(409).json({sucesso:false,erro:'O rascunho foi alterado em outra sessão. Recarregue a ficha antes de salvar.',codigo:'RASCUNHO_CONCORRENTE',atualizadoEm:versaoAtual});
@@ -8240,6 +8240,10 @@ app.patch('/api/manifestacoes/:id/circa-dados', requerPermissao('manifestacoes.e
       const valor=req.body[fonte];
       if((valor===undefined||valor===null||valor==='') && !camposLimpar.has(key) && String(m[key]||'')!=='') continue;
       patch[key]=valor ?? '';
+    }
+    if (String(m.STATUS || m.STATUS_FICHA || '').toUpperCase() !== 'RASCUNHO' &&
+        [patch.STATUS, patch.STATUS_FICHA].some(v => String(v || '').toUpperCase() === 'RASCUNHO')) {
+      return res.status(409).json({ sucesso:false, codigo:'STATUS_NAO_RETROCEDIVEL', erro:'Uma manifestação em andamento não pode voltar a rascunho.' });
     }
     if (patch.ANALISE_IA && m.ANALISE_IA) {
       try {
