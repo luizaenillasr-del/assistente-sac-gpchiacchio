@@ -3010,7 +3010,14 @@ app.patch('/api/manifestacoes/:id/ficha', requerPermissao('manifestacoes.editar'
         return res.status(400).json({ sucesso:false, codigo:'PRAZO_INVALIDO', erro:'O prazo do setor deve estar entre 1 e 720 horas.' });
       }
       const slaHoras = Number.isFinite(prazoSolicitado) && prazoSolicitado > 0 && prazoSolicitado <= 720 ? prazoSolicitado : 72;
-      const dataLimiteSetor = new Date(Date.parse(agora) + slaHoras * 3600000).toISOString();
+      const dataLimiteInformada = req.body.dataLimite || req.body.DATA_LIMITE || '';
+      const dataLimiteInformadaMs = dataLimiteInformada ? Date.parse(dataLimiteInformada) : NaN;
+      if (dataLimiteInformada && (!Number.isFinite(dataLimiteInformadaMs) || dataLimiteInformadaMs <= Date.parse(agora))) {
+        return res.status(400).json({ sucesso:false, codigo:'PRAZO_INVALIDO', erro:'A data limite do setor deve ser válida e futura.' });
+      }
+      const dataLimiteSetor = dataLimiteInformada
+        ? new Date(dataLimiteInformadaMs).toISOString()
+        : new Date(Date.parse(agora) + slaHoras * 3600000).toISOString();
       dados = {
         STATUS: 'AGUARDANDO_RESPOSTA_SETOR',
         STATUS_FICHA: 'AGUARDANDO_SETOR',

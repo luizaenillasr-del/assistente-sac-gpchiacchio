@@ -58,6 +58,9 @@ function request(base, method, route, auth, body) {
     const prazoInvalido = await request(base, 'PATCH', '/api/manifestacoes/MAN-CHI-001/ficha', sac, { ...payload, idempotencyKey: 'TESTE-PERFIL-FUNCIONAL-002', prazoSlaHoras: 'data-inválida' });
     assert.equal(prazoInvalido.status, 400);
     assert.equal(prazoInvalido.body.codigo, 'PRAZO_INVALIDO');
+    const dataInvalida = await request(base, 'PATCH', '/api/manifestacoes/MAN-CHI-001/ficha', sac, { ...payload, idempotencyKey: 'TESTE-PERFIL-FUNCIONAL-003', dataLimite: 'data-inválida' });
+    assert.equal(dataInvalida.status, 400);
+    assert.equal(dataInvalida.body.codigo, 'PRAZO_INVALIDO');
     console.log('ENCAMINHAMENTO PERFIL FUNCIONAL: SAC → APROVADOR_SETORIAL persistido sem HTTP 500 e prazo inválido rejeitado.');
   } finally {
     Object.assign(originalManifestacao, manifestacaoSnapshot);
