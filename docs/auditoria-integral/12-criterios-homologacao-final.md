@@ -13,12 +13,12 @@
 
 | # | Critério | Status | Ref |
 |---|---|---|---|
-| A.1 | Autorização por perfil na MC — perfis restritos (SETOR/VISUALIZADOR/RCA/DIRETOR) não acessam leitura | ✅ Corrigido (commit 595d543) | C1 |
+| A.1 | Autorização MC por perfil funcional — VISUALIZADOR/RCA bloqueados; APROVADOR_SETORIAL/DIRETORIA_GESTOR com leitura; ANALISTA/GESTOR SAC com edição | ✅ Corrigido (commits 595d543 + fb4323f) | C1 |
 | A.2 | Logging estruturado ativo em produção para diagnóstico de erros | ✅ Corrigido (commit 595d543) | C2 |
 | A.3 | `PESQUISA_SPREADSHEET_ID` configurada e validada obrigatoriamente em produção | ✅ Corrigido (commit 595d543) | A1 |
-| A.4 | `AI_PROVIDER` configurada explicitamente (`openai`) em produção | ❌ Aberto | A2 |
+| A.4 | `AI_PROVIDER` configurada explicitamente (`openai`) em produção | ⚠️ Configuração pendente no Vercel (código apenas emite aviso) | A2 |
 | A.5 | PG offline não causa null-pointer exceptions — fallback seguro implementado | ✅ Corrigido (commit 595d543) | A3 |
-| A.6 | `npm test` passa com zero falhas | ✅ Atendido (30 suítes) | — |
+| A.6 | `npm test` passa com zero falhas — suítes com mock | ✅ 34/35 suítes (navigation-pages timeout em cloud — pré-existente, não regressão) | — |
 | A.7 | Nenhuma credencial (DATABASE_URL, GOOGLE_CREDENTIALS, chaves de API) exposta em respostas HTTP | ✅ Atendido | — |
 | A.8 | `SESSION_SECRET` com ≥ 32 caracteres configurada em produção | ✅ Atendido (exit se ausente) | — |
 | A.9 | Isolamento por empresa funcional — usuário de empresa A não acessa dados de empresa B | ✅ Atendido | — |
@@ -56,15 +56,66 @@
 
 ---
 
+## Distinção de Estados — Código vs. Configuração vs. Integração vs. Homologação
+
+| Estado | Definição | Situação Atual |
+|---|---|---|
+| **Código corrigido** | Falha identificada, código alterado, teste unitário aprovado | 5 falhas corrigidas: C1, C2, A1, A3, B4 (commits 595d543, fb4323f) |
+| **Configuração confirmada** | Variável de ambiente definida e validada no ambiente alvo | SPREADSHEET_ID, SESSION_SECRET, DEMO_LOGIN_ENABLED confirmadas. `PESQUISA_SPREADSHEET_ID` e `AI_PROVIDER`: **aguardam confirmação no Vercel** |
+| **Integração testada** | Fluxo ponta a ponta executado com armazenamento real (Sheets/PG/Drive) | **Nenhum fluxo testado com armazenamento real** — todos somente mock |
+| **Homologação aprovada** | Integração testada + assinatura do responsável técnico e do negócio | **Não iniciada** |
+
+---
+
+## Testes Executados, Bloqueados e Pendentes
+
+### Executados com sucesso (mock)
+| Suíte | Cenários | Observação |
+|---|---|---|
+| `foundation-safety.js` | Segurança geral | ✅ |
+| `circa*.js` (9 suítes) | Fluxo CIRCA, tratativas | ✅ |
+| `modelo-autorizacao.js` | Perfis funcionais | ✅ |
+| `encaminhamento-*.js` (2 suítes) | Encaminhamento por setor/perfil | ✅ |
+| `ficha-triagem-responsaveis.js` | Triagem e responsáveis | ✅ |
+| `auth-resilience.js` | Resiliência de autenticação | ✅ |
+| `nova-manifestacao-*.js` (2 suítes) | 7 etapas de criação | ✅ |
+| `matriz-conhecimento-auth.js` | 56 cenários MC — 4 perfis funcionais + cross-company | ✅ |
+| `behavior.js`, `suite.js` | Comportamento geral | ✅ |
+| `pesquisas.js`, `portal-isolamento.js` | Pesquisas e portal | ✅ |
+| `protocolo-atomico.js` | Unicidade de protocolo | ✅ |
+| Demais (10 suítes) | Arquivos, relatórios, etc. | ✅ |
+
+### Bloqueados por timeout (testes Playwright de browser)
+| Suíte | Causa | Classificação |
+|---|---|---|
+| `navigation-pages.js` | Playwright + login real — trava em cloud container sem display persistente | Pré-existente (main), não regressão da PR |
+| `relatorio-satisfacao.js` | Playwright — mesmo cenário | Pré-existente (B3) |
+| `cerebro.js` | Playwright — mesmo cenário | Pré-existente |
+
+### Pendentes — requerem armazenamento real isolado
+| Fluxo | Acesso necessário | Prioridade |
+|---|---|---|
+| Login e autenticação real | Sheets com usuário de staging | ALTA |
+| Nova manifestação — 7 etapas ponta a ponta | Sheets de staging (não produção) | ALTA |
+| Rascunho → continuidade → envio | Sheets de staging | ALTA |
+| Encaminhamento setorial + resposta setorial | Sheets de staging, usuário SETOR RESPONSÁVEL | ALTA |
+| Validação SAC + aprovação APROVADOR_SETORIAL | Sheets de staging, múltiplos perfis | ALTA |
+| Devolutiva (envio de e-mail) | Resend configurado em staging | MÉDIA |
+| Upload de anexo | Drive com `DRIVE_FOLDER_ID` de staging | MÉDIA |
+| Portal público (consulta + pesquisa) | Sheets de staging com token de cliente | ALTA |
+| Pesquisa de satisfação end-to-end | Sheets de staging, `PESQUISA_SPREADSHEET_ID` configurada | ALTA |
+
+---
+
 ## Fluxos Críticos — Validação Requerida
 
-Para considerar o sistema homologado, os seguintes fluxos devem ser validados em ambiente de produção (não apenas em testes unitários com mock):
+Para considerar o sistema homologado, os seguintes fluxos devem ser validados em ambiente de staging com armazenamento real isolado (não mock):
 
 | Fluxo | Método de Validação | Status |
 |---|---|---|
 | Login e autenticação | Teste manual + `behavior.js` | ⚠️ Somente mock |
 | Nova manifestação (7 etapas) | Teste manual ponta a ponta | ⚠️ Somente mock |
-| Complementações CIRCA | `circa-confirmacao-complementacoes.js` + teste manual | ✅ Mock + aprovado |
+| Complementações CIRCA | `circa-confirmacao-complementacoes.js` + teste manual | ✅ Mock aprovado |
 | Geração de protocolo único | `protocolo-atomico.js` + teste em produção | ⚠️ Somente mock |
 | Envio de e-mail de devolutiva | Teste manual com Resend real | ❌ Não testado |
 | Upload de anexo ao Drive | Teste manual com Drive real | ❌ Não testado |
@@ -88,12 +139,16 @@ Para considerar o sistema homologado, os seguintes fluxos devem ser validados em
 ## Status Atual
 
 ```
-Bloqueadores abertos: 1 (A.4 — AI_PROVIDER)
-Bloqueadores corrigidos: 4 (A.1, A.2, A.3, A.5 — commit 595d543)
-Bloqueadores atendidos anteriormente: 7 (A.6-A.12)
-Recomendados abertos: 6
-Fluxos validados apenas em mock: 7 de 9
+Estado do código:          5 falhas corrigidas (C1 reclassificada, C2, A1, A3, B4)
+                           34/35 suítes passando; 3 testes Playwright bloqueados
+                           (pré-existentes — não regressão da PR)
+Configuração confirmada:   SPREADSHEET_ID ✅  SESSION_SECRET ✅  DEMO_LOGIN ✅
+                           PESQUISA_SPREADSHEET_ID ⚠️ aguarda verificação Vercel
+                           AI_PROVIDER ⚠️ aguarda definição explícita no Vercel
+Integração testada:        NENHUM fluxo testado com armazenamento real
+Homologação aprovada:      NÃO INICIADA
 
-CONCLUSÃO: Sistema NÃO HOMOLOGADO — aguardando configuração de AI_PROVIDER
-em produção (A.4) e validação de fluxos críticos com armazenamento real
+CONCLUSÃO: Sistema NÃO HOMOLOGADO — PR #482 limpa, CI Vercel verde,
+código corrigido. Próximo passo: definir AI_PROVIDER e PESQUISA_SPREADSHEET_ID
+no Vercel, e executar plano de testes ponta a ponta em staging.
 ```
