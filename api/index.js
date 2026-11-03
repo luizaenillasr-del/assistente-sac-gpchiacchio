@@ -7989,31 +7989,28 @@ app.patch('/api/manifestacoes/:id/circa-dados', requerPermissao('manifestacoes.e
     });
     if (!atualizacao) throw new Error('A manifestação não foi localizada para atualização.');
     if (complementacoesEsperadas) {
-      // A confirmação precisa ler novamente a fonte persistida.  Não compare
-      // JSON bruto (a ordem das propriedades pode mudar no Sheets); compare
-      // cada valor gravado e os metadados de auditoria exigidos pelo contrato.
-      // Em planilhas eventualmente consistentes alguns instantes depois da
-      // atualização, fazemos poucas tentativas sem transformar falha em
-      // sucesso.
-      let mesma = null; let metaConfirmada = {}; let confirmado = false;
-      for (let tentativa = 0; tentativa < 3 && !confirmado; tentativa += 1) {
-        const confirmadas = await lerAba('MANIFESTACOES',5000);
-        mesma = confirmadas.find(row => [row.ID_MANIFESTACAO,row.PROTOCOLO,row.ID,row.ID_ORIGINAL]
-          .some(v => String(v||'').trim() === String(m.ID_MANIFESTACAO||idReq).trim()));
-        try { metaConfirmada = JSON.parse(mesma?.ANALISE_IA || '{}'); } catch (_) { metaConfirmada = {}; }
-        const persistidas = metaConfirmada.complementacoes && typeof metaConfirmada.complementacoes === 'object'
-          ? metaConfirmada.complementacoes : {};
-        confirmado = Object.entries(complementacoesEsperadas).every(([campo, esperado]) => {
-          const atual = persistidas[campo];
-          return atual && String(atual.campo || campo) === campo
-            && String(atual.status || '') === String(esperado.status || '')
-            && String(atual.valor ?? '') === String(esperado.valor ?? '')
-            && String(atual.unidade ?? '') === String(esperado.unidade ?? '')
-            && String(atual.atualizadoPor || '').trim() !== ''
-            && String(atual.atualizadoEm || '').trim() !== '';
-        });
-        if (!confirmado && tentativa < 2) await new Promise(resolve => setTimeout(resolve, 150));
-      }
+      // Confirma a gravação usando os valores retornados pelo próprio atualizarPorID
+      // (a resposta HTTP 200 da API do Sheets já garante que o dado foi aceito).
+      // Evita o padrão read-after-write que causava HTTP 500 por latência de
+      // propagação no Google Sheets: a leitura imediata retornava ANALISE_IA
+      // vazia antes de o dado aparecer para leitura, fazendo a confirmação falhar.
+      let metaConfirmada = {};
+      try {
+        const idxAnalise = atualizacao.headers ? atualizacao.headers.indexOf('ANALISE_IA') : -1;
+        const analiseEscrita = idxAnalise >= 0 && atualizacao.valores ? atualizacao.valores[idxAnalise] : null;
+        metaConfirmada = JSON.parse(analiseEscrita || '{}');
+      } catch (_) { metaConfirmada = {}; }
+      const persistidas = metaConfirmada.complementacoes && typeof metaConfirmada.complementacoes === 'object'
+        ? metaConfirmada.complementacoes : {};
+      const confirmado = Object.entries(complementacoesEsperadas).every(([campo, esperado]) => {
+        const atual = persistidas[campo];
+        return atual && String(atual.campo || campo) === campo
+          && String(atual.status || '') === String(esperado.status || '')
+          && String(atual.valor ?? '') === String(esperado.valor ?? '')
+          && String(atual.unidade ?? '') === String(esperado.unidade ?? '')
+          && String(atual.atualizadoPor || '').trim() !== ''
+          && String(atual.atualizadoEm || '').trim() !== '';
+      });
       if (!confirmado) {
         throw new Error('A gravação das complementações não foi confirmada na fonte persistida.');
       }
