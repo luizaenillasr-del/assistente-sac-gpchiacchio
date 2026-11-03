@@ -135,6 +135,7 @@ const manifestacaoRepository = {
 
   // Busca para similaridade — retorna manifestações com descrição e tratativa
   async buscarParaSimilaridade(limite = 1000) {
+    if (!prisma) throw new Error('PG offline: DATABASE_URL não configurada');
     const rows = await prisma.manifestacao.findMany({
       where: { descricao: { not: '' } },
       select: {

@@ -301,7 +301,13 @@ module.exports = {
       : ['ID_MANIFESTACAO','ID_RNC','ID','ID_HISTORICO','ID_USUARIO','USUARIO','EMAIL','ID_PERMISSAO','ID_SOLICITACAO'];
     const row = rows.find(r => campos.some(c => r[c] === id));
     if (row) Object.assign(row, dados);
-    return Promise.resolve(row ? { rowIndex: rows.indexOf(row) + 2 } : null);
+    if (!row) return Promise.resolve(null);
+    // Espelha o retorno real de atualizarPorID: { rowIndex, headers, valores }.
+    // headers e valores representam o array exato gravado na linha do Sheets,
+    // necessário para a confirmação por leitura local (sem re-read do Sheets).
+    const headers = Object.keys(row);
+    const valores = headers.map(h => (row[h] !== undefined ? row[h] : ''));
+    return Promise.resolve({ rowIndex: rows.indexOf(row) + 2, headers, valores });
   },
   garantirAbaComCabecalhos(nomeAba, headers) {
     if (!DB[nomeAba]) DB[nomeAba] = [];
