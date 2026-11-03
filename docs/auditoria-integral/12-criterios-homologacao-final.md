@@ -15,7 +15,7 @@
 |---|---|---|---|
 | A.1 | Autorização MC por perfil funcional — VISUALIZADOR/RCA bloqueados; APROVADOR_SETORIAL/DIRETORIA_GESTOR com leitura; ANALISTA/GESTOR SAC com edição | ✅ Corrigido (commits 595d543 + fb4323f) | C1 |
 | A.2 | Logging estruturado ativo em produção para diagnóstico de erros | ✅ Corrigido (commit 595d543) | C2 |
-| A.3 | `PESQUISA_SPREADSHEET_ID` configurada e validada obrigatoriamente em produção | ⚠️ Código corrigido (process.exit se ausente). Variável **não visível** no Vercel — confirmar existência ou adicionar antes do go-live | A1 |
+| A.3 | `PESQUISA_SPREADSHEET_ID` configurada e validada obrigatoriamente em produção | ❌ **AUSENTE no Vercel** (confirmado via busca no dashboard, 2026-11-03). Código faz `process.exit(1)` em produção se ausente — **aplicação não sobe sem esta variável**. Adicionar antes do deploy. | A1 |
 | A.4 | `AI_PROVIDER` configurada explicitamente (`openai`) em produção | ✅ Confirmado no Vercel (Production, 2026-11-03) — visível nas screenshots do dashboard | A2 |
 | A.5 | PG offline não causa null-pointer exceptions — fallback seguro implementado | ✅ Corrigido (commit 595d543) | A3 |
 | A.6 | `npm test` passa com zero falhas — suítes com mock | ✅ 35/35 suítes em GitHub Actions CI (commit 3c99549) — incluindo 3 suítes Playwright | — |
@@ -36,7 +36,7 @@
 | B.2 | Alertas automáticos de SLA vencido enviados por e-mail | ❌ Aberto | M4 |
 | B.3 | Cache invalidado após escritas em abas com TTL>0 | ❌ Aberto | M1 |
 | B.4 | `POST /api/bootstrap` protegido por autenticação | ❌ Aberto | B2 |
-| B.5 | Google Drive configurado (`DRIVE_FOLDER_ID`) e erro explícito quando indisponível | ⚠️ Parcial | M5 |
+| B.5 | Google Drive configurado (`DRIVE_FOLDER_ID`) e erro explícito quando indisponível | ❌ `DRIVE_FOLDER_ID` **ausente no Vercel** (confirmado 2026-11-03). Código faz upload na raiz do Drive sem a variável — não trava, mas arquivos ficam fora da pasta correta. Não é fatal, mas deve ser corrigido antes do go-live. | M5 |
 | B.6 | `Resend` configurado para e-mails transacionais | ⚠️ Configurar | — |
 | B.7 | Estratégia de dual-write Sheets ↔ PG documentada e fonte autoritativa definida | ❌ Aberto | A4 |
 
@@ -145,13 +145,13 @@ Estado do código:          5 falhas corrigidas (C1 reclassificada, C2, A1, A3, 
 Configuração confirmada:   SPREADSHEET_ID ✅  SESSION_SECRET ✅  DEMO_LOGIN ✅
                            AI_PROVIDER ✅ confirmada no Vercel (Production, 2026-11-03)
                            GOOGLE_CREDENTIALS ✅  OPENAI_API_KEY ✅  RESEND_API_KEY ✅
-                           PESQUISA_SPREADSHEET_ID ⚠️ não visível no dashboard — verificar
-                           DRIVE_FOLDER_ID ⚠️ não visível — necessária para upload de anexos
+                           PESQUISA_SPREADSHEET_ID ❌ AUSENTE — process.exit(1) em produção
+                           DRIVE_FOLDER_ID ❌ AUSENTE — uploads vão para raiz do Drive
 Integração testada:        NENHUM fluxo testado com armazenamento real
 Homologação aprovada:      NÃO INICIADA
 
-CONCLUSÃO: Sistema NÃO HOMOLOGADO — PR #482 limpa, CI verde (35/35),
-todos os bloqueadores de código resolvidos. Único bloqueador restante:
-verificar/adicionar PESQUISA_SPREADSHEET_ID no Vercel e executar plano
-de testes ponta a ponta em staging com armazenamento real isolado.
+CONCLUSÃO: Sistema NÃO HOMOLOGADO — PR #482 limpa, CI verde (35/35).
+BLOQUEADOR CRÍTICO: PESQUISA_SPREADSHEET_ID ausente no Vercel → aplicação
+não sobe em produção (process.exit(1)). Adicionar a variável é pré-requisito
+para qualquer deploy. Após isso: executar testes ponta a ponta em staging.
 ```
