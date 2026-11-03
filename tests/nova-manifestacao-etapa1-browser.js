@@ -112,11 +112,25 @@ async function main() {
       sessionStorage.setItem('sac-token', 'browser-regression-token');
       sessionStorage.setItem('sac-auth', '1');
       sessionStorage.setItem('sac-user', JSON.stringify({ usuario: 'teste.nova', nome: 'Teste Nova Manifestação', perfil: 'MASTER', empresa: 'Grupo Chiacchio' }));
+      localStorage.setItem('sac-rascunho', JSON.stringify({ 'nm-descricao': 'não deve vazar para uma nova manifestação' }));
+      localStorage.setItem('sac-rascunho-id', 'NM-BROWSER-001');
       document.getElementById('login-screen').style.display = 'none';
       navigate('nova-manifestacao');
     });
     const pageRoot = page.locator('#page-nova-manifestacao');
     await pageRoot.waitFor({ state: 'visible' });
+    await page.waitForTimeout(350);
+    assert.equal(await page.locator('#nm-descricao').inputValue(), '', 'uma nova manifestação não pode carregar rascunho implicitamente');
+    assert.equal(await page.locator('#nm-evidencias-list .upload-item').count(), 0, 'anexos antigos não podem vazar para uma nova manifestação');
+    await page.evaluate(() => window.nmAbrirRascunho('NM-BROWSER-001'));
+    await page.waitForTimeout(350);
+    assert.equal(await page.locator('#nm-descricao').inputValue(), 'Rascunho de navegador confirmado.', 'a retomada explícita deve carregar o rascunho solicitado');
+    await page.evaluate(() => navigate('nova-manifestacao'));
+    await page.waitForTimeout(350);
+    assert.equal(await page.locator('#nm-descricao').inputValue(), '', 'abrir novamente como nova deve limpar a retomada anterior');
+    await page.locator('#nm-btn-continuar').click();
+    assert.match(await page.locator('#nm-etapa-erro').textContent(), /empresa|cliente|contato|tipo|canal|data|descri/i, 'a Etapa 1 deve informar seus próprios campos obrigatórios');
+    assert.doesNotMatch(await page.locator('#nm-etapa-erro').textContent(), /conduzirá a tratativa/i, 'a validação da Etapa 1 não pode exigir decisão da Etapa 3');
 
     const descricaoCenario = ('A entrega para Chiacchio Embalagens atrasou três dias. ' +
       'Foram identificados aproximadamente 1.200 potes com dificuldade de encaixe das tampas. ').repeat(6).slice(0, 745);
@@ -132,7 +146,16 @@ async function main() {
     await page.locator('#nm-expectativa').fill('Cliente espera substituição e retorno do SAC.');
     await page.locator('#nm-descricao').fill(descricaoCenario);
     await page.locator('#nm-evidencias').setInputFiles(arquivos);
+    await page.waitForTimeout(120);
     await assertFileNames(page, ['evidencia.pdf', 'foto.png']);
+    await page.locator('#nm-evidencias').setInputFiles(arquivos);
+    await page.waitForTimeout(1000);
+    assert.equal(await page.locator('#nm-evidencias-list .upload-item').count(), 2, 'seleção repetida do mesmo arquivo não pode duplicar a lista');
+    await page.locator('#nm-evidencias-list .upload-item').first().locator('button').click();
+    assert.equal(await page.locator('#nm-evidencias-list .upload-item').count(), 1, 'remover um anexo deve preservar os demais');
+    await page.locator('#nm-evidencias').setInputFiles(arquivos);
+    await page.waitForTimeout(120);
+    assert.equal(await page.locator('#nm-evidencias-list .upload-item').count(), 2, 'um anexo removido pode ser selecionado novamente');
 
     const continuar = page.locator('#nm-btn-continuar');
     // Dois cliques no mesmo ciclo não podem criar dois rascunhos.
