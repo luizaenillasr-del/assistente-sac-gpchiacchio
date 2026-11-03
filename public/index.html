@@ -1382,6 +1382,9 @@
             <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">Perfil principal <span style="color:#C70602">*</span></label>
             <select id="usu-perfil" class="form-input" onchange="usuPerfilChanged()">
               <option value="">Selecione...</option>
+              <optgroup label="── Modelo funcional ──">
+                <option>SAC</option><option>APROVADOR_SETORIAL</option><option>DIRETORIA_GESTOR</option>
+              </optgroup>
               <optgroup label="── Administração ──">
                 <option>MASTER</option><option>APROVADOR MASTER</option>
               </optgroup>
@@ -1411,6 +1414,12 @@
           <div class="form-group">
             <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">Cargo oficial</label>
             <input id="usu-cargo" class="form-input" placeholder="Cargo ou função">
+          </div>
+          <div class="form-group">
+            <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">Nível hierárquico</label>
+            <select id="usu-nivel-hierarquico" class="form-input">
+              <option value="">Não informado</option><option value="COLABORADOR">Colaborador / Vendedor</option><option value="SUPERVISOR">Supervisor</option><option value="GERENTE">Gerente</option><option value="DIRETOR">Diretor</option>
+            </select>
           </div>
           <div class="form-group">
             <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">Status</label>
@@ -7413,7 +7422,7 @@
 <script>
 (function(){
   'use strict';
-  const S={item:null,id:null,tab:0,attachments:[],history:[],circa:null,acionamentos:[],extrasErrors:{},loading:false,showAttachments:false,path:'',anexoFiltro:'todos',setores:[],usuarios:[],originPage:null,originTab:null};
+  const S={item:null,id:null,tab:0,attachments:[],history:[],circa:null,acionamentos:[],extrasErrors:{},loading:false,showAttachments:false,path:'',anexoFiltro:'todos',setores:[],usuarios:[],responsaveis:[],responsaveisError:'',setorSelecionado:'',responsaveisRequest:0,originPage:null,originTab:null};
   const $=id=>document.getElementById(id);
   const esc=v=>{const d=document.createElement('div');d.textContent=v==null?'':String(v);return d.innerHTML};
   const val=(o,...ks)=>{for(const k of ks){const v=o?.[k];if(v!==undefined&&v!==null&&String(v).trim()!=='')return v}return ''};
@@ -7428,11 +7437,18 @@
   function acoesAtivas(){return (S.acionamentos||[]).filter(a=>!['CANCELADO','CANCELADA'].includes(String(val(a,'STATUS','status')).toUpperCase()))}
   function listaFrentes(campo){return [...new Set(acoesAtivas().map(a=>val(a,campo)).filter(Boolean).map(String))].join(' · ')}
   function setor(){return val(item(),'SETOR_CONFIRMADO','SETOR_DESTINADO','RESP_SETOR','SETOR_SUGERIDO','SETOR_ORIGEM')||listaFrentes('SETOR_DESTINO')||'Não definido'}
-  function resp(){return val(item(),'RESPONSAVEL_SETOR','RESPONSAVEL_SAC','RESPONSAVEL','RESPONSAVEL_TRATATIVA','USUARIO_CRIACAO')||listaFrentes('RESPONSAVEL')||'Não definido'}
+  function resp(){
+    const direto=val(item(),'RESPONSAVEL_NOME','RESPONSAVEL_SETOR_NOME','RESPONSAVEL_SAC_NOME');
+    if(direto)return direto;
+    const ids=[val(item(),'RESPONSAVEL_SETOR_ID','RESPONSAVEL_ID','RESPONSAVEL_SETOR','RESPONSAVEL'),...acoesAtivas().map(a=>val(a,'RESPONSAVEL_ID','responsavelId','RESPONSAVEL'))].filter(Boolean).map(String);
+    const porFrente=acoesAtivas().map(a=>{const nome=val(a,'RESPONSAVEL_NOME','RESPONSAVEL_NOME_COMPLETO');if(nome)return nome;const rid=val(a,'RESPONSAVEL_ID','responsavelId','RESPONSAVEL');const u=S.responsaveis.find(x=>String(val(x,'id','ID_USUARIO','usuario','USUARIO'))===String(rid));return u?val(u,'nome','NOME','usuario','USUARIO'):''}).filter(Boolean);
+    if(porFrente.length)return [...new Set(porFrente)].join(' · ');
+    return val(item(),'RESPONSAVEL_SETOR','RESPONSAVEL_SAC','RESPONSAVEL','RESPONSAVEL_TRATATIVA','USUARIO_CRIACAO')||listaFrentes('RESPONSAVEL')||'Não definido';
+  }
   function prazo(){return val(item(),'SLA_HORAS','PRAZO_TRATATIVA','PRAZO_RESPOSTA','SLA')}
-  function slaLine(label, start, hours, color){const h=Number(hours);if(!h)return {label,value:'Não informado',pct:0,color};let pct=0,remain='Não informado';try{const t=new Date(start||Date.now()), end=new Date(t.getTime()+h*3600000), now=new Date();pct=Math.max(0,Math.min(100,((now-t)/(h*3600000))*100));const rem=(end-now)/3600000;remain=rem<0?'Vencido':(rem>=24?Math.floor(rem/24)+'d '+Math.floor(rem%24)+'h':Math.floor(rem)+'h '+Math.floor((rem%1)*60)+'min')}catch{};return {label,value:remain,pct:Math.round(pct),color}};
+  function slaLine(label, start, hours, color, limite){const h=Number(hours);if(!h&&!limite)return {label,value:'Não informado',pct:0,color};let pct=0,remain='Não informado',end=null;try{const t=start?new Date(start):null;end=limite?new Date(limite):(t&&h?new Date(t.getTime()+h*3600000):null);if(!end||Number.isNaN(end.getTime()))return {label,value:'Dados insuficientes',pct:0,color};if(!h){return {label,value:`Limite ${date(end.toISOString())} · prazo persistido`,pct:0,color};}const inicio=t&&!Number.isNaN(t.getTime())?t:new Date(end.getTime()-h*3600000);const now=new Date();pct=Math.max(0,Math.min(100,((now-inicio)/(end-inicio))*100));const rem=(end-now)/3600000;remain=rem<0?'Vencido':(rem>=24?Math.floor(rem/24)+'d '+Math.floor(rem%24)+'h':Math.floor(rem)+'h '+Math.floor((rem%1)*60)+'min');remain+=` · limite ${date(end.toISOString())}`;}catch{}return {label,value:remain,pct:Math.round(pct),color}};
   function renderHeader(){const m=item(), p=val(m,'PROTOCOLO','ID_MANIFESTACAO')||'—';$('ficha-v2-breadcrumb').textContent=p;$('ficha-v2-proto').textContent=p;$('ficha-v2-status').textContent=status();$('ficha-v2-status').style.cssText=badgeStyle(status());$('ficha-v2-prioridade').textContent=val(m,'PRIORIDADE','PRIORIDADE_CONFIRMADA')||'Não definida';$('ficha-v2-prioridade').style.cssText=badgeStyle(val(m,'PRIORIDADE','PRIORIDADE_CONFIRMADA'));$('ficha-v2-tipo').textContent=val(m,'TIPO_CONFIRMADO','TIPO_SUGERIDO','TIPO')||'—';$('ficha-v2-empresa').textContent=val(m,'EMPRESA_RECLAMADA','EMPRESA_NORMALIZADA','EMPRESA')||'—';$('ficha-v2-cliente').textContent=val(m,'EMPRESA_RECLAMANTE','CLIENTE','CONTATO')||'—';$('ficha-v2-responsavel').textContent=resp();$('ficha-v2-setor').textContent=setor();$('ficha-v2-aberto').textContent=date(val(m,'DATA_ABERTURA','DATA_REGISTRO','CREATED_AT'));
-    const start=val(m,'DATA_ABERTURA','DATA_REGISTRO','CREATED_AT');const s=[slaLine('SLA da manifestação',start,prazo(),'#D97706'),slaLine('SLA da triagem SAC',val(m,'DATA_TRIAGEM',start),val(m,'SLA_TRIAGEM_HORAS',24),'#C70602'),slaLine('SLA do setor',val(m,'DATA_INICIO_TRATATIVA','DATA_ENCAMINHAMENTO',start),val(m,'SLA_SETOR_HORAS','PRAZO_TRATATIVA'),'#1D4ED8'),slaLine('Tempo total',start,val(m,'SLA_TOTAL_HORAS'),'#929090')];$('ficha-v2-sla').innerHTML=s.map(x=>`<div class="fv2-sla-item"><div class="fv2-sla-label">${esc(x.label)}</div><div class="fv2-sla-value" style="color:${x.color}">${esc(x.value)}</div><div class="fv2-progress"><i style="width:${x.pct}%;background:${x.color}"></i></div></div>`).join('');
+    const start=val(m,'DATA_ABERTURA','DATA_REGISTRO','CREATED_AT');const frentes=acoesAtivas();const setorAcao=frentes.filter(a=>val(a,'DATA_LIMITE','dataLimite')).sort((a,b)=>String(val(a,'DATA_LIMITE','dataLimite')).localeCompare(String(val(b,'DATA_LIMITE','dataLimite'))))[0];const setorHoras=setorAcao?.PRAZO?String(setorAcao.PRAZO).match(/\d+(?:[.,]\d+)?/)?.[0]:'';const s=[slaLine('SLA da manifestação',start,prazo(),'#D97706'),slaLine('SLA da triagem SAC',val(m,'DATA_TRIAGEM'),val(m,'SLA_TRIAGEM_HORAS'),'#C70602'),slaLine('SLA do setor',setorAcao?.CRIADO_EM,setorHoras,'#1D4ED8',setorAcao?.DATA_LIMITE),slaLine('Tempo total',start,val(m,'SLA_TOTAL_HORAS'),'#929090')];$('ficha-v2-sla').innerHTML=s.map(x=>`<div class="fv2-sla-item"><div class="fv2-sla-label">${esc(x.label)}</div><div class="fv2-sla-value" style="color:${x.color}">${esc(x.value)}</div><div class="fv2-progress"><i style="width:${x.pct}%;background:${x.color}"></i></div></div>`).join('');
     $('ficha-v2-anexos-btn').textContent='📎 Anexos ('+S.attachments.length+')';
   }
   function renderTabs(){const labels=['Dados','Triagem e Direcionamento','Tratativa','Validação e Devolutiva','Histórico'];$('ficha-v2-tabs').innerHTML=labels.map((l,i)=>`<button type="button" class="fv2-tab ${i===S.tab?'active':''}" onclick="fichaV2Tab(${i})">${l}</button>`).join('')}
@@ -7440,33 +7456,57 @@
   function anexoHtml(a,compact=false){const nome=val(a,'nome','NOME','NOME_ARQUIVO')||'Arquivo';const url=val(a,'url','URL_ARQUIVO','DRIVE_URL');const mime=val(a,'mimeType','MIME_TYPE','TIPO_MIME')||'';const ext=(nome.split('.').pop()||mime.split('/').pop()||'FILE').toUpperCase().slice(0,5);const meta=[val(a,'origem','ORIGEM')||'Anexo',val(a,'responsavel','USUARIO_UPLOAD','USUARIO')||'—',dateShort(val(a,'data','DATA_UPLOAD')),val(a,'tamanho','TAMANHO')].filter(Boolean).join(' · ');return `<div class="fv2-attachment"><div class="fv2-file-row"><div class="fv2-file-ext">${esc(ext)}</div><div class="fv2-file-name" title="${esc(nome)}">${esc(nome)}</div><div style="display:flex;gap:3px;flex:none">${url?`<a class="fv2-btn-ghost" style="height:24px;font-size:10.5px;padding:1px 7px;text-decoration:none" href="${esc(url)}" target="_blank" rel="noopener">Ver</a><a class="fv2-btn-ghost" style="height:24px;font-size:10.5px;padding:1px 7px;text-decoration:none" href="${esc(url)}" download>↓</a>`:'<span class="fv2-muted">sem link</span>'}</div></div><div class="fv2-file-meta">${esc(meta)}</div></div>`}
   function renderAttachments(){const root=$('ficha-v2-attachments');if(!S.showAttachments){root.hidden=true;root.innerHTML='';return}root.hidden=false;const filters=['todos','original','evidencia','tratativa'];const filtered=S.attachments.filter(a=>S.anexoFiltro==='todos'||String(val(a,'origem','ORIGEM')||'').toLowerCase().includes(S.anexoFiltro)||String(val(a,'categoria','CATEGORIA')||'').toLowerCase().includes(S.anexoFiltro));root.innerHTML=`<div class="fv2-attachments-head"><div><div style="font-size:13px;font-weight:800">Todos os anexos</div><div class="fv2-muted" style="margin-top:1px">${S.attachments.length} arquivos acessíveis</div></div><button class="fv2-btn-ghost" style="height:26px;padding:2px 8px" onclick="fichaV2ToggleAnexos()">✕</button></div><div style="flex:none;padding:8px 14px;border-bottom:1px solid #F0F0F0;display:flex;gap:5px;overflow-x:auto">${filters.map(f=>`<button class="fv2-btn-ghost" style="height:26px;padding:2px 8px;font-size:10.5px;${f===S.anexoFiltro?'border-color:#C70602;color:#C70602;background:#FDECEC':''}" onclick="fichaV2FiltroAnexo('${f}')">${f==='todos'?'Todos':f==='original'?'Originais':f==='evidencia'?'Evidências':'Tratativa'}</button>`).join('')}</div><div class="fv2-attachments-list">${filtered.length?filtered.map(a=>anexoHtml(a,true)).join(''):'<div class="fv2-empty">Nenhum anexo registrado.</div>'}</div><div style="flex:none;padding:10px 14px;border-top:1px solid #F0F0F0"><input id="ficha-v2-upload" type="file" multiple style="display:none" onchange="fichaV2Upload(this.files)"><button class="fv2-btn-ghost" style="width:100%;justify-content:center" onclick="$('ficha-v2-upload').click()">+ Adicionar arquivo</button></div>`}
   function renderData(){const m=item();const orig=S.attachments.filter(a=>String(val(a,'origem','ORIGEM')||'').toLowerCase().includes('original')||String(val(a,'origem','ORIGEM')||'').toLowerCase().includes('portal'));return `<div class="fv2-card"><div class="fv2-section">Identificação</div><div class="fv2-g4">${field('Protocolo',val(m,'PROTOCOLO','ID_MANIFESTACAO'))}${field('Empresa',val(m,'EMPRESA_RECLAMADA','EMPRESA_NORMALIZADA','EMPRESA'))}${field('Tipo',val(m,'TIPO_CONFIRMADO','TIPO_SUGERIDO','TIPO'))}${field('Prioridade',val(m,'PRIORIDADE'))}${field('Cliente',val(m,'EMPRESA_RECLAMANTE','CLIENTE','CONTATO'))}${field('Canal',val(m,'CANAL'))}${field('Origem',val(m,'ORIGEM','ORIGEM_MANIFESTACAO'))}${field('Registrado por',val(m,'USUARIO_CRIACAO','REGISTRADO_POR','ATENDENTE'))}${field('Data de abertura',date(val(m,'DATA_ABERTURA','DATA_REGISTRO')))}${field('Setor atual',setor())}${field('Responsável',resp())}${field('Status',status())}</div></div><div class="fv2-card"><div class="fv2-section">Relato original</div><div class="fv2-muted" style="margin-bottom:8px">◈ Conteúdo original preservado — somente leitura</div><div class="fv2-relato">${esc(relato())}</div></div><div class="fv2-card"><div class="fv2-section">Anexos originais</div>${orig.length?orig.map(a=>anexoHtml(a)).join(''):'<div class="fv2-empty">Nenhum anexo registrado na abertura.</div>'}</div>`}
-  function renderTriage(){const m=item();const chosen=S.path||((val(m,'SETOR_CONFIRMADO','SETOR_DESTINADO'))?'setor':'');const users=S.usuarios||[];const setores=S.setores||[...new Set(users.map(u=>val(u,'SETOR','SETOR_PRINCIPAL')).filter(Boolean))];return `<div class="fv2-card"><div class="fv2-section">Classificação</div><div class="fv2-g3"><div><label>Categoria</label><input id="fv2-categoria" value="${esc(val(m,'CATEGORIA','TIPO_CONFIRMADO','TIPO'))}"></div><div><label>Motivo validado</label><input id="fv2-motivo" value="${esc(val(m,'MOTIVO_VALIDADO','MOTIVO'))}"></div><div><label>Prioridade</label><select id="fv2-prioridade-input"><option ${val(m,'PRIORIDADE')==='Alta'?'selected':''}>Alta</option><option ${val(m,'PRIORIDADE')==='Média'?'selected':''}>Média</option><option ${val(m,'PRIORIDADE')==='Baixa'?'selected':''}>Baixa</option></select></div></div><div style="margin-top:12px"><label>Motivo original <span style="font-weight:400;color:#929090">(somente leitura)</span></label><div style="background:#FAFAFA;border:1px solid #EDEDF0;border-radius:7px;padding:9px 12px;font-size:12.5px;color:#555">${esc(val(m,'MOTIVO_ORIGINAL','MOTIVO'))||'—'}</div></div><div style="margin-top:12px"><label>Observações da triagem</label><textarea id="fv2-triagem-obs" rows="2">${esc(val(m,'OBS_ENCAMINHAMENTO','OBS_TRIAGEM'))}</textarea></div></div><div class="fv2-card"><div style="font-size:13px;font-weight:800;margin-bottom:4px">Quem executará a tratativa?</div><div class="fv2-muted" style="margin-bottom:14px">Selecione uma das opções abaixo.</div><div class="fv2-path-grid"><div class="fv2-path ${chosen==='SAC'?'selected':''}" onclick="fichaV2Path('SAC')"><b>✓ &nbsp;SAC assume a tratativa</b><div class="fv2-muted" style="margin-top:4px">O SAC investiga e resolve a manifestação internamente.</div></div><div class="fv2-path ${chosen==='setor'?'selected':''}" onclick="fichaV2Path('setor')"><b>♙ &nbsp;Encaminhar para outro setor</b><div class="fv2-muted" style="margin-top:4px">A manifestação depende de investigação ou decisão de outra área.</div>${chosen==='setor'?`<div style="margin-top:10px;padding:12px 14px;background:#FFF5F5;border-radius:7px;border:1px solid #FECACA" onclick="event.stopPropagation()"><div class="fv2-g3" style="gap:10px;margin-bottom:10px"><div><label>Setor</label><select id="fv2-setor-input">${setores.length?setores.map(x=>`<option ${x===setor()?'selected':''}>${esc(x)}</option>`).join(''):'<option value="">Selecione um setor</option>'}</select></div><div><label>Responsável</label><select id="fv2-responsavel-input">${users.filter(u=>String(val(u,'STATUS')||'ATIVO').toUpperCase()==='ATIVO').map(u=>{const k=val(u,'USUARIO','LOGIN','EMAIL','NOME');return `<option value="${esc(k)}" ${k===val(m,'RESPONSAVEL_SETOR','RESPONSAVEL')?'selected':''}>${esc(val(u,'NOME','USUARIO','EMAIL'))}</option>`}).join('')||'<option value="">Selecione um responsável</option>'}</select></div><div><label>Prazo de retorno</label><input id="fv2-prazo-input" type="date" value="${esc(String(val(m,'PRAZO_TRATATIVA')||'').slice(0,10))}"></div></div><label>Orientações para o setor</label><textarea id="fv2-orientacoes" rows="2">${esc(val(m,'OBS_ENCAMINHAMENTO'))}</textarea><div class="fv2-actions-row" style="justify-content:flex-end"><button class="fv2-btn-primary" onclick="event.stopPropagation();fichaV2Encaminhar()">Encaminhar ao setor</button></div></div>`:''}</div></div></div><div id="fv2-triagem-msg" class="fv2-message"></div>`}
+  function renderComplementacoes(){
+    if(S.extrasErrors.circa)return '<div class="fv2-card"><div class="fv2-section">Complementações da Etapa 2</div><div class="fv2-empty" style="color:#B91C1C">Não foi possível consultar as complementações persistidas. Tente recarregar a ficha.</div></div>';
+    if(S.circa?.analiseLeitura==='INVALIDA')return '<div class="fv2-card"><div class="fv2-section">Complementações da Etapa 2</div><div class="fv2-empty" style="color:#B91C1C">A análise persistida está indisponível para leitura; os dados não foram considerados ausentes.</div></div>';
+    const mapa=S.circa&&typeof S.circa.complementacoes==='object'&&!Array.isArray(S.circa.complementacoes)?S.circa.complementacoes:{};
+    const itens=Object.values(mapa);
+    if(!itens.length)return '<div class="fv2-card"><div class="fv2-section">Complementações da Etapa 2</div><div class="fv2-empty">Nenhuma complementação persistida para esta manifestação.</div></div>';
+    const rows=itens.map(c=>{const campo=val(c,'campo')||'Campo';const valor=val(c,'valor')||'Não informado';const situacao=val(c,'status','situacao')||'PENDENTE';const origem=val(c,'origem')||'ANALISTA';const just=val(c,'justificativa')||'—';const ev=val(c,'evidencias','observacoes')||'—';return `<div style="padding:10px 0;border-bottom:1px solid #F0F0F0"><div class="fv2-g3"><div><div class="fv2-ri-label">Campo</div><div class="fv2-ri-val">${esc(campo)}</div></div><div><div class="fv2-ri-label">Valor</div><div class="fv2-ri-val">${esc(txt(valor))}</div></div><div><div class="fv2-ri-label">Situação</div><div class="fv2-ri-val">${esc(situacao)}</div></div></div><div class="fv2-g3" style="margin-top:8px"><div><div class="fv2-ri-label">Justificativa</div><div class="fv2-ri-val">${esc(txt(just))}</div></div><div><div class="fv2-ri-label">Evidências/observações</div><div class="fv2-ri-val">${esc(txt(ev))}</div></div><div><div class="fv2-ri-label">Origem · responsável · data</div><div class="fv2-ri-val">${esc(origem)} · ${esc(val(c,'atualizadoPor','responsavel')||'—')} · ${esc(date(val(c,'atualizadoEm','data')))}</div></div></div></div>`}).join('');
+    return `<div class="fv2-card"><div class="fv2-section">Complementações da Etapa 2</div><div class="fv2-muted" style="margin-bottom:8px">Dados complementares persistidos separadamente do relato original.</div>${rows}</div>`;
+  }
+  function renderTriage(){const m=item();const chosen=S.path||((val(m,'SETOR_CONFIRMADO','SETOR_DESTINADO'))?'setor':'');const users=S.responsaveis||[];const setores=S.setores||[];const setorSelecionado=S.setorSelecionado||((val(m,'SETOR_CONFIRMADO','SETOR_DESTINADO'))||'');return `<div class="fv2-card"><div class="fv2-section">Classificação</div><div class="fv2-g3"><div><label>Categoria</label><input id="fv2-categoria" value="${esc(val(m,'CATEGORIA','TIPO_CONFIRMADO','TIPO'))}"></div><div><label>Motivo validado</label><input id="fv2-motivo" value="${esc(val(m,'MOTIVO_VALIDADO','MOTIVO'))}"></div><div><label>Prioridade</label><select id="fv2-prioridade-input"><option ${val(m,'PRIORIDADE')==='Alta'?'selected':''}>Alta</option><option ${val(m,'PRIORIDADE')==='Média'?'selected':''}>Média</option><option ${val(m,'PRIORIDADE')==='Baixa'?'selected':''}>Baixa</option></select></div></div><div style="margin-top:12px"><label>Motivo original <span style="font-weight:400;color:#929090">(somente leitura)</span></label><div style="background:#FAFAFA;border:1px solid #EDEDF0;border-radius:7px;padding:9px 12px;font-size:12.5px;color:#555">${esc(val(m,'MOTIVO_ORIGINAL','MOTIVO'))||'—'}</div></div><div style="margin-top:12px"><label>Observações da triagem</label><textarea id="fv2-triagem-obs" rows="2">${esc(val(m,'OBS_ENCAMINHAMENTO','OBS_TRIAGEM'))}</textarea></div></div><div class="fv2-card"><div style="font-size:13px;font-weight:800;margin-bottom:4px">Quem executará a tratativa?</div><div class="fv2-muted" style="margin-bottom:14px">Selecione uma das opções abaixo.</div><div class="fv2-path-grid"><div class="fv2-path ${chosen==='SAC'?'selected':''}" onclick="fichaV2Path('SAC')"><b>✓ &nbsp;SAC assume a tratativa</b><div class="fv2-muted" style="margin-top:4px">O SAC investiga e resolve a manifestação internamente.</div></div><div class="fv2-path ${chosen==='setor'?'selected':''}" onclick="fichaV2Path('setor')"><b>♙ &nbsp;Encaminhar para outro setor</b><div class="fv2-muted" style="margin-top:4px">A manifestação depende de investigação ou decisão de outra área.</div>${chosen==='setor'?`<div style="margin-top:10px;padding:12px 14px;background:#FFF5F5;border-radius:7px;border:1px solid #FECACA" onclick="event.stopPropagation()"><div class="fv2-g3" style="gap:10px;margin-bottom:10px"><div><label>Setor</label><select id="fv2-setor-input" onchange="fichaV2CarregarResponsaveis(this.value)">${setores.length?setores.map(x=>`<option value="${esc(x)}" ${x===setorSelecionado?'selected':''}>${esc(x)}</option>`).join(''):'<option value="">Selecione um setor</option>'}</select></div><div><label>Responsável</label><select id="fv2-responsavel-input">${S.responsaveisError?`<option value="">${esc(S.responsaveisError)}</option>`:(users.map(u=>{const k=val(u,'id','ID_USUARIO','usuario','USUARIO');return `<option value="${esc(k)}" ${(k===val(m,'RESPONSAVEL_SETOR_ID','RESPONSAVEL_SETOR','RESPONSAVEL')||k===val((S.acionamentos||[]).find(a=>String(val(a,'SETOR_DESTINO','setorDestino'))===String(setor())),'RESPONSAVEL_ID','responsavelId'))?'selected':''}>${esc(val(u,'nome','NOME','usuario','USUARIO'))}</option>`}).join('')||'<option value="">Nenhum responsável elegível</option>')}</select></div><div><label>Prazo de retorno</label><input id="fv2-prazo-input" type="date" value="${esc(String(val(m,'PRAZO_TRATATIVA')||'').slice(0,10))}"></div></div><label>Orientações para o setor</label><textarea id="fv2-orientacoes" rows="2">${esc(val(m,'OBS_ENCAMINHAMENTO'))}</textarea><div class="fv2-actions-row" style="justify-content:flex-end"><button class="fv2-btn-primary" onclick="event.stopPropagation();fichaV2Encaminhar()">Encaminhar ao setor</button></div></div>`:''}</div></div></div><div id="fv2-triagem-msg" class="fv2-message"></div>`}
   function renderFrentes(){
     if(S.extrasErrors.acionamentos)return '<div class="fv2-card"><div class="fv2-section">Frentes de tratamento</div><div class="fv2-empty" style="color:#B91C1C">Não foi possível recuperar os acionamentos persistidos. Tente recarregar a ficha.</div></div>';
     const actions=acoesAtivas();
     if(!actions.length)return '<div class="fv2-card"><div class="fv2-section">Frentes de tratamento</div><div class="fv2-empty">Nenhum acionamento persistido para esta manifestação.</div></div>';
-    const rows=actions.map(a=>{const tipo=String(val(a,'TIPO','tipo')||'').toUpperCase();const frente=tipo==='SOLICITACAO_INFORMACAO'?'Solicitação ao cliente':(val(a,'SETOR_DESTINO','setorDestino')||val(a,'TIPO','tipo')||'Frente de tratamento');const tarefa=val(a,'TAREFA','MOTIVO','ASSUNTO')||'Não informado';const prazoAcao=val(a,'PRAZO','prazo')||'Não informado';const prazoOrigem=val(a,'PRAZO_ORIGEM','prazoOrigem');const limite=val(a,'DATA_LIMITE','dataLimite');const responsavel=val(a,'RESPONSAVEL','responsavel')||'Não designado';const statusAcao=val(a,'STATUS','status')||'Não informado';return `<div style="border:1px solid #E5E7EB;border-radius:8px;padding:11px 12px;margin-top:8px"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><strong>${esc(frente)}</strong><span class="fv2-badge" style="${badgeStyle(statusAcao)}">${esc(statusAcao)}</span></div><div class="fv2-g4" style="margin-top:9px">${field('Responsável',responsavel)}${field('ID do responsável',val(a,'RESPONSAVEL_ID','responsavelId')||'Não informado')}${field('Tarefa',tarefa)}${field('Prazo',prazoAcao)}${field('Origem do prazo',prazoOrigem||'Não informado')}${field('Data limite',limite?date(limite):'Não informado')}${field('Criado em',date(val(a,'CRIADO_EM','criadoEm')))}${field('Evidências',val(a,'EVIDENCIAS','evidencias')||'Não informado')}</div>${val(a,'RESPOSTA','resposta')?`<div style="margin-top:8px"><div class="fv2-ri-label">Resposta registrada</div><div class="fv2-relato">${esc(txt(val(a,'RESPOSTA','resposta')))}</div></div>`:''}</div>`}).join('');
-    return `<div class="fv2-card"><div class="fv2-section">Frentes de tratamento (${actions.length})</div><div class="fv2-muted">Cada acionamento é uma responsabilidade persistida e permanece visível mesmo quando o SAC assume a condução.</div>${rows}</div>`;
+    const rows=actions.map(a=>{
+      const tipo=String(val(a,'TIPO','tipo')||'').toUpperCase();
+      const frente=tipo==='SOLICITACAO_INFORMACAO'?'Solicitação ao cliente':(val(a,'SETOR_DESTINO','setorDestino')||val(a,'TIPO','tipo')||'Frente de tratamento');
+      const tarefa=val(a,'TAREFA','MOTIVO','ASSUNTO')||'Não informado';
+      const prazoAcao=val(a,'PRAZO','prazo')||'Não informado';
+      const prazoOrigem=val(a,'PRAZO_ORIGEM','prazoOrigem');
+      const limite=val(a,'DATA_LIMITE','dataLimite');
+      const responsavel=val(a,'RESPONSAVEL_NOME','responsavelNome')||val(a,'RESPONSAVEL','responsavel')||'Não designado';
+      const statusAcao=val(a,'STATUS','status')||'Não informado';
+      const acaoId=String(val(a,'ID_ACIONAMENTO','idAcionamento','ID')||'');
+      const resposta=val(a,'RESPOSTA','resposta')||'';
+      const podeEditar=['ENVIADO','AGUARDANDO_CIENCIA','EM_ANDAMENTO','AGUARDANDO_INFORMACAO','PENDENTE_COMPLEMENTACAO','INCONCLUSIVO'].includes(String(statusAcao).toUpperCase());
+      return '<div style="border:1px solid #E5E7EB;border-radius:8px;padding:11px 12px;margin-top:8px"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><strong>'+esc(frente)+'</strong><span class="fv2-badge" style="'+badgeStyle(statusAcao)+'">'+esc(statusAcao)+'</span></div><div class="fv2-g4" style="margin-top:9px">'+field('Responsável',responsavel)+field('ID do responsável',val(a,'RESPONSAVEL_ID','responsavelId')||'Não informado')+field('Tarefa',tarefa)+field('Prazo',prazoAcao)+field('Origem do prazo',prazoOrigem||'Não informado')+field('Data limite',limite?date(limite):'Não informado')+field('Criado em',date(val(a,'CRIADO_EM','criadoEm')))+field('Evidências',val(a,'EVIDENCIAS','evidencias')||'Não informado')+'</div>'+(resposta?'<div style="margin-top:8px"><div class="fv2-ri-label">Resposta registrada</div><div class="fv2-relato">'+esc(txt(resposta))+'</div></div>':'')+(podeEditar?'<div style="margin-top:10px;border-top:1px solid #F0F0F0;padding-top:10px"><label>Investigação/resposta desta frente</label><textarea id="fv2-frente-resposta-'+esc(acaoId)+'" rows="3" placeholder="Registre a investigação, evidências e conclusão ou a pendência.">'+esc(txt(resposta))+'</textarea><div class="fv2-actions-row" style="justify-content:flex-end"><button class="fv2-btn-secondary" onclick="fichaV2SalvarFrente(\''+esc(acaoId)+'\')">Enviar resposta ao SAC</button></div></div>':'')+'</div>';
+    }).join('');
+    return '<div class="fv2-card"><div class="fv2-section">Frentes de tratamento ('+actions.length+')</div><div class="fv2-muted">Cada acionamento é uma responsabilidade persistida e permanece visível mesmo quando o SAC assume a condução.</div>'+rows+'</div>';
   }
-  function renderTreatment(){const m=item();const circa=S.circa||{};const causa=val(m,'CAUSA_RAIZ_CONFIRMADA','CAUSA_PROVAVEL','CAUSA_RAIZ')||val(circa,'causaProvavel','CAUSA_PROVAVEL');return `${renderFrentes()}<div class="fv2-card"><div class="fv2-section">Responsável pela tratativa</div><div class="fv2-g4">${field('Setor',setor())}${field('Responsável',resp())}${field('Encaminhado em',date(val(m,'DATA_ENCAMINHAMENTO')))}${field('Prazo',dateShort(val(m,'PRAZO_TRATATIVA')))}${field('Permanência',date(val(m,'DATA_INICIO_TRATATIVA')))}${field('Status',status())}</div></div><div class="fv2-card"><div class="fv2-section">Investigação</div><div style="display:flex;flex-direction:column;gap:12px"><div><label>O que aconteceu?</label><textarea id="fv2-investigacao" rows="3">${esc(val(m,'INVESTIGACAO_O_QUE','RESP_SETOR_O_QUE','TRATATIVA_REALIZADA'))}</textarea></div><div class="fv2-g2"><div><label>Causa identificada</label><input id="fv2-causa" value="${esc(txt(causa))}"></div><div><label>Procedência</label><select id="fv2-procedente"><option value="">Selecione</option><option ${val(m,'PROCEDENTE')==='SIM'?'selected':''}>SIM</option><option ${val(m,'PROCEDENTE')==='NAO'?'selected':''}>NAO</option><option ${val(m,'PROCEDENTE')==='PARCIAL'?'selected':''}>PARCIAL</option></select></div></div><div><label>Solução aplicada</label><textarea id="fv2-solucao" rows="2">${esc(val(m,'TRATATIVA_REALIZADA','RESP_SETOR_RESOLUCAO'))}</textarea></div><div><label>Ação preventiva</label><textarea id="fv2-acao-prev" rows="2">${esc(val(m,'ACOES_CORRETIVAS','RESP_SETOR_ACAO_PREV'))}</textarea></div><div class="fv2-actions-row"><button class="fv2-btn-primary" onclick="fichaV2SalvarInvestigacao()">Salvar investigação</button><button class="fv2-btn-secondary" onclick="fichaV2EnviarValidacao()">Enviar para validação SAC</button></div><div id="fv2-trat-msg" class="fv2-message"></div></div></div><div class="fv2-circa"><div style="display:flex;align-items:center;justify-content:space-between"><b style="color:#0369A1">◉ Assistência Inteligente CIRCA</b><button class="fv2-btn-ghost" onclick="fichaV2ToggleCirca()">${S.circaOpen?'Recolher':'Expandir'}</button></div>${S.circaOpen?`<div style="font-size:12.5px;color:#0C4A6E;line-height:1.65;margin-top:10px">${esc(txt(val(circa,'causaProvavel','CAUSA_PROVAVEL')||causa||'Sem sugestão persistida.'))}<br><span class="fv2-muted">Dados provenientes da análise persistida; valide antes de usar.</span></div>`:''}</div><div class="fv2-card"><div class="fv2-section">Evidências da tratativa</div>${S.attachments.filter(a=>!String(val(a,'origem','ORIGEM')||'').toLowerCase().includes('original')).map(a=>anexoHtml(a)).join('')||'<div class="fv2-empty">Nenhuma evidência registrada.</div>'}</div>`}
+  function renderTreatment(){const m=item();const circa=S.circa||{};const causa=val(m,'CAUSA_RAIZ_CONFIRMADA','CAUSA_PROVAVEL','CAUSA_RAIZ')||val(circa,'causaProvavel','CAUSA_PROVAVEL');return `${renderFrentes()}<div class="fv2-card"><div class="fv2-section">Responsável pela tratativa</div><div class="fv2-g4">${field('Setor',setor())}${field('Responsável',resp())}${field('Encaminhado em',date(val(m,'DATA_ENCAMINHAMENTO')))}${field('Prazo',dateShort(val(m,'PRAZO_TRATATIVA')))}${field('Permanência',date(val(m,'DATA_INICIO_TRATATIVA')))}${field('Status',status())}</div></div><div class="fv2-card"><div class="fv2-section">Investigação</div><div style="display:flex;flex-direction:column;gap:12px"><div><label>O que aconteceu?</label><textarea id="fv2-investigacao" rows="3">${esc(val(m,'INVESTIGACAO_O_QUE','RESP_SETOR_O_QUE','TRATATIVA_REALIZADA'))}</textarea></div><div class="fv2-g2"><div><label>Causa identificada</label><input id="fv2-causa" value="${esc(txt(causa))}"></div><div><label>Procedência</label><select id="fv2-procedente"><option value="">Selecione</option><option ${val(m,'PROCEDENTE')==='SIM'?'selected':''}>SIM</option><option ${val(m,'PROCEDENTE')==='NAO'?'selected':''}>NAO</option><option ${val(m,'PROCEDENTE')==='PARCIAL'?'selected':''}>PARCIAL</option></select></div></div><div><label>Solução aplicada</label><textarea id="fv2-solucao" rows="2">${esc(val(m,'TRATATIVA_REALIZADA','RESP_SETOR_RESOLUCAO'))}</textarea></div><div><label>Ação preventiva</label><textarea id="fv2-acao-prev" rows="2">${esc(val(m,'ACOES_CORRETIVAS','RESP_SETOR_ACAO_PREV'))}</textarea></div><div class="fv2-actions-row"><button class="fv2-btn-primary" onclick="fichaV2SalvarInvestigacao()">Salvar investigação</button>${acoesAtivas().some(a=>['ENVIADO','AGUARDANDO_CIENCIA','EM_ANDAMENTO','AGUARDANDO_INFORMACAO','PENDENTE_COMPLEMENTACAO','PENDENTE_DE_ATRIBUICAO'].includes(String(val(a,'STATUS','status')).toUpperCase()))?'<span class="fv2-muted">Aguardando conclusão das frentes setoriais.</span>':'<button class="fv2-btn-secondary" onclick="fichaV2EnviarValidacao()">Enviar para validação SAC</button>'}</div><div id="fv2-trat-msg" class="fv2-message"></div></div></div><div class="fv2-circa"><div style="display:flex;align-items:center;justify-content:space-between"><b style="color:#0369A1">◉ Assistência Inteligente CIRCA</b><button class="fv2-btn-ghost" onclick="fichaV2ToggleCirca()">${S.circaOpen?'Recolher':'Expandir'}</button></div>${S.circaOpen?`<div style="font-size:12.5px;color:#0C4A6E;line-height:1.65;margin-top:10px">${esc(circa.analiseLeitura==='INVALIDA'?'Análise persistida inválida.':circa.analiseLeitura==='AUSENTE'?'Nenhuma análise persistida.':txt(val(circa,'causaProvavel','CAUSA_PROVAVEL')||causa||'Sem sugestão persistida.'))}<br><span class="fv2-muted">${circa.analiseLeitura==='OK'?'Dados provenientes da análise persistida; valide antes de usar.':'Nenhum conteúdo foi inventado.'}</span></div>`:''}</div><div class="fv2-card"><div class="fv2-section">Evidências da tratativa</div>${S.attachments.filter(a=>!String(val(a,'origem','ORIGEM')||'').toLowerCase().includes('original')).map(a=>anexoHtml(a)).join('')||'<div class="fv2-empty">Nenhuma evidência registrada.</div>'}</div>`}
   function renderValidation(){const m=item();return `<div class="fv2-card"><div class="fv2-section">Validação SAC</div><div class="fv2-g2" style="margin-bottom:14px">${field('Causa confirmada',val(m,'CAUSA_RAIZ_CONFIRMADA','CAUSA_PROVAVEL'))}${field('Solução aplicada',val(m,'TRATATIVA_REALIZADA','RESP_SETOR_RESOLUCAO'))}${field('Procedência',val(m,'PROCEDENTE'))}${field('Situação',status())}</div><label>Observações da validação</label><textarea id="fv2-valid-obs" rows="2">${esc(val(m,'OBSERVACOES_FINAIS','VALID_SAC_PENDENCIAS'))}</textarea><div class="fv2-actions-row"><button class="fv2-btn-primary" onclick="fichaV2Validar('VALIDAR')">✓ Validar tratativa</button><button class="fv2-btn-secondary" onclick="fichaV2Validar('COMPLEMENTAR')">Solicitar complementação</button><button class="fv2-btn-ghost" onclick="fichaV2Validar('DEVOLVER')">Devolver para correção</button></div><div id="fv2-valid-msg" class="fv2-message"></div></div><div class="fv2-card"><div class="fv2-section">Devolutiva ao cliente</div><div class="fv2-g3" style="margin-bottom:12px">${field('Situação',status())}${field('Canal',val(m,'CANAL_RETORNO','CANAL'))}${field('Data de envio',date(val(m,'DATA_DEVOLUTIVA')))}</div><label>Texto da devolutiva</label><textarea id="fv2-devolutiva" rows="5">${esc(val(m,'DEVOLUTIVA_FINAL','DEVOLUTIVA_SUGERIDA','DEVOLUTIVA'))}</textarea><div class="fv2-actions-row"><button class="fv2-btn-ghost" onclick="fichaV2GerarDevolutiva(event)">Gerar sugestão</button><button class="fv2-btn-secondary" onclick="fichaV2SalvarDevolutiva()">Salvar rascunho</button><button class="fv2-btn-primary" style="background:#15803D" onclick="fichaV2EnviarDevolutiva()">Registrar envio</button></div><div id="fv2-dev-msg" class="fv2-message"></div></div>`}
   function renderHistory(){const events=(S.history||[]).map((e,i)=>`<div class="fv2-timeline-item"><div class="fv2-dot" style="background:${i%2?'#1D4ED8':'#15803D'}"></div><div style="flex:1"><div style="font-size:12.5px;font-weight:700">${esc(val(e,'ACAO','acao')||'Ação')}</div><div style="font-size:11.5px;color:#929090">${esc(val(e,'USUARIO','user')||'Sistema')} · ${esc(date(val(e,'DATA_HORA','DATA','data')))}</div><div style="font-size:11.5px;color:#555;margin-top:3px;line-height:1.5">${esc(txt(val(e,'DETALHES','DESCRICAO','obs')))}</div></div></div>`).join('');return `<div class="fv2-card"><div class="fv2-section">Linha do tempo</div>${events||'<div class="fv2-empty">Nenhum evento registrado.</div>'}</div><div class="fv2-card" style="padding:0;overflow:hidden"><div style="padding:12px 18px;border-bottom:1px solid #F0F0F0;background:#FAFAFA;font-size:12px;font-weight:700">Tempo e responsabilidades</div><div style="overflow-x:auto"><table class="fv2-table"><thead><tr><th>Setor/Responsável</th><th>Entrada</th><th>Saída</th><th>Permanência</th><th>Situação</th></tr></thead><tbody><tr><td>${esc(setor())} / ${esc(resp())}</td><td>${esc(date(val(item(),'DATA_ENCAMINHAMENTO','DATA_ABERTURA')))}</td><td>—</td><td>—</td><td><span class="fv2-badge" style="${badgeStyle(status())}">${esc(status())}</span></td></tr></tbody></table></div></div>`}
-  function renderContent(){const fn=[renderData,renderTriage,renderTreatment,renderValidation,renderHistory][S.tab]||renderData;$('ficha-v2-content').innerHTML=fn();renderTabs();renderAttachments()}
+  function renderContent(){const fn=[renderData,renderTriage,renderTreatment,renderValidation,renderHistory][S.tab]||renderData;$('ficha-v2-content').innerHTML=fn();if(S.tab===0||S.tab===1)$('ficha-v2-content').insertAdjacentHTML('beforeend',renderComplementacoes());renderTabs();renderAttachments()}
   function showMsg(id,msg,ok){const e=$(id);if(!e)return;e.style.display='block';e.style.background=ok?'#E6F2EA':'#FEF2F2';e.style.color=ok?'#1E6B3A':'#C70602';e.textContent=msg;}
   async function patch(body){const r=await _apiFetch('/api/manifestacoes/'+encodeURIComponent(id())+'/ficha',30000,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});if(!r.sucesso)throw new Error(r.erro||'Falha ao salvar');return r}
   window.fichaV2Navigate=page=>{const sb=document.getElementById('app-sidebar');if(sb)sb.style.display='';navigate(page)};window.fichaV2Tab=i=>{S.tab=i;renderContent()};window.fichaV2ToggleAnexos=()=>{S.showAttachments=!S.showAttachments;renderAttachments()};window.fichaV2FiltroAnexo=f=>{S.anexoFiltro=f;renderAttachments()};window.fichaV2ToggleCirca=()=>{S.circaOpen=!S.circaOpen;renderContent()};window.fichaV2Path=p=>{S.path=S.path===p?'':p;renderContent()};window.fichaV2Voltar=()=>{S.showAttachments=false;const sb=document.getElementById('app-sidebar');if(sb)sb.style.display='';const page=S.originPage||'central-sac';const tab=S.originTab;navigate(page,document.querySelector('[onclick*="'+page+'"]'));if(tab&&page==='central-sac')setTimeout(()=>{if(typeof window.cenAba==='function')window.cenAba(tab,document.getElementById('mc-tab-'+tab));},50)};window.fichaV2Reatribuir=()=>{S.tab=1;S.path='setor';renderContent();setTimeout(()=>$("fv2-setor-input")?.focus(),0)};
   window.fichaV2Assumir=async()=>{try{await patch({acao:'assumir_sac'});Object.assign(S.item,{STATUS:'EM_ANDAMENTO',STATUS_FICHA:'TRATATIVA_SAC',RESPONSAVEL_SAC:val(typeof sess==='function'?sess():{},'nome','usuario')});renderHeader();renderContent();showMsg('fv2-trat-msg','Tratativa assumida pelo SAC.',true)}catch(e){alert(e.message)}};
   window.fichaV2Salvar=async()=>{const m=item();const body={acao:'salvar_dados'};['RAZAO_SOCIAL','NOME_FANTASIA','CNPJ','CODIGO_CLIENTE','EMPRESA_RECLAMANTE','CONTATO','TELEFONE','EMAIL','PEDIDO','NFE','DATA_PEDIDO','DATA_ENTREGA','VENDEDOR','ORIGEM','CANAL','DATA_RECEBIMENTO','ATENDENTE','TIPO','CATEGORIA','MOTIVO','DESCRICAO','DESCRICAO_MANIFESTACAO','PRODUTO','LOTE','QUANTIDADE','UNIDADE_MEDIDA','QUANTIDADE_TOTAL','QUANTIDADE_AFETADA','QUANTIDADE_DEVOLVIDA','QUANTIDADE_PERDIDA','VALOR_UNITARIO','VALOR_TOTAL','PREJUIZO_ESTIMADO','PREJUIZO_CONFIRMADO','PRIORIDADE'].forEach(k=>{if(Object.prototype.hasOwnProperty.call(m,k))body[k]=m[k]});try{await patch(body);showMsg('fv2-triagem-msg','Dados salvos com sucesso.',true)}catch(e){alert(e.message)}};
-  window.fichaV2Encaminhar=async()=>{const body={acao:'encaminhar_setor',SETOR_CONFIRMADO:$("fv2-setor-input")?.value||'',RESPONSAVEL_SETOR:$("fv2-responsavel-input")?.value.trim()||'',SLA_HORAS:$("fv2-prazo-input")?.value||'',obs:$("fv2-orientacoes")?.value.trim()||''};try{await patch(body);Object.assign(S.item,{...body,STATUS:'AGUARDANDO_RESPOSTA_SETOR',STATUS_FICHA:'AGUARDANDO_SETOR'});renderHeader();renderContent();showMsg('fv2-triagem-msg','Manifestação encaminhada ao setor.',true)}catch(e){showMsg('fv2-triagem-msg',e.message,false)}};
+  window.fichaV2CarregarResponsaveis=async setorNovo=>{const request=++S.responsaveisRequest;S.setorSelecionado=String(setorNovo||'');S.responsaveis=[];S.responsaveisError='';renderContent();if(!setorNovo)return;try{const empresa=val(item(),'EMPRESA_RECLAMADA','EMPRESA_NORMALIZADA','EMPRESA');const d=await _apiFetch('/api/usuarios/responsaveis?empresa='+encodeURIComponent(empresa)+'&setor='+encodeURIComponent(setorNovo),10000);if(request!==S.responsaveisRequest)return;S.responsaveis=Array.isArray(d.itens)?d.itens:[];S.responsaveisError=d.disponibilidade==='NENHUM_ELEGIVEL'?(d.mensagem||'Nenhum responsável elegível.'):'';}catch(e){if(request!==S.responsaveisRequest)return;S.responsaveisError=e.message||'Falha ao carregar responsáveis.';}renderContent()};
+  window.fichaV2Encaminhar=async()=>{const setorSelecionado=$("fv2-setor-input")?.value.trim()||'';const responsavel=$("fv2-responsavel-input")?.value.trim()||'';if(!setorSelecionado)return showMsg('fv2-triagem-msg','Selecione um setor de destino.',false);if(!responsavel)return showMsg('fv2-triagem-msg','Selecione um responsável ativo e autorizado.',false);const body={acao:'encaminhar_setor',SETOR_CONFIRMADO:setorSelecionado,RESPONSAVEL_SETOR:responsavel,RESPONSAVEL_SETOR_ID:responsavel,prazoSlaHoras:72,obs:$("fv2-orientacoes")?.value.trim()||'',idempotencyKey:`FICHA:${id()}:${setorSelecionado}:${responsavel}`};try{await patch(body);Object.assign(S.item,{...body,STATUS:'AGUARDANDO_RESPOSTA_SETOR',STATUS_FICHA:'AGUARDANDO_SETOR'});S.path='';S.setorSelecionado='';S.responsaveis=[];S.responsaveisError='';await loadExtras();showMsg('fv2-triagem-msg','Manifestação encaminhada e acionamento persistido. Os campos estão prontos para um novo encaminhamento.',true)}catch(e){showMsg('fv2-triagem-msg',e.message,false)}};
   window.fichaV2SalvarInvestigacao=async()=>{const body={acao:'salvar_investigacao',INVESTIGACAO_O_QUE:$("fv2-investigacao")?.value||'',CAUSA_RAIZ_CONFIRMADA:$("fv2-causa")?.value||'',PROCEDENTE:$("fv2-procedente")?.value||'',TRATATIVA_REALIZADA:$("fv2-solucao")?.value||'',ACOES_CORRETIVAS:$("fv2-acao-prev")?.value||''};try{await patch(body);Object.assign(S.item,body);showMsg('fv2-trat-msg','Investigação salva.',true)}catch(e){showMsg('fv2-trat-msg',e.message,false)}};
+  window.fichaV2SalvarFrente=async acionamentoId=>{const campo=$("fv2-frente-resposta-"+acionamentoId);const resposta=campo?.value.trim()||'';if(!resposta)return alert('Registre a investigação ou a pendência antes de enviar.');const b=campo?.closest('div')?.querySelector('button');if(b){b.disabled=true;b.textContent='Salvando…'}try{const d=await _apiFetch('/api/manifestacoes/'+encodeURIComponent(id())+'/acionamentos/'+encodeURIComponent(acionamentoId),30000,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'RESPONDIDO',resposta})});if(!d?.sucesso)throw new Error(d?.erro||'Falha ao salvar a frente.');await loadExtras();showMsg('fv2-trat-msg','Resposta da frente persistida e enviada ao SAC.',true)}catch(e){showMsg('fv2-trat-msg',e.message,false)}finally{if(b){b.disabled=false;b.textContent='Enviar resposta ao SAC'}}};
   window.fichaV2EnviarValidacao=async()=>{try{await patch({acao:'enviar_validacao',TRATATIVA_REALIZADA:$("fv2-solucao")?.value||val(item(),'TRATATIVA_REALIZADA')});Object.assign(S.item,{STATUS:'AGUARDANDO_VALIDACAO_SAC',STATUS_FICHA:'AGUARDANDO_VALIDACAO_SAC'});renderHeader();renderContent();showMsg('fv2-trat-msg','Enviado para validação SAC.',true)}catch(e){showMsg('fv2-trat-msg',e.message,false)}};
   window.fichaV2Validar=async decisao=>{const obs=$("fv2-valid-obs")?.value.trim()||'';try{await patch({acao:'validacao_sac',decisao,observacoesFinais:obs,validDataRetorno:'',validClienteInformado:'',validResolvida:''});Object.assign(S.item,{STATUS:decisao==='VALIDAR'?'AGUARDANDO_DEVOLUTIVA':'EM_TRATAMENTO',STATUS_FICHA:decisao==='VALIDAR'?'AGUARDANDO_DEVOLUTIVA':'EM_TRATAMENTO'});renderHeader();renderContent();showMsg('fv2-valid-msg','Decisão registrada.',true)}catch(e){showMsg('fv2-valid-msg',e.message,false)}};
   window.fichaV2GerarDevolutiva=async e=>{const b=e?.currentTarget;if(b){b.disabled=true;b.textContent='Gerando…'}try{const d=await _apiFetch('/api/manifestacoes/'+encodeURIComponent(id())+'/devolutiva/gerar',30000,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});const t=val(d,'texto', 'textoFinal')||val(d.devolutiva||{},'textoFinal','VERSAO_FINAL','TEXTO_GERADO');if(t&&$("fv2-devolutiva"))$("fv2-devolutiva").value=t;else throw new Error('A análise não retornou uma sugestão persistida.');}catch(e){showMsg('fv2-dev-msg',e.message,false)}finally{if(b){b.disabled=false;b.textContent='Gerar sugestão'}}};
   window.fichaV2SalvarDevolutiva=async()=>{try{const t=$("fv2-devolutiva")?.value.trim()||'';if(!t)throw new Error('Informe o texto da devolutiva.');await patch({acao:'salvar_devolutiva',texto:t,canal:val(item(),'CANAL_RETORNO','CANAL')});Object.assign(S.item,{DEVOLUTIVA_FINAL:t,STATUS:'AGUARDANDO_DEVOLUTIVA',STATUS_FICHA:'AGUARDANDO_DEVOLUTIVA'});renderHeader();showMsg('fv2-dev-msg','Rascunho salvo.',true)}catch(e){showMsg('fv2-dev-msg',e.message,false)}};
   window.fichaV2EnviarDevolutiva=async()=>{try{await patch({acao:'registrar_devolutiva',canal:val(item(),'CANAL_RETORNO','CANAL'),responsavel:resp()});Object.assign(S.item,{STATUS:'ENCERRADA',STATUS_FICHA:'FECHADA'});renderHeader();renderContent();showMsg('fv2-dev-msg','Envio registrado e manifestação encerrada.',true)}catch(e){showMsg('fv2-dev-msg',e.message,false)}};
   window.fichaV2Upload=async files=>{const arr=[...(files||[])];for(const f of arr){try{const data=await fileToBase64(f);const r=await _apiFetch('/api/anexos',60000,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tipoEntidade:'MANIFESTACAO',idEntidade:id(),usuario:val(typeof sess==='function'?sess():{},'usuario','nome'),arquivo:{nome:f.name,mimeType:f.type,tamanho:f.size,dataBase64:data,categoria:'EVIDENCIA'}})});if(r.anexo)S.attachments.push(r.anexo)}catch(e){alert('Não foi possível enviar '+f.name+': '+e.message)}}renderHeader();renderAttachments()};
-  async function loadExtras(){const key=encodeURIComponent(id());const read=(url,empty)=>_apiFetch(url,10000).then(x=>({data:x,error:''})).catch(e=>({data:empty,error:e?.message||'Falha de comunicação'}));const [ev,h,ciRes,setRes,userRes,acRes]=await Promise.all([read('/api/manifestacoes/'+key+'/evidencias',{itens:[]}),read('/api/manifestacoes/'+key+'/historico',{itens:[]}),read('/api/manifestacoes/'+key+'/circa',{}),read('/api/setores-unicos',{itens:[]}),read('/api/usuarios',{itens:[]}),read('/api/manifestacoes/'+key+'/acionamentos',{itens:[]})]);const ci=ciRes.data||{};S.extrasErrors={evidencias:ev.error,historico:h.error,circa:ciRes.error,setores:setRes.error,usuarios:userRes.error,acionamentos:acRes.error};const evd=ev.data||{},hd=h.data||{},sd=setRes.data||{},ud=userRes.data||{},ad=acRes.data||{};S.setores=Array.isArray(sd.itens)?sd.itens.map(x=>typeof x==='string'?x:val(x,'SETOR','NOME')).filter(Boolean):[];S.usuarios=Array.isArray(ud.itens)?ud.itens:[];S.attachments=Array.isArray(evd.itens)?evd.itens:[];S.history=Array.isArray(hd.itens)?hd.itens:[];S.circa=ci?.circa||ci?.analise||ci?.dados||ci||{};S.acionamentos=Array.isArray(ad.itens)?ad.itens:[];renderHeader();renderContent()}
-  window.fichaV2Open=async function(raw,opts){const active=document.querySelector('.page.active')?.id?.replace(/^page-/,'');S.originPage=opts?.returnPage||(active&&active!=='ficha-manifestacao-v2'?active:'central-sac');S.originTab=opts?.returnTab||null;let m=typeof raw==='string'?{ID_MANIFESTACAO:raw,PROTOCOLO:raw}:raw||{};S.item=m;S.id=val(m,'ID_MANIFESTACAO','id','PROTOCOLO');S.tab=0;S.path='';S.attachments=[];S.history=[];S.circa=null;S.acionamentos=[];S.extrasErrors={};S.showAttachments=false;const sb=document.getElementById('app-sidebar');if(sb)sb.style.display='none';const u=typeof sess==='function'?sess():{};const un=$("ficha-v2-user-name");const ur=$("ficha-v2-user-role");if(un)un.textContent=val(u,'nome','usuario')||'Usuário';if(ur)ur.textContent=val(u,'perfil','PERFIL')||'SAC';navigate('ficha-manifestacao-v2',null);renderHeader();renderContent();try{const d=await _apiFetch('/api/manifestacoes/'+encodeURIComponent(S.id),15000);if(d?.manifestacao||d?.item)S.item=Object.assign({},m,d.manifestacao||d.item);else if(d?.ID_MANIFESTACAO)S.item=Object.assign({},m,d);S.id=val(S.item,'ID_MANIFESTACAO','PROTOCOLO')||S.id;renderHeader();renderContent();await loadExtras()}catch(e){console.warn('[Ficha v2] carregamento detalhado:',e.message);await loadExtras()}};
+  async function loadExtras(){const key=encodeURIComponent(id());const read=(url,empty)=>_apiFetch(url,10000).then(x=>({data:x,error:''})).catch(e=>({data:empty,error:e?.message||'Falha de comunicação'}));const empresa=val(item(),'EMPRESA_RECLAMADA','EMPRESA_NORMALIZADA','EMPRESA');const setorAtual=S.setorSelecionado||val(item(),'SETOR_CONFIRMADO','SETOR_DESTINADO','SETOR_SUGERIDO');const userUrl=setorAtual?('/api/usuarios/responsaveis?empresa='+encodeURIComponent(empresa)+'&setor='+encodeURIComponent(setorAtual)):'';const [ev,h,ciRes,setRes,userRes,acRes]=await Promise.all([read('/api/manifestacoes/'+key+'/evidencias',{itens:[]}),read('/api/manifestacoes/'+key+'/historico',{itens:[]}),read('/api/manifestacoes/'+key+'/circa',{}),read('/api/setores-responsaveis?empresa='+encodeURIComponent(empresa),{itens:[]}),userUrl?read(userUrl,{itens:[]}):Promise.resolve({data:{itens:[]},error:''}),read('/api/manifestacoes/'+key+'/acionamentos',{itens:[]})]);const ci=ciRes.data||{};S.extrasErrors={evidencias:ev.error,historico:h.error,circa:ciRes.error,setores:setRes.error,responsaveis:userRes.error,acionamentos:acRes.error};const evd=ev.data||{},hd=h.data||{},sd=setRes.data||{},ud=userRes.data||{},ad=acRes.data||{};S.setores=Array.isArray(sd.itens)?sd.itens.map(x=>typeof x==='string'?x:val(x,'SETOR','NOME')).filter(Boolean):[];S.responsaveis=Array.isArray(ud.itens)?ud.itens:[];S.responsaveisError=userRes.error||(ud.disponibilidade==='NENHUM_ELEGIVEL'?ud.mensagem:'');S.attachments=Array.isArray(evd.itens)?evd.itens:[];S.history=Array.isArray(hd.itens)?hd.itens:[];S.circa=ci?.circa||ci?.analise||ci?.dados||ci||{};S.acionamentos=Array.isArray(ad.itens)?ad.itens:[];renderHeader();renderContent()}
+  window.fichaV2Open=async function(raw,opts){const active=document.querySelector('.page.active')?.id?.replace(/^page-/,'');S.originPage=opts?.returnPage||(active&&active!=='ficha-manifestacao-v2'?active:'central-sac');S.originTab=opts?.returnTab||null;let m=typeof raw==='string'?{ID_MANIFESTACAO:raw,PROTOCOLO:raw}:raw||{};S.item=m;S.id=val(m,'ID_MANIFESTACAO','id','PROTOCOLO');S.tab=0;S.path='';S.attachments=[];S.history=[];S.circa=null;S.acionamentos=[];S.extrasErrors={};S.responsaveis=[];S.responsaveisError='';S.setorSelecionado='';S.responsaveisRequest=0;S.showAttachments=false;const sb=document.getElementById('app-sidebar');if(sb)sb.style.display='none';const u=typeof sess==='function'?sess():{};const un=$("ficha-v2-user-name");const ur=$("ficha-v2-user-role");if(un)un.textContent=val(u,'nome','usuario')||'Usuário';if(ur)ur.textContent=val(u,'perfil','PERFIL')||'SAC';navigate('ficha-manifestacao-v2',null);renderHeader();renderContent();try{const d=await _apiFetch('/api/manifestacoes/'+encodeURIComponent(S.id),15000);if(d?.manifestacao||d?.item)S.item=Object.assign({},m,d.manifestacao||d.item);else if(d?.ID_MANIFESTACAO)S.item=Object.assign({},m,d);S.id=val(S.item,'ID_MANIFESTACAO','PROTOCOLO')||S.id;renderHeader();renderContent();await loadExtras()}catch(e){console.warn('[Ficha v2] carregamento detalhado:',e.message);await loadExtras()}};
   window.fichaV2Recarregar=()=>S.item&&window.fichaV2Open(S.item);
   window.addEventListener('beforeunload',()=>{if(S.item)S.item=null});
   window.abrirDossie=function(raw){window.fichaV2Open(raw)};
@@ -11811,6 +11851,12 @@ let _nmAnalisePersistidaCarregada = false;
 let _nmDeterministicaPromise = null;
 let _nmAnaliseInFlight = false;
 
+function nmSincronizarVersaoPersistida(res) {
+  const versao = res?.atualizadoEm || res?.manifestacao?.DATA_ULTIMA_EDICAO || res?.item?.DATA_ULTIMA_EDICAO;
+  if (versao) _nmRascunhoUltimaEdicao = String(versao);
+  return _nmRascunhoUltimaEdicao;
+}
+
 function nmTextoEstruturado(valor, fallback = '') {
   if (valor === undefined || valor === null || valor === '') return fallback;
   if (typeof valor === 'string') return valor;
@@ -12027,8 +12073,9 @@ window.nmSalvarComplementacoes = async function() {
   const invalid = Object.entries(payload).find(([,v]) => v.status !== 'PREENCHIDA' && !v.justificativa.trim());
   if (invalid) { window.nmAtualizarEstadoComplementacoes('error', `Informe uma justificativa para ${NM_COMPLEMENTACAO_LABELS[invalid[0]] || invalid[0]}.`); return; }
   try {
-    const r = await _apiFetch(`/api/manifestacoes/${encodeURIComponent(_nmCardId)}/circa-dados`,15000,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({analisePatch:{complementacoes:payload}})});
+    const r = await _apiFetch(`/api/manifestacoes/${encodeURIComponent(_nmCardId)}/circa-dados`,15000,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({ultimaEdicaoConhecida:_nmRascunhoUltimaEdicao,analisePatch:{complementacoes:payload}})});
     if (!r?.sucesso) throw new Error(r?.erro || 'Falha ao salvar complementações.');
+    nmSincronizarVersaoPersistida(r);
     const atualizada = await nmCarregarAnaliseDeterministica();
     const naoConfirmadas = Object.entries(payload).filter(([campo, valor]) => {
       const salvo = atualizada?.complementacoes?.[campo];
@@ -12036,7 +12083,12 @@ window.nmSalvarComplementacoes = async function() {
     });
     if (naoConfirmadas.length) throw new Error('O servidor não confirmou todas as complementações.');
     window.nmAtualizarEstadoComplementacoes('success', 'Complementações salvas e confirmadas pelo servidor.');
-  } catch(e) { window.nmAtualizarEstadoComplementacoes('error', `Não foi possível salvar: ${e.message}`); }
+  } catch(e) {
+    const conflito = e?.codigo === 'RASCUNHO_CONCORRENTE' || /outra sessão|conflito/i.test(String(e?.message||''));
+    window.nmAtualizarEstadoComplementacoes('error', conflito
+      ? 'Conflito de edição: outra sessão alterou esta ficha. Seus campos permanecem preenchidos; recarregue antes de tentar gravar novamente.'
+      : `Não foi possível salvar: ${e.message}`);
+  }
   finally {
     if (window._nmComplementacoesSaveState === 'saving') window.nmAtualizarEstadoComplementacoes('error', 'Não foi possível confirmar a gravação das complementações.');
   }
@@ -12053,7 +12105,7 @@ window.nmSalvarChecklist = async function(id, concluida) {
   const atual = Array.isArray(window._nmChecklist) ? window._nmChecklist.slice() : [];
   const indice=atual.findIndex(x=>x.id===id); const anterior=indice>=0?{...atual[indice]}:null; const item={ id, status: concluida ? 'CONCLUIDA' : 'PENDENTE' }; if(indice>=0) atual[indice]=item; else atual.push(item);
   window._nmChecklist = atual;
-  try { await _apiFetch(`/api/manifestacoes/${encodeURIComponent(_nmCardId)}/circa-dados`, 15000, {method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({CHECKLIST_CIRCA:JSON.stringify(atual),CHECKLIST_VERSAO:window._nmChecklistVersao})}); window._nmChecklistVersao++; } catch(e) { if(indice>=0) atual[indice]=anterior; else atual.splice(atual.length-1,1); window._nmChecklist=atual; alert('Não foi possível salvar a atividade. O estado anterior foi restaurado.'); renderizarCircaDeterministico(window._nmDeterministicoAtual||{}); }
+  try { const resposta=await _apiFetch(`/api/manifestacoes/${encodeURIComponent(_nmCardId)}/circa-dados`, 15000, {method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({ultimaEdicaoConhecida:_nmRascunhoUltimaEdicao,CHECKLIST_CIRCA:JSON.stringify(atual),CHECKLIST_VERSAO:window._nmChecklistVersao})}); nmSincronizarVersaoPersistida(resposta); window._nmChecklistVersao++; } catch(e) { if(indice>=0) atual[indice]=anterior; else atual.splice(atual.length-1,1); window._nmChecklist=atual; alert('Não foi possível salvar a atividade. O estado anterior foi restaurado.'); renderizarCircaDeterministico(window._nmDeterministicoAtual||{}); }
 };
 
 function nmMostrarDecisaoEtapa2(decisao) {
@@ -12083,8 +12135,9 @@ window.nmSalvarRevisaoOrientacao = async function() {
   if (status === 'ORIENTACAO_REJEITADA' && justificativa.length < 10) { alert('Informe uma justificativa de pelo menos 10 caracteres para rejeitar a orientação.'); return; }
   const classificacao = document.getElementById('nm-revisao-classificacao')?.value.trim() || '';
   try {
-    const r = await _apiFetch(`/api/manifestacoes/${encodeURIComponent(_nmCardId)}/circa-dados`, 15000, {method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({analisePatch:{status, justificativa, classificacao, origem:'SAC', revisadoEm:new Date().toISOString()}})});
+    const r = await _apiFetch(`/api/manifestacoes/${encodeURIComponent(_nmCardId)}/circa-dados`, 15000, {method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ultimaEdicaoConhecida:_nmRascunhoUltimaEdicao,analisePatch:{status, justificativa, classificacao, origem:'SAC', revisadoEm:new Date().toISOString()}})});
     if (!r?.sucesso) throw new Error(r?.erro || 'Falha ao salvar a revisão.');
+    nmSincronizarVersaoPersistida(r);
     window._nmAnaliseAtual = {...(window._nmAnaliseAtual||{}), decisaoEtapa2:{...(window._nmAnaliseAtual?.decisaoEtapa2||{}), status, justificativa, classificacao, origem:'SAC'}};
     if (window._nmDeterministicoAtual) window._nmDeterministicoAtual.decisaoEtapa2 = window._nmAnaliseAtual.decisaoEtapa2;
     nmMostrarDecisaoEtapa2(window._nmAnaliseAtual.decisaoEtapa2);
@@ -12095,8 +12148,9 @@ window.nmUtilizarOrientacao = async function() {
   if (!_nmAnaliseAtual && !_nmDeterministicoAtual) { alert('Execute a análise antes de utilizar uma orientação.'); return; }
   if (!_nmCardId && !(await salvarRascunho({silent:true, reportError:true}))) return;
   try {
-    const r = await _apiFetch(`/api/manifestacoes/${encodeURIComponent(_nmCardId)}/circa-dados`, 15000, {method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({analisePatch:{status:'ORIENTACAO_ACEITA', origem:'SAC', revisadoEm:new Date().toISOString()}})});
+    const r = await _apiFetch(`/api/manifestacoes/${encodeURIComponent(_nmCardId)}/circa-dados`, 15000, {method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ultimaEdicaoConhecida:_nmRascunhoUltimaEdicao,analisePatch:{status:'ORIENTACAO_ACEITA', origem:'SAC', revisadoEm:new Date().toISOString()}})});
     if (!r?.sucesso) throw new Error(r?.erro || 'Falha ao registrar a decisão.');
+    nmSincronizarVersaoPersistida(r);
     window._nmAnaliseAtual = {...(window._nmAnaliseAtual||{}), decisaoEtapa2:{...(window._nmAnaliseAtual?.decisaoEtapa2||{}), status:'ORIENTACAO_ACEITA', origem:'SAC'}};
     nmMostrarDecisaoEtapa2(window._nmAnaliseAtual.decisaoEtapa2);
     await nmProximaEtapa();
@@ -12661,12 +12715,76 @@ function rejeitarAnalise() {
 
 
 let _nmEvidencias = [];
+const _nmAnexoHashes = new WeakMap();
 let _nmTipoImportacao = 'FICHA_RECLAMACAO';
 function fmtBytes(n){ if(!n) return ''; if(n<1024) return n+' B'; if(n<1024*1024) return (n/1024).toFixed(1)+' KB'; return (n/1024/1024).toFixed(1)+' MB'; }
 function abrirImportacaoDocumento(tipo){ _nmTipoImportacao=tipo; const i=document.getElementById('nm-import-file'); i.value=''; i.click(); }
-function adicionarEvidencias(files){ [...(files||[])].forEach(f=>{ if(!_nmEvidencias.some(x=>x.name===f.name&&x.size===f.size)){_nmEvidencias.push(f);} }); renderEvidencias(); }
+function nmAnexoIdentidade(anexo){
+  if(!anexo) return '';
+  const id=_nmAnexoHashes.get(anexo)||anexo._nmHash||anexo.id||anexo.ID||anexo.idArquivo||anexo.ID_ARQUIVO||anexo.fileId||anexo.DRIVE_FILE_ID||anexo.hash||anexo.HASH||anexo.checksum||anexo.CHECKSUM;
+  if(id) return 'id:'+String(id);
+  const nome=anexo.name||anexo.nome||anexo.NOME||anexo.NOME_ARQUIVO||'';
+  const tamanho=anexo.size??anexo.tamanho??anexo.TAMANHO??'';
+  const tipo=anexo.type||anexo.mimeType||anexo.MIME_TYPE||'';
+  const alterado=anexo.lastModified??anexo.ULTIMA_MODIFICACAO??'';
+  // O nome isolado nunca identifica um arquivo: arquivos distintos podem
+  // compartilhar o mesmo nome. Para registros sem hash, só a combinação de
+  // metadados do arquivo selecionado pode evitar uma repetição acidental.
+  return `meta:${nome}|${tamanho}|${tipo}|${alterado}`;
+}
+function nmAnexoCorrespondeLocal(persistido, local){
+  const idPersistido=nmAnexoIdentidade(persistido), idLocal=nmAnexoIdentidade(local);
+  if(idPersistido===idLocal) return true;
+  const nomeP=String(persistido?.nome||persistido?.NOME||persistido?.NOME_ARQUIVO||'').trim();
+  const nomeL=String(local?.name||'').trim();
+  const tamanhoP=String(persistido?.tamanho??persistido?.TAMANHO??'');
+  const tamanhoL=String(local?.size??'');
+  const pendente=!persistido?.url&&!persistido?.URL_ARQUIVO&&!persistido?.driveFileId&&!persistido?.DRIVE_FILE_ID&&/PENDENTE/i.test(String(persistido?.status||''));
+  // Metadados de um upload pendente são a única representação persistida do
+  // arquivo original; nesse caso nome+tamanho vinculam a linha ao arquivo
+  // selecionado, sem deduplicar arquivos já armazenados com o mesmo nome.
+  return pendente && nomeP && nomeP===nomeL && tamanhoP && tamanhoP===tamanhoL;
+}
+async function nmHashArquivo(file){
+  if(!file) return '';
+  if(_nmAnexoHashes.has(file)) return _nmAnexoHashes.get(file);
+  try {
+    const buffer=await file.arrayBuffer();
+    const digest=await crypto.subtle.digest('SHA-256',buffer);
+    const hash='sha256:'+Array.from(new Uint8Array(digest)).map(x=>x.toString(16).padStart(2,'0')).join('');
+    _nmAnexoHashes.set(file,hash);
+    return hash;
+  } catch (_) { return ''; }
+}
+async function adicionarEvidencias(files){
+  const existentes=new Set(_nmEvidencias.map(nmAnexoIdentidade));
+  [...(files||[])].forEach(f=>{
+    // A identidade do conteúdo é calculada antes de incluir o arquivo. Isso
+    // diferencia arquivos de mesmo nome/tamanho e evita duplicar a mesma
+    // evidência quando o seletor é aberto novamente.
+    nmHashArquivo(f).then(()=>{
+      const chave=nmAnexoIdentidade(f);
+      const atual=new Set(_nmEvidencias.map(nmAnexoIdentidade));
+      const jaPersistido=_nmEvidenciasPersistidas.some(p=>nmAnexoCorrespondeLocal(p,f));
+      if(chave && !atual.has(chave) && !jaPersistido){ _nmEvidencias.push(f); renderEvidencias(); }
+    });
+  });
+}
 function removerEvidencia(i){_nmEvidencias.splice(i,1);renderEvidencias();}
-function renderEvidencias(){const el=document.getElementById('nm-evidencias-list'); if(!el)return; const salvos=_nmEvidenciasPersistidas.map(f=>`<div class="upload-item"><span>📎 ${esc(f.nome||f.NOME||f.NOME_ARQUIVO||'arquivo')}</span><small>${fmtBytes(f.tamanho||f.TAMANHO||0)} · ${String(f.status||'ARMAZENADO').replace('_',' ').toLowerCase()}</small></div>`).join(''); const novos=_nmEvidencias.map((f,i)=>`<div class="upload-item"><span>📎 ${esc(f.name)}</span><small>${fmtBytes(f.size)} <button class="btn btn-ghost" style="padding:2px 5px" onclick="event.stopPropagation();removerEvidencia(${i})">Remover</button></small></div>`).join(''); el.innerHTML=salvos+novos;}
+function renderEvidencias(){
+  const el=document.getElementById('nm-evidencias-list'); if(!el)return;
+  const locais=new Set(_nmEvidencias.map(nmAnexoIdentidade));
+  const salvos=_nmEvidenciasPersistidas.map(f=>{
+    const nome=f.nome||f.NOME||f.NOME_ARQUIVO||'arquivo';
+    const estado=String(f.status||'ARMAZENADO').replace('_',' ').toLowerCase();
+    const repetido=_nmEvidencias.some(local=>nmAnexoCorrespondeLocal(f,local)) || locais.has(nmAnexoIdentidade(f));
+    // Um arquivo local pendente representa o mesmo anexo persistido: exiba
+    // uma única linha e mantenha o controle Remover no item local.
+    return repetido ? '' : `<div class="upload-item"><span>📎 ${esc(nome)}</span><small>${fmtBytes(f.tamanho||f.TAMANHO||0)} · ${estado}</small></div>`;
+  }).join('');
+  const novos=_nmEvidencias.map((f,i)=>`<div class="upload-item"><span>📎 ${esc(f.name)}</span><small>${fmtBytes(f.size)} <button class="btn btn-ghost" style="padding:2px 5px" onclick="event.stopPropagation();removerEvidencia(${i})">Remover</button></small></div>`).join('');
+  el.innerHTML=salvos+novos;
+}
 function fileToBase64(file){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsDataURL(file);});}
 async function processarDocumentoImportado(file){
   if(!file)return; const status=document.getElementById('nm-extracao-status'); const preview=document.getElementById('nm-extracao-preview');
@@ -12681,6 +12799,11 @@ function preencherCamposExtraidos(d){setIf('nm-cnpj',d.cnpj);setIf('nm-nome',d.c
 function renderPreviewExtracao(d){const el=document.getElementById('nm-extracao-preview'); const entries=Object.entries(d).filter(([k,v])=>String(v||'').trim()); el.style.display='block'; el.innerHTML='<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--gray-400);margin-top:10px">Prévia dos dados extraídos</div><div class="extract-preview">'+entries.slice(0,16).map(([k,v])=>`<div class="extract-field"><b>${esc(k)}</b>${esc(String(v))}</div>`).join('')+'</div>';}
 
 async function initNovaManifestacao() {
+  // Abrir a rota pela ação “Nova manifestação” sempre começa um registro novo.
+  // A retomada de rascunho é opt-in, por nmAbrirRascunho, para impedir que o
+  // último atendimento guardado no navegador vaze para um novo formulário.
+  const retomadaSolicitada = sessionStorage.getItem('sac-retomar-rascunho-id');
+  if (retomadaSolicitada) sessionStorage.removeItem('sac-retomar-rascunho-id');
   const _now = new Date();
   document.getElementById('nm-data').value = _now.toISOString().slice(0,10); // YYYY-MM-DD for date input
   let _userObj = {}; try { _userObj = JSON.parse(sessionStorage.getItem('sac-user')||'{}'); } catch {}
@@ -12713,6 +12836,8 @@ async function initNovaManifestacao() {
   _nmAnalisePersistidaCarregada = false;
   _nmDecisao = null;
   _nmCardId = null;
+  window.nmEtapa = 1;
+  window._nmEtapasConcluidas = new Set([1]);
   _nmRascunhoUltimaEdicao = '';
   _nmEvidenciasPersistidas = [];
   // Libera uma consulta nova; a resposta de qualquer consulta anterior será
@@ -12721,17 +12846,11 @@ async function initNovaManifestacao() {
   _nmIdempotencyKey = null;
   _nmEvidencias = []; renderEvidencias();
   const es=document.getElementById('nm-extracao-status'); if(es) es.style.display='none'; const ep=document.getElementById('nm-extracao-preview'); if(ep) ep.style.display='none';
+  // Um rascunho persistido só pode ser retomado por uma ação explícita. O ID
+  // continua em localStorage para permitir que a Central ofereça essa ação,
+  // mas nunca é carregado automaticamente ao abrir “Nova manifestação”.
   try {
-    const r = localStorage.getItem('sac-rascunho');
-    if (r) {
-      const rascunho = JSON.parse(r);
-      Object.entries(rascunho).forEach(([id, val]) => { const el = document.getElementById(id); if (el && val) el.value = val; });
-    }
-  } catch(e) { /* ignora erro de localStorage */ }
-  // Um rascunho persistido pode ser retomado depois de uma atualização ou
-  // retorno pela Central. O ID é reutilizado para impedir novo protocolo.
-  try {
-    const resumeId = localStorage.getItem('sac-rascunho-id');
+    const resumeId = retomadaSolicitada;
     if (resumeId) {
       const d = await _apiFetch(`/api/manifestacoes/${encodeURIComponent(resumeId)}`, 15000);
       const m = d?.manifestacao || d?.item;
@@ -12752,6 +12871,17 @@ async function initNovaManifestacao() {
   });
   atualizarResumoFicha();
 }
+
+// Ponto único para recuperação intencional de um rascunho existente. A tela
+// de nova manifestação não deve inferir que o último registro é o que o
+// usuário deseja editar.
+window.nmAbrirRascunho = function(id){
+  const valor=String(id||'').trim();
+  if(!valor) return false;
+  sessionStorage.setItem('sac-retomar-rascunho-id', valor);
+  if(typeof navigate==='function') navigate('nova-manifestacao', document.querySelector('[onclick*=nova-manifestacao]'));
+  return true;
+};
 
 function limparBuscaCnpj() {
   document.getElementById('nm-cnpj').value = '';
@@ -14664,7 +14794,7 @@ async function salvarRascunho(options={}) {
       if (!upload?.sucesso) throw new Error(upload?.erro || 'Falha ao vincular os anexos do rascunho.');
       _nmRascunhoUltimaEdicao=String(upload.atualizadoEm||_nmRascunhoUltimaEdicao||'');
     }
-    if(!silent) alert(`Rascunho salvo${_nmCardId?' ('+_nmCardId+')':''}.`);
+    if(!silent) alert(_nmCardId ? `Rascunho salvo. Identificador técnico: ${_nmCardId}. Protocolo definitivo será gerado na finalização.` : 'Rascunho salvo.');
     return true;
   } catch(e) {
     if(reportError) alert('Não foi possível salvar os dados desta etapa: '+(e.message||'erro desconhecido'));
@@ -14797,7 +14927,7 @@ async function _apiFetch(url, timeoutMs, extraOptions) {
     const text = await r.text();
     let data;
     try { data = text ? JSON.parse(text) : {}; } catch { data = { raw: text }; }
-    if (!r.ok) { const httpError = new Error((data.erro || data.error || data.raw || '') + ' (HTTP ' + r.status + ')'); httpError.status = r.status; httpError.response = data; throw httpError; }
+    if (!r.ok) { const httpError = new Error((data.erro || data.error || data.raw || '') + ' (HTTP ' + r.status + ')'); httpError.status = r.status; httpError.codigo = data.codigo || data.code || ''; httpError.response = data; throw httpError; }
     return data;
   } catch (error) {
     // Este controller só é acionado pelo prazo da requisição. Alguns
@@ -18287,7 +18417,12 @@ function getProximaAcao(m){
   return 'Analisar';
 }
 function getBtnLabel(m){
-  const s = norm(m.STATUS||'');
+  const s = norm(m.STATUS||m.STATUS_FICHA||'');
+  if(/^RASCUNHO$/.test(s) || s.includes('EM_REVISAO')) return 'Continuar preenchimento da ficha';
+  if(s.includes('TRIAGEM')) return 'Continuar triagem';
+  if(s.includes('AGUARDANDO_VALIDACAO')) return 'Validar tratativa';
+  if(s.includes('TRATATIVA') || s.includes('TRATAMENTO')) return 'Continuar tratativa';
+  if(s.includes('ENCERR') || s.includes('FINALIZ') || s.includes('CONCLUID')) return 'Consultar ficha';
   if(s.includes('ANÁLISE')||s.includes('ANALISE')) return 'Analisar';
   if(s.includes('AGUARD')&&s.includes('DECIS')) return 'Decidir';
   if(s.includes('APROVADA')) return 'Encaminhar';
@@ -29032,6 +29167,8 @@ function updateTopbarUser(user) {
     'ATENDENTE SAC': ['manifestacoes.visualizar','manifestacoes.criar','manifestacoes.editar','manifestacoes.historico','manifestacoes.anexar','ia.acessar','ia.similares','ia.recomendacoes','fichas.acessar','fichas.ativas','fichas.pesquisar','cerebro.consultar','indicadores.visualizar'],
     'APROVADOR': ['aprovacoes.visualizar','aprovacoes.aprovar','aprovacoes.reprovar','aprovacoes.devolver','aprovacoes.parecer','aprovacoes.pendentes','aprovacoes.historico','rnc.visualizar','rnc.aprovar','indicadores.visualizar'],
     'SAC': ['manifestacoes.visualizar','manifestacoes.criar','manifestacoes.editar','manifestacoes.encaminhar','manifestacoes.historico','manifestacoes.anexar','ia.acessar','ia.similares','fichas.acessar','fichas.ativas','cerebro.consultar','indicadores.visualizar'],
+    'APROVADOR_SETORIAL': ['manifestacoes.visualizar','manifestacoes.editar','manifestacoes.historico','manifestacoes.anexar','manifestacoes.evidencias','fichas.acessar','fichas.ativas','cerebro.consultar','aprovacoes.visualizar'],
+    'DIRETORIA_GESTOR': ['manifestacoes.visualizar','manifestacoes.editar','manifestacoes.encaminhar','manifestacoes.historico','fichas.acessar','fichas.ativas','aprovacoes.visualizar','aprovacoes.aprovar','aprovacoes.reprovar','indicadores.visualizar','indicadores.empresa','indicadores.setor'],
     // Perfis que antes não tinham defaults no frontend:
     'SETOR RESPONSÁVEL': ['manifestacoes.visualizar','manifestacoes.editar','manifestacoes.historico','manifestacoes.anexar','fichas.acessar','fichas.ativas','cerebro.consultar'],
     'ESPECIALISTA': ['cerebro.consultar','cerebro.criar','cerebro.editar','cerebro.faqs','indicadores.visualizar'],
@@ -29058,6 +29195,25 @@ function updateTopbarUser(user) {
   let _usuGranted = new Set();
   let _usuBlocked = new Set();
   let _usuPermissoesOriginais = { granted: '[]', blocked: '[]' };
+  let _usuEscopo = { status: 'idle', request: 0, usuario: null };
+
+  function _usuEscopoLista(...valores) {
+    const out=[];
+    const add=v=>{
+      if (Array.isArray(v)) return v.forEach(add);
+      if (v && typeof v==='object') return Object.values(v).forEach(add);
+      const s=String(v??'').trim(); if(!s)return;
+      try { const parsed=JSON.parse(s); if(parsed!==v) return add(parsed); } catch(_) {}
+      s.split(/[;,|\n]+/).map(x=>x.trim()).filter(Boolean).forEach(x=>out.push(x));
+    };
+    valores.forEach(add);
+    return [...new Set(out)];
+  }
+  function _usuEscopoNorm(v) {
+    return String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase()
+      .replace(/\bembalagens?\b/g,'').replace(/\s+/g,' ')
+      .replace(/^tubahia\s*\/\s*cesbap$/,'tubahia').trim();
+  }
 
   function _permDefault(perfil, chave) {
     const p = (perfil||'').toUpperCase();
@@ -29206,6 +29362,7 @@ function updateTopbarUser(user) {
   window.usuAbrir = function(idOuObj) {
     const u = idOuObj == null ? null : (typeof idOuObj === 'string' ? window._usuMap[idOuObj] : idOuObj);
     _usuEditando = u;
+    _usuEscopo = { status: 'loading', request: _usuEscopo.request + 1, usuario: u };
     const adminActions = document.getElementById('usu-acoes-admin');
     const statusButton = document.getElementById('usu-btn-status');
     if (adminActions) adminActions.style.display = u ? 'flex' : 'none';
@@ -29232,8 +29389,10 @@ function updateTopbarUser(user) {
     document.getElementById('usu-nome').value = u&&(u.NOME||u.nome)||'';
     document.getElementById('usu-email').value = u&&(u.EMAIL||u.email)||'';
     document.getElementById('usu-usuario').value = u&&(u.USUARIO||u.usuario)||'';
-    document.getElementById('usu-perfil').value = u&&(u.PERFIL||u.perfil)||'';
+    document.getElementById('usu-perfil').value = u&&(u.PERFIL_FUNCIONAL||u.perfilFuncional||u.PERFIL||u.perfil)||'';
     document.getElementById('usu-cargo').value = u&&(u.CARGO||u.cargo)||'';
+    document.getElementById('usu-nivel-hierarquico').value = u&&(u.NIVEL_HIERARQUICO||u.nivelHierarquico||u.NIVEL||u.nivel)||'';
+    document.getElementById('usu-competencias').value = u&&((u.COMPETENCIAS_ALCADAS||u.competenciasAlcadas||u.ALCADAS_APROVACAO||u.COMPETENCIAS)||'').toString().replace(/[,;|]+/g, ', ');
     document.getElementById('usu-status').value = u ? (u.STATUS||u.status||'ATIVO') : 'PRIMEIRO_ACESSO';
     document.getElementById('usu-obs').value = u&&(u.OBSERVACOES||u.observacoes)||'';
     document.getElementById('usu-senha').value = '';
@@ -29251,7 +29410,7 @@ function updateTopbarUser(user) {
     m.style.alignItems = 'center';
     m.style.justifyContent = 'center';
   };
-  window.fecharModalUsuario = function() { document.getElementById('modal-usuario').style.display='none'; };
+  window.fecharModalUsuario = function() { _usuEscopo = { status:'idle', request:_usuEscopo.request+1, usuario:null }; document.getElementById('modal-usuario').style.display='none'; };
 
   window.usuModalTab = function(tab, btn) {
     ['dados','permissoes','escopo','historico'].forEach(function(t) {
@@ -29362,12 +29521,14 @@ function updateTopbarUser(user) {
   };
 
   function usuCarregarEscopo(u) {
+    const request = _usuEscopo.request;
     const empresasEl = document.getElementById('usu-empresas-checks');
     if(empresasEl) {
       const EMPRESAS = ['Chiacchio Embalagens','Plaschio','Tubahia'];
-      const atual = (u&&(u.EMPRESA||u.empresa)||'').split(/[,;|]/).map(function(s){return s.trim().toLowerCase();});
+      const atual = _usuEscopoLista(u?.EMPRESA,u?.empresa,u?.EMPRESAS,u?.empresas,u?.EMPRESAS_JSON,u?.empresasJson);
+      const atualNorm = new Set(atual.map(_usuEscopoNorm));
       empresasEl.innerHTML = EMPRESAS.map(function(e) {
-        return '<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" onchange="usuEmpresaEscopoChanged()" value="' + esc5(e) + '" ' + (atual.includes(e.toLowerCase())?'checked':'') + '> ' + esc5(e) + '</label>';
+        return '<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" onchange="usuEmpresaEscopoChanged()" value="' + esc5(e) + '" ' + (atualNorm.has(_usuEscopoNorm(e))?'checked':'') + '> ' + esc5(e) + '</label>';
       }).join('');
       // Corrige registros legados: empresa definida não deve permanecer em
       // PRIMEIRO_ACESSO aguardando uma aprovação que não existe mais.
@@ -29380,13 +29541,25 @@ function updateTopbarUser(user) {
     }
     const setoresEl = document.getElementById('usu-setores-checks');
     if(setoresEl) {
+      setoresEl.innerHTML='<div style="color:#707070;font-size:12px">Carregando setores autorizados...</div>';
       _apiFetch('/api/setores').then(function(d) {
-        const SETORES = [...new Set((d.setores||d.itens||[]).map(function(s){return String(s.SETOR||s.NOME||s.nome||'').trim();}).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
-        const atual = [...new Set((u&&(u.SETOR||u.setor)||'').split(',').map(function(s){return s.trim();}).filter(Boolean))];
+        if(request!==_usuEscopo.request || _usuEditando!==u) return;
+        const atual = _usuEscopoLista(u?.SETOR,u?.setor,u?.SETORES,u?.setores,u?.SETORES_AUTORIZADOS,u?.setoresAutorizados);
+        const catalogo=(d.setores||d.itens||[]).map(function(s){return String(s.SETOR||s.NOME||s.nome||'').trim();}).filter(Boolean);
+        // Mantém valores persistidos que não estejam no catálogo atual visíveis,
+        // evitando que uma releitura incompleta os transforme em escopo vazio.
+        const SETORES = [...new Set([...catalogo,...atual])].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+        const atualNorm = new Set(atual.map(_usuEscopoNorm));
         setoresEl.innerHTML = SETORES.map(function(s) {
-          return '<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" value="' + esc5(s) + '" ' + (atual.includes(s)?'checked':'') + '> ' + esc5(s) + '</label>';
+          return '<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" value="' + esc5(s) + '" ' + (atualNorm.has(_usuEscopoNorm(s))?'checked':'') + '> ' + esc5(s) + '</label>';
         }).join('');
-      }).catch(function(){ setoresEl.innerHTML='<div style="color:#707070;font-size:12px">Setores indisponíveis.</div>'; });
+        _usuEscopo.status='ready';
+      }).catch(function(e){
+        if(request!==_usuEscopo.request || _usuEditando!==u) return;
+        _usuEscopo.status='error';
+        setoresEl.innerHTML='<div style="color:#C70602;font-size:12px">Não foi possível ler os setores. Nenhuma alteração de escopo será salva.</div>';
+        const msg=document.getElementById('modal-usu-msg'); if(msg){msg.style.color='#C70602';msg.textContent=e?.message||'Cadastro de setores indisponível.';}
+      });
     }
     const compEl = document.getElementById('usu-competencias');
     if(compEl) compEl.value = u&&(u.CODIGO_RCA||u.codigoRCA||u.COMPETENCIAS||u.competencias)||'';
@@ -29427,6 +29600,7 @@ function updateTopbarUser(user) {
     const usuario = document.getElementById('usu-usuario').value.trim();
     const perfil = document.getElementById('usu-perfil').value;
     const cargo = document.getElementById('usu-cargo').value.trim();
+    const nivelHierarquico = document.getElementById('usu-nivel-hierarquico').value;
     const status = document.getElementById('usu-status').value;
     const senha = document.getElementById('usu-senha').value.trim();
     const obs = document.getElementById('usu-obs').value.trim();
@@ -29438,6 +29612,11 @@ function updateTopbarUser(user) {
     }
     if(!_usuEditando && !senha) {
       if(msg){msg.style.color='#C70602';msg.textContent='Informe a senha inicial.';}
+      return;
+    }
+
+    if (_usuEscopo.status !== 'ready') {
+      if(msg){msg.style.color='#C70602';msg.textContent='Aguarde a leitura completa do escopo antes de salvar. Nenhuma seleção foi alterada.';}
       return;
     }
 
@@ -29461,7 +29640,7 @@ function updateTopbarUser(user) {
       let data;
       const editId = _usuEditando && (_usuEditando.ID_USUARIO||_usuEditando.id||_usuEditando.USUARIO||_usuEditando.usuario);
       if(_usuEditando) {
-        const body = { nome, email, perfil, cargo, status: statusEfetivo, empresa: empresas, setor: setores, observacoes: obs };
+        const body = { nome, email, perfil, cargo, status: statusEfetivo, nivelHierarquico, competenciasAlcadas: comp, empresa: empresas, setor: setores, escopoConfirmado: true, observacoes: obs };
         if(senha) body.senha = senha;
         data = await _apiFetch('/api/usuarios/' + encodeURIComponent(editId), 0, {
           method:'PATCH',
@@ -29500,7 +29679,7 @@ function updateTopbarUser(user) {
         data = await _apiFetch('/api/usuarios', 0, {
           method:'POST',
           headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ nome, email, usuario, perfil, cargo, status: statusEfetivo, empresa: empresas, setor: setores, senha, codigoRCA: comp,
+          body: JSON.stringify({ nome, email, usuario, perfil, nivelHierarquico, competenciasAlcadas: comp, cargo, status: statusEfetivo, empresa: empresas, setor: setores, escopoConfirmado: true, senha, codigoRCA: comp,
             permissoes_granted: Array.from(_usuGranted), permissoes_blocked: Array.from(_usuBlocked), observacoes: obs }),
         });
       }
@@ -29736,7 +29915,15 @@ function updateTopbarUser(user) {
   window.navigate = function(page, el){
     if(typeof _navOrig === 'function') _navOrig(page, el);
     if(_interno) return;
-    try { const url = '/' + slugDe(page); if(location.pathname !== url) history.pushState({page}, '', url); } catch(e){}
+    try {
+      // A navegação pode ser redirecionada pelo guard de perfil. Use a página
+      // efetivamente ativa para que a URL não permaneça em /meu-perfil quando
+      // o conteúdo exibido já é Nova Manifestação (e vice-versa).
+      const ativa=document.querySelector('.page.active[id^="page-"]');
+      const efetiva=ativa?.id?.slice(5) || page;
+      const url = '/' + slugDe(efetiva);
+      if(location.pathname !== url) history.pushState({page:efetiva}, '', url);
+    } catch(e){}
   };
 
   function irPara(page){

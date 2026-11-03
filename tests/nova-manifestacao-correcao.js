@@ -21,6 +21,13 @@ assert.ok(html.includes('/api/manifestacoes/${encodeURIComponent(technicalId)}/e
 assert.match(html, /_nmRascunhoUltimaEdicao/, 'o rascunho deve controlar a versão retornada pelo armazenamento');
 assert.match(html, /_nmEvidenciasPersistidas/, 'anexos persistidos devem continuar visíveis após reabrir a ficha');
 assert.match(html, /ultimaEdicaoConhecida/, 'salvamentos concorrentes devem enviar a versão conhecida');
+assert.match(html, /nmSincronizarVersaoPersistida/, 'gravações CIRCA devem sincronizar a versão retornada pelo servidor');
+assert.match(html, /ultimaEdicaoConhecida:_nmRascunhoUltimaEdicao,analisePatch:\{status:'ORIENTACAO_ACEITA'/, 'utilizar orientação deve preservar o controle de concorrência');
+assert.match(html, /Conflito de edição: outra sessão alterou esta ficha/, 'conflito real deve preservar os campos e informar recuperação');
+assert.match(html, /const efetiva=ativa\?\.id\?\.slice\(5\)/, 'a URL deve refletir a página efetivamente renderizada');
+assert.match(html, /Continuar preenchimento da ficha/, 'rascunhos devem oferecer retomada explícita');
+assert.match(html, /S\.path='';S\.setorSelecionado='';S\.responsaveis=\[\]/, 'novo encaminhamento deve limpar somente o formulário após persistir a frente');
+assert.match(html, /RESPONSAVEL_NOME.*RESPONSAVEL_NOME_COMPLETO/, 'ficha deve exibir nome do responsável quando o cadastro estiver disponível');
 assert.match(html, /idempotencyKey:nmGarantirIdempotencyKey\(\)/, 'rascunhos devem reutilizar a chave de idempotência');
 assert.match(html, /O rascunho foi aceito, mas ainda não foi confirmado/, 'o ID só deve ser usado após confirmação de leitura');
 assert.match(fs.readFileSync(path.resolve(__dirname, '../api/index.js'), 'utf8'), /if\(protocoloKeyInput\)/, 'o POST deve deduplicar também rascunhos');
@@ -93,6 +100,12 @@ function request(base, method, route, auth, body) {
     assert.equal(complementacoesCirca.status, 200, JSON.stringify(complementacoesCirca.body));
     assert.equal(complementacoesCirca.body.circa.complementacoes.CANAL.valor, 'TELEFONE');
     assert.equal(complementacoesCirca.body.circa.complementacoes.CATEGORIA.valor, 'Qualidade');
+    const complementacoesHistory = await request(base, 'GET', `/api/manifestacoes/${encodeURIComponent(draftId)}/historico`, master);
+    assert.equal(complementacoesHistory.status, 200, JSON.stringify(complementacoesHistory.body));
+    const complementacaoEvent = complementacoesHistory.body.itens.find(item => item.ACAO === 'COMPLEMENTACOES_CIRCA_ATUALIZADAS');
+    assert.ok(complementacaoEvent, 'a atualização deve gerar evento específico de auditoria da complementação');
+    assert.match(String(complementacaoEvent.DETALHES || ''), /CANAL/);
+    assert.match(String(complementacaoEvent.DETALHES || ''), /CATEGORIA/);
     const stale=await request(base,'PATCH',`/api/manifestacoes/${encodeURIComponent(draftId)}/circa-dados`,master,{produto:'Outro',ultimaEdicaoConhecida:draft.body.atualizadoEm});
     assert.equal(stale.status,409,'gravação com versão antiga deve ser rejeitada sem sobrescrever dados');
 

@@ -43,6 +43,9 @@ async function main() {
   const requisicoes = [];
   const rascunhosEnviados = [];
   const checklistSalvos = [];
+  const patchBodies = [];
+  let armazenamentoVersao = '';
+  let sequenciaVersao = 0;
   let complementacoesPersistidas = {};
   let complementacoesPatchCount = 0;
   let complementacaoModo = 'success';
@@ -71,6 +74,10 @@ async function main() {
     }
     if (url.pathname.endsWith('/circa-dados') && req.method() === 'PATCH') {
       const body = req.postDataJSON() || {};
+      patchBodies.push(body);
+      if (body.ultimaEdicaoConhecida && armazenamentoVersao && body.ultimaEdicaoConhecida !== armazenamentoVersao) {
+        return route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ sucesso: false, codigo: 'RASCUNHO_CONCORRENTE', erro: 'O rascunho foi alterado em outra sessão.' }) });
+      }
       if (body.CHECKLIST_CIRCA) checklistSalvos.push(body);
       if (body.analisePatch?.complementacoes) {
         complementacoesPatchCount += 1;
@@ -79,7 +86,8 @@ async function main() {
         if (complementacaoModo !== 'divergent') complementacoesPersistidas = body.analisePatch.complementacoes;
       }
       await new Promise(resolve => setTimeout(resolve, 80));
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ sucesso: true, id: 'NM-BROWSER-001', protocolo: 'CHIA-20261028-01-0001' }) });
+      armazenamentoVersao = `v${++sequenciaVersao}`;
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ sucesso: true, id: 'NM-BROWSER-001', protocolo: 'CHIA-20261028-01-0001', atualizadoEm: armazenamentoVersao }) });
     }
     if (url.pathname === '/api/manifestacoes/NM-BROWSER-001/circa' && req.method() === 'GET') {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
@@ -112,11 +120,26 @@ async function main() {
       sessionStorage.setItem('sac-token', 'browser-regression-token');
       sessionStorage.setItem('sac-auth', '1');
       sessionStorage.setItem('sac-user', JSON.stringify({ usuario: 'teste.nova', nome: 'Teste Nova Manifestação', perfil: 'MASTER', empresa: 'Grupo Chiacchio' }));
+      localStorage.setItem('sac-rascunho', JSON.stringify({ 'nm-descricao': 'não deve vazar para uma nova manifestação' }));
+      localStorage.setItem('sac-rascunho-id', 'NM-BROWSER-001');
       document.getElementById('login-screen').style.display = 'none';
       navigate('nova-manifestacao');
     });
     const pageRoot = page.locator('#page-nova-manifestacao');
     await pageRoot.waitFor({ state: 'visible' });
+    assert.match(page.url(), /\/nova-manifestacao$/, 'a rota deve acompanhar a página Nova Manifestação');
+    await page.waitForTimeout(350);
+    assert.equal(await page.locator('#nm-descricao').inputValue(), '', 'uma nova manifestação não pode carregar rascunho implicitamente');
+    assert.equal(await page.locator('#nm-evidencias-list .upload-item').count(), 0, 'anexos antigos não podem vazar para uma nova manifestação');
+    await page.evaluate(() => window.nmAbrirRascunho('NM-BROWSER-001'));
+    await page.waitForTimeout(350);
+    assert.equal(await page.locator('#nm-descricao').inputValue(), 'Rascunho de navegador confirmado.', 'a retomada explícita deve carregar o rascunho solicitado');
+    await page.evaluate(() => navigate('nova-manifestacao'));
+    await page.waitForTimeout(350);
+    assert.equal(await page.locator('#nm-descricao').inputValue(), '', 'abrir novamente como nova deve limpar a retomada anterior');
+    await page.locator('#nm-btn-continuar').click();
+    assert.match(await page.locator('#nm-etapa-erro').textContent(), /empresa|cliente|contato|tipo|canal|data|descri/i, 'a Etapa 1 deve informar seus próprios campos obrigatórios');
+    assert.doesNotMatch(await page.locator('#nm-etapa-erro').textContent(), /conduzirá a tratativa/i, 'a validação da Etapa 1 não pode exigir decisão da Etapa 3');
 
     const descricaoCenario = ('A entrega para Chiacchio Embalagens atrasou três dias. ' +
       'Foram identificados aproximadamente 1.200 potes com dificuldade de encaixe das tampas. ').repeat(6).slice(0, 745);
@@ -132,7 +155,16 @@ async function main() {
     await page.locator('#nm-expectativa').fill('Cliente espera substituição e retorno do SAC.');
     await page.locator('#nm-descricao').fill(descricaoCenario);
     await page.locator('#nm-evidencias').setInputFiles(arquivos);
+    await page.waitForTimeout(120);
     await assertFileNames(page, ['evidencia.pdf', 'foto.png']);
+    await page.locator('#nm-evidencias').setInputFiles(arquivos);
+    await page.waitForTimeout(1000);
+    assert.equal(await page.locator('#nm-evidencias-list .upload-item').count(), 2, 'seleção repetida do mesmo arquivo não pode duplicar a lista');
+    await page.locator('#nm-evidencias-list .upload-item').first().locator('button').click();
+    assert.equal(await page.locator('#nm-evidencias-list .upload-item').count(), 1, 'remover um anexo deve preservar os demais');
+    await page.locator('#nm-evidencias').setInputFiles(arquivos);
+    await page.waitForTimeout(120);
+    assert.equal(await page.locator('#nm-evidencias-list .upload-item').count(), 2, 'um anexo removido pode ser selecionado novamente');
 
     const continuar = page.locator('#nm-btn-continuar');
     // Dois cliques no mesmo ciclo não podem criar dois rascunhos.
@@ -219,6 +251,16 @@ async function main() {
     assert.equal(await page.locator('#page-nova-manifestacao .nm-step-panel.nm-active').getAttribute('data-nm-step'), '7');
     assert.equal(await page.locator('#nm-empresa').inputValue(), 'Cliente de regressão');
     assert.equal(await page.locator('#nm-nfe').inputValue(), '987654');
+    // Utilizar orientação faz uma decisão e, em seguida, um autosave. O
+    // segundo PATCH precisa usar a versão devolvida pelo primeiro, sem 409
+    // falso; o mock rejeita apenas versões realmente obsoletas.
+    await page.evaluate(() => nmIrParaEtapa(2));
+    await page.waitForTimeout(250);
+    await page.evaluate(() => window.nmUtilizarOrientacao());
+    await page.locator('#nm-etapa-label').filter({ hasText: 'Etapa 3 de 7' }).waitFor();
+    const autosavesComVersao = patchBodies.filter(body => body.ultimaEdicaoConhecida);
+    assert.ok(autosavesComVersao.length > 0, 'gravações posteriores devem enviar a versão persistida');
+    assert.ok(!errosPagina.some(error => /409|outra sessão/i.test(error.message)), 'a própria sessão não pode gerar conflito falso');
     // O boot do dashboard dispara chamadas fora do fluxo testado; somente
     // erros originados na navegação da ficha bloqueiam esta regressão.
     const errosCriticos = errosPagina.filter(error => /nmProximaEtapa|nm-btn-continuar|SyntaxError|salvarRascunho/.test(error.message));

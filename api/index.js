@@ -21,6 +21,7 @@ const protocoloAtomico = require('../server-services/protocoloAtomico');
 const circaEngine = require('../server-services/circaEngine');
 const circaWorkflow = require('../server-services/circaWorkflow');
 const matrizTratamentoService = require('../server-services/matrizTratamentoService');
+const modeloAutorizacao = require('../server-services/modeloAutorizacao');
 
 // Injeção de mock Sheets para testes — nunca ativo em produção (env var não existe em prod)
 const _sheetsMock = process.env.SHEETS_MOCK_PATH ? (() => { try { return require(process.env.SHEETS_MOCK_PATH); } catch(e) { console.warn('[MOCK] falhou ao carregar:', e.message); return null; } })() : null;
@@ -98,8 +99,13 @@ if (PG_LEITURA_ATIVA && process.env.DATABASE_URL && process.env.NODE_ENV !== 'te
     pesquisaRepo = require('../database/repositories/pesquisaRepository');
     solicitacaoRepo = require('../database/repositories/solicitacaoRepository');
     console.info('[PG] Repositórios carregados — leituras via PostgreSQL ativas.');
-    // Garante que os registros básicos de Perfil existam no banco
-    _seedPerfisSeNecessario().catch(e => console.warn('[PG] seed perfis falhou:', e.message));
+    // O seed é uma operação administrativa e não deve ocorrer em cada cold
+    // start da Vercel. Além de pressionar o pool do Neon, ele podia falhar
+    // junto com requests legítimos (por exemplo /api/configuracoes). Execute
+    // explicitamente somente em uma janela de manutenção autorizada.
+    if (String(process.env.PG_SEED_PERFIS_ON_STARTUP || '').toLowerCase() === 'true') {
+      _seedPerfisSeNecessario().catch(e => console.warn('[PG] seed perfis falhou:', e.message));
+    }
   } catch (e) {
     console.warn('[PG] Repositórios não disponíveis, usando Sheets:', e.message);
   }
@@ -514,6 +520,9 @@ async function carregarUsuarios(){
           EMAIL: u.email || '',
           NOME: u.nome || u.login,
           PERFIL: u.perfil?.codigo || u.perfil?.nome || 'ANALISTA SAC',
+          PERFIL_FUNCIONAL: modeloAutorizacao.perfilFuncional(u.perfil?.codigo || u.perfil?.nome || ''),
+          NIVEL_HIERARQUICO: modeloAutorizacao.nivelHierarquico(u.nivelHierarquico || u.nivel || ''),
+          COMPETENCIAS_ALCADAS: u.competenciasAlcadas || u.alcadasAprovacao || '',
           EMPRESA: u.empresa?.nome || '',
           SETOR: u.setor?.nome || '',
           STATUS: u.ativo === false ? 'INATIVO' : 'ATIVO',
@@ -562,6 +571,13 @@ async function carregarUsuarios(){
     if (sh.PERMISSOES_CUSTOM && !u.PERMISSOES_CUSTOM) overrides.PERMISSOES_CUSTOM = sh.PERMISSOES_CUSTOM;
     if (sh.PERMISSOES_GRANTED && !u.PERMISSOES_GRANTED) overrides.PERMISSOES_GRANTED = sh.PERMISSOES_GRANTED;
     if (sh.COMPETENCIAS && !u.COMPETENCIAS) overrides.COMPETENCIAS = sh.COMPETENCIAS;
+    // O perfil administrativo do Sheets é a representação canônica da UI.
+    // Sem este override, um perfil setorial salvo no Sheets era reidratado
+    // pelo perfil genérico antigo do PostgreSQL.
+    if (sh.PERFIL) overrides.PERFIL = perfilCanonico(sh.PERFIL);
+    if (sh.PERFIL_FUNCIONAL) overrides.PERFIL_FUNCIONAL = modeloAutorizacao.perfilFuncional(sh.PERFIL_FUNCIONAL, sh.PERFIL);
+    if (sh.NIVEL_HIERARQUICO || sh.NIVEL) overrides.NIVEL_HIERARQUICO = modeloAutorizacao.nivelHierarquico(sh.NIVEL_HIERARQUICO || sh.NIVEL);
+    if (sh.COMPETENCIAS_ALCADAS || sh.ALCADAS_APROVACAO) overrides.COMPETENCIAS_ALCADAS = sh.COMPETENCIAS_ALCADAS || sh.ALCADAS_APROVACAO;
     // Senha do Sheets como fallback se PG não tiver
     if (sh.SENHA_HASH && !u.SENHA_HASH) overrides.SENHA_HASH = sh.SENHA_HASH;
     // Escopo de empresa/setor vem do Sheets (MASTER atualiza via modal de usuários)
@@ -599,6 +615,79 @@ async function carregarUsuarios(){
   const result = [...pgMerged, ...sheetsOnly, ...envUsersFiltered, ...(demoEnabled?DEMO_USUARIOS:[])];
   result._debug = { temPGRepo: !!usuarioRepo, pgCount: _pgCount, pgErro: _pgErro, sheetsCount: _sheetsCount, sheetsErro: _sheetsErro, envCount: envUsersFiltered.length, envCountRaw: envUsers.length, total: result.length };
   return result;
+}
+
+// Responsáveis de tratativa são selecionados pelo cadastro administrativo,
+// que é a fonte que contém empresa, setor e permissões operacionais. A rota
+// retorna somente dados públicos do responsável e falha explicitamente quando
+// o cadastro não pode ser consultado.
+const _responsaveisCache = new Map();
+const _responsaveisInFlight = new Map();
+const RESPONSAVEIS_CACHE_TTL_MS = 30_000;
+
+async function carregarResponsaveisElegiveis({ empresa, setor } = {}) {
+  const cacheKey = `${empresaCanonica(empresa || '')}|${normalizarTexto(setor || '')}`;
+  const cached = _responsaveisCache.get(cacheKey);
+  if (cached && Date.now() - cached.ts < RESPONSAVEIS_CACHE_TTL_MS) return cached.itens;
+  if (_responsaveisInFlight.has(cacheKey)) return _responsaveisInFlight.get(cacheKey);
+  const leitura = (async () => {
+    const rows = await lerAba('USUARIOS', 1000);
+  const empresaNorm = empresaCanonica(empresa || '');
+  const setorNorm = normalizarTexto(setor || '');
+    const perfisTratativa = new Set(['MASTER','GESTOR SAC','ANALISTA SAC','ATENDENTE SAC','APROVADOR','APROVADOR MASTER','SETOR RESPONSÁVEL','ESPECIALISTA','DIRETOR','SETOR SAC','SETOR COMERCIAL','SETOR LOGISTICA','SETOR PRODUCAO','SETOR QUALIDADE','SETOR FINANCEIRO','SETOR TI','SETOR MARKETING','SETOR DIRETORIA']);
+  const itens = rows.filter(u => {
+    // PRIMEIRO_ACESSO ainda não é uma conta operacional autorizada para receber tratativas.
+    if (String(u.STATUS || 'ATIVO').toUpperCase() !== 'ATIVO') return false;
+    const perfil = perfilCanonico(u.PERFIL || u.PERFIL_USUARIO);
+    const funcional = modeloAutorizacao.perfilFuncional(u.PERFIL_FUNCIONAL, perfil);
+    if (!perfisTratativa.has(perfil) && !funcional) return false;
+    if (!modeloAutorizacao.usuarioAutorizadoParaTratativa({ ...u, PERFIL_FUNCIONAL: funcional, PERFIL: perfil })) return false;
+    let bloqueadas = [];
+    try { bloqueadas = JSON.parse(u.PERMISSOES_BLOCKED || '[]'); } catch (_) {}
+    if (Array.isArray(bloqueadas) && (bloqueadas.includes('manifestacoes.editar') || bloqueadas.includes('manifestacoes.encaminhar'))) return false;
+    let concedidas = [];
+    try { concedidas = JSON.parse(u.PERMISSOES_GRANTED || '[]'); } catch (_) {}
+    if (Array.isArray(concedidas) && concedidas.length && !concedidas.includes('manifestacoes.editar') && !concedidas.includes('manifestacoes.encaminhar')) return false;
+    const empresas = empresasDoCadastro(u).map(empresaCanonica).filter(Boolean);
+    if (empresaNorm && funcional !== 'MASTER' && (!empresas.length || (!empresas.includes('MASTER') && !empresas.includes(empresaNorm)))) return false;
+    const setoresAlvo = setoresDoCadastro(u).map(normalizarTexto).filter(Boolean);
+    if (!setorNorm || !setoresAlvo.length) return false;
+    return setoresAlvo.some(s => s === setorNorm || s.includes(setorNorm) || setorNorm.includes(s));
+  }).map(u => ({
+    id: String(u.ID_USUARIO || u.ID || u.USUARIO || u.EMAIL || '').trim(),
+    usuario: String(u.USUARIO || u.LOGIN || u.EMAIL || '').trim(),
+    nome: String(u.NOME || u.NOME_COMPLETO || u.USUARIO || u.EMAIL || '').trim(),
+    cargo: String(u.CARGO || '').trim(), perfil: perfilCanonico(u.PERFIL || u.PERFIL_USUARIO),
+    perfilFuncional: modeloAutorizacao.perfilFuncional(u.PERFIL_FUNCIONAL, u.PERFIL || u.PERFIL_USUARIO),
+    nivelHierarquico: modeloAutorizacao.nivelHierarquico(u.NIVEL_HIERARQUICO || u.NIVEL),
+    competenciasAlcadas: modeloAutorizacao.alcadas(u.COMPETENCIAS_ALCADAS || u.ALCADAS_APROVACAO || u.COMPETENCIAS),
+    empresa: String(u.EMPRESA || '').trim(), setores: setoresDoCadastro(u), status: 'ATIVO',
+  })).filter(u => u.id && u.usuario);
+    _responsaveisCache.set(cacheKey, { itens, ts: Date.now() });
+    return itens;
+  })();
+  _responsaveisInFlight.set(cacheKey, leitura);
+  try {
+    return await leitura;
+  } catch (e) {
+    // Só usa snapshot de responsáveis que já foi validado anteriormente para
+    // a mesma empresa/setor; nunca transforma uma falha inédita em lista vazia.
+    if (cached?.itens && Date.now() - cached.ts < 5 * 60_000) {
+      console.warn('[RESPONSAVEIS] cadastro indisponível; usando snapshot recente');
+      return cached.itens;
+    }
+    throw e;
+  } finally {
+    if (_responsaveisInFlight.get(cacheKey) === leitura) _responsaveisInFlight.delete(cacheKey);
+  }
+}
+
+async function encontrarResponsavelElegivel({ empresa, setor, identificador } = {}) {
+  const chave = normalizarTexto(identificador || '');
+  if (!chave) return null;
+  const elegiveis = await carregarResponsaveisElegiveis({ empresa, setor });
+  return elegiveis.find(u => [u.id, u.usuario, u.nome]
+    .some(v => normalizarTexto(v) === chave)) || null;
 }
 
 function perfilCanonico(v){
@@ -692,6 +781,8 @@ function usuarioPublico(u){
     nome:u.NOME||u.NOME_COMPLETO||u.USUARIO||u.EMAIL,
     email:u.EMAIL||'',
     perfil:perfilCanonico(u.PERFIL||u.PERFIL_USUARIO),
+    perfilFuncional:modeloAutorizacao.perfilFuncional(u.PERFIL_FUNCIONAL, u.PERFIL||u.PERFIL_USUARIO),
+    nivelHierarquico:modeloAutorizacao.nivelHierarquico(u.NIVEL_HIERARQUICO||u.NIVEL),
     empresa:u.EMPRESA||'', empresas, setor:u.SETOR||'', setorPrincipal:u.SETOR_PRINCIPAL||u.SETOR||'', setores,
     setoresAutorizados:setores, cargo:u.CARGO||'', telefone:u.TELEFONE||'',
     codigoRCA:u.CODIGO_RCA||u.RCA||'', status:u.STATUS||'ATIVO',
@@ -699,12 +790,27 @@ function usuarioPublico(u){
     permissoes_custom: Array.isArray(permissoes_custom)&&permissoes_custom.length?permissoes_custom:null,
     permissoes_granted: Array.isArray(permissoes_granted)&&permissoes_granted.length?permissoes_granted:null,
     permissoes_blocked: Array.isArray(permissoes_blocked)&&permissoes_blocked.length?permissoes_blocked:null,
+    competenciasAlcadas:modeloAutorizacao.alcadas(u.COMPETENCIAS_ALCADAS||u.ALCADAS_APROVACAO||u.COMPETENCIAS),
   };
 }
 
 function requerPerfil(...perfis){
   return (req,res,next)=>{
-    const permitido=perfis.map(perfilCanonico).includes(perfilCanonico(req.user?.perfil));
+    const atual=perfilCanonico(req.user?.perfil);
+    const funcional=modeloAutorizacao.perfilFuncional(req.user?.perfilFuncional || req.user?.PERFIL_FUNCIONAL, atual);
+    const permitido=perfis.some(perfil => {
+      const canonico=perfilCanonico(perfil);
+      if (canonico === atual) return true;
+      // Compatibilidade explícita: somente os aliases operacionais que
+      // representam um dos quatro perfis novos podem compartilhar a guarda.
+      const equivalentes = {
+        SAC: ['SAC','ANALISTA SAC','ATENDENTE SAC'],
+        APROVADOR_SETORIAL: ['APROVADOR_SETORIAL','APROVADOR','SETOR RESPONSÁVEL','ESPECIALISTA'],
+        DIRETORIA_GESTOR: ['DIRETORIA_GESTOR','DIRETOR'],
+        MASTER: ['MASTER','ADMINISTRADOR'],
+      };
+      return Object.entries(equivalentes).some(([novo, aliases]) => funcional === novo && aliases.includes(canonico));
+    });
     if(!permitido) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado para este perfil.'});
     next();
   };
@@ -712,6 +818,9 @@ function requerPerfil(...perfis){
 
 // Permissões padrão por perfil (espelha frontend _PERM_PADRAO)
 const _PERM_PADRAO_API = {
+  'SAC': ['manifestacoes.visualizar','manifestacoes.abrir','manifestacoes.editar','manifestacoes.gerenciar','manifestacoes.aprovar','cerebro.visualizar','aprovacoes.visualizar','aprovacoes.aprovar','aprovacoes.rejeitar','dashboard.visualizar','pesquisas.visualizar'],
+  'APROVADOR_SETORIAL': ['manifestacoes.visualizar','manifestacoes.editar','manifestacoes.historico','manifestacoes.anexar','manifestacoes.evidencias','aprovacoes.visualizar'],
+  'DIRETORIA_GESTOR': ['manifestacoes.visualizar','manifestacoes.editar','manifestacoes.encaminhar','manifestacoes.historico','aprovacoes.visualizar','aprovacoes.aprovar','aprovacoes.rejeitar','dashboard.visualizar','indicadores.empresa','indicadores.setor'],
   'MASTER':             ['manifestacoes.visualizar','manifestacoes.abrir','manifestacoes.editar','manifestacoes.gerenciar','manifestacoes.aprovar','manifestacoes.excluir','cerebro.visualizar','cerebro.adicionar_conteudo','cerebro.editar_conteudo','cerebro.adicionar_regras','cerebro.adicionar_politicas','cerebro.editar_faq','cerebro.gerenciar','rca.visualizar','rca.criar','rca.editar','rca.gerenciar','pesquisas.visualizar','pesquisas.criar','pesquisas.editar','pesquisas.gerenciar','dashboard.visualizar','dashboard.gerenciar','configuracoes.visualizar','configuracoes.editar','configuracoes.gerenciar','usuarios.visualizar','usuarios.criar','usuarios.editar','usuarios.gerenciar','aprovacoes.visualizar','aprovacoes.aprovar','aprovacoes.rejeitar'],
   'ADMINISTRADOR':      ['manifestacoes.visualizar','manifestacoes.abrir','manifestacoes.editar','manifestacoes.gerenciar','cerebro.visualizar','cerebro.gerenciar','rca.visualizar','rca.gerenciar','pesquisas.visualizar','pesquisas.gerenciar','dashboard.visualizar','dashboard.gerenciar','configuracoes.visualizar','configuracoes.editar','configuracoes.gerenciar','usuarios.visualizar','usuarios.criar','usuarios.editar','usuarios.gerenciar','aprovacoes.visualizar','aprovacoes.aprovar','aprovacoes.rejeitar'],
   'GESTOR SAC':         ['manifestacoes.visualizar','manifestacoes.editar','manifestacoes.gerenciar','manifestacoes.aprovar','cerebro.visualizar','cerebro.gerenciar','rca.visualizar','pesquisas.visualizar','pesquisas.gerenciar','dashboard.visualizar','dashboard.gerenciar','configuracoes.visualizar','configuracoes.editar','aprovacoes.visualizar','aprovacoes.aprovar','aprovacoes.rejeitar'],
@@ -809,6 +918,7 @@ const _CHAVE_UI_PARA_API = {
 function usuarioTemPermissao(user, chave) {
   const p = perfilCanonico(user?.perfil || '');
   if (p === 'MASTER') return true;
+  const funcional = modeloAutorizacao.perfilFuncional(user?.perfilFuncional || user?.PERFIL_FUNCIONAL, p);
   // blocked by Master → denied (verifica chave direta e alias)
   const blocked = user?.permissoes_blocked;
   if (Array.isArray(blocked)) {
@@ -831,7 +941,7 @@ function usuarioTemPermissao(user, chave) {
   if (Array.isArray(user?.permissoes_custom) && user.permissoes_custom.length && !Array.isArray(user?.permissoes_granted)) {
     return user.permissoes_custom.includes(chave);
   }
-  return (_PERM_PADRAO_API[p] || []).includes(chave);
+  return (_PERM_PADRAO_API[p] || _PERM_PADRAO_API[funcional] || []).includes(chave);
 }
 
 // Traduz níveis de módulo (tela legada de permissões por nível → PERMISSOES_USUARIO)
@@ -969,6 +1079,36 @@ async function carregarUsuarioPorLogin(login){
     const demo=DEMO_USUARIOS.find(u=>normalizarTexto(u.USUARIO)===alvo);
     if(demo) return demo;
   }
+  // Quando o PostgreSQL está ativo, ele é a fonte primária de autenticação.
+  // Isso evita uma leitura da aba USUARIOS a cada login e mantém o Sheets como
+  // fallback para cadastros legados ou indisponibilidade do banco.
+  if (usuarioRepo) {
+    try {
+      const pgU = await usuarioRepo.findByLogin(login);
+      const pgPerfil = pgU?.perfil?.codigo || pgU?.perfil?.nome || null;
+      if (pgU && pgU.ativo !== false && pgPerfil && pgU.senhaHash) {
+        return {
+          ID_USUARIO: pgU.idOriginal || `USR-PG-${pgU.id}`,
+          USUARIO: String(pgU.email || login).split('@')[0],
+          EMAIL: pgU.email || '',
+          NOME: pgU.nome || pgU.email,
+          PERFIL: pgPerfil,
+          EMPRESA: pgU.empresa?.nome || '',
+          SETOR: pgU.setor?.nome || '',
+          STATUS: 'ATIVO',
+          SENHA_HASH: pgU.senhaHash,
+          SENHA: pgU.senhaHash,
+          CODIGO_RCA: pgU.codigoRca || '',
+          PERMISSOES_GRANTED: Array.isArray(pgU.perfil?.permissoes) ? pgU.perfil.permissoes : '',
+          _pgId: pgU.id,
+        };
+      }
+    } catch (e) {
+      // Timeout/indisponibilidade do pool não libera acesso: apenas aciona o
+      // fallback já existente, que continua validando a senha no Sheets.
+      console.warn('[AUTH] PostgreSQL indisponível; usando fallback Sheets:', e.message);
+    }
+  }
   // Quando existem registros históricos com o mesmo login (por exemplo, um
   // cadastro excluído e outro recriado), a linha mais recente do Sheets é a
   // credencial administrativa vigente. Isso evita autenticar com o hash antigo
@@ -1066,11 +1206,14 @@ async function carregarUsuarioPorLogin(login){
 
 async function registrarAcessoUsuario(usuario){
   // F4: atualiza PostgreSQL se disponível
-  try {
-    if (usuarioRepo && usuario._pgId && typeof usuarioRepo.registrarAcesso === 'function') {
-      usuarioRepo.registrarAcesso(usuario._pgId).catch(() => {});
-    }
-  } catch(e) { console.warn('[F4] registrarAcesso PG:', e.message); }
+  if (usuarioRepo && usuario._pgId && typeof usuarioRepo.registrarAcesso === 'function') {
+    try {
+      await usuarioRepo.registrarAcesso(usuario._pgId);
+    } catch(e) { console.warn('[F4] registrarAcesso PG:', e.message); }
+    // Usuários autenticados pela fonte PostgreSQL não devem provocar uma
+    // escrita de fallback no Sheets quando o Neon estiver instável.
+    return;
+  }
   try{
     await atualizarPorID('USUARIOS',usuario.ID_USUARIO||usuario.USUARIO||usuario.EMAIL,{ULTIMO_ACESSO:new Date().toISOString()},['ID_USUARIO','USUARIO','EMAIL']);
   }catch(e){}
@@ -1083,6 +1226,14 @@ async function getSheets() {
 }
 
 async function _sheetsGetComRetry(sheets, params, tentativas = 3) {
+  // Circuito curto para 429: sem ele, cada request concorrente repetia o
+  // mesmo retry e ampliava a janela de quota. Leituras com snapshot em cache
+  // continuam podendo ser atendidas por lerAba; gravações nunca usam cache.
+  if (_sheetsQuotaBlockedUntil > Date.now()) {
+    const erro = new Error('Google Sheets temporariamente limitado por quota.');
+    erro.code = 429;
+    throw erro;
+  }
   let espera = 1000;
   for (let i = 0; i < tentativas; i++) {
     try {
@@ -1090,6 +1241,10 @@ async function _sheetsGetComRetry(sheets, params, tentativas = 3) {
     } catch (e) {
       const status = e?.response?.status || e?.code;
       // Retry apenas em 429 (rate limit) e 503 (serviço indisponível)
+      if (Number(status) === 429) {
+        const retryAfter = Number(e?.response?.headers?.['retry-after'] || e?.response?.headers?.['Retry-After']);
+        _sheetsQuotaBlockedUntil = Date.now() + Math.min(30000, Math.max(5000, Number.isFinite(retryAfter) ? retryAfter * 1000 : 10000));
+      }
       if ((status === 429 || status === 503) && i < tentativas - 1) {
         // Jitter evita que várias renderizações concorrentes repitam juntas.
         const atraso = espera + Math.floor(Math.random() * Math.max(100, espera * 0.25));
@@ -1105,12 +1260,20 @@ async function _sheetsGetComRetry(sheets, params, tentativas = 3) {
 // Cache em memória para leituras do Sheets (60 s TTL) — evita quota exceeded
 const _lerAbaCache = new Map();
 const _lerAbaInFlight = new Map();
+let _sheetsQuotaBlockedUntil = 0;
 const LER_ABA_TTL_MS = 60_000;
-// MANIFESTACOES e USUARIOS são fontes operacionais oficiais. Não mantemos
-// cache dessas abas: uma alteração de status, exclusão lógica ou permissão
-// precisa ser percebida na próxima consulta, inclusive em outra instância
-// serverless, e jamais pode ser mascarada por uma cópia antiga.
-const TTL_POR_ABA = { MANIFESTACOES: 0, USUARIOS: 0, PERMISSOES_USUARIO: 0, CONTADORES_PROTOCOLO: 0 };
+// MANIFESTACOES e CONTADORES_PROTOCOLO são fontes operacionais que precisam
+// ser lidas frescas. USUARIOS e PERMISSOES_USUARIO têm uma janela curta para
+// absorver picos concorrentes de autenticação sem esconder revogações por
+// mais de alguns segundos nesta instância serverless.
+const TTL_POR_ABA = {
+  MANIFESTACOES: 0,
+  // A validação de sessão mantém uma janela curta para reduzir quota sem
+  // deixar uma revogação administrativa persistir indefinidamente.
+  USUARIOS: 15_000,
+  PERMISSOES_USUARIO: 15_000,
+  CONTADORES_PROTOCOLO: 0,
+};
 
 async function lerAba(nomeAba, maxRows) {
   if (_sheetsMock?.lerAba) return _sheetsMock.lerAba(nomeAba, maxRows);
@@ -1139,7 +1302,9 @@ async function lerAba(nomeAba, maxRows) {
   } catch (e) {
     // Em 429/503, uma leitura pública pode continuar usando o último snapshot
     // consistente em memória. Escritas nunca usam este fallback.
-    if (cached?.data) {
+    const cacheAutorizacao = nomeAba === 'USUARIOS' || nomeAba === 'PERMISSOES_USUARIO';
+    const cacheAindaValido = cached && (Date.now() - cached.ts) < ttl;
+    if (cached?.data && (!cacheAutorizacao || cacheAindaValido)) {
       console.warn(`[Sheets] ${nomeAba} indisponível (${e.message}); usando snapshot anterior.`);
       return cached.data;
     }
@@ -1672,6 +1837,7 @@ const _STATUS_CACHE_TTL = 2 * 60 * 1000;
 async function verificarStatusUsuario(login) {
   const agora = Date.now();
   const cached = _statusCache.get(login);
+  let erroLeitura = false;
   if (cached && (agora - cached.ts) < _STATUS_CACHE_TTL) return cached;
   // O cadastro administrativo (Sheets) é a fonte autoritativa do status.
   // Antes o PostgreSQL era consultado primeiro, fazendo usuários excluídos ou
@@ -1703,6 +1869,7 @@ async function verificarStatusUsuario(login) {
     // Usuários criados somente no PostgreSQL continuam válidos quando não há
     // espelho administrativo na planilha.
   } catch(e) {
+    erroLeitura = true;
     console.error('[verificarStatusUsuario] Erro ao ler planilha:', e.message || e);
   }
   if (usuarioRepo) {
@@ -1717,7 +1884,10 @@ async function verificarStatusUsuario(login) {
         _statusCache.set(login, entry);
         return entry;
       }
-    } catch (e) { /* fallback abaixo */ }
+    } catch (e) { erroLeitura = true; /* fallback abaixo */ }
+  }
+  if (erroLeitura) {
+    return { status: 'INDISPONIVEL', ts: agora, erroInfra: true, permissoes_granted: null, permissoes_blocked: null, empresa: '', setor: '' };
   }
   try {
     // Se não encontrado no Sheets/PG mas encontrado antes (cache expirado),
@@ -1737,12 +1907,13 @@ async function verificarStatusUsuario(login) {
     }
     return entry;
   } catch(e) {
-    // Falha ao ler Sheets: se houver cache anterior, usa-o para não derrubar sessões ativas.
-    // Se não há cache, nega acesso por segurança.
+    // Falha inesperada ao montar o estado: nunca autorizar sem fonte válida.
     console.error('[verificarStatusUsuario] Erro ao ler planilha:', e.message || e);
-    if (cached) return { ...cached, ts: agora };
-    // JWT já foi validado — se Sheets está indisponível e não há cache, não derruba a sessão
-    return { status: 'ATIVO', ts: agora, permissoes_granted: null, permissoes_blocked: null, empresa: '', setor: '' };
+    // O JWT já foi validado, mas não há fonte confiável para revalidar a sessão.
+    // Nunca autorizar por
+    // ausência de dados: o middleware traduz este estado em 503 para permitir
+    // recuperação sem transformar indisponibilidade em autenticação válida.
+    return { status: 'INDISPONIVEL', ts: agora, erroInfra: true, permissoes_granted: null, permissoes_blocked: null, empresa: '', setor: '' };
   }
 }
 
@@ -1774,6 +1945,9 @@ app.use('/api', async (req,res,next)=>{
   if(!payload) return res.status(401).json({sucesso:false,erro:'Sessão inválida ou expirada.'});
   // Item10: verificar se usuário ainda está ativo (detecta desativação pós-login)
   const infoAtual = await verificarStatusUsuario(payload.usuario);
+  if (infoAtual.erroInfra || String(infoAtual.status || '').toUpperCase() === 'INDISPONIVEL') {
+    return res.status(503).json({ sucesso:false, erro:'Serviço de autenticação temporariamente indisponível. Tente novamente.' });
+  }
   if (['INATIVO','BLOQUEADO','EXCLUIDO'].includes(String(infoAtual.status || '').toUpperCase())) {
     _statusCache.delete(payload.usuario); // forçar re-verificação na próxima vez
     return res.status(401).json({sucesso:false,erro:'Acesso revogado. Sessão encerrada.'});
@@ -1888,7 +2062,14 @@ app.post('/api/auth/login', async (req, res) => {
     if(statusNorm==='excluido') return res.status(403).json({sucesso:false,erro:'Usuário excluído. Contate o administrador.'});
     const senhaOk = await senhaValida(senha, registro.SENHA_HASH || registro.SENHA);
     if(!senhaOk) return res.status(401).json({sucesso:false,erro:'Usuário ou senha inválidos.'});
-    const profissional=await obterPerfilProfissional(pub.id);
+    let profissional = null;
+    // O perfil profissional é um complemento legado do Sheets. Usuários
+    // autenticados pela fonte PostgreSQL não precisam dessa leitura adicional
+    // para validar a sessão, evitando uma chamada de quota por login.
+    if (!registro._pgId) {
+      try { profissional = await obterPerfilProfissional(pub.id); }
+      catch (e) { console.warn('[LOGIN] perfil profissional indisponível:', e.message); }
+    }
     const profissionalCompleto=profissional?.STATUS==='CONCLUIDO';
     const agora=Date.now();
     const primeroAcesso = statusNorm === 'primeiro_acesso' || statusNorm === 'primeiroacesso';
@@ -1917,6 +2098,15 @@ app.post('/api/auth/login', async (req, res) => {
       registrarAcessoUsuario(registro).catch(e=>console.warn('[LOGIN] registrarAcesso falhou:',e.message));
       registrarAuditoria(pub.usuario,'LOGIN',null,'AUTH',null,{perfil:pub.perfil}).catch(()=>{});
     }
+    // Reaproveita a validação recém-concluída no primeiro request autenticado
+    // e evita uma leitura imediata adicional da aba USUARIOS.
+    _statusCache.set(pub.usuario, {
+      status: String(pub.status || 'ATIVO').toUpperCase(),
+      ts: Date.now(),
+      permissoes_granted: pub.permissoes_granted || null,
+      permissoes_blocked: pub.permissoes_blocked || null,
+      empresa: pub.empresa || '', setor: pub.setor || '',
+    });
     res.json({ sucesso:true, token:assinarToken(payload), usuario:pub.usuario, usuarioInfo:{...pub, primeiro_acesso: primeroAcesso || undefined, perfilProfissionalCompleto: profissionalCompleto}, modo:isDemo?'DEMO':'PRODUCAO' });
   } catch (e) {
     console.error(e);
@@ -2321,10 +2511,27 @@ app.get('/api/dashboard-resumo', requerPermissao('dashboard.visualizar'), middle
     if (manifestacaoRepo && typeof manifestacaoRepo.aggregateDashboard === 'function') {
       const _isMaster = perfilCanonico(req.user?.perfil) === 'MASTER';
       const empresaId = _isMaster ? null : await resolverEmpresaIdScope(req.user?.empresa);
-      const agg = await manifestacaoRepo.aggregateDashboard({ empresaId });
-      return res.json({ sucesso: true, fonte: 'postgresql', ...agg });
+      try {
+        const agg = await manifestacaoRepo.aggregateDashboard({ empresaId });
+        return res.json({ sucesso: true, fonte: 'postgresql', ...agg });
+      } catch (e) {
+        // O Postgres é uma projeção opcional; sua indisponibilidade não pode
+        // derrubar a Central quando MANIFESTACOES tem uma fonte operacional
+        // válida no Sheets. Não expor o erro nem misturar resultados parciais.
+        console.warn('[DASHBOARD] agregação PG indisponível; usando Sheets:', e.message);
+      }
     }
-    return res.status(503).json({ sucesso: false, erro: 'Agregação Postgres indisponível (rode em modo PG).' });
+    let itens = await lerManifestacoesOperacionais(5000);
+    if (perfilCanonico(req.user?.perfil) !== 'MASTER') {
+      itens = filtrarPorEmpresaHistorico(itens, req, COLUNA_EMPRESA_ABA.MANIFESTACOES);
+    }
+    const total = itens.length;
+    const encerradas = itens.filter(i => ['ENCERRADA','FINALIZADA','CONCLUIDA'].includes(String(i.STATUS || '').toUpperCase())).length;
+    const contar = campo => itens.reduce((acc, item) => {
+      const chave = item[campo] || '(sem)'; acc[chave] = (acc[chave] || 0) + 1; return acc;
+    }, {});
+    return res.json({ sucesso:true, fonte:'sheets', total, encerradas, emAberto:total-encerradas,
+      porStatus:contar('STATUS'), porTipo:contar('TIPO'), porEmpresa:contar('EMPRESA_RECLAMADA') });
   } catch (e) { res.status(500).json({ sucesso: false, erro: erroSeguro(e) }); }
 });
 
@@ -2583,7 +2790,7 @@ app.post('/api/manifestacoes', requerPermissao('manifestacoes.abrir'), async (re
     registrarHistoricoManifestacao({
       id, protocolo, usuario:usuario||req.user?.usuario||'sistema', etapa:rascunho ? 1 : 2,
       acao:rascunho ? 'SALVOU_RASCUNHO' : 'REGISTROU_MANIFESTACAO',
-      descricao:rascunho ? 'Rascunho salvo sem protocolo definitivo.' : 'Manifestação recebida e encaminhada para triagem SAC.'
+      descricao:rascunho ? `Rascunho persistido. Identificador técnico: ${id}. Protocolo definitivo ainda não gerado.` : 'Manifestação recebida e encaminhada para triagem SAC.'
     });
     // Executar análise de IA — rascunho pula análise (evita timeout Vercel de 60s)
     const decisaoCompleta = req.body.decisaoCompleta;
@@ -2651,6 +2858,8 @@ app.patch('/api/manifestacoes/:id/ficha', requerPermissao('manifestacoes.editar'
     }
     const agora = new Date().toISOString();
     let dados = {};
+    // Responsável já validado no cadastro, reutilizado ao persistir a frente.
+    let alvo = null;
     if (acao === 'salvar_dados') {
       // Lista explícita: não permitir que o navegador sobrescreva protocolo,
       // situação de aprovação ou autoria ao editar a primeira etapa.
@@ -2687,6 +2896,12 @@ app.patch('/api/manifestacoes/:id/ficha', requerPermissao('manifestacoes.editar'
       dados.STATUS = 'EM TRATAMENTO'; dados.STATUS_FICHA = 'EM_TRATAMENTO'; dados.DATA_ULTIMA_TRATATIVA = agora;
     } else if (acao === 'enviar_validacao') {
       if (!(req.body.TRATATIVA_REALIZADA || item.TRATATIVA_REALIZADA)) return res.status(400).json({ sucesso:false, erro:'Registre a tratativa antes de enviar para validação.' });
+      let frentes;
+      try { frentes = await lerAba('ACIONAMENTOS_INTERNOS', 5000); }
+      catch (e) { return res.status(503).json({ sucesso:false, codigo:'ACIONAMENTOS_INDISPONIVEIS', erro:'Não foi possível confirmar o estado das frentes setoriais.' }); }
+      const idsFicha = idsManifestacao(item, id);
+      const pendenteSetor = frentes.some(f => idsFicha.has(String(f.ID_MANIFESTACAO || f.PROTOCOLO || f.ID || '').trim()) && ['ENVIADO','AGUARDANDO_CIENCIA','EM_ANDAMENTO','AGUARDANDO_INFORMACAO','PENDENTE_COMPLEMENTACAO','PENDENTE_DE_ATRIBUICAO'].includes(String(f.STATUS||'').toUpperCase()));
+      if (pendenteSetor) return res.status(409).json({ sucesso:false, codigo:'FRENTE_SETOR_PENDENTE', erro:'A frente setorial ainda não foi concluída pelo responsável.' });
       dados = { STATUS:'AGUARDANDO_VALIDACAO_SAC', STATUS_FICHA:'AGUARDANDO_VALIDACAO_SAC', DATA_ENVIO_VALIDACAO:agora, ENVIADO_VALIDACAO_POR:req.user?.usuario||'' };
     } else if (acao === 'salvar_devolutiva') {
       dados = { DEVOLUTIVA_FINAL:req.body.texto || '', CANAL_RETORNO:req.body.canal || item.CANAL_RETORNO || item.CANAL || '', STATUS:'AGUARDANDO_DEVOLUTIVA', STATUS_FICHA:'AGUARDANDO_DEVOLUTIVA', DATA_DEVOLUTIVA_RASCUNHO:agora };
@@ -2785,25 +3000,44 @@ app.patch('/api/manifestacoes/:id/ficha', requerPermissao('manifestacoes.editar'
       const responsavelDest = String(req.body.RESPONSAVEL_SETOR || req.body.responsavel || '').trim();
       if (!setorDest || /nenhum|não informado|nao informado/i.test(setorDest)) return res.status(400).json({ sucesso:false, erro:'Selecione um setor de destino válido.' });
       if (!responsavelDest || /nenhum|não informado|nao informado/i.test(responsavelDest)) return res.status(400).json({ sucesso:false, erro:'Selecione um responsável cadastrado.' });
-      const usuariosDestino = await lerAba('USUARIOS', 5000).catch(()=>[]);
-      const alvo = usuariosDestino.find(u => {
-        const chave = String(u.USUARIO || u.LOGIN || u.EMAIL || u.NOME || '').trim().toLowerCase();
-        const nomes = responsavelDest.split(',').map(v => v.trim().toLowerCase()).filter(Boolean);
-        const setorU = String(u.SETOR || u.SETOR_PRINCIPAL || u.SETORES || u.SETORES_AUTORIZADOS || '').toLowerCase();
-        return nomes.length === 1 && chave === nomes[0] && String(u.STATUS || 'ATIVO').toUpperCase() === 'ATIVO' && (setorU.includes(setorDest.toLowerCase()) || String(u.PERFIL || '').toUpperCase().includes('SETOR'));
-      });
-      if (!alvo) return res.status(422).json({ sucesso:false, erro:'O responsável precisa estar ativo e cadastrado no setor selecionado.' });
+      try {
+        alvo = await encontrarResponsavelElegivel({
+          empresa: item.EMPRESA_RECLAMADA || item.EMPRESA_NORMALIZADA || item.EMPRESA,
+          setor: setorDest,
+          identificador: responsavelDest,
+        });
+      } catch (e) {
+        console.error('[FICHA] cadastro de responsáveis indisponível:', e?.message || e);
+        return res.status(503).json({ sucesso:false, codigo:'RESPONSAVEIS_INDISPONIVEIS', erro:'Não foi possível validar o responsável no cadastro.' });
+      }
+      if (!alvo) return res.status(422).json({ sucesso:false, codigo:'RESPONSAVEL_NAO_ELEGIVEL', erro:'O responsável precisa estar ativo e autorizado para a empresa e setor selecionados.' });
+      const prazoInformado = req.body.prazoSlaHoras ?? req.body.SLA_HORAS;
+      const prazoSolicitado = Number(prazoInformado);
+      if (prazoInformado !== undefined && prazoInformado !== '' && (!Number.isFinite(prazoSolicitado) || prazoSolicitado <= 0 || prazoSolicitado > 720)) {
+        return res.status(400).json({ sucesso:false, codigo:'PRAZO_INVALIDO', erro:'O prazo do setor deve estar entre 1 e 720 horas.' });
+      }
+      const slaHoras = Number.isFinite(prazoSolicitado) && prazoSolicitado > 0 && prazoSolicitado <= 720 ? prazoSolicitado : 72;
+      const dataLimiteInformada = req.body.dataLimite || req.body.DATA_LIMITE || '';
+      const dataLimiteInformadaMs = dataLimiteInformada ? Date.parse(dataLimiteInformada) : NaN;
+      if (dataLimiteInformada && (!Number.isFinite(dataLimiteInformadaMs) || dataLimiteInformadaMs <= Date.parse(agora))) {
+        return res.status(400).json({ sucesso:false, codigo:'PRAZO_INVALIDO', erro:'A data limite do setor deve ser válida e futura.' });
+      }
+      const dataLimiteSetor = dataLimiteInformada
+        ? new Date(dataLimiteInformadaMs).toISOString()
+        : new Date(Date.parse(agora) + slaHoras * 3600000).toISOString();
       dados = {
         STATUS: 'AGUARDANDO_RESPOSTA_SETOR',
         STATUS_FICHA: 'AGUARDANDO_SETOR',
         SETOR_CONFIRMADO: setorDest,
         SETOR_DESTINADO: setorDest,
-        RESPONSAVEL_SETOR: responsavelDest,
-        SLA_HORAS: req.body.SLA_HORAS || '',
-        SLA_UNIDADE: req.body.SLA_UNIDADE || 'dias',
+        RESPONSAVEL_SETOR: alvo.usuario,
+        SLA_HORAS: String(slaHoras),
+        SLA_UNIDADE: 'horas',
+        PRAZO_TRATATIVA: dataLimiteSetor,
         OBS_ENCAMINHAMENTO: req.body.obs || '',
         DATA_ENCAMINHAMENTO: agora,
         ENCAMINHADO_POR: req.user?.usuario || '',
+        RESPONSAVEL_SETOR_ID: alvo.id,
       };
     } else if (acao === 'assumir_sac') {
       dados = {
@@ -2862,7 +3096,34 @@ app.patch('/api/manifestacoes/:id/ficha', requerPermissao('manifestacoes.editar'
     dados.MENSAGEM_ETAPA = fichaUnica.mensagemContextual(estado);
     await atualizarPorID('MANIFESTACOES', id, dados, ['ID_MANIFESTACAO']);
     if (acao === 'encaminhar_setor') {
-      await registrarNotificacaoInterna({ manifestacaoId:id, destinatario:dados.RESPONSAVEL_SETOR, tipo:'ENCAMINHAMENTO_TRATATIVA', titulo:`Tratativa atribuída — ${item.PROTOCOLO || id}`, mensagem:dados.OBS_ENCAMINHAMENTO || `Nova tratativa atribuída ao setor ${dados.SETOR_CONFIRMADO}.`, usuario:req.user?.usuario || 'sistema' }).catch(e => console.warn('[NOTIFICACAO] encaminhamento:', e.message));
+      // A ficha e a fila operacional usam a mesma chave estável. Isso permite
+      // múltiplas frentes sem sobrescrever a atribuição anterior.
+      const chave = String(req.body.idempotencyKey || `FICHA:${id}:${dados.SETOR_DESTINADO}:${dados.RESPONSAVEL_SETOR_ID}`);
+      const existentesAc = await lerAba('ACIONAMENTOS_INTERNOS', 5000).catch(() => []);
+      let acionamento = existentesAc.find(a => String(a.IDEMPOTENCY_KEY || '') === chave);
+      if (!acionamento) {
+        await garantirAbaComCabecalhos('ACIONAMENTOS_INTERNOS', ACIONAMENTOS_HEADERS);
+        const criadoEm = agora;
+        const dataLimite = dados.PRAZO_TRATATIVA || '';
+        acionamento = {
+          ID_ACIONAMENTO: await gerarProximoID('ACIONAMENTOS_INTERNOS','ACI','ID_ACIONAMENTO'),
+          ID_MANIFESTACAO: item.ID_MANIFESTACAO || id, PROTOCOLO:item.PROTOCOLO || '', TIPO:'ENCAMINHAMENTO_TRATATIVA',
+          EMPRESA:item.EMPRESA_RECLAMADA || item.EMPRESA_NORMALIZADA || '', SETOR_SOLICITANTE:req.user?.setor || 'SAC',
+          SETOR_DESTINO:dados.SETOR_DESTINADO, RESPONSAVEL:dados.RESPONSAVEL_SETOR, RESPONSAVEL_ID:dados.RESPONSAVEL_SETOR_ID, RESPONSAVEL_NOME:alvo.nome,
+          MOTIVO:dados.OBS_ENCAMINHAMENTO || '', TAREFA:dados.OBS_ENCAMINHAMENTO || `Tratativa do setor ${dados.SETOR_DESTINADO}`,
+          PRAZO:`${dados.SLA_HORAS}h`, PRAZO_ORIGEM:'SLA_RETORNO_SETOR_72H', DATA_LIMITE:dataLimite,
+          PRIORIDADE:item.PRIORIDADE || 'NORMAL', STATUS:'ENVIADO', CRIADO_EM:criadoEm, CRIADO_POR:req.user?.usuario || 'sistema',
+          ATUALIZADO_EM:criadoEm, ATUALIZADO_POR:req.user?.usuario || 'sistema', IDEMPOTENCY_KEY:chave,
+        };
+        await appendObjeto('ACIONAMENTOS_INTERNOS', acionamento);
+        const confirmado = await lerAba('ACIONAMENTOS_INTERNOS', 5000);
+        if (!confirmado.some(a => String(a.IDEMPOTENCY_KEY || '') === chave)) {
+          return res.status(502).json({ sucesso:false, codigo:'ACIONAMENTO_NAO_CONFIRMADO', erro:'A persistência do encaminhamento não foi confirmada.' });
+        }
+        await registrarHistoricoManifestacao({ id:item.ID_MANIFESTACAO || id, protocolo:item.PROTOCOLO||'', acao:'ACIONAMENTO_CRIADO', descricao:`${dados.SETOR_DESTINADO}: ${dados.RESPONSAVEL_SETOR} (${dados.SLA_HORAS}h)`, usuario:req.user?.usuario || 'sistema', etapa:'TRIAGEM' });
+        await registrarAuditoria(req.user?.usuario || 'sistema', 'CRIOU_ACIONAMENTO_FICHA', item.ID_MANIFESTACAO || id, 'ACIONAMENTOS_INTERNOS', null, { setor:dados.SETOR_DESTINADO, responsavelId:dados.RESPONSAVEL_SETOR_ID, idempotencyKey:chave });
+      }
+      await registrarNotificacaoInterna({ manifestacaoId:id, acionamentoId:acionamento.ID_ACIONAMENTO, destinatario:dados.RESPONSAVEL_SETOR, tipo:'ENCAMINHAMENTO_TRATATIVA', titulo:`Tratativa atribuída — ${item.PROTOCOLO || id}`, mensagem:dados.OBS_ENCAMINHAMENTO || `Nova tratativa atribuída ao setor ${dados.SETOR_CONFIRMADO}.`, usuario:req.user?.usuario || 'sistema' }).catch(e => console.warn('[NOTIFICACAO] encaminhamento:', e.message));
     }
     invalidarCacheAba('MANIFESTACOES');
     registrarAuditoria(req.user?.usuario||'sistema', `FICHA_${String(acao).toUpperCase()}`, id, 'MANIFESTACOES', null, dados).catch(()=>{});
@@ -7196,11 +7457,55 @@ app.get('/api/usuarios', (req,res,next)=>{
   }
   catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e),itens:[]});}
 });
+app.get('/api/setores-responsaveis', requerPermissao('manifestacoes.editar'), async (req,res) => {
+  try {
+    const empresa = String(req.query?.empresa || req.user?.empresa || '').trim();
+    const rows = await lerAba('USUARIOS', 1000);
+    const nomes = new Set();
+    const empresaNorm = empresaCanonica(empresa);
+    const perfis = new Set(['MASTER','GESTOR SAC','ANALISTA SAC','SETOR RESPONSÁVEL','ESPECIALISTA']);
+    rows.forEach(row => {
+      if (String(row.STATUS || 'ATIVO').toUpperCase() !== 'ATIVO') return;
+      const perfil = perfilCanonico(row.PERFIL || row.PERFIL_USUARIO);
+      if (!perfis.has(perfil) && !perfil.startsWith('SETOR ')) return;
+      const empresas = empresasDoCadastro(row).map(empresaCanonica).filter(Boolean);
+      if (empresaNorm && empresas.length && !empresas.includes(empresaNorm) && !empresas.includes('MASTER')) return;
+      (setoresDoCadastro(row) || []).forEach(x => { if (x) nomes.add(String(x).trim()); });
+    });
+    res.json({ sucesso:true, itens:[...nomes].sort((a,b)=>a.localeCompare(b,'pt-BR')), fonte:'USUARIOS' });
+  } catch (e) {
+    console.error('[GET /api/setores-responsaveis]', e?.message || e);
+    res.status(503).json({ sucesso:false, codigo:'SETORES_INDISPONIVEIS', erro:'Não foi possível consultar os setores autorizados.', itens:[] });
+  }
+});
+
+app.get('/api/usuarios/responsaveis', requerPermissao('manifestacoes.editar'), async (req,res) => {
+  const setor = String(req.query?.setor || '').trim();
+  const empresa = String(req.query?.empresa || req.user?.empresa || '').trim();
+  if (!setor || /^(nenhum|não informado|nao informado)$/i.test(setor)) {
+    return res.status(400).json({ sucesso:false, codigo:'SETOR_OBRIGATORIO', erro:'Informe o setor para consultar responsáveis.', itens:[] });
+  }
+  try {
+    const itens = await carregarResponsaveisElegiveis({ empresa, setor });
+    return res.json({ sucesso:true, total:itens.length, itens,
+      disponibilidade: itens.length ? 'OK' : 'NENHUM_ELEGIVEL',
+      mensagem: itens.length ? '' : 'Não há responsável ativo e autorizado para este setor e empresa.',
+      filtros:{ empresa, setor }, fonte:'USUARIOS' });
+  } catch (e) {
+    console.error('[GET /api/usuarios/responsaveis]', e?.message || e);
+    return res.status(503).json({ sucesso:false, codigo:'RESPONSAVEIS_INDISPONIVEIS',
+      erro:'Não foi possível consultar o cadastro de responsáveis.', itens:[] });
+  }
+});
+
 app.post('/api/usuarios', requerPermissao('usuarios.criar'), async (req,res)=>{
   try{
     const b=req.body||{};
     if(!b.usuario||!b.nome||!b.perfil) return res.status(400).json({sucesso:false,erro:'Usuário, nome e perfil são obrigatórios.'});
     const perfil = perfilCanonico(b.perfil);
+    if (!_PERM_PADRAO_API[perfil]) return res.status(400).json({sucesso:false,codigo:'PERFIL_INVALIDO',erro:'Perfil principal inválido.'});
+    const nivel = modeloAutorizacao.nivelHierarquico(b.nivelHierarquico || b.NIVEL_HIERARQUICO || '');
+    if ((b.nivelHierarquico || b.NIVEL_HIERARQUICO) && !nivel) return res.status(400).json({sucesso:false,codigo:'NIVEL_INVALIDO',erro:'Nível hierárquico inválido.'});
     const empresas = empresasCanonicas(b.empresa);
     if (perfil !== 'MASTER' && !empresas.length) return res.status(400).json({sucesso:false,erro:'Selecione ao menos uma empresa para liberar o acesso do usuário.'});
     const id=await gerarProximoID('USUARIOS','USR','ID_USUARIO');
@@ -7209,7 +7514,7 @@ app.post('/api/usuarios', requerPermissao('usuarios.criar'), async (req,res)=>{
     // Empresa atribuída é a liberação operacional. Não há uma segunda etapa
     // de aprovação para transformar PRIMEIRO_ACESSO em conta utilizável.
     const status = empresas.length && ['PRIMEIRO_ACESSO','PENDENTE_APROVACAO'].includes(statusSolicitado) ? 'ATIVO' : statusSolicitado;
-    const obj={ID_USUARIO:id,USUARIO:b.usuario,EMAIL:b.email||'',NOME:b.nome,CARGO:b.cargo||'',PERFIL:perfil,EMPRESA:b.empresa||'',SETOR:b.setor||'',CODIGO_RCA:b.codigoRCA||'',STATUS:status,SENHA_HASH:hash,DATA_CRIACAO:new Date().toISOString(),ULTIMO_ACESSO:'',PERMISSOES_CUSTOM:Array.isArray(b.permissoes_custom)?JSON.stringify(b.permissoes_custom):'',PERMISSOES_GRANTED:Array.isArray(b.permissoes_granted)?JSON.stringify(b.permissoes_granted):'',PERMISSOES_BLOCKED:Array.isArray(b.permissoes_blocked)?JSON.stringify(b.permissoes_blocked):''};
+    const obj={ID_USUARIO:id,USUARIO:b.usuario,EMAIL:b.email||'',NOME:b.nome,CARGO:b.cargo||'',PERFIL:perfil,PERFIL_FUNCIONAL:modeloAutorizacao.perfilFuncional(perfil),NIVEL_HIERARQUICO:nivel,COMPETENCIAS_ALCADAS:modeloAutorizacao.alcadas(b.competenciasAlcadas||b.COMPETENCIAS_ALCADAS).join(', '),EMPRESA:b.empresa||'',SETOR:b.setor||'',CODIGO_RCA:b.codigoRCA||'',STATUS:status,SENHA_HASH:hash,DATA_CRIACAO:new Date().toISOString(),ULTIMO_ACESSO:'',PERMISSOES_CUSTOM:Array.isArray(b.permissoes_custom)?JSON.stringify(b.permissoes_custom):'',PERMISSOES_GRANTED:Array.isArray(b.permissoes_granted)?JSON.stringify(b.permissoes_granted):'',PERMISSOES_BLOCKED:Array.isArray(b.permissoes_blocked)?JSON.stringify(b.permissoes_blocked):''};
     await appendObjeto('USUARIOS',obj);
     await registrarAuditoria(req.user.usuario,'CRIOU_USUARIO',id,'USUARIOS',null,{perfil:obj.PERFIL});
     res.json({sucesso:true,usuario:usuarioPublico(obj)});
@@ -7221,24 +7526,45 @@ app.patch('/api/usuarios/:id', requerPermissao('usuarios.editar'), async (req,re
     // O token é indexado pelo login, enquanto a tela costuma enviar o ID.
     // Guardamos as chaves do cadastro para invalidar a sessão certa após uma
     // mudança de empresa, perfil, status ou permissões.
-    const precisaInvalidarSessao = ['empresa','EMPRESA','setor','status','perfil','PERFIL','permissoes_granted','permissoes_blocked','senha']
+    const precisaInvalidarSessao = ['empresa','EMPRESA','setor','status','perfil','PERFIL','nivelHierarquico','NIVEL_HIERARQUICO','competenciasAlcadas','COMPETENCIAS_ALCADAS','permissoes_granted','permissoes_blocked','senha']
       .some(campo => b[campo] !== undefined);
     const alvoCache = precisaInvalidarSessao
       ? encontrarUsuarioPorIdentificador(await carregarUsuarios(), req.params.id)
       : null;
+    const escopoConfirmado = req.body?.escopoConfirmado === true;
     // Whitelist de campos permitidos — impede mass assignment
     const dados={};
     if(b.nome!==undefined) dados.NOME=b.nome;
     if(b.email!==undefined) dados.EMAIL=b.email;
     if(b.cargo!==undefined||b.CARGO!==undefined) dados.CARGO=String(b.cargo??b.CARGO??'').trim();
-    if(b.setor!==undefined) dados.SETOR=b.setor;
+    if(b.nivelHierarquico!==undefined||b.NIVEL_HIERARQUICO!==undefined||b.nivel!==undefined) {
+      const valorNivel = b.nivelHierarquico ?? b.NIVEL_HIERARQUICO ?? b.nivel;
+      const nivel = modeloAutorizacao.nivelHierarquico(valorNivel);
+      if (valorNivel && !nivel) return res.status(400).json({sucesso:false,codigo:'NIVEL_INVALIDO',erro:'Nível hierárquico inválido.'});
+      dados.NIVEL_HIERARQUICO = nivel;
+    }
+    if(b.competenciasAlcadas!==undefined||b.COMPETENCIAS_ALCADAS!==undefined||b.alcadasAprovacao!==undefined) {
+      dados.COMPETENCIAS_ALCADAS = modeloAutorizacao.alcadas(b.competenciasAlcadas ?? b.COMPETENCIAS_ALCADAS ?? b.alcadasAprovacao).join(', ');
+    }
+    if(b.setor!==undefined) {
+      const setorRecebido = String(b.setor || '').trim();
+      // Uma falha de carregamento da tela não pode apagar um escopo existente.
+      // A limpeza intencional precisa vir acompanhada da confirmação explícita.
+      dados.SETOR = setorRecebido || (escopoConfirmado ? '' : String(alvoCache?.SETOR || alvoCache?.SETORES || '').trim());
+    }
     if(b.status!==undefined) dados.STATUS=String(b.status).toUpperCase();
     if(b.codigoRCA!==undefined) dados.CODIGO_RCA=b.codigoRCA;
-    if(b.perfil||b.PERFIL) dados.PERFIL=perfilCanonico(b.perfil||b.PERFIL);
+    if(b.perfil||b.PERFIL) {
+      const perfilNovo = perfilCanonico(b.perfil||b.PERFIL);
+      if (!_PERM_PADRAO_API[perfilNovo]) return res.status(400).json({sucesso:false, codigo:'PERFIL_INVALIDO', erro:'Perfil principal inválido.'});
+      dados.PERFIL = perfilNovo;
+      dados.PERFIL_FUNCIONAL = modeloAutorizacao.perfilFuncional(perfilNovo);
+    }
     if(b.empresa!==undefined||b.EMPRESA!==undefined) {
       // Preserva os nomes originais (display names) para que o escopo do usuário
       // seja recarregado corretamente no frontend (checkboxes) sem precisar reverter canonização
-      dados.EMPRESA = String(b.empresa||b.EMPRESA||'').trim();
+      const empresaRecebida = String(b.empresa||b.EMPRESA||'').trim();
+      dados.EMPRESA = empresaRecebida || (escopoConfirmado ? '' : String(alvoCache?.EMPRESA || alvoCache?.EMPRESAS || alvoCache?.EMPRESAS_JSON || '').trim());
       const empresas = empresasCanonicas(dados.EMPRESA);
       const perfilAlvo = perfilCanonico(b.perfil || b.PERFIL || '');
       if (dados.EMPRESA && !empresas.length) return res.status(400).json({sucesso:false,erro:'Empresa inválida. Selecione uma empresa cadastrada.'});
@@ -7282,7 +7608,7 @@ app.patch('/api/usuarios/:id', requerPermissao('usuarios.editar'), async (req,re
     // espelho na aba administrativa. Sem isso, empresa/setor/perfil/cargo
     // eram aceitos pela API, mas desapareciam no próximo carregamento.
     if (!resultado && pgAlvo?._pgId) {
-      await garantirAbaComCabecalhos('USUARIOS', ['ID_USUARIO','USUARIO','EMAIL','NOME','CARGO','PERFIL','EMPRESA','SETOR','STATUS','SENHA_HASH','DATA_CRIACAO','ULTIMO_ACESSO','PERMISSOES_GRANTED','PERMISSOES_BLOCKED','DATA_ULTIMA_ALTERACAO','ALTERADO_POR']);
+      await garantirAbaComCabecalhos('USUARIOS', ['ID_USUARIO','USUARIO','EMAIL','NOME','CARGO','PERFIL','PERFIL_FUNCIONAL','NIVEL_HIERARQUICO','COMPETENCIAS_ALCADAS','EMPRESA','SETOR','STATUS','SENHA_HASH','DATA_CRIACAO','ULTIMO_ACESSO','PERMISSOES_GRANTED','PERMISSOES_BLOCKED','DATA_ULTIMA_ALTERACAO','ALTERADO_POR']);
       await appendObjeto('USUARIOS', {
         ID_USUARIO: pgAlvo.ID_USUARIO || req.params.id,
         USUARIO: pgAlvo.USUARIO || pgAlvo.EMAIL || '',
@@ -7290,6 +7616,9 @@ app.patch('/api/usuarios/:id', requerPermissao('usuarios.editar'), async (req,re
         NOME: b.nome !== undefined ? b.nome : (pgAlvo.NOME || ''),
         CARGO: b.cargo !== undefined ? b.cargo : (pgAlvo.CARGO || ''),
         PERFIL: b.perfil !== undefined ? perfilCanonico(b.perfil) : (pgAlvo.PERFIL || ''),
+        PERFIL_FUNCIONAL: dados.PERFIL_FUNCIONAL || pgAlvo.PERFIL_FUNCIONAL || '',
+        NIVEL_HIERARQUICO: dados.NIVEL_HIERARQUICO ?? pgAlvo.NIVEL_HIERARQUICO ?? '',
+        COMPETENCIAS_ALCADAS: dados.COMPETENCIAS_ALCADAS ?? pgAlvo.COMPETENCIAS_ALCADAS ?? '',
         EMPRESA: b.empresa !== undefined ? String(b.empresa).trim() : (pgAlvo.EMPRESA || ''),
         SETOR: b.setor !== undefined ? String(b.setor).trim() : (pgAlvo.SETOR || ''),
         STATUS: b.status !== undefined ? String(b.status).toUpperCase() : (pgAlvo.STATUS || 'ATIVO'),
@@ -7314,7 +7643,21 @@ app.patch('/api/usuarios/:id', requerPermissao('usuarios.editar'), async (req,re
         if (b.email !== undefined) pgDados.email = String(b.email).toLowerCase();
         if (b.senha) pgDados.senhaHash = dados.SENHA_HASH;
         if (b.status !== undefined) pgDados.ativo = !['INATIVO','BLOQUEADO','EXCLUIDO','EXCLUÍDO'].includes(String(b.status).toUpperCase());
-        if (Object.keys(pgDados).length) await usuarioRepo.update(alvo._pgId, pgDados).catch(e => console.warn('[PATCH usuario PG]', e.message));
+        if (dados.PERFIL !== undefined) {
+          // O schema legado usa SETOR RESPONSÁVEL como perfil relacional para
+          // perfis setoriais específicos; o código exato continua no Sheets.
+          const perfilPg = String(dados.PERFIL).startsWith('SETOR ') ? 'SETOR RESPONSÁVEL' : dados.PERFIL;
+          const perfilRegistro = await usuarioRepo.findPerfilByCodigo(perfilPg);
+          if (!perfilRegistro) return res.status(503).json({sucesso:false, codigo:'PERFIL_NAO_CONFIGURADO', erro:'O perfil selecionado não está configurado no banco de usuários.'});
+          pgDados.perfilId = perfilRegistro.id;
+        }
+        if (Object.keys(pgDados).length) {
+          try { await usuarioRepo.update(alvo._pgId, pgDados); }
+          catch (e) {
+            if (dados.PERFIL !== undefined) return res.status(503).json({sucesso:false, codigo:'PERFIL_NAO_PERSISTIDO', erro:'Não foi possível persistir o perfil principal no cadastro.'});
+            console.warn('[PATCH usuario PG]', e.message);
+          }
+        }
       }
     }
     // Invalida cache de status para mudanças de perfil/status/permissões valerem imediatamente
@@ -7324,8 +7667,11 @@ app.patch('/api/usuarios/:id', requerPermissao('usuarios.editar'), async (req,re
         _statusCache.delete(normalizarTexto(chave));
       });
     invalidarCacheAba('USUARIOS');
+    const confirmados = await carregarUsuarios();
+    const confirmado = encontrarUsuarioPorIdentificador(confirmados, req.params.id);
+    if (!confirmado) return res.status(503).json({sucesso:false, codigo:'USUARIO_NAO_CONFIRMADO', erro:'A alteração não foi confirmada na releitura do cadastro.'});
     await registrarAuditoria(req.user.usuario,'ATUALIZOU_USUARIO',req.params.id,'USUARIOS',null,{campos:Object.keys(b)});
-    res.json({sucesso:true});
+    res.json({sucesso:true, usuario:usuarioPublico(confirmado)});
   }catch(e){
     console.error('[PATCH /api/usuarios/:id]', e?.message, e?.response?.status);
     const st = e?.response?.status || e?.code;
@@ -7334,7 +7680,8 @@ app.patch('/api/usuarios/:id', requerPermissao('usuarios.editar'), async (req,re
       : st === 403
       ? 'Sem permissão para gravar na planilha. Verifique as credenciais.'
       : erroSeguro(e);
-    res.status(500).json({sucesso:false,erro:msg});
+    const status = st === 'PERFIL_NAO_CONFIGURADO' || st === 'PERFIL_NAO_PERSISTIDO' ? 503 : 500;
+    res.status(status).json({sucesso:false,codigo:st === 'PERFIL_NAO_CONFIGURADO' || st === 'PERFIL_NAO_PERSISTIDO' ? st : undefined,erro:msg});
   }
 });
 
@@ -7359,14 +7706,16 @@ async function persistirDadosUsuario(alvo, dados, req, { permitirSomentePg = fal
   // próximo carregamento e para que a revogação seja reconhecida pelo auth.
   if (!sheetAtualizado && alvo._pgId && !permitirSomentePg) {
     await garantirAbaComCabecalhos('USUARIOS', [
-      'ID_USUARIO','USUARIO','EMAIL','NOME','CARGO','PERFIL','EMPRESA','SETOR','STATUS',
+      'ID_USUARIO','USUARIO','EMAIL','NOME','CARGO','PERFIL','PERFIL_FUNCIONAL','NIVEL_HIERARQUICO','COMPETENCIAS_ALCADAS','EMPRESA','SETOR','STATUS',
       'SENHA_HASH','DATA_CRIACAO','ULTIMO_ACESSO','PERMISSOES_GRANTED','PERMISSOES_BLOCKED',
       'COMPETENCIAS','DATA_ULTIMA_ALTERACAO','ALTERADO_POR','DATA_EXCLUSAO','EXCLUIDO_POR','MOTIVO_EXCLUSAO'
     ]);
     await appendObjeto('USUARIOS', {
       ID_USUARIO: alvo.ID_USUARIO || `USR-PG-${alvo._pgId}`,
       USUARIO: alvo.USUARIO || alvo.EMAIL || '', EMAIL: alvo.EMAIL || '', NOME: alvo.NOME || alvo.USUARIO || '',
-      CARGO: alvo.CARGO || '', PERFIL: alvo.PERFIL || '', EMPRESA: alvo.EMPRESA || '', SETOR: alvo.SETOR || '',
+      CARGO: alvo.CARGO || '', PERFIL: alvo.PERFIL || '', PERFIL_FUNCIONAL: alvo.PERFIL_FUNCIONAL || '',
+      NIVEL_HIERARQUICO: alvo.NIVEL_HIERARQUICO || '', COMPETENCIAS_ALCADAS: alvo.COMPETENCIAS_ALCADAS || '',
+      EMPRESA: alvo.EMPRESA || '', SETOR: alvo.SETOR || '',
       STATUS: alvo.STATUS || 'ATIVO', SENHA_HASH: alvo.SENHA_HASH || '', DATA_CRIACAO: alvo.DATA_CRIACAO || '',
       ULTIMO_ACESSO: alvo.ULTIMO_ACESSO || '', ...dados,
     });
@@ -7383,6 +7732,16 @@ async function persistirDadosUsuario(alvo, dados, req, { permitirSomentePg = fal
     if (dados.EMAIL !== undefined) pgDados.email = String(dados.EMAIL).toLowerCase();
     if (dados.SENHA_HASH !== undefined) pgDados.senhaHash = dados.SENHA_HASH;
     if (dados.STATUS !== undefined) pgDados.ativo = !['INATIVO','BLOQUEADO','EXCLUIDO','EXCLUÍDO'].includes(String(dados.STATUS).toUpperCase());
+    if (dados.PERFIL !== undefined) {
+      const perfilPg = String(dados.PERFIL).startsWith('SETOR ') ? 'SETOR RESPONSÁVEL' : dados.PERFIL;
+      const perfilRegistro = await usuarioRepo.findPerfilByCodigo(perfilPg);
+      if (!perfilRegistro) {
+        const err = new Error('O perfil selecionado não está configurado no banco de usuários.');
+        err.code = 'PERFIL_NAO_CONFIGURADO';
+        throw err;
+      }
+      pgDados.perfilId = perfilRegistro.id;
+    }
     if (Object.keys(pgDados).length) await usuarioRepo.update(alvo._pgId, pgDados);
   }
   invalidarCacheAba('USUARIOS');
@@ -7783,8 +8142,10 @@ app.post('/api/documentos/extrair', requerPerfil('MASTER','ANALISTA SAC','APROVA
 app.get('/api/manifestacoes/:id/circa', requerPermissao('manifestacoes.visualizar'), middlewareEscopoEmpresa(), async (req,res) => {
   try {
     const idReq = String(req.params.id || '').trim();
+    // A manifestação é a fonte obrigatória. Falha nessa leitura deve chegar
+    // ao cliente como indisponibilidade, nunca como lista vazia.
     const [manifestacoes, tratativas, devolutivas, matriz, causas] = await Promise.all([
-      lerAba('MANIFESTACOES', 5000).catch(() => []),
+      lerAba('MANIFESTACOES', 5000),
       lerAba('TRATATIVAS_SETORIAIS', 5000).catch(() => []),
       lerAba('DEVOLUTIVAS', 5000).catch(() => []),
       lerAba('MATRIZ_TRATAMENTO', 5000).catch(() => []),
@@ -7797,7 +8158,13 @@ app.get('/api/manifestacoes/:id/circa', requerPermissao('manifestacoes.visualiza
     if (!m) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
     if (req._empresaScope && !pertenceEmpresa(req._empresaScope, m.EMPRESA_RECLAMADA || ''))
       return res.status(403).json({ sucesso:false, erro:'Acesso não autorizado.' });
-    let analisePersistida = {}; try { analisePersistida = JSON.parse(m.ANALISE_IA || '{}'); } catch (_) {}
+    const analiseBruta = m.ANALISE_IA || m.ANALISE_IA_JSON || m.CEREBRO_ANALISE || '';
+    let analisePersistida = {};
+    let analiseLeitura = analiseBruta ? 'OK' : 'AUSENTE';
+    if (analiseBruta) {
+      try { analisePersistida = typeof analiseBruta === 'string' ? JSON.parse(analiseBruta) : analiseBruta; }
+      catch (_) { analisePersistida = {}; analiseLeitura = 'INVALIDA'; }
+    }
     const categoriasMap = new Map();
     matriz.map(matrizTratamentoService.normalizarRegra).forEach(r => {
       const categoria = String(r.CATEGORIA || '').trim();
@@ -7835,7 +8202,7 @@ app.get('/api/manifestacoes/:id/circa', requerPermissao('manifestacoes.visualiza
     let pendenciasPersistidas = [];
     try { const raw=m.CHECKLIST_CIRCA || analisePersistida.checklistPersistido || '[]'; const parsed=typeof raw==='string'?JSON.parse(raw):raw; checklistPersistido=Array.isArray(parsed)?parsed:Object.entries(parsed||{}).map(([id,status])=>({id,status})); } catch (_) { checklistPersistido = []; }
     try { pendenciasPersistidas = JSON.parse(m.PENDENCIAS_VALIDACAO_HUMANA || analisePersistida.pendenciasValidacaoHumana || '[]'); } catch (_) { pendenciasPersistidas = []; }
-    res.json({ sucesso:true, circa:{ ...resultado, categoriasDisponiveis, complementacoes: complementacoesPersistidas, checklistPersistido, checklistVersao: analisePersistida.checklistVersao||0, pendenciasValidacaoHumana: pendenciasPersistidas, decisaoEtapa2: analisePersistida.decisaoEtapa2 || null } });
+    res.json({ sucesso:true, circa:{ ...resultado, categoriasDisponiveis, complementacoes: complementacoesPersistidas, analiseLeitura, analiseFonte:analiseBruta ? 'MANIFESTACOES.ANALISE_IA' : 'MANIFESTACOES', checklistPersistido, checklistVersao: analisePersistida.checklistVersao||0, pendenciasValidacaoHumana: pendenciasPersistidas, decisaoEtapa2: analisePersistida.decisaoEtapa2 || null } });
   } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e,'circa') }); }
 });
 
@@ -7896,6 +8263,7 @@ app.patch('/api/manifestacoes/:id/circa-dados', requerPermissao('manifestacoes.e
     }
     let decisaoEtapa2Audit = null;
     let complementacoesEsperadas = null;
+    let complementacoesAudit = null;
     if (Object.prototype.hasOwnProperty.call(req.body || {}, 'CHECKLIST_CIRCA') || Object.prototype.hasOwnProperty.call(req.body || {}, 'PENDENCIAS_VALIDACAO_HUMANA')) {
       if (!m.ID_MANIFESTACAO) return res.status(409).json({sucesso:false,erro:'A manifestação ainda não possui ID persistido.'});
       let meta={}; try { meta=JSON.parse(m.ANALISE_IA||'{}'); } catch (_) {}
@@ -7935,6 +8303,7 @@ app.patch('/api/manifestacoes/:id/circa-dados', requerPermissao('manifestacoes.e
         if (!patchAnalise.complementacoes || typeof patchAnalise.complementacoes !== 'object' || Array.isArray(patchAnalise.complementacoes)) return res.status(400).json({sucesso:false,erro:'Complementações inválidas.'});
         const anteriores = base.complementacoes && typeof base.complementacoes === 'object' ? base.complementacoes : {};
         const normalizadas = { ...anteriores };
+        const alteracoes = [];
         for (const [campo, valor] of Object.entries(patchAnalise.complementacoes)) {
           if (!/^[A-Za-z][A-Za-z0-9_]{1,60}$/.test(campo) || !valor || typeof valor !== 'object') return res.status(400).json({sucesso:false,erro:'Campo de complementação inválido.'});
           const status = String(valor.status || 'PENDENTE').toUpperCase();
@@ -7947,9 +8316,24 @@ app.patch('/api/manifestacoes/:id/circa-dados', requerPermissao('manifestacoes.e
             evidencias: String(valor.evidencias || '').slice(0, 1000), origem: ['CLIENTE','ANALISTA'].includes(String(valor.origem || '').toUpperCase()) ? String(valor.origem).toUpperCase() : 'ANALISTA',
             atualizadoPor: req.user?.usuario || req.user?.login || 'sistema', atualizadoEm: new Date().toISOString(),
           };
+          const anterior = anteriores[campo] || {};
+          alteracoes.push({
+            campo,
+            valorAnterior: anterior.valor ?? '',
+            valor: normalizadas[campo].valor,
+            situacaoAnterior: anterior.status || 'AUSENTE',
+            situacao: normalizadas[campo].status,
+            justificativa: normalizadas[campo].justificativa,
+            evidencias: normalizadas[campo].evidencias,
+          });
         }
         base.complementacoes = normalizadas;
         complementacoesEsperadas = normalizadas;
+        complementacoesAudit = {
+          campos: alteracoes,
+          usuario: req.user?.usuario || req.user?.login || 'sistema',
+          data: new Date().toISOString(),
+        };
         delete patchAnalise.complementacoes;
       }
       const atual = base.decisaoEtapa2 && typeof base.decisaoEtapa2 === 'object' ? base.decisaoEtapa2 : {};
@@ -8026,6 +8410,16 @@ app.patch('/api/manifestacoes/:id/circa-dados', requerPermissao('manifestacoes.e
     if (req.body?.finalizar && patch.IDEMPOTENCY_KEY) {
       await protocoloAtomico.confirmarPersistencia(patch.IDEMPOTENCY_KEY,m.ID_MANIFESTACAO||idReq);
     }
+    if (complementacoesAudit?.campos?.length) {
+      await registrarHistoricoManifestacao({
+        id:m.ID_MANIFESTACAO||idReq,
+        protocolo:patch.PROTOCOLO||m.PROTOCOLO||'',
+        usuario:complementacoesAudit.usuario,
+        etapa:'2',
+        acao:'COMPLEMENTACOES_CIRCA_ATUALIZADAS',
+        descricao:JSON.stringify(complementacoesAudit),
+      });
+    }
     await registrarHistoricoManifestacao({id:m.ID_MANIFESTACAO||idReq,protocolo:patch.PROTOCOLO||m.PROTOCOLO||'',usuario:req.user?.usuario||'sistema',etapa:patch.ETAPA_ATUAL||m.ETAPA_ATUAL||'',acao:'ATUALIZOU_CARD_CIRCA',descricao:'Dados operacionais atualizados no novo card.'});
     if (decisaoEtapa2Audit) await registrarHistoricoManifestacao({ id:m.ID_MANIFESTACAO||idReq, protocolo:patch.PROTOCOLO||m.PROTOCOLO||'', usuario:decisaoEtapa2Audit.revisadoPor, etapa:'2', acao:'REVISOU_ANALISE_CIRCA', descricao:`Estado ${decisaoEtapa2Audit.status || 'REVISADA'} registrado no servidor.` });
     // Auto-increment FREQUENCIA_OCORRENCIAS na aba CAUSAS quando causa raiz é confirmada
@@ -8049,7 +8443,7 @@ app.patch('/api/manifestacoes/:id/circa-dados', requerPermissao('manifestacoes.e
 // Os registros abaixo reutilizam a manifestação e as abas operacionais legadas.
 // Nenhum acionamento cria uma segunda ficha.
 const ACIONAMENTOS_HEADERS = ['ID_ACIONAMENTO','ID_MANIFESTACAO','PROTOCOLO','TIPO','EMPRESA','SETOR_SOLICITANTE','SETOR_DESTINO','RESPONSAVEL','RESPONSAVEL_ID','ASSUNTO','MOTIVO','TAREFA','PERGUNTAS','PRAZO','PRAZO_ORIGEM','DATA_LIMITE','PRIORIDADE','EVIDENCIAS','OBSERVACOES','RESPOSTA','STATUS','CRIADO_EM','CRIADO_POR','ATUALIZADO_EM','ATUALIZADO_POR','IDEMPOTENCY_KEY'];
-const ACIONAMENTO_STATUSES = ['CRIADO','ENVIADO','PENDENTE_DE_ATRIBUICAO','AGUARDANDO_CIENCIA','EM_ANDAMENTO','AGUARDANDO_INFORMACAO','RESPONDIDO','EM_REVISAO','CONCLUIDO','CANCELADO'];
+const ACIONAMENTO_STATUSES = ['CRIADO','ENVIADO','PENDENTE_DE_ATRIBUICAO','AGUARDANDO_CIENCIA','EM_ANDAMENTO','AGUARDANDO_INFORMACAO','PENDENTE_COMPLEMENTACAO','INCONCLUSIVO','RESPONDIDO','EM_REVISAO','CONCLUIDO','CANCELADO'];
 const ACIONAMENTO_TYPES = ['NOTIFICACAO','SOLICITACAO_INFORMACAO','SOLICITACAO_APOIO','ENCAMINHAMENTO_TRATATIVA','ESCALONAMENTO'];
 const NOTIFICACOES_INTERNAS_HEADERS = ['ID_NOTIFICACAO','ID_MANIFESTACAO','ID_ACIONAMENTO','DESTINATARIO','CANAL','TIPO','TITULO','MENSAGEM','STATUS','CRIADO_EM','CRIADO_POR'];
 
@@ -8113,7 +8507,16 @@ app.get('/api/manifestacoes/:id/acionamentos', requerPermissao('manifestacoes.vi
     if (req._empresaScope && !pertenceEmpresa(req._empresaScope, m.EMPRESA_RECLAMADA || '')) return res.status(403).json({ sucesso:false, erro:'Acesso não autorizado.' });
     const rows = await lerAba('ACIONAMENTOS_INTERNOS', 5000);
     const ids = idsManifestacao(m, req.params.id);
-    const itens=rows.filter(row => ids.has(String(row.ID_MANIFESTACAO || row.PROTOCOLO || row.ID || '').trim()));
+    const correspondentes=rows.filter(row => ids.has(String(row.ID_MANIFESTACAO || row.PROTOCOLO || row.ID || '').trim()));
+    let usuarios=[];
+    try { usuarios = await lerAba('USUARIOS', 1000); }
+    catch (e) { return res.status(503).json({ sucesso:false, codigo:'CADASTRO_RESPONSAVEIS_INDISPONIVEL', erro:'Não foi possível resolver os nomes dos responsáveis no cadastro.' }); }
+    const itens=correspondentes.map(row => {
+      if (row.RESPONSAVEL_NOME) return row;
+      const chave=String(row.RESPONSAVEL_ID || row.RESPONSAVEL || '').trim().toLowerCase();
+      const u=usuarios.find(x => [x.ID_USUARIO,x.ID,x.USUARIO,x.LOGIN,x.EMAIL].some(v=>String(v||'').trim().toLowerCase()===chave));
+      return { ...row, RESPONSAVEL_NOME:u?.NOME || u?.NOME_COMPLETO || '' };
+    });
     res.json({ sucesso:true, itens, statuses:ACIONAMENTO_STATUSES, tipos:ACIONAMENTO_TYPES, diagnostico:{ fonte:'ACIONAMENTOS_INTERNOS', armazenamento:'Google Sheets', identificadores:[...ids], totalLidos:rows.length, totalCorrespondentes:itens.length, escopoEmpresa: req._empresaScope ? 'aplicado' : 'MASTER/global' } });
   } catch (e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e,'acionamentos') }); }
 });
@@ -8138,16 +8541,22 @@ app.post('/api/manifestacoes/:id/acionamentos', requerPermissao('manifestacoes.e
     }
     let responsavelCadastro = null;
     if (body.responsavel) {
-      const usuarios = await lerAba('USUARIOS', 5000).catch(() => []);
-      const alvo = usuarios.find(u => String(u.USUARIO || u.EMAIL || u.LOGIN || '').toLowerCase() === String(body.responsavel).toLowerCase());
-      if (!alvo || String(alvo.STATUS || 'ATIVO').toUpperCase() !== 'ATIVO') return res.status(400).json({ sucesso:false, erro:'Responsável inexistente ou inativo.' });
-      const setorNorm = normalizarTexto(body.setorDestino || '');
-      const setoresAlvo = setoresDoCadastro(alvo).map(normalizarTexto).filter(Boolean);
-      if (setorNorm && !setoresAlvo.some(s => s === setorNorm || s.includes(setorNorm) || setorNorm.includes(s))) return res.status(422).json({ sucesso:false, codigo:'RESPONSAVEL_FORA_DO_SETOR', erro:'O responsável selecionado não está autorizado para o setor escolhido.' });
-      const empresasAlvo = empresasDoCadastro(alvo).map(empresaCanonica).filter(Boolean);
-      const empresaManifestacao = empresaCanonica(m.EMPRESA_RECLAMADA || '');
-      if (empresasAlvo.length && !empresasAlvo.includes('MASTER') && !empresasAlvo.includes(empresaManifestacao)) return res.status(422).json({ sucesso:false, codigo:'RESPONSAVEL_FORA_DA_EMPRESA', erro:'O responsável selecionado não está autorizado para esta empresa.' });
-      responsavelCadastro = alvo;
+      try {
+        responsavelCadastro = await encontrarResponsavelElegivel({
+          empresa: m.EMPRESA_RECLAMADA || m.EMPRESA_NORMALIZADA || m.EMPRESA,
+          setor: body.setorDestino || '', identificador: body.responsavel,
+        });
+      } catch (e) {
+        console.error('[POST acionamento] cadastro de responsáveis indisponível:', e?.message || e);
+        return res.status(503).json({ sucesso:false, codigo:'RESPONSAVEIS_INDISPONIVEIS', erro:'Não foi possível validar o responsável no cadastro.' });
+      }
+      if (!responsavelCadastro) {
+        // Códigos mantidos para consumidores legados: a validação agora é feita
+        // em uma única consulta por empresa/setor, sem aceitar atribuição parcial.
+        const RESPONSAVEL_FORA_DA_EMPRESA = 'RESPONSAVEL_FORA_DA_EMPRESA';
+        const RESPONSAVEL_FORA_DO_SETOR = 'RESPONSAVEL_FORA_DO_SETOR';
+        return res.status(422).json({ sucesso:false, codigo:'RESPONSAVEL_NAO_ELEGIVEL', motivos:[RESPONSAVEL_FORA_DA_EMPRESA, RESPONSAVEL_FORA_DO_SETOR], erro:'O responsável selecionado não está ativo e autorizado para a empresa e setor.' });
+      }
     }
     await garantirAbaComCabecalhos('ACIONAMENTOS_INTERNOS', ACIONAMENTOS_HEADERS);
     const existing = body.idempotencyKey ? (await lerAba('ACIONAMENTOS_INTERNOS', 5000).catch(() => [])).find(r => String(r.IDEMPOTENCY_KEY || '') === String(body.idempotencyKey)) : null;
@@ -8157,7 +8566,7 @@ app.post('/api/manifestacoes/:id/acionamentos', requerPermissao('manifestacoes.e
       ID_ACIONAMENTO: await gerarProximoID('ACIONAMENTOS_INTERNOS','ACI','ID_ACIONAMENTO'),
       ID_MANIFESTACAO: m.ID_MANIFESTACAO || req.params.id, PROTOCOLO:m.PROTOCOLO || '', TIPO:tipo,
       EMPRESA:m.EMPRESA_RECLAMADA || body.empresa || '', SETOR_SOLICITANTE:body.setorSolicitante || req.user?.setor || 'SAC',
-      SETOR_DESTINO:body.setorDestino || '', RESPONSAVEL:body.responsavel || gestor?.USUARIO || gestor?.EMAIL || gestor?.NOME || '', RESPONSAVEL_ID:responsavelCadastro?.ID_USUARIO || responsavelCadastro?.ID || responsavelCadastro?.USUARIO || body.responsavel || '', ASSUNTO:body.assunto || '', MOTIVO:body.motivo || '',
+      SETOR_DESTINO:body.setorDestino || '', RESPONSAVEL:responsavelCadastro?.usuario || body.responsavel || gestor?.USUARIO || gestor?.EMAIL || gestor?.NOME || '', RESPONSAVEL_ID:responsavelCadastro?.id || responsavelCadastro?.usuario || body.responsavel || '', ASSUNTO:body.assunto || '', MOTIVO:body.motivo || '',
       TAREFA:body.tarefa || '', PERGUNTAS:Array.isArray(body.perguntas) ? JSON.stringify(body.perguntas) : (body.perguntas || ''),
       PRAZO:tipo === 'NOTIFICACAO' ? '' : (body.prazo || ''), PRAZO_ORIGEM:body.prazoOrigem || (tipo === 'SOLICITACAO_INFORMACAO' ? 'SLA_RETORNO_CLIENTE_96H' : 'SLA_RETORNO_SETOR_72H'), DATA_LIMITE:body.dataLimite || '', PRIORIDADE:body.prioridade || 'NORMAL',
       EVIDENCIAS:Array.isArray(body.evidencias) ? JSON.stringify(body.evidencias) : (body.evidencias || ''), OBSERVACOES:body.observacoes || '',
@@ -8181,12 +8590,26 @@ app.patch('/api/manifestacoes/:id/acionamentos/:acionamentoId', requerPermissao(
     const rows = await lerAba('ACIONAMENTOS_INTERNOS', 5000).catch(() => []);
     const item = rows.find(r => String(r.ID_ACIONAMENTO) === String(req.params.acionamentoId) && String(r.ID_MANIFESTACAO) === String(m.ID_MANIFESTACAO || req.params.id));
     if (!item) return res.status(404).json({ sucesso:false, erro:'Acionamento não encontrado.' });
+    const perfil = perfilCanonico(req.user?.perfil);
+    const administrativo = ['MASTER','GESTOR SAC','ANALISTA SAC','ATENDENTE SAC','APROVADOR'].includes(perfil);
+    const identidade = [req.user?.usuario, req.user?.id, req.user?.ID_USUARIO, req.user?.email]
+      .map(v => normalizarTexto(v)).filter(Boolean);
+    const responsavelIds = [item.RESPONSAVEL_ID, item.RESPONSAVEL]
+      .map(v => normalizarTexto(v)).filter(Boolean);
+    if (!administrativo && (!responsavelIds.length || !identidade.some(v => responsavelIds.includes(v)))) {
+      return res.status(403).json({ sucesso:false, codigo:'ACIONAMENTO_NAO_AUTORIZADO', erro:'Somente o responsável designado ou o SAC pode atualizar esta frente.' });
+    }
     const next = String(req.body?.status || '').toUpperCase();
     if (!ACIONAMENTO_STATUSES.includes(next)) return res.status(400).json({ sucesso:false, erro:'Status de acionamento inválido.' });
     const agora = new Date().toISOString();
     await atualizarPorID('ACIONAMENTOS_INTERNOS', item.ID_ACIONAMENTO, { STATUS:next, ATUALIZADO_EM:agora, ATUALIZADO_POR:req.user?.usuario || 'sistema', RESPOSTA:req.body?.resposta || item.RESPOSTA || '', EVIDENCIAS:req.body?.evidencias || item.EVIDENCIAS || '' }, ['ID_ACIONAMENTO']);
-    await registrarHistoricoManifestacao({ id:item.ID_MANIFESTACAO, protocolo:item.PROTOCOLO, acao:'ACIONAMENTO_ATUALIZADO', descricao:`${item.ID_ACIONAMENTO}: ${next}`, usuario:req.user?.usuario || 'sistema', etapa:'CONDUCAO' });
-    res.json({ sucesso:true, item:{ ...item, STATUS:next, ATUALIZADO_EM:agora } });
+    const persistido = (await lerAba('ACIONAMENTOS_INTERNOS', 5000)).find(r => String(r.ID_ACIONAMENTO) === String(item.ID_ACIONAMENTO));
+    if (!persistido || String(persistido.STATUS || '').toUpperCase() !== next) {
+      return res.status(503).json({ sucesso:false, codigo:'PERSISTENCIA_ACIONAMENTO_NAO_CONFIRMADA', erro:'A resposta não foi confirmada no armazenamento.' });
+    }
+    const resumo = req.body?.resposta ? 'Resposta da frente registrada.' : `Status atualizado para ${next}.`;
+    await registrarHistoricoManifestacao({ id:item.ID_MANIFESTACAO, protocolo:item.PROTOCOLO, acao:'ACIONAMENTO_ATUALIZADO', descricao:`${item.ID_ACIONAMENTO}: ${resumo}`, usuario:req.user?.usuario || 'sistema', etapa:'CONDUCAO' });
+    res.json({ sucesso:true, item:persistido });
   } catch (e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e,'acionamentos') }); }
 });
 
