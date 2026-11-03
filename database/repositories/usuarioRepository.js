@@ -47,6 +47,10 @@ const usuarioRepository = {
     });
   },
 
+  async findPerfilByCodigo(codigo) {
+    return prisma.perfil.findFirst({ where: { codigo: String(codigo || '').trim() } });
+  },
+
   async create(data) {
     return prisma.usuario.create({
       data: { ...data, email: data.email.toLowerCase() },

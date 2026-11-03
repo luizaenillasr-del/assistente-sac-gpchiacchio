@@ -560,6 +560,10 @@ async function carregarUsuarios(){
     if (sh.PERMISSOES_CUSTOM && !u.PERMISSOES_CUSTOM) overrides.PERMISSOES_CUSTOM = sh.PERMISSOES_CUSTOM;
     if (sh.PERMISSOES_GRANTED && !u.PERMISSOES_GRANTED) overrides.PERMISSOES_GRANTED = sh.PERMISSOES_GRANTED;
     if (sh.COMPETENCIAS && !u.COMPETENCIAS) overrides.COMPETENCIAS = sh.COMPETENCIAS;
+    // O perfil administrativo do Sheets é a representação canônica da UI.
+    // Sem este override, um perfil setorial salvo no Sheets era reidratado
+    // pelo perfil genérico antigo do PostgreSQL.
+    if (sh.PERFIL) overrides.PERFIL = perfilCanonico(sh.PERFIL);
     // Senha do Sheets como fallback se PG não tiver
     if (sh.SENHA_HASH && !u.SENHA_HASH) overrides.SENHA_HASH = sh.SENHA_HASH;
     // Escopo de empresa/setor vem do Sheets (MASTER atualiza via modal de usuários)
@@ -7476,7 +7480,11 @@ app.patch('/api/usuarios/:id', requerPermissao('usuarios.editar'), async (req,re
     }
     if(b.status!==undefined) dados.STATUS=String(b.status).toUpperCase();
     if(b.codigoRCA!==undefined) dados.CODIGO_RCA=b.codigoRCA;
-    if(b.perfil||b.PERFIL) dados.PERFIL=perfilCanonico(b.perfil||b.PERFIL);
+    if(b.perfil||b.PERFIL) {
+      const perfilNovo = perfilCanonico(b.perfil||b.PERFIL);
+      if (!_PERM_PADRAO_API[perfilNovo]) return res.status(400).json({sucesso:false, codigo:'PERFIL_INVALIDO', erro:'Perfil principal inválido.'});
+      dados.PERFIL = perfilNovo;
+    }
     if(b.empresa!==undefined||b.EMPRESA!==undefined) {
       // Preserva os nomes originais (display names) para que o escopo do usuário
       // seja recarregado corretamente no frontend (checkboxes) sem precisar reverter canonização
@@ -7557,7 +7565,21 @@ app.patch('/api/usuarios/:id', requerPermissao('usuarios.editar'), async (req,re
         if (b.email !== undefined) pgDados.email = String(b.email).toLowerCase();
         if (b.senha) pgDados.senhaHash = dados.SENHA_HASH;
         if (b.status !== undefined) pgDados.ativo = !['INATIVO','BLOQUEADO','EXCLUIDO','EXCLUÍDO'].includes(String(b.status).toUpperCase());
-        if (Object.keys(pgDados).length) await usuarioRepo.update(alvo._pgId, pgDados).catch(e => console.warn('[PATCH usuario PG]', e.message));
+        if (dados.PERFIL !== undefined) {
+          // O schema legado usa SETOR RESPONSÁVEL como perfil relacional para
+          // perfis setoriais específicos; o código exato continua no Sheets.
+          const perfilPg = String(dados.PERFIL).startsWith('SETOR ') ? 'SETOR RESPONSÁVEL' : dados.PERFIL;
+          const perfilRegistro = await usuarioRepo.findPerfilByCodigo(perfilPg);
+          if (!perfilRegistro) return res.status(503).json({sucesso:false, codigo:'PERFIL_NAO_CONFIGURADO', erro:'O perfil selecionado não está configurado no banco de usuários.'});
+          pgDados.perfilId = perfilRegistro.id;
+        }
+        if (Object.keys(pgDados).length) {
+          try { await usuarioRepo.update(alvo._pgId, pgDados); }
+          catch (e) {
+            if (dados.PERFIL !== undefined) return res.status(503).json({sucesso:false, codigo:'PERFIL_NAO_PERSISTIDO', erro:'Não foi possível persistir o perfil principal no cadastro.'});
+            console.warn('[PATCH usuario PG]', e.message);
+          }
+        }
       }
     }
     // Invalida cache de status para mudanças de perfil/status/permissões valerem imediatamente
