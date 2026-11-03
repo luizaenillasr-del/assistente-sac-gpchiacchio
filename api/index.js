@@ -8846,7 +8846,7 @@ app.post('/api/cerebro/tratamentos', requerPerfil('MASTER','GESTOR SAC','ANALIST
     await garantirAbaComCabecalhos('MATRIZ_TRATAMENTO', CEREBRO_TRAT_HEADERS).catch(()=>{});
     const id=await gerarProximoID('MATRIZ_TRATAMENTO','TRAT','ID_TRATAMENTO'), agora=new Date().toISOString();
     const obj={ID_TRATAMENTO:id,EMPRESA:b.empresa||b.EMPRESA||'',CATEGORIA:b.categoria||b.CATEGORIA||'',CAUSA_ID:b.causaId||b.CAUSA_ID||'',CAUSA:b.causa||b.CAUSA||'',SUBCAUSA:b.subcausa||b.SUBCAUSA||'',PROBLEMA_TRATADO:b.problemaTratado||b.PROBLEMA_TRATADO||'',SETOR_RESPONSAVEL:b.setorResponsavel||b.SETOR_RESPONSAVEL||'',PROCEDIMENTO:b.procedimento||b.PROCEDIMENTO||'',ACOES:b.acoes||b.ACOES||'',RESPONSAVEL:b.responsavel||b.RESPONSAVEL||'',SETORES_ENVOLVIDOS:b.setoresEnvolvidos||b.SETORES_ENVOLVIDOS||'',ALCADA_APROVACAO:b.alcadaAprovacao||b.ALCADA_APROVACAO||'',SLA_HORAS:b.slaHoras||b.SLA_HORAS||'',EVIDENCIAS_EXIGIDAS:_cCsv(b.evidenciasExigidas||b.EVIDENCIAS_EXIGIDAS),CONDICOES:b.condicoes||b.CONDICOES||'',STATUS:'RASCUNHO',VERSAO:'1',CRIADO_EM:agora,CRIADO_POR:req.user.usuario,ATUALIZADO_EM:agora};
-    await appendObjeto('MATRIZ_TRATAMENTO',obj); await registrarAuditoria(req.user.usuario,'CRIOU_TRATAMENTO_CEREBRO',id,'MATRIZ_TRATAMENTO',null,obj); invalidarCacheAba('MATRIZ_TRATAMENTO'); res.status(201).json({sucesso:true,item:obj});
+    await appendObjeto('MATRIZ_TRATAMENTO',obj); await registrarAuditoria(req.user.usuario,'CRIOU_TRATAMENTO_CEREBRO',id,'MATRIZ_TRATAMENTO',null,obj); invalidarCacheAba('MATRIZ_TRATAMENTO'); matrizTratamentoService.invalidarCacheMatriz(); res.status(201).json({sucesso:true,item:obj});
   } catch(e) { res.status(500).json({sucesso:false,erro:erroSeguro(e)}); }
 });
 
@@ -8867,7 +8867,7 @@ app.patch('/api/cerebro/tratamentos/:id', requerPerfil('MASTER','GESTOR SAC','AN
       if (!validacao.valida) return res.status(422).json({ sucesso:false, codigo:'REGRA_MATRIZ_INCOMPLETA', erro:'A regra não pode ser aprovada sem os campos obrigatórios.', camposAusentes:validacao.motivos });
     }
     await atualizarPorID('MATRIZ_TRATAMENTO',req.params.id,upd,['ID_TRATAMENTO']);
-    invalidarCacheAba('MATRIZ_TRATAMENTO');
+    invalidarCacheAba('MATRIZ_TRATAMENTO'); matrizTratamentoService.invalidarCacheMatriz();
     await registrarAuditoria(req.user.usuario,'ATUALIZOU_TRATAMENTO_CEREBRO',req.params.id,'MATRIZ_TRATAMENTO',item,upd);
     res.json({sucesso:true,item:{...item,...upd}});
   } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
@@ -8880,7 +8880,7 @@ app.delete('/api/cerebro/tratamentos/:id', requerPerfil('MASTER','GESTOR SAC'), 
     if(!item) return res.status(404).json({sucesso:false,erro:'Tratamento não encontrado.'});
     if(!escopoPermite(req,item.EMPRESA)) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado.'});
     await atualizarPorID('MATRIZ_TRATAMENTO',req.params.id,{STATUS:'INATIVO',ATIVO:'NAO',ATUALIZADO_EM:new Date().toISOString()},['ID_TRATAMENTO']);
-    invalidarCacheAba('MATRIZ_TRATAMENTO');
+    invalidarCacheAba('MATRIZ_TRATAMENTO'); matrizTratamentoService.invalidarCacheMatriz();
     await registrarAuditoria(req.user.usuario,'INATIVOU_TRATAMENTO_CEREBRO',req.params.id,'MATRIZ_TRATAMENTO',null,{STATUS:'INATIVO'});
     res.json({sucesso:true});
   } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e)});}
@@ -10700,6 +10700,7 @@ app.post('/api/biblioteca/sincronizar-base', requerPerfil('MASTER','ANALISTA SAC
         matrizCriados++;
       }
     }
+    if (matrizCriados > 0) matrizTratamentoService.invalidarCacheMatriz();
 
     // --- 3. CÉREBRO (MATRIZ_CONHECIMENTO): uma entrada por motivo único relevante ---
     await garantirAbaComCabecalhos('MATRIZ_CONHECIMENTO', ['ID','NOME','DESCRICAO','TIPO','CATEGORIA','CONTEUDO','STATUS','VERSAO','CRIADO_POR','CRIADO_EM','ATUALIZADO_EM']);
@@ -11771,6 +11772,7 @@ app.post('/api/matriz-tratamento', requerPerfil('MASTER','ANALISTA SAC'), async 
     const validacao = _validarAtivacaoMatriz(obj);
     if (!validacao.valida) return res.status(422).json({ sucesso:false, codigo:'REGRA_MATRIZ_INCOMPLETA', erro:'A regra não pode ser ativada sem os campos obrigatórios.', camposAusentes:validacao.motivos });
     await appendObjeto('MATRIZ_TRATAMENTO',obj).catch(e => console.warn('[matriz] Sheets falhou (seguindo p/ PG):', e.message));
+    matrizTratamentoService.invalidarCacheMatriz();
     if (conhecimentoRepo && typeof conhecimentoRepo.upsertMatriz === 'function') await conhecimentoRepo.upsertMatriz({
       empresa: obj.EMPRESA, tipo: obj.TIPO_MANIFESTACAO, categoria: obj.CAUSA, subcategoria: obj.SUBCAUSA, setor: obj.SETOR_RESPONSAVEL,
       dados: {
