@@ -16,25 +16,26 @@
 
 ## CRÍTICAS
 
-### C1 — Matriz de Conhecimento sem Autenticação
+### C1 — Matriz de Conhecimento sem Restrição de Perfil na Leitura
 **ID**: C1  
-**Severidade**: CRÍTICA  
+**Severidade**: ALTA *(reclassificada de CRÍTICA após revisão — ver nota)*  
 **Módulo**: `/api/matriz-conhecimento`  
-**Descrição**: 12 rotas (GET, POST, PUT, DELETE e ações) do módulo de matriz de conhecimento não possuem nenhum middleware de autenticação ou autorização. Qualquer cliente HTTP pode ler e modificar a base de conhecimento sem login.  
-**Impacto**: Exposição de dados internos, possibilidade de corrupção da base de conhecimento, deleção de entradas sem rastro.  
-**Evidência**: Grep confirma ausência de `requerPerfil`/`requerPermissao` nas linhas 10329-10491 de `api/index.js`.  
-**Correção**: Adicionar `requerPerfil('MASTER','ANALISTA SAC','APROVADOR')` (leitura) e `requerPerfil('MASTER','ANALISTA SAC')` (escrita/deleção) nas 12 rotas afetadas.
+**Descrição**: O middleware global `app.use('/api', ...)` exige JWT válido e bloqueia acesso anônimo (retorna 401 sem token ou com token inválido). A falha real era em `podeMC(perfil, 'visualizar')`, que retornava `true` incondicionalmente para **qualquer perfil autenticado**, incluindo SETOR RESPONSÁVEL, VISUALIZADOR, RCA e DIRETOR — perfis sem relação operacional com a base de conhecimento interna.  
+**Nota de reclassificação**: A descrição original afirmava "qualquer cliente HTTP pode ler sem login", o que é incorreto. O acesso anônimo já era bloqueado pelo middleware global. A falha é de autorização por perfil, não de autenticação. Reclassificada de CRÍTICA para ALTA.  
+**Impacto**: Usuários autenticados com perfis operacionais restritos podiam visualizar toda a base de conhecimento, incluindo matrizes de outras empresas (se o escopo não fosse corretamente filtrado) e termos de referência internos.  
+**Evidência (revisada)**: Teste `tests/matriz-conhecimento-auth.js` confirma: sem token → 401; com perfil SETOR RESPONSÁVEL/VISUALIZADOR/RCA/DIRETOR antes da correção → 200 (vazamento); após correção → 403. 46 cenários aprovados.  
+**Correção aplicada** (commit `595d543`): Criada `MC_PERFIS_LEITOR = new Set(['MASTER','ADMINISTRADOR','ANALISTA SAC','GESTOR SAC','APROVADOR','APROVADOR MASTER','ATENDENTE SAC','AUDITOR'])`. `podeMC('visualizar')` agora retorna `MC_PERFIS_LEITOR.has(p)`. Perfis de escrita permanecem em `MC_PERFIS_EDITOR`. `MC_PERFIS_APROVADOR` expandido para incluir `APROVADOR MASTER`.
 
 ---
 
 ### C2 — `erroSeguro()` sem Logging Estruturado
 **ID**: C2  
 **Severidade**: CRÍTICA (operacional)  
-**Módulo**: `api/index.js:1802`  
+**Módulo**: `api/index.js:1805`  
 **Descrição**: Em produção, todos os erros retornam "Erro interno do servidor." sem qualquer referência rastreável. Não há logging estruturado associado que permita correlacionar o erro do usuário com o log do servidor.  
 **Impacto**: Impossibilidade de diagnosticar falhas em produção sem acesso direto aos logs do servidor. Erros críticos de banco, autorização e lógica de negócio são indistinguíveis.  
 **Evidência**: `function erroSeguro(e) { if (NODE_ENV==='production') return 'Erro interno do servidor.'; }`  
-**Correção**: Adicionar logging estruturado com ID de correlação (ex: `console.error('[ERR]', correlationId, e)`) e retornar `{ erro: 'Erro interno', ref: correlationId }` para o cliente.
+**Correção aplicada** (commit `595d543`): `erroSeguro(e, contexto)` agora gera `correlacaoId = crypto.randomBytes(4).toString('hex').toUpperCase()` por chamada. Loga `[contexto][ref:ID] mensagem stack` via `console.error`. Em produção retorna `"Erro interno do servidor. [ref:ID]"` — rastreável nos logs do servidor sem expor detalhes internos ao cliente.
 
 ---
 
@@ -46,7 +47,8 @@
 **Módulo**: Módulo de pesquisas  
 **Descrição**: A variável `PESQUISA_SPREADSHEET_ID` não está definida no ambiente de testes. O sistema usa uma planilha de fallback hardcoded no código. Se isso ocorrer em produção, respostas de pesquisas podem ser gravadas em uma planilha incorreta.  
 **Evidência**: `[AVISO C5] PESQUISA_SPREADSHEET_ID não configurada — módulo de pesquisas usará planilha de fallback hardcoded.`  
-**Correção**: Definir `PESQUISA_SPREADSHEET_ID` como variável obrigatória (exit se ausente em produção), igual a `SPREADSHEET_ID`.
+**Correção aplicada** (commit `595d543`): Adicionada validação em startup (`api/index.js` linha ~371): se `NODE_ENV === 'production'` e `PESQUISA_SPREADSHEET_ID` não configurada, o processo encerra com `process.exit(1)` e mensagem `[FATAL] PESQUISA_SPREADSHEET_ID não configurada`.  
+**Nota de implantação**: Esta correção exige que `PESQUISA_SPREADSHEET_ID` esteja definida nas variáveis de ambiente do Vercel antes do deploy. Verificar a configuração no painel antes de aplicar.
 
 ---
 
@@ -66,7 +68,7 @@
 **Módulo**: Busca de similares, base de conhecimento  
 **Descrição**: Quando PG está offline, `buscarParaSimilaridade` lança erro `Cannot read properties of null (reading 'manifestacao')` — o erro é logado mas a operação falha silenciosamente com fallback para Sheets ou retorno vazio. O usuário não sabe que a funcionalidade está degradada.  
 **Evidência**: `[PG] buscarParaSimilaridade falhou (PG offline?): Cannot read properties of null (reading 'manifestacao')`  
-**Correção**: Validar `conhecimentoRepo !== null` antes de acesso a propriedades; retornar estado de degradação na resposta (`{ fonte: 'degradado', motivo: '...' }`).
+**Correção aplicada** (commit `595d543`): Adicionada guarda explícita no início de `buscarParaSimilaridade` em `database/repositories/manifestacaoRepository.js`: `if (!prisma) throw new Error('PG offline: DATABASE_URL não configurada')`. O erro é propagado de forma legível em vez de null-pointer opaco, permitindo que o handler da rota retorne estado de degradação adequado.
 
 ---
 
@@ -176,7 +178,7 @@
 **Módulo**: Autenticação  
 **Descrição**: Se `DEMO_LOGIN_ENABLED=true` em produção, sistema avisa mas não bloqueia completamente. Risco de logins de demonstração em ambiente real.  
 **Evidência**: `if (DEMO_LOGIN_ENABLED && NODE_ENV==='production') console.warn(...)` — sem exit().  
-**Correção**: `process.exit(1)` se `DEMO_LOGIN_ENABLED=true` em produção.
+**Correção aplicada** (commit `595d543`): Substituído `console.warn` por `process.exit(1)` quando `DEMO_LOGIN_ENABLED=true` em `NODE_ENV=production`. O padrão é `DEMO_LOGIN_ENABLED=false` (ou variável ausente), portanto esta mudança não afeta deploys que não definem a variável.
 
 ---
 
@@ -184,21 +186,22 @@
 
 | ID | Severidade | Status | Módulo |
 |---|---|---|---|
-| C1 | CRÍTICA | Aberto | Matriz conhecimento |
-| C2 | CRÍTICA | Aberto | erroSeguro/logging |
-| A1 | ALTA | Aberto | Pesquisas |
+| C1 | ALTA *(reclassificada)* | ✅ CORRIGIDO (commit 595d543) | Matriz conhecimento |
+| C2 | CRÍTICA | ✅ CORRIGIDO (commit 595d543) | erroSeguro/logging |
+| A1 | ALTA | ✅ CORRIGIDO (commit 595d543) | Pesquisas |
 | A2 | ALTA | Aberto | AI_PROVIDER |
-| A3 | ALTA | Aberto | PG/Similares |
+| A3 | ALTA | ✅ CORRIGIDO (commit 595d543) | PG/Similares |
 | A4 | ALTA | Aberto | Dual-write |
 | M1 | MÉDIA | Aberto | Cache |
 | M2 | MÉDIA | Aberto | Monolito |
 | M3 | MÉDIA | Aberto | USUARIOS_JSON |
 | M4 | MÉDIA | Aberto | SLA |
-| M5 | MÉDIA | Aberto | Anexos |
+| M5 | MÉDIA | ✅ CORRIGIDO (implementado anteriormente) | Anexos |
 | M6 | MÉDIA | Aberto | WhatsApp |
 | B1 | BAIXA | Aberto | Sessão dev |
-| B2 | BAIXA | Aberto | Bootstrap |
-| B3 | BAIXA | Aberto | Teste timeout |
-| B4 | BAIXA | Aberto | Demo login |
+| B2 | BAIXA | ✅ CORRIGIDO (implementado anteriormente) | Bootstrap |
+| B3 | BAIXA | Aberto (pre-existente) | Teste timeout |
+| B4 | BAIXA | ✅ CORRIGIDO (commit 595d543) | Demo login |
 
-**2 Críticas · 4 Altas · 5 Médias · 4 Baixas = 15 falhas total**
+**1 Crítica · 4 Altas · 5 Médias · 4 Baixas = 14 falhas abertas (6 corrigidas)**  
+*C1 reclassificada de CRÍTICA para ALTA após revisão — ver nota na seção C1.*

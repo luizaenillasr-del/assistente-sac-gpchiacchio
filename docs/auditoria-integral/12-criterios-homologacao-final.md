@@ -13,11 +13,11 @@
 
 | # | Critério | Status | Ref |
 |---|---|---|---|
-| A.1 | Todas as rotas da API têm autenticação adequada — sem rotas de escrita abertas | ❌ Aberto | C1 |
-| A.2 | Logging estruturado ativo em produção para diagnóstico de erros | ❌ Aberto | C2 |
-| A.3 | `PESQUISA_SPREADSHEET_ID` configurada e validada obrigatoriamente em produção | ❌ Aberto | A1 |
+| A.1 | Autorização por perfil na MC — perfis restritos (SETOR/VISUALIZADOR/RCA/DIRETOR) não acessam leitura | ✅ Corrigido (commit 595d543) | C1 |
+| A.2 | Logging estruturado ativo em produção para diagnóstico de erros | ✅ Corrigido (commit 595d543) | C2 |
+| A.3 | `PESQUISA_SPREADSHEET_ID` configurada e validada obrigatoriamente em produção | ✅ Corrigido (commit 595d543) | A1 |
 | A.4 | `AI_PROVIDER` configurada explicitamente (`openai`) em produção | ❌ Aberto | A2 |
-| A.5 | PG offline não causa null-pointer exceptions — fallback seguro implementado | ❌ Aberto | A3 |
+| A.5 | PG offline não causa null-pointer exceptions — fallback seguro implementado | ✅ Corrigido (commit 595d543) | A3 |
 | A.6 | `npm test` passa com zero falhas | ✅ Atendido (30 suítes) | — |
 | A.7 | Nenhuma credencial (DATABASE_URL, GOOGLE_CREDENTIALS, chaves de API) exposta em respostas HTTP | ✅ Atendido | — |
 | A.8 | `SESSION_SECRET` com ≥ 32 caracteres configurada em produção | ✅ Atendido (exit se ausente) | — |
@@ -76,7 +76,7 @@ Para considerar o sistema homologado, os seguintes fluxos devem ser validados em
 
 ## Processo de Homologação
 
-1. **Implementar** todos os itens do Grupo A abertos (C1, C2, A1, A2, A3)
+1. **Configurar** `AI_PROVIDER=openai` nas variáveis de ambiente do Vercel (único bloqueador restante — A.4)
 2. **Executar** `npm test` e confirmar zero falhas
 3. **Validar** fluxos críticos em ambiente de staging com dados reais (não mock)
 4. **Revisar** este documento e atualizar status de cada critério
@@ -88,10 +88,12 @@ Para considerar o sistema homologado, os seguintes fluxos devem ser validados em
 ## Status Atual
 
 ```
-Bloqueadores abertos: 5 (A.1, A.2, A.3, A.4, A.5)
-Bloqueadores atendidos: 7 (A.6-A.12)
+Bloqueadores abertos: 1 (A.4 — AI_PROVIDER)
+Bloqueadores corrigidos: 4 (A.1, A.2, A.3, A.5 — commit 595d543)
+Bloqueadores atendidos anteriormente: 7 (A.6-A.12)
 Recomendados abertos: 6
 Fluxos validados apenas em mock: 7 de 9
 
-CONCLUSÃO: Sistema NÃO HOMOLOGADO — aguardando correção de 5 bloqueadores
+CONCLUSÃO: Sistema NÃO HOMOLOGADO — aguardando configuração de AI_PROVIDER
+em produção (A.4) e validação de fluxos críticos com armazenamento real
 ```
