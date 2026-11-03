@@ -3004,7 +3004,14 @@ app.patch('/api/manifestacoes/:id/ficha', requerPermissao('manifestacoes.editar'
       if (!alvo) return res.status(422).json({ sucesso:false, codigo:'RESPONSAVEL_NAO_ELEGIVEL', erro:'O responsável precisa estar ativo e autorizado para a empresa e setor selecionados.' });
       const prazoSolicitado = Number(req.body.prazoSlaHoras || req.body.SLA_HORAS);
       const slaHoras = Number.isFinite(prazoSolicitado) && prazoSolicitado > 0 && prazoSolicitado <= 720 ? prazoSolicitado : 72;
-      const dataLimiteSetor = new Date(Date.parse(agora) + slaHoras * 3600000).toISOString();
+      const dataLimiteInformada = req.body.dataLimite || req.body.DATA_LIMITE || '';
+      const dataLimiteInformadaMs = dataLimiteInformada ? Date.parse(dataLimiteInformada) : NaN;
+      if (dataLimiteInformada && (!Number.isFinite(dataLimiteInformadaMs) || dataLimiteInformadaMs <= Date.parse(agora))) {
+        return res.status(400).json({ sucesso:false, codigo:'PRAZO_INVALIDO', erro:'A data limite do setor deve ser válida e futura.' });
+      }
+      const dataLimiteSetor = dataLimiteInformada
+        ? new Date(dataLimiteInformadaMs).toISOString()
+        : new Date(Date.parse(agora) + slaHoras * 3600000).toISOString();
       dados = {
         STATUS: 'AGUARDANDO_RESPOSTA_SETOR',
         STATUS_FICHA: 'AGUARDANDO_SETOR',
