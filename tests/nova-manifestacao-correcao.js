@@ -25,6 +25,9 @@ assert.match(html, /nmSincronizarVersaoPersistida/, 'gravações CIRCA devem sin
 assert.match(html, /ultimaEdicaoConhecida:_nmRascunhoUltimaEdicao,analisePatch:\{status:'ORIENTACAO_ACEITA'/, 'utilizar orientação deve preservar o controle de concorrência');
 assert.match(html, /Conflito de edição: outra sessão alterou esta ficha/, 'conflito real deve preservar os campos e informar recuperação');
 assert.match(html, /const efetiva=ativa\?\.id\?\.slice\(5\)/, 'a URL deve refletir a página efetivamente renderizada');
+assert.match(html, /Continuar preenchimento da ficha/, 'rascunhos devem oferecer retomada explícita');
+assert.match(html, /S\.path='';S\.setorSelecionado='';S\.responsaveis=\[\]/, 'novo encaminhamento deve limpar somente o formulário após persistir a frente');
+assert.match(html, /RESPONSAVEL_NOME.*RESPONSAVEL_NOME_COMPLETO/, 'ficha deve exibir nome do responsável quando o cadastro estiver disponível');
 assert.match(html, /idempotencyKey:nmGarantirIdempotencyKey\(\)/, 'rascunhos devem reutilizar a chave de idempotência');
 assert.match(html, /O rascunho foi aceito, mas ainda não foi confirmado/, 'o ID só deve ser usado após confirmação de leitura');
 assert.match(fs.readFileSync(path.resolve(__dirname, '../api/index.js'), 'utf8'), /if\(protocoloKeyInput\)/, 'o POST deve deduplicar também rascunhos');
