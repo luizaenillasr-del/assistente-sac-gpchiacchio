@@ -3073,10 +3073,25 @@
 
       <!-- ETAPA 4: INVESTIGAÇÃO E RESOLUÇÃO -->
       <div class="nm-step-panel" data-nm-step="4"><div class="nm-section-hdr"><h2>Investigação e Resolução</h2><p>Registre evidências, causa, ações executadas e resposta do setor.</p></div><div class="circa-investigation-card"><div class="circa-card-head"><div><div class="section-label">Tratamento em andamento</div><h3 id="nm-investigacao-titulo">Aguardando definição de setor</h3></div><span class="badge badge-warning">EM INVESTIGAÇÃO</span></div><div class="nm-grid-2"><label class="nm-label"><span>O que foi verificado?</span><textarea class="nm-textarea" rows="4" id="nm-investigacao-verificada"></textarea></label><label class="nm-label"><span>Evidências e resultado</span><textarea class="nm-textarea" rows="4" id="nm-investigacao-resultado"></textarea></label></div><div class="nm-grid-3"><label class="nm-label"><span>Causa-raiz</span><input class="nm-input" id="nm-causa-raiz"></label><label class="nm-label"><span>Subcausa</span><input class="nm-input" id="nm-subcausa"></label><label class="nm-label"><span>Ação executada</span><input class="nm-input" id="nm-acao-executada"></label></div><div class="circa-action-row"><button class="btn btn-secondary" onclick="nmSolicitarComplementacao()">Solicitar complementação</button><button class="btn btn-ghost" onclick="nmRegistrarLembrete()">Registrar lembrete</button></div></div><div class="nm-card"><div class="section-label">Tratativa registrada pelo SAC</div><textarea id="nm-investigacao-notas" class="nm-textarea" rows="4" placeholder="Registre as ações realizadas e o resultado obtido..."></textarea><input id="nm-qtd-total" class="nm-visually-hidden"><input id="nm-qtd" class="nm-visually-hidden"><input id="nm-qtd-devolvida" class="nm-visually-hidden"><input id="nm-valor" class="nm-visually-hidden"><input id="nm-vlr-pedido" class="nm-visually-hidden"><input id="nm-vlr-estimado" class="nm-visually-hidden"><input type="checkbox" id="nm-houve-devolucao" class="nm-visually-hidden"></div>
+      <!-- CIRCA — Recomendações de investigação (etapa 4) -->
+      <div id="nm-circa-investigacao-panel" class="nm-card" style="display:none">
+        <div class="circa-card-head"><div><div class="section-label">Recomendações CIRCA — Investigação</div><p style="font-size:12px;color:#555">Baseado na triagem e no histórico de casos similares.</p></div><span class="badge badge-info" style="font-size:11px">IA</span></div>
+        <div id="nm-circa-inv-perguntas" style="margin-bottom:10px"></div>
+        <div id="nm-circa-inv-similares" style="margin-bottom:10px"></div>
+        <div id="nm-circa-inv-tratativa" style="margin-bottom:4px"></div>
+      </div>
+      <!-- Botão para enviar para validação SAC após registrar investigação -->
+      <div class="circa-action-row" style="justify-content:flex-end;margin-top:8px">
+        <button class="btn btn-primary" id="nm-btn-enviar-validacao" onclick="nmEnviarParaValidacaoSAC()" style="display:none">Enviar para validação SAC</button>
+      </div>
       </div>
 
       <!-- ETAPA 5: VALIDAÇÃO SAC -->
       <div class="nm-step-panel" data-nm-step="5"><div class="nm-section-hdr"><h2>Validação SAC</h2><p>Confirme a procedência, a causa e a efetividade da resolução.</p></div><div class="nm-card"><div class="section-label">Resultado da investigação</div><textarea class="nm-textarea" id="nm-validacao-resultado" rows="4" placeholder="Resumo da evidência e resultado..." ></textarea></div><div class="nm-card"><div class="section-label">Procedência da manifestação</div><div class="circa-option-grid"><button onclick="nmSetProcedente('SIM',this)" class="nm-proc-btn">Procedente</button><button onclick="nmSetProcedente('NAO',this)" class="nm-proc-btn">Improcedente</button><button onclick="nmSetProcedente('PARCIALMENTE',this)" class="nm-proc-btn">Parcial</button><button onclick="nmSetProcedente('',this)" class="nm-proc-btn">Inconclusiva</button></div><input type="hidden" id="nm-procedente"><textarea id="nm-procedente-justif" class="nm-textarea" rows="3" style="display:none" placeholder="Justificativa da decisão..."></textarea></div><div class="nm-card"><div class="section-label">Verificação da resolução</div><label class="checklist-item"><input type="checkbox" id="nm-check-causa"> Causa registrada com evidência suficiente</label><label class="checklist-item"><input type="checkbox" id="nm-check-acao"> Ação executada e resultado documentado</label><label class="checklist-item"><input type="checkbox" id="nm-check-cliente"> Solução adequada para comunicação ao cliente</label><label class="checklist-item"><input type="checkbox" id="nm-check-sla"> Prazo de resposta atendido (SLA cumprido)</label><label class="checklist-item"><input type="checkbox" id="nm-check-encerramento"> Manifestação apta para encerramento</label></div>
+      <!-- Botão de envio para validação SAC na etapa 5 -->
+      <div class="circa-action-row" style="justify-content:flex-end;margin-top:12px">
+        <button class="btn btn-primary" onclick="nmEnviarParaValidacaoSAC()">Registrar validação SAC</button>
+      </div>
       </div>
 
       <!-- ETAPA 6: DEVOLUTIVA CONCLUSIVA -->
@@ -12188,6 +12203,75 @@ async function nmCarregarAnalisePersistida() {
   } catch (e) { console.warn('Análise persistida indisponível:', e.message); }
   return _nmAnaliseAtual;
 }
+
+// Renderiza painel de recomendações CIRCA na etapa 4 (investigação)
+function nmRenderizarCircaInvestigacao() {
+  var panel = document.getElementById('nm-circa-investigacao-panel');
+  var btnVal = document.getElementById('nm-btn-enviar-validacao');
+  var analise = window._nmAnaliseAtual || window._nmDeterministicoAtual;
+  if (!panel) return;
+  if (!analise) { panel.style.display = 'none'; return; }
+  panel.style.display = 'block';
+
+  // Perguntas de investigação
+  var pDiv = document.getElementById('nm-circa-inv-perguntas');
+  var pergs = (analise.perguntasNecessarias || analise.perguntasInvestigacao || []).slice(0, 5);
+  if (pDiv) pDiv.innerHTML = pergs.length
+    ? '<div style="font-size:11.5px;font-weight:700;color:#374151;margin-bottom:6px">Perguntas recomendadas para a investigação</div>' +
+      pergs.map(function(p){ return '<div style="font-size:12.5px;padding:5px 0;border-bottom:1px solid #F3F4F6;color:#111">• ' + nmTextoEstruturado(p.texto||p) + '</div>'; }).join('')
+    : '';
+
+  // Casos similares
+  var sDiv = document.getElementById('nm-circa-inv-similares');
+  var sims = (analise.casosSimilares || analise.similares || []).slice(0, 3);
+  if (sDiv) sDiv.innerHTML = sims.length
+    ? '<div style="font-size:11.5px;font-weight:700;color:#374151;margin:10px 0 6px">Casos similares</div>' +
+      sims.map(function(c){ return '<div style="font-size:12px;background:#F9FAFB;border-radius:6px;padding:6px 10px;margin-bottom:4px;color:#374151">' + nmTextoEstruturado(c.descricao||c.titulo||c) + '</div>'; }).join('')
+    : '';
+
+  // Tratativa recomendada
+  var tDiv = document.getElementById('nm-circa-inv-tratativa');
+  var diag = analise.tratativaEstruturada?.diagnostico || analise.tratativaEstruturada || {};
+  var trat = diag.causa || diag.recomendacao || analise.recomendacaoTratamento || '';
+  if (tDiv) tDiv.innerHTML = trat
+    ? '<div style="font-size:11.5px;font-weight:700;color:#374151;margin:10px 0 4px">Tratativa recomendada</div>' +
+      '<div style="font-size:12.5px;background:#EFF6FF;border-radius:6px;padding:8px 12px;color:#1E40AF">' + nmTextoEstruturado(trat) + '</div>'
+    : '';
+
+  // Exibir botão de validação quando investigação preenchida
+  if (btnVal) {
+    var verificada = document.getElementById('nm-investigacao-verificada');
+    var resultado = document.getElementById('nm-investigacao-resultado');
+    var mostrar = !!(verificada && verificada.value.trim()) || !!(resultado && resultado.value.trim());
+    btnVal.style.display = mostrar ? 'inline-flex' : 'none';
+  }
+}
+
+// Envia manifestação para validação SAC após a etapa de investigação
+window.nmEnviarParaValidacaoSAC = async function nmEnviarParaValidacaoSAC() {
+  if (!_nmCardId) { alert('Salve a manifestação antes de enviar para validação.'); return; }
+  var verificada = document.getElementById('nm-investigacao-verificada');
+  var resultado = document.getElementById('nm-investigacao-resultado');
+  if (!verificada?.value.trim() && !resultado?.value.trim()) {
+    alert('Registre o resultado da investigação antes de enviar para validação SAC.'); return;
+  }
+  try {
+    var r = await _apiFetch('/api/manifestacoes/' + encodeURIComponent(_nmCardId), 15000, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        STATUS: 'AGUARDANDO_VALIDACAO_SAC',
+        STATUS_FICHA: 'AGUARDANDO_VALIDACAO_SAC',
+        ultimaEdicaoConhecida: _nmRascunhoUltimaEdicao,
+      }),
+    });
+    if (!r?.sucesso) throw new Error(r?.erro || 'Falha ao atualizar status.');
+    nmSincronizarVersaoPersistida && nmSincronizarVersaoPersistida(r);
+    alert('Manifestação enviada para validação SAC.');
+    var btnVal = document.getElementById('nm-btn-enviar-validacao');
+    if (btnVal) btnVal.disabled = true;
+  } catch (e) { alert('Não foi possível enviar para validação SAC: ' + e.message); }
+};
 
 function nmAplicarSugestoes(analise) {
   const causa = nmTextoEstruturado(analise?.causaProvavel || analise?.problemaIdentificado || analise?.tratativaEstruturada?.diagnostico?.causa);
@@ -32171,6 +32255,7 @@ if (typeof pageLoaders !== 'undefined') {
     if (body) body.scrollTop = 0;
     if (n === 2 && typeof window.nmCarregarAnaliseDeterministica === 'function') window.nmCarregarAnaliseDeterministica();
     if (n === 3 && typeof window.nmCarregarPlanoPersistido === 'function') window.nmCarregarPlanoPersistido();
+    if (n === 4) { if (typeof nmCarregarAnalisePersistida === 'function') nmCarregarAnalisePersistida(); nmRenderizarCircaInvestigacao(); }
     if (n === TOTAL && typeof nmMontarResumo === 'function') nmMontarResumo();
     if (n === 6 && typeof nmMontarDevolutiva === 'function') { nmMontarDevolutiva(); nmCarregarAnalisePersistida(); }
     if (n === 5 && typeof nmPreencherValidacao === 'function') nmPreencherValidacao();

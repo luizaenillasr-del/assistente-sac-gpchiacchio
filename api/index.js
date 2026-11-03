@@ -22,6 +22,7 @@ const circaEngine = require('../server-services/circaEngine');
 const circaWorkflow = require('../server-services/circaWorkflow');
 const matrizTratamentoService = require('../server-services/matrizTratamentoService');
 const modeloAutorizacao = require('../server-services/modeloAutorizacao');
+const setorResponsavelService = require('../server-services/setorResponsavelService');
 
 // Injeção de mock Sheets para testes — nunca ativo em produção (env var não existe em prod)
 const _sheetsMock = process.env.SHEETS_MOCK_PATH ? (() => { try { return require(process.env.SHEETS_MOCK_PATH); } catch(e) { console.warn('[MOCK] falhou ao carregar:', e.message); return null; } })() : null;
@@ -3124,6 +3125,15 @@ app.patch('/api/manifestacoes/:id/ficha', requerPermissao('manifestacoes.editar'
         await registrarAuditoria(req.user?.usuario || 'sistema', 'CRIOU_ACIONAMENTO_FICHA', item.ID_MANIFESTACAO || id, 'ACIONAMENTOS_INTERNOS', null, { setor:dados.SETOR_DESTINADO, responsavelId:dados.RESPONSAVEL_SETOR_ID, idempotencyKey:chave });
       }
       await registrarNotificacaoInterna({ manifestacaoId:id, acionamentoId:acionamento.ID_ACIONAMENTO, destinatario:dados.RESPONSAVEL_SETOR, tipo:'ENCAMINHAMENTO_TRATATIVA', titulo:`Tratativa atribuída — ${item.PROTOCOLO || id}`, mensagem:dados.OBS_ENCAMINHAMENTO || `Nova tratativa atribuída ao setor ${dados.SETOR_CONFIRMADO}.`, usuario:req.user?.usuario || 'sistema' }).catch(e => console.warn('[NOTIFICACAO] encaminhamento:', e.message));
+      // Notificar liderança quando criticidade exige (ALTA/CRITICA ou SLA < 24h) — não bloqueia a tratativa
+      setorResponsavelService.notificarLiderancaSetor({
+        manifestacaoId: item.ID_MANIFESTACAO || id,
+        protocolo: item.PROTOCOLO || id,
+        setor: dados.SETOR_DESTINADO,
+        empresa: item.EMPRESA_RECLAMADA || item.EMPRESA_NORMALIZADA || item.EMPRESA || '',
+        criticidade: { prioridade: acionamento.PRIORIDADE || item.PRIORIDADE || '', slaHoras: Number(dados.SLA_HORAS) },
+        lerAba, appendObjeto,
+      }).catch(e => console.warn('[NOTIFICACAO_LIDERANCA]', e.message));
     }
     invalidarCacheAba('MANIFESTACOES');
     registrarAuditoria(req.user?.usuario||'sistema', `FICHA_${String(acao).toUpperCase()}`, id, 'MANIFESTACOES', null, dados).catch(()=>{});
@@ -3880,6 +3890,68 @@ app.post('/api/manifestacoes/:id/validacao-sac', requerPermissao('aprovacoes.apr
     await registrarAuditoria(req.user?.usuario||'sistema','VALIDACAO_SAC',id,'MANIFESTACOES',m.STATUS,novoStatus);
     res.json({ sucesso:true, id, decisao, novoStatus });
   } catch(e){ res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
+});
+
+// ============================================================
+// COMENTÁRIOS DE LIDERANÇA
+// GET  /api/manifestacoes/:id/lideranca/comentarios
+// POST /api/manifestacoes/:id/lideranca/comentarios
+// A liderança pode acompanhar, comentar, sugerir e intervir
+// conforme sua alçada sem interromper a tratativa.
+// ============================================================
+const COMENTARIOS_LIDERANCA_HEADERS = [
+  'ID_COMENTARIO','ID_MANIFESTACAO','USUARIO','NOME','PERFIL',
+  'TIPO','TEXTO','CRIADO_EM','STATUS','EMPRESA',
+];
+
+app.get('/api/manifestacoes/:id/lideranca/comentarios', requerPermissao('manifestacoes.visualizar'), middlewareEscopoEmpresa(), async (req,res) => {
+  try {
+    const { id } = req.params;
+    const rows = await lerAba('COMENTARIOS_LIDERANCA', 1000).catch(() => []);
+    const comentarios = rows
+      .filter(r => r.ID_MANIFESTACAO === id)
+      .map(r => ({
+        id: r.ID_COMENTARIO,
+        usuario: r.USUARIO,
+        nome: r.NOME,
+        perfil: r.PERFIL,
+        tipo: r.TIPO,
+        texto: r.TEXTO,
+        criadoEm: r.CRIADO_EM,
+        status: r.STATUS,
+      }));
+    res.json({ sucesso: true, comentarios });
+  } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
+});
+
+app.post('/api/manifestacoes/:id/lideranca/comentarios', requerPermissao('manifestacoes.editar'), middlewareEscopoEmpresa(), async (req,res) => {
+  try {
+    const { id } = req.params;
+    const data = await lerAba('MANIFESTACOES', 5000);
+    const m = data.find(r => r.ID_MANIFESTACAO === id);
+    if (!m) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
+    if (!escopoPermite(req, m.EMPRESA_RECLAMADA)) return res.status(403).json({ sucesso:false, erro:'Acesso não autorizado.' });
+    const { tipo, texto } = req.body || {};
+    const TIPOS_VALIDOS = ['OBSERVACAO','SUGESTAO','INTERVENCAO'];
+    if (!TIPOS_VALIDOS.includes(tipo)) return res.status(400).json({ sucesso:false, erro:`Tipo inválido. Use: ${TIPOS_VALIDOS.join(', ')}` });
+    if (!texto || !String(texto).trim()) return res.status(400).json({ sucesso:false, erro:'Texto é obrigatório.' });
+    await garantirAbaComCabecalhos('COMENTARIOS_LIDERANCA', COMENTARIOS_LIDERANCA_HEADERS);
+    const comentario = {
+      ID_COMENTARIO: `COM-LID-${id}-${Date.now()}`,
+      ID_MANIFESTACAO: id,
+      USUARIO: req.user?.usuario || '',
+      NOME: req.user?.nome || req.user?.usuario || '',
+      PERFIL: req.user?.perfil || '',
+      TIPO: tipo,
+      TEXTO: String(texto).trim(),
+      CRIADO_EM: new Date().toISOString(),
+      STATUS: 'PENDENTE',
+      EMPRESA: m.EMPRESA_RECLAMADA || '',
+    };
+    await appendObjeto('COMENTARIOS_LIDERANCA', comentario);
+    await registrarAuditoria(req.user?.usuario||'sistema','COMENTARIO_LIDERANCA',id,'COMENTARIOS_LIDERANCA',null,{ tipo });
+    res.json({ sucesso:true, id: comentario.ID_COMENTARIO });
+  } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
 
 // POST aprovar devolutiva e marcar para envio
