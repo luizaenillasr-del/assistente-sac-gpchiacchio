@@ -1382,6 +1382,9 @@
             <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">Perfil principal <span style="color:#C70602">*</span></label>
             <select id="usu-perfil" class="form-input" onchange="usuPerfilChanged()">
               <option value="">Selecione...</option>
+              <optgroup label="── Modelo funcional ──">
+                <option>SAC</option><option>APROVADOR_SETORIAL</option><option>DIRETORIA_GESTOR</option>
+              </optgroup>
               <optgroup label="── Administração ──">
                 <option>MASTER</option><option>APROVADOR MASTER</option>
               </optgroup>
@@ -1411,6 +1414,12 @@
           <div class="form-group">
             <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">Cargo oficial</label>
             <input id="usu-cargo" class="form-input" placeholder="Cargo ou função">
+          </div>
+          <div class="form-group">
+            <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">Nível hierárquico</label>
+            <select id="usu-nivel-hierarquico" class="form-input">
+              <option value="">Não informado</option><option value="COLABORADOR">Colaborador / Vendedor</option><option value="SUPERVISOR">Supervisor</option><option value="GERENTE">Gerente</option><option value="DIRETOR">Diretor</option>
+            </select>
           </div>
           <div class="form-group">
             <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">Status</label>
@@ -29056,6 +29065,8 @@ function updateTopbarUser(user) {
     'ATENDENTE SAC': ['manifestacoes.visualizar','manifestacoes.criar','manifestacoes.editar','manifestacoes.historico','manifestacoes.anexar','ia.acessar','ia.similares','ia.recomendacoes','fichas.acessar','fichas.ativas','fichas.pesquisar','cerebro.consultar','indicadores.visualizar'],
     'APROVADOR': ['aprovacoes.visualizar','aprovacoes.aprovar','aprovacoes.reprovar','aprovacoes.devolver','aprovacoes.parecer','aprovacoes.pendentes','aprovacoes.historico','rnc.visualizar','rnc.aprovar','indicadores.visualizar'],
     'SAC': ['manifestacoes.visualizar','manifestacoes.criar','manifestacoes.editar','manifestacoes.encaminhar','manifestacoes.historico','manifestacoes.anexar','ia.acessar','ia.similares','fichas.acessar','fichas.ativas','cerebro.consultar','indicadores.visualizar'],
+    'APROVADOR_SETORIAL': ['manifestacoes.visualizar','manifestacoes.editar','manifestacoes.historico','manifestacoes.anexar','manifestacoes.evidencias','fichas.acessar','fichas.ativas','cerebro.consultar','aprovacoes.visualizar'],
+    'DIRETORIA_GESTOR': ['manifestacoes.visualizar','manifestacoes.editar','manifestacoes.encaminhar','manifestacoes.historico','fichas.acessar','fichas.ativas','aprovacoes.visualizar','aprovacoes.aprovar','aprovacoes.reprovar','indicadores.visualizar','indicadores.empresa','indicadores.setor'],
     // Perfis que antes não tinham defaults no frontend:
     'SETOR RESPONSÁVEL': ['manifestacoes.visualizar','manifestacoes.editar','manifestacoes.historico','manifestacoes.anexar','fichas.acessar','fichas.ativas','cerebro.consultar'],
     'ESPECIALISTA': ['cerebro.consultar','cerebro.criar','cerebro.editar','cerebro.faqs','indicadores.visualizar'],
@@ -29276,8 +29287,10 @@ function updateTopbarUser(user) {
     document.getElementById('usu-nome').value = u&&(u.NOME||u.nome)||'';
     document.getElementById('usu-email').value = u&&(u.EMAIL||u.email)||'';
     document.getElementById('usu-usuario').value = u&&(u.USUARIO||u.usuario)||'';
-    document.getElementById('usu-perfil').value = u&&(u.PERFIL||u.perfil)||'';
+    document.getElementById('usu-perfil').value = u&&(u.PERFIL_FUNCIONAL||u.perfilFuncional||u.PERFIL||u.perfil)||'';
     document.getElementById('usu-cargo').value = u&&(u.CARGO||u.cargo)||'';
+    document.getElementById('usu-nivel-hierarquico').value = u&&(u.NIVEL_HIERARQUICO||u.nivelHierarquico||u.NIVEL||u.nivel)||'';
+    document.getElementById('usu-competencias').value = u&&((u.COMPETENCIAS_ALCADAS||u.competenciasAlcadas||u.ALCADAS_APROVACAO||u.COMPETENCIAS)||'').toString().replace(/[,;|]+/g, ', ');
     document.getElementById('usu-status').value = u ? (u.STATUS||u.status||'ATIVO') : 'PRIMEIRO_ACESSO';
     document.getElementById('usu-obs').value = u&&(u.OBSERVACOES||u.observacoes)||'';
     document.getElementById('usu-senha').value = '';
@@ -29485,6 +29498,7 @@ function updateTopbarUser(user) {
     const usuario = document.getElementById('usu-usuario').value.trim();
     const perfil = document.getElementById('usu-perfil').value;
     const cargo = document.getElementById('usu-cargo').value.trim();
+    const nivelHierarquico = document.getElementById('usu-nivel-hierarquico').value;
     const status = document.getElementById('usu-status').value;
     const senha = document.getElementById('usu-senha').value.trim();
     const obs = document.getElementById('usu-obs').value.trim();
@@ -29524,7 +29538,7 @@ function updateTopbarUser(user) {
       let data;
       const editId = _usuEditando && (_usuEditando.ID_USUARIO||_usuEditando.id||_usuEditando.USUARIO||_usuEditando.usuario);
       if(_usuEditando) {
-        const body = { nome, email, perfil, cargo, status: statusEfetivo, empresa: empresas, setor: setores, escopoConfirmado: true, observacoes: obs };
+        const body = { nome, email, perfil, cargo, status: statusEfetivo, nivelHierarquico, competenciasAlcadas: comp, empresa: empresas, setor: setores, escopoConfirmado: true, observacoes: obs };
         if(senha) body.senha = senha;
         data = await _apiFetch('/api/usuarios/' + encodeURIComponent(editId), 0, {
           method:'PATCH',
@@ -29563,7 +29577,7 @@ function updateTopbarUser(user) {
         data = await _apiFetch('/api/usuarios', 0, {
           method:'POST',
           headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ nome, email, usuario, perfil, cargo, status: statusEfetivo, empresa: empresas, setor: setores, escopoConfirmado: true, senha, codigoRCA: comp,
+          body: JSON.stringify({ nome, email, usuario, perfil, nivelHierarquico, competenciasAlcadas: comp, cargo, status: statusEfetivo, empresa: empresas, setor: setores, escopoConfirmado: true, senha, codigoRCA: comp,
             permissoes_granted: Array.from(_usuGranted), permissoes_blocked: Array.from(_usuBlocked), observacoes: obs }),
         });
       }
