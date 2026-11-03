@@ -275,6 +275,7 @@ async function gerarTratativaEstruturada(params) {
     confianca: (regras.idTratamento || regras.idRegra) ? 80 : 45,
     tempoMs: Date.now() - inicio,
     geradaEm: new Date().toISOString(),
+    versaoCerebro,
   };
 
   return tratativa;
@@ -314,7 +315,7 @@ async function salvarTratativa(idManifestacao, tratativa, usuario) {
     DATA_APROVACAO: '',
     CRIADO_POR: usuario,
     ID_TRATAMENTO_MATRIZ: tratativa.regras.idTratamento || '',
-    VERSAO_CEREBRO: '2.0.0',
+    VERSAO_CEREBRO: tratativa.versaoCerebro || '4.0.0',
     ORIGEM_REGRA: tratativa.regras.origem || 'PADRAO',
     CAUSA_STATUS: tratativa.diagnostico.causa?.status || 'NAO_IDENTIFICADA',
     CONFIANCA: tratativa.confianca,
