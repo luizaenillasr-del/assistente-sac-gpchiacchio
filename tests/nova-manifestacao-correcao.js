@@ -21,6 +21,10 @@ assert.ok(html.includes('/api/manifestacoes/${encodeURIComponent(technicalId)}/e
 assert.match(html, /_nmRascunhoUltimaEdicao/, 'o rascunho deve controlar a versão retornada pelo armazenamento');
 assert.match(html, /_nmEvidenciasPersistidas/, 'anexos persistidos devem continuar visíveis após reabrir a ficha');
 assert.match(html, /ultimaEdicaoConhecida/, 'salvamentos concorrentes devem enviar a versão conhecida');
+assert.match(html, /nmSincronizarVersaoPersistida/, 'gravações CIRCA devem sincronizar a versão retornada pelo servidor');
+assert.match(html, /ultimaEdicaoConhecida:_nmRascunhoUltimaEdicao,analisePatch:\{status:'ORIENTACAO_ACEITA'/, 'utilizar orientação deve preservar o controle de concorrência');
+assert.match(html, /Conflito de edição: outra sessão alterou esta ficha/, 'conflito real deve preservar os campos e informar recuperação');
+assert.match(html, /const efetiva=ativa\?\.id\?\.slice\(5\)/, 'a URL deve refletir a página efetivamente renderizada');
 assert.match(html, /idempotencyKey:nmGarantirIdempotencyKey\(\)/, 'rascunhos devem reutilizar a chave de idempotência');
 assert.match(html, /O rascunho foi aceito, mas ainda não foi confirmado/, 'o ID só deve ser usado após confirmação de leitura');
 assert.match(fs.readFileSync(path.resolve(__dirname, '../api/index.js'), 'utf8'), /if\(protocoloKeyInput\)/, 'o POST deve deduplicar também rascunhos');
