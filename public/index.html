@@ -12694,12 +12694,76 @@ function rejeitarAnalise() {
 
 
 let _nmEvidencias = [];
+const _nmAnexoHashes = new WeakMap();
 let _nmTipoImportacao = 'FICHA_RECLAMACAO';
 function fmtBytes(n){ if(!n) return ''; if(n<1024) return n+' B'; if(n<1024*1024) return (n/1024).toFixed(1)+' KB'; return (n/1024/1024).toFixed(1)+' MB'; }
 function abrirImportacaoDocumento(tipo){ _nmTipoImportacao=tipo; const i=document.getElementById('nm-import-file'); i.value=''; i.click(); }
-function adicionarEvidencias(files){ [...(files||[])].forEach(f=>{ if(!_nmEvidencias.some(x=>x.name===f.name&&x.size===f.size)){_nmEvidencias.push(f);} }); renderEvidencias(); }
+function nmAnexoIdentidade(anexo){
+  if(!anexo) return '';
+  const id=_nmAnexoHashes.get(anexo)||anexo._nmHash||anexo.id||anexo.ID||anexo.idArquivo||anexo.ID_ARQUIVO||anexo.fileId||anexo.DRIVE_FILE_ID||anexo.hash||anexo.HASH||anexo.checksum||anexo.CHECKSUM;
+  if(id) return 'id:'+String(id);
+  const nome=anexo.name||anexo.nome||anexo.NOME||anexo.NOME_ARQUIVO||'';
+  const tamanho=anexo.size??anexo.tamanho??anexo.TAMANHO??'';
+  const tipo=anexo.type||anexo.mimeType||anexo.MIME_TYPE||'';
+  const alterado=anexo.lastModified??anexo.ULTIMA_MODIFICACAO??'';
+  // O nome isolado nunca identifica um arquivo: arquivos distintos podem
+  // compartilhar o mesmo nome. Para registros sem hash, só a combinação de
+  // metadados do arquivo selecionado pode evitar uma repetição acidental.
+  return `meta:${nome}|${tamanho}|${tipo}|${alterado}`;
+}
+function nmAnexoCorrespondeLocal(persistido, local){
+  const idPersistido=nmAnexoIdentidade(persistido), idLocal=nmAnexoIdentidade(local);
+  if(idPersistido===idLocal) return true;
+  const nomeP=String(persistido?.nome||persistido?.NOME||persistido?.NOME_ARQUIVO||'').trim();
+  const nomeL=String(local?.name||'').trim();
+  const tamanhoP=String(persistido?.tamanho??persistido?.TAMANHO??'');
+  const tamanhoL=String(local?.size??'');
+  const pendente=!persistido?.url&&!persistido?.URL_ARQUIVO&&!persistido?.driveFileId&&!persistido?.DRIVE_FILE_ID&&/PENDENTE/i.test(String(persistido?.status||''));
+  // Metadados de um upload pendente são a única representação persistida do
+  // arquivo original; nesse caso nome+tamanho vinculam a linha ao arquivo
+  // selecionado, sem deduplicar arquivos já armazenados com o mesmo nome.
+  return pendente && nomeP && nomeP===nomeL && tamanhoP && tamanhoP===tamanhoL;
+}
+async function nmHashArquivo(file){
+  if(!file) return '';
+  if(_nmAnexoHashes.has(file)) return _nmAnexoHashes.get(file);
+  try {
+    const buffer=await file.arrayBuffer();
+    const digest=await crypto.subtle.digest('SHA-256',buffer);
+    const hash='sha256:'+Array.from(new Uint8Array(digest)).map(x=>x.toString(16).padStart(2,'0')).join('');
+    _nmAnexoHashes.set(file,hash);
+    return hash;
+  } catch (_) { return ''; }
+}
+async function adicionarEvidencias(files){
+  const existentes=new Set(_nmEvidencias.map(nmAnexoIdentidade));
+  [...(files||[])].forEach(f=>{
+    // A identidade do conteúdo é calculada antes de incluir o arquivo. Isso
+    // diferencia arquivos de mesmo nome/tamanho e evita duplicar a mesma
+    // evidência quando o seletor é aberto novamente.
+    nmHashArquivo(f).then(()=>{
+      const chave=nmAnexoIdentidade(f);
+      const atual=new Set(_nmEvidencias.map(nmAnexoIdentidade));
+      const jaPersistido=_nmEvidenciasPersistidas.some(p=>nmAnexoCorrespondeLocal(p,f));
+      if(chave && !atual.has(chave) && !jaPersistido){ _nmEvidencias.push(f); renderEvidencias(); }
+    });
+  });
+}
 function removerEvidencia(i){_nmEvidencias.splice(i,1);renderEvidencias();}
-function renderEvidencias(){const el=document.getElementById('nm-evidencias-list'); if(!el)return; const salvos=_nmEvidenciasPersistidas.map(f=>`<div class="upload-item"><span>📎 ${esc(f.nome||f.NOME||f.NOME_ARQUIVO||'arquivo')}</span><small>${fmtBytes(f.tamanho||f.TAMANHO||0)} · ${String(f.status||'ARMAZENADO').replace('_',' ').toLowerCase()}</small></div>`).join(''); const novos=_nmEvidencias.map((f,i)=>`<div class="upload-item"><span>📎 ${esc(f.name)}</span><small>${fmtBytes(f.size)} <button class="btn btn-ghost" style="padding:2px 5px" onclick="event.stopPropagation();removerEvidencia(${i})">Remover</button></small></div>`).join(''); el.innerHTML=salvos+novos;}
+function renderEvidencias(){
+  const el=document.getElementById('nm-evidencias-list'); if(!el)return;
+  const locais=new Set(_nmEvidencias.map(nmAnexoIdentidade));
+  const salvos=_nmEvidenciasPersistidas.map(f=>{
+    const nome=f.nome||f.NOME||f.NOME_ARQUIVO||'arquivo';
+    const estado=String(f.status||'ARMAZENADO').replace('_',' ').toLowerCase();
+    const repetido=_nmEvidencias.some(local=>nmAnexoCorrespondeLocal(f,local)) || locais.has(nmAnexoIdentidade(f));
+    // Um arquivo local pendente representa o mesmo anexo persistido: exiba
+    // uma única linha e mantenha o controle Remover no item local.
+    return repetido ? '' : `<div class="upload-item"><span>📎 ${esc(nome)}</span><small>${fmtBytes(f.tamanho||f.TAMANHO||0)} · ${estado}</small></div>`;
+  }).join('');
+  const novos=_nmEvidencias.map((f,i)=>`<div class="upload-item"><span>📎 ${esc(f.name)}</span><small>${fmtBytes(f.size)} <button class="btn btn-ghost" style="padding:2px 5px" onclick="event.stopPropagation();removerEvidencia(${i})">Remover</button></small></div>`).join('');
+  el.innerHTML=salvos+novos;
+}
 function fileToBase64(file){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsDataURL(file);});}
 async function processarDocumentoImportado(file){
   if(!file)return; const status=document.getElementById('nm-extracao-status'); const preview=document.getElementById('nm-extracao-preview');
@@ -12714,6 +12778,11 @@ function preencherCamposExtraidos(d){setIf('nm-cnpj',d.cnpj);setIf('nm-nome',d.c
 function renderPreviewExtracao(d){const el=document.getElementById('nm-extracao-preview'); const entries=Object.entries(d).filter(([k,v])=>String(v||'').trim()); el.style.display='block'; el.innerHTML='<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--gray-400);margin-top:10px">Prévia dos dados extraídos</div><div class="extract-preview">'+entries.slice(0,16).map(([k,v])=>`<div class="extract-field"><b>${esc(k)}</b>${esc(String(v))}</div>`).join('')+'</div>';}
 
 async function initNovaManifestacao() {
+  // Abrir a rota pela ação “Nova manifestação” sempre começa um registro novo.
+  // A retomada de rascunho é opt-in, por nmAbrirRascunho, para impedir que o
+  // último atendimento guardado no navegador vaze para um novo formulário.
+  const retomadaSolicitada = sessionStorage.getItem('sac-retomar-rascunho-id');
+  if (retomadaSolicitada) sessionStorage.removeItem('sac-retomar-rascunho-id');
   const _now = new Date();
   document.getElementById('nm-data').value = _now.toISOString().slice(0,10); // YYYY-MM-DD for date input
   let _userObj = {}; try { _userObj = JSON.parse(sessionStorage.getItem('sac-user')||'{}'); } catch {}
@@ -12746,6 +12815,8 @@ async function initNovaManifestacao() {
   _nmAnalisePersistidaCarregada = false;
   _nmDecisao = null;
   _nmCardId = null;
+  window.nmEtapa = 1;
+  window._nmEtapasConcluidas = new Set([1]);
   _nmRascunhoUltimaEdicao = '';
   _nmEvidenciasPersistidas = [];
   // Libera uma consulta nova; a resposta de qualquer consulta anterior será
@@ -12754,17 +12825,11 @@ async function initNovaManifestacao() {
   _nmIdempotencyKey = null;
   _nmEvidencias = []; renderEvidencias();
   const es=document.getElementById('nm-extracao-status'); if(es) es.style.display='none'; const ep=document.getElementById('nm-extracao-preview'); if(ep) ep.style.display='none';
+  // Um rascunho persistido só pode ser retomado por uma ação explícita. O ID
+  // continua em localStorage para permitir que a Central ofereça essa ação,
+  // mas nunca é carregado automaticamente ao abrir “Nova manifestação”.
   try {
-    const r = localStorage.getItem('sac-rascunho');
-    if (r) {
-      const rascunho = JSON.parse(r);
-      Object.entries(rascunho).forEach(([id, val]) => { const el = document.getElementById(id); if (el && val) el.value = val; });
-    }
-  } catch(e) { /* ignora erro de localStorage */ }
-  // Um rascunho persistido pode ser retomado depois de uma atualização ou
-  // retorno pela Central. O ID é reutilizado para impedir novo protocolo.
-  try {
-    const resumeId = localStorage.getItem('sac-rascunho-id');
+    const resumeId = retomadaSolicitada;
     if (resumeId) {
       const d = await _apiFetch(`/api/manifestacoes/${encodeURIComponent(resumeId)}`, 15000);
       const m = d?.manifestacao || d?.item;
@@ -12785,6 +12850,17 @@ async function initNovaManifestacao() {
   });
   atualizarResumoFicha();
 }
+
+// Ponto único para recuperação intencional de um rascunho existente. A tela
+// de nova manifestação não deve inferir que o último registro é o que o
+// usuário deseja editar.
+window.nmAbrirRascunho = function(id){
+  const valor=String(id||'').trim();
+  if(!valor) return false;
+  sessionStorage.setItem('sac-retomar-rascunho-id', valor);
+  if(typeof navigate==='function') navigate('nova-manifestacao', document.querySelector('[onclick*=nova-manifestacao]'));
+  return true;
+};
 
 function limparBuscaCnpj() {
   document.getElementById('nm-cnpj').value = '';
