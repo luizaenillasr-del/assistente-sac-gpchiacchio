@@ -2927,7 +2927,7 @@
         <div class="nm-approved-breadcrumb"><button type="button" onclick="navigate('central-sac',null)">Central de Manifestações</button><b>›</b><strong>Nova Manifestação</strong></div>
         <div class="nm-approved-actions">
           <button type="button" class="nm-ref-btn" onclick="navigate('central-sac',null)">Voltar</button>
-          <button type="button" class="nm-ref-btn primary-outline" onclick="salvarRascunho()">Salvar</button><button type="button" class="nm-ref-btn" onclick="nmSalvarRascunhoESair()">Salvar rascunho e sair</button>
+          <button type="button" class="nm-ref-btn primary-outline" onclick="salvarRascunho()">Salvar</button><button type="button" class="nm-ref-btn" id="nm-btn-salvar-sair" onclick="nmSalvarRascunhoESair()">Salvar rascunho e sair</button><span id="nm-save-state" role="status" aria-live="polite" style="font-size:11px;color:#929090"></span>
         </div>
       </div>
       <div class="nm-approved-meta">
@@ -14777,6 +14777,8 @@ async function nmSalvarRascunhoESair(){
 async function salvarRascunho(options={}) {
   const silent=!!options.silent;
   const reportError=!!options.reportError || !silent;
+  const stateEl = document.getElementById('nm-save-state');
+  if (stateEl && !silent) { stateEl.textContent = 'Salvando…'; stateEl.style.color = '#929090'; }
   try {
     const payload=nmCardPayload();
     if (_nmCardId && window._nmStatusPersistido && !/^RASCUNHO$/i.test(window._nmStatusPersistido)) { delete payload.status; delete payload.statusFicha; delete payload.STATUS; delete payload.STATUS_FICHA; }
@@ -14804,6 +14806,8 @@ async function salvarRascunho(options={}) {
     _nmRascunhoUltimaEdicao=String(res.atualizadoEm||_nmRascunhoUltimaEdicao||'');
     if (payload.status || payload.STATUS) window._nmStatusPersistido=String(payload.status||payload.STATUS);
     if (_nmCardId) localStorage.setItem('sac-rascunho-id', String(_nmCardId));
+    const statusEl = document.getElementById('nm-ref-status');
+    if (statusEl && !payload.finalizar) { statusEl.textContent = 'Rascunho'; statusEl.style.background = '#FFF7E6'; statusEl.style.color = '#8A5700'; }
     // O vínculo de arquivos usa a mesma ficha e o mesmo endpoint de anexos;
     // o rascunho não perde os arquivos selecionados quando a página é
     // atualizada. O servidor deduplica nomes já vinculados e marca falhas
@@ -14814,13 +14818,39 @@ async function salvarRascunho(options={}) {
       if (!upload?.sucesso) throw new Error(upload?.erro || 'Falha ao vincular os anexos do rascunho.');
       _nmRascunhoUltimaEdicao=String(upload.atualizadoEm||_nmRascunhoUltimaEdicao||'');
     }
-    if(!silent) alert(_nmCardId ? `Rascunho salvo. Identificador técnico: ${_nmCardId}. Protocolo definitivo será gerado na finalização.` : 'Rascunho salvo.');
+    if(!silent) {
+      if (stateEl) { stateEl.textContent = 'Rascunho salvo'; stateEl.style.color = '#1E6B3A'; }
+      alert(_nmCardId ? `Rascunho salvo. Identificador técnico: ${_nmCardId}. Protocolo definitivo será gerado na finalização.` : 'Rascunho salvo.');
+    }
     return true;
   } catch(e) {
+    if (stateEl && !silent) { stateEl.textContent = 'Falha ao salvar'; stateEl.style.color = '#C70602'; }
     if(reportError) alert('Não foi possível salvar os dados desta etapa: '+(e.message||'erro desconhecido'));
     return false;
   }
 }
+
+// A saída do formulário só ocorre depois de o servidor confirmar a gravação
+// do estado atual. O identificador técnico e a etapa permanecem no mesmo
+// rascunho; nenhuma nova manifestação ou protocolo é criado nessa ação.
+let _nmSalvarESairEmAndamento = false;
+window.nmSalvarRascunhoESair = async function() {
+  if (_nmSalvarESairEmAndamento) return;
+  const btn = document.getElementById('nm-btn-salvar-sair');
+  _nmSalvarESairEmAndamento = true;
+  if (btn) { btn.disabled = true; btn.setAttribute('aria-busy', 'true'); btn.textContent = 'Salvando…'; }
+  const stateEl = document.getElementById('nm-save-state');
+  if (stateEl) { stateEl.textContent = 'Salvando rascunho…'; stateEl.style.color = '#929090'; }
+  try {
+    const ok = await salvarRascunho({silent:true, reportError:true});
+    if (!ok) return;
+    if (stateEl) { stateEl.textContent = 'Rascunho salvo'; stateEl.style.color = '#1E6B3A'; }
+    if (typeof navigate === 'function') navigate('central-sac', document.querySelector('[onclick*=central-sac]'));
+  } finally {
+    _nmSalvarESairEmAndamento = false;
+    if (btn) { btn.disabled = false; btn.removeAttribute('aria-busy'); btn.textContent = 'Salvar rascunho e sair'; }
+  }
+};
 
 // ===== BANCO DE RNC =====
 async function loadBancoRNC() {

@@ -269,9 +269,11 @@ async function main() {
     await sair.waitFor({state:'visible'});
     await sair.click();
     await page.locator('#page-central-sac').waitFor({state:'visible'});
+    assert.match(page.url(), /\/central-sac$/, 'salvar rascunho e sair deve retornar à Central após confirmação');
     assert.equal(await page.locator('#page-nova-manifestacao').isVisible(), false, 'salvar rascunho e sair deve retornar à Central somente após salvar');
     assert.equal(registro.STATUS,'RASCUNHO','salvar e sair não deve promover o rascunho a tratativa');
     assert.equal(registro.ETAPA_ATUAL,'3','a etapa em andamento deve ser persistida');
+    assert.ok(requisicoes.some(r => r.method === 'PATCH' && r.path.endsWith('/circa-dados')), 'Salvar rascunho e sair deve persistir a etapa atual');
     await page.evaluate(() => window.nmAbrirRascunho('NM-BROWSER-001'));
     await page.locator('#nm-etapa-label').filter({hasText:'Etapa 3 de 7'}).waitFor();
     await page.waitForFunction(expected => document.getElementById('nm-descricao')?.value === expected, descricaoCenario);
