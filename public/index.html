@@ -13084,7 +13084,10 @@ async function registrarManifestacao() {
       if (!finalRes?.sucesso) throw new Error(finalRes?.erro||'Falha ao concluir a manifestação.');
       localStorage.removeItem('sac-rascunho-id');
       alert(`✅ Manifestação ${finalRes.protocolo || _nmCardId} concluída e encaminhada para triagem.`);
-      navigate('banco-manifestacoes', document.querySelector('[onclick*=banco-manifestacoes]')); loadBancoManifestacoes(); return;
+      const sbCen = document.getElementById('sidebar-central-sac') || document.querySelector('[onclick*="central-sac"]');
+      navigate('central-sac', sbCen);
+      if (typeof loadCentralSAC === 'function') loadCentralSAC();
+      return;
     }
     const res = await _apiFetch('/api/manifestacoes', 60000,{
       method: 'POST',
@@ -13139,9 +13142,11 @@ async function registrarManifestacao() {
 
     if (res.sucesso) {
       localStorage.removeItem('sac-rascunho-id');
-      alert(`✅ Manifestação ${res.protocolo || res.id} registrada com sucesso!\n\nA análise inteligente foi iniciada.`);
-      navigate('banco-manifestacoes', document.querySelector('[onclick*=banco-manifestacoes]'));
-      loadBancoManifestacoes();
+      alert(`✅ Manifestação ${res.protocolo || res.id} registrada com sucesso!`);
+      // Navegar para Central e recarregar fila para que a nova manifestação apareça imediatamente
+      const sbCentral = document.getElementById('sidebar-central-sac') || document.querySelector('[onclick*="central-sac"]');
+      navigate('central-sac', sbCentral);
+      if (typeof loadCentralSAC === 'function') loadCentralSAC();
     } else {
       alert('Erro: ' + res.erro);
     }
@@ -25530,10 +25535,14 @@ async function mudarStatusMC(id, novoStatus) {
 
   function stageOf(status){
     const n=norm(status);
-    if(!n||n==='NOVA'||n==='RECEBIDA'||n.includes('TRIAGEM')) return 'nova';
+    if(!n||n==='NOVA'||n==='RECEBIDA'||n==='RASCUNHO'||n.includes('TRIAGEM')) return 'nova';
     if(/ENCERRAD|CONCLUID|REJEITAD|CANCELAD/.test(n)) return 'enc';
     if(n.includes('APROVACAO')) return 'aprov';
     if(n.includes('DEVOLUTIVA')||n==='APROVADA') return 'dev';
+    // AGUARDANDO_VALIDACAO_SAC = setor respondeu, SAC precisa validar (aprov)
+    if(n.includes('VALIDACAO_SAC')||n.includes('VALIDAÇÃO_SAC')) return 'aprov';
+    // AGUARDANDO_SETOR = encaminhado ao responsável setorial (trat)
+    if(n.includes('SETOR')) return 'trat';
     if(n.includes('TRATAMENTO')) return 'trat';
     return 'anal';
   }
