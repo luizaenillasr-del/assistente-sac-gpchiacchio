@@ -262,6 +262,11 @@ async function obterRegras(ctx) {
   return daMatriz || regrasDefault(ctx);
 }
 
+function invalidarCacheMatriz() {
+  _cache = null;
+  _cacheTs = 0;
+}
+
 module.exports = {
   carregarMatriz,
   consultarMatriz,
@@ -270,4 +275,5 @@ module.exports = {
   normalizarRegra,
   validarRegra,
   regraUtilizavel,
+  invalidarCacheMatriz,
 };

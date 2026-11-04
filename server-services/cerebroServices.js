@@ -87,7 +87,7 @@ function tokens(texto) {
   return new Set(
     normalizar(texto)
       .split(' ')
-      .filter(p => p.length >= 3 && !STOPWORDS.has(p))
+      .filter(p => p.length >= 2 && !STOPWORDS.has(p))
   );
 }
 
@@ -467,12 +467,13 @@ async function consultarBaseConhecimento(tipo, setor, empresaId, descricao) {
   // Fallback Sheets — consulta POLITICAS, PROCEDIMENTOS, BASE_CONHECIMENTO
   // (FAQs), CAUSAS e o histórico sanitizado para hipóteses não confirmadas.
   try {
-    const [politicas, procedimentos, faqs, causasTab, historicoTab] = await Promise.all([
+    const [politicas, procedimentos, faqs, causasTab, historicoTab, perguntasTab] = await Promise.all([
       sheets.lerAba('POLITICAS', 200).catch(() => []),
       sheets.lerAba('PROCEDIMENTOS', 200).catch(() => []),
       sheets.lerAba('BASE_CONHECIMENTO', 500).catch(() => []),
-      sheets.lerAba('CAUSAS', 500).catch(() => []),
+      sheets.lerAba('CAUSAS', 500).then(r => r.length ? r : sheets.lerAba('CAUSAS_SUBCAUSAS', 500).catch(() => [])).catch(() => []),
       sheets.lerAba('BANCO_HISTORICO', 5000).catch(() => []),
+      sheets.lerAba('PERGUNTAS_ANALISE', 300).catch(() => []),
     ]);
 
     const setorN = normalizar(setor || '');
@@ -555,6 +556,28 @@ async function consultarBaseConhecimento(tipo, setor, empresaId, descricao) {
         confirmada: false,
       });
     });
+    // Perguntas de investigação por tipo/setor — orientam o analista humano
+    perguntasTab.forEach(p => {
+      const ativo = (p.ATIVO || 'SIM').toUpperCase() !== 'NAO';
+      if (!ativo) return;
+      const tipoP = normalizar(p.TIPO_MANIFESTACAO || p.TIPO || '');
+      const setorP = normalizar(p.SETOR || '');
+      const matchTipo = !tipoP || !tipoN || tipoP.includes(tipoN.split(' ')[0]) || tipoN.includes(tipoP.split(' ')[0]);
+      const matchSetor = !setorP || !setorN || setorP.includes(setorN.split(' ')[0]);
+      if (matchTipo || matchSetor) {
+        adicionarSeNovo({
+          tipo: 'Pergunta',
+          id: p.ID_PERGUNTA || p.ID || p.PERGUNTA,
+          nome: p.PERGUNTA || p.TITULO,
+          descricao: p.JUSTIFICATIVA || p.OBJETIVO || '',
+          setor: p.SETOR || '',
+          obrigatoria: (p.OBRIGATORIA || 'NAO').toUpperCase() === 'SIM',
+          versao: BASE_CONHECIMENTO_VERSION,
+          fonte: 'sheets',
+          fonte_aba: 'PERGUNTAS_ANALISE',
+        });
+      }
+    });
   } catch (e) {
     console.error('Erro base conhecimento:', e.message);
   }
@@ -563,7 +586,7 @@ async function consultarBaseConhecimento(tipo, setor, empresaId, descricao) {
     status: relevantes.length > 0 ? 'CONHECIMENTO_RELEVANTE' : 'CONHECIMENTO_INSUFICIENTE',
     itens: relevantes,
     total: relevantes.length,
-    fonte: 'POLITICAS + PROCEDIMENTOS + BASE_CONHECIMENTO + CAUSAS + BANCO_HISTORICO (sheets)',
+    fonte: 'POLITICAS + PROCEDIMENTOS + BASE_CONHECIMENTO + CAUSAS + BANCO_HISTORICO + PERGUNTAS_ANALISE (sheets)',
     versao: BASE_CONHECIMENTO_VERSION,
   };
 }
@@ -804,8 +827,12 @@ function _filtrarPerguntasContextuais(perguntas, manifestacao) {
   if (campo(m, ['nfe','NF_NUMERO','NFE'])) preenchidos.add('nfe');
   if (campo(m, ['categoria','CATEGORIA'])) preenchidos.add('categoria');
 
+  const vistos = new Set();
   return perguntas.filter(p => {
     const texto = normalizar(p.pergunta || '');
+    if (!texto) return false;
+    if (vistos.has(texto)) return false;
+    vistos.add(texto);
     for (const [campoNome, kws] of Object.entries(campoKeywords)) {
       if (preenchidos.has(campoNome) && kws.some(k => texto.includes(k))) return false;
     }
@@ -973,6 +1000,27 @@ async function registrarAuditoriaAnalise(protocolo, usuario, analise) {
       CONFLITOS: analise.conflitos?.length || 0, NECESSITA_VALIDACAO: analise.necessitaValidacaoHumana ? 'SIM' : 'NÃO',
       TEMPO_MS: analise.tempoMs || 0, ERROS: analise.erros?.join('; ') || '',
     }).catch(() => {});
+
+    // Registrar aprendizado na aba CEREBRO_APRENDIZADO quando confiança é suficiente
+    if ((analise.confianca?.score || 0) >= 40) {
+      await sheets.garantirAbaComCabecalhos('CEREBRO_APRENDIZADO', [
+        'TIMESTAMP','PROTOCOLO','TIPO_DETECTADO','CONFIANCA_NIVEL','CONFIANCA_SCORE',
+        'SIMILARES_ENCONTRADOS','IA_MODELO','TRATATIVA_SUGERIDA','VERSAO_CEREBRO',
+        'NECESSITA_VALIDACAO',
+      ]).catch(() => {});
+      await sheets.appendObjeto('CEREBRO_APRENDIZADO', {
+        TIMESTAMP: new Date().toISOString(),
+        PROTOCOLO: protocolo || '',
+        TIPO_DETECTADO: analise.tipoDetectado || '',
+        CONFIANCA_NIVEL: analise.confianca?.nivel || 'BAIXA',
+        CONFIANCA_SCORE: analise.confianca?.score || 0,
+        SIMILARES_ENCONTRADOS: analise.casosSimilares?.length || 0,
+        IA_MODELO: analise.ia?.modelo || '',
+        TRATATIVA_SUGERIDA: (analise.tratativaSugerida?.sugestao || '').slice(0, 200),
+        VERSAO_CEREBRO: CEREBRO_VERSION,
+        NECESSITA_VALIDACAO: analise.necessitaValidacaoHumana ? 'SIM' : 'NAO',
+      }).catch(() => {});
+    }
   } catch (e) {
     console.error('Erro ao registrar auditoria de análise:', e.message);
   }
@@ -1013,6 +1061,11 @@ async function analisarManifestacaoCompleta(manifestacao, regras = {}, usuario =
     detectarReincidencia(manifestacao).catch(e => { erros.push('reincidencia: ' + e.message); return { nivel: 'SEM_REINCIDENCIA', detectada: false, quantidade: 0, casos: [] }; }),
     consultarBaseConhecimento(tipo, setor, undefined, descricao).catch(e => { erros.push('conhecimento: ' + e.message); return { status: 'CONHECIMENTO_INSUFICIENTE', itens: [], total: 0 }; }),
   ]);
+
+  // Perguntas de investigação da base de conhecimento (PERGUNTAS_ANALISE)
+  const perguntasDaBase = baseConhecimento.itens
+    .filter(i => i.tipo === 'Pergunta' && i.nome)
+    .map(i => ({ pergunta: i.nome, justificativa: i.descricao || '', obrigatoria: i.obrigatoria || false, fonte: 'PERGUNTAS_ANALISE' }));
 
   const prazoProcedimento = Number(regras.slaHoras) > 0 ? Number(regras.slaHoras) : null;
   const slas = { triagemSAC: 24, retornoSetor: 72, retornoCliente: 96, procedimento: prazoProcedimento };
@@ -1160,7 +1213,7 @@ async function analisarManifestacaoCompleta(manifestacao, regras = {}, usuario =
     setoresRecomendadosConfig,
     prioridade: regras.prioridade || 'Média', slaHoras: prazoProcedimento, slas,
     geraRNC: false, // RNC nunca automático — apenas por critério humano/auditoria
-    procedimentoSugerido: regras.procedimentoSugerido || null, perguntasNecessarias: _filtrarPerguntasContextuais(regras.perguntasNecessarias || [], manifestacao),
+    procedimentoSugerido: regras.procedimentoSugerido || null, perguntasNecessarias: _filtrarPerguntasContextuais([...(regras.perguntasNecessarias || []), ...perguntasDaBase], manifestacao),
     casosSimilares, reincidencia, sla, baseConhecimento, problemasRelatados,
     tratativaSugerida: { aplicavel: tratativa.aplicavel, confianca: tratativa.confianca, sugestao: tratativa.sugestao, quantidadeCasos: tratativa.quantidadeCasos, evidencia: tratativa.evidencia, origem: tratativa.origem||'HISTORICO', todasSugestoes: tratativa.todasSugestoes||[] },
     tratativaEstruturada, devolutivaEstruturada, ia, confianca, conflitos,

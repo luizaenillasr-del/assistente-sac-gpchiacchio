@@ -2922,178 +2922,631 @@
 
   <!-- ===== NOVA MANIFESTAÇÃO ===== -->
   <div class="page" id="page-nova-manifestacao">
-    <div class="nm-approved-header">
-      <div class="nm-approved-topline">
-        <div class="nm-approved-breadcrumb"><button type="button" onclick="navigate('central-sac',null)">Central de Manifestações</button><b>›</b><strong>Nova Manifestação</strong></div>
-        <div class="nm-approved-actions">
-          <button type="button" class="nm-ref-btn" onclick="navigate('central-sac',null)">Voltar</button>
-          <button type="button" class="nm-ref-btn primary-outline" onclick="salvarRascunho()">Salvar</button><button type="button" class="nm-ref-btn" id="nm-btn-salvar-sair" onclick="nmSalvarRascunhoESair()">Salvar rascunho e sair</button><span id="nm-save-state" role="status" aria-live="polite" style="font-size:11px;color:#929090"></span>
-        </div>
-      </div>
-      <div class="nm-approved-meta">
-        <strong id="nm-ref-protocolo">NOVO PROTOCOLO</strong>
-        <span class="nm-status-ficha-btn" id="nm-ref-status">Em abertura</span>
-        <span class="nm-status-ficha-btn priority" id="nm-ref-prioridade">Normal</span>
-        <span id="nm-ref-empresa">Chiacchio Embalagens</span><i>·</i><span id="nm-ref-cliente">Novo cliente</span><i>·</i><span id="nm-ref-sla">SLA: a definir</span>
-      </div>
-      <input type="hidden" id="nm-status-ficha" value="ABERTA">
-    </div>
-    <div class="nm-approved-steps" role="navigation" aria-label="Etapas da manifestação">
-      <button type="button" class="active" data-approved-step="1" onclick="nmIrParaEtapa(1)"><span>1</span>Dados da Manifestação</button>
-      <button type="button" data-approved-step="2" onclick="nmIrParaEtapa(2)"><span>2</span>Análise inteligente e triagem</button>
-      <button type="button" data-approved-step="3" onclick="nmIrParaEtapa(3)"><span>3</span>Condução</button>
-      <button type="button" data-approved-step="4" onclick="nmIrParaEtapa(4)"><span>4</span>Investigação e resolução</button>
-      <button type="button" data-approved-step="5" onclick="nmIrParaEtapa(5)"><span>5</span>Validação SAC</button>
-      <button type="button" data-approved-step="6" onclick="nmIrParaEtapa(6)"><span>6</span>Devolutiva conclusiva</button>
-      <button type="button" data-approved-step="7" onclick="nmIrParaEtapa(7)"><span>7</span>Encerramento e aprendizado</button>
-    </div>
-    <div class="nm-ref-workspace">
-    <style>
-      #page-nova-manifestacao{flex-direction:column;height:100%;overflow:hidden;font-family:Montserrat,system-ui,sans-serif}
-      #nm-wizard{display:flex;flex-direction:column;height:100%;overflow:hidden}
-      .nm-step-panel{display:none}
-      .nm-step-panel.nm-active{display:flex;flex-direction:column;gap:16px}
-      .nm-card{background:#fff;border:1px solid #e8e8e8;border-radius:10px;padding:18px 20px;display:flex;flex-direction:column;gap:14px}
-      .nm-card-title{font-size:12px;font-weight:700;letter-spacing:.01em;color:#1f1f1f;text-transform:none;display:flex;align-items:center;gap:8px;margin-bottom:2px}
-      .nm-card-title::before{content:'';display:inline-block;width:3px;height:13px;background:#C70602;border-radius:2px;flex:none}
-      .nm-section-hdr{margin-bottom:4px}
-      .nm-section-hdr h2{font-size:16px;font-weight:700;margin:0 0 3px;color:#1f1f1f}
-      .nm-section-hdr p{font-size:12.5px;color:#a8a8a8;margin:0}
-      .nm-label{display:flex;flex-direction:column;gap:5px}
-      .nm-label span{font-size:11px;color:#727272;font-weight:500;letter-spacing:.01em}
-      .nm-input{height:40px;border:1px solid #dcdcdc;border-radius:6px;padding:0 11px;font-size:13px;font-family:Montserrat,system-ui,sans-serif;width:100%;box-sizing:border-box;background:#fff;transition:border-color .15s,box-shadow .15s}
-      .nm-input:focus{border-color:#C70602;box-shadow:0 0 0 2px rgba(199,6,2,.1);outline:none}
-      .nm-select{height:40px;border:1px solid #dcdcdc;border-radius:6px;padding:0 10px;font-size:13px;font-family:Montserrat,system-ui,sans-serif;width:100%;box-sizing:border-box;background:#fff;cursor:pointer;transition:border-color .15s}
-      .nm-select:focus{border-color:#C70602;box-shadow:0 0 0 2px rgba(199,6,2,.1);outline:none}
-      .nm-textarea{width:100%;border:1px solid #dcdcdc;border-radius:6px;padding:9px 11px;font-size:13px;line-height:1.65;resize:vertical;font-family:Montserrat,system-ui,sans-serif;box-sizing:border-box;transition:border-color .15s,box-shadow .15s}
-      .nm-textarea:focus{border-color:#C70602;box-shadow:0 0 0 2px rgba(199,6,2,.1);outline:none}
-      .nm-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-      .nm-grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
-      /* Empresa reclamada — pill buttons grandes */
-      .nm-empresa-btn{flex:1;min-width:120px;height:48px;border:2px solid #E4E4E4;background:#fff;border-radius:12px;font-size:12.5px;font-weight:700;color:#545252;cursor:pointer;font-family:Montserrat,system-ui,sans-serif;transition:border-color .15s,background .15s,color .15s;letter-spacing:.01em}
-      .nm-empresa-btn.active{border-color:#C70602;background:#FFF5F5;color:#C70602;box-shadow:0 0 0 3px rgba(199,6,2,.07)}
-      .nm-empresa-btn:hover:not(.active){border-color:#BDBDBD;background:#FAFAFA}
-      /* Canal / tipo — pills */
-      .nm-canal-pill{height:36px;border:1.5px solid #E4E4E4;background:#fff;border-radius:20px;padding:0 16px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:Montserrat,system-ui,sans-serif;color:#545252;white-space:nowrap;transition:all .15s}
-      .nm-canal-pill.active{border-color:#C70602;background:#FFF5F5;color:#C70602;font-weight:700}
-      .nm-canal-pill:hover:not(.active){border-color:#BDBDBD}
-      /* Procedência */
-      .nm-proc-btn{flex:1;min-width:90px;height:42px;border:1.5px solid #E4E4E4;background:#fff;border-radius:10px;font-size:13px;cursor:pointer;font-family:Montserrat,system-ui,sans-serif;font-weight:600;color:#545252;transition:all .15s}
-      .nm-proc-btn.active{border-color:#C70602;background:#FFF5F5;color:#C70602;font-weight:700}
-      /* Stepper — círculos maiores, mais visíveis */
-      .nm-stepper-circle{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;font-weight:700;border:2px solid #D6D6D6;background:#fff;color:#929090;cursor:pointer;transition:all .2s;font-family:Montserrat,system-ui,sans-serif}
-      .nm-stepper-circle.done{background:#1E6B3A;border-color:#1E6B3A;color:#fff}
-      .nm-stepper-circle.active{background:#C70602;border-color:#C70602;color:#fff;box-shadow:0 0 0 4px rgba(199,6,2,.12)}
-      .nm-stepper-line{flex:1;height:2px;background:#E4E4E4;min-width:10px;border-radius:1px;margin:0 6px}
-      .nm-stepper-line.done{background:#1E6B3A}
-      @keyframes nmFadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
-      .nm-active{animation:nmFadeUp .25s ease}
-      /* Status ficha pills */
-      .nm-status-ficha-btn{border-radius:20px;padding:4px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:Montserrat,system-ui,sans-serif;transition:all .15s}
-      #page-nova-manifestacao{position:relative}
-      #page-nova-manifestacao .nm-ref-workspace{display:flex;flex:1;min-height:0;overflow:hidden}
-      #page-nova-manifestacao .nm-ref-sidebar{width:220px;flex:0 0 220px;overflow-y:auto;background:#fff;border-right:1px solid #E4E4E4;padding:18px 0 12px}
-      #page-nova-manifestacao .nm-ref-sidebar>small{display:block;padding:0 16px 10px;font-size:10px;font-weight:700;letter-spacing:.08em;color:#A0A0A0}
-      #page-nova-manifestacao .nm-ref-sidebar button{display:flex;flex-direction:column;align-items:flex-start;width:100%;border:0;border-left:3px solid transparent;background:#fff;padding:12px 14px 11px 16px;text-align:left;color:#545252;cursor:pointer;font:500 12.5px/1.25 Montserrat,system-ui,sans-serif}
-      #page-nova-manifestacao .nm-ref-sidebar button:hover{background:#FAFAFA}
-      #page-nova-manifestacao .nm-ref-sidebar button.active{border-left-color:#C70602;background:#FFF1F1;color:#C70602;font-weight:700}
-      #page-nova-manifestacao .nm-ref-sidebar button i{display:block;width:7px;height:7px;border-radius:50%;background:#C8C8C8;margin-bottom:5px}
-      #page-nova-manifestacao .nm-ref-sidebar button.active i{background:#C70602}
-      #page-nova-manifestacao .nm-ref-sidebar button em{font-style:normal;color:#929090;font-size:10.5px;font-weight:400;margin-top:4px}
-      #page-nova-manifestacao .nm-ref-sidebar button.active em{color:#C70602}
-      #page-nova-manifestacao .nm-ref-workarea{display:flex;flex:1;min-width:0;min-height:0;flex-direction:column;overflow:hidden}
-      #page-nova-manifestacao .nm-company-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
-      #page-nova-manifestacao .nm-grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
-      #page-nova-manifestacao .nm-inline-row{display:flex;gap:8px}
-      #page-nova-manifestacao .nm-inline-row .nm-input{flex:1}
-      #page-nova-manifestacao .nm-history-note{padding:10px 12px;border-radius:8px;font-size:12px}
-      #page-nova-manifestacao .nm-help{font-size:11px;color:#929090}
-      #page-nova-manifestacao .nm-visually-hidden{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
-      #page-nova-manifestacao .circa-analysis-head,#page-nova-manifestacao .circa-card-head{display:flex;align-items:center;justify-content:space-between;gap:18px}
-      #page-nova-manifestacao .circa-kicker,#page-nova-manifestacao .section-label{font-size:11px;letter-spacing:.07em;text-transform:uppercase;font-weight:700;color:#777}
-      #page-nova-manifestacao .circa-analysis-head h3,#page-nova-manifestacao .circa-card-head h3{margin:4px 0;font-size:17px;color:#202020}
-      #page-nova-manifestacao .circa-analysis-head p,#page-nova-manifestacao .circa-card-head p{margin:0;color:#888;font-size:12px}
-      #page-nova-manifestacao .circa-head-actions{display:flex;align-items:center;gap:10px}.circa-source{font-size:11px;color:#2563EB;background:#EFF6FF;padding:6px 10px;border-radius:999px}
-      #page-nova-manifestacao .circa-analysis-grid{display:flex;flex-direction:column;gap:14px}
-      #page-nova-manifestacao .circa-analysis-card{background:#fff;border:1px solid #E5E5E5;border-radius:10px;padding:18px 20px;min-width:0}
-      #page-nova-manifestacao .circa-two{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:10px}.circa-two b{font-size:12px}.circa-two p{font-size:13px;color:#555;line-height:1.55;margin:6px 0}
-      #page-nova-manifestacao .circa-alert{margin-top:12px;padding:11px 13px;border-radius:8px;background:#FFF8E8;border:1px solid #F2D58B;color:#6E5314;font-size:12px;line-height:1.5}.circa-alert b{display:block;margin-bottom:4px}
-      #page-nova-manifestacao .circa-checklist{display:flex;flex-direction:column;gap:8px;margin-top:10px}.checklist-item{display:flex;align-items:center;gap:9px;font-size:13px;color:#333;padding:8px 10px;border:1px solid #ECECEC;border-radius:7px}.check-box{width:21px;height:21px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:#EEF6FF;color:#2563EB;font-size:11px;font-weight:700;flex:none}.circa-muted{font-size:13px;color:#888;line-height:1.55}.circa-tag-list{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}.circa-confidence{display:flex;align-items:center;gap:10px;margin-top:14px;font-size:12px;color:#777}.circa-confidence .progress-bar{height:6px;flex:1;background:#EEE;border-radius:99px}.circa-confidence .progress-fill{display:block;height:100%;width:0;background:#C70602;border-radius:inherit}.circa-analysis-footer{display:flex;justify-content:space-between;align-items:center;gap:12px;border-top:1px solid #E5E5E5;padding-top:14px;font-size:11px;color:#888}.circa-analysis-footer>div{display:flex;gap:8px;flex-wrap:wrap}.circa-similar-list{display:flex;flex-direction:column;gap:7px;margin-top:10px}.circa-path-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.circa-path-card{background:#fff;border:1px solid #E5E5E5;border-radius:10px;padding:18px 20px;display:flex;flex-direction:column;gap:12px}.circa-path-card p{font-size:12px;color:#777;line-height:1.5;margin:0}.circa-path-title{display:flex;align-items:center;gap:9px;font-weight:700;color:#222}.circa-path-icon{width:27px;height:27px;border-radius:50%;background:#FFF1F1;color:#C70602;display:inline-flex;align-items:center;justify-content:center;font-size:12px}.circa-investigation-card{background:#fff;border:1px solid #E5E5E5;border-radius:10px;padding:20px;display:flex;flex-direction:column;gap:16px}.circa-action-row{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}.badge{display:inline-flex;padding:5px 10px;border-radius:999px;font-size:11px;font-weight:700}.badge-warning{background:#FFF5D8;color:#8A5700}.badge-success{background:#E6F2EA;color:#1E6B3A}.circa-option-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin:12px 0}.circa-close-card{background:#F0F8F1;border:1px solid #B7DDBD;border-radius:10px;padding:18px 20px;display:flex;justify-content:space-between;align-items:center;gap:16px}.circa-close-card h3{margin:0 0 5px;font-size:15px}.circa-close-card p{margin:0;color:#55705A;font-size:12px}
-      @media(max-width:900px){#page-nova-manifestacao .nm-grid-4{grid-template-columns:repeat(2,1fr)}#page-nova-manifestacao .circa-path-grid{grid-template-columns:1fr}}
-      @media(max-width:600px){#page-nova-manifestacao .nm-company-grid,#page-nova-manifestacao .nm-grid-4,#page-nova-manifestacao .nm-grid-3,#page-nova-manifestacao .nm-grid-2,#page-nova-manifestacao .circa-two,#page-nova-manifestacao .circa-option-grid{grid-template-columns:1fr}#page-nova-manifestacao .circa-analysis-head,#page-nova-manifestacao .circa-card-head,#page-nova-manifestacao .circa-close-card{align-items:flex-start;flex-direction:column}.circa-analysis-footer{align-items:flex-start;flex-direction:column}}
+    <input type="hidden" id="nm-status-ficha" value="ABERTA">
 
-      @media(max-width:768px){#page-nova-manifestacao .nm-ref-sidebar{width:190px;flex-basis:190px}#page-nova-manifestacao .nm-ref-sidebar button{font-size:11.5px;padding-left:12px}}
+    <!-- HEADER -->
+    <div style="flex:none;background:#fff;border-bottom:1px solid #E5E5E5;padding:10px 28px;display:flex;align-items:center;gap:14px">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:14px;font-weight:800;color:#242424">Nova Manifestação</div>
+        <div style="font-size:11px;color:#929090;margin-top:1px"><span id="nm-ref-empresa">Chiacchio Embalagens</span> · <span id="nm-ref-cliente">Novo cliente</span> · <span style="color:#D97706" id="nm-ref-rascunho-label">Rascunho</span> · <span id="nm-ref-protocolo" style="color:#929090"></span></div>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        <span id="nm-ref-status" style="display:none"></span>
+        <span id="nm-ref-prioridade" style="display:none"></span>
+        <button class="nm-btn-ghost" onclick="navigate('central-sac',null)">← Central</button>
+        <button class="nm-btn-secondary" onclick="salvarRascunho()">Salvar e sair</button>
+        <button class="nm-btn-primary" onclick="salvarRascunho()">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" stroke="white" stroke-width="1.8"/></svg>
+          Salvar
+        </button>
+      </div>
+    </div>
+
+    <!-- STEP NAV -->
+    <div class="nm-approved-steps" role="navigation" aria-label="Etapas da manifestação" style="flex:none;background:#fff;border-bottom:1px solid #E5E5E5;padding:0 28px;overflow-x:auto;display:flex">
+      <button type="button" class="active" data-approved-step="1"><span>1</span>Identificação</button>
+      <button type="button" data-approved-step="2"><span>2</span>Relato</button>
+      <button type="button" data-approved-step="3"><span>3</span>Classificação</button>
+      <button type="button" data-approved-step="4"><span>4</span>Investigação</button>
+      <button type="button" data-approved-step="5"><span>5</span>Tratamento</button>
+      <button type="button" data-approved-step="6"><span>6</span>Direcionamento</button>
+      <button type="button" data-approved-step="7"><span>7</span>Revisão</button>
+    </div>
+
+    <div class="nm-ref-workspace" style="flex:1;overflow:hidden;display:flex;min-height:0">
+    <style>
+      /* ── Nova Manifestação v2 (mockup-match) ── */
+      #page-nova-manifestacao{flex-direction:column;height:100%;overflow:hidden;font-family:'Montserrat',system-ui,sans-serif;background:#F7F7F7;color:#242424}
+      @keyframes nmFadeIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+      .nm-s-anim{animation:nmFadeIn .2s ease}
+      /* step nav */
+      #page-nova-manifestacao .nm-approved-steps button{padding:10px 13px;border:none;border-bottom:2.5px solid transparent;background:none;color:#929090;font-size:11.5px;font-weight:500;cursor:pointer;font-family:'Montserrat',system-ui,sans-serif;white-space:nowrap;display:inline-flex;align-items:center}
+      #page-nova-manifestacao .nm-approved-steps button span{width:16px;height:16px;border-radius:50%;background:#E5E5E5;color:#929090;font-size:8.5px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;margin-right:6px;flex:none;transition:background .2s,color .2s}
+      #page-nova-manifestacao .nm-approved-steps button.active{border-bottom-color:#C70602;color:#C70602;font-weight:700}
+      #page-nova-manifestacao .nm-approved-steps button.active span{background:#C70602;color:#fff}
+      #page-nova-manifestacao .nm-approved-steps button.done{border-bottom-color:#15803D;color:#15803D;font-weight:600}
+      #page-nova-manifestacao .nm-approved-steps button.done span{background:#15803D;color:#fff}
+      /* panels */
+      .nm-step-panel{display:none}
+      .nm-step-panel.nm-active{display:flex;flex-direction:column;gap:14px}
+      /* cards */
+      .nm-card{background:#fff;border:1px solid #E5E5E5;border-radius:10px;padding:18px 20px}
+      .nm-sl{font-size:12px;font-weight:700;color:#242424;margin-bottom:12px;padding-bottom:8px;border-bottom:1.5px solid #F0F0F0;display:flex;align-items:center;gap:6px}
+      .nm-sl::before{content:'';display:block;width:3px;height:14px;background:#C70602;border-radius:2px;flex:none}
+      /* form elements */
+      #page-nova-manifestacao label{display:block;font-size:11px;font-weight:600;color:#555;margin-bottom:4px}
+      .nm-input{font-family:'Montserrat',system-ui,sans-serif;font-size:12.5px;color:#242424;background:#fff;border:1.5px solid #E0E0E0;border-radius:7px;padding:7px 11px;width:100%;outline:none;height:38px;transition:border .15s;box-sizing:border-box}
+      .nm-input:focus{border-color:#C70602}
+      .nm-select{font-family:'Montserrat',system-ui,sans-serif;font-size:12.5px;color:#242424;background:#fff;border:1.5px solid #E0E0E0;border-radius:7px;padding:7px 11px;width:100%;outline:none;height:38px;transition:border .15s;box-sizing:border-box;cursor:pointer}
+      .nm-select:focus{border-color:#C70602}
+      .nm-textarea{font-family:'Montserrat',system-ui,sans-serif;font-size:13px;color:#242424;background:#fff;border:1.5px solid #E0E0E0;border-radius:7px;padding:8px 11px;width:100%;outline:none;resize:vertical;min-height:80px;transition:border .15s;box-sizing:border-box}
+      .nm-textarea:focus{border-color:#C70602}
+      /* grids */
+      .nm-g2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+      .nm-g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+      .nm-g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px}
+      /* chips */
+      .nm-chip{display:inline-flex;align-items:center;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid #E5E5E5;background:#F5F5F5;color:#555;white-space:nowrap;transition:all .15s;font-family:'Montserrat',system-ui,sans-serif}
+      .nm-chip:hover{border-color:#C70602;color:#C70602}
+      .nm-chip.sel{background:#FDECEC;color:#C70602;border-color:#C70602}
+      /* trat-cards */
+      .nm-trat-card{border:1.5px solid #E5E5E5;border-radius:10px;padding:14px 16px;background:#fff;cursor:pointer;transition:border-color .15s,box-shadow .15s}
+      .nm-trat-card:hover{border-color:#C70602}
+      .nm-trat-card.sel{border-color:#C70602;background:#FFFCF5;box-shadow:0 0 0 3px rgba(199,6,2,.08)}
+      /* path-cards */
+      .nm-path-card{border:1.5px solid #E5E5E5;border-radius:10px;padding:16px 18px;cursor:pointer;background:#fff;transition:border-color .15s}
+      .nm-path-card:hover{border-color:#C70602}
+      .nm-path-card.sel{border-color:#C70602;background:#FFFDF5}
+      /* circa panel */
+      .nm-circa-panel{background:#F0F9FF;border:1px solid #BAE6FD;border-radius:10px;padding:14px 18px}
+      /* buttons */
+      .nm-btn-primary{padding:8px 16px;background:#C70602;color:#fff;border:none;border-radius:8px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:'Montserrat',system-ui,sans-serif;transition:background .15s;display:inline-flex;align-items:center;gap:5px;height:36px}
+      .nm-btn-primary:hover{background:#A00400}
+      .nm-btn-secondary{padding:7px 13px;border:1.5px solid #E5E5E5;border-radius:7px;background:#fff;color:#929090;font-size:12.5px;font-weight:600;cursor:pointer;font-family:'Montserrat',system-ui,sans-serif;display:inline-flex;align-items:center;gap:5px;height:36px}
+      .nm-btn-secondary:hover{background:#F7F7F7}
+      .nm-btn-ghost{padding:5px 10px;border:1.5px solid #E5E5E5;border-radius:6px;background:#fff;font-size:11.5px;cursor:pointer;font-family:'Montserrat',system-ui,sans-serif;color:#929090;height:32px}
+      .nm-btn-ghost:hover{color:#C70602;border-color:#C70602}
+      /* stat tile */
+      .nm-stat-tile{padding:10px 12px;background:#FAFAFA;border-radius:8px;border:1px solid #EDEDF0;text-align:center}
+      .nm-stat-tile .nm-stat-num{font-size:20px;font-weight:800;color:#242424}
+      .nm-stat-tile .nm-stat-label{font-size:11px;color:#929090;margin-top:2px}
+      /* visually hidden */
+      .nm-visually-hidden{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+      /* circa sidebar */
+      #page-nova-manifestacao .circa-col{width:280px;flex:none;background:#fff;border-left:1px solid #E5E5E5;overflow-y:auto;padding:16px}
+      /* workarea */
+      #page-nova-manifestacao .nm-ref-workarea{flex:1;overflow-y:auto;padding:20px 28px;background:#F7F7F7;min-width:0}
+      /* upload box */
+      #page-nova-manifestacao .nm-upload-box{border:2px dashed #E5E5E5;border-radius:10px;padding:24px;text-align:center;cursor:pointer;margin-bottom:12px;transition:border-color .15s,background .15s}
+      #page-nova-manifestacao .nm-upload-box:hover{border-color:#C70602;background:#FDFDFF}
+      /* duplicate alert */
+      .nm-dup-alert{background:#FEF3C7;border:1px solid #FFE082;border-radius:10px;padding:12px 16px;display:flex;align-items:flex-start;gap:10px}
+      .nm-err-alert{background:#FFF5F5;border:1px solid #FECACA;border-radius:10px;padding:12px 16px;display:flex;align-items:flex-start;gap:10px}
+      /* review CTA */
+      .nm-register-cta{background:linear-gradient(135deg,#FDECEC,#FFF5F5);border:1px solid #FECACA;border-radius:10px;padding:20px 22px;text-align:center}
+      /* legacy compat */
+      .nm-inline-search,.nm-inline-clear{height:38px;border:1.5px solid #E0E0E0;border-radius:7px;background:#fff;color:#929090;font-size:12px;font-weight:600;cursor:pointer;padding:0 11px;font-family:'Montserrat',system-ui,sans-serif}
+      .nm-inline-search:hover{border-color:#C70602;color:#C70602}
+      .nm-inline-row{display:flex;gap:8px}
+      .nm-inline-row .nm-input{flex:1}
+      .nm-help{font-size:11px;color:#929090}
+      .nm-history-note{padding:10px 12px;border-radius:8px;font-size:12px}
+      /* legacy compatibility — keep old IDs working */
+      .section-label{font-size:11px;letter-spacing:.07em;text-transform:uppercase;font-weight:700;color:#777;margin-bottom:8px}
+      .checklist-item{display:flex;align-items:center;gap:9px;font-size:13px;color:#333;padding:8px 10px;border:1px solid #ECECEC;border-radius:7px}
+      .badge{display:inline-flex;padding:5px 10px;border-radius:999px;font-size:11px;font-weight:700}
+      .badge-warning{background:#FFF5D8;color:#8A5700}
+      .badge-success{background:#E6F2EA;color:#1E6B3A}
+      .circa-muted{font-size:13px;color:#888;line-height:1.55}
+      .circa-analysis-grid{display:flex;flex-direction:column;gap:14px}
+      .circa-analysis-card{background:#fff;border:1px solid #E5E5E5;border-radius:10px;padding:18px 20px;min-width:0}
+      .circa-analysis-footer{display:flex;justify-content:space-between;align-items:center;gap:12px;border-top:1px solid #E5E5E5;padding-top:14px;font-size:11px;color:#888}
+      .circa-analysis-footer>div{display:flex;gap:8px;flex-wrap:wrap}
+      .circa-checklist{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+      .check-box{width:21px;height:21px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:#EEF6FF;color:#2563EB;font-size:11px;font-weight:700;flex:none}
+      .circa-tag-list{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+      .circa-confidence{display:flex;align-items:center;gap:10px;margin-top:14px;font-size:12px;color:#777}
+      .circa-confidence .progress-bar{height:6px;flex:1;background:#EEE;border-radius:99px}
+      .circa-confidence .progress-fill{display:block;height:100%;width:0;background:#C70602;border-radius:inherit}
+      .circa-similar-list{display:flex;flex-direction:column;gap:7px;margin-top:10px}
+      .circa-two{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:10px}
+      .circa-two b{font-size:12px}
+      .circa-two p{font-size:13px;color:#555;line-height:1.55;margin:6px 0}
+      .circa-alert{margin-top:12px;padding:11px 13px;border-radius:8px;background:#FFF8E8;border:1px solid #F2D58B;color:#6E5314;font-size:12px;line-height:1.5}
+      .circa-alert b{display:block;margin-bottom:4px}
+      .circa-action-row{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+      .circa-option-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin:12px 0}
+      /* responsive */
+      @media(max-width:1100px){#page-nova-manifestacao .circa-col{display:none!important}.nm-g3,.nm-g4{grid-template-columns:1fr 1fr!important}}
+      @media(max-width:700px){.nm-g2,.nm-g3,.nm-g4{grid-template-columns:1fr!important}}
     </style>
 
-    <!-- STEPS BODY -->
-    <div class="nm-ref-workarea">
-    <div id="nm-steps-body" style="flex:1;overflow-y:auto;padding:24px 28px">
+    <!-- MAIN SCROLL -->
+    <div class="nm-ref-workarea" id="nm-steps-body">
 
-      <!-- ETAPA 1: DADOS DA MANIFESTAÇÃO -->
-      <div class="nm-step-panel nm-active" data-nm-step="1">
-        <div class="nm-section-hdr"><h2>Dados da Manifestação</h2><p>Identificação do cliente, pedido e origem da ocorrência.</p></div>
-        <div class="nm-card"><div class="nm-card-title">Empresa reclamada</div><div class="nm-company-grid">
-          <button class="nm-empresa-btn active" onclick="nmSelEmpresa(this,'CHIACCHIO EMBALAGENS')">CHIACCHIO EMBALAGENS</button>
-          <button class="nm-empresa-btn" onclick="nmSelEmpresa(this,'PLASCHIO')">PLASCHIO</button>
-          <button class="nm-empresa-btn" onclick="nmSelEmpresa(this,'TUBAHIA')">TUBAHIA / CESBAP</button>
-        </div><select id="nm-empresa-reclamada" class="nm-visually-hidden"><option value="CHIACCHIO EMBALAGENS" selected>CHIACCHIO EMBALAGENS</option><option value="PLASCHIO">PLASCHIO</option><option value="TUBAHIA">TUBAHIA / CESBAP</option></select></div>
-        <div class="nm-card"><div class="nm-card-title">Dados do cliente</div><div class="nm-grid-2">
-          <label class="nm-label"><span>CPF / CNPJ</span><div class="nm-inline-row"><input class="nm-input" placeholder="00.000.000/0001-00" id="nm-cnpj" oninput="onCnpjChange()"><button onclick="buscarCliente()" class="nm-inline-search">Buscar</button><button id="btn-limpar-cnpj" onclick="limparBuscaCnpj()" class="nm-inline-clear" style="display:none">✕</button></div></label>
-          <label class="nm-label"><span>Razão social / Nome</span><input class="nm-input" placeholder="Razão social do cliente" id="nm-empresa"></label>
-        </div><div id="nm-historico-cliente" class="nm-history-note" style="display:none"></div><div class="nm-grid-3">
-          <label class="nm-label"><span>Nome do contato</span><input class="nm-input" placeholder="Nome do comprador" id="nm-nome"></label><label class="nm-label"><span>Telefone / WhatsApp</span><input class="nm-input" placeholder="(77) 90000-0000" id="nm-tel"></label><label class="nm-label"><span>E-mail</span><input class="nm-input" type="email" placeholder="contato@exemplo.com.br" id="nm-email"></label>
-        </div></div>
-        <div class="nm-card"><div class="nm-card-title">Dados do registro</div><div class="nm-grid-4">
-          <label class="nm-label"><span>Data do registro</span><input class="nm-input" id="nm-data" type="date"></label><label class="nm-label"><span>Canal</span><select class="nm-select" id="nm-origem"><option value="MANUAL">Manual</option><option value="WHATSAPP">WhatsApp</option><option value="EMAIL">E-mail</option><option value="PORTAL_CLIENTE">Portal do Cliente</option><option value="PESQUISA_SATISFACAO">Pesquisa de satisfação</option><option value="TELEFONE">Telefone</option></select></label><label class="nm-label"><span>Tipo</span><select class="nm-select" id="nm-tipo"><option>Reclamação</option><option>Dúvida</option><option>Sugestão</option><option>Elogio</option></select></label><label class="nm-label"><span>Prioridade</span><select class="nm-select" id="nm-prioridade"><option value="NORMAL">Normal</option><option value="ALTA">Alta</option><option value="CRITICA">Crítica</option><option value="URGENTE">Urgente</option></select></label>
-        </div><input class="nm-visually-hidden" id="nm-num"><input class="nm-visually-hidden" id="nm-atendente"><input class="nm-visually-hidden" id="nm-canal"></div>
-        <div class="nm-card"><div class="nm-card-title">Relato do cliente</div><label class="nm-label"><span>Descrição da manifestação *</span><textarea class="nm-textarea" rows="6" id="nm-descricao" placeholder="Descreva detalhadamente o que ocorreu..." oninput="onDescricaoChange()"></textarea><span id="nm-chars" class="nm-help">0 caracteres — digite ao menos 30 para análise automática</span></label><div class="nm-grid-3"><label class="nm-label"><span>Produto / SKU</span><input class="nm-input" id="nm-produto" oninput="agendarAnalise()"></label><label class="nm-label"><span>Lote</span><input class="nm-input" id="nm-lote" oninput="agendarAnalise()"></label><label class="nm-label"><span>NF / Pedido</span><input class="nm-input" id="nm-nfe"></label></div><label class="nm-label"><span>O que o cliente espera?</span><textarea class="nm-textarea" rows="3" id="nm-expectativa" placeholder="Descreva a expectativa ou solicitação do cliente..."></textarea></label></div>
-        <div class="nm-card"><div class="nm-card-title">Evidências e anexos</div><input id="nm-import-file" type="file" accept=".pdf,image/*" class="nm-visually-hidden" onchange="processarDocumentoImportado(this.files[0])"><input id="nm-evidencias" type="file" multiple accept=".pdf,image/*,.doc,.docx,.xls,.xlsx" class="nm-visually-hidden" onchange="adicionarEvidencias(this.files)"><div id="nm-upload-box" class="upload-box" onclick="document.getElementById('nm-evidencias').click()"><span>Arraste arquivos aqui ou <b>selecione</b> · até 50 MB</span></div><div id="nm-extracao-status" style="display:none"></div><div id="nm-extracao-preview" style="display:none"></div><div id="nm-evidencias-list" class="upload-list"></div></div>
-        <input type="hidden" id="nm-categoria"><input type="hidden" id="nm-motivo"><input type="hidden" id="nm-severidade" value="MEDIA"><input type="hidden" id="nm-setor-resp"><input type="checkbox" id="nm-gera-rnc" class="nm-visually-hidden"><input type="checkbox" id="nm-analise-causa" class="nm-visually-hidden"><input id="nm-protocolo-externo" class="nm-visually-hidden"><input id="nm-vinculo-man" class="nm-visually-hidden"><input id="nm-cliente-cod" class="nm-visually-hidden"><input id="nm-nr-pedido" class="nm-visually-hidden"><input id="nm-data-nf" class="nm-visually-hidden"><input id="nm-dt-entrega-p" class="nm-visually-hidden"><input id="nm-dt-entrega-e" class="nm-visually-hidden"><input id="nm-data-ocorrido" class="nm-visually-hidden"><input id="nm-repr" class="nm-visually-hidden"><input id="nm-rca-resp" class="nm-visually-hidden">
+      <!-- ══ ETAPA 1: IDENTIFICAÇÃO ══ -->
+      <div class="nm-step-panel nm-active nm-s-anim" data-nm-step="1">
+
+        <!-- Empresa e origem -->
+        <div class="nm-card">
+          <div class="nm-sl">Empresa e origem</div>
+          <div class="nm-g4" style="margin-bottom:14px">
+            <div style="grid-column:1/3">
+              <label>Empresa *</label>
+              <div id="nm-empresa-chips" style="display:flex;gap:8px;flex-wrap:wrap">
+                <button class="nm-chip sel" onclick="nmSelEmpresa(this,'CHIACCHIO EMBALAGENS')">Chiacchio Embalagens</button>
+                <button class="nm-chip" onclick="nmSelEmpresa(this,'PLASCHIO')">Plaschio</button>
+                <button class="nm-chip" onclick="nmSelEmpresa(this,'TUBAHIA')">Tubahia/CESBAP</button>
+              </div>
+              <select id="nm-empresa-reclamada" class="nm-visually-hidden"><option value="CHIACCHIO EMBALAGENS" selected>CHIACCHIO EMBALAGENS</option><option value="PLASCHIO">PLASCHIO</option><option value="TUBAHIA">TUBAHIA</option></select>
+            </div>
+            <div><label>Origem da manifestação</label><select class="nm-select" id="nm-origem"><option value="MANUAL">Manual</option><option value="PORTAL_CLIENTE">Portal do Cliente</option><option value="TELEFONE">Telefone</option><option value="WHATSAPP">WhatsApp</option><option value="EMAIL">E-mail</option><option value="PRESENCIAL">Presencial</option><option value="PESQUISA_SATISFACAO">Pesquisa de satisfação</option></select></div>
+            <div><label>Data do registro</label><input type="date" class="nm-input" id="nm-data"></div>
+          </div>
+          <div><label>Responsável pelo registro</label><input type="text" class="nm-input" id="nm-atendente" placeholder="Nome do atendente SAC"></div>
+        </div>
+
+        <!-- Dados do cliente -->
+        <div class="nm-card">
+          <div class="nm-sl">Dados do cliente</div>
+          <div class="nm-g4" style="margin-bottom:14px">
+            <div style="grid-column:1/3">
+              <label>CNPJ / CPF *</label>
+              <div class="nm-inline-row"><input type="text" class="nm-input" placeholder="00.000.000/0001-00" id="nm-cnpj" oninput="onCnpjChange()"><button onclick="buscarCliente()" class="nm-inline-search">Buscar</button><button id="btn-limpar-cnpj" onclick="limparBuscaCnpj()" class="nm-inline-search" style="display:none">✕</button></div>
+            </div>
+            <div style="grid-column:3/5"><label>Razão social *</label><input type="text" class="nm-input" placeholder="Razão social do cliente" id="nm-empresa"></div>
+          </div>
+          <div id="nm-historico-cliente" class="nm-history-note" style="display:none"></div>
+          <div class="nm-g3" style="margin-bottom:14px">
+            <div><label>Contato</label><input type="text" class="nm-input" placeholder="Nome do contato" id="nm-nome"></div>
+            <div><label>Telefone / WhatsApp</label><input type="tel" class="nm-input" placeholder="(00) 00000-0000" id="nm-tel"></div>
+            <div><label>E-mail</label><input type="email" class="nm-input" placeholder="email@empresa.com.br" id="nm-email"></div>
+          </div>
+          <div class="nm-g2">
+            <div><label>RCA vinculado</label><select class="nm-select" id="nm-rca-resp"><option value="">Não identificado</option></select></div>
+            <div><label>Gerente comercial</label><select class="nm-select" id="nm-gerente-comercial"><option value="">Não identificado</option></select></div>
+          </div>
+        </div>
+
+        <!-- Histórico do cliente -->
+        <div class="nm-card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <div class="nm-sl" style="margin:0;border:none;padding:0">Histórico do cliente</div>
+            <span style="font-size:11px;color:#929090" id="nm-historico-label">Nenhum cliente selecionado ainda</span>
+          </div>
+          <div class="nm-g4">
+            <div class="nm-stat-tile"><div class="nm-stat-num" id="nm-hist-total">—</div><div class="nm-stat-label">Manifestações</div></div>
+            <div class="nm-stat-tile"><div class="nm-stat-num" style="color:#D97706" id="nm-hist-aberto">—</div><div class="nm-stat-label">Em aberto</div></div>
+            <div class="nm-stat-tile"><div class="nm-stat-num" style="color:#C70602" id="nm-hist-reincid">—</div><div class="nm-stat-label">Reincidências</div></div>
+            <div class="nm-stat-tile"><div style="font-size:11.5px;font-weight:600;color:#BDBDBD">Última:</div><div style="font-size:12px;font-weight:700;color:#929090;margin-top:2px" id="nm-hist-ultima">—</div></div>
+          </div>
+        </div>
+
+        <div style="display:flex;justify-content:flex-end;gap:7px">
+          <button class="nm-btn-secondary" onclick="salvarRascunho()">Salvar rascunho</button>
+          <button class="nm-btn-primary" onclick="nmProximaEtapa()">Continuar →</button>
+        </div>
       </div>
 
-      <!-- ETAPA 2: ANÁLISE INTELIGENTE E TRIAGEM -->
-      <div class="nm-step-panel" data-nm-step="2"><div class="nm-section-hdr"><h2>Análise Inteligente e Triagem</h2><p>Histórico, regras determinísticas e recomendações complementares para orientar o SAC.</p></div>
-        <div style="background:#fff;border:1px solid #E5E5E5;border-radius:10px;padding:14px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap"><div style="width:36px;height:36px;border-radius:9px;background:#EFF6FF;display:flex;align-items:center;justify-content:center;flex:none"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4" stroke="#1D4ED8" stroke-width="1.5"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2" stroke="#1D4ED8" stroke-width="1.5" stroke-linecap="round"/></svg></div><div style="flex:1;min-width:0"><div style="font-size:12.5px;font-weight:700;color:#242424">Análise do Cérebro SAC</div><div style="font-size:11.5px;color:#929090;margin-top:2px" id="ia-timestamp">Aguardando análise · Clique em Analisar para iniciar</div></div><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span id="ia-tipo-badge" class="badge" style="background:#FDECEC;color:#C70602;display:none"></span><span id="ia-prioridade-hdr" class="badge" style="background:#FEF3C7;color:#B45309;display:none"></span><button class="btn btn-secondary" id="nm-btn-analisar-ia" onclick="executarAnaliseIA()" style="font-size:11.5px;height:32px;padding:0 14px;white-space:nowrap">Analisar agora</button></div></div>
-        <div id="painel-analise" class="circa-analysis-grid"><div class="circa-analysis-card"><div class="section-label">1 · Entendimento</div><div class="circa-two"><div><b>Problema identificado</b><span id="ia-tipo" class="nm-visually-hidden"></span><p id="ia-causa">Aguardando dados suficientes.</p></div><div><b>Impacto potencial</b><p id="ia-prioridade-badge">A avaliar</p></div></div><div class="circa-alert"><b>Informações faltantes</b><div id="ia-perguntas">Nenhuma informação adicional identificada.</div></div></div>
+      <!-- ══ ETAPA 2: RELATO ══ -->
+      <div class="nm-step-panel nm-s-anim" data-nm-step="2">
+        <div class="nm-card">
+          <div class="nm-sl">Tipo e relato</div>
+          <div class="nm-g3" style="margin-bottom:14px">
+            <div>
+              <label>Tipo de manifestação *</label>
+              <div style="display:flex;gap:6px;flex-wrap:wrap" id="nm-tipo-chips">
+                <button class="nm-chip sel" onclick="nmSelTipo(this,'Reclamação')">Reclamação</button>
+                <button class="nm-chip" onclick="nmSelTipo(this,'Dúvida')">Dúvida</button>
+                <button class="nm-chip" onclick="nmSelTipo(this,'Elogio')">Elogio</button>
+                <button class="nm-chip" onclick="nmSelTipo(this,'Sugestão')">Sugestão</button>
+              </div>
+              <select id="nm-tipo" class="nm-visually-hidden"><option selected>Reclamação</option><option>Dúvida</option><option>Elogio</option><option>Sugestão</option></select>
+            </div>
+            <div><label>Data da ocorrência</label><input type="date" class="nm-input" id="nm-data-ocorrido"></div>
+            <div><label>Pedido / NF</label><input type="text" class="nm-input" placeholder="Ex: NF-004521" id="nm-nfe"></div>
+          </div>
+          <div style="margin-bottom:14px">
+            <label>Relato original * <span style="font-weight:400;color:#929090">— será preservado integralmente</span></label>
+            <textarea class="nm-textarea" rows="5" placeholder="Descreva o que o cliente relatou, o problema identificado, a data da ocorrência e qualquer detalhe relevante..." id="nm-descricao" oninput="onDescricaoChange()"></textarea>
+            <span id="nm-chars" class="nm-help">0 caracteres — digite ao menos 30 para análise automática</span>
+          </div>
+          <div class="nm-g3">
+            <div><label>Produto / SKU</label><input type="text" class="nm-input" placeholder="Ex: Caixa Kraft 40×30×20" id="nm-produto" oninput="agendarAnalise()"></div>
+            <div><label>Lote</label><input type="text" class="nm-input" placeholder="Ex: 2024-B" id="nm-lote" oninput="agendarAnalise()"></div>
+            <div><label>Quantidade afetada</label><input type="number" class="nm-input" placeholder="0" id="nm-qtd"></div>
+          </div>
+          <div style="margin-top:14px"><label>O que o cliente espera?</label><textarea class="nm-textarea" rows="3" placeholder="Descreva a expectativa ou solicitação do cliente..." id="nm-expectativa"></textarea></div>
+        </div>
+
+        <div class="nm-card">
+          <div class="nm-sl">Evidências e anexos</div>
+          <input id="nm-import-file" type="file" accept=".pdf,image/*" class="nm-visually-hidden" onchange="processarDocumentoImportado(this.files[0])">
+          <input id="nm-evidencias" type="file" multiple accept=".pdf,image/*,.doc,.docx,.xls,.xlsx" class="nm-visually-hidden" onchange="adicionarEvidencias(this.files)">
+          <div class="nm-upload-box" id="nm-upload-box" onclick="document.getElementById('nm-evidencias').click()">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" style="margin:0 auto 8px;display:block"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" stroke="#929090" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <div style="font-size:13px;font-weight:700;color:#242424;margin-bottom:3px">Selecionar ou arrastar arquivos</div>
+            <div style="font-size:12px;color:#929090">Imagens, PDF, vídeos ou documentos · Máx. 25 MB por arquivo</div>
+          </div>
+          <div id="nm-extracao-status" style="display:none"></div>
+          <div id="nm-extracao-preview" style="display:none"></div>
+          <div id="nm-evidencias-list" class="upload-list"></div>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;gap:7px">
+          <button class="nm-btn-ghost" onclick="nmEtapaAnterior()">← Voltar</button>
+          <div style="display:flex;gap:7px">
+            <button class="nm-btn-secondary" onclick="salvarRascunho()">Salvar rascunho</button>
+            <button class="nm-btn-primary" onclick="nmProximaEtapa()">Continuar →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ ETAPA 3: CLASSIFICAÇÃO ══ -->
+      <div class="nm-step-panel nm-s-anim" data-nm-step="3">
+
+        <!-- CIRCA suggestion -->
+        <div class="nm-circa-panel" id="nm-circa-classificacao" style="display:flex;gap:12px;align-items:flex-start">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="flex:none;margin-top:2px"><circle cx="12" cy="12" r="4" stroke="#0369A1" stroke-width="1.5"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2" stroke="#0369A1" stroke-width="1.5" stroke-linecap="round"/></svg>
+          <div style="flex:1">
+            <div style="font-size:12px;font-weight:700;color:#0369A1;margin-bottom:4px">Sugestão do Cérebro CIRCA</div>
+            <div style="font-size:12px;color:#0C4A6E;line-height:1.65" id="nm-circa-classificacao-texto">Preencha o relato na etapa anterior para receber sugestão de classificação.</div>
+            <div id="nm-circa-classificacao-actions" style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;display:none">
+              <button class="nm-btn-ghost" style="height:26px;font-size:11px;padding:2px 9px;border-color:#BAE6FD;color:#0369A1" onclick="nmAplicarSugestaoClassificacao()">Aplicar sugestão</button>
+              <button class="nm-btn-ghost" style="height:26px;font-size:11px;padding:2px 9px" onclick="this.closest('.nm-circa-panel').style.display='none'">Ignorar</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- CIRCA analysis panels (hidden, legacy compat) -->
+        <div id="painel-analise" class="circa-analysis-grid" style="display:none">
+          <div class="circa-analysis-card"><div class="section-label">1 · Entendimento</div><div class="circa-two"><div><b>Problema identificado</b><span id="ia-tipo" class="nm-visually-hidden"></span><p id="ia-causa">Aguardando dados suficientes.</p></div><div><b>Impacto potencial</b><p id="ia-prioridade-badge">A avaliar</p></div></div><div class="circa-alert"><b>Informações faltantes</b><div id="ia-perguntas">Nenhuma informação adicional identificada.</div></div></div>
           <div class="circa-analysis-card"><div class="section-label">2 · O que o SAC deve fazer agora</div><div id="ia-tratativa" class="circa-checklist"><div class="checklist-item"><span class="check-box">1</span><span>Analise a manifestação e confirme os dados essenciais.</span></div></div></div>
           <div class="circa-analysis-card"><div class="section-label">3 · Procedimentos recomendados</div><div id="ia-proc-nome" class="circa-muted">Consulte a Matriz de Causas e Tratamentos após a análise.</div></div>
           <div class="circa-analysis-card"><div class="section-label">4 · Responsáveis e competências</div><div id="ia-setores" class="circa-tag-list"><span class="circa-muted">Aguardando classificação.</span></div></div>
           <div class="circa-analysis-card"><div class="section-label">5 · Casos semelhantes encontrados</div><div id="ia-similares" class="circa-similar-list"><span class="circa-muted">O histórico será consultado automaticamente.</span></div></div>
-          <div class="circa-analysis-card"><div class="section-label">Recomendação complementar da IA</div><div id="ia-alertas-wrap"><div id="ia-alertas" class="circa-muted">A IA poderá complementar a orientação após a consulta determinística.</div></div><div class="circa-confidence">Confiança <strong id="ia-confianca-pct">—</strong><span class="progress-bar"><span id="ia-confianca-bar" class="progress-fill"></span></span></div></div></div>
-        <div class="circa-analysis-footer"><span>As recomendações são sugestões baseadas no histórico e na matriz. A decisão operacional é da analista.</span><div><button class="btn btn-ghost" style="font-size:12px" onclick="nmAbrirRevisaoOrientacao()">Ajustar condução</button><button class="btn btn-primary" style="font-size:12px" onclick="nmUtilizarOrientacao()">Utilizar orientação →</button></div></div><div id="nm-revisao-orientacao" class="nm-card" style="display:none;margin-top:12px;border-color:#F59E0B;background:#FFFBEB"><div class="section-label">Revisão humana da orientação</div><p style="font-size:12px;color:#66520A;margin:6px 0 12px">Revise as hipóteses e recomendações antes de transferir a decisão para a condução. A análise original permanece preservada.</p><div class="nm-grid-2"><label class="nm-label"><span>Estado da análise</span><select id="nm-revisao-status" class="nm-select"><option value="REVISADA">Revisada — validar manualmente</option><option value="ORIENTACAO_PARCIAL">Aceita parcialmente</option><option value="ORIENTACAO_REJEITADA">Rejeitar orientação</option></select></label><label class="nm-label"><span>Classificação humana (opcional)</span><input id="nm-revisao-classificacao" class="nm-input" placeholder="Informe somente se confirmado pelo SAC"></label></div><label class="nm-label"><span>Justificativa / ajustes</span><textarea id="nm-revisao-justificativa" class="nm-textarea" rows="3" placeholder="Registre a decisão, ajustes ou motivo da rejeição..."></textarea></label><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-secondary" onclick="nmFecharRevisaoOrientacao()">Cancelar</button><button class="btn btn-primary" onclick="nmSalvarRevisaoOrientacao()">Salvar revisão</button></div></div><div id="ia-decisao-status" style="display:none"></div><div id="ia-analisando" style="display:none"></div><div id="ia-resultado" style="display:none"></div><div id="ia-loading" style="display:none"></div><div id="ia-sla" class="nm-visually-hidden"></div><div id="ia-proc-wrap" class="nm-visually-hidden"></div><div id="ia-perguntas-wrap" class="nm-visually-hidden"></div><div id="ia-similares-wrap" class="nm-visually-hidden"></div><div id="ia-devolutiva-tipo" class="nm-visually-hidden"></div><div id="ia-devolutiva-bloqueadas" class="nm-visually-hidden"></div><textarea id="ia-devolutiva" class="nm-visually-hidden"></textarea>
+          <div class="circa-analysis-card"><div class="section-label">Recomendação complementar da IA</div><div id="ia-alertas-wrap"><div id="ia-alertas" class="circa-muted">A IA poderá complementar a orientação após a consulta determinística.</div></div><div class="circa-confidence">Confiança <strong id="ia-confianca-pct">—</strong><span class="progress-bar"><span id="ia-confianca-bar" class="progress-fill"></span></span></div></div>
+        </div>
+        <!-- legacy hidden analysis elements -->
+        <div id="nm-revisao-orientacao" style="display:none"><select id="nm-revisao-status" class="nm-visually-hidden"><option value="REVISADA">Revisada</option><option value="ORIENTACAO_PARCIAL">Aceita parcialmente</option><option value="ORIENTACAO_REJEITADA">Rejeitar orientação</option></select><input id="nm-revisao-classificacao" class="nm-visually-hidden"><textarea id="nm-revisao-justificativa" class="nm-visually-hidden"></textarea></div>
+        <div id="ia-decisao-status" style="display:none"></div><div id="ia-analisando" style="display:none"></div><div id="ia-resultado" style="display:none"></div><div id="ia-loading" style="display:none"></div>
+        <div id="ia-sla" class="nm-visually-hidden"></div><div id="ia-timestamp" class="nm-visually-hidden"></div><span id="ia-tipo-badge" class="nm-visually-hidden"></span><span id="ia-prioridade-hdr" class="nm-visually-hidden"></span><button id="nm-btn-analisar-ia" onclick="executarAnaliseIA()" class="nm-visually-hidden">Analisar</button>
+        <div id="ia-proc-wrap" class="nm-visually-hidden"></div><div id="ia-perguntas-wrap" class="nm-visually-hidden"></div><div id="ia-similares-wrap" class="nm-visually-hidden"></div><div id="ia-devolutiva-tipo" class="nm-visually-hidden"></div><div id="ia-devolutiva-bloqueadas" class="nm-visually-hidden"></div><textarea id="ia-devolutiva" class="nm-visually-hidden"></textarea>
+
+        <div class="nm-card">
+          <div class="nm-sl">Classificação</div>
+          <div class="nm-g3" style="margin-bottom:14px">
+            <div><label>Tipo *</label><select class="nm-select" id="nm-tipo-class" onchange="document.getElementById('nm-tipo').value=this.value"><option>Reclamação</option><option>Dúvida</option><option>Elogio</option><option>Sugestão</option></select></div>
+            <div><label>Motivo *</label><select class="nm-select" id="nm-motivo-class" onchange="document.getElementById('nm-motivo').value=this.value"><option value="">Selecionar motivo</option><option>Qualidade do produto</option><option>Prazo de entrega</option><option>Quantidade</option><option>Atendimento</option><option>Cobrança</option></select></div>
+            <div><label>Submotivo</label><select class="nm-select" id="nm-submotivo"><option value="">Selecionar submotivo</option><option>Defeito de embalagem</option><option>Contaminação</option><option>Produto fora de especificação</option><option>Avaria no transporte</option></select></div>
+            <div><label>Produto / serviço</label><input type="text" class="nm-input" placeholder="SKU ou descrição" id="nm-produto-class" onchange="if(!document.getElementById('nm-produto').value)document.getElementById('nm-produto').value=this.value"></div>
+            <div><label>Criticidade</label><select class="nm-select" id="nm-criticidade" onchange="document.getElementById('nm-severidade').value=this.value"><option value="ALTA">Alta</option><option value="MEDIA" selected>Média</option><option value="BAIXA">Baixa</option></select></div>
+            <div><label>Prioridade</label><select class="nm-select" id="nm-prioridade"><option value="NORMAL">Normal</option><option value="ALTA">Alta</option><option value="CRITICA">Crítica</option><option value="URGENTE">Urgente</option></select></div>
+          </div>
+          <div><label>Setor potencialmente responsável</label><select class="nm-select" id="nm-setor-class" onchange="document.getElementById('nm-setor-resp').value=this.value"><option value="">Selecionar setor</option><option>Qualidade Industrial</option><option>Logística</option><option>Produção</option><option>Comercial</option><option>SAC</option><option>Financeiro</option></select></div>
+        </div>
+
+        <!-- Duplicidade / reincidência alert -->
+        <div id="nm-dup-alert" class="nm-dup-alert" style="display:none">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" style="flex:none;margin-top:2px"><circle cx="12" cy="12" r="10" stroke="#B45309" stroke-width="1.5"/><line x1="12" y1="7" x2="12" y2="12" stroke="#B45309" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="16" r="1" fill="#B45309"/></svg>
+          <div style="flex:1">
+            <div style="font-size:12px;font-weight:700;color:#92400E;margin-bottom:3px">Possível reincidência identificada</div>
+            <div id="nm-dup-alert-texto" style="font-size:12px;color:#92400E;line-height:1.6"></div>
+          </div>
+          <button class="nm-btn-ghost" style="height:26px;font-size:11px;padding:2px 9px;border-color:#FFE082;white-space:nowrap" onclick="this.closest('.nm-dup-alert').style.display='none'">Entendido</button>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;gap:7px">
+          <button class="nm-btn-ghost" onclick="nmEtapaAnterior()">← Voltar</button>
+          <div style="display:flex;gap:7px">
+            <button class="nm-btn-secondary" onclick="salvarRascunho()">Salvar</button>
+            <button class="nm-btn-primary" onclick="nmProximaEtapa()">Continuar →</button>
+          </div>
+        </div>
       </div>
 
-      <!-- ETAPA 3: CONDUÇÃO -->
-      <div class="nm-step-panel" data-nm-step="3"><div class="nm-section-hdr"><h2>Condução</h2><p>Defina o caminho da tratativa e os próximos responsáveis.</p></div>
-        <div class="circa-path-grid"><div class="circa-path-card"><div class="circa-path-title"><span class="circa-path-icon">A</span>Resolver pelo SAC</div><p>Use quando houver procedimento validado e autonomia para concluir.</p><div class="circa-alert">Confirme a orientação, registre a ação e prepare a devolutiva.</div><button onclick="nmSetCaminhoTratativa('SAC',this)" id="nm-caminho-sac" class="btn btn-secondary">Selecionar caminho</button></div>
-          <div class="circa-path-card"><div class="circa-path-title"><span class="circa-path-icon">B</span>Solicitar informações complementares</div><p>Peça os dados necessários antes de definir a resolução.</p><label class="nm-label"><span>O que solicitar</span><textarea id="nm-complemento-pedido" class="nm-textarea" rows="3"></textarea></label><div class="nm-grid-2"><label class="nm-label"><span>Prazo de retorno</span><input class="nm-input" id="nm-prazo-retorno" placeholder="Conforme SLA aplicável"></label><label class="nm-label"><span>Canal de retorno</span><select class="nm-select" id="nm-canal-retorno"><option>WhatsApp</option><option>E-mail</option><option>Telefone</option></select></label></div><button onclick="nmSetCaminhoTratativa('COMPLEMENTO',this);nmAdicionarAcaoPlano('COMPLEMENTO')" id="nm-caminho-complemento" class="btn btn-secondary">Adicionar ao plano</button></div>
-          <div class="circa-path-card"><div class="circa-path-title"><span class="circa-path-icon">C</span>Acionar setor responsável</div><p>Crie uma tarefa com escopo, responsável, prazo e prioridade.</p><div class="nm-grid-2"><label class="nm-label"><span>Setor</span><select class="nm-select" id="nm-setor-acionado" onchange="document.getElementById('nm-responsavel-acionado').dataset.loaded='';nmCarregarResponsaveisSetor()"><option value="">Selecionar setor</option><option>Qualidade</option><option>Logística</option><option>Comercial</option><option>Produção</option><option>Financeiro</option></select></label><label class="nm-label"><span>Responsável</span><select class="nm-select" id="nm-responsavel-acionado"><option value="">Carregando responsáveis…</option></select></label></div><label class="nm-label"><span>Escopo da tarefa</span><textarea class="nm-textarea" rows="3" id="nm-escopo-acionado"></textarea></label><button onclick="nmSetCaminhoTratativa('SETOR',this)" id="nm-caminho-setor" class="btn btn-secondary">Adicionar ao plano</button><button onclick="nmAdicionarAcaoPlano('SETOR')" id="nm-btn-criar-acionamento" class="btn btn-primary" style="display:none">Adicionar frente ao plano</button></div></div>
-        <input type="hidden" id="nm-caminho-tratativa"><input type="date" id="nm-data-encaminhamento" class="nm-visually-hidden"><div id="nm-plano-conducao" class="nm-card" style="margin-top:12px"><div class="section-label">Plano de condução</div><p style="font-size:12px;color:#777;margin:4px 0 9px">Prepare ações independentes; elas serão confirmadas juntas, sem criar outra manifestação.</p><div id="nm-plano-lista" class="circa-muted">Nenhuma ação preparada.</div><button type="button" class="btn btn-primary" style="margin-top:10px" onclick="nmConfirmarPlano()">Confirmar ações do plano</button><div id="nm-plano-status" style="margin-top:8px"></div></div><div id="nm-box-tratativa-sac" class="nm-card" style="display:none"><div class="section-label">Tratativa interna SAC</div><textarea id="nm-tratativa-sac" class="nm-textarea" rows="5" placeholder="Descreva como o SAC conduzirá a resolução..."></textarea><button type="button" class="btn btn-secondary" style="margin-top:8px" onclick="nmAdicionarAcaoPlano('SAC')">Adicionar tratativa SAC ao plano</button></div><div id="nm-box-complemento" class="nm-card" style="display:none"><div class="section-label">Solicitação de complementação</div><p>Os dados solicitados, o canal e o prazo serão registrados na ficha antes do avanço da tratativa.</p></div><div id="nm-box-encaminhamento-setor" class="nm-card" style="display:none"><div class="section-label">Acionamento preparado</div><p>O setor receberá a ficha após o registro e deverá responder dentro do prazo definido.</p></div>
+      <!-- ══ ETAPA 4: INVESTIGAÇÃO ══ -->
+      <div class="nm-step-panel nm-s-anim" data-nm-step="4">
+
+        <div class="nm-g2" style="align-items:start">
+          <div class="nm-card">
+            <div class="nm-sl">Informações verificadas</div>
+            <div><label>O que já foi confirmado</label><textarea class="nm-textarea" rows="3" placeholder="Descreva as informações confirmadas até o momento..." id="nm-investigacao-verificada"></textarea></div>
+            <div style="margin-top:12px"><label>Evidências disponíveis</label><textarea class="nm-textarea" rows="2" placeholder="Fotos, laudos, registros..." id="nm-investigacao-resultado"></textarea></div>
+          </div>
+          <div class="nm-card">
+            <div class="nm-sl">Informações pendentes</div>
+            <div id="nm-inv-pendentes-lista" style="font-size:12.5px;color:#555">
+              <div style="font-size:12px;color:#929090;font-style:italic">Aguardando análise para listar pendências...</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="nm-card">
+          <div class="nm-sl">Hipóteses e casos semelhantes</div>
+          <div style="margin-bottom:14px"><label>Possíveis causas</label><textarea class="nm-textarea" rows="2" placeholder="Descreva hipóteses baseadas no relato e nas informações disponíveis..." id="nm-causa-raiz"></textarea></div>
+          <div style="margin-bottom:4px"><label>Subcausa</label><input type="text" class="nm-input" id="nm-subcausa" placeholder="Subcausa identificada"></div>
+          <div style="margin-top:14px">
+            <div style="font-size:11.5px;font-weight:700;color:#929090;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Casos semelhantes encontrados</div>
+            <div id="ia-similares-step4" class="circa-muted">O histórico será consultado automaticamente após análise.</div>
+          </div>
+        </div>
+
+        <!-- CIRCA investigation panel (legacy compat hidden) -->
+        <div id="nm-circa-investigacao-panel" style="display:none">
+          <div id="nm-circa-inv-perguntas"></div><div id="nm-circa-inv-similares"></div><div id="nm-circa-inv-tratativa"></div>
+        </div>
+
+        <div class="nm-card">
+          <div class="nm-sl">Notas da investigação</div>
+          <textarea id="nm-investigacao-notas" class="nm-textarea" rows="4" placeholder="Registre as ações realizadas e o resultado obtido..."></textarea>
+          <div style="margin-top:10px"><label>Ação executada</label><input type="text" class="nm-input" id="nm-acao-executada" placeholder="Descreva a ação tomada"></div>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;gap:7px">
+          <button class="nm-btn-ghost" onclick="nmEtapaAnterior()">← Voltar</button>
+          <div style="display:flex;gap:7px">
+            <button class="nm-btn-secondary" onclick="salvarRascunho()">Salvar</button>
+            <button class="nm-btn-primary" onclick="nmProximaEtapa()">Continuar →</button>
+          </div>
+        </div>
       </div>
 
-      <!-- ETAPA 4: INVESTIGAÇÃO E RESOLUÇÃO -->
-      <div class="nm-step-panel" data-nm-step="4"><div class="nm-section-hdr"><h2>Investigação e Resolução</h2><p>Registre evidências, causa, ações executadas e resposta do setor.</p></div><div class="circa-investigation-card"><div class="circa-card-head"><div><div class="section-label">Tratamento em andamento</div><h3 id="nm-investigacao-titulo">Aguardando definição de setor</h3></div><span class="badge badge-warning">EM INVESTIGAÇÃO</span></div><div class="nm-grid-2"><label class="nm-label"><span>O que foi verificado?</span><textarea class="nm-textarea" rows="4" id="nm-investigacao-verificada"></textarea></label><label class="nm-label"><span>Evidências e resultado</span><textarea class="nm-textarea" rows="4" id="nm-investigacao-resultado"></textarea></label></div><div class="nm-grid-3"><label class="nm-label"><span>Causa-raiz</span><input class="nm-input" id="nm-causa-raiz"></label><label class="nm-label"><span>Subcausa</span><input class="nm-input" id="nm-subcausa"></label><label class="nm-label"><span>Ação executada</span><input class="nm-input" id="nm-acao-executada"></label></div><div class="circa-action-row"><button class="btn btn-secondary" onclick="nmSolicitarComplementacao()">Solicitar complementação</button><button class="btn btn-ghost" onclick="nmRegistrarLembrete()">Registrar lembrete</button></div></div><div class="nm-card"><div class="section-label">Tratativa registrada pelo SAC</div><textarea id="nm-investigacao-notas" class="nm-textarea" rows="4" placeholder="Registre as ações realizadas e o resultado obtido..."></textarea><input id="nm-qtd-total" class="nm-visually-hidden"><input id="nm-qtd" class="nm-visually-hidden"><input id="nm-qtd-devolvida" class="nm-visually-hidden"><input id="nm-valor" class="nm-visually-hidden"><input id="nm-vlr-pedido" class="nm-visually-hidden"><input id="nm-vlr-estimado" class="nm-visually-hidden"><input type="checkbox" id="nm-houve-devolucao" class="nm-visually-hidden"></div>
+      <!-- ══ ETAPA 5: TRATAMENTO ══ -->
+      <div class="nm-step-panel nm-s-anim" data-nm-step="5">
+
+        <div style="font-size:13px;color:#555;line-height:1.65">Selecione uma ou mais tratativas recomendadas, ou registre uma alternativa. A execução efetiva ocorrerá no card de tratativa após o registro.</div>
+
+        <div id="nm-trat-cards-lista" style="display:flex;flex-direction:column;gap:10px">
+          <!-- Filled by nmRenderTratativas() -->
+          <div class="nm-trat-card" onclick="nmToggleTrat(this,'SUBSTITUICAO')">
+            <div style="display:flex;align-items:flex-start;gap:12px">
+              <div style="width:36px;height:36px;border-radius:8px;background:#DCFCE7;display:flex;align-items:center;justify-content:center;flex:none">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#15803D" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+              <div style="flex:1">
+                <div style="display:flex;align-items:center;gap:7px;margin-bottom:4px"><span style="font-size:13px;font-weight:800;color:#242424">Substituição imediata do produto</span><span class="badge" style="background:#DCFCE7;color:#15803D">Procedimento aprovado</span></div>
+                <div style="font-size:12px;color:#555;line-height:1.6;margin-bottom:7px">Emissão de nova NF para substituição das unidades afetadas. Aplicável quando a causa é clara e a alçada autoriza.</div>
+                <div style="display:flex;gap:10px;flex-wrap:wrap"><span style="font-size:11px;color:#929090">28 aplicações anteriores</span><span style="color:#E5E5E5">·</span><span style="font-size:11px;color:#929090">Alçada: SAC</span><span style="color:#E5E5E5">·</span><span style="font-size:11px;color:#929090">Fonte: Matriz de Tratamento</span></div>
+              </div>
+              <div class="nm-trat-radio" style="width:20px;height:20px;border-radius:50%;border:1.5px solid #E5E5E5;display:flex;align-items:center;justify-content:center;flex:none;margin-top:2px"></div>
+            </div>
+          </div>
+          <div class="nm-trat-card" onclick="nmToggleTrat(this,'INVESTIGACAO_QUALIDADE')">
+            <div style="display:flex;align-items:flex-start;gap:12px">
+              <div style="width:36px;height:36px;border-radius:8px;background:#EFF6FF;display:flex;align-items:center;justify-content:center;flex:none">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" stroke="#1D4ED8" stroke-width="1.6" stroke-linecap="round"/><circle cx="9" cy="7" r="4" stroke="#1D4ED8" stroke-width="1.6"/></svg>
+              </div>
+              <div style="flex:1">
+                <div style="display:flex;align-items:center;gap:7px;margin-bottom:4px"><span style="font-size:13px;font-weight:800;color:#242424">Encaminhamento para Qualidade Industrial</span><span class="badge" style="background:#EFF6FF;color:#1D4ED8">Tratativa histórica</span></div>
+                <div style="font-size:12px;color:#555;line-height:1.6;margin-bottom:7px">Solicitar investigação técnica do lote e do equipamento de produção envolvido. Recomendado quando há indício de falha de processo.</div>
+                <div style="display:flex;gap:10px;flex-wrap:wrap"><span style="font-size:11px;color:#929090">15 aplicações anteriores</span><span style="color:#E5E5E5">·</span><span style="font-size:11px;color:#929090">Alçada: SAC</span><span style="color:#E5E5E5">·</span><span style="font-size:11px;color:#929090">Fonte: Banco de Casos</span></div>
+              </div>
+              <div class="nm-trat-radio" style="width:20px;height:20px;border-radius:50%;border:1.5px solid #E5E5E5;display:flex;align-items:center;justify-content:center;flex:none;margin-top:2px"></div>
+            </div>
+          </div>
+          <div class="nm-trat-card" onclick="nmToggleTrat(this,'CREDITO_NF')">
+            <div style="display:flex;align-items:flex-start;gap:12px">
+              <div style="width:36px;height:36px;border-radius:8px;background:#FEF3C7;display:flex;align-items:center;justify-content:center;flex:none">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke="#B45309" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+              <div style="flex:1">
+                <div style="display:flex;align-items:center;gap:7px;margin-bottom:4px"><span style="font-size:13px;font-weight:800;color:#242424">Crédito em nota fiscal</span><span class="badge" style="background:#FEF3C7;color:#B45309">Requer aprovação</span></div>
+                <div style="font-size:12px;color:#555;line-height:1.6;margin-bottom:7px">Emissão de nota de crédito referente ao valor das unidades afetadas. Requer aprovação do Comercial para valores acima de R$ 5.000.</div>
+                <div style="display:flex;gap:10px;flex-wrap:wrap"><span style="font-size:11px;color:#929090">8 aplicações anteriores</span><span style="color:#E5E5E5">·</span><span style="font-size:11px;color:#929090">Alçada: Comercial</span><span style="color:#E5E5E5">·</span><span style="font-size:11px;color:#929090">Fonte: Sugestão IA</span></div>
+              </div>
+              <div class="nm-trat-radio" style="width:20px;height:20px;border-radius:50%;border:1.5px solid #E5E5E5;display:flex;align-items:center;justify-content:center;flex:none;margin-top:2px"></div>
+            </div>
+          </div>
+        </div>
+        <input type="hidden" id="nm-tratativas-selecionadas" value="">
+
+        <div class="nm-card" style="padding:12px 16px;background:#FAFAFA">
+          <div style="font-size:12px;color:#929090">Tratativa diferente das recomendações? <button class="nm-btn-ghost" style="height:24px;font-size:11px;margin-left:6px;padding:2px 9px" onclick="this.nextElementSibling.style.display='block';this.style.display='none'">Registrar alternativa com justificativa</button></div>
+          <div style="display:none;margin-top:10px"><label>Tratativa alternativa</label><textarea class="nm-textarea" rows="3" id="nm-tratativa-alternativa" placeholder="Descreva a tratativa e a justificativa para não utilizar as opções recomendadas..."></textarea></div>
+        </div>
+
+        <!-- CIRCA step5 panel (legacy compat) -->
+        <div id="nm-circa-step5-panel" style="display:none"><div id="nm-circa-step5-similares"></div><div id="nm-circa-step5-tratativa"></div><div id="nm-circa-step5-procedimentos"></div><div id="nm-circa-step5-fontes"></div></div>
+        <!-- validation compat fields -->
+        <input type="hidden" id="nm-procedente"><textarea id="nm-procedente-justif" class="nm-visually-hidden"></textarea><textarea id="nm-validacao-resultado" class="nm-visually-hidden"></textarea>
+        <input type="checkbox" id="nm-check-causa" class="nm-visually-hidden"><input type="checkbox" id="nm-check-acao" class="nm-visually-hidden"><input type="checkbox" id="nm-check-cliente" class="nm-visually-hidden"><input type="checkbox" id="nm-check-sla" class="nm-visually-hidden"><input type="checkbox" id="nm-check-encerramento" class="nm-visually-hidden">
+        <button id="nm-btn-enviar-validacao" onclick="nmEnviarParaValidacaoSAC()" class="nm-visually-hidden">Enviar para validação SAC</button>
+
+        <div style="display:flex;justify-content:space-between;gap:7px">
+          <button class="nm-btn-ghost" onclick="nmEtapaAnterior()">← Voltar</button>
+          <div style="display:flex;gap:7px">
+            <button class="nm-btn-secondary" onclick="salvarRascunho()">Salvar</button>
+            <button class="nm-btn-primary" onclick="nmProximaEtapa()">Continuar →</button>
+          </div>
+        </div>
       </div>
 
-      <!-- ETAPA 5: VALIDAÇÃO SAC -->
-      <div class="nm-step-panel" data-nm-step="5"><div class="nm-section-hdr"><h2>Validação SAC</h2><p>Confirme a procedência, a causa e a efetividade da resolução.</p></div><div class="nm-card"><div class="section-label">Resultado da investigação</div><textarea class="nm-textarea" id="nm-validacao-resultado" rows="4" placeholder="Resumo da evidência e resultado..." ></textarea></div><div class="nm-card"><div class="section-label">Procedência da manifestação</div><div class="circa-option-grid"><button onclick="nmSetProcedente('SIM',this)" class="nm-proc-btn">Procedente</button><button onclick="nmSetProcedente('NAO',this)" class="nm-proc-btn">Improcedente</button><button onclick="nmSetProcedente('PARCIALMENTE',this)" class="nm-proc-btn">Parcial</button><button onclick="nmSetProcedente('',this)" class="nm-proc-btn">Inconclusiva</button></div><input type="hidden" id="nm-procedente"><textarea id="nm-procedente-justif" class="nm-textarea" rows="3" style="display:none" placeholder="Justificativa da decisão..."></textarea></div><div class="nm-card"><div class="section-label">Verificação da resolução</div><label class="checklist-item"><input type="checkbox" id="nm-check-causa"> Causa registrada com evidência suficiente</label><label class="checklist-item"><input type="checkbox" id="nm-check-acao"> Ação executada e resultado documentado</label><label class="checklist-item"><input type="checkbox" id="nm-check-cliente"> Solução adequada para comunicação ao cliente</label><label class="checklist-item"><input type="checkbox" id="nm-check-sla"> Prazo de resposta atendido (SLA cumprido)</label><label class="checklist-item"><input type="checkbox" id="nm-check-encerramento"> Manifestação apta para encerramento</label></div>
+      <!-- ══ ETAPA 6: DIRECIONAMENTO ══ -->
+      <div class="nm-step-panel nm-s-anim" data-nm-step="6">
+
+        <div style="font-size:13px;color:#555;line-height:1.65">Defina como a manifestação será conduzida após o registro.</div>
+
+        <input type="hidden" id="nm-caminho-tratativa">
+        <input type="date" id="nm-data-encaminhamento" class="nm-visually-hidden">
+
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <!-- SAC -->
+          <div class="nm-path-card" id="nm-path-sac" onclick="nmSelPath('SAC',this)">
+            <div style="display:flex;align-items:flex-start;gap:14px">
+              <div style="width:36px;height:36px;border-radius:9px;background:#DCFCE7;display:flex;align-items:center;justify-content:center;flex:none">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#15803D" stroke-width="1.6"/><path d="M7 12l4 4 6-6" stroke="#15803D" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+              <div style="flex:1">
+                <div style="font-size:13px;font-weight:800;color:#242424;margin-bottom:3px">Tratativa pelo SAC</div>
+                <div style="font-size:12px;color:#929090;line-height:1.6">O SAC conduzirá a investigação e resolução com base nos procedimentos e alçadas vigentes.</div>
+                <div id="nm-path-sac-detail" style="display:none;margin-top:12px;padding:10px 12px;background:#F0FDF4;border-radius:7px;border:1px solid #BBF7D0">
+                  <div class="nm-g2" style="gap:10px">
+                    <div><label>Responsável SAC</label><input type="text" class="nm-input" id="nm-responsavel-sac" placeholder="Nome do responsável"></div>
+                    <div><label>Prazo interno</label><input type="date" class="nm-input" id="nm-prazo-sac"></div>
+                  </div>
+                  <div style="margin-top:10px"><label>Notas da tratativa SAC</label><textarea class="nm-textarea" rows="3" id="nm-tratativa-sac" placeholder="Descreva como o SAC conduzirá a resolução..."></textarea></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Setor -->
+          <div class="nm-path-card" id="nm-path-setor" onclick="nmSelPath('SETOR',this)">
+            <div style="display:flex;align-items:flex-start;gap:14px">
+              <div style="width:36px;height:36px;border-radius:9px;background:#FDECEC;display:flex;align-items:center;justify-content:center;flex:none">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" stroke="#C70602" stroke-width="1.6" stroke-linecap="round"/><circle cx="9" cy="7" r="4" stroke="#C70602" stroke-width="1.6"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="#C70602" stroke-width="1.6" stroke-linecap="round"/></svg>
+              </div>
+              <div style="flex:1">
+                <div style="font-size:13px;font-weight:800;color:#242424;margin-bottom:3px">Encaminhar ao setor responsável</div>
+                <div style="font-size:12px;color:#929090;line-height:1.6">A manifestação depende de investigação, providência ou decisão de outra área.</div>
+                <div id="nm-path-setor-detail" style="display:none;margin-top:12px;padding:12px 14px;background:#FFF5F5;border-radius:8px;border:1px solid #FECACA">
+                  <div class="nm-g3" style="gap:10px;margin-bottom:10px">
+                    <div><label>Setor *</label><select class="nm-select" id="nm-setor-acionado" onchange="nmCarregarResponsaveisSetor()"><option value="">Selecionar setor</option><option>Qualidade Industrial</option><option>Logística</option><option>Produção</option><option>Comercial</option><option>Financeiro</option></select></div>
+                    <div><label>Responsável *</label><select class="nm-select" id="nm-responsavel-acionado"><option value="">Selecionar responsável</option></select></div>
+                    <div><label>Prazo de retorno *</label><input type="date" class="nm-input" id="nm-prazo-retorno"></div>
+                  </div>
+                  <div class="nm-g2" style="gap:10px;margin-bottom:10px">
+                    <div><label>Gestor / aprovador</label><select class="nm-select" id="nm-gestor-aprovador"><option value="">Sem aprovador específico</option></select></div>
+                    <div><label>Canal de retorno</label><select class="nm-select" id="nm-canal-retorno"><option>WhatsApp</option><option>E-mail</option><option>Telefone</option></select></div>
+                  </div>
+                  <div style="margin-bottom:8px"><label>Motivo do encaminhamento</label><textarea class="nm-textarea" rows="2" id="nm-complemento-pedido" placeholder="Explique por que este setor precisa atuar..."></textarea></div>
+                  <div><label>Orientações e perguntas para o setor</label><textarea class="nm-textarea" rows="3" id="nm-escopo-acionado" placeholder="O que deve ser investigado, quais evidências solicitar..."></textarea></div>
+                  <div style="margin-top:10px;padding:8px 12px;background:#FEF3C7;border-radius:6px;font-size:11.5px;color:#92400E">O gestor e o responsável serão notificados automaticamente após o registro.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- legacy compat panels -->
+        <div id="nm-plano-conducao" style="display:none"><div id="nm-plano-lista"></div><button onclick="nmConfirmarPlano()" class="nm-visually-hidden">Confirmar</button><div id="nm-plano-status"></div></div>
+        <div id="nm-box-tratativa-sac" style="display:none"></div>
+        <div id="nm-box-complemento" style="display:none"></div>
+        <div id="nm-box-encaminhamento-setor" style="display:none"></div>
+
+        <div style="display:flex;justify-content:space-between;gap:7px">
+          <button class="nm-btn-ghost" onclick="nmEtapaAnterior()">← Voltar</button>
+          <div style="display:flex;gap:7px">
+            <button class="nm-btn-secondary" onclick="salvarRascunho()">Salvar</button>
+            <button class="nm-btn-primary" onclick="nmProximaEtapa()">Continuar →</button>
+          </div>
+        </div>
       </div>
 
-      <!-- ETAPA 6: DEVOLUTIVA CONCLUSIVA -->
-      <div class="nm-step-panel" data-nm-step="6"><div class="nm-section-hdr"><h2>Devolutiva Conclusiva</h2><p>Prepare uma comunicação clara, revisada e autorizada para o cliente.</p></div><div class="nm-card"><div class="section-label">Resumo da resolução</div><div class="nm-grid-2" style="gap:16px"><div><textarea class="nm-textarea" id="nm-resumo-resolucao" rows="5" placeholder="Resumo do problema, causa confirmada e ação tomada..."></textarea><div class="nm-grid-2" style="margin-top:10px"><label class="nm-label"><span>Canal</span><select class="nm-select" id="nm-devolutiva-canal"><option>WhatsApp</option><option>E-mail</option><option>Telefone</option></select></label><label class="nm-label"><span>Destinatário</span><input class="nm-input" id="nm-devolutiva-destinatario"></label></div></div><div><div style="font-size:11px;font-weight:700;color:#929090;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Informações autorizadas para comunicação</div><div id="nm-info-autorizada" style="padding:10px 12px;background:#F0FDF4;border-radius:7px;border:1px solid #BBF7D0;font-size:12px;color:#166534;line-height:1.6;min-height:48px">Preencha o resultado da investigação e a procedência para ver as informações autorizadas.</div></div></div></div><div class="nm-card"><div class="circa-card-head"><div><div class="section-label">Devolutiva ao cliente</div><p>Revise o texto antes de registrar o envio.</p></div><button class="btn btn-secondary" onclick="gerarDevolutiva?.()">Gerar sugestão</button></div><div style="background:#F0F9FF;border:1px solid #BAE6FD;border-radius:7px;padding:10px 12px;margin-bottom:12px;display:flex;align-items:flex-start;gap:8px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" style="flex:none;margin-top:2px"><circle cx="12" cy="12" r="10" stroke="#0369A1" stroke-width="1.5"/><line x1="12" y1="7" x2="12" y2="12" stroke="#0369A1" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="16" r="1" fill="#0369A1"/></svg><span style="font-size:12px;color:#0C4A6E">A devolutiva deve ser revisada antes do envio. Textos gerados por IA são sugestões — a analista deve validar e personalizar o conteúdo.</span></div><textarea id="nm-devolutiva" class="nm-textarea" rows="8" placeholder="Digite ou revise a devolutiva..."></textarea><textarea id="nm-devolutiva-interna" class="nm-visually-hidden"></textarea><div class="circa-action-row"><button class="btn btn-ghost" onclick="salvarRascunho()">Salvar rascunho</button><button class="btn btn-primary" onclick="document.getElementById('nm-devolutiva').dataset.aprovada='true'">Aprovar devolutiva</button></div></div>
+      <!-- ══ ETAPA 7: REVISÃO ══ -->
+      <div class="nm-step-panel nm-s-anim" data-nm-step="7">
+
+        <div style="font-size:13px;color:#555;line-height:1.65">Revise todas as informações antes de registrar. Clique em Editar para corrigir qualquer seção.</div>
+
+        <div id="nm-revisao-secoes" style="display:flex;flex-direction:column;gap:10px">
+          <!-- filled by nmMontarRevisao() -->
+        </div>
+
+        <!-- Pendências -->
+        <div id="nm-revisao-pendencias" style="display:none" class="nm-err-alert">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" style="flex:none;margin-top:2px"><circle cx="12" cy="12" r="10" stroke="#B91C1C" stroke-width="1.6"/><line x1="12" y1="7" x2="12" y2="12" stroke="#B91C1C" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="16" r="1" fill="#B91C1C"/></svg>
+          <div>
+            <div style="font-size:12px;font-weight:700;color:#B91C1C;margin-bottom:3px">Campos obrigatórios pendentes</div>
+            <div id="nm-revisao-pendencias-texto" style="font-size:12px;color:#B91C1C;line-height:1.6"></div>
+          </div>
+        </div>
+
+        <!-- Register CTA -->
+        <div class="nm-register-cta">
+          <div style="font-size:14px;font-weight:800;color:#242424;margin-bottom:6px">Pronto para registrar?</div>
+          <div style="font-size:12px;color:#929090;margin-bottom:16px;line-height:1.6">O registro gerará o protocolo, notificará o responsável, iniciará os SLAs e disponibilizará a manifestação na Central.</div>
+          <div style="display:flex;gap:7px;justify-content:center;flex-wrap:wrap">
+            <button class="nm-btn-secondary" onclick="salvarRascunho()">Salvar rascunho</button>
+            <button class="nm-btn-primary" style="padding:10px 28px;font-size:13px;height:auto" onclick="registrarManifestacao()">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Registrar manifestação
+            </button>
+          </div>
+        </div>
+
+        <div style="display:flex;justify-content:flex-start">
+          <button class="nm-btn-ghost" onclick="nmEtapaAnterior()">← Voltar</button>
+        </div>
+
+        <!-- legacy compat hidden fields for step 7 -->
+        <div id="nm-resumo-ficha" style="display:none"><div id="nm-resumo-grid"></div></div>
+        <div id="nm-circa-conhecimento-lista" style="display:none">
+          <textarea class="nm-visually-hidden" id="nm-aprendizado-caso"></textarea>
+          <textarea class="nm-visually-hidden" id="nm-aprendizado-matriz"></textarea>
+          <div id="nm-aprendizado-caso-preview" class="nm-visually-hidden"></div>
+          <div id="nm-aprendizado-matriz-preview" class="nm-visually-hidden"></div>
+        </div>
+        <textarea id="nm-observacoes-finais" class="nm-visually-hidden"></textarea>
+        <textarea id="nm-resumo-resolucao" class="nm-visually-hidden"></textarea>
+        <select id="nm-devolutiva-canal" class="nm-visually-hidden"><option>WhatsApp</option><option>E-mail</option><option>Telefone</option></select>
+        <input id="nm-devolutiva-destinatario" class="nm-visually-hidden">
+        <textarea id="nm-devolutiva" class="nm-visually-hidden"></textarea>
+        <textarea id="nm-devolutiva-interna" class="nm-visually-hidden"></textarea>
+        <div id="nm-info-autorizada" style="display:none"></div>
       </div>
 
-      <!-- ETAPA 7: ENCERRAMENTO E APRENDIZADO -->
-      <div class="nm-step-panel" data-nm-step="7"><div class="nm-section-hdr"><h2>Encerramento e Aprendizado</h2><p>Revise o histórico, gere conhecimento e encerre com rastreabilidade.</p></div><div class="nm-card"><div class="section-label">Resumo da manifestação</div><div id="nm-resumo-ficha"><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px" id="nm-resumo-grid"></div></div></div><div class="nm-card"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px"><div class="section-label" style="margin:0">Conhecimento gerado — CIRCA</div><span style="font-size:11.5px;color:#929090">Proposta para validação, não criação automática</span></div><div id="nm-circa-conhecimento-lista" style="display:flex;flex-direction:column;gap:2px"><div style="display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid #F5F5F5"><span class="badge" style="background:#EFF6FF;color:#1D4ED8;white-space:nowrap">Banco de Casos</span><div style="flex:1"><div style="font-size:12.5px;font-weight:600;color:#242424;margin-bottom:3px" id="nm-aprendizado-caso-preview">—</div><textarea class="nm-textarea nm-visually-hidden" id="nm-aprendizado-caso" rows="3" placeholder="Descrição do caso para o banco..."></textarea></div><span class="badge" style="background:#FEF3C7;color:#B45309">Proposta</span></div><div style="display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid #F5F5F5"><span class="badge" style="background:#DCFCE7;color:#15803D;white-space:nowrap">Matriz de Causas</span><div style="flex:1"><div style="font-size:12.5px;font-weight:600;color:#242424;margin-bottom:3px" id="nm-aprendizado-matriz-preview">—</div><textarea class="nm-textarea nm-visually-hidden" id="nm-aprendizado-matriz" rows="3" placeholder="Causa e tratamento para a matriz..."></textarea></div><span class="badge" style="background:#FEF3C7;color:#B45309">Proposta</span></div></div><label class="nm-label" style="margin-top:14px"><span>Observações finais</span><textarea class="nm-textarea" id="nm-observacoes-finais" rows="3" placeholder="Aprendizados, pendências ou informações para o histórico..."></textarea></label></div><div class="circa-close-card"><div><h3>Pronto para encerrar?</h3><p>Confirme que a devolutiva foi registrada, as validações foram concluídas e o aprendizado foi proposto.</p></div><button class="btn btn-primary" onclick="registrarManifestacao()">Encerrar manifestação</button></div></div>
+      <!-- ═══════════ ALL HIDDEN FIELDS (compat) ═══════════ -->
+      <input type="hidden" id="nm-categoria">
+      <input type="hidden" id="nm-motivo">
+      <input type="hidden" id="nm-severidade" value="MEDIA">
+      <input type="hidden" id="nm-setor-resp">
+      <input type="checkbox" id="nm-gera-rnc" class="nm-visually-hidden">
+      <input type="checkbox" id="nm-analise-causa" class="nm-visually-hidden">
+      <input id="nm-protocolo-externo" class="nm-visually-hidden">
+      <input id="nm-vinculo-man" class="nm-visually-hidden">
+      <input id="nm-cliente-cod" class="nm-visually-hidden">
+      <input id="nm-num" class="nm-visually-hidden">
+      <input id="nm-canal" class="nm-visually-hidden">
+      <input id="nm-nr-pedido" class="nm-visually-hidden">
+      <input id="nm-data-nf" class="nm-visually-hidden">
+      <input id="nm-dt-entrega-p" class="nm-visually-hidden">
+      <input id="nm-dt-entrega-e" class="nm-visually-hidden">
+      <input id="nm-repr" class="nm-visually-hidden">
+      <input id="nm-qtd-total" class="nm-visually-hidden">
+      <input id="nm-qtd-devolvida" class="nm-visually-hidden">
+      <input id="nm-valor" class="nm-visually-hidden">
+      <input id="nm-vlr-pedido" class="nm-visually-hidden">
+      <input id="nm-vlr-estimado" class="nm-visually-hidden">
+      <input type="checkbox" id="nm-houve-devolucao" class="nm-visually-hidden">
+      <!-- leg compat step selectors -->
+      <select id="nm-setor-acionado-hidden" class="nm-visually-hidden"></select>
     </div><!-- /nm-steps-body -->
 
-    <!-- RODAPÉ DE NAVEGAÇÃO -->
-    <div class="nm-navigation-footer" style="background:#fff;border-top:1px solid #E4E4E4;padding:14px 28px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
-      <button onclick="nmEtapaAnterior()" id="nm-btn-voltar" style="height:42px;border:1.5px solid #E4E4E4;background:#fff;border-radius:10px;padding:0 22px;font-size:13px;font-weight:600;cursor:pointer;color:#545252;font-family:Montserrat,system-ui,sans-serif">← Voltar</button>
-      <button onclick="nmSalvarRascunhoESair()" id="nm-btn-rascunho-sair" style="height:42px;border:1.5px solid #C70602;background:#fff;border-radius:10px;padding:0 18px;font-size:12px;font-weight:700;cursor:pointer;color:#C70602;font-family:Montserrat,system-ui,sans-serif">Salvar rascunho e sair</button><div style="font-size:12px;color:#929090;font-weight:500" id="nm-etapa-label">Etapa 1 de 7</div>
-      <button onclick="nmProximaEtapa()" id="nm-btn-continuar" style="height:42px;border:0;background:#C70602;color:#fff;border-radius:10px;padding:0 32px;font-size:13px;font-weight:700;cursor:pointer;font-family:Montserrat,system-ui,sans-serif;letter-spacing:.01em">Salvar e continuar →</button>
-      <button onclick="registrarManifestacao()" id="nm-btn-confirmar" style="display:none;height:42px;border:0;background:#C70602;color:#fff;border-radius:10px;padding:0 28px;font-size:13px;font-weight:700;cursor:pointer;font-family:Montserrat,system-ui,sans-serif">Confirmar e abrir manifestação</button>
+    <!-- CIRCA SIDEBAR (desktop only) -->
+    <div class="circa-col" id="nm-circa-sidebar">
+      <div style="font-size:11px;font-weight:700;color:#0369A1;text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px;display:flex;align-items:center;gap:6px">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4" stroke="#0369A1" stroke-width="1.5"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2" stroke="#0369A1" stroke-width="1.5" stroke-linecap="round"/></svg>
+        Assistência CIRCA
+      </div>
+      <div id="nm-circa-sidebar-content">
+        <div style="padding:10px 0;border-bottom:1px solid #F5F5F5">
+          <div style="font-size:10.5px;font-weight:700;color:#0369A1;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Classificação sugerida</div>
+          <div style="font-size:11.5px;color:#0C4A6E;line-height:1.6" id="nm-circa-sb-classificacao">Preencha os dados para ver a sugestão de classificação.</div>
+        </div>
+        <div style="padding:10px 0;border-bottom:1px solid #F5F5F5">
+          <div style="font-size:10.5px;font-weight:700;color:#0369A1;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Informação ausente</div>
+          <div style="font-size:11.5px;color:#0C4A6E;line-height:1.6" id="nm-circa-sb-ausente">Aguardando análise do relato.</div>
+        </div>
+        <div style="padding:10px 0;border-bottom:1px solid #F5F5F5">
+          <div style="font-size:10.5px;font-weight:700;color:#0369A1;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Reincidência potencial</div>
+          <div style="font-size:11.5px;color:#0C4A6E;line-height:1.6" id="nm-circa-sb-reincidencia">Aguardando dados de produto e cliente.</div>
+        </div>
+        <div style="padding:10px 0">
+          <div style="font-size:10.5px;font-weight:700;color:#0369A1;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Procedimento recomendado</div>
+          <div style="font-size:11.5px;color:#0C4A6E;line-height:1.6" id="nm-circa-sb-procedimento">Aguardando classificação.</div>
+        </div>
+      </div>
     </div>
+
+    </div><!-- /nm-ref-workspace flex row -->
+
+    <!-- FOOTER NAV (shown via JS on mobile / as fallback) -->
+    <div id="nm-nav-footer" style="background:#fff;border-top:1px solid #E4E4E4;padding:12px 28px;display:none;align-items:center;justify-content:space-between;flex-shrink:0">
+      <button id="nm-btn-voltar" onclick="nmEtapaAnterior()" class="nm-btn-secondary">← Voltar</button>
+      <div style="font-size:12px;color:#929090;font-weight:500" id="nm-etapa-label">Etapa 1 de 7</div>
+      <button id="nm-btn-continuar" onclick="nmProximaEtapa()" class="nm-btn-primary">Continuar →</button>
+      <button id="nm-btn-confirmar" onclick="registrarManifestacao()" class="nm-btn-primary" style="display:none">Registrar manifestação</button>
     </div>
     </div>
 
@@ -3101,13 +3554,13 @@
     (function(){
       var NM_TOTAL = 7;
       var NM_STEPS_META = [
-        {l:'Dados da Manifestação',d:'Identificação do cliente, registro e descrição'},
-        {l:'Análise inteligente e triagem',d:'Classificação, risco e orientação operacional'},
-        {l:'Condução',d:'Caminho da tratativa e acionamentos internos'},
-        {l:'Investigação e resolução',d:'Evidências, causa e ações executadas'},
-        {l:'Validação SAC',d:'Procedência e validação da manifestação'},
-        {l:'Devolutiva conclusiva',d:'Comunicação revisada ao cliente'},
-        {l:'Encerramento e aprendizado',d:'Critérios de encerramento e conhecimento'}
+        {l:'Identificação',d:'Empresa, cliente e origem'},
+        {l:'Relato',d:'Tipo, descrição e evidências'},
+        {l:'Classificação',d:'Tipo, motivo e setor responsável'},
+        {l:'Investigação',d:'Informações verificadas e pendentes'},
+        {l:'Tratamento',d:'Seleção de tratativas recomendadas'},
+        {l:'Direcionamento',d:'Caminho da resolução'},
+        {l:'Revisão',d:'Revisão final e registro'}
       ];
       window.nmEtapa = window.nmEtapa || 1;
       window._nmEtapasConcluidas = window._nmEtapasConcluidas || new Set([1]);
@@ -3160,9 +3613,8 @@
         if(btnF) btnF.style.display = window.nmEtapa === NM_TOTAL ? 'block' : 'none';
         var body = document.getElementById('nm-steps-body');
         if(body) body.scrollTop = 0;
-        if(window.nmEtapa === 5 && typeof nmPreencherValidacao === 'function') nmPreencherValidacao();
-        if(window.nmEtapa === 7) nmMontarResumo();
-        if(window.nmEtapa === 6) nmMontarDevolutiva();
+        if(window.nmEtapa === 7 && typeof nmMontarRevisao === 'function') nmMontarRevisao();
+        if(window.nmEtapa === 3 && window._nmAnaliseAtual && typeof nmAtualizarCircaSidebar === 'function') nmAtualizarCircaSidebar();
       }
 
       function nmMontarResumo(){
@@ -3305,8 +3757,10 @@
       };
 
       window.nmSelEmpresa = function(btn, val){
-        document.querySelectorAll('.nm-empresa-btn').forEach(function(b){b.classList.remove('active');});
-        btn.classList.add('active');
+        // support both old .nm-empresa-btn and new .nm-chip within the empresa chips container
+        var container = document.getElementById('nm-empresa-chips') || btn.closest('#nm-empresa-chips') || btn.parentElement;
+        if(container) container.querySelectorAll('.nm-chip,.nm-empresa-btn').forEach(function(b){b.classList.remove('sel','active');});
+        btn.classList.add('sel');
         var sel = document.getElementById('nm-empresa-reclamada');
         if(sel) sel.value = val;
         var LABELS = {'CHIACCHIO EMBALAGENS':'Chiacchio Embalagens','PLASCHIO':'Plaschio','TUBAHIA':'Tubahia/Cesbap','TUBAHIA / CESBAP':'Tubahia/Cesbap'};
@@ -3314,14 +3768,128 @@
         if(ref) ref.textContent = LABELS[val] || val;
       };
 
+      window.nmSelTipo = function(btn, val){
+        var container = document.getElementById('nm-tipo-chips');
+        if(container) container.querySelectorAll('.nm-chip').forEach(function(b){b.classList.remove('sel');});
+        btn.classList.add('sel');
+        var sel = document.getElementById('nm-tipo');
+        if(sel) sel.value = val;
+        var selClass = document.getElementById('nm-tipo-class');
+        if(selClass) selClass.value = val;
+      };
+
+      window.nmToggleTrat = function(card, val){
+        card.classList.toggle('sel');
+        // keep track of selected tratativas
+        if(!window._nmTratativas) window._nmTratativas = [];
+        var idx = window._nmTratativas.indexOf(val);
+        if(card.classList.contains('sel')){
+          if(idx < 0) window._nmTratativas.push(val);
+        } else {
+          if(idx >= 0) window._nmTratativas.splice(idx,1);
+        }
+        var hidden = document.getElementById('nm-tratativas-selecionadas');
+        if(hidden) hidden.value = window._nmTratativas.join(',');
+        // also update caminho-tratativa legacy field
+        var ct = document.getElementById('nm-caminho-tratativa');
+        if(ct) ct.value = window._nmTratativas.join(',');
+      };
+
+      window.nmSelPath = function(val, card){
+        document.querySelectorAll('.nm-path-card').forEach(function(c){
+          c.classList.remove('sel');
+          var det = c.querySelector('[id$="-detail"]');
+          if(det) det.style.display = 'none';
+        });
+        if(card) card.classList.add('sel');
+        // show detail for selected card
+        var detId = val === 'SAC' ? 'nm-path-sac-detail' : 'nm-path-setor-detail';
+        var det = document.getElementById(detId);
+        if(det) det.style.display = '';
+        // update legacy hidden field
+        var campo = document.getElementById('nm-caminho-tratativa');
+        if(campo && !campo.value) campo.value = val;
+        var setor = document.getElementById('nm-setor-acionado');
+        if(setor && val === 'SAC' && !setor.value) setor.value = 'SAC';
+      };
+
+      window.nmMontarRevisao = function(){
+        var el = document.getElementById('nm-revisao-secoes');
+        if(!el) return;
+        function v(id){var e=document.getElementById(id);return e?(e.value||e.textContent||'').trim()||'—':'—';}
+        var rows = [
+          {l:'Empresa', v:v('nm-empresa-reclamada')},
+          {l:'Cliente', v:v('nm-empresa')||v('nm-nome')},
+          {l:'Contato', v:v('nm-tel')||v('nm-email')},
+          {l:'Tipo', v:v('nm-tipo')},
+          {l:'Canal', v:v('nm-origem')},
+          {l:'Descrição', v:v('nm-descricao')},
+          {l:'Produto', v:v('nm-produto')},
+          {l:'Lote', v:v('nm-lote')},
+          {l:'Classificação', v:v('nm-motivo-class')||v('nm-motivo')},
+          {l:'Criticidade', v:v('nm-criticidade')||v('nm-severidade')},
+          {l:'Tratativa', v:v('nm-tratativas-selecionadas')||v('nm-caminho-tratativa')},
+          {l:'Direcionamento', v:v('nm-caminho-tratativa')},
+        ].filter(function(r){return r.v && r.v !== '—';});
+        var html = '<table style="width:100%;border-collapse:collapse;font-size:12.5px">';
+        rows.forEach(function(r){
+          html += '<tr><td style="padding:6px 0;color:#555;width:38%;font-weight:600;border-bottom:1px solid #F0F0F0">'+r.l+'</td><td style="padding:6px 0;border-bottom:1px solid #F0F0F0">'+r.v+'</td></tr>';
+        });
+        html += '</table>';
+        el.innerHTML = html;
+        // check for pending required fields
+        var pend = document.getElementById('nm-revisao-pendencias');
+        var pendTxt = document.getElementById('nm-revisao-pendencias-texto');
+        var required = [{id:'nm-descricao',l:'Relato'},{id:'nm-motivo-class',l:'Motivo'},{id:'nm-empresa-reclamada',l:'Empresa'}];
+        var missing = required.filter(function(f){var e=document.getElementById(f.id);return !e||!e.value.trim();}).map(function(f){return f.l;});
+        if(pend) pend.style.display = missing.length ? '' : 'none';
+        if(pendTxt && missing.length) pendTxt.textContent = 'Campos obrigatórios não preenchidos: '+missing.join(', ')+'.';
+      };
+
+      window.nmAplicarSugestaoClassificacao = function(){
+        var analise = window._nmAnaliseAtual;
+        if(!analise) return;
+        if(analise.tipo){var e=document.getElementById('nm-tipo-class');if(e)e.value=analise.tipo;}
+        if(analise.motivo){var e=document.getElementById('nm-motivo-class');if(e)e.value=analise.motivo;}
+        if(analise.severidade){var e=document.getElementById('nm-criticidade');if(e)e.value=analise.severidade;}
+        if(analise.setor){var e=document.getElementById('nm-setor-class');if(e)e.value=analise.setor;}
+        // hide the suggestion panel
+        var panel = document.getElementById('nm-circa-classificacao');
+        if(panel) panel.style.display = 'none';
+      };
+
+      window.nmAtualizarCircaSidebar = function(){
+        var analise = window._nmAnaliseAtual;
+        if(!analise) return;
+        var classEl = document.getElementById('nm-circa-sb-classificacao');
+        if(classEl && analise.tipo) classEl.textContent = (analise.tipo||'')+(analise.motivo?' — '+analise.motivo:'');
+        var ausEl = document.getElementById('nm-circa-sb-ausente');
+        if(ausEl && analise.informacoesFaltantes) ausEl.textContent = analise.informacoesFaltantes;
+        var reincEl = document.getElementById('nm-circa-sb-reincidencia');
+        if(reincEl && analise.reincidencia) reincEl.textContent = analise.reincidencia;
+        var procEl = document.getElementById('nm-circa-sb-procedimento');
+        if(procEl && analise.procedimento) procEl.textContent = analise.procedimento;
+      };
+
       // init on page show
       function initWizard(){
         window.nmEtapa = 1;
-        var activeBtn = document.querySelector('.nm-empresa-btn.active');
+        window._nmTratativas = [];
+        // find active empresa chip (new .nm-chip.sel or old .nm-empresa-btn.active)
+        var activeBtn = document.querySelector('#nm-empresa-chips .nm-chip.sel') || document.querySelector('.nm-empresa-btn.active');
         var sel = document.getElementById('nm-empresa-reclamada');
         if(activeBtn && sel && !sel.value){
           var m = (activeBtn.getAttribute('onclick')||'').match(/'([^']+)'\s*\)/);
-          sel.value = m ? m[1] : activeBtn.textContent.trim();
+          if(m) sel.value = m[1];
+        }
+        // default empresa to first chip if none selected
+        if(sel && !sel.value){
+          var firstChip = document.querySelector('#nm-empresa-chips .nm-chip');
+          if(firstChip){
+            firstChip.classList.add('sel');
+            var m2 = (firstChip.getAttribute('onclick')||'').match(/'([^']+)'\s*\)/);
+            if(m2) sel.value = m2[1];
+          }
         }
         renderStepper();
       }
@@ -7451,7 +8019,7 @@
     const start=val(m,'DATA_ABERTURA','DATA_REGISTRO','CREATED_AT');const frentes=acoesAtivas();const setorAcao=frentes.filter(a=>val(a,'DATA_LIMITE','dataLimite')).sort((a,b)=>String(val(a,'DATA_LIMITE','dataLimite')).localeCompare(String(val(b,'DATA_LIMITE','dataLimite'))))[0];const setorHoras=setorAcao?.PRAZO?String(setorAcao.PRAZO).match(/\d+(?:[.,]\d+)?/)?.[0]:'';const s=[slaLine('SLA da manifestação',start,prazo(),'#D97706'),slaLine('SLA da triagem SAC',val(m,'DATA_TRIAGEM'),val(m,'SLA_TRIAGEM_HORAS'),'#C70602'),slaLine('SLA do setor',setorAcao?.CRIADO_EM,setorHoras,'#1D4ED8',setorAcao?.DATA_LIMITE),slaLine('Tempo total',start,val(m,'SLA_TOTAL_HORAS'),'#929090')];$('ficha-v2-sla').innerHTML=s.map(x=>`<div class="fv2-sla-item"><div class="fv2-sla-label">${esc(x.label)}</div><div class="fv2-sla-value" style="color:${x.color}">${esc(x.value)}</div><div class="fv2-progress"><i style="width:${x.pct}%;background:${x.color}"></i></div></div>`).join('');
     $('ficha-v2-anexos-btn').textContent='📎 Anexos ('+S.attachments.length+')';
   }
-  function renderTabs(){const labels=['Dados','Triagem e Direcionamento','Tratativa','Validação e Devolutiva','Histórico'];$('ficha-v2-tabs').innerHTML=labels.map((l,i)=>`<button type="button" class="fv2-tab ${i===S.tab?'active':''}" onclick="fichaV2Tab(${i})">${l}</button>`).join('')}
+  function renderTabs(){const labels=['Dados','Triagem e Direcionamento','Tratativa','Validação e Devolutiva','Apoio e Aprovações','Liderança','Histórico'];$('ficha-v2-tabs').innerHTML=labels.map((l,i)=>`<button type="button" class="fv2-tab ${i===S.tab?'active':''}" onclick="fichaV2Tab(${i})">${l}</button>`).join('')}
   function field(label,value,extra=''){return `<div><div class="fv2-ri-label">${esc(label)}</div><div class="fv2-ri-val" ${extra}>${esc(txt(value))}</div></div>`}
   function anexoHtml(a,compact=false){const nome=val(a,'nome','NOME','NOME_ARQUIVO')||'Arquivo';const url=val(a,'url','URL_ARQUIVO','DRIVE_URL');const mime=val(a,'mimeType','MIME_TYPE','TIPO_MIME')||'';const ext=(nome.split('.').pop()||mime.split('/').pop()||'FILE').toUpperCase().slice(0,5);const meta=[val(a,'origem','ORIGEM')||'Anexo',val(a,'responsavel','USUARIO_UPLOAD','USUARIO')||'—',dateShort(val(a,'data','DATA_UPLOAD')),val(a,'tamanho','TAMANHO')].filter(Boolean).join(' · ');return `<div class="fv2-attachment"><div class="fv2-file-row"><div class="fv2-file-ext">${esc(ext)}</div><div class="fv2-file-name" title="${esc(nome)}">${esc(nome)}</div><div style="display:flex;gap:3px;flex:none">${url?`<a class="fv2-btn-ghost" style="height:24px;font-size:10.5px;padding:1px 7px;text-decoration:none" href="${esc(url)}" target="_blank" rel="noopener">Ver</a><a class="fv2-btn-ghost" style="height:24px;font-size:10.5px;padding:1px 7px;text-decoration:none" href="${esc(url)}" download>↓</a>`:'<span class="fv2-muted">sem link</span>'}</div></div><div class="fv2-file-meta">${esc(meta)}</div></div>`}
   function renderAttachments(){const root=$('ficha-v2-attachments');if(!S.showAttachments){root.hidden=true;root.innerHTML='';return}root.hidden=false;const filters=['todos','original','evidencia','tratativa'];const filtered=S.attachments.filter(a=>S.anexoFiltro==='todos'||String(val(a,'origem','ORIGEM')||'').toLowerCase().includes(S.anexoFiltro)||String(val(a,'categoria','CATEGORIA')||'').toLowerCase().includes(S.anexoFiltro));root.innerHTML=`<div class="fv2-attachments-head"><div><div style="font-size:13px;font-weight:800">Todos os anexos</div><div class="fv2-muted" style="margin-top:1px">${S.attachments.length} arquivos acessíveis</div></div><button class="fv2-btn-ghost" style="height:26px;padding:2px 8px" onclick="fichaV2ToggleAnexos()">✕</button></div><div style="flex:none;padding:8px 14px;border-bottom:1px solid #F0F0F0;display:flex;gap:5px;overflow-x:auto">${filters.map(f=>`<button class="fv2-btn-ghost" style="height:26px;padding:2px 8px;font-size:10.5px;${f===S.anexoFiltro?'border-color:#C70602;color:#C70602;background:#FDECEC':''}" onclick="fichaV2FiltroAnexo('${f}')">${f==='todos'?'Todos':f==='original'?'Originais':f==='evidencia'?'Evidências':'Tratativa'}</button>`).join('')}</div><div class="fv2-attachments-list">${filtered.length?filtered.map(a=>anexoHtml(a,true)).join(''):'<div class="fv2-empty">Nenhum anexo registrado.</div>'}</div><div style="flex:none;padding:10px 14px;border-top:1px solid #F0F0F0"><input id="ficha-v2-upload" type="file" multiple style="display:none" onchange="fichaV2Upload(this.files)"><button class="fv2-btn-ghost" style="width:100%;justify-content:center" onclick="$('ficha-v2-upload').click()">+ Adicionar arquivo</button></div>`}
@@ -7486,27 +8054,134 @@
     }).join('');
     return '<div class="fv2-card"><div class="fv2-section">Frentes de tratamento ('+actions.length+')</div><div class="fv2-muted">Cada acionamento é uma responsabilidade persistida e permanece visível mesmo quando o SAC assume a condução.</div>'+rows+'</div>';
   }
-  function renderTreatment(){const m=item();const circa=S.circa||{};const causa=val(m,'CAUSA_RAIZ_CONFIRMADA','CAUSA_PROVAVEL','CAUSA_RAIZ')||val(circa,'causaProvavel','CAUSA_PROVAVEL');return `${renderFrentes()}<div class="fv2-card"><div class="fv2-section">Responsável pela tratativa</div><div class="fv2-g4">${field('Setor',setor())}${field('Responsável',resp())}${field('Encaminhado em',date(val(m,'DATA_ENCAMINHAMENTO')))}${field('Prazo',dateShort(val(m,'PRAZO_TRATATIVA')))}${field('Permanência',date(val(m,'DATA_INICIO_TRATATIVA')))}${field('Status',status())}</div></div><div class="fv2-card"><div class="fv2-section">Investigação</div><div style="display:flex;flex-direction:column;gap:12px"><div><label>O que aconteceu?</label><textarea id="fv2-investigacao" rows="3">${esc(val(m,'INVESTIGACAO_O_QUE','RESP_SETOR_O_QUE','TRATATIVA_REALIZADA'))}</textarea></div><div class="fv2-g2"><div><label>Causa identificada</label><input id="fv2-causa" value="${esc(txt(causa))}"></div><div><label>Procedência</label><select id="fv2-procedente"><option value="">Selecione</option><option ${val(m,'PROCEDENTE')==='SIM'?'selected':''}>SIM</option><option ${val(m,'PROCEDENTE')==='NAO'?'selected':''}>NAO</option><option ${val(m,'PROCEDENTE')==='PARCIAL'?'selected':''}>PARCIAL</option></select></div></div><div><label>Solução aplicada</label><textarea id="fv2-solucao" rows="2">${esc(val(m,'TRATATIVA_REALIZADA','RESP_SETOR_RESOLUCAO'))}</textarea></div><div><label>Ação preventiva</label><textarea id="fv2-acao-prev" rows="2">${esc(val(m,'ACOES_CORRETIVAS','RESP_SETOR_ACAO_PREV'))}</textarea></div><div class="fv2-actions-row"><button class="fv2-btn-primary" onclick="fichaV2SalvarInvestigacao()">Salvar investigação</button>${acoesAtivas().some(a=>['ENVIADO','AGUARDANDO_CIENCIA','EM_ANDAMENTO','AGUARDANDO_INFORMACAO','PENDENTE_COMPLEMENTACAO','PENDENTE_DE_ATRIBUICAO'].includes(String(val(a,'STATUS','status')).toUpperCase()))?'<span class="fv2-muted">Aguardando conclusão das frentes setoriais.</span>':'<button class="fv2-btn-secondary" onclick="fichaV2EnviarValidacao()">Enviar para validação SAC</button>'}</div><div id="fv2-trat-msg" class="fv2-message"></div></div></div><div class="fv2-circa"><div style="display:flex;align-items:center;justify-content:space-between"><b style="color:#0369A1">◉ Assistência Inteligente CIRCA</b><button class="fv2-btn-ghost" onclick="fichaV2ToggleCirca()">${S.circaOpen?'Recolher':'Expandir'}</button></div>${S.circaOpen?`<div style="font-size:12.5px;color:#0C4A6E;line-height:1.65;margin-top:10px">${esc(circa.analiseLeitura==='INVALIDA'?'Análise persistida inválida.':circa.analiseLeitura==='AUSENTE'?'Nenhuma análise persistida.':txt(val(circa,'causaProvavel','CAUSA_PROVAVEL')||causa||'Sem sugestão persistida.'))}<br><span class="fv2-muted">${circa.analiseLeitura==='OK'?'Dados provenientes da análise persistida; valide antes de usar.':'Nenhum conteúdo foi inventado.'}</span></div>`:''}</div><div class="fv2-card"><div class="fv2-section">Evidências da tratativa</div>${S.attachments.filter(a=>!String(val(a,'origem','ORIGEM')||'').toLowerCase().includes('original')).map(a=>anexoHtml(a)).join('')||'<div class="fv2-empty">Nenhuma evidência registrada.</div>'}</div>`}
-  function renderValidation(){const m=item();return `<div class="fv2-card"><div class="fv2-section">Validação SAC</div><div class="fv2-g2" style="margin-bottom:14px">${field('Causa confirmada',val(m,'CAUSA_RAIZ_CONFIRMADA','CAUSA_PROVAVEL'))}${field('Solução aplicada',val(m,'TRATATIVA_REALIZADA','RESP_SETOR_RESOLUCAO'))}${field('Procedência',val(m,'PROCEDENTE'))}${field('Situação',status())}</div><label>Observações da validação</label><textarea id="fv2-valid-obs" rows="2">${esc(val(m,'OBSERVACOES_FINAIS','VALID_SAC_PENDENCIAS'))}</textarea><div class="fv2-actions-row"><button class="fv2-btn-primary" onclick="fichaV2Validar('VALIDAR')">✓ Validar tratativa</button><button class="fv2-btn-secondary" onclick="fichaV2Validar('COMPLEMENTAR')">Solicitar complementação</button><button class="fv2-btn-ghost" onclick="fichaV2Validar('DEVOLVER')">Devolver para correção</button></div><div id="fv2-valid-msg" class="fv2-message"></div></div><div class="fv2-card"><div class="fv2-section">Devolutiva ao cliente</div><div class="fv2-g3" style="margin-bottom:12px">${field('Situação',status())}${field('Canal',val(m,'CANAL_RETORNO','CANAL'))}${field('Data de envio',date(val(m,'DATA_DEVOLUTIVA')))}</div><label>Texto da devolutiva</label><textarea id="fv2-devolutiva" rows="5">${esc(val(m,'DEVOLUTIVA_FINAL','DEVOLUTIVA_SUGERIDA','DEVOLUTIVA'))}</textarea><div class="fv2-actions-row"><button class="fv2-btn-ghost" onclick="fichaV2GerarDevolutiva(event)">Gerar sugestão</button><button class="fv2-btn-secondary" onclick="fichaV2SalvarDevolutiva()">Salvar rascunho</button><button class="fv2-btn-primary" style="background:#15803D" onclick="fichaV2EnviarDevolutiva()">Registrar envio</button></div><div id="fv2-dev-msg" class="fv2-message"></div></div>`}
-  function renderHistory(){const events=(S.history||[]).map((e,i)=>`<div class="fv2-timeline-item"><div class="fv2-dot" style="background:${i%2?'#1D4ED8':'#15803D'}"></div><div style="flex:1"><div style="font-size:12.5px;font-weight:700">${esc(val(e,'ACAO','acao')||'Ação')}</div><div style="font-size:11.5px;color:#929090">${esc(val(e,'USUARIO','user')||'Sistema')} · ${esc(date(val(e,'DATA_HORA','DATA','data')))}</div><div style="font-size:11.5px;color:#555;margin-top:3px;line-height:1.5">${esc(txt(val(e,'DETALHES','DESCRICAO','obs')))}</div></div></div>`).join('');return `<div class="fv2-card"><div class="fv2-section">Linha do tempo</div>${events||'<div class="fv2-empty">Nenhum evento registrado.</div>'}</div><div class="fv2-card" style="padding:0;overflow:hidden"><div style="padding:12px 18px;border-bottom:1px solid #F0F0F0;background:#FAFAFA;font-size:12px;font-weight:700">Tempo e responsabilidades</div><div style="overflow-x:auto"><table class="fv2-table"><thead><tr><th>Setor/Responsável</th><th>Entrada</th><th>Saída</th><th>Permanência</th><th>Situação</th></tr></thead><tbody><tr><td>${esc(setor())} / ${esc(resp())}</td><td>${esc(date(val(item(),'DATA_ENCAMINHAMENTO','DATA_ABERTURA')))}</td><td>—</td><td>—</td><td><span class="fv2-badge" style="${badgeStyle(status())}">${esc(status())}</span></td></tr></tbody></table></div></div>`}
-  function renderContent(){const fn=[renderData,renderTriage,renderTreatment,renderValidation,renderHistory][S.tab]||renderData;$('ficha-v2-content').innerHTML=fn();if(S.tab===0||S.tab===1)$('ficha-v2-content').insertAdjacentHTML('beforeend',renderComplementacoes());renderTabs();renderAttachments()}
+  function renderTreatment(){
+    const m=item();const circa=S.circa||{};
+    const causa=val(m,'CAUSA_RAIZ_CONFIRMADA','CAUSA_PROVAVEL','CAUSA_RAIZ')||val(circa,'causaProvavel','CAUSA_PROVAVEL');
+    const resultado=val(m,'RESULTADO_OPERACIONAL','RESULTADO_TRATATIVA')||'';
+    const circaTrats=Array.isArray(circa.tratativas)?circa.tratativas:(Array.isArray(circa.sugested_treatments)?circa.sugested_treatments:[]);
+    const circaCasos=Array.isArray(circa.casos)?circa.casos:(Array.isArray(circa.similar_cases)?circa.similar_cases:[]);
+    const circaBlock=`<div class="fv2-circa"><div style="display:flex;align-items:center;justify-content:space-between"><b style="color:#0369A1">◉ Assistência Inteligente CIRCA</b><button class="fv2-btn-ghost" onclick="fichaV2ToggleCirca()">${S.circaOpen?'Recolher':'Expandir'}</button></div>${S.circaOpen?`<div style="font-size:12.5px;color:#0C4A6E;line-height:1.65;margin-top:10px"><div style="margin-bottom:8px"><b>Causa provável:</b> ${esc(txt(val(circa,'causaProvavel','CAUSA_PROVAVEL')||causa||'—'))}</div>${circaTrats.length?`<div style="margin-bottom:8px"><b>Tratativas sugeridas baseadas em casos reais:</b><div style="display:flex;flex-direction:column;gap:4px;margin-top:4px">${circaTrats.map((t,i)=>`<div style="display:flex;align-items:flex-start;gap:6px;padding:6px 8px;border:1px solid #B8D8F5;border-radius:5px;background:#F0F7FF"><input type="radio" name="circa-trat" id="circa-trat-${i}" value="${esc(typeof t==='string'?t:(t.texto||t.descricao||JSON.stringify(t)))}" onchange="fichaV2AplicarCircaTrat(this.value,'${i}')" style="margin-top:2px;flex:none"><label for="circa-trat-${i}" style="font-size:11.5px;line-height:1.5;cursor:pointer">${esc(typeof t==='string'?t:(t.texto||t.descricao||JSON.stringify(t)))}</label></div>`).join('')}</div></div>`:''}${circaCasos.length?`<div style="margin-bottom:8px"><b>Casos similares:</b><div style="display:flex;flex-direction:column;gap:3px;margin-top:4px">${circaCasos.slice(0,3).map(c=>`<div style="font-size:11px;color:#1A4F8A;padding:4px 8px;border-left:3px solid #B8D8F5">${esc(typeof c==='string'?c:(c.protocolo||c.id||'—')+': '+(c.descricao||c.texto||''))}</div>`).join('')}</div></div>`:''}${!circaTrats.length&&!circaCasos.length?`<div style="font-size:11.5px;color:#555">${esc(circa.analiseLeitura==='INVALIDA'?'Análise persistida inválida.':circa.analiseLeitura==='AUSENTE'?'Nenhuma análise persistida.':'Sem sugestões disponíveis.')}</div>`:''}${val(circa,'analiseLeitura')==='OK'?'<div class="fv2-muted" style="margin-top:6px">Dados provenientes da análise persistida; valide antes de aplicar.</div>':''}</div>`:''}</div>`;
+    const updts=Array.isArray(S.tratativaUpdates)?S.tratativaUpdates:[];
+    const updateLog=updts.length?`<div style="margin-bottom:12px"><div style="font-size:12px;font-weight:700;margin-bottom:6px">Evolução cronológica (${updts.length})</div><div style="display:flex;flex-direction:column;gap:6px">${updts.map(u=>`<div style="padding:8px 10px;border-left:3px solid #D0D0D0;background:#FAFAFA;border-radius:0 5px 5px 0"><div style="display:flex;justify-content:space-between;font-size:10.5px;color:#929090;margin-bottom:3px"><span>${esc(val(u,'USUARIO','usuario')||'—')}</span><span>${esc(date(val(u,'DATA','DATA_HORA','data')))}</span></div><div style="font-size:12px;line-height:1.5">${esc(val(u,'TEXTO','texto','OBS')||'—')}</div></div>`).join('')}</div></div>`:'';
+    const pendFrentes=acoesAtivas().some(a=>['ENVIADO','AGUARDANDO_CIENCIA','EM_ANDAMENTO','AGUARDANDO_INFORMACAO','PENDENTE_COMPLEMENTACAO','PENDENTE_DE_ATRIBUICAO'].includes(String(val(a,'STATUS','status')).toUpperCase()));
+    return `${renderFrentes()}
+<div class="fv2-card"><div class="fv2-section">Responsável pela tratativa</div><div class="fv2-g4">${field('Setor',setor())}${field('Responsável',resp())}${field('Encaminhado em',date(val(m,'DATA_ENCAMINHAMENTO')))}${field('Prazo',dateShort(val(m,'PRAZO_TRATATIVA')))}${field('Resultado operacional',resultado||'—')}${field('Status',status())}</div></div>
+${circaBlock}
+<div class="fv2-card"><div class="fv2-section">Investigação — Perguntas CIRCA</div><div style="display:flex;flex-direction:column;gap:10px">
+<div><label>O que aconteceu? <span class="fv2-muted">(fato central)</span></label><textarea id="fv2-inv-o-que" rows="2">${esc(val(m,'INVESTIGACAO_O_QUE','RESP_SETOR_O_QUE'))}</textarea></div>
+<div class="fv2-g2">
+<div><label>Como aconteceu?</label><textarea id="fv2-inv-como" rows="2">${esc(val(m,'INVESTIGACAO_COMO','RESP_SETOR_COMO'))}</textarea></div>
+<div><label>Quando aconteceu?</label><input id="fv2-inv-quando" type="text" value="${esc(txt(val(m,'INVESTIGACAO_QUANDO','RESP_SETOR_QUANDO')))}"></div>
+</div>
+<div class="fv2-g2">
+<div><label>Onde aconteceu?</label><input id="fv2-inv-onde" type="text" value="${esc(txt(val(m,'INVESTIGACAO_ONDE','RESP_SETOR_ONDE')))}"></div>
+<div><label>Quem estava envolvido?</label><input id="fv2-inv-quem" type="text" value="${esc(txt(val(m,'INVESTIGACAO_QUEM','RESP_SETOR_QUEM')))}"></div>
+</div>
+<div><label>Hipótese / Subcausa</label><input id="fv2-inv-hipotese" value="${esc(txt(val(m,'INVESTIGACAO_HIPOTESE','SUBCAUSA')))}"></div>
+<div class="fv2-g2">
+<div><label>Causa raiz confirmada</label><input id="fv2-causa" value="${esc(txt(val(m,'CAUSA_RAIZ_CONFIRMADA','CAUSA_PROVAVEL')||causa))}"></div>
+<div><label>Procedência</label><select id="fv2-procedente"><option value="">Selecione</option><option ${val(m,'PROCEDENTE')==='SIM'?'selected':''} value="SIM">SIM</option><option ${val(m,'PROCEDENTE')==='NAO'?'selected':''} value="NAO">NÃO</option><option ${val(m,'PROCEDENTE')==='PARCIAL'?'selected':''} value="PARCIAL">PARCIAL</option></select></div>
+</div>
+<div><label>Notas de investigação</label><textarea id="fv2-inv-notas" rows="2">${esc(val(m,'INVESTIGACAO_NOTAS'))}</textarea></div>
+<div><label>Evidências</label><textarea id="fv2-inv-evidencias" rows="2">${esc(val(m,'INVESTIGACAO_EVIDENCIAS'))}</textarea></div>
+</div></div>
+<div class="fv2-card"><div class="fv2-section">Tratativa — Relato e providências</div><div style="display:flex;flex-direction:column;gap:10px">
+${updateLog}
+<div><label>Nova atualização</label><textarea id="fv2-trat-update" rows="2" placeholder="Descreva o andamento atual, providência tomada ou resultado parcial..."></textarea></div>
+<div><label>Solução aplicada / Providência final</label><textarea id="fv2-solucao" rows="2">${esc(val(m,'TRATATIVA_REALIZADA','RESP_SETOR_RESOLUCAO'))}</textarea></div>
+<div><label>Ação preventiva / Corretiva</label><textarea id="fv2-acao-prev" rows="2">${esc(val(m,'ACOES_CORRETIVAS','RESP_SETOR_ACAO_PREV'))}</textarea></div>
+<div><label>Resultado operacional</label><select id="fv2-resultado"><option value="">Selecione</option><option ${resultado==='RESOLVIDO'?'selected':''} value="RESOLVIDO">Resolvido</option><option ${resultado==='PARCIALMENTE_RESOLVIDO'?'selected':''} value="PARCIALMENTE_RESOLVIDO">Parcialmente resolvido</option><option ${resultado==='NAO_RESOLVIDO'?'selected':''} value="NAO_RESOLVIDO">Não resolvido</option><option ${resultado==='INCONCLUSIVO'?'selected':''} value="INCONCLUSIVO">Inconclusivo</option><option ${resultado==='NAO_PROCEDENTE'?'selected':''} value="NAO_PROCEDENTE">Não procedente</option></select></div>
+<div class="fv2-actions-row">
+<button class="fv2-btn-primary" onclick="fichaV2SalvarInvestigacao()">Salvar investigação</button>
+<button class="fv2-btn-ghost" onclick="fichaV2RegistrarUpdate()">+ Registrar atualização</button>
+${pendFrentes?'<span class="fv2-muted">Aguardando conclusão das frentes setoriais.</span>':'<button class="fv2-btn-secondary" onclick="fichaV2EnviarValidacao()">Enviar para validação SAC</button>'}
+</div>
+<div id="fv2-trat-msg" class="fv2-message"></div>
+</div></div>
+<div class="fv2-card"><div class="fv2-section">Evidências e anexos</div>${S.attachments.filter(a=>!String(val(a,'origem','ORIGEM')||'').toLowerCase().includes('original')).map(a=>anexoHtml(a)).join('')||'<div class="fv2-empty">Nenhuma evidência registrada.</div>'}<input id="ficha-v2-upload-trat" type="file" multiple style="display:none" onchange="fichaV2Upload(this.files)"><button class="fv2-btn-ghost" style="width:100%;justify-content:center;margin-top:8px" onclick="$('ficha-v2-upload-trat').click()">+ Adicionar evidência</button></div>`;
+  }
+  function renderValidation(){
+    const m=item();
+    return `<div class="fv2-card"><div class="fv2-section">Resposta do setor</div><div class="fv2-g2" style="margin-bottom:12px">
+${field('Setor responsável',setor())}${field('Responsável',resp())}${field('Data resposta',date(val(m,'DATA_RESPOSTA_SETOR','DATA_CONCLUSAO_TRATATIVA')))}${field('Status',status())}
+</div>
+<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:12px">
+<div><label>O que o setor fez (resposta):</label><div style="padding:8px 10px;border:1px solid #EEE;border-radius:5px;background:#FAFAFA;font-size:12.5px;line-height:1.5;min-height:36px">${esc(val(m,'RESP_SETOR_O_QUE','TRATATIVA_REALIZADA')||'—')}</div></div>
+<div class="fv2-g2">
+<div><label>Como foi feito:</label><div style="padding:6px 10px;border:1px solid #EEE;border-radius:5px;background:#FAFAFA;font-size:12px;min-height:28px">${esc(val(m,'RESP_SETOR_COMO')||'—')}</div></div>
+<div><label>Quando:</label><div style="padding:6px 10px;border:1px solid #EEE;border-radius:5px;background:#FAFAFA;font-size:12px;min-height:28px">${esc(val(m,'RESP_SETOR_QUANDO')||'—')}</div></div>
+</div>
+<div class="fv2-g2">
+<div><label>Onde:</label><div style="padding:6px 10px;border:1px solid #EEE;border-radius:5px;background:#FAFAFA;font-size:12px;min-height:28px">${esc(val(m,'RESP_SETOR_ONDE')||'—')}</div></div>
+<div><label>Quem executou:</label><div style="padding:6px 10px;border:1px solid #EEE;border-radius:5px;background:#FAFAFA;font-size:12px;min-height:28px">${esc(val(m,'RESP_SETOR_QUEM')||'—')}</div></div>
+</div>
+<div><label>Resolução / Resultado informado pelo setor:</label><div style="padding:8px 10px;border:1px solid #EEE;border-radius:5px;background:#FAFAFA;font-size:12.5px;line-height:1.5;min-height:36px">${esc(val(m,'RESP_SETOR_RESOLUCAO')||'—')}</div></div>
+<div><label>Ação preventiva informada:</label><div style="padding:6px 10px;border:1px solid #EEE;border-radius:5px;background:#FAFAFA;font-size:12px;min-height:28px">${esc(val(m,'RESP_SETOR_ACAO_PREV','ACOES_CORRETIVAS')||'—')}</div></div>
+</div>
+</div>
+<div class="fv2-card"><div class="fv2-section">Validação SAC</div>
+<div class="fv2-g2" style="margin-bottom:12px">${field('Causa confirmada',val(m,'CAUSA_RAIZ_CONFIRMADA','CAUSA_PROVAVEL'))}${field('Resultado operacional',val(m,'RESULTADO_OPERACIONAL','RESULTADO_TRATATIVA'))}${field('Procedência',val(m,'PROCEDENTE'))}${field('Validado por',val(m,'VALIDADO_POR','USUARIO_VALIDACAO'))}</div>
+<label>Observações da validação SAC</label>
+<textarea id="fv2-valid-obs" rows="2">${esc(val(m,'OBSERVACOES_FINAIS','VALID_SAC_PENDENCIAS'))}</textarea>
+<label style="margin-top:8px">Pendência / motivo da complementação (preencha antes de solicitar)</label>
+<textarea id="fv2-valid-complementacao" rows="2" placeholder="Descreva o que precisa ser complementado ou corrigido pelo setor..."></textarea>
+<div class="fv2-actions-row" style="margin-top:10px">
+<button class="fv2-btn-primary" onclick="fichaV2Validar('VALIDAR')">✓ Validar tratativa</button>
+<button class="fv2-btn-secondary" onclick="fichaV2Validar('COMPLEMENTAR')">Solicitar complementação</button>
+<button class="fv2-btn-ghost" onclick="fichaV2Validar('DEVOLVER')">Devolver para correção</button>
+</div>
+<div id="fv2-valid-msg" class="fv2-message"></div>
+</div>
+<div class="fv2-card"><div class="fv2-section">Devolutiva ao cliente</div>
+<div class="fv2-g3" style="margin-bottom:12px">${field('Situação',status())}${field('Canal',val(m,'CANAL_RETORNO','CANAL'))}${field('Data de envio',date(val(m,'DATA_DEVOLUTIVA')))}</div>
+<label>Texto da devolutiva</label>
+<textarea id="fv2-devolutiva" rows="5">${esc(val(m,'DEVOLUTIVA_FINAL','DEVOLUTIVA_SUGERIDA','DEVOLUTIVA'))}</textarea>
+<div class="fv2-actions-row">
+<button class="fv2-btn-ghost" onclick="fichaV2GerarDevolutiva(event)">Gerar sugestão</button>
+<button class="fv2-btn-secondary" onclick="fichaV2SalvarDevolutiva()">Salvar rascunho</button>
+<button class="fv2-btn-primary" style="background:#15803D" onclick="fichaV2EnviarDevolutiva()">Registrar envio</button>
+</div>
+<div id="fv2-dev-msg" class="fv2-message"></div>
+</div>`;
+  }
+  function renderHistory(){
+    const m=item();
+    const DOT_COLOR={historico:'#15803D',acionamento:'#1D4ED8',lideranca:'#A80502',update:'#9A4A10'};
+    const allEvents=[];
+    (S.history||[]).forEach(e=>allEvents.push({tipo:'historico',data:val(e,'DATA_HORA','DATA','data'),acao:val(e,'ACAO','acao')||'Movimentação',usuario:val(e,'USUARIO','user')||'Sistema',detalhe:txt(val(e,'DETALHES','DESCRICAO','obs'))}));
+    (S.acionamentos||[]).forEach(a=>allEvents.push({tipo:'acionamento',data:val(a,'DATA','DATA_CRIACAO'),acao:val(a,'TIPO','tipo')||'Acionamento',usuario:val(a,'CRIADO_POR','USUARIO','usuario')||'Sistema',detalhe:(val(a,'SETOR_DESTINO','USUARIO_DESTINO')?'Para: '+val(a,'SETOR_DESTINO','USUARIO_DESTINO')+'. ':'')+txt(val(a,'DESCRICAO','OBS','texto'))}));
+    (S.liderancaComentarios||[]).forEach(c=>allEvents.push({tipo:'lideranca',data:val(c,'DATA_CRIACAO','DATA'),acao:'Liderança — '+(val(c,'TIPO','tipo')||'OBSERVACAO'),usuario:val(c,'USUARIO','usuario')||'—',detalhe:txt(val(c,'TEXTO','texto','comentario'))}));
+    (S.tratativaUpdates||[]).forEach(u=>allEvents.push({tipo:'update',data:val(u,'DATA','DATA_HORA','data'),acao:'Atualização da tratativa',usuario:val(u,'USUARIO','usuario')||'—',detalhe:txt(val(u,'TEXTO','texto','OBS'))}));
+    allEvents.sort((a,b)=>{const da=a.data?new Date(a.data).getTime():0,db=b.data?new Date(b.data).getTime():0;return db-da;});
+    const timeline=allEvents.map(e=>`<div class="fv2-timeline-item"><div class="fv2-dot" style="background:${DOT_COLOR[e.tipo]||'#A8A8A8'}"></div><div style="flex:1"><div style="font-size:12.5px;font-weight:700">${esc(e.acao)}</div><div style="font-size:11.5px;color:#929090">${esc(e.usuario)} · ${esc(date(e.data))}</div>${e.detalhe?`<div style="font-size:11.5px;color:#555;margin-top:3px;line-height:1.5">${esc(e.detalhe)}</div>`:''}</div></div>`).join('');
+    const stageRows=(S.history||[]).filter(e=>{const a=String(val(e,'ACAO','acao')||'').toUpperCase();return a.includes('STATUS')||a.includes('ENCAMINH')||a.includes('CONCLUS')||a.includes('ABERTURA');}).map(e=>`<tr><td>${esc(val(e,'SETOR','setor')||setor())} / ${esc(val(e,'USUARIO','user')||resp())}</td><td>${esc(date(val(e,'DATA_HORA','DATA','data')))}</td><td>${esc(date(val(e,'DATA_SAIDA','DATA_FIM')))}</td><td>—</td><td><span class="fv2-badge" style="${badgeStyle(val(e,'STATUS','status')||'')} ">${esc(val(e,'STATUS','status')||'—')}</span></td></tr>`).join('');
+    return `<div class="fv2-card"><div class="fv2-section">Dossiê — linha do tempo unificada (${allEvents.length} eventos)</div><div class="fv2-muted" style="margin-bottom:8px">Histórico · Acionamentos · Liderança · Atualizações — ordem cronológica inversa</div>${timeline||'<div class="fv2-empty">Nenhum evento registrado.</div>'}</div><div class="fv2-card" style="padding:0;overflow:hidden"><div style="padding:12px 18px;border-bottom:1px solid #F0F0F0;background:#FAFAFA;font-size:12px;font-weight:700">Responsabilidades por etapa</div><div style="overflow-x:auto"><table class="fv2-table"><thead><tr><th>Setor/Responsável</th><th>Entrada</th><th>Saída</th><th>Permanência</th><th>Situação</th></tr></thead><tbody>${stageRows||`<tr><td>${esc(setor())} / ${esc(resp())}</td><td>${esc(date(val(m,'DATA_ENCAMINHAMENTO','DATA_ABERTURA')))}</td><td>—</td><td>—</td><td><span class="fv2-badge" style="${badgeStyle(status())}">${esc(status())}</span></td></tr>`}</tbody></table></div></div>`;
+  }
+  function renderApoio(){const m=item();const acs=(S.acionamentos||[]);const tipos=['SOLICITACAO_APOIO','ESCALONAMENTO','SOLICITACAO_INFORMACAO'];const ST_APOIO_COLOR={RESPONDIDO:'#1E6B3A',PENDENTE:'#8A5000',ENVIADO:'#1A4F8A',PENDENTE_DE_ATRIBUICAO:'#A80502',EM_ANDAMENTO:'#1A4F8A'};const lista=acs.filter(a=>tipos.includes(val(a,'TIPO','tipo')||'')).map(a=>{const stAp=String(val(a,'STATUS','status')||'PENDENTE').toUpperCase().replace(/\s+/g,'_');const corSt=ST_APOIO_COLOR[stAp]||'#555';return `<div style="padding:10px 14px;border:1px solid #EEE;border-radius:6px;margin-bottom:8px"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="font-size:12px;font-weight:700">${esc(val(a,'TIPO','tipo')||'Acionamento')}</span><span style="font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;border:1px solid ${corSt};color:${corSt}">${esc(stAp)}</span></div><div style="font-size:11.5px;margin-top:5px;color:#333">${esc(val(a,'DESCRICAO','OBS','texto')||'—')}</div><div style="font-size:10.5px;color:#929090;margin-top:3px">Por: ${esc(val(a,'CRIADO_POR','USUARIO','SOLICITANTE','usuario')||'—')} · Para: ${esc(val(a,'SETOR_DESTINO','USUARIO_DESTINO','RESPONSAVEL','destino')||'—')} · ${esc(date(val(a,'DATA','DATA_CRIACAO')))}</div>${val(a,'RESPOSTA','resposta')?`<div style="margin-top:7px;padding:7px 9px;border-left:3px solid ${corSt};background:#FAFAFA;font-size:11.5px;line-height:1.4"><b>Resposta:</b> ${esc(val(a,'RESPOSTA','resposta'))}</div>`:''}${val(a,'DECISAO','decisao')?`<div style="font-size:10.5px;color:#555;margin-top:3px"><b>Decisão:</b> ${esc(val(a,'DECISAO','decisao'))}</div>`:''}</div>`}).join('');return `<div class="fv2-card"><div class="fv2-section">Acionamentos e solicitações (${acs.filter(a=>tipos.includes(val(a,'TIPO','tipo')||'')).length})</div>${lista||'<div class="fv2-empty">Nenhum acionamento registrado.</div>'}</div><div class="fv2-card"><div class="fv2-section">Nova solicitação de apoio</div><label>Tipo</label><select id="fv2-apoio-tipo" style="margin-bottom:8px"><option value="SOLICITACAO_APOIO">Solicitação de apoio</option><option value="SOLICITACAO_INFORMACAO">Solicitação de informação</option><option value="ESCALONAMENTO">Escalonamento</option></select><label>Assunto</label><input id="fv2-apoio-assunto" type="text" placeholder="Assunto da solicitação" style="margin-bottom:8px"><label>Destinatário (setor ou usuário)</label><input id="fv2-apoio-dest" type="text" placeholder="Setor ou usuário responsável" style="margin-bottom:8px"><label>Descrição detalhada</label><textarea id="fv2-apoio-desc" rows="3" placeholder="Descreva o apoio necessário..."></textarea><div class="fv2-actions-row"><button class="fv2-btn-primary" onclick="fichaV2SolicitarApoio()">Enviar solicitação</button></div><div id="fv2-apoio-msg" class="fv2-message"></div></div>`}
+  function renderLideranca(){const comentarios=(S.liderancaComentarios||[]).map(c=>{const tipo=val(c,'TIPO','tipo')||'OBSERVACAO';const cores={INTERVENCAO:'#A80502',SUGESTAO:'#1A4F8A',OBSERVACAO:'#1E6B3A'};const cor=cores[tipo]||'#555';return `<div style="padding:10px 14px;border-left:3px solid ${cor};border-radius:0 6px 6px 0;background:#FAFAFA;margin-bottom:10px"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="font-size:11px;font-weight:800;color:${cor};letter-spacing:.4px">${esc(tipo)}</span><span style="font-size:10.5px;color:#929090">${esc(val(c,'USUARIO','usuario')||'—')} · ${esc(date(val(c,'DATA_CRIACAO','DATA')))}</span></div><div style="font-size:12.5px;margin-top:5px;line-height:1.5">${esc(val(c,'TEXTO','texto','comentario')||'—')}</div></div>`}).join('');const loadErr=S.liderancaErr?`<div class="fv2-message" style="display:block;background:#FEF2F2;color:#C70602;margin-bottom:10px">${esc(S.liderancaErr)}</div>`:'';return `<div class="fv2-card"><div class="fv2-section">Comentários da liderança</div>${loadErr}${comentarios||'<div class="fv2-empty">Nenhum comentário registrado.</div>'}</div><div class="fv2-card"><div class="fv2-section">Novo comentário</div><label>Tipo</label><select id="fv2-lid-tipo" style="margin-bottom:8px"><option value="OBSERVACAO">Observação</option><option value="SUGESTAO">Sugestão</option><option value="INTERVENCAO">Intervenção</option></select><label>Texto</label><textarea id="fv2-lid-texto" rows="3" placeholder="Registre sua observação, sugestão ou intervenção..."></textarea><div class="fv2-actions-row"><button class="fv2-btn-primary" onclick="fichaV2SalvarComentarioLideranca()">Registrar comentário</button></div><div id="fv2-lid-msg" class="fv2-message"></div></div>`}
+  function renderContent(){const fn=[renderData,renderTriage,renderTreatment,renderValidation,renderApoio,renderLideranca,renderHistory][S.tab]||renderData;$('ficha-v2-content').innerHTML=fn();if(S.tab===0||S.tab===1)$('ficha-v2-content').insertAdjacentHTML('beforeend',renderComplementacoes());if(S.tab===5)fichaV2CarregarLideranca();renderTabs();renderAttachments()}
   function showMsg(id,msg,ok){const e=$(id);if(!e)return;e.style.display='block';e.style.background=ok?'#E6F2EA':'#FEF2F2';e.style.color=ok?'#1E6B3A':'#C70602';e.textContent=msg;}
   async function patch(body){const r=await _apiFetch('/api/manifestacoes/'+encodeURIComponent(id())+'/ficha',30000,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});if(!r.sucesso)throw new Error(r.erro||'Falha ao salvar');return r}
-  window.fichaV2Navigate=page=>{const sb=document.getElementById('app-sidebar');if(sb)sb.style.display='';navigate(page)};window.fichaV2Tab=i=>{S.tab=i;renderContent()};window.fichaV2ToggleAnexos=()=>{S.showAttachments=!S.showAttachments;renderAttachments()};window.fichaV2FiltroAnexo=f=>{S.anexoFiltro=f;renderAttachments()};window.fichaV2ToggleCirca=()=>{S.circaOpen=!S.circaOpen;renderContent()};window.fichaV2Path=p=>{S.path=S.path===p?'':p;renderContent()};window.fichaV2Voltar=()=>{S.showAttachments=false;const sb=document.getElementById('app-sidebar');if(sb)sb.style.display='';const page=S.originPage||'central-sac';const tab=S.originTab;navigate(page,document.querySelector('[onclick*="'+page+'"]'));if(tab&&page==='central-sac')setTimeout(()=>{if(typeof window.cenAba==='function')window.cenAba(tab,document.getElementById('mc-tab-'+tab));},50)};window.fichaV2Reatribuir=()=>{S.tab=1;S.path='setor';renderContent();setTimeout(()=>$("fv2-setor-input")?.focus(),0)};
+  window.fichaV2Navigate=page=>{const sb=document.getElementById('app-sidebar');if(sb)sb.style.display='';navigate(page)};window.fichaV2Tab=i=>{S.tab=i;renderContent()};window.fichaV2ToggleAnexos=()=>{S.showAttachments=!S.showAttachments;renderAttachments()};window.fichaV2FiltroAnexo=f=>{S.anexoFiltro=f;renderAttachments()};window.fichaV2ToggleCirca=()=>{S.circaOpen=!S.circaOpen;renderContent()};window.fichaV2Path=p=>{S.path=S.path===p?'':p;renderContent()};window.fichaV2Voltar=()=>{S.showAttachments=false;const sb=document.getElementById('app-sidebar');if(sb)sb.style.display='';const page=S.originPage||'central-sac';const tab=S.originTab;navigate(page,document.querySelector('[onclick*="'+page+'"]'));if(page==='central-sac'){setTimeout(()=>{if(typeof loadCentralSAC==='function')loadCentralSAC();if(tab&&typeof window.cenAba==='function')window.cenAba(tab,document.getElementById('mc-tab-'+tab));},100);}};window.fichaV2Reatribuir=()=>{S.tab=1;S.path='setor';renderContent();setTimeout(()=>$("fv2-setor-input")?.focus(),0)};
   window.fichaV2Assumir=async()=>{try{await patch({acao:'assumir_sac'});Object.assign(S.item,{STATUS:'EM_ANDAMENTO',STATUS_FICHA:'TRATATIVA_SAC',RESPONSAVEL_SAC:val(typeof sess==='function'?sess():{},'nome','usuario')});renderHeader();renderContent();showMsg('fv2-trat-msg','Tratativa assumida pelo SAC.',true)}catch(e){alert(e.message)}};
   window.fichaV2Salvar=async()=>{const m=item();const body={acao:'salvar_dados'};['RAZAO_SOCIAL','NOME_FANTASIA','CNPJ','CODIGO_CLIENTE','EMPRESA_RECLAMANTE','CONTATO','TELEFONE','EMAIL','PEDIDO','NFE','DATA_PEDIDO','DATA_ENTREGA','VENDEDOR','ORIGEM','CANAL','DATA_RECEBIMENTO','ATENDENTE','TIPO','CATEGORIA','MOTIVO','DESCRICAO','DESCRICAO_MANIFESTACAO','PRODUTO','LOTE','QUANTIDADE','UNIDADE_MEDIDA','QUANTIDADE_TOTAL','QUANTIDADE_AFETADA','QUANTIDADE_DEVOLVIDA','QUANTIDADE_PERDIDA','VALOR_UNITARIO','VALOR_TOTAL','PREJUIZO_ESTIMADO','PREJUIZO_CONFIRMADO','PRIORIDADE'].forEach(k=>{if(Object.prototype.hasOwnProperty.call(m,k))body[k]=m[k]});try{await patch(body);showMsg('fv2-triagem-msg','Dados salvos com sucesso.',true)}catch(e){alert(e.message)}};
   window.fichaV2CarregarResponsaveis=async setorNovo=>{const request=++S.responsaveisRequest;S.setorSelecionado=String(setorNovo||'');S.responsaveis=[];S.responsaveisError='';renderContent();if(!setorNovo)return;try{const empresa=val(item(),'EMPRESA_RECLAMADA','EMPRESA_NORMALIZADA','EMPRESA');const d=await _apiFetch('/api/usuarios/responsaveis?empresa='+encodeURIComponent(empresa)+'&setor='+encodeURIComponent(setorNovo),10000);if(request!==S.responsaveisRequest)return;S.responsaveis=Array.isArray(d.itens)?d.itens:[];S.responsaveisError=d.disponibilidade==='NENHUM_ELEGIVEL'?(d.mensagem||'Nenhum responsável elegível.'):'';}catch(e){if(request!==S.responsaveisRequest)return;S.responsaveisError=e.message||'Falha ao carregar responsáveis.';}renderContent()};
   window.fichaV2Encaminhar=async()=>{const setorSelecionado=$("fv2-setor-input")?.value.trim()||'';const responsavel=$("fv2-responsavel-input")?.value.trim()||'';if(!setorSelecionado)return showMsg('fv2-triagem-msg','Selecione um setor de destino.',false);if(!responsavel)return showMsg('fv2-triagem-msg','Selecione um responsável ativo e autorizado.',false);const body={acao:'encaminhar_setor',SETOR_CONFIRMADO:setorSelecionado,RESPONSAVEL_SETOR:responsavel,RESPONSAVEL_SETOR_ID:responsavel,prazoSlaHoras:72,obs:$("fv2-orientacoes")?.value.trim()||'',idempotencyKey:`FICHA:${id()}:${setorSelecionado}:${responsavel}`};try{await patch(body);Object.assign(S.item,{...body,STATUS:'AGUARDANDO_RESPOSTA_SETOR',STATUS_FICHA:'AGUARDANDO_SETOR'});S.path='';S.setorSelecionado='';S.responsaveis=[];S.responsaveisError='';await loadExtras();showMsg('fv2-triagem-msg','Manifestação encaminhada e acionamento persistido. Os campos estão prontos para um novo encaminhamento.',true)}catch(e){showMsg('fv2-triagem-msg',e.message,false)}};
-  window.fichaV2SalvarInvestigacao=async()=>{const body={acao:'salvar_investigacao',INVESTIGACAO_O_QUE:$("fv2-investigacao")?.value||'',CAUSA_RAIZ_CONFIRMADA:$("fv2-causa")?.value||'',PROCEDENTE:$("fv2-procedente")?.value||'',TRATATIVA_REALIZADA:$("fv2-solucao")?.value||'',ACOES_CORRETIVAS:$("fv2-acao-prev")?.value||''};try{await patch(body);Object.assign(S.item,body);showMsg('fv2-trat-msg','Investigação salva.',true)}catch(e){showMsg('fv2-trat-msg',e.message,false)}};
+  window.fichaV2SalvarInvestigacao=async()=>{const sel=S.circaTratSelecionada||{};const circa=S.circa||{};const circaTrats=Array.isArray(circa.tratativas)?circa.tratativas:(Array.isArray(circa.sugested_treatments)?circa.sugested_treatments:[]);const body={acao:'salvar_investigacao',INVESTIGACAO_O_QUE:$("fv2-inv-o-que")?.value||$("fv2-investigacao")?.value||'',INVESTIGACAO_COMO:$("fv2-inv-como")?.value||'',INVESTIGACAO_QUANDO:$("fv2-inv-quando")?.value||'',INVESTIGACAO_ONDE:$("fv2-inv-onde")?.value||'',INVESTIGACAO_QUEM:$("fv2-inv-quem")?.value||'',INVESTIGACAO_HIPOTESE:$("fv2-inv-hipotese")?.value||'',INVESTIGACAO_NOTAS:$("fv2-inv-notas")?.value||'',INVESTIGACAO_EVIDENCIAS:$("fv2-inv-evidencias")?.value||'',CAUSA_RAIZ_CONFIRMADA:$("fv2-causa")?.value||'',PROCEDENTE:$("fv2-procedente")?.value||'',TRATATIVA_REALIZADA:$("fv2-solucao")?.value||'',ACOES_CORRETIVAS:$("fv2-acao-prev")?.value||'',RESULTADO_OPERACIONAL:$("fv2-resultado")?.value||'',CIRCA_TRAT_RECOMENDADA:circaTrats.length?JSON.stringify(circaTrats.map(t=>typeof t==='string'?t:(t.texto||t.descricao||''))):'',CIRCA_TRAT_FONTE:sel.fonte||'',CIRCA_TRAT_SELECIONADA:sel.texto||'',CIRCA_TRAT_AUTORIZADA:sel.texto||'',CIRCA_TRAT_EXECUTADA:$("fv2-solucao")?.value||'',CIRCA_TRAT_RESULTADO:$("fv2-resultado")?.value||''};try{await patch(body);Object.assign(S.item,body);showMsg('fv2-trat-msg','Investigação salva.',true)}catch(e){showMsg('fv2-trat-msg',e.message,false)}};
+  window.fichaV2RegistrarUpdate=async()=>{const texto=$("fv2-trat-update")?.value.trim()||'';if(!texto)return showMsg('fv2-trat-msg','Descreva a atualização antes de registrar.',false);try{const r=await patch({acao:'salvar_investigacao',TRATATIVA_UPDATE:texto});const novaEntrada={TEXTO:texto,DATA:new Date().toISOString(),USUARIO:val(typeof sess==='function'?sess():{},'nome','usuario')||'—'};if(r?.HISTORICO_TRATATIVA){try{const hist=JSON.parse(r.HISTORICO_TRATATIVA);S.tratativaUpdates=Array.isArray(hist)?hist.map(h=>({TEXTO:h.texto||h.TEXTO||'',DATA:h.data||h.DATA||'',USUARIO:h.usuario||h.USUARIO||'—'})):[];}catch(_){if(!S.tratativaUpdates)S.tratativaUpdates=[];S.tratativaUpdates.unshift(novaEntrada);}}else{if(!S.tratativaUpdates)S.tratativaUpdates=[];S.tratativaUpdates.unshift(novaEntrada);}if(S.item)S.item.HISTORICO_TRATATIVA=JSON.stringify(S.tratativaUpdates.map(u=>({texto:u.TEXTO,data:u.DATA,usuario:u.USUARIO})));if($("fv2-trat-update"))$("fv2-trat-update").value='';renderContent();showMsg('fv2-trat-msg','Atualização registrada e persistida.',true)}catch(e){showMsg('fv2-trat-msg',e.message,false)}};
+  window.fichaV2AplicarCircaTrat=function(texto,idxStr){const el=$("fv2-solucao");if(el&&texto){el.value=texto;}const idx=Number(idxStr);const circa=S.circa||{};const circaTrats=Array.isArray(circa.tratativas)?circa.tratativas:(Array.isArray(circa.sugested_treatments)?circa.sugested_treatments:[]);const trat=(!isNaN(idx)&&circaTrats[idx])||null;S.circaTratSelecionada={texto,fonte:trat&&typeof trat==='object'?String(trat.fonte||trat.procedimento||trat.id||''):typeof trat==='string'?trat:'',trat};if(el&&texto)showMsg('fv2-trat-msg','Sugestão CIRCA aplicada. Preservada para rastreabilidade ao salvar.',true);};
   window.fichaV2SalvarFrente=async acionamentoId=>{const campo=$("fv2-frente-resposta-"+acionamentoId);const resposta=campo?.value.trim()||'';if(!resposta)return alert('Registre a investigação ou a pendência antes de enviar.');const b=campo?.closest('div')?.querySelector('button');if(b){b.disabled=true;b.textContent='Salvando…'}try{const d=await _apiFetch('/api/manifestacoes/'+encodeURIComponent(id())+'/acionamentos/'+encodeURIComponent(acionamentoId),30000,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'RESPONDIDO',resposta})});if(!d?.sucesso)throw new Error(d?.erro||'Falha ao salvar a frente.');await loadExtras();showMsg('fv2-trat-msg','Resposta da frente persistida e enviada ao SAC.',true)}catch(e){showMsg('fv2-trat-msg',e.message,false)}finally{if(b){b.disabled=false;b.textContent='Enviar resposta ao SAC'}}};
   window.fichaV2EnviarValidacao=async()=>{try{await patch({acao:'enviar_validacao',TRATATIVA_REALIZADA:$("fv2-solucao")?.value||val(item(),'TRATATIVA_REALIZADA')});Object.assign(S.item,{STATUS:'AGUARDANDO_VALIDACAO_SAC',STATUS_FICHA:'AGUARDANDO_VALIDACAO_SAC'});renderHeader();renderContent();showMsg('fv2-trat-msg','Enviado para validação SAC.',true)}catch(e){showMsg('fv2-trat-msg',e.message,false)}};
-  window.fichaV2Validar=async decisao=>{const obs=$("fv2-valid-obs")?.value.trim()||'';try{await patch({acao:'validacao_sac',decisao,observacoesFinais:obs,validDataRetorno:'',validClienteInformado:'',validResolvida:''});Object.assign(S.item,{STATUS:decisao==='VALIDAR'?'AGUARDANDO_DEVOLUTIVA':'EM_TRATAMENTO',STATUS_FICHA:decisao==='VALIDAR'?'AGUARDANDO_DEVOLUTIVA':'EM_TRATAMENTO'});renderHeader();renderContent();showMsg('fv2-valid-msg','Decisão registrada.',true)}catch(e){showMsg('fv2-valid-msg',e.message,false)}};
+  window.fichaV2Validar=async decisao=>{const obs=$("fv2-valid-obs")?.value.trim()||'';const complementacao=$("fv2-valid-complementacao")?.value.trim()||'';if(decisao==='COMPLEMENTAR'&&!complementacao)return showMsg('fv2-valid-msg','Descreva o que precisa ser complementado antes de solicitar.',false);try{await patch({acao:'validacao_sac',decisao,observacoesFinais:obs,pendenciasComplementacao:complementacao,validDataRetorno:'',validClienteInformado:'',validResolvida:''});Object.assign(S.item,{STATUS:decisao==='VALIDAR'?'AGUARDANDO_DEVOLUTIVA':'EM_TRATAMENTO',STATUS_FICHA:decisao==='VALIDAR'?'AGUARDANDO_DEVOLUTIVA':'EM_TRATAMENTO'});renderHeader();renderContent();showMsg('fv2-valid-msg','Decisão registrada.',true)}catch(e){showMsg('fv2-valid-msg',e.message,false)}};
   window.fichaV2GerarDevolutiva=async e=>{const b=e?.currentTarget;if(b){b.disabled=true;b.textContent='Gerando…'}try{const d=await _apiFetch('/api/manifestacoes/'+encodeURIComponent(id())+'/devolutiva/gerar',30000,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});const t=val(d,'texto', 'textoFinal')||val(d.devolutiva||{},'textoFinal','VERSAO_FINAL','TEXTO_GERADO');if(t&&$("fv2-devolutiva"))$("fv2-devolutiva").value=t;else throw new Error('A análise não retornou uma sugestão persistida.');}catch(e){showMsg('fv2-dev-msg',e.message,false)}finally{if(b){b.disabled=false;b.textContent='Gerar sugestão'}}};
   window.fichaV2SalvarDevolutiva=async()=>{try{const t=$("fv2-devolutiva")?.value.trim()||'';if(!t)throw new Error('Informe o texto da devolutiva.');await patch({acao:'salvar_devolutiva',texto:t,canal:val(item(),'CANAL_RETORNO','CANAL')});Object.assign(S.item,{DEVOLUTIVA_FINAL:t,STATUS:'AGUARDANDO_DEVOLUTIVA',STATUS_FICHA:'AGUARDANDO_DEVOLUTIVA'});renderHeader();showMsg('fv2-dev-msg','Rascunho salvo.',true)}catch(e){showMsg('fv2-dev-msg',e.message,false)}};
   window.fichaV2EnviarDevolutiva=async()=>{try{await patch({acao:'registrar_devolutiva',canal:val(item(),'CANAL_RETORNO','CANAL'),responsavel:resp()});Object.assign(S.item,{STATUS:'ENCERRADA',STATUS_FICHA:'FECHADA'});renderHeader();renderContent();showMsg('fv2-dev-msg','Envio registrado e manifestação encerrada.',true)}catch(e){showMsg('fv2-dev-msg',e.message,false)}};
+  window.fichaV2SolicitarApoio=async()=>{try{const tipo=$('fv2-apoio-tipo')?.value||'SOLICITACAO_APOIO';const assunto=$('fv2-apoio-assunto')?.value?.trim()||'';const dest=$('fv2-apoio-dest')?.value?.trim()||'';const desc=$('fv2-apoio-desc')?.value?.trim()||'';if(!desc)throw new Error('Informe a descrição da solicitação.');const r=await _apiFetch('/api/manifestacoes/'+encodeURIComponent(S.id)+'/acionamentos',30000,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tipo,assunto,setorDestino:dest,motivo:desc,tarefa:desc,idManifestacao:S.id})});if(!r.sucesso&&!r.id)throw new Error(r.erro||'Falha ao registrar acionamento.');if(!S.acionamentos)S.acionamentos=[];S.acionamentos.unshift({TIPO:tipo,ASSUNTO:assunto,SETOR_DESTINO:dest,DESCRICAO:desc,DATA_CRIACAO:new Date().toISOString(),STATUS:'ENVIADO'});if($('fv2-apoio-desc'))$('fv2-apoio-desc').value='';if($('fv2-apoio-assunto'))$('fv2-apoio-assunto').value='';renderContent();showMsg('fv2-apoio-msg','Solicitação registrada.',true)}catch(e){showMsg('fv2-apoio-msg',e.message,false)}};
+  window.fichaV2CarregarLideranca=async()=>{if(S._liderancaLoaded)return;S._liderancaLoaded=true;try{const r=await _apiFetch('/api/manifestacoes/'+encodeURIComponent(S.id)+'/lideranca/comentarios',10000);S.liderancaComentarios=Array.isArray(r?.comentarios)?r.comentarios:Array.isArray(r?.itens)?r.itens:[];S.liderancaErr='';renderContent()}catch(e){S.liderancaErr=e.message||'Falha ao carregar comentários da liderança.';renderContent()}};
+  window.fichaV2SalvarComentarioLideranca=async()=>{try{const tipo=$('fv2-lid-tipo')?.value||'OBSERVACAO';const texto=$('fv2-lid-texto')?.value?.trim()||'';if(!texto)throw new Error('Informe o texto do comentário.');const r=await _apiFetch('/api/manifestacoes/'+encodeURIComponent(S.id)+'/lideranca/comentarios',30000,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tipo,texto,idManifestacao:S.id})});if(!r.sucesso&&!r.id)throw new Error(r.erro||'Falha ao salvar comentário.');if(!S.liderancaComentarios)S.liderancaComentarios=[];S.liderancaComentarios.unshift({TIPO:tipo,TEXTO:texto,DATA_CRIACAO:new Date().toISOString()});renderContent();showMsg('fv2-lid-msg','Comentário registrado.',true)}catch(e){showMsg('fv2-lid-msg',e.message,false)}};
   window.fichaV2Upload=async files=>{const arr=[...(files||[])];for(const f of arr){try{const data=await fileToBase64(f);const r=await _apiFetch('/api/anexos',60000,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tipoEntidade:'MANIFESTACAO',idEntidade:id(),usuario:val(typeof sess==='function'?sess():{},'usuario','nome'),arquivo:{nome:f.name,mimeType:f.type,tamanho:f.size,dataBase64:data,categoria:'EVIDENCIA'}})});if(r.anexo)S.attachments.push(r.anexo)}catch(e){alert('Não foi possível enviar '+f.name+': '+e.message)}}renderHeader();renderAttachments()};
-  async function loadExtras(){const key=encodeURIComponent(id());const read=(url,empty)=>_apiFetch(url,10000).then(x=>({data:x,error:''})).catch(e=>({data:empty,error:e?.message||'Falha de comunicação'}));const empresa=val(item(),'EMPRESA_RECLAMADA','EMPRESA_NORMALIZADA','EMPRESA');const setorAtual=S.setorSelecionado||val(item(),'SETOR_CONFIRMADO','SETOR_DESTINADO','SETOR_SUGERIDO');const userUrl=setorAtual?('/api/usuarios/responsaveis?empresa='+encodeURIComponent(empresa)+'&setor='+encodeURIComponent(setorAtual)):'';const [ev,h,ciRes,setRes,userRes,acRes]=await Promise.all([read('/api/manifestacoes/'+key+'/evidencias',{itens:[]}),read('/api/manifestacoes/'+key+'/historico',{itens:[]}),read('/api/manifestacoes/'+key+'/circa',{}),read('/api/setores-responsaveis?empresa='+encodeURIComponent(empresa),{itens:[]}),userUrl?read(userUrl,{itens:[]}):Promise.resolve({data:{itens:[]},error:''}),read('/api/manifestacoes/'+key+'/acionamentos',{itens:[]})]);const ci=ciRes.data||{};S.extrasErrors={evidencias:ev.error,historico:h.error,circa:ciRes.error,setores:setRes.error,responsaveis:userRes.error,acionamentos:acRes.error};const evd=ev.data||{},hd=h.data||{},sd=setRes.data||{},ud=userRes.data||{},ad=acRes.data||{};S.setores=Array.isArray(sd.itens)?sd.itens.map(x=>typeof x==='string'?x:val(x,'SETOR','NOME')).filter(Boolean):[];S.responsaveis=Array.isArray(ud.itens)?ud.itens:[];S.responsaveisError=userRes.error||(ud.disponibilidade==='NENHUM_ELEGIVEL'?ud.mensagem:'');S.attachments=Array.isArray(evd.itens)?evd.itens:[];S.history=Array.isArray(hd.itens)?hd.itens:[];S.circa=ci?.circa||ci?.analise||ci?.dados||ci||{};S.acionamentos=Array.isArray(ad.itens)?ad.itens:[];renderHeader();renderContent()}
-  window.fichaV2Open=async function(raw,opts){if(raw && typeof raw==='object' && /^RASCUNHO$/i.test(String(raw.STATUS||raw.STATUS_FICHA||''))) return window.nmAbrirRascunho(raw.ID_MANIFESTACAO||raw.ID||raw.PROTOCOLO);const active=document.querySelector('.page.active')?.id?.replace(/^page-/,'');S.originPage=opts?.returnPage||(active&&active!=='ficha-manifestacao-v2'?active:'central-sac');S.originTab=opts?.returnTab||null;let m=typeof raw==='string'?{ID_MANIFESTACAO:raw,PROTOCOLO:raw}:raw||{};S.item=m;S.id=val(m,'ID_MANIFESTACAO','id','PROTOCOLO');S.tab=0;S.path='';S.attachments=[];S.history=[];S.circa=null;S.acionamentos=[];S.extrasErrors={};S.responsaveis=[];S.responsaveisError='';S.setorSelecionado='';S.responsaveisRequest=0;S.showAttachments=false;const sb=document.getElementById('app-sidebar');if(sb)sb.style.display='none';const u=typeof sess==='function'?sess():{};const un=$("ficha-v2-user-name");const ur=$("ficha-v2-user-role");if(un)un.textContent=val(u,'nome','usuario')||'Usuário';if(ur)ur.textContent=val(u,'perfil','PERFIL')||'SAC';navigate('ficha-manifestacao-v2',null);renderHeader();renderContent();try{const d=await _apiFetch('/api/manifestacoes/'+encodeURIComponent(S.id),15000);if(d?.manifestacao||d?.item)S.item=Object.assign({},m,d.manifestacao||d.item);else if(d?.ID_MANIFESTACAO)S.item=Object.assign({},m,d);S.id=val(S.item,'ID_MANIFESTACAO','PROTOCOLO')||S.id;renderHeader();renderContent();await loadExtras()}catch(e){console.warn('[Ficha v2] carregamento detalhado:',e.message);await loadExtras()}};
+  async function loadExtras(){const key=encodeURIComponent(id());const read=(url,empty)=>_apiFetch(url,10000).then(x=>({data:x,error:''})).catch(e=>({data:empty,error:e?.message||'Falha de comunicação'}));const empresa=val(item(),'EMPRESA_RECLAMADA','EMPRESA_NORMALIZADA','EMPRESA');const setorAtual=S.setorSelecionado||val(item(),'SETOR_CONFIRMADO','SETOR_DESTINADO','SETOR_SUGERIDO');const userUrl=setorAtual?('/api/usuarios/responsaveis?empresa='+encodeURIComponent(empresa)+'&setor='+encodeURIComponent(setorAtual)):'';const [ev,h,ciRes,setRes,userRes,acRes]=await Promise.all([read('/api/manifestacoes/'+key+'/evidencias',{itens:[]}),read('/api/manifestacoes/'+key+'/historico',{itens:[]}),read('/api/manifestacoes/'+key+'/circa',{}),read('/api/setores-responsaveis?empresa='+encodeURIComponent(empresa),{itens:[]}),userUrl?read(userUrl,{itens:[]}):Promise.resolve({data:{itens:[]},error:''}),read('/api/manifestacoes/'+key+'/acionamentos',{itens:[]})]);const ci=ciRes.data||{};S.extrasErrors={evidencias:ev.error,historico:h.error,circa:ciRes.error,setores:setRes.error,responsaveis:userRes.error,acionamentos:acRes.error};const evd=ev.data||{},hd=h.data||{},sd=setRes.data||{},ud=userRes.data||{},ad=acRes.data||{};S.setores=Array.isArray(sd.itens)?sd.itens.map(x=>typeof x==='string'?x:val(x,'SETOR','NOME')).filter(Boolean):[];S.responsaveis=Array.isArray(ud.itens)?ud.itens:[];S.responsaveisError=userRes.error||(ud.disponibilidade==='NENHUM_ELEGIVEL'?ud.mensagem:'');S.attachments=Array.isArray(evd.itens)?evd.itens:[];S.history=Array.isArray(hd.itens)?hd.itens:[];S.circa=ci?.circa||ci?.analise||ci?.dados||ci||{};S.acionamentos=Array.isArray(ad.itens)?ad.itens:[];try{const hist=JSON.parse(S.item.HISTORICO_TRATATIVA||'[]');S.tratativaUpdates=Array.isArray(hist)?hist.map(h=>({TEXTO:h.texto||h.TEXTO||'',DATA:h.data||h.DATA||'',USUARIO:h.usuario||h.USUARIO||'—'})):[];}catch(_){S.tratativaUpdates=[];}renderHeader();renderContent()}
+  window.fichaV2Open=async function(raw,opts){if(raw && typeof raw==='object' && /^RASCUNHO$/i.test(String(raw.STATUS||raw.STATUS_FICHA||''))) return window.nmAbrirRascunho(raw.ID_MANIFESTACAO||raw.ID||raw.PROTOCOLO);const active=document.querySelector('.page.active')?.id?.replace(/^page-/,'');S.originPage=opts?.returnPage||(active&&active!=='ficha-manifestacao-v2'?active:'central-sac');S.originTab=opts?.returnTab||null;let m=typeof raw==='string'?{ID_MANIFESTACAO:raw,PROTOCOLO:raw}:raw||{};S.item=m;S.id=val(m,'ID_MANIFESTACAO','id','PROTOCOLO');S.tab=0;S.path='';S.attachments=[];S.history=[];S.circa=null;S.acionamentos=[];S.extrasErrors={};S.responsaveis=[];S.responsaveisError='';S.setorSelecionado='';S.liderancaComentarios=[];S.liderancaErr='';S._liderancaLoaded=false;S.responsaveisRequest=0;S.showAttachments=false;S.tratativaUpdates=[];S.circaTratSelecionada=null;const sb=document.getElementById('app-sidebar');if(sb)sb.style.display='none';const u=typeof sess==='function'?sess():{};const un=$("ficha-v2-user-name");const ur=$("ficha-v2-user-role");if(un)un.textContent=val(u,'nome','usuario')||'Usuário';if(ur)ur.textContent=val(u,'perfil','PERFIL')||'SAC';navigate('ficha-manifestacao-v2',null);renderHeader();renderContent();try{const d=await _apiFetch('/api/manifestacoes/'+encodeURIComponent(S.id),15000);if(d?.manifestacao||d?.item)S.item=Object.assign({},m,d.manifestacao||d.item);else if(d?.ID_MANIFESTACAO)S.item=Object.assign({},m,d);S.id=val(S.item,'ID_MANIFESTACAO','PROTOCOLO')||S.id;renderHeader();renderContent();await loadExtras()}catch(e){console.warn('[Ficha v2] carregamento detalhado:',e.message);await loadExtras()}};
   window.fichaV2Recarregar=()=>S.item&&window.fichaV2Open(S.item);
   window.addEventListener('beforeunload',()=>{if(S.item)S.item=null});
   window.abrirDossie=function(raw){window.fichaV2Open(raw)};
@@ -12189,6 +12864,119 @@ async function nmCarregarAnalisePersistida() {
   return _nmAnaliseAtual;
 }
 
+// Renderiza painel de recomendações CIRCA na etapa 4 (investigação)
+function nmRenderizarCircaInvestigacao() {
+  var panel = document.getElementById('nm-circa-investigacao-panel');
+  var btnVal = document.getElementById('nm-btn-enviar-validacao');
+  var analise = window._nmAnaliseAtual || window._nmDeterministicoAtual;
+  if (!panel) return;
+  if (!analise) { panel.style.display = 'none'; return; }
+  panel.style.display = 'block';
+
+  // Perguntas de investigação
+  var pDiv = document.getElementById('nm-circa-inv-perguntas');
+  var pergs = (analise.perguntasNecessarias || analise.perguntasInvestigacao || []).slice(0, 5);
+  if (pDiv) pDiv.innerHTML = pergs.length
+    ? '<div style="font-size:11.5px;font-weight:700;color:#374151;margin-bottom:6px">Perguntas recomendadas para a investigação</div>' +
+      pergs.map(function(p){ return '<div style="font-size:12.5px;padding:5px 0;border-bottom:1px solid #F3F4F6;color:#111">• ' + nmTextoEstruturado(p.texto||p) + '</div>'; }).join('')
+    : '';
+
+  // Casos similares
+  var sDiv = document.getElementById('nm-circa-inv-similares');
+  var sims = (analise.casosSimilares || analise.similares || []).slice(0, 3);
+  if (sDiv) sDiv.innerHTML = sims.length
+    ? '<div style="font-size:11.5px;font-weight:700;color:#374151;margin:10px 0 6px">Casos similares</div>' +
+      sims.map(function(c){ return '<div style="font-size:12px;background:#F9FAFB;border-radius:6px;padding:6px 10px;margin-bottom:4px;color:#374151">' + nmTextoEstruturado(c.descricao||c.titulo||c) + '</div>'; }).join('')
+    : '';
+
+  // Tratativa recomendada
+  var tDiv = document.getElementById('nm-circa-inv-tratativa');
+  var diag = analise.tratativaEstruturada?.diagnostico || analise.tratativaEstruturada || {};
+  var trat = diag.causa || diag.recomendacao || analise.recomendacaoTratamento || '';
+  if (tDiv) tDiv.innerHTML = trat
+    ? '<div style="font-size:11.5px;font-weight:700;color:#374151;margin:10px 0 4px">Tratativa recomendada</div>' +
+      '<div style="font-size:12.5px;background:#EFF6FF;border-radius:6px;padding:8px 12px;color:#1E40AF">' + nmTextoEstruturado(trat) + '</div>'
+    : '';
+
+  // Exibir botão de validação quando investigação preenchida
+  if (btnVal) {
+    var verificada = document.getElementById('nm-investigacao-verificada');
+    var resultado = document.getElementById('nm-investigacao-resultado');
+    var mostrar = !!(verificada && verificada.value.trim()) || !!(resultado && resultado.value.trim());
+    btnVal.style.display = mostrar ? 'inline-flex' : 'none';
+  }
+}
+
+// Renderiza painel CIRCA na etapa 5 — tratamento recomendado, casos similares, procedimentos e fontes (Req 2)
+function nmRenderizarCircaStep5() {
+  var panel = document.getElementById('nm-circa-step5-panel');
+  if (!panel) return;
+  var analise = window._nmAnaliseAtual || window._nmDeterministicoAtual;
+  if (!analise) { panel.style.display = 'none'; return; }
+  panel.style.display = 'block';
+
+  var esc = function(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); };
+
+  // Casos similares
+  var simDiv = document.getElementById('nm-circa-step5-similares');
+  var sims = (analise.casosSimilares || analise.similares || []).slice(0, 3);
+  if (simDiv) simDiv.innerHTML = sims.length
+    ? '<div style="font-size:11.5px;font-weight:700;color:#374151;margin-bottom:6px">Casos similares</div>' +
+      sims.map(function(c){ return '<div style="font-size:12px;background:#F9FAFB;border-radius:6px;padding:6px 10px;margin-bottom:4px;color:#374151">' + esc(c.descricao||c.titulo||c) + (c.resultado ? ' — <em>' + esc(c.resultado) + '</em>' : '') + '</div>'; }).join('')
+    : '';
+
+  // Tratativa estruturada
+  var tratDiv = document.getElementById('nm-circa-step5-tratativa');
+  var trat = analise.tratativaEstruturada || {};
+  var diag = trat.diagnostico || {};
+  var rec = diag.recomendacao || diag.causa || analise.recomendacaoTratamento || '';
+  if (tratDiv) tratDiv.innerHTML = rec
+    ? '<div style="font-size:11.5px;font-weight:700;color:#374151;margin:8px 0 4px">Tratativa recomendada</div>' +
+      '<div style="font-size:12.5px;background:#EFF6FF;border-radius:6px;padding:8px 12px;color:#1E40AF">' + esc(rec) + '</div>'
+    : '';
+
+  // Procedimentos
+  var procDiv = document.getElementById('nm-circa-step5-procedimentos');
+  var procs = (analise.procedimentos || trat.procedimentos || []).slice(0, 5);
+  if (procDiv) procDiv.innerHTML = procs.length
+    ? '<div style="font-size:11.5px;font-weight:700;color:#374151;margin:8px 0 6px">Procedimentos indicados</div>' +
+      procs.map(function(p){ return '<div style="font-size:12.5px;padding:5px 0;border-bottom:1px solid #F3F4F6;color:#111">• ' + esc(p.descricao||p.texto||p) + '</div>'; }).join('')
+    : '';
+
+  // Fontes
+  var fontesDiv = document.getElementById('nm-circa-step5-fontes');
+  var fontes = (analise.fontes || analise.references || []).slice(0, 3);
+  if (fontesDiv) fontesDiv.innerHTML = fontes.length
+    ? '<div style="font-size:11.5px;font-weight:700;color:#374151;margin:8px 0 6px">Fontes consultadas</div>' +
+      fontes.map(function(f){ return '<div style="font-size:12px;color:#6B7280;padding:3px 0">— ' + esc(f.titulo||f) + '</div>'; }).join('')
+    : '';
+}
+
+
+// Envia manifestação para validação SAC — usa /ficha com acao:'enviar_validacao'
+// que valida tratativa registrada e ausência de frentes pendentes antes de transitar status.
+window.nmEnviarParaValidacaoSAC = async function nmEnviarParaValidacaoSAC() {
+  if (!_nmCardId) { alert('Salve a manifestação antes de enviar para validação.'); return; }
+  var tratativaRealizada = (document.getElementById('nm-investigacao-verificada')?.value.trim() ||
+    document.getElementById('nm-investigacao-resultado')?.value.trim() || '');
+  try {
+    var r = await _apiFetch('/api/manifestacoes/' + encodeURIComponent(_nmCardId) + '/ficha', 15000, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        acao: 'enviar_validacao',
+        TRATATIVA_REALIZADA: tratativaRealizada || undefined,
+        ultimaEdicaoConhecida: _nmRascunhoUltimaEdicao,
+      }),
+    });
+    if (!r?.sucesso) throw new Error(r?.erro || 'Falha ao enviar para validação SAC.');
+    nmSincronizarVersaoPersistida && nmSincronizarVersaoPersistida(r);
+    alert('Manifestação enviada para validação SAC.');
+    var btnVal = document.getElementById('nm-btn-enviar-validacao');
+    if (btnVal) btnVal.disabled = true;
+  } catch (e) { alert('Não foi possível enviar para validação SAC: ' + e.message); }
+};
+
 function nmAplicarSugestoes(analise) {
   const causa = nmTextoEstruturado(analise?.causaProvavel || analise?.problemaIdentificado || analise?.tratativaEstruturada?.diagnostico?.causa);
   const setores = analise?.setores || analise?.setoresSugeridos || [];
@@ -12947,7 +13735,10 @@ async function registrarManifestacao() {
       if (!finalRes?.sucesso) throw new Error(finalRes?.erro||'Falha ao concluir a manifestação.');
       localStorage.removeItem('sac-rascunho-id');
       alert(`✅ Manifestação ${finalRes.protocolo || _nmCardId} concluída e encaminhada para triagem.`);
-      navigate('banco-manifestacoes', document.querySelector('[onclick*=banco-manifestacoes]')); loadBancoManifestacoes(); return;
+      const sbCen = document.getElementById('sidebar-central-sac') || document.querySelector('[onclick*="central-sac"]');
+      navigate('central-sac', sbCen);
+      if (typeof loadCentralSAC === 'function') loadCentralSAC();
+      return;
     }
     const res = await _apiFetch('/api/manifestacoes', 60000,{
       method: 'POST',
@@ -13002,9 +13793,11 @@ async function registrarManifestacao() {
 
     if (res.sucesso) {
       localStorage.removeItem('sac-rascunho-id');
-      alert(`✅ Manifestação ${res.protocolo || res.id} registrada com sucesso!\n\nA análise inteligente foi iniciada.`);
-      navigate('banco-manifestacoes', document.querySelector('[onclick*=banco-manifestacoes]'));
-      loadBancoManifestacoes();
+      alert(`✅ Manifestação ${res.protocolo || res.id} registrada com sucesso!`);
+      // Navegar para Central e recarregar fila para que a nova manifestação apareça imediatamente
+      const sbCentral = document.getElementById('sidebar-central-sac') || document.querySelector('[onclick*="central-sac"]');
+      navigate('central-sac', sbCentral);
+      if (typeof loadCentralSAC === 'function') loadCentralSAC();
     } else {
       alert('Erro: ' + res.erro);
     }
@@ -25430,20 +26223,25 @@ async function mudarStatusMC(id, novoStatus) {
   }
 
   // ── modelo ────────────────────────────────────────────────────────────────
-  const ST_LBL={nova:'Nova · triagem',anal:'Em análise',trat:'Em tratamento',aprov:'Ag. aprovação',dev:'Devolutiva',enc:'Encerrada'};
-  const ST_CFG_BG={nova:'#F2F2F2',anal:'#EAF2FB',trat:'#EEEAFA',aprov:'#FEF3DC',dev:'#E6F4F4',enc:'#EAF4ED'};
-  const ST_CFG_FG={nova:'#545454',anal:'#1A4F8A',trat:'#4A2E9A',aprov:'#8A5000',dev:'#1A6A6A',enc:'#1A6632'};
-  const NEXT={nova:'Fazer triagem',anal:'Validar análise da IA',trat:'Acompanhar setores',aprov:'Aguardando aprovador',dev:'Enviar devolutiva',enc:'Concluída'};
+  const ST_LBL={nova:'Nova · triagem',anal:'Em análise',trat:'Em tratamento',aprov:'Ag. aprovação gerencial',vsac:'Ag. validação SAC',dev:'Devolutiva',enc:'Encerrada'};
+  const ST_CFG_BG={nova:'#F2F2F2',anal:'#EAF2FB',trat:'#EEEAFA',aprov:'#FEF3DC',vsac:'#F3E8FF',dev:'#E6F4F4',enc:'#EAF4ED'};
+  const ST_CFG_FG={nova:'#545454',anal:'#1A4F8A',trat:'#4A2E9A',aprov:'#8A5000',vsac:'#6B21A8',dev:'#1A6A6A',enc:'#1A6632'};
+  const NEXT={nova:'Fazer triagem',anal:'Validar análise da IA',trat:'Acompanhar setores',aprov:'Aguardando aprovador',vsac:'SAC validar tratativa',dev:'Enviar devolutiva',enc:'Concluída'};
   const SET_LBL={atrasado:'Atrasado',pendente:'Aguardando',respondido:'Respondido'};
   const PRI_LBL={alta:'Alta',media:'Média',baixa:'Baixa'};
 
   function stageOf(status){
     const n=norm(status);
-    if(!n||n==='NOVA'||n==='RECEBIDA'||n.includes('TRIAGEM')) return 'nova';
-    if(/ENCERRAD|CONCLUID|REJEITAD|CANCELAD/.test(n)) return 'enc';
+    if(!n||n==='NOVA'||n==='RECEBIDA'||n==='RASCUNHO'||n.includes('TRIAGEM')) return 'nova';
+    if(/ENCERRAD|CONCLUID|REJEITAD|CANCELAD|FINALIZADA/.test(n)) return 'enc';
     if(n.includes('APROVACAO')) return 'aprov';
     if(n.includes('DEVOLUTIVA')||n==='APROVADA') return 'dev';
-    if(n.includes('TRATAMENTO')) return 'trat';
+    // AGUARDANDO_VALIDACAO_SAC = setor respondeu, SAC precisa validar (vsac — separado de aprovação gerencial)
+    if(n.includes('VALIDACAO_SAC')||n.includes('VALIDAÇÃO_SAC')) return 'vsac';
+    // AGUARDANDO_SETOR / AGUARDANDO_RESPOSTA_SETOR = encaminhado ao responsável setorial (trat)
+    if(n.includes('SETOR')) return 'trat';
+    if(n.includes('TRATAMENTO')||n.includes('EM_TRATATIVA')||n==='EM TRATAMENTO') return 'trat';
+    if(n.includes('ANALISE')||n.includes('ANÁLISE')||n.includes('ANDAMENTO')) return 'anal';
     return 'anal';
   }
 
@@ -25499,9 +26297,10 @@ async function mudarStatusMC(id, novoStatus) {
 
   const KP=[
     ['total',      m=>m.mine&&m.st!=='enc'],
-    ['pendentes',  m=>m.mine&&['nova','anal','dev'].includes(m.st)],
+    ['pendentes',  m=>m.mine&&['nova','anal','dev','vsac'].includes(m.st)],
     ['atrasados',  isLate],
     ['aprovacao',  m=>m.st==='aprov'],
+    ['vsac',       m=>m.st==='vsac'],
     ['tratamento', m=>m.st==='trat'],
     ['encerradas', m=>m.st==='enc'],
     ['terceiros',  m=>m.ext&&m.st==='nova']
@@ -25521,7 +26320,16 @@ async function mudarStatusMC(id, novoStatus) {
     if(apAdmin) apAdmin.style.display=(p==='MASTER'||p==='APROVADOR_MASTER')?'flex':'none';
   };
 
-  function baseList(){return _cenScope==='todas'?_cenAll:_cenAll.filter(m=>m.mine||m.ext);}
+  function baseList(){
+    const u=s();const usuario=String(u?.usuario||u?.nome||'').toLowerCase();const setor=String(u?.setor||'').toLowerCase();
+    if(_cenScope==='todas') return _cenAll;
+    if(_cenScope==='minha_fila') return _cenAll.filter(m=>String(val(m.raw||{},'RESPONSAVEL_SAC','RESPONSAVEL','ATENDENTE')||'').toLowerCase()===usuario||String(val(m.raw||{},'RESPONSAVEL_SETOR')||'').toLowerCase()===usuario);
+    if(_cenScope==='meu_setor') return _cenAll.filter(m=>String(val(m.raw||{},'SETOR_CONFIRMADO','SETOR_DESTINADO','SETOR_RESPONSAVEL','SETOR_SUGERIDO')||'').toLowerCase()===setor||String(val(m.raw||{},'SETOR')||'').toLowerCase()===setor);
+    if(_cenScope==='aguardando_minha_acao') return _cenAll.filter(m=>(m.mine||m.ext)&&['nova','anal','dev','vsac'].includes(m.st));
+    if(_cenScope==='aguardando_terceiros') return _cenAll.filter(m=>(m.mine||m.ext)&&m.st==='trat');
+    if(_cenScope==='criticas') return _cenAll.filter(m=>m.pri==='alta'||m.pri==='critica'||isLate(m));
+    return _cenAll.filter(m=>m.mine||m.ext);
+  }
 
   function visibleList(){
     const q=($('cen-busca')?.value||'').trim().toLowerCase();
@@ -26170,34 +26978,72 @@ async function mudarStatusMC(id, novoStatus) {
   };
 
   function renderKpisGrupo(){
-    const all=_cenAll, late=all.filter(isLate).length;
+    const all=_cenAll;
+    const late=all.filter(isLate).length;
+    const soon=all.filter(m=>isSoon(m)&&m.st!=='enc').length;
     const kpis=[
-      {l:'Em atraso',v:late,d:'ação urgente',c:'#A80502',bg:'#FFF5F5',bd:'#F5CCCC'},
-      {l:'Triagem',v:all.filter(m=>m.st==='nova').length,d:'novos',c:'#24508F',bg:'#F0F5FF',bd:'#B8CCF0'},
-      {l:'Em tratativa',v:all.filter(m=>m.st==='trat').length,d:'setores acionados',c:'#7A4C00',bg:'#FFFBEE',bd:'#F0D9A0'},
-      {l:'Ag. aprovação',v:all.filter(m=>m.st==='aprov').length,d:'aprovador decide',c:'#9A4A10',bg:'#FCF0E8',bd:'#F0CCA8'},
-      {l:'Devolutiva',v:all.filter(m=>m.st==='dev').length,d:'a enviar',c:'#0E6B73',bg:'#E3F3F4',bd:'#A8D8DB'},
-      {l:'Encerradas',v:all.filter(m=>m.st==='enc').length,d:'no período',c:'#1E6B3A',bg:'#F0FAF3',bd:'#A8DFC0'},
+      {l:'Vencidas',v:late,d:'ação urgente',c:'#A80502',bg:'#FFF5F5',bd:'#F5CCCC',st:'late',title:'Manifestações com prazo vencido'},
+      {l:'Vencendo',v:soon,d:'próximas 8h',c:'#C87000',bg:'#FFF8ED',bd:'#F5D890',st:'soon',title:'Vencendo nas próximas 8 horas'},
+      {l:'Triagem',v:all.filter(m=>m.st==='nova').length,d:'aguardando análise',c:'#24508F',bg:'#F0F5FF',bd:'#B8CCF0',title:'Aguardando triagem SAC'},
+      {l:'Em tratativa',v:all.filter(m=>m.st==='trat').length,d:'setores acionados',c:'#7A4C00',bg:'#FFFBEE',bd:'#F0D9A0',title:'Em tratamento pelos setores'},
+      {l:'Val. SAC',v:all.filter(m=>m.st==='vsac').length,d:'setor respondeu',c:'#6B21A8',bg:'#F3E8FF',bd:'#D8B4FE',title:'Aguardando validação SAC — setor já respondeu'},
+      {l:'Ag. aprovação',v:all.filter(m=>m.st==='aprov').length,d:'aprovador decide',c:'#9A4A10',bg:'#FCF0E8',bd:'#F0CCA8',title:'Aguardando aprovação gerencial'},
+      {l:'Devolutiva',v:all.filter(m=>m.st==='dev').length,d:'a enviar',c:'#0E6B73',bg:'#E3F3F4',bd:'#A8D8DB',title:'Tratativa validada, falta enviar devolutiva'},
+      {l:'Encerradas',v:all.filter(m=>m.st==='enc').length,d:'no período',c:'#1E6B3A',bg:'#F0FAF3',bd:'#A8DFC0',title:'Manifestações encerradas'},
     ];
     const cont=$('cen-kpis-fila');
-    if(cont) cont.innerHTML=kpis.map(k=>`<div style="display:flex;flex-direction:column;gap:3px"><span style="font-size:24px;font-weight:800;color:${k.c};line-height:1">${k.v}</span><span style="font-size:11.5px;font-weight:600;color:#242424">${esc(k.l)}</span><span style="font-size:10.5px;color:#929090">${esc(k.d)}</span></div>`).join('');
+    if(cont) cont.innerHTML=kpis.map(k=>`<div style="display:flex;flex-direction:column;gap:3px;cursor:pointer" title="${esc(k.title||k.l)}" onclick="cenFiltrarKpi('${k.st||k.l}',this)"><span style="font-size:24px;font-weight:800;color:${k.c};line-height:1">${k.v}</span><span style="font-size:11.5px;font-weight:600;color:#242424">${esc(k.l)}</span><span style="font-size:10.5px;color:#929090">${esc(k.d)}</span></div>`).join('');
     const badge=$('mc-badge-fila');
     if(badge) badge.textContent=all.filter(m=>m.st!=='enc').length;
-    // Atualiza badge da aba "Em tratativa" sempre que _cenAll mudar
     if(typeof _cenAtualizarBadgeTratativas==='function') _cenAtualizarBadgeTratativas();
   }
 
   const FILA_GRUPOS=[
     {id:'nova',titulo:'TRIAGEM NECESSÁRIA',accent:'#24508F',headerBg:'#F0F5FF',headerBd:'#B8CCF0',filtro:m=>m.st==='nova'},
-    {id:'anal',titulo:'VALIDAR ANÁLISE DA IA',accent:'#5B3FA0',headerBg:'#EEE8F7',headerBd:'#C8B8E8',filtro:m=>m.st==='anal'},
-    {id:'atraso',titulo:'COBRAR SETORES (ATRASO)',accent:'#A80502',headerBg:'#FFF5F5',headerBd:'#F5CCCC',filtro:m=>m.st==='trat'&&isLate(m)},
-    {id:'trat',titulo:'ACOMPANHAR TRATATIVAS',accent:'#7A4C00',headerBg:'#FFFBEE',headerBd:'#F0D9A0',filtro:m=>m.st==='trat'&&!isLate(m)},
-    {id:'aprov',titulo:'AGUARDANDO APROVAÇÃO',accent:'#9A4A10',headerBg:'#FCF0E8',headerBd:'#F0CCA8',filtro:m=>m.st==='aprov'},
-    {id:'dev',titulo:'ENVIAR DEVOLUTIVA',accent:'#0E6B73',headerBg:'#E3F3F4',headerBd:'#A8D8DB',filtro:m=>m.st==='dev'},
+    {id:'anal',titulo:'EM ANÁLISE · SAC',accent:'#5B3FA0',headerBg:'#EEE8F7',headerBd:'#C8B8E8',filtro:m=>m.st==='anal'},
+    {id:'atraso',titulo:'⚠ COBRAR SETORES — PRAZO VENCIDO',accent:'#A80502',headerBg:'#FFF5F5',headerBd:'#F5CCCC',filtro:m=>m.st==='trat'&&isLate(m)},
+    {id:'trat',titulo:'AGUARDANDO RESPOSTA DO SETOR',accent:'#7A4C00',headerBg:'#FFFBEE',headerBd:'#F0D9A0',filtro:m=>m.st==='trat'&&!isLate(m)},
+    {id:'vsac',titulo:'AGUARDANDO VALIDAÇÃO SAC',accent:'#6B21A8',headerBg:'#F3E8FF',headerBd:'#D8B4FE',filtro:m=>m.st==='vsac'},
+    {id:'aprov',titulo:'AGUARDANDO APROVAÇÃO GERENCIAL',accent:'#9A4A10',headerBg:'#FCF0E8',headerBd:'#F0CCA8',filtro:m=>m.st==='aprov'},
+    {id:'dev',titulo:'PREPARAR DEVOLUTIVA AO CLIENTE',accent:'#0E6B73',headerBg:'#E3F3F4',headerBd:'#A8D8DB',filtro:m=>m.st==='dev'},
   ];
 
   const PRIO_CFG={alta:{bg:'#FDECEC',fg:'#A80502'},media:{bg:'#FEF3DC',fg:'#8A5000'},baixa:{bg:'#F0F0F0',fg:'#545454'},none:{bg:'#F0F0F0',fg:'#545454'}};
-  const ST_DOT={nova:'#A8A8A8',anal:'#1A4F8A',trat:'#4A2E9A',aprov:'#C87000',dev:'#1A8A8A',enc:'#1A6632'};
+  const ST_DOT={nova:'#A8A8A8',anal:'#1A4F8A',trat:'#4A2E9A',vsac:'#6B21A8',aprov:'#C87000',dev:'#1A8A8A',enc:'#1A6632'};
+
+  window.cenFiltrarKpi=function(tag,el){
+    const cols=$('cen-fila-grupos');if(!cols)return;
+    const isLateTag=tag==='late',isSoonTag=tag==='soon';
+    const grupos=cols.querySelectorAll('.mc-grupo');
+    grupos.forEach(g=>{
+      const gid=g.dataset.gid||'';
+      if(isLateTag){g.style.display=(['atraso'].includes(gid))?'':'none';}
+      else if(isSoonTag){const items=g.querySelectorAll('.mc-item-wrap');let show=false;items.forEach(i=>{const h=parseFloat(i.dataset.h||'999');if(h>=0&&h<=8)show=true;});g.style.display=show?'':'none';}
+      else{g.style.display='';}
+    });
+    if(isLateTag||isSoonTag)return;
+    renderFilaGrupos();
+  };
+
+  function _renderManCard(m){
+    const sl=slaTxt(m);const pr=PRIO_CFG[m.pri]||PRIO_CFG.none;const late=isLate(m)&&m.st!=='enc';const dot=ST_DOT[m.st]||'#A8A8A8';
+    const hAttr=m.h!=null?` data-h="${m.h}"`:'';
+    return `<div class="mc-item-wrap mc-item${_cenAtual===m.id?' sel':''}" data-id="${esc(m.id)}"${hAttr} style="display:block;width:100%;border:1.5px solid ${_cenAtual===m.id?'#C70602':'#F0F0F0'};background:${_cenAtual===m.id?'#FFFAFA':'#fff'};border-radius:9px;padding:10px 11px;margin-bottom:5px;cursor:pointer" onclick="cenSelecionarMan(this.dataset.id)">
+<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:5px;margin-bottom:4px">
+<span style="display:flex;align-items:center;gap:6px"><input type="checkbox" class="cen-sel-man" data-id="${esc(m.id)}" onclick="event.stopPropagation();cenAtualizarSelecao()" style="accent-color:#C70602;width:14px;height:14px"><span style="font-size:11px;font-weight:800;color:${_cenAtual===m.id?'#C70602':'#1F1F1F'}">${esc(m.id)}</span></span>
+<div style="display:flex;gap:3px;flex-wrap:wrap;justify-content:flex-end;align-items:center;flex:none">
+<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:${pr.bg};color:${pr.fg}">${esc(PRI_LBL[m.pri]||'—')}</span>
+${late?'<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#FDECEC;color:#A80502">Atrasada</span>':''}
+${m.ext?'<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#E6EEF8;color:#24508F">EXT</span>':''}
+${(typeof role==='function'&&role()==='MASTER')?`<button onclick="event.stopPropagation();cenExcluirCard('${esc(m.id)}')" title="Excluir" style="border:1px solid #C70602;background:#fff;color:#C70602;border-radius:5px;padding:1px 6px;font-size:11px;cursor:pointer;line-height:1.4;font-family:inherit">🗑</button>`:''}
+</div></div>
+<div style="font-size:12px;font-weight:600;color:#2A2A2A;margin-bottom:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.cli||'—')}</div>
+<div style="font-size:11px;color:#727272;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:5px">${esc(m.motivo||m.tipo||'—')}</div>
+<div style="display:flex;align-items:center;justify-content:space-between;gap:4px">
+<div style="display:flex;align-items:center;gap:4px"><span style="width:6px;height:6px;border-radius:50%;background:${dot};flex:none"></span><span style="font-size:10px;color:#727272">${esc(ST_LBL[m.st]||m.st)}</span></div>
+<span style="font-size:9.5px;color:${late?'#A80502':'#B0B0B0'}">${late?'⚠ '+esc(sl):esc(sl)||esc(m.emp||'')}</span>
+</div></div>`;
+  }
 
   function renderFilaGrupos(){
     const cont=$('cen-fila-grupos'); if(!cont) return;
@@ -26213,33 +27059,14 @@ async function mudarStatusMC(id, novoStatus) {
       cont.innerHTML='<div style="padding:32px 16px;text-align:center"><div style="font-size:12.5px;font-weight:700;color:#C0C0C0">'+(_cenErroLista?'Erro ao carregar':'Nenhuma manifestação')+'</div><div style="font-size:11px;color:#D0D0D0;margin-top:3px">'+(_cenErroLista?'':'Ajuste os filtros')+'</div></div>';
       return;
     }
-    const sl_fn=m=>slaTxt(m);
-    cont.innerHTML=list.map(m=>{
-      const sl=sl_fn(m);
-      const pr=PRIO_CFG[m.pri]||PRIO_CFG.none;
-      const late=isLate(m)&&m.st!=='enc';
-      const dot=ST_DOT[m.st]||'#A8A8A8';
-      return `<div class="mc-item${_cenAtual===m.id?' sel':''}" data-id="${esc(m.id)}" style="display:block;width:100%;border:1.5px solid ${_cenAtual===m.id?'#C70602':'#F0F0F0'};background:${_cenAtual===m.id?'#FFFAFA':'#fff'};border-radius:9px;padding:10px 11px;margin-bottom:5px;animation:none;cursor:pointer" onclick="cenSelecionarMan(this.dataset.id)">
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:5px;margin-bottom:4px">
-          <span style="display:flex;align-items:center;gap:6px"><input type="checkbox" class="cen-sel-man" data-id="${esc(m.id)}" onclick="event.stopPropagation();cenAtualizarSelecao()" style="accent-color:#C70602;width:14px;height:14px"><span style="font-size:11px;font-weight:800;color:${_cenAtual===m.id?'#C70602':'#1F1F1F'}">${esc(m.id)}</span></span>
-          <div style="display:flex;gap:3px;flex-wrap:wrap;justify-content:flex-end;align-items:center;flex:none">
-            <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:${pr.bg};color:${pr.fg}">${esc(PRI_LBL[m.pri]||'—')}</span>
-            ${late?'<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#FDECEC;color:#A80502">Atrasada</span>':''}
-            ${m.ext?'<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#E6EEF8;color:#24508F">EXT</span>':''}
-            ${(typeof role==='function'&&role()==='MASTER')?`<button onclick="event.stopPropagation();cenExcluirCard('${esc(m.id)}')" title="Excluir manifestação" style="border:1px solid #C70602;background:#fff;color:#C70602;border-radius:5px;padding:1px 6px;font-size:11px;cursor:pointer;line-height:1.4;font-family:inherit">🗑</button>`:''}
-          </div>
-        </div>
-        <div style="font-size:12px;font-weight:600;color:#2A2A2A;margin-bottom:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.cli||'—')}</div>
-        <div style="font-size:11px;color:#727272;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:5px">${esc(m.motivo||m.tipo||'—')}</div>
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:4px">
-          <div style="display:flex;align-items:center;gap:4px">
-            <span style="width:6px;height:6px;border-radius:50%;background:${dot};flex:none"></span>
-            <span style="font-size:10px;color:#727272">${esc(ST_LBL[m.st]||m.st)}</span>
-          </div>
-          <span style="font-size:9.5px;color:#B0B0B0">${esc(m.emp||'')} · ${esc((pick(m.raw||{},['DATA_ABERTURA','DATA_REGISTRO','DATA_MANIFESTACAO'])||'').slice(0,10))}</span>
-        </div>
-      </div>`;
+    const grupos=FILA_GRUPOS.map(g=>{
+      const items=list.filter(g.filtro).sort((a,b)=>(a.h==null?1e9:a.h)-(b.h==null?1e9:b.h));
+      if(!items.length)return '';
+      return `<div class="mc-grupo" data-gid="${g.id}" style="margin-bottom:16px"><div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:7px 7px 0 0;background:${g.headerBg};border:1px solid ${g.headerBd};border-bottom:none"><span style="font-size:11px;font-weight:800;color:${g.accent};letter-spacing:.4px">${esc(g.titulo)}</span><span style="font-size:10px;padding:1px 6px;border-radius:9px;background:${g.accent};color:#fff">${items.length}</span></div><div style="border:1px solid ${g.headerBd};border-radius:0 0 7px 7px;padding:6px">${items.map(_renderManCard).join('')}</div></div>`;
     }).join('');
+    const enc=list.filter(m=>m.st==='enc').sort((a,b)=>(b.h||0)-(a.h||0));
+    const encBlock=enc.length?`<div class="mc-grupo" data-gid="enc" style="margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:7px 7px 0 0;background:#F0FAF3;border:1px solid #A8DFC0;border-bottom:none"><span style="font-size:11px;font-weight:800;color:#1E6B3A;letter-spacing:.4px">ENCERRADAS NO PERÍODO</span><span style="font-size:10px;padding:1px 6px;border-radius:9px;background:#1E6B3A;color:#fff">${enc.length}</span></div><div style="border:1px solid #A8DFC0;border-radius:0 0 7px 7px;padding:6px">${enc.map(_renderManCard).join('')}</div></div>`:'';
+    cont.innerHTML=(grupos+encBlock)||'<div style="padding:32px 16px;text-align:center"><div style="font-size:12.5px;font-weight:700;color:#C0C0C0">Nenhuma manifestação nas filas ativas</div></div>';
     cenAtualizarSelecao();
   }
 
@@ -26279,7 +27106,8 @@ async function mudarStatusMC(id, novoStatus) {
   window.filtrarFilaCentral = function(){renderFilaGrupos();};
 
   window.setCenFiltroScope = function(scope){
-    _cenScope=scope==='todas'?'todas':'minhas';
+    const VALID=['todas','minhas','minha_fila','meu_setor','aguardando_minha_acao','aguardando_terceiros','criticas'];
+    _cenScope=VALID.includes(scope)?scope:'minhas';
     renderKpisGrupo(); renderFilaGrupos();
   };
 
@@ -26403,17 +27231,28 @@ async function mudarStatusMC(id, novoStatus) {
   function proximaAcao(n){
     const late=isLate(n);
     const sl=slaTxt(n);
+    const perfil=String(typeof role==='function'?role():'').toUpperCase().replace(/\s+/g,'_');
+    const isSetor=perfil==='SETOR'||perfil==='RESPONSAVEL_SETOR';
+    const isLider=perfil==='GESTOR'||perfil==='LIDERANCA'||perfil==='DIRETOR';
     let t,d,acts;
     if(n.st==='nova'){
-      t=n.ext?'Fazer a triagem desta manifestação externa':'Fazer a triagem desta manifestação';
-      d=(n.canal?'Registrada pelo canal '+n.canal.toLowerCase()+'. ':'')+'Confirme os dados do cliente e envie para análise.';
-      acts=[{l:'Assumir e analisar',p:true,fn:cenAssumir},disabledAct('Pedir mais informações',WHY_NOENDPOINT,false)];
+      if(isSetor){
+        t='Aguardando triagem SAC'; d='Esta manifestação ainda não foi encaminhada ao seu setor.'; acts=[{l:'Ver dados',p:false,fn:cenAbrirFichaCompleta}];
+      } else {
+        t=n.ext?'Fazer a triagem desta manifestação externa':'Fazer a triagem desta manifestação';
+        d=(n.canal?'Registrada pelo canal '+n.canal.toLowerCase()+'. ':'')+'Confirme os dados do cliente e envie para análise.';
+        acts=[{l:'Assumir e analisar',p:true,fn:cenAssumir},disabledAct('Pedir mais informações',WHY_NOENDPOINT,false)];
+      }
     } else if(n.st==='anal'){
       t='Validar a análise sugerida pela IA';
       d='Confira categoria, causa, setor e prioridade. A decisão é sua.';
-      acts=[{l:'Validar e encaminhar',p:true,fn:cenValidarEncaminhar},{l:'Abrir análise',p:false,fn:()=>$('cen-cerebro-wrap')?.scrollIntoView({behavior:'smooth',block:'start'})}];
+      acts=isSetor?[{l:'Ver ficha',p:false,fn:cenAbrirFichaCompleta}]:[{l:'Validar e encaminhar',p:true,fn:cenValidarEncaminhar},{l:'Abrir análise',p:false,fn:()=>$('cen-cerebro-wrap')?.scrollIntoView({behavior:'smooth',block:'start'})}];
     } else if(n.st==='trat'){
-      if(late&&n.setores.length){
+      if(isSetor){
+        t='Registrar tratativa e resposta';
+        d='Você é o responsável por investigar e registrar a solução desta manifestação.';
+        acts=[{l:'Abrir ficha — aba Tratativa',p:true,fn:()=>{cenAbrirFichaCompleta();setTimeout(()=>typeof fichaV2Tab==='function'&&fichaV2Tab(2),400);}}];
+      } else if(late&&n.setores.length){
         t='Cobrar resposta de '+n.setores.join(', ');
         d='Prazo vencido em '+fmtdt(n.prazoMs)+'.'+(pick(n.raw,['RESPONSAVEL_SETOR','RESPONSAVEL'])?' Responsável: '+pick(n.raw,['RESPONSAVEL_SETOR','RESPONSAVEL'])+'.':'');
         acts=[{l:'Cobrar setor',p:true,fn:cenCobrarSetor},{l:'Escalar ao gestor',p:false,fn:cenEscalarGestor}];
@@ -26422,6 +27261,10 @@ async function mudarStatusMC(id, novoStatus) {
         d=n.setores.length?'Setores acionados com prazo em andamento.':'Nenhum setor acionado ainda. Registre a tratativa em "Mais ações".';
         acts=[disabledAct('Enviar lembrete',WHY_NOENDPOINT,false),{l:'Seguir para devolutiva',p:true,fn:cenSeguirDevolutiva}];
       }
+    } else if(n.st==='vsac'){
+      t='Validar resposta do setor';
+      d='O setor concluiu a tratativa e enviou a resposta. Analise, valide ou solicite complementação antes de enviar a devolutiva.';
+      acts=[{l:'Abrir ficha e validar',p:true,fn:()=>{cenAbrirFichaCompleta();setTimeout(()=>typeof fichaV2Tab==='function'&&fichaV2Tab(3),400);}},{l:'Ver ficha',p:false,fn:cenAbrirFichaCompleta}];
     } else if(n.st==='aprov'){
       t='Aguardando aprovação';
       d='Item enviado ao aprovador.'+(n.h!=null?' Prazo: '+(n.h<0?'vencido':(n.h>=24?Math.round(n.h/24)+' dia(s)':Math.ceil(n.h)+'h'))+'.':'');
@@ -32252,9 +33095,10 @@ if (typeof pageLoaders !== 'undefined') {
     if (body) body.scrollTop = 0;
     if (n === 2 && typeof window.nmCarregarAnaliseDeterministica === 'function') window.nmCarregarAnaliseDeterministica();
     if (n === 3 && typeof window.nmCarregarPlanoPersistido === 'function') window.nmCarregarPlanoPersistido();
+    if (n === 4) { if (typeof nmCarregarAnalisePersistida === 'function') nmCarregarAnalisePersistida(); nmRenderizarCircaInvestigacao(); }
+    if (n === 5) { if (typeof nmPreencherValidacao === 'function') nmPreencherValidacao(); nmRenderizarCircaStep5(); }
     if (n === TOTAL && typeof nmMontarResumo === 'function') nmMontarResumo();
     if (n === 6 && typeof nmMontarDevolutiva === 'function') { nmMontarDevolutiva(); nmCarregarAnalisePersistida(); }
-    if (n === 5 && typeof nmPreencherValidacao === 'function') nmPreencherValidacao();
   }
   function validar(){
     var ativo = document.querySelector('#page-nova-manifestacao .nm-step-panel.nm-active');
