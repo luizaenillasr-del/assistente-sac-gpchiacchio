@@ -15562,6 +15562,8 @@ async function salvarRascunho(options={}) {
     if(!res?.sucesso) throw new Error(res?.erro||'Falha ao salvar o rascunho.');
     if (!_nmCardId && res.id) {
       _nmCardId = res.id;
+    } else if (!_nmCardId && !res.id) {
+      throw new Error('O rascunho foi aceito, mas ainda não foi confirmado no armazenamento. Tente salvar novamente.');
     }
     _nmRascunhoUltimaEdicao=String(res.atualizadoEm||_nmRascunhoUltimaEdicao||'');
     if (payload.status || payload.STATUS) window._nmStatusPersistido=String(payload.status||payload.STATUS);
