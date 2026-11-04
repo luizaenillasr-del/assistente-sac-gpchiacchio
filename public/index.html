@@ -15561,19 +15561,7 @@ async function salvarRascunho(options={}) {
     else res=await _apiFetch('/api/manifestacoes',60000,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     if(!res?.sucesso) throw new Error(res?.erro||'Falha ao salvar o rascunho.');
     if (!_nmCardId && res.id) {
-      // O ID só entra no estado do wizard depois de uma leitura confirmatória.
-      // Assim um POST aceito mas ainda não visível no armazenamento não vira
-      // um PATCH prematuro que retorna 404.
-      let confirmado = null;
-      for (let tentativa=0; tentativa<3 && !confirmado; tentativa++) {
-        try {
-          const leitura = await _apiFetch(`/api/manifestacoes/${encodeURIComponent(res.id)}`,10000);
-          if (leitura?.sucesso && leitura.manifestacao?.ID_MANIFESTACAO === res.id) confirmado = leitura.manifestacao;
-        } catch (_) {}
-        if (!confirmado && tentativa < 2) await new Promise(resolve => setTimeout(resolve, 250));
-      }
-      if (!confirmado) throw new Error('O rascunho foi aceito, mas ainda não foi confirmado no armazenamento. Tente salvar novamente.');
-      _nmCardId = confirmado.ID_MANIFESTACAO;
+      _nmCardId = res.id;
     }
     _nmRascunhoUltimaEdicao=String(res.atualizadoEm||_nmRascunhoUltimaEdicao||'');
     if (payload.status || payload.STATUS) window._nmStatusPersistido=String(payload.status||payload.STATUS);
@@ -33258,14 +33246,14 @@ if (typeof pageLoaders !== 'undefined') {
 <style id="nova-indicadores-layout">
 /* Nova Manifestação: uma única navegação global; as etapas ficam em uma faixa horizontal. */
 #page-nova-manifestacao{height:100%!important;min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;background:#f7f7f7!important}
-#page-nova-manifestacao .nm-ref-workspace{display:block!important;overflow:visible!important;min-height:0!important}
+#page-nova-manifestacao .nm-ref-workspace{display:flex!important;flex-direction:row!important;overflow:hidden!important;min-height:0!important}
 #page-nova-manifestacao .nm-ref-sidebar{position:static!important;width:100%!important;height:auto!important;min-height:0!important;display:flex!important;align-items:stretch;gap:0;overflow-x:auto!important;overflow-y:hidden!important;padding:0!important;background:#fff;border-right:0!important;border-bottom:1px solid #e4e4e4}
 #page-nova-manifestacao .nm-ref-sidebar>small{display:none!important}
 #page-nova-manifestacao .nm-ref-sidebar button{display:inline-flex!important;flex:0 0 auto;width:auto!important;min-height:48px;align-items:center!important;justify-content:center;padding:0 18px!important;border-left:0!important;border-bottom:2px solid transparent!important;white-space:nowrap;font-size:12px!important}
 #page-nova-manifestacao .nm-ref-sidebar button.active{border-left:0!important;border-bottom-color:#c70602!important;background:#fff5f5!important}
 #page-nova-manifestacao .nm-ref-sidebar button i{display:none!important}
 #page-nova-manifestacao .nm-ref-sidebar button em{display:none!important}
-#page-nova-manifestacao .nm-ref-workarea{display:block!important;overflow:visible!important;min-height:0!important}
+#page-nova-manifestacao .nm-ref-workarea{display:block!important;flex:1!important;min-width:0!important;overflow:visible!important;min-height:0!important}
 #page-nova-manifestacao #nm-steps-body{width:100%!important;max-width:100%!important;margin:0!important;overflow:visible!important;padding:28px 32px 32px!important}
 #page-nova-manifestacao #nm-steps-body>.nm-step-panel{max-width:1000px;width:100%;margin:0 auto}
 #page-nova-manifestacao .nm-navigation-footer{position:static!important;max-width:1000px;margin:0 auto;padding:14px 0 28px!important;background:transparent!important;border-top:0!important}
@@ -33295,8 +33283,8 @@ if (typeof pageLoaders !== 'undefined') {
 #page-nova-manifestacao .nm-approved-steps button.active span{background:#C70602;color:#fff}
 #page-nova-manifestacao .nm-approved-steps button.done{color:#15803D;font-weight:600;border-bottom-color:#15803D}
 #page-nova-manifestacao .nm-approved-steps button.done span{background:#15803D;color:#fff}
-#page-nova-manifestacao .nm-ref-workspace{display:block!important;min-height:0!important;overflow:visible!important}
-#page-nova-manifestacao .nm-ref-workarea{display:block!important;min-height:0!important;overflow:visible!important}
+#page-nova-manifestacao .nm-ref-workspace{display:flex!important;flex-direction:row!important;min-height:0!important;overflow:hidden!important}
+#page-nova-manifestacao .nm-ref-workarea{display:block!important;flex:1!important;min-width:0!important;min-height:0!important;overflow:visible!important}
 #page-nova-manifestacao #nm-steps-body{overflow:visible!important;background:#F7F7F7!important;padding:24px 28px 48px!important;width:auto!important;max-width:none!important;margin:0!important}
 #page-nova-manifestacao #nm-steps-body>.nm-step-panel{max-width:960px;width:100%;margin:0 auto}
 #page-nova-manifestacao .nm-card{border-radius:8px;padding:16px 18px;gap:12px;box-shadow:none}
