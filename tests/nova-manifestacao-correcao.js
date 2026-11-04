@@ -16,7 +16,7 @@ delete process.env.DATABASE_URL;
 delete process.env.GOOGLE_CREDENTIALS;
 
 const html = fs.readFileSync(path.resolve(__dirname, '../public/index.html'), 'utf8');
-assert.ok(html.includes('res.protocolo || res.id'), 'a tela deve exibir o protocolo oficial retornado pelo backend');
+assert.ok(html.includes('finalRes.protocolo || _nmCardId') || html.includes('res.protocolo || res.id'), 'a tela deve exibir o protocolo oficial retornado pelo backend');
 assert.ok(html.includes('/api/manifestacoes/${encodeURIComponent(technicalId)}/evidencias'), 'a ficha deve recuperar anexos pelo identificador técnico');
 assert.match(html, /_nmRascunhoUltimaEdicao/, 'o rascunho deve controlar a versão retornada pelo armazenamento');
 assert.match(html, /_nmEvidenciasPersistidas/, 'anexos persistidos devem continuar visíveis após reabrir a ficha');

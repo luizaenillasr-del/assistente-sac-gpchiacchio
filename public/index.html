@@ -13742,81 +13742,44 @@ async function registrarManifestacao() {
   const usuario = _uParsed.usuario || _uParsed.USUARIO || 'analista';
 
   try {
-    if (_nmCardId) {
-      const draft = nmCardPayload();
-      draft.finalizar = true; draft.rascunho = false; draft.idempotencyKey = nmGarantirIdempotencyKey();
-      draft.analiseIA = _nmAnaliseAtual ? JSON.stringify(_nmAnaliseAtual) : '';
-      draft.anexos = await Promise.all(_nmEvidencias.map(async f => ({ nome:f.name, mimeType:f.type, tamanho:f.size, dataBase64:await fileToBase64(f), categoria:'EVIDENCIA' })));
-      const finalRes = await _apiFetch(`/api/manifestacoes/${encodeURIComponent(_nmCardId)}/circa-dados`,60000,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(draft)});
-      if (!finalRes?.sucesso) throw new Error(finalRes?.erro||'Falha ao concluir a manifestação.');
-      localStorage.removeItem('sac-rascunho-id');
-      alert(`✅ Manifestação ${finalRes.protocolo || _nmCardId} concluída e encaminhada para triagem.`);
-      const sbCen = document.getElementById('sidebar-central-sac') || document.querySelector('[onclick*="central-sac"]');
-      navigate('central-sac', sbCen);
-      if (typeof loadCentralSAC === 'function') loadCentralSAC();
-      return;
+    // Se não há rascunho prévio, cria um antes de finalizar para que todos os
+    // campos CIRCA (classificação, investigação, tratativas) sejam persistidos
+    // pelo PATCH /circa-dados, que é o único caminho que salva esses dados.
+    if (!_nmCardId) {
+      const initRes = await _apiFetch('/api/manifestacoes', 60000, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          empresaReclamada: empReclamada,
+          empresaReclamante: empresa,
+          contato: document.getElementById('nm-nome').value || document.getElementById('nm-tel').value,
+          descricao: desc,
+          tipo,
+          canal,
+          cnpj: document.getElementById('nm-cnpj').value,
+          telefone: document.getElementById('nm-tel').value,
+          email: document.getElementById('nm-email').value,
+          usuario,
+          idempotencyKey: nmGarantirIdempotencyKey(),
+          rascunho: true,
+        })
+      });
+      if (!initRes?.sucesso) throw new Error(initRes?.erro || 'Falha ao criar registro da manifestação.');
+      window._nmCardId = initRes.id;
+      localStorage.setItem('sac-rascunho-id', initRes.id);
     }
-    const res = await _apiFetch('/api/manifestacoes', 60000,{
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        empresaReclamada: empReclamada,
-        empresaReclamante: empresa,
-        contato: document.getElementById('nm-nome').value || document.getElementById('nm-tel').value,
-        produto: document.getElementById('nm-produto').value,
-        lote: document.getElementById('nm-lote').value,
-        nfe: document.getElementById('nm-nfe').value,
-        descricao: desc,
-        tipo,
-        canal,
-        cnpj: document.getElementById('nm-cnpj').value,
-        telefone: document.getElementById('nm-tel').value,
-        email: document.getElementById('nm-email').value,
-        quantidade: document.getElementById('nm-qtd').value,
-        quantidadeDevolvida: document.getElementById('nm-qtd-devolvida').value,
-        quantidadeTotal: document.getElementById('nm-qtd-total').value,
-        houveDevolucao: document.getElementById('nm-houve-devolucao')?.checked ? 'SIM' : 'NÃO',
-        valor: document.getElementById('nm-valor').value,
-        valorTotalPedido: document.getElementById('nm-vlr-pedido').value,
-        prejuizoEstimado: document.getElementById('nm-vlr-estimado').value,
-        usuario,
-        idempotencyKey: nmGarantirIdempotencyKey(),
-        analiseIA: _nmAnaliseAtual ? JSON.stringify(_nmAnaliseAtual) : null,
-        decisaoAnalista: _nmDecisao || 'pendente',
-        devolutivaSugerida: document.getElementById('ia-devolutiva')?.value || '',
-        origemDocumento: _nmTipoImportacao || '',
-        arquivoOrigem: window._documentoExtraido ? JSON.stringify(window._documentoExtraido) : '',
-        statusFicha: document.getElementById('nm-status-ficha')?.value || 'ABERTA',
-        origem: nmCanalSelecionado(),
-        prioridade: document.getElementById('nm-prioridade')?.value || 'NORMAL',
-        protocoloExterno: document.getElementById('nm-protocolo-externo')?.value || '',
-        vinculoManifestacao: document.getElementById('nm-vinculo-man')?.value || '',
-        categoria: document.getElementById('nm-categoria')?.value || '',
-        motivo: document.getElementById('nm-motivo')?.value || '',
-        severidade: document.getElementById('nm-severidade')?.value || 'MEDIA',
-        setorResponsavelInicial: document.getElementById('nm-setor-resp')?.value || '',
-        geraRNC: document.getElementById('nm-gera-rnc')?.checked ? 'SIM' : 'NÃO',
-        requerAnaliseCausa: document.getElementById('nm-analise-causa')?.checked ? 'SIM' : 'NÃO',
-        procedente: document.getElementById('nm-procedente')?.value || '',
-        procedenteJustificativa: document.getElementById('nm-procedente-justif')?.value || '',
-        caminhoTratativa: document.getElementById('nm-caminho-tratativa')?.value || '',
-        tratativaSACInterna: document.getElementById('nm-tratativa-sac')?.value || '',
-        dataEncaminhamento: document.getElementById('nm-data-encaminhamento')?.value || '',
-        prazoRetornoSAC: document.getElementById('nm-prazo-retorno')?.value || '',
-        anexos: await Promise.all(_nmEvidencias.map(async f => ({ nome:f.name, mimeType:f.type, tamanho:f.size, dataBase64:await fileToBase64(f), categoria:'EVIDENCIA' })))
-      })
-    });
 
-    if (res.sucesso) {
-      localStorage.removeItem('sac-rascunho-id');
-      alert(`✅ Manifestação ${res.protocolo || res.id} registrada com sucesso!`);
-      // Navegar para Central e recarregar fila para que a nova manifestação apareça imediatamente
-      const sbCentral = document.getElementById('sidebar-central-sac') || document.querySelector('[onclick*="central-sac"]');
-      navigate('central-sac', sbCentral);
-      if (typeof loadCentralSAC === 'function') loadCentralSAC();
-    } else {
-      alert('Erro: ' + res.erro);
-    }
+    const draft = nmCardPayload();
+    draft.finalizar = true; draft.rascunho = false; draft.idempotencyKey = nmGarantirIdempotencyKey();
+    draft.analiseIA = _nmAnaliseAtual ? JSON.stringify(_nmAnaliseAtual) : '';
+    draft.anexos = await Promise.all(_nmEvidencias.map(async f => ({ nome:f.name, mimeType:f.type, tamanho:f.size, dataBase64:await fileToBase64(f), categoria:'EVIDENCIA' })));
+    const finalRes = await _apiFetch(`/api/manifestacoes/${encodeURIComponent(_nmCardId)}/circa-dados`,60000,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(draft)});
+    if (!finalRes?.sucesso) throw new Error(finalRes?.erro||'Falha ao concluir a manifestação.');
+    localStorage.removeItem('sac-rascunho-id');
+    alert(`✅ Manifestação ${finalRes.protocolo || _nmCardId} concluída e encaminhada para triagem.`);
+    const sbCen = document.getElementById('sidebar-central-sac') || document.querySelector('[onclick*="central-sac"]');
+    navigate('central-sac', sbCen);
+    if (typeof loadCentralSAC === 'function') loadCentralSAC();
   } catch (e) {
     alert('Erro ao registrar: ' + e.message);
   }
