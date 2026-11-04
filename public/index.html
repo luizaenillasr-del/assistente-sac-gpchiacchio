@@ -15557,8 +15557,13 @@ async function salvarRascunho(options={}) {
     if (options.manterRascunho && (!window._nmStatusPersistido || /^RASCUNHO$/i.test(window._nmStatusPersistido))) { payload.status='RASCUNHO'; payload.statusFicha='RASCUNHO'; payload.STATUS='RASCUNHO'; payload.STATUS_FICHA='RASCUNHO'; payload.rascunho=true; }
     if (_nmRascunhoUltimaEdicao) payload.ultimaEdicaoConhecida=_nmRascunhoUltimaEdicao;
     let res;
-    if(_nmCardId) res=await _apiFetch(`/api/manifestacoes/${encodeURIComponent(_nmCardId)}/circa-dados`,60000,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-    else res=await _apiFetch('/api/manifestacoes',60000,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    if(_nmCardId) {
+      for (let t=0; t<4; t++) {
+        res=await _apiFetch(`/api/manifestacoes/${encodeURIComponent(_nmCardId)}/circa-dados`,60000,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+        if (res?.sucesso || (res?.status!==404 && res?.httpStatus!==404 && !(res?.erro||'').includes('404') && !(res?.erro||'').includes('não encontrada') && !(res?.erro||'').includes('nao encontrada'))) break;
+        if (t<3) await new Promise(r=>setTimeout(r,600*(t+1)));
+      }
+    } else res=await _apiFetch('/api/manifestacoes',60000,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     if(!res?.sucesso) throw new Error(res?.erro||'Falha ao salvar o rascunho.');
     if (!_nmCardId && res.id) {
       _nmCardId = res.id;
