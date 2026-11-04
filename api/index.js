@@ -2678,7 +2678,7 @@ app.post('/api/manifestacoes', requerPermissao('manifestacoes.abrir'), async (re
     // perder ou a confirmação precisar ser repetida, a tentativa seguinte
     // devolve a mesma ficha em vez de criar outra manifestação.
     if(protocoloKeyInput) {
-      const existente=(await lerAba('MANIFESTACOES',5000).catch(()=>[])).find(m=>String(m.IDEMPOTENCY_KEY||'')===protocoloKeyInput);
+      const existente=(await lerAba('MANIFESTACOES').catch(()=>[])).find(m=>String(m.IDEMPOTENCY_KEY||'')===protocoloKeyInput);
       if(existente) return res.json({sucesso:true,id:existente.ID_MANIFESTACAO,protocolo:existente.PROTOCOLO,idempotente:true});
     }
     const empNorm = normalizarEmpresa(empresaReclamada);
@@ -8313,7 +8313,9 @@ app.get('/api/manifestacoes/:id/circa', requerPermissao('manifestacoes.visualiza
 app.patch('/api/manifestacoes/:id/circa-dados', requerPermissao('manifestacoes.editar'), middlewareEscopoEmpresa(), async (req,res) => {
   try {
     const idReq=String(req.params.id||'').trim();
-    const rows=await lerAba('MANIFESTACOES',5000).catch(()=>[]);
+    // Sem limite de linhas: a aba pode ter mais de 5000 registros e o novo
+    // rascunho pode estar além desse limite imediatamente após o POST.
+    const rows=await lerAba('MANIFESTACOES').catch(()=>[]);
     const m=rows.find(r=>[r.ID_MANIFESTACAO,r.PROTOCOLO,r.ID,r.ID_ORIGINAL].some(v=>String(v||'').trim()===idReq));
     if(!m) return res.status(404).json({sucesso:false,erro:'Manifestação não encontrada.'});
     if(req._empresaScope && !pertenceEmpresa(req._empresaScope,m.EMPRESA_RECLAMADA||'')) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado.'});
