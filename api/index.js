@@ -12609,7 +12609,7 @@ app.get('/api/public/whatsapp/webhook', (req, res) => {
   return res.status(200).send(String(req.query['hub.challenge']));
 });
 
-app.post('/api/public/whatsapp/webhook', async (req, res) => {
+app.post('/api/public/whatsapp/webhook', publicRateLimit, async (req, res) => {
   if (!whatsappSignatureValida(req)) return res.status(401).json({ sucesso:false, erro:'Assinatura do webhook inválida.' });
   try {
     const payload = req.body || {};
