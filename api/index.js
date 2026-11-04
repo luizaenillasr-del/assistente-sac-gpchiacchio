@@ -8685,8 +8685,9 @@ app.post('/api/manifestacoes/:id/sugestoes', requerPerfil('MASTER','APROVADOR'),
 // ===== CAUSAS HIERÁRQUICAS =====
 app.get('/api/causas', requerPerfil('MASTER','ANALISTA SAC','APROVADOR','SETOR RESPONSÁVEL','GESTOR SAC','AUDITOR','CONSULTA'), async (req,res)=>{
   try {
-    const causas = await lerAba('CAUSAS', 2000).catch(()=>[]);
-    res.json({sucesso:true, total:causas.length, itens:causas});
+    const base = await lerCatalogoCausas(2000);
+    const causas = base.rows.map(r => normalizarCausaCatalogo(r, base.fonte));
+    res.json({sucesso:true, total:causas.length, fonte:base.fonte, itens:causas});
   } catch(e){ res.status(500).json({sucesso:false,erro:erroSeguro(e),itens:[]}); }
 });
 
@@ -8799,33 +8800,80 @@ function _cScopeRows(req, rows) {
 }
 function _cCanWrite(req) { return ['MASTER','GESTOR SAC','ANALISTA SAC'].includes(perfilCanonico(req.user?.perfil || '')); }
 
+async function lerCatalogoCausas(maxRows = 5000) {
+  const canonicas = await lerAba('CAUSAS', maxRows).catch(() => []);
+  if (canonicas.length) return { fonte: 'CAUSAS', rows: canonicas };
+  return { fonte: 'CAUSAS_SUBCAUSAS', rows: await lerAba('CAUSAS_SUBCAUSAS', maxRows).catch(() => []) };
+}
+
+function normalizarCausaCatalogo(row = {}, fonte = 'CAUSAS') {
+  const item = { ...row, _fonteBase: fonte };
+  item.ID_CAUSA = item.ID_CAUSA || item.ID || item.ID_CAUSA_SUBCAUSA || '';
+  item.CAUSA = item.CAUSA || item.CAUSA_PRINCIPAL || item.DESCRICAO_CAUSA || '';
+  item.SUBCAUSA = item.SUBCAUSA || item.SUB_CAUSA || item.SUBCATEGORIA || '';
+  item._pendenciasDados = [];
+  if (!String(item.ID_CAUSA).trim()) item._pendenciasDados.push('ID_CAUSA');
+  if (!String(item.CAUSA).trim()) item._pendenciasDados.push('CAUSA');
+  item._elegivelCatalogo = item._pendenciasDados.length === 0 && String(item.ATIVO || 'SIM').toUpperCase() !== 'NAO';
+  return item;
+}
+
 app.get('/api/cerebro/matriz-operacional', requerPerfil('MASTER','GESTOR SAC','ANALISTA SAC','APROVADOR','SETOR RESPONSÁVEL','AUDITOR','CONSULTA'), middlewareEscopoEmpresa(), async (req,res)=>{
   try {
     const q = _cNorm(req.query.q), aba = String(req.query.aba || 'causas');
-    const [causas, tratamentos, aprimBase] = await Promise.all([
+    const [causasCanonicas, tratamentos, aprimBase] = await Promise.all([
       lerAba('CAUSAS', 5000).catch(()=>[]), lerAba('MATRIZ_TRATAMENTO', 5000).catch(()=>[]), lerAprimoramentosCerebro(5000),
     ]);
-    const aprimoramentos = aprimBase.rows;
+    // Fallback somente de leitura para planilhas antigas que ainda usam
+    // CAUSAS_SUBCAUSAS. A fonte exibida na resposta permite rastrear a origem.
+    const causas = causasCanonicas.length
+      ? causasCanonicas.map(r => ({ ...r, _fonteBase: 'CAUSAS' }))
+      : (await lerAba('CAUSAS_SUBCAUSAS', 5000).catch(()=>[])).map(r => ({ ...r, _fonteBase: 'CAUSAS_SUBCAUSAS' }));
+    const causasNormalizadas = causas.map(r => normalizarCausaCatalogo(r, r._fonteBase));
+    const aprimoramentos = aprimBase.rows.map(r => ({
+      ...r,
+      _pendenciasDados: [
+        !String(r.ID_APRIMORAMENTO || '').trim() ? 'ID_APRIMORAMENTO' : '',
+        !String(r.DESCRICAO || r.PROBLEMA_RECORRENTE || '').trim() ? 'DESCRICAO' : '',
+      ].filter(Boolean),
+    }));
     const filtra = rows => _cScopeRows(req, rows).filter(r => !q || _cNorm(Object.values(r).join(' ')).includes(q));
     const normTrat = r => ({
       ...matrizTratamentoService.normalizarRegra(r),
       PROBLEMA_TRATADO: r.PROBLEMA_TRATADO || r.TIPO_MANIFESTACAO || '',
       PROCEDIMENTO: r.PROCEDIMENTO || r.TRATATIVA_PADRAO || '',
       CAUSA: r.CAUSA || '',
-      STATUS: r.STATUS || (r.ATIVO === 'NAO' ? 'INATIVO' : r.ATIVO === 'SIM' || r.ATIVO === '1' || r.ATIVO === 'true' ? 'APROVADO' : r.ATIVO ? 'APROVADO' : ''),
+      // ATIVO é estado cadastral; não equivale a aprovação operacional.
+      STATUS: r.STATUS || (String(r.ATIVO || '').toUpperCase() === 'NAO' ? 'INATIVO' : ''),
     });
-    const tratamentosValidos = tratamentos.map(normTrat).filter(matrizTratamentoService.regraUtilizavel);
-    const rows = aba === 'tratamentos' ? filtra(tratamentosValidos) : aba === 'aprimoramentos' ? filtra(aprimoramentos) : filtra(causas);
+    const tratamentosNormalizados = tratamentos.map(normTrat).map(r => {
+      const validacao = matrizTratamentoService.validarRegra(r);
+      return {
+        ...r,
+        _elegivelCirca: matrizTratamentoService.regraUtilizavel(r),
+        _elegibilidadeEstrutural: validacao.motivos.length === 0,
+        _pendenciasDados: validacao.motivos,
+        _statusOperacional: String(r.STATUS || '').trim() || (validacao.ativa ? 'PENDENTE_VALIDACAO' : 'INATIVO'),
+      };
+    });
+    // A tela de gestão exibe também linhas incompletas para saneamento; o
+    // motor CIRCA continua consumindo somente regras elegíveis.
+    const rows = aba === 'tratamentos' ? filtra(tratamentosNormalizados) : aba === 'aprimoramentos' ? filtra(aprimoramentos) : filtra(causasNormalizadas);
     const page = Math.max(1, Number(req.query.page || 1)), limit = Math.min(100, Math.max(1, Number(req.query.limit || 50)));
-    res.json({ sucesso:true, aba, itens:rows.slice((page-1)*limit,page*limit), total:rows.length, page, limit, causas:filtra(causas).length, tratamentos:filtra(tratamentosValidos).length, aprimoramentos:filtra(aprimoramentos).length });
+    res.json({ sucesso:true, aba, itens:rows.slice((page-1)*limit,page*limit), total:rows.length, page, limit,
+      causas:filtra(causasNormalizadas).length,
+      tratamentos:filtra(tratamentosNormalizados).length,
+      tratamentosElegiveis:filtra(tratamentosNormalizados).filter(r=>r._elegivelCirca).length,
+      aprimoramentos:filtra(aprimoramentos).length,
+      fonteCausas:causasCanonicas.length ? 'CAUSAS' : 'CAUSAS_SUBCAUSAS' });
   } catch(e) { res.status(500).json({ sucesso:false, erro:erroSeguro(e), itens:[] }); }
 });
 
 app.get('/api/cerebro/causas/consultar', requerPermissao('base-conhecimento.visualizar'), middlewareEscopoEmpresa(), async (req,res)=>{
   try {
-    const q=_cNorm(req.query.q), rows=_cScopeRows(req, await lerAba('CAUSAS',5000).catch(()=>[])).filter(r=>String(r.ATIVO||'SIM').toUpperCase()!=='NAO');
+    const q=_cNorm(req.query.q), base=await lerCatalogoCausas(5000), rows=_cScopeRows(req, base.rows.map(r=>normalizarCausaCatalogo(r,base.fonte))).filter(r=>String(r.ATIVO||'SIM').toUpperCase()!=='NAO');
     const itens=rows.filter(r=>!q||_cNorm([r.CAUSA,r.SUBCAUSA,r.CATEGORIA,r.SINONIMOS,r.PALAVRAS_CHAVE].join(' ')).includes(q)).slice(0,100);
-    res.json({sucesso:true,itens});
+    res.json({sucesso:true,fonte:base.fonte,itens});
   } catch(e){res.status(500).json({sucesso:false,erro:erroSeguro(e),itens:[]});}
 });
 
