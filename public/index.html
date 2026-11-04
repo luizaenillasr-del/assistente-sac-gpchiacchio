@@ -3391,6 +3391,19 @@
             </div>
           </div>
 
+          <!-- Complementação -->
+          <div class="nm-path-card" id="nm-caminho-complemento" onclick="nmSetCaminhoTratativa('COMPLEMENTO',this)">
+            <div style="display:flex;align-items:flex-start;gap:14px">
+              <div style="width:36px;height:36px;border-radius:9px;background:#FEF9C3;display:flex;align-items:center;justify-content:center;flex:none">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke="#92400E" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+              <div style="flex:1">
+                <div style="font-size:13px;font-weight:800;color:#242424;margin-bottom:3px">Solicitar complementação ao cliente</div>
+                <div style="font-size:12px;color:#929090;line-height:1.6">Faltam informações que apenas o cliente pode fornecer para prosseguir com a análise.</div>
+              </div>
+            </div>
+          </div>
+
           <!-- Setor -->
           <div class="nm-path-card" id="nm-path-setor" onclick="nmSelPath('SETOR',this)">
             <div style="display:flex;align-items:flex-start;gap:14px">
@@ -3404,7 +3417,7 @@
                   <div class="nm-g3" style="gap:10px;margin-bottom:10px">
                     <div><label>Setor *</label><select class="nm-select" id="nm-setor-acionado" onchange="nmCarregarResponsaveisSetor()"><option value="">Selecionar setor</option><option>Qualidade Industrial</option><option>Logística</option><option>Produção</option><option>Comercial</option><option>Financeiro</option></select></div>
                     <div><label>Responsável *</label><select class="nm-select" id="nm-responsavel-acionado"><option value="">Selecionar responsável</option></select></div>
-                    <div><label>Prazo de retorno *</label><input type="date" class="nm-input" id="nm-prazo-retorno"></div>
+                    <div><label>Prazo de retorno *</label><input type="text" class="nm-input" id="nm-prazo-retorno" placeholder="Conforme SLA aplicável"></div>
                   </div>
                   <div class="nm-g2" style="gap:10px;margin-bottom:10px">
                     <div><label>Gestor / aprovador</label><select class="nm-select" id="nm-gestor-aprovador"><option value="">Sem aprovador específico</option></select></div>
@@ -3543,9 +3556,12 @@
 
     <!-- FOOTER NAV (shown via JS on mobile / as fallback) -->
     <div id="nm-nav-footer" style="background:#fff;border-top:1px solid #E4E4E4;padding:12px 28px;display:none;align-items:center;justify-content:space-between;flex-shrink:0">
-      <button id="nm-btn-voltar" onclick="nmEtapaAnterior()" class="nm-btn-secondary">← Voltar</button>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button id="nm-btn-voltar" onclick="nmEtapaAnterior()" class="nm-btn-secondary">← Voltar</button>
+        <button id="nm-btn-salvar-sair" onclick="nmSalvarRascunhoESair()" class="nm-btn-ghost" style="font-size:12px">Salvar e sair</button>
+      </div>
       <div style="font-size:12px;color:#929090;font-weight:500" id="nm-etapa-label">Etapa 1 de 7</div>
-      <button id="nm-btn-continuar" onclick="nmProximaEtapa()" class="nm-btn-primary">Continuar →</button>
+      <button id="nm-btn-continuar" onclick="nmProximaEtapa()" class="nm-btn-primary">Salvar e continuar →</button>
       <button id="nm-btn-confirmar" onclick="registrarManifestacao()" class="nm-btn-primary" style="display:none">Registrar manifestação</button>
     </div>
     </div>
@@ -13786,7 +13802,7 @@ async function registrarManifestacao() {
         caminhoTratativa: document.getElementById('nm-caminho-tratativa')?.value || '',
         tratativaSACInterna: document.getElementById('nm-tratativa-sac')?.value || '',
         dataEncaminhamento: document.getElementById('nm-data-encaminhamento')?.value || '',
-        prazoRetornoSAC: document.getElementById('nm-prazo-retorno')?.value || '72 horas',
+        prazoRetornoSAC: document.getElementById('nm-prazo-retorno')?.value || '',
         anexos: await Promise.all(_nmEvidencias.map(async f => ({ nome:f.name, mimeType:f.type, tamanho:f.size, dataBase64:await fileToBase64(f), categoria:'EVIDENCIA' })))
       })
     });
