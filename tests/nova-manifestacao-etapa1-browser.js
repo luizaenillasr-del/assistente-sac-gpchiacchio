@@ -44,6 +44,7 @@ async function main() {
   const rascunhosEnviados = [];
   const checklistSalvos = [];
   const patchBodies = [];
+  let registro = { ID_MANIFESTACAO:'NM-BROWSER-001', STATUS:'RASCUNHO', ETAPA_ATUAL:'1', CANAL:'TELEFONE', DESCRICAO:'Rascunho de navegador confirmado.' };
   let armazenamentoVersao = '';
   let sequenciaVersao = 0;
   let complementacoesPersistidas = {};
@@ -66,15 +67,18 @@ async function main() {
     }
     if (url.pathname === '/api/manifestacoes' && req.method() === 'POST') {
       rascunhosEnviados.push(req.postDataJSON());
+      const p=req.postDataJSON(); registro={...registro, STATUS:'RASCUNHO', ETAPA_ATUAL:p.ETAPA_ATUAL, DESCRICAO:p.descricao, EMPRESA_RECLAMANTE:p.empresaReclamante, CONTATO:p.contato, EMAIL:p.email, PRODUTO:p.produto, LOTE:p.lote, NFE:p.nfe};
       await new Promise(resolve => setTimeout(resolve, 80));
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ sucesso: true, id: 'NM-BROWSER-001', protocolo: 'CHIA-20261028-01-0001' }) });
     }
     if (url.pathname === '/api/manifestacoes/NM-BROWSER-001' && req.method() === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ sucesso: true, manifestacao: { ID_MANIFESTACAO: 'NM-BROWSER-001', CANAL: 'TELEFONE', DESCRICAO: 'Rascunho de navegador confirmado.' } }) });
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ sucesso: true, manifestacao: registro }) });
     }
     if (url.pathname.endsWith('/circa-dados') && req.method() === 'PATCH') {
       const body = req.postDataJSON() || {};
       patchBodies.push(body);
+      if(body.ETAPA_ATUAL) registro.ETAPA_ATUAL=String(body.ETAPA_ATUAL);
+      if(body.STATUS) registro.STATUS=body.STATUS;
       if (body.ultimaEdicaoConhecida && armazenamentoVersao && body.ultimaEdicaoConhecida !== armazenamentoVersao) {
         return route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ sucesso: false, codigo: 'RASCUNHO_CONCORRENTE', erro: 'O rascunho foi alterado em outra sessão.' }) });
       }
@@ -261,6 +265,19 @@ async function main() {
     const autosavesComVersao = patchBodies.filter(body => body.ultimaEdicaoConhecida);
     assert.ok(autosavesComVersao.length > 0, 'gravações posteriores devem enviar a versão persistida');
     assert.ok(!errosPagina.some(error => /409|outra sessão/i.test(error.message)), 'a própria sessão não pode gerar conflito falso');
+    const sair=page.locator('#nm-btn-rascunho-sair');
+    await sair.waitFor({state:'visible'});
+    await sair.click();
+    await page.locator('#page-central-sac').waitFor({state:'visible'});
+    assert.match(page.url(), /\/central-sac$/, 'salvar rascunho e sair deve retornar à Central após confirmação');
+    assert.equal(await page.locator('#page-nova-manifestacao').isVisible(), false, 'salvar rascunho e sair deve retornar à Central somente após salvar');
+    assert.equal(registro.STATUS,'RASCUNHO','salvar e sair não deve promover o rascunho a tratativa');
+    assert.equal(registro.ETAPA_ATUAL,'3','a etapa em andamento deve ser persistida');
+    assert.ok(requisicoes.some(r => r.method === 'PATCH' && r.path.endsWith('/circa-dados')), 'Salvar rascunho e sair deve persistir a etapa atual');
+    await page.evaluate(() => window.nmAbrirRascunho('NM-BROWSER-001'));
+    await page.locator('#nm-etapa-label').filter({hasText:'Etapa 3 de 7'}).waitFor();
+    await page.waitForFunction(expected => document.getElementById('nm-descricao')?.value === expected, descricaoCenario);
+    assert.equal(await page.locator('#nm-descricao').inputValue(),descricaoCenario,'retomada deve ler o relato do servidor');
     // O boot do dashboard dispara chamadas fora do fluxo testado; somente
     // erros originados na navegação da ficha bloqueiam esta regressão.
     const errosCriticos = errosPagina.filter(error => /nmProximaEtapa|nm-btn-continuar|SyntaxError|salvarRascunho/.test(error.message));

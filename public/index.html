@@ -3548,6 +3548,7 @@
       <button id="nm-btn-continuar" onclick="nmProximaEtapa()" class="nm-btn-primary">Continuar →</button>
       <button id="nm-btn-confirmar" onclick="registrarManifestacao()" class="nm-btn-primary" style="display:none">Registrar manifestação</button>
     </div>
+    </div>
 
     <script>
     (function(){
@@ -8180,7 +8181,7 @@ ${field('Setor responsável',setor())}${field('Responsável',resp())}${field('Da
   window.fichaV2SalvarComentarioLideranca=async()=>{try{const tipo=$('fv2-lid-tipo')?.value||'OBSERVACAO';const texto=$('fv2-lid-texto')?.value?.trim()||'';if(!texto)throw new Error('Informe o texto do comentário.');const r=await _apiFetch('/api/manifestacoes/'+encodeURIComponent(S.id)+'/lideranca/comentarios',30000,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tipo,texto,idManifestacao:S.id})});if(!r.sucesso&&!r.id)throw new Error(r.erro||'Falha ao salvar comentário.');if(!S.liderancaComentarios)S.liderancaComentarios=[];S.liderancaComentarios.unshift({TIPO:tipo,TEXTO:texto,DATA_CRIACAO:new Date().toISOString()});renderContent();showMsg('fv2-lid-msg','Comentário registrado.',true)}catch(e){showMsg('fv2-lid-msg',e.message,false)}};
   window.fichaV2Upload=async files=>{const arr=[...(files||[])];for(const f of arr){try{const data=await fileToBase64(f);const r=await _apiFetch('/api/anexos',60000,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tipoEntidade:'MANIFESTACAO',idEntidade:id(),usuario:val(typeof sess==='function'?sess():{},'usuario','nome'),arquivo:{nome:f.name,mimeType:f.type,tamanho:f.size,dataBase64:data,categoria:'EVIDENCIA'}})});if(r.anexo)S.attachments.push(r.anexo)}catch(e){alert('Não foi possível enviar '+f.name+': '+e.message)}}renderHeader();renderAttachments()};
   async function loadExtras(){const key=encodeURIComponent(id());const read=(url,empty)=>_apiFetch(url,10000).then(x=>({data:x,error:''})).catch(e=>({data:empty,error:e?.message||'Falha de comunicação'}));const empresa=val(item(),'EMPRESA_RECLAMADA','EMPRESA_NORMALIZADA','EMPRESA');const setorAtual=S.setorSelecionado||val(item(),'SETOR_CONFIRMADO','SETOR_DESTINADO','SETOR_SUGERIDO');const userUrl=setorAtual?('/api/usuarios/responsaveis?empresa='+encodeURIComponent(empresa)+'&setor='+encodeURIComponent(setorAtual)):'';const [ev,h,ciRes,setRes,userRes,acRes]=await Promise.all([read('/api/manifestacoes/'+key+'/evidencias',{itens:[]}),read('/api/manifestacoes/'+key+'/historico',{itens:[]}),read('/api/manifestacoes/'+key+'/circa',{}),read('/api/setores-responsaveis?empresa='+encodeURIComponent(empresa),{itens:[]}),userUrl?read(userUrl,{itens:[]}):Promise.resolve({data:{itens:[]},error:''}),read('/api/manifestacoes/'+key+'/acionamentos',{itens:[]})]);const ci=ciRes.data||{};S.extrasErrors={evidencias:ev.error,historico:h.error,circa:ciRes.error,setores:setRes.error,responsaveis:userRes.error,acionamentos:acRes.error};const evd=ev.data||{},hd=h.data||{},sd=setRes.data||{},ud=userRes.data||{},ad=acRes.data||{};S.setores=Array.isArray(sd.itens)?sd.itens.map(x=>typeof x==='string'?x:val(x,'SETOR','NOME')).filter(Boolean):[];S.responsaveis=Array.isArray(ud.itens)?ud.itens:[];S.responsaveisError=userRes.error||(ud.disponibilidade==='NENHUM_ELEGIVEL'?ud.mensagem:'');S.attachments=Array.isArray(evd.itens)?evd.itens:[];S.history=Array.isArray(hd.itens)?hd.itens:[];S.circa=ci?.circa||ci?.analise||ci?.dados||ci||{};S.acionamentos=Array.isArray(ad.itens)?ad.itens:[];try{const hist=JSON.parse(S.item.HISTORICO_TRATATIVA||'[]');S.tratativaUpdates=Array.isArray(hist)?hist.map(h=>({TEXTO:h.texto||h.TEXTO||'',DATA:h.data||h.DATA||'',USUARIO:h.usuario||h.USUARIO||'—'})):[];}catch(_){S.tratativaUpdates=[];}renderHeader();renderContent()}
-  window.fichaV2Open=async function(raw,opts){const active=document.querySelector('.page.active')?.id?.replace(/^page-/,'');S.originPage=opts?.returnPage||(active&&active!=='ficha-manifestacao-v2'?active:'central-sac');S.originTab=opts?.returnTab||null;let m=typeof raw==='string'?{ID_MANIFESTACAO:raw,PROTOCOLO:raw}:raw||{};S.item=m;S.id=val(m,'ID_MANIFESTACAO','id','PROTOCOLO');S.tab=0;S.path='';S.attachments=[];S.history=[];S.circa=null;S.acionamentos=[];S.extrasErrors={};S.responsaveis=[];S.responsaveisError='';S.setorSelecionado='';S.liderancaComentarios=[];S.liderancaErr='';S._liderancaLoaded=false;S.responsaveisRequest=0;S.showAttachments=false;S.tratativaUpdates=[];S.circaTratSelecionada=null;const sb=document.getElementById('app-sidebar');if(sb)sb.style.display='none';const u=typeof sess==='function'?sess():{};const un=$("ficha-v2-user-name");const ur=$("ficha-v2-user-role");if(un)un.textContent=val(u,'nome','usuario')||'Usuário';if(ur)ur.textContent=val(u,'perfil','PERFIL')||'SAC';navigate('ficha-manifestacao-v2',null);renderHeader();renderContent();try{const d=await _apiFetch('/api/manifestacoes/'+encodeURIComponent(S.id),15000);if(d?.manifestacao||d?.item)S.item=Object.assign({},m,d.manifestacao||d.item);else if(d?.ID_MANIFESTACAO)S.item=Object.assign({},m,d);S.id=val(S.item,'ID_MANIFESTACAO','PROTOCOLO')||S.id;renderHeader();renderContent();await loadExtras()}catch(e){console.warn('[Ficha v2] carregamento detalhado:',e.message);await loadExtras()}};
+  window.fichaV2Open=async function(raw,opts){if(raw && typeof raw==='object' && /^RASCUNHO$/i.test(String(raw.STATUS||raw.STATUS_FICHA||''))) return window.nmAbrirRascunho(raw.ID_MANIFESTACAO||raw.ID||raw.PROTOCOLO);const active=document.querySelector('.page.active')?.id?.replace(/^page-/,'');S.originPage=opts?.returnPage||(active&&active!=='ficha-manifestacao-v2'?active:'central-sac');S.originTab=opts?.returnTab||null;let m=typeof raw==='string'?{ID_MANIFESTACAO:raw,PROTOCOLO:raw}:raw||{};S.item=m;S.id=val(m,'ID_MANIFESTACAO','id','PROTOCOLO');S.tab=0;S.path='';S.attachments=[];S.history=[];S.circa=null;S.acionamentos=[];S.extrasErrors={};S.responsaveis=[];S.responsaveisError='';S.setorSelecionado='';S.liderancaComentarios=[];S.liderancaErr='';S._liderancaLoaded=false;S.responsaveisRequest=0;S.showAttachments=false;S.tratativaUpdates=[];S.circaTratSelecionada=null;const sb=document.getElementById('app-sidebar');if(sb)sb.style.display='none';const u=typeof sess==='function'?sess():{};const un=$("ficha-v2-user-name");const ur=$("ficha-v2-user-role");if(un)un.textContent=val(u,'nome','usuario')||'Usuário';if(ur)ur.textContent=val(u,'perfil','PERFIL')||'SAC';navigate('ficha-manifestacao-v2',null);renderHeader();renderContent();try{const d=await _apiFetch('/api/manifestacoes/'+encodeURIComponent(S.id),15000);if(d?.manifestacao||d?.item)S.item=Object.assign({},m,d.manifestacao||d.item);else if(d?.ID_MANIFESTACAO)S.item=Object.assign({},m,d);S.id=val(S.item,'ID_MANIFESTACAO','PROTOCOLO')||S.id;renderHeader();renderContent();await loadExtras()}catch(e){console.warn('[Ficha v2] carregamento detalhado:',e.message);await loadExtras()}};
   window.fichaV2Recarregar=()=>S.item&&window.fichaV2Open(S.item);
   window.addEventListener('beforeunload',()=>{if(S.item)S.item=null});
   window.abrirDossie=function(raw){window.fichaV2Open(raw)};
@@ -13624,6 +13625,7 @@ async function initNovaManifestacao() {
   _nmDecisao = null;
   _nmCardId = null;
   window.nmEtapa = 1;
+  window._nmStatusPersistido = '';
   window._nmEtapasConcluidas = new Set([1]);
   _nmRascunhoUltimaEdicao = '';
   _nmEvidenciasPersistidas = [];
@@ -13641,13 +13643,16 @@ async function initNovaManifestacao() {
     if (resumeId) {
       const d = await _apiFetch(`/api/manifestacoes/${encodeURIComponent(resumeId)}`, 15000);
       const m = d?.manifestacao || d?.item;
-      if (m && !/^(ENCERRADA|FECHADA|CONCLUIDA)$/i.test(String(m.STATUS || m.STATUS_FICHA || ''))) {
+      if (m && /^RASCUNHO$/i.test(String(m.STATUS || m.STATUS_FICHA || ''))) {
         _nmCardId = m.ID_MANIFESTACAO || resumeId;
         const mapa = {DESCRICAO:'nm-descricao',DESCRICAO_MANIFESTACAO:'nm-descricao',EMPRESA_RECLAMADA:'nm-empresa-reclamada',EMPRESA_RECLAMANTE:'nm-empresa',CONTATO:'nm-nome',CNPJ:'nm-cnpj',TELEFONE:'nm-tel',EMAIL:'nm-email',PRODUTO:'nm-produto',LOTE:'nm-lote',NFE:'nm-nfe',QUANTIDADE:'nm-qtd',QUANTIDADE_TOTAL:'nm-qtd-total',PRIORIDADE:'nm-prioridade',CANAL:'nm-origem',TIPO:'nm-tipo',ORIGEM:'nm-origem',DATA_REGISTRO:'nm-data',CATEGORIA:'nm-categoria',MOTIVO:'nm-motivo',CAMINHO_TRATATIVA:'nm-caminho-tratativa',TRATATIVA_SAC_INTERNA:'nm-tratativa-sac',COMPLEMENTO_PEDIDO:'nm-complemento-pedido',CANAL_RETORNO:'nm-canal-retorno',PRAZO_RETORNO_SAC:'nm-prazo-retorno',SETOR_ACIONADO:'nm-setor-acionado',ESCOPO_ACIONAMENTO:'nm-escopo-acionado',INVESTIGACAO_O_QUE:'nm-investigacao-verificada',INVESTIGACAO_NOTAS:'nm-investigacao-notas',INVESTIGACAO_EVIDENCIAS:'nm-investigacao-resultado',SUBCAUSA:'nm-subcausa',CAUSA_RAIZ_CONFIRMADA:'nm-causa-raiz',ACOES_CORRETIVAS:'nm-acao-executada',VALIDACAO_RESULTADO:'nm-validacao-resultado',PROCEDENTE:'nm-procedente',PROCEDENTE_JUSTIFICATIVA:'nm-procedente-justif',RESUMO_RESOLUCAO:'nm-resumo-resolucao',DEVOLUTIVA_CANAL:'nm-devolutiva-canal',DEVOLUTIVA_DESTINATARIO:'nm-devolutiva-destinatario',DEVOLUTIVA_FINAL:'nm-devolutiva',APRENDIZADO_CASO:'nm-aprendizado-caso',APRENDIZADO_MATRIZ:'nm-aprendizado-matriz',OBSERVACOES_FINAIS:'nm-observacoes-finais'};
         for (const [campo,id] of Object.entries(mapa)) { const el=document.getElementById(id); if (el && m[campo] !== undefined && String(m[campo]).trim()) el.value=m[campo]; }
         try { const anexos=typeof m.ANEXOS==='string'?JSON.parse(m.ANEXOS||'[]'):(Array.isArray(m.ANEXOS)?m.ANEXOS:[]); _nmEvidenciasPersistidas=Array.isArray(anexos)?anexos:[]; } catch (_) { _nmEvidenciasPersistidas=[]; }
-        _nmRascunhoUltimaEdicao=String(m.DATA_ULTIMA_EDICAO||''); renderEvidencias();
+        _nmRascunhoUltimaEdicao=String(m.DATA_ULTIMA_EDICAO||''); window._nmStatusPersistido=String(m.STATUS||m.STATUS_FICHA||''); renderEvidencias();
         window.nmEtapa = Math.max(1, Math.min(7, Number(m.ETAPA_ATUAL || 1)));
+        window._nmEtapasConcluidas = new Set(Array.from({length:window.nmEtapa},(_,i)=>i+1));
+        if(typeof window.nmIrParaEtapa === 'function') window.nmIrParaEtapa(window.nmEtapa);
+        if(window.nmEtapa===2 && typeof window.nmCarregarAnaliseDeterministica==='function') window.nmCarregarAnaliseDeterministica();
       }
     }
   } catch(e) { console.warn('Rascunho persistido indisponível:', e.message); }
@@ -15540,7 +15545,7 @@ function nmCardPayload() {
   const val=id=>document.getElementById(id)?.value||'';
   let currentUser={}; try { currentUser=JSON.parse(sessionStorage.getItem('sac-user')||'{}'); } catch(e) {}
   return {
-    idempotencyKey:nmGarantirIdempotencyKey(), empresaReclamada:val('nm-empresa-reclamada'), empresaReclamante:val('nm-empresa')||val('nm-nome')||val('nm-cnpj'), contato:val('nm-nome'), cnpj:val('nm-cnpj'), telefone:val('nm-tel'), email:val('nm-email'), produto:val('nm-produto'), lote:val('nm-lote'), nfe:val('nm-nfe'), quantidade:val('nm-qtd'), quantidadeTotal:val('nm-qtd-total'), pedido:val('nm-pedido'), descricao:val('nm-descricao')||'Rascunho em preenchimento.', tipo:val('nm-tipo')||'Reclamação', canal:nmCanalSelecionado(), origem:nmCanalSelecionado(), prioridade:val('nm-prioridade')||'NORMAL', categoria:val('nm-categoria'), motivo:val('nm-motivo'), gravidade:val('nm-severidade'), dataRegistro:val('nm-data'), DATA_REGISTRO:val('nm-data'), usuario:currentUser.usuario||currentUser.USUARIO||'analista', etapaAtual:String(window.nmEtapa||1), ETAPA_ATUAL:String(window.nmEtapa||1), STATUS:{1:'RASCUNHO',2:'EM_TRIAGEM',3:'EM_TRATATIVA',4:'EM_INVESTIGACAO',5:'AGUARDANDO_VALIDACAO_SAC',6:'AGUARDANDO_DEVOLUTIVA',7:'AGUARDANDO_ENCERRAMENTO'}[Number(window.nmEtapa)||1], STATUS_FICHA:{1:'RASCUNHO',2:'EM_TRIAGEM',3:'EM_TRATATIVA',4:'EM_INVESTIGACAO',5:'AGUARDANDO_VALIDACAO_SAC',6:'AGUARDANDO_DEVOLUTIVA',7:'AGUARDANDO_ENCERRAMENTO'}[Number(window.nmEtapa)||1], mensagemEtapa:'Rascunho em preenchimento.', MENSAGEM_ETAPA:'Rascunho em preenchimento.', rascunho:true,
+    idempotencyKey:nmGarantirIdempotencyKey(), empresaReclamada:val('nm-empresa-reclamada'), empresaReclamante:val('nm-empresa')||val('nm-nome')||val('nm-cnpj'), contato:val('nm-nome'), cnpj:val('nm-cnpj'), telefone:val('nm-tel'), email:val('nm-email'), produto:val('nm-produto'), lote:val('nm-lote'), nfe:val('nm-nfe'), quantidade:val('nm-qtd'), quantidadeTotal:val('nm-qtd-total'), pedido:val('nm-pedido'), descricao:val('nm-descricao')||'Rascunho em preenchimento.', tipo:val('nm-tipo')||'Reclamação', canal:nmCanalSelecionado(), origem:nmCanalSelecionado(), prioridade:val('nm-prioridade')||'NORMAL', categoria:val('nm-categoria'), motivo:val('nm-motivo'), gravidade:val('nm-severidade'), dataRegistro:val('nm-data'), DATA_REGISTRO:val('nm-data'), usuario:currentUser.usuario||currentUser.USUARIO||'analista', etapaAtual:String(window.nmEtapa||1), ETAPA_ATUAL:String(window.nmEtapa||1), STATUS:'RASCUNHO', STATUS_FICHA:'RASCUNHO', mensagemEtapa:'Rascunho em preenchimento.', MENSAGEM_ETAPA:'Rascunho em preenchimento.', rascunho:true,
     CAMINHO_TRATATIVA:val('nm-caminho-tratativa'), TRATATIVA_SAC_INTERNA:val('nm-tratativa-sac'), COMPLEMENTO_PEDIDO:val('nm-complemento-pedido'), CANAL_RETORNO:val('nm-canal-retorno'), PRAZO_RETORNO_SAC:val('nm-prazo-retorno'), SETOR_ACIONADO:val('nm-setor-acionado'), ESCOPO_ACIONAMENTO:val('nm-escopo-acionado'),
     INVESTIGACAO_O_QUE:val('nm-investigacao-verificada'), INVESTIGACAO_NOTAS:val('nm-investigacao-notas'), INVESTIGACAO_EVIDENCIAS:val('nm-investigacao-resultado'), SUBCAUSA:val('nm-subcausa'), CAUSA_RAIZ_CONFIRMADA:val('nm-causa-raiz'), ACOES_CORRETIVAS:val('nm-acao-executada'),
     VALIDACAO_RESULTADO:val('nm-validacao-resultado'), PROCEDENTE:val('nm-procedente'), PROCEDENTE_JUSTIFICATIVA:val('nm-procedente-justif'),
@@ -15549,11 +15554,28 @@ function nmCardPayload() {
   };
 }
 
+async function nmSalvarRascunhoESair(){
+  const btns=[...document.querySelectorAll('#nm-btn-rascunho-sair,.nm-approved-actions button')].filter(b=>/rascunho e sair/i.test(b.textContent));
+  if(btns.some(b=>b.disabled)) return;
+  btns.forEach(b=>{b.disabled=true;b.dataset.textoOriginal=b.textContent;b.textContent='Salvando…';});
+  try {
+    const ok=await salvarRascunho({silent:true,reportError:true,manterRascunho:true});
+    if(!ok) return;
+    alert('Rascunho salvo. Você poderá continuar o preenchimento pela Central de Manifestações.');
+    navigate('central-sac',null);
+    if(typeof loadCentralSAC==='function') loadCentralSAC();
+  } finally { btns.forEach(b=>{b.disabled=false;b.textContent=b.dataset.textoOriginal||'Salvar rascunho e sair';}); }
+}
+
 async function salvarRascunho(options={}) {
   const silent=!!options.silent;
   const reportError=!!options.reportError || !silent;
+  const stateEl = document.getElementById('nm-save-state');
+  if (stateEl && !silent) { stateEl.textContent = 'Salvando…'; stateEl.style.color = '#929090'; }
   try {
     const payload=nmCardPayload();
+    if (_nmCardId && window._nmStatusPersistido && !/^RASCUNHO$/i.test(window._nmStatusPersistido)) { delete payload.status; delete payload.statusFicha; delete payload.STATUS; delete payload.STATUS_FICHA; }
+    if (options.manterRascunho && (!window._nmStatusPersistido || /^RASCUNHO$/i.test(window._nmStatusPersistido))) { payload.status='RASCUNHO'; payload.statusFicha='RASCUNHO'; payload.STATUS='RASCUNHO'; payload.STATUS_FICHA='RASCUNHO'; payload.rascunho=true; }
     if (_nmRascunhoUltimaEdicao) payload.ultimaEdicaoConhecida=_nmRascunhoUltimaEdicao;
     let res;
     if(_nmCardId) res=await _apiFetch(`/api/manifestacoes/${encodeURIComponent(_nmCardId)}/circa-dados`,60000,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
@@ -15575,7 +15597,10 @@ async function salvarRascunho(options={}) {
       _nmCardId = confirmado.ID_MANIFESTACAO;
     }
     _nmRascunhoUltimaEdicao=String(res.atualizadoEm||_nmRascunhoUltimaEdicao||'');
+    if (payload.status || payload.STATUS) window._nmStatusPersistido=String(payload.status||payload.STATUS);
     if (_nmCardId) localStorage.setItem('sac-rascunho-id', String(_nmCardId));
+    const statusEl = document.getElementById('nm-ref-status');
+    if (statusEl && !payload.finalizar) { statusEl.textContent = 'Rascunho'; statusEl.style.background = '#FFF7E6'; statusEl.style.color = '#8A5700'; }
     // O vínculo de arquivos usa a mesma ficha e o mesmo endpoint de anexos;
     // o rascunho não perde os arquivos selecionados quando a página é
     // atualizada. O servidor deduplica nomes já vinculados e marca falhas
@@ -15586,13 +15611,39 @@ async function salvarRascunho(options={}) {
       if (!upload?.sucesso) throw new Error(upload?.erro || 'Falha ao vincular os anexos do rascunho.');
       _nmRascunhoUltimaEdicao=String(upload.atualizadoEm||_nmRascunhoUltimaEdicao||'');
     }
-    if(!silent) alert(_nmCardId ? `Rascunho salvo. Identificador técnico: ${_nmCardId}. Protocolo definitivo será gerado na finalização.` : 'Rascunho salvo.');
+    if(!silent) {
+      if (stateEl) { stateEl.textContent = 'Rascunho salvo'; stateEl.style.color = '#1E6B3A'; }
+      alert(_nmCardId ? `Rascunho salvo. Identificador técnico: ${_nmCardId}. Protocolo definitivo será gerado na finalização.` : 'Rascunho salvo.');
+    }
     return true;
   } catch(e) {
+    if (stateEl && !silent) { stateEl.textContent = 'Falha ao salvar'; stateEl.style.color = '#C70602'; }
     if(reportError) alert('Não foi possível salvar os dados desta etapa: '+(e.message||'erro desconhecido'));
     return false;
   }
 }
+
+// A saída do formulário só ocorre depois de o servidor confirmar a gravação
+// do estado atual. O identificador técnico e a etapa permanecem no mesmo
+// rascunho; nenhuma nova manifestação ou protocolo é criado nessa ação.
+let _nmSalvarESairEmAndamento = false;
+window.nmSalvarRascunhoESair = async function() {
+  if (_nmSalvarESairEmAndamento) return;
+  const btn = document.getElementById('nm-btn-salvar-sair');
+  _nmSalvarESairEmAndamento = true;
+  if (btn) { btn.disabled = true; btn.setAttribute('aria-busy', 'true'); btn.textContent = 'Salvando…'; }
+  const stateEl = document.getElementById('nm-save-state');
+  if (stateEl) { stateEl.textContent = 'Salvando rascunho…'; stateEl.style.color = '#929090'; }
+  try {
+    const ok = await salvarRascunho({silent:true, reportError:true});
+    if (!ok) return;
+    if (stateEl) { stateEl.textContent = 'Rascunho salvo'; stateEl.style.color = '#1E6B3A'; }
+    if (typeof navigate === 'function') navigate('central-sac', document.querySelector('[onclick*=central-sac]'));
+  } finally {
+    _nmSalvarESairEmAndamento = false;
+    if (btn) { btn.disabled = false; btn.removeAttribute('aria-busy'); btn.textContent = 'Salvar rascunho e sair'; }
+  }
+};
 
 // ===== BANCO DE RNC =====
 async function loadBancoRNC() {
@@ -26439,7 +26490,7 @@ async function mudarStatusMC(id, novoStatus) {
         <td style="padding:14px 18px"><span style="font-size:11.5px;font-weight:600;padding:4px 10px;border-radius:99px;background:${cl}18;color:${cl};white-space:nowrap">${_esc(etapa.replace(/_/g,' '))}</span></td>
         <td style="padding:14px 18px;white-space:nowrap;color:${atrasado?'#C70602':'#555'};font-weight:${atrasado?'700':'400'};font-size:13px">${atrasado?'⚠ ':''} ${prazoF}</td>
         <td style="padding:14px 18px;white-space:nowrap;font-size:12.5px;color:#666;max-width:160px;overflow:hidden;text-overflow:ellipsis">${_esc(emp)}</td>
-        <td style="padding:14px 18px"><button onclick="event.stopPropagation();cenAbrirFichaModal('${_esc(id)}')" style="border:1px solid #E4E4E4;background:#fff;color:#A80502;cursor:pointer;font-size:12.5px;font-weight:600;padding:5px 12px;border-radius:6px;white-space:nowrap">Ver →</button></td>
+        <td style="padding:14px 18px"><button onclick="event.stopPropagation();cenAbrirFichaModal('${_esc(id)}')" style="border:1px solid #E4E4E4;background:#fff;color:#A80502;cursor:pointer;font-size:12.5px;font-weight:600;padding:5px 12px;border-radius:6px;white-space:nowrap">${/^RASCUNHO$/i.test(etapa)?'Continuar preenchimento da ficha':'Ver ficha →'}</button></td>
       </tr>`;
     }).join('');
     // Paginação
@@ -31637,6 +31688,16 @@ window.gdDecidir=async function(id,decisao){
     <button onclick="tratCarregar()" style="border:1px solid #EBEBEB;background:#fff;border-radius:7px;padding:6px 12px;cursor:pointer;font-size:12px;color:#545252;font-family:inherit">⟳ Atualizar</button>
   </div>
 
+  <nav id="trat-tabs" aria-label="Abas da ficha de tratativa" style="position:sticky;top:56px;z-index:40;background:#fff;border-bottom:1px solid #EBEBEB;padding:0 24px;display:flex;gap:0;overflow-x:auto">
+    <button type="button" data-trat-tab="visao" onclick="tratMudarAba('visao')" class="trat-tab active">Visão geral</button>
+    <button type="button" data-trat-tab="investigacao" onclick="tratMudarAba('investigacao')" class="trat-tab">Investigação</button>
+    <button type="button" data-trat-tab="tratativa" onclick="tratMudarAba('tratativa')" class="trat-tab">Tratativa</button>
+    <button type="button" data-trat-tab="apoio" onclick="tratMudarAba('apoio')" class="trat-tab">Apoio e aprovações</button>
+    <button type="button" data-trat-tab="lideranca" onclick="tratMudarAba('lideranca')" class="trat-tab">Liderança</button>
+    <button type="button" data-trat-tab="resposta" onclick="tratMudarAba('resposta')" class="trat-tab">Resposta ao SAC</button>
+    <button type="button" data-trat-tab="historico" onclick="tratMudarAba('historico')" class="trat-tab">Histórico e dossiê</button>
+  </nav>
+
   <!-- BODY -->
   <div style="max-width:1100px;margin:0 auto;padding:20px 20px 60px;display:flex;flex-direction:column;gap:16px" id="trat-body">
     <div style="color:#A0A0A0;font-size:13px;padding:40px 0;text-align:center" id="trat-loading">Carregando...</div>
@@ -31645,6 +31706,9 @@ window.gdDecidir=async function(id,decisao){
 
 <style>
 .trat-sec{background:#fff;border:1px solid #EBEBEB;border-radius:12px;overflow:hidden}
+.trat-tab{height:42px;border:0;border-bottom:2px solid transparent;background:#fff;color:#8A8A8A;padding:0 16px;font:600 12px Montserrat,system-ui,sans-serif;cursor:pointer;white-space:nowrap}
+.trat-tab:hover{color:#C70602;background:#FFF8F8}.trat-tab.active{color:#C70602;border-bottom-color:#C70602;font-weight:800}
+.trat-tab-panel{display:flex;flex-direction:column;gap:16px}.trat-tab-panel[hidden]{display:none}
 .trat-sec-h{padding:14px 18px;display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none;border-bottom:1px solid #F0F0F0}
 .trat-sec-h:hover{background:#FAFAFA}
 .trat-sec-badge{font-size:10px;font-weight:700;letter-spacing:.05em;padding:2px 8px;border-radius:10px;background:#F3F4F6;color:#6B7280}
@@ -31694,6 +31758,12 @@ function fmtMoeda(v){ if(!v&&v!==0)return '—'; return 'R$ '+(+v).toLocaleStrin
 window.tratAbrir = function(id){
   if (!id) return;
   _tratId = id;
+  // A ficha pode estar declarada dentro de um contêiner de outra página
+  // (legado da montagem do HTML). Reposicione-a no shell principal antes da
+  // navegação para que a página-pai oculta não mantenha a ficha invisível.
+  const pagina = document.getElementById('page-tratativa');
+  const principal = document.querySelector('main.main');
+  if (pagina && principal && pagina.parentElement !== principal) principal.appendChild(pagina);
   if (typeof navigate==='function') navigate('tratativa', null);
   tratCarregar();
 };
@@ -31731,17 +31801,29 @@ function _renderTratativa(d){
   stBadge.style.color = stInfo.color||'#1D4ED8';
 
   const body = document.getElementById('trat-body');
+  const hist = d.historico || [];
   body.innerHTML =
-    _secA(m) +
-    _secB(m) +
-    _secC(m) +
-    _secD(m, d.encaminhamentos||[]) +
-    _secI(m, d.tratasSetoriais||[]) +
-    _secE(m, d.execucoes||[]) +
-    _secF(m, d.impactoFinanceiro) +
-    _secG(m) +
-    _secH(m, d.devolutivas||[]) +
-    _secAudit(d.historico||[]);
+    `<section class="trat-tab-panel" data-trat-panel="visao">${_secA(m)}${_secB(m)}</section>` +
+    `<section class="trat-tab-panel" data-trat-panel="investigacao" hidden>${_secC(m)}</section>` +
+    `<section class="trat-tab-panel" data-trat-panel="tratativa" hidden>${_secI(m, d.tratasSetoriais||[])}${_secE(m, d.execucoes||[])}${_secF(m, d.impactoFinanceiro)}</section>` +
+    `<section class="trat-tab-panel" data-trat-panel="apoio" hidden>${_secD(m, d.encaminhamentos||[])}</section>` +
+    `<section class="trat-tab-panel" data-trat-panel="lideranca" hidden>${_secLideranca(m, hist)}</section>` +
+    `<section class="trat-tab-panel" data-trat-panel="resposta" hidden>${_secG(m)}${_secH(m, d.devolutivas||[])}</section>` +
+    `<section class="trat-tab-panel" data-trat-panel="historico" hidden>${_secAudit(hist) || '<div class="trat-sec"><div class="trat-sec-body" style="color:#8A8A8A">Nenhum evento de histórico disponível para esta manifestação.</div></div>'}</section>`;
+  tratMudarAba('visao');
+}
+
+window.tratMudarAba = function(tab) {
+  const permitido = new Set(['visao','investigacao','tratativa','apoio','lideranca','resposta','historico']);
+  const atual = permitido.has(tab) ? tab : 'visao';
+  document.querySelectorAll('#trat-tabs [data-trat-tab]').forEach(btn => btn.classList.toggle('active', btn.dataset.tratTab === atual));
+  document.querySelectorAll('#trat-body [data-trat-panel]').forEach(panel => { panel.hidden = panel.dataset.tratPanel !== atual; });
+};
+
+function _secLideranca(m, historico) {
+  const eventos = (historico || []).filter(h => /LIDER|GESTOR|DIRETOR|APROVA|PARECER/i.test(String(h.TIPO||h.ACAO||h.EVENTO||'')));
+  const lista = eventos.length ? eventos.slice().reverse().map(h => `<div class="trat-card" style="margin-bottom:8px"><div style="font-size:12px;font-weight:700;color:#1A1A1A">${esc(h.ACAO||h.EVENTO||h.TIPO||'Interação registrada')}</div><div style="font-size:12px;color:#545252;margin-top:4px;white-space:pre-wrap">${esc(h.OBSERVACAO||h.VALOR_NOVO||h.DESCRICAO||'')}</div><div style="font-size:11px;color:#A0A0A0;margin-top:6px">${esc(h.USUARIO||'sistema')} · ${fmtData(h.DATA_HORA||h.DATA||h.CRIADO_EM)}</div></div>`).join('') : '<div style="color:#8A8A8A;font-size:13px">Nenhuma interação de liderança registrada para esta manifestação.</div>';
+  return `<div class="trat-sec"><div class="trat-sec-h"><span style="font-size:11px;font-weight:700;color:#6D28D9;background:#EDE9FE;border-radius:6px;padding:2px 7px">L</span><span style="font-size:14px;font-weight:700;color:#1A1A1A;flex:1">Acompanhamento da liderança</span></div><div class="trat-sec-body"><p style="font-size:12px;color:#545252;margin:0 0 12px">Gestores e diretores podem acompanhar a investigação e registrar decisões conforme sua alçada. Os eventos exibidos abaixo são recuperados do histórico oficial.</p>${lista}</div></div>`;
 }
 
 // ── SEÇÃO A: Cabeçalho

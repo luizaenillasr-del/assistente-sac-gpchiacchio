@@ -43,9 +43,17 @@ function normalizarRegra(row = {}) {
   // substituídos um pelo outro.
   regra.ID_REGRA = regra.ID_REGRA || '';
   regra.ID_TRATAMENTO = regra.ID_TRATAMENTO || '';
-  regra.CONTRATO = Object.prototype.hasOwnProperty.call(row, 'ID_TRATAMENTO')
+  // A presença do cabeçalho não identifica o contrato: a planilha pode ter
+  // colunas dos dois formatos e deixar ID_TRATAMENTO vazio em linhas legadas.
+  const temIdCanonico = String(row.ID_TRATAMENTO || '').trim() !== '';
+  const temCamposCanonicos = ['TRATATIVA_OBRIGATORIA', 'PRAZO_TRATATIVA', 'NECESSITA_APROVACAO']
+    .some(campo => String(row[campo] || '').trim() !== '');
+  const temIdLegado = String(row.ID_REGRA || '').trim() !== '';
+  const temCamposLegados = ['TRATATIVA_PADRAO', 'SLA_HORAS', 'REQUER_APROVACAO']
+    .some(campo => String(row[campo] || '').trim() !== '');
+  regra.CONTRATO = (temIdCanonico || temCamposCanonicos) && !(temIdLegado && !temIdCanonico && temCamposLegados)
     ? 'CANONICO'
-    : (Object.prototype.hasOwnProperty.call(row, 'ID_REGRA') ? 'LEGADO' : 'DESCONHECIDO');
+    : (temIdLegado || temCamposLegados ? 'LEGADO' : 'DESCONHECIDO');
   regra.TIPO_MANIFESTACAO = regra.TIPO_MANIFESTACAO || regra.PROBLEMA_TRATADO || '';
   regra.SUBCATEGORIA = regra.SUBCATEGORIA || regra.SUBCAUSA || '';
   regra.TRATATIVA_OBRIGATORIA = regra.TRATATIVA_OBRIGATORIA || regra.PROCEDIMENTO || '';
