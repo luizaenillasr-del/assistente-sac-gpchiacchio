@@ -1,6 +1,8 @@
 'use strict';
 
 const assert = require('assert');
+const fs = require('fs');
+const path = require('path');
 const {
   validarBaseCirca,
   validarMatriz,
@@ -45,5 +47,13 @@ const report = validarBaseCirca({ manifestacoes, matrizTratamento: matriz, banco
 assert.equal(report.manifestacoes.duplicados[0].id, 'MAN-1');
 assert.equal(report.manifestacoes.elegiveis, 1, 'causa sem evidência não pode ser confirmada');
 assert.equal(report.modelosDevolutiva.aprovados, 1, 'disponibilidade não aprova modelo em revisão');
+
+const plannedMigration = fs.readFileSync(path.join(__dirname, '..', 'database/migrations/planned/20261104_auxiliary_tables.sql'), 'utf8');
+const plannedSql = plannedMigration.replace(/^\s*--.*$/gm, '');
+assert.match(plannedMigration, /CREATE TABLE IF NOT EXISTS/);
+assert.doesNotMatch(plannedSql, /\b(DROP|DELETE|TRUNCATE)\b/i, 'migração planejada não pode ser destrutiva');
+assert.match(plannedMigration, /BEGIN;/);
+assert.match(plannedMigration, /COMMIT;/);
+assert.ok(!fs.existsSync(path.join(__dirname, '..', 'prisma/migrations/20260930000001_init/migration_parte2.sql')), 'sidecar duplicado não deve permanecer no diretório Prisma');
 
 console.log('CIRCA base integrity: contratos, duplicidades, isolamento e estados aprovados validados.');

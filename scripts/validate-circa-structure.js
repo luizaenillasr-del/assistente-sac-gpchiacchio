@@ -28,7 +28,7 @@ const report = {
   },
   migracoes: {
     init: { tabelas: migrationTables.length },
-    artefatoNaoAplicado: { caminho: 'prisma/migrations/20260930000001_init/migration_parte2.sql', tabelas: sidecarTables.length, duplicadasDoInit: duplicatesBetweenSql },
+    artefatoNaoAplicado: { presente: fs.existsSync(sidecarPath), caminho: 'prisma/migrations/20260930000001_init/migration_parte2.sql', tabelas: sidecarTables.length, duplicadasDoInit: duplicatesBetweenSql },
   },
   achados: [],
 };

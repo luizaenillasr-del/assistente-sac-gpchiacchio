@@ -38,7 +38,7 @@ O identificador externo (`id_original`) é compatibilidade com Sheets; o ID inte
 ## Divergências estruturais encontradas no repositório
 
 - O código mantém leitura operacional de `MANIFESTACOES` no Sheets e possui um modelo relacional paralelo `manifestacoes` no Prisma. Isso é compatibilidade dual-write, não sincronização automática; qualquer reconciliação precisa comparar as chaves antes de importar.
-- `prisma/migrations/20260930000001_init/migration_parte2.sql` repete as tabelas da migração `migration.sql`. O Prisma não executa arquivos fora do `migration.sql`, portanto o sidecar é um artefato de referência e não deve ser executado.
+- O artefato duplicado `prisma/migrations/20260930000001_init/migration_parte2.sql` foi removido do repositório. Ele repetia tabelas de `migration.sql` e não era executado pelo Prisma; sua remoção evita que alguém o aplique manualmente por engano. Nenhuma base foi alterada.
 - O schema atual também mapeia `pesquisa_respostas`, `relatorios_sac` e `solicitacoes_acesso`, mas essas três tabelas não aparecem na migração inicial versionada. A origem real precisa ser confirmada no ambiente autorizado antes de qualquer baseline ou migração; este trabalho não cria essas tabelas.
 - A Matriz aceita contrato canônico e legado (`ID_TRATAMENTO`/`TRATATIVA_OBRIGATORIA` e `ID_REGRA`/`TRATATIVA_PADRAO`). Os identificadores não podem ser misturados.
 - O serviço Sheets possui operações de escrita e credencial com escopo de escrita. Inventários devem usar uma credencial/escopo `spreadsheets.readonly` separado; este trabalho não altera credenciais.
