@@ -3918,6 +3918,10 @@ const COMENTARIOS_LIDERANCA_HEADERS = [
 app.get('/api/manifestacoes/:id/lideranca/comentarios', requerPermissao('manifestacoes.visualizar'), middlewareEscopoEmpresa(), async (req,res) => {
   try {
     const { id } = req.params;
+    const data = await lerAba('MANIFESTACOES', 5000);
+    const m = data.find(r => r.ID_MANIFESTACAO === id);
+    if (!m) return res.status(404).json({ sucesso:false, erro:'Manifestação não encontrada.' });
+    if (!escopoPermite(req, m.EMPRESA_RECLAMADA)) return res.status(403).json({ sucesso:false, erro:'Acesso não autorizado.' });
     const rows = await lerAba('COMENTARIOS_LIDERANCA', 1000).catch(() => []);
     const comentarios = rows
       .filter(r => r.ID_MANIFESTACAO === id)
