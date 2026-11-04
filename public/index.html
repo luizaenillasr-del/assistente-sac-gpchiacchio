@@ -33096,9 +33096,11 @@ if (typeof pageLoaders !== 'undefined') {
       if(!val('nm-empresa-reclamada')) return fail('nm-empresa-reclamada','Informe a empresa responsável pela manifestação.');
       if(!val('nm-empresa')&&!val('nm-nome')&&!val('nm-cnpj')) return fail('nm-empresa','Informe o cliente da manifestação.');
       if(!val('nm-nome')&&!val('nm-tel')&&!val('nm-email')) return fail('nm-nome','Informe ao menos um contato do cliente.');
-      if(!val('nm-tipo')) return fail('nm-tipo','Informe o tipo da manifestação.');
       if(!val('nm-origem')) return fail('nm-origem','Informe o canal de origem.');
       if(!val('nm-data')) return fail('nm-data','Informe a data do registro.');
+    }
+    if(n===2){
+      if(!val('nm-tipo')) return fail('nm-tipo','Informe o tipo da manifestação.');
       if(val('nm-descricao').length<10) return fail('nm-descricao','Preencha a descrição da manifestação.');
     }
     if(n===3){
