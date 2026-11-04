@@ -2953,7 +2953,7 @@
       <button type="button" data-approved-step="7"><span>7</span>Revisão</button>
     </div>
 
-    <div class="nm-ref-workspace" style="flex:1;overflow:hidden;display:flex;min-height:0">
+    <div class="nm-ref-workspace">
     <style>
       /* ── Nova Manifestação v2 (mockup-match) ── */
       #page-nova-manifestacao{flex-direction:column;height:100%;overflow:hidden;font-family:'Montserrat',system-ui,sans-serif;background:#F7F7F7;color:#242424}
@@ -3013,7 +3013,7 @@
       /* visually hidden */
       .nm-visually-hidden{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
       /* circa sidebar */
-      #page-nova-manifestacao .circa-col{width:280px;flex:none;background:#fff;border-left:1px solid #E5E5E5;overflow-y:auto;padding:16px}
+      #page-nova-manifestacao .circa-col{width:280px;flex:none;background:#fff;border-left:1px solid #E5E5E5;overflow-y:auto;padding:16px;position:sticky;top:0;max-height:100vh;align-self:flex-start}
       /* workarea */
       #page-nova-manifestacao .nm-ref-workarea{flex:1;overflow-y:auto;padding:20px 28px;background:#F7F7F7;min-width:0}
       /* upload box */
@@ -33246,9 +33246,9 @@ if (typeof pageLoaders !== 'undefined') {
 @media(max-width:600px){#page-central-sac .mc-tabpanel{padding:16px 14px!important}#page-central-sac #mc-panel-fila{padding:0!important;min-height:760px!important}}
 </style>
 <style id="nova-indicadores-layout">
-/* Nova Manifestação: uma única navegação global; as etapas ficam em uma faixa horizontal. */
-#page-nova-manifestacao{height:100%!important;min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;background:#f7f7f7!important}
-#page-nova-manifestacao .nm-ref-workspace{display:flex!important;flex-direction:row!important;overflow:hidden!important;min-height:0!important}
+/* Nova Manifestação: layout de página com scroll natural. */
+#page-nova-manifestacao{height:auto!important;min-height:100%!important;overflow-y:visible!important;overflow-x:hidden!important;background:#f7f7f7!important}
+#page-nova-manifestacao .nm-ref-workspace{display:flex!important;flex-direction:row!important;overflow:visible!important;min-height:0!important;align-items:flex-start!important}
 #page-nova-manifestacao .nm-ref-sidebar{position:static!important;width:100%!important;height:auto!important;min-height:0!important;display:flex!important;align-items:stretch;gap:0;overflow-x:auto!important;overflow-y:hidden!important;padding:0!important;background:#fff;border-right:0!important;border-bottom:1px solid #e4e4e4}
 #page-nova-manifestacao .nm-ref-sidebar>small{display:none!important}
 #page-nova-manifestacao .nm-ref-sidebar button{display:inline-flex!important;flex:0 0 auto;width:auto!important;min-height:48px;align-items:center!important;justify-content:center;padding:0 18px!important;border-left:0!important;border-bottom:2px solid transparent!important;white-space:nowrap;font-size:12px!important}
@@ -33265,7 +33265,7 @@ if (typeof pageLoaders !== 'undefined') {
 /* Layout aprovado da Ficha/Nova Manifestação: cabeçalho compacto, etapas
    numeradas e conteúdo centralizado. Os IDs dos campos permanecem os
    contratos usados pelo fluxo existente. */
-#page-nova-manifestacao{height:100%!important;min-height:0!important;flex-direction:column!important;overflow-y:auto!important;overflow-x:hidden!important;background:#F7F7F7!important;font-family:Montserrat,system-ui,sans-serif!important}
+#page-nova-manifestacao{height:auto!important;min-height:100%!important;flex-direction:column!important;overflow-y:visible!important;overflow-x:hidden!important;background:#F7F7F7!important;font-family:Montserrat,system-ui,sans-serif!important}
 #page-nova-manifestacao .nm-approved-header{flex:none;background:#fff;border-bottom:1px solid #E5E5E5;padding:12px 28px}
 #page-nova-manifestacao .nm-approved-topline{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
 #page-nova-manifestacao .nm-approved-breadcrumb{display:flex;align-items:center;gap:6px;font-size:12px;color:#929090}
@@ -33285,7 +33285,7 @@ if (typeof pageLoaders !== 'undefined') {
 #page-nova-manifestacao .nm-approved-steps button.active span{background:#C70602;color:#fff}
 #page-nova-manifestacao .nm-approved-steps button.done{color:#15803D;font-weight:600;border-bottom-color:#15803D}
 #page-nova-manifestacao .nm-approved-steps button.done span{background:#15803D;color:#fff}
-#page-nova-manifestacao .nm-ref-workspace{display:flex!important;flex-direction:row!important;min-height:0!important;overflow:hidden!important}
+#page-nova-manifestacao .nm-ref-workspace{display:flex!important;flex-direction:row!important;min-height:0!important;overflow:visible!important;align-items:flex-start!important}
 #page-nova-manifestacao .nm-ref-workarea{display:block!important;flex:1!important;min-width:0!important;min-height:0!important;overflow:visible!important}
 #page-nova-manifestacao #nm-steps-body{overflow:visible!important;background:#F7F7F7!important;padding:24px 28px 48px!important;width:auto!important;max-width:none!important;margin:0!important}
 #page-nova-manifestacao #nm-steps-body>.nm-step-panel{max-width:960px;width:100%;margin:0 auto}
