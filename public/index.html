@@ -3088,6 +3088,19 @@
 
       <!-- ETAPA 5: VALIDAÇÃO SAC -->
       <div class="nm-step-panel" data-nm-step="5"><div class="nm-section-hdr"><h2>Validação SAC</h2><p>Confirme a procedência, a causa e a efetividade da resolução.</p></div><div class="nm-card"><div class="section-label">Resultado da investigação</div><textarea class="nm-textarea" id="nm-validacao-resultado" rows="4" placeholder="Resumo da evidência e resultado..." ></textarea></div><div class="nm-card"><div class="section-label">Procedência da manifestação</div><div class="circa-option-grid"><button onclick="nmSetProcedente('SIM',this)" class="nm-proc-btn">Procedente</button><button onclick="nmSetProcedente('NAO',this)" class="nm-proc-btn">Improcedente</button><button onclick="nmSetProcedente('PARCIALMENTE',this)" class="nm-proc-btn">Parcial</button><button onclick="nmSetProcedente('',this)" class="nm-proc-btn">Inconclusiva</button></div><input type="hidden" id="nm-procedente"><textarea id="nm-procedente-justif" class="nm-textarea" rows="3" style="display:none" placeholder="Justificativa da decisão..."></textarea></div><div class="nm-card"><div class="section-label">Verificação da resolução</div><label class="checklist-item"><input type="checkbox" id="nm-check-causa"> Causa registrada com evidência suficiente</label><label class="checklist-item"><input type="checkbox" id="nm-check-acao"> Ação executada e resultado documentado</label><label class="checklist-item"><input type="checkbox" id="nm-check-cliente"> Solução adequada para comunicação ao cliente</label><label class="checklist-item"><input type="checkbox" id="nm-check-sla"> Prazo de resposta atendido (SLA cumprido)</label><label class="checklist-item"><input type="checkbox" id="nm-check-encerramento"> Manifestação apta para encerramento</label></div>
+      <!-- Painel CIRCA: tratamento recomendado — casos similares, procedimentos e fontes (Req 2) -->
+      <div id="nm-circa-step5-panel" class="nm-card" style="display:none">
+        <div class="circa-card-head">
+          <div>
+            <div class="section-label">Tratamento Recomendado — CIRCA</div>
+            <p style="font-size:12px;color:#929090;margin:2px 0 0">Baseado na análise da manifestação e casos similares registrados.</p>
+          </div>
+        </div>
+        <div id="nm-circa-step5-similares" style="margin-bottom:10px"></div>
+        <div id="nm-circa-step5-tratativa" style="margin-bottom:10px"></div>
+        <div id="nm-circa-step5-procedimentos" style="margin-bottom:10px"></div>
+        <div id="nm-circa-step5-fontes"></div>
+      </div>
       <!-- Botão de envio para validação SAC na etapa 5 -->
       <div class="circa-action-row" style="justify-content:flex-end;margin-top:12px">
         <button class="btn btn-primary" onclick="nmEnviarParaValidacaoSAC()">Registrar validação SAC</button>
@@ -12247,25 +12260,69 @@ function nmRenderizarCircaInvestigacao() {
   }
 }
 
-// Envia manifestação para validação SAC após a etapa de investigação
+// Renderiza painel CIRCA na etapa 5 — tratamento recomendado, casos similares, procedimentos e fontes (Req 2)
+function nmRenderizarCircaStep5() {
+  var panel = document.getElementById('nm-circa-step5-panel');
+  if (!panel) return;
+  var analise = window._nmAnaliseAtual || window._nmDeterministicoAtual;
+  if (!analise) { panel.style.display = 'none'; return; }
+  panel.style.display = 'block';
+
+  var esc = function(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); };
+
+  // Casos similares
+  var simDiv = document.getElementById('nm-circa-step5-similares');
+  var sims = (analise.casosSimilares || analise.similares || []).slice(0, 3);
+  if (simDiv) simDiv.innerHTML = sims.length
+    ? '<div style="font-size:11.5px;font-weight:700;color:#374151;margin-bottom:6px">Casos similares</div>' +
+      sims.map(function(c){ return '<div style="font-size:12px;background:#F9FAFB;border-radius:6px;padding:6px 10px;margin-bottom:4px;color:#374151">' + esc(c.descricao||c.titulo||c) + (c.resultado ? ' — <em>' + esc(c.resultado) + '</em>' : '') + '</div>'; }).join('')
+    : '';
+
+  // Tratativa estruturada
+  var tratDiv = document.getElementById('nm-circa-step5-tratativa');
+  var trat = analise.tratativaEstruturada || {};
+  var diag = trat.diagnostico || {};
+  var rec = diag.recomendacao || diag.causa || analise.recomendacaoTratamento || '';
+  if (tratDiv) tratDiv.innerHTML = rec
+    ? '<div style="font-size:11.5px;font-weight:700;color:#374151;margin:8px 0 4px">Tratativa recomendada</div>' +
+      '<div style="font-size:12.5px;background:#EFF6FF;border-radius:6px;padding:8px 12px;color:#1E40AF">' + esc(rec) + '</div>'
+    : '';
+
+  // Procedimentos
+  var procDiv = document.getElementById('nm-circa-step5-procedimentos');
+  var procs = (analise.procedimentos || trat.procedimentos || []).slice(0, 5);
+  if (procDiv) procDiv.innerHTML = procs.length
+    ? '<div style="font-size:11.5px;font-weight:700;color:#374151;margin:8px 0 6px">Procedimentos indicados</div>' +
+      procs.map(function(p){ return '<div style="font-size:12.5px;padding:5px 0;border-bottom:1px solid #F3F4F6;color:#111">• ' + esc(p.descricao||p.texto||p) + '</div>'; }).join('')
+    : '';
+
+  // Fontes
+  var fontesDiv = document.getElementById('nm-circa-step5-fontes');
+  var fontes = (analise.fontes || analise.references || []).slice(0, 3);
+  if (fontesDiv) fontesDiv.innerHTML = fontes.length
+    ? '<div style="font-size:11.5px;font-weight:700;color:#374151;margin:8px 0 6px">Fontes consultadas</div>' +
+      fontes.map(function(f){ return '<div style="font-size:12px;color:#6B7280;padding:3px 0">— ' + esc(f.titulo||f) + '</div>'; }).join('')
+    : '';
+}
+
+
+// Envia manifestação para validação SAC — usa /ficha com acao:'enviar_validacao'
+// que valida tratativa registrada e ausência de frentes pendentes antes de transitar status.
 window.nmEnviarParaValidacaoSAC = async function nmEnviarParaValidacaoSAC() {
   if (!_nmCardId) { alert('Salve a manifestação antes de enviar para validação.'); return; }
-  var verificada = document.getElementById('nm-investigacao-verificada');
-  var resultado = document.getElementById('nm-investigacao-resultado');
-  if (!verificada?.value.trim() && !resultado?.value.trim()) {
-    alert('Registre o resultado da investigação antes de enviar para validação SAC.'); return;
-  }
+  var tratativaRealizada = (document.getElementById('nm-investigacao-verificada')?.value.trim() ||
+    document.getElementById('nm-investigacao-resultado')?.value.trim() || '');
   try {
-    var r = await _apiFetch('/api/manifestacoes/' + encodeURIComponent(_nmCardId), 15000, {
+    var r = await _apiFetch('/api/manifestacoes/' + encodeURIComponent(_nmCardId) + '/ficha', 15000, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        STATUS: 'AGUARDANDO_VALIDACAO_SAC',
-        STATUS_FICHA: 'AGUARDANDO_VALIDACAO_SAC',
+        acao: 'enviar_validacao',
+        TRATATIVA_REALIZADA: tratativaRealizada || undefined,
         ultimaEdicaoConhecida: _nmRascunhoUltimaEdicao,
       }),
     });
-    if (!r?.sucesso) throw new Error(r?.erro || 'Falha ao atualizar status.');
+    if (!r?.sucesso) throw new Error(r?.erro || 'Falha ao enviar para validação SAC.');
     nmSincronizarVersaoPersistida && nmSincronizarVersaoPersistida(r);
     alert('Manifestação enviada para validação SAC.');
     var btnVal = document.getElementById('nm-btn-enviar-validacao');
@@ -32256,9 +32313,9 @@ if (typeof pageLoaders !== 'undefined') {
     if (n === 2 && typeof window.nmCarregarAnaliseDeterministica === 'function') window.nmCarregarAnaliseDeterministica();
     if (n === 3 && typeof window.nmCarregarPlanoPersistido === 'function') window.nmCarregarPlanoPersistido();
     if (n === 4) { if (typeof nmCarregarAnalisePersistida === 'function') nmCarregarAnalisePersistida(); nmRenderizarCircaInvestigacao(); }
+    if (n === 5) { if (typeof nmPreencherValidacao === 'function') nmPreencherValidacao(); nmRenderizarCircaStep5(); }
     if (n === TOTAL && typeof nmMontarResumo === 'function') nmMontarResumo();
     if (n === 6 && typeof nmMontarDevolutiva === 'function') { nmMontarDevolutiva(); nmCarregarAnalisePersistida(); }
-    if (n === 5 && typeof nmPreencherValidacao === 'function') nmPreencherValidacao();
   }
   function validar(){
     var ativo = document.querySelector('#page-nova-manifestacao .nm-step-panel.nm-active');
