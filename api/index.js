@@ -8844,16 +8844,26 @@ app.get('/api/cerebro/matriz-operacional', requerPerfil('MASTER','GESTOR SAC','A
       PROCEDIMENTO: r.PROCEDIMENTO || r.TRATATIVA_PADRAO || '',
       CAUSA: r.CAUSA || '',
       // ATIVO é estado cadastral; não equivale a aprovação operacional.
+      STATUS_ORIGINAL: r.STATUS || '',
       STATUS: r.STATUS || (String(r.ATIVO || '').toUpperCase() === 'NAO' ? 'INATIVO' : ''),
     });
     const tratamentosNormalizados = tratamentos.map(normTrat).map(r => {
       const validacao = matrizTratamentoService.validarRegra(r);
+      const statusOperacional = !validacao.ativa
+        ? 'INATIVO'
+        : validacao.motivos.length
+          ? 'PENDENTE_DADOS'
+          : (String(r.STATUS || '').trim() || 'PENDENTE_VALIDACAO');
       return {
         ...r,
         _elegivelCirca: matrizTratamentoService.regraUtilizavel(r),
         _elegibilidadeEstrutural: validacao.motivos.length === 0,
         _pendenciasDados: validacao.motivos,
-        _statusOperacional: String(r.STATUS || '').trim() || (validacao.ativa ? 'PENDENTE_VALIDACAO' : 'INATIVO'),
+        // O status exibido não pode declarar aprovação de uma regra que não
+        // possui os campos obrigatórios. O valor original fica preservado
+        // em STATUS_ORIGINAL para auditoria/saneamento.
+        STATUS: statusOperacional,
+        _statusOperacional: statusOperacional,
       };
     });
     // A tela de gestão exibe também linhas incompletas para saneamento; o

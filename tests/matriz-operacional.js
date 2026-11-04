@@ -30,6 +30,8 @@ assert.match(fonte, /CAUSAS_SUBCAUSAS/);
 assert.match(fonte, /_pendenciasDados/);
 assert.match(fonte, /tratamentosElegiveis/);
 assert.match(fonte, /PENDENTE_VALIDACAO/);
+assert.match(fonte, /STATUS_ORIGINAL/);
+assert.match(fonte, /PENDENTE_DADOS/);
 assert.doesNotMatch(fonte, /tratamentosValidos\)\s*:/, 'a listagem não pode ocultar tratamentos incompletos');
 assert.match(api.slice(api.indexOf("app.get('/api/causas'"), api.indexOf("app.post('/api/causas'")), /lerCatalogoCausas/);
 
