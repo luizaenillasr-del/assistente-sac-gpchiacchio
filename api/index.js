@@ -3941,7 +3941,10 @@ app.post('/api/manifestacoes/:id/devolutiva/enviar', requerPermissao('manifestac
 app.get('/api/manifestacoes/:id/tratativas-setoriais', requerPermissao('manifestacoes.visualizar'), middlewareEscopoEmpresa(), async (req,res)=>{
   try {
     const id = req.params.id;
-    const rows = await lerAba('TRATATIVAS_SETORIAIS', 3000).catch(()=>[]);
+    // Falha de leitura não significa ausência de tratativas. Propague um
+    // erro operacional explícito para que a ficha não exiba uma lista vazia
+    // quando a fonte estiver indisponível.
+    const rows = await lerAba('TRATATIVAS_SETORIAIS', 3000);
     const tratativas = rows.filter(r => r.ID_MANIFESTACAO === id);
     res.json({ sucesso:true, tratativas });
   } catch(e){ res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
@@ -3968,12 +3971,25 @@ app.post('/api/manifestacoes/:id/tratativas-setoriais', requerPermissao('manifes
       CRIADO_EM: agora, CRIADO_POR: req.user?.usuario||'sistema',
       EMPRESA: m.EMPRESA_RECLAMADA||''
     };
-    await appendObjeto('TRATATIVAS_SETORIAIS', objeto).catch(async ()=>{
-      const rows2 = await lerAba('TRATATIVAS_SETORIAIS',3000).catch(()=>[]);
-      rows2.push(objeto);
-    });
+    // Nunca confirme uma tratativa que só foi adicionada a um array local.
+    // A resposta de sucesso exige gravação efetiva e releitura do registro.
+    try {
+      await appendObjeto('TRATATIVAS_SETORIAIS', objeto);
+    } catch (e) {
+      return res.status(503).json({ sucesso:false, erro:'Não foi possível persistir a tratativa setorial.', detalhe:erroSeguro(e) });
+    }
+    let confirmadas;
+    try {
+      confirmadas = await lerAba('TRATATIVAS_SETORIAIS', 3000);
+    } catch (e) {
+      return res.status(503).json({ sucesso:false, erro:'Tratativa gravada, mas não foi possível confirmar a leitura.', detalhe:erroSeguro(e) });
+    }
+    const persistida = confirmadas.find(r => r.ID_TRATATIVA === idTrat && r.ID_MANIFESTACAO === id);
+    if (!persistida) {
+      return res.status(503).json({ sucesso:false, erro:'A gravação da tratativa não pôde ser confirmada no armazenamento.' });
+    }
     await registrarAuditoria(req.user?.usuario||'sistema','TRATATIVA_SETORIAL',id,'TRATATIVAS_SETORIAIS',null,{ setor, acao });
-    res.json({ sucesso:true, id:idTrat, tratativa:objeto });
+    res.json({ sucesso:true, id:idTrat, tratativa:persistida });
   } catch(e){ res.status(500).json({ sucesso:false, erro:erroSeguro(e) }); }
 });
 
