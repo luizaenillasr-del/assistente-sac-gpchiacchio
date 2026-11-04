@@ -2922,220 +2922,644 @@
 
   <!-- ===== NOVA MANIFESTAÇÃO ===== -->
   <div class="page" id="page-nova-manifestacao">
-    <div class="nm-approved-header">
-      <div class="nm-approved-topline">
-        <div class="nm-approved-breadcrumb"><button type="button" onclick="navigate('central-sac',null)">Central de Manifestações</button><b>›</b><strong>Nova Manifestação</strong></div>
-        <div class="nm-approved-actions">
-          <button type="button" class="nm-ref-btn" onclick="navigate('central-sac',null)">Voltar</button>
-          <button type="button" class="nm-ref-btn primary-outline" onclick="salvarRascunho()">Salvar</button>
-        </div>
-      </div>
-      <div class="nm-approved-meta">
-        <strong id="nm-ref-protocolo">NOVO PROTOCOLO</strong>
-        <span class="nm-status-ficha-btn" id="nm-ref-status">Em abertura</span>
-        <span class="nm-status-ficha-btn priority" id="nm-ref-prioridade">Normal</span>
-        <span id="nm-ref-empresa">Chiacchio Embalagens</span><i>·</i><span id="nm-ref-cliente">Novo cliente</span><i>·</i><span id="nm-ref-sla">SLA: a definir</span>
-      </div>
-      <input type="hidden" id="nm-status-ficha" value="ABERTA">
-    </div>
-    <div class="nm-approved-steps" role="navigation" aria-label="Etapas da manifestação">
-      <button type="button" class="active" data-approved-step="1" onclick="nmIrParaEtapa(1)"><span>1</span>Dados da Manifestação</button>
-      <button type="button" data-approved-step="2" onclick="nmIrParaEtapa(2)"><span>2</span>Análise inteligente e triagem</button>
-      <button type="button" data-approved-step="3" onclick="nmIrParaEtapa(3)"><span>3</span>Condução</button>
-      <button type="button" data-approved-step="4" onclick="nmIrParaEtapa(4)"><span>4</span>Investigação e resolução</button>
-      <button type="button" data-approved-step="5" onclick="nmIrParaEtapa(5)"><span>5</span>Validação SAC</button>
-      <button type="button" data-approved-step="6" onclick="nmIrParaEtapa(6)"><span>6</span>Devolutiva conclusiva</button>
-      <button type="button" data-approved-step="7" onclick="nmIrParaEtapa(7)"><span>7</span>Encerramento e aprendizado</button>
-    </div>
-    <div class="nm-ref-workspace">
-    <style>
-      #page-nova-manifestacao{flex-direction:column;height:100%;overflow:hidden;font-family:Montserrat,system-ui,sans-serif}
-      #nm-wizard{display:flex;flex-direction:column;height:100%;overflow:hidden}
-      .nm-step-panel{display:none}
-      .nm-step-panel.nm-active{display:flex;flex-direction:column;gap:16px}
-      .nm-card{background:#fff;border:1px solid #e8e8e8;border-radius:10px;padding:18px 20px;display:flex;flex-direction:column;gap:14px}
-      .nm-card-title{font-size:12px;font-weight:700;letter-spacing:.01em;color:#1f1f1f;text-transform:none;display:flex;align-items:center;gap:8px;margin-bottom:2px}
-      .nm-card-title::before{content:'';display:inline-block;width:3px;height:13px;background:#C70602;border-radius:2px;flex:none}
-      .nm-section-hdr{margin-bottom:4px}
-      .nm-section-hdr h2{font-size:16px;font-weight:700;margin:0 0 3px;color:#1f1f1f}
-      .nm-section-hdr p{font-size:12.5px;color:#a8a8a8;margin:0}
-      .nm-label{display:flex;flex-direction:column;gap:5px}
-      .nm-label span{font-size:11px;color:#727272;font-weight:500;letter-spacing:.01em}
-      .nm-input{height:40px;border:1px solid #dcdcdc;border-radius:6px;padding:0 11px;font-size:13px;font-family:Montserrat,system-ui,sans-serif;width:100%;box-sizing:border-box;background:#fff;transition:border-color .15s,box-shadow .15s}
-      .nm-input:focus{border-color:#C70602;box-shadow:0 0 0 2px rgba(199,6,2,.1);outline:none}
-      .nm-select{height:40px;border:1px solid #dcdcdc;border-radius:6px;padding:0 10px;font-size:13px;font-family:Montserrat,system-ui,sans-serif;width:100%;box-sizing:border-box;background:#fff;cursor:pointer;transition:border-color .15s}
-      .nm-select:focus{border-color:#C70602;box-shadow:0 0 0 2px rgba(199,6,2,.1);outline:none}
-      .nm-textarea{width:100%;border:1px solid #dcdcdc;border-radius:6px;padding:9px 11px;font-size:13px;line-height:1.65;resize:vertical;font-family:Montserrat,system-ui,sans-serif;box-sizing:border-box;transition:border-color .15s,box-shadow .15s}
-      .nm-textarea:focus{border-color:#C70602;box-shadow:0 0 0 2px rgba(199,6,2,.1);outline:none}
-      .nm-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-      .nm-grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
-      /* Empresa reclamada — pill buttons grandes */
-      .nm-empresa-btn{flex:1;min-width:120px;height:48px;border:2px solid #E4E4E4;background:#fff;border-radius:12px;font-size:12.5px;font-weight:700;color:#545252;cursor:pointer;font-family:Montserrat,system-ui,sans-serif;transition:border-color .15s,background .15s,color .15s;letter-spacing:.01em}
-      .nm-empresa-btn.active{border-color:#C70602;background:#FFF5F5;color:#C70602;box-shadow:0 0 0 3px rgba(199,6,2,.07)}
-      .nm-empresa-btn:hover:not(.active){border-color:#BDBDBD;background:#FAFAFA}
-      /* Canal / tipo — pills */
-      .nm-canal-pill{height:36px;border:1.5px solid #E4E4E4;background:#fff;border-radius:20px;padding:0 16px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:Montserrat,system-ui,sans-serif;color:#545252;white-space:nowrap;transition:all .15s}
-      .nm-canal-pill.active{border-color:#C70602;background:#FFF5F5;color:#C70602;font-weight:700}
-      .nm-canal-pill:hover:not(.active){border-color:#BDBDBD}
-      /* Procedência */
-      .nm-proc-btn{flex:1;min-width:90px;height:42px;border:1.5px solid #E4E4E4;background:#fff;border-radius:10px;font-size:13px;cursor:pointer;font-family:Montserrat,system-ui,sans-serif;font-weight:600;color:#545252;transition:all .15s}
-      .nm-proc-btn.active{border-color:#C70602;background:#FFF5F5;color:#C70602;font-weight:700}
-      /* Stepper — círculos maiores, mais visíveis */
-      .nm-stepper-circle{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;font-weight:700;border:2px solid #D6D6D6;background:#fff;color:#929090;cursor:pointer;transition:all .2s;font-family:Montserrat,system-ui,sans-serif}
-      .nm-stepper-circle.done{background:#1E6B3A;border-color:#1E6B3A;color:#fff}
-      .nm-stepper-circle.active{background:#C70602;border-color:#C70602;color:#fff;box-shadow:0 0 0 4px rgba(199,6,2,.12)}
-      .nm-stepper-line{flex:1;height:2px;background:#E4E4E4;min-width:10px;border-radius:1px;margin:0 6px}
-      .nm-stepper-line.done{background:#1E6B3A}
-      @keyframes nmFadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
-      .nm-active{animation:nmFadeUp .25s ease}
-      /* Status ficha pills */
-      .nm-status-ficha-btn{border-radius:20px;padding:4px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:Montserrat,system-ui,sans-serif;transition:all .15s}
-      #page-nova-manifestacao{position:relative}
-      #page-nova-manifestacao .nm-ref-workspace{display:flex;flex:1;min-height:0;overflow:hidden}
-      #page-nova-manifestacao .nm-ref-sidebar{width:220px;flex:0 0 220px;overflow-y:auto;background:#fff;border-right:1px solid #E4E4E4;padding:18px 0 12px}
-      #page-nova-manifestacao .nm-ref-sidebar>small{display:block;padding:0 16px 10px;font-size:10px;font-weight:700;letter-spacing:.08em;color:#A0A0A0}
-      #page-nova-manifestacao .nm-ref-sidebar button{display:flex;flex-direction:column;align-items:flex-start;width:100%;border:0;border-left:3px solid transparent;background:#fff;padding:12px 14px 11px 16px;text-align:left;color:#545252;cursor:pointer;font:500 12.5px/1.25 Montserrat,system-ui,sans-serif}
-      #page-nova-manifestacao .nm-ref-sidebar button:hover{background:#FAFAFA}
-      #page-nova-manifestacao .nm-ref-sidebar button.active{border-left-color:#C70602;background:#FFF1F1;color:#C70602;font-weight:700}
-      #page-nova-manifestacao .nm-ref-sidebar button i{display:block;width:7px;height:7px;border-radius:50%;background:#C8C8C8;margin-bottom:5px}
-      #page-nova-manifestacao .nm-ref-sidebar button.active i{background:#C70602}
-      #page-nova-manifestacao .nm-ref-sidebar button em{font-style:normal;color:#929090;font-size:10.5px;font-weight:400;margin-top:4px}
-      #page-nova-manifestacao .nm-ref-sidebar button.active em{color:#C70602}
-      #page-nova-manifestacao .nm-ref-workarea{display:flex;flex:1;min-width:0;min-height:0;flex-direction:column;overflow:hidden}
-      #page-nova-manifestacao .nm-company-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
-      #page-nova-manifestacao .nm-grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
-      #page-nova-manifestacao .nm-inline-row{display:flex;gap:8px}
-      #page-nova-manifestacao .nm-inline-row .nm-input{flex:1}
-      #page-nova-manifestacao .nm-history-note{padding:10px 12px;border-radius:8px;font-size:12px}
-      #page-nova-manifestacao .nm-help{font-size:11px;color:#929090}
-      #page-nova-manifestacao .nm-visually-hidden{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
-      #page-nova-manifestacao .circa-analysis-head,#page-nova-manifestacao .circa-card-head{display:flex;align-items:center;justify-content:space-between;gap:18px}
-      #page-nova-manifestacao .circa-kicker,#page-nova-manifestacao .section-label{font-size:11px;letter-spacing:.07em;text-transform:uppercase;font-weight:700;color:#777}
-      #page-nova-manifestacao .circa-analysis-head h3,#page-nova-manifestacao .circa-card-head h3{margin:4px 0;font-size:17px;color:#202020}
-      #page-nova-manifestacao .circa-analysis-head p,#page-nova-manifestacao .circa-card-head p{margin:0;color:#888;font-size:12px}
-      #page-nova-manifestacao .circa-head-actions{display:flex;align-items:center;gap:10px}.circa-source{font-size:11px;color:#2563EB;background:#EFF6FF;padding:6px 10px;border-radius:999px}
-      #page-nova-manifestacao .circa-analysis-grid{display:flex;flex-direction:column;gap:14px}
-      #page-nova-manifestacao .circa-analysis-card{background:#fff;border:1px solid #E5E5E5;border-radius:10px;padding:18px 20px;min-width:0}
-      #page-nova-manifestacao .circa-two{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:10px}.circa-two b{font-size:12px}.circa-two p{font-size:13px;color:#555;line-height:1.55;margin:6px 0}
-      #page-nova-manifestacao .circa-alert{margin-top:12px;padding:11px 13px;border-radius:8px;background:#FFF8E8;border:1px solid #F2D58B;color:#6E5314;font-size:12px;line-height:1.5}.circa-alert b{display:block;margin-bottom:4px}
-      #page-nova-manifestacao .circa-checklist{display:flex;flex-direction:column;gap:8px;margin-top:10px}.checklist-item{display:flex;align-items:center;gap:9px;font-size:13px;color:#333;padding:8px 10px;border:1px solid #ECECEC;border-radius:7px}.check-box{width:21px;height:21px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:#EEF6FF;color:#2563EB;font-size:11px;font-weight:700;flex:none}.circa-muted{font-size:13px;color:#888;line-height:1.55}.circa-tag-list{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}.circa-confidence{display:flex;align-items:center;gap:10px;margin-top:14px;font-size:12px;color:#777}.circa-confidence .progress-bar{height:6px;flex:1;background:#EEE;border-radius:99px}.circa-confidence .progress-fill{display:block;height:100%;width:0;background:#C70602;border-radius:inherit}.circa-analysis-footer{display:flex;justify-content:space-between;align-items:center;gap:12px;border-top:1px solid #E5E5E5;padding-top:14px;font-size:11px;color:#888}.circa-analysis-footer>div{display:flex;gap:8px;flex-wrap:wrap}.circa-similar-list{display:flex;flex-direction:column;gap:7px;margin-top:10px}.circa-path-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.circa-path-card{background:#fff;border:1px solid #E5E5E5;border-radius:10px;padding:18px 20px;display:flex;flex-direction:column;gap:12px}.circa-path-card p{font-size:12px;color:#777;line-height:1.5;margin:0}.circa-path-title{display:flex;align-items:center;gap:9px;font-weight:700;color:#222}.circa-path-icon{width:27px;height:27px;border-radius:50%;background:#FFF1F1;color:#C70602;display:inline-flex;align-items:center;justify-content:center;font-size:12px}.circa-investigation-card{background:#fff;border:1px solid #E5E5E5;border-radius:10px;padding:20px;display:flex;flex-direction:column;gap:16px}.circa-action-row{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}.badge{display:inline-flex;padding:5px 10px;border-radius:999px;font-size:11px;font-weight:700}.badge-warning{background:#FFF5D8;color:#8A5700}.badge-success{background:#E6F2EA;color:#1E6B3A}.circa-option-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin:12px 0}.circa-close-card{background:#F0F8F1;border:1px solid #B7DDBD;border-radius:10px;padding:18px 20px;display:flex;justify-content:space-between;align-items:center;gap:16px}.circa-close-card h3{margin:0 0 5px;font-size:15px}.circa-close-card p{margin:0;color:#55705A;font-size:12px}
-      @media(max-width:900px){#page-nova-manifestacao .nm-grid-4{grid-template-columns:repeat(2,1fr)}#page-nova-manifestacao .circa-path-grid{grid-template-columns:1fr}}
-      @media(max-width:600px){#page-nova-manifestacao .nm-company-grid,#page-nova-manifestacao .nm-grid-4,#page-nova-manifestacao .nm-grid-3,#page-nova-manifestacao .nm-grid-2,#page-nova-manifestacao .circa-two,#page-nova-manifestacao .circa-option-grid{grid-template-columns:1fr}#page-nova-manifestacao .circa-analysis-head,#page-nova-manifestacao .circa-card-head,#page-nova-manifestacao .circa-close-card{align-items:flex-start;flex-direction:column}.circa-analysis-footer{align-items:flex-start;flex-direction:column}}
+    <input type="hidden" id="nm-status-ficha" value="ABERTA">
 
-      @media(max-width:768px){#page-nova-manifestacao .nm-ref-sidebar{width:190px;flex-basis:190px}#page-nova-manifestacao .nm-ref-sidebar button{font-size:11.5px;padding-left:12px}}
+    <!-- HEADER -->
+    <div style="flex:none;background:#fff;border-bottom:1px solid #E5E5E5;padding:10px 28px;display:flex;align-items:center;gap:14px">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:14px;font-weight:800;color:#242424">Nova Manifestação</div>
+        <div style="font-size:11px;color:#929090;margin-top:1px"><span id="nm-ref-empresa">Chiacchio Embalagens</span> · <span id="nm-ref-cliente">Novo cliente</span> · <span style="color:#D97706" id="nm-ref-rascunho-label">Rascunho</span> · <span id="nm-ref-protocolo" style="color:#929090"></span></div>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        <span id="nm-ref-status" style="display:none"></span>
+        <span id="nm-ref-prioridade" style="display:none"></span>
+        <button class="nm-btn-ghost" onclick="navigate('central-sac',null)">← Central</button>
+        <button class="nm-btn-secondary" onclick="salvarRascunho()">Salvar e sair</button>
+        <button class="nm-btn-primary" onclick="salvarRascunho()">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" stroke="white" stroke-width="1.8"/></svg>
+          Salvar
+        </button>
+      </div>
+    </div>
+
+    <!-- STEP NAV -->
+    <div class="nm-approved-steps" role="navigation" aria-label="Etapas da manifestação" style="flex:none;background:#fff;border-bottom:1px solid #E5E5E5;padding:0 28px;overflow-x:auto;display:flex">
+      <button type="button" class="active" data-approved-step="1"><span>1</span>Identificação</button>
+      <button type="button" data-approved-step="2"><span>2</span>Relato</button>
+      <button type="button" data-approved-step="3"><span>3</span>Classificação</button>
+      <button type="button" data-approved-step="4"><span>4</span>Investigação</button>
+      <button type="button" data-approved-step="5"><span>5</span>Tratamento</button>
+      <button type="button" data-approved-step="6"><span>6</span>Direcionamento</button>
+      <button type="button" data-approved-step="7"><span>7</span>Revisão</button>
+    </div>
+
+    <div class="nm-ref-workspace" style="flex:1;overflow:hidden;display:flex;min-height:0">
+    <style>
+      /* ── Nova Manifestação v2 (mockup-match) ── */
+      #page-nova-manifestacao{flex-direction:column;height:100%;overflow:hidden;font-family:'Montserrat',system-ui,sans-serif;background:#F7F7F7;color:#242424}
+      @keyframes nmFadeIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+      .nm-s-anim{animation:nmFadeIn .2s ease}
+      /* step nav */
+      #page-nova-manifestacao .nm-approved-steps button{padding:10px 13px;border:none;border-bottom:2.5px solid transparent;background:none;color:#929090;font-size:11.5px;font-weight:500;cursor:pointer;font-family:'Montserrat',system-ui,sans-serif;white-space:nowrap;display:inline-flex;align-items:center}
+      #page-nova-manifestacao .nm-approved-steps button span{width:16px;height:16px;border-radius:50%;background:#E5E5E5;color:#929090;font-size:8.5px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;margin-right:6px;flex:none;transition:background .2s,color .2s}
+      #page-nova-manifestacao .nm-approved-steps button.active{border-bottom-color:#C70602;color:#C70602;font-weight:700}
+      #page-nova-manifestacao .nm-approved-steps button.active span{background:#C70602;color:#fff}
+      #page-nova-manifestacao .nm-approved-steps button.done{border-bottom-color:#15803D;color:#15803D;font-weight:600}
+      #page-nova-manifestacao .nm-approved-steps button.done span{background:#15803D;color:#fff}
+      /* panels */
+      .nm-step-panel{display:none}
+      .nm-step-panel.nm-active{display:flex;flex-direction:column;gap:14px}
+      /* cards */
+      .nm-card{background:#fff;border:1px solid #E5E5E5;border-radius:10px;padding:18px 20px}
+      .nm-sl{font-size:12px;font-weight:700;color:#242424;margin-bottom:12px;padding-bottom:8px;border-bottom:1.5px solid #F0F0F0;display:flex;align-items:center;gap:6px}
+      .nm-sl::before{content:'';display:block;width:3px;height:14px;background:#C70602;border-radius:2px;flex:none}
+      /* form elements */
+      #page-nova-manifestacao label{display:block;font-size:11px;font-weight:600;color:#555;margin-bottom:4px}
+      .nm-input{font-family:'Montserrat',system-ui,sans-serif;font-size:12.5px;color:#242424;background:#fff;border:1.5px solid #E0E0E0;border-radius:7px;padding:7px 11px;width:100%;outline:none;height:38px;transition:border .15s;box-sizing:border-box}
+      .nm-input:focus{border-color:#C70602}
+      .nm-select{font-family:'Montserrat',system-ui,sans-serif;font-size:12.5px;color:#242424;background:#fff;border:1.5px solid #E0E0E0;border-radius:7px;padding:7px 11px;width:100%;outline:none;height:38px;transition:border .15s;box-sizing:border-box;cursor:pointer}
+      .nm-select:focus{border-color:#C70602}
+      .nm-textarea{font-family:'Montserrat',system-ui,sans-serif;font-size:13px;color:#242424;background:#fff;border:1.5px solid #E0E0E0;border-radius:7px;padding:8px 11px;width:100%;outline:none;resize:vertical;min-height:80px;transition:border .15s;box-sizing:border-box}
+      .nm-textarea:focus{border-color:#C70602}
+      /* grids */
+      .nm-g2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+      .nm-g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+      .nm-g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px}
+      /* chips */
+      .nm-chip{display:inline-flex;align-items:center;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid #E5E5E5;background:#F5F5F5;color:#555;white-space:nowrap;transition:all .15s;font-family:'Montserrat',system-ui,sans-serif}
+      .nm-chip:hover{border-color:#C70602;color:#C70602}
+      .nm-chip.sel{background:#FDECEC;color:#C70602;border-color:#C70602}
+      /* trat-cards */
+      .nm-trat-card{border:1.5px solid #E5E5E5;border-radius:10px;padding:14px 16px;background:#fff;cursor:pointer;transition:border-color .15s,box-shadow .15s}
+      .nm-trat-card:hover{border-color:#C70602}
+      .nm-trat-card.sel{border-color:#C70602;background:#FFFCF5;box-shadow:0 0 0 3px rgba(199,6,2,.08)}
+      /* path-cards */
+      .nm-path-card{border:1.5px solid #E5E5E5;border-radius:10px;padding:16px 18px;cursor:pointer;background:#fff;transition:border-color .15s}
+      .nm-path-card:hover{border-color:#C70602}
+      .nm-path-card.sel{border-color:#C70602;background:#FFFDF5}
+      /* circa panel */
+      .nm-circa-panel{background:#F0F9FF;border:1px solid #BAE6FD;border-radius:10px;padding:14px 18px}
+      /* buttons */
+      .nm-btn-primary{padding:8px 16px;background:#C70602;color:#fff;border:none;border-radius:8px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:'Montserrat',system-ui,sans-serif;transition:background .15s;display:inline-flex;align-items:center;gap:5px;height:36px}
+      .nm-btn-primary:hover{background:#A00400}
+      .nm-btn-secondary{padding:7px 13px;border:1.5px solid #E5E5E5;border-radius:7px;background:#fff;color:#929090;font-size:12.5px;font-weight:600;cursor:pointer;font-family:'Montserrat',system-ui,sans-serif;display:inline-flex;align-items:center;gap:5px;height:36px}
+      .nm-btn-secondary:hover{background:#F7F7F7}
+      .nm-btn-ghost{padding:5px 10px;border:1.5px solid #E5E5E5;border-radius:6px;background:#fff;font-size:11.5px;cursor:pointer;font-family:'Montserrat',system-ui,sans-serif;color:#929090;height:32px}
+      .nm-btn-ghost:hover{color:#C70602;border-color:#C70602}
+      /* stat tile */
+      .nm-stat-tile{padding:10px 12px;background:#FAFAFA;border-radius:8px;border:1px solid #EDEDF0;text-align:center}
+      .nm-stat-tile .nm-stat-num{font-size:20px;font-weight:800;color:#242424}
+      .nm-stat-tile .nm-stat-label{font-size:11px;color:#929090;margin-top:2px}
+      /* visually hidden */
+      .nm-visually-hidden{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+      /* circa sidebar */
+      #page-nova-manifestacao .circa-col{width:280px;flex:none;background:#fff;border-left:1px solid #E5E5E5;overflow-y:auto;padding:16px}
+      /* workarea */
+      #page-nova-manifestacao .nm-ref-workarea{flex:1;overflow-y:auto;padding:20px 28px;background:#F7F7F7;min-width:0}
+      /* upload box */
+      #page-nova-manifestacao .nm-upload-box{border:2px dashed #E5E5E5;border-radius:10px;padding:24px;text-align:center;cursor:pointer;margin-bottom:12px;transition:border-color .15s,background .15s}
+      #page-nova-manifestacao .nm-upload-box:hover{border-color:#C70602;background:#FDFDFF}
+      /* duplicate alert */
+      .nm-dup-alert{background:#FEF3C7;border:1px solid #FFE082;border-radius:10px;padding:12px 16px;display:flex;align-items:flex-start;gap:10px}
+      .nm-err-alert{background:#FFF5F5;border:1px solid #FECACA;border-radius:10px;padding:12px 16px;display:flex;align-items:flex-start;gap:10px}
+      /* review CTA */
+      .nm-register-cta{background:linear-gradient(135deg,#FDECEC,#FFF5F5);border:1px solid #FECACA;border-radius:10px;padding:20px 22px;text-align:center}
+      /* legacy compat */
+      .nm-inline-search,.nm-inline-clear{height:38px;border:1.5px solid #E0E0E0;border-radius:7px;background:#fff;color:#929090;font-size:12px;font-weight:600;cursor:pointer;padding:0 11px;font-family:'Montserrat',system-ui,sans-serif}
+      .nm-inline-search:hover{border-color:#C70602;color:#C70602}
+      .nm-inline-row{display:flex;gap:8px}
+      .nm-inline-row .nm-input{flex:1}
+      .nm-help{font-size:11px;color:#929090}
+      .nm-history-note{padding:10px 12px;border-radius:8px;font-size:12px}
+      /* legacy compatibility — keep old IDs working */
+      .section-label{font-size:11px;letter-spacing:.07em;text-transform:uppercase;font-weight:700;color:#777;margin-bottom:8px}
+      .checklist-item{display:flex;align-items:center;gap:9px;font-size:13px;color:#333;padding:8px 10px;border:1px solid #ECECEC;border-radius:7px}
+      .badge{display:inline-flex;padding:5px 10px;border-radius:999px;font-size:11px;font-weight:700}
+      .badge-warning{background:#FFF5D8;color:#8A5700}
+      .badge-success{background:#E6F2EA;color:#1E6B3A}
+      .circa-muted{font-size:13px;color:#888;line-height:1.55}
+      .circa-analysis-grid{display:flex;flex-direction:column;gap:14px}
+      .circa-analysis-card{background:#fff;border:1px solid #E5E5E5;border-radius:10px;padding:18px 20px;min-width:0}
+      .circa-analysis-footer{display:flex;justify-content:space-between;align-items:center;gap:12px;border-top:1px solid #E5E5E5;padding-top:14px;font-size:11px;color:#888}
+      .circa-analysis-footer>div{display:flex;gap:8px;flex-wrap:wrap}
+      .circa-checklist{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+      .check-box{width:21px;height:21px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:#EEF6FF;color:#2563EB;font-size:11px;font-weight:700;flex:none}
+      .circa-tag-list{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+      .circa-confidence{display:flex;align-items:center;gap:10px;margin-top:14px;font-size:12px;color:#777}
+      .circa-confidence .progress-bar{height:6px;flex:1;background:#EEE;border-radius:99px}
+      .circa-confidence .progress-fill{display:block;height:100%;width:0;background:#C70602;border-radius:inherit}
+      .circa-similar-list{display:flex;flex-direction:column;gap:7px;margin-top:10px}
+      .circa-two{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:10px}
+      .circa-two b{font-size:12px}
+      .circa-two p{font-size:13px;color:#555;line-height:1.55;margin:6px 0}
+      .circa-alert{margin-top:12px;padding:11px 13px;border-radius:8px;background:#FFF8E8;border:1px solid #F2D58B;color:#6E5314;font-size:12px;line-height:1.5}
+      .circa-alert b{display:block;margin-bottom:4px}
+      .circa-action-row{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+      .circa-option-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin:12px 0}
+      /* responsive */
+      @media(max-width:1100px){#page-nova-manifestacao .circa-col{display:none!important}.nm-g3,.nm-g4{grid-template-columns:1fr 1fr!important}}
+      @media(max-width:700px){.nm-g2,.nm-g3,.nm-g4{grid-template-columns:1fr!important}}
     </style>
 
-    <!-- STEPS BODY -->
-    <div class="nm-ref-workarea">
-    <div id="nm-steps-body" style="flex:1;overflow-y:auto;padding:24px 28px">
+    <!-- MAIN SCROLL -->
+    <div class="nm-ref-workarea" id="nm-steps-body">
 
-      <!-- ETAPA 1: DADOS DA MANIFESTAÇÃO -->
-      <div class="nm-step-panel nm-active" data-nm-step="1">
-        <div class="nm-section-hdr"><h2>Dados da Manifestação</h2><p>Identificação do cliente, pedido e origem da ocorrência.</p></div>
-        <div class="nm-card"><div class="nm-card-title">Empresa reclamada</div><div class="nm-company-grid">
-          <button class="nm-empresa-btn active" onclick="nmSelEmpresa(this,'CHIACCHIO EMBALAGENS')">CHIACCHIO EMBALAGENS</button>
-          <button class="nm-empresa-btn" onclick="nmSelEmpresa(this,'PLASCHIO')">PLASCHIO</button>
-          <button class="nm-empresa-btn" onclick="nmSelEmpresa(this,'TUBAHIA')">TUBAHIA / CESBAP</button>
-        </div><select id="nm-empresa-reclamada" class="nm-visually-hidden"><option value="CHIACCHIO EMBALAGENS" selected>CHIACCHIO EMBALAGENS</option><option value="PLASCHIO">PLASCHIO</option><option value="TUBAHIA">TUBAHIA / CESBAP</option></select></div>
-        <div class="nm-card"><div class="nm-card-title">Dados do cliente</div><div class="nm-grid-2">
-          <label class="nm-label"><span>CPF / CNPJ</span><div class="nm-inline-row"><input class="nm-input" placeholder="00.000.000/0001-00" id="nm-cnpj" oninput="onCnpjChange()"><button onclick="buscarCliente()" class="nm-inline-search">Buscar</button><button id="btn-limpar-cnpj" onclick="limparBuscaCnpj()" class="nm-inline-clear" style="display:none">✕</button></div></label>
-          <label class="nm-label"><span>Razão social / Nome</span><input class="nm-input" placeholder="Razão social do cliente" id="nm-empresa"></label>
-        </div><div id="nm-historico-cliente" class="nm-history-note" style="display:none"></div><div class="nm-grid-3">
-          <label class="nm-label"><span>Nome do contato</span><input class="nm-input" placeholder="Nome do comprador" id="nm-nome"></label><label class="nm-label"><span>Telefone / WhatsApp</span><input class="nm-input" placeholder="(77) 90000-0000" id="nm-tel"></label><label class="nm-label"><span>E-mail</span><input class="nm-input" type="email" placeholder="contato@exemplo.com.br" id="nm-email"></label>
-        </div></div>
-        <div class="nm-card"><div class="nm-card-title">Dados do registro</div><div class="nm-grid-4">
-          <label class="nm-label"><span>Data do registro</span><input class="nm-input" id="nm-data" type="date"></label><label class="nm-label"><span>Canal</span><select class="nm-select" id="nm-origem"><option value="MANUAL">Manual</option><option value="WHATSAPP">WhatsApp</option><option value="EMAIL">E-mail</option><option value="PORTAL_CLIENTE">Portal do Cliente</option><option value="PESQUISA_SATISFACAO">Pesquisa de satisfação</option><option value="TELEFONE">Telefone</option></select></label><label class="nm-label"><span>Tipo</span><select class="nm-select" id="nm-tipo"><option>Reclamação</option><option>Dúvida</option><option>Sugestão</option><option>Elogio</option></select></label><label class="nm-label"><span>Prioridade</span><select class="nm-select" id="nm-prioridade"><option value="NORMAL">Normal</option><option value="ALTA">Alta</option><option value="CRITICA">Crítica</option><option value="URGENTE">Urgente</option></select></label>
-        </div><input class="nm-visually-hidden" id="nm-num"><input class="nm-visually-hidden" id="nm-atendente"><input class="nm-visually-hidden" id="nm-canal"></div>
-        <div class="nm-card"><div class="nm-card-title">Relato do cliente</div><label class="nm-label"><span>Descrição da manifestação *</span><textarea class="nm-textarea" rows="6" id="nm-descricao" placeholder="Descreva detalhadamente o que ocorreu..." oninput="onDescricaoChange()"></textarea><span id="nm-chars" class="nm-help">0 caracteres — digite ao menos 30 para análise automática</span></label><div class="nm-grid-3"><label class="nm-label"><span>Produto / SKU</span><input class="nm-input" id="nm-produto" oninput="agendarAnalise()"></label><label class="nm-label"><span>Lote</span><input class="nm-input" id="nm-lote" oninput="agendarAnalise()"></label><label class="nm-label"><span>NF / Pedido</span><input class="nm-input" id="nm-nfe"></label></div><label class="nm-label"><span>O que o cliente espera?</span><textarea class="nm-textarea" rows="3" id="nm-expectativa" placeholder="Descreva a expectativa ou solicitação do cliente..."></textarea></label></div>
-        <div class="nm-card"><div class="nm-card-title">Evidências e anexos</div><input id="nm-import-file" type="file" accept=".pdf,image/*" class="nm-visually-hidden" onchange="processarDocumentoImportado(this.files[0])"><input id="nm-evidencias" type="file" multiple accept=".pdf,image/*,.doc,.docx,.xls,.xlsx" class="nm-visually-hidden" onchange="adicionarEvidencias(this.files)"><div id="nm-upload-box" class="upload-box" onclick="document.getElementById('nm-evidencias').click()"><span>Arraste arquivos aqui ou <b>selecione</b> · até 50 MB</span></div><div id="nm-extracao-status" style="display:none"></div><div id="nm-extracao-preview" style="display:none"></div><div id="nm-evidencias-list" class="upload-list"></div></div>
-        <input type="hidden" id="nm-categoria"><input type="hidden" id="nm-motivo"><input type="hidden" id="nm-severidade" value="MEDIA"><input type="hidden" id="nm-setor-resp"><input type="checkbox" id="nm-gera-rnc" class="nm-visually-hidden"><input type="checkbox" id="nm-analise-causa" class="nm-visually-hidden"><input id="nm-protocolo-externo" class="nm-visually-hidden"><input id="nm-vinculo-man" class="nm-visually-hidden"><input id="nm-cliente-cod" class="nm-visually-hidden"><input id="nm-nr-pedido" class="nm-visually-hidden"><input id="nm-data-nf" class="nm-visually-hidden"><input id="nm-dt-entrega-p" class="nm-visually-hidden"><input id="nm-dt-entrega-e" class="nm-visually-hidden"><input id="nm-data-ocorrido" class="nm-visually-hidden"><input id="nm-repr" class="nm-visually-hidden"><input id="nm-rca-resp" class="nm-visually-hidden">
+      <!-- ══ ETAPA 1: IDENTIFICAÇÃO ══ -->
+      <div class="nm-step-panel nm-active nm-s-anim" data-nm-step="1">
+
+        <!-- Empresa e origem -->
+        <div class="nm-card">
+          <div class="nm-sl">Empresa e origem</div>
+          <div class="nm-g4" style="margin-bottom:14px">
+            <div style="grid-column:1/3">
+              <label>Empresa *</label>
+              <div id="nm-empresa-chips" style="display:flex;gap:8px;flex-wrap:wrap">
+                <button class="nm-chip sel" onclick="nmSelEmpresa(this,'CHIACCHIO EMBALAGENS')">Chiacchio Embalagens</button>
+                <button class="nm-chip" onclick="nmSelEmpresa(this,'PLASCHIO')">Plaschio</button>
+                <button class="nm-chip" onclick="nmSelEmpresa(this,'TUBAHIA')">Tubahia/CESBAP</button>
+              </div>
+              <select id="nm-empresa-reclamada" class="nm-visually-hidden"><option value="CHIACCHIO EMBALAGENS" selected>CHIACCHIO EMBALAGENS</option><option value="PLASCHIO">PLASCHIO</option><option value="TUBAHIA">TUBAHIA</option></select>
+            </div>
+            <div><label>Origem da manifestação</label><select class="nm-select" id="nm-origem"><option value="MANUAL">Manual</option><option value="PORTAL_CLIENTE">Portal do Cliente</option><option value="TELEFONE">Telefone</option><option value="WHATSAPP">WhatsApp</option><option value="EMAIL">E-mail</option><option value="PRESENCIAL">Presencial</option><option value="PESQUISA_SATISFACAO">Pesquisa de satisfação</option></select></div>
+            <div><label>Data do registro</label><input type="date" class="nm-input" id="nm-data"></div>
+          </div>
+          <div><label>Responsável pelo registro</label><input type="text" class="nm-input" id="nm-atendente" placeholder="Nome do atendente SAC"></div>
+        </div>
+
+        <!-- Dados do cliente -->
+        <div class="nm-card">
+          <div class="nm-sl">Dados do cliente</div>
+          <div class="nm-g4" style="margin-bottom:14px">
+            <div style="grid-column:1/3">
+              <label>CNPJ / CPF *</label>
+              <div class="nm-inline-row"><input type="text" class="nm-input" placeholder="00.000.000/0001-00" id="nm-cnpj" oninput="onCnpjChange()"><button onclick="buscarCliente()" class="nm-inline-search">Buscar</button><button id="btn-limpar-cnpj" onclick="limparBuscaCnpj()" class="nm-inline-search" style="display:none">✕</button></div>
+            </div>
+            <div style="grid-column:3/5"><label>Razão social *</label><input type="text" class="nm-input" placeholder="Razão social do cliente" id="nm-empresa"></div>
+          </div>
+          <div id="nm-historico-cliente" class="nm-history-note" style="display:none"></div>
+          <div class="nm-g3" style="margin-bottom:14px">
+            <div><label>Contato</label><input type="text" class="nm-input" placeholder="Nome do contato" id="nm-nome"></div>
+            <div><label>Telefone / WhatsApp</label><input type="tel" class="nm-input" placeholder="(00) 00000-0000" id="nm-tel"></div>
+            <div><label>E-mail</label><input type="email" class="nm-input" placeholder="email@empresa.com.br" id="nm-email"></div>
+          </div>
+          <div class="nm-g2">
+            <div><label>RCA vinculado</label><select class="nm-select" id="nm-rca-resp"><option value="">Não identificado</option></select></div>
+            <div><label>Gerente comercial</label><select class="nm-select" id="nm-gerente-comercial"><option value="">Não identificado</option></select></div>
+          </div>
+        </div>
+
+        <!-- Histórico do cliente -->
+        <div class="nm-card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <div class="nm-sl" style="margin:0;border:none;padding:0">Histórico do cliente</div>
+            <span style="font-size:11px;color:#929090" id="nm-historico-label">Nenhum cliente selecionado ainda</span>
+          </div>
+          <div class="nm-g4">
+            <div class="nm-stat-tile"><div class="nm-stat-num" id="nm-hist-total">—</div><div class="nm-stat-label">Manifestações</div></div>
+            <div class="nm-stat-tile"><div class="nm-stat-num" style="color:#D97706" id="nm-hist-aberto">—</div><div class="nm-stat-label">Em aberto</div></div>
+            <div class="nm-stat-tile"><div class="nm-stat-num" style="color:#C70602" id="nm-hist-reincid">—</div><div class="nm-stat-label">Reincidências</div></div>
+            <div class="nm-stat-tile"><div style="font-size:11.5px;font-weight:600;color:#BDBDBD">Última:</div><div style="font-size:12px;font-weight:700;color:#929090;margin-top:2px" id="nm-hist-ultima">—</div></div>
+          </div>
+        </div>
+
+        <div style="display:flex;justify-content:flex-end;gap:7px">
+          <button class="nm-btn-secondary" onclick="salvarRascunho()">Salvar rascunho</button>
+          <button class="nm-btn-primary" onclick="nmProximaEtapa()">Continuar →</button>
+        </div>
       </div>
 
-      <!-- ETAPA 2: ANÁLISE INTELIGENTE E TRIAGEM -->
-      <div class="nm-step-panel" data-nm-step="2"><div class="nm-section-hdr"><h2>Análise Inteligente e Triagem</h2><p>Histórico, regras determinísticas e recomendações complementares para orientar o SAC.</p></div>
-        <div style="background:#fff;border:1px solid #E5E5E5;border-radius:10px;padding:14px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap"><div style="width:36px;height:36px;border-radius:9px;background:#EFF6FF;display:flex;align-items:center;justify-content:center;flex:none"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4" stroke="#1D4ED8" stroke-width="1.5"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2" stroke="#1D4ED8" stroke-width="1.5" stroke-linecap="round"/></svg></div><div style="flex:1;min-width:0"><div style="font-size:12.5px;font-weight:700;color:#242424">Análise do Cérebro SAC</div><div style="font-size:11.5px;color:#929090;margin-top:2px" id="ia-timestamp">Aguardando análise · Clique em Analisar para iniciar</div></div><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span id="ia-tipo-badge" class="badge" style="background:#FDECEC;color:#C70602;display:none"></span><span id="ia-prioridade-hdr" class="badge" style="background:#FEF3C7;color:#B45309;display:none"></span><button class="btn btn-secondary" id="nm-btn-analisar-ia" onclick="executarAnaliseIA()" style="font-size:11.5px;height:32px;padding:0 14px;white-space:nowrap">Analisar agora</button></div></div>
-        <div id="painel-analise" class="circa-analysis-grid"><div class="circa-analysis-card"><div class="section-label">1 · Entendimento</div><div class="circa-two"><div><b>Problema identificado</b><span id="ia-tipo" class="nm-visually-hidden"></span><p id="ia-causa">Aguardando dados suficientes.</p></div><div><b>Impacto potencial</b><p id="ia-prioridade-badge">A avaliar</p></div></div><div class="circa-alert"><b>Informações faltantes</b><div id="ia-perguntas">Nenhuma informação adicional identificada.</div></div></div>
+      <!-- ══ ETAPA 2: RELATO ══ -->
+      <div class="nm-step-panel nm-s-anim" data-nm-step="2">
+        <div class="nm-card">
+          <div class="nm-sl">Tipo e relato</div>
+          <div class="nm-g3" style="margin-bottom:14px">
+            <div>
+              <label>Tipo de manifestação *</label>
+              <div style="display:flex;gap:6px;flex-wrap:wrap" id="nm-tipo-chips">
+                <button class="nm-chip sel" onclick="nmSelTipo(this,'Reclamação')">Reclamação</button>
+                <button class="nm-chip" onclick="nmSelTipo(this,'Dúvida')">Dúvida</button>
+                <button class="nm-chip" onclick="nmSelTipo(this,'Elogio')">Elogio</button>
+                <button class="nm-chip" onclick="nmSelTipo(this,'Sugestão')">Sugestão</button>
+              </div>
+              <select id="nm-tipo" class="nm-visually-hidden"><option selected>Reclamação</option><option>Dúvida</option><option>Elogio</option><option>Sugestão</option></select>
+            </div>
+            <div><label>Data da ocorrência</label><input type="date" class="nm-input" id="nm-data-ocorrido"></div>
+            <div><label>Pedido / NF</label><input type="text" class="nm-input" placeholder="Ex: NF-004521" id="nm-nfe"></div>
+          </div>
+          <div style="margin-bottom:14px">
+            <label>Relato original * <span style="font-weight:400;color:#929090">— será preservado integralmente</span></label>
+            <textarea class="nm-textarea" rows="5" placeholder="Descreva o que o cliente relatou, o problema identificado, a data da ocorrência e qualquer detalhe relevante..." id="nm-descricao" oninput="onDescricaoChange()"></textarea>
+            <span id="nm-chars" class="nm-help">0 caracteres — digite ao menos 30 para análise automática</span>
+          </div>
+          <div class="nm-g3">
+            <div><label>Produto / SKU</label><input type="text" class="nm-input" placeholder="Ex: Caixa Kraft 40×30×20" id="nm-produto" oninput="agendarAnalise()"></div>
+            <div><label>Lote</label><input type="text" class="nm-input" placeholder="Ex: 2024-B" id="nm-lote" oninput="agendarAnalise()"></div>
+            <div><label>Quantidade afetada</label><input type="number" class="nm-input" placeholder="0" id="nm-qtd"></div>
+          </div>
+          <div style="margin-top:14px"><label>O que o cliente espera?</label><textarea class="nm-textarea" rows="3" placeholder="Descreva a expectativa ou solicitação do cliente..." id="nm-expectativa"></textarea></div>
+        </div>
+
+        <div class="nm-card">
+          <div class="nm-sl">Evidências e anexos</div>
+          <input id="nm-import-file" type="file" accept=".pdf,image/*" class="nm-visually-hidden" onchange="processarDocumentoImportado(this.files[0])">
+          <input id="nm-evidencias" type="file" multiple accept=".pdf,image/*,.doc,.docx,.xls,.xlsx" class="nm-visually-hidden" onchange="adicionarEvidencias(this.files)">
+          <div class="nm-upload-box" id="nm-upload-box" onclick="document.getElementById('nm-evidencias').click()">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" style="margin:0 auto 8px;display:block"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" stroke="#929090" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <div style="font-size:13px;font-weight:700;color:#242424;margin-bottom:3px">Selecionar ou arrastar arquivos</div>
+            <div style="font-size:12px;color:#929090">Imagens, PDF, vídeos ou documentos · Máx. 25 MB por arquivo</div>
+          </div>
+          <div id="nm-extracao-status" style="display:none"></div>
+          <div id="nm-extracao-preview" style="display:none"></div>
+          <div id="nm-evidencias-list" class="upload-list"></div>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;gap:7px">
+          <button class="nm-btn-ghost" onclick="nmEtapaAnterior()">← Voltar</button>
+          <div style="display:flex;gap:7px">
+            <button class="nm-btn-secondary" onclick="salvarRascunho()">Salvar rascunho</button>
+            <button class="nm-btn-primary" onclick="nmProximaEtapa()">Continuar →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ ETAPA 3: CLASSIFICAÇÃO ══ -->
+      <div class="nm-step-panel nm-s-anim" data-nm-step="3">
+
+        <!-- CIRCA suggestion -->
+        <div class="nm-circa-panel" id="nm-circa-classificacao" style="display:flex;gap:12px;align-items:flex-start">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="flex:none;margin-top:2px"><circle cx="12" cy="12" r="4" stroke="#0369A1" stroke-width="1.5"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2" stroke="#0369A1" stroke-width="1.5" stroke-linecap="round"/></svg>
+          <div style="flex:1">
+            <div style="font-size:12px;font-weight:700;color:#0369A1;margin-bottom:4px">Sugestão do Cérebro CIRCA</div>
+            <div style="font-size:12px;color:#0C4A6E;line-height:1.65" id="nm-circa-classificacao-texto">Preencha o relato na etapa anterior para receber sugestão de classificação.</div>
+            <div id="nm-circa-classificacao-actions" style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;display:none">
+              <button class="nm-btn-ghost" style="height:26px;font-size:11px;padding:2px 9px;border-color:#BAE6FD;color:#0369A1" onclick="nmAplicarSugestaoClassificacao()">Aplicar sugestão</button>
+              <button class="nm-btn-ghost" style="height:26px;font-size:11px;padding:2px 9px" onclick="this.closest('.nm-circa-panel').style.display='none'">Ignorar</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- CIRCA analysis panels (hidden, legacy compat) -->
+        <div id="painel-analise" class="circa-analysis-grid" style="display:none">
+          <div class="circa-analysis-card"><div class="section-label">1 · Entendimento</div><div class="circa-two"><div><b>Problema identificado</b><span id="ia-tipo" class="nm-visually-hidden"></span><p id="ia-causa">Aguardando dados suficientes.</p></div><div><b>Impacto potencial</b><p id="ia-prioridade-badge">A avaliar</p></div></div><div class="circa-alert"><b>Informações faltantes</b><div id="ia-perguntas">Nenhuma informação adicional identificada.</div></div></div>
           <div class="circa-analysis-card"><div class="section-label">2 · O que o SAC deve fazer agora</div><div id="ia-tratativa" class="circa-checklist"><div class="checklist-item"><span class="check-box">1</span><span>Analise a manifestação e confirme os dados essenciais.</span></div></div></div>
           <div class="circa-analysis-card"><div class="section-label">3 · Procedimentos recomendados</div><div id="ia-proc-nome" class="circa-muted">Consulte a Matriz de Causas e Tratamentos após a análise.</div></div>
           <div class="circa-analysis-card"><div class="section-label">4 · Responsáveis e competências</div><div id="ia-setores" class="circa-tag-list"><span class="circa-muted">Aguardando classificação.</span></div></div>
           <div class="circa-analysis-card"><div class="section-label">5 · Casos semelhantes encontrados</div><div id="ia-similares" class="circa-similar-list"><span class="circa-muted">O histórico será consultado automaticamente.</span></div></div>
-          <div class="circa-analysis-card"><div class="section-label">Recomendação complementar da IA</div><div id="ia-alertas-wrap"><div id="ia-alertas" class="circa-muted">A IA poderá complementar a orientação após a consulta determinística.</div></div><div class="circa-confidence">Confiança <strong id="ia-confianca-pct">—</strong><span class="progress-bar"><span id="ia-confianca-bar" class="progress-fill"></span></span></div></div></div>
-        <div class="circa-analysis-footer"><span>As recomendações são sugestões baseadas no histórico e na matriz. A decisão operacional é da analista.</span><div><button class="btn btn-ghost" style="font-size:12px" onclick="nmAbrirRevisaoOrientacao()">Ajustar condução</button><button class="btn btn-primary" style="font-size:12px" onclick="nmUtilizarOrientacao()">Utilizar orientação →</button></div></div><div id="nm-revisao-orientacao" class="nm-card" style="display:none;margin-top:12px;border-color:#F59E0B;background:#FFFBEB"><div class="section-label">Revisão humana da orientação</div><p style="font-size:12px;color:#66520A;margin:6px 0 12px">Revise as hipóteses e recomendações antes de transferir a decisão para a condução. A análise original permanece preservada.</p><div class="nm-grid-2"><label class="nm-label"><span>Estado da análise</span><select id="nm-revisao-status" class="nm-select"><option value="REVISADA">Revisada — validar manualmente</option><option value="ORIENTACAO_PARCIAL">Aceita parcialmente</option><option value="ORIENTACAO_REJEITADA">Rejeitar orientação</option></select></label><label class="nm-label"><span>Classificação humana (opcional)</span><input id="nm-revisao-classificacao" class="nm-input" placeholder="Informe somente se confirmado pelo SAC"></label></div><label class="nm-label"><span>Justificativa / ajustes</span><textarea id="nm-revisao-justificativa" class="nm-textarea" rows="3" placeholder="Registre a decisão, ajustes ou motivo da rejeição..."></textarea></label><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-secondary" onclick="nmFecharRevisaoOrientacao()">Cancelar</button><button class="btn btn-primary" onclick="nmSalvarRevisaoOrientacao()">Salvar revisão</button></div></div><div id="ia-decisao-status" style="display:none"></div><div id="ia-analisando" style="display:none"></div><div id="ia-resultado" style="display:none"></div><div id="ia-loading" style="display:none"></div><div id="ia-sla" class="nm-visually-hidden"></div><div id="ia-proc-wrap" class="nm-visually-hidden"></div><div id="ia-perguntas-wrap" class="nm-visually-hidden"></div><div id="ia-similares-wrap" class="nm-visually-hidden"></div><div id="ia-devolutiva-tipo" class="nm-visually-hidden"></div><div id="ia-devolutiva-bloqueadas" class="nm-visually-hidden"></div><textarea id="ia-devolutiva" class="nm-visually-hidden"></textarea>
-      </div>
+          <div class="circa-analysis-card"><div class="section-label">Recomendação complementar da IA</div><div id="ia-alertas-wrap"><div id="ia-alertas" class="circa-muted">A IA poderá complementar a orientação após a consulta determinística.</div></div><div class="circa-confidence">Confiança <strong id="ia-confianca-pct">—</strong><span class="progress-bar"><span id="ia-confianca-bar" class="progress-fill"></span></span></div></div>
+        </div>
+        <!-- legacy hidden analysis elements -->
+        <div id="nm-revisao-orientacao" style="display:none"><select id="nm-revisao-status" class="nm-visually-hidden"><option value="REVISADA">Revisada</option><option value="ORIENTACAO_PARCIAL">Aceita parcialmente</option><option value="ORIENTACAO_REJEITADA">Rejeitar orientação</option></select><input id="nm-revisao-classificacao" class="nm-visually-hidden"><textarea id="nm-revisao-justificativa" class="nm-visually-hidden"></textarea></div>
+        <div id="ia-decisao-status" style="display:none"></div><div id="ia-analisando" style="display:none"></div><div id="ia-resultado" style="display:none"></div><div id="ia-loading" style="display:none"></div>
+        <div id="ia-sla" class="nm-visually-hidden"></div><div id="ia-timestamp" class="nm-visually-hidden"></div><span id="ia-tipo-badge" class="nm-visually-hidden"></span><span id="ia-prioridade-hdr" class="nm-visually-hidden"></span><button id="nm-btn-analisar-ia" onclick="executarAnaliseIA()" class="nm-visually-hidden">Analisar</button>
+        <div id="ia-proc-wrap" class="nm-visually-hidden"></div><div id="ia-perguntas-wrap" class="nm-visually-hidden"></div><div id="ia-similares-wrap" class="nm-visually-hidden"></div><div id="ia-devolutiva-tipo" class="nm-visually-hidden"></div><div id="ia-devolutiva-bloqueadas" class="nm-visually-hidden"></div><textarea id="ia-devolutiva" class="nm-visually-hidden"></textarea>
 
-      <!-- ETAPA 3: CONDUÇÃO -->
-      <div class="nm-step-panel" data-nm-step="3"><div class="nm-section-hdr"><h2>Condução</h2><p>Defina o caminho da tratativa e os próximos responsáveis.</p></div>
-        <div class="circa-path-grid"><div class="circa-path-card"><div class="circa-path-title"><span class="circa-path-icon">A</span>Resolver pelo SAC</div><p>Use quando houver procedimento validado e autonomia para concluir.</p><div class="circa-alert">Confirme a orientação, registre a ação e prepare a devolutiva.</div><button onclick="nmSetCaminhoTratativa('SAC',this)" id="nm-caminho-sac" class="btn btn-secondary">Selecionar caminho</button></div>
-          <div class="circa-path-card"><div class="circa-path-title"><span class="circa-path-icon">B</span>Solicitar informações complementares</div><p>Peça os dados necessários antes de definir a resolução.</p><label class="nm-label"><span>O que solicitar</span><textarea id="nm-complemento-pedido" class="nm-textarea" rows="3"></textarea></label><div class="nm-grid-2"><label class="nm-label"><span>Prazo de retorno</span><input class="nm-input" id="nm-prazo-retorno" placeholder="Conforme SLA aplicável"></label><label class="nm-label"><span>Canal de retorno</span><select class="nm-select" id="nm-canal-retorno"><option>WhatsApp</option><option>E-mail</option><option>Telefone</option></select></label></div><button onclick="nmSetCaminhoTratativa('COMPLEMENTO',this);nmAdicionarAcaoPlano('COMPLEMENTO')" id="nm-caminho-complemento" class="btn btn-secondary">Adicionar ao plano</button></div>
-          <div class="circa-path-card"><div class="circa-path-title"><span class="circa-path-icon">C</span>Acionar setor responsável</div><p>Crie uma tarefa com escopo, responsável, prazo e prioridade.</p><div class="nm-grid-2"><label class="nm-label"><span>Setor</span><select class="nm-select" id="nm-setor-acionado" onchange="document.getElementById('nm-responsavel-acionado').dataset.loaded='';nmCarregarResponsaveisSetor()"><option value="">Selecionar setor</option><option>Qualidade</option><option>Logística</option><option>Comercial</option><option>Produção</option><option>Financeiro</option></select></label><label class="nm-label"><span>Responsável</span><select class="nm-select" id="nm-responsavel-acionado"><option value="">Carregando responsáveis…</option></select></label></div><label class="nm-label"><span>Escopo da tarefa</span><textarea class="nm-textarea" rows="3" id="nm-escopo-acionado"></textarea></label><button onclick="nmSetCaminhoTratativa('SETOR',this)" id="nm-caminho-setor" class="btn btn-secondary">Adicionar ao plano</button><button onclick="nmAdicionarAcaoPlano('SETOR')" id="nm-btn-criar-acionamento" class="btn btn-primary" style="display:none">Adicionar frente ao plano</button></div></div>
-        <input type="hidden" id="nm-caminho-tratativa"><input type="date" id="nm-data-encaminhamento" class="nm-visually-hidden"><div id="nm-plano-conducao" class="nm-card" style="margin-top:12px"><div class="section-label">Plano de condução</div><p style="font-size:12px;color:#777;margin:4px 0 9px">Prepare ações independentes; elas serão confirmadas juntas, sem criar outra manifestação.</p><div id="nm-plano-lista" class="circa-muted">Nenhuma ação preparada.</div><button type="button" class="btn btn-primary" style="margin-top:10px" onclick="nmConfirmarPlano()">Confirmar ações do plano</button><div id="nm-plano-status" style="margin-top:8px"></div></div><div id="nm-box-tratativa-sac" class="nm-card" style="display:none"><div class="section-label">Tratativa interna SAC</div><textarea id="nm-tratativa-sac" class="nm-textarea" rows="5" placeholder="Descreva como o SAC conduzirá a resolução..."></textarea><button type="button" class="btn btn-secondary" style="margin-top:8px" onclick="nmAdicionarAcaoPlano('SAC')">Adicionar tratativa SAC ao plano</button></div><div id="nm-box-complemento" class="nm-card" style="display:none"><div class="section-label">Solicitação de complementação</div><p>Os dados solicitados, o canal e o prazo serão registrados na ficha antes do avanço da tratativa.</p></div><div id="nm-box-encaminhamento-setor" class="nm-card" style="display:none"><div class="section-label">Acionamento preparado</div><p>O setor receberá a ficha após o registro e deverá responder dentro do prazo definido.</p></div>
-      </div>
+        <div class="nm-card">
+          <div class="nm-sl">Classificação</div>
+          <div class="nm-g3" style="margin-bottom:14px">
+            <div><label>Tipo *</label><select class="nm-select" id="nm-tipo-class" onchange="document.getElementById('nm-tipo').value=this.value"><option>Reclamação</option><option>Dúvida</option><option>Elogio</option><option>Sugestão</option></select></div>
+            <div><label>Motivo *</label><select class="nm-select" id="nm-motivo-class" onchange="document.getElementById('nm-motivo').value=this.value"><option value="">Selecionar motivo</option><option>Qualidade do produto</option><option>Prazo de entrega</option><option>Quantidade</option><option>Atendimento</option><option>Cobrança</option></select></div>
+            <div><label>Submotivo</label><select class="nm-select" id="nm-submotivo"><option value="">Selecionar submotivo</option><option>Defeito de embalagem</option><option>Contaminação</option><option>Produto fora de especificação</option><option>Avaria no transporte</option></select></div>
+            <div><label>Produto / serviço</label><input type="text" class="nm-input" placeholder="SKU ou descrição" id="nm-produto-class" onchange="if(!document.getElementById('nm-produto').value)document.getElementById('nm-produto').value=this.value"></div>
+            <div><label>Criticidade</label><select class="nm-select" id="nm-criticidade" onchange="document.getElementById('nm-severidade').value=this.value"><option value="ALTA">Alta</option><option value="MEDIA" selected>Média</option><option value="BAIXA">Baixa</option></select></div>
+            <div><label>Prioridade</label><select class="nm-select" id="nm-prioridade"><option value="NORMAL">Normal</option><option value="ALTA">Alta</option><option value="CRITICA">Crítica</option><option value="URGENTE">Urgente</option></select></div>
+          </div>
+          <div><label>Setor potencialmente responsável</label><select class="nm-select" id="nm-setor-class" onchange="document.getElementById('nm-setor-resp').value=this.value"><option value="">Selecionar setor</option><option>Qualidade Industrial</option><option>Logística</option><option>Produção</option><option>Comercial</option><option>SAC</option><option>Financeiro</option></select></div>
+        </div>
 
-      <!-- ETAPA 4: INVESTIGAÇÃO E RESOLUÇÃO -->
-      <div class="nm-step-panel" data-nm-step="4"><div class="nm-section-hdr"><h2>Investigação e Resolução</h2><p>Registre evidências, causa, ações executadas e resposta do setor.</p></div><div class="circa-investigation-card"><div class="circa-card-head"><div><div class="section-label">Tratamento em andamento</div><h3 id="nm-investigacao-titulo">Aguardando definição de setor</h3></div><span class="badge badge-warning">EM INVESTIGAÇÃO</span></div><div class="nm-grid-2"><label class="nm-label"><span>O que foi verificado?</span><textarea class="nm-textarea" rows="4" id="nm-investigacao-verificada"></textarea></label><label class="nm-label"><span>Evidências e resultado</span><textarea class="nm-textarea" rows="4" id="nm-investigacao-resultado"></textarea></label></div><div class="nm-grid-3"><label class="nm-label"><span>Causa-raiz</span><input class="nm-input" id="nm-causa-raiz"></label><label class="nm-label"><span>Subcausa</span><input class="nm-input" id="nm-subcausa"></label><label class="nm-label"><span>Ação executada</span><input class="nm-input" id="nm-acao-executada"></label></div><div class="circa-action-row"><button class="btn btn-secondary" onclick="nmSolicitarComplementacao()">Solicitar complementação</button><button class="btn btn-ghost" onclick="nmRegistrarLembrete()">Registrar lembrete</button></div></div><div class="nm-card"><div class="section-label">Tratativa registrada pelo SAC</div><textarea id="nm-investigacao-notas" class="nm-textarea" rows="4" placeholder="Registre as ações realizadas e o resultado obtido..."></textarea><input id="nm-qtd-total" class="nm-visually-hidden"><input id="nm-qtd" class="nm-visually-hidden"><input id="nm-qtd-devolvida" class="nm-visually-hidden"><input id="nm-valor" class="nm-visually-hidden"><input id="nm-vlr-pedido" class="nm-visually-hidden"><input id="nm-vlr-estimado" class="nm-visually-hidden"><input type="checkbox" id="nm-houve-devolucao" class="nm-visually-hidden"></div>
-      <!-- CIRCA — Recomendações de investigação (etapa 4) -->
-      <div id="nm-circa-investigacao-panel" class="nm-card" style="display:none">
-        <div class="circa-card-head"><div><div class="section-label">Recomendações CIRCA — Investigação</div><p style="font-size:12px;color:#555">Baseado na triagem e no histórico de casos similares.</p></div><span class="badge badge-info" style="font-size:11px">IA</span></div>
-        <div id="nm-circa-inv-perguntas" style="margin-bottom:10px"></div>
-        <div id="nm-circa-inv-similares" style="margin-bottom:10px"></div>
-        <div id="nm-circa-inv-tratativa" style="margin-bottom:4px"></div>
-      </div>
-      <!-- Botão para enviar para validação SAC após registrar investigação -->
-      <div class="circa-action-row" style="justify-content:flex-end;margin-top:8px">
-        <button class="btn btn-primary" id="nm-btn-enviar-validacao" onclick="nmEnviarParaValidacaoSAC()" style="display:none">Enviar para validação SAC</button>
-      </div>
-      </div>
+        <!-- Duplicidade / reincidência alert -->
+        <div id="nm-dup-alert" class="nm-dup-alert" style="display:none">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" style="flex:none;margin-top:2px"><circle cx="12" cy="12" r="10" stroke="#B45309" stroke-width="1.5"/><line x1="12" y1="7" x2="12" y2="12" stroke="#B45309" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="16" r="1" fill="#B45309"/></svg>
+          <div style="flex:1">
+            <div style="font-size:12px;font-weight:700;color:#92400E;margin-bottom:3px">Possível reincidência identificada</div>
+            <div id="nm-dup-alert-texto" style="font-size:12px;color:#92400E;line-height:1.6"></div>
+          </div>
+          <button class="nm-btn-ghost" style="height:26px;font-size:11px;padding:2px 9px;border-color:#FFE082;white-space:nowrap" onclick="this.closest('.nm-dup-alert').style.display='none'">Entendido</button>
+        </div>
 
-      <!-- ETAPA 5: VALIDAÇÃO SAC -->
-      <div class="nm-step-panel" data-nm-step="5"><div class="nm-section-hdr"><h2>Validação SAC</h2><p>Confirme a procedência, a causa e a efetividade da resolução.</p></div><div class="nm-card"><div class="section-label">Resultado da investigação</div><textarea class="nm-textarea" id="nm-validacao-resultado" rows="4" placeholder="Resumo da evidência e resultado..." ></textarea></div><div class="nm-card"><div class="section-label">Procedência da manifestação</div><div class="circa-option-grid"><button onclick="nmSetProcedente('SIM',this)" class="nm-proc-btn">Procedente</button><button onclick="nmSetProcedente('NAO',this)" class="nm-proc-btn">Improcedente</button><button onclick="nmSetProcedente('PARCIALMENTE',this)" class="nm-proc-btn">Parcial</button><button onclick="nmSetProcedente('',this)" class="nm-proc-btn">Inconclusiva</button></div><input type="hidden" id="nm-procedente"><textarea id="nm-procedente-justif" class="nm-textarea" rows="3" style="display:none" placeholder="Justificativa da decisão..."></textarea></div><div class="nm-card"><div class="section-label">Verificação da resolução</div><label class="checklist-item"><input type="checkbox" id="nm-check-causa"> Causa registrada com evidência suficiente</label><label class="checklist-item"><input type="checkbox" id="nm-check-acao"> Ação executada e resultado documentado</label><label class="checklist-item"><input type="checkbox" id="nm-check-cliente"> Solução adequada para comunicação ao cliente</label><label class="checklist-item"><input type="checkbox" id="nm-check-sla"> Prazo de resposta atendido (SLA cumprido)</label><label class="checklist-item"><input type="checkbox" id="nm-check-encerramento"> Manifestação apta para encerramento</label></div>
-      <!-- Painel CIRCA: tratamento recomendado — casos similares, procedimentos e fontes (Req 2) -->
-      <div id="nm-circa-step5-panel" class="nm-card" style="display:none">
-        <div class="circa-card-head">
-          <div>
-            <div class="section-label">Tratamento Recomendado — CIRCA</div>
-            <p style="font-size:12px;color:#929090;margin:2px 0 0">Baseado na análise da manifestação e casos similares registrados.</p>
+        <div style="display:flex;justify-content:space-between;gap:7px">
+          <button class="nm-btn-ghost" onclick="nmEtapaAnterior()">← Voltar</button>
+          <div style="display:flex;gap:7px">
+            <button class="nm-btn-secondary" onclick="salvarRascunho()">Salvar</button>
+            <button class="nm-btn-primary" onclick="nmProximaEtapa()">Continuar →</button>
           </div>
         </div>
-        <div id="nm-circa-step5-similares" style="margin-bottom:10px"></div>
-        <div id="nm-circa-step5-tratativa" style="margin-bottom:10px"></div>
-        <div id="nm-circa-step5-procedimentos" style="margin-bottom:10px"></div>
-        <div id="nm-circa-step5-fontes"></div>
-      </div>
-      <!-- Botão de envio para validação SAC na etapa 5 -->
-      <div class="circa-action-row" style="justify-content:flex-end;margin-top:12px">
-        <button class="btn btn-primary" onclick="nmEnviarParaValidacaoSAC()">Registrar validação SAC</button>
-      </div>
       </div>
 
-      <!-- ETAPA 6: DEVOLUTIVA CONCLUSIVA -->
-      <div class="nm-step-panel" data-nm-step="6"><div class="nm-section-hdr"><h2>Devolutiva Conclusiva</h2><p>Prepare uma comunicação clara, revisada e autorizada para o cliente.</p></div><div class="nm-card"><div class="section-label">Resumo da resolução</div><div class="nm-grid-2" style="gap:16px"><div><textarea class="nm-textarea" id="nm-resumo-resolucao" rows="5" placeholder="Resumo do problema, causa confirmada e ação tomada..."></textarea><div class="nm-grid-2" style="margin-top:10px"><label class="nm-label"><span>Canal</span><select class="nm-select" id="nm-devolutiva-canal"><option>WhatsApp</option><option>E-mail</option><option>Telefone</option></select></label><label class="nm-label"><span>Destinatário</span><input class="nm-input" id="nm-devolutiva-destinatario"></label></div></div><div><div style="font-size:11px;font-weight:700;color:#929090;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Informações autorizadas para comunicação</div><div id="nm-info-autorizada" style="padding:10px 12px;background:#F0FDF4;border-radius:7px;border:1px solid #BBF7D0;font-size:12px;color:#166534;line-height:1.6;min-height:48px">Preencha o resultado da investigação e a procedência para ver as informações autorizadas.</div></div></div></div><div class="nm-card"><div class="circa-card-head"><div><div class="section-label">Devolutiva ao cliente</div><p>Revise o texto antes de registrar o envio.</p></div><button class="btn btn-secondary" onclick="gerarDevolutiva?.()">Gerar sugestão</button></div><div style="background:#F0F9FF;border:1px solid #BAE6FD;border-radius:7px;padding:10px 12px;margin-bottom:12px;display:flex;align-items:flex-start;gap:8px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" style="flex:none;margin-top:2px"><circle cx="12" cy="12" r="10" stroke="#0369A1" stroke-width="1.5"/><line x1="12" y1="7" x2="12" y2="12" stroke="#0369A1" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="16" r="1" fill="#0369A1"/></svg><span style="font-size:12px;color:#0C4A6E">A devolutiva deve ser revisada antes do envio. Textos gerados por IA são sugestões — a analista deve validar e personalizar o conteúdo.</span></div><textarea id="nm-devolutiva" class="nm-textarea" rows="8" placeholder="Digite ou revise a devolutiva..."></textarea><textarea id="nm-devolutiva-interna" class="nm-visually-hidden"></textarea><div class="circa-action-row"><button class="btn btn-ghost" onclick="salvarRascunho()">Salvar rascunho</button><button class="btn btn-primary" onclick="document.getElementById('nm-devolutiva').dataset.aprovada='true'">Aprovar devolutiva</button></div></div>
+      <!-- ══ ETAPA 4: INVESTIGAÇÃO ══ -->
+      <div class="nm-step-panel nm-s-anim" data-nm-step="4">
+
+        <div class="nm-g2" style="align-items:start">
+          <div class="nm-card">
+            <div class="nm-sl">Informações verificadas</div>
+            <div><label>O que já foi confirmado</label><textarea class="nm-textarea" rows="3" placeholder="Descreva as informações confirmadas até o momento..." id="nm-investigacao-verificada"></textarea></div>
+            <div style="margin-top:12px"><label>Evidências disponíveis</label><textarea class="nm-textarea" rows="2" placeholder="Fotos, laudos, registros..." id="nm-investigacao-resultado"></textarea></div>
+          </div>
+          <div class="nm-card">
+            <div class="nm-sl">Informações pendentes</div>
+            <div id="nm-inv-pendentes-lista" style="font-size:12.5px;color:#555">
+              <div style="font-size:12px;color:#929090;font-style:italic">Aguardando análise para listar pendências...</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="nm-card">
+          <div class="nm-sl">Hipóteses e casos semelhantes</div>
+          <div style="margin-bottom:14px"><label>Possíveis causas</label><textarea class="nm-textarea" rows="2" placeholder="Descreva hipóteses baseadas no relato e nas informações disponíveis..." id="nm-causa-raiz"></textarea></div>
+          <div style="margin-bottom:4px"><label>Subcausa</label><input type="text" class="nm-input" id="nm-subcausa" placeholder="Subcausa identificada"></div>
+          <div style="margin-top:14px">
+            <div style="font-size:11.5px;font-weight:700;color:#929090;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Casos semelhantes encontrados</div>
+            <div id="ia-similares-step4" class="circa-muted">O histórico será consultado automaticamente após análise.</div>
+          </div>
+        </div>
+
+        <!-- CIRCA investigation panel (legacy compat hidden) -->
+        <div id="nm-circa-investigacao-panel" style="display:none">
+          <div id="nm-circa-inv-perguntas"></div><div id="nm-circa-inv-similares"></div><div id="nm-circa-inv-tratativa"></div>
+        </div>
+
+        <div class="nm-card">
+          <div class="nm-sl">Notas da investigação</div>
+          <textarea id="nm-investigacao-notas" class="nm-textarea" rows="4" placeholder="Registre as ações realizadas e o resultado obtido..."></textarea>
+          <div style="margin-top:10px"><label>Ação executada</label><input type="text" class="nm-input" id="nm-acao-executada" placeholder="Descreva a ação tomada"></div>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;gap:7px">
+          <button class="nm-btn-ghost" onclick="nmEtapaAnterior()">← Voltar</button>
+          <div style="display:flex;gap:7px">
+            <button class="nm-btn-secondary" onclick="salvarRascunho()">Salvar</button>
+            <button class="nm-btn-primary" onclick="nmProximaEtapa()">Continuar →</button>
+          </div>
+        </div>
       </div>
 
-      <!-- ETAPA 7: ENCERRAMENTO E APRENDIZADO -->
-      <div class="nm-step-panel" data-nm-step="7"><div class="nm-section-hdr"><h2>Encerramento e Aprendizado</h2><p>Revise o histórico, gere conhecimento e encerre com rastreabilidade.</p></div><div class="nm-card"><div class="section-label">Resumo da manifestação</div><div id="nm-resumo-ficha"><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px" id="nm-resumo-grid"></div></div></div><div class="nm-card"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px"><div class="section-label" style="margin:0">Conhecimento gerado — CIRCA</div><span style="font-size:11.5px;color:#929090">Proposta para validação, não criação automática</span></div><div id="nm-circa-conhecimento-lista" style="display:flex;flex-direction:column;gap:2px"><div style="display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid #F5F5F5"><span class="badge" style="background:#EFF6FF;color:#1D4ED8;white-space:nowrap">Banco de Casos</span><div style="flex:1"><div style="font-size:12.5px;font-weight:600;color:#242424;margin-bottom:3px" id="nm-aprendizado-caso-preview">—</div><textarea class="nm-textarea nm-visually-hidden" id="nm-aprendizado-caso" rows="3" placeholder="Descrição do caso para o banco..."></textarea></div><span class="badge" style="background:#FEF3C7;color:#B45309">Proposta</span></div><div style="display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid #F5F5F5"><span class="badge" style="background:#DCFCE7;color:#15803D;white-space:nowrap">Matriz de Causas</span><div style="flex:1"><div style="font-size:12.5px;font-weight:600;color:#242424;margin-bottom:3px" id="nm-aprendizado-matriz-preview">—</div><textarea class="nm-textarea nm-visually-hidden" id="nm-aprendizado-matriz" rows="3" placeholder="Causa e tratamento para a matriz..."></textarea></div><span class="badge" style="background:#FEF3C7;color:#B45309">Proposta</span></div></div><label class="nm-label" style="margin-top:14px"><span>Observações finais</span><textarea class="nm-textarea" id="nm-observacoes-finais" rows="3" placeholder="Aprendizados, pendências ou informações para o histórico..."></textarea></label></div><div class="circa-close-card"><div><h3>Pronto para encerrar?</h3><p>Confirme que a devolutiva foi registrada, as validações foram concluídas e o aprendizado foi proposto.</p></div><button class="btn btn-primary" onclick="registrarManifestacao()">Encerrar manifestação</button></div></div>
+      <!-- ══ ETAPA 5: TRATAMENTO ══ -->
+      <div class="nm-step-panel nm-s-anim" data-nm-step="5">
+
+        <div style="font-size:13px;color:#555;line-height:1.65">Selecione uma ou mais tratativas recomendadas, ou registre uma alternativa. A execução efetiva ocorrerá no card de tratativa após o registro.</div>
+
+        <div id="nm-trat-cards-lista" style="display:flex;flex-direction:column;gap:10px">
+          <!-- Filled by nmRenderTratativas() -->
+          <div class="nm-trat-card" onclick="nmToggleTrat(this,'SUBSTITUICAO')">
+            <div style="display:flex;align-items:flex-start;gap:12px">
+              <div style="width:36px;height:36px;border-radius:8px;background:#DCFCE7;display:flex;align-items:center;justify-content:center;flex:none">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#15803D" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+              <div style="flex:1">
+                <div style="display:flex;align-items:center;gap:7px;margin-bottom:4px"><span style="font-size:13px;font-weight:800;color:#242424">Substituição imediata do produto</span><span class="badge" style="background:#DCFCE7;color:#15803D">Procedimento aprovado</span></div>
+                <div style="font-size:12px;color:#555;line-height:1.6;margin-bottom:7px">Emissão de nova NF para substituição das unidades afetadas. Aplicável quando a causa é clara e a alçada autoriza.</div>
+                <div style="display:flex;gap:10px;flex-wrap:wrap"><span style="font-size:11px;color:#929090">28 aplicações anteriores</span><span style="color:#E5E5E5">·</span><span style="font-size:11px;color:#929090">Alçada: SAC</span><span style="color:#E5E5E5">·</span><span style="font-size:11px;color:#929090">Fonte: Matriz de Tratamento</span></div>
+              </div>
+              <div class="nm-trat-radio" style="width:20px;height:20px;border-radius:50%;border:1.5px solid #E5E5E5;display:flex;align-items:center;justify-content:center;flex:none;margin-top:2px"></div>
+            </div>
+          </div>
+          <div class="nm-trat-card" onclick="nmToggleTrat(this,'INVESTIGACAO_QUALIDADE')">
+            <div style="display:flex;align-items:flex-start;gap:12px">
+              <div style="width:36px;height:36px;border-radius:8px;background:#EFF6FF;display:flex;align-items:center;justify-content:center;flex:none">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" stroke="#1D4ED8" stroke-width="1.6" stroke-linecap="round"/><circle cx="9" cy="7" r="4" stroke="#1D4ED8" stroke-width="1.6"/></svg>
+              </div>
+              <div style="flex:1">
+                <div style="display:flex;align-items:center;gap:7px;margin-bottom:4px"><span style="font-size:13px;font-weight:800;color:#242424">Encaminhamento para Qualidade Industrial</span><span class="badge" style="background:#EFF6FF;color:#1D4ED8">Tratativa histórica</span></div>
+                <div style="font-size:12px;color:#555;line-height:1.6;margin-bottom:7px">Solicitar investigação técnica do lote e do equipamento de produção envolvido. Recomendado quando há indício de falha de processo.</div>
+                <div style="display:flex;gap:10px;flex-wrap:wrap"><span style="font-size:11px;color:#929090">15 aplicações anteriores</span><span style="color:#E5E5E5">·</span><span style="font-size:11px;color:#929090">Alçada: SAC</span><span style="color:#E5E5E5">·</span><span style="font-size:11px;color:#929090">Fonte: Banco de Casos</span></div>
+              </div>
+              <div class="nm-trat-radio" style="width:20px;height:20px;border-radius:50%;border:1.5px solid #E5E5E5;display:flex;align-items:center;justify-content:center;flex:none;margin-top:2px"></div>
+            </div>
+          </div>
+          <div class="nm-trat-card" onclick="nmToggleTrat(this,'CREDITO_NF')">
+            <div style="display:flex;align-items:flex-start;gap:12px">
+              <div style="width:36px;height:36px;border-radius:8px;background:#FEF3C7;display:flex;align-items:center;justify-content:center;flex:none">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke="#B45309" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+              <div style="flex:1">
+                <div style="display:flex;align-items:center;gap:7px;margin-bottom:4px"><span style="font-size:13px;font-weight:800;color:#242424">Crédito em nota fiscal</span><span class="badge" style="background:#FEF3C7;color:#B45309">Requer aprovação</span></div>
+                <div style="font-size:12px;color:#555;line-height:1.6;margin-bottom:7px">Emissão de nota de crédito referente ao valor das unidades afetadas. Requer aprovação do Comercial para valores acima de R$ 5.000.</div>
+                <div style="display:flex;gap:10px;flex-wrap:wrap"><span style="font-size:11px;color:#929090">8 aplicações anteriores</span><span style="color:#E5E5E5">·</span><span style="font-size:11px;color:#929090">Alçada: Comercial</span><span style="color:#E5E5E5">·</span><span style="font-size:11px;color:#929090">Fonte: Sugestão IA</span></div>
+              </div>
+              <div class="nm-trat-radio" style="width:20px;height:20px;border-radius:50%;border:1.5px solid #E5E5E5;display:flex;align-items:center;justify-content:center;flex:none;margin-top:2px"></div>
+            </div>
+          </div>
+        </div>
+        <input type="hidden" id="nm-tratativas-selecionadas" value="">
+
+        <div class="nm-card" style="padding:12px 16px;background:#FAFAFA">
+          <div style="font-size:12px;color:#929090">Tratativa diferente das recomendações? <button class="nm-btn-ghost" style="height:24px;font-size:11px;margin-left:6px;padding:2px 9px" onclick="this.nextElementSibling.style.display='block';this.style.display='none'">Registrar alternativa com justificativa</button></div>
+          <div style="display:none;margin-top:10px"><label>Tratativa alternativa</label><textarea class="nm-textarea" rows="3" id="nm-tratativa-alternativa" placeholder="Descreva a tratativa e a justificativa para não utilizar as opções recomendadas..."></textarea></div>
+        </div>
+
+        <!-- CIRCA step5 panel (legacy compat) -->
+        <div id="nm-circa-step5-panel" style="display:none"><div id="nm-circa-step5-similares"></div><div id="nm-circa-step5-tratativa"></div><div id="nm-circa-step5-procedimentos"></div><div id="nm-circa-step5-fontes"></div></div>
+        <!-- validation compat fields -->
+        <input type="hidden" id="nm-procedente"><textarea id="nm-procedente-justif" class="nm-visually-hidden"></textarea><textarea id="nm-validacao-resultado" class="nm-visually-hidden"></textarea>
+        <input type="checkbox" id="nm-check-causa" class="nm-visually-hidden"><input type="checkbox" id="nm-check-acao" class="nm-visually-hidden"><input type="checkbox" id="nm-check-cliente" class="nm-visually-hidden"><input type="checkbox" id="nm-check-sla" class="nm-visually-hidden"><input type="checkbox" id="nm-check-encerramento" class="nm-visually-hidden">
+        <button id="nm-btn-enviar-validacao" onclick="nmEnviarParaValidacaoSAC()" class="nm-visually-hidden">Enviar para validação SAC</button>
+
+        <div style="display:flex;justify-content:space-between;gap:7px">
+          <button class="nm-btn-ghost" onclick="nmEtapaAnterior()">← Voltar</button>
+          <div style="display:flex;gap:7px">
+            <button class="nm-btn-secondary" onclick="salvarRascunho()">Salvar</button>
+            <button class="nm-btn-primary" onclick="nmProximaEtapa()">Continuar →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ ETAPA 6: DIRECIONAMENTO ══ -->
+      <div class="nm-step-panel nm-s-anim" data-nm-step="6">
+
+        <div style="font-size:13px;color:#555;line-height:1.65">Defina como a manifestação será conduzida após o registro.</div>
+
+        <input type="hidden" id="nm-caminho-tratativa">
+        <input type="date" id="nm-data-encaminhamento" class="nm-visually-hidden">
+
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <!-- SAC -->
+          <div class="nm-path-card" id="nm-path-sac" onclick="nmSelPath('SAC',this)">
+            <div style="display:flex;align-items:flex-start;gap:14px">
+              <div style="width:36px;height:36px;border-radius:9px;background:#DCFCE7;display:flex;align-items:center;justify-content:center;flex:none">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#15803D" stroke-width="1.6"/><path d="M7 12l4 4 6-6" stroke="#15803D" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+              <div style="flex:1">
+                <div style="font-size:13px;font-weight:800;color:#242424;margin-bottom:3px">Tratativa pelo SAC</div>
+                <div style="font-size:12px;color:#929090;line-height:1.6">O SAC conduzirá a investigação e resolução com base nos procedimentos e alçadas vigentes.</div>
+                <div id="nm-path-sac-detail" style="display:none;margin-top:12px;padding:10px 12px;background:#F0FDF4;border-radius:7px;border:1px solid #BBF7D0">
+                  <div class="nm-g2" style="gap:10px">
+                    <div><label>Responsável SAC</label><input type="text" class="nm-input" id="nm-responsavel-sac" placeholder="Nome do responsável"></div>
+                    <div><label>Prazo interno</label><input type="date" class="nm-input" id="nm-prazo-sac"></div>
+                  </div>
+                  <div style="margin-top:10px"><label>Notas da tratativa SAC</label><textarea class="nm-textarea" rows="3" id="nm-tratativa-sac" placeholder="Descreva como o SAC conduzirá a resolução..."></textarea></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Setor -->
+          <div class="nm-path-card" id="nm-path-setor" onclick="nmSelPath('SETOR',this)">
+            <div style="display:flex;align-items:flex-start;gap:14px">
+              <div style="width:36px;height:36px;border-radius:9px;background:#FDECEC;display:flex;align-items:center;justify-content:center;flex:none">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" stroke="#C70602" stroke-width="1.6" stroke-linecap="round"/><circle cx="9" cy="7" r="4" stroke="#C70602" stroke-width="1.6"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="#C70602" stroke-width="1.6" stroke-linecap="round"/></svg>
+              </div>
+              <div style="flex:1">
+                <div style="font-size:13px;font-weight:800;color:#242424;margin-bottom:3px">Encaminhar ao setor responsável</div>
+                <div style="font-size:12px;color:#929090;line-height:1.6">A manifestação depende de investigação, providência ou decisão de outra área.</div>
+                <div id="nm-path-setor-detail" style="display:none;margin-top:12px;padding:12px 14px;background:#FFF5F5;border-radius:8px;border:1px solid #FECACA">
+                  <div class="nm-g3" style="gap:10px;margin-bottom:10px">
+                    <div><label>Setor *</label><select class="nm-select" id="nm-setor-acionado" onchange="nmCarregarResponsaveisSetor()"><option value="">Selecionar setor</option><option>Qualidade Industrial</option><option>Logística</option><option>Produção</option><option>Comercial</option><option>Financeiro</option></select></div>
+                    <div><label>Responsável *</label><select class="nm-select" id="nm-responsavel-acionado"><option value="">Selecionar responsável</option></select></div>
+                    <div><label>Prazo de retorno *</label><input type="date" class="nm-input" id="nm-prazo-retorno"></div>
+                  </div>
+                  <div class="nm-g2" style="gap:10px;margin-bottom:10px">
+                    <div><label>Gestor / aprovador</label><select class="nm-select" id="nm-gestor-aprovador"><option value="">Sem aprovador específico</option></select></div>
+                    <div><label>Canal de retorno</label><select class="nm-select" id="nm-canal-retorno"><option>WhatsApp</option><option>E-mail</option><option>Telefone</option></select></div>
+                  </div>
+                  <div style="margin-bottom:8px"><label>Motivo do encaminhamento</label><textarea class="nm-textarea" rows="2" id="nm-complemento-pedido" placeholder="Explique por que este setor precisa atuar..."></textarea></div>
+                  <div><label>Orientações e perguntas para o setor</label><textarea class="nm-textarea" rows="3" id="nm-escopo-acionado" placeholder="O que deve ser investigado, quais evidências solicitar..."></textarea></div>
+                  <div style="margin-top:10px;padding:8px 12px;background:#FEF3C7;border-radius:6px;font-size:11.5px;color:#92400E">O gestor e o responsável serão notificados automaticamente após o registro.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- legacy compat panels -->
+        <div id="nm-plano-conducao" style="display:none"><div id="nm-plano-lista"></div><button onclick="nmConfirmarPlano()" class="nm-visually-hidden">Confirmar</button><div id="nm-plano-status"></div></div>
+        <div id="nm-box-tratativa-sac" style="display:none"></div>
+        <div id="nm-box-complemento" style="display:none"></div>
+        <div id="nm-box-encaminhamento-setor" style="display:none"></div>
+
+        <div style="display:flex;justify-content:space-between;gap:7px">
+          <button class="nm-btn-ghost" onclick="nmEtapaAnterior()">← Voltar</button>
+          <div style="display:flex;gap:7px">
+            <button class="nm-btn-secondary" onclick="salvarRascunho()">Salvar</button>
+            <button class="nm-btn-primary" onclick="nmProximaEtapa()">Continuar →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ ETAPA 7: REVISÃO ══ -->
+      <div class="nm-step-panel nm-s-anim" data-nm-step="7">
+
+        <div style="font-size:13px;color:#555;line-height:1.65">Revise todas as informações antes de registrar. Clique em Editar para corrigir qualquer seção.</div>
+
+        <div id="nm-revisao-secoes" style="display:flex;flex-direction:column;gap:10px">
+          <!-- filled by nmMontarRevisao() -->
+        </div>
+
+        <!-- Pendências -->
+        <div id="nm-revisao-pendencias" style="display:none" class="nm-err-alert">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" style="flex:none;margin-top:2px"><circle cx="12" cy="12" r="10" stroke="#B91C1C" stroke-width="1.6"/><line x1="12" y1="7" x2="12" y2="12" stroke="#B91C1C" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="16" r="1" fill="#B91C1C"/></svg>
+          <div>
+            <div style="font-size:12px;font-weight:700;color:#B91C1C;margin-bottom:3px">Campos obrigatórios pendentes</div>
+            <div id="nm-revisao-pendencias-texto" style="font-size:12px;color:#B91C1C;line-height:1.6"></div>
+          </div>
+        </div>
+
+        <!-- Register CTA -->
+        <div class="nm-register-cta">
+          <div style="font-size:14px;font-weight:800;color:#242424;margin-bottom:6px">Pronto para registrar?</div>
+          <div style="font-size:12px;color:#929090;margin-bottom:16px;line-height:1.6">O registro gerará o protocolo, notificará o responsável, iniciará os SLAs e disponibilizará a manifestação na Central.</div>
+          <div style="display:flex;gap:7px;justify-content:center;flex-wrap:wrap">
+            <button class="nm-btn-secondary" onclick="salvarRascunho()">Salvar rascunho</button>
+            <button class="nm-btn-primary" style="padding:10px 28px;font-size:13px;height:auto" onclick="registrarManifestacao()">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Registrar manifestação
+            </button>
+          </div>
+        </div>
+
+        <div style="display:flex;justify-content:flex-start">
+          <button class="nm-btn-ghost" onclick="nmEtapaAnterior()">← Voltar</button>
+        </div>
+
+        <!-- legacy compat hidden fields for step 7 -->
+        <div id="nm-resumo-ficha" style="display:none"><div id="nm-resumo-grid"></div></div>
+        <div id="nm-circa-conhecimento-lista" style="display:none">
+          <textarea class="nm-visually-hidden" id="nm-aprendizado-caso"></textarea>
+          <textarea class="nm-visually-hidden" id="nm-aprendizado-matriz"></textarea>
+          <div id="nm-aprendizado-caso-preview" class="nm-visually-hidden"></div>
+          <div id="nm-aprendizado-matriz-preview" class="nm-visually-hidden"></div>
+        </div>
+        <textarea id="nm-observacoes-finais" class="nm-visually-hidden"></textarea>
+        <textarea id="nm-resumo-resolucao" class="nm-visually-hidden"></textarea>
+        <select id="nm-devolutiva-canal" class="nm-visually-hidden"><option>WhatsApp</option><option>E-mail</option><option>Telefone</option></select>
+        <input id="nm-devolutiva-destinatario" class="nm-visually-hidden">
+        <textarea id="nm-devolutiva" class="nm-visually-hidden"></textarea>
+        <textarea id="nm-devolutiva-interna" class="nm-visually-hidden"></textarea>
+        <div id="nm-info-autorizada" style="display:none"></div>
+      </div>
+
+      <!-- ═══════════ ALL HIDDEN FIELDS (compat) ═══════════ -->
+      <input type="hidden" id="nm-categoria">
+      <input type="hidden" id="nm-motivo">
+      <input type="hidden" id="nm-severidade" value="MEDIA">
+      <input type="hidden" id="nm-setor-resp">
+      <input type="checkbox" id="nm-gera-rnc" class="nm-visually-hidden">
+      <input type="checkbox" id="nm-analise-causa" class="nm-visually-hidden">
+      <input id="nm-protocolo-externo" class="nm-visually-hidden">
+      <input id="nm-vinculo-man" class="nm-visually-hidden">
+      <input id="nm-cliente-cod" class="nm-visually-hidden">
+      <input id="nm-num" class="nm-visually-hidden">
+      <input id="nm-canal" class="nm-visually-hidden">
+      <input id="nm-nr-pedido" class="nm-visually-hidden">
+      <input id="nm-data-nf" class="nm-visually-hidden">
+      <input id="nm-dt-entrega-p" class="nm-visually-hidden">
+      <input id="nm-dt-entrega-e" class="nm-visually-hidden">
+      <input id="nm-repr" class="nm-visually-hidden">
+      <input id="nm-qtd-total" class="nm-visually-hidden">
+      <input id="nm-qtd-devolvida" class="nm-visually-hidden">
+      <input id="nm-valor" class="nm-visually-hidden">
+      <input id="nm-vlr-pedido" class="nm-visually-hidden">
+      <input id="nm-vlr-estimado" class="nm-visually-hidden">
+      <input type="checkbox" id="nm-houve-devolucao" class="nm-visually-hidden">
+      <!-- leg compat step selectors -->
+      <select id="nm-setor-acionado-hidden" class="nm-visually-hidden"></select>
     </div><!-- /nm-steps-body -->
 
-    <!-- RODAPÉ DE NAVEGAÇÃO -->
-    <div class="nm-navigation-footer" style="background:#fff;border-top:1px solid #E4E4E4;padding:14px 28px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
-      <button onclick="nmEtapaAnterior()" id="nm-btn-voltar" style="height:42px;border:1.5px solid #E4E4E4;background:#fff;border-radius:10px;padding:0 22px;font-size:13px;font-weight:600;cursor:pointer;color:#545252;font-family:Montserrat,system-ui,sans-serif">← Voltar</button>
+    <!-- CIRCA SIDEBAR (desktop only) -->
+    <div class="circa-col" id="nm-circa-sidebar">
+      <div style="font-size:11px;font-weight:700;color:#0369A1;text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px;display:flex;align-items:center;gap:6px">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4" stroke="#0369A1" stroke-width="1.5"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2" stroke="#0369A1" stroke-width="1.5" stroke-linecap="round"/></svg>
+        Assistência CIRCA
+      </div>
+      <div id="nm-circa-sidebar-content">
+        <div style="padding:10px 0;border-bottom:1px solid #F5F5F5">
+          <div style="font-size:10.5px;font-weight:700;color:#0369A1;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Classificação sugerida</div>
+          <div style="font-size:11.5px;color:#0C4A6E;line-height:1.6" id="nm-circa-sb-classificacao">Preencha os dados para ver a sugestão de classificação.</div>
+        </div>
+        <div style="padding:10px 0;border-bottom:1px solid #F5F5F5">
+          <div style="font-size:10.5px;font-weight:700;color:#0369A1;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Informação ausente</div>
+          <div style="font-size:11.5px;color:#0C4A6E;line-height:1.6" id="nm-circa-sb-ausente">Aguardando análise do relato.</div>
+        </div>
+        <div style="padding:10px 0;border-bottom:1px solid #F5F5F5">
+          <div style="font-size:10.5px;font-weight:700;color:#0369A1;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Reincidência potencial</div>
+          <div style="font-size:11.5px;color:#0C4A6E;line-height:1.6" id="nm-circa-sb-reincidencia">Aguardando dados de produto e cliente.</div>
+        </div>
+        <div style="padding:10px 0">
+          <div style="font-size:10.5px;font-weight:700;color:#0369A1;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Procedimento recomendado</div>
+          <div style="font-size:11.5px;color:#0C4A6E;line-height:1.6" id="nm-circa-sb-procedimento">Aguardando classificação.</div>
+        </div>
+      </div>
+    </div>
+
+    </div><!-- /nm-ref-workspace flex row -->
+
+    <!-- FOOTER NAV (shown via JS on mobile / as fallback) -->
+    <div id="nm-nav-footer" style="background:#fff;border-top:1px solid #E4E4E4;padding:12px 28px;display:none;align-items:center;justify-content:space-between;flex-shrink:0">
+      <button id="nm-btn-voltar" onclick="nmEtapaAnterior()" class="nm-btn-secondary">← Voltar</button>
       <div style="font-size:12px;color:#929090;font-weight:500" id="nm-etapa-label">Etapa 1 de 7</div>
-      <button onclick="nmProximaEtapa()" id="nm-btn-continuar" style="height:42px;border:0;background:#C70602;color:#fff;border-radius:10px;padding:0 32px;font-size:13px;font-weight:700;cursor:pointer;font-family:Montserrat,system-ui,sans-serif;letter-spacing:.01em">Continuar →</button>
-      <button onclick="registrarManifestacao()" id="nm-btn-confirmar" style="display:none;height:42px;border:0;background:#C70602;color:#fff;border-radius:10px;padding:0 28px;font-size:13px;font-weight:700;cursor:pointer;font-family:Montserrat,system-ui,sans-serif">Confirmar e abrir manifestação</button>
-    </div>
-    </div>
+      <button id="nm-btn-continuar" onclick="nmProximaEtapa()" class="nm-btn-primary">Continuar →</button>
+      <button id="nm-btn-confirmar" onclick="registrarManifestacao()" class="nm-btn-primary" style="display:none">Registrar manifestação</button>
     </div>
 
     <script>
     (function(){
       var NM_TOTAL = 7;
       var NM_STEPS_META = [
-        {l:'Dados da Manifestação',d:'Identificação do cliente, registro e descrição'},
-        {l:'Análise inteligente e triagem',d:'Classificação, risco e orientação operacional'},
-        {l:'Condução',d:'Caminho da tratativa e acionamentos internos'},
-        {l:'Investigação e resolução',d:'Evidências, causa e ações executadas'},
-        {l:'Validação SAC',d:'Procedência e validação da manifestação'},
-        {l:'Devolutiva conclusiva',d:'Comunicação revisada ao cliente'},
-        {l:'Encerramento e aprendizado',d:'Critérios de encerramento e conhecimento'}
+        {l:'Identificação',d:'Empresa, cliente e origem'},
+        {l:'Relato',d:'Tipo, descrição e evidências'},
+        {l:'Classificação',d:'Tipo, motivo e setor responsável'},
+        {l:'Investigação',d:'Informações verificadas e pendentes'},
+        {l:'Tratamento',d:'Seleção de tratativas recomendadas'},
+        {l:'Direcionamento',d:'Caminho da resolução'},
+        {l:'Revisão',d:'Revisão final e registro'}
       ];
       window.nmEtapa = window.nmEtapa || 1;
       window._nmEtapasConcluidas = window._nmEtapasConcluidas || new Set([1]);
@@ -3188,9 +3612,8 @@
         if(btnF) btnF.style.display = window.nmEtapa === NM_TOTAL ? 'block' : 'none';
         var body = document.getElementById('nm-steps-body');
         if(body) body.scrollTop = 0;
-        if(window.nmEtapa === 5 && typeof nmPreencherValidacao === 'function') nmPreencherValidacao();
-        if(window.nmEtapa === 7) nmMontarResumo();
-        if(window.nmEtapa === 6) nmMontarDevolutiva();
+        if(window.nmEtapa === 7 && typeof nmMontarRevisao === 'function') nmMontarRevisao();
+        if(window.nmEtapa === 3 && window._nmAnaliseAtual && typeof nmAtualizarCircaSidebar === 'function') nmAtualizarCircaSidebar();
       }
 
       function nmMontarResumo(){
@@ -3333,8 +3756,10 @@
       };
 
       window.nmSelEmpresa = function(btn, val){
-        document.querySelectorAll('.nm-empresa-btn').forEach(function(b){b.classList.remove('active');});
-        btn.classList.add('active');
+        // support both old .nm-empresa-btn and new .nm-chip within the empresa chips container
+        var container = document.getElementById('nm-empresa-chips') || btn.closest('#nm-empresa-chips') || btn.parentElement;
+        if(container) container.querySelectorAll('.nm-chip,.nm-empresa-btn').forEach(function(b){b.classList.remove('sel','active');});
+        btn.classList.add('sel');
         var sel = document.getElementById('nm-empresa-reclamada');
         if(sel) sel.value = val;
         var LABELS = {'CHIACCHIO EMBALAGENS':'Chiacchio Embalagens','PLASCHIO':'Plaschio','TUBAHIA':'Tubahia/Cesbap','TUBAHIA / CESBAP':'Tubahia/Cesbap'};
@@ -3342,14 +3767,128 @@
         if(ref) ref.textContent = LABELS[val] || val;
       };
 
+      window.nmSelTipo = function(btn, val){
+        var container = document.getElementById('nm-tipo-chips');
+        if(container) container.querySelectorAll('.nm-chip').forEach(function(b){b.classList.remove('sel');});
+        btn.classList.add('sel');
+        var sel = document.getElementById('nm-tipo');
+        if(sel) sel.value = val;
+        var selClass = document.getElementById('nm-tipo-class');
+        if(selClass) selClass.value = val;
+      };
+
+      window.nmToggleTrat = function(card, val){
+        card.classList.toggle('sel');
+        // keep track of selected tratativas
+        if(!window._nmTratativas) window._nmTratativas = [];
+        var idx = window._nmTratativas.indexOf(val);
+        if(card.classList.contains('sel')){
+          if(idx < 0) window._nmTratativas.push(val);
+        } else {
+          if(idx >= 0) window._nmTratativas.splice(idx,1);
+        }
+        var hidden = document.getElementById('nm-tratativas-selecionadas');
+        if(hidden) hidden.value = window._nmTratativas.join(',');
+        // also update caminho-tratativa legacy field
+        var ct = document.getElementById('nm-caminho-tratativa');
+        if(ct) ct.value = window._nmTratativas.join(',');
+      };
+
+      window.nmSelPath = function(val, card){
+        document.querySelectorAll('.nm-path-card').forEach(function(c){
+          c.classList.remove('sel');
+          var det = c.querySelector('[id$="-detail"]');
+          if(det) det.style.display = 'none';
+        });
+        if(card) card.classList.add('sel');
+        // show detail for selected card
+        var detId = val === 'SAC' ? 'nm-path-sac-detail' : 'nm-path-setor-detail';
+        var det = document.getElementById(detId);
+        if(det) det.style.display = '';
+        // update legacy hidden field
+        var campo = document.getElementById('nm-caminho-tratativa');
+        if(campo && !campo.value) campo.value = val;
+        var setor = document.getElementById('nm-setor-acionado');
+        if(setor && val === 'SAC' && !setor.value) setor.value = 'SAC';
+      };
+
+      window.nmMontarRevisao = function(){
+        var el = document.getElementById('nm-revisao-secoes');
+        if(!el) return;
+        function v(id){var e=document.getElementById(id);return e?(e.value||e.textContent||'').trim()||'—':'—';}
+        var rows = [
+          {l:'Empresa', v:v('nm-empresa-reclamada')},
+          {l:'Cliente', v:v('nm-empresa')||v('nm-nome')},
+          {l:'Contato', v:v('nm-tel')||v('nm-email')},
+          {l:'Tipo', v:v('nm-tipo')},
+          {l:'Canal', v:v('nm-origem')},
+          {l:'Descrição', v:v('nm-descricao')},
+          {l:'Produto', v:v('nm-produto')},
+          {l:'Lote', v:v('nm-lote')},
+          {l:'Classificação', v:v('nm-motivo-class')||v('nm-motivo')},
+          {l:'Criticidade', v:v('nm-criticidade')||v('nm-severidade')},
+          {l:'Tratativa', v:v('nm-tratativas-selecionadas')||v('nm-caminho-tratativa')},
+          {l:'Direcionamento', v:v('nm-caminho-tratativa')},
+        ].filter(function(r){return r.v && r.v !== '—';});
+        var html = '<table style="width:100%;border-collapse:collapse;font-size:12.5px">';
+        rows.forEach(function(r){
+          html += '<tr><td style="padding:6px 0;color:#555;width:38%;font-weight:600;border-bottom:1px solid #F0F0F0">'+r.l+'</td><td style="padding:6px 0;border-bottom:1px solid #F0F0F0">'+r.v+'</td></tr>';
+        });
+        html += '</table>';
+        el.innerHTML = html;
+        // check for pending required fields
+        var pend = document.getElementById('nm-revisao-pendencias');
+        var pendTxt = document.getElementById('nm-revisao-pendencias-texto');
+        var required = [{id:'nm-descricao',l:'Relato'},{id:'nm-motivo-class',l:'Motivo'},{id:'nm-empresa-reclamada',l:'Empresa'}];
+        var missing = required.filter(function(f){var e=document.getElementById(f.id);return !e||!e.value.trim();}).map(function(f){return f.l;});
+        if(pend) pend.style.display = missing.length ? '' : 'none';
+        if(pendTxt && missing.length) pendTxt.textContent = 'Campos obrigatórios não preenchidos: '+missing.join(', ')+'.';
+      };
+
+      window.nmAplicarSugestaoClassificacao = function(){
+        var analise = window._nmAnaliseAtual;
+        if(!analise) return;
+        if(analise.tipo){var e=document.getElementById('nm-tipo-class');if(e)e.value=analise.tipo;}
+        if(analise.motivo){var e=document.getElementById('nm-motivo-class');if(e)e.value=analise.motivo;}
+        if(analise.severidade){var e=document.getElementById('nm-criticidade');if(e)e.value=analise.severidade;}
+        if(analise.setor){var e=document.getElementById('nm-setor-class');if(e)e.value=analise.setor;}
+        // hide the suggestion panel
+        var panel = document.getElementById('nm-circa-classificacao');
+        if(panel) panel.style.display = 'none';
+      };
+
+      window.nmAtualizarCircaSidebar = function(){
+        var analise = window._nmAnaliseAtual;
+        if(!analise) return;
+        var classEl = document.getElementById('nm-circa-sb-classificacao');
+        if(classEl && analise.tipo) classEl.textContent = (analise.tipo||'')+(analise.motivo?' — '+analise.motivo:'');
+        var ausEl = document.getElementById('nm-circa-sb-ausente');
+        if(ausEl && analise.informacoesFaltantes) ausEl.textContent = analise.informacoesFaltantes;
+        var reincEl = document.getElementById('nm-circa-sb-reincidencia');
+        if(reincEl && analise.reincidencia) reincEl.textContent = analise.reincidencia;
+        var procEl = document.getElementById('nm-circa-sb-procedimento');
+        if(procEl && analise.procedimento) procEl.textContent = analise.procedimento;
+      };
+
       // init on page show
       function initWizard(){
         window.nmEtapa = 1;
-        var activeBtn = document.querySelector('.nm-empresa-btn.active');
+        window._nmTratativas = [];
+        // find active empresa chip (new .nm-chip.sel or old .nm-empresa-btn.active)
+        var activeBtn = document.querySelector('#nm-empresa-chips .nm-chip.sel') || document.querySelector('.nm-empresa-btn.active');
         var sel = document.getElementById('nm-empresa-reclamada');
         if(activeBtn && sel && !sel.value){
           var m = (activeBtn.getAttribute('onclick')||'').match(/'([^']+)'\s*\)/);
-          sel.value = m ? m[1] : activeBtn.textContent.trim();
+          if(m) sel.value = m[1];
+        }
+        // default empresa to first chip if none selected
+        if(sel && !sel.value){
+          var firstChip = document.querySelector('#nm-empresa-chips .nm-chip');
+          if(firstChip){
+            firstChip.classList.add('sel');
+            var m2 = (firstChip.getAttribute('onclick')||'').match(/'([^']+)'\s*\)/);
+            if(m2) sel.value = m2[1];
+          }
         }
         renderStepper();
       }
