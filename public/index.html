@@ -2927,7 +2927,7 @@
         <div class="nm-approved-breadcrumb"><button type="button" onclick="navigate('central-sac',null)">Central de Manifestações</button><b>›</b><strong>Nova Manifestação</strong></div>
         <div class="nm-approved-actions">
           <button type="button" class="nm-ref-btn" onclick="navigate('central-sac',null)">Voltar</button>
-          <button type="button" class="nm-ref-btn primary-outline" onclick="salvarRascunho()">Salvar</button><button type="button" class="nm-ref-btn" onclick="nmSalvarRascunhoESair()">Salvar rascunho e sair</button>
+          <button type="button" class="nm-ref-btn primary-outline" onclick="salvarRascunho()">Salvar</button><button type="button" class="nm-ref-btn" id="nm-btn-salvar-sair" onclick="nmSalvarRascunhoESair()">Salvar rascunho e sair</button><span id="nm-save-state" role="status" aria-live="polite" style="font-size:11px;color:#929090"></span>
         </div>
       </div>
       <div class="nm-approved-meta">
@@ -14777,6 +14777,8 @@ async function nmSalvarRascunhoESair(){
 async function salvarRascunho(options={}) {
   const silent=!!options.silent;
   const reportError=!!options.reportError || !silent;
+  const stateEl = document.getElementById('nm-save-state');
+  if (stateEl && !silent) { stateEl.textContent = 'Salvando…'; stateEl.style.color = '#929090'; }
   try {
     const payload=nmCardPayload();
     if (_nmCardId && window._nmStatusPersistido && !/^RASCUNHO$/i.test(window._nmStatusPersistido)) { delete payload.status; delete payload.statusFicha; delete payload.STATUS; delete payload.STATUS_FICHA; }
@@ -14804,6 +14806,8 @@ async function salvarRascunho(options={}) {
     _nmRascunhoUltimaEdicao=String(res.atualizadoEm||_nmRascunhoUltimaEdicao||'');
     if (payload.status || payload.STATUS) window._nmStatusPersistido=String(payload.status||payload.STATUS);
     if (_nmCardId) localStorage.setItem('sac-rascunho-id', String(_nmCardId));
+    const statusEl = document.getElementById('nm-ref-status');
+    if (statusEl && !payload.finalizar) { statusEl.textContent = 'Rascunho'; statusEl.style.background = '#FFF7E6'; statusEl.style.color = '#8A5700'; }
     // O vínculo de arquivos usa a mesma ficha e o mesmo endpoint de anexos;
     // o rascunho não perde os arquivos selecionados quando a página é
     // atualizada. O servidor deduplica nomes já vinculados e marca falhas
@@ -14814,13 +14818,39 @@ async function salvarRascunho(options={}) {
       if (!upload?.sucesso) throw new Error(upload?.erro || 'Falha ao vincular os anexos do rascunho.');
       _nmRascunhoUltimaEdicao=String(upload.atualizadoEm||_nmRascunhoUltimaEdicao||'');
     }
-    if(!silent) alert(_nmCardId ? `Rascunho salvo. Identificador técnico: ${_nmCardId}. Protocolo definitivo será gerado na finalização.` : 'Rascunho salvo.');
+    if(!silent) {
+      if (stateEl) { stateEl.textContent = 'Rascunho salvo'; stateEl.style.color = '#1E6B3A'; }
+      alert(_nmCardId ? `Rascunho salvo. Identificador técnico: ${_nmCardId}. Protocolo definitivo será gerado na finalização.` : 'Rascunho salvo.');
+    }
     return true;
   } catch(e) {
+    if (stateEl && !silent) { stateEl.textContent = 'Falha ao salvar'; stateEl.style.color = '#C70602'; }
     if(reportError) alert('Não foi possível salvar os dados desta etapa: '+(e.message||'erro desconhecido'));
     return false;
   }
 }
+
+// A saída do formulário só ocorre depois de o servidor confirmar a gravação
+// do estado atual. O identificador técnico e a etapa permanecem no mesmo
+// rascunho; nenhuma nova manifestação ou protocolo é criado nessa ação.
+let _nmSalvarESairEmAndamento = false;
+window.nmSalvarRascunhoESair = async function() {
+  if (_nmSalvarESairEmAndamento) return;
+  const btn = document.getElementById('nm-btn-salvar-sair');
+  _nmSalvarESairEmAndamento = true;
+  if (btn) { btn.disabled = true; btn.setAttribute('aria-busy', 'true'); btn.textContent = 'Salvando…'; }
+  const stateEl = document.getElementById('nm-save-state');
+  if (stateEl) { stateEl.textContent = 'Salvando rascunho…'; stateEl.style.color = '#929090'; }
+  try {
+    const ok = await salvarRascunho({silent:true, reportError:true});
+    if (!ok) return;
+    if (stateEl) { stateEl.textContent = 'Rascunho salvo'; stateEl.style.color = '#1E6B3A'; }
+    if (typeof navigate === 'function') navigate('central-sac', document.querySelector('[onclick*=central-sac]'));
+  } finally {
+    _nmSalvarESairEmAndamento = false;
+    if (btn) { btn.disabled = false; btn.removeAttribute('aria-busy'); btn.textContent = 'Salvar rascunho e sair'; }
+  }
+};
 
 // ===== BANCO DE RNC =====
 async function loadBancoRNC() {
@@ -30815,6 +30845,16 @@ window.gdDecidir=async function(id,decisao){
     <button onclick="tratCarregar()" style="border:1px solid #EBEBEB;background:#fff;border-radius:7px;padding:6px 12px;cursor:pointer;font-size:12px;color:#545252;font-family:inherit">⟳ Atualizar</button>
   </div>
 
+  <nav id="trat-tabs" aria-label="Abas da ficha de tratativa" style="position:sticky;top:56px;z-index:40;background:#fff;border-bottom:1px solid #EBEBEB;padding:0 24px;display:flex;gap:0;overflow-x:auto">
+    <button type="button" data-trat-tab="visao" onclick="tratMudarAba('visao')" class="trat-tab active">Visão geral</button>
+    <button type="button" data-trat-tab="investigacao" onclick="tratMudarAba('investigacao')" class="trat-tab">Investigação</button>
+    <button type="button" data-trat-tab="tratativa" onclick="tratMudarAba('tratativa')" class="trat-tab">Tratativa</button>
+    <button type="button" data-trat-tab="apoio" onclick="tratMudarAba('apoio')" class="trat-tab">Apoio e aprovações</button>
+    <button type="button" data-trat-tab="lideranca" onclick="tratMudarAba('lideranca')" class="trat-tab">Liderança</button>
+    <button type="button" data-trat-tab="resposta" onclick="tratMudarAba('resposta')" class="trat-tab">Resposta ao SAC</button>
+    <button type="button" data-trat-tab="historico" onclick="tratMudarAba('historico')" class="trat-tab">Histórico e dossiê</button>
+  </nav>
+
   <!-- BODY -->
   <div style="max-width:1100px;margin:0 auto;padding:20px 20px 60px;display:flex;flex-direction:column;gap:16px" id="trat-body">
     <div style="color:#A0A0A0;font-size:13px;padding:40px 0;text-align:center" id="trat-loading">Carregando...</div>
@@ -30823,6 +30863,9 @@ window.gdDecidir=async function(id,decisao){
 
 <style>
 .trat-sec{background:#fff;border:1px solid #EBEBEB;border-radius:12px;overflow:hidden}
+.trat-tab{height:42px;border:0;border-bottom:2px solid transparent;background:#fff;color:#8A8A8A;padding:0 16px;font:600 12px Montserrat,system-ui,sans-serif;cursor:pointer;white-space:nowrap}
+.trat-tab:hover{color:#C70602;background:#FFF8F8}.trat-tab.active{color:#C70602;border-bottom-color:#C70602;font-weight:800}
+.trat-tab-panel{display:flex;flex-direction:column;gap:16px}.trat-tab-panel[hidden]{display:none}
 .trat-sec-h{padding:14px 18px;display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none;border-bottom:1px solid #F0F0F0}
 .trat-sec-h:hover{background:#FAFAFA}
 .trat-sec-badge{font-size:10px;font-weight:700;letter-spacing:.05em;padding:2px 8px;border-radius:10px;background:#F3F4F6;color:#6B7280}
@@ -30872,6 +30915,12 @@ function fmtMoeda(v){ if(!v&&v!==0)return '—'; return 'R$ '+(+v).toLocaleStrin
 window.tratAbrir = function(id){
   if (!id) return;
   _tratId = id;
+  // A ficha pode estar declarada dentro de um contêiner de outra página
+  // (legado da montagem do HTML). Reposicione-a no shell principal antes da
+  // navegação para que a página-pai oculta não mantenha a ficha invisível.
+  const pagina = document.getElementById('page-tratativa');
+  const principal = document.querySelector('main.main');
+  if (pagina && principal && pagina.parentElement !== principal) principal.appendChild(pagina);
   if (typeof navigate==='function') navigate('tratativa', null);
   tratCarregar();
 };
@@ -30909,17 +30958,29 @@ function _renderTratativa(d){
   stBadge.style.color = stInfo.color||'#1D4ED8';
 
   const body = document.getElementById('trat-body');
+  const hist = d.historico || [];
   body.innerHTML =
-    _secA(m) +
-    _secB(m) +
-    _secC(m) +
-    _secD(m, d.encaminhamentos||[]) +
-    _secI(m, d.tratasSetoriais||[]) +
-    _secE(m, d.execucoes||[]) +
-    _secF(m, d.impactoFinanceiro) +
-    _secG(m) +
-    _secH(m, d.devolutivas||[]) +
-    _secAudit(d.historico||[]);
+    `<section class="trat-tab-panel" data-trat-panel="visao">${_secA(m)}${_secB(m)}</section>` +
+    `<section class="trat-tab-panel" data-trat-panel="investigacao" hidden>${_secC(m)}</section>` +
+    `<section class="trat-tab-panel" data-trat-panel="tratativa" hidden>${_secI(m, d.tratasSetoriais||[])}${_secE(m, d.execucoes||[])}${_secF(m, d.impactoFinanceiro)}</section>` +
+    `<section class="trat-tab-panel" data-trat-panel="apoio" hidden>${_secD(m, d.encaminhamentos||[])}</section>` +
+    `<section class="trat-tab-panel" data-trat-panel="lideranca" hidden>${_secLideranca(m, hist)}</section>` +
+    `<section class="trat-tab-panel" data-trat-panel="resposta" hidden>${_secG(m)}${_secH(m, d.devolutivas||[])}</section>` +
+    `<section class="trat-tab-panel" data-trat-panel="historico" hidden>${_secAudit(hist) || '<div class="trat-sec"><div class="trat-sec-body" style="color:#8A8A8A">Nenhum evento de histórico disponível para esta manifestação.</div></div>'}</section>`;
+  tratMudarAba('visao');
+}
+
+window.tratMudarAba = function(tab) {
+  const permitido = new Set(['visao','investigacao','tratativa','apoio','lideranca','resposta','historico']);
+  const atual = permitido.has(tab) ? tab : 'visao';
+  document.querySelectorAll('#trat-tabs [data-trat-tab]').forEach(btn => btn.classList.toggle('active', btn.dataset.tratTab === atual));
+  document.querySelectorAll('#trat-body [data-trat-panel]').forEach(panel => { panel.hidden = panel.dataset.tratPanel !== atual; });
+};
+
+function _secLideranca(m, historico) {
+  const eventos = (historico || []).filter(h => /LIDER|GESTOR|DIRETOR|APROVA|PARECER/i.test(String(h.TIPO||h.ACAO||h.EVENTO||'')));
+  const lista = eventos.length ? eventos.slice().reverse().map(h => `<div class="trat-card" style="margin-bottom:8px"><div style="font-size:12px;font-weight:700;color:#1A1A1A">${esc(h.ACAO||h.EVENTO||h.TIPO||'Interação registrada')}</div><div style="font-size:12px;color:#545252;margin-top:4px;white-space:pre-wrap">${esc(h.OBSERVACAO||h.VALOR_NOVO||h.DESCRICAO||'')}</div><div style="font-size:11px;color:#A0A0A0;margin-top:6px">${esc(h.USUARIO||'sistema')} · ${fmtData(h.DATA_HORA||h.DATA||h.CRIADO_EM)}</div></div>`).join('') : '<div style="color:#8A8A8A;font-size:13px">Nenhuma interação de liderança registrada para esta manifestação.</div>';
+  return `<div class="trat-sec"><div class="trat-sec-h"><span style="font-size:11px;font-weight:700;color:#6D28D9;background:#EDE9FE;border-radius:6px;padding:2px 7px">L</span><span style="font-size:14px;font-weight:700;color:#1A1A1A;flex:1">Acompanhamento da liderança</span></div><div class="trat-sec-body"><p style="font-size:12px;color:#545252;margin:0 0 12px">Gestores e diretores podem acompanhar a investigação e registrar decisões conforme sua alçada. Os eventos exibidos abaixo são recuperados do histórico oficial.</p>${lista}</div></div>`;
 }
 
 // ── SEÇÃO A: Cabeçalho

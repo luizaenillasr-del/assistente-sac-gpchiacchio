@@ -76,8 +76,9 @@ const manifestacoes = [
     assert.equal(matriz.regraUtilizavel(legado), true, 'regra legada completa deve ser utilizável');
 
     const incompleta = matriz.normalizarRegra(matrizRows[2]);
-    assert.equal(matriz.regraUtilizavel(incompleta), false, 'regra canônica incompleta ativa deve ser bloqueada');
-    assert.ok(incompleta.MOTIVOS_INCOMPLETUDE.includes('ID_TRATAMENTO'));
+    assert.equal(matriz.regraUtilizavel(incompleta), false, 'regra legada incompleta ativa deve ser bloqueada');
+    assert.equal(incompleta.CONTRATO, 'LEGADO', 'linha com ID_REGRA e campos legados deve manter o contrato legado');
+    assert.ok(incompleta.MOTIVOS_INCOMPLETUDE.includes('TRATATIVA_PADRAO'));
     assert.equal(matriz.regraUtilizavel(matriz.normalizarRegra(matrizRows[3])), false, 'regra inativa não deve ser utilizada');
 
     matriz._cache = null;
