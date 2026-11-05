@@ -8315,7 +8315,14 @@ app.patch('/api/manifestacoes/:id/circa-dados', requerPermissao('manifestacoes.e
     const idReq=String(req.params.id||'').trim();
     // Sem limite de linhas: a aba pode ter mais de 5000 registros e o novo
     // rascunho pode estar além desse limite imediatamente após o POST.
-    const rows=await lerAba('MANIFESTACOES').catch(()=>[]);
+    // Distingue falha de leitura (503) de registro genuinamente inexistente (404).
+    let rows;
+    try { rows = await lerAba('MANIFESTACOES'); } catch(e) {
+      return res.status(503).json({sucesso:false,erro:'Serviço temporariamente indisponível. Tente novamente.',codigo:'SHEETS_UNAVAILABLE'});
+    }
+    if (!rows || rows.length === 0) {
+      return res.status(503).json({sucesso:false,erro:'Serviço temporariamente indisponível. Tente novamente.',codigo:'SHEETS_UNAVAILABLE'});
+    }
     const m=rows.find(r=>[r.ID_MANIFESTACAO,r.PROTOCOLO,r.ID,r.ID_ORIGINAL].some(v=>String(v||'').trim()===idReq));
     if(!m) return res.status(404).json({sucesso:false,erro:'Manifestação não encontrada.'});
     if(req._empresaScope && !pertenceEmpresa(req._empresaScope,m.EMPRESA_RECLAMADA||'')) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado.'});

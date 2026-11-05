@@ -15563,7 +15563,9 @@ async function salvarRascunho(options={}) {
         if (t>0) await new Promise(r=>setTimeout(r,1000*t));
         res=await _apiFetch(`/api/manifestacoes/${encodeURIComponent(_nmCardId)}/circa-dados`,60000,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
         const e=String(res?.erro||'');
-        if (res?.sucesso || (!e.includes('404') && !e.includes('não encontrada') && !e.includes('nao encontrada'))) break;
+        const isRetryable = e.includes('404') || e.includes('não encontrada') || e.includes('nao encontrada') ||
+          e.includes('503') || e.includes('temporariamente') || res?.codigo === 'SHEETS_UNAVAILABLE';
+        if (res?.sucesso || !isRetryable) break;
       }
     } else res=await _apiFetch('/api/manifestacoes',60000,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     if(!res?.sucesso) throw new Error(res?.erro||'Falha ao salvar o rascunho.');
