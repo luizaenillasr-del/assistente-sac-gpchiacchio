@@ -1305,7 +1305,11 @@ async function lerAba(nomeAba, maxRows) {
     // consistente em memória. Escritas nunca usam este fallback.
     const cacheAutorizacao = nomeAba === 'USUARIOS' || nomeAba === 'PERMISSOES_USUARIO';
     const cacheAindaValido = cached && (Date.now() - cached.ts) < ttl;
-    if (cached?.data && (!cacheAutorizacao || cacheAindaValido)) {
+    // TTL=0 significa "nunca usar stale" — não usar snapshot mesmo em erro.
+    // Sem isso, qualquer falha de leitura retornava dados antigos sem o registro
+    // recém-criado, fazendo o PATCH retornar 404 silencioso.
+    const podeUsarStale = ttl > 0 && cached?.data && (!cacheAutorizacao || cacheAindaValido);
+    if (podeUsarStale) {
       console.warn(`[Sheets] ${nomeAba} indisponível (${e.message}); usando snapshot anterior.`);
       return cached.data;
     }
