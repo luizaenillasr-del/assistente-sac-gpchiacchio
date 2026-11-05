@@ -8332,8 +8332,19 @@ app.patch('/api/manifestacoes/:id/circa-dados', requerPermissao('manifestacoes.e
     if (!rows || rows.length === 0) {
       return res.status(503).json({sucesso:false,erro:'Serviço temporariamente indisponível. Tente novamente.',codigo:'SHEETS_UNAVAILABLE'});
     }
-    const m=rows.find(r=>[r.ID_MANIFESTACAO,r.PROTOCOLO,r.ID,r.ID_ORIGINAL].some(v=>String(v||'').trim()===idReq));
-    if(!m) return res.status(404).json({sucesso:false,erro:'Manifestação não encontrada.'});
+    let m=rows.find(r=>[r.ID_MANIFESTACAO,r.PROTOCOLO,r.ID,r.ID_ORIGINAL].some(v=>String(v||'').trim()===idReq));
+    // Fallback: se não achou pelo ID do parâmetro, tenta pelo idempotencyKey do body.
+    // Cobre o caso onde o registro foi criado mas o ID retornado pelo POST diferiu
+    // do que ficou gravado (eventual consistency de Sheets).
+    if (!m) {
+      const iKey = String(req.body?.idempotencyKey||req.body?.IDEMPOTENCY_KEY||'').trim();
+      if (iKey) m = rows.find(r => String(r.IDEMPOTENCY_KEY||'').trim() === iKey);
+      if (m) console.warn(`[PATCH/circa-dados] id="${idReq}" não encontrado; recuperado por idempotencyKey="${iKey}" → id real="${m.ID_MANIFESTACAO}"`);
+    }
+    if (!m) {
+      console.warn(`[PATCH/circa-dados] 404: id="${idReq}" não encontrado em ${rows.length} registros`);
+      return res.status(404).json({sucesso:false,erro:'Manifestação não encontrada.'});
+    }
     if(req._empresaScope && !pertenceEmpresa(req._empresaScope,m.EMPRESA_RECLAMADA||'')) return res.status(403).json({sucesso:false,erro:'Acesso não autorizado.'});
     const requestedStage=Number(req.body?.ETAPA_ATUAL||0);
     const currentStage=Math.max(Number(m.ETAPA_ATUAL)||0, circaWorkflow.stageForStatus(m.STATUS||m.STATUS_FICHA||'RASCUNHO'));
