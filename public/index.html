@@ -15573,7 +15573,7 @@ async function salvarRascunho(options={}) {
           lastErr = err;
           const st = err?.status || 0;
           const msg = String(err?.message||'');
-          const retryable = st===404 || st===503 || msg.includes('não encontrada') || msg.includes('nao encontrada') || msg.includes('temporariamente') || err?.codigo==='SHEETS_UNAVAILABLE';
+          const retryable = st===404 || st===500 || st===503 || msg.includes('não encontrada') || msg.includes('nao encontrada') || msg.includes('temporariamente') || msg.includes('não foi localizada') || err?.codigo==='SHEETS_UNAVAILABLE';
           if (!retryable) throw err; // erro permanente (400, 403, 409…) — não retenta
           if (t===5) throw err; // esgotou tentativas
         }
