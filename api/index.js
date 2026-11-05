@@ -2643,7 +2643,10 @@ app.get('/api/manifestacoes/:id', requerPermissao('manifestacoes.visualizar'), m
           // somente valores não vazios do Sheets, sem permitir que um PG
           // resumido oculte relato, canal, prioridade, autoria ou anexos.
           try {
-            const sheetsRows = await lerManifestacoesOperacionais(5000).catch(() => []);
+            // A ficha recém-criada pode estar além da linha 5.000. A leitura
+            // de confirmação não pode truncar a fonte oficial, senão um POST
+            // confirmado pelo Sheets parece inexistente para a ficha.
+            const sheetsRows = await lerManifestacoesOperacionais().catch(() => []);
             const sheetItem = sheetsRows.find(r => [r.ID_MANIFESTACAO, r.PROTOCOLO, r.ID, r.ID_ORIGINAL].some(v => String(v || '').trim() === String(req.params.id || '').trim()));
             if (sheetItem) for (const [key, value] of Object.entries(sheetItem)) {
               if (value !== undefined && value !== null && String(value).trim() !== '') item[key] = value;
@@ -2654,7 +2657,9 @@ app.get('/api/manifestacoes/:id', requerPermissao('manifestacoes.visualizar'), m
       } catch (e) { console.warn('[F6] GET /manifestacoes/:id PG falhou:', e.message); }
     }
     // Fallback Sheets
-    const data = await lerManifestacoesOperacionais(5000).catch(()=>[]);
+    // Não limitar a leitura: rascunhos novos podem estar depois da linha 5.000.
+    // Esse GET é usado imediatamente após o POST para confirmar a persistência.
+    const data = await lerManifestacoesOperacionais().catch(()=>[]);
     const idReq = String(req.params.id || '').trim();
     const item = data.find(r => [r.ID_MANIFESTACAO, r.PROTOCOLO, r.ID, r.ID_ORIGINAL]
       .some(v => String(v || '').trim() === idReq));
