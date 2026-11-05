@@ -1474,7 +1474,8 @@ async function appendObjeto(nomeAba, objeto) {
 async function atualizarPorID(nomeAba, id, dados, camposID = ['ID_MANIFESTACAO','ID_RNC','ID_APROVADOR','ID_SUGESTAO','ID_ANEXO','ID_EVENTO']) {
   if (_sheetsMock?.atualizarPorID) return _sheetsMock.atualizarPorID(nomeAba, id, dados, camposID);
   const sheets = await getSheets();
-  const res = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: nomeAba, valueRenderOption: 'FORMATTED_VALUE' });
+  // Usa _sheetsGetComRetry para respeitar o circuit breaker de quota (429).
+  const res = await _sheetsGetComRetry(sheets, { spreadsheetId: SPREADSHEET_ID, range: nomeAba, valueRenderOption: 'FORMATTED_VALUE' });
   const rows = res.data.values || [];
   if (rows.length < 2) return null;
   const headers = rows[0];
@@ -1587,9 +1588,8 @@ async function registrarAuditoria(usuario, acao, idManifestacao, entidade, valor
 // log administrativo completo a quem só pode acompanhar a manifestação.
 async function registrarHistoricoManifestacao({ id, protocolo = '', acao, descricao = '', usuario = 'sistema', etapa = '' }) {
   try {
-    await garantirAbaComCabecalhos('HISTORICO_MANIFESTACOES', [
-      'ID_HISTORICO','ID_MANIFESTACAO','PROTOCOLO','DATA_HORA','USUARIO','ACAO','DESCRICAO','ETAPA'
-    ]);
+    // garantirAbaComCabecalhos removida: aba já existe em produção com headers
+    // estáveis; chamá-la a cada POST/PATCH consumia 3–4 calls extras ao Sheets.
     await appendObjeto('HISTORICO_MANIFESTACOES', {
       ID_HISTORICO:`HMF-${Date.now()}-${Math.random().toString(36).slice(2,6)}`,
       ID_MANIFESTACAO:id, PROTOCOLO:protocolo, DATA_HORA:new Date().toISOString(),
