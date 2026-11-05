@@ -15556,26 +15556,46 @@ async function salvarRascunho(options={}) {
     if (_nmCardId && window._nmStatusPersistido && !/^RASCUNHO$/i.test(window._nmStatusPersistido)) { delete payload.status; delete payload.statusFicha; delete payload.STATUS; delete payload.STATUS_FICHA; }
     if (options.manterRascunho && (!window._nmStatusPersistido || /^RASCUNHO$/i.test(window._nmStatusPersistido))) { payload.status='RASCUNHO'; payload.statusFicha='RASCUNHO'; payload.STATUS='RASCUNHO'; payload.STATUS_FICHA='RASCUNHO'; payload.rascunho=true; }
     if (_nmRascunhoUltimaEdicao) payload.ultimaEdicaoConhecida=_nmRascunhoUltimaEdicao;
+    // _apiFetch lança exceção em qualquer resposta não-2xx (ver linha ~15761).
+    // O loop de retry precisa capturar essa exceção para decidir se retenta
+    // ou propaga — sem o try/catch interno, a exceção subia direto para o
+    // catch externo e o retry nunca executava.
     let res;
     if(_nmCardId) {
-      // Retry para 404: Sheets pode não ter propagado o registro recém-criado
+      let lastErr;
       for (let t=0; t<6; t++) {
-        if (t>0) await new Promise(r=>setTimeout(r,1000*t));
-        res=await _apiFetch(`/api/manifestacoes/${encodeURIComponent(_nmCardId)}/circa-dados`,60000,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-        const e=String(res?.erro||'');
-        const isRetryable = e.includes('404') || e.includes('não encontrada') || e.includes('nao encontrada') ||
-          e.includes('503') || e.includes('temporariamente') || res?.codigo === 'SHEETS_UNAVAILABLE';
-        if (res?.sucesso || !isRetryable) break;
+        if (t>0) await new Promise(r=>setTimeout(r,1500*t));
+        try {
+          res = await _apiFetch(`/api/manifestacoes/${encodeURIComponent(_nmCardId)}/circa-dados`,60000,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+          lastErr = null;
+          break; // sucesso
+        } catch(err) {
+          lastErr = err;
+          const st = err?.status || 0;
+          const msg = String(err?.message||'');
+          const retryable = st===404 || st===503 || msg.includes('não encontrada') || msg.includes('nao encontrada') || msg.includes('temporariamente') || err?.codigo==='SHEETS_UNAVAILABLE';
+          if (!retryable) throw err; // erro permanente (400, 403, 409…) — não retenta
+          if (t===5) throw err; // esgotou tentativas
+        }
       }
     } else {
       // Retry no POST: idempotencyKey garante que tentativas repetidas devolvem
       // o mesmo registro em vez de criar duplicatas (429/503 transitórios).
+      let lastErr;
       for (let t=0; t<4; t++) {
         if (t>0) await new Promise(r=>setTimeout(r,2000*t));
-        res=await _apiFetch('/api/manifestacoes',60000,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-        const e=String(res?.erro||'');
-        const isRetryable = e.includes('429') || e.includes('503') || e.includes('requisições') || e.includes('temporariamente') || res?.codigo === 'SHEETS_UNAVAILABLE';
-        if (res?.sucesso || !isRetryable) break;
+        try {
+          res = await _apiFetch('/api/manifestacoes',60000,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+          lastErr = null;
+          break; // sucesso
+        } catch(err) {
+          lastErr = err;
+          const st = err?.status || 0;
+          const msg = String(err?.message||'');
+          const retryable = st===429 || st===503 || msg.includes('requisições') || msg.includes('temporariamente') || err?.codigo==='SHEETS_UNAVAILABLE';
+          if (!retryable) throw err;
+          if (t===3) throw err;
+        }
       }
     }
     if(!res?.sucesso) throw new Error(res?.erro||'Falha ao salvar o rascunho.');
