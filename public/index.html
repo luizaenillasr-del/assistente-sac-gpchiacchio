@@ -15567,7 +15567,17 @@ async function salvarRascunho(options={}) {
           e.includes('503') || e.includes('temporariamente') || res?.codigo === 'SHEETS_UNAVAILABLE';
         if (res?.sucesso || !isRetryable) break;
       }
-    } else res=await _apiFetch('/api/manifestacoes',60000,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    } else {
+      // Retry no POST: idempotencyKey garante que tentativas repetidas devolvem
+      // o mesmo registro em vez de criar duplicatas (429/503 transitórios).
+      for (let t=0; t<4; t++) {
+        if (t>0) await new Promise(r=>setTimeout(r,2000*t));
+        res=await _apiFetch('/api/manifestacoes',60000,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+        const e=String(res?.erro||'');
+        const isRetryable = e.includes('429') || e.includes('503') || e.includes('requisições') || e.includes('temporariamente') || res?.codigo === 'SHEETS_UNAVAILABLE';
+        if (res?.sucesso || !isRetryable) break;
+      }
+    }
     if(!res?.sucesso) throw new Error(res?.erro||'Falha ao salvar o rascunho.');
     if (!_nmCardId && res.id) {
       _nmCardId = res.id;
