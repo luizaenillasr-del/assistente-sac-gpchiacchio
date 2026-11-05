@@ -15583,7 +15583,7 @@ async function salvarRascunho(options={}) {
       // o mesmo registro em vez de criar duplicatas (429/503 transitórios).
       let lastErr;
       for (let t=0; t<4; t++) {
-        if (t>0) await new Promise(r=>setTimeout(r,2000*t));
+        if (t>0) await new Promise(r=>setTimeout(r,3000*t + Math.random()*500|0));
         try {
           res = await _apiFetch('/api/manifestacoes',60000,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
           lastErr = null;
