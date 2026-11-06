@@ -8355,6 +8355,26 @@ app.patch('/api/manifestacoes/:id/circa-dados', requerPermissao('manifestacoes.e
       if (m) console.warn(`[PATCH/circa-dados] id="${idReq}" não encontrado; recuperado por idempotencyKey="${iKey}" → id real="${m.ID_MANIFESTACAO}"`);
     }
     if (!m) {
+      // Retry com leitura fresca: janela de propagação do Sheets entre o appendValues
+      // do POST (confirmado) e um get subsequente em outra instância serverless.
+      // Aguarda 1.2s e relê antes de concluir que o registro não existe.
+      await new Promise(r => setTimeout(r, 1200));
+      try {
+        const rowsRetry = await lerAba('MANIFESTACOES');
+        if (rowsRetry && rowsRetry.length > 0) {
+          m = rowsRetry.find(r => [r.ID_MANIFESTACAO,r.PROTOCOLO,r.ID,r.ID_ORIGINAL].some(v => String(v||'').trim() === idReq));
+          if (!m) {
+            const iKey2 = String(req.body?.idempotencyKey||req.body?.IDEMPOTENCY_KEY||'').trim();
+            if (iKey2) m = rowsRetry.find(r => String(r.IDEMPOTENCY_KEY||'').trim() === iKey2);
+            if (m) console.warn(`[PATCH/circa-dados] retry: id="${idReq}" recuperado por idempotencyKey na 2ª leitura`);
+          } else {
+            console.warn(`[PATCH/circa-dados] retry: id="${idReq}" encontrado na 2ª leitura (${rowsRetry.length} registros)`);
+          }
+          if (m) rows = rowsRetry;
+        }
+      } catch(e) { console.warn('[PATCH/circa-dados] retry lerAba falhou:', e.message); }
+    }
+    if (!m) {
       console.warn(`[PATCH/circa-dados] 404: id="${idReq}" não encontrado em ${rows.length} registros`);
       return res.status(404).json({sucesso:false,erro:'Manifestação não encontrada.'});
     }
