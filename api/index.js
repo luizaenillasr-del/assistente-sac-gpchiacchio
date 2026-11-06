@@ -1293,14 +1293,18 @@ async function lerAba(nomeAba, maxRows) {
     const range = maxRows ? `${nomeAba}!1:${maxRows + 1}` : nomeAba;
     const res = await _sheetsGetComRetry(sheets, { spreadsheetId: SPREADSHEET_ID, range });
     const rows = res.data.values || [];
-    if (rows.length < 2) { _lerAbaCache.set(cacheKey, { data: [], ts: Date.now() }); return []; }
+    if (rows.length < 2) { if (_lerAbaInFlight.get(cacheKey) === leitura) _lerAbaCache.set(cacheKey, { data: [], ts: Date.now() }); return []; }
     const headers = rows[0];
     const data = rows.slice(1).map(row => {
       const obj = {};
       headers.forEach((h, i) => { if (h && !(h in obj)) obj[h] = row[i] || ''; });
       return obj;
     });
-    _lerAbaCache.set(cacheKey, { data, ts: Date.now() });
+    // Só armazena se esta promise ainda é a leitura corrente (não foi
+    // descartada por invalidarCacheAba enquanto estava em andamento).
+    if (_lerAbaInFlight.get(cacheKey) === leitura) {
+      _lerAbaCache.set(cacheKey, { data, ts: Date.now() });
+    }
     return data;
   } catch (e) {
     // Em 429/503, uma leitura pública pode continuar usando o último snapshot
@@ -1326,6 +1330,12 @@ async function lerAba(nomeAba, maxRows) {
 function invalidarCacheAba(nomeAba) {
   for (const key of _lerAbaCache.keys()) {
     if (key.startsWith(nomeAba + '|')) _lerAbaCache.delete(key);
+  }
+  // Remove leituras em andamento que iniciaram antes desta escrita: quando
+  // resolverem, o check `_lerAbaInFlight.get(cacheKey) === leitura` falhará
+  // e elas não sobrescreverão o cache com dados anteriores ao novo registro.
+  for (const key of _lerAbaInFlight.keys()) {
+    if (key.startsWith(nomeAba + '|')) _lerAbaInFlight.delete(key);
   }
 }
 
