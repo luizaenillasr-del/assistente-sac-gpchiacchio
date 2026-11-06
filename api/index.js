@@ -1268,9 +1268,10 @@ const LER_ABA_TTL_MS = 60_000;
 // absorver picos concorrentes de autenticação sem esconder revogações por
 // mais de alguns segundos nesta instância serverless.
 const TTL_POR_ABA = {
-  // 3 s absorve retries imediatos dentro da mesma instância (ex: PATCH logo após POST)
-  // sem abrir janela de stale data relevante para o usuário.
-  MANIFESTACOES: 3_000,
+  // TTL=0: nunca usar stale cache em erro. Com ttl>0, podeUsarStale=true e um
+  // 429 retorna snapshot sem o registro recém-criado → PATCH vê 404.
+  // O PR #499 havia colocado 3_000 ms aqui, reintroduzindo o bug do PR #496.
+  MANIFESTACOES: 0,
   // A validação de sessão mantém uma janela curta para reduzir quota sem
   // deixar uma revogação administrativa persistir indefinidamente.
   USUARIOS: 15_000,
