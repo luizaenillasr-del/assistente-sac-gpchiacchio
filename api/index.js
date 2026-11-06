@@ -1270,7 +1270,6 @@ const LER_ABA_TTL_MS = 60_000;
 const TTL_POR_ABA = {
   // TTL=0: nunca usar stale cache em erro. Com ttl>0, podeUsarStale=true e um
   // 429 retorna snapshot sem o registro recém-criado → PATCH vê 404.
-  // O PR #499 havia colocado 3_000 ms aqui, reintroduzindo o bug do PR #496.
   MANIFESTACOES: 0,
   // A validação de sessão mantém uma janela curta para reduzir quota sem
   // deixar uma revogação administrativa persistir indefinidamente.
